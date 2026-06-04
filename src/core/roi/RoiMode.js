@@ -3,13 +3,17 @@ import { normalizeSamplingRules } from '../sim/MissionRules.js';
 import { buildRouteSegmentsForAgent } from '../planning/RouteSegmentBuilder.js';
 import { getSelectedStart } from '../deployment/DeploymentZones.js';
 import { clipLineToTerrain } from '../planning/RoutePreview.js';
+import { estimateBeachingRiskAtCell, estimateSegmentBeachingRisk } from '../planning/ShorelineRisk.js';
+import { isCellNavigable } from '../planning/Navigability.js';
 import { getMobileHazardsAtTime } from '../sim/MobileHazards.js';
 import { clamp } from '../math/MathUtils.js';
 
-export const ROI_MODES = ['value', 'probability', 'expectedValue', 'remaining', 'risk', 'safety', 'travelCost'];
+export const ROI_MODES = ['value', 'probability', 'expectedValue', 'remaining', 'travelCost', 'riskSafety'];
 const DEBUG_TRAVEL_COST = false;
 
 export function normalizeRoiMode(mode) {
+  const key = String(mode ?? '').trim().toLowerCase().replace(/\s+/g, '');
+  if (key === 'risk' || key === 'safety' || key === 'risksafety' || key === 'risk/safety' || key === 'risk-safety') return 'riskSafety';
   if (mode === 'depletedValue') return 'remaining';
   if (mode === 'expected') return 'expectedValue';
   return ROI_MODES.includes(mode) ? mode : 'expectedValue';
@@ -27,9 +31,8 @@ export function getRoiModeLabel(mode) {
     probability: 'Probability',
     expectedValue: 'Expected',
     remaining: 'Remaining',
-    risk: 'Risk',
-    safety: 'Safety',
-    travelCost: 'Travel Cost'
+    travelCost: 'Travel Cost',
+    riskSafety: 'Risk / Safety'
   }[normalizeRoiMode(mode)];
 }
 
@@ -42,8 +45,7 @@ export function getRoiModeDescription(mode, { deterministic = false } = {}) {
       : 'Shows how likely each sampling opportunity is to exist.';
   }
   if (normalized === 'remaining') return 'Shows value still available after currently planned fleet routes are considered.';
-  if (normalized === 'risk') return 'Highlights dangerous cells from hazards, shallow water, strong currents, and uncertainty.';
-  if (normalized === 'safety') return 'Highlights safer navigation cells as the inverse of risk.';
+  if (normalized === 'riskSafety') return 'Shows one navigability spectrum: low-risk areas are safer, high-risk areas are dangerous or likely to cause route trouble.';
   if (normalized === 'travelCost') return 'Shows estimated travel cost from the current planning anchor.';
   return 'Shows risk-adjusted ROI value: raw value times probability.';
 }
@@ -54,8 +56,8 @@ export function getCellRoiDisplayValue({ cell, x, y, t = 0, mode = 'expectedValu
   const remaining = normalized === 'remaining'
     ? getRemainingRoiValue({ x, y, t, rawValue: roi.value, roi, plan, mission, level, coverage })
     : null;
-  const risk = normalized === 'risk' || normalized === 'safety'
-    ? getCellRisk({ x, y, t, level, mission, frame, planningAnchor })
+  const risk = normalized === 'riskSafety'
+    ? computeRiskScore({ x, y, t, level, mission, frame, planningAnchor })
     : null;
   const travel = normalized === 'travelCost'
     ? getTravelCost({ x, y, t, level, mission, plan, frame, selectedAgentId, selectedWaypoint, planningAnchor, field: travelCostField })
@@ -66,11 +68,9 @@ export function getCellRoiDisplayValue({ cell, x, y, t = 0, mode = 'expectedValu
       ? roi.probability
       : normalized === 'remaining'
         ? remaining.remainingValue
-        : normalized === 'risk'
+        : normalized === 'riskSafety'
           ? risk.value
-          : normalized === 'safety'
-            ? 1 - risk.value
-            : normalized === 'travelCost'
+          : normalized === 'travelCost'
               ? travel.displayValue
               : roi.expectedValue;
   return {
@@ -88,9 +88,13 @@ export function getCellRoiDisplayValue({ cell, x, y, t = 0, mode = 'expectedValu
   };
 }
 
-export function getCellRisk({ x, y, t = 0, level = null, mission = null, frame = null } = {}) {
-  if (!isInsideLevel(level, x, y)) return { value: 1, label: 'blocked', reasons: ['outside map'] };
-  if (level?.layers?.terrain?.[y]?.[x]) return { value: 1, label: 'blocked', reasons: ['terrain'] };
+export function getCellRisk(context = {}) {
+  return computeRiskScore(context);
+}
+
+export function computeRiskScore({ x, y, t = 0, level = null, mission = null, frame = null } = {}) {
+  const navigability = isCellNavigable(level, mission, x, y);
+  if (!navigability.ok) return blockedRisk(navigability.reason);
   const reasons = [];
   let risk = 0;
   const hazard = Number(level?.layers?.hazards?.[y]?.[x] ?? 0);
@@ -117,17 +121,43 @@ export function getCellRisk({ x, y, t = 0, level = null, mission = null, frame =
     risk += Math.min(0.34, currentMagnitude * 0.24);
     reasons.push('strong current');
   }
+  const beachingRisk = estimateBeachingRiskAtCell({ level, frame, x, y });
+  if (beachingRisk.value >= 0.5) {
+    risk += Math.min(0.42, beachingRisk.value * 0.42);
+    reasons.push(`${beachingRisk.level} shoreline current`);
+  } else if (beachingRisk.value > 0) {
+    risk += Math.min(0.18, beachingRisk.value * 0.32);
+    reasons.push('shoreline current');
+  }
   const confidence = frame?.confidence?.[y]?.[x];
   if (confidence !== undefined && Number(confidence) < 0.45) {
     risk += 0.24;
     reasons.push('low forecast confidence');
   }
   const value = clamp01(risk);
+  const safetyValue = clamp01(1 - value);
   return {
     value,
+    safetyValue,
     label: value > 0.7 ? 'high' : value > 0.35 ? 'medium' : 'low',
+    safetyLabel: safetyValue > 0.7 ? 'high' : safetyValue > 0.35 ? 'medium' : 'low',
     reasons,
-    currentMagnitude
+    currentMagnitude,
+    beachingRisk,
+    derivedSafety: true
+  };
+}
+
+function blockedRisk(reason) {
+  return {
+    value: 1,
+    safetyValue: 0,
+    label: 'blocked',
+    safetyLabel: 'low',
+    reasons: [reason],
+    currentMagnitude: 0,
+    beachingRisk: null,
+    derivedSafety: true
   };
 }
 
@@ -265,7 +295,7 @@ function estimateTravelCostCell({ level, mission, agent, frame, anchor, x, y, bu
     return { available: true, reachable: false, displayValue: 1, cost: Infinity, energy: Infinity, eta: Infinity, message: 'Blocked terrain' };
   }
   const target = { x, y };
-  const clipped = clipLineToTerrain(anchor, target, level);
+  const clipped = clipLineToTerrain(anchor, target, level, { mission });
   const distance = Math.hypot(Number(x) - Number(anchor.x), Number(y) - Number(anchor.y));
   const direction = normalizeDirection(Number(x) - Number(anchor.x), Number(y) - Number(anchor.y));
   const baseSpeed = Math.max(0.1, finiteNumber(agent?.maxSpeed ?? agent?.speed ?? mission?.physics?.speed, 1));
@@ -283,6 +313,8 @@ function estimateTravelCostCell({ level, mission, agent, frame, anchor, x, y, bu
   const eta = distance / effectiveSpeed;
   const hazardPenalty = finiteNumber(level?.layers?.hazards?.[y]?.[x], 0) > 0 ? 5 : 0;
   const depthPenalty = level?.layers?.depth?.[y]?.[x] !== undefined && Number(level.layers.depth[y][x]) < 0.32 ? 2 : 0;
+  const beachingRisk = estimateSegmentBeachingRisk({ level, frame, start: anchor, end: target });
+  const beachingPenalty = Number(beachingRisk.costPenalty ?? 0) * Math.max(1, distance);
   const oppositionScale = finiteNumber(mission?.rules?.travelCost?.oppositionScale, 2);
   const crossCurrentScale = finiteNumber(mission?.rules?.travelCost?.crossCurrentScale, 0.75);
   const assistScale = finiteNumber(mission?.rules?.travelCost?.assistScale, 0.8);
@@ -291,7 +323,7 @@ function estimateTravelCostCell({ level, mission, agent, frame, anchor, x, y, bu
   const oppositionPenalty = Math.max(0, -currentAlong) * oppositionScale * distance;
   const assistDiscount = Math.max(0, currentAlong) * assistScale * distance;
   const baseEnergy = distance * energyRate;
-  const energy = Math.max(0, baseEnergy + hazardPenalty + depthPenalty + crossPenalty + oppositionPenalty - assistDiscount);
+  const energy = Math.max(0, baseEnergy + hazardPenalty + depthPenalty + beachingPenalty + crossPenalty + oppositionPenalty - assistDiscount);
   const cost = Math.max(0, energy + eta * 0.2);
   const remainingFuel = Number(budget.remainingFuel ?? agent?.battery ?? mission?.rules?.energyBudget ?? Infinity);
   const availableTime = Number(budget.availableTime ?? Infinity);
@@ -327,6 +359,8 @@ function estimateTravelCostCell({ level, mission, agent, frame, anchor, x, y, bu
     timeReachable,
     hazardPenalty,
     depthPenalty,
+    beachingPenalty,
+    beachingRisk,
     crossPenalty,
     oppositionPenalty,
     assistDiscount,

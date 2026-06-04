@@ -1,4 +1,5 @@
 import { clamp, normalize } from '../math/MathUtils.js';
+import { estimateBeachingRiskAtCell } from '../planning/ShorelineRisk.js';
 import { applySeededStochasticDrift } from './StochasticDrift.js';
 
 export function stepAgentToward(agent, target, world, dt, config = {}) {
@@ -55,6 +56,8 @@ export function stepAgentToward(agent, target, world, dt, config = {}) {
     agent.history.push(snapshot(agent, config.t));
     return { moved: false, distance: 0, blocked: false, batteryDepleted: false, invalidPosition: true };
   }
+  const frame = world.getFrame?.(config.t ?? 0);
+  const beachingRisk = estimateBeachingRiskAtCell({ level: world.level, frame, x: nextX, y: nextY });
   const blocked = world.isBlocked(nextX, nextY);
 
   if (!blocked) {
@@ -72,7 +75,8 @@ export function stepAgentToward(agent, target, world, dt, config = {}) {
   const distance = Math.hypot(agent.x - oldX, agent.y - oldY);
   const depthMultiplier = world.depthEnergyMultiplier?.(agent.x, agent.y) ?? config.depthEnergyMultiplier ?? 1;
   const baseEnergy = distance * (config.energyPerCell ?? 1);
-  const energy = baseEnergy * depthMultiplier;
+  const shorelineEnergyPenalty = !blocked && distance > 0 ? baseEnergy * Math.max(0, Number(beachingRisk.energyMultiplier ?? 1) - 1) : 0;
+  const energy = baseEnergy * depthMultiplier + shorelineEnergyPenalty;
   agent.energyUsed += energy;
   agent.battery = Math.max(0, agent.battery - energy);
   if (agent.battery <= 0 && distance > 0) agent.status = 'batteryDepleted';
@@ -91,7 +95,9 @@ export function stepAgentToward(agent, target, world, dt, config = {}) {
     velocity: [vx, vy],
     depthMultiplier,
     baseEnergy,
-    energy
+    energy,
+    shorelineEnergyPenalty,
+    beachingRisk
   };
 }
 

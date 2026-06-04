@@ -1,5 +1,6 @@
 import { buildResultExport } from '../io/ResultExporter.js';
 import { cloneJson } from '../io/ExportVisibility.js';
+import { evaluateExactReplayAvailability, getReplaySeedContract } from '../random/ReplaySeedContract.js';
 
 export const SAVED_ATTEMPT_STORAGE_KEY = 'anchorGliderCommand.savedAttempts.v1';
 
@@ -9,14 +10,27 @@ export function loadSavedAttempts() {
 
 export function saveAttemptToLocalStore({ level, mission, plan, result, label = 'Manual Player Plan' } = {}) {
   const attempt = buildResultExport({ level, mission, plan, result, label });
+  const replaySeedContract = getReplaySeedContract({ level, mission, generationConfig: level?.meta?.generationConfig ?? null });
+  const exactReplay = evaluateExactReplayAvailability({ level, mission, replaySeedContract });
   const store = loadSavedAttempts();
   store.attempts ??= {};
   const key = `${attempt.instanceId ?? 'unknown'}:${result?.leaderboardAttempt?.attemptId ?? attempt.createdAt}`;
   store.attempts[key] = {
     key,
     instanceId: attempt.instanceId,
+    challengeId: attempt.challengeId ?? attempt.instanceId,
     levelId: attempt.levelId,
     missionId: attempt.missionId,
+    replaySeedAnchor: replaySeedContract?.replaySeedAnchor ?? attempt.instanceId,
+    generationVersion: replaySeedContract?.generationVersion ?? null,
+    generationConfig: cloneJson(replaySeedContract?.generationConfig ?? level?.meta?.generationConfig ?? null),
+    derivedSeeds: cloneJson(replaySeedContract?.derivedSeeds ?? null),
+    replaySeedContract: cloneJson(replaySeedContract),
+    exactReplay: {
+      available: exactReplay.available,
+      method: exactReplay.method,
+      reason: exactReplay.reason
+    },
     label,
     savedAt: new Date().toISOString(),
     pathSummary: {

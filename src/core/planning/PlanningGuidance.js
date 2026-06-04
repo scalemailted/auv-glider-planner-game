@@ -4,6 +4,7 @@ import { getDriftRules } from '../sim/StochasticDrift.js';
 import { getTimeConfig, getWindowEndTime } from '../time/MissionTime.js';
 import { clipLineToTerrain, estimateRouteEnergy } from './RoutePreview.js';
 import { getSelectedStart } from '../deployment/DeploymentZones.js';
+import { isCellNavigable } from './Navigability.js';
 
 export function buildPlanningGuidance({
   level,
@@ -33,15 +34,16 @@ export function buildPlanningGuidance({
   const driftGain = getDriftRules(mission).driftGain;
   const confidence = sampleConfidence(frame, level, origin.x, origin.y);
   const ensembleDisagreement = sampleEnsembleCurrentDisagreement(level, origin.x, origin.y, time);
-  const reachable = buildReachableCells(level, agent, origin, current, duration, driftGain);
+  const reachable = buildReachableCells(level, mission, agent, origin, current, duration, driftGain);
   const reachableRegion = buildReachableRegion(level, agent, origin, current, duration, driftGain, confidence, ensembleDisagreement);
-  const previewTarget = hoverCell && !level.layers.terrain?.[hoverCell.y]?.[hoverCell.x]
+  const previewTarget = hoverCell && isCellNavigable(level, mission, hoverCell.x, hoverCell.y).ok
     ? hoverCell
     : getNextWaypoint(plan, selectedAgentId, selectedWindow) ?? null;
-  const routeClip = previewTarget ? clipLineToTerrain(origin, previewTarget, level) : null;
+  const routeClip = previewTarget ? clipLineToTerrain(origin, previewTarget, level, { mission }) : null;
   const routeEnergy = previewTarget ? estimateRouteEnergy(origin, previewTarget, level, agent, frame, {
     driftGain,
-    energyPerCell: mission.physics?.energyPerCell ?? 1
+    energyPerCell: mission.physics?.energyPerCell ?? 1,
+    mission
   }) : null;
   const coneTarget = routeClip?.valid === false ? routeClip.lastValid : previewTarget;
   const driftCone = previewTarget ? buildDriftConeCorridor({
@@ -253,7 +255,7 @@ function getNextWaypoint(plan, agentId, selectedWindow) {
   return waypoints.find((waypoint) => Number(waypoint.window ?? 0) >= selectedWindow) ?? waypoints.at(-1) ?? null;
 }
 
-function buildReachableCells(level, agent, origin, current, duration, driftGain) {
+function buildReachableCells(level, mission, agent, origin, current, duration, driftGain) {
   const maxSpeed = agent.maxSpeed ?? 1;
   const maxDistance = Math.max(0.5, maxSpeed * duration);
   const driftX = current[0] * driftGain * duration;
@@ -262,7 +264,7 @@ function buildReachableCells(level, agent, origin, current, duration, driftGain)
 
   for (let y = 0; y < level.world.grid.height; y += 1) {
     for (let x = 0; x < level.world.grid.width; x += 1) {
-      if (level.layers.terrain?.[y]?.[x]) continue;
+      if (!isCellNavigable(level, mission, x, y).ok) continue;
       const rx = x - origin.x;
       const ry = y - origin.y;
       const projectedX = rx - driftX * 0.28;

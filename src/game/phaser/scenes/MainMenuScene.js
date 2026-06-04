@@ -3,12 +3,14 @@ import { applyTutorialMissionConfig, loadCampaignLevel, CAMPAIGN_LEVELS } from '
 import { ensureLevelIdentity } from '../../../core/identity/GameInstanceId.js';
 import { resetPlanResultStore } from '../../../core/evaluation/PlanResultStore.js';
 import { beginScenario } from '../../../core/scenario/ScenarioState.js';
-import { createDefaultScenarioConfig, generateScenarioFromConfig } from '../../../core/generation/ScenarioConfig.js';
+import { createDefaultScenarioConfig, generateScenarioFromConfig, regenerateScenarioFromReplayContract } from '../../../core/generation/ScenarioConfig.js';
 import { CenterLeaderboardView } from '../../../ui/CenterLeaderboardView.js';
 import { CenterTutorialBrowser } from '../../../ui/CenterTutorialBrowser.js';
 import { buildChallengeExport } from '../../../core/io/ChallengeExporter.js';
 import { buildLeaderboardExport, buildLeaderboardRecordExport } from '../../../core/io/LeaderboardExporter.js';
 import { buildResultExport } from '../../../core/io/ResultExporter.js';
+import { evaluateExactReplayAvailability } from '../../../core/random/ReplaySeedContract.js';
+import { normalizePlan } from '../../../core/planning/WaypointPlan.js';
 import {
   clearLeaderboard,
   clearLeaderboardRecord,
@@ -235,6 +237,29 @@ export class MainMenuScene extends PhaserScene {
 
   leaderboardHandlers() {
     return {
+      replayChallenge: (record) => this.loadLeaderboardChallenge(record, {
+        withPlan: false,
+        showBestPathOverlay: false,
+        targetScene: 'MissionWorkspaceScene'
+      }),
+      showPath: (record) => this.loadLeaderboardChallenge(record, {
+        withPlan: false,
+        showBestPathOverlay: true,
+        targetScene: 'MissionWorkspaceScene'
+      }),
+      hidePath: (record) => this.loadLeaderboardChallenge(record, {
+        withPlan: false,
+        showBestPathOverlay: false,
+        targetScene: 'MissionWorkspaceScene'
+      }),
+      rerunPath: (record) => this.rerunLeaderboardPath(record),
+      loadPathAsPlan: (record) => this.loadLeaderboardChallenge(record, {
+        withPlan: true,
+        showBestPathOverlay: false,
+        targetScene: 'MissionWorkspaceScene',
+        planSource: 'loadedFromLeaderboard',
+        planNamePrefix: 'Leaderboard Saved Path'
+      }),
       loadChallenge: (record) => this.loadLeaderboardChallenge(record, { withPlan: false }),
       loadBestPlan: (record) => this.loadLeaderboardChallenge(record, { withPlan: true }),
       exportPlan: (record) => this.exportLeaderboardPlan(record),
@@ -246,31 +271,114 @@ export class MainMenuScene extends PhaserScene {
     };
   }
 
-  loadLeaderboardChallenge(record, { withPlan = false } = {}) {
-    if (!record?.level || !record?.mission) {
-      this.app.toast?.('This leaderboard record does not include a saved challenge.', 'error');
+  loadLeaderboardChallenge(record, {
+    withPlan = false,
+    showBestPathOverlay = false,
+    targetScene = null,
+    planSource = 'loadedFromLeaderboard',
+    planNamePrefix = 'Leaderboard Saved Path'
+  } = {}) {
+    const restored = restoreLeaderboardChallenge(record);
+    if (!restored) {
+      const replay = evaluateExactReplayAvailability(record);
+      this.app.toast?.(replay.reason ?? 'This leaderboard record does not include replayable challenge data.', 'error');
       return;
     }
+    const restoredRecord = { ...record, level: restored.level, mission: restored.mission };
     const best = getBestAttempt(loadLeaderboard(), record.instanceId);
-    const plan = withPlan ? cloneJson(best?.plan) : null;
+    const plan = withPlan ? this.prepareLeaderboardPlan(restoredRecord, best, { planSource, planNamePrefix }) : null;
     if (withPlan && !plan) {
       this.app.toast?.('No saved plan is available for this record.', 'error');
       return;
     }
     beginScenario(this.app.state, {
-      level: cloneJson(record.level),
-      mission: cloneJson(record.mission),
+      level: restored.level,
+      mission: restored.mission,
       challengeMode: record.challengeMode ?? record.mode ?? 'perfectKnowledge',
-      source: 'leaderboard'
+      source: restored.source
     });
     resetPlanResultStore(this.app.state);
+    this.app.state.ui ??= {};
+    this.app.state.ui.showBestPathOverlay = Boolean(showBestPathOverlay);
     if (plan) {
       this.app.state.plan = plan;
       this.app.state.manualPlan = plan;
-      this.app.state.currentPlanSource = best?.label ?? 'Leaderboard Best Plan';
+      this.app.state.currentPlanSource = planSource;
       this.app.state.selectedAgentId = this.app.state.mission?.agents?.[0]?.id ?? null;
+      this.app.state.loadedLeaderboardPlan = {
+        recordInstanceId: record.instanceId,
+        attemptId: best?.attemptId ?? null,
+        score: best?.score ?? null
+      };
     }
-    this.scene.start(withPlan ? 'MissionWorkspaceScene' : 'MissionBriefingScene');
+    if (showBestPathOverlay) {
+      this.app.toast?.(`Saved path overlay enabled for this challenge (${restored.replayMethod}).`, 'info');
+    } else if (plan) {
+      this.app.toast?.('Saved leaderboard path loaded as the editable plan.', 'success');
+    }
+    this.scene.start(targetScene ?? (withPlan ? 'MissionWorkspaceScene' : 'MissionBriefingScene'));
+  }
+
+  rerunLeaderboardPath(record) {
+    const restored = restoreLeaderboardChallenge(record);
+    if (!restored) {
+      const replay = evaluateExactReplayAvailability(record);
+      this.app.toast?.(replay.reason ?? 'This leaderboard record does not include replayable challenge data.', 'error');
+      return;
+    }
+    const restoredRecord = { ...record, level: restored.level, mission: restored.mission };
+    const best = getBestAttempt(loadLeaderboard(), record.instanceId);
+    const plan = this.prepareLeaderboardPlan(restoredRecord, best, {
+      planSource: 'bestPriorRerun',
+      planNamePrefix: 'Leaderboard Saved Path Rerun'
+    });
+    if (!plan) {
+      this.app.toast?.('No saved plan is available to rerun for this record.', 'error');
+      return;
+    }
+    beginScenario(this.app.state, {
+      level: restored.level,
+      mission: restored.mission,
+      challengeMode: record.challengeMode ?? record.mode ?? 'perfectKnowledge',
+      source: restored.source
+    });
+    resetPlanResultStore(this.app.state);
+    this.app.state.ui ??= {};
+    this.app.state.ui.showBestPathOverlay = true;
+    this.app.state.plan = plan;
+    this.app.state.manualPlan = plan;
+    this.app.state.currentPlanSource = 'bestPriorRerun';
+    this.app.state.selectedAgentId = this.app.state.mission?.agents?.[0]?.id ?? null;
+    this.app.state.bestPriorRerun = {
+      attemptId: best?.attemptId ?? null,
+      originalScore: best?.score ?? null,
+      recordInstanceId: record.instanceId,
+      rerunUnderSavedChallenge: true
+    };
+    this.app.state.pendingWorkspaceAutoExecute = {
+      source: 'leaderboardSavedPath',
+      attemptId: best?.attemptId ?? null
+    };
+    this.app.toast?.('Rerunning saved leaderboard path.', 'info');
+    this.scene.start('MissionWorkspaceScene');
+  }
+
+  prepareLeaderboardPlan(record, best, { planSource, planNamePrefix } = {}) {
+    const rawPlan = cloneJson(best?.plan);
+    if (!rawPlan) return null;
+    try {
+      const plan = normalizePlan(rawPlan, record.level, record.mission);
+      plan.meta ??= {};
+      plan.meta.source = planSource ?? 'loadedFromLeaderboard';
+      plan.meta.name = `${planNamePrefix ?? 'Leaderboard Saved Path'} (${formatScore(best?.score)})`;
+      plan.meta.originalAttemptId = best?.attemptId ?? null;
+      plan.meta.originalScore = best?.score ?? null;
+      plan.meta.recordInstanceId = record.instanceId;
+      return plan;
+    } catch (error) {
+      this.app.toast?.(error?.message ?? 'Saved plan could not be loaded.', 'error');
+      return null;
+    }
   }
 
   exportLeaderboardPlan(record) {
@@ -441,4 +549,30 @@ function cloneJson(value) {
   } catch {
     return value;
   }
+}
+
+function restoreLeaderboardChallenge(record) {
+  if (record?.level && record?.mission) {
+    return {
+      level: cloneJson(record.level),
+      mission: cloneJson(record.mission),
+      source: 'leaderboard',
+      replayMethod: 'snapshot'
+    };
+  }
+  const replay = evaluateExactReplayAvailability(record);
+  if (!replay.available || replay.method !== 'regeneration') return null;
+  const regenerated = regenerateScenarioFromReplayContract(record);
+  if (!regenerated?.level || !regenerated?.mission) return null;
+  return {
+    level: regenerated.level,
+    mission: regenerated.mission,
+    source: 'leaderboardRegenerated',
+    replayMethod: 'regeneration'
+  };
+}
+
+function formatScore(value) {
+  const number = Number(value);
+  return Number.isFinite(number) ? number.toFixed(1) : 'N/A';
 }

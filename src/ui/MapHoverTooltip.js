@@ -81,11 +81,13 @@ function tooltipHtml(state, info) {
     <section class="map-hover-tooltip-card">
       <strong>Cell (${info.x}, ${info.y}) - ${escapeHtml(formatMissionTime(state.level, info.t))}</strong>
       <span>ROI Mode: ${escapeHtml(getRoiModeLabel(info.roiMode))} (${escapeHtml(formatHudMetric(info.roiDisplayValue, 2))})</span>
+      <span>Navigability: ${escapeHtml(info.navigability?.status ?? 'unknown')}${info.navigability?.status === 'blocked' ? ` (${escapeHtml(formatNavigabilityReason(info.navigability.reason))})` : ''}</span>
       ${diagnosticRows(info)}
       <span>Raw: ${escapeHtml(formatHudMetric(info.roiRawValue, 2))} | Probability: ${escapeHtml(formatHudMetric(info.roiProbability, 2))}${state.challengeMode === 'forecast' ? '' : ' deterministic'}</span>
       <span>Expected: ${escapeHtml(formatHudMetric(info.roiExpectedValue, 2))} | Remaining: ${escapeHtml(formatHudMetric(info.roiRemainingValue, 2))}</span>
       ${info.roiDepletedByPlan ? `<span class="warning">Claimed by: ${escapeHtml(claimedByLabel(info.roiClaimedBy))}</span>` : ''}
       <span>Current: ${escapeHtml(formatHudMetric(info.current.magnitude, 2))} ${escapeHtml(info.current.direction)}</span>
+      ${beachingRiskRow(info.beachingRisk)}
       ${info.priorityTarget ? `<span>Priority: +${escapeHtml(formatHudMetric(info.priorityTarget.value))} active</span>` : ''}
       <span>Hazard: ${info.hazard ? 'yes' : 'none'}</span>
       ${info.depth ? `<span>Depth: ${escapeHtml(info.depth.label)}</span>` : ''}
@@ -114,14 +116,34 @@ function diagnosticRows(info) {
       `<span>ETA: ${escapeHtml(formatHudMetric(travel.eta, 1))} / ${escapeHtml(formatBudget(travel.availableTime, 'hr'))} | Speed: ${escapeHtml(formatHudMetric(travel.effectiveSpeed, 2))}</span>`,
       `<span>Current: (${escapeHtml(formatHudMetric(travel.currentVector?.u, 2))}, ${escapeHtml(formatHudMetric(travel.currentVector?.v, 2))}), mag ${escapeHtml(formatHudMetric(travel.currentMagnitude, 2))}</span>`,
       `<span>Along-route: ${escapeHtml(formatSignedMetric(travel.currentAlong, 2))} | Cross-current: ${escapeHtml(formatHudMetric(travel.currentCross, 2))} | ${escapeHtml(travel.currentLabel ?? 'current estimate')}</span>`,
+      travel.beachingRisk?.value > 0 ? `<span class="${travel.beachingRisk.value >= 0.5 ? 'warning' : ''}">Beaching risk: ${escapeHtml(travel.beachingRisk.level)} | Shore distance: ${escapeHtml(formatHudMetric(travel.beachingRisk.shoreDistance, 1))} | Toward land: ${escapeHtml(formatSignedMetric(travel.beachingRisk.currentTowardLand, 2))}</span>` : '',
       `<span>Reachable: ${travel.reachable ? 'yes' : 'no'}${travel.message ? ` | ${escapeHtml(travel.message)}` : ''}</span>`
-    ].join('');
+    ].filter(Boolean).join('');
   }
-  if (info.roiMode === 'risk' || info.roiMode === 'safety') {
+  if (info.roiMode === 'riskSafety') {
     const risk = info.roiRisk ?? {};
-    return `<span>Risk: ${escapeHtml(risk.label ?? 'low')} (${escapeHtml(formatHudMetric(risk.value, 2))})</span>${risk.reasons?.length ? `<span>${escapeHtml(risk.reasons.join(', '))}</span>` : ''}`;
+    const reasons = risk.reasons?.length ? `<span>Reason: ${escapeHtml(risk.reasons.slice(0, 3).join(', '))}</span>` : '';
+    return [
+      `<span>Risk / Safety: ${escapeHtml(risk.label ?? 'low')} Risk (${escapeHtml(formatHudMetric(risk.value, 2))})</span>`,
+      `<span>Safety: ${escapeHtml(risk.safetyLabel ?? 'high')} (${escapeHtml(formatHudMetric(risk.safetyValue ?? (1 - Number(risk.value ?? 0)), 2))})</span>`,
+      reasons
+    ].filter(Boolean).join('');
   }
   return '';
+}
+
+function beachingRiskRow(risk) {
+  if (!risk || Number(risk.value ?? 0) <= 0) return '';
+  const label = `Beaching risk: ${risk.level} | Shore distance: ${formatHudMetric(risk.shoreDistance, 1)} | Current toward land: ${formatSignedMetric(risk.currentTowardLand, 2)}`;
+  return `<span class="${risk.value >= 0.5 ? 'warning' : ''}">${escapeHtml(label)}</span>`;
+}
+
+function formatNavigabilityReason(reason) {
+  return {
+    terrain: 'terrain block',
+    tooShallow: 'too shallow',
+    outsideMap: 'outside map'
+  }[reason] ?? reason ?? 'unknown';
 }
 
 function formatBudget(value, suffix = '') {

@@ -21,9 +21,16 @@ export function saveChallengeToLocalStore(challengeOrState) {
   board.records ??= {};
   board.records[challenge.instanceId] = {
     instanceId: challenge.instanceId,
+    challengeId: challenge.challengeId ?? challenge.instanceId,
     levelId: challenge.levelId,
     missionId: challenge.missionId,
     challengeMode: challenge.challengeMode,
+    replaySeedAnchor: challenge.replaySeedAnchor ?? challenge.replaySeedContract?.replaySeedAnchor ?? challenge.instanceId,
+    generationVersion: challenge.generationVersion ?? challenge.replaySeedContract?.generationVersion ?? null,
+    generationConfig: cloneJson(challenge.generationConfig ?? challenge.replaySeedContract?.generationConfig ?? null),
+    derivedSeeds: cloneJson(challenge.derivedSeeds ?? challenge.replaySeedContract?.derivedSeeds ?? null),
+    replaySeedContract: cloneJson(challenge.replaySeedContract ?? null),
+    exactReplay: cloneJson(challenge.exactReplay ?? null),
     savedAt: new Date().toISOString(),
     challenge
   };

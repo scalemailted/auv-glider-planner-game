@@ -60,7 +60,7 @@ export function estimateSelectedGliderPlan(state, options = {}) {
     const frame = getPlanningFrame(level, t, frameOptions);
     const routeSegment = route.segments[index];
     const segmentFrom = routeSegment?.from ?? previous;
-    const segment = estimateSegmentEnergy(segmentFrom, waypoint, level, agent, frame, { energyPerCell, driftGain });
+    const segment = estimateSegmentEnergy(segmentFrom, waypoint, level, agent, frame, { energyPerCell, driftGain, mission });
     const windowIndex = Number(waypoint.window ?? getWindowForTime(level, t));
     const cellValue = sampleRoi(frame, waypoint.x, waypoint.y);
     expectedValue += cellValue.expectedValue;
@@ -92,6 +92,7 @@ export function estimateSelectedGliderPlan(state, options = {}) {
     hoverTarget,
     level,
     agent,
+    mission,
     frame: getPlanningFrame(level, selectedTime, frameOptions),
     energyPerCell,
     driftGain
@@ -174,9 +175,9 @@ function getCurrentAgentStart(state, agent) {
   };
 }
 
-function estimateHoverTarget({ previous, hoverTarget, level, agent, frame, energyPerCell, driftGain }) {
-  const clipped = clipLineToTerrain(previous, hoverTarget, level);
-  const estimate = estimateRouteEnergy(previous, hoverTarget, level, agent, frame, { energyPerCell, driftGain });
+function estimateHoverTarget({ previous, hoverTarget, level, mission, agent, frame, energyPerCell, driftGain }) {
+  const clipped = clipLineToTerrain(previous, hoverTarget, level, { mission });
+  const estimate = estimateRouteEnergy(previous, hoverTarget, level, agent, frame, { energyPerCell, driftGain, mission });
   return {
     x: hoverTarget.x,
     y: hoverTarget.y,

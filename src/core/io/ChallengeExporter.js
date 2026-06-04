@@ -6,6 +6,7 @@ import { summarizeDeployment } from '../deployment/DeploymentZones.js';
 import { normalizeForecastRules } from '../forecast/ForecastDecay.js';
 import { cloneJson, EXPORT_SCHEMA_VERSION, hashJson, visibilityForChallenge } from './ExportVisibility.js';
 import { decodeHiddenTruthBundle, encodeHiddenTruthBundle } from './HiddenTruthBundle.js';
+import { evaluateExactReplayAvailability, getReplaySeedContract } from '../random/ReplaySeedContract.js';
 
 export function buildChallengeExport({ level, mission, challengeMode = null, includeHiddenTruth = false } = {}) {
   const exportedLevel = cloneJson(level);
@@ -14,6 +15,16 @@ export function buildChallengeExport({ level, mission, challengeMode = null, inc
   const mode = challengeMode ?? exportedLevel?.challengeMode ?? 'perfectKnowledge';
   if (mode === 'forecast') ensureForecastFields(exportedLevel);
   const identity = getLevelIdentity(exportedLevel);
+  const replaySeedContract = getReplaySeedContract({
+    level: exportedLevel,
+    mission: exportedMission,
+    generationConfig: exportedLevel?.meta?.generationConfig ?? null
+  });
+  const exactReplay = evaluateExactReplayAvailability({
+    level: exportedLevel,
+    mission: exportedMission,
+    replaySeedContract
+  });
   const visibility = visibilityForChallenge(mode, { includeTruth: includeHiddenTruth });
   const originalTruth = cloneJson(exportedLevel?.layers?.truth ?? null);
   const truthHash = hashJson(originalTruth);
@@ -33,14 +44,27 @@ export function buildChallengeExport({ level, mission, challengeMode = null, inc
     createdAt: new Date().toISOString(),
     levelId: identity.levelId,
     instanceId: identity.instanceId,
+    challengeId: identity.instanceId,
     missionId: exportedMission?.missionId ?? exportedMission?.id ?? null,
     challengeMode: mode,
+    replaySeedAnchor: replaySeedContract?.replaySeedAnchor ?? identity.instanceId,
+    generationVersion: replaySeedContract?.generationVersion ?? null,
     generationConfig: exportedLevel?.meta?.generationConfig ?? null,
+    derivedSeeds: replaySeedContract?.derivedSeeds ?? null,
+    replaySeedContract,
+    exactReplay: {
+      available: exactReplay.available,
+      method: exactReplay.method,
+      reason: exactReplay.reason
+    },
     leaderboardIdentity: {
       levelId: identity.levelId,
       instanceId: identity.instanceId,
+      challengeId: identity.instanceId,
       missionId: exportedMission?.missionId ?? exportedMission?.id ?? null,
-      challengeMode: mode
+      challengeMode: mode,
+      replaySeedAnchor: replaySeedContract?.replaySeedAnchor ?? identity.instanceId,
+      generationVersion: replaySeedContract?.generationVersion ?? null
     },
     visibility: {
       ...visibility,

@@ -1,47 +1,26 @@
-export function clipLineToTerrain(start, end, level, { stepsPerCell = 4 } = {}) {
-  if (!isFinitePoint(start) || !isFinitePoint(end)) {
-    return {
-      valid: false,
-      points: [],
-      blockedAt: end ?? null,
-      lastValid: start ?? { x: 0, y: 0 },
-      reason: 'invalidPoint'
-    };
-  }
-  const distance = Math.max(1, Math.hypot(end.x - start.x, end.y - start.y));
-  const stepScale = Number.isFinite(Number(stepsPerCell)) && Number(stepsPerCell) > 0 ? Number(stepsPerCell) : 4;
-  const maxSteps = Math.max(32, (level?.world?.grid?.width ?? 10) * (level?.world?.grid?.height ?? 10) * 2);
-  const steps = Math.min(maxSteps, Math.max(1, Math.ceil(distance * stepScale)));
-  const points = [];
-  let lastValid = { x: start.x, y: start.y };
+import { estimateSegmentBeachingRisk } from './ShorelineRisk.js';
+import { explainSegmentBlockage } from './Navigability.js';
 
-  for (let index = 0; index <= steps; index += 1) {
-    const t = index / steps;
-    const point = {
-      x: start.x + (end.x - start.x) * t,
-      y: start.y + (end.y - start.y) * t
-    };
-    const cell = { x: Math.round(point.x), y: Math.round(point.y) };
-    if (!isWaterCell(level, cell.x, cell.y)) {
-      return {
-        valid: false,
-        points,
-        blockedAt: cell,
-        lastValid
-      };
-    }
-    lastValid = { x: point.x, y: point.y };
-    points.push(point);
-  }
-
-  return { valid: true, points, blockedAt: null, lastValid };
+export function clipLineToTerrain(start, end, level, { stepsPerCell = 4, mission = null } = {}) {
+  void stepsPerCell;
+  const blockage = explainSegmentBlockage(start, end, { level, mission });
+  return {
+    valid: blockage.ok,
+    points: blockage.cells.map((cell) => ({ x: cell.x, y: cell.y })),
+    blockedAt: blockage.blockedAt,
+    lastValid: blockage.lastValid ?? start ?? { x: 0, y: 0 },
+    reason: blockage.reason,
+    traversedCells: blockage.cells,
+    blockedCells: blockage.blockedCells
+  };
 }
 
 export function estimateRouteEnergy(start, target, level, agent, frame, {
   driftGain = 0.5,
-  energyPerCell = 1
+  energyPerCell = 1,
+  mission = null
 } = {}) {
-  const clipped = clipLineToTerrain(start, target, level);
+  const clipped = clipLineToTerrain(start, target, level, { mission });
   const endpoint = clipped.valid ? target : clipped.lastValid;
   const dx = endpoint.x - start.x;
   const dy = endpoint.y - start.y;
@@ -53,7 +32,9 @@ export function estimateRouteEnergy(start, target, level, agent, frame, {
   const alignmentPenalty = Math.max(-0.5, Math.min(0.9, -currentAssist * driftGain));
   const crossPenalty = Math.min(0.38, Math.abs(crossCurrent) * driftGain * 0.24);
   const depthPenalty = sampleDepthPenalty(level, endpoint.x, endpoint.y);
-  const energy = Math.max(0, distance * energyPerCell * (1 + alignmentPenalty + crossPenalty + depthPenalty));
+  const beachingRisk = estimateSegmentBeachingRisk({ level, frame, start, end: endpoint });
+  const beachingPenalty = Number(beachingRisk.value ?? 0) * 0.18;
+  const energy = Math.max(0, distance * energyPerCell * (1 + alignmentPenalty + crossPenalty + depthPenalty + beachingPenalty));
   const budget = Number(agent?.battery ?? 0);
   const notes = [];
   if (!clipped.valid) notes.push('Route blocked by land');
@@ -61,6 +42,7 @@ export function estimateRouteEnergy(start, target, level, agent, frame, {
   if (currentAssist < -0.08) notes.push('Against current: costly');
   if (Math.abs(crossCurrent) > 0.12) notes.push('Cross-current uncertainty');
   if (depthPenalty > 0) notes.push('Shallow/depth penalty');
+  if (beachingRisk.value >= 0.5) notes.push('Shoreline current beaching risk');
   if (budget && energy > budget) notes.push('Energy exceeds battery');
 
   return {
@@ -71,17 +53,13 @@ export function estimateRouteEnergy(start, target, level, agent, frame, {
     crossCurrent,
     energyModifier: 1 + alignmentPenalty + crossPenalty + depthPenalty,
     depthPenalty,
+    beachingRisk,
+    beachingPenalty,
     blockedAt: clipped.blockedAt,
     lastValid: clipped.lastValid,
     reachable: !budget || energy <= budget,
     notes
   };
-}
-
-function isWaterCell(level, x, y) {
-  const grid = level?.world?.grid ?? {};
-  if (x < 0 || y < 0 || x >= grid.width || y >= grid.height) return false;
-  return !level?.layers?.terrain?.[y]?.[x];
 }
 
 function sampleCurrent(frame, level, x, y) {

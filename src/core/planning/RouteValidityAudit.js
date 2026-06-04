@@ -3,6 +3,8 @@ import { getSelectedStart, requiresDeploymentSelection } from '../deployment/Dep
 import { getTimeConfig } from '../time/MissionTime.js';
 import { buildRouteSegmentsForAgent } from './RouteSegmentBuilder.js';
 import { estimateRouteEnergy } from './RoutePreview.js';
+import { estimateSegmentBeachingRisk, isBeachingRisk } from './ShorelineRisk.js';
+import { isCellNavigable } from './Navigability.js';
 
 export function validateRoutePlanForExecution({
   level,
@@ -60,14 +62,15 @@ export function validateRoutePlanForExecution({
         annotateWaypoint(agentPlan, index, boundsIssue);
         continue;
       }
-      if (level?.layers?.terrain?.[Math.round(Number(waypoint.y))]?.[Math.round(Number(waypoint.x))]) {
+      const navigability = isCellNavigable(level, mission, waypoint.x, waypoint.y);
+      if (!navigability.ok) {
         const issue = buildIssue({
           type: 'invalidCoordinate',
-          reason: 'terrain',
+          reason: navigability.reason,
           severity: 'error',
           agentId: agent.id,
           to: waypointRef(waypoint, index),
-          message: `${agent.label ?? agent.id} ${label} is on terrain.`
+          message: `${agent.label ?? agent.id} ${label} is not navigable (${formatBlockReason(navigability.reason)}).`
         });
         issues.push(issue);
         annotateWaypoint(agentPlan, index, issue);
@@ -86,7 +89,8 @@ export function validateRoutePlanForExecution({
       });
       const estimate = estimateRouteEnergy(segment.from, segment.to, level, agent, frame, {
         driftGain: gameState?.mission?.physics?.driftGain ?? mission?.physics?.driftGain ?? 0.5,
-        energyPerCell: mission?.physics?.energyPerCell ?? 1
+        energyPerCell: mission?.physics?.energyPerCell ?? 1,
+        mission
       });
       cumulativeEnergy += Number(waypoint.segmentEnergy ?? estimate.energy ?? 0);
 
@@ -102,6 +106,36 @@ export function validateRoutePlanForExecution({
           segmentIndex: index,
           waypointIndex: index,
           message: `${agent.label ?? agent.id} route to Waypoint ${index + 1} crosses terrain${formatBlockedAt(segment.blockedAt ?? estimate.blockedAt)}.`
+        });
+        issues.push(issue);
+        annotateWaypoint(agentPlan, index, issue);
+      }
+
+      const beachingRisk = estimateSegmentBeachingRisk({
+        level,
+        frame,
+        start: segment.from,
+        end: estimate.valid === false ? estimate.lastValid : segment.to
+      });
+      if (isBeachingRisk(beachingRisk)) {
+        const issue = buildIssue({
+          type: 'beachingRisk',
+          reason: 'beachingRisk',
+          severity: 'warning',
+          agentId: agent.id,
+          from: segmentEndpointRef(segment.from, index - 1),
+          to: waypointRef(waypoint, index),
+          segmentIndex: index,
+          waypointIndex: index,
+          risk: {
+            level: beachingRisk.level,
+            value: beachingRisk.value,
+            shoreDistance: beachingRisk.shoreDistance,
+            currentTowardLand: beachingRisk.currentTowardLand,
+            currentMagnitude: beachingRisk.currentMagnitude,
+            cell: { x: beachingRisk.x, y: beachingRisk.y }
+          },
+          message: `${agent.label ?? agent.id} shoreline current warning: route may beach near (${beachingRisk.x}, ${beachingRisk.y}).`
         });
         issues.push(issue);
         annotateWaypoint(agentPlan, index, issue);
@@ -268,6 +302,15 @@ function waypointRef(waypoint, index) {
 
 function formatBlockedAt(cell) {
   return cell ? ` at (${Math.round(Number(cell.x))}, ${Math.round(Number(cell.y))})` : '';
+}
+
+function formatBlockReason(reason) {
+  return {
+    terrain: 'terrain',
+    tooShallow: 'too shallow',
+    outsideMap: 'outside map',
+    invalidPoint: 'invalid point'
+  }[reason] ?? reason ?? 'blocked';
 }
 
 function isFinitePoint(point) {

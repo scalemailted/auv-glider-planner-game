@@ -43,6 +43,13 @@
     "deployment",
     "probabilityOutcomes",
     "riskReward",
+    "challengeId",
+    "replaySeedAnchor",
+    "generationVersion",
+    "generationConfig",
+    "derivedSeeds",
+    "replaySeedContract",
+    "exactReplay",
     "comparison",
     "rating",
     "objectives"
@@ -61,6 +68,14 @@
     "segmentsApplied": "number applied during simulation",
     "automatedExecution": "false until surface-update automation is implemented"
   },
+  "replaySeedContract": {
+    "challengeId": "stable challenge UUID / instance id",
+    "replaySeedAnchor": "UUID seed anchor used for deterministic challenge regeneration",
+    "generationVersion": "generator compatibility version",
+    "generationConfig": "config snapshot used with the UUID seed anchor",
+    "derivedSeeds": "namespace-specific seeds derived from the UUID"
+  },
+  "exactReplay": "available from snapshot when a challenge snapshot is embedded/available; otherwise available only when UUID/config/version/seeds are complete and compatible",
   "summaryFields": [
     "finalScore",
     "sampleScore",

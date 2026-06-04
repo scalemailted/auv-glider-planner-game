@@ -1,16 +1,40 @@
 import { EXPORT_SCHEMA_VERSION, cloneJson } from './ExportVisibility.js';
 import { ensureLevelIdentity } from '../identity/GameInstanceId.js';
+import { evaluateExactReplayAvailability, getReplaySeedContract } from '../random/ReplaySeedContract.js';
 
 export function buildResultExport({ level, mission, plan, result, label = 'Manual Player Plan', challenge = null } = {}) {
   if (level) ensureLevelIdentity(level);
+  const replaySeedContract = getReplaySeedContract({
+    level,
+    mission,
+    challenge,
+    generationConfig: level?.meta?.generationConfig ?? challenge?.generationConfig ?? null
+  });
+  const exactReplay = evaluateExactReplayAvailability({
+    level,
+    mission,
+    challenge,
+    replaySeedContract
+  });
   return {
     schemaVersion: EXPORT_SCHEMA_VERSION,
     type: 'anchor.result',
     createdAt: new Date().toISOString(),
     levelId: result?.levelId ?? level?.levelId ?? null,
     instanceId: result?.instanceId ?? level?.instanceId ?? null,
+    challengeId: result?.instanceId ?? level?.instanceId ?? null,
     missionId: result?.missionId ?? mission?.missionId ?? mission?.id ?? null,
     challengeMode: result?.challengeMode ?? level?.challengeMode ?? null,
+    replaySeedAnchor: replaySeedContract?.replaySeedAnchor ?? result?.instanceId ?? level?.instanceId ?? null,
+    generationVersion: replaySeedContract?.generationVersion ?? null,
+    generationConfig: cloneJson(replaySeedContract?.generationConfig ?? level?.meta?.generationConfig ?? null),
+    derivedSeeds: cloneJson(replaySeedContract?.derivedSeeds ?? null),
+    replaySeedContract: cloneJson(replaySeedContract),
+    exactReplay: {
+      available: exactReplay.available,
+      method: exactReplay.method,
+      reason: exactReplay.reason
+    },
     label,
     executionMode: plan?.executionMode ?? plan?.meta?.executionMode ?? 'openLoop',
     importedPlanMetadata: plan?.importMetadata ?? null,
@@ -32,8 +56,11 @@ export function buildResultExport({ level, mission, plan, result, label = 'Manua
     challengeReference: challenge ? {
       levelId: challenge.levelId,
       instanceId: challenge.instanceId,
+      challengeId: challenge.challengeId ?? challenge.instanceId,
       missionId: challenge.missionId,
       challengeMode: challenge.challengeMode,
+      replaySeedAnchor: challenge.replaySeedAnchor ?? challenge.replaySeedContract?.replaySeedAnchor ?? challenge.instanceId,
+      generationVersion: challenge.generationVersion ?? challenge.replaySeedContract?.generationVersion ?? null,
       visibility: challenge.visibility
     } : null,
     plan: cloneJson(plan ?? result?.plan ?? null),

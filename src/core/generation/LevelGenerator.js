@@ -15,6 +15,7 @@ import { repairDeploymentConnectivity } from './ConnectivityRepair.js';
 import { validateGeneratedLevelConnectivity } from '../validation/ConnectivityValidator.js';
 import { getVectorPresetConfig, normalizeVectorPreset } from './VectorFieldPresets.js';
 import { normalizeForecastRules } from '../forecast/ForecastDecay.js';
+import { buildReplaySeedContract, deriveReplaySeeds, GENERATION_VERSION } from '../random/ReplaySeedContract.js';
 
 export function generateLevel(config = {}) {
   const merged = applyDifficultyPreset(config);
@@ -24,26 +25,39 @@ export function generateLevel(config = {}) {
   const duration = clampInt(merged.duration, 10, 200);
   const planningWindow = clampInt(merged.planningWindow, 2, duration);
   const seed = merged.seed ?? Date.now();
+  const challengeId = String(merged.challengeId ?? merged.instanceId ?? merged.replaySeedAnchor ?? seed);
+  const generationVersion = merged.generationVersion ?? merged.generationConfig?.generationVersion ?? GENERATION_VERSION;
+  const derivedSeeds = {
+    ...deriveReplaySeeds(challengeId),
+    ...(merged.replaySeedContract?.derivedSeeds ?? merged.derivedSeeds ?? merged.generationConfig?.derivedSeeds ?? {})
+  };
   const vectorPreset = getVectorPresetConfig(merged.vectorPreset ?? merged.currentPreset ?? merged.currentGenerator?.preset ?? merged.currentPattern, {
     currentStrength: merged.currentStrength,
     currentVariability: merged.currentVariability ?? merged.variability ?? merged.currentGenerator?.variability,
-    seed
+    seed: derivedSeeds.currents ?? seed
   });
   if (merged.vectorPreset || merged.currentPreset || merged.currentGenerator?.preset) merged.currentPattern = vectorPreset.currentPattern;
   const generationAttempt = clampInt(merged.__connectivityAttempt ?? 0, 0, 100);
   const random = createSeededRandom(seed);
+  const terrainRandom = createSeededRandom(derivedSeeds.terrain ?? seed);
+  const hazardRandom = createSeededRandom(derivedSeeds.hazards ?? seed);
+  const roiRandom = createSeededRandom(derivedSeeds.roi ?? seed);
+  const truthRandom = createSeededRandom(derivedSeeds.truth ?? seed);
+  const forecastRandom = createSeededRandom(derivedSeeds.forecast ?? seed);
+  const depthRandom = createSeededRandom(derivedSeeds.depth ?? seed);
+  const targetsRandom = createSeededRandom(derivedSeeds.targets ?? seed);
   const levelSeedHash = hashSeed(seed).toString(36);
-  const terrain = generateTerrain(width, height, Number(merged.terrainDensity ?? 0.08), random);
-  const hazards = generateHazards(width, height, Number(merged.hazardDensity ?? 0.06), terrain, random);
-  const hotspots = createHotspots(width, height, clampInt(merged.roiHotspots, 1, 8), merged.roiPattern, random);
-  const eddies = makeEddies(width, height, random);
+  const terrain = generateTerrain(width, height, Number(merged.terrainDensity ?? 0.08), terrainRandom);
+  const hazards = generateHazards(width, height, Number(merged.hazardDensity ?? 0.06), terrain, hazardRandom);
+  const hotspots = createHotspots(width, height, clampInt(merged.roiHotspots, 1, 8), merged.roiPattern, roiRandom);
+  const eddies = makeEddies(width, height, createSeededRandom(derivedSeeds.currents ?? seed));
   const currentFrames = generateCurrentFrames({
     ...merged,
     width,
     height,
     dt,
     duration,
-    seed,
+    seed: derivedSeeds.currents ?? seed,
     terrain,
     eddies,
     pattern: merged.currentPattern,
@@ -58,14 +72,14 @@ export function generateLevel(config = {}) {
     return {
       t: currentFrames[index]?.t ?? index * dt,
       current: currentFrames[index]?.current ?? currentFrames.at(-1)?.current ?? [],
-      roi: probabilisticROI ? normalizeROIGrid(roi, 'variable', random) : roi
+      roi: probabilisticROI ? normalizeROIGrid(roi, 'variable', truthRandom) : roi
     };
   });
-  const forecastFrames = makeForecastFromTruth(truthFrames, merged, random);
+  const forecastFrames = makeForecastFromTruth(truthFrames, merged, forecastRandom);
   const ensembleCount = clampInt(merged.ensembleCount ?? (merged.challengeMode === 'forecast' ? 3 : 0), 0, 8);
-  const forecasts = makeForecastEnsembleFromTruth(truthFrames, { ...merged, ensembleCount }, random);
-  const depth = merged.depthVariation === 0 ? null : generateDepth(width, height, merged, random);
-  const mobileHazards = makeMobileHazards(width, height, clampInt(merged.mobileHazardsCount ?? (merged.challengeMode === 'forecast' ? 1 : 0), 0, 8), duration, random);
+  const forecasts = makeForecastEnsembleFromTruth(truthFrames, { ...merged, ensembleCount }, createSeededRandom(`${derivedSeeds.forecast ?? seed}:ensemble`));
+  const depth = merged.depthVariation === 0 ? null : generateDepth(width, height, merged, depthRandom);
+  const mobileHazards = makeMobileHazards(width, height, clampInt(merged.mobileHazardsCount ?? (merged.challengeMode === 'forecast' ? 1 : 0), 0, 8), duration, hazardRandom);
   const zones = makeDeploymentZones(width, height, terrain, hazards, Boolean(merged.multipleDropZones));
   for (const cell of zones.flatMap((zone) => zone.cells)) {
     terrain[cell.y][cell.x] = 0;
@@ -78,7 +92,7 @@ export function generateLevel(config = {}) {
     || (!explicitParametricPreset && isFluidCurrentPattern(merged.currentPattern));
   const currentGenerator = fluidEnabled
     ? {
-      ...buildFluidGeneratorMetadata({ ...merged, seed }),
+      ...buildFluidGeneratorMetadata({ ...merged, seed: derivedSeeds.currents ?? seed }),
       stats: computeCurrentFrameSetStats(currentFrames)
     }
     : {
@@ -87,7 +101,7 @@ export function generateLevel(config = {}) {
       strength: Number(merged.currentStrength ?? vectorPreset.strength ?? 1),
       variability: Number(vectorPreset.variability ?? 0.5),
       preset: normalizeVectorPreset(merged.vectorPreset ?? merged.currentPreset ?? merged.currentGenerator?.preset ?? merged.currentPattern),
-      seed,
+      seed: derivedSeeds.currents ?? seed,
       temporalEvolution: true,
       notes: 'Synthetic ocean-inspired current field for gameplay.',
       stats: computeCurrentFrameSetStats(currentFrames),
@@ -141,22 +155,37 @@ export function generateLevel(config = {}) {
       movementMode: merged.priorityTargetMovementMode ?? merged.priorityTargetMovement ?? 'jumping'
     },
     depthVariation: merged.depthVariation ?? 0.45,
-    connectivity: normalizeConnectivityConfig(merged.connectivity)
+    connectivity: normalizeConnectivityConfig(merged.connectivity),
+    challengeId,
+    replaySeedAnchor: challengeId,
+    generationVersion,
+    derivedSeeds
   };
   const priorityTargets = generationConfig.priorityTargets.enabled
-    ? makePriorityTargets(width, height, terrain, hazards, duration, planningWindow, generationConfig.priorityTargets, random)
+    ? makePriorityTargets(width, height, terrain, hazards, duration, planningWindow, generationConfig.priorityTargets, targetsRandom)
     : [];
+  const replaySeedContract = buildReplaySeedContract({
+    challengeId,
+    generationConfig,
+    generationVersion,
+    derivedSeeds
+  });
 
   const level = {
     schemaVersion: '2.0',
     type: 'anchor.level',
     levelId: merged.levelId ?? `LVL-${levelSeedHash}-${width}x${height}`,
+    instanceId: merged.instanceId ?? challengeId,
     challengeMode: merged.challengeMode ?? (merged.forecastMode === 'none' ? 'perfectKnowledge' : 'forecast'),
     meta: {
       name: merged.name ?? `Generated ${merged.difficulty ?? 'medium'} ${levelSeedHash}`,
       description: 'Ocean-inspired synthetic planning level generated in the browser.',
       generated: true,
       seed,
+      replaySeedAnchor: challengeId,
+      generationVersion,
+      derivedSeeds,
+      replaySeedContract,
       difficulty: merged.difficulty ?? 'medium',
       generationConfig
     },

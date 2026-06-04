@@ -44,6 +44,13 @@ export function normalizeBestAttempt(attempt = {}, record = {}) {
     summary,
     pathSummary: attempt.pathSummary ?? pathSummary,
     recordInstanceId: record.instanceId ?? null,
+    recordReplaySeedAnchor: record.replaySeedAnchor ?? record.replaySeedContract?.replaySeedAnchor ?? null,
+    replaySeedAnchor: attempt.replaySeedAnchor ?? result?.replaySeedAnchor ?? record.replaySeedAnchor ?? null,
+    generationVersion: attempt.generationVersion ?? result?.generationVersion ?? record.generationVersion ?? null,
+    generationConfig: attempt.generationConfig ?? result?.generationConfig ?? record.generationConfig ?? null,
+    derivedSeeds: attempt.derivedSeeds ?? result?.derivedSeeds ?? record.derivedSeeds ?? null,
+    replaySeedContract: attempt.replaySeedContract ?? result?.replaySeedContract ?? record.replaySeedContract ?? null,
+    exactReplay: attempt.exactReplay ?? result?.exactReplay ?? record.exactReplay ?? null,
     recordLevelId: record.levelId ?? null,
     recordMissionId: record.missionId ?? null,
     recordChallengeMode: record.challengeMode ?? record.mode ?? null

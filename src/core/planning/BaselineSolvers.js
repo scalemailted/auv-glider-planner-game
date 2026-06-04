@@ -6,6 +6,7 @@ import { getPlanningFrame } from '../sim/ChallengeMode.js';
 import { normalizePriorityTargets, getPriorityTargetPosition } from '../sim/PriorityTargets.js';
 import { estimateTemporalSegment } from './TemporalWaypointPlanner.js';
 import { applyRouteAuditToPlan, validateRoutePlanForExecution } from './RouteValidityAudit.js';
+import { isCellNavigable } from './Navigability.js';
 
 export function greedySolver(level, mission, options = {}) {
   return temporalGreedySolver(level, mission, options);
@@ -35,7 +36,7 @@ export function temporalGreedySolver(level, mission, options = {}) {
   const priorityTargets = normalizePriorityTargets(level);
   for (let y = 0; y < level.world.grid.height; y += 1) {
     for (let x = 0; x < level.world.grid.width; x += 1) {
-      if (level.layers.terrain?.[y]?.[x]) continue;
+      if (!isCellNavigable(level, mission, x, y).ok) continue;
       cells.push({ x, y });
     }
   }

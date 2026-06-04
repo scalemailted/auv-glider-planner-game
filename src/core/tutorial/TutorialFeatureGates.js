@@ -22,7 +22,7 @@ export function getAllowedRoiModesForTutorial(stateOrLevel = null) {
   if (features.probabilityModes || features.stochastic) modes.push('probability', 'expectedValue');
   else modes.push('expectedValue');
   if (features.remainingMode || features.multiAgent) modes.push('remaining');
-  if (features.hazards) modes.push('risk', 'safety');
+  if (features.hazards) modes.push('riskSafety');
   if (features.travelCost) modes.push('travelCost');
   return unique(modes);
 }

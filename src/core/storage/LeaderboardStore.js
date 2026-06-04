@@ -1,5 +1,6 @@
 import { createGameInstanceId } from '../identity/GameInstanceId.js';
 import { compareAttempts, normalizeBestAttempt } from './BestAttemptSelector.js';
+import { evaluateExactReplayAvailability, getReplaySeedContract } from '../random/ReplaySeedContract.js';
 
 export const LEADERBOARD_STORAGE_KEY = 'anchorGliderCommand.leaderboard.v1';
 const MAX_ATTEMPTS_PER_RECORD = 25;
@@ -46,6 +47,8 @@ export function recordLeaderboardAttempt({ level, mission, plan, result, label =
   const board = loadLeaderboard();
   const instanceId = result?.instanceId ?? level?.instanceId ?? 'unknown-instance';
   const existing = board.records[instanceId] ?? {};
+  const replaySeedContract = getReplaySeedContract({ level, mission, generationConfig: level?.meta?.generationConfig ?? existing.generationConfig ?? null });
+  const exactReplay = evaluateExactReplayAvailability({ level, mission, replaySeedContract });
   const record = normalizeRecord({
     ...existing,
     levelId: result?.levelId ?? level?.levelId ?? null,
@@ -57,6 +60,12 @@ export function recordLeaderboardAttempt({ level, mission, plan, result, label =
     durationHours: Number(level?.duration ?? level?.time?.duration ?? existing.durationHours ?? 0) || null,
     agentCount: Number(mission?.agents?.length ?? existing.agentCount ?? 0) || null,
     seed: level?.meta?.seed ?? null,
+    challengeId: instanceId,
+    replaySeedAnchor: replaySeedContract?.replaySeedAnchor ?? instanceId,
+    generationVersion: replaySeedContract?.generationVersion ?? null,
+    derivedSeeds: replaySeedContract?.derivedSeeds ?? null,
+    replaySeedContract,
+    exactReplay,
     generationConfig: level?.meta?.generationConfig ?? null,
     level: cloneJson(level),
     mission: cloneJson(mission),
@@ -66,6 +75,17 @@ export function recordLeaderboardAttempt({ level, mission, plan, result, label =
     attemptId: createGameInstanceId('ATTEMPT'),
     createdAt: new Date().toISOString(),
     score: Number(result?.summary?.finalScore ?? result?.summary?.score ?? 0),
+    challengeId: instanceId,
+    replaySeedAnchor: replaySeedContract?.replaySeedAnchor ?? instanceId,
+    generationVersion: replaySeedContract?.generationVersion ?? null,
+    generationConfig: cloneJson(replaySeedContract?.generationConfig ?? level?.meta?.generationConfig ?? null),
+    derivedSeeds: cloneJson(replaySeedContract?.derivedSeeds ?? null),
+    replaySeedContract: cloneJson(replaySeedContract),
+    exactReplay: {
+      available: exactReplay.available,
+      method: exactReplay.method,
+      reason: exactReplay.reason
+    },
     plan: cloneJson(plan),
     result: cloneJson(result),
     summary: result?.summary ?? {},
@@ -127,6 +147,18 @@ function normalizeRecord(record = {}) {
   const level = record.level ?? embeddedChallenge?.level ?? null;
   const mission = record.mission ?? embeddedChallenge?.mission ?? null;
   const instanceId = record.instanceId ?? record.id ?? level?.instanceId ?? 'unknown-instance';
+  const replaySeedContract = getReplaySeedContract({
+    ...record,
+    level,
+    mission,
+    generationConfig: record.generationConfig ?? level?.meta?.generationConfig ?? embeddedChallenge?.generationConfig ?? null
+  });
+  const exactReplay = evaluateExactReplayAvailability({
+    ...record,
+    level,
+    mission,
+    replaySeedContract
+  });
   const attempts = normalizeAttempts(record.attempts ?? []);
   const bestAttempt = attempts.find((attempt) => attempt.attemptId === record.bestAttemptId) ?? attempts[0] ?? null;
   const mapSize = normalizeMapSize(record.mapSize) ?? inferMapSize(level);
@@ -141,6 +173,16 @@ function normalizeRecord(record = {}) {
     durationHours: Number(record.durationHours ?? level?.duration ?? level?.time?.duration ?? 0) || null,
     agentCount: Number(record.agentCount ?? mission?.agents?.length ?? 0) || null,
     seed: record.seed ?? level?.meta?.seed ?? null,
+    challengeId: record.challengeId ?? instanceId,
+    replaySeedAnchor: replaySeedContract?.replaySeedAnchor ?? record.replaySeedAnchor ?? instanceId,
+    generationVersion: replaySeedContract?.generationVersion ?? record.generationVersion ?? null,
+    derivedSeeds: replaySeedContract?.derivedSeeds ?? record.derivedSeeds ?? null,
+    replaySeedContract,
+    exactReplay: {
+      available: exactReplay.available,
+      method: exactReplay.method,
+      reason: exactReplay.reason
+    },
     generationConfig: record.generationConfig ?? level?.meta?.generationConfig ?? null,
     level,
     mission,
@@ -158,6 +200,13 @@ function normalizeAttempts(attempts = []) {
       createdAt: attempt.createdAt ?? attempt.savedAt ?? null,
       label: attempt.label ?? attempt.plan?.label ?? attempt.result?.source ?? 'Manual Player Plan',
       score: Number(attempt.score ?? attempt.summary?.finalScore ?? attempt.result?.summary?.finalScore ?? 0),
+      challengeId: attempt.challengeId ?? attempt.result?.challengeId ?? attempt.result?.instanceId ?? null,
+      replaySeedAnchor: attempt.replaySeedAnchor ?? attempt.result?.replaySeedAnchor ?? attempt.result?.replaySeedContract?.replaySeedAnchor ?? null,
+      generationVersion: attempt.generationVersion ?? attempt.result?.generationVersion ?? attempt.result?.replaySeedContract?.generationVersion ?? null,
+      generationConfig: attempt.generationConfig ?? attempt.result?.generationConfig ?? attempt.result?.replaySeedContract?.generationConfig ?? null,
+      derivedSeeds: attempt.derivedSeeds ?? attempt.result?.derivedSeeds ?? attempt.result?.replaySeedContract?.derivedSeeds ?? null,
+      replaySeedContract: attempt.replaySeedContract ?? attempt.result?.replaySeedContract ?? null,
+      exactReplay: attempt.exactReplay ?? attempt.result?.exactReplay ?? null,
       plan: attempt.plan ?? null,
       result: attempt.result ?? null,
       summary: attempt.summary ?? attempt.result?.summary ?? {},

@@ -7,6 +7,7 @@ export function summarizeScore({ agents, events, t, scoring = {}, missionState =
   const mobileHazardsHit = events.filter((event) => event.type === 'mobileHazard').length;
   const mobileHazardNearMisses = events.filter((event) => event.type === 'mobileHazardNearMiss').length;
   const mobileHazardExposureCount = events.filter((event) => event.type === 'mobileHazardNearMiss' || event.type === 'mobileHazardExposure' || event.type === 'mobileHazard').length;
+  const shorelineRiskEvents = events.filter((event) => event.type === 'shorelineRisk');
   const duplicateSamples = missionState?.samplingMetrics?.duplicateSamples ?? events.filter((event) => event.type === 'duplicateSample').length;
   const updateEvents = events.filter((event) => event.type === 'replanned' || event.type === 'update').length;
   const completedWaypoints = agents.reduce((sum, agent) => sum + agent.completedWaypoints.length, 0);
@@ -36,6 +37,7 @@ export function summarizeScore({ agents, events, t, scoring = {}, missionState =
   const depthEnergyBenefit = events
     .filter((event) => event.type === 'depthEnergy')
     .reduce((sum, event) => sum + Number(event.energyBenefit ?? 0), 0);
+  const shorelineRiskEnergyPenalty = shorelineRiskEvents.reduce((sum, event) => sum + Number(event.extraEnergy ?? 0), 0);
 
   return {
     finalScore: round(finalScore, 2),
@@ -57,6 +59,8 @@ export function summarizeScore({ agents, events, t, scoring = {}, missionState =
     mobileHazardsHit,
     mobileHazardNearMisses,
     mobileHazardExposureCount,
+    shorelineRiskEvents: shorelineRiskEvents.length,
+    shorelineRiskEnergyPenalty: round(shorelineRiskEnergyPenalty, 3),
     hazardPenalty: round(hazardPenalty, 2),
     mobileHazardPenalty: round(mobileHazardPenalty, 2),
     shallowEnergyPenalty: round(shallowEnergyPenalty, 3),

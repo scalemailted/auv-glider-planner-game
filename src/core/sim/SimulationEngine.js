@@ -363,6 +363,29 @@ export class SimulationEngine {
       });
     }
 
+    if (outcome.beachingRisk?.value >= 0.5 && outcome.shorelineEnergyPenalty > 0) {
+      const cellX = Math.round(agent.x);
+      const cellY = Math.round(agent.y);
+      const riskKey = `${agent.id}:${agent.currentWaypointIndex}:${cellX},${cellY}:shorelineRisk`;
+      if (!this.missionState.hazards.has(riskKey)) {
+        this.missionState.hazards.add(riskKey);
+        this.recordEvent({
+          type: 'shorelineRisk',
+          t: this.t,
+          agentId: agent.id,
+          waypointIndex: agent.currentWaypointIndex,
+          x: cellX,
+          y: cellY,
+          riskLevel: outcome.beachingRisk.level,
+          riskValue: round(outcome.beachingRisk.value, 3),
+          shoreDistance: round(outcome.beachingRisk.shoreDistance, 3),
+          currentTowardLand: round(outcome.beachingRisk.currentTowardLand, 3),
+          currentMagnitude: round(outcome.beachingRisk.currentMagnitude, 3),
+          extraEnergy: round(outcome.shorelineEnergyPenalty, 4)
+        });
+      }
+    }
+
     if (outcome.blocked) {
       this.recordEvent({
         type: 'blocked',

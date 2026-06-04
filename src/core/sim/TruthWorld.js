@@ -1,7 +1,8 @@
 import { getFrameAtTime } from '../time/MissionTime.js';
 import { normalizeROIValue, roiScalar } from './ROIValue.js';
-import { depthEnergyMultiplier, isTooShallow, sampleDepth } from './DepthLayer.js';
+import { depthEnergyMultiplier, sampleDepth } from './DepthLayer.js';
 import { mobileHazardAt } from './MobileHazards.js';
+import { isPointNavigable } from '../planning/Navigability.js';
 
 export class TruthWorld {
   constructor(level, mission = null) {
@@ -41,8 +42,7 @@ export class TruthWorld {
   }
 
   isBlocked(x, y) {
-    const { cx, cy } = this.clampCell(x, y);
-    return Boolean(this.level.layers.terrain?.[cy]?.[cx]) || isTooShallow(this.level, this.mission, cx, cy);
+    return !isPointNavigable(this.level, this.mission, { x, y }).ok;
   }
 
   hazardAt(x, y, t = 0) {

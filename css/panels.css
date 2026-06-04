@@ -311,6 +311,42 @@
   font-size: .78rem;
   overflow-wrap: anywhere;
 }
+.replay-diagnostics-card {
+  display: grid;
+  gap: .34rem;
+  padding: .55rem;
+  border: 1px solid rgba(141,220,242,0.15);
+  border-radius: 8px;
+  background: rgba(255,255,255,0.045);
+}
+.replay-diagnostics-card.compact {
+  margin: .15rem 0 .1rem;
+  padding: .5rem;
+}
+.replay-diagnostics-title {
+  color: var(--muted);
+  font-size: .68rem;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+.replay-diagnostics-row {
+  display: grid;
+  grid-template-columns: minmax(5.8rem, .72fr) minmax(0, 1.28fr);
+  gap: .45rem;
+  align-items: start;
+  min-width: 0;
+}
+.replay-diagnostics-row span {
+  color: var(--muted);
+  font-size: .7rem;
+  font-weight: 800;
+}
+.replay-diagnostics-row strong {
+  color: #eef6ff;
+  font-size: .76rem;
+  font-weight: 700;
+  overflow-wrap: anywhere;
+}
 .leaderboard-attempt-list {
   display: grid;
   gap: .45rem;
@@ -568,9 +604,13 @@
 .timeline-event.waypoint.pending { border-color: #ffd166; }
 .timeline-event.waypoint.completed { border-color: var(--success); color: #eafff7; }
 .timeline-event.waypoint.missed { border-color: #ff8a5c; color: #fff0e8; }
-.timeline-event.waypoint.invalid {
+.timeline-event.waypoint.invalid,
+.timeline-event.waypoint.invalid-time,
+.timeline-event.waypoint.invalid-fuel,
+.timeline-event.waypoint.invalid-terrain {
   border-color: var(--danger);
   color: #ffecef;
+  background: rgba(255,78,90,0.2);
 }
 .timeline-event.marker {
   width: 1rem;

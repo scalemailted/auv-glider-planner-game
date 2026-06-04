@@ -3,6 +3,8 @@ import { normalizeROIValue } from '../sim/ROIValue.js';
 import { getActivePriorityTargets } from '../sim/PriorityTargets.js';
 import { getWindowForTime } from '../time/MissionTime.js';
 import { computePlannedCoverage, computeTravelCostField, getCellRoiDisplayValue, getRoiModeDescription, normalizeRoiMode } from '../roi/RoiMode.js';
+import { estimateBeachingRiskAtCell } from '../planning/ShorelineRisk.js';
+import { isCellNavigable } from '../planning/Navigability.js';
 
 export function inspectCellAtTime({ level, mission = null, state = null, x, y, t = 0 } = {}) {
   const grid = level?.world?.grid ?? {};
@@ -47,9 +49,11 @@ export function inspectCellAtTime({ level, mission = null, state = null, x, y, t
     travelCostField
   });
   const current = frame?.current?.[y]?.[x] ?? [0, 0];
+  const beachingRisk = estimateBeachingRiskAtCell({ level, frame, x, y });
   const confidence = frame?.confidence?.[y]?.[x];
   const depthValue = level?.layers?.depth?.[y]?.[x];
   const priorityTarget = findPriorityTarget(level, t, x, y);
+  const navigability = isCellNavigable(level, mission, x, y);
   return {
     x,
     y,
@@ -72,6 +76,10 @@ export function inspectCellAtTime({ level, mission = null, state = null, x, y, t
     roiTravel: roiDisplay.travel ?? null,
     priorityTarget,
     terrain: level?.layers?.terrain?.[y]?.[x] ? 'land' : 'water',
+    navigability: {
+      status: navigability.ok ? 'navigable' : 'blocked',
+      reason: navigability.reason
+    },
     hazard: Number(level?.layers?.hazards?.[y]?.[x] ?? 0) > 0,
     current: {
       u: Number(current[0] ?? 0),
@@ -79,6 +87,7 @@ export function inspectCellAtTime({ level, mission = null, state = null, x, y, t
       magnitude: Math.hypot(Number(current[0] ?? 0), Number(current[1] ?? 0)),
       direction: currentDirection(current)
     },
+    beachingRisk,
     depth: depthValue === undefined ? null : {
       value: Number(depthValue),
       label: Number(depthValue) < 0.32 ? 'shallow' : 'deep'

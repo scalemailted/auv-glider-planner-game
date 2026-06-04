@@ -1,6 +1,7 @@
 import { getSelectedStart, isValidSelectedStart, requiresDeploymentSelection } from '../deployment/DeploymentZones.js';
 import { computeReachabilitySummary } from '../validation/ConnectivityValidator.js';
 import { validateRoutePlanForExecution } from './RouteValidityAudit.js';
+import { isCellNavigable } from './Navigability.js';
 
 const MAX_EXECUTION_WAYPOINTS_PER_AGENT = 50;
 const MAX_INVALID_WAYPOINTS_PER_AGENT = 3;
@@ -76,7 +77,8 @@ export function validatePlanForExecution({ level, mission, plan } = {}) {
         invalidWaypointCount += 1;
         continue;
       }
-      if (level?.layers?.terrain?.[y]?.[x]) errors.push(`${label} is on blocked terrain.`);
+      const navigability = isCellNavigable(level, mission, x, y);
+      if (!navigability.ok) errors.push(`${label} is not navigable (${formatBlockReason(navigability.reason)}).`);
       for (const field of ['t', 'estimatedArrivalTime', 'segmentTravelTime']) {
         if (waypoint[field] !== undefined && waypoint[field] !== null && !Number.isFinite(Number(waypoint[field]))) {
           errors.push(`${label} has invalid ${field}.`);
@@ -109,4 +111,12 @@ export function validatePlanForExecution({ level, mission, plan } = {}) {
 
 function isFinitePoint(point) {
   return Number.isFinite(Number(point?.x)) && Number.isFinite(Number(point?.y));
+}
+
+function formatBlockReason(reason) {
+  return {
+    terrain: 'blocked terrain',
+    tooShallow: 'too shallow',
+    outsideMap: 'outside map'
+  }[reason] ?? reason ?? 'blocked';
 }

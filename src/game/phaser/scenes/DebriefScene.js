@@ -98,6 +98,7 @@ export class DebriefScene extends PhaserScene {
   }
 
   debriefHtml(result) {
+    result ??= {};
     const s = result.summary ?? {};
     const metrics = [
       ['Actual Final', s.finalScore ?? 0],
@@ -115,7 +116,7 @@ export class DebriefScene extends PhaserScene {
           <div>
             <p class="debrief-kicker">Mission Results</p>
             <h1>Mission Debrief</h1>
-            <p>${escapeHtml(result.planName ?? result.source ?? 'unknown')} | Instance ${escapeHtml(shortInstanceId(result.instanceId ?? this.app.state.level?.instanceId))} | ${escapeHtml(result.challengeMode ?? 'unknown')}</p>
+            <p>${escapeHtml(result.planName ?? result.source ?? 'Unknown Plan')} | Instance ${escapeHtml(shortInstanceId(result.instanceId ?? this.app.state.level?.instanceId ?? 'unknown'))} | ${escapeHtml(labelize(result.challengeMode ?? this.app.state.challengeMode, 'Unknown Mode'))}</p>
           </div>
           <div class="debrief-score">
             <span>Actual Final</span>
@@ -146,8 +147,8 @@ export class DebriefScene extends PhaserScene {
   }
 
   priorityTargetPanelHtml(result) {
-    const targets = result.priorityTargets ?? result.summary?.priorityTargets ?? {};
-    const captures = targets.captures ?? [];
+    const targets = result?.priorityTargets ?? result?.summary?.priorityTargets ?? {};
+    const captures = Array.isArray(targets.captures) ? targets.captures : [];
     return `
       <article class="debrief-panel">
         <h2>Gold Star Targets</h2>
@@ -198,10 +199,10 @@ export class DebriefScene extends PhaserScene {
 
   importedPlanPanelHtml(result) {
     const metadata = this.app.state.plan?.importMetadata ?? this.app.state.importedPlanMetadata ?? null;
-    const planner = this.app.state.plan?.planner ?? result.planMetadata?.planner ?? null;
-    const isImported = Boolean(metadata || result.planMetadata?.importedPlan || planner);
+    const planner = this.app.state.plan?.planner ?? result?.planMetadata?.planner ?? null;
+    const isImported = Boolean(metadata || result?.planMetadata?.importedPlan || planner);
     if (!isImported) return '';
-    const demo = Boolean(metadata?.demoPlan || planner?.type === 'demo' || result.planMetadata?.source === 'tutorialDemo');
+    const demo = Boolean(metadata?.demoPlan || planner?.type === 'demo' || result?.planMetadata?.source === 'tutorialDemo');
     return `
       <article class="debrief-panel">
         <h2>Imported Plan</h2>
@@ -237,39 +238,42 @@ export class DebriefScene extends PhaserScene {
   }
 
   riskPanelHtml(result) {
-    const s = result.summary ?? {};
-    const drift = result.drift ?? {};
+    const s = result?.summary ?? {};
+    const drift = result?.drift ?? {};
     return `
       <article class="debrief-panel">
         <h2>Stochastic / Risk</h2>
-        <p>ROI ${escapeHtml(result.stochastic?.roiScoringMode ?? result.stochasticRun?.roiScoringMode ?? 'expectedValue')} | Seed ${escapeHtml(result.stochastic?.seed ?? result.stochasticRun?.rngSeed ?? 'N/A')}</p>
-        <p>Simulation-resolved stochastic outcome: ${escapeHtml(result.stochastic?.probabilitySuccesses ?? s.probabilitySuccesses ?? 0)} success / ${escapeHtml(result.stochastic?.probabilityMisses ?? s.probabilityFailures ?? 0)} miss | Avg p ${escapeHtml(s.averageSampleProbability ?? 'N/A')}</p>
+        <p>ROI ${escapeHtml(labelize(result?.stochastic?.roiScoringMode ?? result?.stochasticRun?.roiScoringMode ?? 'expectedValue'))} | Seed ${escapeHtml(result?.stochastic?.seed ?? result?.stochasticRun?.rngSeed ?? 'N/A')}</p>
+        <p>Simulation-resolved stochastic outcome: ${escapeHtml(result?.stochastic?.probabilitySuccesses ?? s.probabilitySuccesses ?? 0)} success / ${escapeHtml(result?.stochastic?.probabilityMisses ?? s.probabilityFailures ?? 0)} miss | Avg p ${escapeHtml(s.averageSampleProbability ?? 'N/A')}</p>
         <p>Drift actuals: assist ${escapeHtml(formatMetric(drift.averageCurrentAssist ?? 0))} | cross ${escapeHtml(formatMetric(drift.averageCrossCurrent ?? 0))} | drift seed ${escapeHtml(drift.stochasticDrift ? drift.stochasticDriftSeed : 'deterministic')}</p>
-        <p>Sampling ${escapeHtml(result.sampling?.mode ?? s.samplingMode ?? 'unique')} | Duplicates ${escapeHtml(s.duplicateSamples ?? 0)} | Depleted ${escapeHtml(s.depletedSamples ?? 0)}</p>
-        <p>End ${escapeHtml(result.endCondition?.mode ?? s.endCondition?.mode ?? 'none')} | Achieved ${escapeHtml((result.endCondition?.achieved ?? s.recoveryAchieved ?? true) ? 'yes' : 'no')} | Bonus ${escapeHtml(s.recoveryBonus ?? 0)} | Penalty ${escapeHtml(s.recoveryPenalty ?? 0)}</p>
+        <p>Sampling ${escapeHtml(labelize(result?.sampling?.mode ?? s.samplingMode ?? 'unique'))} | Duplicates ${escapeHtml(s.duplicateSamples ?? 0)} | Depleted ${escapeHtml(s.depletedSamples ?? 0)}</p>
+        <p>Shoreline risk events: ${escapeHtml(s.shorelineRiskEvents ?? 0)} | Extra shoreline energy ${escapeHtml(formatMetric(s.shorelineRiskEnergyPenalty ?? 0))}</p>
+        <p>End ${escapeHtml(labelize(result?.endCondition?.mode ?? s.endCondition?.mode ?? 'none'))} | Achieved ${escapeHtml((result?.endCondition?.achieved ?? s.recoveryAchieved ?? true) ? 'yes' : 'no')} | Bonus ${escapeHtml(s.recoveryBonus ?? 0)} | Penalty ${escapeHtml(s.recoveryPenalty ?? 0)}</p>
       </article>
     `;
   }
 
   stopReasonPanelHtml(result) {
-    const stop = result.stopReason ?? result.summary?.stopReason;
-    if (!stop || stop.code === 'complete') return '';
+    const stop = normalizeStopReason(result?.stopReason ?? result?.summary?.stopReason ?? result?.routeFailure ?? null);
+    if (stop.code === 'complete') return '';
     const last = stop.lastSuccessfulWaypoint
       ? `Last successful waypoint: ${Number(stop.lastSuccessfulWaypoint.waypointIndex ?? 0) + 1}.`
-      : 'Last successful waypoint: none.';
+      : 'Last successful waypoint: not available.';
     const failed = stop.firstFailedWaypoint
       ? `First failed waypoint: ${Number(stop.firstFailedWaypoint.waypointIndex ?? 0) + 1}.`
-      : '';
-    const decision = (result.events ?? []).findLast?.((event) => event.type === 'routeFailureDecision')
-      ?? [...(result.events ?? [])].reverse().find((event) => event.type === 'routeFailureDecision')
+      : 'First failed waypoint: not available.';
+    const events = Array.isArray(result?.events) ? result.events : [];
+    const decision = events.findLast?.((event) => event.type === 'routeFailureDecision')
+      ?? [...events].reverse().find((event) => event.type === 'routeFailureDecision')
       ?? null;
     return `
       <article class="debrief-panel">
         <h2>Simulation Stop Reason</h2>
-        <p>${escapeHtml(stop.title ?? 'Simulation stopped before completing the route.')}</p>
+        <p>Stop reason: ${escapeHtml(stop.label)}</p>
+        <p>${escapeHtml(stop.title)}</p>
         <p>${escapeHtml(last)} ${escapeHtml(failed)}</p>
-        ${decision ? `<p>Recovery choice: ${escapeHtml(labelize(decision.action ?? 'unknown'))}.</p>` : ''}
-        <p>Suggested fix: ${escapeHtml(stop.suggestedFix ?? 'Revise unreachable waypoints, then run again.')}</p>
+        ${decision ? `<p>Recovery choice: ${escapeHtml(labelize(decision.action, 'Unknown'))}.</p>` : ''}
+        <p>Suggested fix: ${escapeHtml(stop.suggestedFix)}</p>
       </article>
     `;
   }
@@ -687,9 +691,45 @@ function greedyStopSummary(stop = {}) {
 }
 
 function labelizeStopReason(reason) {
-  return String(reason ?? 'unknown')
-    .replace(/([A-Z])/g, ' $1')
-    .replace(/^./, (letter) => letter.toUpperCase());
+  return labelize(reason, 'Unknown');
+}
+
+function normalizeStopReason(stop) {
+  if (!stop) {
+    return {
+      code: 'notRecorded',
+      label: 'Not Recorded',
+      title: 'No stop reason recorded.',
+      suggestedFix: 'No route details available.'
+    };
+  }
+  if (typeof stop === 'string') {
+    return {
+      code: stop,
+      label: labelize(stop, 'Not Recorded'),
+      title: stop === 'complete' ? 'Mission completed.' : 'Simulation stopped before completing the route.',
+      suggestedFix: stop === 'complete' ? 'No fix needed.' : 'Review the route details and revise the plan if needed.'
+    };
+  }
+  const code = stop.code ?? stop.reason ?? stop.stopReason ?? stop.type ?? 'notRecorded';
+  return {
+    ...stop,
+    code,
+    label: labelize(stop.label ?? stop.reasonLabel ?? code, 'Not Recorded'),
+    title: stop.title ?? stop.message ?? (code === 'complete' ? 'Mission completed.' : 'Simulation stopped before completing the route.'),
+    suggestedFix: stop.suggestedFix ?? stop.recommendation ?? (code === 'complete' ? 'No fix needed.' : 'Review unreachable waypoints, fuel, timing, and recovery rules, then run again.')
+  };
+}
+
+function labelize(value, fallback = 'Unknown') {
+  if (value === null || value === undefined || value === '') return fallback;
+  const label = String(value)
+    .replace(/([a-z])([A-Z])/g, '$1 $2')
+    .replace(/[_-]+/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+  if (!label) return fallback;
+  return label.replace(/\b\w/g, (char) => char.toUpperCase());
 }
 
 function escapeHtml(value) {

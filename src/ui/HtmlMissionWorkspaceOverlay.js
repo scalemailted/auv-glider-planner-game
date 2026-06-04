@@ -17,6 +17,7 @@ import { getSelectedStart } from '../core/deployment/DeploymentZones.js';
 import { inspectCellAtTime } from '../core/exploration/CellInspection.js';
 import { getRoiModeDescription, getRoiModeLabel, getTravelCostAnchor, getTravelCostBudget, normalizeRoiMode } from '../core/roi/RoiMode.js';
 import { getTutorialHint, tutorialFeatureEnabled } from '../core/tutorial/TutorialFeatureGates.js';
+import { replayDiagnosticsCardHtml } from './ReplayDiagnosticsCard.js';
 
 export class HtmlMissionWorkspaceOverlay {
   constructor(app, handlers) {
@@ -25,6 +26,7 @@ export class HtmlMissionWorkspaceOverlay {
     this.roots = app.elements.overlay ?? {};
     this.consoleRoot = app.elements.consoleRoot;
     this.collapsedRight = false;
+    this.boundRoots = new WeakMap();
   }
 
   refresh(state) {
@@ -48,6 +50,7 @@ export class HtmlMissionWorkspaceOverlay {
     const estimate = routeEstimate(state);
     const routeAudit = state.ui?.routeAudit;
     const executeDisabled = routeAudit && routeAudit.ok === false;
+    const routeAuditIssues = routeAuditIssueCount(routeAudit);
     const connectivity = state.level && state.mission ? computeReachabilitySummary(state.level, state.mission) : null;
     const connectivityWarnings = connectivity?.warnings ?? [];
     root.innerHTML = `
@@ -69,7 +72,7 @@ export class HtmlMissionWorkspaceOverlay {
       </section>` : ''}
       <section class="console-section">
         <h2>Plan</h2>
-        <button class="console-button primary" data-action="execute" ${executeDisabled ? 'disabled' : ''} title="${executeDisabled ? 'Cannot execute: route has invalid segments.' : 'Execute mission'}">Execute Mission</button>
+        <button class="console-button primary" data-action="execute" title="${executeDisabled ? 'Review route validation before simulation.' : 'Execute mission'}">Execute Mission</button>
         ${executeDisabled ? `<div class="hud-muted warning">${escapeHtml(routeAuditSummary(routeAudit))}</div>` : ''}
         ${tutorialFeatureEnabled(state, 'markers') ? `<button class="console-button" data-action="placement-mode">${state.ui?.placementMode === 'marker' ? 'Mode: Planning Marker' : 'Mode: Waypoint'}</button>` : ''}
         <button class="console-button" data-action="clear-route">Clear Selected Route</button>
@@ -79,7 +82,7 @@ export class HtmlMissionWorkspaceOverlay {
         <button class="console-button" data-action="save-level">Save Level</button>
       </section>
       ${importDemoSection(state, executeDisabled)}
-      ${executeDisabled ? routeAuditSection(routeAudit) : ''}
+      ${routeAuditIssues ? routeAuditSection(routeAudit) : ''}
       ${tutorialHintSection(state)}
       <section class="console-section">
         <h2>Analysis</h2>
@@ -179,7 +182,7 @@ export class HtmlMissionWorkspaceOverlay {
         <div class="hud-row">
           <button class="hud-button" data-action="toggle-waypoints">${this.collapsedRight ? 'Show Waypoints' : 'Hide Waypoints'}</button>
           <button class="hud-button" data-action="main-menu">Main Menu</button>
-          <button class="hud-button primary" data-action="execute" ${executeDisabled ? 'disabled' : ''} title="${executeDisabled ? 'Cannot execute: route has invalid segments.' : 'Execute mission'}">Execute</button>
+          <button class="hud-button primary" data-action="execute" title="${executeDisabled ? 'Review route validation before simulation.' : 'Execute mission'}">Execute</button>
         </div>
         ${executeDisabled ? `<div class="hud-muted warning">${escapeHtml(routeAuditSummary(state.ui.routeAudit))}</div>` : ''}
       </div>
@@ -196,6 +199,7 @@ export class HtmlMissionWorkspaceOverlay {
       'show-best-path': () => this.handlers.showBestPath?.(),
       'hide-best-path': () => this.handlers.hideBestPath?.(),
       'rerun-best-path': () => this.handlers.rerunBestPath?.(),
+      'load-best-path-as-plan': () => this.handlers.loadBestPath?.(),
       'load-best-path': () => this.handlers.loadBestPath?.(),
       'export-best-path': () => this.handlers.exportBestPath?.(),
       'export-plan': () => this.handlers.exportPlan(),
@@ -345,12 +349,25 @@ export class HtmlMissionWorkspaceOverlay {
   }
 
   bind(root, actions) {
-    root.querySelectorAll('[data-action]').forEach((button) => {
-      const action = actions[button.dataset.action];
-      if (!action || button.dataset.bound) return;
-      button.dataset.bound = 'true';
-      button.addEventListener('click', () => action(button));
-    });
+    if (!root) return;
+    root.__anchorActionMap = actions ?? {};
+    if (this.boundRoots.has(root)) return;
+    const listener = (event) => {
+      const button = event.target?.closest?.('[data-action]');
+      if (!button || !root.contains(button) || button.disabled) return;
+      const actionKey = button.dataset.action;
+      debugMissionConsoleClick(event, actionKey);
+      const action = root.__anchorActionMap?.[actionKey];
+      debugMissionActionDispatch(actionKey, root.__anchorActionMap, action);
+      if (!action) {
+        this.app.toast?.(`No handler is registered for action ${actionKey}.`, 'warning');
+        return;
+      }
+      event.preventDefault?.();
+      action(button);
+    };
+    root.addEventListener('click', listener);
+    this.boundRoots.set(root, listener);
   }
 
   goToTimelineFrame(frameIndex, state, reason = 'button') {
@@ -399,6 +416,12 @@ export class HtmlMissionWorkspaceOverlay {
       'layer-energy': () => this.handlers.toggleLayer('showEnergyPreview'),
       'layer-markers': () => this.handlers.toggleLayer('showPlanningMarkers'),
       'layer-stars': () => this.handlers.toggleLayer('showPriorityStars'),
+      'show-best-path': () => this.handlers.showBestPath?.(),
+      'hide-best-path': () => this.handlers.hideBestPath?.(),
+      'rerun-best-path': () => this.handlers.rerunBestPath?.(),
+      'load-best-path-as-plan': () => this.handlers.loadBestPath?.(),
+      'load-best-path': () => this.handlers.loadBestPath?.(),
+      'export-best-path': () => this.handlers.exportBestPath?.(),
       help: () => this.handlers.help(),
       'main-menu': () => this.handlers.mainMenu?.(),
       execute: () => this.handlers.execute(),
@@ -461,6 +484,7 @@ function markerInspectionSection(state) {
       <h2>Marker Inspection</h2>
       <div class="hud-muted">Cell (${info.x}, ${info.y}) | ${escapeHtml(formatMissionTime(state.level, info.t))} | W${Number(info.window ?? 0)}</div>
       <div class="hud-muted">ROI Mode: ${escapeHtml(getRoiModeLabel(info.roiMode))} | Display ${formatHudMetric(info.roiDisplayValue, 2)}</div>
+      <div class="hud-muted">Navigability: ${escapeHtml(info.navigability?.status ?? 'unknown')}${info.navigability?.status === 'blocked' ? ` (${escapeHtml(formatNavigabilityReason(info.navigability.reason))})` : ''}</div>
       ${roiDiagnosticRows(info)}
       <div class="hud-muted">Raw ${formatHudMetric(info.roiRawValue, 2)} | Probability ${formatHudMetric(info.roiProbability, 2)}${state.challengeMode === 'forecast' ? '' : ' deterministic'} | Expected ${formatHudMetric(info.roiExpectedValue, 2)}</div>
       <div class="hud-muted">Remaining: ${formatHudMetric(info.roiRemainingValue, 2)}${info.roiDepletedByPlan ? ` | Claimed by ${escapeHtml(claimedByLabel(info.roiClaimedBy))}` : ''}</div>
@@ -742,7 +766,7 @@ function importDemoSection(state, executeDisabled) {
       <button class="console-button" data-action="download-demo-plan">Download Demo Plan JSON</button>
       <button class="console-button" data-action="import-plan">Import Waypoint Data</button>
       <button class="console-button" data-action="clear-imported-plan">Clear Imported Plan</button>
-      <button class="console-button" data-action="execute" ${executeDisabled ? 'disabled' : ''}>Execute Mission</button>
+      <button class="console-button" data-action="execute">Execute Mission</button>
       <button class="console-button secondary" data-action="main-menu">Main Menu</button>
       ${status ? `<div class="hud-muted">Imported: ${escapeHtml(status.plannerName ?? demo.label ?? 'Tutorial Demo Plan')} | ${Number(status.waypointCount ?? 0)} waypoint(s)</div>` : ''}
       <div class="hud-muted">${escapeHtml(routeStatus)}</div>
@@ -751,34 +775,104 @@ function importDemoSection(state, executeDisabled) {
 }
 
 function bestPriorRunSummary(state) {
-  const best = state.bestPriorPath;
+  const vm = state.bestPriorRunVm;
+  const best = vm?.bestPriorRun ?? state.bestPriorPath;
   if (!best?.attempt) {
-    return '<div class="hud-muted">No prior runs for this challenge yet. Complete a mission to create a benchmark path.</div>';
+    return '<div class="hud-muted">No prior run saved for this challenge yet.</div>';
   }
   const summary = best.bestPathSummary ?? {};
-  const score = Number(best.bestScore ?? best.attempt.score ?? 0);
-  const starsCaptured = Number(summary.starsCaptured ?? 0);
-  const starsAvailable = Number(summary.starsAvailable ?? 0);
-  const showing = state.ui?.showBestPathOverlay !== false;
+  const score = best.bestScore ?? best.attempt.score ?? null;
+  const energyUsed = summary.energyUsed ?? best.attempt.summary?.energyUsed ?? best.attempt.result?.summary?.energyUsed ?? null;
+  const elapsedTime = summary.elapsedTime ?? best.attempt.summary?.elapsedTime ?? best.attempt.result?.summary?.elapsedTime ?? null;
+  const waypointCount = summary.waypointCount ?? countPlanWaypoints(best.attempt.plan);
+  const starsCaptured = safeInteger(summary.starsCaptured ?? best.attempt.summary?.priorityTargets?.captured, 'N/A');
+  const starsAvailable = safeInteger(summary.starsAvailable ?? best.attempt.summary?.priorityTargets?.available, 'N/A');
+  const attemptCount = safeInteger(best.attemptCount, 1);
+  const planLabel = best.attempt.label
+    ?? best.attempt.plan?.meta?.name
+    ?? best.attempt.plan?.planner?.name
+    ?? 'Saved Plan';
+  const showing = state.ui?.showBestPathOverlay === true;
+  const showTitle = vm?.canShowBestPath ? '' : ` title="${escapeAttr(bestPathUnavailableReason(vm, 'show'))}" disabled`;
+  const loadTitle = vm?.canLoadBestPathAsPlan ? '' : ` title="${escapeAttr(bestPathUnavailableReason(vm, 'load'))}" disabled`;
+  const rerunTitle = vm?.canRerunBestPath ? '' : ` title="${escapeAttr(bestPathUnavailableReason(vm, 'rerun'))}" disabled`;
+  const exportTitle = vm?.canExportBestPath ? '' : ` title="${escapeAttr(bestPathUnavailableReason(vm, 'export'))}" disabled`;
+  debugBestPathRender(vm, [
+    showing ? 'hide-best-path' : 'show-best-path',
+    'rerun-best-path',
+    'load-best-path-as-plan',
+    'export-best-path'
+  ], state);
   return `
     <div class="hud-muted"><strong>Best prior run</strong></div>
-    <div class="hud-muted">Score: ${escapeHtml(formatNumber(score))}</div>
-    <div class="hud-muted">Plan: ${escapeHtml(best.attempt.label ?? best.attempt.plan?.meta?.name ?? 'Saved Plan')}</div>
-    <div class="hud-muted">Energy: ${escapeHtml(formatNumber(summary.energyUsed))} | Stars: ${starsCaptured}/${starsAvailable} | Attempts: ${Number(best.attemptCount ?? 1)}</div>
+    <div class="hud-muted">Score: ${escapeHtml(formatHudMetric(score))}</div>
+    <div class="hud-muted">Plan: ${escapeHtml(planLabel)}</div>
+    <div class="hud-muted">Energy: ${escapeHtml(formatHudMetric(energyUsed))} | Time: ${escapeHtml(formatHudMetric(elapsedTime))} hr | Waypoints: ${escapeHtml(safeInteger(waypointCount, 'N/A'))}</div>
+    <div class="hud-muted">Stars: ${escapeHtml(starsCaptured)}/${escapeHtml(starsAvailable)} | Attempts: ${escapeHtml(attemptCount)}</div>
     <div class="hud-muted">Actual path: ${summary.actualPathAvailable ? 'available' : 'planned route only'}</div>
-    <button class="console-button" data-action="${showing ? 'hide-best-path' : 'show-best-path'}">${showing ? 'Hide Best Path' : 'Show Best Path'}</button>
-    <button class="console-button" data-action="rerun-best-path">Rerun Best Path</button>
-    <button class="console-button" data-action="load-best-path">Load Best Path as Plan</button>
-    <button class="console-button" data-action="export-best-path">Export Best Path</button>
+    ${replayDiagnosticsCardHtml(vm, { title: 'Replay Status', className: 'compact' })}
+    <button type="button" class="console-button" data-action="${showing ? 'hide-best-path' : 'show-best-path'}"${showing ? '' : showTitle}>${showing ? 'Hide Best Path' : 'Show Best Path'}</button>
+    <button type="button" class="console-button" data-action="rerun-best-path"${rerunTitle}>Rerun Best Path</button>
+    <button type="button" class="console-button" data-action="load-best-path-as-plan"${loadTitle}>Load Best Path as Plan</button>
+    <button type="button" class="console-button" data-action="export-best-path"${exportTitle}>Export Best Path</button>
   `;
+}
+
+function bestPathUnavailableReason(vm, action) {
+  const missing = vm?.missingFields?.length ? vm.missingFields.join(', ') : 'best prior run';
+  if (action === 'show') return `Cannot show best path: missing ${missing}.`;
+  if (action === 'load') return `Cannot load best path as plan: missing ${missing}.`;
+  if (action === 'rerun') return `Cannot rerun best path: missing ${missing}.`;
+  return `Cannot export best path: missing ${missing}.`;
+}
+
+function debugBestPathRender(vm, buttonActions, state) {
+  if (!globalThis.ANCHOR_DEBUG_BEST_PATH) return;
+  globalThis.console?.debug?.('[BestPath][Render]', {
+    entryPath: state?.currentScenario?.source ?? state?.mode ?? 'unknown',
+    attemptId: vm?.attemptId ?? null,
+    challengeId: vm?.challengeId ?? null,
+    plannedPathAvailable: Boolean(vm?.plannedPathAvailable),
+    actualPathAvailable: Boolean(vm?.actualPathAvailable),
+    exactReplayAvailable: Boolean(vm?.exactReplayAvailable),
+    buttonActions
+  });
+}
+
+function debugMissionConsoleClick(event, action) {
+  if (!globalThis.ANCHOR_DEBUG_BEST_PATH) return;
+  globalThis.console?.debug?.('[MissionConsole][Click]', {
+    targetTag: event.target?.tagName ?? null,
+    action
+  });
+}
+
+function debugMissionActionDispatch(action, handlers, handler) {
+  if (!globalThis.ANCHOR_DEBUG_BEST_PATH) return;
+  globalThis.console?.debug?.('[MissionActionDispatch]', {
+    action,
+    hasHandler: Boolean(handler),
+    registeredActions: Object.keys(handlers ?? {})
+  });
+}
+
+function countPlanWaypoints(plan) {
+  if (!Array.isArray(plan?.agentPlans)) return null;
+  return plan.agentPlans.reduce((sum, agentPlan) => sum + (agentPlan.waypoints?.length ?? 0), 0);
+}
+
+function safeInteger(value, fallback = 'N/A') {
+  const numeric = Number(value);
+  return Number.isFinite(numeric) ? String(Math.round(numeric)) : fallback;
 }
 
 function routeAuditSection(routeAudit) {
   const issues = (routeAudit?.agentResults ?? []).flatMap((result) => result.issues ?? []);
   if (!issues.length) return '';
+  const hasErrors = issues.some((issue) => issue.severity === 'error');
   return `
     <section class="console-section warning">
-      <h2>Route Invalid</h2>
+      <h2>${hasErrors ? 'Route Invalid' : 'Route Warnings'}</h2>
       <div class="hud-muted">${escapeHtml(routeAuditSummary(routeAudit))}</div>
       ${issues.slice(0, 3).map((issue) => `<div class="hud-muted">- ${escapeHtml(issue.message)}</div>`).join('')}
     </section>
@@ -787,10 +881,16 @@ function routeAuditSection(routeAudit) {
 
 function routeAuditSummary(routeAudit) {
   const issues = (routeAudit?.agentResults ?? []).flatMap((result) => result.issues ?? []);
-  if (!issues.length) return 'Route invalid.';
+  if (!issues.length) return 'Route has no audit issues.';
   const first = issues[0];
-  if (issues.length === 1) return `Route invalid: ${first.message}`;
-  return `Route invalid: ${issues.length} issues found. First issue: ${first.message}`;
+  const hasErrors = issues.some((issue) => issue.severity === 'error');
+  const prefix = hasErrors ? 'Route invalid' : 'Route warning';
+  if (issues.length === 1) return `${prefix}: ${first.message}`;
+  return `${hasErrors ? 'Route invalid' : 'Route warnings'}: ${issues.length} issues found. First issue: ${first.message}`;
+}
+
+function routeAuditIssueCount(routeAudit) {
+  return (routeAudit?.agentResults ?? []).reduce((sum, result) => sum + (result.issues?.length ?? 0), 0);
 }
 
 function claimedByLabel(claimedBy = []) {
@@ -814,9 +914,12 @@ function roiDiagnosticRows(info) {
       <div class="hud-muted">Reachable ${travel.reachable ? 'yes' : 'no'} | ${escapeHtml(travel.currentLabel ?? 'current estimate')}${travel.message ? ` | ${escapeHtml(travel.message)}` : ''}</div>
     `;
   }
-  if (info.roiMode === 'risk' || info.roiMode === 'safety') {
+  if (info.roiMode === 'riskSafety') {
     const risk = info.roiRisk ?? {};
-    return `<div class="hud-muted">Risk: ${escapeHtml(risk.label ?? 'low')} (${formatHudMetric(risk.value, 2)})${risk.reasons?.length ? ` | ${escapeHtml(risk.reasons.join(', '))}` : ''}</div>`;
+    return `
+      <div class="hud-muted">Risk / Safety: ${escapeHtml(risk.label ?? 'low')} risk (${formatHudMetric(risk.value, 2)}) | Safety ${escapeHtml(risk.safetyLabel ?? 'high')} (${formatHudMetric(risk.safetyValue ?? (1 - Number(risk.value ?? 0)), 2)})</div>
+      ${risk.reasons?.length ? `<div class="hud-muted">Reason: ${escapeHtml(risk.reasons.slice(0, 3).join(', '))}</div>` : ''}
+    `;
   }
   return '';
 }
@@ -831,6 +934,15 @@ function formatSignedMetric(value, digits = 2) {
   const numeric = Number(value);
   if (!Number.isFinite(numeric)) return 'N/A';
   return `${numeric >= 0 ? '+' : ''}${formatHudMetric(numeric, digits)}`;
+}
+
+function formatNavigabilityReason(reason) {
+  return {
+    terrain: 'terrain block',
+    tooShallow: 'too shallow',
+    outsideMap: 'outside map',
+    invalidPoint: 'invalid point'
+  }[reason] ?? reason ?? 'unknown';
 }
 
 function waypointTable(state, waypoints) {

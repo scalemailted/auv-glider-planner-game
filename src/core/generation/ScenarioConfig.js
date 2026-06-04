@@ -1,8 +1,9 @@
 import { generateLevel } from './LevelGenerator.js';
-import { ensureLevelIdentity } from '../identity/GameInstanceId.js';
+import { createGameInstanceId, ensureLevelIdentity } from '../identity/GameInstanceId.js';
 import { buildDefaultMissionForLevel } from '../editor/LevelEditOperations.js';
 import { getVectorPresetConfig, normalizeVectorPreset } from './VectorFieldPresets.js';
 import { normalizeForecastRules } from '../forecast/ForecastDecay.js';
+import { buildReplaySeedContract, deriveSeedFromUuid, GENERATION_VERSION } from '../random/ReplaySeedContract.js';
 
 export const SCENARIO_SIZE_PRESETS = {
   small: { label: 'Small', width: 12, height: 12, duration: 12, surfaceInterval: 3, agentCount: 1, fuel: 100 },
@@ -108,15 +109,26 @@ export function buildScenarioGenerationConfig(config = {}) {
 export function generateScenarioFromConfig(config = {}) {
   const normalized = normalizeScenarioConfig(config);
   const stochastic = normalized.mode === 'forecast';
-  const seed = config.seed ?? makeChallengeSeed(normalized.mode);
-  const generationConfig = buildScenarioGenerationConfig({ ...normalized, seed });
+  const challengeId = String(config.challengeId ?? config.uuid ?? config.instanceId ?? createGameInstanceId('CHALLENGE'));
+  const seed = config.seed ?? deriveSeedFromUuid(challengeId, 'mission') ?? makeChallengeSeed(normalized.mode);
+  const generationConfig = {
+    ...buildScenarioGenerationConfig({ ...normalized, seed }),
+    challengeId,
+    replaySeedAnchor: challengeId,
+    generationVersion: GENERATION_VERSION
+  };
+  const replaySeedContract = buildReplaySeedContract({ challengeId, generationConfig });
   const vectorPreset = getVectorPresetConfig(normalized.currentPreset, {
     currentStrength: normalized.currentStrength,
     currentVariability: normalized.currentVariability,
-    seed
+    seed: replaySeedContract?.derivedSeeds?.currents ?? seed
   });
   const forecastRules = generationConfig.forecastRules;
   const level = ensureLevelIdentity(generateLevel({
+    challengeId,
+    instanceId: challengeId,
+    replaySeedAnchor: challengeId,
+    generationVersion: GENERATION_VERSION,
     seed,
     name: stochastic ? `Stochastic Challenge ${seed}` : `Deterministic Challenge ${seed}`,
     width: normalized.width,
@@ -149,11 +161,21 @@ export function generateScenarioFromConfig(config = {}) {
     priorityTargetCount: Math.max(1, Math.round(normalized.priorityTargetFrequency * 6)),
     probabilityNoStarPerWindow: 1 - normalized.priorityTargetFrequency,
     multipleDropZones: normalized.multipleDropZones,
-    generationConfig
+    generationConfig,
+    replaySeedContract
   }));
+  level.instanceId = challengeId;
   level.meta ??= {};
+  level.meta.replaySeedAnchor = challengeId;
+  level.meta.generationVersion = GENERATION_VERSION;
+  level.meta.derivedSeeds = replaySeedContract?.derivedSeeds ?? {};
+  level.meta.replaySeedContract = replaySeedContract;
   level.meta.generationConfig ??= {};
   level.meta.generationConfig.scenarioSetup = generationConfig;
+  level.meta.generationConfig.challengeId = challengeId;
+  level.meta.generationConfig.replaySeedAnchor = challengeId;
+  level.meta.generationConfig.generationVersion = GENERATION_VERSION;
+  level.meta.generationConfig.derivedSeeds = replaySeedContract?.derivedSeeds ?? {};
 
   const mission = buildDefaultMissionForLevel(level, {
     missionId: stochastic ? 'stochastic_challenge_mission' : 'deterministic_challenge_mission',
@@ -169,11 +191,26 @@ export function generateScenarioFromConfig(config = {}) {
     forecastRules,
     stochasticDrift: stochastic,
     driftNoiseScale: stochastic ? Math.max(0.04, normalized.forecastNoise * 0.35) : 0,
-    driftSeed: level.meta?.seed ?? level.instanceId
+    driftSeed: replaySeedContract?.derivedSeeds?.truth ?? level.meta?.seed ?? level.instanceId
   });
   mission.meta ??= {};
   mission.meta.scenarioSetup = generationConfig;
-  return { level, mission, config: normalized, generationConfig };
+  mission.meta.replaySeedContract = replaySeedContract;
+  mission.rules ??= {};
+  mission.rules.stochasticSeed ??= replaySeedContract?.derivedSeeds?.truth ?? seed;
+  mission.rules.rngSeed ??= replaySeedContract?.derivedSeeds?.truth ?? seed;
+  return { level, mission, config: normalized, generationConfig, replaySeedContract };
+}
+
+export function regenerateScenarioFromReplayContract(source = {}) {
+  const contract = source.replaySeedContract ?? source.replay ?? source;
+  const generationConfig = contract?.generationConfig ?? source.generationConfig ?? null;
+  const challengeId = contract?.challengeId ?? contract?.replaySeedAnchor ?? source.challengeId ?? source.instanceId ?? null;
+  if (!challengeId || !generationConfig) return null;
+  return generateScenarioFromConfig({
+    ...scenarioConfigFromGenerationConfig(generationConfig, source),
+    challengeId
+  });
 }
 
 export function describeScenarioComplexity(config = {}) {
@@ -197,6 +234,39 @@ function makeChallengeSeed(mode) {
   const prefix = mode === 'forecast' ? 'stochastic' : 'deterministic';
   const cryptoValue = globalThis.crypto?.getRandomValues ? globalThis.crypto.getRandomValues(new Uint32Array(1))[0] : Date.now();
   return `${prefix}-${cryptoValue.toString(36)}`;
+}
+
+function scenarioConfigFromGenerationConfig(generationConfig = {}, source = {}) {
+  const setup = generationConfig.scenarioSetup ?? generationConfig;
+  const mode = setup.mode === 'stochastic' || setup.mode === 'forecast' || source.challengeMode === 'forecast'
+    ? 'forecast'
+    : 'perfectKnowledge';
+  return normalizeScenarioConfig({
+    mode,
+    agentCount: setup.agentCount ?? source.agentCount,
+    width: setup.grid?.width ?? setup.width,
+    height: setup.grid?.height ?? setup.height,
+    duration: setup.durationHours ?? setup.duration,
+    surfaceInterval: setup.surfaceIntervalHours ?? setup.planningWindow,
+    fuel: setup.fuelPerAgent ?? source.fuel,
+    gliderSpeed: setup.gliderSpeed,
+    difficulty: setup.difficulty,
+    terrainDensity: setup.terrainDensity,
+    hazardDensity: setup.hazardDensity,
+    currentStrength: setup.currentStrength,
+    currentVariability: setup.currentVariability,
+    currentPreset: setup.currentPreset ?? setup.vectorPreset,
+    roiHotspots: setup.roiHotspots,
+    priorityTargetFrequency: setup.priorityTargetFrequency,
+    forecastNoise: setup.forecastNoise,
+    forecastDecay: setup.forecastDecay,
+    forecastMinConfidence: setup.forecastRules?.minConfidence,
+    forecastDecayRate: setup.forecastRules?.decayRate,
+    forecastDecayModel: setup.forecastRules?.decayModel,
+    multipleDropZones: setup.multipleDropZones,
+    agentSpecMode: setup.agentSpecMode,
+    ensembleCount: setup.ensembleCount
+  });
 }
 
 function finiteNumber(value, fallback) {

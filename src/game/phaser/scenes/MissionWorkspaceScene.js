@@ -5,7 +5,8 @@ import { buildOracleDatasetExport } from '../../../core/io/OracleDatasetExporter
 import { buildResultExport } from '../../../core/io/ResultExporter.js';
 import { buildLeaderboardExport } from '../../../core/io/LeaderboardExporter.js';
 import { importLeaderboard, loadLeaderboard } from '../../../core/storage/LeaderboardStore.js';
-import { bestAttemptCompatible, getBestAttemptForChallenge } from '../../../core/storage/BestAttemptSelector.js';
+import { getBestAttemptForChallenge } from '../../../core/storage/BestAttemptSelector.js';
+import { buildBestPriorRunViewModel, bestPriorRunLogPayload, debugBestPath } from '../../../core/storage/BestPriorRunViewModel.js';
 import { importPlanJson } from '../../../core/io/PlanImporter.js';
 import { importResultJson } from '../../../core/io/ResultImporter.js';
 import { saveChallengeToLocalStore } from '../../../core/storage/LocalChallengeStore.js';
@@ -105,6 +106,10 @@ export class MissionWorkspaceScene extends PhaserScene {
     this.app.setSceneLabel('Mission Workspace');
     this.app.state.mode = 'planning';
     this.app.elements.shell?.classList.add('planning-workspace');
+    this.app.state.ui ??= {};
+    if (!String(this.app.state.currentScenario?.source ?? '').startsWith('leaderboard')) {
+      this.app.state.ui.showBestPathOverlay = false;
+    }
     ensureLevelIdentity(this.app.state.level);
     if (this.app.state.challengeMode === 'forecast') ensureForecastFields(this.app.state.level);
     normalizeDeploymentState(this.app.state.level, this.app.state.mission, this.app.state.plan);
@@ -132,6 +137,7 @@ export class MissionWorkspaceScene extends PhaserScene {
     this.setupMapCameraControls();
     this.refreshPanels();
     this.refreshMap();
+    this.consumePendingAutoExecute();
     this.input.on('pointerdown', this.onPointerDown, this);
     this.input.on('pointermove', this.onPointerMove, this);
     this.input.on('pointerup', this.onPointerUp, this);
@@ -155,6 +161,17 @@ export class MissionWorkspaceScene extends PhaserScene {
         this.refreshPanels();
       }
     ]);
+  }
+
+  consumePendingAutoExecute() {
+    if (!this.app.state.pendingWorkspaceAutoExecute) return;
+    this.app.state.pendingWorkspaceAutoExecute = null;
+    const run = () => this.executePlan();
+    if (this.time?.delayedCall) {
+      this.time.delayedCall(0, run);
+    } else {
+      globalThis.setTimeout?.(run, 0);
+    }
   }
 
   shutdown() {
@@ -468,6 +485,8 @@ export class MissionWorkspaceScene extends PhaserScene {
       level: this.app.state.level,
       mission: this.app.state.mission
     });
+    this.app.state.bestPriorRunVm = buildBestPriorRunViewModel(this.app.state, this.app.state.bestPriorPath);
+    debugBestPath('Diagnostics', bestPriorRunLogPayload(this.app.state.bestPriorRunVm));
   }
 
   clearPlanningOverlayObjects() {
@@ -1097,79 +1116,145 @@ export class MissionWorkspaceScene extends PhaserScene {
     this.app.toast?.('Imported plan cleared.', 'info');
   }
 
+  resolveBestPriorRunVm(action) {
+    if (!this.app.state.bestPriorRunVm) this.refreshBestPriorPath();
+    const vm = this.app.state.bestPriorRunVm;
+    const payload = bestPriorRunLogPayload(vm, {
+      action,
+      hasBestPriorRun: Boolean(vm?.bestPriorRun),
+      hasCurrentScene: Boolean(this),
+      currentSceneKey: this.scene?.key ?? this.sys?.settings?.key ?? 'MissionWorkspaceScene'
+    });
+    debugBestPath('Dispatch', payload);
+    debugBestPath(action, payload);
+    return vm;
+  }
+
   showBestPathOverlay(show) {
-    this.app.state.ui.showBestPathOverlay = Boolean(show);
-    if (show && !this.app.state.bestPriorPath?.attempt) {
-      this.app.toast?.('No prior best path is available for this challenge yet.', 'info');
+    const vm = this.resolveBestPriorRunVm(show ? 'show-best-path' : 'hide-best-path');
+    if (show && !vm?.canShowBestPath) {
+      return this.app.toast?.(bestPathActionError('show', vm), 'warning');
     }
+    this.app.state.ui.showBestPathOverlay = Boolean(show);
+    this.app.state.bestPriorPath = vm.bestPriorRun;
     this.refreshPanels();
     this.refreshMap();
+    this.app.toast?.(show ? 'Best path overlay shown.' : 'Best path overlay hidden.', show ? 'success' : 'info');
   }
 
   loadBestPathAsPlan() {
-    const best = this.app.state.bestPriorPath;
-    const compatibility = bestAttemptCompatible(best, {
-      level: this.app.state.level,
-      mission: this.app.state.mission
-    });
-    if (!compatibility.ok) return this.app.toast?.(compatibility.reason, 'warning');
-    const plan = cloneJson(best.attempt.plan);
-    if (!plan) return this.app.toast?.('Best attempt has no saved plan to load.', 'warning');
+    const vm = this.resolveBestPriorRunVm('load-best-path-as-plan');
+    if (!vm?.canLoadBestPathAsPlan) return this.app.toast?.(bestPathActionError('load', vm), 'warning');
+    const plan = cloneJson(vm.plannedWaypoints);
     this.app.state.plan = normalizePlan(plan, this.app.state.level, this.app.state.mission);
     this.app.state.plan.meta ??= {};
     this.app.state.plan.meta.source = 'loadedFromBestPriorRun';
-    this.app.state.plan.meta.name = `Best Prior Path (${formatScore(best.bestScore)})`;
+    this.app.state.plan.meta.name = `Best Prior Path (${formatScore(vm.bestPriorRun?.bestScore)})`;
+    this.app.state.plan.meta.originalAttemptId = vm.attemptId;
+    this.app.state.plan.meta.replaySeedAnchor = vm.replaySeedAnchor;
+    this.app.state.plan.meta.generationVersion = vm.generationVersion;
     this.app.state.currentPlanSource = 'loadedFromBestPriorRun';
     this.app.state.loadedBestPriorPlan = cloneJson(this.app.state.plan);
     recomputeAllWaypointTiming(this.app.state);
     recomputePlanningMarkerReachability(this.app.state);
     applyPlanningAnchor(this.app.state, this.app.state.selectedAgentId);
     this.clearSelectedWaypoint();
+    const routeAudit = this.refreshRouteAudit();
+    if (routeAudit?.ok === false) {
+      const validation = validatePlanForExecution({
+        level: this.app.state.level,
+        mission: this.app.state.mission,
+        plan: this.app.state.plan
+      });
+      const issue = firstBlockingRouteIssue(validation);
+      this.focusRouteIssue(issue);
+      this.refreshPanels();
+      this.refreshMap();
+      this.showRouteValidationModal(issue, validation);
+      return;
+    }
     this.refreshPanels();
     this.refreshMap();
-    this.app.toast?.('Best prior path loaded as the editable plan.', 'success');
+    this.app.toast?.('Best path loaded as plan.', 'success');
   }
 
   rerunBestPath() {
-    const best = this.app.state.bestPriorPath;
-    const compatibility = bestAttemptCompatible(best, {
-      level: this.app.state.level,
-      mission: this.app.state.mission
-    });
-    if (!compatibility.ok) return this.app.toast?.(compatibility.reason, 'warning');
-    const plan = cloneJson(best.attempt.plan);
-    if (!plan) return this.app.toast?.('Best attempt has no saved plan to rerun.', 'warning');
+    const vm = this.resolveBestPriorRunVm('rerun-best-path');
+    if (!vm?.canRerunBestPath) return this.app.toast?.(bestPathActionError('rerun', vm), 'warning');
+    if (vm.challengeSnapshot?.level && vm.challengeSnapshot?.mission) {
+      this.app.state.level = cloneJson(vm.challengeSnapshot.level);
+      this.app.state.mission = cloneJson(vm.challengeSnapshot.mission);
+    }
+    const plan = cloneJson(vm.plannedWaypoints);
     const normalized = normalizePlan(plan, this.app.state.level, this.app.state.mission);
     normalized.meta ??= {};
     normalized.meta.source = 'bestPriorRerun';
-    normalized.meta.name = `Best Prior Path Rerun (${formatScore(best.bestScore)})`;
+    normalized.meta.name = `Best Prior Path Rerun (${formatScore(vm.bestPriorRun?.bestScore)})`;
+    normalized.meta.originalAttemptId = vm.attemptId;
+    normalized.meta.replaySeedAnchor = vm.replaySeedAnchor;
+    normalized.meta.generationVersion = vm.generationVersion;
     this.app.state.planBeforeBestRerun = cloneJson(this.app.state.plan);
     this.app.state.planSourceBeforeBestRerun = this.app.state.currentPlanSource;
     this.app.state.bestPriorRerun = {
-      attemptId: best.attempt.attemptId,
-      originalScore: best.bestScore,
-      rerunUnderCurrentChallenge: true
+      attemptId: vm.attemptId,
+      originalScore: vm.bestPriorRun?.bestScore,
+      rerunUnderCurrentChallenge: true,
+      replaySeedAnchor: vm.replaySeedAnchor,
+      generationVersion: vm.generationVersion
     };
     this.app.state.plan = normalized;
     this.app.state.currentPlanSource = 'bestPriorRerun';
+    this.app.toast?.('Rerunning best path.', 'info');
     this.executePlan();
   }
 
   exportBestPath() {
-    const best = this.app.state.bestPriorPath;
-    if (!best?.attempt?.plan) return this.app.toast?.('No prior best path is available to export.', 'info');
-    const plan = cloneJson(best.attempt.plan);
+    const vm = this.resolveBestPriorRunVm('export-best-path');
+    if (!vm?.canExportBestPath) return this.app.toast?.(bestPathActionError('export', vm), 'warning');
+    const plan = cloneJson(vm.plannedWaypoints ?? {});
     plan.source = 'bestPriorRun';
-    plan.attemptId = best.attempt.attemptId;
+    plan.attemptId = vm.attemptId;
+    plan.challengeId = vm.challengeId;
+    plan.replaySeedAnchor = vm.replaySeedAnchor;
+    plan.generationVersion = vm.generationVersion;
+    plan.generationConfig = cloneJson(vm.replaySeedContract?.generationConfig ?? this.app.state.level?.meta?.generationConfig ?? null);
+    plan.derivedSeeds = cloneJson(vm.replaySeedContract?.derivedSeeds ?? null);
+    plan.replaySeedContract = cloneJson(vm.replaySeedContract);
+    plan.exactReplay = {
+      available: vm.exactReplayAvailable,
+      method: vm.diagnostics?.method ?? null,
+      reason: vm.diagnostics?.reason ?? null
+    };
+    plan.routeExecution = {
+      frames: cloneJson(vm.actualPathFrames ?? []),
+      events: cloneJson(vm.actualPathEvents ?? [])
+    };
+    plan.bestPathRecord = {
+      attemptId: vm.attemptId,
+      challengeId: vm.challengeId,
+      replayStatus: vm.replayStatus,
+      plannedPathAvailable: vm.plannedPathAvailable,
+      actualPathAvailable: vm.actualPathAvailable,
+      missingFields: cloneJson(vm.missingFields)
+    };
     plan.meta = {
       ...(plan.meta ?? {}),
       source: 'bestPriorRun',
-      originalAttemptId: best.attempt.attemptId,
-      originalScore: best.bestScore,
-      pathSummary: best.bestPathSummary ?? null
+      originalAttemptId: vm.attemptId,
+      originalScore: vm.bestPriorRun?.bestScore,
+      originalPlannerLabel: vm.attempt?.label ?? vm.plannedWaypoints?.meta?.name ?? null,
+      challengeId: plan.challengeId,
+      replaySeedAnchor: plan.replaySeedAnchor,
+      generationVersion: plan.generationVersion,
+      generationConfig: cloneJson(plan.generationConfig),
+      derivedSeeds: cloneJson(plan.derivedSeeds),
+      exactReplay: cloneJson(plan.exactReplay),
+      challengeName: this.app.state.level?.meta?.name ?? this.app.state.level?.name ?? null,
+      pathType: vm.actualPathAvailable ? 'planned+actual' : 'planned',
+      pathSummary: vm.bestPriorRun?.bestPathSummary ?? null
     };
-    downloadJSON(`anchor-best-path-${shortInstanceId(this.app.state.level)}-${best.attempt.attemptId ?? 'attempt'}.json`, plan);
-    this.app.toast?.('Best path plan exported.', 'success');
+    downloadJSON(`anchor-best-path-${shortInstanceId(this.app.state.level)}-${vm.attemptId ?? 'attempt'}.json`, plan);
+    this.app.toast?.('Best path exported.', 'success');
   }
 
   showPlanImportSummary(imported) {
@@ -1268,7 +1353,13 @@ export class MissionWorkspaceScene extends PhaserScene {
     const missingDeployment = (this.app.state.mission.agents ?? []).find((agent) => requiresDeploymentSelection(this.app.state.mission, agent.id));
     if (missingDeployment) {
       this.app.state.selectedAgentId = missingDeployment.id;
-      this.app.toast(`Choose ${missingDeployment.label ?? missingDeployment.id} deployment cell first.`, 'warning');
+      this.showRouteValidationModal({
+        message: `${missingDeployment.label ?? missingDeployment.id} needs a deployment cell before simulation.`,
+        agentId: missingDeployment.id,
+        type: 'invalidStart',
+        reason: 'deployment',
+        fixHint: 'Choose a valid deployment cell, then click Execute again.'
+      });
       this.refreshPanels();
       this.refreshMap();
       return;
@@ -1289,6 +1380,8 @@ export class MissionWorkspaceScene extends PhaserScene {
     });
     if (!validation.ok) {
       this.app.state.ui.routeAudit = validation.routeAudit ?? routeAudit;
+      const blockingIssue = firstBlockingRouteIssue(validation);
+      this.focusRouteIssue(blockingIssue);
       traceSimulation(this.app.state.simulationTrace, {
         scene: 'MissionWorkspaceScene',
         phase: 'validation.fail',
@@ -1296,9 +1389,9 @@ export class MissionWorkspaceScene extends PhaserScene {
         message: validation.errors[0] ?? 'Validation failed',
         details: { errors: validation.errors }
       });
-      this.app.toast?.(`Simulation blocked: ${validation.errors[0]}`, 'warning');
       this.refreshPanels();
       this.refreshMap();
+      this.showRouteValidationModal(blockingIssue, validation);
       return;
     }
     traceSimulation(this.app.state.simulationTrace, {
@@ -1312,6 +1405,56 @@ export class MissionWorkspaceScene extends PhaserScene {
     this.clearPlanningPreviewState();
     this.app.state.mode = 'simulation';
     this.scene.start('SimulationScene');
+  }
+
+  focusRouteIssue(issue = {}) {
+    const agentId = issue.agentId ?? issue.to?.agentId ?? this.app.state.selectedAgentId ?? this.app.state.mission?.agents?.[0]?.id ?? null;
+    const waypointIndex = Number(issue.waypointIndex ?? issue.to?.index);
+    if (agentId) this.app.state.selectedAgentId = agentId;
+    this.app.state.ui ??= {};
+    if (agentId && Number.isInteger(waypointIndex) && waypointIndex >= 0) {
+      this.app.state.ui.selectedWaypoint = { agentId, index: waypointIndex };
+      this.app.state.ui.selectedMarker = null;
+    }
+  }
+
+  showRouteValidationModal(issue = {}, validation = null) {
+    const message = issue?.message ?? validation?.errors?.[0] ?? 'Route validation failed.';
+    const detailLines = routeIssueDetails(issue, this.app.state);
+    const body = [
+      `${agentLabel(this.app.state, issue?.agentId)} cannot start simulation.`,
+      '',
+      'Reason:',
+      message,
+      '',
+      ...(detailLines.length ? ['Details:', ...detailLines, ''] : []),
+      'Fix:',
+      issue?.fixHint ?? routeIssueFixHint(issue)
+    ].join('\n');
+    this.app.toast?.(`Simulation blocked: ${message}`, 'warning');
+    this.modal.show({
+      title: 'Route Cannot Run',
+      body,
+      buttons: [
+        {
+          label: 'Review Route',
+          onClick: () => {
+            this.focusRouteIssue(issue);
+            this.refreshPanels();
+            this.refreshMap();
+          }
+        },
+        ...(Number.isInteger(Number(issue?.waypointIndex ?? issue?.to?.index)) ? [{
+          label: 'Select Waypoint',
+          onClick: () => {
+            this.focusRouteIssue(issue);
+            this.refreshPanels();
+            this.refreshMap();
+          }
+        }] : []),
+        { label: 'Close', onClick: () => {} }
+      ]
+    });
   }
 
   showHelpModal() {
@@ -1527,6 +1670,10 @@ export class MissionWorkspaceScene extends PhaserScene {
 
   toggleLayer(key) {
     if (!key || !(key in this.app.state.ui)) return;
+    if (key === 'showBestPathOverlay') {
+      this.showBestPathOverlay(!this.app.state.ui.showBestPathOverlay);
+      return;
+    }
     this.app.state.ui[key] = !this.app.state.ui[key];
     this.refreshPanels();
     this.refreshMap();
@@ -1604,6 +1751,100 @@ function canPlaceGliderStarts(mission) {
     || mission?.rules?.dropPlacement?.enabled
     || (mission?.agents ?? []).some((agent) => agent.deployment?.mode === 'chooseFromZone' || agent.deployment?.mode === 'chooseFromZones')
   );
+}
+
+function firstBlockingRouteIssue(validation = {}) {
+  const issues = (validation.routeAudit?.agentResults ?? [])
+    .flatMap((result) => (result.issues ?? []).map((issue) => ({ agentId: result.agentId, ...issue })));
+  return issues.find((issue) => issue.severity === 'error')
+    ?? {
+      type: 'validationError',
+      reason: 'validation',
+      severity: 'error',
+      message: validation.errors?.[0] ?? 'Route validation failed.'
+    };
+}
+
+function bestPathActionError(action, vm) {
+  const missing = vm?.missingFields?.length ? vm.missingFields.join(', ') : 'best prior run';
+  if (vm?.compatibility?.ok === false) {
+    return `Cannot ${bestPathActionVerb(action)} best path: ${vm.compatibility.reason}`;
+  }
+  if (action === 'show') {
+    return `Cannot show best path: diagnostics record has no actualPathFrames or plannedWaypoints at click time. Missing: ${missing}.`;
+  }
+  if (action === 'load') {
+    return `Cannot load best path as plan: diagnostics record has no plannedWaypoints at click time. Missing: ${missing}.`;
+  }
+  if (action === 'rerun') {
+    return `Cannot rerun best path: diagnostics record is missing plannedWaypoints or exact replay. Missing: ${missing}.`;
+  }
+  return `Cannot export best path: diagnostics record has no plannedWaypoints or actualPathFrames at click time. Missing: ${missing}.`;
+}
+
+function bestPathActionVerb(action) {
+  return {
+    show: 'show',
+    load: 'load',
+    rerun: 'rerun',
+    export: 'export'
+  }[action] ?? 'use';
+}
+
+function routeIssueDetails(issue = {}, state = {}) {
+  const lines = [];
+  const waypointIndex = Number(issue.waypointIndex ?? issue.to?.index);
+  const segmentIndex = Number(issue.segmentIndex);
+  if (issue.agentId) lines.push(`Glider: ${agentLabel(state, issue.agentId)}`);
+  if (Number.isInteger(waypointIndex) && waypointIndex >= 0) lines.push(`Waypoint: ${waypointIndex + 1}`);
+  if (Number.isInteger(segmentIndex) && segmentIndex >= 0) {
+    const fromLabel = segmentIndex === 0 ? 'start' : `Waypoint ${segmentIndex}`;
+    lines.push(`Segment: ${fromLabel} to Waypoint ${segmentIndex + 1}`);
+  }
+  const blocked = issue.blockedAt ?? issue.risk?.cell ?? issue.cell;
+  if (blocked) lines.push(`Cell: (${Math.round(Number(blocked.x))}, ${Math.round(Number(blocked.y))})`);
+  const waypoint = getIssueWaypoint(state, issue);
+  if (waypoint) {
+    if (Number.isFinite(Number(waypoint.t ?? waypoint.estimatedArrivalTime))) {
+      lines.push(`Waypoint time: ${formatRouteNumber(waypoint.estimatedArrivalTime ?? waypoint.t)} hr`);
+    }
+    if (Number.isFinite(Number(state.level?.world?.time?.duration))) {
+      lines.push(`Mission duration: ${formatRouteNumber(state.level.world.time.duration)} hr`);
+    }
+    if (Number.isFinite(Number(waypoint.segmentEnergy))) lines.push(`Segment energy: ${formatRouteNumber(waypoint.segmentEnergy)}`);
+    if (Number.isFinite(Number(waypoint.remainingFuelEstimate))) lines.push(`Remaining fuel estimate: ${formatRouteNumber(waypoint.remainingFuelEstimate)}`);
+  }
+  return lines;
+}
+
+function routeIssueFixHint(issue = {}) {
+  const reason = String(issue.reason ?? issue.type ?? '').toLowerCase();
+  if (reason.includes('terrain') || reason.includes('segmentblocked') || reason.includes('tooshallow')) {
+    return 'Move the failed waypoint or add an intermediate waypoint around the blocked cell.';
+  }
+  if (reason.includes('time')) return 'Move the waypoint earlier, delete it, or shorten the route.';
+  if (reason.includes('fuel')) return 'Shorten the route, remove a waypoint, or choose a lower-cost path.';
+  if (reason.includes('deployment') || reason.includes('invalidstart')) return 'Choose a valid deployment/start cell before simulation.';
+  if (reason.includes('coordinate') || reason.includes('outside')) return 'Move the waypoint onto a valid navigable map cell.';
+  return 'Review the highlighted waypoint or segment, adjust the route, then click Execute again.';
+}
+
+function getIssueWaypoint(state = {}, issue = {}) {
+  const agentId = issue.agentId ?? issue.to?.agentId;
+  const index = Number(issue.waypointIndex ?? issue.to?.index);
+  if (!agentId || !Number.isInteger(index)) return null;
+  return state.plan?.agentPlans?.find((plan) => plan.agentId === agentId)?.waypoints?.[index] ?? null;
+}
+
+function agentLabel(state = {}, agentId) {
+  const agent = state.mission?.agents?.find((candidate) => candidate.id === agentId);
+  return agent?.label ?? agent?.name ?? agentId ?? 'Selected glider';
+}
+
+function formatRouteNumber(value) {
+  const number = Number(value);
+  if (!Number.isFinite(number)) return 'N/A';
+  return Math.abs(number) >= 10 ? number.toFixed(1) : number.toFixed(2);
 }
 
 function isValidDropCell(level, cell, mission, agentId = null) {

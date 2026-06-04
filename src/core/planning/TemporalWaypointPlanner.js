@@ -138,7 +138,8 @@ export function estimateTemporalSegment({
   const driftGain = Number(getDriftRules(mission).driftGain);
   const energy = estimateRouteEnergy(from, to, level, agent, frame, {
     driftGain,
-    energyPerCell: mission.physics?.energyPerCell ?? 1
+    energyPerCell: mission.physics?.energyPerCell ?? 1,
+    mission
   });
   const dx = Number(to.x) - Number(from.x);
   const dy = Number(to.y) - Number(from.y);

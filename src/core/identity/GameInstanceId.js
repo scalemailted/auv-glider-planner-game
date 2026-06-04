@@ -12,9 +12,14 @@ export function createStableGameInstanceId(seed, config = {}, prefix = 'GID') {
 export function ensureLevelIdentity(level, config = {}) {
   if (!level || typeof level !== 'object') return level;
   if (!level.levelId) level.levelId = `LVL-${hashString(level.meta?.seed ?? Date.now())}`;
+  const replaySeedAnchor = level.meta?.replaySeedAnchor
+    ?? level.meta?.generationConfig?.replaySeedAnchor
+    ?? level.meta?.generationConfig?.challengeId
+    ?? level.instanceId
+    ?? null;
   if (!level.instanceId) {
     level.instanceId = level.meta?.generated
-      ? createStableGameInstanceId(level.meta?.seed ?? level.levelId, config.generationConfig ?? level.meta?.generationConfig ?? {}, 'GID')
+      ? (replaySeedAnchor ?? createStableGameInstanceId(level.meta?.seed ?? level.levelId, config.generationConfig ?? level.meta?.generationConfig ?? {}, 'GID'))
       : createStableGameInstanceId(level.levelId, {
         seed: level.meta?.seed ?? null,
         builtIn: Boolean(level.campaign || level.meta?.difficulty === 'tutorial')
@@ -26,6 +31,7 @@ export function ensureLevelIdentity(level, config = {}) {
       ? { ...(config.generationConfig ?? level.meta?.generationConfig ?? {}) }
       : level.meta?.generationConfig
   };
+  if (replaySeedAnchor) level.meta.replaySeedAnchor = replaySeedAnchor;
   return level;
 }
 
@@ -34,7 +40,10 @@ export function getLevelIdentity(level) {
     levelId: level?.levelId ?? null,
     instanceId: level?.instanceId ?? null,
     seed: level?.meta?.seed ?? null,
-    generationConfig: level?.meta?.generationConfig ?? null
+    generationConfig: level?.meta?.generationConfig ?? null,
+    replaySeedAnchor: level?.meta?.replaySeedAnchor ?? level?.meta?.generationConfig?.replaySeedAnchor ?? level?.instanceId ?? null,
+    generationVersion: level?.meta?.generationVersion ?? level?.meta?.generationConfig?.generationVersion ?? null,
+    derivedSeeds: level?.meta?.derivedSeeds ?? level?.meta?.generationConfig?.derivedSeeds ?? null
   };
 }
 

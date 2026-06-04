@@ -1,6 +1,8 @@
 import { formatMetric } from '../core/evaluation/PlanComparison.js';
 import { shortInstanceId } from '../core/identity/GameInstanceId.js';
 import { getBestAttempt, loadLeaderboard } from '../core/storage/LeaderboardStore.js';
+import { evaluateExactReplayAvailability } from '../core/random/ReplaySeedContract.js';
+import { replayDiagnosticsCardHtml } from './ReplayDiagnosticsCard.js';
 
 export class CenterLeaderboardView {
   constructor(app, { handlers = {} } = {}) {
@@ -84,7 +86,7 @@ export class CenterLeaderboardView {
           <div>
             <p class="center-kicker">Local Leaderboard</p>
             <h1>Saved Challenge Records</h1>
-            <p>Browse locally saved challenge attempts, load a challenge, replay the best plan, or export saved data.</p>
+            <p>Browse locally saved challenge attempts, replay saved challenges, inspect saved paths, or export saved data.</p>
           </div>
           <div class="leaderboard-count">
             <span>${escapeHtml(this.records.length)}</span>
@@ -99,11 +101,11 @@ export class CenterLeaderboardView {
     this.root.querySelectorAll('[data-select-record]').forEach((button) => {
       button.addEventListener('click', () => this.select(button.dataset.selectRecord));
     });
-    this.root.querySelectorAll('[data-load-challenge]').forEach((button) => {
-      button.addEventListener('click', () => this.handlers.loadChallenge?.(this.board.records?.[button.dataset.loadChallenge]));
+    this.root.querySelectorAll('[data-replay-challenge]').forEach((button) => {
+      button.addEventListener('click', () => this.handlers.replayChallenge?.(this.board.records?.[button.dataset.replayChallenge]));
     });
-    this.root.querySelectorAll('[data-load-best-plan]').forEach((button) => {
-      button.addEventListener('click', () => this.handlers.loadBestPlan?.(this.board.records?.[button.dataset.loadBestPlan]));
+    this.root.querySelectorAll('[data-load-path-as-plan]').forEach((button) => {
+      button.addEventListener('click', () => this.handlers.loadPathAsPlan?.(this.board.records?.[button.dataset.loadPathAsPlan]));
     });
     this.root.querySelectorAll('[data-export-plan]').forEach((button) => {
       button.addEventListener('click', () => this.handlers.exportPlan?.(this.board.records?.[button.dataset.exportPlan]));
@@ -127,6 +129,7 @@ export class CenterLeaderboardView {
       return;
     }
     const best = getBestAttempt(this.board, record.instanceId);
+    const capabilities = recordCapabilities(record, best, this.app?.state);
     this.detailsRoot.innerHTML = `
       <section class="waypoint-shell leaderboard-detail-panel">
         <div class="console-kicker">Leaderboard Details</div>
@@ -138,22 +141,25 @@ export class CenterLeaderboardView {
           <div><span>Map</span><strong>${escapeHtml(formatMapSize(record))}</strong></div>
           <div><span>Agents</span><strong>${escapeHtml(record.agentCount ?? 'N/A')}</strong></div>
         </div>
-        <div class="leaderboard-detail-block">
-          <strong>Seed</strong>
-          <span>${escapeHtml(record.seed ?? record.level?.meta?.seed ?? 'N/A')}</span>
-        </div>
+        ${replayDiagnosticsCardHtml(record, { best })}
         <div class="leaderboard-detail-block">
           <strong>Settings</strong>
           <span>${escapeHtml(settingsSummary(record))}</span>
         </div>
+        <div class="leaderboard-detail-block">
+          <strong>Saved Data</strong>
+          <span>${escapeHtml(capabilitySummary(capabilities))}</span>
+        </div>
         <div class="leaderboard-detail-actions">
-          <button data-load-challenge="${escapeAttr(record.instanceId)}" ${record.level && record.mission ? '' : 'disabled'}>Load Challenge</button>
-          <button data-load-best-plan="${escapeAttr(record.instanceId)}" ${best?.plan && record.level && record.mission ? '' : 'disabled'}>Load Best Plan</button>
-          <button data-export-plan="${escapeAttr(record.instanceId)}" ${best?.plan ? '' : 'disabled'}>Export Plan</button>
-          <button data-export-level="${escapeAttr(record.instanceId)}" ${record.level ? '' : 'disabled'}>Export Challenge</button>
-          <button data-export-result="${escapeAttr(record.instanceId)}" ${best?.result ? '' : 'disabled'}>Export Result</button>
-          <button data-export-record="${escapeAttr(record.instanceId)}">Export Record</button>
-          <button data-clear-record="${escapeAttr(record.instanceId)}">Clear Map Records</button>
+          ${leaderboardActionButton('replay-challenge', record.instanceId, 'Replay Challenge', capabilities.replayable, capabilities.replayReason)}
+          ${leaderboardActionButton(capabilities.pathShowing ? 'hide-path' : 'show-path', record.instanceId, capabilities.pathShowing ? 'Hide Saved Path' : 'Show Saved Path', capabilities.hasChallengeAndPlan, 'Saved path unavailable: this record does not include both a saved challenge and a saved plan.')}
+          ${leaderboardActionButton('rerun-path', record.instanceId, 'Rerun Saved Path', capabilities.hasChallengeAndPlan, 'Rerun unavailable: this record does not include both a saved challenge and a saved plan.')}
+          ${leaderboardActionButton('load-path-as-plan', record.instanceId, 'Load Path as Plan', capabilities.hasChallengeAndPlan, 'Load unavailable: this record does not include both a saved challenge and a saved plan.')}
+          ${leaderboardActionButton('export-plan', record.instanceId, 'Export Path', capabilities.hasPlan, 'Export path unavailable: this record does not include a saved plan.')}
+          ${leaderboardActionButton('export-level', record.instanceId, 'Export Challenge', Boolean(record.level), 'Export challenge unavailable: this record does not include a saved level.')}
+          ${leaderboardActionButton('export-result', record.instanceId, 'Export Result', capabilities.hasResult, 'Export result unavailable: this record does not include a saved result.')}
+          <button data-export-record="${escapeAttr(record.instanceId)}" title="Export the full leaderboard record, including saved challenge and attempts.">Export Record</button>
+          <button data-clear-record="${escapeAttr(record.instanceId)}" title="Remove all local attempts for this saved challenge.">Clear Map Records</button>
         </div>
         <h3 class="waypoint-section-title">Attempts</h3>
         <ol class="leaderboard-attempt-list">
@@ -161,11 +167,20 @@ export class CenterLeaderboardView {
         </ol>
       </section>
     `;
-    this.detailsRoot.querySelectorAll('[data-load-challenge]').forEach((button) => {
-      button.addEventListener('click', () => this.handlers.loadChallenge?.(record));
+    this.detailsRoot.querySelectorAll('[data-replay-challenge]').forEach((button) => {
+      button.addEventListener('click', () => this.handlers.replayChallenge?.(record));
     });
-    this.detailsRoot.querySelectorAll('[data-load-best-plan]').forEach((button) => {
-      button.addEventListener('click', () => this.handlers.loadBestPlan?.(record));
+    this.detailsRoot.querySelectorAll('[data-show-path]').forEach((button) => {
+      button.addEventListener('click', () => this.handlers.showPath?.(record));
+    });
+    this.detailsRoot.querySelectorAll('[data-hide-path]').forEach((button) => {
+      button.addEventListener('click', () => this.handlers.hidePath?.(record));
+    });
+    this.detailsRoot.querySelectorAll('[data-rerun-path]').forEach((button) => {
+      button.addEventListener('click', () => this.handlers.rerunPath?.(record));
+    });
+    this.detailsRoot.querySelectorAll('[data-load-path-as-plan]').forEach((button) => {
+      button.addEventListener('click', () => this.handlers.loadPathAsPlan?.(record));
     });
     this.detailsRoot.querySelectorAll('[data-export-plan]').forEach((button) => {
       button.addEventListener('click', () => this.handlers.exportPlan?.(record));
@@ -228,6 +243,7 @@ function modeMatches(record, filter) {
 
 function recordCardHtml(record, best, selectedId) {
   const selected = record.instanceId === selectedId;
+  const capabilities = recordCapabilities(record, best);
   return `
     <article class="leaderboard-record-card ${selected ? 'selected' : ''}">
       <div class="leaderboard-record-main">
@@ -246,13 +262,35 @@ function recordCardHtml(record, best, selectedId) {
       </div>
       <div class="leaderboard-card-actions">
         <button data-select-record="${escapeAttr(record.instanceId)}">${selected ? 'Selected' : 'Select'}</button>
-        <button data-load-challenge="${escapeAttr(record.instanceId)}" ${record.level && record.mission ? '' : 'disabled'}>Load Challenge</button>
-        <button data-load-best-plan="${escapeAttr(record.instanceId)}" ${best?.plan && record.level && record.mission ? '' : 'disabled'}>Load Best Plan</button>
-        <button data-export-plan="${escapeAttr(record.instanceId)}" ${best?.plan ? '' : 'disabled'}>Export Plan</button>
-        <button data-export-level="${escapeAttr(record.instanceId)}" ${record.level ? '' : 'disabled'}>Export Level</button>
+        ${leaderboardActionButton('replay-challenge', record.instanceId, 'Replay Challenge', capabilities.replayable, capabilities.replayReason)}
+        ${leaderboardActionButton('load-path-as-plan', record.instanceId, 'Load Path as Plan', capabilities.hasChallengeAndPlan, 'Load unavailable: this record does not include both a saved challenge and a saved plan.')}
+        ${leaderboardActionButton('export-plan', record.instanceId, 'Export Path', capabilities.hasPlan, 'Export path unavailable: this record does not include a saved plan.')}
+        ${leaderboardActionButton('export-level', record.instanceId, 'Export Challenge', Boolean(record.level), 'Export challenge unavailable: this record does not include a saved level.')}
       </div>
     </article>
   `;
+}
+
+function leaderboardActionButton(action, instanceId, label, enabled, disabledTitle) {
+  const title = enabled ? actionTitle(action) : disabledTitle;
+  return `<button data-${escapeAttr(action)}="${escapeAttr(instanceId)}" title="${escapeAttr(title)}" ${enabled ? '' : 'disabled'}>${escapeHtml(label)}</button>`;
+}
+
+function actionTitle(action) {
+  return {
+    'replay-challenge': 'Open this saved challenge in the planning workspace without loading a saved path.',
+    'show-path': 'Open this saved challenge and show the saved path as a non-editing overlay.',
+    'hide-path': 'Hide the saved path overlay for this challenge.',
+    'rerun-path': 'Execute the saved path again against the saved challenge snapshot.',
+    'load-path-as-plan': 'Load the saved path as the editable plan for this saved challenge.',
+    'export-plan': 'Export the saved path JSON.',
+    'export-level': 'Export the saved challenge JSON.',
+    'export-result': 'Export the saved result JSON.'
+  }[action] ?? labelAction(action);
+}
+
+function labelAction(action) {
+  return String(action ?? '').replace(/-/g, ' ');
 }
 
 function attemptRowHtml(record, attempt, best) {
@@ -279,12 +317,43 @@ function emptyBrowserHtml() {
 function badges(record, best) {
   return [
     labelMode(record.challengeMode ?? record.mode),
-    best?.plan ? 'has best route' : null,
-    best?.plan ? 'has exported plan' : null,
+    best?.plan ? 'saved path' : null,
+    best?.pathSummary?.actualPathAvailable ? 'saved execution' : null,
     String(record.challengeMode ?? record.mode ?? '').toLowerCase().includes('forecast') ? 'stochastic' : null,
     record.levelId ? null : 'custom map',
     record.generationConfig ? 'generated map' : null
   ].filter(Boolean);
+}
+
+function recordCapabilities(record, best, state = null) {
+  const currentInstanceId = state?.level?.instanceId ?? state?.currentScenario?.instanceId ?? null;
+  const pathShowing = Boolean(currentInstanceId && currentInstanceId === record?.instanceId && state?.ui?.showBestPathOverlay);
+  const hasPlan = Boolean(best?.plan);
+  const replay = evaluateExactReplayAvailability(record);
+  const replayable = Boolean(record?.level && record?.mission) || replay.available;
+  return {
+    replayable,
+    replayReason: replay.reason,
+    replayMethod: replay.method,
+    hasPlan,
+    hasChallengeAndPlan: replayable && hasPlan,
+    hasResult: Boolean(best?.result),
+    hasExecutionPath: Boolean(best?.pathSummary?.actualPathAvailable),
+    hasSeed: Boolean(record?.replaySeedAnchor ?? record?.seed ?? record?.level?.meta?.seed),
+    pathShowing
+  };
+}
+
+function capabilitySummary(capabilities) {
+  const items = [
+    capabilities.replayable ? 'saved challenge snapshot' : 'missing challenge snapshot',
+    capabilities.hasPlan ? 'saved planned path' : 'missing saved path',
+    capabilities.hasExecutionPath ? 'saved executed trajectory' : 'no executed trajectory frames',
+    capabilities.hasResult ? 'saved result' : 'missing saved result',
+    capabilities.hasSeed ? 'replay seed preserved' : 'seed unavailable',
+    capabilities.replayable ? `exact replay ${capabilities.replayMethod}` : capabilities.replayReason
+  ];
+  return items.join(' | ');
 }
 
 function recordTitle(record) {

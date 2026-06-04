@@ -1,6 +1,7 @@
 import { getBestAttempt, loadLeaderboard, normalizeLeaderboard } from '../storage/LeaderboardStore.js';
 import { buildChallengeExport } from './ChallengeExporter.js';
 import { EXPORT_SCHEMA_VERSION, cloneJson } from './ExportVisibility.js';
+import { evaluateExactReplayAvailability, getReplaySeedContract } from '../random/ReplaySeedContract.js';
 
 export function buildLeaderboardExport(board = loadLeaderboard(), { embedChallenges = true } = {}) {
   const normalized = normalizeLeaderboard(board);
@@ -17,13 +18,26 @@ export function buildLeaderboardExport(board = loadLeaderboard(), { embedChallen
 
 export function buildLeaderboardRecordExport(record, { embedChallenge = true } = {}) {
   const best = getBestAttempt({ records: { [record.instanceId]: record } }, record.instanceId);
+  const replaySeedContract = getReplaySeedContract(record);
+  const exactReplay = evaluateExactReplayAvailability(record);
   return {
     schemaVersion: EXPORT_SCHEMA_VERSION,
     type: 'anchor.leaderboardRecord',
     levelId: record.levelId,
     instanceId: record.instanceId,
+    challengeId: record.challengeId ?? record.instanceId,
     missionId: record.missionId,
     challengeMode: record.challengeMode ?? record.mode ?? null,
+    replaySeedAnchor: replaySeedContract?.replaySeedAnchor ?? record.instanceId,
+    generationVersion: replaySeedContract?.generationVersion ?? null,
+    generationConfig: cloneJson(replaySeedContract?.generationConfig ?? record.generationConfig ?? null),
+    derivedSeeds: cloneJson(replaySeedContract?.derivedSeeds ?? null),
+    replaySeedContract: cloneJson(replaySeedContract),
+    exactReplay: {
+      available: exactReplay.available,
+      method: exactReplay.method,
+      reason: exactReplay.reason
+    },
     bestScore: best?.score ?? null,
     bestAttemptId: best?.attemptId ?? null,
     bestPlan: cloneJson(best?.plan ?? null),
@@ -40,8 +54,11 @@ export function buildLeaderboardRecordExport(record, { embedChallenge = true } =
     challengeReference: {
       levelId: record.levelId,
       instanceId: record.instanceId,
+      challengeId: record.challengeId ?? record.instanceId,
       missionId: record.missionId,
-      challengeMode: record.challengeMode ?? record.mode ?? null
+      challengeMode: record.challengeMode ?? record.mode ?? null,
+      replaySeedAnchor: replaySeedContract?.replaySeedAnchor ?? record.instanceId,
+      generationVersion: replaySeedContract?.generationVersion ?? null
     },
     embeddedChallenge: embedChallenge && record.level && record.mission
       ? buildChallengeExport({

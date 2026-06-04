@@ -7,9 +7,14 @@
     "type",
     "levelId",
     "instanceId",
+    "challengeId",
     "missionId",
     "challengeMode",
+    "replaySeedAnchor",
+    "generationVersion",
     "generationConfig",
+    "derivedSeeds",
+    "replaySeedContract",
     "leaderboardIdentity",
     "visibility",
     "visibleData",
@@ -26,5 +31,13 @@
     "hiddenTruthChecksum": "non-cryptographic checksum of omitted truth for identity/debugging",
     "warning": "browser hidden truth is cheat-resistant only, not secure"
   },
+  "replaySeedContract": {
+    "challengeId": "stable UUID / challenge instance id used as the replay seed anchor",
+    "replaySeedAnchor": "same value as challengeId for deterministic seed derivation",
+    "generationVersion": "generator compatibility version such as anchor-generator-v1",
+    "generationConfig": "normalized config required for deterministic regeneration",
+    "derivedSeeds": "namespace-specific deterministic seeds for terrain, currents, roi, hazards, depth, targets, forecast, truth, and mission"
+  },
+  "exactReplay": "available when a saved challenge snapshot exists, or when UUID + generationConfig + compatible generationVersion + derivedSeeds permit deterministic regeneration",
   "notes": "anchor.challenge is the replayable game import format. It combines level, mission, rules, identity, visible planning data, and stochastic visibility metadata. Deterministic challenges may include truth plainly. Public stochastic challenges omit plain hidden truth; an optional opaque bundle is for reload convenience only and is not secure."
 }

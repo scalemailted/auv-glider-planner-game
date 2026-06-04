@@ -492,8 +492,7 @@ The `ROI Mode` button in Analysis changes what the heatmap represents:
 - `ROI Mode: Probability`: likelihood that the opportunity exists. In deterministic missions this is normally 1.0 for available ROI cells.
 - `ROI Mode: Expected`: value times probability.
 - `ROI Mode: Remaining`: raw value still available after current planned fleet route coverage is considered.
-- `ROI Mode: Risk`: dangerous cells from hazards, shallow water, strong currents, nearby mobile hazards, or low confidence.
-- `ROI Mode: Safety`: safer navigation cells as the inverse of risk.
+- `ROI Mode: Risk / Safety`: one navigability spectrum. High values mark dangerous cells from hazards, shallow water, shoreline-current risk, nearby mobile hazards, or low confidence; low-risk areas are safer.
 - `ROI Mode: Travel Cost`: estimated route cost from the current selected glider planning anchor.
 
 Remaining mode is useful in multi-glider missions. If Glider 01 already has a route segment or sample waypoint crossing valuable cells, those cells are dimmed/marked in Remaining mode when planning Glider 02. This is a planning preview only; the simulator still applies the mission's actual sampling rules during execution.

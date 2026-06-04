@@ -33,7 +33,7 @@ export function buildRouteSegmentsForAgent({ level, mission, agent, agentPlan, s
   for (let index = 1; index < points.length; index += 1) {
     const from = points[index - 1];
     const to = points[index];
-    const clipped = clipLineToTerrain(from, to, level);
+    const clipped = clipLineToTerrain(from, to, level, { mission });
     segments.push({
       from,
       to,
