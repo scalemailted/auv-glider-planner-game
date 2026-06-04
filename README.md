@@ -383,6 +383,29 @@ Supported example strategies:
 
 The solver ranks visible ROI cells by expected value, avoids blocked terrain and hazard targets at a basic level, applies lightweight mobile-hazard, shallow-depth, ensemble-disagreement, and current-assist terms, and writes one waypoint list per mission agent. It is a readable baseline for students, not an optimal planner.
 
+The repository also includes a Google Colab external-solver template:
+
+```text
+tools/python/notebooks/anchor_external_solver_template.ipynb
+```
+
+The notebook loads an exported `anchor.solver-packet.json`, reconstructs a lightweight forecast-only headless planning world, runs a starter greedy solver, writes `anchor.plan.json`, and documents the import loop. It is not live browser control and not a Python port of the simulator:
+
+```text
+Colab proposes. Game validates. Game simulates. Game scores.
+```
+
+The default notebook fairness metadata is `usesForecast: true`, `usesTruth: false`, and `usesOracle: false`.
+
+For a higher-fidelity external-solver path, Node.js can run portable ANCHOR core modules headlessly:
+
+```bash
+node tools/js/headless_solver.mjs anchor.solver-packet.json anchor.plan.json
+node tools/js/headless_validate_plan.mjs anchor.solver-packet.json anchor.plan.json
+```
+
+This path is documented in `tools/js/README.md` and is also shown as an optional Colab notebook cell. It avoids Phaser and DOM imports and keeps the browser game as the official referee.
+
 Debrief stores comparison results for the current browser session in slots for `manual`, `temporalGreedy`, and `importedSolver`, with legacy compatibility for older `greedyBaseline` records. Run or import each plan, simulate it, then Debrief shows available rows side by side and includes the comparison in result JSON and after-action Markdown exports. Temporal Greedy plans continue until mission time, fuel, reachable positive-value candidates, or a safety limit stops them, and the plan metadata records the stop reason, stop time, remaining time, and remaining fuel.
 
 More details:

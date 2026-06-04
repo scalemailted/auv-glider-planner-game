@@ -61,3 +61,7 @@ Plan import validates type, agent IDs, selected starts, waypoint coordinates, wa
 ```
 
 The Planning Console can load this file directly with `Load Built-In Demo Plan`, or players can download and re-import it through `Import Waypoint Data`. The same importer and route validity audit are used for tutorial demo plans and external solver plans.
+
+## Node Headless Solver Plans
+
+`tools/js/headless_solver.mjs` writes `timedOpenLoop` plans with `planner.type: "importedSolver"` and explicit forecast/truth/oracle metadata. Default output is forecast-only and non-oracle. `--oracle` must be explicit and marks the plan as oracle-assisted.

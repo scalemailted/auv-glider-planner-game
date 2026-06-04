@@ -109,6 +109,17 @@ def solve_packet(packet, strategy="value_per_distance"):
         "levelId": packet.get("levelId"),
         "instanceId": packet.get("instanceId"),
         "missionId": packet.get("missionId"),
+        "challengeId": packet.get("challengeId") or packet.get("instanceId"),
+        "executionMode": "openLoop",
+        "planner": {
+            "name": f"example-greedy-{strategy}",
+            "label": f"example-greedy-{strategy}",
+            "type": "importedSolver",
+            "usesForecast": packet.get("visiblePlanningSource") == "forecast",
+            "usesTruth": packet.get("visiblePlanningSource") == "truth",
+            "usesOracle": bool((packet.get("visibility") or {}).get("oracleMode")),
+            "source": "external",
+        },
         "meta": {
             "name": f"Example {strategy.replace('_', ' ').title()} Solver Plan",
             "createdAt": datetime.now(timezone.utc).isoformat(),

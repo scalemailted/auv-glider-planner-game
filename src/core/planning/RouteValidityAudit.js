@@ -80,15 +80,19 @@ export function validateRoutePlanForExecution({
 
     let cumulativeEnergy = 0;
     let previousTime = null;
+    let executionAnchor = isFinitePoint(route.anchor)
+      ? { x: Number(route.anchor.x), y: Number(route.anchor.y), t: Number(route.anchor.t ?? 0), source: route.anchor.source ?? 'start' }
+      : null;
     for (const [index, segment] of (route.segments ?? []).entries()) {
       const waypoint = agentPlan.waypoints?.[index];
-      if (!waypoint || !isFinitePoint(segment.from) || !isFinitePoint(segment.to)) continue;
-      const frame = getPlanningFrame(level, Number(segment.from.t ?? waypoint.t ?? 0), {
+      const executionFrom = isFinitePoint(executionAnchor) ? executionAnchor : segment.from;
+      if (!waypoint || !isFinitePoint(executionFrom) || !isFinitePoint(segment.to)) continue;
+      const frame = getPlanningFrame(level, Number(executionFrom.t ?? segment.from.t ?? waypoint.t ?? 0), {
         challengeMode: gameState?.challengeMode,
         revealTruth: gameState?.ui?.revealTruth,
         forecastMemberId: gameState?.ui?.forecastMemberId
       });
-      const estimate = estimateRouteEnergy(segment.from, segment.to, level, agent, frame, {
+      const estimate = estimateRouteEnergy(executionFrom, segment.to, level, agent, frame, {
         driftGain: gameState?.mission?.physics?.driftGain ?? mission?.physics?.driftGain ?? 0.5,
         energyPerCell: mission?.physics?.energyPerCell ?? 1,
         mission
@@ -99,9 +103,9 @@ export function validateRoutePlanForExecution({
           level,
           mission,
           agent,
-          from: segment.from,
+          from: executionFrom,
           to: segment.to,
-          startTime: Number(segment.from.t ?? waypoint.t ?? 0),
+          startTime: Number(executionFrom.t ?? segment.from.t ?? waypoint.t ?? 0),
           travelTime: waypoint.segmentTravelTime ?? waypoint.estimatedTravelTime ?? estimate.distance / Math.max(0.05, Number(agent.maxSpeed ?? 1)),
           fuelRemaining: Number(agent.battery ?? agent.maxBattery ?? mission?.rules?.energyBudget ?? 100) - cumulativeEnergy,
           frame
@@ -117,7 +121,7 @@ export function validateRoutePlanForExecution({
           reason: noLegalPath ? 'noLegalPath' : executionBlocked ? 'routeBlocked' : 'segmentBlocked',
           severity: 'error',
           agentId: agent.id,
-          from: segmentEndpointRef(segment.from, index - 1),
+          from: segmentEndpointRef(executionFrom, index - 1),
           to: waypointRef(waypoint, index),
           blockedAt,
           segmentIndex: index,
@@ -135,7 +139,7 @@ export function validateRoutePlanForExecution({
       const beachingRisk = estimateSegmentBeachingRisk({
         level,
         frame,
-        start: segment.from,
+        start: executionFrom,
         end: estimate.valid === false ? estimate.lastValid : segment.to
       });
       if (isBeachingRisk(beachingRisk)) {
@@ -144,7 +148,7 @@ export function validateRoutePlanForExecution({
           reason: 'beachingRisk',
           severity: 'warning',
           agentId: agent.id,
-          from: segmentEndpointRef(segment.from, index - 1),
+          from: segmentEndpointRef(executionFrom, index - 1),
           to: waypointRef(waypoint, index),
           segmentIndex: index,
           waypointIndex: index,
@@ -193,6 +197,21 @@ export function validateRoutePlanForExecution({
           annotateWaypoint(agentPlan, index, issue);
         }
         previousTime = waypointTime;
+      }
+      if (execution?.ok && isFinitePoint(execution.finalPosition)) {
+        executionAnchor = {
+          x: Number(execution.finalPosition.x),
+          y: Number(execution.finalPosition.y),
+          t: Number(execution.finalPosition.t ?? waypointTime ?? executionFrom.t ?? 0),
+          source: 'simulatedWaypointArrival'
+        };
+      } else if (isFinitePoint(segment.to)) {
+        executionAnchor = {
+          x: Number(segment.to.x),
+          y: Number(segment.to.y),
+          t: Number(waypointTime ?? segment.to.t ?? executionFrom.t ?? 0),
+          source: 'plannedWaypoint'
+        };
       }
 
       const fuelBudget = Number(agent.battery ?? agent.maxBattery ?? mission?.rules?.energyBudget ?? 100);

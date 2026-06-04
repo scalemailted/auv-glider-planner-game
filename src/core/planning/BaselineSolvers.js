@@ -48,10 +48,10 @@ export function temporalGreedySolver(level, mission, options = {}) {
   const grid = level?.world?.grid ?? {};
   const cellCount = Math.max(1, Number(grid.width ?? 1) * Number(grid.height ?? 1));
   const missionDuration = Number(level?.world?.time?.duration ?? 24);
-  const maxWaypoints = Math.max(1, Number(options.maxWaypoints ?? Math.min(cellCount, Math.max(24, Math.ceil(missionDuration * 3)))));
-  const maxPlannerIterations = Math.max(maxWaypoints, Number(options.maxPlannerIterations ?? maxWaypoints + agentsSafetyMargin(mission)));
+  const maxWaypoints = Math.max(1, Number(options.maxWaypoints ?? Math.min(cellCount, Math.max(48, Math.ceil(missionDuration * 4)))));
+  const maxPlannerIterations = Math.max(maxWaypoints, Number(options.maxPlannerIterations ?? Math.max(200, cellCount * Math.max(1, mission?.agents?.length ?? 1) * 4)));
   const startedAt = globalThis.performance?.now?.() ?? Date.now();
-  const maxRuntimeMs = Number(options.maxRuntimeMs ?? 800);
+  const maxRuntimeMs = Number.isFinite(Number(options.maxRuntimeMs)) ? Number(options.maxRuntimeMs) : Infinity;
   const duration = Number(level?.world?.time?.duration ?? 0);
   const priorityTargets = normalizePriorityTargets(level);
   const depletion = createFleetDepletionState(level, mission, priorityTargets);
@@ -76,15 +76,52 @@ export function temporalGreedySolver(level, mission, options = {}) {
     let remainingFuel = Number(agent.battery ?? agent.maxBattery ?? 100);
     const agentSampled = new Set([cellKey(anchor)]);
     let stop = null;
-    const plannerStats = { unreachableCandidates: 0, blockedCandidates: 0, stochasticRiskCandidates: 0 };
+    const plannerStats = {
+      unreachableCandidates: 0,
+      blockedCandidates: 0,
+      stochasticRiskCandidates: 0,
+      timeRejectedCandidates: 0,
+      fuelRejectedCandidates: 0,
+      evaluatedCandidates: 0,
+      feasibleCandidates: 0,
+      lastCandidateStage: null
+    };
     debugTemporalGreedyVisibility(plan.planner);
     for (let index = 0; index < maxWaypoints; index += 1) {
       if ((globalThis.performance?.now?.() ?? Date.now()) - startedAt > maxRuntimeMs) {
-        stop = buildStop('plannerSafetyLimitReached', anchor, remainingFuel, duration, { waypointCount: index });
+        stop = buildStop('planner_safety_limit_reached', anchor, remainingFuel, duration, {
+          waypointCount: index,
+          guardFailure: true,
+          diagnostics: buildPlannerDiagnostics({
+            maxPlannerIterations,
+            maxRuntimeMs,
+            acceptedWaypoints: index,
+            anchor,
+            remainingFuel,
+            duration,
+            agent,
+            plannerStats
+          })
+        });
+        debugTemporalGreedySafetyLimit(stop);
         break;
       }
       if (index >= maxPlannerIterations) {
-        stop = buildStop('maxWaypointSafetyLimitReached', anchor, remainingFuel, duration, { waypointCount: index });
+        stop = buildStop('max_planner_iterations_after_no_progress', anchor, remainingFuel, duration, {
+          waypointCount: index,
+          guardFailure: true,
+          diagnostics: buildPlannerDiagnostics({
+            maxPlannerIterations,
+            maxRuntimeMs,
+            acceptedWaypoints: index,
+            anchor,
+            remainingFuel,
+            duration,
+            agent,
+            plannerStats
+          })
+        });
+        debugTemporalGreedySafetyLimit(stop);
         break;
       }
       if (duration && Number(anchor.t ?? 0) >= duration - minimumMoveTime(agent)) {
@@ -109,7 +146,8 @@ export function temporalGreedySolver(level, mission, options = {}) {
         revealTruth: plannerRevealTruth,
         forecastMemberId: options.forecastMemberId ?? null,
         duration,
-        plannerStats
+        plannerStats,
+        iteration: index
       });
       if (!candidate) {
         stop = buildStop(plannerStats.stochasticRiskCandidates > 0
@@ -118,7 +156,19 @@ export function temporalGreedySolver(level, mission, options = {}) {
           waypointCount: index,
           unreachableCandidates: plannerStats.unreachableCandidates,
           blockedCandidates: plannerStats.blockedCandidates,
-          stochasticRiskCandidates: plannerStats.stochasticRiskCandidates
+          stochasticRiskCandidates: plannerStats.stochasticRiskCandidates,
+          timeRejectedCandidates: plannerStats.timeRejectedCandidates,
+          fuelRejectedCandidates: plannerStats.fuelRejectedCandidates,
+          diagnostics: buildPlannerDiagnostics({
+            maxPlannerIterations,
+            maxRuntimeMs,
+            acceptedWaypoints: index,
+            anchor,
+            remainingFuel,
+            duration,
+            agent,
+            plannerStats
+          })
         });
         break;
       }
@@ -132,6 +182,14 @@ export function temporalGreedySolver(level, mission, options = {}) {
         y: candidate.y,
         action: 'sample',
         note: `stage=${candidate.stage} temporal=${candidate.value.toFixed(3)} priority=${candidate.priorityBonus.toFixed(1)} energy=${candidate.segment.energy.toFixed(1)} score=${candidate.score.toFixed(3)}`
+      });
+      debugTemporalGreedyCommit({
+        waypointIndex: index,
+        previousTime: anchor.t,
+        newTime: candidate.arrivalTime,
+        previousFuel: remainingFuel,
+        newFuel: remainingFuel - candidate.segment.energy,
+        position: candidate
       });
       agentSampled.add(cellKey(candidate));
       remainingFuel -= candidate.segment.energy;
@@ -149,7 +207,19 @@ export function temporalGreedySolver(level, mission, options = {}) {
         waypointCount: maxWaypoints,
         unreachableCandidates: plannerStats.unreachableCandidates,
         blockedCandidates: plannerStats.blockedCandidates,
-        stochasticRiskCandidates: plannerStats.stochasticRiskCandidates
+        stochasticRiskCandidates: plannerStats.stochasticRiskCandidates,
+        timeRejectedCandidates: plannerStats.timeRejectedCandidates,
+        fuelRejectedCandidates: plannerStats.fuelRejectedCandidates,
+        diagnostics: buildPlannerDiagnostics({
+          maxPlannerIterations,
+          maxRuntimeMs,
+          acceptedWaypoints: maxWaypoints,
+          anchor,
+          remainingFuel,
+          duration,
+          agent,
+          plannerStats
+        })
       });
     }
     const agentPlan = plan.agentPlans?.find((candidate) => candidate.agentId === agent.id);
@@ -172,10 +242,12 @@ export function temporalGreedySolver(level, mission, options = {}) {
     };
     agentStops.push({ agentId: agent.id, ...stop });
   }
-  plan.meta.greedyStop = summarizeStops(agentStops, duration);
   plan.meta.greedyStopsByAgent = agentStops;
   plan.meta.sharedDepletion = summarizeFleetDepletion(depletion, agents.length);
   validateAndRepairBaselinePlan(plan, level, mission);
+  reconcileGreedyStopsWithAcceptedPlan(plan, level, mission);
+  plan.meta.greedyStop = summarizeStops(plan.meta.greedyStopsByAgent, duration);
+  debugTemporalGreedySummary(plan, level, mission);
 
   return plan;
 }
@@ -195,7 +267,9 @@ function validateAndRepairBaselinePlan(plan, level, mission) {
         agentPlan.waypoints.splice(truncateAt);
         const stop = plan.meta.greedyStopsByAgent?.find((candidate) => candidate.agentId === result.agentId);
         if (stop) {
-          stop.stopReason = 'route_blocked_by_terrain';
+          stop.stopReason = isRouteBlockedIssue(firstInvalid)
+            ? 'planner_generated_blocked_segment'
+            : 'route_blocked_by_terrain';
           stop.validationIssues = result.issues;
           stop.waypointCount = agentPlan.waypoints.length;
         }
@@ -206,7 +280,76 @@ function validateAndRepairBaselinePlan(plan, level, mission) {
   applyRouteAuditToPlan(plan, audit);
   plan.meta.valid = audit.ok;
   plan.meta.validationIssues = audit.agentResults?.flatMap((result) => result.issues ?? []) ?? [];
-  if (!audit.ok) plan.meta.stopReason = 'route_validation_failed';
+  if (!audit.ok) {
+    plan.meta.stopReason = hasRouteBlockedIssue(audit)
+      ? 'planner_generated_blocked_segment'
+      : 'no_executable_route_after_validation';
+  }
+}
+
+function reconcileGreedyStopsWithAcceptedPlan(plan, level, mission) {
+  const duration = Number(level?.world?.time?.duration ?? 0);
+  for (const stop of plan?.meta?.greedyStopsByAgent ?? []) {
+    const agent = mission?.agents?.find((candidate) => candidate.id === stop.agentId);
+    const agentPlan = plan?.agentPlans?.find((candidate) => candidate.agentId === stop.agentId);
+    const waypoints = agentPlan?.waypoints ?? [];
+    const acceptedWaypointCount = waypoints.length;
+    const lastWaypoint = waypoints.at(-1) ?? null;
+    const acceptedTime = acceptedWaypointCount
+      ? Number(lastWaypoint?.estimatedArrivalTime ?? lastWaypoint?.t ?? 0)
+      : 0;
+    const acceptedEnergy = waypoints.reduce((sum, waypoint) => sum + Math.max(0, Number(waypoint.segmentEnergy ?? 0)), 0);
+    const fuelBudget = Number(agent?.battery ?? agent?.maxBattery ?? 100);
+    stop.acceptedWaypointCount = acceptedWaypointCount;
+    stop.acceptedRouteTime = round(acceptedTime);
+    stop.acceptedFuelUsed = round(acceptedEnergy);
+    stop.waypointCount = acceptedWaypointCount;
+    stop.stopTime = round(acceptedTime);
+    stop.remainingMissionTime = round(Math.max(0, Number(duration || 0) - acceptedTime));
+    stop.remainingFuel = round(Math.max(0, fuelBudget - acceptedEnergy));
+    stop.accounting = {
+      acceptedWaypointCount,
+      acceptedRouteTime: stop.acceptedRouteTime,
+      acceptedFuelUsed: stop.acceptedFuelUsed,
+      candidateEvaluations: Number(stop.diagnostics?.evaluatedCandidates ?? 0),
+      rejectedCandidates: {
+        blocked: Number(stop.blockedCandidates ?? stop.diagnostics?.rejectionSummary?.blocked ?? 0),
+        unreachable: Number(stop.unreachableCandidates ?? stop.diagnostics?.rejectionSummary?.unreachable ?? 0),
+        unsafeForecast: Number(stop.stochasticRiskCandidates ?? stop.diagnostics?.rejectionSummary?.unsafeForecast ?? 0),
+        time: Number(stop.timeRejectedCandidates ?? stop.diagnostics?.rejectionSummary?.time ?? 0),
+        fuel: Number(stop.fuelRejectedCandidates ?? stop.diagnostics?.rejectionSummary?.fuel ?? 0)
+      }
+    };
+    if (acceptedWaypointCount === 0 && shouldReplaceZeroWaypointStop(stop.stopReason)) {
+      stop.stopReason = stop.validationIssues?.length
+        ? 'no_candidate_passed_validation'
+        : stop.stochasticRiskCandidates > 0
+          ? 'no_safe_forecast_feasible_candidates'
+          : 'no_reachable_feasible_candidates';
+    }
+  }
+}
+
+function shouldReplaceZeroWaypointStop(reason) {
+  return new Set([
+    'mission_time_exhausted',
+    'fuel_exhausted',
+    'route_blocked_by_terrain',
+    'planner_generated_blocked_segment',
+    'no_executable_route_after_validation',
+    'route_validation_failed',
+    'max_planner_iterations'
+  ]).has(reason);
+}
+
+function hasRouteBlockedIssue(audit) {
+  return (audit?.agentResults ?? []).some((result) =>
+    (result.issues ?? []).some((issue) => isRouteBlockedIssue(issue))
+  );
+}
+
+function isRouteBlockedIssue(issue) {
+  return issue?.type === 'segmentBlocked' || issue?.reason === 'routeBlocked';
 }
 
 function chooseTemporalCell({
@@ -223,12 +366,15 @@ function chooseTemporalCell({
   revealTruth,
   forecastMemberId,
   duration,
-  plannerStats = null
+  plannerStats = null,
+  iteration = 0
 }) {
   const candidates = [];
+  const loopStartStats = snapshotPlannerStats(plannerStats);
   for (const cell of cells) {
     if (sampled.has(cellKey(cell))) continue;
     if (cell.x === Math.round(anchor.x) && cell.y === Math.round(anchor.y)) continue;
+    plannerStats && (plannerStats.evaluatedCandidates += 1);
     const segment = estimateTemporalSegment({
       level,
       mission,
@@ -246,8 +392,14 @@ function chooseTemporalCell({
       debugTemporalGreedyCandidate({ from: anchor, to: cell, segment, execution: null, accepted: false, reason: 'segmentInvalid' });
       continue;
     }
-    if (duration && arrivalTime > duration) continue;
-    if (Number.isFinite(remainingFuel) && segment.energy > remainingFuel) continue;
+    if (duration && arrivalTime > duration) {
+      plannerStats && (plannerStats.timeRejectedCandidates += 1);
+      continue;
+    }
+    if (Number.isFinite(remainingFuel) && segment.energy > remainingFuel) {
+      plannerStats && (plannerStats.fuelRejectedCandidates += 1);
+      continue;
+    }
     const segmentFrame = getPlanningFrame(level, Number(anchor.t ?? 0), { challengeMode, revealTruth, forecastMemberId });
     const execution = evaluateSegmentForExecution({
       level,
@@ -326,7 +478,18 @@ function chooseTemporalCell({
     if (stochasticRisk.warning) debugTemporalGreedyStochasticRisk({ from: anchor, to: cell, stochasticRisk, rejected: false, score });
     debugTemporalGreedyCandidate({ from: anchor, to: cell, segment, execution, score, accepted: false });
     candidates.push(candidate);
+    plannerStats && (plannerStats.feasibleCandidates += 1);
   }
+  debugTemporalGreedyLoop({
+    iteration,
+    anchor,
+    remainingFuel,
+    duration,
+    candidateCount: cells.length,
+    feasibleCandidateCount: candidates.length,
+    plannerStats,
+    loopStartStats
+  });
   if (!candidates.length) return null;
   const selected = chooseFromStage(candidates, 'high_value')
     ?? chooseFromStage(candidates, 'moderate_value')
@@ -335,7 +498,10 @@ function chooseTemporalCell({
   if (selected && Number(selected.rawValue ?? 0) > Number(selected.value ?? 0)) {
     depletion.duplicateSamplesAvoided += 1;
   }
-  if (selected) debugTemporalGreedyAccepted(selected);
+  if (selected) {
+    plannerStats && (plannerStats.lastCandidateStage = selected.stage);
+    debugTemporalGreedyAccepted(selected);
+  }
   return selected;
 }
 
@@ -497,6 +663,84 @@ function summarizeFleetDepletion(depletion, agentCount) {
   };
 }
 
+function snapshotPlannerStats(stats = {}) {
+  return {
+    unreachableCandidates: Number(stats.unreachableCandidates ?? 0),
+    blockedCandidates: Number(stats.blockedCandidates ?? 0),
+    stochasticRiskCandidates: Number(stats.stochasticRiskCandidates ?? 0),
+    timeRejectedCandidates: Number(stats.timeRejectedCandidates ?? 0),
+    fuelRejectedCandidates: Number(stats.fuelRejectedCandidates ?? 0),
+    evaluatedCandidates: Number(stats.evaluatedCandidates ?? 0),
+    feasibleCandidates: Number(stats.feasibleCandidates ?? 0)
+  };
+}
+
+function buildPlannerDiagnostics({
+  maxPlannerIterations,
+  maxRuntimeMs,
+  acceptedWaypoints,
+  anchor,
+  remainingFuel,
+  duration,
+  agent,
+  plannerStats = {}
+} = {}) {
+  const fuelBudget = Number(agent?.battery ?? agent?.maxBattery ?? 0);
+  const fuelUsed = Number.isFinite(fuelBudget) ? Math.max(0, fuelBudget - Number(remainingFuel ?? 0)) : null;
+  const rejectionSummary = {
+    blocked: Number(plannerStats.blockedCandidates ?? 0),
+    unreachable: Number(plannerStats.unreachableCandidates ?? 0),
+    unsafeForecast: Number(plannerStats.stochasticRiskCandidates ?? 0),
+    time: Number(plannerStats.timeRejectedCandidates ?? 0),
+    fuel: Number(plannerStats.fuelRejectedCandidates ?? 0)
+  };
+  const mostCommonRejection = Object.entries(rejectionSummary).sort((a, b) => b[1] - a[1])[0] ?? ['none', 0];
+  return {
+    maxPlannerIterations,
+    maxRuntimeMs: Number.isFinite(maxRuntimeMs) ? maxRuntimeMs : null,
+    acceptedWaypoints,
+    currentTime: round(anchor?.t ?? 0),
+    missionDuration: round(duration),
+    fuelUsed: fuelUsed === null ? null : round(fuelUsed),
+    fuelBudget: Number.isFinite(fuelBudget) ? round(fuelBudget) : null,
+    currentCell: pointCell(anchor),
+    rejectionSummary,
+    mostCommonRejection: { reason: mostCommonRejection[0], count: mostCommonRejection[1] },
+    evaluatedCandidates: Number(plannerStats.evaluatedCandidates ?? 0),
+    feasibleCandidates: Number(plannerStats.feasibleCandidates ?? 0),
+    lastAcceptedWaypoint: pointCell(anchor),
+    lastCandidateStage: plannerStats.lastCandidateStage ?? null
+  };
+}
+
+function debugTemporalGreedyLoop({ iteration, anchor, remainingFuel, duration, candidateCount, feasibleCandidateCount, plannerStats, loopStartStats } = {}) {
+  if (!globalThis.ANCHOR_DEBUG_TEMPORAL_GREEDY) return;
+  const delta = {
+    rejectedBlocked: Number(plannerStats?.blockedCandidates ?? 0) - Number(loopStartStats?.blockedCandidates ?? 0),
+    rejectedUnsafe: Number(plannerStats?.stochasticRiskCandidates ?? 0) - Number(loopStartStats?.stochasticRiskCandidates ?? 0),
+    rejectedFuel: Number(plannerStats?.fuelRejectedCandidates ?? 0) - Number(loopStartStats?.fuelRejectedCandidates ?? 0),
+    rejectedTime: Number(plannerStats?.timeRejectedCandidates ?? 0) - Number(loopStartStats?.timeRejectedCandidates ?? 0),
+    rejectedUnreachable: Number(plannerStats?.unreachableCandidates ?? 0) - Number(loopStartStats?.unreachableCandidates ?? 0)
+  };
+  globalThis.console?.debug?.('[TemporalGreedy][Loop]', {
+    iteration,
+    acceptedWaypoints: iteration,
+    currentTime: round(anchor?.t ?? 0),
+    missionDuration: round(duration),
+    remainingFuel: round(remainingFuel),
+    currentCell: pointCell(anchor),
+    candidateCount,
+    feasibleCandidateCount,
+    ...delta,
+    stopCandidateStage: plannerStats?.lastCandidateStage ?? null
+  });
+}
+
+function debugTemporalGreedySafetyLimit(stop = {}) {
+  if (!globalThis.ANCHOR_DEBUG_TEMPORAL_GREEDY) return;
+  globalThis.console?.warn?.('[TemporalGreedy][SafetyLimitReached]', stop.diagnostics ?? stop);
+}
+
 function debugTemporalGreedyCandidate({ from, to, segment, execution, score = null, accepted = false, reason = null } = {}) {
   if (!globalThis.ANCHOR_DEBUG_TEMPORAL_GREEDY) return;
   globalThis.console?.debug?.('[TemporalGreedy][Candidate]', {
@@ -521,6 +765,34 @@ function debugTemporalGreedyAccepted(candidate) {
     validationOk: true,
     travelTime: candidate?.execution?.travelTime ?? candidate?.segment?.estimatedTravelTime ?? null,
     energyCost: candidate?.execution?.energyCost ?? candidate?.segment?.energy ?? null
+  });
+}
+
+function debugTemporalGreedyCommit({ waypointIndex, previousTime, newTime, previousFuel, newFuel, position } = {}) {
+  if (!globalThis.ANCHOR_DEBUG_TEMPORAL_GREEDY) return;
+  globalThis.console?.debug?.('[TemporalGreedy][Commit]', {
+    waypointIndex,
+    previousTime: round(previousTime),
+    newTime: round(newTime),
+    previousFuel: round(previousFuel),
+    newFuel: round(newFuel),
+    position: pointCell(position)
+  });
+}
+
+function debugTemporalGreedySummary(plan, level, mission) {
+  if (!globalThis.ANCHOR_DEBUG_TEMPORAL_GREEDY) return;
+  const stop = plan?.meta?.greedyStop ?? {};
+  const acceptedWaypoints = (plan?.agentPlans ?? []).reduce((sum, agentPlan) => sum + (agentPlan.waypoints?.length ?? 0), 0);
+  const fuelBudget = (mission?.agents ?? []).reduce((sum, agent) => sum + Number(agent.battery ?? agent.maxBattery ?? 100), 0);
+  globalThis.console?.debug?.('[TemporalGreedy][Summary]', {
+    acceptedWaypoints,
+    plannedTime: stop.stopTime ?? 0,
+    missionDuration: Number(level?.world?.time?.duration ?? 0),
+    fuelUsed: Math.max(0, fuelBudget - Number(stop.remainingFuel ?? fuelBudget)),
+    fuelBudget,
+    stopReason: stop.stopReason,
+    rejectionSummary: (stop.agents ?? []).map((agentStop) => agentStop.accounting?.rejectedCandidates ?? agentStop.diagnostics?.rejectionSummary ?? {})
   });
 }
 

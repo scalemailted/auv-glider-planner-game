@@ -32,9 +32,29 @@ The default `value_per_distance` strategy:
 
 This is not an optimal planner. It is meant to be readable, editable, and good enough for students to inspect and improve.
 
+The generated plan includes current import metadata:
+
+- `executionMode: "openLoop"`
+- `planner.type: "importedSolver"`
+- `planner.usesForecast`
+- `planner.usesTruth`
+- `planner.usesOracle`
+
+Fair leaderboard comparisons should use forecast-only non-oracle plans unless the assignment explicitly says otherwise.
+
 The obstacle/risk checks are basic: each proposed straight waypoint leg must avoid terrain and hazard cells, mobile hazards are sampled at a few mission times, and depth is treated as a shallow-water penalty. The script does not run A*, Dijkstra, vehicle simulation, ensemble simulation, or current-aware path search.
 
 Python is optional for browser play. If Python is unavailable locally, the browser game and Debrief comparison still work; run this script in any Python-enabled environment.
+
+## Google Colab Template
+
+For a notebook-first workflow, use:
+
+```text
+tools/python/notebooks/anchor_external_solver_template.ipynb
+```
+
+It loads `anchor.solver-packet.json`, reconstructs a lightweight forecast-only planning world, runs a simple greedy solver, writes `anchor.plan.json`, and reminds students that ANCHOR is still the official validator, simulator, and scorer.
 
 ## Import Back Into The Game
 

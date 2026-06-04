@@ -10,7 +10,7 @@ import { buildBestPriorRunViewModel, bestPriorRunLogPayload, debugBestPath } fro
 import { importPlanJson } from '../../../core/io/PlanImporter.js';
 import { importResultJson } from '../../../core/io/ResultImporter.js';
 import { saveChallengeToLocalStore } from '../../../core/storage/LocalChallengeStore.js';
-import { temporalGreedySolver } from '../../../core/planning/BaselineSolvers.js';
+import { buildTemporalGreedyRequest, runTemporalGreedyAsync } from '../../../core/planning/PlannerWorkerClient.js';
 import { ensureForecastFields } from '../../../core/sim/ChallengeMode.js';
 import { getLevelObjectiveSummary, getPlanningPrompts } from '../../../core/campaign/LevelObjectives.js';
 import {
@@ -54,6 +54,7 @@ import { createSimulationTrace, traceSimulation } from '../../../core/debug/Simu
 import { canPlaceWaypoint, getPlacementDisabledReason } from '../../../core/planning/WaypointPlacementGuard.js';
 import {
   attachIdentityToPlan,
+  createGameInstanceId,
   ensureLevelIdentity,
   planMatchesLevel,
   shortInstanceId
@@ -1654,20 +1655,70 @@ export class MissionWorkspaceScene extends PhaserScene {
     input.click();
   }
 
-  applyTemporalGreedyPlan() {
-    this.app.state.plan = temporalGreedySolver(this.app.state.level, this.app.state.mission, {
-      challengeMode: this.app.state.challengeMode,
-      revealTruth: this.app.state.ui?.revealTruth,
-      forecastMemberId: this.app.state.ui?.forecastMemberId
-    });
-    attachIdentityToPlan(this.app.state.plan, this.app.state.level, this.app.state.mission);
-    recomputeAllWaypointTiming(this.app.state);
-    applyPlanningAnchor(this.app.state, this.app.state.selectedAgentId);
-    this.app.state.currentPlanSource = 'temporalGreedy';
-    this.app.state.temporalGreedyPlan = this.app.state.plan;
+  async applyTemporalGreedyPlan() {
+    this.app.state.ui ??= {};
+    this.app.state.ui.plannerState ??= {};
+    if (this.app.state.ui.plannerState.temporalGreedyRunning || this.app.state.ui.temporalGreedyRunning) {
+      this.app.toast?.('Temporal Greedy planner is already running.', 'info');
+      return;
+    }
+    const requestId = createGameInstanceId('TPLAN');
+    this.app.state.ui.plannerState.temporalGreedyRunning = true;
+    this.app.state.ui.plannerState.activePlannerRequestId = requestId;
+    this.app.state.ui.temporalGreedyRunning = true;
     this.refreshPanels();
-    this.refreshMap();
-    this.app.toast?.(temporalGreedySummary(this.app.state.plan, this.app.state.level, this.app.state.mission), this.app.state.plan?.meta?.valid === false ? 'warning' : 'success');
+    this.app.toast?.('Planning Temporal Greedy route...', 'info');
+    try {
+      const request = buildTemporalGreedyRequest({
+        level: this.app.state.level,
+        mission: this.app.state.mission,
+        options: {
+          challengeMode: this.app.state.challengeMode,
+          revealTruth: this.app.state.ui?.revealTruth,
+          forecastMemberId: this.app.state.ui?.forecastMemberId
+        }
+      });
+      request.requestId = requestId;
+      const result = await runTemporalGreedyAsync(request, {
+        onProgress: (progress) => {
+          if (!this.isActiveTemporalGreedyRequest(requestId)) return;
+          if (progress?.phase === 'running') this.app.toast?.('Temporal Greedy planner running...', 'info');
+        }
+      });
+      if (!this.isActiveTemporalGreedyRequest(requestId)) return;
+      if (result?.requestId && result.requestId !== requestId) return;
+      if (!result.ok) throw new Error(result.error ?? 'Temporal Greedy planning failed.');
+      this.app.state.plan = result.plan;
+      attachIdentityToPlan(this.app.state.plan, this.app.state.level, this.app.state.mission);
+      recomputeAllWaypointTiming(this.app.state);
+      applyPlanningAnchor(this.app.state, this.app.state.selectedAgentId);
+      this.app.state.currentPlanSource = 'temporalGreedy';
+      this.app.state.temporalGreedyPlan = this.app.state.plan;
+      this.refreshMap();
+      this.app.toast?.(temporalGreedySummary(this.app.state.plan, this.app.state.level, this.app.state.mission), this.app.state.plan?.meta?.valid === false ? 'warning' : 'success');
+    } catch (error) {
+      if (this.isActiveTemporalGreedyRequest(requestId)) {
+        console.error('Temporal Greedy planning failed.', error);
+        this.app.toast?.(error?.name === 'AbortError' ? 'Temporal Greedy cancelled.' : error?.message ?? 'Temporal Greedy planning failed.', 'warning');
+      }
+    } finally {
+      if (this.isActiveTemporalGreedyRequest(requestId)) {
+        this.clearTemporalGreedyBusyState();
+        this.refreshPanels();
+      }
+    }
+  }
+
+  isActiveTemporalGreedyRequest(requestId) {
+    return this.app.state.ui?.plannerState?.activePlannerRequestId === requestId;
+  }
+
+  clearTemporalGreedyBusyState() {
+    this.app.state.ui ??= {};
+    this.app.state.ui.plannerState ??= {};
+    this.app.state.ui.plannerState.temporalGreedyRunning = false;
+    this.app.state.ui.plannerState.activePlannerRequestId = null;
+    this.app.state.ui.temporalGreedyRunning = false;
   }
 
   clearSelectedAgentPlan() {
@@ -1838,9 +1889,10 @@ function temporalGreedySummary(plan, level, mission) {
   const blockedCandidates = (stop.agents ?? []).reduce((sum, agentStop) => sum + Number(agentStop.blockedCandidates ?? 0), Number(stop.blockedCandidates ?? 0));
   const stochasticRiskCandidates = (stop.agents ?? []).reduce((sum, agentStop) => sum + Number(agentStop.stochasticRiskCandidates ?? 0), Number(stop.stochasticRiskCandidates ?? 0));
   const depletion = plan?.meta?.sharedDepletion ?? {};
-  const complete = !stop.remainingMissionTime || stop.stopReason === 'mission_time_exhausted' || stop.stopReason === 'fuel_exhausted';
+  const guardFailure = Boolean(stop.guardFailure || (stop.agents ?? []).some((agentStop) => agentStop.guardFailure));
+  const complete = !guardFailure && (!stop.remainingMissionTime || stop.stopReason === 'mission_time_exhausted' || stop.stopReason === 'fuel_exhausted');
   const lines = [
-    complete ? 'Temporal Greedy complete' : 'Temporal Greedy stopped early',
+    guardFailure ? 'Temporal Greedy guard stopped' : complete ? 'Temporal Greedy complete' : 'Temporal Greedy stopped early',
     `Waypoints: ${waypointCount}`,
     `Planned time: ${formatRouteNumber(stopTime)} / ${formatRouteNumber(duration)} hr`,
     `Fuel used: ${formatRouteNumber(fuelUsed)} / ${formatRouteNumber(startingFuel)}`,
@@ -1852,6 +1904,7 @@ function temporalGreedySummary(plan, level, mission) {
   if (unreachableCandidates > 0) lines.splice(5, 0, `Skipped unreachable candidates: ${unreachableCandidates}`);
   if (blockedCandidates > 0) lines.splice(5, 0, `Skipped blocked candidates: ${blockedCandidates}`);
   if (stochasticRiskCandidates > 0) lines.splice(5, 0, `Skipped unknown-current shoreline risks: ${stochasticRiskCandidates}`);
+  if (guardFailure) lines.splice(5, 0, 'Planner guard hit before a normal stop condition.');
   return lines.join('\n');
 }
 

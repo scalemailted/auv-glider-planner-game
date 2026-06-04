@@ -16,9 +16,37 @@ Deterministic challenges include truth fields because there is no hidden state. 
 
 In stochastic mode, ordinary solver packets include forecast/belief fields, not hidden truth. Oracle-mode packets are only for benchmarking.
 
+Google Colab is supported through `tools/python/notebooks/anchor_external_solver_template.ipynb`. The notebook loads this packet, builds a lightweight headless planning world from visible fields, writes `anchor.plan.json`, and leaves validation/simulation/scoring to the browser game.
+
+The notebook can also call the Node.js headless solver:
+
+```bash
+node tools/js/headless_solver.mjs anchor.solver-packet.json anchor.plan.json
+```
+
+That script reads the same solver packet, uses visible forecast fields by default, imports portable core JavaScript helpers, and writes an importable `anchor.plan`.
+
 ## `anchor.plan.json`
 
 `type: "anchor.plan"` is the imported/exported route format. It supports executable `openLoop` and `timedOpenLoop` plans now, preserves `surfaceUpdateBundle` metadata with a safe import warning, and recognizes `policy` / `contingencyTable` as non-executable scaffolds. Planner metadata declares whether the route used forecast, truth, or oracle data.
+
+External-solver plans should include:
+
+```json
+{
+  "executionMode": "timedOpenLoop",
+  "planner": {
+    "name": "colab-template-greedy-v1",
+    "type": "importedSolver",
+    "usesForecast": true,
+    "usesTruth": false,
+    "usesOracle": false,
+    "source": "external"
+  }
+}
+```
+
+The fair default is forecast-only and non-oracle. Colab proposes; ANCHOR validates, simulates, and scores.
 
 ## `anchor.plan-segment.json`
 

@@ -14,6 +14,91 @@ During Simulation, surface and route-failure menus can export `anchor.surface-ob
 
 External solvers can read a solver packet, produce an `anchor.plan`, then import that plan back into the browser game for simulation and scoring.
 
+## External Solver Workflow With Google Colab
+
+Google Colab is an official external-solver platform for ANCHOR's JSON workflow. The notebook is a planning mirror, not live browser control and not the official simulator.
+
+```text
+Colab proposes.
+Game validates.
+Game simulates.
+Game scores.
+```
+
+Workflow:
+
+1. Export Solver Packet from ANCHOR.
+2. Open `tools/python/notebooks/anchor_external_solver_template.ipynb` in Colab or local Jupyter.
+3. Upload or load `anchor.solver-packet.json`.
+4. Run the notebook cells to inspect challenge identity, replay seed anchor, generator version, mission duration, grid dimensions, agent count, visible forecast/ROI availability, and fairness flags.
+5. Let the notebook build a lightweight headless planning world from visible fields.
+6. Run the starter forecast-only greedy solver.
+7. Download `anchor.plan.json`.
+8. Import the plan into ANCHOR.
+9. Let ANCHOR validate and simulate the imported route.
+10. Export `anchor.result` if you want to compare attempts or build datasets.
+
+The default notebook planner metadata is:
+
+```json
+{
+  "name": "colab-template-greedy-v1",
+  "type": "importedSolver",
+  "usesForecast": true,
+  "usesTruth": false,
+  "usesOracle": false,
+  "source": "external"
+}
+```
+
+Oracle mode is for benchmarking/research only. Do not compare oracle-assisted plans as fair leaderboard entries.
+
+Surface-update replanning is scaffolded as the same file contract:
+
+```text
+anchor.surface-observation.json -> anchor.plan-segment.json
+```
+
+The intended loop is: the game reaches a surface/update window, exports a surface observation, the notebook computes the next segment from the actual surfaced position, the notebook exports `anchor.plan-segment.json`, and the game imports, validates, replaces future waypoints, and continues.
+
+This is not live browser automation. A shared-folder watcher or optional local bridge may be added later, but the current supported workflow is explicit JSON export/import.
+
+### JavaScript Headless Solver From Colab
+
+For a higher-fidelity path that avoids Python translation drift, Colab can call Node.js and run the repository's portable JavaScript core modules:
+
+```python
+import subprocess
+
+subprocess.run([
+    "node",
+    "tools/js/headless_solver.mjs",
+    "anchor.solver-packet.json",
+    "anchor.plan.json"
+], check=True)
+```
+
+The same command works locally:
+
+```bash
+node tools/js/headless_solver.mjs anchor.solver-packet.json anchor.plan.json --planner greedy
+node tools/js/headless_validate_plan.mjs anchor.solver-packet.json anchor.plan.json
+```
+
+The Node path imports `src/core/headless/*` plus shared planning validation from `src/core/planning/PlanExecutionValidator.js`. It does not import Phaser scenes, DOM overlays, or browser UI modules.
+
+By default it uses visible forecast packet fields and exports:
+
+```json
+{
+  "usesForecast": true,
+  "usesTruth": false,
+  "usesOracle": false
+}
+```
+
+Oracle mode requires `--oracle` and labels the plan with `usesTruth: true` and `usesOracle: true`.
+
 For a no-code demonstration of that loop, play `Tutorial 14: Import / Export Workflow`. Its packaged demo plan is `tutorials/import-demo/import-demo-waypoints.json`. `Load Built-In Demo Plan` imports it directly, while `Download Demo Plan JSON` plus `Import Waypoint Data` shows the same file-selection workflow an external A*, Dijkstra, ML, or RL planner would use after writing an `anchor.plan`.
 
 ## Steps
@@ -40,6 +125,14 @@ Optional strategy names are `value_per_distance`, `greedy_roi`, and `nearest_roi
 
 The example reads the visible planning fields from the packet, chooses ROI target cells, skips blocked terrain and hazard cells, and writes an importable `anchor.plan`. It supports multiple mission agents by creating one waypoint list per agent. The solver is a baseline teaching example, not an optimal planner.
 
+The repository also includes a Colab-friendly notebook template:
+
+```text
+tools/python/notebooks/anchor_external_solver_template.ipynb
+```
+
+It uses the lightweight helpers in `tools/python/anchor_headless/` and exports a `timedOpenLoop` `anchor.plan` with explicit forecast/truth/oracle metadata.
+
 ## Pseudo-Code
 
 ```text
@@ -57,6 +150,15 @@ write_json({
   "levelId": packet["levelId"],
   "instanceId": packet["instanceId"],
   "missionId": packet["missionId"],
+  "executionMode": "timedOpenLoop",
+  "planner": {
+    "name": "my-external-solver",
+    "type": "importedSolver",
+    "usesForecast": true,
+    "usesTruth": false,
+    "usesOracle": false,
+    "source": "external"
+  },
   "meta": {
     "name": "My Solver Plan",
     "solver": "my-external-solver"

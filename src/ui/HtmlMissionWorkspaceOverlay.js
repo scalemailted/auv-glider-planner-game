@@ -53,6 +53,7 @@ export class HtmlMissionWorkspaceOverlay {
     const routeAuditIssues = routeAuditIssueCount(routeAudit);
     const connectivity = state.level && state.mission ? computeReachabilitySummary(state.level, state.mission) : null;
     const connectivityWarnings = connectivity?.warnings ?? [];
+    const temporalGreedyRunning = isTemporalGreedyRunning(state);
     root.innerHTML = `
       <section class="console-header">
         <div class="console-kicker">Planning Console</div>
@@ -93,7 +94,8 @@ export class HtmlMissionWorkspaceOverlay {
         <h2>Analysis</h2>
         ${bestPriorRunSummary(state)}
         ${temporalGreedyPlannerSummary(state)}
-        ${tutorialFeatureEnabled(state, 'solver') ? '<button class="console-button" data-action="temporal-greedy">Temporal Greedy</button>' : ''}
+        ${tutorialFeatureEnabled(state, 'solver') ? `<button class="console-button" data-action="temporal-greedy" ${temporalGreedyRunning ? 'disabled' : ''} title="${temporalGreedyRunning ? 'Temporal Greedy is already computing a route.' : 'Compute a temporal greedy route.'}">${temporalGreedyRunning ? 'Temporal Greedy Running...' : 'Temporal Greedy'}</button>` : ''}
+        ${temporalGreedyRunning ? '<div class="hud-muted">Temporal Greedy planner running...</div>' : ''}
         ${tutorialFeatureEnabled(state, 'solver') ? '<button class="console-button" data-action="solver-packet">Export Solver Packet</button>' : ''}
         <button class="console-button" data-action="roi-mode" title="${escapeAttr(roiModeDescription(state))}">ROI Mode: ${escapeHtml(getRoiModeLabel(state.ui?.roiViewMode))}</button>
       </section>
@@ -155,6 +157,7 @@ export class HtmlMissionWorkspaceOverlay {
     const root = this.roots.topHud;
     if (!root) return;
     const executeDisabled = state.ui?.routeAudit && state.ui.routeAudit.ok === false;
+    const temporalGreedyRunning = isTemporalGreedyRunning(state);
     root.innerHTML = `
       <div class="hud-panel hud-pad hud-spread">
         <div class="hud-row">
@@ -165,7 +168,10 @@ export class HtmlMissionWorkspaceOverlay {
             ['export-plan', 'Export Plan']
           ])}
           ${menu('Analysis', [
-            ['temporal-greedy', 'Temporal Greedy'],
+            ['temporal-greedy', temporalGreedyRunning ? 'Temporal Greedy Running...' : 'Temporal Greedy', {
+              disabled: temporalGreedyRunning,
+              title: temporalGreedyRunning ? 'Temporal Greedy is already computing a route.' : 'Compute a temporal greedy route.'
+            }],
             ['solver-packet', 'Solver Packet'],
             ['roi-mode', `ROI Mode: ${getRoiModeLabel(state.ui?.roiViewMode)}`]
           ].filter(([action]) => action === 'roi-mode' || tutorialFeatureEnabled(state, 'solver')))}
@@ -664,7 +670,7 @@ function menu(label, items) {
     <details class="hud-menu">
       <summary>${escapeHtml(label)}</summary>
       <div class="hud-menu-body">
-        ${items.map(([action, itemLabel]) => `<button data-action="${action}">${escapeHtml(itemLabel)}</button>`).join('')}
+        ${items.map(([action, itemLabel, options = {}]) => `<button data-action="${action}"${options.disabled ? ' disabled' : ''}${options.title ? ` title="${escapeAttr(options.title)}"` : ''}>${escapeHtml(itemLabel)}</button>`).join('')}
       </div>
     </details>
   `;
@@ -698,6 +704,10 @@ function layerButton(state, key, label) {
   }[key] ?? '';
   const titleAttr = title ? ` title="${escapeHtml(title)}"` : '';
   return `<button class="console-button secondary" data-action="${action}"${titleAttr}>${state.ui?.[key] === false ? 'Show' : 'Hide'} ${escapeHtml(label)}</button>`;
+}
+
+function isTemporalGreedyRunning(state) {
+  return Boolean(state?.ui?.plannerState?.temporalGreedyRunning || state?.ui?.temporalGreedyRunning);
 }
 
 function roiModeLegendLabel(state) {
@@ -837,6 +847,7 @@ function temporalGreedyPlannerSummary(state) {
   const unreachableCandidates = (stop.agents ?? []).reduce((sum, agentStop) => sum + Number(agentStop.unreachableCandidates ?? 0), Number(stop.unreachableCandidates ?? 0));
   const blockedCandidates = (stop.agents ?? []).reduce((sum, agentStop) => sum + Number(agentStop.blockedCandidates ?? 0), Number(stop.blockedCandidates ?? 0));
   const stochasticRiskCandidates = (stop.agents ?? []).reduce((sum, agentStop) => sum + Number(agentStop.stochasticRiskCandidates ?? 0), Number(stop.stochasticRiskCandidates ?? 0));
+  const guardFailure = Boolean(stop.guardFailure || (stop.agents ?? []).some((agentStop) => agentStop.guardFailure));
   const depletion = plan.meta?.sharedDepletion ?? {};
   return `
     <div class="replay-diagnostics-card compact">
@@ -848,6 +859,7 @@ function temporalGreedyPlannerSummary(state) {
       ${unreachableCandidates > 0 ? `<div class="replay-diagnostics-row"><span>Skipped</span><strong>${escapeHtml(unreachableCandidates)} unreachable</strong></div>` : ''}
       ${blockedCandidates > 0 ? `<div class="replay-diagnostics-row"><span>Blocked</span><strong>${escapeHtml(blockedCandidates)} rejected</strong></div>` : ''}
       ${stochasticRiskCandidates > 0 ? `<div class="replay-diagnostics-row"><span>Forecast Risk</span><strong>${escapeHtml(stochasticRiskCandidates)} avoided</strong></div>` : ''}
+      ${guardFailure ? '<div class="hud-muted warning">Planner guard stopped before a normal horizon/fuel/no-candidate condition.</div>' : ''}
       <div class="replay-diagnostics-row"><span>Stop Reason</span><strong>${escapeHtml(labelizeStopReason(stop.stopReason))}</strong></div>
     </div>
   `;

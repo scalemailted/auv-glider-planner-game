@@ -36,6 +36,10 @@ export function createGameState() {
       selectedMarker: null,
       hoverCell: null,
       placementMode: 'waypoint',
+      plannerState: {
+        temporalGreedyRunning: false,
+        activePlannerRequestId: null
+      },
       mapCamera: { zoom: 1, panX: 0, panY: 0 }
     } };
 }
