@@ -1,0 +1,77 @@
+{
+  "schemaVersion": "2.0",
+  "type": "schema",
+  "describes": "anchor.mission",
+  "required": [
+    "schemaVersion",
+    "type",
+    "missionId",
+    "agents",
+    "rules",
+    "scoring"
+  ],
+  "objectives": [
+    {
+      "id": "collect_samples",
+      "label": "Collect valuable samples",
+      "metric": "sampleScore",
+      "operator": ">=",
+      "value": 0.5
+    }
+  ],
+  "communicationRules": {
+    "rules.communication.mode": "surfaceOnly",
+    "rules.communication.surfaceInterval": "mission time between surfacing windows; defaults to 3",
+    "rules.communication.surfaceDuration": "visible surfacing transition duration; defaults to 0.25",
+    "rules.communication.allowReplanningOnSurface": "boolean; defaults to true",
+    "rules.communication.updatePenalty": "number applied per replanned event when scoring enables update penalties"
+  },
+  "deploymentRules": {
+    "agents[].deployment.mode": "fixedStart | chooseFromZone; missing deployment with agent.start defaults to fixedStart",
+    "agents[].deployment.zoneId": "deployment zone id for chooseFromZone",
+    "agents[].deployment.selectedStart": "actual chosen start cell; may be null until player/solver chooses a deployment cell",
+    "agents[].start": "fixed-start compatibility field; selectedStart is authoritative after deployment selection"
+  },
+  "generatedScenarioSetup": {
+    "mission.meta.scenarioSetup": "player-selected setup preserved for generated challenges: agentCount, grid, durationHours, surfaceIntervalHours, fuelPerAgent, gliderSpeed, difficulty, hazard/current/ROI/star settings",
+    "agents": "generated challenge agents use glider_01, glider_02, etc. up to the browser-safe cap",
+    "communication": "surfaceInterval is set from the setup screen and usually matches level.world.time.planningWindow"
+  },
+  "endConditionRules": {
+    "rules.endCondition.mode": "none | surface | communication | recovery | pickup | return; defaults to none",
+    "rules.endCondition.requiredByMissionEnd": "boolean; if true, failing the condition marks recoverySuccess false and can apply penalty",
+    "rules.endCondition.targetZoneId": "optional zone id from rules.endCondition.zones, rules.recoveryZones, rules.communicationZones, or level bases",
+    "rules.endCondition.bonus": "score bonus applied when achieved",
+    "rules.endCondition.penalty": "score penalty applied when requiredByMissionEnd is true and not achieved"
+  },
+  "samplingRules": {
+    "rules.sampling.mode": "unique | diminishing | cooldown | persistent; defaults to unique",
+    "rules.sampling.duplicateValueMultiplier": "value multiplier for repeated samples in unique/cooldown modes; defaults to 0",
+    "rules.sampling.localDepletionRadius": "radius around sampled cells affected in diminishing mode; defaults to 0",
+    "rules.sampling.depletionFactor": "value multiplier for depleted samples in diminishing mode; defaults to 0",
+    "rules.sampling.cooldownWindows": "planning windows before a cooldown sample recovers full value; defaults to 0",
+    "rules.sampling.persistentWindowMultiplier": "repeat-per-window multiplier for monitoring missions; defaults to 1"
+  },
+  "priorityTargetRules": {
+    "rules.priorityTargets.enabled": "boolean; defaults to true when level priority targets exist",
+    "rules.priorityTargets.captureMode": "once by default",
+    "rules.priorityTargets.showFutureTargets": "optional planning display hint; defaults to false",
+    "rules.priorityTargets.showActiveOnly": "optional planning display hint; defaults to true",
+    "scoring.priorityTargetValueMultiplier": "multiplier applied to target.value when captured; defaults to 1",
+    "scoring.priorityTargetMissPenalty": "optional per-missed-target penalty; defaults to 0",
+    "scoring.allowSharedPriorityCapture": "if true multiple agents may receive capture events for the same target; defaults to false"
+  },
+  "stochasticRules": {
+    "rules.roiScoringMode": "expectedValue | realizedStochastic; defaults to expectedValue",
+    "rules.stochasticSeed": "optional deterministic seed for per-cell probabilistic ROI outcomes",
+    "rules.rngSeed": "legacy alias for stochasticSeed"
+  },
+  "driftRules": {
+    "rules.drift.mode": "deterministic | forecastUncertain; defaults to deterministic unless stochasticDrift is true",
+    "rules.drift.driftGain": "optional current drift multiplier; falls back to mission.physics.driftGain",
+    "rules.drift.stochasticDrift": "boolean; when true, simulation perturbs truth current with deterministic seeded noise",
+    "rules.drift.noiseScale": "current-vector noise magnitude used only when stochasticDrift is true",
+    "rules.drift.seed": "optional deterministic seed for stochastic drift noise"
+  },
+  "notes": "Readable schema-like documentation; validation is lightweight/manual. Mission objectives are optional; campaign defaults are generated when missing."
+}

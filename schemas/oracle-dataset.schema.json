@@ -1,0 +1,29 @@
+{
+  "schemaVersion": "3.0",
+  "type": "schema",
+  "describes": "anchor.oracleDataset",
+  "required": [
+    "schemaVersion",
+    "type",
+    "label",
+    "visibility",
+    "challenge",
+    "solverPacket",
+    "oracle",
+    "featureSpec"
+  ],
+  "label": "Research/oracle export. Contains hidden truth. Do not use for fair player planning.",
+  "oracle": {
+    "hiddenTruth": "plain truth temporal fields",
+    "forecast": "visible forecast temporal fields",
+    "forecasts": "forecast ensemble members",
+    "truthForecastDeltas": "frame-level availability summary for truth/forecast deltas",
+    "terrainMask": "traversability/terrain mask",
+    "reachableMasks": "connectivity/reachability metadata when available",
+    "currentFields": "truth and forecast current frame arrays",
+    "roiValues": "truth and forecast ROI frame arrays",
+    "priorityTargets": "hidden/visible priority target states",
+    "scoringLabels": "result summary labels when a result is included"
+  },
+  "notes": "Oracle datasets are for ML/RL training, benchmark evaluation, and offline reproducibility. They intentionally include hidden truth."
+}

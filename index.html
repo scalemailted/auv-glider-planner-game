@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>ANCHOR: Glider Command</title>
+  <link rel="stylesheet" href="css/base.css" />
+  <link rel="stylesheet" href="css/theme.css" />
+  <link rel="stylesheet" href="css/layout.css" />
+  <link rel="stylesheet" href="css/game.css" />
+  <link rel="stylesheet" href="css/panels.css" />
+</head>
+<body>
+  <aside id="mission-console" aria-label="Mission Console"></aside>
+  <div id="center-column" aria-label="Mission View">
+    <div id="viewport-shell">
+      <div id="game-root" aria-label="ANCHOR: Glider Command game"></div>
+      <div id="ui-root" aria-live="polite">
+        <div id="mission-summary-hud" class="overlay-panel"></div>
+        <div id="top-hud" class="overlay-panel"></div>
+        <div id="left-drawer" class="overlay-panel"></div>
+        <div id="right-drawer" class="overlay-panel"></div>
+        <div id="bottom-timeline" class="overlay-panel"></div>
+        <div id="agent-performance-hud" class="overlay-panel"></div>
+        <div id="modal-root"></div>
+      </div>
+    </div>
+  </div>
+  <aside id="waypoint-timeline" aria-label="Mission Waypoint Timeline"></aside>
+  <input id="hidden-file-input" type="file" accept="application/json" hidden />
+  <div id="toast-root" aria-live="polite"></div>
+  <script src="vendor/phaser.min.js"></script>
+  <script type="module" src="src/game/main.js"></script>
+</body>
+</html>

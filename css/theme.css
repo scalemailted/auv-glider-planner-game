@@ -1,0 +1,9 @@
+:root {
+  --bg: #08111f; --panel: #101b2e; --panel-2: #14243d; --text: #eef6ff; --muted: #9cb4d8;
+  --accent: #54c7ec; --warning: #ffd166; --danger: #ff6b6b; --success: #63e6be;
+  --grid: rgba(255,255,255,0.12); --land: #293327; --planned: #ffd166; --actual: #fff;
+}
+body { background: var(--bg); color: var(--text); }
+.panel { background: linear-gradient(180deg, var(--panel), var(--panel-2)); border: 1px solid rgba(255,255,255,0.08); border-radius: 14px; }
+button { color: var(--text); background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.12); border-radius: 10px; padding: 0.5rem 0.7rem; }
+button:hover { background: rgba(255,255,255,0.14); }

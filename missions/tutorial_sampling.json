@@ -1,0 +1,60 @@
+{
+  "schemaVersion": "2.0",
+  "type": "anchor.mission",
+  "missionId": "tutorial_sampling",
+  "meta": {
+    "name": "Tutorial Sampling Mission",
+    "description": "Collect high-value samples while conserving energy and avoiding hazards."
+  },
+  "agents": [
+    {
+      "id": "glider_01",
+      "label": "Glider 01",
+      "start": {
+        "x": 1,
+        "y": 1
+      },
+      "battery": 100,
+      "maxSpeed": 1.25,
+      "samplingRadius": 0.8,
+      "collisionRadius": 0.5
+    }
+  ],
+  "rules": {
+    "roiThreshold": 0.15,
+    "communication": {
+      "mode": "surfaceOnly",
+      "surfaceInterval": 3,
+      "surfaceDuration": 0.25,
+      "allowReplanningOnSurface": true,
+      "updatePenalty": 2
+    }
+  },
+  "objectives": [
+    {
+      "id": "collect_samples",
+      "label": "Collect valuable samples",
+      "metric": "sampleScore",
+      "operator": ">=",
+      "value": 0.5
+    },
+    {
+      "id": "avoid_hazards",
+      "label": "Avoid hazards",
+      "metric": "hazardsHit",
+      "operator": "<=",
+      "value": 0
+    }
+  ],
+  "physics": {
+    "driftGain": 0.6,
+    "energyPerCell": 1.0
+  },
+  "scoring": {
+    "sampleWeight": 100,
+    "energyPenalty": 0.05,
+    "hazardPenalty": 10,
+    "elapsedTimePenalty": 0.01,
+    "updatePenalty": 2
+  }
+}

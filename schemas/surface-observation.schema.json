@@ -1,0 +1,20 @@
+{
+  "schemaVersion": "3.0",
+  "type": "schema",
+  "describes": "anchor.surfaceObservation",
+  "required": [
+    "schemaVersion",
+    "type",
+    "context",
+    "levelId",
+    "instanceId",
+    "missionId",
+    "time",
+    "agents",
+    "activePlan",
+    "expectedResponse"
+  ],
+  "context": "surfaceDecision | routeFailure",
+  "expectedResponse": "anchor.plan-segment or anchor.plan",
+  "notes": "Exported from surfacing and route-failure menus so external solvers can compute updated waypoint data for import."
+}

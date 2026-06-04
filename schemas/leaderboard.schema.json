@@ -1,0 +1,26 @@
+{
+  "schemaVersion": "3.0",
+  "type": "schema",
+  "describes": "anchor.leaderboard",
+  "required": [
+    "schemaVersion",
+    "type",
+    "createdAt",
+    "records"
+  ],
+  "record": {
+    "type": "anchor.leaderboardRecord",
+    "levelId": "challenge level id",
+    "instanceId": "leaderboard grouping identity",
+    "missionId": "mission id",
+    "challengeMode": "deterministic/stochastic/tutorial/custom or internal mode",
+    "bestScore": "best attempt score",
+    "bestAttemptId": "attempt id for best score",
+    "bestPlan": "embedded best anchor.plan when available",
+    "attempts": "attempt list with score, label, plan, result, summary, pathSummary, timestamps",
+    "pathSummary": "per-attempt waypoint count, sample count, stars captured, energy, hazards, elapsed time, and actual path availability",
+    "challengeReference": "importable challenge identity",
+    "embeddedChallenge": "optional anchor.challenge data for replay"
+  },
+  "notes": "Leaderboard exports are local-browser save artifacts for sharing saved challenges and attempts. They are importable and merge into localStorage."
+}

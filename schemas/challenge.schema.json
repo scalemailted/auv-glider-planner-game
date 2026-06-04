@@ -1,0 +1,30 @@
+{
+  "schemaVersion": "3.0",
+  "type": "schema",
+  "describes": "anchor.challenge",
+  "required": [
+    "schemaVersion",
+    "type",
+    "levelId",
+    "instanceId",
+    "missionId",
+    "challengeMode",
+    "generationConfig",
+    "leaderboardIdentity",
+    "visibility",
+    "visibleData",
+    "missionRules",
+    "scoringRules",
+    "level",
+    "mission"
+  ],
+  "visibility": {
+    "truthIncluded": "false for public stochastic exports unless explicitly included",
+    "forecastIncluded": "true for stochastic/forecast challenges",
+    "oracleMode": "false for player-facing challenge files",
+    "hiddenTruthPolicy": "omitted | opaqueBundle | included",
+    "hiddenTruthChecksum": "non-cryptographic checksum of omitted truth for identity/debugging",
+    "warning": "browser hidden truth is cheat-resistant only, not secure"
+  },
+  "notes": "anchor.challenge is the replayable game import format. It combines level, mission, rules, identity, visible planning data, and stochastic visibility metadata. Deterministic challenges may include truth plainly. Public stochastic challenges omit plain hidden truth; an optional opaque bundle is for reload convenience only and is not secure."
+}

@@ -1,0 +1,19 @@
+{
+  "schemaVersion": "2.0",
+  "type": "anchor.experiment",
+  "meta": {
+    "name": "Tutorial Benchmark"
+  },
+  "levels": [
+    "levels/tutorial_01_currents.json"
+  ],
+  "missions": [
+    "missions/tutorial_sampling.json"
+  ],
+  "plans": [
+    "plans/example_manual_plan.json"
+  ],
+  "outputs": {
+    "exportResults": true
+  }
+}

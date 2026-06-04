@@ -1,0 +1,101 @@
+{
+  "schemaVersion": "2.0",
+  "type": "schema",
+  "describes": "anchor.plan",
+  "required": [
+    "schemaVersion",
+    "type",
+    "levelId",
+    "instanceId",
+    "missionId",
+    "executionMode",
+    "planner",
+    "agentPlans"
+  ],
+  "executionMode": "openLoop | timedOpenLoop | surfaceUpdateBundle | policy | contingencyTable",
+  "planner": {
+    "name": "planner/display name",
+    "type": "manual | importedSolver | temporalAStar | greedy | policy | ml | rl | other",
+    "usesForecast": "boolean",
+    "usesTruth": "boolean",
+    "usesOracle": "boolean",
+    "source": "game | external | research"
+  },
+  "waypointShape": {
+    "id": "string",
+    "window": "integer >= 0",
+    "t": "mission time number; if absent, derived from window * planningWindow",
+    "estimatedArrivalTime": "optional planning estimate; recomputed by browser when absent",
+    "x": "integer grid coordinate",
+    "y": "integer grid coordinate",
+    "action": "sample | transit | return | hold",
+    "segmentEnergy": "optional estimated segment energy from previous planning anchor",
+    "cumulativeEnergy": "optional estimated cumulative route energy for this agent",
+    "remainingFuelEstimate": "optional estimated remaining fuel after this waypoint",
+    "segmentTravelTime": "optional estimated travel time from previous planning anchor",
+    "estimatedTravelTime": "optional alias for segmentTravelTime",
+    "currentAssist": "optional current alignment estimate for the segment",
+    "arrivalUncertainty": "optional object with radiusX, radiusY, and angle for the waypoint arrival oval",
+    "validity": "optional object with valid boolean and reasons array: time | fuel | terrain | stale",
+    "warnings": "optional array of planning warnings such as blocked route or surfacing reach",
+    "note": "optional string"
+  },
+  "markerShape": {
+    "id": "string",
+    "x": "integer grid coordinate",
+    "y": "integer grid coordinate",
+    "t": "mission time number for timeline focus",
+    "window": "integer >= 0 for visual grouping",
+    "type": "futureTarget | priorityTargetMarker | priorityTarget | note | other",
+    "label": "short display label",
+    "linkedTargetId": "optional priority target / objective id this marker references",
+    "roiValueAtPlacement": "optional ROI/expected value sampled when marker was placed",
+    "priorityValueAtPlacement": "optional priority target value sampled when marker was placed",
+    "reachability": {
+      "status": "reachable | tight | risky | impossible",
+      "availableTime": "target time minus connected route-anchor time",
+      "estimatedTravelTime": "approximate travel time from current connected anchor to marker",
+      "timeSlack": "availableTime - estimatedTravelTime",
+      "estimatedEnergy": "approximate energy from anchor to marker",
+      "remainingFuel": "estimated fuel after reaching marker",
+      "routeRiskStatus": "clear estimate | hazard risk | blocked terrain | unavailable",
+      "recommendedBackfillSteps": "approximate planning windows/intermediate waypoints likely needed",
+      "warnings": "estimate warnings; not simulation results"
+    },
+    "note": "optional string"
+  },
+  "agentPlanShape": {
+    "agentId": "mission agent id",
+    "selectedStart": "optional {x,y}; validated against the active agent deployment zone on import",
+    "waypoints": "ordered executable waypoint array",
+    "surfaceSegments": "optional segment array used when executionMode is surfaceUpdateBundle",
+    "markers": "legacy optional marker array; import normalization migrates these into top-level planningMarkers"
+  },
+  "surfaceSegmentShape": {
+    "segmentId": "string",
+    "window": "integer planning/update window",
+    "startTime": "mission time number",
+    "endTime": "mission time number",
+    "anchorMode": "selectedStart | expectedSurfacePosition | actualSurfacePosition | fixedCoordinate",
+    "anchor": "optional fixed/expected coordinate",
+    "waypoints": "ordered waypoints for this surface window"
+  },
+  "executionModeNotes": {
+    "openLoop": "default static route; waypoints execute in order without automatic re-optimization",
+    "timedOpenLoop": "static route with preserved t/window/estimatedArrivalTime metadata",
+    "surfaceUpdateBundle": "metadata and import summary are preserved; automatic surfacing segment application is scaffolded, not enabled",
+    "policy": "recognized as metadata only; arbitrary imported code/models are not executed",
+    "contingencyTable": "recognized as metadata only"
+  },
+  "planningMarkers": "top-level global non-executable planning marker array; preserved by import/export and ignored by simulation/scoring",
+  "ordering": "waypoints array order is execution order; window/t are temporal planning metadata and are not used to sort imported plans",
+  "meta": {
+    "name": "string",
+    "createdAt": "ISO timestamp",
+    "source": "manual | importedSolver | greedyBaseline | other",
+    "levelIdentity": "levelId, instanceId, seed, and generationConfig snapshot",
+    "solver": "optional external solver name/path",
+    "strategy": "optional solver strategy label"
+  },
+  "notes": "Readable schema-like documentation; validation is lightweight/manual. Import normalization fills missing waypoint ids, marker ids, waypoint window/t/action/note, marker window/t/type/label, executionMode, planner metadata, and meta.createdAt. Older agentPlan markers are migrated into top-level planningMarkers. The browser recomputes optional timing/energy metadata when planning state changes. Markers are global planning notes only: they are not connected by route lines, executed, sampled, or scored unless absorbed by placing a waypoint on the same marker cell/time."
+}

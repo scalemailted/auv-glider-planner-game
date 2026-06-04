@@ -1,0 +1,38 @@
+{
+  "schemaVersion": "2.0",
+  "type": "anchor.plan",
+  "levelId": "tutorial_01_currents",
+  "missionId": "tutorial_sampling",
+  "meta": {
+    "name": "Example Solver Plan",
+    "solver": "greedy-baseline"
+  },
+  "agentPlans": [
+    {
+      "agentId": "glider_01",
+      "waypoints": [
+        {
+          "id": "wp1",
+          "window": 0,
+          "x": 4,
+          "y": 4,
+          "action": "sample"
+        },
+        {
+          "id": "wp2",
+          "window": 1,
+          "x": 7,
+          "y": 5,
+          "action": "sample"
+        },
+        {
+          "id": "wp3",
+          "window": 2,
+          "x": 9,
+          "y": 6,
+          "action": "sample"
+        }
+      ]
+    }
+  ]
+}

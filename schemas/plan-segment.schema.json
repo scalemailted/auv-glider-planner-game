@@ -1,0 +1,24 @@
+{
+  "schemaVersion": "1.0",
+  "type": "schema",
+  "describes": "anchor.plan-segment",
+  "required": [
+    "type",
+    "schemaVersion",
+    "agentId",
+    "startTime",
+    "anchorMode",
+    "waypoints"
+  ],
+  "fields": {
+    "challengeId": "optional active challenge instanceId",
+    "missionId": "optional mission id",
+    "agentId": "target agent id; defaults to surfaced/failed agent in UI only when missing from plain waypoint-list imports",
+    "startTime": "mission time at segment start",
+    "endTime": "optional segment end time",
+    "anchorMode": "selectedStart | expectedSurfacePosition | actualSurfacePosition | fixedCoordinate",
+    "waypoints": "future waypoint list to replace or append",
+    "planner": "planner metadata with usesForecast, usesTruth, usesOracle"
+  },
+  "notes": "Used for surfacing and route-failure recovery imports. The browser validates waypoints before applying and defaults to replacing future waypoints after current simulation time."
+}

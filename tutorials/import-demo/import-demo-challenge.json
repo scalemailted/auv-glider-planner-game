@@ -1,0 +1,16 @@
+{
+  "type": "anchor.challenge-reference",
+  "schemaVersion": "1.0",
+  "challengeId": "tutorial_14_import_export_workflow",
+  "missionId": "tutorial_sampling",
+  "title": "Tutorial 14: Import / Export Workflow",
+  "description": "Static tutorial challenge reference for the imported waypoint plan demo.",
+  "levelUrl": "../../levels/tutorial_05_forecast.json",
+  "missionUrl": "../../missions/tutorial_sampling.json",
+  "planUrl": "import-demo-waypoints.json",
+  "notes": [
+    "The Tutorial Campaign loads levels/tutorial_05_forecast.json and applies tutorial_14_import_export_workflow metadata.",
+    "The matching plan file is tutorials/import-demo/import-demo-waypoints.json.",
+    "The route is intended to pass the route validity audit before simulation."
+  ]
+}

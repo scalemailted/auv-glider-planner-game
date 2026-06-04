@@ -1,0 +1,34 @@
+{
+  "schemaVersion": "2.0",
+  "type": "schema",
+  "describes": "anchor.levelDataset | anchor.solverPacketDataset | training examples JSONL",
+  "required": [
+    "schemaVersion",
+    "type",
+    "createdAt",
+    "datasetId",
+    "levels or packets"
+  ],
+  "identity": "Level datasets include levelIdentities with levelId, instanceId, seed, and generationConfig. Training examples include instanceId and generationConfig metadata.",
+  "currentGenerator": "Level metadata and training-example metadata preserve current preset, strength, temporal variability, seed, stats, and generated current frames.",
+  "missionRules": "Training example metadata preserves normalized endCondition and sampling configs when a mission is provided.",
+  "priorityTargets": "Generated levels may include layers.priorityTargets; level datasets preserve those temporal target frames, and solver-packet datasets include normalized priorityTargets for external planners.",
+  "connectivity": "Generated level metadata may include deployment connectivity validation, repair method, reachable navigable ratio, ROI reachability, and recovery reachability.",
+  "stochasticFields": [
+    "forecast ensembles",
+    "probabilistic ROI cells",
+    "mobile hazards",
+    "temporal priority targets",
+    "depth grids",
+    "selected challenge mode",
+    "roiScoringMode",
+    "rngSeed",
+    "stochasticSeed",
+    "selectedForecastMember",
+    "expected vs realized summary when result metadata is included",
+    "stochasticOutcomeMetadata",
+    "probabilityOutcome event metadata",
+    "stochasticMetadata per level"
+  ],
+  "notes": "Readable schema-like documentation; validation is lightweight/manual. Training examples export as JSONL where each line contains input level/mission data, nullable target.plan, and metadata."
+}

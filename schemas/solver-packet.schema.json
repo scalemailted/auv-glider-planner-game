@@ -1,0 +1,91 @@
+{
+  "schemaVersion": "2.0",
+  "type": "schema",
+  "describes": "anchor.solverPacket",
+  "required": [
+    "schemaVersion",
+    "type",
+    "packetId",
+    "createdAt",
+    "levelId",
+    "instanceId",
+    "missionId",
+    "challengeMode",
+    "visibility",
+    "level",
+    "mission",
+    "missionRules",
+    "deployment",
+    "connectivity",
+    "stochasticConfig",
+    "truthVisibility",
+    "visiblePlanningSource",
+    "planningData",
+    "expectedPlanFormat"
+  ],
+  "planningData": {
+    "visibleFields": {
+      "terrain": "2D grid of blocked cells",
+      "hazards": "2D grid of hazard cells",
+      "truth": "visible in perfectKnowledge mode or when hidden truth is explicitly included",
+      "forecast": "visible forecast frames when available",
+      "forecasts": "forecast ensemble members with id, label, and frames",
+      "mobileHazards": "timed moving hazard tracks",
+      "priorityTargets": "temporal Gold Star / priority target frames visible to external solvers",
+      "depth": "optional bathymetry grid from shallow 0 to deep 1",
+      "roi": "ROI cells may be numeric or { value, probability, expectedValue }"
+    },
+    "hiddenTruthIncluded": "boolean",
+    "forecastAvailable": "boolean",
+    "selectedForecastMemberId": "forecast member id or ensemble_mean",
+    "roiViewMode": "expectedValue | value | probability",
+    "scoringMode": "mission ROI scoring mode: expectedValue | realizedStochastic",
+    "stochasticSeed": "seed used for deterministic stochastic ROI outcomes",
+    "endCondition": "normalized mission end-condition config",
+    "sampling": "normalized mission sampling config",
+    "priorityTargets": "normalized mission priority target display/capture config",
+    "vectorField": "current generator metadata including preset, strength, variability, seed, stats, and synthetic/current notes",
+    "planningMarkers": "optional global current plan markers; non-executable notes for future windows",
+    "connectivity": "deployment connectivity summary and warnings",
+    "riskFields": "probabilisticROI, ensembleForecasts, mobileHazards, depth, staticHazards, and scoringMode",
+    "solverHints": "human-readable risk-aware planning hints for baseline/external solvers"
+  },
+  "visibility": {
+    "truthIncluded": "false for ordinary stochastic solver packets",
+    "forecastIncluded": "true for stochastic solver packets",
+    "oracleMode": "true only when explicitly exporting hidden truth for benchmarking",
+    "publicChallenge": "whether packet follows fair player-facing visibility"
+  },
+  "algorithmSupport": {
+    "graphSearch": "A*/Dijkstra/time-expanded graph metadata and cost model notes",
+    "multiAgentPlanning": "agent ids, shared reward, duplicate sampling, conflict notes",
+    "reinforcementLearning": "observation/action/reward/termination notes",
+    "supervisedLearning": "trajectory/label/return notes",
+    "neuralPlanning": "tensor, graph, and sequence feature notes"
+  },
+  "missionRules": {
+    "endCondition": "none | surface | communication | recovery | pickup | return plus target/bonus/penalty fields",
+    "sampling": "unique | diminishing | cooldown | persistent plus duplicate/depletion/cooldown multipliers"
+  },
+  "deployment": {
+    "agents": "agentId, mode, zoneId, allowedCells, selectedStart. Solvers may choose selectedStart from allowedCells when null."
+  },
+  "connectivity": {
+    "validated": "boolean",
+    "deploymentConnected": "whether at least one valid deployment cell reaches navigable water",
+    "reachableNavigableRatio": "fraction of navigable water reachable from deployment",
+    "roiReachableRatio": "fraction of high-value ROI targets reachable from deployment",
+    "recoveryReachable": "whether required recovery/communication target cells are reachable",
+    "warnings": "human-readable connectivity warnings"
+  },
+  "stochasticConfig": {
+    "enabled": "boolean; true for forecast challenge packets",
+    "seed": "current stochastic seed",
+    "roiScoringMode": "expectedValue | realizedStochastic",
+    "selectedForecastMember": "forecast member id or ensemble_mean"
+  },
+  "vectorField": "Top-level vectorField mirrors level.meta.generationConfig.currentGenerator or vector preset metadata so external solvers can identify the current preset used to generate visible frames.",
+  "exampleSolver": "python tools/python/example_greedy_solver.py solver_packet.json output_plan.json",
+  "priorityTargets": "Top-level priorityTargets mirrors level.layers.priorityTargets after normalization: id, label, value, radius, captureMode, frames.",
+  "notes": "Solver packets contain the current level, mission, visible planning fields, challenge mode, selected forecast member, ROI view mode, optional planning markers, and an expected anchor.plan shape. Forecast mode packets include forecast/ensemble data, probabilistic ROI, mobile hazards, priority targets, and depth for risk-aware baseline solvers. Truth is included only when explicitly requested for benchmarking. Planning markers are study notes only and should not be treated as executable waypoints unless a solver intentionally converts them."
+}

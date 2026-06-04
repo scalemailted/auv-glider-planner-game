@@ -1,0 +1,93 @@
+{
+  "schemaVersion": "2.0",
+  "type": "schema",
+  "describes": "anchor.level",
+  "required": [
+    "schemaVersion",
+    "type",
+    "levelId",
+    "instanceId",
+    "meta",
+    "world",
+    "layers"
+  ],
+  "generatedFields": {
+    "world.time": "dt, duration, planningWindow, and optional displayUnits such as hours",
+    "challengeMode": "perfectKnowledge | forecast",
+    "meta.generated": "boolean",
+    "meta.seed": "string or number",
+    "meta.generationConfig": "object used to reproduce generated levels when possible",
+    "meta.generationConfig.scenarioSetup": "player-selected generated challenge setup: mode, agentCount, grid, durationHours, surfaceIntervalHours, fuelPerAgent, gliderSpeed, difficulty, terrain/hazard/current/star settings",
+    "meta.generationConfig.connectivity": "connectivity generation settings and latest validation result",
+    "meta.connectivity": "playability validation summary for deployment-to-water, ROI, and recovery reachability",
+    "meta.generationConfig.currentGenerator": "object describing parametric or synthetic fluid-inspired current generation",
+    "meta.difficulty": "tutorial | easy | medium | hard | chaotic",
+    "layers.forecast.frames": "optional forecast frames with current, roi, and confidence",
+    "layers.forecasts": "optional ensemble forecast members with id, label, and frames",
+    "layers.depth": "optional 2D bathymetry grid from shallow 0 to deep 1",
+    "layers.mobileHazards": "optional mobile hazard objects with timed frames",
+    "layers.priorityTargets": "optional temporal Gold Star / priority target objects with value, radius, captureMode, and timed frames"
+  },
+  "zones": {
+    "shape": "optional top-level zones array",
+    "deployment": "{ id, type:'deployment', label, cells:[{x,y}] }",
+    "recovery": "{ id, type:'recovery', label, cells:[{x,y}] }",
+    "compatibility": "legacy layers.bases are normalized into deployment zones when explicit zones are absent"
+  },
+  "optionalEditorFields": {
+    "missionDefaults": "optional anchor.mission object exported by the Environment Editor for custom playable levels",
+    "meta.editorConfig": "optional editor settings such as last brush, frame scope, and selected frame"
+  },
+  "challengeModes": [
+    "perfectKnowledge",
+    "forecast"
+  ],
+  "probabilisticROI": {
+    "numeric": "treated as { value:number, probability:1, expectedValue:number }",
+    "object": "{ value:number, probability:number, expectedValue?:number }"
+  },
+  "currentGenerator": {
+    "parametric": "{ type:'parametric', preset:'calm|uniformDrift|shearFlow|currentCorridor|eddyField|doubleGyre|tidalOscillation|stormPulse|islandWake|gulfInspired|chaotic', pattern:string, strength:number, variability:number, seed, temporalEvolution:true, synthetic:true }",
+    "fluid": "{ type:'fluid', preset:'eddyField|shearFlow|currentCorridor|islandWake|stormPulse', seed, strength, viscosity, iterations, vorticityConfinement, vorticity, stats, synthetic:true }",
+    "stats": "{ minSpeed, maxSpeed, meanSpeed, medianSpeed, stdSpeed, calmCellRatio, strongCellRatio, classification:'Calm|Gentle|Moderate|Strong|Chaotic', warnings:string[] }",
+    "note": "Fluid presets are synthetic gameplay fields generated in-browser; they are not real ocean forecasts, HYCOM output, or a Navier-Stokes solver."
+  },
+  "savedRegistry": {
+    "storageKey": "anchorGliderCommand.savedLevels.v1",
+    "shape": "{ levels: { [instanceId]: { savedAt, level } } }",
+    "fallback": "If localStorage is unavailable, JSON import/export still works and registry actions report a warning."
+  },
+  "campaign": {
+    "order": "integer",
+    "unlockAfter": "optional levelId",
+    "concept": "string",
+    "learningObjectives": "string[]",
+    "successCriteria": {
+      "minFinalScore": "number",
+      "minSampleScore": "number",
+      "maxHazardsHit": "number",
+      "maxEnergyUsed": "number"
+    },
+    "ratings": {
+      "bronze": "number",
+      "silver": "number",
+      "gold": "number",
+      "perfect": "optional number"
+    }
+  },
+  "tutorial": {
+    "planningPrompts": [
+      {
+        "title": "short prompt heading",
+        "body": "concise student-facing planning guidance"
+      }
+    ]
+  },
+  "priorityTargets": {
+    "frameShape": "{ id, label, value, radius, captureMode:'once', frames:[{t,x,y,active}] }",
+    "intervalShape": "{ id, label, x, y, startTime, endTime, value, radius }",
+    "generationConfig": "meta.generationConfig.priorityTargets may include enabled, count, valueRange, probabilityNoStarPerWindow, allowNoStarAtStart, minFirstAppearanceWindow, maxFirstAppearanceWindow, activeWindowDuration, and movementMode.",
+    "behavior": "Targets are separate from ROI heatmap cells. Active targets appear only after the current/previous active frame says active:true, can move between frames, and disappear when active:false."
+  },
+  "notes": "Readable schema-like documentation; validation is lightweight/manual. Generated levels use ocean-inspired synthetic current and forecast fields and remain compatible with static hosting."
+}

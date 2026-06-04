@@ -1,0 +1,61 @@
+{
+  "type": "anchor.plan",
+  "schemaVersion": "2.0",
+  "levelId": "tutorial_14_import_export_workflow",
+  "challengeId": "tutorial_14_import_export_workflow",
+  "missionId": "tutorial_sampling",
+  "executionMode": "timedOpenLoop",
+  "meta": {
+    "name": "Tutorial Demo Plan",
+    "source": "tutorialDemo",
+    "description": "A small imported route used by Tutorial 14 to demonstrate JSON plan import, validation, execution, and debrief review."
+  },
+  "planner": {
+    "name": "Tutorial Demo Plan",
+    "type": "demo",
+    "usesForecast": true,
+    "usesTruth": false,
+    "usesOracle": false,
+    "source": "tutorial-file"
+  },
+  "agentPlans": [
+    {
+      "agentId": "glider_01",
+      "selectedStart": { "x": 1, "y": 1 },
+      "waypoints": [
+        {
+          "id": "wp_demo_001",
+          "x": 3,
+          "y": 2,
+          "t": 2,
+          "window": 0,
+          "action": "sample"
+        },
+        {
+          "id": "wp_demo_002",
+          "x": 4,
+          "y": 3,
+          "t": 4,
+          "window": 0,
+          "action": "sample"
+        },
+        {
+          "id": "wp_demo_003",
+          "x": 5,
+          "y": 4,
+          "t": 7,
+          "window": 1,
+          "action": "sample"
+        },
+        {
+          "id": "wp_demo_004",
+          "x": 6,
+          "y": 5,
+          "t": 10,
+          "window": 1,
+          "action": "sample"
+        }
+      ]
+    }
+  ]
+}

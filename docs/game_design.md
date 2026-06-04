@@ -1,0 +1,139 @@
+# Game Design
+
+Version 2 is a mission-planning puzzle game. The player plans glider waypoint tours over a time horizon, then simulates the plan under currents, hazards, terrain, and energy limits.
+
+## Phaser Game Shell
+
+The active browser shell is a Mission Console + Phaser Simulator Viewport + Waypoint Timeline. Phaser 3 owns scene lifecycle, map rendering, sprites, visual waypoint stacks, drift/current/route overlays, pointer interaction, transitions, and simulation playback visuals. HTML/CSS owns the left mission-control console for main menu, scene-aware controls, form controls, import/export panels, and debrief/editor-style data surfaces. HTML/CSS also owns the right waypoint timeline for agent tabs, waypoint status, waypoint selection, deletion, reordering, and list actions, plus compact center-viewport overlays for selected-glider planning feedback and mission/agent performance. The scientific/data core remains framework-independent: schemas, truth/forecast fields, physics, sampling, scoring, solver packets, datasets, and UUID identity stay in `src/core`.
+
+The Phaser Main Menu scene is not a button menu. It renders an idle simulator viewport with sonar/water styling and an "Awaiting Mission Launch" prompt. The actual main menu options live only in `#mission-console`. Generated Deterministic and Stochastic challenge starts first route to a Scenario Setup version of Mission Briefing where the player selects agents, map size, duration, surfacing interval, fuel, speed, difficulty, current/hazard/terrain/ROI/star settings, and stochastic ensemble count before generation. Tutorial and loaded JSON levels still route through the read-only mission dossier briefing. In planning, Phaser renders the dominant mission map while the Mission Console renders `Plan`, `Analysis`, `View`, and `Execute` controls, route/cost estimate, selected-glider performance, and status. The top center HUD is a compact, single-line mission strip for active glider, phase/mode, time/window, waypoint count, fuel, score/EV, and alert count; detailed route cost, deployment names, warnings, and estimates live in the console, waypoint panel, bottom timeline, tooltips, and debrief. The bottom center DOM panel is reserved for temporal controls in both Planning and Simulation: Planning shows the mission-time scrubber and route icons, while Simulation shows the playback playhead and compact Start/Prev/Next/End/Play/Step/Finish controls. Phaser does not render timeline tracks or playback buttons over the map. The right `#waypoint-timeline` renders a quiet idle placeholder until a mission is loaded, then shows tabs for each glider and only the selected glider's executable waypoint sequence. Global non-executable planning markers live on the map and bottom timeline. Load Level JSON uses console buttons for import/play/edit and the Phaser viewport for level preview. Debrief takes over the full viewport with Phaser-native result cards and actions while hiding the map, console, and waypoint timeline.
+
+Planning HUD and guidance overlays deliberately use estimate language. Projected route cost, estimated fuel, likely reachability, guidance cones, and realized previews are fast planning aids derived from visible fields and simplified current/speed/time assumptions. Simulation remains authoritative for actual fuel, trajectory, hazards, and stochastic ROI realization. Debrief labels actual simulation results separately from planned expected value so estimate/result differences read as uncertainty and model error, not as implementation bugs.
+
+Planning guidance overlays have an explicit lifecycle gate. Reachability ellipses, drift cones, hover ETA/energy labels, arrival previews, and predicted-surface markers render only in active planning mode with a selected glider, valid planning anchor, guidance enabled, and no simulation engine/debrief/surface-decision playback owning the view. Drift cones use current-aware planning estimates: along-track assist/opposition changes projected length and energy, cross-current shifts and widens the expected arrival oval, and forecast confidence or ensemble current disagreement widens the uncertainty envelope. Entering Simulation or Debrief clears transient hover, selected-waypoint, and planning-anchor overlay state before the next scene renders.
+
+Sequential temporal planning advances the player's planning anchor after each reachable waypoint. The browser estimates segment travel time from distance, glider max speed, current alignment, and drift gain, writes optional waypoint metadata such as `estimatedArrivalTime`, `segmentTravelTime`, `segmentEnergy`, `cumulativeEnergy`, `remainingFuelEstimate`, and `arrivalUncertainty`, then moves the planning slider to that estimated arrival. Guidance overlays use this planning anchor for the next widening origin-to-target guidance cone, likely reachable region, preview path, hover cost estimate, and committed waypoint arrival ovals. Blocked terrain segments keep warnings and do not advance the anchor past the breach.
+
+Waypoint placement is append-first. A normal map click in Waypoint Mode creates a new waypoint for the selected glider, even when the clicked cell already contains an earlier waypoint. Same-cell revisits are legal route entries when they have different sequence positions, times, or windows. Existing waypoints are selected, deleted, and reordered from the right Waypoint Timeline; modifier map selection such as Shift-click or Alt-click is allowed as a convenience but existing waypoint markers do not intercept default placement clicks. Stacked same-cell waypoints render with slight marker offsets plus a compact stack indicator, while route execution, import, and export preserve the original waypoint array order.
+
+Mission timeline navigation is frame-based rather than only planning-window-based. The core timeline builder always includes mission start, all configured surfacing/update frames, and the exact mission duration as a final surface/end frame. `Prev`, `Next`, marker clicks, and `End` therefore work for both even horizons such as `0, 3, 6, 9, 12 hr` and uneven horizons such as `0, 3, 6, 9, 10 hr`.
+
+Full-route rendering and route estimates use a shared route-segment builder. The committed route always begins at the agent's fixed start, selected deployment cell, or surfaced replanning position, then draws a `startToWaypoint` segment into waypoint 1 and `waypointToWaypoint` segments for the rest of the route. The ordinary next-placement planning anchor is not used as the origin for the full committed route, so selecting or adding a waypoint cannot hide the first edge.
+
+Glider triangle orientation is based on path direction rather than a fixed or left/right-only facing. Planning renders the selected glider toward the hovered waypoint target when previewing, then toward the first route segment when no hover target is active. Simulation renders the glider along recent actual movement, falling back to stored velocity, active waypoint direction, and finally the last known heading.
+
+Drop-zone missions have an explicit pre-planning deployment-selection state. When an agent has `deployment.mode: "chooseFromZone"` and no `selectedStart`, waypoint placement is blocked, the assigned deployment zone is emphasized, the top selected-glider HUD reports `Placement mode: Choose deployment cell`, the right waypoint panel shows `Start: not selected`, and hovering a valid deployment cell previews the start marker. Guidance builders return `null` in this state, so the renderer suppresses drift cones, reachability overlays, route-preview lines, arrival ovals, ETA/energy labels, and any false `(0,0)` planning origin. Clicking a valid non-terrain, non-hazard zone cell writes `deployment.selectedStart`, mirrors it into `agentPlans[].selectedStart`, clears stale hover/deployment preview state, locks a distinct deployment marker, and switches that agent into normal waypoint placement. From that point, the reachability ellipse center is the committed planning anchor: first the selected start, then the latest reachable waypoint. Clicking outside the zone warns instead of placing a waypoint.
+
+Mission horizon and fuel limits are enforced at placement time. The placement guard estimates the proposed segment before mutating the plan and blocks targets that exceed mission duration, exceed estimated fuel, or breach terrain. Imported or edited plans are recomputed in sequence; invalid waypoints receive `validity` reasons and downstream stale markers rather than repeated clamped arrival times.
+
+Planning also runs a pre-simulation route validity audit over the active plan. The audit checks each selected-start/fixed-start-to-waypoint and waypoint-to-waypoint segment for missing starts, invalid coordinates, terrain crossings, mission-time overflow, and estimated fuel overflow. Failed audits block Execute by default, annotate affected waypoints with planning-time invalid status, color invalid route segments and bottom-timeline icons, and show the first issue in the Mission Console. Browser baseline planners run the same audit before their route is accepted and prefer a shorter valid route over a known invalid one.
+
+## Main Menu Flow
+
+The active top-level modes are:
+
+- `Tutorial Mode`: opens a center-viewport tutorial browser with left-side filters/progress controls, scrollable lesson cards in the center, and selected-lesson details in the right panel.
+- `Deterministic Challenge`: generates a fresh perfect-knowledge level and mission, then opens Mission Briefing.
+- `Stochastic Challenge`: generates a fresh forecast-mode level with hidden truth, visible forecast/ensemble layers, and a default mission, then opens Mission Briefing.
+- `Environment Editor`: opens the visual level editor for terrain, hazards, depth, ROI, bases, agent starts, mission defaults, time frames, and U/V current edits.
+- `Load Level JSON`: imports an exported `anchor.level` through a hidden file bridge, validates/normalizes it, summarizes it in a Phaser panel, and offers deterministic play, stochastic play, or editing. Play choices route through Mission Briefing.
+- `Leaderboard`: opens a main-menu mode where the left Mission Console holds filters/actions, the center viewport is a scrollable saved challenge card browser, and the right panel shows selected-record details, attempts, load, export, delete, and clear actions.
+- Planning Analysis: when prior attempts exist for the same challenge instance, the console exposes the best prior run as a benchmark with ghost-path overlay, rerun, load-as-plan, and export controls. The overlay is muted and never replaces the editable current route unless the player explicitly loads it.
+
+UUIDs and instance IDs remain important metadata for solver packets, plans, results, local saves, and datasets. They are no longer the primary player-facing loading mechanism.
+
+Debrief uses the active `currentScenario` metadata to provide next actions: retry from briefing, next tutorial, new generated challenge, return to editor, revise plan, exports, and main menu.
+
+Debrief switches the page into a fullscreen result layout. The mission console, waypoint timeline, and planning map are hidden while the Phaser Debrief scene presents metrics and actions; returning to planning, simulation, editor, or main menu restores the normal spatial layout.
+
+## Challenge Modes
+
+Perfect Knowledge mode shows the truth fields during planning. Forecast mode shows forecast fields during planning while simulation runs against hidden truth. This creates a robust-planning puzzle: the player must decide whether to pursue high forecast value or hedge against uncertain currents and ROI.
+
+Stochastic mode adds forecast ensembles, probabilistic ROI, mobile hazards, and depth. The player can switch between ensemble mean and individual members, view ROI by expected value, raw value, probability, or planning-time remaining value, and toggle ensemble-disagreement overlays. Simulation still uses hidden truth for scoring.
+
+Mission rules may optionally enable seeded stochastic drift through `rules.drift`. In normal deterministic mode, simulation uses truth current deterministically. When `rules.drift.stochasticDrift` is true, simulation adds deterministic seed-based current perturbation to truth current to represent forecast/current uncertainty. The same seed repeats the same perturbation sequence; different seeds can produce different actual drift. Result exports summarize average along-current assist, cross-current, stochastic drift seed, and noise magnitude when available.
+
+Generated deterministic and stochastic challenge levels are temporal by default. They use a 24-hour horizon, 3-hour planning windows, moving/pulsing ROI hotspots, and current fields whose direction and magnitude shift over time. Generated truth, forecast, and current frame lists include `t = 0`, intermediate `dt` frames, and the exact mission-duration frame. Stochastic challenge truth frames evolve independently from visible forecast/ensemble frames, so timeline scrubbing changes the planning view and simulation playback advances through the temporal field sequence.
+
+Generated maps are validated for deployment connectivity before play. A 4-neighbor flood fill starts from valid deployment water cells and measures reachable navigable water, high-value ROI reachability, and required recovery/communication reachability. If terrain isolates the deployment zone, generation clears nearby cells and carves a compact water corridor toward the largest navigable region and ROI targets; if repair fails, generation retries with a derived seed up to the configured limit. The summary is stored in `level.meta.connectivity`, exposed in solver packets, and shown as a Planning Console warning for custom disconnected maps.
+
+Probabilistic ROI uses `expectedValue = rewardValue * probability`. In `expectedValue` mode, scoring awards expected value. In `realizedStochastic` mode, each sampled ROI cell manifests once per run using a deterministic seed; manifested cells award reward value and missed cells award zero. Debrief reports realized sample value, planned expected value, probability success/failure counts, and a simple expected-value regret cue where available.
+
+Planning `ROI Mode` is separate from stochastic scoring mode. `Value` shows raw reward value, `Probability` shows opportunity likelihood, `Expected` shows value times probability, and `Remaining` shows raw value still available after all currently planned fleet route coverage is considered. `Risk` highlights hazards, shallow water, strong currents, mobile hazard proximity, and low-confidence forecast cells; `Safety` renders the inverse; `Travel Cost` estimates route difficulty from the selected glider's current planning anchor. Remaining mode computes a planning-only coverage map from every agent plan by rasterizing the selected-start/fixed-start to waypoint 1 segment and each waypoint-to-waypoint segment, expanding by sampling radius when configured, and adding explicit sample waypoint cells. It applies the mission sampling multiplier (`duplicateValueMultiplier`, `depletionFactor`, or persistent no-depletion behavior), dims/marks claimed cells, and never mutates the underlying ROI field. Deterministic probability mode remains explicit: available ROI cells are treated as probability 1.0 unless probabilistic fields are configured.
+
+Simulation stop diagnostics are treated as player-facing mission feedback, not only debug information. When blocked movement, unreachable waypoints, timeouts, fuel exhaustion, or waypoint-miss cascades occur, the simulation enters a route-failure decision state and pauses engine time. A Phaser modal explains the failed waypoint, last successful waypoint, current glider position/time, reason, and suggested fix. Actions let the player replan from the current actual position, keep the failed waypoint skipped and continue, continue anyway when safe, end to Debrief, or return to Main Menu. The Simulation Console renders fallback buttons for the same actions, Debrief records the selected recovery action, and the waypoint timeline labels missed waypoints with the specific reason.
+
+Realized stochastic sampling logs explicit `probabilityOutcome` events with value, probability, expected value, manifest/miss status, realized value, seed, and outcome roll. Repeated visits to the same ROI cell reuse the same manifestation outcome for the run seed.
+
+The Mission Workspace stochastic panel makes this seed explicit. Forecast-mode players can step or randomize the seed, switch ROI scoring mode, cycle forecast members, rerun the exact same waypoint plan with the same seed, or rerun the same plan with a new seed. Debrief keeps a session-local seed comparison table keyed by a simple plan fingerprint so students can see whether a plan is stable or seed-sensitive.
+
+Mobile hazards are rendered at the selected mission time and checked during simulation. The result summary tracks contacts, near misses, and exposure count. Depth is rendered as a bathymetry tint; shallow water can increase energy use or block cells when mission rules set a minimum depth, and result summaries track shallow energy penalty and deep-water benefit.
+
+Mission rules now support multiple end-condition styles. Sampling-only missions can leave `rules.endCondition.mode` as `none`. Surface/transmit missions can require or reward surfacing/communication by mission end. Recovery and pickup missions can require or reward ending near a target zone. These checks live in core simulation scoring, and Debrief reports whether recovery was required, achieved, and how bonus or penalty affected the score.
+
+Sampling behavior is mission-configurable. `unique` sampling gives full value once and reduced/no value for duplicates. `diminishing` sampling keeps observed hotspots visible but reduces nearby value. `cooldown` sampling lets value recover after a configured number of planning windows. `persistent` sampling supports monitoring-style missions where revisits can remain valuable once per window. Result JSON records sampling mode plus duplicate, depleted, cooldown, and persistent sample metrics.
+
+Because sampling and depletion are cell-level mechanics, ROI rendering is deliberately discrete. Phaser draws each traversable grid cell with its own ROI color and subtle boundary instead of smoothing or interpolating values across adjacent cells. Terrain masks ROI, while hazards, currents, waypoints, and guidance overlays render above the heatmap.
+
+Forecast regret is reported as a lightweight teaching metric when a truth-reference signal is available. Browser-native Temporal Greedy is a comparison planner, not an optimal planner.
+
+Forecast ensemble metrics are approximate. The game estimates plan ROI across visible ensemble members, reports ensemble mean expected value and disagreement, and computes a simple ensemble regret estimate against realized sample value when available.
+
+## Synthetic Current Generation
+
+Generated levels use precomputed temporal `[u, v]` current frames. The primary browser-safe generator is a parametric ocean-inspired preset system:
+
+- `calm`
+- `uniformDrift`
+- `shearFlow`
+- `currentCorridor`
+- `eddyField`
+- `doubleGyre`
+- `tidalOscillation`
+- `stormPulse`
+- `islandWake`
+- `gulfInspired`
+- `chaotic`
+
+These presets are intentionally synthetic and deterministic by seed. They create plausible-looking U/V current fields for planning puzzles, solver packets, and datasets; they are not real ocean-model data, HYCOM ingestion, or a high-fidelity Navier-Stokes solver. Scenario setup exposes Current Field, Current Strength, and Temporal Variability. Generated stochastic missions use the selected preset for hidden truth and derive noisy forecast/ensemble current variants from those truth frames.
+
+The older fluid-inspired editor preview remains available for environment editing experiments. Both systems commit ordinary temporal current frames, so Travel Cost mode, guidance cones, reachability estimates, drift preview, simulation, solver packets, and dataset export all consume the same field shape.
+
+The Environment Editor includes a compact temporal current preview for these presets. It renders a small vector-field mini-map, frame/time label, scrubber, previous/next/play/reset controls, a weak/moderate/strong legend, current magnitude statistics, a qualitative label, and gameplay notes. Designers can inspect individual frames or play the generated sequence at a low rate without regenerating it. `Apply To Level` commits the whole generated current sequence, not only the visible preview frame. The stats are meant to help designers judge whether a field is too calm, too strong, too uniform, or varied enough for a drift/strategy challenge.
+
+The active editor uses a Phaser-native grouped HUD for common editing actions. Terrain, water/depth, currents, hazards, ROI, deployment, agents, time, and import/export tools are grouped as tab-like sections. The HUD also includes compact numeric steppers for brush radius and intensity/vector strength; these update shared editor tool state and keep legacy DOM inputs synchronized. The current/vector brush uses click-drag-preview-release interaction: while dragging, the editor shows the proposed vector arrow, affected radius, magnitude, and frame scope; releasing applies the synthetic edit, while Escape or right click cancels.
+
+## Ratings
+
+Campaign levels define bronze, silver, gold, and optional perfect thresholds. Debrief converts the final score into a rating, checks objectives, and gives improvement suggestions tied to energy, hazards, sample value, drift, and forecast uncertainty. The Debrief screen is Phaser-native; its cards and buttons replace visible DOM result controls while still calling core export helpers.
+
+## Debrief Comparison
+
+The browser session keeps separate result slots for `manual`, `temporalGreedy`, and `importedSolver` plans, with legacy compatibility for older `greedyBaseline` records. Each slot stores the plan, result, and normalized summary. Debrief renders available rows side by side in a Phaser panel and identifies the winner by final score. Comparison metrics include expected value, realized value, energy, static hazards, mobile hazards, depth exposure, risk exposure, forecast regret, completed waypoints, and missed waypoints when available. Missing metrics render as `N/A`.
+
+The comparison block is included in result JSON and after-action Markdown exports. Static browser greedy is not exposed as a normal player baseline because it is not useful for temporal missions; Temporal Greedy evaluates candidate value at estimated arrival time and includes travel cost and active priority targets. It replans after each chosen waypoint and records why it stopped, including stop time, remaining mission time, and remaining fuel.
+
+## Tutorial Guidance
+
+Tutorial levels may define `tutorial.planningPrompts` as short title/body steps. The Planning scene shows those prompts in a Phaser-native help/briefing modal that does not block waypoint editing, solver import, or simulation after it is closed.
+
+## Temporal Planning
+
+Planning is a spatiotemporal puzzle. The Phaser-native bottom timeline scrubs mission time, updates the visible ROI/current/forecast frame, shows active Gold Star priority targets, marks surfacing windows, shows global future planning-marker ticks/icons, and selects the active planning window. Waypoints keep both `window` and `t` metadata for export/import, while simulation still executes each glider's waypoint array in list order. The timeline shows numbered executable waypoint icons only for the selected glider; switching glider tabs swaps the waypoint icon layer while preserving global markers and stars. Planning markers keep `x`, `y`, `t`, `window`, `type`, `label`, optional `linkedTargetId`, and recomputed reachability estimates but are not connected, executed, sampled, or scored unless absorbed by placing a waypoint on the same marker cell/time. Marker reachability is deliberately approximate: it evaluates latest connected anchor to marker, time slack, fuel, terrain, hazard/current risk, forecast uncertainty, and likely backfill steps without generating an automatic path. Simulation playback refreshes the same timeline from engine time so the time label, active window, visible temporal map frame, and active priority targets advance during playback.
+
+Marker Mode is a free exploration/annotation mode, not a route-planning mode. It can be used before deployment selection and does not require a selected start or planning anchor. Hover inspection samples the visible planning frame at the timeline time and reports cell coordinates, ROI, active priority target value, terrain/hazard state, current vector/magnitude, depth, and forecast confidence when available. Marker Mode suppresses route guidance lines, drift cones, reachability ovals, ETA/energy hover labels, and planned route drawing so the player can inspect temporal fields without receiving waypoint-placement warnings such as "choose deployment cell first." Waypoint Mode retains the deployment, anchor, time, energy, and terrain checks.
+
+The map renderer uses a shared camera-aware layout for large generated maps. The player can zoom, pan, fit, or reset the map; pointer-to-cell hit testing, waypoint dragging, deployment selection, ROI heatmap, current vectors, route overlays, guidance, and simulation paths all use that same layout. DOM and HTML overlay panels remain fixed outside the map transform. Current vectors are automatically strided on larger maps to reduce clutter and redraw cost.
+
+## Surfacing And Replanning
+
+Tutorial missions use surface-only communications. Gliders submerge after launch, surface at configured mission-time intervals, report actual position, and can pause the simulation with a Phaser-native continue/update/finish modal. Replanning records `replanned` events and can apply an update penalty through mission scoring.
+
+## Planning Guidance Overlays
+
+When a glider is selected, Planning can draw strategy-style estimate overlays: a guidance cone from the current planning origin, likely reachable cells and an approximate reachable ellipse for the active planning window, a terrain-aware expected-drift preview path, a cost preview, and a predicted next surfacing marker. These overlays use the same visible planning source as the map: forecast fields in forecast mode, truth fields in perfect-knowledge mode, or revealed truth when debug reveal is enabled. The map renderer emphasizes route intent with heavier planned-path strokes, a smoothed blue-to-yellow ROI heatmap, white current arrows scaled by magnitude, orange-red hazard markings, terrain masking, and water/land styling that reads as a mission chart rather than a plain grid.
+
+Gold Star priority targets are a separate temporal objective layer, not enhanced ROI cells. They render as pulsing gold stars only when active, score through `priorityTargetCaptured` simulation events, and are summarized in Debrief, solver packets, result JSON, and datasets.
+
+The route preview uses a lightweight terrain line clipper and energy estimator in `src/core/planning/RoutePreview.js`. It steps along the proposed segment, clips when terrain is breached, reports the blocked cell, and estimates energy from distance, current assist/opposition, and shallow/depth penalty. These estimates are intentionally approximate gameplay guidance, not a real ocean or vehicle-energy model.
