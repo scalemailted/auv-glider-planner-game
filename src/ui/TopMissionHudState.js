@@ -53,13 +53,18 @@ function buildPlanningHudState(state, context = {}) {
         tone: warningCount ? 'warn' : 'ok',
         title: warningCount ? `${warningCount} active route or mission warning(s). See Mission Console for details.\n${uniqueWarnings(warnings).join('\n')}` : 'No active planning warnings.'
       }),
+      state.missionOptions?.ignoreUpdateEvents ? chip('updates', 'Updates ignored', {
+        tone: 'warn',
+        priority: 6,
+        title: 'Continuous run mode: surfacing/update windows will not pause simulation.'
+      }) : null,
       chip('deployment', deploymentLabel(state, forecast.agentId, agent), { priority: 8, title: deploymentTitle }),
       chip('start', selectedStart ? `Start ${selectedStart.x},${selectedStart.y}` : 'Start ?', {
         priority: 8,
         tone: choosingDeployment && !selectedStart ? 'bad' : '',
         title: selectedStartTitle
       })
-    ]
+    ].filter(Boolean)
   };
 }
 
@@ -89,6 +94,11 @@ function buildSimulationHudState(state, context = {}) {
     chip('samples', `Samp ${formatHudMetric(summary.sampledCells ?? summary.sampleScore ?? 0)}`, { priority: 6, title: `Samples collected or sampled value: ${formatHudMetric(summary.sampledCells ?? summary.sampleScore ?? 0)}.` }),
     chip('hazards', `Haz ${Number(summary.hazardsHit ?? 0) + Number(summary.mobileHazardsHit ?? 0)}`, { priority: 6, title: `Hazards hit: ${Number(summary.hazardsHit ?? 0) + Number(summary.mobileHazardsHit ?? 0)} total static and mobile hazards.` }),
     stars ? chip('stars', `Stars ${stars}`, { priority: 6, title: `Gold Star priority targets captured: ${stars}.` }) : null,
+    state.missionOptions?.ignoreUpdateEvents ? chip('updates', 'Updates ignored', {
+      tone: 'warn',
+      priority: 6,
+      title: 'Continuous run mode: surfacing/update windows are ignored.'
+    }) : null,
     chip('alerts', `! ${warningCount}`, { tone: warningCount ? 'warn' : 'ok', title: simulationAlertTitle(engine, summary, routeFailure, surfaceDecision) })
   ].filter(Boolean);
 

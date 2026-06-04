@@ -21,6 +21,7 @@
     "derivedSeeds": "namespace-specific deterministic seeds",
     "replaySeedContract": "challengeId, replaySeedAnchor, generationVersion, generationConfig, and derivedSeeds",
     "exactReplay": "availability, method, and reason for snapshot or deterministic regeneration replay",
+    "missionOptions": "run options such as ignoreUpdateEvents so continuous-run attempts are visible",
     "bestScore": "best attempt score",
     "bestAttemptId": "attempt id for best score",
     "bestPlan": "embedded best anchor.plan when available",

@@ -43,6 +43,7 @@
     "deployment",
     "probabilityOutcomes",
     "riskReward",
+    "missionOptions",
     "challengeId",
     "replaySeedAnchor",
     "generationVersion",
@@ -66,7 +67,13 @@
     "modeRecognized": "true when executionMode is surfaceUpdateBundle",
     "segmentsAvailable": "number of imported surface update segments",
     "segmentsApplied": "number applied during simulation",
-    "automatedExecution": "false until surface-update automation is implemented"
+    "automatedExecution": "false until surface-update automation is implemented",
+    "ignoreUpdateEvents": "true when surfacing/update pauses were bypassed",
+    "ignoredUpdateEvents": "count of update/surfacing decision events skipped"
+  },
+  "missionOptions": {
+    "ignoreUpdateEvents": "when true, scheduled surfacing/update windows are logged but do not pause simulation",
+    "ignoredUpdateEvents": "number of update events skipped during execution"
   },
   "replaySeedContract": {
     "challengeId": "stable challenge UUID / instance id",

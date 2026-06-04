@@ -81,12 +81,18 @@ export class HtmlMissionWorkspaceOverlay {
         <button class="console-button" data-action="export-plan">Export Plan</button>
         <button class="console-button" data-action="save-level">Save Level</button>
       </section>
+      <section class="console-section">
+        <h2>Mission Options</h2>
+        <button type="button" class="console-button ${state.missionOptions?.ignoreUpdateEvents ? 'secondary' : ''}" data-action="toggle-ignore-update-events" title="Run continuously through surfacing/update windows without pausing for replanning. Off by default.">Ignore Update Events: ${state.missionOptions?.ignoreUpdateEvents ? 'On' : 'Off'}</button>
+        <div class="hud-muted">${state.missionOptions?.ignoreUpdateEvents ? 'Update events: ignored. Continuous run mode is enabled.' : 'Update events: respected.'}</div>
+      </section>
       ${importDemoSection(state, executeDisabled)}
       ${routeAuditIssues ? routeAuditSection(routeAudit) : ''}
       ${tutorialHintSection(state)}
       <section class="console-section">
         <h2>Analysis</h2>
         ${bestPriorRunSummary(state)}
+        ${temporalGreedyPlannerSummary(state)}
         ${tutorialFeatureEnabled(state, 'solver') ? '<button class="console-button" data-action="temporal-greedy">Temporal Greedy</button>' : ''}
         ${tutorialFeatureEnabled(state, 'solver') ? '<button class="console-button" data-action="solver-packet">Export Solver Packet</button>' : ''}
         <button class="console-button" data-action="roi-mode" title="${escapeAttr(roiModeDescription(state))}">ROI Mode: ${escapeHtml(getRoiModeLabel(state.ui?.roiViewMode))}</button>
@@ -196,6 +202,7 @@ export class HtmlMissionWorkspaceOverlay {
       'load-demo-plan': () => this.handlers.loadDemoPlan?.(),
       'download-demo-plan': () => this.handlers.downloadDemoPlan?.(),
       'clear-imported-plan': () => this.handlers.clearImportedPlan?.(),
+      'toggle-ignore-update-events': () => this.handlers.toggleIgnoreUpdateEvents?.(),
       'show-best-path': () => this.handlers.showBestPath?.(),
       'hide-best-path': () => this.handlers.hideBestPath?.(),
       'rerun-best-path': () => this.handlers.rerunBestPath?.(),
@@ -401,6 +408,7 @@ export class HtmlMissionWorkspaceOverlay {
       'clear-markers': () => this.handlers.clearMarkers?.(),
       'import-plan': () => this.handlers.importPlan(),
       'export-plan': () => this.handlers.exportPlan(),
+      'toggle-ignore-update-events': () => this.handlers.toggleIgnoreUpdateEvents?.(),
       'temporal-greedy': () => this.handlers.temporalGreedy?.(),
       'solver-packet': () => this.handlers.exportSolver(),
       'roi-mode': () => this.handlers.toggleRoiMode(),
@@ -818,6 +826,33 @@ function bestPriorRunSummary(state) {
   `;
 }
 
+function temporalGreedyPlannerSummary(state) {
+  const plan = state.temporalGreedyPlan;
+  const stop = plan?.meta?.greedyStop;
+  if (!stop) return '';
+  const waypointCount = (plan.agentPlans ?? []).reduce((sum, agentPlan) => sum + (agentPlan.waypoints?.length ?? 0), 0);
+  const duration = Number(state.level?.world?.time?.duration ?? 0);
+  const startingFuel = (state.mission?.agents ?? []).reduce((sum, agent) => sum + Number(agent.battery ?? agent.maxBattery ?? 100), 0);
+  const fuelUsed = Math.max(0, startingFuel - Number(stop.remainingFuel ?? 0));
+  const unreachableCandidates = (stop.agents ?? []).reduce((sum, agentStop) => sum + Number(agentStop.unreachableCandidates ?? 0), Number(stop.unreachableCandidates ?? 0));
+  const blockedCandidates = (stop.agents ?? []).reduce((sum, agentStop) => sum + Number(agentStop.blockedCandidates ?? 0), Number(stop.blockedCandidates ?? 0));
+  const stochasticRiskCandidates = (stop.agents ?? []).reduce((sum, agentStop) => sum + Number(agentStop.stochasticRiskCandidates ?? 0), Number(stop.stochasticRiskCandidates ?? 0));
+  const depletion = plan.meta?.sharedDepletion ?? {};
+  return `
+    <div class="replay-diagnostics-card compact">
+      <div class="replay-diagnostics-title">Temporal Greedy</div>
+      <div class="replay-diagnostics-row"><span>Waypoints</span><strong>${escapeHtml(waypointCount)}</strong></div>
+      <div class="replay-diagnostics-row"><span>Planned Time</span><strong>${escapeHtml(formatHudMetric(stop.stopTime))} / ${escapeHtml(formatHudMetric(duration))} hr</strong></div>
+      <div class="replay-diagnostics-row"><span>Fuel Used</span><strong>${escapeHtml(formatHudMetric(fuelUsed))} / ${escapeHtml(formatHudMetric(startingFuel))}</strong></div>
+      <div class="replay-diagnostics-row"><span>Shared Depletion</span><strong>${depletion.enabled ? `enabled, ${escapeHtml(depletion.duplicateSamplesAvoided ?? 0)} avoided` : 'single-agent not needed'}</strong></div>
+      ${unreachableCandidates > 0 ? `<div class="replay-diagnostics-row"><span>Skipped</span><strong>${escapeHtml(unreachableCandidates)} unreachable</strong></div>` : ''}
+      ${blockedCandidates > 0 ? `<div class="replay-diagnostics-row"><span>Blocked</span><strong>${escapeHtml(blockedCandidates)} rejected</strong></div>` : ''}
+      ${stochasticRiskCandidates > 0 ? `<div class="replay-diagnostics-row"><span>Forecast Risk</span><strong>${escapeHtml(stochasticRiskCandidates)} avoided</strong></div>` : ''}
+      <div class="replay-diagnostics-row"><span>Stop Reason</span><strong>${escapeHtml(labelizeStopReason(stop.stopReason))}</strong></div>
+    </div>
+  `;
+}
+
 function bestPathUnavailableReason(vm, action) {
   const missing = vm?.missingFields?.length ? vm.missingFields.join(', ') : 'best prior run';
   if (action === 'show') return `Cannot show best path: missing ${missing}.`;
@@ -1029,6 +1064,13 @@ function toggleLabel(state, key, label) {
 
 function labelize(value) {
   return String(value ?? '').replace(/([A-Z])/g, ' $1').replace(/^./, (letter) => letter.toUpperCase());
+}
+
+function labelizeStopReason(value) {
+  return String(value ?? 'unknown')
+    .replace(/_/g, ' ')
+    .replace(/([A-Z])/g, ' $1')
+    .replace(/\b\w/g, (letter) => letter.toUpperCase());
 }
 
 function escapeHtml(value) {

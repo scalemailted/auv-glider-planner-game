@@ -3,10 +3,15 @@ import { roiScalar } from '../sim/ROIValue.js';
 import { getMobileHazardsAtTime } from '../sim/MobileHazards.js';
 import { depthEnergyMultiplier } from '../sim/DepthLayer.js';
 import { getPlanningFrame } from '../sim/ChallengeMode.js';
-import { normalizePriorityTargets, getPriorityTargetPosition } from '../sim/PriorityTargets.js';
+import { normalizePriorityTargetRules, normalizePriorityTargets, getPriorityTargetPosition } from '../sim/PriorityTargets.js';
+import { normalizeSamplingRules } from '../sim/MissionRules.js';
 import { estimateTemporalSegment } from './TemporalWaypointPlanner.js';
 import { applyRouteAuditToPlan, validateRoutePlanForExecution } from './RouteValidityAudit.js';
 import { isCellNavigable } from './Navigability.js';
+import { buildRouteSegmentsForAgent } from './RouteSegmentBuilder.js';
+import { expandCellsBySamplingRadius, rasterizeRouteSegment } from '../roi/RoiMode.js';
+import { evaluateSegmentForExecution } from './SegmentExecutionValidator.js';
+import { estimateStochasticSegmentCurrentRisk } from './ShorelineRisk.js';
 
 export function greedySolver(level, mission, options = {}) {
   return temporalGreedySolver(level, mission, options);
@@ -23,17 +28,33 @@ export function temporalGreedySolver(level, mission, options = {}) {
   plan.meta.usesTravelCost = true;
   plan.meta.usesPriorityTargets = true;
   plan.meta.usesForecastProbability = true;
+  plan.meta.usesFleetRemainingValue = true;
+  plan.meta.depletesPriorAgentCoverage = true;
+  const plannerChallengeMode = options.challengeMode ?? level.challengeMode ?? 'perfectKnowledge';
+  const plannerRevealTruth = plannerChallengeMode === 'forecast'
+    ? Boolean(options.usesOracle && options.revealTruth)
+    : Boolean(options.revealTruth);
+  plan.planner = {
+    name: 'Temporal Greedy',
+    type: 'temporalGreedy',
+    usesForecast: plannerChallengeMode === 'forecast',
+    usesTruth: plannerChallengeMode !== 'forecast' || plannerRevealTruth,
+    usesOracle: Boolean(options.usesOracle && plannerRevealTruth),
+    source: 'game'
+  };
+  plan.meta.planner = plan.planner;
 
   const cells = [];
   const grid = level?.world?.grid ?? {};
   const cellCount = Math.max(1, Number(grid.width ?? 1) * Number(grid.height ?? 1));
-  const maxWaypoints = Math.max(1, Number(options.maxWaypoints ?? Math.min(cellCount, Math.max(24, Math.ceil(Number(level?.world?.time?.duration ?? 24) * 3)))));
+  const missionDuration = Number(level?.world?.time?.duration ?? 24);
+  const maxWaypoints = Math.max(1, Number(options.maxWaypoints ?? Math.min(cellCount, Math.max(24, Math.ceil(missionDuration * 3)))));
   const maxPlannerIterations = Math.max(maxWaypoints, Number(options.maxPlannerIterations ?? maxWaypoints + agentsSafetyMargin(mission)));
-  const minPositiveScoreThreshold = Number(options.minPositiveScoreThreshold ?? 0);
   const startedAt = globalThis.performance?.now?.() ?? Date.now();
   const maxRuntimeMs = Number(options.maxRuntimeMs ?? 800);
   const duration = Number(level?.world?.time?.duration ?? 0);
   const priorityTargets = normalizePriorityTargets(level);
+  const depletion = createFleetDepletionState(level, mission, priorityTargets);
   for (let y = 0; y < level.world.grid.height; y += 1) {
     for (let x = 0; x < level.world.grid.width; x += 1) {
       if (!isCellNavigable(level, mission, x, y).ok) continue;
@@ -42,7 +63,6 @@ export function temporalGreedySolver(level, mission, options = {}) {
   }
 
   const agents = mission.agents ?? [];
-  const globalSampled = new Set();
   const agentStops = [];
 
   for (const agent of agents) {
@@ -54,8 +74,10 @@ export function temporalGreedySolver(level, mission, options = {}) {
       source: 'start'
     };
     let remainingFuel = Number(agent.battery ?? agent.maxBattery ?? 100);
-    globalSampled.add(cellKey(anchor));
+    const agentSampled = new Set([cellKey(anchor)]);
     let stop = null;
+    const plannerStats = { unreachableCandidates: 0, blockedCandidates: 0, stochasticRiskCandidates: 0 };
+    debugTemporalGreedyVisibility(plan.planner);
     for (let index = 0; index < maxWaypoints; index += 1) {
       if ((globalThis.performance?.now?.() ?? Date.now()) - startedAt > maxRuntimeMs) {
         stop = buildStop('plannerSafetyLimitReached', anchor, remainingFuel, duration, { waypointCount: index });
@@ -65,12 +87,12 @@ export function temporalGreedySolver(level, mission, options = {}) {
         stop = buildStop('maxWaypointSafetyLimitReached', anchor, remainingFuel, duration, { waypointCount: index });
         break;
       }
-      if (duration && Number(anchor.t ?? 0) >= duration) {
-        stop = buildStop('missionTimeExhausted', anchor, remainingFuel, duration, { waypointCount: index });
+      if (duration && Number(anchor.t ?? 0) >= duration - minimumMoveTime(agent)) {
+        stop = buildStop('mission_time_exhausted', anchor, remainingFuel, duration, { waypointCount: index });
         break;
       }
-      if (Number.isFinite(remainingFuel) && remainingFuel <= 0) {
-        stop = buildStop('remainingFuelExhausted', anchor, remainingFuel, duration, { waypointCount: index });
+      if (Number.isFinite(remainingFuel) && remainingFuel <= minimumFuelReserve(mission)) {
+        stop = buildStop('fuel_exhausted', anchor, remainingFuel, duration, { waypointCount: index });
         break;
       }
       const candidate = chooseTemporalCell({
@@ -80,22 +102,23 @@ export function temporalGreedySolver(level, mission, options = {}) {
         anchor,
         remainingFuel,
         cells,
-        sampled: globalSampled,
+        sampled: agentSampled,
         priorityTargets,
-        challengeMode: options.challengeMode ?? level.challengeMode ?? 'perfectKnowledge',
-        revealTruth: Boolean(options.revealTruth),
+        depletion,
+        challengeMode: plannerChallengeMode,
+        revealTruth: plannerRevealTruth,
         forecastMemberId: options.forecastMemberId ?? null,
-        duration
+        duration,
+        plannerStats
       });
       if (!candidate) {
-        stop = buildStop('noReachableCandidates', anchor, remainingFuel, duration, { waypointCount: index });
-        break;
-      }
-      if (candidate.value + candidate.priorityBonus <= 0 || candidate.score <= minPositiveScoreThreshold) {
-        stop = buildStop('noPositiveReachableCandidates', anchor, remainingFuel, duration, {
+        stop = buildStop(plannerStats.stochasticRiskCandidates > 0
+          ? 'no_safe_forecast_feasible_candidates'
+          : 'no_reachable_feasible_candidates', anchor, remainingFuel, duration, {
           waypointCount: index,
-          bestScore: round(candidate.score),
-          bestValue: round(candidate.value + candidate.priorityBonus)
+          unreachableCandidates: plannerStats.unreachableCandidates,
+          blockedCandidates: plannerStats.blockedCandidates,
+          stochasticRiskCandidates: plannerStats.stochasticRiskCandidates
         });
         break;
       }
@@ -108,9 +131,9 @@ export function temporalGreedySolver(level, mission, options = {}) {
         x: candidate.x,
         y: candidate.y,
         action: 'sample',
-        note: `temporal=${candidate.value.toFixed(3)} priority=${candidate.priorityBonus.toFixed(1)} energy=${candidate.segment.energy.toFixed(1)} score=${candidate.score.toFixed(3)}`
+        note: `stage=${candidate.stage} temporal=${candidate.value.toFixed(3)} priority=${candidate.priorityBonus.toFixed(1)} energy=${candidate.segment.energy.toFixed(1)} score=${candidate.score.toFixed(3)}`
       });
-      globalSampled.add(cellKey(candidate));
+      agentSampled.add(cellKey(candidate));
       remainingFuel -= candidate.segment.energy;
       anchor = {
         agentId: agent.id,
@@ -121,11 +144,37 @@ export function temporalGreedySolver(level, mission, options = {}) {
         waypointIndex: index
       };
     }
-    if (!stop) stop = buildStop('maxWaypointSafetyLimitReached', anchor, remainingFuel, duration, { waypointCount: maxWaypoints });
+    if (!stop) {
+      stop = buildStop('max_planner_iterations', anchor, remainingFuel, duration, {
+        waypointCount: maxWaypoints,
+        unreachableCandidates: plannerStats.unreachableCandidates,
+        blockedCandidates: plannerStats.blockedCandidates,
+        stochasticRiskCandidates: plannerStats.stochasticRiskCandidates
+      });
+    }
+    const agentPlan = plan.agentPlans?.find((candidate) => candidate.agentId === agent.id);
+    const depletionSummary = applyAgentPlanDepletion(depletion, {
+      level,
+      mission,
+      plan,
+      agent,
+      agentPlan,
+      challengeMode: plannerChallengeMode,
+      revealTruth: plannerRevealTruth,
+      forecastMemberId: options.forecastMemberId ?? null
+    });
+    stop.sharedDepletion = {
+      enabled: agents.length > 1,
+      plannedOrder: agentStops.length + 1,
+      claimedCells: depletionSummary.claimedCells,
+      claimedPriorityTargets: depletionSummary.claimedPriorityTargets,
+      duplicateSamplesAvoided: depletion.duplicateSamplesAvoided
+    };
     agentStops.push({ agentId: agent.id, ...stop });
   }
   plan.meta.greedyStop = summarizeStops(agentStops, duration);
   plan.meta.greedyStopsByAgent = agentStops;
+  plan.meta.sharedDepletion = summarizeFleetDepletion(depletion, agents.length);
   validateAndRepairBaselinePlan(plan, level, mission);
 
   return plan;
@@ -133,6 +182,7 @@ export function temporalGreedySolver(level, mission, options = {}) {
 
 function validateAndRepairBaselinePlan(plan, level, mission) {
   let audit = validateRoutePlanForExecution({ level, mission, plan });
+  debugTemporalGreedyInvalidRoute(audit, plan);
   if (!audit.ok) {
     for (const result of audit.agentResults ?? []) {
       const firstInvalid = (result.issues ?? [])
@@ -145,7 +195,7 @@ function validateAndRepairBaselinePlan(plan, level, mission) {
         agentPlan.waypoints.splice(truncateAt);
         const stop = plan.meta.greedyStopsByAgent?.find((candidate) => candidate.agentId === result.agentId);
         if (stop) {
-          stop.stopReason = 'segmentBlockedDuringValidation';
+          stop.stopReason = 'route_blocked_by_terrain';
           stop.validationIssues = result.issues;
           stop.waypointCount = agentPlan.waypoints.length;
         }
@@ -156,7 +206,7 @@ function validateAndRepairBaselinePlan(plan, level, mission) {
   applyRouteAuditToPlan(plan, audit);
   plan.meta.valid = audit.ok;
   plan.meta.validationIssues = audit.agentResults?.flatMap((result) => result.issues ?? []) ?? [];
-  if (!audit.ok) plan.meta.stopReason = 'routeValidationFailed';
+  if (!audit.ok) plan.meta.stopReason = 'route_validation_failed';
 }
 
 function chooseTemporalCell({
@@ -168,12 +218,14 @@ function chooseTemporalCell({
   cells,
   sampled,
   priorityTargets,
+  depletion,
   challengeMode,
   revealTruth,
   forecastMemberId,
-  duration
+  duration,
+  plannerStats = null
 }) {
-  let best = null;
+  const candidates = [];
   for (const cell of cells) {
     if (sampled.has(cellKey(cell))) continue;
     if (cell.x === Math.round(anchor.x) && cell.y === Math.round(anchor.y)) continue;
@@ -188,18 +240,60 @@ function chooseTemporalCell({
       forecastMemberId
     });
     const arrivalTime = Number(anchor.t ?? 0) + Number(segment.estimatedTravelTime ?? 0);
-    if (!segment.valid) continue;
+    if (!segment.valid) {
+      if (segment.reachability?.reachable === false) plannerStats && (plannerStats.unreachableCandidates += 1);
+      else plannerStats && (plannerStats.blockedCandidates += 1);
+      debugTemporalGreedyCandidate({ from: anchor, to: cell, segment, execution: null, accepted: false, reason: 'segmentInvalid' });
+      continue;
+    }
     if (duration && arrivalTime > duration) continue;
     if (Number.isFinite(remainingFuel) && segment.energy > remainingFuel) continue;
+    const segmentFrame = getPlanningFrame(level, Number(anchor.t ?? 0), { challengeMode, revealTruth, forecastMemberId });
+    const execution = evaluateSegmentForExecution({
+      level,
+      mission,
+      agent,
+      from: anchor,
+      to: cell,
+      startTime: Number(anchor.t ?? 0),
+      travelTime: segment.estimatedTravelTime,
+      fuelRemaining: remainingFuel,
+      frame: segmentFrame
+    });
+    if (!execution.ok) {
+      if (execution.reason === 'noLegalPath' || execution.reason === 'outsideMap' || execution.reason === 'terrain' || execution.reason === 'tooShallow') {
+        plannerStats && (plannerStats.unreachableCandidates += 1);
+      } else {
+        plannerStats && (plannerStats.blockedCandidates += 1);
+      }
+      debugTemporalGreedyCandidate({ from: anchor, to: cell, segment, execution, accepted: false, reason: execution.reason });
+      continue;
+    }
 
     const arrivalFrame = getPlanningFrame(level, arrivalTime, { challengeMode, revealTruth, forecastMemberId });
-    const value = roiScalar(arrivalFrame?.roi?.[cell.y]?.[cell.x] ?? 0, 'expectedValue');
+    const stochasticRisk = estimateStochasticSegmentCurrentRisk({
+      level,
+      frame: arrivalFrame,
+      start: anchor,
+      end: cell,
+      stochasticMode: challengeMode === 'forecast' && !revealTruth
+    });
+    if (stochasticRisk.blocking) {
+      plannerStats && (plannerStats.stochasticRiskCandidates += 1);
+      debugTemporalGreedyStochasticRisk({ from: anchor, to: cell, stochasticRisk, rejected: true });
+      continue;
+    }
+    const rawValue = roiScalar(arrivalFrame?.roi?.[cell.y]?.[cell.x] ?? 0, 'expectedValue');
     const probability = roiScalar(arrivalFrame?.roi?.[cell.y]?.[cell.x] ?? 0, 'probability');
-    const priorityBonus = priorityTargetBonus(priorityTargets, cell, arrivalTime);
+    const depletionMultiplier = getRemainingValueMultiplier(depletion, cell, arrivalTime);
+    const value = rawValue * depletionMultiplier;
+    const priority = priorityTargetBonus(priorityTargets, cell, arrivalTime, depletion);
+    const priorityBonus = priority.bonus;
     const hazardPenalty = Number(level.layers?.hazards?.[cell.y]?.[cell.x] ?? 0) * 40;
     const mobileRisk = mobileHazardRisk(level, cell.x, cell.y, arrivalTime);
     const depthPenalty = Math.max(0, depthEnergyMultiplier(level, mission, cell.x, cell.y) - 1);
     const ensembleRisk = ensembleDisagreementAt(level, cell.x, cell.y, arrivalTime, { challengeMode, forecastMemberId });
+    const stochasticRiskPenalty = Number(stochasticRisk.value ?? 0) * 90;
     const energyPenalty = Number(segment.energy ?? 0) * 0.35;
     const travelTimePenalty = Number(segment.estimatedTravelTime ?? 0) * 0.08;
     const score = value
@@ -209,32 +303,270 @@ function chooseTemporalCell({
       - hazardPenalty
       - mobileRisk * 12
       - depthPenalty * 18
-      - ensembleRisk * 12;
+      - ensembleRisk * 12
+      - stochasticRiskPenalty;
     const candidate = {
       ...cell,
       segment,
+      execution,
       arrivalTime,
       window: windowForTime(level, arrivalTime),
+      rawValue,
       value,
       probability,
       priorityBonus,
-      score
+      priorityTargetIds: priority.targetIds,
+      depletionMultiplier,
+      stochasticRisk,
+      score,
+      distance: segment.distance,
+      totalValue: value + priorityBonus,
+      riskPenalty: hazardPenalty + mobileRisk * 12 + depthPenalty * 18 + ensembleRisk * 12 + stochasticRiskPenalty
     };
-    if (!best || candidate.score > best.score) best = candidate;
+    if (stochasticRisk.warning) debugTemporalGreedyStochasticRisk({ from: anchor, to: cell, stochasticRisk, rejected: false, score });
+    debugTemporalGreedyCandidate({ from: anchor, to: cell, segment, execution, score, accepted: false });
+    candidates.push(candidate);
   }
-  return best;
+  if (!candidates.length) return null;
+  const selected = chooseFromStage(candidates, 'high_value')
+    ?? chooseFromStage(candidates, 'moderate_value')
+    ?? chooseFromStage(candidates, 'safe_continuation')
+    ?? null;
+  if (selected && Number(selected.rawValue ?? 0) > Number(selected.value ?? 0)) {
+    depletion.duplicateSamplesAvoided += 1;
+  }
+  if (selected) debugTemporalGreedyAccepted(selected);
+  return selected;
 }
 
-function priorityTargetBonus(targets, cell, time) {
+function chooseFromStage(candidates, stage) {
+  const filtered = candidates.filter((candidate) => {
+    if (stage === 'high_value') return candidate.totalValue > 0.35 || candidate.priorityBonus > 0;
+    if (stage === 'moderate_value') return candidate.totalValue > 0.04 || candidate.probability > 0.2;
+    return candidate.riskPenalty < 45;
+  });
+  if (!filtered.length) return null;
+  const scored = filtered.map((candidate) => ({
+    ...candidate,
+    stage,
+    score: stageScore(candidate, stage)
+  }));
+  return scored.sort((a, b) => b.score - a.score || a.segment.energy - b.segment.energy || a.arrivalTime - b.arrivalTime)[0] ?? null;
+}
+
+function stageScore(candidate, stage) {
+  if (stage === 'high_value') return candidate.score;
+  if (stage === 'moderate_value') {
+    return candidate.totalValue * 1.6
+      + candidate.probability * 0.25
+      - Number(candidate.segment.energy ?? 0) * 0.22
+      - Number(candidate.segment.estimatedTravelTime ?? 0) * 0.06
+      - candidate.riskPenalty * 0.04;
+  }
+  return safeContinuationScore(candidate);
+}
+
+function safeContinuationScore(candidate) {
+  const currentAssist = Number(candidate.segment.currentAssist ?? 0);
+  const energy = Number(candidate.segment.energy ?? 0);
+  const travelTime = Number(candidate.segment.estimatedTravelTime ?? 0);
+  const distance = Number(candidate.distance ?? 0);
+  return currentAssist * 0.35
+    + Math.min(0.3, distance * 0.03)
+    + candidate.totalValue * 0.4
+    - energy * 0.18
+    - travelTime * 0.04
+    - candidate.riskPenalty * 0.08;
+}
+
+function priorityTargetBonus(targets, cell, time, depletion = null) {
   let bonus = 0;
+  const targetIds = [];
   for (const target of targets) {
+    if (depletion?.claimedTargets?.has(target.id) && !depletion.allowSharedPriorityTargets) continue;
     const position = getPriorityTargetPosition(target, time);
     if (!position?.active) continue;
     const radius = Math.max(0.05, Number(target.radius ?? 0.75));
     const distance = Math.hypot(Number(cell.x) - Number(position.x), Number(cell.y) - Number(position.y));
-    if (distance <= radius + 0.5) bonus += Number(target.value ?? 0);
+    if (distance <= radius + 0.5) {
+      bonus += Number(target.value ?? 0);
+      targetIds.push(target.id);
+    }
   }
-  return bonus;
+  return { bonus, targetIds };
+}
+
+function createFleetDepletionState(level, mission, priorityTargets = []) {
+  const samplingRules = normalizeSamplingRules(mission);
+  const priorityRules = normalizePriorityTargetRules(mission);
+  return {
+    level,
+    mission,
+    samplingRules,
+    priorityRules,
+    claimedCells: new Map(),
+    claimedTargets: new Set(),
+    priorityTargets,
+    duplicateSamplesAvoided: 0,
+    allowSharedPriorityTargets: priorityRules.captureMode === 'shared' || priorityRules.captureMode === 'multiple',
+    enabled: (mission?.agents ?? []).length > 1
+  };
+}
+
+function applyAgentPlanDepletion(depletion, { level, mission, agent, agentPlan, challengeMode, revealTruth, forecastMemberId }) {
+  if (!agentPlan) return { claimedCells: 0, claimedPriorityTargets: 0 };
+  const beforeCells = depletion.claimedCells.size;
+  const beforeTargets = depletion.claimedTargets.size;
+  const route = buildRouteSegmentsForAgent({ level, mission, agent, agentPlan });
+  const samplingRadius = Number(mission?.rules?.samplingRadius ?? agent?.samplingRadius ?? 0.75);
+  for (const segment of route.segments ?? []) {
+    const cells = expandCellsBySamplingRadius(rasterizeRouteSegment(segment, level), samplingRadius, level);
+    for (const cell of cells) claimDepletionCell(depletion, cell, Number(segment.to?.estimatedArrivalTime ?? segment.to?.t ?? 0), agent.id, 'segment');
+  }
+  for (const waypoint of agentPlan.waypoints ?? []) {
+    const cells = expandCellsBySamplingRadius([{ x: waypoint.x, y: waypoint.y }], samplingRadius, level);
+    for (const cell of cells) claimDepletionCell(depletion, cell, Number(waypoint.estimatedArrivalTime ?? waypoint.t ?? 0), agent.id, 'waypoint');
+    for (const target of priorityTargetBonus(depletion.priorityTargets, waypoint, Number(waypoint.estimatedArrivalTime ?? waypoint.t ?? 0), { ...depletion, claimedTargets: new Set(), allowSharedPriorityTargets: true }).targetIds) {
+      if (!depletion.allowSharedPriorityTargets) depletion.claimedTargets.add(target);
+    }
+  }
+  return {
+    claimedCells: depletion.claimedCells.size - beforeCells,
+    claimedPriorityTargets: depletion.claimedTargets.size - beforeTargets
+  };
+}
+
+function claimDepletionCell(depletion, cell, time, agentId, source) {
+  const key = cellKey(cell);
+  const entry = depletion.claimedCells.get(key) ?? {
+    x: Math.round(Number(cell.x)),
+    y: Math.round(Number(cell.y)),
+    count: 0,
+    windows: new Set(),
+    claims: []
+  };
+  entry.count += 1;
+  entry.lastWindow = missionWindow(depletion.level, time);
+  entry.windows.add(entry.lastWindow);
+  entry.claims.push({ agentId, source, t: round(time), window: entry.lastWindow });
+  depletion.claimedCells.set(key, entry);
+}
+
+function getRemainingValueMultiplier(depletion, cell, time) {
+  if (!depletion?.claimedCells?.size) return 1;
+  const rules = depletion.samplingRules ?? {};
+  const key = cellKey(cell);
+  const exact = depletion.claimedCells.get(key);
+  if (rules.mode === 'persistent') return exact ? Number(rules.persistentWindowMultiplier ?? 1) : 1;
+  if (rules.mode === 'cooldown') {
+    if (!exact) return 1;
+    const currentWindow = missionWindow(depletion.level, time);
+    const lastWindow = Number(exact.lastWindow ?? -Infinity);
+    return currentWindow - lastWindow < Number(rules.cooldownWindows ?? 0)
+      ? Number(rules.duplicateValueMultiplier ?? 0)
+      : 1;
+  }
+  if (rules.mode === 'diminishing') {
+    const radius = Number(rules.localDepletionRadius ?? 0);
+    if (radius <= 0) return exact ? Number(rules.depletionFactor ?? 0) : 1;
+    for (const claimed of depletion.claimedCells.values()) {
+      if (Math.hypot(Number(cell.x) - claimed.x, Number(cell.y) - claimed.y) <= radius) return Number(rules.depletionFactor ?? 0);
+    }
+    return 1;
+  }
+  return exact ? Number(rules.duplicateValueMultiplier ?? 0) : 1;
+}
+
+function missionWindow(level, time) {
+  const windowSize = Number(level?.world?.time?.planningWindow ?? 1);
+  if (!Number.isFinite(windowSize) || windowSize <= 0) return 0;
+  return Math.max(0, Math.floor(Number(time ?? 0) / windowSize));
+}
+
+function summarizeFleetDepletion(depletion, agentCount) {
+  return {
+    enabled: Number(agentCount ?? 0) > 1,
+    agentCount: Number(agentCount ?? 0),
+    samplingMode: depletion?.samplingRules?.mode ?? 'unique',
+    claimedCells: Number(depletion?.claimedCells?.size ?? 0),
+    claimedPriorityTargets: Number(depletion?.claimedTargets?.size ?? 0),
+    duplicateSamplesAvoided: Number(depletion?.duplicateSamplesAvoided ?? 0),
+    priorityCaptureMode: depletion?.priorityRules?.captureMode ?? 'once',
+    footprint: 'route_segments_and_waypoint_sampling_radius',
+    timeAware: ['cooldown', 'persistent'].includes(depletion?.samplingRules?.mode)
+  };
+}
+
+function debugTemporalGreedyCandidate({ from, to, segment, execution, score = null, accepted = false, reason = null } = {}) {
+  if (!globalThis.ANCHOR_DEBUG_TEMPORAL_GREEDY) return;
+  globalThis.console?.debug?.('[TemporalGreedy][Candidate]', {
+    fromCell: pointCell(from),
+    toCell: pointCell(to),
+    endpointNavigable: segment?.valid !== false || execution?.reason !== 'terrain',
+    segmentOk: execution ? execution.ok : segment?.valid !== false,
+    blockReason: reason ?? execution?.reason ?? segment?.reason ?? null,
+    blockedCell: execution?.blockedCell ?? segment?.blockedAt ?? null,
+    travelTime: execution?.travelTime ?? segment?.estimatedTravelTime ?? null,
+    energyCost: execution?.energyCost ?? segment?.energy ?? null,
+    score,
+    accepted
+  });
+}
+
+function debugTemporalGreedyAccepted(candidate) {
+  if (!globalThis.ANCHOR_DEBUG_TEMPORAL_GREEDY) return;
+  globalThis.console?.debug?.('[TemporalGreedy][Accepted]', {
+    waypointIndex: candidate?.waypointIndex ?? null,
+    toCell: pointCell(candidate),
+    validationOk: true,
+    travelTime: candidate?.execution?.travelTime ?? candidate?.segment?.estimatedTravelTime ?? null,
+    energyCost: candidate?.execution?.energyCost ?? candidate?.segment?.energy ?? null
+  });
+}
+
+function debugTemporalGreedyInvalidRoute(audit, plan) {
+  if (!globalThis.ANCHOR_DEBUG_TEMPORAL_GREEDY || audit?.ok !== false) return;
+  globalThis.console?.warn?.('[TemporalGreedy][InvalidGeneratedRoute]', {
+    firstBlockingError: audit.firstIssue ?? audit.agentResults?.flatMap((result) => result.issues ?? [])?.[0] ?? null,
+    waypoints: (plan?.agentPlans ?? []).map((agentPlan) => ({
+      agentId: agentPlan.agentId,
+      waypoints: (agentPlan.waypoints ?? []).map(pointCell)
+    }))
+  });
+}
+
+function debugTemporalGreedyStochasticRisk({ from, to, stochasticRisk, rejected = false, score = null } = {}) {
+  if (!globalThis.ANCHOR_DEBUG_TEMPORAL_GREEDY) return;
+  globalThis.console?.debug?.('[TemporalGreedy][StochasticRisk]', {
+    fromCell: pointCell(from),
+    toCell: pointCell(to),
+    stochasticMode: true,
+    shoreDistance: stochasticRisk?.shoreDistance ?? null,
+    forecastConfidence: stochasticRisk?.forecastConfidence ?? null,
+    currentKnown: stochasticRisk?.currentKnown ?? null,
+    currentTowardLand: stochasticRisk?.currentTowardLand ?? null,
+    riskScore: stochasticRisk?.value ?? 0,
+    rejected,
+    reason: stochasticRisk?.message ?? null,
+    score
+  });
+}
+
+function debugTemporalGreedyVisibility(planner = {}) {
+  if (!globalThis.ANCHOR_DEBUG_TEMPORAL_GREEDY) return;
+  globalThis.console?.debug?.('[TemporalGreedy][Visibility]', {
+    usesForecast: Boolean(planner.usesForecast),
+    usesTruth: Boolean(planner.usesTruth),
+    usesOracle: Boolean(planner.usesOracle)
+  });
+}
+
+function pointCell(point) {
+  if (!point) return null;
+  return {
+    x: Math.round(Number(point.x)),
+    y: Math.round(Number(point.y))
+  };
 }
 
 function ensembleDisagreementAt(level, x, y, time = 0, options = {}) {
@@ -303,6 +635,15 @@ function summarizeStops(stops, duration) {
 
 function agentsSafetyMargin(mission) {
   return Math.max(1, (mission?.agents ?? []).length) * 2;
+}
+
+function minimumMoveTime(agent = {}) {
+  const speed = Math.max(0.05, Number(agent.maxSpeed ?? 1));
+  return Math.min(0.5, 0.5 / speed);
+}
+
+function minimumFuelReserve(mission = {}) {
+  return Math.max(0, Number(mission?.physics?.energyPerCell ?? 1) * 0.1);
 }
 
 function round(value, digits = 2) {

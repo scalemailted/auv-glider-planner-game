@@ -107,6 +107,7 @@ export class MissionWorkspaceScene extends PhaserScene {
     this.app.state.mode = 'planning';
     this.app.elements.shell?.classList.add('planning-workspace');
     this.app.state.ui ??= {};
+    this.syncMissionOptionsFromMission();
     if (!String(this.app.state.currentScenario?.source ?? '').startsWith('leaderboard')) {
       this.app.state.ui.showBestPathOverlay = false;
     }
@@ -214,6 +215,7 @@ export class MissionWorkspaceScene extends PhaserScene {
       loadDemoPlan: () => this.loadBuiltInDemoPlan(),
       downloadDemoPlan: () => this.downloadBuiltInDemoPlan(),
       clearImportedPlan: () => this.clearImportedPlan(),
+      toggleIgnoreUpdateEvents: () => this.toggleIgnoreUpdateEvents(),
       showBestPath: () => this.showBestPathOverlay(true),
       hideBestPath: () => this.showBestPathOverlay(false),
       rerunBestPath: () => this.rerunBestPath(),
@@ -1116,6 +1118,38 @@ export class MissionWorkspaceScene extends PhaserScene {
     this.app.toast?.('Imported plan cleared.', 'info');
   }
 
+  syncMissionOptionsFromMission() {
+    const existing = this.app.state.missionOptions ?? this.app.state.mission?.rules?.missionOptions ?? {};
+    this.app.state.missionOptions = {
+      ignoreUpdateEvents: Boolean(existing.ignoreUpdateEvents ?? this.app.state.mission?.rules?.missionOptions?.ignoreUpdateEvents ?? false)
+    };
+    this.applyMissionOptionsToMission();
+  }
+
+  applyMissionOptionsToMission() {
+    this.app.state.missionOptions ??= { ignoreUpdateEvents: false };
+    this.app.state.mission ??= {};
+    this.app.state.mission.rules ??= {};
+    this.app.state.mission.rules.missionOptions = {
+      ...(this.app.state.mission.rules.missionOptions ?? {}),
+      ignoreUpdateEvents: Boolean(this.app.state.missionOptions.ignoreUpdateEvents)
+    };
+  }
+
+  toggleIgnoreUpdateEvents() {
+    this.app.state.missionOptions ??= { ignoreUpdateEvents: false };
+    this.app.state.missionOptions.ignoreUpdateEvents = !this.app.state.missionOptions.ignoreUpdateEvents;
+    this.applyMissionOptionsToMission();
+    this.refreshPanels();
+    this.refreshMap();
+    this.app.toast?.(
+      this.app.state.missionOptions.ignoreUpdateEvents
+        ? 'Update events ignored. Continuous run mode enabled.'
+        : 'Update events respected.',
+      this.app.state.missionOptions.ignoreUpdateEvents ? 'warning' : 'info'
+    );
+  }
+
   resolveBestPriorRunVm(action) {
     if (!this.app.state.bestPriorRunVm) this.refreshBestPriorPath();
     const vm = this.app.state.bestPriorRunVm;
@@ -1348,6 +1382,7 @@ export class MissionWorkspaceScene extends PhaserScene {
       simTime: this.app.state.planningTime ?? 0,
       message: 'Execute clicked'
     });
+    this.applyMissionOptionsToMission();
     applyStochasticToMission(this.app.state);
     normalizeDeploymentState(this.app.state.level, this.app.state.mission, this.app.state.plan);
     const missingDeployment = (this.app.state.mission.agents ?? []).find((agent) => requiresDeploymentSelection(this.app.state.mission, agent.id));
@@ -1623,8 +1658,7 @@ export class MissionWorkspaceScene extends PhaserScene {
     this.app.state.plan = temporalGreedySolver(this.app.state.level, this.app.state.mission, {
       challengeMode: this.app.state.challengeMode,
       revealTruth: this.app.state.ui?.revealTruth,
-      forecastMemberId: this.app.state.ui?.forecastMemberId,
-      maxWaypoints: 6
+      forecastMemberId: this.app.state.ui?.forecastMemberId
     });
     attachIdentityToPlan(this.app.state.plan, this.app.state.level, this.app.state.mission);
     recomputeAllWaypointTiming(this.app.state);
@@ -1633,6 +1667,7 @@ export class MissionWorkspaceScene extends PhaserScene {
     this.app.state.temporalGreedyPlan = this.app.state.plan;
     this.refreshPanels();
     this.refreshMap();
+    this.app.toast?.(temporalGreedySummary(this.app.state.plan, this.app.state.level, this.app.state.mission), this.app.state.plan?.meta?.valid === false ? 'warning' : 'success');
   }
 
   clearSelectedAgentPlan() {
@@ -1789,6 +1824,41 @@ function bestPathActionVerb(action) {
     rerun: 'rerun',
     export: 'export'
   }[action] ?? 'use';
+}
+
+function temporalGreedySummary(plan, level, mission) {
+  const stop = plan?.meta?.greedyStop ?? {};
+  const waypointCount = (plan?.agentPlans ?? []).reduce((sum, agentPlan) => sum + (agentPlan.waypoints?.length ?? 0), 0);
+  const duration = Number(level?.world?.time?.duration ?? 0);
+  const stopTime = Number(stop.stopTime ?? 0);
+  const startingFuel = (mission?.agents ?? []).reduce((sum, agent) => sum + Number(agent.battery ?? agent.maxBattery ?? 100), 0);
+  const remainingFuel = Number(stop.remainingFuel ?? 0);
+  const fuelUsed = Math.max(0, startingFuel - remainingFuel);
+  const unreachableCandidates = (stop.agents ?? []).reduce((sum, agentStop) => sum + Number(agentStop.unreachableCandidates ?? 0), Number(stop.unreachableCandidates ?? 0));
+  const blockedCandidates = (stop.agents ?? []).reduce((sum, agentStop) => sum + Number(agentStop.blockedCandidates ?? 0), Number(stop.blockedCandidates ?? 0));
+  const stochasticRiskCandidates = (stop.agents ?? []).reduce((sum, agentStop) => sum + Number(agentStop.stochasticRiskCandidates ?? 0), Number(stop.stochasticRiskCandidates ?? 0));
+  const depletion = plan?.meta?.sharedDepletion ?? {};
+  const complete = !stop.remainingMissionTime || stop.stopReason === 'mission_time_exhausted' || stop.stopReason === 'fuel_exhausted';
+  const lines = [
+    complete ? 'Temporal Greedy complete' : 'Temporal Greedy stopped early',
+    `Waypoints: ${waypointCount}`,
+    `Planned time: ${formatRouteNumber(stopTime)} / ${formatRouteNumber(duration)} hr`,
+    `Fuel used: ${formatRouteNumber(fuelUsed)} / ${formatRouteNumber(startingFuel)}`,
+    depletion.enabled
+      ? `Shared depletion: enabled, duplicate samples avoided: ${depletion.duplicateSamplesAvoided ?? 0}`
+      : 'Shared depletion: single-agent not needed',
+    `Stop reason: ${labelizeStopReason(stop.stopReason)}`
+  ];
+  if (unreachableCandidates > 0) lines.splice(5, 0, `Skipped unreachable candidates: ${unreachableCandidates}`);
+  if (blockedCandidates > 0) lines.splice(5, 0, `Skipped blocked candidates: ${blockedCandidates}`);
+  if (stochasticRiskCandidates > 0) lines.splice(5, 0, `Skipped unknown-current shoreline risks: ${stochasticRiskCandidates}`);
+  return lines.join('\n');
+}
+
+function labelizeStopReason(reason) {
+  return String(reason ?? 'unknown')
+    .replace(/_/g, ' ')
+    .replace(/\b\w/g, (char) => char.toUpperCase());
 }
 
 function routeIssueDetails(issue = {}, state = {}) {

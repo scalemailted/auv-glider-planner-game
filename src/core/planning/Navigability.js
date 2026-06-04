@@ -76,6 +76,124 @@ export function isSegmentNavigable(start, end, context = {}) {
   return explainSegmentBlockage(start, end, context).ok;
 }
 
+export function evaluateReachability(startCell, goalCell, { level = null, mission = null } = {}) {
+  const start = cellFromPoint(startCell, 'round');
+  const goal = cellFromPoint(goalCell, 'round');
+  const startNav = isCellNavigable(level, mission, start.x, start.y);
+  if (!startNav.ok) return unreachableResult(start, goal, startNav.reason, startNav.cell, []);
+  const goalNav = isCellNavigable(level, mission, goal.x, goal.y);
+  if (!goalNav.ok) return unreachableResult(start, goal, goalNav.reason, goalNav.cell, []);
+  if (start.x === goal.x && start.y === goal.y) {
+    return {
+      reachable: true,
+      reason: 'sameCell',
+      start,
+      goal,
+      pathCells: [start],
+      traversedCells: [start],
+      cost: 0,
+      distance: 0,
+      blockedCell: null,
+      blockedCells: []
+    };
+  }
+
+  const field = buildNavigableReachabilityField({ level, mission, startCell: start, goalCell: goal });
+  const entry = field.cells.get(cellKey(goal.x, goal.y));
+  if (!entry) {
+    return unreachableResult(start, goal, 'noLegalPath', null, field.visitedCells);
+  }
+  const pathCells = reconstructPath(field, goal);
+  return {
+    reachable: true,
+    reason: 'reachable',
+    start,
+    goal,
+    pathCells,
+    traversedCells: pathCells,
+    cost: entry.cost,
+    distance: entry.cost,
+    blockedCell: null,
+    blockedCells: [],
+    movement: field.movement
+  };
+}
+
+export function buildNavigableReachabilityField({ level = null, mission = null, startCell = null, goalCell = null } = {}) {
+  const start = cellFromPoint(startCell, 'round');
+  const width = Number(level?.world?.grid?.width ?? 0);
+  const height = Number(level?.world?.grid?.height ?? 0);
+  const cells = new Map();
+  const queue = [];
+  const startNav = isCellNavigable(level, mission, start.x, start.y);
+  if (!startNav.ok) {
+    return {
+      start,
+      cells,
+      visitedCells: [],
+      movement: { neighbors: 4, allowDiagonal: false, preventCornerCutting: true }
+    };
+  }
+  cells.set(cellKey(start.x, start.y), { x: start.x, y: start.y, cost: 0, previous: null });
+  queue.push(start);
+  const targetKey = goalCell ? cellKey(goalCell.x, goalCell.y) : null;
+  for (let index = 0; index < queue.length; index += 1) {
+    const cell = queue[index];
+    const entry = cells.get(cellKey(cell.x, cell.y));
+    if (targetKey && cellKey(cell.x, cell.y) === targetKey) break;
+    for (const next of neighbors4(cell.x, cell.y)) {
+      if (!isInsideLevel(level, next.x, next.y) || !isCellNavigable(level, mission, next.x, next.y).ok) continue;
+      const key = cellKey(next.x, next.y);
+      if (cells.has(key)) continue;
+      cells.set(key, {
+        x: next.x,
+        y: next.y,
+        cost: entry.cost + 1,
+        previous: { x: cell.x, y: cell.y }
+      });
+      queue.push(next);
+    }
+  }
+  return {
+    start,
+    cells,
+    visitedCells: queue,
+    movement: { neighbors: 4, allowDiagonal: false, preventCornerCutting: true }
+  };
+}
+
+function unreachableResult(start, goal, reason, blockedCell = null, visitedCells = []) {
+  return {
+    reachable: false,
+    reason,
+    start,
+    goal,
+    pathCells: [],
+    traversedCells: visitedCells,
+    cost: Infinity,
+    distance: Infinity,
+    blockedCell,
+    blockedCells: blockedCell ? [blockedCell] : []
+  };
+}
+
+function reconstructPath(field, goal) {
+  const path = [];
+  let current = {
+    x: Math.round(Number(goal.x)),
+    y: Math.round(Number(goal.y))
+  };
+  const guard = Math.max(1, Number(field?.cells?.size ?? 0) + 1);
+  for (let index = 0; index < guard; index += 1) {
+    const entry = field.cells.get(cellKey(current.x, current.y));
+    if (!entry) break;
+    path.push({ x: entry.x, y: entry.y });
+    if (!entry.previous) break;
+    current = entry.previous;
+  }
+  return path.reverse();
+}
+
 function supercoverLineCells(start, end) {
   let x = start.x;
   let y = start.y;
@@ -126,6 +244,19 @@ function uniqueCells(cells) {
 function isInsideLevel(level, x, y) {
   const grid = level?.world?.grid ?? {};
   return x >= 0 && y >= 0 && x < Number(grid.width ?? 0) && y < Number(grid.height ?? 0);
+}
+
+function neighbors4(x, y) {
+  return [
+    { x: x + 1, y },
+    { x: x - 1, y },
+    { x, y: y + 1 },
+    { x, y: y - 1 }
+  ];
+}
+
+function cellKey(x, y) {
+  return `${Math.round(Number(x))},${Math.round(Number(y))}`;
 }
 
 function isFinitePoint(point) {

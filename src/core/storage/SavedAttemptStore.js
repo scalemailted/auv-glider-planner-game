@@ -31,6 +31,7 @@ export function saveAttemptToLocalStore({ level, mission, plan, result, label = 
       method: exactReplay.method,
       reason: exactReplay.reason
     },
+    missionOptions: cloneJson(attempt.missionOptions ?? result?.missionOptions ?? mission?.rules?.missionOptions ?? null),
     label,
     savedAt: new Date().toISOString(),
     pathSummary: {

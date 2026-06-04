@@ -46,7 +46,8 @@ export function inspectCellAtTime({ level, mission = null, state = null, x, y, t
     selectedAgentId: state?.selectedAgentId,
     selectedWaypoint: state?.ui?.selectedWaypoint,
     planningAnchor: state?.ui?.planningAnchor,
-    travelCostField
+    travelCostField,
+    challengeMode: state?.challengeMode
   });
   const current = frame?.current?.[y]?.[x] ?? [0, 0];
   const beachingRisk = estimateBeachingRiskAtCell({ level, frame, x, y });

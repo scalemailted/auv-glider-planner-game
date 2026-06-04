@@ -22,6 +22,10 @@ export const DEFAULT_PRIORITY_TARGET_RULES = {
   showActiveOnly: true
 };
 
+export const DEFAULT_MISSION_OPTIONS = {
+  ignoreUpdateEvents: false
+};
+
 const END_MODES = new Set(['none', 'surface', 'communication', 'recovery', 'pickup', 'return']);
 const SAMPLING_MODES = new Set(['unique', 'diminishing', 'cooldown', 'persistent']);
 
@@ -66,6 +70,16 @@ export function normalizePriorityTargetRules(missionOrRules = {}) {
     captureMode: input.captureMode ?? DEFAULT_PRIORITY_TARGET_RULES.captureMode,
     showFutureTargets: Boolean(input.showFutureTargets ?? DEFAULT_PRIORITY_TARGET_RULES.showFutureTargets),
     showActiveOnly: input.showActiveOnly !== false
+  };
+}
+
+export function normalizeMissionOptions(missionOrRules = {}) {
+  const rules = missionOrRules.rules ?? missionOrRules;
+  const input = rules?.missionOptions ?? missionOrRules?.missionOptions ?? {};
+  return {
+    ...DEFAULT_MISSION_OPTIONS,
+    ...input,
+    ignoreUpdateEvents: Boolean(input.ignoreUpdateEvents ?? DEFAULT_MISSION_OPTIONS.ignoreUpdateEvents)
   };
 }
 

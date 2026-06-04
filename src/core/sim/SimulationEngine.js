@@ -11,7 +11,7 @@ import { getMobileHazardsAtTime } from './MobileHazards.js';
 import { summarizeProbabilityOutcomes } from '../evaluation/ProbabilityOutcomeMetrics.js';
 import { summarizeRiskReward } from '../evaluation/RiskRewardMetrics.js';
 import { evaluateEndCondition } from './EndConditions.js';
-import { normalizeEndCondition, normalizePriorityTargetRules, normalizeSamplingRules } from './MissionRules.js';
+import { normalizeEndCondition, normalizeMissionOptions, normalizePriorityTargetRules, normalizeSamplingRules } from './MissionRules.js';
 import { normalizeDeploymentState, summarizeDeployment } from '../deployment/DeploymentZones.js';
 import { normalizeForecastRules } from '../forecast/ForecastDecay.js';
 import { summarizeAgentSpecs } from '../agents/AgentSpecs.js';
@@ -58,7 +58,8 @@ export class SimulationEngine {
     this.world = new TruthWorld(level, mission);
     this.resumeState = resumeState;
     this.trace = trace ?? createSimulationTrace();
-    this.ignoreSurfacePauses = false;
+    this.missionOptions = normalizeMissionOptions(this.mission);
+    this.ignoreSurfacePauses = Boolean(this.missionOptions.ignoreUpdateEvents);
     this.running = false;
     this.reset();
   }
@@ -79,6 +80,7 @@ export class SimulationEngine {
     this.awaitingSurfaceDecision = null;
     this.surfaceDecision = null;
     this.routeFailureDecision = null;
+    this.ignoredUpdateEvents = [];
     const samplingRules = normalizeSamplingRules(this.mission);
     const priorityTargetRules = normalizePriorityTargetRules(this.mission);
     this.missionState = {
@@ -804,6 +806,30 @@ export class SimulationEngine {
     });
 
     const rules = getCommunicationRules(this.mission);
+    if (this.ignoreSurfacePauses && rules.pauseOnSurface && rules.allowReplanningOnSurface && !this.complete) {
+      const first = surfaced[0] ?? null;
+      const ignoredEvent = {
+        type: 'update_event_ignored',
+        t: time,
+        agentId: first?.agentId ?? null,
+        window: Math.max(0, Math.round(time / Math.max(1e-6, Number(rules.surfaceInterval ?? 1)))),
+        reason: 'ignoreUpdateEventsEnabled',
+        agents: surfaced.map((agent) => agent.agentId)
+      };
+      this.ignoredUpdateEvents.push(ignoredEvent);
+      this.recordEvent(ignoredEvent);
+      this.updateCommsStates('submerged');
+      traceSimulation(this.trace, {
+        scene: 'SimulationEngine',
+        phase: 'surfacing.ignored',
+        simTime: time,
+        agentId: first?.agentId ?? null,
+        message: 'Surface/update event ignored by mission option',
+        details: { agents: ignoredEvent.agents }
+      });
+      return;
+    }
+
     if (!this.ignoreSurfacePauses && rules.pauseOnSurface && rules.allowReplanningOnSurface && !this.complete) {
       this.running = false;
       const first = surfaced[0] ?? null;
@@ -1052,6 +1078,11 @@ export class SimulationEngine {
       trace: this.trace?.snapshot?.() ?? [],
       surfaceDecision: this.surfaceDecision,
       endCondition: this.missionState.endConditionResult,
+      missionOptions: {
+        ...this.missionOptions,
+        ignoredUpdateEvents: this.ignoredUpdateEvents.length
+      },
+      updateEventsIgnored: this.ignoredUpdateEvents.length,
       sampling: {
         config: this.missionState.samplingRules,
         mode: this.missionState.samplingMode,

@@ -5,6 +5,7 @@ import { buildRouteSegmentsForAgent } from './RouteSegmentBuilder.js';
 import { estimateRouteEnergy } from './RoutePreview.js';
 import { estimateSegmentBeachingRisk, isBeachingRisk } from './ShorelineRisk.js';
 import { isCellNavigable } from './Navigability.js';
+import { evaluateSegmentForExecution } from './SegmentExecutionValidator.js';
 
 export function validateRoutePlanForExecution({
   level,
@@ -92,20 +93,40 @@ export function validateRoutePlanForExecution({
         energyPerCell: mission?.physics?.energyPerCell ?? 1,
         mission
       });
+      const execution = estimate.valid === false || segment.valid === false
+        ? null
+        : evaluateSegmentForExecution({
+          level,
+          mission,
+          agent,
+          from: segment.from,
+          to: segment.to,
+          startTime: Number(segment.from.t ?? waypoint.t ?? 0),
+          travelTime: waypoint.segmentTravelTime ?? waypoint.estimatedTravelTime ?? estimate.distance / Math.max(0.05, Number(agent.maxSpeed ?? 1)),
+          fuelRemaining: Number(agent.battery ?? agent.maxBattery ?? mission?.rules?.energyBudget ?? 100) - cumulativeEnergy,
+          frame
+        });
       cumulativeEnergy += Number(waypoint.segmentEnergy ?? estimate.energy ?? 0);
 
-      if (!segment.valid || estimate.valid === false) {
+      if (!segment.valid || estimate.valid === false || execution?.ok === false) {
+        const noLegalPath = estimate.reachability?.reachable === false && segment.valid !== false;
+        const blockedAt = segment.blockedAt ?? estimate.blockedAt ?? execution?.blockedCell ?? estimate.reachability?.blockedCell ?? null;
+        const executionBlocked = execution?.ok === false && !noLegalPath && segment.valid !== false && estimate.valid !== false;
         const issue = buildIssue({
           type: 'segmentBlocked',
-          reason: 'segmentBlocked',
+          reason: noLegalPath ? 'noLegalPath' : executionBlocked ? 'routeBlocked' : 'segmentBlocked',
           severity: 'error',
           agentId: agent.id,
           from: segmentEndpointRef(segment.from, index - 1),
           to: waypointRef(waypoint, index),
-          blockedAt: segment.blockedAt ?? estimate.blockedAt ?? null,
+          blockedAt,
           segmentIndex: index,
           waypointIndex: index,
-          message: `${agent.label ?? agent.id} route to Waypoint ${index + 1} crosses terrain${formatBlockedAt(segment.blockedAt ?? estimate.blockedAt)}.`
+          message: noLegalPath
+            ? `${agent.label ?? agent.id} cannot reach Waypoint ${index + 1}: no legal navigable path exists${formatBlockedAt(blockedAt)}.`
+            : executionBlocked
+              ? `${agent.label ?? agent.id} route to Waypoint ${index + 1} would be blocked during simulation${formatBlockedAt(blockedAt)}.`
+            : `${agent.label ?? agent.id} route to Waypoint ${index + 1} crosses terrain${formatBlockedAt(blockedAt)}.`
         });
         issues.push(issue);
         annotateWaypoint(agentPlan, index, issue);

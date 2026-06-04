@@ -67,6 +67,7 @@ export function recordLeaderboardAttempt({ level, mission, plan, result, label =
     replaySeedContract,
     exactReplay,
     generationConfig: level?.meta?.generationConfig ?? null,
+    missionOptions: cloneJson(result?.missionOptions ?? mission?.rules?.missionOptions ?? null),
     level: cloneJson(level),
     mission: cloneJson(mission),
     attempts: existing.attempts ?? []
@@ -86,6 +87,7 @@ export function recordLeaderboardAttempt({ level, mission, plan, result, label =
       method: exactReplay.method,
       reason: exactReplay.reason
     },
+    missionOptions: cloneJson(result?.missionOptions ?? mission?.rules?.missionOptions ?? null),
     plan: cloneJson(plan),
     result: cloneJson(result),
     summary: result?.summary ?? {},
@@ -184,6 +186,7 @@ function normalizeRecord(record = {}) {
       reason: exactReplay.reason
     },
     generationConfig: record.generationConfig ?? level?.meta?.generationConfig ?? null,
+    missionOptions: record.missionOptions ?? bestAttempt?.missionOptions ?? null,
     level,
     mission,
     attempts,
@@ -207,6 +210,7 @@ function normalizeAttempts(attempts = []) {
       derivedSeeds: attempt.derivedSeeds ?? attempt.result?.derivedSeeds ?? attempt.result?.replaySeedContract?.derivedSeeds ?? null,
       replaySeedContract: attempt.replaySeedContract ?? attempt.result?.replaySeedContract ?? null,
       exactReplay: attempt.exactReplay ?? attempt.result?.exactReplay ?? null,
+      missionOptions: attempt.missionOptions ?? attempt.result?.missionOptions ?? null,
       plan: attempt.plan ?? null,
       result: attempt.result ?? null,
       summary: attempt.summary ?? attempt.result?.summary ?? {},

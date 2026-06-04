@@ -135,6 +135,7 @@ export class DebriefScene extends PhaserScene {
 
         <section class="debrief-content-grid">
           ${this.riskPanelHtml(result)}
+          ${this.missionOptionsPanelHtml(result)}
           ${this.tutorialPanelHtml(result)}
           ${this.importedPlanPanelHtml(result)}
           ${this.stopReasonPanelHtml(result)}
@@ -171,6 +172,19 @@ export class DebriefScene extends PhaserScene {
             </table>
           </div>
         ` : '<p>No priority targets were captured.</p>'}
+      </article>
+    `;
+  }
+
+  missionOptionsPanelHtml(result) {
+    const options = result?.missionOptions ?? {};
+    if (!options.ignoreUpdateEvents) return '';
+    const ignored = Number(options.ignoredUpdateEvents ?? result?.updateEventsIgnored ?? 0);
+    return `
+      <article class="debrief-panel">
+        <h2>Mission Options</h2>
+        <p>Update events: ignored.</p>
+        <p>Surfacing/update windows ignored: ${escapeHtml(ignored)}</p>
       </article>
     `;
   }

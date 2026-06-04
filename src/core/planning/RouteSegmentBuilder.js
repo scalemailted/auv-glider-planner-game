@@ -1,4 +1,5 @@
 import { getSelectedStart } from '../deployment/DeploymentZones.js';
+import { evaluateReachability } from './Navigability.js';
 import { clipLineToTerrain } from './RoutePreview.js';
 
 export function buildRouteSegmentsForAgent({ level, mission, agent, agentPlan, surfacedAgents = [], planningAnchor = null } = {}) {
@@ -34,16 +35,19 @@ export function buildRouteSegmentsForAgent({ level, mission, agent, agentPlan, s
     const from = points[index - 1];
     const to = points[index];
     const clipped = clipLineToTerrain(from, to, level, { mission });
+    const reachability = evaluateReachability(from, to, { level, mission });
     segments.push({
       from,
       to,
       kind: index === 1 ? 'startToWaypoint' : 'waypointToWaypoint',
       waypointIndex: index - 1,
-      valid: clipped.valid,
+      valid: clipped.valid && reachability.reachable !== false,
       points: clipped.points,
       blockedAt: clipped.blockedAt,
       lastValid: clipped.lastValid,
-      reason: clipped.reason ?? null
+      reason: clipped.valid === false ? clipped.reason ?? null : reachability.reachable === false ? reachability.reason : null,
+      reachability,
+      pathCells: reachability.pathCells ?? []
     });
   }
   return { anchor, missingAnchor: false, segments };

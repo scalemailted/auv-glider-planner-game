@@ -6,6 +6,7 @@ export function createGameState() {
   return { mode: 'menu', level: null, mission: null, plan: null, result: null, customLevel: null, importedLevel: null, importedMission: null, currentScenario: null, pendingScenarioSetup: null, selectedAgentId: null, selectedWindow: 0, planningTime: 0, challengeMode: 'perfectKnowledge',
     simulationResume: null, surfacedAgents: [], surfaceDecision: null, routeFailureDecision: null,
     simulation: createDefaultSimulationState(),
+    missionOptions: { ignoreUpdateEvents: false },
     currentPlanSource: 'manual', manualPlan: null, solverPlan: null, temporalGreedyPlan: null, greedyPlan: null, manualResult: null, solverResult: null, temporalGreedyResult: null, greedyResult: null, planResults: createEmptyPlanResultStore(),
     stochastic: createDefaultStochasticState(),
     stochasticRuns: createEmptyStochasticRunStore(),

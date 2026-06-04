@@ -203,6 +203,8 @@ For quick testing, use `Finish Instantly`.
 
 In surface-only missions, the simulation pauses when the glider surfaces. The pause dialog shows expected and actual position. Choose `Continue Mission` to keep the plan, `Update Waypoints` to return to Planning from the surfaced position, or `Finish Simulation` to run through the remaining mission.
 
+Planning includes an advanced `Ignore Update Events` option. It is off by default. When enabled, the simulation logs scheduled surfacing/update windows as ignored and continues without opening the surface decision dialog. Route failures, blocked terrain, fuel exhaustion, and mission-end conditions still apply.
+
 The surface dialog and route-failure recovery dialog also support external solver updates. Use `Export Observation Data`, run your solver, then use `Import Waypoint Data` with an `anchor.plan`, `anchor.plan-segment`, or compatible waypoint list. Valid imports replace only future waypoints for the surfaced or failed agent; completed past waypoints are preserved.
 
 If a surface dialog ever fails to appear, use the keyboard fallback: `C` continues, `U` updates waypoints from the surfaced position, and `F` finishes the mission and opens Debrief.

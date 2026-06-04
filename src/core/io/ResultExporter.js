@@ -51,8 +51,11 @@ export function buildResultExport({ level, mission, plan, result, label = 'Manua
       modeRecognized: (plan?.executionMode ?? plan?.meta?.executionMode) === 'surfaceUpdateBundle',
       segmentsAvailable: plan?.surfaceSegments?.length ?? 0,
       segmentsApplied: result?.surfaceUpdate?.segmentsApplied ?? 0,
-      automatedExecution: false
+      automatedExecution: false,
+      ignoreUpdateEvents: Boolean(result?.missionOptions?.ignoreUpdateEvents),
+      ignoredUpdateEvents: Number(result?.missionOptions?.ignoredUpdateEvents ?? result?.updateEventsIgnored ?? 0)
     },
+    missionOptions: cloneJson(result?.missionOptions ?? mission?.rules?.missionOptions ?? { ignoreUpdateEvents: false }),
     challengeReference: challenge ? {
       levelId: challenge.levelId,
       instanceId: challenge.instanceId,

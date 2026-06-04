@@ -2,6 +2,9 @@ export function beginScenario(state, { level, mission, challengeMode = null, sou
   if (!state) return null;
   state.level = level ?? null;
   state.mission = mission ?? null;
+  state.missionOptions = {
+    ignoreUpdateEvents: Boolean(mission?.rules?.missionOptions?.ignoreUpdateEvents ?? false)
+  };
   state.challengeMode = challengeMode ?? level?.challengeMode ?? state.challengeMode ?? 'perfectKnowledge';
   state.currentScenario = {
     levelId: level?.levelId ?? null,
@@ -18,6 +21,9 @@ export function beginScenario(state, { level, mission, challengeMode = null, sou
   state.surfaceDecision = null;
   state.routeFailureDecision = null;
   state.simulation = createIdleSimulationState();
+  state.missionOptions = {
+    ignoreUpdateEvents: Boolean(state.mission?.rules?.missionOptions?.ignoreUpdateEvents ?? false)
+  };
   state.selectedAgentId = null;
   state.selectedWindow = 0;
   state.planningTime = 0;

@@ -53,6 +53,7 @@ export class SimulationScene extends PhaserScene {
     this.modal = new Modal(this);
     normalizeStochasticState(this.app.state);
     applyStochasticToMission(this.app.state);
+    applyMissionOptionsToMission(this.app.state);
     this.trace = this.app.state.simulationTrace ?? createSimulationTrace();
     this.app.state.simulationTrace = this.trace;
     this.engine = new SimulationEngine({
@@ -195,6 +196,7 @@ export class SimulationScene extends PhaserScene {
 
   resetSimulation() {
     applyStochasticToMission(this.app.state);
+    applyMissionOptionsToMission(this.app.state);
     this.engine = new SimulationEngine({ level: this.app.state.level, mission: this.app.state.mission, plan: this.app.state.plan, trace: this.trace });
     this.abortNoticeShown = false;
     this.stopReasonNoticeShown = false;
@@ -213,6 +215,7 @@ export class SimulationScene extends PhaserScene {
     const target = clampTime(this.app.state.level, time);
     this.engine.pause();
     applyStochasticToMission(this.app.state);
+    applyMissionOptionsToMission(this.app.state);
     this.engine = new SimulationEngine({
       level: this.app.state.level,
       mission: this.app.state.mission,
@@ -1263,6 +1266,16 @@ function simulationTimelineMarkers(state, duration) {
     const kind = `window${frame.isSurfaceFrame ? ' surface' : ''}${frame.isFinalFrame ? ' mission-end' : ''}`;
     return `<span class="timeline-tick ${kind}" style="left:${left}%"></span>`;
   }).join('');
+}
+
+function applyMissionOptionsToMission(state = {}) {
+  state.missionOptions ??= { ignoreUpdateEvents: false };
+  state.mission ??= {};
+  state.mission.rules ??= {};
+  state.mission.rules.missionOptions = {
+    ...(state.mission.rules.missionOptions ?? {}),
+    ignoreUpdateEvents: Boolean(state.missionOptions.ignoreUpdateEvents)
+  };
 }
 
 function clampTime(level, time = 0) {

@@ -4,7 +4,7 @@ import { getDriftRules } from '../sim/StochasticDrift.js';
 import { getTimeConfig, getWindowEndTime } from '../time/MissionTime.js';
 import { clipLineToTerrain, estimateRouteEnergy } from './RoutePreview.js';
 import { getSelectedStart } from '../deployment/DeploymentZones.js';
-import { isCellNavigable } from './Navigability.js';
+import { buildNavigableReachabilityField, isCellNavigable } from './Navigability.js';
 
 export function buildPlanningGuidance({
   level,
@@ -261,15 +261,17 @@ function buildReachableCells(level, mission, agent, origin, current, duration, d
   const driftX = current[0] * driftGain * duration;
   const driftY = current[1] * driftGain * duration;
   const cells = [];
+  const field = buildNavigableReachabilityField({ level, mission, startCell: origin });
 
   for (let y = 0; y < level.world.grid.height; y += 1) {
     for (let x = 0; x < level.world.grid.width; x += 1) {
-      if (!isCellNavigable(level, mission, x, y).ok) continue;
+      const reachability = field.cells.get(`${x},${y}`);
+      if (!reachability) continue;
       const rx = x - origin.x;
       const ry = y - origin.y;
       const projectedX = rx - driftX * 0.28;
       const projectedY = ry - driftY * 0.28;
-      const distance = Math.hypot(projectedX, projectedY);
+      const distance = Math.max(Math.hypot(projectedX, projectedY), Number(reachability.cost ?? 0));
       if (distance <= maxDistance) {
         cells.push({ x, y, strength: 1 - distance / maxDistance });
       }
