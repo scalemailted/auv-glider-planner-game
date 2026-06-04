@@ -307,6 +307,7 @@ test('stochastic mode exposes ensemble and risk controls', async ({ page }) => {
   await expect(page.evaluate(() => window.anchorGame.state.ui.roiViewMode)).resolves.toBe('expectedValue');
   await startPlanningFromBriefing(page);
   await expect(page.locator('#mission-summary-hud')).toContainText('Deploy');
+  await expectTopHudTooltips(page);
   await expect(page.locator('#waypoint-timeline')).toContainText('Start: not selected');
   await expect(page.evaluate(() => import('./src/core/deployment/DeploymentZones.js').then(({ getSelectedStart }) => {
     const scene = window.anchorGame.phaser.scene.getScene('MissionWorkspaceScene');
@@ -387,6 +388,11 @@ test('stochastic mode exposes ensemble and risk controls', async ({ page }) => {
     gliderHitTargets: 1
   });
   await expect(page.locator('#mission-summary-hud')).toContainText(`Start ${deploymentCell.x},${deploymentCell.y}`);
+  await expectTopHudTooltips(page);
+  const markerCells = await validMarkerCellsNear(page, deploymentCell, 2);
+  await expectMarkerHoverAndPlacement(page, markerCells[0].x, markerCells[0].y);
+  await page.evaluate(() => window.anchorGame.phaser.scene.getScene('MissionWorkspaceScene').zoomMap(1.5));
+  await expectMarkerHoverAndPlacement(page, markerCells[1].x, markerCells[1].y);
   await expect(page.evaluate((cell) => import('./src/core/planning/PlanningGuidance.js').then(({ buildPlanningGuidance }) => {
     const guidance = buildPlanningGuidance({
       level: window.anchorGame.state.level,
@@ -513,6 +519,90 @@ async function expectWaypointCount(page, count) {
   await expect.poll(async () => page.evaluate(() => (
     window.anchorGame.state.plan?.agentPlans?.reduce((sum, agentPlan) => sum + (agentPlan.waypoints?.length || 0), 0) ?? 0
   ))).toBe(count);
+}
+
+async function expectTopHudTooltips(page) {
+  await expect(page.evaluate(() => {
+    const chips = [...document.querySelectorAll('#mission-summary-hud .top-hud-chip')];
+    return {
+      chipCount: chips.length,
+      allHaveTitles: chips.every((chip) => chip.getAttribute('title')?.trim()),
+      allHaveAriaLabels: chips.every((chip) => chip.getAttribute('aria-label')?.trim()),
+      titles: chips.map((chip) => chip.getAttribute('title'))
+    };
+  })).resolves.toMatchObject({
+    allHaveTitles: true,
+    allHaveAriaLabels: true
+  });
+}
+
+async function expectMarkerHoverAndPlacement(page, x, y) {
+  await page.evaluate(() => {
+    const scene = window.anchorGame.phaser.scene.getScene('MissionWorkspaceScene');
+    if (window.anchorGame.state.ui.placementMode !== 'marker') scene.togglePlacementMode();
+  });
+  const point = await cellCenter(page, x, y);
+  await page.mouse.move(point.x, point.y);
+  await expect(page.locator('#map-hover-tooltip')).toContainText(`Cell (${x}, ${y})`);
+  await expectTooltipNearPointer(page, point);
+  await expect(page.evaluate(() => window.anchorGame.state.ui.hoverCell)).resolves.toEqual({ x, y });
+  await page.mouse.click(point.x, point.y);
+  await expect(page.evaluate(() => {
+    const marker = window.anchorGame.state.plan.planningMarkers?.at(-1);
+    return marker ? { x: marker.x, y: marker.y } : null;
+  })).resolves.toEqual({ x, y });
+}
+
+async function expectTooltipNearPointer(page, point) {
+  await expect(page.evaluate(({ point }) => {
+    const rect = document.getElementById('map-hover-tooltip')?.getBoundingClientRect();
+    if (!rect) return { exists: false };
+    const horizontalGap = point.x <= rect.left
+      ? rect.left - point.x
+      : point.x - rect.right;
+    const verticalGap = point.y <= rect.top
+      ? rect.top - point.y
+      : point.y - rect.bottom;
+    return {
+      exists: true,
+      insideViewport: rect.left >= 0
+        && rect.top >= 0
+        && rect.right <= window.innerWidth
+        && rect.bottom <= window.innerHeight,
+      closeHorizontally: horizontalGap <= 24,
+      closeVertically: verticalGap <= 24,
+      notFarRight: rect.left - point.x < 80,
+      notFarBelow: rect.top - point.y < 80
+    };
+  }, { point })).resolves.toEqual({
+    exists: true,
+    insideViewport: true,
+    closeHorizontally: true,
+    closeVertically: true,
+    notFarRight: true,
+    notFarBelow: true
+  });
+}
+
+async function validMarkerCellsNear(page, origin, count = 2) {
+  return page.evaluate(({ origin, count }) => {
+    const level = window.anchorGame.state.level;
+    const cells = [];
+    for (let radius = 1; radius < Math.max(level.world.grid.width, level.world.grid.height); radius += 1) {
+      for (let dy = -radius; dy <= radius; dy += 1) {
+        for (let dx = -radius; dx <= radius; dx += 1) {
+          const x = origin.x + dx;
+          const y = origin.y + dy;
+          if (x < 0 || y < 0 || x >= level.world.grid.width || y >= level.world.grid.height) continue;
+          if (level.layers.terrain?.[y]?.[x]) continue;
+          if (cells.some((cell) => cell.x === x && cell.y === y)) continue;
+          cells.push({ x, y });
+          if (cells.length >= count) return cells;
+        }
+      }
+    }
+    return cells;
+  }, { origin, count });
 }
 
 async function expectCenterShellContained(page) {

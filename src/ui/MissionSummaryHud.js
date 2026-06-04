@@ -30,8 +30,9 @@ function chip(item) {
   if (item.primary) classes.push('primary');
   if (item.tone) classes.push(item.tone);
   const titleAttr = item.title ? ` title="${escapeHtml(item.title)}"` : '';
+  const ariaAttr = item.title ? ` aria-label="${escapeHtml(item.title)}"` : '';
   const priority = Number(item.priority ?? 7);
-  return `<span class="${classes.map(escapeHtml).join(' ')}" data-priority="${priority}"${titleAttr}>${escapeHtml(item.value)}</span>`;
+  return `<span class="${classes.map(escapeHtml).join(' ')}" data-priority="${priority}"${titleAttr}${ariaAttr}>${escapeHtml(item.value)}</span>`;
 }
 
 function escapeHtml(value) {

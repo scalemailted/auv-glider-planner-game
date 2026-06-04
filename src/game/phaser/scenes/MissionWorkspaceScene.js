@@ -57,7 +57,7 @@ import {
   planMatchesLevel,
   shortInstanceId
 } from '../../../core/identity/GameInstanceId.js';
-import { buildGuidanceLabel, cellToWorld, clampZoom, drawMissionMap, getMapLayout, pointerToCell } from '../PhaserCoreAdapter.js';
+import { buildGuidanceLabel, cellToWorld, clampZoom, drawMissionMap, getMapLayout, pointerToCanvasPoint, pointerToCell } from '../PhaserCoreAdapter.js';
 import { saveLevelToRegistry } from '../../../core/storage/LevelRegistry.js';
 import { getViewportMapBounds } from '../ViewportMapBounds.js';
 import { getActiveRenderTime } from '../../../core/time/ActiveRenderTime.js';
@@ -334,15 +334,16 @@ export class MissionWorkspaceScene extends PhaserScene {
     if (Math.abs(nextZoom - previousZoom) < 0.001) return;
     if (pointer && this.app.adapter.layout) {
       const layout = this.app.adapter.layout;
-      const gridX = (pointer.x - layout.ox) / layout.cell;
-      const gridY = (pointer.y - layout.oy) / layout.cell;
+      const point = this.resolvePointerPoint(pointer);
+      const gridX = (point.x - layout.ox) / layout.cell;
+      const gridY = (point.y - layout.oy) / layout.cell;
       const nextLayout = getMapLayout(this.app.state.level, undefined, undefined, this.getCurrentMapBounds(), {
         zoom: nextZoom,
         panX: 0,
         panY: 0
       });
-      camera.panX = pointer.x - gridX * nextLayout.cell - nextLayout.baseOx;
-      camera.panY = pointer.y - gridY * nextLayout.cell - nextLayout.baseOy;
+      camera.panX = point.x - gridX * nextLayout.cell - nextLayout.baseOx;
+      camera.panY = point.y - gridY * nextLayout.cell - nextLayout.baseOy;
     }
     camera.zoom = nextZoom;
     this.constrainCurrentMapCamera();
@@ -639,11 +640,20 @@ export class MissionWorkspaceScene extends PhaserScene {
     }
   }
 
+  resolvePointerPoint(pointer) {
+    return pointerToCanvasPoint(pointer, this.app?.phaser?.canvas);
+  }
+
+  resolvePointerCell(pointer) {
+    return pointerToCell(pointer, this.app.adapter.layout, { canvas: this.app?.phaser?.canvas });
+  }
+
   onPointerDown(pointer) {
+    const point = this.resolvePointerPoint(pointer);
     if (this.shouldPanMap(pointer)) {
       this.cameraPan = {
-        x: pointer.x,
-        y: pointer.y,
+        x: point.x,
+        y: point.y,
         panX: Number(this.app.state.ui.mapCamera?.panX ?? 0),
         panY: Number(this.app.state.ui.mapCamera?.panY ?? 0)
       };
@@ -651,21 +661,22 @@ export class MissionWorkspaceScene extends PhaserScene {
       return;
     }
     this.pointerInteraction = {
-      cell: pointerToCell(pointer, this.app.adapter.layout),
+      cell: this.resolvePointerCell(pointer),
       moved: false
     };
   }
 
   onPointerMove(pointer) {
+    const point = this.resolvePointerPoint(pointer);
     if (this.cameraPan) {
       this.app.state.ui.mapCamera ??= { zoom: 1, panX: 0, panY: 0 };
-      this.app.state.ui.mapCamera.panX = this.cameraPan.panX + pointer.x - this.cameraPan.x;
-      this.app.state.ui.mapCamera.panY = this.cameraPan.panY + pointer.y - this.cameraPan.y;
+      this.app.state.ui.mapCamera.panX = this.cameraPan.panX + point.x - this.cameraPan.x;
+      this.app.state.ui.mapCamera.panY = this.cameraPan.panY + point.y - this.cameraPan.y;
       this.constrainCurrentMapCamera();
       this.refreshMap();
       return;
     }
-    const cell = pointerToCell(pointer, this.app.adapter.layout);
+    const cell = this.resolvePointerCell(pointer);
     if (this.pointerInteraction?.cell && cell && (cell.x !== this.pointerInteraction.cell.x || cell.y !== this.pointerInteraction.cell.y)) {
       this.pointerInteraction.moved = true;
     }
@@ -692,7 +703,7 @@ export class MissionWorkspaceScene extends PhaserScene {
       this.suppressNextPointerUp = false;
       return;
     }
-    const cell = pointerToCell(pointer, this.app.adapter.layout);
+    const cell = this.resolvePointerCell(pointer);
     if (!cell || !this.pointerInteraction || this.pointerInteraction.moved) return;
     if (this.app.state.ui.placementMode === 'marker') {
       const marker = getMarkerAtCell(this.app.state.plan, cell.x, cell.y, this.app.state.selectedAgentId);

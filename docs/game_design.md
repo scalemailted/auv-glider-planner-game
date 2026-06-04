@@ -124,6 +124,8 @@ Planning is a spatiotemporal puzzle. The Phaser-native bottom timeline scrubs mi
 
 Marker Mode is a free exploration/annotation mode, not a route-planning mode. It can be used before deployment selection and does not require a selected start or planning anchor. Hover inspection samples the visible planning frame at the timeline time and reports cell coordinates, ROI, active priority target value, terrain/hazard state, current vector/magnitude, depth, and forecast confidence when available. Marker Mode suppresses route guidance lines, drift cones, reachability ovals, ETA/energy hover labels, and planned route drawing so the player can inspect temporal fields without receiving waypoint-placement warnings such as "choose deployment cell first." Waypoint Mode retains the deployment, anchor, time, energy, and terrain checks.
 
+Pointer-to-cell conversion is centralized through the Phaser map adapter. Hover inspection, marker placement, waypoint placement, zoom focus, and pan deltas normalize DOM pointer coordinates against the canvas before applying map bounds, zoom, pan, and grid clamping. The tooltip box may be visually offset from the cursor, but its cell content always comes from the same resolved hover cell used for highlights and marker targets.
+
 The map renderer uses a shared camera-aware layout for large generated maps. The player can zoom, pan, fit, or reset the map; pointer-to-cell hit testing, waypoint dragging, deployment selection, ROI heatmap, current vectors, route overlays, guidance, and simulation paths all use that same layout. DOM and HTML overlay panels remain fixed outside the map transform. Current vectors are automatically strided on larger maps to reduce clutter and redraw cost.
 
 ## Surfacing And Replanning

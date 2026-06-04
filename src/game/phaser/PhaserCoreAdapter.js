@@ -90,9 +90,32 @@ export function cellToWorld(layout, x, y) {
   };
 }
 
-export function pointerToCell(pointer, layout) {
-  const x = Math.floor((pointer.x - layout.ox) / layout.cell);
-  const y = Math.floor((pointer.y - layout.oy) / layout.cell);
+export function pointerToCanvasPoint(pointer, canvas = null) {
+  const event = pointer?.event ?? pointer;
+  const clientX = Number(event?.clientX);
+  const clientY = Number(event?.clientY);
+  const rect = canvas?.getBoundingClientRect?.();
+  if (rect && Number.isFinite(clientX) && Number.isFinite(clientY) && rect.width > 0 && rect.height > 0) {
+    const width = Number(canvas.width ?? rect.width);
+    const height = Number(canvas.height ?? rect.height);
+    return {
+      x: (clientX - rect.left) * (width / rect.width),
+      y: (clientY - rect.top) * (height / rect.height),
+      source: 'client'
+    };
+  }
+  return {
+    x: Number(pointer?.x ?? 0),
+    y: Number(pointer?.y ?? 0),
+    source: 'pointer'
+  };
+}
+
+export function pointerToCell(pointer, layout, { canvas = null } = {}) {
+  if (!layout) return null;
+  const point = pointerToCanvasPoint(pointer, canvas);
+  const x = Math.floor((point.x - layout.ox) / layout.cell);
+  const y = Math.floor((point.y - layout.oy) / layout.cell);
   if (x < 0 || y < 0 || x >= layout.width || y >= layout.height) return null;
   return { x, y };
 }

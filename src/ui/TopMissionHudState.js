@@ -10,7 +10,7 @@ export function buildTopHudState(state, context = {}) {
       className: 'idle',
       chips: [
         chip('glider', 'No mission', { primary: true, title: 'No mission loaded.' }),
-        chip('phase', phaseLabel(state), { primary: true }),
+        chip('phase', phaseLabel(state), { primary: true, title: `Mission phase: ${phaseLabel(state)}.` }),
         chip('status', 'Awaiting launch', { title: 'Choose or generate a mission from the Mission Console.' })
       ]
     };
@@ -38,20 +38,20 @@ function buildPlanningHudState(state, context = {}) {
   return {
     className: 'planning',
     chips: [
-      chip('glider', shortGliderLabel(forecast.label, forecast.agentId), { primary: true, title: forecast.label }),
-      chip('phase', 'Planning', { primary: true }),
+      chip('glider', shortGliderLabel(forecast.label, forecast.agentId), { primary: true, title: `Selected active glider: ${forecast.label}.` }),
+      chip('phase', 'Planning', { primary: true, title: 'Mission phase: Planning. Add or edit waypoints before execution.' }),
       chip('mode', placement, { title: placementModeTitle(state.ui?.placementMode, choosingDeployment) }),
-      chip('time', `T ${forecast.selectedTimeLabel}`, { title: 'Current planning time.' }),
-      chip('window', `W${forecast.selectedWindow}`, { title: 'Current planning window.' }),
+      chip('time', `T ${forecast.selectedTimeLabel}`, { title: `Mission elapsed planning time: ${forecast.selectedTimeLabel}.` }),
+      chip('window', `W${forecast.selectedWindow}`, { title: `Current surfacing / planning window: Window ${forecast.selectedWindow}.` }),
       chip('fuel', `Fuel ${formatHudMetric(Math.max(0, forecast.remainingFuel))}/${formatHudMetric(forecast.startingFuel)}`, {
         tone: forecast.remainingFuel < 0 ? 'bad' : '',
-        title: 'Estimated remaining fuel after the selected glider route.'
+        title: `Estimated remaining fuel for the selected glider: ${formatHudMetric(Math.max(0, forecast.remainingFuel))} out of ${formatHudMetric(forecast.startingFuel)}.`
       }),
-      chip('score', `EV ${formatHudMetric(forecast.expectedValue, 1)}`, { title: 'Expected ROI estimate from visible planning fields.' }),
-      chip('waypoints', `WP ${forecast.waypointCount}`, { title: 'Executable waypoints for the active glider.' }),
+      chip('score', `EV ${formatHudMetric(forecast.expectedValue, 1)}`, { title: `Expected route value based on current ROI/probability mode: ${formatHudMetric(forecast.expectedValue, 1)}.` }),
+      chip('waypoints', `WP ${forecast.waypointCount}`, { title: `Waypoints planned for the selected glider: ${forecast.waypointCount}.` }),
       chip('alerts', `! ${warningCount}`, {
         tone: warningCount ? 'warn' : 'ok',
-        title: warningCount ? uniqueWarnings(warnings).join('\n') : 'No active planning warnings.'
+        title: warningCount ? `${warningCount} active route or mission warning(s). See Mission Console for details.\n${uniqueWarnings(warnings).join('\n')}` : 'No active planning warnings.'
       }),
       chip('deployment', deploymentLabel(state, forecast.agentId, agent), { priority: 8, title: deploymentTitle }),
       chip('start', selectedStart ? `Start ${selectedStart.x},${selectedStart.y}` : 'Start ?', {
@@ -79,16 +79,16 @@ function buildSimulationHudState(state, context = {}) {
     : null;
 
   const chips = [
-    chip('glider', shortGliderLabel(agent.label ?? agent.name ?? agent.id ?? agentId, agentId), { primary: true, title: agent.label ?? agent.name ?? agent.id ?? agentId }),
+    chip('glider', shortGliderLabel(agent.label ?? agent.name ?? agent.id ?? agentId, agentId), { primary: true, title: `Selected active glider: ${agent.label ?? agent.name ?? agent.id ?? agentId}.` }),
     chip('phase', phase.label, { primary: true, tone: phase.tone, title: phase.title }),
-    chip('time', `T ${formatMissionTime(state.level, time)}`, { title: 'Current simulation time.' }),
-    chip('window', `W${getWindowForTime(state.level, time)}`, { title: 'Current mission window.' }),
-    chip('fuel', `Fuel ${formatHudMetric(agent.battery ?? batteryFromMission(state, agentId))}`, { title: 'Current selected glider fuel.' }),
-    chip('score', `Score ${formatHudMetric(summary.finalScore ?? summary.sampleScore ?? 0)}`, { title: 'Current mission score.' }),
-    chip('waypoints', `WP ${formatActiveWaypoint(agent, planWaypoints)}`, { title: 'Active waypoint progress for the selected glider.' }),
-    chip('samples', `Samp ${formatHudMetric(summary.sampledCells ?? summary.sampleScore ?? 0)}`, { priority: 6, title: 'Samples collected or sampled value.' }),
-    chip('hazards', `Haz ${Number(summary.hazardsHit ?? 0) + Number(summary.mobileHazardsHit ?? 0)}`, { priority: 6, title: 'Static and mobile hazards hit.' }),
-    stars ? chip('stars', `Stars ${stars}`, { priority: 6, title: 'Gold Star priority targets captured.' }) : null,
+    chip('time', `T ${formatMissionTime(state.level, time)}`, { title: `Mission elapsed simulation time: ${formatMissionTime(state.level, time)}.` }),
+    chip('window', `W${getWindowForTime(state.level, time)}`, { title: `Current mission window: Window ${getWindowForTime(state.level, time)}.` }),
+    chip('fuel', `Fuel ${formatHudMetric(agent.battery ?? batteryFromMission(state, agentId))}`, { title: `Current fuel for the selected glider: ${formatHudMetric(agent.battery ?? batteryFromMission(state, agentId))}.` }),
+    chip('score', `Score ${formatHudMetric(summary.finalScore ?? summary.sampleScore ?? 0)}`, { title: `Current mission score: ${formatHudMetric(summary.finalScore ?? summary.sampleScore ?? 0)}.` }),
+    chip('waypoints', `WP ${formatActiveWaypoint(agent, planWaypoints)}`, { title: `Active waypoint progress for the selected glider: ${formatActiveWaypoint(agent, planWaypoints)}.` }),
+    chip('samples', `Samp ${formatHudMetric(summary.sampledCells ?? summary.sampleScore ?? 0)}`, { priority: 6, title: `Samples collected or sampled value: ${formatHudMetric(summary.sampledCells ?? summary.sampleScore ?? 0)}.` }),
+    chip('hazards', `Haz ${Number(summary.hazardsHit ?? 0) + Number(summary.mobileHazardsHit ?? 0)}`, { priority: 6, title: `Hazards hit: ${Number(summary.hazardsHit ?? 0) + Number(summary.mobileHazardsHit ?? 0)} total static and mobile hazards.` }),
+    stars ? chip('stars', `Stars ${stars}`, { priority: 6, title: `Gold Star priority targets captured: ${stars}.` }) : null,
     chip('alerts', `! ${warningCount}`, { tone: warningCount ? 'warn' : 'ok', title: simulationAlertTitle(engine, summary, routeFailure, surfaceDecision) })
   ].filter(Boolean);
 
@@ -98,8 +98,8 @@ function buildSimulationHudState(state, context = {}) {
       chips: [
         chips[0],
         chip('phase', 'Surfaced', { primary: true, tone: 'warn', title: 'Simulation is paused at a surface decision.' }),
-        chip('time', `T ${formatMissionTime(state.level, time)}`),
-        chip('fuel', `Fuel ${formatHudMetric(agent.battery ?? batteryFromMission(state, agentId))}`),
+        chip('time', `T ${formatMissionTime(state.level, time)}`, { title: `Mission elapsed time at surfacing: ${formatMissionTime(state.level, time)}.` }),
+        chip('fuel', `Fuel ${formatHudMetric(agent.battery ?? batteryFromMission(state, agentId))}`, { title: `Fuel remaining at surfacing: ${formatHudMetric(agent.battery ?? batteryFromMission(state, agentId))}.` }),
         chip('status', 'Awaiting instructions', { title: 'Continue, replan, export, import, or finish from the decision prompt.' })
       ]
     };
@@ -110,8 +110,8 @@ function buildSimulationHudState(state, context = {}) {
       chips: [
         chips[0],
         chip('phase', 'Failure', { primary: true, tone: 'bad', title: 'Route failure decision required.' }),
-        chip('time', `T ${formatMissionTime(state.level, time)}`),
-        chip('reason', `Reason: ${shortReason(routeFailure.reason)}`, { tone: 'bad', title: labelReason(routeFailure.reason) })
+        chip('time', `T ${formatMissionTime(state.level, time)}`, { title: `Mission elapsed time when route failure occurred: ${formatMissionTime(state.level, time)}.` }),
+        chip('reason', `Reason: ${shortReason(routeFailure.reason)}`, { tone: 'bad', title: `Route failure reason: ${labelReason(routeFailure.reason)}.` })
       ]
     };
   }
@@ -124,9 +124,9 @@ function buildFallbackMissionHudState(state) {
     className: 'fallback',
     chips: [
       chip('glider', 'Glider', { primary: true }),
-      chip('phase', phaseLabel(state), { primary: true }),
-      chip('time', `T ${formatMissionTime(state.level, time)}`),
-      chip('window', `W${getWindowForTime(state.level, time)}`)
+      chip('phase', phaseLabel(state), { primary: true, title: `Mission phase: ${phaseLabel(state)}.` }),
+      chip('time', `T ${formatMissionTime(state.level, time)}`, { title: `Mission elapsed time: ${formatMissionTime(state.level, time)}.` }),
+      chip('window', `W${getWindowForTime(state.level, time)}`, { title: `Current mission window: Window ${getWindowForTime(state.level, time)}.` })
     ]
   };
 }
@@ -135,11 +135,34 @@ function chip(key, value, options = {}) {
   return {
     key,
     value: String(value ?? 'N/A'),
-    title: options.title ?? '',
+    title: options.title ?? defaultTooltip(key, value),
     tone: options.tone ?? '',
     primary: Boolean(options.primary),
     priority: Number(options.priority ?? defaultPriority(key))
   };
+}
+
+function defaultTooltip(key, value) {
+  const label = String(value ?? 'N/A');
+  const map = {
+    glider: `Selected active glider: ${label}.`,
+    phase: `Mission phase or simulation status: ${label}.`,
+    mode: `Current placement mode: ${label}.`,
+    time: `Mission elapsed time: ${label.replace(/^T\s*/, '')}.`,
+    window: `Current mission window: ${label}.`,
+    fuel: `Fuel or energy state for the selected glider: ${label}.`,
+    score: `Current score or expected value: ${label}.`,
+    waypoints: `Waypoint count or progress for the selected glider: ${label}.`,
+    samples: `Sampling progress: ${label}.`,
+    hazards: `Hazard count: ${label}.`,
+    stars: `Priority star capture progress: ${label}.`,
+    alerts: `Active warning count: ${label}. See Mission Console for details.`,
+    deployment: `Deployment state: ${label}.`,
+    start: `Selected start state: ${label}.`,
+    status: `Mission status: ${label}.`,
+    reason: `Route failure reason: ${label}.`
+  };
+  return map[key] ?? label;
 }
 
 function defaultPriority(key) {

@@ -46,12 +46,16 @@ export class MapHoverTooltip {
     let top = base.y + offset;
     if (left + rect.width + pad > globalThis.innerWidth) left = base.x - rect.width - offset;
     if (top + rect.height + pad > globalThis.innerHeight) top = base.y - rect.height - offset;
-    this.root.style.left = `${Math.max(pad, left)}px`;
-    this.root.style.top = `${Math.max(pad, top)}px`;
+    this.root.style.left = `${clamp(left, pad, Math.max(pad, globalThis.innerWidth - rect.width - pad))}px`;
+    this.root.style.top = `${clamp(top, pad, Math.max(pad, globalThis.innerHeight - rect.height - pad))}px`;
   }
 }
 
 function pointerClientPosition(app, pointer) {
+  const event = pointer?.event ?? pointer;
+  const clientX = Number(event?.clientX);
+  const clientY = Number(event?.clientY);
+  if (Number.isFinite(clientX) && Number.isFinite(clientY)) return { x: clientX, y: clientY };
   const canvas = app?.phaser?.canvas;
   const rect = canvas?.getBoundingClientRect?.();
   if (!rect) return { x: Number(pointer.x ?? 0), y: Number(pointer.y ?? 0) };
@@ -136,8 +140,14 @@ function createRoot(app) {
   const root = document.createElement('div');
   root.id = 'map-hover-tooltip';
   root.hidden = true;
-  (app?.elements?.uiRoot ?? document.body).appendChild(root);
+  document.body.appendChild(root);
   return root;
+}
+
+function clamp(value, min, max) {
+  const numeric = Number(value);
+  if (!Number.isFinite(numeric)) return min;
+  return Math.max(min, Math.min(max, numeric));
 }
 
 function escapeHtml(value) {
