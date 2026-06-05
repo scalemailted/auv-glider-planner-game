@@ -5,6 +5,7 @@ import { getVectorPresetConfig } from '../generation/VectorFieldPresets.js';
 const TAU = Math.PI * 2;
 const DEFAULT_TRAIL_LIMIT = 44;
 const MAX_DEMO_MAGNITUDE = 1.35;
+export const FLOW_DEMO_FIELD_DURATION_HOURS = 24;
 export const FLOW_DEMO_GRID = { width: 18, height: 12 };
 export const FLOW_DEMO_FIELD_MODES = ['static', 'dynamic', 'blended', 'partitioned'];
 export const FLOW_DEMO_TIME_SPEEDS = [0.1, 0.5, 1, 2, 5, 10];
@@ -36,7 +37,9 @@ export function getFlowDemoPresetConfig(mode = 'static', preset = null) {
   const temporal = normalizedMode !== 'static';
   return getVectorPresetConfig(presetId, {
     temporalEvolution: temporal,
-    currentVariability: temporal ? undefined : 0
+    currentVariability: temporal ? undefined : 0,
+    duration: FLOW_DEMO_FIELD_DURATION_HOURS,
+    durationHours: FLOW_DEMO_FIELD_DURATION_HOURS
   });
 }
 
@@ -107,10 +110,12 @@ export function sampleComposedDemoFlow({
 
 function sampleSingleDemoFlow({ fieldMode = 'static', x = 0, y = 0, time = 0, preset = null, terrain = null } = {}) {
   const presetConfig = getFlowDemoPresetConfig(fieldMode, preset);
+  const mode = normalizeFieldMode(fieldMode);
+  const sampleTime = mode === 'static' ? 0 : positiveModulo(time, FLOW_DEMO_FIELD_DURATION_HOURS);
   const sample = sampleCurrentField({
     x,
     y,
-    time: normalizeFieldMode(fieldMode) === 'static' ? 0 : time,
+    time: sampleTime,
     grid: FLOW_DEMO_GRID,
     coordinates: CURRENT_COORDINATES.NORMALIZED,
     terrain,
@@ -233,6 +238,12 @@ function clampVector(vector) {
 
 function clamp01(value) {
   return Math.max(0, Math.min(1, Number(value) || 0));
+}
+
+function positiveModulo(value, modulus) {
+  const number = Number(value) || 0;
+  const base = Math.max(1, Number(modulus) || 1);
+  return ((number % base) + base) % base;
 }
 
 function addRandomIslands(terrain, rng) {

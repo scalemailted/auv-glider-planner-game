@@ -32,10 +32,13 @@ Planning also runs a pre-simulation route validity audit over the active plan. T
 
 ## Main Menu Flow
 
+The main menu groups isolated concept sandboxes under `Demos`, then player training under `Tutorials`, followed by challenge/editor/load tools. Demos validate core field behavior before those fields are used inside full missions; tutorials teach the player how to play missions.
+
 The active top-level modes are:
 
+- `Flow Fields Demo`: opens one isolated Phaser vector-field sandbox with Static, Dynamic, Blended, and Partitioned modes. It renders current arrows, passive glider-like particles, trails, preset selection, blend weight, partition type, optional deterministic terrain (`No Land`, `Random Islands`, `Coastline`, `Channel`), and time-speed controls without creating missions, waypoint plans, scores, or leaderboard records. When terrain is enabled, arrows over land are hidden, particles reset on land collision, and the shared topology-aware sampler receives the terrain mask so shoreline deflection/risk behavior can be inspected visually. See `docs/flow_fields_demo.md` for the full behavior and implementation notes.
+- `ROI Generator Demo`: opens one isolated Phaser sample-value sandbox. It renders a seeded ROI/value heatmap, high-value markers, field statistics, distribution selection, seed/regenerate controls, hotspot count, noise, and static/dynamic time mode without creating missions, waypoint plans, scores, or leaderboard records. See `docs/roi_generator_demo.md`.
 - `Tutorial Mode`: opens a center-viewport tutorial browser with left-side filters/progress controls, scrollable lesson cards in the center, and selected-lesson details in the right panel.
-- `Flow Fields Demo`: opens one isolated Phaser vector-field sandbox with Static, Dynamic / Temporal, Blended Composite, and Partitioned Composite modes. It renders current arrows, passive glider-like particles, trails, preset selection, blend weight, partition type, optional deterministic terrain (`No Land`, `Random Islands`, `Coastline`, `Channel`), and time-speed controls without creating missions, waypoint plans, scores, or leaderboard records. When terrain is enabled, arrows over land are hidden, particles reset on land collision, and the shared topology-aware sampler receives the terrain mask so shoreline deflection/risk behavior can be inspected visually. See `docs/flow_fields_demo.md` for the full behavior and implementation notes.
 - `Deterministic Challenge`: generates a fresh perfect-knowledge level and mission, then opens Mission Briefing.
 - `Stochastic Challenge`: generates a fresh forecast-mode level with hidden truth, visible forecast/ensemble layers, and a default mission, then opens Mission Briefing.
 - `Environment Editor`: opens the visual level editor for terrain, hazards, depth, ROI, bases, agent starts, mission defaults, time frames, and U/V current edits.

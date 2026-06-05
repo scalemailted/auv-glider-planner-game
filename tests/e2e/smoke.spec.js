@@ -21,9 +21,12 @@ test('campaign planning smoke flow reaches debrief', async ({ page }) => {
   await expect(page.locator('#right-panel')).toHaveCount(0);
   await expect(page.locator('#context-panel')).toBeEmpty();
   await expect(page.locator('#mission-console')).toContainText('ANCHOR: Glider Command');
-  await expect(page.locator('#mission-console button.console-button')).toHaveCount(8);
-  await expect(page.locator('#mission-console .accordion-header')).toHaveCount(1);
+  await expect(page.locator('#mission-console button.console-button')).toHaveCount(9);
+  await expect(page.locator('#mission-console .accordion-header')).toHaveCount(2);
+  await expect(page.locator('#mission-console')).toContainText('Demos');
+  await expect(page.locator('#mission-console')).toContainText('Tutorials');
   await expect(page.locator('#mission-console')).toContainText('Flow Fields Demo');
+  await expect(page.locator('#mission-console')).toContainText('ROI Generator Demo');
   await expect(page.locator('#mission-console')).not.toContainText('Static Flow Field Demo');
   await expect(page.locator('#mission-console')).not.toContainText('Temporal Flow Field Demo');
   await expect(page.locator('#mission-console .console-status')).toContainText('No mission loaded');
@@ -91,6 +94,19 @@ test('campaign planning smoke flow reaches debrief', async ({ page }) => {
   await page.locator('#flow-demo-terrain').selectOption('coastline');
   await expect.poll(() => page.evaluate(() => window.anchorGame.phaser.scene.getScene('FlowFieldDemoScene').terrainMode)).toBe('coastline');
   await expect(page.locator('#mission-console')).toContainText('Reset Particles');
+  await page.locator('#mission-console [data-action="menu"]').click();
+  await expect.poll(() => page.evaluate(() => window.anchorGame.phaser.scene.getScene('MainMenuScene').sys.isActive())).toBe(true);
+
+  await page.locator('#mission-console [data-action="roi-demo"]').click();
+  await expect.poll(() => page.evaluate(() => window.anchorGame.phaser.scene.getScene('RoiGeneratorDemoScene').sys.isActive())).toBe(true);
+  await expect(page.locator('#mission-console')).toContainText('ROI Generator Demo');
+  await expect(page.locator('#roi-demo-distribution')).toBeVisible();
+  await page.locator('#roi-demo-distribution').selectOption('gradientFront');
+  await expect.poll(() => page.evaluate(() => window.anchorGame.phaser.scene.getScene('RoiGeneratorDemoScene').distribution)).toBe('gradientFront');
+  await page.locator('#roi-demo-time-mode').selectOption('dynamic');
+  await expect.poll(() => page.evaluate(() => window.anchorGame.phaser.scene.getScene('RoiGeneratorDemoScene').timeMode)).toBe('dynamic');
+  await page.locator('#mission-console [data-action="regenerate"]').click();
+  await expect.poll(() => page.evaluate(() => window.anchorGame.phaser.scene.getScene('RoiGeneratorDemoScene').seed)).toContain('2');
   await page.locator('#mission-console [data-action="menu"]').click();
   await expect.poll(() => page.evaluate(() => window.anchorGame.phaser.scene.getScene('MainMenuScene').sys.isActive())).toBe(true);
 

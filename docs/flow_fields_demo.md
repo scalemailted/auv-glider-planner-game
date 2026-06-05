@@ -2,9 +2,11 @@
 
 ## 1. Purpose
 
-The Flow Fields Demo isolates vector-field behavior from the full mission planner. It lets developers, students, researchers, external solver users, and future contributors inspect static currents, temporal currents, blended fields, partitioned fields, passive particle drift, and terrain boundary effects before those behaviors are used inside full missions.
+The Flow Fields Demo isolates vector-field behavior from the full mission planner. It lets developers, students, researchers, external solver users, and future contributors inspect static currents, dynamic currents, blended fields, partitioned fields, passive particle drift, and terrain boundary effects before those behaviors are used inside full missions.
 
 This demo validates current behavior. It is not a scored mission, a route planner, a waypoint execution mode, or a leaderboard mode.
+
+It sits in the Main Menu `Demos` section alongside the ROI Generator Demo. Demos validate core mechanics; tutorials teach players how to play missions.
 
 ## 2. Why the Demo Exists
 
@@ -21,11 +23,11 @@ The demo provides a controlled scene for questions like:
 
 ## 3. User-Facing Controls
 
-- `Field Mode`: chooses Static, Dynamic / Temporal, Blended Composite, or Partitioned Composite behavior.
+- `Field Mode`: chooses Static, Dynamic, Blended, or Partitioned behavior.
 - `Primary Field`: selects the main synthetic ocean-inspired current preset.
 - `Secondary Field`: selects the second preset used by blended and partitioned modes.
-- `Blend Weight`: controls the primary/secondary mix in Blended Composite mode.
-- `Partition`: chooses how Partitioned Composite mode divides the domain: vertical split, horizontal split, quadrants, or radial center.
+- `Blend Weight`: controls the primary/secondary mix in Blended mode.
+- `Partition`: chooses how Partitioned mode divides the domain: vertical split, horizontal split, quadrants, or radial center.
 - `Terrain`: selects No Land, Random Islands, Coastline, or Channel.
 - `Reset Terrain`: advances the deterministic terrain seed and rebuilds the land mask.
 - `Time Speed`: scales simulated field time from 0.1x to 10x.
@@ -41,7 +43,7 @@ Particle count is currently fixed by mode: static mode uses fewer particles than
 
 Static mode samples the selected field at time zero. Arrows remain stable, while particles move through the fixed current.
 
-### Dynamic / Temporal
+### Dynamic
 
 Dynamic mode passes advancing demo time into the shared current sampler. Arrows, magnitudes, directions, and particle drift can change as simulated time advances.
 
@@ -55,7 +57,7 @@ finalVector = weightA * fieldA + weightB * fieldB
 
 The demo clamps combined vector magnitude so stacked fields remain visually bounded.
 
-### Partitioned Composite
+### Partitioned
 
 Partitioned mode samples different presets in different regions. The current implementation supports:
 

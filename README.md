@@ -10,7 +10,7 @@ Version 2 is a playable static-web game built with vanilla JavaScript, HTML, CSS
 
 - main menu, campaign flow, mission briefing, planning, simulation, debrief, level editor, and dataset export scenes
 - Phaser-native top-level modes for Tutorial, Deterministic Challenge, Stochastic Challenge, Environment Editor, and Load Level JSON
-- isolated Flow Fields Demo for current arrows, glider-like particle motion, composition, and terrain boundary diagnostics
+- isolated Demos section with Flow Fields Demo for current arrows and ROI Generator Demo for sample-value heatmaps
 - game-first mission planning workspace with a large Phaser map, HTML/CSS mission-control overlays, top selected-glider planning HUD, bottom mission-time slider, waypoint drawer/table, and non-executable planning markers
 - Phaser 3 scene shell with Main Menu, Mission Briefing, Mission Workspace, Simulation, Debrief, Environment Editor, and Dataset Export scenes
 - fourteen staged tutorial lessons built from handcrafted tutorial scenarios
@@ -68,7 +68,7 @@ See [HOWPLAY.md](HOWPLAY.md) for complete player instructions, tutorial guidance
 Quick loop:
 
 1. Open the game.
-2. Choose `Flow Fields Demo`, `Tutorial Mode`, `Deterministic Challenge`, `Stochastic Challenge`, `Environment Editor`, or `Load Level JSON`.
+2. Choose a demo, tutorial, generated challenge, editor, dataset export, or level import from the Mission Console.
 3. For generated challenges, configure the scenario setup, then click `Generate Mission`.
 3. Start a tutorial, generate a challenge, import a level JSON, or use an editor/custom level.
 4. Read Mission Briefing, then click `Start Planning`.
@@ -81,6 +81,7 @@ Quick loop:
 
 - [Game design](docs/game_design.md)
 - [Flow Fields Demo](docs/flow_fields_demo.md)
+- [ROI Generator Demo](docs/roi_generator_demo.md)
 - [Solver workflow](docs/solver_workflow.md)
 - [Export formats](docs/export_formats.md)
 - [Plan format](docs/plan_format.md)
@@ -93,9 +94,13 @@ Quick loop:
 
 ## Gameplay Features
 
-### Flow Fields Demo
+### Demos
 
-The Main Menu includes one `Flow Fields Demo` above Tutorial Mode. It is an isolated Phaser sandbox for teaching and validating current vectors: the map shows an arrow grid, glider-like particles drift through the selected field, and particle heading follows movement. The demo supports Static, Dynamic / Temporal, Blended Composite, and Partitioned Composite modes with selectable presets, blend weight, partition type, optional terrain modes (`No Land`, `Random Islands`, `Coastline`, `Channel`), reset/play controls, and a time-speed scale from 0.1x to 10x. Land is deterministic from the demo seed; arrows over land are hidden and particles reset on land collision. It does not create missions, waypoints, scores, leaderboard entries, or route-validation state. See [Flow Fields Demo](docs/flow_fields_demo.md) for the controls, implementation files, and limitations.
+The Main Menu includes a `Demos` section above `Tutorials`. Demos are isolated concept scenes for validating field behavior before those fields are used inside full missions.
+
+`Flow Fields Demo` is a Phaser sandbox for teaching and validating current vectors: the map shows an arrow grid, glider-like particles drift through the selected field, and particle heading follows movement. The demo supports Static, Dynamic, Blended, and Partitioned modes with selectable presets, blend weight, partition type, optional terrain modes (`No Land`, `Random Islands`, `Coastline`, `Channel`), reset/play controls, and a time-speed scale from 0.1x to 10x. Land is deterministic from the demo seed; arrows over land are hidden and particles reset on land collision. It does not create missions, waypoints, scores, leaderboard entries, or route-validation state. See [Flow Fields Demo](docs/flow_fields_demo.md) for the controls, implementation files, and limitations.
+
+`ROI Generator Demo` is a seeded sample-value heatmap sandbox. It supports Uniform Random, Gaussian Hotspots, Clustered Hotspots, Gradient / Front, Sparse Targets, and Ridge / Corridor distributions with seed, hotspot count, noise, static/dynamic time mode, regenerate, and return-to-menu controls. It does not create missions, waypoint plans, leaderboard entries, or scoring results. See [ROI Generator Demo](docs/roi_generator_demo.md).
 
 ### Campaign And Tutorials
 

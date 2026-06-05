@@ -10,6 +10,7 @@ import { DebriefScene } from './scenes/DebriefScene.js';
 import { EnvironmentEditorScene } from './scenes/EnvironmentEditorScene.js';
 import { DatasetExportScene } from './scenes/DatasetExportScene.js';
 import { FlowFieldDemoScene } from './scenes/FlowFieldDemoScene.js';
+import { RoiGeneratorDemoScene } from './scenes/RoiGeneratorDemoScene.js';
 import { LoadLevelByIdScene } from './scenes/LoadLevelByIdScene.js';
 import { LoadLevelJsonScene } from './scenes/LoadLevelJsonScene.js';
 import { PHASER_HEIGHT, PHASER_WIDTH } from './PhaserCoreAdapter.js';
@@ -52,6 +53,7 @@ export class PhaserGameApp {
         EnvironmentEditorScene,
         DatasetExportScene,
         FlowFieldDemoScene,
+        RoiGeneratorDemoScene,
         LoadLevelJsonScene,
         LoadLevelByIdScene
       ],
@@ -234,7 +236,8 @@ function sceneKey(name) {
     debrief: 'DebriefScene',
     levelEditor: 'EnvironmentEditorScene',
     datasetExport: 'DatasetExportScene',
-    flowDemo: 'FlowFieldDemoScene'
+    flowDemo: 'FlowFieldDemoScene',
+    roiDemo: 'RoiGeneratorDemoScene'
   };
   return aliases[name] ?? name;
 }

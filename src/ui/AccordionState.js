@@ -15,6 +15,10 @@ export function applyMissionConsoleAccordions(root, mode = 'default', defaults =
       flattenOrRemoveSection(section);
       continue;
     }
+    if (section.dataset.keepTitle === 'true') {
+      renderNonAccordionSection(section, title, titleElement);
+      continue;
+    }
     if (!shouldRenderAsAccordionSection({ title, items: sectionItems(section, titleElement) })) {
       renderNonAccordionSection(section, title, titleElement);
       continue;
@@ -93,6 +97,12 @@ export function getAccordionDefaults(mode) {
       composition: false,
       terrain: true,
       controls: true
+    },
+    roiDemo: {
+      distribution: true,
+      shape: true,
+      time: true,
+      'field-stats': false
     },
     tutorial: {
       'tutorial-campaign': true,
@@ -242,6 +252,11 @@ function renderNonAccordionSection(section, title, titleElement = null) {
   const items = sectionItems(section, titleElement).filter((item) => !item.hidden);
   if (!items.length) {
     section.remove();
+    return;
+  }
+  if (section.dataset.keepTitle === 'true') {
+    section.dataset.accordionReady = 'true';
+    section.classList.add('non-accordion-section');
     return;
   }
   if (items.length === 1 && items[0].type === 'button') {

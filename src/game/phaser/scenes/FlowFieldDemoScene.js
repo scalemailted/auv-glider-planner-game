@@ -30,6 +30,7 @@ export class FlowFieldDemoScene extends PhaserScene {
     this.timeSpeedScale = 1;
     this.demoTime = 0;
     this.paused = false;
+    this.lastDebugDemoTime = -Infinity;
   }
 
   init(data = {}) {
@@ -44,6 +45,7 @@ export class FlowFieldDemoScene extends PhaserScene {
     this.timeSpeedScale = finiteNumber(data.timeSpeedScale, 1);
     this.demoTime = 0;
     this.paused = false;
+    this.lastDebugDemoTime = -Infinity;
     this.particles = createDemoParticles({
       count: this.fieldMode === 'static' ? 18 : 22,
       seed: `flow-demo-${this.fieldMode}:${this.preset}:${this.secondaryPreset}`
@@ -88,6 +90,7 @@ export class FlowFieldDemoScene extends PhaserScene {
       field: sampleDemoFlow,
       fieldConfig: this.fieldConfig()
     });
+    this.debugFlowSample();
     this.draw();
   }
 
@@ -372,7 +375,9 @@ export class FlowFieldDemoScene extends PhaserScene {
     const preset = getFlowDemoPresetConfig(this.fieldMode, this.preset);
     const secondary = getFlowDemoPresetConfig(this.fieldMode, this.secondaryPreset);
     const secondaryText = ['blended', 'partitioned'].includes(this.fieldMode) ? ` + ${secondary.label}` : '';
-    this.statusText?.setText(`Mode: ${fieldModeLabel(this.fieldMode)} | Field: ${preset?.label ?? 'Current Field'}${secondaryText} | Terrain: ${terrainModeLabel(this.terrainMode)} | Time: ${this.demoTime.toFixed(1)} hr | Speed: ${this.timeSpeedScale}x | Particles: ${this.particles?.length ?? 0}`);
+    const centerSample = sampleDemoFlow({ ...this.fieldConfig(), x: 0.5, y: 0.5, time: this.demoTime });
+    this.statusText?.setText(`Mode: ${fieldModeLabel(this.fieldMode)} | Preset: ${preset?.label ?? 'Current Field'}${secondaryText} | Demo time: ${this.demoTime.toFixed(1)} hr | Time Speed: ${this.timeSpeedScale}x | Sample: (${centerSample.u.toFixed(2)}, ${centerSample.v.toFixed(2)}) | Terrain: ${terrainModeLabel(this.terrainMode)}`);
+    this.statusText?.setWordWrapWidth(Math.min(980, map.width));
     this.statusText?.setPosition(margin, map.y + map.height + 18);
   }
 
@@ -398,14 +403,33 @@ export class FlowFieldDemoScene extends PhaserScene {
     this.objects = [];
     this.graphics = null;
   }
+
+  debugFlowSample() {
+    if (!globalThis.ANCHOR_DEBUG_FLOW_DEMO) return;
+    if (this.demoTime - this.lastDebugDemoTime < 1) return;
+    this.lastDebugDemoTime = this.demoTime;
+    const sample = sampleDemoFlow({ ...this.fieldConfig(), x: 0.5, y: 0.5, time: this.demoTime });
+    globalThis.console?.debug?.('[FlowFieldsDemo][Sample]', {
+      mode: fieldModeLabel(this.fieldMode),
+      preset: this.preset,
+      secondaryPreset: this.secondaryPreset,
+      demoTime: Number(this.demoTime.toFixed(2)),
+      timeSpeedScale: this.timeSpeedScale,
+      center: {
+        u: Number(sample.u.toFixed(4)),
+        v: Number(sample.v.toFixed(4)),
+        magnitude: Number(Math.hypot(sample.u, sample.v).toFixed(4))
+      }
+    });
+  }
 }
 
 function fieldModeLabel(mode) {
   return {
     static: 'Static',
     dynamic: 'Dynamic',
-    blended: 'Blended Composite',
-    partitioned: 'Partitioned Composite'
+    blended: 'Blended',
+    partitioned: 'Partitioned'
   }[mode] ?? 'Static';
 }
 

@@ -10,7 +10,7 @@ Playwright is optional and intended for development smoke testing.
 
 Temporal Greedy is useful for planner smoke checks because it should return promptly, preserve non-selected glider routes, and validate before simulation. See `docs/temporal_greedy.md` for the expected selected-glider baseline behavior.
 
-The Flow Fields Demo is the manual diagnostic sandbox for current-field behavior before debugging full missions. Use `docs/flow_fields_demo.md` when validating static/dynamic fields, blend or partition behavior, terrain boundary effects, and topology-aware shoreline risk.
+The `Demos` menu section contains isolated concept scenes for validating field behavior before debugging full missions. Use `docs/flow_fields_demo.md` when validating static/dynamic fields, blend or partition behavior, terrain boundary effects, and topology-aware shoreline risk. Use `docs/roi_generator_demo.md` when validating seeded ROI/value distributions, hotspot clustering, noise, and dynamic value-field behavior.
 
 ## Core Development Checks
 
@@ -63,6 +63,7 @@ The e2e smoke tests verify:
 - app loads
 - main menu appears
 - Flow Fields Demo opens and switches demo modes
+- ROI Generator Demo opens, switches distributions, regenerates, and returns to main menu
 - level select opens
 - Tutorial 01 starts
 - mission briefing appears
@@ -111,6 +112,7 @@ Manual planner checks should cover:
 When time allows, run a browser smoke pass:
 
 - tutorial campaign start, planning, simulation, and debrief;
+- Flow Fields Demo and ROI Generator Demo open from the `Demos` section and return to Main Menu;
 - deterministic generated challenge;
 - stochastic generated challenge with forecast controls;
 - level generator and Environment Editor import/export;

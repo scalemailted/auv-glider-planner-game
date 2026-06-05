@@ -2,6 +2,7 @@ import { CAMPAIGN_LEVELS } from '../core/campaign/CampaignLevels.js';
 import { shortInstanceId } from '../core/identity/GameInstanceId.js';
 import { formatMetric } from '../core/evaluation/PlanComparison.js';
 import { FLOW_DEMO_FIELD_MODES, FLOW_DEMO_PARTITION_TYPES, FLOW_DEMO_PRESET_CHOICES, FLOW_DEMO_TERRAIN_MODES, FLOW_DEMO_TIME_SPEEDS } from '../core/demo/FlowFieldDemo.js';
+import { ROI_DEMO_DISTRIBUTIONS, ROI_DEMO_TIME_MODES, roiDistributionLabel } from '../core/demo/DemoRoiFields.js';
 import { getVectorPresetConfig } from '../core/generation/VectorFieldPresets.js';
 
 export class MissionConsole {
@@ -21,10 +22,14 @@ export class MissionConsole {
       <section class="console-section">
         <h2>Demos</h2>
         <button data-action="flow-fields" class="console-button">Flow Fields Demo</button>
+        <button data-action="roi-demo" class="console-button">ROI Generator Demo</button>
+      </section>
+      <section class="console-section" data-keep-title="true">
+        <h2>Tutorials</h2>
+        <button data-action="tutorial" class="console-button primary">Tutorial Mode</button>
       </section>
       <section class="console-section">
         <h2>Launch</h2>
-        <button data-action="tutorial" class="console-button primary">Tutorial Mode</button>
         <button data-action="deterministic" class="console-button">Deterministic Challenge</button>
         <button data-action="stochastic" class="console-button">Stochastic Challenge</button>
         <button data-action="editor" class="console-button">Environment Editor</button>
@@ -44,6 +49,7 @@ export class MissionConsole {
     this.app.applyConsoleAccordions?.('idle');
     this.bind({
       'flow-fields': () => this.app.phaser.scene.start('FlowFieldDemoScene', { fieldMode: 'dynamic' }),
+      'roi-demo': () => this.app.phaser.scene.start('RoiGeneratorDemoScene'),
       tutorial: () => this.mainMenuScene()?.openTutorialBrowser?.(),
       deterministic: () => this.mainMenuScene()?.openChallengeSetup?.('perfectKnowledge'),
       stochastic: () => this.mainMenuScene()?.openChallengeSetup?.('forecast'),
@@ -151,6 +157,85 @@ export class MissionConsole {
       'reset-terrain': handlers.resetTerrain,
       pause: handlers.pause,
       reset: handlers.reset,
+      menu: handlers.menu
+    });
+  }
+
+  renderRoiDemoControls(state = {}, handlers = {}) {
+    if (!this.root) return;
+    this.root.innerHTML = `
+      <section class="console-header">
+        <div class="console-kicker">ROI Generator Demo</div>
+        <h1>${escapeHtml(state.title ?? 'ROI Generator Demo')}</h1>
+        <p>Isolated sample-value field visualization.</p>
+      </section>
+      <section class="console-status">
+        <span>${escapeHtml(state.status ?? 'ROI field')}</span>
+        <strong>${escapeHtml(state.timeMode === 'dynamic' && !state.paused ? 'Animating' : state.paused ? 'Paused' : 'Static')}</strong>
+        <small>Heatmap shows value/probability regions; no mission scoring is created.</small>
+      </section>
+      <section class="console-section">
+        <h2>Distribution</h2>
+        <label class="compact-field">
+          Scheme
+          <select id="roi-demo-distribution">
+            ${ROI_DEMO_DISTRIBUTIONS.map((distribution) => `<option value="${escapeAttr(distribution)}" ${state.distribution === distribution ? 'selected' : ''}>${escapeHtml(roiDistributionLabel(distribution))}</option>`).join('')}
+          </select>
+        </label>
+        <label class="compact-field">
+          Seed
+          <input id="roi-demo-seed" type="text" value="${escapeAttr(state.seed ?? 'anchor-roi-demo')}" />
+        </label>
+        <button data-action="regenerate" class="console-button">Regenerate</button>
+      </section>
+      <section class="console-section">
+        <h2>Shape</h2>
+        <label class="compact-field">
+          Hotspot Count
+          <input id="roi-demo-hotspots" type="range" min="1" max="8" step="1" value="${escapeAttr(state.hotspotCount ?? 4)}" />
+        </label>
+        <div class="hud-muted">${escapeHtml(state.hotspotCount ?? 4)} hotspot(s)</div>
+        <label class="compact-field">
+          Noise
+          <input id="roi-demo-noise" type="range" min="0" max="1" step="0.05" value="${escapeAttr(state.noise ?? 0.15)}" />
+        </label>
+        <div class="hud-muted">Noise ${escapeHtml(Number(state.noise ?? 0.15).toFixed(2))}</div>
+      </section>
+      <section class="console-section">
+        <h2>Time</h2>
+        <label class="compact-field">
+          Time Mode
+          <select id="roi-demo-time-mode">
+            ${ROI_DEMO_TIME_MODES.map((mode) => `<option value="${escapeAttr(mode)}" ${state.timeMode === mode ? 'selected' : ''}>${escapeHtml(mode === 'dynamic' ? 'Dynamic' : 'Static')}</option>`).join('')}
+          </select>
+        </label>
+        <label class="compact-field">
+          Time Speed
+          <select id="roi-demo-time-speed">
+            ${[0.5, 1, 2, 5].map((speed) => `<option value="${escapeAttr(speed)}" ${Number(state.timeSpeedScale ?? 1) === speed ? 'selected' : ''}>${escapeHtml(speed)}x</option>`).join('')}
+          </select>
+        </label>
+        <button data-action="pause" class="console-button">${state.paused ? 'Play' : 'Pause'}</button>
+      </section>
+      <section class="console-status">
+        <span>Field Stats</span>
+        <strong>Max ${escapeHtml(formatDemoStat(state.stats?.max))} | Mean ${escapeHtml(formatDemoStat(state.stats?.mean))}</strong>
+        <small>Total value ${escapeHtml(formatDemoStat(state.stats?.totalValue))}</small>
+      </section>
+      <section class="console-footer">
+        <button data-action="menu" class="console-button secondary">Main Menu</button>
+      </section>
+    `;
+    this.app.applyConsoleAccordions?.('roiDemo');
+    this.root.querySelector('#roi-demo-distribution')?.addEventListener('change', (event) => handlers.distribution?.(event.target.value));
+    this.root.querySelector('#roi-demo-seed')?.addEventListener('change', (event) => handlers.seed?.(event.target.value));
+    this.root.querySelector('#roi-demo-hotspots')?.addEventListener('input', (event) => handlers.hotspotCount?.(event.target.value));
+    this.root.querySelector('#roi-demo-noise')?.addEventListener('input', (event) => handlers.noise?.(event.target.value));
+    this.root.querySelector('#roi-demo-time-mode')?.addEventListener('change', (event) => handlers.timeMode?.(event.target.value));
+    this.root.querySelector('#roi-demo-time-speed')?.addEventListener('change', (event) => handlers.timeSpeedScale?.(event.target.value));
+    this.bind({
+      regenerate: handlers.regenerate,
+      pause: handlers.pause,
       menu: handlers.menu
     });
   }
@@ -366,9 +451,9 @@ export class MissionConsole {
 function flowModeLabel(mode) {
   return {
     static: 'Static',
-    dynamic: 'Dynamic / Temporal',
-    blended: 'Blended Composite',
-    partitioned: 'Partitioned Composite'
+    dynamic: 'Dynamic',
+    blended: 'Blended',
+    partitioned: 'Partitioned'
   }[mode] ?? mode;
 }
 
@@ -388,6 +473,11 @@ function terrainModeLabel(mode) {
     coastline: 'Coastline',
     channel: 'Channel'
   }[mode] ?? mode;
+}
+
+function formatDemoStat(value) {
+  const number = Number(value);
+  return Number.isFinite(number) ? number.toFixed(3) : 'N/A';
 }
 
 function nextActionButtonHtml(state) {
