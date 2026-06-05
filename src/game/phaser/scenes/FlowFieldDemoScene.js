@@ -1,4 +1,15 @@
-import { advanceDemoParticles, createDemoParticles, FLOW_DEMO_DEFAULT_PRESETS, FLOW_DEMO_GRID, getFlowDemoPresetConfig, sampleDemoFlow } from '../../../core/demo/FlowFieldDemo.js';
+import {
+  advanceDemoParticles,
+  createDemoParticles,
+  createDemoTerrain,
+  FLOW_DEMO_DEFAULT_PRESETS,
+  FLOW_DEMO_GRID,
+  getFlowDemoPresetConfig,
+  isDemoLand,
+  normalizeTerrainMode,
+  normalizeFieldMode,
+  sampleDemoFlow
+} from '../../../core/demo/FlowFieldDemo.js';
 import { PhaserButton } from '../ui/Button.js';
 
 const PhaserScene = globalThis.Phaser?.Scene ?? class {};
@@ -8,20 +19,34 @@ export class FlowFieldDemoScene extends PhaserScene {
     super('FlowFieldDemoScene');
     this.objects = [];
     this.buttons = [];
-    this.mode = 'static';
+    this.fieldMode = 'dynamic';
     this.preset = FLOW_DEMO_DEFAULT_PRESETS.static;
+    this.secondaryPreset = FLOW_DEMO_DEFAULT_PRESETS.secondary;
+    this.blendWeight = 0.6;
+    this.partitionType = 'vertical';
+    this.terrainMode = 'none';
+    this.terrainSeed = 'anchor-demo-1';
+    this.terrain = createDemoTerrain({ mode: 'none', seed: this.terrainSeed });
+    this.timeSpeedScale = 1;
     this.demoTime = 0;
     this.paused = false;
   }
 
   init(data = {}) {
-    this.mode = data.mode === 'temporal' ? 'temporal' : 'static';
-    this.preset = data.preset ?? FLOW_DEMO_DEFAULT_PRESETS[this.mode];
+    this.fieldMode = normalizeFieldMode(data.fieldMode ?? data.mode ?? 'dynamic');
+    this.preset = data.preset ?? FLOW_DEMO_DEFAULT_PRESETS[this.fieldMode] ?? FLOW_DEMO_DEFAULT_PRESETS.dynamic;
+    this.secondaryPreset = data.secondaryPreset ?? FLOW_DEMO_DEFAULT_PRESETS.secondary;
+    this.blendWeight = finiteNumber(data.blendWeight, 0.6);
+    this.partitionType = data.partitionType ?? 'vertical';
+    this.terrainMode = normalizeTerrainMode(data.terrainMode ?? 'none');
+    this.terrainSeed = data.terrainSeed ?? 'anchor-demo-1';
+    this.terrain = createDemoTerrain({ mode: this.terrainMode, seed: this.terrainSeed });
+    this.timeSpeedScale = finiteNumber(data.timeSpeedScale, 1);
     this.demoTime = 0;
     this.paused = false;
     this.particles = createDemoParticles({
-      count: this.mode === 'temporal' ? 22 : 18,
-      seed: `flow-demo-${this.mode}`
+      count: this.fieldMode === 'static' ? 18 : 22,
+      seed: `flow-demo-${this.fieldMode}:${this.preset}:${this.secondaryPreset}`
     });
   }
 
@@ -56,47 +81,86 @@ export class FlowFieldDemoScene extends PhaserScene {
       return;
     }
     const dt = Math.min(0.05, Math.max(0, Number(delta ?? 16.67) / 1000));
-    this.demoTime += dt;
+    this.demoTime += dt * this.timeSpeedScale;
     advanceDemoParticles(this.particles, {
-      mode: this.mode,
       time: this.demoTime,
       dt,
       field: sampleDemoFlow,
-      preset: this.preset
+      fieldConfig: this.fieldConfig()
     });
     this.draw();
   }
 
   title() {
-    return this.mode === 'temporal' ? 'Temporal Flow Field Demo' : 'Static Flow Field Demo';
+    return 'Flow Fields Demo';
   }
 
   subtitle() {
-    return this.mode === 'temporal'
-      ? 'Time-varying currents move particles through an evolving vector field.'
-      : 'A fixed vector field moves particles through steady currents.';
+    if (this.fieldMode === 'static') return 'Static fields hold direction and magnitude while particles reveal flow structure.';
+    if (this.fieldMode === 'blended') return 'Blended fields stack two presets over the same domain.';
+    if (this.fieldMode === 'partitioned') return 'Partitioned fields use different presets in different regions.';
+    return 'Dynamic fields evolve over simulated time; the speed control scales field time.';
   }
 
   renderConsole() {
+    const primaryConfig = getFlowDemoPresetConfig(this.fieldMode, this.preset);
     this.app.console?.renderFlowDemoControls?.({
       title: this.title(),
-      mode: this.mode,
+      fieldMode: this.fieldMode,
       preset: this.preset,
-      presetConfig: getFlowDemoPresetConfig(this.mode, this.preset),
-      status: this.mode === 'temporal' ? 'Time-varying field' : 'Fixed field',
+      secondaryPreset: this.secondaryPreset,
+      blendWeight: this.blendWeight,
+      partitionType: this.partitionType,
+      terrainMode: this.terrainMode,
+      terrainSeed: this.terrainSeed,
+      timeSpeedScale: this.timeSpeedScale,
+      presetConfig: primaryConfig,
+      status: `${fieldModeLabel(this.fieldMode)} field`,
       time: this.demoTime,
       paused: this.paused
     }, {
-      static: () => this.scene.restart({ mode: 'static', preset: FLOW_DEMO_DEFAULT_PRESETS.static }),
-      temporal: () => this.scene.restart({ mode: 'temporal', preset: FLOW_DEMO_DEFAULT_PRESETS.temporal }),
-      preset: (preset) => this.scene.restart({ mode: this.mode, preset }),
+      fieldMode: (fieldMode) => this.scene.restart({ ...this.sceneConfig(), fieldMode }),
+      preset: (preset) => this.scene.restart({ ...this.sceneConfig(), preset }),
+      secondaryPreset: (secondaryPreset) => this.scene.restart({ ...this.sceneConfig(), secondaryPreset }),
+      blendWeight: (blendWeight) => this.scene.restart({ ...this.sceneConfig(), blendWeight: Number(blendWeight) }),
+      partitionType: (partitionType) => this.scene.restart({ ...this.sceneConfig(), partitionType }),
+      terrainMode: (terrainMode) => this.scene.restart({ ...this.sceneConfig(), terrainMode }),
+      resetTerrain: () => this.scene.restart({ ...this.sceneConfig(), terrainSeed: nextTerrainSeed(this.terrainSeed) }),
+      timeSpeedScale: (timeSpeedScale) => {
+        this.timeSpeedScale = Number(timeSpeedScale) || 1;
+        this.renderConsole();
+      },
       pause: () => {
         this.paused = !this.paused;
         this.renderConsole();
       },
-      reset: () => this.scene.restart({ mode: this.mode }),
+      reset: () => this.scene.restart(this.sceneConfig()),
       menu: () => this.scene.start('MainMenuScene')
     });
+  }
+
+  fieldConfig() {
+    return {
+      fieldMode: this.fieldMode,
+      primaryPreset: this.preset,
+      secondaryPreset: this.secondaryPreset,
+      blendWeight: this.blendWeight,
+      partitionType: this.partitionType,
+      terrain: this.terrain
+    };
+  }
+
+  sceneConfig() {
+    return {
+      fieldMode: this.fieldMode,
+      preset: this.preset,
+      secondaryPreset: this.secondaryPreset,
+      blendWeight: this.blendWeight,
+      partitionType: this.partitionType,
+      terrainMode: this.terrainMode,
+      terrainSeed: this.terrainSeed,
+      timeSpeedScale: this.timeSpeedScale
+    };
   }
 
   buildSceneObjects() {
@@ -149,7 +213,7 @@ export class FlowFieldDemoScene extends PhaserScene {
         y: 0,
         width: 112,
         label: 'Reset',
-        onClick: () => this.scene.restart({ mode: this.mode })
+        onClick: () => this.scene.restart(this.sceneConfig())
       })
     ];
   }
@@ -181,6 +245,7 @@ export class FlowFieldDemoScene extends PhaserScene {
     const layout = this.layout();
     this.graphics.clear();
     this.drawBackground(layout);
+    this.drawTerrain(layout.map);
     this.drawField(layout.map);
     this.drawTrails(layout.map);
     this.drawParticles(layout.map);
@@ -211,13 +276,31 @@ export class FlowFieldDemoScene extends PhaserScene {
       for (let col = 0; col < cols; col += 1) {
         const nx = (col + 0.5) / cols;
         const ny = (row + 0.5) / rows;
-        const flow = sampleDemoFlow(this.mode, nx, ny, this.demoTime, this.preset);
+        if (isDemoLand(this.terrain, nx, ny)) continue;
+        const flow = sampleDemoFlow({ ...this.fieldConfig(), x: nx, y: ny, time: this.demoTime });
         const magnitude = Math.min(1.2, Math.hypot(flow.u, flow.v));
         const point = this.toScreen(map, nx, ny);
         const angle = Math.atan2(flow.v, flow.u);
         const length = 12 + magnitude * 22;
-        const color = this.mode === 'temporal' ? 0x70d6ff : 0x63e6be;
+        const color = modeColor(this.fieldMode, flow.composition?.activeRegion);
         this.drawArrow(point.x, point.y, angle, length, color, 0.36 + magnitude * 0.42);
+      }
+    }
+  }
+
+  drawTerrain(map) {
+    if (this.terrainMode === 'none') return;
+    const cols = FLOW_DEMO_GRID.width;
+    const rows = FLOW_DEMO_GRID.height;
+    const cellW = map.width / cols;
+    const cellH = map.height / rows;
+    for (let y = 0; y < rows; y += 1) {
+      for (let x = 0; x < cols; x += 1) {
+        if (!this.terrain?.[y]?.[x]) continue;
+        this.graphics.fillStyle(0x394238, 0.94);
+        this.graphics.fillRect(map.x + x * cellW, map.y + y * cellH, cellW + 1, cellH + 1);
+        this.graphics.lineStyle(1, 0x8aa178, 0.38);
+        this.graphics.strokeRect(map.x + x * cellW, map.y + y * cellH, cellW, cellH);
       }
     }
   }
@@ -286,8 +369,10 @@ export class FlowFieldDemoScene extends PhaserScene {
     this.titleText?.setPosition(margin, top);
     this.subtitleText?.setPosition(margin, top + 42);
     this.subtitleText?.setWordWrapWidth(Math.min(760, map.width));
-    const preset = getFlowDemoPresetConfig(this.mode, this.preset);
-    this.statusText?.setText(`Mode: ${this.mode} | Preset: ${preset?.label ?? 'Current Field'} | Time: ${this.demoTime.toFixed(1)} s | Particles: ${this.particles?.length ?? 0}`);
+    const preset = getFlowDemoPresetConfig(this.fieldMode, this.preset);
+    const secondary = getFlowDemoPresetConfig(this.fieldMode, this.secondaryPreset);
+    const secondaryText = ['blended', 'partitioned'].includes(this.fieldMode) ? ` + ${secondary.label}` : '';
+    this.statusText?.setText(`Mode: ${fieldModeLabel(this.fieldMode)} | Field: ${preset?.label ?? 'Current Field'}${secondaryText} | Terrain: ${terrainModeLabel(this.terrainMode)} | Time: ${this.demoTime.toFixed(1)} hr | Speed: ${this.timeSpeedScale}x | Particles: ${this.particles?.length ?? 0}`);
     this.statusText?.setPosition(margin, map.y + map.height + 18);
   }
 
@@ -313,4 +398,40 @@ export class FlowFieldDemoScene extends PhaserScene {
     this.objects = [];
     this.graphics = null;
   }
+}
+
+function fieldModeLabel(mode) {
+  return {
+    static: 'Static',
+    dynamic: 'Dynamic',
+    blended: 'Blended Composite',
+    partitioned: 'Partitioned Composite'
+  }[mode] ?? 'Static';
+}
+
+function modeColor(mode, activeRegion = null) {
+  if (mode === 'static') return 0x63e6be;
+  if (mode === 'blended') return 0xf4d35e;
+  if (mode === 'partitioned') return activeRegion === 'secondary' ? 0xff8c42 : 0x70d6ff;
+  return 0x70d6ff;
+}
+
+function terrainModeLabel(mode) {
+  return {
+    none: 'No Land',
+    islands: 'Random Islands',
+    coastline: 'Coastline',
+    channel: 'Channel'
+  }[mode] ?? 'No Land';
+}
+
+function nextTerrainSeed(seed) {
+  const match = String(seed ?? '').match(/^(.*?)(\d+)$/);
+  if (!match) return `${seed}-2`;
+  return `${match[1]}${Number(match[2]) + 1}`;
+}
+
+function finiteNumber(value, fallback = 0) {
+  const number = Number(value);
+  return Number.isFinite(number) ? number : fallback;
 }

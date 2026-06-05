@@ -21,10 +21,11 @@ test('campaign planning smoke flow reaches debrief', async ({ page }) => {
   await expect(page.locator('#right-panel')).toHaveCount(0);
   await expect(page.locator('#context-panel')).toBeEmpty();
   await expect(page.locator('#mission-console')).toContainText('ANCHOR: Glider Command');
-  await expect(page.locator('#mission-console button.console-button')).toHaveCount(9);
-  await expect(page.locator('#mission-console .accordion-header')).toHaveCount(2);
-  await expect(page.locator('#mission-console')).toContainText('Static Flow Field Demo');
-  await expect(page.locator('#mission-console')).toContainText('Temporal Flow Field Demo');
+  await expect(page.locator('#mission-console button.console-button')).toHaveCount(8);
+  await expect(page.locator('#mission-console .accordion-header')).toHaveCount(1);
+  await expect(page.locator('#mission-console')).toContainText('Flow Fields Demo');
+  await expect(page.locator('#mission-console')).not.toContainText('Static Flow Field Demo');
+  await expect(page.locator('#mission-console')).not.toContainText('Temporal Flow Field Demo');
   await expect(page.locator('#mission-console .console-status')).toContainText('No mission loaded');
   await expect(page.locator('canvas')).toBeVisible();
   await expect(page.evaluate(() => {
@@ -74,18 +75,22 @@ test('campaign planning smoke flow reaches debrief', async ({ page }) => {
   });
   await expect(page.evaluate(() => window.anchorGame.phaser.scene.getScene('MainMenuScene').buttons?.length ?? 0)).resolves.toBe(0);
 
-  await page.locator('#mission-console [data-action="flow-static"]').click();
+  await page.locator('#mission-console [data-action="flow-fields"]').click();
   await expect.poll(() => page.evaluate(() => window.anchorGame.phaser.scene.getScene('FlowFieldDemoScene').sys.isActive())).toBe(true);
-  await expect(page.evaluate(() => window.anchorGame.phaser.scene.getScene('FlowFieldDemoScene').mode)).resolves.toBe('static');
-  await expect(page.locator('#mission-console')).toContainText('Static Flow Field Demo');
+  await expect(page.evaluate(() => window.anchorGame.phaser.scene.getScene('FlowFieldDemoScene').fieldMode)).resolves.toBe('dynamic');
+  await expect(page.locator('#mission-console')).toContainText('Flow Fields Demo');
+  await expect(page.locator('#flow-demo-mode')).toBeVisible();
+  await page.locator('#flow-demo-mode').selectOption('blended');
+  await expect.poll(() => page.evaluate(() => window.anchorGame.phaser.scene.getScene('FlowFieldDemoScene').fieldMode)).toBe('blended');
+  await page.locator('#flow-demo-time-speed').selectOption('5');
+  await expect.poll(() => page.evaluate(() => window.anchorGame.phaser.scene.getScene('FlowFieldDemoScene').timeSpeedScale)).toBe(5);
+  await page.locator('#flow-demo-mode').selectOption('partitioned');
+  await expect.poll(() => page.evaluate(() => window.anchorGame.phaser.scene.getScene('FlowFieldDemoScene').fieldMode)).toBe('partitioned');
+  await page.locator('#flow-demo-terrain').selectOption('islands');
+  await expect.poll(() => page.evaluate(() => window.anchorGame.phaser.scene.getScene('FlowFieldDemoScene').terrainMode)).toBe('islands');
+  await page.locator('#flow-demo-terrain').selectOption('coastline');
+  await expect.poll(() => page.evaluate(() => window.anchorGame.phaser.scene.getScene('FlowFieldDemoScene').terrainMode)).toBe('coastline');
   await expect(page.locator('#mission-console')).toContainText('Reset Particles');
-  await page.locator('#mission-console [data-action="menu"]').click();
-  await expect.poll(() => page.evaluate(() => window.anchorGame.phaser.scene.getScene('MainMenuScene').sys.isActive())).toBe(true);
-
-  await page.locator('#mission-console [data-action="flow-temporal"]').click();
-  await expect.poll(() => page.evaluate(() => window.anchorGame.phaser.scene.getScene('FlowFieldDemoScene').sys.isActive())).toBe(true);
-  await expect(page.evaluate(() => window.anchorGame.phaser.scene.getScene('FlowFieldDemoScene').mode)).resolves.toBe('temporal');
-  await expect(page.locator('#mission-console')).toContainText('Temporal Flow Field Demo');
   await page.locator('#mission-console [data-action="menu"]').click();
   await expect.poll(() => page.evaluate(() => window.anchorGame.phaser.scene.getScene('MainMenuScene').sys.isActive())).toBe(true);
 

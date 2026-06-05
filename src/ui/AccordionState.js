@@ -88,8 +88,10 @@ export function getAccordionDefaults(mode) {
       status: false
     },
     flowDemo: {
-      demos: true,
-      preset: true,
+      'field-mode': true,
+      fields: true,
+      composition: false,
+      terrain: true,
       controls: true
     },
     tutorial: {

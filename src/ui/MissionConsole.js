@@ -1,7 +1,7 @@
 import { CAMPAIGN_LEVELS } from '../core/campaign/CampaignLevels.js';
 import { shortInstanceId } from '../core/identity/GameInstanceId.js';
 import { formatMetric } from '../core/evaluation/PlanComparison.js';
-import { FLOW_DEMO_PRESET_CHOICES } from '../core/demo/FlowFieldDemo.js';
+import { FLOW_DEMO_FIELD_MODES, FLOW_DEMO_PARTITION_TYPES, FLOW_DEMO_PRESET_CHOICES, FLOW_DEMO_TERRAIN_MODES, FLOW_DEMO_TIME_SPEEDS } from '../core/demo/FlowFieldDemo.js';
 import { getVectorPresetConfig } from '../core/generation/VectorFieldPresets.js';
 
 export class MissionConsole {
@@ -20,8 +20,7 @@ export class MissionConsole {
       </section>
       <section class="console-section">
         <h2>Demos</h2>
-        <button data-action="flow-static" class="console-button">Static Flow Field Demo</button>
-        <button data-action="flow-temporal" class="console-button">Temporal Flow Field Demo</button>
+        <button data-action="flow-fields" class="console-button">Flow Fields Demo</button>
       </section>
       <section class="console-section">
         <h2>Launch</h2>
@@ -44,8 +43,7 @@ export class MissionConsole {
     `;
     this.app.applyConsoleAccordions?.('idle');
     this.bind({
-      'flow-static': () => this.app.phaser.scene.start('FlowFieldDemoScene', { mode: 'static' }),
-      'flow-temporal': () => this.app.phaser.scene.start('FlowFieldDemoScene', { mode: 'temporal' }),
+      'flow-fields': () => this.app.phaser.scene.start('FlowFieldDemoScene', { fieldMode: 'dynamic' }),
       tutorial: () => this.mainMenuScene()?.openTutorialBrowser?.(),
       deterministic: () => this.mainMenuScene()?.openChallengeSetup?.('perfectKnowledge'),
       stochastic: () => this.mainMenuScene()?.openChallengeSetup?.('forecast'),
@@ -60,8 +58,8 @@ export class MissionConsole {
     if (!this.root) return;
     this.root.innerHTML = `
       <section class="console-header">
-        <div class="console-kicker">Flow Field Demo</div>
-        <h1>${escapeHtml(state.title ?? 'Flow Field Demo')}</h1>
+        <div class="console-kicker">Flow Fields Demo</div>
+        <h1>${escapeHtml(state.title ?? 'Flow Fields Demo')}</h1>
         <p>Isolated current-field visualization.</p>
       </section>
       <section class="console-status">
@@ -70,14 +68,18 @@ export class MissionConsole {
         <small>Arrows show local flow; glider particles align with movement.</small>
       </section>
       <section class="console-section">
-        <h2>Demos</h2>
-        <button data-action="static" class="console-button ${state.mode === 'static' ? 'primary' : ''}">Static Flow Field Demo</button>
-        <button data-action="temporal" class="console-button ${state.mode === 'temporal' ? 'primary' : ''}">Temporal Flow Field Demo</button>
+        <h2>Field Mode</h2>
+        <label class="compact-field">
+          Mode
+          <select id="flow-demo-mode">
+            ${FLOW_DEMO_FIELD_MODES.map((mode) => `<option value="${escapeAttr(mode)}" ${state.fieldMode === mode ? 'selected' : ''}>${escapeHtml(flowModeLabel(mode))}</option>`).join('')}
+          </select>
+        </label>
       </section>
       <section class="console-section">
-        <h2>Preset</h2>
+        <h2>Fields</h2>
         <label class="compact-field">
-          Current Field
+          Primary Field
           <select id="flow-demo-preset">
             ${FLOW_DEMO_PRESET_CHOICES.map((preset) => {
               const config = getVectorPresetConfig(preset);
@@ -85,10 +87,50 @@ export class MissionConsole {
             }).join('')}
           </select>
         </label>
+        <label class="compact-field">
+          Secondary Field
+          <select id="flow-demo-secondary">
+            ${FLOW_DEMO_PRESET_CHOICES.map((preset) => {
+              const config = getVectorPresetConfig(preset);
+              return `<option value="${escapeAttr(preset)}" ${state.secondaryPreset === preset ? 'selected' : ''}>${escapeHtml(config.label)}</option>`;
+            }).join('')}
+          </select>
+        </label>
         <div class="hud-muted">${escapeHtml(state.presetConfig?.warning ?? 'Synthetic ocean-inspired current field; not validated HYCOM forecast data.')}</div>
       </section>
       <section class="console-section">
+        <h2>Composition</h2>
+        <label class="compact-field">
+          Blend Weight
+          <input id="flow-demo-blend" type="range" min="0" max="1" step="0.05" value="${escapeAttr(state.blendWeight ?? 0.6)}" />
+        </label>
+        <div class="hud-muted">Primary ${escapeHtml(Number(state.blendWeight ?? 0.6).toFixed(2))} / Secondary ${escapeHtml((1 - Number(state.blendWeight ?? 0.6)).toFixed(2))}</div>
+        <label class="compact-field">
+          Partition
+          <select id="flow-demo-partition">
+            ${FLOW_DEMO_PARTITION_TYPES.map((type) => `<option value="${escapeAttr(type)}" ${state.partitionType === type ? 'selected' : ''}>${escapeHtml(partitionLabel(type))}</option>`).join('')}
+          </select>
+        </label>
+      </section>
+      <section class="console-section">
+        <h2>Terrain</h2>
+        <label class="compact-field">
+          Land Mode
+          <select id="flow-demo-terrain">
+            ${FLOW_DEMO_TERRAIN_MODES.map((mode) => `<option value="${escapeAttr(mode)}" ${state.terrainMode === mode ? 'selected' : ''}>${escapeHtml(terrainModeLabel(mode))}</option>`).join('')}
+          </select>
+        </label>
+        <div class="hud-muted">Seed: ${escapeHtml(state.terrainSeed ?? 'anchor-demo-1')}</div>
+        <button data-action="reset-terrain" class="console-button">Reset Terrain</button>
+      </section>
+      <section class="console-section">
         <h2>Controls</h2>
+        <label class="compact-field">
+          Time Speed
+          <select id="flow-demo-time-speed">
+            ${FLOW_DEMO_TIME_SPEEDS.map((speed) => `<option value="${escapeAttr(speed)}" ${Number(state.timeSpeedScale ?? 1) === speed ? 'selected' : ''}>${escapeHtml(speed)}x</option>`).join('')}
+          </select>
+        </label>
         <button data-action="pause" class="console-button">${state.paused ? 'Play' : 'Pause'}</button>
         <button data-action="reset" class="console-button">Reset Particles</button>
       </section>
@@ -97,11 +139,16 @@ export class MissionConsole {
       </section>
     `;
     this.app.applyConsoleAccordions?.('flowDemo');
+    this.root.querySelector('#flow-demo-mode')?.addEventListener('change', (event) => handlers.fieldMode?.(event.target.value));
     this.root.querySelector('#flow-demo-preset')?.addEventListener('change', (event) => handlers.preset?.(event.target.value));
+    this.root.querySelector('#flow-demo-secondary')?.addEventListener('change', (event) => handlers.secondaryPreset?.(event.target.value));
+    this.root.querySelector('#flow-demo-blend')?.addEventListener('input', (event) => handlers.blendWeight?.(event.target.value));
+    this.root.querySelector('#flow-demo-partition')?.addEventListener('change', (event) => handlers.partitionType?.(event.target.value));
+    this.root.querySelector('#flow-demo-terrain')?.addEventListener('change', (event) => handlers.terrainMode?.(event.target.value));
+    this.root.querySelector('#flow-demo-time-speed')?.addEventListener('change', (event) => handlers.timeSpeedScale?.(event.target.value));
     this.bind({
-      static: handlers.static,
-      temporal: handlers.temporal,
       preset: handlers.preset,
+      'reset-terrain': handlers.resetTerrain,
       pause: handlers.pause,
       reset: handlers.reset,
       menu: handlers.menu
@@ -314,6 +361,33 @@ export class MissionConsole {
       button.addEventListener('click', () => actions[button.dataset.action]?.());
     });
   }
+}
+
+function flowModeLabel(mode) {
+  return {
+    static: 'Static',
+    dynamic: 'Dynamic / Temporal',
+    blended: 'Blended Composite',
+    partitioned: 'Partitioned Composite'
+  }[mode] ?? mode;
+}
+
+function partitionLabel(type) {
+  return {
+    vertical: 'Vertical Split',
+    horizontal: 'Horizontal Split',
+    quadrants: 'Quadrants',
+    radial: 'Radial Center'
+  }[type] ?? type;
+}
+
+function terrainModeLabel(mode) {
+  return {
+    none: 'No Land',
+    islands: 'Random Islands',
+    coastline: 'Coastline',
+    channel: 'Channel'
+  }[mode] ?? mode;
 }
 
 function nextActionButtonHtml(state) {

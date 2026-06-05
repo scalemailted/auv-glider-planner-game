@@ -35,8 +35,7 @@ Planning also runs a pre-simulation route validity audit over the active plan. T
 The active top-level modes are:
 
 - `Tutorial Mode`: opens a center-viewport tutorial browser with left-side filters/progress controls, scrollable lesson cards in the center, and selected-lesson details in the right panel.
-- `Static Flow Field Demo`: opens an isolated Phaser vector-field scene with fixed currents, arrow-grid indicators, and glider-like particles that align to their movement through the field.
-- `Temporal Flow Field Demo`: opens the same isolated demo shell with a time-varying current field. It is visual-only and does not create missions, waypoint plans, scores, or leaderboard records.
+- `Flow Fields Demo`: opens one isolated Phaser vector-field sandbox with Static, Dynamic / Temporal, Blended Composite, and Partitioned Composite modes. It renders current arrows, passive glider-like particles, trails, preset selection, blend weight, partition type, optional deterministic terrain (`No Land`, `Random Islands`, `Coastline`, `Channel`), and time-speed controls without creating missions, waypoint plans, scores, or leaderboard records. When terrain is enabled, arrows over land are hidden, particles reset on land collision, and the shared topology-aware sampler receives the terrain mask so shoreline deflection/risk behavior can be inspected visually. See `docs/flow_fields_demo.md` for the full behavior and implementation notes.
 - `Deterministic Challenge`: generates a fresh perfect-knowledge level and mission, then opens Mission Briefing.
 - `Stochastic Challenge`: generates a fresh forecast-mode level with hidden truth, visible forecast/ensemble layers, and a default mission, then opens Mission Briefing.
 - `Environment Editor`: opens the visual level editor for terrain, hazards, depth, ROI, bases, agent starts, mission defaults, time frames, and U/V current edits.
