@@ -31,7 +31,7 @@ import {
   normalizePlan,
   removeMarker,
   removeWaypoint,
-  validatePlan
+  getAgentPlan
 } from '../../../core/planning/WaypointPlan.js';
 import {
   clampMissionTime,
@@ -783,6 +783,8 @@ export class MissionWorkspaceScene extends PhaserScene {
   }
 
   selectWaypoint(agentId, index) {
+    const agentPlan = getAgentPlan(this.app.state.plan, agentId);
+    this.previousWaypointSelected = agentPlan.waypoints.length != index+1 ? true : false;
     this.app.state.selectedAgentId = agentId;
     this.app.state.ui.selectedWaypoint = { agentId, index };
     this.app.state.ui.selectedMarker = null;
@@ -812,6 +814,7 @@ export class MissionWorkspaceScene extends PhaserScene {
   }
 
   selectGlider(agentId) {
+    this.previousWaypointSelected = false;
     this.app.state.selectedAgentId = agentId;
     this.app.state.ui.hoverCell = null;
     this.clearSelectedWaypoint();
@@ -863,6 +866,14 @@ export class MissionWorkspaceScene extends PhaserScene {
 
 
   addWaypointForSelected({ x, y, action }) {
+    if (this.previousWaypointSelected) {
+        const agentPlan = getAgentPlan(this.app.state.plan, this.app.state.selectedAgentId);
+        const agentPlanLength = agentPlan.waypoints.length;
+        for (let i = this.app.state.ui.selectedWaypoint.index +1; i < agentPlan.waypoints.length; i=i) {
+           this.removeWaypointFromPanel(this.app.state.selectedAgentId, i);
+        }
+        this.previousWaypointSelected = false;
+      }
     const targetX = Math.round(x);
     const targetY = Math.round(y);
     if (requiresDeploymentSelection(this.app.state.mission, this.app.state.selectedAgentId)) {
