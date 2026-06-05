@@ -105,12 +105,14 @@ function currentAt(pattern, x, y, width, height, time, strength, variability, ed
     ];
   }
   if (pattern === 'shearFlow') {
-    const shear = ((y / Math.max(1, height - 1)) - 0.5) * 2;
-    const bandFlip = Math.sin((y / Math.max(1, height)) * Math.PI * 4 + cycle * 0.65 + jetPhase) > 0 ? 1 : -1;
+    const ny = y / Math.max(1, height - 1);
+    const shear = (ny - 0.5) * 2;
+    const band = 0.5 + 0.5 * Math.sin(ny * Math.PI * 4 + cycle * 0.65 + jetPhase);
     const reversal = Math.cos(slowCycle * 0.8);
+    const magnitudeProfile = 0.18 + 0.48 * ny + 0.18 * band;
     return [
-      strength * ((0.22 * shear + 0.22 * bandFlip) * (0.7 + 0.35 * reversal) + 0.12 * temporal * Math.sin(cycle)),
-      strength * 0.12 * temporal * Math.sin((x / width) * Math.PI * 2 + cycle)
+      strength * magnitudeProfile * Math.sign(shear || 1) * (0.72 + 0.28 * reversal),
+      strength * (0.04 + 0.18 * band) * temporal * Math.sin((x / width) * Math.PI * 2 + cycle)
     ];
   }
   if (pattern === 'doubleGyre') {
@@ -129,11 +131,16 @@ function currentAt(pattern, x, y, width, height, time, strength, variability, ed
     ];
   }
   if (pattern === 'stormPulse') {
-    const pulse = 0.15 + (0.45 + variability * 0.9) * Math.max(0, Math.sin(pulseCycle + stormPhase));
-    const stormShift = (stormCenterX - 0.5) * width * 0.35 + Math.sin(slowCycle + stormPhase) * width * 0.18;
+    const pulse = Math.max(0, Math.sin(pulseCycle + stormPhase));
+    const stormX = width * (0.28 + stormCenterX * 0.44) + Math.sin(slowCycle + stormPhase) * width * 0.12;
+    const stormY = height * (0.28 + stormCenterY * 0.44) + Math.cos(slowCycle * 0.8 + stormPhase) * height * 0.12;
+    const radius = Math.max(1, Math.min(width, height) * (0.18 + 0.08 * pulse));
+    const local = Math.exp(-(((x - stormX) ** 2 + (y - stormY) ** 2) / (2 * radius ** 2)));
+    const pulseStrength = 0.08 + (0.38 + variability * 1.0) * pulse * local;
+    const angle = Math.atan2(y - stormY, x - stormX) + Math.PI * 0.45 + 0.4 * Math.sin(cycle);
     return [
-      strength * pulse * (0.45 + 0.18 * Math.sin(y * 0.6 + cycle)),
-      strength * pulse * (0.18 * Math.cos((x - stormShift) * 0.5 - cycle * 0.8))
+      strength * pulseStrength * Math.cos(angle),
+      strength * pulseStrength * Math.sin(angle)
     ];
   }
   if (pattern === 'westernBoundaryCurrent') {
@@ -231,8 +238,10 @@ function currentAt(pattern, x, y, width, height, time, strength, variability, ed
 function vortex(x, y, cx, cy, strength) {
   const dx = x - cx;
   const dy = y - cy;
-  const dist = Math.max(1, Math.hypot(dx, dy));
-  const scale = Math.min(0.45, strength / dist);
+  const dist = Math.hypot(dx, dy);
+  if (!Number.isFinite(dist) || dist <= 1e-6) return [0, 0];
+  const ringScale = dist / (dist * dist + 3.2);
+  const scale = strength * ringScale;
   return [(-dy / dist) * scale, (dx / dist) * scale];
 }
 

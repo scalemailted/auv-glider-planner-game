@@ -1,7 +1,7 @@
 import { CAMPAIGN_LEVELS } from '../core/campaign/CampaignLevels.js';
 import { shortInstanceId } from '../core/identity/GameInstanceId.js';
 import { formatMetric } from '../core/evaluation/PlanComparison.js';
-import { FLOW_DEMO_FIELD_MODES, FLOW_DEMO_PARTITION_TYPES, FLOW_DEMO_PRESET_CHOICES, FLOW_DEMO_TERRAIN_MODES, FLOW_DEMO_TIME_SPEEDS } from '../core/demo/FlowFieldDemo.js';
+import { FLOW_DEMO_FIELD_MODES, FLOW_DEMO_MAGNITUDE_SCALES, FLOW_DEMO_PARTICLE_SPEEDS, FLOW_DEMO_PARTITION_TYPES, FLOW_DEMO_PRESET_CHOICES, FLOW_DEMO_TERRAIN_MODES, FLOW_DEMO_TIME_SPEEDS, normalizeAdditiveLayers } from '../core/demo/FlowFieldDemo.js';
 import { ROI_DEMO_DISTRIBUTIONS, ROI_DEMO_TIME_MODES, roiDistributionLabel } from '../core/demo/DemoRoiFields.js';
 import { getVectorPresetConfig } from '../core/generation/VectorFieldPresets.js';
 
@@ -19,7 +19,7 @@ export class MissionConsole {
         <h1>ANCHOR: Glider Command</h1>
         <p>AUV Glider Planner Game</p>
       </section>
-      <section class="console-section">
+      <section class="console-section" data-keep-title="true">
         <h2>Demos</h2>
         <button data-action="flow-fields" class="console-button">Flow Fields Demo</button>
         <button data-action="roi-demo" class="console-button">ROI Generator Demo</button>
@@ -85,7 +85,7 @@ export class MissionConsole {
       <section class="console-section">
         <h2>Fields</h2>
         <label class="compact-field">
-          Primary Field
+          Base Field
           <select id="flow-demo-preset">
             ${FLOW_DEMO_PRESET_CHOICES.map((preset) => {
               const config = getVectorPresetConfig(preset);
@@ -93,8 +93,17 @@ export class MissionConsole {
             }).join('')}
           </select>
         </label>
+        <div class="hud-muted">${escapeHtml(state.presetConfig?.warning ?? 'Synthetic ocean-inspired current field; not validated HYCOM forecast data.')}</div>
+      </section>
+      <section class="console-section">
+        <h2>Additive Layers</h2>
+        ${flowLayerControlHtml(0, state.additiveLayers)}
+        ${flowLayerControlHtml(1, state.additiveLayers)}
+      </section>
+      <section class="console-section">
+        <h2>Partitioned</h2>
         <label class="compact-field">
-          Secondary Field
+          Region Field
           <select id="flow-demo-secondary">
             ${FLOW_DEMO_PRESET_CHOICES.map((preset) => {
               const config = getVectorPresetConfig(preset);
@@ -102,15 +111,6 @@ export class MissionConsole {
             }).join('')}
           </select>
         </label>
-        <div class="hud-muted">${escapeHtml(state.presetConfig?.warning ?? 'Synthetic ocean-inspired current field; not validated HYCOM forecast data.')}</div>
-      </section>
-      <section class="console-section">
-        <h2>Composition</h2>
-        <label class="compact-field">
-          Blend Weight
-          <input id="flow-demo-blend" type="range" min="0" max="1" step="0.05" value="${escapeAttr(state.blendWeight ?? 0.6)}" />
-        </label>
-        <div class="hud-muted">Primary ${escapeHtml(Number(state.blendWeight ?? 0.6).toFixed(2))} / Secondary ${escapeHtml((1 - Number(state.blendWeight ?? 0.6)).toFixed(2))}</div>
         <label class="compact-field">
           Partition
           <select id="flow-demo-partition">
@@ -137,8 +137,25 @@ export class MissionConsole {
             ${FLOW_DEMO_TIME_SPEEDS.map((speed) => `<option value="${escapeAttr(speed)}" ${Number(state.timeSpeedScale ?? 1) === speed ? 'selected' : ''}>${escapeHtml(speed)}x</option>`).join('')}
           </select>
         </label>
+        <label class="compact-field">
+          Magnitude Scale
+          <select id="flow-demo-magnitude-scale">
+            ${FLOW_DEMO_MAGNITUDE_SCALES.map((scale) => `<option value="${escapeAttr(scale)}" ${Number(state.magnitudeScale ?? 1.5) === scale ? 'selected' : ''}>${escapeHtml(scale)}x</option>`).join('')}
+          </select>
+        </label>
+        <label class="compact-field">
+          Particle Speed
+          <select id="flow-demo-particle-speed">
+            ${FLOW_DEMO_PARTICLE_SPEEDS.map((speed) => `<option value="${escapeAttr(speed)}" ${Number(state.particleSpeedScale ?? 1) === speed ? 'selected' : ''}>${escapeHtml(speed)}x</option>`).join('')}
+          </select>
+        </label>
         <button data-action="pause" class="console-button">${state.paused ? 'Play' : 'Pause'}</button>
         <button data-action="reset" class="console-button">Reset Particles</button>
+      </section>
+      <section class="console-status">
+        <span>Magnitude Range</span>
+        <strong>${escapeHtml(formatDemoStat(state.magnitudeStats?.min))} / ${escapeHtml(formatDemoStat(state.magnitudeStats?.mean))} / ${escapeHtml(formatDemoStat(state.magnitudeStats?.max))}</strong>
+        <small>Min / mean / max for the current arrow grid.</small>
       </section>
       <section class="console-footer">
         <button data-action="menu" class="console-button secondary">Main Menu</button>
@@ -148,10 +165,23 @@ export class MissionConsole {
     this.root.querySelector('#flow-demo-mode')?.addEventListener('change', (event) => handlers.fieldMode?.(event.target.value));
     this.root.querySelector('#flow-demo-preset')?.addEventListener('change', (event) => handlers.preset?.(event.target.value));
     this.root.querySelector('#flow-demo-secondary')?.addEventListener('change', (event) => handlers.secondaryPreset?.(event.target.value));
-    this.root.querySelector('#flow-demo-blend')?.addEventListener('input', (event) => handlers.blendWeight?.(event.target.value));
+    this.root.querySelectorAll('[data-flow-layer-preset]').forEach((select) => {
+      select.addEventListener('change', (event) => {
+        const index = Number(event.currentTarget.dataset.flowLayerPreset);
+        const preset = event.target.value;
+        handlers.additiveLayer?.(index, { preset: preset === 'off' ? undefined : preset, enabled: preset !== 'off' });
+      });
+    });
+    this.root.querySelectorAll('[data-flow-layer-weight]').forEach((input) => {
+      input.addEventListener('input', (event) => {
+        handlers.additiveLayer?.(Number(event.currentTarget.dataset.flowLayerWeight), { weight: Number(event.target.value) });
+      });
+    });
     this.root.querySelector('#flow-demo-partition')?.addEventListener('change', (event) => handlers.partitionType?.(event.target.value));
     this.root.querySelector('#flow-demo-terrain')?.addEventListener('change', (event) => handlers.terrainMode?.(event.target.value));
     this.root.querySelector('#flow-demo-time-speed')?.addEventListener('change', (event) => handlers.timeSpeedScale?.(event.target.value));
+    this.root.querySelector('#flow-demo-magnitude-scale')?.addEventListener('change', (event) => handlers.magnitudeScale?.(event.target.value));
+    this.root.querySelector('#flow-demo-particle-speed')?.addEventListener('change', (event) => handlers.particleSpeedScale?.(event.target.value));
     this.bind({
       preset: handlers.preset,
       'reset-terrain': handlers.resetTerrain,
@@ -452,9 +482,31 @@ function flowModeLabel(mode) {
   return {
     static: 'Static',
     dynamic: 'Dynamic',
-    blended: 'Blended',
+    additiveLayers: 'Additive Layers',
     partitioned: 'Partitioned'
   }[mode] ?? mode;
+}
+
+function flowLayerControlHtml(index, layers) {
+  const layer = normalizeAdditiveLayers(layers)[index];
+  const selected = layer.enabled ? layer.preset : 'off';
+  return `
+    <label class="compact-field">
+      Layer ${index + 1}
+      <select data-flow-layer-preset="${escapeAttr(index)}">
+        <option value="off" ${selected === 'off' ? 'selected' : ''}>Off</option>
+        ${FLOW_DEMO_PRESET_CHOICES.map((preset) => {
+          const config = getVectorPresetConfig(preset);
+          return `<option value="${escapeAttr(preset)}" ${selected === preset ? 'selected' : ''}>${escapeHtml(config.label)}</option>`;
+        }).join('')}
+      </select>
+    </label>
+    <label class="compact-field">
+      Layer ${index + 1} Weight
+      <input data-flow-layer-weight="${escapeAttr(index)}" type="range" min="0" max="1" step="0.05" value="${escapeAttr(layer.weight)}" />
+    </label>
+    <div class="hud-muted">${escapeHtml(layer.enabled ? `Layer ${index + 1}: ${getVectorPresetConfig(layer.preset).label} at ${layer.weight.toFixed(2)}x` : `Layer ${index + 1}: off`)}</div>
+  `;
 }
 
 function partitionLabel(type) {

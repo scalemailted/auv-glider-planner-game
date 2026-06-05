@@ -7,8 +7,10 @@ const DEFAULT_TRAIL_LIMIT = 44;
 const MAX_DEMO_MAGNITUDE = 1.35;
 export const FLOW_DEMO_FIELD_DURATION_HOURS = 24;
 export const FLOW_DEMO_GRID = { width: 18, height: 12 };
-export const FLOW_DEMO_FIELD_MODES = ['static', 'dynamic', 'blended', 'partitioned'];
+export const FLOW_DEMO_FIELD_MODES = ['static', 'dynamic', 'additiveLayers', 'partitioned'];
 export const FLOW_DEMO_TIME_SPEEDS = [0.1, 0.5, 1, 2, 5, 10];
+export const FLOW_DEMO_MAGNITUDE_SCALES = [0.75, 1, 1.5, 2, 3];
+export const FLOW_DEMO_PARTICLE_SPEEDS = [0.5, 0.75, 1, 1.5, 2];
 export const FLOW_DEMO_PARTITION_TYPES = ['vertical', 'horizontal', 'quadrants', 'radial'];
 export const FLOW_DEMO_TERRAIN_MODES = ['none', 'islands', 'coastline', 'channel'];
 export const FLOW_DEMO_PRESET_CHOICES = [
@@ -25,11 +27,15 @@ export const FLOW_DEMO_PRESET_CHOICES = [
 ];
 export const FLOW_DEMO_DEFAULT_PRESETS = {
   static: 'currentCorridor',
-  dynamic: 'tidalOscillation',
-  blended: 'uniformDrift',
+  dynamic: 'eddyField',
+  additiveLayers: 'uniformDrift',
   partitioned: 'meanderingJet',
   secondary: 'eddyField'
 };
+export const FLOW_DEMO_DEFAULT_LAYERS = [
+  { id: 'layer1', preset: 'eddyField', weight: 0.45, enabled: false, dynamic: true },
+  { id: 'layer2', preset: 'tidalOscillation', weight: 0.3, enabled: false, dynamic: true }
+];
 
 export function getFlowDemoPresetConfig(mode = 'static', preset = null) {
   const normalizedMode = normalizeFieldMode(mode);
@@ -61,27 +67,49 @@ export function sampleComposedDemoFlow({
   time = 0,
   primaryPreset = null,
   secondaryPreset = FLOW_DEMO_DEFAULT_PRESETS.secondary,
-  blendWeight = 0.6,
+  additiveLayers = FLOW_DEMO_DEFAULT_LAYERS,
   partitionType = 'vertical',
   terrain = null
 } = {}) {
   const mode = normalizeFieldMode(fieldMode);
-  if (mode === 'blended') {
-    const primary = sampleSingleDemoFlow({ fieldMode: 'dynamic', x, y, time, preset: primaryPreset ?? FLOW_DEMO_DEFAULT_PRESETS.blended, terrain });
-    const secondary = sampleSingleDemoFlow({ fieldMode: 'dynamic', x, y, time, preset: secondaryPreset, terrain });
-    const weight = clamp01(blendWeight);
-    return withCompositionMetadata(clampVector({
-      u: primary.u * weight + secondary.u * (1 - weight),
-      v: primary.v * weight + secondary.v * (1 - weight),
-      confidence: Math.min(primary.confidence ?? 1, secondary.confidence ?? 1),
-      source: 'demo-composite'
+  if (mode === 'additiveLayers') {
+    const base = sampleSingleDemoFlow({ fieldMode: 'dynamic', x, y, time, preset: primaryPreset ?? FLOW_DEMO_DEFAULT_PRESETS.additiveLayers, terrain });
+    const layers = normalizeAdditiveLayers(additiveLayers);
+    const enabledLayers = layers
+      .filter((layer) => layer.enabled && layer.preset)
+      .map((layer) => ({
+        ...layer,
+        sample: sampleSingleDemoFlow({
+          fieldMode: layer.dynamic === false ? 'static' : 'dynamic',
+          x,
+          y,
+          time,
+          preset: layer.preset,
+          terrain
+        })
+      }));
+    const combined = enabledLayers.reduce((sum, layer) => ({
+      u: sum.u + layer.sample.u * layer.weight,
+      v: sum.v + layer.sample.v * layer.weight,
+      confidence: Math.min(sum.confidence ?? 1, layer.sample.confidence ?? 1),
+      source: 'demo-additive'
     }), {
+      u: base.u,
+      v: base.v,
+      confidence: base.confidence ?? 1,
+      source: 'demo-additive'
+    });
+    return withCompositionMetadata(clampVector(combined), {
       mode,
-      primaryPreset: primary.preset,
-      secondaryPreset: secondary.preset,
-      blendWeight: weight,
+      primaryPreset: base.preset,
+      base,
+      layers: enabledLayers.map(({ sample, ...layer }) => ({
+        ...layer,
+        presetLabel: sample.presetLabel,
+        vector: { u: sample.u, v: sample.v, magnitude: Math.hypot(sample.u, sample.v) }
+      })),
       timeVarying: true,
-      contributors: { primary, secondary }
+      contributors: { base, layers: enabledLayers.map((layer) => layer.sample) }
     });
   }
   if (mode === 'partitioned') {
@@ -141,6 +169,7 @@ export function advanceDemoParticles(particles, {
   field = sampleDemoFlow,
   preset = null,
   fieldConfig = null,
+  particleSpeedScale = 1,
   trailLimit = DEFAULT_TRAIL_LIMIT
 } = {}) {
   if (!Array.isArray(particles)) return [];
@@ -149,11 +178,11 @@ export function advanceDemoParticles(particles, {
       ? field({ ...fieldConfig, x: particle.x, y: particle.y, time })
       : field(mode, particle.x, particle.y, time, preset);
     const glideBias = {
-      u: 0.1 * Math.cos(particle.biasAngle),
-      v: 0.1 * Math.sin(particle.biasAngle)
+      u: 0.035 * Math.cos(particle.biasAngle),
+      v: 0.035 * Math.sin(particle.biasAngle)
     };
-    const u = (flow.u + glideBias.u) * particle.speedScale;
-    const v = (flow.v + glideBias.v) * particle.speedScale;
+    const u = (flow.u + glideBias.u) * particle.speedScale * particleSpeedScale;
+    const v = (flow.v + glideBias.v) * particle.speedScale * particleSpeedScale;
     const nextX = particle.x + u * dt * 0.18;
     const nextY = particle.y + v * dt * 0.18;
     if (fieldConfig?.terrain && isDemoLand(fieldConfig.terrain, nextX, nextY)) {
@@ -172,6 +201,29 @@ export function advanceDemoParticles(particles, {
     }
   }
   return particles;
+}
+
+export function summarizeDemoFlowMagnitudes(fieldConfig = {}, time = 0) {
+  const values = [];
+  for (let row = 0; row < FLOW_DEMO_GRID.height; row += 1) {
+    for (let col = 0; col < FLOW_DEMO_GRID.width; col += 1) {
+      const x = (col + 0.5) / FLOW_DEMO_GRID.width;
+      const y = (row + 0.5) / FLOW_DEMO_GRID.height;
+      if (fieldConfig.terrain && isDemoLand(fieldConfig.terrain, x, y)) continue;
+      const sample = sampleDemoFlow({ ...fieldConfig, x, y, time });
+      values.push(Math.hypot(sample.u, sample.v));
+    }
+  }
+  if (!values.length) return { min: 0, mean: 0, max: 0, spread: 0 };
+  const min = Math.min(...values);
+  const max = Math.max(...values);
+  const mean = values.reduce((sum, value) => sum + value, 0) / values.length;
+  return {
+    min,
+    mean,
+    max,
+    spread: max - min
+  };
 }
 
 export function createDemoTerrain({ mode = 'none', seed = 'anchor-demo-1', grid = FLOW_DEMO_GRID } = {}) {
@@ -201,7 +253,24 @@ export function normalizeTerrainMode(value = 'none') {
 
 export function normalizeFieldMode(value = 'static') {
   if (value === 'temporal') return 'dynamic';
+  if (value === 'blended') return 'additiveLayers';
   return FLOW_DEMO_FIELD_MODES.includes(value) ? value : 'static';
+}
+
+export function normalizeAdditiveLayers(layers = FLOW_DEMO_DEFAULT_LAYERS) {
+  const source = Array.isArray(layers) ? layers : FLOW_DEMO_DEFAULT_LAYERS;
+  return [0, 1].map((index) => {
+    const fallback = FLOW_DEMO_DEFAULT_LAYERS[index];
+    const layer = source[index] ?? fallback;
+    const preset = FLOW_DEMO_PRESET_CHOICES.includes(layer?.preset) ? layer.preset : fallback.preset;
+    return {
+      id: layer?.id ?? fallback.id,
+      preset,
+      weight: clamp01(layer?.weight ?? fallback.weight),
+      enabled: Boolean(layer?.enabled),
+      dynamic: layer?.dynamic !== false
+    };
+  });
 }
 
 function partitionSelect({ x = 0, y = 0, partitionType = 'vertical' } = {}) {

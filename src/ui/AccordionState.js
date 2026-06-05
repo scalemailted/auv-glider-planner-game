@@ -94,9 +94,11 @@ export function getAccordionDefaults(mode) {
     flowDemo: {
       'field-mode': true,
       fields: true,
-      composition: false,
+      'additive-layers': true,
+      partitioned: false,
       terrain: true,
-      controls: true
+      controls: true,
+      'magnitude-range': false
     },
     roiDemo: {
       distribution: true,

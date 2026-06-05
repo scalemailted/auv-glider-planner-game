@@ -22,7 +22,7 @@ test('campaign planning smoke flow reaches debrief', async ({ page }) => {
   await expect(page.locator('#context-panel')).toBeEmpty();
   await expect(page.locator('#mission-console')).toContainText('ANCHOR: Glider Command');
   await expect(page.locator('#mission-console button.console-button')).toHaveCount(9);
-  await expect(page.locator('#mission-console .accordion-header')).toHaveCount(2);
+  await expect(page.locator('#mission-console .accordion-header')).toHaveCount(1);
   await expect(page.locator('#mission-console')).toContainText('Demos');
   await expect(page.locator('#mission-console')).toContainText('Tutorials');
   await expect(page.locator('#mission-console')).toContainText('Flow Fields Demo');
@@ -83,10 +83,22 @@ test('campaign planning smoke flow reaches debrief', async ({ page }) => {
   await expect(page.evaluate(() => window.anchorGame.phaser.scene.getScene('FlowFieldDemoScene').fieldMode)).resolves.toBe('dynamic');
   await expect(page.locator('#mission-console')).toContainText('Flow Fields Demo');
   await expect(page.locator('#flow-demo-mode')).toBeVisible();
-  await page.locator('#flow-demo-mode').selectOption('blended');
-  await expect.poll(() => page.evaluate(() => window.anchorGame.phaser.scene.getScene('FlowFieldDemoScene').fieldMode)).toBe('blended');
+  await page.locator('#flow-demo-mode').selectOption('additiveLayers');
+  await expect.poll(() => page.evaluate(() => window.anchorGame.phaser.scene.getScene('FlowFieldDemoScene').fieldMode)).toBe('additiveLayers');
+  await page.locator('[data-flow-layer-preset="0"]').selectOption('eddyField');
+  await expect.poll(() => page.evaluate(() => window.anchorGame.phaser.scene.getScene('FlowFieldDemoScene').additiveLayers[0].enabled)).toBe(true);
+  await page.locator('[data-flow-layer-weight="0"]').evaluate((input) => {
+    input.value = '0.75';
+    input.dispatchEvent(new Event('input', { bubbles: true }));
+  });
+  await expect.poll(() => page.evaluate(() => window.anchorGame.phaser.scene.getScene('FlowFieldDemoScene').additiveLayers[0].weight)).toBe(0.75);
   await page.locator('#flow-demo-time-speed').selectOption('5');
   await expect.poll(() => page.evaluate(() => window.anchorGame.phaser.scene.getScene('FlowFieldDemoScene').timeSpeedScale)).toBe(5);
+  await page.locator('#flow-demo-magnitude-scale').selectOption('2');
+  await expect.poll(() => page.evaluate(() => window.anchorGame.phaser.scene.getScene('FlowFieldDemoScene').magnitudeScale)).toBe(2);
+  await page.locator('#flow-demo-particle-speed').selectOption('1.5');
+  await expect.poll(() => page.evaluate(() => window.anchorGame.phaser.scene.getScene('FlowFieldDemoScene').particleSpeedScale)).toBe(1.5);
+  await expect(page.locator('#mission-console')).toContainText('Magnitude Range');
   await page.locator('#flow-demo-mode').selectOption('partitioned');
   await expect.poll(() => page.evaluate(() => window.anchorGame.phaser.scene.getScene('FlowFieldDemoScene').fieldMode)).toBe('partitioned');
   await page.locator('#flow-demo-terrain').selectOption('islands');

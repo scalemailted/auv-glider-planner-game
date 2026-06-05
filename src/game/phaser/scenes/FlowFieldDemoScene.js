@@ -2,13 +2,16 @@ import {
   advanceDemoParticles,
   createDemoParticles,
   createDemoTerrain,
+  FLOW_DEMO_DEFAULT_LAYERS,
   FLOW_DEMO_DEFAULT_PRESETS,
   FLOW_DEMO_GRID,
   getFlowDemoPresetConfig,
   isDemoLand,
+  normalizeAdditiveLayers,
   normalizeTerrainMode,
   normalizeFieldMode,
-  sampleDemoFlow
+  sampleDemoFlow,
+  summarizeDemoFlowMagnitudes
 } from '../../../core/demo/FlowFieldDemo.js';
 import { PhaserButton } from '../ui/Button.js';
 
@@ -20,14 +23,16 @@ export class FlowFieldDemoScene extends PhaserScene {
     this.objects = [];
     this.buttons = [];
     this.fieldMode = 'dynamic';
-    this.preset = FLOW_DEMO_DEFAULT_PRESETS.static;
+    this.preset = FLOW_DEMO_DEFAULT_PRESETS.dynamic;
     this.secondaryPreset = FLOW_DEMO_DEFAULT_PRESETS.secondary;
-    this.blendWeight = 0.6;
+    this.additiveLayers = normalizeAdditiveLayers(FLOW_DEMO_DEFAULT_LAYERS);
     this.partitionType = 'vertical';
     this.terrainMode = 'none';
     this.terrainSeed = 'anchor-demo-1';
     this.terrain = createDemoTerrain({ mode: 'none', seed: this.terrainSeed });
     this.timeSpeedScale = 1;
+    this.magnitudeScale = 1.5;
+    this.particleSpeedScale = 1;
     this.demoTime = 0;
     this.paused = false;
     this.lastDebugDemoTime = -Infinity;
@@ -37,18 +42,20 @@ export class FlowFieldDemoScene extends PhaserScene {
     this.fieldMode = normalizeFieldMode(data.fieldMode ?? data.mode ?? 'dynamic');
     this.preset = data.preset ?? FLOW_DEMO_DEFAULT_PRESETS[this.fieldMode] ?? FLOW_DEMO_DEFAULT_PRESETS.dynamic;
     this.secondaryPreset = data.secondaryPreset ?? FLOW_DEMO_DEFAULT_PRESETS.secondary;
-    this.blendWeight = finiteNumber(data.blendWeight, 0.6);
+    this.additiveLayers = normalizeAdditiveLayers(data.additiveLayers ?? legacyAdditiveLayers(data));
     this.partitionType = data.partitionType ?? 'vertical';
     this.terrainMode = normalizeTerrainMode(data.terrainMode ?? 'none');
     this.terrainSeed = data.terrainSeed ?? 'anchor-demo-1';
     this.terrain = createDemoTerrain({ mode: this.terrainMode, seed: this.terrainSeed });
     this.timeSpeedScale = finiteNumber(data.timeSpeedScale, 1);
+    this.magnitudeScale = finiteNumber(data.magnitudeScale, 1.5);
+    this.particleSpeedScale = finiteNumber(data.particleSpeedScale, 1);
     this.demoTime = 0;
     this.paused = false;
     this.lastDebugDemoTime = -Infinity;
     this.particles = createDemoParticles({
       count: this.fieldMode === 'static' ? 18 : 22,
-      seed: `flow-demo-${this.fieldMode}:${this.preset}:${this.secondaryPreset}`
+      seed: `flow-demo-${this.fieldMode}:${this.preset}:${this.secondaryPreset}:${JSON.stringify(this.additiveLayers)}`
     });
   }
 
@@ -88,7 +95,8 @@ export class FlowFieldDemoScene extends PhaserScene {
       time: this.demoTime,
       dt,
       field: sampleDemoFlow,
-      fieldConfig: this.fieldConfig()
+      fieldConfig: this.fieldConfig(),
+      particleSpeedScale: this.particleSpeedScale
     });
     this.debugFlowSample();
     this.draw();
@@ -100,9 +108,9 @@ export class FlowFieldDemoScene extends PhaserScene {
 
   subtitle() {
     if (this.fieldMode === 'static') return 'Static fields hold direction and magnitude while particles reveal flow structure.';
-    if (this.fieldMode === 'blended') return 'Blended fields stack two presets over the same domain.';
+    if (this.fieldMode === 'additiveLayers') return 'Additive Layers sum optional behaviors over one base field.';
     if (this.fieldMode === 'partitioned') return 'Partitioned fields use different presets in different regions.';
-    return 'Dynamic fields evolve over simulated time; the speed control scales field time.';
+    return 'Dynamic fields evolve their arrow directions and magnitudes over simulated time.';
   }
 
   renderConsole() {
@@ -112,11 +120,14 @@ export class FlowFieldDemoScene extends PhaserScene {
       fieldMode: this.fieldMode,
       preset: this.preset,
       secondaryPreset: this.secondaryPreset,
-      blendWeight: this.blendWeight,
+      additiveLayers: this.additiveLayers,
       partitionType: this.partitionType,
       terrainMode: this.terrainMode,
       terrainSeed: this.terrainSeed,
       timeSpeedScale: this.timeSpeedScale,
+      magnitudeScale: this.magnitudeScale,
+      particleSpeedScale: this.particleSpeedScale,
+      magnitudeStats: summarizeDemoFlowMagnitudes(this.fieldConfig(), this.demoTime),
       presetConfig: primaryConfig,
       status: `${fieldModeLabel(this.fieldMode)} field`,
       time: this.demoTime,
@@ -125,12 +136,23 @@ export class FlowFieldDemoScene extends PhaserScene {
       fieldMode: (fieldMode) => this.scene.restart({ ...this.sceneConfig(), fieldMode }),
       preset: (preset) => this.scene.restart({ ...this.sceneConfig(), preset }),
       secondaryPreset: (secondaryPreset) => this.scene.restart({ ...this.sceneConfig(), secondaryPreset }),
-      blendWeight: (blendWeight) => this.scene.restart({ ...this.sceneConfig(), blendWeight: Number(blendWeight) }),
+      additiveLayer: (index, patch) => this.scene.restart({
+        ...this.sceneConfig(),
+        additiveLayers: updateLayer(this.additiveLayers, index, patch)
+      }),
       partitionType: (partitionType) => this.scene.restart({ ...this.sceneConfig(), partitionType }),
       terrainMode: (terrainMode) => this.scene.restart({ ...this.sceneConfig(), terrainMode }),
       resetTerrain: () => this.scene.restart({ ...this.sceneConfig(), terrainSeed: nextTerrainSeed(this.terrainSeed) }),
       timeSpeedScale: (timeSpeedScale) => {
         this.timeSpeedScale = Number(timeSpeedScale) || 1;
+        this.renderConsole();
+      },
+      magnitudeScale: (magnitudeScale) => {
+        this.magnitudeScale = Number(magnitudeScale) || 1;
+        this.renderConsole();
+      },
+      particleSpeedScale: (particleSpeedScale) => {
+        this.particleSpeedScale = Number(particleSpeedScale) || 1;
         this.renderConsole();
       },
       pause: () => {
@@ -147,7 +169,7 @@ export class FlowFieldDemoScene extends PhaserScene {
       fieldMode: this.fieldMode,
       primaryPreset: this.preset,
       secondaryPreset: this.secondaryPreset,
-      blendWeight: this.blendWeight,
+      additiveLayers: this.additiveLayers,
       partitionType: this.partitionType,
       terrain: this.terrain
     };
@@ -158,11 +180,13 @@ export class FlowFieldDemoScene extends PhaserScene {
       fieldMode: this.fieldMode,
       preset: this.preset,
       secondaryPreset: this.secondaryPreset,
-      blendWeight: this.blendWeight,
+      additiveLayers: this.additiveLayers,
       partitionType: this.partitionType,
       terrainMode: this.terrainMode,
       terrainSeed: this.terrainSeed,
-      timeSpeedScale: this.timeSpeedScale
+      timeSpeedScale: this.timeSpeedScale,
+      magnitudeScale: this.magnitudeScale,
+      particleSpeedScale: this.particleSpeedScale
     };
   }
 
@@ -281,12 +305,13 @@ export class FlowFieldDemoScene extends PhaserScene {
         const ny = (row + 0.5) / rows;
         if (isDemoLand(this.terrain, nx, ny)) continue;
         const flow = sampleDemoFlow({ ...this.fieldConfig(), x: nx, y: ny, time: this.demoTime });
-        const magnitude = Math.min(1.2, Math.hypot(flow.u, flow.v));
+        const rawMagnitude = Math.hypot(flow.u, flow.v);
+        const magnitude = Math.min(1.35, rawMagnitude);
         const point = this.toScreen(map, nx, ny);
         const angle = Math.atan2(flow.v, flow.u);
-        const length = 12 + magnitude * 22;
+        const length = 5 + Math.max(0, magnitude) * 24 * this.magnitudeScale;
         const color = modeColor(this.fieldMode, flow.composition?.activeRegion);
-        this.drawArrow(point.x, point.y, angle, length, color, 0.36 + magnitude * 0.42);
+        this.drawArrow(point.x, point.y, angle, length, color, 0.26 + Math.min(0.62, magnitude * 0.5), 1.2 + magnitude * 2.1);
       }
     }
   }
@@ -308,11 +333,11 @@ export class FlowFieldDemoScene extends PhaserScene {
     }
   }
 
-  drawArrow(x, y, angle, length, color, alpha) {
+  drawArrow(x, y, angle, length, color, alpha, thickness = 2) {
     const head = Math.max(5, length * 0.22);
     const endX = x + Math.cos(angle) * length;
     const endY = y + Math.sin(angle) * length;
-    this.graphics.lineStyle(2, color, alpha);
+    this.graphics.lineStyle(thickness, color, alpha);
     this.graphics.lineBetween(x, y, endX, endY);
     this.graphics.fillStyle(color, Math.min(0.92, alpha + 0.12));
     this.graphics.fillTriangle(
@@ -374,9 +399,11 @@ export class FlowFieldDemoScene extends PhaserScene {
     this.subtitleText?.setWordWrapWidth(Math.min(760, map.width));
     const preset = getFlowDemoPresetConfig(this.fieldMode, this.preset);
     const secondary = getFlowDemoPresetConfig(this.fieldMode, this.secondaryPreset);
-    const secondaryText = ['blended', 'partitioned'].includes(this.fieldMode) ? ` + ${secondary.label}` : '';
+    const layerText = this.fieldMode === 'additiveLayers' ? ` | Additive Layers: ${formatLayerSummary(this.additiveLayers)}` : '';
+    const secondaryText = this.fieldMode === 'partitioned' ? ` + ${secondary.label}` : '';
     const centerSample = sampleDemoFlow({ ...this.fieldConfig(), x: 0.5, y: 0.5, time: this.demoTime });
-    this.statusText?.setText(`Mode: ${fieldModeLabel(this.fieldMode)} | Preset: ${preset?.label ?? 'Current Field'}${secondaryText} | Demo time: ${this.demoTime.toFixed(1)} hr | Time Speed: ${this.timeSpeedScale}x | Sample: (${centerSample.u.toFixed(2)}, ${centerSample.v.toFixed(2)}) | Terrain: ${terrainModeLabel(this.terrainMode)}`);
+    const stats = summarizeDemoFlowMagnitudes(this.fieldConfig(), this.demoTime);
+    this.statusText?.setText(`Mode: ${fieldModeLabel(this.fieldMode)} | Base Field: ${preset?.label ?? 'Current Field'}${secondaryText}${layerText} | Demo Time: ${this.demoTime.toFixed(1)} hr | Time Speed: ${this.timeSpeedScale}x | Mag min/mean/max: ${stats.min.toFixed(2)} / ${stats.mean.toFixed(2)} / ${stats.max.toFixed(2)} | Sample: (${centerSample.u.toFixed(2)}, ${centerSample.v.toFixed(2)}) mag ${Math.hypot(centerSample.u, centerSample.v).toFixed(2)} | Terrain: ${terrainModeLabel(this.terrainMode)}`);
     this.statusText?.setWordWrapWidth(Math.min(980, map.width));
     this.statusText?.setPosition(margin, map.y + map.height + 18);
   }
@@ -409,12 +436,15 @@ export class FlowFieldDemoScene extends PhaserScene {
     if (this.demoTime - this.lastDebugDemoTime < 1) return;
     this.lastDebugDemoTime = this.demoTime;
     const sample = sampleDemoFlow({ ...this.fieldConfig(), x: 0.5, y: 0.5, time: this.demoTime });
-    globalThis.console?.debug?.('[FlowFieldsDemo][Sample]', {
+    globalThis.console?.debug?.('[FlowDemo][MagnitudeSample]', {
       mode: fieldModeLabel(this.fieldMode),
+      basePreset: this.preset,
       preset: this.preset,
       secondaryPreset: this.secondaryPreset,
+      layers: this.additiveLayers,
       demoTime: Number(this.demoTime.toFixed(2)),
       timeSpeedScale: this.timeSpeedScale,
+      magnitudeStats: summarizeDemoFlowMagnitudes(this.fieldConfig(), this.demoTime),
       center: {
         u: Number(sample.u.toFixed(4)),
         v: Number(sample.v.toFixed(4)),
@@ -428,14 +458,14 @@ function fieldModeLabel(mode) {
   return {
     static: 'Static',
     dynamic: 'Dynamic',
-    blended: 'Blended',
+    additiveLayers: 'Additive Layers',
     partitioned: 'Partitioned'
   }[mode] ?? 'Static';
 }
 
 function modeColor(mode, activeRegion = null) {
   if (mode === 'static') return 0x63e6be;
-  if (mode === 'blended') return 0xf4d35e;
+  if (mode === 'additiveLayers') return 0xf4d35e;
   if (mode === 'partitioned') return activeRegion === 'secondary' ? 0xff8c42 : 0x70d6ff;
   return 0x70d6ff;
 }
@@ -458,4 +488,28 @@ function nextTerrainSeed(seed) {
 function finiteNumber(value, fallback = 0) {
   const number = Number(value);
   return Number.isFinite(number) ? number : fallback;
+}
+
+function updateLayer(layers, index, patch = {}) {
+  const next = normalizeAdditiveLayers(layers);
+  next[index] = normalizeAdditiveLayers([
+    ...next.slice(0, index),
+    { ...next[index], ...patch },
+    ...next.slice(index + 1)
+  ])[index];
+  return next;
+}
+
+function legacyAdditiveLayers(data = {}) {
+  if (!data || data.fieldMode !== 'blended') return FLOW_DEMO_DEFAULT_LAYERS;
+  return [
+    { id: 'layer1', preset: data.secondaryPreset ?? FLOW_DEMO_DEFAULT_PRESETS.secondary, weight: Math.max(0, Math.min(1, 1 - finiteNumber(data.blendWeight, 0.6))), enabled: true, dynamic: true },
+    FLOW_DEMO_DEFAULT_LAYERS[1]
+  ];
+}
+
+function formatLayerSummary(layers = []) {
+  const enabled = normalizeAdditiveLayers(layers).filter((layer) => layer.enabled);
+  if (!enabled.length) return 'none';
+  return enabled.map((layer) => `${getFlowDemoPresetConfig('dynamic', layer.preset).label} ${layer.weight.toFixed(2)}x`).join(', ');
 }
