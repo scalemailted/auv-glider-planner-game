@@ -1,6 +1,6 @@
 import { isTooShallow } from '../sim/DepthLayer.js';
 
-export function cellFromPoint(point, mode = 'round') {
+export function cellFromPoint(point, mode = 'floor') {
   const x = Number(point?.x);
   const y = Number(point?.y);
   const quantize = mode === 'floor' ? Math.floor : Math.round;
@@ -11,8 +11,8 @@ export function cellFromPoint(point, mode = 'round') {
 }
 
 export function isCellNavigable(level, mission = null, x, y) {
-  const cx = Math.round(Number(x));
-  const cy = Math.round(Number(y));
+  const cx = Math.floor(Number(x));
+  const cy = Math.floor(Number(y));
   if (!isInsideLevel(level, cx, cy)) {
     return { ok: false, reason: 'outsideMap', cell: { x: cx, y: cy }, terrain: null };
   }
@@ -31,9 +31,26 @@ export function isPointNavigable(level, mission = null, point) {
   return isCellNavigable(level, mission, cell.x, cell.y);
 }
 
+export function describeCellNavigability(level, mission = null, cell = null) {
+  if (!cell || !Number.isFinite(Number(cell.x)) || !Number.isFinite(Number(cell.y))) {
+    return { status: 'unknown', reason: 'invalidPoint', cell: null, terrainType: 'unknown', source: 'canonicalNavigability' };
+  }
+  const normalized = cellFromPoint(cell, 'floor');
+  const nav = isCellNavigable(level, mission, normalized.x, normalized.y);
+  return {
+    status: nav.ok ? 'water' : nav.reason === 'terrain' ? 'land' : 'blocked',
+    reason: nav.reason,
+    cell: normalized,
+    terrainType: nav.reason === 'terrain' ? 'land' : nav.ok ? 'water' : nav.reason ?? 'unknown',
+    source: 'canonicalNavigability'
+  };
+}
+
 export function getSegmentCells(start, end) {
   if (!isFinitePoint(start) || !isFinitePoint(end)) return [];
-  return supercoverLineCells(cellFromPoint(start, 'round'), cellFromPoint(end, 'round'));
+  const sampled = sampleSegmentCells(start, end, 0.25);
+  const supercover = supercoverLineCells(cellFromPoint(start, 'floor'), cellFromPoint(end, 'floor'));
+  return uniqueCells([...sampled.cells, ...supercover]);
 }
 
 export function explainSegmentBlockage(start, end, { level = null, mission = null } = {}) {
@@ -43,10 +60,11 @@ export function explainSegmentBlockage(start, end, { level = null, mission = nul
       reason: 'invalidPoint',
       cells: [],
       blockedCells: [],
-      blockedAt: isFinitePoint(end) ? cellFromPoint(end) : null,
+      blockedAt: isFinitePoint(end) ? cellFromPoint(end, 'floor') : null,
       lastValid: isFinitePoint(start) ? { x: Number(start.x), y: Number(start.y) } : null
     };
   }
+  const sample = sampleSegmentCells(start, end, 0.25);
   const cells = getSegmentCells(start, end);
   const traversedCells = [];
   const blockedCells = [];
@@ -61,15 +79,145 @@ export function explainSegmentBlockage(start, end, { level = null, mission = nul
     lastValid = { x: cell.x, y: cell.y };
   }
   const blockedAt = blockedCells[0] ?? null;
-  return {
+  const result = {
     ok: !blockedAt,
     reason: blockedAt?.reason ?? 'clear',
     cells: traversedCells,
     allCells: cells,
+    sampledPoints: sample.points,
+    sampleSpacing: sample.spacing,
     blockedCells,
     blockedAt,
-    lastValid
+    lastValid,
+    movementModel: 'continuous-segment'
   };
+  debugRouteSegmentValidation({ start, end, result });
+  return result;
+}
+
+export function buildRouteBlockDiagnostic({
+  level = null,
+  mission = null,
+  agentId = null,
+  segmentFromIndex = null,
+  segmentToIndex = null,
+  plannedFrom = null,
+  target = null,
+  actualStartPosition = null,
+  reportedCell = null,
+  reason = null,
+  source = 'routeValidation'
+} = {}) {
+  const segmentStart = isFinitePoint(actualStartPosition) ? actualStartPosition : plannedFrom;
+  const plannedFromCell = isFinitePoint(plannedFrom) ? cellFromPoint(plannedFrom, 'floor') : null;
+  const plannedTargetCell = isFinitePoint(target) ? cellFromPoint(target, 'floor') : null;
+  const actualStartCell = isFinitePoint(actualStartPosition) ? cellFromPoint(actualStartPosition, 'floor') : null;
+  const normalizedReportedCell = reportedCell && isFinitePoint(reportedCell)
+    ? cellFromPoint(reportedCell, 'floor')
+    : null;
+  const blockage = explainSegmentBlockage(segmentStart, target, { level, mission });
+  const startNav = describeCellNavigability(level, mission, actualStartCell ?? plannedFromCell);
+  const targetNav = describeCellNavigability(level, mission, plannedTargetCell);
+  const segmentBlockedCell = blockage.blockedAt ? { x: blockage.blockedAt.x, y: blockage.blockedAt.y } : null;
+  const blockedCell = segmentBlockedCell
+    ?? (!startNav || startNav.status === 'water' ? null : startNav.cell)
+    ?? (!targetNav || targetNav.status === 'water' ? null : targetNav.cell)
+    ?? normalizedReportedCell;
+  const blockedCellNav = describeCellNavigability(level, mission, blockedCell);
+  const reportedCellNav = describeCellNavigability(level, mission, normalizedReportedCell);
+  const blockingReason = classifyRouteBlockReason({
+    reason,
+    blockage,
+    startNav,
+    targetNav,
+    blockedCell,
+    plannedTargetCell,
+    actualStartCell
+  });
+  const diagnostic = {
+    agentId,
+    segmentFromIndex,
+    segmentToIndex,
+    plannedFromCell,
+    plannedTargetCell,
+    actualStartPosition: isFinitePoint(actualStartPosition)
+      ? { x: Number(actualStartPosition.x), y: Number(actualStartPosition.y), t: Number(actualStartPosition.t ?? 0) }
+      : null,
+    actualStartCell,
+    traversedCells: (blockage.cells ?? []).map((cell) => {
+      const nav = describeCellNavigability(level, mission, cell);
+      return {
+        x: cell.x,
+        y: cell.y,
+        navigable: nav.status === 'water',
+        terrainType: nav.terrainType,
+        reason: nav.reason,
+        source: 'segmentTraversal'
+      };
+    }),
+    blocking: {
+      blocked: true,
+      reason: blockingReason,
+      blockedCell,
+      blockedCellNavigability: blockedCellNav.status,
+      reportedCell: normalizedReportedCell,
+      reportedCellNavigability: reportedCellNav.status
+    },
+    tooltipAgreement: {
+      reportedCellMatchesTooltip: normalizedReportedCell
+        ? reportedCellNav.status !== 'water' || !blockedCell || sameCell(normalizedReportedCell, blockedCell)
+        : true,
+      blockedCellMatchesTooltip: !blockedCell || blockedCellNav.status !== 'water'
+    },
+    source,
+    movementModel: 'continuous-segment',
+    coordinateConvention: 'x/y'
+  };
+  debugRouteBlockDiagnostic(diagnostic);
+  return diagnostic;
+}
+
+function classifyRouteBlockReason({ reason, blockage, startNav, targetNav, blockedCell, plannedTargetCell, actualStartCell } = {}) {
+  if (startNav?.status && startNav.status !== 'water') return 'actual_drift_into_land';
+  if (targetNav?.status && targetNav.status !== 'water') return 'blocked_endpoint';
+  if (String(reason ?? blockage?.reason ?? '').includes('noLegalPath')) return 'no_path';
+  if (blockage?.blockedAt) {
+    if (plannedTargetCell && sameCell(blockage.blockedAt, plannedTargetCell)) return 'blocked_endpoint';
+    if (actualStartCell && sameCell(blockage.blockedAt, actualStartCell)) return 'actual_drift_into_land';
+    return 'blocked_by_land';
+  }
+  return blockedCell ? 'unknown' : 'no_path';
+}
+
+function debugRouteBlockDiagnostic(diagnostic) {
+  if (!globalThis.ANCHOR_DEBUG_ROUTE_BLOCKS) return;
+  globalThis.console?.debug?.('[RouteBlockDiagnostic]', {
+    agentId: diagnostic.agentId,
+    fromWaypoint: diagnostic.segmentFromIndex,
+    toWaypoint: diagnostic.segmentToIndex,
+    plannedFromCell: diagnostic.plannedFromCell,
+    targetCell: diagnostic.plannedTargetCell,
+    actualStartPosition: diagnostic.actualStartPosition,
+    actualStartCell: diagnostic.actualStartCell,
+    traversedCells: diagnostic.traversedCells,
+    blockedCell: diagnostic.blocking.blockedCell,
+    blockedReason: diagnostic.blocking.reason,
+    reportedCell: diagnostic.blocking.reportedCell,
+    reportedCellNavigability: diagnostic.blocking.reportedCellNavigability,
+    tooltipNavigability: diagnostic.blocking.reportedCellNavigability,
+    coordinateConvention: diagnostic.coordinateConvention
+  });
+  if (diagnostic.blocking.reportedCell && diagnostic.blocking.reportedCellNavigability === 'water' && diagnostic.blocking.blockedCell) {
+    globalThis.console?.warn?.('[RouteBlockDiagnostic][Mismatch]', {
+      reportedCell: diagnostic.blocking.reportedCell,
+      tooltipSaysNavigable: true,
+      validatorSaysBlocked: true,
+      actualBlockedCell: diagnostic.blocking.blockedCell,
+      suspectedCause: sameCell(diagnostic.blocking.reportedCell, diagnostic.blocking.blockedCell)
+        ? 'canonical_lookup_disagreement'
+        : 'reported_cell_was_current_position_not_blocking_terrain'
+    });
+  }
 }
 
 export function isSegmentNavigable(start, end, context = {}) {
@@ -77,8 +225,8 @@ export function isSegmentNavigable(start, end, context = {}) {
 }
 
 export function evaluateReachability(startCell, goalCell, { level = null, mission = null } = {}) {
-  const start = cellFromPoint(startCell, 'round');
-  const goal = cellFromPoint(goalCell, 'round');
+  const start = cellFromPoint(startCell, 'floor');
+  const goal = cellFromPoint(goalCell, 'floor');
   const startNav = isCellNavigable(level, mission, start.x, start.y);
   if (!startNav.ok) return unreachableResult(start, goal, startNav.reason, startNav.cell, []);
   const goalNav = isCellNavigable(level, mission, goal.x, goal.y);
@@ -120,7 +268,7 @@ export function evaluateReachability(startCell, goalCell, { level = null, missio
 }
 
 export function buildNavigableReachabilityField({ level = null, mission = null, startCell = null, goalCell = null } = {}) {
-  const start = cellFromPoint(startCell, 'round');
+  const start = cellFromPoint(startCell, 'floor');
   const width = Number(level?.world?.grid?.width ?? 0);
   const height = Number(level?.world?.grid?.height ?? 0);
   const cells = new Map();
@@ -180,8 +328,8 @@ function unreachableResult(start, goal, reason, blockedCell = null, visitedCells
 function reconstructPath(field, goal) {
   const path = [];
   let current = {
-    x: Math.round(Number(goal.x)),
-    y: Math.round(Number(goal.y))
+    x: Math.floor(Number(goal.x)),
+    y: Math.floor(Number(goal.y))
   };
   const guard = Math.max(1, Number(field?.cells?.size ?? 0) + 1);
   for (let index = 0; index < guard; index += 1) {
@@ -213,6 +361,8 @@ function supercoverLineCells(start, end) {
     const nextX = (0.5 + ix) / Math.max(1, nx);
     const nextY = (0.5 + iy) / Math.max(1, ny);
     if (nextX === nextY) {
+      if (signX !== 0) cells.push({ x: x + signX, y });
+      if (signY !== 0) cells.push({ x, y: y + signY });
       x += signX;
       y += signY;
       ix += 1;
@@ -229,6 +379,26 @@ function supercoverLineCells(start, end) {
   return uniqueCells(cells);
 }
 
+function sampleSegmentCells(start, end, spacing = 0.25) {
+  if (!isFinitePoint(start) || !isFinitePoint(end)) return { points: [], cells: [], spacing };
+  const from = { x: Number(start.x), y: Number(start.y) };
+  const to = { x: Number(end.x), y: Number(end.y) };
+  const length = Math.hypot(to.x - from.x, to.y - from.y);
+  const steps = Math.max(1, Math.ceil(length / Math.max(0.05, Number(spacing) || 0.25)));
+  const points = [];
+  const cells = [];
+  for (let index = 0; index <= steps; index += 1) {
+    const ratio = index / steps;
+    const point = {
+      x: from.x + (to.x - from.x) * ratio,
+      y: from.y + (to.y - from.y) * ratio
+    };
+    points.push(point);
+    cells.push(cellFromPoint(point, 'floor'));
+  }
+  return { points, cells: uniqueCells(cells), spacing };
+}
+
 function uniqueCells(cells) {
   const seen = new Set();
   const result = [];
@@ -239,6 +409,24 @@ function uniqueCells(cells) {
     result.push(cell);
   }
   return result;
+}
+
+function debugRouteSegmentValidation({ start, end, result } = {}) {
+  if (!globalThis.ANCHOR_DEBUG_ROUTE_SEGMENTS) return;
+  globalThis.console?.debug?.('[RouteSegmentValidation]', {
+    from: start ? { x: Number(start.x), y: Number(start.y) } : null,
+    to: end ? { x: Number(end.x), y: Number(end.y) } : null,
+    segmentLength: isFinitePoint(start) && isFinitePoint(end)
+      ? Math.hypot(Number(end.x) - Number(start.x), Number(end.y) - Number(start.y))
+      : null,
+    sampleSpacing: result?.sampleSpacing ?? null,
+    sampledPoints: result?.sampledPoints ?? [],
+    sampledCells: result?.cells ?? [],
+    blockedCells: result?.blockedCells ?? [],
+    clearanceViolations: [],
+    movementModel: 'continuous-segment',
+    valid: Boolean(result?.ok)
+  });
 }
 
 function isInsideLevel(level, x, y) {
@@ -256,7 +444,11 @@ function neighbors4(x, y) {
 }
 
 function cellKey(x, y) {
-  return `${Math.round(Number(x))},${Math.round(Number(y))}`;
+  return `${Math.floor(Number(x))},${Math.floor(Number(y))}`;
+}
+
+function sameCell(a, b) {
+  return Boolean(a && b && Math.floor(Number(a.x)) === Math.floor(Number(b.x)) && Math.floor(Number(a.y)) === Math.floor(Number(b.y)));
 }
 
 function isFinitePoint(point) {

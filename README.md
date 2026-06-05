@@ -406,11 +406,12 @@ node tools/js/headless_validate_plan.mjs anchor.solver-packet.json anchor.plan.j
 
 This path is documented in `tools/js/README.md` and is also shown as an optional Colab notebook cell. It avoids Phaser and DOM imports and keeps the browser game as the official referee.
 
-Debrief stores comparison results for the current browser session in slots for `manual`, `temporalGreedy`, and `importedSolver`, with legacy compatibility for older `greedyBaseline` records. Run or import each plan, simulate it, then Debrief shows available rows side by side and includes the comparison in result JSON and after-action Markdown exports. Temporal Greedy plans continue until mission time, fuel, reachable positive-value candidates, or a safety limit stops them, and the plan metadata records the stop reason, stop time, remaining time, and remaining fuel.
+Debrief stores comparison results for the current browser session in slots for `manual`, `temporalGreedy`, and `importedSolver`, with legacy compatibility for older `greedyBaseline` records. Run or import each plan, simulate it, then Debrief shows available rows side by side and includes the comparison in result JSON and after-action Markdown exports. Temporal Greedy is the browser-native selected-glider baseline planner; see `docs/temporal_greedy.md` for algorithm scope, scoring, validation, and limitations.
 
 More details:
 
 - `docs/solver_workflow.md`
+- `docs/temporal_greedy.md`
 - `tools/python/example_solver_readme.md`
 - `docs/plan_format.md`
 

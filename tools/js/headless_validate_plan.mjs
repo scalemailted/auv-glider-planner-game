@@ -25,11 +25,27 @@ const validation = validatePlanForExecution({
   plan
 });
 
+if (!validation.ok) {
+  console.error('Plan invalid.');
+  for (const diagnostic of validation.diagnostics ?? []) {
+    if (diagnostic.severity !== 'blocking') continue;
+    console.error('');
+    console.error(`[${diagnostic.severity}] ${diagnostic.agentId ?? 'agent'} ${diagnostic.segment?.fromWaypointLabel ?? 'start'} -> ${diagnostic.segment?.toWaypointLabel ?? 'waypoint'}`);
+    console.error(`Category: ${diagnostic.category}`);
+    if (diagnostic.blocking?.blockedCell) {
+      console.error(`Blocked cell: (${diagnostic.blocking.blockedCell.x}, ${diagnostic.blocking.blockedCell.y})`);
+    }
+    console.error(`Fix: ${diagnostic.fixHint}`);
+  }
+}
+
 console.log(JSON.stringify({
   ok: validation.ok,
   errors: validation.errors,
   warnings: validation.warnings,
-  routeIssueCount: validation.routeAudit?.issueCount ?? 0
+  routeIssueCount: validation.routeAudit?.issueCount ?? 0,
+  diagnostics: validation.diagnostics ?? [],
+  solverFeedback: validation.solverFeedback ?? null
 }, null, 2));
 process.exit(validation.ok ? 0 : 1);
 

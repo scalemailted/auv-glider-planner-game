@@ -29,6 +29,8 @@ export function createAgent(config) {
     completedPlan: false,
     activeWaypoint: null,
     blockedSteps: 0,
+    lastBlockedCell: null,
+    lastBlockedPosition: null,
     status: 'ready',
     commsState: 'surfaced',
     lastSurfaceTime: 0,

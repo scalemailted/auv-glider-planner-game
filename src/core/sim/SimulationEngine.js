@@ -29,6 +29,8 @@ import {
   getActiveWaypoint,
   getWaypointProgress
 } from '../planning/PlanExecutor.js';
+import { buildRouteBlockDiagnostic } from '../planning/Navigability.js';
+import { buildRouteValidationDiagnostic } from '../planning/RouteDiagnostic.js';
 import { summarizeSimulationStopReason } from '../planning/StopReasonSummarizer.js';
 import {
   createRouteFailureDecision,
@@ -330,6 +332,7 @@ export class SimulationEngine {
 
     const missedBeforeMovement = detectMissedWaypoint(agent, activeWaypoint, this.t, {
       blockedTarget: targetValid ? this.world.isBlocked(activeWaypoint.x, activeWaypoint.y) : false,
+      blockedCell: targetValid ? { x: Math.floor(Number(activeWaypoint.x)), y: Math.floor(Number(activeWaypoint.y)) } : null,
       outOfBounds: targetValid ? !this.isInBounds(activeWaypoint.x, activeWaypoint.y) : false,
       maxWaypointTravelTime: this.getMaxWaypointTravelTime(activeWaypoint)
     });
@@ -394,7 +397,9 @@ export class SimulationEngine {
         t: this.t,
         agentId: agent.id,
         x: agent.x,
-        y: agent.y
+        y: agent.y,
+        blockedCell: outcome.blockedCell ?? null,
+        attemptedPosition: outcome.attemptedPosition ?? null
       });
     }
 
@@ -414,7 +419,9 @@ export class SimulationEngine {
     const missedAfterMovement = detectMissedWaypoint(agent, getActiveWaypoint(agent, this.plan), this.t, {
       maxWaypointTravelTime: this.getMaxWaypointTravelTime(getActiveWaypoint(agent, this.plan)),
       maxStalledSteps: SIMULATION_LIMITS.maxStalledWaypointSteps,
-      maxBlockedSteps: SIMULATION_LIMITS.maxBlockedWaypointSteps
+      maxBlockedSteps: SIMULATION_LIMITS.maxBlockedWaypointSteps,
+      blockedCell: outcome.blockedCell ?? agent.lastBlockedCell ?? null,
+      attemptedPosition: outcome.attemptedPosition ?? agent.lastBlockedPosition ?? null
     });
     if (missedAfterMovement) this.recordEvent(missedAfterMovement);
     trimArrayToLimit(agent.history, SIMULATION_LIMITS.maxAgentHistoryPoints);
@@ -715,6 +722,21 @@ export class SimulationEngine {
       reason: event.reason,
       stopReason
     });
+    this.routeFailureDecision.plannerDiagnostics = this.buildRouteFailureDiagnostics(event, agent);
+    if (this.routeFailureDecision.reason === 'routeBlocked') {
+      globalThis.console?.warn?.('[Simulation][RouteBlockedAfterPlannerValidation]', this.routeFailureDecision.plannerDiagnostics);
+      globalThis.console?.warn?.('[TemporalGreedy][RuntimeBlockAfterValidation]', {
+        agentId: this.routeFailureDecision.plannerDiagnostics.agentId,
+        lastSuccessfulWaypoint: this.routeFailureDecision.plannerDiagnostics.lastSuccessfulWaypointIndex,
+        failedWaypoint: this.routeFailureDecision.plannerDiagnostics.failedWaypointIndex,
+        currentPosition: this.routeFailureDecision.plannerDiagnostics.currentPosition,
+        plannedFromCell: this.routeFailureDecision.plannerDiagnostics.plannedFromCell,
+        targetWaypoint: this.routeFailureDecision.plannerDiagnostics.targetWaypoint,
+        previousPlannerValidation: this.routeFailureDecision.plannerDiagnostics.prevalidationResult,
+        playValidationResult: this.initialValidation,
+        simulationBlockReason: this.routeFailureDecision.plannerDiagnostics.simulationBlockReason
+      });
+    }
     this.running = false;
     this.recordEvent({
       type: 'routeFailureDecisionRequired',
@@ -725,6 +747,74 @@ export class SimulationEngine {
       failedWaypointId: this.routeFailureDecision.failedWaypointId,
       currentPosition: this.routeFailureDecision.currentPosition
     });
+  }
+
+  buildRouteFailureDiagnostics(event, agent) {
+    const agentPlan = this.plan?.agentPlans?.find((candidate) => candidate.agentId === event?.agentId) ?? null;
+    const failedWaypointIndex = Number(event?.waypointIndex ?? agent?.currentWaypointIndex ?? -1);
+    const targetWaypoint = failedWaypointIndex >= 0 ? agentPlan?.waypoints?.[failedWaypointIndex] ?? null : null;
+    const fromWaypoint = failedWaypointIndex > 0 ? agentPlan?.waypoints?.[failedWaypointIndex - 1] ?? null : null;
+    const plannedStart = agentPlan?.selectedStart ?? agent?.history?.[0] ?? null;
+    const plannedFrom = fromWaypoint ?? plannedStart;
+    const currentPosition = agent ? { x: round(agent.x, 3), y: round(agent.y, 3) } : null;
+    const reportedCell = event?.blockedCell ?? (agent ? { x: Math.floor(agent.x), y: Math.floor(agent.y) } : null);
+    const routeBlockDiagnostic = buildRouteBlockDiagnostic({
+      level: this.level,
+      mission: this.mission,
+      agentId: event?.agentId ?? agent?.id ?? null,
+      segmentFromIndex: failedWaypointIndex > 0 ? failedWaypointIndex - 1 : null,
+      segmentToIndex: failedWaypointIndex,
+      plannedFrom,
+      target: targetWaypoint,
+      actualStartPosition: currentPosition ? { ...currentPosition, t: this.t } : null,
+      reportedCell,
+      reason: event?.reason ?? null,
+      source: 'simulationRouteFailure'
+    });
+    const routeValidationDiagnostic = buildRouteValidationDiagnostic({
+      type: 'segmentBlocked',
+      reason: event?.reason ?? 'routeBlocked',
+      severity: 'error',
+      agentId: event?.agentId ?? agent?.id ?? null,
+      agentLabel: agent?.label ?? event?.agentId ?? agent?.id ?? null,
+      segmentIndex: failedWaypointIndex,
+      waypointIndex: failedWaypointIndex,
+      blockedAt: routeBlockDiagnostic?.blocking?.blockedCell ?? reportedCell,
+      routeBlockDiagnostic
+    });
+    const prevalidationIssue = (this.initialValidation?.routeAudit?.agentResults ?? [])
+      .find((result) => result.agentId === event?.agentId)
+      ?.issues?.find((issue) => Number(issue.waypointIndex ?? issue.to?.index) === failedWaypointIndex) ?? null;
+    return {
+      agentId: event?.agentId ?? agent?.id ?? null,
+      failedWaypointIndex,
+      lastSuccessfulWaypointIndex: failedWaypointIndex > 0 ? failedWaypointIndex - 1 : null,
+      plannedSegment: {
+        fromLabel: failedWaypointIndex > 0 ? `W${failedWaypointIndex}` : 'start',
+        toLabel: failedWaypointIndex >= 0 ? `W${failedWaypointIndex + 1}` : 'active waypoint'
+      },
+      plannedFromCell: fromWaypoint ? { x: fromWaypoint.x, y: fromWaypoint.y } : plannedStart ? { x: plannedStart.x, y: plannedStart.y } : null,
+      currentPosition,
+      targetWaypoint: targetWaypoint ? { x: targetWaypoint.x, y: targetWaypoint.y, t: targetWaypoint.t ?? targetWaypoint.estimatedArrivalTime ?? null } : null,
+      blockReason: event?.reason ?? null,
+      blockedCell: routeBlockDiagnostic?.blocking?.blockedCell ?? reportedCell,
+      reportedCell,
+      routeBlockDiagnostic,
+      routeValidationDiagnostic,
+      prevalidated: Boolean(this.initialValidation),
+      prevalidationResult: prevalidationIssue
+        ? {
+          ok: false,
+          reason: prevalidationIssue.reason ?? prevalidationIssue.type,
+          message: prevalidationIssue.message,
+          blockedAt: prevalidationIssue.blockedAt ?? null,
+          routeBlockDiagnostic: prevalidationIssue.routeBlockDiagnostic ?? null,
+          routeValidationDiagnostic: prevalidationIssue.diagnostic ?? null
+        }
+        : { ok: Boolean(this.initialValidation?.ok), reason: null, message: this.initialValidation?.ok ? 'Initial Play validation passed this segment.' : 'Initial Play validation had no matching segment issue.' },
+      playValidationOk: Boolean(this.initialValidation?.ok),
+      simulationBlockReason: event?.reason ?? null
+    };
   }
 
   recordRouteFailureDecision(action) {

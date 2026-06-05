@@ -7,6 +7,7 @@ import {
   PLAN_ANCHOR_MODES
 } from '../planning/PlanExecutionModes.js';
 import { planMatchesLevel } from '../identity/GameInstanceId.js';
+import { buildSolverValidationFeedback } from '../planning/RouteDiagnostic.js';
 
 export function importPlanJson(json, { level, mission, routeValidation = true } = {}) {
   const errors = [];
@@ -64,7 +65,8 @@ export function importPlanJson(json, { level, mission, routeValidation = true } 
   if (routeValidation && normalized.agentPlans?.some((agentPlan) => agentPlan.waypoints?.length)) {
     const audit = validateRoutePlanForExecution({ level, mission, plan: normalized });
     normalized.importMetadata.routeAudit = audit;
-    if (audit.ok === false) warnings.push(audit.message ?? 'Route validity audit found issues.');
+    normalized.importMetadata.validationFeedback = buildSolverValidationFeedback({ routeAudit: audit, plan: normalized, level, mission, planner });
+    if (audit.ok === false) errors.push(audit.firstBlockingDiagnostic?.message ?? audit.firstIssue?.message ?? 'Route validity audit found issues.');
   }
 
   return {

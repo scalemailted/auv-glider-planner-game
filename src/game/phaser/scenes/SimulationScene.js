@@ -30,6 +30,7 @@ import { routeFailureTitle } from '../../../core/sim/RouteFailureDecision.js';
 import { applyImportedWaypointData, importWaypointDataJson } from '../../../core/io/PlanSegmentImporter.js';
 import { buildSurfaceObservationExport } from '../../../core/io/SurfaceObservationExporter.js';
 import { recomputeAllWaypointTiming } from '../../../core/planning/TemporalWaypointPlanner.js';
+import { buildRouteValidationDiagnostic, formatDiagnosticDetails } from '../../../core/planning/RouteDiagnostic.js';
 import {
   debugSurfaceDecision,
   isSurfaceDecisionModalVisible
@@ -1294,7 +1295,54 @@ function routeFailureBody(level, mission, decision) {
   const last = Number.isFinite(Number(decision.lastCompletedWaypointIndex))
     ? `Waypoint ${Number(decision.lastCompletedWaypointIndex) + 1}`
     : 'none';
-  return `${glider} could not continue to ${failed}.\nReason: ${labelReason(decision.reason)}.\nLast successful waypoint: ${last}.\nCurrent time: ${formatMissionTime(level, decision.time)}.\nCurrent position: ${formatPoint(decision.currentPosition)}.\n\nSuggested fix: ${decision.suggestedFix}\n\nChoose how to recover. Replan returns to Planning from this actual position and time.`;
+  const diagnostics = decision.plannerDiagnostics ?? {};
+  const target = diagnostics.targetWaypoint ? formatPoint(diagnostics.targetWaypoint) : 'N/A';
+  const plannedFrom = diagnostics.plannedFromCell ? formatPoint(diagnostics.plannedFromCell) : 'N/A';
+  const routeBlock = diagnostics.routeBlockDiagnostic ?? diagnostics.prevalidationResult?.routeBlockDiagnostic ?? null;
+  const routeDiagnostic = diagnostics.routeValidationDiagnostic
+    ?? diagnostics.prevalidationResult?.routeValidationDiagnostic
+    ?? (routeBlock ? buildRouteValidationDiagnostic({
+      type: 'segmentBlocked',
+      reason: diagnostics.simulationBlockReason ?? decision.reason,
+      severity: 'error',
+      agentId: diagnostics.agentId ?? decision.agentId,
+      agentLabel: glider,
+      segmentIndex: Number(decision.failedWaypointIndex ?? 0),
+      waypointIndex: Number(decision.failedWaypointIndex ?? 0),
+      blockedAt: routeBlock.blocking?.blockedCell ?? diagnostics.blockedCell ?? null,
+      routeBlockDiagnostic: routeBlock
+    }) : null);
+  const blockedCell = routeBlock?.blocking?.blockedCell ? formatPoint(routeBlock.blocking.blockedCell) : diagnostics.blockedCell ? formatPoint(diagnostics.blockedCell) : 'N/A';
+  const reportedCell = routeBlock?.blocking?.reportedCell ? formatPoint(routeBlock.blocking.reportedCell) : diagnostics.reportedCell ? formatPoint(diagnostics.reportedCell) : null;
+  const blockExplanation = routeDiagnostic ? formatDiagnosticDetails(routeDiagnostic) : formatRouteBlockExplanation(routeBlock);
+  const prevalidation = diagnostics.prevalidationResult
+    ? `${diagnostics.prevalidationResult.ok ? 'passed' : 'failed'}${diagnostics.prevalidationResult.reason ? ` (${diagnostics.prevalidationResult.reason})` : ''}`
+    : 'unknown';
+  return `${glider} could not continue to ${failed}.\nReason: ${labelReason(decision.reason)}.\nLast successful waypoint: ${last}.\nCurrent time: ${formatMissionTime(level, decision.time)}.\nCurrent position: ${formatPoint(decision.currentPosition)}.\n\nPlanned segment: ${diagnostics.plannedSegment?.fromLabel ?? 'previous'} -> ${diagnostics.plannedSegment?.toLabel ?? failed}\nPlanned from cell: ${plannedFrom}\nTarget waypoint: ${target}\nReported/current cell: ${reportedCell ?? formatPoint(decision.currentPosition)}\nActual blocked cell: ${blockedCell}\n${blockExplanation}\nPrevalidation: ${prevalidation}\n\nSuggested fix: ${routeDiagnostic?.fixHint ?? decision.suggestedFix}\n\nChoose how to recover. Replan returns to Planning from this actual position and time.`;
+}
+
+function formatRouteBlockExplanation(diagnostic) {
+  const blocking = diagnostic?.blocking;
+  if (!blocking) return 'Route block detail: unavailable.';
+  const blocked = blocking.blockedCell ? formatPoint(blocking.blockedCell) : 'unknown';
+  const reported = blocking.reportedCell ? formatPoint(blocking.reportedCell) : null;
+  if (reported && blocking.reportedCellNavigability === 'water' && !sameCell(blocking.reportedCell, blocking.blockedCell)) {
+    return `Route block detail: reported/current cell ${reported} is navigable, but the segment crosses blocked terrain at ${blocked}.`;
+  }
+  if (blocking.reason === 'actual_drift_into_land') {
+    return `Route block detail: the glider's actual drifted position made the segment unsafe near blocked terrain at ${blocked}.`;
+  }
+  if (blocking.reason === 'blocked_endpoint') {
+    return `Route block detail: the target endpoint is blocked at ${blocked}.`;
+  }
+  if (blocking.reason === 'no_path') {
+    return 'Route block detail: no legal navigable path exists between these cells.';
+  }
+  return `Route block detail: segment crosses blocked terrain at ${blocked}.`;
+}
+
+function sameCell(a, b) {
+  return Boolean(a && b && Math.floor(Number(a.x)) === Math.floor(Number(b.x)) && Math.floor(Number(a.y)) === Math.floor(Number(b.y)));
 }
 
 function routeFailureConsoleText(decision) {

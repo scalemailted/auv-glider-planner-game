@@ -2,7 +2,7 @@ import { createAgent } from '../sim/Agent.js';
 import { stepAgentToward } from '../sim/Physics.js';
 import { SIMULATION_LIMITS } from '../sim/SimulationSafety.js';
 import { TruthWorld } from '../sim/TruthWorld.js';
-import { evaluateReachability, isCellNavigable } from './Navigability.js';
+import { buildRouteBlockDiagnostic, isCellNavigable } from './Navigability.js';
 
 export function evaluateSegmentForExecution({
   level = null,
@@ -12,6 +12,7 @@ export function evaluateSegmentForExecution({
   to = null,
   startTime = 0,
   travelTime = null,
+  maxWaypointTravelTime = null,
   fuelRemaining = null,
   frame = null
 } = {}) {
@@ -19,21 +20,45 @@ export function evaluateSegmentForExecution({
     return blockedResult('invalidPoint', 'Segment has invalid endpoint coordinates.', { from, to });
   }
   const startNav = isCellNavigable(level, mission, from.x, from.y);
-  if (!startNav.ok) return blockedResult(startNav.reason, 'Segment start is not navigable.', { blockedCell: startNav.cell });
-  const targetNav = isCellNavigable(level, mission, to.x, to.y);
-  if (!targetNav.ok) return blockedResult(targetNav.reason, 'Segment target is not navigable.', { blockedCell: targetNav.cell });
-  const reachability = evaluateReachability(from, to, { level, mission });
-  if (reachability.reachable === false) {
-    return blockedResult(reachability.reason ?? 'noLegalPath', 'No legal navigable path exists for this segment.', {
-      blockedCell: reachability.blockedCell,
-      reachability
+  if (!startNav.ok) {
+    return blockedResult(startNav.reason, 'Segment start is not navigable.', {
+      blockedCell: startNav.cell,
+      routeBlockDiagnostic: buildRouteBlockDiagnostic({
+        level,
+        mission,
+        agentId: agent.id,
+        plannedFrom: from,
+        target: to,
+        actualStartPosition: from,
+        reportedCell: startNav.cell,
+        reason: startNav.reason,
+        source: 'segmentExecutionValidator'
+      })
     });
   }
-
+  const targetNav = isCellNavigable(level, mission, to.x, to.y);
+  if (!targetNav.ok) {
+    return blockedResult(targetNav.reason, 'Segment target is not navigable.', {
+      blockedCell: targetNav.cell,
+      routeBlockDiagnostic: buildRouteBlockDiagnostic({
+        level,
+        mission,
+        agentId: agent.id,
+        plannedFrom: from,
+        target: to,
+        actualStartPosition: from,
+        reportedCell: targetNav.cell,
+        reason: targetNav.reason,
+        source: 'segmentExecutionValidator'
+      })
+    });
+  }
   const dt = getSafeStepDt(level);
   const waypointTolerance = Number(agent.waypointTolerance ?? 0.35);
-  const timeBudget = Number.isFinite(Number(travelTime))
-    ? Math.max(Number(travelTime) * 1.65 + dt * SIMULATION_LIMITS.maxBlockedWaypointSteps, Number(travelTime) + dt)
+  const timeBudget = Number.isFinite(Number(maxWaypointTravelTime))
+    ? Math.max(dt, Number(maxWaypointTravelTime))
+    : Number.isFinite(Number(travelTime))
+      ? Math.max(Number(travelTime) * 1.65 + dt * SIMULATION_LIMITS.maxBlockedWaypointSteps, Number(travelTime) + dt)
     : Math.max(1, Math.hypot(Number(to.x) - Number(from.x), Number(to.y) - Number(from.y)) / Math.max(0.05, Number(agent.maxSpeed ?? 1))) * 2;
   const maxSteps = Math.min(
     SIMULATION_LIMITS.maxRunUntilCompleteSteps,
@@ -61,7 +86,7 @@ export function evaluateSegmentForExecution({
       return {
         ok: true,
         reason: 'reachable',
-        pathCells: reachability.pathCells,
+        pathCells: [],
         finalPosition: { x: simAgent.x, y: simAgent.y, t },
         travelTime: Math.max(0, t - Number(startTime ?? 0)),
         energyCost: simAgent.energyUsed,
@@ -79,11 +104,25 @@ export function evaluateSegmentForExecution({
     if (lastOutcome.blocked) {
       blockedSteps += 1;
       if (blockedSteps >= SIMULATION_LIMITS.maxBlockedWaypointSteps) {
+        const blockedCell = lastOutcome.blockedCell ?? { x: Math.floor(simAgent.x), y: Math.floor(simAgent.y) };
         return blockedResult('routeBlocked', 'Simulation movement would be blocked by terrain.', {
-          blockedCell: { x: Math.floor(simAgent.x), y: Math.floor(simAgent.y) },
+          blockedCell,
           travelTime: Math.max(0, t - Number(startTime ?? 0)),
           energyCost: simAgent.energyUsed,
-          blockedSteps
+          blockedSteps,
+          finalPosition: { x: simAgent.x, y: simAgent.y, t },
+          attemptedPosition: lastOutcome.attemptedPosition ?? null,
+          routeBlockDiagnostic: buildRouteBlockDiagnostic({
+            level,
+            mission,
+            agentId: agent.id,
+            plannedFrom: from,
+            target: to,
+            actualStartPosition: { x: simAgent.x, y: simAgent.y, t },
+            reportedCell: blockedCell,
+            reason: 'routeBlocked',
+            source: 'segmentExecutionValidator'
+          })
         });
       }
     } else {
@@ -98,11 +137,28 @@ export function evaluateSegmentForExecution({
     t += dt;
   }
 
-  return blockedResult(lastOutcome?.blocked ? 'routeBlocked' : 'waypointTimeout', 'Simulation movement did not reach the waypoint within the segment budget.', {
-    blockedCell: lastOutcome?.blocked ? { x: Math.floor(simAgent.x), y: Math.floor(simAgent.y) } : null,
+  const endedBlocked = lastOutcome?.blocked || blockedSteps > 0;
+  const blockedCell = endedBlocked ? lastOutcome?.blockedCell ?? { x: Math.floor(simAgent.x), y: Math.floor(simAgent.y) } : null;
+  return blockedResult(endedBlocked ? 'routeBlocked' : 'waypointTimeout', 'Simulation movement did not reach the waypoint within the segment budget.', {
+    blockedCell,
     travelTime: Math.max(0, t - Number(startTime ?? 0)),
     energyCost: simAgent.energyUsed,
-    blockedSteps
+    blockedSteps,
+    finalPosition: { x: simAgent.x, y: simAgent.y, t },
+    attemptedPosition: lastOutcome?.attemptedPosition ?? null,
+    routeBlockDiagnostic: endedBlocked
+      ? buildRouteBlockDiagnostic({
+        level,
+        mission,
+        agentId: agent.id,
+        plannedFrom: from,
+        target: to,
+        actualStartPosition: { x: simAgent.x, y: simAgent.y, t },
+        reportedCell: blockedCell,
+        reason: 'routeBlocked',
+        source: 'segmentExecutionValidator'
+      })
+      : null
   });
 }
 
@@ -120,6 +176,8 @@ function blockedResult(reason, message, extra = {}) {
     blockedCell: extra.blockedCell ?? null,
     blockedSteps: extra.blockedSteps ?? 0,
     reachability: extra.reachability ?? null,
+    attemptedPosition: extra.attemptedPosition ?? null,
+    routeBlockDiagnostic: extra.routeBlockDiagnostic ?? null,
     from: extra.from ?? null,
     to: extra.to ?? null
   };

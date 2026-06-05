@@ -18,6 +18,7 @@ import { inspectCellAtTime } from '../core/exploration/CellInspection.js';
 import { getRoiModeDescription, getRoiModeLabel, getTravelCostAnchor, getTravelCostBudget, normalizeRoiMode } from '../core/roi/RoiMode.js';
 import { getTutorialHint, tutorialFeatureEnabled } from '../core/tutorial/TutorialFeatureGates.js';
 import { replayDiagnosticsCardHtml } from './ReplayDiagnosticsCard.js';
+import { formatDiagnosticForUi } from '../core/planning/RouteDiagnostic.js';
 
 export class HtmlMissionWorkspaceOverlay {
   constructor(app, handlers) {
@@ -847,6 +848,9 @@ function temporalGreedyPlannerSummary(state) {
   const unreachableCandidates = (stop.agents ?? []).reduce((sum, agentStop) => sum + Number(agentStop.unreachableCandidates ?? 0), Number(stop.unreachableCandidates ?? 0));
   const blockedCandidates = (stop.agents ?? []).reduce((sum, agentStop) => sum + Number(agentStop.blockedCandidates ?? 0), Number(stop.blockedCandidates ?? 0));
   const stochasticRiskCandidates = (stop.agents ?? []).reduce((sum, agentStop) => sum + Number(agentStop.stochasticRiskCandidates ?? 0), Number(stop.stochasticRiskCandidates ?? 0));
+  const clusteredCandidates = (stop.agents ?? []).reduce((sum, agentStop) => sum + Number(agentStop.clusteredCandidates ?? agentStop.diagnostics?.rejectionSummary?.clustered ?? 0), Number(stop.clusteredCandidates ?? 0));
+  const diagnosticCategories = summarizeTemporalGreedyDiagnosticCategories(stop);
+  const topDiagnostic = Object.entries(diagnosticCategories).sort((a, b) => b[1] - a[1])[0] ?? null;
   const guardFailure = Boolean(stop.guardFailure || (stop.agents ?? []).some((agentStop) => agentStop.guardFailure));
   const depletion = plan.meta?.sharedDepletion ?? {};
   return `
@@ -858,11 +862,24 @@ function temporalGreedyPlannerSummary(state) {
       <div class="replay-diagnostics-row"><span>Shared Depletion</span><strong>${depletion.enabled ? `enabled, ${escapeHtml(depletion.duplicateSamplesAvoided ?? 0)} avoided` : 'single-agent not needed'}</strong></div>
       ${unreachableCandidates > 0 ? `<div class="replay-diagnostics-row"><span>Skipped</span><strong>${escapeHtml(unreachableCandidates)} unreachable</strong></div>` : ''}
       ${blockedCandidates > 0 ? `<div class="replay-diagnostics-row"><span>Blocked</span><strong>${escapeHtml(blockedCandidates)} rejected</strong></div>` : ''}
+      ${topDiagnostic ? `<div class="replay-diagnostics-row"><span>Top Reject</span><strong>${escapeHtml(labelizeStopReason(topDiagnostic[0]))} (${escapeHtml(topDiagnostic[1])})</strong></div>` : ''}
+      ${clusteredCandidates > 0 ? `<div class="replay-diagnostics-row"><span>Spacing</span><strong>${escapeHtml(clusteredCandidates)} penalized</strong></div>` : ''}
       ${stochasticRiskCandidates > 0 ? `<div class="replay-diagnostics-row"><span>Forecast Risk</span><strong>${escapeHtml(stochasticRiskCandidates)} avoided</strong></div>` : ''}
       ${guardFailure ? '<div class="hud-muted warning">Planner guard stopped before a normal horizon/fuel/no-candidate condition.</div>' : ''}
       <div class="replay-diagnostics-row"><span>Stop Reason</span><strong>${escapeHtml(labelizeStopReason(stop.stopReason))}</strong></div>
     </div>
   `;
+}
+
+function summarizeTemporalGreedyDiagnosticCategories(stop = {}) {
+  const summary = {};
+  for (const agentStop of stop.agents ?? []) {
+    const categories = agentStop.diagnostics?.diagnosticCategories ?? {};
+    for (const [category, count] of Object.entries(categories)) {
+      summary[category] = Number(summary[category] ?? 0) + Number(count ?? 0);
+    }
+  }
+  return summary;
 }
 
 function bestPathUnavailableReason(vm, action) {
@@ -921,7 +938,7 @@ function routeAuditSection(routeAudit) {
     <section class="console-section warning">
       <h2>${hasErrors ? 'Route Invalid' : 'Route Warnings'}</h2>
       <div class="hud-muted">${escapeHtml(routeAuditSummary(routeAudit))}</div>
-      ${issues.slice(0, 3).map((issue) => `<div class="hud-muted">- ${escapeHtml(issue.message)}</div>`).join('')}
+      ${issues.slice(0, 3).map((issue) => `<div class="hud-muted">- ${escapeHtml(formatDiagnosticForUi(issue.diagnostic) ?? issue.message)}</div>`).join('')}
     </section>
   `;
 }
@@ -932,8 +949,9 @@ function routeAuditSummary(routeAudit) {
   const first = issues[0];
   const hasErrors = issues.some((issue) => issue.severity === 'error');
   const prefix = hasErrors ? 'Route invalid' : 'Route warning';
-  if (issues.length === 1) return `${prefix}: ${first.message}`;
-  return `${hasErrors ? 'Route invalid' : 'Route warnings'}: ${issues.length} issues found. First issue: ${first.message}`;
+  const firstMessage = formatDiagnosticForUi(first.diagnostic) ?? first.message;
+  if (issues.length === 1) return `${prefix}: ${firstMessage}`;
+  return `${hasErrors ? 'Route invalid' : 'Route warnings'}: ${issues.length} issues found. First issue: ${firstMessage}`;
 }
 
 function routeAuditIssueCount(routeAudit) {

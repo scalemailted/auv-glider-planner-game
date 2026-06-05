@@ -1,23 +1,33 @@
 import { temporalGreedySolver } from './BaselineSolvers.js';
-import { validatePlanForExecution } from './PlanExecutionValidator.js';
+import { validateRoutePlanForExecution } from './RouteValidityAudit.js';
 
-export function buildTemporalGreedyRequest({ level, mission, options = {} } = {}) {
+export function buildTemporalGreedyRequest({ level, mission, plan = null, selectedAgentId = null, options = {} } = {}) {
   return {
     planner: 'temporalGreedy',
     version: 1,
     level: cloneJson(level),
     mission: cloneJson(mission),
+    currentPlan: cloneJson(plan),
+    selectedAgentId: selectedAgentId ?? null,
     options: cloneJson(options)
   };
 }
 
-export function runTemporalGreedyPlan(request = {}) {
+export function runTemporalGreedyPlan(request = {}, { onProgress = null } = {}) {
   try {
-    const plan = temporalGreedySolver(request.level, request.mission, request.options ?? {});
-    const validation = validatePlanForExecution({
+    const plan = temporalGreedySolver(request.level, request.mission, {
+      ...(request.options ?? {}),
+      currentPlan: request.currentPlan ?? null,
+      selectedAgentId: request.selectedAgentId ?? request.options?.selectedAgentId ?? null,
+      requestId: request.requestId ?? null,
+      onProgress
+    });
+    const selectedAgentId = request.selectedAgentId ?? request.options?.selectedAgentId ?? null;
+    const validation = validateSelectedTemporalGreedyPlan({
       level: request.level,
       mission: request.mission,
-      plan
+      plan,
+      selectedAgentId
     });
     if (!validation.ok) {
       plan.meta ??= {};
@@ -60,6 +70,12 @@ export function runTemporalGreedyPlan(request = {}) {
       validation
     };
   } catch (error) {
+    onProgress?.({
+      type: 'plannerError',
+      phase: 'error',
+      requestId: request.requestId ?? null,
+      error: error?.message ?? 'Temporal Greedy planning failed.'
+    });
     return {
       ok: false,
       requestId: request.requestId ?? null,
@@ -129,13 +145,36 @@ function runTemporalGreedyOnMainThread(request, { signal, onProgress } = {}) {
         return;
       }
       onProgress?.({ phase: 'running' });
-      resolve(runTemporalGreedyPlan(request));
+      resolve(runTemporalGreedyPlan(request, { onProgress }));
     }, 0);
   });
 }
 
 function countWaypoints(plan) {
   return (plan?.agentPlans ?? []).reduce((sum, agentPlan) => sum + (agentPlan.waypoints?.length ?? 0), 0);
+}
+
+function validateSelectedTemporalGreedyPlan({ level, mission, plan, selectedAgentId } = {}) {
+  const audit = validateRoutePlanForExecution({
+    level,
+    mission,
+    plan,
+    agentId: selectedAgentId
+  });
+  const errors = (audit.agentResults ?? [])
+    .flatMap((result) => result.issues ?? [])
+    .filter((issue) => issue.severity === 'error')
+    .map((issue) => issue.message);
+  const warnings = (audit.agentResults ?? [])
+    .flatMap((result) => result.issues ?? [])
+    .filter((issue) => issue.severity !== 'error')
+    .map((issue) => issue.message);
+  return {
+    ok: audit.ok,
+    errors: [...new Set(errors)],
+    warnings: [...new Set(warnings)],
+    routeAudit: audit
+  };
 }
 
 function hasRouteBlockedIssue(validation) {

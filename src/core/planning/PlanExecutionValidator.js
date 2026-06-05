@@ -70,8 +70,8 @@ export function validatePlanForExecution({ level, mission, plan } = {}) {
         const reason = waypoint.validity.reasons?.join(', ') || 'route';
         errors.push(`${label} is not executable (${reason}). Reduce or revise waypoints.`);
       }
-      const x = Math.round(Number(waypoint.x));
-      const y = Math.round(Number(waypoint.y));
+      const x = Math.floor(Number(waypoint.x));
+      const y = Math.floor(Number(waypoint.y));
       if (x < 0 || y < 0 || x >= Number(grid.width) || y >= Number(grid.height)) {
         errors.push(`${label} is outside the grid.`);
         invalidWaypointCount += 1;
@@ -106,7 +106,14 @@ export function validatePlanForExecution({ level, mission, plan } = {}) {
     }
   }
 
-  return { ok: errors.length === 0, errors: [...new Set(errors)], warnings: [...new Set(warnings)], routeAudit };
+  return {
+    ok: errors.length === 0,
+    errors: [...new Set(errors)],
+    warnings: [...new Set(warnings)],
+    diagnostics: routeAudit?.diagnostics ?? [],
+    solverFeedback: routeAudit?.solverFeedback ?? null,
+    routeAudit
+  };
 }
 
 function isFinitePoint(point) {

@@ -1,6 +1,7 @@
 import { normalizePlan } from '../planning/WaypointPlan.js';
 import { validateRoutePlanForExecution } from '../planning/RouteValidityAudit.js';
 import { PLAN_ANCHOR_MODES, normalizePlannerMetadata } from '../planning/PlanExecutionModes.js';
+import { buildSolverValidationFeedback } from '../planning/RouteDiagnostic.js';
 
 export function importWaypointDataJson(json, context = {}) {
   if (!json || typeof json !== 'object') return failure('Waypoint import JSON must be an object.');
@@ -117,7 +118,10 @@ function buildImported({ sourceType, segments, planner, json, context, inferredM
     segment.waypoints.forEach((waypoint, index) => validateWaypoint(waypoint, index, segment, context, errors, warnings));
   }
   const routeAudit = buildRouteAudit(segments, context);
-  if (routeAudit?.ok === false) errors.push(routeAudit.message ?? 'Route validity audit found issues.');
+  const validationFeedback = routeAudit
+    ? buildSolverValidationFeedback({ routeAudit, plan: context.plan, level: context.level, mission: context.mission, planner })
+    : null;
+  if (routeAudit?.ok === false) errors.push(routeAudit.firstBlockingDiagnostic?.message ?? routeAudit.firstIssue?.message ?? 'Route validity audit found issues.');
   const imported = {
     ok: errors.length === 0,
     errors,
@@ -132,6 +136,7 @@ function buildImported({ sourceType, segments, planner, json, context, inferredM
       fairForLeaderboard: !planner.usesTruth && !planner.usesOracle
     },
     routeAudit,
+    validationFeedback,
     summary: {
       title: 'Imported Waypoint Data',
       sourceType,

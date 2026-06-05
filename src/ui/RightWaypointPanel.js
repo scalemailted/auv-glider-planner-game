@@ -1,6 +1,7 @@
 import { formatMissionTime, getTimeConfig } from '../core/time/MissionTime.js';
 import { getDeploymentZoneForAgent, getDeploymentZonesForAgent, getSelectedStart, requiresDeploymentSelection } from '../core/deployment/DeploymentZones.js';
 import { labelReason } from '../core/planning/StopReasonSummarizer.js';
+import { formatDiagnosticForUi } from '../core/planning/RouteDiagnostic.js';
 
 export class RightWaypointPanel {
   constructor(app, root) {
@@ -142,7 +143,7 @@ function waypointRows(state, waypoints, agentId, engine, result) {
               <span>
                 <strong>W${Number(waypoint.window ?? 0)} · ${escapeHtml(formatMissionTime(state.level, waypoint.t ?? 0))}</strong>
                 <small>(${Number(waypoint.x)}, ${Number(waypoint.y)}) · ${escapeHtml(waypoint.action ?? 'sample')}</small>
-                ${waypoint.validity?.routeAudit?.message ? `<small class="marker-warning">${escapeHtml(waypoint.validity.routeAudit.message)}</small>` : ''}
+                ${waypoint.validity?.routeAudit ? `<small class="marker-warning">${escapeHtml(formatDiagnosticForUi(waypoint.validity.routeAudit.diagnostic) ?? waypoint.validity.routeAudit.message)}</small>` : ''}
               </span>
               <em>${escapeHtml(label)}</em>
             </button>

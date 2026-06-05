@@ -30,6 +30,8 @@ That script reads the same solver packet, uses visible forecast fields by defaul
 
 `type: "anchor.plan"` is the imported/exported route format. It supports executable `openLoop` and `timedOpenLoop` plans now, preserves `surfaceUpdateBundle` metadata with a safe import warning, and recognizes `policy` / `contingencyTable` as non-executable scaffolds. Planner metadata declares whether the route used forecast, truth, or oracle data.
 
+Invalid imported plans receive shared route diagnostics in import metadata and headless validation output. Each diagnostic has `type: "route_validation_diagnostic"`, `schemaVersion: "1.0"`, `severity`, `category`, segment cells, blocked/reported cells when available, a human explanation, and a solver-oriented `fixHint` plus `plannerFeedback`.
+
 External-solver plans should include:
 
 ```json

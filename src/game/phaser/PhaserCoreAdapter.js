@@ -16,6 +16,19 @@ const MIN_CAMERA_ZOOM = 0.55;
 const MAX_CAMERA_ZOOM = 6;
 const MAP_VERTICAL_BIAS = 0.46;
 
+function debugRouteRendering({ layerName, agentId = null, routeType = 'route', pointCount = 0, color = null, isDiagnostic = false, isVisibleByDefault = true } = {}) {
+  if (!globalThis?.ANCHOR_DEBUG_ROUTE_RENDERING) return;
+  console.debug('[RouteRendering]', {
+    layerName,
+    agentId,
+    routeType,
+    pointCount,
+    color,
+    isDiagnostic,
+    isVisibleByDefault
+  });
+}
+
 export function getMapLayout(level, width = PHASER_WIDTH, height = PHASER_HEIGHT, bounds = null, mapCamera = null) {
   const grid = level?.world?.grid ?? { width: 10, height: 10 };
   const area = bounds ?? { x: 54, y: 54, width: width - 108, height: height - 108 };
@@ -273,7 +286,12 @@ function drawBestPathOverlay(g, { level, mission, bestPathOverlay, selectedAgent
     const route = buildRouteSegmentsForAgent({ level, mission, agent, agentPlan });
     const plannedAlpha = selected ? 0.56 : 0.22;
     for (const segment of route.segments ?? []) {
-      drawGhostSegment(g, segment, layout, { color: 0xb9a7ff, alpha: plannedAlpha });
+      drawGhostSegment(g, segment, layout, {
+        color: 0xb9a7ff,
+        alpha: plannedAlpha,
+        agentId: agentPlan.agentId,
+        routeType: 'bestPathPlanned'
+      });
     }
     for (const [index, waypoint] of (agentPlan.waypoints ?? []).entries()) {
       if (!isFinitePoint(waypoint)) continue;
@@ -288,9 +306,19 @@ function drawBestPathOverlay(g, { level, mission, bestPathOverlay, selectedAgent
   drawBestPathEvents(g, events, layout);
 }
 
-function drawGhostSegment(g, segment, layout, { color, alpha }) {
-  const points = (segment.points?.length ? segment.points : [segment.from, segment.to]).filter(isFinitePoint);
+function drawGhostSegment(g, segment, layout, { color, alpha, agentId = null, routeType = 'plannedGhost' }) {
+  const points = getVisibleSegmentPoints(segment).filter(isFinitePoint);
   if (points.length < 2) return;
+  debugRouteRendering({
+    layerName: 'best-path-planned-route',
+    agentId,
+    routeType,
+    pointCount: points.length,
+    color,
+    isDiagnostic: false,
+    isVisibleByDefault: false
+  });
+  debugHiddenDiagnosticRouteCells(segment, { layerName: 'best-path-route-diagnostic-cells', agentId, routeType });
   const screenPoints = points.map((point) => cellToWorld(layout, point.x, point.y));
   g.lineStyle(5, 0x050a13, 0.26 * alpha);
   strokeDashedPolyline(g, screenPoints, layout.cell * 0.34, layout.cell * 0.2);
@@ -915,7 +943,9 @@ function drawPlan(g, {
         color: invalidSegment ? 0xff4e5a : segment.valid ? segmentStyle.color : 0xff9f43,
         alpha: alpha * segmentStyle.alpha,
         warning: !segment.valid || invalidSegment,
-        invalid: invalidSegment
+        invalid: invalidSegment,
+        agentId: agentPlan.agentId,
+        routeType: 'planned'
       });
     }
     for (const stack of stacks.values()) {
@@ -952,9 +982,19 @@ function drawPlan(g, {
   }
 }
 
-function drawRouteSegment(g, segment, layout, { selected, color, alpha, warning = false, invalid = false }) {
-  const points = (segment.points?.length ? segment.points : [segment.from, segment.valid ? segment.to : segment.lastValid]).filter(isFinitePoint);
+function drawRouteSegment(g, segment, layout, { selected, color, alpha, warning = false, invalid = false, agentId = null, routeType = 'planned' }) {
+  const points = getVisibleSegmentPoints(segment).filter(isFinitePoint);
   if (points.length < 2) return;
+  debugRouteRendering({
+    layerName: 'planned-route',
+    agentId,
+    routeType,
+    pointCount: points.length,
+    color,
+    isDiagnostic: false,
+    isVisibleByDefault: true
+  });
+  debugHiddenDiagnosticRouteCells(segment, { layerName: 'planned-route-diagnostic-cells', agentId, routeType });
   const screenPoints = points.map((point) => cellToWorld(layout, point.x, point.y));
   g.lineStyle(selected ? 7 : 3, 0x08111f, 0.38 * alpha);
   strokePolyline(g, screenPoints);
@@ -972,6 +1012,25 @@ function drawRouteSegment(g, segment, layout, { selected, color, alpha, warning 
       g.lineBetween(blocked.x + layout.cell * 0.13, blocked.y - layout.cell * 0.13, blocked.x - layout.cell * 0.13, blocked.y + layout.cell * 0.13);
     }
   }
+}
+
+function getVisibleSegmentPoints(segment) {
+  const end = segment?.valid === false && isFinitePoint(segment?.lastValid) ? segment.lastValid : segment?.to;
+  return [segment?.from, end];
+}
+
+function debugHiddenDiagnosticRouteCells(segment, { layerName, agentId = null, routeType = 'diagnosticCells' } = {}) {
+  const diagnosticCount = segment?.traversedCells?.length ?? segment?.pathCells?.length ?? segment?.sampledCells?.length ?? 0;
+  if (diagnosticCount <= 0) return;
+  debugRouteRendering({
+    layerName,
+    agentId,
+    routeType,
+    pointCount: diagnosticCount,
+    color: null,
+    isDiagnostic: true,
+    isVisibleByDefault: false
+  });
 }
 
 function drawPlanningMarkers(g, plan, selectedAgentId, selectedWindow, selectedMarker, layout, mode = 'planning') {
@@ -1113,6 +1172,26 @@ function drawGuidance(g, guidance, layout, layers = {}) {
       g.fillCircle(blocked.x, blocked.y, layout.cell * 0.22);
       g.lineStyle(3, 0xffd166, 0.9);
       g.strokeCircle(blocked.x, blocked.y, layout.cell * 0.32);
+    }
+    debugRouteRendering({
+      layerName: 'guidance-preview-route',
+      agentId: guidance.debug?.selectedAgentId ?? null,
+      routeType: 'guidancePreview',
+      pointCount: guidance.previewPath.length,
+      color: 0xffffff,
+      isDiagnostic: false,
+      isVisibleByDefault: true
+    });
+    if (guidance.routeClip?.traversedCells?.length) {
+      debugRouteRendering({
+        layerName: 'guidance-route-diagnostic-cells',
+        agentId: guidance.debug?.selectedAgentId ?? null,
+        routeType: 'guidanceDiagnosticCells',
+        pointCount: guidance.routeClip.traversedCells.length,
+        color: null,
+        isDiagnostic: true,
+        isVisibleByDefault: false
+      });
     }
     g.lineStyle(5, 0x07111d, 0.36);
     g.beginPath();

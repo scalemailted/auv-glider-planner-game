@@ -8,6 +8,8 @@ python -m http.server 8000
 
 Playwright is optional and intended for development smoke testing.
 
+Temporal Greedy is useful for planner smoke checks because it should return promptly, preserve non-selected glider routes, and validate before simulation. See `docs/temporal_greedy.md` for the expected selected-glider baseline behavior.
+
 ## Optional E2E Setup
 
 Install development dependencies:

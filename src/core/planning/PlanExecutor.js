@@ -32,7 +32,7 @@ export function advanceWaypointIfReached(agent, plan, tolerance = agent.waypoint
   return waypoint;
 }
 
-export function markWaypointMissed(agent, waypoint, reason, t) {
+export function markWaypointMissed(agent, waypoint, reason, t, details = {}) {
   if (!waypoint) return null;
   const waypointId = waypoint.id ?? `${agent.id}:wp:${agent.currentWaypointIndex}`;
   const alreadyMissed = agent.missedWaypoints.some((missed) => missed.waypointId === waypointId || missed.waypointIndex === agent.currentWaypointIndex);
@@ -49,7 +49,10 @@ export function markWaypointMissed(agent, waypoint, reason, t) {
     waypointIndex: agent.currentWaypointIndex,
     x: waypoint.x,
     y: waypoint.y,
-    reason
+    reason,
+    blockedCell: details.blockedCell ?? null,
+    attemptedPosition: details.attemptedPosition ?? null,
+    routeBlockDetails: details.routeBlockDetails ?? null
   };
   waypoint.executionStatus = 'missed';
   waypoint.executionReason = reason;
@@ -66,8 +69,19 @@ export function detectMissedWaypoint(agent, waypoint, t, config = {}) {
   if (!isFiniteWaypoint(waypoint)) return markWaypointMissed(agent, waypoint, 'invalidWaypoint', t);
   if (config.outOfBounds) return markWaypointMissed(agent, waypoint, 'outOfBoundsTarget', t);
   if (agent.battery <= 0) return markWaypointMissed(agent, waypoint, 'batteryDepleted', t);
-  if (config.blockedTarget) return markWaypointMissed(agent, waypoint, 'blockedTarget', t);
-  if ((agent.blockedSteps ?? 0) >= (config.maxBlockedSteps ?? 8)) return markWaypointMissed(agent, waypoint, 'blockedMovement', t);
+  if (config.blockedTarget) {
+    return markWaypointMissed(agent, waypoint, 'blockedTarget', t, {
+      blockedCell: config.blockedCell ?? { x: Math.floor(Number(waypoint.x)), y: Math.floor(Number(waypoint.y)) },
+      routeBlockDetails: config.routeBlockDetails ?? null
+    });
+  }
+  if ((agent.blockedSteps ?? 0) >= (config.maxBlockedSteps ?? 8)) {
+    return markWaypointMissed(agent, waypoint, 'blockedMovement', t, {
+      blockedCell: config.blockedCell ?? agent.lastBlockedCell ?? null,
+      attemptedPosition: config.attemptedPosition ?? agent.lastBlockedPosition ?? null,
+      routeBlockDetails: config.routeBlockDetails ?? null
+    });
+  }
   if ((agent.waypointSafety?.stalledSteps ?? 0) >= (config.maxStalledSteps ?? 90)) return markWaypointMissed(agent, waypoint, 'unreachableStalled', t);
   if ((agent.waypointSafety?.elapsed ?? 0) >= (config.maxWaypointTravelTime ?? Infinity)) return markWaypointMissed(agent, waypoint, 'waypointTimeout', t);
   return null;

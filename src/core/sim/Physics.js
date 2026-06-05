@@ -59,14 +59,20 @@ export function stepAgentToward(agent, target, world, dt, config = {}) {
   const frame = world.getFrame?.(config.t ?? 0);
   const beachingRisk = estimateBeachingRiskAtCell({ level: world.level, frame, x: nextX, y: nextY });
   const blocked = world.isBlocked(nextX, nextY);
+  const attemptedPosition = { x: nextX, y: nextY };
+  const blockedCell = blocked ? { x: Math.floor(nextX), y: Math.floor(nextY) } : null;
 
   if (!blocked) {
     agent.x = nextX;
     agent.y = nextY;
     agent.blockedSteps = 0;
+    agent.lastBlockedCell = null;
+    agent.lastBlockedPosition = null;
     agent.status = 'enroute';
   } else {
     agent.blockedSteps += 1;
+    agent.lastBlockedCell = blockedCell;
+    agent.lastBlockedPosition = attemptedPosition;
     agent.status = 'blocked';
   }
 
@@ -93,6 +99,9 @@ export function stepAgentToward(agent, target, world, dt, config = {}) {
     stochasticDriftRules: driftSample.rules,
     command: [commandVx, commandVy],
     velocity: [vx, vy],
+    attemptedPosition,
+    attemptedCell: { x: Math.floor(nextX), y: Math.floor(nextY) },
+    blockedCell,
     depthMultiplier,
     baseEnergy,
     energy,

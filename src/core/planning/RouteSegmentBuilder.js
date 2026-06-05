@@ -1,5 +1,4 @@
 import { getSelectedStart } from '../deployment/DeploymentZones.js';
-import { evaluateReachability } from './Navigability.js';
 import { clipLineToTerrain } from './RoutePreview.js';
 
 export function buildRouteSegmentsForAgent({ level, mission, agent, agentPlan, surfacedAgents = [], planningAnchor = null } = {}) {
@@ -35,19 +34,30 @@ export function buildRouteSegmentsForAgent({ level, mission, agent, agentPlan, s
     const from = points[index - 1];
     const to = points[index];
     const clipped = clipLineToTerrain(from, to, level, { mission });
-    const reachability = evaluateReachability(from, to, { level, mission });
     segments.push({
       from,
       to,
       kind: index === 1 ? 'startToWaypoint' : 'waypointToWaypoint',
       waypointIndex: index - 1,
-      valid: clipped.valid && reachability.reachable !== false,
+      valid: clipped.valid,
       points: clipped.points,
       blockedAt: clipped.blockedAt,
       lastValid: clipped.lastValid,
-      reason: clipped.valid === false ? clipped.reason ?? null : reachability.reachable === false ? reachability.reason : null,
-      reachability,
-      pathCells: reachability.pathCells ?? []
+      reason: clipped.valid === false ? clipped.reason ?? null : null,
+      traversedCells: clipped.traversedCells ?? [],
+      sampledCells: clipped.sampledCells ?? [],
+      sampledPoints: clipped.sampledPoints ?? [],
+      reachability: {
+        reachable: clipped.valid,
+        reason: clipped.valid ? 'continuousSegmentClear' : clipped.reason ?? 'segmentBlocked',
+        movementModel: 'continuous-segment',
+        traversedCells: clipped.traversedCells ?? [],
+        pathCells: clipped.traversedCells ?? [],
+        blockedCell: clipped.blockedAt ?? null,
+        blockedCells: clipped.blockedCells ?? [],
+        distance: Math.hypot(Number(to.x) - Number(from.x), Number(to.y) - Number(from.y))
+      },
+      pathCells: clipped.traversedCells ?? []
     });
   }
   return { anchor, missingAnchor: false, segments };

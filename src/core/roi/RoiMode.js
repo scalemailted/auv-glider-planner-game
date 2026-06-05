@@ -4,7 +4,7 @@ import { buildRouteSegmentsForAgent } from '../planning/RouteSegmentBuilder.js';
 import { getSelectedStart } from '../deployment/DeploymentZones.js';
 import { clipLineToTerrain } from '../planning/RoutePreview.js';
 import { estimateBeachingRiskAtCell, estimateSegmentBeachingRisk, estimateStochasticCurrentRiskAtCell } from '../planning/ShorelineRisk.js';
-import { buildNavigableReachabilityField, isCellNavigable } from '../planning/Navigability.js';
+import { isCellNavigable } from '../planning/Navigability.js';
 import { getMobileHazardsAtTime } from '../sim/MobileHazards.js';
 import { clamp } from '../math/MathUtils.js';
 
@@ -96,8 +96,8 @@ export function getCellRisk(context = {}) {
 export function computeRiskScore({ x, y, t = 0, level = null, mission = null, frame = null, planningAnchor = null, challengeMode = null } = {}) {
   const navigability = isCellNavigable(level, mission, x, y);
   if (!navigability.ok) return blockedRisk(navigability.reason);
-  const reachability = getCachedAnchorReachability({ level, mission, planningAnchor, x, y });
-  if (reachability?.reachable === false) return blockedRisk('unreachable');
+  const routeClip = getCachedAnchorReachability({ level, mission, planningAnchor, x, y });
+  if (routeClip?.reachable === false) return blockedRisk(routeClip.reason ?? 'continuous segment blocked');
   const reasons = [];
   let risk = 0;
   const stochasticRisk = estimateStochasticCurrentRiskAtCell({
@@ -188,7 +188,7 @@ export function getTravelCost({ x, y, t = 0, level = null, mission = null, plan 
     planningAnchor,
     t
   });
-  const entry = computedField.cells.get(`${Math.round(Number(x))},${Math.round(Number(y))}`);
+  const entry = computedField.cells.get(`${Math.floor(Number(x))},${Math.floor(Number(y))}`);
   if (entry) return entry;
   if (!computedField.anchor) {
     return {
@@ -220,15 +220,13 @@ export function computeTravelCostField({ level = null, mission = null, plan = nu
     return { anchor: null, cells, minCost: null, maxCost: null, reachableCount: 0, blockedCount: width * height };
   }
   const budget = getTravelCostBudget({ level, mission, agent, agentPlan, anchor, t });
-  const reachabilityField = buildNavigableReachabilityField({ level, mission, startCell: anchor });
-
   let minCost = Infinity;
   let maxCost = -Infinity;
   let reachableCount = 0;
   let blockedCount = 0;
   for (let y = 0; y < height; y += 1) {
     for (let x = 0; x < width; x += 1) {
-      const entry = safeEstimateTravelCostCell({ level, mission, agent, frame, anchor, x, y, budget, reachabilityField });
+      const entry = safeEstimateTravelCostCell({ level, mission, agent, frame, anchor, x, y, budget });
       cells.set(`${x},${y}`, entry);
       if (entry.reachable && Number.isFinite(entry.cost)) {
         minCost = Math.min(minCost, entry.cost);
@@ -307,18 +305,14 @@ function safeEstimateTravelCostCell(args) {
   }
 }
 
-function estimateTravelCostCell({ level, mission, agent, frame, anchor, x, y, budget = {}, reachabilityField = null }) {
+function estimateTravelCostCell({ level, mission, agent, frame, anchor, x, y, budget = {} }) {
   if (!isInsideLevel(level, x, y) || level?.layers?.terrain?.[y]?.[x]) {
     return { available: true, reachable: false, displayValue: 1, cost: Infinity, energy: Infinity, eta: Infinity, message: 'Blocked terrain' };
-  }
-  const reachabilityEntry = reachabilityField?.cells?.get(`${Math.round(Number(x))},${Math.round(Number(y))}`);
-  if (!reachabilityEntry) {
-    return { available: true, reachable: false, displayValue: 1, cost: Infinity, energy: Infinity, eta: Infinity, message: 'No legal path from current anchor' };
   }
   const target = { x, y };
   const clipped = clipLineToTerrain(anchor, target, level, { mission });
   const lineDistance = Math.hypot(Number(x) - Number(anchor.x), Number(y) - Number(anchor.y));
-  const distance = Math.max(lineDistance, Number(reachabilityEntry.cost ?? lineDistance));
+  const distance = lineDistance;
   const direction = normalizeDirection(Number(x) - Number(anchor.x), Number(y) - Number(anchor.y));
   const baseSpeed = Math.max(0.1, finiteNumber(agent?.maxSpeed ?? agent?.speed ?? mission?.physics?.speed, 1));
   const driftGain = finiteNumber(mission?.rules?.drift?.driftGain ?? mission?.physics?.driftGain, 0.75);
@@ -418,7 +412,8 @@ function estimateTravelCostCell({ level, mission, agent, frame, anchor, x, y, bu
     opposingCurrentTooStrong,
     currentLabel: currentAlignmentLabel(currentAlong, currentCross),
     blockedAt: clipped.blockedAt ?? null,
-    reachabilityCost: reachabilityEntry.cost,
+    movementModel: 'continuous-segment',
+    sampledCells: clipped.traversedCells ?? [],
     message
   };
 }
@@ -431,21 +426,28 @@ function getCachedAnchorReachability({ level = null, mission = null, planningAnc
     riskReachabilityCache.set(level, byKey);
   }
   const key = [
-    Math.round(Number(planningAnchor.x)),
-    Math.round(Number(planningAnchor.y)),
+    Math.floor(Number(planningAnchor.x)),
+    Math.floor(Number(planningAnchor.y)),
     level?.layers?.terrain?.length ?? 0,
     level?.world?.grid?.width ?? 0,
     level?.world?.grid?.height ?? 0
   ].join(':');
   let field = byKey.get(key);
   if (!field) {
-    field = buildNavigableReachabilityField({ level, mission, startCell: planningAnchor });
+    field = new Map();
     byKey.set(key, field);
   }
-  const cellKey = `${Math.round(Number(x))},${Math.round(Number(y))}`;
-  return field.cells.has(cellKey)
-    ? { reachable: true, cost: field.cells.get(cellKey).cost }
-    : { reachable: false, reason: 'unreachable' };
+  const cellKey = `${Math.floor(Number(x))},${Math.floor(Number(y))}`;
+  if (field.has(cellKey)) return field.get(cellKey);
+  const clipped = clipLineToTerrain(planningAnchor, { x, y }, level, { mission });
+  const entry = {
+    reachable: clipped.valid !== false,
+    reason: clipped.valid === false ? clipped.reason ?? 'segmentBlocked' : 'continuousSegmentClear',
+    blockedAt: clipped.blockedAt ?? null,
+    movementModel: 'continuous-segment'
+  };
+  field.set(cellKey, entry);
+  return entry;
 }
 
 function finiteNumber(value, fallback = 0) {
@@ -481,8 +483,8 @@ function averageSegmentCurrent(frame, level, start, target) {
 
 function sampleCurrent(frame, level, x, y) {
   const grid = level?.world?.grid ?? {};
-  const cx = clampIndex(Math.round(Number(x)), Number(grid.width ?? 1));
-  const cy = clampIndex(Math.round(Number(y)), Number(grid.height ?? 1));
+  const cx = clampIndex(Math.floor(Number(x)), Number(grid.width ?? 1));
+  const cy = clampIndex(Math.floor(Number(y)), Number(grid.height ?? 1));
   const vector = frame?.current?.[cy]?.[cx] ?? [0, 0];
   return {
     u: finiteNumber(vector[0], 0),
@@ -496,8 +498,8 @@ function clampIndex(value, max) {
 
 function debugTravelCostSamples({ anchor, cells, level, frame, agent, mission }) {
   if (!anchor || !cells) return;
-  const ax = Math.round(Number(anchor.x));
-  const ay = Math.round(Number(anchor.y));
+  const ax = Math.floor(Number(anchor.x));
+  const ay = Math.floor(Number(anchor.y));
   const offsets = {
     east: { x: ax + 3, y: ay },
     west: { x: ax - 3, y: ay },
@@ -650,6 +652,16 @@ function plannedDepletionMultiplier(rules) {
 }
 
 export function rasterizeRouteSegment(segment, level = null) {
+  const diagnosticCells = segment?.traversedCells?.length
+    ? segment.traversedCells
+    : segment?.pathCells?.length
+      ? segment.pathCells
+      : segment?.sampledCells?.length
+        ? segment.sampledCells
+        : null;
+  if (diagnosticCells?.length) {
+    return uniqueCells(diagnosticCells.filter((cell) => !level || isInsideLevel(level, cell.x, cell.y)));
+  }
   const points = segment?.points?.length
     ? segment.points
     : [segment?.from, segment?.valid === false ? segment?.lastValid : segment?.to].filter(Boolean);

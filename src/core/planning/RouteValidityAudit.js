@@ -4,8 +4,9 @@ import { getTimeConfig } from '../time/MissionTime.js';
 import { buildRouteSegmentsForAgent } from './RouteSegmentBuilder.js';
 import { estimateRouteEnergy } from './RoutePreview.js';
 import { estimateSegmentBeachingRisk, isBeachingRisk } from './ShorelineRisk.js';
-import { isCellNavigable } from './Navigability.js';
+import { buildRouteBlockDiagnostic, isCellNavigable } from './Navigability.js';
 import { evaluateSegmentForExecution } from './SegmentExecutionValidator.js';
+import { buildRouteValidationDiagnostic, buildSolverValidationFeedback } from './RouteDiagnostic.js';
 
 export function validateRoutePlanForExecution({
   level,
@@ -20,7 +21,7 @@ export function validateRoutePlanForExecution({
   const duration = Number(getTimeConfig(level).duration ?? level?.world?.time?.duration ?? Infinity);
 
   for (const agent of agents) {
-    const agentPlan = (plan?.agentPlans ?? []).find((candidate) => candidate.agentId === agent.id) ?? { agentId: agent.id, waypoints: [] };
+    const agentPlan = (plan?.agentPlans ?? []).find((candidate) => candidate.agentId === agent.id) ?? { agentId: agent.id, agentLabel: agent.label ?? agent.id, waypoints: [] };
     const issues = [];
     const route = buildRouteSegmentsForAgent({
       level,
@@ -36,6 +37,7 @@ export function validateRoutePlanForExecution({
         type: 'invalidStart',
         severity: 'error',
         agentId: agent.id,
+        agentLabel: agent.label ?? agent.id,
         to: waypointRef(agentPlan.waypoints?.[0], 0),
         message: `${agent.label ?? agent.id} needs a valid start before execution.`
       });
@@ -50,6 +52,7 @@ export function validateRoutePlanForExecution({
           type: 'invalidCoordinate',
           severity: 'error',
           agentId: agent.id,
+          agentLabel: agent.label ?? agent.id,
           to: waypointRef(waypoint, index),
           message: `${agent.label ?? agent.id} ${label} needs finite coordinates.`
         });
@@ -70,6 +73,7 @@ export function validateRoutePlanForExecution({
           reason: navigability.reason,
           severity: 'error',
           agentId: agent.id,
+          agentLabel: agent.label ?? agent.id,
           to: waypointRef(waypoint, index),
           message: `${agent.label ?? agent.id} ${label} is not navigable (${formatBlockReason(navigability.reason)}).`
         });
@@ -107,30 +111,53 @@ export function validateRoutePlanForExecution({
           to: segment.to,
           startTime: Number(executionFrom.t ?? segment.from.t ?? waypoint.t ?? 0),
           travelTime: waypoint.segmentTravelTime ?? waypoint.estimatedTravelTime ?? estimate.distance / Math.max(0.05, Number(agent.maxSpeed ?? 1)),
+          maxWaypointTravelTime: getMaxWaypointTravelTime(level, waypoint, Number(executionFrom.t ?? segment.from.t ?? waypoint.t ?? 0)),
           fuelRemaining: Number(agent.battery ?? agent.maxBattery ?? mission?.rules?.energyBudget ?? 100) - cumulativeEnergy,
           frame
         });
       cumulativeEnergy += Number(waypoint.segmentEnergy ?? estimate.energy ?? 0);
 
       if (!segment.valid || estimate.valid === false || execution?.ok === false) {
-        const noLegalPath = estimate.reachability?.reachable === false && segment.valid !== false;
-        const blockedAt = segment.blockedAt ?? estimate.blockedAt ?? execution?.blockedCell ?? estimate.reachability?.blockedCell ?? null;
+        const noLegalPath = execution?.reason === 'noLegalPath' || estimate.reason === 'noLegalPath';
+        const routeBlockDiagnostic = execution?.routeBlockDiagnostic ?? buildRouteBlockDiagnostic({
+          level,
+          mission,
+          agentId: agent.id,
+          agentLabel: agent.label ?? agent.id,
+          segmentFromIndex: index - 1,
+          segmentToIndex: index,
+          plannedFrom: segment.from,
+          target: segment.to,
+          actualStartPosition: executionFrom,
+          reportedCell: segment.blockedAt ?? estimate.blockedAt ?? execution?.blockedCell ?? estimate.reachability?.blockedCell ?? null,
+          reason: noLegalPath ? 'noLegalPath' : execution?.reason ?? segment.reason ?? 'segmentBlocked',
+          source: 'routeValidityAudit'
+        });
+        const blockedAt = routeBlockDiagnostic?.blocking?.blockedCell
+          ?? segment.blockedAt
+          ?? estimate.blockedAt
+          ?? execution?.blockedCell
+          ?? estimate.reachability?.blockedCell
+          ?? null;
         const executionBlocked = execution?.ok === false && !noLegalPath && segment.valid !== false && estimate.valid !== false;
         const issue = buildIssue({
           type: 'segmentBlocked',
           reason: noLegalPath ? 'noLegalPath' : executionBlocked ? 'routeBlocked' : 'segmentBlocked',
           severity: 'error',
           agentId: agent.id,
+          agentLabel: agent.label ?? agent.id,
           from: segmentEndpointRef(executionFrom, index - 1),
           to: waypointRef(waypoint, index),
           blockedAt,
+          routeBlockDiagnostic,
+          pathCells: routeBlockDiagnostic?.traversedCells ?? segment.pathCells ?? estimate.reachability?.pathCells ?? [],
           segmentIndex: index,
           waypointIndex: index,
           message: noLegalPath
-            ? `${agent.label ?? agent.id} cannot reach Waypoint ${index + 1}: no legal navigable path exists${formatBlockedAt(blockedAt)}.`
+            ? `${agent.label ?? agent.id} cannot reach Waypoint ${index + 1}: no legal continuous segment exists${formatRouteBlockDiagnostic(routeBlockDiagnostic, blockedAt)}.`
             : executionBlocked
-              ? `${agent.label ?? agent.id} route to Waypoint ${index + 1} would be blocked during simulation${formatBlockedAt(blockedAt)}.`
-            : `${agent.label ?? agent.id} route to Waypoint ${index + 1} crosses terrain${formatBlockedAt(blockedAt)}.`
+              ? `${agent.label ?? agent.id} route to Waypoint ${index + 1} would be blocked during simulation${formatRouteBlockDiagnostic(routeBlockDiagnostic, blockedAt)}.`
+            : `${agent.label ?? agent.id} route to Waypoint ${index + 1} crosses terrain${formatRouteBlockDiagnostic(routeBlockDiagnostic, blockedAt)}.`
         });
         issues.push(issue);
         annotateWaypoint(agentPlan, index, issue);
@@ -148,6 +175,7 @@ export function validateRoutePlanForExecution({
           reason: 'beachingRisk',
           severity: 'warning',
           agentId: agent.id,
+          agentLabel: agent.label ?? agent.id,
           from: segmentEndpointRef(executionFrom, index - 1),
           to: waypointRef(waypoint, index),
           segmentIndex: index,
@@ -174,6 +202,7 @@ export function validateRoutePlanForExecution({
             reason: 'time',
             severity: 'error',
             agentId: agent.id,
+            agentLabel: agent.label ?? agent.id,
             to: waypointRef(waypoint, index),
             segmentIndex: index,
             waypointIndex: index,
@@ -188,6 +217,7 @@ export function validateRoutePlanForExecution({
             reason: 'nonMonotonicTime',
             severity: 'error',
             agentId: agent.id,
+            agentLabel: agent.label ?? agent.id,
             to: waypointRef(waypoint, index),
             segmentIndex: index,
             waypointIndex: index,
@@ -221,6 +251,7 @@ export function validateRoutePlanForExecution({
           reason: 'fuel',
           severity: 'error',
           agentId: agent.id,
+          agentLabel: agent.label ?? agent.id,
           to: waypointRef(waypoint, index),
           segmentIndex: index,
           waypointIndex: index,
@@ -233,18 +264,23 @@ export function validateRoutePlanForExecution({
 
     agentResults.push({
       agentId: agent.id,
+      agentLabel: agent.label ?? agent.id,
       ok: issues.every((issue) => issue.severity !== 'error'),
       issues
     });
   }
 
   const issues = agentResults.flatMap((result) => result.issues);
-  return {
+  const result = {
     ok: issues.every((issue) => issue.severity !== 'error'),
     issueCount: issues.length,
     firstIssue: issues[0] ?? null,
-    agentResults
+    agentResults,
+    diagnostics: issues.map((issue) => issue.diagnostic).filter(Boolean)
   };
+  result.firstBlockingDiagnostic = result.diagnostics.find((diagnostic) => diagnostic.severity === 'blocking') ?? null;
+  result.solverFeedback = buildSolverValidationFeedback({ routeAudit: result, plan, level, mission });
+  return result;
 }
 
 export function applyRouteAuditToPlan(plan, audit) {
@@ -289,7 +325,8 @@ function annotateWaypoint(agentPlan, index, issue) {
       severity: issue.severity,
       reasons: [reason],
       message: issue.message,
-      blockedAt: issue.blockedAt ?? null
+      blockedAt: issue.blockedAt ?? null,
+      diagnostic: issue.diagnostic ?? null
     }
   };
   if (issue.severity === 'error') waypoint.validity.valid = false;
@@ -297,14 +334,15 @@ function annotateWaypoint(agentPlan, index, issue) {
 
 function outOfBoundsIssue(level, agent, waypoint, index) {
   const grid = level?.world?.grid ?? {};
-  const x = Math.round(Number(waypoint?.x));
-  const y = Math.round(Number(waypoint?.y));
+  const x = Math.floor(Number(waypoint?.x));
+  const y = Math.floor(Number(waypoint?.y));
   if (x >= 0 && y >= 0 && x < Number(grid.width) && y < Number(grid.height)) return null;
   return buildIssue({
     type: 'invalidCoordinate',
     reason: 'invalidCoordinate',
     severity: 'error',
     agentId: agent.id,
+    agentLabel: agent.label ?? agent.id,
     to: waypointRef(waypoint, index),
     waypointIndex: index,
     message: `${agent.label ?? agent.id} Waypoint ${index + 1} is outside the grid.`
@@ -312,11 +350,13 @@ function outOfBoundsIssue(level, agent, waypoint, index) {
 }
 
 function buildIssue(issue) {
-  return {
+  const enriched = {
     severity: 'error',
     reason: issue.type,
     ...issue
   };
+  enriched.diagnostic ??= buildRouteValidationDiagnostic(enriched);
+  return enriched;
 }
 
 function segmentEndpointRef(point, index) {
@@ -341,7 +381,26 @@ function waypointRef(waypoint, index) {
 }
 
 function formatBlockedAt(cell) {
-  return cell ? ` at (${Math.round(Number(cell.x))}, ${Math.round(Number(cell.y))})` : '';
+  return cell ? ` at (${Math.floor(Number(cell.x))}, ${Math.floor(Number(cell.y))})` : '';
+}
+
+function formatRouteBlockDiagnostic(diagnostic, fallbackCell = null) {
+  const blocking = diagnostic?.blocking;
+  if (!blocking) return formatBlockedAt(fallbackCell);
+  const blockedCell = blocking.blockedCell;
+  const reportedCell = blocking.reportedCell;
+  const blockedText = blockedCell ? ` at (${Math.floor(Number(blockedCell.x))}, ${Math.floor(Number(blockedCell.y))})` : '';
+  if (reportedCell && blockedCell && !sameCell(reportedCell, blockedCell) && blocking.reportedCellNavigability === 'water') {
+    return `${blockedText}; reported/current cell (${Math.floor(Number(reportedCell.x))}, ${Math.floor(Number(reportedCell.y))}) is navigable`;
+  }
+  if (blocking.reason === 'actual_drift_into_land') return `${blockedText}; actual drifted start entered blocked terrain`;
+  if (blocking.reason === 'blocked_endpoint') return `${blockedText}; endpoint is blocked`;
+  if (blocking.reason === 'no_path') return blockedText || ' because no legal navigable path exists';
+  return blockedText;
+}
+
+function sameCell(a, b) {
+  return Boolean(a && b && Math.floor(Number(a.x)) === Math.floor(Number(b.x)) && Math.floor(Number(a.y)) === Math.floor(Number(b.y)));
 }
 
 function formatBlockReason(reason) {
@@ -353,6 +412,15 @@ function formatBlockReason(reason) {
   }[reason] ?? reason ?? 'blocked';
 }
 
+function getMaxWaypointTravelTime(level, waypoint, currentTime = 0) {
+  if (!waypoint) return Infinity;
+  const plannedT = Number(waypoint.t ?? waypoint.estimatedArrivalTime ?? waypoint.window);
+  const planningWindow = Number(level?.world?.time?.planningWindow ?? 3);
+  if (Number.isFinite(plannedT)) return Math.max(planningWindow * 3, plannedT + planningWindow * 2 - Number(currentTime ?? 0));
+  return Math.max(12, planningWindow * 4);
+}
+
 function isFinitePoint(point) {
   return Number.isFinite(Number(point?.x)) && Number.isFinite(Number(point?.y));
 }
+

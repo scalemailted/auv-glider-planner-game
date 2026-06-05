@@ -87,6 +87,8 @@ node tools/js/headless_validate_plan.mjs anchor.solver-packet.json anchor.plan.j
 
 The Node path imports `src/core/headless/*` plus shared planning validation from `src/core/planning/PlanExecutionValidator.js`. It does not import Phaser scenes, DOM overlays, or browser UI modules.
 
+Route validation diagnostics are shared between the human UI and external solver feedback. The same `route_validation_diagnostic` objects are used to mark invalid waypoints, explain Route Blocked modals, reject imported `anchor.plan` or `anchor.plan-segment` files, and report headless Node validation failures. Solvers should read `diagnostics[]` or `solverFeedback.blockingDiagnostics[]` for stable categories such as `segment_intersects_land`, `target_on_land`, `fuel_exceeded`, and `time_exceeded`, plus blocked cells and fix hints.
+
 By default it uses visible forecast packet fields and exports:
 
 ```json
@@ -123,7 +125,7 @@ python tools/python/example_greedy_solver.py anchor_solver_packet.json anchor_so
 
 Optional strategy names are `value_per_distance`, `greedy_roi`, and `nearest_roi`.
 
-The example reads the visible planning fields from the packet, chooses ROI target cells, skips blocked terrain and hazard cells, and writes an importable `anchor.plan`. It supports multiple mission agents by creating one waypoint list per agent. The solver is a baseline teaching example, not an optimal planner.
+The example reads the visible planning fields from the packet, chooses ROI target cells, skips blocked terrain and hazard cells, and writes an importable `anchor.plan`. It supports multiple mission agents by creating one waypoint list per agent. The solver is a baseline teaching example, not an optimal planner. For the browser-native baseline planner used inside ANCHOR, see `docs/temporal_greedy.md`.
 
 The repository also includes a Colab-friendly notebook template:
 
