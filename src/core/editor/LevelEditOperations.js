@@ -254,7 +254,7 @@ export function buildDefaultMissionForLevel(level, config = {}) {
     scoring: {
       sampleWeight: 100,
       energyPenalty: 0.05,
-      hazardPenalty: 10,
+      hazardPenalty: 150,
       elapsedTimePenalty: 0.01,
       updatePenalty: 2
     }
