@@ -504,11 +504,24 @@ function markerInspectionSection(state) {
       <div class="hud-muted">Raw ${formatHudMetric(info.roiRawValue, 2)} | Probability ${formatHudMetric(info.roiProbability, 2)}${state.challengeMode === 'forecast' ? '' : ' deterministic'} | Expected ${formatHudMetric(info.roiExpectedValue, 2)}</div>
       <div class="hud-muted">Remaining: ${formatHudMetric(info.roiRemainingValue, 2)}${info.roiDepletedByPlan ? ` | Claimed by ${escapeHtml(claimedByLabel(info.roiClaimedBy))}` : ''}</div>
       <div class="hud-muted">Current: ${formatHudMetric(info.current.magnitude, 2)} ${escapeHtml(info.current.direction)} (${formatHudMetric(info.current.u, 2)}, ${formatHudMetric(info.current.v, 2)})</div>
+      ${currentDiagnosticRows(info.current)}
       <div class="hud-muted">Terrain: ${escapeHtml(info.terrain)} | Hazard: ${info.hazard ? 'yes' : 'none'}${info.depth ? ` | Depth: ${escapeHtml(info.depth.label)}` : ''}</div>
       ${info.forecastConfidence !== null ? `<div class="hud-muted">Forecast confidence: ${formatHudMetric(info.forecastConfidence, 2)}</div>` : ''}
       ${info.priorityTarget ? `<div class="hud-muted">Priority: ${escapeHtml(info.priorityTarget.label ?? info.priorityTarget.id)} +${formatHudMetric(info.priorityTarget.value)}</div>` : '<div class="hud-muted">Priority: none active here</div>'}
     </section>
   `;
+}
+
+function currentDiagnosticRows(current = {}) {
+  const risk = current.contributors?.shorelineRisk;
+  const topology = current.contributors?.topologyAdjustment;
+  const rows = [];
+  if (current.source) rows.push(`<div class="hud-muted">Current source: ${escapeHtml(current.source)} | Confidence ${formatHudMetric(current.confidence ?? 1, 2)}</div>`);
+  if (risk && risk.level && risk.level !== 'none') {
+    rows.push(`<div class="hud-muted ${risk.value >= 0.7 ? 'warning' : ''}">Shoreline risk: ${escapeHtml(risk.level)} | Toward land ${formatSignedMetric(risk.currentTowardLand, 2)}</div>`);
+  }
+  if (topology?.topologyAdjusted) rows.push('<div class="hud-muted">Topology adjustment: deflected along shore</div>');
+  return rows.join('');
 }
 
 function timelineMarkers(state, duration) {

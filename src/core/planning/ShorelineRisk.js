@@ -1,3 +1,5 @@
+import { sampleCurrentField } from '../currents/CurrentFieldSampler.js';
+
 export const BEACHING_RISK_NONE = {
   level: 'none',
   value: 0,
@@ -22,8 +24,9 @@ export function estimateBeachingRiskAtCell({ level = null, frame = null, x, y, m
 
   const directionToLand = normalize(nearestLand.x - cx, nearestLand.y - cy);
   const current = sampleCurrent(frame, level, cx, cy);
-  const currentMagnitude = Math.hypot(current.u, current.v);
-  const currentTowardLand = current.u * directionToLand.x + current.v * directionToLand.y;
+  const samplerRisk = current.contributors?.shorelineRisk ?? null;
+  const currentMagnitude = Number(samplerRisk?.currentMagnitude ?? Math.hypot(current.u, current.v));
+  const currentTowardLand = Number(samplerRisk?.currentTowardLand ?? (current.u * directionToLand.x + current.v * directionToLand.y));
   const close = nearestLand.distance <= 1.01;
   const near = nearestLand.distance <= 2.01;
   const toward = currentTowardLand > 0.08;
@@ -46,6 +49,12 @@ export function estimateBeachingRiskAtCell({ level = null, frame = null, x, y, m
     value = currentTowardLand < -0.08 ? 0.08 : 0.14;
   }
 
+  const samplerValue = Number(samplerRisk?.value ?? 0);
+  if (samplerValue > value) {
+    value = samplerValue;
+    levelName = samplerRisk?.level ?? levelName;
+  }
+
   return {
     level: levelName,
     value,
@@ -57,6 +66,7 @@ export function estimateBeachingRiskAtCell({ level = null, frame = null, x, y, m
     nearestLand: { x: nearestLand.x, y: nearestLand.y },
     directionToLand,
     current: { u: current.u, v: current.v },
+    topologyAdjustment: current.contributors?.topologyAdjustment ?? null,
     message: value > 0
       ? `Shoreline current may beach near (${cx}, ${cy})`
       : ''
@@ -203,14 +213,7 @@ function findNearestLand(level, x, y, maxDistance) {
 }
 
 function sampleCurrent(frame, level, x, y) {
-  const grid = level?.world?.grid ?? {};
-  const cx = clampIndex(x, Number(grid.width ?? 1));
-  const cy = clampIndex(y, Number(grid.height ?? 1));
-  const vector = frame?.current?.[cy]?.[cx] ?? [0, 0];
-  return {
-    u: finiteNumber(vector[0], 0),
-    v: finiteNumber(vector[1], 0)
-  };
+  return sampleCurrentField({ frame, level, x, y });
 }
 
 function currentConfidence(frame, level, x, y) {

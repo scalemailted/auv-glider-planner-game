@@ -8,6 +8,7 @@ import { getDeploymentZonesForAgent, getSelectedStart, requiresDeploymentSelecti
 import { buildRouteSegmentsForAgent } from '../../core/planning/RouteSegmentBuilder.js';
 import { getActivePriorityTargets, normalizePriorityTargetRules } from '../../core/sim/PriorityTargets.js';
 import { computeHeadingAngle, computeHeadingFromVelocity, isUsableHeading } from '../../core/math/Heading.js';
+import { sampleCurrentField } from '../../core/currents/CurrentFieldSampler.js';
 
 export const PHASER_WIDTH = 1280;
 export const PHASER_HEIGHT = 820;
@@ -677,20 +678,20 @@ function drawCurrents(g, frame, layout) {
   const stride = layout.width * layout.height >= 1600 ? 3 : layout.width * layout.height >= 625 ? 2 : 1;
   for (let y = 0; y < layout.height; y += stride) {
     for (let x = 0; x < layout.width; x += stride) {
-      const vector = frame?.current?.[y]?.[x] ?? [0, 0];
-      const magnitude = Math.min(1.4, Math.hypot(vector[0], vector[1]));
+      const vector = sampleCurrentField({ frame, grid: { width: layout.width, height: layout.height }, x, y });
+      const magnitude = Math.min(1.4, vector.magnitude);
       if (magnitude < 0.02) continue;
       const start = cellToWorld(layout, x, y);
-      const ex = start.x + vector[0] * layout.cell * 0.45;
-      const ey = start.y + vector[1] * layout.cell * 0.45;
+      const ex = start.x + vector.u * layout.cell * 0.45;
+      const ey = start.y + vector.v * layout.cell * 0.45;
       const color = 0xffffff;
       g.lineStyle(1.4 + magnitude * 2.4, color, 0.42 + magnitude * 0.44);
       g.beginPath();
-      g.moveTo(start.x - vector[0] * layout.cell * 0.16, start.y - vector[1] * layout.cell * 0.16);
+      g.moveTo(start.x - vector.u * layout.cell * 0.16, start.y - vector.v * layout.cell * 0.16);
       g.lineTo(ex, ey);
       g.strokePath();
       g.fillStyle(color, 0.5 + magnitude * 0.34);
-      const angle = Math.atan2(vector[1], vector[0]);
+      const angle = Math.atan2(vector.v, vector.u);
       const size = 3 + magnitude * 2.2;
       g.fillTriangle(
         ex + Math.cos(angle) * size,

@@ -7,6 +7,7 @@ import { estimateBeachingRiskAtCell, estimateSegmentBeachingRisk, estimateStocha
 import { isCellNavigable } from '../planning/Navigability.js';
 import { getMobileHazardsAtTime } from '../sim/MobileHazards.js';
 import { clamp } from '../math/MathUtils.js';
+import { sampleCurrentField } from '../currents/CurrentFieldSampler.js';
 
 export const ROI_MODES = ['value', 'probability', 'expectedValue', 'remaining', 'travelCost', 'riskSafety'];
 const DEBUG_TRAVEL_COST = false;
@@ -130,8 +131,8 @@ export function computeRiskScore({ x, y, t = 0, level = null, mission = null, fr
     risk += 0.34;
     reasons.push('shallow');
   }
-  const current = frame?.current?.[y]?.[x] ?? [0, 0];
-  const currentMagnitude = Math.hypot(Number(current[0] ?? 0), Number(current[1] ?? 0));
+  const current = sampleCurrentField({ frame, level, x, y, time: t });
+  const currentMagnitude = current.magnitude;
   if (currentMagnitude > 0.55) {
     risk += Math.min(0.34, currentMagnitude * 0.24);
     reasons.push('strong current');
@@ -482,14 +483,7 @@ function averageSegmentCurrent(frame, level, start, target) {
 }
 
 function sampleCurrent(frame, level, x, y) {
-  const grid = level?.world?.grid ?? {};
-  const cx = clampIndex(Math.floor(Number(x)), Number(grid.width ?? 1));
-  const cy = clampIndex(Math.floor(Number(y)), Number(grid.height ?? 1));
-  const vector = frame?.current?.[cy]?.[cx] ?? [0, 0];
-  return {
-    u: finiteNumber(vector[0], 0),
-    v: finiteNumber(vector[1], 0)
-  };
+  return sampleCurrentField({ frame, level, x, y });
 }
 
 function clampIndex(value, max) {

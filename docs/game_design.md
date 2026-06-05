@@ -86,6 +86,14 @@ Forecast ensemble metrics are approximate. The game estimates plan ROI across vi
 
 ## Synthetic Current Generation
 
+`src/core/currents/CurrentFieldSampler.js` is the canonical current/vector sampling interface. It returns `{ u, v, magnitude, confidence, source, contributors }` and accepts either grid coordinates or normalized coordinates. Mission systems use grid coordinates in cell units. The Flow Field demos use normalized `[0,1]` coordinates, which are converted by `normalizedToGridCell(...)` to the nearest demo grid cell before sampling. Time is mission time in hours. This keeps demo arrows, mission map arrows, hover diagnostics, Travel Cost, Risk/Safety, route guidance, simulation drift, and Temporal Greedy route scoring aligned on the same current values.
+
+Sampling is topology-aware when terrain is available. The sampler first evaluates the synthetic ocean-inspired base field, then estimates nearest land within a small radius, computes the direction toward land, and measures the current component pointing into that land. Land cells return zero current with blocked shoreline risk. Water cells near shore damp inward current and deflect part of it along the shoreline while preserving metadata such as `shoreDistance`, `directionToLand`, `currentTowardLand`, `shorelineRisk`, and `topologyAdjusted`. Risk/Safety and Travel Cost use that metadata so near-land current into shore is expensive and risky even if the displayed vector has been deflected.
+
+Synthetic fields vary between challenges through seeded variation, not page-load randomness. Current parameters such as eddy centers, jet phase, tidal phase, storm timing/location, and curl-noise offsets are derived from `challengeId` / `replaySeedAnchor`, preset id, generator version, map size, strength, and variability. The same challenge UUID plus the same preset/config regenerates the same current field for replay, leaderboard, solver packets, and best-path validation; different challenge UUIDs produce different repeatable current variations.
+
+The Flow Field demos are passive visualizations: demo particles advance by the sampled current plus a small display bias. Mission gliders do not use that passive model. In missions, the simulator still computes commanded velocity toward the active waypoint, then adds the sampled current drift contribution according to mission drift rules before terrain, fuel, sampling, and scoring checks run.
+
 Generated levels use precomputed temporal `[u, v]` current frames. The primary browser-safe generator is a parametric ocean-inspired preset system:
 
 - `calm`
@@ -95,12 +103,16 @@ Generated levels use precomputed temporal `[u, v]` current frames. The primary b
 - `eddyField`
 - `doubleGyre`
 - `tidalOscillation`
+- `meanderingJet`
+- `westernBoundaryCurrent`
 - `stormPulse`
 - `islandWake`
+- `curlNoise`
 - `gulfInspired`
+- `hycomInspiredComposite`
 - `chaotic`
 
-These presets are intentionally synthetic and deterministic by seed. They create plausible-looking U/V current fields for planning puzzles, solver packets, and datasets; they are not real ocean-model data, HYCOM ingestion, or a high-fidelity Navier-Stokes solver. Scenario setup exposes Current Field, Current Strength, and Temporal Variability. Generated stochastic missions use the selected preset for hidden truth and derive noisy forecast/ensemble current variants from those truth frames.
+These presets are intentionally synthetic and deterministic by seed/config. They create plausible-looking U/V current fields for planning puzzles, solver packets, and datasets; they are not real ocean-model data, HYCOM ingestion, validated HYCOM forecasts, or a high-fidelity Navier-Stokes solver. Scenario setup exposes Current Field, Current Strength, and Temporal Variability. Generated stochastic missions use the selected preset for hidden truth and derive noisy forecast/ensemble current variants from those truth frames. `hycomInspiredComposite` is labeled as a HYCOM-inspired synthetic composite, not real HYCOM forecast data.
 
 The older fluid-inspired editor preview remains available for environment editing experiments. Both systems commit ordinary temporal current frames, so Travel Cost mode, guidance cones, reachability estimates, drift preview, simulation, solver packets, and dataset export all consume the same field shape.
 

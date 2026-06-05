@@ -5,6 +5,7 @@ import { getTimeConfig, getWindowEndTime } from '../time/MissionTime.js';
 import { clipLineToTerrain, estimateRouteEnergy } from './RoutePreview.js';
 import { getSelectedStart } from '../deployment/DeploymentZones.js';
 import { isCellNavigable } from './Navigability.js';
+import { sampleCurrentVector } from '../currents/CurrentFieldSampler.js';
 
 export function buildPlanningGuidance({
   level,
@@ -313,9 +314,7 @@ function getNextSurfaceDuration(level, mission, time, selectedWindow) {
 }
 
 function sampleCurrent(frame, level, x, y) {
-  const cx = clampIndex(x, level.world.grid.width);
-  const cy = clampIndex(y, level.world.grid.height);
-  return frame?.current?.[cy]?.[cx] ?? [0, 0];
+  return sampleCurrentVector({ frame, level, x, y });
 }
 
 function sampleConfidence(frame, level, x, y) {

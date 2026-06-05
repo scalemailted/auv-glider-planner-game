@@ -1,5 +1,6 @@
 import { estimateSegmentBeachingRisk } from './ShorelineRisk.js';
 import { explainSegmentBlockage } from './Navigability.js';
+import { sampleCurrentVector } from '../currents/CurrentFieldSampler.js';
 
 export function clipLineToTerrain(start, end, level, { stepsPerCell = 4, mission = null } = {}) {
   void stepsPerCell;
@@ -70,9 +71,7 @@ export function estimateRouteEnergy(start, target, level, agent, frame, {
 }
 
 function sampleCurrent(frame, level, x, y) {
-  const cx = clampIndex(x, level?.world?.grid?.width ?? 1);
-  const cy = clampIndex(y, level?.world?.grid?.height ?? 1);
-  return frame?.current?.[cy]?.[cx] ?? [0, 0];
+  return sampleCurrentVector({ frame, level, x, y });
 }
 
 function sampleDepthPenalty(level, x, y) {

@@ -5,6 +5,7 @@ import { getWindowForTime } from '../time/MissionTime.js';
 import { computePlannedCoverage, computeTravelCostField, getCellRoiDisplayValue, getRoiModeDescription, normalizeRoiMode } from '../roi/RoiMode.js';
 import { estimateBeachingRiskAtCell } from '../planning/ShorelineRisk.js';
 import { isCellNavigable } from '../planning/Navigability.js';
+import { sampleCurrentField } from '../currents/CurrentFieldSampler.js';
 
 export function inspectCellAtTime({ level, mission = null, state = null, x, y, t = 0 } = {}) {
   const grid = level?.world?.grid ?? {};
@@ -49,7 +50,7 @@ export function inspectCellAtTime({ level, mission = null, state = null, x, y, t
     travelCostField,
     challengeMode: state?.challengeMode
   });
-  const current = frame?.current?.[y]?.[x] ?? [0, 0];
+  const current = sampleCurrentField({ frame, level, x, y, time: t });
   const beachingRisk = estimateBeachingRiskAtCell({ level, frame, x, y });
   const confidence = frame?.confidence?.[y]?.[x];
   const depthValue = level?.layers?.depth?.[y]?.[x];
@@ -83,10 +84,13 @@ export function inspectCellAtTime({ level, mission = null, state = null, x, y, t
     },
     hazard: Number(level?.layers?.hazards?.[y]?.[x] ?? 0) > 0,
     current: {
-      u: Number(current[0] ?? 0),
-      v: Number(current[1] ?? 0),
-      magnitude: Math.hypot(Number(current[0] ?? 0), Number(current[1] ?? 0)),
-      direction: currentDirection(current)
+      u: current.u,
+      v: current.v,
+      magnitude: current.magnitude,
+      direction: currentDirection(current),
+      confidence: current.confidence,
+      source: current.source,
+      contributors: current.contributors
     },
     beachingRisk,
     depth: depthValue === undefined ? null : {
@@ -118,8 +122,8 @@ function findPriorityTarget(level, t, x, y) {
 }
 
 function currentDirection(current) {
-  const u = Number(current?.[0] ?? 0);
-  const v = Number(current?.[1] ?? 0);
+  const u = Number(Array.isArray(current) ? current[0] : current?.u ?? 0);
+  const v = Number(Array.isArray(current) ? current[1] : current?.v ?? 0);
   if (Math.hypot(u, v) < 0.01) return 'calm';
   const angle = Math.atan2(-v, u) * 180 / Math.PI;
   const dirs = ['E', 'NE', 'N', 'NW', 'W', 'SW', 'S', 'SE'];

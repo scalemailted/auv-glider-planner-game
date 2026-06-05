@@ -1,6 +1,8 @@
 import { CAMPAIGN_LEVELS } from '../core/campaign/CampaignLevels.js';
 import { shortInstanceId } from '../core/identity/GameInstanceId.js';
 import { formatMetric } from '../core/evaluation/PlanComparison.js';
+import { FLOW_DEMO_PRESET_CHOICES } from '../core/demo/FlowFieldDemo.js';
+import { getVectorPresetConfig } from '../core/generation/VectorFieldPresets.js';
 
 export class MissionConsole {
   constructor(app, root) {
@@ -73,6 +75,19 @@ export class MissionConsole {
         <button data-action="temporal" class="console-button ${state.mode === 'temporal' ? 'primary' : ''}">Temporal Flow Field Demo</button>
       </section>
       <section class="console-section">
+        <h2>Preset</h2>
+        <label class="compact-field">
+          Current Field
+          <select id="flow-demo-preset">
+            ${FLOW_DEMO_PRESET_CHOICES.map((preset) => {
+              const config = getVectorPresetConfig(preset);
+              return `<option value="${escapeAttr(preset)}" ${state.preset === preset ? 'selected' : ''}>${escapeHtml(config.label)}</option>`;
+            }).join('')}
+          </select>
+        </label>
+        <div class="hud-muted">${escapeHtml(state.presetConfig?.warning ?? 'Synthetic ocean-inspired current field; not validated HYCOM forecast data.')}</div>
+      </section>
+      <section class="console-section">
         <h2>Controls</h2>
         <button data-action="pause" class="console-button">${state.paused ? 'Play' : 'Pause'}</button>
         <button data-action="reset" class="console-button">Reset Particles</button>
@@ -82,9 +97,11 @@ export class MissionConsole {
       </section>
     `;
     this.app.applyConsoleAccordions?.('flowDemo');
+    this.root.querySelector('#flow-demo-preset')?.addEventListener('change', (event) => handlers.preset?.(event.target.value));
     this.bind({
       static: handlers.static,
       temporal: handlers.temporal,
+      preset: handlers.preset,
       pause: handlers.pause,
       reset: handlers.reset,
       menu: handlers.menu

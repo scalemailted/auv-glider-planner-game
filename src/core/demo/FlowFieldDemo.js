@@ -1,39 +1,43 @@
 import { createSeededRng } from '../random/SeededRng.js';
+import { CURRENT_COORDINATES, sampleCurrentField } from '../currents/CurrentFieldSampler.js';
+import { getVectorPresetConfig } from '../generation/VectorFieldPresets.js';
 
 const TAU = Math.PI * 2;
 const DEFAULT_TRAIL_LIMIT = 44;
+export const FLOW_DEMO_GRID = { width: 18, height: 12 };
+export const FLOW_DEMO_PRESET_CHOICES = [
+  'calm',
+  'uniformDrift',
+  'eddyField',
+  'tidalOscillation',
+  'meanderingJet',
+  'hycomInspiredComposite'
+];
+export const FLOW_DEMO_DEFAULT_PRESETS = {
+  static: 'currentCorridor',
+  temporal: 'tidalOscillation'
+};
 
-export function sampleDemoFlow(mode = 'static', x = 0, y = 0, time = 0) {
-  return mode === 'temporal'
-    ? sampleTemporalFlow(x, y, time)
-    : sampleStaticFlow(x, y);
+export function getFlowDemoPresetConfig(mode = 'static', preset = null) {
+  const normalizedMode = mode === 'temporal' ? 'temporal' : 'static';
+  const presetId = preset ?? FLOW_DEMO_DEFAULT_PRESETS[normalizedMode];
+  const temporal = normalizedMode === 'temporal';
+  return getVectorPresetConfig(presetId, {
+    temporalEvolution: temporal,
+    currentVariability: temporal ? undefined : 0
+  });
 }
 
-export function sampleStaticFlow(x = 0, y = 0) {
-  const dx = x - 0.5;
-  const dy = y - 0.5;
-  const eddy = {
-    u: -dy * 0.9,
-    v: dx * 0.9
-  };
-  const channel = {
-    u: 0.58 + 0.22 * Math.sin(y * TAU * 1.7),
-    v: 0.1 * Math.cos(x * TAU * 1.2)
-  };
-  return clampVector({
-    u: channel.u + eddy.u,
-    v: channel.v + eddy.v
-  }, 1.1);
-}
-
-export function sampleTemporalFlow(x = 0, y = 0, time = 0) {
-  const phase = time * 0.55;
-  const tide = Math.sin(phase);
-  const gyre = Math.cos(phase * 0.72);
-  return clampVector({
-    u: 0.46 * tide + 0.38 * Math.sin(y * TAU * 1.5 + phase) - 0.2 * (y - 0.5) * gyre,
-    v: 0.32 * gyre + 0.34 * Math.cos(x * TAU * 1.3 - phase * 0.8) + 0.18 * (x - 0.5) * tide
-  }, 1.05);
+export function sampleDemoFlow(mode = 'static', x = 0, y = 0, time = 0, preset = null) {
+  const presetConfig = getFlowDemoPresetConfig(mode, preset);
+  return sampleCurrentField({
+    x,
+    y,
+    time,
+    grid: FLOW_DEMO_GRID,
+    coordinates: CURRENT_COORDINATES.NORMALIZED,
+    config: presetConfig
+  });
 }
 
 export function createDemoParticles({ count = 18, seed = 'anchor-flow-demo' } = {}) {
@@ -46,11 +50,12 @@ export function advanceDemoParticles(particles, {
   time = 0,
   dt = 1 / 60,
   field = sampleDemoFlow,
+  preset = null,
   trailLimit = DEFAULT_TRAIL_LIMIT
 } = {}) {
   if (!Array.isArray(particles)) return [];
   for (const particle of particles) {
-    const flow = field(mode, particle.x, particle.y, time);
+    const flow = field(mode, particle.x, particle.y, time, preset);
     const glideBias = {
       u: 0.1 * Math.cos(particle.biasAngle),
       v: 0.1 * Math.sin(particle.biasAngle)
@@ -107,14 +112,4 @@ function resetParticle(particle) {
   }
   particle.age = 0;
   particle.trail = [{ x: particle.x, y: particle.y }];
-}
-
-function clampVector(vector, maxMagnitude) {
-  const magnitude = Math.hypot(vector.u, vector.v);
-  if (!Number.isFinite(magnitude) || magnitude <= maxMagnitude) return vector;
-  const scale = maxMagnitude / magnitude;
-  return {
-    u: vector.u * scale,
-    v: vector.v * scale
-  };
 }

@@ -1,4 +1,4 @@
-import { advanceDemoParticles, createDemoParticles, sampleDemoFlow } from '../../../core/demo/FlowFieldDemo.js';
+import { advanceDemoParticles, createDemoParticles, FLOW_DEMO_DEFAULT_PRESETS, FLOW_DEMO_GRID, getFlowDemoPresetConfig, sampleDemoFlow } from '../../../core/demo/FlowFieldDemo.js';
 import { PhaserButton } from '../ui/Button.js';
 
 const PhaserScene = globalThis.Phaser?.Scene ?? class {};
@@ -9,12 +9,14 @@ export class FlowFieldDemoScene extends PhaserScene {
     this.objects = [];
     this.buttons = [];
     this.mode = 'static';
+    this.preset = FLOW_DEMO_DEFAULT_PRESETS.static;
     this.demoTime = 0;
     this.paused = false;
   }
 
   init(data = {}) {
     this.mode = data.mode === 'temporal' ? 'temporal' : 'static';
+    this.preset = data.preset ?? FLOW_DEMO_DEFAULT_PRESETS[this.mode];
     this.demoTime = 0;
     this.paused = false;
     this.particles = createDemoParticles({
@@ -59,7 +61,8 @@ export class FlowFieldDemoScene extends PhaserScene {
       mode: this.mode,
       time: this.demoTime,
       dt,
-      field: sampleDemoFlow
+      field: sampleDemoFlow,
+      preset: this.preset
     });
     this.draw();
   }
@@ -78,12 +81,15 @@ export class FlowFieldDemoScene extends PhaserScene {
     this.app.console?.renderFlowDemoControls?.({
       title: this.title(),
       mode: this.mode,
+      preset: this.preset,
+      presetConfig: getFlowDemoPresetConfig(this.mode, this.preset),
       status: this.mode === 'temporal' ? 'Time-varying field' : 'Fixed field',
       time: this.demoTime,
       paused: this.paused
     }, {
-      static: () => this.scene.restart({ mode: 'static' }),
-      temporal: () => this.scene.restart({ mode: 'temporal' }),
+      static: () => this.scene.restart({ mode: 'static', preset: FLOW_DEMO_DEFAULT_PRESETS.static }),
+      temporal: () => this.scene.restart({ mode: 'temporal', preset: FLOW_DEMO_DEFAULT_PRESETS.temporal }),
+      preset: (preset) => this.scene.restart({ mode: this.mode, preset }),
       pause: () => {
         this.paused = !this.paused;
         this.renderConsole();
@@ -199,13 +205,13 @@ export class FlowFieldDemoScene extends PhaserScene {
   }
 
   drawField(map) {
-    const cols = 16;
-    const rows = 10;
+    const cols = FLOW_DEMO_GRID.width;
+    const rows = FLOW_DEMO_GRID.height;
     for (let row = 0; row < rows; row += 1) {
       for (let col = 0; col < cols; col += 1) {
         const nx = (col + 0.5) / cols;
         const ny = (row + 0.5) / rows;
-        const flow = sampleDemoFlow(this.mode, nx, ny, this.demoTime);
+        const flow = sampleDemoFlow(this.mode, nx, ny, this.demoTime, this.preset);
         const magnitude = Math.min(1.2, Math.hypot(flow.u, flow.v));
         const point = this.toScreen(map, nx, ny);
         const angle = Math.atan2(flow.v, flow.u);
@@ -280,7 +286,8 @@ export class FlowFieldDemoScene extends PhaserScene {
     this.titleText?.setPosition(margin, top);
     this.subtitleText?.setPosition(margin, top + 42);
     this.subtitleText?.setWordWrapWidth(Math.min(760, map.width));
-    this.statusText?.setText(`Mode: ${this.mode} | Time: ${this.demoTime.toFixed(1)} s | Particles: ${this.particles?.length ?? 0}`);
+    const preset = getFlowDemoPresetConfig(this.mode, this.preset);
+    this.statusText?.setText(`Mode: ${this.mode} | Preset: ${preset?.label ?? 'Current Field'} | Time: ${this.demoTime.toFixed(1)} s | Particles: ${this.particles?.length ?? 0}`);
     this.statusText?.setPosition(margin, map.y + map.height + 18);
   }
 

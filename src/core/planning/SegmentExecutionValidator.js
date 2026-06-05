@@ -3,6 +3,7 @@ import { stepAgentToward } from '../sim/Physics.js';
 import { SIMULATION_LIMITS } from '../sim/SimulationSafety.js';
 import { TruthWorld } from '../sim/TruthWorld.js';
 import { buildRouteBlockDiagnostic, isCellNavigable } from './Navigability.js';
+import { sampleCurrentVector } from '../currents/CurrentFieldSampler.js';
 
 export function evaluateSegmentForExecution({
   level = null,
@@ -197,12 +198,7 @@ function createExecutionWorld(level, mission, frame = null) {
     mission,
     grid: world.grid,
     getFrame: () => frame,
-    sampleCurrent: (x, y) => {
-      const grid = level?.world?.grid ?? {};
-      const cx = Math.max(0, Math.min(Number(grid.width ?? 1) - 1, Math.floor(Number(x) || 0)));
-      const cy = Math.max(0, Math.min(Number(grid.height ?? 1) - 1, Math.floor(Number(y) || 0)));
-      return frame?.current?.[cy]?.[cx] ?? [0, 0];
-    },
+    sampleCurrent: (x, y, t) => sampleCurrentVector({ frame, level, x, y, time: t }),
     sampleROI: (...args) => world.sampleROI(...args),
     sampleROIObject: (...args) => world.sampleROIObject(...args),
     sampleDepth: (...args) => world.sampleDepth(...args),

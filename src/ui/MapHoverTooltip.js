@@ -87,6 +87,7 @@ function tooltipHtml(state, info) {
       <span>Expected: ${escapeHtml(formatHudMetric(info.roiExpectedValue, 2))} | Remaining: ${escapeHtml(formatHudMetric(info.roiRemainingValue, 2))}</span>
       ${info.roiDepletedByPlan ? `<span class="warning">Claimed by: ${escapeHtml(claimedByLabel(info.roiClaimedBy))}</span>` : ''}
       <span>Current: ${escapeHtml(formatHudMetric(info.current.magnitude, 2))} ${escapeHtml(info.current.direction)}</span>
+      ${currentMetadataRows(info.current)}
       ${beachingRiskRow(info.beachingRisk)}
       ${info.priorityTarget ? `<span>Priority: +${escapeHtml(formatHudMetric(info.priorityTarget.value))} active</span>` : ''}
       <span>Hazard: ${info.hazard ? 'yes' : 'none'}</span>
@@ -94,6 +95,16 @@ function tooltipHtml(state, info) {
       ${info.forecastConfidence !== null ? `<span>Confidence: ${escapeHtml(formatHudMetric(info.forecastConfidence, 2))}</span>` : ''}
     </section>
   `;
+}
+
+function currentMetadataRows(current = {}) {
+  const risk = current.contributors?.shorelineRisk;
+  const topology = current.contributors?.topologyAdjustment;
+  return [
+    current.source ? `<span>Current source: ${escapeHtml(current.source)} | Confidence: ${escapeHtml(formatHudMetric(current.confidence ?? 1, 2))}</span>` : '',
+    risk && risk.level && risk.level !== 'none' ? `<span class="${risk.value >= 0.7 ? 'warning' : ''}">Shoreline risk: ${escapeHtml(risk.level)} | Toward land: ${escapeHtml(formatSignedMetric(risk.currentTowardLand, 2))}</span>` : '',
+    topology?.topologyAdjusted ? '<span>Topology adjustment: deflected along shore</span>' : ''
+  ].filter(Boolean).join('');
 }
 
 function claimedByLabel(claimedBy = []) {

@@ -143,6 +143,8 @@ Temporal Greedy must not rely on simulation as the first invalid-route detector.
 
 ANCHOR uses a cellular map for environmental sampling, but glider route commands are continuous waypoint-to-waypoint movements. Terrain, depth, current, ROI, and risk are sampled from grid cells along a continuous segment; the glider is not required to follow Manhattan-style cell hops or a 4-neighbor grid path.
 
+Current-aware candidate scoring goes through the same current sampling path used by mission simulation, map hover diagnostics, Travel Cost, Risk/Safety, and the Flow Field demos: `src/core/currents/CurrentFieldSampler.js`. The sampler reports topology-aware shoreline risk, so current pushing into nearby land raises candidate cost/risk before simulation. Temporal Greedy still plans commanded waypoint movement; it does not treat mission gliders as passive current particles.
+
 Before committing a candidate, it should reject:
 
 - endpoints on land or outside the map

@@ -3,6 +3,7 @@ import { normalizeROIValue, roiScalar } from './ROIValue.js';
 import { depthEnergyMultiplier, sampleDepth } from './DepthLayer.js';
 import { mobileHazardAt } from './MobileHazards.js';
 import { isPointNavigable } from '../planning/Navigability.js';
+import { sampleCurrentVector } from '../currents/CurrentFieldSampler.js';
 
 export class TruthWorld {
   constructor(level, mission = null) {
@@ -19,8 +20,7 @@ export class TruthWorld {
 
   sampleCurrent(x, y, t) {
     const frame = this.getFrame(t);
-    const { cx, cy } = this.clampCell(x, y);
-    return frame?.current?.[cy]?.[cx] ?? [0, 0];
+    return sampleCurrentVector({ frame, level: this.level, x, y, time: t });
   }
 
   sampleROI(x, y, t, mode = 'value') {

@@ -89,6 +89,7 @@ export function getAccordionDefaults(mode) {
     },
     flowDemo: {
       demos: true,
+      preset: true,
       controls: true
     },
     tutorial: {
