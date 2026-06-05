@@ -10,6 +10,7 @@ Version 2 is a playable static-web game built with vanilla JavaScript, HTML, CSS
 
 - main menu, campaign flow, mission briefing, planning, simulation, debrief, level editor, and dataset export scenes
 - Phaser-native top-level modes for Tutorial, Deterministic Challenge, Stochastic Challenge, Environment Editor, and Load Level JSON
+- isolated Static and Temporal Flow Field demos for current arrows and glider-like particle motion
 - game-first mission planning workspace with a large Phaser map, HTML/CSS mission-control overlays, top selected-glider planning HUD, bottom mission-time slider, waypoint drawer/table, and non-executable planning markers
 - Phaser 3 scene shell with Main Menu, Mission Briefing, Mission Workspace, Simulation, Debrief, Environment Editor, and Dataset Export scenes
 - fourteen staged tutorial lessons built from handcrafted tutorial scenarios
@@ -67,7 +68,7 @@ See [HOWPLAY.md](HOWPLAY.md) for complete player instructions, tutorial guidance
 Quick loop:
 
 1. Open the game.
-2. Choose `Tutorial Mode`, `Deterministic Challenge`, `Stochastic Challenge`, `Environment Editor`, or `Load Level JSON`.
+2. Choose `Static Flow Field Demo`, `Temporal Flow Field Demo`, `Tutorial Mode`, `Deterministic Challenge`, `Stochastic Challenge`, `Environment Editor`, or `Load Level JSON`.
 3. For generated challenges, configure the scenario setup, then click `Generate Mission`.
 3. Start a tutorial, generate a challenge, import a level JSON, or use an editor/custom level.
 4. Read Mission Briefing, then click `Start Planning`.
@@ -90,6 +91,10 @@ Quick loop:
 - [Python and Colab solver tools](tools/python/README.md)
 
 ## Gameplay Features
+
+### Flow Field Demos
+
+The Main Menu includes `Static Flow Field Demo` and `Temporal Flow Field Demo` above Tutorial Mode. These demos are isolated Phaser scenes for teaching current vectors: the map shows an arrow grid, glider-like particles drift through the field, and particle heading follows the resulting movement. Static uses one fixed synthetic field; Temporal evolves the field over time. They do not create missions, waypoints, scores, leaderboard entries, or route-validation state.
 
 ### Campaign And Tutorials
 

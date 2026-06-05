@@ -35,6 +35,8 @@ Planning also runs a pre-simulation route validity audit over the active plan. T
 The active top-level modes are:
 
 - `Tutorial Mode`: opens a center-viewport tutorial browser with left-side filters/progress controls, scrollable lesson cards in the center, and selected-lesson details in the right panel.
+- `Static Flow Field Demo`: opens an isolated Phaser vector-field scene with fixed currents, arrow-grid indicators, and glider-like particles that align to their movement through the field.
+- `Temporal Flow Field Demo`: opens the same isolated demo shell with a time-varying current field. It is visual-only and does not create missions, waypoint plans, scores, or leaderboard records.
 - `Deterministic Challenge`: generates a fresh perfect-knowledge level and mission, then opens Mission Briefing.
 - `Stochastic Challenge`: generates a fresh forecast-mode level with hidden truth, visible forecast/ensemble layers, and a default mission, then opens Mission Briefing.
 - `Environment Editor`: opens the visual level editor for terrain, hazards, depth, ROI, bases, agent starts, mission defaults, time frames, and U/V current edits.

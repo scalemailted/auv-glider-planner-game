@@ -81,10 +81,15 @@ export function shouldRenderAsAccordionSection(section) {
 export function getAccordionDefaults(mode) {
   const defaults = {
     idle: {
+      demos: true,
       launch: true,
       tools: true,
       idle: false,
       status: false
+    },
+    flowDemo: {
+      demos: true,
+      controls: true
     },
     tutorial: {
       'tutorial-campaign': true,

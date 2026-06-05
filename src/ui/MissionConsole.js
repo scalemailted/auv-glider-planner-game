@@ -17,6 +17,11 @@ export class MissionConsole {
         <p>AUV Glider Planner Game</p>
       </section>
       <section class="console-section">
+        <h2>Demos</h2>
+        <button data-action="flow-static" class="console-button">Static Flow Field Demo</button>
+        <button data-action="flow-temporal" class="console-button">Temporal Flow Field Demo</button>
+      </section>
+      <section class="console-section">
         <h2>Launch</h2>
         <button data-action="tutorial" class="console-button primary">Tutorial Mode</button>
         <button data-action="deterministic" class="console-button">Deterministic Challenge</button>
@@ -37,6 +42,8 @@ export class MissionConsole {
     `;
     this.app.applyConsoleAccordions?.('idle');
     this.bind({
+      'flow-static': () => this.app.phaser.scene.start('FlowFieldDemoScene', { mode: 'static' }),
+      'flow-temporal': () => this.app.phaser.scene.start('FlowFieldDemoScene', { mode: 'temporal' }),
       tutorial: () => this.mainMenuScene()?.openTutorialBrowser?.(),
       deterministic: () => this.mainMenuScene()?.openChallengeSetup?.('perfectKnowledge'),
       stochastic: () => this.mainMenuScene()?.openChallengeSetup?.('forecast'),
@@ -44,6 +51,43 @@ export class MissionConsole {
       'load-json': () => this.app.phaser.scene.start('LoadLevelJsonScene'),
       dataset: () => this.app.phaser.scene.start('DatasetExportScene'),
       leaderboard: () => this.mainMenuScene()?.openLeaderboard?.()
+    });
+  }
+
+  renderFlowDemoControls(state = {}, handlers = {}) {
+    if (!this.root) return;
+    this.root.innerHTML = `
+      <section class="console-header">
+        <div class="console-kicker">Flow Field Demo</div>
+        <h1>${escapeHtml(state.title ?? 'Flow Field Demo')}</h1>
+        <p>Isolated current-field visualization.</p>
+      </section>
+      <section class="console-status">
+        <span>${escapeHtml(state.status ?? 'Demo running')}</span>
+        <strong>${escapeHtml(state.paused ? 'Paused' : 'Animating')}</strong>
+        <small>Arrows show local flow; glider particles align with movement.</small>
+      </section>
+      <section class="console-section">
+        <h2>Demos</h2>
+        <button data-action="static" class="console-button ${state.mode === 'static' ? 'primary' : ''}">Static Flow Field Demo</button>
+        <button data-action="temporal" class="console-button ${state.mode === 'temporal' ? 'primary' : ''}">Temporal Flow Field Demo</button>
+      </section>
+      <section class="console-section">
+        <h2>Controls</h2>
+        <button data-action="pause" class="console-button">${state.paused ? 'Play' : 'Pause'}</button>
+        <button data-action="reset" class="console-button">Reset Particles</button>
+      </section>
+      <section class="console-footer">
+        <button data-action="menu" class="console-button secondary">Main Menu</button>
+      </section>
+    `;
+    this.app.applyConsoleAccordions?.('flowDemo');
+    this.bind({
+      static: handlers.static,
+      temporal: handlers.temporal,
+      pause: handlers.pause,
+      reset: handlers.reset,
+      menu: handlers.menu
     });
   }
 
