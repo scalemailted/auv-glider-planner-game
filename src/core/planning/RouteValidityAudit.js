@@ -4,7 +4,7 @@ import { getTimeConfig } from '../time/MissionTime.js';
 import { buildRouteSegmentsForAgent } from './RouteSegmentBuilder.js';
 import { estimateRouteEnergy } from './RoutePreview.js';
 import { estimateSegmentBeachingRisk, isBeachingRisk } from './ShorelineRisk.js';
-import { buildRouteBlockDiagnostic, isCellNavigable } from './Navigability.js';
+import { buildRouteBlockDiagnostic, cellToCenterPosition, isCellNavigable, positionToCell } from './Navigability.js';
 import { evaluateSegmentForExecution } from './SegmentExecutionValidator.js';
 import { buildRouteValidationDiagnostic, buildSolverValidationFeedback } from './RouteDiagnostic.js';
 
@@ -115,6 +115,15 @@ export function validateRoutePlanForExecution({
           fuelRemaining: Number(agent.battery ?? agent.maxBattery ?? mission?.rules?.energyBudget ?? 100) - cumulativeEnergy,
           frame
         });
+      debugAdjacentRouteValidation({
+        level,
+        mission,
+        from: executionFrom,
+        to: segment.to,
+        segment,
+        estimate,
+        execution
+      });
       cumulativeEnergy += Number(waypoint.segmentEnergy ?? estimate.energy ?? 0);
 
       if (!segment.valid || estimate.valid === false || execution?.ok === false) {
@@ -395,12 +404,44 @@ function formatRouteBlockDiagnostic(diagnostic, fallbackCell = null) {
   }
   if (blocking.reason === 'actual_drift_into_land') return `${blockedText}; actual drifted start entered blocked terrain`;
   if (blocking.reason === 'blocked_endpoint') return `${blockedText}; endpoint is blocked`;
+  if (blocking.reason === 'waypoint_timeout') return ' because the segment did not reach the waypoint within the validation time budget';
   if (blocking.reason === 'no_path') return blockedText || ' because no legal navigable path exists';
   return blockedText;
 }
 
 function sameCell(a, b) {
   return Boolean(a && b && Math.floor(Number(a.x)) === Math.floor(Number(b.x)) && Math.floor(Number(a.y)) === Math.floor(Number(b.y)));
+}
+
+function debugAdjacentRouteValidation({ level, mission, from, to, segment, estimate, execution } = {}) {
+  if (!globalThis.ANCHOR_DEBUG_COORDINATES && !globalThis.ANCHOR_DEBUG_ROUTE_BLOCKS) return;
+  const fromDisplayCell = isFinitePoint(from) ? positionToCell(from) : null;
+  const toDisplayCell = isFinitePoint(to) ? positionToCell(to) : null;
+  const adjacent = fromDisplayCell && toDisplayCell
+    ? Math.abs(fromDisplayCell.x - toDisplayCell.x) + Math.abs(fromDisplayCell.y - toDisplayCell.y) === 1
+    : false;
+  if (!adjacent && !globalThis.ANCHOR_DEBUG_ROUTE_BLOCKS) return;
+  const fromNavigable = fromDisplayCell ? isCellNavigable(level, mission, fromDisplayCell.x, fromDisplayCell.y) : null;
+  const toNavigable = toDisplayCell ? isCellNavigable(level, mission, toDisplayCell.x, toDisplayCell.y) : null;
+  globalThis.console?.debug?.('[AdjacentRouteValidation]', {
+    fromDisplayCell,
+    toDisplayCell,
+    fromValidationPosition: isFinitePoint(from) ? cellToCenterPosition(from) : null,
+    toValidationPosition: isFinitePoint(to) ? cellToCenterPosition(to) : null,
+    fromValidationCell: fromDisplayCell,
+    toValidationCell: toDisplayCell,
+    fromNavigable,
+    toNavigable,
+    sampledCells: segment?.traversedCells ?? segment?.pathCells ?? estimate?.sampledCells ?? [],
+    blockedCells: segment?.blockedCells ?? estimate?.blockedCells ?? execution?.routeBlockDiagnostic?.traversedCells?.filter((cell) => cell.navigable === false) ?? [],
+    validationResult: {
+      segmentValid: segment?.valid,
+      estimateValid: estimate?.valid,
+      executionOk: execution?.ok ?? null,
+      executionReason: execution?.reason ?? null,
+      estimateReason: estimate?.reason ?? null
+    }
+  });
 }
 
 function formatBlockReason(reason) {

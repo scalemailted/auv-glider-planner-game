@@ -10,6 +10,17 @@ export function cellFromPoint(point, mode = 'floor') {
   };
 }
 
+export function positionToCell(position) {
+  return cellFromPoint(position, 'round');
+}
+
+export function cellToCenterPosition(cell) {
+  return {
+    x: Math.round(Number(cell?.x)),
+    y: Math.round(Number(cell?.y))
+  };
+}
+
 export function isCellNavigable(level, mission = null, x, y) {
   const cx = Math.floor(Number(x));
   const cy = Math.floor(Number(y));
@@ -27,7 +38,7 @@ export function isCellNavigable(level, mission = null, x, y) {
 }
 
 export function isPointNavigable(level, mission = null, point) {
-  const cell = cellFromPoint(point, 'floor');
+  const cell = positionToCell(point);
   return isCellNavigable(level, mission, cell.x, cell.y);
 }
 
@@ -49,7 +60,7 @@ export function describeCellNavigability(level, mission = null, cell = null) {
 export function getSegmentCells(start, end) {
   if (!isFinitePoint(start) || !isFinitePoint(end)) return [];
   const sampled = sampleSegmentCells(start, end, 0.25);
-  const supercover = supercoverLineCells(cellFromPoint(start, 'floor'), cellFromPoint(end, 'floor'));
+  const supercover = supercoverLineCells(positionToCell(start), positionToCell(end));
   return uniqueCells([...sampled.cells, ...supercover]);
 }
 
@@ -60,7 +71,7 @@ export function explainSegmentBlockage(start, end, { level = null, mission = nul
       reason: 'invalidPoint',
       cells: [],
       blockedCells: [],
-      blockedAt: isFinitePoint(end) ? cellFromPoint(end, 'floor') : null,
+      blockedAt: isFinitePoint(end) ? positionToCell(end) : null,
       lastValid: isFinitePoint(start) ? { x: Number(start.x), y: Number(start.y) } : null
     };
   }
@@ -109,11 +120,11 @@ export function buildRouteBlockDiagnostic({
   source = 'routeValidation'
 } = {}) {
   const segmentStart = isFinitePoint(actualStartPosition) ? actualStartPosition : plannedFrom;
-  const plannedFromCell = isFinitePoint(plannedFrom) ? cellFromPoint(plannedFrom, 'floor') : null;
-  const plannedTargetCell = isFinitePoint(target) ? cellFromPoint(target, 'floor') : null;
-  const actualStartCell = isFinitePoint(actualStartPosition) ? cellFromPoint(actualStartPosition, 'floor') : null;
+  const plannedFromCell = isFinitePoint(plannedFrom) ? positionToCell(plannedFrom) : null;
+  const plannedTargetCell = isFinitePoint(target) ? positionToCell(target) : null;
+  const actualStartCell = isFinitePoint(actualStartPosition) ? positionToCell(actualStartPosition) : null;
   const normalizedReportedCell = reportedCell && isFinitePoint(reportedCell)
-    ? cellFromPoint(reportedCell, 'floor')
+    ? positionToCell(reportedCell)
     : null;
   const blockage = explainSegmentBlockage(segmentStart, target, { level, mission });
   const startNav = describeCellNavigability(level, mission, actualStartCell ?? plannedFromCell);
@@ -171,16 +182,18 @@ export function buildRouteBlockDiagnostic({
     },
     source,
     movementModel: 'continuous-segment',
-    coordinateConvention: 'x/y'
+    coordinateConvention: 'integer-cell-coordinates-are-cell-centers'
   };
   debugRouteBlockDiagnostic(diagnostic);
   return diagnostic;
 }
 
 function classifyRouteBlockReason({ reason, blockage, startNav, targetNav, blockedCell, plannedTargetCell, actualStartCell } = {}) {
+  const reasonText = String(reason ?? blockage?.reason ?? '');
   if (startNav?.status && startNav.status !== 'water') return 'actual_drift_into_land';
   if (targetNav?.status && targetNav.status !== 'water') return 'blocked_endpoint';
-  if (String(reason ?? blockage?.reason ?? '').includes('noLegalPath')) return 'no_path';
+  if (reasonText.includes('noLegalPath')) return 'no_path';
+  if (reasonText.includes('waypointTimeout') || reasonText.includes('noProgress')) return 'waypoint_timeout';
   if (blockage?.blockedAt) {
     if (plannedTargetCell && sameCell(blockage.blockedAt, plannedTargetCell)) return 'blocked_endpoint';
     if (actualStartCell && sameCell(blockage.blockedAt, actualStartCell)) return 'actual_drift_into_land';
@@ -394,7 +407,7 @@ function sampleSegmentCells(start, end, spacing = 0.25) {
       y: from.y + (to.y - from.y) * ratio
     };
     points.push(point);
-    cells.push(cellFromPoint(point, 'floor'));
+    cells.push(positionToCell(point));
   }
   return { points, cells: uniqueCells(cells), spacing };
 }
@@ -412,7 +425,7 @@ function uniqueCells(cells) {
 }
 
 function debugRouteSegmentValidation({ start, end, result } = {}) {
-  if (!globalThis.ANCHOR_DEBUG_ROUTE_SEGMENTS) return;
+  if (!globalThis.ANCHOR_DEBUG_ROUTE_SEGMENTS && !globalThis.ANCHOR_DEBUG_COORDINATES) return;
   globalThis.console?.debug?.('[RouteSegmentValidation]', {
     from: start ? { x: Number(start.x), y: Number(start.y) } : null,
     to: end ? { x: Number(end.x), y: Number(end.y) } : null,
@@ -427,6 +440,18 @@ function debugRouteSegmentValidation({ start, end, result } = {}) {
     movementModel: 'continuous-segment',
     valid: Boolean(result?.ok)
   });
+  if (globalThis.ANCHOR_DEBUG_COORDINATES) {
+    globalThis.console?.debug?.('[CoordinateDebug][SegmentValidation]', {
+      fromDisplayCell: isFinitePoint(start) ? positionToCell(start) : null,
+      fromValidationPosition: isFinitePoint(start) ? cellToCenterPosition(start) : null,
+      toDisplayCell: isFinitePoint(end) ? positionToCell(end) : null,
+      toValidationPosition: isFinitePoint(end) ? cellToCenterPosition(end) : null,
+      sampledPositions: result?.sampledPoints ?? [],
+      sampledCells: result?.cells ?? [],
+      blockedCells: result?.blockedCells ?? [],
+      reason: result?.reason ?? null
+    });
+  }
 }
 
 function isInsideLevel(level, x, y) {
@@ -448,7 +473,7 @@ function cellKey(x, y) {
 }
 
 function sameCell(a, b) {
-  return Boolean(a && b && Math.floor(Number(a.x)) === Math.floor(Number(b.x)) && Math.floor(Number(a.y)) === Math.floor(Number(b.y)));
+  return Boolean(a && b && positionToCell(a).x === positionToCell(b).x && positionToCell(a).y === positionToCell(b).y);
 }
 
 function isFinitePoint(point) {

@@ -65,6 +65,7 @@ import { getViewportMapBounds } from '../ViewportMapBounds.js';
 import { getActiveRenderTime } from '../../../core/time/ActiveRenderTime.js';
 import { getActivePriorityTargets } from '../../../core/sim/PriorityTargets.js';
 import { inspectCellAtTime } from '../../../core/exploration/CellInspection.js';
+import { cellToCenterPosition, isCellNavigable } from '../../../core/planning/Navigability.js';
 import { getNextRoiMode, getRoiModeLabel, normalizeRoiMode } from '../../../core/roi/RoiMode.js';
 import { nextAllowedRoiMode } from '../../../core/tutorial/TutorialFeatureGates.js';
 import {
@@ -705,6 +706,7 @@ export class MissionWorkspaceScene extends PhaserScene {
     const hover = this.app.state.ui.hoverCell;
     if (hover?.x !== cell?.x || hover?.y !== cell?.y) {
       this.app.state.ui.hoverCell = cell;
+      this.debugCoordinateHover(pointer, cell);
       if (this.app.state.ui.placementMode === 'marker') this.refreshPanels();
       this.refreshMap();
     }
@@ -893,6 +895,10 @@ export class MissionWorkspaceScene extends PhaserScene {
       y: targetY,
       action
     });
+    this.debugCoordinateWaypointPlaced({
+      clickCell: { x: targetX, y: targetY },
+      storedWaypoint: waypoint
+    });
     const absorbedMarker = absorbPlanningMarkersForWaypoint(this.app.state.plan, waypoint);
     const index = (this.app.state.plan.agentPlans.find((plan) => plan.agentId === this.app.state.selectedAgentId)?.waypoints?.length ?? 1) - 1;
     this.app.state.ui.selectedWaypoint = { agentId: this.app.state.selectedAgentId, index };
@@ -908,6 +914,46 @@ export class MissionWorkspaceScene extends PhaserScene {
     this.markManualPlan();
     this.refreshPanels();
     this.refreshMap();
+  }
+
+  debugCoordinateHover(pointer, cell) {
+    if (!globalThis.ANCHOR_DEBUG_COORDINATES || !cell) return;
+    const canvasLocal = this.resolvePointerPoint(pointer);
+    const layout = this.app.adapter?.layout;
+    const worldPosition = layout ? {
+      x: (canvasLocal.x - layout.ox) / layout.cell,
+      y: (canvasLocal.y - layout.oy) / layout.cell
+    } : null;
+    globalThis.console?.debug?.('[CoordinateDebug][Hover]', {
+      pointer: {
+        x: Number(pointer?.x ?? pointer?.event?.clientX ?? NaN),
+        y: Number(pointer?.y ?? pointer?.event?.clientY ?? NaN),
+        clientX: Number(pointer?.event?.clientX ?? NaN),
+        clientY: Number(pointer?.event?.clientY ?? NaN)
+      },
+      canvasLocal,
+      worldPosition,
+      hoverCell: cell,
+      cellCenter: cellToCenterPosition(cell),
+      terrainAtHoverCell: terrainAt(this.app.state.level, cell),
+      navigability: isCellNavigable(this.app.state.level, this.app.state.mission, cell.x, cell.y)
+    });
+  }
+
+  debugCoordinateWaypointPlaced({ clickCell, storedWaypoint }) {
+    if (!globalThis.ANCHOR_DEBUG_COORDINATES) return;
+    const displayCell = storedWaypoint ? {
+      x: Math.round(Number(storedWaypoint.x)),
+      y: Math.round(Number(storedWaypoint.y))
+    } : null;
+    globalThis.console?.debug?.('[CoordinateDebug][WaypointPlaced]', {
+      clickCell,
+      storedWaypoint,
+      displayCell,
+      validationPosition: displayCell ? cellToCenterPosition(displayCell) : null,
+      terrainAtWaypoint: displayCell ? terrainAt(this.app.state.level, displayCell) : null,
+      navigability: displayCell ? isCellNavigable(this.app.state.level, this.app.state.mission, displayCell.x, displayCell.y) : null
+    });
   }
 
   addMarkerForSelected({ x, y }) {
@@ -2070,6 +2116,14 @@ function formatRouteNumber(value) {
   const number = Number(value);
   if (!Number.isFinite(number)) return 'N/A';
   return Math.abs(number) >= 10 ? number.toFixed(1) : number.toFixed(2);
+}
+
+function terrainAt(level, cell) {
+  const x = Math.round(Number(cell?.x));
+  const y = Math.round(Number(cell?.y));
+  return Number.isFinite(x) && Number.isFinite(y)
+    ? level?.layers?.terrain?.[y]?.[x] ?? null
+    : null;
 }
 
 function isValidDropCell(level, cell, mission, agentId = null) {

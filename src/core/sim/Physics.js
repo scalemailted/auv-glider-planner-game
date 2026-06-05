@@ -33,9 +33,13 @@ export function stepAgentToward(agent, target, world, dt, config = {}) {
     return { moved: false, distance: 0, blocked: false, batteryDepleted: false, invalidPosition: true };
   }
 
-  const [nx, ny] = normalize(target.x - agent.x, target.y - agent.y);
-  const commandVx = nx * agent.maxSpeed;
-  const commandVy = ny * agent.maxSpeed;
+  const dxToTarget = target.x - agent.x;
+  const dyToTarget = target.y - agent.y;
+  const distanceToTarget = Math.hypot(dxToTarget, dyToTarget);
+  const [nx, ny] = normalize(dxToTarget, dyToTarget);
+  const commandSpeed = Math.min(Number(agent.maxSpeed ?? 1), distanceToTarget / Math.max(Number(dt) || 1, 1e-6));
+  const commandVx = nx * commandSpeed;
+  const commandVy = ny * commandSpeed;
   const sampledCurrent = world.sampleCurrent(agent.x, agent.y, config.t ?? 0);
   const driftSample = applySeededStochasticDrift(sampledCurrent, {
     mission: config.mission,

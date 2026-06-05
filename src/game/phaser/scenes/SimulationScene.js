@@ -1362,6 +1362,9 @@ function formatRouteBlockExplanation(diagnostic) {
   if (blocking.reason === 'no_path') {
     return 'Route block detail: no legal navigable path exists between these cells.';
   }
+  if (blocking.reason === 'waypoint_timeout') {
+    return 'Route block detail: the segment did not reach the waypoint within the validation time budget.';
+  }
   return `Route block detail: segment crosses blocked terrain at ${blocked}.`;
 }
 
