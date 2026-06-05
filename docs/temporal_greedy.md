@@ -107,6 +107,8 @@ mission_time_exhausted
 fuel_exhausted
 no_reachable_feasible_candidates
 no_safe_forecast_feasible_candidates
+no_executable_route_after_validation
+planner_generated_blocked_segment
 max_iterations_guard
 cancelled
 error
@@ -152,13 +154,13 @@ Before committing a candidate, it should reject:
 - forecast-risk candidates that are unsafe near shoreline or low-confidence currents
 - obvious selected-glider conflicts with other planned glider occupancy
 
-After generating the selected-glider route, ANCHOR runs route validation before accepting the route into the active plan. The Play button also runs pre-simulation validation.
+After generating the selected-glider route, ANCHOR runs route validation before accepting the route into the active plan. The Play button also runs pre-simulation validation. The current worker-compatible path returns validation diagnostics with the planner result; if validation fails, the generated route is not installed as a valid plan.
 
 ```text
 Simulation should not be the first system to discover a Temporal Greedy route is invalid.
 ```
 
-If validation fails, the route should be rejected, truncated to a valid prefix only when that is explicitly handled, or reported with a clear stop reason.
+If validation fails, the route is rejected, truncated to a valid prefix only when that path is explicitly handled, or reported with a clear stop reason such as `no_executable_route_after_validation` or `planner_generated_blocked_segment`.
 
 ## 10. Stochastic Mode
 

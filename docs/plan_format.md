@@ -7,6 +7,7 @@ Required foundation fields:
 - `type: "anchor.plan"`
 - `schemaVersion`
 - `challengeId` or `instanceId`
+- optional `replaySeedAnchor`, `generationVersion`, `generationConfig`, and `derivedSeeds`
 - `missionId`
 - `executionMode`
 - `planner`
@@ -41,7 +42,9 @@ For live surfacing and route-failure recovery, external tools can return `anchor
 
 ## Import Validation
 
-Plan import validates type, agent IDs, selected starts, waypoint coordinates, waypoint time metadata, terrain/out-of-bounds warnings, mission/challenge compatibility, surface segment timing, route audit warnings, and fairness metadata. Failed imports show a summary and do not replace the active route. Oracle-assisted imports are labeled and are not treated as fair leaderboard entries.
+Plan import validates type, agent IDs, selected starts, waypoint coordinates, waypoint time metadata, terrain/out-of-bounds warnings, mission/challenge compatibility, surface segment timing, route audit diagnostics, and fairness metadata. Blocking route diagnostics reject full imported plans by default and do not replace the active route. Oracle-assisted imports are labeled and are not treated as fair leaderboard entries.
+
+Shared route diagnostics use `type: "route_validation_diagnostic"` and stable categories such as `segment_intersects_land`, `target_on_land`, `fuel_exceeded`, `time_exceeded`, and `unknown_route_block`. Import metadata and headless validation may expose these diagnostics as `diagnostics[]` and `solverFeedback`.
 
 ## Tutorial Demo Plan
 

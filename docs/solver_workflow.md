@@ -63,6 +63,12 @@ The intended loop is: the game reaches a surface/update window, exports a surfac
 
 This is not live browser automation. A shared-folder watcher or optional local bridge may be added later, but the current supported workflow is explicit JSON export/import.
 
+Tool docs:
+
+- [`../tools/python/README.md`](../tools/python/README.md)
+- [`../tools/python/example_solver_readme.md`](../tools/python/example_solver_readme.md)
+- [`../tools/js/README.md`](../tools/js/README.md)
+
 ### JavaScript Headless Solver From Colab
 
 For a higher-fidelity path that avoids Python translation drift, Colab can call Node.js and run the repository's portable JavaScript core modules:
@@ -142,7 +148,10 @@ packet = load_json("anchor_solver_packet.json")
 level = packet["level"]
 mission = packet["mission"]
 terrain = packet["planningData"]["visibleFields"]["terrain"]
-roi = packet["planningData"]["visibleFields"]["truth"]["frames"][0]["roi"]
+fields = packet["planningData"]["visibleFields"]
+source = packet.get("visiblePlanningSource", "forecast")
+frames = fields.get(source, {}).get("frames", [])
+roi = frames[0]["roi"] if frames else fields.get("roi", [])
 
 choose high-value water cells
 

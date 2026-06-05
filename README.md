@@ -6,7 +6,7 @@ The project is also an **AUV Glider Planner Game** for teaching long-horizon pla
 
 ## Current Status
 
-Version 2 is a playable static-web game built with vanilla JavaScript, HTML, CSS, Phaser 3, and schema-driven core modules. The active shell is a Mission Console + Phaser Simulator Viewport: HTML/CSS owns the left mission-control console for menus, forms, tables, imports/exports, and results, while Phaser owns the right simulator viewport for map rendering, sprites, animation, overlays, and direct pointer interaction. It has:
+Version 2 is a playable static-web game built with vanilla JavaScript, HTML, CSS, Phaser 3, and schema-driven core modules. The active shell is a Mission Console + Phaser Simulator Viewport + Waypoint Timeline: HTML/CSS owns the left mission-control console for menus, forms, tables, imports/exports, and results, Phaser owns the center simulator viewport for map rendering, sprites, animation, overlays, and direct pointer interaction, and the right panel owns the selected-glider waypoint timeline. It has:
 
 - main menu, campaign flow, mission briefing, planning, simulation, debrief, level editor, and dataset export scenes
 - Phaser-native top-level modes for Tutorial, Deterministic Challenge, Stochastic Challenge, Environment Editor, and Load Level JSON
@@ -75,6 +75,19 @@ Quick loop:
 6. Click `Execute`.
 7. Review Debrief score, objectives, rating, and suggestions.
 8. Retry, revise, continue to the next tutorial, generate another challenge, return to the editor, or export data for solver experiments.
+
+## Documentation Index
+
+- [Game design](docs/game_design.md)
+- [Solver workflow](docs/solver_workflow.md)
+- [Export formats](docs/export_formats.md)
+- [Plan format](docs/plan_format.md)
+- [Temporal Greedy](docs/temporal_greedy.md)
+- [Testing](docs/testing.md)
+- [Leaderboard and best paths](docs/leaderboard.md)
+- [Development versions and project state](docs/development_versions.md)
+- [JavaScript headless solver tools](tools/js/README.md)
+- [Python and Colab solver tools](tools/python/README.md)
 
 ## Gameplay Features
 
@@ -163,7 +176,7 @@ Before `Execute`, the game validates that the level, mission, starts, deployment
 - confidence overlay in forecast mode
 - planning guidance toggle for map overlays
 - view-layer toggles for water, ROI heatmap, current vectors, hazards, terrain, guidance cone, approximate reach, cost preview, planned path, actual path, and best prior path overlay
-- stateful `ROI Mode` planning perspectives: Value, Probability, Expected, Remaining, Risk, Safety, and Travel Cost
+- stateful `ROI Mode` planning perspectives: Value, Probability, Expected, Remaining, merged Risk / Safety, and Travel Cost
 - stronger planned-route, predicted-drift, drift-cone, and predicted-surfacing feedback
 - glider triangle heading follows planned preview direction and actual simulation movement
 - smoother blue-to-yellow ROI heatmap, terrain-masked land, orange-red hazard markings, and white current arrows scaled by magnitude
@@ -411,9 +424,14 @@ Debrief stores comparison results for the current browser session in slots for `
 More details:
 
 - `docs/solver_workflow.md`
-- `docs/temporal_greedy.md`
-- `tools/python/example_solver_readme.md`
+- `docs/export_formats.md`
 - `docs/plan_format.md`
+- `docs/temporal_greedy.md`
+- `docs/testing.md`
+- `docs/development_versions.md`
+- `tools/js/README.md`
+- `tools/python/README.md`
+- `tools/python/example_solver_readme.md`
 
 ## Dataset Export
 
@@ -528,11 +546,11 @@ Current smoke coverage:
 ## Development Commands
 
 ```bash
-node tools/check-js.mjs
-npm run test:e2e
+npm.cmd run check
+npm.cmd run test:e2e
 ```
 
-`node tools/check-js.mjs` performs repository JavaScript syntax/import checks. Playwright requires optional npm setup.
+`npm.cmd run check` runs `node tools/check-js.mjs` for repository JavaScript syntax/import checks. Playwright requires optional npm setup. On non-Windows shells, use `npm run check` and `npm run test:e2e`.
 
 ## Architecture
 

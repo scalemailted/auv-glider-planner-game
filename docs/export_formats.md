@@ -10,6 +10,30 @@ The app remains static. These files are the data API: export JSON from the brows
 
 Deterministic challenges include truth fields because there is no hidden state. Public stochastic challenge exports omit plain hidden truth and include a non-cryptographic checksum. They may include an opaque browser-obfuscation bundle for reload convenience, with a warning that browser-only secrecy is cheat-resistant only.
 
+Generated challenge exports should preserve replay seed metadata when available:
+
+```json
+{
+  "challengeId": "CHALLENGE-...",
+  "replaySeedAnchor": "CHALLENGE-...",
+  "generationVersion": "anchor-generator-v1",
+  "generationConfig": {},
+  "derivedSeeds": {
+    "terrain": "...",
+    "currents": "...",
+    "roi": "...",
+    "hazards": "...",
+    "depth": "...",
+    "targets": "...",
+    "forecast": "...",
+    "truth": "...",
+    "mission": "..."
+  }
+}
+```
+
+Exact replay prefers a saved challenge snapshot. If no snapshot is available, replay may be exact via UUID only when the UUID seed anchor, compatible generator version, generation config, and required derived seeds are present. Older records missing these fields should be labeled unavailable or approximate rather than silently regenerated with a new seed.
+
 ## `anchor.solver-packet.json`
 
 `type: "anchor.solverPacket"` is input for external planners. It contains the information an algorithm is allowed to use: grid/layers, deployment options and selected starts, agent specs, duration/surfacing windows, scoring/sampling rules, ROI/current forecast data, priority targets, cost-model notes, end conditions, stochastic metadata, and an `algorithmSupport` section for graph search, multi-agent planning, RL, supervised learning, and neural planners.
@@ -68,6 +92,12 @@ This export is labeled: Research/oracle export. Contains hidden truth. Do not us
 
 `type: "anchor.result"` preserves one run: challenge identity, label/source, submitted plan, selected starts, planning markers, execution frames, trajectories, sampled cells, score/energy/hazard summaries, route failure decisions, stochastic seed/run data, debrief metrics, event log, and raw result payload.
 
+Result exports include replay metadata when available: `challengeId`, `replaySeedAnchor`, `generationVersion`, `generationConfig`, `derivedSeeds`, `replaySeedContract`, and `exactReplay`. They also preserve planner fairness metadata and imported-plan validation metadata when present.
+
 ## `anchor.leaderboard.json`
 
 `type: "anchor.leaderboard"` stores local challenge records by instance id. Records include attempts, best score, best plan, full saved plan/result blobs when available, per-attempt `pathSummary`, timestamps, labels, challenge reference, and optional embedded challenge data for replay. Planning uses those records to draw the best prior path overlay and to rerun, load, or export the top saved plan for the current challenge.
+
+Best-path exports are derived from the saved leaderboard/best-attempt record. They should carry the saved plan/result blobs when available, replay seed contract metadata, exact replay availability, planned-path and actual-path availability, and route diagnostics if the saved attempt contains imported-plan validation feedback or route-failure events.
+
+Related schemas live in [`../schemas/`](../schemas/). The schema files are documentation-oriented and runtime validation remains intentionally lightweight.

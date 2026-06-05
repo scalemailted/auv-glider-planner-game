@@ -6,6 +6,13 @@ These optional Node.js tools run outside the browser and import portable ANCHOR 
 node tools/js/headless_solver.mjs anchor.solver-packet.json anchor.plan.json
 ```
 
+Sample repository packet:
+
+```bash
+node tools/js/headless_solver.mjs tools/js/examples/sample_solver_packet.json anchor.plan.json
+node tools/js/headless_validate_plan.mjs tools/js/examples/sample_solver_packet.json anchor.plan.json
+```
+
 Optional flags:
 
 ```bash
@@ -37,3 +44,5 @@ This validation is still not the official score. ANCHOR browser import and simul
 ```text
 Node proposes. Game validates. Game simulates. Game scores.
 ```
+
+The Node tools are useful for CI-style contract checks and external solver prototyping. They do not replace browser Debrief, leaderboard scoring, stochastic replay, or route-failure recovery UI.

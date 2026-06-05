@@ -59,6 +59,14 @@ The example uses only the Python standard library. It ranks visible ROI cells, a
 
 See `tools/python/example_solver_readme.md` for strategy details.
 
+After generating a plan, import it into ANCHOR or validate it with the optional Node.js helper when the repository is available:
+
+```bash
+node tools/js/headless_validate_plan.mjs anchor.solver-packet.json anchor.plan.json
+```
+
+Notebook/Python validation is intentionally lightweight. The browser game remains the official validator, simulator, and scorer.
+
 ## Headless Helper Package
 
 `tools/python/anchor_headless/` contains small standard-library helpers used by the Colab template:
