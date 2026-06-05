@@ -1318,7 +1318,31 @@ function routeFailureBody(level, mission, decision) {
   const prevalidation = diagnostics.prevalidationResult
     ? `${diagnostics.prevalidationResult.ok ? 'passed' : 'failed'}${diagnostics.prevalidationResult.reason ? ` (${diagnostics.prevalidationResult.reason})` : ''}`
     : 'unknown';
-  return `${glider} could not continue to ${failed}.\nReason: ${labelReason(decision.reason)}.\nLast successful waypoint: ${last}.\nCurrent time: ${formatMissionTime(level, decision.time)}.\nCurrent position: ${formatPoint(decision.currentPosition)}.\n\nPlanned segment: ${diagnostics.plannedSegment?.fromLabel ?? 'previous'} -> ${diagnostics.plannedSegment?.toLabel ?? failed}\nPlanned from cell: ${plannedFrom}\nTarget waypoint: ${target}\nReported/current cell: ${reportedCell ?? formatPoint(decision.currentPosition)}\nActual blocked cell: ${blockedCell}\n${blockExplanation}\nPrevalidation: ${prevalidation}\n\nSuggested fix: ${routeDiagnostic?.fixHint ?? decision.suggestedFix}\n\nChoose how to recover. Replan returns to Planning from this actual position and time.`;
+  return [
+    'Summary',
+    `${glider} could not continue to ${failed}.`,
+    `Reason: ${labelReason(decision.reason)}.`,
+    `Last successful waypoint: ${last}.`,
+    `Current time: ${formatMissionTime(level, decision.time)}.`,
+    `Current position: ${formatPoint(decision.currentPosition)}.`,
+    '',
+    'Segment',
+    `Planned segment: ${diagnostics.plannedSegment?.fromLabel ?? 'previous'} -> ${diagnostics.plannedSegment?.toLabel ?? failed}`,
+    `Planned from cell: ${plannedFrom}`,
+    `Target waypoint: ${target}`,
+    `Reported/current cell: ${reportedCell ?? formatPoint(decision.currentPosition)}`,
+    `Actual blocked cell: ${blockedCell}`,
+    `Prevalidation: ${prevalidation}`,
+    '',
+    'Blocking condition',
+    blockExplanation,
+    '',
+    'Suggested fix',
+    routeDiagnostic?.fixHint ?? decision.suggestedFix,
+    '',
+    'Recovery',
+    'Choose how to recover. Replan returns to Planning from this actual position and time.'
+  ].join('\n');
 }
 
 function formatRouteBlockExplanation(diagnostic) {
