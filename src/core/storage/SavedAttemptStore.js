@@ -21,9 +21,12 @@ export function saveAttemptToLocalStore({ level, mission, plan, result, label = 
     challengeId: attempt.challengeId ?? attempt.instanceId,
     levelId: attempt.levelId,
     missionId: attempt.missionId,
+    experienceMode: attempt.experienceMode ?? result?.experienceMode ?? level?.meta?.experienceMode ?? mission?.meta?.experienceMode ?? null,
+    missionMode: attempt.missionMode ?? result?.missionMode ?? level?.meta?.missionMode ?? mission?.meta?.missionMode ?? level?.meta?.generationConfig?.missionMode ?? null,
     replaySeedAnchor: replaySeedContract?.replaySeedAnchor ?? attempt.instanceId,
     generationVersion: replaySeedContract?.generationVersion ?? null,
     generationConfig: cloneJson(replaySeedContract?.generationConfig ?? level?.meta?.generationConfig ?? null),
+    navigationUncertainty: cloneJson(attempt.navigationUncertainty ?? level?.meta?.generationConfig?.navigationUncertainty ?? mission?.rules?.navigationUncertainty ?? null),
     derivedSeeds: cloneJson(replaySeedContract?.derivedSeeds ?? null),
     replaySeedContract: cloneJson(replaySeedContract),
     exactReplay: {
@@ -42,6 +45,8 @@ export function saveAttemptToLocalStore({ level, mission, plan, result, label = 
       energyUsed: finiteOrNull(result?.summary?.energyUsed),
       hazardsHit: Number(result?.summary?.hazardsHit ?? 0) + Number(result?.summary?.mobileHazardsHit ?? 0),
       elapsedTime: finiteOrNull(result?.summary?.elapsedTime),
+      routeGrade: result?.routeQuality?.overall?.grade ?? null,
+      routeScore: finiteOrNull(result?.routeQuality?.overall?.numericScore),
       actualPathAvailable: Array.isArray(result?.frames) && result.frames.length > 0
     },
     result: cloneJson(attempt)

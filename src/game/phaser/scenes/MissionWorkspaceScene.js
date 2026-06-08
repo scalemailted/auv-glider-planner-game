@@ -904,6 +904,7 @@ export class MissionWorkspaceScene extends PhaserScene {
       t: placement.estimate.arrivalTime,
       x: targetX,
       y: targetY,
+      kind: 'navigation',
       action
     });
     this.debugCoordinateWaypointPlaced({
@@ -1609,6 +1610,7 @@ export class MissionWorkspaceScene extends PhaserScene {
       mission: this.app.state.mission,
       plan: this.app.state.plan,
       challengeMode: this.app.state.challengeMode,
+      experienceMode: this.app.state.experienceMode,
       forecastMemberId: this.app.state.ui.forecastMemberId,
       roiViewMode: this.app.state.ui.roiViewMode,
       stochasticConfig: this.app.state.stochastic
@@ -1622,6 +1624,7 @@ export class MissionWorkspaceScene extends PhaserScene {
       level: this.app.state.level,
       mission: this.app.state.mission,
       challengeMode: this.app.state.challengeMode,
+      experienceMode: this.app.state.experienceMode,
       includeHiddenTruth: false
     });
     saveChallengeToLocalStore(challenge);
@@ -1653,6 +1656,7 @@ export class MissionWorkspaceScene extends PhaserScene {
       mission: this.app.state.mission,
       plan: this.app.state.plan,
       result: this.app.state.result,
+      experienceMode: this.app.state.experienceMode,
       label: this.app.state.currentPlanSource ?? 'Manual Player Plan'
     }));
   }

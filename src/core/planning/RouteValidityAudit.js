@@ -7,6 +7,7 @@ import { estimateSegmentBeachingRisk, isBeachingRisk } from './ShorelineRisk.js'
 import { buildRouteBlockDiagnostic, cellToCenterPosition, isCellNavigable, positionToCell } from './Navigability.js';
 import { evaluateSegmentForExecution } from './SegmentExecutionValidator.js';
 import { buildRouteValidationDiagnostic, buildSolverValidationFeedback } from './RouteDiagnostic.js';
+import { normalizeWaypointKind } from './WaypointSemantics.js';
 
 export function validateRoutePlanForExecution({
   level,
@@ -358,6 +359,12 @@ function annotateWaypoint(agentPlan, index, issue) {
       diagnostic: issue.diagnostic ?? null
     }
   };
+  if (issue.terminalCarryThrough || issue.runtimeBehavior === 'truncate_at_mission_end') {
+    waypoint.kind = 'terminalCarryThrough';
+    waypoint.waypointKind = 'terminalCarryThrough';
+    waypoint.terminalCarryThrough = true;
+    waypoint.runtimeBehavior = 'truncate_at_mission_end';
+  }
   if (issue.severity === 'error') waypoint.validity.valid = false;
 }
 
@@ -411,6 +418,7 @@ function segmentEndpointRef(point, index) {
 function waypointRef(waypoint, index) {
   return {
     kind: 'waypoint',
+    waypointKind: normalizeWaypointKind(waypoint),
     index,
     id: waypoint?.id ?? null,
     x: Number(waypoint?.x),

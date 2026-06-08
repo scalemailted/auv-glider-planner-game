@@ -10,6 +10,7 @@ import { parseChallengeImport } from '../../../core/io/ChallengeExporter.js';
 import { saveChallengeToLocalStore } from '../../../core/storage/LocalChallengeStore.js';
 import { importResultJson } from '../../../core/io/ResultImporter.js';
 import { importOracleDatasetJson } from '../../../core/io/OracleDatasetImporter.js';
+import { EXPERIENCE_MODES } from '../../../core/experience/ExperienceMode.js';
 
 const PhaserScene = globalThis.Phaser?.Scene ?? class {};
 
@@ -152,6 +153,12 @@ export class LoadLevelJsonScene extends PhaserScene {
       this.level = normalizeLevelForEditor(ensureLevelIdentity(imported.level));
       this.level.challengeMode = imported.challengeMode ?? this.level.challengeMode;
       this.mission = imported.mission ?? this.buildMissionFromImportedLevel(this.level);
+      if (imported.experienceMode) {
+        this.level.meta ??= {};
+        this.level.meta.experienceMode = imported.experienceMode;
+        this.mission.meta ??= {};
+        this.mission.meta.experienceMode = imported.experienceMode;
+      }
       this.app.state.importedLevel = this.level;
       this.app.state.importedMission = this.mission;
       if (raw?.type === 'anchor.challenge') saveChallengeToLocalStore(raw);
@@ -181,6 +188,12 @@ export class LoadLevelJsonScene extends PhaserScene {
       this.level = normalizeLevelForEditor(ensureLevelIdentity(imported.imported.level));
       this.level.challengeMode = imported.imported.challengeMode ?? this.level.challengeMode;
       this.mission = imported.imported.mission ?? this.buildMissionFromImportedLevel(this.level);
+      if (imported.imported.experienceMode) {
+        this.level.meta ??= {};
+        this.level.meta.experienceMode = imported.imported.experienceMode;
+        this.mission.meta ??= {};
+        this.mission.meta.experienceMode = imported.imported.experienceMode;
+      }
       this.app.state.importedLevel = this.level;
       this.app.state.importedMission = this.mission;
     }
@@ -254,6 +267,7 @@ export class LoadLevelJsonScene extends PhaserScene {
       level,
       mission: this.mission ?? this.buildMissionFromImportedLevel(level),
       challengeMode: mode,
+      experienceMode: level.meta?.experienceMode ?? this.mission?.meta?.experienceMode ?? EXPERIENCE_MODES.simulationLab,
       source: 'levelJson'
     });
     resetPlanResultStore(this.app.state);

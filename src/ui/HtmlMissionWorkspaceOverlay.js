@@ -10,12 +10,15 @@ import { shortInstanceId } from '../core/identity/GameInstanceId.js';
 import { getPlanningFrame } from '../core/sim/ChallengeMode.js';
 import { estimateRouteEnergy } from '../core/planning/RoutePreview.js';
 import { buildRouteSegmentsForAgent } from '../core/planning/RouteSegmentBuilder.js';
+import { gradeRouteContributions } from '../core/planning/SegmentContributionGrader.js';
 import { buildTimelineEvents } from '../core/planning/TimelineEvents.js';
 import { computeReachabilitySummary } from '../core/validation/ConnectivityValidator.js';
 import { formatHudMetric, getAgentPerformanceRows } from './HudMetrics.js';
 import { getSelectedStart } from '../core/deployment/DeploymentZones.js';
 import { inspectCellAtTime } from '../core/exploration/CellInspection.js';
 import { getRoiModeDescription, getRoiModeLabel, getTravelCostAnchor, getTravelCostBudget, normalizeRoiMode } from '../core/roi/RoiMode.js';
+import { normalizePriorityTargets } from '../core/sim/PriorityTargets.js';
+import { EXPERIENCE_MODES, getExperienceModeDefaults, experienceModeLabel } from '../core/experience/ExperienceMode.js';
 import { getTutorialHint, tutorialFeatureEnabled } from '../core/tutorial/TutorialFeatureGates.js';
 import { replayDiagnosticsCardHtml } from './ReplayDiagnosticsCard.js';
 import { formatDiagnosticForUi } from '../core/planning/RouteDiagnostic.js';
@@ -55,16 +58,18 @@ export class HtmlMissionWorkspaceOverlay {
     const connectivity = state.level && state.mission ? computeReachabilitySummary(state.level, state.mission) : null;
     const connectivityWarnings = connectivity?.warnings ?? [];
     const temporalGreedyRunning = isTemporalGreedyRunning(state);
+    const experience = getExperienceModeDefaults(state.experienceMode);
+    const simulationLab = state.experienceMode === EXPERIENCE_MODES.simulationLab;
     root.innerHTML = `
       <section class="console-header">
         <div class="console-kicker">Planning Console</div>
         <h1>${escapeHtml(level?.meta?.name ?? 'Mission')}</h1>
-        <p>${escapeHtml(labelize(state.challengeMode))} | ${escapeHtml(shortInstanceId(level))}</p>
+        <p>${escapeHtml(experienceModeLabel(state.experienceMode))} | ${escapeHtml(labelize(state.challengeMode))} | ${escapeHtml(shortInstanceId(level))}</p>
       </section>
       <section class="console-status">
-        <span>Active Plan</span>
+        <span>${simulationLab ? 'Experiment Plan' : 'Challenge Plan'}</span>
         <strong>${escapeHtml(state.selectedAgentId ?? 'No glider')}</strong>
-        <small>Window ${Number(state.selectedWindow ?? 0)} | ${escapeHtml(formatMissionTime(level, state.planningTime))} | ${waypointCount} waypoint(s)</small>
+        <small>${escapeHtml(experience.description)} Window ${Number(state.selectedWindow ?? 0)} | ${escapeHtml(formatMissionTime(level, state.planningTime))} | ${waypointCount} waypoint(s)</small>
       </section>
       ${state.ui?.placementMode === 'marker' ? markerInspectionSection(state) : ''}
       ${connectivityWarnings.length ? `
@@ -83,6 +88,7 @@ export class HtmlMissionWorkspaceOverlay {
         <button class="console-button" data-action="export-plan">Export Plan</button>
         <button class="console-button" data-action="save-level">Save Level</button>
       </section>
+      ${manualPlanningAssistantSection(state)}
       <section class="console-section">
         <h2>Mission Options</h2>
         <button type="button" class="console-button ${state.missionOptions?.ignoreUpdateEvents ? 'secondary' : ''}" data-action="toggle-ignore-update-events" title="Run continuously through surfacing/update windows without pausing for replanning. Off by default.">Ignore Update Events: ${state.missionOptions?.ignoreUpdateEvents ? 'On' : 'Off'}</button>
@@ -97,10 +103,10 @@ export class HtmlMissionWorkspaceOverlay {
         ${temporalGreedyPlannerSummary(state)}
         ${tutorialFeatureEnabled(state, 'solver') ? `<button class="console-button" data-action="temporal-greedy" ${temporalGreedyRunning ? 'disabled' : ''} title="${temporalGreedyRunning ? 'Greedy Planner is already computing a route.' : 'Compute a greedy planner route.'}">${temporalGreedyRunning ? 'Greedy Planner Running...' : 'Greedy Planner'}</button>` : ''}
         ${temporalGreedyRunning ? '<div class="hud-muted">Greedy Planner running...</div>' : ''}
-        ${tutorialFeatureEnabled(state, 'solver') ? '<button class="console-button" data-action="solver-packet">Export Solver Packet</button>' : ''}
+        ${simulationLab && tutorialFeatureEnabled(state, 'solver') ? '<button class="console-button" data-action="solver-packet">Export Solver Packet</button>' : ''}
         <button class="console-button" data-action="roi-mode" title="${escapeAttr(roiModeDescription(state))}">ROI Mode: ${escapeHtml(getRoiModeLabel(state.ui?.roiViewMode))}</button>
       </section>
-      <section class="console-section">
+      ${simulationLab ? `<section class="console-section">
         <h2>Data Exports</h2>
         <button class="console-button" data-action="export-challenge">Export Challenge JSON</button>
         <button class="console-button" data-action="import-challenge">Import Challenge</button>
@@ -111,7 +117,12 @@ export class HtmlMissionWorkspaceOverlay {
         <button class="console-button" data-action="import-leaderboard">Import Leaderboard</button>
         ${state.challengeMode === 'forecast' ? '<div class="hud-muted">Challenge export is forecast-visible; hidden truth is not stored plainly.</div>' : ''}
         ${state.challengeMode === 'forecast' ? '<div class="hud-muted warning">Oracle export contains hidden truth. Public challenge exports are cheat-resistant only, not secure.</div>' : ''}
-      </section>
+      </section>` : `<section class="console-section">
+        <h2>Challenge Records</h2>
+        <button class="console-button" data-action="export-result" ${state.result ? '' : 'disabled'}>Export Result</button>
+        <button class="console-button" data-action="export-leaderboard">Export Leaderboard</button>
+        <div class="hud-muted">Lab JSON, oracle, and solver packet tools are available in Simulation Lab.</div>
+      </section>`}
       <section class="console-section">
         <h2>View Layers</h2>
         ${layerButton(state, 'showROI', 'ROI Heatmap')}
@@ -969,6 +980,388 @@ function routeAuditSummary(routeAudit) {
 
 function routeAuditIssueCount(routeAudit) {
   return (routeAudit?.agentResults ?? []).reduce((sum, result) => sum + (result.issues?.length ?? 0), 0);
+}
+
+function manualPlanningAssistantSection(state) {
+  if (!state?.level || !state?.mission || state.ui?.placementMode === 'marker') return '';
+  const vm = buildManualPlanningAssistantVm(state);
+  if (!vm.agentId) return '';
+  return `
+    <section class="console-section planning-assistant">
+      <h2>Planning Assistant</h2>
+      <div class="replay-diagnostics-card compact">
+        <div class="replay-diagnostics-title">${escapeHtml(vm.segment.title)}</div>
+        ${diagnosticRow('Grade', vm.segment.grade)}
+        ${diagnosticRow('Role', vm.segment.role)}
+        ${diagnosticRow('ETA', vm.segment.eta)}
+        ${diagnosticRow('Fuel', vm.segment.fuel)}
+        ${diagnosticRow('Current', vm.segment.current)}
+        ${diagnosticRow('Risk', vm.segment.risk)}
+        ${diagnosticRow('Reward', vm.segment.reward)}
+        ${vm.segment.warning ? diagnosticRow('Warning', vm.segment.warning, 'warning') : diagnosticRow('Warning', 'clear')}
+      </div>
+      <div class="replay-diagnostics-card compact">
+        <div class="replay-diagnostics-title">Route</div>
+        ${diagnosticRow('Overall Grade', vm.route.grade)}
+        ${diagnosticRow('Coverage', vm.route.coverage)}
+        ${diagnosticRow('Stars', vm.route.stars)}
+        ${diagnosticRow('Expected Score', vm.route.expectedScore)}
+        ${diagnosticRow('Safety', vm.route.safety, vm.route.safetyTone)}
+        ${diagnosticRow('Fuel Remaining', vm.route.fuelRemaining, vm.route.fuelTone)}
+      </div>
+      <div class="hud-muted ${vm.recommendationTone}">${escapeHtml(vm.recommendation)}</div>
+    </section>
+  `;
+}
+
+function diagnosticRow(label, value, tone = '') {
+  return `
+    <div class="replay-diagnostics-row ${tone ? escapeAttr(tone) : ''}">
+      <span>${escapeHtml(label)}</span>
+      <strong>${escapeHtml(value)}</strong>
+    </div>
+  `;
+}
+
+function buildManualPlanningAssistantVm(state) {
+  const agentPlan = (state.plan?.agentPlans ?? []).find((plan) => plan.agentId === state.selectedAgentId);
+  const agent = (state.mission?.agents ?? []).find((candidate) => candidate.id === state.selectedAgentId);
+  if (!agent) {
+    return {
+      agentId: null,
+      segment: emptyAssistantSegment('No active glider'),
+      route: emptyAssistantRoute(),
+      recommendation: 'Select a glider to review route quality.',
+      recommendationTone: ''
+    };
+  }
+  const route = buildRouteSegmentsForAgent({
+    level: state.level,
+    mission: state.mission,
+    agent,
+    agentPlan,
+    surfacedAgents: state.surfacedAgents,
+    planningAnchor: state.ui?.planningAnchor
+  });
+  if (route.missingAnchor) {
+    return {
+      agentId: agent.id,
+      segment: emptyAssistantSegment('Selected Segment'),
+      route: emptyAssistantRoute(),
+      recommendation: 'Choose a deployment/start before planning.',
+      recommendationTone: 'warning'
+    };
+  }
+
+  const waypoints = agentPlan?.waypoints ?? [];
+  const routeQuality = gradeRouteContributions({
+    level: state.level,
+    mission: state.mission,
+    plan: state.plan,
+    selectedAgentId: agent.id,
+    challengeMode: state.challengeMode,
+    revealTruth: state.ui?.revealTruth,
+    forecastMemberId: state.ui?.forecastMemberId
+  });
+  const hoverPreview = buildHoverAssistantSegment(state, agent, route);
+  const selectedSegment = hoverPreview ?? buildSelectedAssistantSegment(state, agent, route, routeQuality);
+  const segmentVm = selectedSegment
+    ? summarizeAssistantSegment(state, agent, selectedSegment)
+    : emptyAssistantSegment(waypoints.length ? 'Selected Segment' : 'Next Segment');
+  const routeVm = summarizeAssistantRoute(state, agent, route, waypoints, routeQuality);
+  const recommendation = chooseAssistantRecommendation({ segment: segmentVm, route: routeVm, waypointCount: waypoints.length });
+  return {
+    agentId: agent.id,
+    segment: segmentVm,
+    route: routeVm,
+    recommendation: recommendation.message,
+    recommendationTone: recommendation.tone
+  };
+}
+
+function buildHoverAssistantSegment(state, agent, route) {
+  const hover = state.ui?.hoverCell;
+  if (!isFinitePoint(hover) || state.ui?.showEnergyPreview === false) return null;
+  const from = route.segments.at(-1)?.to ?? route.anchor;
+  if (!isFinitePoint(from)) return null;
+  const to = { x: Number(hover.x), y: Number(hover.y), t: Number(state.planningTime ?? from.t ?? 0), source: 'hover' };
+  return {
+    title: 'Hover Preview',
+    from,
+    to,
+    segment: null,
+    estimate: estimateAssistantSegment(state, agent, from, to)
+  };
+}
+
+function buildSelectedAssistantSegment(state, agent, route, routeQuality = null) {
+  const selectedIndex = state.ui?.selectedWaypoint?.agentId === state.selectedAgentId
+    ? Number(state.ui.selectedWaypoint.index)
+    : route.segments.length - 1;
+  const segment = route.segments[selectedIndex];
+  if (!segment) return null;
+  return {
+    title: segment.waypointIndex === 0 ? 'Start To W1' : `W${segment.waypointIndex} To W${segment.waypointIndex + 1}`,
+    from: segment.from,
+    to: segment.to,
+    segment,
+    contributionGrade: routeQuality?.segments?.find((grade) => Number(grade.toWaypointIndex) === selectedIndex) ?? null,
+    estimate: estimateAssistantSegment(state, agent, segment.from, segment.to)
+  };
+}
+
+function estimateAssistantSegment(state, agent, from, to) {
+  const segmentTime = Number(from?.t ?? to?.t ?? state.planningTime ?? 0);
+  const frame = getPlanningFrame(state.level, segmentTime, {
+    challengeMode: state.challengeMode,
+    revealTruth: state.ui?.revealTruth,
+    forecastMemberId: state.ui?.forecastMemberId
+  });
+  return estimateRouteEnergy(from, to, state.level, agent, frame, {
+    driftGain: state.mission?.physics?.driftGain ?? 0.5,
+    energyPerCell: state.mission?.physics?.energyPerCell ?? 1,
+    mission: state.mission
+  });
+}
+
+function summarizeAssistantSegment(state, agent, segmentInfo) {
+  const estimate = segmentInfo.estimate ?? {};
+  const targetTime = Number(segmentInfo.from?.t ?? state.planningTime ?? 0) + Number(estimate.eta ?? estimate.estimatedTravelTime ?? 0);
+  const target = {
+    x: Number(segmentInfo.to?.x),
+    y: Number(segmentInfo.to?.y),
+    t: Number.isFinite(Number(segmentInfo.to?.t)) ? Number(segmentInfo.to.t) : targetTime
+  };
+  const inspection = inspectAssistantCell(state, target);
+  const hazardExposure = countHazardExposure(state.level, segmentInfo.segment?.sampledCells ?? estimate.sampledCells ?? []);
+  const risk = classifyAssistantRisk(estimate, hazardExposure, inspection);
+  const reward = formatAssistantReward(inspection);
+  const warning = firstSegmentWarning(estimate, segmentInfo.segment, hazardExposure, inspection);
+  return {
+    title: segmentInfo.title,
+    grade: segmentInfo.contributionGrade
+      ? `${segmentInfo.contributionGrade.grade} (${formatHudMetric(segmentInfo.contributionGrade.numericScore, 0)})`
+      : 'preview',
+    role: segmentInfo.contributionGrade?.roleLabels?.join(' + ') ?? (reward.value > 0 ? 'sampling' : 'transit'),
+    eta: formatAssistantEta(estimate),
+    fuel: Number.isFinite(Number(estimate.energy)) ? `${formatHudMetric(estimate.energy, 1)} units` : 'N/A',
+    current: classifyAssistantCurrent(estimate),
+    risk: risk.label,
+    riskValue: risk.value,
+    reward: reward.toString(),
+    rewardValue: reward.value,
+    warning,
+    blocked: estimate.valid === false || segmentInfo.segment?.valid === false,
+    opposingCurrent: Number(estimate.currentAssist ?? 0) < -0.12,
+    crossCurrent: Math.abs(Number(estimate.crossCurrent ?? 0)) > 0.16
+  };
+}
+
+function summarizeAssistantRoute(state, agent, route, waypoints, routeQuality = null) {
+  const routeEstimates = route.segments.map((segment) => estimateAssistantSegment(state, agent, segment.from, segment.to));
+  const energyUsed = routeEstimates.reduce((sum, estimate, index) => (
+    sum + finiteOr(estimate.energy, finiteOr(waypoints[index]?.segmentEnergy, 0))
+  ), 0);
+  const budget = Number(agent?.battery ?? state.mission?.rules?.energyBudget ?? NaN);
+  const remaining = Number.isFinite(budget) ? budget - energyUsed : NaN;
+  const duration = Number(getTimeConfig(state.level)?.duration ?? state.mission?.duration ?? NaN);
+  const lastWaypoint = waypoints.at(-1);
+  const lastEta = Number(lastWaypoint?.estimatedArrivalTime ?? lastWaypoint?.t ?? 0);
+  const coverageRatio = Number.isFinite(duration) && duration > 0 ? Math.max(0, Math.min(1, lastEta / duration)) : NaN;
+  const routeReward = summarizeRouteReward(state, waypoints);
+  const routeIssues = (state.ui?.routeAudit?.agentResults ?? [])
+    .filter((result) => !result.agentId || result.agentId === agent.id)
+    .flatMap((result) => result.issues ?? []);
+  const hasError = routeIssues.some((issue) => issue.severity === 'error');
+  const invalidSegment = route.segments.some((segment) => segment.valid === false);
+  const warningCount = routeIssues.length + routeEstimates.filter((estimate) => estimate.valid === false || Number(estimate.currentAssist ?? 0) < -0.18).length;
+  const safety = hasError || invalidSegment
+    ? { label: 'blocked', tone: 'warning' }
+    : warningCount
+      ? { label: 'moderate', tone: 'warning' }
+      : { label: waypoints.length ? 'stable' : 'pending', tone: '' };
+  return {
+    grade: routeQuality?.overall?.grade
+      ? `${routeQuality.overall.grade} (${formatHudMetric(routeQuality.overall.numericScore, 0)})`
+      : 'pending',
+    coverage: formatAssistantCoverage(coverageRatio, lastWaypoint, waypoints.length),
+    stars: `${routeReward.starsPlanned} / ${routeReward.starsAvailable}`,
+    expectedScore: formatHudMetric(routeReward.expectedScore, 0),
+    safety: safety.label,
+    safetyTone: safety.tone,
+    fuelRemaining: Number.isFinite(remaining)
+      ? `${formatHudMetric(Math.max(0, remaining), 1)} (${formatHudMetric((remaining / Math.max(1, budget)) * 100, 0)}%)`
+      : 'unlimited',
+    fuelTone: Number.isFinite(remaining) && remaining < 0 ? 'warning' : '',
+    energyUsed,
+    remainingFuel: remaining,
+    hasError: hasError || invalidSegment,
+    warningCount,
+    waypointCount: waypoints.length
+  };
+}
+
+function summarizeRouteReward(state, waypoints) {
+  const priorityTargets = normalizePriorityTargets(state.level);
+  let expectedScore = 0;
+  const plannedTargetIds = new Set();
+  for (const waypoint of waypoints) {
+    const info = inspectAssistantCell(state, waypoint);
+    expectedScore += finiteOr(info?.roiRemainingValue, finiteOr(info?.roiExpectedValue, 0));
+    const targetId = info?.priorityTarget?.id ?? info?.priorityTarget?.label;
+    if (targetId) {
+      plannedTargetIds.add(targetId);
+      expectedScore += finiteOr(info?.priorityTarget?.value, 0);
+    }
+  }
+  return {
+    expectedScore,
+    starsPlanned: plannedTargetIds.size,
+    starsAvailable: priorityTargets.length
+  };
+}
+
+function inspectAssistantCell(state, point) {
+  if (!isFinitePoint(point)) return null;
+  return inspectCellAtTime({
+    level: state.level,
+    mission: state.mission,
+    state,
+    x: Math.round(Number(point.x)),
+    y: Math.round(Number(point.y)),
+    t: Number(point.t ?? state.planningTime ?? 0)
+  });
+}
+
+function emptyAssistantSegment(title) {
+  return {
+    title,
+    eta: 'N/A',
+    fuel: 'N/A',
+    current: 'N/A',
+    risk: 'pending',
+    reward: 'N/A',
+    warning: 'add or hover a waypoint',
+    blocked: false,
+    opposingCurrent: false,
+    crossCurrent: false,
+    riskValue: 0,
+    rewardValue: 0
+  };
+}
+
+function emptyAssistantRoute() {
+  return {
+    coverage: '0%',
+    stars: '0 / 0',
+    expectedScore: '0',
+    safety: 'pending',
+    safetyTone: '',
+    fuelRemaining: 'N/A',
+    fuelTone: '',
+    hasError: false,
+    warningCount: 0,
+    waypointCount: 0
+  };
+}
+
+function formatAssistantEta(estimate) {
+  const eta = Number(estimate.eta ?? estimate.estimatedTravelTime);
+  return Number.isFinite(eta) ? `${formatHudMetric(eta, 1)} hr` : 'N/A';
+}
+
+function formatAssistantCoverage(ratio, lastWaypoint, waypointCount) {
+  if (!waypointCount) return '0%';
+  if (lastWaypoint?.terminalCarryThrough || lastWaypoint?.action === 'terminalCarryThrough') return 'full';
+  if (!Number.isFinite(ratio)) return 'planned';
+  return ratio >= 0.995 ? 'full' : `${formatHudMetric(ratio * 100, 0)}%`;
+}
+
+function formatAssistantReward(info) {
+  if (!info) return { value: 0, toString: () => 'N/A' };
+  const sample = finiteOr(info.roiRemainingValue, finiteOr(info.roiExpectedValue, 0));
+  const star = finiteOr(info.priorityTarget?.value, 0);
+  return {
+    value: sample + star,
+    toString: () => `+${formatHudMetric(sample, 0)} sample${star ? `, +${formatHudMetric(star, 0)} star` : ', +0 star'}`
+  };
+}
+
+function classifyAssistantCurrent(estimate) {
+  const assist = Number(estimate.currentAssist ?? 0);
+  const cross = Math.abs(Number(estimate.crossCurrent ?? 0));
+  if (!Number.isFinite(assist) && !Number.isFinite(cross)) return 'N/A';
+  const label = assist > 0.1
+    ? 'assisting'
+    : assist < -0.1
+      ? 'opposing'
+      : cross > 0.16
+        ? 'cross-current'
+        : 'neutral';
+  return `${label} (${formatSignedMetric(assist, 2)} along, ${formatHudMetric(cross, 2)} cross)`;
+}
+
+function classifyAssistantRisk(estimate, hazardExposure, inspection) {
+  const shoreline = Number(estimate.beachingRisk?.value ?? inspection?.beachingRisk?.value ?? 0);
+  const hazard = hazardExposure > 0 || inspection?.hazard ? 0.7 : 0;
+  const blocked = estimate.valid === false ? 1 : 0;
+  const value = Math.max(blocked, shoreline, hazard);
+  const label = value >= 0.95 ? 'blocked' : value >= 0.65 ? 'high' : value >= 0.35 ? 'medium' : 'low';
+  return { value, label: hazardExposure ? `${label} (${hazardExposure} hazard cell${hazardExposure === 1 ? '' : 's'})` : label };
+}
+
+function firstSegmentWarning(estimate, segment, hazardExposure, inspection) {
+  if (segment?.valid === false || estimate.valid === false) return 'route blocked';
+  if (hazardExposure > 0 || inspection?.hazard) return 'hazard exposure';
+  if (Number(estimate.beachingRisk?.value ?? inspection?.beachingRisk?.value ?? 0) >= 0.5) return 'shoreline current risk';
+  if (Number(estimate.currentAssist ?? 0) < -0.18) return 'strong opposing current';
+  if (Math.abs(Number(estimate.crossCurrent ?? 0)) > 0.2) return 'cross-current drift';
+  return estimate.notes?.[0] ?? '';
+}
+
+function countHazardExposure(level, cells = []) {
+  const seen = new Set();
+  let total = 0;
+  for (const cell of cells ?? []) {
+    const x = Math.round(Number(cell?.x));
+    const y = Math.round(Number(cell?.y));
+    const key = `${x},${y}`;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    if (Number(level?.layers?.hazards?.[y]?.[x] ?? 0) > 0) total += 1;
+  }
+  return total;
+}
+
+function chooseAssistantRecommendation({ segment, route, waypointCount }) {
+  if (!waypointCount && segment.title !== 'Hover Preview') {
+    return { message: 'Hover target cells to compare ETA, current, risk, and reward.', tone: '' };
+  }
+  if (segment.blocked || route.hasError) {
+    return { message: 'Repair the blocked segment before execution.', tone: 'warning' };
+  }
+  if (Number(route.remainingFuel) < 0) {
+    return { message: 'Route exceeds fuel budget; shorten the leg or use current assist.', tone: 'warning' };
+  }
+  if (segment.riskValue >= 0.5) {
+    return { message: 'Risk/Safety lens should make this segment easier to judge.', tone: 'warning' };
+  }
+  if (segment.opposingCurrent || segment.crossCurrent) {
+    return { message: 'Travel Cost lens can expose a lower-drag approach.', tone: '' };
+  }
+  if (segment.rewardValue > 0) {
+    return { message: 'This segment has measurable reward; check timing against stars and ROI depletion.', tone: '' };
+  }
+  return { message: 'Route is currently clear; compare nearby cells for more reward.', tone: '' };
+}
+
+function finiteOr(value, fallback) {
+  const numeric = Number(value);
+  return Number.isFinite(numeric) ? numeric : fallback;
+}
+
+function isFinitePoint(point) {
+  return Number.isFinite(Number(point?.x)) && Number.isFinite(Number(point?.y));
 }
 
 function claimedByLabel(claimedBy = []) {

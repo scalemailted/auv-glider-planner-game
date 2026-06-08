@@ -1,4 +1,5 @@
 import { getWindowForTime } from '../time/MissionTime.js';
+import { normalizeWaypointKind, waypointKindLabel } from './WaypointSemantics.js';
 
 export function buildTimelineEvents({
   plan,
@@ -27,6 +28,8 @@ export function buildTimelineEventsForAgent(agentPlan, mission, level, options =
       agentId,
       index,
       label: String(index + 1),
+      waypointKind: normalizeWaypointKind(waypoint),
+      waypointKindLabel: waypointKindLabel(waypoint),
       t,
       window: Number(waypoint.window ?? getWindowForTime(level, t)),
       x: Number(waypoint.x),
@@ -65,7 +68,9 @@ export function buildTimelineEventsForAgent(agentPlan, mission, level, options =
       events.push({
         type: 'priorityTarget',
         id: `${target.id ?? 'target'}_${t}`,
-        label: 'Star',
+        label: 'Sampling Target',
+        waypointKind: 'samplingTarget',
+        waypointKindLabel: 'Sampling Target',
         t,
         window: getWindowForTime(level, t),
         x: Number(frame.x ?? target.x ?? target.position?.x ?? 0),

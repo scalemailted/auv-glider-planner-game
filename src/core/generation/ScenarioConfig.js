@@ -9,6 +9,9 @@ import {
   currentFieldConfigToGeneratorConfig,
   normalizeCurrentFieldConfig
 } from './FlowFieldConfig.js';
+import { createDefaultSampleFieldConfig, normalizeSampleFieldConfig } from './SampleFieldConfig.js';
+import { DEFAULT_MISSION_MODE_ID, applyMissionModeDefaults, getMissionModePreset, normalizeMissionModeId } from '../missions/MissionModeRegistry.js';
+import { normalizeNavigationUncertaintyConfig } from '../navigation/NavigationUncertainty.js';
 
 export const SCENARIO_SIZE_PRESETS = {
   small: { label: 'Small', width: 12, height: 12, duration: 12, surfaceInterval: 3, agentCount: 1, fuel: 100 },
@@ -20,14 +23,17 @@ export const SCENARIO_SIZE_PRESETS = {
 export function createDefaultScenarioConfig(mode = 'perfectKnowledge') {
   const stochastic = mode === 'forecast';
   const preset = stochastic ? 'medium' : 'small';
+  const missionMode = stochastic ? 'uncertainWaters' : DEFAULT_MISSION_MODE_ID;
   return normalizeScenarioConfig({
     mode,
+    missionMode,
     preset,
     difficulty: stochastic ? 'hard' : 'medium',
     currentPreset: stochastic ? 'eddyField' : 'currentCorridor',
     currentStrength: stochastic ? 1.05 : 0.85,
     currentVariability: stochastic ? 0.65 : 0.4,
     currentFieldConfig: createDefaultCurrentFieldConfig(mode),
+    sampleFieldConfig: createDefaultSampleFieldConfig(mode),
     hazardDensity: stochastic ? 0.08 : 0.06,
     terrainDensity: stochastic ? 0.1 : 0.08,
     roiHotspots: stochastic ? 5 : 4,
@@ -43,56 +49,83 @@ export function createDefaultScenarioConfig(mode = 'perfectKnowledge') {
 }
 
 export function normalizeScenarioConfig(config = {}) {
-  const presetKey = SCENARIO_SIZE_PRESETS[config.preset] ? config.preset : 'small';
+  const missionDefaults = applyMissionModeDefaults(config);
+  const presetKey = SCENARIO_SIZE_PRESETS[missionDefaults.preset] ? missionDefaults.preset : 'small';
   const preset = SCENARIO_SIZE_PRESETS[presetKey];
-  const mode = config.mode === 'forecast' ? 'forecast' : 'perfectKnowledge';
-  const importedFlowField = config.importedFlowField ?? config.flowFieldImport ?? null;
-  const normalizedCurrentField = normalizeCurrentFieldConfig(importedFlowField?.syntheticConfig ?? config.currentFieldConfig ?? config.currentField ?? {
-    fieldMode: config.temporalEvolution === false ? 'static' : 'dynamic',
-    basePreset: config.vectorPreset ?? config.currentPreset ?? (mode === 'forecast' ? 'eddyField' : 'currentCorridor'),
-    strength: config.currentStrength,
-    directionVariation: config.currentVariability === 0 ? 'off' : undefined,
-    magnitudeVariation: config.currentVariability === 0 ? 'off' : undefined
+  const mode = missionDefaults.mode === 'forecast' ? 'forecast' : 'perfectKnowledge';
+  const importedFlowField = missionDefaults.importedFlowField ?? missionDefaults.flowFieldImport ?? null;
+  const normalizedCurrentField = normalizeCurrentFieldConfig(importedFlowField?.syntheticConfig ?? missionDefaults.currentFieldConfig ?? missionDefaults.currentField ?? {
+    fieldMode: missionDefaults.temporalEvolution === false ? 'static' : 'dynamic',
+    basePreset: missionDefaults.vectorPreset ?? missionDefaults.currentPreset ?? (mode === 'forecast' ? 'eddyField' : 'currentCorridor'),
+    strength: missionDefaults.currentStrength,
+    directionVariation: missionDefaults.currentVariability === 0 ? 'off' : undefined,
+    magnitudeVariation: missionDefaults.currentVariability === 0 ? 'off' : undefined
   }, {
     mode,
-    currentPreset: config.vectorPreset ?? config.currentPreset,
-    currentStrength: config.currentStrength
+    currentPreset: missionDefaults.vectorPreset ?? missionDefaults.currentPreset,
+    currentStrength: missionDefaults.currentStrength
   });
   const currentGeneratorConfig = currentFieldConfigToGeneratorConfig(normalizedCurrentField, { mode });
+  const normalizedSampleField = normalizeSampleFieldConfig(missionDefaults.sampleFieldConfig ?? missionDefaults.sampleField ?? createDefaultSampleFieldConfig(mode), {
+    mode,
+    roiHotspots: missionDefaults.roiHotspots ?? (mode === 'forecast' ? 5 : 4)
+  });
+  const missionMode = normalizeMissionModeId(missionDefaults.missionMode);
+  const missionModePreset = getMissionModePreset(missionMode);
+  const navigationUncertainty = normalizeNavigationUncertaintyConfig(missionDefaults.navigationUncertainty);
   return {
     mode,
+    missionMode,
+    missionModePreset: {
+      id: missionModePreset.id,
+      label: missionModePreset.label,
+      concept: missionModePreset.concept,
+      description: missionModePreset.description,
+      difficulty: missionModePreset.difficulty,
+      tags: missionModePreset.tags,
+      recommendedLenses: missionModePreset.recommendedLenses,
+      strategyHint: missionModePreset.strategyHint
+    },
     preset: presetKey,
-    agentCount: clampInt(config.agentCount ?? preset.agentCount, 1, 8),
-    width: clampInt(config.width ?? preset.width, 8, 48),
-    height: clampInt(config.height ?? preset.height, 8, 48),
-    duration: clampInt(config.duration ?? preset.duration, 6, 96),
-    surfaceInterval: clampInt(config.surfaceInterval ?? preset.surfaceInterval, 1, 24),
-    fuel: clampInt(config.fuel ?? preset.fuel, 25, 400),
-    gliderSpeed: finiteNumber(config.gliderSpeed, mode === 'forecast' ? 1.2 : 1.25),
-    difficulty: config.difficulty ?? (mode === 'forecast' ? 'hard' : 'medium'),
-    terrainDensity: clamp01(finiteNumber(config.terrainDensity, 0.08)),
-    hazardDensity: clamp01(finiteNumber(config.hazardDensity, mode === 'forecast' ? 0.08 : 0.06)),
+    agentCount: clampInt(missionDefaults.agentCount ?? preset.agentCount, 1, 8),
+    width: clampInt(missionDefaults.width ?? preset.width, 8, 48),
+    height: clampInt(missionDefaults.height ?? preset.height, 8, 48),
+    duration: clampInt(missionDefaults.duration ?? preset.duration, 6, 96),
+    surfaceInterval: clampInt(missionDefaults.surfaceInterval ?? preset.surfaceInterval, 1, 24),
+    fuel: clampInt(missionDefaults.fuel ?? preset.fuel, 25, 400),
+    gliderSpeed: finiteNumber(missionDefaults.gliderSpeed, mode === 'forecast' ? 1.2 : 1.25),
+    difficulty: missionDefaults.difficulty ?? (mode === 'forecast' ? 'hard' : 'medium'),
+    terrainDensity: clamp01(finiteNumber(missionDefaults.terrainDensity, 0.08)),
+    hazardDensity: clamp01(finiteNumber(missionDefaults.hazardDensity, mode === 'forecast' ? 0.08 : 0.06)),
     currentStrength: currentGeneratorConfig.currentStrength,
-    currentVariability: clamp01(config.currentFieldConfig || config.currentField
+    currentVariability: clamp01(missionDefaults.currentFieldConfig || missionDefaults.currentField
       ? currentGeneratorConfig.currentVariability
-      : finiteNumber(config.currentVariability ?? config.variability, currentGeneratorConfig.currentVariability)),
+      : finiteNumber(missionDefaults.currentVariability ?? missionDefaults.variability, currentGeneratorConfig.currentVariability)),
     currentPreset: normalizeVectorPreset(currentGeneratorConfig.currentPreset),
     currentFieldConfig: normalizedCurrentField,
-    currentFieldSource: importedFlowField ? 'imported' : (config.currentFieldSource === 'imported' ? 'imported' : 'procedural'),
+    currentFieldSource: importedFlowField ? 'imported' : (missionDefaults.currentFieldSource === 'imported' ? 'imported' : 'procedural'),
     importedFlowField,
-    roiHotspots: clampInt(config.roiHotspots ?? (mode === 'forecast' ? 5 : 4), 1, 12),
-    priorityTargetFrequency: clamp01(finiteNumber(config.priorityTargetFrequency, 0.35)),
-    forecastNoise: clamp01(finiteNumber(config.forecastNoise, mode === 'forecast' ? 0.22 : 0)),
-    forecastDecay: booleanValue(config.forecastDecay, mode === 'forecast'),
-    forecastDecayModel: config.forecastDecayModel === 'linear' ? 'linear' : 'exponential',
-    forecastMinConfidence: clamp01(finiteNumber(config.forecastMinConfidence, 0.35)),
-    forecastDecayRate: Math.max(0, finiteNumber(config.forecastDecayRate, 0.04)),
-    uncertaintyGrowth: normalizedCurrentField.stochastic?.uncertaintyGrowth ?? config.uncertaintyGrowth ?? 'moderate',
-    hiddenTruthVariation: normalizedCurrentField.stochastic?.hiddenTruthVariation ?? config.hiddenTruthVariation ?? 'medium',
-    forecastConfidence: normalizedCurrentField.stochastic?.forecastConfidence ?? config.forecastConfidence ?? 'medium',
-    multipleDropZones: booleanValue(config.multipleDropZones, false),
-    agentSpecMode: config.agentSpecMode === 'varied' ? 'varied' : 'uniform',
-    ensembleCount: clampInt(config.ensembleCount ?? (mode === 'forecast' ? 3 : 0), 0, 8)
+    roiHotspots: clampInt(missionDefaults.roiHotspots ?? (mode === 'forecast' ? 5 : 4), 1, 12),
+    sampleFieldConfig: normalizedSampleField,
+    sampleField: normalizedSampleField,
+    priorityTargetFrequency: clamp01(finiteNumber(missionDefaults.priorityTargetFrequency, 0.35)),
+    forecastNoise: clamp01(finiteNumber(missionDefaults.forecastNoise, mode === 'forecast' ? 0.22 : 0)),
+    forecastDecay: booleanValue(missionDefaults.forecastDecay, mode === 'forecast'),
+    forecastDecayModel: missionDefaults.forecastDecayModel === 'linear' ? 'linear' : 'exponential',
+    forecastMinConfidence: clamp01(finiteNumber(missionDefaults.forecastMinConfidence, 0.35)),
+    forecastDecayRate: Math.max(0, finiteNumber(missionDefaults.forecastDecayRate, 0.04)),
+    uncertaintyGrowth: normalizedCurrentField.stochastic?.uncertaintyGrowth ?? missionDefaults.uncertaintyGrowth ?? 'moderate',
+    hiddenTruthVariation: normalizedCurrentField.stochastic?.hiddenTruthVariation ?? missionDefaults.hiddenTruthVariation ?? 'medium',
+    forecastConfidence: normalizedCurrentField.stochastic?.forecastConfidence ?? missionDefaults.forecastConfidence ?? 'medium',
+    multipleDropZones: booleanValue(missionDefaults.multipleDropZones, false),
+    agentSpecMode: missionDefaults.agentSpecMode === 'varied' ? 'varied' : 'uniform',
+    ensembleCount: clampInt(missionDefaults.ensembleCount ?? (mode === 'forecast' ? 3 : 0), 0, 8),
+    sampling: missionDefaults.sampling ?? null,
+    navigationUncertainty,
+    scoringWeights: missionDefaults.scoringWeights ?? {},
+    routeGradeWeights: missionDefaults.routeGradeWeights ?? {},
+    medals: missionDefaults.medals ?? [],
+    plannerDefaults: missionDefaults.plannerDefaults ?? {}
   };
 }
 
@@ -100,6 +133,8 @@ export function buildScenarioGenerationConfig(config = {}) {
   const normalized = normalizeScenarioConfig(config);
   return {
     mode: normalized.mode === 'forecast' ? 'stochastic' : 'deterministic',
+    missionMode: normalized.missionMode,
+    missionModePreset: normalized.missionModePreset,
     agentCount: normalized.agentCount,
     grid: { width: normalized.width, height: normalized.height },
     durationHours: normalized.duration,
@@ -122,6 +157,14 @@ export function buildScenarioGenerationConfig(config = {}) {
       currentVariability: normalized.currentVariability
     }),
     roiHotspots: normalized.roiHotspots,
+    sampleFieldConfig: normalized.sampleFieldConfig,
+    sampleField: normalized.sampleFieldConfig,
+    sampling: normalized.sampling,
+    navigationUncertainty: normalized.navigationUncertainty,
+    scoringWeights: normalized.scoringWeights,
+    routeGradeWeights: normalized.routeGradeWeights,
+    medals: normalized.medals,
+    plannerDefaults: normalized.plannerDefaults,
     priorityTargetFrequency: normalized.priorityTargetFrequency,
     forecastNoise: normalized.forecastNoise,
     forecastConfidence: normalized.forecastConfidence,
@@ -165,6 +208,7 @@ export function generateScenarioFromConfig(config = {}) {
     generationVersion: GENERATION_VERSION,
     seed,
     name: stochastic ? `Stochastic Challenge ${seed}` : `Deterministic Challenge ${seed}`,
+    missionMode: normalized.missionMode,
     width: normalized.width,
     height: normalized.height,
     dt: 1,
@@ -180,6 +224,9 @@ export function generateScenarioFromConfig(config = {}) {
     currentVariability: normalized.currentVariability,
     roiPattern: 'moving',
     roiHotspots: normalized.roiHotspots,
+    sampleFieldConfig: normalized.sampleFieldConfig,
+    sampleField: normalized.sampleFieldConfig,
+    navigationUncertainty: normalized.navigationUncertainty,
     temporalHotspots: true,
     temporalCurrents: true,
     challengeMode: normalized.mode,
@@ -213,6 +260,15 @@ export function generateScenarioFromConfig(config = {}) {
   level.meta.generationConfig.currentField = generatedCurrentFieldConfig;
   level.meta.generationConfig.currentFieldSource = normalized.currentFieldSource;
   level.meta.generationConfig.importedFlowField = normalized.importedFlowField;
+  level.meta.generationConfig.sampleFieldConfig = normalized.sampleFieldConfig;
+  level.meta.generationConfig.sampleField = normalized.sampleFieldConfig;
+  level.meta.generationConfig.navigationUncertainty = normalized.navigationUncertainty;
+  level.meta.missionMode = normalized.missionMode;
+  level.meta.missionModePreset = normalized.missionModePreset;
+  level.meta.generationConfig.missionMode = normalized.missionMode;
+  level.meta.generationConfig.missionModePreset = normalized.missionModePreset;
+  level.meta.generationConfig.scoringWeights = normalized.scoringWeights;
+  level.meta.generationConfig.routeGradeWeights = normalized.routeGradeWeights;
   level.meta.generationConfig.challengeId = challengeId;
   level.meta.generationConfig.replaySeedAnchor = challengeId;
   level.meta.generationConfig.generationVersion = GENERATION_VERSION;
@@ -238,6 +294,32 @@ export function generateScenarioFromConfig(config = {}) {
   mission.meta.scenarioSetup = generationConfig;
   mission.meta.currentFieldConfig = generatedCurrentFieldConfig;
   mission.meta.importedFlowField = normalized.importedFlowField;
+  mission.meta.sampleFieldConfig = normalized.sampleFieldConfig;
+  mission.meta.navigationUncertainty = normalized.navigationUncertainty;
+  mission.meta.missionMode = normalized.missionMode;
+  mission.meta.missionModePreset = normalized.missionModePreset;
+  mission.rules ??= {};
+  if (normalized.sampling) mission.rules.sampling = { ...(mission.rules.sampling ?? {}), ...normalized.sampling };
+  mission.rules.navigationUncertainty = normalized.navigationUncertainty;
+  mission.rules.missionMode = normalized.missionMode;
+  mission.rules.scoringWeights = normalized.scoringWeights;
+  mission.rules.routeGradeWeights = normalized.routeGradeWeights;
+  mission.scoring = {
+    ...(mission.scoring ?? {}),
+    missionMode: normalized.missionMode,
+    weights: normalized.scoringWeights
+  };
+  mission.objectives = [
+    ...(mission.objectives ?? []),
+    {
+      id: `mission_mode_${normalized.missionMode}`,
+      label: normalized.missionModePreset.label,
+      description: normalized.missionModePreset.description,
+      metric: normalized.missionModePreset.concept,
+      operator: 'mode',
+      value: normalized.missionMode
+    }
+  ];
   mission.meta.replaySeedContract = replaySeedContract;
   mission.rules ??= {};
   mission.rules.stochasticSeed ??= replaySeedContract?.derivedSeeds?.truth ?? seed;
@@ -286,6 +368,7 @@ function scenarioConfigFromGenerationConfig(generationConfig = {}, source = {}) 
     : 'perfectKnowledge';
   return normalizeScenarioConfig({
     mode,
+    missionMode: setup.missionMode,
     agentCount: setup.agentCount ?? source.agentCount,
     width: setup.grid?.width ?? setup.width,
     height: setup.grid?.height ?? setup.height,
@@ -302,6 +385,8 @@ function scenarioConfigFromGenerationConfig(generationConfig = {}, source = {}) 
     currentFieldConfig: setup.currentFieldConfig ?? setup.currentField,
     importedFlowField: setup.importedFlowField,
     roiHotspots: setup.roiHotspots,
+    sampleFieldConfig: setup.sampleFieldConfig ?? setup.sampleField,
+    navigationUncertainty: setup.navigationUncertainty,
     priorityTargetFrequency: setup.priorityTargetFrequency,
     forecastNoise: setup.forecastNoise,
     forecastDecay: setup.forecastDecay,

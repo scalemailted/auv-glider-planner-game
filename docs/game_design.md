@@ -2,6 +2,34 @@
 
 Version 2 is a mission-planning puzzle game. The player plans glider waypoint tours over a time horizon, then simulates the plan under currents, hazards, terrain, and energy limits.
 
+## Challenge Mode vs Simulation Lab
+
+ANCHOR has two user-facing experiences built on the same mission engine.
+
+Challenge Mode is the playable planning-puzzle experience. It emphasizes score, stars, medals, route quality, risk warnings, leaderboard comparison, and learning strategy through play.
+
+Simulation Lab is the reproducible experiment sandbox. It emphasizes exact configuration, deterministic/stochastic setup, dynamic current-field metadata, solver packets, replay seeds, external solver workflows, JSON import/export, and auditability.
+
+Both modes use the same terrain, current fields, hazards, glider physics, scoring core, route validation, planner APIs, and replay/export system. `experienceMode` controls UI framing and metadata, not mission mechanics.
+
+Challenge Mode starts from mission-mode cards instead of a full technical form. Survey Sweep, Signal Hunt, Surface & Adapt, Fleet Split, Uncertain Waters, Forecast Chase, Plume Intercept, Watch Stations, Danger Run, and Long Glide map player-facing objectives to shared sample-field, current-field, scoring, route-grade, mission-rule, replay, and export presets. Simulation Lab exposes the underlying knobs directly for experiments.
+
+## Mission Modes
+
+Mission Modes are Challenge Mode objective presets, not separate simulation engines. A Mission Mode chooses player-facing goals and default technical settings for sample-field behavior, current-field behavior, sampling rules, scoring weights, route-grade weights, mission rules, replay metadata, and export metadata.
+
+The purpose is to turn research concepts such as coverage planning, informative path planning, event interception, adaptive sampling, fleet splitting, uncertain navigation, and energy-aware routing into playable challenge goals. Simulation Lab keeps the same fields visible as individual controls for experiment design and solver testing.
+
+## Dynamic Sample Fields
+
+The sample field describes where and when science value exists. Generated missions can preserve `sampleFieldConfig` metadata for spatial patterns, temporal behavior, stochasticity, current coupling, depletion, and objective-model settings while still exporting ordinary temporal ROI frames for playback, scoring, solver packets, and datasets.
+
+Implemented generated behaviors include static value, hotspot-style value, burst/periodic temporal value, moving or current-advected value, random/noisy fields, neighbor-coupled fields, bimodal/plume/channel/gradient patterns, and texture-like fields where configured. Mission Modes choose sensible presets; Simulation Lab exposes the underlying controls.
+
+## Sampling Objectives
+
+Sampling objectives combine the sample field with temporal Gold Star / priority targets and mission sampling rules. ROI cells represent gridded science value. Gold Star targets are separate timed objectives that can appear, move, and disappear. Sampling rules such as unique, diminishing, cooldown, and persistent determine whether repeated visits keep value, deplete value, or recover across windows.
+
 ## Phaser Game Shell
 
 The active browser shell is a Mission Console + Phaser Simulator Viewport + Waypoint Timeline. Phaser 3 owns scene lifecycle, map rendering, sprites, visual waypoint stacks, drift/current/route overlays, pointer interaction, transitions, and simulation playback visuals. HTML/CSS owns the left mission-control console for main menu, scene-aware controls, form controls, import/export panels, and debrief/editor-style data surfaces. HTML/CSS also owns the right waypoint timeline for agent tabs, waypoint status, waypoint selection, deletion, reordering, and list actions, plus compact center-viewport overlays for selected-glider planning feedback and mission/agent performance. The scientific/data core remains framework-independent: schemas, truth/forecast fields, physics, sampling, scoring, solver packets, datasets, and UUID identity stay in `src/core`.
@@ -16,6 +44,8 @@ Sequential temporal planning advances the player's planning anchor after each re
 
 Waypoint placement is append-first. A normal map click in Waypoint Mode creates a new waypoint for the selected glider, even when the clicked cell already contains an earlier waypoint. Same-cell revisits are legal route entries when they have different sequence positions, times, or windows. Existing waypoints are selected, deleted, and reordered from the right Waypoint Timeline; modifier map selection such as Shift-click or Alt-click is allowed as a convenience but existing waypoint markers do not intercept default placement clicks. Stacked same-cell waypoints render with slight marker offsets plus a compact stack indicator, while route execution, import, and export preserve the original waypoint array order.
 
+Waypoint data includes semantic `kind` metadata. `navigation` is the default for old and new ordinary route waypoints and represents commanded submerged intent. `surface` represents a GPS/communication/update point and emits `surface_update` semantics during simulation. `samplingTarget` is reserved for science objectives and planning markers, not for ordinary hard route checkpoints. `terminalCarryThrough` marks a final over-duration command that is intentionally truncated at mission end. This keeps player intent separate from GPS-confirmed truth correction.
+
 Mission timeline navigation is frame-based rather than only planning-window-based. The core timeline builder always includes mission start, all configured surfacing/update frames, and the exact mission duration as a final surface/end frame. `Prev`, `Next`, marker clicks, and `End` therefore work for both even horizons such as `0, 3, 6, 9, 12 hr` and uneven horizons such as `0, 3, 6, 9, 10 hr`.
 
 Full-route rendering and route estimates use a shared route-segment builder. The committed route always begins at the agent's fixed start, selected deployment cell, or surfaced replanning position, then draws a `startToWaypoint` segment into waypoint 1 and `waypointToWaypoint` segments for the rest of the route. The ordinary next-placement planning anchor is not used as the origin for the full committed route, so selecting or adding a waypoint cannot hide the first edge.
@@ -29,6 +59,14 @@ Drop-zone missions have an explicit pre-planning deployment-selection state. Whe
 Mission horizon and fuel limits are enforced at placement time. The placement guard estimates the proposed segment before mutating the plan and blocks targets that exceed mission duration, exceed estimated fuel, or breach terrain. Imported or edited plans are recomputed in sequence; invalid waypoints receive `validity` reasons and downstream stale markers rather than repeated clamped arrival times.
 
 Planning also runs a pre-simulation route validity audit over the active plan. The audit checks each selected-start/fixed-start-to-waypoint and waypoint-to-waypoint segment for missing starts, invalid coordinates, terrain crossings, mission-time overflow, and estimated fuel overflow. Failed audits block Execute by default, annotate affected waypoints with planning-time invalid status, color invalid route segments and bottom-timeline icons, and show the first issue in the Mission Console. Browser baseline planners run the same audit before their route is accepted and prefer a shorter valid route over a known invalid one.
+
+## Segment Contribution Grading
+
+`src/core/planning/SegmentContributionGrader.js` grades route quality at two levels: waypoint-to-waypoint segments and fixed 3-hour dead-reckoning blocks. Each grade includes immediate sample reward, priority-target reward, future setup value, current-assist value, coverage value, energy/time cost, hazard penalty, shoreline risk penalty, and cross-current penalty.
+
+Future setup value is intentionally heuristic rather than a full optimizer. It compares limited-lookahead potential from the segment start and segment end using active future Gold Stars and nearby high-expected-value ROI. This gives positioning moves credit when they improve access to future reward, even if the segment itself collects little immediate value.
+
+The same grader is used for manual plans and Greedy Planner routes. Challenge Mode presents friendly letter grades and role labels in the Planning Assistant, right waypoint timeline, and Debrief. Simulation Lab exports the numeric breakdown through `routeQuality` in result JSON.
 
 ## Main Menu Flow
 
@@ -87,6 +125,8 @@ Forecast regret is reported as a lightweight teaching metric when a truth-refere
 Forecast ensemble metrics are approximate. The game estimates plan ROI across visible ensemble members, reports ensemble mean expected value and disagreement, and computes a simple ensemble regret estimate against realized sample value when available.
 
 ## Synthetic Current Generation
+
+Dynamic Current Fields are the movement-side companion to Dynamic Sample Fields. Current fields are sampled as vectors over space and mission time, then used for current-aware ETA, energy, speed over ground, cross-current drift/risk, shoreline/topology risk, route preview, Greedy Planner scoring, simulation movement, debrief metrics, and solver exports.
 
 `src/core/currents/CurrentFieldSampler.js` is the canonical current/vector sampling interface. It returns `{ u, v, magnitude, confidence, source, contributors }` and accepts either grid coordinates or normalized coordinates. Mission systems use grid coordinates in cell units. The Flow Field demos use normalized `[0,1]` coordinates, which are converted by `normalizedToGridCell(...)` to the nearest demo grid cell before sampling. Time is mission time in hours. This keeps demo arrows, mission map arrows, hover diagnostics, Travel Cost, Risk/Safety, route guidance, simulation drift, and Greedy Planner route scoring aligned on the same current values.
 

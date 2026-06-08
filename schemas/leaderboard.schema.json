@@ -15,6 +15,7 @@
     "challengeId": "stable challenge UUID / instance id used as replay seed anchor",
     "missionId": "mission id",
     "challengeMode": "deterministic/stochastic/tutorial/custom or internal mode",
+    "missionMode": "optional Challenge Mode objective preset id preserved with records and attempts",
     "replaySeedAnchor": "UUID seed anchor for deterministic regeneration",
     "generationVersion": "generator compatibility version",
     "generationConfig": "config snapshot used with UUID seed anchor",
@@ -26,7 +27,7 @@
     "bestAttemptId": "attempt id for best score",
     "bestPlan": "embedded best anchor.plan when available",
     "attempts": "attempt list with score, label, plan, result, summary, pathSummary, timestamps",
-    "pathSummary": "per-attempt waypoint count, sample count, stars captured, energy, hazards, elapsed time, and actual path availability",
+    "pathSummary": "per-attempt waypoint count, sample count, stars captured, energy, hazards, elapsed time, route-quality highlights when present, and actual path availability",
     "challengeReference": "importable challenge identity",
     "embeddedChallenge": "optional anchor.challenge data for replay"
   },

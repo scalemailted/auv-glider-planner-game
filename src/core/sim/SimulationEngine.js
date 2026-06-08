@@ -30,6 +30,7 @@ import {
   getWaypointProgress,
   markWaypointMissed
 } from '../planning/PlanExecutor.js';
+import { normalizeWaypointKind, waypointKindEventType } from '../planning/WaypointSemantics.js';
 import { buildRouteBlockDiagnostic } from '../planning/Navigability.js';
 import { buildRouteValidationDiagnostic } from '../planning/RouteDiagnostic.js';
 import { summarizeSimulationStopReason } from '../planning/StopReasonSummarizer.js';
@@ -406,15 +407,39 @@ export class SimulationEngine {
 
     const reached = advanceWaypointIfReached(agent, this.plan, agent.waypointTolerance);
     if (reached) {
+      const waypointKind = normalizeWaypointKind(reached);
+      const semanticEventType = waypointKindEventType(reached);
       this.recordWaypointTransition({
         type: 'waypointReached',
         t: this.t,
         agentId: agent.id,
         waypointId: reached.id,
         waypointIndex: agent.currentWaypointIndex - 1,
+        waypointKind,
+        semanticEventType,
+        gpsFix: waypointKind === 'surface',
+        canReplan: waypointKind === 'surface',
         x: reached.x,
         y: reached.y
       });
+      this.recordEvent({
+        type: semanticEventType,
+        t: this.t,
+        agentId: agent.id,
+        waypointId: reached.id,
+        waypointIndex: agent.currentWaypointIndex - 1,
+        waypointKind,
+        x: reached.x,
+        y: reached.y,
+        gpsFix: waypointKind === 'surface',
+        canReplan: waypointKind === 'surface',
+        uncertaintyCollapsed: waypointKind === 'surface',
+        runtimeBehavior: waypointKind === 'terminalCarryThrough' ? 'truncate_at_mission_end' : null
+      });
+      if (waypointKind === 'surface') {
+        agent.commsState = 'surfaced';
+        agent.lastSurfaceTime = this.t;
+      }
     }
 
     const missedAfterMovement = detectMissedWaypoint(agent, getActiveWaypoint(agent, this.plan), this.t, {
@@ -536,12 +561,15 @@ export class SimulationEngine {
       let activeWaypoint = getActiveWaypoint(agent, this.plan);
       while (activeWaypoint) {
         const terminalCarryThrough = Boolean(activeWaypoint.terminalCarryThrough || activeWaypoint.intentionalOverDuration);
+        const waypointKind = normalizeWaypointKind(activeWaypoint);
         const event = markWaypointMissed(agent, activeWaypoint, 'missionTimeExpired', duration, {
           finalPosition: { x: round(agent.x, 3), y: round(agent.y, 3), t: duration },
           missionDuration: duration,
           finalInstruction: terminalCarryThrough ? 'terminalCarryThrough' : null,
           finalWaypointReached: false,
-          terminalCarryThrough
+          terminalCarryThrough,
+          gpsFix: waypointKind === 'surface',
+          canReplan: waypointKind === 'surface'
         });
         if (event) {
           event.message = terminalCarryThrough
@@ -551,6 +579,8 @@ export class SimulationEngine {
           event.finalInstruction = terminalCarryThrough ? 'terminalCarryThrough' : null;
           event.finalWaypointReached = false;
           event.terminalCarryThrough = terminalCarryThrough;
+          event.waypointKind = waypointKind;
+          event.semanticEventType = waypointKindEventType(activeWaypoint);
           this.recordEvent(event);
         }
         activeWaypoint = getActiveWaypoint(agent, this.plan);
@@ -925,10 +955,18 @@ export class SimulationEngine {
         type: 'surfaced',
         t: time,
         agentId: agent.id,
+        gpsFix: true,
+        canReplan: true,
+        uncertaintyCollapsed: true,
         expected: agent.activeWaypoint ? { x: agent.activeWaypoint.x, y: agent.activeWaypoint.y } : null,
         actual: { x: round(agent.x, 3), y: round(agent.y, 3) }
       };
       this.recordEvent(event);
+      this.recordEvent({
+        ...event,
+        type: 'surface_update',
+        reason: 'scheduledSurface'
+      });
       return event;
     });
 

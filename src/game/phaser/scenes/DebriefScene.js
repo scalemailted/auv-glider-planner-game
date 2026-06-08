@@ -16,6 +16,9 @@ import { loadLeaderboard, recordLeaderboardAttempt } from '../../../core/storage
 import { saveAttemptToLocalStore } from '../../../core/storage/SavedAttemptStore.js';
 import { evaluateObjectives, summarizePerformance } from '../../../core/campaign/LevelObjectives.js';
 import { recordLevelResult, saveCampaignProgress } from '../../../core/campaign/CampaignProgress.js';
+import { EXPERIENCE_MODES, experienceModeLabel } from '../../../core/experience/ExperienceMode.js';
+import { getMissionModePreset } from '../../../core/missions/MissionModeRegistry.js';
+import { navigationUncertaintyLabel, normalizeNavigationUncertaintyConfig } from '../../../core/navigation/NavigationUncertainty.js';
 import { PhaserButton } from '../ui/Button.js';
 import { downloadJson, downloadText } from '../ui/FileBridge.js';
 
@@ -100,7 +103,8 @@ export class DebriefScene extends PhaserScene {
   debriefHtml(result) {
     result ??= {};
     const s = result.summary ?? {};
-    const metrics = [
+    const simulationLab = (result.experienceMode ?? this.app.state.experienceMode) === EXPERIENCE_MODES.simulationLab;
+    const metrics = (simulationLab ? [
       ['Actual Final', s.finalScore ?? 0],
       ['Actual ROI', s.sampleScore ?? 0],
       ['Planned EV', s.expectedSampleScore ?? 0],
@@ -109,17 +113,26 @@ export class DebriefScene extends PhaserScene {
       ['Hazards', s.hazardsHit ?? 0],
       ['Mobile Hazards', s.mobileHazardsHit ?? 0],
       ['Regret', result.regret?.forecastRegret ?? s.expectedValueRegret ?? 'N/A']
-    ];
+    ] : [
+      ['Score', s.finalScore ?? 0],
+      ['Stars', `${s.priorityTargets?.captured ?? result.priorityTargets?.captured ?? 0}/${s.priorityTargets?.available ?? result.priorityTargets?.available ?? 0}`],
+      ['Fuel Used', s.energyUsed ?? 0],
+      ['Sample Score', s.sampleScore ?? 0],
+      ['Route Grade', result.rating ?? 'N/A'],
+      ['Risk Events', Number(s.hazardsHit ?? 0) + Number(s.mobileHazardsHit ?? 0)],
+      ['Coverage', s.completedWaypoints ?? 0],
+      ['Greedy Delta', result.comparison?.bestManualVsGreedyDelta ?? 'N/A']
+    ]);
     return `
       <main class="debrief-shell">
         <header class="debrief-header">
           <div>
-            <p class="debrief-kicker">Mission Results</p>
-            <h1>Mission Debrief</h1>
+            <p class="debrief-kicker">${escapeHtml(experienceModeLabel(result.experienceMode ?? this.app.state.experienceMode))}</p>
+            <h1>${escapeHtml(simulationLab ? 'Simulation Lab Debrief' : 'Challenge Debrief')}</h1>
             <p>${escapeHtml(result.planName ?? result.source ?? 'Unknown Plan')} | Instance ${escapeHtml(shortInstanceId(result.instanceId ?? this.app.state.level?.instanceId ?? 'unknown'))} | ${escapeHtml(labelize(result.challengeMode ?? this.app.state.challengeMode, 'Unknown Mode'))}</p>
           </div>
           <div class="debrief-score">
-            <span>Actual Final</span>
+            <span>${escapeHtml(simulationLab ? 'Actual Final' : 'Score')}</span>
             <strong>${escapeHtml(formatMetric(s.finalScore ?? 0))}</strong>
           </div>
         </header>
@@ -135,15 +148,59 @@ export class DebriefScene extends PhaserScene {
 
         <section class="debrief-content-grid">
           ${this.riskPanelHtml(result)}
+          ${this.missionModePanelHtml(result)}
+          ${this.navigationUncertaintyPanelHtml(result)}
           ${this.missionOptionsPanelHtml(result)}
           ${this.tutorialPanelHtml(result)}
           ${this.importedPlanPanelHtml(result)}
           ${this.stopReasonPanelHtml(result)}
           ${this.priorityTargetPanelHtml(result)}
+          ${this.segmentContributionPanelHtml(result)}
           ${this.comparisonPanelHtml(result.comparison)}
-          ${this.seedPanelHtml(result)}
+          ${simulationLab ? this.seedPanelHtml(result) : ''}
         </section>
       </main>
+    `;
+  }
+
+  missionModePanelHtml(result) {
+    const missionMode = result?.missionMode ?? this.app.state.missionMode ?? this.app.state.level?.meta?.missionMode ?? this.app.state.mission?.meta?.missionMode ?? null;
+    if (!missionMode) return '';
+    const preset = result?.missionModePreset ?? this.app.state.level?.meta?.missionModePreset ?? this.app.state.mission?.meta?.missionModePreset ?? getMissionModePreset(missionMode);
+    const scoring = Object.keys(result?.generationConfig?.scoringWeights ?? this.app.state.level?.meta?.generationConfig?.scoringWeights ?? {}).join(', ') || 'standard';
+    const route = Object.keys(result?.generationConfig?.routeGradeWeights ?? this.app.state.level?.meta?.generationConfig?.routeGradeWeights ?? {}).join(', ') || 'standard';
+    return `
+      <section class="debrief-panel">
+        <h2>Mission Mode</h2>
+        <p><strong>${escapeHtml(preset.label ?? labelize(missionMode))}</strong>: ${escapeHtml(preset.description ?? 'Challenge objective preset.')}</p>
+        <p>Concept: ${escapeHtml(labelize(preset.concept ?? missionMode))} | Difficulty: ${escapeHtml(labelize(preset.difficulty ?? 'standard'))}</p>
+        <p>Strategy: ${escapeHtml(preset.strategyHint ?? 'Use route quality, map lenses, and timing to improve the run.')}</p>
+        <p>Scoring emphasis: ${escapeHtml(scoring)} | Route grading: ${escapeHtml(route)}</p>
+      </section>
+    `;
+  }
+
+  navigationUncertaintyPanelHtml(result) {
+    const config = normalizeNavigationUncertaintyConfig(
+      result?.navigationUncertainty
+        ?? result?.generationConfig?.navigationUncertainty
+        ?? this.app.state.mission?.rules?.navigationUncertainty
+        ?? this.app.state.mission?.meta?.navigationUncertainty
+        ?? this.app.state.level?.meta?.generationConfig?.navigationUncertainty
+        ?? {}
+    );
+    if (!config.enabled) return '';
+    const segments = result?.routeQuality?.segments ?? [];
+    const riskSegments = segments.filter((segment) => Number(segment.components?.navigationUncertaintyPenalty ?? 0) > 0);
+    const maxCone = Math.max(0, ...segments.map((segment) => Number(segment.diagnostics?.deadReckoningCone?.coneWidthCells ?? 0)));
+    const penalty = segments.reduce((sum, segment) => sum + Number(segment.components?.navigationUncertaintyPenalty ?? 0), 0);
+    return `
+      <article class="debrief-panel">
+        <h2>Navigation Uncertainty</h2>
+        <p>Level: ${escapeHtml(navigationUncertaintyLabel(config))} | GPS correction on surfacing: ${escapeHtml(config.gpsCorrectionOnSurface ? 'yes' : 'no')}</p>
+        <p>Max dead-reckoning cone: ${escapeHtml(formatMetric(maxCone))} cells | Risk segments: ${escapeHtml(riskSegments.length)} | Route penalty ${escapeHtml(formatMetric(penalty))}</p>
+        <p>${escapeHtml(riskSegments.length ? 'Cone overlap warnings indicate routes where true underwater position could drift into land or hazards.' : 'No cone overlap warnings were recorded for the executed plan.')}</p>
+      </article>
     `;
   }
 
@@ -172,6 +229,39 @@ export class DebriefScene extends PhaserScene {
             </table>
           </div>
         ` : '<p>No priority targets were captured.</p>'}
+      </article>
+    `;
+  }
+
+  segmentContributionPanelHtml(result) {
+    const quality = result?.routeQuality;
+    if (!quality?.blocks?.length && !quality?.segments?.length) return '';
+    const blocks = quality.blocks ?? [];
+    const segments = (quality.segments ?? []).slice(0, 6);
+    return `
+      <article class="debrief-panel">
+        <h2>Segment Contributions</h2>
+        <p>Overall route grade ${escapeHtml(quality.overall?.grade ?? 'N/A')} (${escapeHtml(formatMetric(quality.overall?.numericScore ?? 'N/A'))}). Blocks use ${escapeHtml(quality.blockSizeHours ?? 3)} hr dead-reckoning windows.</p>
+        ${blocks.length ? `
+          <div class="debrief-table-wrap">
+            <table class="debrief-table">
+              <thead><tr><th>Block</th><th>Grade</th><th>Role</th><th>Sample</th><th>Setup</th><th>Risk</th></tr></thead>
+              <tbody>
+                ${blocks.map((block) => `
+                  <tr>
+                    <td>${escapeHtml(formatMetric(block.timeStart))}-${escapeHtml(formatMetric(block.timeEnd))} hr</td>
+                    <td>${escapeHtml(block.grade)} (${escapeHtml(formatMetric(block.numericScore))})</td>
+                    <td>${escapeHtml((block.roleLabels ?? []).join(' + ') || 'transit')}</td>
+                    <td>${escapeHtml(formatMetric(block.components?.immediateSampleReward ?? 0))}</td>
+                    <td>${escapeHtml(formatMetric(block.components?.futureSetupValue ?? 0))}</td>
+                    <td>${escapeHtml(formatMetric(Number(block.components?.hazardPenalty ?? 0) + Number(block.components?.shorelineRiskPenalty ?? 0)))}</td>
+                  </tr>
+                `).join('')}
+              </tbody>
+            </table>
+          </div>
+        ` : ''}
+        ${segments.length ? `<p>Key segments: ${escapeHtml(segments.map((segment) => `${segment.grade} ${segment.roleLabels?.[0] ?? 'transit'}`).join(' · '))}</p>` : ''}
       </article>
     `;
   }
@@ -546,6 +636,7 @@ export class DebriefScene extends PhaserScene {
       level,
       mission,
       challengeMode: level.challengeMode ?? entry.mode ?? 'perfectKnowledge',
+      experienceMode: EXPERIENCE_MODES.challenge,
       source: 'tutorial'
     });
     resetPlanResultStore(this.app.state);
@@ -600,6 +691,7 @@ export class DebriefScene extends PhaserScene {
       level,
       mission,
       challengeMode: mode,
+      experienceMode: EXPERIENCE_MODES.challenge,
       source: stochastic ? 'stochasticChallenge' : 'deterministicChallenge'
     });
     this.app.state.ui.revealTruth = false;
@@ -636,6 +728,7 @@ export class DebriefScene extends PhaserScene {
       mission: this.app.state.mission,
       plan: this.app.state.plan,
       result,
+      experienceMode: this.app.state.experienceMode,
       label: this.app.state.currentPlanSource ?? 'Manual Player Plan'
     });
   }

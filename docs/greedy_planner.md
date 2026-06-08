@@ -20,6 +20,12 @@ Candidate scoring uses the same route and current systems as Planning and Simula
 
 Current-aware scoring treats current aligned with the heading as assistance, opposing current as extra cost, cross-current as drift/risk, and current toward nearby land as shoreline risk.
 
+## Segment Contribution Grades
+
+Greedy Planner routes are gradeable with the same `SegmentContributionGrader` used for manual routes. Segment grades are explanatory, not a separate planner objective. They report immediate sample/star value, current assist, energy/risk costs, future setup value, and 3-hour dead-reckoning block summaries.
+
+This allows the browser to compare player and Greedy Planner routes with the same route-quality vocabulary: a low-immediate-value Greedy segment can still score well if it positions for a future star or high-value region, while a hazardous shortcut is penalized even if it collects sample value.
+
 ## Terminal Carry-Through
 
 Greedy Planner is horizon-filling. When safe feasible movement remains, it should keep the selected glider commanded through the mission window.
@@ -28,6 +34,7 @@ A final waypoint beyond the mission duration is not an error. It is a **terminal
 
 ```json
 {
+  "kind": "terminalCarryThrough",
   "terminalCarryThrough": true,
   "terminalCarryThroughReason": "mission_horizon_coverage",
   "runtimeBehavior": "truncate_at_mission_end"

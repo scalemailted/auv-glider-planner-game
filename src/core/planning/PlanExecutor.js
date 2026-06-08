@@ -1,4 +1,5 @@
 import { distance } from '../math/MathUtils.js';
+import { normalizeWaypointKind, waypointKindEventType } from './WaypointSemantics.js';
 
 export function getActiveWaypoint(agent, plan) {
   const agentPlan = getPlanForAgent(plan, agent.id);
@@ -17,6 +18,8 @@ export function advanceWaypointIfReached(agent, plan, tolerance = agent.waypoint
   agent.completedWaypoints.push({
     waypointId: waypoint.id,
     waypointIndex,
+    waypointKind: normalizeWaypointKind(waypoint),
+    semanticEventType: waypointKindEventType(waypoint),
     t: agent.lastStepTime ?? 0
   });
 
@@ -49,6 +52,10 @@ export function markWaypointMissed(agent, waypoint, reason, t, details = {}) {
     waypointIndex: agent.currentWaypointIndex,
     x: waypoint.x,
     y: waypoint.y,
+    waypointKind: normalizeWaypointKind(waypoint),
+    semanticEventType: waypointKindEventType(waypoint),
+    gpsFix: Boolean(details.gpsFix ?? waypoint.gpsFix ?? normalizeWaypointKind(waypoint) === 'surface'),
+    canReplan: Boolean(details.canReplan ?? waypoint.canReplan ?? normalizeWaypointKind(waypoint) === 'surface'),
     reason,
     blockedCell: details.blockedCell ?? null,
     attemptedPosition: details.attemptedPosition ?? null,

@@ -55,6 +55,8 @@ export function recordLeaderboardAttempt({ level, mission, plan, result, label =
     instanceId,
     missionId: result?.missionId ?? mission?.missionId ?? null,
     challengeMode: result?.challengeMode ?? level?.challengeMode ?? null,
+    experienceMode: result?.experienceMode ?? level?.meta?.experienceMode ?? mission?.meta?.experienceMode ?? existing.experienceMode ?? null,
+    missionMode: result?.missionMode ?? level?.meta?.missionMode ?? mission?.meta?.missionMode ?? level?.meta?.generationConfig?.missionMode ?? existing.missionMode ?? null,
     mode: result?.challengeMode ?? level?.challengeMode ?? existing.mode ?? existing.challengeMode ?? null,
     mapSize: inferMapSize(level) ?? existing.mapSize ?? null,
     durationHours: Number(level?.duration ?? level?.time?.duration ?? existing.durationHours ?? 0) || null,
@@ -67,6 +69,7 @@ export function recordLeaderboardAttempt({ level, mission, plan, result, label =
     replaySeedContract,
     exactReplay,
     generationConfig: level?.meta?.generationConfig ?? null,
+    navigationUncertainty: result?.navigationUncertainty ?? level?.meta?.generationConfig?.navigationUncertainty ?? mission?.rules?.navigationUncertainty ?? existing.navigationUncertainty ?? null,
     missionOptions: cloneJson(result?.missionOptions ?? mission?.rules?.missionOptions ?? null),
     level: cloneJson(level),
     mission: cloneJson(mission),
@@ -77,9 +80,12 @@ export function recordLeaderboardAttempt({ level, mission, plan, result, label =
     createdAt: new Date().toISOString(),
     score: Number(result?.summary?.finalScore ?? result?.summary?.score ?? 0),
     challengeId: instanceId,
+    experienceMode: result?.experienceMode ?? level?.meta?.experienceMode ?? mission?.meta?.experienceMode ?? record.experienceMode ?? null,
+    missionMode: result?.missionMode ?? level?.meta?.missionMode ?? mission?.meta?.missionMode ?? level?.meta?.generationConfig?.missionMode ?? record.missionMode ?? null,
     replaySeedAnchor: replaySeedContract?.replaySeedAnchor ?? instanceId,
     generationVersion: replaySeedContract?.generationVersion ?? null,
     generationConfig: cloneJson(replaySeedContract?.generationConfig ?? level?.meta?.generationConfig ?? null),
+    navigationUncertainty: cloneJson(result?.navigationUncertainty ?? level?.meta?.generationConfig?.navigationUncertainty ?? mission?.rules?.navigationUncertainty ?? null),
     derivedSeeds: cloneJson(replaySeedContract?.derivedSeeds ?? null),
     replaySeedContract: cloneJson(replaySeedContract),
     exactReplay: {
@@ -165,11 +171,15 @@ function normalizeRecord(record = {}) {
   const bestAttempt = attempts.find((attempt) => attempt.attemptId === record.bestAttemptId) ?? attempts[0] ?? null;
   const mapSize = normalizeMapSize(record.mapSize) ?? inferMapSize(level);
   const challengeMode = record.challengeMode ?? record.mode ?? level?.challengeMode ?? bestAttempt?.result?.challengeMode ?? null;
+  const experienceMode = record.experienceMode ?? level?.meta?.experienceMode ?? mission?.meta?.experienceMode ?? bestAttempt?.experienceMode ?? bestAttempt?.result?.experienceMode ?? null;
+  const missionMode = record.missionMode ?? level?.meta?.missionMode ?? mission?.meta?.missionMode ?? level?.meta?.generationConfig?.missionMode ?? bestAttempt?.missionMode ?? bestAttempt?.result?.missionMode ?? null;
   return {
     levelId: record.levelId ?? level?.levelId ?? bestAttempt?.result?.levelId ?? null,
     instanceId,
     missionId: record.missionId ?? mission?.missionId ?? mission?.id ?? bestAttempt?.result?.missionId ?? null,
     challengeMode,
+    experienceMode,
+    missionMode,
     mode: record.mode ?? challengeMode ?? null,
     mapSize,
     durationHours: Number(record.durationHours ?? level?.duration ?? level?.time?.duration ?? 0) || null,
@@ -186,6 +196,7 @@ function normalizeRecord(record = {}) {
       reason: exactReplay.reason
     },
     generationConfig: record.generationConfig ?? level?.meta?.generationConfig ?? null,
+    navigationUncertainty: record.navigationUncertainty ?? level?.meta?.generationConfig?.navigationUncertainty ?? mission?.rules?.navigationUncertainty ?? bestAttempt?.navigationUncertainty ?? null,
     missionOptions: record.missionOptions ?? bestAttempt?.missionOptions ?? null,
     level,
     mission,
@@ -204,9 +215,12 @@ function normalizeAttempts(attempts = []) {
       label: attempt.label ?? attempt.plan?.label ?? attempt.result?.source ?? 'Manual Player Plan',
       score: Number(attempt.score ?? attempt.summary?.finalScore ?? attempt.result?.summary?.finalScore ?? 0),
       challengeId: attempt.challengeId ?? attempt.result?.challengeId ?? attempt.result?.instanceId ?? null,
+      experienceMode: attempt.experienceMode ?? attempt.result?.experienceMode ?? null,
+      missionMode: attempt.missionMode ?? attempt.result?.missionMode ?? attempt.result?.generationConfig?.missionMode ?? null,
       replaySeedAnchor: attempt.replaySeedAnchor ?? attempt.result?.replaySeedAnchor ?? attempt.result?.replaySeedContract?.replaySeedAnchor ?? null,
       generationVersion: attempt.generationVersion ?? attempt.result?.generationVersion ?? attempt.result?.replaySeedContract?.generationVersion ?? null,
       generationConfig: attempt.generationConfig ?? attempt.result?.generationConfig ?? attempt.result?.replaySeedContract?.generationConfig ?? null,
+      navigationUncertainty: attempt.navigationUncertainty ?? attempt.result?.navigationUncertainty ?? attempt.result?.generationConfig?.navigationUncertainty ?? null,
       derivedSeeds: attempt.derivedSeeds ?? attempt.result?.derivedSeeds ?? attempt.result?.replaySeedContract?.derivedSeeds ?? null,
       replaySeedContract: attempt.replaySeedContract ?? attempt.result?.replaySeedContract ?? null,
       exactReplay: attempt.exactReplay ?? attempt.result?.exactReplay ?? null,
@@ -247,6 +261,8 @@ function buildPathSummary(plan, result) {
     energyUsed: finiteOrNull(summary.energyUsed),
     hazardsHit: Number(summary.hazardsHit ?? 0) + Number(summary.mobileHazardsHit ?? 0),
     elapsedTime: finiteOrNull(summary.elapsedTime),
+    routeGrade: result?.routeQuality?.overall?.grade ?? null,
+    routeScore: finiteOrNull(result?.routeQuality?.overall?.numericScore),
     actualPathAvailable: Array.isArray(frames) && frames.length > 0,
     eventCount: Array.isArray(events) ? events.length : 0
   };

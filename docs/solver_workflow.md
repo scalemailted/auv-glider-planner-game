@@ -2,13 +2,29 @@
 
 Use `anchor.solver-packet.json` for external algorithms. The packet is intentionally different from a replayable challenge: it describes the planner's allowed observations, cost model inputs, rules, and expected `anchor.plan` output shape.
 
+## Challenge Mode vs Simulation Lab
+
+ANCHOR has two user-facing experiences built on the same mission engine.
+
+Challenge Mode is the playable planning-puzzle experience. It emphasizes score, stars, medals, route quality, risk warnings, leaderboard comparison, and learning strategy through play.
+
+Simulation Lab is the reproducible experiment sandbox. It emphasizes exact configuration, deterministic/stochastic setup, dynamic current-field metadata, solver packets, replay seeds, external solver workflows, JSON import/export, and auditability.
+
+Both modes use the same terrain, current fields, hazards, glider physics, scoring core, route validation, planner APIs, and replay/export system. Solver packet workflows are presented through Simulation Lab by default, but exported plans still run in the same simulator as Challenge Mode.
+
+Solver packets may preserve `experienceMode`, `missionMode`, `missionRules`, `navigationUncertainty`, visible `currentFieldConfig`, visible `sampleFieldConfig`, `waypointSemantics`, replay seed metadata, and generator version metadata. Challenge Mode uses those fields through player-facing presets; Simulation Lab exposes them directly for reproducible experiments.
+
 For A* or Dijkstra, build nodes from grid cells, use terrain/depth/hazard masks for traversability/risk, derive edge costs from agent speed/fuel and temporal current frames, and use ROI or priority targets as goals/rewards. For time-expanded graph search, use state `(cell, time/frame, fuel)` and transition through the exported frame timing.
 
 For multi-agent planners, use `agentSpecs`, deployment zones, mission sampling rules, and shared reward state. Duplicate/depleted/cooldown/persistent sampling rules determine whether repeated coverage is useful.
 
+ANCHOR treats the environment as two coupled planning fields. Current fields affect current-aware ETA, energy, speed over ground, risk, and route validation. Sample fields describe where and when science value exists through ROI grids, hotspots, burst windows, moving/temporal behavior, and priority targets. Fair stochastic solver packets expose forecast-visible fields and metadata; hidden truth remains withheld unless an oracle export is explicit.
+
 For RL, use the packet's observation/action/reward/termination notes. Stochastic evaluation packets expose forecast/belief observations; oracle datasets expose hidden truth for training labels. For supervised or imitation learning, pair packets with exported `anchor.result` or `anchor.oracleDataset` trajectories.
 
 The external tool writes `anchor.plan`. Use `executionMode: "openLoop"` for ordinary waypoint lists, `timedOpenLoop` when waypoints include expected timing, and `surfaceUpdateBundle` only when you want to preserve future surfacing-window segments for a later implementation. Policy and contingency-table plans are accepted as metadata summaries but are not executed by the browser.
+
+Executable waypoints should include a `kind` when the solver knows the intent. Missing `kind` defaults to `navigation` for backward compatibility. Use `navigation` for normal underwater commands, `surface` for GPS/communication/update points, `samplingTarget` only for objective metadata or converted science-target waypoints, and `terminalCarryThrough` for a final horizon-filling command that may extend beyond mission duration and truncate at mission end.
 
 During Simulation, surface and route-failure menus can export `anchor.surface-observation` and import updated waypoint data. Return `anchor.plan-segment` for the current surfaced/failed agent, or return a complete `anchor.plan`; the browser validates it and replaces future waypoints after the current simulation time.
 
@@ -178,7 +194,7 @@ write_json({
     {
       "agentId": "glider_01",
       "waypoints": [
-        { "window": 0, "x": 4, "y": 5, "action": "sample" }
+        { "window": 0, "x": 4, "y": 5, "action": "sample", "kind": "navigation" }
       ]
     }
   ]
@@ -207,13 +223,15 @@ Solvers should use `expectedValue` for conservative expected-value planning, `va
 
 Current fields are visible planning data according to the packet fairness mode. Fair stochastic packets expose forecast-visible current frames/config, confidence, and source metadata. Hidden truth current frames are withheld unless an oracle export is explicit. Topology-aware fields may include `currentFieldConfig`, `dynamicComplexity`, `topologyComposite` region metadata, boundary mode, and generated temporal frames. Solvers should plan against the visible frames and may use the config/metadata to explain behavior such as shoreline risk, channel acceleration, island wakes, bay recirculation, and dynamic magnitude pulses. These fields are synthetic ocean-inspired planning data, not real HYCOM forecasts or CFD output.
 
-Solver packets also include top-level `priorityTargets`, `stochasticConfig`, `missionRules`, `planningData.scoringMode`, `planningData.stochasticSeed`, `planningData.endCondition`, `planningData.sampling`, `planningData.priorityTargets`, and `planningData.riskFields`. Risk-aware solvers can use these fields to account for the active stochastic seed, ROI scoring mode, selected forecast member, probabilistic ROI outcomes, mission-end recovery/surface requirements, duplicate/depleted/cooldown sampling behavior, temporal Gold Star Targets, forecast ensemble count/disagreement, mobile hazard tracks, bathymetry/depth, and static hazard grids. These are educational approximations; they are not a full robust optimizer.
+Solver packets also include top-level `priorityTargets`, `stochasticConfig`, `missionRules`, `planningData.scoringMode`, `planningData.stochasticSeed`, `planningData.endCondition`, `planningData.sampling`, `planningData.priorityTargets`, and `planningData.riskFields`. Risk-aware solvers can use these fields to account for the active stochastic seed, ROI scoring mode, selected forecast member, probabilistic ROI outcomes, mission-end recovery/surface requirements, duplicate/depleted/cooldown sampling behavior, temporal Gold Star Targets, hotspot/burst sample behavior, forecast ensemble count/disagreement, mobile hazard tracks, bathymetry/depth, and static hazard grids. These are educational approximations; they are not a full robust optimizer.
 
 Solver packets include `deployment.agents[]` with each agent's deployment mode, zone id, allowed cells, and selected start. If `selectedStart` is null, an external solver may choose a start cell from `allowedCells` and echo it as `agentPlans[].selectedStart` in the imported plan.
 
 Solver packets can also include `planningData.planningMarkers` when the player placed future planning notes before export. These markers preserve `x`, `y`, `t`, `window`, `type`, `label`, and optional `linkedTargetId`. They are not executable commands; a solver should treat them as hints or comments unless it intentionally converts them into waypoints in its output plan.
 
-A final waypoint beyond mission duration is allowed when the route segment is otherwise legal. This terminal carry-through pattern keeps a glider commanded until the mission time limit. Imported solvers may include it intentionally; ANCHOR validates it as a warning with runtime truncation, not as route failure.
+A final waypoint beyond mission duration is allowed when the route segment is otherwise legal. This terminal carry-through pattern keeps a glider commanded until the mission time limit. Imported solvers may include it intentionally with `kind: "terminalCarryThrough"`; ANCHOR validates it as a warning with runtime truncation, not as route failure.
+
+Result exports may include `routeQuality`, segment contribution grades, waypoint semantic events, planned and actual paths, replay diagnostics, and solver comparison metadata. Segment grades are explanatory feedback from ANCHOR after validation/simulation; external solvers do not need to reproduce the exact grade calculation to submit a plan.
 
 Debrief may report forecast regret against a lightweight truth-reference metric when available. This is a teaching signal, not an optimal solution guarantee.
 

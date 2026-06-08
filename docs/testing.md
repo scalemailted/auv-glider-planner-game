@@ -12,6 +12,43 @@ Greedy Planner is useful for planner smoke checks because it should return promp
 
 The `Demos` menu section contains isolated concept scenes for validating field behavior before debugging full missions. Use `docs/flow_fields_demo.md` when validating static/dynamic fields, additive layers, partition behavior, terrain boundary effects, and topology-aware shoreline risk. Use `docs/roi_generator_demo.md` when validating seeded ROI/value distributions, hotspot clustering, noise, and dynamic value-field behavior.
 
+## Challenge Mode vs Simulation Lab
+
+ANCHOR has two user-facing experiences built on the same mission engine.
+
+Challenge Mode is the playable planning-puzzle experience. It emphasizes score, stars, medals, route quality, risk warnings, leaderboard comparison, and learning strategy through play.
+
+Simulation Lab is the reproducible experiment sandbox. It emphasizes exact configuration, deterministic/stochastic setup, dynamic current-field metadata, solver packets, replay seeds, external solver workflows, JSON import/export, and auditability.
+
+Both modes use the same terrain, current fields, hazards, glider physics, scoring core, route validation, planner APIs, and replay/export system. Smoke tests should confirm the main menu exposes both modes, Challenge setup presents mission-mode cards with advanced tuning collapsed by default, Simulation Lab setup keeps the detailed technical controls visible, and launching either mode reaches the same mission workspace/simulation engine path.
+
+## Segment Contribution Grades
+
+Route-quality testing should include at least three manual plans:
+
+- a low-immediate-value setup segment that improves access to a future Gold Star or high-value ROI region
+- a hazardous shortcut that collects value but crosses hazard/shoreline risk
+- a terminal carry-through segment that extends command coverage to mission end
+
+The first should receive future setup credit, the second should receive risk penalties, and the third should be graded as carry-through coverage rather than invalid. Debrief should show 3-hour block summaries, and result JSON should include `routeQuality`.
+
+## Waypoint Semantics Checks
+
+Waypoint tests should confirm old plans default to `kind: "navigation"`, normal map clicks show `Navigation`, surface/update waypoints emit `surface_update` events with `gpsFix: true`, Gold Star/planning-marker objectives are labeled as `Sampling Target`, and Greedy Planner over-duration final waypoints are `terminalCarryThrough` with `runtimeBehavior: "truncate_at_mission_end"`.
+
+## Dynamic Sample Field Checklist
+
+Manual sample-field checks should cover:
+
+- Mission Mode selection persists into generated level/mission metadata;
+- Challenge Mode presets choose sample-field/current/scoring defaults without forking the mission engine;
+- Simulation Lab exposes the detailed sample-field controls directly;
+- ROI Generator Demo can regenerate seeded hotspot-style fields and dynamic value fields;
+- generated missions preserve `sampleFieldConfig` when configured;
+- scrubbing mission time changes temporal sample fields such as periodic, burst, moving, current-advected, plume, channel, or texture-like patterns where selected;
+- Gold Star / priority targets remain separate from ROI cells and are labeled as sampling targets or objectives rather than GPS waypoint truth;
+- solver packets and result exports preserve visible sample-field metadata while fair stochastic packets omit hidden truth.
+
 ## Core Development Checks
 
 After JavaScript changes, run:

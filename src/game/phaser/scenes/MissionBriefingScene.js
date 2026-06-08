@@ -27,8 +27,18 @@ import {
   normalizeCurrentFieldConfig,
   summarizeCurrentFieldConfig
 } from '../../../core/generation/FlowFieldConfig.js';
+import {
+  SAMPLE_SPATIAL_PATTERNS,
+  SAMPLE_TEMPORAL_BEHAVIORS,
+  normalizeSampleFieldConfig,
+  sampleSpatialPatternLabel,
+  sampleTemporalBehaviorLabel
+} from '../../../core/generation/SampleFieldConfig.js';
 import { readJSONFile } from '../../../core/io/ImportExport.js';
 import { importFlowFieldJson, summarizeImportedFlowField } from '../../../core/io/FlowFieldImporter.js';
+import { EXPERIENCE_MODES } from '../../../core/experience/ExperienceMode.js';
+import { MISSION_MODE_PRESETS, getMissionModePreset, missionModeLabel } from '../../../core/missions/MissionModeRegistry.js';
+import { NAVIGATION_UNCERTAINTY_LEVELS, navigationUncertaintyLabel, normalizeNavigationUncertaintyConfig } from '../../../core/navigation/NavigationUncertainty.js';
 
 const PhaserScene = globalThis.Phaser?.Scene ?? class {};
 
@@ -116,18 +126,21 @@ export class MissionBriefingScene extends PhaserScene {
   renderScenarioSetupCenterOverlay(config, complexity) {
     const root = this.app.elements?.overlay?.modalRoot;
     if (!root) return;
+    const challengeSetup = this.isChallengeSetup();
     root.innerHTML = `
       <main class="center-screen-overlay setup-view" aria-label="Scenario setup summary">
         <section class="center-panel setup-panel">
           <header class="center-panel-header">
             <div>
-              <p class="center-kicker">Scenario Setup</p>
-              <h1>${escapeHtml(config.mode === 'forecast' ? 'Configure Stochastic Challenge' : 'Configure Deterministic Challenge')}</h1>
-              <p>Choose mission scale, duration, surfacing cadence, glider count, fuel, and generation difficulty before the map is created.</p>
+              <p class="center-kicker">${escapeHtml(challengeSetup ? 'Challenge Mission Mode' : 'Scenario Setup')}</p>
+              <h1>${escapeHtml(challengeSetup ? missionModeLabel(config.missionMode) : config.mode === 'forecast' ? 'Configure Stochastic Experiment' : 'Configure Deterministic Experiment')}</h1>
+              <p>${escapeHtml(challengeSetup ? getMissionModePreset(config.missionMode).description : 'Choose mission scale, duration, surfacing cadence, glider count, fuel, and generation difficulty before the map is created.')}</p>
             </div>
-            <span class="center-mode-pill">${escapeHtml(config.mode === 'forecast' ? 'Stochastic / Forecast' : 'Deterministic / Perfect Knowledge')}</span>
+            <span class="center-mode-pill">${escapeHtml(challengeSetup ? labelize(getMissionModePreset(config.missionMode).difficulty) : config.mode === 'forecast' ? 'Stochastic / Forecast' : 'Deterministic / Perfect Knowledge')}</span>
           </header>
+          ${challengeSetup ? missionModeCardGridHtml(config.missionMode) : ''}
           <section class="setup-metric-grid">
+            ${challengeSetup ? setupMetricHtml('Mission', missionModeLabel(config.missionMode)) : ''}
             ${setupMetricHtml('Agents', config.agentCount)}
             ${setupMetricHtml('Map Size', `${config.width} x ${config.height}`)}
             ${setupMetricHtml('Duration', `${config.duration} hr`)}
@@ -135,12 +148,14 @@ export class MissionBriefingScene extends PhaserScene {
             ${setupMetricHtml('Fuel / Glider', config.fuel)}
             ${setupMetricHtml('Speed', `${Number(config.gliderSpeed).toFixed(2)} cells/hr`)}
             ${setupMetricHtml('Difficulty', labelize(config.difficulty))}
+            ${setupMetricHtml('Navigation', navigationUncertaintyLabel(config.navigationUncertainty))}
             ${setupMetricHtml('Priority Stars', `${Math.round(config.priorityTargetFrequency * 100)}% window chance`)}
           </section>
           <section class="setup-section-grid">
             ${setupSectionHtml('Generated Mission Preview', `${complexity.cells} cells, about ${complexity.frames} temporal frames, vector stride ${complexity.vectorStride}.`)}
             ${setupSectionHtml('Performance Note', complexity.warning)}
             ${setupSectionHtml('Knowledge Mode', config.mode === 'forecast' ? 'Planning uses forecast and ensemble fields. Simulation resolves against hidden truth.' : 'Planning and simulation use the same perfect-knowledge truth fields.')}
+            ${challengeSetup ? setupSectionHtml('Strategy', getMissionModePreset(config.missionMode).strategyHint) : ''}
             ${setupSectionHtml('Current / Flow Field', summarizeCurrentFieldConfig(config.currentFieldConfig))}
             ${setupSectionHtml('Generation', 'Map, currents, ROI, hazards, drop zone, depth, and temporal Gold Star targets are generated after you click Generate Mission.')}
           </section>
@@ -155,6 +170,9 @@ export class MissionBriefingScene extends PhaserScene {
         </section>
       </main>
     `;
+    root.querySelectorAll('[data-mission-mode-card]').forEach((button) => {
+      button.addEventListener('click', () => this.selectMissionMode(button.dataset.missionModeCard));
+    });
     root.querySelector('[data-action="generate"]')?.addEventListener('click', () => this.generateConfiguredScenario());
     root.querySelector('[data-action="reset"]')?.addEventListener('click', () => this.resetScenarioSetup());
     root.querySelector('[data-action="back"]')?.addEventListener('click', () => {
@@ -215,35 +233,30 @@ export class MissionBriefingScene extends PhaserScene {
     if (!root) return;
     const config = normalizeScenarioConfig(this.app.state.pendingScenarioSetup);
     const complexity = describeScenarioComplexity(config);
+    const challengeSetup = this.isChallengeSetup();
+    const preset = getMissionModePreset(config.missionMode);
     root.innerHTML = `
       <section class="console-header">
-        <div class="console-kicker">Scenario Setup</div>
-        <h1>${config.mode === 'forecast' ? 'Stochastic Challenge' : 'Deterministic Challenge'}</h1>
-        <p>Configure the generated mission before the map is created.</p>
+        <div class="console-kicker">${escapeHtml(challengeSetup ? 'Challenge Setup' : 'Scenario Setup')}</div>
+        <h1>${escapeHtml(challengeSetup ? 'Mission Modes' : config.mode === 'forecast' ? 'Stochastic Experiment' : 'Deterministic Experiment')}</h1>
+        <p>${escapeHtml(challengeSetup ? 'Pick a tactical objective card; ANCHOR configures the technical model underneath.' : 'Configure the generated mission before the map is created.')}</p>
       </section>
-      <section class="console-section">
-        <h2>Core Settings</h2>
-        ${selectField('preset', 'Map Size', Object.entries(SCENARIO_SIZE_PRESETS).map(([value, preset]) => [value, preset.label]), config.preset)}
-        ${selectField('agentCount', 'Agents', range(1, 8), String(config.agentCount))}
-        ${selectField('duration', 'Duration', ['12', '24', '48', '72'].map((value) => [value, `${value} hr`]), String(config.duration))}
-        ${selectField('surfaceInterval', 'Surfacing', ['3', '6', '12'].map((value) => [value, `${value} hr`]), String(config.surfaceInterval))}
-        ${selectField('fuel', 'Fuel', ['50', '100', '120', '150', '200'].map((value) => [value, value]), String(config.fuel))}
-        ${selectField('gliderSpeed', 'Speed', [['0.9', 'Slow'], ['1.25', 'Normal'], ['1.6', 'Fast']], String(config.gliderSpeed))}
-        ${selectField('agentSpecMode', 'Agent Specs', [['uniform', 'Uniform'], ['varied', 'Varied Fleet']], config.agentSpecMode)}
-        ${selectField('multipleDropZones', 'Drop Zones', [['false', 'Single'], ['true', 'Multiple']], String(config.multipleDropZones))}
-      </section>
-      <section class="console-section">
-        <h2>Generation</h2>
-        ${selectField('difficulty', 'Difficulty', ['easy', 'medium', 'hard', 'chaotic'].map((value) => [value, labelize(value)]), config.difficulty)}
-        ${selectField('hazardDensity', 'Hazards', [['0.03', 'Low'], ['0.06', 'Medium'], ['0.1', 'High'], ['0.14', 'Extreme']], String(config.hazardDensity))}
-        ${selectField('terrainDensity', 'Terrain', [['0.04', 'Sparse'], ['0.08', 'Medium'], ['0.14', 'Dense'], ['0.2', 'Maze-like']], String(config.terrainDensity))}
-        ${selectField('roiHotspots', 'ROI Hotspots', range(2, 8), String(config.roiHotspots))}
-        ${selectField('priorityTargetFrequency', 'Gold Stars', [['0.15', 'Rare'], ['0.35', 'Normal'], ['0.55', 'Frequent']], String(config.priorityTargetFrequency))}
-        ${config.mode === 'forecast' ? selectField('ensembleCount', 'Ensemble', range(1, 6), String(config.ensembleCount)) : ''}
-        ${config.mode === 'forecast' ? selectField('forecastDecay', 'Forecast Decay', [['true', 'On'], ['false', 'Off']], String(config.forecastDecay)) : ''}
-        ${config.mode === 'forecast' ? selectField('forecastDecayModel', 'Decay Model', [['exponential', 'Exponential'], ['linear', 'Linear']], config.forecastDecayModel) : ''}
-      </section>
-      ${currentFieldSetupHtml(config)}
+      ${challengeSetup ? `
+      <section class="console-section" data-keep-title="true">
+        <h2>Mission Mode</h2>
+        <div class="mission-mode-console-grid">
+          ${MISSION_MODE_PRESETS.map((mode) => missionModeMiniButtonHtml(mode, config.missionMode)).join('')}
+        </div>
+        <div class="mission-mode-detail">
+          <strong>${escapeHtml(preset.label)}</strong>
+          <span>${escapeHtml(preset.description)}</span>
+          <small>${escapeHtml(preset.strategyHint)}</small>
+        </div>
+      </section>` : ''}
+      ${challengeSetup ? challengeAdvancedSetupHtml(config) : `
+      ${coreSettingsSectionHtml(config)}
+      ${generationSectionHtml(config, false)}
+      ${currentFieldSetupHtml(config)}`}
       <section class="console-status">
         <span>Preview</span>
         <strong>${complexity.cells} cells | ${complexity.frames} frames</strong>
@@ -257,6 +270,9 @@ export class MissionBriefingScene extends PhaserScene {
       </section>
     `;
     this.app.applyConsoleAccordions?.('scenarioSetup');
+    root.querySelectorAll('[data-mission-mode]').forEach((button) => {
+      button.addEventListener('click', () => this.selectMissionMode(button.dataset.missionMode));
+    });
     root.querySelectorAll('[data-field]').forEach((field) => {
       field.addEventListener('change', () => this.updateScenarioSetupFromForm());
     });
@@ -276,6 +292,34 @@ export class MissionBriefingScene extends PhaserScene {
       this.app.state.pendingScenarioSetup = null;
       this.scene.start('MainMenuScene');
     });
+  }
+
+  isChallengeSetup() {
+    return (this.app.state.currentScenario?.experienceMode ?? this.app.state.experienceMode) === EXPERIENCE_MODES.challenge;
+  }
+
+  selectMissionMode(missionMode) {
+    const current = normalizeScenarioConfig(this.app.state.pendingScenarioSetup);
+    const keep = {
+      preset: current.preset,
+      width: current.width,
+      height: current.height,
+      duration: current.duration,
+      surfaceInterval: current.surfaceInterval,
+      agentCount: current.agentCount,
+      fuel: current.fuel,
+      gliderSpeed: current.gliderSpeed
+    };
+    this.app.state.pendingScenarioSetup = normalizeScenarioConfig({
+      missionMode,
+      ...keep
+    });
+    this.app.state.challengeMode = this.app.state.pendingScenarioSetup.mode;
+    if (this.app.state.currentScenario) {
+      this.app.state.currentScenario.challengeMode = this.app.state.pendingScenarioSetup.mode;
+    }
+    this.renderScenarioSetup();
+    this.renderScenarioSetupConsole();
   }
 
   renderConsole(detailsOpen = false) {
@@ -345,6 +389,20 @@ export class MissionBriefingScene extends PhaserScene {
     values.currentStrength = values.currentFieldConfig.strength;
     values.currentFieldSource = root?.querySelector('[data-current-field-source]')?.value ?? current.currentFieldSource ?? 'procedural';
     values.importedFlowField = values.currentFieldSource === 'imported' ? current.importedFlowField ?? null : null;
+    values.sampleFieldConfig = normalizeSampleFieldConfig({
+      ...current.sampleFieldConfig,
+      spatialPattern: values.sampleSpatialPattern ?? current.sampleFieldConfig?.spatialPattern,
+      temporalBehavior: values.sampleTemporalBehavior ?? current.sampleFieldConfig?.temporalBehavior,
+      mode: values.sampleTemporalBehavior === 'static' ? 'static' : 'dynamic',
+      hotspotCount: values.roiHotspots
+    }, {
+      mode: current.mode,
+      roiHotspots: values.roiHotspots
+    });
+    values.navigationUncertainty = normalizeNavigationUncertaintyConfig({
+      ...current.navigationUncertainty,
+      level: values.navigationUncertaintyLevel ?? current.navigationUncertainty?.level
+    });
     values.multipleDropZones = values.multipleDropZones === 'true';
     values.forecastDecay = values.forecastDecay === 'true';
     const preset = SCENARIO_SIZE_PRESETS[values.preset];
@@ -458,6 +516,13 @@ export class MissionBriefingScene extends PhaserScene {
 
   generateConfiguredScenario() {
     const { level, mission, config } = generateScenarioFromConfig(this.app.state.pendingScenarioSetup);
+    const experienceMode = this.app.state.currentScenario?.experienceMode ?? this.app.state.experienceMode ?? EXPERIENCE_MODES.simulationLab;
+    level.meta ??= {};
+    level.meta.experienceMode = experienceMode;
+    level.meta.missionMode = config.missionMode;
+    mission.meta ??= {};
+    mission.meta.experienceMode = experienceMode;
+    mission.meta.missionMode = config.missionMode;
     this.app.state.pendingScenarioSetup = null;
     this.app.state.ui.mapCamera = { zoom: 1, panX: 0, panY: 0 };
     this.app.state.ui.revealTruth = false;
@@ -467,7 +532,10 @@ export class MissionBriefingScene extends PhaserScene {
       level,
       mission,
       challengeMode: config.mode,
-      source: config.mode === 'forecast' ? 'stochasticChallenge' : 'deterministicChallenge'
+      experienceMode,
+      source: experienceMode === EXPERIENCE_MODES.simulationLab
+        ? (config.mode === 'forecast' ? 'stochasticExperiment' : 'deterministicExperiment')
+        : (config.mode === 'forecast' ? 'stochasticChallenge' : 'deterministicChallenge')
     });
     resetPlanResultStore(this.app.state);
     markBriefingSeen(this.app.state);
@@ -642,6 +710,123 @@ function setupSectionHtml(title, body) {
       <h2>${escapeHtml(title)}</h2>
       <p>${escapeHtml(body)}</p>
     </article>
+  `;
+}
+
+function missionModeCardGridHtml(selectedId) {
+  return `
+    <section class="mission-mode-card-grid" aria-label="Mission mode cards">
+      ${MISSION_MODE_PRESETS.map((mode) => `
+        <button class="mission-mode-card ${mode.id === selectedId ? 'selected' : ''}" type="button" data-mission-mode-card="${escapeHtml(mode.id)}">
+          <span class="mission-mode-card-topline">
+            <strong>${escapeHtml(mode.label)}</strong>
+            <small>${escapeHtml(labelize(mode.difficulty))}</small>
+          </span>
+          <span>${escapeHtml(mode.description)}</span>
+          <span class="mission-mode-tags">${mode.tags.slice(0, 3).map((tag) => `<em>${escapeHtml(tag)}</em>`).join('')}</span>
+          <span class="mission-mode-lenses">Lenses: ${escapeHtml(mode.recommendedLenses.join(', '))}</span>
+        </button>
+      `).join('')}
+    </section>
+  `;
+}
+
+function missionModeMiniButtonHtml(mode, selectedId) {
+  return `
+    <button type="button" class="mission-mode-mini ${mode.id === selectedId ? 'selected' : ''}" data-mission-mode="${escapeHtml(mode.id)}">
+      <strong>${escapeHtml(mode.label)}</strong>
+      <span>${escapeHtml(mode.tags.slice(0, 2).join(' / '))}</span>
+    </button>
+  `;
+}
+
+function missionModeTechnicalSummaryHtml(config) {
+  const preset = getMissionModePreset(config.missionMode);
+  return `
+    <section class="console-status">
+      <span>Preset Mapping</span>
+      <strong>${escapeHtml(preset.concept)}</strong>
+      <small>Sample: ${escapeHtml(sampleSpatialPatternLabel(config.sampleFieldConfig?.spatialPattern))} / ${escapeHtml(sampleTemporalBehaviorLabel(config.sampleFieldConfig?.temporalBehavior))}</small>
+      <small>Navigation uncertainty: ${escapeHtml(navigationUncertaintyLabel(config.navigationUncertainty))}</small>
+      <small>Scoring emphasis: ${escapeHtml(Object.keys(config.scoringWeights ?? {}).join(', ') || 'standard')}</small>
+      <small>Route grading: ${escapeHtml(Object.keys(config.routeGradeWeights ?? {}).join(', ') || 'standard')}</small>
+    </section>
+  `;
+}
+
+function challengeAdvancedSetupHtml(config) {
+  return `
+    <section class="console-section" data-accordion-key="advanced-setup">
+      <h2>Advanced Setup</h2>
+      <div class="hud-muted">Optional tuning. The selected mission card already sets these defaults.</div>
+      <div class="mission-mode-advanced-grid">
+        ${coreSettingsFieldsHtml(config)}
+        ${generationFieldsHtml(config, true)}
+      </div>
+      ${missionModeTechnicalSummaryBodyHtml(config)}
+    </section>
+  `;
+}
+
+function coreSettingsSectionHtml(config) {
+  return `
+    <section class="console-section">
+      <h2>Core Settings</h2>
+      ${coreSettingsFieldsHtml(config)}
+    </section>
+  `;
+}
+
+function coreSettingsFieldsHtml(config) {
+  return `
+    ${selectField('preset', 'Map Size', Object.entries(SCENARIO_SIZE_PRESETS).map(([value, preset]) => [value, preset.label]), config.preset)}
+    ${selectField('agentCount', 'Agents', range(1, 8), String(config.agentCount))}
+    ${selectField('duration', 'Duration', ['12', '24', '48', '72'].map((value) => [value, `${value} hr`]), String(config.duration))}
+    ${selectField('surfaceInterval', 'Surfacing', ['3', '6', '12'].map((value) => [value, `${value} hr`]), String(config.surfaceInterval))}
+    ${selectField('fuel', 'Fuel', ['50', '100', '120', '150', '200'].map((value) => [value, value]), String(config.fuel))}
+    ${selectField('gliderSpeed', 'Speed', [['0.9', 'Slow'], ['1.25', 'Normal'], ['1.6', 'Fast']], String(config.gliderSpeed))}
+    ${selectField('agentSpecMode', 'Agent Specs', [['uniform', 'Uniform'], ['varied', 'Varied Fleet']], config.agentSpecMode)}
+    ${selectField('multipleDropZones', 'Drop Zones', [['false', 'Single'], ['true', 'Multiple']], String(config.multipleDropZones))}
+  `;
+}
+
+function generationSectionHtml(config, challengeSetup = false) {
+  return `
+    <section class="console-section">
+      <h2>${escapeHtml(challengeSetup ? 'Challenge Tuning' : 'Generation')}</h2>
+      ${generationFieldsHtml(config, challengeSetup)}
+    </section>
+  `;
+}
+
+function generationFieldsHtml(config, challengeSetup = false) {
+  return `
+    ${selectField('difficulty', 'Difficulty', ['easy', 'medium', 'hard', 'chaotic'].map((value) => [value, labelize(value)]), config.difficulty)}
+    ${selectField('hazardDensity', 'Hazards', [['0.03', 'Low'], ['0.06', 'Medium'], ['0.1', 'High'], ['0.14', 'Extreme']], String(config.hazardDensity))}
+    ${selectField('terrainDensity', 'Terrain', [['0.04', 'Sparse'], ['0.08', 'Medium'], ['0.14', 'Dense'], ['0.2', 'Maze-like']], String(config.terrainDensity))}
+    ${selectField('navigationUncertaintyLevel', 'Navigation Uncertainty', NAVIGATION_UNCERTAINTY_LEVELS.map((value) => [value, navigationUncertaintyLabel(value)]), config.navigationUncertainty?.level ?? 'off')}
+    ${selectField('roiHotspots', 'ROI Hotspots', range(2, 8), String(config.roiHotspots))}
+    ${challengeSetup ? `<div class="hud-muted">Sample model: ${escapeHtml(sampleSpatialPatternLabel(config.sampleFieldConfig?.spatialPattern))} / ${escapeHtml(sampleTemporalBehaviorLabel(config.sampleFieldConfig?.temporalBehavior))}</div>` : `
+    ${selectField('sampleSpatialPattern', 'Sample Pattern', SAMPLE_SPATIAL_PATTERNS.map((value) => [value, sampleSpatialPatternLabel(value)]), config.sampleFieldConfig?.spatialPattern)}
+    ${selectField('sampleTemporalBehavior', 'Sample Timing', SAMPLE_TEMPORAL_BEHAVIORS.map((value) => [value, sampleTemporalBehaviorLabel(value)]), config.sampleFieldConfig?.temporalBehavior)}`}
+    ${selectField('priorityTargetFrequency', 'Gold Stars', [['0.15', 'Rare'], ['0.35', 'Normal'], ['0.55', 'Frequent']], String(config.priorityTargetFrequency))}
+    ${config.mode === 'forecast' ? selectField('ensembleCount', 'Ensemble', range(1, 6), String(config.ensembleCount)) : ''}
+    ${config.mode === 'forecast' ? selectField('forecastDecay', 'Forecast Decay', [['true', 'On'], ['false', 'Off']], String(config.forecastDecay)) : ''}
+    ${config.mode === 'forecast' ? selectField('forecastDecayModel', 'Decay Model', [['exponential', 'Exponential'], ['linear', 'Linear']], config.forecastDecayModel) : ''}
+  `;
+}
+
+function missionModeTechnicalSummaryBodyHtml(config) {
+  const preset = getMissionModePreset(config.missionMode);
+  return `
+    <div class="mission-mode-detail">
+      <strong>Preset Mapping</strong>
+      <span>${escapeHtml(preset.concept)}</span>
+      <small>Sample: ${escapeHtml(sampleSpatialPatternLabel(config.sampleFieldConfig?.spatialPattern))} / ${escapeHtml(sampleTemporalBehaviorLabel(config.sampleFieldConfig?.temporalBehavior))}</small>
+      <small>Navigation uncertainty: ${escapeHtml(navigationUncertaintyLabel(config.navigationUncertainty))}</small>
+      <small>Scoring emphasis: ${escapeHtml(Object.keys(config.scoringWeights ?? {}).join(', ') || 'standard')}</small>
+      <small>Route grading: ${escapeHtml(Object.keys(config.routeGradeWeights ?? {}).join(', ') || 'standard')}</small>
+    </div>
   `;
 }
 

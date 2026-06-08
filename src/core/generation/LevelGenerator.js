@@ -18,6 +18,8 @@ import { normalizeForecastRules } from '../forecast/ForecastDecay.js';
 import { buildReplaySeedContract, deriveReplaySeeds, GENERATION_VERSION } from '../random/ReplaySeedContract.js';
 import { currentFieldConfigToGeneratorConfig, normalizeCurrentFieldConfig } from './FlowFieldConfig.js';
 import { buildTopologyAwareCompositeConfig } from './TopologyAwareComposite.js';
+import { createDefaultSampleFieldConfig, normalizeSampleFieldConfig } from './SampleFieldConfig.js';
+import { normalizeNavigationUncertaintyConfig } from '../navigation/NavigationUncertainty.js';
 
 export function generateLevel(config = {}) {
   const merged = applyDifficultyPreset(config);
@@ -42,6 +44,16 @@ export function generateLevel(config = {}) {
   const currentConfig = currentFieldConfigToGeneratorConfig(currentFieldConfig, {
     mode: merged.challengeMode === 'forecast' || merged.forecastMode === 'noisy' ? 'forecast' : 'perfectKnowledge'
   });
+  const sampleFieldConfig = normalizeSampleFieldConfig(
+    merged.sampleFieldConfig ?? merged.sampleField ?? merged.generationConfig?.sampleFieldConfig ?? createDefaultSampleFieldConfig(merged.challengeMode === 'forecast' || merged.forecastMode === 'noisy' ? 'forecast' : 'perfectKnowledge'),
+    {
+      mode: merged.challengeMode === 'forecast' || merged.forecastMode === 'noisy' ? 'forecast' : 'perfectKnowledge',
+      roiHotspots: merged.roiHotspots
+    }
+  );
+  const navigationUncertainty = normalizeNavigationUncertaintyConfig(
+    merged.navigationUncertainty ?? merged.generationConfig?.navigationUncertainty ?? merged.generationConfig?.scenarioSetup?.navigationUncertainty ?? {}
+  );
   const vectorPreset = getVectorPresetConfig(currentConfig.currentPreset ?? merged.vectorPreset ?? merged.currentPreset ?? merged.currentGenerator?.preset ?? merged.currentPattern, {
     currentStrength: currentConfig.currentStrength,
     currentVariability: currentConfig.currentVariability,
@@ -79,7 +91,7 @@ export function generateLevel(config = {}) {
     });
   }
   const hazards = generateHazards(width, height, Number(merged.hazardDensity ?? 0.06), terrain, hazardRandom);
-  const hotspots = createHotspots(width, height, clampInt(merged.roiHotspots, 1, 8), merged.roiPattern, roiRandom);
+  const hotspots = createHotspots(width, height, clampInt(sampleFieldConfig.hotspotCount ?? merged.roiHotspots, 1, 8), legacyPatternFromSampleField(sampleFieldConfig, merged.roiPattern), roiRandom);
   const eddies = makeEddies(width, height, createSeededRandom(derivedSeeds.currents ?? seed));
   const currentFrames = generateCurrentFrames({
     ...merged,
@@ -100,10 +112,18 @@ export function generateLevel(config = {}) {
   const probabilisticROI = merged.roiProbabilityMode === 'variable' || merged.probabilisticROI || merged.challengeMode === 'forecast';
   const temporalHotspots = merged.temporalHotspots ?? true;
   const truthFrames = Array.from({ length: frameCount }, (_, index) => {
-    const roi = generateROI(width, height, index, { ...merged, hotspots, temporalHotspots });
+    const current = currentFrames[index]?.current ?? currentFrames.at(-1)?.current ?? [];
+    const roi = generateROI(width, height, index, {
+      ...merged,
+      hotspots,
+      temporalHotspots,
+      sampleFieldConfig,
+      sampleFieldSeed: derivedSeeds.roi ?? seed,
+      currentFrame: current
+    });
     return {
       t: currentFrames[index]?.t ?? index * dt,
-      current: currentFrames[index]?.current ?? currentFrames.at(-1)?.current ?? [],
+      current,
       roi: probabilisticROI ? normalizeROIGrid(roi, 'variable', truthRandom) : roi
     };
   });
@@ -171,6 +191,9 @@ export function generateLevel(config = {}) {
     fluidVorticityConfinement: fluidEnabled ? currentGenerator.vorticityConfinement : undefined,
     roiPattern: merged.roiPattern,
     roiHotspots: merged.roiHotspots,
+    sampleFieldConfig,
+    sampleField: sampleFieldConfig,
+    navigationUncertainty,
     hazardDensity: merged.hazardDensity,
     terrainDensity: merged.terrainDensity,
     forecastMode: merged.forecastMode,
@@ -274,6 +297,15 @@ export function generateLevel(config = {}) {
   };
   level.meta.temporalValidation = validateTemporalFrames(level);
   return ensureLevelIdentity(level, { generationConfig });
+}
+
+function legacyPatternFromSampleField(sampleFieldConfig = {}, fallback = 'multiple') {
+  if (sampleFieldConfig.spatialPattern === 'singleHotspot') return 'single';
+  if (sampleFieldConfig.spatialPattern === 'bimodal') return 'bimodal';
+  if (sampleFieldConfig.spatialPattern === 'plume') return 'plume';
+  if (sampleFieldConfig.distribution === 'clustered') return 'clustered';
+  if (sampleFieldConfig.temporalBehavior === 'moving') return 'moving';
+  return fallback ?? 'multiple';
 }
 
 function normalizeConnectivityConfig(config = {}) {

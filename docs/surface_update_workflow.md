@@ -2,7 +2,7 @@
 
 Surfacing and route-failure prompts support a file-based solver loop.
 
-1. At a surface pause or route failure, choose `Export Observation Data`.
+1. At a surface/update window or route failure, choose `Export Observation Data`.
 2. Run an external solver on `anchor.surface-observation.json`.
 3. Return `anchor.plan-segment`, `anchor.plan`, or a compatible `{ agentId, waypoints }` JSON file.
 4. Choose `Import Waypoint Data`.

@@ -21,6 +21,8 @@ If a plan cannot run safely, the game blocks execution or records a safe aborted
 
 ## Start The Game
 
+In Challenge Mode, pick a mission card first. Mission cards are player-facing objectives such as Survey Sweep, Signal Hunt, Plume Intercept, Danger Run, and Long Glide. The selected card quietly sets up the sample field, currents, scoring emphasis, and route-grade emphasis. Simulation Lab keeps the detailed technical controls visible when you want to tune those systems directly.
+
 From the project root:
 
 ```bash
@@ -34,6 +36,16 @@ http://localhost:8000
 ```
 
 Any static server can be used if Python is not available.
+
+## Challenge Mode vs Simulation Lab
+
+ANCHOR has two user-facing experiences built on the same mission engine.
+
+Challenge Mode is the playable planning-puzzle experience. It emphasizes score, stars, medals, route quality, risk warnings, leaderboard comparison, and learning strategy through play.
+
+Simulation Lab is the reproducible experiment sandbox. It emphasizes exact configuration, deterministic/stochastic setup, dynamic current-field metadata, solver packets, replay seeds, external solver workflows, JSON import/export, and auditability.
+
+Both modes use the same terrain, current fields, hazards, glider physics, scoring core, route validation, planner APIs, and replay/export system. The difference is the menu framing, default panels, and how much technical detail is shown by default.
 
 ## Screen Overview
 
@@ -110,6 +122,8 @@ Read this screen before planning. `More Details` expands scoring notes and tutor
 ### Planning
 
 Planning is where you create the waypoint plan. It is the main workspace: the left Mission Console shows mission controls, status, layer toggles, route/cost estimate, selected-glider performance, imports/exports, and Execute; the center Phaser Simulator Viewport shows the map, gliders, waypoints, global planning markers, currents, guidance cone, direct map interaction, a top selected-glider planning HUD, and a bottom mission-time slider; the right Waypoint Timeline panel shows agent tabs and only the selected glider's executable waypoint sequence.
+
+Waypoint labels describe intent. `Navigation` means a commanded underwater target followed by dead reckoning. `Surface / GPS Update` means the glider surfaces, receives GPS, communicates, and may replan. `Sampling Target` means a science objective such as a Gold Star or marker; it is not a GPS-confirmed waypoint unless you add it to the route. `Terminal Carry-Through` means the final command intentionally extends past mission duration so the glider keeps moving until time expires.
 
 For large maps, use camera controls in Planning:
 
@@ -232,10 +246,16 @@ Debrief keeps the mission shell visible. The left Mission Console contains Debri
 Labels such as `Actual Final`, `Actual ROI`, and `Actual Energy` come from the completed simulation. `Planned EV` is the expected value implied by the plan and visible/forecast fields. `Stochastic Realized` is the ROI outcome resolved during simulation for the active seed.
 - event summary
 - forecast regret when available
-- manual-vs-temporal-greedy comparison when available
+- manual-vs-Greedy Planner comparison when available
 - manual-vs-solver comparison when available
 
 Use Debrief to decide what to improve, then click `Revise Plan` or `Retry From Briefing`. Tutorial missions also offer `Next Tutorial`; generated challenges offer `New Challenge`; editor/custom missions offer `Return To Editor`. Export, rerun, Greedy Planner, comparison, and main-menu controls are in-game buttons; downloads still use the browser download bridge behind those buttons.
+
+### Segment Contribution Grades
+
+Planning grades each waypoint-to-waypoint segment. A segment can be `sampling`, `objective`, `positioning`, `current-assisted`, `risky`, `carry-through`, or `transit`. The grade is not just immediate samples: a low-value move can earn positioning credit when it sets up a future Gold Star, high-value ROI region, safer current corridor, or terminal carry-through coverage.
+
+The right Waypoint Timeline shows compact segment grades beside each waypoint. The Planning Assistant shows the selected segment grade and overall route grade. Debrief summarizes segment contributions by 3-hour dead-reckoning blocks so you can see which windows earned value, took risk, or set up later rewards.
 
 If the simulator detects an invalid or unreachable plan, it stops with a warning and recovery choices instead of freezing. Move or delete the problem waypoint, replan from the current actual position, or end to Debrief. Exported results include the stop reason and recovery decision for debugging.
 

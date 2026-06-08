@@ -15,6 +15,7 @@ export function saveChallengeToLocalStore(challengeOrState) {
       level: challengeOrState?.level,
       mission: challengeOrState?.mission,
       challengeMode: challengeOrState?.challengeMode,
+      experienceMode: challengeOrState?.experienceMode,
       includeHiddenTruth: false
     });
   const board = loadChallengeIndex();
@@ -25,6 +26,8 @@ export function saveChallengeToLocalStore(challengeOrState) {
     levelId: challenge.levelId,
     missionId: challenge.missionId,
     challengeMode: challenge.challengeMode,
+    experienceMode: challenge.experienceMode,
+    missionMode: challenge.missionMode ?? challenge.generationConfig?.missionMode ?? challenge.level?.meta?.missionMode ?? null,
     replaySeedAnchor: challenge.replaySeedAnchor ?? challenge.replaySeedContract?.replaySeedAnchor ?? challenge.instanceId,
     generationVersion: challenge.generationVersion ?? challenge.replaySeedContract?.generationVersion ?? null,
     generationConfig: cloneJson(challenge.generationConfig ?? challenge.replaySeedContract?.generationConfig ?? null),

@@ -64,9 +64,24 @@ Generated challenge setup from the player-facing briefing flow is preserved in `
 }
 ```
 
+Generated challenges may also include `navigationUncertainty` in `meta.generationConfig`, `meta.generationConfig.scenarioSetup`, `mission.meta.navigationUncertainty`, and `mission.rules.navigationUncertainty`:
+
+```json
+{
+  "level": "medium",
+  "seeded": true,
+  "showCone": true,
+  "gpsCorrectionOnSurface": true
+}
+```
+
+The setting models dead-reckoning uncertainty while gliders are underwater. Planning and result diagnostics can estimate a cone that grows with underwater duration/current exposure, warn when the cone overlaps land or hazards, and derive smooth reproducible offset samples from the challenge replay seed contract. Surfacing acts as the intended GPS correction/replan point when `gpsCorrectionOnSurface` is true.
+
 ## Current Generation Metadata
 
 `meta.generationConfig.currentGenerator` records how generated current frames were made.
+
+`meta.generationConfig.sampleFieldConfig` records how generated sample-value frames were made. It keeps the legacy `truth.frames[].roi` numeric grid format, but the generator can now produce static, periodic, bursty, moving, current-advected, random, neighbor-coupled, bimodal, plume, channel, gradient, and texture-like sample fields. Replays should preserve this config with the challenge UUID seed contract so the same challenge ID and generation config reproduce the same sample-value evolution.
 
 Parametric current modes use:
 
@@ -158,6 +173,21 @@ Stochastic generated levels may also include:
 - probabilistic ROI cells shaped as `{ value, probability, expectedValue }`.
 
 Numeric ROI cells remain valid and are interpreted as certain ROI: `{ value: number, probability: 1, expectedValue: number }`.
+
+## Waypoint, Timeline, and Route-Quality Metadata
+
+Level JSON normally describes the environment rather than an executable plan, but generated challenges, solver packets, plans, results, and leaderboard records may preserve waypoint and route-quality metadata tied to that environment.
+
+Executable waypoint kinds are:
+
+- `navigation`: a commanded underwater navigation intent. This is the backward-compatible default when old plans omit a kind.
+- `surface`: a GPS/communication/update point where replanning may occur.
+- `samplingTarget`: a science objective or marker. It is not automatically an executable hard checkpoint unless converted into a route waypoint.
+- `terminalCarryThrough`: a final command that may extend beyond mission duration so the glider remains commanded until the clock expires.
+
+Simulation events preserve legacy `waypointReached` and `missedWaypoint` records, and may also include semantic companion events such as `navigation_intent`, `surface_update`, `sampling_target`, and `terminal_carry_through`. Surface/update events may include GPS correction/replan metadata when mission rules enable it.
+
+Result exports may include `routeQuality` with segment contribution grades, 3-hour block summaries, component values, role labels, and diagnostics from `SegmentContributionGrader`. These grades explain route value and risk; they are not required fields for loading a bare `anchor.level`.
 
 ## Priority Targets
 

@@ -44,11 +44,14 @@
     "endCondition": "normalized mission end-condition config",
     "sampling": "normalized mission sampling config",
     "priorityTargets": "normalized mission priority target display/capture config",
+    "navigationUncertainty": "dead-reckoning uncertainty config and GPS correction/display hints used for cone-aware risk grading",
     "vectorField": "current generator metadata including preset, strength, variability, seed, stats, and synthetic/current notes",
     "currentFieldConfig": "serializable visible current/flow-field setup: static/dynamic mode, base preset, evolution behavior/speed, explicit timeMode, cycleDurationHours, frameInterpolation, dynamicComplexity, variation levels, additive layers, spatial influence, topologyComposite regional metadata/assigned behaviors when using Topology-Aware Composite, and stochastic forecast-confidence metadata when applicable",
+    "sampleFieldConfig": "serializable visible sample-value setup: spatialPattern, temporalBehavior, objectiveModel, stochasticity, currentCoupling, depletion, hotspot/burst/moving/plume/channel/gradient metadata when configured",
     "importedFlowField": "optional visible anchor.flow-field payload when the challenge currents came from an import",
     "currentFieldVisibility": "declares whether visible current config/frames are included and whether hidden truth-current frames are withheld or included",
     "planningMarkers": "optional global current plan markers; non-executable notes for future windows",
+    "waypointSemantics": "Executable waypoints may include kind navigation | surface | samplingTarget | terminalCarryThrough. Treat navigation as commanded dead-reckoned intent, surface as GPS/update/replan, samplingTarget as objective metadata unless converted, and terminalCarryThrough as truncate-at-mission-end.",
     "connectivity": "deployment connectivity summary and warnings",
     "riskFields": "probabilisticROI, ensembleForecasts, mobileHazards, depth, staticHazards, and scoringMode",
     "solverHints": "human-readable risk-aware planning hints for baseline/external solvers"
@@ -70,6 +73,7 @@
     "endCondition": "none | surface | communication | recovery | pickup | return plus target/bonus/penalty fields",
     "sampling": "unique | diminishing | cooldown | persistent plus duplicate/depletion/cooldown multipliers"
   },
+  "waypointSemantics": "Expected plans should preserve waypoint kind. Missing kind defaults to navigation for backward compatibility.",
   "deployment": {
     "agents": "agentId, mode, zoneId, allowedCells, selectedStart. Solvers may choose selectedStart from allowedCells when null."
   },
@@ -89,6 +93,8 @@
   },
   "vectorField": "Top-level vectorField mirrors level.meta.generationConfig.currentGenerator or vector preset metadata so external solvers can identify the current preset used to generate visible frames.",
   "currentFieldConfig": "Top-level currentFieldConfig mirrors level.meta.generationConfig.currentFieldConfig so external solvers can reproduce the visible current setup behind the exported temporal frames.",
+  "sampleFieldConfig": "Top-level sampleFieldConfig mirrors level.meta.generationConfig.sampleFieldConfig so external solvers can explain or reproduce visible generated sample-value frames when the replay contract is complete.",
+  "navigationUncertainty": "Top-level navigationUncertainty mirrors mission.rules.navigationUncertainty and level.meta.generationConfig.navigationUncertainty. Solvers should account for cone overlap with land/hazards when enabled.",
   "importedFlowField": "Top-level importedFlowField mirrors level.meta.generationConfig.importedFlowField so external solvers can inspect source/fairness metadata and imported frame/config behavior.",
   "exampleSolver": "python tools/python/example_greedy_solver.py solver_packet.json output_plan.json",
   "priorityTargets": "Top-level priorityTargets mirrors level.layers.priorityTargets after normalization: id, label, value, radius, captureMode, frames.",

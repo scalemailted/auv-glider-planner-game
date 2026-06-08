@@ -21,6 +21,8 @@
     "meta.generationConfig.connectivity": "connectivity generation settings and latest validation result",
     "meta.connectivity": "playability validation summary for deployment-to-water, ROI, and recovery reachability",
     "meta.generationConfig.currentGenerator": "object describing parametric or synthetic fluid-inspired current generation",
+    "meta.generationConfig.sampleFieldConfig": "object describing deterministic sample-value field generation, including spatialPattern, temporalBehavior, objectiveModel, stochasticity, currentCoupling, and depletion metadata",
+    "meta.generationConfig.missionMode": "optional Challenge Mode objective preset id used to choose sample/current/scoring/route-grade defaults",
     "meta.difficulty": "tutorial | easy | medium | hard | chaotic",
     "layers.forecast.frames": "optional forecast frames with current, roi, and confidence",
     "layers.forecasts": "optional ensemble forecast members with id, label, and frames",

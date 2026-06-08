@@ -13,6 +13,7 @@ import { validateGeneratedLevelConnectivity } from '../../../core/validation/Con
 import { makeForecastEnsembleFromTruth, makeForecastFromTruth } from '../../../core/generation/ForecastGenerator.js';
 import { resetPlanResultStore } from '../../../core/evaluation/PlanResultStore.js';
 import { beginScenario } from '../../../core/scenario/ScenarioState.js';
+import { EXPERIENCE_MODES } from '../../../core/experience/ExperienceMode.js';
 import { EditorHud } from '../ui/EditorHud.js';
 import { VectorBrushPreview } from '../ui/VectorBrushPreview.js';
 import { PhaserButton } from '../ui/Button.js';
@@ -241,6 +242,7 @@ export class EnvironmentEditorScene extends PhaserScene {
         level: this.level,
         mission: this.level.missionDefaults,
         challengeMode: this.level.challengeMode ?? 'perfectKnowledge',
+        experienceMode: this.level.meta?.experienceMode ?? EXPERIENCE_MODES.simulationLab,
         source: 'editor'
       });
       resetPlanResultStore(this.app.state);
@@ -253,6 +255,7 @@ export class EnvironmentEditorScene extends PhaserScene {
         level: this.level,
         mission: this.level.missionDefaults,
         challengeMode: 'forecast',
+        experienceMode: this.level.meta?.experienceMode ?? EXPERIENCE_MODES.simulationLab,
         source: 'editor'
       });
       resetPlanResultStore(this.app.state);
@@ -875,6 +878,7 @@ export class EnvironmentEditorScene extends PhaserScene {
       level: this.level,
       mission: this.level.missionDefaults,
       challengeMode: this.level.challengeMode ?? 'perfectKnowledge',
+      experienceMode: this.level.meta?.experienceMode ?? EXPERIENCE_MODES.simulationLab,
       source: 'editor'
     });
     resetPlanResultStore(this.app.state);

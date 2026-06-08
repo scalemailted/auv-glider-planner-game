@@ -3,7 +3,7 @@ import { createEmptyPlanResultStore } from '../../core/evaluation/PlanResultStor
 import { createDefaultStochasticState, createEmptyStochasticRunStore } from '../../core/evaluation/StochasticRunStore.js';
 
 export function createGameState() {
-  return { mode: 'menu', level: null, mission: null, plan: null, result: null, customLevel: null, importedLevel: null, importedMission: null, currentScenario: null, pendingScenarioSetup: null, selectedAgentId: null, selectedWindow: 0, planningTime: 0, challengeMode: 'perfectKnowledge',
+  return { mode: 'menu', level: null, mission: null, plan: null, result: null, customLevel: null, importedLevel: null, importedMission: null, currentScenario: null, pendingScenarioSetup: null, selectedAgentId: null, selectedWindow: 0, planningTime: 0, challengeMode: 'perfectKnowledge', missionMode: null,
     simulationResume: null, surfacedAgents: [], surfaceDecision: null, routeFailureDecision: null,
     simulation: createDefaultSimulationState(),
     missionOptions: { ignoreUpdateEvents: false },

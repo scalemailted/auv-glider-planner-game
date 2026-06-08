@@ -12,6 +12,18 @@ ANCHOR is a static browser-first Phaser 3 game and simulator. The active shell i
 
 The current app supports tutorials, deterministic and stochastic generated challenges, Mission Briefing, waypoint planning, continuous route validation, simulation playback, Debrief comparison, local leaderboard/best-path records, dataset export, JSON solver contracts, optional Python/Colab templates, and optional Node.js headless solver tools.
 
+## Challenge Mode vs Simulation Lab
+
+ANCHOR has two user-facing experiences built on the same mission engine.
+
+Challenge Mode is the playable planning-puzzle experience. It emphasizes score, stars, medals, route quality, risk warnings, leaderboard comparison, and learning strategy through play.
+
+Simulation Lab is the reproducible experiment sandbox. It emphasizes exact configuration, deterministic/stochastic setup, dynamic current-field metadata, solver packets, replay seeds, external solver workflows, JSON import/export, and auditability.
+
+Both modes use the same terrain, current fields, hazards, glider physics, scoring core, route validation, planner APIs, and replay/export system. `experienceMode` is persisted as metadata in scenario state and exports; it must not fork simulation mechanics.
+
+Challenge Mode also persists `missionMode`. Mission modes are player-facing objective presets such as Survey Sweep, Signal Hunt, Plume Intercept, Danger Run, and Long Glide. They map to shared technical defaults for sample-field behavior, current-field behavior, sampling rules, scoring weights, route-grade weights, and replay/export metadata. Simulation Lab remains the detailed configuration path.
+
 ## Version / Milestone Log
 
 ### v0.1 - Static Browser Shell And Phaser Map
@@ -73,6 +85,16 @@ The current app supports tutorials, deterministic and stochastic generated chall
 - Travel Cost, Risk/Safety, route diagnostics, simulation drift, hover tooltips, solver exports, and Greedy Planner all use the shared current sampler path.
 - Greedy Planner and route validation now treat terminal over-duration waypoints as valid carry-through instructions so missions remain active until the time limit.
 
+### v0.9 - Challenge Mode, Mission Modes, Dynamic Sampling, And Waypoint Semantics
+
+- Expanded ANCHOR into a two-experience system: Challenge Mode for playable planning puzzles and Simulation Lab for reproducible experiments.
+- Added Mission Mode presets that map research concepts such as coverage planning, informative path planning, event interception, and energy-aware routing into player-facing objectives.
+- Added `sampleFieldConfig` metadata and generated sample-field behaviors for static, hotspot, burst, moving, current-advected, random, neighbor-coupled, plume, channel, gradient, and texture-like value fields where configured.
+- Added segment contribution grades and route-quality summaries so manual, Greedy Planner, and imported-solver routes can be explained with the same vocabulary.
+- Added explicit waypoint semantics for `navigation`, `surface`, `samplingTarget`, and `terminalCarryThrough` waypoints, while preserving old plans by defaulting missing kinds to `navigation`.
+- Added semantic timeline events for navigation intent, surface/update windows, sampling targets, and terminal carry-through outcomes while preserving existing `waypointReached` and `missedWaypoint` events.
+- Added navigation uncertainty config, seeded cone metadata, and cone-aware route grading as a first pass. This is not yet a full true-position-vs-believed-position underwater navigation simulator.
+
 ## Current Stable Concepts
 
 - Browser game remains authoritative for validation, simulation, scoring, and player-facing results.
@@ -81,6 +103,11 @@ The current app supports tutorials, deterministic and stochastic generated chall
 - Core modules should remain independent from Phaser scenes and DOM UI.
 - UUID/instance identity is used as replay seed anchor metadata.
 - `generationVersion: "anchor-generator-v1"` is the current deterministic generation version label.
+- `experienceMode` frames the UI as Challenge Mode or Simulation Lab while sharing the same mission engine.
+- `missionMode` is a Challenge Mode objective preset, not a separate physics/scoring engine.
+- `sampleFieldConfig` describes generated sample-value behavior when present.
+- Waypoint `kind` values distinguish navigation commands, surface/update points, sampling targets, and terminal carry-through commands.
+- Route-quality and segment contribution grades are explanatory diagnostics for player feedback, debrief, result exports, and solver comparison.
 - Greedy Planner plans only for the selected glider.
 - Route preflight validation is required before Execute and before accepting planner output.
 - Forecast/truth/oracle fairness metadata must be preserved in plans, results, and leaderboard records.
@@ -93,11 +120,13 @@ The current app supports tutorials, deterministic and stochastic generated chall
 - Advanced stochastic surface-update automation.
 - External current-field ingestion.
 - Stronger baseline solvers beyond greedy.
+- Full true-position-vs-believed-position dead-reckoning simulation beyond current cone-aware grading.
 
 ## Known Limitations
 
 - Greedy Planner is a fast baseline, not a global optimizer.
 - Current fields are synthetic ocean-inspired gameplay fields, not validated CFD, HYCOM, or operational forecasts.
+- Navigation uncertainty is currently configuration, semantic surfacing metadata, seeded cone diagnostics, and route-grade penalty input; it is not a complete underwater navigation state estimator.
 - Route-block diagnostics are improving and may still need better explanations for rare edge cases.
 - The Colab/Python solver is a template, not a full optimizer or simulator.
 - The Node headless solver is a portable baseline/validation path, not the official scorer.

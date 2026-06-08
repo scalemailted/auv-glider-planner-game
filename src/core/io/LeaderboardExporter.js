@@ -28,6 +28,7 @@ export function buildLeaderboardRecordExport(record, { embedChallenge = true } =
     challengeId: record.challengeId ?? record.instanceId,
     missionId: record.missionId,
     challengeMode: record.challengeMode ?? record.mode ?? null,
+    experienceMode: record.experienceMode ?? null,
     replaySeedAnchor: replaySeedContract?.replaySeedAnchor ?? record.instanceId,
     generationVersion: replaySeedContract?.generationVersion ?? null,
     generationConfig: cloneJson(replaySeedContract?.generationConfig ?? record.generationConfig ?? null),
@@ -57,6 +58,7 @@ export function buildLeaderboardRecordExport(record, { embedChallenge = true } =
       challengeId: record.challengeId ?? record.instanceId,
       missionId: record.missionId,
       challengeMode: record.challengeMode ?? record.mode ?? null,
+      experienceMode: record.experienceMode ?? null,
       replaySeedAnchor: replaySeedContract?.replaySeedAnchor ?? record.instanceId,
       generationVersion: replaySeedContract?.generationVersion ?? null
     },
@@ -65,6 +67,7 @@ export function buildLeaderboardRecordExport(record, { embedChallenge = true } =
         level: record.level,
         mission: record.mission,
         challengeMode: record.challengeMode ?? record.mode,
+        experienceMode: record.experienceMode,
         includeHiddenTruth: false
       })
       : null

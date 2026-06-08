@@ -1,6 +1,7 @@
 import { getWindowStartTime } from '../time/MissionTime.js';
 import { attachIdentityToPlan } from '../identity/GameInstanceId.js';
 import { getSelectedStart, isValidSelectedStart, setSelectedStart } from '../deployment/DeploymentZones.js';
+import { WAYPOINT_KINDS, normalizeWaypointKind } from './WaypointSemantics.js';
 
 export const VALID_WAYPOINT_ACTIONS = ['sample', 'transit', 'return', 'hold'];
 
@@ -132,6 +133,9 @@ export function validatePlan(plan, mission) {
       if (!VALID_WAYPOINT_ACTIONS.includes(waypoint.action)) {
         errors.push(`Waypoint ${index + 1} for "${agentPlan.agentId}" has invalid action "${waypoint.action}".`);
       }
+      if (waypoint.kind && !WAYPOINT_KINDS.includes(waypoint.kind)) {
+        warnings.push(`Waypoint ${index + 1} for "${agentPlan.agentId}" has unknown kind "${waypoint.kind}" and will be treated as navigation.`);
+      }
       if (waypoint.id) {
         if (ids.has(waypoint.id)) warnings.push(`Duplicate waypoint id "${waypoint.id}" was found.`);
         ids.add(waypoint.id);
@@ -227,6 +231,7 @@ export function convertMarkerToWaypoint(plan, agentId, markerIndex, patch = {}) 
     y: marker.y,
     t: marker.t,
     window: marker.window,
+    kind: patch.kind ?? 'navigation',
     action: patch.action ?? 'sample',
     note: marker.linkedTargetId ? `Converted from marker linked to ${marker.linkedTargetId}` : marker.label
   });
@@ -349,6 +354,7 @@ export function getUnknownAgentIds(plan, mission) {
 
 function normalizeWaypoint(waypoint, agentId, index, level = null) {
   const action = VALID_WAYPOINT_ACTIONS.includes(waypoint.action) ? waypoint.action : 'sample';
+  const kind = normalizeWaypointKind(waypoint);
   const x = Number(waypoint.x);
   const y = Number(waypoint.y);
   const window = Number(waypoint.window ?? 0);
@@ -361,9 +367,25 @@ function normalizeWaypoint(waypoint, agentId, index, level = null) {
     t: Number.isFinite(t) ? t : getWindowStartTime(level, normalizedWindow),
     x: Number.isFinite(x) ? Math.round(x) : NaN,
     y: Number.isFinite(y) ? Math.round(y) : NaN,
+    kind,
+    waypointKind: kind,
     action,
     note: waypoint.note ? String(waypoint.note) : ''
   };
+  if (kind === 'surface') {
+    normalized.gpsFix = waypoint.gpsFix !== false;
+    normalized.canReplan = waypoint.canReplan !== false;
+  }
+  if (kind === 'terminalCarryThrough') {
+    normalized.terminalCarryThrough = true;
+    normalized.intentionalOverDuration = waypoint.intentionalOverDuration !== false;
+    normalized.runtimeBehavior = 'truncate_at_mission_end';
+    normalized.terminalCarryThroughReason = waypoint.terminalCarryThroughReason
+      ? String(waypoint.terminalCarryThroughReason)
+      : 'mission_horizon_coverage';
+  }
+  if (waypoint.linkedTargetId) normalized.linkedTargetId = String(waypoint.linkedTargetId);
+  if (waypoint.targetId) normalized.targetId = String(waypoint.targetId);
   for (const key of [
     'estimatedArrivalTime',
     'segmentEnergy',

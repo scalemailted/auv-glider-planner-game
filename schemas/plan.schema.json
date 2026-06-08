@@ -28,6 +28,8 @@
     "estimatedArrivalTime": "optional planning estimate; recomputed by browser when absent",
     "x": "integer grid coordinate",
     "y": "integer grid coordinate",
+    "kind": "navigation | surface | samplingTarget | terminalCarryThrough; old plans default to navigation",
+    "waypointKind": "legacy/display alias for kind when present",
     "action": "sample | transit | return | hold",
     "segmentEnergy": "optional estimated segment energy from previous planning anchor",
     "cumulativeEnergy": "optional estimated cumulative route energy for this agent",
@@ -39,6 +41,12 @@
     "validity": "optional object with valid boolean and reasons array: time | fuel | terrain | stale",
     "warnings": "optional array of planning warnings such as blocked route or surfacing reach",
     "note": "optional string"
+  },
+  "waypointSemantics": {
+    "navigation": "commanded submerged navigation intent; not a GPS-confirmed point",
+    "surface": "surface/GPS/communication update point; emits surface_update semantics and can be used for replanning",
+    "samplingTarget": "science objective marker/target; not automatically a hard navigation checkpoint unless converted to a waypoint",
+    "terminalCarryThrough": "final intentional over-duration command; simulation travels toward it until mission time expires"
   },
   "markerShape": {
     "id": "string",

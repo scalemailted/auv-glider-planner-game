@@ -31,6 +31,7 @@ import { applyImportedWaypointData, importWaypointDataJson } from '../../../core
 import { buildSurfaceObservationExport } from '../../../core/io/SurfaceObservationExporter.js';
 import { recomputeAllWaypointTiming } from '../../../core/planning/TemporalWaypointPlanner.js';
 import { buildRouteValidationDiagnostic, formatDiagnosticDetails } from '../../../core/planning/RouteDiagnostic.js';
+import { gradeRouteContributions } from '../../../core/planning/SegmentContributionGrader.js';
 import {
   debugSurfaceDecision,
   isSurfaceDecisionModalVisible
@@ -401,6 +402,21 @@ export class SimulationScene extends PhaserScene {
     const result = attachIdentityToResult({
       ...engineResult,
       challengeMode: this.app.state.challengeMode,
+      experienceMode: this.app.state.experienceMode,
+      missionMode: this.app.state.missionMode ?? this.app.state.level?.meta?.missionMode ?? this.app.state.mission?.meta?.missionMode ?? null,
+      missionModePreset: this.app.state.level?.meta?.missionModePreset ?? this.app.state.mission?.meta?.missionModePreset ?? null,
+      navigationUncertainty: this.app.state.mission?.rules?.navigationUncertainty
+        ?? this.app.state.mission?.meta?.navigationUncertainty
+        ?? this.app.state.level?.meta?.generationConfig?.navigationUncertainty
+        ?? null,
+      routeQuality: gradeRouteContributions({
+        level: this.app.state.level,
+        mission: this.app.state.mission,
+        plan: this.app.state.plan,
+        challengeMode: this.app.state.challengeMode,
+        revealTruth: this.app.state.ui?.revealTruth,
+        forecastMemberId: this.app.state.ui?.forecastMemberId
+      }),
       source,
       planName: planDisplayName(this.app.state.plan, source),
       planMetadata: this.app.state.plan?.meta ?? {},

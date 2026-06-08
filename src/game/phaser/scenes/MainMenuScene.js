@@ -11,6 +11,7 @@ import { buildLeaderboardExport, buildLeaderboardRecordExport } from '../../../c
 import { buildResultExport } from '../../../core/io/ResultExporter.js';
 import { evaluateExactReplayAvailability } from '../../../core/random/ReplaySeedContract.js';
 import { normalizePlan } from '../../../core/planning/WaypointPlan.js';
+import { EXPERIENCE_MODES, normalizeExperienceMode } from '../../../core/experience/ExperienceMode.js';
 import {
   clearLeaderboard,
   clearLeaderboardRecord,
@@ -295,6 +296,7 @@ export class MainMenuScene extends PhaserScene {
       level: restored.level,
       mission: restored.mission,
       challengeMode: record.challengeMode ?? record.mode ?? 'perfectKnowledge',
+      experienceMode: record.experienceMode ?? EXPERIENCE_MODES.challenge,
       source: restored.source
     });
     resetPlanResultStore(this.app.state);
@@ -340,6 +342,7 @@ export class MainMenuScene extends PhaserScene {
       level: restored.level,
       mission: restored.mission,
       challengeMode: record.challengeMode ?? record.mode ?? 'perfectKnowledge',
+      experienceMode: record.experienceMode ?? EXPERIENCE_MODES.challenge,
       source: restored.source
     });
     resetPlanResultStore(this.app.state);
@@ -399,6 +402,7 @@ export class MainMenuScene extends PhaserScene {
       level: record.level,
       mission: record.mission,
       challengeMode: record.challengeMode ?? record.mode,
+      experienceMode: record.experienceMode,
       includeHiddenTruth: false
     }));
   }
@@ -414,6 +418,7 @@ export class MainMenuScene extends PhaserScene {
       mission: record.mission,
       plan: best.plan,
       result: best.result,
+      experienceMode: record.experienceMode,
       label: best.label ?? 'Leaderboard Best Plan'
     }));
   }
@@ -490,15 +495,18 @@ export class MainMenuScene extends PhaserScene {
       level,
       mission,
       challengeMode: forcedMode ?? level.challengeMode ?? entry.mode ?? 'perfectKnowledge',
+      experienceMode: EXPERIENCE_MODES.challenge,
       source: 'tutorial'
     });
     resetPlanResultStore(this.app.state);
     this.scene.start('MissionBriefingScene');
   }
 
-  openChallengeSetup(mode) {
+  openChallengeSetup(mode, experienceMode = EXPERIENCE_MODES.simulationLab) {
     this.app ??= this.sys.game.anchorApp;
     const stochastic = mode === 'forecast';
+    const normalizedExperience = normalizeExperienceMode(experienceMode);
+    this.app.state.experienceMode = normalizedExperience;
     this.app.state.ui.revealTruth = false;
     this.app.state.ui.forecastMemberId = stochastic ? 'ensemble_mean' : null;
     this.app.state.ui.roiViewMode = stochastic ? 'expectedValue' : 'expectedValue';
@@ -511,7 +519,10 @@ export class MainMenuScene extends PhaserScene {
       instanceId: null,
       missionId: null,
       challengeMode: mode,
-      source: stochastic ? 'stochasticChallenge' : 'deterministicChallenge',
+      experienceMode: normalizedExperience,
+      source: normalizedExperience === EXPERIENCE_MODES.simulationLab
+        ? (stochastic ? 'stochasticExperiment' : 'deterministicExperiment')
+        : (stochastic ? 'stochasticChallenge' : 'deterministicChallenge'),
       briefingSeen: false,
       setupPending: true
     };
@@ -519,18 +530,29 @@ export class MainMenuScene extends PhaserScene {
     this.scene.start('MissionBriefingScene');
   }
 
-  startRandomChallenge(mode) {
+  startRandomChallenge(mode, experienceMode = EXPERIENCE_MODES.challenge, options = {}) {
     this.app ??= this.sys.game.anchorApp;
     const stochastic = mode === 'forecast';
+    const normalizedExperience = normalizeExperienceMode(experienceMode);
     const { level, mission } = generateScenarioFromConfig(createDefaultScenarioConfig(mode));
+    level.meta ??= {};
+    level.meta.experienceMode = normalizedExperience;
+    mission.meta ??= {};
+    mission.meta.experienceMode = normalizedExperience;
     this.app.state.ui.revealTruth = false;
     this.app.state.ui.forecastMemberId = stochastic ? 'ensemble_mean' : null;
     this.app.state.ui.roiViewMode = 'expectedValue';
+    this.app.state.pendingGreedyRace = Boolean(options.greedyRace);
     beginScenario(this.app.state, {
       level,
       mission,
       challengeMode: mode,
-      source: stochastic ? 'stochasticChallenge' : 'deterministicChallenge'
+      experienceMode: normalizedExperience,
+      source: options.greedyRace
+        ? 'greedyPlannerRace'
+        : normalizedExperience === EXPERIENCE_MODES.simulationLab
+          ? (stochastic ? 'stochasticExperiment' : 'deterministicExperiment')
+          : (stochastic ? 'stochasticChallenge' : 'deterministicChallenge')
     });
     resetPlanResultStore(this.app.state);
     this.scene.start('MissionBriefingScene');

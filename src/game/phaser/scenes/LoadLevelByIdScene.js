@@ -8,6 +8,7 @@ import {
   SAVED_LEVELS_STORAGE_KEY
 } from '../../../core/storage/LevelRegistry.js';
 import { beginScenario } from '../../../core/scenario/ScenarioState.js';
+import { EXPERIENCE_MODES } from '../../../core/experience/ExperienceMode.js';
 
 const PhaserScene = globalThis.Phaser?.Scene ?? class {};
 
@@ -168,6 +169,7 @@ export class LoadLevelByIdScene extends PhaserScene {
       level,
       mission,
       challengeMode: level.challengeMode ?? 'perfectKnowledge',
+      experienceMode: level.meta?.experienceMode ?? mission.meta?.experienceMode ?? EXPERIENCE_MODES.simulationLab,
       source: 'savedLevel'
     });
     this.scene.start('MissionBriefingScene');

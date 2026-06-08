@@ -21,8 +21,13 @@ test('campaign planning smoke flow reaches debrief', async ({ page }) => {
   await expect(page.locator('#right-panel')).toHaveCount(0);
   await expect(page.locator('#context-panel')).toBeEmpty();
   await expect(page.locator('#mission-console')).toContainText('ANCHOR: Glider Command');
-  await expect(page.locator('#mission-console button.console-button')).toHaveCount(9);
+  await expect(page.locator('#mission-console button.console-button')).toHaveCount(13);
   await expect(page.locator('#mission-console .accordion-header')).toHaveCount(1);
+  await expect(page.locator('#mission-console')).toContainText('Challenge Mode');
+  await expect(page.locator('#mission-console')).toContainText('Simulation Lab');
+  await expect(page.locator('#mission-console')).toContainText('Editor / Import Tools');
+  await expect(page.locator('#mission-console')).toContainText('Play Challenge');
+  await expect(page.locator('#mission-console')).toContainText('Deterministic Experiment');
   await expect(page.locator('#mission-console')).toContainText('Demos');
   await expect(page.locator('#mission-console')).toContainText('Tutorials');
   await expect(page.locator('#mission-console')).toContainText('Flow Fields Demo');
@@ -265,7 +270,7 @@ test('campaign planning smoke flow reaches debrief', async ({ page }) => {
   await expect.poll(() => page.evaluate(() => window.anchorGame.phaser.scene.getScene('DebriefScene').sys.isActive())).toBe(true);
   await expect(page.locator('body')).not.toHaveClass(/debrief-fullscreen/);
   await expect(page.locator('#debrief-root')).toBeVisible();
-  await expect(page.locator('#debrief-root h1')).toHaveText('Mission Debrief');
+  await expect(page.locator('#debrief-root h1')).toHaveText('Challenge Debrief');
   await expect(page.locator('#debrief-root .debrief-header p').first()).toBeVisible();
   await expect(page.locator('#debrief-root .debrief-metric-card')).toHaveCount(8);
   await expect(page.locator('#debrief-root [data-action]')).toHaveCount(0);
@@ -309,6 +314,22 @@ test('scenario setup stays inside the center viewport', async ({ page }) => {
   await expect(page.locator('#waypoint-timeline')).toContainText('Mission Waypoints');
   await expectCenterShellContained(page);
   await expectCenterPanelUsesAvailableSpace(page);
+});
+
+test('challenge setup is mission-card first', async ({ page }) => {
+  await page.goto('/');
+  await expect.poll(() => page.evaluate(() => window.anchorGame?.phaser?.scene.getScene('MainMenuScene')?.sys.isActive() ?? false)).toBe(true);
+
+  await page.evaluate(() => window.anchorGame.phaser.scene.getScene('MainMenuScene').openChallengeSetup('perfectKnowledge', 'challenge'));
+  await expect.poll(() => page.evaluate(() => window.anchorGame.phaser.scene.getScene('MissionBriefingScene').sys.isActive())).toBe(true);
+  await expect(page.locator('.mission-mode-card-grid')).toBeVisible();
+  await expect(page.locator('[data-mission-mode-card="surveySweep"]')).toContainText('Survey Sweep');
+  await expect(page.locator('[data-mission-mode-card="plumeIntercept"]')).toContainText('Plume Intercept');
+  await page.locator('[data-mission-mode-card="plumeIntercept"]').click();
+  await expect(page.evaluate(() => window.anchorGame.state.pendingScenarioSetup?.missionMode)).resolves.toBe('plumeIntercept');
+  await expect(page.evaluate(() => window.anchorGame.state.pendingScenarioSetup?.mode)).resolves.toBe('forecast');
+  await expect(page.locator('#mission-console [data-flow-field="basePreset"]')).toHaveCount(0);
+  await expect(page.locator('#mission-console .accordion-section[data-accordion-key="advanced-setup"]')).toHaveClass(/collapsed/);
 });
 
 test('level generator opens from main menu', async ({ page }) => {

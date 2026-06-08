@@ -2,8 +2,10 @@ import { EXPORT_SCHEMA_VERSION, cloneJson } from './ExportVisibility.js';
 import { ensureLevelIdentity } from '../identity/GameInstanceId.js';
 import { evaluateExactReplayAvailability, getReplaySeedContract } from '../random/ReplaySeedContract.js';
 import { summarizeCurrentFieldConfig } from '../generation/FlowFieldConfig.js';
+import { normalizeExperienceMode } from '../experience/ExperienceMode.js';
+import { normalizeNavigationUncertaintyConfig } from '../navigation/NavigationUncertainty.js';
 
-export function buildResultExport({ level, mission, plan, result, label = 'Manual Player Plan', challenge = null } = {}) {
+export function buildResultExport({ level, mission, plan, result, label = 'Manual Player Plan', challenge = null, experienceMode = null } = {}) {
   if (level) ensureLevelIdentity(level);
   const replaySeedContract = getReplaySeedContract({
     level,
@@ -17,6 +19,21 @@ export function buildResultExport({ level, mission, plan, result, label = 'Manua
     challenge,
     replaySeedContract
   });
+  const resolvedExperienceMode = normalizeExperienceMode(experienceMode ?? result?.experienceMode ?? level?.meta?.experienceMode ?? mission?.meta?.experienceMode ?? challenge?.experienceMode);
+  const missionMode = result?.missionMode
+    ?? level?.meta?.missionMode
+    ?? mission?.meta?.missionMode
+    ?? challenge?.missionMode
+    ?? level?.meta?.generationConfig?.missionMode
+    ?? null;
+  const navigationUncertainty = normalizeNavigationUncertaintyConfig(
+    result?.navigationUncertainty
+      ?? mission?.rules?.navigationUncertainty
+      ?? mission?.meta?.navigationUncertainty
+      ?? level?.meta?.generationConfig?.navigationUncertainty
+      ?? challenge?.navigationUncertainty
+      ?? {}
+  );
   return {
     schemaVersion: EXPORT_SCHEMA_VERSION,
     type: 'anchor.result',
@@ -26,12 +43,22 @@ export function buildResultExport({ level, mission, plan, result, label = 'Manua
     challengeId: result?.instanceId ?? level?.instanceId ?? null,
     missionId: result?.missionId ?? mission?.missionId ?? mission?.id ?? null,
     challengeMode: result?.challengeMode ?? level?.challengeMode ?? null,
+    experienceMode: resolvedExperienceMode,
+    missionMode,
+    missionModePreset: cloneJson(level?.meta?.missionModePreset ?? mission?.meta?.missionModePreset ?? challenge?.missionModePreset ?? level?.meta?.generationConfig?.missionModePreset ?? null),
     replaySeedAnchor: replaySeedContract?.replaySeedAnchor ?? result?.instanceId ?? level?.instanceId ?? null,
     generationVersion: replaySeedContract?.generationVersion ?? null,
     generationConfig: cloneJson(replaySeedContract?.generationConfig ?? level?.meta?.generationConfig ?? null),
+    navigationUncertainty: cloneJson(navigationUncertainty),
+    sampleFieldConfig: cloneJson(level?.meta?.generationConfig?.sampleFieldConfig ?? level?.meta?.generationConfig?.sampleField ?? null),
     currentFieldConfig: cloneJson(level?.meta?.generationConfig?.currentFieldConfig ?? level?.meta?.generationConfig?.currentField ?? null),
     currentFieldSummary: summarizeCurrentFieldConfig(level?.meta?.generationConfig?.currentFieldConfig ?? level?.meta?.generationConfig?.currentField ?? {}),
     importedFlowField: cloneJson(level?.meta?.generationConfig?.importedFlowField ?? null),
+    waypointSemantics: {
+      defaultKind: 'navigation',
+      kinds: ['navigation', 'surface', 'samplingTarget', 'terminalCarryThrough'],
+      eventTypes: ['navigation_intent', 'surface_update', 'sampling_target', 'terminal_carry_through']
+    },
     derivedSeeds: cloneJson(replaySeedContract?.derivedSeeds ?? null),
     replaySeedContract: cloneJson(replaySeedContract),
     exactReplay: {
@@ -66,6 +93,8 @@ export function buildResultExport({ level, mission, plan, result, label = 'Manua
       challengeId: challenge.challengeId ?? challenge.instanceId,
       missionId: challenge.missionId,
       challengeMode: challenge.challengeMode,
+      experienceMode: challenge.experienceMode ?? resolvedExperienceMode,
+      missionMode: challenge.missionMode ?? missionMode,
       replaySeedAnchor: challenge.replaySeedAnchor ?? challenge.replaySeedContract?.replaySeedAnchor ?? challenge.instanceId,
       generationVersion: challenge.generationVersion ?? challenge.replaySeedContract?.generationVersion ?? null,
       visibility: challenge.visibility
@@ -76,6 +105,7 @@ export function buildResultExport({ level, mission, plan, result, label = 'Manua
       selectedStart: agent.deployment?.selectedStart ?? agent.selectedStart ?? agent.start ?? null
     }))),
     planningMarkers: cloneJson(plan?.planningMarkers ?? []),
+    routeQuality: cloneJson(result?.routeQuality ?? null),
     routeExecution: {
       frames: cloneJson(result?.frames ?? []),
       trajectories: cloneJson(result?.trajectories ?? result?.frames ?? []),

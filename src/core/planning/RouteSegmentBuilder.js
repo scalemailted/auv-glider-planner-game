@@ -1,5 +1,6 @@
 import { getSelectedStart } from '../deployment/DeploymentZones.js';
 import { clipLineToTerrain } from './RoutePreview.js';
+import { normalizeWaypointKind } from './WaypointSemantics.js';
 
 export function buildRouteSegmentsForAgent({ level, mission, agent, agentPlan, surfacedAgents = [], planningAnchor = null } = {}) {
   const resolvedAgent = agent ?? mission?.agents?.find((candidate) => candidate.id === agentPlan?.agentId);
@@ -38,6 +39,9 @@ export function buildRouteSegmentsForAgent({ level, mission, agent, agentPlan, s
       from,
       to,
       kind: index === 1 ? 'startToWaypoint' : 'waypointToWaypoint',
+      waypointKind: normalizeWaypointKind(to),
+      gpsCorrectionAtEnd: normalizeWaypointKind(to) === 'surface',
+      canReplanAtEnd: normalizeWaypointKind(to) === 'surface',
       waypointIndex: index - 1,
       valid: clipped.valid,
       points: clipped.points,

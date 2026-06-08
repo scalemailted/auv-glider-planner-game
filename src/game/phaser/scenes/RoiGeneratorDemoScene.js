@@ -1,7 +1,12 @@
 import {
   createDemoRoiField,
   roiDistributionLabel,
+  sampleSpatialPatternLabel,
+  sampleTemporalBehaviorLabel,
+  roiDemoDistributionDefaults,
   normalizeRoiDemoDistribution,
+  normalizeRoiDemoSpatialPattern,
+  normalizeRoiDemoTemporalBehavior,
   normalizeRoiDemoTimeMode
 } from '../../../core/demo/DemoRoiFields.js';
 import { PhaserButton } from '../ui/Button.js';
@@ -18,6 +23,9 @@ export class RoiGeneratorDemoScene extends PhaserScene {
     this.hotspotCount = 4;
     this.noise = 0.15;
     this.timeMode = 'static';
+    this.spatialPattern = 'multiHotspot';
+    this.temporalBehavior = 'periodic';
+    this.forecastView = 'forecast';
     this.demoTime = 0;
     this.timeSpeedScale = 1;
     this.paused = false;
@@ -26,10 +34,14 @@ export class RoiGeneratorDemoScene extends PhaserScene {
 
   init(data = {}) {
     this.distribution = normalizeRoiDemoDistribution(data.distribution ?? 'gaussianHotspots');
+    const distributionDefaults = roiDemoDistributionDefaults(this.distribution);
     this.seed = data.seed ?? 'anchor-roi-demo';
     this.hotspotCount = finiteNumber(data.hotspotCount, 4);
     this.noise = finiteNumber(data.noise, 0.15);
     this.timeMode = normalizeRoiDemoTimeMode(data.timeMode ?? 'static');
+    this.spatialPattern = normalizeRoiDemoSpatialPattern(data.spatialPattern ?? distributionDefaults.spatialPattern);
+    this.temporalBehavior = normalizeRoiDemoTemporalBehavior(data.temporalBehavior ?? distributionDefaults.temporalBehavior);
+    this.forecastView = normalizeForecastView(data.forecastView ?? 'forecast');
     this.timeSpeedScale = finiteNumber(data.timeSpeedScale, 1);
     this.demoTime = finiteNumber(data.demoTime, 0);
     this.paused = false;
@@ -84,6 +96,9 @@ export class RoiGeneratorDemoScene extends PhaserScene {
       hotspotCount: this.hotspotCount,
       noise: this.noise,
       timeMode: this.timeMode,
+      spatialPattern: this.spatialPattern,
+      temporalBehavior: this.temporalBehavior,
+      forecastView: this.forecastView,
       timeSpeedScale: this.timeSpeedScale,
       demoTime: this.demoTime,
       ...overrides
@@ -103,12 +118,26 @@ export class RoiGeneratorDemoScene extends PhaserScene {
       hotspotCount: this.hotspotCount,
       noise: this.noise,
       timeMode: this.timeMode,
+      spatialPattern: this.field?.spatialPattern ?? this.spatialPattern,
+      spatialPatternLabel: sampleSpatialPatternLabel(this.field?.spatialPattern ?? this.spatialPattern),
+      temporalBehavior: this.field?.temporalBehavior ?? this.temporalBehavior,
+      temporalBehaviorLabel: sampleTemporalBehaviorLabel(this.field?.temporalBehavior ?? this.temporalBehavior),
+      forecastView: this.forecastView,
       timeSpeedScale: this.timeSpeedScale,
       time: this.demoTime,
       paused: this.paused,
       stats: this.field?.stats
     }, {
-      distribution: (distribution) => this.scene.restart(this.sceneConfig({ distribution })),
+      distribution: (distribution) => {
+        const defaults = roiDemoDistributionDefaults(distribution);
+        this.scene.restart(this.sceneConfig({
+          distribution,
+          spatialPattern: defaults.spatialPattern,
+          temporalBehavior: defaults.temporalBehavior,
+          timeMode: defaults.temporalBehavior === 'static' ? 'static' : this.timeMode,
+          demoTime: 0
+        }));
+      },
       seed: (seed) => {
         this.seed = String(seed ?? 'anchor-roi-demo').trim() || 'anchor-roi-demo';
         this.scene.restart(this.sceneConfig({ seed: this.seed, demoTime: 0 }));
@@ -116,6 +145,9 @@ export class RoiGeneratorDemoScene extends PhaserScene {
       hotspotCount: (hotspotCount) => this.scene.restart(this.sceneConfig({ hotspotCount: Number(hotspotCount), demoTime: 0 })),
       noise: (noise) => this.scene.restart(this.sceneConfig({ noise: Number(noise), demoTime: 0 })),
       timeMode: (timeMode) => this.scene.restart(this.sceneConfig({ timeMode, demoTime: 0 })),
+      spatialPattern: (spatialPattern) => this.scene.restart(this.sceneConfig({ spatialPattern, demoTime: 0 })),
+      temporalBehavior: (temporalBehavior) => this.scene.restart(this.sceneConfig({ temporalBehavior, timeMode: temporalBehavior === 'static' ? 'static' : 'dynamic', demoTime: 0 })),
+      forecastView: (forecastView) => this.scene.restart(this.sceneConfig({ forecastView, demoTime: 0 })),
       timeSpeedScale: (timeSpeedScale) => {
         this.timeSpeedScale = Number(timeSpeedScale) || 1;
         this.renderConsole();
@@ -273,7 +305,7 @@ export class RoiGeneratorDemoScene extends PhaserScene {
     this.subtitleText?.setWordWrapWidth(Math.min(780, map.width));
     const stats = this.field?.stats ?? {};
     const dynamicText = this.timeMode === 'dynamic' ? ` | Demo time: ${this.demoTime.toFixed(1)} hr | Time Speed: ${this.timeSpeedScale}x` : '';
-    this.statusText?.setText(`Distribution: ${roiDistributionLabel(this.distribution)} | Seed: ${this.seed} | Hotspots: ${this.hotspotCount} | Noise: ${Number(this.noise).toFixed(2)}${dynamicText} | Max: ${formatStat(stats.max)} | Mean: ${formatStat(stats.mean)} | Total: ${formatStat(stats.totalValue)}`);
+    this.statusText?.setText(`Distribution: ${roiDistributionLabel(this.distribution)} | Pattern: ${sampleSpatialPatternLabel(this.field?.spatialPattern ?? this.spatialPattern)} | Temporal: ${sampleTemporalBehaviorLabel(this.field?.temporalBehavior ?? this.temporalBehavior)} | View: ${forecastViewLabel(this.forecastView)} | Seed: ${this.seed}${dynamicText} | Max: ${formatStat(stats.max)} | Mean: ${formatStat(stats.mean)} | Total: ${formatStat(stats.totalValue)}`);
     this.statusText?.setWordWrapWidth(Math.min(1040, map.width));
     this.statusText?.setPosition(margin, map.y + map.height + 18);
   }
@@ -319,4 +351,17 @@ function finiteNumber(value, fallback = 0) {
 function formatStat(value) {
   const number = Number(value);
   return Number.isFinite(number) ? number.toFixed(3) : 'N/A';
+}
+
+function normalizeForecastView(value) {
+  return ['forecast', 'truth', 'uncertainty', 'depleted'].includes(value) ? value : 'forecast';
+}
+
+function forecastViewLabel(value) {
+  return {
+    forecast: 'Forecast',
+    truth: 'Truth',
+    uncertainty: 'Uncertainty',
+    depleted: 'Depleted'
+  }[value] ?? 'Forecast';
 }

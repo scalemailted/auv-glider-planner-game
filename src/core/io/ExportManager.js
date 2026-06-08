@@ -14,6 +14,7 @@ export function exportChallenge(gameState, options = {}) {
     level: gameState?.level,
     mission: gameState?.mission,
     challengeMode: gameState?.challengeMode,
+    experienceMode: gameState?.experienceMode,
     includeHiddenTruth: Boolean(options.includeHiddenTruth)
   });
 }
@@ -28,6 +29,7 @@ export function exportSolverPacket(gameState, options = {}) {
     mission: gameState?.mission,
     plan: gameState?.plan,
     challengeMode: gameState?.challengeMode,
+    experienceMode: gameState?.experienceMode,
     includeHiddenTruth: Boolean(options.oracleMode),
     forecastMemberId: gameState?.ui?.forecastMemberId,
     roiViewMode: gameState?.ui?.roiViewMode,
@@ -53,6 +55,7 @@ export function exportResult(gameState) {
     mission: gameState?.mission,
     plan: gameState?.plan,
     result: gameState?.result,
+    experienceMode: gameState?.experienceMode,
     label: gameState?.currentPlanSource ?? 'Manual Player Plan'
   });
 }

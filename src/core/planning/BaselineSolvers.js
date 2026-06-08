@@ -555,6 +555,8 @@ function reconcileGreedyStopsWithAcceptedPlan(plan, level, mission) {
       : 0;
     if (lastWaypoint && duration && acceptedTime > duration && !lastWaypoint.terminalCarryThrough) {
       lastWaypoint.terminalCarryThrough = true;
+      lastWaypoint.kind = 'terminalCarryThrough';
+      lastWaypoint.waypointKind = 'terminalCarryThrough';
       lastWaypoint.terminalCarryThroughReason = 'mission_horizon_coverage';
       lastWaypoint.runtimeBehavior = 'truncate_at_mission_end';
       lastWaypoint.intentionalOverDuration = true;
@@ -1480,6 +1482,8 @@ function buildCandidateWaypoint(candidate, { duration = null } = {}) {
     x: candidate.x,
     y: candidate.y,
     action: 'sample',
+    kind: terminalCarryThrough ? 'terminalCarryThrough' : 'navigation',
+    waypointKind: terminalCarryThrough ? 'terminalCarryThrough' : 'navigation',
     ...(terminalCarryThrough ? {
       terminalCarryThrough: true,
       terminalCarryThroughReason: candidate.terminalCarryThroughReason ?? 'mission_horizon_coverage',

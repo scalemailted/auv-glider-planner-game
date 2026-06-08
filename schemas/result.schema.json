@@ -48,12 +48,16 @@
     "replaySeedAnchor",
     "generationVersion",
     "generationConfig",
+    "missionMode",
+    "navigationUncertainty",
     "currentFieldConfig",
+    "sampleFieldConfig",
     "currentFieldSummary",
     "importedFlowField",
     "derivedSeeds",
     "replaySeedContract",
     "exactReplay",
+    "waypointSemantics",
     "comparison",
     "rating",
     "objectives"
@@ -74,6 +78,12 @@
     "ignoreUpdateEvents": "true when surfacing/update pauses were bypassed",
     "ignoredUpdateEvents": "count of update/surfacing decision events skipped"
   },
+  "waypointSemantics": {
+    "kind": "Executed plan waypoints may include navigation | surface | samplingTarget | terminalCarryThrough.",
+    "events": "Simulation events may include navigation_intent, surface_update, sampling_target, or terminal_carry_through companion events in addition to waypointReached/missedWaypoint compatibility events.",
+    "surfaceUpdate": "surface waypoint events include gpsFix true, canReplan true, and uncertaintyCollapsed true.",
+    "terminalCarryThrough": "terminal carry-through missedWaypoint events are non-blocking mission-time-expiration records when the mission ends before arrival."
+  },
   "missionOptions": {
     "ignoreUpdateEvents": "when true, scheduled surfacing/update windows are logged but do not pause simulation",
     "ignoredUpdateEvents": "number of update events skipped during execution"
@@ -86,6 +96,13 @@
     "derivedSeeds": "namespace-specific seeds derived from the UUID"
   },
   "exactReplay": "available from snapshot when a challenge snapshot is embedded/available; otherwise available only when UUID/config/version/seeds are complete and compatible",
+  "sampleFieldConfig": "sample-value generation metadata preserved with generated challenge attempts when available; result frames/events remain the authoritative record of what was scored",
+  "navigationUncertainty": {
+    "level": "off | low | medium | high",
+    "seeded": "true when dead-reckoning offsets are deterministic from the replay seed contract",
+    "gpsCorrectionOnSurface": "true when surfacing/GPS fixes reset the true-vs-believed position uncertainty",
+    "routeQuality": "segments may include components.navigationUncertaintyPenalty and diagnostics.deadReckoningCone with cone width, overlap risk, and seeded offset metadata"
+  },
   "summaryFields": [
     "finalScore",
     "sampleScore",

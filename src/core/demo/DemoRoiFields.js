@@ -1,5 +1,12 @@
 import { generateROI, createHotspots } from '../generation/ROIFieldGenerator.js';
 import { createSeededRng } from '../random/SeededRng.js';
+import {
+  SAMPLE_SPATIAL_PATTERNS,
+  SAMPLE_TEMPORAL_BEHAVIORS,
+  normalizeSampleFieldConfig,
+  sampleSpatialPatternLabel,
+  sampleTemporalBehaviorLabel
+} from '../generation/SampleFieldConfig.js';
 
 export const ROI_DEMO_GRID = { width: 24, height: 16 };
 export const ROI_DEMO_DISTRIBUTIONS = [
@@ -8,9 +15,16 @@ export const ROI_DEMO_DISTRIBUTIONS = [
   'clusteredHotspots',
   'gradientFront',
   'sparseTargets',
-  'ridgeCorridor'
+  'ridgeCorridor',
+  'bimodalHotspots',
+  'movingHotspot',
+  'burstyBloom',
+  'currentAdvectedPlume',
+  'nonuniformRandom'
 ];
 export const ROI_DEMO_TIME_MODES = ['static', 'dynamic'];
+export const ROI_DEMO_SPATIAL_PATTERNS = SAMPLE_SPATIAL_PATTERNS;
+export const ROI_DEMO_TEMPORAL_BEHAVIORS = SAMPLE_TEMPORAL_BEHAVIORS;
 
 export function normalizeRoiDemoDistribution(value = 'gaussianHotspots') {
   return ROI_DEMO_DISTRIBUTIONS.includes(value) ? value : 'gaussianHotspots';
@@ -26,6 +40,9 @@ export function createDemoRoiField({
   hotspotCount = 4,
   noise = 0.15,
   timeMode = 'static',
+  spatialPattern = null,
+  temporalBehavior = null,
+  forecastView = 'forecast',
   time = 0,
   grid = ROI_DEMO_GRID
 } = {}) {
@@ -44,6 +61,9 @@ export function createDemoRoiField({
     hotspotCount: Math.max(1, Math.min(8, Math.round(Number(hotspotCount) || 4))),
     noise: clamp01(noise),
     timeMode: normalizedTimeMode,
+    spatialPattern,
+    temporalBehavior,
+    forecastView,
     time: t
   });
   const stats = summarizeField(field);
@@ -54,6 +74,9 @@ export function createDemoRoiField({
     distribution: normalizedDistribution,
     distributionLabel: roiDistributionLabel(normalizedDistribution),
     timeMode: normalizedTimeMode,
+    spatialPattern: normalizeRoiDemoSpatialPattern(spatialPattern ?? distributionToSampleConfig(normalizedDistribution).spatialPattern),
+    temporalBehavior: normalizeRoiDemoTemporalBehavior(temporalBehavior ?? distributionToSampleConfig(normalizedDistribution).temporalBehavior),
+    forecastView,
     time: t,
     stats,
     highValueCells: findHighValueCells(field, Math.max(0.68, stats.mean + stats.stdDev * 1.35))
@@ -67,11 +90,35 @@ export function roiDistributionLabel(value) {
     clusteredHotspots: 'Clustered Hotspots',
     gradientFront: 'Gradient / Front',
     sparseTargets: 'Sparse Targets',
-    ridgeCorridor: 'Ridge / Corridor'
+    ridgeCorridor: 'Ridge / Corridor',
+    bimodalHotspots: 'Bimodal Hotspots',
+    movingHotspot: 'Moving Hotspot',
+    burstyBloom: 'Bursty Bloom',
+    currentAdvectedPlume: 'Current-Advected Plume',
+    nonuniformRandom: 'Nonuniform Random'
   }[value] ?? 'Gaussian Hotspots';
 }
 
-function buildDistribution({ distribution, rng, seed, width, height, hotspotCount, noise, timeMode, time }) {
+export function normalizeRoiDemoSpatialPattern(value = 'multiHotspot') {
+  return ROI_DEMO_SPATIAL_PATTERNS.includes(value) ? value : 'multiHotspot';
+}
+
+export function normalizeRoiDemoTemporalBehavior(value = 'static') {
+  return ROI_DEMO_TEMPORAL_BEHAVIORS.includes(value) ? value : 'static';
+}
+
+export function roiDemoDistributionDefaults(distribution = 'gaussianHotspots') {
+  const defaults = distributionToSampleConfig(normalizeRoiDemoDistribution(distribution));
+  return {
+    spatialPattern: defaults.spatialPattern,
+    temporalBehavior: defaults.temporalBehavior,
+    distribution: defaults.distribution
+  };
+}
+
+export { sampleSpatialPatternLabel, sampleTemporalBehaviorLabel };
+
+function buildDistribution({ distribution, rng, seed, width, height, hotspotCount, noise, timeMode, spatialPattern, temporalBehavior, forecastView, time }) {
   if (distribution === 'uniformRandom') return withNoise(createUniformRandom(width, height, rng), rng, noise * 0.35);
   if (distribution === 'clusteredHotspots') {
     return withNoise(generateROI(width, height, time, {
@@ -83,11 +130,91 @@ function buildDistribution({ distribution, rng, seed, width, height, hotspotCoun
   if (distribution === 'gradientFront') return createGradientFront({ width, height, rng, noise, time });
   if (distribution === 'sparseTargets') return createSparseTargets({ width, height, rng, hotspotCount, noise, time });
   if (distribution === 'ridgeCorridor') return createRidgeCorridor({ width, height, rng, noise, time });
-  return withNoise(generateROI(width, height, time, {
-    roiPattern: timeMode === 'dynamic' ? 'moving' : 'multiple',
+  const sampleFieldConfig = normalizeSampleFieldConfig({
+    ...distributionToSampleConfig(distribution),
+    spatialPattern: spatialPattern ?? distributionToSampleConfig(distribution).spatialPattern,
+    temporalBehavior: timeMode === 'dynamic'
+      ? temporalBehavior ?? distributionToSampleConfig(distribution).temporalBehavior
+      : 'static',
+    mode: timeMode === 'dynamic' ? 'dynamic' : 'static',
+    hotspotCount,
+    spatialCorrelation: { enabled: true, radiusCells: 3, anisotropy: distribution === 'currentAdvectedPlume' ? 'currentAligned' : 'none' },
+    neighborInfluence: { enabled: true, diffusionRate: 0.14, growthRate: 0.04, decayRate: 0.03 },
+    currentCoupling: { enabled: distribution === 'currentAdvectedPlume' || temporalBehavior === 'currentAdvected', advectionStrength: 0.8 }
+  }, { roiHotspots: hotspotCount });
+  const generated = generateROI(width, height, time, {
+    seed,
+    sampleFieldSeed: `${seed}:${distribution}:sample-field`,
+    sampleFieldConfig,
     temporalHotspots: timeMode === 'dynamic',
-    hotspots: createHotspots(width, height, hotspotCount, 'multiple', createSeededRng(`${seed}:gaussian:${hotspotCount}`))
-  }), rng, noise);
+    currentFrame: makeDemoCurrentFrame(width, height, time),
+    hotspots: createHotspots(width, height, hotspotCount, legacyPattern(sampleFieldConfig), createSeededRng(`${seed}:sample-hotspots:${hotspotCount}`))
+  });
+  const viewAdjusted = applyForecastView(generated, forecastView, seed, time);
+  return withNoise(viewAdjusted, rng, noise);
+}
+
+function distributionToSampleConfig(distribution) {
+  return {
+    uniformRandom: { spatialPattern: 'randomTexture', temporalBehavior: 'uniformRandom', distribution: 'uniform' },
+    gaussianHotspots: { spatialPattern: 'multiHotspot', temporalBehavior: 'periodic', distribution: 'multimodal' },
+    clusteredHotspots: { spatialPattern: 'multiHotspot', temporalBehavior: 'moving', distribution: 'clustered' },
+    gradientFront: { spatialPattern: 'gradient', temporalBehavior: 'periodic', distribution: 'uniform' },
+    sparseTargets: { spatialPattern: 'multiHotspot', temporalBehavior: 'bursty', distribution: 'multimodal' },
+    ridgeCorridor: { spatialPattern: 'channelCorridor', temporalBehavior: 'periodic', distribution: 'gaussian' },
+    bimodalHotspots: { spatialPattern: 'bimodal', temporalBehavior: 'periodic', distribution: 'bimodal' },
+    movingHotspot: { spatialPattern: 'singleHotspot', temporalBehavior: 'moving', distribution: 'gaussian' },
+    burstyBloom: { spatialPattern: 'multiHotspot', temporalBehavior: 'bursty', distribution: 'multimodal' },
+    currentAdvectedPlume: { spatialPattern: 'plume', temporalBehavior: 'currentAdvected', distribution: 'heavyTail' },
+    nonuniformRandom: { spatialPattern: 'randomTexture', temporalBehavior: 'nonuniformRandom', distribution: 'heavyTail' }
+  }[distribution] ?? { spatialPattern: 'multiHotspot', temporalBehavior: 'periodic', distribution: 'multimodal' };
+}
+
+function legacyPattern(sampleFieldConfig) {
+  if (sampleFieldConfig.spatialPattern === 'singleHotspot') return 'single';
+  if (sampleFieldConfig.spatialPattern === 'bimodal') return 'bimodal';
+  if (sampleFieldConfig.spatialPattern === 'plume') return 'plume';
+  if (sampleFieldConfig.distribution === 'clustered') return 'clustered';
+  if (sampleFieldConfig.temporalBehavior === 'moving') return 'moving';
+  return 'multiple';
+}
+
+function makeDemoCurrentFrame(width, height, time) {
+  return Array.from({ length: height }, (_, y) => Array.from({ length: width }, (_, x) => {
+    const nx = width > 1 ? x / (width - 1) : 0;
+    const ny = height > 1 ? y / (height - 1) : 0;
+    return [
+      0.28 + 0.16 * Math.sin(ny * Math.PI * 2 + time * 0.18),
+      0.08 * Math.cos(nx * Math.PI * 2 + time * 0.12)
+    ];
+  }));
+}
+
+function applyForecastView(field, forecastView, seed, time) {
+  if (forecastView === 'truth') return field;
+  if (forecastView === 'depleted') {
+    const cx = field[0]?.length ? field[0].length * (0.32 + 0.18 * Math.sin(time * 0.15)) : 0;
+    const cy = field.length * 0.52;
+    return field.map((row, y) => row.map((value, x) => {
+      const d2 = (x - cx) ** 2 + (y - cy) ** 2;
+      const depletion = 0.55 * Math.exp(-d2 / (2 * 2.2 ** 2));
+      return round3(clamp01(value * (1 - depletion)));
+    }));
+  }
+  if (forecastView === 'uncertainty') {
+    return field.map((row, y) => row.map((_value, x) => {
+      const uncertainty = 0.18 + 0.62 * seededUnitLike(`${seed}:uncertainty:${Math.floor(x / 3)}:${Math.floor(y / 3)}`);
+      return round3(clamp01(uncertainty + 0.08 * Math.sin(time * 0.2 + x * 0.3)));
+    }));
+  }
+  return field.map((row, y) => row.map((value, x) => {
+    const bias = (seededUnitLike(`${seed}:forecast-bias:${x}:${y}`) - 0.5) * 0.18;
+    return round3(clamp01(value + bias));
+  }));
+}
+
+function seededUnitLike(seed) {
+  return createSeededRng(seed)();
 }
 
 function createUniformRandom(width, height, rng) {

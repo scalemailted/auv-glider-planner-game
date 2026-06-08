@@ -1,8 +1,10 @@
 # ANCHOR: Glider Command
 
-**ANCHOR: Glider Command** is a browser-first AUV glider planning puzzle game and schema-driven simulator. Players plan waypoint missions, simulate glider behavior under currents, hazards, terrain, energy limits, and forecast uncertainty, then review scores and export data for external solvers.
+**ANCHOR** is a browser-based serious game and simulation sandbox for multi-agent underwater glider mission planning. Players plan waypoint missions, simulate glider behavior under dynamic currents, sample fields, hazards, terrain, energy limits, and forecast uncertainty, then review scores and export data for external solvers.
 
-The project is also an **AUV Glider Planner Game** for teaching long-horizon planning, energy tradeoffs, waypoint sequencing, forecast uncertainty, solver comparison, and dataset generation.
+The project is also an **AUV Glider Planner Game** for teaching long-horizon planning, energy tradeoffs, waypoint sequencing, forecast uncertainty, solver comparison, and dataset generation. Challenge Mode presents playable planning puzzles with mission-mode objectives, stars, route grades, risk warnings, and leaderboard comparison. Simulation Lab exposes the same mission engine as a reproducible experiment environment for deterministic/stochastic setup, current/sample-field configuration, replay seeds, solver packets, JSON import/export, and planner comparisons.
+
+ANCHOR treats the environment as two coupled planning fields: the current field describes how hard it is to move, and the sample field describes where and when it is valuable to collect information. Both experiences use the same terrain, current fields, sample fields, hazards, glider physics, scoring, route validation, planner APIs, and export/replay system.
 
 ## Current Status
 
@@ -31,6 +33,7 @@ Version 2 is a playable static-web game built with vanilla JavaScript, HTML, CSS
 - local browser leaderboard records for completed challenge attempts, grouped by level instance
 - typed export products for replayable challenges, solver packets, oracle datasets, structured results, plans, and leaderboard records
 - topology-aware synthetic ocean-inspired U/V current generation with seeded parametric presets for generated challenge, demo, and dataset levels
+- dynamic sample-field generation with seeded spatial patterns, hotspot/burst behavior, temporal evolution, and mission-mode objective defaults
 - generated deterministic/stochastic challenge levels with temporal ROI hotspot and current-field evolution
 - generated-map connectivity validation and repair so deployment zones connect to navigable water and high-value ROI
 - active render-time synchronization: planning uses the scrubber time, simulation uses `SimulationEngine.t`, and generated levels store temporal-frame validation metadata
@@ -64,6 +67,16 @@ If Python is unavailable, any static file server can serve the repository root. 
 ## How To Play
 
 See [HOWPLAY.md](HOWPLAY.md) for complete player instructions, tutorial guidance, scoring explanations, solver workflows, and classroom usage notes.
+
+## Challenge Mode vs Simulation Lab
+
+ANCHOR has two user-facing experiences built on the same mission engine.
+
+Challenge Mode is the playable planning-puzzle experience. It emphasizes score, stars, medals, route quality, risk warnings, leaderboard comparison, and learning strategy through play.
+
+Simulation Lab is the reproducible experiment sandbox. It emphasizes exact configuration, deterministic/stochastic setup, dynamic current-field metadata, solver packets, replay seeds, external solver workflows, JSON import/export, and auditability.
+
+Both modes use the same terrain generation, current fields, hazards, glider physics, scoring core, route validation, planner APIs, and replay/export system. `experienceMode` is metadata and UI framing; it does not fork physics or scoring.
 
 Quick loop:
 
@@ -131,7 +144,7 @@ Every playable scenario now passes through a compact Mission Briefing before pla
 
 Planning is the main game workspace. Phaser renders the mission board, gliders, waypoints, global planning markers, currents, Gold Star priority targets, route overlays, guidance cone, and map hit targets. The left Mission Console renders planning controls, status, route/cost estimate, solver/export actions, layer toggles, selected-glider performance details, and execute controls. The right Waypoint Timeline panel renders agent tabs and only the selected glider's executable waypoint sequence with pending/active/completed/missed status. The center viewport includes a top selected-glider planning HUD for projected route cost, estimated remaining fuel, planning window/time, expected ROI estimate, current assist/opposition, next surface estimate, likely reachability, route validity, and compact warnings. The bottom center is reserved for the mission-time slider in Planning and the mission-time playhead during Simulation.
 
-Generated challenge setup opens before the map is created. Presets include Small, Medium, Large, and Huge/Experimental. Player settings include agent count, duration, surfacing interval, fuel per glider, glider speed, uniform or varied fleet specs, single or multiple drop zones, difficulty, current-field preset, current strength, dynamic complexity, temporal variability, hazard density, terrain density, ROI hotspot count, and Gold Star frequency. Stochastic setup also exposes ensemble count and forecast horizon decay controls. The selected setup is stored in `level.meta.generationConfig.scenarioSetup` and `mission.meta.scenarioSetup`.
+Generated challenge setup opens before the map is created. In Challenge Mode, players choose Mission Mode cards such as Survey Sweep, Signal Hunt, Fleet Split, Plume Intercept, Danger Run, and Long Glide. Mission Modes are objective presets, not separate engines: they turn research concepts such as coverage planning, informative path planning, event interception, and energy-aware routing into playable goals by choosing seeded sample-field, current-field, scoring, route-grade, and mission-rule defaults. Simulation Lab keeps the detailed technical controls for agent count, duration, surfacing interval, fuel per glider, glider speed, fleet specs, drop zones, difficulty, current-field preset, current strength, dynamic complexity, temporal variability, hazard density, terrain density, ROI hotspot count, sample-field spatial pattern, sample-field temporal behavior, and Gold Star frequency. Stochastic setup also exposes ensemble count and forecast horizon decay controls. The selected setup is stored in `level.meta.generationConfig.scenarioSetup` and `mission.meta.scenarioSetup`.
 
 ### Dynamic Topology-Aware Current Fields
 
@@ -188,6 +201,10 @@ Planning HUD values are fast estimates, not exact simulation results. `Projected
 Reachability ovals, drift cones, hover ETA/energy labels, arrival previews, and predicted-surface markers are planning-only overlays. Pressing `Execute` clears their transient anchor/hover state; Simulation shows planned path, actual path, glider state, and events instead. Debrief owns the fullscreen result view and does not retain planning guidance overlays behind it.
 
 Waypoint placement is sequential. After a waypoint is added, the game estimates travel time from the previous planning anchor, writes `estimatedArrivalTime`, `segmentTravelTime`, `segmentEnergy`, `cumulativeEnergy`, `remainingFuelEstimate`, and `arrivalUncertainty` onto the waypoint, advances the time slider to that estimate, and recenters guidance from the new reachable anchor. Multiple waypoints may share the same cell when the route revisits that location at different times; the map fans their markers slightly and shows an `xN` stack badge while import/export and simulation preserve waypoint array order. If the direct segment is blocked by terrain, the warning is kept on the waypoint and the guidance anchor stays at the previous reachable point. Guidance cones are current-aware: assisting current extends and narrows the cone, opposing current shortens and warns, cross-current shifts and widens the expected arrival oval, and low confidence or ensemble disagreement widens the forecast envelope.
+
+ANCHOR distinguishes waypoint semantics. A `navigation` waypoint is a commanded underwater navigation intent, not a GPS-confirmed truth position. A `surface` waypoint is a GPS/communication/update point where replanning may occur. A `samplingTarget` is a science objective or marker and is not automatically an executable checkpoint unless converted into a route waypoint. A `terminalCarryThrough` waypoint is an intentional final command beyond mission duration; simulation travels toward it until the clock expires.
+
+Dead-reckoning uncertainty is currently represented as configuration, planning/export metadata, semantic surface/update events, and cone-aware route grading. It is not yet a full separate true-position-vs-believed-position underwater navigation simulator.
 
 Planning markers are separate from route waypoints and are global by default. Use the `Mode: Waypoint` / `Mode: Planning Marker` button in the Mission Console to switch placement mode, scrub to a future time, then click the map to leave a marker for a future target, Gold Star timing note, or tactical reminder. Markers render differently from waypoints, show as diamond ticks/icons on the bottom timeline, and can be hidden with `Show/Hide Planning Markers`. Each future marker shows an estimate badge in the selected-marker HUD: `Reachable`, `Tight`, `Risky`, or `Impossible`, plus target time, travel-time slack, estimated energy, remaining fuel, route risk, and a backfill hint for roughly how many planning windows/intermediate waypoints may be needed. They are preserved by plan import/export and included in solver packets as notes, but they are not connected by route lines, executed, sampled, or scored unless absorbed by placing a waypoint on the same marker cell/time.
 
@@ -291,6 +308,10 @@ Debrief is a Phaser-native fullscreen score screen with metric cards, comparison
 - winner notes explaining likely score differences such as realized value, energy, hazards, risk, and forecast regret
 
 The Debrief buttons handle `Revise Plan`, `Retry From Briefing`, context-aware next actions, reruns, Greedy Planner simulation, result export, after-action report export, comparison export, and return to Main Menu. Tutorial debriefs offer `Next Tutorial`, generated challenge debriefs offer `New Challenge`, and editor/custom debriefs offer `Return To Editor`. JSON and Markdown exports still use the browser download bridge internally.
+
+### Segment Contribution Grades
+
+Each planned route segment receives a contribution grade from `src/core/planning/SegmentContributionGrader.js`. The grade combines immediate sample/star value, current assist, energy cost, hazard and shoreline risk, mission coverage, and future-positioning credit. Low immediate-value moves can still grade well when they improve access to future stars, high-value ROI, or terminal carry-through coverage. Debrief also aggregates segment grades into 3-hour dead-reckoning blocks.
 
 Simulation has safety guards for invalid time steps, invalid waypoint coordinates, terrain-blocked targets, stalled waypoint pursuit, and maximum step count. If a plan cannot be executed safely, the simulator stops with a warning and result JSON records `aborted` and `abortReason` instead of locking the browser.
 

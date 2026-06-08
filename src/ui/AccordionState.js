@@ -115,6 +115,8 @@ export function getAccordionDefaults(mode) {
       actions: true
     },
     scenarioSetup: {
+      'mission-mode': true,
+      'advanced-setup': false,
       'core-settings': true,
       generation: true,
       preview: true

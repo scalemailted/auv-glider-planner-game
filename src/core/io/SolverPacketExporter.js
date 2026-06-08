@@ -7,13 +7,18 @@ import { computeReachabilitySummary, stripReachableSet } from '../validation/Con
 import { normalizeForecastRules } from '../forecast/ForecastDecay.js';
 import { summarizeAgentSpecs } from '../agents/AgentSpecs.js';
 import { visibilityForChallenge } from './ExportVisibility.js';
+import { normalizeExperienceMode } from '../experience/ExperienceMode.js';
+import { normalizeNavigationUncertaintyConfig } from '../navigation/NavigationUncertainty.js';
 
-export function buildSolverPacket({ level, mission, plan = null, challengeMode = 'perfectKnowledge', includeHiddenTruth = false, forecastMemberId = null, roiViewMode = 'expectedValue', stochasticConfig = null }) {
+export function buildSolverPacket({ level, mission, plan = null, challengeMode = 'perfectKnowledge', includeHiddenTruth = false, forecastMemberId = null, roiViewMode = 'expectedValue', stochasticConfig = null, experienceMode = null }) {
   ensureLevelIdentity(level);
   normalizeDeploymentState(level, mission);
   if (challengeMode === 'forecast') ensureForecastFields(level);
   const createdAt = new Date().toISOString();
   const identity = getLevelIdentity(level);
+  const resolvedExperienceMode = normalizeExperienceMode(experienceMode ?? level?.meta?.experienceMode ?? mission?.meta?.experienceMode, 'simulationLab');
+  const missionMode = level?.meta?.missionMode ?? mission?.meta?.missionMode ?? level?.meta?.generationConfig?.missionMode ?? mission?.rules?.missionMode ?? null;
+  const missionModePreset = level?.meta?.missionModePreset ?? mission?.meta?.missionModePreset ?? level?.meta?.generationConfig?.missionModePreset ?? null;
   const forecastFrames = level?.layers?.forecast?.frames ?? [];
   const visibleFields = {
     terrain: level?.layers?.terrain ?? [],
@@ -56,6 +61,12 @@ export function buildSolverPacket({ level, mission, plan = null, challengeMode =
     ?? vectorField?.currentFieldConfig
     ?? null;
   const importedFlowField = level?.meta?.generationConfig?.importedFlowField ?? null;
+  const navigationUncertainty = normalizeNavigationUncertaintyConfig(
+    mission?.rules?.navigationUncertainty
+      ?? mission?.meta?.navigationUncertainty
+      ?? level?.meta?.generationConfig?.navigationUncertainty
+      ?? {}
+  );
 
   return {
     schemaVersion: '2.0',
@@ -66,6 +77,9 @@ export function buildSolverPacket({ level, mission, plan = null, challengeMode =
     instanceId: identity.instanceId,
     missionId: mission?.missionId ?? null,
     challengeMode,
+    experienceMode: resolvedExperienceMode,
+    missionMode,
+    missionModePreset,
     visibility,
     selectedForecastMemberId: forecastMemberId,
     roiViewMode,
@@ -74,7 +88,10 @@ export function buildSolverPacket({ level, mission, plan = null, challengeMode =
     agentSpecs,
     vectorField,
     currentFieldConfig,
+    sampleFieldConfig: level?.meta?.generationConfig?.sampleFieldConfig ?? level?.meta?.generationConfig?.sampleField ?? null,
+    navigationUncertainty,
     importedFlowField,
+    waypointSemantics: waypointSemanticsMetadata(),
     currentFieldVisibility: {
       visibleConfigIncluded: Boolean(currentFieldConfig),
       importedFlowFieldIncluded: Boolean(importedFlowField),
@@ -89,7 +106,11 @@ export function buildSolverPacket({ level, mission, plan = null, challengeMode =
       sampling,
       priorityTargets: priorityTargetRules,
       forecast: forecastRules,
+      navigationUncertainty,
+      missionMode,
+      missionModePreset,
       agentSpecs,
+      waypointSemantics: waypointSemanticsMetadata(),
       deployment,
       connectivity
     },
@@ -112,6 +133,7 @@ export function buildSolverPacket({ level, mission, plan = null, challengeMode =
       agentSpecs,
       vectorField,
       currentFieldConfig,
+      navigationUncertainty,
       importedFlowField,
       currentFieldVisibility: {
         visibleConfigIncluded: Boolean(currentFieldConfig),
@@ -139,6 +161,7 @@ export function buildSolverPacket({ level, mission, plan = null, challengeMode =
         endCondition: 'Check missionRules.endCondition to see whether final surfacing, communication, or recovery is required or rewarded.',
         sampling: 'Check missionRules.sampling before revisiting ROI cells; duplicate, depleted, cooldown, or persistent samples may score differently.',
         priorityTargets: 'Gold Star Targets are temporal high-value objectives. Capture them only while active and within radius.',
+        navigationUncertainty: 'When enabled, dead-reckoning cones grow underwater until surfacing/GPS correction; penalize routes whose cone overlaps land or hazards.',
         planningMarkers: 'planningData.planningMarkers are player notes for future windows; they are not executable waypoints.'
       },
       hiddenTruthIncluded: Boolean(visibleFields.truth),
@@ -156,8 +179,21 @@ export function buildSolverPacket({ level, mission, plan = null, challengeMode =
       agentPlans: (mission?.agents ?? []).map((agent) => ({
         agentId: agent.id,
         markers: [],
-        waypoints: [{ window: 0, x: agent.start?.x ?? 1, y: agent.start?.y ?? 1, action: 'sample' }]
+        waypoints: [{ window: 0, x: agent.start?.x ?? 1, y: agent.start?.y ?? 1, kind: 'navigation', action: 'sample' }]
       }))
+    }
+  };
+}
+
+function waypointSemanticsMetadata() {
+  return {
+    defaultKind: 'navigation',
+    kinds: ['navigation', 'surface', 'samplingTarget', 'terminalCarryThrough'],
+    guidance: {
+      navigation: 'Commanded submerged navigation intent; not GPS-confirmed truth.',
+      surface: 'GPS/communication/update point; can replan and collapses navigation uncertainty.',
+      samplingTarget: 'Science objective metadata unless converted into an executable waypoint.',
+      terminalCarryThrough: 'Final horizon-filling command; simulation truncates at mission end.'
     }
   };
 }

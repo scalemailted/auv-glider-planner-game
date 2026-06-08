@@ -33,7 +33,8 @@
     "agents[].start": "fixed-start compatibility field; selectedStart is authoritative after deployment selection"
   },
   "generatedScenarioSetup": {
-    "mission.meta.scenarioSetup": "player-selected setup preserved for generated challenges: agentCount, grid, durationHours, surfaceIntervalHours, fuelPerAgent, gliderSpeed, difficulty, hazard/current/ROI/star settings",
+    "mission.meta.scenarioSetup": "player-selected setup preserved for generated challenges: missionMode, agentCount, grid, durationHours, surfaceIntervalHours, fuelPerAgent, gliderSpeed, difficulty, hazard/current/ROI/star settings",
+    "mission.meta.missionMode": "Challenge Mode objective preset id when the mission was generated from a mission card",
     "agents": "generated challenge agents use glider_01, glider_02, etc. up to the browser-safe cap",
     "communication": "surfaceInterval is set from the setup screen and usually matches level.world.time.planningWindow"
   },
@@ -72,6 +73,14 @@
     "rules.drift.stochasticDrift": "boolean; when true, simulation perturbs truth current with deterministic seeded noise",
     "rules.drift.noiseScale": "current-vector noise magnitude used only when stochasticDrift is true",
     "rules.drift.seed": "optional deterministic seed for stochastic drift noise"
+  },
+  "navigationUncertaintyRules": {
+    "rules.navigationUncertainty.level": "off | low | medium | high; controls dead-reckoning cone growth while underwater",
+    "rules.navigationUncertainty.seeded": "when true, true-position offset samples are deterministic from the challenge replay seed anchor",
+    "rules.navigationUncertainty.gpsCorrectionOnSurface": "when true, surfacing acts as a GPS fix/replan point",
+    "rules.navigationUncertainty.showCone": "planning UI/export hint to show likely surfacing/dead-reckoning uncertainty regions",
+    "rules.navigationUncertainty.baseConeWidthCells": "initial cone radius contribution in cells",
+    "rules.navigationUncertainty.growthPerHour": "cone radius growth per underwater hour before surfacing correction"
   },
   "notes": "Readable schema-like documentation; validation is lightweight/manual. Mission objectives are optional; campaign defaults are generated when missing."
 }

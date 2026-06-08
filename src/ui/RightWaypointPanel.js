@@ -2,6 +2,8 @@ import { formatMissionTime, getTimeConfig } from '../core/time/MissionTime.js';
 import { getDeploymentZoneForAgent, getDeploymentZonesForAgent, getSelectedStart, requiresDeploymentSelection } from '../core/deployment/DeploymentZones.js';
 import { labelReason } from '../core/planning/StopReasonSummarizer.js';
 import { formatDiagnosticForUi } from '../core/planning/RouteDiagnostic.js';
+import { gradeRouteContributions } from '../core/planning/SegmentContributionGrader.js';
+import { normalizeWaypointKind, waypointKindLabel } from '../core/planning/WaypointSemantics.js';
 
 export class RightWaypointPanel {
   constructor(app, root) {
@@ -46,6 +48,15 @@ export class RightWaypointPanel {
     const selectedPlan = (state.plan?.agentPlans ?? []).find((plan) => plan.agentId === selectedAgentId);
     const waypoints = selectedPlan?.waypoints ?? [];
     const timeConfig = getTimeConfig(state.level);
+    const routeQuality = gradeRouteContributions({
+      level: state.level,
+      mission: state.mission,
+      plan: state.plan,
+      selectedAgentId,
+      challengeMode: state.challengeMode,
+      revealTruth: state.ui?.revealTruth,
+      forecastMemberId: state.ui?.forecastMemberId
+    });
     this.root.innerHTML = `
       <section class="waypoint-shell">
         <div class="console-kicker">Mission Waypoints</div>
@@ -59,9 +70,10 @@ export class RightWaypointPanel {
           <span>Global markers live on the map/timeline</span>
         </div>
         ${deploymentSummary(state, selectedAgentId)}
+        ${routeQuality?.overall?.segmentCount ? `<div class="waypoint-summary"><span>Route grade: ${escapeHtml(routeQuality.overall.grade)} (${escapeHtml(routeQuality.overall.numericScore)})</span><span>${escapeHtml(routeQuality.overall.segmentCount)} segment(s)</span></div>` : ''}
         ${result && !hasWaypointStatusEvents(result, selectedAgentId) ? '<p class="hud-muted">Final waypoint statuses unavailable for this run.</p>' : ''}
         <h3 class="waypoint-section-title">Route Waypoints</h3>
-        ${waypoints.length ? waypointRows(state, waypoints, selectedAgentId, engine, result) : '<p class="hud-muted">No executable waypoints. Click water cells in waypoint mode to add route steps.</p>'}
+        ${waypoints.length ? waypointRows(state, waypoints, selectedAgentId, engine, result, routeQuality) : '<p class="hud-muted">No executable waypoints. Click water cells in waypoint mode to add route steps.</p>'}
       </section>
     `;
     this.bindRows();
@@ -123,7 +135,7 @@ function deploymentSummary(state, agentId) {
   `;
 }
 
-function waypointRows(state, waypoints, agentId, engine, result) {
+function waypointRows(state, waypoints, agentId, engine, result, routeQuality) {
   return `
     <ol class="timeline-waypoints">
       ${waypoints.map((waypoint, index) => {
@@ -132,19 +144,25 @@ function waypointRows(state, waypoints, agentId, engine, result) {
         const routeFailure = state.routeFailureDecision?.active
           && state.routeFailureDecision.agentId === agentId
           && Number(state.routeFailureDecision.failedWaypointIndex) === index;
-        const terminalCarryThrough = Boolean(waypoint.terminalCarryThrough);
+        const waypointKind = normalizeWaypointKind(waypoint);
+        const semanticLabel = waypointKindLabel(waypointKind);
+        const terminalCarryThrough = waypointKind === 'terminalCarryThrough';
         const label = routeFailure
           ? `MISSED: ${labelReason(state.routeFailureDecision.reason).toUpperCase()}`
-          : terminalCarryThrough ? 'Terminal Carry-Through'
+          : terminalCarryThrough ? semanticLabel
             : missed ? `MISSED: ${labelReason(missed.reason).toUpperCase()}` : statusLabel(status);
         const selected = state.ui?.selectedWaypoint?.agentId === agentId && state.ui.selectedWaypoint.index === index;
+        const grade = routeQuality?.segments?.find((segment) => Number(segment.toWaypointIndex) === index);
         return `
           <li class="timeline-waypoint ${status} ${terminalCarryThrough ? 'warning' : ''} ${selected || routeFailure ? 'selected' : ''} ${routeFailure ? 'failure' : ''}">
             <button class="waypoint-main" data-select-waypoint data-agent="${escapeAttr(agentId)}" data-index="${index}">
               <span class="waypoint-num">${index + 1}</span>
               <span>
+                <strong>W${index + 1} &middot; ${escapeHtml(semanticLabel)}</strong>
+                ${waypointKind === 'surface' ? '<small class="marker-estimate">GPS correction, communication/update, replanning point.</small>' : ''}
                 <strong>W${Number(waypoint.window ?? 0)} · ${escapeHtml(formatMissionTime(state.level, waypoint.t ?? 0))}</strong>
                 <small>(${Number(waypoint.x)}, ${Number(waypoint.y)}) · ${escapeHtml(waypoint.action ?? 'sample')}</small>
+                ${segmentGradeLine(grade)}
                 ${terminalCarryThrough ? '<small class="marker-warning">Terminal carry-through: simulation will travel toward this waypoint until mission time expires.</small>' : ''}
                 ${waypoint.validity?.routeAudit ? `<small class="marker-warning">${escapeHtml(formatDiagnosticForUi(waypoint.validity.routeAudit.diagnostic) ?? waypoint.validity.routeAudit.message)}</small>` : ''}
               </span>
@@ -173,6 +191,7 @@ function markerRows(state, markers, agentId) {
           <div class="waypoint-main marker-main">
             <span class="waypoint-num">M${index + 1}</span>
             <span>
+              ${marker.linkedTargetId ? '<strong>Sampling Target</strong>' : ''}
               <strong>W${Number(marker.window ?? 0)} Â· ${escapeHtml(formatMissionTime(state.level, marker.t ?? 0))}</strong>
               <small>(${Number(marker.x)}, ${Number(marker.y)}) Â· ${escapeHtml(marker.label ?? 'Planning Marker')}${marker.linkedTargetId ? ` Â· ${escapeHtml(marker.linkedTargetId)}` : ''}</small>
               ${markerEstimateDetails(reach)}
@@ -189,6 +208,12 @@ function markerRows(state, markers, agentId) {
       }).join('')}
     </ol>
   `;
+}
+
+function segmentGradeLine(grade) {
+  if (!grade) return '';
+  const role = (grade.roleLabels ?? []).join(' + ') || 'transit';
+  return `<small class="marker-estimate">Segment grade ${escapeHtml(grade.grade)} (${escapeHtml(grade.numericScore)}) · ${escapeHtml(role)} · immediate +${escapeHtml(formatNumber(grade.components?.immediateSampleReward))} · setup +${escapeHtml(formatNumber(grade.components?.futureSetupValue))} · risk -${escapeHtml(formatNumber(Number(grade.components?.hazardPenalty ?? 0) + Number(grade.components?.shorelineRiskPenalty ?? 0)))}</small>`;
 }
 
 function markerEstimateDetails(reach = {}) {

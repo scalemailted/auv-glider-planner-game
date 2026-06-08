@@ -2,7 +2,8 @@ import { CAMPAIGN_LEVELS } from '../core/campaign/CampaignLevels.js';
 import { shortInstanceId } from '../core/identity/GameInstanceId.js';
 import { formatMetric } from '../core/evaluation/PlanComparison.js';
 import { FLOW_DEMO_CYCLE_DURATIONS, FLOW_DEMO_EVOLUTION_BEHAVIORS, FLOW_DEMO_EVOLUTION_PATTERNS, FLOW_DEMO_EVOLUTION_SPEEDS, FLOW_DEMO_FIELD_MODES, FLOW_DEMO_LAYER_INFLUENCES, FLOW_DEMO_MAGNITUDE_SCALES, FLOW_DEMO_PARTICLE_SPEEDS, FLOW_DEMO_PRESET_CHOICES, FLOW_DEMO_SPATIAL_MOTIONS, FLOW_DEMO_SPATIAL_MOTION_SPEEDS, FLOW_DEMO_TERRAIN_MODES, FLOW_DEMO_VARIATION_LEVELS, normalizeAdditiveLayers } from '../core/demo/FlowFieldDemo.js';
-import { ROI_DEMO_DISTRIBUTIONS, ROI_DEMO_TIME_MODES, roiDistributionLabel } from '../core/demo/DemoRoiFields.js';
+import { ROI_DEMO_DISTRIBUTIONS, ROI_DEMO_SPATIAL_PATTERNS, ROI_DEMO_TEMPORAL_BEHAVIORS, ROI_DEMO_TIME_MODES, roiDistributionLabel, sampleSpatialPatternLabel, sampleTemporalBehaviorLabel } from '../core/demo/DemoRoiFields.js';
+import { EXPERIENCE_MODES, getExperienceModeDefaults } from '../core/experience/ExperienceMode.js';
 import { getVectorPresetConfig } from '../core/generation/VectorFieldPresets.js';
 
 export class MissionConsole {
@@ -20,6 +21,22 @@ export class MissionConsole {
         <p>AUV Glider Planner Game</p>
       </section>
       <section class="console-section" data-keep-title="true">
+        <h2>Challenge Mode</h2>
+        <div class="hud-muted">${escapeHtml(getExperienceModeDefaults(EXPERIENCE_MODES.challenge).description)}</div>
+        <button data-action="play-challenge" class="console-button primary">Play Challenge</button>
+        <button data-action="random-challenge" class="console-button">Random Challenge</button>
+        <button data-action="greedy-race" class="console-button">Greedy Planner Race</button>
+        <button data-action="leaderboard" class="console-button">Leaderboard</button>
+      </section>
+      <section class="console-section" data-keep-title="true">
+        <h2>Simulation Lab</h2>
+        <div class="hud-muted">${escapeHtml(getExperienceModeDefaults(EXPERIENCE_MODES.simulationLab).description)}</div>
+        <button data-action="deterministic" class="console-button">Deterministic Experiment</button>
+        <button data-action="stochastic" class="console-button">Stochastic Experiment</button>
+        <button data-action="load-json" class="console-button">Imported Flow Field Test</button>
+        <button data-action="dataset" class="console-button secondary">External Solver Evaluation</button>
+      </section>
+      <section class="console-section" data-keep-title="true">
         <h2>Demos</h2>
         <button data-action="flow-fields" class="console-button">Flow Fields Demo</button>
         <button data-action="roi-demo" class="console-button">ROI Generator Demo</button>
@@ -29,16 +46,9 @@ export class MissionConsole {
         <button data-action="tutorial" class="console-button primary">Tutorial Mode</button>
       </section>
       <section class="console-section">
-        <h2>Launch</h2>
-        <button data-action="deterministic" class="console-button">Deterministic Challenge</button>
-        <button data-action="stochastic" class="console-button">Stochastic Challenge</button>
+        <h2>Editor / Import Tools</h2>
         <button data-action="editor" class="console-button">Environment Editor</button>
         <button data-action="load-json" class="console-button">Load Level JSON</button>
-        <button data-action="leaderboard" class="console-button">Leaderboard</button>
-      </section>
-      <section class="console-section">
-        <h2>Tools</h2>
-        <button data-action="dataset" class="console-button secondary">Dataset Export</button>
       </section>
       <section class="console-status">
         <span>${escapeHtml(mode)}</span>
@@ -51,8 +61,11 @@ export class MissionConsole {
       'flow-fields': () => this.app.phaser.scene.start('FlowFieldDemoScene', { fieldMode: 'static' }),
       'roi-demo': () => this.app.phaser.scene.start('RoiGeneratorDemoScene'),
       tutorial: () => this.mainMenuScene()?.openTutorialBrowser?.(),
-      deterministic: () => this.mainMenuScene()?.openChallengeSetup?.('perfectKnowledge'),
-      stochastic: () => this.mainMenuScene()?.openChallengeSetup?.('forecast'),
+      'play-challenge': () => this.mainMenuScene()?.openChallengeSetup?.('perfectKnowledge', EXPERIENCE_MODES.challenge),
+      'random-challenge': () => this.mainMenuScene()?.startRandomChallenge?.('perfectKnowledge', EXPERIENCE_MODES.challenge),
+      'greedy-race': () => this.mainMenuScene()?.startRandomChallenge?.('forecast', EXPERIENCE_MODES.challenge, { greedyRace: true }),
+      deterministic: () => this.mainMenuScene()?.openChallengeSetup?.('perfectKnowledge', EXPERIENCE_MODES.simulationLab),
+      stochastic: () => this.mainMenuScene()?.openChallengeSetup?.('forecast', EXPERIENCE_MODES.simulationLab),
       editor: () => this.app.phaser.scene.start('EnvironmentEditorScene'),
       'load-json': () => this.app.phaser.scene.start('LoadLevelJsonScene'),
       dataset: () => this.app.phaser.scene.start('DatasetExportScene'),
@@ -262,6 +275,12 @@ export class MissionConsole {
           </select>
         </label>
         <label class="compact-field">
+          Spatial Pattern
+          <select id="roi-demo-spatial-pattern">
+            ${ROI_DEMO_SPATIAL_PATTERNS.map((pattern) => `<option value="${escapeAttr(pattern)}" ${state.spatialPattern === pattern ? 'selected' : ''}>${escapeHtml(sampleSpatialPatternLabel(pattern))}</option>`).join('')}
+          </select>
+        </label>
+        <label class="compact-field">
           Seed
           <input id="roi-demo-seed" type="text" value="${escapeAttr(state.seed ?? 'anchor-roi-demo')}" />
         </label>
@@ -289,6 +308,18 @@ export class MissionConsole {
           </select>
         </label>
         <label class="compact-field">
+          Temporal Behavior
+          <select id="roi-demo-temporal-behavior">
+            ${ROI_DEMO_TEMPORAL_BEHAVIORS.map((behavior) => `<option value="${escapeAttr(behavior)}" ${state.temporalBehavior === behavior ? 'selected' : ''}>${escapeHtml(sampleTemporalBehaviorLabel(behavior))}</option>`).join('')}
+          </select>
+        </label>
+        <label class="compact-field">
+          Forecast / Truth
+          <select id="roi-demo-forecast-view">
+            ${['forecast', 'truth', 'uncertainty', 'depleted'].map((view) => `<option value="${escapeAttr(view)}" ${state.forecastView === view ? 'selected' : ''}>${escapeHtml(roiForecastViewLabel(view))}</option>`).join('')}
+          </select>
+        </label>
+        <label class="compact-field">
           Time Speed
           <select id="roi-demo-time-speed">
             ${[0.5, 1, 2, 5].map((speed) => `<option value="${escapeAttr(speed)}" ${Number(state.timeSpeedScale ?? 1) === speed ? 'selected' : ''}>${escapeHtml(speed)}x</option>`).join('')}
@@ -299,7 +330,7 @@ export class MissionConsole {
       <section class="console-status">
         <span>Field Stats</span>
         <strong>Max ${escapeHtml(formatDemoStat(state.stats?.max))} | Mean ${escapeHtml(formatDemoStat(state.stats?.mean))}</strong>
-        <small>Total value ${escapeHtml(formatDemoStat(state.stats?.totalValue))}</small>
+        <small>${escapeHtml(state.spatialPatternLabel ?? sampleSpatialPatternLabel(state.spatialPattern))} / ${escapeHtml(state.temporalBehaviorLabel ?? sampleTemporalBehaviorLabel(state.temporalBehavior))} | Total value ${escapeHtml(formatDemoStat(state.stats?.totalValue))}</small>
       </section>
       <section class="console-footer">
         <button data-action="menu" class="console-button secondary">Main Menu</button>
@@ -307,10 +338,13 @@ export class MissionConsole {
     `;
     this.app.applyConsoleAccordions?.('roiDemo');
     this.root.querySelector('#roi-demo-distribution')?.addEventListener('change', (event) => handlers.distribution?.(event.target.value));
+    this.root.querySelector('#roi-demo-spatial-pattern')?.addEventListener('change', (event) => handlers.spatialPattern?.(event.target.value));
     this.root.querySelector('#roi-demo-seed')?.addEventListener('change', (event) => handlers.seed?.(event.target.value));
     this.root.querySelector('#roi-demo-hotspots')?.addEventListener('input', (event) => handlers.hotspotCount?.(event.target.value));
     this.root.querySelector('#roi-demo-noise')?.addEventListener('input', (event) => handlers.noise?.(event.target.value));
     this.root.querySelector('#roi-demo-time-mode')?.addEventListener('change', (event) => handlers.timeMode?.(event.target.value));
+    this.root.querySelector('#roi-demo-temporal-behavior')?.addEventListener('change', (event) => handlers.temporalBehavior?.(event.target.value));
+    this.root.querySelector('#roi-demo-forecast-view')?.addEventListener('change', (event) => handlers.forecastView?.(event.target.value));
     this.root.querySelector('#roi-demo-time-speed')?.addEventListener('change', (event) => handlers.timeSpeedScale?.(event.target.value));
     this.bind({
       regenerate: handlers.regenerate,
@@ -465,14 +499,16 @@ export class MissionConsole {
     const priorityTargets = result?.priorityTargets ?? summary.priorityTargets ?? {};
     const stopReason = result?.stopReason ?? summary.stopReason;
     const stochasticEnabled = Boolean(state?.stochastic?.enabled);
+    const experience = getExperienceModeDefaults(result?.experienceMode ?? state?.experienceMode);
+    const simulationLab = (result?.experienceMode ?? state?.experienceMode) === EXPERIENCE_MODES.simulationLab;
     this.root.innerHTML = `
       <section class="console-header">
         <div class="console-kicker">Debrief Console</div>
-        <h1>Mission Debrief</h1>
-        <p>${escapeHtml(result?.source ?? 'No result')} | ${escapeHtml(result?.challengeMode ?? state?.challengeMode ?? '')}</p>
+        <h1>${escapeHtml(simulationLab ? 'Simulation Lab Debrief' : 'Challenge Debrief')}</h1>
+        <p>${escapeHtml(experience.label)} | ${escapeHtml(result?.source ?? 'No result')} | ${escapeHtml(result?.challengeMode ?? state?.challengeMode ?? '')}</p>
       </section>
       <section class="console-status">
-        <span>Actual Simulation Score</span>
+        <span>${escapeHtml(simulationLab ? 'Metric Score' : 'Challenge Score')}</span>
         <strong>${escapeHtml(formatMetric(summary.finalScore ?? 'N/A'))}</strong>
         <small>Instance ${escapeHtml(shortInstanceId(result?.instanceId ?? state?.level?.instanceId))}</small>
       </section>
@@ -489,7 +525,7 @@ export class MissionConsole {
         ${state?.currentScenario?.source === 'tutorial' ? '<button class="console-button" data-action="tutorial-browser">Tutorial Browser</button>' : ''}
       </section>
       <section class="console-section">
-        <h2>Exports</h2>
+        <h2>${escapeHtml(simulationLab ? 'Exports / Audit' : 'Challenge Records')}</h2>
         <button class="console-button" data-action="export-result">Export Result JSON</button>
         <button class="console-button" data-action="export-aar">Export AAR</button>
         <button class="console-button" data-action="export-compare">Export Compare</button>
@@ -499,10 +535,10 @@ export class MissionConsole {
         <button class="console-button" data-action="temporal-greedy">Simulate Greedy Planner</button>
       </section>
       <section class="console-section">
-        <h2>Mission Results</h2>
+        <h2>${escapeHtml(simulationLab ? 'Experiment Metrics' : 'Mission Results')}</h2>
         <div class="hud-muted">Planned expected value: ${escapeHtml(summary.expectedSampleScore ?? 'N/A')}</div>
         <div class="hud-muted">Actual / stochastic realized outcome: ${escapeHtml(summary.realizedSampleScore ?? summary.sampleScore ?? 'N/A')}</div>
-        <div class="hud-muted">Regret: ${escapeHtml(result?.regret?.forecastRegret ?? summary.expectedValueRegret ?? 'N/A')}</div>
+        ${simulationLab ? `<div class="hud-muted">Regret: ${escapeHtml(result?.regret?.forecastRegret ?? summary.expectedValueRegret ?? 'N/A')}</div>` : ''}
         ${stopReason && stopReason.code !== 'complete' ? `<div class="hud-muted warning">Stop reason: ${escapeHtml(stopReason.title ?? stopReason.code)}</div>` : ''}
         <div class="hud-muted">End condition: ${escapeHtml(endCondition.mode ?? 'none')} | Achieved ${escapeHtml(endCondition.achieved ?? true ? 'yes' : 'no')}</div>
         <div class="hud-muted">Sampling mode: ${escapeHtml(sampling.mode ?? summary.samplingMode ?? 'unique')} | Duplicates ${escapeHtml(summary.duplicateSamples ?? 0)}</div>
@@ -630,6 +666,15 @@ function terrainModeLabel(mode) {
     coastline: 'Coastline',
     channel: 'Channel'
   }[mode] ?? mode;
+}
+
+function roiForecastViewLabel(view) {
+  return {
+    forecast: 'Forecast',
+    truth: 'Truth',
+    uncertainty: 'Uncertainty',
+    depleted: 'Depleted'
+  }[view] ?? 'Forecast';
 }
 
 function formatDemoStat(value) {
