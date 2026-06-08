@@ -44,13 +44,15 @@ export function createDemoRoiField({
   temporalBehavior = null,
   forecastView = 'forecast',
   time = 0,
+  demoTime = null,
   grid = ROI_DEMO_GRID
 } = {}) {
   const width = Math.max(1, Number(grid.width ?? ROI_DEMO_GRID.width));
   const height = Math.max(1, Number(grid.height ?? ROI_DEMO_GRID.height));
   const normalizedDistribution = normalizeRoiDemoDistribution(distribution);
   const normalizedTimeMode = normalizeRoiDemoTimeMode(timeMode);
-  const t = normalizedTimeMode === 'dynamic' ? Number(time) || 0 : 0;
+  const sourceTime = demoTime ?? time;
+  const t = normalizedTimeMode === 'dynamic' ? Number(sourceTime) || 0 : 0;
   const rng = createSeededRng(`${seed}:${normalizedDistribution}:${width}x${height}:${hotspotCount}:${noise}`);
   const field = buildDistribution({
     distribution: normalizedDistribution,
@@ -78,6 +80,13 @@ export function createDemoRoiField({
     temporalBehavior: normalizeRoiDemoTemporalBehavior(temporalBehavior ?? distributionToSampleConfig(normalizedDistribution).temporalBehavior),
     forecastView,
     time: t,
+    sampleFieldConfig: sampleFieldConfigForDemo({
+      distribution: normalizedDistribution,
+      timeMode: normalizedTimeMode,
+      spatialPattern,
+      temporalBehavior,
+      hotspotCount
+    }),
     stats,
     highValueCells: findHighValueCells(field, Math.max(0.68, stats.mean + stats.stdDev * 1.35))
   };
@@ -130,18 +139,7 @@ function buildDistribution({ distribution, rng, seed, width, height, hotspotCoun
   if (distribution === 'gradientFront') return createGradientFront({ width, height, rng, noise, time });
   if (distribution === 'sparseTargets') return createSparseTargets({ width, height, rng, hotspotCount, noise, time });
   if (distribution === 'ridgeCorridor') return createRidgeCorridor({ width, height, rng, noise, time });
-  const sampleFieldConfig = normalizeSampleFieldConfig({
-    ...distributionToSampleConfig(distribution),
-    spatialPattern: spatialPattern ?? distributionToSampleConfig(distribution).spatialPattern,
-    temporalBehavior: timeMode === 'dynamic'
-      ? temporalBehavior ?? distributionToSampleConfig(distribution).temporalBehavior
-      : 'static',
-    mode: timeMode === 'dynamic' ? 'dynamic' : 'static',
-    hotspotCount,
-    spatialCorrelation: { enabled: true, radiusCells: 3, anisotropy: distribution === 'currentAdvectedPlume' ? 'currentAligned' : 'none' },
-    neighborInfluence: { enabled: true, diffusionRate: 0.14, growthRate: 0.04, decayRate: 0.03 },
-    currentCoupling: { enabled: distribution === 'currentAdvectedPlume' || temporalBehavior === 'currentAdvected', advectionStrength: 0.8 }
-  }, { roiHotspots: hotspotCount });
+  const sampleFieldConfig = sampleFieldConfigForDemo({ distribution, timeMode, spatialPattern, temporalBehavior, hotspotCount });
   const generated = generateROI(width, height, time, {
     seed,
     sampleFieldSeed: `${seed}:${distribution}:sample-field`,
@@ -152,6 +150,23 @@ function buildDistribution({ distribution, rng, seed, width, height, hotspotCoun
   });
   const viewAdjusted = applyForecastView(generated, forecastView, seed, time);
   return withNoise(viewAdjusted, rng, noise);
+}
+
+function sampleFieldConfigForDemo({ distribution, timeMode, spatialPattern, temporalBehavior, hotspotCount }) {
+  const defaults = distributionToSampleConfig(distribution);
+  const selectedTemporal = timeMode === 'dynamic'
+    ? temporalBehavior ?? defaults.temporalBehavior
+    : 'static';
+  return normalizeSampleFieldConfig({
+    ...defaults,
+    spatialPattern: spatialPattern ?? defaults.spatialPattern,
+    temporalBehavior: selectedTemporal,
+    mode: timeMode === 'dynamic' ? 'dynamic' : 'static',
+    hotspotCount,
+    spatialCorrelation: { enabled: true, radiusCells: 3, anisotropy: distribution === 'currentAdvectedPlume' || selectedTemporal === 'currentAdvected' ? 'currentAligned' : 'none' },
+    neighborInfluence: { enabled: selectedTemporal === 'diffusive' || selectedTemporal === 'markovNeighbor' || selectedTemporal === 'currentAdvected', diffusionRate: 0.14, growthRate: 0.04, decayRate: 0.03 },
+    currentCoupling: { enabled: distribution === 'currentAdvectedPlume' || selectedTemporal === 'currentAdvected', advectionStrength: 0.8 }
+  }, { roiHotspots: hotspotCount });
 }
 
 function distributionToSampleConfig(distribution) {

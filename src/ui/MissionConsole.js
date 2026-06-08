@@ -288,9 +288,9 @@ export class MissionConsole {
     if (!this.root) return;
     this.root.innerHTML = `
       <section class="console-header">
-        <div class="console-kicker">ROI Generator Demo</div>
-        <h1>${escapeHtml(state.title ?? 'ROI Generator Demo')}</h1>
-        <p>Isolated sample-value field visualization.</p>
+        <div class="console-kicker">Sample / ROI Field Demo</div>
+        <h1>${escapeHtml(state.title ?? 'Sample / ROI Field Demo')}</h1>
+        <p>Visualizes S(x,y,t): where and when the environment is valuable to sample.</p>
       </section>
       <section class="console-status">
         <span>${escapeHtml(state.status ?? 'ROI field')}</span>
@@ -356,7 +356,6 @@ export class MissionConsole {
             ${[0.5, 1, 2, 5].map((speed) => `<option value="${escapeAttr(speed)}" ${Number(state.timeSpeedScale ?? 1) === speed ? 'selected' : ''}>${escapeHtml(speed)}x</option>`).join('')}
           </select>
         </label>
-        <button data-action="pause" class="console-button">${state.paused ? 'Play' : 'Pause'}</button>
       </section>
       <section class="console-status">
         <span>Field Stats</span>
@@ -379,7 +378,6 @@ export class MissionConsole {
     this.root.querySelector('#roi-demo-time-speed')?.addEventListener('change', (event) => handlers.timeSpeedScale?.(event.target.value));
     this.bind({
       regenerate: handlers.regenerate,
-      pause: handlers.pause,
       menu: handlers.menu
     });
   }

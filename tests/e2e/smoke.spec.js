@@ -274,12 +274,64 @@ test('campaign planning smoke flow reaches debrief', async ({ page }) => {
 
   await page.locator('#mission-console [data-action="roi-demo"]').click();
   await expect.poll(() => page.evaluate(() => window.anchorGame.phaser.scene.getScene('RoiGeneratorDemoScene').sys.isActive())).toBe(true);
-  await expect(page.locator('#mission-console')).toContainText('ROI Generator Demo');
+  await expect(page.locator('#mission-console')).toContainText('Sample / ROI Field Demo');
+  await expect(page.evaluate(() => window.anchorGame.phaser.scene.getScene('RoiGeneratorDemoScene').buttons?.length ?? 0)).resolves.toBe(0);
+  await expect(page.locator('#mission-summary-hud')).toBeEmpty();
+  await expect(page.locator('#agent-performance-hud')).toBeEmpty();
+  await expect(page.locator('#waypoint-timeline')).toContainText('Cell Inspector');
+  await expect(page.locator('#bottom-timeline .roi-demo-transport')).toBeVisible();
+  await expect(page.locator('#bottom-timeline')).toContainText('Demo Time');
+  await expect(page.locator('#bottom-timeline')).toContainText('Infinite timeline');
+  await expect(page.locator('#bottom-timeline [data-action="roi-demo-reset"]')).toHaveText('Reset');
+  await expect(page.locator('#bottom-timeline [data-action="roi-demo-direction"]')).toHaveText('Direction: Forward');
+  await expect(page.locator('#bottom-timeline [data-action="roi-demo-pause"]')).toHaveText('Pause');
   await expect(page.locator('#roi-demo-distribution')).toBeVisible();
+  await expect(page.evaluate(() => window.anchorGame.phaser.scene.getScene('RoiGeneratorDemoScene').timeMode)).resolves.toBe('dynamic');
+  const roiDynamicCell = await page.evaluate(() => {
+    const scene = window.anchorGame.phaser.scene.getScene('RoiGeneratorDemoScene');
+    const currentTime = scene.demoTime;
+    const currentField = scene.field.field;
+    const future = scene.constructor ? null : null;
+    let best = { col: 0, row: 0, delta: 0, value: 0 };
+    for (let row = 0; row < scene.field.height; row += 1) {
+      for (let col = 0; col < scene.field.width; col += 1) {
+        scene.demoTime = currentTime + 6;
+        scene.rebuildField();
+        const futureValue = scene.field.field[row][col];
+        scene.demoTime = currentTime;
+        scene.field.field = currentField;
+        const value = currentField[row][col];
+        const delta = Math.abs(futureValue - value);
+        if (delta > best.delta) best = { col, row, delta, value };
+      }
+    }
+    scene.demoTime = currentTime;
+    scene.rebuildField();
+    return best;
+  });
+  expect(roiDynamicCell.delta).toBeGreaterThan(0.02);
+  await clickRoiDemoCell(page, roiDynamicCell.col, roiDynamicCell.row);
+  await expect(page.locator('#waypoint-timeline')).toContainText(`Cell (${roiDynamicCell.col}, ${roiDynamicCell.row})`);
+  await expect(page.locator('#waypoint-timeline')).toContainText('Sample Value');
+  await expect(page.locator('#waypoint-timeline')).toContainText('temporal behavior');
   await page.locator('#roi-demo-distribution').selectOption('gradientFront');
   await expect.poll(() => page.evaluate(() => window.anchorGame.phaser.scene.getScene('RoiGeneratorDemoScene').distribution)).toBe('gradientFront');
   await page.locator('#roi-demo-time-mode').selectOption('dynamic');
   await expect.poll(() => page.evaluate(() => window.anchorGame.phaser.scene.getScene('RoiGeneratorDemoScene').timeMode)).toBe('dynamic');
+  await page.locator('#roi-demo-temporal-behavior').selectOption('moving');
+  await expect.poll(() => page.evaluate(() => window.anchorGame.phaser.scene.getScene('RoiGeneratorDemoScene').temporalBehavior)).toBe('moving');
+  await expect(page.locator('#bottom-timeline')).toContainText('Behavior: Moving Hotspot');
+  await page.locator('#bottom-timeline [data-action="roi-demo-pause"]').click();
+  await expect(page.locator('#bottom-timeline [data-action="roi-demo-pause"]')).toHaveText('Resume');
+  await expect.poll(() => page.evaluate(() => window.anchorGame.phaser.scene.getScene('RoiGeneratorDemoScene').paused)).toBe(true);
+  const roiTimeBeforePause = await page.evaluate(() => window.anchorGame.phaser.scene.getScene('RoiGeneratorDemoScene').demoTime);
+  await page.waitForTimeout(200);
+  await expect(page.evaluate(() => window.anchorGame.phaser.scene.getScene('RoiGeneratorDemoScene').demoTime)).resolves.toBeCloseTo(roiTimeBeforePause, 1);
+  await page.locator('#bottom-timeline [data-action="roi-demo-pause"]').click();
+  await page.locator('#bottom-timeline [data-action="roi-demo-direction"]').click();
+  await expect(page.locator('#bottom-timeline [data-action="roi-demo-direction"]')).toHaveText('Direction: Reverse');
+  await page.locator('#bottom-timeline [data-action="roi-demo-reset"]').click();
+  await expect.poll(() => page.evaluate(() => window.anchorGame.phaser.scene.getScene('RoiGeneratorDemoScene').demoTime)).toBeLessThan(0.2);
   await page.locator('#mission-console [data-action="regenerate"]').click();
   await expect.poll(() => page.evaluate(() => window.anchorGame.phaser.scene.getScene('RoiGeneratorDemoScene').seed)).toContain('2');
   await page.locator('#mission-console [data-action="menu"]').click();
@@ -745,6 +797,24 @@ async function clickFlowDemoCell(page, col, row) {
     const rect = canvas.getBoundingClientRect();
     const canvasX = map.x + ((Number(col) + 0.5) / 18) * map.width;
     const canvasY = map.y + ((Number(row) + 0.5) / 12) * map.height;
+    return {
+      x: rect.left + canvasX * rect.width / canvas.width,
+      y: rect.top + canvasY * rect.height / canvas.height
+    };
+  }, { col, row });
+  await page.mouse.click(point.x, point.y);
+}
+
+async function clickRoiDemoCell(page, col, row) {
+  const point = await page.evaluate(({ col, row }) => {
+    const scene = window.anchorGame.phaser.scene.getScene('RoiGeneratorDemoScene');
+    const map = scene.layout().map;
+    const canvas = document.getElementById('game-canvas');
+    const rect = canvas.getBoundingClientRect();
+    const width = scene.field.width;
+    const height = scene.field.height;
+    const canvasX = map.x + ((Number(col) + 0.5) / width) * map.width;
+    const canvasY = map.y + ((Number(row) + 0.5) / height) * map.height;
     return {
       x: rect.left + canvasX * rect.width / canvas.width,
       y: rect.top + canvasY * rect.height / canvas.height

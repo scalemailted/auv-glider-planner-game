@@ -1,21 +1,33 @@
-# ROI Generator Demo
+# Sample / ROI Field Demo
 
 ## Purpose
 
-The ROI Generator Demo is an isolated concept scene for inspecting sample-value fields before they are used by missions, planners, scoring, datasets, or external solvers.
+The Sample / ROI Field Demo visualizes `S(x,y,t)`: where and when the environment is valuable to sample. Unlike the Flow Fields Demo, which shows water motion `F(x,y,t)`, this demo shows objective value, information value, uncertainty, hotspots, bursts, temporal patterns, and depletion behavior.
 
 It is not a mission, planner, leaderboard mode, or scoring mode. It only visualizes how value/probability regions can be shaped.
+
+## Layout
+
+- Left Mission Console: explanation, sample-field configuration, display controls, playback speed, seed regeneration, and Main Menu navigation.
+- Center Phaser viewport: heatmap, high-value markers, selected-cell highlight, and non-obstructive labels only.
+- Right panel: Cell Inspector for the selected sample cell.
+- Bottom transport: compact infinite-time controls for Reset, Direction, Pause/Resume, Demo Time, Playback, temporal behavior, and Infinite timeline.
 
 ## Controls
 
 - `Distribution`: selects the value-field pattern.
+- `Spatial Pattern`: selects the shared sample-field spatial model.
 - `Seed`: controls deterministic field generation.
 - `Regenerate`: advances the seed and rebuilds the field.
 - `Hotspot Count`: changes the number of target regions used by hotspot-style distributions.
 - `Noise`: adds seeded texture to the field.
 - `Time Mode`: chooses Static or Dynamic field behavior.
-- `Time Speed`: controls dynamic field evolution speed.
-- `Pause / Play`: pauses or resumes dynamic evolution.
+- `Temporal Behavior`: chooses Static, Periodic, Bursty, Moving Hotspot, Diffusive, Current-Advected, Random, or Neighbor-Coupled behavior where supported by the shared sampler.
+- `Forecast / Truth`: switches between forecast-biased, truth, uncertainty, and depleted-value views.
+- `Time Speed`: controls playback speed for dynamic demo time.
+- Bottom `Pause / Resume`: pauses or resumes dynamic evolution.
+- Bottom `Direction`: runs demo time forward or backward.
+- Bottom `Reset`: returns demo time to zero.
 - `Main Menu`: returns to the main menu.
 
 ## Distributions
@@ -26,6 +38,30 @@ It is not a mission, planner, leaderboard mode, or scoring mode. It only visuali
 - `Gradient / Front`: a smooth front-like transition across the domain.
 - `Sparse Targets`: small high-value targets in a mostly low-value field.
 - `Ridge / Corridor`: a sinuous high-value corridor.
+- `Bimodal Hotspots`: two major high-value modes.
+- `Moving Hotspot`: a high-value region that translates over time.
+- `Bursty Bloom`: high-value regions that grow, peak, and decay.
+- `Current-Advected Plume`: plume-like value transported by a synthetic demo current frame.
+- `Nonuniform Random`: seeded random-looking texture with spatially varying amplitude.
+
+## Static vs Dynamic Sample Fields
+
+Static mode samples the selected field at time zero. Dynamic mode passes advancing demo time into the shared sample-field generator through `createDemoRoiField({ time: demoTime, ... })`, so periodic, bursty, moving, diffusive, current-advected, random, and neighbor-coupled fields visibly change over time.
+
+The default is intentionally dynamic and visually active: Bursty Bloom distribution, Multi Hotspot spatial pattern, Bursty temporal behavior, and Forecast view.
+
+## Cell Inspector
+
+Click any heatmap cell to select it. The right panel updates live with:
+
+- cell coordinates
+- sample value and normalized value
+- trend over the previous simulated second
+- field mode, spatial pattern, temporal behavior, distribution, and view
+- uncertainty estimate
+- depleted-value estimate
+- hotspot membership
+- shared sample-field configuration metadata such as neighbor influence, current coupling, and depletion mode
 
 ## Visuals
 
@@ -39,14 +75,17 @@ Relevant files:
 
 - `src/game/phaser/scenes/RoiGeneratorDemoScene.js`
 - `src/core/demo/DemoRoiFields.js`
+- `src/core/generation/SampleFieldConfig.js`
 - `src/core/generation/ROIFieldGenerator.js`
 - `src/core/random/SeededRng.js`
 
-The demo uses seeded randomness and does not call `Math.random()` for field generation. The same seed, distribution, hotspot count, noise, time mode, and demo time reproduce the same heatmap.
+The demo uses the shared sample-field config and ROI generator path where practical. `DemoRoiFields.js` normalizes demo controls into `SampleFieldConfig`, then calls `generateROI` / `generateSampleField` for hotspot, burst, moving, current-coupled, random, and neighbor-coupled behavior.
+
+The demo uses seeded randomness and does not call `Math.random()` for per-frame field generation. The same seed, distribution, hotspot count, noise, time mode, temporal behavior, forecast view, and demo time reproduce the same heatmap.
 
 ## Limitations
 
-- The demo does not simulate depletion from actual glider sampling.
+- The depleted view is a deterministic visualization estimate; it does not simulate actual glider sampling.
 - It does not run route planning or scoring.
 - It does not create leaderboard entries.
 - Dynamic mode is a visual generator diagnostic, not a full stochastic truth/forecast replay.

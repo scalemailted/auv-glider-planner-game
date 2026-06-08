@@ -9,7 +9,6 @@ import {
   normalizeRoiDemoTemporalBehavior,
   normalizeRoiDemoTimeMode
 } from '../../../core/demo/DemoRoiFields.js';
-import { PhaserButton } from '../ui/Button.js';
 
 const PhaserScene = globalThis.Phaser?.Scene ?? class {};
 
@@ -17,34 +16,42 @@ export class RoiGeneratorDemoScene extends PhaserScene {
   constructor() {
     super('RoiGeneratorDemoScene');
     this.objects = [];
-    this.buttons = [];
-    this.distribution = 'gaussianHotspots';
+    this.transportRefs = {};
+    this.distribution = 'burstyBloom';
     this.seed = 'anchor-roi-demo';
     this.hotspotCount = 4;
     this.noise = 0.15;
-    this.timeMode = 'static';
+    this.timeMode = 'dynamic';
     this.spatialPattern = 'multiHotspot';
-    this.temporalBehavior = 'periodic';
+    this.temporalBehavior = 'bursty';
     this.forecastView = 'forecast';
     this.demoTime = 0;
     this.timeSpeedScale = 1;
+    this.playbackDirection = 1;
     this.paused = false;
     this.field = null;
+    this.selectedCell = null;
+    this.lastInspectorKey = '';
+    this.lastInspectorRenderTime = -Infinity;
   }
 
   init(data = {}) {
-    this.distribution = normalizeRoiDemoDistribution(data.distribution ?? 'gaussianHotspots');
+    this.distribution = normalizeRoiDemoDistribution(data.distribution ?? 'burstyBloom');
     const distributionDefaults = roiDemoDistributionDefaults(this.distribution);
     this.seed = data.seed ?? 'anchor-roi-demo';
     this.hotspotCount = finiteNumber(data.hotspotCount, 4);
     this.noise = finiteNumber(data.noise, 0.15);
-    this.timeMode = normalizeRoiDemoTimeMode(data.timeMode ?? 'static');
+    this.timeMode = normalizeRoiDemoTimeMode(data.timeMode ?? 'dynamic');
     this.spatialPattern = normalizeRoiDemoSpatialPattern(data.spatialPattern ?? distributionDefaults.spatialPattern);
     this.temporalBehavior = normalizeRoiDemoTemporalBehavior(data.temporalBehavior ?? distributionDefaults.temporalBehavior);
     this.forecastView = normalizeForecastView(data.forecastView ?? 'forecast');
     this.timeSpeedScale = finiteNumber(data.timeSpeedScale, 1);
+    this.playbackDirection = normalizePlaybackDirection(data.playbackDirection);
     this.demoTime = finiteNumber(data.demoTime, 0);
     this.paused = false;
+    this.selectedCell = normalizeSelectedCell(data.selectedCell);
+    this.lastInspectorKey = '';
+    this.lastInspectorRenderTime = -Infinity;
     this.rebuildField();
   }
 
@@ -54,17 +61,19 @@ export class RoiGeneratorDemoScene extends PhaserScene {
     this.app.clearPanels();
     this.app.elements.shell?.classList.remove('planning-workspace');
     this.app.setSceneLabel(this.title());
-    this.app.waypointPanel?.renderIdle?.();
-    this.app.summaryHud?.renderIdle?.();
-    this.app.agentPerformanceHud?.setHandlers?.({});
-    this.app.agentPerformanceHud?.renderIdle?.();
     this.renderConsole();
+    this.renderTransportBar();
+    this.renderCellInspector(true);
     this.buildSceneObjects();
+    this.bindInputHandlers();
     this.draw();
   }
 
   shutdown() {
+    this.unbindInputHandlers();
     this.destroyObjects();
+    this.clearTransportBar();
+    this.clearCellInspector();
   }
 
   handleViewportResize() {
@@ -74,19 +83,22 @@ export class RoiGeneratorDemoScene extends PhaserScene {
   }
 
   update(_time, delta) {
-    if (this.paused || this.timeMode !== 'dynamic') return;
+    if (this.paused || this.timeMode !== 'dynamic') {
+      this.draw();
+      return;
+    }
     const dt = Math.min(0.05, Math.max(0, Number(delta ?? 16.67) / 1000));
-    this.demoTime += dt * this.timeSpeedScale;
+    this.demoTime = Math.max(0, this.demoTime + dt * this.playbackDirection * this.timeSpeedScale);
     this.rebuildField();
     this.draw();
   }
 
   title() {
-    return 'ROI Generator Demo';
+    return 'Sample / ROI Field Demo';
   }
 
   subtitle() {
-    return 'Seeded value-field sandbox for inspecting sampling regions before they appear in missions.';
+    return 'Seeded S(x,y,t) sandbox for inspecting where and when sampling is valuable.';
   }
 
   sceneConfig(overrides = {}) {
@@ -100,13 +112,15 @@ export class RoiGeneratorDemoScene extends PhaserScene {
       temporalBehavior: this.temporalBehavior,
       forecastView: this.forecastView,
       timeSpeedScale: this.timeSpeedScale,
+      playbackDirection: this.playbackDirection,
       demoTime: this.demoTime,
+      selectedCell: this.selectedCell,
       ...overrides
     };
   }
 
   rebuildField() {
-    this.field = createDemoRoiField(this.sceneConfig());
+    this.field = createDemoRoiField({ ...this.sceneConfig(), time: this.demoTime });
   }
 
   renderConsole() {
@@ -124,6 +138,7 @@ export class RoiGeneratorDemoScene extends PhaserScene {
       temporalBehaviorLabel: sampleTemporalBehaviorLabel(this.field?.temporalBehavior ?? this.temporalBehavior),
       forecastView: this.forecastView,
       timeSpeedScale: this.timeSpeedScale,
+      playbackDirection: this.playbackDirection,
       time: this.demoTime,
       paused: this.paused,
       stats: this.field?.stats
@@ -151,12 +166,17 @@ export class RoiGeneratorDemoScene extends PhaserScene {
       timeSpeedScale: (timeSpeedScale) => {
         this.timeSpeedScale = Number(timeSpeedScale) || 1;
         this.renderConsole();
+        this.updateTransportBar();
       },
       regenerate: () => this.scene.restart(this.sceneConfig({ seed: nextSeed(this.seed), demoTime: 0 })),
       pause: () => {
         this.paused = !this.paused;
         this.renderConsole();
+        this.updateTransportBar();
+        this.renderCellInspector(true);
       },
+      direction: () => this.togglePlaybackDirection(),
+      reset: () => this.resetDemoState(),
       menu: () => this.scene.start('MainMenuScene')
     });
   }
@@ -183,37 +203,6 @@ export class RoiGeneratorDemoScene extends PhaserScene {
       color: '#d7f7cc'
     }).setOrigin(0, 0);
     this.objects.push(this.titleText, this.subtitleText, this.statusText);
-    this.createButtons();
-  }
-
-  createButtons() {
-    this.buttons = [
-      new PhaserButton(this, {
-        x: 0,
-        y: 0,
-        width: 112,
-        label: 'Back',
-        onClick: () => this.scene.start('MainMenuScene')
-      }),
-      new PhaserButton(this, {
-        x: 0,
-        y: 0,
-        width: 126,
-        label: 'Regenerate',
-        onClick: () => this.scene.restart(this.sceneConfig({ seed: nextSeed(this.seed), demoTime: 0 }))
-      }),
-      new PhaserButton(this, {
-        x: 0,
-        y: 0,
-        width: 112,
-        label: this.paused ? 'Play' : 'Pause',
-        onClick: () => {
-          this.paused = !this.paused;
-          this.buttons?.[2]?.setLabel(this.paused ? 'Play' : 'Pause');
-          this.renderConsole();
-        }
-      })
-    ];
   }
 
   layout() {
@@ -222,7 +211,7 @@ export class RoiGeneratorDemoScene extends PhaserScene {
     const margin = Math.max(24, Math.min(52, width * 0.045));
     const top = Math.max(24, Math.min(44, height * 0.06));
     const mapTop = top + 112;
-    const mapHeight = Math.max(260, height - mapTop - 62);
+    const mapHeight = Math.max(260, height - mapTop - 118);
     const mapWidth = Math.max(320, width - margin * 2);
     return {
       width,
@@ -245,8 +234,10 @@ export class RoiGeneratorDemoScene extends PhaserScene {
     this.drawBackground(layout);
     this.drawHeatmap(layout.map);
     this.drawHighValueMarkers(layout.map);
+    this.drawSelectedCell(layout.map);
     this.layoutText(layout);
-    this.layoutButtons(layout);
+    this.updateTransportBar();
+    this.renderCellInspector();
   }
 
   drawBackground({ width, height, map }) {
@@ -304,27 +295,188 @@ export class RoiGeneratorDemoScene extends PhaserScene {
     this.subtitleText?.setPosition(margin, top + 42);
     this.subtitleText?.setWordWrapWidth(Math.min(780, map.width));
     const stats = this.field?.stats ?? {};
-    const dynamicText = this.timeMode === 'dynamic' ? ` | Demo time: ${this.demoTime.toFixed(1)} hr | Time Speed: ${this.timeSpeedScale}x` : '';
+    const dynamicText = this.timeMode === 'dynamic' ? ` | Demo Time: ${this.demoTime.toFixed(1)} hr | Playback: ${this.timeSpeedScale}x | Direction: ${this.playbackDirection === -1 ? 'Reverse' : 'Forward'}` : '';
     this.statusText?.setText(`Distribution: ${roiDistributionLabel(this.distribution)} | Pattern: ${sampleSpatialPatternLabel(this.field?.spatialPattern ?? this.spatialPattern)} | Temporal: ${sampleTemporalBehaviorLabel(this.field?.temporalBehavior ?? this.temporalBehavior)} | View: ${forecastViewLabel(this.forecastView)} | Seed: ${this.seed}${dynamicText} | Max: ${formatStat(stats.max)} | Mean: ${formatStat(stats.mean)} | Total: ${formatStat(stats.totalValue)}`);
     this.statusText?.setWordWrapWidth(Math.min(1040, map.width));
     this.statusText?.setPosition(margin, map.y + map.height + 18);
   }
 
-  layoutButtons({ width, top }) {
-    const y = top + 18;
-    const right = width - 58;
-    const spacing = 138;
-    for (const [index, button] of this.buttons.entries()) {
-      button.container.setPosition(right - index * spacing, y);
-    }
-  }
-
   destroyObjects() {
-    this.buttons?.forEach((button) => button.destroy?.());
-    this.buttons = [];
     this.objects?.forEach((object) => object.destroy?.());
     this.objects = [];
     this.graphics = null;
+  }
+
+  drawSelectedCell(map) {
+    if (!this.selectedCell || !this.field) return;
+    const cellW = map.width / this.field.width;
+    const cellH = map.height / this.field.height;
+    const x = map.x + this.selectedCell.col * cellW;
+    const y = map.y + this.selectedCell.row * cellH;
+    this.graphics.fillStyle(0x63e6be, 0.1);
+    this.graphics.fillRect(x + 1, y + 1, Math.max(1, cellW - 2), Math.max(1, cellH - 2));
+    this.graphics.lineStyle(3, 0x63e6be, 0.96);
+    this.graphics.strokeRect(x + 1.5, y + 1.5, Math.max(1, cellW - 3), Math.max(1, cellH - 3));
+  }
+
+  bindInputHandlers() {
+    this.input?.off?.('pointerdown', this.handlePointerDown, this);
+    this.input?.on?.('pointerdown', this.handlePointerDown, this);
+  }
+
+  unbindInputHandlers() {
+    this.input?.off?.('pointerdown', this.handlePointerDown, this);
+  }
+
+  handlePointerDown(pointer) {
+    const cell = this.cellFromPointer(pointer);
+    if (!cell) return;
+    if (this.selectedCell && this.selectedCell.col === cell.col && this.selectedCell.row === cell.row) {
+      this.selectedCell = null;
+    } else {
+      this.selectedCell = cell;
+    }
+    this.lastInspectorRenderTime = -Infinity;
+    this.renderCellInspector(true);
+    this.draw();
+  }
+
+  cellFromPointer(pointer) {
+    const map = this.layout().map;
+    const x = Number(pointer?.x);
+    const y = Number(pointer?.y);
+    if (!Number.isFinite(x) || !Number.isFinite(y) || !this.field) return null;
+    if (x < map.x || y < map.y || x > map.x + map.width || y > map.y + map.height) return null;
+    const col = Math.max(0, Math.min(this.field.width - 1, Math.floor(((x - map.x) / map.width) * this.field.width)));
+    const row = Math.max(0, Math.min(this.field.height - 1, Math.floor(((y - map.y) / map.height) * this.field.height)));
+    return { col, row, x: col, y: row };
+  }
+
+  renderTransportBar() {
+    const root = this.app?.elements?.overlay?.bottomTimeline;
+    if (!root) return;
+    root.innerHTML = `
+      <section class="hud-panel flow-demo-transport roi-demo-transport" aria-label="Sample / ROI Field Demo transport controls">
+        <div class="timeline-buttons flow-demo-transport-actions">
+          <button type="button" data-action="roi-demo-reset">Reset</button>
+          <button type="button" data-action="roi-demo-direction">Direction: Forward</button>
+          <button type="button" data-action="roi-demo-pause">Pause</button>
+        </div>
+        <div class="timeline-readout flow-demo-time-readout">
+          <strong data-roi-demo-time>Demo Time: 0.0 s</strong>
+          <span class="hud-muted" data-roi-demo-state>Dynamic sample field</span>
+        </div>
+        <div class="flow-demo-transport-summary">
+          <span data-roi-demo-speed>Playback: 1x</span>
+          <span data-roi-demo-behavior>Behavior: Bursty Bloom</span>
+          <span>Infinite timeline</span>
+        </div>
+      </section>
+    `;
+    root.querySelector('[data-action="roi-demo-reset"]')?.addEventListener('click', () => this.resetDemoState());
+    root.querySelector('[data-action="roi-demo-direction"]')?.addEventListener('click', () => this.togglePlaybackDirection());
+    root.querySelector('[data-action="roi-demo-pause"]')?.addEventListener('click', () => {
+      this.paused = !this.paused;
+      this.renderConsole();
+      this.updateTransportBar();
+      this.renderCellInspector(true);
+    });
+    this.transportRefs = {
+      root,
+      directionButton: root.querySelector('[data-action="roi-demo-direction"]'),
+      pauseButton: root.querySelector('[data-action="roi-demo-pause"]'),
+      time: root.querySelector('[data-roi-demo-time]'),
+      state: root.querySelector('[data-roi-demo-state]'),
+      speed: root.querySelector('[data-roi-demo-speed]'),
+      behavior: root.querySelector('[data-roi-demo-behavior]')
+    };
+    this.updateTransportBar();
+  }
+
+  updateTransportBar() {
+    const refs = this.transportRefs ?? {};
+    if (!refs.root?.isConnected) return;
+    const directionLabel = this.playbackDirection === -1 ? 'Reverse' : 'Forward';
+    if (refs.time) refs.time.textContent = `${this.paused ? 'Paused at' : 'Demo Time'}: ${this.demoTime.toFixed(1)} s`;
+    if (refs.state) refs.state.textContent = this.timeMode === 'dynamic' ? `Dynamic sample field - ${directionLabel.toLowerCase()}` : 'Static sample field';
+    if (refs.directionButton) refs.directionButton.textContent = `Direction: ${directionLabel}`;
+    if (refs.pauseButton) refs.pauseButton.textContent = this.paused ? 'Resume' : 'Pause';
+    if (refs.speed) refs.speed.textContent = `Playback: ${this.timeSpeedScale}x`;
+    if (refs.behavior) refs.behavior.textContent = `Behavior: ${sampleTemporalBehaviorLabel(this.temporalBehavior)}`;
+  }
+
+  clearTransportBar() {
+    const root = this.app?.elements?.overlay?.bottomTimeline;
+    if (root) root.innerHTML = '';
+    this.transportRefs = {};
+  }
+
+  togglePlaybackDirection() {
+    this.playbackDirection = this.playbackDirection === 1 ? -1 : 1;
+    this.updateTransportBar();
+    this.renderConsole();
+    this.renderCellInspector(true);
+  }
+
+  resetDemoState() {
+    this.demoTime = 0;
+    this.rebuildField();
+    this.renderConsole();
+    this.updateTransportBar();
+    this.renderCellInspector(true);
+    this.draw();
+  }
+
+  renderCellInspector(force = false) {
+    const root = this.app?.elements?.waypointTimelineRoot;
+    if (!root) return;
+    if (!this.selectedCell) {
+      if (force || this.lastInspectorKey !== 'empty') {
+        root.innerHTML = roiInspectorEmptyHtml();
+        this.lastInspectorKey = 'empty';
+      }
+      return;
+    }
+    const key = `${this.selectedCell.col},${this.selectedCell.row}:${this.timeMode}:${this.temporalBehavior}:${this.forecastView}:${this.paused}`;
+    if (!force && key === this.lastInspectorKey && Math.abs(this.demoTime - this.lastInspectorRenderTime) < 0.25) return;
+    this.lastInspectorKey = key;
+    this.lastInspectorRenderTime = this.demoTime;
+    root.innerHTML = roiInspectorHtml(this.inspectSelectedCell());
+  }
+
+  clearCellInspector() {
+    const root = this.app?.elements?.waypointTimelineRoot;
+    if (root) root.innerHTML = '';
+    this.lastInspectorKey = '';
+  }
+
+  inspectSelectedCell() {
+    const cell = this.selectedCell;
+    const value = Number(this.field?.field?.[cell.row]?.[cell.col] ?? 0);
+    const previousField = createDemoRoiField({ ...this.sceneConfig(), time: Math.max(0, this.demoTime - 1), demoTime: Math.max(0, this.demoTime - 1) });
+    const previous = Number(previousField.field?.[cell.row]?.[cell.col] ?? value);
+    const stats = this.field?.stats ?? {};
+    const hotspot = (this.field?.highValueCells ?? []).find((entry) => entry.x === cell.col && entry.y === cell.row);
+    const uncertainty = this.forecastView === 'uncertainty' ? value : estimateUncertainty(cell, this.seed, this.demoTime);
+    const depleted = this.forecastView === 'depleted' ? value : Math.max(0, value - estimateDepletion(cell, this.field));
+    return {
+      cell,
+      value,
+      previous,
+      delta: value - previous,
+      normalizedValue: stats.max > stats.min ? (value - stats.min) / Math.max(0.0001, stats.max - stats.min) : value,
+      mode: this.timeMode,
+      distribution: this.distribution,
+      spatialPattern: this.field?.spatialPattern ?? this.spatialPattern,
+      temporalBehavior: this.field?.temporalBehavior ?? this.temporalBehavior,
+      forecastView: this.forecastView,
+      uncertainty,
+      depleted,
+      hotspotMembership: hotspot ? `high-value rank ${1 + (this.field.highValueCells ?? []).indexOf(hotspot)}` : 'none',
+      sampleFieldConfig: this.field?.sampleFieldConfig,
+      demoTime: this.demoTime,
+      paused: this.paused
+    };
   }
 }
 
@@ -364,4 +516,137 @@ function forecastViewLabel(value) {
     uncertainty: 'Uncertainty',
     depleted: 'Depleted'
   }[value] ?? 'Forecast';
+}
+
+function normalizePlaybackDirection(value) {
+  return Number(value) === -1 || value === 'reverse' ? -1 : 1;
+}
+
+function normalizeSelectedCell(value) {
+  if (!value || typeof value !== 'object') return null;
+  const col = Number(value.col ?? value.x);
+  const row = Number(value.row ?? value.y);
+  if (!Number.isFinite(col) || !Number.isFinite(row)) return null;
+  return { col: Math.max(0, Math.round(col)), row: Math.max(0, Math.round(row)), x: Math.max(0, Math.round(col)), y: Math.max(0, Math.round(row)) };
+}
+
+function roiInspectorEmptyHtml() {
+  return `
+    <section class="cell-inspector-shell">
+      <div class="cell-inspector-header">
+        <span>Sample / ROI Field Demo</span>
+        <h2>Cell Inspector</h2>
+        <p>Click a cell in the sample field to inspect its value behavior over time.</p>
+      </div>
+      <div class="cell-inspector-card">
+        <strong>You can inspect</strong>
+        <ul>
+          <li>sample value and normalized value</li>
+          <li>temporal trend and hotspot membership</li>
+          <li>forecast, uncertainty, and depleted-value views</li>
+          <li>shared sample-field configuration metadata</li>
+        </ul>
+      </div>
+    </section>
+  `;
+}
+
+function roiInspectorHtml(inspection) {
+  return `
+    <section class="cell-inspector-shell" data-roi-cell-inspector>
+      <div class="cell-inspector-header">
+        <span>Cell Inspector</span>
+        <h2>Cell (${escapeHtml(inspection.cell.col)}, ${escapeHtml(inspection.cell.row)})</h2>
+        <p>Type: Sample cell | t = ${formatStat(inspection.demoTime)} s</p>
+      </div>
+      <div class="cell-inspector-card selected">
+        <span>Sample Value</span>
+        ${metricRows([
+          ['value', formatStat(inspection.value)],
+          ['normalized', formatStat(inspection.normalizedValue)],
+          ['trend', trendLabel(inspection.delta)],
+          ['delta / 1s', formatSignedStat(inspection.delta)]
+        ])}
+      </div>
+      <div class="cell-inspector-card">
+        <span>Field Behavior</span>
+        ${metricRows([
+          ['field mode', inspection.mode === 'dynamic' ? 'Dynamic' : 'Static'],
+          ['spatial pattern', sampleSpatialPatternLabel(inspection.spatialPattern)],
+          ['temporal behavior', sampleTemporalBehaviorLabel(inspection.temporalBehavior)],
+          ['distribution', roiDistributionLabel(inspection.distribution)],
+          ['view', forecastViewLabel(inspection.forecastView)]
+        ])}
+      </div>
+      <div class="cell-inspector-card">
+        <span>Sampling Semantics</span>
+        ${metricRows([
+          ['uncertainty', formatStat(inspection.uncertainty)],
+          ['depleted value', formatStat(inspection.depleted)],
+          ['hotspot membership', inspection.hotspotMembership],
+          ['neighbor influence', inspection.sampleFieldConfig?.neighborInfluence?.enabled ? 'enabled' : 'off'],
+          ['current coupled', inspection.sampleFieldConfig?.currentCoupling?.enabled ? 'yes' : 'no'],
+          ['depletion', inspection.sampleFieldConfig?.depletion?.mode ?? 'none']
+        ])}
+      </div>
+    </section>
+  `;
+}
+
+function metricRows(rows) {
+  return `
+    <div class="cell-inspector-metrics">
+      ${rows.map(([label, value]) => `
+        <div>
+          <span>${escapeHtml(label)}</span>
+          <strong>${escapeHtml(value)}</strong>
+        </div>
+      `).join('')}
+    </div>
+  `;
+}
+
+function trendLabel(delta) {
+  const value = Number(delta) || 0;
+  if (value > 0.015) return 'rising';
+  if (value < -0.015) return 'falling';
+  return 'stable';
+}
+
+function formatSignedStat(value) {
+  const number = Number(value);
+  if (!Number.isFinite(number)) return 'N/A';
+  return `${number >= 0 ? '+' : ''}${number.toFixed(3)}`;
+}
+
+function estimateUncertainty(cell, seed, time) {
+  const phase = seededHash(`${seed}:uncertainty:${cell.col}:${cell.row}`) * Math.PI * 2;
+  return Math.max(0, Math.min(1, 0.22 + 0.42 * seededHash(`${seed}:uncertainty-block:${Math.floor(cell.col / 3)}:${Math.floor(cell.row / 3)}`) + 0.1 * Math.sin(time * 0.18 + phase)));
+}
+
+function estimateDepletion(cell, field) {
+  const width = Math.max(1, Number(field?.width ?? 1));
+  const height = Math.max(1, Number(field?.height ?? 1));
+  const cx = width * 0.35;
+  const cy = height * 0.52;
+  const d2 = (cell.col - cx) ** 2 + (cell.row - cy) ** 2;
+  return 0.35 * Math.exp(-d2 / (2 * 2.2 ** 2));
+}
+
+function seededHash(seed) {
+  let hash = 2166136261;
+  for (const char of String(seed)) {
+    hash ^= char.charCodeAt(0);
+    hash = Math.imul(hash, 16777619);
+  }
+  return ((hash >>> 0) % 100000) / 100000;
+}
+
+function escapeHtml(value) {
+  return String(value ?? '')
+    .replaceAll('&', '&amp;')
+    .replaceAll('<', '&lt;')
+    .replaceAll('>', '&gt;')
+    .replaceAll('"', '&quot;')
+    .replaceAll("'", '&#39;');
 }
