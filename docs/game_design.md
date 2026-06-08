@@ -72,25 +72,20 @@ The same grader is used for manual plans and Greedy Planner routes. Challenge Mo
 
 ## Main Menu Flow
 
-The main menu has two primary accordions: `Challenge Mode` and `Simulation Lab`. Challenge Mode is the playable/game-facing door: mission modes, tutorials, custom challenges, quick challenge variants, and challenge leaderboards. Simulation Lab is the experimental/authoring/analysis door: deterministic and stochastic experiments, Mission Editor, import/export tools, field demos, solver workflows, and benchmark leaderboards.
+The main menu has two primary accordions: `Challenge Mode` and `Simulation Lab`. Each accordion uses smaller visual subsection headings rather than a flat list. Challenge Mode is the playable/game-facing door; Simulation Lab is the experimental/authoring/analysis door.
 
 Challenge Mode contains:
 
-- `Mission Modes`: opens generated challenge setup for player-facing play.
-- `Tutorials`: opens a center-viewport tutorial browser with filters, lesson cards, and selected-lesson details.
-- `Play Custom Challenge`: imports a shared/custom `anchor.challenge` package for Challenge Mode.
-- `Quick Random Challenge` and `Greedy Planner Race`: immediate challenge variants.
-- `Challenge Leaderboard`: opens local high-score/best-path records.
+- `Play`: Mission Modes, Play Custom Challenge, and Quick Random Challenge.
+- `Learn`: Tutorials.
+- `Compete`: Greedy Planner Race and Challenge Leaderboard.
 
 Simulation Lab contains:
 
-- `Deterministic Experiment` and `Stochastic Experiment`: open technical scenario setup.
-- `Mission Editor`: opens the visual level editor for terrain, hazards, depth, ROI, bases, agent starts, mission defaults, time frames, and U/V current edits.
-- `Import / Export Tools`: imports exported `anchor.challenge`, `anchor.level`, result, or oracle JSON packages.
-- `Flow Fields Demo`: opens one isolated Phaser vector-field sandbox, defaulting to Static mode with one Base Flow Field and no additive layers.
-- `Sample / ROI Field Demo`: opens one isolated Phaser sample-value sandbox.
-- `External Solver Evaluation`: opens dataset/solver export tooling.
-- `Benchmark Leaderboard`: opens local benchmark records. Challenge Mode and Simulation Lab share storage infrastructure but are filtered by `leaderboardScope`.
+- `Experiments`: Deterministic Experiment and Stochastic Experiment.
+- `Demos`: Flow Fields Demo and Sample / ROI Field Demo.
+- `Editor & Import Tools`: Mission Editor and Import / Export Tools.
+- `Benchmarks`: External Solver Evaluation and Benchmark Leaderboard.
 - Planning Analysis: when prior attempts exist for the same challenge instance, the console exposes the best prior run as a benchmark with ghost-path overlay, rerun, load-as-plan, and export controls. The overlay is muted and never replaces the editable current route unless the player explicitly loads it.
 
 UUIDs and instance IDs remain important metadata for solver packets, plans, results, local saves, and datasets. They are no longer the primary player-facing loading mechanism.

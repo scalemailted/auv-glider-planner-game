@@ -567,6 +567,30 @@
   font-weight: 600;
   line-height: 1.25;
 }
+.menu-subsection {
+  display: grid;
+  gap: .42rem;
+  padding-top: .55rem;
+  margin-top: .55rem;
+  border-top: 1px solid rgba(141,220,242,0.14);
+}
+.menu-subsection:first-of-type {
+  margin-top: .25rem;
+}
+.menu-subsection h3 {
+  margin: 0;
+  padding-left: .45rem;
+  color: var(--success);
+  border-left: 3px solid rgba(99,230,190,0.72);
+  font-size: .68rem;
+  font-weight: 900;
+  letter-spacing: .04em;
+  text-transform: uppercase;
+}
+.menu-subsection-items {
+  display: grid;
+  gap: .42rem;
+}
 .flow-import-actions {
   display: grid;
   grid-template-columns: 1fr;

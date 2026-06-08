@@ -27,6 +27,7 @@ test('campaign planning smoke flow reaches debrief', async ({ page }) => {
   await expect(page.locator('#mission-console')).toContainText('Challenge Mode');
   await expect(page.locator('#mission-console')).toContainText('Simulation Lab');
   await expect(page.locator('#mission-console .accordion-title')).toHaveText(['Challenge Mode', 'Simulation Lab']);
+  await expect(page.locator('#mission-console [data-accordion-key="challenge-mode"] [data-menu-group] h3')).toHaveText(['Play', 'Learn', 'Compete']);
   await expect(page.locator('#mission-console [data-accordion-key="challenge-mode"]')).toContainText('Mission Modes');
   await expect(page.locator('#mission-console [data-accordion-key="challenge-mode"]')).toContainText('Tutorials');
   await expect(page.locator('#mission-console')).toContainText('Play Custom Challenge');
@@ -36,6 +37,7 @@ test('campaign planning smoke flow reaches debrief', async ({ page }) => {
   await expect(page.locator('#mission-console [data-accordion-key="simulation-lab"]')).toContainText('Import / Export Tools');
   await expect(page.locator('#mission-console [data-accordion-key="simulation-lab"]')).toContainText('Benchmark Leaderboard');
   await page.locator('#mission-console [data-accordion-key="simulation-lab"] .accordion-header').click();
+  await expect(page.locator('#mission-console [data-accordion-key="simulation-lab"] [data-menu-group] h3')).toHaveText(['Experiments', 'Demos', 'Editor & Import Tools', 'Benchmarks']);
   await expect(page.locator('#mission-console [data-accordion-key="simulation-lab"]')).toContainText('Flow Fields Demo');
   await expect(page.locator('#mission-console [data-accordion-key="simulation-lab"]')).toContainText('Sample / ROI Field Demo');
   await expect(page.locator('#mission-console')).not.toContainText('Static Flow Field Demo');

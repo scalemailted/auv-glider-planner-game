@@ -53,8 +53,8 @@ Both modes use the same terrain, current fields, hazards, glider physics, scorin
 
 The Main Menu is the starting screen. It is organized around two expandable experiences:
 
-- `Challenge Mode`: Mission Modes, Tutorials, Play Custom Challenge, Quick Random Challenge, Greedy Planner Race, and Challenge Leaderboard.
-- `Simulation Lab`: Deterministic Experiment, Stochastic Experiment, Mission Editor, Import / Export Tools, Flow Fields Demo, Sample / ROI Field Demo, External Solver Evaluation, and Benchmark Leaderboard.
+- `Challenge Mode`: `Play` for Mission Modes/custom challenges, `Learn` for Tutorials, and `Compete` for Greedy Planner Race plus Challenge Leaderboard.
+- `Simulation Lab`: `Experiments`, `Demos`, `Editor & Import Tools`, and `Benchmarks`.
 
 For first-time play, expand `Challenge Mode` and choose `Tutorials`.
 

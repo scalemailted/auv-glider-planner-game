@@ -82,8 +82,8 @@ Quick loop:
 
 1. Open the game.
 2. Choose one of the two expandable experiences: Challenge Mode or Simulation Lab.
-3. Under Challenge Mode, start tutorials, choose Mission Modes, play a custom challenge, or open challenge leaderboards.
-4. Under Simulation Lab, configure deterministic/stochastic experiments, open Mission Editor, import/export JSON, inspect field demos, or run solver/benchmark workflows.
+3. Under Challenge Mode, use `Play` for Mission Modes/custom challenges, `Learn` for Tutorials, or `Compete` for leaderboards.
+4. Under Simulation Lab, use `Experiments`, `Demos`, `Editor & Import Tools`, or `Benchmarks`.
 5. Start a tutorial, generate a challenge, import a custom challenge JSON, or use an editor/custom level.
 6. Read Mission Briefing, then click `Start Planning`.
 7. Place waypoint plans directly on the map.
