@@ -3,7 +3,7 @@ import { buildTemporalFrameTimes } from '../time/TemporalFrameTimes.js';
 import { createSeededRng } from '../random/SeededRng.js';
 import { currentFieldVariationToNumber, normalizeCurrentFieldConfig, variationLevelToNumber } from './FlowFieldConfig.js';
 import { getVectorPresetConfig } from './VectorFieldPresets.js';
-import { classifyTopologyRegionAtCell } from './TopologyAwareComposite.js';
+import { classifyTopologyRegionAtCell, normalizeDynamicComplexity } from './TopologyAwareComposite.js';
 
 export function generateCurrentFrames(config = {}) {
   const width = clampInt(config.width, 2, 128);
@@ -23,7 +23,7 @@ export function generateCurrentFrames(config = {}) {
   if (config.currentGenerator?.type !== 'parametric' && (isFluidCurrentPattern(pattern) || config.currentGenerator?.type === 'fluid')) {
     return generateFluidCurrentFrames({ ...config, width, height, dt, duration });
   }
-  return frameTimes.map((t, index) => ({
+  const frames = frameTimes.map((t, index) => ({
     t,
     current: generateCurrent(width, height, t, {
       ...config,
@@ -33,6 +33,8 @@ export function generateCurrentFrames(config = {}) {
       dtHours: dt
     })
   }));
+  debugTopologyCompositeGeneration({ config, frames, width, height });
+  return frames;
 }
 
 function sampleImportedFlowFieldFrame(flowField, t, width, height) {
@@ -511,29 +513,37 @@ function currentAt(pattern, x, y, width, height, time, strength, variability, ed
 function topologyAwareCompositeAt(x, y, width, height, time, strength, variability, eddies, terrain, topologyComposite = null) {
   const classification = classifyTopologyRegionAtCell({ terrain, x, y, width, height });
   const regions = Array.isArray(topologyComposite?.regions) ? topologyComposite.regions : [];
+  const profile = topologyCompositeProfile(topologyComposite?.dynamicComplexity ?? topologyComposite?.randomness ?? variability);
   const shoreInfluence = Number.isFinite(classification.shoreDistance) ? clamp((3.2 - classification.shoreDistance) / 3.2, 0, 1) : 0;
   const regionList = [
-    [regionFor(regions, 'openWater') ?? defaultRegion('openWater', 'meanderingJet', 0.62), clamp(classification.openness * 0.9 + 0.1, 0, 1)],
-    [regionFor(regions, 'shoreline') ?? defaultRegion('shoreline', 'alongShoreFlow', 0.46), shoreInfluence],
-    [regionFor(regions, 'channel') ?? defaultRegion('channel', 'channelJet', 0.58), classification.channelScore],
-    [regionFor(regions, 'bayPocket') ?? defaultRegion('bayPocket', 'eddyField', 0.36), classification.bayScore],
-    [regionFor(regions, 'islandAdjacent') ?? defaultRegion('islandAdjacent', 'islandWake', 0.42), classification.islandAdjacency]
+    [regionsFor(regions, 'openWater', [defaultRegion('openWater', 'movingMeanderingJet', 0.62)]), clamp(classification.openness * 0.9 + 0.1, 0, 1)],
+    [regionsFor(regions, 'shoreline', [defaultRegion('shoreline', 'variableAlongShoreFlow', 0.46)]), shoreInfluence],
+    [regionsFor(regions, 'channel', [defaultRegion('channel', 'reversingChannelJet', 0.58)]), classification.channelScore],
+    [regionsFor(regions, 'bayPocket', [defaultRegion('bayPocket', 'bayRecirculation', 0.36)]), classification.bayScore],
+    [regionsFor(regions, 'islandAdjacent', [defaultRegion('islandAdjacent', 'eddyPairWake', 0.42)]), classification.islandAdjacency]
   ];
-  const vector = regionList.reduce((sum, [region, influence]) => {
-    if (!region || influence <= 0) return sum;
-    const sample = regionVector(region, x, y, width, height, time, strength, variability, eddies, terrain);
-    const scale = influence * Number(region.weight ?? 0.5) * Number(region.magnitudeScale ?? 1);
-    return [sum[0] + sample[0] * scale, sum[1] + sample[1] * scale];
+  const vector = regionList.reduce((sum, [regionSet, influence]) => {
+    if (!Array.isArray(regionSet) || influence <= 0) return sum;
+    return regionSet.reduce((inner, region) => {
+      if (!region) return inner;
+      const sample = regionVector(region, x, y, width, height, time, strength, variability, eddies, terrain, profile, classification);
+      const temporalScale = regionTemporalScale(region, time, profile);
+      const scale = influence * Number(region.weight ?? 0.5) * Number(region.magnitudeScale ?? 1) * temporalScale;
+      return [inner[0] + sample[0] * scale, inner[1] + sample[1] * scale];
+    }, sum);
   }, [0, 0]);
-  const background = currentAt('uniformDrift', x, y, width, height, time, strength * 0.34, variability * 0.65, eddies, terrain);
-  const combined = [vector[0] + background[0], vector[1] + background[1]];
+  const background = topologyBackgroundVector(x, y, width, height, time, strength, variability, eddies, terrain, profile);
+  const combined = [
+    (vector[0] + background[0]) * regionalMagnitudeEnvelope(classification, x, y, time, profile),
+    (vector[1] + background[1]) * regionalMagnitudeEnvelope(classification, x, y, time, profile)
+  ];
   const magnitude = Math.hypot(combined[0], combined[1]);
-  const maxMagnitude = 1.85 * Math.max(0.2, strength);
+  const maxMagnitude = profile.maxMagnitude * Math.max(0.2, strength);
   const scale = magnitude > maxMagnitude ? maxMagnitude / magnitude : 1;
   return [combined[0] * scale, combined[1] * scale];
 }
 
-function regionVector(region, x, y, width, height, time, strength, variability, eddies, terrain) {
+function regionVector(region, x, y, width, height, time, strength, variability, eddies, terrain, profile = topologyCompositeProfile(), classification = null) {
   const behavior = region.behavior ?? 'uniformDrift';
   const adjustedTime = {
     ...time,
@@ -541,30 +551,154 @@ function regionVector(region, x, y, width, height, time, strength, variability, 
     slowCycle: time.slowCycle * Number(region.speedScale ?? 1) + Number(region.phase ?? 0) * 0.5,
     pulseCycle: time.pulseCycle * Number(region.speedScale ?? 1) + Number(region.phase ?? 0)
   };
-  if (behavior === 'alongShoreFlow') return alongShoreFlow(x, y, width, height, adjustedTime, strength, terrain);
-  if (behavior === 'channelJet') return channelJet(x, y, width, height, adjustedTime, strength, terrain);
+  const sampleX = x + Math.sin(adjustedTime.slowCycle * 0.47 + Number(region.phase ?? 0)) * Number(region.driftRadius ?? 0) * width;
+  const sampleY = y + Math.cos(adjustedTime.slowCycle * 0.39 + Number(region.phase ?? 0)) * Number(region.driftRadius ?? 0) * height;
+  if (behavior === 'alongShoreFlow' || behavior === 'variableAlongShoreFlow') return alongShoreFlow(x, y, width, height, adjustedTime, strength, terrain, profile, behavior === 'variableAlongShoreFlow');
+  if (behavior === 'shorelinePulse') return shorelinePulseFlow(x, y, width, height, adjustedTime, strength, terrain, profile);
+  if (behavior === 'channelJet' || behavior === 'reversingChannelJet') return channelJet(x, y, width, height, adjustedTime, strength, terrain, profile, behavior === 'reversingChannelJet');
+  if (behavior === 'movingMeanderingJet') return movingMeanderingJet(sampleX, sampleY, width, height, adjustedTime, strength, variability, region, profile);
+  if (behavior === 'movingGyre') return movingGyrePair(sampleX, sampleY, width, height, adjustedTime, strength, region, profile);
+  if (behavior === 'rotatingDrift') return rotatingDrift(x, y, width, height, adjustedTime, strength, profile);
+  if (behavior === 'advectedCurlTexture' || behavior === 'turbulentWakeTexture') return advectedCurlTexture(sampleX, sampleY, width, height, adjustedTime, strength, variability, region, profile, behavior === 'turbulentWakeTexture');
+  if (behavior === 'bayRecirculation') return bayRecirculation(x, y, width, height, adjustedTime, strength, terrain, profile, classification);
+  if (behavior === 'flushingPulse') return flushingPulse(x, y, width, height, adjustedTime, strength, terrain, profile);
+  if (behavior === 'eddyPairWake') return eddyPairWake(x, y, width, height, adjustedTime, strength, terrain, profile);
   const pattern = behavior === 'eddyField' ? 'eddies' : behavior;
   return currentAt(pattern, x, y, width, height, adjustedTime, strength, variability, eddies, terrain);
 }
 
-function alongShoreFlow(x, y, width, height, time, strength, terrain) {
+function topologyBackgroundVector(x, y, width, height, time, strength, variability, eddies, terrain, profile) {
+  const drift = rotatingDrift(x, y, width, height, time, strength * (0.24 + profile.directionScale * 0.08), profile);
+  const curl = currentAt('curlNoise', x, y, width, height, time, strength * profile.textureScale * 0.18, variability, eddies, terrain);
+  const tide = currentAt('tidalOscillation', x, y, width, height, time, strength * (0.12 + profile.magnitudeScale * 0.1), variability, eddies, terrain);
+  const pulse = profile.pulseScale > 0.65
+    ? currentAt('stormPulse', x, y, width, height, time, strength * 0.12 * profile.pulseScale, variability, eddies, terrain)
+    : [0, 0];
+  return [drift[0] + curl[0] + tide[0] + pulse[0], drift[1] + curl[1] + tide[1] + pulse[1]];
+}
+
+function alongShoreFlow(x, y, width, height, time, strength, terrain, profile = topologyCompositeProfile(), variable = false) {
   const classification = classifyTopologyRegionAtCell({ terrain, x, y, width, height });
   const landVector = nearestLandVector(terrain, x, y, width, height);
   const tangent = landVector ? { x: -landVector.y, y: landVector.x } : { x: 1, y: 0 };
-  const sign = Math.sin(time.slowCycle + x * 0.19 + y * 0.13) >= 0 ? 1 : -1;
+  const sign = Math.sin(time.slowCycle * (variable ? 0.9 : 0.45) + x * 0.19 + y * 0.13) >= 0 ? 1 : -1;
   const shoreScale = Number.isFinite(classification.shoreDistance) ? clamp((3.5 - classification.shoreDistance) / 3.5, 0.15, 1) : 0.15;
-  const magnitude = strength * shoreScale * (0.28 + 0.12 * Math.sin(time.cycle + x * 0.2));
-  return [tangent.x * sign * magnitude, tangent.y * sign * magnitude];
+  const pulse = variable ? 1 + profile.shorelineScale * 0.34 * Math.sin(time.pulseCycle + x * 0.2) : 1;
+  const offshore = variable && landVector ? Math.sin(time.cycle * 0.7 + y * 0.23) * 0.06 * profile.shorelineScale * shoreScale * strength : 0;
+  const magnitude = strength * shoreScale * (0.26 + profile.shorelineScale * 0.15 * Math.sin(time.cycle + x * 0.2)) * pulse;
+  return [
+    tangent.x * sign * magnitude - (landVector?.x ?? 0) * offshore,
+    tangent.y * sign * magnitude - (landVector?.y ?? 0) * offshore
+  ];
 }
 
-function channelJet(x, y, width, height, time, strength, terrain) {
+function shorelinePulseFlow(x, y, width, height, time, strength, terrain, profile) {
+  const base = alongShoreFlow(x, y, width, height, time, strength, terrain, profile, true);
+  const landVector = nearestLandVector(terrain, x, y, width, height);
+  const pulse = Math.max(0, Math.sin(time.pulseCycle + x * 0.31 + y * 0.19));
+  const normal = landVector
+    ? [-(landVector.x ?? 0) * pulse * strength * 0.16 * profile.pulseScale, -(landVector.y ?? 0) * pulse * strength * 0.16 * profile.pulseScale]
+    : [0, 0];
+  return [base[0] + normal[0], base[1] + normal[1]];
+}
+
+function channelJet(x, y, width, height, time, strength, terrain, profile = topologyCompositeProfile(), reversing = false) {
   const cx = Math.round(x);
   const cy = Math.round(y);
   const eastWestLand = Boolean(terrain?.[cy]?.[cx - 1] || terrain?.[cy]?.[cx + 1]);
   const northSouthLand = Boolean(terrain?.[cy - 1]?.[cx] || terrain?.[cy + 1]?.[cx]);
   const axis = eastWestLand && !northSouthLand ? { x: 0, y: 1 } : { x: 1, y: 0 };
-  const pulse = 0.72 + 0.22 * Math.sin(time.cycle + x * 0.17 + y * 0.11);
-  return [axis.x * strength * pulse * 0.64, axis.y * strength * pulse * 0.64];
+  const reverse = reversing ? Math.sign(Math.sin(time.slowCycle * 0.85 + Number(x) * 0.09) || 1) : 1;
+  const pulse = 0.72 + profile.magnitudeScale * 0.36 * Math.sin(time.cycle + x * 0.17 + y * 0.11);
+  const cross = Math.cos(time.pulseCycle * 0.6 + y * 0.13) * strength * 0.08 * profile.directionScale;
+  return [
+    axis.x * reverse * strength * pulse * 0.7 + (axis.y ? cross : 0),
+    axis.y * reverse * strength * pulse * 0.7 + (axis.x ? cross : 0)
+  ];
+}
+
+function movingMeanderingJet(x, y, width, height, time, strength, variability, region, profile) {
+  const nx = x / Math.max(1, width - 1);
+  const meander = Number(region.meanderAmplitude ?? 0.16) * profile.directionScale;
+  const center = height * (0.5 + meander * Math.sin(nx * Math.PI * (2.4 + profile.directionScale) + time.cycle * 0.75 + Number(region.phase ?? 0)));
+  const distance = y - center;
+  const widthScale = Math.max(1, (height * (0.1 + 0.035 * profile.magnitudeScale)) ** 2);
+  const jet = Math.exp(-(distance ** 2) / widthScale);
+  const pulse = 0.8 + 0.36 * profile.magnitudeScale * Math.sin(time.pulseCycle + nx * Math.PI);
+  const cross = 0.16 * profile.directionScale * Math.cos(nx * Math.PI * 2.4 + time.cycle + Number(region.phase ?? 0));
+  return [
+    strength * jet * pulse * (0.58 + variability * 0.2),
+    strength * jet * cross
+  ];
+}
+
+function movingGyrePair(x, y, width, height, time, strength, region, profile) {
+  const phase = Number(region.phase ?? 0);
+  const drift = Number(region.driftRadius ?? 0.08);
+  const c1x = width * (0.36 + drift * Math.cos(time.slowCycle * 0.7 + phase));
+  const c1y = height * (0.44 + drift * Math.sin(time.slowCycle * 0.53 + phase));
+  const c2x = width * (0.66 + drift * Math.sin(time.slowCycle * 0.49 + phase));
+  const c2y = height * (0.58 + drift * Math.cos(time.slowCycle * 0.61 + phase));
+  const strengthScale = strength * profile.wakeScale * (0.7 + 0.32 * Math.sin(time.pulseCycle + phase));
+  const a = vortex(x, y, c1x, c1y, strengthScale);
+  const b = vortex(x, y, c2x, c2y, -strengthScale * 0.82);
+  return [a[0] + b[0], a[1] + b[1]];
+}
+
+function rotatingDrift(x, y, width, height, time, strength, profile) {
+  const angle = time.seedDirection + 0.42 * profile.directionScale * Math.sin(time.slowCycle * 0.72) + 0.18 * Math.sin((x / Math.max(1, width)) * Math.PI * 2 + time.cycle * 0.35);
+  const band = 0.72 + 0.24 * profile.magnitudeScale * Math.sin((y / Math.max(1, height)) * Math.PI * 2 + time.pulseCycle * 0.45);
+  return [Math.cos(angle) * strength * band, Math.sin(angle) * strength * band];
+}
+
+function advectedCurlTexture(x, y, width, height, time, strength, variability, region, profile, turbulent = false) {
+  const shiftX = Math.sin(time.slowCycle * 0.37 + Number(region.phase ?? 0)) * width * Number(region.driftRadius ?? 0.08);
+  const shiftY = Math.cos(time.slowCycle * 0.29 + Number(region.phase ?? 0)) * height * Number(region.driftRadius ?? 0.08);
+  const texture = currentAt('curlNoise', x + shiftX, y + shiftY, width, height, time, strength * profile.textureScale * (turbulent ? 1.3 : 1), variability, [], []);
+  const wobble = turbulent ? [0.08 * strength * Math.sin(time.cycle + x * 0.9), 0.08 * strength * Math.cos(time.cycle * 0.8 + y * 0.7)] : [0, 0];
+  return [texture[0] + wobble[0], texture[1] + wobble[1]];
+}
+
+function bayRecirculation(x, y, width, height, time, strength, terrain, profile, classification = null) {
+  const land = nearestLandVector(terrain, x, y, width, height);
+  const cx = x - (land?.x ?? 0) * Math.max(1.2, width * 0.08) + Math.sin(time.slowCycle * 0.4) * width * 0.035 * profile.directionScale;
+  const cy = y - (land?.y ?? 0) * Math.max(1.2, height * 0.08) + Math.cos(time.slowCycle * 0.34) * height * 0.035 * profile.directionScale;
+  const recirc = vortex(x, y, cx, cy, strength * (0.42 + 0.28 * profile.magnitudeScale) * (0.65 + 0.25 * Math.sin(time.pulseCycle)));
+  const damp = 0.45 + 0.35 * Number(classification?.bayScore ?? 0.5);
+  return [recirc[0] * damp, recirc[1] * damp];
+}
+
+function flushingPulse(x, y, width, height, time, strength, terrain, profile) {
+  const recirc = bayRecirculation(x, y, width, height, time, strength, terrain, profile);
+  const land = nearestLandVector(terrain, x, y, width, height);
+  const pulse = Math.max(0, Math.sin(time.pulseCycle * 0.8 + x * 0.17 + y * 0.13));
+  const flush = land ? [-(land.x ?? 0) * pulse * strength * 0.24 * profile.pulseScale, -(land.y ?? 0) * pulse * strength * 0.24 * profile.pulseScale] : [0, 0];
+  return [recirc[0] + flush[0], recirc[1] + flush[1]];
+}
+
+function eddyPairWake(x, y, width, height, time, strength, terrain, profile) {
+  const island = terrainIslandCenter(terrain, width, height);
+  const dominantAngle = time.seedDirection + 0.55 * Math.sin(time.slowCycle * 0.58);
+  const relX = Math.cos(dominantAngle) * (x - island.x) + Math.sin(dominantAngle) * (y - island.y);
+  const relY = -Math.sin(dominantAngle) * (x - island.x) + Math.cos(dominantAngle) * (y - island.y);
+  const downstream = relX > 0 ? Math.exp(-relX / Math.max(2, width * 0.36)) : 0.22;
+  const wakeBand = Math.exp(-(relY ** 2) / Math.max(1, (height * 0.16) ** 2)) * downstream;
+  const shed = Math.sin(time.pulseCycle + relX * 0.45);
+  const c1 = {
+    x: island.x + Math.cos(dominantAngle) * (2.2 + Math.abs(shed) * 1.4) + -Math.sin(dominantAngle) * 1.1,
+    y: island.y + Math.sin(dominantAngle) * (2.2 + Math.abs(shed) * 1.4) + Math.cos(dominantAngle) * 1.1
+  };
+  const c2 = {
+    x: island.x + Math.cos(dominantAngle) * (2.2 + Math.abs(shed) * 1.4) + Math.sin(dominantAngle) * 1.1,
+    y: island.y + Math.sin(dominantAngle) * (2.2 + Math.abs(shed) * 1.4) - Math.cos(dominantAngle) * 1.1
+  };
+  const wakeStrength = strength * profile.wakeScale * (0.34 + 0.32 * Math.abs(shed));
+  const a = vortex(x, y, c1.x, c1.y, wakeStrength);
+  const b = vortex(x, y, c2.x, c2.y, -wakeStrength);
+  return [
+    a[0] + b[0] + Math.cos(dominantAngle) * wakeBand * strength * 0.32,
+    a[1] + b[1] + Math.sin(dominantAngle) * wakeBand * strength * 0.32
+  ];
 }
 
 function nearestLandVector(terrain, x, y, width, height) {
@@ -582,12 +716,70 @@ function nearestLandVector(terrain, x, y, width, height) {
   return best;
 }
 
-function regionFor(regions, maskType) {
-  return regions.find((region) => region.maskType === maskType);
+function regionsFor(regions, maskType, fallback = []) {
+  const matches = regions.filter((region) => region.maskType === maskType);
+  return matches.length ? matches : fallback;
 }
 
 function defaultRegion(maskType, behavior, weight) {
   return { maskType, behavior, weight, speedScale: 1, magnitudeScale: 1, phase: 0 };
+}
+
+function topologyCompositeProfile(value = 'medium') {
+  const complexity = normalizeDynamicComplexity(value);
+  if (complexity === 'low') {
+    return {
+      complexity,
+      directionScale: 0.45,
+      magnitudeScale: 0.42,
+      shorelineScale: 0.42,
+      wakeScale: 0.5,
+      pulseScale: 0.35,
+      textureScale: 0.35,
+      maxMagnitude: 1.65
+    };
+  }
+  if (complexity === 'high') {
+    return {
+      complexity,
+      directionScale: 1.05,
+      magnitudeScale: 1.08,
+      shorelineScale: 1.05,
+      wakeScale: 1.15,
+      pulseScale: 1.05,
+      textureScale: 1,
+      maxMagnitude: 2.8
+    };
+  }
+  return {
+    complexity,
+    directionScale: 0.75,
+    magnitudeScale: 0.78,
+    shorelineScale: 0.72,
+    wakeScale: 0.78,
+    pulseScale: 0.7,
+    textureScale: 0.68,
+    maxMagnitude: 2.2
+  };
+}
+
+function regionTemporalScale(region, time, profile) {
+  const phase = Number(region.phase ?? 0);
+  const slow = Math.sin(time.slowCycle * Number(region.speedScale ?? 1) + phase);
+  const pulse = Math.sin(time.pulseCycle * (0.72 + Number(region.speedScale ?? 1) * 0.18) + phase);
+  const scale = 1
+    + profile.magnitudeScale * 0.18 * slow
+    + Number(region.pulseScale ?? profile.pulseScale) * 0.12 * pulse;
+  return clamp(scale, 0.32, 1.75);
+}
+
+function regionalMagnitudeEnvelope(classification, x, y, time, profile) {
+  const spatial = Math.sin(x * 0.23 + time.slowCycle * 0.31) * Math.cos(y * 0.19 - time.cycle * 0.17);
+  let regionBoost = 1;
+  if (classification?.regionType === 'channel') regionBoost += 0.16 * profile.magnitudeScale * Math.sin(time.pulseCycle + x * 0.11);
+  if (classification?.regionType === 'bayPocket') regionBoost -= 0.1 * profile.magnitudeScale;
+  if (classification?.regionType === 'islandAdjacent') regionBoost += 0.12 * profile.wakeScale * Math.sin(time.pulseCycle * 0.8 + y * 0.15);
+  return clamp(regionBoost + spatial * 0.12 * profile.magnitudeScale, 0.35, 1.65);
 }
 
 function vortex(x, y, cx, cy, strength) {
@@ -726,6 +918,64 @@ function currentVariability(config = {}) {
 function debugCurrentTime(details = {}) {
   if (!globalThis.ANCHOR_DEBUG_CURRENT_TIME) return;
   console.debug('[CurrentField][Time]', details);
+}
+
+function debugTopologyCompositeGeneration({ config = {}, frames = [], width = 1, height = 1 } = {}) {
+  if (!globalThis.ANCHOR_DEBUG_CURRENT_COMPLEXITY) return;
+  const fieldConfig = config.currentFieldConfig ?? {};
+  const composite = fieldConfig.topologyComposite ?? config.topologyComposite ?? null;
+  const pattern = fieldConfig.basePreset ?? config.currentPreset ?? config.vectorPreset ?? config.currentPattern ?? config.pattern;
+  if (pattern !== 'topologyAwareComposite' && !composite) return;
+  const stats = currentFrameMagnitudeStats(frames);
+  console.debug('[CurrentField][TopologyComposite]', {
+    seed: config.seed ?? composite?.seed ?? null,
+    dynamicComplexity: fieldConfig.dynamicComplexity ?? composite?.dynamicComplexity ?? composite?.randomness ?? null,
+    regionCounts: composite?.summary?.regionCounts ?? null,
+    assignedBehaviors: composite?.assignedBehaviors ?? behaviorSummary(composite?.regions),
+    evolutionBehavior: composite?.evolutionBehavior ?? null,
+    magnitudeStats: stats.magnitudeStats,
+    directionVariance: stats.directionVariance,
+    topologyAware: fieldConfig.topologyAware !== false,
+    frameCount: frames.length,
+    grid: { width, height }
+  });
+}
+
+function currentFrameMagnitudeStats(frames = []) {
+  const magnitudes = [];
+  const angles = [];
+  for (const frame of frames) {
+    for (const row of frame.current ?? []) {
+      for (const vector of row ?? []) {
+        const u = Number(vector?.[0] ?? 0);
+        const v = Number(vector?.[1] ?? 0);
+        const magnitude = Math.hypot(u, v);
+        if (!Number.isFinite(magnitude) || magnitude <= 0) continue;
+        magnitudes.push(magnitude);
+        angles.push(Math.atan2(v, u));
+      }
+    }
+  }
+  if (!magnitudes.length) return { magnitudeStats: { min: 0, mean: 0, max: 0 }, directionVariance: 0 };
+  const min = Math.min(...magnitudes);
+  const max = Math.max(...magnitudes);
+  const mean = magnitudes.reduce((sum, value) => sum + value, 0) / magnitudes.length;
+  const meanSin = angles.reduce((sum, value) => sum + Math.sin(value), 0) / angles.length;
+  const meanCos = angles.reduce((sum, value) => sum + Math.cos(value), 0) / angles.length;
+  return {
+    magnitudeStats: { min: round(min), mean: round(mean), max: round(max) },
+    directionVariance: round(1 - Math.hypot(meanSin, meanCos))
+  };
+}
+
+function behaviorSummary(regions = []) {
+  if (!Array.isArray(regions)) return null;
+  return regions.reduce((summary, region) => {
+    const key = region.maskType ?? 'unknown';
+    summary[key] ??= [];
+    summary[key].push(region.behavior ?? 'unknown');
+    return summary;
+  }, {});
 }
 
 function round(value) {

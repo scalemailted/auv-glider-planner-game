@@ -13,6 +13,7 @@ import {
   FLOW_FIELD_EVOLUTION_BEHAVIORS,
   FLOW_FIELD_EVOLUTION_SPEEDS,
   FLOW_FIELD_CYCLE_DURATIONS_HOURS,
+  FLOW_FIELD_DYNAMIC_COMPLEXITY_LEVELS,
   FLOW_FIELD_FRAME_INTERPOLATION_MODES,
   FLOW_FIELD_HIDDEN_TRUTH_VARIATION_LEVELS,
   FLOW_FIELD_LAYER_INFLUENCES,
@@ -702,6 +703,7 @@ function currentFieldSetupHtml(config) {
       ${flowSelectField('timeMode', 'Time Mode', FLOW_FIELD_TIME_MODES.filter((value) => value !== 'frames').map((value) => [value, timeModeLabel(value)]), field.timeMode)}
       ${flowSelectField('cycleDurationHours', 'Cycle Duration', FLOW_FIELD_CYCLE_DURATIONS_HOURS.map((value) => [String(value), `${value} hr`]), String(field.cycleDurationHours))}
       ${flowSelectField('frameInterpolation', 'Frame Interpolation', FLOW_FIELD_FRAME_INTERPOLATION_MODES.map((value) => [value, labelize(value)]), field.frameInterpolation)}
+      ${flowSelectField('dynamicComplexity', 'Dynamic Complexity', FLOW_FIELD_DYNAMIC_COMPLEXITY_LEVELS.map((value) => [value, variationLabel(value)]), field.dynamicComplexity)}
       ${flowSelectField('directionVariation', 'Direction Variation', FLOW_FIELD_VARIATION_LEVELS.map((value) => [value, variationLabel(value)]), field.directionVariation)}
       ${flowSelectField('magnitudeVariation', 'Magnitude Variation', FLOW_FIELD_VARIATION_LEVELS.map((value) => [value, variationLabel(value)]), field.magnitudeVariation)}
       ${stochastic ? `

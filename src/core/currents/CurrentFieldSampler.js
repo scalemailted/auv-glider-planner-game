@@ -35,9 +35,14 @@ export function sampleCurrentField({
   const cx = Math.round(point.x);
   const cy = Math.round(point.y);
   const terrainLayer = terrain ?? config.terrain ?? level?.layers?.terrain;
+  const levelCurrentFieldConfig = level?.meta?.generationConfig?.currentFieldConfig
+    ?? level?.meta?.generationConfig?.currentField
+    ?? null;
+  const resolvedCurrentFieldConfig = config.currentFieldConfig
+    ?? (config.fieldMode || config.basePreset ? config : null)
+    ?? levelCurrentFieldConfig;
   const boundaryConditions = normalizeBoundaryConditions(config.boundaryConditions
-    ?? config.currentFieldConfig?.boundaryConditions
-    ?? level?.meta?.generationConfig?.currentFieldConfig?.boundaryConditions
+    ?? resolvedCurrentFieldConfig?.boundaryConditions
     ?? level?.meta?.generationConfig?.importedFlowField?.boundaryConditions
     ?? {});
 
@@ -50,7 +55,7 @@ export function sampleCurrentField({
       y: cy,
       coordinates: 'grid-cell'
     });
-    return annotateTopologyComposite(applyTopologyAdjustment(sample, { terrain: terrainLayer, x: cx, y: cy, width, height, boundaryConditions }), {
+    return debugCurrentSampleContributors(annotateTopologyComposite(applyTopologyAdjustment(sample, { terrain: terrainLayer, x: cx, y: cy, width, height, boundaryConditions }), {
       terrain: terrainLayer,
       x: cx,
       y: cy,
@@ -58,13 +63,14 @@ export function sampleCurrentField({
       height,
       config,
       level
-    });
+    }), { x: cx, y: cy, time });
   }
 
   const presetConfig = preset ? getVectorPresetConfig(preset, config) : {};
   const generatorConfig = {
     ...presetConfig,
     ...config,
+    currentFieldConfig: resolvedCurrentFieldConfig,
     terrain: terrainLayer,
     width,
     height,
@@ -91,7 +97,7 @@ export function sampleCurrentField({
     y: cy,
     coordinates: 'grid-cell'
   });
-  return annotateTopologyComposite(applyTopologyAdjustment(sample, { terrain: terrainLayer, x: cx, y: cy, width, height, boundaryConditions }), {
+  return debugCurrentSampleContributors(annotateTopologyComposite(applyTopologyAdjustment(sample, { terrain: terrainLayer, x: cx, y: cy, width, height, boundaryConditions }), {
     terrain: terrainLayer,
     x: cx,
     y: cy,
@@ -99,7 +105,7 @@ export function sampleCurrentField({
     height,
     config,
     level
-  });
+  }), { x: cx, y: cy, time });
 }
 
 export function sampleCurrentVector(options = {}) {
@@ -338,6 +344,7 @@ function annotateTopologyComposite(sample, { terrain = null, x = 0, y = 0, width
       ...(sample.contributors ?? {}),
       topologyComposite: {
         schemaVersion: composite.schemaVersion ?? '1.0',
+        dynamicComplexity: composite.dynamicComplexity ?? composite.randomness ?? null,
         regionType: classification.regionType,
         dominantRegionBehavior: dominantRegion?.behavior ?? classification.dominantRegionBehavior,
         regionId: dominantRegion?.id ?? null,
@@ -351,6 +358,20 @@ function annotateTopologyComposite(sample, { terrain = null, x = 0, y = 0, width
       }
     }
   };
+}
+
+function debugCurrentSampleContributors(sample, { x = 0, y = 0, time = 0 } = {}) {
+  if (!globalThis.ANCHOR_DEBUG_CURRENT_COMPLEXITY) return sample;
+  console.debug('[CurrentField][SampleContributors]', {
+    position: { x, y },
+    missionTime: Number(time) || 0,
+    finalVector: { u: sample.u, v: sample.v },
+    magnitude: sample.magnitude,
+    contributors: sample.contributors,
+    dominantBehavior: sample.contributors?.topologyComposite?.dominantRegionBehavior ?? null,
+    shorelineRisk: sample.contributors?.shorelineRisk ?? null
+  });
+  return sample;
 }
 
 function normalize(x, y) {

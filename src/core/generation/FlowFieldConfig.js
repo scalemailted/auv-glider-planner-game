@@ -7,6 +7,7 @@ export const FLOW_FIELD_EVOLUTION_SPEEDS = [0.25, 0.5, 1, 2, 5, 10];
 export const FLOW_FIELD_TIME_MODES = ['continuous', 'looping', 'clamped', 'frames'];
 export const FLOW_FIELD_FRAME_INTERPOLATION_MODES = ['linear', 'nearest'];
 export const FLOW_FIELD_VARIATION_LEVELS = ['off', 'low', 'medium', 'high'];
+export const FLOW_FIELD_DYNAMIC_COMPLEXITY_LEVELS = ['low', 'medium', 'high'];
 export const FLOW_FIELD_LAYER_INFLUENCES = ['global', 'spatialPocket', 'partitionedRegion'];
 export const FLOW_FIELD_BOUNDARY_MODES = ['none', 'riskOnly', 'dampenIntoLand', 'deflectAlongShore', 'wakeApproximation'];
 export const FLOW_FIELD_CYCLE_DURATIONS_HOURS = [6, 12, 24, 48];
@@ -42,6 +43,7 @@ export function createDefaultCurrentFieldConfig(mode = 'perfectKnowledge') {
     frameInterpolation: 'linear',
     directionVariation: stochastic ? 'high' : 'medium',
     magnitudeVariation: stochastic ? 'medium' : 'low',
+    dynamicComplexity: stochastic ? 'high' : 'medium',
     cycleDurationHours: 24,
     layers: [],
     topologyAware: true,
@@ -66,6 +68,7 @@ export function normalizeCurrentFieldConfig(config = {}, context = {}) {
   const basePreset = normalizeFlowPreset(config.basePreset ?? config.primaryPreset ?? config.currentPreset ?? context.currentPreset ?? defaults.basePreset);
   const directionVariation = normalizeVariationLevel(config.directionVariation ?? defaults.directionVariation);
   const magnitudeVariation = normalizeVariationLevel(config.magnitudeVariation ?? defaults.magnitudeVariation);
+  const dynamicComplexity = normalizeDynamicComplexity(config.dynamicComplexity ?? config.currentVariability ?? strongestVariation(directionVariation, magnitudeVariation));
   const strength = Math.max(0, finiteNumber(config.strength ?? config.currentStrength ?? context.currentStrength, defaults.strength));
   const evolutionBehavior = fieldMode === 'static' ? 'continuous' : normalizeEvolutionBehavior(config.evolutionBehavior);
   return {
@@ -80,6 +83,7 @@ export function normalizeCurrentFieldConfig(config = {}, context = {}) {
     frameInterpolation: normalizeFrameInterpolation(config.frameInterpolation ?? config.interpolation),
     directionVariation: fieldMode === 'static' ? 'off' : directionVariation,
     magnitudeVariation: fieldMode === 'static' ? 'off' : magnitudeVariation,
+    dynamicComplexity: fieldMode === 'static' ? 'low' : dynamicComplexity,
     cycleDurationHours: normalizeCycleDurationHours(config.cycleDurationHours ?? config.cycleDuration ?? 24),
     layers: normalizeCurrentFieldLayers(config.layers ?? config.additiveLayers ?? [], { basePreset }),
     topologyAware: config.topologyAware !== false,
@@ -196,6 +200,9 @@ function normalizeTopologyComposite(value) {
   if (typeof value !== 'object') return null;
   return {
     ...value,
+    dynamicComplexity: normalizeDynamicComplexity(value.dynamicComplexity ?? value.randomness ?? 'medium'),
+    assignedBehaviors: value.assignedBehaviors ?? null,
+    evolutionBehavior: value.evolutionBehavior ?? null,
     regions: Array.isArray(value.regions) ? value.regions.map((region, index) => ({
       id: String(region?.id ?? `region-${index + 1}`),
       maskType: String(region?.maskType ?? region?.type ?? 'openWater'),
@@ -203,7 +210,11 @@ function normalizeTopologyComposite(value) {
       weight: clamp(finiteNumber(region?.weight, 0.5), 0, 2),
       phase: finiteNumber(region?.phase, 0),
       speedScale: clamp(finiteNumber(region?.speedScale, 1), 0.1, 4),
-      magnitudeScale: clamp(finiteNumber(region?.magnitudeScale, 1), 0.1, 4)
+      magnitudeScale: clamp(finiteNumber(region?.magnitudeScale, 1), 0.1, 4),
+      driftRadius: clamp(finiteNumber(region?.driftRadius, 0), 0, 1),
+      meanderAmplitude: clamp(finiteNumber(region?.meanderAmplitude, 0), 0, 1),
+      pulseScale: clamp(finiteNumber(region?.pulseScale, 0.5), 0, 2),
+      textureScale: clamp(finiteNumber(region?.textureScale, 0.5), 0, 2)
     })) : []
   };
 }
@@ -230,6 +241,19 @@ function normalizeFrameInterpolation(value = 'linear') {
 
 function normalizeVariationLevel(value = 'medium') {
   return FLOW_FIELD_VARIATION_LEVELS.includes(value) ? value : 'medium';
+}
+
+function normalizeDynamicComplexity(value = 'medium') {
+  if (FLOW_FIELD_DYNAMIC_COMPLEXITY_LEVELS.includes(value)) return value;
+  if (value === 'off') return 'low';
+  const numeric = Number(value);
+  if (Number.isFinite(numeric)) return numeric >= 0.7 ? 'high' : numeric <= 0.35 ? 'low' : 'medium';
+  return 'medium';
+}
+
+function strongestVariation(directionVariation, magnitudeVariation) {
+  const score = Math.max(variationLevelToNumber(directionVariation), variationLevelToNumber(magnitudeVariation));
+  return score >= 0.7 ? 'high' : score <= 0.35 ? 'low' : 'medium';
 }
 
 function normalizeEvolutionSpeed(value = 1) {

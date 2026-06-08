@@ -45,7 +45,7 @@
     "sampling": "normalized mission sampling config",
     "priorityTargets": "normalized mission priority target display/capture config",
     "vectorField": "current generator metadata including preset, strength, variability, seed, stats, and synthetic/current notes",
-    "currentFieldConfig": "serializable visible current/flow-field setup: static/dynamic mode, base preset, evolution behavior/speed, explicit timeMode, cycleDurationHours, frameInterpolation, variation levels, additive layers, spatial influence, topologyComposite regional metadata when using Topology-Aware Composite, and stochastic forecast-confidence metadata when applicable",
+    "currentFieldConfig": "serializable visible current/flow-field setup: static/dynamic mode, base preset, evolution behavior/speed, explicit timeMode, cycleDurationHours, frameInterpolation, dynamicComplexity, variation levels, additive layers, spatial influence, topologyComposite regional metadata/assigned behaviors when using Topology-Aware Composite, and stochastic forecast-confidence metadata when applicable",
     "importedFlowField": "optional visible anchor.flow-field payload when the challenge currents came from an import",
     "currentFieldVisibility": "declares whether visible current config/frames are included and whether hidden truth-current frames are withheld or included",
     "planningMarkers": "optional global current plan markers; non-executable notes for future windows",

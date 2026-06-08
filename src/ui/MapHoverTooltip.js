@@ -103,10 +103,19 @@ function currentMetadataRows(current = {}) {
   const composite = current.contributors?.topologyComposite;
   return [
     current.source ? `<span>Current source: ${escapeHtml(current.source)} | Confidence: ${escapeHtml(formatHudMetric(current.confidence ?? 1, 2))}</span>` : '',
-    composite ? `<span>Current region: ${escapeHtml(labelize(composite.regionType))} | Behavior: ${escapeHtml(labelize(composite.dominantRegionBehavior))}</span>` : '',
+    composite ? `<span>Current region: ${escapeHtml(labelize(composite.regionType))} | Behavior: ${escapeHtml(labelize(composite.dominantRegionBehavior))}${composite.dynamicComplexity ? ` | Complexity: ${escapeHtml(labelize(composite.dynamicComplexity))}` : ''}</span>` : '',
+    composite ? `<span>Magnitude: ${escapeHtml(magnitudeLabel(current.magnitude))}</span>` : '',
     risk && risk.level && risk.level !== 'none' ? `<span class="${risk.value >= 0.7 ? 'warning' : ''}">Shoreline risk: ${escapeHtml(risk.level)} | Toward land: ${escapeHtml(formatSignedMetric(risk.currentTowardLand, 2))}</span>` : '',
     topology?.topologyAdjusted ? '<span>Topology adjustment: deflected along shore</span>' : ''
   ].filter(Boolean).join('');
+}
+
+function magnitudeLabel(value) {
+  const magnitude = Number(value ?? 0);
+  if (magnitude >= 0.8) return 'strong';
+  if (magnitude >= 0.35) return 'moderate';
+  if (magnitude > 0.05) return 'weak';
+  return 'calm';
 }
 
 function claimedByLabel(claimedBy = []) {

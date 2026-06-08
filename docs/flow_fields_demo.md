@@ -155,6 +155,16 @@ land cell                           = invalid / blocked
 
 This is a lightweight topology-aware approximation, not full CFD.
 
+The generated `Topology-Aware Composite` preset is not just a static boundary-deflected field. Generated challenge configs store a seeded `dynamicComplexity` value (`low`, `medium`, or `high`) and a region assignment contract. The sampler blends multiple continuous regional behaviors:
+
+- open water: moving/meandering jets, drifting gyres, rotating background drift, and advected curl texture
+- shoreline: variable along-shore flow, weak onshore/offshore pulses, and deflection/risk when current points into land
+- channels: accelerated flow aligned with the detected passage axis, with time-varying or reversing strength
+- bays/pockets: weak recirculation plus periodic flushing pulses
+- islands/obstacles: wake-like downstream flow, paired vortices, and texture tied to the dominant background direction
+
+Low complexity keeps these effects smoother and slower. Medium is the default challenge setting. High increases active secondary behaviors, moving structures, wake strength, pulse strength, and magnitude variation without using random jitter inside sampling.
+
 ## 9. Particle / Demo Glider Behavior
 
 Demo particles are passive flow visualizers. They sample the active field, move according to field velocity plus a small display bias, orient heading with `atan2(v, u)`, and leave trails.

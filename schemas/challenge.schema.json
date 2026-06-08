@@ -39,7 +39,7 @@
     "derivedSeeds": "namespace-specific deterministic seeds for terrain, currents, roi, hazards, depth, targets, forecast, truth, and mission"
   },
   "exactReplay": "available when a saved challenge snapshot exists, or when UUID + generationConfig + compatible generationVersion + derivedSeeds permit deterministic regeneration",
-  "currentFieldConfig": "serializable current/flow-field setup used to generate temporal current frames: static/dynamic mode, base preset, evolution behavior/speed, explicit timeMode, cycleDurationHours, frameInterpolation, variation levels, additive layers, spatial influence, topologyComposite regional metadata when using Topology-Aware Composite, and stochastic forecast-confidence metadata when applicable",
+  "currentFieldConfig": "serializable current/flow-field setup used to generate temporal current frames: static/dynamic mode, base preset, evolution behavior/speed, explicit timeMode, cycleDurationHours, frameInterpolation, dynamicComplexity, variation levels, additive layers, spatial influence, topologyComposite regional metadata/assigned behaviors when using Topology-Aware Composite, and stochastic forecast-confidence metadata when applicable",
   "importedFlowField": "optional embedded anchor.flow-field payload used to override/generated current behavior. Challenge terrain remains the land/water boundary mask.",
   "notes": "anchor.challenge is the replayable game import format. It combines level, mission, rules, identity, visible planning data, and stochastic visibility metadata. Deterministic challenges may include truth plainly. Public stochastic challenges omit plain hidden truth; an optional opaque bundle is for reload convenience only and is not secure."
 }

@@ -22,7 +22,7 @@
     "usesOracle": "true for oracle/benchmark data that must not be treated as fair leaderboard input"
   },
   "frames": "optional frame array for imported vector fields. Each frame has time/t and vectors/current as height x width entries of {u,v} or [u,v]. Times must be strictly increasing.",
-  "syntheticConfig": "optional shared currentFieldConfig object with basePreset, fieldMode, evolution behavior/speed, timeMode, cycleDurationHours, frameInterpolation, variation levels, additive layers, and optional topologyComposite region metadata.",
+  "syntheticConfig": "optional shared currentFieldConfig object with basePreset, fieldMode, evolution behavior/speed, timeMode, cycleDurationHours, frameInterpolation, dynamicComplexity, variation levels, additive layers, and optional topologyComposite region metadata.",
   "sampling": {
     "kind": "frames | synthetic",
     "interpolation": "linear | nearest",

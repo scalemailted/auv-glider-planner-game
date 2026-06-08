@@ -69,7 +69,8 @@ export function generateLevel(config = {}) {
         seed: derivedSeeds.currents ?? seed,
         challengeId,
         generationVersion,
-        randomness: currentFieldConfig.magnitudeVariation === 'high' || currentFieldConfig.directionVariation === 'high' ? 'high' : 'medium'
+        randomness: currentFieldConfig.dynamicComplexity,
+        dynamicComplexity: currentFieldConfig.dynamicComplexity
       })
     }, {
       mode: merged.challengeMode === 'forecast' || merged.forecastMode === 'noisy' ? 'forecast' : 'perfectKnowledge',
