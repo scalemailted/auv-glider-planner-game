@@ -1487,6 +1487,8 @@ export class MissionWorkspaceScene extends PhaserScene {
       this.showRouteValidationModal(blockingIssue, validation);
       return;
     }
+    const missionDurationWarning = validation.warnings?.find((warning) => /mission duration|mission time limit/i.test(warning));
+    if (missionDurationWarning) this.app.toast?.(missionDurationWarning, 'warning');
     traceSimulation(this.app.state.simulationTrace, {
       scene: 'MissionWorkspaceScene',
       phase: 'validation.pass',

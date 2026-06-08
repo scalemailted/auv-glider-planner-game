@@ -208,14 +208,16 @@ export function validateRoutePlanForExecution({
         if (Number.isFinite(duration) && waypointTime > duration) {
           const issue = buildIssue({
             type: 'timeExceeded',
-            reason: 'time',
-            severity: 'error',
+            reason: 'waypoint_exceeds_mission_duration',
+            severity: 'warning',
+            category: 'waypoint_exceeds_mission_duration',
+            runtimeBehavior: 'truncate_at_mission_end',
             agentId: agent.id,
             agentLabel: agent.label ?? agent.id,
             to: waypointRef(waypoint, index),
             segmentIndex: index,
             waypointIndex: index,
-            message: `${agent.label ?? agent.id} Waypoint ${index + 1} exceeds the mission duration.`
+            message: `${agent.label ?? agent.id} Waypoint ${index + 1} is scheduled after the mission duration. Simulation will run toward this waypoint and end at the mission time limit before it is reached.`
           });
           issues.push(issue);
           annotateWaypoint(agentPlan, index, issue);

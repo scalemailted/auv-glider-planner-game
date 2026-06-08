@@ -1,6 +1,9 @@
 import { generateFluidCurrentFrames, isFluidCurrentPattern } from '../fluids/FluidPresets.js';
 import { buildTemporalFrameTimes } from '../time/TemporalFrameTimes.js';
 import { createSeededRng } from '../random/SeededRng.js';
+import { currentFieldVariationToNumber, normalizeCurrentFieldConfig, variationLevelToNumber } from './FlowFieldConfig.js';
+import { getVectorPresetConfig } from './VectorFieldPresets.js';
+import { classifyTopologyRegionAtCell } from './TopologyAwareComposite.js';
 
 export function generateCurrentFrames(config = {}) {
   const width = clampInt(config.width, 2, 128);
@@ -8,6 +11,13 @@ export function generateCurrentFrames(config = {}) {
   const dt = Math.max(0.1, Number(config.dt ?? 1));
   const duration = Math.max(1, Number(config.duration ?? 24));
   const frameTimes = buildTemporalFrameTimes({ duration, dt });
+  if (config.importedFlowField?.frames?.length) {
+    return frameTimes.map((t) => ({
+      t,
+      source: 'importedFlowField',
+      current: sampleImportedFlowFieldFrame(config.importedFlowField, t, width, height)
+    }));
+  }
   const frameCount = frameTimes.length;
   const pattern = config.currentPattern ?? config.pattern ?? 'wave';
   if (config.currentGenerator?.type !== 'parametric' && (isFluidCurrentPattern(pattern) || config.currentGenerator?.type === 'fluid')) {
@@ -25,22 +35,127 @@ export function generateCurrentFrames(config = {}) {
   }));
 }
 
+function sampleImportedFlowFieldFrame(flowField, t, width, height) {
+  const frames = [...(flowField.frames ?? [])].filter((frame) => Array.isArray(frame.current)).sort((a, b) => Number(a.t) - Number(b.t));
+  if (!frames.length) return Array.from({ length: height }, () => Array.from({ length: width }, () => [0, 0]));
+  const timeMode = flowField.sampling?.timeMode ?? 'clamped';
+  const interpolation = flowField.sampling?.interpolation ?? 'linear';
+  const first = frames[0];
+  const last = frames.at(-1);
+  let time = Number(t) || 0;
+  let clamped = false;
+  let interpolationAlpha = 0;
+  if (timeMode === 'looping' && frames.length > 1) {
+    const span = Math.max(1e-6, Number(last.t) - Number(first.t));
+    time = Number(first.t) + positiveModulo(time - Number(first.t), span);
+  }
+  if (time <= Number(first.t) || frames.length === 1) {
+    clamped = timeMode !== 'looping' && Number(t) <= Number(first.t);
+    debugCurrentTime({
+      missionTime: Number(t) || 0,
+      evolutionSpeed: 1,
+      timeMode,
+      cycleDuration: Number(last.t) - Number(first.t),
+      effectiveTime: time,
+      normalizedByTime: 0,
+      frameIndex: 0,
+      interpolationAlpha,
+      clamped,
+      source: 'importedFlowField'
+    });
+    return cloneCurrentGrid(first.current, width, height);
+  }
+  if (time >= Number(last.t)) {
+    clamped = timeMode !== 'looping';
+    debugCurrentTime({
+      missionTime: Number(t) || 0,
+      evolutionSpeed: 1,
+      timeMode,
+      cycleDuration: Number(last.t) - Number(first.t),
+      effectiveTime: time,
+      normalizedByTime: 1,
+      frameIndex: frames.length - 1,
+      interpolationAlpha,
+      clamped,
+      source: 'importedFlowField'
+    });
+    return cloneCurrentGrid(last.current, width, height);
+  }
+  const upperIndex = frames.findIndex((frame) => Number(frame.t) >= time);
+  const upper = frames[Math.max(1, upperIndex)];
+  const lower = frames[Math.max(0, upperIndex - 1)];
+  if (interpolation === 'nearest') {
+    interpolationAlpha = Math.abs(time - Number(lower.t)) <= Math.abs(Number(upper.t) - time) ? 0 : 1;
+    debugCurrentTime({
+      missionTime: Number(t) || 0,
+      evolutionSpeed: 1,
+      timeMode,
+      cycleDuration: Number(last.t) - Number(first.t),
+      effectiveTime: time,
+      normalizedByTime: clamp((time - Number(first.t)) / Math.max(1e-6, Number(last.t) - Number(first.t)), 0, 1),
+      frameIndex: interpolationAlpha === 0 ? Math.max(0, upperIndex - 1) : Math.max(1, upperIndex),
+      interpolationAlpha,
+      clamped,
+      source: 'importedFlowField'
+    });
+    return cloneCurrentGrid(Math.abs(time - Number(lower.t)) <= Math.abs(Number(upper.t) - time) ? lower.current : upper.current, width, height);
+  }
+  const ratio = clamp((time - Number(lower.t)) / Math.max(1e-6, Number(upper.t) - Number(lower.t)), 0, 1);
+  interpolationAlpha = ratio;
+  debugCurrentTime({
+    missionTime: Number(t) || 0,
+    evolutionSpeed: 1,
+    timeMode,
+    cycleDuration: Number(last.t) - Number(first.t),
+    effectiveTime: time,
+    normalizedByTime: clamp((time - Number(first.t)) / Math.max(1e-6, Number(last.t) - Number(first.t)), 0, 1),
+    frameIndex: Math.max(0, upperIndex - 1),
+    interpolationAlpha,
+    clamped,
+    source: 'importedFlowField'
+  });
+  return Array.from({ length: height }, (_, y) => Array.from({ length: width }, (_, x) => {
+    const a = lower.current?.[y]?.[x] ?? [0, 0];
+    const b = upper.current?.[y]?.[x] ?? a;
+    return [
+      round(Number(a[0] ?? 0) + (Number(b[0] ?? 0) - Number(a[0] ?? 0)) * ratio),
+      round(Number(a[1] ?? 0) + (Number(b[1] ?? 0) - Number(a[1] ?? 0)) * ratio)
+    ];
+  }));
+}
+
+function cloneCurrentGrid(current, width, height) {
+  return Array.from({ length: height }, (_, y) => Array.from({ length: width }, (_, x) => {
+    const vector = current?.[y]?.[x] ?? [0, 0];
+    return [round(Number(vector[0] ?? 0)), round(Number(vector[1] ?? 0))];
+  }));
+}
+
 export function generateCurrent(width, height, t, config = {}) {
-  const pattern = config.currentPattern ?? config.pattern ?? 'wave';
+  const currentFieldConfig = config.currentFieldConfig ? normalizeCurrentFieldConfig(config.currentFieldConfig, {
+    currentPreset: config.currentPreset ?? config.vectorPreset,
+    currentStrength: config.currentStrength
+  }) : null;
+  const pattern = currentFieldConfig
+    ? getVectorPresetConfig(currentFieldConfig.basePreset).currentPattern
+    : config.currentPattern ?? config.pattern ?? 'wave';
   const strength = Number(config.currentStrength ?? config.strength ?? 1);
-  const variability = currentVariability(config);
+  const variability = currentFieldConfig ? currentFieldVariationToNumber(currentFieldConfig) : currentVariability(config);
   const seedKey = currentSeedKey({ ...config, pattern, strength, variability }, width, height);
   const eddies = config.eddies ?? defaultEddies(width, height, seedKey);
   const terrain = config.terrain ?? [];
-  const time = makeTimeContext(t, { ...config, pattern, strength, variability, seedKey });
+  const time = makeTimeContext(t, { ...config, pattern, strength, variability, seedKey, currentFieldConfig });
 
   return Array.from({ length: height }, (_, y) => Array.from({ length: width }, (_, x) => {
     if (terrain[y]?.[x]) return [0, 0];
-    return sampleGeneratedCurrent({ x, y, width, height, timeContext: time, config: { ...config, pattern, strength, variability, eddies, terrain } });
+    return sampleGeneratedCurrent({ x, y, width, height, time: t, timeContext: time, config: { ...config, pattern, strength, variability, eddies, terrain } });
   }));
 }
 
 export function sampleGeneratedCurrent({ x = 0, y = 0, width = 1, height = 1, time = 0, timeContext = null, config = {} } = {}) {
+  if (config.currentFieldConfig) {
+    return sampleComposedGeneratedCurrent({ x, y, width, height, time, timeContext, config });
+  }
   const pattern = config.currentPattern ?? config.pattern ?? config.currentGenerator?.currentPattern ?? 'wave';
   const strength = Number(config.currentStrength ?? config.strength ?? config.currentGenerator?.strength ?? 1);
   const variability = currentVariability(config);
@@ -60,12 +175,167 @@ export function sampleGeneratedCurrent({ x = 0, y = 0, width = 1, height = 1, ti
     strength,
     variability,
     eddies,
-    terrain
+    terrain,
+    config.topologyComposite ?? config.currentFieldConfig?.topologyComposite
   );
   return [round(vector[0]), round(vector[1])];
 }
 
-function currentAt(pattern, x, y, width, height, time, strength, variability, eddies, terrain) {
+function sampleComposedGeneratedCurrent({ x = 0, y = 0, width = 1, height = 1, time = 0, timeContext = null, config = {} } = {}) {
+  const fieldConfig = normalizeCurrentFieldConfig(config.currentFieldConfig, {
+    currentPreset: config.currentPreset ?? config.vectorPreset,
+    currentStrength: config.currentStrength
+  });
+  const basePreset = getVectorPresetConfig(fieldConfig.basePreset, {
+    currentStrength: fieldConfig.strength,
+    currentVariability: currentFieldVariationToNumber(fieldConfig),
+    temporalEvolution: fieldConfig.fieldMode !== 'static',
+    seed: config.seed
+  });
+  const baseTime = timeContextForFlowConfig(time, timeContext, {
+    ...config,
+    currentFieldConfig: null,
+    currentGenerator: basePreset,
+    currentPattern: basePreset.currentPattern,
+    pattern: basePreset.currentPattern,
+    currentStrength: basePreset.strength,
+    strength: basePreset.strength,
+    currentVariability: fieldConfig.fieldMode === 'static' ? 0 : currentFieldVariationToNumber(fieldConfig),
+    variability: fieldConfig.fieldMode === 'static' ? 0 : currentFieldVariationToNumber(fieldConfig),
+    temporalEvolution: fieldConfig.fieldMode !== 'static',
+    topologyComposite: fieldConfig.topologyComposite
+  }, fieldConfig, fieldConfig.basePreset, width, height);
+  const base = sampleGeneratedCurrent({
+    x,
+    y,
+    width,
+    height,
+    time,
+    timeContext: baseTime,
+    config: {
+      ...config,
+      currentFieldConfig: null,
+      currentGenerator: basePreset,
+      currentPattern: basePreset.currentPattern,
+      pattern: basePreset.currentPattern,
+      currentStrength: basePreset.strength,
+      strength: basePreset.strength,
+      currentVariability: fieldConfig.fieldMode === 'static' ? 0 : currentFieldVariationToNumber(fieldConfig),
+      variability: fieldConfig.fieldMode === 'static' ? 0 : currentFieldVariationToNumber(fieldConfig),
+      temporalEvolution: fieldConfig.fieldMode !== 'static',
+      topologyComposite: fieldConfig.topologyComposite
+    }
+  });
+  const combined = fieldConfig.layers
+    .filter((layer) => layer.enabled && layer.weight > 0)
+    .reduce((sum, layer) => {
+      const influence = layerInfluenceAt(layer, x, y, width, height);
+      if (influence <= 0) return sum;
+      const layerPreset = getVectorPresetConfig(layer.preset, {
+        currentStrength: fieldConfig.strength,
+        currentVariability: variationLevelToNumber(layer.directionVariation) || variationLevelToNumber(layer.magnitudeVariation),
+        temporalEvolution: fieldConfig.fieldMode !== 'static',
+        seed: `${config.seed ?? 'anchor-current'}:${layer.id}`
+      });
+      const layerConfig = {
+        ...config,
+        currentFieldConfig: null,
+        currentGenerator: layerPreset,
+        currentPattern: layerPreset.currentPattern,
+        pattern: layerPreset.currentPattern,
+        currentStrength: layerPreset.strength,
+        strength: layerPreset.strength,
+        currentVariability: fieldConfig.fieldMode === 'static' ? 0 : Math.max(variationLevelToNumber(layer.directionVariation), variationLevelToNumber(layer.magnitudeVariation)),
+        variability: fieldConfig.fieldMode === 'static' ? 0 : Math.max(variationLevelToNumber(layer.directionVariation), variationLevelToNumber(layer.magnitudeVariation)),
+        temporalEvolution: fieldConfig.fieldMode !== 'static',
+        seed: `${config.seed ?? 'anchor-current'}:${layer.id}:${layer.preset}`
+      };
+      const layerSample = sampleGeneratedCurrent({
+        x,
+        y,
+        width,
+        height,
+        time,
+        timeContext: timeContextForFlowConfig(time, timeContext, layerConfig, layer, layer.preset, width, height),
+        config: layerConfig
+      });
+      return [
+        sum[0] + layerSample[0] * layer.weight * influence,
+        sum[1] + layerSample[1] * layer.weight * influence
+      ];
+    }, base);
+  return [round(combined[0]), round(combined[1])];
+}
+
+function timeContextForFlowConfig(t, timeContext, sampleConfig, flowConfig, preset, width, height) {
+  if (flowConfig.fieldMode === 'static') {
+    return makeTimeContext(0, { ...sampleConfig, frameIndex: 0, frameCount: 1, durationHours: 1, timeMode: 'clamped', width, height });
+  }
+  const behavior = flowConfig.evolutionBehavior ?? 'continuous';
+  const speed = Math.max(0, Number(flowConfig.evolutionSpeed ?? 1));
+  const rawTime = Number(t) * speed;
+  const cycle = Math.max(1, Number(flowConfig.cycleDurationHours ?? 24));
+  const timeMode = flowConfig.timeMode
+    ?? (behavior === 'looping' ? 'looping' : behavior === 'pulse' ? 'clamped' : 'continuous');
+  const frameCount = Math.max(2, Number(sampleConfig.frameCount ?? timeContext?.frameCount ?? 2));
+  const durationHours = Math.max(1, Number(sampleConfig.durationHours ?? sampleConfig.duration ?? timeContext?.duration ?? cycle));
+  const phaseTime = timeMode === 'looping' || behavior === 'pulse' ? cycle : durationHours;
+  const nextTime = timeMode === 'looping'
+    ? positiveModulo(rawTime, cycle)
+    : timeMode === 'clamped' || timeMode === 'frames'
+      ? clamp(rawTime, 0, phaseTime)
+      : rawTime;
+  const phase = timeMode === 'continuous'
+    ? nextTime / Math.max(1, phaseTime)
+    : timeMode === 'looping'
+      ? positiveModulo(nextTime, phaseTime) / Math.max(1, phaseTime)
+      : clamp(nextTime / Math.max(1, phaseTime), 0, 1);
+  const frameIndex = clampInt(Math.round(phase * (frameCount - 1)), 0, frameCount - 1);
+  return makeTimeContext(nextTime, {
+    ...sampleConfig,
+    frameIndex,
+    frameCount,
+    durationHours: phaseTime,
+    timeMode,
+    interpolation: flowConfig.frameInterpolation ?? sampleConfig.frameInterpolation ?? 'linear',
+    width,
+    height,
+    seed: `${sampleConfig.seed ?? 'anchor-current'}:${preset}:${behavior}`,
+    debugTime: {
+      missionTime: Number(t) || 0,
+      evolutionSpeed: speed,
+      cycleDuration: cycle,
+      effectiveTime: nextTime,
+      clamped: (timeMode === 'clamped' || timeMode === 'frames') && rawTime !== nextTime,
+      source: 'generatedFlowField',
+      preset
+    }
+  });
+}
+
+function layerInfluenceAt(layer, x, y, width, height) {
+  if (layer.influence === 'spatialPocket') {
+    const pocket = layer.pocket ?? {};
+    const px = Number(pocket.x ?? 0.5) * Math.max(1, width - 1);
+    const py = Number(pocket.y ?? 0.5) * Math.max(1, height - 1);
+    const radius = Math.max(0.5, Number(pocket.radius ?? 0.28) * Math.max(width, height));
+    const softness = Math.max(0.01, Number(pocket.softness ?? 0.12));
+    const dist = Math.hypot(Number(x) - px, Number(y) - py);
+    return clamp(1 - (dist - radius * (1 - softness)) / Math.max(0.01, radius * softness), 0, 1);
+  }
+  if (layer.influence === 'partitionedRegion') {
+    const partition = layer.partition ?? {};
+    const vertical = partition.type !== 'horizontal';
+    const axis = vertical ? Number(x) / Math.max(1, width - 1) : Number(y) / Math.max(1, height - 1);
+    const side = partition.side ?? (vertical ? 'left' : 'bottom');
+    const softness = Math.max(0.01, Number(partition.softness ?? 0.08));
+    const signed = side === 'right' || side === 'bottom' ? axis - 0.5 : 0.5 - axis;
+    return clamp(0.5 + signed / softness, 0, 1);
+  }
+  return 1;
+}
+
+function currentAt(pattern, x, y, width, height, time, strength, variability, eddies, terrain, topologyComposite = null) {
   const { cycle, slowCycle, pulseCycle, seedDirection, jetPhase, noisePhase, stormPhase, stormCenterX, stormCenterY } = time;
   const tau = cycle;
   const temporal = variability > 0 ? 1 : 0;
@@ -194,6 +464,9 @@ function currentAt(pattern, x, y, width, height, time, strength, variability, ed
       jet[1] + gyre[1] + boundary[1] + tide[1] + texture[1]
     ];
   }
+  if (pattern === 'topologyAwareComposite') {
+    return topologyAwareCompositeAt(x, y, width, height, time, strength, variability, eddies, terrain, topologyComposite);
+  }
   if (pattern === 'curlNoise') {
     const s1 = Math.sin(x * 0.72 + y * 0.31 + cycle + noisePhase);
     const s2 = Math.sin(x * 0.27 - y * 0.64 - slowCycle * 0.9 + noisePhase * 0.7);
@@ -233,6 +506,88 @@ function currentAt(pattern, x, y, width, height, time, strength, variability, ed
   const u = Math.sin((y / height) * Math.PI * 2 + cycle) * 0.35 * strength;
   const v = Math.cos((x / width) * Math.PI * 2 - cycle) * 0.35 * strength;
   return [u, v];
+}
+
+function topologyAwareCompositeAt(x, y, width, height, time, strength, variability, eddies, terrain, topologyComposite = null) {
+  const classification = classifyTopologyRegionAtCell({ terrain, x, y, width, height });
+  const regions = Array.isArray(topologyComposite?.regions) ? topologyComposite.regions : [];
+  const shoreInfluence = Number.isFinite(classification.shoreDistance) ? clamp((3.2 - classification.shoreDistance) / 3.2, 0, 1) : 0;
+  const regionList = [
+    [regionFor(regions, 'openWater') ?? defaultRegion('openWater', 'meanderingJet', 0.62), clamp(classification.openness * 0.9 + 0.1, 0, 1)],
+    [regionFor(regions, 'shoreline') ?? defaultRegion('shoreline', 'alongShoreFlow', 0.46), shoreInfluence],
+    [regionFor(regions, 'channel') ?? defaultRegion('channel', 'channelJet', 0.58), classification.channelScore],
+    [regionFor(regions, 'bayPocket') ?? defaultRegion('bayPocket', 'eddyField', 0.36), classification.bayScore],
+    [regionFor(regions, 'islandAdjacent') ?? defaultRegion('islandAdjacent', 'islandWake', 0.42), classification.islandAdjacency]
+  ];
+  const vector = regionList.reduce((sum, [region, influence]) => {
+    if (!region || influence <= 0) return sum;
+    const sample = regionVector(region, x, y, width, height, time, strength, variability, eddies, terrain);
+    const scale = influence * Number(region.weight ?? 0.5) * Number(region.magnitudeScale ?? 1);
+    return [sum[0] + sample[0] * scale, sum[1] + sample[1] * scale];
+  }, [0, 0]);
+  const background = currentAt('uniformDrift', x, y, width, height, time, strength * 0.34, variability * 0.65, eddies, terrain);
+  const combined = [vector[0] + background[0], vector[1] + background[1]];
+  const magnitude = Math.hypot(combined[0], combined[1]);
+  const maxMagnitude = 1.85 * Math.max(0.2, strength);
+  const scale = magnitude > maxMagnitude ? maxMagnitude / magnitude : 1;
+  return [combined[0] * scale, combined[1] * scale];
+}
+
+function regionVector(region, x, y, width, height, time, strength, variability, eddies, terrain) {
+  const behavior = region.behavior ?? 'uniformDrift';
+  const adjustedTime = {
+    ...time,
+    cycle: time.cycle * Number(region.speedScale ?? 1) + Number(region.phase ?? 0),
+    slowCycle: time.slowCycle * Number(region.speedScale ?? 1) + Number(region.phase ?? 0) * 0.5,
+    pulseCycle: time.pulseCycle * Number(region.speedScale ?? 1) + Number(region.phase ?? 0)
+  };
+  if (behavior === 'alongShoreFlow') return alongShoreFlow(x, y, width, height, adjustedTime, strength, terrain);
+  if (behavior === 'channelJet') return channelJet(x, y, width, height, adjustedTime, strength, terrain);
+  const pattern = behavior === 'eddyField' ? 'eddies' : behavior;
+  return currentAt(pattern, x, y, width, height, adjustedTime, strength, variability, eddies, terrain);
+}
+
+function alongShoreFlow(x, y, width, height, time, strength, terrain) {
+  const classification = classifyTopologyRegionAtCell({ terrain, x, y, width, height });
+  const landVector = nearestLandVector(terrain, x, y, width, height);
+  const tangent = landVector ? { x: -landVector.y, y: landVector.x } : { x: 1, y: 0 };
+  const sign = Math.sin(time.slowCycle + x * 0.19 + y * 0.13) >= 0 ? 1 : -1;
+  const shoreScale = Number.isFinite(classification.shoreDistance) ? clamp((3.5 - classification.shoreDistance) / 3.5, 0.15, 1) : 0.15;
+  const magnitude = strength * shoreScale * (0.28 + 0.12 * Math.sin(time.cycle + x * 0.2));
+  return [tangent.x * sign * magnitude, tangent.y * sign * magnitude];
+}
+
+function channelJet(x, y, width, height, time, strength, terrain) {
+  const cx = Math.round(x);
+  const cy = Math.round(y);
+  const eastWestLand = Boolean(terrain?.[cy]?.[cx - 1] || terrain?.[cy]?.[cx + 1]);
+  const northSouthLand = Boolean(terrain?.[cy - 1]?.[cx] || terrain?.[cy + 1]?.[cx]);
+  const axis = eastWestLand && !northSouthLand ? { x: 0, y: 1 } : { x: 1, y: 0 };
+  const pulse = 0.72 + 0.22 * Math.sin(time.cycle + x * 0.17 + y * 0.11);
+  return [axis.x * strength * pulse * 0.64, axis.y * strength * pulse * 0.64];
+}
+
+function nearestLandVector(terrain, x, y, width, height) {
+  let best = null;
+  for (let dy = -4; dy <= 4; dy += 1) {
+    for (let dx = -4; dx <= 4; dx += 1) {
+      const tx = Math.round(x) + dx;
+      const ty = Math.round(y) + dy;
+      if (tx < 0 || ty < 0 || tx >= width || ty >= height || !terrain?.[ty]?.[tx]) continue;
+      const distance = Math.hypot(dx, dy);
+      if (distance <= 0 || (best && distance >= best.distance)) continue;
+      best = { x: dx / distance, y: dy / distance, distance };
+    }
+  }
+  return best;
+}
+
+function regionFor(regions, maskType) {
+  return regions.find((region) => region.maskType === maskType);
+}
+
+function defaultRegion(maskType, behavior, weight) {
+  return { maskType, behavior, weight, speedScale: 1, magnitudeScale: 1, phase: 0 };
 }
 
 function vortex(x, y, cx, cy, strength) {
@@ -277,11 +632,23 @@ function defaultEddies(width, height, seedKey = 'anchor-current') {
 
 function makeTimeContext(t, config = {}) {
   const frameCount = Math.max(1, Number(config.frameCount ?? 1));
-  const frameIndex = Math.max(0, Number(config.frameIndex ?? 0));
+  const frameIndex = clampInt(Number(config.frameIndex ?? 0), 0, Math.max(0, frameCount - 1));
   const duration = Math.max(1, Number(config.durationHours ?? config.duration ?? frameCount));
+  const timeMode = config.timeMode ?? (frameCount > 1 ? 'frames' : 'clamped');
   const normalizedByFrame = frameCount > 1 ? frameIndex / (frameCount - 1) : 0;
-  const normalizedByTime = Number.isFinite(Number(t)) ? clamp(Number(t) / duration, 0, 1) : normalizedByFrame;
-  const phase = frameCount > 1 ? normalizedByFrame : normalizedByTime;
+  const rawNormalizedByTime = Number.isFinite(Number(t)) ? Number(t) / duration : normalizedByFrame;
+  let normalizedByTime = rawNormalizedByTime;
+  let clamped = false;
+  if (timeMode === 'looping') {
+    normalizedByTime = positiveModulo(Number(t) || 0, duration) / duration;
+  } else if (timeMode === 'clamped') {
+    normalizedByTime = clamp(rawNormalizedByTime, 0, 1);
+    clamped = normalizedByTime !== rawNormalizedByTime;
+  } else if (timeMode === 'frames') {
+    normalizedByTime = clamp(rawNormalizedByTime, 0, 1);
+    clamped = normalizedByTime !== rawNormalizedByTime;
+  }
+  const phase = timeMode === 'frames' ? normalizedByFrame : normalizedByTime;
   const variability = currentVariability(config);
   const cycleCount = 0.85 + variability * 1.65;
   const seedKey = config.seedKey ?? currentSeedKey(config, config.width, config.height);
@@ -292,11 +659,27 @@ function makeTimeContext(t, config = {}) {
   const noisePhase = rng() * Math.PI * 2;
   const stormPhase = rng() * Math.PI * 2;
   const cycle = phase * Math.PI * 2 * cycleCount + seedPhase;
+  debugCurrentTime({
+    missionTime: config.debugTime?.missionTime ?? (Number(t) || 0),
+    evolutionSpeed: config.debugTime?.evolutionSpeed ?? 1,
+    timeMode,
+    cycleDuration: config.debugTime?.cycleDuration ?? duration,
+    effectiveTime: Number(t) || 0,
+    normalizedByTime,
+    frameIndex,
+    interpolationAlpha: Number.isFinite(phase) ? phase - Math.floor(phase) : 0,
+    clamped: Boolean(config.debugTime?.clamped ?? clamped),
+    source: config.debugTime?.source ?? 'generatedCurrent',
+    preset: config.debugTime?.preset
+  });
   return {
     t: Number(t) || 0,
     frameIndex,
     frameCount,
     phase,
+    timeMode,
+    normalizedByTime,
+    clamped: Boolean(config.debugTime?.clamped ?? clamped),
     cycle,
     slowCycle: cycle * 0.55 + Math.PI * 0.25,
     pulseCycle: cycle * (1.15 + variability * 0.75) + Math.PI * 0.5,
@@ -329,9 +712,20 @@ function currentSeedKey(config = {}, width = 1, height = 1) {
   return `${anchor}:${preset}:${version}:${width}x${height}:s${strength}:v${variability}`;
 }
 
+function positiveModulo(value, modulus) {
+  const number = Number(value) || 0;
+  const base = Math.max(1, Number(modulus) || 1);
+  return ((number % base) + base) % base;
+}
+
 function currentVariability(config = {}) {
   if (config.temporalEvolution === false || config.currentGenerator?.temporalEvolution === false) return 0;
   return clamp(Number(config.currentVariability ?? config.variability ?? config.currentGenerator?.variability ?? 0.5), 0, 1);
+}
+
+function debugCurrentTime(details = {}) {
+  if (!globalThis.ANCHOR_DEBUG_CURRENT_TIME) return;
+  console.debug('[CurrentField][Time]', details);
 }
 
 function round(value) {

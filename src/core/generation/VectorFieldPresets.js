@@ -13,6 +13,7 @@ export const VECTOR_FIELD_PRESETS = {
   curlNoise: preset('Curl Noise Texture', 'curlNoise', 0.95, 0.75, true, 'Small-scale synthetic turbulence from a stream-function texture.'),
   gulfInspired: preset('Gulf Inspired', 'gulfInspired', 1.0, 0.65, true, 'Synthetic Gulf-like loop current and eddy behavior.'),
   hycomInspiredComposite: preset('HYCOM-Inspired Composite', 'hycomInspiredComposite', 1.1, 0.75, true, 'Composite background drift, jet, eddies, shear, and tide. Not real HYCOM forecast data.', 'HYCOM-inspired synthetic composite. Not real HYCOM forecast data.'),
+  topologyAwareComposite: preset('Topology-Aware Composite', 'topologyAwareComposite', 1.05, 0.72, true, 'Synthetic topology-aware ocean-inspired current field. Blends open-water, shoreline, channel, bay, and island-wake behavior from the terrain map.', 'Synthetic topology-aware ocean-inspired current field. Not validated CFD or HYCOM forecast data.'),
   chaotic: preset('Chaotic', 'chaotic', 1.25, 0.9, true, 'High-variation synthetic current texture.'),
 
   // Legacy aliases kept for imported configs and older saved scenarios.
@@ -40,6 +41,7 @@ export const CURRENT_PRESET_CHOICES = [
   'curlNoise',
   'gulfInspired',
   'hycomInspiredComposite',
+  'topologyAwareComposite',
   'chaotic'
 ];
 
@@ -53,6 +55,8 @@ export function normalizeVectorPreset(value = 'currentCorridor') {
   if (value === 'fluid') return 'eddyField';
   if (value === 'hycomInspired') return 'hycomInspiredComposite';
   if (value === 'hycom') return 'hycomInspiredComposite';
+  if (value === 'smartCoastalComposite') return 'topologyAwareComposite';
+  if (value === 'smartComposite') return 'topologyAwareComposite';
   return VECTOR_FIELD_PRESETS[value] ? value : 'currentCorridor';
 }
 

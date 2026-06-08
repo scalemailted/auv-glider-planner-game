@@ -32,6 +32,10 @@ Generated challenge exports should preserve replay seed metadata when available:
 }
 ```
 
+Generated challenge exports also preserve `currentFieldConfig`. This records the selected static/dynamic current mode, base flow preset, evolution behavior and speed, explicit `timeMode`, `cycleDurationHours`, `frameInterpolation`, variation levels, additive layer presets/weights/influence masks, and stochastic forecast-confidence settings when present. The generated challenge default is `Topology-Aware Composite`, a synthetic topology-aware ocean-inspired field that stores seeded `topologyComposite` region metadata for open water, shoreline, channel, bay/pocket, and island-wake influences. It is not validated CFD or HYCOM forecast data. Continuous synthetic fields use scaled mission time without exhausting a finite frame list; looping fields wrap by cycle duration; clamped/frame fields declare that finite timeline behavior. The exported temporal current frames remain the authoritative solver input, while the config explains and reproduces how those frames were generated from the replay seed anchor.
+
+When a setup imports `anchor.flow-field`, challenge exports preserve `importedFlowField` as well. Imported fields may embed validated static/dynamic vector frames or a synthetic `currentFieldConfig`; challenge terrain still supplies the land/water boundary mask for topology-aware risk and deflection.
+
 Exact replay prefers a saved challenge snapshot. If no snapshot is available, replay may be exact via UUID only when the UUID seed anchor, compatible generator version, generation config, and required derived seeds are present. Older records missing these fields should be labeled unavailable or approximate rather than silently regenerated with a new seed.
 
 ## `anchor.solver-packet.json`
@@ -39,6 +43,14 @@ Exact replay prefers a saved challenge snapshot. If no snapshot is available, re
 `type: "anchor.solverPacket"` is input for external planners. It contains the information an algorithm is allowed to use: grid/layers, deployment options and selected starts, agent specs, duration/surfacing windows, scoring/sampling rules, ROI/current forecast data, priority targets, cost-model notes, end conditions, stochastic metadata, and an `algorithmSupport` section for graph search, multi-agent planning, RL, supervised learning, and neural planners.
 
 In stochastic mode, ordinary solver packets include forecast/belief fields, not hidden truth. Oracle-mode packets are only for benchmarking.
+
+Solver packets include `currentFieldConfig` and `currentFieldVisibility`. Fair stochastic packets expose the forecast-visible current frames/config and confidence metadata, including current time behavior, but withhold hidden truth unless oracle export is explicitly requested.
+
+Solver packets also include `importedFlowField` when a challenge used one, plus the generated visible temporal current frames. Imported field source metadata declares whether the field is forecast-visible, truth-visible, or oracle.
+
+## `anchor.flow-field.json`
+
+`type: "anchor.flow-field"` is an optional current-field import format for challenge setup. It supports frame-based currents with finite `{u,v}` vectors and strictly increasing frame times, or a synthetic config using the same presets/layers/evolution controls as challenge setup. Sampling metadata declares `timeMode` (`continuous`, `looping`, `clamped`, or `frames`) and `linear`/`nearest` frame interpolation. Boundary conditions can request `none`, `riskOnly`, `dampenIntoLand`, `deflectAlongShore`, or scaffolded `wakeApproximation`. Imports must match the setup grid size; challenge terrain remains authoritative for coastlines and land boundaries.
 
 Google Colab is supported through `tools/python/notebooks/anchor_external_solver_template.ipynb`. The notebook loads this packet, builds a lightweight headless planning world from visible fields, writes `anchor.plan.json`, and leaves validation/simulation/scoring to the browser game.
 

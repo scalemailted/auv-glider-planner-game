@@ -302,6 +302,10 @@ test('scenario setup stays inside the center viewport', async ({ page }) => {
   await page.evaluate(() => window.anchorGame.phaser.scene.getScene('MainMenuScene').openChallengeSetup('perfectKnowledge'));
   await expect.poll(() => page.evaluate(() => window.anchorGame.phaser.scene.getScene('MissionBriefingScene').sys.isActive())).toBe(true);
   await expect(page.locator('#mission-console')).toContainText('Scenario Setup');
+  await expect(page.locator('#mission-console')).toContainText('Current / Flow Field');
+  await expect(page.locator('#mission-console')).toContainText('Additive Flow Layers');
+  await expect(page.locator('#mission-console [data-flow-field="fieldMode"]')).toBeVisible();
+  await expect(page.locator('#mission-console [data-flow-field="basePreset"]')).toBeVisible();
   await expect(page.locator('#waypoint-timeline')).toContainText('Mission Waypoints');
   await expectCenterShellContained(page);
   await expectCenterPanelUsesAvailableSpace(page);

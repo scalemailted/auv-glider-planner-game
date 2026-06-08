@@ -1,6 +1,7 @@
 import { EXPORT_SCHEMA_VERSION, cloneJson } from './ExportVisibility.js';
 import { ensureLevelIdentity } from '../identity/GameInstanceId.js';
 import { evaluateExactReplayAvailability, getReplaySeedContract } from '../random/ReplaySeedContract.js';
+import { summarizeCurrentFieldConfig } from '../generation/FlowFieldConfig.js';
 
 export function buildResultExport({ level, mission, plan, result, label = 'Manual Player Plan', challenge = null } = {}) {
   if (level) ensureLevelIdentity(level);
@@ -28,6 +29,9 @@ export function buildResultExport({ level, mission, plan, result, label = 'Manua
     replaySeedAnchor: replaySeedContract?.replaySeedAnchor ?? result?.instanceId ?? level?.instanceId ?? null,
     generationVersion: replaySeedContract?.generationVersion ?? null,
     generationConfig: cloneJson(replaySeedContract?.generationConfig ?? level?.meta?.generationConfig ?? null),
+    currentFieldConfig: cloneJson(level?.meta?.generationConfig?.currentFieldConfig ?? level?.meta?.generationConfig?.currentField ?? null),
+    currentFieldSummary: summarizeCurrentFieldConfig(level?.meta?.generationConfig?.currentFieldConfig ?? level?.meta?.generationConfig?.currentField ?? {}),
+    importedFlowField: cloneJson(level?.meta?.generationConfig?.importedFlowField ?? null),
     derivedSeeds: cloneJson(replaySeedContract?.derivedSeeds ?? null),
     replaySeedContract: cloneJson(replaySeedContract),
     exactReplay: {

@@ -19,6 +19,18 @@ export function summarizeSimulationStopReason({ agents = [], events = [], aborte
     } : null;
   }
   const firstFailed = missed[0];
+  const missionTimeExpired = missed.find((event) => normalizeMissReason(event.reason) === 'mission_time_expired') ?? null;
+  if (missionTimeExpired) {
+    return {
+      code: 'mission_time_expired',
+      title: `Mission ended: time limit reached before waypoint ${Number(missionTimeExpired.waypointIndex ?? 0) + 1}.`,
+      lastSuccessfulWaypoint: lastReached(events, missionTimeExpired.agentId),
+      firstFailedWaypoint: missionTimeExpired,
+      suggestedFix: suggestedFix('mission_time_expired'),
+      missedCount: missed.length,
+      affectedAgents: [...new Set(missed.map((event) => event.agentId).filter(Boolean))]
+    };
+  }
   const blockedBeforeMiss = events.some((event) => event.type === 'blocked'
     && event.agentId === firstFailed.agentId
     && Number(event.t ?? 0) <= Number(firstFailed.t ?? 0));
@@ -46,6 +58,8 @@ export function labelReason(reason) {
     terrain: 'route blocked',
     unreachableStalled: 'unreachable',
     waypointTimeout: 'time exceeded',
+    missionTimeExpired: 'mission time expired',
+    mission_time_expired: 'mission time expired',
     batteryDepleted: 'fuel exceeded',
     outOfBoundsTarget: 'target out of bounds',
     invalidWaypoint: 'invalid waypoint',
@@ -62,6 +76,7 @@ export function suggestedFix(reason) {
   const normalized = normalizeMissReason(reason);
   if (normalized === 'routeBlocked') return 'Move the failed waypoint or add an intermediate waypoint around terrain.';
   if (normalized === 'waypointTimeout') return 'Move the waypoint closer, use currents, or plan it in an earlier window.';
+  if (normalized === 'mission_time_expired') return 'No route fix is required unless this waypoint must be reached before mission end.';
   if (normalized === 'batteryDepleted') return 'Shorten the route, use favorable currents, or remove costly detours.';
   if (normalized === 'unreachableStalled') return 'Add an intermediate waypoint or choose a reachable cell.';
   if (normalized === 'noProgress') return 'Revise the route so the glider can make progress toward the active waypoint.';
@@ -72,6 +87,7 @@ export function normalizeMissReason(reason) {
   if (reason === 'blockedMovement' || reason === 'blockedTarget' || reason === 'terrain') return 'routeBlocked';
   if (reason === 'batteryDepleted') return 'batteryDepleted';
   if (reason === 'waypointTimeout') return 'waypointTimeout';
+  if (reason === 'missionTimeExpired' || reason === 'mission_time_expired') return 'mission_time_expired';
   if (reason === 'unreachableStalled') return 'unreachableStalled';
   if (reason === 'timeStalled' || reason === 'waypointNoProgress') return 'noProgress';
   return reason ?? 'unknown';

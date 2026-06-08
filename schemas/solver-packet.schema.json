@@ -45,6 +45,9 @@
     "sampling": "normalized mission sampling config",
     "priorityTargets": "normalized mission priority target display/capture config",
     "vectorField": "current generator metadata including preset, strength, variability, seed, stats, and synthetic/current notes",
+    "currentFieldConfig": "serializable visible current/flow-field setup: static/dynamic mode, base preset, evolution behavior/speed, explicit timeMode, cycleDurationHours, frameInterpolation, variation levels, additive layers, spatial influence, topologyComposite regional metadata when using Topology-Aware Composite, and stochastic forecast-confidence metadata when applicable",
+    "importedFlowField": "optional visible anchor.flow-field payload when the challenge currents came from an import",
+    "currentFieldVisibility": "declares whether visible current config/frames are included and whether hidden truth-current frames are withheld or included",
     "planningMarkers": "optional global current plan markers; non-executable notes for future windows",
     "connectivity": "deployment connectivity summary and warnings",
     "riskFields": "probabilisticROI, ensembleForecasts, mobileHazards, depth, staticHazards, and scoringMode",
@@ -85,6 +88,8 @@
     "selectedForecastMember": "forecast member id or ensemble_mean"
   },
   "vectorField": "Top-level vectorField mirrors level.meta.generationConfig.currentGenerator or vector preset metadata so external solvers can identify the current preset used to generate visible frames.",
+  "currentFieldConfig": "Top-level currentFieldConfig mirrors level.meta.generationConfig.currentFieldConfig so external solvers can reproduce the visible current setup behind the exported temporal frames.",
+  "importedFlowField": "Top-level importedFlowField mirrors level.meta.generationConfig.importedFlowField so external solvers can inspect source/fairness metadata and imported frame/config behavior.",
   "exampleSolver": "python tools/python/example_greedy_solver.py solver_packet.json output_plan.json",
   "priorityTargets": "Top-level priorityTargets mirrors level.layers.priorityTargets after normalization: id, label, value, radius, captureMode, frames.",
   "notes": "Solver packets contain the current level, mission, visible planning fields, challenge mode, selected forecast member, ROI view mode, optional planning markers, and an expected anchor.plan shape. Forecast mode packets include forecast/ensemble data, probabilistic ROI, mobile hazards, priority targets, and depth for risk-aware baseline solvers. Truth is included only when explicitly requested for benchmarking. Planning markers are study notes only and should not be treated as executable waypoints unless a solver intentionally converts them."

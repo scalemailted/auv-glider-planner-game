@@ -29,7 +29,8 @@ export const FLOW_DEMO_PRESET_CHOICES = [
   'meanderingJet',
   'stormPulse',
   'curlNoise',
-  'hycomInspiredComposite'
+  'hycomInspiredComposite',
+  'topologyAwareComposite'
 ];
 export const FLOW_DEMO_DEFAULT_PRESETS = {
   static: 'uniformDrift',

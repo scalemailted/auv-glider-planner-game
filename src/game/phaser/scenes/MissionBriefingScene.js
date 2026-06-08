@@ -8,7 +8,26 @@ import {
   normalizeScenarioConfig,
   SCENARIO_SIZE_PRESETS
 } from '../../../core/generation/ScenarioConfig.js';
-import { CURRENT_PRESET_CHOICES, VECTOR_FIELD_PRESETS } from '../../../core/generation/VectorFieldPresets.js';
+import { VECTOR_FIELD_PRESETS } from '../../../core/generation/VectorFieldPresets.js';
+import {
+  FLOW_FIELD_EVOLUTION_BEHAVIORS,
+  FLOW_FIELD_EVOLUTION_SPEEDS,
+  FLOW_FIELD_CYCLE_DURATIONS_HOURS,
+  FLOW_FIELD_FRAME_INTERPOLATION_MODES,
+  FLOW_FIELD_HIDDEN_TRUTH_VARIATION_LEVELS,
+  FLOW_FIELD_LAYER_INFLUENCES,
+  FLOW_FIELD_MODES,
+  FLOW_FIELD_PRESET_CHOICES,
+  FLOW_FIELD_STOCHASTIC_CONFIDENCE_LEVELS,
+  FLOW_FIELD_TIME_MODES,
+  FLOW_FIELD_UNCERTAINTY_GROWTH_LEVELS,
+  FLOW_FIELD_VARIATION_LEVELS,
+  createDefaultCurrentFieldLayer,
+  normalizeCurrentFieldConfig,
+  summarizeCurrentFieldConfig
+} from '../../../core/generation/FlowFieldConfig.js';
+import { readJSONFile } from '../../../core/io/ImportExport.js';
+import { importFlowFieldJson, summarizeImportedFlowField } from '../../../core/io/FlowFieldImporter.js';
 
 const PhaserScene = globalThis.Phaser?.Scene ?? class {};
 
@@ -121,6 +140,7 @@ export class MissionBriefingScene extends PhaserScene {
             ${setupSectionHtml('Generated Mission Preview', `${complexity.cells} cells, about ${complexity.frames} temporal frames, vector stride ${complexity.vectorStride}.`)}
             ${setupSectionHtml('Performance Note', complexity.warning)}
             ${setupSectionHtml('Knowledge Mode', config.mode === 'forecast' ? 'Planning uses forecast and ensemble fields. Simulation resolves against hidden truth.' : 'Planning and simulation use the same perfect-knowledge truth fields.')}
+            ${setupSectionHtml('Current / Flow Field', summarizeCurrentFieldConfig(config.currentFieldConfig))}
             ${setupSectionHtml('Generation', 'Map, currents, ROI, hazards, drop zone, depth, and temporal Gold Star targets are generated after you click Generate Mission.')}
           </section>
           <footer class="center-panel-footer">
@@ -214,9 +234,6 @@ export class MissionBriefingScene extends PhaserScene {
       <section class="console-section">
         <h2>Generation</h2>
         ${selectField('difficulty', 'Difficulty', ['easy', 'medium', 'hard', 'chaotic'].map((value) => [value, labelize(value)]), config.difficulty)}
-        ${selectField('currentPreset', 'Current Field', CURRENT_PRESET_CHOICES.map((key) => [key, VECTOR_FIELD_PRESETS[key]?.label ?? labelize(key)]), config.currentPreset)}
-        ${selectField('currentStrength', 'Current Strength', [['0.45', 'Low'], ['0.85', 'Medium'], ['1.25', 'High']], String(config.currentStrength))}
-        ${selectField('currentVariability', 'Temporal Variability', [['0.2', 'Low'], ['0.55', 'Medium'], ['0.9', 'High']], String(config.currentVariability))}
         ${selectField('hazardDensity', 'Hazards', [['0.03', 'Low'], ['0.06', 'Medium'], ['0.1', 'High'], ['0.14', 'Extreme']], String(config.hazardDensity))}
         ${selectField('terrainDensity', 'Terrain', [['0.04', 'Sparse'], ['0.08', 'Medium'], ['0.14', 'Dense'], ['0.2', 'Maze-like']], String(config.terrainDensity))}
         ${selectField('roiHotspots', 'ROI Hotspots', range(2, 8), String(config.roiHotspots))}
@@ -225,9 +242,11 @@ export class MissionBriefingScene extends PhaserScene {
         ${config.mode === 'forecast' ? selectField('forecastDecay', 'Forecast Decay', [['true', 'On'], ['false', 'Off']], String(config.forecastDecay)) : ''}
         ${config.mode === 'forecast' ? selectField('forecastDecayModel', 'Decay Model', [['exponential', 'Exponential'], ['linear', 'Linear']], config.forecastDecayModel) : ''}
       </section>
+      ${currentFieldSetupHtml(config)}
       <section class="console-status">
         <span>Preview</span>
         <strong>${complexity.cells} cells | ${complexity.frames} frames</strong>
+        <small>${escapeHtml(summarizeCurrentFieldConfig(config.currentFieldConfig))}</small>
         <small>${escapeHtml(complexity.warning)}</small>
       </section>
       <section class="console-footer">
@@ -239,6 +258,16 @@ export class MissionBriefingScene extends PhaserScene {
     this.app.applyConsoleAccordions?.('scenarioSetup');
     root.querySelectorAll('[data-field]').forEach((field) => {
       field.addEventListener('change', () => this.updateScenarioSetupFromForm());
+    });
+    root.querySelectorAll('[data-flow-field], [data-flow-layer-field]').forEach((field) => {
+      field.addEventListener('change', () => this.updateScenarioSetupFromForm());
+    });
+    root.querySelector('[data-current-field-source]')?.addEventListener('change', () => this.updateScenarioSetupFromForm());
+    root.querySelector('[data-action="add-flow-layer"]')?.addEventListener('click', () => this.addCurrentFlowLayer());
+    root.querySelector('[data-action="import-flow-field"]')?.addEventListener('click', () => this.importFlowFieldJson());
+    root.querySelector('[data-action="clear-flow-field-import"]')?.addEventListener('click', () => this.clearFlowFieldImport());
+    root.querySelectorAll('[data-action="remove-flow-layer"]').forEach((button) => {
+      button.addEventListener('click', () => this.removeCurrentFlowLayer(button.dataset.layerId));
     });
     root.querySelector('[data-action="generate"]')?.addEventListener('click', () => this.generateConfiguredScenario());
     root.querySelector('[data-action="reset"]')?.addEventListener('click', () => this.resetScenarioSetup());
@@ -310,6 +339,11 @@ export class MissionBriefingScene extends PhaserScene {
     root?.querySelectorAll('[data-field]')?.forEach((field) => {
       values[field.dataset.field] = field.value;
     });
+    values.currentFieldConfig = collectCurrentFieldConfig(root, current);
+    values.currentPreset = values.currentFieldConfig.basePreset;
+    values.currentStrength = values.currentFieldConfig.strength;
+    values.currentFieldSource = root?.querySelector('[data-current-field-source]')?.value ?? current.currentFieldSource ?? 'procedural';
+    values.importedFlowField = values.currentFieldSource === 'imported' ? current.importedFlowField ?? null : null;
     values.multipleDropZones = values.multipleDropZones === 'true';
     values.forecastDecay = values.forecastDecay === 'true';
     const preset = SCENARIO_SIZE_PRESETS[values.preset];
@@ -329,6 +363,94 @@ export class MissionBriefingScene extends PhaserScene {
   resetScenarioSetup() {
     const mode = this.app.state.pendingScenarioSetup?.mode ?? this.app.state.challengeMode ?? 'perfectKnowledge';
     this.app.state.pendingScenarioSetup = createDefaultScenarioConfig(mode);
+    this.renderScenarioSetup();
+    this.renderScenarioSetupConsole();
+  }
+
+  addCurrentFlowLayer() {
+    const current = normalizeScenarioConfig(this.app.state.pendingScenarioSetup);
+    const currentFieldConfig = normalizeCurrentFieldConfig(current.currentFieldConfig, { mode: current.mode });
+    if (currentFieldConfig.layers.length >= 4) return;
+    this.app.state.pendingScenarioSetup = normalizeScenarioConfig({
+      ...current,
+      currentFieldConfig: {
+        ...currentFieldConfig,
+        layers: [
+          ...currentFieldConfig.layers,
+          createDefaultCurrentFieldLayer(currentFieldConfig.layers, currentFieldConfig.basePreset)
+        ]
+      }
+    });
+    this.renderScenarioSetup();
+    this.renderScenarioSetupConsole();
+  }
+
+  removeCurrentFlowLayer(layerId) {
+    const current = normalizeScenarioConfig(this.app.state.pendingScenarioSetup);
+    const currentFieldConfig = normalizeCurrentFieldConfig(current.currentFieldConfig, { mode: current.mode });
+    this.app.state.pendingScenarioSetup = normalizeScenarioConfig({
+      ...current,
+      currentFieldConfig: {
+        ...currentFieldConfig,
+        layers: currentFieldConfig.layers.filter((layer) => layer.id !== layerId)
+      }
+    });
+    this.renderScenarioSetup();
+    this.renderScenarioSetupConsole();
+  }
+
+  importFlowFieldJson() {
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = 'application/json,.json';
+    input.addEventListener('change', async () => {
+      const file = input.files?.[0];
+      if (!file) return;
+      try {
+        const json = await readJSONFile(file);
+        const current = normalizeScenarioConfig(this.app.state.pendingScenarioSetup);
+        const imported = importFlowFieldJson(json, {
+          mode: current.mode,
+          width: current.width,
+          height: current.height
+        });
+        if (!imported.ok) {
+          this.app.toast?.(`Flow field import failed: ${imported.errors[0] ?? 'invalid file'}`, 'warning');
+          this.app.state.pendingScenarioSetup = {
+            ...current,
+            flowFieldImportStatus: imported.summary
+          };
+        } else {
+          this.app.toast?.(`Imported flow field: ${imported.summary.title}`, 'success');
+          this.app.state.pendingScenarioSetup = normalizeScenarioConfig({
+            ...current,
+            currentFieldSource: 'imported',
+            importedFlowField: imported.flowField,
+            currentFieldConfig: imported.flowField.syntheticConfig ?? {
+              ...current.currentFieldConfig,
+              boundaryConditions: imported.flowField.boundaryConditions
+            },
+            flowFieldImportStatus: imported.summary
+          });
+        }
+      } catch (error) {
+        this.app.toast?.(`Flow field import failed: ${error.message}`, 'warning');
+      }
+      this.renderScenarioSetup();
+      this.renderScenarioSetupConsole();
+    });
+    input.click();
+  }
+
+  clearFlowFieldImport() {
+    const current = normalizeScenarioConfig(this.app.state.pendingScenarioSetup);
+    this.app.state.pendingScenarioSetup = normalizeScenarioConfig({
+      ...current,
+      currentFieldSource: 'procedural',
+      importedFlowField: null,
+      flowFieldImportStatus: null
+    });
+    this.app.toast?.('Imported flow field cleared.', 'info');
     this.renderScenarioSetup();
     this.renderScenarioSetupConsole();
   }
@@ -550,6 +672,159 @@ function selectField(name, label, options, selected) {
       </select>
     </label>
   `;
+}
+
+function currentFieldSetupHtml(config) {
+  const field = normalizeCurrentFieldConfig(config.currentFieldConfig, { mode: config.mode });
+  const stochastic = config.mode === 'forecast';
+  const layers = field.layers ?? [];
+  const source = config.importedFlowField ? 'imported' : (config.currentFieldSource ?? 'procedural');
+  return `
+    <section class="console-section">
+      <h2>Current / Flow Field</h2>
+      <label class="scenario-field">
+        <span>Source</span>
+        <select data-current-field-source>
+          <option value="procedural" ${source !== 'imported' ? 'selected' : ''}>Procedural / Generated</option>
+          <option value="imported" ${source === 'imported' ? 'selected' : ''}>Imported Flow Field JSON</option>
+        </select>
+      </label>
+      <div class="flow-import-actions">
+        <button class="console-button" data-action="import-flow-field">Import Flow Field JSON</button>
+        ${config.importedFlowField ? '<button class="console-button secondary" data-action="clear-flow-field-import">Clear Import</button>' : ''}
+      </div>
+      ${config.importedFlowField ? importedFlowFieldSummaryHtml(config.importedFlowField) : ''}
+      ${flowSelectField('fieldMode', 'Mode', FLOW_FIELD_MODES.map((mode) => [mode, mode === 'dynamic' ? 'Dynamic' : 'Static']), field.fieldMode)}
+      ${flowSelectField('basePreset', 'Base Flow Field', FLOW_FIELD_PRESET_CHOICES.map((key) => [key, VECTOR_FIELD_PRESETS[key]?.label ?? labelize(key)]), field.basePreset)}
+      ${flowSelectField('strength', 'Current Strength', [['0.45', 'Low'], ['0.85', 'Medium'], ['1.05', 'Medium High'], ['1.25', 'High']], String(field.strength))}
+      ${flowSelectField('evolutionBehavior', 'Evolution Behavior', FLOW_FIELD_EVOLUTION_BEHAVIORS.map((value) => [value, evolutionBehaviorLabel(value)]), field.evolutionBehavior)}
+      ${flowSelectField('evolutionSpeed', 'Evolution Speed', FLOW_FIELD_EVOLUTION_SPEEDS.map((value) => [String(value), `${value}x`]), String(field.evolutionSpeed))}
+      ${flowSelectField('timeMode', 'Time Mode', FLOW_FIELD_TIME_MODES.filter((value) => value !== 'frames').map((value) => [value, timeModeLabel(value)]), field.timeMode)}
+      ${flowSelectField('cycleDurationHours', 'Cycle Duration', FLOW_FIELD_CYCLE_DURATIONS_HOURS.map((value) => [String(value), `${value} hr`]), String(field.cycleDurationHours))}
+      ${flowSelectField('frameInterpolation', 'Frame Interpolation', FLOW_FIELD_FRAME_INTERPOLATION_MODES.map((value) => [value, labelize(value)]), field.frameInterpolation)}
+      ${flowSelectField('directionVariation', 'Direction Variation', FLOW_FIELD_VARIATION_LEVELS.map((value) => [value, variationLabel(value)]), field.directionVariation)}
+      ${flowSelectField('magnitudeVariation', 'Magnitude Variation', FLOW_FIELD_VARIATION_LEVELS.map((value) => [value, variationLabel(value)]), field.magnitudeVariation)}
+      ${stochastic ? `
+        ${flowSelectField('forecastConfidence', 'Forecast Confidence', FLOW_FIELD_STOCHASTIC_CONFIDENCE_LEVELS.map((value) => [value, variationLabel(value)]), field.stochastic?.forecastConfidence ?? 'medium')}
+        ${flowSelectField('uncertaintyGrowth', 'Uncertainty Growth', FLOW_FIELD_UNCERTAINTY_GROWTH_LEVELS.map((value) => [value, variationLabel(value)]), field.stochastic?.uncertaintyGrowth ?? 'moderate')}
+        ${flowSelectField('hiddenTruthVariation', 'Hidden Truth Variation', FLOW_FIELD_HIDDEN_TRUTH_VARIATION_LEVELS.map((value) => [value, variationLabel(value)]), field.stochastic?.hiddenTruthVariation ?? 'medium')}
+      ` : ''}
+      <div class="console-status compact-status">
+        <span>Current summary</span>
+        <strong>${escapeHtml(field.fieldMode === 'dynamic' ? `${timeModeLabel(field.timeMode)} current evolution` : 'Static field')}</strong>
+        <small>${escapeHtml(summarizeCurrentFieldConfig(field))}</small>
+        ${field.timeMode === 'clamped' ? '<small class="warning">Clamped mode holds the final current state after the forecast duration.</small>' : ''}
+      </div>
+    </section>
+    <section class="console-section">
+      <h2>Additive Flow Layers</h2>
+      ${layers.length ? layers.map((layer, index) => flowLayerHtml(layer, index)).join('') : '<div class="hud-muted">No additive flow layers.</div>'}
+      <button class="console-button" data-action="add-flow-layer" ${layers.length >= 4 ? 'disabled' : ''}>+ Add Flow Field</button>
+    </section>
+  `;
+}
+
+function importedFlowFieldSummaryHtml(flowField) {
+  const summary = summarizeImportedFlowField(flowField);
+  return `
+    <div class="console-status compact-status">
+      <span>Imported Flow Field</span>
+      <strong>${escapeHtml(summary.title)} | ${escapeHtml(labelize(summary.mode))} | ${Number(summary.frameCount ?? 0)} frame(s)</strong>
+      <small>Source: ${escapeHtml(summary.sourceLabel)} | Fairness: ${escapeHtml(summary.fairness)} | Boundary: ${escapeHtml(summary.boundaryMode)}</small>
+      ${summary.syntheticSummary ? `<small>${escapeHtml(summary.syntheticSummary)}</small>` : ''}
+      ${summary.warnings?.length ? `<small class="warning">${escapeHtml(summary.warnings[0])}</small>` : ''}
+    </div>
+  `;
+}
+
+function flowLayerHtml(layer, index) {
+  return `
+    <article class="flow-layer-card">
+      <header class="flow-layer-header">
+        <strong>Layer ${index + 1}</strong>
+        <button class="console-button secondary compact-button" data-action="remove-flow-layer" data-layer-id="${escapeHtml(layer.id)}">Remove</button>
+      </header>
+      ${flowLayerSelectField(index, 'preset', 'Flow Field', FLOW_FIELD_PRESET_CHOICES.map((key) => [key, VECTOR_FIELD_PRESETS[key]?.label ?? labelize(key)]), layer.preset)}
+      ${flowLayerSelectField(index, 'weight', 'Weight', [['0.2', '0.20x'], ['0.35', '0.35x'], ['0.5', '0.50x'], ['0.75', '0.75x'], ['1', '1.00x']], String(layer.weight))}
+      ${flowLayerSelectField(index, 'influence', 'Influence', FLOW_FIELD_LAYER_INFLUENCES.map((value) => [value, flowInfluenceLabel(value)]), layer.influence)}
+      ${flowLayerSelectField(index, 'evolutionBehavior', 'Evolution', FLOW_FIELD_EVOLUTION_BEHAVIORS.map((value) => [value, evolutionBehaviorLabel(value)]), layer.evolutionBehavior)}
+      ${flowLayerSelectField(index, 'evolutionSpeed', 'Speed', FLOW_FIELD_EVOLUTION_SPEEDS.map((value) => [String(value), `${value}x`]), String(layer.evolutionSpeed))}
+      ${flowLayerSelectField(index, 'timeMode', 'Time Mode', FLOW_FIELD_TIME_MODES.filter((value) => value !== 'frames').map((value) => [value, timeModeLabel(value)]), layer.timeMode)}
+      ${flowLayerSelectField(index, 'directionVariation', 'Direction Variation', FLOW_FIELD_VARIATION_LEVELS.map((value) => [value, variationLabel(value)]), layer.directionVariation)}
+      ${flowLayerSelectField(index, 'magnitudeVariation', 'Magnitude Variation', FLOW_FIELD_VARIATION_LEVELS.map((value) => [value, variationLabel(value)]), layer.magnitudeVariation)}
+    </article>
+  `;
+}
+
+function flowSelectField(name, label, options, selected) {
+  return `
+    <label class="scenario-field">
+      <span>${escapeHtml(label)}</span>
+      <select data-flow-field="${escapeHtml(name)}">
+        ${options.map(([value, optionLabel]) => `<option value="${escapeHtml(value)}" ${String(value) === String(selected) ? 'selected' : ''}>${escapeHtml(optionLabel)}</option>`).join('')}
+      </select>
+    </label>
+  `;
+}
+
+function flowLayerSelectField(index, name, label, options, selected) {
+  return `
+    <label class="scenario-field">
+      <span>${escapeHtml(label)}</span>
+      <select data-flow-layer-index="${index}" data-flow-layer-field="${escapeHtml(name)}">
+        ${options.map(([value, optionLabel]) => `<option value="${escapeHtml(value)}" ${String(value) === String(selected) ? 'selected' : ''}>${escapeHtml(optionLabel)}</option>`).join('')}
+      </select>
+    </label>
+  `;
+}
+
+function collectCurrentFieldConfig(root, current) {
+  const existing = normalizeCurrentFieldConfig(current.currentFieldConfig, { mode: current.mode });
+  const next = {
+    ...existing,
+    stochastic: existing.stochastic ? { ...existing.stochastic } : null,
+    layers: existing.layers.map((layer) => ({ ...layer }))
+  };
+  root?.querySelectorAll('[data-flow-field]')?.forEach((field) => {
+    const name = field.dataset.flowField;
+    if (name === 'forecastConfidence' || name === 'uncertaintyGrowth' || name === 'hiddenTruthVariation') {
+      next.stochastic ??= {};
+      next.stochastic[name] = field.value;
+      return;
+    }
+    next[name] = field.value;
+  });
+  root?.querySelectorAll('[data-flow-layer-field]')?.forEach((field) => {
+    const index = Number(field.dataset.flowLayerIndex);
+    const name = field.dataset.flowLayerField;
+    if (!Number.isInteger(index) || !next.layers[index]) return;
+    next.layers[index][name] = field.value;
+  });
+  return normalizeCurrentFieldConfig(next, { mode: current.mode });
+}
+
+function evolutionBehaviorLabel(value) {
+  if (value === 'looping') return 'Looping / Cyclic';
+  if (value === 'pulse') return 'One-Shot Pulse';
+  if (value === 'translating') return 'Meandering / Translating';
+  return 'Continuous';
+}
+
+function variationLabel(value) {
+  return labelize(value);
+}
+
+function timeModeLabel(value) {
+  if (value === 'looping') return 'Looping';
+  if (value === 'clamped') return 'Clamped';
+  if (value === 'frames') return 'Frame Timeline';
+  return 'Continuous';
+}
+
+function flowInfluenceLabel(value) {
+  if (value === 'spatialPocket') return 'Spatial Pocket';
+  if (value === 'partitionedRegion') return 'Partitioned Region';
+  return 'Global Blend';
 }
 
 function range(min, max) {

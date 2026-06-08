@@ -52,7 +52,9 @@ export function markWaypointMissed(agent, waypoint, reason, t, details = {}) {
     reason,
     blockedCell: details.blockedCell ?? null,
     attemptedPosition: details.attemptedPosition ?? null,
-    routeBlockDetails: details.routeBlockDetails ?? null
+    routeBlockDetails: details.routeBlockDetails ?? null,
+    finalPosition: details.finalPosition ?? null,
+    missionDuration: details.missionDuration ?? null
   };
   waypoint.executionStatus = 'missed';
   waypoint.executionReason = reason;

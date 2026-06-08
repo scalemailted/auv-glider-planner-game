@@ -17,6 +17,7 @@ import { getVectorPresetConfig, normalizeVectorPreset } from './VectorFieldPrese
 import { normalizeForecastRules } from '../forecast/ForecastDecay.js';
 import { buildReplaySeedContract, deriveReplaySeeds, GENERATION_VERSION } from '../random/ReplaySeedContract.js';
 import { currentFieldConfigToGeneratorConfig, normalizeCurrentFieldConfig } from './FlowFieldConfig.js';
+import { buildTopologyAwareCompositeConfig } from './TopologyAwareComposite.js';
 
 export function generateLevel(config = {}) {
   const merged = applyDifficultyPreset(config);
@@ -32,7 +33,8 @@ export function generateLevel(config = {}) {
     ...deriveReplaySeeds(challengeId),
     ...(merged.replaySeedContract?.derivedSeeds ?? merged.derivedSeeds ?? merged.generationConfig?.derivedSeeds ?? {})
   };
-  const currentFieldConfig = normalizeCurrentFieldConfig(merged.currentFieldConfig ?? merged.currentField ?? merged.generationConfig?.currentFieldConfig ?? null, {
+  const importedFlowField = merged.importedFlowField ?? merged.generationConfig?.importedFlowField ?? null;
+  let currentFieldConfig = normalizeCurrentFieldConfig(importedFlowField?.syntheticConfig ?? merged.currentFieldConfig ?? merged.currentField ?? merged.generationConfig?.currentFieldConfig ?? null, {
     mode: merged.challengeMode === 'forecast' || merged.forecastMode === 'noisy' ? 'forecast' : 'perfectKnowledge',
     currentPreset: merged.currentPreset ?? merged.vectorPreset,
     currentStrength: merged.currentStrength
@@ -57,6 +59,24 @@ export function generateLevel(config = {}) {
   const targetsRandom = createSeededRandom(derivedSeeds.targets ?? seed);
   const levelSeedHash = hashSeed(seed).toString(36);
   const terrain = generateTerrain(width, height, Number(merged.terrainDensity ?? 0.08), terrainRandom);
+  if (!importedFlowField && currentFieldConfig.basePreset === 'topologyAwareComposite' && !currentFieldConfig.topologyComposite) {
+    currentFieldConfig = normalizeCurrentFieldConfig({
+      ...currentFieldConfig,
+      topologyComposite: buildTopologyAwareCompositeConfig({
+        terrain,
+        width,
+        height,
+        seed: derivedSeeds.currents ?? seed,
+        challengeId,
+        generationVersion,
+        randomness: currentFieldConfig.magnitudeVariation === 'high' || currentFieldConfig.directionVariation === 'high' ? 'high' : 'medium'
+      })
+    }, {
+      mode: merged.challengeMode === 'forecast' || merged.forecastMode === 'noisy' ? 'forecast' : 'perfectKnowledge',
+      currentPreset: currentFieldConfig.basePreset,
+      currentStrength: currentFieldConfig.strength
+    });
+  }
   const hazards = generateHazards(width, height, Number(merged.hazardDensity ?? 0.06), terrain, hazardRandom);
   const hotspots = createHotspots(width, height, clampInt(merged.roiHotspots, 1, 8), merged.roiPattern, roiRandom);
   const eddies = makeEddies(width, height, createSeededRandom(derivedSeeds.currents ?? seed));
@@ -71,6 +91,7 @@ export function generateLevel(config = {}) {
     eddies,
     pattern: merged.currentPattern,
     currentFieldConfig,
+    importedFlowField,
     currentGenerator: vectorPreset,
     currentVariability: vectorPreset.variability
   });
@@ -114,6 +135,7 @@ export function generateLevel(config = {}) {
       seed: derivedSeeds.currents ?? seed,
       temporalEvolution: true,
       currentFieldConfig,
+      importedFlowField: importedFlowField ? summarizeImportedFlowField(importedFlowField) : null,
       layers: currentFieldConfig.layers,
       notes: 'Synthetic ocean-inspired current field for gameplay.',
       stats: computeCurrentFrameSetStats(currentFrames),
@@ -139,6 +161,7 @@ export function generateLevel(config = {}) {
     vectorField: currentGenerator,
     currentFieldConfig,
     currentField: currentFieldConfig,
+    importedFlowField: importedFlowField ? cloneJson(importedFlowField) : null,
     currentPreset: vectorPreset.preset,
     vectorPreset: vectorPreset.preset,
     fluidPreset: fluidEnabled ? normalizeFluidPreset(merged) : undefined,
@@ -418,4 +441,27 @@ function clampInt(value, min, max) {
   const number = Number(value);
   if (!Number.isFinite(number)) return min;
   return Math.max(min, Math.min(max, Math.round(number)));
+}
+
+function summarizeImportedFlowField(flowField = null) {
+  if (!flowField) return null;
+  return {
+    type: flowField.type ?? 'anchor.flow-field',
+    name: flowField.name ?? 'Imported Flow Field',
+    mode: flowField.mode ?? (flowField.frames?.length > 1 ? 'dynamic' : 'static'),
+    frameCount: flowField.frames?.length ?? 0,
+    source: flowField.source ?? null,
+    fairness: flowField.source?.usesOracle
+      ? 'oracle'
+      : flowField.source?.usesTruth
+        ? 'truth-visible'
+        : 'forecast-visible',
+    boundaryMode: flowField.boundaryConditions?.mode ?? 'deflectAlongShore',
+    hasSyntheticConfig: Boolean(flowField.syntheticConfig)
+  };
+}
+
+function cloneJson(value) {
+  if (value === undefined || value === null) return value ?? null;
+  return JSON.parse(JSON.stringify(value));
 }

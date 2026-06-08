@@ -87,7 +87,9 @@ export function validatePlanForExecution({ level, mission, plan } = {}) {
       if (Number(waypoint.segmentTravelTime) < 0) errors.push(`${label} has negative segment travel time.`);
       const waypointTime = Number(waypoint.estimatedArrivalTime ?? waypoint.t);
       if (Number.isFinite(waypointTime)) {
-        if (waypointTime > duration) errors.push(`${label} exceeds mission horizon. Route exceeds mission horizon; reduce or revise waypoints.`);
+        if (waypointTime > duration) {
+          warnings.push(`${label} is scheduled after the mission duration. Simulation will run toward this waypoint and end at the mission time limit before it is reached.`);
+        }
         if (previousTime !== null && waypointTime <= previousTime) {
           errors.push(`${label} has non-increasing timing. Waypoint times must increase before simulation.`);
         }

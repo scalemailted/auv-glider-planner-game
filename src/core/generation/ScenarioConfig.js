@@ -46,7 +46,8 @@ export function normalizeScenarioConfig(config = {}) {
   const presetKey = SCENARIO_SIZE_PRESETS[config.preset] ? config.preset : 'small';
   const preset = SCENARIO_SIZE_PRESETS[presetKey];
   const mode = config.mode === 'forecast' ? 'forecast' : 'perfectKnowledge';
-  const normalizedCurrentField = normalizeCurrentFieldConfig(config.currentFieldConfig ?? config.currentField ?? {
+  const importedFlowField = config.importedFlowField ?? config.flowFieldImport ?? null;
+  const normalizedCurrentField = normalizeCurrentFieldConfig(importedFlowField?.syntheticConfig ?? config.currentFieldConfig ?? config.currentField ?? {
     fieldMode: config.temporalEvolution === false ? 'static' : 'dynamic',
     basePreset: config.vectorPreset ?? config.currentPreset ?? (mode === 'forecast' ? 'eddyField' : 'currentCorridor'),
     strength: config.currentStrength,
@@ -77,6 +78,8 @@ export function normalizeScenarioConfig(config = {}) {
       : finiteNumber(config.currentVariability ?? config.variability, currentGeneratorConfig.currentVariability)),
     currentPreset: normalizeVectorPreset(currentGeneratorConfig.currentPreset),
     currentFieldConfig: normalizedCurrentField,
+    currentFieldSource: importedFlowField ? 'imported' : (config.currentFieldSource === 'imported' ? 'imported' : 'procedural'),
+    importedFlowField,
     roiHotspots: clampInt(config.roiHotspots ?? (mode === 'forecast' ? 5 : 4), 1, 12),
     priorityTargetFrequency: clamp01(finiteNumber(config.priorityTargetFrequency, 0.35)),
     forecastNoise: clamp01(finiteNumber(config.forecastNoise, mode === 'forecast' ? 0.22 : 0)),
@@ -112,6 +115,8 @@ export function buildScenarioGenerationConfig(config = {}) {
     vectorPreset: normalized.currentPreset,
     currentFieldConfig: normalized.currentFieldConfig,
     currentField: normalized.currentFieldConfig,
+    currentFieldSource: normalized.currentFieldSource,
+    importedFlowField: normalized.importedFlowField,
     vectorField: getVectorPresetConfig(normalized.currentPreset, {
       currentStrength: normalized.currentStrength,
       currentVariability: normalized.currentVariability
@@ -170,6 +175,7 @@ export function generateScenarioFromConfig(config = {}) {
     vectorPreset: vectorPreset.preset,
     currentGenerator: vectorPreset,
     currentFieldConfig: normalized.currentFieldConfig,
+    importedFlowField: normalized.importedFlowField,
     currentStrength: normalized.currentStrength,
     currentVariability: normalized.currentVariability,
     roiPattern: 'moving',
@@ -204,6 +210,8 @@ export function generateScenarioFromConfig(config = {}) {
   level.meta.generationConfig.scenarioSetup = generationConfig;
   level.meta.generationConfig.currentFieldConfig = normalized.currentFieldConfig;
   level.meta.generationConfig.currentField = normalized.currentFieldConfig;
+  level.meta.generationConfig.currentFieldSource = normalized.currentFieldSource;
+  level.meta.generationConfig.importedFlowField = normalized.importedFlowField;
   level.meta.generationConfig.challengeId = challengeId;
   level.meta.generationConfig.replaySeedAnchor = challengeId;
   level.meta.generationConfig.generationVersion = GENERATION_VERSION;
@@ -228,6 +236,7 @@ export function generateScenarioFromConfig(config = {}) {
   mission.meta ??= {};
   mission.meta.scenarioSetup = generationConfig;
   mission.meta.currentFieldConfig = normalized.currentFieldConfig;
+  mission.meta.importedFlowField = normalized.importedFlowField;
   mission.meta.replaySeedContract = replaySeedContract;
   mission.rules ??= {};
   mission.rules.stochasticSeed ??= replaySeedContract?.derivedSeeds?.truth ?? seed;
@@ -290,6 +299,7 @@ function scenarioConfigFromGenerationConfig(generationConfig = {}, source = {}) 
     currentVariability: setup.currentVariability,
     currentPreset: setup.currentPreset ?? setup.vectorPreset,
     currentFieldConfig: setup.currentFieldConfig ?? setup.currentField,
+    importedFlowField: setup.importedFlowField,
     roiHotspots: setup.roiHotspots,
     priorityTargetFrequency: setup.priorityTargetFrequency,
     forecastNoise: setup.forecastNoise,

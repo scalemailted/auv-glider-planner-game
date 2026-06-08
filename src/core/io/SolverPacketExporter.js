@@ -51,6 +51,11 @@ export function buildSolverPacket({ level, mission, plan = null, challengeMode =
   const vectorField = level?.meta?.generationConfig?.vectorField
     ?? level?.meta?.generationConfig?.currentGenerator
     ?? { preset: level?.meta?.generationConfig?.vectorPreset ?? level?.meta?.generationConfig?.currentPattern ?? null };
+  const currentFieldConfig = level?.meta?.generationConfig?.currentFieldConfig
+    ?? level?.meta?.generationConfig?.currentField
+    ?? vectorField?.currentFieldConfig
+    ?? null;
+  const importedFlowField = level?.meta?.generationConfig?.importedFlowField ?? null;
 
   return {
     schemaVersion: '2.0',
@@ -68,6 +73,17 @@ export function buildSolverPacket({ level, mission, plan = null, challengeMode =
     forecastRules,
     agentSpecs,
     vectorField,
+    currentFieldConfig,
+    importedFlowField,
+    currentFieldVisibility: {
+      visibleConfigIncluded: Boolean(currentFieldConfig),
+      importedFlowFieldIncluded: Boolean(importedFlowField),
+      visibleFramesIncluded: true,
+      hiddenTruthIncluded: challengeMode !== 'forecast' || includeHiddenTruth,
+      fairness: challengeMode === 'forecast' && !includeHiddenTruth
+        ? 'Solver packet exposes forecast-visible current frames/config only; hidden truth is withheld.'
+        : 'Solver packet includes truth-current frames for perfect-knowledge or oracle use.'
+    },
     missionRules: {
       endCondition,
       sampling,
@@ -95,6 +111,14 @@ export function buildSolverPacket({ level, mission, plan = null, challengeMode =
       forecastRules,
       agentSpecs,
       vectorField,
+      currentFieldConfig,
+      importedFlowField,
+      currentFieldVisibility: {
+        visibleConfigIncluded: Boolean(currentFieldConfig),
+        importedFlowFieldIncluded: Boolean(importedFlowField),
+        visibleFramesIncluded: true,
+        hiddenTruthIncluded: Boolean(visibleFields.truth)
+      },
       planningMarkers: extractPlanningMarkers(plan),
       deployment,
       connectivity,

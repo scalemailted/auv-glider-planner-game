@@ -24,7 +24,7 @@ The demo provides a controlled scene for questions like:
 ## 3. User-Facing Controls
 
 - `Field Mode`: chooses Static or Dynamic behavior.
-- `Base Flow Field`: selects the main synthetic ocean-inspired current preset.
+- `Base Flow Field`: selects the main synthetic ocean-inspired current preset. `Topology-Aware Composite` uses terrain when available to blend open-water, shoreline, channel, bay/pocket, and island-wake behaviors; with `No Land` it behaves as an open-water synthetic fallback.
 - `+ Add Flow Layer`: appends an optional additive field behavior over the same domain.
 - `Layer Field`: selects a layer's current preset.
 - `Layer Weight`: controls that layer's contribution to the final vector.

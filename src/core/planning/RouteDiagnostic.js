@@ -53,8 +53,13 @@ export const ROUTE_DIAGNOSTIC_CATEGORIES = {
   },
   time_exceeded: {
     label: 'Time exceeded',
-    severity: 'blocking',
-    fixHint: 'Move the waypoint earlier, shorten the segment, or reduce route length.'
+    severity: 'warning',
+    fixHint: 'Simulation can continue; shorten the route only if this waypoint must be reached before mission end.'
+  },
+  waypoint_exceeds_mission_duration: {
+    label: 'Beyond mission duration',
+    severity: 'warning',
+    fixHint: 'Simulation will truncate this segment at the mission time limit.'
   },
   stale_route_state: {
     label: 'Stale route state',
@@ -121,6 +126,7 @@ export function buildRouteValidationDiagnostic(issue = {}, context = {}) {
     schemaVersion: ROUTE_DIAGNOSTIC_SCHEMA_VERSION,
     severity: normalizeSeverity(issue.severity, definition.severity),
     category,
+    runtimeBehavior: issue.runtimeBehavior ?? (category === 'waypoint_exceeds_mission_duration' ? 'truncate_at_mission_end' : null),
     label: definition.label,
     agentId,
     agentLabel,
@@ -140,7 +146,7 @@ export function buildRouteValidationDiagnostic(issue = {}, context = {}) {
     message: buildCompactMessage({ category, agentLabel, segment, blockedCell, issue }),
     fixHint,
     plannerFeedback: {
-      canRetryWithAlternateWaypoint: !['fuel_exceeded', 'time_exceeded', 'invalid_start'].includes(category),
+      canRetryWithAlternateWaypoint: !['fuel_exceeded', 'invalid_start'].includes(category),
       suggestedAvoidCells: blockedCell ? [normalizeCell(blockedCell)].filter(Boolean) : [],
       suggestedAnchor: routeBlock?.actualStartPosition ?? segment.actualStartPosition ?? null
     },
@@ -213,6 +219,7 @@ function normalizeDiagnosticCategory(issue = {}) {
     return 'invalid_coordinate';
   }
   if (issue.type === 'fuelExceeded' || issue.reason === 'fuel' || issue.reason === 'fuelExceeded') return 'fuel_exceeded';
+  if (issue.reason === 'waypoint_exceeds_mission_duration' || issue.category === 'waypoint_exceeds_mission_duration') return 'waypoint_exceeds_mission_duration';
   if (issue.type === 'timeExceeded' || issue.reason === 'time' || issue.reason === 'waypointTimeout') return 'time_exceeded';
   if (issue.type === 'nonMonotonicTime') return 'stale_route_state';
   if (issue.type === 'beachingRisk' || issue.reason === 'beachingRisk') return 'shoreline_current_risk';
@@ -246,6 +253,7 @@ function buildExplanation({ category, definition, agentLabel, segment, blockedCe
   if (category === 'source_on_land' || category === 'actual_position_blocked') return `The route source is on blocked terrain${blocked}.`;
   if (category === 'current_drift_into_land') return `The glider's actual or drifted position makes the segment enter blocked terrain${blocked}.`;
   if (category === 'fuel_exceeded') return `${agentLabel} does not have enough estimated fuel to execute this route segment.`;
+  if (category === 'waypoint_exceeds_mission_duration') return `${agentLabel} reaches this waypoint after the mission time limit; simulation will travel toward it and stop at mission end.`;
   if (category === 'time_exceeded') return `${agentLabel} reaches this waypoint after the mission time limit.`;
   if (category === 'shoreline_current_risk') return issue.message ?? `The segment has shoreline current risk near ${blocked || 'land'}.`;
   return issue.message ?? definition.label;
@@ -257,6 +265,7 @@ function buildCompactMessage({ category, agentLabel, segment, blockedCell, issue
   if (category === 'segment_intersects_land') return `${agentLabel} ${segmentLabel} intersects land${blocked}.`;
   if (category === 'target_on_land') return `${agentLabel} ${segment.toWaypointLabel ?? 'waypoint'} is on land${blocked}.`;
   if (category === 'fuel_exceeded') return `${agentLabel} ${segment.toWaypointLabel ?? 'waypoint'} exceeds estimated fuel.`;
+  if (category === 'waypoint_exceeds_mission_duration') return `${agentLabel} ${segment.toWaypointLabel ?? 'waypoint'} is beyond mission duration; simulation will stop en route at mission end.`;
   if (category === 'time_exceeded') return `${agentLabel} ${segment.toWaypointLabel ?? 'waypoint'} exceeds mission time.`;
   return issue.message ?? `${agentLabel} ${segmentLabel}: ${category.replace(/_/g, ' ')}.`;
 }

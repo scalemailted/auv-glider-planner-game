@@ -183,7 +183,7 @@ The deployment start is separate from the waypoint list. It is not counted as wa
 
 If the next waypoint would exceed mission time, exceed estimated fuel, or cross blocked terrain, the game blocks the placement and shows a warning. You can repair the plan by deleting waypoints, moving them closer, reordering them, or clearing the selected glider's route.
 
-When you press `Execute`, the game checks that every required deployment start is selected, every fixed start is valid, mission time settings are usable, waypoint coordinates are finite and inside water cells, route segments do not cross terrain, and the estimated route stays within mission time and fuel. If something is invalid, Planning stays open, the visible Execute control is blocked, and the affected waypoint/segment is highlighted before simulation starts.
+When you press `Execute`, the game checks that every required deployment start is selected, every fixed start is valid, mission time settings are usable, waypoint coordinates are finite and inside water cells, route segments do not cross terrain, and estimated fuel is sufficient. If something is invalid, Planning stays open, the visible Execute control is blocked, and the affected waypoint/segment is highlighted before simulation starts. A future waypoint scheduled beyond the mission duration is a warning, not a hard blocker: simulation runs toward it and ends at the mission time limit before it is reached.
 
 ### Simulation
 
@@ -527,7 +527,7 @@ Use the map directly:
 
 Selected waypoints get a bright ring. The selected glider route is emphasized, while inactive routes are dimmed.
 
-If simulation stops because a route is blocked or waypoints cascade into misses, the Route Failure prompt and Simulation Console explain the stop reason, the last successful waypoint, the first failed waypoint, and a suggested fix. The waypoint timeline labels missed steps with reasons such as `ROUTE BLOCKED`, `UNREACHABLE`, `TIME EXCEEDED`, or `FUEL EXCEEDED`.
+If simulation stops because a route is blocked or waypoints cascade into misses, the Route Failure prompt and Simulation Console explain the stop reason, the last successful waypoint, the first failed waypoint, and a suggested fix. Mission time expiration ends cleanly without a route-failure prompt; the glider remains at its final simulated position and unreached waypoints are labeled missed because the time limit was reached. The waypoint timeline labels missed steps with reasons such as `ROUTE BLOCKED`, `UNREACHABLE`, `MISSION TIME EXPIRED`, or `FUEL EXCEEDED`.
 
 ### Edit Waypoints
 

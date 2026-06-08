@@ -4,8 +4,11 @@ export const FLOW_FIELD_CONFIG_SCHEMA_VERSION = '1.0';
 export const FLOW_FIELD_MODES = ['static', 'dynamic'];
 export const FLOW_FIELD_EVOLUTION_BEHAVIORS = ['continuous', 'looping', 'pulse', 'translating'];
 export const FLOW_FIELD_EVOLUTION_SPEEDS = [0.25, 0.5, 1, 2, 5, 10];
+export const FLOW_FIELD_TIME_MODES = ['continuous', 'looping', 'clamped', 'frames'];
+export const FLOW_FIELD_FRAME_INTERPOLATION_MODES = ['linear', 'nearest'];
 export const FLOW_FIELD_VARIATION_LEVELS = ['off', 'low', 'medium', 'high'];
 export const FLOW_FIELD_LAYER_INFLUENCES = ['global', 'spatialPocket', 'partitionedRegion'];
+export const FLOW_FIELD_BOUNDARY_MODES = ['none', 'riskOnly', 'dampenIntoLand', 'deflectAlongShore', 'wakeApproximation'];
 export const FLOW_FIELD_CYCLE_DURATIONS_HOURS = [6, 12, 24, 48];
 export const FLOW_FIELD_MAX_LAYERS = 4;
 
@@ -19,7 +22,8 @@ export const FLOW_FIELD_PRESET_CHOICES = CURRENT_PRESET_CHOICES.filter((preset) 
   'meanderingJet',
   'stormPulse',
   'curlNoise',
-  'hycomInspiredComposite'
+  'hycomInspiredComposite',
+  'topologyAwareComposite'
 ].includes(preset));
 
 export const FLOW_FIELD_STOCHASTIC_CONFIDENCE_LEVELS = ['high', 'medium', 'low'];
@@ -30,15 +34,18 @@ export function createDefaultCurrentFieldConfig(mode = 'perfectKnowledge') {
   const stochastic = mode === 'forecast';
   return normalizeCurrentFieldConfig({
     fieldMode: 'dynamic',
-    basePreset: stochastic ? 'eddyField' : 'currentCorridor',
+    basePreset: 'topologyAwareComposite',
     strength: stochastic ? 1.05 : 0.85,
     evolutionBehavior: stochastic ? 'looping' : 'continuous',
     evolutionSpeed: 1,
+    timeMode: stochastic ? 'looping' : 'continuous',
+    frameInterpolation: 'linear',
     directionVariation: stochastic ? 'high' : 'medium',
     magnitudeVariation: stochastic ? 'medium' : 'low',
     cycleDurationHours: 24,
     layers: [],
     topologyAware: true,
+    boundaryConditions: { mode: 'deflectAlongShore', topologyAware: true },
     seedSalt: 'currents',
     stochastic: stochastic ? {
       forecastConfidence: 'medium',
@@ -50,30 +57,48 @@ export function createDefaultCurrentFieldConfig(mode = 'perfectKnowledge') {
 }
 
 export function normalizeCurrentFieldConfig(config = {}, context = {}) {
+  config ??= {};
   const mode = context.mode === 'forecast' ? 'forecast' : 'perfectKnowledge';
   const defaults = mode === 'forecast'
-    ? { basePreset: 'eddyField', strength: 1.05, directionVariation: 'high', magnitudeVariation: 'medium' }
-    : { basePreset: 'currentCorridor', strength: 0.85, directionVariation: 'medium', magnitudeVariation: 'low' };
+    ? { basePreset: 'topologyAwareComposite', strength: 1.05, directionVariation: 'high', magnitudeVariation: 'medium' }
+    : { basePreset: 'topologyAwareComposite', strength: 0.85, directionVariation: 'medium', magnitudeVariation: 'low' };
   const fieldMode = normalizeFieldMode(config.fieldMode ?? config.mode ?? (config.temporalEvolution === false ? 'static' : 'dynamic'));
   const basePreset = normalizeFlowPreset(config.basePreset ?? config.primaryPreset ?? config.currentPreset ?? context.currentPreset ?? defaults.basePreset);
   const directionVariation = normalizeVariationLevel(config.directionVariation ?? defaults.directionVariation);
   const magnitudeVariation = normalizeVariationLevel(config.magnitudeVariation ?? defaults.magnitudeVariation);
   const strength = Math.max(0, finiteNumber(config.strength ?? config.currentStrength ?? context.currentStrength, defaults.strength));
+  const evolutionBehavior = fieldMode === 'static' ? 'continuous' : normalizeEvolutionBehavior(config.evolutionBehavior);
   return {
     schemaVersion: String(config.schemaVersion ?? FLOW_FIELD_CONFIG_SCHEMA_VERSION),
     fieldMode,
     basePreset,
     currentPreset: basePreset,
     strength,
-    evolutionBehavior: fieldMode === 'static' ? 'continuous' : normalizeEvolutionBehavior(config.evolutionBehavior),
+    evolutionBehavior,
     evolutionSpeed: normalizeEvolutionSpeed(config.evolutionSpeed ?? config.evolutionSpeedScale ?? 1),
+    timeMode: normalizeTimeMode(config.timeMode, fieldMode, evolutionBehavior),
+    frameInterpolation: normalizeFrameInterpolation(config.frameInterpolation ?? config.interpolation),
     directionVariation: fieldMode === 'static' ? 'off' : directionVariation,
     magnitudeVariation: fieldMode === 'static' ? 'off' : magnitudeVariation,
     cycleDurationHours: normalizeCycleDurationHours(config.cycleDurationHours ?? config.cycleDuration ?? 24),
     layers: normalizeCurrentFieldLayers(config.layers ?? config.additiveLayers ?? [], { basePreset }),
     topologyAware: config.topologyAware !== false,
+    boundaryConditions: normalizeBoundaryConditions(config.boundaryConditions ?? config.boundary ?? {
+      topologyAware: config.topologyAware !== false
+    }),
+    topologyComposite: normalizeTopologyComposite(config.topologyComposite ?? config.regions),
     seedSalt: String(config.seedSalt ?? 'currents'),
     stochastic: mode === 'forecast' ? normalizeStochasticCurrentConfig(config.stochastic ?? config.forecastUncertainty ?? {}) : null
+  };
+}
+
+export function normalizeBoundaryConditions(boundary = {}) {
+  return {
+    mode: FLOW_FIELD_BOUNDARY_MODES.includes(boundary.mode) ? boundary.mode : 'deflectAlongShore',
+    topologyAware: boundary.topologyAware !== false,
+    shoreRiskRadius: clamp(finiteNumber(boundary.shoreRiskRadius, 3), 1, 8),
+    dampenIntoLand: clamp(finiteNumber(boundary.dampenIntoLand, 0.78), 0, 1),
+    deflectStrength: clamp(finiteNumber(boundary.deflectStrength, 0.42), 0, 1)
   };
 }
 
@@ -87,6 +112,8 @@ export function normalizeCurrentFieldLayers(layers = [], { basePreset = 'uniform
     influence: FLOW_FIELD_LAYER_INFLUENCES.includes(layer?.influence) ? layer.influence : 'global',
     evolutionBehavior: normalizeEvolutionBehavior(layer?.evolutionBehavior),
     evolutionSpeed: normalizeEvolutionSpeed(layer?.evolutionSpeed ?? 1),
+    timeMode: normalizeTimeMode(layer?.timeMode, 'dynamic', normalizeEvolutionBehavior(layer?.evolutionBehavior)),
+    frameInterpolation: normalizeFrameInterpolation(layer?.frameInterpolation ?? layer?.interpolation),
     directionVariation: normalizeVariationLevel(layer?.directionVariation),
     magnitudeVariation: normalizeVariationLevel(layer?.magnitudeVariation),
     cycleDurationHours: normalizeCycleDurationHours(layer?.cycleDurationHours ?? layer?.cycleDuration ?? 24),
@@ -106,6 +133,8 @@ export function createDefaultCurrentFieldLayer(existingLayers = [], basePreset =
     influence: 'global',
     evolutionBehavior: 'continuous',
     evolutionSpeed: 1,
+    timeMode: 'continuous',
+    frameInterpolation: 'linear',
     directionVariation: 'medium',
     magnitudeVariation: 'medium',
     cycleDurationHours: 24,
@@ -144,7 +173,7 @@ export function summarizeCurrentFieldConfig(config = {}) {
   const normalized = normalizeCurrentFieldConfig(config);
   const preset = VECTOR_FIELD_PRESETS[normalized.basePreset]?.label ?? labelize(normalized.basePreset);
   const mode = normalized.fieldMode === 'dynamic' ? 'Dynamic' : 'Static';
-  const behavior = normalized.fieldMode === 'dynamic' ? `, ${labelize(normalized.evolutionBehavior)}, ${normalized.evolutionSpeed}x` : '';
+  const behavior = normalized.fieldMode === 'dynamic' ? `, ${labelize(normalized.evolutionBehavior)}, ${labelize(normalized.timeMode)}, ${normalized.evolutionSpeed}x` : '';
   const layers = normalized.layers.filter((layer) => layer.enabled && layer.weight > 0);
   const layerText = layers.length
     ? ` Layers: ${layers.map((layer) => `${VECTOR_FIELD_PRESETS[layer.preset]?.label ?? labelize(layer.preset)} ${layer.weight.toFixed(2)}x`).join(' + ')}.`
@@ -161,12 +190,42 @@ function normalizeStochasticCurrentConfig(config = {}) {
   };
 }
 
+function normalizeTopologyComposite(value) {
+  if (!value) return null;
+  if (Array.isArray(value)) return { regions: value };
+  if (typeof value !== 'object') return null;
+  return {
+    ...value,
+    regions: Array.isArray(value.regions) ? value.regions.map((region, index) => ({
+      id: String(region?.id ?? `region-${index + 1}`),
+      maskType: String(region?.maskType ?? region?.type ?? 'openWater'),
+      behavior: String(region?.behavior ?? region?.preset ?? 'uniformDrift'),
+      weight: clamp(finiteNumber(region?.weight, 0.5), 0, 2),
+      phase: finiteNumber(region?.phase, 0),
+      speedScale: clamp(finiteNumber(region?.speedScale, 1), 0.1, 4),
+      magnitudeScale: clamp(finiteNumber(region?.magnitudeScale, 1), 0.1, 4)
+    })) : []
+  };
+}
+
 function normalizeFieldMode(value = 'dynamic') {
   return FLOW_FIELD_MODES.includes(value) ? value : 'dynamic';
 }
 
 function normalizeEvolutionBehavior(value = 'continuous') {
   return FLOW_FIELD_EVOLUTION_BEHAVIORS.includes(value) ? value : 'continuous';
+}
+
+function normalizeTimeMode(value, fieldMode = 'dynamic', evolutionBehavior = 'continuous') {
+  if (FLOW_FIELD_TIME_MODES.includes(value)) return value;
+  if (fieldMode === 'static') return 'clamped';
+  if (evolutionBehavior === 'looping') return 'looping';
+  if (evolutionBehavior === 'pulse') return 'clamped';
+  return 'continuous';
+}
+
+function normalizeFrameInterpolation(value = 'linear') {
+  return FLOW_FIELD_FRAME_INTERPOLATION_MODES.includes(value) ? value : 'linear';
 }
 
 function normalizeVariationLevel(value = 'medium') {

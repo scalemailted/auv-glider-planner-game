@@ -27,7 +27,8 @@ import {
   advanceWaypointIfReached,
   detectMissedWaypoint,
   getActiveWaypoint,
-  getWaypointProgress
+  getWaypointProgress,
+  markWaypointMissed
 } from '../planning/PlanExecutor.js';
 import { buildRouteBlockDiagnostic } from '../planning/Navigability.js';
 import { buildRouteValidationDiagnostic } from '../planning/RouteDiagnostic.js';
@@ -204,7 +205,7 @@ export class SimulationEngine {
     }
     const tAfter = Math.min(duration, this.t + boundedDt);
     const surfaceTime = shouldSurfaceAtTime(tBefore, tAfter, this.level, this.mission, this.handledSurfacingTimes);
-    const stepDt = surfaceTime === null ? boundedDt : Math.max(0, surfaceTime - tBefore);
+    const stepDt = surfaceTime === null ? Math.max(0, tAfter - tBefore) : Math.max(0, surfaceTime - tBefore);
     const eventsBeforeStep = this.events.length;
     this.stepCount += 1;
     this.tickBudget = {
@@ -517,9 +518,36 @@ export class SimulationEngine {
       return agent.completedPlan;
     });
 
-    if (this.t >= duration || allPlansDone) {
+    if (this.t >= duration) {
+      this.recordMissionTimeExpiredWaypoints(duration);
       this.complete = true;
       this.running = false;
+      return;
+    }
+
+    if (allPlansDone) {
+      this.complete = true;
+      this.running = false;
+    }
+  }
+
+  recordMissionTimeExpiredWaypoints(duration) {
+    for (const agent of this.agents) {
+      let activeWaypoint = getActiveWaypoint(agent, this.plan);
+      while (activeWaypoint) {
+        const event = markWaypointMissed(agent, activeWaypoint, 'missionTimeExpired', duration, {
+          finalPosition: { x: round(agent.x, 3), y: round(agent.y, 3), t: duration },
+          missionDuration: duration
+        });
+        if (event) {
+          event.message = 'Mission time expired before this waypoint was reached.';
+          event.finalPosition = { x: round(agent.x, 3), y: round(agent.y, 3), t: duration };
+          this.recordEvent(event);
+        }
+        activeWaypoint = getActiveWaypoint(agent, this.plan);
+      }
+      agent.completedPlan = true;
+      if (agent.status !== 'batteryDepleted') agent.status = 'complete';
     }
   }
 
@@ -697,7 +725,7 @@ export class SimulationEngine {
       eventType: event.type,
       message: `Recorded ${event.type}`
     });
-    if (event.type === 'missedWaypoint' && !this.routeFailureDecision?.active) {
+    if (event.type === 'missedWaypoint' && event.reason !== 'missionTimeExpired' && !this.routeFailureDecision?.active) {
       this.requireRouteFailureDecision(event);
     }
   }

@@ -1,5 +1,7 @@
 import { sampleGeneratedCurrent } from '../generation/CurrentFieldGenerator.js';
 import { getVectorPresetConfig } from '../generation/VectorFieldPresets.js';
+import { normalizeBoundaryConditions } from '../generation/FlowFieldConfig.js';
+import { classifyTopologyRegionAtCell } from '../generation/TopologyAwareComposite.js';
 
 export const CURRENT_COORDINATES = {
   GRID: 'grid',
@@ -33,6 +35,11 @@ export function sampleCurrentField({
   const cx = Math.round(point.x);
   const cy = Math.round(point.y);
   const terrainLayer = terrain ?? config.terrain ?? level?.layers?.terrain;
+  const boundaryConditions = normalizeBoundaryConditions(config.boundaryConditions
+    ?? config.currentFieldConfig?.boundaryConditions
+    ?? level?.meta?.generationConfig?.currentFieldConfig?.boundaryConditions
+    ?? level?.meta?.generationConfig?.importedFlowField?.boundaryConditions
+    ?? {});
 
   let sample;
   if (frame?.current) {
@@ -43,7 +50,15 @@ export function sampleCurrentField({
       y: cy,
       coordinates: 'grid-cell'
     });
-    return applyTopologyAdjustment(sample, { terrain: terrainLayer, x: cx, y: cy, width, height });
+    return annotateTopologyComposite(applyTopologyAdjustment(sample, { terrain: terrainLayer, x: cx, y: cy, width, height, boundaryConditions }), {
+      terrain: terrainLayer,
+      x: cx,
+      y: cy,
+      width,
+      height,
+      config,
+      level
+    });
   }
 
   const presetConfig = preset ? getVectorPresetConfig(preset, config) : {};
@@ -76,7 +91,15 @@ export function sampleCurrentField({
     y: cy,
     coordinates: 'grid-cell'
   });
-  return applyTopologyAdjustment(sample, { terrain: terrainLayer, x: cx, y: cy, width, height });
+  return annotateTopologyComposite(applyTopologyAdjustment(sample, { terrain: terrainLayer, x: cx, y: cy, width, height, boundaryConditions }), {
+    terrain: terrainLayer,
+    x: cx,
+    y: cy,
+    width,
+    height,
+    config,
+    level
+  });
 }
 
 export function sampleCurrentVector(options = {}) {
@@ -180,16 +203,17 @@ export function estimateTopologyAtCell({ terrain = null, x = 0, y = 0, width = 1
   };
 }
 
-function applyTopologyAdjustment(sample, { terrain = null, x = 0, y = 0, width = 1, height = 1 } = {}) {
-  const topology = estimateTopologyAtCell({ terrain, x, y, width, height });
+function applyTopologyAdjustment(sample, { terrain = null, x = 0, y = 0, width = 1, height = 1, boundaryConditions = {} } = {}) {
+  const boundary = normalizeBoundaryConditions(boundaryConditions);
+  const topology = estimateTopologyAtCell({ terrain, x, y, width, height, radius: boundary.shoreRiskRadius });
   const base = { u: sample.u, v: sample.v };
-  if (!topology.available) {
+  if (!boundary.topologyAware || boundary.mode === 'none' || !topology.available) {
     return {
       ...sample,
       contributors: {
         ...(sample.contributors ?? {}),
         base,
-        topologyAdjustment: { applied: false, reason: 'terrain-unavailable' },
+        topologyAdjustment: { applied: false, reason: boundary.mode === 'none' ? 'boundary-mode-none' : 'terrain-unavailable', boundaryMode: boundary.mode },
         shorelineRisk: null
       }
     };
@@ -204,7 +228,7 @@ function applyTopologyAdjustment(sample, { terrain = null, x = 0, y = 0, width =
       contributors: {
         ...(sample.contributors ?? {}),
         base,
-        topologyAdjustment: { applied: true, reason: 'land-cell', method: 'zero-land-current' },
+          topologyAdjustment: { applied: true, reason: 'land-cell', method: 'zero-land-current', boundaryMode: boundary.mode },
         shorelineRisk: {
           level: 'blocked',
           value: 1,
@@ -222,7 +246,7 @@ function applyTopologyAdjustment(sample, { terrain = null, x = 0, y = 0, width =
       contributors: {
         ...(sample.contributors ?? {}),
         base,
-        topologyAdjustment: { applied: false, reason: 'open-water' },
+        topologyAdjustment: { applied: false, reason: 'open-water', boundaryMode: boundary.mode },
         shorelineRisk: {
           level: 'none',
           value: 0,
@@ -250,10 +274,13 @@ function applyTopologyAdjustment(sample, { terrain = null, x = 0, y = 0, width =
     0,
     1
   );
-  const damp = inward > 0 ? Math.min(0.92, nearScale * 0.78) : 0;
+  const damp = inward > 0 ? Math.min(0.92, nearScale * boundary.dampenIntoLand) : 0;
   const tangentialSign = (base.u * -ny + base.v * nx) >= 0 ? 1 : -1;
-  const deflect = inward * nearScale * 0.42;
-  const adjusted = inward > 0
+  const deflect = boundary.mode === 'deflectAlongShore' || boundary.mode === 'wakeApproximation'
+    ? inward * nearScale * boundary.deflectStrength
+    : 0;
+  const shouldAdjust = inward > 0 && boundary.mode !== 'riskOnly';
+  const adjusted = shouldAdjust
     ? {
         u: base.u - nx * inward * damp + (-ny) * deflect * tangentialSign,
         v: base.v - ny * inward * damp + nx * deflect * tangentialSign
@@ -261,13 +288,16 @@ function applyTopologyAdjustment(sample, { terrain = null, x = 0, y = 0, width =
     : base;
   const riskLevel = riskValue >= 0.7 ? 'high' : riskValue >= 0.35 ? 'medium' : riskValue > 0 ? 'low' : 'none';
   const topologyAdjustment = {
-    applied: inward > 0,
-    method: inward > 0 ? 'dampen-inward-deflect-along-shore' : 'risk-label-only',
+    applied: shouldAdjust,
+    method: shouldAdjust
+      ? (deflect > 0 ? 'dampen-inward-deflect-along-shore' : 'dampen-inward-current')
+      : 'risk-label-only',
+    boundaryMode: boundary.mode,
     original: base,
     adjusted,
     shoreDistance: topology.shoreDistance,
     currentTowardLand,
-    topologyAdjusted: inward > 0
+    topologyAdjusted: shouldAdjust
   };
   return {
     ...sample,
@@ -286,7 +316,38 @@ function applyTopologyAdjustment(sample, { terrain = null, x = 0, y = 0, width =
         directionToLand: topology.directionToLand,
         currentTowardLand,
         currentMagnitude: Math.hypot(base.u, base.v),
-        topologyAdjusted: inward > 0
+        topologyAdjusted: shouldAdjust,
+        boundaryMode: boundary.mode
+      }
+    }
+  };
+}
+
+function annotateTopologyComposite(sample, { terrain = null, x = 0, y = 0, width = 1, height = 1, config = {}, level = null } = {}) {
+  const fieldConfig = config.currentFieldConfig
+    ?? level?.meta?.generationConfig?.currentFieldConfig
+    ?? level?.meta?.generationConfig?.currentField
+    ?? null;
+  const composite = fieldConfig?.topologyComposite;
+  if (!composite || !terrain) return sample;
+  const classification = classifyTopologyRegionAtCell({ terrain, x, y, width, height });
+  const dominantRegion = composite.regions?.find((region) => region.maskType === classification.regionType) ?? null;
+  return {
+    ...sample,
+    contributors: {
+      ...(sample.contributors ?? {}),
+      topologyComposite: {
+        schemaVersion: composite.schemaVersion ?? '1.0',
+        regionType: classification.regionType,
+        dominantRegionBehavior: dominantRegion?.behavior ?? classification.dominantRegionBehavior,
+        regionId: dominantRegion?.id ?? null,
+        weight: dominantRegion?.weight ?? null,
+        shoreDistance: classification.shoreDistance,
+        openness: classification.openness,
+        channelScore: classification.channelScore,
+        bayScore: classification.bayScore,
+        islandAdjacency: classification.islandAdjacency,
+        description: composite.description ?? 'Synthetic topology-aware ocean-inspired current field.'
       }
     }
   };

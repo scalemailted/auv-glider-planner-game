@@ -50,6 +50,8 @@ export function buildChallengeExport({ level, mission, challengeMode = null, inc
     replaySeedAnchor: replaySeedContract?.replaySeedAnchor ?? identity.instanceId,
     generationVersion: replaySeedContract?.generationVersion ?? null,
     generationConfig: exportedLevel?.meta?.generationConfig ?? null,
+    currentFieldConfig: exportedLevel?.meta?.generationConfig?.currentFieldConfig ?? exportedLevel?.meta?.generationConfig?.currentField ?? null,
+    importedFlowField: exportedLevel?.meta?.generationConfig?.importedFlowField ?? null,
     derivedSeeds: replaySeedContract?.derivedSeeds ?? null,
     replaySeedContract,
     exactReplay: {
@@ -132,6 +134,8 @@ function buildVisibleData(level, challengeMode) {
     currentPreset: cloneJson(level?.meta?.generationConfig?.currentGenerator
       ?? level?.meta?.generationConfig?.vectorField
       ?? level?.meta?.generationConfig?.currentPattern
-      ?? null)
+      ?? null),
+    currentFieldConfig: cloneJson(level?.meta?.generationConfig?.currentFieldConfig ?? level?.meta?.generationConfig?.currentField ?? null),
+    importedFlowField: cloneJson(level?.meta?.generationConfig?.importedFlowField ?? null)
   };
 }

@@ -446,11 +446,30 @@
 }
 .flow-layer-card {
   display: grid;
-  gap: .45rem;
-  padding: .55rem;
-  border: 1px solid rgba(255,255,255,0.12);
+  gap: .5rem;
+  padding: .6rem;
+  margin: .45rem 0;
+  border: 1px solid rgba(102,214,255,0.18);
   border-radius: 8px;
-  background: rgba(255,255,255,0.045);
+  background: rgba(8,17,31,0.72);
+  color: var(--text);
+}
+.flow-layer-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: .5rem;
+  color: var(--text);
+}
+.compact-button {
+  width: auto;
+  min-height: 30px;
+  padding: .35rem .55rem;
+}
+.flow-import-actions {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: .45rem;
 }
 .timeline-strip { display: flex; gap: .4rem; flex-wrap: wrap; }
 .timeline-strip button.active { border-color: var(--success); background: rgba(99,230,190,0.14); }
