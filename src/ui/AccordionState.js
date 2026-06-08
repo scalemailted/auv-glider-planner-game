@@ -85,9 +85,8 @@ export function shouldRenderAsAccordionSection(section) {
 export function getAccordionDefaults(mode) {
   const defaults = {
     idle: {
-      demos: true,
-      launch: true,
-      tools: true,
+      'challenge-mode': true,
+      'simulation-lab': false,
       idle: false,
       status: false
     },

@@ -11,8 +11,8 @@ ANCHOR treats the environment as two coupled planning fields: the current field 
 Version 2 is a playable static-web game built with vanilla JavaScript, HTML, CSS, Phaser 3, and schema-driven core modules. The active shell is a Mission Console + Phaser Simulator Viewport + Waypoint Timeline: HTML/CSS owns the left mission-control console for menus, forms, tables, imports/exports, and results, Phaser owns the center simulator viewport for map rendering, sprites, animation, overlays, and direct pointer interaction, and the right panel owns the selected-glider waypoint timeline. It has:
 
 - main menu, campaign flow, mission briefing, planning, simulation, debrief, level editor, and dataset export scenes
-- Phaser-native top-level modes for Tutorial, Challenge Mode, Simulation Lab, Mission Editor, Import Challenge JSON, and Load Level JSON
-- isolated Demos section with Flow Fields Demo for current arrows and ROI Generator Demo for sample-value heatmaps
+- two top-level main menu accordions: Challenge Mode and Simulation Lab
+- Simulation Lab field demos with Flow Fields Demo for current arrows and ROI Generator Demo for sample-value heatmaps
 - game-first mission planning workspace with a large Phaser map, HTML/CSS mission-control overlays, top selected-glider planning HUD, bottom mission-time slider, waypoint drawer/table, and non-executable planning markers
 - Phaser 3 scene shell with Main Menu, Mission Briefing, Mission Workspace, Simulation, Debrief, Environment Editor, and Dataset Export scenes
 - fourteen staged tutorial lessons built from handcrafted tutorial scenarios
@@ -46,7 +46,7 @@ Normal browser use does not require npm, Playwright, a build step, or a backend.
 
 The visible page shell uses three bounded regions: `#mission-console` on the left, `#center-column` / `#game-root` in the center, and `#waypoint-timeline` on the right. Phaser is mounted only inside the center viewport shell, and the canvas is resized to fill that shell instead of preserving a fixed 1280x820 page aspect ratio. Scenario Setup and Mission Briefing use responsive HTML overlays inside the same center shell, so their cards stretch, wrap, and scroll within the available center space instead of rendering as tiny fixed cards or overlapping the side panels. Idle, JSON import, planning, simulation, editor, and debrief scenes follow the same center-region contract: center content is sized from the Phaser scale or center shell, not the full browser window. On narrow or portrait screens, the right waypoint panel hides and the left console stacks above the center viewport. Map bounds are recomputed from the visible top selected-glider HUD and bottom timeline, so the board scales uniformly into the usable simulator area. The map may letterbox inside the full-size canvas when the grid and viewport aspect ratios differ, but grid cells remain square and the map is never stretched independently on x/y. The console is the only main menu surface; the Phaser Main Menu scene renders an idle "Awaiting Mission Launch" simulator viewport rather than duplicate buttons. The right panel shows a quiet waypoint placeholder until a mission is loaded, then becomes the authoritative executable waypoint timeline for the selected glider. The center viewport also has compact HTML overlays: a top selected-glider planning HUD and a bottom mission-time slider/playhead. Planning and Simulation both use the bottom DOM timeline panel; Phaser no longer renders playback buttons or a timeline track over the map. Selected-glider performance details now live in the left Mission Console.
 
-The left Mission Console uses collapsible accordion sections for menus, setup, briefing, planning, simulation, editor, import, dataset, saved-level, and debrief controls. Section headers stay visible when collapsed, controls remain mounted inside the section body, and session state is saved in `localStorage` under `anchorGliderCommand.ui.accordions.v1` with mode-specific defaults.
+The left Mission Console uses collapsible accordion sections for menus, setup, briefing, planning, simulation, editor, import, dataset, saved-level, and debrief controls. The main menu has two primary accordions: `Challenge Mode` and `Simulation Lab`. Section headers stay visible when collapsed, controls remain mounted inside the section body, and session state is saved in `localStorage` under `anchorGliderCommand.ui.accordions.v1` with mode-specific defaults.
 
 ## Run Locally
 
@@ -81,9 +81,9 @@ Both modes use the same terrain generation, current fields, hazards, glider phys
 Quick loop:
 
 1. Open the game.
-2. Choose a demo, tutorial, generated challenge, custom challenge import, Mission Editor, dataset export, or level import from the Mission Console.
-3. For Challenge Mode, choose a Mission Mode card from the gallery, review its briefing, then click `Generate Mission`.
-4. For Simulation Lab, configure the technical scenario setup, then click `Generate Mission`.
+2. Choose one of the two expandable experiences: Challenge Mode or Simulation Lab.
+3. Under Challenge Mode, start tutorials, choose Mission Modes, play a custom challenge, or open challenge leaderboards.
+4. Under Simulation Lab, configure deterministic/stochastic experiments, open Mission Editor, import/export JSON, inspect field demos, or run solver/benchmark workflows.
 5. Start a tutorial, generate a challenge, import a custom challenge JSON, or use an editor/custom level.
 6. Read Mission Briefing, then click `Start Planning`.
 7. Place waypoint plans directly on the map.
@@ -108,9 +108,9 @@ Quick loop:
 
 ## Gameplay Features
 
-### Demos
+### Simulation Lab Demos
 
-The Main Menu includes a `Demos` section above `Tutorials`. Demos are isolated concept scenes for validating field behavior before those fields are used inside full missions.
+The Main Menu includes field demos inside the `Simulation Lab` accordion. Demos are isolated concept scenes for validating field behavior before those fields are used inside full missions.
 
 `Flow Fields Demo` is a Phaser sandbox for teaching and validating current vectors: the map shows an arrow grid, glider-like particles drift through the selected field, and particle heading follows movement. The demo starts in Static mode with one Base Flow Field and no additive layers. Mode only controls Static vs Dynamic field evolution. Dynamic mode uses continuous `demoTime` with explicit evolution behavior controls (`Continuous`, `Looping / Cyclic`, `One-Shot Pulse`, `Meandering / Translating`), spatial motion, deterministic direction variation, magnitude variation, and evolution pattern controls so even Uniform Drift visibly morphs over time. Composition is handled by a `+ Add Flow Field` stack with per-layer weights, influence modes (`Global Blend`, `Spatial Pocket`, `Partitioned Region`), enable/remove controls, optional terrain modes (`No Land`, `Random Islands`, `Coastline`, `Channel`), reset/play controls, evolution-speed, magnitude-scale, and particle-speed controls. Arrow length, opacity, and thickness encode current magnitude, and the console reports min/mean/max magnitude for the current grid. Land is deterministic from the demo seed; arrows over land are hidden and particles reset on land collision. It does not create missions, waypoints, scores, leaderboard entries, or route-validation state. See [Flow Fields Demo](docs/flow_fields_demo.md) for the controls, implementation files, and limitations.
 

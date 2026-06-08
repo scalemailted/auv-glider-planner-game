@@ -44,6 +44,7 @@ Challenge Mode also persists `missionMode`. Mission modes are player-facing obje
 - Standardized `anchor.challenge`, `anchor.solverPacket`, `anchor.plan`, `anchor.plan-segment`, `anchor.surfaceObservation`, `anchor.result`, `anchor.leaderboard`, and `anchor.oracleDataset` products.
 - Kept solver exchange file-based and static-host compatible.
 - Restored Mission Editor as a first-class Simulation Lab tool and added custom `anchor.challenge` export/import paths with optional attached best-path history.
+- Refactored Main Menu navigation into two primary accordions: Challenge Mode for playable/tutorial/high-score flows and Simulation Lab for experiments, demos, editor/import/export, solver, and benchmark flows.
 - Added explicit fairness metadata for forecast, truth, and oracle-assisted plans.
 - Preserved `surfaceUpdateBundle` as metadata while using explicit plan/segment imports for live recovery.
 

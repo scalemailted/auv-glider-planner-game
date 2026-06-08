@@ -20,38 +20,27 @@ export class MissionConsole {
         <h1>ANCHOR: Glider Command</h1>
         <p>AUV Glider Planner Game</p>
       </section>
-      <section class="console-section" data-keep-title="true">
+      <section class="console-section" data-accordion-key="challenge-mode">
         <h2>Challenge Mode</h2>
-        <div class="hud-muted">${escapeHtml(getExperienceModeDefaults(EXPERIENCE_MODES.challenge).description)}</div>
-        <button data-action="play-challenge" class="console-button primary">Play Challenge</button>
-        <button data-action="play-custom-challenge" class="console-button">Play Custom Challenge</button>
-        <button data-action="random-challenge" class="console-button">Random Challenge</button>
-        <button data-action="greedy-race" class="console-button">Greedy Planner Race</button>
-        <button data-action="leaderboard" class="console-button">Leaderboard</button>
+        <div class="hud-muted">Play mission objectives, learn strategies, compare routes, and chase high scores.</div>
+        ${menuActionHtml('play-challenge', 'Mission Modes', 'Pick a tactical objective and generate a playable challenge.', 'primary')}
+        ${menuActionHtml('tutorial', 'Tutorials', 'Learn deployment, currents, planning, stochastic forecasts, and import/export.')}
+        ${menuActionHtml('play-custom-challenge', 'Play Custom Challenge', 'Import a shared or editor-authored challenge package.')}
+        ${menuActionHtml('random-challenge', 'Quick Random Challenge', 'Generate a fresh perfect-knowledge challenge immediately.')}
+        ${menuActionHtml('greedy-race', 'Greedy Planner Race', 'Race a generated forecast challenge against the baseline planner.')}
+        ${menuActionHtml('leaderboard', 'Challenge Leaderboard', 'Review local high-score attempts and saved best paths.')}
       </section>
-      <section class="console-section" data-keep-title="true">
+      <section class="console-section" data-accordion-key="simulation-lab">
         <h2>Simulation Lab</h2>
-        <div class="hud-muted">${escapeHtml(getExperienceModeDefaults(EXPERIENCE_MODES.simulationLab).description)}</div>
-        <button data-action="deterministic" class="console-button">Deterministic Experiment</button>
-        <button data-action="stochastic" class="console-button">Stochastic Experiment</button>
-        <button data-action="editor" class="console-button">Mission Editor</button>
-        <button data-action="load-json" class="console-button">Import Challenge JSON</button>
-        <button data-action="dataset" class="console-button secondary">External Solver Evaluation</button>
-        <button data-action="leaderboard" class="console-button secondary">Benchmark Leaderboard</button>
-      </section>
-      <section class="console-section" data-keep-title="true">
-        <h2>Demos</h2>
-        <button data-action="flow-fields" class="console-button">Flow Fields Demo</button>
-        <button data-action="roi-demo" class="console-button">ROI Generator Demo</button>
-      </section>
-      <section class="console-section" data-keep-title="true">
-        <h2>Tutorials</h2>
-        <button data-action="tutorial" class="console-button primary">Tutorial Mode</button>
-      </section>
-      <section class="console-section">
-        <h2>Editor / Import Tools</h2>
-        <button data-action="editor" class="console-button">Mission Editor</button>
-        <button data-action="load-json" class="console-button">Load Level JSON</button>
+        <div class="hud-muted">Build, inspect, import, export, and benchmark reproducible glider-planning scenarios.</div>
+        ${menuActionHtml('deterministic', 'Deterministic Experiment', 'Configure a perfect-knowledge reproducible scenario.')}
+        ${menuActionHtml('stochastic', 'Stochastic Experiment', 'Configure forecast, ensemble, hidden-truth, and uncertainty settings.')}
+        ${menuActionHtml('editor', 'Mission Editor', 'Build and export custom scenario/challenge packages.')}
+        ${menuActionHtml('load-json', 'Import / Export Tools', 'Load challenge, level, result, oracle, and custom JSON packages.')}
+        ${menuActionHtml('flow-fields', 'Flow Fields Demo', 'Explore static and dynamic current-field behavior.')}
+        ${menuActionHtml('roi-demo', 'Sample / ROI Field Demo', 'Inspect seeded sample-value and ROI field behavior.')}
+        ${menuActionHtml('dataset', 'External Solver Evaluation', 'Export datasets and packets for solver or ML workflows.', 'secondary')}
+        ${menuActionHtml('leaderboard', 'Benchmark Leaderboard', 'Compare Simulation Lab benchmark attempts and solver runs.', 'secondary')}
       </section>
       <section class="console-status">
         <span>${escapeHtml(mode)}</span>
@@ -697,6 +686,16 @@ function nextActionButtonHtml(state) {
   if (source === 'deterministicChallenge' || source === 'stochasticChallenge') return '<button class="console-button" data-action="new-challenge">New Challenge</button>';
   if (source === 'editor') return '<button class="console-button" data-action="editor">Return To Editor</button>';
   return '';
+}
+
+function menuActionHtml(action, title, description, tone = '') {
+  const classes = ['console-button', 'menu-action-button', tone].filter(Boolean).join(' ');
+  return `
+    <button data-action="${escapeAttr(action)}" class="${classes}">
+      <span>${escapeHtml(title)}</span>
+      <small>${escapeHtml(description)}</small>
+    </button>
+  `;
 }
 
 function escapeHtml(value) {

@@ -550,6 +550,23 @@
   min-height: 30px;
   padding: .35rem .55rem;
 }
+.menu-action-button {
+  display: grid;
+  gap: .16rem;
+  min-height: 3.4rem;
+  align-content: center;
+  text-align: left;
+}
+.menu-action-button span {
+  font-size: .88rem;
+  font-weight: 800;
+}
+.menu-action-button small {
+  color: rgba(218,232,247,0.72);
+  font-size: .7rem;
+  font-weight: 600;
+  line-height: 1.25;
+}
 .flow-import-actions {
   display: grid;
   grid-template-columns: 1fr;

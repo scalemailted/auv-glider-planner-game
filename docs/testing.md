@@ -10,7 +10,7 @@ Playwright is optional and intended for development smoke testing.
 
 Greedy Planner is useful for planner smoke checks because it should return promptly, preserve non-selected glider routes, and validate before simulation. See `docs/greedy_planner.md` for the expected selected-glider baseline behavior.
 
-The `Demos` menu section contains isolated concept scenes for validating field behavior before debugging full missions. Use `docs/flow_fields_demo.md` when validating static/dynamic fields, additive layers, partition behavior, terrain boundary effects, and topology-aware shoreline risk. Use `docs/roi_generator_demo.md` when validating seeded ROI/value distributions, hotspot clustering, noise, and dynamic value-field behavior.
+The main menu should expose two top-level accordions: `Challenge Mode` and `Simulation Lab`. Field demos live inside Simulation Lab, not as a separate top-level section. Use `docs/flow_fields_demo.md` when validating static/dynamic fields, additive layers, partition behavior, terrain boundary effects, and topology-aware shoreline risk. Use `docs/roi_generator_demo.md` when validating seeded ROI/value distributions, hotspot clustering, noise, and dynamic value-field behavior.
 
 ## Challenge Mode vs Simulation Lab
 
@@ -20,7 +20,7 @@ Challenge Mode is the playable planning-puzzle experience. It emphasizes score, 
 
 Simulation Lab is the reproducible experiment sandbox. It emphasizes exact configuration, deterministic/stochastic setup, dynamic current-field metadata, solver packets, replay seeds, external solver workflows, JSON import/export, and auditability.
 
-Both modes use the same terrain, current fields, hazards, glider physics, scoring core, route validation, planner APIs, and replay/export system. Smoke tests should confirm the main menu exposes both modes, Challenge setup presents the left Mission Mode Navigator plus selected center briefing, selecting a mission updates the briefing without duplicating cards in the center, Generate Mission reaches the workspace, Simulation Lab setup keeps the detailed technical controls visible, Simulation Lab exposes Mission Editor / Import Challenge JSON / External Solver Evaluation / Benchmark Leaderboard, Challenge Mode exposes Play Custom Challenge, and launching either mode reaches the same mission workspace/simulation engine path.
+Both modes use the same terrain, current fields, hazards, glider physics, scoring core, route validation, planner APIs, and replay/export system. Smoke tests should confirm the main menu exposes only the Challenge Mode and Simulation Lab top-level accordions, Tutorials appear under Challenge Mode, field demos and Mission Editor appear under Simulation Lab, Challenge setup presents the left Mission Mode Navigator plus selected center briefing, selecting a mission updates the briefing without duplicating cards in the center, Generate Mission reaches the workspace, Simulation Lab setup keeps the detailed technical controls visible, Simulation Lab exposes Import / Export Tools / External Solver Evaluation / Benchmark Leaderboard, Challenge Mode exposes Play Custom Challenge, and launching either mode reaches the same mission workspace/simulation engine path.
 
 ## Segment Contribution Grades
 

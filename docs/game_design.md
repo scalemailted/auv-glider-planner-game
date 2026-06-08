@@ -72,18 +72,25 @@ The same grader is used for manual plans and Greedy Planner routes. Challenge Mo
 
 ## Main Menu Flow
 
-The main menu groups isolated concept sandboxes under `Demos`, then player training under `Tutorials`, followed by challenge/editor/load tools. Demos validate core field behavior before those fields are used inside full missions; tutorials teach the player how to play missions.
+The main menu has two primary accordions: `Challenge Mode` and `Simulation Lab`. Challenge Mode is the playable/game-facing door: mission modes, tutorials, custom challenges, quick challenge variants, and challenge leaderboards. Simulation Lab is the experimental/authoring/analysis door: deterministic and stochastic experiments, Mission Editor, import/export tools, field demos, solver workflows, and benchmark leaderboards.
 
-The active top-level modes are:
+Challenge Mode contains:
 
-- `Flow Fields Demo`: opens one isolated Phaser vector-field sandbox, defaulting to Static mode with one Base Flow Field and no additive layers. Mode only selects Static or Dynamic field evolution. Dynamic mode uses continuous `demoTime` and exposes evolution behavior (`Continuous`, `Looping / Cyclic`, `One-Shot Pulse`, `Meandering / Translating`), spatial motion, direction variation, magnitude variation, evolution pattern, and evolution-speed controls that affect the sampled vector field itself. It renders current arrows, passive glider-like particles, trails, base-flow-field selection, an optional additive layer stack, per-layer weights, layer influence modes (`Global Blend`, `Spatial Pocket`, `Partitioned Region`), enable/remove controls, optional deterministic terrain (`No Land`, `Random Islands`, `Coastline`, `Channel`), magnitude-scale, and particle-speed controls without creating missions, waypoint plans, scores, or leaderboard records. Arrow length, opacity, and thickness preserve sampled magnitude instead of normalizing every glyph to a constant length. When terrain is enabled, arrows over land are hidden, particles reset on land collision, and the shared topology-aware sampler receives the terrain mask so shoreline deflection/risk behavior can be inspected visually. See `docs/flow_fields_demo.md` for the full behavior and implementation notes.
-- `ROI Generator Demo`: opens one isolated Phaser sample-value sandbox. It renders a seeded ROI/value heatmap, high-value markers, field statistics, distribution selection, seed/regenerate controls, hotspot count, noise, and static/dynamic time mode without creating missions, waypoint plans, scores, or leaderboard records. See `docs/roi_generator_demo.md`.
-- `Tutorial Mode`: opens a center-viewport tutorial browser with left-side filters/progress controls, scrollable lesson cards in the center, and selected-lesson details in the right panel.
-- `Challenge Mode`: opens generated challenge setup or imports a shared/custom `anchor.challenge` package for player-facing play.
-- `Simulation Lab`: opens deterministic/stochastic technical setup, Mission Editor, challenge import, external solver evaluation, and benchmark leaderboard tools.
-- `Mission Editor`: opens the visual level editor for terrain, hazards, depth, ROI, bases, agent starts, mission defaults, time frames, and U/V current edits. It can export raw `anchor.level`, playable `anchor.challenge`, or `anchor.challenge` with attached local best-path history.
-- `Import Challenge JSON` / `Load Level JSON`: imports an exported `anchor.challenge` or `anchor.level` through a hidden file bridge, validates/normalizes it, summarizes it in a Phaser panel, reports any attached best-path history, and offers Challenge Mode play, Simulation Lab play, editing, or explicit history import. Play choices route through Mission Briefing.
-- `Leaderboard`: opens a main-menu mode where the left Mission Console holds scope/source filters and actions, the center viewport is a scrollable saved challenge/benchmark card browser, and the right panel shows selected-record details, attempts, load, export, delete, and clear actions. Challenge Mode and Simulation Lab share storage infrastructure but are filtered by `leaderboardScope`.
+- `Mission Modes`: opens generated challenge setup for player-facing play.
+- `Tutorials`: opens a center-viewport tutorial browser with filters, lesson cards, and selected-lesson details.
+- `Play Custom Challenge`: imports a shared/custom `anchor.challenge` package for Challenge Mode.
+- `Quick Random Challenge` and `Greedy Planner Race`: immediate challenge variants.
+- `Challenge Leaderboard`: opens local high-score/best-path records.
+
+Simulation Lab contains:
+
+- `Deterministic Experiment` and `Stochastic Experiment`: open technical scenario setup.
+- `Mission Editor`: opens the visual level editor for terrain, hazards, depth, ROI, bases, agent starts, mission defaults, time frames, and U/V current edits.
+- `Import / Export Tools`: imports exported `anchor.challenge`, `anchor.level`, result, or oracle JSON packages.
+- `Flow Fields Demo`: opens one isolated Phaser vector-field sandbox, defaulting to Static mode with one Base Flow Field and no additive layers.
+- `Sample / ROI Field Demo`: opens one isolated Phaser sample-value sandbox.
+- `External Solver Evaluation`: opens dataset/solver export tooling.
+- `Benchmark Leaderboard`: opens local benchmark records. Challenge Mode and Simulation Lab share storage infrastructure but are filtered by `leaderboardScope`.
 - Planning Analysis: when prior attempts exist for the same challenge instance, the console exposes the best prior run as a benchmark with ghost-path overlay, rerun, load-as-plan, and export controls. The overlay is muted and never replaces the editable current route unless the player explicitly loads it.
 
 UUIDs and instance IDs remain important metadata for solver packets, plans, results, local saves, and datasets. They are no longer the primary player-facing loading mechanism.
