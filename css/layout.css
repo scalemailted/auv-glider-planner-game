@@ -205,6 +205,60 @@ body {
   gap: .7rem;
 }
 
+.mission-mode-gallery {
+  display: grid;
+  gap: clamp(.75rem, 1.4vw, 1.05rem);
+}
+
+.mission-mode-gallery-group {
+  display: grid;
+  gap: .55rem;
+}
+
+.mission-mode-gallery-group h2 {
+  margin: 0;
+  color: var(--success);
+  font-size: .9rem;
+  font-weight: 900;
+  letter-spacing: 0;
+  text-transform: uppercase;
+}
+
+.mission-mode-gallery-panel {
+  max-width: 1320px;
+}
+
+.mission-mode-briefing-panel {
+  max-width: 1220px;
+}
+
+.mission-mode-briefing-intro {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 240px), 1fr));
+  gap: .75rem;
+}
+
+.mission-mode-briefing-intro article {
+  min-width: 0;
+  padding: .82rem;
+  border: 1px solid rgba(99, 230, 190, 0.2);
+  border-radius: 9px;
+  background: rgba(99, 230, 190, 0.075);
+}
+
+.mission-mode-briefing-intro h2 {
+  margin: 0;
+  color: var(--success);
+  font-size: .86rem;
+  text-transform: uppercase;
+}
+
+.mission-mode-briefing-intro p {
+  margin: .42rem 0 0;
+  color: #d8e8f7;
+  line-height: 1.35;
+}
+
 .mission-mode-card {
   min-width: 0;
   min-height: 10.25rem;

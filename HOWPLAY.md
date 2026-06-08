@@ -21,7 +21,7 @@ If a plan cannot run safely, the game blocks execution or records a safe aborted
 
 ## Start The Game
 
-In Challenge Mode, pick a mission card first. Mission cards are player-facing objectives such as Survey Sweep, Signal Hunt, Plume Intercept, Danger Run, and Long Glide. The selected card quietly sets up the sample field, currents, scoring emphasis, and route-grade emphasis. Simulation Lab keeps the detailed technical controls visible when you want to tune those systems directly.
+In Challenge Mode, pick a mission card from the Mission Mode Gallery first. Mission cards are player-facing objectives such as Survey Sweep, Signal Hunt, Plume Intercept, Danger Run, and Long Glide. After you choose a card, a focused briefing explains the objective, strategy, recommended lenses, generated setup, current field, and sample-field behavior before you click `Generate Mission`. Simulation Lab keeps the detailed technical controls visible when you want to tune those systems directly.
 
 From the project root:
 
@@ -63,11 +63,11 @@ The Main Menu is the starting screen. It links to:
 
 For first-time play, choose `Tutorial Mode`.
 
-`Deterministic Challenge` opens a scenario setup screen, then generates a fresh perfect-knowledge mission where planning shows true terrain, hazards, ROI, and currents.
+`Deterministic Challenge` opens the Challenge Mode Mission Gallery. Pick a Mission Mode card, read its briefing, then generate a fresh perfect-knowledge mission where planning shows true terrain, hazards, ROI, and currents.
 
-`Stochastic Challenge` opens the same setup flow, then generates a forecast-mode mission where planning shows forecast/belief fields and simulation scores against hidden truth.
+`Stochastic Challenge` opens the same gallery/briefing flow, then generates a forecast-mode mission where planning shows forecast/belief fields and simulation scores against hidden truth.
 
-Scenario setup controls include map size, agent count, duration, surfacing interval, fuel per glider, glider speed, uniform or varied glider specs, single or multiple drop zones, difficulty, current-field preset, current strength, temporal variability, hazard/terrain density, ROI hotspots, Gold Star frequency, and ensemble count for stochastic challenges. Stochastic setup can also enable forecast decay, which makes future forecast confidence lower than near-term confidence. Click `Generate Mission` to create the level and enter Planning.
+In Challenge Mode, the gallery is for browsing and the selected mission briefing is for deciding/launching. It does not show the full technical setup grid. Simulation Lab exposes detailed scenario setup controls such as map size, agent count, duration, surfacing interval, fuel per glider, glider speed, uniform or varied glider specs, single or multiple drop zones, difficulty, current-field preset, current strength, temporal variability, hazard/terrain density, ROI hotspots, Gold Star frequency, and ensemble count for stochastic challenges. Stochastic setup can also enable forecast decay, which makes future forecast confidence lower than near-term confidence. Click `Generate Mission` to create the level and enter Planning.
 
 Generated challenges use temporal fields. Scrub the bottom time slider to inspect how ROI cells warm/cool or move, how Gold Star Targets appear/disappear, and how current arrows shift direction/magnitude before committing a plan. Stochastic challenges also evolve hidden truth and visible forecast/ensemble frames over the same mission horizon.
 

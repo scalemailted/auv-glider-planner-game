@@ -82,13 +82,14 @@ Quick loop:
 
 1. Open the game.
 2. Choose a demo, tutorial, generated challenge, editor, dataset export, or level import from the Mission Console.
-3. For generated challenges, configure the scenario setup, then click `Generate Mission`.
-3. Start a tutorial, generate a challenge, import a level JSON, or use an editor/custom level.
-4. Read Mission Briefing, then click `Start Planning`.
-5. Place waypoint plans directly on the map.
-6. Click `Execute`.
-7. Review Debrief score, objectives, rating, and suggestions.
-8. Retry, revise, continue to the next tutorial, generate another challenge, return to the editor, or export data for solver experiments.
+3. For Challenge Mode, choose a Mission Mode card from the gallery, review its briefing, then click `Generate Mission`.
+4. For Simulation Lab, configure the technical scenario setup, then click `Generate Mission`.
+5. Start a tutorial, generate a challenge, import a level JSON, or use an editor/custom level.
+6. Read Mission Briefing, then click `Start Planning`.
+7. Place waypoint plans directly on the map.
+8. Click `Execute`.
+9. Review Debrief score, objectives, rating, and suggestions.
+10. Retry, revise, continue to the next tutorial, generate another challenge, return to the editor, or export data for solver experiments.
 
 ## Documentation Index
 
@@ -144,7 +145,7 @@ Every playable scenario now passes through a compact Mission Briefing before pla
 
 Planning is the main game workspace. Phaser renders the mission board, gliders, waypoints, global planning markers, currents, Gold Star priority targets, route overlays, guidance cone, and map hit targets. The left Mission Console renders planning controls, status, route/cost estimate, solver/export actions, layer toggles, selected-glider performance details, and execute controls. The right Waypoint Timeline panel renders agent tabs and only the selected glider's executable waypoint sequence with pending/active/completed/missed status. The center viewport includes a top selected-glider planning HUD for projected route cost, estimated remaining fuel, planning window/time, expected ROI estimate, current assist/opposition, next surface estimate, likely reachability, route validity, and compact warnings. The bottom center is reserved for the mission-time slider in Planning and the mission-time playhead during Simulation.
 
-Generated challenge setup opens before the map is created. In Challenge Mode, players choose Mission Mode cards such as Survey Sweep, Signal Hunt, Fleet Split, Plume Intercept, Danger Run, and Long Glide. Mission Modes are objective presets, not separate engines: they turn research concepts such as coverage planning, informative path planning, event interception, and energy-aware routing into playable goals by choosing seeded sample-field, current-field, scoring, route-grade, and mission-rule defaults. Simulation Lab keeps the detailed technical controls for agent count, duration, surfacing interval, fuel per glider, glider speed, fleet specs, drop zones, difficulty, current-field preset, current strength, dynamic complexity, temporal variability, hazard density, terrain density, ROI hotspot count, sample-field spatial pattern, sample-field temporal behavior, and Gold Star frequency. Stochastic setup also exposes ensemble count and forecast horizon decay controls. The selected setup is stored in `level.meta.generationConfig.scenarioSetup` and `mission.meta.scenarioSetup`.
+Generated challenge setup opens before the map is created. In Challenge Mode, players first see a scrollable Mission Mode Gallery with cards such as Survey Sweep, Signal Hunt, Fleet Split, Plume Intercept, Danger Run, and Long Glide. Clicking a card opens a focused Mission Briefing / Detail screen for that one objective with strategy, recommended lenses, mission setup summary, environment summary, sample-field behavior, and `Generate Mission`. Mission Modes are objective presets, not separate engines: they turn research concepts such as coverage planning, informative path planning, event interception, and energy-aware routing into playable goals by choosing seeded sample-field, current-field, scoring, route-grade, and mission-rule defaults. Simulation Lab keeps the detailed technical controls for agent count, duration, surfacing interval, fuel per glider, glider speed, fleet specs, drop zones, difficulty, current-field preset, current strength, dynamic complexity, temporal variability, hazard density, terrain density, ROI hotspot count, sample-field spatial pattern, sample-field temporal behavior, and Gold Star frequency. Stochastic setup also exposes ensemble count and forecast horizon decay controls. The selected setup is stored in `level.meta.generationConfig.scenarioSetup` and `mission.meta.scenarioSetup`.
 
 ### Dynamic Topology-Aware Current Fields
 

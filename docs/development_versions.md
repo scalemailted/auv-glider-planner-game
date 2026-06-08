@@ -89,6 +89,7 @@ Challenge Mode also persists `missionMode`. Mission modes are player-facing obje
 
 - Expanded ANCHOR into a two-experience system: Challenge Mode for playable planning puzzles and Simulation Lab for reproducible experiments.
 - Added Mission Mode presets that map research concepts such as coverage planning, informative path planning, event interception, and energy-aware routing into player-facing objectives.
+- Split Challenge Mode setup into a Mission Mode Gallery for browsing objective cards and a selected-mission briefing/detail screen for strategy, setup summary, environment summary, and launch.
 - Added `sampleFieldConfig` metadata and generated sample-field behaviors for static, hotspot, burst, moving, current-advected, random, neighbor-coupled, plume, channel, gradient, and texture-like value fields where configured.
 - Added segment contribution grades and route-quality summaries so manual, Greedy Planner, and imported-solver routes can be explained with the same vocabulary.
 - Added explicit waypoint semantics for `navigation`, `surface`, `samplingTarget`, and `terminalCarryThrough` waypoints, while preserving old plans by defaulting missing kinds to `navigation`.
