@@ -23,7 +23,7 @@ export class RightWaypointPanel {
         <div class="console-kicker">Mission Waypoints</div>
         <h2>No mission loaded</h2>
         <p class="hud-muted">Waypoint plan will appear here.</p>
-        <p class="hud-muted">Start Tutorial Mode, Deterministic Challenge, Stochastic Challenge, or Load Level JSON to begin.</p>
+        <p class="hud-muted">Start Tutorial Mode, Challenge Mode, Simulation Lab, or Import Challenge JSON to begin.</p>
       </section>
     `;
   }

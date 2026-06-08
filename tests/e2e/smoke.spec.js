@@ -21,13 +21,17 @@ test('campaign planning smoke flow reaches debrief', async ({ page }) => {
   await expect(page.locator('#right-panel')).toHaveCount(0);
   await expect(page.locator('#context-panel')).toBeEmpty();
   await expect(page.locator('#mission-console')).toContainText('ANCHOR: Glider Command');
-  await expect(page.locator('#mission-console button.console-button')).toHaveCount(13);
+  await expect(page.locator('#mission-console button.console-button')).toHaveCount(16);
   await expect(page.locator('#mission-console .accordion-header')).toHaveCount(1);
   await expect(page.locator('#mission-console')).toContainText('Challenge Mode');
   await expect(page.locator('#mission-console')).toContainText('Simulation Lab');
   await expect(page.locator('#mission-console')).toContainText('Editor / Import Tools');
   await expect(page.locator('#mission-console')).toContainText('Play Challenge');
+  await expect(page.locator('#mission-console')).toContainText('Play Custom Challenge');
   await expect(page.locator('#mission-console')).toContainText('Deterministic Experiment');
+  await expect(page.locator('#mission-console')).toContainText('Mission Editor');
+  await expect(page.locator('#mission-console')).toContainText('Import Challenge JSON');
+  await expect(page.locator('#mission-console')).toContainText('Benchmark Leaderboard');
   await expect(page.locator('#mission-console')).toContainText('Demos');
   await expect(page.locator('#mission-console')).toContainText('Tutorials');
   await expect(page.locator('#mission-console')).toContainText('Flow Fields Demo');

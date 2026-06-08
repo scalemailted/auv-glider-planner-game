@@ -11,7 +11,7 @@ ANCHOR treats the environment as two coupled planning fields: the current field 
 Version 2 is a playable static-web game built with vanilla JavaScript, HTML, CSS, Phaser 3, and schema-driven core modules. The active shell is a Mission Console + Phaser Simulator Viewport + Waypoint Timeline: HTML/CSS owns the left mission-control console for menus, forms, tables, imports/exports, and results, Phaser owns the center simulator viewport for map rendering, sprites, animation, overlays, and direct pointer interaction, and the right panel owns the selected-glider waypoint timeline. It has:
 
 - main menu, campaign flow, mission briefing, planning, simulation, debrief, level editor, and dataset export scenes
-- Phaser-native top-level modes for Tutorial, Deterministic Challenge, Stochastic Challenge, Environment Editor, and Load Level JSON
+- Phaser-native top-level modes for Tutorial, Challenge Mode, Simulation Lab, Mission Editor, Import Challenge JSON, and Load Level JSON
 - isolated Demos section with Flow Fields Demo for current arrows and ROI Generator Demo for sample-value heatmaps
 - game-first mission planning workspace with a large Phaser map, HTML/CSS mission-control overlays, top selected-glider planning HUD, bottom mission-time slider, waypoint drawer/table, and non-executable planning markers
 - Phaser 3 scene shell with Main Menu, Mission Briefing, Mission Workspace, Simulation, Debrief, Environment Editor, and Dataset Export scenes
@@ -81,10 +81,10 @@ Both modes use the same terrain generation, current fields, hazards, glider phys
 Quick loop:
 
 1. Open the game.
-2. Choose a demo, tutorial, generated challenge, editor, dataset export, or level import from the Mission Console.
+2. Choose a demo, tutorial, generated challenge, custom challenge import, Mission Editor, dataset export, or level import from the Mission Console.
 3. For Challenge Mode, choose a Mission Mode card from the gallery, review its briefing, then click `Generate Mission`.
 4. For Simulation Lab, configure the technical scenario setup, then click `Generate Mission`.
-5. Start a tutorial, generate a challenge, import a level JSON, or use an editor/custom level.
+5. Start a tutorial, generate a challenge, import a custom challenge JSON, or use an editor/custom level.
 6. Read Mission Briefing, then click `Start Planning`.
 7. Place waypoint plans directly on the map.
 8. Click `Execute`.
@@ -166,7 +166,7 @@ Low/Medium/High dynamic complexity controls moving structures, secondary regiona
 
 Completed simulations are saved to a browser-local leaderboard under `anchorGliderCommand.leaderboard.v1` when `localStorage` is available. Challenge Mode and Simulation Lab share the same storage infrastructure but keep separate leaderboard scopes. Challenge Mode records are framed as high-score attempts with route source, stars/objectives, route grade, and fairness labels. Simulation Lab records are framed as benchmark results for reproducible comparison across manual routes, Greedy Planner routes, imported plans, and external solvers. Main Menu `Leaderboard` opens a dedicated mode: the left Mission Console holds scope/source filters plus import/export actions, the center viewport shows scrollable saved challenge/benchmark cards, and the right panel shows selected-record details. It can load a saved challenge, load/export the best plan, export the saved level, delete attempts, and clear local records. In Planning, the Analysis section also exposes the best prior run for the current challenge instance with show/hide ghost path, rerun, load-as-plan, and export controls. No backend or account is used.
 
-Export formats are intentionally separated. `anchor.challenge` reloads playable challenges, `anchor.solverPacket` gives external algorithms only allowed planning information, `anchor.oracleDataset` includes hidden truth for research/training, `anchor.result` preserves one attempt, and `anchor.leaderboard` shares local challenge records. Public stochastic challenge exports omit plain hidden truth and may carry an opaque reload bundle that is cheat-resistant only; solver exports omit hidden truth by default. Oracle exports include hidden truth and are not for fair player planning. See `docs/export_formats.md` and `docs/stochastic_hidden_truth.md`.
+Export formats are intentionally separated. `anchor.challenge` reloads playable challenges, `anchor.solverPacket` gives external algorithms only allowed planning information, `anchor.oracleDataset` includes hidden truth for research/training, `anchor.result` preserves one attempt, and `anchor.leaderboard` shares local challenge records. Mission Editor can export a custom scenario as `anchor.challenge`; the optional `Export Challenge + Best Path History` action attaches a compact local leaderboard snapshot for the same challenge instance without changing the playable level/mission payload. Public stochastic challenge exports omit plain hidden truth and may carry an opaque reload bundle that is cheat-resistant only; solver exports omit hidden truth by default. Oracle exports include hidden truth and are not for fair player planning. See `docs/export_formats.md` and `docs/stochastic_hidden_truth.md`.
 
 External solvers interact through files rather than a backend in both Challenge Mode and Simulation Lab: export a challenge or solver packet, run A*/Dijkstra/ML/RL tooling outside the browser, import the returned `anchor.plan`, simulate it, then export `anchor.result`. Imported/external-solver attempts can be saved to the active scope's leaderboard and are labeled by route source and fairness metadata (`Fair`, `Truth-assisted`, or `Oracle`). Plan import supports `openLoop` and `timedOpenLoop` route execution now, preserves `surfaceUpdateBundle` metadata with a warning, and treats `policy` / `contingencyTable` as non-executable metadata. Lightweight local storage uses `localStorage` keys for challenges, saved attempts, leaderboard records, settings, and a storage index; the storage API is isolated so IndexedDB can be added later.
 
@@ -395,7 +395,7 @@ Stored shape:
 }
 ```
 
-`Load Level JSON` is the primary recall flow. The Phaser-native import screen opens a hidden browser file picker, imports an exported `anchor.level` file, validates and normalizes it, then shows a compact in-game summary with level name, level ID, instance ID, grid, duration, challenge mode, truth/forecast data, and mission defaults. From that summary the player can choose `Play Deterministic`, `Play Stochastic`, `Open Editor`, or return to the menu. Play choices open Mission Briefing before planning. UUIDs and instance IDs remain embedded in level, plan, solver packet, result, and dataset JSON for identity and comparison, but players do not need to type IDs to load a level.
+`Import Challenge JSON` / `Load Level JSON` is the primary recall flow. The Phaser-native import screen opens a hidden browser file picker, imports an exported `anchor.challenge` or `anchor.level` file, validates and normalizes it, then shows a compact in-game summary with level name, level ID, instance ID, grid, duration, challenge mode, truth/forecast data, mission defaults, custom-package metadata, and whether best-path history is attached. From that summary the player can choose `Play in Challenge Mode`, `Open in Simulation Lab`, `Open Editor`, optionally `Import Attached History`, or return to the menu. Play choices open Mission Briefing before planning. UUIDs and instance IDs remain embedded in level, plan, solver packet, result, leaderboard, and dataset JSON for identity and comparison, but players do not need to type IDs to load a level.
 
 A legacy saved-level registry remains available internally for local browser saves and UUID recall. If localStorage is unavailable, the game warns gracefully and JSON import/export still works.
 
@@ -497,7 +497,7 @@ This is intended for offline experiments, classroom assignments, and benchmark g
 
 ## Environment Editor
 
-The Environment Editor can generate, import, edit, and export custom levels. Controls include:
+The Mission Editor / Environment Editor is exposed directly under Simulation Lab. It can generate, import, edit, launch, and export custom levels and replayable custom challenge packages. `Export Level JSON` writes the raw editable `anchor.level`; `Export Challenge JSON` writes a playable/importable `anchor.challenge`; `Export Challenge + Best Path History` adds optional local best-path/attempt history for the same challenge instance when available. Controls include:
 
 - Phaser-native grouped editor HUD with Terrain, Water/Depth, Currents, Hazards, ROI, Deploy, Agents, Time, and Import/Export groups
 - width and height

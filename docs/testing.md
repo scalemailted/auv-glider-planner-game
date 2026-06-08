@@ -20,7 +20,7 @@ Challenge Mode is the playable planning-puzzle experience. It emphasizes score, 
 
 Simulation Lab is the reproducible experiment sandbox. It emphasizes exact configuration, deterministic/stochastic setup, dynamic current-field metadata, solver packets, replay seeds, external solver workflows, JSON import/export, and auditability.
 
-Both modes use the same terrain, current fields, hazards, glider physics, scoring core, route validation, planner APIs, and replay/export system. Smoke tests should confirm the main menu exposes both modes, Challenge setup presents a Mission Mode Gallery first, clicking a card opens the selected-mission briefing/detail screen, Back returns to the Gallery, Generate Mission reaches the workspace, Simulation Lab setup keeps the detailed technical controls visible, and launching either mode reaches the same mission workspace/simulation engine path.
+Both modes use the same terrain, current fields, hazards, glider physics, scoring core, route validation, planner APIs, and replay/export system. Smoke tests should confirm the main menu exposes both modes, Challenge setup presents a Mission Mode Gallery first, clicking a card opens the selected-mission briefing/detail screen, Back returns to the Gallery, Generate Mission reaches the workspace, Simulation Lab setup keeps the detailed technical controls visible, Simulation Lab exposes Mission Editor / Import Challenge JSON / External Solver Evaluation / Benchmark Leaderboard, Challenge Mode exposes Play Custom Challenge, and launching either mode reaches the same mission workspace/simulation engine path.
 
 ## Segment Contribution Grades
 
@@ -62,6 +62,15 @@ Leaderboard checks should cover:
 - truth/oracle-assisted imported plans display fairness labels and do not look like unlabeled fair manual runs;
 - old leaderboard records without scope/source metadata still load and default to Challenge scope;
 - scenario fingerprints remain stable for the same UUID/config/generator-version benchmark.
+
+Custom challenge import/export checks should cover:
+
+- Mission Editor exports raw `anchor.level`, `anchor.challenge`, and optional challenge-plus-history packages;
+- custom challenge packages preserve `customScenario`, `sourceMetadata`, `leaderboardScope`, and replay seed metadata;
+- Import Challenge JSON summarizes attached best-path history without merging it automatically;
+- Play in Challenge Mode sets `experienceMode: "challenge"`;
+- Open in Simulation Lab sets `experienceMode: "simulationLab"`;
+- Import Attached History merges only the attached leaderboard snapshot for packages that include one.
 
 After JavaScript changes, run:
 

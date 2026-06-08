@@ -10,7 +10,7 @@ Challenge Mode is the playable planning-puzzle experience. It emphasizes score, 
 
 Simulation Lab is the reproducible experiment sandbox. It emphasizes exact configuration, deterministic/stochastic setup, dynamic current-field metadata, solver packets, replay seeds, external solver workflows, JSON import/export, and auditability.
 
-Both modes use the same terrain, current fields, hazards, glider physics, scoring core, route validation, planner APIs, and replay/export system. Solver packet workflows are presented through Simulation Lab by default, but exported plans can be imported, validated, simulated, and saved in either Simulation Lab or Challenge Mode.
+Both modes use the same terrain, current fields, hazards, glider physics, scoring core, route validation, planner APIs, and replay/export system. Solver packet workflows are presented through Simulation Lab by default, but exported plans and custom challenge packages can be imported, validated, simulated, and saved in either Simulation Lab or Challenge Mode.
 
 Solver packets may preserve `experienceMode`, `missionMode`, `missionRules`, `navigationUncertainty`, visible `currentFieldConfig`, visible `sampleFieldConfig`, `waypointSemantics`, replay seed metadata, and generator version metadata. Challenge Mode uses those fields through player-facing presets; Simulation Lab exposes them directly for reproducible experiments.
 
@@ -29,6 +29,8 @@ Executable waypoints should include a `kind` when the solver knows the intent. M
 During Simulation, surface and route-failure menus can export `anchor.surface-observation` and import updated waypoint data. Return `anchor.plan-segment` for the current surfaced/failed agent, or return a complete `anchor.plan`; the browser validates it and replaces future waypoints after the current simulation time.
 
 External solvers can read a solver packet, produce an `anchor.plan`, then import that plan back into the browser game for simulation and scoring.
+
+Mission Editor can export custom scenarios as `anchor.challenge` packages. Use challenge-only export when sharing a map/mission for a fresh comparison, or include best-path history when the receiving browser should be able to merge the local benchmark/best attempt for the same challenge instance. The import screen reports attached history and requires an explicit `Import Attached History` action before local leaderboard data is merged.
 
 ## External Solver Workflow With Google Colab
 

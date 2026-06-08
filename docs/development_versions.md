@@ -43,6 +43,7 @@ Challenge Mode also persists `missionMode`. Mission modes are player-facing obje
 
 - Standardized `anchor.challenge`, `anchor.solverPacket`, `anchor.plan`, `anchor.plan-segment`, `anchor.surfaceObservation`, `anchor.result`, `anchor.leaderboard`, and `anchor.oracleDataset` products.
 - Kept solver exchange file-based and static-host compatible.
+- Restored Mission Editor as a first-class Simulation Lab tool and added custom `anchor.challenge` export/import paths with optional attached best-path history.
 - Added explicit fairness metadata for forecast, truth, and oracle-assisted plans.
 - Preserved `surfaceUpdateBundle` as metadata while using explicit plan/segment imports for live recovery.
 
@@ -53,6 +54,7 @@ Challenge Mode also persists `missionMode`. Mission modes are player-facing obje
 - Added derived seed metadata for namespaces such as terrain, currents, ROI, hazards, depth, targets, forecast, truth, and mission.
 - Added local leaderboard and best-path records with saved plan/result blobs when available.
 - Hardened leaderboard metadata so Challenge Mode and Simulation Lab can share storage while separating high-score and benchmark scopes by `experienceMode` / `leaderboardScope`.
+- Added explicit import behavior for custom challenge packages: play in Challenge Mode, open in Simulation Lab, edit in Mission Editor, and merge attached history only on user action.
 - Added replay diagnostics that distinguish exact replay via snapshot, exact replay via UUID contract, approximate replay, and unavailable replay.
 
 ### v0.5 - External Solver Templates

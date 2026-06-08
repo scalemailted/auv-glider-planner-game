@@ -14,6 +14,9 @@ import { makeForecastEnsembleFromTruth, makeForecastFromTruth } from '../../../c
 import { resetPlanResultStore } from '../../../core/evaluation/PlanResultStore.js';
 import { beginScenario } from '../../../core/scenario/ScenarioState.js';
 import { EXPERIENCE_MODES } from '../../../core/experience/ExperienceMode.js';
+import { buildChallengeExport } from '../../../core/io/ChallengeExporter.js';
+import { buildLeaderboardExport } from '../../../core/io/LeaderboardExporter.js';
+import { loadLeaderboard, normalizeLeaderboard } from '../../../core/storage/LeaderboardStore.js';
 import { EditorHud } from '../ui/EditorHud.js';
 import { VectorBrushPreview } from '../ui/VectorBrushPreview.js';
 import { PhaserButton } from '../ui/Button.js';
@@ -162,6 +165,8 @@ export class EnvironmentEditorScene extends PhaserScene {
         <button id="btn-use-level-stochastic">Use as Stochastic</button>
         <button id="btn-save-level">Save Level</button>
         <button id="btn-export-level">Export Level JSON</button>
+        <button id="btn-export-challenge">Export Challenge JSON</button>
+        <button id="btn-export-challenge-history">Export Challenge + Best Path History</button>
         <label class="file-control" hidden>Import Level JSON <input id="level-file" type="file" accept="application/json" /></label>
       </div>
       </section>
@@ -262,6 +267,8 @@ export class EnvironmentEditorScene extends PhaserScene {
       this.scene.start('MissionBriefingScene');
     };
     document.getElementById('btn-export-level').onclick = () => downloadJSON(`${this.level.levelId}.json`, this.prepareLevelForExport());
+    document.getElementById('btn-export-challenge').onclick = () => this.exportCustomChallenge({ includeHistory: false });
+    document.getElementById('btn-export-challenge-history').onclick = () => this.exportCustomChallenge({ includeHistory: true });
     document.getElementById('btn-save-level').onclick = () => {
       const saved = saveLevelToRegistry(this.prepareLevelForExport());
       if (!saved.ok) return this.app.toast(saved.error, 'warning');
@@ -554,6 +561,32 @@ export class EnvironmentEditorScene extends PhaserScene {
     };
     this.attachCurrentStatsMetadata();
     return this.level;
+  }
+
+  exportCustomChallenge({ includeHistory = false } = {}) {
+    const level = this.prepareLevelForExport();
+    level.meta ??= {};
+    level.meta.customScenario = true;
+    level.meta.source = 'editor';
+    const history = includeHistory ? buildBestPathHistoryForLevel(level) : null;
+    const challenge = buildChallengeExport({
+      level,
+      mission: level.missionDefaults,
+      challengeMode: level.challengeMode ?? 'perfectKnowledge',
+      experienceMode: level.meta?.experienceMode ?? EXPERIENCE_MODES.simulationLab,
+      customScenario: true,
+      sourceMetadata: {
+        source: 'editor',
+        tool: 'EnvironmentEditorScene',
+        label: 'Custom Scenario Builder'
+      },
+      bestPathHistory: history
+    });
+    const suffix = includeHistory ? 'with-history' : 'challenge';
+    downloadJSON(`anchor.custom-${suffix}.${level.levelId}.json`, challenge);
+    this.setStatus(includeHistory
+      ? 'Exported custom challenge JSON with local best path history metadata.'
+      : 'Exported custom challenge JSON.');
   }
 
   refreshCurrentPreview(options = {}) {
@@ -942,6 +975,24 @@ function buildEmptyCurrentPreview() {
     sequenceStats: null,
     current: [],
     stats: null
+  };
+}
+
+function buildBestPathHistoryForLevel(level) {
+  const instanceId = level?.instanceId ?? null;
+  const board = normalizeLeaderboard(loadLeaderboard());
+  const record = instanceId ? board.records?.[instanceId] ?? null : null;
+  const records = record ? { [instanceId]: record } : {};
+  return {
+    type: 'anchor.bestPathHistory',
+    createdAt: new Date().toISOString(),
+    instanceId,
+    hasBestAttempt: Boolean(record?.bestAttemptId || record?.attempts?.length),
+    recordCount: Object.keys(records).length,
+    leaderboard: buildLeaderboardExport({ records }, { embedChallenges: false }),
+    note: record
+      ? 'Local best-path/attempt history for this custom challenge is attached.'
+      : 'No local best attempt exists for this challenge yet.'
   };
 }
 

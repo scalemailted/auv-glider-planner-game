@@ -29,7 +29,29 @@ The stored shape is:
 
 If localStorage is unavailable, the game reports the issue and still allows level JSON import/export.
 
-The primary player-facing recall flow is `Load Level JSON`: import an exported `anchor.level`, review the summary, then play deterministically, play stochastically, or open it in the Environment Editor. UUIDs and instance IDs remain inside JSON for identity, solver linkage, result comparison, local saves, and datasets; users normally do not need to type an ID to load a level.
+The primary player-facing recall flow is `Import Challenge JSON` / `Load Level JSON`: import an exported `anchor.challenge` or `anchor.level`, review the summary, then play it in Challenge Mode, open it in Simulation Lab, or open it in the Mission Editor. UUIDs and instance IDs remain inside JSON for identity, solver linkage, result comparison, local saves, and datasets; users normally do not need to type an ID to load a level.
+
+Mission Editor exports can remain raw `anchor.level` files for editing, or can be packaged as replayable `anchor.challenge` files. Custom challenge packages may include:
+
+```json
+{
+  "type": "anchor.challenge",
+  "customScenario": true,
+  "leaderboardScope": "simulationLab",
+  "sourceMetadata": {
+    "source": "editor",
+    "tool": "EnvironmentEditorScene",
+    "label": "Custom Scenario Builder"
+  },
+  "bestPathHistory": {
+    "type": "anchor.bestPathHistory",
+    "hasBestAttempt": true,
+    "leaderboard": {}
+  }
+}
+```
+
+Importing attached best-path history is explicit. The level/mission can be played without merging the attached local leaderboard snapshot.
 
 The campaign tutorials in `levels/tutorial_01_currents.json` through `levels/tutorial_05_forecast.json` are handcrafted `anchor.level` files. Each includes campaign metadata and `tutorial.planningPrompts` so the briefing, planning guidance, simulation, and debrief can teach one concept at a time.
 

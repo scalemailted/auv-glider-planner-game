@@ -8,6 +8,7 @@ import { FileBridge, downloadJson } from '../ui/FileBridge.js';
 import { Modal } from '../ui/Modal.js';
 import { parseChallengeImport } from '../../../core/io/ChallengeExporter.js';
 import { saveChallengeToLocalStore } from '../../../core/storage/LocalChallengeStore.js';
+import { importLeaderboard } from '../../../core/storage/LeaderboardStore.js';
 import { importResultJson } from '../../../core/io/ResultImporter.js';
 import { importOracleDatasetJson } from '../../../core/io/OracleDatasetImporter.js';
 import { EXPERIENCE_MODES } from '../../../core/experience/ExperienceMode.js';
@@ -22,16 +23,19 @@ export class LoadLevelJsonScene extends PhaserScene {
     this.importedResult = null;
     this.importedResultSummary = null;
     this.oracleDatasetSummary = null;
+    this.importedPackage = null;
+    this.preferredExperienceMode = EXPERIENCE_MODES.simulationLab;
     this.objects = [];
   }
 
-  create() {
+  create(data = {}) {
     this.app = this.sys.game.anchorApp;
     this.app.clearPanels();
     this.app.setSceneLabel('Load Level JSON');
     this.app.elements.shell?.classList.remove('planning-workspace');
     this.level = this.app.state.importedLevel ?? null;
     this.mission = this.app.state.importedMission ?? null;
+    this.preferredExperienceMode = data.preferredExperienceMode ?? EXPERIENCE_MODES.simulationLab;
     this.modal = new Modal(this);
     this.fileBridge = new FileBridge({
       onLoad: (data) => this.importLevelData(data),
@@ -120,6 +124,7 @@ export class LoadLevelJsonScene extends PhaserScene {
       return;
     }
     const summary = levelSummary(this.level, this.mission);
+    const packageSummary = importedPackageSummary(this.importedPackage);
     const rows = [
       ['Name', summary.name],
       ['Level ID', summary.levelId],
@@ -128,18 +133,20 @@ export class LoadLevelJsonScene extends PhaserScene {
       ['Duration', summary.duration],
       ['Challenge', summary.challengeMode],
       ['Data', summary.data],
-      ['Mission', summary.mission]
+      ['Mission', summary.mission],
+      ['Package', packageSummary.package],
+      ['History', packageSummary.history]
     ];
     rows.forEach(([label, value], index) => {
-      const rowY = y + 80 + index * 34;
+      const rowY = y + 80 + index * 30;
       this.text(x + 28, rowY, label, 12, '#7898bd', '700', 108);
       this.text(x + 150, rowY, value, 13, '#eef6ff', '500', width - 178);
     });
     const buttonY = y + Math.min(height - 68, 394);
     const buttonWidth = Math.min(168, Math.max(132, (width - 72) / 3));
     const startX = x + 28 + buttonWidth / 2;
-    this.button(startX, buttonY, buttonWidth, 'Play Deterministic', () => this.playImported('perfectKnowledge'));
-    this.button(startX + buttonWidth + 12, buttonY, buttonWidth, 'Play Stochastic', () => this.playImported('forecast'));
+    this.button(startX, buttonY, buttonWidth, 'Challenge Mode', () => this.playImportedExperience(EXPERIENCE_MODES.challenge));
+    this.button(startX + buttonWidth + 12, buttonY, buttonWidth, 'Simulation Lab', () => this.playImportedExperience(EXPERIENCE_MODES.simulationLab));
     this.button(startX + (buttonWidth + 12) * 2, buttonY, buttonWidth, 'Open Editor', () => this.editImported());
     this.button(startX + buttonWidth + 12, buttonY + 48, buttonWidth, 'Export Level', () => downloadJson(`${this.level?.levelId ?? 'imported_level'}.json`, this.level));
   }
@@ -150,6 +157,9 @@ export class LoadLevelJsonScene extends PhaserScene {
       if (raw?.type === 'anchor.oracleDataset') return this.importOracleDataset(raw);
       const imported = parseChallengeImport(raw);
       if (!imported?.level) throw new Error('Expected type anchor.challenge or anchor.level.');
+      this.importedPackage = imported;
+      this.importedResultSummary = null;
+      this.oracleDatasetSummary = null;
       this.level = normalizeLevelForEditor(ensureLevelIdentity(imported.level));
       this.level.challengeMode = imported.challengeMode ?? this.level.challengeMode;
       this.mission = imported.mission ?? this.buildMissionFromImportedLevel(this.level);
@@ -174,6 +184,7 @@ export class LoadLevelJsonScene extends PhaserScene {
     this.importedResult = imported.result;
     this.importedResultSummary = imported.summary;
     this.oracleDatasetSummary = null;
+    this.importedPackage = null;
     this.drawScene(imported.summary?.message ?? 'Imported result JSON.');
     this.renderConsole(imported.summary?.message ?? 'Imported result JSON.');
   }
@@ -196,6 +207,7 @@ export class LoadLevelJsonScene extends PhaserScene {
       }
       this.app.state.importedLevel = this.level;
       this.app.state.importedMission = this.mission;
+      this.importedPackage = imported.imported;
     }
     this.drawScene(imported.summary?.message ?? 'Oracle dataset import processed.');
     this.renderConsole(imported.summary?.message ?? 'Oracle dataset import processed.');
@@ -212,19 +224,20 @@ export class LoadLevelJsonScene extends PhaserScene {
       </section>
       <section class="console-section">
         <h2>Import</h2>
-        <button class="console-button primary" data-action="choose">Choose Level JSON</button>
+        <button class="console-button primary" data-action="choose">Choose Challenge JSON</button>
       </section>
       ${this.level ? `
       <section class="console-status">
         <span>Imported</span>
         <strong>${escapeHtml(this.level.levelId)}</strong>
-        <small>${escapeHtml(shortInstanceId(this.level))} | ${escapeHtml(this.level.challengeMode ?? 'unknown')}</small>
+        <small>${escapeHtml(shortInstanceId(this.level))} | ${escapeHtml(this.level.challengeMode ?? 'unknown')} | ${escapeHtml(importedPackageSummary(this.importedPackage).history)}</small>
       </section>
       <section class="console-section">
         <h2>Play</h2>
-        <button class="console-button primary" data-action="deterministic">Play Deterministic</button>
-        <button class="console-button" data-action="stochastic">Play Stochastic</button>
+        <button class="console-button primary" data-action="challenge-mode">Play in Challenge Mode</button>
+        <button class="console-button" data-action="simulation-lab">Open in Simulation Lab</button>
         <button class="console-button" data-action="editor">Open Editor</button>
+        ${hasAttachedHistory(this.importedPackage) ? '<button class="console-button secondary" data-action="import-history">Import Attached History</button>' : ''}
       </section>` : ''}
       ${status ? `<section class="console-status"><span>Status</span><strong>${escapeHtml(status)}</strong></section>` : ''}
       ${this.importedResultSummary ? `
@@ -240,9 +253,10 @@ export class LoadLevelJsonScene extends PhaserScene {
     this.app.applyConsoleAccordions?.('import');
     root.querySelector('[data-action="choose"]')?.addEventListener('click', () => this.fileBridge.chooseJsonFile());
     root.querySelector('[data-action="menu"]')?.addEventListener('click', () => this.scene.start('MainMenuScene'));
-    root.querySelector('[data-action="deterministic"]')?.addEventListener('click', () => this.playImported('perfectKnowledge'));
-    root.querySelector('[data-action="stochastic"]')?.addEventListener('click', () => this.playImported('forecast'));
+    root.querySelector('[data-action="challenge-mode"]')?.addEventListener('click', () => this.playImportedExperience(EXPERIENCE_MODES.challenge));
+    root.querySelector('[data-action="simulation-lab"]')?.addEventListener('click', () => this.playImportedExperience(EXPERIENCE_MODES.simulationLab));
     root.querySelector('[data-action="editor"]')?.addEventListener('click', () => this.editImported());
+    root.querySelector('[data-action="import-history"]')?.addEventListener('click', () => this.importAttachedHistory());
     root.querySelector('[data-action="debrief"]')?.addEventListener('click', () => this.showImportedDebrief());
   }
 
@@ -272,6 +286,38 @@ export class LoadLevelJsonScene extends PhaserScene {
     });
     resetPlanResultStore(this.app.state);
     this.scene.start('MissionBriefingScene');
+  }
+
+  playImportedExperience(experienceMode) {
+    const mode = this.importedPackage?.challengeMode ?? this.level?.challengeMode ?? 'perfectKnowledge';
+    if (!this.level) return this.showError('Import a challenge JSON file first.');
+    const level = normalizeLevelForEditor(this.level);
+    if (mode === 'forecast') ensureForecastFields(level, { seed: level.meta?.seed ?? level.instanceId });
+    level.challengeMode = mode;
+    level.meta ??= {};
+    level.meta.experienceMode = experienceMode;
+    const mission = this.mission ?? this.buildMissionFromImportedLevel(level);
+    mission.meta ??= {};
+    mission.meta.experienceMode = experienceMode;
+    beginScenario(this.app.state, {
+      level,
+      mission,
+      challengeMode: mode,
+      experienceMode,
+      source: experienceMode === EXPERIENCE_MODES.challenge ? 'customChallengeJson' : 'customScenarioBenchmark'
+    });
+    resetPlanResultStore(this.app.state);
+    this.scene.start('MissionBriefingScene');
+  }
+
+  importAttachedHistory() {
+    const history = this.importedPackage?.bestPathHistory;
+    const leaderboard = history?.leaderboard ?? this.importedPackage?.leaderboardSnapshot ?? null;
+    if (!leaderboard) return this.showError('This challenge does not include importable best path history.');
+    const imported = importLeaderboard(leaderboard, { merge: true });
+    if (!imported.ok) return this.showError(imported.message ?? 'Could not import attached history.');
+    this.app.toast?.('Imported attached best path history.', 'success');
+    this.renderConsole('Imported attached best path history.');
   }
 
   editImported() {
@@ -340,6 +386,30 @@ function levelSummary(level, mission) {
     data: `truth ${truthFrames ? 'yes' : 'no'} (${truthFrames}) | forecast ${forecastFrames ? 'yes' : 'no'} (${forecastFrames}) | ensemble ${ensembleCount}`,
     mission: agents ? `${agents} agent(s) from mission defaults or fallback mission` : 'fallback mission will be generated'
   };
+}
+
+function importedPackageSummary(importedPackage) {
+  const custom = importedPackage?.customScenario ? 'custom challenge' : importedPackage?.source ?? 'level JSON';
+  const scope = importedPackage?.leaderboardScope ?? importedPackage?.experienceMode ?? 'select at launch';
+  const history = hasAttachedHistory(importedPackage)
+    ? attachedHistoryLabel(importedPackage)
+    : 'no attached best path history';
+  return {
+    package: `${custom} | ${scope}`,
+    history
+  };
+}
+
+function hasAttachedHistory(importedPackage) {
+  return Boolean(importedPackage?.bestPathHistory?.leaderboard || importedPackage?.leaderboardSnapshot);
+}
+
+function attachedHistoryLabel(importedPackage) {
+  const history = importedPackage?.bestPathHistory;
+  if (history?.hasBestAttempt) return 'best path history attached';
+  if (history?.leaderboard) return 'history snapshot attached';
+  if (importedPackage?.leaderboardSnapshot) return 'leaderboard snapshot attached';
+  return 'history metadata attached';
 }
 
 function escapeHtml(value) {

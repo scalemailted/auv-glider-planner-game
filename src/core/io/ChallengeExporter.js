@@ -10,7 +10,17 @@ import { evaluateExactReplayAvailability, getReplaySeedContract } from '../rando
 import { normalizeExperienceMode } from '../experience/ExperienceMode.js';
 import { normalizeNavigationUncertaintyConfig } from '../navigation/NavigationUncertainty.js';
 
-export function buildChallengeExport({ level, mission, challengeMode = null, includeHiddenTruth = false, experienceMode = null } = {}) {
+export function buildChallengeExport({
+  level,
+  mission,
+  challengeMode = null,
+  includeHiddenTruth = false,
+  experienceMode = null,
+  customScenario = false,
+  sourceMetadata = null,
+  bestPathHistory = null,
+  leaderboardSnapshot = null
+} = {}) {
   const exportedLevel = cloneJson(level);
   const exportedMission = cloneJson(mission);
   ensureLevelIdentity(exportedLevel);
@@ -43,6 +53,12 @@ export function buildChallengeExport({ level, mission, challengeMode = null, inc
     mission: exportedMission,
     replaySeedContract
   });
+  const isCustomScenario = Boolean(
+    customScenario
+    || exportedLevel?.meta?.customScenario
+    || exportedLevel?.meta?.source === 'editor'
+    || exportedLevel?.meta?.editorConfig
+  );
   const visibility = visibilityForChallenge(mode, { includeTruth: includeHiddenTruth });
   const originalTruth = cloneJson(exportedLevel?.layers?.truth ?? null);
   const truthHash = hashJson(originalTruth);
@@ -66,6 +82,13 @@ export function buildChallengeExport({ level, mission, challengeMode = null, inc
     missionId: exportedMission?.missionId ?? exportedMission?.id ?? null,
     challengeMode: mode,
     experienceMode: resolvedExperienceMode,
+    customScenario: isCustomScenario,
+    leaderboardScope: resolvedExperienceMode === 'simulationLab' ? 'simulationLab' : 'challenge',
+    sourceMetadata: sourceMetadata ? cloneJson(sourceMetadata) : {
+      source: exportedLevel?.meta?.source ?? (isCustomScenario ? 'editor' : null),
+      tool: isCustomScenario ? 'EnvironmentEditorScene' : null,
+      label: isCustomScenario ? 'Custom Scenario Builder' : null
+    },
     missionMode,
     missionModePreset,
     replaySeedAnchor: replaySeedContract?.replaySeedAnchor ?? identity.instanceId,
@@ -109,6 +132,8 @@ export function buildChallengeExport({ level, mission, challengeMode = null, inc
       forecast: normalizeForecastRules(exportedMission?.rules?.forecast ?? exportedLevel?.meta?.generationConfig?.forecastRules ?? {})
     },
     scoringRules: cloneJson(exportedMission?.rules?.scoring ?? exportedLevel?.scoring ?? {}),
+    bestPathHistory: bestPathHistory ? cloneJson(bestPathHistory) : null,
+    leaderboardSnapshot: leaderboardSnapshot ? cloneJson(leaderboardSnapshot) : null,
     level: exportedLevel,
     mission: exportedMission
   };
@@ -136,7 +161,12 @@ export function parseChallengeImport(data) {
       challengeMode: data.challengeMode,
       experienceMode: data.experienceMode,
       source: 'challengeJson',
-      visibility: data.visibility ?? null
+      visibility: data.visibility ?? null,
+      customScenario: Boolean(data.customScenario),
+      leaderboardScope: data.leaderboardScope ?? null,
+      sourceMetadata: cloneJson(data.sourceMetadata ?? null),
+      bestPathHistory: cloneJson(data.bestPathHistory ?? null),
+      leaderboardSnapshot: cloneJson(data.leaderboardSnapshot ?? null)
     };
   }
   if (data?.type === 'anchor.level') {

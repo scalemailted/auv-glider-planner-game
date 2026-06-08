@@ -54,18 +54,19 @@ Both modes use the same terrain, current fields, hazards, glider physics, scorin
 The Main Menu is the starting screen. It links to:
 
 - `Tutorial Mode`
-- `Deterministic Challenge`
-- `Stochastic Challenge`
-- `Environment Editor`
+- `Challenge Mode`
+- `Simulation Lab`
+- `Mission Editor`
+- `Import Challenge JSON`
 - `Load Level JSON`
 - `Dataset Export`
 - `Leaderboard`
 
 For first-time play, choose `Tutorial Mode`.
 
-`Deterministic Challenge` opens the Challenge Mode Mission Gallery. Pick a Mission Mode card, read its briefing, then generate a fresh perfect-knowledge mission where planning shows true terrain, hazards, ROI, and currents.
+`Play Challenge` opens the Challenge Mode Mission Gallery. Pick a Mission Mode card, read its briefing, then generate a fresh perfect-knowledge mission where planning shows true terrain, hazards, ROI, and currents.
 
-`Stochastic Challenge` opens the same gallery/briefing flow, then generates a forecast-mode mission where planning shows forecast/belief fields and simulation scores against hidden truth.
+`Greedy Planner Race` and stochastic Challenge Mode flows use the same gallery/briefing model, then generate forecast-mode missions where planning shows forecast/belief fields and simulation scores against hidden truth.
 
 In Challenge Mode, the gallery is for browsing and the selected mission briefing is for deciding/launching. It does not show the full technical setup grid. Simulation Lab exposes detailed scenario setup controls such as map size, agent count, duration, surfacing interval, fuel per glider, glider speed, uniform or varied glider specs, single or multiple drop zones, difficulty, current-field preset, current strength, temporal variability, hazard/terrain density, ROI hotspots, Gold Star frequency, and ensemble count for stochastic challenges. Stochastic setup can also enable forecast decay, which makes future forecast confidence lower than near-term confidence. Click `Generate Mission` to create the level and enter Planning.
 
@@ -75,7 +76,7 @@ Current-field presets are synthetic ocean-inspired gameplay patterns: calm, unif
 
 During simulation, the map uses the simulator clock rather than the planning scrubber. The bottom time readout, ROI heatmap, current arrows, mobile hazards, and visible forecast/truth field advance from the same simulation time source.
 
-`Load Level JSON` opens a Phaser-native import screen. Its `Choose Level JSON` button uses a hidden browser file picker, then the game shows an in-game summary before you choose deterministic play, stochastic play, or editing. UUIDs still identify generated instances in JSON exports, but normal loading is done by importing JSON instead of typing an ID.
+`Import Challenge JSON` / `Load Level JSON` opens a Phaser-native import screen. Its file button uses a hidden browser file picker, then the game shows an in-game summary before you choose `Play in Challenge Mode`, `Open in Simulation Lab`, `Open Editor`, or optional `Import Attached History` when the package contains best-path history. UUIDs still identify generated instances in JSON exports, but normal loading is done by importing JSON instead of typing an ID.
 
 ### Tutorial Mode
 
@@ -93,7 +94,7 @@ Completed attempts are saved locally in this browser when `localStorage` is avai
 
 ### Export / Import Data
 
-Planning exports include replayable `anchor.challenge` files, `anchor.plan` waypoint plans, solver packets for external algorithms, oracle datasets for research/training, structured result files, and local leaderboard JSON. Import `anchor.challenge` from Load Level JSON to replay the same challenge, and import `anchor.plan` from Planning to test a saved or solver-generated route. External solver plans can be imported in Challenge Mode as well as Simulation Lab; their leaderboard entries are labeled as External Solver or Imported Plan, with fairness labels for forecast-only, truth-assisted, or oracle-assisted routes.
+Planning exports include replayable `anchor.challenge` files, `anchor.plan` waypoint plans, solver packets for external algorithms, oracle datasets for research/training, structured result files, and local leaderboard JSON. Mission Editor can export custom scenarios as `anchor.challenge`, either challenge-only or with optional attached best-path history. Import `anchor.challenge` from Import Challenge JSON / Load Level JSON to replay the same challenge, and import `anchor.plan` from Planning to test a saved or solver-generated route. External solver plans can be imported in Challenge Mode as well as Simulation Lab; their leaderboard entries are labeled as External Solver or Imported Plan, with fairness labels for forecast-only, truth-assisted, or oracle-assisted routes.
 
 For stochastic challenges, public challenge and solver exports use visible forecast/belief data. Challenge files omit plain hidden truth and may include an opaque reload bundle that is not secure against determined users. Oracle dataset exports contain hidden truth and are for training or offline benchmark evaluation, not fair player planning.
 
@@ -865,10 +866,10 @@ Use the preview scrubber, `Prev`, `Next`, `Play`, and `Reset` controls to inspec
 
 Open `Load Level JSON` from the Main Menu.
 
-1. Click `Choose Level JSON`.
+1. Click `Choose Challenge JSON`.
 2. Choose an exported `anchor.level` JSON file from the hidden browser file picker.
 3. Review the in-game summary: name, level ID, instance ID, grid, duration, challenge mode, truth/forecast data, and mission defaults.
-4. Choose `Play Deterministic`, `Play Stochastic`, or `Open Editor`.
+4. Choose `Play in Challenge Mode`, `Open in Simulation Lab`, `Open Editor`, or `Import Attached History` when available.
 
 If the imported level does not include mission defaults, the game creates a simple default sampling mission from the level base and grid metadata.
 

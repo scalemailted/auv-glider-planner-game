@@ -20,13 +20,15 @@ Mission Modes are Challenge Mode objective presets. They choose player-facing go
 
 1. Launch ANCHOR from a static server or GitHub Pages-compatible host.
 2. Use Simulation Lab for detailed reproducible setup, or Challenge Mode when testing a playable objective preset.
-3. Generate or load a mission.
+3. Generate a mission, import a shared/custom `anchor.challenge`, or build one in Mission Editor.
 4. Export `anchor.solverPacket`.
 5. Run an external A*, Dijkstra, optimization, ML, RL, Node, Python, or Colab planner against that JSON.
 6. Import the planner's `anchor.plan`.
 7. Let ANCHOR validate, simulate, score, and export `anchor.result`.
 
 The browser game remains authoritative for validation and scoring. External tools propose plans; they do not bypass route validation, fuel/time checks, current-aware movement, terrain checks, or debrief scoring.
+
+Mission Editor can export custom challenge packages for this loop. Use `Export Challenge JSON` for a clean shared benchmark, or `Export Challenge + Best Path History` when the receiver should be able to import a local best-path/attempt snapshot for the same instance. Importing attached history is separate from opening the challenge, so a solver comparison can start clean when needed.
 
 ## Fields and Mission Data
 

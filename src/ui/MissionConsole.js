@@ -24,6 +24,7 @@ export class MissionConsole {
         <h2>Challenge Mode</h2>
         <div class="hud-muted">${escapeHtml(getExperienceModeDefaults(EXPERIENCE_MODES.challenge).description)}</div>
         <button data-action="play-challenge" class="console-button primary">Play Challenge</button>
+        <button data-action="play-custom-challenge" class="console-button">Play Custom Challenge</button>
         <button data-action="random-challenge" class="console-button">Random Challenge</button>
         <button data-action="greedy-race" class="console-button">Greedy Planner Race</button>
         <button data-action="leaderboard" class="console-button">Leaderboard</button>
@@ -33,8 +34,10 @@ export class MissionConsole {
         <div class="hud-muted">${escapeHtml(getExperienceModeDefaults(EXPERIENCE_MODES.simulationLab).description)}</div>
         <button data-action="deterministic" class="console-button">Deterministic Experiment</button>
         <button data-action="stochastic" class="console-button">Stochastic Experiment</button>
-        <button data-action="load-json" class="console-button">Imported Flow Field Test</button>
+        <button data-action="editor" class="console-button">Mission Editor</button>
+        <button data-action="load-json" class="console-button">Import Challenge JSON</button>
         <button data-action="dataset" class="console-button secondary">External Solver Evaluation</button>
+        <button data-action="leaderboard" class="console-button secondary">Benchmark Leaderboard</button>
       </section>
       <section class="console-section" data-keep-title="true">
         <h2>Demos</h2>
@@ -47,7 +50,7 @@ export class MissionConsole {
       </section>
       <section class="console-section">
         <h2>Editor / Import Tools</h2>
-        <button data-action="editor" class="console-button">Environment Editor</button>
+        <button data-action="editor" class="console-button">Mission Editor</button>
         <button data-action="load-json" class="console-button">Load Level JSON</button>
       </section>
       <section class="console-status">
@@ -62,6 +65,7 @@ export class MissionConsole {
       'roi-demo': () => this.app.phaser.scene.start('RoiGeneratorDemoScene'),
       tutorial: () => this.mainMenuScene()?.openTutorialBrowser?.(),
       'play-challenge': () => this.mainMenuScene()?.openChallengeSetup?.('perfectKnowledge', EXPERIENCE_MODES.challenge),
+      'play-custom-challenge': () => this.app.phaser.scene.start('LoadLevelJsonScene', { preferredExperienceMode: EXPERIENCE_MODES.challenge }),
       'random-challenge': () => this.mainMenuScene()?.startRandomChallenge?.('perfectKnowledge', EXPERIENCE_MODES.challenge),
       'greedy-race': () => this.mainMenuScene()?.startRandomChallenge?.('forecast', EXPERIENCE_MODES.challenge, { greedyRace: true }),
       deterministic: () => this.mainMenuScene()?.openChallengeSetup?.('perfectKnowledge', EXPERIENCE_MODES.simulationLab),
