@@ -408,6 +408,33 @@
   background-repeat: no-repeat;
   padding-right: 1.55rem;
 }
+.compact-field select option,
+.coordinate-grid select option,
+.scenario-field select option,
+#mission-console select option,
+#agent-select option,
+#window-select option,
+#level-challenge-mode option {
+  color: #eef6ff;
+  background-color: #08111f;
+}
+.compact-field select option:checked,
+.coordinate-grid select option:checked,
+.scenario-field select option:checked,
+#mission-console select option:checked,
+#agent-select option:checked,
+#window-select option:checked,
+#level-challenge-mode option:checked {
+  color: #06121f;
+  background-color: #63e6be;
+}
+.compact-field select optgroup,
+.coordinate-grid select optgroup,
+.scenario-field select optgroup,
+#mission-console select optgroup {
+  color: #9cb4d8;
+  background-color: #08111f;
+}
 .compact-field input:focus, .compact-field select:focus, .coordinate-grid input:focus, .coordinate-grid select:focus {
   outline: 2px solid rgba(99,230,190,0.42);
   border-color: rgba(99,230,190,0.65);

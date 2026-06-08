@@ -16,6 +16,7 @@ import { validateGeneratedLevelConnectivity } from '../validation/ConnectivityVa
 import { getVectorPresetConfig, normalizeVectorPreset } from './VectorFieldPresets.js';
 import { normalizeForecastRules } from '../forecast/ForecastDecay.js';
 import { buildReplaySeedContract, deriveReplaySeeds, GENERATION_VERSION } from '../random/ReplaySeedContract.js';
+import { currentFieldConfigToGeneratorConfig, normalizeCurrentFieldConfig } from './FlowFieldConfig.js';
 
 export function generateLevel(config = {}) {
   const merged = applyDifficultyPreset(config);
@@ -31,9 +32,17 @@ export function generateLevel(config = {}) {
     ...deriveReplaySeeds(challengeId),
     ...(merged.replaySeedContract?.derivedSeeds ?? merged.derivedSeeds ?? merged.generationConfig?.derivedSeeds ?? {})
   };
-  const vectorPreset = getVectorPresetConfig(merged.vectorPreset ?? merged.currentPreset ?? merged.currentGenerator?.preset ?? merged.currentPattern, {
-    currentStrength: merged.currentStrength,
-    currentVariability: merged.currentVariability ?? merged.variability ?? merged.currentGenerator?.variability,
+  const currentFieldConfig = normalizeCurrentFieldConfig(merged.currentFieldConfig ?? merged.currentField ?? merged.generationConfig?.currentFieldConfig ?? null, {
+    mode: merged.challengeMode === 'forecast' || merged.forecastMode === 'noisy' ? 'forecast' : 'perfectKnowledge',
+    currentPreset: merged.currentPreset ?? merged.vectorPreset,
+    currentStrength: merged.currentStrength
+  });
+  const currentConfig = currentFieldConfigToGeneratorConfig(currentFieldConfig, {
+    mode: merged.challengeMode === 'forecast' || merged.forecastMode === 'noisy' ? 'forecast' : 'perfectKnowledge'
+  });
+  const vectorPreset = getVectorPresetConfig(currentConfig.currentPreset ?? merged.vectorPreset ?? merged.currentPreset ?? merged.currentGenerator?.preset ?? merged.currentPattern, {
+    currentStrength: currentConfig.currentStrength,
+    currentVariability: currentConfig.currentVariability,
     seed: derivedSeeds.currents ?? seed
   });
   if (merged.vectorPreset || merged.currentPreset || merged.currentGenerator?.preset) merged.currentPattern = vectorPreset.currentPattern;
@@ -61,6 +70,7 @@ export function generateLevel(config = {}) {
     terrain,
     eddies,
     pattern: merged.currentPattern,
+    currentFieldConfig,
     currentGenerator: vectorPreset,
     currentVariability: vectorPreset.variability
   });
@@ -103,6 +113,8 @@ export function generateLevel(config = {}) {
       preset: normalizeVectorPreset(merged.vectorPreset ?? merged.currentPreset ?? merged.currentGenerator?.preset ?? merged.currentPattern),
       seed: derivedSeeds.currents ?? seed,
       temporalEvolution: true,
+      currentFieldConfig,
+      layers: currentFieldConfig.layers,
       notes: 'Synthetic ocean-inspired current field for gameplay.',
       stats: computeCurrentFrameSetStats(currentFrames),
       synthetic: true
@@ -125,6 +137,8 @@ export function generateLevel(config = {}) {
     currentVariability: vectorPreset.variability,
     currentGenerator,
     vectorField: currentGenerator,
+    currentFieldConfig,
+    currentField: currentFieldConfig,
     currentPreset: vectorPreset.preset,
     vectorPreset: vectorPreset.preset,
     fluidPreset: fluidEnabled ? normalizeFluidPreset(merged) : undefined,

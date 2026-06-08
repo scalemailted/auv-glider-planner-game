@@ -4,6 +4,11 @@ import { buildDefaultMissionForLevel } from '../editor/LevelEditOperations.js';
 import { getVectorPresetConfig, normalizeVectorPreset } from './VectorFieldPresets.js';
 import { normalizeForecastRules } from '../forecast/ForecastDecay.js';
 import { buildReplaySeedContract, deriveSeedFromUuid, GENERATION_VERSION } from '../random/ReplaySeedContract.js';
+import {
+  createDefaultCurrentFieldConfig,
+  currentFieldConfigToGeneratorConfig,
+  normalizeCurrentFieldConfig
+} from './FlowFieldConfig.js';
 
 export const SCENARIO_SIZE_PRESETS = {
   small: { label: 'Small', width: 12, height: 12, duration: 12, surfaceInterval: 3, agentCount: 1, fuel: 100 },
@@ -22,6 +27,7 @@ export function createDefaultScenarioConfig(mode = 'perfectKnowledge') {
     currentPreset: stochastic ? 'eddyField' : 'currentCorridor',
     currentStrength: stochastic ? 1.05 : 0.85,
     currentVariability: stochastic ? 0.65 : 0.4,
+    currentFieldConfig: createDefaultCurrentFieldConfig(mode),
     hazardDensity: stochastic ? 0.08 : 0.06,
     terrainDensity: stochastic ? 0.1 : 0.08,
     roiHotspots: stochastic ? 5 : 4,
@@ -40,6 +46,18 @@ export function normalizeScenarioConfig(config = {}) {
   const presetKey = SCENARIO_SIZE_PRESETS[config.preset] ? config.preset : 'small';
   const preset = SCENARIO_SIZE_PRESETS[presetKey];
   const mode = config.mode === 'forecast' ? 'forecast' : 'perfectKnowledge';
+  const normalizedCurrentField = normalizeCurrentFieldConfig(config.currentFieldConfig ?? config.currentField ?? {
+    fieldMode: config.temporalEvolution === false ? 'static' : 'dynamic',
+    basePreset: config.vectorPreset ?? config.currentPreset ?? (mode === 'forecast' ? 'eddyField' : 'currentCorridor'),
+    strength: config.currentStrength,
+    directionVariation: config.currentVariability === 0 ? 'off' : undefined,
+    magnitudeVariation: config.currentVariability === 0 ? 'off' : undefined
+  }, {
+    mode,
+    currentPreset: config.vectorPreset ?? config.currentPreset,
+    currentStrength: config.currentStrength
+  });
+  const currentGeneratorConfig = currentFieldConfigToGeneratorConfig(normalizedCurrentField, { mode });
   return {
     mode,
     preset: presetKey,
@@ -53,9 +71,12 @@ export function normalizeScenarioConfig(config = {}) {
     difficulty: config.difficulty ?? (mode === 'forecast' ? 'hard' : 'medium'),
     terrainDensity: clamp01(finiteNumber(config.terrainDensity, 0.08)),
     hazardDensity: clamp01(finiteNumber(config.hazardDensity, mode === 'forecast' ? 0.08 : 0.06)),
-    currentStrength: Math.max(0, finiteNumber(config.currentStrength, mode === 'forecast' ? 1.05 : 0.85)),
-    currentVariability: clamp01(finiteNumber(config.currentVariability ?? config.variability, mode === 'forecast' ? 0.65 : 0.4)),
-    currentPreset: normalizeVectorPreset(config.vectorPreset ?? config.currentPreset ?? (mode === 'forecast' ? 'eddyField' : 'currentCorridor')),
+    currentStrength: currentGeneratorConfig.currentStrength,
+    currentVariability: clamp01(config.currentFieldConfig || config.currentField
+      ? currentGeneratorConfig.currentVariability
+      : finiteNumber(config.currentVariability ?? config.variability, currentGeneratorConfig.currentVariability)),
+    currentPreset: normalizeVectorPreset(currentGeneratorConfig.currentPreset),
+    currentFieldConfig: normalizedCurrentField,
     roiHotspots: clampInt(config.roiHotspots ?? (mode === 'forecast' ? 5 : 4), 1, 12),
     priorityTargetFrequency: clamp01(finiteNumber(config.priorityTargetFrequency, 0.35)),
     forecastNoise: clamp01(finiteNumber(config.forecastNoise, mode === 'forecast' ? 0.22 : 0)),
@@ -63,6 +84,9 @@ export function normalizeScenarioConfig(config = {}) {
     forecastDecayModel: config.forecastDecayModel === 'linear' ? 'linear' : 'exponential',
     forecastMinConfidence: clamp01(finiteNumber(config.forecastMinConfidence, 0.35)),
     forecastDecayRate: Math.max(0, finiteNumber(config.forecastDecayRate, 0.04)),
+    uncertaintyGrowth: normalizedCurrentField.stochastic?.uncertaintyGrowth ?? config.uncertaintyGrowth ?? 'moderate',
+    hiddenTruthVariation: normalizedCurrentField.stochastic?.hiddenTruthVariation ?? config.hiddenTruthVariation ?? 'medium',
+    forecastConfidence: normalizedCurrentField.stochastic?.forecastConfidence ?? config.forecastConfidence ?? 'medium',
     multipleDropZones: booleanValue(config.multipleDropZones, false),
     agentSpecMode: config.agentSpecMode === 'varied' ? 'varied' : 'uniform',
     ensembleCount: clampInt(config.ensembleCount ?? (mode === 'forecast' ? 3 : 0), 0, 8)
@@ -86,6 +110,8 @@ export function buildScenarioGenerationConfig(config = {}) {
     currentVariability: normalized.currentVariability,
     currentPreset: normalized.currentPreset,
     vectorPreset: normalized.currentPreset,
+    currentFieldConfig: normalized.currentFieldConfig,
+    currentField: normalized.currentFieldConfig,
     vectorField: getVectorPresetConfig(normalized.currentPreset, {
       currentStrength: normalized.currentStrength,
       currentVariability: normalized.currentVariability
@@ -93,6 +119,9 @@ export function buildScenarioGenerationConfig(config = {}) {
     roiHotspots: normalized.roiHotspots,
     priorityTargetFrequency: normalized.priorityTargetFrequency,
     forecastNoise: normalized.forecastNoise,
+    forecastConfidence: normalized.forecastConfidence,
+    uncertaintyGrowth: normalized.uncertaintyGrowth,
+    hiddenTruthVariation: normalized.hiddenTruthVariation,
     forecastDecay: normalized.forecastDecay,
     forecastRules: normalizeForecastRules({
       mode: normalized.forecastDecay && normalized.mode === 'forecast' ? 'decay' : 'none',
@@ -140,6 +169,7 @@ export function generateScenarioFromConfig(config = {}) {
     currentPattern: vectorPreset.currentPattern,
     vectorPreset: vectorPreset.preset,
     currentGenerator: vectorPreset,
+    currentFieldConfig: normalized.currentFieldConfig,
     currentStrength: normalized.currentStrength,
     currentVariability: normalized.currentVariability,
     roiPattern: 'moving',
@@ -172,6 +202,8 @@ export function generateScenarioFromConfig(config = {}) {
   level.meta.replaySeedContract = replaySeedContract;
   level.meta.generationConfig ??= {};
   level.meta.generationConfig.scenarioSetup = generationConfig;
+  level.meta.generationConfig.currentFieldConfig = normalized.currentFieldConfig;
+  level.meta.generationConfig.currentField = normalized.currentFieldConfig;
   level.meta.generationConfig.challengeId = challengeId;
   level.meta.generationConfig.replaySeedAnchor = challengeId;
   level.meta.generationConfig.generationVersion = GENERATION_VERSION;
@@ -195,6 +227,7 @@ export function generateScenarioFromConfig(config = {}) {
   });
   mission.meta ??= {};
   mission.meta.scenarioSetup = generationConfig;
+  mission.meta.currentFieldConfig = normalized.currentFieldConfig;
   mission.meta.replaySeedContract = replaySeedContract;
   mission.rules ??= {};
   mission.rules.stochasticSeed ??= replaySeedContract?.derivedSeeds?.truth ?? seed;
@@ -256,6 +289,7 @@ function scenarioConfigFromGenerationConfig(generationConfig = {}, source = {}) 
     currentStrength: setup.currentStrength,
     currentVariability: setup.currentVariability,
     currentPreset: setup.currentPreset ?? setup.vectorPreset,
+    currentFieldConfig: setup.currentFieldConfig ?? setup.currentField,
     roiHotspots: setup.roiHotspots,
     priorityTargetFrequency: setup.priorityTargetFrequency,
     forecastNoise: setup.forecastNoise,
@@ -263,6 +297,9 @@ function scenarioConfigFromGenerationConfig(generationConfig = {}, source = {}) 
     forecastMinConfidence: setup.forecastRules?.minConfidence,
     forecastDecayRate: setup.forecastRules?.decayRate,
     forecastDecayModel: setup.forecastRules?.decayModel,
+    forecastConfidence: setup.forecastConfidence,
+    uncertaintyGrowth: setup.uncertaintyGrowth,
+    hiddenTruthVariation: setup.hiddenTruthVariation,
     multipleDropZones: setup.multipleDropZones,
     agentSpecMode: setup.agentSpecMode,
     ensembleCount: setup.ensembleCount
