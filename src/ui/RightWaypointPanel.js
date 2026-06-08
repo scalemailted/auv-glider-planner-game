@@ -215,6 +215,7 @@ function formatNumber(value) {
 }
 
 function waypointStatus({ waypoint, index, agentId, engine, result }) {
+  if (isRuntimeTruncatedTimeWaypoint(waypoint)) return 'warning-time';
   if (waypoint?.validity?.valid === false) {
     const reason = waypoint.validity.reasons?.[0] ?? 'route';
     if (waypoint.validity.reasons?.includes('time')) return 'invalid-time';
@@ -248,11 +249,25 @@ function waypointMissEvent({ waypoint, index, agentId, engine, result }) {
 }
 
 function statusLabel(status) {
+  if (status === 'warning-time') return 'CARRY-THROUGH';
   if (status === 'invalid-time') return 'INVALID: TIME';
   if (status === 'invalid-fuel') return 'INVALID: FUEL';
   if (status === 'invalid-terrain') return 'INVALID: TERRAIN';
   if (status === 'invalid') return 'INVALID';
   return status;
+}
+
+function isRuntimeTruncatedTimeWaypoint(waypoint) {
+  const routeAudit = waypoint?.validity?.routeAudit ?? {};
+  const reasons = new Set((waypoint?.validity?.reasons ?? []).map((reason) => String(reason)));
+  return Boolean(
+    waypoint?.terminalCarryThrough
+    || waypoint?.intentionalOverDuration
+    || waypoint?.runtimeBehavior === 'truncate_at_mission_end'
+    || routeAudit.runtimeBehavior === 'truncate_at_mission_end'
+    || routeAudit.terminalCarryThrough
+    || reasons.has('waypoint_exceeds_mission_duration')
+  );
 }
 
 function escapeHtml(value) {

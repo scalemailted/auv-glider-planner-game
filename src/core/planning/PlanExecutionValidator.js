@@ -66,9 +66,13 @@ export function validatePlanForExecution({ level, mission, plan } = {}) {
         continue;
       }
       if (waypoint.validity?.valid === false) {
-        invalidWaypointCount += 1;
-        const reason = waypoint.validity.reasons?.join(', ') || 'route';
-        errors.push(`${label} is not executable (${reason}). Reduce or revise waypoints.`);
+        if (isRuntimeTruncatedTimeWaypoint(waypoint, duration)) {
+          warnings.push(`${label} is beyond mission duration. Simulation will travel toward it and stop at mission end.`);
+        } else {
+          invalidWaypointCount += 1;
+          const reason = waypoint.validity.reasons?.join(', ') || 'route';
+          errors.push(`${label} is not executable (${reason}). Reduce or revise waypoints.`);
+        }
       }
       const x = Math.floor(Number(waypoint.x));
       const y = Math.floor(Number(waypoint.y));
@@ -103,6 +107,7 @@ export function validatePlanForExecution({ level, mission, plan } = {}) {
 
   for (const result of routeAudit.agentResults ?? []) {
     for (const issue of result.issues ?? []) {
+      debugRouteExecutionValidationIssue(issue, result);
       if (issue.severity === 'error') errors.push(issue.message);
       else warnings.push(issue.message);
     }
@@ -116,6 +121,36 @@ export function validatePlanForExecution({ level, mission, plan } = {}) {
     solverFeedback: routeAudit?.solverFeedback ?? null,
     routeAudit
   };
+}
+
+function isRuntimeTruncatedTimeWaypoint(waypoint, duration) {
+  const routeAudit = waypoint?.validity?.routeAudit ?? {};
+  if (routeAudit.runtimeBehavior === 'truncate_at_mission_end') return true;
+  if (waypoint?.runtimeBehavior === 'truncate_at_mission_end') return true;
+  if (waypoint?.terminalCarryThrough || waypoint?.intentionalOverDuration) return true;
+  const reasons = new Set((waypoint?.validity?.reasons ?? []).map((reason) => String(reason)));
+  const onlyTimeReason = reasons.size > 0 && [...reasons].every((reason) =>
+    reason === 'time'
+    || reason === 'timeExceeded'
+    || reason === 'waypoint_exceeds_mission_duration'
+    || reason === 'missionTimeExceeded'
+  );
+  const waypointTime = Number(waypoint?.estimatedArrivalTime ?? waypoint?.t);
+  return onlyTimeReason && Number.isFinite(waypointTime) && Number.isFinite(duration) && waypointTime > duration;
+}
+
+function debugRouteExecutionValidationIssue(issue = {}, result = {}) {
+  if (!globalThis.ANCHOR_DEBUG_ROUTE_EXECUTION) return;
+  console.debug('[RouteExecution][ValidationIssue]', {
+    category: issue.category ?? issue.diagnostic?.category ?? issue.reason ?? issue.type,
+    severity: issue.severity,
+    blocking: issue.blocking ?? issue.severity === 'error',
+    agentId: issue.agentId ?? result.agentId ?? null,
+    waypointIndex: issue.waypointIndex ?? issue.to?.index ?? null,
+    isFinalWaypoint: issue.isFinalWaypoint ?? null,
+    terminalCarryThrough: Boolean(issue.terminalCarryThrough || issue.intentional),
+    runtimeBehavior: issue.runtimeBehavior ?? issue.diagnostic?.runtimeBehavior ?? null
+  });
 }
 
 function isFinitePoint(point) {

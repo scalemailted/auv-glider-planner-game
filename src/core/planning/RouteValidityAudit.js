@@ -206,7 +206,8 @@ export function validateRoutePlanForExecution({
       const waypointTime = Number(waypoint.estimatedArrivalTime ?? waypoint.t);
       if (Number.isFinite(waypointTime)) {
         if (Number.isFinite(duration) && waypointTime > duration) {
-          const terminalCarryThrough = Boolean(waypoint.terminalCarryThrough || waypoint.intentionalOverDuration);
+          const isFinalWaypoint = index === (agentPlan.waypoints?.length ?? 0) - 1;
+          const terminalCarryThrough = Boolean(waypoint.terminalCarryThrough || waypoint.intentionalOverDuration || isFinalWaypoint);
           const issue = buildIssue({
             type: 'timeExceeded',
             reason: 'waypoint_exceeds_mission_duration',
@@ -216,6 +217,7 @@ export function validateRoutePlanForExecution({
             blocking: false,
             intentional: terminalCarryThrough,
             terminalCarryThrough,
+            isFinalWaypoint,
             agentId: agent.id,
             agentLabel: agent.label ?? agent.id,
             to: waypointRef(waypoint, index),
@@ -332,9 +334,16 @@ function annotateWaypoint(agentPlan, index, issue) {
   const waypoint = agentPlan.waypoints?.[index];
   if (!waypoint) return;
   const reason = issue.reason ?? issue.type;
-  const reasons = new Set([...(waypoint.validity?.reasons ?? []), reason]);
+  const runtimeTruncation = issue.runtimeBehavior === 'truncate_at_mission_end'
+    || issue.reason === 'waypoint_exceeds_mission_duration'
+    || issue.category === 'waypoint_exceeds_mission_duration';
+  const existingReasons = runtimeTruncation
+    ? (waypoint.validity?.reasons ?? []).filter((existing) => !isLegacyTimeReason(existing))
+    : (waypoint.validity?.reasons ?? []);
+  const reasons = new Set([...existingReasons, reason]);
+  const hasHardExistingReason = [...reasons].some((existing) => !isLegacyTimeReason(existing) && existing !== reason);
   waypoint.validity = {
-    valid: issue.severity !== 'error' && waypoint.validity?.valid !== false,
+    valid: issue.severity !== 'error' && !hasHardExistingReason,
     status: issue.severity === 'error' ? 'invalid' : 'warning',
     reasons: [...reasons],
     routeAudit: {
@@ -350,6 +359,15 @@ function annotateWaypoint(agentPlan, index, issue) {
     }
   };
   if (issue.severity === 'error') waypoint.validity.valid = false;
+}
+
+function isLegacyTimeReason(reason) {
+  return [
+    'time',
+    'timeExceeded',
+    'waypoint_exceeds_mission_duration',
+    'missionTimeExceeded'
+  ].includes(String(reason));
 }
 
 function outOfBoundsIssue(level, agent, waypoint, index) {
