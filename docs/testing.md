@@ -20,7 +20,7 @@ Challenge Mode is the playable planning-puzzle experience. It emphasizes score, 
 
 Simulation Lab is the reproducible experiment sandbox. It emphasizes exact configuration, deterministic/stochastic setup, dynamic current-field metadata, solver packets, replay seeds, external solver workflows, JSON import/export, and auditability.
 
-Both modes use the same terrain, current fields, hazards, glider physics, scoring core, route validation, planner APIs, and replay/export system. Smoke tests should confirm the main menu exposes both modes, Challenge setup presents a Mission Mode Gallery first, clicking a card opens the selected-mission briefing/detail screen, Back returns to the Gallery, Generate Mission reaches the workspace, Simulation Lab setup keeps the detailed technical controls visible, Simulation Lab exposes Mission Editor / Import Challenge JSON / External Solver Evaluation / Benchmark Leaderboard, Challenge Mode exposes Play Custom Challenge, and launching either mode reaches the same mission workspace/simulation engine path.
+Both modes use the same terrain, current fields, hazards, glider physics, scoring core, route validation, planner APIs, and replay/export system. Smoke tests should confirm the main menu exposes both modes, Challenge setup presents the left Mission Mode Navigator plus selected center briefing, selecting a mission updates the briefing without duplicating cards in the center, Generate Mission reaches the workspace, Simulation Lab setup keeps the detailed technical controls visible, Simulation Lab exposes Mission Editor / Import Challenge JSON / External Solver Evaluation / Benchmark Leaderboard, Challenge Mode exposes Play Custom Challenge, and launching either mode reaches the same mission workspace/simulation engine path.
 
 ## Segment Contribution Grades
 
@@ -41,9 +41,10 @@ Waypoint tests should confirm old plans default to `kind: "navigation"`, normal 
 Manual sample-field checks should cover:
 
 - Mission Mode selection persists into generated level/mission metadata;
-- Challenge Mode opens with the Mission Mode Gallery, not the technical setup grid;
-- selecting a mission card opens only that mission's briefing/detail screen;
-- Back to Mission Modes returns to the gallery without losing the selected preset;
+- Challenge Mode opens with the left mission-mode navigator and a selected mission briefing in the center, not the technical setup grid;
+- selecting a mission in the left navigator updates only the selected briefing/detail screen;
+- the center briefing does not duplicate the full mission list;
+- the right setup panel shows Mission Snapshot or is hidden, never Mission Waypoints;
 - Challenge Mode presets choose sample-field/current/scoring defaults without forking the mission engine;
 - Simulation Lab exposes the detailed sample-field controls directly;
 - ROI Generator Demo can regenerate seeded hotspot-style fields and dynamic value fields;

@@ -57,7 +57,12 @@ export class MissionBriefingScene extends PhaserScene {
     this.graphics = null;
     this.content = null;
     if (this.app.state.pendingScenarioSetup) {
-      this.app.waypointPanel?.renderIdle?.();
+      if (this.isChallengeSetup()) {
+        this.renderChallengeSetupSnapshot();
+        this.setChallengeSetupView('briefing');
+      } else {
+        this.app.waypointPanel?.renderIdle?.();
+      }
       this.renderScenarioSetup();
       this.renderScenarioSetupConsole();
     } else {
@@ -75,6 +80,7 @@ export class MissionBriefingScene extends PhaserScene {
   handleViewportResize() {
     if (!this.sys?.isActive?.()) return;
     if (this.app?.state?.pendingScenarioSetup) {
+      if (this.isChallengeSetup()) this.renderChallengeSetupSnapshot();
       this.renderScenarioSetup();
     } else {
       this.renderBriefing();
@@ -127,10 +133,6 @@ export class MissionBriefingScene extends PhaserScene {
     const root = this.app.elements?.overlay?.modalRoot;
     if (!root) return;
     const challengeSetup = this.isChallengeSetup();
-    if (challengeSetup && this.challengeSetupView() === 'gallery') {
-      this.renderMissionModeGalleryCenterOverlay(root);
-      return;
-    }
     root.innerHTML = `
       <main class="center-screen-overlay setup-view mission-mode-detail-view" aria-label="Mission mode briefing">
         <section class="center-panel setup-panel mission-mode-briefing-panel">
@@ -167,55 +169,18 @@ export class MissionBriefingScene extends PhaserScene {
           <footer class="center-panel-footer">
             <span><strong>Setup only:</strong> no tactical map details exist yet.</span>
             <div class="center-actions">
-              ${challengeSetup ? '<button class="center-button secondary" data-action="mission-gallery">Back to Mission Modes</button>' : ''}
               <button class="center-button primary" data-action="generate">Generate Mission</button>
-              <button class="center-button" data-action="reset">Reset Defaults</button>
+              ${challengeSetup ? '' : '<button class="center-button" data-action="reset">Reset Defaults</button>'}
               <button class="center-button secondary" data-action="back">Back</button>
             </div>
           </footer>
         </section>
       </main>
     `;
-    root.querySelectorAll('[data-mission-mode-card]').forEach((button) => {
-      button.addEventListener('click', () => this.selectMissionMode(button.dataset.missionModeCard));
-    });
-    root.querySelector('[data-action="mission-gallery"]')?.addEventListener('click', () => this.showMissionModeGallery());
     root.querySelector('[data-action="generate"]')?.addEventListener('click', () => this.generateConfiguredScenario());
     root.querySelector('[data-action="reset"]')?.addEventListener('click', () => this.resetScenarioSetup());
     root.querySelector('[data-action="back"]')?.addEventListener('click', () => {
       this.app.state.pendingScenarioSetup = null;
-      this.scene.start('MainMenuScene');
-    });
-  }
-
-  renderMissionModeGalleryCenterOverlay(root) {
-    root.innerHTML = `
-      <main class="center-screen-overlay setup-view mission-mode-gallery-view" aria-label="Mission mode gallery">
-        <section class="center-panel setup-panel mission-mode-gallery-panel">
-          <header class="center-panel-header">
-            <div>
-              <p class="center-kicker">Challenge Mode</p>
-              <h1>Choose a Mission</h1>
-              <p>Pick the kind of challenge first. The next screen explains the selected objective, strategy, environment, and launch setup.</p>
-            </div>
-            <span class="center-mode-pill">Mission Modes</span>
-          </header>
-          ${missionModeGalleryHtml()}
-          <footer class="center-panel-footer">
-            <span><strong>Gallery:</strong> browse objectives here; detailed technical controls stay in Simulation Lab.</span>
-            <div class="center-actions">
-              <button class="center-button secondary" data-action="back">Back</button>
-            </div>
-          </footer>
-        </section>
-      </main>
-    `;
-    root.querySelectorAll('[data-mission-mode-card]').forEach((button) => {
-      button.addEventListener('click', () => this.selectMissionMode(button.dataset.missionModeCard));
-    });
-    root.querySelector('[data-action="back"]')?.addEventListener('click', () => {
-      this.app.state.pendingScenarioSetup = null;
-      this.clearChallengeSetupView();
       this.scene.start('MainMenuScene');
     });
   }
@@ -274,49 +239,16 @@ export class MissionBriefingScene extends PhaserScene {
     const complexity = describeScenarioComplexity(config);
     const challengeSetup = this.isChallengeSetup();
     const preset = getMissionModePreset(config.missionMode);
-    if (challengeSetup && this.challengeSetupView() === 'gallery') {
-      root.innerHTML = `
-        <section class="console-header">
-          <div class="console-kicker">Challenge Mode</div>
-          <h1>Mission Modes</h1>
-          <p>Choose a mission card in the center gallery. Each card maps a game objective to seeded mission defaults.</p>
-        </section>
-        <section class="console-status">
-          <span>Gallery</span>
-          <strong>${MISSION_MODE_PRESETS.length} mission modes</strong>
-          <small>Simulation Lab remains the detailed technical configuration path.</small>
-        </section>
-        <section class="console-section">
-          <h2>Browse</h2>
-          <div class="hud-muted">Cards show only mission name, difficulty, objective, and tags. Select one to open its briefing.</div>
-        </section>
-        <section class="console-footer">
-          <button class="console-button secondary" data-action="back">Main Menu</button>
-        </section>
-      `;
-      this.app.applyConsoleAccordions?.('scenarioSetup');
-      root.querySelector('[data-action="back"]')?.addEventListener('click', () => {
-        this.app.state.pendingScenarioSetup = null;
-        this.clearChallengeSetupView();
-        this.scene.start('MainMenuScene');
-      });
-      return;
-    }
     root.innerHTML = `
       <section class="console-header">
         <div class="console-kicker">${escapeHtml(challengeSetup ? 'Challenge Setup' : 'Scenario Setup')}</div>
-        <h1>${escapeHtml(challengeSetup ? preset.label : config.mode === 'forecast' ? 'Stochastic Experiment' : 'Deterministic Experiment')}</h1>
-        <p>${escapeHtml(challengeSetup ? 'Review the selected objective and launch settings, then generate the mission.' : 'Configure the generated mission before the map is created.')}</p>
+        <h1>${escapeHtml(challengeSetup ? 'Mission Navigator' : config.mode === 'forecast' ? 'Stochastic Experiment' : 'Deterministic Experiment')}</h1>
+        <p>${escapeHtml(challengeSetup ? 'Select a mission mode, read the briefing in the center, then generate the mission.' : 'Configure the generated mission before the map is created.')}</p>
       </section>
       ${challengeSetup ? `
-      <section class="console-section" data-keep-title="true">
-        <h2>Selected Mission</h2>
-        <div class="mission-mode-detail">
-          <strong>${escapeHtml(preset.label)}</strong>
-          <span>${escapeHtml(preset.description)}</span>
-          <small>${escapeHtml(preset.strategyHint)}</small>
-          <small>Tags: ${escapeHtml(preset.tags.join(', '))}</small>
-        </div>
+      <section class="console-section mission-mode-navigator-section" data-keep-title="true">
+        <h2>Mission Modes</h2>
+        ${missionModeNavigatorHtml(config.missionMode)}
       </section>` : ''}
       ${challengeSetup ? missionModeTechnicalSummaryHtml(config) : `
       ${coreSettingsSectionHtml(config)}
@@ -329,9 +261,8 @@ export class MissionBriefingScene extends PhaserScene {
         <small>${escapeHtml(complexity.warning)}</small>
       </section>
       <section class="console-footer">
-        ${challengeSetup ? '<button class="console-button secondary" data-action="mission-gallery">Back to Mission Modes</button>' : ''}
         <button class="console-button primary" data-action="generate">Generate Mission</button>
-        <button class="console-button" data-action="reset">Reset Defaults</button>
+        ${challengeSetup ? '' : '<button class="console-button" data-action="reset">Reset Defaults</button>'}
         <button class="console-button secondary" data-action="back">Main Menu</button>
       </section>
     `;
@@ -353,7 +284,6 @@ export class MissionBriefingScene extends PhaserScene {
       button.addEventListener('click', () => this.removeCurrentFlowLayer(button.dataset.layerId));
     });
     root.querySelector('[data-action="generate"]')?.addEventListener('click', () => this.generateConfiguredScenario());
-    root.querySelector('[data-action="mission-gallery"]')?.addEventListener('click', () => this.showMissionModeGallery());
     root.querySelector('[data-action="reset"]')?.addEventListener('click', () => this.resetScenarioSetup());
     root.querySelector('[data-action="back"]')?.addEventListener('click', () => {
       this.app.state.pendingScenarioSetup = null;
@@ -368,7 +298,7 @@ export class MissionBriefingScene extends PhaserScene {
 
   challengeSetupView() {
     if (!this.isChallengeSetup()) return 'setup';
-    return this.app.state.ui?.challengeMissionSetupView === 'briefing' ? 'briefing' : 'gallery';
+    return 'briefing';
   }
 
   setChallengeSetupView(view) {
@@ -378,12 +308,6 @@ export class MissionBriefingScene extends PhaserScene {
 
   clearChallengeSetupView() {
     if (this.app?.state?.ui) delete this.app.state.ui.challengeMissionSetupView;
-  }
-
-  showMissionModeGallery() {
-    this.setChallengeSetupView('gallery');
-    this.renderScenarioSetup();
-    this.renderScenarioSetupConsole();
   }
 
   selectMissionMode(missionMode) {
@@ -407,8 +331,37 @@ export class MissionBriefingScene extends PhaserScene {
       this.app.state.currentScenario.challengeMode = this.app.state.pendingScenarioSetup.mode;
     }
     this.setChallengeSetupView('briefing');
+    this.renderChallengeSetupSnapshot();
     this.renderScenarioSetup();
     this.renderScenarioSetupConsole();
+  }
+
+  renderChallengeSetupSnapshot() {
+    const root = this.app.elements.waypointTimelineRoot;
+    if (!root) return;
+    const config = normalizeScenarioConfig(this.app.state.pendingScenarioSetup);
+    const preset = getMissionModePreset(config.missionMode);
+    root.innerHTML = `
+      <section class="waypoint-shell mission-snapshot-shell">
+        <div class="console-kicker">Mission Snapshot</div>
+        <h2>${escapeHtml(preset.label)}</h2>
+        <p class="hud-muted">${escapeHtml(preset.concept)}</p>
+        <div class="waypoint-summary">
+          <span>${escapeHtml(labelize(preset.difficulty))}</span>
+          <span>${escapeHtml(config.mode === 'forecast' ? 'Forecast' : 'Perfect Knowledge')}</span>
+        </div>
+        <div class="mission-snapshot-list">
+          ${snapshotRowHtml('Agents', config.agentCount)}
+          ${snapshotRowHtml('Duration', `${config.duration} hr`)}
+          ${snapshotRowHtml('Map', `${config.width} x ${config.height}`)}
+          ${snapshotRowHtml('Surface', `${config.surfaceInterval} hr`)}
+          ${snapshotRowHtml('Current', summarizeCurrentFieldConfig(config.currentFieldConfig))}
+          ${snapshotRowHtml('Sample Field', `${sampleSpatialPatternLabel(config.sampleFieldConfig?.spatialPattern)} / ${sampleTemporalBehaviorLabel(config.sampleFieldConfig?.temporalBehavior)}`)}
+          ${snapshotRowHtml('Hazards', labelize(config.hazardDensity >= 0.1 ? 'high' : config.hazardDensity >= 0.06 ? 'moderate' : 'low'))}
+          ${snapshotRowHtml('Stars', `${Math.round(config.priorityTargetFrequency * 100)}% chance`)}
+        </div>
+      </section>
+    `;
   }
 
   renderConsole(detailsOpen = false) {
@@ -810,39 +763,16 @@ function setupSectionHtml(title, body) {
   `;
 }
 
-function missionModeGalleryHtml() {
+function missionModeNavigatorHtml(selectedMissionMode) {
   return `
-    <section class="mission-mode-gallery" aria-label="Mission mode cards">
-      ${missionModeGroupHtml('Starter Missions', ['surveySweep', 'signalHunt', 'longGlide'])}
-      ${missionModeGroupHtml('Dynamic Missions', ['surfaceAdapt', 'forecastChase', 'plumeIntercept', 'watchStations'])}
-      ${missionModeGroupHtml('Advanced Missions', ['fleetSplit', 'uncertainWaters', 'dangerRun'])}
-    </section>
-  `;
-}
-
-function missionModeGroupHtml(title, ids) {
-  const modes = ids.map((id) => getMissionModePreset(id));
-  return `
-    <section class="mission-mode-gallery-group">
-      <h2>${escapeHtml(title)}</h2>
-      <div class="mission-mode-card-grid">
-        ${modes.map((mode) => missionModeCardHtml(mode)).join('')}
-      </div>
-    </section>
-  `;
-}
-
-function missionModeCardHtml(mode) {
-  return `
-    <button class="mission-mode-card" type="button" data-mission-mode-card="${escapeHtml(mode.id)}">
-      <span class="mission-mode-card-topline">
-        <strong>${escapeHtml(mode.label)}</strong>
-        <small>${escapeHtml(labelize(mode.difficulty))}</small>
-      </span>
-      <span>${escapeHtml(mode.description)}</span>
-      <span class="mission-mode-tags">${mode.tags.slice(0, 3).map((tag) => `<em>${escapeHtml(tag)}</em>`).join('')}</span>
-      <span class="mission-mode-lenses">Lenses: ${escapeHtml(mode.recommendedLenses.join(', '))}</span>
-    </button>
+    <div class="mission-mode-console-grid" role="list" aria-label="Mission mode navigator">
+      ${MISSION_MODE_PRESETS.map((mode) => `
+        <button class="mission-mode-mini ${mode.id === selectedMissionMode ? 'selected' : ''}" type="button" data-mission-mode="${escapeHtml(mode.id)}" role="listitem">
+          <strong>${escapeHtml(mode.label)}</strong>
+          <span>${escapeHtml(mode.concept ?? mode.tags?.slice(0, 2).join(' / ') ?? labelize(mode.difficulty))}</span>
+        </button>
+      `).join('')}
+    </div>
   `;
 }
 
@@ -876,20 +806,6 @@ function missionModeTechnicalSummaryHtml(config) {
       <small>Navigation uncertainty: ${escapeHtml(navigationUncertaintyLabel(config.navigationUncertainty))}</small>
       <small>Scoring emphasis: ${escapeHtml(Object.keys(config.scoringWeights ?? {}).join(', ') || 'standard')}</small>
       <small>Route grading: ${escapeHtml(Object.keys(config.routeGradeWeights ?? {}).join(', ') || 'standard')}</small>
-    </section>
-  `;
-}
-
-function challengeAdvancedSetupHtml(config) {
-  return `
-    <section class="console-section" data-accordion-key="advanced-setup">
-      <h2>Advanced Setup</h2>
-      <div class="hud-muted">Optional tuning. The selected mission card already sets these defaults.</div>
-      <div class="mission-mode-advanced-grid">
-        ${coreSettingsFieldsHtml(config)}
-        ${generationFieldsHtml(config, true)}
-      </div>
-      ${missionModeTechnicalSummaryBodyHtml(config)}
     </section>
   `;
 }
@@ -952,6 +868,15 @@ function missionModeTechnicalSummaryBodyHtml(config) {
       <small>Navigation uncertainty: ${escapeHtml(navigationUncertaintyLabel(config.navigationUncertainty))}</small>
       <small>Scoring emphasis: ${escapeHtml(Object.keys(config.scoringWeights ?? {}).join(', ') || 'standard')}</small>
       <small>Route grading: ${escapeHtml(Object.keys(config.routeGradeWeights ?? {}).join(', ') || 'standard')}</small>
+    </div>
+  `;
+}
+
+function snapshotRowHtml(label, value) {
+  return `
+    <div class="mission-snapshot-row">
+      <span>${escapeHtml(label)}</span>
+      <strong>${escapeHtml(value)}</strong>
     </div>
   `;
 }

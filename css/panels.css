@@ -512,6 +512,32 @@
   display: grid;
   gap: .5rem;
 }
+.mission-snapshot-shell {
+  gap: .75rem;
+}
+.mission-snapshot-list {
+  display: grid;
+  gap: .42rem;
+}
+.mission-snapshot-row {
+  display: grid;
+  gap: .18rem;
+  padding: .52rem .58rem;
+  border: 1px solid rgba(141,220,242,0.14);
+  border-radius: 8px;
+  background: rgba(8,17,31,0.52);
+}
+.mission-snapshot-row span {
+  color: var(--muted);
+  font-size: .66rem;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+.mission-snapshot-row strong {
+  color: var(--text);
+  font-size: .78rem;
+  line-height: 1.25;
+}
 .flow-layer-header {
   display: flex;
   align-items: center;

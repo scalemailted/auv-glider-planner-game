@@ -320,27 +320,29 @@ test('scenario setup stays inside the center viewport', async ({ page }) => {
   await expectCenterPanelUsesAvailableSpace(page);
 });
 
-test('challenge setup is mission-card first', async ({ page }) => {
+test('challenge setup uses left navigator and selected briefing', async ({ page }) => {
   await page.goto('/');
   await expect.poll(() => page.evaluate(() => window.anchorGame?.phaser?.scene.getScene('MainMenuScene')?.sys.isActive() ?? false)).toBe(true);
 
   await page.evaluate(() => window.anchorGame.phaser.scene.getScene('MainMenuScene').openChallengeSetup('perfectKnowledge', 'challenge'));
   await expect.poll(() => page.evaluate(() => window.anchorGame.phaser.scene.getScene('MissionBriefingScene').sys.isActive())).toBe(true);
-  await expect(page.locator('.mission-mode-gallery-view')).toBeVisible();
-  await expect(page.locator('#mission-console')).toContainText('Choose a mission card');
-  await expect(page.locator('.mission-mode-gallery')).toBeVisible();
-  await expect(page.locator('[data-mission-mode-card="surveySweep"]')).toContainText('Survey Sweep');
-  await expect(page.locator('[data-mission-mode-card="plumeIntercept"]')).toContainText('Plume Intercept');
-  await page.locator('[data-mission-mode-card="plumeIntercept"]').click();
+  await expect(page.locator('.mission-mode-detail-view')).toBeVisible();
+  await expect(page.locator('.mission-mode-gallery-view')).toHaveCount(0);
+  await expect(page.locator('.mission-mode-gallery')).toHaveCount(0);
+  await expect(page.locator('#mission-console')).toContainText('Mission Navigator');
+  await expect(page.locator('#mission-console [data-mission-mode="surveySweep"]')).toContainText('Survey Sweep');
+  await expect(page.locator('#mission-console [data-mission-mode="plumeIntercept"]')).toContainText('Plume Intercept');
+  await expect(page.locator('#mission-console [data-action="reset"]')).toHaveCount(0);
+  await expect(page.locator('#waypoint-timeline')).toContainText('Mission Snapshot');
+  await expect(page.locator('#waypoint-timeline')).not.toContainText('Mission Waypoints');
+  await page.locator('#mission-console [data-mission-mode="plumeIntercept"]').click();
   await expect(page.evaluate(() => window.anchorGame.state.pendingScenarioSetup?.missionMode)).resolves.toBe('plumeIntercept');
   await expect(page.evaluate(() => window.anchorGame.state.pendingScenarioSetup?.mode)).resolves.toBe('forecast');
   await expect(page.locator('.mission-mode-detail-view')).toBeVisible();
   await expect(page.locator('.mission-mode-detail-view')).toContainText('Plume Intercept');
-  await expect(page.locator('.mission-mode-detail-view')).toContainText('Back to Mission Modes');
+  await expect(page.locator('.mission-mode-detail-view')).not.toContainText('Back to Mission Modes');
+  await expect(page.locator('.mission-mode-detail-view [data-action="reset"]')).toHaveCount(0);
   await expect(page.locator('#mission-console [data-flow-field="basePreset"]')).toHaveCount(0);
-  await page.locator('.mission-mode-detail-view [data-action="mission-gallery"]').click();
-  await expect(page.locator('.mission-mode-gallery-view')).toBeVisible();
-  await page.locator('[data-mission-mode-card="plumeIntercept"]').click();
   await page.locator('.mission-mode-detail-view [data-action="generate"]').click();
   await expect.poll(() => page.evaluate(() => window.anchorGame.phaser.scene.getScene('MissionWorkspaceScene').sys.isActive())).toBe(true);
   await expect.poll(() => page.evaluate(() => window.anchorGame.state.level?.meta?.missionMode)).toBe('plumeIntercept');

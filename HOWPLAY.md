@@ -21,7 +21,7 @@ If a plan cannot run safely, the game blocks execution or records a safe aborted
 
 ## Start The Game
 
-In Challenge Mode, pick a mission card from the Mission Mode Gallery first. Mission cards are player-facing objectives such as Survey Sweep, Signal Hunt, Plume Intercept, Danger Run, and Long Glide. After you choose a card, a focused briefing explains the objective, strategy, recommended lenses, generated setup, current field, and sample-field behavior before you click `Generate Mission`. Simulation Lab keeps the detailed technical controls visible when you want to tune those systems directly.
+In Challenge Mode, pick a mission from the left Mission Mode Navigator first. Mission modes are player-facing objectives such as Survey Sweep, Signal Hunt, Plume Intercept, Danger Run, and Long Glide. The center briefing explains the selected objective, strategy, recommended lenses, generated setup, current field, and sample-field behavior before you click `Generate Mission`. Simulation Lab keeps the detailed technical controls visible when you want to tune those systems directly.
 
 From the project root:
 
@@ -64,7 +64,7 @@ The Main Menu is the starting screen. It links to:
 
 For first-time play, choose `Tutorial Mode`.
 
-`Play Challenge` opens the Challenge Mode Mission Gallery. Pick a Mission Mode card, read its briefing, then generate a fresh perfect-knowledge mission where planning shows true terrain, hazards, ROI, and currents.
+`Play Challenge` opens the Challenge Mode mission navigator and selected briefing. Pick a Mission Mode in the left console, read its briefing, then generate a fresh perfect-knowledge mission where planning shows true terrain, hazards, ROI, and currents.
 
 `Greedy Planner Race` and stochastic Challenge Mode flows use the same gallery/briefing model, then generate forecast-mode missions where planning shows forecast/belief fields and simulation scores against hidden truth.
 
