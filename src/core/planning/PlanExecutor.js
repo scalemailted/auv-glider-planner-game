@@ -54,7 +54,10 @@ export function markWaypointMissed(agent, waypoint, reason, t, details = {}) {
     attemptedPosition: details.attemptedPosition ?? null,
     routeBlockDetails: details.routeBlockDetails ?? null,
     finalPosition: details.finalPosition ?? null,
-    missionDuration: details.missionDuration ?? null
+    missionDuration: details.missionDuration ?? null,
+    finalInstruction: details.finalInstruction ?? null,
+    finalWaypointReached: details.finalWaypointReached ?? null,
+    terminalCarryThrough: Boolean(details.terminalCarryThrough)
   };
   waypoint.executionStatus = 'missed';
   waypoint.executionReason = reason;

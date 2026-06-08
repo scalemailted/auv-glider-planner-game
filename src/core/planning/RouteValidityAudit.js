@@ -206,18 +206,24 @@ export function validateRoutePlanForExecution({
       const waypointTime = Number(waypoint.estimatedArrivalTime ?? waypoint.t);
       if (Number.isFinite(waypointTime)) {
         if (Number.isFinite(duration) && waypointTime > duration) {
+          const terminalCarryThrough = Boolean(waypoint.terminalCarryThrough || waypoint.intentionalOverDuration);
           const issue = buildIssue({
             type: 'timeExceeded',
             reason: 'waypoint_exceeds_mission_duration',
             severity: 'warning',
             category: 'waypoint_exceeds_mission_duration',
             runtimeBehavior: 'truncate_at_mission_end',
+            blocking: false,
+            intentional: terminalCarryThrough,
+            terminalCarryThrough,
             agentId: agent.id,
             agentLabel: agent.label ?? agent.id,
             to: waypointRef(waypoint, index),
             segmentIndex: index,
             waypointIndex: index,
-            message: `${agent.label ?? agent.id} Waypoint ${index + 1} is scheduled after the mission duration. Simulation will run toward this waypoint and end at the mission time limit before it is reached.`
+            message: terminalCarryThrough
+              ? `${agent.label ?? agent.id} Waypoint ${index + 1} is a terminal carry-through waypoint after mission duration. Simulation will run toward it and end at the mission time limit.`
+              : `${agent.label ?? agent.id} Waypoint ${index + 1} is scheduled after the mission duration. Simulation will run toward this waypoint and end at the mission time limit before it is reached.`
           });
           issues.push(issue);
           annotateWaypoint(agentPlan, index, issue);
@@ -337,6 +343,9 @@ function annotateWaypoint(agentPlan, index, issue) {
       reasons: [reason],
       message: issue.message,
       blockedAt: issue.blockedAt ?? null,
+      runtimeBehavior: issue.runtimeBehavior ?? null,
+      intentional: Boolean(issue.intentional),
+      terminalCarryThrough: Boolean(issue.terminalCarryThrough),
       diagnostic: issue.diagnostic ?? null
     }
   };

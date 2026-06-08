@@ -132,17 +132,20 @@ function waypointRows(state, waypoints, agentId, engine, result) {
         const routeFailure = state.routeFailureDecision?.active
           && state.routeFailureDecision.agentId === agentId
           && Number(state.routeFailureDecision.failedWaypointIndex) === index;
+        const terminalCarryThrough = Boolean(waypoint.terminalCarryThrough);
         const label = routeFailure
           ? `MISSED: ${labelReason(state.routeFailureDecision.reason).toUpperCase()}`
-          : missed ? `MISSED: ${labelReason(missed.reason).toUpperCase()}` : statusLabel(status);
+          : terminalCarryThrough ? 'Terminal Carry-Through'
+            : missed ? `MISSED: ${labelReason(missed.reason).toUpperCase()}` : statusLabel(status);
         const selected = state.ui?.selectedWaypoint?.agentId === agentId && state.ui.selectedWaypoint.index === index;
         return `
-          <li class="timeline-waypoint ${status} ${selected || routeFailure ? 'selected' : ''} ${routeFailure ? 'failure' : ''}">
+          <li class="timeline-waypoint ${status} ${terminalCarryThrough ? 'warning' : ''} ${selected || routeFailure ? 'selected' : ''} ${routeFailure ? 'failure' : ''}">
             <button class="waypoint-main" data-select-waypoint data-agent="${escapeAttr(agentId)}" data-index="${index}">
               <span class="waypoint-num">${index + 1}</span>
               <span>
                 <strong>W${Number(waypoint.window ?? 0)} · ${escapeHtml(formatMissionTime(state.level, waypoint.t ?? 0))}</strong>
                 <small>(${Number(waypoint.x)}, ${Number(waypoint.y)}) · ${escapeHtml(waypoint.action ?? 'sample')}</small>
+                ${terminalCarryThrough ? '<small class="marker-warning">Terminal carry-through: simulation will travel toward this waypoint until mission time expires.</small>' : ''}
                 ${waypoint.validity?.routeAudit ? `<small class="marker-warning">${escapeHtml(formatDiagnosticForUi(waypoint.validity.routeAudit.diagnostic) ?? waypoint.validity.routeAudit.message)}</small>` : ''}
               </span>
               <em>${escapeHtml(label)}</em>

@@ -100,7 +100,7 @@ export function temporalGreedySolver(level, mission, options = {}) {
   const planningWindow = Number(level?.world?.time?.planningWindow ?? Math.max(1, missionDuration / 8));
   const maxStepHours = Math.max(0.25, Number(options.maxStepHours ?? Math.min(Math.max(1, planningWindow), 3)));
   const defaultStepBudgetHours = Math.max(0.5, Math.min(maxStepHours, planningWindow, missionDuration / 24 || maxStepHours));
-  const maxWaypoints = Math.max(1, Number(options.maxWaypoints ?? Math.min(160, Math.ceil(missionDuration / defaultStepBudgetHours))));
+  const maxWaypoints = Math.max(1, Number(options.maxWaypoints ?? Math.min(162, Math.ceil(missionDuration / defaultStepBudgetHours) + 2)));
   const maxPlannerIterations = Math.max(maxWaypoints, Number(options.maxPlannerIterations ?? maxWaypoints + Math.max(16, Math.ceil(maxWaypoints * 0.25))));
   const maxCandidateCellsPerStep = Math.max(8, Number(options.maxCandidateCellsPerStep ?? 96));
   const maxEvaluationsPerStep = Math.max(4, Number(options.maxEvaluationsPerStep ?? Math.min(48, maxCandidateCellsPerStep)));
@@ -213,9 +213,12 @@ export function temporalGreedySolver(level, mission, options = {}) {
         debugTemporalGreedySafetyLimit(stop);
         break;
       }
-      if (duration && Number(anchor.t ?? 0) >= duration - minimumMoveTime(agent)) {
-        stop = buildStop('mission_time_exhausted', anchor, remainingFuel, duration, {
+      if (duration && Number(anchor.t ?? 0) > duration) {
+        stop = buildStop('mission_horizon_covered', anchor, remainingFuel, duration, {
           waypointCount: index,
+          missionCoverage: 'full',
+          terminalCarryThrough: true,
+          terminalCarryThroughWaypointIndex: Math.max(0, index - 1),
           diagnostics: buildPlannerDiagnostics({
             maxPlannerIterations,
             maxRuntimeMs,
@@ -275,6 +278,7 @@ export function temporalGreedySolver(level, mission, options = {}) {
         maxEvaluationsPerStep,
         maxTotalEvaluations,
         safetyPolicy,
+        allowTerminalCarryThrough: Boolean(duration && Number(anchor.t ?? 0) <= duration),
         plannerStats,
         iteration: index
       });
@@ -308,7 +312,7 @@ export function temporalGreedySolver(level, mission, options = {}) {
         });
         break;
       }
-      const waypoint = addWaypoint(plan, agent.id, buildCandidateWaypoint(candidate));
+      const waypoint = addWaypoint(plan, agent.id, buildCandidateWaypoint(candidate, { duration }));
       recordAcceptedPlannerScore(plannerStats, candidate);
       applyAcceptedCandidateDepletion(depletion, {
         level,
@@ -360,6 +364,30 @@ export function temporalGreedySolver(level, mission, options = {}) {
         source: 'expectedArrivalPosition',
         waypointIndex: index
       };
+      if (candidate.terminalCarryThrough) {
+        stop = buildStop('mission_horizon_covered', anchor, remainingFuel, duration, {
+          waypointCount: index + 1,
+          missionCoverage: 'full',
+          terminalCarryThrough: true,
+          terminalCarryThroughWaypointIndex: index,
+          terminalCarryThroughWaypointId: waypoint?.id ?? null,
+          diagnostics: buildPlannerDiagnostics({
+            maxPlannerIterations,
+            maxRuntimeMs,
+            maxStepHours,
+            maxCandidateCellsPerStep,
+            maxEvaluationsPerStep,
+            maxTotalEvaluations,
+            acceptedWaypoints: index + 1,
+            anchor,
+            remainingFuel,
+            duration,
+            agent,
+            plannerStats
+          })
+        });
+        break;
+      }
     }
     if (!stop) {
       stop = buildStop('max_iterations_guard', anchor, remainingFuel, duration, {
@@ -525,6 +553,14 @@ function reconcileGreedyStopsWithAcceptedPlan(plan, level, mission) {
     const acceptedTime = acceptedWaypointCount
       ? Number(lastWaypoint?.estimatedArrivalTime ?? lastWaypoint?.t ?? 0)
       : 0;
+    if (lastWaypoint && duration && acceptedTime > duration && !lastWaypoint.terminalCarryThrough) {
+      lastWaypoint.terminalCarryThrough = true;
+      lastWaypoint.terminalCarryThroughReason = 'mission_horizon_coverage';
+      lastWaypoint.runtimeBehavior = 'truncate_at_mission_end';
+      lastWaypoint.intentionalOverDuration = true;
+      lastWaypoint.missionDuration = duration;
+      lastWaypoint.note = `terminalCarryThrough=true reason=mission_horizon_coverage ${lastWaypoint.note ?? ''}`.trim();
+    }
     const acceptedEnergy = waypoints.reduce((sum, waypoint) => sum + Math.max(0, Number(waypoint.segmentEnergy ?? 0)), 0);
     const fuelBudget = Number(agent?.battery ?? agent?.maxBattery ?? 100);
     stop.acceptedWaypointCount = acceptedWaypointCount;
@@ -534,6 +570,11 @@ function reconcileGreedyStopsWithAcceptedPlan(plan, level, mission) {
     stop.stopTime = round(acceptedTime);
     stop.remainingMissionTime = round(Math.max(0, Number(duration || 0) - acceptedTime));
     stop.remainingFuel = round(Math.max(0, fuelBudget - acceptedEnergy));
+    stop.missionCoverage = duration && acceptedTime > duration ? 'full' : 'incomplete';
+    stop.terminalCarryThroughWaypointIndex = lastWaypoint?.terminalCarryThrough ? acceptedWaypointCount - 1 : stop.terminalCarryThroughWaypointIndex ?? null;
+    stop.terminalCarryThroughWaypointId = lastWaypoint?.terminalCarryThrough ? lastWaypoint.id ?? null : stop.terminalCarryThroughWaypointId ?? null;
+    stop.terminalCarryThrough = Boolean(lastWaypoint?.terminalCarryThrough);
+    if (stop.terminalCarryThrough && stop.stopReason === 'mission_time_exhausted') stop.stopReason = 'mission_horizon_covered';
     stop.accounting = {
       acceptedWaypointCount,
       acceptedRouteTime: stop.acceptedRouteTime,
@@ -582,6 +623,7 @@ function determineNoCandidateStopReason(plannerStats = {}, { anchor = null, dura
   if (early && (Number(safeTier.candidates ?? 0) > 0 || Number(safeTier.rejected ?? 0) > 0)) {
     return 'no_safe_continuation_candidates';
   }
+  if (Number(duration ?? 0) > 0 && plannedTime <= Number(duration)) return 'no_safe_carry_through_candidate';
   if (Number(plannerStats.stochasticRiskCandidates ?? 0) > 0) return 'no_safe_forecast_feasible_candidates';
   return 'no_reachable_feasible_candidates';
 }
@@ -618,6 +660,7 @@ function chooseTemporalCell({
   maxEvaluationsPerStep = 48,
   maxTotalEvaluations = Infinity,
   safetyPolicy = GREEDY_PLANNER_SAFETY_POLICY,
+  allowTerminalCarryThrough = false,
   plannerStats = null,
   iteration = 0
 }) {
@@ -677,7 +720,7 @@ function chooseTemporalCell({
       debugTemporalGreedyCandidate({ from: anchor, to: cell, segment, execution: null, accepted: false, reason: 'segmentInvalid' });
       continue;
     }
-    if (duration && estimatedArrivalTime > duration) {
+    if (duration && estimatedArrivalTime > duration && !allowTerminalCarryThrough) {
       plannerStats && (plannerStats.timeRejectedCandidates += 1);
       continue;
     }
@@ -709,7 +752,8 @@ function chooseTemporalCell({
     }
     const arrivalTime = Number(anchor.t ?? 0) + Number(execution.travelTime ?? segment.estimatedTravelTime ?? 0);
     const executionEnergy = Number.isFinite(Number(execution.energyCost)) ? Number(execution.energyCost) : Number(segment.energy ?? 0);
-    if (duration && arrivalTime > duration) {
+    const terminalCarryThrough = Boolean(duration && arrivalTime > duration && allowTerminalCarryThrough);
+    if (duration && arrivalTime > duration && !terminalCarryThrough) {
       plannerStats && (plannerStats.timeRejectedCandidates += 1);
       continue;
     }
@@ -836,6 +880,8 @@ function chooseTemporalCell({
       segment,
       execution,
       arrivalTime,
+      terminalCarryThrough,
+      terminalCarryThroughReason: terminalCarryThrough ? 'mission_horizon_coverage' : null,
       expectedArrivalPosition: execution.finalPosition ?? null,
       executionEnergy,
       window: windowForTime(level, arrivalTime),
@@ -1422,8 +1468,9 @@ function validateCandidateBeforeAppend({ level, mission, agent, plan, candidate,
   };
 }
 
-function buildCandidateWaypoint(candidate) {
+function buildCandidateWaypoint(candidate, { duration = null } = {}) {
   const breakdown = candidate.scoreBreakdown ?? {};
+  const terminalCarryThrough = Boolean(candidate.terminalCarryThrough);
   return {
     window: candidate.window,
     t: candidate.arrivalTime,
@@ -1433,7 +1480,14 @@ function buildCandidateWaypoint(candidate) {
     x: candidate.x,
     y: candidate.y,
     action: 'sample',
-    note: `stage=${candidate.stage} sample=${Number(breakdown.sampleReward ?? candidate.value ?? 0).toFixed(2)} star=${Number(breakdown.starReward ?? candidate.priorityBonus ?? 0).toFixed(1)} hazardPenalty=${Number(breakdown.hazardPenalty ?? 0).toFixed(1)} energy=${Number(candidate.executionEnergy ?? candidate.segment?.energy ?? 0).toFixed(1)} score=${Number(candidate.score ?? 0).toFixed(3)}`
+    ...(terminalCarryThrough ? {
+      terminalCarryThrough: true,
+      terminalCarryThroughReason: candidate.terminalCarryThroughReason ?? 'mission_horizon_coverage',
+      runtimeBehavior: 'truncate_at_mission_end',
+      intentionalOverDuration: true,
+      missionDuration: Number.isFinite(Number(duration)) ? Number(duration) : null
+    } : {}),
+    note: `${terminalCarryThrough ? 'terminalCarryThrough=true reason=mission_horizon_coverage ' : ''}stage=${candidate.stage} sample=${Number(breakdown.sampleReward ?? candidate.value ?? 0).toFixed(2)} star=${Number(breakdown.starReward ?? candidate.priorityBonus ?? 0).toFixed(1)} hazardPenalty=${Number(breakdown.hazardPenalty ?? 0).toFixed(1)} energy=${Number(candidate.executionEnergy ?? candidate.segment?.energy ?? 0).toFixed(1)} score=${Number(candidate.score ?? 0).toFixed(3)}`
   };
 }
 
@@ -1779,6 +1833,8 @@ function buildPlannerDiagnostics({
     acceptedWaypoints,
     currentTime: round(anchor?.t ?? 0),
     missionDuration: round(duration),
+    missionCoverage: Number(anchor?.t ?? 0) > Number(duration ?? 0) ? 'full' : 'incomplete',
+    terminalCarryThrough: Number(anchor?.t ?? 0) > Number(duration ?? 0),
     fuelUsed: fuelUsed === null ? null : round(fuelUsed),
     fuelBudget: Number.isFinite(fuelBudget) ? round(fuelBudget) : null,
     currentCell: pointCell(anchor),
@@ -2277,6 +2333,10 @@ function summarizeStops(stops, duration) {
     remainingMissionTime: round(Math.max(0, Number(duration || 0) - Number(latest.stopTime ?? 0))),
     remainingFuel: round(stops.reduce((sum, stop) => sum + Number(stop.remainingFuel ?? 0), 0)),
     diagnostics: latest.diagnostics ? { ...latest.diagnostics } : null,
+    missionCoverage: latest.missionCoverage ?? (Number(latest.stopTime ?? 0) > Number(duration ?? 0) ? 'full' : 'incomplete'),
+    terminalCarryThrough: Boolean(latest.terminalCarryThrough),
+    terminalCarryThroughWaypointIndex: latest.terminalCarryThroughWaypointIndex ?? null,
+    terminalCarryThroughWaypointId: latest.terminalCarryThroughWaypointId ?? null,
     agents: stops
   };
 }

@@ -2015,7 +2015,17 @@ function temporalGreedySummary(plan, level, mission) {
   const selectedAgentId = stop.selectedAgentId ?? plan?.meta?.selectedAgentId ?? depletion.selectedAgentId ?? null;
   const otherRoutesPreserved = Number(depletion.otherGliderRoutesPreserved ?? stop.sharedDepletion?.otherGliderRoutesPreserved ?? 0);
   const guardFailure = Boolean(stop.guardFailure || (stop.agents ?? []).some((agentStop) => agentStop.guardFailure));
-  const complete = !guardFailure && (!stop.remainingMissionTime || stop.stopReason === 'mission_time_exhausted' || stop.stopReason === 'fuel_exhausted');
+  const missionCoverage = stop.missionCoverage ?? (duration > 0 && stopTime > duration ? 'full' : 'incomplete');
+  const terminalWaypointIndex = Number.isInteger(stop.terminalCarryThroughWaypointIndex)
+    ? stop.terminalCarryThroughWaypointIndex
+    : null;
+  const complete = !guardFailure && (
+    missionCoverage === 'full'
+    || !stop.remainingMissionTime
+    || stop.stopReason === 'mission_horizon_covered'
+    || stop.stopReason === 'mission_time_exhausted'
+    || stop.stopReason === 'fuel_exhausted'
+  );
   const lines = [
     guardFailure ? 'Greedy Planner guard stopped' : complete ? 'Greedy Planner complete' : 'Greedy Planner stopped early',
     selectedAgentId ? `Selected glider: ${agentLabel({ mission }, selectedAgentId)}` : null,
@@ -2023,6 +2033,8 @@ function temporalGreedySummary(plan, level, mission) {
     'Mode: iterative limited-horizon greedy',
     `Waypoints: ${waypointCount}`,
     `Planned time: ${formatRouteNumber(stopTime)} / ${formatRouteNumber(duration)} hr`,
+    `Mission coverage: ${missionCoverage}`,
+    terminalWaypointIndex !== null ? `Terminal carry-through waypoint: W${terminalWaypointIndex + 1}` : null,
     `Fuel used: ${formatRouteNumber(fuelUsed)} / ${formatRouteNumber(startingFuel)}`,
     `Candidate evaluations: ${candidateEvaluations}`,
     `Tier accepts: high ${tierStats.high_value.accepted}, moderate ${tierStats.moderate_value.accepted}, continuation ${tierStats.safe_continuation.accepted}`,

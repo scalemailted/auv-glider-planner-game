@@ -535,13 +535,22 @@ export class SimulationEngine {
     for (const agent of this.agents) {
       let activeWaypoint = getActiveWaypoint(agent, this.plan);
       while (activeWaypoint) {
+        const terminalCarryThrough = Boolean(activeWaypoint.terminalCarryThrough || activeWaypoint.intentionalOverDuration);
         const event = markWaypointMissed(agent, activeWaypoint, 'missionTimeExpired', duration, {
           finalPosition: { x: round(agent.x, 3), y: round(agent.y, 3), t: duration },
-          missionDuration: duration
+          missionDuration: duration,
+          finalInstruction: terminalCarryThrough ? 'terminalCarryThrough' : null,
+          finalWaypointReached: false,
+          terminalCarryThrough
         });
         if (event) {
-          event.message = 'Mission time expired before this waypoint was reached.';
+          event.message = terminalCarryThrough
+            ? 'Mission time expired while traveling toward terminal carry-through waypoint.'
+            : 'Mission time expired before this waypoint was reached.';
           event.finalPosition = { x: round(agent.x, 3), y: round(agent.y, 3), t: duration };
+          event.finalInstruction = terminalCarryThrough ? 'terminalCarryThrough' : null;
+          event.finalWaypointReached = false;
+          event.terminalCarryThrough = terminalCarryThrough;
           this.recordEvent(event);
         }
         activeWaypoint = getActiveWaypoint(agent, this.plan);
