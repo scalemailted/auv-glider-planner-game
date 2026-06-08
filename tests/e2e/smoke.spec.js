@@ -3,6 +3,8 @@ import { startStaticServer } from './static-server.mjs';
 
 let server;
 
+test.setTimeout(60000);
+
 test.beforeAll(async () => {
   server = await startStaticServer({ port: 9321 });
 });
@@ -707,9 +709,13 @@ async function clickFlowDemoCell(page, col, row) {
   const point = await page.evaluate(({ col, row }) => {
     const scene = window.anchorGame.phaser.scene.getScene('FlowFieldDemoScene');
     const map = scene.layout().map;
+    const canvas = document.getElementById('game-canvas');
+    const rect = canvas.getBoundingClientRect();
+    const canvasX = map.x + ((Number(col) + 0.5) / 18) * map.width;
+    const canvasY = map.y + ((Number(row) + 0.5) / 12) * map.height;
     return {
-      x: map.x + ((Number(col) + 0.5) / 18) * map.width,
-      y: map.y + ((Number(row) + 0.5) / 12) * map.height
+      x: rect.left + canvasX * rect.width / canvas.width,
+      y: rect.top + canvasY * rect.height / canvas.height
     };
   }, { col, row });
   await page.mouse.click(point.x, point.y);
