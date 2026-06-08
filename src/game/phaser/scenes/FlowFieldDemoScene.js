@@ -6,6 +6,8 @@ import {
   FLOW_DEMO_DEFAULT_LAYERS,
   FLOW_DEMO_DEFAULT_PRESETS,
   FLOW_DEMO_GRID,
+  normalizeBoundaryMode,
+  normalizeDynamicComplexity,
   getFlowDemoPresetConfig,
   isDemoLand,
   normalizeAdditiveLayers,
@@ -28,20 +30,22 @@ export class FlowFieldDemoScene extends PhaserScene {
     super('FlowFieldDemoScene');
     this.objects = [];
     this.buttons = [];
-    this.fieldMode = 'static';
-    this.preset = FLOW_DEMO_DEFAULT_PRESETS.static;
+    this.fieldMode = 'dynamic';
+    this.preset = FLOW_DEMO_DEFAULT_PRESETS.dynamic;
     this.additiveLayers = normalizeAdditiveLayers(FLOW_DEMO_DEFAULT_LAYERS);
-    this.terrainMode = 'none';
+    this.terrainMode = 'blendedCoastal';
     this.terrainSeed = 'anchor-demo-1';
-    this.terrain = createDemoTerrain({ mode: 'none', seed: this.terrainSeed });
+    this.terrain = createDemoTerrain({ mode: this.terrainMode, seed: this.terrainSeed });
     this.evolutionSpeedScale = 1;
     this.evolutionBehavior = 'continuous';
     this.cycleDuration = 60;
-    this.directionVariation = 'medium';
-    this.magnitudeVariation = 'medium';
+    this.directionVariation = 'high';
+    this.magnitudeVariation = 'high';
+    this.dynamicComplexity = 'high';
     this.evolutionPattern = 'composite';
-    this.spatialMotion = 'none';
+    this.spatialMotion = 'meander';
     this.spatialMotionSpeed = 1;
+    this.boundaryMode = 'deflectAlongShore';
     this.magnitudeScale = 1.5;
     this.particleSpeedScale = 1;
     this.demoTime = 0;
@@ -51,20 +55,22 @@ export class FlowFieldDemoScene extends PhaserScene {
   }
 
   init(data = {}) {
-    this.fieldMode = normalizeFieldMode(data.fieldMode ?? data.mode ?? 'static');
+    this.fieldMode = normalizeFieldMode(data.fieldMode ?? data.mode ?? 'dynamic');
     this.preset = data.preset ?? FLOW_DEMO_DEFAULT_PRESETS[this.fieldMode] ?? FLOW_DEMO_DEFAULT_PRESETS.dynamic;
     this.additiveLayers = normalizeAdditiveLayers(data.additiveLayers ?? legacyAdditiveLayers(data));
-    this.terrainMode = normalizeTerrainMode(data.terrainMode ?? 'none');
+    this.terrainMode = normalizeTerrainMode(data.terrainMode ?? 'blendedCoastal');
     this.terrainSeed = data.terrainSeed ?? 'anchor-demo-1';
     this.terrain = createDemoTerrain({ mode: this.terrainMode, seed: this.terrainSeed });
     this.evolutionSpeedScale = finiteNumber(data.evolutionSpeedScale ?? data.timeSpeedScale, 1);
     this.evolutionBehavior = normalizeEvolutionBehavior(data.evolutionBehavior ?? 'continuous');
     this.cycleDuration = finiteNumber(data.cycleDuration, 60);
-    this.directionVariation = normalizeVariationLevel(data.directionVariation ?? 'medium');
-    this.magnitudeVariation = normalizeVariationLevel(data.magnitudeVariation ?? 'medium');
+    this.directionVariation = normalizeVariationLevel(data.directionVariation ?? 'high');
+    this.magnitudeVariation = normalizeVariationLevel(data.magnitudeVariation ?? 'high');
+    this.dynamicComplexity = normalizeDynamicComplexity(data.dynamicComplexity ?? 'high');
     this.evolutionPattern = normalizeEvolutionPattern(data.evolutionPattern ?? 'composite');
-    this.spatialMotion = normalizeSpatialMotion(data.spatialMotion ?? 'none');
+    this.spatialMotion = normalizeSpatialMotion(data.spatialMotion ?? 'meander');
     this.spatialMotionSpeed = finiteNumber(data.spatialMotionSpeed, 1);
+    this.boundaryMode = normalizeBoundaryMode(data.boundaryMode ?? 'deflectAlongShore');
     this.magnitudeScale = finiteNumber(data.magnitudeScale, 1.5);
     this.particleSpeedScale = finiteNumber(data.particleSpeedScale, 1);
     this.demoTime = 0;
@@ -144,9 +150,11 @@ export class FlowFieldDemoScene extends PhaserScene {
       cycleDuration: this.cycleDuration,
       directionVariation: this.directionVariation,
       magnitudeVariation: this.magnitudeVariation,
+      dynamicComplexity: this.dynamicComplexity,
       evolutionPattern: this.evolutionPattern,
       spatialMotion: this.spatialMotion,
       spatialMotionSpeed: this.spatialMotionSpeed,
+      boundaryMode: this.boundaryMode,
       magnitudeScale: this.magnitudeScale,
       particleSpeedScale: this.particleSpeedScale,
       magnitudeStats: summarizeDemoFlowMagnitudes(this.fieldConfig(), this.demoTime),
@@ -191,6 +199,10 @@ export class FlowFieldDemoScene extends PhaserScene {
         this.magnitudeVariation = normalizeVariationLevel(magnitudeVariation);
         this.renderConsole();
       },
+      dynamicComplexity: (dynamicComplexity) => {
+        this.dynamicComplexity = normalizeDynamicComplexity(dynamicComplexity);
+        this.renderConsole();
+      },
       evolutionPattern: (evolutionPattern) => {
         this.evolutionPattern = normalizeEvolutionPattern(evolutionPattern);
         this.renderConsole();
@@ -201,6 +213,10 @@ export class FlowFieldDemoScene extends PhaserScene {
       },
       spatialMotionSpeed: (spatialMotionSpeed) => {
         this.spatialMotionSpeed = finiteNumber(spatialMotionSpeed, 1);
+        this.renderConsole();
+      },
+      boundaryMode: (boundaryMode) => {
+        this.boundaryMode = normalizeBoundaryMode(boundaryMode);
         this.renderConsole();
       },
       magnitudeScale: (magnitudeScale) => {
@@ -229,12 +245,14 @@ export class FlowFieldDemoScene extends PhaserScene {
       ...normalizeEvolutionControls({
         directionVariation: this.directionVariation,
         magnitudeVariation: this.magnitudeVariation,
+        dynamicComplexity: this.dynamicComplexity,
         evolutionPattern: this.evolutionPattern,
         evolutionBehavior: this.evolutionBehavior,
         cycleDuration: this.cycleDuration,
         spatialMotion: this.spatialMotion,
         spatialMotionSpeed: this.spatialMotionSpeed
-      })
+      }),
+      boundaryMode: this.boundaryMode
     };
   }
 
@@ -250,9 +268,11 @@ export class FlowFieldDemoScene extends PhaserScene {
       cycleDuration: this.cycleDuration,
       directionVariation: this.directionVariation,
       magnitudeVariation: this.magnitudeVariation,
+      dynamicComplexity: this.dynamicComplexity,
       evolutionPattern: this.evolutionPattern,
       spatialMotion: this.spatialMotion,
       spatialMotionSpeed: this.spatialMotionSpeed,
+      boundaryMode: this.boundaryMode,
       magnitudeScale: this.magnitudeScale,
       particleSpeedScale: this.particleSpeedScale
     };
@@ -470,10 +490,10 @@ export class FlowFieldDemoScene extends PhaserScene {
     const centerSample = sampleDemoFlow({ ...this.fieldConfig(), x: 0.5, y: 0.5, time: this.demoTime });
     const stats = summarizeDemoFlowMagnitudes(this.fieldConfig(), this.demoTime);
     const evolutionText = this.fieldMode === 'dynamic'
-      ? ` | Evolution: ${evolutionBehaviorLabel(this.evolutionBehavior)}${this.evolutionBehavior === 'looping' ? ` ${this.cycleDuration}s` : ''} | Spatial: ${spatialMotionLabel(this.spatialMotion)} | Direction: ${variationLabel(this.directionVariation)} | Magnitude: ${variationLabel(this.magnitudeVariation)} | Pattern: ${evolutionPatternLabel(this.evolutionPattern)}`
+      ? ` | Evolution: ${evolutionBehaviorLabel(this.evolutionBehavior)}${this.evolutionBehavior === 'looping' ? ` ${this.cycleDuration}s` : ''} | Spatial: ${spatialMotionLabel(this.spatialMotion)} | Complexity: ${dynamicComplexityLabel(this.dynamicComplexity)} | Direction: ${variationLabel(this.directionVariation)} | Magnitude: ${variationLabel(this.magnitudeVariation)} | Pattern: ${evolutionPatternLabel(this.evolutionPattern)}`
       : '';
     const modePrefix = this.fieldMode === 'dynamic' ? 'Continuous F(x,y,t)' : 'Fixed F(x,y,0)';
-    this.statusText?.setText(`${modePrefix} | Mode: ${fieldModeLabel(this.fieldMode)} | Base Flow Field: ${preset?.label ?? 'Current Field'}${layerText}${evolutionText} | Demo Time: ${this.demoTime.toFixed(1)} | Evolution Speed: ${this.evolutionSpeedScale}x | Particle Speed: ${this.particleSpeedScale}x | Magnitude Scale: ${this.magnitudeScale}x | Mag min/mean/max: ${stats.min.toFixed(2)} / ${stats.mean.toFixed(2)} / ${stats.max.toFixed(2)} | Sample: (${centerSample.u.toFixed(2)}, ${centerSample.v.toFixed(2)}) mag ${Math.hypot(centerSample.u, centerSample.v).toFixed(2)} | Terrain: ${terrainModeLabel(this.terrainMode)}`);
+    this.statusText?.setText(`${modePrefix} | Mode: ${fieldModeLabel(this.fieldMode)} | Base Flow Field: ${preset?.label ?? 'Current Field'}${layerText}${evolutionText} | Boundary: ${boundaryModeLabel(this.boundaryMode)} | Demo Time: ${this.demoTime.toFixed(1)} | Evolution Speed: ${this.evolutionSpeedScale}x | Particle Speed: ${this.particleSpeedScale}x | Magnitude Scale: ${this.magnitudeScale}x | Mag min/mean/max: ${stats.min.toFixed(2)} / ${stats.mean.toFixed(2)} / ${stats.max.toFixed(2)} | Sample: (${centerSample.u.toFixed(2)}, ${centerSample.v.toFixed(2)}) mag ${Math.hypot(centerSample.u, centerSample.v).toFixed(2)} | Terrain: ${terrainModeLabel(this.terrainMode)}`);
     this.statusText?.setWordWrapWidth(Math.min(980, map.width));
     this.statusText?.setPosition(margin, map.y + map.height + 18);
   }
@@ -523,7 +543,9 @@ export class FlowFieldDemoScene extends PhaserScene {
       magnitudeScale: this.magnitudeScale,
       directionVariation: this.directionVariation,
       magnitudeVariation: this.magnitudeVariation,
+      dynamicComplexity: this.dynamicComplexity,
       evolutionPattern: this.evolutionPattern,
+      boundaryMode: this.boundaryMode,
       magnitudeStats: summarizeDemoFlowMagnitudes(this.fieldConfig(), this.demoTime),
       center: {
         u: Number(sample.u.toFixed(4)),
@@ -545,6 +567,8 @@ export class FlowFieldDemoScene extends PhaserScene {
       magnitudeScale: this.magnitudeScale,
       directionVariation: this.directionVariation,
       magnitudeVariation: this.magnitudeVariation,
+      dynamicComplexity: this.dynamicComplexity,
+      boundaryMode: this.boundaryMode,
       t0Vector: {
         u: Number(sample.u.toFixed(4)),
         v: Number(sample.v.toFixed(4)),
@@ -595,6 +619,8 @@ export class FlowFieldDemoScene extends PhaserScene {
       spatialMotionSpeed: this.spatialMotionSpeed,
       directionVariation: this.directionVariation,
       magnitudeVariation: this.magnitudeVariation,
+      dynamicComplexity: this.dynamicComplexity,
+      boundaryMode: this.boundaryMode,
       sampleVectorAtCenter: {
         u: Number(sample.u.toFixed(4)),
         v: Number(sample.v.toFixed(4))
@@ -664,10 +690,16 @@ function modeColor(mode, activeRegion = null) {
 
 function terrainModeLabel(mode) {
   return {
+    blendedCoastal: 'Blended Coastal Map',
+    coastIslands: 'Coast + Islands',
+    coastalEstuary: 'Coastal Estuary',
+    channelIslands: 'Channel + Islands',
     none: 'No Land',
     islands: 'Random Islands',
     coastline: 'Coastline',
-    channel: 'Channel'
+    channel: 'Channel',
+    bayPocket: 'Bay / Pocket',
+    islandChain: 'Island Chain'
   }[mode] ?? 'No Land';
 }
 
@@ -678,6 +710,23 @@ function variationLabel(level) {
     medium: 'Medium',
     high: 'High'
   }[level] ?? 'Medium';
+}
+
+function dynamicComplexityLabel(level) {
+  return {
+    low: 'Low',
+    medium: 'Medium',
+    high: 'High'
+  }[level] ?? 'High';
+}
+
+function boundaryModeLabel(mode) {
+  return {
+    none: 'None',
+    riskOnly: 'Risk Only',
+    dampenIntoLand: 'Dampen Into Land',
+    deflectAlongShore: 'Deflect Along Shore'
+  }[mode] ?? 'Deflect Along Shore';
 }
 
 function evolutionPatternLabel(pattern) {

@@ -1,6 +1,7 @@
 import { createSeededRng } from '../random/SeededRng.js';
 import { CURRENT_COORDINATES, sampleCurrentField } from '../currents/CurrentFieldSampler.js';
 import { getVectorPresetConfig } from '../generation/VectorFieldPresets.js';
+import { FLOW_FIELD_BOUNDARY_MODES, normalizeBoundaryConditions } from '../generation/FlowFieldConfig.js';
 
 const TAU = Math.PI * 2;
 const DEFAULT_TRAIL_LIMIT = 44;
@@ -14,27 +15,40 @@ export const FLOW_DEMO_CYCLE_DURATIONS = [15, 30, 60, 120];
 export const FLOW_DEMO_SPATIAL_MOTIONS = ['none', 'driftEast', 'driftWest', 'driftNorth', 'driftSouth', 'circularDrift', 'meander'];
 export const FLOW_DEMO_SPATIAL_MOTION_SPEEDS = [0.25, 0.5, 1, 2];
 export const FLOW_DEMO_VARIATION_LEVELS = ['off', 'low', 'medium', 'high'];
+export const FLOW_DEMO_DYNAMIC_COMPLEXITY_LEVELS = ['low', 'medium', 'high'];
 export const FLOW_DEMO_EVOLUTION_PATTERNS = ['tidalCycle', 'meanderingJet', 'eddyDrift', 'stormPulse', 'composite'];
 export const FLOW_DEMO_MAGNITUDE_SCALES = [0.5, 1, 1.5, 2];
 export const FLOW_DEMO_PARTICLE_SPEEDS = [0.5, 1, 2, 4];
 export const FLOW_DEMO_LAYER_INFLUENCES = ['global', 'spatialPocket', 'partitionedRegion'];
-export const FLOW_DEMO_TERRAIN_MODES = ['none', 'islands', 'coastline', 'channel'];
+export const FLOW_DEMO_BOUNDARY_MODES = FLOW_FIELD_BOUNDARY_MODES.filter((mode) => mode !== 'wakeApproximation');
+export const FLOW_DEMO_TERRAIN_MODES = [
+  'blendedCoastal',
+  'coastIslands',
+  'coastalEstuary',
+  'channelIslands',
+  'islands',
+  'coastline',
+  'channel',
+  'bayPocket',
+  'islandChain',
+  'none'
+];
 export const FLOW_DEMO_PRESET_CHOICES = [
-  'calm',
-  'uniformDrift',
-  'shearFlow',
+  'topologyAwareComposite',
+  'meanderingJet',
   'eddyField',
   'doubleGyre',
   'tidalOscillation',
-  'meanderingJet',
   'stormPulse',
   'curlNoise',
-  'hycomInspiredComposite',
-  'topologyAwareComposite'
+  'uniformDrift',
+  'shearFlow',
+  'calm',
+  'hycomInspiredComposite'
 ];
 export const FLOW_DEMO_DEFAULT_PRESETS = {
-  static: 'uniformDrift',
-  dynamic: 'eddyField',
+  static: 'topologyAwareComposite',
+  dynamic: 'topologyAwareComposite',
   additiveLayers: 'uniformDrift',
   partitioned: 'meanderingJet'
 };
@@ -76,13 +90,16 @@ export function sampleComposedDemoFlow({
   cycleDuration = 60,
   directionVariation = 'medium',
   magnitudeVariation = 'medium',
+  dynamicComplexity = 'high',
   evolutionPattern = 'composite',
   spatialMotion = 'none',
-  spatialMotionSpeed = 1
+  spatialMotionSpeed = 1,
+  boundaryMode = 'deflectAlongShore'
 } = {}) {
   const mode = normalizeFieldMode(fieldMode);
-  const evolution = normalizeEvolutionControls({ evolutionBehavior, cycleDuration, directionVariation, magnitudeVariation, evolutionPattern, spatialMotion, spatialMotionSpeed });
-  const base = sampleSingleDemoFlow({ fieldMode: mode, x, y, time, preset: primaryPreset, terrain, evolution });
+  const evolution = normalizeEvolutionControls({ evolutionBehavior, cycleDuration, directionVariation, magnitudeVariation, dynamicComplexity, evolutionPattern, spatialMotion, spatialMotionSpeed });
+  const boundaryConditions = normalizeDemoBoundaryConditions({ mode: boundaryMode, topologyAware: true });
+  const base = sampleSingleDemoFlow({ fieldMode: mode, x, y, time, preset: primaryPreset, terrain, evolution, boundaryConditions });
   const layers = normalizeAdditiveLayers(additiveLayers);
   const enabledLayers = layers
     .filter((layer) => layer.enabled && layer.preset && layer.weight > 0)
@@ -96,7 +113,8 @@ export function sampleComposedDemoFlow({
         time,
         preset: layer.preset,
         terrain,
-        evolution: layerEvolution
+        evolution: layerEvolution,
+        boundaryConditions
       });
       return { ...layer, evolution: layerEvolution, influenceScale, sample };
     })
@@ -128,11 +146,12 @@ export function sampleComposedDemoFlow({
     })),
     timeVarying: mode !== 'static',
     evolution,
+    boundaryConditions,
     contributors: { base, layers: enabledLayers.map((layer) => layer.sample) }
   });
 }
 
-function sampleSingleDemoFlow({ fieldMode = 'static', x = 0, y = 0, time = 0, preset = null, terrain = null, evolution = normalizeEvolutionControls() } = {}) {
+function sampleSingleDemoFlow({ fieldMode = 'static', x = 0, y = 0, time = 0, preset = null, terrain = null, evolution = normalizeEvolutionControls(), boundaryConditions = normalizeDemoBoundaryConditions() } = {}) {
   const presetConfig = getFlowDemoPresetConfig(fieldMode, preset);
   const mode = normalizeFieldMode(fieldMode);
   const rawTime = Number(time) || 0;
@@ -151,7 +170,29 @@ function sampleSingleDemoFlow({ fieldMode = 'static', x = 0, y = 0, time = 0, pr
     grid: FLOW_DEMO_GRID,
     coordinates: CURRENT_COORDINATES.NORMALIZED,
     terrain,
-    config: presetConfig
+    config: {
+      ...presetConfig,
+      boundaryConditions,
+      currentFieldConfig: {
+        fieldMode: mode,
+        basePreset: presetConfig.preset,
+        currentPreset: presetConfig.preset,
+        strength: presetConfig.strength,
+        directionVariation: evolution.directionVariation,
+        magnitudeVariation: evolution.magnitudeVariation,
+        dynamicComplexity: evolution.dynamicComplexity,
+        topologyAware: true,
+        boundaryConditions,
+        topologyComposite: {
+          dynamicComplexity: evolution.dynamicComplexity,
+          randomness: evolution.dynamicComplexity
+        }
+      },
+      topologyComposite: {
+        dynamicComplexity: evolution.dynamicComplexity,
+        randomness: evolution.dynamicComplexity
+      }
+    }
   });
   const evolved = mode === 'dynamic'
     ? applyDynamicEvolution(sample, {
@@ -247,9 +288,19 @@ export function createDemoTerrain({ mode = 'none', seed = 'anchor-demo-1', grid 
   const normalized = normalizeTerrainMode(mode);
   if (normalized === 'none') return terrain;
   const rng = createSeededRng(`${seed}:${normalized}:${width}x${height}`);
-  if (normalized === 'islands') addRandomIslands(terrain, rng);
+  if (normalized === 'blendedCoastal') addBlendedCoastalMap(terrain, rng);
+  else if (normalized === 'coastIslands') {
+    addCoastline(terrain, rng);
+    addRandomIslands(terrain, rng, { count: 3, maxRadius: 0.075 });
+  } else if (normalized === 'coastalEstuary') addCoastalEstuary(terrain, rng);
+  else if (normalized === 'channelIslands') {
+    addChannel(terrain, rng);
+    addIslandChain(terrain, rng, { count: 3, maxRadius: 0.06 });
+  } else if (normalized === 'islands') addRandomIslands(terrain, rng);
   else if (normalized === 'coastline') addCoastline(terrain, rng);
   else if (normalized === 'channel') addChannel(terrain, rng);
+  else if (normalized === 'bayPocket') addBayPocket(terrain, rng);
+  else if (normalized === 'islandChain') addIslandChain(terrain, rng);
   clearWaterEdge(terrain);
   return terrain;
 }
@@ -262,11 +313,19 @@ export function isDemoLand(terrain, x, y, grid = FLOW_DEMO_GRID) {
 }
 
 export function normalizeTerrainMode(value = 'none') {
-  return FLOW_DEMO_TERRAIN_MODES.includes(value) ? value : 'none';
+  return FLOW_DEMO_TERRAIN_MODES.includes(value) ? value : 'blendedCoastal';
+}
+
+export function normalizeBoundaryMode(value = 'deflectAlongShore') {
+  return FLOW_DEMO_BOUNDARY_MODES.includes(value) ? value : 'deflectAlongShore';
 }
 
 export function normalizeVariationLevel(value = 'medium') {
   return FLOW_DEMO_VARIATION_LEVELS.includes(value) ? value : 'medium';
+}
+
+export function normalizeDynamicComplexity(value = 'high') {
+  return FLOW_DEMO_DYNAMIC_COMPLEXITY_LEVELS.includes(value) ? value : 'high';
 }
 
 export function normalizeEvolutionPattern(value = 'composite') {
@@ -286,6 +345,7 @@ export function normalizeEvolutionControls({
   cycleDuration = 60,
   directionVariation = 'medium',
   magnitudeVariation = 'medium',
+  dynamicComplexity = 'high',
   evolutionPattern = 'composite',
   spatialMotion = 'none',
   spatialMotionSpeed = 1
@@ -295,6 +355,7 @@ export function normalizeEvolutionControls({
     cycleDuration: normalizeCycleDuration(cycleDuration),
     directionVariation: normalizeVariationLevel(directionVariation),
     magnitudeVariation: normalizeVariationLevel(magnitudeVariation),
+    dynamicComplexity: normalizeDynamicComplexity(dynamicComplexity),
     evolutionPattern: normalizeEvolutionPattern(evolutionPattern),
     spatialMotion: normalizeSpatialMotion(spatialMotion),
     spatialMotionSpeed: normalizeSpatialMotionSpeed(spatialMotionSpeed)
@@ -321,6 +382,7 @@ export function normalizeAdditiveLayers(layers = FLOW_DEMO_DEFAULT_LAYERS) {
       cycleDuration: normalizeCycleDuration(layer?.cycleDuration ?? layer?.evolution?.cycleDuration ?? 60),
       directionVariation: normalizeVariationLevel(layer?.directionVariation ?? layer?.evolution?.directionVariation ?? 'medium'),
       magnitudeVariation: normalizeVariationLevel(layer?.magnitudeVariation ?? layer?.evolution?.magnitudeVariation ?? 'medium'),
+      dynamicComplexity: normalizeDynamicComplexity(layer?.dynamicComplexity ?? layer?.evolution?.dynamicComplexity ?? 'medium'),
       evolutionPattern: normalizeEvolutionPattern(layer?.evolutionPattern ?? layer?.evolution?.evolutionPattern ?? 'composite'),
       spatialMotion: normalizeSpatialMotion(layer?.spatialMotion ?? layer?.evolution?.spatialMotion ?? 'none'),
       spatialMotionSpeed: normalizeSpatialMotionSpeed(layer?.spatialMotionSpeed ?? layer?.evolution?.spatialMotionSpeed ?? 1),
@@ -343,6 +405,7 @@ export function createDefaultFlowLayer(existingLayers = [], basePreset = FLOW_DE
     cycleDuration: 60,
     directionVariation: 'medium',
     magnitudeVariation: 'medium',
+    dynamicComplexity: 'medium',
     evolutionPattern: 'composite',
     spatialMotion: 'none',
     spatialMotionSpeed: 1,
@@ -477,8 +540,9 @@ function spatialOffsetForEvolution(evolution, time, preset) {
 }
 
 function applyDynamicEvolution(sample, { x = 0, y = 0, time = 0, preset = 'uniformDrift', evolution = normalizeEvolutionControls(), spatialOffset = { x: 0, y: 0 } } = {}) {
-  const directionAmp = directionVariationAmplitude(evolution.directionVariation);
-  const magnitudeAmp = magnitudeVariationAmplitude(evolution.magnitudeVariation);
+  const complexity = dynamicComplexityMultiplier(evolution.dynamicComplexity);
+  const directionAmp = directionVariationAmplitude(evolution.directionVariation) * complexity.direction;
+  const magnitudeAmp = magnitudeVariationAmplitude(evolution.magnitudeVariation) * complexity.magnitude;
   if (directionAmp <= 0 && magnitudeAmp <= 0) return sample;
 
   const nx = clamp01(x);
@@ -509,6 +573,7 @@ function applyDynamicEvolution(sample, { x = 0, y = 0, time = 0, preset = 'unifo
         pattern: evolution.evolutionPattern,
         directionVariation: evolution.directionVariation,
         magnitudeVariation: evolution.magnitudeVariation,
+        dynamicComplexity: evolution.dynamicComplexity,
         cycleDuration: evolution.cycleDuration,
         spatialMotion: evolution.spatialMotion,
         spatialMotionSpeed: evolution.spatialMotionSpeed,
@@ -638,6 +703,24 @@ function magnitudeVariationAmplitude(level) {
   }[normalizeVariationLevel(level)] ?? 0.3;
 }
 
+function dynamicComplexityMultiplier(level) {
+  return {
+    low: { direction: 0.55, magnitude: 0.55 },
+    medium: { direction: 1, magnitude: 1 },
+    high: { direction: 1.42, magnitude: 1.36 }
+  }[normalizeDynamicComplexity(level)] ?? { direction: 1.42, magnitude: 1.36 };
+}
+
+function normalizeDemoBoundaryConditions(boundary = {}) {
+  return normalizeBoundaryConditions({
+    mode: normalizeBoundaryMode(boundary.mode),
+    topologyAware: boundary.topologyAware !== false,
+    shoreRiskRadius: boundary.shoreRiskRadius ?? 3,
+    dampenIntoLand: boundary.dampenIntoLand ?? 0.78,
+    deflectStrength: boundary.deflectStrength ?? 0.52
+  });
+}
+
 function presetPhaseOffset(preset) {
   let hash = 0;
   const text = String(preset ?? 'flow');
@@ -689,15 +772,16 @@ function defaultPartition(index = 0) {
   return ['left', 'right', 'top', 'center'][index % 4];
 }
 
-function addRandomIslands(terrain, rng) {
+function addRandomIslands(terrain, rng, options = {}) {
   const height = terrain.length;
   const width = terrain[0]?.length ?? 0;
-  const count = 2 + Math.floor(rng() * 4);
+  const count = Number(options.count ?? (2 + Math.floor(rng() * 4)));
+  const maxRadius = Number(options.maxRadius ?? 0.11);
   const islands = Array.from({ length: count }, () => ({
     x: 0.18 + rng() * 0.64,
     y: 0.18 + rng() * 0.64,
-    rx: 0.08 + rng() * 0.11,
-    ry: 0.07 + rng() * 0.1
+    rx: 0.055 + rng() * maxRadius,
+    ry: 0.05 + rng() * Math.max(0.05, maxRadius * 0.9)
   }));
   for (let y = 0; y < height; y += 1) {
     for (let x = 0; x < width; x += 1) {
@@ -711,12 +795,20 @@ function addRandomIslands(terrain, rng) {
   }
 }
 
-function addCoastline(terrain, rng) {
+function addBlendedCoastalMap(terrain, rng) {
+  addCoastline(terrain, rng, { side: 'left', baseWidth: 0.2 });
+  carveWaterChannel(terrain, rng, { centerX: 0.48, width: 0.15, wobble: 0.11 });
+  addBayPocket(terrain, rng, { side: 'left', centerY: 0.66, radius: 0.24 });
+  addIslandChain(terrain, rng, { count: 4, maxRadius: 0.055, startX: 0.48, startY: 0.22, dx: 0.09, dy: 0.12 });
+}
+
+function addCoastline(terrain, rng, options = {}) {
   const height = terrain.length;
   const width = terrain[0]?.length ?? 0;
-  const side = rng() < 0.5 ? 'left' : 'right';
+  const side = options.side ?? (rng() < 0.5 ? 'left' : 'right');
+  const baseWidth = Number(options.baseWidth ?? 0.22);
   for (let y = 0; y < height; y += 1) {
-    const boundary = Math.round(width * (0.22 + 0.07 * Math.sin(y * 0.85 + rng() * 2)));
+    const boundary = Math.round(width * (baseWidth + 0.07 * Math.sin(y * 0.85 + rng() * 2)));
     for (let x = 0; x < width; x += 1) {
       if (side === 'left' ? x <= boundary : x >= width - boundary - 1) terrain[y][x] = 1;
     }
@@ -731,6 +823,83 @@ function addChannel(terrain, rng) {
     const halfWidth = Math.max(2, width * 0.16);
     for (let x = 0; x < width; x += 1) {
       terrain[y][x] = Math.abs(x - center) <= halfWidth ? 0 : 1;
+    }
+  }
+}
+
+function addBayPocket(terrain, rng, options = {}) {
+  const height = terrain.length;
+  const width = terrain[0]?.length ?? 0;
+  const side = options.side ?? (rng() < 0.5 ? 'left' : 'right');
+  addCoastline(terrain, rng, { side, baseWidth: 0.24 });
+  const centerY = Number(options.centerY ?? (0.34 + rng() * 0.36));
+  const radius = Number(options.radius ?? 0.22);
+  const mouth = side === 'left' ? 0.18 : 0.82;
+  for (let y = 0; y < height; y += 1) {
+    for (let x = 0; x < width; x += 1) {
+      const nx = width > 1 ? x / (width - 1) : 0;
+      const ny = height > 1 ? y / (height - 1) : 0;
+      const dx = nx - mouth;
+      const dy = ny - centerY;
+      if ((dx * dx + dy * dy) < radius * radius) terrain[y][x] = 0;
+    }
+  }
+}
+
+function addIslandChain(terrain, rng, options = {}) {
+  const height = terrain.length;
+  const width = terrain[0]?.length ?? 0;
+  const count = Number(options.count ?? 5);
+  const maxRadius = Number(options.maxRadius ?? 0.065);
+  const startX = Number(options.startX ?? 0.26);
+  const startY = Number(options.startY ?? 0.24);
+  const dx = Number(options.dx ?? 0.1);
+  const dy = Number(options.dy ?? 0.095);
+  const islands = Array.from({ length: count }, (_, index) => ({
+    x: startX + dx * index + (rng() - 0.5) * 0.05,
+    y: startY + dy * index + (rng() - 0.5) * 0.06,
+    rx: 0.045 + rng() * maxRadius,
+    ry: 0.04 + rng() * maxRadius
+  }));
+  for (let y = 0; y < height; y += 1) {
+    for (let x = 0; x < width; x += 1) {
+      const nx = width > 1 ? x / (width - 1) : 0;
+      const ny = height > 1 ? y / (height - 1) : 0;
+      if (islands.some((island) => (((nx - island.x) / island.rx) ** 2 + ((ny - island.y) / island.ry) ** 2) <= 1)) {
+        terrain[y][x] = 1;
+      }
+    }
+  }
+}
+
+function addCoastalEstuary(terrain, rng) {
+  const height = terrain.length;
+  const width = terrain[0]?.length ?? 0;
+  for (let y = 0; y < height; y += 1) {
+    for (let x = 0; x < width; x += 1) {
+      const nx = width > 1 ? x / (width - 1) : 0;
+      const ny = height > 1 ? y / (height - 1) : 0;
+      terrain[y][x] = nx < 0.34 + 0.08 * Math.sin(ny * Math.PI * 3) ? 1 : 0;
+    }
+  }
+  carveWaterChannel(terrain, rng, { centerX: 0.3, width: 0.1, wobble: 0.16 });
+  carveWaterChannel(terrain, rng, { centerX: 0.42, width: 0.07, wobble: 0.07, phase: 1.4 });
+  addIslandChain(terrain, rng, { count: 3, maxRadius: 0.045, startX: 0.56, startY: 0.26, dx: 0.1, dy: 0.16 });
+}
+
+function carveWaterChannel(terrain, rng, options = {}) {
+  const height = terrain.length;
+  const width = terrain[0]?.length ?? 0;
+  const centerX = Number(options.centerX ?? 0.5);
+  const halfWidth = Number(options.width ?? 0.12);
+  const wobble = Number(options.wobble ?? 0.08);
+  const phase = Number(options.phase ?? rng() * Math.PI * 2);
+  for (let y = 0; y < height; y += 1) {
+    const ny = height > 1 ? y / (height - 1) : 0;
+    const center = centerX + wobble * Math.sin(ny * Math.PI * 2.3 + phase);
+    for (let x = 0; x < width; x += 1) {
+      const nx = width > 1 ? x / (width - 1) : 0;
+      if (Math.abs(nx - center) < halfWidth) terrain[y][x] = 0;
     }
   }
 }

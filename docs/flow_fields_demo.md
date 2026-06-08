@@ -30,16 +30,18 @@ The demo provides a controlled scene for questions like:
 - `Layer Weight`: controls that layer's contribution to the final vector.
 - `Layer Influence`: chooses Global Blend, Spatial Pocket, or Partitioned Region.
 - `Enabled / Remove Layer`: keeps a layer card without influence or removes it from the stack.
-- `Terrain`: selects No Land, Random Islands, Coastline, or Channel.
+- `Terrain`: selects Blended Coastal Map, Coast + Islands, Coastal Estuary, Channel + Islands, Random Islands, Coastline, Channel, Bay / Pocket, Island Chain, or No Land.
 - `Reset Terrain`: advances the deterministic terrain seed and rebuilds the land mask.
 - `Direction Variation`: chooses Off, Low, Medium, or High smooth rotation/bending of the dynamic field.
 - `Magnitude Variation`: chooses Off, Low, Medium, or High smooth strengthening/weakening of the dynamic field.
+- `Dynamic Complexity`: chooses Low, Medium, or High regional and temporal structure in topology-aware fields.
 - `Evolution Behavior`: chooses Continuous, Looping / Cyclic, One-Shot Pulse, or Meandering / Translating.
 - `Evolution Pattern`: chooses Tidal Cycle, Meandering Jet, Eddy Drift, Storm Pulse, or Composite dynamic modulation.
 - `Cycle Duration`: controls intentional Looping cycle length or One-Shot Pulse timing.
 - `Spatial Motion`: chooses Off, directional drift, Circular Drift, or Meander.
 - `Spatial Motion Speed`: scales the selected spatial translation.
 - `Evolution Speed`: scales simulated field evolution from 0.25x to 10x.
+- `Boundary Mode`: chooses None, Risk Only, Dampen Into Land, or Deflect Along Shore.
 - `Magnitude Scale`: changes how strongly arrow length visualizes sampled magnitude from 0.5x to 2x.
 - `Particle Speed`: changes passive particle speed through the sampled field from 0.5x to 4x without changing field evolution.
 - `Pause / Play`: pauses or resumes demo animation.
@@ -56,11 +58,12 @@ Static mode samples the selected field at time zero. Arrows remain stable, while
 
 ### Dynamic
 
-Dynamic mode passes advancing demo time into the shared current sampler and applies a deterministic demo evolution layer. The demo evolution uses raw continuous `demoTime`, not a discrete frame index, so arrows, magnitudes, directions, and particle drift change smoothly as simulated time advances. The default Dynamic setup uses Medium direction variation, Medium magnitude variation, and the Composite pattern, so even Uniform Drift visibly morphs over time.
+Dynamic mode passes advancing demo time into the shared current sampler and applies a deterministic demo evolution layer. The demo evolution uses raw continuous `demoTime`, not a discrete frame index, so arrows, magnitudes, directions, and particle drift change smoothly as simulated time advances. The default setup is Dynamic `Topology-Aware Composite` over a Blended Coastal Map with High dynamic complexity, High direction variation, High magnitude variation, Composite pattern, Meander spatial motion, and Deflect Along Shore boundary handling.
 
 Dynamic controls affect the sampled field itself:
 
 - `Evolution Behavior`: controls whether evolution is continuous, intentionally looping, pulse-shaped, or spatially translating.
+- `Dynamic Complexity`: scales how much secondary regional motion, temporal structure, direction bending, and magnitude pulsing are visible.
 - `Direction Variation`: rotates or bends vectors coherently over time.
 - `Magnitude Variation`: changes vector strength coherently over time.
 - `Evolution Pattern`: controls the water-like modulation shape.
@@ -78,7 +81,7 @@ Evolution behavior semantics:
 
 ## 5. Additive Flow Layers
 
-The demo opens in Static mode with one Base Flow Field and no additive layers. The layer stack uses that same base-field-first model: each `+ Add Flow Layer` click appends a weighted layer over the same spatial domain:
+The demo opens in Dynamic mode with one Base Flow Field and no additive layers. The layer stack uses that same base-field-first model: each `+ Add Flow Layer` click appends a weighted layer over the same spatial domain:
 
 ```text
 finalVector = baseField + sum(layerWeight * layerField for enabled layers)
@@ -115,6 +118,22 @@ These are synthetic ocean-inspired fields, not validated HYCOM forecasts. The HY
 
 ## 7. Terrain Modes
 
+### Blended Coastal Map
+
+Blended Coastal Map is the default. It combines shoreline, a water channel, a bay/pocket, and an island chain so topology-aware current behavior is visible immediately.
+
+### Coast + Islands
+
+Coast + Islands combines an irregular coastline with small islands for mixed shoreline and obstacle behavior.
+
+### Coastal Estuary
+
+Coastal Estuary carves branching water channels into a coastal land mass and adds a small island chain.
+
+### Channel + Islands
+
+Channel + Islands combines a constrained passage with small islands for corridor acceleration and wake-like behavior.
+
 ### No Land
 
 No Land is pure open-water vector-field behavior with no obstacles. Use it to inspect the base math and particle drift.
@@ -130,6 +149,14 @@ Coastline generates an irregular land/water boundary along one side of the domai
 ### Channel / Narrow Passage
 
 Channel creates land on both sides with a water corridor through the center. It is useful for testing boundary effects in constrained passages.
+
+### Bay / Pocket
+
+Bay / Pocket generates a coastal indentation so weak recirculation and flushing-like topology effects can be inspected.
+
+### Island Chain
+
+Island Chain creates a diagonal chain of deterministic islands for repeated obstacle-adjacent current behavior.
 
 Terrain modes help validate how currents behave near land and how passive glider icons respond to blocked areas.
 

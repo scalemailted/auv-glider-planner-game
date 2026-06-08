@@ -1,7 +1,7 @@
 import { CAMPAIGN_LEVELS } from '../core/campaign/CampaignLevels.js';
 import { shortInstanceId } from '../core/identity/GameInstanceId.js';
 import { formatMetric } from '../core/evaluation/PlanComparison.js';
-import { FLOW_DEMO_CYCLE_DURATIONS, FLOW_DEMO_EVOLUTION_BEHAVIORS, FLOW_DEMO_EVOLUTION_PATTERNS, FLOW_DEMO_EVOLUTION_SPEEDS, FLOW_DEMO_FIELD_MODES, FLOW_DEMO_LAYER_INFLUENCES, FLOW_DEMO_MAGNITUDE_SCALES, FLOW_DEMO_PARTICLE_SPEEDS, FLOW_DEMO_PRESET_CHOICES, FLOW_DEMO_SPATIAL_MOTIONS, FLOW_DEMO_SPATIAL_MOTION_SPEEDS, FLOW_DEMO_TERRAIN_MODES, FLOW_DEMO_VARIATION_LEVELS, normalizeAdditiveLayers } from '../core/demo/FlowFieldDemo.js';
+import { FLOW_DEMO_BOUNDARY_MODES, FLOW_DEMO_CYCLE_DURATIONS, FLOW_DEMO_DYNAMIC_COMPLEXITY_LEVELS, FLOW_DEMO_EVOLUTION_BEHAVIORS, FLOW_DEMO_EVOLUTION_PATTERNS, FLOW_DEMO_EVOLUTION_SPEEDS, FLOW_DEMO_FIELD_MODES, FLOW_DEMO_LAYER_INFLUENCES, FLOW_DEMO_MAGNITUDE_SCALES, FLOW_DEMO_PARTICLE_SPEEDS, FLOW_DEMO_PRESET_CHOICES, FLOW_DEMO_SPATIAL_MOTIONS, FLOW_DEMO_SPATIAL_MOTION_SPEEDS, FLOW_DEMO_TERRAIN_MODES, FLOW_DEMO_VARIATION_LEVELS, normalizeAdditiveLayers } from '../core/demo/FlowFieldDemo.js';
 import { ROI_DEMO_DISTRIBUTIONS, ROI_DEMO_SPATIAL_PATTERNS, ROI_DEMO_TEMPORAL_BEHAVIORS, ROI_DEMO_TIME_MODES, roiDistributionLabel, sampleSpatialPatternLabel, sampleTemporalBehaviorLabel } from '../core/demo/DemoRoiFields.js';
 import { EXPERIENCE_MODES, getExperienceModeDefaults } from '../core/experience/ExperienceMode.js';
 import { getVectorPresetConfig } from '../core/generation/VectorFieldPresets.js';
@@ -64,7 +64,7 @@ export class MissionConsole {
     `;
     this.app.applyConsoleAccordions?.('idle');
     this.bind({
-      'flow-fields': () => this.app.phaser.scene.start('FlowFieldDemoScene', { fieldMode: 'static' }),
+      'flow-fields': () => this.app.phaser.scene.start('FlowFieldDemoScene'),
       'roi-demo': () => this.app.phaser.scene.start('RoiGeneratorDemoScene'),
       tutorial: () => this.mainMenuScene()?.openTutorialBrowser?.(),
       'play-challenge': () => this.mainMenuScene()?.openChallengeSetup?.('perfectKnowledge', EXPERIENCE_MODES.challenge),
@@ -94,6 +94,11 @@ export class MissionConsole {
         <small>${escapeHtml(state.fieldMode === 'dynamic'
           ? `${evolutionBehaviorLabel(state.evolutionBehavior)} evolution. Spatial ${spatialMotionLabel(state.spatialMotion)} | Evolution Speed ${state.evolutionSpeedScale ?? 1}x | Particle Speed ${state.particleSpeedScale ?? 1}x | Magnitude Scale ${state.magnitudeScale ?? 1.5}x.`
           : 'Particles move through a non-evolving vector field.')}</small>
+      </section>
+      <section class="console-section">
+        <h2>What This Shows</h2>
+        <div class="hud-muted">A current field maps position and time to F(x, y, t) = &lt;u, v&gt;. Direction shows where water pushes; magnitude shows how strongly it pushes.</div>
+        <div class="hud-muted">Topology-aware fields react to shoreline, islands, channels, bays, and open water using the same shared current sampler used by missions.</div>
       </section>
       <section class="console-section">
         <h2>Field Mode</h2>
@@ -154,6 +159,12 @@ export class MissionConsole {
           </select>
         </label>
         <label class="compact-field">
+          Dynamic Complexity
+          <select id="flow-demo-dynamic-complexity">
+            ${FLOW_DEMO_DYNAMIC_COMPLEXITY_LEVELS.map((level) => `<option value="${escapeAttr(level)}" ${state.dynamicComplexity === level ? 'selected' : ''}>${escapeHtml(dynamicComplexityLabel(level))}</option>`).join('')}
+          </select>
+        </label>
+        <label class="compact-field">
           Evolution Pattern
           <select id="flow-demo-evolution-pattern">
             ${FLOW_DEMO_EVOLUTION_PATTERNS.map((pattern) => `<option value="${escapeAttr(pattern)}" ${state.evolutionPattern === pattern ? 'selected' : ''}>${escapeHtml(evolutionPatternLabel(pattern))}</option>`).join('')}
@@ -181,6 +192,12 @@ export class MissionConsole {
           Evolution Speed
           <select id="flow-demo-evolution-speed">
             ${FLOW_DEMO_EVOLUTION_SPEEDS.map((speed) => `<option value="${escapeAttr(speed)}" ${Number(state.evolutionSpeedScale ?? 1) === speed ? 'selected' : ''}>${escapeHtml(speed)}x</option>`).join('')}
+          </select>
+        </label>
+        <label class="compact-field">
+          Boundary Mode
+          <select id="flow-demo-boundary-mode">
+            ${FLOW_DEMO_BOUNDARY_MODES.map((mode) => `<option value="${escapeAttr(mode)}" ${state.boundaryMode === mode ? 'selected' : ''}>${escapeHtml(boundaryModeLabel(mode))}</option>`).join('')}
           </select>
         </label>
       </section>
@@ -244,10 +261,12 @@ export class MissionConsole {
     this.root.querySelector('#flow-demo-cycle-duration')?.addEventListener('change', (event) => handlers.cycleDuration?.(event.target.value));
     this.root.querySelector('#flow-demo-direction-variation')?.addEventListener('change', (event) => handlers.directionVariation?.(event.target.value));
     this.root.querySelector('#flow-demo-magnitude-variation')?.addEventListener('change', (event) => handlers.magnitudeVariation?.(event.target.value));
+    this.root.querySelector('#flow-demo-dynamic-complexity')?.addEventListener('change', (event) => handlers.dynamicComplexity?.(event.target.value));
     this.root.querySelector('#flow-demo-evolution-pattern')?.addEventListener('change', (event) => handlers.evolutionPattern?.(event.target.value));
     this.root.querySelector('#flow-demo-spatial-motion')?.addEventListener('change', (event) => handlers.spatialMotion?.(event.target.value));
     this.root.querySelector('#flow-demo-spatial-motion-speed')?.addEventListener('change', (event) => handlers.spatialMotionSpeed?.(event.target.value));
     this.root.querySelector('#flow-demo-evolution-speed')?.addEventListener('change', (event) => handlers.evolutionSpeedScale?.(event.target.value));
+    this.root.querySelector('#flow-demo-boundary-mode')?.addEventListener('change', (event) => handlers.boundaryMode?.(event.target.value));
     this.root.querySelector('#flow-demo-magnitude-scale')?.addEventListener('change', (event) => handlers.magnitudeScale?.(event.target.value));
     this.root.querySelector('#flow-demo-particle-speed')?.addEventListener('change', (event) => handlers.particleSpeedScale?.(event.target.value));
     this.bind({
@@ -640,6 +659,14 @@ function variationLabel(level) {
   }[level] ?? 'Medium';
 }
 
+function dynamicComplexityLabel(level) {
+  return {
+    low: 'Low',
+    medium: 'Medium',
+    high: 'High'
+  }[level] ?? 'High';
+}
+
 function evolutionPatternLabel(pattern) {
   return {
     tidalCycle: 'Tidal Cycle',
@@ -673,11 +700,26 @@ function spatialMotionLabel(motion) {
 
 function terrainModeLabel(mode) {
   return {
+    blendedCoastal: 'Blended Coastal Map',
+    coastIslands: 'Coast + Islands',
+    coastalEstuary: 'Coastal Estuary',
+    channelIslands: 'Channel + Islands',
     none: 'No Land',
     islands: 'Random Islands',
     coastline: 'Coastline',
-    channel: 'Channel'
+    channel: 'Channel',
+    bayPocket: 'Bay / Pocket',
+    islandChain: 'Island Chain'
   }[mode] ?? mode;
+}
+
+function boundaryModeLabel(mode) {
+  return {
+    none: 'None',
+    riskOnly: 'Risk Only',
+    dampenIntoLand: 'Dampen Into Land',
+    deflectAlongShore: 'Deflect Along Shore'
+  }[mode] ?? 'Deflect Along Shore';
 }
 
 function roiForecastViewLabel(view) {
