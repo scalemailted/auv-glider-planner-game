@@ -44,9 +44,11 @@ The demo provides a controlled scene for questions like:
 - `Boundary Mode`: chooses None, Risk Only, Dampen Into Land, or Deflect Along Shore.
 - `Magnitude Scale`: changes how strongly arrow length visualizes sampled magnitude from 0.5x to 2x.
 - `Particle Speed`: changes passive particle speed through the sampled field from 0.5x to 4x without changing field evolution.
-- `Pause / Play`: pauses or resumes demo animation.
-- `Reset Particles`: respawns particles with the current configuration.
-- `Main Menu`: returns to the main menu.
+- Bottom transport `Back`: returns to the main menu / Simulation Lab launcher.
+- Bottom transport `Reset`: resets demo time and respawns particles with the current configuration.
+- Bottom transport `Pause / Resume`: pauses or resumes demo time and particle motion.
+- Bottom transport `Demo Time`: shows the unbounded demo-time clock. Continuous behavior is labeled as an infinite timeline; Looping shows the active cycle duration.
+- `Cell Inspector`: click any map cell to populate the right panel with current vector behavior for that cell.
 
 Particle count is currently fixed by mode: static mode uses fewer particles than dynamic/composite modes.
 
@@ -248,6 +250,30 @@ Examples:
 Evolution Speed affects Dynamic arrows, dynamic sampled layers, displayed demo time, and dynamic field phase. Static mode pins base samples to time zero, so its base arrows remain stable while particles move through the fixed field.
 
 Particle Speed only scales passive particle advection after the field is sampled. Magnitude Scale only changes arrow visualization. Neither control changes the underlying current values.
+
+The Flow Fields Demo transport actions live in the bottom timeline slot rather than inside the Phaser visualization. The center viewport remains reserved for the current-field map, arrows, particles, and non-obstructive readouts. Because the demo is not a finite mission, the bottom strip presents `Demo Time` and an `Infinite timeline` summary instead of a mission-time scrubber.
+
+## 10.1 Click-To-Inspect Cell Behavior
+
+Click any cell in the Flow Fields Demo to inspect its current vector behavior. The selected cell remains highlighted until another cell is clicked or the same cell is clicked again.
+
+The right panel shows:
+
+- selected cell coordinates and land/water status
+- vector components `u` and `v`
+- magnitude
+- direction in degrees plus a compass label that matches the rendered arrow orientation
+- topology region and dominant behavior when the shared sampler provides them
+- boundary mode, shoreline risk, shore distance, current-toward-land, tangential component, and topology-adjusted status when available
+- temporal trend over the previous second, including magnitude trend and angular change
+
+The inspector samples the same composed current field as the arrow grid:
+
+```text
+sampleDemoFlow({ ...fieldConfig, x, y, time: demoTime })
+```
+
+It updates while dynamic time advances, freezes while paused, and returns to `t = 0.0s` when Reset is pressed. Land cells are selectable too; they show that no navigable water current is applied at that location while nearby water may still be damped, deflected, or marked risky depending on boundary mode.
 
 ## 11. Magnitude Diagnostics
 

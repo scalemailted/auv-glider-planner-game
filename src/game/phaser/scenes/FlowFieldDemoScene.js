@@ -21,7 +21,6 @@ import {
   sampleDemoFlow,
   summarizeDemoFlowMagnitudes
 } from '../../../core/demo/FlowFieldDemo.js';
-import { PhaserButton } from '../ui/Button.js';
 
 const PhaserScene = globalThis.Phaser?.Scene ?? class {};
 
@@ -29,7 +28,7 @@ export class FlowFieldDemoScene extends PhaserScene {
   constructor() {
     super('FlowFieldDemoScene');
     this.objects = [];
-    this.buttons = [];
+    this.transportRefs = {};
     this.fieldMode = 'dynamic';
     this.preset = FLOW_DEMO_DEFAULT_PRESETS.dynamic;
     this.additiveLayers = normalizeAdditiveLayers(FLOW_DEMO_DEFAULT_LAYERS);
@@ -52,6 +51,9 @@ export class FlowFieldDemoScene extends PhaserScene {
     this.paused = false;
     this.lastDeltaSeconds = 0;
     this.lastDebugDemoTime = -Infinity;
+    this.selectedCell = null;
+    this.lastInspectorRenderTime = -Infinity;
+    this.lastInspectorKey = '';
   }
 
   init(data = {}) {
@@ -77,9 +79,12 @@ export class FlowFieldDemoScene extends PhaserScene {
     this.paused = false;
     this.lastDeltaSeconds = 0;
     this.lastDebugDemoTime = -Infinity;
+    this.selectedCell = normalizeSelectedCell(data.selectedCell);
+    this.lastInspectorRenderTime = -Infinity;
+    this.lastInspectorKey = '';
     this.particles = createDemoParticles({
       count: this.fieldMode === 'static' ? 18 : 22,
-      seed: `flow-demo-${this.fieldMode}:${this.preset}:${JSON.stringify(this.additiveLayers)}`
+      seed: this.particleSeed()
     });
   }
 
@@ -94,12 +99,18 @@ export class FlowFieldDemoScene extends PhaserScene {
     this.app.agentPerformanceHud?.setHandlers?.({});
     this.app.agentPerformanceHud?.renderIdle?.();
     this.renderConsole();
+    this.renderTransportBar();
+    this.renderCellInspector(true);
     this.buildSceneObjects();
+    this.bindInputHandlers();
     this.draw();
   }
 
   shutdown() {
+    this.unbindInputHandlers();
     this.destroyObjects();
+    this.clearTransportBar();
+    this.clearCellInspector();
   }
 
   handleViewportResize() {
@@ -182,42 +193,52 @@ export class FlowFieldDemoScene extends PhaserScene {
       evolutionSpeedScale: (evolutionSpeedScale) => {
         this.evolutionSpeedScale = Number(evolutionSpeedScale) || 1;
         this.renderConsole();
+        this.renderCellInspector(true);
       },
       evolutionBehavior: (evolutionBehavior) => {
         this.evolutionBehavior = normalizeEvolutionBehavior(evolutionBehavior);
         this.renderConsole();
+        this.renderCellInspector(true);
       },
       cycleDuration: (cycleDuration) => {
         this.cycleDuration = finiteNumber(cycleDuration, 60);
         this.renderConsole();
+        this.renderCellInspector(true);
       },
       directionVariation: (directionVariation) => {
         this.directionVariation = normalizeVariationLevel(directionVariation);
         this.renderConsole();
+        this.renderCellInspector(true);
       },
       magnitudeVariation: (magnitudeVariation) => {
         this.magnitudeVariation = normalizeVariationLevel(magnitudeVariation);
         this.renderConsole();
+        this.renderCellInspector(true);
       },
       dynamicComplexity: (dynamicComplexity) => {
         this.dynamicComplexity = normalizeDynamicComplexity(dynamicComplexity);
         this.renderConsole();
+        this.renderCellInspector(true);
       },
       evolutionPattern: (evolutionPattern) => {
         this.evolutionPattern = normalizeEvolutionPattern(evolutionPattern);
         this.renderConsole();
+        this.renderCellInspector(true);
       },
       spatialMotion: (spatialMotion) => {
         this.spatialMotion = normalizeSpatialMotion(spatialMotion);
         this.renderConsole();
+        this.renderCellInspector(true);
       },
       spatialMotionSpeed: (spatialMotionSpeed) => {
         this.spatialMotionSpeed = finiteNumber(spatialMotionSpeed, 1);
         this.renderConsole();
+        this.renderCellInspector(true);
       },
       boundaryMode: (boundaryMode) => {
         this.boundaryMode = normalizeBoundaryMode(boundaryMode);
         this.renderConsole();
+        this.renderCellInspector(true);
       },
       magnitudeScale: (magnitudeScale) => {
         this.magnitudeScale = Number(magnitudeScale) || 1;
@@ -229,9 +250,11 @@ export class FlowFieldDemoScene extends PhaserScene {
       },
       pause: () => {
         this.paused = !this.paused;
+        this.updateTransportBar();
         this.renderConsole();
+        this.renderCellInspector(true);
       },
-      reset: () => this.scene.restart(this.sceneConfig()),
+      reset: () => this.resetDemoState(),
       menu: () => this.scene.start('MainMenuScene')
     });
   }
@@ -274,7 +297,8 @@ export class FlowFieldDemoScene extends PhaserScene {
       spatialMotionSpeed: this.spatialMotionSpeed,
       boundaryMode: this.boundaryMode,
       magnitudeScale: this.magnitudeScale,
-      particleSpeedScale: this.particleSpeedScale
+      particleSpeedScale: this.particleSpeedScale,
+      selectedCell: this.selectedCell
     };
   }
 
@@ -300,37 +324,6 @@ export class FlowFieldDemoScene extends PhaserScene {
       color: '#c9f7e5'
     }).setOrigin(0, 0);
     this.objects.push(this.titleText, this.subtitleText, this.statusText);
-    this.createButtons();
-  }
-
-  createButtons() {
-    this.buttons = [
-      new PhaserButton(this, {
-        x: 0,
-        y: 0,
-        width: 112,
-        label: 'Back',
-        onClick: () => this.scene.start('MainMenuScene')
-      }),
-      new PhaserButton(this, {
-        x: 0,
-        y: 0,
-        width: 112,
-        label: this.paused ? 'Play' : 'Pause',
-        onClick: () => {
-          this.paused = !this.paused;
-          this.buttons?.[1]?.setLabel(this.paused ? 'Play' : 'Pause');
-          this.renderConsole();
-        }
-      }),
-      new PhaserButton(this, {
-        x: 0,
-        y: 0,
-        width: 112,
-        label: 'Reset',
-        onClick: () => this.scene.restart(this.sceneConfig())
-      })
-    ];
   }
 
   layout() {
@@ -339,7 +332,7 @@ export class FlowFieldDemoScene extends PhaserScene {
     const margin = Math.max(24, Math.min(52, width * 0.045));
     const top = Math.max(24, Math.min(44, height * 0.06));
     const mapTop = top + 112;
-    const mapHeight = Math.max(260, height - mapTop - 54);
+    const mapHeight = Math.max(220, height - mapTop - 188);
     const mapWidth = Math.max(320, width - margin * 2);
     return {
       width,
@@ -362,10 +355,12 @@ export class FlowFieldDemoScene extends PhaserScene {
     this.drawBackground(layout);
     this.drawTerrain(layout.map);
     this.drawField(layout.map);
+    this.drawSelectedCell(layout.map);
     this.drawTrails(layout.map);
     this.drawParticles(layout.map);
     this.layoutText(layout);
-    this.layoutButtons(layout);
+    this.updateTransportBar();
+    this.renderCellInspector();
   }
 
   drawBackground({ width, height, map }) {
@@ -419,6 +414,27 @@ export class FlowFieldDemoScene extends PhaserScene {
         this.graphics.strokeRect(map.x + x * cellW, map.y + y * cellH, cellW, cellH);
       }
     }
+  }
+
+  drawSelectedCell(map) {
+    if (!this.selectedCell) return;
+    const cols = FLOW_DEMO_GRID.width;
+    const rows = FLOW_DEMO_GRID.height;
+    const cellW = map.width / cols;
+    const cellH = map.height / rows;
+    const x = map.x + this.selectedCell.col * cellW;
+    const y = map.y + this.selectedCell.row * cellH;
+    const centerX = x + cellW / 2;
+    const centerY = y + cellH / 2;
+    const land = isDemoLand(this.terrain, this.selectedCell.x, this.selectedCell.y);
+    const color = land ? 0xff8a5c : 0x63e6be;
+    this.graphics.fillStyle(color, 0.08);
+    this.graphics.fillRect(x + 1, y + 1, Math.max(1, cellW - 2), Math.max(1, cellH - 2));
+    this.graphics.lineStyle(3, color, 0.96);
+    this.graphics.strokeRect(x + 1.5, y + 1.5, Math.max(1, cellW - 3), Math.max(1, cellH - 3));
+    this.graphics.lineStyle(1, 0xffffff, 0.72);
+    this.graphics.lineBetween(centerX - Math.min(12, cellW * 0.28), centerY, centerX + Math.min(12, cellW * 0.28), centerY);
+    this.graphics.lineBetween(centerX, centerY - Math.min(12, cellH * 0.28), centerX, centerY + Math.min(12, cellH * 0.28));
   }
 
   drawArrow(x, y, angle, length, color, alpha, thickness = 2) {
@@ -498,14 +514,6 @@ export class FlowFieldDemoScene extends PhaserScene {
     this.statusText?.setPosition(margin, map.y + map.height + 18);
   }
 
-  layoutButtons({ width, top }) {
-    const y = top + 18;
-    const right = width - 58;
-    for (const [index, button] of this.buttons.entries()) {
-      button.container.setPosition(right - index * 124, y);
-    }
-  }
-
   toScreen(map, x, y) {
     return {
       x: map.x + Number(x) * map.width,
@@ -514,11 +522,181 @@ export class FlowFieldDemoScene extends PhaserScene {
   }
 
   destroyObjects() {
-    this.buttons?.forEach((button) => button.destroy?.());
-    this.buttons = [];
     this.objects?.forEach((object) => object.destroy?.());
     this.objects = [];
     this.graphics = null;
+  }
+
+  bindInputHandlers() {
+    this.input?.off?.('pointerdown', this.handlePointerDown, this);
+    this.input?.on?.('pointerdown', this.handlePointerDown, this);
+  }
+
+  unbindInputHandlers() {
+    this.input?.off?.('pointerdown', this.handlePointerDown, this);
+  }
+
+  handlePointerDown(pointer) {
+    const cell = this.cellFromPointer(pointer);
+    if (!cell) return;
+    if (this.selectedCell && this.selectedCell.col === cell.col && this.selectedCell.row === cell.row) {
+      this.selectedCell = null;
+    } else {
+      this.selectedCell = cell;
+    }
+    this.lastInspectorRenderTime = -Infinity;
+    this.renderCellInspector(true);
+    this.draw();
+  }
+
+  cellFromPointer(pointer) {
+    const map = this.layout().map;
+    const x = Number(pointer?.x);
+    const y = Number(pointer?.y);
+    if (!Number.isFinite(x) || !Number.isFinite(y)) return null;
+    if (x < map.x || y < map.y || x > map.x + map.width || y > map.y + map.height) return null;
+    const col = Math.max(0, Math.min(FLOW_DEMO_GRID.width - 1, Math.floor(((x - map.x) / map.width) * FLOW_DEMO_GRID.width)));
+    const row = Math.max(0, Math.min(FLOW_DEMO_GRID.height - 1, Math.floor(((y - map.y) / map.height) * FLOW_DEMO_GRID.height)));
+    return cellFromRowCol(row, col);
+  }
+
+  renderTransportBar() {
+    const root = this.app?.elements?.overlay?.bottomTimeline;
+    if (!root) return;
+    root.innerHTML = `
+      <section class="hud-panel timeline-overlay flow-demo-transport" aria-label="Flow Fields Demo transport controls">
+        <div class="timeline-buttons flow-demo-transport-actions">
+          <button type="button" data-action="flow-demo-back">Back</button>
+          <button type="button" data-action="flow-demo-reset">Reset</button>
+          <button type="button" data-action="flow-demo-pause">Pause</button>
+        </div>
+        <div class="timeline-readout flow-demo-time-readout">
+          <strong data-flow-demo-time>Demo Time: 0.0 s</strong>
+          <span class="hud-muted" data-flow-demo-state>Continuous demo time</span>
+        </div>
+        <div class="flow-demo-transport-summary">
+          <span data-flow-demo-mode>Mode: Dynamic</span>
+          <span data-flow-demo-behavior>Behavior: Continuous</span>
+          <span data-flow-demo-speed>Speed: 1x</span>
+          <span>Infinite timeline</span>
+        </div>
+      </section>
+    `;
+    root.querySelector('[data-action="flow-demo-back"]')?.addEventListener('click', () => this.scene.start('MainMenuScene'));
+    root.querySelector('[data-action="flow-demo-reset"]')?.addEventListener('click', () => this.resetDemoState());
+    root.querySelector('[data-action="flow-demo-pause"]')?.addEventListener('click', () => {
+      this.paused = !this.paused;
+      this.renderConsole();
+      this.updateTransportBar();
+      this.renderCellInspector(true);
+    });
+    this.transportRefs = {
+      root,
+      pauseButton: root.querySelector('[data-action="flow-demo-pause"]'),
+      time: root.querySelector('[data-flow-demo-time]'),
+      state: root.querySelector('[data-flow-demo-state]'),
+      mode: root.querySelector('[data-flow-demo-mode]'),
+      behavior: root.querySelector('[data-flow-demo-behavior]'),
+      speed: root.querySelector('[data-flow-demo-speed]')
+    };
+    this.updateTransportBar();
+  }
+
+  updateTransportBar() {
+    const refs = this.transportRefs ?? {};
+    if (!refs.root?.isConnected) return;
+    const timeText = `${this.paused ? 'Paused at' : 'Demo Time'}: ${this.demoTime.toFixed(1)} s`;
+    if (refs.time) refs.time.textContent = timeText;
+    if (refs.state) refs.state.textContent = this.transportStateLabel();
+    if (refs.mode) refs.mode.textContent = `Mode: ${fieldModeLabel(this.fieldMode)}`;
+    if (refs.behavior) refs.behavior.textContent = `Behavior: ${evolutionBehaviorLabel(this.evolutionBehavior)}`;
+    if (refs.speed) refs.speed.textContent = `Speed: ${this.evolutionSpeedScale}x`;
+    if (refs.pauseButton) refs.pauseButton.textContent = this.paused ? 'Resume' : 'Pause';
+  }
+
+  transportStateLabel() {
+    if (this.paused) return `Paused at t = ${this.demoTime.toFixed(1)}s`;
+    if (this.evolutionBehavior === 'looping') return `Looping - cycle ${this.cycleDuration}s`;
+    return 'Continuous demo time - infinite timeline';
+  }
+
+  resetDemoState() {
+    this.demoTime = 0;
+    this.paused = true;
+    this.lastDeltaSeconds = 0;
+    this.lastDebugDemoTime = -Infinity;
+    this.particles = createDemoParticles({
+      count: this.fieldMode === 'static' ? 18 : 22,
+      seed: this.particleSeed()
+    });
+    this.renderConsole();
+    this.updateTransportBar();
+    this.renderCellInspector(true);
+    this.draw();
+  }
+
+  particleSeed() {
+    return `flow-demo-${this.fieldMode}:${this.preset}:${this.terrainMode}:${this.terrainSeed}:${JSON.stringify(this.additiveLayers)}`;
+  }
+
+  clearTransportBar() {
+    const root = this.app?.elements?.overlay?.bottomTimeline;
+    if (root) root.innerHTML = '';
+    this.transportRefs = {};
+  }
+
+  renderCellInspector(force = false) {
+    const root = this.app?.elements?.waypointTimelineRoot;
+    if (!root) return;
+    if (!this.selectedCell) {
+      if (force || this.lastInspectorKey !== 'empty') {
+        root.innerHTML = cellInspectorEmptyHtml();
+        this.lastInspectorKey = 'empty';
+      }
+      return;
+    }
+    const key = `${this.selectedCell.col},${this.selectedCell.row}:${this.paused}:${this.fieldMode}:${this.preset}:${this.terrainMode}:${this.boundaryMode}`;
+    if (!force && key === this.lastInspectorKey && Math.abs(this.demoTime - this.lastInspectorRenderTime) < 0.25) return;
+    this.lastInspectorKey = key;
+    this.lastInspectorRenderTime = this.demoTime;
+    root.innerHTML = cellInspectorHtml(this.inspectSelectedCell());
+  }
+
+  clearCellInspector() {
+    const root = this.app?.elements?.waypointTimelineRoot;
+    if (root) root.innerHTML = '';
+    this.lastInspectorKey = '';
+  }
+
+  inspectSelectedCell() {
+    const cell = this.selectedCell;
+    const land = isDemoLand(this.terrain, cell.x, cell.y);
+    const current = sampleDemoFlow({ ...this.fieldConfig(), x: cell.x, y: cell.y, time: this.demoTime });
+    const previous = sampleDemoFlow({ ...this.fieldConfig(), x: cell.x, y: cell.y, time: Math.max(0, this.demoTime - 1) });
+    const magnitude = Math.hypot(current.u, current.v);
+    const previousMagnitude = Math.hypot(previous.u, previous.v);
+    const directionRadians = Math.atan2(current.v, current.u);
+    const previousDirection = Math.atan2(previous.v, previous.u);
+    const directionDegrees = radiansToDegrees(directionRadians);
+    return {
+      cell,
+      land,
+      current,
+      previous,
+      magnitude,
+      previousMagnitude,
+      magnitudeDelta: magnitude - previousMagnitude,
+      directionDegrees,
+      directionDelta: signedAngleDeltaDegrees(directionRadians, previousDirection),
+      compass: compassLabel(directionDegrees),
+      mode: this.fieldMode,
+      evolutionBehavior: this.evolutionBehavior,
+      dynamicComplexity: this.dynamicComplexity,
+      evolutionPattern: this.evolutionPattern,
+      boundaryMode: current.boundaryMode ?? this.boundaryMode,
+      paused: this.paused,
+      demoTime: this.demoTime
+    };
   }
 
   debugFlowSample() {
@@ -676,6 +854,108 @@ export class FlowFieldDemoScene extends PhaserScene {
   }
 }
 
+function cellInspectorEmptyHtml() {
+  return `
+    <section class="cell-inspector-shell">
+      <div class="cell-inspector-header">
+        <span>Flow Fields Demo</span>
+        <h2>Cell Inspector</h2>
+        <p>Click a cell in the flow field to inspect its vector behavior over time.</p>
+      </div>
+      <div class="cell-inspector-card">
+        <strong>You can inspect</strong>
+        <ul>
+          <li>magnitude and direction</li>
+          <li>u/v current components</li>
+          <li>topology region and boundary adjustment</li>
+          <li>shoreline risk and dominant flow behavior</li>
+        </ul>
+      </div>
+    </section>
+  `;
+}
+
+function cellInspectorHtml(inspection) {
+  if (inspection.land) return landCellInspectorHtml(inspection);
+  const sample = inspection.current ?? {};
+  return `
+    <section class="cell-inspector-shell" data-flow-cell-inspector>
+      <div class="cell-inspector-header">
+        <span>Cell Inspector</span>
+        <h2>Cell (${escapeHtml(inspection.cell.col)}, ${escapeHtml(inspection.cell.row)})</h2>
+        <p>Type: Water | t = ${formatNumber(inspection.demoTime, 1)} s</p>
+      </div>
+      <div class="cell-inspector-card selected">
+        <span>Region</span>
+        <strong>${escapeHtml(labelize(sample.topologyRegion ?? 'unavailable'))}</strong>
+        <small>Dominant behavior: ${escapeHtml(labelize(sample.dominantBehavior ?? 'unavailable'))}</small>
+      </div>
+      <div class="cell-inspector-card">
+        <span>Current Vector</span>
+        ${metricRows([
+          ['u', formatSignedNumber(sample.u, 3)],
+          ['v', formatSignedNumber(sample.v, 3)],
+          ['magnitude', formatNumber(inspection.magnitude, 3)],
+          ['direction', `${formatNumber(inspection.directionDegrees, 1)} deg ${inspection.compass}`]
+        ])}
+      </div>
+      <div class="cell-inspector-card">
+        <span>Temporal Behavior</span>
+        ${metricRows([
+          ['mode', fieldModeLabel(inspection.mode)],
+          ['evolution', evolutionBehaviorLabel(inspection.evolutionBehavior)],
+          ['complexity', dynamicComplexityLabel(inspection.dynamicComplexity)],
+          ['pattern', evolutionPatternLabel(inspection.evolutionPattern)],
+          ['magnitude trend', magnitudeTrendLabel(inspection.magnitudeDelta)],
+          ['angular change', `${formatSignedNumber(inspection.directionDelta, 1)} deg / 1s`]
+        ])}
+      </div>
+      <div class="cell-inspector-card">
+        <span>Topology / Boundary</span>
+        ${metricRows([
+          ['shore distance', formatMaybeNumber(sample.shoreDistance, 2)],
+          ['current toward land', formatMaybeSignedNumber(sample.normalTowardLand, 3)],
+          ['tangential component', formatMaybeSignedNumber(sample.tangentialComponent, 3)],
+          ['boundary mode', boundaryModeLabel(inspection.boundaryMode)],
+          ['topology adjusted', sample.topologyAdjusted ? 'yes' : 'no'],
+          ['shoreline risk', shorelineRiskLabel(sample.shorelineRisk)],
+          ['hazard exposure', formatMaybeNumber(sample.hazardExposure, 2)]
+        ])}
+      </div>
+    </section>
+  `;
+}
+
+function landCellInspectorHtml(inspection) {
+  return `
+    <section class="cell-inspector-shell" data-flow-cell-inspector>
+      <div class="cell-inspector-header">
+        <span>Cell Inspector</span>
+        <h2>Cell (${escapeHtml(inspection.cell.col)}, ${escapeHtml(inspection.cell.row)})</h2>
+        <p>Type: Land | t = ${formatNumber(inspection.demoTime, 1)} s</p>
+      </div>
+      <div class="cell-inspector-card warning">
+        <strong>No navigable water current is applied here.</strong>
+        <p>Nearby water flow may be deflected, damped, or marked risky depending on boundary mode.</p>
+      </div>
+      <div class="cell-inspector-card">
+        <span>Boundary Context</span>
+        ${metricRows([
+          ['boundary mode', boundaryModeLabel(inspection.boundaryMode)],
+          ['sample magnitude', formatNumber(inspection.magnitude, 3)],
+          ['shoreline risk', shorelineRiskLabel(inspection.current?.shorelineRisk)]
+        ])}
+      </div>
+    </section>
+  `;
+}
+
+function metricRows(rows) {
+  return `<div class="cell-inspector-metrics">${rows.map(([label, value]) => `
+    <div><span>${escapeHtml(label)}</span><strong>${escapeHtml(value)}</strong></div>
+  `).join('')}</div>`;
+}
+
 function fieldModeLabel(mode) {
   return {
     static: 'Static',
@@ -758,6 +1038,90 @@ function spatialMotionLabel(motion) {
     circularDrift: 'Circular Drift',
     meander: 'Meander'
   }[motion] ?? 'Off';
+}
+
+function cellFromRowCol(row, col) {
+  return {
+    row: Math.max(0, Math.min(FLOW_DEMO_GRID.height - 1, Math.round(Number(row) || 0))),
+    col: Math.max(0, Math.min(FLOW_DEMO_GRID.width - 1, Math.round(Number(col) || 0))),
+    x: (Math.max(0, Math.min(FLOW_DEMO_GRID.width - 1, Math.round(Number(col) || 0))) + 0.5) / FLOW_DEMO_GRID.width,
+    y: (Math.max(0, Math.min(FLOW_DEMO_GRID.height - 1, Math.round(Number(row) || 0))) + 0.5) / FLOW_DEMO_GRID.height
+  };
+}
+
+function normalizeSelectedCell(cell) {
+  if (!cell || !Number.isFinite(Number(cell.row)) || !Number.isFinite(Number(cell.col))) return null;
+  return cellFromRowCol(cell.row, cell.col);
+}
+
+function radiansToDegrees(radians) {
+  const degrees = (Number(radians) * 180) / Math.PI;
+  return ((degrees % 360) + 360) % 360;
+}
+
+function signedAngleDeltaDegrees(current, previous) {
+  const delta = ((Number(current) - Number(previous) + Math.PI) % (Math.PI * 2)) - Math.PI;
+  return (delta * 180) / Math.PI;
+}
+
+function compassLabel(degrees) {
+  const labels = ['E', 'SE', 'S', 'SW', 'W', 'NW', 'N', 'NE'];
+  const index = Math.round((((Number(degrees) % 360) + 360) % 360) / 45) % labels.length;
+  return labels[index];
+}
+
+function magnitudeTrendLabel(delta) {
+  const value = Number(delta);
+  if (!Number.isFinite(value) || Math.abs(value) < 0.01) return 'stable';
+  return value > 0 ? `strengthening (${formatSignedNumber(value, 3)})` : `weakening (${formatSignedNumber(value, 3)})`;
+}
+
+function shorelineRiskLabel(value) {
+  const numeric = Number(value);
+  if (!Number.isFinite(numeric)) return 'n/a';
+  const label = numeric >= 0.7 ? 'high' : numeric >= 0.35 ? 'medium' : numeric > 0 ? 'low' : 'none';
+  return `${label} (${formatNumber(numeric, 2)})`;
+}
+
+function formatNumber(value, digits = 2) {
+  const numeric = Number(value);
+  if (!Number.isFinite(numeric)) return 'n/a';
+  return numeric.toFixed(digits);
+}
+
+function formatSignedNumber(value, digits = 2) {
+  const numeric = Number(value);
+  if (!Number.isFinite(numeric)) return 'n/a';
+  return `${numeric >= 0 ? '+' : ''}${numeric.toFixed(digits)}`;
+}
+
+function formatMaybeNumber(value, digits = 2) {
+  const numeric = Number(value);
+  if (!Number.isFinite(numeric)) return 'n/a';
+  return numeric.toFixed(digits);
+}
+
+function formatMaybeSignedNumber(value, digits = 2) {
+  const numeric = Number(value);
+  if (!Number.isFinite(numeric)) return 'n/a';
+  return `${numeric >= 0 ? '+' : ''}${numeric.toFixed(digits)}`;
+}
+
+function labelize(value) {
+  return String(value ?? 'n/a')
+    .replace(/([A-Z])/g, ' $1')
+    .replace(/[_-]+/g, ' ')
+    .replace(/^./, (letter) => letter.toUpperCase());
+}
+
+function escapeHtml(value) {
+  return String(value ?? '').replace(/[&<>"']/g, (char) => ({
+    '&': '&amp;',
+    '<': '&lt;',
+    '>': '&gt;',
+    '"': '&quot;',
+    "'": '&#039;'
+  }[char]));
 }
 
 function nextTerrainSeed(seed) {

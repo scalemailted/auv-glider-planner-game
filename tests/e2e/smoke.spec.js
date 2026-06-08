@@ -104,6 +104,64 @@ test('campaign planning smoke flow reaches debrief', async ({ page }) => {
   await expect(page.locator('#mission-console')).toContainText('Additive Flow Layers');
   await expect(page.locator('#mission-console')).toContainText('Flow Evolution');
   await expect(page.locator('#mission-console')).toContainText('Topology-aware fields react');
+  await expect(page.locator('#mission-console')).not.toContainText('Reset Particles');
+  await expect(page.locator('#mission-console [data-action="pause"]')).toHaveCount(0);
+  await expect(page.locator('#mission-console [data-action="reset"]')).toHaveCount(0);
+  await expect(page.locator('#mission-console [data-action="menu"]')).toHaveCount(0);
+  await expect(page.locator('#bottom-timeline .flow-demo-transport')).toBeVisible();
+  await expect(page.locator('#bottom-timeline')).toContainText('Demo Time');
+  await expect(page.locator('#bottom-timeline')).toContainText('Infinite timeline');
+  await expect(page.locator('#bottom-timeline [data-action="flow-demo-back"]')).toHaveText('Back');
+  await expect(page.locator('#bottom-timeline [data-action="flow-demo-reset"]')).toHaveText('Reset');
+  await expect(page.locator('#bottom-timeline [data-action="flow-demo-pause"]')).toHaveText('Pause');
+  await expect(page.evaluate(() => window.anchorGame.phaser.scene.getScene('FlowFieldDemoScene').buttons?.length ?? 0)).resolves.toBe(0);
+  await expect(page.evaluate(() => {
+    const bottom = document.querySelector('#bottom-timeline .flow-demo-transport')?.getBoundingClientRect();
+    const canvas = document.querySelector('#game-root canvas')?.getBoundingClientRect();
+    const timeText = document.querySelector('#bottom-timeline [data-flow-demo-time]')?.textContent ?? '';
+    return {
+      hasBottom: Boolean(bottom),
+      belowCanvasHeader: bottom ? bottom.top > canvas.top + 120 : false,
+      timeText
+    };
+  })).resolves.toMatchObject({
+    hasBottom: true,
+    belowCanvasHeader: true
+  });
+  const waterCell = await page.evaluate(() => {
+    const scene = window.anchorGame.phaser.scene.getScene('FlowFieldDemoScene');
+    for (let row = 0; row < scene.terrain.length; row += 1) {
+      for (let col = 0; col < scene.terrain[row].length; col += 1) {
+        if (!scene.terrain[row][col]) return { col, row };
+      }
+    }
+    return { col: 0, row: 0 };
+  });
+  await clickFlowDemoCell(page, waterCell.col, waterCell.row);
+  await expect(page.locator('#waypoint-timeline')).toContainText('Cell Inspector');
+  await expect(page.locator('#waypoint-timeline')).toContainText(`Cell (${waterCell.col}, ${waterCell.row})`);
+  await expect(page.locator('#waypoint-timeline')).toContainText('Current Vector');
+  await expect(page.locator('#waypoint-timeline')).toContainText('magnitude');
+  await expect(page.locator('#waypoint-timeline')).toContainText('direction');
+  await expect(page.locator('#waypoint-timeline')).toContainText('Topology / Boundary');
+  await expect(page.evaluate(() => window.anchorGame.phaser.scene.getScene('FlowFieldDemoScene').selectedCell)).resolves.toMatchObject(waterCell);
+  const inspectedMagnitude = await page.evaluate(() => window.anchorGame.phaser.scene.getScene('FlowFieldDemoScene').inspectSelectedCell().magnitude);
+  await expect.poll(() => page.evaluate(() => window.anchorGame.phaser.scene.getScene('FlowFieldDemoScene').inspectSelectedCell().magnitude)).not.toBe(inspectedMagnitude);
+  const landCell = await page.evaluate(() => {
+    const scene = window.anchorGame.phaser.scene.getScene('FlowFieldDemoScene');
+    for (let row = 0; row < scene.terrain.length; row += 1) {
+      for (let col = 0; col < scene.terrain[row].length; col += 1) {
+        if (scene.terrain[row][col]) return { col, row };
+      }
+    }
+    return null;
+  });
+  expect(landCell).toBeTruthy();
+  await clickFlowDemoCell(page, landCell.col, landCell.row);
+  await expect(page.locator('#waypoint-timeline')).toContainText(`Cell (${landCell.col}, ${landCell.row})`);
+  await expect(page.locator('#waypoint-timeline')).toContainText('Type: Land');
+  await expect(page.locator('#waypoint-timeline')).toContainText('No navigable water current is applied here.');
+  await clickFlowDemoCell(page, waterCell.col, waterCell.row);
   await expect(page.locator('#flow-demo-mode')).toBeVisible();
   await expect(page.locator('#flow-demo-mode option')).toHaveText(['Static', 'Dynamic']);
   await expect(page.locator('#mission-console')).toContainText('Continuous evolution');
@@ -157,15 +215,28 @@ test('campaign planning smoke flow reaches debrief', async ({ page }) => {
   await page.locator('#flow-demo-particle-speed').selectOption('2');
   await expect.poll(() => page.evaluate(() => window.anchorGame.phaser.scene.getScene('FlowFieldDemoScene').particleSpeedScale)).toBe(2);
   await expect(page.locator('#mission-console')).toContainText('Magnitude Range');
+  await page.locator('#bottom-timeline [data-action="flow-demo-pause"]').click();
+  await expect(page.locator('#bottom-timeline [data-action="flow-demo-pause"]')).toHaveText('Resume');
+  await expect(page.locator('#bottom-timeline')).toContainText('Paused at');
+  const flowTimeBeforePause = await page.evaluate(() => window.anchorGame.phaser.scene.getScene('FlowFieldDemoScene').demoTime);
+  const flowMagnitudeBeforePause = await page.evaluate(() => window.anchorGame.phaser.scene.getScene('FlowFieldDemoScene').inspectSelectedCell().magnitude);
+  await page.waitForTimeout(250);
+  await expect(page.evaluate(() => window.anchorGame.phaser.scene.getScene('FlowFieldDemoScene').demoTime)).resolves.toBeCloseTo(flowTimeBeforePause, 1);
+  await expect(page.evaluate(() => window.anchorGame.phaser.scene.getScene('FlowFieldDemoScene').inspectSelectedCell().magnitude)).resolves.toBeCloseTo(flowMagnitudeBeforePause, 4);
+  await page.locator('#bottom-timeline [data-action="flow-demo-pause"]').click();
+  await expect(page.locator('#bottom-timeline [data-action="flow-demo-pause"]')).toHaveText('Pause');
+  await expect.poll(() => page.evaluate(() => window.anchorGame.phaser.scene.getScene('FlowFieldDemoScene').demoTime)).toBeGreaterThan(flowTimeBeforePause);
+  await page.locator('#bottom-timeline [data-action="flow-demo-reset"]').click();
+  await expect.poll(() => page.evaluate(() => window.anchorGame.phaser.scene.getScene('FlowFieldDemoScene').demoTime)).toBeLessThan(0.2);
   await page.locator('#flow-demo-terrain').selectOption('islands');
   await expect.poll(() => page.evaluate(() => window.anchorGame.phaser.scene.getScene('FlowFieldDemoScene').terrainMode)).toBe('islands');
   await page.locator('#flow-demo-terrain').selectOption('coastline');
   await expect.poll(() => page.evaluate(() => window.anchorGame.phaser.scene.getScene('FlowFieldDemoScene').terrainMode)).toBe('coastline');
   await page.locator('#flow-demo-terrain').selectOption('none');
   await expect.poll(() => page.evaluate(() => window.anchorGame.phaser.scene.getScene('FlowFieldDemoScene').terrainMode)).toBe('none');
-  await expect(page.locator('#mission-console')).toContainText('Reset Particles');
-  await page.locator('#mission-console [data-action="menu"]').click();
+  await page.locator('#bottom-timeline [data-action="flow-demo-back"]').click();
   await expect.poll(() => page.evaluate(() => window.anchorGame.phaser.scene.getScene('MainMenuScene').sys.isActive())).toBe(true);
+  await expect(page.locator('#bottom-timeline')).toBeEmpty();
 
   await page.locator('#mission-console [data-action="roi-demo"]').click();
   await expect.poll(() => page.evaluate(() => window.anchorGame.phaser.scene.getScene('RoiGeneratorDemoScene').sys.isActive())).toBe(true);
@@ -629,6 +700,18 @@ test('legacy saved level registry scene still opens', async ({ page }) => {
 
 async function clickCell(page, x, y) {
   const point = await cellCenter(page, x, y);
+  await page.mouse.click(point.x, point.y);
+}
+
+async function clickFlowDemoCell(page, col, row) {
+  const point = await page.evaluate(({ col, row }) => {
+    const scene = window.anchorGame.phaser.scene.getScene('FlowFieldDemoScene');
+    const map = scene.layout().map;
+    return {
+      x: map.x + ((Number(col) + 0.5) / 18) * map.width,
+      y: map.y + ((Number(row) + 0.5) / 12) * map.height
+    };
+  }, { col, row });
   await page.mouse.click(point.x, point.y);
 }
 

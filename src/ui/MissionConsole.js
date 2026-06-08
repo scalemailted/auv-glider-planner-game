@@ -215,16 +215,11 @@ export class MissionConsole {
             ${FLOW_DEMO_PARTICLE_SPEEDS.map((speed) => `<option value="${escapeAttr(speed)}" ${Number(state.particleSpeedScale ?? 1) === speed ? 'selected' : ''}>${escapeHtml(speed)}x</option>`).join('')}
           </select>
         </label>
-        <button data-action="pause" class="console-button">${state.paused ? 'Play' : 'Pause'}</button>
-        <button data-action="reset" class="console-button">Reset Particles</button>
       </section>
       <section class="console-status">
         <span>Magnitude Range</span>
         <strong>${escapeHtml(formatDemoStat(state.magnitudeStats?.min))} / ${escapeHtml(formatDemoStat(state.magnitudeStats?.mean))} / ${escapeHtml(formatDemoStat(state.magnitudeStats?.max))}</strong>
         <small>Min / mean / max for the current arrow grid.</small>
-      </section>
-      <section class="console-footer">
-        <button data-action="menu" class="console-button secondary">Main Menu</button>
       </section>
     `;
     this.app.applyConsoleAccordions?.('flowDemo');
@@ -272,10 +267,7 @@ export class MissionConsole {
     this.bind({
       preset: handlers.preset,
       'add-flow-layer': handlers.addLayer,
-      'reset-terrain': handlers.resetTerrain,
-      pause: handlers.pause,
-      reset: handlers.reset,
-      menu: handlers.menu
+      'reset-terrain': handlers.resetTerrain
     });
   }
 
