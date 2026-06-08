@@ -163,7 +163,12 @@ The generated `Topology-Aware Composite` preset is not just a static boundary-de
 - bays/pockets: weak recirculation plus periodic flushing pulses
 - islands/obstacles: wake-like downstream flow, paired vortices, and texture tied to the dominant background direction
 
-Low complexity keeps these effects smoother and slower. Medium is the default challenge setting. High increases active secondary behaviors, moving structures, wake strength, pulse strength, and magnitude variation without using random jitter inside sampling.
+Low complexity keeps these effects smoother and slower. Medium is the default challenge setting. High increases active secondary behaviors, moving structures, wake strength, pulse strength, domain-scale direction rotation, and magnitude pulse range without using random jitter inside sampling. High mode is intentionally obvious in current-arrow views: vectors rotate over mission time, strong/calm bands pulse, and meanders/eddies translate across the grid.
+
+Debugging flags:
+
+- `globalThis.ANCHOR_DEBUG_CURRENT_COMPLEXITY = true` logs generated topology composite configuration and sample contributor breakdowns.
+- `globalThis.ANCHOR_DEBUG_CURRENT_VARIATION = true` logs `[CurrentField][VariationStats]` with magnitude min/mean/max, direction variance, mean angular delta between frames, active components, and clamp counts.
 
 ## 9. Particle / Demo Glider Behavior
 

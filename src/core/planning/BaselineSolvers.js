@@ -18,8 +18,9 @@ const GREEDY_PLANNER_SCORE_WEIGHTS = {
   sampleRewardScale: 1,
   endpointSampleRewardScale: 0.8,
   starRewardScale: 10,
-  hazardPenaltyScale: 220,
-  nearHazardPenaltyScale: 34,
+  hazardPenaltyScale: 5000,
+  nearHazardPenaltyScale: 500,
+  hazardIntersectionPenalty: 100000,
   mobileHazardPenaltyScale: 18,
   riskPenaltyScale: 95,
   energyPenaltyScale: 0.42,
@@ -30,6 +31,16 @@ const GREEDY_PLANNER_SCORE_WEIGHTS = {
   clusterPenaltyScale: 1
 };
 
+const GREEDY_PLANNER_SAFETY_POLICY = {
+  severeHazardsAreBlocking: true,
+  severeHazardThreshold: 1,
+  hazardBufferRadiusCells: 1,
+  allowHazardTraversalIfNoAlternative: false,
+  hazardIntersectionPenalty: 100000,
+  hazardExposurePenaltyScale: 5000,
+  nearHazardPenaltyScale: 500
+};
+
 export function greedySolver(level, mission, options = {}) {
   return temporalGreedySolver(level, mission, options);
 }
@@ -38,6 +49,10 @@ export function temporalGreedySolver(level, mission, options = {}) {
   const selectedAgentId = options.selectedAgentId ?? mission?.agents?.[0]?.id ?? null;
   const onProgress = typeof options.onProgress === 'function' ? options.onProgress : null;
   const requestId = options.requestId ?? null;
+  const safetyPolicy = {
+    ...GREEDY_PLANNER_SAFETY_POLICY,
+    ...(options.greedyPlannerSafetyPolicy ?? options.safetyPolicy ?? {})
+  };
   const plan = clonePlanForTemporalGreedy(options.currentPlan, level, mission);
   validateSelectedGreedyStart(level, mission, plan, selectedAgentId);
   plan.meta.name = 'Greedy Planner Plan';
@@ -136,6 +151,8 @@ export function temporalGreedySolver(level, mission, options = {}) {
       depletedCandidates: 0,
       collisionConflictCandidates: 0,
       clusteredCandidates: 0,
+      hazardIntersectionCandidates: 0,
+      nearHazardCandidates: 0,
       safeContinuationMoves: 0,
       starsTargeted: 0,
       sampleRewardTotal: 0,
@@ -257,6 +274,7 @@ export function temporalGreedySolver(level, mission, options = {}) {
         maxCandidateCellsPerStep,
         maxEvaluationsPerStep,
         maxTotalEvaluations,
+        safetyPolicy,
         plannerStats,
         iteration: index
       });
@@ -599,6 +617,7 @@ function chooseTemporalCell({
   maxCandidateCellsPerStep = 96,
   maxEvaluationsPerStep = 48,
   maxTotalEvaluations = Infinity,
+  safetyPolicy = GREEDY_PLANNER_SAFETY_POLICY,
   plannerStats = null,
   iteration = 0
 }) {
@@ -739,6 +758,21 @@ function chooseTemporalCell({
     const priorityBonus = priority.bonus;
     const weights = GREEDY_PLANNER_SCORE_WEIGHTS;
     const exposure = scorePathExposure({ level, segment: { ...segment, from: anchor, to: cell }, cell });
+    if (exposure.hazardCellCount > 0) plannerStats && (plannerStats.hazardIntersectionCandidates += 1);
+    if (exposure.nearHazardCount > 0) plannerStats && (plannerStats.nearHazardCandidates += 1);
+    const hazardPolicy = safetyPolicy ?? GREEDY_PLANNER_SAFETY_POLICY;
+    if (shouldRejectHazardCandidate(exposure, hazardPolicy)) {
+      debugGreedyPlannerCandidateHazard({
+        candidate: { ...cell, from: anchor, arrivalTime },
+        segment: { ...segment, from: anchor, to: cell },
+        exposure,
+        rejected: true,
+        rejectionReason: 'hazard_intersection',
+        penalty: hazardPolicy.hazardIntersectionPenalty
+      });
+      noteDiagnosticCategory(plannerStats, { category: 'hazard_intersection' }, 'hazard_intersection');
+      continue;
+    }
     const mobileRisk = mobileHazardRisk(level, cell.x, cell.y, arrivalTime);
     const depthPenalty = Math.max(0, depthEnergyMultiplier(level, mission, cell.x, cell.y) - 1);
     const ensembleRisk = ensembleDisagreementAt(level, cell.x, cell.y, arrivalTime, { challengeMode, forecastMemberId });
@@ -748,8 +782,9 @@ function chooseTemporalCell({
     const depletedValuePenalty = depletionMultiplier <= 0 ? weights.depletedValuePenaltyScale : 0;
     const sampleReward = pathValue.value * weights.sampleRewardScale + endpointValue * weights.endpointSampleRewardScale;
     const starReward = priorityBonus * weights.starRewardScale;
-    const hazardPenalty = exposure.hazardExposure * weights.hazardPenaltyScale;
-    const nearHazardPenalty = exposure.nearHazardExposure * weights.nearHazardPenaltyScale;
+    const hazardPenalty = exposure.hazardExposure * (hazardPolicy.hazardExposurePenaltyScale ?? weights.hazardPenaltyScale)
+      + exposure.hazardCellCount * (hazardPolicy.hazardIntersectionPenalty ?? weights.hazardIntersectionPenalty);
+    const nearHazardPenalty = exposure.nearHazardExposure * (hazardPolicy.nearHazardPenaltyScale ?? weights.nearHazardPenaltyScale);
     const riskPenalty = (shorelineRisk + Number(stochasticRisk.value ?? 0)) * weights.riskPenaltyScale;
     const mobileHazardPenalty = mobileRisk * weights.mobileHazardPenaltyScale;
     const depthRiskPenalty = depthPenalty * 18;
@@ -790,6 +825,9 @@ function chooseTemporalCell({
       totalScore: score,
       hazardExposure: exposure.hazardExposure,
       nearHazardExposure: exposure.nearHazardExposure,
+      hazardCellCount: exposure.hazardCellCount,
+      nearHazardCount: exposure.nearHazardCount,
+      maxHazardIntensity: exposure.maxHazardIntensity,
       pathHazardCells: exposure.hazardCells
     };
     const candidate = {
@@ -820,8 +858,20 @@ function chooseTemporalCell({
       clusterPenalty: Number(conflict.clusterPenalty ?? 0),
       hazardExposure: exposure.hazardExposure,
       nearHazardExposure: exposure.nearHazardExposure,
+      hazardCellCount: exposure.hazardCellCount,
+      nearHazardCount: exposure.nearHazardCount,
+      maxHazardIntensity: exposure.maxHazardIntensity,
       riskPenalty: hazardPenalty + nearHazardPenalty + riskPenalty + mobileHazardPenalty + depthRiskPenalty + ensembleRiskPenalty + collisionPenalty + clusterPenalty
     };
+    if (exposure.hazardCellCount || exposure.nearHazardCount) {
+      debugGreedyPlannerCandidateHazard({
+        candidate,
+        segment: candidate.segment,
+        exposure,
+        rejected: false,
+        penalty: hazardPenalty + nearHazardPenalty
+      });
+    }
     if (stochasticRisk.warning) debugTemporalGreedyStochasticRisk({ from: anchor, to: cell, stochasticRisk, rejected: false, score });
     debugGreedyPlannerCandidateScore({ candidate, rejected: false });
     debugTemporalGreedyCandidate({ from: anchor, to: cell, segment, execution, score, accepted: false });
@@ -1032,44 +1082,106 @@ function scoreRoutePathValue({ level, mission, agent, segment, frame, depletion,
 }
 
 function scorePathExposure({ level, segment, cell }) {
-  const routeCells = Array.isArray(segment?.sampledCells) && segment.sampledCells.length
-    ? segment.sampledCells
-    : rasterizeRouteSegment(segment, level);
+  const routeCells = uniquePlannerCells([
+    ...(Array.isArray(segment?.sampledCells) && segment.sampledCells.length ? segment.sampledCells : []),
+    ...rasterizeRouteSegment(segment, level),
+    ...denseSegmentCells(segment, level)
+  ]);
   let hazardExposure = 0;
   let nearHazardExposure = 0;
+  let maxHazardIntensity = 0;
   const hazardCells = [];
+  const nearHazardCells = [];
   for (const routeCell of routeCells) {
     const hazard = Number(level?.layers?.hazards?.[routeCell.y]?.[routeCell.x] ?? 0);
     if (hazard > 0) {
       hazardExposure += Math.max(1, hazard);
+      maxHazardIntensity = Math.max(maxHazardIntensity, hazard);
       hazardCells.push({ x: routeCell.x, y: routeCell.y, hazard });
     }
-    nearHazardExposure += countAdjacentHazards(level, routeCell.x, routeCell.y) * 0.2;
+    const adjacent = collectAdjacentHazards(level, routeCell.x, routeCell.y);
+    if (adjacent.length) {
+      nearHazardExposure += adjacent.reduce((sum, item) => sum + Math.max(0.2, Number(item.hazard ?? 0)), 0);
+      nearHazardCells.push(...adjacent);
+    }
   }
   const endpointHazard = Number(level?.layers?.hazards?.[cell.y]?.[cell.x] ?? 0);
   if (endpointHazard > 0 && !hazardCells.some((hazardCell) => hazardCell.x === cell.x && hazardCell.y === cell.y)) {
     hazardExposure += Math.max(1, endpointHazard);
+    maxHazardIntensity = Math.max(maxHazardIntensity, endpointHazard);
     hazardCells.push({ x: cell.x, y: cell.y, hazard: endpointHazard });
   }
   return {
     hazardExposure,
     nearHazardExposure,
-    hazardCells
+    maxHazardIntensity,
+    hazardCellCount: hazardCells.length,
+    nearHazardCount: uniquePlannerCells(nearHazardCells).length,
+    hazardCells,
+    nearHazardCells: uniquePlannerCells(nearHazardCells)
   };
 }
 
+function shouldRejectHazardCandidate(exposure = {}, policy = GREEDY_PLANNER_SAFETY_POLICY) {
+  if (policy.allowHazardTraversalIfNoAlternative) return false;
+  if (!policy.severeHazardsAreBlocking) return false;
+  return Number(exposure.hazardCellCount ?? 0) > 0
+    && Number(exposure.maxHazardIntensity ?? 0) >= Number(policy.severeHazardThreshold ?? 1);
+}
+
+function denseSegmentCells(segment = {}, level = null) {
+  const from = segment.from ?? segment.points?.[0] ?? null;
+  const to = segment.to ?? segment.points?.at?.(-1) ?? null;
+  if (!isFinitePoint(from) || !isFinitePoint(to)) return [];
+  const dx = Number(to.x) - Number(from.x);
+  const dy = Number(to.y) - Number(from.y);
+  const steps = Math.max(1, Math.ceil(Math.hypot(dx, dy) * 4));
+  const cells = [];
+  for (let index = 0; index <= steps; index += 1) {
+    const ratio = index / steps;
+    const x = Math.round(Number(from.x) + dx * ratio);
+    const y = Math.round(Number(from.y) + dy * ratio);
+    if (!Number.isFinite(x) || !Number.isFinite(y)) continue;
+    if (level && (x < 0 || y < 0 || x >= Number(level?.world?.grid?.width ?? 1) || y >= Number(level?.world?.grid?.height ?? 1))) continue;
+    cells.push({ x, y });
+  }
+  return uniquePlannerCells(cells);
+}
+
+function uniquePlannerCells(cells = []) {
+  const seen = new Set();
+  const unique = [];
+  for (const cell of cells) {
+    const x = Math.round(Number(cell?.x));
+    const y = Math.round(Number(cell?.y));
+    if (!Number.isFinite(x) || !Number.isFinite(y)) continue;
+    const key = `${x},${y}`;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    unique.push({ ...cell, x, y });
+  }
+  return unique;
+}
+
 function countAdjacentHazards(level, x, y) {
-  let count = 0;
+  return collectAdjacentHazards(level, x, y).length;
+}
+
+function collectAdjacentHazards(level, x, y) {
+  const hazards = [];
   for (let dy = -1; dy <= 1; dy += 1) {
     for (let dx = -1; dx <= 1; dx += 1) {
       if (dx === 0 && dy === 0) continue;
       const nx = Number(x) + dx;
       const ny = Number(y) + dy;
       if (nx < 0 || ny < 0 || nx >= Number(level?.world?.grid?.width ?? 1) || ny >= Number(level?.world?.grid?.height ?? 1)) continue;
-      count += Number(level?.layers?.hazards?.[ny]?.[nx] ?? 0) > 0 ? 1 : 0;
+      const hazard = Number(level?.layers?.hazards?.[ny]?.[nx] ?? 0);
+      if (hazard > 0) {
+        hazards.push({ x: nx, y: ny, hazard });
+      }
     }
   }
-  return count;
+  return hazards;
 }
 
 function rankCandidatesByStage(candidates) {
@@ -1204,6 +1316,31 @@ function validateCandidateBeforeAppend({ level, mission, agent, plan, candidate,
       fullPrefixOk: false,
       rejectionReason: candidate.execution?.reason ?? candidate.segment?.reason ?? 'segmentBlocked',
       audit: null
+    };
+  }
+  const hazardExposure = scorePathExposure({
+    level,
+    segment: { ...(candidate.segment ?? {}), from: candidate.from ?? candidate.segment?.from, to: candidate },
+    cell: candidate
+  });
+  if (shouldRejectHazardCandidate(hazardExposure, GREEDY_PLANNER_SAFETY_POLICY)) {
+    debugGreedyPlannerCandidateHazard({
+      candidate,
+      segment: candidate.segment,
+      exposure: hazardExposure,
+      rejected: true,
+      rejectionReason: 'hazard_intersection',
+      penalty: GREEDY_PLANNER_SAFETY_POLICY.hazardIntersectionPenalty
+    });
+    return {
+      ok: false,
+      endpointOk: true,
+      segmentOk: false,
+      fullPrefixOk: false,
+      rejectionReason: 'hazard_intersection',
+      hazardExposure,
+      audit: null,
+      waypointIndex
     };
   }
   const blockage = explainSegmentBlockage(candidate.from ?? candidate.segment?.from, candidate, { level, mission });
@@ -1619,6 +1756,8 @@ function buildPlannerDiagnostics({
   const fuelUsed = Number.isFinite(fuelBudget) ? Math.max(0, fuelBudget - Number(remainingFuel ?? 0)) : null;
   const rejectionSummary = {
     blocked: Number(plannerStats.blockedCandidates ?? 0),
+    hazardIntersection: Number(plannerStats.hazardIntersectionCandidates ?? 0),
+    nearHazard: Number(plannerStats.nearHazardCandidates ?? 0),
     unreachable: Number(plannerStats.unreachableCandidates ?? 0),
     unsafeForecast: Number(plannerStats.stochasticRiskCandidates ?? 0),
     depleted: Number(plannerStats.depletedCandidates ?? 0),
@@ -1647,6 +1786,8 @@ function buildPlannerDiagnostics({
     mostCommonRejection: { reason: mostCommonRejection[0], count: mostCommonRejection[1] },
     evaluatedCandidates: Number(plannerStats.evaluatedCandidates ?? 0),
     feasibleCandidates: Number(plannerStats.feasibleCandidates ?? 0),
+    hazardCandidatesRejected: Number(plannerStats.hazardIntersectionCandidates ?? 0),
+    nearHazardCandidates: Number(plannerStats.nearHazardCandidates ?? 0),
     safeContinuationMoves: Number(plannerStats.safeContinuationMoves ?? 0),
     starsTargeted: Number(plannerStats.starsTargeted ?? 0),
     sampleReward: round(plannerStats.sampleRewardTotal ?? 0, 3),
@@ -1768,6 +1909,23 @@ function debugGreedyPlannerCandidateScore({ candidate = null, rejected = false, 
     totalScore: round(breakdown.totalScore ?? candidate?.score ?? 0, 3),
     rejected,
     rejectionReason
+  });
+}
+
+function debugGreedyPlannerCandidateHazard({ candidate = null, segment = null, exposure = {}, rejected = false, rejectionReason = null, penalty = 0 } = {}) {
+  if (!isGreedyPlannerDebugEnabled()) return;
+  globalThis.console?.debug?.('[GreedyPlanner][CandidateHazard]', {
+    candidate: candidate ? pointCell(candidate) : null,
+    from: candidate?.from ? pointCell(candidate.from) : segment?.from ? pointCell(segment.from) : null,
+    to: candidate ? pointCell(candidate) : segment?.to ? pointCell(segment.to) : null,
+    hazardCellCount: Number(exposure.hazardCellCount ?? 0),
+    nearHazardCount: Number(exposure.nearHazardCount ?? 0),
+    maxHazardIntensity: Number(exposure.maxHazardIntensity ?? 0),
+    hazardCells: exposure.hazardCells ?? [],
+    nearHazardCells: exposure.nearHazardCells ?? [],
+    rejected,
+    rejectionReason,
+    penalty: round(penalty ?? 0, 3)
   });
 }
 

@@ -679,20 +679,21 @@ function drawCurrents(g, frame, layout) {
   for (let y = 0; y < layout.height; y += stride) {
     for (let x = 0; x < layout.width; x += stride) {
       const vector = sampleCurrentField({ frame, grid: { width: layout.width, height: layout.height }, x, y });
-      const magnitude = Math.min(1.4, vector.magnitude);
+      const magnitude = Math.min(2.4, vector.magnitude);
       if (magnitude < 0.02) continue;
       const start = cellToWorld(layout, x, y);
-      const ex = start.x + vector.u * layout.cell * 0.45;
-      const ey = start.y + vector.v * layout.cell * 0.45;
-      const color = 0xffffff;
-      g.lineStyle(1.4 + magnitude * 2.4, color, 0.42 + magnitude * 0.44);
+      const lengthScale = layout.cell * 0.68;
+      const ex = start.x + vector.u * lengthScale;
+      const ey = start.y + vector.v * lengthScale;
+      const color = magnitude >= 1.1 ? 0xfff0a3 : magnitude >= 0.55 ? 0xbef6ff : 0xffffff;
+      g.lineStyle(1.4 + Math.min(4.4, magnitude * 2.2), color, Math.min(0.96, 0.38 + magnitude * 0.34));
       g.beginPath();
-      g.moveTo(start.x - vector.u * layout.cell * 0.16, start.y - vector.v * layout.cell * 0.16);
+      g.moveTo(start.x - vector.u * layout.cell * 0.2, start.y - vector.v * layout.cell * 0.2);
       g.lineTo(ex, ey);
       g.strokePath();
-      g.fillStyle(color, 0.5 + magnitude * 0.34);
+      g.fillStyle(color, Math.min(0.96, 0.48 + magnitude * 0.28));
       const angle = Math.atan2(vector.v, vector.u);
-      const size = 3 + magnitude * 2.2;
+      const size = 3.5 + Math.min(6, magnitude * 2.8);
       g.fillTriangle(
         ex + Math.cos(angle) * size,
         ey + Math.sin(angle) * size,

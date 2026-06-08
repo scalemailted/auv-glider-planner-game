@@ -34,6 +34,7 @@ export function generateCurrentFrames(config = {}) {
     })
   }));
   debugTopologyCompositeGeneration({ config, frames, width, height });
+  debugCurrentVariationStats({ config, frames });
   return frames;
 }
 
@@ -537,10 +538,11 @@ function topologyAwareCompositeAt(x, y, width, height, time, strength, variabili
     (vector[0] + background[0]) * regionalMagnitudeEnvelope(classification, x, y, time, profile),
     (vector[1] + background[1]) * regionalMagnitudeEnvelope(classification, x, y, time, profile)
   ];
-  const magnitude = Math.hypot(combined[0], combined[1]);
+  const dynamic = applyTopologyDynamicVariation(combined, x, y, width, height, time, profile);
+  const magnitude = Math.hypot(dynamic[0], dynamic[1]);
   const maxMagnitude = profile.maxMagnitude * Math.max(0.2, strength);
   const scale = magnitude > maxMagnitude ? maxMagnitude / magnitude : 1;
-  return [combined[0] * scale, combined[1] * scale];
+  return [dynamic[0] * scale, dynamic[1] * scale];
 }
 
 function regionVector(region, x, y, width, height, time, strength, variability, eddies, terrain, profile = topologyCompositeProfile(), classification = null) {
@@ -730,37 +732,79 @@ function topologyCompositeProfile(value = 'medium') {
   if (complexity === 'low') {
     return {
       complexity,
-      directionScale: 0.45,
-      magnitudeScale: 0.42,
+      directionScale: 0.55,
+      magnitudeScale: 0.5,
+      directionVariationRadians: 0.24,
+      magnitudePulseAmplitude: 0.24,
       shorelineScale: 0.42,
       wakeScale: 0.5,
       pulseScale: 0.35,
       textureScale: 0.35,
-      maxMagnitude: 1.65
+      maxMagnitude: 1.85,
+      maxPulseScale: 1.35
     };
   }
   if (complexity === 'high') {
     return {
       complexity,
-      directionScale: 1.05,
-      magnitudeScale: 1.08,
-      shorelineScale: 1.05,
-      wakeScale: 1.15,
-      pulseScale: 1.05,
-      textureScale: 1,
-      maxMagnitude: 2.8
+      directionScale: 1.45,
+      magnitudeScale: 1.45,
+      directionVariationRadians: 1.25,
+      magnitudePulseAmplitude: 1.15,
+      shorelineScale: 1.25,
+      wakeScale: 1.45,
+      pulseScale: 1.35,
+      textureScale: 1.35,
+      maxMagnitude: 3.45,
+      maxPulseScale: 2.8
     };
   }
   return {
     complexity,
-    directionScale: 0.75,
-    magnitudeScale: 0.78,
+    directionScale: 0.95,
+    magnitudeScale: 0.95,
+    directionVariationRadians: 0.62,
+    magnitudePulseAmplitude: 0.58,
     shorelineScale: 0.72,
     wakeScale: 0.78,
     pulseScale: 0.7,
     textureScale: 0.68,
-    maxMagnitude: 2.2
+    maxMagnitude: 2.35,
+    maxPulseScale: 1.95
   };
+}
+
+function applyTopologyDynamicVariation(vector, x, y, width, height, time, profile) {
+  const magnitude = Math.hypot(vector[0], vector[1]);
+  if (!Number.isFinite(magnitude) || magnitude <= 1e-9) return vector;
+  const nx = Number(x) / Math.max(1, Number(width) - 1);
+  const ny = Number(y) / Math.max(1, Number(height) - 1);
+  const phase = time.seedPhase
+    + time.cycle * (0.72 + profile.directionScale * 0.22)
+    + nx * Math.PI * (2.1 + profile.directionScale * 0.8)
+    + ny * Math.PI * (1.4 + profile.directionScale * 0.65);
+  const angleOffset = Number(profile.directionVariationRadians ?? 0.6) * (
+    0.55 * Math.sin(phase)
+    + 0.3 * Math.sin(phase * 0.37 + time.jetPhase)
+    + 0.15 * Math.cos(phase * 0.71 + time.noisePhase)
+  );
+  const pulsePhase = time.pulseCycle * (0.82 + profile.magnitudeScale * 0.2)
+    + nx * Math.PI * 1.3
+    - ny * Math.PI * 0.9;
+  const movingPulseCenterX = 0.5 + 0.26 * Math.sin(time.slowCycle * 0.33 + time.stormPhase);
+  const movingPulseCenterY = 0.5 + 0.22 * Math.cos(time.slowCycle * 0.41 + time.jetPhase);
+  const localPulse = Math.exp(-(((nx - movingPulseCenterX) ** 2 + (ny - movingPulseCenterY) ** 2) / (2 * 0.18 ** 2)));
+  const pulse = 1 + Number(profile.magnitudePulseAmplitude ?? 0.5) * (
+    0.5 * Math.sin(pulsePhase)
+    + 0.35 * Math.sin(pulsePhase * 0.53 + nx * Math.PI * 2 + time.seedPhase)
+    + 0.15 * localPulse * Math.sin(time.pulseCycle + time.stormPhase)
+  );
+  const scale = clamp(pulse, 0.15, Number(profile.maxPulseScale ?? 2));
+  const baseAngle = Math.atan2(vector[1], vector[0]) + angleOffset;
+  return [
+    Math.cos(baseAngle) * magnitude * scale,
+    Math.sin(baseAngle) * magnitude * scale
+  ];
 }
 
 function regionTemporalScale(region, time, profile) {
@@ -941,6 +985,30 @@ function debugTopologyCompositeGeneration({ config = {}, frames = [], width = 1,
   });
 }
 
+function debugCurrentVariationStats({ config = {}, frames = [] } = {}) {
+  if (!globalThis.ANCHOR_DEBUG_CURRENT_VARIATION) return;
+  const fieldConfig = config.currentFieldConfig ?? {};
+  const composite = fieldConfig.topologyComposite ?? config.topologyComposite ?? null;
+  const pattern = fieldConfig.basePreset ?? config.currentPreset ?? config.vectorPreset ?? config.currentPattern ?? config.pattern;
+  if (pattern !== 'topologyAwareComposite' && !composite) return;
+  const stats = currentFrameMagnitudeStats(frames);
+  const angularDelta = meanAngularDeltaBetweenFrames(frames);
+  const maxMagnitude = topologyCompositeProfile(fieldConfig.dynamicComplexity ?? composite?.dynamicComplexity ?? composite?.randomness).maxMagnitude
+    * Math.max(0.2, Number(fieldConfig.strength ?? config.currentStrength ?? config.strength ?? 1));
+  console.debug('[CurrentField][VariationStats]', {
+    time: frames.at(-1)?.t ?? null,
+    complexity: fieldConfig.dynamicComplexity ?? composite?.dynamicComplexity ?? composite?.randomness ?? null,
+    minMagnitude: stats.magnitudeStats.min,
+    meanMagnitude: stats.magnitudeStats.mean,
+    maxMagnitude: stats.magnitudeStats.max,
+    directionVariance: stats.directionVariance,
+    meanAngularDeltaSincePreviousFrame: angularDelta,
+    activeComponents: behaviorSummary(composite?.regions),
+    clampCount: countClampedCurrentCells(frames, maxMagnitude),
+    topologyAdjustedCount: null
+  });
+}
+
 function currentFrameMagnitudeStats(frames = []) {
   const magnitudes = [];
   const angles = [];
@@ -976,6 +1044,45 @@ function behaviorSummary(regions = []) {
     summary[key].push(region.behavior ?? 'unknown');
     return summary;
   }, {});
+}
+
+function meanAngularDeltaBetweenFrames(frames = []) {
+  let total = 0;
+  let count = 0;
+  for (let index = 1; index < frames.length; index += 1) {
+    const previous = frames[index - 1]?.current ?? [];
+    const current = frames[index]?.current ?? [];
+    for (let y = 0; y < current.length; y += 1) {
+      for (let x = 0; x < (current[y]?.length ?? 0); x += 1) {
+        const a = previous[y]?.[x] ?? [0, 0];
+        const b = current[y]?.[x] ?? [0, 0];
+        const magA = Math.hypot(Number(a[0] ?? 0), Number(a[1] ?? 0));
+        const magB = Math.hypot(Number(b[0] ?? 0), Number(b[1] ?? 0));
+        if (magA <= 0.02 || magB <= 0.02) continue;
+        total += Math.abs(angleDelta(Math.atan2(Number(b[1] ?? 0), Number(b[0] ?? 0)), Math.atan2(Number(a[1] ?? 0), Number(a[0] ?? 0))));
+        count += 1;
+      }
+    }
+  }
+  return count ? round(total / count) : 0;
+}
+
+function countClampedCurrentCells(frames = [], maxMagnitude = Infinity) {
+  if (!Number.isFinite(maxMagnitude)) return 0;
+  let count = 0;
+  for (const frame of frames) {
+    for (const row of frame.current ?? []) {
+      for (const vector of row ?? []) {
+        const magnitude = Math.hypot(Number(vector?.[0] ?? 0), Number(vector?.[1] ?? 0));
+        if (magnitude >= maxMagnitude - 0.002) count += 1;
+      }
+    }
+  }
+  return count;
+}
+
+function angleDelta(a, b) {
+  return Math.atan2(Math.sin(a - b), Math.cos(a - b));
 }
 
 function round(value) {

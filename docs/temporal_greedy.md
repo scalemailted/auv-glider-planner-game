@@ -92,6 +92,8 @@ Gold Stars are high-value temporal priority targets. ROI cells contribute accumu
 
 Greedy Planner should try to use the selected glider's available mission time and fuel when feasible.
 
+Hazards are treated as a safety constraint for the browser baseline, not just a small score tax. Candidate segments are scanned path-wise before acceptance. If the segment touches a severe hazard cell, the candidate is rejected by default with `hazard_intersection`; near-hazard cells receive a large buffer penalty. This keeps ordinary sample reward, and even most star shortcuts, from winning by routing directly through red danger cells. Human players may still choose risky routes where the game allows them, but Greedy Planner is configured as a conservative baseline.
+
 It should not stop just because nearby high-value targets are gone. If the strongest targets are depleted or unsafe, it can broaden to:
 
 - lower-value reachable cells
@@ -144,6 +146,14 @@ Greedy Planner must not rely on simulation as the first invalid-route detector.
 ANCHOR uses a cellular map for environmental sampling, but glider route commands are continuous waypoint-to-waypoint movements. Terrain, depth, current, ROI, and risk are sampled from grid cells along a continuous segment; the glider is not required to follow Manhattan-style cell hops or a 4-neighbor grid path.
 
 Current-aware candidate scoring goes through the same current sampling path used by mission simulation, map hover diagnostics, Travel Cost, Risk/Safety, and the Flow Field demos: `src/core/currents/CurrentFieldSampler.js`. Segment ETA and energy come from `src/core/planning/CurrentAwareRouteCost.js`, which samples multiple points along the candidate route at mission time and projects current into along-track assist/opposition plus cross-current risk. The sampler reports topology-aware shoreline risk and topology-composite region metadata, so current pushing into nearby land, moving channel flow, island wakes, bay recirculation, and time-varying regional currents can raise candidate cost/risk before simulation. Greedy Planner still plans commanded waypoint movement; it does not treat mission gliders as passive current particles.
+
+Planner diagnostics include hazard rejection counts:
+
+- `rejectionSummary.hazardIntersection`
+- `hazardCandidatesRejected`
+- `nearHazardCandidates`
+
+When `globalThis.ANCHOR_DEBUG_GREEDY_PLANNER = true`, candidate hazard scans log `[GreedyPlanner][CandidateHazard]` with touched hazard cells, near-hazard cells, max hazard intensity, rejection state, and penalty.
 
 Before committing a candidate, it should reject:
 
