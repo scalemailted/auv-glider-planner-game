@@ -169,6 +169,35 @@ Debugging flags:
 
 - `globalThis.ANCHOR_DEBUG_CURRENT_COMPLEXITY = true` logs generated topology composite configuration and sample contributor breakdowns.
 - `globalThis.ANCHOR_DEBUG_CURRENT_VARIATION = true` logs `[CurrentField][VariationStats]` with magnitude min/mean/max, direction variance, mean angular delta between frames, active components, and clamp counts.
+- `globalThis.ANCHOR_DEBUG_TOPOLOGY_CURRENT_AUDIT = true` logs `[CurrentAudit][RegionStats]` buckets by time and region type, including mean magnitude, max magnitude, direction variance, mean shoreline risk, topology-adjusted count, and dominant behaviors. It also warns `[CurrentAudit][SuspiciousSample]` for cases such as nonzero land current, strong into-land current with low risk, unadjusted near-shore into-land current, channel flow mostly perpendicular to its estimated axis, or unusually strong bay/pocket flow.
+
+## 8.1 Sampled Current Metadata
+
+Mission systems consume sampled current objects rather than raw arrows. The shared sampler can report:
+
+```text
+u, v
+magnitude
+directionRadians
+fieldMode
+preset
+evolutionBehavior
+dynamicComplexity
+topologyRegion
+dominantBehavior
+shoreDistance
+directionToLand
+normalTowardLand / currentTowardLand
+tangentialComponent
+shorelineRisk
+topologyAdjusted
+boundaryMode
+hazardExposure
+confidence
+contributors
+```
+
+Hover tooltips, Travel Cost, Risk/Safety, Greedy Planner, simulation drift, and route diagnostics should agree because they use the same sampler. A current pointing into land is risk and boundary-condition input, not free safe motion through land.
 
 ## 9. Particle / Demo Glider Behavior
 
@@ -217,6 +246,10 @@ Hover tooltips -> report sampled current metadata
 ```
 
 The shared sampler lives in `src/core/currents/CurrentFieldSampler.js`. Synthetic presets are defined in `src/core/generation/VectorFieldPresets.js` and sampled/generated through `src/core/generation/CurrentFieldGenerator.js`.
+
+## 13. Limitations
+
+The field model is synthetic and planning-oriented. It is useful for teaching and solver benchmarking because it is deterministic, topology-aware, and mechanically connected to route cost. It is not validated CFD, real HYCOM forecast data, an operational ocean model, or a Navier-Stokes solver. Region classification for channels, bays, islands, and shoreline is heuristic and should be audited with the debug tools when new terrain-generation patterns are added.
 
 ## 13. Implementation Notes
 

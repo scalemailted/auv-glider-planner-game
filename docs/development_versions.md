@@ -64,6 +64,15 @@ The current app supports tutorials, deterministic and stochastic generated chall
 - Added shared `route_validation_diagnostic` output for Planning, Simulation, plan import, headless validation, and external solver feedback.
 - Separated visible route geometry from diagnostic traversal cells so route overlays remain waypoint-to-waypoint while scoring and diagnostics still inspect sampled cells.
 
+### v0.8 - Dynamic Topology-Aware Current System
+
+- Expanded current fields from simple visual flow arrows into a topology-aware dynamic environment model.
+- Added synthetic coastal-aware composite currents with seeded regional behavior for open water, shoreline, channels, bays/pockets, and island-adjacent wakes.
+- Added continuous dynamic evolution, magnitude pulses, moving structures, Low/Medium/High dynamic complexity, and terrain-aware boundary effects.
+- Current samples now carry planning-relevant metadata such as dominant behavior, topology region, shore distance, current toward land, shoreline risk, topology adjustment, hazard exposure, and confidence.
+- Travel Cost, Risk/Safety, route diagnostics, simulation drift, hover tooltips, solver exports, and Greedy Planner all use the shared current sampler path.
+- Greedy Planner and route validation now treat terminal over-duration waypoints as valid carry-through instructions so missions remain active until the time limit.
+
 ## Current Stable Concepts
 
 - Browser game remains authoritative for validation, simulation, scoring, and player-facing results.
@@ -104,6 +113,7 @@ The current app supports tutorials, deterministic and stochastic generated chall
   - [game_design.md](game_design.md)
   - [solver_workflow.md](solver_workflow.md)
   - [export_formats.md](export_formats.md)
+  - [greedy_planner.md](greedy_planner.md)
   - [temporal_greedy.md](temporal_greedy.md)
   - [testing.md](testing.md)
   - [../tools/js/README.md](../tools/js/README.md)

@@ -85,7 +85,7 @@ Quick loop:
 - [Solver workflow](docs/solver_workflow.md)
 - [Export formats](docs/export_formats.md)
 - [Plan format](docs/plan_format.md)
-- [Greedy Planner](docs/temporal_greedy.md)
+- [Greedy Planner](docs/greedy_planner.md)
 - [Testing](docs/testing.md)
 - [Leaderboard and best paths](docs/leaderboard.md)
 - [Development versions and project state](docs/development_versions.md)
@@ -133,7 +133,22 @@ Planning is the main game workspace. Phaser renders the mission board, gliders, 
 
 Generated challenge setup opens before the map is created. Presets include Small, Medium, Large, and Huge/Experimental. Player settings include agent count, duration, surfacing interval, fuel per glider, glider speed, uniform or varied fleet specs, single or multiple drop zones, difficulty, current-field preset, current strength, dynamic complexity, temporal variability, hazard density, terrain density, ROI hotspot count, and Gold Star frequency. Stochastic setup also exposes ensemble count and forecast horizon decay controls. The selected setup is stored in `level.meta.generationConfig.scenarioSetup` and `mission.meta.scenarioSetup`.
 
-Advanced generated missions can use synthetic vector presets: `calm`, `uniformDrift`, `shearFlow`, `currentCorridor`, `eddyField`, `doubleGyre`, `tidalOscillation`, `meanderingJet`, `westernBoundaryCurrent`, `stormPulse`, `islandWake`, `curlNoise`, `gulfInspired`, `hycomInspiredComposite`, and `chaotic`. These are synthetic ocean-inspired gameplay fields, not operational ocean-model products or validated HYCOM forecasts. Preset variation is seeded from the challenge UUID / replay seed anchor plus preset and generation config, so one challenge replays the same currents while different challenge UUIDs get different repeatable current patterns. The default `Topology-Aware Composite` stores seeded regional behaviors and a Low/Medium/High dynamic-complexity setting that controls moving jets, gyres, shoreline variability, channel pulses, bay recirculation, island wakes, domain-scale direction rotation, and magnitude spread. High complexity is tuned so current arrows visibly rotate and pulse during time scrub/playback. The shared sampler applies terrain-aware shoreline interpretation when terrain is available, so current into land is damped/deflected and exposed as risk metadata for hover diagnostics, Travel Cost, Risk/Safety, simulation drift, and Greedy Planner scoring. Stochastic missions can enable forecast decay so confidence and ROI probabilities decrease farther into the future; the Planning tooltip and confidence overlay show the decayed forecast confidence, and guidance cones widen through the existing confidence path. Varied fleets assign per-agent speed, fuel, energy-rate, drift-gain, and sampling-radius specs. Multiple-drop-zone missions allow a glider to pick any allowed deployment zone before planning.
+### Dynamic Topology-Aware Current Fields
+
+Advanced generated missions can use synthetic vector presets: `calm`, `uniformDrift`, `shearFlow`, `currentCorridor`, `eddyField`, `doubleGyre`, `tidalOscillation`, `meanderingJet`, `westernBoundaryCurrent`, `stormPulse`, `islandWake`, `curlNoise`, `gulfInspired`, `hycomInspiredComposite`, `topologyAwareComposite`, and `chaotic`. These are synthetic ocean-inspired gameplay fields, not operational ocean-model products, real HYCOM feeds, validated CFD, or a Navier-Stokes solver.
+
+Currents are mechanically meaningful, not just visual arrows. ANCHOR samples current as `F(x, y, t) = <u, v>` and uses it for glider drift, speed over ground, ETA, fuel/energy, cross-current risk, shoreline risk, Travel Cost, Risk/Safety, Greedy Planner scoring, route diagnostics, simulation playback, debrief metrics, and solver exports.
+
+Preset variation is seeded from the challenge UUID / replay seed anchor plus preset and generation config, so one challenge replays the same currents while different challenge UUIDs get different repeatable current patterns. The default `Topology-Aware Composite` inspects the generated land/water map and stores seeded regional behaviors:
+
+- open water: drift, gyres, meandering jets, moving eddies, and curl texture
+- shoreline: along-shore flow, damped/deflected into-land current, and shoreline risk
+- islands/obstacles: wake-like and eddy-like structures
+- channels: accelerated corridor flow with pulsing or reversing strength
+- bays/pockets: weaker recirculation and flushing pulses
+- hazards: risk/cost exposure for planning and optional localized challenge context
+
+Low/Medium/High dynamic complexity controls moving structures, secondary regional behaviors, shoreline variability, channel pulses, bay recirculation, island wakes, domain-scale direction rotation, and magnitude spread. High complexity is still seeded and topology-conditioned, not frame-to-frame random jitter. Stochastic missions can enable forecast decay so confidence and ROI probabilities decrease farther into the future; the Planning tooltip and confidence overlay show the decayed forecast confidence, and guidance cones widen through the existing confidence path. Varied fleets assign per-agent speed, fuel, energy-rate, drift-gain, and sampling-radius specs. Multiple-drop-zone missions allow a glider to pick any allowed deployment zone before planning.
 
 Completed simulations are saved to a browser-local leaderboard under `anchorGliderCommand.leaderboard.v1` when `localStorage` is available. Main Menu `Leaderboard` opens a dedicated mode: the left Mission Console holds filters and import/export actions, the center viewport shows scrollable saved challenge cards, and the right panel shows selected-record details. It can load a saved challenge, load/export the best plan, export the saved level, delete attempts, and clear local records. In Planning, the Analysis section also exposes the best prior run for the current challenge instance with show/hide ghost path, rerun, load-as-plan, and export controls. No backend or account is used.
 
@@ -430,14 +445,14 @@ node tools/js/headless_validate_plan.mjs anchor.solver-packet.json anchor.plan.j
 
 This path is documented in `tools/js/README.md` and is also shown as an optional Colab notebook cell. It avoids Phaser and DOM imports and keeps the browser game as the official referee.
 
-Debrief stores comparison results for the current browser session in slots for `manual`, `temporalGreedy`, and `importedSolver`, with legacy compatibility for older `greedyBaseline` records. Run or import each plan, simulate it, then Debrief shows available rows side by side and includes the comparison in result JSON and after-action Markdown exports. Greedy Planner is the browser-native selected-glider baseline planner; see `docs/temporal_greedy.md` for algorithm scope, scoring, validation, and limitations.
+Debrief stores comparison results for the current browser session in slots for `manual`, Greedy Planner, and `importedSolver`, with legacy compatibility for older internal `temporalGreedy` and `greedyBaseline` records. Run or import each plan, simulate it, then Debrief shows available rows side by side and includes the comparison in result JSON and after-action Markdown exports. Greedy Planner is the browser-native selected-glider baseline planner; see `docs/greedy_planner.md` for algorithm scope, scoring, validation, and limitations.
 
 More details:
 
 - `docs/solver_workflow.md`
 - `docs/export_formats.md`
 - `docs/plan_format.md`
-- `docs/temporal_greedy.md`
+- `docs/greedy_planner.md`
 - `docs/testing.md`
 - `docs/development_versions.md`
 - `tools/js/README.md`

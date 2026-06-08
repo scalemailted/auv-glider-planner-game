@@ -2,7 +2,7 @@
 
 Students play manually, explain strategy, export data, write/inspect solver code, import solver plans, and compare outcomes.
 
-Greedy Planner is the browser-native selected-glider baseline planner for quick comparison and mission testing. It is intentionally local and greedy rather than globally optimal. See `docs/temporal_greedy.md` for the algorithm, intended use, and limitations.
+Greedy Planner is the browser-native selected-glider baseline planner for quick comparison and mission testing. It is intentionally local and greedy rather than globally optimal. See `docs/greedy_planner.md` for the algorithm, intended use, and limitations.
 
 ## Campaign Flow
 

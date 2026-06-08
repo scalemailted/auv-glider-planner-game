@@ -8,7 +8,7 @@ python -m http.server 8000
 
 Playwright is optional and intended for development smoke testing.
 
-Greedy Planner is useful for planner smoke checks because it should return promptly, preserve non-selected glider routes, and validate before simulation. See `docs/temporal_greedy.md` for the expected selected-glider baseline behavior.
+Greedy Planner is useful for planner smoke checks because it should return promptly, preserve non-selected glider routes, and validate before simulation. See `docs/greedy_planner.md` for the expected selected-glider baseline behavior.
 
 The `Demos` menu section contains isolated concept scenes for validating field behavior before debugging full missions. Use `docs/flow_fields_demo.md` when validating static/dynamic fields, additive layers, partition behavior, terrain boundary effects, and topology-aware shoreline risk. Use `docs/roi_generator_demo.md` when validating seeded ROI/value distributions, hotspot clustering, noise, and dynamic value-field behavior.
 
@@ -104,8 +104,26 @@ Manual planner checks should cover:
 - worker fallback does not change the accepted plan shape;
 - every generated segment is checked before append;
 - final route audit runs before accepting the generated plan;
+- terminal carry-through waypoint exceeds mission duration when safe feasible movement remains;
+- over-duration terminal waypoint is a warning, not an Execute blocker;
 - blocked output reports a stop reason such as `no_reachable_feasible_candidates`, `no_executable_route_after_validation`, or `planner_generated_blocked_segment`;
 - the right Waypoint Timeline and Mission Console do not show a generated blocked route as valid.
+
+## Dynamic Current / Topology Checklist
+
+Manual current checks should cover:
+
+- static fields stay fixed while particles move through them;
+- dynamic fields continue changing direction and magnitude over mission time;
+- High dynamic complexity has visibly stronger direction/magnitude variation than Low;
+- same challenge UUID/config/generation version reproduces the same current field;
+- a different challenge UUID produces different seeded variation;
+- `Topology-Aware Composite` reports open water, shoreline, island-adjacent, channel, and bay/pocket behavior where the terrain supports them;
+- shoreline current into land raises shoreline risk and is damped/deflected when boundary mode requires it;
+- channel flow aligns with the estimated channel axis instead of rotating randomly through land;
+- bay/pocket flow is more contained than open water unless intentionally configured;
+- `globalThis.ANCHOR_DEBUG_TOPOLOGY_CURRENT_AUDIT = true` logs `[CurrentAudit][RegionStats]` and suspicious-sample warnings;
+- hover tooltip, Travel Cost, Risk/Safety, Greedy Planner, and simulation use the same current sampler metadata.
 
 ## Manual Smoke Checklist
 

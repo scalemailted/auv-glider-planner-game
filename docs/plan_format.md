@@ -46,6 +46,18 @@ Plan import validates type, agent IDs, selected starts, waypoint coordinates, wa
 
 Shared route diagnostics use `type: "route_validation_diagnostic"` and stable categories such as `segment_intersects_land`, `target_on_land`, `fuel_exceeded`, `time_exceeded`, and `unknown_route_block`. Import metadata and headless validation may expose these diagnostics as `diagnostics[]` and `solverFeedback`.
 
+`waypoint_exceeds_mission_duration` is not a hard error by itself. For a final horizon-coverage waypoint, plans may include:
+
+```json
+{
+  "terminalCarryThrough": true,
+  "terminalCarryThroughReason": "mission_horizon_coverage",
+  "runtimeBehavior": "truncate_at_mission_end"
+}
+```
+
+Simulation travels toward that waypoint until mission time expires, then stops at the reached position and debriefs normally. Hard route diagnostics such as land crossing, invalid start, non-navigable target, fuel failure, and severe hazard traversal still block execution.
+
 ## Tutorial Demo Plan
 
 `Tutorial 14: Import / Export Workflow` includes a packaged demo plan at `tutorials/import-demo/import-demo-waypoints.json`. It is a normal `anchor.plan` with planner metadata:

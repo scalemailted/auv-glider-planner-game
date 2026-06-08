@@ -1,5 +1,7 @@
 # Greedy Planner Baseline Planner
 
+Compatibility note: this file keeps the older `temporal_greedy.md` filename for links and implementation history. User-facing text should call the feature **Greedy Planner**. The short canonical overview is [greedy_planner.md](greedy_planner.md).
+
 ## 1. Purpose
 
 Greedy Planner is ANCHOR's fast internal baseline planner. It is designed to produce a reasonable route for the currently selected glider using local, step-by-step decisions. It is not a global optimizer. Its purpose is to provide a simple baseline for comparison, fast mission testing, and quick route execution checks.

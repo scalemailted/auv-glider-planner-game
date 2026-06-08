@@ -44,13 +44,15 @@ Exact replay prefers a saved challenge snapshot. If no snapshot is available, re
 
 In stochastic mode, ordinary solver packets include forecast/belief fields, not hidden truth. Oracle-mode packets are only for benchmarking.
 
-Solver packets include `currentFieldConfig` and `currentFieldVisibility`. Fair stochastic packets expose the forecast-visible current frames/config and confidence metadata, including current time behavior, but withhold hidden truth unless oracle export is explicitly requested.
+Solver packets include `currentFieldConfig` and `currentFieldVisibility`. Fair stochastic packets expose the forecast-visible current frames/config and confidence metadata, including current time behavior, but withhold hidden truth unless oracle export is explicitly requested. For topology-aware generated fields, packets may expose source/config metadata such as `fieldMode`, `timeMode`, `evolutionBehavior`, `dynamicComplexity`, `topologyAware`, `boundaryMode`, region assignments, and fairness/source labels. The visible temporal current frames remain the numerical input solvers should plan against.
 
 Solver packets also include `importedFlowField` when a challenge used one, plus the generated visible temporal current frames. Imported field source metadata declares whether the field is forecast-visible, truth-visible, or oracle.
 
 ## `anchor.flow-field.json`
 
 `type: "anchor.flow-field"` is an optional current-field import format for challenge setup. It supports frame-based currents with finite `{u,v}` vectors and strictly increasing frame times, or a synthetic config using the same presets/layers/evolution controls as challenge setup. Sampling metadata declares `timeMode` (`continuous`, `looping`, `clamped`, or `frames`) and `linear`/`nearest` frame interpolation. Boundary conditions can request `none`, `riskOnly`, `dampenIntoLand`, `deflectAlongShore`, or scaffolded `wakeApproximation`. Imports must match the setup grid size; challenge terrain remains authoritative for coastlines and land boundaries.
+
+Imported flow fields should declare whether they are forecast-visible, truth-visible, or oracle-only. If they include synthetic topology-aware config, preserve `topologyComposite`, `dynamicComplexity`, region behavior metadata, and boundary settings so replay and solver comparison remain explainable.
 
 Google Colab is supported through `tools/python/notebooks/anchor_external_solver_template.ipynb`. The notebook loads this packet, builds a lightweight headless planning world from visible fields, writes `anchor.plan.json`, and leaves validation/simulation/scoring to the browser game.
 
@@ -67,6 +69,8 @@ That script reads the same solver packet, uses visible forecast fields by defaul
 `type: "anchor.plan"` is the imported/exported route format. It supports executable `openLoop` and `timedOpenLoop` plans now, preserves `surfaceUpdateBundle` metadata with a safe import warning, and recognizes `policy` / `contingencyTable` as non-executable scaffolds. Planner metadata declares whether the route used forecast, truth, or oracle data.
 
 Invalid imported plans receive shared route diagnostics in import metadata and headless validation output. Each diagnostic has `type: "route_validation_diagnostic"`, `schemaVersion: "1.0"`, `severity`, `category`, segment cells, blocked/reported cells when available, a human explanation, and a solver-oriented `fixHint` plus `plannerFeedback`.
+
+`waypoint_exceeds_mission_duration` is a warning when the segment is otherwise legal. A final over-duration waypoint may be a terminal carry-through instruction with `runtimeBehavior: "truncate_at_mission_end"`. The browser simulation travels toward it until mission time expires and debriefs normally. Do not treat this category as a hard route failure by itself.
 
 External-solver plans should include:
 

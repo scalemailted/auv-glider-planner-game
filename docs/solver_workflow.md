@@ -131,7 +131,7 @@ python tools/python/example_greedy_solver.py anchor_solver_packet.json anchor_so
 
 Optional strategy names are `value_per_distance`, `greedy_roi`, and `nearest_roi`.
 
-The example reads the visible planning fields from the packet, chooses ROI target cells, skips blocked terrain and hazard cells, and writes an importable `anchor.plan`. It supports multiple mission agents by creating one waypoint list per agent. The solver is a baseline teaching example, not an optimal planner. For the browser-native baseline planner used inside ANCHOR, see `docs/temporal_greedy.md`.
+The example reads the visible planning fields from the packet, chooses ROI target cells, skips blocked terrain and hazard cells, and writes an importable `anchor.plan`. It supports multiple mission agents by creating one waypoint list per agent. The solver is a baseline teaching example, not an optimal planner. For the browser-native baseline planner used inside ANCHOR, see `docs/greedy_planner.md`.
 
 The repository also includes a Colab-friendly notebook template:
 
@@ -205,11 +205,15 @@ ROI cells may be numeric or objects:
 
 Solvers should use `expectedValue` for conservative expected-value planning, `value` for high-reward target seeking, or `probability` for risk-averse target seeking. Mobile hazards and depth are visible planning data. The browser Greedy Planner evaluates expected value at estimated arrival time and applies current-aware travel-cost, hazard, mobile-hazard, depth, uncertainty, and active-priority-target terms. The Python example applies lightweight penalties for static hazards, mobile-hazard exposure, and shallow depth, but remains deliberately simple and non-optimal.
 
+Current fields are visible planning data according to the packet fairness mode. Fair stochastic packets expose forecast-visible current frames/config, confidence, and source metadata. Hidden truth current frames are withheld unless an oracle export is explicit. Topology-aware fields may include `currentFieldConfig`, `dynamicComplexity`, `topologyComposite` region metadata, boundary mode, and generated temporal frames. Solvers should plan against the visible frames and may use the config/metadata to explain behavior such as shoreline risk, channel acceleration, island wakes, bay recirculation, and dynamic magnitude pulses. These fields are synthetic ocean-inspired planning data, not real HYCOM forecasts or CFD output.
+
 Solver packets also include top-level `priorityTargets`, `stochasticConfig`, `missionRules`, `planningData.scoringMode`, `planningData.stochasticSeed`, `planningData.endCondition`, `planningData.sampling`, `planningData.priorityTargets`, and `planningData.riskFields`. Risk-aware solvers can use these fields to account for the active stochastic seed, ROI scoring mode, selected forecast member, probabilistic ROI outcomes, mission-end recovery/surface requirements, duplicate/depleted/cooldown sampling behavior, temporal Gold Star Targets, forecast ensemble count/disagreement, mobile hazard tracks, bathymetry/depth, and static hazard grids. These are educational approximations; they are not a full robust optimizer.
 
 Solver packets include `deployment.agents[]` with each agent's deployment mode, zone id, allowed cells, and selected start. If `selectedStart` is null, an external solver may choose a start cell from `allowedCells` and echo it as `agentPlans[].selectedStart` in the imported plan.
 
 Solver packets can also include `planningData.planningMarkers` when the player placed future planning notes before export. These markers preserve `x`, `y`, `t`, `window`, `type`, `label`, and optional `linkedTargetId`. They are not executable commands; a solver should treat them as hints or comments unless it intentionally converts them into waypoints in its output plan.
+
+A final waypoint beyond mission duration is allowed when the route segment is otherwise legal. This terminal carry-through pattern keeps a glider commanded until the mission time limit. Imported solvers may include it intentionally; ANCHOR validates it as a warning with runtime truncation, not as route failure.
 
 Debrief may report forecast regret against a lightweight truth-reference metric when available. This is a teaching signal, not an optimal solution guarantee.
 

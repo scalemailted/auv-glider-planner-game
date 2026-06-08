@@ -59,7 +59,7 @@ Scenario setup controls include map size, agent count, duration, surfacing inter
 
 Generated challenges use temporal fields. Scrub the bottom time slider to inspect how ROI cells warm/cool or move, how Gold Star Targets appear/disappear, and how current arrows shift direction/magnitude before committing a plan. Stochastic challenges also evolve hidden truth and visible forecast/ensemble frames over the same mission horizon.
 
-Current-field presets are synthetic gameplay patterns: calm, uniform drift, shear flow, current corridor, eddy field, double gyre, tidal oscillation, storm pulse, island wake, Gulf-inspired circulation, and chaotic. Strength controls magnitude; Temporal Variability controls how much the field changes over mission time. These create distinct planning challenges but are not real ocean-model forecasts.
+Current-field presets are synthetic ocean-inspired gameplay patterns: calm, uniform drift, shear flow, current corridor, eddy field, double gyre, tidal oscillation, storm pulse, island wake, Gulf-inspired circulation, topology-aware composite, and chaotic. Strength controls magnitude; dynamic complexity and temporal variability control how much the field changes over mission time. The default topology-aware composite looks at the generated land/water map: open water can contain moving jets, gyres, and eddies; shorelines damp or deflect current into land and raise shoreline risk; islands create wake-like structures; channels accelerate corridor flow; bays/pockets use weaker recirculation. These fields are deterministic from challenge seed/config and are not real ocean-model forecasts or validated CFD.
 
 During simulation, the map uses the simulator clock rather than the planning scrubber. The bottom time readout, ROI heatmap, current arrows, mobile hazards, and visible forecast/truth field advance from the same simulation time source.
 
@@ -181,7 +181,7 @@ The committed route line starts at the fixed start, selected deployment cell, or
 
 The deployment start is separate from the waypoint list. It is not counted as waypoint 1 and does not sample ROI. In drop-zone missions, use the `Change` control in the waypoint panel or click another valid drop-zone cell before execution to move the start.
 
-If the next waypoint would exceed mission time, exceed estimated fuel, or cross blocked terrain, the game blocks the placement and shows a warning. You can repair the plan by deleting waypoints, moving them closer, reordering them, or clearing the selected glider's route.
+If the next waypoint would exceed estimated fuel or cross blocked terrain, the game blocks the placement and shows a warning. A final waypoint beyond mission duration is different: it can be a terminal carry-through instruction. Simulation travels toward it, stops at the mission time limit, marks it missed because time expired, and debriefs normally. You can repair true route problems by deleting waypoints, moving them closer, reordering them, or clearing the selected glider's route.
 
 When you press `Execute`, the game checks that every required deployment start is selected, every fixed start is valid, mission time settings are usable, waypoint coordinates are finite and inside water cells, route segments do not cross terrain, and estimated fuel is sufficient. If something is invalid, Planning stays open, the visible Execute control is blocked, and the affected waypoint/segment is highlighted before simulation starts. A future waypoint scheduled beyond the mission duration is a warning, not a hard blocker: simulation runs toward it and ends at the mission time limit before it is reached.
 
@@ -235,7 +235,7 @@ Labels such as `Actual Final`, `Actual ROI`, and `Actual Energy` come from the c
 - manual-vs-temporal-greedy comparison when available
 - manual-vs-solver comparison when available
 
-Use Debrief to decide what to improve, then click `Revise Plan` or `Retry From Briefing`. Tutorial missions also offer `Next Tutorial`; generated challenges offer `New Challenge`; editor/custom missions offer `Return To Editor`. Export, rerun, Temporal Greedy, comparison, and main-menu controls are in-game buttons; downloads still use the browser download bridge behind those buttons.
+Use Debrief to decide what to improve, then click `Revise Plan` or `Retry From Briefing`. Tutorial missions also offer `Next Tutorial`; generated challenges offer `New Challenge`; editor/custom missions offer `Return To Editor`. Export, rerun, Greedy Planner, comparison, and main-menu controls are in-game buttons; downloads still use the browser download bridge behind those buttons.
 
 If the simulator detects an invalid or unreachable plan, it stops with a warning and recovery choices instead of freezing. Move or delete the problem waypoint, replan from the current actual position, or end to Debrief. Exported results include the stop reason and recovery decision for debugging.
 
@@ -898,7 +898,7 @@ This is useful for classroom assignments, solver benchmarking, or offline ML exp
 - Reorder waypoints when the map labels show a route that does not make sense.
 - In forecast mode, use confidence as a warning sign.
 - Export plans before trying a risky revision.
-- Use Temporal Greedy as a quick browser-native comparison route; Debrief reports why it stopped if it ends before mission time runs out.
+- Use Greedy Planner as a quick browser-native comparison route; Debrief reports why it stopped if it cannot safely cover the mission horizon.
 - Compare a manual plan with an imported solver plan.
 
 ## Common Problems
