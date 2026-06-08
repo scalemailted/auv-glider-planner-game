@@ -399,6 +399,32 @@
   border-radius: 6px;
   padding: .3rem;
 }
+.compact-field select, .coordinate-grid select, #agent-select, #window-select, #level-challenge-mode {
+  color-scheme: dark;
+  appearance: none;
+  background-image: linear-gradient(45deg, transparent 50%, var(--muted) 50%), linear-gradient(135deg, var(--muted) 50%, transparent 50%);
+  background-position: calc(100% - 12px) 50%, calc(100% - 7px) 50%;
+  background-size: 5px 5px, 5px 5px;
+  background-repeat: no-repeat;
+  padding-right: 1.55rem;
+}
+.compact-field input:focus, .compact-field select:focus, .coordinate-grid input:focus, .coordinate-grid select:focus {
+  outline: 2px solid rgba(99,230,190,0.42);
+  border-color: rgba(99,230,190,0.65);
+}
+.compact-field input:disabled, .compact-field select:disabled {
+  color: rgba(226,240,255,0.48);
+  border-color: rgba(255,255,255,0.08);
+  background-color: rgba(255,255,255,0.04);
+}
+.flow-layer-card {
+  display: grid;
+  gap: .45rem;
+  padding: .55rem;
+  border: 1px solid rgba(255,255,255,0.12);
+  border-radius: 8px;
+  background: rgba(255,255,255,0.045);
+}
 .timeline-strip { display: flex; gap: .4rem; flex-wrap: wrap; }
 .timeline-strip button.active { border-color: var(--success); background: rgba(99,230,190,0.14); }
 .score-components { display: grid; gap: .25rem; margin-top: .65rem; }

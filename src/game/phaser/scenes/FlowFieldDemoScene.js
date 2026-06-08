@@ -1,6 +1,7 @@
 import {
   advanceDemoParticles,
   createDemoParticles,
+  createDefaultFlowLayer,
   createDemoTerrain,
   FLOW_DEMO_DEFAULT_LAYERS,
   FLOW_DEMO_DEFAULT_PRESETS,
@@ -8,8 +9,11 @@ import {
   getFlowDemoPresetConfig,
   isDemoLand,
   normalizeAdditiveLayers,
+  normalizeEvolutionControls,
   normalizeTerrainMode,
   normalizeFieldMode,
+  normalizeEvolutionPattern,
+  normalizeVariationLevel,
   sampleDemoFlow,
   summarizeDemoFlowMagnitudes
 } from '../../../core/demo/FlowFieldDemo.js';
@@ -22,40 +26,44 @@ export class FlowFieldDemoScene extends PhaserScene {
     super('FlowFieldDemoScene');
     this.objects = [];
     this.buttons = [];
-    this.fieldMode = 'dynamic';
-    this.preset = FLOW_DEMO_DEFAULT_PRESETS.dynamic;
-    this.secondaryPreset = FLOW_DEMO_DEFAULT_PRESETS.secondary;
+    this.fieldMode = 'static';
+    this.preset = FLOW_DEMO_DEFAULT_PRESETS.static;
     this.additiveLayers = normalizeAdditiveLayers(FLOW_DEMO_DEFAULT_LAYERS);
-    this.partitionType = 'vertical';
     this.terrainMode = 'none';
     this.terrainSeed = 'anchor-demo-1';
     this.terrain = createDemoTerrain({ mode: 'none', seed: this.terrainSeed });
-    this.timeSpeedScale = 1;
+    this.evolutionSpeedScale = 1;
+    this.directionVariation = 'medium';
+    this.magnitudeVariation = 'medium';
+    this.evolutionPattern = 'composite';
     this.magnitudeScale = 1.5;
     this.particleSpeedScale = 1;
     this.demoTime = 0;
     this.paused = false;
+    this.lastDeltaSeconds = 0;
     this.lastDebugDemoTime = -Infinity;
   }
 
   init(data = {}) {
-    this.fieldMode = normalizeFieldMode(data.fieldMode ?? data.mode ?? 'dynamic');
+    this.fieldMode = normalizeFieldMode(data.fieldMode ?? data.mode ?? 'static');
     this.preset = data.preset ?? FLOW_DEMO_DEFAULT_PRESETS[this.fieldMode] ?? FLOW_DEMO_DEFAULT_PRESETS.dynamic;
-    this.secondaryPreset = data.secondaryPreset ?? FLOW_DEMO_DEFAULT_PRESETS.secondary;
     this.additiveLayers = normalizeAdditiveLayers(data.additiveLayers ?? legacyAdditiveLayers(data));
-    this.partitionType = data.partitionType ?? 'vertical';
     this.terrainMode = normalizeTerrainMode(data.terrainMode ?? 'none');
     this.terrainSeed = data.terrainSeed ?? 'anchor-demo-1';
     this.terrain = createDemoTerrain({ mode: this.terrainMode, seed: this.terrainSeed });
-    this.timeSpeedScale = finiteNumber(data.timeSpeedScale, 1);
+    this.evolutionSpeedScale = finiteNumber(data.evolutionSpeedScale ?? data.timeSpeedScale, 1);
+    this.directionVariation = normalizeVariationLevel(data.directionVariation ?? 'medium');
+    this.magnitudeVariation = normalizeVariationLevel(data.magnitudeVariation ?? 'medium');
+    this.evolutionPattern = normalizeEvolutionPattern(data.evolutionPattern ?? 'composite');
     this.magnitudeScale = finiteNumber(data.magnitudeScale, 1.5);
     this.particleSpeedScale = finiteNumber(data.particleSpeedScale, 1);
     this.demoTime = 0;
     this.paused = false;
+    this.lastDeltaSeconds = 0;
     this.lastDebugDemoTime = -Infinity;
     this.particles = createDemoParticles({
       count: this.fieldMode === 'static' ? 18 : 22,
-      seed: `flow-demo-${this.fieldMode}:${this.preset}:${this.secondaryPreset}:${JSON.stringify(this.additiveLayers)}`
+      seed: `flow-demo-${this.fieldMode}:${this.preset}:${JSON.stringify(this.additiveLayers)}`
     });
   }
 
@@ -90,7 +98,8 @@ export class FlowFieldDemoScene extends PhaserScene {
       return;
     }
     const dt = Math.min(0.05, Math.max(0, Number(delta ?? 16.67) / 1000));
-    this.demoTime += dt * this.timeSpeedScale;
+    this.lastDeltaSeconds = dt;
+    this.demoTime += dt * this.evolutionSpeedScale;
     advanceDemoParticles(this.particles, {
       time: this.demoTime,
       dt,
@@ -108,9 +117,7 @@ export class FlowFieldDemoScene extends PhaserScene {
 
   subtitle() {
     if (this.fieldMode === 'static') return 'Static fields hold direction and magnitude while particles reveal flow structure.';
-    if (this.fieldMode === 'additiveLayers') return 'Additive Layers sum optional behaviors over one base field.';
-    if (this.fieldMode === 'partitioned') return 'Partitioned fields use different presets in different regions.';
-    return 'Dynamic fields evolve their arrow directions and magnitudes over simulated time.';
+    return 'Dynamic fields continuously morph F(x,y,t), changing direction and magnitude over simulated time.';
   }
 
   renderConsole() {
@@ -119,12 +126,13 @@ export class FlowFieldDemoScene extends PhaserScene {
       title: this.title(),
       fieldMode: this.fieldMode,
       preset: this.preset,
-      secondaryPreset: this.secondaryPreset,
       additiveLayers: this.additiveLayers,
-      partitionType: this.partitionType,
       terrainMode: this.terrainMode,
       terrainSeed: this.terrainSeed,
-      timeSpeedScale: this.timeSpeedScale,
+      evolutionSpeedScale: this.evolutionSpeedScale,
+      directionVariation: this.directionVariation,
+      magnitudeVariation: this.magnitudeVariation,
+      evolutionPattern: this.evolutionPattern,
       magnitudeScale: this.magnitudeScale,
       particleSpeedScale: this.particleSpeedScale,
       magnitudeStats: summarizeDemoFlowMagnitudes(this.fieldConfig(), this.demoTime),
@@ -135,16 +143,34 @@ export class FlowFieldDemoScene extends PhaserScene {
     }, {
       fieldMode: (fieldMode) => this.scene.restart({ ...this.sceneConfig(), fieldMode }),
       preset: (preset) => this.scene.restart({ ...this.sceneConfig(), preset }),
-      secondaryPreset: (secondaryPreset) => this.scene.restart({ ...this.sceneConfig(), secondaryPreset }),
-      additiveLayer: (index, patch) => this.scene.restart({
+      addLayer: () => this.scene.restart({
         ...this.sceneConfig(),
-        additiveLayers: updateLayer(this.additiveLayers, index, patch)
+        additiveLayers: addLayer(this.additiveLayers, this.preset)
       }),
-      partitionType: (partitionType) => this.scene.restart({ ...this.sceneConfig(), partitionType }),
+      updateLayer: (id, patch) => this.scene.restart({
+        ...this.sceneConfig(),
+        additiveLayers: updateLayer(this.additiveLayers, id, patch)
+      }),
+      removeLayer: (id) => this.scene.restart({
+        ...this.sceneConfig(),
+        additiveLayers: removeLayer(this.additiveLayers, id)
+      }),
       terrainMode: (terrainMode) => this.scene.restart({ ...this.sceneConfig(), terrainMode }),
       resetTerrain: () => this.scene.restart({ ...this.sceneConfig(), terrainSeed: nextTerrainSeed(this.terrainSeed) }),
-      timeSpeedScale: (timeSpeedScale) => {
-        this.timeSpeedScale = Number(timeSpeedScale) || 1;
+      evolutionSpeedScale: (evolutionSpeedScale) => {
+        this.evolutionSpeedScale = Number(evolutionSpeedScale) || 1;
+        this.renderConsole();
+      },
+      directionVariation: (directionVariation) => {
+        this.directionVariation = normalizeVariationLevel(directionVariation);
+        this.renderConsole();
+      },
+      magnitudeVariation: (magnitudeVariation) => {
+        this.magnitudeVariation = normalizeVariationLevel(magnitudeVariation);
+        this.renderConsole();
+      },
+      evolutionPattern: (evolutionPattern) => {
+        this.evolutionPattern = normalizeEvolutionPattern(evolutionPattern);
         this.renderConsole();
       },
       magnitudeScale: (magnitudeScale) => {
@@ -168,10 +194,13 @@ export class FlowFieldDemoScene extends PhaserScene {
     return {
       fieldMode: this.fieldMode,
       primaryPreset: this.preset,
-      secondaryPreset: this.secondaryPreset,
       additiveLayers: this.additiveLayers,
-      partitionType: this.partitionType,
-      terrain: this.terrain
+      terrain: this.terrain,
+      ...normalizeEvolutionControls({
+        directionVariation: this.directionVariation,
+        magnitudeVariation: this.magnitudeVariation,
+        evolutionPattern: this.evolutionPattern
+      })
     };
   }
 
@@ -179,12 +208,13 @@ export class FlowFieldDemoScene extends PhaserScene {
     return {
       fieldMode: this.fieldMode,
       preset: this.preset,
-      secondaryPreset: this.secondaryPreset,
       additiveLayers: this.additiveLayers,
-      partitionType: this.partitionType,
       terrainMode: this.terrainMode,
       terrainSeed: this.terrainSeed,
-      timeSpeedScale: this.timeSpeedScale,
+      evolutionSpeedScale: this.evolutionSpeedScale,
+      directionVariation: this.directionVariation,
+      magnitudeVariation: this.magnitudeVariation,
+      evolutionPattern: this.evolutionPattern,
       magnitudeScale: this.magnitudeScale,
       particleSpeedScale: this.particleSpeedScale
     };
@@ -398,12 +428,14 @@ export class FlowFieldDemoScene extends PhaserScene {
     this.subtitleText?.setPosition(margin, top + 42);
     this.subtitleText?.setWordWrapWidth(Math.min(760, map.width));
     const preset = getFlowDemoPresetConfig(this.fieldMode, this.preset);
-    const secondary = getFlowDemoPresetConfig(this.fieldMode, this.secondaryPreset);
-    const layerText = this.fieldMode === 'additiveLayers' ? ` | Additive Layers: ${formatLayerSummary(this.additiveLayers)}` : '';
-    const secondaryText = this.fieldMode === 'partitioned' ? ` + ${secondary.label}` : '';
+    const layerText = ` | Layers: ${formatLayerSummary(this.additiveLayers)}`;
     const centerSample = sampleDemoFlow({ ...this.fieldConfig(), x: 0.5, y: 0.5, time: this.demoTime });
     const stats = summarizeDemoFlowMagnitudes(this.fieldConfig(), this.demoTime);
-    this.statusText?.setText(`Mode: ${fieldModeLabel(this.fieldMode)} | Base Field: ${preset?.label ?? 'Current Field'}${secondaryText}${layerText} | Demo Time: ${this.demoTime.toFixed(1)} hr | Time Speed: ${this.timeSpeedScale}x | Mag min/mean/max: ${stats.min.toFixed(2)} / ${stats.mean.toFixed(2)} / ${stats.max.toFixed(2)} | Sample: (${centerSample.u.toFixed(2)}, ${centerSample.v.toFixed(2)}) mag ${Math.hypot(centerSample.u, centerSample.v).toFixed(2)} | Terrain: ${terrainModeLabel(this.terrainMode)}`);
+    const evolutionText = this.fieldMode === 'dynamic'
+      ? ` | Direction: ${variationLabel(this.directionVariation)} | Magnitude: ${variationLabel(this.magnitudeVariation)} | Pattern: ${evolutionPatternLabel(this.evolutionPattern)}`
+      : '';
+    const modePrefix = this.fieldMode === 'dynamic' ? 'Continuous F(x,y,t)' : 'Fixed F(x,y,0)';
+    this.statusText?.setText(`${modePrefix} | Mode: ${fieldModeLabel(this.fieldMode)} | Base Flow Field: ${preset?.label ?? 'Current Field'}${layerText}${evolutionText} | Demo Time: ${this.demoTime.toFixed(1)} | Evolution Speed: ${this.evolutionSpeedScale}x | Particle Speed: ${this.particleSpeedScale}x | Magnitude Scale: ${this.magnitudeScale}x | Mag min/mean/max: ${stats.min.toFixed(2)} / ${stats.mean.toFixed(2)} / ${stats.max.toFixed(2)} | Sample: (${centerSample.u.toFixed(2)}, ${centerSample.v.toFixed(2)}) mag ${Math.hypot(centerSample.u, centerSample.v).toFixed(2)} | Terrain: ${terrainModeLabel(this.terrainMode)}`);
     this.statusText?.setWordWrapWidth(Math.min(980, map.width));
     this.statusText?.setPosition(margin, map.y + map.height + 18);
   }
@@ -436,14 +468,20 @@ export class FlowFieldDemoScene extends PhaserScene {
     if (this.demoTime - this.lastDebugDemoTime < 1) return;
     this.lastDebugDemoTime = this.demoTime;
     const sample = sampleDemoFlow({ ...this.fieldConfig(), x: 0.5, y: 0.5, time: this.demoTime });
-    globalThis.console?.debug?.('[FlowDemo][MagnitudeSample]', {
+    const futureSample = sampleDemoFlow({ ...this.fieldConfig(), x: 0.5, y: 0.5, time: this.demoTime + 1 });
+    const composition = sample.composition ?? {};
+    globalThis.console?.debug?.('[FlowDemo][DynamicFieldSample]', {
       mode: fieldModeLabel(this.fieldMode),
       basePreset: this.preset,
       preset: this.preset,
-      secondaryPreset: this.secondaryPreset,
       layers: this.additiveLayers,
       demoTime: Number(this.demoTime.toFixed(2)),
-      timeSpeedScale: this.timeSpeedScale,
+      evolutionSpeed: this.evolutionSpeedScale,
+      particleSpeed: this.particleSpeedScale,
+      magnitudeScale: this.magnitudeScale,
+      directionVariation: this.directionVariation,
+      magnitudeVariation: this.magnitudeVariation,
+      evolutionPattern: this.evolutionPattern,
       magnitudeStats: summarizeDemoFlowMagnitudes(this.fieldConfig(), this.demoTime),
       center: {
         u: Number(sample.u.toFixed(4)),
@@ -451,22 +489,97 @@ export class FlowFieldDemoScene extends PhaserScene {
         magnitude: Number(Math.hypot(sample.u, sample.v).toFixed(4))
       }
     });
+    globalThis.console?.debug?.('[FlowDemo][FixedPointEvolution]', {
+      mode: this.fieldMode,
+      baseField: this.preset,
+      point: { x: 0.5, y: 0.5 },
+      t0: Number(this.demoTime.toFixed(2)),
+      t1: Number((this.demoTime + 1).toFixed(2)),
+      evolutionSpeed: this.evolutionSpeedScale,
+      particleSpeed: this.particleSpeedScale,
+      magnitudeScale: this.magnitudeScale,
+      directionVariation: this.directionVariation,
+      magnitudeVariation: this.magnitudeVariation,
+      t0Vector: {
+        u: Number(sample.u.toFixed(4)),
+        v: Number(sample.v.toFixed(4)),
+        magnitude: Number(Math.hypot(sample.u, sample.v).toFixed(4))
+      },
+      t1Vector: {
+        u: Number(futureSample.u.toFixed(4)),
+        v: Number(futureSample.v.toFixed(4)),
+        magnitude: Number(Math.hypot(futureSample.u, futureSample.v).toFixed(4))
+      },
+      deltaU: Number((futureSample.u - sample.u).toFixed(4)),
+      deltaV: Number((futureSample.v - sample.v).toFixed(4)),
+      deltaMagnitude: Number((Math.hypot(futureSample.u, futureSample.v) - Math.hypot(sample.u, sample.v)).toFixed(4))
+    });
+    globalThis.console?.debug?.('[FlowDemo][ContinuousEvolution]', {
+      mode: this.fieldMode,
+      demoTime: Number(this.demoTime.toFixed(3)),
+      evolutionSpeed: this.evolutionSpeedScale,
+      particleSpeed: this.particleSpeedScale,
+      magnitudeScale: this.magnitudeScale,
+      point: { x: 0.5, y: 0.5 },
+      vector: {
+        u: Number(sample.u.toFixed(4)),
+        v: Number(sample.v.toFixed(4))
+      },
+      magnitude: Number(Math.hypot(sample.u, sample.v).toFixed(4)),
+      angle: Number(Math.atan2(sample.v, sample.u).toFixed(4)),
+      evolution: sample.composition?.evolution ?? null
+    });
+    globalThis.console?.debug?.('[FlowDemo][TimeState]', {
+      demoTime: Number(this.demoTime.toFixed(3)),
+      evolutionSpeed: this.evolutionSpeedScale,
+      particleSpeed: this.particleSpeedScale,
+      magnitudeScale: this.magnitudeScale,
+      deltaSeconds: Number((this.lastDeltaSeconds ?? 0).toFixed(4)),
+      arrowRedrawOnly: false
+    });
+    globalThis.console?.debug?.('[FlowDemo][MagnitudeStats]', {
+      ...summarizeDemoFlowMagnitudes(this.fieldConfig(), this.demoTime),
+      time: Number(this.demoTime.toFixed(2))
+    });
+    globalThis.console?.debug?.('[FlowDemo][LayerComposition]', {
+      baseFieldId: this.preset,
+      layers: this.additiveLayers,
+      samplePoint: { x: 0.5, y: 0.5 },
+      baseVector: composition.base ? {
+        u: Number(composition.base.u.toFixed(4)),
+        v: Number(composition.base.v.toFixed(4)),
+        magnitude: Number(Math.hypot(composition.base.u, composition.base.v).toFixed(4))
+      } : null,
+      layerVectors: (composition.layers ?? []).map((layer) => ({
+        id: layer.id,
+        preset: layer.preset,
+        weight: layer.weight,
+        influence: layer.influence,
+        influenceAtPoint: Number((layer.influenceScale ?? 1).toFixed(4)),
+        vector: {
+          u: Number(layer.vector.u.toFixed(4)),
+          v: Number(layer.vector.v.toFixed(4)),
+          magnitude: Number(layer.vector.magnitude.toFixed(4))
+        }
+      })),
+      finalVector: {
+        u: Number(sample.u.toFixed(4)),
+        v: Number(sample.v.toFixed(4))
+      },
+      finalMagnitude: Number(Math.hypot(sample.u, sample.v).toFixed(4))
+    });
   }
 }
 
 function fieldModeLabel(mode) {
   return {
     static: 'Static',
-    dynamic: 'Dynamic',
-    additiveLayers: 'Additive Layers',
-    partitioned: 'Partitioned'
+    dynamic: 'Dynamic'
   }[mode] ?? 'Static';
 }
 
 function modeColor(mode, activeRegion = null) {
   if (mode === 'static') return 0x63e6be;
-  if (mode === 'additiveLayers') return 0xf4d35e;
-  if (mode === 'partitioned') return activeRegion === 'secondary' ? 0xff8c42 : 0x70d6ff;
   return 0x70d6ff;
 }
 
@@ -477,6 +590,25 @@ function terrainModeLabel(mode) {
     coastline: 'Coastline',
     channel: 'Channel'
   }[mode] ?? 'No Land';
+}
+
+function variationLabel(level) {
+  return {
+    off: 'Off',
+    low: 'Low',
+    medium: 'Medium',
+    high: 'High'
+  }[level] ?? 'Medium';
+}
+
+function evolutionPatternLabel(pattern) {
+  return {
+    tidalCycle: 'Tidal Cycle',
+    meanderingJet: 'Meandering Jet',
+    eddyDrift: 'Eddy Drift',
+    stormPulse: 'Storm Pulse',
+    composite: 'Composite'
+  }[pattern] ?? 'Composite';
 }
 
 function nextTerrainSeed(seed) {
@@ -490,21 +622,28 @@ function finiteNumber(value, fallback = 0) {
   return Number.isFinite(number) ? number : fallback;
 }
 
-function updateLayer(layers, index, patch = {}) {
+function updateLayer(layers, id, patch = {}) {
   const next = normalizeAdditiveLayers(layers);
-  next[index] = normalizeAdditiveLayers([
-    ...next.slice(0, index),
-    { ...next[index], ...patch },
-    ...next.slice(index + 1)
-  ])[index];
+  const layerIndex = next.findIndex((layer) => layer.id === id);
+  if (layerIndex < 0) return next;
+  next[layerIndex] = normalizeAdditiveLayers([{ ...next[layerIndex], ...patch }])[0];
   return next;
+}
+
+function addLayer(layers, basePreset) {
+  const next = normalizeAdditiveLayers(layers);
+  if (next.length >= 4) return next;
+  return [...next, createDefaultFlowLayer(next, basePreset)];
+}
+
+function removeLayer(layers, id) {
+  return normalizeAdditiveLayers(layers).filter((layer) => layer.id !== id);
 }
 
 function legacyAdditiveLayers(data = {}) {
   if (!data || data.fieldMode !== 'blended') return FLOW_DEMO_DEFAULT_LAYERS;
   return [
-    { id: 'layer1', preset: data.secondaryPreset ?? FLOW_DEMO_DEFAULT_PRESETS.secondary, weight: Math.max(0, Math.min(1, 1 - finiteNumber(data.blendWeight, 0.6))), enabled: true, dynamic: true },
-    FLOW_DEMO_DEFAULT_LAYERS[1]
+    { id: 'layer1', preset: data.secondaryPreset ?? 'eddyField', weight: Math.max(0, Math.min(1, 1 - finiteNumber(data.blendWeight, 0.6))), enabled: true, influence: 'global' },
   ];
 }
 

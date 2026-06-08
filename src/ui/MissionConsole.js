@@ -1,7 +1,7 @@
 import { CAMPAIGN_LEVELS } from '../core/campaign/CampaignLevels.js';
 import { shortInstanceId } from '../core/identity/GameInstanceId.js';
 import { formatMetric } from '../core/evaluation/PlanComparison.js';
-import { FLOW_DEMO_FIELD_MODES, FLOW_DEMO_MAGNITUDE_SCALES, FLOW_DEMO_PARTICLE_SPEEDS, FLOW_DEMO_PARTITION_TYPES, FLOW_DEMO_PRESET_CHOICES, FLOW_DEMO_TERRAIN_MODES, FLOW_DEMO_TIME_SPEEDS, normalizeAdditiveLayers } from '../core/demo/FlowFieldDemo.js';
+import { FLOW_DEMO_EVOLUTION_PATTERNS, FLOW_DEMO_EVOLUTION_SPEEDS, FLOW_DEMO_FIELD_MODES, FLOW_DEMO_LAYER_INFLUENCES, FLOW_DEMO_MAGNITUDE_SCALES, FLOW_DEMO_PARTICLE_SPEEDS, FLOW_DEMO_PRESET_CHOICES, FLOW_DEMO_TERRAIN_MODES, FLOW_DEMO_VARIATION_LEVELS, normalizeAdditiveLayers } from '../core/demo/FlowFieldDemo.js';
 import { ROI_DEMO_DISTRIBUTIONS, ROI_DEMO_TIME_MODES, roiDistributionLabel } from '../core/demo/DemoRoiFields.js';
 import { getVectorPresetConfig } from '../core/generation/VectorFieldPresets.js';
 
@@ -48,7 +48,7 @@ export class MissionConsole {
     `;
     this.app.applyConsoleAccordions?.('idle');
     this.bind({
-      'flow-fields': () => this.app.phaser.scene.start('FlowFieldDemoScene', { fieldMode: 'dynamic' }),
+      'flow-fields': () => this.app.phaser.scene.start('FlowFieldDemoScene', { fieldMode: 'static' }),
       'roi-demo': () => this.app.phaser.scene.start('RoiGeneratorDemoScene'),
       tutorial: () => this.mainMenuScene()?.openTutorialBrowser?.(),
       deterministic: () => this.mainMenuScene()?.openChallengeSetup?.('perfectKnowledge'),
@@ -71,7 +71,9 @@ export class MissionConsole {
       <section class="console-status">
         <span>${escapeHtml(state.status ?? 'Demo running')}</span>
         <strong>${escapeHtml(state.paused ? 'Paused' : 'Animating')}</strong>
-        <small>Arrows show local flow; glider particles align with movement.</small>
+        <small>${escapeHtml(state.fieldMode === 'dynamic'
+          ? `Continuous evolution. Evolution Speed ${state.evolutionSpeedScale ?? 1}x | Particle Speed ${state.particleSpeedScale ?? 1}x | Magnitude Scale ${state.magnitudeScale ?? 1.5}x.`
+          : 'Particles move through a non-evolving vector field.')}</small>
       </section>
       <section class="console-section">
         <h2>Field Mode</h2>
@@ -85,7 +87,7 @@ export class MissionConsole {
       <section class="console-section">
         <h2>Fields</h2>
         <label class="compact-field">
-          Base Field
+          Base Flow Field
           <select id="flow-demo-preset">
             ${FLOW_DEMO_PRESET_CHOICES.map((preset) => {
               const config = getVectorPresetConfig(preset);
@@ -96,27 +98,9 @@ export class MissionConsole {
         <div class="hud-muted">${escapeHtml(state.presetConfig?.warning ?? 'Synthetic ocean-inspired current field; not validated HYCOM forecast data.')}</div>
       </section>
       <section class="console-section">
-        <h2>Additive Layers</h2>
-        ${flowLayerControlHtml(0, state.additiveLayers)}
-        ${flowLayerControlHtml(1, state.additiveLayers)}
-      </section>
-      <section class="console-section">
-        <h2>Partitioned</h2>
-        <label class="compact-field">
-          Region Field
-          <select id="flow-demo-secondary">
-            ${FLOW_DEMO_PRESET_CHOICES.map((preset) => {
-              const config = getVectorPresetConfig(preset);
-              return `<option value="${escapeAttr(preset)}" ${state.secondaryPreset === preset ? 'selected' : ''}>${escapeHtml(config.label)}</option>`;
-            }).join('')}
-          </select>
-        </label>
-        <label class="compact-field">
-          Partition
-          <select id="flow-demo-partition">
-            ${FLOW_DEMO_PARTITION_TYPES.map((type) => `<option value="${escapeAttr(type)}" ${state.partitionType === type ? 'selected' : ''}>${escapeHtml(partitionLabel(type))}</option>`).join('')}
-          </select>
-        </label>
+        <h2>Additive Flow Layers</h2>
+        ${flowLayerStackHtml(state.additiveLayers)}
+        <button data-action="add-flow-layer" class="console-button">+ Add Flow Layer</button>
       </section>
       <section class="console-section">
         <h2>Terrain</h2>
@@ -130,13 +114,34 @@ export class MissionConsole {
         <button data-action="reset-terrain" class="console-button">Reset Terrain</button>
       </section>
       <section class="console-section">
-        <h2>Controls</h2>
+        <h2>Flow Evolution</h2>
         <label class="compact-field">
-          Time Speed
-          <select id="flow-demo-time-speed">
-            ${FLOW_DEMO_TIME_SPEEDS.map((speed) => `<option value="${escapeAttr(speed)}" ${Number(state.timeSpeedScale ?? 1) === speed ? 'selected' : ''}>${escapeHtml(speed)}x</option>`).join('')}
+          Direction Variation
+          <select id="flow-demo-direction-variation">
+            ${FLOW_DEMO_VARIATION_LEVELS.map((level) => `<option value="${escapeAttr(level)}" ${state.directionVariation === level ? 'selected' : ''}>${escapeHtml(variationLabel(level))}</option>`).join('')}
           </select>
         </label>
+        <label class="compact-field">
+          Magnitude Variation
+          <select id="flow-demo-magnitude-variation">
+            ${FLOW_DEMO_VARIATION_LEVELS.map((level) => `<option value="${escapeAttr(level)}" ${state.magnitudeVariation === level ? 'selected' : ''}>${escapeHtml(variationLabel(level))}</option>`).join('')}
+          </select>
+        </label>
+        <label class="compact-field">
+          Evolution Pattern
+          <select id="flow-demo-evolution-pattern">
+            ${FLOW_DEMO_EVOLUTION_PATTERNS.map((pattern) => `<option value="${escapeAttr(pattern)}" ${state.evolutionPattern === pattern ? 'selected' : ''}>${escapeHtml(evolutionPatternLabel(pattern))}</option>`).join('')}
+          </select>
+        </label>
+        <label class="compact-field">
+          Evolution Speed
+          <select id="flow-demo-evolution-speed">
+            ${FLOW_DEMO_EVOLUTION_SPEEDS.map((speed) => `<option value="${escapeAttr(speed)}" ${Number(state.evolutionSpeedScale ?? 1) === speed ? 'selected' : ''}>${escapeHtml(speed)}x</option>`).join('')}
+          </select>
+        </label>
+      </section>
+      <section class="console-section">
+        <h2>Display</h2>
         <label class="compact-field">
           Magnitude Scale
           <select id="flow-demo-magnitude-scale">
@@ -164,26 +169,42 @@ export class MissionConsole {
     this.app.applyConsoleAccordions?.('flowDemo');
     this.root.querySelector('#flow-demo-mode')?.addEventListener('change', (event) => handlers.fieldMode?.(event.target.value));
     this.root.querySelector('#flow-demo-preset')?.addEventListener('change', (event) => handlers.preset?.(event.target.value));
-    this.root.querySelector('#flow-demo-secondary')?.addEventListener('change', (event) => handlers.secondaryPreset?.(event.target.value));
     this.root.querySelectorAll('[data-flow-layer-preset]').forEach((select) => {
       select.addEventListener('change', (event) => {
-        const index = Number(event.currentTarget.dataset.flowLayerPreset);
-        const preset = event.target.value;
-        handlers.additiveLayer?.(index, { preset: preset === 'off' ? undefined : preset, enabled: preset !== 'off' });
+        const id = event.currentTarget.dataset.flowLayerPreset;
+        handlers.updateLayer?.(id, { preset: event.target.value });
       });
     });
     this.root.querySelectorAll('[data-flow-layer-weight]').forEach((input) => {
       input.addEventListener('input', (event) => {
-        handlers.additiveLayer?.(Number(event.currentTarget.dataset.flowLayerWeight), { weight: Number(event.target.value) });
+        handlers.updateLayer?.(event.currentTarget.dataset.flowLayerWeight, { weight: Number(event.target.value) });
       });
     });
-    this.root.querySelector('#flow-demo-partition')?.addEventListener('change', (event) => handlers.partitionType?.(event.target.value));
+    this.root.querySelectorAll('[data-flow-layer-influence]').forEach((select) => {
+      select.addEventListener('change', (event) => {
+        handlers.updateLayer?.(event.currentTarget.dataset.flowLayerInfluence, { influence: event.target.value });
+      });
+    });
+    this.root.querySelectorAll('[data-flow-layer-enabled]').forEach((input) => {
+      input.addEventListener('change', (event) => {
+        handlers.updateLayer?.(event.currentTarget.dataset.flowLayerEnabled, { enabled: event.target.checked });
+      });
+    });
+    this.root.querySelectorAll('[data-flow-layer-remove]').forEach((button) => {
+      button.addEventListener('click', (event) => {
+        handlers.removeLayer?.(event.currentTarget.dataset.flowLayerRemove);
+      });
+    });
     this.root.querySelector('#flow-demo-terrain')?.addEventListener('change', (event) => handlers.terrainMode?.(event.target.value));
-    this.root.querySelector('#flow-demo-time-speed')?.addEventListener('change', (event) => handlers.timeSpeedScale?.(event.target.value));
+    this.root.querySelector('#flow-demo-direction-variation')?.addEventListener('change', (event) => handlers.directionVariation?.(event.target.value));
+    this.root.querySelector('#flow-demo-magnitude-variation')?.addEventListener('change', (event) => handlers.magnitudeVariation?.(event.target.value));
+    this.root.querySelector('#flow-demo-evolution-pattern')?.addEventListener('change', (event) => handlers.evolutionPattern?.(event.target.value));
+    this.root.querySelector('#flow-demo-evolution-speed')?.addEventListener('change', (event) => handlers.evolutionSpeedScale?.(event.target.value));
     this.root.querySelector('#flow-demo-magnitude-scale')?.addEventListener('change', (event) => handlers.magnitudeScale?.(event.target.value));
     this.root.querySelector('#flow-demo-particle-speed')?.addEventListener('change', (event) => handlers.particleSpeedScale?.(event.target.value));
     this.bind({
       preset: handlers.preset,
+      'add-flow-layer': handlers.addLayer,
       'reset-terrain': handlers.resetTerrain,
       pause: handlers.pause,
       reset: handlers.reset,
@@ -481,41 +502,76 @@ export class MissionConsole {
 function flowModeLabel(mode) {
   return {
     static: 'Static',
-    dynamic: 'Dynamic',
-    additiveLayers: 'Additive Layers',
-    partitioned: 'Partitioned'
+    dynamic: 'Dynamic'
   }[mode] ?? mode;
 }
 
-function flowLayerControlHtml(index, layers) {
-  const layer = normalizeAdditiveLayers(layers)[index];
-  const selected = layer.enabled ? layer.preset : 'off';
+function flowLayerStackHtml(layers) {
+  const normalized = normalizeAdditiveLayers(layers);
+  if (!normalized.length) {
+    return '<div class="hud-muted">No additive layers. Add one to combine another flow behavior with the base field.</div>';
+  }
+  return normalized.map((layer, index) => flowLayerControlHtml(layer, index)).join('');
+}
+
+function flowLayerControlHtml(layer, index) {
   return `
-    <label class="compact-field">
-      Layer ${index + 1}
-      <select data-flow-layer-preset="${escapeAttr(index)}">
-        <option value="off" ${selected === 'off' ? 'selected' : ''}>Off</option>
+    <div class="flow-layer-card">
+      <div class="hud-muted">Layer ${escapeHtml(index + 1)}</div>
+      <label class="compact-field">
+        Field
+        <select data-flow-layer-preset="${escapeAttr(layer.id)}">
         ${FLOW_DEMO_PRESET_CHOICES.map((preset) => {
           const config = getVectorPresetConfig(preset);
-          return `<option value="${escapeAttr(preset)}" ${selected === preset ? 'selected' : ''}>${escapeHtml(config.label)}</option>`;
+          return `<option value="${escapeAttr(preset)}" ${layer.preset === preset ? 'selected' : ''}>${escapeHtml(config.label)}</option>`;
         }).join('')}
-      </select>
-    </label>
-    <label class="compact-field">
-      Layer ${index + 1} Weight
-      <input data-flow-layer-weight="${escapeAttr(index)}" type="range" min="0" max="1" step="0.05" value="${escapeAttr(layer.weight)}" />
-    </label>
-    <div class="hud-muted">${escapeHtml(layer.enabled ? `Layer ${index + 1}: ${getVectorPresetConfig(layer.preset).label} at ${layer.weight.toFixed(2)}x` : `Layer ${index + 1}: off`)}</div>
+        </select>
+      </label>
+      <label class="compact-field">
+        Weight
+        <input data-flow-layer-weight="${escapeAttr(layer.id)}" type="range" min="0" max="2" step="0.05" value="${escapeAttr(layer.weight)}" />
+      </label>
+      <label class="compact-field">
+        Influence
+        <select data-flow-layer-influence="${escapeAttr(layer.id)}">
+          ${FLOW_DEMO_LAYER_INFLUENCES.map((influence) => `<option value="${escapeAttr(influence)}" ${layer.influence === influence ? 'selected' : ''}>${escapeHtml(flowInfluenceLabel(influence))}</option>`).join('')}
+        </select>
+      </label>
+      <label class="compact-field">
+        Enabled
+        <input data-flow-layer-enabled="${escapeAttr(layer.id)}" type="checkbox" ${layer.enabled ? 'checked' : ''} />
+      </label>
+      <button type="button" class="console-button secondary" data-flow-layer-remove="${escapeAttr(layer.id)}">Remove Layer</button>
+      <div class="hud-muted">${escapeHtml(`${getVectorPresetConfig(layer.preset).label} at ${layer.weight.toFixed(2)}x, ${flowInfluenceLabel(layer.influence)}${layer.enabled ? '' : ' (disabled)'}`)}</div>
+    </div>
   `;
 }
 
-function partitionLabel(type) {
+function flowInfluenceLabel(type) {
   return {
-    vertical: 'Vertical Split',
-    horizontal: 'Horizontal Split',
-    quadrants: 'Quadrants',
-    radial: 'Radial Center'
+    global: 'Global Blend',
+    spatialPocket: 'Spatial Pocket',
+    partitionedRegion: 'Partitioned Region'
   }[type] ?? type;
+}
+
+function variationLabel(level) {
+  return {
+    off: 'Off',
+    low: 'Low',
+    medium: 'Medium',
+    high: 'High'
+  }[level] ?? 'Medium';
+}
+
+function evolutionPatternLabel(pattern) {
+  return {
+    tidalCycle: 'Tidal Cycle',
+    meanderingJet: 'Meandering Jet',
+    eddyDrift: 'Eddy Drift',
+    stormPulse: 'Storm Pulse',
+    composite: 'Composite'
+  }[pattern] ?? 'Composite';
 }
 
 function terrainModeLabel(mode) {

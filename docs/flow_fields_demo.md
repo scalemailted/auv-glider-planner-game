@@ -2,7 +2,7 @@
 
 ## 1. Purpose
 
-The Flow Fields Demo isolates vector-field behavior from the full mission planner. It lets developers, students, researchers, external solver users, and future contributors inspect static currents, dynamic currents, additive field layers, partitioned fields, passive particle drift, and terrain boundary effects before those behaviors are used inside full missions.
+The Flow Fields Demo isolates vector-field behavior from the full mission planner. It lets developers, students, researchers, external solver users, and future contributors inspect static currents, dynamic currents, additive field layers, layer influence regions, passive particle drift, and terrain boundary effects before those behaviors are used inside full missions.
 
 This demo validates current behavior. It is not a scored mission, a route planner, a waypoint execution mode, or a leaderboard mode.
 
@@ -19,28 +19,32 @@ The demo provides a controlled scene for questions like:
 - Do particles drift as expected?
 - Do headings follow motion?
 - Do land boundaries affect currents and risk?
-- Do additive or partitioned fields produce understandable combined behavior?
+- Do additive layers and layer influence regions produce understandable combined behavior?
 
 ## 3. User-Facing Controls
 
-- `Field Mode`: chooses Static, Dynamic, Additive Layers, or Partitioned behavior.
-- `Base Field`: selects the main synthetic ocean-inspired current preset.
-- `Additive Layer 1 / 2`: optionally adds extra field behaviors over the same domain.
-- `Layer Weight`: controls each additive layer's contribution to the final vector.
-- `Region Field`: selects the secondary preset used by Partitioned mode.
-- `Partition`: chooses how Partitioned mode divides the domain: vertical split, horizontal split, quadrants, or radial center.
+- `Field Mode`: chooses Static or Dynamic behavior.
+- `Base Flow Field`: selects the main synthetic ocean-inspired current preset.
+- `+ Add Flow Layer`: appends an optional additive field behavior over the same domain.
+- `Layer Field`: selects a layer's current preset.
+- `Layer Weight`: controls that layer's contribution to the final vector.
+- `Layer Influence`: chooses Global Blend, Spatial Pocket, or Partitioned Region.
+- `Enabled / Remove Layer`: keeps a layer card without influence or removes it from the stack.
 - `Terrain`: selects No Land, Random Islands, Coastline, or Channel.
 - `Reset Terrain`: advances the deterministic terrain seed and rebuilds the land mask.
-- `Time Speed`: scales simulated field time from 0.1x to 10x.
-- `Magnitude Scale`: changes how strongly arrow length visualizes sampled magnitude.
-- `Particle Speed`: changes passive particle speed through the sampled field without changing field evolution.
+- `Direction Variation`: chooses Off, Low, Medium, or High smooth rotation/bending of the dynamic field.
+- `Magnitude Variation`: chooses Off, Low, Medium, or High smooth strengthening/weakening of the dynamic field.
+- `Evolution Pattern`: chooses Tidal Cycle, Meandering Jet, Eddy Drift, Storm Pulse, or Composite dynamic modulation.
+- `Evolution Speed`: scales simulated field evolution from 0.25x to 10x.
+- `Magnitude Scale`: changes how strongly arrow length visualizes sampled magnitude from 0.5x to 2x.
+- `Particle Speed`: changes passive particle speed through the sampled field from 0.5x to 4x without changing field evolution.
 - `Pause / Play`: pauses or resumes demo animation.
 - `Reset Particles`: respawns particles with the current configuration.
 - `Main Menu`: returns to the main menu.
 
 Particle count is currently fixed by mode: static mode uses fewer particles than dynamic/composite modes.
 
-## 4. Field Modes
+## 4. Field Mode
 
 ### Static
 
@@ -48,32 +52,36 @@ Static mode samples the selected field at time zero. Arrows remain stable, while
 
 ### Dynamic
 
-Dynamic mode passes advancing demo time into the shared current sampler. Arrows, magnitudes, directions, and particle drift can change as simulated time advances.
+Dynamic mode passes advancing demo time into the shared current sampler and applies a deterministic demo evolution layer. The demo evolution uses raw continuous `demoTime`, not a discrete frame index, so arrows, magnitudes, directions, and particle drift change smoothly as simulated time advances. The default Dynamic setup uses Medium direction variation, Medium magnitude variation, and the Composite pattern, so even Uniform Drift visibly morphs over time.
 
-### Additive Layers
+Dynamic controls affect the sampled field itself:
 
-Additive Layers mode starts with one base field and optionally sums extra field behaviors over the same spatial domain:
+- `Direction Variation`: rotates or bends vectors coherently over time.
+- `Magnitude Variation`: changes vector strength coherently over time.
+- `Evolution Pattern`: controls the water-like modulation shape.
+- `Evolution Speed`: advances demo field time faster or slower.
+
+These controls do not normalize vectors. Normal magnitude differences remain visible in arrow length, opacity, thickness, and particle drift speed.
+
+## 5. Additive Flow Layers
+
+The demo opens in Static mode with one Base Flow Field and no additive layers. The layer stack uses that same base-field-first model: each `+ Add Flow Layer` click appends a weighted layer over the same spatial domain:
 
 ```text
-finalVector = baseField + layer1Weight * layer1 + layer2Weight * layer2
+finalVector = baseField + sum(layerWeight * layerField for enabled layers)
 ```
 
 The demo clamps combined vector magnitude so stacked fields remain visually bounded. Disabled layers contribute nothing, so the default remains one selected field behavior.
 
 Additive composition preserves magnitude. It clamps only vectors that exceed the demo cap; it does not normalize every arrow to the same length.
 
-### Partitioned
+Layer influence controls where a layer applies:
 
-Partitioned mode samples different presets in different regions. The current implementation supports:
+- `Global Blend`: layer affects the whole domain.
+- `Spatial Pocket`: layer is strongest in a deterministic local pocket and fades outward.
+- `Partitioned Region`: layer applies to a deterministic region such as a side or center pocket.
 
-- vertical left/right split
-- horizontal top/bottom split
-- quadrants
-- radial center region
-
-Partition boundaries are currently sharp. This makes region transitions easy to inspect, but it is not a smooth physical boundary model.
-
-## 5. Synthetic Field Presets
+## 6. Synthetic Field Presets
 
 Implemented demo presets:
 
@@ -90,7 +98,7 @@ Implemented demo presets:
 
 These are synthetic ocean-inspired fields, not validated HYCOM forecasts. The HYCOM-inspired composite is a gameplay and diagnostic pattern, not real HYCOM data.
 
-## 6. Terrain Modes
+## 7. Terrain Modes
 
 ### No Land
 
@@ -110,7 +118,7 @@ Channel creates land on both sides with a water corridor through the center. It 
 
 Terrain modes help validate how currents behave near land and how passive glider icons respond to blocked areas.
 
-## 7. Topology-Aware Current Behavior
+## 8. Topology-Aware Current Behavior
 
 When terrain is available, the shared current sampler applies a lightweight topology-aware postprocess:
 
@@ -132,7 +140,7 @@ land cell                           = invalid / blocked
 
 This is a lightweight topology-aware approximation, not full CFD.
 
-## 8. Particle / Demo Glider Behavior
+## 9. Particle / Demo Glider Behavior
 
 Demo particles are passive flow visualizers. They sample the active field, move according to field velocity plus a small display bias, orient heading with `atan2(v, u)`, and leave trails.
 
@@ -140,9 +148,9 @@ Particles reset when they leave the domain, exceed their lifetime, or hit land. 
 
 Mission gliders are not passive particles. Mission gliders have commanded waypoint motion plus current drift, fuel/energy limits, terrain interaction, route validation, sampling, and scoring.
 
-## 9. Time Speed Scale
+## 10. Evolution Speed, Particle Speed, And Magnitude Scale
 
-Time Speed changes simulated field time, not browser frame rate.
+Evolution Speed changes simulated field time, not browser frame rate or particle advection speed.
 
 Examples:
 
@@ -151,11 +159,11 @@ Examples:
 - `5.0x`: faster evolving field
 - `10.0x`: rapid stress-test evolution
 
-Time speed affects Dynamic and Additive Layers arrows, particle drift, displayed demo time, and dynamic field phase. Static mode pins samples to time zero, so its arrows remain stable while particles move through the fixed field.
+Evolution Speed affects Dynamic arrows, dynamic sampled layers, displayed demo time, and dynamic field phase. Static mode pins base samples to time zero, so its base arrows remain stable while particles move through the fixed field.
 
-Magnitude Scale only changes arrow visualization. Particle Speed only changes passive particle advection speed. Neither control changes the underlying current values.
+Particle Speed only scales passive particle advection after the field is sampled. Magnitude Scale only changes arrow visualization. Neither control changes the underlying current values.
 
-## 10. Magnitude Diagnostics
+## 11. Magnitude Diagnostics
 
 The demo reports min / mean / max current magnitude for the current arrow grid. Use this to verify that non-uniform presets are not accidentally flattened:
 
@@ -163,9 +171,9 @@ The demo reports min / mean / max current magnitude for the current arrow grid. 
 - Eddy / Vortex Field should show different center, ring, and far-field magnitudes.
 - Meandering Jet should show a strong corridor and weaker surrounding water.
 - Storm Pulse should show a localized energetic region whose strength changes over time.
-- Additive Layers should change local magnitude when layers are enabled or their weights change.
+- Additive flow layers should change local magnitude when layers are enabled or their weights change.
 
-## 11. Relationship to Mission Currents
+## 12. Relationship to Mission Currents
 
 The demo and missions use the same shared current sampling path where possible:
 
@@ -180,7 +188,7 @@ Hover tooltips -> report sampled current metadata
 
 The shared sampler lives in `src/core/currents/CurrentFieldSampler.js`. Synthetic presets are defined in `src/core/generation/VectorFieldPresets.js` and sampled/generated through `src/core/generation/CurrentFieldGenerator.js`.
 
-## 12. Implementation Notes
+## 13. Implementation Notes
 
 Relevant source files:
 
@@ -194,19 +202,21 @@ Relevant source files:
 - `src/core/fluids/FluidPresets.js`
 - `src/core/fluids/FluidFieldStats.js`
 
-Field functions are pure samplers where practical. Seeded randomness comes from `createSeededRng`. Do not use `Math.random()` for reproducible demo state or current-field variation.
+Field functions are pure samplers where practical. Seeded randomness comes from `createSeededRng`. Do not use `Math.random()` for reproducible demo state or current-field variation. Dynamic demo modulation derives stable phase offsets from preset IDs and evaluates smooth functions of continuous time.
 
 The demo uses normalized `[0, 1]` coordinates. The shared sampler converts those to the demo grid before sampling. Mission systems use grid coordinates in cell units.
 
-## 13. Debugging Checklist
+## 14. Debugging Checklist
 
 If arrows do not change in Dynamic mode:
 
 - check demo time is advancing
-- check `timeSpeedScale`
+- check `evolutionSpeedScale`
+- check Direction Variation and Magnitude Variation are not both Off
+- check Evolution Pattern is selected
 - check the sampler receives `time`
 - check the arrow grid redraws
-- check the selected preset is time-varying
+- check the selected preset and demo evolution controls are time-varying
 
 If arrow lengths look too uniform:
 
@@ -214,7 +224,7 @@ If arrow lengths look too uniform:
 - check `Magnitude Scale`
 - check min / mean / max magnitude in the console
 - check sampled vectors are not normalized before rendering
-- enable `globalThis.ANCHOR_DEBUG_FLOW_DEMO = true` and inspect `[FlowDemo][MagnitudeSample]`
+- enable `globalThis.ANCHOR_DEBUG_FLOW_DEMO = true` and inspect `[FlowDemo][DynamicFieldSample]`, `[FlowDemo][FixedPointEvolution]`, and `[FlowDemo][ContinuousEvolution]`
 
 If particles do not move:
 
@@ -237,12 +247,12 @@ If mission currents differ from demo:
 - check preset id, seed, strength, variability, and generation version
 - check whether one path is sampling a saved frame while the demo is sampling a live preset
 
-## 14. Limitations
+## 15. Limitations
 
 - Synthetic fields are not real ocean forecasts.
 - HYCOM-inspired composite is not actual HYCOM data.
 - Topology-aware behavior is approximate and not full CFD.
 - Demo particles are passive visualizers.
 - Mission gliders use commanded waypoint physics plus current drift, not passive particle motion.
-- Partition boundaries are currently sharp.
+- Partitioned Region layer boundaries are intentionally sharp.
 - Terrain generation is a compact diagnostic mask, not the full mission terrain generator.
