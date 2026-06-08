@@ -95,8 +95,8 @@ export class HtmlMissionWorkspaceOverlay {
         <h2>Analysis</h2>
         ${bestPriorRunSummary(state)}
         ${temporalGreedyPlannerSummary(state)}
-        ${tutorialFeatureEnabled(state, 'solver') ? `<button class="console-button" data-action="temporal-greedy" ${temporalGreedyRunning ? 'disabled' : ''} title="${temporalGreedyRunning ? 'Temporal Greedy is already computing a route.' : 'Compute a temporal greedy route.'}">${temporalGreedyRunning ? 'Temporal Greedy Running...' : 'Temporal Greedy'}</button>` : ''}
-        ${temporalGreedyRunning ? '<div class="hud-muted">Temporal Greedy planner running...</div>' : ''}
+        ${tutorialFeatureEnabled(state, 'solver') ? `<button class="console-button" data-action="temporal-greedy" ${temporalGreedyRunning ? 'disabled' : ''} title="${temporalGreedyRunning ? 'Greedy Planner is already computing a route.' : 'Compute a greedy planner route.'}">${temporalGreedyRunning ? 'Greedy Planner Running...' : 'Greedy Planner'}</button>` : ''}
+        ${temporalGreedyRunning ? '<div class="hud-muted">Greedy Planner running...</div>' : ''}
         ${tutorialFeatureEnabled(state, 'solver') ? '<button class="console-button" data-action="solver-packet">Export Solver Packet</button>' : ''}
         <button class="console-button" data-action="roi-mode" title="${escapeAttr(roiModeDescription(state))}">ROI Mode: ${escapeHtml(getRoiModeLabel(state.ui?.roiViewMode))}</button>
       </section>
@@ -169,9 +169,9 @@ export class HtmlMissionWorkspaceOverlay {
             ['export-plan', 'Export Plan']
           ])}
           ${menu('Analysis', [
-            ['temporal-greedy', temporalGreedyRunning ? 'Temporal Greedy Running...' : 'Temporal Greedy', {
+            ['temporal-greedy', temporalGreedyRunning ? 'Greedy Planner Running...' : 'Greedy Planner', {
               disabled: temporalGreedyRunning,
-              title: temporalGreedyRunning ? 'Temporal Greedy is already computing a route.' : 'Compute a temporal greedy route.'
+              title: temporalGreedyRunning ? 'Greedy Planner is already computing a route.' : 'Compute a greedy planner route.'
             }],
             ['solver-packet', 'Solver Packet'],
             ['roi-mode', `ROI Mode: ${getRoiModeLabel(state.ui?.roiViewMode)}`]
@@ -868,7 +868,7 @@ function temporalGreedyPlannerSummary(state) {
   const depletion = plan.meta?.sharedDepletion ?? {};
   return `
     <div class="replay-diagnostics-card compact">
-      <div class="replay-diagnostics-title">Temporal Greedy</div>
+      <div class="replay-diagnostics-title">Greedy Planner</div>
       <div class="replay-diagnostics-row"><span>Waypoints</span><strong>${escapeHtml(waypointCount)}</strong></div>
       <div class="replay-diagnostics-row"><span>Planned Time</span><strong>${escapeHtml(formatHudMetric(stop.stopTime))} / ${escapeHtml(formatHudMetric(duration))} hr</strong></div>
       <div class="replay-diagnostics-row"><span>Fuel Used</span><strong>${escapeHtml(formatHudMetric(fuelUsed))} / ${escapeHtml(formatHudMetric(startingFuel))}</strong></div>

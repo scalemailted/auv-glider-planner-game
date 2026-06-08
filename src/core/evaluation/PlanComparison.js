@@ -1,6 +1,6 @@
 export const PLAN_SOURCE_LABELS = {
   manual: 'Player Plan',
-  temporalGreedy: 'Temporal Greedy',
+  temporalGreedy: 'Greedy Planner',
   greedyBaseline: 'Legacy Greedy Result',
   importedSolver: 'Imported Solver',
   unknown: 'Unknown Plan'

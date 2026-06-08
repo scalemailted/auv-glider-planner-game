@@ -74,12 +74,12 @@ export function runTemporalGreedyPlan(request = {}, { onProgress = null } = {}) 
       type: 'plannerError',
       phase: 'error',
       requestId: request.requestId ?? null,
-      error: error?.message ?? 'Temporal Greedy planning failed.'
+      error: error?.message ?? 'Greedy Planner planning failed.'
     });
     return {
       ok: false,
       requestId: request.requestId ?? null,
-      error: error?.message ?? 'Temporal Greedy planning failed.',
+      error: error?.message ?? 'Greedy Planner planning failed.',
       diagnostics: {
         stack: error?.stack ?? null
       }
@@ -124,12 +124,12 @@ function runTemporalGreedyInWorker(request, { signal, onProgress } = {}) {
       }
       if (message.type === 'error') {
         cleanup();
-        reject(new Error(message.error ?? 'Temporal Greedy worker failed.'));
+        reject(new Error(message.error ?? 'Greedy Planner worker failed.'));
       }
     };
     worker.onerror = (event) => {
       cleanup();
-      reject(new Error(event.message ?? 'Temporal Greedy worker failed.'));
+      reject(new Error(event.message ?? 'Greedy Planner worker failed.'));
     };
     worker.postMessage({ type: 'runTemporalGreedy', request });
   });
@@ -188,9 +188,9 @@ function hasRouteBlockedIssue(validation) {
 function firstValidationError(validation) {
   const issue = validation?.routeAudit?.firstIssue;
   if (issue?.type === 'segmentBlocked' || issue?.reason === 'routeBlocked') {
-    return issue.message ?? 'Temporal Greedy generated a blocked route segment.';
+    return issue.message ?? 'Greedy Planner generated a blocked route segment.';
   }
-  return validation?.errors?.[0] ?? 'Temporal Greedy generated a route that is not executable.';
+  return validation?.errors?.[0] ?? 'Greedy Planner generated a route that is not executable.';
 }
 
 function cloneJson(value) {
@@ -200,7 +200,7 @@ function cloneJson(value) {
 }
 
 function abortError() {
-  const error = new Error('Temporal Greedy cancelled.');
+  const error = new Error('Greedy Planner cancelled.');
   error.name = 'AbortError';
   return error;
 }

@@ -1388,7 +1388,7 @@ function formatMetric(value) {
 function planDisplayName(plan, source) {
   if (plan?.meta?.name) return plan.meta.name;
   if (plan?.meta?.solver) return `Imported Solver (${plan.meta.solver})`;
-  if (source === 'temporalGreedy') return 'Temporal Greedy';
+  if (source === 'temporalGreedy') return 'Greedy Planner';
   if (source === 'greedyBaseline') return 'Legacy Greedy Result';
   if (source === 'importedSolver') return 'Imported Solver';
   if (source === 'loadedFromBestPriorRun') return 'Loaded Best Prior Path';

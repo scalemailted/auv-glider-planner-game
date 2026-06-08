@@ -496,7 +496,7 @@ export class MissionConsole {
       </section>
       <section class="console-section">
         <h2>Solver / Comparison</h2>
-        <button class="console-button" data-action="temporal-greedy">Simulate Temporal Greedy</button>
+        <button class="console-button" data-action="temporal-greedy">Simulate Greedy Planner</button>
       </section>
       <section class="console-section">
         <h2>Mission Results</h2>

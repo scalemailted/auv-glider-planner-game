@@ -1,21 +1,21 @@
-# Temporal Greedy Baseline Planner
+# Greedy Planner Baseline Planner
 
 ## 1. Purpose
 
-Temporal Greedy is ANCHOR's fast internal baseline planner. It is designed to produce a reasonable route for the currently selected glider using local, step-by-step decisions. It is not a global optimizer. Its purpose is to provide a simple baseline for comparison, fast mission testing, and quick route execution checks.
+Greedy Planner is ANCHOR's fast internal baseline planner. It is designed to produce a reasonable route for the currently selected glider using local, step-by-step decisions. It is not a global optimizer. Its purpose is to provide a simple baseline for comparison, fast mission testing, and quick route execution checks.
 
-Temporal Greedy exists so players, students, developers, and researchers can quickly ask:
+Greedy Planner exists so players, students, developers, and researchers can quickly ask:
 
 - Is this mission playable?
 - Can the selected glider find a plausible route?
 - Does route validation catch blocked paths before simulation?
 - How does a simple baseline compare with a manual plan or external solver?
 
-Temporal Greedy is a baseline to beat, not the final planning solution.
+Greedy Planner is a baseline to beat, not the final planning solution.
 
 ## 2. Intended Use
 
-Use Temporal Greedy for:
+Use Greedy Planner for:
 
 - quick smoke testing during development
 - route execution testing before deeper solver work
@@ -29,32 +29,32 @@ It is intentionally practical and fast. It should return promptly on normal miss
 
 ## 3. Non-Goals
 
-Temporal Greedy is not intended to be globally optimal.
+Greedy Planner is not intended to be globally optimal.
 
-Temporal Greedy is not a deep search planner. It should not build a combinatorial search tree, recursively expand future route sequences, or attempt to solve the entire mission as one global optimization problem.
+Greedy Planner is not a deep search planner. It should not build a combinatorial search tree, recursively expand future route sequences, or attempt to solve the entire mission as one global optimization problem.
 
-Temporal Greedy is not a fleet-wide optimizer. It plans only for the selected glider and treats other gliders' existing plans as constraints and depleted value.
+Greedy Planner is not a fleet-wide optimizer. It plans only for the selected glider and treats other gliders' existing plans as constraints and depleted value.
 
-Temporal Greedy is not a replacement for external solvers. It is a local baseline that external solvers should be able to outperform.
+Greedy Planner is not a replacement for external solvers. It is a local baseline that external solvers should be able to outperform.
 
-Temporal Greedy should not use hidden stochastic truth unless an explicit oracle/debug variant is requested and clearly labeled.
+Greedy Planner should not use hidden stochastic truth unless an explicit oracle/debug variant is requested and clearly labeled.
 
 ## 4. Selected-Glider Scope
 
-Temporal Greedy plans only for the currently selected glider.
+Greedy Planner plans only for the currently selected glider.
 
-When the player runs Temporal Greedy:
+When the player runs Greedy Planner:
 
 - the selected glider's route is replaced or set
 - non-selected glider routes are preserved
 - other glider plans influence depletion and collision constraints
 - other gliders are not replanned
 
-This behavior keeps Temporal Greedy useful inside ordinary multi-agent manual planning. A player can plan Glider 01 manually, select Glider 02, run Temporal Greedy, and expect Glider 01's waypoints to remain unchanged.
+This behavior keeps Greedy Planner useful inside ordinary multi-agent manual planning. A player can plan Glider 01 manually, select Glider 02, run Greedy Planner, and expect Glider 01's waypoints to remain unchanged.
 
 ## 5. Greedy Planning Loop
 
-Temporal Greedy makes one local decision at a time.
+Greedy Planner makes one local decision at a time.
 
 ```text
 while mission time and fuel remain:
@@ -70,7 +70,7 @@ The important rule is that candidate evaluation does not mutate the accepted rou
 
 ## 6. Scoring
 
-Temporal Greedy scores the next move by estimated incremental benefit. A candidate is valuable when it can be reached safely and produces useful sampled value for the selected glider.
+Greedy Planner scores the next move by estimated incremental benefit. A candidate is valuable when it can be reached safely and produces useful sampled value for the selected glider.
 
 The score considers:
 
@@ -86,11 +86,11 @@ The score considers:
 - duplicate sampling conflicts
 - approximate same-cell/time-window conflicts with other gliders
 
-Gold Stars are high-value temporal priority targets. ROI cells contribute accumulated route value when the glider samples or passes through the route footprint. Temporal Greedy should not choose a waypoint solely because the endpoint is high value if the route to that endpoint is blocked, unsafe, too expensive, or already depleted.
+Gold Stars are high-value temporal priority targets. ROI cells contribute accumulated route value when the glider samples or passes through the route footprint. Greedy Planner should not choose a waypoint solely because the endpoint is high value if the route to that endpoint is blocked, unsafe, too expensive, or already depleted.
 
 ## 7. Horizon-Filling Behavior
 
-Temporal Greedy should try to use the selected glider's available mission time and fuel when feasible.
+Greedy Planner should try to use the selected glider's available mission time and fuel when feasible.
 
 It should not stop just because nearby high-value targets are gone. If the strongest targets are depleted or unsafe, it can broaden to:
 
@@ -118,7 +118,7 @@ error
 
 ## 8. Multi-Agent Awareness
 
-Temporal Greedy is selected-glider only, but fleet-aware.
+Greedy Planner is selected-glider only, but fleet-aware.
 
 Before planning the selected glider, the planner reads non-selected gliders' existing waypoint lists and estimates:
 
@@ -139,11 +139,11 @@ The selected glider may travel through depleted cells if needed, but it should n
 
 ## 9. Route Validation
 
-Temporal Greedy must not rely on simulation as the first invalid-route detector.
+Greedy Planner must not rely on simulation as the first invalid-route detector.
 
 ANCHOR uses a cellular map for environmental sampling, but glider route commands are continuous waypoint-to-waypoint movements. Terrain, depth, current, ROI, and risk are sampled from grid cells along a continuous segment; the glider is not required to follow Manhattan-style cell hops or a 4-neighbor grid path.
 
-Current-aware candidate scoring goes through the same current sampling path used by mission simulation, map hover diagnostics, Travel Cost, Risk/Safety, and the Flow Field demos: `src/core/currents/CurrentFieldSampler.js`. Segment ETA and energy come from `src/core/planning/CurrentAwareRouteCost.js`, which samples multiple points along the candidate route at mission time and projects current into along-track assist/opposition plus cross-current risk. The sampler reports topology-aware shoreline risk, so current pushing into nearby land raises candidate cost/risk before simulation. Temporal Greedy still plans commanded waypoint movement; it does not treat mission gliders as passive current particles.
+Current-aware candidate scoring goes through the same current sampling path used by mission simulation, map hover diagnostics, Travel Cost, Risk/Safety, and the Flow Field demos: `src/core/currents/CurrentFieldSampler.js`. Segment ETA and energy come from `src/core/planning/CurrentAwareRouteCost.js`, which samples multiple points along the candidate route at mission time and projects current into along-track assist/opposition plus cross-current risk. The sampler reports topology-aware shoreline risk, so current pushing into nearby land raises candidate cost/risk before simulation. Greedy Planner still plans commanded waypoint movement; it does not treat mission gliders as passive current particles.
 
 Before committing a candidate, it should reject:
 
@@ -159,14 +159,14 @@ Before committing a candidate, it should reject:
 After generating the selected-glider route, ANCHOR runs route validation before accepting the route into the active plan. The Play button also runs pre-simulation validation. The current worker-compatible path returns validation diagnostics with the planner result; if validation fails, the generated route is not installed as a valid plan.
 
 ```text
-Simulation should not be the first system to discover a Temporal Greedy route is invalid.
+Simulation should not be the first system to discover a Greedy Planner route is invalid.
 ```
 
 If validation fails, the route is rejected, truncated to a valid prefix only when that path is explicitly handled, or reported with a clear stop reason such as `no_executable_route_after_validation` or `planner_generated_blocked_segment`.
 
 ## 10. Stochastic Mode
 
-Temporal Greedy must not cheat in stochastic missions.
+Greedy Planner must not cheat in stochastic missions.
 
 It may use:
 
@@ -183,15 +183,15 @@ It should not use:
 - oracle datasets
 - hidden stochastic target outcomes
 
-When current is unknown near land or other risky shoreline conditions, Temporal Greedy should act conservatively. In practice this means rejecting the candidate or applying a strong risk penalty.
+When current is unknown near land or other risky shoreline conditions, Greedy Planner should act conservatively. In practice this means rejecting the candidate or applying a strong risk penalty.
 
 ## 11. Worker / Responsiveness
 
-Temporal Greedy can run through a Web Worker or worker-compatible async path so the UI remains responsive.
+Greedy Planner can run through a Web Worker or worker-compatible async path so the UI remains responsive.
 
 The Planning Console should:
 
-- disable the Temporal Greedy button while planning is running
+- disable the Greedy Planner button while planning is running
 - show a planning or running label
 - ignore duplicate clicks
 - track the active planner request id
@@ -202,7 +202,7 @@ The planner request and response should remain serializable. DOM nodes, Phaser s
 
 ## 12. Comparison Role
 
-Temporal Greedy is part of ANCHOR's research and teaching workflow as a browser-native baseline.
+Greedy Planner is part of ANCHOR's research and teaching workflow as a browser-native baseline.
 
 Compare it against:
 
@@ -216,11 +216,11 @@ Compare it against:
 - future RL/ML planners
 - future optimization methods such as MILP or ILP
 
-Debrief can compare manual, Temporal Greedy, and imported-solver results when those runs are available. Temporal Greedy should be treated as a quick reference route, not as the expected best route.
+Debrief can compare manual, Greedy Planner, and imported-solver results when those runs are available. Greedy Planner should be treated as a quick reference route, not as the expected best route.
 
 ## 13. Limitations
 
-Temporal Greedy has known limitations:
+Greedy Planner has known limitations:
 
 - local greedy decisions can miss better long-term routes
 - it is not globally optimal
@@ -235,7 +235,7 @@ These limitations are acceptable for a baseline planner. They are also useful te
 
 ## 14. Future Planner Directions
 
-Future planner work can build beyond Temporal Greedy with:
+Future planner work can build beyond Greedy Planner with:
 
 - receding-horizon planners
 - beam search
@@ -249,4 +249,4 @@ Future planner work can build beyond Temporal Greedy with:
 - shared-folder or local-bridge solver workflows
 - oracle benchmarking for research only
 
-Those methods should be compared against Temporal Greedy to show what additional complexity buys in route quality, robustness, and mission score.
+Those methods should be compared against Greedy Planner to show what additional complexity buys in route quality, robustness, and mission score.

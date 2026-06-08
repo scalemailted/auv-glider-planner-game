@@ -75,7 +75,7 @@ This is the baseline gameplay loop.
 
 ## 4. Internal Planner Workflow
 
-ANCHOR includes internal planning tools such as Temporal Greedy.
+ANCHOR includes internal planning tools such as Greedy Planner.
 
 The intended internal planner lifecycle is:
 
@@ -91,7 +91,7 @@ The intended internal planner lifecycle is:
 9. Play validation runs again as the final gate.
 ```
 
-Temporal Greedy should not emit blocked paths, dead-zone paths, or routes that the simulator will immediately reject. If a region is unreachable, the planner, route validator, travel-cost layer, risk/safety layer, and simulator should all agree.
+Greedy Planner should not emit blocked paths, dead-zone paths, or routes that the simulator will immediately reject. If a region is unreachable, the planner, route validator, travel-cost layer, risk/safety layer, and simulator should all agree.
 
 ---
 

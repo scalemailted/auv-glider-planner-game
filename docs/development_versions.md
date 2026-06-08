@@ -49,9 +49,9 @@ The current app supports tutorials, deterministic and stochastic generated chall
 - Documented the contract: Colab/Node/Python propose, ANCHOR validates, ANCHOR simulates, ANCHOR scores.
 - Kept hidden truth out of fair solver packets unless oracle mode is explicit.
 
-### v0.6 - Temporal Greedy Refactor
+### v0.6 - Greedy Planner Refactor
 
-- Reframed Temporal Greedy as a browser-native selected-glider baseline, not a fleet-wide optimizer.
+- Reframed Greedy Planner as a browser-native selected-glider baseline, not a fleet-wide optimizer.
 - Preserved non-selected glider routes while treating their planned coverage as depleted value/constraints.
 - Added worker-compatible async execution and planner busy-state handling.
 - Added validation-before-append and final route validation before accepting generated routes.
@@ -60,7 +60,7 @@ The current app supports tutorials, deterministic and stochastic generated chall
 ### v0.7 - Continuous Route Semantics And Diagnostics
 
 - Clarified that the grid is an environmental sampling layer, not a Manhattan movement graph.
-- Route preview, planned route rendering, Temporal Greedy, Travel Cost, validation, and simulation diagnostics use continuous waypoint-to-waypoint segment checks against grid-derived terrain/risk fields.
+- Route preview, planned route rendering, Greedy Planner, Travel Cost, validation, and simulation diagnostics use continuous waypoint-to-waypoint segment checks against grid-derived terrain/risk fields.
 - Added shared `route_validation_diagnostic` output for Planning, Simulation, plan import, headless validation, and external solver feedback.
 - Separated visible route geometry from diagnostic traversal cells so route overlays remain waypoint-to-waypoint while scoring and diagnostics still inspect sampled cells.
 
@@ -72,13 +72,13 @@ The current app supports tutorials, deterministic and stochastic generated chall
 - Core modules should remain independent from Phaser scenes and DOM UI.
 - UUID/instance identity is used as replay seed anchor metadata.
 - `generationVersion: "anchor-generator-v1"` is the current deterministic generation version label.
-- Temporal Greedy plans only for the selected glider.
+- Greedy Planner plans only for the selected glider.
 - Route preflight validation is required before Execute and before accepting planner output.
 - Forecast/truth/oracle fairness metadata must be preserved in plans, results, and leaderboard records.
 
 ## Experimental Concepts
 
-- Temporal Greedy robustness in difficult stochastic/generated missions.
+- Greedy Planner robustness in difficult stochastic/generated missions.
 - Regeneration-only exact replay when a saved snapshot is missing.
 - Shared-folder solver exchange and local bridge automation.
 - Advanced stochastic surface-update automation.
@@ -87,7 +87,7 @@ The current app supports tutorials, deterministic and stochastic generated chall
 
 ## Known Limitations
 
-- Temporal Greedy is a fast baseline, not a global optimizer.
+- Greedy Planner is a fast baseline, not a global optimizer.
 - Current fields are synthetic ocean-inspired gameplay fields, not validated CFD, HYCOM, or operational forecasts.
 - Route-block diagnostics are improving and may still need better explanations for rare edge cases.
 - The Colab/Python solver is a template, not a full optimizer or simulator.

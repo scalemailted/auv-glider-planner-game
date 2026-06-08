@@ -42,7 +42,7 @@ export class MissionWorkspaceHud {
       label: 'Analysis',
       width: 126,
       items: [
-        { label: 'Temporal Greedy', onClick: () => this.handlers.temporalGreedy?.() },
+        { label: 'Greedy Planner', onClick: () => this.handlers.temporalGreedy?.() },
         { label: 'Solver Packet', onClick: () => this.handlers.exportSolver() },
         { label: 'ROI Mode', onClick: () => this.handlers.toggleRoiMode() },
         { label: 'Guidance', onClick: () => this.handlers.toggleGuidance() }

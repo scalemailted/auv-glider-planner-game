@@ -14,6 +14,22 @@ import { evaluateSegmentForExecution } from './SegmentExecutionValidator.js';
 import { estimateStochasticSegmentCurrentRisk } from './ShorelineRisk.js';
 import { getDeploymentZones, getSelectedStart } from '../deployment/DeploymentZones.js';
 
+const GREEDY_PLANNER_SCORE_WEIGHTS = {
+  sampleRewardScale: 1,
+  endpointSampleRewardScale: 0.8,
+  starRewardScale: 10,
+  hazardPenaltyScale: 220,
+  nearHazardPenaltyScale: 34,
+  mobileHazardPenaltyScale: 18,
+  riskPenaltyScale: 95,
+  energyPenaltyScale: 0.42,
+  travelTimePenaltyScale: 0.08,
+  currentAssistBonusScale: 1.1,
+  depletedValuePenaltyScale: 9,
+  duplicatePenaltyScale: 7,
+  clusterPenaltyScale: 1
+};
+
 export function greedySolver(level, mission, options = {}) {
   return temporalGreedySolver(level, mission, options);
 }
@@ -24,10 +40,11 @@ export function temporalGreedySolver(level, mission, options = {}) {
   const requestId = options.requestId ?? null;
   const plan = clonePlanForTemporalGreedy(options.currentPlan, level, mission);
   validateSelectedGreedyStart(level, mission, plan, selectedAgentId);
-  plan.meta.name = 'Temporal Greedy Plan';
+  plan.meta.name = 'Greedy Planner Plan';
   plan.meta.solver = 'browser-temporal-greedy';
   plan.meta.source = 'temporalGreedy';
   plan.meta.plannerType = 'temporalGreedy';
+  plan.meta.displayPlannerType = 'greedyPlanner';
   plan.meta.plannerVersion = 'v1';
   plan.meta.algorithm = 'iterative-limited-horizon-greedy';
   plan.meta.commitMode = 'live_append';
@@ -51,8 +68,9 @@ export function temporalGreedySolver(level, mission, options = {}) {
     ? Boolean(options.usesOracle && options.revealTruth)
     : Boolean(options.revealTruth);
   plan.planner = {
-    name: 'Temporal Greedy',
+    name: 'Greedy Planner',
     type: 'temporalGreedy',
+    displayType: 'greedyPlanner',
     usesForecast: plannerChallengeMode === 'forecast',
     usesTruth: plannerChallengeMode !== 'forecast' || plannerRevealTruth,
     usesOracle: Boolean(options.usesOracle && plannerRevealTruth),
@@ -118,6 +136,11 @@ export function temporalGreedySolver(level, mission, options = {}) {
       depletedCandidates: 0,
       collisionConflictCandidates: 0,
       clusteredCandidates: 0,
+      safeContinuationMoves: 0,
+      starsTargeted: 0,
+      sampleRewardTotal: 0,
+      starRewardTotal: 0,
+      hazardPenaltyTotal: 0,
       timeRejectedCandidates: 0,
       fuelRejectedCandidates: 0,
       deploymentZoneRejectedCandidates: 0,
@@ -268,6 +291,7 @@ export function temporalGreedySolver(level, mission, options = {}) {
         break;
       }
       const waypoint = addWaypoint(plan, agent.id, buildCandidateWaypoint(candidate));
+      recordAcceptedPlannerScore(plannerStats, candidate);
       applyAcceptedCandidateDepletion(depletion, {
         level,
         mission,
@@ -458,17 +482,17 @@ function validateAndRepairBaselinePlan(plan, level, mission, selectedAgentId = n
 
 function validateSelectedGreedyStart(level, mission, plan, selectedAgentId) {
   const agent = mission?.agents?.find((candidate) => candidate.id === selectedAgentId);
-  if (!agent) throw new Error('Temporal Greedy cannot run: no selected glider is available.');
+  if (!agent) throw new Error('Greedy Planner cannot run: no selected glider is available.');
   const agentPlan = plan?.agentPlans?.find((candidate) => candidate.agentId === selectedAgentId);
   const selectedStart = agentPlan?.selectedStart ?? getSelectedStart(agent) ?? agent.start ?? null;
   if (!isFinitePoint(selectedStart)) {
-    throw new Error(`Temporal Greedy cannot run: selected ${agent.label ?? agent.id} needs a deployment cell.`);
+    throw new Error(`Greedy Planner cannot run: selected ${agent.label ?? agent.id} needs a deployment cell.`);
   }
   const x = Math.round(Number(selectedStart.x));
   const y = Math.round(Number(selectedStart.y));
   const grid = level?.world?.grid ?? {};
   if (x < 0 || y < 0 || x >= Number(grid.width) || y >= Number(grid.height) || level?.layers?.terrain?.[y]?.[x]) {
-    throw new Error(`Temporal Greedy cannot run: selected ${agent.label ?? agent.id} needs a valid deployment cell.`);
+    throw new Error(`Greedy Planner cannot run: selected ${agent.label ?? agent.id} needs a valid deployment cell.`);
   }
 }
 
@@ -713,26 +737,61 @@ function chooseTemporalCell({
     const value = pathValue.value + endpointValue;
     const priority = priorityTargetBonus(priorityTargets, cell, arrivalTime, depletion);
     const priorityBonus = priority.bonus;
-    const hazardPenalty = Number(level.layers?.hazards?.[cell.y]?.[cell.x] ?? 0) * 40;
+    const weights = GREEDY_PLANNER_SCORE_WEIGHTS;
+    const exposure = scorePathExposure({ level, segment: { ...segment, from: anchor, to: cell }, cell });
     const mobileRisk = mobileHazardRisk(level, cell.x, cell.y, arrivalTime);
     const depthPenalty = Math.max(0, depthEnergyMultiplier(level, mission, cell.x, cell.y) - 1);
     const ensembleRisk = ensembleDisagreementAt(level, cell.x, cell.y, arrivalTime, { challengeMode, forecastMemberId });
-    const stochasticRiskPenalty = Number(stochasticRisk.value ?? 0) * 90;
+    const shorelineRisk = Number(segment.beachingRisk?.value ?? segment.shorelineRisk?.value ?? 0);
     const collisionPenalty = Number(conflict.penalty ?? 0);
-    const duplicatePenalty = (sampled.has(cellKey(cell)) ? 5 : 0) + (depletionMultiplier <= 0 ? 8 : 0);
-    const energyPenalty = Number(executionEnergy ?? segment.energy ?? 0) * 0.35;
-    const travelTimePenalty = Number(execution.travelTime ?? segment.estimatedTravelTime ?? 0) * 0.08;
-    const score = value
-      + priorityBonus
+    const duplicatePenalty = sampled.has(cellKey(cell)) ? weights.duplicatePenaltyScale : 0;
+    const depletedValuePenalty = depletionMultiplier <= 0 ? weights.depletedValuePenaltyScale : 0;
+    const sampleReward = pathValue.value * weights.sampleRewardScale + endpointValue * weights.endpointSampleRewardScale;
+    const starReward = priorityBonus * weights.starRewardScale;
+    const hazardPenalty = exposure.hazardExposure * weights.hazardPenaltyScale;
+    const nearHazardPenalty = exposure.nearHazardExposure * weights.nearHazardPenaltyScale;
+    const riskPenalty = (shorelineRisk + Number(stochasticRisk.value ?? 0)) * weights.riskPenaltyScale;
+    const mobileHazardPenalty = mobileRisk * weights.mobileHazardPenaltyScale;
+    const depthRiskPenalty = depthPenalty * 18;
+    const ensembleRiskPenalty = ensembleRisk * 12;
+    const energyPenalty = Number(executionEnergy ?? segment.energy ?? 0) * weights.energyPenaltyScale;
+    const travelTimePenalty = Number(execution.travelTime ?? segment.estimatedTravelTime ?? 0) * weights.travelTimePenaltyScale;
+    const currentAssistBonus = Math.max(0, Number(segment.currentAssist ?? 0)) * weights.currentAssistBonusScale;
+    const clusterPenalty = Number(conflict.clusterPenalty ?? 0) * weights.clusterPenaltyScale;
+    const score = sampleReward
+      + starReward
+      + currentAssistBonus
       - energyPenalty
       - travelTimePenalty
       - duplicatePenalty
+      - depletedValuePenalty
       - hazardPenalty
-      - mobileRisk * 12
-      - depthPenalty * 18
-      - ensembleRisk * 12
-      - stochasticRiskPenalty
+      - nearHazardPenalty
+      - riskPenalty
+      - mobileHazardPenalty
+      - depthRiskPenalty
+      - ensembleRiskPenalty
+      - clusterPenalty
       - collisionPenalty;
+    const scoreBreakdown = {
+      sampleReward,
+      starReward,
+      hazardPenalty,
+      nearHazardPenalty,
+      riskPenalty,
+      mobileHazardPenalty,
+      energyPenalty,
+      travelTimePenalty,
+      currentAssistBonus,
+      depletedValuePenalty,
+      duplicatePenalty,
+      clusterPenalty,
+      collisionPenalty,
+      totalScore: score,
+      hazardExposure: exposure.hazardExposure,
+      nearHazardExposure: exposure.nearHazardExposure,
+      pathHazardCells: exposure.hazardCells
+    };
     const candidate = {
       ...cell,
       from: { ...anchor },
@@ -749,17 +808,22 @@ function chooseTemporalCell({
       priorityTargetIds: priority.targetIds,
       depletionMultiplier,
       duplicatePenalty,
+      depletedValuePenalty,
       stochasticRisk,
       score,
+      scoreBreakdown,
       distance: segment.distance,
       pathValue: pathValue.value,
       endpointValue,
       totalValue: value + priorityBonus,
       conflict,
       clusterPenalty: Number(conflict.clusterPenalty ?? 0),
-      riskPenalty: hazardPenalty + mobileRisk * 12 + depthPenalty * 18 + ensembleRisk * 12 + stochasticRiskPenalty + collisionPenalty
+      hazardExposure: exposure.hazardExposure,
+      nearHazardExposure: exposure.nearHazardExposure,
+      riskPenalty: hazardPenalty + nearHazardPenalty + riskPenalty + mobileHazardPenalty + depthRiskPenalty + ensembleRiskPenalty + collisionPenalty + clusterPenalty
     };
     if (stochasticRisk.warning) debugTemporalGreedyStochasticRisk({ from: anchor, to: cell, stochasticRisk, rejected: false, score });
+    debugGreedyPlannerCandidateScore({ candidate, rejected: false });
     debugTemporalGreedyCandidate({ from: anchor, to: cell, segment, execution, score, accepted: false });
     candidates.push(candidate);
     plannerStats && (plannerStats.feasibleCandidates += 1);
@@ -811,6 +875,7 @@ function chooseTemporalCell({
       accepted: validation.ok
     });
     if (!validation.ok) {
+      debugGreedyPlannerCandidateScore({ candidate, rejected: true, rejectionReason: validation.rejectionReason });
       noteTierRejected(plannerStats, candidate.stage, validation.rejectionReason);
       noteDiagnosticCategory(plannerStats, validation.routeBlockDiagnostic ?? validation.issue?.diagnostic ?? validation.issue?.routeBlockDiagnostic ?? null, validation.rejectionReason);
       debugTemporalGreedyRejectedSegment({
@@ -923,9 +988,16 @@ function buildBoundedGreedyCandidates({
     const remainingValue = rawValue * multiplier;
     const priority = priorityTargetBonus(priorityTargets, cell, Number(anchor?.t ?? 0) + distance / speed, depletion).bonus;
     const duplicatePenalty = sampled.has(cellKey(cell)) || multiplier <= 0 ? 0.45 : 0;
-    const hazardPenalty = Number(level.layers?.hazards?.[cell.y]?.[cell.x] ?? 0) * 0.4;
+    const hazardPenalty = Number(level.layers?.hazards?.[cell.y]?.[cell.x] ?? 0) * 8;
+    const nearHazardPenalty = countAdjacentHazards(level, cell.x, cell.y) * 0.7;
     const continuation = Math.max(0, 0.08 - distance * 0.005);
-    const score = remainingValue * 2.5 + priority - distance * 0.04 + continuation - duplicatePenalty - hazardPenalty;
+    const score = remainingValue * GREEDY_PLANNER_SCORE_WEIGHTS.sampleRewardScale
+      + priority * GREEDY_PLANNER_SCORE_WEIGHTS.starRewardScale
+      - distance * 0.035
+      + continuation
+      - duplicatePenalty
+      - hazardPenalty
+      - nearHazardPenalty;
     scored.push({ ...cell, approximateScore: score, approximateDistance: distance });
   }
   scored.sort((a, b) => b.approximateScore - a.approximateScore || a.approximateDistance - b.approximateDistance);
@@ -957,6 +1029,47 @@ function scoreRoutePathValue({ level, mission, agent, segment, frame, depletion,
     value += cellRawValue * getRemainingValueMultiplier(depletion, cell, arrivalTime);
   }
   return { rawValue, value };
+}
+
+function scorePathExposure({ level, segment, cell }) {
+  const routeCells = Array.isArray(segment?.sampledCells) && segment.sampledCells.length
+    ? segment.sampledCells
+    : rasterizeRouteSegment(segment, level);
+  let hazardExposure = 0;
+  let nearHazardExposure = 0;
+  const hazardCells = [];
+  for (const routeCell of routeCells) {
+    const hazard = Number(level?.layers?.hazards?.[routeCell.y]?.[routeCell.x] ?? 0);
+    if (hazard > 0) {
+      hazardExposure += Math.max(1, hazard);
+      hazardCells.push({ x: routeCell.x, y: routeCell.y, hazard });
+    }
+    nearHazardExposure += countAdjacentHazards(level, routeCell.x, routeCell.y) * 0.2;
+  }
+  const endpointHazard = Number(level?.layers?.hazards?.[cell.y]?.[cell.x] ?? 0);
+  if (endpointHazard > 0 && !hazardCells.some((hazardCell) => hazardCell.x === cell.x && hazardCell.y === cell.y)) {
+    hazardExposure += Math.max(1, endpointHazard);
+    hazardCells.push({ x: cell.x, y: cell.y, hazard: endpointHazard });
+  }
+  return {
+    hazardExposure,
+    nearHazardExposure,
+    hazardCells
+  };
+}
+
+function countAdjacentHazards(level, x, y) {
+  let count = 0;
+  for (let dy = -1; dy <= 1; dy += 1) {
+    for (let dx = -1; dx <= 1; dx += 1) {
+      if (dx === 0 && dy === 0) continue;
+      const nx = Number(x) + dx;
+      const ny = Number(y) + dy;
+      if (nx < 0 || ny < 0 || nx >= Number(level?.world?.grid?.width ?? 1) || ny >= Number(level?.world?.grid?.height ?? 1)) continue;
+      count += Number(level?.layers?.hazards?.[ny]?.[nx] ?? 0) > 0 ? 1 : 0;
+    }
+  }
+  return count;
 }
 
 function rankCandidatesByStage(candidates) {
@@ -1173,6 +1286,7 @@ function validateCandidateBeforeAppend({ level, mission, agent, plan, candidate,
 }
 
 function buildCandidateWaypoint(candidate) {
+  const breakdown = candidate.scoreBreakdown ?? {};
   return {
     window: candidate.window,
     t: candidate.arrivalTime,
@@ -1182,7 +1296,7 @@ function buildCandidateWaypoint(candidate) {
     x: candidate.x,
     y: candidate.y,
     action: 'sample',
-    note: `stage=${candidate.stage} temporal=${Number(candidate.value ?? 0).toFixed(3)} priority=${Number(candidate.priorityBonus ?? 0).toFixed(1)} energy=${Number(candidate.executionEnergy ?? candidate.segment?.energy ?? 0).toFixed(1)} score=${Number(candidate.score ?? 0).toFixed(3)}`
+    note: `stage=${candidate.stage} sample=${Number(breakdown.sampleReward ?? candidate.value ?? 0).toFixed(2)} star=${Number(breakdown.starReward ?? candidate.priorityBonus ?? 0).toFixed(1)} hazardPenalty=${Number(breakdown.hazardPenalty ?? 0).toFixed(1)} energy=${Number(candidate.executionEnergy ?? candidate.segment?.energy ?? 0).toFixed(1)} score=${Number(candidate.score ?? 0).toFixed(3)}`
   };
 }
 
@@ -1462,12 +1576,22 @@ function noteDiagnosticCategory(plannerStats, diagnostic = null, fallback = 'rej
   plannerStats.diagnosticCategories[category] = Number(plannerStats.diagnosticCategories[category] ?? 0) + 1;
 }
 
+function recordAcceptedPlannerScore(plannerStats, candidate = {}) {
+  if (!plannerStats) return;
+  const breakdown = candidate.scoreBreakdown ?? {};
+  if (candidate.stage === 'safe_continuation') plannerStats.safeContinuationMoves = Number(plannerStats.safeContinuationMoves ?? 0) + 1;
+  if ((candidate.priorityTargetIds ?? []).length) plannerStats.starsTargeted = Number(plannerStats.starsTargeted ?? 0) + candidate.priorityTargetIds.length;
+  plannerStats.sampleRewardTotal = Number(plannerStats.sampleRewardTotal ?? 0) + Number(breakdown.sampleReward ?? 0);
+  plannerStats.starRewardTotal = Number(plannerStats.starRewardTotal ?? 0) + Number(breakdown.starReward ?? 0);
+  plannerStats.hazardPenaltyTotal = Number(plannerStats.hazardPenaltyTotal ?? 0) + Number(breakdown.hazardPenalty ?? 0);
+}
+
 function emitTemporalGreedyProgress(onProgress, progress) {
   if (!onProgress) return;
   try {
     onProgress(cloneProgressPayload(progress));
   } catch (error) {
-    globalThis.console?.warn?.('Temporal Greedy progress callback failed.', error);
+    globalThis.console?.warn?.('Greedy Planner progress callback failed.', error);
   }
 }
 
@@ -1523,6 +1647,12 @@ function buildPlannerDiagnostics({
     mostCommonRejection: { reason: mostCommonRejection[0], count: mostCommonRejection[1] },
     evaluatedCandidates: Number(plannerStats.evaluatedCandidates ?? 0),
     feasibleCandidates: Number(plannerStats.feasibleCandidates ?? 0),
+    safeContinuationMoves: Number(plannerStats.safeContinuationMoves ?? 0),
+    starsTargeted: Number(plannerStats.starsTargeted ?? 0),
+    sampleReward: round(plannerStats.sampleRewardTotal ?? 0, 3),
+    starReward: round(plannerStats.starRewardTotal ?? 0, 3),
+    hazardPenalty: round(plannerStats.hazardPenaltyTotal ?? 0, 3),
+    scoreWeights: { ...GREEDY_PLANNER_SCORE_WEIGHTS },
     diagnosticCategories: { ...(plannerStats.diagnosticCategories ?? {}) },
     tierStats: cloneTierStats(plannerStats.tierStats),
     lastAcceptedWaypoint: pointCell(anchor),
@@ -1605,7 +1735,7 @@ function debugTemporalGreedySafetyLimit(stop = {}) {
 }
 
 function debugTemporalGreedyCandidate({ from, to, segment, execution, score = null, accepted = false, reason = null } = {}) {
-  if (!globalThis.ANCHOR_DEBUG_TEMPORAL_GREEDY) return;
+  if (!isGreedyPlannerDebugEnabled()) return;
   globalThis.console?.debug?.('[TemporalGreedy][Candidate]', {
     fromCell: pointCell(from),
     toCell: pointCell(to),
@@ -1617,6 +1747,27 @@ function debugTemporalGreedyCandidate({ from, to, segment, execution, score = nu
     energyCost: execution?.energyCost ?? segment?.energy ?? null,
     score,
     accepted
+  });
+}
+
+function debugGreedyPlannerCandidateScore({ candidate = null, rejected = false, rejectionReason = null } = {}) {
+  if (!isGreedyPlannerDebugEnabled()) return;
+  const breakdown = candidate?.scoreBreakdown ?? {};
+  globalThis.console?.debug?.('[GreedyPlanner][CandidateScore]', {
+    candidate: pointCell(candidate),
+    sampleReward: round(breakdown.sampleReward ?? 0, 3),
+    starReward: round(breakdown.starReward ?? 0, 3),
+    hazardPenalty: round(breakdown.hazardPenalty ?? 0, 3),
+    nearHazardPenalty: round(breakdown.nearHazardPenalty ?? 0, 3),
+    riskPenalty: round(breakdown.riskPenalty ?? 0, 3),
+    energyPenalty: round(breakdown.energyPenalty ?? 0, 3),
+    travelTimePenalty: round(breakdown.travelTimePenalty ?? 0, 3),
+    currentAssistBonus: round(breakdown.currentAssistBonus ?? 0, 3),
+    depletedValuePenalty: round(breakdown.depletedValuePenalty ?? 0, 3),
+    clusterPenalty: round(breakdown.clusterPenalty ?? 0, 3),
+    totalScore: round(breakdown.totalScore ?? candidate?.score ?? 0, 3),
+    rejected,
+    rejectionReason
   });
 }
 
@@ -1871,12 +2022,16 @@ function debugTemporalGreedyStochasticRisk({ from, to, stochasticRisk, rejected 
 }
 
 function debugTemporalGreedyVisibility(planner = {}) {
-  if (!globalThis.ANCHOR_DEBUG_TEMPORAL_GREEDY) return;
+  if (!isGreedyPlannerDebugEnabled()) return;
   globalThis.console?.debug?.('[TemporalGreedy][Visibility]', {
     usesForecast: Boolean(planner.usesForecast),
     usesTruth: Boolean(planner.usesTruth),
     usesOracle: Boolean(planner.usesOracle)
   });
+}
+
+function isGreedyPlannerDebugEnabled() {
+  return Boolean(globalThis.ANCHOR_DEBUG_GREEDY_PLANNER || globalThis.ANCHOR_DEBUG_TEMPORAL_GREEDY);
 }
 
 function pointCell(point) {
@@ -1963,6 +2118,7 @@ function summarizeStops(stops, duration) {
     stopTime: round(latest.stopTime ?? 0),
     remainingMissionTime: round(Math.max(0, Number(duration || 0) - Number(latest.stopTime ?? 0))),
     remainingFuel: round(stops.reduce((sum, stop) => sum + Number(stop.remainingFuel ?? 0), 0)),
+    diagnostics: latest.diagnostics ? { ...latest.diagnostics } : null,
     agents: stops
   };
 }

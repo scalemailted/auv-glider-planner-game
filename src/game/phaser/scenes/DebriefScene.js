@@ -508,7 +508,7 @@ export class DebriefScene extends PhaserScene {
     }), 'text/markdown'));
     this.button(956, y, 158, 'Export Compare', () => downloadJson('anchor_plan_comparison.json', result.comparison ?? comparePlanResults(this.app.state.planResults ?? {})));
     this.button(1118, y, 116, 'Menu', () => this.scene.start('MainMenuScene'));
-    this.button(230, y + 52, 220, 'Temporal Greedy', () => this.simulateTemporalGreedy());
+    this.button(230, y + 52, 220, 'Greedy Planner', () => this.simulateTemporalGreedy());
     this.button(474, y + 52, 172, 'Retry Briefing', () => this.retryFromBriefing());
     const next = this.getScenarioNextAction();
     if (next) this.button(668, y + 52, 188, next.label, next.onClick);

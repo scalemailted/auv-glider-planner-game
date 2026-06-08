@@ -1718,7 +1718,7 @@ export class MissionWorkspaceScene extends PhaserScene {
     this.app.state.ui ??= {};
     this.app.state.ui.plannerState ??= {};
     if (this.app.state.ui.plannerState.temporalGreedyRunning || this.app.state.ui.temporalGreedyRunning) {
-      this.app.toast?.('Temporal Greedy planner is already running.', 'info');
+      this.app.toast?.('Greedy Planner is already running.', 'info');
       return;
     }
     const requestId = createGameInstanceId('TPLAN');
@@ -1731,7 +1731,7 @@ export class MissionWorkspaceScene extends PhaserScene {
       selectedAgentId: this.app.state.selectedAgentId
     };
     this.refreshPanels();
-    this.app.toast?.('Planning Temporal Greedy route...', 'info');
+    this.app.toast?.('Planning Greedy Planner route...', 'info');
     try {
       const request = buildTemporalGreedyRequest({
         level: this.app.state.level,
@@ -1753,7 +1753,7 @@ export class MissionWorkspaceScene extends PhaserScene {
       });
       if (!this.isActiveTemporalGreedyRequest(requestId)) return;
       if (result?.requestId && result.requestId !== requestId) return;
-      if (!result.ok && liveAppendState.acceptedWaypoints <= 0) throw new Error(result.error ?? 'Temporal Greedy planning failed.');
+      if (!result.ok && liveAppendState.acceptedWaypoints <= 0) throw new Error(result.error ?? 'Greedy Planner planning failed.');
       this.finishTemporalGreedyLivePlan(result, liveAppendState);
       this.app.state.currentPlanSource = 'temporalGreedy';
       this.app.state.temporalGreedyPlan = this.app.state.plan;
@@ -1762,8 +1762,8 @@ export class MissionWorkspaceScene extends PhaserScene {
       this.app.toast?.(temporalGreedySummary(this.app.state.plan, this.app.state.level, this.app.state.mission), toastLevel);
     } catch (error) {
       if (this.isActiveTemporalGreedyRequest(requestId)) {
-        console.error('Temporal Greedy planning failed.', error);
-        this.app.toast?.(error?.name === 'AbortError' ? 'Temporal Greedy cancelled.' : error?.message ?? 'Temporal Greedy planning failed.', 'warning');
+        console.error('Greedy Planner planning failed.', error);
+        this.app.toast?.(error?.name === 'AbortError' ? 'Greedy Planner cancelled.' : error?.message ?? 'Greedy Planner planning failed.', 'warning');
       }
     } finally {
       if (this.isActiveTemporalGreedyRequest(requestId)) {
@@ -1775,7 +1775,7 @@ export class MissionWorkspaceScene extends PhaserScene {
 
   applyTemporalGreedyProgress(progress = {}, liveAppendState = {}) {
     if (progress?.phase === 'running' || progress?.type === 'planningStarted') {
-      this.app.toast?.('Temporal Greedy planner running...', 'info');
+      this.app.toast?.('Greedy Planner running...', 'info');
       return;
     }
     if (progress?.type === 'waypointAccepted' || progress?.phase === 'waypointAccepted') {
@@ -1796,7 +1796,7 @@ export class MissionWorkspaceScene extends PhaserScene {
       this.app.state.ui.plannerState.temporalGreedyLastProgress = progress.summarySoFar ?? null;
       this.refreshPanels();
       this.refreshMap();
-      this.app.toast?.(`Temporal Greedy: added W${selectedIndex + 1} at ${Number(accepted.estimatedArrivalTime ?? accepted.t ?? 0).toFixed(1)} hr`, 'info');
+      this.app.toast?.(`Greedy Planner: added W${selectedIndex + 1} at ${Number(accepted.estimatedArrivalTime ?? accepted.t ?? 0).toFixed(1)} hr`, 'info');
       return;
     }
     if (progress?.type === 'plannerStopped' || progress?.phase === 'stopped') {
@@ -2017,7 +2017,7 @@ function temporalGreedySummary(plan, level, mission) {
   const guardFailure = Boolean(stop.guardFailure || (stop.agents ?? []).some((agentStop) => agentStop.guardFailure));
   const complete = !guardFailure && (!stop.remainingMissionTime || stop.stopReason === 'mission_time_exhausted' || stop.stopReason === 'fuel_exhausted');
   const lines = [
-    guardFailure ? 'Temporal Greedy guard stopped' : complete ? 'Temporal Greedy complete' : 'Temporal Greedy stopped early',
+    guardFailure ? 'Greedy Planner guard stopped' : complete ? 'Greedy Planner complete' : 'Greedy Planner stopped early',
     selectedAgentId ? `Selected glider: ${agentLabel({ mission }, selectedAgentId)}` : null,
     `Other gliders preserved: ${otherRoutesPreserved}`,
     'Mode: iterative limited-horizon greedy',

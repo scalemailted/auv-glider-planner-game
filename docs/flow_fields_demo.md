@@ -10,7 +10,7 @@ It sits in the Main Menu `Demos` section alongside the ROI Generator Demo. Demos
 
 ## 2. Why the Demo Exists
 
-Current-field behavior affects glider drift, route validation, Travel Cost, Risk / Safety, Temporal Greedy, stochastic safety, shoreline risk, current rendering, and future solver/import workflows.
+Current-field behavior affects glider drift, route validation, Travel Cost, Risk / Safety, Greedy Planner, stochastic safety, shoreline risk, current rendering, and future solver/import workflows.
 
 The demo provides a controlled scene for questions like:
 
@@ -197,7 +197,7 @@ Flow Fields Demo -> visualizes current behavior
 Mission simulation -> uses current for glider drift
 Travel Cost -> uses current for movement cost
 Risk / Safety -> uses current and topology for danger
-Temporal Greedy -> uses current/risk for scoring
+Greedy Planner -> uses current/risk for scoring
 Hover tooltips -> report sampled current metadata
 ```
 

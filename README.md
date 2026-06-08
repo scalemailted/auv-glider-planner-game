@@ -85,7 +85,7 @@ Quick loop:
 - [Solver workflow](docs/solver_workflow.md)
 - [Export formats](docs/export_formats.md)
 - [Plan format](docs/plan_format.md)
-- [Temporal Greedy](docs/temporal_greedy.md)
+- [Greedy Planner](docs/temporal_greedy.md)
 - [Testing](docs/testing.md)
 - [Leaderboard and best paths](docs/leaderboard.md)
 - [Development versions and project state](docs/development_versions.md)
@@ -133,7 +133,7 @@ Planning is the main game workspace. Phaser renders the mission board, gliders, 
 
 Generated challenge setup opens before the map is created. Presets include Small, Medium, Large, and Huge/Experimental. Player settings include agent count, duration, surfacing interval, fuel per glider, glider speed, uniform or varied fleet specs, single or multiple drop zones, difficulty, current-field preset, current strength, temporal variability, hazard density, terrain density, ROI hotspot count, and Gold Star frequency. Stochastic setup also exposes ensemble count and forecast horizon decay controls. The selected setup is stored in `level.meta.generationConfig.scenarioSetup` and `mission.meta.scenarioSetup`.
 
-Advanced generated missions can use synthetic vector presets: `calm`, `uniformDrift`, `shearFlow`, `currentCorridor`, `eddyField`, `doubleGyre`, `tidalOscillation`, `meanderingJet`, `westernBoundaryCurrent`, `stormPulse`, `islandWake`, `curlNoise`, `gulfInspired`, `hycomInspiredComposite`, and `chaotic`. These are synthetic ocean-inspired gameplay fields, not operational ocean-model products or validated HYCOM forecasts. Preset variation is seeded from the challenge UUID / replay seed anchor plus preset and generation config, so one challenge replays the same currents while different challenge UUIDs get different repeatable current patterns. The shared sampler applies terrain-aware shoreline interpretation when terrain is available, so current into land is damped/deflected and exposed as risk metadata for hover diagnostics, Travel Cost, Risk/Safety, simulation drift, and Temporal Greedy scoring. Stochastic missions can enable forecast decay so confidence and ROI probabilities decrease farther into the future; the Planning tooltip and confidence overlay show the decayed forecast confidence, and guidance cones widen through the existing confidence path. Varied fleets assign per-agent speed, fuel, energy-rate, drift-gain, and sampling-radius specs. Multiple-drop-zone missions allow a glider to pick any allowed deployment zone before planning.
+Advanced generated missions can use synthetic vector presets: `calm`, `uniformDrift`, `shearFlow`, `currentCorridor`, `eddyField`, `doubleGyre`, `tidalOscillation`, `meanderingJet`, `westernBoundaryCurrent`, `stormPulse`, `islandWake`, `curlNoise`, `gulfInspired`, `hycomInspiredComposite`, and `chaotic`. These are synthetic ocean-inspired gameplay fields, not operational ocean-model products or validated HYCOM forecasts. Preset variation is seeded from the challenge UUID / replay seed anchor plus preset and generation config, so one challenge replays the same currents while different challenge UUIDs get different repeatable current patterns. The shared sampler applies terrain-aware shoreline interpretation when terrain is available, so current into land is damped/deflected and exposed as risk metadata for hover diagnostics, Travel Cost, Risk/Safety, simulation drift, and Greedy Planner scoring. Stochastic missions can enable forecast decay so confidence and ROI probabilities decrease farther into the future; the Planning tooltip and confidence overlay show the decayed forecast confidence, and guidance cones widen through the existing confidence path. Varied fleets assign per-agent speed, fuel, energy-rate, drift-gain, and sampling-radius specs. Multiple-drop-zone missions allow a glider to pick any allowed deployment zone before planning.
 
 Completed simulations are saved to a browser-local leaderboard under `anchorGliderCommand.leaderboard.v1` when `localStorage` is available. Main Menu `Leaderboard` opens a dedicated mode: the left Mission Console holds filters and import/export actions, the center viewport shows scrollable saved challenge cards, and the right panel shows selected-record details. It can load a saved challenge, load/export the best plan, export the saved level, delete attempts, and clear local records. In Planning, the Analysis section also exposes the best prior run for the current challenge instance with show/hide ghost path, rerun, load-as-plan, and export controls. No backend or account is used.
 
@@ -166,7 +166,7 @@ The workspace supports:
 - saving the active level to the local saved-level registry
 - copying the active instance ID
 - solver packet export as `anchor.solverPacket`
-- temporal greedy plan generation for a browser-native comparison route
+- greedy planner plan generation for a browser-native comparison route
 
 Planning HUD values are fast estimates, not exact simulation results. `Projected Cost`, `Estimated Fuel`, `Expected ROI Est`, `Realized Preview`, guidance cones, and approximate reach overlays use visible planning fields, speed/time assumptions, current assist/opposition, cross-current drift, forecast confidence, and simple terrain checks. The actual path, fuel used, hazards contacted, and stochastic ROI outcome are computed during Simulation and summarized in Debrief. If a planning preview differs from the simulation result, treat it as model uncertainty and a planning lesson rather than a game error.
 
@@ -215,7 +215,7 @@ The planned route line starts at the fixed start, selected deployment cell, or s
 
 Glider triangle orientation uses standard path angles. In Planning, the selected glider points from its current planning/start position toward the hovered target when previewing, otherwise toward the first route segment when a route exists. In Simulation, the glider points along recent actual movement, then latest velocity, then the active waypoint if stationary.
 
-Temporal Greedy plans run the same route validity audit before they are accepted. If validation finds a blocked generated segment, the browser keeps the shorter valid prefix and records the validation stop reason in plan metadata.
+Greedy Planner plans run the same route validity audit before they are accepted. If validation finds a blocked generated segment, the browser keeps the shorter valid prefix and records the validation stop reason in plan metadata.
 
 Generated challenge missions use deployment/drop zones. Before ordinary waypoint placement begins, the selected glider enters deployment-selection mode: the drop zone is highlighted, the map prompts you to choose a deployment cell, and the waypoint panel shows `Start: not selected`. During this state, guidance cones, route previews, ETA/energy labels, reachability ovals, fake origin markers, overlapping base/station markers, and real glider/start icons are suppressed. A temporary ghost marker can appear only under a valid hovered deployment cell. Click a valid highlighted cell to lock the start marker, then place route waypoints. After deployment, the reachability oval and guidance anchor center on the locked `selectedStart`; after each reachable waypoint, they center on the latest waypoint rather than on hover previews or a default grid cell. The selected start is not a sample waypoint. Tutorial missions keep fixed starts. Exported plans may include `agentPlans[].selectedStart`, and solver packets include each agent's allowed deployment cells plus the chosen `selectedStart` when one exists.
 
@@ -272,10 +272,10 @@ Debrief is a Phaser-native fullscreen score screen with metric cards, comparison
 - performance suggestions
 - event summary
 - forecast regret when available
-- side-by-side comparison for manual/player, temporal greedy, and imported solver results when available
+- side-by-side comparison for manual/player, greedy planner, and imported solver results when available
 - winner notes explaining likely score differences such as realized value, energy, hazards, risk, and forecast regret
 
-The Debrief buttons handle `Revise Plan`, `Retry From Briefing`, context-aware next actions, reruns, Temporal Greedy simulation, result export, after-action report export, comparison export, and return to Main Menu. Tutorial debriefs offer `Next Tutorial`, generated challenge debriefs offer `New Challenge`, and editor/custom debriefs offer `Return To Editor`. JSON and Markdown exports still use the browser download bridge internally.
+The Debrief buttons handle `Revise Plan`, `Retry From Briefing`, context-aware next actions, reruns, Greedy Planner simulation, result export, after-action report export, comparison export, and return to Main Menu. Tutorial debriefs offer `Next Tutorial`, generated challenge debriefs offer `New Challenge`, and editor/custom debriefs offer `Return To Editor`. JSON and Markdown exports still use the browser download bridge internally.
 
 Simulation has safety guards for invalid time steps, invalid waypoint coordinates, terrain-blocked targets, stalled waypoint pursuit, and maximum step count. If a plan cannot be executed safely, the simulator stops with a warning and result JSON records `aborted` and `abortReason` instead of locking the browser.
 
@@ -430,7 +430,7 @@ node tools/js/headless_validate_plan.mjs anchor.solver-packet.json anchor.plan.j
 
 This path is documented in `tools/js/README.md` and is also shown as an optional Colab notebook cell. It avoids Phaser and DOM imports and keeps the browser game as the official referee.
 
-Debrief stores comparison results for the current browser session in slots for `manual`, `temporalGreedy`, and `importedSolver`, with legacy compatibility for older `greedyBaseline` records. Run or import each plan, simulate it, then Debrief shows available rows side by side and includes the comparison in result JSON and after-action Markdown exports. Temporal Greedy is the browser-native selected-glider baseline planner; see `docs/temporal_greedy.md` for algorithm scope, scoring, validation, and limitations.
+Debrief stores comparison results for the current browser session in slots for `manual`, `temporalGreedy`, and `importedSolver`, with legacy compatibility for older `greedyBaseline` records. Run or import each plan, simulate it, then Debrief shows available rows side by side and includes the comparison in result JSON and after-action Markdown exports. Greedy Planner is the browser-native selected-glider baseline planner; see `docs/temporal_greedy.md` for algorithm scope, scoring, validation, and limitations.
 
 More details:
 
