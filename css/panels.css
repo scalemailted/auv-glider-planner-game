@@ -788,24 +788,32 @@
 .timeline-readout { min-width: 7.5rem; font-weight: 800; }
 .timeline-buttons { display: flex; gap: .32rem; }
 .flow-demo-transport {
-  grid-template-columns: auto minmax(10rem, 1fr) auto;
-  padding: .7rem .75rem;
+  display: flex;
+  align-items: center;
+  gap: .5rem;
+  flex-wrap: wrap;
+  padding: .48rem .6rem;
 }
 .flow-demo-transport-actions {
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
 }
 .flow-demo-transport-actions button {
-  min-width: 4.4rem;
+  min-width: auto;
+  padding: .34rem .52rem;
+  white-space: nowrap;
 }
 .flow-demo-time-readout {
-  display: grid;
-  gap: .1rem;
-  min-width: 10rem;
+  display: flex;
+  align-items: baseline;
+  gap: .45rem;
+  min-width: auto;
+  white-space: nowrap;
 }
 .flow-demo-time-readout strong {
   color: #eef6ff;
 }
 .flow-demo-transport-summary {
+  flex: 1 1 18rem;
   display: flex;
   align-items: center;
   justify-content: flex-end;

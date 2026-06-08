@@ -110,6 +110,11 @@ test('campaign planning smoke flow reaches debrief', async ({ page }) => {
   await expect(page.locator('#mission-console [data-action="pause"]')).toHaveCount(0);
   await expect(page.locator('#mission-console [data-action="reset"]')).toHaveCount(0);
   await expect(page.locator('#mission-console [data-action="menu"]')).toHaveText('Main Menu');
+  await expect(page.locator('#mission-summary-hud')).toBeEmpty();
+  await expect(page.locator('#agent-performance-hud')).toBeEmpty();
+  await expect(page.locator('#mission-summary-hud')).not.toContainText('No mission');
+  await expect(page.locator('#agent-performance-hud')).not.toContainText('MISSION PERFORMANCE');
+  await expect(page.locator('#agent-performance-hud')).not.toContainText('No active gliders');
   await expect(page.locator('#bottom-timeline .flow-demo-transport')).toBeVisible();
   await expect(page.locator('#bottom-timeline')).toContainText('Demo Time');
   await expect(page.locator('#bottom-timeline')).toContainText('Infinite timeline');
@@ -180,6 +185,8 @@ test('campaign planning smoke flow reaches debrief', async ({ page }) => {
   await expect(page.locator('#flow-demo-boundary-mode option')).toHaveText(['None', 'Risk Only', 'Dampen Into Land', 'Deflect Along Shore']);
   await expect(page.locator('#flow-demo-evolution-pattern option')).toHaveText(['Tidal Cycle', 'Meandering Jet', 'Eddy Drift', 'Storm Pulse', 'Composite']);
   await expect(page.locator('#flow-demo-spatial-motion option')).toHaveText(['Off', 'Drift East', 'Drift West', 'Drift North', 'Drift South', 'Circular Drift', 'Meander']);
+  await expect(page.locator('#flow-demo-playback-speed')).toBeVisible();
+  await expect(page.locator('#flow-demo-flow-evolution-speed')).toBeVisible();
   await page.locator('#flow-demo-evolution-behavior').selectOption('looping');
   await expect.poll(() => page.evaluate(() => window.anchorGame.phaser.scene.getScene('FlowFieldDemoScene').evolutionBehavior)).toBe('looping');
   await page.locator('#flow-demo-cycle-duration').selectOption('30');
@@ -213,10 +220,20 @@ test('campaign planning smoke flow reaches debrief', async ({ page }) => {
   await expect.poll(() => page.evaluate(() => window.anchorGame.phaser.scene.getScene('FlowFieldDemoScene').additiveLayers.length)).toBe(2);
   await page.locator('[data-flow-layer-remove]').first().click();
   await expect.poll(() => page.evaluate(() => window.anchorGame.phaser.scene.getScene('FlowFieldDemoScene').additiveLayers.length)).toBe(1);
-  await page.locator('#flow-demo-evolution-speed').selectOption('5');
+  await page.locator('#flow-demo-playback-speed').selectOption('5');
+  await expect.poll(() => page.evaluate(() => window.anchorGame.phaser.scene.getScene('FlowFieldDemoScene').playbackSpeedScale)).toBe(5);
   await expect.poll(() => page.evaluate(() => window.anchorGame.phaser.scene.getScene('FlowFieldDemoScene').evolutionSpeedScale)).toBe(5);
   await expect(page.locator('#mission-console')).toContainText('Playback Speed');
   await expect(page.locator('#bottom-timeline')).toContainText('Playback: 5x');
+  await page.locator('#flow-demo-flow-evolution-speed').selectOption('2');
+  await expect.poll(() => page.evaluate(() => window.anchorGame.phaser.scene.getScene('FlowFieldDemoScene').flowEvolutionSpeedScale)).toBe(2);
+  await expect(page.locator('#mission-console')).toContainText('Flow Evolution Speed');
+  await expect(page.locator('#bottom-timeline')).toContainText('Flow: 2x');
+  await expect(page.evaluate(() => {
+    const scene = window.anchorGame.phaser.scene.getScene('FlowFieldDemoScene');
+    scene.demoTime = 3;
+    return scene.flowSampleTime();
+  })).resolves.toBe(6);
   await page.locator('#flow-demo-magnitude-scale').selectOption('2');
   await expect.poll(() => page.evaluate(() => window.anchorGame.phaser.scene.getScene('FlowFieldDemoScene').magnitudeScale)).toBe(2);
   await page.locator('#flow-demo-particle-speed').selectOption('2');

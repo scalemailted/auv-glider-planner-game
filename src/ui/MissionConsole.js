@@ -92,7 +92,7 @@ export class MissionConsole {
         <span>${escapeHtml(state.status ?? 'Demo running')}</span>
         <strong>${escapeHtml(state.paused ? 'Paused' : 'Animating')}</strong>
         <small>${escapeHtml(state.fieldMode === 'dynamic'
-          ? `${evolutionBehaviorLabel(state.evolutionBehavior)} evolution. Spatial ${spatialMotionLabel(state.spatialMotion)} | Playback Speed ${state.evolutionSpeedScale ?? 1}x | Particle Speed ${state.particleSpeedScale ?? 1}x | Magnitude Scale ${state.magnitudeScale ?? 1.5}x.`
+          ? `${evolutionBehaviorLabel(state.evolutionBehavior)} evolution. Spatial ${spatialMotionLabel(state.spatialMotion)} | Playback Speed ${state.playbackSpeedScale ?? state.evolutionSpeedScale ?? 1}x | Flow Evolution ${state.flowEvolutionSpeedScale ?? 1}x | Particle Speed ${state.particleSpeedScale ?? 1}x | Magnitude Scale ${state.magnitudeScale ?? 1.5}x.`
           : 'Particles move through a non-evolving vector field.')}</small>
       </section>
       <section class="console-section">
@@ -190,11 +190,17 @@ export class MissionConsole {
         </label>
         <label class="compact-field">
           Playback Speed
-          <select id="flow-demo-evolution-speed">
-            ${FLOW_DEMO_EVOLUTION_SPEEDS.map((speed) => `<option value="${escapeAttr(speed)}" ${Number(state.evolutionSpeedScale ?? 1) === speed ? 'selected' : ''}>${escapeHtml(speed)}x</option>`).join('')}
+          <select id="flow-demo-playback-speed">
+            ${FLOW_DEMO_EVOLUTION_SPEEDS.map((speed) => `<option value="${escapeAttr(speed)}" ${Number(state.playbackSpeedScale ?? state.evolutionSpeedScale ?? 1) === speed ? 'selected' : ''}>${escapeHtml(speed)}x</option>`).join('')}
           </select>
         </label>
-        <div class="hud-muted">Playback Speed controls how fast demo time moves. Evolution settings control how the current field changes per unit demo time.</div>
+        <label class="compact-field">
+          Flow Evolution Speed
+          <select id="flow-demo-flow-evolution-speed">
+            ${FLOW_DEMO_EVOLUTION_SPEEDS.map((speed) => `<option value="${escapeAttr(speed)}" ${Number(state.flowEvolutionSpeedScale ?? 1) === speed ? 'selected' : ''}>${escapeHtml(speed)}x</option>`).join('')}
+          </select>
+        </label>
+        <div class="hud-muted">Playback Speed controls how fast demo time moves. Flow Evolution Speed controls how fast the current field changes per unit demo time.</div>
         <label class="compact-field">
           Boundary Mode
           <select id="flow-demo-boundary-mode">
@@ -264,7 +270,9 @@ export class MissionConsole {
     this.root.querySelector('#flow-demo-evolution-pattern')?.addEventListener('change', (event) => handlers.evolutionPattern?.(event.target.value));
     this.root.querySelector('#flow-demo-spatial-motion')?.addEventListener('change', (event) => handlers.spatialMotion?.(event.target.value));
     this.root.querySelector('#flow-demo-spatial-motion-speed')?.addEventListener('change', (event) => handlers.spatialMotionSpeed?.(event.target.value));
+    this.root.querySelector('#flow-demo-playback-speed')?.addEventListener('change', (event) => handlers.playbackSpeedScale?.(event.target.value));
     this.root.querySelector('#flow-demo-evolution-speed')?.addEventListener('change', (event) => handlers.evolutionSpeedScale?.(event.target.value));
+    this.root.querySelector('#flow-demo-flow-evolution-speed')?.addEventListener('change', (event) => handlers.flowEvolutionSpeedScale?.(event.target.value));
     this.root.querySelector('#flow-demo-boundary-mode')?.addEventListener('change', (event) => handlers.boundaryMode?.(event.target.value));
     this.root.querySelector('#flow-demo-magnitude-scale')?.addEventListener('change', (event) => handlers.magnitudeScale?.(event.target.value));
     this.root.querySelector('#flow-demo-particle-speed')?.addEventListener('change', (event) => handlers.particleSpeedScale?.(event.target.value));

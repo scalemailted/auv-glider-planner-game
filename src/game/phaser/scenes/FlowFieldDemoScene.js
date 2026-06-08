@@ -35,6 +35,8 @@ export class FlowFieldDemoScene extends PhaserScene {
     this.terrainMode = 'blendedCoastal';
     this.terrainSeed = 'anchor-demo-1';
     this.terrain = createDemoTerrain({ mode: this.terrainMode, seed: this.terrainSeed });
+    this.playbackSpeedScale = 1;
+    this.flowEvolutionSpeedScale = 1;
     this.evolutionSpeedScale = 1;
     this.evolutionBehavior = 'continuous';
     this.cycleDuration = 60;
@@ -64,7 +66,9 @@ export class FlowFieldDemoScene extends PhaserScene {
     this.terrainMode = normalizeTerrainMode(data.terrainMode ?? 'blendedCoastal');
     this.terrainSeed = data.terrainSeed ?? 'anchor-demo-1';
     this.terrain = createDemoTerrain({ mode: this.terrainMode, seed: this.terrainSeed });
-    this.evolutionSpeedScale = finiteNumber(data.evolutionSpeedScale ?? data.timeSpeedScale, 1);
+    this.playbackSpeedScale = finiteNumber(data.playbackSpeedScale ?? data.evolutionSpeedScale ?? data.timeSpeedScale, 1);
+    this.flowEvolutionSpeedScale = finiteNumber(data.flowEvolutionSpeedScale ?? data.currentEvolutionSpeedScale, 1);
+    this.evolutionSpeedScale = this.playbackSpeedScale;
     this.evolutionBehavior = normalizeEvolutionBehavior(data.evolutionBehavior ?? 'continuous');
     this.cycleDuration = finiteNumber(data.cycleDuration, 60);
     this.directionVariation = normalizeVariationLevel(data.directionVariation ?? 'high');
@@ -96,10 +100,6 @@ export class FlowFieldDemoScene extends PhaserScene {
     this.app.clearPanels();
     this.app.elements.shell?.classList.remove('planning-workspace');
     this.app.setSceneLabel(this.title());
-    this.app.waypointPanel?.renderIdle?.();
-    this.app.summaryHud?.renderIdle?.();
-    this.app.agentPerformanceHud?.setHandlers?.({});
-    this.app.agentPerformanceHud?.renderIdle?.();
     this.renderConsole();
     this.renderTransportBar();
     this.renderCellInspector(true);
@@ -128,12 +128,12 @@ export class FlowFieldDemoScene extends PhaserScene {
     }
     const dt = Math.min(0.05, Math.max(0, Number(delta ?? 16.67) / 1000));
     this.lastDeltaSeconds = dt;
-    const nextTime = Math.max(0, this.demoTime + dt * this.playbackDirection * this.evolutionSpeedScale);
+    const nextTime = Math.max(0, this.demoTime + dt * this.playbackDirection * this.playbackSpeedScale);
     const timeAdvanced = Math.abs(nextTime - this.demoTime) > 1e-9;
     this.demoTime = nextTime;
     if (timeAdvanced) {
       advanceDemoParticles(this.particles, {
-        time: this.demoTime,
+        time: this.flowSampleTime(),
         dt,
         field: sampleDemoFlow,
         fieldConfig: this.fieldConfig(),
@@ -162,7 +162,9 @@ export class FlowFieldDemoScene extends PhaserScene {
       additiveLayers: this.additiveLayers,
       terrainMode: this.terrainMode,
       terrainSeed: this.terrainSeed,
-      evolutionSpeedScale: this.evolutionSpeedScale,
+      playbackSpeedScale: this.playbackSpeedScale,
+      flowEvolutionSpeedScale: this.flowEvolutionSpeedScale,
+      evolutionSpeedScale: this.playbackSpeedScale,
       evolutionBehavior: this.evolutionBehavior,
       cycleDuration: this.cycleDuration,
       directionVariation: this.directionVariation,
@@ -175,7 +177,7 @@ export class FlowFieldDemoScene extends PhaserScene {
       magnitudeScale: this.magnitudeScale,
       particleSpeedScale: this.particleSpeedScale,
       playbackDirection: this.playbackDirection,
-      magnitudeStats: summarizeDemoFlowMagnitudes(this.fieldConfig(), this.demoTime),
+      magnitudeStats: summarizeDemoFlowMagnitudes(this.fieldConfig(), this.flowSampleTime()),
       presetConfig: primaryConfig,
       status: `${fieldModeLabel(this.fieldMode)} field`,
       time: this.demoTime,
@@ -197,8 +199,20 @@ export class FlowFieldDemoScene extends PhaserScene {
       }),
       terrainMode: (terrainMode) => this.scene.restart({ ...this.sceneConfig(), terrainMode }),
       resetTerrain: () => this.scene.restart({ ...this.sceneConfig(), terrainSeed: nextTerrainSeed(this.terrainSeed) }),
+      playbackSpeedScale: (playbackSpeedScale) => {
+        this.playbackSpeedScale = Number(playbackSpeedScale) || 1;
+        this.evolutionSpeedScale = this.playbackSpeedScale;
+        this.renderConsole();
+        this.renderCellInspector(true);
+      },
       evolutionSpeedScale: (evolutionSpeedScale) => {
-        this.evolutionSpeedScale = Number(evolutionSpeedScale) || 1;
+        this.playbackSpeedScale = Number(evolutionSpeedScale) || 1;
+        this.evolutionSpeedScale = this.playbackSpeedScale;
+        this.renderConsole();
+        this.renderCellInspector(true);
+      },
+      flowEvolutionSpeedScale: (flowEvolutionSpeedScale) => {
+        this.flowEvolutionSpeedScale = Number(flowEvolutionSpeedScale) || 1;
         this.renderConsole();
         this.renderCellInspector(true);
       },
@@ -294,7 +308,9 @@ export class FlowFieldDemoScene extends PhaserScene {
       additiveLayers: this.additiveLayers,
       terrainMode: this.terrainMode,
       terrainSeed: this.terrainSeed,
-      evolutionSpeedScale: this.evolutionSpeedScale,
+      playbackSpeedScale: this.playbackSpeedScale,
+      flowEvolutionSpeedScale: this.flowEvolutionSpeedScale,
+      evolutionSpeedScale: this.playbackSpeedScale,
       evolutionBehavior: this.evolutionBehavior,
       cycleDuration: this.cycleDuration,
       directionVariation: this.directionVariation,
@@ -309,6 +325,10 @@ export class FlowFieldDemoScene extends PhaserScene {
       playbackDirection: this.playbackDirection,
       selectedCell: this.selectedCell
     };
+  }
+
+  flowSampleTime(time = this.demoTime) {
+    return Math.max(0, finiteNumber(time, 0)) * this.flowEvolutionSpeedScale;
   }
 
   buildSceneObjects() {
@@ -396,7 +416,7 @@ export class FlowFieldDemoScene extends PhaserScene {
         const nx = (col + 0.5) / cols;
         const ny = (row + 0.5) / rows;
         if (isDemoLand(this.terrain, nx, ny)) continue;
-        const flow = sampleDemoFlow({ ...this.fieldConfig(), x: nx, y: ny, time: this.demoTime });
+        const flow = sampleDemoFlow({ ...this.fieldConfig(), x: nx, y: ny, time: this.flowSampleTime() });
         const rawMagnitude = Math.hypot(flow.u, flow.v);
         const magnitude = Math.min(1.35, rawMagnitude);
         const point = this.toScreen(map, nx, ny);
@@ -512,13 +532,13 @@ export class FlowFieldDemoScene extends PhaserScene {
     this.subtitleText?.setWordWrapWidth(Math.min(760, map.width));
     const preset = getFlowDemoPresetConfig(this.fieldMode, this.preset);
     const layerText = ` | Layers: ${formatLayerSummary(this.additiveLayers)}`;
-    const centerSample = sampleDemoFlow({ ...this.fieldConfig(), x: 0.5, y: 0.5, time: this.demoTime });
-    const stats = summarizeDemoFlowMagnitudes(this.fieldConfig(), this.demoTime);
+    const centerSample = sampleDemoFlow({ ...this.fieldConfig(), x: 0.5, y: 0.5, time: this.flowSampleTime() });
+    const stats = summarizeDemoFlowMagnitudes(this.fieldConfig(), this.flowSampleTime());
     const evolutionText = this.fieldMode === 'dynamic'
       ? ` | Evolution: ${evolutionBehaviorLabel(this.evolutionBehavior)}${this.evolutionBehavior === 'looping' ? ` ${this.cycleDuration}s` : ''} | Spatial: ${spatialMotionLabel(this.spatialMotion)} | Complexity: ${dynamicComplexityLabel(this.dynamicComplexity)} | Direction: ${variationLabel(this.directionVariation)} | Magnitude: ${variationLabel(this.magnitudeVariation)} | Pattern: ${evolutionPatternLabel(this.evolutionPattern)}`
       : '';
     const modePrefix = this.fieldMode === 'dynamic' ? 'Continuous F(x,y,t)' : 'Fixed F(x,y,0)';
-    this.statusText?.setText(`${modePrefix} | Mode: ${fieldModeLabel(this.fieldMode)} | Base Flow Field: ${preset?.label ?? 'Current Field'}${layerText}${evolutionText} | Boundary: ${boundaryModeLabel(this.boundaryMode)} | Demo Time: ${this.demoTime.toFixed(1)} | Playback Speed: ${this.evolutionSpeedScale}x | Direction: ${this.playbackDirection === -1 ? 'Reverse' : 'Forward'} | Particle Speed: ${this.particleSpeedScale}x | Magnitude Scale: ${this.magnitudeScale}x | Mag min/mean/max: ${stats.min.toFixed(2)} / ${stats.mean.toFixed(2)} / ${stats.max.toFixed(2)} | Sample: (${centerSample.u.toFixed(2)}, ${centerSample.v.toFixed(2)}) mag ${Math.hypot(centerSample.u, centerSample.v).toFixed(2)} | Terrain: ${terrainModeLabel(this.terrainMode)}`);
+    this.statusText?.setText(`${modePrefix} | Mode: ${fieldModeLabel(this.fieldMode)} | Base Flow Field: ${preset?.label ?? 'Current Field'}${layerText}${evolutionText} | Boundary: ${boundaryModeLabel(this.boundaryMode)} | Demo Time: ${this.demoTime.toFixed(1)} | Playback Speed: ${this.playbackSpeedScale}x | Flow Evolution: ${this.flowEvolutionSpeedScale}x | Direction: ${this.playbackDirection === -1 ? 'Reverse' : 'Forward'} | Particle Speed: ${this.particleSpeedScale}x | Magnitude Scale: ${this.magnitudeScale}x | Mag min/mean/max: ${stats.min.toFixed(2)} / ${stats.mean.toFixed(2)} / ${stats.max.toFixed(2)} | Sample: (${centerSample.u.toFixed(2)}, ${centerSample.v.toFixed(2)}) mag ${Math.hypot(centerSample.u, centerSample.v).toFixed(2)} | Terrain: ${terrainModeLabel(this.terrainMode)}`);
     this.statusText?.setWordWrapWidth(Math.min(980, map.width));
     this.statusText?.setPosition(margin, map.y + map.height + 18);
   }
@@ -594,6 +614,7 @@ export class FlowFieldDemoScene extends PhaserScene {
           <span data-flow-demo-direction>Forward</span>
           <span data-flow-demo-behavior>Behavior: Continuous</span>
           <span data-flow-demo-speed>Playback: 1x</span>
+          <span data-flow-demo-flow-speed>Flow: 1x</span>
           <span>Infinite timeline</span>
         </div>
       </section>
@@ -614,7 +635,8 @@ export class FlowFieldDemoScene extends PhaserScene {
       state: root.querySelector('[data-flow-demo-state]'),
       direction: root.querySelector('[data-flow-demo-direction]'),
       behavior: root.querySelector('[data-flow-demo-behavior]'),
-      speed: root.querySelector('[data-flow-demo-speed]')
+      speed: root.querySelector('[data-flow-demo-speed]'),
+      flowSpeed: root.querySelector('[data-flow-demo-flow-speed]')
     };
     this.updateTransportBar();
   }
@@ -629,7 +651,8 @@ export class FlowFieldDemoScene extends PhaserScene {
     if (refs.directionButton) refs.directionButton.textContent = `Direction: ${directionLabel}`;
     if (refs.direction) refs.direction.textContent = `Direction: ${directionLabel}`;
     if (refs.behavior) refs.behavior.textContent = `Behavior: ${evolutionBehaviorLabel(this.evolutionBehavior)}`;
-    if (refs.speed) refs.speed.textContent = `Playback: ${this.evolutionSpeedScale}x`;
+    if (refs.speed) refs.speed.textContent = `Playback: ${this.playbackSpeedScale}x`;
+    if (refs.flowSpeed) refs.flowSpeed.textContent = `Flow: ${this.flowEvolutionSpeedScale}x`;
     if (refs.pauseButton) refs.pauseButton.textContent = this.paused ? 'Resume' : 'Pause';
   }
 
@@ -692,8 +715,8 @@ export class FlowFieldDemoScene extends PhaserScene {
   inspectSelectedCell() {
     const cell = this.selectedCell;
     const land = isDemoLand(this.terrain, cell.x, cell.y);
-    const current = sampleDemoFlow({ ...this.fieldConfig(), x: cell.x, y: cell.y, time: this.demoTime });
-    const previous = sampleDemoFlow({ ...this.fieldConfig(), x: cell.x, y: cell.y, time: Math.max(0, this.demoTime - 1) });
+    const current = sampleDemoFlow({ ...this.fieldConfig(), x: cell.x, y: cell.y, time: this.flowSampleTime() });
+    const previous = sampleDemoFlow({ ...this.fieldConfig(), x: cell.x, y: cell.y, time: this.flowSampleTime(Math.max(0, this.demoTime - 1)) });
     const magnitude = Math.hypot(current.u, current.v);
     const previousMagnitude = Math.hypot(previous.u, previous.v);
     const directionRadians = Math.atan2(current.v, current.u);
@@ -716,7 +739,9 @@ export class FlowFieldDemoScene extends PhaserScene {
       evolutionPattern: this.evolutionPattern,
       boundaryMode: current.boundaryMode ?? this.boundaryMode,
       paused: this.paused,
-      demoTime: this.demoTime
+      demoTime: this.demoTime,
+      flowSampleTime: this.flowSampleTime(),
+      flowEvolutionSpeedScale: this.flowEvolutionSpeedScale
     };
   }
 
@@ -724,8 +749,10 @@ export class FlowFieldDemoScene extends PhaserScene {
     if (!globalThis.ANCHOR_DEBUG_FLOW_DEMO) return;
     if (this.demoTime - this.lastDebugDemoTime < 1) return;
     this.lastDebugDemoTime = this.demoTime;
-    const sample = sampleDemoFlow({ ...this.fieldConfig(), x: 0.5, y: 0.5, time: this.demoTime });
-    const futureSample = sampleDemoFlow({ ...this.fieldConfig(), x: 0.5, y: 0.5, time: this.demoTime + 1 });
+    const flowTime = this.flowSampleTime();
+    const futureFlowTime = this.flowSampleTime(this.demoTime + 1);
+    const sample = sampleDemoFlow({ ...this.fieldConfig(), x: 0.5, y: 0.5, time: flowTime });
+    const futureSample = sampleDemoFlow({ ...this.fieldConfig(), x: 0.5, y: 0.5, time: futureFlowTime });
     const composition = sample.composition ?? {};
     globalThis.console?.debug?.('[FlowDemo][DynamicFieldSample]', {
       mode: fieldModeLabel(this.fieldMode),
@@ -733,7 +760,9 @@ export class FlowFieldDemoScene extends PhaserScene {
       preset: this.preset,
       layers: this.additiveLayers,
       demoTime: Number(this.demoTime.toFixed(2)),
-      evolutionSpeed: this.evolutionSpeedScale,
+      flowSampleTime: Number(flowTime.toFixed(2)),
+      playbackSpeed: this.playbackSpeedScale,
+      evolutionSpeed: this.flowEvolutionSpeedScale,
       evolutionBehavior: this.evolutionBehavior,
       cycleDuration: this.cycleDuration,
       spatialMotion: this.spatialMotion,
@@ -745,7 +774,7 @@ export class FlowFieldDemoScene extends PhaserScene {
       dynamicComplexity: this.dynamicComplexity,
       evolutionPattern: this.evolutionPattern,
       boundaryMode: this.boundaryMode,
-      magnitudeStats: summarizeDemoFlowMagnitudes(this.fieldConfig(), this.demoTime),
+      magnitudeStats: summarizeDemoFlowMagnitudes(this.fieldConfig(), flowTime),
       center: {
         u: Number(sample.u.toFixed(4)),
         v: Number(sample.v.toFixed(4)),
@@ -758,7 +787,10 @@ export class FlowFieldDemoScene extends PhaserScene {
       point: { x: 0.5, y: 0.5 },
       t0: Number(this.demoTime.toFixed(2)),
       t1: Number((this.demoTime + 1).toFixed(2)),
-      evolutionSpeed: this.evolutionSpeedScale,
+      flowT0: Number(flowTime.toFixed(2)),
+      flowT1: Number(futureFlowTime.toFixed(2)),
+      playbackSpeed: this.playbackSpeedScale,
+      evolutionSpeed: this.flowEvolutionSpeedScale,
       evolutionBehavior: this.evolutionBehavior,
       cycleDuration: this.cycleDuration,
       spatialMotion: this.spatialMotion,
@@ -785,7 +817,9 @@ export class FlowFieldDemoScene extends PhaserScene {
     globalThis.console?.debug?.('[FlowDemo][ContinuousEvolution]', {
       mode: this.fieldMode,
       demoTime: Number(this.demoTime.toFixed(3)),
-      evolutionSpeed: this.evolutionSpeedScale,
+      flowSampleTime: Number(flowTime.toFixed(3)),
+      playbackSpeed: this.playbackSpeedScale,
+      evolutionSpeed: this.flowEvolutionSpeedScale,
       evolutionBehavior: this.evolutionBehavior,
       cycleDuration: this.cycleDuration,
       spatialMotion: this.spatialMotion,
@@ -802,7 +836,9 @@ export class FlowFieldDemoScene extends PhaserScene {
     });
     globalThis.console?.debug?.('[FlowDemo][TimeState]', {
       demoTime: Number(this.demoTime.toFixed(3)),
-      evolutionSpeed: this.evolutionSpeedScale,
+      flowSampleTime: Number(flowTime.toFixed(3)),
+      playbackSpeed: this.playbackSpeedScale,
+      evolutionSpeed: this.flowEvolutionSpeedScale,
       particleSpeed: this.particleSpeedScale,
       magnitudeScale: this.magnitudeScale,
       deltaSeconds: Number((this.lastDeltaSeconds ?? 0).toFixed(4)),
@@ -812,7 +848,9 @@ export class FlowFieldDemoScene extends PhaserScene {
       mode: this.fieldMode,
       evolutionBehavior: this.evolutionBehavior,
       demoTime: Number(this.demoTime.toFixed(3)),
-      evolutionSpeed: this.evolutionSpeedScale,
+      flowSampleTime: Number(flowTime.toFixed(3)),
+      playbackSpeed: this.playbackSpeedScale,
+      evolutionSpeed: this.flowEvolutionSpeedScale,
       cycleDuration: this.cycleDuration,
       spatialMotion: this.spatialMotion,
       spatialMotionSpeed: this.spatialMotionSpeed,
@@ -827,8 +865,8 @@ export class FlowFieldDemoScene extends PhaserScene {
       magnitudeAtCenter: Number(Math.hypot(sample.u, sample.v).toFixed(4))
     });
     globalThis.console?.debug?.('[FlowDemo][MagnitudeStats]', {
-      ...summarizeDemoFlowMagnitudes(this.fieldConfig(), this.demoTime),
-      time: Number(this.demoTime.toFixed(2))
+      ...summarizeDemoFlowMagnitudes(this.fieldConfig(), flowTime),
+      time: Number(flowTime.toFixed(2))
     });
     globalThis.console?.debug?.('[FlowDemo][LayerComposition]', {
       baseFieldId: this.preset,
@@ -862,7 +900,7 @@ export class FlowFieldDemoScene extends PhaserScene {
         layerId: layer.id,
         presetId: layer.preset,
         evolutionBehavior: layer.evolution?.evolutionBehavior ?? layer.evolutionBehavior,
-        layerTime: Number(this.demoTime.toFixed(3)),
+        layerTime: Number(flowTime.toFixed(3)),
         spatialMotion: layer.evolution?.spatialMotion ?? layer.spatialMotion,
         spatialOffset: layer.vector?.spatialOffset ?? null,
         vector: {
@@ -925,6 +963,8 @@ function cellInspectorHtml(inspection) {
         ${metricRows([
           ['mode', fieldModeLabel(inspection.mode)],
           ['evolution', evolutionBehaviorLabel(inspection.evolutionBehavior)],
+          ['flow time', `${formatNumber(inspection.flowSampleTime, 1)} s`],
+          ['flow speed', `${formatNumber(inspection.flowEvolutionSpeedScale, 2)}x`],
           ['complexity', dynamicComplexityLabel(inspection.dynamicComplexity)],
           ['pattern', evolutionPatternLabel(inspection.evolutionPattern)],
           ['magnitude trend', magnitudeTrendLabel(inspection.magnitudeDelta)],

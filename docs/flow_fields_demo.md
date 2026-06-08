@@ -40,14 +40,15 @@ The demo provides a controlled scene for questions like:
 - `Cycle Duration`: controls intentional Looping cycle length or One-Shot Pulse timing.
 - `Spatial Motion`: chooses Off, directional drift, Circular Drift, or Meander.
 - `Spatial Motion Speed`: scales the selected spatial translation.
-- `Playback Speed`: scales how fast demo time moves from 0.25x to 10x. Evolution behavior/pattern controls how the field changes per unit demo time.
+- `Playback Speed`: scales how fast demo time moves from 0.25x to 10x.
+- `Flow Evolution Speed`: scales how fast the sampled current field evolves per unit demo time.
 - `Boundary Mode`: chooses None, Risk Only, Dampen Into Land, or Deflect Along Shore.
 - `Magnitude Scale`: changes how strongly arrow length visualizes sampled magnitude from 0.5x to 2x.
 - `Particle Speed`: changes passive particle speed through the sampled field from 0.5x to 4x without changing field evolution.
 - Bottom transport `Reset`: resets demo time and respawns particles with the current configuration.
 - Bottom transport `Direction`: toggles demo time between Forward and Reverse playback.
 - Bottom transport `Pause / Resume`: pauses or resumes demo time and particle motion.
-- Bottom transport `Demo Time`: shows the unbounded demo-time clock, playback direction, read-only playback speed, and evolution behavior. Continuous behavior is labeled as an infinite timeline; Looping shows the active cycle duration.
+- Bottom transport `Demo Time`: shows the unbounded demo-time clock, playback direction, read-only playback speed, flow evolution speed, and evolution behavior. Continuous behavior is labeled as an infinite timeline; Looping shows the active cycle duration.
 - Left footer `Main Menu`: returns to the main menu / Simulation Lab launcher.
 - `Cell Inspector`: click any map cell to populate the right panel with current vector behavior for that cell.
 
@@ -61,7 +62,7 @@ Static mode samples the selected field at time zero. Arrows remain stable, while
 
 ### Dynamic
 
-Dynamic mode passes advancing demo time into the shared current sampler and applies a deterministic demo evolution layer. The demo evolution uses raw continuous `demoTime`, not a discrete frame index, so arrows, magnitudes, directions, and particle drift change smoothly as simulated time advances. The default setup is Dynamic `Topology-Aware Composite` over a Blended Coastal Map with High dynamic complexity, High direction variation, High magnitude variation, Composite pattern, Meander spatial motion, and Deflect Along Shore boundary handling.
+Dynamic mode passes derived flow sample time into the shared current sampler and applies a deterministic demo evolution layer. Flow sample time is `demoTime * flowEvolutionSpeedScale`, not a discrete frame index, so arrows, magnitudes, directions, and particle drift change smoothly as simulated time advances while allowing the current field to evolve faster or slower than the UI playback clock. The default setup is Dynamic `Topology-Aware Composite` over a Blended Coastal Map with High dynamic complexity, High direction variation, High magnitude variation, Composite pattern, Meander spatial motion, and Deflect Along Shore boundary handling.
 
 Dynamic controls affect the sampled field itself:
 
@@ -71,7 +72,8 @@ Dynamic controls affect the sampled field itself:
 - `Magnitude Variation`: changes vector strength coherently over time.
 - `Evolution Pattern`: controls the water-like modulation shape.
 - `Spatial Motion`: translates the sampled field coordinates so structures move through the domain.
-- `Playback Speed`: advances demo field time faster or slower. This is a UI time multiplier, not a separate current-field model.
+- `Playback Speed`: advances the visible demo clock faster or slower.
+- `Flow Evolution Speed`: advances the current-field sample time faster or slower per unit demo time.
 
 These controls do not normalize vectors. Normal magnitude differences remain visible in arrow length, opacity, thickness, and particle drift speed.
 
@@ -237,22 +239,24 @@ Particles reset when they leave the domain, exceed their lifetime, or hit land. 
 
 Mission gliders are not passive particles. Mission gliders have commanded waypoint motion plus current drift, fuel/energy limits, terrain interaction, route validation, sampling, and scoring.
 
-## 10. Playback Speed, Particle Speed, And Magnitude Scale
+## 10. Playback Speed, Flow Evolution Speed, Particle Speed, And Magnitude Scale
 
 Playback Speed changes simulated demo time, not browser frame rate or particle advection speed.
 
 Examples:
 
-- `0.5x`: slower evolving field
+- `0.5x`: slower demo clock
 - `1.0x`: normal demo time
-- `5.0x`: faster evolving field
-- `10.0x`: rapid stress-test evolution
+- `5.0x`: faster demo clock
+- `10.0x`: rapid transport stress test
 
-Playback Speed affects Dynamic arrows, dynamic sampled layers, displayed demo time, and dynamic field phase. Static mode pins base samples to time zero, so its base arrows remain stable while particles move through the fixed field.
+Flow Evolution Speed affects Dynamic arrows, dynamic sampled layers, and dynamic field phase by scaling the sampler time passed to the current field. Static mode pins base samples to time zero, so its base arrows remain stable while particles move through the fixed field.
+
+Playback Speed and Flow Evolution Speed are intentionally separate. For example, a mission-style demo can run glider-like particles and UI time at `1x` while showing a current field whose eddies, tides, or storm pulses evolve at `5x`.
 
 Particle Speed only scales passive particle advection after the field is sampled. Magnitude Scale only changes arrow visualization. Neither control changes the underlying current values.
 
-The Flow Fields Demo transport actions live in the bottom timeline slot rather than inside the Phaser visualization. The center viewport remains reserved for the current-field map, arrows, particles, and non-obstructive readouts. Because the demo is not a finite mission, the bottom strip presents `Reset`, `Direction`, `Play/Pause`, `Demo Time`, read-only `Playback Speed`, and an `Infinite timeline` summary instead of a mission-time scrubber. Use the direction control to run time forward or backward, and use Play/Pause to start or stop playback. Playback Speed is controlled from the left panel. This is separate from evolution behavior/pattern controls, which define how rapidly and in what form the field changes per unit demo time.
+The Flow Fields Demo transport actions live in the bottom timeline slot rather than inside the Phaser visualization. The center viewport remains reserved for the current-field map, arrows, particles, and non-obstructive readouts. Because the demo is not a finite mission, the bottom strip presents `Reset`, `Direction`, `Play/Pause`, `Demo Time`, read-only `Playback Speed`, read-only `Flow`, and an `Infinite timeline` summary instead of a mission-time scrubber. Use the direction control to run time forward or backward, and use Play/Pause to start or stop playback. Playback Speed and Flow Evolution Speed are controlled from the left panel. Evolution behavior/pattern controls define the shape of field changes; Flow Evolution Speed defines their rate per unit demo time.
 
 ## 10.1 Click-To-Inspect Cell Behavior
 
@@ -271,10 +275,10 @@ The right panel shows:
 The inspector samples the same composed current field as the arrow grid:
 
 ```text
-sampleDemoFlow({ ...fieldConfig, x, y, time: demoTime })
+sampleDemoFlow({ ...fieldConfig, x, y, time: flowSampleTime })
 ```
 
-It updates while dynamic time advances, freezes while paused, and returns to `t = 0.0s` when Reset is pressed. Land cells are selectable too; they show that no navigable water current is applied at that location while nearby water may still be damped, deflected, or marked risky depending on boundary mode.
+The implementation passes `flowSampleTime = demoTime * flowEvolutionSpeedScale` as the sampler `time`. It updates while dynamic time advances, freezes while paused, and returns to `t = 0.0s` when Reset is pressed. Land cells are selectable too; they show that no navigable water current is applied at that location while nearby water may still be damped, deflected, or marked risky depending on boundary mode.
 
 ## 11. Magnitude Diagnostics
 
@@ -328,7 +332,8 @@ The demo uses normalized `[0, 1]` coordinates. The shared sampler converts those
 If arrows do not change in Dynamic mode:
 
 - check demo time is advancing
-- check `evolutionSpeedScale`
+- check `playbackSpeedScale`
+- check `flowEvolutionSpeedScale`
 - check Direction Variation and Magnitude Variation are not both Off
 - check Evolution Pattern is selected
 - check the sampler receives `time`
