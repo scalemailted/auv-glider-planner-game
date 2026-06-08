@@ -109,13 +109,16 @@ test('campaign planning smoke flow reaches debrief', async ({ page }) => {
   await expect(page.locator('#mission-console')).not.toContainText('Reset Particles');
   await expect(page.locator('#mission-console [data-action="pause"]')).toHaveCount(0);
   await expect(page.locator('#mission-console [data-action="reset"]')).toHaveCount(0);
-  await expect(page.locator('#mission-console [data-action="menu"]')).toHaveCount(0);
+  await expect(page.locator('#mission-console [data-action="menu"]')).toHaveText('Main Menu');
   await expect(page.locator('#bottom-timeline .flow-demo-transport')).toBeVisible();
   await expect(page.locator('#bottom-timeline')).toContainText('Demo Time');
   await expect(page.locator('#bottom-timeline')).toContainText('Infinite timeline');
-  await expect(page.locator('#bottom-timeline [data-action="flow-demo-back"]')).toHaveText('Back');
+  await expect(page.locator('#bottom-timeline [data-action="flow-demo-back"]')).toHaveCount(0);
+  await expect(page.locator('#bottom-timeline')).not.toContainText('Back');
   await expect(page.locator('#bottom-timeline [data-action="flow-demo-reset"]')).toHaveText('Reset');
+  await expect(page.locator('#bottom-timeline [data-action="flow-demo-direction"]')).toHaveText('Direction: Forward');
   await expect(page.locator('#bottom-timeline [data-action="flow-demo-pause"]')).toHaveText('Pause');
+  await expect(page.locator('#mission-console [data-action="menu"]')).toHaveText('Main Menu');
   await expect(page.evaluate(() => window.anchorGame.phaser.scene.getScene('FlowFieldDemoScene').buttons?.length ?? 0)).resolves.toBe(0);
   await expect(page.evaluate(() => {
     const bottom = document.querySelector('#bottom-timeline .flow-demo-transport')?.getBoundingClientRect();
@@ -212,6 +215,8 @@ test('campaign planning smoke flow reaches debrief', async ({ page }) => {
   await expect.poll(() => page.evaluate(() => window.anchorGame.phaser.scene.getScene('FlowFieldDemoScene').additiveLayers.length)).toBe(1);
   await page.locator('#flow-demo-evolution-speed').selectOption('5');
   await expect.poll(() => page.evaluate(() => window.anchorGame.phaser.scene.getScene('FlowFieldDemoScene').evolutionSpeedScale)).toBe(5);
+  await expect(page.locator('#mission-console')).toContainText('Playback Speed');
+  await expect(page.locator('#bottom-timeline')).toContainText('Playback: 5x');
   await page.locator('#flow-demo-magnitude-scale').selectOption('2');
   await expect.poll(() => page.evaluate(() => window.anchorGame.phaser.scene.getScene('FlowFieldDemoScene').magnitudeScale)).toBe(2);
   await page.locator('#flow-demo-particle-speed').selectOption('2');
@@ -228,6 +233,16 @@ test('campaign planning smoke flow reaches debrief', async ({ page }) => {
   await page.locator('#bottom-timeline [data-action="flow-demo-pause"]').click();
   await expect(page.locator('#bottom-timeline [data-action="flow-demo-pause"]')).toHaveText('Pause');
   await expect.poll(() => page.evaluate(() => window.anchorGame.phaser.scene.getScene('FlowFieldDemoScene').demoTime)).toBeGreaterThan(flowTimeBeforePause);
+  const forwardTime = await page.evaluate(() => window.anchorGame.phaser.scene.getScene('FlowFieldDemoScene').demoTime);
+  await page.locator('#bottom-timeline [data-action="flow-demo-direction"]').click();
+  await expect(page.locator('#bottom-timeline [data-action="flow-demo-direction"]')).toHaveText('Direction: Reverse');
+  await expect.poll(() => page.evaluate(() => window.anchorGame.phaser.scene.getScene('FlowFieldDemoScene').demoTime)).toBeLessThan(forwardTime);
+  await page.evaluate(() => {
+    const scene = window.anchorGame.phaser.scene.getScene('FlowFieldDemoScene');
+    scene.demoTime = 0.01;
+  });
+  await expect.poll(() => page.evaluate(() => window.anchorGame.phaser.scene.getScene('FlowFieldDemoScene').demoTime)).toBe(0);
+  await page.locator('#bottom-timeline [data-action="flow-demo-pause"]').click();
   await page.locator('#bottom-timeline [data-action="flow-demo-reset"]').click();
   await expect.poll(() => page.evaluate(() => window.anchorGame.phaser.scene.getScene('FlowFieldDemoScene').demoTime)).toBeLessThan(0.2);
   await page.locator('#flow-demo-terrain').selectOption('islands');
@@ -236,7 +251,7 @@ test('campaign planning smoke flow reaches debrief', async ({ page }) => {
   await expect.poll(() => page.evaluate(() => window.anchorGame.phaser.scene.getScene('FlowFieldDemoScene').terrainMode)).toBe('coastline');
   await page.locator('#flow-demo-terrain').selectOption('none');
   await expect.poll(() => page.evaluate(() => window.anchorGame.phaser.scene.getScene('FlowFieldDemoScene').terrainMode)).toBe('none');
-  await page.locator('#bottom-timeline [data-action="flow-demo-back"]').click();
+  await page.locator('#mission-console [data-action="menu"]').click();
   await expect.poll(() => page.evaluate(() => window.anchorGame.phaser.scene.getScene('MainMenuScene').sys.isActive())).toBe(true);
   await expect(page.locator('#bottom-timeline')).toBeEmpty();
 

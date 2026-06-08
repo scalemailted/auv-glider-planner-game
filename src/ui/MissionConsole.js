@@ -92,7 +92,7 @@ export class MissionConsole {
         <span>${escapeHtml(state.status ?? 'Demo running')}</span>
         <strong>${escapeHtml(state.paused ? 'Paused' : 'Animating')}</strong>
         <small>${escapeHtml(state.fieldMode === 'dynamic'
-          ? `${evolutionBehaviorLabel(state.evolutionBehavior)} evolution. Spatial ${spatialMotionLabel(state.spatialMotion)} | Evolution Speed ${state.evolutionSpeedScale ?? 1}x | Particle Speed ${state.particleSpeedScale ?? 1}x | Magnitude Scale ${state.magnitudeScale ?? 1.5}x.`
+          ? `${evolutionBehaviorLabel(state.evolutionBehavior)} evolution. Spatial ${spatialMotionLabel(state.spatialMotion)} | Playback Speed ${state.evolutionSpeedScale ?? 1}x | Particle Speed ${state.particleSpeedScale ?? 1}x | Magnitude Scale ${state.magnitudeScale ?? 1.5}x.`
           : 'Particles move through a non-evolving vector field.')}</small>
       </section>
       <section class="console-section">
@@ -189,11 +189,12 @@ export class MissionConsole {
           </select>
         </label>
         <label class="compact-field">
-          Evolution Speed
+          Playback Speed
           <select id="flow-demo-evolution-speed">
             ${FLOW_DEMO_EVOLUTION_SPEEDS.map((speed) => `<option value="${escapeAttr(speed)}" ${Number(state.evolutionSpeedScale ?? 1) === speed ? 'selected' : ''}>${escapeHtml(speed)}x</option>`).join('')}
           </select>
         </label>
+        <div class="hud-muted">Playback Speed controls how fast demo time moves. Evolution settings control how the current field changes per unit demo time.</div>
         <label class="compact-field">
           Boundary Mode
           <select id="flow-demo-boundary-mode">
@@ -220,6 +221,9 @@ export class MissionConsole {
         <span>Magnitude Range</span>
         <strong>${escapeHtml(formatDemoStat(state.magnitudeStats?.min))} / ${escapeHtml(formatDemoStat(state.magnitudeStats?.mean))} / ${escapeHtml(formatDemoStat(state.magnitudeStats?.max))}</strong>
         <small>Min / mean / max for the current arrow grid.</small>
+      </section>
+      <section class="console-footer">
+        <button data-action="menu" class="console-button secondary">Main Menu</button>
       </section>
     `;
     this.app.applyConsoleAccordions?.('flowDemo');
@@ -267,7 +271,8 @@ export class MissionConsole {
     this.bind({
       preset: handlers.preset,
       'add-flow-layer': handlers.addLayer,
-      'reset-terrain': handlers.resetTerrain
+      'reset-terrain': handlers.resetTerrain,
+      menu: handlers.menu
     });
   }
 
