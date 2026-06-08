@@ -1,5 +1,6 @@
 import { clamp, normalize } from '../math/MathUtils.js';
 import { estimateBeachingRiskAtCell } from '../planning/ShorelineRisk.js';
+import { computeHeadingCurrentComponents, currentEnergyMultiplier } from '../planning/CurrentAwareRouteCost.js';
 import { applySeededStochasticDrift } from './StochasticDrift.js';
 
 export function stepAgentToward(agent, target, world, dt, config = {}) {
@@ -84,9 +85,18 @@ export function stepAgentToward(agent, target, world, dt, config = {}) {
   if (!blocked && Math.hypot(vx, vy) > 1e-6) agent.heading = Math.atan2(vy, vx);
   const distance = Math.hypot(agent.x - oldX, agent.y - oldY);
   const depthMultiplier = world.depthEnergyMultiplier?.(agent.x, agent.y) ?? config.depthEnergyMultiplier ?? 1;
-  const baseEnergy = distance * (config.energyPerCell ?? 1);
+  const commandedDistance = commandSpeed * dt;
+  const baseEnergy = commandedDistance * (config.energyPerCell ?? 1);
+  const currentComponents = computeHeadingCurrentComponents({ u: currentX, v: currentY }, { x: nx, y: ny });
+  const currentMultiplier = currentEnergyMultiplier({
+    ...currentComponents,
+    driftGain,
+    shorelineRisk: beachingRisk.value ?? 0,
+    depthPenalty: Math.max(0, Number(depthMultiplier ?? 1) - 1)
+  });
   const shorelineEnergyPenalty = !blocked && distance > 0 ? baseEnergy * Math.max(0, Number(beachingRisk.energyMultiplier ?? 1) - 1) : 0;
-  const energy = baseEnergy * depthMultiplier + shorelineEnergyPenalty;
+  const currentEnergyAdjustment = !blocked && distance > 0 ? baseEnergy * (currentMultiplier - 1) : 0;
+  const energy = Math.max(0, baseEnergy * depthMultiplier * currentMultiplier + shorelineEnergyPenalty);
   agent.energyUsed += energy;
   agent.battery = Math.max(0, agent.battery - energy);
   if (agent.battery <= 0 && distance > 0) agent.status = 'batteryDepleted';
@@ -108,7 +118,13 @@ export function stepAgentToward(agent, target, world, dt, config = {}) {
     blockedCell,
     depthMultiplier,
     baseEnergy,
+    commandedDistance,
     energy,
+    currentEnergyMultiplier: currentMultiplier,
+    currentEnergyAdjustment,
+    alongTrackCurrent: currentComponents.alongTrackCurrent,
+    crossTrackCurrent: currentComponents.crossTrackCurrent,
+    speedOverGround: Math.hypot(vx, vy),
     shorelineEnergyPenalty,
     beachingRisk
   };

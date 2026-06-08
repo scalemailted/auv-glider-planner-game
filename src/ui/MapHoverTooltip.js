@@ -100,8 +100,10 @@ function tooltipHtml(state, info) {
 function currentMetadataRows(current = {}) {
   const risk = current.contributors?.shorelineRisk;
   const topology = current.contributors?.topologyAdjustment;
+  const composite = current.contributors?.topologyComposite;
   return [
     current.source ? `<span>Current source: ${escapeHtml(current.source)} | Confidence: ${escapeHtml(formatHudMetric(current.confidence ?? 1, 2))}</span>` : '',
+    composite ? `<span>Current region: ${escapeHtml(labelize(composite.regionType))} | Behavior: ${escapeHtml(labelize(composite.dominantRegionBehavior))}</span>` : '',
     risk && risk.level && risk.level !== 'none' ? `<span class="${risk.value >= 0.7 ? 'warning' : ''}">Shoreline risk: ${escapeHtml(risk.level)} | Toward land: ${escapeHtml(formatSignedMetric(risk.currentTowardLand, 2))}</span>` : '',
     topology?.topologyAdjusted ? '<span>Topology adjustment: deflected along shore</span>' : ''
   ].filter(Boolean).join('');
@@ -167,6 +169,10 @@ function formatSignedMetric(value, digits = 2) {
   const numeric = Number(value);
   if (!Number.isFinite(numeric)) return 'N/A';
   return `${numeric >= 0 ? '+' : ''}${formatHudMetric(numeric, digits)}`;
+}
+
+function labelize(value) {
+  return String(value ?? '').replace(/([A-Z])/g, ' $1').replace(/[_-]+/g, ' ').replace(/^./, (letter) => letter.toUpperCase());
 }
 
 function createRoot(app) {

@@ -110,7 +110,7 @@ export function validateRoutePlanForExecution({
           from: executionFrom,
           to: segment.to,
           startTime: Number(executionFrom.t ?? segment.from.t ?? waypoint.t ?? 0),
-          travelTime: waypoint.segmentTravelTime ?? waypoint.estimatedTravelTime ?? estimate.distance / Math.max(0.05, Number(agent.maxSpeed ?? 1)),
+          travelTime: waypoint.segmentTravelTime ?? waypoint.estimatedTravelTime ?? estimate.estimatedTravelTime ?? estimate.eta ?? estimate.distance / Math.max(0.05, Number(agent.maxSpeed ?? 1)),
           maxWaypointTravelTime: getMaxWaypointTravelTime(level, waypoint, Number(executionFrom.t ?? segment.from.t ?? waypoint.t ?? 0)),
           fuelRemaining: Number(agent.battery ?? agent.maxBattery ?? mission?.rules?.energyBudget ?? 100) - cumulativeEnergy,
           frame

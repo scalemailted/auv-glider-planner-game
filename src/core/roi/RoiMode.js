@@ -8,6 +8,7 @@ import { isCellNavigable } from '../planning/Navigability.js';
 import { getMobileHazardsAtTime } from '../sim/MobileHazards.js';
 import { clamp } from '../math/MathUtils.js';
 import { sampleCurrentField } from '../currents/CurrentFieldSampler.js';
+import { estimateCurrentAwareSegment } from '../planning/CurrentAwareRouteCost.js';
 
 export const ROI_MODES = ['value', 'probability', 'expectedValue', 'remaining', 'travelCost', 'riskSafety'];
 const DEBUG_TRAVEL_COST = false;
@@ -314,20 +315,27 @@ function estimateTravelCostCell({ level, mission, agent, frame, anchor, x, y, bu
   const clipped = clipLineToTerrain(anchor, target, level, { mission });
   const lineDistance = Math.hypot(Number(x) - Number(anchor.x), Number(y) - Number(anchor.y));
   const distance = lineDistance;
-  const direction = normalizeDirection(Number(x) - Number(anchor.x), Number(y) - Number(anchor.y));
   const baseSpeed = Math.max(0.1, finiteNumber(agent?.maxSpeed ?? agent?.speed ?? mission?.physics?.speed, 1));
   const driftGain = finiteNumber(mission?.rules?.drift?.driftGain ?? mission?.physics?.driftGain, 0.75);
-  const minEffectiveSpeed = baseSpeed * 0.15;
-  const maxEffectiveSpeed = baseSpeed * 2;
-  const current = averageSegmentCurrent(frame, level, anchor, target);
-  const currentMagnitude = Math.hypot(current.u, current.v);
-  const currentAlong = current.u * direction.x + current.v * direction.y;
-  const crossX = current.u - currentAlong * direction.x;
-  const crossY = current.v - currentAlong * direction.y;
-  const currentCross = Math.hypot(crossX, crossY);
-  const rawEffectiveSpeed = baseSpeed + driftGain * currentAlong;
-  const effectiveSpeed = clamp(rawEffectiveSpeed, minEffectiveSpeed, maxEffectiveSpeed);
-  const eta = distance / effectiveSpeed;
+  const routeCost = estimateCurrentAwareSegment({
+    start: anchor,
+    end: target,
+    level,
+    agent,
+    frame,
+    mission,
+    startTime: frame?.t ?? anchor?.t ?? t,
+    driftGain,
+    energyPerCell: finiteNumber(mission?.physics?.energyPerCell ?? mission?.scoring?.energyCostPerDistance ?? mission?.rules?.energyCostPerDistance, 1)
+  });
+  const currentMagnitude = routeCost.currentMagnitude;
+  const currentAlong = routeCost.currentAssist;
+  const currentCross = Math.abs(routeCost.crossCurrent);
+  const rawEffectiveSpeed = routeCost.speedOverGround;
+  const effectiveSpeed = routeCost.effectiveSpeed;
+  const minEffectiveSpeed = routeCost.minEffectiveSpeed;
+  const maxEffectiveSpeed = routeCost.maxEffectiveSpeed;
+  const eta = routeCost.eta;
   const hazardPenalty = finiteNumber(level?.layers?.hazards?.[y]?.[x], 0) > 0 ? 5 : 0;
   const depthPenalty = level?.layers?.depth?.[y]?.[x] !== undefined && Number(level.layers.depth[y][x]) < 0.32 ? 2 : 0;
   const beachingRisk = estimateSegmentBeachingRisk({ level, frame, start: anchor, end: target });
@@ -351,15 +359,12 @@ function estimateTravelCostCell({ level, mission, agent, frame, anchor, x, y, bu
     };
   }
   const beachingPenalty = (Number(beachingRisk.costPenalty ?? 0) + Number(stochasticRisk.value ?? 0) * 4) * Math.max(1, distance);
-  const oppositionScale = finiteNumber(mission?.rules?.travelCost?.oppositionScale, 2);
-  const crossCurrentScale = finiteNumber(mission?.rules?.travelCost?.crossCurrentScale, 0.75);
-  const assistScale = finiteNumber(mission?.rules?.travelCost?.assistScale, 0.8);
-  const energyRate = finiteNumber(mission?.physics?.energyPerCell ?? mission?.scoring?.energyCostPerDistance ?? mission?.rules?.energyCostPerDistance, 1);
-  const crossPenalty = currentCross * crossCurrentScale * distance;
-  const oppositionPenalty = Math.max(0, -currentAlong) * oppositionScale * distance;
-  const assistDiscount = Math.max(0, currentAlong) * assistScale * distance;
-  const baseEnergy = distance * energyRate;
-  const energy = Math.max(0, baseEnergy + hazardPenalty + depthPenalty + beachingPenalty + crossPenalty + oppositionPenalty - assistDiscount);
+  const baseEnergy = routeCost.baseEnergy;
+  const routeEnergyDelta = routeCost.energy - routeCost.baseEnergy;
+  const crossPenalty = Math.max(0, Math.abs(routeCost.crossCurrent) * driftGain * 0.28 * distance);
+  const oppositionPenalty = Math.max(0, -currentAlong) * driftGain * 0.72 * distance;
+  const assistDiscount = Math.max(0, currentAlong) * driftGain * 0.38 * distance;
+  const energy = Math.max(0, routeCost.energy + hazardPenalty + depthPenalty + beachingPenalty);
   const cost = Math.max(0, energy + eta * 0.2);
   const remainingFuel = Number(budget.remainingFuel ?? agent?.battery ?? mission?.rules?.energyBudget ?? Infinity);
   const availableTime = Number(budget.availableTime ?? Infinity);
@@ -396,6 +401,7 @@ function estimateTravelCostCell({ level, mission, agent, frame, anchor, x, y, bu
     hazardPenalty,
     depthPenalty,
     beachingPenalty,
+    routeEnergyDelta,
     beachingRisk,
     stochasticRisk,
     crossPenalty,
@@ -406,15 +412,16 @@ function estimateTravelCostCell({ level, mission, agent, frame, anchor, x, y, bu
     currentCross,
     crossCurrent: currentCross,
     currentMagnitude,
-    currentVector: { u: current.u, v: current.v },
+    currentVector: routeCost.currentVector,
     rawEffectiveSpeed,
     minEffectiveSpeed,
     maxEffectiveSpeed,
     opposingCurrentTooStrong,
-    currentLabel: currentAlignmentLabel(currentAlong, currentCross),
+    currentLabel: routeCost.currentLabel ?? currentAlignmentLabel(currentAlong, currentCross),
     blockedAt: clipped.blockedAt ?? null,
-    movementModel: 'continuous-segment',
+    movementModel: routeCost.movementModel,
     sampledCells: clipped.traversedCells ?? [],
+    sampledPoints: routeCost.sampledPoints,
     message
   };
 }
@@ -454,32 +461,6 @@ function getCachedAnchorReachability({ level = null, mission = null, planningAnc
 function finiteNumber(value, fallback = 0) {
   const numeric = Number(value);
   return Number.isFinite(numeric) ? numeric : fallback;
-}
-
-function normalizeDirection(dx, dy) {
-  const length = Math.hypot(dx, dy);
-  if (!Number.isFinite(length) || length <= 1e-9) return { x: 0, y: 0 };
-  return { x: dx / length, y: dy / length };
-}
-
-function averageSegmentCurrent(frame, level, start, target) {
-  const midpoint = {
-    x: (Number(start.x) + Number(target.x)) / 2,
-    y: (Number(start.y) + Number(target.y)) / 2
-  };
-  const samples = [
-    sampleCurrent(frame, level, start.x, start.y),
-    sampleCurrent(frame, level, midpoint.x, midpoint.y),
-    sampleCurrent(frame, level, target.x, target.y)
-  ];
-  const total = samples.reduce((sum, current) => ({
-    u: sum.u + current.u,
-    v: sum.v + current.v
-  }), { u: 0, v: 0 });
-  return {
-    u: total.u / samples.length,
-    v: total.v / samples.length
-  };
 }
 
 function sampleCurrent(frame, level, x, y) {

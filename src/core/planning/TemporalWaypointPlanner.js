@@ -145,9 +145,8 @@ export function estimateTemporalSegment({
   const dy = Number(to.y) - Number(from.y);
   const distance = Math.hypot(dx, dy);
   const currentAssist = Number(energy.currentAssist ?? 0);
-  const baseSpeed = Math.max(0.05, Number(agent.maxSpeed ?? 1));
-  const effectiveSpeed = clamp(baseSpeed + driftGain * currentAssist, baseSpeed * 0.25, baseSpeed * 1.75);
-  const estimatedTravelTime = distance / effectiveSpeed;
+  const effectiveSpeed = Number(energy.effectiveSpeed ?? energy.speedOverGround ?? agent.maxSpeed ?? 1);
+  const estimatedTravelTime = Number(energy.estimatedTravelTime ?? energy.eta ?? (distance / Math.max(0.05, effectiveSpeed)));
   const warnings = [];
   if (!energy.valid) warnings.push('Segment blocked by land');
   if (currentAssist < -0.18) warnings.push('Strong opposing current');

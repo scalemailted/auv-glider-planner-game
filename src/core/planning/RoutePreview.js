@@ -1,6 +1,6 @@
 import { estimateSegmentBeachingRisk } from './ShorelineRisk.js';
 import { explainSegmentBlockage } from './Navigability.js';
-import { sampleCurrentVector } from '../currents/CurrentFieldSampler.js';
+import { estimateCurrentAwareSegment } from './CurrentAwareRouteCost.js';
 
 export function clipLineToTerrain(start, end, level, { stepsPerCell = 4, mission = null } = {}) {
   void stepsPerCell;
@@ -30,16 +30,23 @@ export function estimateRouteEnergy(start, target, level, agent, frame, {
   const dy = endpoint.y - start.y;
   const lineDistance = Math.hypot(dx, dy);
   const distance = lineDistance;
-  const direction = normalize(dx, dy);
-  const current = sampleCurrent(frame, level, start.x, start.y);
-  const currentAssist = current[0] * direction.x + current[1] * direction.y;
-  const crossCurrent = current[0] * -direction.y + current[1] * direction.x;
-  const alignmentPenalty = Math.max(-0.5, Math.min(0.9, -currentAssist * driftGain));
-  const crossPenalty = Math.min(0.38, Math.abs(crossCurrent) * driftGain * 0.24);
-  const depthPenalty = sampleDepthPenalty(level, endpoint.x, endpoint.y);
+  const segmentCost = estimateCurrentAwareSegment({
+    start,
+    end: endpoint,
+    level,
+    agent,
+    frame,
+    mission,
+    startTime: frame?.t ?? start?.t ?? 0,
+    driftGain,
+    energyPerCell
+  });
+  const currentAssist = segmentCost.currentAssist;
+  const crossCurrent = segmentCost.crossCurrent;
+  const depthPenalty = segmentCost.depthPenalty;
   const beachingRisk = estimateSegmentBeachingRisk({ level, frame, start, end: endpoint });
-  const beachingPenalty = Number(beachingRisk.value ?? 0) * 0.18;
-  const energy = Math.max(0, distance * energyPerCell * (1 + alignmentPenalty + crossPenalty + depthPenalty + beachingPenalty));
+  const beachingPenalty = Math.max(Number(segmentCost.beachingRisk?.value ?? 0), Number(beachingRisk.value ?? 0)) * 0.18;
+  const energy = Math.max(0, segmentCost.energy + distance * energyPerCell * beachingPenalty);
   const budget = Number(agent?.battery ?? 0);
   const notes = [];
   if (!clipped.valid) notes.push('Route blocked by land');
@@ -53,40 +60,30 @@ export function estimateRouteEnergy(start, target, level, agent, frame, {
   return {
     valid: clipped.valid,
     energy,
+    eta: segmentCost.eta,
+    estimatedTravelTime: segmentCost.estimatedTravelTime,
     distance,
     pathDistance: distance,
     currentAssist,
     crossCurrent,
-    energyModifier: 1 + alignmentPenalty + crossPenalty + depthPenalty,
+    alongTrackCurrent: segmentCost.alongTrackCurrent,
+    crossTrackCurrent: segmentCost.crossTrackCurrent,
+    currentMagnitude: segmentCost.currentMagnitude,
+    currentVector: segmentCost.currentVector,
+    effectiveSpeed: segmentCost.effectiveSpeed,
+    speedOverGround: segmentCost.speedOverGround,
+    energyModifier: segmentCost.energyModifier + beachingPenalty,
     depthPenalty,
     beachingRisk,
     beachingPenalty,
     blockedAt: clipped.blockedAt ?? null,
     lastValid: clipped.lastValid,
     reachable: clipped.valid !== false && (!budget || energy <= budget),
-    movementModel: 'continuous-segment',
+    movementModel: segmentCost.movementModel,
     sampledCells: clipped.traversedCells ?? [],
+    sampledPoints: segmentCost.sampledPoints,
     notes
   };
-}
-
-function sampleCurrent(frame, level, x, y) {
-  return sampleCurrentVector({ frame, level, x, y });
-}
-
-function sampleDepthPenalty(level, x, y) {
-  const depth = level?.layers?.depth?.[clampIndex(y, level?.world?.grid?.height ?? 1)]?.[clampIndex(x, level?.world?.grid?.width ?? 1)];
-  if (depth === undefined) return 0;
-  return Number(depth) < 0.32 ? 0.22 : 0;
-}
-
-function normalize(x, y) {
-  const length = Math.hypot(x, y) || 1;
-  return { x: x / length, y: y / length };
-}
-
-function clampIndex(value, max) {
-  return Math.max(0, Math.min(max - 1, Math.floor(value)));
 }
 
 function isFinitePoint(point) {

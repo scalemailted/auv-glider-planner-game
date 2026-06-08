@@ -1080,7 +1080,7 @@ function routeEstimate(state) {
   return {
     distance,
     energyText: hoverPreview
-      ? `${hoverPreview.valid ? hoverPreview.energy.toFixed(1) : 'invalid'} (${hoverPreview.note})`
+      ? `${hoverPreview.valid ? `${hoverPreview.energy.toFixed(1)} · ETA ${Number(hoverPreview.eta ?? hoverPreview.estimatedTravelTime ?? 0).toFixed(1)} hr` : 'invalid'} (${hoverPreview.note})`
       : budget ? `${Math.round(energy)} / ${Math.round(budget)}` : `${Math.round(energy)}`
   };
 }
@@ -1097,7 +1097,7 @@ function hoverEnergyPreview(state, origin, agent) {
   });
   return {
     ...preview,
-    note: preview.notes?.[0] ?? (preview.currentAssist >= 0 ? 'current helpful' : 'against current')
+    note: preview.notes?.[0] ?? preview.currentLabel ?? (preview.currentAssist >= 0 ? 'current helpful' : 'against current')
   };
 }
 
