@@ -27,7 +27,7 @@ export const EXPERIENCE_MODE_DEFAULTS = {
     showExportsProminent: true,
     routeAssistant: false,
     medalsEnabled: false,
-    leaderboardEnabled: false,
+    leaderboardEnabled: true,
     defaultCurrentComplexity: 'medium'
   }
 };

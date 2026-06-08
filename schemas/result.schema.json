@@ -49,6 +49,11 @@
     "generationVersion",
     "generationConfig",
     "missionMode",
+    "leaderboardScope",
+    "scenarioFingerprint",
+    "routeSource",
+    "solverId",
+    "solverLabel",
     "navigationUncertainty",
     "currentFieldConfig",
     "sampleFieldConfig",
@@ -63,6 +68,10 @@
     "objectives"
   ],
   "importedPlanMetadata": "Plan import metadata, validation summary, and fairness flags when the attempt used an imported plan.",
+  "leaderboardScope": "challenge | simulationLab; Challenge Mode records are high-score oriented, Simulation Lab records are benchmark/comparison oriented",
+  "scenarioFingerprint": "stable grouping fingerprint for reproducible generated scenario comparison",
+  "routeSource": "manual | greedyPlanner | externalSolver | importedPlan | savedReplay | unknown",
+  "solverMetadata": "solverId and solverLabel identify external/imported solvers when routeSource is externalSolver or importedPlan",
   "fairness": {
     "usesForecast": "plan declared forecast use",
     "usesTruth": "plan declared hidden truth use",

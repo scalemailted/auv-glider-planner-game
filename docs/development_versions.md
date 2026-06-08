@@ -52,6 +52,7 @@ Challenge Mode also persists `missionMode`. Mission modes are player-facing obje
 - Added `anchor-generator-v1` as the current generator version contract.
 - Added derived seed metadata for namespaces such as terrain, currents, ROI, hazards, depth, targets, forecast, truth, and mission.
 - Added local leaderboard and best-path records with saved plan/result blobs when available.
+- Hardened leaderboard metadata so Challenge Mode and Simulation Lab can share storage while separating high-score and benchmark scopes by `experienceMode` / `leaderboardScope`.
 - Added replay diagnostics that distinguish exact replay via snapshot, exact replay via UUID contract, approximate replay, and unavailable replay.
 
 ### v0.5 - External Solver Templates
@@ -112,6 +113,7 @@ Challenge Mode also persists `missionMode`. Mission modes are player-facing obje
 - Greedy Planner plans only for the selected glider.
 - Route preflight validation is required before Execute and before accepting planner output.
 - Forecast/truth/oracle fairness metadata must be preserved in plans, results, and leaderboard records.
+- Leaderboard attempts should preserve route source, solver labels, fairness labels, and scenario fingerprints for both Challenge Mode high-score comparison and Simulation Lab benchmark comparison.
 
 ## Experimental Concepts
 

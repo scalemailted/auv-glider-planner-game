@@ -1,8 +1,9 @@
 import { formatMetric } from '../core/evaluation/PlanComparison.js';
 import { shortInstanceId } from '../core/identity/GameInstanceId.js';
-import { getBestAttempt, loadLeaderboard } from '../core/storage/LeaderboardStore.js';
+import { fairnessLabel, getBestAttempt, loadLeaderboard, routeSourceLabel } from '../core/storage/LeaderboardStore.js';
 import { evaluateExactReplayAvailability } from '../core/random/ReplaySeedContract.js';
 import { replayDiagnosticsCardHtml } from './ReplayDiagnosticsCard.js';
+import { EXPERIENCE_MODES } from '../core/experience/ExperienceMode.js';
 
 export class CenterLeaderboardView {
   constructor(app, { handlers = {} } = {}) {
@@ -11,7 +12,7 @@ export class CenterLeaderboardView {
     this.root = app?.elements?.overlay?.topHud ?? null;
     this.detailsRoot = app?.elements?.waypointTimelineRoot ?? null;
     this.state = {
-      filter: 'all',
+      filter: 'challenge',
       sort: 'bestScore',
       search: '',
       selectedInstanceId: null
@@ -85,8 +86,8 @@ export class CenterLeaderboardView {
         <header class="leaderboard-browser-header">
           <div>
             <p class="center-kicker">Local Leaderboard</p>
-            <h1>Saved Challenge Records</h1>
-            <p>Browse locally saved challenge attempts, replay saved challenges, inspect saved paths, or export saved data.</p>
+            <h1>${escapeHtml(this.state.filter === 'simulationLab' ? 'Experiment Leaderboard' : 'Challenge Leaderboard')}</h1>
+            <p>${escapeHtml(this.state.filter === 'simulationLab' ? 'Benchmark reproducible lab runs, solver attempts, and saved route comparisons.' : 'Browse high-score challenge attempts, route sources, saved paths, and replayable records.')}</p>
           </div>
           <div class="leaderboard-count">
             <span>${escapeHtml(this.records.length)}</span>
@@ -145,6 +146,10 @@ export class CenterLeaderboardView {
         <div class="leaderboard-detail-block">
           <strong>Settings</strong>
           <span>${escapeHtml(settingsSummary(record))}</span>
+        </div>
+        <div class="leaderboard-detail-block">
+          <strong>Leaderboard Scope</strong>
+          <span>${escapeHtml(scopeLabel(record.leaderboardScope))} | Fingerprint ${escapeHtml(record.scenarioFingerprint ?? 'N/A')}</span>
         </div>
         <div class="leaderboard-detail-block">
           <strong>Saved Data</strong>
@@ -233,6 +238,12 @@ function compareRecords(a, b, board, sort) {
 
 function modeMatches(record, filter) {
   if (!filter || filter === 'all') return true;
+  if (filter === 'challenge') return (record.leaderboardScope ?? record.experienceMode ?? EXPERIENCE_MODES.challenge) === EXPERIENCE_MODES.challenge;
+  if (filter === 'simulationLab') return (record.leaderboardScope ?? record.experienceMode) === EXPERIENCE_MODES.simulationLab;
+  const attempts = record.attempts ?? [];
+  if (filter === 'manual') return attempts.some((attempt) => attempt.routeSource === 'manual');
+  if (filter === 'greedyPlanner') return attempts.some((attempt) => attempt.routeSource === 'greedyPlanner');
+  if (filter === 'externalSolver') return attempts.some((attempt) => attempt.routeSource === 'externalSolver');
   const mode = String(record.challengeMode ?? record.mode ?? '').toLowerCase();
   if (filter === 'deterministic') return mode.includes('perfect') || mode.includes('deterministic');
   if (filter === 'stochastic') return mode.includes('forecast') || mode.includes('stochastic');
@@ -254,7 +265,7 @@ function recordCardHtml(record, best, selectedId) {
           </div>
           <div class="leaderboard-score-line">Best Score: ${escapeHtml(formatMetric(best?.score ?? 'N/A'))} | Attempts: ${escapeHtml(record.attempts?.length ?? 0)}</div>
           <div class="leaderboard-meta-line">Map: ${escapeHtml(formatMapSize(record))} | Duration: ${escapeHtml(formatDuration(record))} | Agents: ${escapeHtml(record.agentCount ?? 'N/A')}</div>
-          <div class="leaderboard-meta-line">Best Route: ${escapeHtml(best?.label ?? 'N/A')} | Last Played: ${escapeHtml(formatDate(record.lastPlayedAt))}</div>
+          <div class="leaderboard-meta-line">Best Route: ${escapeHtml(routeSourceLabel(best?.routeSource, best))} | ${escapeHtml(fairnessLabel(best?.fairness))} | Last Played: ${escapeHtml(formatDate(record.lastPlayedAt))}</div>
           <div class="leaderboard-badge-row">
             ${badges(record, best).map((badge) => `<span>${escapeHtml(badge)}</span>`).join('')}
           </div>
@@ -298,7 +309,7 @@ function attemptRowHtml(record, attempt, best) {
     <li class="leaderboard-attempt-row ${attempt.attemptId === best?.attemptId ? 'best' : ''}">
       <div>
         <strong>${escapeHtml(attempt.label ?? 'Attempt')}</strong>
-        <span>${escapeHtml(formatMetric(attempt.score ?? 0))} | ${escapeHtml(formatDate(attempt.createdAt))}</span>
+        <span>${escapeHtml(formatMetric(attempt.score ?? 0))} | ${escapeHtml(routeSourceLabel(attempt.routeSource, attempt))} | ${escapeHtml(fairnessLabel(attempt.fairness))} | ${escapeHtml(formatDate(attempt.createdAt))}</span>
       </div>
       <button data-delete-attempt="${escapeAttr(attempt.attemptId)}" data-instance="${escapeAttr(record.instanceId)}">Delete</button>
     </li>
@@ -317,12 +328,19 @@ function emptyBrowserHtml() {
 function badges(record, best) {
   return [
     labelMode(record.challengeMode ?? record.mode),
+    scopeLabel(record.leaderboardScope ?? record.experienceMode),
+    best?.routeSource ? routeSourceLabel(best.routeSource, best) : null,
+    best?.fairness ? fairnessLabel(best.fairness) : null,
     best?.plan ? 'saved path' : null,
     best?.pathSummary?.actualPathAvailable ? 'saved execution' : null,
     String(record.challengeMode ?? record.mode ?? '').toLowerCase().includes('forecast') ? 'stochastic' : null,
     record.levelId ? null : 'custom map',
     record.generationConfig ? 'generated map' : null
   ].filter(Boolean);
+}
+
+function scopeLabel(scope) {
+  return scope === EXPERIENCE_MODES.simulationLab ? 'simulation lab' : 'challenge';
 }
 
 function recordCapabilities(record, best, state = null) {

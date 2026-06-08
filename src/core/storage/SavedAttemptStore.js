@@ -1,6 +1,7 @@
 import { buildResultExport } from '../io/ResultExporter.js';
 import { cloneJson } from '../io/ExportVisibility.js';
 import { evaluateExactReplayAvailability, getReplaySeedContract } from '../random/ReplaySeedContract.js';
+import { buildScenarioFingerprint, classifyRouteSource, leaderboardScopeForExperience } from './LeaderboardStore.js';
 
 export const SAVED_ATTEMPT_STORAGE_KEY = 'anchorGliderCommand.savedAttempts.v1';
 
@@ -12,6 +13,8 @@ export function saveAttemptToLocalStore({ level, mission, plan, result, label = 
   const attempt = buildResultExport({ level, mission, plan, result, label });
   const replaySeedContract = getReplaySeedContract({ level, mission, generationConfig: level?.meta?.generationConfig ?? null });
   const exactReplay = evaluateExactReplayAvailability({ level, mission, replaySeedContract });
+  const experienceMode = attempt.experienceMode ?? result?.experienceMode ?? level?.meta?.experienceMode ?? mission?.meta?.experienceMode ?? null;
+  const routeSource = classifyRouteSource(plan, { label, result });
   const store = loadSavedAttempts();
   store.attempts ??= {};
   const key = `${attempt.instanceId ?? 'unknown'}:${result?.leaderboardAttempt?.attemptId ?? attempt.createdAt}`;
@@ -21,8 +24,14 @@ export function saveAttemptToLocalStore({ level, mission, plan, result, label = 
     challengeId: attempt.challengeId ?? attempt.instanceId,
     levelId: attempt.levelId,
     missionId: attempt.missionId,
-    experienceMode: attempt.experienceMode ?? result?.experienceMode ?? level?.meta?.experienceMode ?? mission?.meta?.experienceMode ?? null,
+    experienceMode,
+    leaderboardScope: leaderboardScopeForExperience(experienceMode),
     missionMode: attempt.missionMode ?? result?.missionMode ?? level?.meta?.missionMode ?? mission?.meta?.missionMode ?? level?.meta?.generationConfig?.missionMode ?? null,
+    scenarioFingerprint: buildScenarioFingerprint({ level, mission, result, replaySeedContract }),
+    routeSource,
+    solverId: attempt.solverId ?? null,
+    solverLabel: attempt.solverLabel ?? null,
+    fairness: cloneJson(attempt.fairness ?? null),
     replaySeedAnchor: replaySeedContract?.replaySeedAnchor ?? attempt.instanceId,
     generationVersion: replaySeedContract?.generationVersion ?? null,
     generationConfig: cloneJson(replaySeedContract?.generationConfig ?? level?.meta?.generationConfig ?? null),

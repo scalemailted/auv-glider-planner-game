@@ -2,6 +2,13 @@
 
 Leaderboard records are stored locally in `localStorage` under `anchorGliderCommand.leaderboard.v1`.
 
+Challenge Mode and Simulation Lab use the same leaderboard infrastructure but separate records by `experienceMode` and `leaderboardScope`.
+
+- Challenge Mode is the high-score view: score, stars/objectives, route grade, safety/energy, mission mode, route source, and fairness labels.
+- Simulation Lab is the benchmark-results view: reproducible scenario identity, score, sample value, hazard exposure, fuel/energy, route grade, solver/source labels, and replay metadata.
+
+Attempts can come from manual routes, Greedy Planner, external solvers, imported plans, or saved replays. External solver and oracle/truth-assisted attempts are stored with source/fairness labels rather than hidden inside the manual category.
+
 Each attempt stores the submitted `anchor.plan`, the simulation result, summary metrics, fairness metadata, and a compact `pathSummary`. New results include execution frames and event logs, so Planning can reconstruct the actual path. Older records without frames still work as planned-route overlays.
 
 New records also preserve replay metadata when available: `challengeId`, `replaySeedAnchor`, `generationVersion`, `generationConfig`, `derivedSeeds`, `replaySeedContract`, and `exactReplay`. The UI can summarize this as exact via saved snapshot, exact via UUID seed contract, approximate, or unavailable. Exact replay should not be claimed for older records missing the UUID/config/version contract.

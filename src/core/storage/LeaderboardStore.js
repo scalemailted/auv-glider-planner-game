@@ -1,6 +1,7 @@
 import { createGameInstanceId } from '../identity/GameInstanceId.js';
 import { compareAttempts, normalizeBestAttempt } from './BestAttemptSelector.js';
 import { evaluateExactReplayAvailability, getReplaySeedContract } from '../random/ReplaySeedContract.js';
+import { EXPERIENCE_MODES, normalizeExperienceMode } from '../experience/ExperienceMode.js';
 
 export const LEADERBOARD_STORAGE_KEY = 'anchorGliderCommand.leaderboard.v1';
 const MAX_ATTEMPTS_PER_RECORD = 25;
@@ -49,14 +50,21 @@ export function recordLeaderboardAttempt({ level, mission, plan, result, label =
   const existing = board.records[instanceId] ?? {};
   const replaySeedContract = getReplaySeedContract({ level, mission, generationConfig: level?.meta?.generationConfig ?? existing.generationConfig ?? null });
   const exactReplay = evaluateExactReplayAvailability({ level, mission, replaySeedContract });
+  const experienceMode = resolveExperienceMode({ result, level, mission, existing });
+  const leaderboardScope = leaderboardScopeForExperience(experienceMode);
+  const routeSource = classifyRouteSource(plan, { label, result });
+  const solverMetadata = solverMetadataForPlan(plan, routeSource);
+  const scenarioFingerprint = buildScenarioFingerprint({ level, mission, result, replaySeedContract });
   const record = normalizeRecord({
     ...existing,
     levelId: result?.levelId ?? level?.levelId ?? null,
     instanceId,
     missionId: result?.missionId ?? mission?.missionId ?? null,
     challengeMode: result?.challengeMode ?? level?.challengeMode ?? null,
-    experienceMode: result?.experienceMode ?? level?.meta?.experienceMode ?? mission?.meta?.experienceMode ?? existing.experienceMode ?? null,
+    experienceMode,
+    leaderboardScope,
     missionMode: result?.missionMode ?? level?.meta?.missionMode ?? mission?.meta?.missionMode ?? level?.meta?.generationConfig?.missionMode ?? existing.missionMode ?? null,
+    scenarioFingerprint,
     mode: result?.challengeMode ?? level?.challengeMode ?? existing.mode ?? existing.challengeMode ?? null,
     mapSize: inferMapSize(level) ?? existing.mapSize ?? null,
     durationHours: Number(level?.duration ?? level?.time?.duration ?? existing.durationHours ?? 0) || null,
@@ -80,8 +88,14 @@ export function recordLeaderboardAttempt({ level, mission, plan, result, label =
     createdAt: new Date().toISOString(),
     score: Number(result?.summary?.finalScore ?? result?.summary?.score ?? 0),
     challengeId: instanceId,
-    experienceMode: result?.experienceMode ?? level?.meta?.experienceMode ?? mission?.meta?.experienceMode ?? record.experienceMode ?? null,
+    experienceMode,
+    leaderboardScope,
     missionMode: result?.missionMode ?? level?.meta?.missionMode ?? mission?.meta?.missionMode ?? level?.meta?.generationConfig?.missionMode ?? record.missionMode ?? null,
+    scenarioFingerprint,
+    routeSource,
+    solverId: solverMetadata.solverId,
+    solverLabel: solverMetadata.solverLabel,
+    plannerType: solverMetadata.plannerType,
     replaySeedAnchor: replaySeedContract?.replaySeedAnchor ?? instanceId,
     generationVersion: replaySeedContract?.generationVersion ?? null,
     generationConfig: cloneJson(replaySeedContract?.generationConfig ?? level?.meta?.generationConfig ?? null),
@@ -171,15 +185,22 @@ function normalizeRecord(record = {}) {
   const bestAttempt = attempts.find((attempt) => attempt.attemptId === record.bestAttemptId) ?? attempts[0] ?? null;
   const mapSize = normalizeMapSize(record.mapSize) ?? inferMapSize(level);
   const challengeMode = record.challengeMode ?? record.mode ?? level?.challengeMode ?? bestAttempt?.result?.challengeMode ?? null;
-  const experienceMode = record.experienceMode ?? level?.meta?.experienceMode ?? mission?.meta?.experienceMode ?? bestAttempt?.experienceMode ?? bestAttempt?.result?.experienceMode ?? null;
+  const experienceMode = normalizeExperienceMode(
+    record.experienceMode ?? level?.meta?.experienceMode ?? mission?.meta?.experienceMode ?? bestAttempt?.experienceMode ?? bestAttempt?.result?.experienceMode,
+    EXPERIENCE_MODES.challenge
+  );
+  const leaderboardScope = record.leaderboardScope ?? leaderboardScopeForExperience(experienceMode);
   const missionMode = record.missionMode ?? level?.meta?.missionMode ?? mission?.meta?.missionMode ?? level?.meta?.generationConfig?.missionMode ?? bestAttempt?.missionMode ?? bestAttempt?.result?.missionMode ?? null;
+  const scenarioFingerprint = record.scenarioFingerprint ?? bestAttempt?.scenarioFingerprint ?? buildScenarioFingerprint({ level, mission, result: bestAttempt?.result, replaySeedContract });
   return {
     levelId: record.levelId ?? level?.levelId ?? bestAttempt?.result?.levelId ?? null,
     instanceId,
     missionId: record.missionId ?? mission?.missionId ?? mission?.id ?? bestAttempt?.result?.missionId ?? null,
     challengeMode,
     experienceMode,
+    leaderboardScope,
     missionMode,
+    scenarioFingerprint,
     mode: record.mode ?? challengeMode ?? null,
     mapSize,
     durationHours: Number(record.durationHours ?? level?.duration ?? level?.time?.duration ?? 0) || null,
@@ -209,14 +230,24 @@ function normalizeRecord(record = {}) {
 function normalizeAttempts(attempts = []) {
   return attempts
     .filter((attempt) => attempt && typeof attempt === 'object')
-    .map((attempt, index) => ({
+    .map((attempt, index) => {
+      const routeSource = attempt.routeSource ?? classifyRouteSource(attempt.plan ?? attempt.result?.plan, { label: attempt.label, result: attempt.result });
+      const solverMetadata = solverMetadataForPlan(attempt.plan ?? attempt.result?.plan, routeSource);
+      const experienceMode = normalizeExperienceMode(attempt.experienceMode ?? attempt.result?.experienceMode, EXPERIENCE_MODES.challenge);
+      return {
       attemptId: attempt.attemptId ?? attempt.id ?? `attempt_${index + 1}`,
       createdAt: attempt.createdAt ?? attempt.savedAt ?? null,
       label: attempt.label ?? attempt.plan?.label ?? attempt.result?.source ?? 'Manual Player Plan',
       score: Number(attempt.score ?? attempt.summary?.finalScore ?? attempt.result?.summary?.finalScore ?? 0),
       challengeId: attempt.challengeId ?? attempt.result?.challengeId ?? attempt.result?.instanceId ?? null,
-      experienceMode: attempt.experienceMode ?? attempt.result?.experienceMode ?? null,
+      experienceMode,
+      leaderboardScope: attempt.leaderboardScope ?? leaderboardScopeForExperience(experienceMode),
       missionMode: attempt.missionMode ?? attempt.result?.missionMode ?? attempt.result?.generationConfig?.missionMode ?? null,
+      scenarioFingerprint: attempt.scenarioFingerprint ?? attempt.result?.scenarioFingerprint ?? null,
+      routeSource,
+      solverId: attempt.solverId ?? solverMetadata.solverId,
+      solverLabel: attempt.solverLabel ?? solverMetadata.solverLabel,
+      plannerType: attempt.plannerType ?? solverMetadata.plannerType,
       replaySeedAnchor: attempt.replaySeedAnchor ?? attempt.result?.replaySeedAnchor ?? attempt.result?.replaySeedContract?.replaySeedAnchor ?? null,
       generationVersion: attempt.generationVersion ?? attempt.result?.generationVersion ?? attempt.result?.replaySeedContract?.generationVersion ?? null,
       generationConfig: attempt.generationConfig ?? attempt.result?.generationConfig ?? attempt.result?.replaySeedContract?.generationConfig ?? null,
@@ -229,8 +260,9 @@ function normalizeAttempts(attempts = []) {
       result: attempt.result ?? null,
       summary: attempt.summary ?? attempt.result?.summary ?? {},
       pathSummary: attempt.pathSummary ?? buildPathSummary(attempt.plan ?? attempt.result?.plan, attempt.result),
-      fairness: attempt.fairness ?? fairnessForPlan(attempt.plan)
-    }))
+      fairness: attempt.fairness ?? attempt.result?.fairness ?? fairnessForPlan(attempt.plan)
+    };
+    })
     .map((attempt) => normalizeBestAttempt(attempt))
     .sort(compareAttempts)
     .slice(0, MAX_ATTEMPTS_PER_RECORD);
@@ -293,6 +325,96 @@ function fairnessForPlan(plan) {
     usesOracle: Boolean(planner.usesOracle),
     fairForLeaderboard: !planner.usesOracle && !planner.usesTruth
   };
+}
+
+export function leaderboardScopeForExperience(experienceMode) {
+  return normalizeExperienceMode(experienceMode, EXPERIENCE_MODES.challenge) === EXPERIENCE_MODES.simulationLab
+    ? EXPERIENCE_MODES.simulationLab
+    : EXPERIENCE_MODES.challenge;
+}
+
+export function classifyRouteSource(plan, { label = '', result = null } = {}) {
+  const planner = plan?.planner ?? plan?.meta?.planner ?? result?.planner ?? {};
+  const source = String(plan?.meta?.source ?? result?.source ?? label ?? '').toLowerCase();
+  const type = String(planner?.type ?? '').toLowerCase();
+  const name = String(planner?.name ?? '').toLowerCase();
+  if (source.includes('leaderboard') || source.includes('saved')) return 'savedReplay';
+  if (source.includes('greedy') || type.includes('greedy') || name.includes('greedy')) return 'greedyPlanner';
+  if (type === 'manual' || source.includes('manual')) return 'manual';
+  if (type.includes('importedsolver') || type.includes('solver') || planner?.source === 'external') return 'externalSolver';
+  if (plan?.importMetadata || source.includes('import') || planner?.name || planner?.type) return 'importedPlan';
+  return 'manual';
+}
+
+export function routeSourceLabel(routeSource, attempt = {}) {
+  if (routeSource === 'manual') return 'Manual';
+  if (routeSource === 'greedyPlanner') return 'Greedy Planner';
+  if (routeSource === 'externalSolver') return attempt.solverLabel ? `External Solver: ${attempt.solverLabel}` : 'External Solver';
+  if (routeSource === 'importedPlan') return attempt.solverLabel ? `Imported Plan: ${attempt.solverLabel}` : 'Imported Plan';
+  if (routeSource === 'savedReplay') return 'Saved Replay';
+  return 'Unknown';
+}
+
+export function fairnessLabel(fairness = {}) {
+  if (fairness.usesOracle) return 'Oracle';
+  if (fairness.usesTruth) return 'Truth-assisted';
+  if (fairness.usesForecast) return 'Fair forecast';
+  if (fairness.fairForLeaderboard === false) return 'Non-fair';
+  return 'Fair';
+}
+
+function solverMetadataForPlan(plan, routeSource) {
+  const planner = plan?.planner ?? plan?.meta?.planner ?? {};
+  const solverId = planner.id ?? planner.solverId ?? plan?.meta?.solver ?? null;
+  const solverLabel = planner.label ?? planner.name ?? plan?.meta?.name ?? solverId ?? null;
+  return {
+    solverId,
+    solverLabel: routeSource === 'manual' ? null : solverLabel,
+    plannerType: planner.type ?? null
+  };
+}
+
+function resolveExperienceMode({ result, level, mission, existing } = {}) {
+  return normalizeExperienceMode(
+    result?.experienceMode ?? level?.meta?.experienceMode ?? mission?.meta?.experienceMode ?? existing?.experienceMode,
+    EXPERIENCE_MODES.challenge
+  );
+}
+
+export function buildScenarioFingerprint({ level = null, mission = null, result = null, replaySeedContract = null } = {}) {
+  const generationConfig = replaySeedContract?.generationConfig ?? result?.generationConfig ?? level?.meta?.generationConfig ?? {};
+  const payload = {
+    challengeId: result?.challengeId ?? level?.instanceId ?? replaySeedContract?.challengeId ?? null,
+    replaySeedAnchor: replaySeedContract?.replaySeedAnchor ?? result?.replaySeedAnchor ?? level?.instanceId ?? null,
+    generationVersion: replaySeedContract?.generationVersion ?? result?.generationVersion ?? null,
+    missionMode: result?.missionMode ?? level?.meta?.missionMode ?? mission?.meta?.missionMode ?? generationConfig?.missionMode ?? null,
+    challengeMode: result?.challengeMode ?? level?.challengeMode ?? null,
+    grid: inferMapSize(level),
+    duration: level?.duration ?? level?.time?.duration ?? mission?.duration ?? null,
+    currentFieldConfig: generationConfig?.currentFieldConfig ?? generationConfig?.currentField ?? generationConfig?.currentGenerator ?? null,
+    sampleFieldConfig: generationConfig?.sampleFieldConfig ?? generationConfig?.sampleField ?? null,
+    hazards: {
+      hazardDensity: generationConfig?.hazardDensity,
+      terrainDensity: generationConfig?.terrainDensity,
+      difficulty: generationConfig?.difficulty
+    }
+  };
+  return `scenario-${hashString(stableStringify(payload))}`;
+}
+
+function stableStringify(value) {
+  if (value === null || typeof value !== 'object') return JSON.stringify(value);
+  if (Array.isArray(value)) return `[${value.map(stableStringify).join(',')}]`;
+  return `{${Object.keys(value).sort().map((key) => `${JSON.stringify(key)}:${stableStringify(value[key])}`).join(',')}}`;
+}
+
+function hashString(value) {
+  let hash = 2166136261;
+  for (let i = 0; i < value.length; i += 1) {
+    hash ^= value.charCodeAt(i);
+    hash = Math.imul(hash, 16777619);
+  }
+  return (hash >>> 0).toString(36);
 }
 
 function finiteOrNull(value) {

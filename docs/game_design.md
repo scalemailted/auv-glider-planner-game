@@ -83,7 +83,7 @@ The active top-level modes are:
 - `Stochastic Challenge`: generates a fresh forecast-mode level with hidden truth, visible forecast/ensemble layers, and a default mission, then opens Mission Briefing.
 - `Environment Editor`: opens the visual level editor for terrain, hazards, depth, ROI, bases, agent starts, mission defaults, time frames, and U/V current edits.
 - `Load Level JSON`: imports an exported `anchor.level` through a hidden file bridge, validates/normalizes it, summarizes it in a Phaser panel, and offers deterministic play, stochastic play, or editing. Play choices route through Mission Briefing.
-- `Leaderboard`: opens a main-menu mode where the left Mission Console holds filters/actions, the center viewport is a scrollable saved challenge card browser, and the right panel shows selected-record details, attempts, load, export, delete, and clear actions.
+- `Leaderboard`: opens a main-menu mode where the left Mission Console holds scope/source filters and actions, the center viewport is a scrollable saved challenge/benchmark card browser, and the right panel shows selected-record details, attempts, load, export, delete, and clear actions. Challenge Mode and Simulation Lab share storage infrastructure but are filtered by `leaderboardScope`.
 - Planning Analysis: when prior attempts exist for the same challenge instance, the console exposes the best prior run as a benchmark with ghost-path overlay, rerun, load-as-plan, and export controls. The overlay is muted and never replaces the editable current route unless the player explicitly loads it.
 
 UUIDs and instance IDs remain important metadata for solver packets, plans, results, local saves, and datasets. They are no longer the primary player-facing loading mechanism.
@@ -177,6 +177,14 @@ Campaign levels define bronze, silver, gold, and optional perfect thresholds. De
 The browser session keeps separate result slots for `manual`, `temporalGreedy`, and `importedSolver` plans, with legacy compatibility for older `greedyBaseline` records. Each slot stores the plan, result, and normalized summary. Debrief renders available rows side by side in a Phaser panel and identifies the winner by final score. Comparison metrics include expected value, realized value, energy, static hazards, mobile hazards, depth exposure, risk exposure, forecast regret, completed waypoints, and missed waypoints when available. Missing metrics render as `N/A`.
 
 The comparison block is included in result JSON and after-action Markdown exports. Older static greedy behavior is not exposed as a normal player baseline because it is not useful for temporal missions; Greedy Planner evaluates candidate value at estimated arrival time and includes travel cost and active priority targets. It is documented as a selected-glider baseline in `docs/greedy_planner.md`. It replans after each chosen waypoint, records why it stopped, and may end with a terminal carry-through waypoint beyond mission duration so the route remains commanded until the time limit.
+
+## Leaderboard Scopes
+
+Leaderboards are shared infrastructure, not a separate engine. Every non-tutorial completed run can save an attempt with `experienceMode`, `leaderboardScope`, `scenarioFingerprint`, `routeSource`, solver metadata, fairness metadata, and replay seed metadata. Old records without those fields normalize to Challenge scope and unknown/manual-compatible source labels.
+
+Challenge Mode leaderboards are high-score views. They emphasize score, stars/objectives, medals/grades when available, safety/energy tie breakers, mission mode, difficulty, route source, and fairness. Manual routes, Greedy Planner routes, imported plans, external solvers, and saved replays can all appear, but external/oracle/truth-assisted entries are labeled instead of silently treated as ordinary manual runs.
+
+Simulation Lab leaderboards are benchmark results. They emphasize reproducible scenario identity, score, sample value, objective capture, hazard exposure, fuel/energy, route grade, source/fairness, and solver labels. They are meant to compare manual planning, Greedy Planner, imported benchmark routes, and external solver variants on the same UUID/config/generator-version scenario.
 
 ## Tutorial Guidance
 

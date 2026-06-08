@@ -356,7 +356,12 @@ export class MissionConsole {
   renderLeaderboardControls(state = {}, handlers = {}) {
     if (!this.root) return;
     const filters = [
+      ['challenge', 'Challenge'],
+      ['simulationLab', 'Simulation Lab'],
       ['all', 'All'],
+      ['manual', 'Manual'],
+      ['greedyPlanner', 'Greedy Planner'],
+      ['externalSolver', 'External Solver'],
       ['deterministic', 'Deterministic'],
       ['stochastic', 'Stochastic'],
       ['tutorial', 'Tutorial'],
@@ -371,8 +376,8 @@ export class MissionConsole {
     this.root.innerHTML = `
       <section class="console-header">
         <div class="console-kicker">Local Leaderboard</div>
-        <h1>Challenge Records</h1>
-        <p>Browse saved maps and attempts in the center viewport.</p>
+        <h1>${escapeHtml(state.filter === 'simulationLab' ? 'Benchmark Results' : 'Challenge Records')}</h1>
+        <p>Browse saved attempts by experience mode, route source, and scenario.</p>
       </section>
       <section class="console-section">
         <h2>Filters</h2>

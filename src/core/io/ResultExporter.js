@@ -4,6 +4,11 @@ import { evaluateExactReplayAvailability, getReplaySeedContract } from '../rando
 import { summarizeCurrentFieldConfig } from '../generation/FlowFieldConfig.js';
 import { normalizeExperienceMode } from '../experience/ExperienceMode.js';
 import { normalizeNavigationUncertaintyConfig } from '../navigation/NavigationUncertainty.js';
+import {
+  buildScenarioFingerprint,
+  classifyRouteSource,
+  leaderboardScopeForExperience
+} from '../storage/LeaderboardStore.js';
 
 export function buildResultExport({ level, mission, plan, result, label = 'Manual Player Plan', challenge = null, experienceMode = null } = {}) {
   if (level) ensureLevelIdentity(level);
@@ -20,6 +25,10 @@ export function buildResultExport({ level, mission, plan, result, label = 'Manua
     replaySeedContract
   });
   const resolvedExperienceMode = normalizeExperienceMode(experienceMode ?? result?.experienceMode ?? level?.meta?.experienceMode ?? mission?.meta?.experienceMode ?? challenge?.experienceMode);
+  const leaderboardScope = leaderboardScopeForExperience(resolvedExperienceMode);
+  const routeSource = classifyRouteSource(plan, { label, result });
+  const planner = plan?.planner ?? plan?.meta?.planner ?? null;
+  const scenarioFingerprint = buildScenarioFingerprint({ level, mission, result, replaySeedContract });
   const missionMode = result?.missionMode
     ?? level?.meta?.missionMode
     ?? mission?.meta?.missionMode
@@ -44,6 +53,8 @@ export function buildResultExport({ level, mission, plan, result, label = 'Manua
     missionId: result?.missionId ?? mission?.missionId ?? mission?.id ?? null,
     challengeMode: result?.challengeMode ?? level?.challengeMode ?? null,
     experienceMode: resolvedExperienceMode,
+    leaderboardScope,
+    scenarioFingerprint,
     missionMode,
     missionModePreset: cloneJson(level?.meta?.missionModePreset ?? mission?.meta?.missionModePreset ?? challenge?.missionModePreset ?? level?.meta?.generationConfig?.missionModePreset ?? null),
     replaySeedAnchor: replaySeedContract?.replaySeedAnchor ?? result?.instanceId ?? level?.instanceId ?? null,
@@ -67,9 +78,12 @@ export function buildResultExport({ level, mission, plan, result, label = 'Manua
       reason: exactReplay.reason
     },
     label,
+    routeSource,
+    solverId: planner?.id ?? planner?.solverId ?? plan?.meta?.solver ?? null,
+    solverLabel: routeSource === 'manual' ? null : (planner?.label ?? planner?.name ?? plan?.meta?.name ?? plan?.meta?.solver ?? null),
     executionMode: plan?.executionMode ?? plan?.meta?.executionMode ?? 'openLoop',
     importedPlanMetadata: plan?.importMetadata ?? null,
-    planner: plan?.planner ?? plan?.meta?.planner ?? null,
+    planner,
     fairness: {
       usesForecast: Boolean(plan?.planner?.usesForecast ?? plan?.meta?.planner?.usesForecast),
       usesTruth: Boolean(plan?.planner?.usesTruth ?? plan?.meta?.planner?.usesTruth),

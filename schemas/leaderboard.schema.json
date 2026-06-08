@@ -15,7 +15,14 @@
     "challengeId": "stable challenge UUID / instance id used as replay seed anchor",
     "missionId": "mission id",
     "challengeMode": "deterministic/stochastic/tutorial/custom or internal mode",
+    "experienceMode": "challenge | simulationLab; separates game-facing high-score records from benchmark/experiment records",
+    "leaderboardScope": "challenge | simulationLab; default leaderboard namespace used for filtering and ranking",
     "missionMode": "optional Challenge Mode objective preset id preserved with records and attempts",
+    "scenarioFingerprint": "stable grouping fingerprint derived from challengeId/replaySeedAnchor, generator version, mission mode, generation config, current/sample field config, hazard/terrain config, and duration",
+    "routeSource": "per-attempt source: manual | greedyPlanner | externalSolver | importedPlan | savedReplay | unknown",
+    "solverId": "optional external solver id for imported/external-solver attempts",
+    "solverLabel": "optional display label for imported/external-solver attempts",
+    "fairness": "per-attempt metadata: usesForecast, usesTruth, usesOracle, and fairForLeaderboard. Oracle/truth-assisted attempts are stored but labeled.",
     "replaySeedAnchor": "UUID seed anchor for deterministic regeneration",
     "generationVersion": "generator compatibility version",
     "generationConfig": "config snapshot used with UUID seed anchor",
@@ -31,5 +38,5 @@
     "challengeReference": "importable challenge identity",
     "embeddedChallenge": "optional anchor.challenge data for replay"
   },
-  "notes": "Leaderboard exports are local-browser save artifacts for sharing saved challenges and attempts. They are importable and merge into localStorage."
+  "notes": "Leaderboard exports are local-browser save artifacts for sharing saved challenges and attempts. Challenge Mode and Simulation Lab share storage infrastructure but are filtered by experienceMode/leaderboardScope. They are importable and merge into localStorage."
 }

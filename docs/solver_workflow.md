@@ -10,7 +10,7 @@ Challenge Mode is the playable planning-puzzle experience. It emphasizes score, 
 
 Simulation Lab is the reproducible experiment sandbox. It emphasizes exact configuration, deterministic/stochastic setup, dynamic current-field metadata, solver packets, replay seeds, external solver workflows, JSON import/export, and auditability.
 
-Both modes use the same terrain, current fields, hazards, glider physics, scoring core, route validation, planner APIs, and replay/export system. Solver packet workflows are presented through Simulation Lab by default, but exported plans still run in the same simulator as Challenge Mode.
+Both modes use the same terrain, current fields, hazards, glider physics, scoring core, route validation, planner APIs, and replay/export system. Solver packet workflows are presented through Simulation Lab by default, but exported plans can be imported, validated, simulated, and saved in either Simulation Lab or Challenge Mode.
 
 Solver packets may preserve `experienceMode`, `missionMode`, `missionRules`, `navigationUncertainty`, visible `currentFieldConfig`, visible `sampleFieldConfig`, `waypointSemantics`, replay seed metadata, and generator version metadata. Challenge Mode uses those fields through player-facing presets; Simulation Lab exposes them directly for reproducible experiments.
 
@@ -68,6 +68,8 @@ The default notebook planner metadata is:
 ```
 
 Oracle mode is for benchmarking/research only. Do not compare oracle-assisted plans as fair leaderboard entries.
+
+External solver entries are allowed in Challenge Mode. The leaderboard records `routeSource`, solver id/label when available, and fairness metadata, so a Challenge Mode table can compare Manual, Greedy Planner, External Solver, Imported Plan, and Saved Replay attempts without hiding how each route was produced. Oracle or hidden-truth assisted plans may be stored, but they are labeled as Oracle or Truth-assisted and should not be interpreted as fair forecast-visible competition.
 
 Surface-update replanning is scaffolded as the same file contract:
 

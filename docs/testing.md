@@ -54,6 +54,15 @@ Manual sample-field checks should cover:
 
 ## Core Development Checks
 
+Leaderboard checks should cover:
+
+- Challenge Mode attempts save with `experienceMode: "challenge"` and `leaderboardScope: "challenge"`;
+- Simulation Lab attempts save with `experienceMode: "simulationLab"` and `leaderboardScope: "simulationLab"`;
+- manual, Greedy Planner, external solver, imported plan, and saved replay attempts display route-source labels;
+- truth/oracle-assisted imported plans display fairness labels and do not look like unlabeled fair manual runs;
+- old leaderboard records without scope/source metadata still load and default to Challenge scope;
+- scenario fingerprints remain stable for the same UUID/config/generator-version benchmark.
+
 After JavaScript changes, run:
 
 ```bash
