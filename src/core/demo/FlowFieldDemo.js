@@ -5,11 +5,14 @@ import { getVectorPresetConfig } from '../generation/VectorFieldPresets.js';
 const TAU = Math.PI * 2;
 const DEFAULT_TRAIL_LIMIT = 44;
 const MAX_DEMO_MAGNITUDE = 1.35;
-const DEMO_EVOLUTION_PERIOD_SECONDS = 12;
 export const FLOW_DEMO_FIELD_DURATION_HOURS = 24;
 export const FLOW_DEMO_GRID = { width: 18, height: 12 };
 export const FLOW_DEMO_FIELD_MODES = ['static', 'dynamic'];
 export const FLOW_DEMO_EVOLUTION_SPEEDS = [0.25, 0.5, 1, 2, 5, 10];
+export const FLOW_DEMO_EVOLUTION_BEHAVIORS = ['continuous', 'looping', 'pulse', 'translating'];
+export const FLOW_DEMO_CYCLE_DURATIONS = [15, 30, 60, 120];
+export const FLOW_DEMO_SPATIAL_MOTIONS = ['none', 'driftEast', 'driftWest', 'driftNorth', 'driftSouth', 'circularDrift', 'meander'];
+export const FLOW_DEMO_SPATIAL_MOTION_SPEEDS = [0.25, 0.5, 1, 2];
 export const FLOW_DEMO_VARIATION_LEVELS = ['off', 'low', 'medium', 'high'];
 export const FLOW_DEMO_EVOLUTION_PATTERNS = ['tidalCycle', 'meanderingJet', 'eddyDrift', 'stormPulse', 'composite'];
 export const FLOW_DEMO_MAGNITUDE_SCALES = [0.5, 1, 1.5, 2];
@@ -68,18 +71,23 @@ export function sampleComposedDemoFlow({
   primaryPreset = null,
   additiveLayers = [],
   terrain = null,
+  evolutionBehavior = 'continuous',
+  cycleDuration = 60,
   directionVariation = 'medium',
   magnitudeVariation = 'medium',
-  evolutionPattern = 'composite'
+  evolutionPattern = 'composite',
+  spatialMotion = 'none',
+  spatialMotionSpeed = 1
 } = {}) {
   const mode = normalizeFieldMode(fieldMode);
-  const evolution = normalizeEvolutionControls({ directionVariation, magnitudeVariation, evolutionPattern });
+  const evolution = normalizeEvolutionControls({ evolutionBehavior, cycleDuration, directionVariation, magnitudeVariation, evolutionPattern, spatialMotion, spatialMotionSpeed });
   const base = sampleSingleDemoFlow({ fieldMode: mode, x, y, time, preset: primaryPreset, terrain, evolution });
   const layers = normalizeAdditiveLayers(additiveLayers);
   const enabledLayers = layers
     .filter((layer) => layer.enabled && layer.preset && layer.weight > 0)
     .map((layer) => {
       const influenceScale = layerInfluenceAt(layer, x, y);
+      const layerEvolution = normalizeEvolutionControls({ ...evolution, ...(layer.evolution ?? {}), ...layer });
       const sample = sampleSingleDemoFlow({
         fieldMode: mode,
         x,
@@ -87,9 +95,9 @@ export function sampleComposedDemoFlow({
         time,
         preset: layer.preset,
         terrain,
-        evolution
+        evolution: layerEvolution
       });
-      return { ...layer, influenceScale, sample };
+      return { ...layer, evolution: layerEvolution, influenceScale, sample };
     })
     .filter((layer) => layer.influenceScale > 0);
   const combined = enabledLayers.reduce((sum, layer) => ({
@@ -110,7 +118,12 @@ export function sampleComposedDemoFlow({
     layers: enabledLayers.map(({ sample, ...layer }) => ({
       ...layer,
       presetLabel: sample.presetLabel,
-      vector: { u: sample.u, v: sample.v, magnitude: Math.hypot(sample.u, sample.v) }
+      vector: {
+        u: sample.u,
+        v: sample.v,
+        magnitude: Math.hypot(sample.u, sample.v),
+        spatialOffset: sample.contributors?.demoEvolution?.spatialOffset ?? null
+      }
     })),
     timeVarying: mode !== 'static',
     evolution,
@@ -122,10 +135,17 @@ function sampleSingleDemoFlow({ fieldMode = 'static', x = 0, y = 0, time = 0, pr
   const presetConfig = getFlowDemoPresetConfig(fieldMode, preset);
   const mode = normalizeFieldMode(fieldMode);
   const rawTime = Number(time) || 0;
-  const sampleTime = mode === 'static' ? 0 : rawTime;
+  const sampleTime = mode === 'static'
+    ? 0
+    : evolution.evolutionBehavior === 'looping'
+      ? positiveModulo(rawTime, evolution.cycleDuration)
+      : rawTime;
+  const spatialOffset = mode === 'dynamic' ? spatialOffsetForEvolution(evolution, rawTime, presetConfig.preset) : { x: 0, y: 0 };
+  const sampleX = wrap01(Number(x) - spatialOffset.x);
+  const sampleY = wrap01(Number(y) - spatialOffset.y);
   const sample = sampleCurrentField({
-    x,
-    y,
+    x: sampleX,
+    y: sampleY,
     time: sampleTime,
     grid: FLOW_DEMO_GRID,
     coordinates: CURRENT_COORDINATES.NORMALIZED,
@@ -138,7 +158,8 @@ function sampleSingleDemoFlow({ fieldMode = 'static', x = 0, y = 0, time = 0, pr
         y,
         time: rawTime,
         preset: presetConfig.preset,
-        evolution
+        evolution,
+        spatialOffset
       })
     : sample;
   return {
@@ -251,15 +272,31 @@ export function normalizeEvolutionPattern(value = 'composite') {
   return FLOW_DEMO_EVOLUTION_PATTERNS.includes(value) ? value : 'composite';
 }
 
+export function normalizeEvolutionBehavior(value = 'continuous') {
+  return FLOW_DEMO_EVOLUTION_BEHAVIORS.includes(value) ? value : 'continuous';
+}
+
+export function normalizeSpatialMotion(value = 'none') {
+  return FLOW_DEMO_SPATIAL_MOTIONS.includes(value) ? value : 'none';
+}
+
 export function normalizeEvolutionControls({
+  evolutionBehavior = 'continuous',
+  cycleDuration = 60,
   directionVariation = 'medium',
   magnitudeVariation = 'medium',
-  evolutionPattern = 'composite'
+  evolutionPattern = 'composite',
+  spatialMotion = 'none',
+  spatialMotionSpeed = 1
 } = {}) {
   return {
+    evolutionBehavior: normalizeEvolutionBehavior(evolutionBehavior),
+    cycleDuration: normalizeCycleDuration(cycleDuration),
     directionVariation: normalizeVariationLevel(directionVariation),
     magnitudeVariation: normalizeVariationLevel(magnitudeVariation),
-    evolutionPattern: normalizeEvolutionPattern(evolutionPattern)
+    evolutionPattern: normalizeEvolutionPattern(evolutionPattern),
+    spatialMotion: normalizeSpatialMotion(spatialMotion),
+    spatialMotionSpeed: normalizeSpatialMotionSpeed(spatialMotionSpeed)
   };
 }
 
@@ -279,6 +316,13 @@ export function normalizeAdditiveLayers(layers = FLOW_DEMO_DEFAULT_LAYERS) {
       weight: clampLayerWeight(layer?.weight ?? 0.5),
       enabled: layer?.enabled !== false,
       influence: FLOW_DEMO_LAYER_INFLUENCES.includes(layer?.influence) ? layer.influence : 'global',
+      evolutionBehavior: normalizeEvolutionBehavior(layer?.evolutionBehavior ?? layer?.evolution?.evolutionBehavior ?? 'continuous'),
+      cycleDuration: normalizeCycleDuration(layer?.cycleDuration ?? layer?.evolution?.cycleDuration ?? 60),
+      directionVariation: normalizeVariationLevel(layer?.directionVariation ?? layer?.evolution?.directionVariation ?? 'medium'),
+      magnitudeVariation: normalizeVariationLevel(layer?.magnitudeVariation ?? layer?.evolution?.magnitudeVariation ?? 'medium'),
+      evolutionPattern: normalizeEvolutionPattern(layer?.evolutionPattern ?? layer?.evolution?.evolutionPattern ?? 'composite'),
+      spatialMotion: normalizeSpatialMotion(layer?.spatialMotion ?? layer?.evolution?.spatialMotion ?? 'none'),
+      spatialMotionSpeed: normalizeSpatialMotionSpeed(layer?.spatialMotionSpeed ?? layer?.evolution?.spatialMotionSpeed ?? 1),
       pocket: layer?.pocket ?? defaultPocket(index),
       partition: layer?.partition ?? defaultPartition(index)
     };
@@ -294,6 +338,13 @@ export function createDefaultFlowLayer(existingLayers = [], basePreset = FLOW_DE
     weight: 0.5,
     enabled: true,
     influence: 'global',
+    evolutionBehavior: 'continuous',
+    cycleDuration: 60,
+    directionVariation: 'medium',
+    magnitudeVariation: 'medium',
+    evolutionPattern: 'composite',
+    spatialMotion: 'none',
+    spatialMotionSpeed: 1,
     pocket: defaultPocket(layers.length),
     partition: defaultPartition(layers.length)
   };
@@ -328,28 +379,121 @@ function clamp01(value) {
   return Math.max(0, Math.min(1, Number(value) || 0));
 }
 
+function wrap01(value) {
+  const number = Number(value) || 0;
+  return ((number % 1) + 1) % 1;
+}
+
+function positiveModulo(value, modulus) {
+  const number = Number(value) || 0;
+  const base = Math.max(1, Number(modulus) || 1);
+  return ((number % base) + base) % base;
+}
+
 function clampLayerWeight(value) {
   return Math.max(0, Math.min(2, Number(value) || 0));
 }
 
-function applyDynamicEvolution(sample, { x = 0, y = 0, time = 0, preset = 'uniformDrift', evolution = normalizeEvolutionControls() } = {}) {
+function normalizeCycleDuration(value) {
+  const number = Number(value);
+  if (!Number.isFinite(number)) return 60;
+  return FLOW_DEMO_CYCLE_DURATIONS.includes(number) ? number : Math.max(5, Math.min(300, number));
+}
+
+function normalizeSpatialMotionSpeed(value) {
+  const number = Number(value);
+  if (!Number.isFinite(number)) return 1;
+  return FLOW_DEMO_SPATIAL_MOTION_SPEEDS.includes(number) ? number : Math.max(0.1, Math.min(4, number));
+}
+
+function evolutionTimeContext(evolution, time, preset) {
+  const seed = presetPhaseOffset(`${preset}:${evolution.evolutionBehavior}:${evolution.evolutionPattern}`);
+  if (evolution.evolutionBehavior === 'looping') {
+    const cycle = Math.max(1, Number(evolution.cycleDuration) || 60);
+    const phase = ((time / cycle) % 1) * TAU + seed;
+    return {
+      phaseA: phase,
+      phaseB: phase + seed * 0.37,
+      phaseC: phase + seed * 0.61,
+      phaseD: phase + seed * 0.83,
+      envelope: 1
+    };
+  }
+  if (evolution.evolutionBehavior === 'pulse') {
+    const center = Math.max(2, Number(evolution.cycleDuration) || 60) * 0.42;
+    const width = Math.max(2, center * 0.38);
+    const envelope = Math.exp(-(((time - center) ** 2) / (2 * width ** 2)));
+    return {
+      phaseA: time * 0.48 + seed,
+      phaseB: time * 0.31 + seed * 0.57,
+      phaseC: time * 0.22 + seed * 0.79,
+      phaseD: time * 0.63 + seed * 1.13,
+      envelope
+    };
+  }
+  if (evolution.evolutionBehavior === 'translating') {
+    return {
+      phaseA: time * 0.34 + seed,
+      phaseB: time * 0.21 + seed * 0.43,
+      phaseC: time * 0.13 + seed * 0.71,
+      phaseD: time * 0.47 + seed * 0.97,
+      envelope: 1
+    };
+  }
+  return {
+    phaseA: time * 0.17 + seed,
+    phaseB: time * 0.031 + seed * 0.47,
+    phaseC: time * 0.073 + seed * 0.73,
+    phaseD: time * 0.113 + seed * 1.11,
+    envelope: 1
+  };
+}
+
+function spatialOffsetForEvolution(evolution, time, preset) {
+  const behavior = evolution.evolutionBehavior;
+  const effectiveTime = behavior === 'looping' ? positiveModulo(time, evolution.cycleDuration) : time;
+  const motion = behavior === 'translating' && evolution.spatialMotion === 'none'
+    ? 'meander'
+    : evolution.spatialMotion;
+  if (motion === 'none') return { x: 0, y: 0 };
+  const speed = Number(evolution.spatialMotionSpeed) || 1;
+  const phase = effectiveTime * 0.045 * speed + presetPhaseOffset(`${preset}:${motion}`);
+  const drift = Math.min(0.42, 0.08 + speed * 0.08);
+  if (motion === 'driftEast') return { x: wrap01(effectiveTime * 0.018 * speed), y: 0 };
+  if (motion === 'driftWest') return { x: -wrap01(effectiveTime * 0.018 * speed), y: 0 };
+  if (motion === 'driftNorth') return { x: 0, y: -wrap01(effectiveTime * 0.018 * speed) };
+  if (motion === 'driftSouth') return { x: 0, y: wrap01(effectiveTime * 0.018 * speed) };
+  if (motion === 'circularDrift') {
+    return {
+      x: drift * Math.sin(phase),
+      y: drift * Math.cos(phase * 0.83)
+    };
+  }
+  return {
+    x: drift * Math.sin(phase) + 0.12 * Math.sin(phase * 0.31),
+    y: drift * 0.72 * Math.cos(phase * 0.77) + 0.08 * Math.sin(phase * 0.19)
+  };
+}
+
+function applyDynamicEvolution(sample, { x = 0, y = 0, time = 0, preset = 'uniformDrift', evolution = normalizeEvolutionControls(), spatialOffset = { x: 0, y: 0 } } = {}) {
   const directionAmp = directionVariationAmplitude(evolution.directionVariation);
   const magnitudeAmp = magnitudeVariationAmplitude(evolution.magnitudeVariation);
   if (directionAmp <= 0 && magnitudeAmp <= 0) return sample;
 
   const nx = clamp01(x);
   const ny = clamp01(y);
-  const phase = (Number(time) / DEMO_EVOLUTION_PERIOD_SECONDS) * TAU;
-  const terms = dynamicEvolutionTerms(evolution.evolutionPattern, nx, ny, phase, preset);
+  const context = evolutionTimeContext(evolution, Number(time) || 0, preset);
+  const terms = dynamicEvolutionTerms(evolution.evolutionPattern, nx, ny, context, preset);
+  const pulseEnvelope = evolution.evolutionBehavior === 'pulse' ? context.envelope : 1;
   const structuralU = (0.1 + directionAmp * 0.13) * terms.u + magnitudeAmp * 0.05 * terms.magnitudeU;
   const structuralV = (0.1 + directionAmp * 0.13) * terms.v + magnitudeAmp * 0.05 * terms.magnitudeV;
   const mixedU = sample.u + structuralU;
   const mixedV = sample.v + structuralV;
   const baseMagnitude = Math.hypot(mixedU, mixedV);
   const baseAngle = baseMagnitude > 1e-9 ? Math.atan2(mixedV, mixedU) : terms.fallbackAngle;
-  const angle = baseAngle + directionAmp * terms.direction;
-  const multiplier = Math.max(0.05, 1 + magnitudeAmp * terms.magnitude);
-  const spatialBoost = magnitudeAmp > 0 ? 1 + magnitudeAmp * 0.22 * terms.spatialMagnitude : 1;
+  const angle = baseAngle + directionAmp * terms.direction * pulseEnvelope;
+  const multiplier = Math.max(0.05, 1 + magnitudeAmp * terms.magnitude * pulseEnvelope);
+  const spatialBoost = magnitudeAmp > 0 ? 1 + magnitudeAmp * 0.22 * terms.spatialMagnitude * pulseEnvelope : 1;
   const magnitude = baseMagnitude * multiplier * spatialBoost;
 
   return {
@@ -364,26 +508,32 @@ function applyDynamicEvolution(sample, { x = 0, y = 0, time = 0, preset = 'unifo
         pattern: evolution.evolutionPattern,
         directionVariation: evolution.directionVariation,
         magnitudeVariation: evolution.magnitudeVariation,
+        cycleDuration: evolution.cycleDuration,
+        spatialMotion: evolution.spatialMotion,
+        spatialMotionSpeed: evolution.spatialMotionSpeed,
         directionOffset: directionAmp * terms.direction,
         magnitudeMultiplier: multiplier * spatialBoost,
         structuralVector: { u: structuralU, v: structuralV },
+        spatialOffset,
+        pulseEnvelope,
         continuousTime: Number(time) || 0
       }
     }
   };
 }
 
-function dynamicEvolutionTerms(pattern, x, y, phase, preset) {
+function dynamicEvolutionTerms(pattern, x, y, context, preset) {
+  const phase = context.phaseA;
   if (pattern === 'tidalCycle') return tidalCycleTerms(x, y, phase, preset);
   if (pattern === 'meanderingJet') return meanderingJetTerms(x, y, phase, preset);
   if (pattern === 'eddyDrift') return eddyDriftTerms(x, y, phase, preset);
   if (pattern === 'stormPulse') return stormPulseTerms(x, y, phase, preset);
   const tide = tidalCycleTerms(x, y, phase, preset);
-  const jet = meanderingJetTerms(x, y, phase, preset);
-  const eddy = eddyDriftTerms(x, y, phase, preset);
-  const storm = stormPulseTerms(x, y, phase, preset);
-  const broadDirection = Math.sin(phase * 0.92 + x * TAU * 0.55) + 0.45 * Math.cos(phase * 0.58 + y * TAU);
-  const broadMagnitude = Math.cos(phase * 1.08 + y * TAU * 0.72) + 0.35 * Math.sin(phase * 0.7 + x * TAU);
+  const jet = meanderingJetTerms(x, y, context.phaseB, preset);
+  const eddy = eddyDriftTerms(x, y, context.phaseC, preset);
+  const storm = stormPulseTerms(x, y, context.phaseD, preset);
+  const broadDirection = Math.sin(context.phaseA * 0.92 + x * TAU * 0.55) + 0.45 * Math.cos(context.phaseB * 0.58 + y * TAU);
+  const broadMagnitude = Math.cos(context.phaseC * 1.08 + y * TAU * 0.72) + 0.35 * Math.sin(context.phaseA * 0.7 + x * TAU);
   return {
     direction: 0.42 * broadDirection + 0.32 * tide.direction + 0.24 * jet.direction + 0.2 * eddy.direction + 0.12 * storm.direction,
     magnitude: 0.48 * broadMagnitude + 0.28 * tide.magnitude + 0.22 * jet.magnitude + 0.18 * eddy.magnitude + 0.2 * storm.magnitude,

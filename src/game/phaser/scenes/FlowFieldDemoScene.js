@@ -12,7 +12,9 @@ import {
   normalizeEvolutionControls,
   normalizeTerrainMode,
   normalizeFieldMode,
+  normalizeEvolutionBehavior,
   normalizeEvolutionPattern,
+  normalizeSpatialMotion,
   normalizeVariationLevel,
   sampleDemoFlow,
   summarizeDemoFlowMagnitudes
@@ -33,9 +35,13 @@ export class FlowFieldDemoScene extends PhaserScene {
     this.terrainSeed = 'anchor-demo-1';
     this.terrain = createDemoTerrain({ mode: 'none', seed: this.terrainSeed });
     this.evolutionSpeedScale = 1;
+    this.evolutionBehavior = 'continuous';
+    this.cycleDuration = 60;
     this.directionVariation = 'medium';
     this.magnitudeVariation = 'medium';
     this.evolutionPattern = 'composite';
+    this.spatialMotion = 'none';
+    this.spatialMotionSpeed = 1;
     this.magnitudeScale = 1.5;
     this.particleSpeedScale = 1;
     this.demoTime = 0;
@@ -52,9 +58,13 @@ export class FlowFieldDemoScene extends PhaserScene {
     this.terrainSeed = data.terrainSeed ?? 'anchor-demo-1';
     this.terrain = createDemoTerrain({ mode: this.terrainMode, seed: this.terrainSeed });
     this.evolutionSpeedScale = finiteNumber(data.evolutionSpeedScale ?? data.timeSpeedScale, 1);
+    this.evolutionBehavior = normalizeEvolutionBehavior(data.evolutionBehavior ?? 'continuous');
+    this.cycleDuration = finiteNumber(data.cycleDuration, 60);
     this.directionVariation = normalizeVariationLevel(data.directionVariation ?? 'medium');
     this.magnitudeVariation = normalizeVariationLevel(data.magnitudeVariation ?? 'medium');
     this.evolutionPattern = normalizeEvolutionPattern(data.evolutionPattern ?? 'composite');
+    this.spatialMotion = normalizeSpatialMotion(data.spatialMotion ?? 'none');
+    this.spatialMotionSpeed = finiteNumber(data.spatialMotionSpeed, 1);
     this.magnitudeScale = finiteNumber(data.magnitudeScale, 1.5);
     this.particleSpeedScale = finiteNumber(data.particleSpeedScale, 1);
     this.demoTime = 0;
@@ -130,9 +140,13 @@ export class FlowFieldDemoScene extends PhaserScene {
       terrainMode: this.terrainMode,
       terrainSeed: this.terrainSeed,
       evolutionSpeedScale: this.evolutionSpeedScale,
+      evolutionBehavior: this.evolutionBehavior,
+      cycleDuration: this.cycleDuration,
       directionVariation: this.directionVariation,
       magnitudeVariation: this.magnitudeVariation,
       evolutionPattern: this.evolutionPattern,
+      spatialMotion: this.spatialMotion,
+      spatialMotionSpeed: this.spatialMotionSpeed,
       magnitudeScale: this.magnitudeScale,
       particleSpeedScale: this.particleSpeedScale,
       magnitudeStats: summarizeDemoFlowMagnitudes(this.fieldConfig(), this.demoTime),
@@ -161,6 +175,14 @@ export class FlowFieldDemoScene extends PhaserScene {
         this.evolutionSpeedScale = Number(evolutionSpeedScale) || 1;
         this.renderConsole();
       },
+      evolutionBehavior: (evolutionBehavior) => {
+        this.evolutionBehavior = normalizeEvolutionBehavior(evolutionBehavior);
+        this.renderConsole();
+      },
+      cycleDuration: (cycleDuration) => {
+        this.cycleDuration = finiteNumber(cycleDuration, 60);
+        this.renderConsole();
+      },
       directionVariation: (directionVariation) => {
         this.directionVariation = normalizeVariationLevel(directionVariation);
         this.renderConsole();
@@ -171,6 +193,14 @@ export class FlowFieldDemoScene extends PhaserScene {
       },
       evolutionPattern: (evolutionPattern) => {
         this.evolutionPattern = normalizeEvolutionPattern(evolutionPattern);
+        this.renderConsole();
+      },
+      spatialMotion: (spatialMotion) => {
+        this.spatialMotion = normalizeSpatialMotion(spatialMotion);
+        this.renderConsole();
+      },
+      spatialMotionSpeed: (spatialMotionSpeed) => {
+        this.spatialMotionSpeed = finiteNumber(spatialMotionSpeed, 1);
         this.renderConsole();
       },
       magnitudeScale: (magnitudeScale) => {
@@ -199,7 +229,11 @@ export class FlowFieldDemoScene extends PhaserScene {
       ...normalizeEvolutionControls({
         directionVariation: this.directionVariation,
         magnitudeVariation: this.magnitudeVariation,
-        evolutionPattern: this.evolutionPattern
+        evolutionPattern: this.evolutionPattern,
+        evolutionBehavior: this.evolutionBehavior,
+        cycleDuration: this.cycleDuration,
+        spatialMotion: this.spatialMotion,
+        spatialMotionSpeed: this.spatialMotionSpeed
       })
     };
   }
@@ -212,9 +246,13 @@ export class FlowFieldDemoScene extends PhaserScene {
       terrainMode: this.terrainMode,
       terrainSeed: this.terrainSeed,
       evolutionSpeedScale: this.evolutionSpeedScale,
+      evolutionBehavior: this.evolutionBehavior,
+      cycleDuration: this.cycleDuration,
       directionVariation: this.directionVariation,
       magnitudeVariation: this.magnitudeVariation,
       evolutionPattern: this.evolutionPattern,
+      spatialMotion: this.spatialMotion,
+      spatialMotionSpeed: this.spatialMotionSpeed,
       magnitudeScale: this.magnitudeScale,
       particleSpeedScale: this.particleSpeedScale
     };
@@ -432,7 +470,7 @@ export class FlowFieldDemoScene extends PhaserScene {
     const centerSample = sampleDemoFlow({ ...this.fieldConfig(), x: 0.5, y: 0.5, time: this.demoTime });
     const stats = summarizeDemoFlowMagnitudes(this.fieldConfig(), this.demoTime);
     const evolutionText = this.fieldMode === 'dynamic'
-      ? ` | Direction: ${variationLabel(this.directionVariation)} | Magnitude: ${variationLabel(this.magnitudeVariation)} | Pattern: ${evolutionPatternLabel(this.evolutionPattern)}`
+      ? ` | Evolution: ${evolutionBehaviorLabel(this.evolutionBehavior)}${this.evolutionBehavior === 'looping' ? ` ${this.cycleDuration}s` : ''} | Spatial: ${spatialMotionLabel(this.spatialMotion)} | Direction: ${variationLabel(this.directionVariation)} | Magnitude: ${variationLabel(this.magnitudeVariation)} | Pattern: ${evolutionPatternLabel(this.evolutionPattern)}`
       : '';
     const modePrefix = this.fieldMode === 'dynamic' ? 'Continuous F(x,y,t)' : 'Fixed F(x,y,0)';
     this.statusText?.setText(`${modePrefix} | Mode: ${fieldModeLabel(this.fieldMode)} | Base Flow Field: ${preset?.label ?? 'Current Field'}${layerText}${evolutionText} | Demo Time: ${this.demoTime.toFixed(1)} | Evolution Speed: ${this.evolutionSpeedScale}x | Particle Speed: ${this.particleSpeedScale}x | Magnitude Scale: ${this.magnitudeScale}x | Mag min/mean/max: ${stats.min.toFixed(2)} / ${stats.mean.toFixed(2)} / ${stats.max.toFixed(2)} | Sample: (${centerSample.u.toFixed(2)}, ${centerSample.v.toFixed(2)}) mag ${Math.hypot(centerSample.u, centerSample.v).toFixed(2)} | Terrain: ${terrainModeLabel(this.terrainMode)}`);
@@ -477,6 +515,10 @@ export class FlowFieldDemoScene extends PhaserScene {
       layers: this.additiveLayers,
       demoTime: Number(this.demoTime.toFixed(2)),
       evolutionSpeed: this.evolutionSpeedScale,
+      evolutionBehavior: this.evolutionBehavior,
+      cycleDuration: this.cycleDuration,
+      spatialMotion: this.spatialMotion,
+      spatialMotionSpeed: this.spatialMotionSpeed,
       particleSpeed: this.particleSpeedScale,
       magnitudeScale: this.magnitudeScale,
       directionVariation: this.directionVariation,
@@ -496,6 +538,9 @@ export class FlowFieldDemoScene extends PhaserScene {
       t0: Number(this.demoTime.toFixed(2)),
       t1: Number((this.demoTime + 1).toFixed(2)),
       evolutionSpeed: this.evolutionSpeedScale,
+      evolutionBehavior: this.evolutionBehavior,
+      cycleDuration: this.cycleDuration,
+      spatialMotion: this.spatialMotion,
       particleSpeed: this.particleSpeedScale,
       magnitudeScale: this.magnitudeScale,
       directionVariation: this.directionVariation,
@@ -518,6 +563,9 @@ export class FlowFieldDemoScene extends PhaserScene {
       mode: this.fieldMode,
       demoTime: Number(this.demoTime.toFixed(3)),
       evolutionSpeed: this.evolutionSpeedScale,
+      evolutionBehavior: this.evolutionBehavior,
+      cycleDuration: this.cycleDuration,
+      spatialMotion: this.spatialMotion,
       particleSpeed: this.particleSpeedScale,
       magnitudeScale: this.magnitudeScale,
       point: { x: 0.5, y: 0.5 },
@@ -536,6 +584,22 @@ export class FlowFieldDemoScene extends PhaserScene {
       magnitudeScale: this.magnitudeScale,
       deltaSeconds: Number((this.lastDeltaSeconds ?? 0).toFixed(4)),
       arrowRedrawOnly: false
+    });
+    globalThis.console?.debug?.('[FlowDemo][EvolutionState]', {
+      mode: this.fieldMode,
+      evolutionBehavior: this.evolutionBehavior,
+      demoTime: Number(this.demoTime.toFixed(3)),
+      evolutionSpeed: this.evolutionSpeedScale,
+      cycleDuration: this.cycleDuration,
+      spatialMotion: this.spatialMotion,
+      spatialMotionSpeed: this.spatialMotionSpeed,
+      directionVariation: this.directionVariation,
+      magnitudeVariation: this.magnitudeVariation,
+      sampleVectorAtCenter: {
+        u: Number(sample.u.toFixed(4)),
+        v: Number(sample.v.toFixed(4))
+      },
+      magnitudeAtCenter: Number(Math.hypot(sample.u, sample.v).toFixed(4))
     });
     globalThis.console?.debug?.('[FlowDemo][MagnitudeStats]', {
       ...summarizeDemoFlowMagnitudes(this.fieldConfig(), this.demoTime),
@@ -568,6 +632,21 @@ export class FlowFieldDemoScene extends PhaserScene {
       },
       finalMagnitude: Number(Math.hypot(sample.u, sample.v).toFixed(4))
     });
+    for (const layer of composition.layers ?? []) {
+      globalThis.console?.debug?.('[FlowDemo][LayerEvolution]', {
+        layerId: layer.id,
+        presetId: layer.preset,
+        evolutionBehavior: layer.evolution?.evolutionBehavior ?? layer.evolutionBehavior,
+        layerTime: Number(this.demoTime.toFixed(3)),
+        spatialMotion: layer.evolution?.spatialMotion ?? layer.spatialMotion,
+        spatialOffset: layer.vector?.spatialOffset ?? null,
+        vector: {
+          u: Number(layer.vector.u.toFixed(4)),
+          v: Number(layer.vector.v.toFixed(4))
+        },
+        magnitude: Number(layer.vector.magnitude.toFixed(4))
+      });
+    }
   }
 }
 
@@ -609,6 +688,27 @@ function evolutionPatternLabel(pattern) {
     stormPulse: 'Storm Pulse',
     composite: 'Composite'
   }[pattern] ?? 'Composite';
+}
+
+function evolutionBehaviorLabel(behavior) {
+  return {
+    continuous: 'Continuous',
+    looping: 'Looping',
+    pulse: 'One-Shot Pulse',
+    translating: 'Meandering / Translating'
+  }[behavior] ?? 'Continuous';
+}
+
+function spatialMotionLabel(motion) {
+  return {
+    none: 'Off',
+    driftEast: 'Drift East',
+    driftWest: 'Drift West',
+    driftNorth: 'Drift North',
+    driftSouth: 'Drift South',
+    circularDrift: 'Circular Drift',
+    meander: 'Meander'
+  }[motion] ?? 'Off';
 }
 
 function nextTerrainSeed(seed) {

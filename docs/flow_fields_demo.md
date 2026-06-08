@@ -34,7 +34,11 @@ The demo provides a controlled scene for questions like:
 - `Reset Terrain`: advances the deterministic terrain seed and rebuilds the land mask.
 - `Direction Variation`: chooses Off, Low, Medium, or High smooth rotation/bending of the dynamic field.
 - `Magnitude Variation`: chooses Off, Low, Medium, or High smooth strengthening/weakening of the dynamic field.
+- `Evolution Behavior`: chooses Continuous, Looping / Cyclic, One-Shot Pulse, or Meandering / Translating.
 - `Evolution Pattern`: chooses Tidal Cycle, Meandering Jet, Eddy Drift, Storm Pulse, or Composite dynamic modulation.
+- `Cycle Duration`: controls intentional Looping cycle length or One-Shot Pulse timing.
+- `Spatial Motion`: chooses Off, directional drift, Circular Drift, or Meander.
+- `Spatial Motion Speed`: scales the selected spatial translation.
 - `Evolution Speed`: scales simulated field evolution from 0.25x to 10x.
 - `Magnitude Scale`: changes how strongly arrow length visualizes sampled magnitude from 0.5x to 2x.
 - `Particle Speed`: changes passive particle speed through the sampled field from 0.5x to 4x without changing field evolution.
@@ -56,12 +60,21 @@ Dynamic mode passes advancing demo time into the shared current sampler and appl
 
 Dynamic controls affect the sampled field itself:
 
+- `Evolution Behavior`: controls whether evolution is continuous, intentionally looping, pulse-shaped, or spatially translating.
 - `Direction Variation`: rotates or bends vectors coherently over time.
 - `Magnitude Variation`: changes vector strength coherently over time.
 - `Evolution Pattern`: controls the water-like modulation shape.
+- `Spatial Motion`: translates the sampled field coordinates so structures move through the domain.
 - `Evolution Speed`: advances demo field time faster or slower.
 
 These controls do not normalize vectors. Normal magnitude differences remain visible in arrow length, opacity, thickness, and particle drift speed.
+
+Evolution behavior semantics:
+
+- `Continuous`: uses multiple incommensurate phase rates so the field keeps changing without an obvious short repeat.
+- `Looping / Cyclic`: intentionally repeats after the selected Cycle Duration.
+- `One-Shot Pulse`: applies a single smooth growth/fade envelope over the selected timing window.
+- `Meandering / Translating`: moves field structures spatially; if Spatial Motion is Off, it defaults to Meander internally.
 
 ## 5. Additive Flow Layers
 
@@ -80,6 +93,8 @@ Layer influence controls where a layer applies:
 - `Global Blend`: layer affects the whole domain.
 - `Spatial Pocket`: layer is strongest in a deterministic local pocket and fades outward.
 - `Partitioned Region`: layer applies to a deterministic region such as a side or center pocket.
+
+Layer data supports the same evolution behavior, variation, cycle duration, and spatial motion fields as the base field. The current UI exposes those controls for the base field first; new layers default to Continuous / Composite / no spatial motion unless their layer data is edited/imported with explicit evolution settings.
 
 ## 6. Synthetic Field Presets
 

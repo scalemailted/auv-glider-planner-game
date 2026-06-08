@@ -1,7 +1,7 @@
 import { CAMPAIGN_LEVELS } from '../core/campaign/CampaignLevels.js';
 import { shortInstanceId } from '../core/identity/GameInstanceId.js';
 import { formatMetric } from '../core/evaluation/PlanComparison.js';
-import { FLOW_DEMO_EVOLUTION_PATTERNS, FLOW_DEMO_EVOLUTION_SPEEDS, FLOW_DEMO_FIELD_MODES, FLOW_DEMO_LAYER_INFLUENCES, FLOW_DEMO_MAGNITUDE_SCALES, FLOW_DEMO_PARTICLE_SPEEDS, FLOW_DEMO_PRESET_CHOICES, FLOW_DEMO_TERRAIN_MODES, FLOW_DEMO_VARIATION_LEVELS, normalizeAdditiveLayers } from '../core/demo/FlowFieldDemo.js';
+import { FLOW_DEMO_CYCLE_DURATIONS, FLOW_DEMO_EVOLUTION_BEHAVIORS, FLOW_DEMO_EVOLUTION_PATTERNS, FLOW_DEMO_EVOLUTION_SPEEDS, FLOW_DEMO_FIELD_MODES, FLOW_DEMO_LAYER_INFLUENCES, FLOW_DEMO_MAGNITUDE_SCALES, FLOW_DEMO_PARTICLE_SPEEDS, FLOW_DEMO_PRESET_CHOICES, FLOW_DEMO_SPATIAL_MOTIONS, FLOW_DEMO_SPATIAL_MOTION_SPEEDS, FLOW_DEMO_TERRAIN_MODES, FLOW_DEMO_VARIATION_LEVELS, normalizeAdditiveLayers } from '../core/demo/FlowFieldDemo.js';
 import { ROI_DEMO_DISTRIBUTIONS, ROI_DEMO_TIME_MODES, roiDistributionLabel } from '../core/demo/DemoRoiFields.js';
 import { getVectorPresetConfig } from '../core/generation/VectorFieldPresets.js';
 
@@ -72,7 +72,7 @@ export class MissionConsole {
         <span>${escapeHtml(state.status ?? 'Demo running')}</span>
         <strong>${escapeHtml(state.paused ? 'Paused' : 'Animating')}</strong>
         <small>${escapeHtml(state.fieldMode === 'dynamic'
-          ? `Continuous evolution. Evolution Speed ${state.evolutionSpeedScale ?? 1}x | Particle Speed ${state.particleSpeedScale ?? 1}x | Magnitude Scale ${state.magnitudeScale ?? 1.5}x.`
+          ? `${evolutionBehaviorLabel(state.evolutionBehavior)} evolution. Spatial ${spatialMotionLabel(state.spatialMotion)} | Evolution Speed ${state.evolutionSpeedScale ?? 1}x | Particle Speed ${state.particleSpeedScale ?? 1}x | Magnitude Scale ${state.magnitudeScale ?? 1.5}x.`
           : 'Particles move through a non-evolving vector field.')}</small>
       </section>
       <section class="console-section">
@@ -116,6 +116,12 @@ export class MissionConsole {
       <section class="console-section">
         <h2>Flow Evolution</h2>
         <label class="compact-field">
+          Evolution Behavior
+          <select id="flow-demo-evolution-behavior">
+            ${FLOW_DEMO_EVOLUTION_BEHAVIORS.map((behavior) => `<option value="${escapeAttr(behavior)}" ${state.evolutionBehavior === behavior ? 'selected' : ''}>${escapeHtml(evolutionBehaviorLabel(behavior))}</option>`).join('')}
+          </select>
+        </label>
+        <label class="compact-field">
           Direction Variation
           <select id="flow-demo-direction-variation">
             ${FLOW_DEMO_VARIATION_LEVELS.map((level) => `<option value="${escapeAttr(level)}" ${state.directionVariation === level ? 'selected' : ''}>${escapeHtml(variationLabel(level))}</option>`).join('')}
@@ -131,6 +137,24 @@ export class MissionConsole {
           Evolution Pattern
           <select id="flow-demo-evolution-pattern">
             ${FLOW_DEMO_EVOLUTION_PATTERNS.map((pattern) => `<option value="${escapeAttr(pattern)}" ${state.evolutionPattern === pattern ? 'selected' : ''}>${escapeHtml(evolutionPatternLabel(pattern))}</option>`).join('')}
+          </select>
+        </label>
+        <label class="compact-field">
+          Cycle Duration
+          <select id="flow-demo-cycle-duration">
+            ${FLOW_DEMO_CYCLE_DURATIONS.map((duration) => `<option value="${escapeAttr(duration)}" ${Number(state.cycleDuration ?? 60) === duration ? 'selected' : ''}>${escapeHtml(duration)}s</option>`).join('')}
+          </select>
+        </label>
+        <label class="compact-field">
+          Spatial Motion
+          <select id="flow-demo-spatial-motion">
+            ${FLOW_DEMO_SPATIAL_MOTIONS.map((motion) => `<option value="${escapeAttr(motion)}" ${state.spatialMotion === motion ? 'selected' : ''}>${escapeHtml(spatialMotionLabel(motion))}</option>`).join('')}
+          </select>
+        </label>
+        <label class="compact-field">
+          Spatial Motion Speed
+          <select id="flow-demo-spatial-motion-speed">
+            ${FLOW_DEMO_SPATIAL_MOTION_SPEEDS.map((speed) => `<option value="${escapeAttr(speed)}" ${Number(state.spatialMotionSpeed ?? 1) === speed ? 'selected' : ''}>${escapeHtml(speed)}x</option>`).join('')}
           </select>
         </label>
         <label class="compact-field">
@@ -196,9 +220,13 @@ export class MissionConsole {
       });
     });
     this.root.querySelector('#flow-demo-terrain')?.addEventListener('change', (event) => handlers.terrainMode?.(event.target.value));
+    this.root.querySelector('#flow-demo-evolution-behavior')?.addEventListener('change', (event) => handlers.evolutionBehavior?.(event.target.value));
+    this.root.querySelector('#flow-demo-cycle-duration')?.addEventListener('change', (event) => handlers.cycleDuration?.(event.target.value));
     this.root.querySelector('#flow-demo-direction-variation')?.addEventListener('change', (event) => handlers.directionVariation?.(event.target.value));
     this.root.querySelector('#flow-demo-magnitude-variation')?.addEventListener('change', (event) => handlers.magnitudeVariation?.(event.target.value));
     this.root.querySelector('#flow-demo-evolution-pattern')?.addEventListener('change', (event) => handlers.evolutionPattern?.(event.target.value));
+    this.root.querySelector('#flow-demo-spatial-motion')?.addEventListener('change', (event) => handlers.spatialMotion?.(event.target.value));
+    this.root.querySelector('#flow-demo-spatial-motion-speed')?.addEventListener('change', (event) => handlers.spatialMotionSpeed?.(event.target.value));
     this.root.querySelector('#flow-demo-evolution-speed')?.addEventListener('change', (event) => handlers.evolutionSpeedScale?.(event.target.value));
     this.root.querySelector('#flow-demo-magnitude-scale')?.addEventListener('change', (event) => handlers.magnitudeScale?.(event.target.value));
     this.root.querySelector('#flow-demo-particle-speed')?.addEventListener('change', (event) => handlers.particleSpeedScale?.(event.target.value));
@@ -572,6 +600,27 @@ function evolutionPatternLabel(pattern) {
     stormPulse: 'Storm Pulse',
     composite: 'Composite'
   }[pattern] ?? 'Composite';
+}
+
+function evolutionBehaviorLabel(behavior) {
+  return {
+    continuous: 'Continuous',
+    looping: 'Looping / Cyclic',
+    pulse: 'One-Shot Pulse',
+    translating: 'Meandering / Translating'
+  }[behavior] ?? 'Continuous';
+}
+
+function spatialMotionLabel(motion) {
+  return {
+    none: 'Off',
+    driftEast: 'Drift East',
+    driftWest: 'Drift West',
+    driftNorth: 'Drift North',
+    driftSouth: 'Drift South',
+    circularDrift: 'Circular Drift',
+    meander: 'Meander'
+  }[motion] ?? 'Off';
 }
 
 function terrainModeLabel(mode) {
