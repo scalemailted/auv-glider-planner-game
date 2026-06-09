@@ -302,6 +302,8 @@ test('campaign planning smoke flow reaches debrief', async ({ page }) => {
   await expect(page.locator('#bottom-timeline [data-action="roi-demo-reset"]')).toHaveText('Reset');
   await expect(page.locator('#bottom-timeline [data-action="roi-demo-direction"]')).toHaveText('Direction: Forward');
   await expect(page.locator('#bottom-timeline [data-action="roi-demo-pause"]')).toHaveText('Pause');
+  await expect(page.locator('#roi-demo-event-likelihood')).toBeVisible();
+  await expect(page.locator('#roi-demo-event-likelihood-dynamics')).toBeVisible();
   await expect(page.locator('#roi-demo-spatial-pattern')).toBeVisible();
   await expect(page.locator('#roi-demo-value-distribution')).toBeVisible();
   await expect(page.locator('#roi-demo-cluster-size')).toBeVisible();
@@ -312,7 +314,8 @@ test('campaign planning smoke flow reaches debrief', async ({ page }) => {
   await expect(page.locator('#roi-demo-depletion-mode')).toBeVisible();
   await expect(page.locator('#roi-demo-display-mode')).toBeVisible();
   await expect(page.locator('#roi-demo-dynamic-complexity')).toBeVisible();
-  await expect(page.locator('#mission-console')).toContainText('Spatial Field');
+  await expect(page.locator('#mission-console')).toContainText('Sample Field Substrate');
+  await expect(page.locator('#mission-console')).toContainText('Event Likelihood Field');
   await expect(page.locator('#mission-console')).toContainText('Spatial Parameters');
   await expect(page.locator('#mission-console')).toContainText('Temporal Pattern');
   await expect(page.locator('#mission-console')).toContainText('Spatial Evolution');
@@ -337,9 +340,23 @@ test('campaign planning smoke flow reaches debrief', async ({ page }) => {
   await expect(page.locator('#roi-demo-spatial-pattern')).not.toContainText('Multiple Clusters');
   await expect(page.locator('#roi-demo-spatial-pattern')).not.toContainText('Bimodal');
   await expect(page.locator('#mission-console .sample-field-explainer')).toHaveCount(0);
-  await expect(page.locator('#mission-console [data-roi-help]')).toHaveCount(7);
+  await expect(page.locator('#mission-console [data-roi-help]')).toHaveCount(8);
+  await expect(page.locator('#mission-console [data-roi-help="eventLikelihood"]')).toContainText('Explain Multi-Modal Likelihood');
   await expect(page.locator('#mission-console [data-roi-help="spatialPattern"]')).toContainText('Explain Clustered Field');
+  await expect(page.locator('#roi-demo-event-likelihood option')).toHaveText([
+    'Uniform Likelihood',
+    'Gaussian Likelihood',
+    'Multi-Modal Likelihood',
+    'Gradient Likelihood',
+    'Patchy Likelihood',
+    'Seeded Texture Likelihood',
+    'Sparse Candidate Sites'
+  ]);
+  await expect(page.locator('#roi-demo-event-likelihood-dynamics option')).toHaveText(['Static', 'Dynamic']);
   await expect(page.locator('#roi-demo-value-distribution option')).toHaveText(['Constant Value', 'Uniform Random', 'Gaussian / Normal']);
+  await page.locator('#mission-console [data-roi-help="eventLikelihood"]').click();
+  await expect(page.locator('#waypoint-timeline [data-roi-behavior-help]')).toContainText('About Event Likelihood Field: Multi-Modal Likelihood');
+  await expect(page.locator('#waypoint-timeline [data-roi-behavior-help]')).toContainText('Where are events likely to originate');
   await page.locator('#mission-console [data-roi-help="spatialPattern"]').click();
   await expect(page.locator('#waypoint-timeline [data-roi-behavior-help]')).toContainText('About Spatial Pattern: Clustered Field');
   await expect(page.locator('#waypoint-timeline [data-roi-behavior-help]')).toContainText('Value appears in one or more coherent blobs');
@@ -396,6 +413,11 @@ test('campaign planning smoke flow reaches debrief', async ({ page }) => {
   await clickRoiDemoCell(page, roiDynamicCell.col, roiDynamicCell.row);
   await expect(page.locator('#waypoint-timeline')).toContainText(`Cell (${roiDynamicCell.col}, ${roiDynamicCell.row})`);
   await expect(page.locator('#waypoint-timeline')).toContainText('Sample Value');
+  await expect(page.locator('#waypoint-timeline')).toContainText('Event Likelihood Field');
+  await expect(page.locator('#waypoint-timeline')).toContainText('L(x,y,t)');
+  await expect(page.locator('#waypoint-timeline')).toContainText('Observed Sample Value');
+  await expect(page.locator('#waypoint-timeline')).toContainText('S(x,y,t)');
+  await expect(page.locator('#waypoint-timeline')).toContainText('event-prone');
   await expect(page.locator('#waypoint-timeline')).toContainText('cluster count');
   await expect(page.locator('#waypoint-timeline')).toContainText('cluster size');
   await expect(page.locator('#waypoint-timeline')).toContainText('value distribution');
@@ -408,6 +430,54 @@ test('campaign planning smoke flow reaches debrief', async ({ page }) => {
   await expect(page.locator('#waypoint-timeline')).toContainText('feature motion');
   await expect(page.locator('#waypoint-timeline')).toContainText('state model');
   await page.locator('#roi-demo-spatial-pattern').selectOption('clusteredField');
+  await page.locator('#roi-demo-event-likelihood').selectOption('gaussianLikelihood');
+  await expect.poll(() => page.evaluate(() => window.anchorGame.phaser.scene.getScene('RoiGeneratorDemoScene').eventLikelihood)).toBe('gaussianLikelihood');
+  await expect(page.locator('#roi-demo-event-likelihood-temporal-pattern')).toHaveCount(0);
+  await page.locator('#roi-demo-event-likelihood-dynamics').selectOption('dynamic');
+  await expect.poll(() => page.evaluate(() => window.anchorGame.phaser.scene.getScene('RoiGeneratorDemoScene').eventLikelihoodDynamics)).toBe('dynamic');
+  await expect(page.locator('#roi-demo-event-likelihood-temporal-pattern')).toBeVisible();
+  await expect(page.locator('#roi-demo-event-likelihood-spatial-evolution')).toBeVisible();
+  await page.locator('#roi-demo-event-likelihood-temporal-pattern').selectOption('bursty');
+  await page.locator('#roi-demo-event-likelihood-spatial-evolution').selectOption('discreteJump');
+  await expect.poll(() => page.evaluate(() => window.anchorGame.phaser.scene.getScene('RoiGeneratorDemoScene').eventLikelihoodTemporalPattern)).toBe('bursty');
+  await expect.poll(() => page.evaluate(() => window.anchorGame.phaser.scene.getScene('RoiGeneratorDemoScene').eventLikelihoodSpatialEvolution)).toBe('discreteJump');
+  const dynamicLikelihoodAudit = await page.evaluate(() => {
+    const scene = window.anchorGame.phaser.scene.getScene('RoiGeneratorDemoScene');
+    scene.timeMode = 'static';
+    scene.demoTime = 0;
+    scene.rebuildField();
+    const first = JSON.stringify(scene.field.eventLikelihoodField);
+    scene.demoTime = 30;
+    scene.rebuildField();
+    const second = JSON.stringify(scene.field.eventLikelihoodField);
+    return {
+      sampleTime: scene.field.time,
+      likelihoodTime: scene.field.eventLikelihoodTime,
+      changed: first !== second
+    };
+  });
+  expect(dynamicLikelihoodAudit.changed).toBe(true);
+  expect(dynamicLikelihoodAudit.sampleTime).toBe(0);
+  expect(dynamicLikelihoodAudit.likelihoodTime).toBe(30);
+  await page.locator('#roi-demo-event-likelihood-dynamics').selectOption('static');
+  await expect.poll(() => page.evaluate(() => window.anchorGame.phaser.scene.getScene('RoiGeneratorDemoScene').eventLikelihoodDynamics)).toBe('static');
+  const gaussianLikelihoodAudit = await page.evaluate(() => {
+    const scene = window.anchorGame.phaser.scene.getScene('RoiGeneratorDemoScene');
+    const field = scene.field.eventLikelihoodField;
+    const h = field.length;
+    const w = field[0].length;
+    const center = field[Math.floor(h / 2)][Math.floor(w / 2)];
+    const corners = [field[0][0], field[0][w - 1], field[h - 1][0], field[h - 1][w - 1]];
+    return {
+      eventLikelihood: scene.field.eventLikelihood,
+      center,
+      maxCorner: Math.max(...corners),
+      sameSeed: JSON.stringify(field) === JSON.stringify(scene.field.eventLikelihoodField)
+    };
+  });
+  expect(gaussianLikelihoodAudit.eventLikelihood).toBe('gaussianLikelihood');
+  expect(gaussianLikelihoodAudit.center).toBeGreaterThan(gaussianLikelihoodAudit.maxCorner);
+  expect(gaussianLikelihoodAudit.sameSeed).toBe(true);
   await expect.poll(() => page.evaluate(() => window.anchorGame.phaser.scene.getScene('RoiGeneratorDemoScene').spatialPattern)).toBe('clusteredField');
   await page.locator('#roi-demo-spatial-pattern').selectOption('constantField');
   await page.locator('#roi-demo-value-distribution').selectOption('constantValue');

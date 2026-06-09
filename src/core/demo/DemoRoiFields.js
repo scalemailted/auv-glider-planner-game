@@ -1,4 +1,4 @@
-import { generateROI, createHotspots } from '../generation/ROIFieldGenerator.js';
+import { generateROI } from '../generation/ROIFieldGenerator.js';
 import { createSeededRng } from '../random/SeededRng.js';
 import {
   SAMPLE_SPATIAL_PATTERNS,
@@ -9,6 +9,17 @@ import {
 } from '../generation/SampleFieldConfig.js';
 
 export const ROI_DEMO_GRID = { width: 24, height: 16 };
+const EVENT_LIKELIHOOD_FIELD_CACHE = new Map();
+export const ROI_DEMO_EVENT_LIKELIHOODS = [
+  'uniformLikelihood',
+  'gaussianLikelihood',
+  'multiModalLikelihood',
+  'gradientLikelihood',
+  'patchyLikelihood',
+  'seededTextureLikelihood',
+  'sparseCandidateSites'
+];
+export const ROI_DEMO_LIKELIHOOD_DYNAMICS = ['static', 'dynamic'];
 export const ROI_DEMO_DISTRIBUTIONS = [
   'uniformRandom',
   'gaussianHotspots',
@@ -55,6 +66,34 @@ export function normalizeRoiDemoDistribution(value = 'gaussianHotspots') {
   return ROI_DEMO_DISTRIBUTIONS.includes(value) ? value : 'gaussianHotspots';
 }
 
+export function normalizeRoiDemoEventLikelihood(value = 'uniformLikelihood') {
+  const aliases = {
+    constantField: 'uniformLikelihood',
+    uniformField: 'uniformLikelihood',
+    uniform: 'uniformLikelihood',
+    uniformLikelihood: 'uniformLikelihood',
+    gaussian: 'gaussianLikelihood',
+    gaussianLikelihood: 'gaussianLikelihood',
+    multiModal: 'multiModalLikelihood',
+    multimodal: 'multiModalLikelihood',
+    multiModalLikelihood: 'multiModalLikelihood',
+    gradient: 'gradientLikelihood',
+    gradientLikelihood: 'gradientLikelihood',
+    patchy: 'patchyLikelihood',
+    patchyLikelihood: 'patchyLikelihood',
+    seededTexture: 'seededTextureLikelihood',
+    seededTextureLikelihood: 'seededTextureLikelihood',
+    sparseTargets: 'sparseCandidateSites',
+    sparseCandidateSites: 'sparseCandidateSites'
+  };
+  const normalized = aliases[value] ?? value;
+  return ROI_DEMO_EVENT_LIKELIHOODS.includes(normalized) ? normalized : 'uniformLikelihood';
+}
+
+export function normalizeRoiDemoLikelihoodDynamics(value = 'static') {
+  return ROI_DEMO_LIKELIHOOD_DYNAMICS.includes(value) ? value : 'static';
+}
+
 export function normalizeRoiDemoTimeMode(value = 'static') {
   return ROI_DEMO_TIME_MODES.includes(value) ? value : 'static';
 }
@@ -62,6 +101,10 @@ export function normalizeRoiDemoTimeMode(value = 'static') {
 export function createDemoRoiField({
   distribution = 'burstyBloom',
   seed = 'anchor-roi-demo',
+  eventLikelihood = null,
+  eventLikelihoodDynamics = 'static',
+  eventLikelihoodTemporalPattern = 'static',
+  eventLikelihoodSpatialEvolution = 'stationary',
   hotspotCount = null,
   clusterSize = 'medium',
   noise = 0.15,
@@ -86,6 +129,10 @@ export function createDemoRoiField({
   const width = Math.max(1, Number(grid.width ?? ROI_DEMO_GRID.width));
   const height = Math.max(1, Number(grid.height ?? ROI_DEMO_GRID.height));
   const normalizedDistribution = normalizeRoiDemoDistribution(distribution);
+  const normalizedEventLikelihood = normalizeRoiDemoEventLikelihood(eventLikelihood ?? eventLikelihoodFromLegacy(spatialPattern, normalizedDistribution));
+  const normalizedEventLikelihoodDynamics = normalizeRoiDemoLikelihoodDynamics(eventLikelihoodDynamics);
+  const normalizedEventLikelihoodTemporalPattern = normalizeRoiDemoTemporalPattern(eventLikelihoodTemporalPattern);
+  const normalizedEventLikelihoodSpatialEvolution = normalizeRoiDemoSpatialEvolution(eventLikelihoodSpatialEvolution);
   const normalizedTimeMode = normalizeRoiDemoTimeMode(timeMode);
   const legacyClusterCount = legacyClusterCountFromPattern(spatialPattern ?? normalizedDistribution);
   const normalizedPureSpatialPattern = normalizeRoiDemoPureSpatialPattern(spatialPattern ?? pureSpatialPatternFromDistribution(normalizedDistribution));
@@ -102,13 +149,31 @@ export function createDemoRoiField({
   const normalizedClusterSize = normalizeRoiDemoClusterSize(clusterSize);
   const effectiveTemporalBehavior = temporalBehavior ?? temporalBehaviorFromPattern(normalizedTemporalPattern, normalizedSpatialEvolution);
   const sourceTime = demoTime ?? time;
-  const t = normalizedTimeMode === 'dynamic' ? Number(sourceTime) || 0 : 0;
+  const sampleTime = normalizedTimeMode === 'dynamic' ? Number(sourceTime) || 0 : 0;
+  const likelihoodTime = normalizedEventLikelihoodDynamics === 'dynamic' ? Number(sourceTime) || 0 : 0;
   const clusterCount = clampInt(hotspotCount ?? legacyClusterCount, 1, 6, spatialDefaults.clusterCount);
-  const rng = createSeededRng(`${seed}:${normalizedPureSpatialPattern}:${width}x${height}:${clusterCount}:${normalizedClusterSize}:${noise}`);
+  const likelihoodField = createEventLikelihoodField({
+    eventLikelihood: normalizedEventLikelihood,
+    seed,
+    width,
+    height,
+    count: clusterCount,
+    dynamics: normalizedEventLikelihoodDynamics,
+    temporalPattern: normalizedEventLikelihoodTemporalPattern,
+    spatialEvolution: normalizedEventLikelihoodSpatialEvolution,
+    dynamicComplexity: normalizedDynamicComplexity,
+    time: likelihoodTime
+  });
+  const rng = createSeededRng(`${seed}:${normalizedEventLikelihood}:${normalizedPureSpatialPattern}:${width}x${height}:${clusterCount}:${normalizedClusterSize}:${noise}`);
   const spatialBaseField = buildDistribution({
     distribution: spatialDefaults.distribution,
     rng,
     seed,
+    eventLikelihood: normalizedEventLikelihood,
+    eventLikelihoodDynamics: normalizedEventLikelihoodDynamics,
+    eventLikelihoodTemporalPattern: normalizedEventLikelihoodTemporalPattern,
+    eventLikelihoodSpatialEvolution: normalizedEventLikelihoodSpatialEvolution,
+    likelihoodField,
     width,
     height,
     hotspotCount: clusterCount,
@@ -118,7 +183,7 @@ export function createDemoRoiField({
     spatialPattern: spatialDefaults.sampleSpatialPattern,
     temporalBehavior: effectiveTemporalBehavior,
     forecastView: 'truth',
-    time: t
+    time: sampleTime
   });
   const baseField = applyValueDistribution(spatialBaseField, {
     valueDistribution: normalizedValueDistribution,
@@ -126,16 +191,18 @@ export function createDemoRoiField({
     spatialPattern: normalizedPureSpatialPattern
   });
   const behavior = sampleBehaviorMetadata({
+    eventLikelihood: normalizedEventLikelihood,
     temporalPattern: normalizedTemporalPattern,
     spatialEvolution: normalizedSpatialEvolution,
     motionScope: normalizedMotionScope,
     stateModel: normalizedStateModel,
     dynamicComplexity: normalizedDynamicComplexity,
-    time: t
+    time: sampleTime
   });
   const field = applyEvolutionModel(baseField, {
     seed,
-    time: t,
+    likelihoodField,
+    time: sampleTime,
     timeMode: normalizedTimeMode,
     temporalPattern: normalizedTemporalPattern,
     spatialEvolution: normalizedSpatialEvolution,
@@ -144,7 +211,7 @@ export function createDemoRoiField({
   });
   const displayedField = applySampleDisplayMode(field, {
     seed,
-    time: t,
+    time: sampleTime,
     depletionMode: normalizedDepletionMode,
     displayMode: normalizedDisplayMode,
     dynamicComplexity: normalizedDynamicComplexity
@@ -156,6 +223,15 @@ export function createDemoRoiField({
     evolvedField: field,
     width,
     height,
+    eventLikelihood: normalizedEventLikelihood,
+    eventLikelihoodLabel: roiEventLikelihoodLabel(normalizedEventLikelihood),
+    eventLikelihoodDynamics: normalizedEventLikelihoodDynamics,
+    eventLikelihoodDynamicsLabel: roiLikelihoodDynamicsLabel(normalizedEventLikelihoodDynamics),
+    eventLikelihoodTemporalPattern: normalizedEventLikelihoodTemporalPattern,
+    eventLikelihoodTemporalPatternLabel: roiTemporalPatternLabel(normalizedEventLikelihoodTemporalPattern),
+    eventLikelihoodSpatialEvolution: normalizedEventLikelihoodSpatialEvolution,
+    eventLikelihoodSpatialEvolutionLabel: roiLikelihoodSpatialEvolutionLabel(normalizedEventLikelihoodSpatialEvolution),
+    eventLikelihoodField: likelihoodField,
     distribution: spatialDefaults.distribution,
     distributionLabel: roiDistributionLabel(spatialDefaults.distribution),
     valueDistribution: normalizedValueDistribution,
@@ -189,9 +265,14 @@ export function createDemoRoiField({
     priorMode: normalizedStateModel,
     behavior,
     forecastView: 'truth',
-    time: t,
+    time: sampleTime,
+    eventLikelihoodTime: likelihoodTime,
     sampleFieldConfig: sampleFieldConfigForDemo({
       distribution: spatialDefaults.distribution,
+      eventLikelihood: normalizedEventLikelihood,
+      eventLikelihoodDynamics: normalizedEventLikelihoodDynamics,
+      eventLikelihoodTemporalPattern: normalizedEventLikelihoodTemporalPattern,
+      eventLikelihoodSpatialEvolution: normalizedEventLikelihoodSpatialEvolution,
       valueDistribution: normalizedValueDistribution,
       timeMode: normalizedTimeMode,
       spatialPattern: spatialDefaults.sampleSpatialPattern,
@@ -484,6 +565,35 @@ export function roiValueDistributionLabel(value) {
   }[value] ?? 'Constant Value';
 }
 
+export function roiEventLikelihoodLabel(value) {
+  return {
+    uniformLikelihood: 'Uniform Likelihood',
+    gaussianLikelihood: 'Gaussian Likelihood',
+    multiModalLikelihood: 'Multi-Modal Likelihood',
+    gradientLikelihood: 'Gradient Likelihood',
+    patchyLikelihood: 'Patchy Likelihood',
+    seededTextureLikelihood: 'Seeded Texture Likelihood',
+    sparseCandidateSites: 'Sparse Candidate Sites'
+  }[value] ?? 'Uniform Likelihood';
+}
+
+export function roiLikelihoodDynamicsLabel(value) {
+  return {
+    static: 'Static',
+    dynamic: 'Dynamic'
+  }[value] ?? 'Static';
+}
+
+export function roiLikelihoodSpatialEvolutionLabel(value) {
+  return {
+    stationary: 'Stationary',
+    continuousDrift: 'Continuous Movement',
+    discreteJump: 'Discrete Jump',
+    randomWalk: 'Random Walk',
+    neighborPropagation: 'Neighbor Propagation'
+  }[value] ?? 'Stationary';
+}
+
 export function roiSpatialPatternHelp(value) {
   const key = normalizeRoiDemoPureSpatialPattern(value);
   return {
@@ -711,41 +821,44 @@ export function roiDemoDistributionDefaults(distribution = 'gaussianHotspots') {
     evolutionModel: spatialEvolutionFromDistribution(distribution),
     spatialEvolution: spatialEvolutionFromDistribution(distribution),
     distribution: defaults.distribution,
+    eventLikelihood: eventLikelihoodFromLegacy(defaults.spatialPattern, distribution),
     valueDistribution: valueDistributionFromLegacy(distribution)
   };
 }
 
 export { sampleSpatialPatternLabel, sampleTemporalBehaviorLabel };
 
-function buildDistribution({ distribution, rng, seed, width, height, hotspotCount, clusterSize, noise, timeMode, spatialPattern, temporalBehavior, forecastView, time }) {
+function buildDistribution({ distribution, rng, seed, eventLikelihood, likelihoodField, width, height, hotspotCount, clusterSize, noise, timeMode, spatialPattern, temporalBehavior, forecastView, time }) {
   if (distribution === 'constantField') return createUniformField(width, height, 0.42);
   if (distribution === 'uniformRandom' && spatialPattern === 'uniform') return createUniformField(width, height, 0.42);
   if (distribution === 'uniformRandom') return withNoise(createUniformRandom(width, height, rng), rng, noise * 0.35);
+  const likelihoodHotspots = createLikelihoodHotspots(width, height, hotspotCount, 'clustered', rng, likelihoodField, seed, eventLikelihood);
   if (distribution === 'clusteredHotspots') {
     return withNoise(generateROI(width, height, time, {
       roiPattern: 'clustered',
       temporalHotspots: timeMode === 'dynamic',
-      hotspots: scaleHotspotRadii(createHotspots(width, height, hotspotCount, 'clustered', rng), clusterSize)
+      hotspots: scaleHotspotRadii(likelihoodHotspots, clusterSize)
     }), rng, noise);
   }
   if (distribution === 'gradientFront') return createGradientFront({ width, height, rng, noise, time });
-  if (distribution === 'sparseTargets') return createSparseTargets({ width, height, rng, hotspotCount, noise, time });
+  if (distribution === 'sparseTargets') return createSparseTargets({ width, height, rng, hotspotCount, noise, time, likelihoodField, seed, eventLikelihood });
   if (distribution === 'ridgeCorridor') return createRidgeCorridor({ width, height, rng, noise, time });
   if (distribution === 'boundaryBand') return createBoundaryBand({ width, height, rng, noise, time });
-  const sampleFieldConfig = sampleFieldConfigForDemo({ distribution, timeMode, spatialPattern, temporalBehavior, hotspotCount });
+  const sampleFieldConfig = sampleFieldConfigForDemo({ distribution, eventLikelihood, timeMode, spatialPattern, temporalBehavior, hotspotCount });
+  const generatedHotspots = createLikelihoodHotspots(width, height, hotspotCount, legacyPattern(sampleFieldConfig), createSeededRng(`${seed}:sample-hotspots:${eventLikelihood}:${hotspotCount}`), likelihoodField, seed, eventLikelihood);
   const generated = generateROI(width, height, time, {
     seed,
     sampleFieldSeed: `${seed}:${distribution}:sample-field`,
     sampleFieldConfig,
     temporalHotspots: timeMode === 'dynamic',
     currentFrame: makeDemoCurrentFrame(width, height, time),
-    hotspots: scaleHotspotRadii(createHotspots(width, height, hotspotCount, legacyPattern(sampleFieldConfig), createSeededRng(`${seed}:sample-hotspots:${hotspotCount}`)), clusterSize)
+    hotspots: scaleHotspotRadii(generatedHotspots, clusterSize)
   });
   const viewAdjusted = applyForecastView(generated, forecastView, seed, time);
   return withNoise(viewAdjusted, rng, noise);
 }
 
-function sampleFieldConfigForDemo({ distribution, timeMode, spatialPattern, temporalBehavior, hotspotCount, evolutionModel, spatialEvolution, motionScope, dynamicComplexity, stateModel, depletionMode }) {
+function sampleFieldConfigForDemo({ distribution, eventLikelihood, timeMode, spatialPattern, temporalBehavior, hotspotCount, evolutionModel, spatialEvolution, motionScope, dynamicComplexity, stateModel, depletionMode }) {
   const defaults = distributionToSampleConfig(distribution);
   const selectedTemporal = timeMode === 'dynamic'
     ? temporalBehavior ?? defaults.temporalBehavior
@@ -755,6 +868,7 @@ function sampleFieldConfigForDemo({ distribution, timeMode, spatialPattern, temp
     ...defaults,
     spatialPattern: spatialPattern ?? defaults.spatialPattern,
     temporalBehavior: selectedTemporal,
+    eventLikelihood: normalizeRoiDemoEventLikelihood(eventLikelihood),
     stateModel,
     motionScope: normalizeRoiDemoMotionScope(motionScope),
     mode: timeMode === 'dynamic' ? 'dynamic' : 'static',
@@ -831,12 +945,15 @@ function spatialEvolutionFromDistribution(distribution) {
   }[distribution] ?? 'stationary';
 }
 
-function sampleBehaviorMetadata({ temporalPattern, spatialEvolution, motionScope, stateModel: selectedStateModel, dynamicComplexity, time }) {
+function sampleBehaviorMetadata({ eventLikelihood, temporalPattern, spatialEvolution, motionScope, stateModel: selectedStateModel, dynamicComplexity, time }) {
   const stateModel = normalizeRoiDemoStateModel(selectedStateModel ?? roiStateModelForEvolutionModel(spatialEvolution));
   const normalizedMotionScope = normalizeRoiDemoMotionScope(motionScope);
+  const normalizedEventLikelihood = normalizeRoiDemoEventLikelihood(eventLikelihood);
   const cycle = temporalPattern === 'seasonal' ? 72 : temporalPattern === 'intermittent' ? 18 : 24;
   const phase = positiveModulo(time, cycle) / cycle;
   return {
+    eventLikelihood: normalizedEventLikelihood,
+    eventLikelihoodLabel: roiEventLikelihoodLabel(normalizedEventLikelihood),
     temporalPattern,
     evolutionModel: spatialEvolution,
     spatialEvolution,
@@ -851,11 +968,11 @@ function sampleBehaviorMetadata({ temporalPattern, spatialEvolution, motionScope
     burstPhase: burstPhaseLabel(phase),
     neighborInfluence: spatialEvolution === 'neighborPropagation' ? dynamicComplexity : 'off',
     featureMotion: featureMotionDescription(spatialEvolution, normalizedMotionScope),
-    explanation: spatialEvolutionDescription(spatialEvolution, normalizedMotionScope)
+    explanation: `${spatialEvolutionDescription(spatialEvolution, normalizedMotionScope)} Event origins are biased by ${roiEventLikelihoodLabel(normalizedEventLikelihood).toLowerCase()}.`
   };
 }
 
-function applyEvolutionModel(field, { seed, time, timeMode, temporalPattern, spatialEvolution, dynamicComplexity, motionScope }) {
+function applyEvolutionModel(field, { seed, likelihoodField, time, timeMode, temporalPattern, spatialEvolution, dynamicComplexity, motionScope }) {
   if (timeMode !== 'dynamic') return field;
   const complexityScale = complexityValue(dynamicComplexity, 0.65, 1, 1.35);
   const normalizedMotionScope = normalizeRoiDemoMotionScope(motionScope);
@@ -873,8 +990,11 @@ function applyEvolutionModel(field, { seed, time, timeMode, temporalPattern, spa
     const jumpIndex = Math.floor(Math.max(0, time) / cycle);
     const dx = (seededUnitLike(`${seed}:jump-x:${jumpIndex}`) - 0.5) * 0.72 * complexityScale;
     const dy = (seededUnitLike(`${seed}:jump-y:${jumpIndex}`) - 0.5) * 0.54 * complexityScale;
-    if (normalizedMotionScope === 'global') return shiftField(evolved, dx, dy);
-    return warpField(evolved, (x, y) => discreteJumpOffset({ seed, x, y, jumpIndex, complexityScale, motionScope: normalizedMotionScope }));
+    if (normalizedMotionScope === 'global') {
+      const bias = likelihoodGradient(likelihoodField, 0.5, 0.5);
+      return shiftField(evolved, dx + bias.dx * 0.16 * complexityScale, dy + bias.dy * 0.12 * complexityScale);
+    }
+    return warpField(evolved, (x, y) => discreteJumpOffset({ seed, likelihoodField, x, y, jumpIndex, complexityScale, motionScope: normalizedMotionScope }));
   }
   if (spatialEvolution === 'randomWalk') {
     const step = Math.floor(Math.max(0, time) / 3);
@@ -884,14 +1004,19 @@ function applyEvolutionModel(field, { seed, time, timeMode, temporalPattern, spa
       dx += (seededUnitLike(`${seed}:walk-x:${index}`) - 0.5) * 0.035 * complexityScale;
       dy += (seededUnitLike(`${seed}:walk-y:${index}`) - 0.5) * 0.028 * complexityScale;
     }
-    if (normalizedMotionScope === 'global') return shiftField(evolved, clampRange(dx, -0.26, 0.26), clampRange(dy, -0.22, 0.22));
-    return warpField(evolved, (x, y) => randomWalkOffset({ seed, x, y, step, complexityScale, motionScope: normalizedMotionScope }));
+    if (normalizedMotionScope === 'global') {
+      const bias = likelihoodGradient(likelihoodField, 0.5, 0.5);
+      return shiftField(evolved, clampRange(dx + bias.dx * 0.06 * complexityScale, -0.26, 0.26), clampRange(dy + bias.dy * 0.05 * complexityScale, -0.22, 0.22));
+    }
+    return warpField(evolved, (x, y) => randomWalkOffset({ seed, likelihoodField, x, y, step, complexityScale, motionScope: normalizedMotionScope }));
   }
   if (spatialEvolution === 'neighborPropagation') {
     const activated = diffuseField(evolved, complexityValue(dynamicComplexity, 0.12, 0.2, 0.3));
     return evolved.map((row, y) => row.map((value, x) => {
+      const likelihood = likelihoodAtCell(likelihoodField, x, y);
       const block = seededUnitLike(`${seed}:activation:${Math.floor(x / 3)}:${Math.floor(y / 3)}:${Math.floor(time / 4)}`);
-      return round3(clamp01(value * 0.7 + activated[y][x] * 0.28 + (block > 0.62 ? 0.16 * complexityScale : 0)));
+      const threshold = 0.74 - likelihood * 0.26;
+      return round3(clamp01(value * 0.66 + activated[y][x] * (0.18 + likelihood * 0.16) + (block > threshold ? (0.08 + likelihood * 0.12) * complexityScale : 0)));
     }));
   }
   return evolved.map((row) => row.map(round3));
@@ -1067,7 +1192,7 @@ function continuousMotionOffset({ seed, x, y, time, complexityScale, motionScope
   });
 }
 
-function discreteJumpOffset({ seed, x, y, jumpIndex, complexityScale, motionScope }) {
+function discreteJumpOffset({ seed, likelihoodField, x, y, jumpIndex, complexityScale, motionScope }) {
   const cols = motionScope === 'localNeighborhood' ? 8 : 4;
   const rows = motionScope === 'localNeighborhood' ? 6 : 3;
   const amplitude = (motionScope === 'localNeighborhood' ? 0.18 : 0.42) * complexityScale;
@@ -1077,14 +1202,19 @@ function discreteJumpOffset({ seed, x, y, jumpIndex, complexityScale, motionScop
     y,
     cols,
     rows,
-    valueAt: (ix, iy) => ({
-      dx: (seededUnitLike(`${seed}:jump-region-x:${ix}:${iy}:${jumpIndex}`) - 0.5) * amplitude,
-      dy: (seededUnitLike(`${seed}:jump-region-y:${ix}:${iy}:${jumpIndex}`) - 0.5) * amplitude * 0.75
-    })
+    valueAt: (ix, iy) => {
+      const gx = cols > 1 ? ix / (cols - 1) : 0;
+      const gy = rows > 1 ? iy / (rows - 1) : 0;
+      const bias = likelihoodGradient(likelihoodField, gx, gy);
+      return {
+        dx: (seededUnitLike(`${seed}:jump-region-x:${ix}:${iy}:${jumpIndex}`) - 0.5) * amplitude + bias.dx * 0.12 * complexityScale,
+        dy: (seededUnitLike(`${seed}:jump-region-y:${ix}:${iy}:${jumpIndex}`) - 0.5) * amplitude * 0.75 + bias.dy * 0.1 * complexityScale
+      };
+    }
   });
 }
 
-function randomWalkOffset({ seed, x, y, step, complexityScale, motionScope }) {
+function randomWalkOffset({ seed, likelihoodField, x, y, step, complexityScale, motionScope }) {
   const cols = motionScope === 'localNeighborhood' ? 8 : 4;
   const rows = motionScope === 'localNeighborhood' ? 6 : 3;
   const stepScale = (motionScope === 'localNeighborhood' ? 0.012 : 0.024) * complexityScale;
@@ -1103,6 +1233,11 @@ function randomWalkOffset({ seed, x, y, step, complexityScale, motionScope }) {
         dx += (seededUnitLike(`${seed}:walk-region-x:${ix}:${iy}:${index}`) - 0.5) * stepScale;
         dy += (seededUnitLike(`${seed}:walk-region-y:${ix}:${iy}:${index}`) - 0.5) * stepScale * 0.82;
       }
+      const gx = cols > 1 ? ix / (cols - 1) : 0;
+      const gy = rows > 1 ? iy / (rows - 1) : 0;
+      const bias = likelihoodGradient(likelihoodField, gx, gy);
+      dx += bias.dx * stepScale * Math.min(8, step + 1);
+      dy += bias.dy * stepScale * Math.min(8, step + 1) * 0.82;
       return {
         dx: clampRange(dx, -boundX, boundX),
         dy: clampRange(dy, -boundY, boundY)
@@ -1181,6 +1316,245 @@ function seededUnitLike(seed) {
   return createSeededRng(seed)();
 }
 
+function eventLikelihoodFromLegacy(spatialPattern, distribution) {
+  const pattern = normalizeRoiDemoPureSpatialPattern(spatialPattern);
+  if (pattern === 'gradientField' || distribution === 'gradientFront') return 'gradientLikelihood';
+  if (pattern === 'patchyField') return 'patchyLikelihood';
+  if (pattern === 'seededTexture' || distribution === 'nonuniformRandom') return 'seededTextureLikelihood';
+  if (pattern === 'sparseTargets') return 'sparseCandidateSites';
+  if (pattern === 'clusteredField' || distribution === 'gaussianHotspots' || distribution === 'burstyBloom') return 'multiModalLikelihood';
+  return 'uniformLikelihood';
+}
+
+export function createEventLikelihoodField({
+  eventLikelihood = 'uniformLikelihood',
+  seed = 'anchor-roi-demo',
+  width = ROI_DEMO_GRID.width,
+  height = ROI_DEMO_GRID.height,
+  count = 3,
+  dynamics = 'static',
+  temporalPattern = 'static',
+  spatialEvolution = 'stationary',
+  dynamicComplexity = 'medium',
+  time = 0
+} = {}) {
+  const normalized = normalizeRoiDemoEventLikelihood(eventLikelihood);
+  const normalizedDynamics = normalizeRoiDemoLikelihoodDynamics(dynamics);
+  const normalizedTemporalPattern = normalizeRoiDemoTemporalPattern(temporalPattern);
+  const normalizedSpatialEvolution = normalizeRoiDemoSpatialEvolution(spatialEvolution);
+  const cacheKey = `${seed}:${normalized}:${width}x${height}:${count}`;
+  const cached = EVENT_LIKELIHOOD_FIELD_CACHE.get(cacheKey);
+  if (cached) {
+    return normalizedDynamics === 'dynamic'
+      ? applyLikelihoodBehavior(cached, { seed, time, temporalPattern: normalizedTemporalPattern, spatialEvolution: normalizedSpatialEvolution, dynamicComplexity })
+      : cached;
+  }
+  const rng = createSeededRng(`${seed}:event-likelihood:${normalized}:${width}x${height}:${count}`);
+  const centers = Array.from({ length: Math.max(1, count) }, () => ({
+    x: 0.14 + rng() * 0.72,
+    y: 0.16 + rng() * 0.68,
+    radius: 0.09 + rng() * 0.16,
+    strength: 0.55 + rng() * 0.45
+  }));
+  const field = Array.from({ length: height }, (_, y) => Array.from({ length: width }, (_, x) => {
+    const nx = width > 1 ? x / (width - 1) : 0;
+    const ny = height > 1 ? y / (height - 1) : 0;
+    if (normalized === 'uniformLikelihood') return 1;
+    if (normalized === 'gaussianLikelihood') {
+      const cx = 0.42 + (rngSeeded(`${seed}:event-likelihood:gaussian:x`) - 0.5) * 0.18;
+      const cy = 0.52 + (rngSeeded(`${seed}:event-likelihood:gaussian:y`) - 0.5) * 0.18;
+      return 0.08 + 0.92 * Math.exp(-(((nx - cx) ** 2) / (2 * 0.22 ** 2) + ((ny - cy) ** 2) / (2 * 0.18 ** 2)));
+    }
+    if (normalized === 'multiModalLikelihood') {
+      return centers.reduce((sum, center) => {
+        const d2 = (nx - center.x) ** 2 + (ny - center.y) ** 2;
+        return sum + center.strength * Math.exp(-d2 / (2 * center.radius ** 2));
+      }, 0.04);
+    }
+    if (normalized === 'gradientLikelihood') {
+      const angle = rngSeeded(`${seed}:event-likelihood:gradient:angle`) * Math.PI * 2;
+      const projected = (nx - 0.5) * Math.cos(angle) + (ny - 0.5) * Math.sin(angle);
+      return 0.1 + 0.9 * smoothstep(-0.52, 0.52, projected);
+    }
+    if (normalized === 'patchyLikelihood') {
+      const coarseX = Math.floor(nx * 6);
+      const coarseY = Math.floor(ny * 5);
+      const local = seededUnitLike(`${seed}:event-likelihood:patch:${coarseX}:${coarseY}`);
+      const neighbor = seededUnitLike(`${seed}:event-likelihood:patch:${coarseX + 1}:${coarseY}`) * 0.35
+        + seededUnitLike(`${seed}:event-likelihood:patch:${coarseX}:${coarseY + 1}`) * 0.35;
+      return 0.08 + 0.74 * local + 0.18 * neighbor;
+    }
+    if (normalized === 'seededTextureLikelihood') {
+      const low = seededUnitLike(`${seed}:event-likelihood:texture:${Math.floor(nx * 8)}:${Math.floor(ny * 6)}`);
+      const high = seededUnitLike(`${seed}:event-likelihood:texture-fine:${x}:${y}`);
+      return 0.08 + low * 0.68 + high * 0.24;
+    }
+    if (normalized === 'sparseCandidateSites') {
+      return centers.reduce((sum, center) => {
+        const d2 = (nx - center.x) ** 2 + (ny - center.y) ** 2;
+        return Math.max(sum, 0.04 + center.strength * Math.exp(-d2 / (2 * 0.045 ** 2)));
+      }, 0.02);
+    }
+    return 1;
+  }));
+  const normalizedField = normalizeLikelihoodField(field);
+  if (EVENT_LIKELIHOOD_FIELD_CACHE.size > 80) EVENT_LIKELIHOOD_FIELD_CACHE.clear();
+  EVENT_LIKELIHOOD_FIELD_CACHE.set(cacheKey, normalizedField);
+  return normalizedDynamics === 'dynamic'
+    ? applyLikelihoodBehavior(normalizedField, { seed, time, temporalPattern: normalizedTemporalPattern, spatialEvolution: normalizedSpatialEvolution, dynamicComplexity })
+    : normalizedField;
+}
+
+function applyLikelihoodBehavior(field, { seed, time, temporalPattern, spatialEvolution, dynamicComplexity }) {
+  const complexityScale = complexityValue(dynamicComplexity, 0.65, 1, 1.35);
+  const temporalEnvelope = temporalEnvelopeForPattern(temporalPattern, time, `${seed}:event-likelihood`);
+  let evolved = field.map((row) => row.map((value) => clamp01(value * temporalEnvelope)));
+  if (spatialEvolution === 'stationary') return roundLikelihoodField(evolved);
+  if (spatialEvolution === 'continuousDrift') {
+    return roundLikelihoodField(warpField(evolved, (x, y) => continuousMotionOffset({
+      seed: `${seed}:event-likelihood`,
+      x,
+      y,
+      time,
+      complexityScale,
+      motionScope: 'perFeature'
+    })));
+  }
+  if (spatialEvolution === 'discreteJump') {
+    const cycle = temporalPattern === 'bursty' ? 24 : temporalPattern === 'intermittent' ? 18 : 16;
+    const jumpIndex = Math.floor(Math.max(0, time) / cycle);
+    return roundLikelihoodField(warpField(evolved, (x, y) => discreteJumpOffset({
+      seed: `${seed}:event-likelihood`,
+      likelihoodField: field,
+      x,
+      y,
+      jumpIndex,
+      complexityScale,
+      motionScope: 'perFeature'
+    })));
+  }
+  if (spatialEvolution === 'randomWalk') {
+    const step = Math.floor(Math.max(0, time) / 3);
+    return roundLikelihoodField(warpField(evolved, (x, y) => randomWalkOffset({
+      seed: `${seed}:event-likelihood`,
+      likelihoodField: field,
+      x,
+      y,
+      step,
+      complexityScale,
+      motionScope: 'perFeature'
+    })));
+  }
+  if (spatialEvolution === 'neighborPropagation') {
+    const activated = diffuseField(evolved, complexityValue(dynamicComplexity, 0.1, 0.18, 0.28));
+    evolved = evolved.map((row, y) => row.map((value, x) => {
+      const block = seededUnitLike(`${seed}:event-likelihood:spread:${Math.floor(x / 3)}:${Math.floor(y / 3)}:${Math.floor(time / 4)}`);
+      return clamp01(value * 0.7 + activated[y][x] * 0.26 + (block > 0.68 ? 0.1 * complexityScale : 0));
+    }));
+    return roundLikelihoodField(evolved);
+  }
+  return roundLikelihoodField(evolved);
+}
+
+function roundLikelihoodField(field) {
+  return field.map((row) => row.map((value) => round3(clamp01(value))));
+}
+
+function rngSeeded(seed) {
+  return seededUnitLike(seed);
+}
+
+function normalizeLikelihoodField(field) {
+  const values = field.flat().map(Number);
+  const min = Math.min(...values);
+  const max = Math.max(...values);
+  if (!Number.isFinite(min) || !Number.isFinite(max) || Math.abs(max - min) < 0.0001) {
+    return field.map((row) => row.map(() => 1));
+  }
+  return field.map((row) => row.map((value) => round3(clamp01((Number(value) - min) / (max - min)))));
+}
+
+function likelihoodAtCell(likelihoodField, x, y) {
+  const height = likelihoodField?.length ?? 0;
+  const width = likelihoodField?.[0]?.length ?? 0;
+  if (!height || !width) return 1;
+  const xx = Math.max(0, Math.min(width - 1, Math.round(Number(x) || 0)));
+  const yy = Math.max(0, Math.min(height - 1, Math.round(Number(y) || 0)));
+  return clamp01(likelihoodField[yy]?.[xx] ?? 1);
+}
+
+function likelihoodAtNorm(likelihoodField, x, y) {
+  const height = likelihoodField?.length ?? 0;
+  const width = likelihoodField?.[0]?.length ?? 0;
+  if (!height || !width) return 1;
+  return likelihoodAtCell(likelihoodField, clampRange(x, 0, 1) * (width - 1), clampRange(y, 0, 1) * (height - 1));
+}
+
+function likelihoodGradient(likelihoodField, x, y) {
+  const amount = 0.04;
+  const left = likelihoodAtNorm(likelihoodField, x - amount, y);
+  const right = likelihoodAtNorm(likelihoodField, x + amount, y);
+  const up = likelihoodAtNorm(likelihoodField, x, y - amount);
+  const down = likelihoodAtNorm(likelihoodField, x, y + amount);
+  return {
+    dx: clampRange(right - left, -1, 1),
+    dy: clampRange(down - up, -1, 1)
+  };
+}
+
+function createLikelihoodHotspots(width, height, count, pattern, rng, likelihoodField, seed, eventLikelihood) {
+  const normalizedCount = Math.max(1, Math.round(Number(count) || 1));
+  const anchor = weightedLikelihoodCell(likelihoodField, rng);
+  return Array.from({ length: normalizedCount }, (_, index) => {
+    const cell = pattern === 'clustered' && index > 0
+      ? weightedCellNearAnchor(likelihoodField, rng, anchor, width, height)
+      : weightedLikelihoodCell(likelihoodField, rng);
+    return {
+      x: Math.max(0, Math.min(width - 1, cell.x + 0.12 + rng() * 0.76)),
+      y: Math.max(0, Math.min(height - 1, cell.y + 0.12 + rng() * 0.76)),
+      radius: pattern === 'single' ? 2.7 : pattern === 'clustered' ? 2.1 : 1.55 + rng() * 1.1,
+      strength: 0.66 + likelihoodAtCell(likelihoodField, cell.x, cell.y) * 0.26 + rng() * 0.12,
+      seed: `${seed}:${eventLikelihood}:event-origin:${index}`
+    };
+  });
+}
+
+function weightedCellNearAnchor(likelihoodField, rng, anchor, width, height) {
+  let best = anchor;
+  let bestScore = -Infinity;
+  for (let attempt = 0; attempt < 18; attempt += 1) {
+    const cell = weightedLikelihoodCell(likelihoodField, rng);
+    const dx = (cell.x - anchor.x) / Math.max(1, width);
+    const dy = (cell.y - anchor.y) / Math.max(1, height);
+    const score = likelihoodAtCell(likelihoodField, cell.x, cell.y) - Math.sqrt(dx * dx + dy * dy) * 0.85 + rng() * 0.12;
+    if (score > bestScore) {
+      bestScore = score;
+      best = cell;
+    }
+  }
+  return best;
+}
+
+function weightedLikelihoodCell(likelihoodField, rng) {
+  const height = likelihoodField?.length ?? 0;
+  const width = likelihoodField?.[0]?.length ?? 0;
+  if (!height || !width) return { x: 0, y: 0 };
+  let total = 0;
+  for (let y = 0; y < height; y += 1) {
+    for (let x = 0; x < width; x += 1) {
+      total += 0.015 + likelihoodAtCell(likelihoodField, x, y) ** 1.8;
+    }
+  }
+  let roll = rng() * Math.max(0.0001, total);
+  for (let y = 0; y < height; y += 1) {
+    for (let x = 0; x < width; x += 1) {
+      roll -= 0.015 + likelihoodAtCell(likelihoodField, x, y) ** 1.8;
+      if (roll <= 0) return { x, y };
+    }
+  }
+  return { x: width - 1, y: height - 1 };
+}
+
 function createUniformRandom(width, height, rng) {
   return Array.from({ length: height }, () => Array.from({ length: width }, () => round3(rng())));
 }
@@ -1243,10 +1617,11 @@ function createGradientFront({ width, height, rng, noise, time }) {
   }));
 }
 
-function createSparseTargets({ width, height, rng, hotspotCount, noise, time }) {
-  const targets = Array.from({ length: Math.max(3, hotspotCount * 2) }, (_, index) => ({
-    x: rng() * Math.max(1, width - 1),
-    y: rng() * Math.max(1, height - 1),
+function createSparseTargets({ width, height, rng, hotspotCount, noise, time, likelihoodField, seed, eventLikelihood }) {
+  const targetCells = createLikelihoodHotspots(width, height, Math.max(3, hotspotCount * 2), 'multiple', rng, likelihoodField, seed, eventLikelihood);
+  const targets = targetCells.map((cell, index) => ({
+    x: cell.x,
+    y: cell.y,
     strength: 0.58 + rng() * 0.42,
     radius: 0.55 + rng() * 0.7,
     phase: rng() * Math.PI * 2 + index

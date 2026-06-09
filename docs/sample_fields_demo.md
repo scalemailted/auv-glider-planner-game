@@ -7,6 +7,7 @@ The pure Sample / ROI Field Demo visualizes `S(x,y,t)`: sample value, reward val
 It teaches sample-value fields by separating field construction from process behavior. It answers:
 
 - what spatial shape the sample-value field has
+- where events are likely to originate before geometry and values are applied
 - how intensity changes over time
 - how the spatial distribution moves, jumps, wanders, or propagates over time
 - whether the process is time-indexed, state-evolving, or history-aware
@@ -16,13 +17,21 @@ It teaches sample-value fields by separating field construction from process beh
 
 `S(x,y,t)` is a scalar field over map position and demo time.
 
+The demo also exposes an Event Likelihood Field:
+
+```text
+L(x,y,t)
+```
+
+`L` is the generative substrate: where sample-value events, clusters, targets, bursts, or activations are likely to originate at time `t`. `S` is the observed sample value after likelihood, spatial pattern, value distribution, temporal behavior, spatial evolution, and sampling effects are composed.
+
 The center viewport renders this field as a cell heatmap. Cooler cells have lower sample value; warmer cells have higher sample value. The field is deterministic from the demo seed and controls, so random-looking texture and pulses are replayable rather than unseeded page-load randomness.
 
 ## Why the Demo Separates Pattern, Parameters, and Process
 
 Earlier versions exposed a long list of named examples, but many names mixed different concepts: spatial geometry, number of clusters, temporal behavior, statistical texture, and history-aware sampling effects.
 
-The refactored demo separates these concepts. The spatial pattern describes where value appears. Spatial parameters describe how that pattern is shaped. The temporal pattern describes how intensity changes over time. Spatial evolution describes how the spatial distribution stays fixed, drifts, jumps, wanders, or propagates. The state model explains whether the field is time-indexed, frequency-based, state-evolving, or history-aware.
+The refactored demo separates these concepts. The Event Likelihood Field describes where event origins, sparse candidate sites, jump destinations, random-walk bias, and propagation likelihood come from. It can be static as `L(x,y)` or dynamic as `L(x,y,t)`. The spatial pattern describes how value is organized around that substrate. Spatial parameters describe how that pattern is shaped. Value Distribution describes how values are assigned. The temporal pattern describes how intensity changes over time. Spatial evolution describes how the spatial distribution stays fixed, drifts, jumps, wanders, or propagates. The state model explains whether the field is time-indexed, frequency-based, state-evolving, or history-aware.
 
 A two-cluster field is not a separate theory from a three-cluster field. Both are instances of a clustered field with a different cluster count. This is why the demo uses `Clustered Field` plus `Cluster Count` rather than separate Single Cluster, Bimodal, and Multi-Hotspot modes.
 
@@ -50,6 +59,7 @@ Use Flow Fields Demo for `F(x,y,t)`, Coupled Fields Demo for current-dependent s
 The demo builds sample-value behavior from independent axes:
 
 - **Spatial Pattern:** where value appears.
+- **Event Likelihood Field:** where event origins and future activity are likely.
 - **Value Distribution:** how values are assigned within that spatial geometry.
 - **Temporal Pattern:** how intensity changes over time.
 - **Spatial Evolution:** how the spatial distribution moves, jumps, spreads, or propagates.
@@ -65,6 +75,7 @@ Every major component in the Sample / ROI Demo has behavior help. The left Missi
 
 | Component Group | What it controls | Example question answered |
 |---|---|---|
+| Event Likelihood Field | Where event origins and future activity are likely | Where are events prone to start, jump, walk, or spread? |
 | Spatial Pattern | Where value is organized in space | Where are the valuable cells? |
 | Value Distribution | How values are assigned within that geometry | Are values constant, uniformly random, or mostly near a mean? |
 | Temporal Pattern | How intensity changes over time | When does value rise, fade, pulse, or stay steady? |
@@ -73,11 +84,69 @@ Every major component in the Sample / ROI Demo has behavior help. The left Missi
 | Sampling Effect | How visits change future value | Does sampling deplete, cool neighbors, or recover later? |
 | Display Layer | Which value layer is visible | Am I viewing raw value, depleted value, freshness, or composed sample value? |
 
-The right-panel Behavior Help view includes a `Current Composition` card that summarizes how the selected components combine, for example `Clustered Field + Gaussian / Normal + Bursty + Discrete Jump + Time-Indexed + Soft Depletion + Sample Value`. Current-driven transport, plumes, flow-stretched patterns, forecast, truth, uncertainty, information gain, and forecast error are routed to the Coupled Fields Demo and Uncertainty / Forecast Demo.
+The right-panel Behavior Help view includes a `Current Composition` card that summarizes how the selected components combine, for example `Multi-Modal Likelihood + Clustered Field + Gaussian / Normal + Bursty + Discrete Jump + Time-Indexed + Soft Depletion + Sample Value`. Current-driven transport, plumes, flow-stretched patterns, forecast, truth, uncertainty, information gain, and forecast error are routed to the Coupled Fields Demo and Uncertainty / Forecast Demo.
 
-## Spatial Pattern vs Value Distribution
+## Event Likelihood Field
 
-The demo separates the shape of the field from the distribution of values. Spatial Pattern is geometry. Value Distribution is value likelihood.
+Event Likelihood Field is the primitive substrate. It answers: where are events likely to originate or move next?
+
+It is not the displayed value distribution and it is not a current, terrain, or land model. It biases:
+
+- cluster and event origins
+- sparse target candidate sites
+- discrete jump destinations
+- random-walk movement direction
+- neighbor-propagation activation and spread
+
+The implemented Event Likelihood options are:
+
+| Event Likelihood Field | What it means | Typical effect |
+|---|---|---|
+| Uniform Likelihood | Every cell is equally event-prone | Neutral baseline |
+| Gaussian Likelihood | One smooth seeded event-prone region | Events favor one broad basin |
+| Multi-Modal Likelihood | Several seeded event-prone regions | Clusters and jumps favor several basins |
+| Gradient Likelihood | Event-proneness increases along a seeded direction | Activity favors the high-likelihood side |
+| Patchy Likelihood | Irregular spatially correlated event-prone patches | Propagation and targets favor patch neighborhoods |
+| Seeded Texture Likelihood | Fine/coarse replayable texture | Irregular event-prone pockets |
+| Sparse Candidate Sites | Small seeded candidate locations | Sparse targets and jumps favor candidate neighborhoods |
+
+`Constant Field` is not the event substrate. Constant Field remains a Spatial Pattern that adds no geometry. Use `Uniform Likelihood` when event origins should be unbiased.
+
+### Event Likelihood Dynamics
+
+The likelihood substrate can be:
+
+- `Static`: `L(x,y)` is fixed over time.
+- `Dynamic`: `L(x,y,t)` changes over demo time.
+
+When dynamic, Event Likelihood Field has its own controls:
+
+- `Likelihood Temporal Pattern`: Static, Sustained, Periodic, Bursty, Intermittent, Random Pulses, or Long Cycle.
+- `Likelihood Spatial Evolution`: Stationary, Continuous Movement, Discrete Jump, Random Walk, or Neighbor Propagation.
+
+These controls affect `L`, not the already-realized sample-value layer. For example:
+
+```text
+Event Likelihood Field: Multi-Modal Likelihood
+Likelihood Temporal Pattern: Bursty
+Likelihood Spatial Evolution: Discrete Jump
+
+Spatial Pattern: Clustered Field
+Temporal Pattern: Bursty
+Spatial Evolution: Stationary
+```
+
+This means the likelihood substrate chooses which region is event-prone during each burst window. Once a cluster appears during that burst, the cluster can grow and fade in place. The next burst can form elsewhere because `L(x,y,t)` changed.
+
+`Continuous Movement` changes likelihood smoothly through adjacent or intermediate locations. `Discrete Jump` is the mode for discontinuous relocation between event windows. `Random Walk` moves likelihood peaks by local seeded steps. `Neighbor Propagation` spreads high-likelihood influence into nearby cells.
+
+## Event Likelihood vs Spatial Pattern vs Value Distribution
+
+The demo separates event-proneness, geometry, and assigned values.
+
+- Event Likelihood Field is where events are likely to originate or move next.
+- Spatial Pattern is the geometry used to organize value around that substrate.
+- Value Distribution is how values are assigned within the resulting geometry.
 
 A Constant Field with Constant Value is flat. A Constant Field with Uniform Random values has no spatial structure, but each cell receives a seeded random value from a uniform distribution. A Gaussian / Normal distribution produces values mostly near a mean, with fewer extremes.
 
@@ -115,7 +184,7 @@ Spatial Pattern answers: where is sample value located?
 - `Monitoring Stations`: fixed station-like targets that support revisit strategy.
 - `Seeded Texture`: deterministic fine/coarse value texture with spatial coherence.
 
-The left Mission Console provides quick hover help and compact Explain buttons. The right panel shows the selected `About ...` explainer for Spatial Pattern, Value Distribution, Temporal Pattern, Spatial Evolution, State Model, Sampling Effect, and Display Layer.
+The left Mission Console provides quick hover help and compact Explain buttons. The right panel shows the selected `About ...` explainer for Event Likelihood Field, Spatial Pattern, Value Distribution, Temporal Pattern, Spatial Evolution, State Model, Sampling Effect, and Display Layer.
 
 ## Value Distributions
 
@@ -213,6 +282,7 @@ Click a heatmap cell to inspect it in the right panel. Clicking a cell switches 
 The inspector reports:
 
 - cell coordinate
+- event likelihood model and selected-cell likelihood
 - displayed layer
 - sample value and normalized value
 - spatial pattern

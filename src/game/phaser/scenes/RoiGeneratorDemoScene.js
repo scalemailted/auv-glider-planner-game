@@ -6,6 +6,9 @@ import {
   roiSpatialEvolutionLabel,
   roiMotionScopeLabel,
   roiPureSpatialPatternLabel,
+  roiEventLikelihoodLabel,
+  roiLikelihoodDynamicsLabel,
+  roiLikelihoodSpatialEvolutionLabel,
   roiValueDistributionLabel,
   roiSpatialPatternHelp,
   roiTemporalPatternLabel,
@@ -17,6 +20,8 @@ import {
   sampleTemporalBehaviorLabel,
   roiDemoDistributionDefaults,
   normalizeRoiDemoDistribution,
+  normalizeRoiDemoEventLikelihood,
+  normalizeRoiDemoLikelihoodDynamics,
   normalizeRoiDemoPureSpatialPattern,
   normalizeRoiDemoValueDistribution,
   normalizeRoiDemoTemporalBehavior,
@@ -42,6 +47,10 @@ export class RoiGeneratorDemoScene extends PhaserScene {
     this.transportRefs = {};
     this.distribution = 'burstyBloom';
     this.seed = 'anchor-roi-demo';
+    this.eventLikelihood = 'multiModalLikelihood';
+    this.eventLikelihoodDynamics = 'static';
+    this.eventLikelihoodTemporalPattern = 'static';
+    this.eventLikelihoodSpatialEvolution = 'stationary';
     this.hotspotCount = 3;
     this.clusterSize = 'medium';
     this.noise = 0.15;
@@ -75,6 +84,10 @@ export class RoiGeneratorDemoScene extends PhaserScene {
     this.distribution = normalizeRoiDemoDistribution(data.distribution ?? 'burstyBloom');
     const distributionDefaults = roiDemoDistributionDefaults(this.distribution);
     this.seed = data.seed ?? 'anchor-roi-demo';
+    this.eventLikelihood = normalizeRoiDemoEventLikelihood(data.eventLikelihood ?? distributionDefaults.eventLikelihood ?? 'multiModalLikelihood');
+    this.eventLikelihoodDynamics = normalizeRoiDemoLikelihoodDynamics(data.eventLikelihoodDynamics ?? 'static');
+    this.eventLikelihoodTemporalPattern = normalizeRoiDemoTemporalPattern(data.eventLikelihoodTemporalPattern ?? 'static');
+    this.eventLikelihoodSpatialEvolution = normalizeRoiDemoPatternEvolution(data.eventLikelihoodSpatialEvolution ?? 'stationary');
     this.hotspotCount = finiteNumber(data.hotspotCount, 3);
     this.clusterSize = normalizeRoiDemoClusterSize(data.clusterSize ?? 'medium');
     this.noise = finiteNumber(data.noise, 0.15);
@@ -132,7 +145,7 @@ export class RoiGeneratorDemoScene extends PhaserScene {
   }
 
   update(_time, delta) {
-    if (this.paused || this.timeMode !== 'dynamic') {
+    if (this.paused || (this.timeMode !== 'dynamic' && this.eventLikelihoodDynamics !== 'dynamic')) {
       this.draw();
       return;
     }
@@ -154,6 +167,10 @@ export class RoiGeneratorDemoScene extends PhaserScene {
     return {
       distribution: this.distribution,
       seed: this.seed,
+      eventLikelihood: this.eventLikelihood,
+      eventLikelihoodDynamics: this.eventLikelihoodDynamics,
+      eventLikelihoodTemporalPattern: this.eventLikelihoodTemporalPattern,
+      eventLikelihoodSpatialEvolution: this.eventLikelihoodSpatialEvolution,
       hotspotCount: this.hotspotCount,
       clusterSize: this.clusterSize,
       noise: this.noise,
@@ -188,9 +205,17 @@ export class RoiGeneratorDemoScene extends PhaserScene {
   renderConsole() {
     this.app.console?.renderRoiDemoControls?.({
       title: this.title(),
-      status: `${roiPureSpatialPatternLabel(this.field?.pureSpatialPattern ?? this.spatialPattern)} sample field`,
+      status: `${roiEventLikelihoodLabel(this.field?.eventLikelihood ?? this.eventLikelihood)} event likelihood`,
       distribution: this.distribution,
       seed: this.seed,
+      eventLikelihood: this.field?.eventLikelihood ?? this.eventLikelihood,
+      eventLikelihoodLabel: this.field?.eventLikelihoodLabel ?? roiEventLikelihoodLabel(this.eventLikelihood),
+      eventLikelihoodDynamics: this.field?.eventLikelihoodDynamics ?? this.eventLikelihoodDynamics,
+      eventLikelihoodDynamicsLabel: this.field?.eventLikelihoodDynamicsLabel ?? roiLikelihoodDynamicsLabel(this.eventLikelihoodDynamics),
+      eventLikelihoodTemporalPattern: this.field?.eventLikelihoodTemporalPattern ?? this.eventLikelihoodTemporalPattern,
+      eventLikelihoodTemporalPatternLabel: this.field?.eventLikelihoodTemporalPatternLabel ?? roiTemporalPatternLabel(this.eventLikelihoodTemporalPattern),
+      eventLikelihoodSpatialEvolution: this.field?.eventLikelihoodSpatialEvolution ?? this.eventLikelihoodSpatialEvolution,
+      eventLikelihoodSpatialEvolutionLabel: this.field?.eventLikelihoodSpatialEvolutionLabel ?? roiLikelihoodSpatialEvolutionLabel(this.eventLikelihoodSpatialEvolution),
       hotspotCount: this.hotspotCount,
       noise: this.noise,
       timeMode: this.timeMode,
@@ -233,6 +258,10 @@ export class RoiGeneratorDemoScene extends PhaserScene {
         const defaults = roiDemoDistributionDefaults(distribution);
         this.scene.restart(this.sceneConfig({
           distribution,
+          eventLikelihood: defaults.eventLikelihood ?? this.eventLikelihood,
+          eventLikelihoodDynamics: this.eventLikelihoodDynamics,
+          eventLikelihoodTemporalPattern: this.eventLikelihoodTemporalPattern,
+          eventLikelihoodSpatialEvolution: this.eventLikelihoodSpatialEvolution,
           spatialPattern: defaults.spatialPattern,
           valueDistribution: defaults.valueDistribution,
           temporalPattern: defaults.temporalPattern,
@@ -248,6 +277,15 @@ export class RoiGeneratorDemoScene extends PhaserScene {
         this.seed = String(seed ?? 'anchor-roi-demo').trim() || 'anchor-roi-demo';
         this.scene.restart(this.sceneConfig({ seed: this.seed, demoTime: 0 }));
       },
+      eventLikelihood: (eventLikelihood) => this.scene.restart(this.sceneConfig({ eventLikelihood, demoTime: 0 })),
+      eventLikelihoodDynamics: (eventLikelihoodDynamics) => this.scene.restart(this.sceneConfig({
+        eventLikelihoodDynamics,
+        eventLikelihoodTemporalPattern: eventLikelihoodDynamics === 'dynamic' ? this.eventLikelihoodTemporalPattern : 'static',
+        eventLikelihoodSpatialEvolution: eventLikelihoodDynamics === 'dynamic' ? this.eventLikelihoodSpatialEvolution : 'stationary',
+        demoTime: 0
+      })),
+      eventLikelihoodTemporalPattern: (eventLikelihoodTemporalPattern) => this.scene.restart(this.sceneConfig({ eventLikelihoodTemporalPattern, eventLikelihoodDynamics: 'dynamic', demoTime: 0 })),
+      eventLikelihoodSpatialEvolution: (eventLikelihoodSpatialEvolution) => this.scene.restart(this.sceneConfig({ eventLikelihoodSpatialEvolution, eventLikelihoodDynamics: 'dynamic', demoTime: 0 })),
       hotspotCount: (hotspotCount) => this.scene.restart(this.sceneConfig({ hotspotCount: Number(hotspotCount), demoTime: 0 })),
       clusterSize: (clusterSize) => this.scene.restart(this.sceneConfig({ clusterSize, demoTime: 0 })),
       noise: (noise) => this.scene.restart(this.sceneConfig({ noise: Number(noise), demoTime: 0 })),
@@ -397,9 +435,9 @@ export class RoiGeneratorDemoScene extends PhaserScene {
     this.subtitleText?.setPosition(margin, top + 42);
     this.subtitleText?.setWordWrapWidth(Math.min(780, map.width));
     const stats = this.field?.stats ?? {};
-    const dynamicText = this.timeMode === 'dynamic' ? ` | Demo Time: ${this.demoTime.toFixed(1)} hr | Playback: ${this.timeSpeedScale}x | Direction: ${this.playbackDirection === -1 ? 'Reverse' : 'Forward'}` : '';
+    const dynamicText = this.timeMode === 'dynamic' || this.eventLikelihoodDynamics === 'dynamic' ? ` | Demo Time: ${this.demoTime.toFixed(1)} hr | Playback: ${this.timeSpeedScale}x | Direction: ${this.playbackDirection === -1 ? 'Reverse' : 'Forward'}` : '';
     const stateModel = this.field?.stateModel ?? roiStateModelForEvolutionModel(this.field?.evolutionModel ?? this.evolutionModel);
-    this.statusText?.setText(`Spatial: ${roiPureSpatialPatternLabel(this.field?.pureSpatialPattern ?? this.spatialPattern)} | Value Distribution: ${roiValueDistributionLabel(this.field?.valueDistribution ?? this.valueDistribution)} | Temporal: ${roiTemporalPatternLabel(this.field?.temporalPattern ?? this.temporalPattern)} | Spatial Evolution: ${roiSpatialEvolutionLabel(this.field?.spatialEvolution ?? this.spatialEvolution)} | State Model: ${roiStateModelLabel(stateModel)} | Sampling: ${roiDepletionModeLabel(this.field?.depletionMode ?? this.depletionMode)} | Display: ${roiDisplayModeLabel(this.field?.displayMode ?? this.displayMode)} | Seed: ${this.seed}${dynamicText} | Max: ${formatStat(stats.max)} | Mean: ${formatStat(stats.mean)} | Total: ${formatStat(stats.totalValue)}`);
+    this.statusText?.setText(`Event Likelihood: ${roiEventLikelihoodLabel(this.field?.eventLikelihood ?? this.eventLikelihood)} (${roiLikelihoodDynamicsLabel(this.field?.eventLikelihoodDynamics ?? this.eventLikelihoodDynamics)}) | Spatial: ${roiPureSpatialPatternLabel(this.field?.pureSpatialPattern ?? this.spatialPattern)} | Value Distribution: ${roiValueDistributionLabel(this.field?.valueDistribution ?? this.valueDistribution)} | Temporal: ${roiTemporalPatternLabel(this.field?.temporalPattern ?? this.temporalPattern)} | Spatial Evolution: ${roiSpatialEvolutionLabel(this.field?.spatialEvolution ?? this.spatialEvolution)} | State Model: ${roiStateModelLabel(stateModel)} | Sampling: ${roiDepletionModeLabel(this.field?.depletionMode ?? this.depletionMode)} | Display: ${roiDisplayModeLabel(this.field?.displayMode ?? this.displayMode)} | Seed: ${this.seed}${dynamicText} | Max: ${formatStat(stats.max)} | Mean: ${formatStat(stats.mean)} | Total: ${formatStat(stats.totalValue)}`);
     this.statusText?.setWordWrapWidth(Math.min(1040, map.width));
     this.statusText?.setPosition(margin, map.y + map.height + 18);
   }
@@ -524,7 +562,9 @@ export class RoiGeneratorDemoScene extends PhaserScene {
     if (!refs.root?.isConnected) return;
     const directionLabel = this.playbackDirection === -1 ? 'Reverse' : 'Forward';
     if (refs.time) refs.time.textContent = `${this.paused ? 'Paused at' : 'Demo Time'}: ${this.demoTime.toFixed(1)} s`;
-    if (refs.state) refs.state.textContent = this.timeMode === 'dynamic' ? `Dynamic sample field - ${directionLabel.toLowerCase()}` : 'Static sample field';
+    if (refs.state) refs.state.textContent = this.timeMode === 'dynamic' || this.eventLikelihoodDynamics === 'dynamic'
+      ? `Dynamic sample field - ${directionLabel.toLowerCase()}`
+      : 'Static sample field';
     if (refs.directionButton) refs.directionButton.textContent = `Direction: ${directionLabel}`;
     if (refs.pauseButton) refs.pauseButton.textContent = this.paused ? 'Resume' : 'Pause';
     if (refs.speed) refs.speed.textContent = `Playback: ${this.timeSpeedScale}x`;
@@ -558,7 +598,7 @@ export class RoiGeneratorDemoScene extends PhaserScene {
     if (!root) return;
     if (this.rightPanelMode === 'behaviorHelp') {
       const topic = this.selectedHelpTopic ?? null;
-      const key = `behaviorHelp:${topic?.groupId ?? 'empty'}:${topic?.optionId ?? 'empty'}:${this.timeMode}:${this.spatialPattern}:${this.valueDistribution}:${this.temporalPattern}:${this.spatialEvolution}:${this.motionScope}:${this.depletionMode}:${this.displayMode}`;
+      const key = `behaviorHelp:${topic?.groupId ?? 'empty'}:${topic?.optionId ?? 'empty'}:${this.timeMode}:${this.eventLikelihood}:${this.eventLikelihoodDynamics}:${this.eventLikelihoodTemporalPattern}:${this.eventLikelihoodSpatialEvolution}:${this.spatialPattern}:${this.valueDistribution}:${this.temporalPattern}:${this.spatialEvolution}:${this.motionScope}:${this.depletionMode}:${this.displayMode}`;
       if (!force && key === this.lastInspectorKey) return;
       this.lastInspectorKey = key;
       this.lastInspectorRenderTime = this.demoTime;
@@ -576,7 +616,7 @@ export class RoiGeneratorDemoScene extends PhaserScene {
       }
       return;
     }
-    const key = `${this.selectedCell.col},${this.selectedCell.row}:${this.timeMode}:${this.spatialPattern}:${this.valueDistribution}:${this.temporalPattern}:${this.spatialEvolution}:${this.motionScope}:${this.depletionMode}:${this.displayMode}:${this.clusterSize}:${this.paused}`;
+    const key = `${this.selectedCell.col},${this.selectedCell.row}:${this.timeMode}:${this.eventLikelihood}:${this.eventLikelihoodDynamics}:${this.eventLikelihoodTemporalPattern}:${this.eventLikelihoodSpatialEvolution}:${this.spatialPattern}:${this.valueDistribution}:${this.temporalPattern}:${this.spatialEvolution}:${this.motionScope}:${this.depletionMode}:${this.displayMode}:${this.clusterSize}:${this.paused}`;
     if (!force && key === this.lastInspectorKey && Math.abs(this.demoTime - this.lastInspectorRenderTime) < 0.25) return;
     this.lastInspectorKey = key;
     this.lastInspectorRenderTime = this.demoTime;
@@ -585,6 +625,11 @@ export class RoiGeneratorDemoScene extends PhaserScene {
 
   behaviorHelpState() {
     return {
+      eventLikelihood: this.field?.eventLikelihood ?? this.eventLikelihood,
+      eventLikelihoodLabel: this.field?.eventLikelihoodLabel ?? roiEventLikelihoodLabel(this.eventLikelihood),
+      eventLikelihoodDynamics: this.field?.eventLikelihoodDynamics ?? this.eventLikelihoodDynamics,
+      eventLikelihoodTemporalPattern: this.field?.eventLikelihoodTemporalPattern ?? this.eventLikelihoodTemporalPattern,
+      eventLikelihoodSpatialEvolution: this.field?.eventLikelihoodSpatialEvolution ?? this.eventLikelihoodSpatialEvolution,
       spatialPattern: this.field?.pureSpatialPattern ?? this.spatialPattern,
       valueDistribution: this.field?.valueDistribution ?? this.valueDistribution,
       temporalPattern: this.field?.temporalPattern ?? this.temporalPattern,
@@ -604,6 +649,7 @@ export class RoiGeneratorDemoScene extends PhaserScene {
   inspectSelectedCell() {
     const cell = this.selectedCell;
     const value = Number(this.field?.field?.[cell.row]?.[cell.col] ?? 0);
+    const eventLikelihoodValue = Number(this.field?.eventLikelihoodField?.[cell.row]?.[cell.col] ?? 1);
     const previousField = createDemoRoiField({ ...this.sceneConfig(), time: Math.max(0, this.demoTime - 1), demoTime: Math.max(0, this.demoTime - 1) });
     const previous = Number(previousField.field?.[cell.row]?.[cell.col] ?? value);
     const stats = this.field?.stats ?? {};
@@ -620,6 +666,16 @@ export class RoiGeneratorDemoScene extends PhaserScene {
       normalizedValue: stats.max > stats.min ? (value - stats.min) / Math.max(0.0001, stats.max - stats.min) : value,
       mode: this.timeMode,
       distribution: this.distribution,
+      eventLikelihood: this.field?.eventLikelihood ?? this.eventLikelihood,
+      eventLikelihoodLabel: this.field?.eventLikelihoodLabel ?? roiEventLikelihoodLabel(this.eventLikelihood),
+      eventLikelihoodDynamics: this.field?.eventLikelihoodDynamics ?? this.eventLikelihoodDynamics,
+      eventLikelihoodDynamicsLabel: this.field?.eventLikelihoodDynamicsLabel ?? roiLikelihoodDynamicsLabel(this.eventLikelihoodDynamics),
+      eventLikelihoodTemporalPattern: this.field?.eventLikelihoodTemporalPattern ?? this.eventLikelihoodTemporalPattern,
+      eventLikelihoodTemporalPatternLabel: this.field?.eventLikelihoodTemporalPatternLabel ?? roiTemporalPatternLabel(this.eventLikelihoodTemporalPattern),
+      eventLikelihoodSpatialEvolution: this.field?.eventLikelihoodSpatialEvolution ?? this.eventLikelihoodSpatialEvolution,
+      eventLikelihoodSpatialEvolutionLabel: this.field?.eventLikelihoodSpatialEvolutionLabel ?? roiLikelihoodSpatialEvolutionLabel(this.eventLikelihoodSpatialEvolution),
+      eventLikelihoodValue,
+      eventLikelihoodBand: likelihoodBandLabel(eventLikelihoodValue),
       spatialPattern,
       valueDistribution: this.field?.valueDistribution ?? this.valueDistribution,
       valueDistributionLabel: this.field?.valueDistributionLabel ?? roiValueDistributionLabel(this.valueDistribution),
@@ -694,6 +750,14 @@ function valueBandLabel(value) {
   return 'high';
 }
 
+function likelihoodBandLabel(value) {
+  const number = Number(value);
+  if (!Number.isFinite(number)) return 'n/a';
+  if (number < 0.25) return 'unlikely';
+  if (number < 0.6) return 'possible';
+  return 'event-prone';
+}
+
 function normalizeForecastView(value) {
   return ['forecast', 'truth', 'uncertainty', 'depleted'].includes(value) ? value : 'forecast';
 }
@@ -736,6 +800,7 @@ function roiInspectorEmptyHtml() {
         <strong>You can inspect</strong>
         <ul>
           <li>sample value and normalized value</li>
+          <li>event likelihood at the selected cell</li>
           <li>temporal trend and hotspot membership</li>
           <li>state model, spatial evolution, and sampling effect</li>
           <li>raw and depleted sample-value display layers</li>
@@ -757,6 +822,7 @@ function roiBehaviorHelpEmptyHtml() {
         <strong>Available help</strong>
         <ul>
           <li>Spatial Pattern</li>
+          <li>Event Likelihood Field</li>
           <li>Temporal Pattern</li>
           <li>Spatial Evolution</li>
           <li>State Model</li>
@@ -819,6 +885,7 @@ function roiBehaviorHelpHtml(topic, state) {
 
 function behaviorHelpOptionForGroup(groupId, state) {
   return {
+    eventLikelihood: state.eventLikelihood,
     spatialPattern: state.spatialPattern,
     valueDistribution: state.valueDistribution,
     temporalPattern: state.temporalPattern,
@@ -837,10 +904,22 @@ function roiInspectorHtml(inspection) {
         <h2>Cell (${escapeHtml(inspection.cell.col)}, ${escapeHtml(inspection.cell.row)})</h2>
         <p>Type: Sample cell | t = ${formatStat(inspection.demoTime)} s</p>
       </div>
-      <div class="cell-inspector-card selected">
-        <span>Sample Value</span>
+      <div class="cell-inspector-card">
+        <span>Event Likelihood Field</span>
         ${metricRows([
-          ['value', formatStat(inspection.value)],
+          ['L(x,y,t)', formatStat(inspection.eventLikelihoodValue)],
+          ['likelihood model', inspection.eventLikelihoodLabel],
+          ['dynamics', inspection.eventLikelihoodDynamicsLabel],
+          ['temporal pattern', inspection.eventLikelihoodTemporalPatternLabel],
+          ['spatial evolution', inspection.eventLikelihoodSpatialEvolutionLabel],
+          ['event-prone', inspection.eventLikelihoodBand],
+          ['role', 'biases event origins, jumps, walks, and propagation']
+        ])}
+      </div>
+      <div class="cell-inspector-card selected">
+        <span>Observed Sample Value</span>
+        ${metricRows([
+          ['S(x,y,t)', formatStat(inspection.value)],
           ['normalized', formatStat(inspection.normalizedValue)],
           ['trend', trendLabel(inspection.delta)],
           ['delta / 1s', formatSignedStat(inspection.delta)]
@@ -850,6 +929,7 @@ function roiInspectorHtml(inspection) {
         <span>Pattern Composition</span>
         ${metricRows([
           ['field mode', inspection.mode === 'dynamic' ? 'Dynamic' : 'Static'],
+          ['event likelihood', inspection.eventLikelihoodLabel],
           ['displayed layer', roiDisplayModeLabel(inspection.displayMode)],
           ['spatial pattern', roiPureSpatialPatternLabel(inspection.spatialPattern)],
           ['value distribution', inspection.valueDistributionLabel],

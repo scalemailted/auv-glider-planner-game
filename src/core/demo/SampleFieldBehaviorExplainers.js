@@ -1,4 +1,5 @@
 export const SAMPLE_FIELD_EXPLAINER_GROUPS = [
+  'eventLikelihood',
   'spatialPattern',
   'valueDistribution',
   'temporalPattern',
@@ -9,6 +10,11 @@ export const SAMPLE_FIELD_EXPLAINER_GROUPS = [
 ];
 
 export const SAMPLE_FIELD_GROUP_SUMMARIES = {
+  eventLikelihood: {
+    label: 'Event Likelihood Field',
+    question: 'Where are events likely to originate or move next?',
+    summary: 'Controls the underlying event-proneness substrate used by origins, sparse sites, jumps, walks, and propagation.'
+  },
   spatialPattern: {
     label: 'Spatial Pattern',
     question: 'Where is sample value located in space?',
@@ -43,6 +49,79 @@ export const SAMPLE_FIELD_GROUP_SUMMARIES = {
     label: 'Display Layer',
     question: 'What value layer am I viewing?',
     summary: 'Controls whether the heatmap shows raw value, depleted value, freshness, or the active sample layer.'
+  }
+};
+
+const EVENT_LIKELIHOOD_EXPLAINERS = {
+  uniformLikelihood: {
+    label: 'Uniform Likelihood',
+    short: 'Every cell is equally likely to host event origins before spatial pattern shaping.',
+    meaning: 'The event substrate contributes no preferred origin zones.',
+    expectedBehavior: 'Clusters, sparse targets, jumps, walks, and propagation are not biased toward any particular part of the domain.',
+    parameters: ['Seed'],
+    pairsWellWith: ['Constant Field', 'Clustered Field', 'Static'],
+    strategy: 'Use as a neutral baseline for comparing spatial pattern and value distribution controls.',
+    boundaryNote: 'This replaces the old Constant Field-as-substrate idea; Constant Field is now only a spatial pattern.'
+  },
+  gaussianLikelihood: {
+    label: 'Gaussian Likelihood',
+    short: 'Events are most likely near one smooth seeded center.',
+    meaning: 'The substrate has a single broad event-prone region.',
+    expectedBehavior: 'Origin centers, sparse targets, and dynamic relocations tend to favor one seeded zone.',
+    parameters: ['Seed', 'Center', 'Spread'],
+    pairsWellWith: ['Clustered Field', 'Sparse Targets', 'Bursty'],
+    strategy: 'Teaches planning around a dominant event-prone region without hard-coding target cells.',
+    boundaryNote: 'Gaussian likelihood biases event origins; Gaussian / Normal value distribution controls value draws.'
+  },
+  multiModalLikelihood: {
+    label: 'Multi-Modal Likelihood',
+    short: 'Events are likely around several seeded source regions.',
+    meaning: 'The substrate creates multiple replayable event-prone basins.',
+    expectedBehavior: 'Clusters and targets tend to appear around several source zones rather than uniformly.',
+    parameters: ['Seed', 'Mode Count', 'Mode Spread'],
+    pairsWellWith: ['Clustered Field', 'Discrete Jump', 'Random Walk'],
+    strategy: 'Teaches assignment and fallback between several likely event regions.',
+    boundaryNote: 'The modes are deterministic from seed, not regenerated from Math.random during updates.'
+  },
+  gradientLikelihood: {
+    label: 'Gradient Likelihood',
+    short: 'Event probability increases along a seeded directional trend.',
+    meaning: 'The substrate makes one side or direction more event-prone.',
+    expectedBehavior: 'New centers, jumps, and walks favor the high-likelihood side of the heatmap.',
+    parameters: ['Seed', 'Gradient Direction'],
+    pairsWellWith: ['Gradient / Trend', 'Front / Boundary', 'Continuous Drift'],
+    strategy: 'Teaches routes that trade travel cost against a broad event-prone region.',
+    boundaryNote: 'This is not current flow or terrain slope.'
+  },
+  patchyLikelihood: {
+    label: 'Patchy Likelihood',
+    short: 'Events favor irregular but spatially correlated patches.',
+    meaning: 'The event substrate is locally coherent, so neighboring cells can share event-proneness.',
+    expectedBehavior: 'Origins and propagation prefer replayable patch neighborhoods.',
+    parameters: ['Seed', 'Patch Scale'],
+    pairsWellWith: ['Patchy / Correlated Field', 'Neighbor Propagation', 'Intermittent Activity'],
+    strategy: 'Teaches local search where nearby cells are informative.',
+    boundaryNote: 'Patchiness is deterministic from seed; it is not per-frame noise.'
+  },
+  seededTextureLikelihood: {
+    label: 'Seeded Texture Likelihood',
+    short: 'Events use a deterministic texture as the likelihood substrate.',
+    meaning: 'The substrate is irregular at coarse and fine scales while remaining replayable.',
+    expectedBehavior: 'Sparse sites, centers, and evolving features favor textured high-likelihood pockets.',
+    parameters: ['Seed', 'Texture Scale'],
+    pairsWellWith: ['Seeded Texture', 'Random Pulses', 'State-Evolving'],
+    strategy: 'Teaches planning over irregular event-prone terrain without flow or land coupling.',
+    boundaryNote: 'Texture likelihood is separate from value-distribution randomness.'
+  },
+  sparseCandidateSites: {
+    label: 'Sparse Candidate Sites',
+    short: 'Events favor a small set of seeded candidate locations.',
+    meaning: 'The substrate acts like a replayable candidate-site map for isolated event origins.',
+    expectedBehavior: 'Sparse targets and jump destinations tend to snap toward candidate neighborhoods.',
+    parameters: ['Seed', 'Candidate Count', 'Candidate Radius'],
+    pairsWellWith: ['Sparse Targets', 'Discrete Jump', 'Revisit Recovery'],
+    strategy: 'Teaches routing among a few likely event opportunities.',
+    boundaryNote: 'Candidate sites are demo event likelihood, not mission Gold Stars.'
   }
 };
 
@@ -458,6 +537,7 @@ const DISPLAY_LAYER_EXPLAINERS = {
 };
 
 const GROUP_OPTIONS = {
+  eventLikelihood: EVENT_LIKELIHOOD_EXPLAINERS,
   spatialPattern: SPATIAL_PATTERN_EXPLAINERS,
   valueDistribution: VALUE_DISTRIBUTION_EXPLAINERS,
   temporalPattern: TEMPORAL_PATTERN_EXPLAINERS,
@@ -468,6 +548,17 @@ const GROUP_OPTIONS = {
 };
 
 const ALIASES = {
+  eventLikelihood: {
+    constantField: 'uniformLikelihood',
+    uniformField: 'uniformLikelihood',
+    uniform: 'uniformLikelihood',
+    gaussian: 'gaussianLikelihood',
+    multiModal: 'multiModalLikelihood',
+    multimodal: 'multiModalLikelihood',
+    patchy: 'patchyLikelihood',
+    seededTexture: 'seededTextureLikelihood',
+    sparseTargets: 'sparseCandidateSites'
+  },
   spatialPattern: {
     uniformField: 'constantField',
     uniform: 'constantField',
@@ -528,6 +619,7 @@ export function sampleFieldBehaviorExplainer(groupId, value) {
 }
 
 export function sampleFieldCompositionExplainer(state = {}) {
+  const likelihood = sampleFieldBehaviorExplainer('eventLikelihood', state.eventLikelihood);
   const spatial = sampleFieldBehaviorExplainer('spatialPattern', state.spatialPattern);
   const valueDistribution = sampleFieldBehaviorExplainer('valueDistribution', state.valueDistribution);
   const temporal = sampleFieldBehaviorExplainer('temporalPattern', state.temporalPattern);
@@ -537,6 +629,7 @@ export function sampleFieldCompositionExplainer(state = {}) {
   const display = sampleFieldBehaviorExplainer('displayLayer', state.displayMode);
   return {
     label: [
+      likelihood.label,
       spatial.label,
       valueDistribution.label,
       temporal.label,
@@ -545,7 +638,7 @@ export function sampleFieldCompositionExplainer(state = {}) {
       sampling.label,
       display.label
     ].join(' + '),
-    summary: `${spatial.label} defines where value is organized; ${valueDistribution.label} controls how values are assigned within that geometry; ${temporal.label} controls when intensity changes; ${evolution.label} controls how the geometry changes over time; ${model.label} describes what the field depends on; ${sampling.label} describes how synthetic visits change value; ${display.label} is the layer currently shown.`,
+    summary: `${likelihood.label} defines where events are prone to originate; ${spatial.label} defines how value is organized around those events; ${valueDistribution.label} controls how values are assigned within that geometry; ${temporal.label} controls when intensity changes; ${evolution.label} controls how the geometry changes over time; ${model.label} describes what the field depends on; ${sampling.label} describes how synthetic visits change value; ${display.label} is the layer currently shown.`,
     routeNote: 'Current-driven transport, plumes, flow-stretched patterns, forecast, truth, uncertainty, information gain, and forecast error are shown in the Coupled Fields and Uncertainty / Forecast demos.'
   };
 }

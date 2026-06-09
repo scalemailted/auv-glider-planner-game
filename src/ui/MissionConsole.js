@@ -2,7 +2,7 @@ import { CAMPAIGN_LEVELS } from '../core/campaign/CampaignLevels.js';
 import { shortInstanceId } from '../core/identity/GameInstanceId.js';
 import { formatMetric } from '../core/evaluation/PlanComparison.js';
 import { FLOW_DEMO_BOUNDARY_MODES, FLOW_DEMO_CYCLE_DURATIONS, FLOW_DEMO_DYNAMIC_COMPLEXITY_LEVELS, FLOW_DEMO_EVOLUTION_BEHAVIORS, FLOW_DEMO_EVOLUTION_PATTERNS, FLOW_DEMO_EVOLUTION_SPEEDS, FLOW_DEMO_FIELD_MODES, FLOW_DEMO_LAYER_INFLUENCES, FLOW_DEMO_MAGNITUDE_SCALES, FLOW_DEMO_PARTICLE_SPEEDS, FLOW_DEMO_PRESET_CHOICES, FLOW_DEMO_SPATIAL_MOTIONS, FLOW_DEMO_SPATIAL_MOTION_SPEEDS, FLOW_DEMO_TERRAIN_MODES, FLOW_DEMO_VARIATION_LEVELS, normalizeAdditiveLayers } from '../core/demo/FlowFieldDemo.js';
-import { ROI_DEMO_DISTRIBUTIONS, ROI_DEMO_SPATIAL_PATTERNS, ROI_DEMO_TEMPORAL_BEHAVIORS, ROI_DEMO_TIME_MODES, ROI_DEMO_TEMPORAL_PATTERNS, ROI_DEMO_SPATIAL_EVOLUTIONS, ROI_DEMO_MOTION_SCOPES, ROI_DEMO_STATE_MODELS, ROI_DEMO_DEPLETION_MODES, ROI_DEMO_DISPLAY_MODES, ROI_DEMO_DYNAMIC_COMPLEXITY, ROI_DEMO_PURE_SPATIAL_PATTERNS, ROI_DEMO_VALUE_DISTRIBUTIONS, ROI_DEMO_CLUSTER_SIZES, roiDistributionLabel, roiTemporalPatternLabel, roiStateModelDescription, roiStateModelForEvolutionModel, roiStateModelLabel, roiPureSpatialPatternLabel, roiValueDistributionLabel, roiSpatialEvolutionLabel, roiMotionScopeLabel, roiDepletionModeLabel, roiDisplayModeLabel, roiClusterSizeLabel, sampleSpatialPatternLabel, sampleTemporalBehaviorLabel } from '../core/demo/DemoRoiFields.js';
+import { ROI_DEMO_DISTRIBUTIONS, ROI_DEMO_SPATIAL_PATTERNS, ROI_DEMO_TEMPORAL_BEHAVIORS, ROI_DEMO_TIME_MODES, ROI_DEMO_TEMPORAL_PATTERNS, ROI_DEMO_SPATIAL_EVOLUTIONS, ROI_DEMO_LIKELIHOOD_DYNAMICS, ROI_DEMO_MOTION_SCOPES, ROI_DEMO_STATE_MODELS, ROI_DEMO_DEPLETION_MODES, ROI_DEMO_DISPLAY_MODES, ROI_DEMO_DYNAMIC_COMPLEXITY, ROI_DEMO_PURE_SPATIAL_PATTERNS, ROI_DEMO_EVENT_LIKELIHOODS, ROI_DEMO_VALUE_DISTRIBUTIONS, ROI_DEMO_CLUSTER_SIZES, roiDistributionLabel, roiTemporalPatternLabel, roiStateModelDescription, roiStateModelForEvolutionModel, roiStateModelLabel, roiPureSpatialPatternLabel, roiEventLikelihoodLabel, roiLikelihoodDynamicsLabel, roiLikelihoodSpatialEvolutionLabel, roiValueDistributionLabel, roiSpatialEvolutionLabel, roiMotionScopeLabel, roiDepletionModeLabel, roiDisplayModeLabel, roiClusterSizeLabel, sampleSpatialPatternLabel, sampleTemporalBehaviorLabel } from '../core/demo/DemoRoiFields.js';
 import { sampleFieldBehaviorExplainer } from '../core/demo/SampleFieldBehaviorExplainers.js';
 import { EXPERIENCE_MODES, getExperienceModeDefaults } from '../core/experience/ExperienceMode.js';
 import { getVectorPresetConfig } from '../core/generation/VectorFieldPresets.js';
@@ -311,6 +311,7 @@ export class MissionConsole {
     const stateModel = state.stateModel ?? roiStateModelForEvolutionModel(state.evolutionModel);
     const stateModelLabel = state.stateModelLabel ?? roiStateModelLabel(stateModel);
     const stateModelDescription = state.stateModelDescription ?? roiStateModelDescription(stateModel);
+    const eventLikelihoodHelp = sampleFieldBehaviorExplainer('eventLikelihood', state.eventLikelihood);
     const spatialHelp = sampleFieldBehaviorExplainer('spatialPattern', state.spatialPattern);
     const temporalHelp = sampleFieldBehaviorExplainer('temporalPattern', state.temporalPattern);
     const evolutionHelp = sampleFieldBehaviorExplainer('spatialEvolution', state.spatialEvolution ?? state.patternEvolution);
@@ -326,11 +327,42 @@ export class MissionConsole {
       </section>
       <section class="console-status">
         <span>${escapeHtml(state.status ?? 'ROI field')}</span>
-        <strong>${escapeHtml(state.timeMode === 'dynamic' && !state.paused ? 'Animating' : state.paused ? 'Paused' : 'Static')}</strong>
-        <small>${escapeHtml(`${state.spatialPatternLabel ?? roiPureSpatialPatternLabel(state.spatialPattern)} | ${state.valueDistributionLabel ?? roiValueDistributionLabel(state.valueDistribution)} | ${state.temporalPatternLabel ?? roiTemporalPatternLabel(state.temporalPattern)} | ${state.spatialEvolutionLabel ?? roiSpatialEvolutionLabel(state.spatialEvolution ?? state.patternEvolution)}`)}</small>
+        <strong>${escapeHtml((state.timeMode === 'dynamic' || state.eventLikelihoodDynamics === 'dynamic') && !state.paused ? 'Animating' : state.paused ? 'Paused' : 'Static')}</strong>
+        <small>${escapeHtml(`${state.eventLikelihoodLabel ?? roiEventLikelihoodLabel(state.eventLikelihood)} ${state.eventLikelihoodDynamics === 'dynamic' ? `(${roiTemporalPatternLabel(state.eventLikelihoodTemporalPattern)} / ${roiLikelihoodSpatialEvolutionLabel(state.eventLikelihoodSpatialEvolution)})` : '(Static)'} | ${state.spatialPatternLabel ?? roiPureSpatialPatternLabel(state.spatialPattern)} | ${state.valueDistributionLabel ?? roiValueDistributionLabel(state.valueDistribution)} | ${state.temporalPatternLabel ?? roiTemporalPatternLabel(state.temporalPattern)} | ${state.spatialEvolutionLabel ?? roiSpatialEvolutionLabel(state.spatialEvolution ?? state.patternEvolution)}`)}</small>
       </section>
       <section class="console-section">
-        <h2 title="${escapeAttr(spatialHelp.groupSummary)}">Spatial Field <span aria-label="Spatial Pattern help" title="${escapeAttr(spatialHelp.short)}">i</span></h2>
+        <h2 title="${escapeAttr(eventLikelihoodHelp.groupSummary)}">Sample Field Substrate <span aria-label="Event Likelihood help" title="${escapeAttr(eventLikelihoodHelp.short)}">i</span></h2>
+        <label class="compact-field" title="${escapeAttr(eventLikelihoodHelp.short)}">
+          <span>Event Likelihood Field <span aria-label="Event Likelihood Field help" title="${escapeAttr(eventLikelihoodHelp.short)}">i</span></span>
+          <select id="roi-demo-event-likelihood" title="${escapeAttr(eventLikelihoodHelp.short)}">
+            ${ROI_DEMO_EVENT_LIKELIHOODS.map((likelihood) => {
+              const help = sampleFieldBehaviorExplainer('eventLikelihood', likelihood);
+              return `<option value="${escapeAttr(likelihood)}" ${state.eventLikelihood === likelihood ? 'selected' : ''} title="${escapeAttr(help.short)}">${escapeHtml(roiEventLikelihoodLabel(likelihood))}</option>`;
+            }).join('')}
+          </select>
+        </label>
+        ${roiHelpButtonHtml('eventLikelihood', `Explain ${roiEventLikelihoodLabel(state.eventLikelihood)}`)}
+        <label class="compact-field">
+          Dynamics
+          <select id="roi-demo-event-likelihood-dynamics">
+            ${ROI_DEMO_LIKELIHOOD_DYNAMICS.map((mode) => `<option value="${escapeAttr(mode)}" ${state.eventLikelihoodDynamics === mode ? 'selected' : ''}>${escapeHtml(roiLikelihoodDynamicsLabel(mode))}</option>`).join('')}
+          </select>
+        </label>
+        ${state.eventLikelihoodDynamics === 'dynamic' ? `
+          <label class="compact-field">
+            Likelihood Temporal Pattern
+            <select id="roi-demo-event-likelihood-temporal-pattern">
+              ${ROI_DEMO_TEMPORAL_PATTERNS.map((pattern) => `<option value="${escapeAttr(pattern)}" ${state.eventLikelihoodTemporalPattern === pattern ? 'selected' : ''}>${escapeHtml(roiTemporalPatternLabel(pattern))}</option>`).join('')}
+            </select>
+          </label>
+          <label class="compact-field">
+            Likelihood Spatial Evolution
+            <select id="roi-demo-event-likelihood-spatial-evolution">
+              ${ROI_DEMO_SPATIAL_EVOLUTIONS.map((evolution) => `<option value="${escapeAttr(evolution)}" ${state.eventLikelihoodSpatialEvolution === evolution ? 'selected' : ''}>${escapeHtml(roiLikelihoodSpatialEvolutionLabel(evolution))}</option>`).join('')}
+            </select>
+          </label>
+          <div class="hud-muted">Dynamic likelihood updates L(x,y,t). It controls where future events are likely to originate; the sample-value controls below still define the realized S(x,y,t).</div>
+        ` : ''}
         <label class="compact-field" title="${escapeAttr(spatialHelp.short)}">
           <span>Spatial Pattern <span aria-label="Pattern help" title="${escapeAttr(spatialHelp.short)}">i</span></span>
           <select id="roi-demo-spatial-pattern" title="${escapeAttr(spatialHelp.short)}">
@@ -367,7 +399,7 @@ export class MissionConsole {
           <input id="roi-demo-seed" type="text" value="${escapeAttr(state.seed ?? 'anchor-roi-demo')}" />
         </label>
         <button data-action="regenerate" class="console-button">Regenerate</button>
-        <div class="hud-muted">Spatial Pattern controls geometry; Value Distribution controls value likelihood. This pure demo does not use current vectors or flow transport.</div>
+        <div class="hud-muted">Event Likelihood Field controls L(x,y,t): where events are likely to originate. Spatial Pattern and Value Distribution control observed S(x,y,t). This pure demo does not use current vectors, land, or flow transport.</div>
       </section>
       <section class="console-section">
         <h2>Spatial Parameters</h2>
@@ -473,13 +505,17 @@ export class MissionConsole {
       <section class="console-status">
         <span>Field Stats</span>
         <strong>Max ${escapeHtml(formatDemoStat(state.stats?.max))} | Mean ${escapeHtml(formatDemoStat(state.stats?.mean))}</strong>
-        <small>${escapeHtml(state.spatialPatternLabel ?? roiPureSpatialPatternLabel(state.spatialPattern))} / ${escapeHtml(state.valueDistributionLabel ?? roiValueDistributionLabel(state.valueDistribution))} / ${escapeHtml(state.temporalPatternLabel ?? roiTemporalPatternLabel(state.temporalPattern))} / ${escapeHtml(state.spatialEvolutionLabel ?? roiSpatialEvolutionLabel(state.spatialEvolution ?? state.patternEvolution))} / ${escapeHtml(stateModelLabel)} | Total value ${escapeHtml(formatDemoStat(state.stats?.totalValue))}</small>
+        <small>${escapeHtml(state.eventLikelihoodLabel ?? roiEventLikelihoodLabel(state.eventLikelihood))} ${escapeHtml(state.eventLikelihoodDynamics === 'dynamic' ? `${roiTemporalPatternLabel(state.eventLikelihoodTemporalPattern)} / ${roiLikelihoodSpatialEvolutionLabel(state.eventLikelihoodSpatialEvolution)}` : 'Static')} / ${escapeHtml(state.spatialPatternLabel ?? roiPureSpatialPatternLabel(state.spatialPattern))} / ${escapeHtml(state.valueDistributionLabel ?? roiValueDistributionLabel(state.valueDistribution))} / ${escapeHtml(state.temporalPatternLabel ?? roiTemporalPatternLabel(state.temporalPattern))} / ${escapeHtml(state.spatialEvolutionLabel ?? roiSpatialEvolutionLabel(state.spatialEvolution ?? state.patternEvolution))} / ${escapeHtml(stateModelLabel)} | Total value ${escapeHtml(formatDemoStat(state.stats?.totalValue))}</small>
       </section>
       <section class="console-footer">
         <button data-action="menu" class="console-button secondary">Main Menu</button>
       </section>
     `;
     this.app.applyConsoleAccordions?.('roiDemo');
+    this.root.querySelector('#roi-demo-event-likelihood')?.addEventListener('change', (event) => handlers.eventLikelihood?.(event.target.value));
+    this.root.querySelector('#roi-demo-event-likelihood-dynamics')?.addEventListener('change', (event) => handlers.eventLikelihoodDynamics?.(event.target.value));
+    this.root.querySelector('#roi-demo-event-likelihood-temporal-pattern')?.addEventListener('change', (event) => handlers.eventLikelihoodTemporalPattern?.(event.target.value));
+    this.root.querySelector('#roi-demo-event-likelihood-spatial-evolution')?.addEventListener('change', (event) => handlers.eventLikelihoodSpatialEvolution?.(event.target.value));
     this.root.querySelector('#roi-demo-spatial-pattern')?.addEventListener('change', (event) => handlers.spatialPattern?.(event.target.value));
     this.root.querySelector('#roi-demo-value-distribution')?.addEventListener('change', (event) => handlers.valueDistribution?.(event.target.value));
     this.root.querySelector('#roi-demo-seed')?.addEventListener('change', (event) => handlers.seed?.(event.target.value));
