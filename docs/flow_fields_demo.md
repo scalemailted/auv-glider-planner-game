@@ -52,6 +52,8 @@ The demo provides a controlled scene for questions like:
 - Left footer `Main Menu`: returns to the main menu / Simulation Lab launcher.
 - `Cell Inspector`: click any map cell to populate the right panel with current vector behavior for that cell.
 
+The Flow Fields Demo follows the same interaction model as the Sample / ROI Field Demo: the left panel contains compact controls, the center canvas shows the field, the bottom bar owns time controls, and the right panel can show either the selected-cell inspector or Behavior Help. Info buttons in the left panel open right-panel explainers for Flow Field / Base Preset, Evolution Behavior, Dynamic Complexity, Direction Variation, Magnitude Variation, Spatial Motion, Land / Topology Mode, Boundary Mode, Display Layers, and Playback vs Evolution Speed. Long explanatory text belongs in the right panel, not inside the left control accordions.
+
 Particle count is currently fixed by mode: static mode uses fewer particles than dynamic/composite modes.
 
 ## 4. Field Mode

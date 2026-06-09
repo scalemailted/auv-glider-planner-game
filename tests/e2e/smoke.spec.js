@@ -108,6 +108,20 @@ test('campaign planning smoke flow reaches debrief', async ({ page }) => {
   await expect(page.locator('#mission-console')).toContainText('Additive Flow Layers');
   await expect(page.locator('#mission-console')).toContainText('Flow Evolution');
   await expect(page.locator('#mission-console')).toContainText('Topology-aware fields react');
+  await expect(page.locator('#mission-console [data-flow-help]')).toHaveCount(11);
+  await expect(page.locator('#mission-console .sample-field-explainer')).toHaveCount(0);
+  await expect(page.locator('#mission-console')).not.toContainText('Expected Visual Behavior');
+  await page.locator('#mission-console [data-flow-help="basePreset"]').click();
+  await expect(page.locator('#waypoint-timeline [data-flow-behavior-help]')).toBeVisible();
+  await expect(page.locator('#waypoint-timeline')).toContainText('Behavior Help');
+  await expect(page.locator('#waypoint-timeline')).toContainText('About Flow Field / Base Preset');
+  await expect(page.locator('#waypoint-timeline')).toContainText('Current Composition');
+  await page.locator('#mission-console [data-flow-help="evolutionBehavior"]').click();
+  await expect(page.locator('#waypoint-timeline')).toContainText('About Evolution Behavior');
+  await page.locator('#mission-console [data-flow-help="boundaryMode"]').click();
+  await expect(page.locator('#waypoint-timeline')).toContainText('About Boundary Mode');
+  await page.locator('#mission-console [data-flow-help="speedModel"]').click();
+  await expect(page.locator('#waypoint-timeline')).toContainText('Playback vs Evolution Speed');
   await expect(page.locator('#mission-console')).not.toContainText('Reset Particles');
   await expect(page.locator('#mission-console [data-action="pause"]')).toHaveCount(0);
   await expect(page.locator('#mission-console [data-action="reset"]')).toHaveCount(0);
@@ -150,6 +164,7 @@ test('campaign planning smoke flow reaches debrief', async ({ page }) => {
     return { col: 0, row: 0 };
   });
   await clickFlowDemoCell(page, waterCell.col, waterCell.row);
+  await expect(page.locator('#waypoint-timeline [data-flow-behavior-help]')).toHaveCount(0);
   await expect(page.locator('#waypoint-timeline')).toContainText('Cell Inspector');
   await expect(page.locator('#waypoint-timeline')).toContainText(`Cell (${waterCell.col}, ${waterCell.row})`);
   await expect(page.locator('#waypoint-timeline')).toContainText('Current Vector');

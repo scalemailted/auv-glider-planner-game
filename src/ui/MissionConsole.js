@@ -117,6 +117,7 @@ export class MissionConsole {
       </section>
       <section class="console-section">
         <h2>Fields</h2>
+        ${flowHelpButtonHtml('basePreset', 'Explain Flow Field')}
         <label class="compact-field">
           Base Flow Field
           <select id="flow-demo-preset">
@@ -130,11 +131,13 @@ export class MissionConsole {
       </section>
       <section class="console-section">
         <h2>Additive Flow Layers</h2>
+        ${flowHelpButtonHtml('displayLayer', 'Explain Layers')}
         ${flowLayerStackHtml(state.additiveLayers)}
         <button data-action="add-flow-layer" class="console-button">+ Add Flow Layer</button>
       </section>
       <section class="console-section">
         <h2>Terrain</h2>
+        ${flowHelpButtonHtml('topologyMode', 'Explain Topology')}
         <label class="compact-field">
           Land Mode
           <select id="flow-demo-terrain">
@@ -146,6 +149,15 @@ export class MissionConsole {
       </section>
       <section class="console-section">
         <h2>Flow Evolution</h2>
+        <div class="console-button-row">
+          ${flowHelpButtonHtml('evolutionBehavior', 'Explain Evolution')}
+          ${flowHelpButtonHtml('dynamicComplexity', 'Explain Complexity')}
+          ${flowHelpButtonHtml('directionVariation', 'Explain Direction')}
+          ${flowHelpButtonHtml('magnitudeVariation', 'Explain Magnitude')}
+          ${flowHelpButtonHtml('spatialMotion', 'Explain Motion')}
+          ${flowHelpButtonHtml('boundaryMode', 'Explain Boundary')}
+          ${flowHelpButtonHtml('speedModel', 'Explain Speeds')}
+        </div>
         <label class="compact-field">
           Evolution Behavior
           <select id="flow-demo-evolution-behavior">
@@ -216,6 +228,7 @@ export class MissionConsole {
       </section>
       <section class="console-section">
         <h2>Display</h2>
+        ${flowHelpButtonHtml('displayLayer', 'Explain Display')}
         <label class="compact-field">
           Magnitude Scale
           <select id="flow-demo-magnitude-scale">
@@ -282,6 +295,9 @@ export class MissionConsole {
     this.root.querySelector('#flow-demo-boundary-mode')?.addEventListener('change', (event) => handlers.boundaryMode?.(event.target.value));
     this.root.querySelector('#flow-demo-magnitude-scale')?.addEventListener('change', (event) => handlers.magnitudeScale?.(event.target.value));
     this.root.querySelector('#flow-demo-particle-speed')?.addEventListener('change', (event) => handlers.particleSpeedScale?.(event.target.value));
+    this.root.querySelectorAll('[data-flow-help]').forEach((button) => {
+      button.addEventListener('click', () => handlers.behaviorHelp?.(button.dataset.flowHelp));
+    });
     this.bind({
       preset: handlers.preset,
       'add-flow-layer': handlers.addLayer,
@@ -1085,6 +1101,10 @@ function formatDemoStat(value) {
 
 function roiHelpButtonHtml(groupId, label) {
   return `<button type="button" class="console-button secondary roi-help-button" data-roi-help="${escapeAttr(groupId)}">${escapeHtml(label)}</button>`;
+}
+
+function flowHelpButtonHtml(groupId, label) {
+  return `<button type="button" class="console-button secondary flow-help-button" data-flow-help="${escapeAttr(groupId)}">${escapeHtml(label)}</button>`;
 }
 
 function nextActionButtonHtml(state) {

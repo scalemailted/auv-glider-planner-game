@@ -21,6 +21,10 @@ import {
   sampleDemoFlow,
   summarizeDemoFlowMagnitudes
 } from '../../../core/demo/FlowFieldDemo.js';
+import {
+  flowFieldBehaviorExplainer,
+  flowFieldCompositionExplainer
+} from '../../../core/demo/FlowFieldBehaviorExplainers.js';
 
 const PhaserScene = globalThis.Phaser?.Scene ?? class {};
 
@@ -55,6 +59,8 @@ export class FlowFieldDemoScene extends PhaserScene {
     this.lastDeltaSeconds = 0;
     this.lastDebugDemoTime = -Infinity;
     this.selectedCell = null;
+    this.rightPanelMode = 'cellInspector';
+    this.selectedHelpTopic = null;
     this.lastInspectorRenderTime = -Infinity;
     this.lastInspectorKey = '';
   }
@@ -86,6 +92,8 @@ export class FlowFieldDemoScene extends PhaserScene {
     this.lastDeltaSeconds = 0;
     this.lastDebugDemoTime = -Infinity;
     this.selectedCell = normalizeSelectedCell(data.selectedCell);
+    this.rightPanelMode = normalizeRightPanelMode(data.rightPanelMode);
+    this.selectedHelpTopic = normalizeHelpTopic(data.selectedHelpTopic);
     this.lastInspectorRenderTime = -Infinity;
     this.lastInspectorKey = '';
     this.particles = createDemoParticles({
@@ -269,6 +277,7 @@ export class FlowFieldDemoScene extends PhaserScene {
         this.particleSpeedScale = Number(particleSpeedScale) || 1;
         this.renderConsole();
       },
+      behaviorHelp: (groupId) => this.showBehaviorHelp(groupId),
       pause: () => {
         this.paused = !this.paused;
         this.updateTransportBar();
@@ -323,7 +332,9 @@ export class FlowFieldDemoScene extends PhaserScene {
       magnitudeScale: this.magnitudeScale,
       particleSpeedScale: this.particleSpeedScale,
       playbackDirection: this.playbackDirection,
-      selectedCell: this.selectedCell
+      selectedCell: this.selectedCell,
+      rightPanelMode: this.rightPanelMode,
+      selectedHelpTopic: this.selectedHelpTopic
     };
   }
 
@@ -575,6 +586,7 @@ export class FlowFieldDemoScene extends PhaserScene {
   handlePointerDown(pointer) {
     const cell = this.cellFromPointer(pointer);
     if (!cell) return;
+    this.rightPanelMode = 'cellInspector';
     if (this.selectedCell && this.selectedCell.col === cell.col && this.selectedCell.row === cell.row) {
       this.selectedCell = null;
     } else {
@@ -583,6 +595,15 @@ export class FlowFieldDemoScene extends PhaserScene {
     this.lastInspectorRenderTime = -Infinity;
     this.renderCellInspector(true);
     this.draw();
+  }
+
+  showBehaviorHelp(groupId) {
+    this.rightPanelMode = 'behaviorHelp';
+    this.selectedHelpTopic = {
+      groupId,
+      optionId: behaviorHelpOptionForGroup(groupId, this.behaviorHelpState())
+    };
+    this.renderCellInspector(true);
   }
 
   cellFromPointer(pointer) {
@@ -692,6 +713,20 @@ export class FlowFieldDemoScene extends PhaserScene {
   renderCellInspector(force = false) {
     const root = this.app?.elements?.waypointTimelineRoot;
     if (!root) return;
+    if (this.rightPanelMode === 'behaviorHelp') {
+      const topic = this.selectedHelpTopic ?? null;
+      const state = this.behaviorHelpState();
+      const key = `behaviorHelp:${topic?.groupId ?? 'empty'}:${topic?.optionId ?? 'empty'}:${state.fieldMode}:${state.preset}:${state.evolutionBehavior}:${state.dynamicComplexity}:${state.directionVariation}:${state.magnitudeVariation}:${state.spatialMotion}:${state.terrainMode}:${state.boundaryMode}:${state.flowEvolutionSpeedScale}`;
+      if (!force && key === this.lastInspectorKey) return;
+      this.lastInspectorKey = key;
+      this.lastInspectorRenderTime = this.demoTime;
+      root.innerHTML = topic ? flowBehaviorHelpHtml(topic, state) : flowBehaviorHelpEmptyHtml();
+      root.querySelector('[data-action="flow-show-cell-inspector"]')?.addEventListener('click', () => {
+        this.rightPanelMode = 'cellInspector';
+        this.renderCellInspector(true);
+      });
+      return;
+    }
     if (!this.selectedCell) {
       if (force || this.lastInspectorKey !== 'empty') {
         root.innerHTML = cellInspectorEmptyHtml();
@@ -704,6 +739,26 @@ export class FlowFieldDemoScene extends PhaserScene {
     this.lastInspectorKey = key;
     this.lastInspectorRenderTime = this.demoTime;
     root.innerHTML = cellInspectorHtml(this.inspectSelectedCell());
+  }
+
+  behaviorHelpState() {
+    return {
+      fieldMode: this.fieldMode,
+      preset: this.preset,
+      additiveLayers: this.additiveLayers,
+      terrainMode: this.terrainMode,
+      evolutionBehavior: this.evolutionBehavior,
+      dynamicComplexity: this.dynamicComplexity,
+      directionVariation: this.directionVariation,
+      magnitudeVariation: this.magnitudeVariation,
+      evolutionPattern: this.evolutionPattern,
+      spatialMotion: this.spatialMotion,
+      boundaryMode: this.boundaryMode,
+      playbackSpeedScale: this.playbackSpeedScale,
+      flowEvolutionSpeedScale: this.flowEvolutionSpeedScale,
+      magnitudeScale: this.magnitudeScale,
+      particleSpeedScale: this.particleSpeedScale
+    };
   }
 
   clearCellInspector() {
@@ -934,6 +989,94 @@ function cellInspectorEmptyHtml() {
   `;
 }
 
+function flowBehaviorHelpEmptyHtml() {
+  return `
+    <section class="cell-inspector-shell behavior-help-shell" data-flow-behavior-help>
+      <div class="cell-inspector-header">
+        <span>Behavior Help</span>
+        <h2>Behavior Help</h2>
+        <p>Click an Explain button beside a Flow Fields Demo control to learn what that component does.</p>
+      </div>
+      <div class="cell-inspector-card">
+        <strong>Available help</strong>
+        <ul>
+          <li>Flow Field / Base Preset</li>
+          <li>Evolution Behavior</li>
+          <li>Dynamic Complexity</li>
+          <li>Direction and Magnitude Variation</li>
+          <li>Spatial Motion</li>
+          <li>Land / Topology and Boundary Mode</li>
+          <li>Display Layers and Speed Controls</li>
+        </ul>
+      </div>
+      <button class="console-button secondary" data-action="flow-show-cell-inspector">Show Cell Inspector</button>
+    </section>
+  `;
+}
+
+function flowBehaviorHelpHtml(topic, state) {
+  const optionId = topic.optionId ?? behaviorHelpOptionForGroup(topic.groupId, state);
+  const help = flowFieldBehaviorExplainer(topic.groupId, optionId);
+  const composition = flowFieldCompositionExplainer(state);
+  return `
+    <section class="cell-inspector-shell behavior-help-shell" data-flow-behavior-help>
+      <div class="cell-inspector-header">
+        <span>Behavior Help</span>
+        <h2>About ${escapeHtml(help.groupLabel)}: ${escapeHtml(help.label)}</h2>
+        <p>${escapeHtml(help.question)}</p>
+      </div>
+      <div class="cell-inspector-card selected">
+        <span>Selected Behavior</span>
+        ${metricRows([
+          ['component', help.groupLabel],
+          ['selected', help.label]
+        ])}
+        <small>${escapeHtml(help.short)}</small>
+      </div>
+      <div class="cell-inspector-card">
+        <span>Meaning</span>
+        <p>${escapeHtml(help.meaning)}</p>
+      </div>
+      <div class="cell-inspector-card">
+        <span>Expected Visual Behavior</span>
+        <p>${escapeHtml(help.expectedBehavior)}</p>
+      </div>
+      <div class="cell-inspector-card">
+        <span>Important Parameters</span>
+        <p>${escapeHtml((help.parameters ?? []).join(', ') || 'N/A')}</p>
+      </div>
+      <div class="cell-inspector-card">
+        <span>Strategy</span>
+        <p>${escapeHtml(help.strategy)}</p>
+        <small>${escapeHtml((help.pairsWellWith ?? []).length ? `Related concepts: ${help.pairsWellWith.join(', ')}` : '')}</small>
+        <small>${escapeHtml(help.boundaryNote)}</small>
+      </div>
+      <div class="cell-inspector-card">
+        <span>Current Composition</span>
+        <small>${escapeHtml(composition.label)}</small>
+        <small>${escapeHtml(composition.summary)}</small>
+        <small>${escapeHtml(composition.routeNote)}</small>
+      </div>
+      <button class="console-button secondary" data-action="flow-show-cell-inspector">Show Cell Inspector</button>
+    </section>
+  `;
+}
+
+function behaviorHelpOptionForGroup(groupId, state) {
+  return {
+    basePreset: state.preset,
+    evolutionBehavior: state.evolutionBehavior,
+    dynamicComplexity: state.dynamicComplexity,
+    directionVariation: state.directionVariation,
+    magnitudeVariation: state.magnitudeVariation,
+    spatialMotion: state.spatialMotion,
+    topologyMode: state.terrainMode,
+    boundaryMode: state.boundaryMode,
+    displayLayer: 'composedField',
+    speedModel: 'playbackEvolution'
+  }[groupId] ?? null;
+}
+
 function cellInspectorHtml(inspection) {
   if (inspection.land) return landCellInspectorHtml(inspection);
   const sample = inspection.current ?? {};
@@ -1113,6 +1256,20 @@ function cellFromRowCol(row, col) {
 function normalizeSelectedCell(cell) {
   if (!cell || !Number.isFinite(Number(cell.row)) || !Number.isFinite(Number(cell.col))) return null;
   return cellFromRowCol(cell.row, cell.col);
+}
+
+function normalizeRightPanelMode(value) {
+  return value === 'behaviorHelp' ? 'behaviorHelp' : 'cellInspector';
+}
+
+function normalizeHelpTopic(value) {
+  if (!value || typeof value !== 'object') return null;
+  const groupId = String(value.groupId ?? '');
+  if (!groupId) return null;
+  return {
+    groupId,
+    optionId: value.optionId == null ? null : String(value.optionId)
+  };
 }
 
 function radiansToDegrees(radians) {
