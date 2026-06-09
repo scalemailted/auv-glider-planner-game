@@ -44,8 +44,9 @@ export class MissionConsole {
           menuActionHtml('stochastic', 'Stochastic Experiment', 'Configure forecast, ensemble, hidden-truth, and uncertainty settings.')
         ])}
         ${menuGroupHtml('Demos', [
-          menuActionHtml('flow-fields', 'Flow Fields Demo', 'Explore static and dynamic current-field behavior.'),
-          menuActionHtml('roi-demo', 'Sample / ROI Field Demo', 'Inspect seeded sample-value and ROI field behavior.')
+          menuActionHtml('flow-fields', 'Flow Fields Demo', 'Explore current vectors F(x,y,t).'),
+          menuActionHtml('roi-demo', 'Sample / ROI Field Demo', 'Explore sampling value S(x,y,t).'),
+          menuActionHtml('coupled-fields', 'Coupled Fields Demo', 'Explore how currents move, shape, or complicate sample value.')
         ])}
         ${menuGroupHtml('Editor & Import Tools', [
           menuActionHtml('editor', 'Mission Editor', 'Build and export custom scenario/challenge packages.'),
@@ -66,6 +67,7 @@ export class MissionConsole {
     this.bind({
       'flow-fields': () => this.app.phaser.scene.start('FlowFieldDemoScene'),
       'roi-demo': () => this.app.phaser.scene.start('RoiGeneratorDemoScene'),
+      'coupled-fields': () => this.app.phaser.scene.start('CoupledFieldsDemoScene'),
       tutorial: () => this.mainMenuScene()?.openTutorialBrowser?.(),
       'play-challenge': () => this.mainMenuScene()?.openChallengeSetup?.('perfectKnowledge', EXPERIENCE_MODES.challenge),
       'play-custom-challenge': () => this.app.phaser.scene.start('LoadLevelJsonScene', { preferredExperienceMode: EXPERIENCE_MODES.challenge }),
@@ -382,6 +384,135 @@ export class MissionConsole {
     });
   }
 
+  renderCoupledFieldsDemoControls(state = {}, handlers = {}) {
+    if (!this.root) return;
+    const couplingModes = ['off', 'currentAdvected', 'currentStretched', 'shorelineRunoff', 'eddyCarried'];
+    const forecastViews = ['forecast', 'truth', 'uncertainty', 'depleted'];
+    const layerToggles = state.layerToggles ?? {};
+    this.root.innerHTML = `
+      <section class="console-header">
+        <div class="console-kicker">Coupled Fields Demo</div>
+        <h1>${escapeHtml(state.title ?? 'Coupled Fields Demo')}</h1>
+        <p>Overlays F(x,y,t) currents and S(x,y,t) sample value to show field interaction.</p>
+      </section>
+      <section class="console-status">
+        <span>${escapeHtml(state.status ?? 'Coupled fields')}</span>
+        <strong>${escapeHtml(state.paused ? 'Paused' : 'Animating')}</strong>
+        <small>Flow arrows and sample heatmap share one demo clock. Current-coupled modes sample the displayed flow field.</small>
+      </section>
+      <section class="console-section">
+        <h2>Display Layers</h2>
+        ${toggleHtml('flowArrows', 'Flow arrows', layerToggles.flowArrows !== false)}
+        ${toggleHtml('flowParticles', 'Flow particles', Boolean(layerToggles.flowParticles))}
+        ${toggleHtml('sampleHeatmap', 'Sample heatmap', layerToggles.sampleHeatmap !== false)}
+        ${toggleHtml('landTopology', 'Land / topology', layerToggles.landTopology !== false)}
+      </section>
+      <section class="console-section">
+        <h2>Flow Field</h2>
+        <label class="compact-field">
+          Base Flow Field
+          <select id="coupled-flow-preset">
+            ${FLOW_DEMO_PRESET_CHOICES.map((preset) => {
+              const config = getVectorPresetConfig(preset);
+              return `<option value="${escapeAttr(preset)}" ${state.flowPreset === preset ? 'selected' : ''}>${escapeHtml(config.label)}</option>`;
+            }).join('')}
+          </select>
+        </label>
+        <label class="compact-field">
+          Dynamic Complexity
+          <select id="coupled-dynamic-complexity">
+            ${FLOW_DEMO_DYNAMIC_COMPLEXITY_LEVELS.map((level) => `<option value="${escapeAttr(level)}" ${state.dynamicComplexity === level ? 'selected' : ''}>${escapeHtml(dynamicComplexityLabel(level))}</option>`).join('')}
+          </select>
+        </label>
+        <label class="compact-field">
+          Evolution Behavior
+          <select id="coupled-evolution-behavior">
+            ${FLOW_DEMO_EVOLUTION_BEHAVIORS.map((behavior) => `<option value="${escapeAttr(behavior)}" ${state.evolutionBehavior === behavior ? 'selected' : ''}>${escapeHtml(evolutionBehaviorLabel(behavior))}</option>`).join('')}
+          </select>
+        </label>
+        <label class="compact-field">
+          Boundary Mode
+          <select id="coupled-boundary-mode">
+            ${FLOW_DEMO_BOUNDARY_MODES.map((mode) => `<option value="${escapeAttr(mode)}" ${state.boundaryMode === mode ? 'selected' : ''}>${escapeHtml(boundaryModeLabel(mode))}</option>`).join('')}
+          </select>
+        </label>
+        <label class="compact-field">
+          Land Mode
+          <select id="coupled-terrain-mode">
+            ${FLOW_DEMO_TERRAIN_MODES.map((mode) => `<option value="${escapeAttr(mode)}" ${state.terrainMode === mode ? 'selected' : ''}>${escapeHtml(terrainModeLabel(mode))}</option>`).join('')}
+          </select>
+        </label>
+      </section>
+      <section class="console-section">
+        <h2>Sample Field</h2>
+        <label class="compact-field">
+          Distribution
+          <select id="coupled-sample-distribution">
+            ${ROI_DEMO_DISTRIBUTIONS.map((distribution) => `<option value="${escapeAttr(distribution)}" ${state.sampleDistribution === distribution ? 'selected' : ''}>${escapeHtml(roiDistributionLabel(distribution))}</option>`).join('')}
+          </select>
+        </label>
+        <label class="compact-field">
+          Spatial Pattern
+          <select id="coupled-spatial-pattern">
+            ${ROI_DEMO_SPATIAL_PATTERNS.map((pattern) => `<option value="${escapeAttr(pattern)}" ${state.spatialPattern === pattern ? 'selected' : ''}>${escapeHtml(sampleSpatialPatternLabel(pattern))}</option>`).join('')}
+          </select>
+        </label>
+        <label class="compact-field">
+          Temporal Behavior
+          <select id="coupled-temporal-behavior">
+            ${ROI_DEMO_TEMPORAL_BEHAVIORS.map((behavior) => `<option value="${escapeAttr(behavior)}" ${state.temporalBehavior === behavior ? 'selected' : ''}>${escapeHtml(sampleTemporalBehaviorLabel(behavior))}</option>`).join('')}
+          </select>
+        </label>
+        <label class="compact-field">
+          Forecast / Truth
+          <select id="coupled-forecast-view">
+            ${forecastViews.map((view) => `<option value="${escapeAttr(view)}" ${state.forecastView === view ? 'selected' : ''}>${escapeHtml(roiForecastViewLabel(view))}</option>`).join('')}
+          </select>
+        </label>
+      </section>
+      <section class="console-section">
+        <h2>Coupling</h2>
+        <label class="compact-field">
+          Coupling Mode
+          <select id="coupled-coupling-mode">
+            ${couplingModes.map((mode) => `<option value="${escapeAttr(mode)}" ${state.couplingMode === mode ? 'selected' : ''}>${escapeHtml(couplingModeLabel(mode))}</option>`).join('')}
+          </select>
+        </label>
+        <div class="hud-muted">Current-coupled modes backtrace or shape sample value using the same flow vectors rendered on the canvas.</div>
+        <label class="compact-field">
+          Playback Speed
+          <select id="coupled-playback-speed">
+            ${[0.5, 1, 2, 5].map((speed) => `<option value="${escapeAttr(speed)}" ${Number(state.playbackSpeedScale ?? 1) === speed ? 'selected' : ''}>${escapeHtml(speed)}x</option>`).join('')}
+          </select>
+        </label>
+      </section>
+      <section class="console-status">
+        <span>Sample Value Range</span>
+        <strong>${escapeHtml(formatDemoStat(state.stats?.min))} / ${escapeHtml(formatDemoStat(state.stats?.mean))} / ${escapeHtml(formatDemoStat(state.stats?.max))}</strong>
+        <small>Min / mean / max for the visible sample heatmap.</small>
+      </section>
+      <section class="console-footer">
+        <button data-action="menu" class="console-button secondary">Main Menu</button>
+      </section>
+    `;
+    this.app.applyConsoleAccordions?.('coupledFieldsDemo');
+    this.root.querySelectorAll('[data-coupled-layer]').forEach((input) => {
+      input.addEventListener('change', (event) => handlers.layerToggle?.(event.currentTarget.dataset.coupledLayer, event.target.checked));
+    });
+    this.root.querySelector('#coupled-flow-preset')?.addEventListener('change', (event) => handlers.flowPreset?.(event.target.value));
+    this.root.querySelector('#coupled-dynamic-complexity')?.addEventListener('change', (event) => handlers.dynamicComplexity?.(event.target.value));
+    this.root.querySelector('#coupled-evolution-behavior')?.addEventListener('change', (event) => handlers.evolutionBehavior?.(event.target.value));
+    this.root.querySelector('#coupled-boundary-mode')?.addEventListener('change', (event) => handlers.boundaryMode?.(event.target.value));
+    this.root.querySelector('#coupled-terrain-mode')?.addEventListener('change', (event) => handlers.terrainMode?.(event.target.value));
+    this.root.querySelector('#coupled-sample-distribution')?.addEventListener('change', (event) => handlers.sampleDistribution?.(event.target.value));
+    this.root.querySelector('#coupled-spatial-pattern')?.addEventListener('change', (event) => handlers.spatialPattern?.(event.target.value));
+    this.root.querySelector('#coupled-temporal-behavior')?.addEventListener('change', (event) => handlers.temporalBehavior?.(event.target.value));
+    this.root.querySelector('#coupled-forecast-view')?.addEventListener('change', (event) => handlers.forecastView?.(event.target.value));
+    this.root.querySelector('#coupled-coupling-mode')?.addEventListener('change', (event) => handlers.couplingMode?.(event.target.value));
+    this.root.querySelector('#coupled-playback-speed')?.addEventListener('change', (event) => handlers.playbackSpeedScale?.(event.target.value));
+    this.bind({ menu: handlers.menu });
+  }
+
   renderLeaderboardControls(state = {}, handlers = {}) {
     if (!this.root) return;
     const filters = [
@@ -651,6 +782,25 @@ function flowInfluenceLabel(type) {
     spatialPocket: 'Spatial Pocket',
     partitionedRegion: 'Partitioned Region'
   }[type] ?? type;
+}
+
+function toggleHtml(key, label, checked) {
+  return `
+    <label class="compact-field">
+      ${escapeHtml(label)}
+      <input data-coupled-layer="${escapeAttr(key)}" type="checkbox" ${checked ? 'checked' : ''} />
+    </label>
+  `;
+}
+
+function couplingModeLabel(mode) {
+  return {
+    off: 'Off',
+    currentAdvected: 'Current-Advected',
+    currentStretched: 'Current-Stretched',
+    shorelineRunoff: 'Shoreline Source / Runoff',
+    eddyCarried: 'Eddy-Carried'
+  }[mode] ?? 'Current-Advected';
 }
 
 function variationLabel(level) {

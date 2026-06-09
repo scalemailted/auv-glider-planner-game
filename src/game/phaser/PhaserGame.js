@@ -11,6 +11,7 @@ import { EnvironmentEditorScene } from './scenes/EnvironmentEditorScene.js';
 import { DatasetExportScene } from './scenes/DatasetExportScene.js';
 import { FlowFieldDemoScene } from './scenes/FlowFieldDemoScene.js';
 import { RoiGeneratorDemoScene } from './scenes/RoiGeneratorDemoScene.js';
+import { CoupledFieldsDemoScene } from './scenes/CoupledFieldsDemoScene.js';
 import { LoadLevelByIdScene } from './scenes/LoadLevelByIdScene.js';
 import { LoadLevelJsonScene } from './scenes/LoadLevelJsonScene.js';
 import { PHASER_HEIGHT, PHASER_WIDTH } from './PhaserCoreAdapter.js';
@@ -54,6 +55,7 @@ export class PhaserGameApp {
         DatasetExportScene,
         FlowFieldDemoScene,
         RoiGeneratorDemoScene,
+        CoupledFieldsDemoScene,
         LoadLevelJsonScene,
         LoadLevelByIdScene
       ],

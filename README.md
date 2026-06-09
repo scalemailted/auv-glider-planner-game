@@ -116,6 +116,8 @@ The Main Menu includes field demos inside the `Simulation Lab` accordion. Demos 
 
 `Sample / ROI Field Demo` is the companion sandbox for sample value `S(x,y,t)`: where and when the environment is valuable to sample. It uses the same left controls, center-only canvas, right Cell Inspector, and compact bottom transport pattern as the Flow Fields Demo. It supports seeded hotspot, bursty, periodic, moving, bimodal, plume/current-advected, random-texture, forecast/truth/uncertainty, and depleted-value views where the shared sample-field generator supports them. It does not create missions, waypoint plans, leaderboard entries, or scoring results. See [Sample / ROI Field Demo](docs/roi_generator_demo.md).
 
+`Coupled Fields Demo` overlays the current vector field `F(x,y,t)` and sample value field `S(x,y,t)` with layer toggles for flow arrows, flow particles, sample heatmap, and land/topology. It is the interaction view for current-advected plumes, flow-stretched hotspots, shoreline runoff, and eddy-carried value. The coupled modes use the same visible flow sampler that draws the arrows and the same sample-field generator used by the ROI demo. See [Coupled Fields Demo](docs/coupled_fields_demo.md).
+
 ### Campaign And Tutorials
 
 Tutorial Mode is a fourteen-step campaign that unlocks planning concepts gradually. It opens a center Tutorial Browser: the left Mission Console holds search/filter/progress controls, the center viewport shows scrollable tutorial cards, and the right panel shows details for the selected lesson. Starting a lesson opens Mission Briefing first, then `Start Planning` enters the Mission Planning workspace. The workspace shows only the controls needed for that lesson, plus concise guidance prompts and a tutorial-focused debrief.

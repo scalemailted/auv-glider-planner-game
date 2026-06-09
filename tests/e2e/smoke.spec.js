@@ -23,7 +23,7 @@ test('campaign planning smoke flow reaches debrief', async ({ page }) => {
   await expect(page.locator('#right-panel')).toHaveCount(0);
   await expect(page.locator('#context-panel')).toBeEmpty();
   await expect(page.locator('#mission-console')).toContainText('ANCHOR: Glider Command');
-  await expect(page.locator('#mission-console button.console-button')).toHaveCount(14);
+  await expect(page.locator('#mission-console button.console-button')).toHaveCount(15);
   await expect(page.locator('#mission-console .accordion-header')).toHaveCount(2);
   await expect(page.locator('#mission-console > .console-section')).toHaveCount(2);
   await expect(page.locator('#mission-console')).toContainText('Challenge Mode');
@@ -42,6 +42,7 @@ test('campaign planning smoke flow reaches debrief', async ({ page }) => {
   await expect(page.locator('#mission-console [data-accordion-key="simulation-lab"] [data-menu-group] h3')).toHaveText(['Experiments', 'Demos', 'Editor & Import Tools', 'Benchmarks']);
   await expect(page.locator('#mission-console [data-accordion-key="simulation-lab"]')).toContainText('Flow Fields Demo');
   await expect(page.locator('#mission-console [data-accordion-key="simulation-lab"]')).toContainText('Sample / ROI Field Demo');
+  await expect(page.locator('#mission-console [data-accordion-key="simulation-lab"]')).toContainText('Coupled Fields Demo');
   await expect(page.locator('#mission-console')).not.toContainText('Static Flow Field Demo');
   await expect(page.locator('#mission-console')).not.toContainText('Temporal Flow Field Demo');
   await expect(page.locator('#mission-console .console-status')).toContainText('No mission loaded');
@@ -334,6 +335,48 @@ test('campaign planning smoke flow reaches debrief', async ({ page }) => {
   await expect.poll(() => page.evaluate(() => window.anchorGame.phaser.scene.getScene('RoiGeneratorDemoScene').demoTime)).toBeLessThan(0.2);
   await page.locator('#mission-console [data-action="regenerate"]').click();
   await expect.poll(() => page.evaluate(() => window.anchorGame.phaser.scene.getScene('RoiGeneratorDemoScene').seed)).toContain('2');
+  await page.locator('#mission-console [data-action="menu"]').click();
+  await expect.poll(() => page.evaluate(() => window.anchorGame.phaser.scene.getScene('MainMenuScene').sys.isActive())).toBe(true);
+
+  await page.locator('#mission-console [data-action="coupled-fields"]').click();
+  await expect.poll(() => page.evaluate(() => window.anchorGame.phaser.scene.getScene('CoupledFieldsDemoScene').sys.isActive())).toBe(true);
+  await expect(page.locator('#mission-console')).toContainText('Coupled Fields Demo');
+  await expect(page.locator('#mission-console')).toContainText('Display Layers');
+  await expect(page.locator('#mission-console')).toContainText('Flow Field');
+  await expect(page.locator('#mission-console')).toContainText('Sample Field');
+  await expect(page.locator('#mission-console')).toContainText('Coupling');
+  await expect(page.locator('#mission-summary-hud')).toBeEmpty();
+  await expect(page.locator('#agent-performance-hud')).toBeEmpty();
+  await expect(page.locator('#bottom-timeline .coupled-demo-transport')).toBeVisible();
+  await expect(page.locator('#bottom-timeline')).toContainText('Infinite timeline');
+  await expect(page.locator('#coupled-flow-preset')).toBeVisible();
+  await expect(page.locator('#coupled-coupling-mode')).toBeVisible();
+  await expect(page.locator('[data-coupled-layer="flowArrows"]')).toBeChecked();
+  await expect(page.locator('[data-coupled-layer="sampleHeatmap"]')).toBeChecked();
+  await page.locator('[data-coupled-layer="flowArrows"]').uncheck();
+  await expect.poll(() => page.evaluate(() => window.anchorGame.phaser.scene.getScene('CoupledFieldsDemoScene').layerToggles.flowArrows)).toBe(false);
+  await page.locator('[data-coupled-layer="flowArrows"]').check();
+  await expect.poll(() => page.evaluate(() => window.anchorGame.phaser.scene.getScene('CoupledFieldsDemoScene').layerToggles.flowArrows)).toBe(true);
+  await page.locator('[data-coupled-layer="sampleHeatmap"]').uncheck();
+  await expect.poll(() => page.evaluate(() => window.anchorGame.phaser.scene.getScene('CoupledFieldsDemoScene').layerToggles.sampleHeatmap)).toBe(false);
+  await page.locator('[data-coupled-layer="sampleHeatmap"]').check();
+  await expect.poll(() => page.evaluate(() => window.anchorGame.phaser.scene.getScene('CoupledFieldsDemoScene').layerToggles.sampleHeatmap)).toBe(true);
+  await page.locator('#coupled-coupling-mode').selectOption('currentAdvected');
+  await expect.poll(() => page.evaluate(() => window.anchorGame.phaser.scene.getScene('CoupledFieldsDemoScene').couplingMode)).toBe('currentAdvected');
+  const coupledValueAtStart = await page.evaluate(() => window.anchorGame.phaser.scene.getScene('CoupledFieldsDemoScene').sampleField.field[5][5]);
+  await expect.poll(() => page.evaluate(() => window.anchorGame.phaser.scene.getScene('CoupledFieldsDemoScene').sampleField.field[5][5])).not.toBe(coupledValueAtStart);
+  await clickCoupledDemoCell(page, 5, 5);
+  await expect(page.locator('#waypoint-timeline')).toContainText('Flow');
+  await expect(page.locator('#waypoint-timeline')).toContainText('Sample / ROI');
+  await expect(page.locator('#waypoint-timeline')).toContainText('Coupling');
+  await expect(page.locator('#waypoint-timeline')).toContainText('uses visible flow');
+  await page.locator('#bottom-timeline [data-action="coupled-demo-pause"]').click();
+  await expect(page.locator('#bottom-timeline [data-action="coupled-demo-pause"]')).toHaveText('Resume');
+  await page.locator('#bottom-timeline [data-action="coupled-demo-pause"]').click();
+  await page.locator('#bottom-timeline [data-action="coupled-demo-direction"]').click();
+  await expect(page.locator('#bottom-timeline [data-action="coupled-demo-direction"]')).toHaveText('Direction: Reverse');
+  await page.locator('#bottom-timeline [data-action="coupled-demo-reset"]').click();
+  await expect.poll(() => page.evaluate(() => window.anchorGame.phaser.scene.getScene('CoupledFieldsDemoScene').demoTime)).toBeLessThan(0.2);
   await page.locator('#mission-console [data-action="menu"]').click();
   await expect.poll(() => page.evaluate(() => window.anchorGame.phaser.scene.getScene('MainMenuScene').sys.isActive())).toBe(true);
 
@@ -815,6 +858,22 @@ async function clickRoiDemoCell(page, col, row) {
     const height = scene.field.height;
     const canvasX = map.x + ((Number(col) + 0.5) / width) * map.width;
     const canvasY = map.y + ((Number(row) + 0.5) / height) * map.height;
+    return {
+      x: rect.left + canvasX * rect.width / canvas.width,
+      y: rect.top + canvasY * rect.height / canvas.height
+    };
+  }, { col, row });
+  await page.mouse.click(point.x, point.y);
+}
+
+async function clickCoupledDemoCell(page, col, row) {
+  const point = await page.evaluate(({ col, row }) => {
+    const scene = window.anchorGame.phaser.scene.getScene('CoupledFieldsDemoScene');
+    const map = scene.layout().map;
+    const canvas = document.getElementById('game-canvas');
+    const rect = canvas.getBoundingClientRect();
+    const canvasX = map.x + ((Number(col) + 0.5) / 24) * map.width;
+    const canvasY = map.y + ((Number(row) + 0.5) / 16) * map.height;
     return {
       x: rect.left + canvasX * rect.width / canvas.width,
       y: rect.top + canvasY * rect.height / canvas.height
