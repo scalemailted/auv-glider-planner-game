@@ -86,6 +86,20 @@ Every major component in the Sample / ROI Demo has behavior help. The left Missi
 
 The right-panel Behavior Help view includes a `Current Composition` card that summarizes how the selected components combine, for example `Multi-Modal Likelihood + Clustered Field + Gaussian / Normal + Bursty + Discrete Jump + Time-Indexed + Soft Depletion + Sample Value`. Current-driven transport, plumes, flow-stretched patterns, forecast, truth, uncertainty, information gain, and forecast error are routed to the Coupled Fields Demo and Uncertainty / Forecast Demo.
 
+## Viewing the Event Likelihood Field
+
+The Display Layer selector can show either the realized sample value `S(x,y,t)`, the Event Likelihood Field `L(x,y,t)`, or `Sample Value + Likelihood Overlay`.
+
+The Event Likelihood view shows the generative substrate that controls where events are likely to form. This is different from realized sample value. With Multi-Modal Likelihood and Bursty temporal behavior, likelihood may remain high in several preferred regions while the realized sample value activates in only one region during a burst. With Discrete Jump spatial evolution, the likelihood field can relocate between burst windows, causing future clusters to appear in different places.
+
+Overlay mode keeps `S(x,y,t)` as the heatmap and draws high-likelihood cells as pale dots/rings on top. Use it to compare where events are likely to originate with where sample value is currently active. The Cell Inspector always reports both `L(x,y,t)` and `S(x,y,t)`, regardless of which display layer is selected.
+
+## Demo Artifact Export
+
+`Export Demo JSON` downloads an `anchor.demo.sample-roi-field` artifact for Colab/notebook rendering. Choose start time, end time, and timeframe count to include a `frames[]` series sampled from the current settings. It includes the current scene config, demo time, row-major displayed sample value, `L(x,y,t)` event likelihood, raw base value, evolved value when available, field stats, high-value cells, and selected-cell inspector state. Arrays are indexed as `field[row][col]` using top-left origin and cell-center coordinates.
+
+Freshness / Age of Information values remain labeled as demo-only synthetic visit effects unless they are later tied to actual mission visits.
+
 ## Event Likelihood Field
 
 Event Likelihood Field is the primitive substrate. It answers: where are events likely to originate or move next?

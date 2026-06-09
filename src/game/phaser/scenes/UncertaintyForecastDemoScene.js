@@ -13,6 +13,8 @@ import {
   uncertaintyViewLabel,
   updateModelLabel
 } from '../../../core/demo/UncertaintyForecastDemo.js';
+import { buildDemoArtifactEnvelope, cloneField, demoArtifactFilename, normalizeDemoExportSettings, validateDemoExportSettings } from '../../../core/io/DemoArtifactExporter.js';
+import { downloadJSON } from '../../../core/io/ImportExport.js';
 
 const PhaserScene = globalThis.Phaser?.Scene ?? class {};
 
@@ -35,6 +37,10 @@ export class UncertaintyForecastDemoScene extends PhaserScene {
     this.observations = [];
     this.lastInspectorKey = '';
     this.lastInspectorRenderTime = -Infinity;
+    this.exportMode = 'currentFrame';
+    this.exportStartTime = 0;
+    this.exportEndTime = 120;
+    this.exportFrameCount = 1;
   }
 
   init(data = {}) {
@@ -52,6 +58,10 @@ export class UncertaintyForecastDemoScene extends PhaserScene {
     this.observations = Array.isArray(data.observations) ? data.observations.slice(0, 64) : [];
     this.lastInspectorKey = '';
     this.lastInspectorRenderTime = -Infinity;
+    this.exportMode = normalizeExportMode(data.exportMode);
+    this.exportStartTime = finiteNumber(data.exportStartTime ?? this.demoTime, this.demoTime);
+    this.exportEndTime = finiteNumber(data.exportEndTime ?? Math.max(120, this.demoTime), Math.max(120, this.demoTime));
+    this.exportFrameCount = Math.max(1, Math.round(finiteNumber(data.exportFrameCount, 1)));
     this.rebuildField();
   }
 
@@ -114,6 +124,10 @@ export class UncertaintyForecastDemoScene extends PhaserScene {
       playbackDirection: this.playbackDirection,
       selectedCell: this.selectedCell,
       observations: this.observations,
+      exportMode: this.exportMode,
+      exportStartTime: this.exportStartTime,
+      exportEndTime: this.exportEndTime,
+      exportFrameCount: this.exportFrameCount,
       ...overrides
     };
   }
@@ -141,7 +155,11 @@ export class UncertaintyForecastDemoScene extends PhaserScene {
       paused: this.paused,
       time: this.demoTime,
       observationCount: this.observations.length,
-      stats: this.field?.stats
+      stats: this.field?.stats,
+      exportMode: this.exportMode,
+      exportStartTime: this.exportStartTime,
+      exportEndTime: this.exportEndTime,
+      exportFrameCount: this.exportFrameCount
     }, {
       viewMode: (viewMode) => this.scene.restart(this.sceneConfig({ viewMode, demoTime: 0 })),
       uncertaintyPattern: (uncertaintyPattern) => this.scene.restart(this.sceneConfig({ uncertaintyPattern, demoTime: 0, observations: [] })),
@@ -165,6 +183,8 @@ export class UncertaintyForecastDemoScene extends PhaserScene {
         this.updateTransportBar();
         this.renderCellInspector(true);
       },
+      exportSettings: (patch) => this.updateExportSettings(patch),
+      exportDemoJson: () => this.exportDemoJson(),
       menu: () => this.scene.start('MainMenuScene')
     });
   }
@@ -469,6 +489,111 @@ export class UncertaintyForecastDemoScene extends PhaserScene {
     };
   }
 
+  exportDemoJson() {
+    const errors = validateDemoExportSettings(this.exportSettings(), this.demoTime);
+    if (errors.length) {
+      this.app?.toast?.(errors[0], 'warning');
+      return;
+    }
+    const artifact = this.buildDemoArtifactExport();
+    downloadJSON(demoArtifactFilename('uncertainty-forecast', { kind: artifact.timeSampling?.kind }), artifact);
+    this.app?.toast?.('Uncertainty / Forecast Demo JSON exported.', 'success');
+  }
+
+  buildDemoArtifactExport() {
+    const sampling = this.demoExportSampling();
+    const currentFrame = this.buildDemoArtifactFrame(this.demoTime, null, this.field);
+    const frames = sampling.timesSeconds.map((time, index) => this.buildDemoArtifactFrame(time, index));
+    return buildDemoArtifactEnvelope({
+      type: 'anchor.demo.uncertainty-forecast',
+      demo: this.title(),
+      grid: UNCERTAINTY_DEMO_GRID,
+      time: {
+        demoTimeSeconds: this.demoTime,
+        fieldTimeSeconds: this.field?.time ?? this.demoTime,
+        playbackDirection: this.playbackDirection,
+        playbackSpeed: this.playbackSpeedScale
+      },
+      timeSampling: sampling,
+      config: this.sceneConfig(),
+      fields: currentFrame.fields,
+      frames,
+      selectedCell: this.selectedCell ? this.inspectSelectedCell() : null,
+      fairness: {
+        truthVisibleInDemo: true,
+        fairSolverDefault: 'forecast_and_uncertainty_only',
+        truthAllowedForFairSolver: false
+      },
+      metadata: {
+        coordinateConvention: 'Row-major arrays indexed fields[layer][row][col]; values represent cell centers on the uncertainty demo grid.',
+        units: {
+          forecast: 'normalized scalar, 0..1',
+          truth: 'normalized hidden-truth demo scalar, 0..1',
+          uncertainty: 'normalized uncertainty, 0..1',
+          informationGain: 'normalized expected information gain, 0..1',
+          forecastError: 'absolute normalized forecast error, 0..1',
+          deltaAfterUpdate: 'normalized post-update change, signed when model emits signed values'
+        },
+        stats: this.field?.stats,
+        observationCount: this.observations.length,
+        exportFrameLimit: 240
+      }
+    });
+  }
+
+  buildDemoArtifactFrame(demoTime, index, existingField = null) {
+    const field = existingField ?? createUncertaintyForecastField({ ...this.sceneConfig(), time: demoTime, demoTime });
+    const layers = field?.layers ?? {};
+    return {
+      index,
+      timeSeconds: demoTime,
+      demoTimeSeconds: demoTime,
+      fieldTimeSeconds: field?.time ?? demoTime,
+      fields: {
+        displayedValue: cloneField(field?.field),
+        forecast: cloneField(layers.forecast),
+        truth: cloneField(layers.truth),
+        uncertainty: cloneField(layers.uncertainty),
+        informationGain: cloneField(layers.informationGain),
+        forecastError: cloneField(layers.forecastError),
+        deltaAfterUpdate: cloneField(layers.deltaAfterUpdate)
+      }
+    };
+  }
+
+  demoExportSampling() {
+    return normalizeDemoExportSettings({
+      exportMode: this.exportMode,
+      startTimeSeconds: this.exportStartTime,
+      endTimeSeconds: this.exportEndTime,
+      frameCount: this.exportFrameCount
+    }, this.demoTime);
+  }
+
+  updateExportSettings(patch = {}) {
+    if (patch.exportMode !== undefined) {
+      this.exportMode = normalizeExportMode(patch.exportMode);
+      if (this.exportMode === 'timeWindow' && this.exportFrameCount <= 1) {
+        this.exportStartTime = 0;
+        this.exportEndTime = Math.max(120, this.demoTime);
+        this.exportFrameCount = 25;
+      }
+    }
+    if (patch.startTimeSeconds !== undefined) this.exportStartTime = finiteNumber(patch.startTimeSeconds, this.exportStartTime);
+    if (patch.endTimeSeconds !== undefined) this.exportEndTime = finiteNumber(patch.endTimeSeconds, this.exportEndTime);
+    if (patch.frameCount !== undefined) this.exportFrameCount = Math.max(1, Math.min(240, Math.round(finiteNumber(patch.frameCount, this.exportFrameCount))));
+    this.renderConsole();
+  }
+
+  exportSettings() {
+    return {
+      exportMode: this.exportMode,
+      startTimeSeconds: this.exportStartTime,
+      endTimeSeconds: this.exportEndTime,
+      frameCount: this.exportFrameCount
+    };
+  }
+
   destroyObjects() {
     this.objects?.forEach((object) => object.destroy?.());
     this.objects = [];
@@ -568,6 +693,10 @@ function layerColor(value, viewMode) {
 function finiteNumber(value, fallback = 0) {
   const number = Number(value);
   return Number.isFinite(number) ? number : fallback;
+}
+
+function normalizeExportMode(mode) {
+  return mode === 'timeWindow' || mode === 'timeSeries' ? 'timeWindow' : 'currentFrame';
 }
 
 function formatStat(value) {

@@ -1,9 +1,10 @@
 import { expect, test } from '@playwright/test';
+import fs from 'node:fs/promises';
 import { startStaticServer } from './static-server.mjs';
 
 let server;
 
-test.setTimeout(90000);
+test.setTimeout(150000);
 
 test.beforeAll(async () => {
   server = await startStaticServer({ port: 9321 });
@@ -125,6 +126,37 @@ test('campaign planning smoke flow reaches debrief', async ({ page }) => {
   await expect(page.locator('#mission-console')).not.toContainText('Reset Particles');
   await expect(page.locator('#mission-console [data-action="pause"]')).toHaveCount(0);
   await expect(page.locator('#mission-console [data-action="reset"]')).toHaveCount(0);
+  await expect(page.locator('#mission-console [data-action="export-demo-json"]')).toHaveText('Export Demo JSON');
+  const flowArtifact = await downloadDemoArtifact(page);
+  expect(flowArtifact.filename).toMatch(/^anchor-flow-field-demo-frame-/);
+  expect(flowArtifact.data).toMatchObject({
+    schemaVersion: '1.1',
+    type: 'anchor.demo.flow-field',
+    grid: { rowMajor: true, coordinateConvention: 'cell-center' },
+    timeSampling: { kind: 'singleFrame', mode: 'currentFrame', frameCount: 1 }
+  });
+  expect(flowArtifact.data.fields.u.length).toBe(flowArtifact.data.grid.height);
+  expect(flowArtifact.data.fields.v[0].length).toBe(flowArtifact.data.grid.width);
+  expect(flowArtifact.data.frames).toHaveLength(1);
+  await page.locator('#demo-export-mode').selectOption('timeWindow');
+  await page.locator('#demo-export-start').fill('0');
+  await page.locator('#demo-export-start').dispatchEvent('change');
+  await page.locator('#demo-export-end').fill('4');
+  await page.locator('#demo-export-end').dispatchEvent('change');
+  await page.locator('#demo-export-frames').fill('3');
+  await page.locator('#demo-export-frames').dispatchEvent('change');
+  const flowSeriesArtifact = await downloadDemoArtifact(page);
+  expect(flowSeriesArtifact.filename).toMatch(/^anchor-flow-field-demo-timeseries-/);
+  expect(flowSeriesArtifact.data.timeSampling).toMatchObject({
+    kind: 'timeSeries',
+    mode: 'timeWindow',
+    startTimeSeconds: 0,
+    endTimeSeconds: 4,
+    frameCount: 3,
+    timesSeconds: [0, 2, 4]
+  });
+  expect(flowSeriesArtifact.data.frames).toHaveLength(3);
+  expect(flowSeriesArtifact.data.frames[2].fields.u.length).toBe(flowSeriesArtifact.data.grid.height);
   await expect(page.locator('#mission-console [data-action="menu"]')).toHaveText('Main Menu');
   await expect(page.locator('#mission-summary-hud')).toBeEmpty();
   await expect(page.locator('#agent-performance-hud')).toBeEmpty();
@@ -314,6 +346,13 @@ test('campaign planning smoke flow reaches debrief', async ({ page }) => {
   await expect(page.locator('#roi-demo-depletion-mode')).toBeVisible();
   await expect(page.locator('#roi-demo-display-mode')).toBeVisible();
   await expect(page.locator('#roi-demo-dynamic-complexity')).toBeVisible();
+  await expect(page.locator('#mission-console [data-action="export-demo-json"]')).toHaveText('Export Demo JSON');
+  const roiArtifact = await downloadDemoArtifact(page);
+  expect(roiArtifact.filename).toMatch(/^anchor-sample-roi-field-demo-frame-/);
+  expect(roiArtifact.data.type).toBe('anchor.demo.sample-roi-field');
+  expect(roiArtifact.data.frames).toHaveLength(1);
+  expect(roiArtifact.data.fields.sampleValue.length).toBe(roiArtifact.data.grid.height);
+  expect(roiArtifact.data.fields.eventLikelihood[0].length).toBe(roiArtifact.data.grid.width);
   await expect(page.locator('#mission-console')).toContainText('Sample Field Substrate');
   await expect(page.locator('#mission-console')).toContainText('Event Likelihood Field');
   await expect(page.locator('#mission-console')).toContainText('Spatial Parameters');
@@ -381,7 +420,14 @@ test('campaign planning smoke flow reaches debrief', async ({ page }) => {
   await expect(page.locator('#roi-demo-cluster-size option')).toHaveText(['Tight', 'Medium', 'Wide']);
   await expect(page.locator('#roi-demo-spatial-evolution option')).toHaveText(['Stationary', 'Continuous Drift', 'Discrete Jump', 'Random Walk', 'Neighbor Propagation']);
   await expect(page.locator('#roi-demo-motion-scope option')).toHaveText(['Per Feature', 'Local / Neighborhood', 'Global']);
-  await expect(page.locator('#roi-demo-display-mode option')).toHaveText(['Sample Value', 'Depleted Value', 'Freshness / Revisit Value', 'Raw Base Value']);
+  await expect(page.locator('#roi-demo-display-mode option')).toHaveText([
+    'Sample Value',
+    'Event Likelihood',
+    'Sample Value + Likelihood Overlay',
+    'Depleted Value',
+    'Freshness / Revisit Value',
+    'Raw Base Value'
+  ]);
   await expect(page.locator('#mission-console')).not.toContainText('Forecast / Truth');
   await expect(page.locator('#mission-console')).not.toContainText('Current-Advected');
   await expect(page.locator('#mission-console')).not.toContainText('Uncertainty / Forecast demos');
@@ -423,6 +469,8 @@ test('campaign planning smoke flow reaches debrief', async ({ page }) => {
   await expect(page.locator('#waypoint-timeline')).toContainText('value distribution');
   await expect(page.locator('#waypoint-timeline')).toContainText('seeded value');
   await expect(page.locator('#waypoint-timeline')).toContainText('value band');
+  await expect(page.locator('#waypoint-timeline')).toContainText('Likelihood is the chance this cell is event-prone');
+  await expect(page.locator('#waypoint-timeline')).toContainText('Sample value is the currently realized reward');
   await expect(page.locator('#waypoint-timeline')).toContainText('pattern parameters');
   await expect(page.locator('#waypoint-timeline')).toContainText('temporal pattern');
   await expect(page.locator('#waypoint-timeline')).toContainText('spatial evolution');
@@ -482,6 +530,16 @@ test('campaign planning smoke flow reaches debrief', async ({ page }) => {
   await page.locator('#roi-demo-spatial-pattern').selectOption('constantField');
   await page.locator('#roi-demo-value-distribution').selectOption('constantValue');
   await page.locator('#roi-demo-depletion-mode').selectOption('none');
+  await page.locator('#roi-demo-display-mode').selectOption('eventLikelihood');
+  await expect.poll(() => page.evaluate(() => window.anchorGame.phaser.scene.getScene('RoiGeneratorDemoScene').displayMode)).toBe('eventLikelihood');
+  const likelihoodViewAudit = await page.evaluate(() => {
+    const scene = window.anchorGame.phaser.scene.getScene('RoiGeneratorDemoScene');
+    return JSON.stringify(scene.field.field) === JSON.stringify(scene.field.eventLikelihoodField)
+      && JSON.stringify(scene.field.sampleValueField) !== JSON.stringify(scene.field.eventLikelihoodField);
+  });
+  expect(likelihoodViewAudit).toBe(true);
+  await page.locator('#roi-demo-display-mode').selectOption('sampleValueLikelihoodOverlay');
+  await expect.poll(() => page.evaluate(() => window.anchorGame.phaser.scene.getScene('RoiGeneratorDemoScene').displayMode)).toBe('sampleValueLikelihoodOverlay');
   await page.locator('#roi-demo-display-mode').selectOption('rawBaseValue');
   await expect.poll(() => page.evaluate(() => window.anchorGame.phaser.scene.getScene('RoiGeneratorDemoScene').spatialPattern)).toBe('constantField');
   await expect.poll(() => page.evaluate(() => window.anchorGame.phaser.scene.getScene('RoiGeneratorDemoScene').valueDistribution)).toBe('constantValue');
@@ -587,6 +645,13 @@ test('campaign planning smoke flow reaches debrief', async ({ page }) => {
   await expect(page.locator('#bottom-timeline')).toContainText('Infinite timeline');
   await expect(page.locator('#coupled-flow-preset')).toBeVisible();
   await expect(page.locator('#coupled-coupling-mode')).toBeVisible();
+  await expect(page.locator('#mission-console [data-action="export-demo-json"]')).toHaveText('Export Demo JSON');
+  const coupledArtifact = await downloadDemoArtifact(page);
+  expect(coupledArtifact.filename).toMatch(/^anchor-coupled-fields-demo-frame-/);
+  expect(coupledArtifact.data.type).toBe('anchor.demo.coupled-fields');
+  expect(coupledArtifact.data.frames).toHaveLength(1);
+  expect(coupledArtifact.data.fields.flow.u.length).toBe(coupledArtifact.data.grid.height);
+  expect(coupledArtifact.data.fields.sample.displayedValue[0].length).toBe(coupledArtifact.data.grid.width);
   await expect(page.locator('[data-coupled-layer="flowArrows"]')).toBeChecked();
   await expect(page.locator('[data-coupled-layer="sampleHeatmap"]')).toBeChecked();
   await page.locator('[data-coupled-layer="flowArrows"]').uncheck();
@@ -627,6 +692,13 @@ test('campaign planning smoke flow reaches debrief', async ({ page }) => {
   await expect(page.locator('#uncertainty-demo-view')).toContainText('Information Gain');
   await expect(page.locator('#uncertainty-demo-view')).toContainText('Forecast Error');
   await expect(page.locator('#uncertainty-demo-view')).toContainText('Delta After Update');
+  await expect(page.locator('#mission-console [data-action="export-demo-json"]')).toHaveText('Export Demo JSON');
+  const uncertaintyArtifact = await downloadDemoArtifact(page);
+  expect(uncertaintyArtifact.filename).toMatch(/^anchor-uncertainty-forecast-demo-frame-/);
+  expect(uncertaintyArtifact.data.type).toBe('anchor.demo.uncertainty-forecast');
+  expect(uncertaintyArtifact.data.frames).toHaveLength(1);
+  expect(uncertaintyArtifact.data.fields.forecast.length).toBe(uncertaintyArtifact.data.grid.height);
+  expect(uncertaintyArtifact.data.fairness.truthAllowedForFairSolver).toBe(false);
   await page.locator('#uncertainty-demo-view').selectOption('forecastError');
   await expect.poll(() => page.evaluate(() => window.anchorGame.phaser.scene.getScene('UncertaintyForecastDemoScene').viewMode)).toBe('forecastError');
   await page.locator('#uncertainty-demo-forecast-model').selectOption('driftingForecast');
@@ -1321,6 +1393,19 @@ async function expectCenterPanelUsesAvailableSpace(page) {
 async function startPlanningFromBriefing(page) {
   await page.evaluate(() => window.anchorGame.phaser.scene.getScene('MissionBriefingScene').startPlanning());
   await expect.poll(() => page.evaluate(() => window.anchorGame.phaser.scene.getScene('MissionWorkspaceScene').sys.isActive())).toBe(true);
+}
+
+async function downloadDemoArtifact(page) {
+  const [download] = await Promise.all([
+    page.waitForEvent('download'),
+    page.locator('#mission-console [data-action="export-demo-json"]').click()
+  ]);
+  const path = await download.path();
+  const text = await fs.readFile(path, 'utf8');
+  return {
+    filename: download.suggestedFilename(),
+    data: JSON.parse(text)
+  };
 }
 
 async function clickCanvasPoint(page, canvasX, canvasY) {

@@ -504,6 +504,26 @@ const DISPLAY_LAYER_EXPLAINERS = {
     strategy: 'Use this for normal planning intuition over the composed sample field.',
     boundaryNote: 'It is not truth/forecast/uncertainty; those belong in the Uncertainty / Forecast Demo.'
   },
+  eventLikelihood: {
+    label: 'Event Likelihood',
+    short: 'Shows L(x,y,t), where events are likely to originate.',
+    meaning: 'The Event Likelihood Field is the generative substrate. It controls where sample-value events, targets, bursts, jumps, walks, and propagation are likely to start.',
+    expectedBehavior: 'Uniform likelihood appears flat; Gaussian, multi-modal, gradient, patchy, texture, or sparse-site modes reveal preferred event-origin regions.',
+    parameters: ['Event Likelihood Field', 'Likelihood Dynamics', 'Likelihood Spatial Evolution'],
+    pairsWellWith: ['Multi-Modal Likelihood', 'Discrete Jump', 'Random Walk', 'Neighbor Propagation'],
+    strategy: 'Use this layer to understand where future events are likely before inspecting realized sample value.',
+    boundaryNote: 'Likelihood is not the realized sample value S(x,y,t). It biases where events form.'
+  },
+  sampleValueLikelihoodOverlay: {
+    label: 'Sample Value + Likelihood Overlay',
+    short: 'Shows S(x,y,t) with L(x,y,t) highlighted on top.',
+    meaning: 'The heatmap remains realized sample value while bright dots/rings mark high event-likelihood regions.',
+    expectedBehavior: 'High-likelihood zones may remain visible even when the current sample-value burst is active elsewhere.',
+    parameters: ['Display Layer', 'Event Likelihood Field', 'Sample Value'],
+    pairsWellWith: ['Clustered Field', 'Bursty', 'Discrete Jump', 'Multi-Modal Likelihood'],
+    strategy: 'Use overlay mode to compare likely origins with currently realized reward.',
+    boundaryNote: 'Overlay is explanatory; it does not change the generated field.'
+  },
   depletedValue: {
     label: 'Depleted Value',
     short: 'Shows value after synthetic sampling depletion.',

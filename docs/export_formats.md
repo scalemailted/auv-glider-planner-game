@@ -64,6 +64,55 @@ node tools/js/headless_solver.mjs anchor.solver-packet.json anchor.plan.json
 
 That script reads the same solver packet, uses visible forecast fields by default, imports portable core JavaScript helpers, and writes an importable `anchor.plan`.
 
+## `anchor.demo.*.json`
+
+`type: "anchor.demo.flow-field"`, `"anchor.demo.sample-roi-field"`, `"anchor.demo.coupled-fields"`, and `"anchor.demo.uncertainty-forecast"` are single-frame demo artifact exports for notebooks, Colab, slides, and external visualization.
+
+Each demo console has an `Export Demo JSON` button and an `Export Mode` selector. `Current Frame` exports the field state at the current demo time. `Time Window` reveals start time, end time, and timeframe count controls, then exports a `frames[]` series sampled from the current demo settings. The export captures schema version, artifact type, demo name, generation timestamp, scene config, row-major grid metadata, current demo time, field sampling time, displayed field arrays for the current visible frame, selected-cell inspector payload when a cell is selected, units/coordinate notes, and sampled frames for the requested time range. Frame counts are capped at 240 in the browser to avoid accidental huge downloads.
+
+Coordinates use top-left origin and row-major indexing. Array access is `field[row][col]`; the cell-center sample point is `x=(col+0.5)/width`, `y=(row+0.5)/height`. Time is in demo seconds. `schemaVersion` is `1.1`. `timeSampling.kind` is `singleFrame` for Current Frame and `timeSeries` for Time Window. `timeSampling.timesSeconds` lists the exact sampled times. Flow exports include `u`, `v`, `magnitude`, `directionRadians`, `landMask`, and topology/boundary diagnostics. Sample/ROI exports include displayed sample value, event likelihood `L(x,y,t)`, raw base value, and evolved value when available. Coupled exports include both composed flow and coupled sample grids. Uncertainty exports include displayed value, forecast, truth, uncertainty, information gain, forecast error, and delta-after-update layers, with fairness metadata marking truth as educational/demo-only.
+
+Minimal notebook loader:
+
+```python
+import json
+import matplotlib.pyplot as plt
+
+with open("anchor-flow-field-demo-20260609-120000Z.json", "r", encoding="utf-8") as f:
+    artifact = json.load(f)
+
+grid = artifact["grid"]
+fields = artifact["fields"]
+plt.imshow(fields.get("magnitude") or fields["sample"]["displayedValue"])
+plt.title(f'{artifact["source"]["demo"]} at t={artifact["timeSampling"]["timeSeconds"]}s')
+plt.colorbar()
+plt.show()
+
+for frame in artifact["frames"]:
+    print(frame["demoTimeSeconds"], frame["fields"].keys())
+```
+
+Time-window sample/ROI loading:
+
+```python
+import json
+import numpy as np
+import matplotlib.pyplot as plt
+
+with open("anchor-sample-roi-field-demo-timeseries-20260609-120000Z.json", "r", encoding="utf-8") as f:
+    data = json.load(f)
+
+times = data["timeSampling"]["timesSeconds"]
+frames = [np.array(frame["fields"]["sampleValue"]) for frame in data["frames"]]
+
+plt.imshow(frames[0])
+plt.title(f"t={times[0]} seconds")
+plt.colorbar()
+plt.show()
+```
+
+Schema documentation lives at [`../schemas/demo-artifact.schema.json`](../schemas/demo-artifact.schema.json). Demo artifacts are visualization/research snapshots; solver validation should still use solver packets, challenge exports, plans, results, and oracle datasets as appropriate.
+
 ## `anchor.plan.json`
 
 `type: "anchor.plan"` is the imported/exported route format. It supports executable `openLoop` and `timedOpenLoop` plans now, preserves `surfaceUpdateBundle` metadata with a safe import warning, and recognizes `policy` / `contingencyTable` as non-executable scaffolds. Planner metadata declares whether the route used forecast, truth, or oracle data.

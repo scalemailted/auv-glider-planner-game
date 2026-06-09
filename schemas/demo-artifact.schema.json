@@ -1,0 +1,102 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://anchor.local/schemas/demo-artifact.schema.json",
+  "title": "ANCHOR Demo Artifact",
+  "type": "object",
+  "required": ["schemaVersion", "type", "generatedAt", "source", "grid", "time", "timeSampling", "config", "fields"],
+  "properties": {
+    "schemaVersion": {
+      "type": "string",
+      "const": "1.1"
+    },
+    "type": {
+      "type": "string",
+      "enum": [
+        "anchor.demo.flow-field",
+        "anchor.demo.sample-roi-field",
+        "anchor.demo.coupled-fields",
+        "anchor.demo.uncertainty-forecast"
+      ]
+    },
+    "generatedAt": {
+      "type": "string"
+    },
+    "source": {
+      "type": "object",
+      "required": ["app", "demo", "version"],
+      "properties": {
+        "app": { "type": "string" },
+        "demo": { "type": "string" },
+        "version": { "type": "string" }
+      },
+      "additionalProperties": true
+    },
+    "grid": {
+      "type": "object",
+      "required": ["width", "height", "coordinateConvention", "origin", "rowMajor", "xAxis", "yAxis", "timeUnits"],
+      "properties": {
+        "width": { "type": "integer", "minimum": 1 },
+        "height": { "type": "integer", "minimum": 1 },
+        "coordinateConvention": { "type": "string" },
+        "origin": { "type": "string" },
+        "rowMajor": { "type": "boolean" },
+        "xAxis": { "type": "string" },
+        "yAxis": { "type": "string" },
+        "cellIndexing": { "type": "object" },
+        "timeUnits": { "type": "string" }
+      },
+      "additionalProperties": true
+    },
+    "time": {
+      "type": "object",
+      "required": ["demoTimeSeconds", "playbackDirection", "playbackSpeed"],
+      "properties": {
+        "demoTimeSeconds": { "type": "number" },
+        "fieldTimeSeconds": { "type": ["number", "null"] },
+        "playbackDirection": { "type": "string", "enum": ["forward", "reverse"] },
+        "playbackSpeed": { "type": "number" }
+      },
+      "additionalProperties": true
+    },
+    "timeSampling": {
+      "type": "object",
+      "required": ["kind", "timeSeconds"],
+      "properties": {
+        "kind": { "type": "string", "enum": ["singleFrame", "timeSeries"] },
+        "mode": { "type": "string", "enum": ["currentFrame", "timeWindow"] },
+        "timeSeconds": { "type": "number" },
+        "startSeconds": { "type": "number" },
+        "endSeconds": { "type": "number" },
+        "startTimeSeconds": { "type": "number" },
+        "endTimeSeconds": { "type": "number" },
+        "frameCount": { "type": "integer", "minimum": 1 },
+        "timesSeconds": {
+          "type": "array",
+          "items": { "type": "number" }
+        }
+      },
+      "additionalProperties": true
+    },
+    "config": { "type": "object" },
+    "fields": { "type": "object" },
+    "frames": {
+      "type": ["array", "null"],
+      "items": {
+        "type": "object",
+        "required": ["timeSeconds", "demoTimeSeconds", "fieldTimeSeconds", "fields"],
+        "properties": {
+          "index": { "type": ["integer", "null"] },
+          "demoTimeSeconds": { "type": "number" },
+          "fieldTimeSeconds": { "type": ["number", "null"] },
+          "fields": { "type": "object" }
+        },
+        "additionalProperties": true
+      }
+    },
+    "selectedCell": { "type": ["object", "null"] },
+    "metadata": { "type": ["object", "null"] },
+    "fairness": { "type": ["object", "null"] },
+    "coupling": { "type": ["object", "null"] }
+  },
+  "additionalProperties": true
+}

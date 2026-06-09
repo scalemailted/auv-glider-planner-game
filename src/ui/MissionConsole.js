@@ -247,6 +247,12 @@ export class MissionConsole {
         <strong>${escapeHtml(formatDemoStat(state.magnitudeStats?.min))} / ${escapeHtml(formatDemoStat(state.magnitudeStats?.mean))} / ${escapeHtml(formatDemoStat(state.magnitudeStats?.max))}</strong>
         <small>Min / mean / max for the current arrow grid.</small>
       </section>
+      <section class="console-section">
+        <h2>Data Export</h2>
+        ${demoExportControlsHtml(state)}
+        <button data-action="export-demo-json" class="console-button">Export Demo JSON</button>
+        <div class="hud-muted">Exports F(x,y,t) grids across the selected time range, plus config, current time, and selected-cell inspector state.</div>
+      </section>
       <section class="console-footer">
         <button data-action="menu" class="console-button secondary">Main Menu</button>
       </section>
@@ -298,10 +304,12 @@ export class MissionConsole {
     this.root.querySelectorAll('[data-flow-help]').forEach((button) => {
       button.addEventListener('click', () => handlers.behaviorHelp?.(button.dataset.flowHelp));
     });
+    this.bindDemoExportControls(handlers);
     this.bind({
       preset: handlers.preset,
       'add-flow-layer': handlers.addLayer,
       'reset-terrain': handlers.resetTerrain,
+      'export-demo-json': handlers.exportDemoJson,
       menu: handlers.menu
     });
   }
@@ -507,6 +515,12 @@ export class MissionConsole {
         <strong>Max ${escapeHtml(formatDemoStat(state.stats?.max))} | Mean ${escapeHtml(formatDemoStat(state.stats?.mean))}</strong>
         <small>${escapeHtml(state.eventLikelihoodLabel ?? roiEventLikelihoodLabel(state.eventLikelihood))} ${escapeHtml(state.eventLikelihoodDynamics === 'dynamic' ? `${roiTemporalPatternLabel(state.eventLikelihoodTemporalPattern)} / ${roiLikelihoodSpatialEvolutionLabel(state.eventLikelihoodSpatialEvolution)}` : 'Static')} / ${escapeHtml(state.spatialPatternLabel ?? roiPureSpatialPatternLabel(state.spatialPattern))} / ${escapeHtml(state.valueDistributionLabel ?? roiValueDistributionLabel(state.valueDistribution))} / ${escapeHtml(state.temporalPatternLabel ?? roiTemporalPatternLabel(state.temporalPattern))} / ${escapeHtml(state.spatialEvolutionLabel ?? roiSpatialEvolutionLabel(state.spatialEvolution ?? state.patternEvolution))} / ${escapeHtml(stateModelLabel)} | Total value ${escapeHtml(formatDemoStat(state.stats?.totalValue))}</small>
       </section>
+      <section class="console-section">
+        <h2>Data Export</h2>
+        ${demoExportControlsHtml(state)}
+        <button data-action="export-demo-json" class="console-button">Export Demo JSON</button>
+        <div class="hud-muted">Exports S(x,y,t) and L(x,y,t) grids across the selected time range, plus config and selected-cell inspector state.</div>
+      </section>
       <section class="console-footer">
         <button data-action="menu" class="console-button secondary">Main Menu</button>
       </section>
@@ -535,8 +549,10 @@ export class MissionConsole {
     this.root.querySelectorAll('[data-roi-help]').forEach((button) => {
       button.addEventListener('click', () => handlers.behaviorHelp?.(button.dataset.roiHelp));
     });
+    this.bindDemoExportControls(handlers);
     this.bind({
       regenerate: handlers.regenerate,
+      'export-demo-json': handlers.exportDemoJson,
       menu: handlers.menu
     });
   }
@@ -648,6 +664,12 @@ export class MissionConsole {
         <strong>${escapeHtml(formatDemoStat(state.stats?.min))} / ${escapeHtml(formatDemoStat(state.stats?.mean))} / ${escapeHtml(formatDemoStat(state.stats?.max))}</strong>
         <small>Min / mean / max for the visible sample heatmap.</small>
       </section>
+      <section class="console-section">
+        <h2>Data Export</h2>
+        ${demoExportControlsHtml(state)}
+        <button data-action="export-demo-json" class="console-button">Export Demo JSON</button>
+        <div class="hud-muted">Exports composed flow and sample-value grids across the selected time range with coupling metadata.</div>
+      </section>
       <section class="console-footer">
         <button data-action="menu" class="console-button secondary">Main Menu</button>
       </section>
@@ -667,7 +689,11 @@ export class MissionConsole {
     this.root.querySelector('#coupled-forecast-view')?.addEventListener('change', (event) => handlers.forecastView?.(event.target.value));
     this.root.querySelector('#coupled-coupling-mode')?.addEventListener('change', (event) => handlers.couplingMode?.(event.target.value));
     this.root.querySelector('#coupled-playback-speed')?.addEventListener('change', (event) => handlers.playbackSpeedScale?.(event.target.value));
-    this.bind({ menu: handlers.menu });
+    this.bindDemoExportControls(handlers);
+    this.bind({
+      'export-demo-json': handlers.exportDemoJson,
+      menu: handlers.menu
+    });
   }
 
   renderUncertaintyForecastDemoControls(state = {}, handlers = {}) {
@@ -751,6 +777,12 @@ export class MissionConsole {
         <strong>Max ${escapeHtml(formatDemoStat(state.stats?.max))} | Mean ${escapeHtml(formatDemoStat(state.stats?.mean))}</strong>
         <small>${escapeHtml(state.viewModeLabel ?? uncertaintyViewLabel(state.viewMode))} | Total ${escapeHtml(formatDemoStat(state.stats?.totalValue))}</small>
       </section>
+      <section class="console-section">
+        <h2>Data Export</h2>
+        ${demoExportControlsHtml(state)}
+        <button data-action="export-demo-json" class="console-button">Export Demo JSON</button>
+        <div class="hud-muted">Exports forecast, truth, uncertainty, information-gain, error, update, and displayed grids across the selected time range.</div>
+      </section>
       <section class="console-footer">
         <button data-action="menu" class="console-button secondary">Main Menu</button>
       </section>
@@ -763,10 +795,12 @@ export class MissionConsole {
     this.root.querySelector('#uncertainty-demo-behavior')?.addEventListener('change', (event) => handlers.uncertaintyBehavior?.(event.target.value));
     this.root.querySelector('#uncertainty-demo-update-model')?.addEventListener('change', (event) => handlers.updateModel?.(event.target.value));
     this.root.querySelector('#uncertainty-demo-playback-speed')?.addEventListener('change', (event) => handlers.playbackSpeedScale?.(event.target.value));
+    this.bindDemoExportControls(handlers);
     this.bind({
       'uncertainty-apply-sample': handlers.applySampleUpdate,
       'uncertainty-surface-update': handlers.surfaceUpdate,
       'uncertainty-reset-observations': handlers.resetObservations,
+      'export-demo-json': handlers.exportDemoJson,
       menu: handlers.menu
     });
   }
@@ -979,6 +1013,21 @@ export class MissionConsole {
     return this.app.phaser?.scene?.getScene('MainMenuScene');
   }
 
+  bindDemoExportControls(handlers = {}) {
+    this.root.querySelector('#demo-export-mode')?.addEventListener('change', (event) => {
+      handlers.exportSettings?.({ exportMode: event.target.value });
+    });
+    this.root.querySelector('#demo-export-start')?.addEventListener('change', (event) => {
+      handlers.exportSettings?.({ startTimeSeconds: Number(event.target.value) });
+    });
+    this.root.querySelector('#demo-export-end')?.addEventListener('change', (event) => {
+      handlers.exportSettings?.({ endTimeSeconds: Number(event.target.value) });
+    });
+    this.root.querySelector('#demo-export-frames')?.addEventListener('change', (event) => {
+      handlers.exportSettings?.({ frameCount: Number(event.target.value) });
+    });
+  }
+
   bind(actions) {
     this.root.querySelectorAll('[data-action]').forEach((button) => {
       button.addEventListener('click', () => actions[button.dataset.action]?.());
@@ -1153,6 +1202,43 @@ function roiHelpButtonHtml(groupId, label) {
 
 function flowHelpButtonHtml(groupId, label) {
   return `<button type="button" class="console-button secondary flow-help-button" data-flow-help="${escapeAttr(groupId)}">${escapeHtml(label)}</button>`;
+}
+
+function demoExportControlsHtml(state = {}) {
+  const mode = state.exportMode === 'timeWindow' || state.exportMode === 'timeSeries' ? 'timeWindow' : 'currentFrame';
+  const start = Number.isFinite(Number(state.exportStartTime)) ? Number(state.exportStartTime) : Number(state.time ?? 0) || 0;
+  const end = Number.isFinite(Number(state.exportEndTime)) ? Number(state.exportEndTime) : start;
+  const frames = Math.max(1, Math.min(240, Math.round(Number(state.exportFrameCount) || 1)));
+  return `
+    <label class="compact-field">
+      Export Mode
+      <select id="demo-export-mode">
+        <option value="currentFrame" ${mode === 'currentFrame' ? 'selected' : ''}>Current Frame</option>
+        <option value="timeWindow" ${mode === 'timeWindow' ? 'selected' : ''}>Time Window</option>
+      </select>
+    </label>
+    ${mode === 'timeWindow' ? `
+    <label class="compact-field">
+      Start Time (s)
+      <input id="demo-export-start" type="number" min="0" step="1" value="${escapeAttr(formatExportTime(start))}" />
+    </label>
+    <label class="compact-field">
+      End Time (s)
+      <input id="demo-export-end" type="number" min="0" step="1" value="${escapeAttr(formatExportTime(end))}" />
+    </label>
+    <label class="compact-field">
+      Timeframes
+      <input id="demo-export-frames" type="number" min="1" max="240" step="1" value="${escapeAttr(frames)}" />
+    </label>
+    <div class="hud-muted">Timeframes are evenly sampled from start to end using the current demo settings. Max 240 frames.</div>
+    ` : '<div class="hud-muted">Current Frame exports the field state at the current demo time.</div>'}
+  `;
+}
+
+function formatExportTime(value) {
+  const number = Number(value);
+  if (!Number.isFinite(number)) return '0';
+  return Number.isInteger(number) ? String(number) : number.toFixed(2);
 }
 
 function nextActionButtonHtml(state) {

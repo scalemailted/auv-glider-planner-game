@@ -36,6 +36,12 @@ Implemented toggles:
 
 Flow arrows and sample heatmap are enabled by default. Flow particles are optional to avoid visual overload.
 
+## Demo Artifact Export
+
+`Export Demo JSON` downloads an `anchor.demo.coupled-fields` artifact for Colab/notebook rendering. Choose start time, end time, and timeframe count to include a `frames[]` series sampled from the current flow/sample/coupling settings. It includes the current flow config, sample config, coupling mode, demo time, row-major flow vectors, magnitude/direction/topology diagnostics, coupled sample-value arrays, event likelihood when available, high-value cells, and selected-cell inspector state.
+
+The export samples both `F(x,y,t)` and `S(x,y,t)` at the same cell centers used by the rendered heatmap and arrows, so external plots match the visible demo frame.
+
 ## Coupling Modes
 
 - `Off`: sample field evolves independently.

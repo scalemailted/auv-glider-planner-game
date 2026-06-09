@@ -59,6 +59,7 @@ Manual sample-field checks should cover:
 - Sample / ROI Field Demo right panel switches between Cell Inspector and Behavior Help;
 - Sample / ROI Field Demo Behavior Help supports Event Likelihood Field, Spatial Pattern, Value Distribution, Temporal Pattern, Spatial Evolution, State Model, Sampling Effect, and Display Layer, and includes a Current Composition summary that routes current-coupled/uncertainty concepts to the Coupled Fields and Uncertainty / Forecast demos;
 - Sample / ROI Field Demo inspector reports Event Likelihood `L(x,y,t)` separately from Observed Sample Value `S(x,y,t)`, plus Pattern Composition, value distribution, seeded-value status, value band, and pattern-relevant parameters;
+- Sample / ROI Field Demo Display Layer includes Event Likelihood and Sample Value + Likelihood Overlay, and switching to Event Likelihood renders the same `eventLikelihoodField` that drives event origins, jumps, walks, and propagation;
 - Sample / ROI Field Demo labels selected behavior as Time-Indexed, State-Evolving, or History-Aware in the inspector;
 - Sample / ROI Field Demo does not expose Forecast, Truth, Uncertainty, or current-coupled controls;
 - generated missions preserve `sampleFieldConfig` when configured;

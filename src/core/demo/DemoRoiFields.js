@@ -58,7 +58,7 @@ export const ROI_DEMO_PATTERN_EVOLUTIONS = ROI_DEMO_SPATIAL_EVOLUTIONS;
 export const ROI_DEMO_MOTION_SCOPES = ['perFeature', 'localNeighborhood', 'global'];
 export const ROI_DEMO_STATE_MODELS = ['timeIndexed', 'frequencyBased', 'stateEvolving', 'historyAware'];
 export const ROI_DEMO_DEPLETION_MODES = ['none', 'hard', 'soft', 'neighborhood', 'freshnessAge', 'revisitRecovery'];
-export const ROI_DEMO_DISPLAY_MODES = ['sampleValue', 'depletedValue', 'freshnessRevisitValue', 'rawBaseValue'];
+export const ROI_DEMO_DISPLAY_MODES = ['sampleValue', 'eventLikelihood', 'sampleValueLikelihoodOverlay', 'depletedValue', 'freshnessRevisitValue', 'rawBaseValue'];
 export const ROI_DEMO_DYNAMIC_COMPLEXITY = ['low', 'medium', 'high'];
 export const ROI_DEMO_CLUSTER_SIZES = ['tight', 'medium', 'wide'];
 
@@ -209,16 +209,18 @@ export function createDemoRoiField({
     dynamicComplexity: normalizedDynamicComplexity,
     motionScope: normalizedMotionScope
   });
-  const displayedField = applySampleDisplayMode(field, {
+  const sampleDisplayField = applySampleDisplayMode(field, {
     seed,
     time: sampleTime,
     depletionMode: normalizedDepletionMode,
     displayMode: normalizedDisplayMode,
     dynamicComplexity: normalizedDynamicComplexity
   });
+  const displayedField = normalizedDisplayMode === 'eventLikelihood' ? likelihoodField : sampleDisplayField;
   const stats = summarizeField(displayedField);
   return {
     field: displayedField,
+    sampleValueField: sampleDisplayField,
     rawBaseField: baseField,
     evolvedField: field,
     width,
@@ -467,6 +469,12 @@ export function normalizeRoiDemoDisplayMode(value = 'sampleValue') {
     sample: 'sampleValue',
     value: 'sampleValue',
     sampleValue: 'sampleValue',
+    eventLikelihood: 'eventLikelihood',
+    likelihood: 'eventLikelihood',
+    likelihoodField: 'eventLikelihood',
+    sampleValueLikelihoodOverlay: 'sampleValueLikelihoodOverlay',
+    likelihoodOverlay: 'sampleValueLikelihoodOverlay',
+    sampleWithLikelihoodOverlay: 'sampleValueLikelihoodOverlay',
     depleted: 'depletedValue',
     depletedValue: 'depletedValue',
     freshness: 'freshnessRevisitValue',
@@ -716,6 +724,8 @@ export function roiDepletionModeLabel(value) {
 export function roiDisplayModeLabel(value) {
   return {
     sampleValue: 'Sample Value',
+    eventLikelihood: 'Event Likelihood',
+    sampleValueLikelihoodOverlay: 'Sample Value + Likelihood Overlay',
     depletedValue: 'Depleted Value',
     freshnessRevisitValue: 'Freshness / Revisit Value',
     rawBaseValue: 'Raw Base Value'

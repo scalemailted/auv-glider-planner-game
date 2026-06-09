@@ -61,6 +61,7 @@ The demo provides a controlled scene for questions like:
 - Bottom transport `Direction`: toggles demo time between Forward and Reverse playback.
 - Bottom transport `Pause / Resume`: pauses or resumes demo time and particle motion.
 - Bottom transport `Demo Time`: shows the unbounded demo-time clock, playback direction, read-only playback speed, flow evolution speed, and evolution behavior. Continuous behavior is labeled as an infinite timeline; Looping shows the active cycle duration.
+- `Export Demo JSON`: downloads an `anchor.demo.flow-field` artifact for Colab/notebook rendering. Choose start time, end time, and timeframe count to include a `frames[]` series sampled from the current settings. It includes the current config, demo time, flow sample time, row-major `u`, `v`, magnitude, direction, land-mask, topology diagnostics, and selected-cell inspector state.
 - Left footer `Main Menu`: returns to the main menu / Simulation Lab launcher.
 - `Cell Inspector`: click any map cell to populate the right panel with current vector behavior for that cell.
 

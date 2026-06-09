@@ -32,6 +32,8 @@ import {
   sampleTemporalBehaviorLabel
 } from '../../../core/demo/DemoRoiFields.js';
 import { getVectorPresetConfig } from '../../../core/generation/VectorFieldPresets.js';
+import { buildDemoArtifactEnvelope, buildGridFields, cloneField, demoArtifactFilename, normalizeDemoExportSettings, validateDemoExportSettings } from '../../../core/io/DemoArtifactExporter.js';
+import { downloadJSON } from '../../../core/io/ImportExport.js';
 
 const PhaserScene = globalThis.Phaser?.Scene ?? class {};
 
@@ -68,6 +70,10 @@ export class CoupledFieldsDemoScene extends PhaserScene {
     this.selectedCell = null;
     this.lastInspectorKey = '';
     this.lastInspectorRenderTime = -Infinity;
+    this.exportMode = 'currentFrame';
+    this.exportStartTime = 0;
+    this.exportEndTime = 120;
+    this.exportFrameCount = 1;
   }
 
   init(data = {}) {
@@ -91,6 +97,10 @@ export class CoupledFieldsDemoScene extends PhaserScene {
     this.selectedCell = normalizeSelectedCell(data.selectedCell);
     this.lastInspectorKey = '';
     this.lastInspectorRenderTime = -Infinity;
+    this.exportMode = normalizeExportMode(data.exportMode);
+    this.exportStartTime = finiteNumber(data.exportStartTime ?? this.demoTime, this.demoTime);
+    this.exportEndTime = finiteNumber(data.exportEndTime ?? Math.max(120, this.demoTime), Math.max(120, this.demoTime));
+    this.exportFrameCount = Math.max(1, Math.round(finiteNumber(data.exportFrameCount, 1)));
     this.terrain = createDemoTerrain({ mode: this.terrainMode, seed: this.terrainSeed, grid: ROI_DEMO_GRID });
     this.particles = createDemoParticles({ count: 18, seed: this.particleSeed() });
     this.rebuildSampleField();
@@ -170,6 +180,10 @@ export class CoupledFieldsDemoScene extends PhaserScene {
       playbackSpeedScale: this.playbackSpeedScale,
       playbackDirection: this.playbackDirection,
       selectedCell: this.selectedCell,
+      exportMode: this.exportMode,
+      exportStartTime: this.exportStartTime,
+      exportEndTime: this.exportEndTime,
+      exportFrameCount: this.exportFrameCount,
       ...overrides
     };
   }
@@ -208,7 +222,7 @@ export class CoupledFieldsDemoScene extends PhaserScene {
     });
     const coupledField = this.couplingMode === 'off'
       ? base.field
-      : this.applyFlowCoupling(base.field);
+      : this.applyFlowCoupling(base.field, this.demoTime);
     this.sampleField = {
       ...base,
       field: coupledField,
@@ -217,23 +231,23 @@ export class CoupledFieldsDemoScene extends PhaserScene {
     };
   }
 
-  applyFlowCoupling(baseField) {
+  applyFlowCoupling(baseField, time = this.demoTime) {
     const height = baseField.length;
     const width = baseField[0]?.length ?? 0;
     return Array.from({ length: height }, (_, row) => Array.from({ length: width }, (_, col) => {
       const x = (col + 0.5) / width;
       const y = (row + 0.5) / height;
-      const flow = this.sampleFlow(x, y);
+      const flow = this.sampleFlow(x, y, time);
       const strength = couplingStrength(this.couplingMode);
-      const backX = wrap01(x - flow.u * strength * Math.min(8, this.demoTime) * 0.025);
-      const backY = wrap01(y - flow.v * strength * Math.min(8, this.demoTime) * 0.025);
+      const backX = wrap01(x - flow.u * strength * Math.min(8, time) * 0.025);
+      const backY = wrap01(y - flow.v * strength * Math.min(8, time) * 0.025);
       const sampled = sampleGrid(baseField, backX, backY);
       if (this.couplingMode === 'currentStretched') return clamp01(sampled + Math.hypot(flow.u, flow.v) * 0.08);
       if (this.couplingMode === 'shorelineRunoff') {
         const runoff = shorelineRunoffBoost(this.terrain, x, y, flow);
         return clamp01(sampled * 0.85 + runoff);
       }
-      if (this.couplingMode === 'eddyCarried') return clamp01(sampled + 0.08 * Math.sin(this.demoTime * 0.4 + Math.atan2(flow.v, flow.u) * 2));
+      if (this.couplingMode === 'eddyCarried') return clamp01(sampled + 0.08 * Math.sin(time * 0.4 + Math.atan2(flow.v, flow.u) * 2));
       return clamp01(sampled);
     }));
   }
@@ -268,7 +282,11 @@ export class CoupledFieldsDemoScene extends PhaserScene {
       playbackSpeedScale: this.playbackSpeedScale,
       paused: this.paused,
       time: this.demoTime,
-      stats: this.sampleField?.stats
+      stats: this.sampleField?.stats,
+      exportMode: this.exportMode,
+      exportStartTime: this.exportStartTime,
+      exportEndTime: this.exportEndTime,
+      exportFrameCount: this.exportFrameCount
     }, {
       flowPreset: (flowPreset) => this.scene.restart(this.sceneConfig({ flowPreset, demoTime: 0 })),
       dynamicComplexity: (dynamicComplexity) => this.scene.restart(this.sceneConfig({ dynamicComplexity, demoTime: 0 })),
@@ -298,6 +316,8 @@ export class CoupledFieldsDemoScene extends PhaserScene {
         this.updateTransportBar();
         this.renderCellInspector(true);
       },
+      exportSettings: (patch) => this.updateExportSettings(patch),
+      exportDemoJson: () => this.exportDemoJson(),
       menu: () => this.scene.start('MainMenuScene')
     });
   }
@@ -630,6 +650,153 @@ export class CoupledFieldsDemoScene extends PhaserScene {
     };
   }
 
+  exportDemoJson() {
+    const errors = validateDemoExportSettings(this.exportSettings(), this.demoTime);
+    if (errors.length) {
+      this.app?.toast?.(errors[0], 'warning');
+      return;
+    }
+    const artifact = this.buildDemoArtifactExport();
+    downloadJSON(demoArtifactFilename('coupled-fields', { kind: artifact.timeSampling?.kind }), artifact);
+    this.app?.toast?.('Coupled Fields Demo JSON exported.', 'success');
+  }
+
+  buildDemoArtifactExport() {
+    const sampling = this.demoExportSampling();
+    const currentFrame = this.buildDemoArtifactFrame(this.demoTime, null, this.sampleField);
+    const frames = sampling.timesSeconds.map((time, index) => this.buildDemoArtifactFrame(time, index));
+    return buildDemoArtifactEnvelope({
+      type: 'anchor.demo.coupled-fields',
+      demo: this.title(),
+      grid: ROI_DEMO_GRID,
+      time: {
+        demoTimeSeconds: this.demoTime,
+        fieldTimeSeconds: this.demoTime,
+        playbackDirection: this.playbackDirection,
+        playbackSpeed: this.playbackSpeedScale
+      },
+      timeSampling: sampling,
+      config: this.sceneConfig(),
+      fields: currentFrame.fields,
+      frames,
+      selectedCell: this.selectedCell ? this.inspectSelectedCell() : null,
+      coupling: {
+        mode: this.couplingMode,
+        flowSampler: 'sampleDemoFlow',
+        sampleFieldSource: 'createDemoRoiField plus optional flow coupling'
+      },
+      metadata: {
+        coordinateConvention: 'Flow vectors and sample values are row-major cell-center samples on the ROI demo grid.',
+        units: {
+          flowU: 'normalized grid-widths per demo second',
+          flowV: 'normalized grid-heights per demo second',
+          sampleValue: 'normalized scalar, 0..1'
+        },
+        sampleStats: this.sampleField?.stats,
+        highValueCells: this.sampleField?.highValueCells,
+        exportFrameLimit: 240
+      }
+    });
+  }
+
+  buildDemoArtifactFrame(demoTime, index, existingSampleField = null) {
+    const width = ROI_DEMO_GRID.width;
+    const height = ROI_DEMO_GRID.height;
+    const flow = buildGridFields(width, height, (col, row) => {
+      const x = (col + 0.5) / width;
+      const y = (row + 0.5) / height;
+      const sample = this.sampleFlow(x, y, demoTime);
+      const land = isDemoLand(this.terrain, x, y, ROI_DEMO_GRID);
+      return {
+        u: land ? null : sample.u,
+        v: land ? null : sample.v,
+        magnitude: land ? null : Math.hypot(sample.u, sample.v),
+        directionRadians: land ? null : Math.atan2(sample.v, sample.u),
+        landMask: land,
+        shorelineRisk: sample.shorelineRisk ?? sample.composition?.base?.shorelineRisk ?? null,
+        topologyRegion: sample.topologyRegion ?? sample.composition?.base?.topologyRegion ?? null,
+        dominantBehavior: sample.dominantBehavior ?? sample.composition?.base?.dominantBehavior ?? null
+      };
+    });
+    const sampleField = existingSampleField ?? this.buildSampleFieldAtTime(demoTime);
+    return {
+      index,
+      timeSeconds: demoTime,
+      demoTimeSeconds: demoTime,
+      fieldTimeSeconds: demoTime,
+      fields: {
+        flow,
+        sample: {
+          displayedValue: cloneField(sampleField?.field),
+          sampleValue: cloneField(sampleField?.field),
+          rawBaseValue: cloneField(sampleField?.rawBaseField),
+          evolvedValue: cloneField(sampleField?.evolvedField),
+          eventLikelihood: cloneField(sampleField?.eventLikelihoodField)
+        }
+      }
+    };
+  }
+
+  buildSampleFieldAtTime(time) {
+    const distribution = distributionForCoupling(this.sampleDistribution, this.couplingMode);
+    const temporalBehavior = temporalBehaviorForCoupling(this.temporalBehavior, this.couplingMode);
+    const spatialPattern = spatialPatternForCoupling(this.spatialPattern, this.couplingMode);
+    const base = createDemoRoiField({
+      distribution,
+      seed: this.sampleSeed(),
+      hotspotCount: 5,
+      noise: 0.12,
+      timeMode: 'dynamic',
+      spatialPattern,
+      temporalBehavior,
+      forecastView: this.forecastView,
+      time,
+      grid: ROI_DEMO_GRID
+    });
+    const coupledField = this.couplingMode === 'off'
+      ? base.field
+      : this.applyFlowCoupling(base.field, time);
+    return {
+      ...base,
+      field: coupledField,
+      stats: summarizeField(coupledField),
+      highValueCells: findHighValueCells(coupledField)
+    };
+  }
+
+  demoExportSampling() {
+    return normalizeDemoExportSettings({
+      exportMode: this.exportMode,
+      startTimeSeconds: this.exportStartTime,
+      endTimeSeconds: this.exportEndTime,
+      frameCount: this.exportFrameCount
+    }, this.demoTime);
+  }
+
+  updateExportSettings(patch = {}) {
+    if (patch.exportMode !== undefined) {
+      this.exportMode = normalizeExportMode(patch.exportMode);
+      if (this.exportMode === 'timeWindow' && this.exportFrameCount <= 1) {
+        this.exportStartTime = 0;
+        this.exportEndTime = Math.max(120, this.demoTime);
+        this.exportFrameCount = 25;
+      }
+    }
+    if (patch.startTimeSeconds !== undefined) this.exportStartTime = finiteNumber(patch.startTimeSeconds, this.exportStartTime);
+    if (patch.endTimeSeconds !== undefined) this.exportEndTime = finiteNumber(patch.endTimeSeconds, this.exportEndTime);
+    if (patch.frameCount !== undefined) this.exportFrameCount = Math.max(1, Math.min(240, Math.round(finiteNumber(patch.frameCount, this.exportFrameCount))));
+    this.renderConsole();
+  }
+
+  exportSettings() {
+    return {
+      exportMode: this.exportMode,
+      startTimeSeconds: this.exportStartTime,
+      endTimeSeconds: this.exportEndTime,
+      frameCount: this.exportFrameCount
+    };
+  }
+
   destroyObjects() {
     this.objects?.forEach((object) => object.destroy?.());
     this.objects = [];
@@ -858,6 +1025,10 @@ function formatSignedNumber(value, digits = 2) {
 function finiteNumber(value, fallback = 0) {
   const number = Number(value);
   return Number.isFinite(number) ? number : fallback;
+}
+
+function normalizeExportMode(mode) {
+  return mode === 'timeWindow' || mode === 'timeSeries' ? 'timeWindow' : 'currentFrame';
 }
 
 function wrap01(value) {

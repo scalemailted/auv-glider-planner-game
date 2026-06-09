@@ -25,6 +25,8 @@ import {
   flowFieldBehaviorExplainer,
   flowFieldCompositionExplainer
 } from '../../../core/demo/FlowFieldBehaviorExplainers.js';
+import { buildDemoArtifactEnvelope, buildGridFields, demoArtifactFilename, normalizeDemoExportSettings, validateDemoExportSettings } from '../../../core/io/DemoArtifactExporter.js';
+import { downloadJSON } from '../../../core/io/ImportExport.js';
 
 const PhaserScene = globalThis.Phaser?.Scene ?? class {};
 
@@ -63,6 +65,10 @@ export class FlowFieldDemoScene extends PhaserScene {
     this.selectedHelpTopic = null;
     this.lastInspectorRenderTime = -Infinity;
     this.lastInspectorKey = '';
+    this.exportMode = 'currentFrame';
+    this.exportStartTime = 0;
+    this.exportEndTime = 120;
+    this.exportFrameCount = 1;
   }
 
   init(data = {}) {
@@ -96,6 +102,10 @@ export class FlowFieldDemoScene extends PhaserScene {
     this.selectedHelpTopic = normalizeHelpTopic(data.selectedHelpTopic);
     this.lastInspectorRenderTime = -Infinity;
     this.lastInspectorKey = '';
+    this.exportMode = normalizeExportMode(data.exportMode);
+    this.exportStartTime = finiteNumber(data.exportStartTime ?? this.demoTime, this.demoTime);
+    this.exportEndTime = finiteNumber(data.exportEndTime ?? Math.max(120, this.demoTime), Math.max(120, this.demoTime));
+    this.exportFrameCount = Math.max(1, Math.round(finiteNumber(data.exportFrameCount, 1)));
     this.particles = createDemoParticles({
       count: this.fieldMode === 'static' ? 18 : 22,
       seed: this.particleSeed()
@@ -189,7 +199,11 @@ export class FlowFieldDemoScene extends PhaserScene {
       presetConfig: primaryConfig,
       status: `${fieldModeLabel(this.fieldMode)} field`,
       time: this.demoTime,
-      paused: this.paused
+      paused: this.paused,
+      exportMode: this.exportMode,
+      exportStartTime: this.exportStartTime,
+      exportEndTime: this.exportEndTime,
+      exportFrameCount: this.exportFrameCount
     }, {
       fieldMode: (fieldMode) => this.scene.restart({ ...this.sceneConfig(), fieldMode }),
       preset: (preset) => this.scene.restart({ ...this.sceneConfig(), preset }),
@@ -286,6 +300,8 @@ export class FlowFieldDemoScene extends PhaserScene {
       },
       direction: () => this.togglePlaybackDirection(),
       reset: () => this.resetDemoState(),
+      exportSettings: (patch) => this.updateExportSettings(patch),
+      exportDemoJson: () => this.exportDemoJson(),
       menu: () => this.scene.start('MainMenuScene')
     });
   }
@@ -334,7 +350,11 @@ export class FlowFieldDemoScene extends PhaserScene {
       playbackDirection: this.playbackDirection,
       selectedCell: this.selectedCell,
       rightPanelMode: this.rightPanelMode,
-      selectedHelpTopic: this.selectedHelpTopic
+      selectedHelpTopic: this.selectedHelpTopic,
+      exportMode: this.exportMode,
+      exportStartTime: this.exportStartTime,
+      exportEndTime: this.exportEndTime,
+      exportFrameCount: this.exportFrameCount
     };
   }
 
@@ -797,6 +817,113 @@ export class FlowFieldDemoScene extends PhaserScene {
       demoTime: this.demoTime,
       flowSampleTime: this.flowSampleTime(),
       flowEvolutionSpeedScale: this.flowEvolutionSpeedScale
+    };
+  }
+
+  exportDemoJson() {
+    const errors = validateDemoExportSettings(this.exportSettings(), this.demoTime);
+    if (errors.length) {
+      this.app?.toast?.(errors[0], 'warning');
+      return;
+    }
+    const artifact = this.buildDemoArtifactExport();
+    downloadJSON(demoArtifactFilename('flow-field', { kind: artifact.timeSampling?.kind }), artifact);
+    this.app?.toast?.('Flow Fields Demo JSON exported.', 'success');
+  }
+
+  buildDemoArtifactExport() {
+    const sampling = this.demoExportSampling();
+    const currentFrame = this.buildDemoArtifactFrame(this.demoTime, null);
+    const frames = sampling.timesSeconds.map((time, index) => this.buildDemoArtifactFrame(time, index));
+    return buildDemoArtifactEnvelope({
+      type: 'anchor.demo.flow-field',
+      demo: this.title(),
+      grid: FLOW_DEMO_GRID,
+      time: {
+        demoTimeSeconds: this.demoTime,
+        fieldTimeSeconds: this.flowSampleTime(),
+        playbackDirection: this.playbackDirection,
+        playbackSpeed: this.playbackSpeedScale
+      },
+      timeSampling: sampling,
+      config: this.sceneConfig(),
+      fields: currentFrame.fields,
+      frames,
+      selectedCell: this.selectedCell ? this.inspectSelectedCell() : null,
+      metadata: {
+        coordinateConvention: 'Values are sampled at normalized cell centers: x=(col+0.5)/width, y=(row+0.5)/height.',
+        units: {
+          u: 'normalized grid-widths per demo second',
+          v: 'normalized grid-heights per demo second',
+          magnitude: 'normalized vector magnitude per demo second',
+          directionRadians: 'atan2(v,u), screen-y positive downward'
+        },
+        magnitudeStats: summarizeDemoFlowMagnitudes(this.fieldConfig(), this.flowSampleTime()),
+        exportFrameLimit: 240
+      }
+    });
+  }
+
+  buildDemoArtifactFrame(demoTime, index) {
+    const width = FLOW_DEMO_GRID.width;
+    const height = FLOW_DEMO_GRID.height;
+    const fieldConfig = this.fieldConfig();
+    const fieldTime = this.flowSampleTime(demoTime);
+    const fields = buildGridFields(width, height, (col, row) => {
+      const x = (col + 0.5) / width;
+      const y = (row + 0.5) / height;
+      const sample = sampleDemoFlow({ ...fieldConfig, x, y, time: fieldTime });
+      const land = isDemoLand(this.terrain, x, y, FLOW_DEMO_GRID);
+      return {
+        u: land ? null : sample.u,
+        v: land ? null : sample.v,
+        magnitude: land ? null : Math.hypot(sample.u, sample.v),
+        directionRadians: land ? null : Math.atan2(sample.v, sample.u),
+        landMask: land,
+        shorelineRisk: sample.shorelineRisk ?? sample.composition?.base?.shorelineRisk ?? null,
+        topologyRegion: sample.topologyRegion ?? sample.composition?.base?.topologyRegion ?? null,
+        dominantBehavior: sample.dominantBehavior ?? sample.composition?.base?.dominantBehavior ?? null
+      };
+    });
+    return {
+      index,
+      timeSeconds: demoTime,
+      demoTimeSeconds: demoTime,
+      fieldTimeSeconds: fieldTime,
+      fields
+    };
+  }
+
+  demoExportSampling() {
+    return normalizeDemoExportSettings({
+      exportMode: this.exportMode,
+      startTimeSeconds: this.exportStartTime,
+      endTimeSeconds: this.exportEndTime,
+      frameCount: this.exportFrameCount
+    }, this.demoTime);
+  }
+
+  updateExportSettings(patch = {}) {
+    if (patch.exportMode !== undefined) {
+      this.exportMode = normalizeExportMode(patch.exportMode);
+      if (this.exportMode === 'timeWindow' && this.exportFrameCount <= 1) {
+        this.exportStartTime = 0;
+        this.exportEndTime = Math.max(120, this.demoTime);
+        this.exportFrameCount = 25;
+      }
+    }
+    if (patch.startTimeSeconds !== undefined) this.exportStartTime = finiteNumber(patch.startTimeSeconds, this.exportStartTime);
+    if (patch.endTimeSeconds !== undefined) this.exportEndTime = finiteNumber(patch.endTimeSeconds, this.exportEndTime);
+    if (patch.frameCount !== undefined) this.exportFrameCount = Math.max(1, Math.min(240, Math.round(finiteNumber(patch.frameCount, this.exportFrameCount))));
+    this.renderConsole();
+  }
+
+  exportSettings() {
+    return {
+      exportMode: this.exportMode,
+      startTimeSeconds: this.exportStartTime,
+      endTimeSeconds: this.exportEndTime,
+      frameCount: this.exportFrameCount
     };
   }
 
@@ -1351,6 +1478,10 @@ function nextTerrainSeed(seed) {
 function finiteNumber(value, fallback = 0) {
   const number = Number(value);
   return Number.isFinite(number) ? number : fallback;
+}
+
+function normalizeExportMode(mode) {
+  return mode === 'timeWindow' || mode === 'timeSeries' ? 'timeWindow' : 'currentFrame';
 }
 
 function normalizePlaybackDirection(value) {

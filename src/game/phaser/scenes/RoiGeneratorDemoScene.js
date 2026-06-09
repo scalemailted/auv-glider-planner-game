@@ -37,6 +37,8 @@ import {
   normalizeRoiDemoClusterSize
 } from '../../../core/demo/DemoRoiFields.js';
 import { sampleFieldBehaviorExplainer, sampleFieldCompositionExplainer } from '../../../core/demo/SampleFieldBehaviorExplainers.js';
+import { buildDemoArtifactEnvelope, cloneField, demoArtifactFilename, normalizeDemoExportSettings, validateDemoExportSettings } from '../../../core/io/DemoArtifactExporter.js';
+import { downloadJSON } from '../../../core/io/ImportExport.js';
 
 const PhaserScene = globalThis.Phaser?.Scene ?? class {};
 
@@ -78,6 +80,10 @@ export class RoiGeneratorDemoScene extends PhaserScene {
     this.selectedHelpTopic = null;
     this.lastInspectorKey = '';
     this.lastInspectorRenderTime = -Infinity;
+    this.exportMode = 'currentFrame';
+    this.exportStartTime = 0;
+    this.exportEndTime = 120;
+    this.exportFrameCount = 1;
   }
 
   init(data = {}) {
@@ -114,6 +120,10 @@ export class RoiGeneratorDemoScene extends PhaserScene {
     this.selectedHelpTopic = normalizeHelpTopic(data.selectedHelpTopic);
     this.lastInspectorKey = '';
     this.lastInspectorRenderTime = -Infinity;
+    this.exportMode = normalizeExportMode(data.exportMode);
+    this.exportStartTime = finiteNumber(data.exportStartTime ?? this.demoTime, this.demoTime);
+    this.exportEndTime = finiteNumber(data.exportEndTime ?? Math.max(120, this.demoTime), Math.max(120, this.demoTime));
+    this.exportFrameCount = Math.max(1, Math.round(finiteNumber(data.exportFrameCount, 1)));
     this.rebuildField();
   }
 
@@ -194,6 +204,10 @@ export class RoiGeneratorDemoScene extends PhaserScene {
       selectedCell: this.selectedCell,
       rightPanelMode: this.rightPanelMode,
       selectedHelpTopic: this.selectedHelpTopic,
+      exportMode: this.exportMode,
+      exportStartTime: this.exportStartTime,
+      exportEndTime: this.exportEndTime,
+      exportFrameCount: this.exportFrameCount,
       ...overrides
     };
   }
@@ -252,7 +266,11 @@ export class RoiGeneratorDemoScene extends PhaserScene {
       playbackDirection: this.playbackDirection,
       time: this.demoTime,
       paused: this.paused,
-      stats: this.field?.stats
+      stats: this.field?.stats,
+      exportMode: this.exportMode,
+      exportStartTime: this.exportStartTime,
+      exportEndTime: this.exportEndTime,
+      exportFrameCount: this.exportFrameCount
     }, {
       distribution: (distribution) => {
         const defaults = roiDemoDistributionDefaults(distribution);
@@ -317,6 +335,8 @@ export class RoiGeneratorDemoScene extends PhaserScene {
       },
       direction: () => this.togglePlaybackDirection(),
       reset: () => this.resetDemoState(),
+      exportSettings: (patch) => this.updateExportSettings(patch),
+      exportDemoJson: () => this.exportDemoJson(),
       menu: () => this.scene.start('MainMenuScene')
     });
   }
@@ -409,6 +429,30 @@ export class RoiGeneratorDemoScene extends PhaserScene {
     }
     for (let y = 0; y <= height; y += 1) {
       this.graphics.lineBetween(map.x, map.y + y * cellH, map.x + map.width, map.y + y * cellH);
+    }
+    if (this.field.displayMode === 'sampleValueLikelihoodOverlay') {
+      this.drawLikelihoodOverlay(map, cellW, cellH);
+    }
+  }
+
+  drawLikelihoodOverlay(map, cellW, cellH) {
+    const likelihood = this.field?.eventLikelihoodField ?? [];
+    const width = this.field.width;
+    const height = this.field.height;
+    for (let y = 0; y < height; y += 1) {
+      for (let x = 0; x < width; x += 1) {
+        const value = Number(likelihood[y]?.[x] ?? 0);
+        if (value < 0.42) continue;
+        const cx = map.x + (x + 0.5) * cellW;
+        const cy = map.y + (y + 0.5) * cellH;
+        const radius = Math.max(1.5, Math.min(cellW, cellH) * (0.1 + value * 0.2));
+        this.graphics.fillStyle(0xf7f7c6, 0.12 + value * 0.34);
+        this.graphics.fillCircle(cx, cy, radius);
+        if (value >= 0.72) {
+          this.graphics.lineStyle(1, 0xffffff, 0.42 + value * 0.28);
+          this.graphics.strokeCircle(cx, cy, radius + Math.min(cellW, cellH) * 0.16);
+        }
+      }
     }
   }
 
@@ -648,19 +692,21 @@ export class RoiGeneratorDemoScene extends PhaserScene {
 
   inspectSelectedCell() {
     const cell = this.selectedCell;
-    const value = Number(this.field?.field?.[cell.row]?.[cell.col] ?? 0);
+    const value = Number(this.field?.sampleValueField?.[cell.row]?.[cell.col] ?? this.field?.field?.[cell.row]?.[cell.col] ?? 0);
+    const displayedValue = Number(this.field?.field?.[cell.row]?.[cell.col] ?? value);
     const eventLikelihoodValue = Number(this.field?.eventLikelihoodField?.[cell.row]?.[cell.col] ?? 1);
     const previousField = createDemoRoiField({ ...this.sceneConfig(), time: Math.max(0, this.demoTime - 1), demoTime: Math.max(0, this.demoTime - 1) });
-    const previous = Number(previousField.field?.[cell.row]?.[cell.col] ?? value);
+    const previous = Number(previousField.sampleValueField?.[cell.row]?.[cell.col] ?? previousField.field?.[cell.row]?.[cell.col] ?? value);
     const stats = this.field?.stats ?? {};
     const hotspot = (this.field?.highValueCells ?? []).find((entry) => entry.x === cell.col && entry.y === cell.row);
     const rawBase = Number(this.field?.rawBaseField?.[cell.row]?.[cell.col] ?? value);
-    const depleted = Number(this.field?.field?.[cell.row]?.[cell.col] ?? value);
+    const depleted = Number(this.field?.sampleValueField?.[cell.row]?.[cell.col] ?? value);
     const spatialPattern = this.field?.pureSpatialPattern ?? this.spatialPattern;
     const spatialHelp = roiSpatialPatternHelp(spatialPattern);
     return {
       cell,
       value,
+      displayedValue,
       previous,
       delta: value - previous,
       normalizedValue: stats.max > stats.min ? (value - stats.min) / Math.max(0.0001, stats.max - stats.min) : value,
@@ -715,6 +761,112 @@ export class RoiGeneratorDemoScene extends PhaserScene {
       paused: this.paused
     };
   }
+
+  exportDemoJson() {
+    const errors = validateDemoExportSettings(this.exportSettings(), this.demoTime);
+    if (errors.length) {
+      this.app?.toast?.(errors[0], 'warning');
+      return;
+    }
+    const artifact = this.buildDemoArtifactExport();
+    downloadJSON(demoArtifactFilename('sample-roi-field', { kind: artifact.timeSampling?.kind }), artifact);
+    this.app?.toast?.('Sample / ROI Demo JSON exported.', 'success');
+  }
+
+  buildDemoArtifactExport() {
+    const field = this.field ?? {};
+    const sampling = this.demoExportSampling();
+    const currentFrame = this.buildDemoArtifactFrame(this.demoTime, null, field);
+    const frames = sampling.timesSeconds.map((time, index) => this.buildDemoArtifactFrame(time, index));
+    return buildDemoArtifactEnvelope({
+      type: 'anchor.demo.sample-roi-field',
+      demo: this.title(),
+      grid: {
+        width: field.width,
+        height: field.height
+      },
+      time: {
+        demoTimeSeconds: this.demoTime,
+        fieldTimeSeconds: field.time ?? this.demoTime,
+        playbackDirection: this.playbackDirection,
+        playbackSpeed: this.timeSpeedScale
+      },
+      timeSampling: sampling,
+      config: this.sceneConfig(),
+      fields: currentFrame.fields,
+      frames,
+      selectedCell: this.selectedCell ? this.inspectSelectedCell() : null,
+      metadata: {
+        coordinateConvention: 'Row-major arrays indexed fields[layer][row][col]; values represent cell centers on the demo grid.',
+        units: {
+          displayedValue: 'normalized demo scalar, 0..1',
+          sampleValue: 'normalized realized sample scalar S(x,y,t), 0..1',
+          eventLikelihood: 'normalized event likelihood L(x,y,t), 0..1',
+          rawBaseValue: 'seeded base sample value before temporal/evolution/display effects, 0..1',
+          evolvedValue: 'sample value after temporal/spatial evolution when available, 0..1'
+        },
+        stats: field.stats,
+        highValueCells: field.highValueCells,
+        freshnessNote: 'Freshness / Age of Information layers are demo-only unless connected to real mission visit history.',
+        historyAwareExport: {
+          supported: true,
+          method: 'deterministic-resample-from-current-config-at-each-requested-time',
+          notes: 'Sampling visits and freshness are synthetic demo effects, not mission glider visit history.'
+        },
+        exportFrameLimit: 240
+      }
+    });
+  }
+
+  buildDemoArtifactFrame(demoTime, index, existingField = null) {
+    const field = existingField ?? createDemoRoiField({ ...this.sceneConfig(), time: demoTime, demoTime });
+    return {
+      index,
+      timeSeconds: demoTime,
+      demoTimeSeconds: demoTime,
+      fieldTimeSeconds: field.time ?? demoTime,
+      fields: {
+        displayedValue: cloneField(field.field),
+        sampleValue: cloneField(field.sampleValueField ?? field.field),
+        eventLikelihood: cloneField(field.eventLikelihoodField),
+        rawBaseValue: cloneField(field.rawBaseField),
+        evolvedValue: cloneField(field.evolvedField)
+      }
+    };
+  }
+
+  demoExportSampling() {
+    return normalizeDemoExportSettings({
+      exportMode: this.exportMode,
+      startTimeSeconds: this.exportStartTime,
+      endTimeSeconds: this.exportEndTime,
+      frameCount: this.exportFrameCount
+    }, this.demoTime);
+  }
+
+  updateExportSettings(patch = {}) {
+    if (patch.exportMode !== undefined) {
+      this.exportMode = normalizeExportMode(patch.exportMode);
+      if (this.exportMode === 'timeWindow' && this.exportFrameCount <= 1) {
+        this.exportStartTime = 0;
+        this.exportEndTime = Math.max(120, this.demoTime);
+        this.exportFrameCount = 25;
+      }
+    }
+    if (patch.startTimeSeconds !== undefined) this.exportStartTime = finiteNumber(patch.startTimeSeconds, this.exportStartTime);
+    if (patch.endTimeSeconds !== undefined) this.exportEndTime = finiteNumber(patch.endTimeSeconds, this.exportEndTime);
+    if (patch.frameCount !== undefined) this.exportFrameCount = Math.max(1, Math.min(240, Math.round(finiteNumber(patch.frameCount, this.exportFrameCount))));
+    this.renderConsole();
+  }
+
+  exportSettings() {
+    return {
+      exportMode: this.exportMode,
+      startTimeSeconds: this.exportStartTime,
+      endTimeSeconds: this.exportEndTime,
+      frameCount: this.exportFrameCount
+    };
+  }
 }
 
 function heatColor(value) {
@@ -735,6 +887,10 @@ function nextSeed(seed) {
 function finiteNumber(value, fallback = 0) {
   const number = Number(value);
   return Number.isFinite(number) ? number : fallback;
+}
+
+function normalizeExportMode(mode) {
+  return mode === 'timeWindow' || mode === 'timeSeries' ? 'timeWindow' : 'currentFrame';
 }
 
 function formatStat(value) {
@@ -915,15 +1071,18 @@ function roiInspectorHtml(inspection) {
           ['event-prone', inspection.eventLikelihoodBand],
           ['role', 'biases event origins, jumps, walks, and propagation']
         ])}
+        <small>Likelihood is the chance this cell is event-prone; it is the generative substrate, not the realized reward.</small>
       </div>
       <div class="cell-inspector-card selected">
         <span>Observed Sample Value</span>
         ${metricRows([
           ['S(x,y,t)', formatStat(inspection.value)],
+          ['displayed value', formatStat(inspection.displayedValue)],
           ['normalized', formatStat(inspection.normalizedValue)],
           ['trend', trendLabel(inspection.delta)],
           ['delta / 1s', formatSignedStat(inspection.delta)]
         ])}
+        <small>Sample value is the currently realized reward/value after the selected sample-field behavior is composed.</small>
       </div>
       <div class="cell-inspector-card">
         <span>Pattern Composition</span>

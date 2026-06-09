@@ -56,6 +56,12 @@ Forecast Error shows where the forecast differs from truth. It is useful for tea
 
 Delta After Update shows how much uncertainty was reduced by sample or surface-update events. Click a cell or use update buttons to create observations.
 
+## Demo Artifact Export
+
+`Export Demo JSON` downloads an `anchor.demo.uncertainty-forecast` artifact for Colab/notebook rendering. Choose start time, end time, and timeframe count to include a `frames[]` series sampled from the current forecast/uncertainty settings. It includes the current config, demo time, displayed layer, forecast, truth, uncertainty, information gain, forecast error, delta-after-update, observations summary, fairness metadata, and selected-cell inspector state. Arrays are row-major and indexed as `field[row][col]`.
+
+Truth is exported because this is an educational demo artifact. Fair solver packets should continue to use forecast/uncertainty data only unless an oracle export is explicitly requested.
+
 ## Uncertainty Spatial Patterns
 
 Implemented patterns:
