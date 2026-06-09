@@ -6,7 +6,19 @@ The Flow Fields Demo isolates vector-field behavior from the full mission planne
 
 This demo validates current behavior. It is not a scored mission, a route planner, a waypoint execution mode, or a leaderboard mode.
 
-It sits in the Main Menu `Demos` section alongside the ROI Generator Demo. Demos validate core mechanics; tutorials teach players how to play missions.
+It sits in the Main Menu `Demos` section alongside the Sample / ROI, Coupled Fields, and Uncertainty / Forecast demos. Demos validate core mechanics; tutorials teach players how to play missions.
+
+## Concept Boundary
+
+The Flow Fields Demo teaches:
+
+```text
+F(x,y,t) = <u,v>
+```
+
+`F` is the local current vector at position `x,y` and time `t`. It answers how water moves, how the environment pushes the glider, and how currents affect travel time, energy, drift, shoreline risk, and route validation.
+
+This demo does not teach event likelihood `L(x,y,t)`, sample value `S(x,y,t)`, or uncertainty `U(x,y,t)` as primary controls. Use Sample / ROI Field Demo for `L` and `S`, Coupled Fields Demo for `F + S` interactions, and Uncertainty / Forecast Demo for forecast, truth, information gain, and confidence.
 
 ## 2. Why the Demo Exists
 

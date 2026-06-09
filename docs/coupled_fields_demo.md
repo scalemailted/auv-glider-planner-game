@@ -2,9 +2,21 @@
 
 ## Purpose
 
-ANCHOR has three field demos. Flow Fields Demo isolates `F(x,y,t)`, the current vector field. Sample / ROI Field Demo isolates `S(x,y,t)`, the science/sample value field. Coupled Fields Demo overlays both fields to show current-advected plumes, moving hotspots, shoreline sources, uncertainty drift, and other interactions where sampling strategy depends on the underlying flow.
+ANCHOR has four field demos. Flow Fields Demo isolates `F(x,y,t)`, the current vector field. Sample / ROI Field Demo isolates `L(x,y,t)` event likelihood and `S(x,y,t)` science/sample value. Uncertainty / Forecast Demo isolates forecast, truth, uncertainty, and information gain. Coupled Fields Demo overlays `F(x,y,t)` and `S(x,y,t)` to show current-advected plumes, flow-stretched fronts, shoreline/runoff transport, eddy-carried blooms, channel transport, and other interactions where sampling strategy depends on the underlying flow.
 
 The individual demos remain separate because they teach different concepts. The coupled demo is for inspecting interaction.
+
+## Coupled Field Boundary
+
+The Coupled Fields Demo is the interaction view:
+
+```text
+F(x,y,t) + S(x,y,t)
+```
+
+It shows behaviors where sample value is shaped by water motion or topology. Current-advected plumes, flow-stretched fronts, eddy-carried value, shoreline/runoff transport, channel transport, and terrain-constrained sample movement belong here rather than in the pure Sample / ROI Demo.
+
+This demo does not treat uncertainty `U(x,y,t)` as a primary field. If the question is "where is the forecast unreliable?" or "where would sampling reduce uncertainty?", use the Uncertainty / Forecast Demo. If the question is "how does visible flow move or reshape realized sample value?", use this demo.
 
 ## Layout
 

@@ -18,7 +18,14 @@ For A* or Dijkstra, build nodes from grid cells, use terrain/depth/hazard masks 
 
 For multi-agent planners, use `agentSpecs`, deployment zones, mission sampling rules, and shared reward state. Duplicate/depleted/cooldown/persistent sampling rules determine whether repeated coverage is useful.
 
-ANCHOR treats the environment as two coupled planning fields. Current fields affect current-aware ETA, energy, speed over ground, risk, and route validation. Sample fields describe where and when science value exists through ROI grids, hotspots, burst windows, moving/temporal behavior, and priority targets. Fair stochastic solver packets expose forecast-visible fields and metadata; hidden truth remains withheld unless an oracle export is explicit.
+ANCHOR separates field concepts for solver fairness:
+
+- `F(x,y,t)`: visible current/flow vectors used for current-aware ETA, energy, speed over ground, risk, and route validation.
+- `L(x,y,t)`: event likelihood metadata when available, describing where sample-value events tend to originate.
+- `S(x,y,t)`: visible sample value or expected reward used for route grading, Greedy Planner reward, and scoring estimates.
+- `U(x,y,t)`: uncertainty, confidence, or information-gain metadata in stochastic/forecast workflows.
+
+Likelihood and uncertainty are not interchangeable. `L` says where events tend to occur; `U` says what the planner does not know. Fair stochastic solver packets expose forecast-visible fields and metadata; hidden truth remains withheld unless an oracle export is explicit.
 
 For RL, use the packet's observation/action/reward/termination notes. Stochastic evaluation packets expose forecast/belief observations; oracle datasets expose hidden truth for training labels. For supervised or imitation learning, pair packets with exported `anchor.result` or `anchor.oracleDataset` trajectories.
 

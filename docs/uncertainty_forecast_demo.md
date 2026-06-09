@@ -6,6 +6,20 @@ The Uncertainty / Forecast Demo teaches what is known, unknown, wrong, or learne
 
 It is separate from the pure Sample / ROI Demo. Sample value answers where sampling is valuable. Uncertainty answers where the planner does not know enough. Information gain answers where sampling is expected to teach the most.
 
+## Concept Boundary
+
+The Uncertainty / Forecast Demo teaches:
+
+```text
+U(x,y,t)
+```
+
+`U` is uncertainty, lack of confidence, or expected information gain at position `x,y` and time `t`. It answers where the forecast is unreliable, where the planner does not know enough, and where observation could reduce uncertainty.
+
+It does not use event likelihood `L(x,y,t)` as a primary control. Likelihood describes where events tend to occur. Uncertainty describes what the planner does not know.
+
+Only uncertainty about the event likelihood field belongs in the Uncertainty / Forecast Demo. The event likelihood field itself belongs in the Sample / ROI Demo as the generative substrate for sample-value events.
+
 ## Forecast vs Truth
 
 The demo distinguishes:
@@ -19,6 +33,16 @@ Truth is visible in this demo for educational inspection only. Fair solver packe
 ## Uncertainty
 
 Uncertainty is a confidence/risk-of-being-wrong field. High uncertainty means the forecast is less reliable or under-observed. It is not the same as high sample value.
+
+## Likelihood Is Not Uncertainty
+
+A region can be high likelihood and low uncertainty: events often occur there and the model knows it well.
+
+A region can be low likelihood and high uncertainty: events are unlikely, but the model is unsure.
+
+A region can be high value and low uncertainty: it is worth sampling, but not very informative.
+
+A region can be low value and high information gain: it is not valuable as a concentration, but sampling there may reduce uncertainty.
 
 ## Information Gain
 

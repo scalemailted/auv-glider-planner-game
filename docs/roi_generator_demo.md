@@ -4,6 +4,8 @@
 
 The Sample / ROI Field Demo visualizes `S(x,y,t)`: where and when the environment is valuable to sample. Unlike the Flow Fields Demo, which shows water motion `F(x,y,t)`, this pure demo shows objective value, reward value, hotspots, bursts, temporal patterns, depletion, and recovery behavior.
 
+It also exposes `L(x,y,t)`, the event likelihood field that controls where sample-value events tend to originate. `L` is not uncertainty. Uncertainty and information gain are covered by the Uncertainty / Forecast Demo; current-driven sample movement is covered by the Coupled Fields Demo.
+
 It is not a mission, planner, leaderboard mode, uncertainty demo, forecast/truth demo, or scoring mode. It only visualizes how sample-value regions can be shaped.
 
 ## Layout

@@ -150,6 +150,14 @@ The demo separates event-proneness, geometry, and assigned values.
 
 A Constant Field with Constant Value is flat. A Constant Field with Uniform Random values has no spatial structure, but each cell receives a seeded random value from a uniform distribution. A Gaussian / Normal distribution produces values mostly near a mean, with fewer extremes.
 
+A uniform likelihood field does not mean every cell has the same sample value. It means every cell is equally likely to host an event. The realized value still depends on the spatial pattern, value distribution, temporal pattern, spatial evolution, and sampling effects.
+
+Examples:
+
+- `Uniform Likelihood + Uniform Random`: events can originate anywhere, and realized values are seeded draws across the value range.
+- `Gaussian Likelihood + Uniform Random`: events tend to originate near a center, but realized values are still spread across the value range.
+- `Multi-Modal Likelihood + Clustered Field`: clusters tend to form near several preferred regions.
+
 - Clustered Field + Cluster Count 2 creates two spatial clusters.
 - Bimodal Values would create two preferred value ranges.
 - These are different concepts.
@@ -231,6 +239,13 @@ Spatial Evolution answers: how does the spatial distribution itself change over 
 
 Current-advected movement is not part of this demo. Use Coupled Fields Demo when the sample pattern should move because of `F(x,y,t)`.
 
+Spatial Pattern and Spatial Evolution are separate:
+
+- `Clustered Field + Stationary`: a cluster changes intensity but stays in place.
+- `Clustered Field + Continuous Drift`: a cluster moves smoothly through adjacent or intermediate positions.
+- `Clustered Field + Discrete Jump`: a cluster fades and reappears elsewhere.
+- `Patchy Field + Neighbor Propagation`: activity spreads locally from active cells.
+
 ### Motion Scope
 
 Motion Scope controls whether spatial evolution is global, per-feature, or local:
@@ -253,6 +268,13 @@ State Model answers: what does the field depend on?
 - **History-Aware / Non-Markovian:** the field depends on longer sampling or observation history, such as time since last sample or cumulative depletion.
 
 Markovian is not a synonym for any time-varying behavior. Seeded irregular pulses can be deterministic and replayable. Visit-dependent depletion or monitoring recovery is history-aware when visit history affects value.
+
+State model terms:
+
+- `Time-Indexed`: `S` or `L` can be computed directly from `x,y,t`; it is memoryless.
+- `Frequency-Based`: behavior follows cycles, frequencies, or seasonal patterns.
+- `State-Evolving`: the next state depends on the current state; it is Markovian when only the current state is needed.
+- `History-Aware`: behavior depends on longer sampling or observation history, such as time since last visit or cumulative sampling.
 
 ## Depletion, Freshness, and Revisit Value
 

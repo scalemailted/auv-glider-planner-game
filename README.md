@@ -4,7 +4,7 @@
 
 The project is also an **AUV Glider Planner Game** for teaching long-horizon planning, energy tradeoffs, waypoint sequencing, forecast uncertainty, solver comparison, and dataset generation. Challenge Mode presents playable planning puzzles with mission-mode objectives, stars, route grades, risk warnings, and leaderboard comparison. Simulation Lab exposes the same mission engine as a reproducible experiment environment for deterministic/stochastic setup, current/sample-field configuration, replay seeds, solver packets, JSON import/export, and planner comparisons.
 
-ANCHOR treats the environment as two coupled planning fields: the current field describes how hard it is to move, and the sample field describes where and when it is valuable to collect information. Both experiences use the same terrain, current fields, sample fields, hazards, glider physics, scoring, route validation, planner APIs, and export/replay system.
+ANCHOR separates current flow, event likelihood, realized sample value, and uncertainty into distinct field concepts. Current flow describes how hard it is to move, event likelihood describes where sample-value events tend to originate, sample value describes where and when sampling has reward, and uncertainty describes what the planner does not know. Both experiences use the same terrain, current fields, sample fields, hazards, glider physics, scoring, route validation, planner APIs, and export/replay system.
 
 ## Current Status
 
@@ -77,6 +77,17 @@ Challenge Mode is the playable planning-puzzle experience. It emphasizes score, 
 Simulation Lab is the reproducible experiment sandbox. It emphasizes exact configuration, deterministic/stochastic setup, dynamic current-field metadata, solver packets, replay seeds, external solver workflows, JSON import/export, and auditability.
 
 Both modes use the same terrain generation, current fields, hazards, glider physics, scoring core, route validation, planner APIs, and replay/export system. `experienceMode` is metadata and UI framing; it does not fork physics or scoring.
+
+## Field Concepts
+
+ANCHOR separates four field concepts:
+
+- `F(x,y,t)` - flow/current vector field: how water moves and how currents affect travel time, energy, drift, route risk, and simulation.
+- `L(x,y,t)` - event likelihood field: where sample-value events, clusters, bursts, targets, or activations tend to originate.
+- `S(x,y,t)` - sample value field: where and when sampling has realized reward or objective value.
+- `U(x,y,t)` - uncertainty field: where the model is unreliable, under-observed, or sampling is expected to teach the planner more.
+
+These fields are related but not interchangeable. The demos separate them so students can learn each concept before combining them in planning challenges. Event likelihood is not uncertainty: a high-likelihood region can be well known, and a low-likelihood region can still be uncertain.
 
 Quick loop:
 

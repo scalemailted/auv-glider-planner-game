@@ -14,6 +14,21 @@ Both modes use the same terrain, current fields, hazards, glider physics, scorin
 
 Challenge Mode starts from a mission-mode navigator instead of a full technical form. The left Mission Console lists curated objectives, and the center viewport shows the focused briefing for the selected mission before generating the map. Survey Sweep, Signal Hunt, Surface & Adapt, Fleet Split, Uncertain Waters, Forecast Chase, Plume Intercept, Watch Stations, Danger Run, and Long Glide map player-facing objectives to shared sample-field, current-field, scoring, route-grade, mission-rule, replay, and export presets. Simulation Lab exposes the underlying knobs directly for experiments.
 
+## Concept Boundaries
+
+ANCHOR keeps four educational field concepts distinct:
+
+| Field | Meaning | Answers | Primary homes |
+|---|---|---|---|
+| `F(x,y,t)` | Flow/current vector `<u,v>` at position and time | How does water move, and how does it push the glider? | Flow Fields Demo, Coupled Fields Demo, mission simulation, route cost |
+| `L(x,y,t)` | Event likelihood: where sample-value events tend to originate | Where should clusters, bursts, targets, or future opportunities tend to form? | Sample / ROI Field Demo, sample-field generation, mission objective generation |
+| `S(x,y,t)` | Realized sample value, reward, or objective value | Where and when is it valuable to sample? | Sample / ROI Field Demo, scoring, route grading, Greedy Planner reward, Challenge objectives |
+| `U(x,y,t)` | Uncertainty, lack of confidence, or expected information gain | Where do we not know enough, and where would sampling teach us most? | Uncertainty / Forecast Demo, forecast/truth workflows, stochastic challenges |
+
+Likelihood is not uncertainty. Event likelihood describes where events tend to occur; uncertainty describes what the planner does not know. Only uncertainty about a likelihood model belongs in the Uncertainty / Forecast Demo. The event likelihood field itself belongs in the Sample / ROI Demo as the generative substrate for sample-value events.
+
+Flow-value interactions belong in Coupled Fields Demo. The pure Sample / ROI Demo shows abstract value-field construction without water-motion coupling; the Coupled Fields Demo shows current-advected plumes, flow-stretched fronts, eddy-carried blooms, shoreline/runoff transport, channel transport, and terrain-constrained flow-value interactions.
+
 ## Mission Modes
 
 Mission Modes are Challenge Mode objective presets, not separate simulation engines. A Mission Mode chooses player-facing goals and default technical settings for sample-field behavior, current-field behavior, sampling rules, scoring weights, route-grade weights, mission rules, replay metadata, and export metadata.
