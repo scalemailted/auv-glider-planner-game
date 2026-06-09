@@ -110,6 +110,27 @@ Every major component in the Sample / ROI Demo has behavior help. The left Missi
 | Sampling Effect | How visits change future value | Does sampling deplete, cool neighbors, or recover later? |
 | Display Layer | Which value layer is visible | Am I viewing raw value, depleted value, freshness, or composed sample value? |
 
+## Behavior Presets
+
+Behavior presets are curated combinations of the primitive sample-field controls. They provide recognizable starting points for common spatiotemporal pattern families, such as recurring hotspots, migrating patches, expanding fronts, patchy rainfall, and freshness/revisit value.
+
+Presets do not replace the primitive controls. Selecting a preset fills in the underlying Event Likelihood Field, Spatial Pattern, Value Distribution, Temporal Pattern, Spatial Evolution, State Model, Sampling Effect, and relevant parameters. Users can then modify those controls to create custom behavior. Changing any primitive control after selecting a preset marks it as modified from that preset; choosing `Custom` leaves the primitive controls editable without a preset label.
+
+| Preset | What it demonstrates | Key composition |
+|---|---|---|
+| Recurring Hotspots | Repeated activity in preferred regions | Multi-modal likelihood + clustered field + bursty |
+| Migrating Patch | Smooth feature movement | Gaussian likelihood + clustered field + continuous drift |
+| Expanding Front | Spreading boundary | Front / Boundary + neighbor propagation |
+| Patchy Rainfall | Irregular activity patches | Seeded texture likelihood + patchy field + random pulses |
+| Drifting Storm Cells | Moving compact bursts | Clustered field + bursty + continuous drift |
+| Freshness / Revisit Value | Value recovers after time | History-aware + freshness |
+| Neighbor Spread | Local activation/spread | Patchy field + neighbor propagation |
+| Oscillating Ecological Field | Phase-shifted cycles | Periodic + frequency-based |
+| Forest Fire Front (inspired) | Advancing active front | Front + propagation + depleted residual |
+| Life-Like Cellular Emergence (inspired) | Local-rule emergence | Neighbor propagation + state-evolving |
+
+Some presets are inspired by real-world processes but are simplified educational examples. They are not validated process models and do not add current-field dependencies. Flow-driven examples belong in the Coupled Fields Demo.
+
 The right-panel Behavior Help view includes a `Current Composition` card that summarizes how the selected components combine, for example `Multi-Modal Likelihood + Clustered Field + Gaussian / Normal + Bursty + Discrete Jump + Time-Indexed + Soft Depletion + Sample Value`. Current-driven transport, plumes, flow-stretched patterns, forecast, truth, uncertainty, information gain, and forecast error are routed to the Coupled Fields Demo and Uncertainty / Forecast Demo.
 
 ## Viewing the Event Likelihood Field

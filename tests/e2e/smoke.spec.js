@@ -356,8 +356,82 @@ test('campaign planning smoke flow reaches debrief', async ({ page }) => {
   expect(roiArtifact.data.metadata.activityDiagnostics.meanValue).toBeGreaterThan(0);
   expect(roiArtifact.data.metadata.activityDiagnostics.activeFraction).toBeGreaterThan(0.1);
   expect(roiArtifact.data.frames[0].activityDiagnostics.totalActivityMass).toBeGreaterThan(0);
+  expect(roiArtifact.data.behaviorPreset.id).toBe('custom');
   await expect(page.locator('#mission-console')).toContainText('Activity');
   await expect(page.locator('#mission-console')).toContainText('Injected');
+  await expect(page.locator('#roi-demo-behavior-preset')).toBeVisible();
+  await expect(page.locator('#roi-demo-behavior-preset option')).toHaveText([
+    'Custom',
+    'Recurring Hotspots',
+    'Migrating Patch',
+    'Expanding Front',
+    'Patchy Rainfall',
+    'Drifting Storm Cells',
+    'Freshness / Revisit Value',
+    'Neighbor Spread',
+    'Oscillating Ecological Field',
+    'Forest Fire Front (inspired)',
+    'Life-Like Cellular Emergence (inspired)'
+  ]);
+  await page.locator('#roi-demo-behavior-preset').selectOption('driftingStormCells');
+  await expect.poll(() => page.evaluate(() => {
+    const scene = window.anchorGame.phaser.scene.getScene('RoiGeneratorDemoScene');
+    return {
+      preset: scene.behaviorPresetId,
+      modified: scene.behaviorPresetModified,
+      spatial: scene.spatialPattern,
+      temporal: scene.temporalPattern,
+      evolution: scene.spatialEvolution,
+      dynamics: scene.eventLikelihoodDynamics
+    };
+  })).toEqual({
+    preset: 'driftingStormCells',
+    modified: false,
+    spatial: 'clusteredField',
+    temporal: 'bursty',
+    evolution: 'continuousDrift',
+    dynamics: 'dynamic'
+  });
+  await page.locator('#mission-console [data-roi-help="behaviorPreset"]').click();
+  await expect(page.locator('#waypoint-timeline [data-roi-behavior-help]')).toContainText('About Behavior Preset: Drifting Storm Cells');
+  await expect(page.locator('#waypoint-timeline [data-roi-behavior-help]')).toContainText('Compact high-value cells move through the domain');
+  const presetArtifact = await downloadDemoArtifact(page);
+  expect(presetArtifact.data.behaviorPreset).toMatchObject({
+    id: 'driftingStormCells',
+    label: 'Drifting Storm Cells',
+    modified: false
+  });
+  await page.locator('#roi-demo-spatial-evolution').selectOption('randomWalk');
+  await expect.poll(() => page.evaluate(() => {
+    const scene = window.anchorGame.phaser.scene.getScene('RoiGeneratorDemoScene');
+    return {
+      preset: scene.behaviorPresetId,
+      modified: scene.behaviorPresetModified,
+      evolution: scene.spatialEvolution
+    };
+  })).toEqual({
+    preset: 'driftingStormCells',
+    modified: true,
+    evolution: 'randomWalk'
+  });
+  await expect(page.locator('#mission-console')).toContainText('Modified from Drifting Storm Cells');
+  await page.locator('#roi-demo-behavior-preset').selectOption('custom');
+  await expect.poll(() => page.evaluate(() => {
+    const scene = window.anchorGame.phaser.scene.getScene('RoiGeneratorDemoScene');
+    return {
+      preset: scene.behaviorPresetId,
+      modified: scene.behaviorPresetModified
+    };
+  })).toEqual({ preset: 'custom', modified: false });
+  await page.locator('#roi-demo-event-likelihood').selectOption('multiModalLikelihood');
+  await page.locator('#roi-demo-event-likelihood-dynamics').selectOption('static');
+  await page.locator('#roi-demo-spatial-pattern').selectOption('clusteredField');
+  await page.locator('#roi-demo-value-distribution').selectOption('gaussianNormal');
+  await page.locator('#roi-demo-temporal-pattern').selectOption('bursty');
+  await page.locator('#roi-demo-spatial-evolution').selectOption('stationary');
+  await page.locator('#roi-demo-state-model').selectOption('stateEvolving');
+  await page.locator('#roi-demo-depletion-mode').selectOption('soft');
+  await page.locator('#roi-demo-display-mode').selectOption('sampleValue');
   await expect(page.locator('#mission-console')).toContainText('Sample Field Substrate');
   await expect(page.locator('#mission-console')).toContainText('Event Likelihood Field');
   await expect(page.locator('#mission-console')).toContainText('Spatial Parameters');
@@ -384,7 +458,7 @@ test('campaign planning smoke flow reaches debrief', async ({ page }) => {
   await expect(page.locator('#roi-demo-spatial-pattern')).not.toContainText('Multiple Clusters');
   await expect(page.locator('#roi-demo-spatial-pattern')).not.toContainText('Bimodal');
   await expect(page.locator('#mission-console .sample-field-explainer')).toHaveCount(0);
-  await expect(page.locator('#mission-console [data-roi-help]')).toHaveCount(8);
+  await expect(page.locator('#mission-console [data-roi-help]')).toHaveCount(9);
   await expect(page.locator('#mission-console [data-roi-help="eventLikelihood"]')).toContainText('Explain Multi-Modal Likelihood');
   await expect(page.locator('#mission-console [data-roi-help="spatialPattern"]')).toContainText('Explain Clustered Field');
   await expect(page.locator('#roi-demo-event-likelihood option')).toHaveText([

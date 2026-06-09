@@ -37,6 +37,13 @@ import {
   normalizeRoiDemoClusterSize
 } from '../../../core/demo/DemoRoiFields.js';
 import { sampleFieldBehaviorExplainer, sampleFieldCompositionExplainer } from '../../../core/demo/SampleFieldBehaviorExplainers.js';
+import {
+  CUSTOM_SAMPLE_FIELD_BEHAVIOR_PRESET_ID,
+  normalizeSampleFieldBehaviorPresetId,
+  sampleFieldBehaviorPresetById,
+  sampleFieldBehaviorPresetMetadata,
+  sampleFieldBehaviorPresetLabel
+} from '../../../core/demo/SampleFieldBehaviorPresets.js';
 import { buildDemoArtifactEnvelope, cloneField, demoArtifactFilename, normalizeDemoExportSettings, validateDemoExportSettings } from '../../../core/io/DemoArtifactExporter.js';
 import { downloadJSON } from '../../../core/io/ImportExport.js';
 
@@ -69,6 +76,8 @@ export class RoiGeneratorDemoScene extends PhaserScene {
     this.depletionMode = 'soft';
     this.displayMode = 'sampleValue';
     this.dynamicComplexity = 'medium';
+    this.behaviorPresetId = CUSTOM_SAMPLE_FIELD_BEHAVIOR_PRESET_ID;
+    this.behaviorPresetModified = false;
     this.forecastView = 'forecast';
     this.demoTime = 0;
     this.timeSpeedScale = 1;
@@ -110,6 +119,8 @@ export class RoiGeneratorDemoScene extends PhaserScene {
     this.depletionMode = normalizeRoiDemoDepletionMode(data.depletionMode ?? 'soft');
     this.displayMode = normalizeRoiDemoDisplayMode(data.displayMode ?? 'sampleValue');
     this.dynamicComplexity = normalizeRoiDemoDynamicComplexity(data.dynamicComplexity ?? 'medium');
+    this.behaviorPresetId = normalizeSampleFieldBehaviorPresetId(data.behaviorPresetId ?? data.behaviorPreset?.id ?? CUSTOM_SAMPLE_FIELD_BEHAVIOR_PRESET_ID);
+    this.behaviorPresetModified = Boolean(data.behaviorPresetModified ?? data.behaviorPreset?.modified);
     this.temporalBehavior = normalizeRoiDemoTemporalBehavior(data.temporalBehavior ?? distributionDefaults.temporalBehavior);
     this.forecastView = normalizeForecastView(data.forecastView ?? 'forecast');
     this.timeSpeedScale = finiteNumber(data.timeSpeedScale, 1);
@@ -199,6 +210,8 @@ export class RoiGeneratorDemoScene extends PhaserScene {
       depletionMode: this.depletionMode,
       displayMode: this.displayMode,
       dynamicComplexity: this.dynamicComplexity,
+      behaviorPresetId: this.behaviorPresetId,
+      behaviorPresetModified: this.behaviorPresetModified,
       forecastView: this.forecastView,
       timeSpeedScale: this.timeSpeedScale,
       playbackDirection: this.playbackDirection,
@@ -212,6 +225,35 @@ export class RoiGeneratorDemoScene extends PhaserScene {
       exportFrameCount: this.exportFrameCount,
       ...overrides
     };
+  }
+
+  primitiveSceneConfig(overrides = {}) {
+    const hasPreset = this.behaviorPresetId !== CUSTOM_SAMPLE_FIELD_BEHAVIOR_PRESET_ID;
+    return this.sceneConfig({
+      behaviorPresetModified: hasPreset ? true : false,
+      ...overrides
+    });
+  }
+
+  applyBehaviorPreset(behaviorPresetId) {
+    const presetId = normalizeSampleFieldBehaviorPresetId(behaviorPresetId);
+    const preset = sampleFieldBehaviorPresetById(presetId);
+    if (!preset) {
+      this.scene.restart(this.sceneConfig({
+        behaviorPresetId: CUSTOM_SAMPLE_FIELD_BEHAVIOR_PRESET_ID,
+        behaviorPresetModified: false,
+        selectedHelpTopic: { groupId: 'behaviorPreset' },
+        demoTime: 0
+      }));
+      return;
+    }
+    this.scene.restart(this.sceneConfig({
+      ...preset.config,
+      behaviorPresetId: preset.id,
+      behaviorPresetModified: false,
+      selectedHelpTopic: { groupId: 'behaviorPreset' },
+      demoTime: 0
+    }));
   }
 
   rebuildField() {
@@ -265,6 +307,10 @@ export class RoiGeneratorDemoScene extends PhaserScene {
       motionScope: this.field?.motionScope ?? this.motionScope,
       motionScopeLabel: roiMotionScopeLabel(this.field?.motionScope ?? this.motionScope),
       dynamicComplexity: this.field?.dynamicComplexity ?? this.dynamicComplexity,
+      behaviorPresetId: this.behaviorPresetId,
+      behaviorPresetLabel: sampleFieldBehaviorPresetLabel(this.behaviorPresetId),
+      behaviorPresetModified: this.behaviorPresetModified,
+      behaviorPreset: sampleFieldBehaviorPresetMetadata(this.behaviorPresetId, this.behaviorPresetModified),
       stateModel: this.field?.stateModel ?? this.stateModel,
       stateModelLabel: this.field?.stateModelLabel ?? roiStateModelLabel(this.stateModel),
       stateModelDescription: this.field?.stateModelDescription ?? roiStateModelDescription(this.stateModel),
@@ -287,7 +333,7 @@ export class RoiGeneratorDemoScene extends PhaserScene {
     }, {
       distribution: (distribution) => {
         const defaults = roiDemoDistributionDefaults(distribution);
-        this.scene.restart(this.sceneConfig({
+        this.scene.restart(this.primitiveSceneConfig({
           distribution,
           eventLikelihood: defaults.eventLikelihood ?? this.eventLikelihood,
           eventLikelihoodDynamics: this.eventLikelihoodDynamics,
@@ -306,40 +352,41 @@ export class RoiGeneratorDemoScene extends PhaserScene {
       },
       seed: (seed) => {
         this.seed = String(seed ?? 'anchor-roi-demo').trim() || 'anchor-roi-demo';
-        this.scene.restart(this.sceneConfig({ seed: this.seed, demoTime: 0 }));
+        this.scene.restart(this.primitiveSceneConfig({ seed: this.seed, demoTime: 0 }));
       },
-      eventLikelihood: (eventLikelihood) => this.scene.restart(this.sceneConfig({ eventLikelihood, demoTime: 0 })),
-      eventLikelihoodDynamics: (eventLikelihoodDynamics) => this.scene.restart(this.sceneConfig({
+      behaviorPreset: (behaviorPresetId) => this.applyBehaviorPreset(behaviorPresetId),
+      eventLikelihood: (eventLikelihood) => this.scene.restart(this.primitiveSceneConfig({ eventLikelihood, demoTime: 0 })),
+      eventLikelihoodDynamics: (eventLikelihoodDynamics) => this.scene.restart(this.primitiveSceneConfig({
         eventLikelihoodDynamics,
         eventLikelihoodTemporalPattern: eventLikelihoodDynamics === 'dynamic' ? this.eventLikelihoodTemporalPattern : 'static',
         eventLikelihoodSpatialEvolution: eventLikelihoodDynamics === 'dynamic' ? this.eventLikelihoodSpatialEvolution : 'stationary',
         demoTime: 0
       })),
-      eventLikelihoodTemporalPattern: (eventLikelihoodTemporalPattern) => this.scene.restart(this.sceneConfig({ eventLikelihoodTemporalPattern, eventLikelihoodDynamics: 'dynamic', demoTime: 0 })),
-      eventLikelihoodSpatialEvolution: (eventLikelihoodSpatialEvolution) => this.scene.restart(this.sceneConfig({ eventLikelihoodSpatialEvolution, eventLikelihoodDynamics: 'dynamic', demoTime: 0 })),
-      hotspotCount: (hotspotCount) => this.scene.restart(this.sceneConfig({ hotspotCount: Number(hotspotCount), demoTime: 0 })),
-      clusterSize: (clusterSize) => this.scene.restart(this.sceneConfig({ clusterSize, demoTime: 0 })),
-      noise: (noise) => this.scene.restart(this.sceneConfig({ noise: Number(noise), demoTime: 0 })),
-      timeMode: (timeMode) => this.scene.restart(this.sceneConfig({ timeMode, demoTime: 0 })),
-      spatialPattern: (spatialPattern) => this.scene.restart(this.sceneConfig({ spatialPattern, demoTime: 0 })),
-      valueDistribution: (valueDistribution) => this.scene.restart(this.sceneConfig({ valueDistribution, demoTime: 0 })),
-      temporalPattern: (temporalPattern) => this.scene.restart(this.sceneConfig({ temporalPattern, timeMode: temporalPattern === 'static' ? 'static' : 'dynamic', demoTime: 0 })),
-      temporalBehavior: (temporalBehavior) => this.scene.restart(this.sceneConfig({ temporalBehavior, timeMode: temporalBehavior === 'static' ? 'static' : 'dynamic', demoTime: 0 })),
-      evolutionModel: (evolutionModel) => this.scene.restart(this.sceneConfig({ evolutionModel, demoTime: 0 })),
-      patternEvolution: (patternEvolution) => this.scene.restart(this.sceneConfig({ patternEvolution, spatialEvolution: patternEvolution, evolutionModel: patternEvolution, demoTime: 0 })),
-      spatialEvolution: (spatialEvolution) => this.scene.restart(this.sceneConfig({ spatialEvolution, patternEvolution: spatialEvolution, evolutionModel: spatialEvolution, demoTime: 0 })),
-      motionScope: (motionScope) => this.scene.restart(this.sceneConfig({ motionScope, demoTime: 0 })),
-      stateModel: (stateModel) => this.scene.restart(this.sceneConfig({ stateModel, demoTime: 0 })),
-      depletionMode: (depletionMode) => this.scene.restart(this.sceneConfig({ depletionMode, demoTime: 0 })),
-      displayMode: (displayMode) => this.scene.restart(this.sceneConfig({ displayMode, demoTime: 0 })),
-      dynamicComplexity: (dynamicComplexity) => this.scene.restart(this.sceneConfig({ dynamicComplexity, demoTime: 0 })),
+      eventLikelihoodTemporalPattern: (eventLikelihoodTemporalPattern) => this.scene.restart(this.primitiveSceneConfig({ eventLikelihoodTemporalPattern, eventLikelihoodDynamics: 'dynamic', demoTime: 0 })),
+      eventLikelihoodSpatialEvolution: (eventLikelihoodSpatialEvolution) => this.scene.restart(this.primitiveSceneConfig({ eventLikelihoodSpatialEvolution, eventLikelihoodDynamics: 'dynamic', demoTime: 0 })),
+      hotspotCount: (hotspotCount) => this.scene.restart(this.primitiveSceneConfig({ hotspotCount: Number(hotspotCount), demoTime: 0 })),
+      clusterSize: (clusterSize) => this.scene.restart(this.primitiveSceneConfig({ clusterSize, demoTime: 0 })),
+      noise: (noise) => this.scene.restart(this.primitiveSceneConfig({ noise: Number(noise), demoTime: 0 })),
+      timeMode: (timeMode) => this.scene.restart(this.primitiveSceneConfig({ timeMode, demoTime: 0 })),
+      spatialPattern: (spatialPattern) => this.scene.restart(this.primitiveSceneConfig({ spatialPattern, demoTime: 0 })),
+      valueDistribution: (valueDistribution) => this.scene.restart(this.primitiveSceneConfig({ valueDistribution, demoTime: 0 })),
+      temporalPattern: (temporalPattern) => this.scene.restart(this.primitiveSceneConfig({ temporalPattern, timeMode: temporalPattern === 'static' ? 'static' : 'dynamic', demoTime: 0 })),
+      temporalBehavior: (temporalBehavior) => this.scene.restart(this.primitiveSceneConfig({ temporalBehavior, timeMode: temporalBehavior === 'static' ? 'static' : 'dynamic', demoTime: 0 })),
+      evolutionModel: (evolutionModel) => this.scene.restart(this.primitiveSceneConfig({ evolutionModel, demoTime: 0 })),
+      patternEvolution: (patternEvolution) => this.scene.restart(this.primitiveSceneConfig({ patternEvolution, spatialEvolution: patternEvolution, evolutionModel: patternEvolution, demoTime: 0 })),
+      spatialEvolution: (spatialEvolution) => this.scene.restart(this.primitiveSceneConfig({ spatialEvolution, patternEvolution: spatialEvolution, evolutionModel: spatialEvolution, demoTime: 0 })),
+      motionScope: (motionScope) => this.scene.restart(this.primitiveSceneConfig({ motionScope, demoTime: 0 })),
+      stateModel: (stateModel) => this.scene.restart(this.primitiveSceneConfig({ stateModel, demoTime: 0 })),
+      depletionMode: (depletionMode) => this.scene.restart(this.primitiveSceneConfig({ depletionMode, demoTime: 0 })),
+      displayMode: (displayMode) => this.scene.restart(this.primitiveSceneConfig({ displayMode, demoTime: 0 })),
+      dynamicComplexity: (dynamicComplexity) => this.scene.restart(this.primitiveSceneConfig({ dynamicComplexity, demoTime: 0 })),
       timeSpeedScale: (timeSpeedScale) => {
         this.timeSpeedScale = Number(timeSpeedScale) || 1;
         this.renderConsole();
         this.updateTransportBar();
       },
       behaviorHelp: (groupId) => this.showBehaviorHelp(groupId),
-      regenerate: () => this.scene.restart(this.sceneConfig({ seed: nextSeed(this.seed), demoTime: 0 })),
+      regenerate: () => this.scene.restart(this.primitiveSceneConfig({ seed: nextSeed(this.seed), demoTime: 0 })),
       pause: () => {
         this.paused = !this.paused;
         this.renderConsole();
@@ -554,6 +601,8 @@ export class RoiGeneratorDemoScene extends PhaserScene {
 
   helpOptionForGroup(groupId) {
     return {
+      behaviorPreset: this.behaviorPresetId,
+      eventLikelihood: this.field?.eventLikelihood ?? this.eventLikelihood,
       spatialPattern: this.field?.pureSpatialPattern ?? this.spatialPattern,
       valueDistribution: this.field?.valueDistribution ?? this.valueDistribution,
       temporalPattern: this.field?.temporalPattern ?? this.temporalPattern,
@@ -657,7 +706,7 @@ export class RoiGeneratorDemoScene extends PhaserScene {
     if (!root) return;
     if (this.rightPanelMode === 'behaviorHelp') {
       const topic = this.selectedHelpTopic ?? null;
-      const key = `behaviorHelp:${topic?.groupId ?? 'empty'}:${topic?.optionId ?? 'empty'}:${this.timeMode}:${this.eventLikelihood}:${this.eventLikelihoodDynamics}:${this.eventLikelihoodTemporalPattern}:${this.eventLikelihoodSpatialEvolution}:${this.spatialPattern}:${this.valueDistribution}:${this.temporalPattern}:${this.spatialEvolution}:${this.motionScope}:${this.depletionMode}:${this.displayMode}`;
+      const key = `behaviorHelp:${topic?.groupId ?? 'empty'}:${topic?.optionId ?? 'empty'}:${this.behaviorPresetId}:${this.behaviorPresetModified}:${this.timeMode}:${this.eventLikelihood}:${this.eventLikelihoodDynamics}:${this.eventLikelihoodTemporalPattern}:${this.eventLikelihoodSpatialEvolution}:${this.spatialPattern}:${this.valueDistribution}:${this.temporalPattern}:${this.spatialEvolution}:${this.motionScope}:${this.depletionMode}:${this.displayMode}`;
       if (!force && key === this.lastInspectorKey) return;
       this.lastInspectorKey = key;
       this.lastInspectorRenderTime = this.demoTime;
@@ -793,6 +842,7 @@ export class RoiGeneratorDemoScene extends PhaserScene {
     const sampling = this.demoExportSampling();
     const currentFrame = this.buildDemoArtifactFrame(this.demoTime, null, field);
     const frames = sampling.timesSeconds.map((time, index) => this.buildDemoArtifactFrame(time, index));
+    const behaviorPreset = sampleFieldBehaviorPresetMetadata(this.behaviorPresetId, this.behaviorPresetModified);
     return buildDemoArtifactEnvelope({
       type: 'anchor.demo.sample-roi-field',
       demo: this.title(),
@@ -811,7 +861,9 @@ export class RoiGeneratorDemoScene extends PhaserScene {
       fields: currentFrame.fields,
       frames,
       selectedCell: this.selectedCell ? this.inspectSelectedCell() : null,
+      behaviorPreset,
       metadata: {
+        behaviorPreset,
         coordinateConvention: 'Row-major arrays indexed fields[layer][row][col]; values represent cell centers on the demo grid.',
         units: {
           displayedValue: 'normalized demo scalar, 0..1',
@@ -848,7 +900,8 @@ export class RoiGeneratorDemoScene extends PhaserScene {
         rawBaseValue: cloneField(field.rawBaseField),
         evolvedValue: cloneField(field.evolvedField)
       },
-      activityDiagnostics: field.activityDiagnostics
+      activityDiagnostics: field.activityDiagnostics,
+      behaviorPreset: sampleFieldBehaviorPresetMetadata(this.behaviorPresetId, this.behaviorPresetModified)
     };
   }
 
@@ -1063,6 +1116,7 @@ function roiBehaviorHelpHtml(topic, state) {
 
 function behaviorHelpOptionForGroup(groupId, state) {
   return {
+    behaviorPreset: state.behaviorPresetId,
     eventLikelihood: state.eventLikelihood,
     spatialPattern: state.spatialPattern,
     valueDistribution: state.valueDistribution,

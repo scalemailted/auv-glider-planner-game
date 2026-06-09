@@ -78,6 +78,16 @@
       "additionalProperties": true
     },
     "config": { "type": "object" },
+    "behaviorPreset": {
+      "type": ["object", "null"],
+      "properties": {
+        "id": { "type": "string" },
+        "label": { "type": "string" },
+        "modified": { "type": "boolean" },
+        "category": { "type": "string" }
+      },
+      "additionalProperties": true
+    },
     "fields": { "type": "object" },
     "frames": {
       "type": ["array", "null"],

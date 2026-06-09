@@ -13,6 +13,7 @@ export function buildDemoArtifactEnvelope({
   timeSampling = null,
   selectedCell = null,
   metadata = {},
+  behaviorPreset = null,
   fairness = null,
   coupling = null
 } = {}) {
@@ -53,6 +54,7 @@ export function buildDemoArtifactEnvelope({
     fields,
     frames,
     selectedCell,
+    behaviorPreset,
     metadata,
     fairness,
     coupling

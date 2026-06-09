@@ -1,4 +1,7 @@
+import { sampleFieldBehaviorPresetById } from './SampleFieldBehaviorPresets.js';
+
 export const SAMPLE_FIELD_EXPLAINER_GROUPS = [
+  'behaviorPreset',
   'eventLikelihood',
   'spatialPattern',
   'valueDistribution',
@@ -10,6 +13,11 @@ export const SAMPLE_FIELD_EXPLAINER_GROUPS = [
 ];
 
 export const SAMPLE_FIELD_GROUP_SUMMARIES = {
+  behaviorPreset: {
+    label: 'Behavior Preset',
+    question: 'What recognizable sample-field behavior family is being demonstrated?',
+    summary: 'Curated starting points that fill in the primitive sample-field controls.'
+  },
   eventLikelihood: {
     label: 'Event Likelihood Field',
     question: 'Where are events likely to originate or move next?',
@@ -557,6 +565,7 @@ const DISPLAY_LAYER_EXPLAINERS = {
 };
 
 const GROUP_OPTIONS = {
+  behaviorPreset: {},
   eventLikelihood: EVENT_LIKELIHOOD_EXPLAINERS,
   spatialPattern: SPATIAL_PATTERN_EXPLAINERS,
   valueDistribution: VALUE_DISTRIBUTION_EXPLAINERS,
@@ -618,6 +627,7 @@ export function sampleFieldExplainerGroup(groupId) {
 }
 
 export function sampleFieldBehaviorExplainer(groupId, value) {
+  if (groupId === 'behaviorPreset') return sampleFieldBehaviorPresetExplainer(value);
   const group = sampleFieldExplainerGroup(groupId);
   const normalizedValue = normalizeExplainerValue(groupId, value);
   const option = GROUP_OPTIONS[groupId]?.[normalizedValue] ?? null;
@@ -635,6 +645,51 @@ export function sampleFieldBehaviorExplainer(groupId, value) {
     pairsWellWith: option?.pairsWellWith ?? [],
     strategy: option?.strategy ?? 'Use the visualization to understand how this component affects sampling choices.',
     boundaryNote: option?.boundaryNote ?? 'Current-coupled and uncertainty behavior belong in their dedicated demos.'
+  };
+}
+
+function sampleFieldBehaviorPresetExplainer(value) {
+  const group = sampleFieldExplainerGroup('behaviorPreset');
+  const preset = sampleFieldBehaviorPresetById(value);
+  if (!preset) {
+    return {
+      groupId: 'behaviorPreset',
+      groupLabel: group.label,
+      groupSummary: group.summary,
+      question: group.question,
+      value: 'custom',
+      label: 'Custom',
+      short: 'Primitive controls define the behavior directly.',
+      meaning: 'No curated preset is selected. The current primitive controls define the field.',
+      expectedBehavior: 'The heatmap follows the current Event Likelihood, Spatial Pattern, Value Distribution, Temporal Pattern, Spatial Evolution, State Model, Sampling Effect, and Display controls.',
+      parameters: ['All primitive controls'],
+      pairsWellWith: ['Behavior audits', 'Export Demo JSON'],
+      strategy: 'Use Custom when tuning a preset or designing a new behavior family.',
+      boundaryNote: 'Custom still remains inside the pure Sample / ROI Demo and does not add current-field dependencies.'
+    };
+  }
+  return {
+    groupId: 'behaviorPreset',
+    groupLabel: group.label,
+    groupSummary: group.summary,
+    question: group.question,
+    value: preset.id,
+    label: preset.label,
+    short: preset.description,
+    meaning: preset.description,
+    expectedBehavior: preset.explanation?.expectedBehavior ?? preset.description,
+    parameters: [
+      `Event Likelihood: ${preset.config.eventLikelihood}`,
+      `Spatial Pattern: ${preset.config.spatialPattern}`,
+      `Temporal Pattern: ${preset.config.temporalPattern}`,
+      `Spatial Evolution: ${preset.config.spatialEvolution}`,
+      `State Model: ${preset.config.stateModel}`,
+      `Sampling Effect: ${preset.config.depletionMode}`
+    ],
+    pairsWellWith: [preset.category],
+    strategy: preset.strategy,
+    boundaryNote: preset.notA,
+    preset
   };
 }
 

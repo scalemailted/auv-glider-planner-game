@@ -4,6 +4,7 @@ import { formatMetric } from '../core/evaluation/PlanComparison.js';
 import { FLOW_DEMO_BOUNDARY_MODES, FLOW_DEMO_CYCLE_DURATIONS, FLOW_DEMO_DYNAMIC_COMPLEXITY_LEVELS, FLOW_DEMO_EVOLUTION_BEHAVIORS, FLOW_DEMO_EVOLUTION_PATTERNS, FLOW_DEMO_EVOLUTION_SPEEDS, FLOW_DEMO_FIELD_MODES, FLOW_DEMO_LAYER_INFLUENCES, FLOW_DEMO_MAGNITUDE_SCALES, FLOW_DEMO_PARTICLE_SPEEDS, FLOW_DEMO_PRESET_CHOICES, FLOW_DEMO_SPATIAL_MOTIONS, FLOW_DEMO_SPATIAL_MOTION_SPEEDS, FLOW_DEMO_TERRAIN_MODES, FLOW_DEMO_VARIATION_LEVELS, normalizeAdditiveLayers } from '../core/demo/FlowFieldDemo.js';
 import { ROI_DEMO_DISTRIBUTIONS, ROI_DEMO_SPATIAL_PATTERNS, ROI_DEMO_TEMPORAL_BEHAVIORS, ROI_DEMO_TIME_MODES, ROI_DEMO_TEMPORAL_PATTERNS, ROI_DEMO_SPATIAL_EVOLUTIONS, ROI_DEMO_LIKELIHOOD_DYNAMICS, ROI_DEMO_MOTION_SCOPES, ROI_DEMO_STATE_MODELS, ROI_DEMO_DEPLETION_MODES, ROI_DEMO_DISPLAY_MODES, ROI_DEMO_DYNAMIC_COMPLEXITY, ROI_DEMO_PURE_SPATIAL_PATTERNS, ROI_DEMO_EVENT_LIKELIHOODS, ROI_DEMO_VALUE_DISTRIBUTIONS, ROI_DEMO_CLUSTER_SIZES, roiDistributionLabel, roiTemporalPatternLabel, roiStateModelDescription, roiStateModelForEvolutionModel, roiStateModelLabel, roiPureSpatialPatternLabel, roiEventLikelihoodLabel, roiLikelihoodDynamicsLabel, roiLikelihoodSpatialEvolutionLabel, roiValueDistributionLabel, roiSpatialEvolutionLabel, roiMotionScopeLabel, roiDepletionModeLabel, roiDisplayModeLabel, roiClusterSizeLabel, sampleSpatialPatternLabel, sampleTemporalBehaviorLabel } from '../core/demo/DemoRoiFields.js';
 import { sampleFieldBehaviorExplainer } from '../core/demo/SampleFieldBehaviorExplainers.js';
+import { SAMPLE_FIELD_BEHAVIOR_PRESET_OPTIONS, CUSTOM_SAMPLE_FIELD_BEHAVIOR_PRESET_ID, sampleFieldBehaviorPresetById, sampleFieldBehaviorPresetSummary } from '../core/demo/SampleFieldBehaviorPresets.js';
 import { EXPERIENCE_MODES, getExperienceModeDefaults } from '../core/experience/ExperienceMode.js';
 import { getVectorPresetConfig } from '../core/generation/VectorFieldPresets.js';
 import { UNCERTAINTY_DEMO_BEHAVIORS, UNCERTAINTY_DEMO_FORECAST_MODELS, UNCERTAINTY_DEMO_PATTERNS, UNCERTAINTY_DEMO_UPDATE_MODELS, UNCERTAINTY_DEMO_VIEW_MODES, forecastModelLabel, uncertaintyBehaviorLabel, uncertaintyPatternLabel, uncertaintyViewLabel, updateModelLabel } from '../core/demo/UncertaintyForecastDemo.js';
@@ -319,6 +320,11 @@ export class MissionConsole {
     const stateModel = state.stateModel ?? roiStateModelForEvolutionModel(state.evolutionModel);
     const stateModelLabel = state.stateModelLabel ?? roiStateModelLabel(stateModel);
     const stateModelDescription = state.stateModelDescription ?? roiStateModelDescription(stateModel);
+    const presetHelp = sampleFieldBehaviorExplainer('behaviorPreset', state.behaviorPresetId);
+    const selectedPreset = sampleFieldBehaviorPresetById(state.behaviorPresetId);
+    const presetStatus = state.behaviorPresetId && state.behaviorPresetId !== CUSTOM_SAMPLE_FIELD_BEHAVIOR_PRESET_ID
+      ? state.behaviorPresetModified ? `Modified from ${state.behaviorPresetLabel}` : `Preset: ${state.behaviorPresetLabel}`
+      : 'Preset: Custom';
     const eventLikelihoodHelp = sampleFieldBehaviorExplainer('eventLikelihood', state.eventLikelihood);
     const spatialHelp = sampleFieldBehaviorExplainer('spatialPattern', state.spatialPattern);
     const temporalHelp = sampleFieldBehaviorExplainer('temporalPattern', state.temporalPattern);
@@ -337,6 +343,18 @@ export class MissionConsole {
         <span>${escapeHtml(state.status ?? 'ROI field')}</span>
         <strong>${escapeHtml((state.timeMode === 'dynamic' || state.eventLikelihoodDynamics === 'dynamic') && !state.paused ? 'Animating' : state.paused ? 'Paused' : 'Static')}</strong>
         <small>${escapeHtml(`${state.eventLikelihoodLabel ?? roiEventLikelihoodLabel(state.eventLikelihood)} ${state.eventLikelihoodDynamics === 'dynamic' ? `(${roiTemporalPatternLabel(state.eventLikelihoodTemporalPattern)} / ${roiLikelihoodSpatialEvolutionLabel(state.eventLikelihoodSpatialEvolution)})` : '(Static)'} | ${state.spatialPatternLabel ?? roiPureSpatialPatternLabel(state.spatialPattern)} | ${state.valueDistributionLabel ?? roiValueDistributionLabel(state.valueDistribution)} | ${state.temporalPatternLabel ?? roiTemporalPatternLabel(state.temporalPattern)} | ${state.spatialEvolutionLabel ?? roiSpatialEvolutionLabel(state.spatialEvolution ?? state.patternEvolution)}`)}</small>
+      </section>
+      <section class="console-section">
+        <h2 title="${escapeAttr(presetHelp.groupSummary)}">Behavior Preset <span aria-label="Behavior Preset help" title="${escapeAttr(presetHelp.short)}">i</span></h2>
+        <label class="compact-field" title="${escapeAttr(presetHelp.short)}">
+          <span>Behavior Preset</span>
+          <select id="roi-demo-behavior-preset" title="${escapeAttr(presetHelp.short)}">
+            ${SAMPLE_FIELD_BEHAVIOR_PRESET_OPTIONS.map((preset) => `<option value="${escapeAttr(preset.id)}" ${state.behaviorPresetId === preset.id || (!state.behaviorPresetId && preset.id === CUSTOM_SAMPLE_FIELD_BEHAVIOR_PRESET_ID) ? 'selected' : ''}>${escapeHtml(preset.label)}</option>`).join('')}
+          </select>
+        </label>
+        ${roiHelpButtonHtml('behaviorPreset', `Explain ${state.behaviorPresetLabel ?? 'Custom'}`)}
+        <div class="hud-muted">${escapeHtml(presetStatus)}</div>
+        ${selectedPreset ? `<div class="hud-muted">${escapeHtml(selectedPreset.description)}</div><div class="hud-muted">${escapeHtml(sampleFieldBehaviorPresetSummary(selectedPreset.id))}</div>` : '<div class="hud-muted">Custom primitive composition. Select a preset to load a curated starting point, then adjust the primitive controls below.</div>'}
       </section>
       <section class="console-section">
         <h2 title="${escapeAttr(eventLikelihoodHelp.groupSummary)}">Sample Field Substrate <span aria-label="Event Likelihood help" title="${escapeAttr(eventLikelihoodHelp.short)}">i</span></h2>
@@ -526,6 +544,7 @@ export class MissionConsole {
       </section>
     `;
     this.app.applyConsoleAccordions?.('roiDemo');
+    this.root.querySelector('#roi-demo-behavior-preset')?.addEventListener('change', (event) => handlers.behaviorPreset?.(event.target.value));
     this.root.querySelector('#roi-demo-event-likelihood')?.addEventListener('change', (event) => handlers.eventLikelihood?.(event.target.value));
     this.root.querySelector('#roi-demo-event-likelihood-dynamics')?.addEventListener('change', (event) => handlers.eventLikelihoodDynamics?.(event.target.value));
     this.root.querySelector('#roi-demo-event-likelihood-temporal-pattern')?.addEventListener('change', (event) => handlers.eventLikelihoodTemporalPattern?.(event.target.value));
