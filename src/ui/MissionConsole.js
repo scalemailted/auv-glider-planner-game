@@ -354,7 +354,7 @@ export class MissionConsole {
         </label>
         ${roiHelpButtonHtml('behaviorPreset', `Explain ${state.behaviorPresetLabel ?? 'Custom'}`)}
         <div class="hud-muted">${escapeHtml(presetStatus)}</div>
-        ${selectedPreset ? `<div class="hud-muted">${escapeHtml(selectedPreset.description)}</div><div class="hud-muted">${escapeHtml(sampleFieldBehaviorPresetSummary(selectedPreset.id))}</div>` : '<div class="hud-muted">Custom primitive composition. Select a preset to load a curated starting point, then adjust the primitive controls below.</div>'}
+        ${selectedPreset ? `<div class="hud-muted">Expected: ${escapeHtml(selectedPreset.explanation?.expectedBehavior ?? selectedPreset.description)}</div><div class="hud-muted">Actual current state: active ${escapeHtml(formatPercent(state.activityDiagnostics?.activeFraction))}, max ${escapeHtml(formatDemoStat(state.activityDiagnostics?.maxValue))}, injected +${escapeHtml(formatDemoStat(state.activityDiagnostics?.injectedActivity))}</div><div class="hud-muted">${escapeHtml(sampleFieldBehaviorPresetSummary(selectedPreset.id))}</div>` : '<div class="hud-muted">Custom primitive composition. Select a preset to load a curated starting point, then adjust the primitive controls below.</div>'}
       </section>
       <section class="console-section">
         <h2 title="${escapeAttr(eventLikelihoodHelp.groupSummary)}">Sample Field Substrate <span aria-label="Event Likelihood help" title="${escapeAttr(eventLikelihoodHelp.short)}">i</span></h2>

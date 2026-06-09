@@ -131,6 +131,14 @@ Presets do not replace the primitive controls. Selecting a preset fills in the u
 
 Some presets are inspired by real-world processes but are simplified educational examples. They are not validated process models and do not add current-field dependencies. Flow-driven examples belong in the Coupled Fields Demo.
 
+Preset sanity checks can be run from Node:
+
+```bash
+node tools/js/audit_sample_field_presets.mjs
+```
+
+The script evaluates each preset over multiple demo times and reports active fraction, frame-to-frame delta, connected components, center-of-mass movement, spatial correlation, extinction warnings, saturation warnings, and static-dynamic warnings. In the browser console, set `globalThis.ANCHOR_DEBUG_ROI_PRESETS = true` to log a compact per-frame preset audit for the selected preset.
+
 The right-panel Behavior Help view includes a `Current Composition` card that summarizes how the selected components combine, for example `Multi-Modal Likelihood + Clustered Field + Gaussian / Normal + Bursty + Discrete Jump + Time-Indexed + Soft Depletion + Sample Value`. Current-driven transport, plumes, flow-stretched patterns, forecast, truth, uncertainty, information gain, and forecast error are routed to the Coupled Fields Demo and Uncertainty / Forecast Demo.
 
 ## Viewing the Event Likelihood Field

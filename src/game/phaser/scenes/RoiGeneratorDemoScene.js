@@ -262,12 +262,32 @@ export class RoiGeneratorDemoScene extends PhaserScene {
   }
 
   maybeLogFieldDynamics() {
-    if (!globalThis.ANCHOR_DEBUG_ROI_DYNAMICS || !this.field?.activityDiagnostics) return;
+    if (!this.field?.activityDiagnostics) return;
     const diagnostics = this.field.activityDiagnostics;
     const key = `${Math.floor((diagnostics.time ?? 0) * 10)}:${diagnostics.temporalPattern}:${diagnostics.spatialEvolution}:${diagnostics.samplingEffect}:${diagnostics.totalActivityMass}`;
-    if (key === this.lastDynamicsDebugKey) return;
+    if (!this.field?.activityDiagnostics || key === this.lastDynamicsDebugKey) return;
     this.lastDynamicsDebugKey = key;
-    console.debug('[ROIDemo][FieldDynamics]', diagnostics);
+    if (globalThis.ANCHOR_DEBUG_ROI_DYNAMICS) {
+      console.debug('[ROIDemo][FieldDynamics]', diagnostics);
+    }
+    if (globalThis.ANCHOR_DEBUG_ROI_PRESETS && this.behaviorPresetId !== CUSTOM_SAMPLE_FIELD_BEHAVIOR_PRESET_ID) {
+      const previousTime = Math.max(0, this.demoTime - 1);
+      const previousField = createDemoRoiField({ ...this.sceneConfig(), time: previousTime, demoTime: previousTime });
+      const delta = meanFieldDelta(previousField.sampleValueField ?? previousField.field, this.field.sampleValueField ?? this.field.field);
+      console.debug('[ROIDemo][PresetAudit]', {
+        presetId: this.behaviorPresetId,
+        time: diagnostics.time,
+        meanValue: diagnostics.meanValue,
+        maxValue: diagnostics.maxValue,
+        activeCellFraction: diagnostics.activeFraction,
+        highValueCellFraction: this.field?.stats ? highValueFraction(this.field.sampleValueField ?? this.field.field, 0.68) : 0,
+        totalActivityMass: diagnostics.totalActivityMass,
+        frameDelta: delta,
+        extinctionWarning: diagnostics.activeFraction < 0.02,
+        saturationWarning: diagnostics.activeFraction > 0.98 && diagnostics.maxValue - diagnostics.meanValue < 0.08,
+        staticWarning: this.timeMode === 'dynamic' && delta < 0.012
+      });
+    }
   }
 
   renderConsole() {
@@ -971,6 +991,24 @@ function formatStat(value) {
 function formatPercent(value) {
   const number = Number(value);
   return Number.isFinite(number) ? `${Math.round(number * 100)}%` : 'N/A';
+}
+
+function meanFieldDelta(a, b) {
+  const valuesA = a?.flat?.().map(Number) ?? [];
+  const valuesB = b?.flat?.().map(Number) ?? [];
+  const count = Math.min(valuesA.length, valuesB.length);
+  if (!count) return 0;
+  let total = 0;
+  for (let index = 0; index < count; index += 1) {
+    total += Math.abs((valuesA[index] || 0) - (valuesB[index] || 0));
+  }
+  return Number((total / count).toFixed(3));
+}
+
+function highValueFraction(field, threshold = 0.68) {
+  const values = field?.flat?.().map(Number) ?? [];
+  if (!values.length) return 0;
+  return Number((values.filter((value) => value >= threshold).length / values.length).toFixed(3));
 }
 
 function valueBandLabel(value) {

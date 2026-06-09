@@ -1,0 +1,224 @@
+import { createDemoRoiField } from './DemoRoiFields.js';
+import { SAMPLE_FIELD_BEHAVIOR_PRESETS, sampleFieldBehaviorPresetById } from './SampleFieldBehaviorPresets.js';
+
+const DEFAULT_TIMES = [0, 6, 12, 18, 24, 30, 36, 42, 48, 60];
+
+export function validateSampleFieldPreset(presetId, options = {}) {
+  const preset = sampleFieldBehaviorPresetById(presetId);
+  if (!preset) {
+    return {
+      presetId,
+      label: 'Unknown preset',
+      status: 'FAIL',
+      warnings: ['missing_preset'],
+      frames: []
+    };
+  }
+  const seed = options.seed ?? `preset-audit:${preset.id}`;
+  const times = Array.isArray(options.times) && options.times.length ? options.times : DEFAULT_TIMES;
+  const frames = times.map((time) => {
+    const field = createDemoRoiField({
+      ...preset.config,
+      seed,
+      time,
+      demoTime: time
+    });
+    return summarizePresetFrame(field, time);
+  });
+  const deltas = [];
+  for (let index = 1; index < frames.length; index += 1) {
+    deltas.push(frameDelta(frames[index - 1].sampleValueField, frames[index].sampleValueField));
+  }
+  const activeFractions = frames.map((frame) => frame.activeCellFraction);
+  const highFractions = frames.map((frame) => frame.highValueCellFraction);
+  const masses = frames.map((frame) => frame.totalActivityMass);
+  const means = frames.map((frame) => frame.meanValue);
+  const maxValues = frames.map((frame) => frame.maxValue);
+  const maxComponents = Math.max(...frames.map((frame) => frame.connectedComponents));
+  const meanDelta = mean(deltas);
+  const meanSpatialCorrelation = mean(frames.map((frame) => frame.spatialCorrelation));
+  const centerMovement = totalCenterMovement(frames.map((frame) => frame.centerOfMass));
+  const avgComponents = mean(frames.map((frame) => frame.connectedComponents));
+  const warnings = [];
+  if (consecutiveBelow(activeFractions, 0.02, 3)) warnings.push('extinction_risk');
+  if (consecutiveSaturation(frames, 3)) warnings.push('saturation_risk');
+  if (preset.config.timeMode === 'dynamic' && meanDelta < 0.012) warnings.push('dynamic_static_risk');
+  if (meanDelta > 0.34 && meanSpatialCorrelation < 0.24) warnings.push('random_flicker_risk');
+  if (preset.id === 'migratingPatch' && centerMovement < 0.08) warnings.push('movement_too_subtle');
+  if (preset.id === 'driftingStormCells' && maxComponents < 2) warnings.push('not_enough_distinct_cells');
+  if ((preset.id === 'expandingFront' || preset.id === 'forestFireFrontInspired') && avgComponents > 14) warnings.push('front_too_speckled');
+  return {
+    presetId: preset.id,
+    label: preset.label,
+    status: warnings.length ? 'WARN' : 'PASS',
+    warnings,
+    summary: {
+      meanValue: round3(mean(means)),
+      maxValue: round3(mean(maxValues)),
+      minActiveCellFraction: round3(Math.min(...activeFractions)),
+      meanActiveCellFraction: round3(mean(activeFractions)),
+      meanHighValueCellFraction: round3(mean(highFractions)),
+      meanTotalActivityMass: round3(mean(masses)),
+      meanFrameDelta: round3(meanDelta),
+      centerOfMassMovement: round3(centerMovement),
+      meanConnectedComponents: round3(avgComponents),
+      meanSpatialCorrelation: round3(meanSpatialCorrelation)
+    },
+    frames: frames.map(({ sampleValueField: _sampleValueField, ...frame }) => frame)
+  };
+}
+
+export function validateSampleFieldPresets(options = {}) {
+  return SAMPLE_FIELD_BEHAVIOR_PRESETS.map((preset) => validateSampleFieldPreset(preset.id, options));
+}
+
+function summarizePresetFrame(field, time) {
+  const sampleValueField = field.sampleValueField ?? field.field ?? [];
+  const stats = field.activityDiagnostics ?? field.stats ?? {};
+  const flat = sampleValueField.flat().map((value) => Number(value) || 0);
+  const cellCount = Math.max(1, flat.length);
+  return {
+    time,
+    meanValue: round3(stats.meanValue ?? stats.mean ?? mean(flat)),
+    maxValue: round3(stats.maxValue ?? stats.max ?? Math.max(...flat)),
+    activeCellFraction: round3((stats.activeFraction ?? flat.filter((value) => value >= 0.07).length / cellCount)),
+    highValueCellFraction: round3(flat.filter((value) => value >= 0.68).length / cellCount),
+    totalActivityMass: round3(stats.totalActivityMass ?? stats.totalValue ?? sum(flat)),
+    centerOfMass: centerOfMass(sampleValueField),
+    connectedComponents: connectedComponents(sampleValueField, 0.55),
+    spatialCorrelation: localSpatialCorrelation(sampleValueField),
+    sampleValueField
+  };
+}
+
+function frameDelta(a, b) {
+  const valuesA = a?.flat?.().map(Number) ?? [];
+  const valuesB = b?.flat?.().map(Number) ?? [];
+  const count = Math.min(valuesA.length, valuesB.length);
+  if (!count) return 0;
+  let total = 0;
+  for (let index = 0; index < count; index += 1) {
+    total += Math.abs((valuesA[index] || 0) - (valuesB[index] || 0));
+  }
+  return round3(total / count);
+}
+
+function centerOfMass(field) {
+  let mass = 0;
+  let xSum = 0;
+  let ySum = 0;
+  const height = field?.length ?? 0;
+  const width = field?.[0]?.length ?? 0;
+  for (let y = 0; y < height; y += 1) {
+    for (let x = 0; x < width; x += 1) {
+      const value = Number(field[y]?.[x] ?? 0);
+      mass += value;
+      xSum += value * (width > 1 ? x / (width - 1) : 0);
+      ySum += value * (height > 1 ? y / (height - 1) : 0);
+    }
+  }
+  if (mass <= 0) return { x: 0.5, y: 0.5 };
+  return { x: round3(xSum / mass), y: round3(ySum / mass) };
+}
+
+function totalCenterMovement(centers) {
+  let total = 0;
+  for (let index = 1; index < centers.length; index += 1) {
+    const dx = centers[index].x - centers[index - 1].x;
+    const dy = centers[index].y - centers[index - 1].y;
+    total += Math.sqrt(dx * dx + dy * dy);
+  }
+  return total;
+}
+
+function connectedComponents(field, threshold) {
+  const height = field?.length ?? 0;
+  const width = field?.[0]?.length ?? 0;
+  const visited = new Set();
+  let count = 0;
+  for (let y = 0; y < height; y += 1) {
+    for (let x = 0; x < width; x += 1) {
+      const key = `${x},${y}`;
+      if (visited.has(key) || Number(field[y]?.[x] ?? 0) < threshold) continue;
+      count += 1;
+      const stack = [[x, y]];
+      visited.add(key);
+      while (stack.length) {
+        const [cx, cy] = stack.pop();
+        for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
+          const nx = cx + dx;
+          const ny = cy + dy;
+          const nextKey = `${nx},${ny}`;
+          if (nx < 0 || ny < 0 || nx >= width || ny >= height || visited.has(nextKey)) continue;
+          if (Number(field[ny]?.[nx] ?? 0) < threshold) continue;
+          visited.add(nextKey);
+          stack.push([nx, ny]);
+        }
+      }
+    }
+  }
+  return count;
+}
+
+function localSpatialCorrelation(field) {
+  const values = [];
+  const neighbors = [];
+  const height = field?.length ?? 0;
+  const width = field?.[0]?.length ?? 0;
+  for (let y = 0; y < height; y += 1) {
+    for (let x = 0; x < width - 1; x += 1) {
+      values.push(Number(field[y]?.[x] ?? 0));
+      neighbors.push(Number(field[y]?.[x + 1] ?? 0));
+    }
+  }
+  return Math.max(0, pearson(values, neighbors));
+}
+
+function pearson(a, b) {
+  const count = Math.min(a.length, b.length);
+  if (!count) return 0;
+  const meanA = mean(a);
+  const meanB = mean(b);
+  let numerator = 0;
+  let denomA = 0;
+  let denomB = 0;
+  for (let index = 0; index < count; index += 1) {
+    const da = a[index] - meanA;
+    const db = b[index] - meanB;
+    numerator += da * db;
+    denomA += da * da;
+    denomB += db * db;
+  }
+  return numerator / Math.max(0.000001, Math.sqrt(denomA * denomB));
+}
+
+function consecutiveBelow(values, threshold, runLength) {
+  let run = 0;
+  for (const value of values) {
+    run = value < threshold ? run + 1 : 0;
+    if (run >= runLength) return true;
+  }
+  return false;
+}
+
+function consecutiveSaturation(frames, runLength) {
+  let run = 0;
+  for (const frame of frames) {
+    run = frame.activeCellFraction > 0.98 && frame.maxValue - frame.meanValue < 0.08 ? run + 1 : 0;
+    if (run >= runLength) return true;
+  }
+  return false;
+}
+
+function sum(values) {
+  return values.reduce((total, value) => total + (Number(value) || 0), 0);
+}
+
+function mean(values) {
+  if (!values.length) return 0;
+  return sum(values) / values.length;
+}
+
+function round3(value) {
+  return Number((Number(value) || 0).toFixed(3));
+}
