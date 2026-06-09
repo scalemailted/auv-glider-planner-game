@@ -135,6 +135,7 @@ export function createDemoRoiField({
   displayMode = 'sampleValue',
   dynamicComplexity = 'medium',
   forecastView = 'forecast',
+  behaviorPresetId = null,
   time = 0,
   demoTime = null,
   grid = ROI_DEMO_GRID
@@ -196,7 +197,8 @@ export function createDemoRoiField({
     spatialPattern: spatialDefaults.sampleSpatialPattern,
     temporalBehavior: effectiveTemporalBehavior,
     forecastView: 'truth',
-    time: sampleTime
+    time: sampleTime,
+    behaviorPresetId
   });
   const baseField = applyValueDistribution(spatialBaseField, {
     valueDistribution: normalizedValueDistribution,
@@ -214,6 +216,7 @@ export function createDemoRoiField({
   });
   const evolvedResult = applyEvolutionModel(baseField, {
     seed,
+    behaviorPresetId,
     likelihoodField,
     time: sampleTime,
     timeMode: normalizedTimeMode,
@@ -232,6 +235,7 @@ export function createDemoRoiField({
     likelihoodField
   });
   const contrastResult = enhanceSampleValueContrast(displayResult.field, {
+    behaviorPresetId,
     displayMode: normalizedDisplayMode,
     temporalPattern: normalizedTemporalPattern,
     spatialEvolution: normalizedSpatialEvolution,
@@ -242,7 +246,9 @@ export function createDemoRoiField({
   const displayedField = normalizedDisplayMode === 'eventLikelihood' ? likelihoodField : sampleDisplayField;
   const stats = summarizeField(displayedField);
   const activityDiagnostics = buildActivityDiagnostics({
+    seed,
     time: sampleTime,
+    behaviorPresetId,
     eventLikelihoodMode: normalizedEventLikelihood,
     spatialPattern: normalizedPureSpatialPattern,
     temporalPattern: normalizedTemporalPattern,
@@ -252,6 +258,8 @@ export function createDemoRoiField({
     baseField,
     evolvedField: field,
     displayedField,
+    likelihoodField,
+    hotspotCount: clusterCount,
     evolutionDiagnostics: evolvedResult.diagnostics,
     displayDiagnostics: {
       ...displayResult.diagnostics,
@@ -884,10 +892,24 @@ export function roiDemoDistributionDefaults(distribution = 'gaussianHotspots') {
 
 export { sampleSpatialPatternLabel, sampleTemporalBehaviorLabel };
 
-function buildDistribution({ distribution, rng, seed, eventLikelihood, likelihoodField, width, height, hotspotCount, clusterSize, noise, timeMode, spatialPattern, temporalBehavior, forecastView, time }) {
+function buildDistribution({ distribution, rng, seed, eventLikelihood, likelihoodField, width, height, hotspotCount, clusterSize, noise, timeMode, spatialPattern, temporalBehavior, forecastView, time, behaviorPresetId }) {
   if (distribution === 'constantField') return createUniformField(width, height, 0.42);
   if (distribution === 'uniformRandom' && spatialPattern === 'uniform') return createUniformField(width, height, 0.42);
   if (distribution === 'uniformRandom') return withNoise(createUniformRandom(width, height, rng), rng, noise * 0.35);
+  if (behaviorPresetId === 'recurringHotspots') {
+    return createRecurringHotspotsField({
+      width,
+      height,
+      seed,
+      time,
+      hotspotCount,
+      clusterSize,
+      likelihoodField,
+      eventLikelihood,
+      noise,
+      rng
+    });
+  }
   const likelihoodHotspots = createLikelihoodHotspots(width, height, hotspotCount, 'clustered', rng, likelihoodField, seed, eventLikelihood);
   if (distribution === 'clusteredHotspots') {
     return withNoise(generateROI(width, height, time, {
@@ -1001,6 +1023,53 @@ function spatialEvolutionFromDistribution(distribution) {
   }[distribution] ?? 'stationary';
 }
 
+function createRecurringHotspotsField({ width, height, seed, time, hotspotCount, clusterSize, likelihoodField, eventLikelihood, noise, rng }) {
+  const count = clampInt(hotspotCount, 3, 5, 4);
+  const centers = recurringHotspotModeCenters({ seed, width, height, count, eventLikelihood });
+  const radiusScale = {
+    tight: 1.55,
+    medium: 2.15,
+    wide: 2.75
+  }[normalizeRoiDemoClusterSize(clusterSize)] ?? 2.15;
+  return Array.from({ length: height }, (_, y) => Array.from({ length: width }, (_, x) => {
+    const nx = width > 1 ? x / (width - 1) : 0;
+    const ny = height > 1 ? y / (height - 1) : 0;
+    const value = centers.reduce((sum, center, index) => {
+      const phase = seededUnitLike(`${seed}:recurring-hotspot-phase:${index}`) * Math.PI * 2;
+      const cycle = 22 + seededUnitLike(`${seed}:recurring-hotspot-cycle:${index}`) * 8;
+      const localTime = positiveModulo(time + phase / Math.PI * cycle * 0.5, cycle);
+      const primary = Math.exp(-((localTime - cycle * 0.28) ** 2) / (2 * (cycle * 0.13) ** 2));
+      const secondary = Math.exp(-((localTime - cycle * 0.72) ** 2) / (2 * (cycle * 0.09) ** 2)) * 0.42;
+      const envelope = 0.1 + Math.max(primary, secondary);
+      const jitterX = Math.sin(time * (0.035 + index * 0.006) + phase) * 0.018;
+      const jitterY = Math.cos(time * (0.031 + index * 0.005) + phase * 0.7) * 0.014;
+      const cx = clampRange(center.x + jitterX, 0.05, 0.95);
+      const cy = clampRange(center.y + jitterY, 0.05, 0.95);
+      const sigmaX = radiusScale / Math.max(1, width - 1);
+      const sigmaY = radiusScale / Math.max(1, height - 1);
+      const d2 = ((nx - cx) ** 2) / (2 * sigmaX ** 2) + ((ny - cy) ** 2) / (2 * sigmaY ** 2);
+      const amplitude = (0.68 + center.strength * 0.32) * (0.86 + seededUnitLike(`${seed}:recurring-hotspot-amp:${index}`) * 0.24);
+      return sum + amplitude * envelope * Math.exp(-d2);
+    }, 0);
+    const likelihood = likelihoodAtCell(likelihoodField, x, y);
+    const background = 0.018 + likelihood * 0.028;
+    return round3(clamp01(background + value + (rng() - 0.5) * noise * 0.16));
+  }));
+}
+
+function recurringHotspotModeCenters({ seed, width, height, count, eventLikelihood }) {
+  const normalizedEventLikelihood = normalizeRoiDemoEventLikelihood(eventLikelihood);
+  const rng = createSeededRng(`${seed}:event-likelihood:${normalizedEventLikelihood}:${width}x${height}:${count}`);
+  return createSeparatedLikelihoodCenters({
+    seed,
+    width,
+    height,
+    count,
+    kind: normalizedEventLikelihood === 'multiModalLikelihood' ? 'multiModalLikelihood' : 'patchyLikelihood',
+    rng
+  });
+}
+
 function sampleBehaviorMetadata({ eventLikelihood, temporalPattern, spatialEvolution, motionScope, stateModel: selectedStateModel, dynamicComplexity, time }) {
   const stateModel = normalizeRoiDemoStateModel(selectedStateModel ?? roiStateModelForEvolutionModel(spatialEvolution));
   const normalizedMotionScope = normalizeRoiDemoMotionScope(motionScope);
@@ -1028,8 +1097,8 @@ function sampleBehaviorMetadata({ eventLikelihood, temporalPattern, spatialEvolu
   };
 }
 
-function applyEvolutionModel(field, { seed, likelihoodField, time, timeMode, temporalPattern, spatialEvolution, dynamicComplexity, motionScope }) {
-  if (timeMode !== 'dynamic') {
+function applyEvolutionModel(field, { seed, behaviorPresetId, likelihoodField, time, timeMode, temporalPattern, spatialEvolution, dynamicComplexity, motionScope }) {
+  if (timeMode !== 'dynamic' || behaviorPresetId === 'recurringHotspots') {
     return {
       field: field.map((row) => row.map(round3)),
       diagnostics: activityDiagnosticsForStage(field, field, field, {
@@ -1159,9 +1228,9 @@ function applySampleDisplayMode(field, { seed, time, depletionMode, displayMode,
   };
 }
 
-function enhanceSampleValueContrast(field, { displayMode, temporalPattern, spatialEvolution, spatialPattern, dynamicComplexity }) {
+function enhanceSampleValueContrast(field, { behaviorPresetId, displayMode, temporalPattern, spatialEvolution, spatialPattern, dynamicComplexity }) {
   const normalizedDisplay = normalizeRoiDemoDisplayMode(displayMode);
-  if (normalizedDisplay === 'eventLikelihood' || normalizedDisplay === 'rawBaseValue') {
+  if (normalizedDisplay === 'eventLikelihood' || normalizedDisplay === 'rawBaseValue' || behaviorPresetId === 'recurringHotspots') {
     return {
       field: field.map((row) => row.map(round3)),
       diagnostics: { contrastEnhanced: false, contrastStrength: 0, dynamicRangeBefore: fieldRange(field), dynamicRangeAfter: fieldRange(field) }
@@ -1323,12 +1392,16 @@ function activityDiagnosticsForStage(baseField, retainedField, finalField, extra
   };
 }
 
-function buildActivityDiagnostics({ time, eventLikelihoodMode, spatialPattern, temporalPattern, spatialEvolution, stateModel, samplingEffect, baseField, evolvedField, displayedField, evolutionDiagnostics, displayDiagnostics }) {
+function buildActivityDiagnostics({ seed, time, behaviorPresetId, eventLikelihoodMode, spatialPattern, temporalPattern, spatialEvolution, stateModel, samplingEffect, baseField, evolvedField, displayedField, likelihoodField, hotspotCount, evolutionDiagnostics, displayDiagnostics }) {
   const stats = summarizeField(displayedField);
-  const activeCellCount = countCells(displayedField, 0.07);
-  const highValueCellCount = countCells(displayedField, 0.68);
+  const activeCellCount = countCells(displayedField, 0.35);
+  const highValueCellCount = countCells(displayedField, 0.65);
   const cellCount = Math.max(1, (displayedField?.length ?? 0) * (displayedField?.[0]?.length ?? 0));
-  const spatialMetrics = spatialActivityMetrics(displayedField, 0.07);
+  const spatialMetrics = spatialActivityMetrics(displayedField, 0.35);
+  const hotspotMetrics = spatialActivityMetrics(displayedField, 0.65);
+  const modeDiagnostics = behaviorPresetId === 'recurringHotspots'
+    ? recurringHotspotDiagnostics({ seed, time, eventLikelihoodMode, hotspotCount, displayedField, likelihoodField })
+    : null;
   const highValueFraction = highValueCellCount / cellCount;
   const warnings = roiDiagnosticsWarnings({
     eventLikelihoodMode,
@@ -1362,7 +1435,13 @@ function buildActivityDiagnostics({ time, eventLikelihoodMode, spatialPattern, t
     activeBoundingBox: spatialMetrics.boundingBox,
     centerOfMass: spatialMetrics.centerOfMass,
     connectedComponentCount: spatialMetrics.connectedComponentCount,
+    hotspotComponentCount: hotspotMetrics.connectedComponentCount,
+    activeHotspotCount: modeDiagnostics?.activeHotspotCount ?? hotspotMetrics.connectedComponentCount,
+    highValueComponentCount: modeDiagnostics?.highValueComponentCount ?? hotspotMetrics.connectedComponentCount,
+    hotspotBoundingBoxCoverage: hotspotMetrics.boundingBoxCoverage,
     quadrantOccupancy: spatialMetrics.quadrantOccupancy,
+    likelihoodSampleCorrelation: round3(fieldCorrelation(likelihoodField, displayedField)),
+    recurringHotspots: modeDiagnostics,
     diagnosticWarnings: warnings,
     totalActivityMass: stats.totalValue,
     rawActivityMass: round3(fieldTotal(baseField)),
@@ -1478,6 +1557,75 @@ function roiDiagnosticsWarnings({ eventLikelihoodMode, spatialPattern, stats, ac
   if (stats.variance < 0.006 && spatialPattern !== 'constantField') warnings.push('low_variance');
   if (highValueFraction > 0.82 || activeFraction > 0.985) warnings.push('possible_saturation');
   return warnings;
+}
+
+function recurringHotspotDiagnostics({ seed, time, eventLikelihoodMode, hotspotCount, displayedField, likelihoodField }) {
+  const width = displayedField?.[0]?.length ?? ROI_DEMO_GRID.width;
+  const height = displayedField?.length ?? ROI_DEMO_GRID.height;
+  const count = clampInt(hotspotCount, 3, 5, 4);
+  const modeCenters = recurringHotspotModeCenters({ seed, width, height, count, eventLikelihood: eventLikelihoodMode });
+  const distances = [];
+  for (let i = 0; i < modeCenters.length; i += 1) {
+    for (let j = i + 1; j < modeCenters.length; j += 1) {
+      distances.push(distance2d(modeCenters[i].x, modeCenters[i].y, modeCenters[j].x, modeCenters[j].y));
+    }
+  }
+  const xs = modeCenters.map((center) => center.x);
+  const ys = modeCenters.map((center) => center.y);
+  const bbox = {
+    minX: round3(Math.min(...xs)),
+    maxX: round3(Math.max(...xs)),
+    minY: round3(Math.min(...ys)),
+    maxY: round3(Math.max(...ys))
+  };
+  const activeHotspotCount = modeCenters.filter((center) => {
+    const x = Math.round(center.x * Math.max(1, width - 1));
+    const y = Math.round(center.y * Math.max(1, height - 1));
+    return likelihoodAtCell(displayedField, x, y) >= 0.35;
+  }).length;
+  return {
+    modeCount: modeCenters.length,
+    modeCenters: modeCenters.map((center) => ({
+      x: round3(center.x),
+      y: round3(center.y),
+      radius: round3(center.radius),
+      strength: round3(center.strength)
+    })),
+    minPairwiseDistance: round3(Math.min(...distances)),
+    meanPairwiseDistance: round3(distances.reduce((sum, value) => sum + value, 0) / Math.max(1, distances.length)),
+    modeCenterBBox: {
+      ...bbox,
+      width: round3(bbox.maxX - bbox.minX),
+      height: round3(bbox.maxY - bbox.minY)
+    },
+    activeHotspotCount,
+    highValueComponentCount: spatialActivityMetrics(displayedField, 0.65).connectedComponentCount,
+    likelihoodSampleCorrelation: round3(fieldCorrelation(likelihoodField, displayedField)),
+    temporalPhase: round3(positiveModulo(time, 24) / 24),
+    burstWindowActive: activeHotspotCount > 0
+  };
+}
+
+function fieldCorrelation(a, b) {
+  const valuesA = a?.flat?.().map(Number).filter(Number.isFinite) ?? [];
+  const valuesB = b?.flat?.().map(Number).filter(Number.isFinite) ?? [];
+  const count = Math.min(valuesA.length, valuesB.length);
+  if (!count) return 0;
+  const sliceA = valuesA.slice(0, count);
+  const sliceB = valuesB.slice(0, count);
+  const meanA = sliceA.reduce((sum, value) => sum + value, 0) / count;
+  const meanB = sliceB.reduce((sum, value) => sum + value, 0) / count;
+  let numerator = 0;
+  let denomA = 0;
+  let denomB = 0;
+  for (let index = 0; index < count; index += 1) {
+    const da = sliceA[index] - meanA;
+    const db = sliceB[index] - meanB;
+    numerator += da * db;
+    denomA += da * da;
+    denomB += db * db;
+  }
+  return numerator / Math.max(0.000001, Math.sqrt(denomA * denomB));
 }
 
 function scaleHotspotRadii(hotspots, clusterSize = 'medium') {
@@ -1869,14 +2017,14 @@ function createSeparatedLikelihoodCenters({ seed, width, height, count, kind, rn
     ? 0.18
     : kind === 'patchyLikelihood'
       ? 0.22
-      : 0.26;
+      : 0.32;
   const marginX = kind === 'sparseCandidateSites' ? 0.08 : 0.12;
   const marginY = kind === 'sparseCandidateSites' ? 0.1 : 0.14;
   const quadrantAnchors = [
-    { x: 0.24, y: 0.26 },
-    { x: 0.74, y: 0.28 },
-    { x: 0.28, y: 0.72 },
-    { x: 0.72, y: 0.7 },
+    { x: 0.2, y: 0.24 },
+    { x: 0.8, y: 0.26 },
+    { x: 0.22, y: 0.76 },
+    { x: 0.78, y: 0.74 },
     { x: 0.5, y: 0.5 },
     { x: 0.16, y: 0.5 },
     { x: 0.84, y: 0.52 },

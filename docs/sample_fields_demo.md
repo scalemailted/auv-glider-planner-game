@@ -48,10 +48,12 @@ retained value
 The left console and Phaser status line include compact activity and range diagnostics:
 
 ```text
-Activity: mean 0.42 | active 61% | high 13% | max 0.94 | range 0.82 | bbox 48% | components 4 | injected +0.12
+Activity: mean 0.42 | active 24% | high 8% | max 0.94 | range 0.82 | bbox 48% | components 4 | hotspots 3 | L/S corr 0.71 | injected +0.12
 ```
 
 Set `globalThis.ANCHOR_DEBUG_ROI_DYNAMICS = true` in the browser console to log detailed frame diagnostics, including min/mean/max, variance, p10/p50/p90, active and high-value cell fractions, active bounding-box coverage, connected components, quadrant occupancy, total activity mass, injected activity, decay loss, depletion loss, boundary loss, regeneration amount, dynamic range before/after contrast shaping, and whether normalization occurred.
+
+Set `globalThis.ANCHOR_DEBUG_ROI_COMPOSER = true` while inspecting Recurring Hotspots to log persistent likelihood mode centers, pairwise separation, mode-center bounding box, active recurring basin count, high-value component count, likelihood/sample correlation, and temporal phase.
 
 ## Why the Demo Separates Pattern, Parameters, and Process
 
@@ -84,12 +86,12 @@ Use Flow Fields Demo for `F(x,y,t)`, Coupled Fields Demo for current-dependent s
 
 The demo builds sample-value behavior from independent axes:
 
-- **Spatial Pattern:** where value appears.
-- **Event Likelihood Field:** where event origins and future activity are likely.
+- **Event Likelihood / Spawn Distribution:** where event origins and future activity are likely.
+- **Spatial Pattern / Geometry:** where value appears.
 - **Value Distribution:** how values are assigned within that spatial geometry.
 - **Temporal Pattern:** how intensity changes over time.
 - **Spatial Evolution:** how the spatial distribution moves, jumps, spreads, or propagates.
-- **State Model:** whether the process is time-indexed, frequency-based, state-evolving, or history-aware.
+- **State Model / Memory:** whether the process is time-indexed, frequency-based, state-evolving, or history-aware.
 - **Sampling Effect:** how observation changes future value.
 - **Display Layer:** which value layer the heatmap is currently showing.
 
@@ -101,12 +103,12 @@ Every major component in the Sample / ROI Demo has behavior help. The left Missi
 
 | Component Group | What it controls | Example question answered |
 |---|---|---|
-| Event Likelihood Field | Where event origins and future activity are likely | Where are events prone to start, jump, walk, or spread? |
-| Spatial Pattern | Where value is organized in space | Where are the valuable cells? |
+| Event Likelihood / Spawn Distribution | Where event origins and future activity are likely | Where are events prone to start, jump, walk, or spread? |
+| Spatial Pattern / Geometry | Where value is organized in space | Where are the valuable cells? |
 | Value Distribution | How values are assigned within that geometry | Are values constant, uniformly random, or mostly near a mean? |
 | Temporal Pattern | How intensity changes over time | When does value rise, fade, pulse, or stay steady? |
 | Spatial Evolution | How the spatial distribution changes over time | Does the pattern stay fixed, drift, jump, wander, or spread? |
-| State Model | What the field depends on | Is value computed from time, cycles, current state, or longer history? |
+| State Model / Memory | What the field depends on | Is value computed from time, cycles, current state, or longer history? |
 | Sampling Effect | How visits change future value | Does sampling deplete, cool neighbors, or recover later? |
 | Display Layer | Which value layer is visible | Am I viewing raw value, depleted value, freshness, or composed sample value? |
 
@@ -118,7 +120,7 @@ Presets do not replace the primitive controls. Selecting a preset fills in the u
 
 | Preset | What it demonstrates | Key composition |
 |---|---|---|
-| Recurring Hotspots | Repeated activity in preferred regions | Multi-modal likelihood + clustered field + bursty |
+| Recurring Hotspots | Repeated activity in separated preferred regions | Multi-modal likelihood basins + out-of-phase recurring sample flares |
 | Migrating Patch | Smooth feature movement | Gaussian likelihood + clustered field + continuous drift |
 | Expanding Front | Spreading boundary | Front / Boundary + neighbor propagation |
 | Patchy Rainfall | Irregular activity patches | Seeded texture likelihood + patchy field + random pulses |
@@ -155,9 +157,9 @@ Overlay mode keeps `S(x,y,t)` as the heatmap and draws high-likelihood cells as 
 
 Freshness / Age of Information values remain labeled as demo-only synthetic visit effects unless they are later tied to actual mission visits.
 
-## Event Likelihood Field
+## Event Likelihood / Spawn Distribution
 
-Event Likelihood Field is the primitive substrate. It answers: where are events likely to originate or move next?
+Event Likelihood / Spawn Distribution is the primitive substrate. It answers: where are events likely to originate or move next?
 
 It is not the displayed value distribution and it is not a current, terrain, or land model. It biases:
 
@@ -271,9 +273,9 @@ Value Distribution answers: how are values assigned within the selected spatial 
 - `Uniform Random`: each cell receives a deterministic seeded random draw from a uniform distribution over the allowed range.
 - `Gaussian / Normal`: each cell receives a deterministic seeded draw from a bell-shaped distribution centered near the mean.
 
-## Spatial Parameters
+## Spatial Pattern / Geometry
 
-Spatial parameters tune how the selected pattern is drawn.
+Spatial pattern and geometry parameters tune how the selected realized sample-value pattern is drawn.
 
 - `Cluster Count`: number of cluster centers or station-like targets.
 - `Cluster Size`: tight, medium, or wide cluster spread.
@@ -332,9 +334,9 @@ Motion Scope controls whether spatial evolution is global, per-feature, or local
 
 `Continuous Drift` and `Random Walk` default to `Per Feature`, not `Global`. That means clustered fields move each cluster/region independently instead of sliding the entire heatmap. `Random Walk` is bounded and seeded, so the same seed produces the same local steps. `Discrete Jump` remains the mode where non-local relocation is allowed after fade/quiet windows. `Neighbor Propagation` remains local/neighborhood-based and does not use a whole-domain shift.
 
-## State Model
+## State Model / Memory
 
-State Model answers: what does the field depend on?
+State Model / Memory answers: what does the field depend on?
 
 - **Time-Indexed / Memoryless:** `S(x,y,t)` is computed directly from position and time. The field does not need to remember a previous state.
 - **Frequency-Based:** future behavior follows repeated cycles or frequency structure, useful for periodic, cyclic, and long-cycle patterns.

@@ -270,6 +270,9 @@ export class RoiGeneratorDemoScene extends PhaserScene {
     if (globalThis.ANCHOR_DEBUG_ROI_DYNAMICS) {
       console.debug('[ROIDemo][FieldDynamics]', diagnostics);
     }
+    if (globalThis.ANCHOR_DEBUG_ROI_COMPOSER && this.behaviorPresetId === 'recurringHotspots') {
+      console.debug('[ROI][RecurringHotspots]', diagnostics.recurringHotspots ?? diagnostics);
+    }
     if (globalThis.ANCHOR_DEBUG_ROI_PRESETS && this.behaviorPresetId !== CUSTOM_SAMPLE_FIELD_BEHAVIOR_PRESET_ID) {
       const previousTime = Math.max(0, this.demoTime - 1);
       const previousField = createDemoRoiField({ ...this.sceneConfig(), time: previousTime, demoTime: previousTime });
@@ -564,7 +567,7 @@ export class RoiGeneratorDemoScene extends PhaserScene {
     const stateModel = this.field?.stateModel ?? roiStateModelForEvolutionModel(this.field?.evolutionModel ?? this.evolutionModel);
     const range = diagnostics.dynamicRangeAfterContrast ?? ((diagnostics.maxValue ?? stats.max ?? 0) - (diagnostics.minValue ?? stats.min ?? 0));
     const warningText = diagnostics.diagnosticWarnings?.length ? ` | warnings ${diagnostics.diagnosticWarnings.join(', ')}` : '';
-    const activityText = `Activity: mean ${formatStat(diagnostics.meanValue ?? stats.mean)} | active ${formatPercent(diagnostics.activeFraction)} | high ${formatPercent(diagnostics.highValueFraction)} | max ${formatStat(diagnostics.maxValue ?? stats.max)} | range ${formatStat(range)} | bbox ${formatPercent(diagnostics.activeBoundingBoxCoverage)} | components ${diagnostics.connectedComponentCount ?? 0} | injected +${formatStat(diagnostics.injectedActivity)}${warningText}`;
+    const activityText = `Activity: mean ${formatStat(diagnostics.meanValue ?? stats.mean)} | active ${formatPercent(diagnostics.activeFraction)} | high ${formatPercent(diagnostics.highValueFraction)} | max ${formatStat(diagnostics.maxValue ?? stats.max)} | range ${formatStat(range)} | bbox ${formatPercent(diagnostics.activeBoundingBoxCoverage)} | components ${diagnostics.connectedComponentCount ?? 0} | hotspots ${diagnostics.activeHotspotCount ?? diagnostics.hotspotComponentCount ?? 0} | L/S corr ${formatStat(diagnostics.likelihoodSampleCorrelation)} | injected +${formatStat(diagnostics.injectedActivity)}${warningText}`;
     this.statusText?.setText(`Event Likelihood: ${roiEventLikelihoodLabel(this.field?.eventLikelihood ?? this.eventLikelihood)} (${roiLikelihoodDynamicsLabel(this.field?.eventLikelihoodDynamics ?? this.eventLikelihoodDynamics)}) | Spatial: ${roiPureSpatialPatternLabel(this.field?.pureSpatialPattern ?? this.spatialPattern)} | Value Distribution: ${roiValueDistributionLabel(this.field?.valueDistribution ?? this.valueDistribution)} | Temporal: ${roiTemporalPatternLabel(this.field?.temporalPattern ?? this.temporalPattern)} | Spatial Evolution: ${roiSpatialEvolutionLabel(this.field?.spatialEvolution ?? this.spatialEvolution)} | State Model: ${roiStateModelLabel(stateModel)} | Sampling: ${roiDepletionModeLabel(this.field?.depletionMode ?? this.depletionMode)} | Display: ${roiDisplayModeLabel(this.field?.displayMode ?? this.displayMode)} | Seed: ${this.seed}${dynamicText} | ${activityText} | Total: ${formatStat(stats.totalValue)}`);
     this.statusText?.setWordWrapWidth(Math.min(1040, map.width));
     this.statusText?.setPosition(margin, map.y + map.height + 18);
@@ -1092,12 +1095,13 @@ function roiBehaviorHelpEmptyHtml() {
       <div class="cell-inspector-card">
         <strong>Available help</strong>
         <ul>
-          <li>Spatial Pattern</li>
-          <li>Event Likelihood Field</li>
+          <li>Event Likelihood / Spawn Distribution</li>
+          <li>Spatial Pattern / Geometry</li>
+          <li>Value Distribution</li>
           <li>Temporal Pattern</li>
           <li>Spatial Evolution</li>
-          <li>State Model</li>
-          <li>Sampling Effect</li>
+          <li>State Model / Memory</li>
+          <li>Sampling Effects</li>
           <li>Display Layer</li>
         </ul>
       </div>
@@ -1177,7 +1181,7 @@ function roiInspectorHtml(inspection) {
         <p>Type: Sample cell | t = ${formatStat(inspection.demoTime)} s</p>
       </div>
       <div class="cell-inspector-card">
-        <span>Event Likelihood Field</span>
+        <span>Event Likelihood / Spawn Distribution</span>
         ${metricRows([
           ['L(x,y,t)', formatStat(inspection.eventLikelihoodValue)],
           ['likelihood model', inspection.eventLikelihoodLabel],
@@ -1187,7 +1191,7 @@ function roiInspectorHtml(inspection) {
           ['event-prone', inspection.eventLikelihoodBand],
           ['role', 'biases event origins, jumps, walks, and propagation']
         ])}
-        <small>Likelihood is the chance this cell is event-prone; it is the generative substrate, not the realized reward.</small>
+        <small>L(x,y,t) is the event-prone spawn substrate; it is not the realized sample reward.</small>
       </div>
       <div class="cell-inspector-card selected">
         <span>Observed Sample Value</span>
