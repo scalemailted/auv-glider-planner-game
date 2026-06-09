@@ -19,7 +19,7 @@ export const SAMPLE_FIELD_GROUP_SUMMARIES = {
     summary: 'Curated starting points that fill in the primitive sample-field controls.'
   },
   eventLikelihood: {
-    label: 'Event Likelihood / Spawn Distribution',
+    label: 'Event Likelihood Field',
     question: 'Where are events likely to originate or move next?',
     summary: 'Controls L(x,y,t): the underlying event-proneness substrate used by origins, sparse sites, jumps, walks, and propagation. This is not the realized sample value.'
   },
@@ -729,7 +729,7 @@ function sampleFieldBehaviorPresetExplainer(value) {
     meaning: preset.description,
     expectedBehavior: preset.explanation?.expectedBehavior ?? preset.description,
     parameters: [
-      `Event Likelihood / Spawn Distribution: ${preset.config.eventLikelihood}`,
+      `Event Likelihood Field: ${preset.config.eventLikelihood}`,
       `Spatial Pattern / Geometry: ${preset.config.spatialPattern}`,
       `Value Distribution: ${preset.config.valueDistribution}`,
       `Temporal Pattern: ${preset.config.temporalPattern}`,

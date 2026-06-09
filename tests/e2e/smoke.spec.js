@@ -356,6 +356,8 @@ test('campaign planning smoke flow reaches debrief', async ({ page }) => {
   expect(roiArtifact.data.config.displayMode).toBe('sampleValueLikelihoodOverlay');
   expect(roiArtifact.data.fields.sampleValue.length).toBe(roiArtifact.data.grid.height);
   expect(roiArtifact.data.fields.eventLikelihood[0].length).toBe(roiArtifact.data.grid.width);
+  expect(roiArtifact.data.likelihoodField.type).toBe('multiModalLikelihood');
+  expect(roiArtifact.data.likelihoodField.diagnostics.modeCount).toBeGreaterThan(1);
   expect(roiArtifact.data.metadata.activityDiagnostics.meanValue).toBeGreaterThan(0);
   expect(roiArtifact.data.metadata.activityDiagnostics.activeFraction).toBeGreaterThan(0.1);
   expect(roiArtifact.data.frames[0].activityDiagnostics.totalActivityMass).toBeGreaterThan(0);
@@ -371,7 +373,9 @@ test('campaign planning smoke flow reaches debrief', async ({ page }) => {
     'Patchy Rainfall',
     'Drifting Storm Cells',
     'Freshness / Revisit Value',
+    'Wandering Hotspot',
     'Neighbor Spread',
+    'Ripple Activation',
     'Oscillating Ecological Field',
     'Forest Fire Front (inspired)',
     'Life-Like Cellular Emergence (inspired)'
@@ -435,8 +439,8 @@ test('campaign planning smoke flow reaches debrief', async ({ page }) => {
   await page.locator('#roi-demo-state-model').selectOption('stateEvolving');
   await page.locator('#roi-demo-depletion-mode').selectOption('soft');
   await page.locator('#roi-demo-display-mode').selectOption('sampleValue');
-  await expect(page.locator('#mission-console')).toContainText('Event Likelihood / Spawn Distribution');
-  await expect(page.locator('#mission-console')).toContainText('Event Likelihood / Spawn Distribution');
+  await expect(page.locator('#mission-console')).toContainText('Event Likelihood Field');
+  await expect(page.locator('#mission-console')).toContainText('Likelihood Field Type');
   await expect(page.locator('#mission-console')).toContainText('Spatial Pattern / Geometry');
   await expect(page.locator('#mission-console')).toContainText('Temporal Pattern');
   await expect(page.locator('#mission-console')).toContainText('Spatial Evolution');
@@ -476,7 +480,7 @@ test('campaign planning smoke flow reaches debrief', async ({ page }) => {
   await expect(page.locator('#roi-demo-event-likelihood-dynamics option')).toHaveText(['Static', 'Dynamic']);
   await expect(page.locator('#roi-demo-value-distribution option')).toHaveText(['Constant Value', 'Uniform Random', 'Gaussian / Normal']);
   await page.locator('#mission-console [data-roi-help="eventLikelihood"]').click();
-  await expect(page.locator('#waypoint-timeline [data-roi-behavior-help]')).toContainText('About Event Likelihood / Spawn Distribution: Multi-Modal Likelihood');
+  await expect(page.locator('#waypoint-timeline [data-roi-behavior-help]')).toContainText('About Event Likelihood Field: Multi-Modal Likelihood');
   await expect(page.locator('#waypoint-timeline [data-roi-behavior-help]')).toContainText('Where are events likely to originate');
   await page.locator('#mission-console [data-roi-help="spatialPattern"]').click();
   await expect(page.locator('#waypoint-timeline [data-roi-behavior-help]')).toContainText('About Spatial Pattern / Geometry: Clustered Field');
@@ -541,7 +545,7 @@ test('campaign planning smoke flow reaches debrief', async ({ page }) => {
   await clickRoiDemoCell(page, roiDynamicCell.col, roiDynamicCell.row);
   await expect(page.locator('#waypoint-timeline')).toContainText(`Cell (${roiDynamicCell.col}, ${roiDynamicCell.row})`);
   await expect(page.locator('#waypoint-timeline')).toContainText('Sample Value');
-  await expect(page.locator('#waypoint-timeline')).toContainText('Event Likelihood / Spawn Distribution');
+  await expect(page.locator('#waypoint-timeline')).toContainText('Event Likelihood Field');
   await expect(page.locator('#waypoint-timeline')).toContainText('L(x,y,t)');
   await expect(page.locator('#waypoint-timeline')).toContainText('Observed Sample Value');
   await expect(page.locator('#waypoint-timeline')).toContainText('S(x,y,t)');

@@ -793,6 +793,7 @@ export class RoiGeneratorDemoScene extends PhaserScene {
     const depleted = Number(this.field?.sampleValueField?.[cell.row]?.[cell.col] ?? value);
     const spatialPattern = this.field?.pureSpatialPattern ?? this.spatialPattern;
     const spatialHelp = roiSpatialPatternHelp(spatialPattern);
+    const nearestLikelihoodNode = nearestLikelihoodNodeForCell(this.field?.likelihoodField, cell);
     return {
       cell,
       value,
@@ -812,6 +813,8 @@ export class RoiGeneratorDemoScene extends PhaserScene {
       eventLikelihoodSpatialEvolutionLabel: this.field?.eventLikelihoodSpatialEvolutionLabel ?? roiLikelihoodSpatialEvolutionLabel(this.eventLikelihoodSpatialEvolution),
       eventLikelihoodValue,
       eventLikelihoodBand: likelihoodBandLabel(eventLikelihoodValue),
+      likelihoodField: this.field?.likelihoodField,
+      nearestLikelihoodNode,
       spatialPattern,
       valueDistribution: this.field?.valueDistribution ?? this.valueDistribution,
       valueDistributionLabel: this.field?.valueDistributionLabel ?? roiValueDistributionLabel(this.valueDistribution),
@@ -885,6 +888,7 @@ export class RoiGeneratorDemoScene extends PhaserScene {
       timeSampling: sampling,
       config: this.sceneConfig(),
       fields: currentFrame.fields,
+      likelihoodField: currentFrame.likelihoodField,
       frames,
       selectedCell: this.selectedCell ? this.inspectSelectedCell() : null,
       behaviorPreset,
@@ -900,6 +904,7 @@ export class RoiGeneratorDemoScene extends PhaserScene {
         },
         stats: field.stats,
         activityDiagnostics: field.activityDiagnostics,
+        likelihoodField: field.likelihoodField,
         highValueCells: field.highValueCells,
         freshnessNote: 'Freshness / Age of Information layers are demo-only unless connected to real mission visit history.',
         historyAwareExport: {
@@ -926,6 +931,7 @@ export class RoiGeneratorDemoScene extends PhaserScene {
         rawBaseValue: cloneField(field.rawBaseField),
         evolvedValue: cloneField(field.evolvedField)
       },
+      likelihoodField: cloneLikelihoodFieldModel(field.likelihoodField),
       activityDiagnostics: field.activityDiagnostics,
       behaviorPreset: sampleFieldBehaviorPresetMetadata(this.behaviorPresetId, this.behaviorPresetModified)
     };
@@ -987,6 +993,36 @@ function finiteNumber(value, fallback = 0) {
 
 function normalizeExportMode(mode) {
   return mode === 'timeWindow' || mode === 'timeSeries' ? 'timeWindow' : 'currentFrame';
+}
+
+function nearestLikelihoodNodeForCell(model, cell) {
+  const nodes = model?.nodes ?? [];
+  const width = model?.values?.[0]?.length ?? 0;
+  const height = model?.values?.length ?? 0;
+  if (!nodes.length || !width || !height) return null;
+  const nx = width > 1 ? Number(cell.col ?? cell.x ?? 0) / (width - 1) : 0;
+  const ny = height > 1 ? Number(cell.row ?? cell.y ?? 0) / (height - 1) : 0;
+  return nodes
+    .map((node) => ({
+      ...node,
+      distance: Math.hypot(nx - Number(node.x ?? 0), ny - Number(node.y ?? 0))
+    }))
+    .sort((a, b) => a.distance - b.distance)[0] ?? null;
+}
+
+function cloneLikelihoodFieldModel(model) {
+  if (!model) return null;
+  return {
+    type: model.type,
+    label: model.label,
+    values: cloneField(model.values),
+    nodes: (model.nodes ?? []).map((node) => ({
+      ...node,
+      driftVelocity: node.driftVelocity ? { ...node.driftVelocity } : undefined
+    })),
+    metadata: { ...(model.metadata ?? {}) },
+    diagnostics: { ...(model.diagnostics ?? {}) }
+  };
 }
 
 function formatStat(value) {
@@ -1096,7 +1132,7 @@ function roiBehaviorHelpEmptyHtml() {
       <div class="cell-inspector-card">
         <strong>Available help</strong>
         <ul>
-          <li>Event Likelihood / Spawn Distribution</li>
+          <li>Event Likelihood Field</li>
           <li>Spatial Pattern / Geometry</li>
           <li>Value Distribution</li>
           <li>Temporal Pattern</li>
@@ -1182,7 +1218,7 @@ function roiInspectorHtml(inspection) {
         <p>Type: Sample cell | t = ${formatStat(inspection.demoTime)} s</p>
       </div>
       <div class="cell-inspector-card">
-        <span>Event Likelihood / Spawn Distribution</span>
+        <span>Event Likelihood Field</span>
         ${metricRows([
           ['L(x,y,t)', formatStat(inspection.eventLikelihoodValue)],
           ['likelihood model', inspection.eventLikelihoodLabel],
@@ -1190,6 +1226,10 @@ function roiInspectorHtml(inspection) {
           ['temporal pattern', inspection.eventLikelihoodTemporalPatternLabel],
           ['spatial evolution', inspection.eventLikelihoodSpatialEvolutionLabel],
           ['event-prone', inspection.eventLikelihoodBand],
+          ['nearest node', inspection.nearestLikelihoodNode ? inspection.nearestLikelihoodNode.id : 'none'],
+          ['node state', inspection.nearestLikelihoodNode ? inspection.nearestLikelihoodNode.state : 'n/a'],
+          ['node cooldown', inspection.nearestLikelihoodNode ? formatStat(inspection.nearestLikelihoodNode.cooldown) : 'n/a'],
+          ['node distance', inspection.nearestLikelihoodNode ? formatStat(inspection.nearestLikelihoodNode.distance) : 'n/a'],
           ['role', 'biases event origins, jumps, walks, and propagation']
         ])}
         <small>L(x,y,t) is the event-prone spawn substrate; it is not the realized sample reward.</small>

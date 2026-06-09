@@ -370,9 +370,9 @@ export class MissionConsole {
         ${selectedPreset ? `<div class="hud-muted">Expected: ${escapeHtml(selectedPreset.explanation?.expectedBehavior ?? selectedPreset.description)}</div><div class="hud-muted">Actual current state: active ${escapeHtml(formatPercent(state.activityDiagnostics?.activeFraction))}, hotspots ${escapeHtml(String(state.activityDiagnostics?.activeHotspotCount ?? state.activityDiagnostics?.hotspotComponentCount ?? 0))}, L/S corr ${escapeHtml(formatDemoStat(state.activityDiagnostics?.likelihoodSampleCorrelation))}</div><div class="hud-muted">${summaryRows.map(([label, value]) => `${label}: ${value}`).map(escapeHtml).join(' | ')}</div>` : '<div class="hud-muted">Custom primitive composition. Select a preset to load a curated starting point, then adjust the primitive controls below.</div>'}
       </section>
       <section class="console-section">
-        <h2 title="${escapeAttr(eventLikelihoodHelp.groupSummary)}">Event Likelihood / Spawn Distribution <span aria-label="Event Likelihood help" title="${escapeAttr(eventLikelihoodHelp.short)}">i</span></h2>
+        <h2 title="${escapeAttr(eventLikelihoodHelp.groupSummary)}">Event Likelihood Field <span aria-label="Event Likelihood help" title="${escapeAttr(eventLikelihoodHelp.short)}">i</span></h2>
         <label class="compact-field" title="${escapeAttr(eventLikelihoodHelp.short)}">
-          <span>Event Likelihood / Spawn Distribution <span aria-label="Event Likelihood help" title="${escapeAttr(eventLikelihoodHelp.short)}">i</span></span>
+          <span>Likelihood Field Type <span aria-label="Event Likelihood help" title="${escapeAttr(eventLikelihoodHelp.short)}">i</span></span>
           <select id="roi-demo-event-likelihood" title="${escapeAttr(eventLikelihoodHelp.short)}">
             ${ROI_DEMO_EVENT_LIKELIHOODS.map((likelihood) => {
               const help = sampleFieldBehaviorExplainer('eventLikelihood', likelihood);
@@ -382,7 +382,7 @@ export class MissionConsole {
         </label>
         ${roiHelpButtonHtml('eventLikelihood', `Explain ${roiEventLikelihoodLabel(state.eventLikelihood)}`)}
         <label class="compact-field">
-          Dynamics
+          Likelihood Dynamics
           <select id="roi-demo-event-likelihood-dynamics">
             ${ROI_DEMO_LIKELIHOOD_DYNAMICS.map((mode) => `<option value="${escapeAttr(mode)}" ${state.eventLikelihoodDynamics === mode ? 'selected' : ''}>${escapeHtml(roiLikelihoodDynamicsLabel(mode))}</option>`).join('')}
           </select>
@@ -402,6 +402,10 @@ export class MissionConsole {
           </label>
           <div class="hud-muted">Dynamic likelihood updates L(x,y,t). It controls where future events are likely to originate; the sample-value controls below still define the realized S(x,y,t).</div>
         ` : ''}
+        <div class="hud-muted">L(x,y,t) range ${escapeHtml(formatDemoStat(state.activityDiagnostics?.likelihood?.min))}-${escapeHtml(formatDemoStat(state.activityDiagnostics?.likelihood?.max))}; modes ${escapeHtml(String(state.activityDiagnostics?.likelihood?.modeCount ?? 0))}; active modes ${escapeHtml(String(state.activityDiagnostics?.likelihood?.activeModeCount ?? 0))}; entropy ${escapeHtml(formatDemoStat(state.activityDiagnostics?.likelihood?.entropy))}; spread ${escapeHtml(formatDemoStat(state.activityDiagnostics?.likelihood?.modeCenterSpread))}.</div>
+      </section>
+      <section class="console-section">
+        <h2 title="${escapeAttr(spatialHelp.groupSummary)}">Spatial Pattern / Geometry <span aria-label="Pattern help" title="${escapeAttr(spatialHelp.short)}">i</span></h2>
         <label class="compact-field" title="${escapeAttr(spatialHelp.short)}">
           <span>Spatial Pattern <span aria-label="Pattern help" title="${escapeAttr(spatialHelp.short)}">i</span></span>
           <select id="roi-demo-spatial-pattern" title="${escapeAttr(spatialHelp.short)}">
@@ -437,16 +441,13 @@ export class MissionConsole {
           Seed
           <input id="roi-demo-seed" type="text" value="${escapeAttr(state.seed ?? 'anchor-roi-demo')}" />
         </label>
-        <button data-action="regenerate" class="console-button">Regenerate</button>
-        <div class="hud-muted">Event Likelihood / Spawn Distribution controls L(x,y,t): where events are likely to originate. Spatial Pattern / Geometry and Value Distribution control observed S(x,y,t). This pure demo does not use current vectors, land, or flow transport.</div>
-      </section>
-      <section class="console-section">
-        <h2>Spatial Pattern / Geometry</h2>
         <label class="compact-field">
           Noise / Texture
           <input id="roi-demo-noise" type="range" min="0" max="1" step="0.05" value="${escapeAttr(state.noise ?? 0.15)}" />
         </label>
+        <button data-action="regenerate" class="console-button">Regenerate</button>
         <div class="hud-muted">Noise ${escapeHtml(Number(state.noise ?? 0.15).toFixed(2))}. Cluster size controls spread; cluster count controls how many centers are generated.</div>
+        <div class="hud-muted">Event Likelihood Field controls L(x,y,t): where events are likely to originate. Spatial Pattern / Geometry and Value Distribution control observed S(x,y,t). This pure demo does not use current vectors, land, or flow transport.</div>
       </section>
       <section class="console-section">
         <h2 title="${escapeAttr(temporalHelp.groupSummary)}">Temporal Pattern <span aria-label="Temporal Pattern help" title="${escapeAttr(temporalHelp.short)}">i</span></h2>

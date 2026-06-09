@@ -25,6 +25,26 @@ L(x,y,t)
 
 `L` is the generative substrate: where sample-value events, clusters, targets, bursts, or activations are likely to originate at time `t`. `S` is the observed sample value after likelihood, spatial pattern, value distribution, temporal behavior, spatial evolution, and sampling effects are composed.
 
+Concept boundary:
+
+```text
+F(x,y,t): physical flow/current vector field
+L(x,y,t): event likelihood scalar field
+S(x,y,t): realized sample value scalar field
+U(x,y,t): uncertainty / forecast-error scalar field
+```
+
+`L` can pulse, recover, walk, jump, ripple, or propagate as likelihood dynamics, but it is not a physical current and does not move water or gliders.
+
+Feature-evolution patterns describe how scalar structures move, spread, rotate, deform, or activate:
+
+```text
+V_L(x,y,t): likelihood evolution / propagation influence
+V_S(x,y,t): sample-value motion / deformation influence
+```
+
+These are teaching analogs for dynamic sampling strategy. They are not validated wildfire, rainfall, ecology, crime, or hydrodynamic simulators, and they are not the Flow Field Demo's physical current field.
+
 The center viewport renders this field as a cell heatmap. Cooler cells have lower sample value; warmer cells have higher sample value. The field is deterministic from the demo seed and controls, so random-looking texture and pulses are replayable rather than unseeded page-load randomness.
 
 The ROI demo is a persistent sample-opportunity process by default. Decay is balanced by regeneration from the Event Likelihood Field unless a future explicit finite/one-shot behavior is selected. This keeps the demo useful for exploring ongoing sampling strategies instead of letting ordinary bursty, periodic, random-walk, or propagation modes collapse into an empty field.
@@ -86,7 +106,7 @@ Use Flow Fields Demo for `F(x,y,t)`, Coupled Fields Demo for current-dependent s
 
 The demo builds sample-value behavior from independent axes:
 
-- **Event Likelihood / Spawn Distribution:** where event origins and future activity are likely.
+- **Event Likelihood Field:** where event origins and future activity are likely.
 - **Spatial Pattern / Geometry:** where value appears.
 - **Value Distribution:** how values are assigned within that spatial geometry.
 - **Temporal Pattern:** how intensity changes over time.
@@ -103,7 +123,7 @@ Every major component in the Sample / ROI Demo has behavior help. The left Missi
 
 | Component Group | What it controls | Example question answered |
 |---|---|---|
-| Event Likelihood / Spawn Distribution | Where event origins and future activity are likely | Where are events prone to start, jump, walk, or spread? |
+| Event Likelihood Field | Where event origins and future activity are likely | Where are events prone to start, jump, walk, or spread? |
 | Spatial Pattern / Geometry | Where value is organized in space | Where are the valuable cells? |
 | Value Distribution | How values are assigned within that geometry | Are values constant, uniformly random, or mostly near a mean? |
 | Temporal Pattern | How intensity changes over time | When does value rise, fade, pulse, or stay steady? |
@@ -126,7 +146,9 @@ Presets do not replace the primitive controls. Selecting a preset fills in the u
 | Patchy Rainfall | Irregular activity patches | Seeded texture likelihood + patchy field + random pulses |
 | Drifting Storm Cells | Moving compact rapid-pulse cells | Clustered field + rapid pulses + continuous drift |
 | Freshness / Revisit Value | Value recovers after time | History-aware + freshness |
+| Wandering Hotspot | Mobile coherent source | Gaussian likelihood + bounded random walk |
 | Neighbor Spread | Local activation/spread | Patchy field + neighbor propagation |
+| Ripple Activation | Traveling activation band | Patchy likelihood + wave/ripple propagation |
 | Oscillating Ecological Field | Phase-shifted cycles | Periodic + frequency-based |
 | Forest Fire Front (inspired) | Advancing active front | Front + propagation + depleted residual |
 | Life-Like Cellular Emergence (inspired) | Local-rule emergence | Neighbor propagation + state-evolving |
@@ -153,13 +175,13 @@ Overlay mode keeps `S(x,y,t)` as the heatmap and draws high-likelihood cells as 
 
 ## Demo Artifact Export
 
-`Export Demo JSON` downloads an `anchor.demo.sample-roi-field` artifact for Colab/notebook rendering. Choose start time, end time, and timeframe count to include a `frames[]` series sampled from the current settings. It includes the current scene config, demo time, row-major displayed sample value, `L(x,y,t)` event likelihood, raw base value, evolved value when available, field stats, activity diagnostics, high-value cells, and selected-cell inspector state. Arrays are indexed as `field[row][col]` using top-left origin and cell-center coordinates.
+`Export Demo JSON` downloads an `anchor.demo.sample-roi-field` artifact for Colab/notebook rendering. Choose start time, end time, and timeframe count to include a `frames[]` series sampled from the current settings. It includes the current scene config, demo time, row-major displayed sample value, `L(x,y,t)` event likelihood, likelihood field metadata/nodes/diagnostics, raw base value, evolved value when available, field stats, activity diagnostics, high-value cells, and selected-cell inspector state. Arrays are indexed as `field[row][col]` using top-left origin and cell-center coordinates.
 
 Freshness / Age of Information values remain labeled as demo-only synthetic visit effects unless they are later tied to actual mission visits.
 
-## Event Likelihood / Spawn Distribution
+## Event Likelihood Field
 
-Event Likelihood / Spawn Distribution is the primitive substrate. It answers: where are events likely to originate or move next?
+Event Likelihood Field is the primitive substrate. It answers: where are events likely to originate or move next?
 
 It is not the displayed value distribution and it is not a current, terrain, or land model. It biases:
 
@@ -182,6 +204,23 @@ The implemented Event Likelihood options are:
 | Sparse Candidate Sites | Small seeded candidate locations | Sparse targets and jumps favor candidate neighborhoods |
 
 `Constant Field` is not the event substrate. Constant Field remains a Spatial Pattern that adds no geometry. Use `Uniform Likelihood` when event origins should be unbiased.
+
+## Field-Evolution Analog Patterns
+
+The demo uses simplified feature-evolution patterns as validation targets:
+
+| Pattern | Expected signature | Sampling lesson |
+|---|---|---|
+| Uniform Drift | centroid moves smoothly with high frame overlap | intercept the future location |
+| Radial Source / Expansion | active area grows in a bounded way | target the active edge |
+| Radial Sink / Contraction | activity concentrates toward a basin | anticipate accumulation zones |
+| Rotational / Vortex | features recur around a bounded path | time arrivals around circulation |
+| Shear / Stretching | aspect ratio or elongation changes | adapt to deformation, not only translation |
+| Wave / Ripple | activation crest moves locally | sample the next wave band |
+| Front / Boundary Motion | active front advances with residual behind it | sample the transition boundary |
+| Multi-Source Pulsing | separated modes pulse out of phase | choose the currently useful basin |
+| Random-Walk / Wandering Center | displacement is local and bounded | track mobile sources without assuming teleportation |
+| Birth-Death / Cellular Activation | cells activate, cool, recover, or trigger neighbors | exploit state transitions |
 
 ### Event Likelihood Dynamics
 

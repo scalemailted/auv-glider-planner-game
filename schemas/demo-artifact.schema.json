@@ -89,6 +89,7 @@
       "additionalProperties": true
     },
     "fields": { "type": "object" },
+    "likelihoodField": { "type": ["object", "null"] },
     "frames": {
       "type": ["array", "null"],
       "items": {

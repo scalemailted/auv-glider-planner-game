@@ -10,8 +10,8 @@ export const SAMPLE_FIELD_BEHAVIOR_PRESETS = [
     notA: 'Not a one-shot extinction event; ordinary bursts regenerate from the event likelihood field.',
     config: {
       eventLikelihood: 'multiModalLikelihood',
-      eventLikelihoodDynamics: 'static',
-      eventLikelihoodTemporalPattern: 'static',
+      eventLikelihoodDynamics: 'dynamic',
+      eventLikelihoodTemporalPattern: 'bursty',
       eventLikelihoodSpatialEvolution: 'stationary',
       spatialPattern: 'clusteredField',
       hotspotCount: 4,
@@ -27,10 +27,10 @@ export const SAMPLE_FIELD_BEHAVIOR_PRESETS = [
       depletionMode: 'soft',
       timeMode: 'dynamic',
       dynamicComplexity: 'medium',
-      displayMode: 'sampleValue'
+      displayMode: 'sampleValueLikelihoodOverlay'
     },
     explanation: {
-      expectedBehavior: 'The likelihood view shows persistent separated regions where events tend to recur. The sample value view shows which recurring basins are currently active; not every likely basin must be active at every moment.',
+      expectedBehavior: 'The likelihood view shows separated basins that pulse with phase offsets. The sample value view shows which recurring basins are currently active; not every likely basin must be active at every moment.',
       goodForTeaching: 'Recurring-event timing, assignment across known basins, and routes that wait for active windows.'
     }
   },
@@ -200,6 +200,39 @@ export const SAMPLE_FIELD_BEHAVIOR_PRESETS = [
     }
   },
   {
+    id: 'wanderingHotspot',
+    label: 'Wandering Hotspot',
+    category: 'Moving features',
+    description: 'A compact event-prone basin wanders by bounded local seeded steps.',
+    strategy: 'Track a mobile source using recent observations without assuming it teleports.',
+    notA: 'Not ocean drift; this is a seeded feature-evolution pattern for likelihood and sample value.',
+    config: {
+      eventLikelihood: 'gaussianLikelihood',
+      eventLikelihoodDynamics: 'dynamic',
+      eventLikelihoodTemporalPattern: 'sustained',
+      eventLikelihoodSpatialEvolution: 'randomWalk',
+      spatialPattern: 'clusteredField',
+      hotspotCount: 1,
+      clusterSize: 'medium',
+      valueDistribution: 'gaussianNormal',
+      temporalPattern: 'sustained',
+      temporalBehavior: 'periodic',
+      spatialEvolution: 'randomWalk',
+      patternEvolution: 'randomWalk',
+      evolutionModel: 'randomWalk',
+      motionScope: 'perFeature',
+      stateModel: 'stateEvolving',
+      depletionMode: 'none',
+      timeMode: 'dynamic',
+      dynamicComplexity: 'high',
+      displayMode: 'sampleValueLikelihoodOverlay'
+    },
+    explanation: {
+      expectedBehavior: 'A coherent hotspot center moves by local bounded steps; the next useful area should be near, but not exactly at, the current maximum.',
+      goodForTeaching: 'Tracking mobile event sources and planning robust intercepts under bounded motion.'
+    }
+  },
+  {
     id: 'neighborSpread',
     label: 'Neighbor Spread',
     category: 'Local propagation',
@@ -230,6 +263,39 @@ export const SAMPLE_FIELD_BEHAVIOR_PRESETS = [
     explanation: {
       expectedBehavior: 'Active cells warm nearby cells over time.',
       goodForTeaching: 'Local inference and spread-aware sampling.'
+    }
+  },
+  {
+    id: 'rippleActivation',
+    label: 'Ripple Activation',
+    category: 'Local propagation',
+    description: 'A likelihood wave or activation band ripples through nearby cells.',
+    strategy: 'Predict the next activation band instead of chasing the current crest.',
+    notA: 'Not a water wave or current; this is a scalar likelihood/sample activation wave.',
+    config: {
+      eventLikelihood: 'patchyLikelihood',
+      eventLikelihoodDynamics: 'dynamic',
+      eventLikelihoodTemporalPattern: 'wavyMultiFrequency',
+      eventLikelihoodSpatialEvolution: 'neighborPropagation',
+      spatialPattern: 'patchyField',
+      hotspotCount: 4,
+      clusterSize: 'wide',
+      valueDistribution: 'gaussianNormal',
+      temporalPattern: 'wavyMultiFrequency',
+      temporalBehavior: 'periodic',
+      spatialEvolution: 'neighborPropagation',
+      patternEvolution: 'neighborPropagation',
+      evolutionModel: 'neighborPropagation',
+      motionScope: 'localNeighborhood',
+      stateModel: 'stateEvolving',
+      depletionMode: 'soft',
+      timeMode: 'dynamic',
+      dynamicComplexity: 'high',
+      displayMode: 'sampleValueLikelihoodOverlay'
+    },
+    explanation: {
+      expectedBehavior: 'Local regions brighten in a traveling, ripple-like activation pattern while remaining spatially coherent.',
+      goodForTeaching: 'Anticipating local activation waves and sampling the next likely crest.'
     }
   },
   {
