@@ -432,15 +432,15 @@ test('campaign planning smoke flow reaches debrief', async ({ page }) => {
   await page.locator('#roi-demo-state-model').selectOption('stateEvolving');
   await page.locator('#roi-demo-depletion-mode').selectOption('soft');
   await page.locator('#roi-demo-display-mode').selectOption('sampleValue');
-  await expect(page.locator('#mission-console')).toContainText('Sample Field Substrate');
-  await expect(page.locator('#mission-console')).toContainText('Event Likelihood Field');
-  await expect(page.locator('#mission-console')).toContainText('Spatial Parameters');
+  await expect(page.locator('#mission-console')).toContainText('Event Likelihood / Spawn Distribution');
+  await expect(page.locator('#mission-console')).toContainText('Event Likelihood / Spawn Distribution');
+  await expect(page.locator('#mission-console')).toContainText('Spatial Pattern / Geometry');
   await expect(page.locator('#mission-console')).toContainText('Temporal Pattern');
   await expect(page.locator('#mission-console')).toContainText('Spatial Evolution');
   await expect(page.locator('#mission-console')).toContainText('Motion Scope');
   await expect(page.locator('#mission-console')).toContainText('Sampling Effects');
   await expect(page.locator('#mission-console')).toContainText('Display');
-  await expect(page.locator('#mission-console')).toContainText('State Model');
+  await expect(page.locator('#mission-console')).toContainText('State Model / Memory');
   await expect(page.locator('#mission-console')).toContainText('Time-Indexed');
   await expect(page.locator('#roi-demo-spatial-pattern option')).toHaveText([
     'Constant Field',
@@ -473,7 +473,7 @@ test('campaign planning smoke flow reaches debrief', async ({ page }) => {
   await expect(page.locator('#roi-demo-event-likelihood-dynamics option')).toHaveText(['Static', 'Dynamic']);
   await expect(page.locator('#roi-demo-value-distribution option')).toHaveText(['Constant Value', 'Uniform Random', 'Gaussian / Normal']);
   await page.locator('#mission-console [data-roi-help="eventLikelihood"]').click();
-  await expect(page.locator('#waypoint-timeline [data-roi-behavior-help]')).toContainText('About Event Likelihood Field: Multi-Modal Likelihood');
+  await expect(page.locator('#waypoint-timeline [data-roi-behavior-help]')).toContainText('About Event Likelihood / Spawn Distribution: Multi-Modal Likelihood');
   await expect(page.locator('#waypoint-timeline [data-roi-behavior-help]')).toContainText('Where are events likely to originate');
   await page.locator('#mission-console [data-roi-help="spatialPattern"]').click();
   await expect(page.locator('#waypoint-timeline [data-roi-behavior-help]')).toContainText('About Spatial Pattern: Clustered Field');
@@ -488,7 +488,7 @@ test('campaign planning smoke flow reaches debrief', async ({ page }) => {
   await page.locator('#mission-console [data-roi-help="spatialEvolution"]').click();
   await expect(page.locator('#waypoint-timeline [data-roi-behavior-help]')).toContainText('About Spatial Evolution: Stationary');
   await page.locator('#mission-console [data-roi-help="stateModel"]').click();
-  await expect(page.locator('#waypoint-timeline [data-roi-behavior-help]')).toContainText('About State Model:');
+  await expect(page.locator('#waypoint-timeline [data-roi-behavior-help]')).toContainText('About State Model / Memory:');
   await expect(page.locator('#waypoint-timeline [data-roi-behavior-help]')).toContainText('Markovian');
   await page.locator('#mission-console [data-roi-help="samplingEffect"]').click();
   await expect(page.locator('#waypoint-timeline [data-roi-behavior-help]')).toContainText('About Sampling Effect: Soft Depletion');
@@ -538,7 +538,7 @@ test('campaign planning smoke flow reaches debrief', async ({ page }) => {
   await clickRoiDemoCell(page, roiDynamicCell.col, roiDynamicCell.row);
   await expect(page.locator('#waypoint-timeline')).toContainText(`Cell (${roiDynamicCell.col}, ${roiDynamicCell.row})`);
   await expect(page.locator('#waypoint-timeline')).toContainText('Sample Value');
-  await expect(page.locator('#waypoint-timeline')).toContainText('Event Likelihood Field');
+  await expect(page.locator('#waypoint-timeline')).toContainText('Event Likelihood / Spawn Distribution');
   await expect(page.locator('#waypoint-timeline')).toContainText('L(x,y,t)');
   await expect(page.locator('#waypoint-timeline')).toContainText('Observed Sample Value');
   await expect(page.locator('#waypoint-timeline')).toContainText('S(x,y,t)');

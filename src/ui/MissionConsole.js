@@ -333,6 +333,19 @@ export class MissionConsole {
     const valueDistributionHelp = sampleFieldBehaviorExplainer('valueDistribution', state.valueDistribution);
     const samplingHelp = sampleFieldBehaviorExplainer('samplingEffect', state.depletionMode);
     const displayHelp = sampleFieldBehaviorExplainer('displayLayer', state.displayMode);
+    const likelihoodModeText = state.activityDiagnostics?.recurringHotspots?.modeCount
+      ? `${roiEventLikelihoodLabel(state.eventLikelihood)} (${roiLikelihoodDynamicsLabel(state.eventLikelihoodDynamics)}, ${state.activityDiagnostics.recurringHotspots.modeCount} separated basins)`
+      : `${roiEventLikelihoodLabel(state.eventLikelihood)} (${state.eventLikelihoodDynamics === 'dynamic' ? `${roiTemporalPatternLabel(state.eventLikelihoodTemporalPattern)} / ${roiLikelihoodSpatialEvolutionLabel(state.eventLikelihoodSpatialEvolution)}` : 'Static'})`;
+    const summaryRows = [
+      ['Preset', state.behaviorPresetId && state.behaviorPresetId !== CUSTOM_SAMPLE_FIELD_BEHAVIOR_PRESET_ID ? `${state.behaviorPresetLabel}${state.behaviorPresetModified ? ' (modified)' : ''}` : 'Custom'],
+      ['Likelihood', likelihoodModeText],
+      ['Spatial Pattern', state.spatialPatternLabel ?? roiPureSpatialPatternLabel(state.spatialPattern)],
+      ['Value Distribution', state.valueDistributionLabel ?? roiValueDistributionLabel(state.valueDistribution)],
+      ['Temporal Pattern', state.temporalPatternLabel ?? roiTemporalPatternLabel(state.temporalPattern)],
+      ['Spatial Evolution', state.spatialEvolutionLabel ?? roiSpatialEvolutionLabel(state.spatialEvolution ?? state.patternEvolution)],
+      ['State Update', stateModelLabel],
+      ['Sampling', roiDepletionModeLabel(state.depletionMode)]
+    ];
     this.root.innerHTML = `
       <section class="console-header">
         <div class="console-kicker">Sample / ROI Field Demo</div>
@@ -340,9 +353,9 @@ export class MissionConsole {
         <p>Visualizes S(x,y,t): where and when the environment is valuable to sample.</p>
       </section>
       <section class="console-status">
-        <span>${escapeHtml(state.status ?? 'ROI field')}</span>
+        <span>Component Breakdown</span>
         <strong>${escapeHtml((state.timeMode === 'dynamic' || state.eventLikelihoodDynamics === 'dynamic') && !state.paused ? 'Animating' : state.paused ? 'Paused' : 'Static')}</strong>
-        <small>${escapeHtml(`${state.eventLikelihoodLabel ?? roiEventLikelihoodLabel(state.eventLikelihood)} ${state.eventLikelihoodDynamics === 'dynamic' ? `(${roiTemporalPatternLabel(state.eventLikelihoodTemporalPattern)} / ${roiLikelihoodSpatialEvolutionLabel(state.eventLikelihoodSpatialEvolution)})` : '(Static)'} | ${state.spatialPatternLabel ?? roiPureSpatialPatternLabel(state.spatialPattern)} | ${state.valueDistributionLabel ?? roiValueDistributionLabel(state.valueDistribution)} | ${state.temporalPatternLabel ?? roiTemporalPatternLabel(state.temporalPattern)} | ${state.spatialEvolutionLabel ?? roiSpatialEvolutionLabel(state.spatialEvolution ?? state.patternEvolution)}`)}</small>
+        <small>${summaryRows.map(([label, value]) => `${label}: ${value}`).map(escapeHtml).join(' | ')}</small>
       </section>
       <section class="console-section">
         <h2 title="${escapeAttr(presetHelp.groupSummary)}">Behavior Preset <span aria-label="Behavior Preset help" title="${escapeAttr(presetHelp.short)}">i</span></h2>
@@ -354,12 +367,12 @@ export class MissionConsole {
         </label>
         ${roiHelpButtonHtml('behaviorPreset', `Explain ${state.behaviorPresetLabel ?? 'Custom'}`)}
         <div class="hud-muted">${escapeHtml(presetStatus)}</div>
-        ${selectedPreset ? `<div class="hud-muted">Expected: ${escapeHtml(selectedPreset.explanation?.expectedBehavior ?? selectedPreset.description)}</div><div class="hud-muted">Actual current state: active ${escapeHtml(formatPercent(state.activityDiagnostics?.activeFraction))}, max ${escapeHtml(formatDemoStat(state.activityDiagnostics?.maxValue))}, injected +${escapeHtml(formatDemoStat(state.activityDiagnostics?.injectedActivity))}</div><div class="hud-muted">${escapeHtml(sampleFieldBehaviorPresetSummary(selectedPreset.id))}</div>` : '<div class="hud-muted">Custom primitive composition. Select a preset to load a curated starting point, then adjust the primitive controls below.</div>'}
+        ${selectedPreset ? `<div class="hud-muted">Expected: ${escapeHtml(selectedPreset.explanation?.expectedBehavior ?? selectedPreset.description)}</div><div class="hud-muted">Actual current state: active ${escapeHtml(formatPercent(state.activityDiagnostics?.activeFraction))}, hotspots ${escapeHtml(String(state.activityDiagnostics?.activeHotspotCount ?? state.activityDiagnostics?.hotspotComponentCount ?? 0))}, L/S corr ${escapeHtml(formatDemoStat(state.activityDiagnostics?.likelihoodSampleCorrelation))}</div><div class="hud-muted">${summaryRows.map(([label, value]) => `${label}: ${value}`).map(escapeHtml).join(' | ')}</div>` : '<div class="hud-muted">Custom primitive composition. Select a preset to load a curated starting point, then adjust the primitive controls below.</div>'}
       </section>
       <section class="console-section">
-        <h2 title="${escapeAttr(eventLikelihoodHelp.groupSummary)}">Sample Field Substrate <span aria-label="Event Likelihood help" title="${escapeAttr(eventLikelihoodHelp.short)}">i</span></h2>
+        <h2 title="${escapeAttr(eventLikelihoodHelp.groupSummary)}">Event Likelihood / Spawn Distribution <span aria-label="Event Likelihood help" title="${escapeAttr(eventLikelihoodHelp.short)}">i</span></h2>
         <label class="compact-field" title="${escapeAttr(eventLikelihoodHelp.short)}">
-          <span>Event Likelihood Field <span aria-label="Event Likelihood Field help" title="${escapeAttr(eventLikelihoodHelp.short)}">i</span></span>
+          <span>Event Likelihood / Spawn Distribution <span aria-label="Event Likelihood help" title="${escapeAttr(eventLikelihoodHelp.short)}">i</span></span>
           <select id="roi-demo-event-likelihood" title="${escapeAttr(eventLikelihoodHelp.short)}">
             ${ROI_DEMO_EVENT_LIKELIHOODS.map((likelihood) => {
               const help = sampleFieldBehaviorExplainer('eventLikelihood', likelihood);
@@ -425,10 +438,10 @@ export class MissionConsole {
           <input id="roi-demo-seed" type="text" value="${escapeAttr(state.seed ?? 'anchor-roi-demo')}" />
         </label>
         <button data-action="regenerate" class="console-button">Regenerate</button>
-        <div class="hud-muted">Event Likelihood Field controls L(x,y,t): where events are likely to originate. Spatial Pattern and Value Distribution control observed S(x,y,t). This pure demo does not use current vectors, land, or flow transport.</div>
+        <div class="hud-muted">Event Likelihood / Spawn Distribution controls L(x,y,t): where events are likely to originate. Spatial Pattern / Geometry and Value Distribution control observed S(x,y,t). This pure demo does not use current vectors, land, or flow transport.</div>
       </section>
       <section class="console-section">
-        <h2>Spatial Parameters</h2>
+        <h2>Spatial Pattern / Geometry</h2>
         <label class="compact-field">
           Noise / Texture
           <input id="roi-demo-noise" type="range" min="0" max="1" step="0.05" value="${escapeAttr(state.noise ?? 0.15)}" />
@@ -481,8 +494,8 @@ export class MissionConsole {
         ${roiHelpButtonHtml('spatialEvolution', `Explain ${roiSpatialEvolutionLabel(state.spatialEvolution ?? state.patternEvolution)}`)}
       </section>
       <section class="console-section">
-        <h2 title="${escapeAttr(stateHelp.groupSummary)}">State Model <span aria-label="State Model help" title="${escapeAttr(stateHelp.short)}">i</span></h2>
-        <div class="hud-muted">State Model: ${escapeHtml(stateModelLabel)}. ${escapeHtml(stateModelDescription)}</div>
+        <h2 title="${escapeAttr(stateHelp.groupSummary)}">State Model / Memory <span aria-label="State Model help" title="${escapeAttr(stateHelp.short)}">i</span></h2>
+        <div class="hud-muted">State Update Rule: ${escapeHtml(stateModelLabel)}. ${escapeHtml(stateModelDescription)}</div>
         <label class="compact-field" title="${escapeAttr(stateHelp.short)}">
           State Model
           <select id="roi-demo-state-model" title="${escapeAttr(stateHelp.short)}">
@@ -531,7 +544,7 @@ export class MissionConsole {
       <section class="console-status">
         <span>Field Stats</span>
         <strong>Activity ${escapeHtml(formatDemoStat(state.activityDiagnostics?.meanValue ?? state.stats?.mean))} mean | ${escapeHtml(formatPercent(state.activityDiagnostics?.activeFraction))} active | ${escapeHtml(formatPercent(state.activityDiagnostics?.highValueFraction))} high | Max ${escapeHtml(formatDemoStat(state.activityDiagnostics?.maxValue ?? state.stats?.max))} | Range ${escapeHtml(formatDemoStat(state.activityDiagnostics?.dynamicRangeAfterContrast ?? ((state.stats?.max ?? 0) - (state.stats?.min ?? 0))))}</strong>
-        <small>${escapeHtml(state.eventLikelihoodLabel ?? roiEventLikelihoodLabel(state.eventLikelihood))} ${escapeHtml(state.eventLikelihoodDynamics === 'dynamic' ? `${roiTemporalPatternLabel(state.eventLikelihoodTemporalPattern)} / ${roiLikelihoodSpatialEvolutionLabel(state.eventLikelihoodSpatialEvolution)}` : 'Static')} / ${escapeHtml(state.spatialPatternLabel ?? roiPureSpatialPatternLabel(state.spatialPattern))} / ${escapeHtml(state.valueDistributionLabel ?? roiValueDistributionLabel(state.valueDistribution))} / ${escapeHtml(state.temporalPatternLabel ?? roiTemporalPatternLabel(state.temporalPattern))} / ${escapeHtml(state.spatialEvolutionLabel ?? roiSpatialEvolutionLabel(state.spatialEvolution ?? state.patternEvolution))} / ${escapeHtml(stateModelLabel)} | BBox ${escapeHtml(formatPercent(state.activityDiagnostics?.activeBoundingBoxCoverage))} | Components ${escapeHtml(String(state.activityDiagnostics?.connectedComponentCount ?? 0))} | P10/P50/P90 ${escapeHtml(formatDemoStat(state.activityDiagnostics?.percentile10))}/${escapeHtml(formatDemoStat(state.activityDiagnostics?.percentile50))}/${escapeHtml(formatDemoStat(state.activityDiagnostics?.percentile90))} | Total ${escapeHtml(formatDemoStat(state.activityDiagnostics?.totalActivityMass ?? state.stats?.totalValue))} | Injected +${escapeHtml(formatDemoStat(state.activityDiagnostics?.injectedActivity))} | Contrast ${escapeHtml(state.activityDiagnostics?.contrastEnhanced ? `on ${formatDemoStat(state.activityDiagnostics?.contrastStrength)}` : 'off')} | Decay -${escapeHtml(formatDemoStat(state.activityDiagnostics?.activityLostToDecay))} | Depletion -${escapeHtml(formatDemoStat(state.activityDiagnostics?.activityLostToDepletion))}${state.activityDiagnostics?.diagnosticWarnings?.length ? ` | Warnings ${escapeHtml(state.activityDiagnostics.diagnosticWarnings.join(', '))}` : ''}</small>
+        <small>${escapeHtml(state.eventLikelihoodLabel ?? roiEventLikelihoodLabel(state.eventLikelihood))} ${escapeHtml(state.eventLikelihoodDynamics === 'dynamic' ? `${roiTemporalPatternLabel(state.eventLikelihoodTemporalPattern)} / ${roiLikelihoodSpatialEvolutionLabel(state.eventLikelihoodSpatialEvolution)}` : 'Static')} / ${escapeHtml(state.spatialPatternLabel ?? roiPureSpatialPatternLabel(state.spatialPattern))} / ${escapeHtml(state.valueDistributionLabel ?? roiValueDistributionLabel(state.valueDistribution))} / ${escapeHtml(state.temporalPatternLabel ?? roiTemporalPatternLabel(state.temporalPattern))} / ${escapeHtml(state.spatialEvolutionLabel ?? roiSpatialEvolutionLabel(state.spatialEvolution ?? state.patternEvolution))} / ${escapeHtml(stateModelLabel)} | BBox ${escapeHtml(formatPercent(state.activityDiagnostics?.activeBoundingBoxCoverage))} | Components ${escapeHtml(String(state.activityDiagnostics?.connectedComponentCount ?? 0))} | Hotspots ${escapeHtml(String(state.activityDiagnostics?.activeHotspotCount ?? state.activityDiagnostics?.hotspotComponentCount ?? 0))} | L/S corr ${escapeHtml(formatDemoStat(state.activityDiagnostics?.likelihoodSampleCorrelation))} | P10/P50/P90 ${escapeHtml(formatDemoStat(state.activityDiagnostics?.percentile10))}/${escapeHtml(formatDemoStat(state.activityDiagnostics?.percentile50))}/${escapeHtml(formatDemoStat(state.activityDiagnostics?.percentile90))} | Total ${escapeHtml(formatDemoStat(state.activityDiagnostics?.totalActivityMass ?? state.stats?.totalValue))} | Injected +${escapeHtml(formatDemoStat(state.activityDiagnostics?.injectedActivity))} | Contrast ${escapeHtml(state.activityDiagnostics?.contrastEnhanced ? `on ${formatDemoStat(state.activityDiagnostics?.contrastStrength)}` : 'off')} | Decay -${escapeHtml(formatDemoStat(state.activityDiagnostics?.activityLostToDecay))} | Depletion -${escapeHtml(formatDemoStat(state.activityDiagnostics?.activityLostToDepletion))}${state.activityDiagnostics?.diagnosticWarnings?.length ? ` | Warnings ${escapeHtml(state.activityDiagnostics.diagnosticWarnings.join(', '))}` : ''}</small>
       </section>
       <section class="console-section">
         <h2>Data Export</h2>
