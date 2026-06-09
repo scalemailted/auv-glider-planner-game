@@ -2,7 +2,7 @@ import { CAMPAIGN_LEVELS } from '../core/campaign/CampaignLevels.js';
 import { shortInstanceId } from '../core/identity/GameInstanceId.js';
 import { formatMetric } from '../core/evaluation/PlanComparison.js';
 import { FLOW_DEMO_BOUNDARY_MODES, FLOW_DEMO_CYCLE_DURATIONS, FLOW_DEMO_DYNAMIC_COMPLEXITY_LEVELS, FLOW_DEMO_EVOLUTION_BEHAVIORS, FLOW_DEMO_EVOLUTION_PATTERNS, FLOW_DEMO_EVOLUTION_SPEEDS, FLOW_DEMO_FIELD_MODES, FLOW_DEMO_LAYER_INFLUENCES, FLOW_DEMO_MAGNITUDE_SCALES, FLOW_DEMO_PARTICLE_SPEEDS, FLOW_DEMO_PRESET_CHOICES, FLOW_DEMO_SPATIAL_MOTIONS, FLOW_DEMO_SPATIAL_MOTION_SPEEDS, FLOW_DEMO_TERRAIN_MODES, FLOW_DEMO_VARIATION_LEVELS, normalizeAdditiveLayers } from '../core/demo/FlowFieldDemo.js';
-import { ROI_DEMO_DISTRIBUTIONS, ROI_DEMO_SPATIAL_PATTERNS, ROI_DEMO_TEMPORAL_BEHAVIORS, ROI_DEMO_TIME_MODES, roiDistributionLabel, sampleSpatialPatternLabel, sampleTemporalBehaviorLabel } from '../core/demo/DemoRoiFields.js';
+import { ROI_DEMO_DISTRIBUTIONS, ROI_DEMO_SAMPLE_ONLY_DISTRIBUTIONS, ROI_DEMO_SPATIAL_PATTERNS, ROI_DEMO_TEMPORAL_BEHAVIORS, ROI_DEMO_TIME_MODES, ROI_DEMO_TEMPORAL_PATTERNS, ROI_DEMO_EVOLUTION_MODELS, ROI_DEMO_DYNAMIC_COMPLEXITY, roiDistributionLabel, roiTemporalPatternLabel, roiEvolutionModelLabel, sampleSpatialPatternLabel, sampleTemporalBehaviorLabel } from '../core/demo/DemoRoiFields.js';
 import { EXPERIENCE_MODES, getExperienceModeDefaults } from '../core/experience/ExperienceMode.js';
 import { getVectorPresetConfig } from '../core/generation/VectorFieldPresets.js';
 
@@ -297,14 +297,14 @@ export class MissionConsole {
       <section class="console-status">
         <span>${escapeHtml(state.status ?? 'ROI field')}</span>
         <strong>${escapeHtml(state.timeMode === 'dynamic' && !state.paused ? 'Animating' : state.paused ? 'Paused' : 'Static')}</strong>
-        <small>Heatmap shows value/probability regions; no mission scoring is created.</small>
+        <small>${escapeHtml(`${state.priorMode === 'prior-agnostic' ? 'Prior-agnostic baseline' : 'Evolutionary sample process'} | ${state.temporalPatternLabel ?? roiTemporalPatternLabel(state.temporalPattern)} | ${state.evolutionModelLabel ?? roiEvolutionModelLabel(state.evolutionModel)}`)}</small>
       </section>
       <section class="console-section">
-        <h2>Distribution</h2>
+        <h2>Spatial Pattern</h2>
         <label class="compact-field">
-          Scheme
+          Distribution
           <select id="roi-demo-distribution">
-            ${ROI_DEMO_DISTRIBUTIONS.map((distribution) => `<option value="${escapeAttr(distribution)}" ${state.distribution === distribution ? 'selected' : ''}>${escapeHtml(roiDistributionLabel(distribution))}</option>`).join('')}
+            ${ROI_DEMO_SAMPLE_ONLY_DISTRIBUTIONS.map((distribution) => `<option value="${escapeAttr(distribution)}" ${state.distribution === distribution ? 'selected' : ''}>${escapeHtml(roiDistributionLabel(distribution))}</option>`).join('')}
           </select>
         </label>
         <label class="compact-field">
@@ -318,9 +318,10 @@ export class MissionConsole {
           <input id="roi-demo-seed" type="text" value="${escapeAttr(state.seed ?? 'anchor-roi-demo')}" />
         </label>
         <button data-action="regenerate" class="console-button">Regenerate</button>
+        <div class="hud-muted">Current-dependent plume options are handled in Coupled Fields Demo.</div>
       </section>
       <section class="console-section">
-        <h2>Shape</h2>
+        <h2>Spatial Detail</h2>
         <label class="compact-field">
           Hotspot Count
           <input id="roi-demo-hotspots" type="range" min="1" max="8" step="1" value="${escapeAttr(state.hotspotCount ?? 4)}" />
@@ -333,7 +334,7 @@ export class MissionConsole {
         <div class="hud-muted">Noise ${escapeHtml(Number(state.noise ?? 0.15).toFixed(2))}</div>
       </section>
       <section class="console-section">
-        <h2>Time</h2>
+        <h2>Temporal Pattern</h2>
         <label class="compact-field">
           Time Mode
           <select id="roi-demo-time-mode">
@@ -341,11 +342,30 @@ export class MissionConsole {
           </select>
         </label>
         <label class="compact-field">
-          Temporal Behavior
-          <select id="roi-demo-temporal-behavior">
-            ${ROI_DEMO_TEMPORAL_BEHAVIORS.map((behavior) => `<option value="${escapeAttr(behavior)}" ${state.temporalBehavior === behavior ? 'selected' : ''}>${escapeHtml(sampleTemporalBehaviorLabel(behavior))}</option>`).join('')}
+          Temporal Pattern
+          <select id="roi-demo-temporal-pattern">
+            ${ROI_DEMO_TEMPORAL_PATTERNS.map((pattern) => `<option value="${escapeAttr(pattern)}" ${state.temporalPattern === pattern ? 'selected' : ''}>${escapeHtml(roiTemporalPatternLabel(pattern))}</option>`).join('')}
           </select>
         </label>
+      </section>
+      <section class="console-section">
+        <h2>Evolution Model</h2>
+        <label class="compact-field">
+          Evolution Model
+          <select id="roi-demo-evolution-model">
+            ${ROI_DEMO_EVOLUTION_MODELS.map((model) => `<option value="${escapeAttr(model)}" ${state.evolutionModel === model ? 'selected' : ''}>${escapeHtml(roiEvolutionModelLabel(model))}</option>`).join('')}
+          </select>
+        </label>
+        <label class="compact-field">
+          Dynamic Complexity
+          <select id="roi-demo-dynamic-complexity">
+            ${ROI_DEMO_DYNAMIC_COMPLEXITY.map((level) => `<option value="${escapeAttr(level)}" ${state.dynamicComplexity === level ? 'selected' : ''}>${escapeHtml(dynamicComplexityLabel(level))}</option>`).join('')}
+          </select>
+        </label>
+        <div class="hud-muted">${escapeHtml(state.priorMode === 'prior-agnostic' ? 'Prior-agnostic: value is computed directly from x, y, and demo time.' : 'Evolutionary: prior activity shapes current and future value.')}</div>
+      </section>
+      <section class="console-section">
+        <h2>Forecast / View</h2>
         <label class="compact-field">
           Forecast / Truth
           <select id="roi-demo-forecast-view">
@@ -362,7 +382,7 @@ export class MissionConsole {
       <section class="console-status">
         <span>Field Stats</span>
         <strong>Max ${escapeHtml(formatDemoStat(state.stats?.max))} | Mean ${escapeHtml(formatDemoStat(state.stats?.mean))}</strong>
-        <small>${escapeHtml(state.spatialPatternLabel ?? sampleSpatialPatternLabel(state.spatialPattern))} / ${escapeHtml(state.temporalBehaviorLabel ?? sampleTemporalBehaviorLabel(state.temporalBehavior))} | Total value ${escapeHtml(formatDemoStat(state.stats?.totalValue))}</small>
+        <small>${escapeHtml(state.spatialPatternLabel ?? sampleSpatialPatternLabel(state.spatialPattern))} / ${escapeHtml(state.temporalPatternLabel ?? roiTemporalPatternLabel(state.temporalPattern))} / ${escapeHtml(state.evolutionModelLabel ?? roiEvolutionModelLabel(state.evolutionModel))} | Total value ${escapeHtml(formatDemoStat(state.stats?.totalValue))}</small>
       </section>
       <section class="console-footer">
         <button data-action="menu" class="console-button secondary">Main Menu</button>
@@ -375,7 +395,10 @@ export class MissionConsole {
     this.root.querySelector('#roi-demo-hotspots')?.addEventListener('input', (event) => handlers.hotspotCount?.(event.target.value));
     this.root.querySelector('#roi-demo-noise')?.addEventListener('input', (event) => handlers.noise?.(event.target.value));
     this.root.querySelector('#roi-demo-time-mode')?.addEventListener('change', (event) => handlers.timeMode?.(event.target.value));
+    this.root.querySelector('#roi-demo-temporal-pattern')?.addEventListener('change', (event) => handlers.temporalPattern?.(event.target.value));
     this.root.querySelector('#roi-demo-temporal-behavior')?.addEventListener('change', (event) => handlers.temporalBehavior?.(event.target.value));
+    this.root.querySelector('#roi-demo-evolution-model')?.addEventListener('change', (event) => handlers.evolutionModel?.(event.target.value));
+    this.root.querySelector('#roi-demo-dynamic-complexity')?.addEventListener('change', (event) => handlers.dynamicComplexity?.(event.target.value));
     this.root.querySelector('#roi-demo-forecast-view')?.addEventListener('change', (event) => handlers.forecastView?.(event.target.value));
     this.root.querySelector('#roi-demo-time-speed')?.addEventListener('change', (event) => handlers.timeSpeedScale?.(event.target.value));
     this.bind({

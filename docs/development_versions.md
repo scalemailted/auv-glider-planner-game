@@ -95,6 +95,7 @@ Challenge Mode also persists `missionMode`. Mission modes are player-facing obje
 - Added Mission Mode presets that map research concepts such as coverage planning, informative path planning, event interception, and energy-aware routing into player-facing objectives.
 - Split Challenge Mode setup into a left Mission Mode Navigator, a selected-mission briefing/detail screen for strategy/setup/environment summary, and a compact right Mission Snapshot instead of pre-mission waypoint UI.
 - Added `sampleFieldConfig` metadata and generated sample-field behaviors for static, hotspot, burst, moving, current-advected, random, neighbor-coupled, plume, channel, gradient, and texture-like value fields where configured.
+- Refactored the Sample / ROI Field Demo taxonomy into Temporal Pattern, Spatial Pattern, and Evolution Model controls with explicit prior-agnostic versus evolutionary labels. See [sample_fields_demo.md](sample_fields_demo.md).
 - Added segment contribution grades and route-quality summaries so manual, Greedy Planner, and imported-solver routes can be explained with the same vocabulary.
 - Added explicit waypoint semantics for `navigation`, `surface`, `samplingTarget`, and `terminalCarryThrough` waypoints, while preserving old plans by defaulting missing kinds to `navigation`.
 - Added semantic timeline events for navigation intent, surface/update windows, sampling targets, and terminal carry-through outcomes while preserving existing `waypointReached` and `missedWaypoint` events.

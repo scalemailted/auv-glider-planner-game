@@ -1,13 +1,18 @@
 import {
   createDemoRoiField,
   roiDistributionLabel,
+  roiTemporalPatternLabel,
+  roiEvolutionModelLabel,
   sampleSpatialPatternLabel,
   sampleTemporalBehaviorLabel,
   roiDemoDistributionDefaults,
   normalizeRoiDemoDistribution,
   normalizeRoiDemoSpatialPattern,
   normalizeRoiDemoTemporalBehavior,
-  normalizeRoiDemoTimeMode
+  normalizeRoiDemoTimeMode,
+  normalizeRoiDemoTemporalPattern,
+  normalizeRoiDemoEvolutionModel,
+  normalizeRoiDemoDynamicComplexity
 } from '../../../core/demo/DemoRoiFields.js';
 
 const PhaserScene = globalThis.Phaser?.Scene ?? class {};
@@ -23,7 +28,10 @@ export class RoiGeneratorDemoScene extends PhaserScene {
     this.noise = 0.15;
     this.timeMode = 'dynamic';
     this.spatialPattern = 'multiHotspot';
+    this.temporalPattern = 'bursty';
     this.temporalBehavior = 'bursty';
+    this.evolutionModel = 'growthDecay';
+    this.dynamicComplexity = 'medium';
     this.forecastView = 'forecast';
     this.demoTime = 0;
     this.timeSpeedScale = 1;
@@ -43,6 +51,9 @@ export class RoiGeneratorDemoScene extends PhaserScene {
     this.noise = finiteNumber(data.noise, 0.15);
     this.timeMode = normalizeRoiDemoTimeMode(data.timeMode ?? 'dynamic');
     this.spatialPattern = normalizeRoiDemoSpatialPattern(data.spatialPattern ?? distributionDefaults.spatialPattern);
+    this.temporalPattern = normalizeRoiDemoTemporalPattern(data.temporalPattern ?? distributionDefaults.temporalPattern);
+    this.evolutionModel = normalizeRoiDemoEvolutionModel(data.evolutionModel ?? distributionDefaults.evolutionModel);
+    this.dynamicComplexity = normalizeRoiDemoDynamicComplexity(data.dynamicComplexity ?? 'medium');
     this.temporalBehavior = normalizeRoiDemoTemporalBehavior(data.temporalBehavior ?? distributionDefaults.temporalBehavior);
     this.forecastView = normalizeForecastView(data.forecastView ?? 'forecast');
     this.timeSpeedScale = finiteNumber(data.timeSpeedScale, 1);
@@ -109,7 +120,10 @@ export class RoiGeneratorDemoScene extends PhaserScene {
       noise: this.noise,
       timeMode: this.timeMode,
       spatialPattern: this.spatialPattern,
+      temporalPattern: this.temporalPattern,
       temporalBehavior: this.temporalBehavior,
+      evolutionModel: this.evolutionModel,
+      dynamicComplexity: this.dynamicComplexity,
       forecastView: this.forecastView,
       timeSpeedScale: this.timeSpeedScale,
       playbackDirection: this.playbackDirection,
@@ -134,8 +148,14 @@ export class RoiGeneratorDemoScene extends PhaserScene {
       timeMode: this.timeMode,
       spatialPattern: this.field?.spatialPattern ?? this.spatialPattern,
       spatialPatternLabel: sampleSpatialPatternLabel(this.field?.spatialPattern ?? this.spatialPattern),
+      temporalPattern: this.field?.temporalPattern ?? this.temporalPattern,
+      temporalPatternLabel: roiTemporalPatternLabel(this.field?.temporalPattern ?? this.temporalPattern),
       temporalBehavior: this.field?.temporalBehavior ?? this.temporalBehavior,
       temporalBehaviorLabel: sampleTemporalBehaviorLabel(this.field?.temporalBehavior ?? this.temporalBehavior),
+      evolutionModel: this.field?.evolutionModel ?? this.evolutionModel,
+      evolutionModelLabel: roiEvolutionModelLabel(this.field?.evolutionModel ?? this.evolutionModel),
+      dynamicComplexity: this.field?.dynamicComplexity ?? this.dynamicComplexity,
+      priorMode: this.field?.priorMode,
       forecastView: this.forecastView,
       timeSpeedScale: this.timeSpeedScale,
       playbackDirection: this.playbackDirection,
@@ -148,7 +168,9 @@ export class RoiGeneratorDemoScene extends PhaserScene {
         this.scene.restart(this.sceneConfig({
           distribution,
           spatialPattern: defaults.spatialPattern,
+          temporalPattern: defaults.temporalPattern,
           temporalBehavior: defaults.temporalBehavior,
+          evolutionModel: defaults.evolutionModel,
           timeMode: defaults.temporalBehavior === 'static' ? 'static' : this.timeMode,
           demoTime: 0
         }));
@@ -161,7 +183,10 @@ export class RoiGeneratorDemoScene extends PhaserScene {
       noise: (noise) => this.scene.restart(this.sceneConfig({ noise: Number(noise), demoTime: 0 })),
       timeMode: (timeMode) => this.scene.restart(this.sceneConfig({ timeMode, demoTime: 0 })),
       spatialPattern: (spatialPattern) => this.scene.restart(this.sceneConfig({ spatialPattern, demoTime: 0 })),
+      temporalPattern: (temporalPattern) => this.scene.restart(this.sceneConfig({ temporalPattern, timeMode: temporalPattern === 'static' ? 'static' : 'dynamic', demoTime: 0 })),
       temporalBehavior: (temporalBehavior) => this.scene.restart(this.sceneConfig({ temporalBehavior, timeMode: temporalBehavior === 'static' ? 'static' : 'dynamic', demoTime: 0 })),
+      evolutionModel: (evolutionModel) => this.scene.restart(this.sceneConfig({ evolutionModel, demoTime: 0 })),
+      dynamicComplexity: (dynamicComplexity) => this.scene.restart(this.sceneConfig({ dynamicComplexity, demoTime: 0 })),
       forecastView: (forecastView) => this.scene.restart(this.sceneConfig({ forecastView, demoTime: 0 })),
       timeSpeedScale: (timeSpeedScale) => {
         this.timeSpeedScale = Number(timeSpeedScale) || 1;
@@ -296,7 +321,7 @@ export class RoiGeneratorDemoScene extends PhaserScene {
     this.subtitleText?.setWordWrapWidth(Math.min(780, map.width));
     const stats = this.field?.stats ?? {};
     const dynamicText = this.timeMode === 'dynamic' ? ` | Demo Time: ${this.demoTime.toFixed(1)} hr | Playback: ${this.timeSpeedScale}x | Direction: ${this.playbackDirection === -1 ? 'Reverse' : 'Forward'}` : '';
-    this.statusText?.setText(`Distribution: ${roiDistributionLabel(this.distribution)} | Pattern: ${sampleSpatialPatternLabel(this.field?.spatialPattern ?? this.spatialPattern)} | Temporal: ${sampleTemporalBehaviorLabel(this.field?.temporalBehavior ?? this.temporalBehavior)} | View: ${forecastViewLabel(this.forecastView)} | Seed: ${this.seed}${dynamicText} | Max: ${formatStat(stats.max)} | Mean: ${formatStat(stats.mean)} | Total: ${formatStat(stats.totalValue)}`);
+    this.statusText?.setText(`Distribution: ${roiDistributionLabel(this.distribution)} | Spatial: ${sampleSpatialPatternLabel(this.field?.spatialPattern ?? this.spatialPattern)} | Temporal: ${roiTemporalPatternLabel(this.field?.temporalPattern ?? this.temporalPattern)} | Evolution: ${roiEvolutionModelLabel(this.field?.evolutionModel ?? this.evolutionModel)} | Prior: ${this.field?.priorMode ?? 'evolutionary'} | View: ${forecastViewLabel(this.forecastView)} | Seed: ${this.seed}${dynamicText} | Max: ${formatStat(stats.max)} | Mean: ${formatStat(stats.mean)} | Total: ${formatStat(stats.totalValue)}`);
     this.statusText?.setWordWrapWidth(Math.min(1040, map.width));
     this.statusText?.setPosition(margin, map.y + map.height + 18);
   }
@@ -402,7 +427,7 @@ export class RoiGeneratorDemoScene extends PhaserScene {
     if (refs.directionButton) refs.directionButton.textContent = `Direction: ${directionLabel}`;
     if (refs.pauseButton) refs.pauseButton.textContent = this.paused ? 'Resume' : 'Pause';
     if (refs.speed) refs.speed.textContent = `Playback: ${this.timeSpeedScale}x`;
-    if (refs.behavior) refs.behavior.textContent = `Behavior: ${sampleTemporalBehaviorLabel(this.temporalBehavior)}`;
+    if (refs.behavior) refs.behavior.textContent = `Behavior: ${roiTemporalPatternLabel(this.temporalPattern)}`;
   }
 
   clearTransportBar() {
@@ -437,7 +462,7 @@ export class RoiGeneratorDemoScene extends PhaserScene {
       }
       return;
     }
-    const key = `${this.selectedCell.col},${this.selectedCell.row}:${this.timeMode}:${this.temporalBehavior}:${this.forecastView}:${this.paused}`;
+    const key = `${this.selectedCell.col},${this.selectedCell.row}:${this.timeMode}:${this.temporalPattern}:${this.evolutionModel}:${this.forecastView}:${this.paused}`;
     if (!force && key === this.lastInspectorKey && Math.abs(this.demoTime - this.lastInspectorRenderTime) < 0.25) return;
     this.lastInspectorKey = key;
     this.lastInspectorRenderTime = this.demoTime;
@@ -468,7 +493,12 @@ export class RoiGeneratorDemoScene extends PhaserScene {
       mode: this.timeMode,
       distribution: this.distribution,
       spatialPattern: this.field?.spatialPattern ?? this.spatialPattern,
+      temporalPattern: this.field?.temporalPattern ?? this.temporalPattern,
       temporalBehavior: this.field?.temporalBehavior ?? this.temporalBehavior,
+      evolutionModel: this.field?.evolutionModel ?? this.evolutionModel,
+      dynamicComplexity: this.field?.dynamicComplexity ?? this.dynamicComplexity,
+      priorMode: this.field?.priorMode ?? (this.evolutionModel === 'priorAgnostic' ? 'prior-agnostic' : 'evolutionary'),
+      behavior: this.field?.behavior,
       forecastView: this.forecastView,
       uncertainty,
       depleted,
@@ -573,10 +603,15 @@ function roiInspectorHtml(inspection) {
         ${metricRows([
           ['field mode', inspection.mode === 'dynamic' ? 'Dynamic' : 'Static'],
           ['spatial pattern', sampleSpatialPatternLabel(inspection.spatialPattern)],
-          ['temporal behavior', sampleTemporalBehaviorLabel(inspection.temporalBehavior)],
+          ['temporal pattern', roiTemporalPatternLabel(inspection.temporalPattern)],
+          ['evolution model', roiEvolutionModelLabel(inspection.evolutionModel)],
+          ['prior mode', inspection.priorMode],
+          ['burst phase', inspection.behavior?.burstPhase ?? 'n/a'],
+          ['dynamic complexity', complexityLabel(inspection.dynamicComplexity)],
           ['distribution', roiDistributionLabel(inspection.distribution)],
           ['view', forecastViewLabel(inspection.forecastView)]
         ])}
+        <small>${escapeHtml(inspection.behavior?.explanation ?? '')}</small>
       </div>
       <div class="cell-inspector-card">
         <span>Sampling Semantics</span>
@@ -584,7 +619,7 @@ function roiInspectorHtml(inspection) {
           ['uncertainty', formatStat(inspection.uncertainty)],
           ['depleted value', formatStat(inspection.depleted)],
           ['hotspot membership', inspection.hotspotMembership],
-          ['neighbor influence', inspection.sampleFieldConfig?.neighborInfluence?.enabled ? 'enabled' : 'off'],
+          ['neighbor influence', inspection.behavior?.neighborInfluence ?? (inspection.sampleFieldConfig?.neighborInfluence?.enabled ? 'enabled' : 'off')],
           ['current coupled', inspection.sampleFieldConfig?.currentCoupling?.enabled ? 'yes' : 'no'],
           ['depletion', inspection.sampleFieldConfig?.depletion?.mode ?? 'none']
         ])}
@@ -617,6 +652,14 @@ function formatSignedStat(value) {
   const number = Number(value);
   if (!Number.isFinite(number)) return 'N/A';
   return `${number >= 0 ? '+' : ''}${number.toFixed(3)}`;
+}
+
+function complexityLabel(value) {
+  return {
+    low: 'Low',
+    medium: 'Medium',
+    high: 'High'
+  }[value] ?? 'Medium';
 }
 
 function estimateUncertainty(cell, seed, time) {

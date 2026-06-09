@@ -22,7 +22,7 @@ It is not a mission, planner, leaderboard mode, or scoring mode. It only visuali
 - `Hotspot Count`: changes the number of target regions used by hotspot-style distributions.
 - `Noise`: adds seeded texture to the field.
 - `Time Mode`: chooses Static or Dynamic field behavior.
-- `Temporal Behavior`: chooses Static, Periodic, Bursty, Moving Hotspot, Diffusive, Current-Advected, Random, or Neighbor-Coupled behavior where supported by the shared sampler.
+- `Temporal Behavior`: legacy label for the newer Temporal Pattern / Evolution Model split. Current sample-only behavior covers static, periodic, bursty, moving, diffusive, random, and neighbor-coupled styles where supported by the shared sampler. Current-advected behavior is reserved for the Coupled Fields Demo.
 - `Forecast / Truth`: switches between forecast-biased, truth, uncertainty, and depleted-value views.
 - `Time Speed`: controls playback speed for dynamic demo time.
 - Bottom `Pause / Resume`: pauses or resumes dynamic evolution.
@@ -41,14 +41,16 @@ It is not a mission, planner, leaderboard mode, or scoring mode. It only visuali
 - `Bimodal Hotspots`: two major high-value modes.
 - `Moving Hotspot`: a high-value region that translates over time.
 - `Bursty Bloom`: high-value regions that grow, peak, and decay.
-- `Current-Advected Plume`: plume-like value transported by a synthetic demo current frame.
+- `Current-Advected Plume`: legacy coupled-field behavior. It is not shown in the sample-only distribution dropdown; use Coupled Fields Demo for plume-like value transported by a current field.
 - `Nonuniform Random`: seeded random-looking texture with spatially varying amplitude.
 
 ## Static vs Dynamic Sample Fields
 
-Static mode samples the selected field at time zero. Dynamic mode passes advancing demo time into the shared sample-field generator through `createDemoRoiField({ time: demoTime, ... })`, so periodic, bursty, moving, diffusive, current-advected, random, and neighbor-coupled fields visibly change over time.
+Static mode samples the selected field at time zero. Dynamic mode passes advancing demo time into the shared sample-field generator through `createDemoRoiField({ time: demoTime, ... })`, so periodic, bursty, moving, diffusive, random, and neighbor-coupled sample-only fields visibly change over time. Current-advected sample behavior is demonstrated in the Coupled Fields Demo.
 
 The default is intentionally dynamic and visually active: Bursty Bloom distribution, Multi Hotspot spatial pattern, Bursty temporal behavior, and Forecast view.
+
+The left panel now separates sample behavior into `Temporal Pattern`, `Spatial Pattern`, and `Evolution Model`. The inspector labels each selected cell as `prior-agnostic` or `evolutionary` so users can tell whether value is computed directly from `x,y,t` or whether prior activity is part of the concept. See [Sample / ROI Field Demo](sample_fields_demo.md) for the taxonomy.
 
 ## Cell Inspector
 
