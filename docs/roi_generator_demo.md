@@ -23,7 +23,7 @@ It is not a mission, planner, leaderboard mode, uncertainty demo, forecast/truth
 - `Noise / Texture`: adds seeded texture to the field.
 - `Time Mode`: chooses Static or Dynamic field behavior.
 - `Temporal Pattern`: controls static, sustained, periodic, bursty, intermittent, random-pulse, or long-cycle intensity changes.
-- `Pattern Evolution`: controls fixed, moving, grow/fade, diffuse/spread, neighbor activation, split/merge, or revisit/recover behavior.
+- `Spatial Evolution`: controls stationary, continuous drift, discrete jump, random walk, or neighbor propagation behavior.
 - `State Model`: selects Time-Indexed, State-Evolving, or History-Aware semantics.
 - `Sampling Effects`: selects none, hard, soft, neighborhood depletion, or knowledge-decay / revisit-recovery behavior.
 - `Display`: switches between Sample Value, Depleted Value, Freshness / Revisit Value, and Raw Base Value.
@@ -50,9 +50,9 @@ It is not a mission, planner, leaderboard mode, uncertainty demo, forecast/truth
 
 Static mode samples the selected field at time zero. Dynamic mode passes advancing demo time into the shared sample-field generator through `createDemoRoiField({ time: demoTime, ... })`, so periodic, bursty, moving, diffusive, random, and neighbor-coupled sample-only fields visibly change over time. Current-advected sample behavior is demonstrated in the Coupled Fields Demo.
 
-The default is intentionally dynamic and visually active: Clustered Field, Cluster Count 3, Medium Cluster Size, Bursty temporal pattern, Grow / Fade pattern evolution, State-Evolving state model, Soft Depletion, and Sample Value display.
+The default is intentionally dynamic and visually active: Clustered Field, Cluster Count 3, Medium Cluster Size, Bursty temporal pattern, Stationary spatial evolution, State-Evolving state model, Soft Depletion, and Sample Value display.
 
-The left panel separates sample behavior into Spatial Field, Spatial Parameters, Temporal Pattern, Pattern Evolution, State Model, Sampling Effects, and Display. The inspector labels each selected cell as Time-Indexed, State-Evolving, or History-Aware so users can tell whether value is computed directly from `x,y,t`, depends on the current field state, or depends on longer sampling/observation history. See [Sample / ROI Field Demo](sample_fields_demo.md) for the taxonomy and motivation.
+The left panel separates sample behavior into Spatial Field, Spatial Parameters, Temporal Pattern, Spatial Evolution, State Model, Sampling Effects, and Display. The inspector labels each selected cell as Time-Indexed, Frequency-Based, State-Evolving, or History-Aware so users can tell whether value is computed directly from `x,y,t`, follows a cycle, depends on current field state, or depends on longer sampling/observation history. See [Sample / ROI Field Demo](sample_fields_demo.md) for the taxonomy and motivation.
 
 ## Cell Inspector
 
@@ -61,7 +61,7 @@ Click any heatmap cell to select it. The right panel updates live with:
 - cell coordinates
 - sample value and normalized value
 - trend over the previous simulated second
-- field mode, displayed layer, spatial pattern, cluster count, cluster size, temporal pattern, pattern evolution, and display layer
+- field mode, displayed layer, spatial pattern, cluster count, cluster size, temporal pattern, spatial evolution, and display layer
 - raw base value
 - depleted value
 - hotspot membership
@@ -71,7 +71,7 @@ Click any heatmap cell to select it. The right panel updates live with:
 
 The center viewport renders a heatmap over a fixed diagnostic grid. Cooler cells are lower value, warmer cells are higher value, and outlined markers show high-value cells that a greedy planner might be tempted to chase.
 
-The status line reports spatial pattern, temporal pattern, pattern evolution, state model, depletion, display mode, seed, demo time when dynamic, and basic field statistics such as max, mean, and total value.
+The status line reports spatial pattern, temporal pattern, spatial evolution, state model, sampling effect, display mode, seed, demo time when dynamic, and basic field statistics such as max, mean, and total value.
 
 ## Implementation
 
@@ -85,7 +85,7 @@ Relevant files:
 
 The demo uses the shared sample-field config and ROI generator path where practical. `DemoRoiFields.js` normalizes pure sample controls into `SampleFieldConfig`, then calls `generateROI` / `generateSampleField` for cluster, burst, moving, diffuse, random, depletion, and neighbor-coupled sample-value behavior.
 
-The demo uses seeded randomness and does not call `Math.random()` for per-frame field generation. The same seed, spatial pattern, cluster count, texture, time mode, temporal pattern, pattern evolution, depletion, display mode, and demo time reproduce the same heatmap.
+The demo uses seeded randomness and does not call `Math.random()` for per-frame field generation. The same seed, spatial pattern, cluster count, texture, time mode, temporal pattern, spatial evolution, depletion, display mode, and demo time reproduce the same heatmap.
 
 ## Limitations
 

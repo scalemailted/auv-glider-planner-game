@@ -290,7 +290,7 @@ test('campaign planning smoke flow reaches debrief', async ({ page }) => {
   await expect(page.locator('#roi-demo-spatial-pattern')).toBeVisible();
   await expect(page.locator('#roi-demo-cluster-size')).toBeVisible();
   await expect(page.locator('#roi-demo-temporal-pattern')).toBeVisible();
-  await expect(page.locator('#roi-demo-pattern-evolution')).toBeVisible();
+  await expect(page.locator('#roi-demo-spatial-evolution')).toBeVisible();
   await expect(page.locator('#roi-demo-state-model')).toBeVisible();
   await expect(page.locator('#roi-demo-depletion-mode')).toBeVisible();
   await expect(page.locator('#roi-demo-display-mode')).toBeVisible();
@@ -298,7 +298,7 @@ test('campaign planning smoke flow reaches debrief', async ({ page }) => {
   await expect(page.locator('#mission-console')).toContainText('Spatial Field');
   await expect(page.locator('#mission-console')).toContainText('Spatial Parameters');
   await expect(page.locator('#mission-console')).toContainText('Temporal Pattern');
-  await expect(page.locator('#mission-console')).toContainText('Pattern Evolution');
+  await expect(page.locator('#mission-console')).toContainText('Spatial Evolution');
   await expect(page.locator('#mission-console')).toContainText('Sampling Effects');
   await expect(page.locator('#mission-console')).toContainText('Display');
   await expect(page.locator('#mission-console')).toContainText('State Model');
@@ -319,6 +319,7 @@ test('campaign planning smoke flow reaches debrief', async ({ page }) => {
   await expect(page.locator('#roi-demo-spatial-pattern')).not.toContainText('Multiple Clusters');
   await expect(page.locator('#roi-demo-spatial-pattern')).not.toContainText('Bimodal');
   await expect(page.locator('#roi-demo-cluster-size option')).toHaveText(['Tight', 'Medium', 'Wide']);
+  await expect(page.locator('#roi-demo-spatial-evolution option')).toHaveText(['Stationary', 'Continuous Drift', 'Discrete Jump', 'Random Walk', 'Neighbor Propagation']);
   await expect(page.locator('#roi-demo-display-mode option')).toHaveText(['Sample Value', 'Depleted Value', 'Freshness / Revisit Value', 'Raw Base Value']);
   await expect(page.locator('#mission-console')).not.toContainText('Forecast / Truth');
   await expect(page.locator('#mission-console')).not.toContainText('Uncertainty');
@@ -353,7 +354,7 @@ test('campaign planning smoke flow reaches debrief', async ({ page }) => {
   await expect(page.locator('#waypoint-timeline')).toContainText('cluster count');
   await expect(page.locator('#waypoint-timeline')).toContainText('cluster size');
   await expect(page.locator('#waypoint-timeline')).toContainText('temporal pattern');
-  await expect(page.locator('#waypoint-timeline')).toContainText('pattern evolution');
+  await expect(page.locator('#waypoint-timeline')).toContainText('spatial evolution');
   await expect(page.locator('#waypoint-timeline')).toContainText('state model');
   await page.locator('#roi-demo-spatial-pattern').selectOption('clusteredField');
   await expect.poll(() => page.evaluate(() => window.anchorGame.phaser.scene.getScene('RoiGeneratorDemoScene').spatialPattern)).toBe('clusteredField');
@@ -376,8 +377,14 @@ test('campaign planning smoke flow reaches debrief', async ({ page }) => {
   await page.locator('#roi-demo-state-model').selectOption('timeIndexed');
   await expect.poll(() => page.evaluate(() => window.anchorGame.phaser.scene.getScene('RoiGeneratorDemoScene').stateModel)).toBe('timeIndexed');
   await expect(page.locator('#bottom-timeline')).toContainText('Behavior: Periodic / Cyclic');
-  await page.locator('#roi-demo-pattern-evolution').selectOption('diffusion');
-  await expect.poll(() => page.evaluate(() => window.anchorGame.phaser.scene.getScene('RoiGeneratorDemoScene').patternEvolution)).toBe('diffusion');
+  await page.locator('#roi-demo-spatial-evolution').selectOption('neighborPropagation');
+  await expect.poll(() => page.evaluate(() => window.anchorGame.phaser.scene.getScene('RoiGeneratorDemoScene').spatialEvolution)).toBe('neighborPropagation');
+  await page.locator('#roi-demo-spatial-evolution').selectOption('continuousDrift');
+  await expect.poll(() => page.evaluate(() => window.anchorGame.phaser.scene.getScene('RoiGeneratorDemoScene').spatialEvolution)).toBe('continuousDrift');
+  await page.locator('#roi-demo-spatial-evolution').selectOption('discreteJump');
+  await expect.poll(() => page.evaluate(() => window.anchorGame.phaser.scene.getScene('RoiGeneratorDemoScene').spatialEvolution)).toBe('discreteJump');
+  await page.locator('#roi-demo-spatial-evolution').selectOption('randomWalk');
+  await expect.poll(() => page.evaluate(() => window.anchorGame.phaser.scene.getScene('RoiGeneratorDemoScene').spatialEvolution)).toBe('randomWalk');
   await page.locator('#roi-demo-depletion-mode').selectOption('soft');
   await expect.poll(() => page.evaluate(() => window.anchorGame.phaser.scene.getScene('RoiGeneratorDemoScene').depletionMode)).toBe('soft');
   await page.locator('#roi-demo-display-mode').selectOption('depletedValue');

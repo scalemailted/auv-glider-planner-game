@@ -3,6 +3,7 @@ import {
   roiDepletionModeLabel,
   roiDisplayModeLabel,
   roiPatternEvolutionLabel,
+  roiSpatialEvolutionLabel,
   roiPureSpatialPatternLabel,
   roiTemporalPatternLabel,
   roiEvolutionModelLabel,
@@ -35,15 +36,16 @@ export class RoiGeneratorDemoScene extends PhaserScene {
     this.transportRefs = {};
     this.distribution = 'burstyBloom';
     this.seed = 'anchor-roi-demo';
-    this.hotspotCount = 4;
+    this.hotspotCount = 3;
     this.clusterSize = 'medium';
     this.noise = 0.15;
     this.timeMode = 'dynamic';
     this.spatialPattern = 'clusteredField';
     this.temporalPattern = 'bursty';
     this.temporalBehavior = 'bursty';
-    this.evolutionModel = 'growthDecay';
-    this.patternEvolution = 'growthDecay';
+    this.evolutionModel = 'stationary';
+    this.patternEvolution = 'stationary';
+    this.spatialEvolution = 'stationary';
     this.stateModel = 'stateEvolving';
     this.depletionMode = 'soft';
     this.displayMode = 'sampleValue';
@@ -63,14 +65,15 @@ export class RoiGeneratorDemoScene extends PhaserScene {
     this.distribution = normalizeRoiDemoDistribution(data.distribution ?? 'burstyBloom');
     const distributionDefaults = roiDemoDistributionDefaults(this.distribution);
     this.seed = data.seed ?? 'anchor-roi-demo';
-    this.hotspotCount = finiteNumber(data.hotspotCount, 4);
+    this.hotspotCount = finiteNumber(data.hotspotCount, 3);
     this.clusterSize = normalizeRoiDemoClusterSize(data.clusterSize ?? 'medium');
     this.noise = finiteNumber(data.noise, 0.15);
     this.timeMode = normalizeRoiDemoTimeMode(data.timeMode ?? 'dynamic');
     this.spatialPattern = normalizeRoiDemoPureSpatialPattern(data.spatialPattern ?? data.pureSpatialPattern ?? distributionDefaults.spatialPattern);
     this.temporalPattern = normalizeRoiDemoTemporalPattern(data.temporalPattern ?? distributionDefaults.temporalPattern);
-    this.evolutionModel = normalizeRoiDemoEvolutionModel(data.evolutionModel ?? distributionDefaults.evolutionModel);
-    this.patternEvolution = normalizeRoiDemoPatternEvolution(data.patternEvolution ?? data.evolutionModel ?? distributionDefaults.evolutionModel);
+    this.spatialEvolution = normalizeRoiDemoPatternEvolution(data.spatialEvolution ?? data.patternEvolution ?? data.evolutionModel ?? distributionDefaults.spatialEvolution ?? distributionDefaults.evolutionModel);
+    this.evolutionModel = this.spatialEvolution;
+    this.patternEvolution = this.spatialEvolution;
     this.stateModel = normalizeRoiDemoStateModel(data.stateModel);
     this.depletionMode = normalizeRoiDemoDepletionMode(data.depletionMode ?? 'soft');
     this.displayMode = normalizeRoiDemoDisplayMode(data.displayMode ?? 'sampleValue');
@@ -146,6 +149,7 @@ export class RoiGeneratorDemoScene extends PhaserScene {
       temporalBehavior: this.temporalBehavior,
       evolutionModel: this.evolutionModel,
       patternEvolution: this.patternEvolution,
+      spatialEvolution: this.spatialEvolution,
       stateModel: this.stateModel,
       depletionMode: this.depletionMode,
       displayMode: this.displayMode,
@@ -185,6 +189,8 @@ export class RoiGeneratorDemoScene extends PhaserScene {
       evolutionModelLabel: roiEvolutionModelLabel(this.field?.evolutionModel ?? this.evolutionModel),
       patternEvolution: this.field?.patternEvolution ?? this.patternEvolution,
       patternEvolutionLabel: roiPatternEvolutionLabel(this.field?.patternEvolution ?? this.patternEvolution),
+      spatialEvolution: this.field?.spatialEvolution ?? this.spatialEvolution,
+      spatialEvolutionLabel: roiSpatialEvolutionLabel(this.field?.spatialEvolution ?? this.spatialEvolution),
       dynamicComplexity: this.field?.dynamicComplexity ?? this.dynamicComplexity,
       stateModel: this.field?.stateModel ?? this.stateModel,
       stateModelLabel: this.field?.stateModelLabel ?? roiStateModelLabel(this.stateModel),
@@ -208,7 +214,9 @@ export class RoiGeneratorDemoScene extends PhaserScene {
           spatialPattern: defaults.spatialPattern,
           temporalPattern: defaults.temporalPattern,
           temporalBehavior: defaults.temporalBehavior,
-          evolutionModel: defaults.evolutionModel,
+          evolutionModel: defaults.spatialEvolution ?? defaults.evolutionModel,
+          patternEvolution: defaults.spatialEvolution ?? defaults.evolutionModel,
+          spatialEvolution: defaults.spatialEvolution ?? defaults.evolutionModel,
           timeMode: defaults.temporalBehavior === 'static' ? 'static' : this.timeMode,
           demoTime: 0
         }));
@@ -225,7 +233,8 @@ export class RoiGeneratorDemoScene extends PhaserScene {
       temporalPattern: (temporalPattern) => this.scene.restart(this.sceneConfig({ temporalPattern, timeMode: temporalPattern === 'static' ? 'static' : 'dynamic', demoTime: 0 })),
       temporalBehavior: (temporalBehavior) => this.scene.restart(this.sceneConfig({ temporalBehavior, timeMode: temporalBehavior === 'static' ? 'static' : 'dynamic', demoTime: 0 })),
       evolutionModel: (evolutionModel) => this.scene.restart(this.sceneConfig({ evolutionModel, demoTime: 0 })),
-      patternEvolution: (patternEvolution) => this.scene.restart(this.sceneConfig({ patternEvolution, evolutionModel: patternEvolution, demoTime: 0 })),
+      patternEvolution: (patternEvolution) => this.scene.restart(this.sceneConfig({ patternEvolution, spatialEvolution: patternEvolution, evolutionModel: patternEvolution, demoTime: 0 })),
+      spatialEvolution: (spatialEvolution) => this.scene.restart(this.sceneConfig({ spatialEvolution, patternEvolution: spatialEvolution, evolutionModel: spatialEvolution, demoTime: 0 })),
       stateModel: (stateModel) => this.scene.restart(this.sceneConfig({ stateModel, demoTime: 0 })),
       depletionMode: (depletionMode) => this.scene.restart(this.sceneConfig({ depletionMode, demoTime: 0 })),
       displayMode: (displayMode) => this.scene.restart(this.sceneConfig({ displayMode, demoTime: 0 })),
@@ -364,7 +373,7 @@ export class RoiGeneratorDemoScene extends PhaserScene {
     const stats = this.field?.stats ?? {};
     const dynamicText = this.timeMode === 'dynamic' ? ` | Demo Time: ${this.demoTime.toFixed(1)} hr | Playback: ${this.timeSpeedScale}x | Direction: ${this.playbackDirection === -1 ? 'Reverse' : 'Forward'}` : '';
     const stateModel = this.field?.stateModel ?? roiStateModelForEvolutionModel(this.field?.evolutionModel ?? this.evolutionModel);
-    this.statusText?.setText(`Spatial: ${roiPureSpatialPatternLabel(this.field?.pureSpatialPattern ?? this.spatialPattern)} | Temporal: ${roiTemporalPatternLabel(this.field?.temporalPattern ?? this.temporalPattern)} | Evolution: ${roiPatternEvolutionLabel(this.field?.patternEvolution ?? this.patternEvolution)} | State Model: ${roiStateModelLabel(stateModel)} | Depletion: ${roiDepletionModeLabel(this.field?.depletionMode ?? this.depletionMode)} | Display: ${roiDisplayModeLabel(this.field?.displayMode ?? this.displayMode)} | Seed: ${this.seed}${dynamicText} | Max: ${formatStat(stats.max)} | Mean: ${formatStat(stats.mean)} | Total: ${formatStat(stats.totalValue)}`);
+    this.statusText?.setText(`Spatial: ${roiPureSpatialPatternLabel(this.field?.pureSpatialPattern ?? this.spatialPattern)} | Temporal: ${roiTemporalPatternLabel(this.field?.temporalPattern ?? this.temporalPattern)} | Spatial Evolution: ${roiSpatialEvolutionLabel(this.field?.spatialEvolution ?? this.spatialEvolution)} | State Model: ${roiStateModelLabel(stateModel)} | Sampling: ${roiDepletionModeLabel(this.field?.depletionMode ?? this.depletionMode)} | Display: ${roiDisplayModeLabel(this.field?.displayMode ?? this.displayMode)} | Seed: ${this.seed}${dynamicText} | Max: ${formatStat(stats.max)} | Mean: ${formatStat(stats.mean)} | Total: ${formatStat(stats.totalValue)}`);
     this.statusText?.setWordWrapWidth(Math.min(1040, map.width));
     this.statusText?.setPosition(margin, map.y + map.height + 18);
   }
@@ -505,7 +514,7 @@ export class RoiGeneratorDemoScene extends PhaserScene {
       }
       return;
     }
-    const key = `${this.selectedCell.col},${this.selectedCell.row}:${this.timeMode}:${this.temporalPattern}:${this.patternEvolution}:${this.depletionMode}:${this.displayMode}:${this.clusterSize}:${this.paused}`;
+    const key = `${this.selectedCell.col},${this.selectedCell.row}:${this.timeMode}:${this.temporalPattern}:${this.spatialEvolution}:${this.depletionMode}:${this.displayMode}:${this.clusterSize}:${this.paused}`;
     if (!force && key === this.lastInspectorKey && Math.abs(this.demoTime - this.lastInspectorRenderTime) < 0.25) return;
     this.lastInspectorKey = key;
     this.lastInspectorRenderTime = this.demoTime;
@@ -543,6 +552,8 @@ export class RoiGeneratorDemoScene extends PhaserScene {
       evolutionModel: this.field?.evolutionModel ?? this.evolutionModel,
       dynamicComplexity: this.field?.dynamicComplexity ?? this.dynamicComplexity,
       patternEvolution: this.field?.patternEvolution ?? this.patternEvolution,
+      spatialEvolution: this.field?.spatialEvolution ?? this.spatialEvolution,
+      spatialEvolutionLabel: this.field?.spatialEvolutionLabel ?? roiSpatialEvolutionLabel(this.spatialEvolution),
       depletionMode: this.field?.depletionMode ?? this.depletionMode,
       displayMode: this.field?.displayMode ?? this.displayMode,
       stateModel: this.field?.stateModel ?? this.stateModel,
@@ -615,7 +626,7 @@ function roiInspectorEmptyHtml() {
         <ul>
           <li>sample value and normalized value</li>
           <li>temporal trend and hotspot membership</li>
-          <li>state model, pattern evolution, and depletion mode</li>
+          <li>state model, spatial evolution, and sampling effect</li>
           <li>raw and depleted sample-value display layers</li>
         </ul>
       </div>
@@ -641,7 +652,7 @@ function roiInspectorHtml(inspection) {
         ])}
       </div>
       <div class="cell-inspector-card">
-        <span>Field Behavior</span>
+        <span>Pattern Composition</span>
         ${metricRows([
           ['field mode', inspection.mode === 'dynamic' ? 'Dynamic' : 'Static'],
           ['displayed layer', roiDisplayModeLabel(inspection.displayMode)],
@@ -650,7 +661,7 @@ function roiInspectorHtml(inspection) {
           ['cluster size', roiClusterSizeLabel(inspection.clusterSize)],
           ['temporal pattern', roiTemporalPatternLabel(inspection.temporalPattern)],
           ['state model', inspection.stateModelLabel],
-          ['pattern evolution', roiPatternEvolutionLabel(inspection.patternEvolution)],
+          ['spatial evolution', roiSpatialEvolutionLabel(inspection.spatialEvolution)],
           ['burst phase', inspection.behavior?.burstPhase ?? 'n/a'],
           ['dynamic complexity', complexityLabel(inspection.dynamicComplexity)],
           ['cluster membership', inspection.hotspotMembership]
@@ -662,7 +673,7 @@ function roiInspectorHtml(inspection) {
         ${metricRows([
           ['raw base value', formatStat(inspection.rawBase)],
           ['depleted value', formatStat(inspection.depleted)],
-          ['depletion', roiDepletionModeLabel(inspection.depletionMode)],
+          ['sampling effect', roiDepletionModeLabel(inspection.depletionMode)],
           ['last sampled', inspection.lastSampled],
           ['recovery', inspection.recovery],
           ['neighbor influence', inspection.behavior?.neighborInfluence ?? (inspection.sampleFieldConfig?.neighborInfluence?.enabled ? 'enabled' : 'off')]

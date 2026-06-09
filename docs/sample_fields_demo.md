@@ -8,7 +8,7 @@ It teaches sample-value fields by separating field construction from process beh
 
 - what spatial shape the sample-value field has
 - how intensity changes over time
-- how the spatial pattern evolves over time
+- how the spatial distribution moves, jumps, wanders, or propagates over time
 - whether the process is time-indexed, state-evolving, or history-aware
 - how sampling, depletion, freshness, and recovery alter value
 
@@ -22,7 +22,7 @@ The center viewport renders this field as a cell heatmap. Cooler cells have lowe
 
 Earlier versions exposed a long list of named examples, but many names mixed different concepts: spatial geometry, number of clusters, temporal behavior, statistical texture, and history-aware sampling effects.
 
-The refactored demo separates these concepts. The spatial pattern describes where value appears. Spatial parameters describe how that pattern is shaped. The temporal pattern describes how intensity changes over time. Pattern evolution describes how the spatial structure changes. The state model explains whether the field is time-indexed, state-evolving, or history-aware.
+The refactored demo separates these concepts. The spatial pattern describes where value appears. Spatial parameters describe how that pattern is shaped. The temporal pattern describes how intensity changes over time. Spatial evolution describes how the spatial distribution stays fixed, drifts, jumps, wanders, or propagates. The state model explains whether the field is time-indexed, frequency-based, state-evolving, or history-aware.
 
 A two-cluster field is not a separate theory from a three-cluster field. Both are instances of a clustered field with a different cluster count. This is why the demo uses `Clustered Field` plus `Cluster Count` rather than separate Single Cluster, Bimodal, and Multi-Hotspot modes.
 
@@ -44,6 +44,18 @@ This demo does not show:
 - update assimilation
 
 Use Flow Fields Demo for `F(x,y,t)`, Coupled Fields Demo for current-dependent sample behavior, and Uncertainty / Forecast Demo for forecast/truth/uncertainty concepts.
+
+## Observable Pattern Composition
+
+The demo builds sample-value behavior from independent axes:
+
+- **Spatial Pattern:** where value appears.
+- **Temporal Pattern:** how intensity changes over time.
+- **Spatial Evolution:** how the spatial distribution moves, jumps, spreads, or propagates.
+- **State Model:** whether the process is time-indexed, frequency-based, state-evolving, or history-aware.
+- **Sampling Effect:** how observation changes future value.
+
+A bursty clustered field can behave differently depending on spatial evolution. With Stationary evolution, the same cluster grows and fades in place. With Discrete Jump, each burst can reappear elsewhere. With Continuous Drift, the cluster moves smoothly through the domain. With Random Walk, it moves by local seeded steps. With Neighbor Propagation, activity spreads from active cells to nearby cells.
 
 ## Spatial Patterns
 
@@ -85,17 +97,15 @@ Temporal Pattern answers: how does sample value intensity change over time?
 
 A temporal pattern can be dynamic without being stateful. For example, a periodic field can be evaluated directly from `S(x,y,t)`.
 
-## Pattern Evolution
+## Spatial Evolution
 
-Pattern Evolution answers: how does the spatial pattern itself change over time?
+Spatial Evolution answers: how does the spatial distribution itself change over time?
 
-- `Fixed in Place`: the spatial pattern stays put while intensity may change.
-- `Moving Feature`: sample-value features move independently of flow vectors.
-- `Grow / Fade`: clusters intensify and decay.
-- `Diffuse / Spread`: value spreads to nearby cells.
-- `Neighbor Activation`: nearby activity can activate future value.
-- `Split / Merge`: patches separate or recombine.
-- `Revisit / Recover`: station-like value returns over time.
+- `Stationary`: the pattern changes intensity but stays in the same location.
+- `Continuous Drift`: the feature moves smoothly through adjacent or intermediate locations.
+- `Discrete Jump`: the feature fades, then reappears elsewhere without continuous travel.
+- `Random Walk`: the feature center changes by small seeded local steps over time.
+- `Neighbor Propagation`: active cells influence nearby cells, spreading activity locally.
 
 Current-advected movement is not part of this demo. Use Coupled Fields Demo when the sample pattern should move because of `F(x,y,t)`.
 
@@ -104,6 +114,7 @@ Current-advected movement is not part of this demo. Use Coupled Fields Demo when
 State Model answers: what does the field depend on?
 
 - **Time-Indexed / Memoryless:** `S(x,y,t)` is computed directly from position and time. The field does not need to remember a previous state.
+- **Frequency-Based:** future behavior follows repeated cycles or frequency structure, useful for periodic, cyclic, and long-cycle patterns.
 - **State-Evolving / Markovian:** the next field state depends on the current field state, often written as `S_{t+1} = f(S_t, inputs_t)`.
 - **History-Aware / Non-Markovian:** the field depends on longer sampling or observation history, such as time since last sample or cumulative depletion.
 
@@ -117,7 +128,8 @@ Sampling effects model sample visits:
 - `Hard Depletion`: sampled cells lose most value.
 - `Soft Depletion`: sampled cells lose part of their value.
 - `Neighborhood Depletion`: nearby cells partially lose value too.
-- `Knowledge Decay / Revisit Recovery`: recently visited places cool down and stale places regain value.
+- `Freshness / Age of Information`: recently visited cells cool down; stale or unvisited cells warm over time.
+- `Knowledge Decay / Revisit Recovery`: places become valuable again after enough time passes.
 
 The `Freshness / Revisit Value` display emphasizes age-of-information behavior. Recently visited cells have lower immediate value; unvisited or stale cells warm up over time. Nearby cells may also partially cool due to spatial correlation.
 
@@ -141,9 +153,9 @@ The inspector reports:
 - spatial pattern
 - cluster count and cluster size
 - temporal pattern
-- pattern evolution
+- spatial evolution
 - state model
-- depletion mode
+- sampling effect
 - cluster/high-value membership
 - trend
 - raw base value
@@ -183,7 +195,10 @@ The pure Sample / ROI Demo keeps Linear Band and Front / Boundary only as abstra
 - `Clustered Field + Cluster Count 2`: compare splitting the fleet between two reward regions.
 - `Clustered Field + Cluster Count 5`: teach prioritization when many targets compete for limited time.
 - `Front / Boundary + Fixed`: teach edge-following and boundary-crossing sample strategies.
-- `Bursty + Grow / Fade`: teach timing a route through active and quiet windows.
+- `Clustered Field + Bursty + Stationary`: teach fixed cluster bursts.
+- `Clustered Field + Bursty + Discrete Jump`: teach reappearing event patterns.
+- `Clustered Field + Sustained + Continuous Drift`: teach migrating patches without current coupling.
+- `Patchy / Correlated Field + Sustained + Neighbor Propagation`: teach local spread.
 - `History-Aware + Knowledge Decay / Revisit Recovery`: teach freshness, revisits, and avoiding immediate resampling.
 
 ## Limitations
