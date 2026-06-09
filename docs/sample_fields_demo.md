@@ -45,13 +45,13 @@ retained value
 
 `Bursty` means activity appears in active windows and quiets between them; future bursts regenerate from `L(x,y,t)`. `Discrete Jump` means the next event source is reseeded or relocated from likelihood-biased regions. `Random Walk` keeps active regions bounded while they move by local seeded steps. `Neighbor Propagation` spreads activity locally and can activate likely nearby cells instead of only smearing values downward.
 
-The left console and Phaser status line include compact activity diagnostics:
+The left console and Phaser status line include compact activity and range diagnostics:
 
 ```text
-Activity: mean 0.42 | active 61% | max 0.94 | injected +0.12
+Activity: mean 0.42 | active 61% | max 0.94 | range 0.82 | injected +0.12
 ```
 
-Set `globalThis.ANCHOR_DEBUG_ROI_DYNAMICS = true` in the browser console to log detailed frame diagnostics, including min/mean/max, active cell count, total activity mass, injected activity, decay loss, depletion loss, boundary loss, regeneration amount, and whether normalization occurred.
+Set `globalThis.ANCHOR_DEBUG_ROI_DYNAMICS = true` in the browser console to log detailed frame diagnostics, including min/mean/max, active cell count, total activity mass, injected activity, decay loss, depletion loss, boundary loss, regeneration amount, dynamic range before/after contrast shaping, and whether normalization occurred.
 
 ## Why the Demo Separates Pattern, Parameters, and Process
 
@@ -122,7 +122,7 @@ Presets do not replace the primitive controls. Selecting a preset fills in the u
 | Migrating Patch | Smooth feature movement | Gaussian likelihood + clustered field + continuous drift |
 | Expanding Front | Spreading boundary | Front / Boundary + neighbor propagation |
 | Patchy Rainfall | Irregular activity patches | Seeded texture likelihood + patchy field + random pulses |
-| Drifting Storm Cells | Moving compact bursts | Clustered field + bursty + continuous drift |
+| Drifting Storm Cells | Moving compact pulsed cells | Clustered field + periodic pulses + continuous drift |
 | Freshness / Revisit Value | Value recovers after time | History-aware + freshness |
 | Neighbor Spread | Local activation/spread | Patchy field + neighbor propagation |
 | Oscillating Ecological Field | Phase-shifted cycles | Periodic + frequency-based |

@@ -17,8 +17,8 @@ export const SAMPLE_FIELD_BEHAVIOR_PRESETS = [
       hotspotCount: 3,
       clusterSize: 'medium',
       valueDistribution: 'gaussianNormal',
-      temporalPattern: 'bursty',
-      temporalBehavior: 'bursty',
+      temporalPattern: 'periodic',
+      temporalBehavior: 'periodic',
       spatialEvolution: 'stationary',
       patternEvolution: 'stationary',
       evolutionModel: 'stationary',
@@ -149,8 +149,8 @@ export const SAMPLE_FIELD_BEHAVIOR_PRESETS = [
       hotspotCount: 3,
       clusterSize: 'tight',
       valueDistribution: 'constantValue',
-      temporalPattern: 'bursty',
-      temporalBehavior: 'bursty',
+      temporalPattern: 'periodic',
+      temporalBehavior: 'periodic',
       spatialEvolution: 'continuousDrift',
       patternEvolution: 'continuousDrift',
       evolutionModel: 'continuousDrift',
@@ -162,7 +162,7 @@ export const SAMPLE_FIELD_BEHAVIOR_PRESETS = [
       displayMode: 'sampleValue'
     },
     explanation: {
-      expectedBehavior: 'Compact high-value cells move through the domain and pulse in intensity.',
+      expectedBehavior: 'Compact high-value cells move through the domain and pulse in intensity without collapsing between windows.',
       goodForTeaching: 'Timing routes to moving, fading high-value cells.'
     }
   },

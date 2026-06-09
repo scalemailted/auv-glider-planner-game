@@ -218,7 +218,14 @@ export function createDemoRoiField({
     dynamicComplexity: normalizedDynamicComplexity,
     likelihoodField
   });
-  const sampleDisplayField = displayResult.field;
+  const contrastResult = enhanceSampleValueContrast(displayResult.field, {
+    displayMode: normalizedDisplayMode,
+    temporalPattern: normalizedTemporalPattern,
+    spatialEvolution: normalizedSpatialEvolution,
+    spatialPattern: normalizedPureSpatialPattern,
+    dynamicComplexity: normalizedDynamicComplexity
+  });
+  const sampleDisplayField = contrastResult.field;
   const displayedField = normalizedDisplayMode === 'eventLikelihood' ? likelihoodField : sampleDisplayField;
   const stats = summarizeField(displayedField);
   const activityDiagnostics = buildActivityDiagnostics({
@@ -233,7 +240,10 @@ export function createDemoRoiField({
     evolvedField: field,
     displayedField,
     evolutionDiagnostics: evolvedResult.diagnostics,
-    displayDiagnostics: displayResult.diagnostics
+    displayDiagnostics: {
+      ...displayResult.diagnostics,
+      ...contrastResult.diagnostics
+    }
   });
   return {
     field: displayedField,
@@ -1131,6 +1141,87 @@ function applySampleDisplayMode(field, { seed, time, depletionMode, displayMode,
   };
 }
 
+function enhanceSampleValueContrast(field, { displayMode, temporalPattern, spatialEvolution, spatialPattern, dynamicComplexity }) {
+  const normalizedDisplay = normalizeRoiDemoDisplayMode(displayMode);
+  if (normalizedDisplay === 'eventLikelihood' || normalizedDisplay === 'rawBaseValue') {
+    return {
+      field: field.map((row) => row.map(round3)),
+      diagnostics: { contrastEnhanced: false, contrastStrength: 0, dynamicRangeBefore: fieldRange(field), dynamicRangeAfter: fieldRange(field) }
+    };
+  }
+  const values = field.flat().map(Number).filter(Number.isFinite).sort((a, b) => a - b);
+  if (values.length < 2) {
+    return {
+      field: field.map((row) => row.map(round3)),
+      diagnostics: { contrastEnhanced: false, contrastStrength: 0, dynamicRangeBefore: 0, dynamicRangeAfter: 0 }
+    };
+  }
+  const min = values[0];
+  const max = values[values.length - 1];
+  const range = max - min;
+  if (range < 0.0001) {
+    return {
+      field: field.map((row) => row.map(round3)),
+      diagnostics: { contrastEnhanced: false, contrastStrength: 0, dynamicRangeBefore: round3(range), dynamicRangeAfter: round3(range) }
+    };
+  }
+  const p08 = percentileSorted(values, 0.08);
+  const p92 = percentileSorted(values, 0.92);
+  const activeFraction = values.filter((value) => value >= 0.07).length / values.length;
+  const highFraction = values.filter((value) => value >= 0.68).length / values.length;
+  const needsRangeHelp = range < 0.62 || activeFraction > 0.94 || highFraction < 0.015;
+  if (!needsRangeHelp) {
+    return {
+      field: field.map((row) => row.map(round3)),
+      diagnostics: { contrastEnhanced: false, contrastStrength: 0, dynamicRangeBefore: round3(range), dynamicRangeAfter: round3(range) }
+    };
+  }
+  const strength = contrastStrengthForField({ temporalPattern, spatialEvolution, spatialPattern, dynamicComplexity, activeFraction, highFraction, range });
+  const denominator = Math.max(0.0001, p92 - p08);
+  const enhanced = field.map((row) => row.map((value) => {
+    const stretched = clamp01((Number(value) - p08) / denominator);
+    const shaped = Math.pow(stretched, 0.82);
+    return round3(clamp01(Number(value) * (1 - strength) + shaped * strength));
+  }));
+  return {
+    field: enhanced,
+    diagnostics: {
+      contrastEnhanced: strength > 0,
+      contrastStrength: round3(strength),
+      dynamicRangeBefore: round3(range),
+      dynamicRangeAfter: fieldRange(enhanced),
+      percentile08: round3(p08),
+      percentile92: round3(p92)
+    }
+  };
+}
+
+function contrastStrengthForField({ temporalPattern, spatialEvolution, spatialPattern, dynamicComplexity, activeFraction, highFraction, range }) {
+  let strength = complexityValue(dynamicComplexity, 0.18, 0.26, 0.34);
+  if (temporalPattern === 'bursty' || temporalPattern === 'randomPulses' || temporalPattern === 'intermittent') strength += 0.08;
+  if (spatialEvolution === 'neighborPropagation') strength -= 0.08;
+  if (spatialEvolution === 'continuousDrift') strength -= 0.14;
+  if (spatialPattern === 'monitoringStations') strength -= 0.1;
+  if (activeFraction > 0.97) strength += 0.08;
+  if (highFraction < 0.01) strength += 0.08;
+  if (range > 0.75) strength -= 0.12;
+  return clampRange(strength, 0.12, 0.42);
+}
+
+function percentileSorted(values, percentile) {
+  const index = clampRange(percentile, 0, 1) * Math.max(0, values.length - 1);
+  const lo = Math.floor(index);
+  const hi = Math.ceil(index);
+  const t = index - lo;
+  return values[lo] * (1 - t) + values[hi] * t;
+}
+
+function fieldRange(field) {
+  const values = field.flat().map(Number).filter(Number.isFinite);
+  if (!values.length) return 0;
+  return round3(Math.max(...values) - Math.min(...values));
+}
+
 function createFreshnessField(field, { seed, time, dynamicComplexity, likelihoodField }) {
   const complexityScale = complexityValue(dynamicComplexity, 0.8, 1, 1.25);
   let syntheticVisitedCells = 0;
@@ -1228,6 +1319,10 @@ function buildActivityDiagnostics({ time, eventLikelihoodMode, spatialPattern, t
     activityLostToBoundaries: round3(evolutionDiagnostics?.activityLostToBoundaries ?? 0),
     regenerationAmount: round3((evolutionDiagnostics?.regenerationAmount ?? 0) + (displayDiagnostics?.regenerationAmount ?? 0)),
     syntheticVisitedCells: displayDiagnostics?.syntheticVisitedCells ?? 0,
+    contrastEnhanced: Boolean(displayDiagnostics?.contrastEnhanced),
+    contrastStrength: round3(displayDiagnostics?.contrastStrength ?? 0),
+    dynamicRangeBeforeContrast: round3(displayDiagnostics?.dynamicRangeBefore ?? (stats.max - stats.min)),
+    dynamicRangeAfterContrast: round3(displayDiagnostics?.dynamicRangeAfter ?? (stats.max - stats.min)),
     normalized: Boolean(evolutionDiagnostics?.normalized)
   };
 }

@@ -34,6 +34,7 @@ export function validateSampleFieldPreset(presetId, options = {}) {
   const masses = frames.map((frame) => frame.totalActivityMass);
   const means = frames.map((frame) => frame.meanValue);
   const maxValues = frames.map((frame) => frame.maxValue);
+  const ranges = frames.map((frame) => frame.dynamicRange);
   const maxComponents = Math.max(...frames.map((frame) => frame.connectedComponents));
   const meanDelta = mean(deltas);
   const meanSpatialCorrelation = mean(frames.map((frame) => frame.spatialCorrelation));
@@ -59,6 +60,7 @@ export function validateSampleFieldPreset(presetId, options = {}) {
       meanActiveCellFraction: round3(mean(activeFractions)),
       meanHighValueCellFraction: round3(mean(highFractions)),
       meanTotalActivityMass: round3(mean(masses)),
+      meanDynamicRange: round3(mean(ranges)),
       meanFrameDelta: round3(meanDelta),
       centerOfMassMovement: round3(centerMovement),
       meanConnectedComponents: round3(avgComponents),
@@ -84,6 +86,9 @@ function summarizePresetFrame(field, time) {
     activeCellFraction: round3((stats.activeFraction ?? flat.filter((value) => value >= 0.07).length / cellCount)),
     highValueCellFraction: round3(flat.filter((value) => value >= 0.68).length / cellCount),
     totalActivityMass: round3(stats.totalActivityMass ?? stats.totalValue ?? sum(flat)),
+    dynamicRange: round3((stats.maxValue ?? stats.max ?? Math.max(...flat)) - (stats.minValue ?? stats.min ?? Math.min(...flat))),
+    contrastEnhanced: Boolean(stats.contrastEnhanced),
+    contrastStrength: round3(stats.contrastStrength ?? 0),
     centerOfMass: centerOfMass(sampleValueField),
     connectedComponents: connectedComponents(sampleValueField, 0.55),
     spatialCorrelation: localSpatialCorrelation(sampleValueField),

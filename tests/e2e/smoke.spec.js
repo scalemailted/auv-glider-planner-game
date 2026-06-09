@@ -388,7 +388,7 @@ test('campaign planning smoke flow reaches debrief', async ({ page }) => {
     preset: 'driftingStormCells',
     modified: false,
     spatial: 'clusteredField',
-    temporal: 'bursty',
+    temporal: 'periodic',
     evolution: 'continuousDrift',
     dynamics: 'dynamic'
   });
