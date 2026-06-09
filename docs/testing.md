@@ -10,7 +10,7 @@ Playwright is optional and intended for development smoke testing.
 
 Greedy Planner is useful for planner smoke checks because it should return promptly, preserve non-selected glider routes, and validate before simulation. See `docs/greedy_planner.md` for the expected selected-glider baseline behavior.
 
-The main menu should expose two top-level accordions: `Challenge Mode` and `Simulation Lab`. Challenge Mode should contain `Play`, `Learn`, and `Compete` visual subsections. Simulation Lab should contain `Experiments`, `Demos`, `Editor & Import Tools`, and `Benchmarks`. Field demos live inside Simulation Lab, not as a separate top-level section. Use `docs/flow_fields_demo.md` when validating static/dynamic fields, additive layers, partition behavior, terrain boundary effects, and topology-aware shoreline risk. Use `docs/sample_fields_demo.md` when validating seeded sample-value temporal patterns, spatial patterns, evolution models, prior-agnostic baselines, and evolutionary behavior. Use `docs/coupled_fields_demo.md` for current-dependent sample behavior.
+The main menu should expose two top-level accordions: `Challenge Mode` and `Simulation Lab`. Challenge Mode should contain `Play`, `Learn`, and `Compete` visual subsections. Simulation Lab should contain `Experiments`, `Demos`, `Editor & Import Tools`, and `Benchmarks`. Field demos live inside Simulation Lab, not as a separate top-level section. Use `docs/flow_fields_demo.md` when validating static/dynamic fields, additive layers, partition behavior, terrain boundary effects, and topology-aware shoreline risk. Use `docs/sample_fields_demo.md` when validating seeded sample-value temporal patterns, spatial patterns, Time-Indexed, State-Evolving, and History-Aware state models, and process models. Use `docs/coupled_fields_demo.md` for current-dependent sample behavior.
 
 ## Challenge Mode vs Simulation Lab
 
@@ -47,8 +47,8 @@ Manual sample-field checks should cover:
 - the right setup panel shows Mission Snapshot or is hidden, never Mission Waypoints;
 - Challenge Mode presets choose sample-field/current/scoring defaults without forking the mission engine;
 - Simulation Lab exposes the detailed sample-field controls directly;
-- Sample / ROI Field Demo can regenerate seeded hotspot-style fields and dynamic value fields, and its controls separate Temporal Pattern, Spatial Pattern, and Evolution Model;
-- Sample / ROI Field Demo labels selected behavior as prior-agnostic or evolutionary in the inspector;
+- Sample / ROI Field Demo can regenerate seeded hotspot-style fields and dynamic value fields, and its controls separate Temporal Pattern, Spatial Pattern, State Model, and Process Model;
+- Sample / ROI Field Demo labels selected behavior as Time-Indexed, State-Evolving, or History-Aware in the inspector;
 - generated missions preserve `sampleFieldConfig` when configured;
 - scrubbing mission time changes temporal sample fields such as periodic, burst, moving, plume, channel, or texture-like patterns where selected;
 - Coupled Fields Demo, not the sample-only demo, covers current-advected sample behavior;

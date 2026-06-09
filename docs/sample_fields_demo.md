@@ -41,19 +41,23 @@ The sample field is not the current field.
 
 The Sample / ROI Field Demo is sample-only. Current-dependent behavior such as flow-carried plumes, eddy-stretched blooms, shoreline runoff, and current-shaped fronts is reserved for the Coupled Fields Demo, where `F(x,y,t)` and `S(x,y,t)` are rendered together and the sample layer can use the visible flow sampler.
 
-## Prior-Agnostic vs Evolutionary Behavior
+## State Model
 
-The demo separates value generation into two broad concepts.
+The Sample / ROI Field Demo distinguishes how a sample field depends on time and prior behavior. The UI uses friendly labels; the docs include the technical language.
 
-`Prior-Agnostic` means the field value is computed directly from location, seed, pattern settings, and time. It does not need a previous field state to make sense. Examples include static hotspots, regular periodic cycles, spatial gradients, and seeded texture.
+- **Time-Indexed / Memoryless:** `S(x,y,t)` is computed directly from position and time. The field does not need to remember a previous state. Static hotspots, direct periodic cycles, seeded time functions, and deterministic moving features defined by `t` are examples.
 
-`Evolutionary` means prior or neighboring activity is part of the model concept. The current implementation uses deterministic synthetic transforms rather than a full physical PDE simulator, but the behavior is still useful for planning: blooms grow and decay, values diffuse, neighboring areas activate, features move, fields split or merge, station-like regions recover, and forecast-like views drift away from the base field.
+- **State-Evolving / Markovian:** the next field state depends on the current field state, often written as `S_{t+1} = f(S_t, inputs_t)`. Diffusion, growth/decay, neighbor activation, and active/inactive cell transitions are examples when the next state depends only on the current state and current inputs.
 
-The right Cell Inspector labels the selected behavior as prior-agnostic or evolutionary so users can distinguish simple known value functions from stateful-looking processes.
+- **History-Aware / Non-Markovian:** the field depends on longer history, such as time since last sample, cumulative depletion, persistent monitoring, trend estimates, revisit rewards, or longer forecast-error accumulation.
+
+Markovian is not a synonym for any time-varying behavior. A periodic field can be dynamic and still memoryless because it can be evaluated directly at time `t`. A seeded irregular pulse can be deterministic and replayable rather than stochastic in the simulation sense. A revisit-recovery process becomes history-aware when visits or observation history affect the value.
+
+The right Cell Inspector labels the selected behavior as Time-Indexed, State-Evolving, or History-Aware.
 
 ## Temporal Patterns
 
-Temporal Pattern controls how value changes over time before the selected evolution model is applied.
+Temporal Pattern controls how value changes over time before the selected process model is applied.
 
 - `Static`: value remains fixed over demo time.
 - `Sustained`: value stays active with slow mild variation.
@@ -81,17 +85,17 @@ Spatial Pattern controls where value appears in the domain.
 
 The separate Distribution control is a diagnostic preset layer over these spatial ideas. It includes uniform random, Gaussian hotspots, clustered hotspots, gradient/front, sparse targets, ridge/corridor, bimodal hotspots, moving hotspot, bursty bloom, and nonuniform random. The sample-only distribution list intentionally excludes the current-advected plume option; use Coupled Fields Demo for current-dependent plume behavior.
 
-## Evolution Models
+## Process Models
 
-Evolution Model controls how the selected base field is transformed through time.
+Process Model controls how the selected base field is transformed through time.
 
-- `Prior-Agnostic`: uses the selected field and temporal envelope directly.
+- `Time-Indexed`: uses the selected field and temporal envelope directly. This preserves compatibility with older saved demo configurations while displaying the clearer educational label.
 - `Growth / Decay`: adds seeded cell pulses so regions intensify, peak, and fade.
 - `Diffusion`: blurs value into neighboring cells through deterministic blur passes.
 - `Neighbor Activation`: combines blur with seeded block activation by time bucket.
 - `Moving Feature`: shifts the field through time so hotspots or fronts translate.
 - `Split / Merge`: mixes shifted copies so a patch can separate or recombine.
-- `Revisit / Recovery`: adds station-like recovery boosts that suggest returning later can regain value.
+- `Revisit / Recovery`: adds station-like recovery boosts that suggest returning later can regain value. In full mission contexts, visit-dependent recovery is History-Aware.
 - `Forecast Error Drift`: adds seeded bias that increases with time, representing a forecast drifting from the base truth-like field.
 
 These are lightweight educational approximations. They are meant to expose strategy differences, not to claim a physical biological or ocean model.
@@ -127,7 +131,7 @@ Use this demo to understand what revisit and recovery fields look like. Use Chal
 
 Click a heatmap cell to inspect it in the right panel. The inspector is the authoritative readout for the selected cell in this demo.
 
-It reports the selected coordinates, current sample value, normalized value, recent trend, distribution, view, temporal pattern, spatial pattern, evolution model, behavior family, uncertainty estimate, depleted-value estimate, hotspot membership, and relevant sample-field metadata.
+It reports the selected coordinates, current sample value, normalized value, recent trend, distribution, view, temporal pattern, spatial pattern, state model, process model, uncertainty estimate, depleted-value estimate, hotspot membership, and relevant sample-field metadata.
 
 The inspector updates from the same field generation path used to render the heatmap, so it is the best way to verify whether a visual change is a value change, an uncertainty change, or a depleted-view change.
 
@@ -160,7 +164,7 @@ Use it when the sample field should depend on currents:
 - shoreline runoff
 - fronts shaped by the visible current sampler
 
-The Sample / ROI Field Demo intentionally stays useful without current vectors. That keeps the sample taxonomy clear: temporal pattern, spatial pattern, and evolution model can be understood before flow coupling is introduced.
+The Sample / ROI Field Demo intentionally stays useful without current vectors. That keeps the sample taxonomy clear: temporal pattern, spatial pattern, state model, and process model can be understood before flow coupling is introduced.
 
 ## Strategy Examples
 
@@ -193,7 +197,8 @@ Important implementation details:
 - Sample-only distributions exclude `currentAdvectedPlume`.
 - Temporal Pattern provides the time envelope.
 - Spatial Pattern provides the base spatial layout.
-- Evolution Model applies deterministic synthetic time transforms.
+- State Model describes whether the sample value is Time-Indexed, State-Evolving, or History-Aware.
+- Process Model applies deterministic synthetic time transforms.
 - Forecast/truth/uncertainty/depleted view is applied after base field generation.
 - The bottom transport changes demo time, not mission simulation time.
 - The demo can run forward or backward because the field is sampled from time, not advanced by mutating persistent simulation state.
@@ -202,7 +207,7 @@ Important implementation details:
 
 - This is a visualization and taxonomy demo, not a mission simulation.
 - Depletion is illustrative and not based on actual glider visits.
-- Evolutionary behavior is deterministic synthetic post-processing, not a full ecological, fluid, or stochastic process model.
+- State-Evolving and History-Aware demo behavior is deterministic synthetic post-processing, not a full ecological, fluid, or stochastic process model.
 - Current-dependent transport belongs in the Coupled Fields Demo.
 - The demo does not validate waypoint routes, compute score, save attempts, or export leaderboard records.
 - It should not be used as evidence that a particular route is executable; use Planning, route validation, simulation, and Debrief for that.

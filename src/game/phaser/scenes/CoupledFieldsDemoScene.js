@@ -25,6 +25,9 @@ import {
   normalizeRoiDemoSpatialPattern,
   normalizeRoiDemoTemporalBehavior,
   roiDistributionLabel,
+  roiStateModelDescription,
+  roiStateModelForEvolutionModel,
+  roiStateModelLabel,
   sampleSpatialPatternLabel,
   sampleTemporalBehaviorLabel
 } from '../../../core/demo/DemoRoiFields.js';
@@ -615,6 +618,9 @@ export class CoupledFieldsDemoScene extends PhaserScene {
       sampleValue: value,
       sampleDelta: value - previousValue,
       hotspotMembership: (this.sampleField?.highValueCells ?? []).some((entry) => entry.x === cell.col && entry.y === cell.row) ? 'high-value cell' : 'none',
+      stateModel: this.sampleField?.stateModel ?? roiStateModelForEvolutionModel(this.sampleField?.evolutionModel),
+      stateModelLabel: this.sampleField?.stateModelLabel ?? roiStateModelLabel(roiStateModelForEvolutionModel(this.sampleField?.evolutionModel)),
+      stateModelDescription: this.sampleField?.stateModelDescription ?? roiStateModelDescription(roiStateModelForEvolutionModel(this.sampleField?.evolutionModel)),
       couplingMode: this.couplingMode,
       currentInfluence: currentInfluenceLabel(this.couplingMode, flow),
       advectionDirection: compassLabel(radiansToDegrees(Math.atan2(flow.v, flow.u))),
@@ -674,10 +680,12 @@ function coupledInspectorHtml(inspection) {
         <span>Sample / ROI</span>
         ${metricRows([
           ['value', formatNumber(inspection.sampleValue, 3)],
+          ['state model', inspection.stateModelLabel],
           ['temporal trend', trendLabel(inspection.sampleDelta)],
           ['delta / 1s', formatSignedNumber(inspection.sampleDelta, 3)],
           ['hotspot membership', inspection.hotspotMembership]
         ])}
+        <small>${escapeHtml(inspection.stateModelDescription)}</small>
       </div>
       <div class="cell-inspector-card">
         <span>Coupling</span>

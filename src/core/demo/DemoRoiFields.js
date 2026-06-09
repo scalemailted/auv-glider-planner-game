@@ -28,6 +28,7 @@ export const ROI_DEMO_SPATIAL_PATTERNS = SAMPLE_SPATIAL_PATTERNS;
 export const ROI_DEMO_TEMPORAL_BEHAVIORS = SAMPLE_TEMPORAL_BEHAVIORS;
 export const ROI_DEMO_TEMPORAL_PATTERNS = ['static', 'sustained', 'periodic', 'bursty', 'seasonal', 'randomPulses', 'intermittent'];
 export const ROI_DEMO_EVOLUTION_MODELS = ['priorAgnostic', 'growthDecay', 'diffusion', 'neighborActivation', 'movingFeature', 'splitMerge', 'revisitRecovery', 'forecastErrorDrift'];
+export const ROI_DEMO_STATE_MODELS = ['timeIndexed', 'stateEvolving', 'historyAware'];
 export const ROI_DEMO_DYNAMIC_COMPLEXITY = ['low', 'medium', 'high'];
 
 export function normalizeRoiDemoDistribution(value = 'gaussianHotspots') {
@@ -108,6 +109,9 @@ export function createDemoRoiField({
     evolutionModel: normalizedEvolutionModel,
     evolutionModelLabel: roiEvolutionModelLabel(normalizedEvolutionModel),
     dynamicComplexity: normalizedDynamicComplexity,
+    stateModel: behavior.stateModel,
+    stateModelLabel: behavior.stateModelLabel,
+    stateModelDescription: behavior.stateModelDescription,
     priorMode: behavior.priorMode,
     behavior,
     forecastView,
@@ -155,6 +159,9 @@ export function normalizeRoiDemoTemporalPattern(value = 'bursty') {
 }
 
 export function normalizeRoiDemoEvolutionModel(value = 'growthDecay') {
+  if (value === 'timeIndexed') return 'priorAgnostic';
+  if (value === 'stateEvolving' || value === 'stateful') return 'growthDecay';
+  if (value === 'historyAware' || value === 'historyDependent') return 'revisitRecovery';
   return ROI_DEMO_EVOLUTION_MODELS.includes(value) ? value : 'growthDecay';
 }
 
@@ -176,7 +183,7 @@ export function roiTemporalPatternLabel(value) {
 
 export function roiEvolutionModelLabel(value) {
   return {
-    priorAgnostic: 'Prior-Agnostic',
+    priorAgnostic: 'Time-Indexed',
     growthDecay: 'Growth / Decay',
     diffusion: 'Diffusion',
     neighborActivation: 'Neighbor Activation',
@@ -185,6 +192,29 @@ export function roiEvolutionModelLabel(value) {
     revisitRecovery: 'Revisit / Recovery',
     forecastErrorDrift: 'Forecast Error Drift'
   }[value] ?? 'Growth / Decay';
+}
+
+export function roiStateModelForEvolutionModel(value) {
+  const normalized = normalizeRoiDemoEvolutionModel(value);
+  if (normalized === 'priorAgnostic' || normalized === 'movingFeature' || normalized === 'forecastErrorDrift') return 'timeIndexed';
+  if (normalized === 'revisitRecovery') return 'historyAware';
+  return 'stateEvolving';
+}
+
+export function roiStateModelLabel(value) {
+  return {
+    timeIndexed: 'Time-Indexed',
+    stateEvolving: 'State-Evolving',
+    historyAware: 'History-Aware'
+  }[value] ?? 'State-Evolving';
+}
+
+export function roiStateModelDescription(value) {
+  return {
+    timeIndexed: 'Computed directly from position and time.',
+    stateEvolving: 'Next state depends on the current field state.',
+    historyAware: 'Depends on longer sampling or observation history.'
+  }[value] ?? 'Next state depends on the current field state.';
 }
 
 export function roiDemoDistributionDefaults(distribution = 'gaussianHotspots') {
@@ -306,19 +336,20 @@ function evolutionModelFromDistribution(distribution) {
 }
 
 function sampleBehaviorMetadata({ temporalPattern, evolutionModel, dynamicComplexity, time }) {
-  const priorMode = evolutionModel === 'priorAgnostic' ? 'prior-agnostic' : 'evolutionary';
+  const stateModel = roiStateModelForEvolutionModel(evolutionModel);
   const cycle = temporalPattern === 'seasonal' ? 72 : temporalPattern === 'intermittent' ? 18 : 24;
   const phase = positiveModulo(time, cycle) / cycle;
   return {
     temporalPattern,
     evolutionModel,
     dynamicComplexity,
-    priorMode,
+    stateModel,
+    stateModelLabel: roiStateModelLabel(stateModel),
+    stateModelDescription: roiStateModelDescription(stateModel),
+    priorMode: stateModel,
     burstPhase: burstPhaseLabel(phase),
     neighborInfluence: evolutionModel === 'neighborActivation' ? dynamicComplexity : evolutionModel === 'diffusion' ? dynamicComplexity : 'off',
-    explanation: priorMode === 'prior-agnostic'
-      ? 'This behavior is prior-agnostic: current value is computed directly from location and demo time.'
-      : 'This behavior is evolutionary: prior activity influences current/future value.'
+    explanation: roiStateModelDescription(stateModel)
   };
 }
 

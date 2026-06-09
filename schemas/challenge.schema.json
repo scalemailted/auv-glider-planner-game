@@ -40,7 +40,7 @@
   },
   "exactReplay": "available when a saved challenge snapshot exists, or when UUID + generationConfig + compatible generationVersion + derivedSeeds permit deterministic regeneration",
   "currentFieldConfig": "serializable current/flow-field setup used to generate temporal current frames: static/dynamic mode, base preset, evolution behavior/speed, explicit timeMode, cycleDurationHours, frameInterpolation, dynamicComplexity, variation levels, additive layers, spatial influence, topologyComposite regional metadata/assigned behaviors when using Topology-Aware Composite, and stochastic forecast-confidence metadata when applicable",
-  "sampleFieldConfig": "serializable sample-value setup used to generate temporal ROI/sample frames: spatialPattern, temporalBehavior, objectiveModel, stochasticity, currentCoupling, depletion, hotspot/burst/moving/plume/channel/gradient metadata when configured",
+  "sampleFieldConfig": "serializable sample-value setup used to generate temporal ROI/sample frames: spatialPattern, temporalBehavior, stateModel (timeIndexed/stateEvolving/historyAware), objectiveModel, stochasticity, currentCoupling, depletion, hotspot/burst/moving/plume/channel/gradient metadata when configured",
   "customScenario": "true when the package was exported from Mission Editor / Custom Scenario Builder rather than a campaign/generated challenge gallery path",
   "sourceMetadata": "optional authoring metadata for custom packages: source, tool, label, author, or workflow notes",
   "leaderboardScope": "challenge for Challenge Mode records, simulationLab for benchmark/lab records",

@@ -22,6 +22,7 @@ export const SAMPLE_TEMPORAL_BEHAVIORS = [
   'nonuniformRandom',
   'markovNeighbor'
 ];
+export const SAMPLE_STATE_MODELS = ['timeIndexed', 'stateEvolving', 'historyAware'];
 export const SAMPLE_DISTRIBUTIONS = ['uniform', 'gaussian', 'bimodal', 'multimodal', 'heavyTail', 'clustered'];
 
 export function createDefaultSampleFieldConfig(mode = 'perfectKnowledge') {
@@ -68,6 +69,7 @@ export function normalizeSampleFieldConfig(config = {}, { mode = 'perfectKnowled
     objectiveModel: normalizeChoice(source.objectiveModel, SAMPLE_OBJECTIVE_MODELS, stochastic ? 'uncertainty' : 'mixed'),
     spatialPattern: normalizeChoice(source.spatialPattern, SAMPLE_SPATIAL_PATTERNS, source.distribution === 'bimodal' ? 'bimodal' : 'multiHotspot'),
     temporalBehavior: normalizeChoice(source.temporalBehavior, SAMPLE_TEMPORAL_BEHAVIORS, source.mode === 'static' ? 'static' : 'moving'),
+    stateModel: null,
     distribution: normalizeChoice(source.distribution, SAMPLE_DISTRIBUTIONS, source.spatialPattern === 'bimodal' ? 'bimodal' : 'multimodal'),
     hotspotCount: clampInt(source.hotspotCount ?? roiHotspots, 1, 12),
     spatialCorrelation: {
@@ -98,7 +100,28 @@ export function normalizeSampleFieldConfig(config = {}, { mode = 'perfectKnowled
   };
   if (normalized.mode === 'static') normalized.temporalBehavior = 'static';
   if (normalized.temporalBehavior !== 'static') normalized.mode = 'dynamic';
+  normalized.stateModel = normalizeStateModel(source.stateModel ?? source.stateDependency ?? source.dependencyModel, normalized.temporalBehavior);
   return normalized;
+}
+
+export function normalizeStateModel(value, temporalBehavior = 'moving') {
+  const aliases = {
+    priorAgnostic: 'timeIndexed',
+    priorIndependent: 'timeIndexed',
+    memoryless: 'timeIndexed',
+    timeIndexed: 'timeIndexed',
+    evolutionary: 'stateEvolving',
+    stateful: 'stateEvolving',
+    markovian: 'stateEvolving',
+    stateEvolving: 'stateEvolving',
+    historyDependent: 'historyAware',
+    historyAware: 'historyAware',
+    nonMarkovian: 'historyAware'
+  };
+  if (aliases[value]) return aliases[value];
+  if (temporalBehavior === 'static' || temporalBehavior === 'periodic' || temporalBehavior === 'moving' || temporalBehavior === 'uniformRandom' || temporalBehavior === 'nonuniformRandom') return 'timeIndexed';
+  if (temporalBehavior === 'markovNeighbor' || temporalBehavior === 'diffusive') return 'stateEvolving';
+  return 'stateEvolving';
 }
 
 export function sampleFieldConfigFromLegacyRoi(config = {}) {

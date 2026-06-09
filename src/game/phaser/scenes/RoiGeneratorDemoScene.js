@@ -3,6 +3,9 @@ import {
   roiDistributionLabel,
   roiTemporalPatternLabel,
   roiEvolutionModelLabel,
+  roiStateModelDescription,
+  roiStateModelForEvolutionModel,
+  roiStateModelLabel,
   sampleSpatialPatternLabel,
   sampleTemporalBehaviorLabel,
   roiDemoDistributionDefaults,
@@ -155,6 +158,9 @@ export class RoiGeneratorDemoScene extends PhaserScene {
       evolutionModel: this.field?.evolutionModel ?? this.evolutionModel,
       evolutionModelLabel: roiEvolutionModelLabel(this.field?.evolutionModel ?? this.evolutionModel),
       dynamicComplexity: this.field?.dynamicComplexity ?? this.dynamicComplexity,
+      stateModel: this.field?.stateModel ?? roiStateModelForEvolutionModel(this.field?.evolutionModel ?? this.evolutionModel),
+      stateModelLabel: this.field?.stateModelLabel ?? roiStateModelLabel(roiStateModelForEvolutionModel(this.field?.evolutionModel ?? this.evolutionModel)),
+      stateModelDescription: this.field?.stateModelDescription ?? roiStateModelDescription(roiStateModelForEvolutionModel(this.field?.evolutionModel ?? this.evolutionModel)),
       priorMode: this.field?.priorMode,
       forecastView: this.forecastView,
       timeSpeedScale: this.timeSpeedScale,
@@ -321,7 +327,8 @@ export class RoiGeneratorDemoScene extends PhaserScene {
     this.subtitleText?.setWordWrapWidth(Math.min(780, map.width));
     const stats = this.field?.stats ?? {};
     const dynamicText = this.timeMode === 'dynamic' ? ` | Demo Time: ${this.demoTime.toFixed(1)} hr | Playback: ${this.timeSpeedScale}x | Direction: ${this.playbackDirection === -1 ? 'Reverse' : 'Forward'}` : '';
-    this.statusText?.setText(`Distribution: ${roiDistributionLabel(this.distribution)} | Spatial: ${sampleSpatialPatternLabel(this.field?.spatialPattern ?? this.spatialPattern)} | Temporal: ${roiTemporalPatternLabel(this.field?.temporalPattern ?? this.temporalPattern)} | Evolution: ${roiEvolutionModelLabel(this.field?.evolutionModel ?? this.evolutionModel)} | Prior: ${this.field?.priorMode ?? 'evolutionary'} | View: ${forecastViewLabel(this.forecastView)} | Seed: ${this.seed}${dynamicText} | Max: ${formatStat(stats.max)} | Mean: ${formatStat(stats.mean)} | Total: ${formatStat(stats.totalValue)}`);
+    const stateModel = this.field?.stateModel ?? roiStateModelForEvolutionModel(this.field?.evolutionModel ?? this.evolutionModel);
+    this.statusText?.setText(`Distribution: ${roiDistributionLabel(this.distribution)} | Spatial: ${sampleSpatialPatternLabel(this.field?.spatialPattern ?? this.spatialPattern)} | Temporal: ${roiTemporalPatternLabel(this.field?.temporalPattern ?? this.temporalPattern)} | Process: ${roiEvolutionModelLabel(this.field?.evolutionModel ?? this.evolutionModel)} | State Model: ${roiStateModelLabel(stateModel)} | View: ${forecastViewLabel(this.forecastView)} | Seed: ${this.seed}${dynamicText} | Max: ${formatStat(stats.max)} | Mean: ${formatStat(stats.mean)} | Total: ${formatStat(stats.totalValue)}`);
     this.statusText?.setWordWrapWidth(Math.min(1040, map.width));
     this.statusText?.setPosition(margin, map.y + map.height + 18);
   }
@@ -497,7 +504,9 @@ export class RoiGeneratorDemoScene extends PhaserScene {
       temporalBehavior: this.field?.temporalBehavior ?? this.temporalBehavior,
       evolutionModel: this.field?.evolutionModel ?? this.evolutionModel,
       dynamicComplexity: this.field?.dynamicComplexity ?? this.dynamicComplexity,
-      priorMode: this.field?.priorMode ?? (this.evolutionModel === 'priorAgnostic' ? 'prior-agnostic' : 'evolutionary'),
+      stateModel: this.field?.stateModel ?? roiStateModelForEvolutionModel(this.evolutionModel),
+      stateModelLabel: this.field?.stateModelLabel ?? roiStateModelLabel(roiStateModelForEvolutionModel(this.evolutionModel)),
+      stateModelDescription: this.field?.stateModelDescription ?? roiStateModelDescription(roiStateModelForEvolutionModel(this.evolutionModel)),
       behavior: this.field?.behavior,
       forecastView: this.forecastView,
       uncertainty,
@@ -604,8 +613,8 @@ function roiInspectorHtml(inspection) {
           ['field mode', inspection.mode === 'dynamic' ? 'Dynamic' : 'Static'],
           ['spatial pattern', sampleSpatialPatternLabel(inspection.spatialPattern)],
           ['temporal pattern', roiTemporalPatternLabel(inspection.temporalPattern)],
-          ['evolution model', roiEvolutionModelLabel(inspection.evolutionModel)],
-          ['prior mode', inspection.priorMode],
+          ['state model', inspection.stateModelLabel],
+          ['process model', roiEvolutionModelLabel(inspection.evolutionModel)],
           ['burst phase', inspection.behavior?.burstPhase ?? 'n/a'],
           ['dynamic complexity', complexityLabel(inspection.dynamicComplexity)],
           ['distribution', roiDistributionLabel(inspection.distribution)],

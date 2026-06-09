@@ -2,7 +2,7 @@ import { CAMPAIGN_LEVELS } from '../core/campaign/CampaignLevels.js';
 import { shortInstanceId } from '../core/identity/GameInstanceId.js';
 import { formatMetric } from '../core/evaluation/PlanComparison.js';
 import { FLOW_DEMO_BOUNDARY_MODES, FLOW_DEMO_CYCLE_DURATIONS, FLOW_DEMO_DYNAMIC_COMPLEXITY_LEVELS, FLOW_DEMO_EVOLUTION_BEHAVIORS, FLOW_DEMO_EVOLUTION_PATTERNS, FLOW_DEMO_EVOLUTION_SPEEDS, FLOW_DEMO_FIELD_MODES, FLOW_DEMO_LAYER_INFLUENCES, FLOW_DEMO_MAGNITUDE_SCALES, FLOW_DEMO_PARTICLE_SPEEDS, FLOW_DEMO_PRESET_CHOICES, FLOW_DEMO_SPATIAL_MOTIONS, FLOW_DEMO_SPATIAL_MOTION_SPEEDS, FLOW_DEMO_TERRAIN_MODES, FLOW_DEMO_VARIATION_LEVELS, normalizeAdditiveLayers } from '../core/demo/FlowFieldDemo.js';
-import { ROI_DEMO_DISTRIBUTIONS, ROI_DEMO_SAMPLE_ONLY_DISTRIBUTIONS, ROI_DEMO_SPATIAL_PATTERNS, ROI_DEMO_TEMPORAL_BEHAVIORS, ROI_DEMO_TIME_MODES, ROI_DEMO_TEMPORAL_PATTERNS, ROI_DEMO_EVOLUTION_MODELS, ROI_DEMO_DYNAMIC_COMPLEXITY, roiDistributionLabel, roiTemporalPatternLabel, roiEvolutionModelLabel, sampleSpatialPatternLabel, sampleTemporalBehaviorLabel } from '../core/demo/DemoRoiFields.js';
+import { ROI_DEMO_DISTRIBUTIONS, ROI_DEMO_SAMPLE_ONLY_DISTRIBUTIONS, ROI_DEMO_SPATIAL_PATTERNS, ROI_DEMO_TEMPORAL_BEHAVIORS, ROI_DEMO_TIME_MODES, ROI_DEMO_TEMPORAL_PATTERNS, ROI_DEMO_EVOLUTION_MODELS, ROI_DEMO_DYNAMIC_COMPLEXITY, roiDistributionLabel, roiTemporalPatternLabel, roiEvolutionModelLabel, roiStateModelDescription, roiStateModelForEvolutionModel, roiStateModelLabel, sampleSpatialPatternLabel, sampleTemporalBehaviorLabel } from '../core/demo/DemoRoiFields.js';
 import { EXPERIENCE_MODES, getExperienceModeDefaults } from '../core/experience/ExperienceMode.js';
 import { getVectorPresetConfig } from '../core/generation/VectorFieldPresets.js';
 
@@ -288,6 +288,9 @@ export class MissionConsole {
 
   renderRoiDemoControls(state = {}, handlers = {}) {
     if (!this.root) return;
+    const stateModel = state.stateModel ?? roiStateModelForEvolutionModel(state.evolutionModel);
+    const stateModelLabel = state.stateModelLabel ?? roiStateModelLabel(stateModel);
+    const stateModelDescription = state.stateModelDescription ?? roiStateModelDescription(stateModel);
     this.root.innerHTML = `
       <section class="console-header">
         <div class="console-kicker">Sample / ROI Field Demo</div>
@@ -297,7 +300,7 @@ export class MissionConsole {
       <section class="console-status">
         <span>${escapeHtml(state.status ?? 'ROI field')}</span>
         <strong>${escapeHtml(state.timeMode === 'dynamic' && !state.paused ? 'Animating' : state.paused ? 'Paused' : 'Static')}</strong>
-        <small>${escapeHtml(`${state.priorMode === 'prior-agnostic' ? 'Prior-agnostic baseline' : 'Evolutionary sample process'} | ${state.temporalPatternLabel ?? roiTemporalPatternLabel(state.temporalPattern)} | ${state.evolutionModelLabel ?? roiEvolutionModelLabel(state.evolutionModel)}`)}</small>
+        <small>${escapeHtml(`${stateModelLabel} | ${state.temporalPatternLabel ?? roiTemporalPatternLabel(state.temporalPattern)} | ${state.evolutionModelLabel ?? roiEvolutionModelLabel(state.evolutionModel)}`)}</small>
       </section>
       <section class="console-section">
         <h2>Spatial Pattern</h2>
@@ -349,9 +352,10 @@ export class MissionConsole {
         </label>
       </section>
       <section class="console-section">
-        <h2>Evolution Model</h2>
+        <h2>Process Model</h2>
+        <div class="hud-muted">State Model: ${escapeHtml(stateModelLabel)}. ${escapeHtml(stateModelDescription)}</div>
         <label class="compact-field">
-          Evolution Model
+          Process Model
           <select id="roi-demo-evolution-model">
             ${ROI_DEMO_EVOLUTION_MODELS.map((model) => `<option value="${escapeAttr(model)}" ${state.evolutionModel === model ? 'selected' : ''}>${escapeHtml(roiEvolutionModelLabel(model))}</option>`).join('')}
           </select>
@@ -362,7 +366,7 @@ export class MissionConsole {
             ${ROI_DEMO_DYNAMIC_COMPLEXITY.map((level) => `<option value="${escapeAttr(level)}" ${state.dynamicComplexity === level ? 'selected' : ''}>${escapeHtml(dynamicComplexityLabel(level))}</option>`).join('')}
           </select>
         </label>
-        <div class="hud-muted">${escapeHtml(state.priorMode === 'prior-agnostic' ? 'Prior-agnostic: value is computed directly from x, y, and demo time.' : 'Evolutionary: prior activity shapes current and future value.')}</div>
+        <div class="hud-muted">Time-Indexed fields are computed directly from position and time; State-Evolving fields use current field state; History-Aware fields depend on longer sampling or observation history.</div>
       </section>
       <section class="console-section">
         <h2>Forecast / View</h2>
@@ -382,7 +386,7 @@ export class MissionConsole {
       <section class="console-status">
         <span>Field Stats</span>
         <strong>Max ${escapeHtml(formatDemoStat(state.stats?.max))} | Mean ${escapeHtml(formatDemoStat(state.stats?.mean))}</strong>
-        <small>${escapeHtml(state.spatialPatternLabel ?? sampleSpatialPatternLabel(state.spatialPattern))} / ${escapeHtml(state.temporalPatternLabel ?? roiTemporalPatternLabel(state.temporalPattern))} / ${escapeHtml(state.evolutionModelLabel ?? roiEvolutionModelLabel(state.evolutionModel))} | Total value ${escapeHtml(formatDemoStat(state.stats?.totalValue))}</small>
+        <small>${escapeHtml(state.spatialPatternLabel ?? sampleSpatialPatternLabel(state.spatialPattern))} / ${escapeHtml(state.temporalPatternLabel ?? roiTemporalPatternLabel(state.temporalPattern))} / ${escapeHtml(stateModelLabel)} / ${escapeHtml(state.evolutionModelLabel ?? roiEvolutionModelLabel(state.evolutionModel))} | Total value ${escapeHtml(formatDemoStat(state.stats?.totalValue))}</small>
       </section>
       <section class="console-footer">
         <button data-action="menu" class="console-button secondary">Main Menu</button>

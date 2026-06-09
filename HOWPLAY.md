@@ -56,7 +56,7 @@ The Main Menu is the starting screen. It is organized around two expandable expe
 - `Challenge Mode`: `Play` for Mission Modes/custom challenges, `Learn` for Tutorials, and `Compete` for Greedy Planner Race plus Challenge Leaderboard.
 - `Simulation Lab`: `Experiments`, `Demos`, `Editor & Import Tools`, and `Benchmarks`.
 
-Simulation Lab `Demos` includes three field laboratories: Flow Fields Demo for current vectors `F(x,y,t)`, Sample / ROI Field Demo for sample value `S(x,y,t)`, and Coupled Fields Demo for how currents shape or transport sample value. In the sample-only demo, controls are organized as Temporal Pattern, Spatial Pattern, and Evolution Model so you can distinguish prior-agnostic baselines from evolutionary sample processes. See [Sample / ROI Field Demo](docs/sample_fields_demo.md) for the full taxonomy.
+Simulation Lab `Demos` includes three field laboratories: Flow Fields Demo for current vectors `F(x,y,t)`, Sample / ROI Field Demo for sample value `S(x,y,t)`, and Coupled Fields Demo for how currents shape or transport sample value. In the sample-only demo, controls are organized as Temporal Pattern, Spatial Pattern, State Model, and Process Model so you can distinguish Time-Indexed, State-Evolving, and History-Aware sample processes. See [Sample / ROI Field Demo](docs/sample_fields_demo.md) for the full taxonomy.
 
 For first-time play, expand `Challenge Mode` and choose `Tutorials`.
 

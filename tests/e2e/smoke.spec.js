@@ -291,8 +291,9 @@ test('campaign planning smoke flow reaches debrief', async ({ page }) => {
   await expect(page.locator('#roi-demo-evolution-model')).toBeVisible();
   await expect(page.locator('#roi-demo-dynamic-complexity')).toBeVisible();
   await expect(page.locator('#mission-console')).toContainText('Temporal Pattern');
-  await expect(page.locator('#mission-console')).toContainText('Evolution Model');
-  await expect(page.locator('#mission-console')).toContainText('Prior-Agnostic');
+  await expect(page.locator('#mission-console')).toContainText('Process Model');
+  await expect(page.locator('#mission-console')).toContainText('State Model');
+  await expect(page.locator('#mission-console')).toContainText('Time-Indexed');
   await expect(page.evaluate(() => window.anchorGame.phaser.scene.getScene('RoiGeneratorDemoScene').timeMode)).resolves.toBe('dynamic');
   const roiDynamicCell = await page.evaluate(() => {
     const scene = window.anchorGame.phaser.scene.getScene('RoiGeneratorDemoScene');
@@ -321,8 +322,8 @@ test('campaign planning smoke flow reaches debrief', async ({ page }) => {
   await expect(page.locator('#waypoint-timeline')).toContainText(`Cell (${roiDynamicCell.col}, ${roiDynamicCell.row})`);
   await expect(page.locator('#waypoint-timeline')).toContainText('Sample Value');
   await expect(page.locator('#waypoint-timeline')).toContainText('temporal pattern');
-  await expect(page.locator('#waypoint-timeline')).toContainText('evolution model');
-  await expect(page.locator('#waypoint-timeline')).toContainText('prior mode');
+  await expect(page.locator('#waypoint-timeline')).toContainText('process model');
+  await expect(page.locator('#waypoint-timeline')).toContainText('state model');
   await page.locator('#roi-demo-distribution').selectOption('gradientFront');
   await expect.poll(() => page.evaluate(() => window.anchorGame.phaser.scene.getScene('RoiGeneratorDemoScene').distribution)).toBe('gradientFront');
   await page.locator('#roi-demo-time-mode').selectOption('dynamic');

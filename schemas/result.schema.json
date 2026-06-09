@@ -105,7 +105,7 @@
     "derivedSeeds": "namespace-specific seeds derived from the UUID"
   },
   "exactReplay": "available from snapshot when a challenge snapshot is embedded/available; otherwise available only when UUID/config/version/seeds are complete and compatible",
-  "sampleFieldConfig": "sample-value generation metadata preserved with generated challenge attempts when available; result frames/events remain the authoritative record of what was scored",
+  "sampleFieldConfig": "sample-value generation metadata preserved with generated challenge attempts when available, including stateModel when configured; result frames/events remain the authoritative record of what was scored",
   "navigationUncertainty": {
     "level": "off | low | medium | high",
     "seeded": "true when dead-reckoning offsets are deterministic from the replay seed contract",

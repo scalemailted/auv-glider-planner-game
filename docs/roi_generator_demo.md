@@ -50,7 +50,7 @@ Static mode samples the selected field at time zero. Dynamic mode passes advanci
 
 The default is intentionally dynamic and visually active: Bursty Bloom distribution, Multi Hotspot spatial pattern, Bursty temporal behavior, and Forecast view.
 
-The left panel now separates sample behavior into `Temporal Pattern`, `Spatial Pattern`, and `Evolution Model`. The inspector labels each selected cell as `prior-agnostic` or `evolutionary` so users can tell whether value is computed directly from `x,y,t` or whether prior activity is part of the concept. See [Sample / ROI Field Demo](sample_fields_demo.md) for the taxonomy.
+The left panel now separates sample behavior into `Temporal Pattern`, `Spatial Pattern`, State Model, and Process Model. The inspector labels each selected cell as Time-Indexed, State-Evolving, or History-Aware so users can tell whether value is computed directly from `x,y,t`, depends on the current field state, or depends on longer sampling/observation history. See [Sample / ROI Field Demo](sample_fields_demo.md) for the taxonomy.
 
 ## Cell Inspector
 
