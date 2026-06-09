@@ -23,7 +23,7 @@ test('campaign planning smoke flow reaches debrief', async ({ page }) => {
   await expect(page.locator('#right-panel')).toHaveCount(0);
   await expect(page.locator('#context-panel')).toBeEmpty();
   await expect(page.locator('#mission-console')).toContainText('ANCHOR: Glider Command');
-  await expect(page.locator('#mission-console button.console-button')).toHaveCount(15);
+  await expect(page.locator('#mission-console button.console-button')).toHaveCount(16);
   await expect(page.locator('#mission-console .accordion-header')).toHaveCount(2);
   await expect(page.locator('#mission-console > .console-section')).toHaveCount(2);
   await expect(page.locator('#mission-console')).toContainText('Challenge Mode');
@@ -43,6 +43,7 @@ test('campaign planning smoke flow reaches debrief', async ({ page }) => {
   await expect(page.locator('#mission-console [data-accordion-key="simulation-lab"]')).toContainText('Flow Fields Demo');
   await expect(page.locator('#mission-console [data-accordion-key="simulation-lab"]')).toContainText('Sample / ROI Field Demo');
   await expect(page.locator('#mission-console [data-accordion-key="simulation-lab"]')).toContainText('Coupled Fields Demo');
+  await expect(page.locator('#mission-console [data-accordion-key="simulation-lab"]')).toContainText('Uncertainty / Forecast Demo');
   await expect(page.locator('#mission-console')).not.toContainText('Static Flow Field Demo');
   await expect(page.locator('#mission-console')).not.toContainText('Temporal Flow Field Demo');
   await expect(page.locator('#mission-console .console-status')).toContainText('No mission loaded');
@@ -286,14 +287,22 @@ test('campaign planning smoke flow reaches debrief', async ({ page }) => {
   await expect(page.locator('#bottom-timeline [data-action="roi-demo-reset"]')).toHaveText('Reset');
   await expect(page.locator('#bottom-timeline [data-action="roi-demo-direction"]')).toHaveText('Direction: Forward');
   await expect(page.locator('#bottom-timeline [data-action="roi-demo-pause"]')).toHaveText('Pause');
-  await expect(page.locator('#roi-demo-distribution')).toBeVisible();
+  await expect(page.locator('#roi-demo-spatial-pattern')).toBeVisible();
   await expect(page.locator('#roi-demo-temporal-pattern')).toBeVisible();
-  await expect(page.locator('#roi-demo-evolution-model')).toBeVisible();
+  await expect(page.locator('#roi-demo-pattern-evolution')).toBeVisible();
+  await expect(page.locator('#roi-demo-state-model')).toBeVisible();
+  await expect(page.locator('#roi-demo-depletion-mode')).toBeVisible();
+  await expect(page.locator('#roi-demo-display-mode')).toBeVisible();
   await expect(page.locator('#roi-demo-dynamic-complexity')).toBeVisible();
   await expect(page.locator('#mission-console')).toContainText('Temporal Pattern');
-  await expect(page.locator('#mission-console')).toContainText('Process Model');
+  await expect(page.locator('#mission-console')).toContainText('Pattern Evolution');
+  await expect(page.locator('#mission-console')).toContainText('Depletion / Recovery');
+  await expect(page.locator('#mission-console')).toContainText('Display');
   await expect(page.locator('#mission-console')).toContainText('State Model');
   await expect(page.locator('#mission-console')).toContainText('Time-Indexed');
+  await expect(page.locator('#mission-console')).not.toContainText('Forecast / Truth');
+  await expect(page.locator('#mission-console')).not.toContainText('Uncertainty');
+  await expect(page.locator('#mission-console')).not.toContainText('Current-Advected');
   await expect(page.evaluate(() => window.anchorGame.phaser.scene.getScene('RoiGeneratorDemoScene').timeMode)).resolves.toBe('dynamic');
   const roiDynamicCell = await page.evaluate(() => {
     const scene = window.anchorGame.phaser.scene.getScene('RoiGeneratorDemoScene');
@@ -301,8 +310,8 @@ test('campaign planning smoke flow reaches debrief', async ({ page }) => {
     const currentField = scene.field.field;
     const future = scene.constructor ? null : null;
     let best = { col: 0, row: 0, delta: 0, value: 0 };
-    for (let row = 0; row < scene.field.height; row += 1) {
-      for (let col = 0; col < scene.field.width; col += 1) {
+    for (let row = 1; row < scene.field.height - 1; row += 1) {
+      for (let col = 1; col < scene.field.width - 1; col += 1) {
         scene.demoTime = currentTime + 6;
         scene.rebuildField();
         const futureValue = scene.field.field[row][col];
@@ -322,19 +331,23 @@ test('campaign planning smoke flow reaches debrief', async ({ page }) => {
   await expect(page.locator('#waypoint-timeline')).toContainText(`Cell (${roiDynamicCell.col}, ${roiDynamicCell.row})`);
   await expect(page.locator('#waypoint-timeline')).toContainText('Sample Value');
   await expect(page.locator('#waypoint-timeline')).toContainText('temporal pattern');
-  await expect(page.locator('#waypoint-timeline')).toContainText('process model');
+  await expect(page.locator('#waypoint-timeline')).toContainText('pattern evolution');
   await expect(page.locator('#waypoint-timeline')).toContainText('state model');
-  await page.locator('#roi-demo-distribution').selectOption('gradientFront');
-  await expect.poll(() => page.evaluate(() => window.anchorGame.phaser.scene.getScene('RoiGeneratorDemoScene').distribution)).toBe('gradientFront');
+  await page.locator('#roi-demo-spatial-pattern').selectOption('multipleClusters');
+  await expect.poll(() => page.evaluate(() => window.anchorGame.phaser.scene.getScene('RoiGeneratorDemoScene').spatialPattern)).toBe('multipleClusters');
   await page.locator('#roi-demo-time-mode').selectOption('dynamic');
   await expect.poll(() => page.evaluate(() => window.anchorGame.phaser.scene.getScene('RoiGeneratorDemoScene').timeMode)).toBe('dynamic');
   await page.locator('#roi-demo-temporal-pattern').selectOption('periodic');
   await expect.poll(() => page.evaluate(() => window.anchorGame.phaser.scene.getScene('RoiGeneratorDemoScene').temporalPattern)).toBe('periodic');
-  await page.locator('#roi-demo-evolution-model').selectOption('priorAgnostic');
-  await expect.poll(() => page.evaluate(() => window.anchorGame.phaser.scene.getScene('RoiGeneratorDemoScene').evolutionModel)).toBe('priorAgnostic');
+  await page.locator('#roi-demo-state-model').selectOption('timeIndexed');
+  await expect.poll(() => page.evaluate(() => window.anchorGame.phaser.scene.getScene('RoiGeneratorDemoScene').stateModel)).toBe('timeIndexed');
   await expect(page.locator('#bottom-timeline')).toContainText('Behavior: Periodic / Cyclic');
-  await page.locator('#roi-demo-evolution-model').selectOption('diffusion');
-  await expect.poll(() => page.evaluate(() => window.anchorGame.phaser.scene.getScene('RoiGeneratorDemoScene').evolutionModel)).toBe('diffusion');
+  await page.locator('#roi-demo-pattern-evolution').selectOption('diffusion');
+  await expect.poll(() => page.evaluate(() => window.anchorGame.phaser.scene.getScene('RoiGeneratorDemoScene').patternEvolution)).toBe('diffusion');
+  await page.locator('#roi-demo-depletion-mode').selectOption('soft');
+  await expect.poll(() => page.evaluate(() => window.anchorGame.phaser.scene.getScene('RoiGeneratorDemoScene').depletionMode)).toBe('soft');
+  await page.locator('#roi-demo-display-mode').selectOption('depletedValue');
+  await expect.poll(() => page.evaluate(() => window.anchorGame.phaser.scene.getScene('RoiGeneratorDemoScene').displayMode)).toBe('depletedValue');
   await page.locator('#roi-demo-dynamic-complexity').selectOption('high');
   await expect.poll(() => page.evaluate(() => window.anchorGame.phaser.scene.getScene('RoiGeneratorDemoScene').dynamicComplexity)).toBe('high');
   await page.locator('#bottom-timeline [data-action="roi-demo-pause"]').click();
@@ -392,6 +405,33 @@ test('campaign planning smoke flow reaches debrief', async ({ page }) => {
   await expect(page.locator('#bottom-timeline [data-action="coupled-demo-direction"]')).toHaveText('Direction: Reverse');
   await page.locator('#bottom-timeline [data-action="coupled-demo-reset"]').click();
   await expect.poll(() => page.evaluate(() => window.anchorGame.phaser.scene.getScene('CoupledFieldsDemoScene').demoTime)).toBeLessThan(0.2);
+  await page.locator('#mission-console [data-action="menu"]').click();
+  await expect.poll(() => page.evaluate(() => window.anchorGame.phaser.scene.getScene('MainMenuScene').sys.isActive())).toBe(true);
+
+  await page.locator('#mission-console [data-action="uncertainty-forecast-demo"]').click();
+  await expect.poll(() => page.evaluate(() => window.anchorGame.phaser.scene.getScene('UncertaintyForecastDemoScene').sys.isActive())).toBe(true);
+  await expect(page.locator('#mission-console')).toContainText('Uncertainty / Forecast Demo');
+  await expect(page.locator('#bottom-timeline .uncertainty-demo-transport')).toBeVisible();
+  await expect(page.locator('#uncertainty-demo-view')).toBeVisible();
+  await expect(page.locator('#uncertainty-demo-view')).toContainText('Forecast');
+  await expect(page.locator('#uncertainty-demo-view')).toContainText('Truth');
+  await expect(page.locator('#uncertainty-demo-view')).toContainText('Uncertainty');
+  await expect(page.locator('#uncertainty-demo-view')).toContainText('Information Gain');
+  await expect(page.locator('#uncertainty-demo-view')).toContainText('Forecast Error');
+  await expect(page.locator('#uncertainty-demo-view')).toContainText('Delta After Update');
+  await page.locator('#uncertainty-demo-view').selectOption('forecastError');
+  await expect.poll(() => page.evaluate(() => window.anchorGame.phaser.scene.getScene('UncertaintyForecastDemoScene').viewMode)).toBe('forecastError');
+  await page.locator('#uncertainty-demo-forecast-model').selectOption('driftingForecast');
+  await expect.poll(() => page.evaluate(() => window.anchorGame.phaser.scene.getScene('UncertaintyForecastDemoScene').forecastModel)).toBe('driftingForecast');
+  await clickUncertaintyDemoCell(page, 10, 7);
+  await expect(page.locator('#waypoint-timeline')).toContainText('Forecast vs Truth');
+  await expect(page.locator('#waypoint-timeline')).toContainText('forecast error');
+  await expect(page.locator('#waypoint-timeline')).toContainText('information gain');
+  const beforeUpdate = await page.evaluate(() => window.anchorGame.phaser.scene.getScene('UncertaintyForecastDemoScene').observations.length);
+  await page.locator('#mission-console [data-action="uncertainty-apply-sample"]').click();
+  await expect.poll(() => page.evaluate(() => window.anchorGame.phaser.scene.getScene('UncertaintyForecastDemoScene').observations.length)).toBeGreaterThan(beforeUpdate);
+  await page.locator('#mission-console [data-action="uncertainty-reset-observations"]').click();
+  await expect.poll(() => page.evaluate(() => window.anchorGame.phaser.scene.getScene('UncertaintyForecastDemoScene').observations.length)).toBe(0);
   await page.locator('#mission-console [data-action="menu"]').click();
   await expect.poll(() => page.evaluate(() => window.anchorGame.phaser.scene.getScene('MainMenuScene').sys.isActive())).toBe(true);
 
@@ -889,6 +929,24 @@ async function clickCoupledDemoCell(page, col, row) {
     const rect = canvas.getBoundingClientRect();
     const canvasX = map.x + ((Number(col) + 0.5) / 24) * map.width;
     const canvasY = map.y + ((Number(row) + 0.5) / 16) * map.height;
+    return {
+      x: rect.left + canvasX * rect.width / canvas.width,
+      y: rect.top + canvasY * rect.height / canvas.height
+    };
+  }, { col, row });
+  await page.mouse.click(point.x, point.y);
+}
+
+async function clickUncertaintyDemoCell(page, col, row) {
+  const point = await page.evaluate(({ col, row }) => {
+    const scene = window.anchorGame.phaser.scene.getScene('UncertaintyForecastDemoScene');
+    const map = scene.layout().map;
+    const canvas = document.getElementById('game-canvas');
+    const rect = canvas.getBoundingClientRect();
+    const width = scene.field.width;
+    const height = scene.field.height;
+    const canvasX = map.x + ((Number(col) + 0.5) / width) * map.width;
+    const canvasY = map.y + ((Number(row) + 0.5) / height) * map.height;
     return {
       x: rect.left + canvasX * rect.width / canvas.width,
       y: rect.top + canvasY * rect.height / canvas.height

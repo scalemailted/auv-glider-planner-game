@@ -2,9 +2,10 @@ import { CAMPAIGN_LEVELS } from '../core/campaign/CampaignLevels.js';
 import { shortInstanceId } from '../core/identity/GameInstanceId.js';
 import { formatMetric } from '../core/evaluation/PlanComparison.js';
 import { FLOW_DEMO_BOUNDARY_MODES, FLOW_DEMO_CYCLE_DURATIONS, FLOW_DEMO_DYNAMIC_COMPLEXITY_LEVELS, FLOW_DEMO_EVOLUTION_BEHAVIORS, FLOW_DEMO_EVOLUTION_PATTERNS, FLOW_DEMO_EVOLUTION_SPEEDS, FLOW_DEMO_FIELD_MODES, FLOW_DEMO_LAYER_INFLUENCES, FLOW_DEMO_MAGNITUDE_SCALES, FLOW_DEMO_PARTICLE_SPEEDS, FLOW_DEMO_PRESET_CHOICES, FLOW_DEMO_SPATIAL_MOTIONS, FLOW_DEMO_SPATIAL_MOTION_SPEEDS, FLOW_DEMO_TERRAIN_MODES, FLOW_DEMO_VARIATION_LEVELS, normalizeAdditiveLayers } from '../core/demo/FlowFieldDemo.js';
-import { ROI_DEMO_DISTRIBUTIONS, ROI_DEMO_SAMPLE_ONLY_DISTRIBUTIONS, ROI_DEMO_SPATIAL_PATTERNS, ROI_DEMO_TEMPORAL_BEHAVIORS, ROI_DEMO_TIME_MODES, ROI_DEMO_TEMPORAL_PATTERNS, ROI_DEMO_EVOLUTION_MODELS, ROI_DEMO_DYNAMIC_COMPLEXITY, roiDistributionLabel, roiTemporalPatternLabel, roiEvolutionModelLabel, roiStateModelDescription, roiStateModelForEvolutionModel, roiStateModelLabel, sampleSpatialPatternLabel, sampleTemporalBehaviorLabel } from '../core/demo/DemoRoiFields.js';
+import { ROI_DEMO_DISTRIBUTIONS, ROI_DEMO_SAMPLE_ONLY_DISTRIBUTIONS, ROI_DEMO_SPATIAL_PATTERNS, ROI_DEMO_TEMPORAL_BEHAVIORS, ROI_DEMO_TIME_MODES, ROI_DEMO_TEMPORAL_PATTERNS, ROI_DEMO_EVOLUTION_MODELS, ROI_DEMO_PATTERN_EVOLUTIONS, ROI_DEMO_STATE_MODELS, ROI_DEMO_DEPLETION_MODES, ROI_DEMO_DISPLAY_MODES, ROI_DEMO_DYNAMIC_COMPLEXITY, ROI_DEMO_PURE_SPATIAL_PATTERNS, roiDistributionLabel, roiTemporalPatternLabel, roiEvolutionModelLabel, roiStateModelDescription, roiStateModelForEvolutionModel, roiStateModelLabel, roiPureSpatialPatternLabel, roiPatternEvolutionLabel, roiDepletionModeLabel, roiDisplayModeLabel, sampleSpatialPatternLabel, sampleTemporalBehaviorLabel } from '../core/demo/DemoRoiFields.js';
 import { EXPERIENCE_MODES, getExperienceModeDefaults } from '../core/experience/ExperienceMode.js';
 import { getVectorPresetConfig } from '../core/generation/VectorFieldPresets.js';
+import { UNCERTAINTY_DEMO_BEHAVIORS, UNCERTAINTY_DEMO_FORECAST_MODELS, UNCERTAINTY_DEMO_PATTERNS, UNCERTAINTY_DEMO_UPDATE_MODELS, UNCERTAINTY_DEMO_VIEW_MODES, forecastModelLabel, uncertaintyBehaviorLabel, uncertaintyPatternLabel, uncertaintyViewLabel, updateModelLabel } from '../core/demo/UncertaintyForecastDemo.js';
 
 export class MissionConsole {
   constructor(app, root) {
@@ -46,7 +47,8 @@ export class MissionConsole {
         ${menuGroupHtml('Demos', [
           menuActionHtml('flow-fields', 'Flow Fields Demo', 'Explore current vectors F(x,y,t).'),
           menuActionHtml('roi-demo', 'Sample / ROI Field Demo', 'Explore sampling value S(x,y,t).'),
-          menuActionHtml('coupled-fields', 'Coupled Fields Demo', 'Explore how currents move, shape, or complicate sample value.')
+          menuActionHtml('coupled-fields', 'Coupled Fields Demo', 'Explore how currents move, shape, or complicate sample value.'),
+          menuActionHtml('uncertainty-forecast-demo', 'Uncertainty / Forecast Demo', 'Explore forecast, truth, uncertainty, information gain, and sampling updates.')
         ])}
         ${menuGroupHtml('Editor & Import Tools', [
           menuActionHtml('editor', 'Mission Editor', 'Build and export custom scenario/challenge packages.'),
@@ -68,6 +70,7 @@ export class MissionConsole {
       'flow-fields': () => this.app.phaser.scene.start('FlowFieldDemoScene'),
       'roi-demo': () => this.app.phaser.scene.start('RoiGeneratorDemoScene'),
       'coupled-fields': () => this.app.phaser.scene.start('CoupledFieldsDemoScene'),
+      'uncertainty-forecast-demo': () => this.app.phaser.scene.start('UncertaintyForecastDemoScene'),
       tutorial: () => this.mainMenuScene()?.openTutorialBrowser?.(),
       'play-challenge': () => this.mainMenuScene()?.openChallengeSetup?.('perfectKnowledge', EXPERIENCE_MODES.challenge),
       'play-custom-challenge': () => this.app.phaser.scene.start('LoadLevelJsonScene', { preferredExperienceMode: EXPERIENCE_MODES.challenge }),
@@ -300,41 +303,35 @@ export class MissionConsole {
       <section class="console-status">
         <span>${escapeHtml(state.status ?? 'ROI field')}</span>
         <strong>${escapeHtml(state.timeMode === 'dynamic' && !state.paused ? 'Animating' : state.paused ? 'Paused' : 'Static')}</strong>
-        <small>${escapeHtml(`${stateModelLabel} | ${state.temporalPatternLabel ?? roiTemporalPatternLabel(state.temporalPattern)} | ${state.evolutionModelLabel ?? roiEvolutionModelLabel(state.evolutionModel)}`)}</small>
+        <small>${escapeHtml(`${state.spatialPatternLabel ?? roiPureSpatialPatternLabel(state.spatialPattern)} | ${state.temporalPatternLabel ?? roiTemporalPatternLabel(state.temporalPattern)} | ${state.patternEvolutionLabel ?? roiPatternEvolutionLabel(state.patternEvolution)}`)}</small>
       </section>
       <section class="console-section">
         <h2>Spatial Pattern</h2>
         <label class="compact-field">
-          Distribution
-          <select id="roi-demo-distribution">
-            ${ROI_DEMO_SAMPLE_ONLY_DISTRIBUTIONS.map((distribution) => `<option value="${escapeAttr(distribution)}" ${state.distribution === distribution ? 'selected' : ''}>${escapeHtml(roiDistributionLabel(distribution))}</option>`).join('')}
+          Spatial Pattern
+          <select id="roi-demo-spatial-pattern">
+            ${ROI_DEMO_PURE_SPATIAL_PATTERNS.map((pattern) => `<option value="${escapeAttr(pattern)}" ${state.spatialPattern === pattern ? 'selected' : ''}>${escapeHtml(roiPureSpatialPatternLabel(pattern))}</option>`).join('')}
           </select>
         </label>
         <label class="compact-field">
-          Spatial Pattern
-          <select id="roi-demo-spatial-pattern">
-            ${ROI_DEMO_SPATIAL_PATTERNS.map((pattern) => `<option value="${escapeAttr(pattern)}" ${state.spatialPattern === pattern ? 'selected' : ''}>${escapeHtml(sampleSpatialPatternLabel(pattern))}</option>`).join('')}
-          </select>
+          Cluster Count
+          <input id="roi-demo-hotspots" type="range" min="1" max="6" step="1" value="${escapeAttr(state.clusterCount ?? state.hotspotCount ?? 3)}" />
         </label>
+        <div class="hud-muted">${escapeHtml(state.clusterCount ?? state.hotspotCount ?? 3)} cluster(s)</div>
         <label class="compact-field">
           Seed
           <input id="roi-demo-seed" type="text" value="${escapeAttr(state.seed ?? 'anchor-roi-demo')}" />
         </label>
         <button data-action="regenerate" class="console-button">Regenerate</button>
-        <div class="hud-muted">Current-dependent plume options are handled in Coupled Fields Demo.</div>
+        <div class="hud-muted">This pure demo does not use current vectors or flow transport.</div>
       </section>
       <section class="console-section">
-        <h2>Spatial Detail</h2>
+        <h2>Spatial Parameters</h2>
         <label class="compact-field">
-          Hotspot Count
-          <input id="roi-demo-hotspots" type="range" min="1" max="8" step="1" value="${escapeAttr(state.hotspotCount ?? 4)}" />
-        </label>
-        <div class="hud-muted">${escapeHtml(state.hotspotCount ?? 4)} hotspot(s)</div>
-        <label class="compact-field">
-          Noise
+          Texture
           <input id="roi-demo-noise" type="range" min="0" max="1" step="0.05" value="${escapeAttr(state.noise ?? 0.15)}" />
         </label>
-        <div class="hud-muted">Noise ${escapeHtml(Number(state.noise ?? 0.15).toFixed(2))}</div>
+        <div class="hud-muted">Texture ${escapeHtml(Number(state.noise ?? 0.15).toFixed(2))}</div>
       </section>
       <section class="console-section">
         <h2>Temporal Pattern</h2>
@@ -352,12 +349,11 @@ export class MissionConsole {
         </label>
       </section>
       <section class="console-section">
-        <h2>Process Model</h2>
-        <div class="hud-muted">State Model: ${escapeHtml(stateModelLabel)}. ${escapeHtml(stateModelDescription)}</div>
+        <h2>Pattern Evolution</h2>
         <label class="compact-field">
-          Process Model
-          <select id="roi-demo-evolution-model">
-            ${ROI_DEMO_EVOLUTION_MODELS.map((model) => `<option value="${escapeAttr(model)}" ${state.evolutionModel === model ? 'selected' : ''}>${escapeHtml(roiEvolutionModelLabel(model))}</option>`).join('')}
+          Pattern Evolution
+          <select id="roi-demo-pattern-evolution">
+            ${ROI_DEMO_PATTERN_EVOLUTIONS.map((model) => `<option value="${escapeAttr(model)}" ${state.patternEvolution === model ? 'selected' : ''}>${escapeHtml(roiPatternEvolutionLabel(model))}</option>`).join('')}
           </select>
         </label>
         <label class="compact-field">
@@ -366,14 +362,33 @@ export class MissionConsole {
             ${ROI_DEMO_DYNAMIC_COMPLEXITY.map((level) => `<option value="${escapeAttr(level)}" ${state.dynamicComplexity === level ? 'selected' : ''}>${escapeHtml(dynamicComplexityLabel(level))}</option>`).join('')}
           </select>
         </label>
+      </section>
+      <section class="console-section">
+        <h2>State Model</h2>
+        <div class="hud-muted">State Model: ${escapeHtml(stateModelLabel)}. ${escapeHtml(stateModelDescription)}</div>
+        <label class="compact-field">
+          State Model
+          <select id="roi-demo-state-model">
+            ${ROI_DEMO_STATE_MODELS.map((model) => `<option value="${escapeAttr(model)}" ${stateModel === model ? 'selected' : ''}>${escapeHtml(roiStateModelLabel(model))}</option>`).join('')}
+          </select>
+        </label>
         <div class="hud-muted">Time-Indexed fields are computed directly from position and time; State-Evolving fields use current field state; History-Aware fields depend on longer sampling or observation history.</div>
       </section>
       <section class="console-section">
-        <h2>Forecast / View</h2>
+        <h2>Depletion / Recovery</h2>
         <label class="compact-field">
-          Forecast / Truth
-          <select id="roi-demo-forecast-view">
-            ${['forecast', 'truth', 'uncertainty', 'depleted'].map((view) => `<option value="${escapeAttr(view)}" ${state.forecastView === view ? 'selected' : ''}>${escapeHtml(roiForecastViewLabel(view))}</option>`).join('')}
+          Depletion
+          <select id="roi-demo-depletion-mode">
+            ${ROI_DEMO_DEPLETION_MODES.map((mode) => `<option value="${escapeAttr(mode)}" ${state.depletionMode === mode ? 'selected' : ''}>${escapeHtml(roiDepletionModeLabel(mode))}</option>`).join('')}
+          </select>
+        </label>
+      </section>
+      <section class="console-section">
+        <h2>Display</h2>
+        <label class="compact-field">
+          Display Layer
+          <select id="roi-demo-display-mode">
+            ${ROI_DEMO_DISPLAY_MODES.map((mode) => `<option value="${escapeAttr(mode)}" ${state.displayMode === mode ? 'selected' : ''}>${escapeHtml(roiDisplayModeLabel(mode))}</option>`).join('')}
           </select>
         </label>
         <label class="compact-field">
@@ -386,14 +401,13 @@ export class MissionConsole {
       <section class="console-status">
         <span>Field Stats</span>
         <strong>Max ${escapeHtml(formatDemoStat(state.stats?.max))} | Mean ${escapeHtml(formatDemoStat(state.stats?.mean))}</strong>
-        <small>${escapeHtml(state.spatialPatternLabel ?? sampleSpatialPatternLabel(state.spatialPattern))} / ${escapeHtml(state.temporalPatternLabel ?? roiTemporalPatternLabel(state.temporalPattern))} / ${escapeHtml(stateModelLabel)} / ${escapeHtml(state.evolutionModelLabel ?? roiEvolutionModelLabel(state.evolutionModel))} | Total value ${escapeHtml(formatDemoStat(state.stats?.totalValue))}</small>
+        <small>${escapeHtml(state.spatialPatternLabel ?? roiPureSpatialPatternLabel(state.spatialPattern))} / ${escapeHtml(state.temporalPatternLabel ?? roiTemporalPatternLabel(state.temporalPattern))} / ${escapeHtml(state.patternEvolutionLabel ?? roiPatternEvolutionLabel(state.patternEvolution))} / ${escapeHtml(stateModelLabel)} | Total value ${escapeHtml(formatDemoStat(state.stats?.totalValue))}</small>
       </section>
       <section class="console-footer">
         <button data-action="menu" class="console-button secondary">Main Menu</button>
       </section>
     `;
     this.app.applyConsoleAccordions?.('roiDemo');
-    this.root.querySelector('#roi-demo-distribution')?.addEventListener('change', (event) => handlers.distribution?.(event.target.value));
     this.root.querySelector('#roi-demo-spatial-pattern')?.addEventListener('change', (event) => handlers.spatialPattern?.(event.target.value));
     this.root.querySelector('#roi-demo-seed')?.addEventListener('change', (event) => handlers.seed?.(event.target.value));
     this.root.querySelector('#roi-demo-hotspots')?.addEventListener('input', (event) => handlers.hotspotCount?.(event.target.value));
@@ -402,8 +416,11 @@ export class MissionConsole {
     this.root.querySelector('#roi-demo-temporal-pattern')?.addEventListener('change', (event) => handlers.temporalPattern?.(event.target.value));
     this.root.querySelector('#roi-demo-temporal-behavior')?.addEventListener('change', (event) => handlers.temporalBehavior?.(event.target.value));
     this.root.querySelector('#roi-demo-evolution-model')?.addEventListener('change', (event) => handlers.evolutionModel?.(event.target.value));
+    this.root.querySelector('#roi-demo-pattern-evolution')?.addEventListener('change', (event) => handlers.patternEvolution?.(event.target.value));
+    this.root.querySelector('#roi-demo-state-model')?.addEventListener('change', (event) => handlers.stateModel?.(event.target.value));
     this.root.querySelector('#roi-demo-dynamic-complexity')?.addEventListener('change', (event) => handlers.dynamicComplexity?.(event.target.value));
-    this.root.querySelector('#roi-demo-forecast-view')?.addEventListener('change', (event) => handlers.forecastView?.(event.target.value));
+    this.root.querySelector('#roi-demo-depletion-mode')?.addEventListener('change', (event) => handlers.depletionMode?.(event.target.value));
+    this.root.querySelector('#roi-demo-display-mode')?.addEventListener('change', (event) => handlers.displayMode?.(event.target.value));
     this.root.querySelector('#roi-demo-time-speed')?.addEventListener('change', (event) => handlers.timeSpeedScale?.(event.target.value));
     this.bind({
       regenerate: handlers.regenerate,
@@ -538,6 +555,107 @@ export class MissionConsole {
     this.root.querySelector('#coupled-coupling-mode')?.addEventListener('change', (event) => handlers.couplingMode?.(event.target.value));
     this.root.querySelector('#coupled-playback-speed')?.addEventListener('change', (event) => handlers.playbackSpeedScale?.(event.target.value));
     this.bind({ menu: handlers.menu });
+  }
+
+  renderUncertaintyForecastDemoControls(state = {}, handlers = {}) {
+    if (!this.root) return;
+    this.root.innerHTML = `
+      <section class="console-header">
+        <div class="console-kicker">Uncertainty / Forecast Demo</div>
+        <h1>${escapeHtml(state.title ?? 'Uncertainty / Forecast Demo')}</h1>
+        <p>Explore what is known, unknown, wrong, or learned in forecast planning fields.</p>
+      </section>
+      <section class="console-status">
+        <span>${escapeHtml(state.status ?? 'Uncertainty layer')}</span>
+        <strong>${escapeHtml(state.paused ? 'Paused' : 'Animating')}</strong>
+        <small>${escapeHtml(`${state.forecastModelLabel ?? forecastModelLabel(state.forecastModel)} | ${state.updateModelLabel ?? updateModelLabel(state.updateModel)} | Observations ${state.observationCount ?? 0}`)}</small>
+      </section>
+      <section class="console-section">
+        <h2>Displayed Layer</h2>
+        <label class="compact-field">
+          View
+          <select id="uncertainty-demo-view">
+            ${UNCERTAINTY_DEMO_VIEW_MODES.map((view) => `<option value="${escapeAttr(view)}" ${state.viewMode === view ? 'selected' : ''}>${escapeHtml(uncertaintyViewLabel(view))}</option>`).join('')}
+          </select>
+        </label>
+        <div class="hud-muted">Truth is shown here for education only. Fair solver packets hide truth unless oracle mode is explicit.</div>
+      </section>
+      <section class="console-section">
+        <h2>Uncertainty Pattern</h2>
+        <label class="compact-field">
+          Spatial Pattern
+          <select id="uncertainty-demo-pattern">
+            ${UNCERTAINTY_DEMO_PATTERNS.map((pattern) => `<option value="${escapeAttr(pattern)}" ${state.uncertaintyPattern === pattern ? 'selected' : ''}>${escapeHtml(uncertaintyPatternLabel(pattern))}</option>`).join('')}
+          </select>
+        </label>
+        <label class="compact-field">
+          Seed
+          <input id="uncertainty-demo-seed" type="text" value="${escapeAttr(state.seed ?? 'anchor-uncertainty-demo')}" />
+        </label>
+      </section>
+      <section class="console-section">
+        <h2>Forecast Model</h2>
+        <label class="compact-field">
+          Forecast Model
+          <select id="uncertainty-demo-forecast-model">
+            ${UNCERTAINTY_DEMO_FORECAST_MODELS.map((model) => `<option value="${escapeAttr(model)}" ${state.forecastModel === model ? 'selected' : ''}>${escapeHtml(forecastModelLabel(model))}</option>`).join('')}
+          </select>
+        </label>
+      </section>
+      <section class="console-section">
+        <h2>Uncertainty Behavior</h2>
+        <label class="compact-field">
+          Behavior
+          <select id="uncertainty-demo-behavior">
+            ${UNCERTAINTY_DEMO_BEHAVIORS.map((behavior) => `<option value="${escapeAttr(behavior)}" ${state.uncertaintyBehavior === behavior ? 'selected' : ''}>${escapeHtml(uncertaintyBehaviorLabel(behavior))}</option>`).join('')}
+          </select>
+        </label>
+      </section>
+      <section class="console-section">
+        <h2>Update Model</h2>
+        <label class="compact-field">
+          Update Model
+          <select id="uncertainty-demo-update-model">
+            ${UNCERTAINTY_DEMO_UPDATE_MODELS.map((model) => `<option value="${escapeAttr(model)}" ${state.updateModel === model ? 'selected' : ''}>${escapeHtml(updateModelLabel(model))}</option>`).join('')}
+          </select>
+        </label>
+        <button data-action="uncertainty-apply-sample" class="console-button">Apply Sample Update</button>
+        <button data-action="uncertainty-surface-update" class="console-button secondary">Surface Update</button>
+        <button data-action="uncertainty-reset-observations" class="console-button secondary">Reset Observations</button>
+        <div class="hud-muted">Clicking the map also simulates a sample observation at that cell.</div>
+      </section>
+      <section class="console-section">
+        <h2>Playback</h2>
+        <label class="compact-field">
+          Time Speed
+          <select id="uncertainty-demo-playback-speed">
+            ${[0.5, 1, 2, 5].map((speed) => `<option value="${escapeAttr(speed)}" ${Number(state.playbackSpeedScale ?? 1) === speed ? 'selected' : ''}>${escapeHtml(speed)}x</option>`).join('')}
+          </select>
+        </label>
+      </section>
+      <section class="console-status">
+        <span>Layer Stats</span>
+        <strong>Max ${escapeHtml(formatDemoStat(state.stats?.max))} | Mean ${escapeHtml(formatDemoStat(state.stats?.mean))}</strong>
+        <small>${escapeHtml(state.viewModeLabel ?? uncertaintyViewLabel(state.viewMode))} | Total ${escapeHtml(formatDemoStat(state.stats?.totalValue))}</small>
+      </section>
+      <section class="console-footer">
+        <button data-action="menu" class="console-button secondary">Main Menu</button>
+      </section>
+    `;
+    this.app.applyConsoleAccordions?.('uncertaintyForecastDemo');
+    this.root.querySelector('#uncertainty-demo-view')?.addEventListener('change', (event) => handlers.viewMode?.(event.target.value));
+    this.root.querySelector('#uncertainty-demo-pattern')?.addEventListener('change', (event) => handlers.uncertaintyPattern?.(event.target.value));
+    this.root.querySelector('#uncertainty-demo-seed')?.addEventListener('change', (event) => handlers.seed?.(event.target.value));
+    this.root.querySelector('#uncertainty-demo-forecast-model')?.addEventListener('change', (event) => handlers.forecastModel?.(event.target.value));
+    this.root.querySelector('#uncertainty-demo-behavior')?.addEventListener('change', (event) => handlers.uncertaintyBehavior?.(event.target.value));
+    this.root.querySelector('#uncertainty-demo-update-model')?.addEventListener('change', (event) => handlers.updateModel?.(event.target.value));
+    this.root.querySelector('#uncertainty-demo-playback-speed')?.addEventListener('change', (event) => handlers.playbackSpeedScale?.(event.target.value));
+    this.bind({
+      'uncertainty-apply-sample': handlers.applySampleUpdate,
+      'uncertainty-surface-update': handlers.surfaceUpdate,
+      'uncertainty-reset-observations': handlers.resetObservations,
+      menu: handlers.menu
+    });
   }
 
   renderLeaderboardControls(state = {}, handlers = {}) {

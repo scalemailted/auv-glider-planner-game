@@ -2,183 +2,170 @@
 
 ## Purpose
 
-The Sample / ROI Field Demo is the isolated diagnostic view for sample value `S(x,y,t)`: where the environment is valuable to observe, how that value changes over mission time, and which field families are useful for planning puzzles.
+The pure Sample / ROI Field Demo visualizes `S(x,y,t)`: sample value, reward value, or objective value at map location `x,y` and demo time `t`.
 
-It is the sample-side companion to the Flow Fields Demo. It does not create a mission, run a planner, execute gliders, score a route, or save leaderboard attempts. Its job is to make sample-field behavior visible before the same ideas are used in Challenge Mode, Simulation Lab, solver packets, and datasets.
+This demo focuses only on sample-value behavior:
+
+- where value is located
+- when value rises, falls, appears, or fades
+- how a spatial pattern evolves
+- how depletion and recovery change value
+
+It does not show forecast/truth switching, uncertainty, information gain, current vectors, current-advected transport, or flow-stretched sample behavior. Those concepts belong in the Uncertainty / Forecast Demo and Coupled Fields Demo.
 
 ## Conceptual Model
 
-`S(x,y,t)` is a scalar field over map position and mission time.
+`S(x,y,t)` is a scalar field over map position and demo time.
 
-Depending on the selected view, `S` can represent:
+The center viewport renders this field as a cell heatmap. Cooler cells have lower sample value; warmer cells have higher sample value. The field is deterministic from the demo seed and controls, so random-looking texture and pulses are replayable rather than unseeded page-load randomness.
 
-- raw science value
-- expected sample reward
-- forecast-biased value
-- hidden truth value
-- uncertainty
-- depleted or remaining-looking value
-- a diagnostic value field used to teach planner behavior
+## Spatial Pattern
 
-The demo renders this as a cell heatmap. Cooler cells are lower-value sample opportunities, and warmer cells are higher-value opportunities. The field is deterministic from the selected seed, pattern controls, forecast/truth view, and demo time.
+Spatial Pattern answers: where is sample value located?
 
-## Sample Field vs Flow Field
+Options are sample-value shapes, not flow structures:
 
-The sample field is not the current field.
+- `Uniform Field`
+- `Gradient Field`
+- `Single Cluster`
+- `Multiple Clusters`
+- `Patchy Field`
+- `Sparse Targets`
+- `Front / Boundary`
+- `Linear Band`
+- `Coastal Band`
+- `Monitoring Stations`
+- `Random Texture`
 
-`S(x,y,t)` answers:
+`Multiple Clusters` plus `Cluster Count = 2` replaces the older dedicated bimodal top-level option. Plume or channel language is avoided here when it would imply transport by currents.
 
-- What is worth sampling here?
-- When does the opportunity appear or fade?
-- Is the planner chasing forecast value, true value, uncertainty, or apparent remaining value?
-- Does revisiting this region matter?
+## Spatial Parameters
 
-`F(x,y,t)` answers:
+Spatial parameters tune how the selected pattern is drawn.
 
-- Which way is the water moving?
-- How fast is the current?
-- Does the current help, oppose, or drift a glider off route?
+- `Cluster Count`: number of sample-value clusters or station-like targets.
+- `Texture`: seeded local variation added to the field.
+- `Seed`: deterministic replay seed for the visual pattern.
 
-The Sample / ROI Field Demo is sample-only. Current-dependent behavior such as flow-carried plumes, eddy-stretched blooms, shoreline runoff, and current-shaped fronts is reserved for the Coupled Fields Demo, where `F(x,y,t)` and `S(x,y,t)` are rendered together and the sample layer can use the visible flow sampler.
+The pure demo keeps these parameters simple so users can see how location and value interact before adding uncertainty or flow coupling.
+
+## Temporal Pattern
+
+Temporal Pattern answers: how does sample value intensity change over time?
+
+- `Static`: value does not change over time.
+- `Sustained`: long active window with gradual change.
+- `Periodic`: regular rise/fall cycle.
+- `Bursty`: short intense activity followed by quiet periods.
+- `Intermittent`: repeated on/off windows.
+- `Random Pulses`: irregular but seeded pulses.
+- `Long Cycle`: slow seasonal-style cycle.
+
+A temporal pattern can be dynamic without being stateful. For example, a periodic field can be evaluated directly from `S(x,y,t)`.
+
+## Pattern Evolution
+
+Pattern Evolution answers: how does the spatial pattern itself change over time?
+
+- `Fixed in Place`: the spatial pattern stays put while intensity may change.
+- `Moving Feature`: clusters move independently of flow vectors.
+- `Grow / Fade`: clusters intensify and decay.
+- `Diffuse / Spread`: value spreads to nearby cells.
+- `Neighbor Activation`: nearby activity can activate future value.
+- `Split / Merge`: patches separate or recombine.
+- `Revisit / Recover`: station-like value returns over time.
+
+Current-advected movement is not part of this demo. Use Coupled Fields Demo when the sample pattern should move because of `F(x,y,t)`.
 
 ## State Model
 
-The Sample / ROI Field Demo distinguishes how a sample field depends on time and prior behavior. The UI uses friendly labels; the docs include the technical language.
+State Model answers: what does the field depend on?
 
-- **Time-Indexed / Memoryless:** `S(x,y,t)` is computed directly from position and time. The field does not need to remember a previous state. Static hotspots, direct periodic cycles, seeded time functions, and deterministic moving features defined by `t` are examples.
+- **Time-Indexed / Memoryless:** `S(x,y,t)` is computed directly from position and time. The field does not need to remember a previous state.
+- **State-Evolving / Markovian:** the next field state depends on the current field state, often written as `S_{t+1} = f(S_t, inputs_t)`.
+- **History-Aware / Non-Markovian:** the field depends on longer sampling or observation history, such as time since last sample or cumulative depletion.
 
-- **State-Evolving / Markovian:** the next field state depends on the current field state, often written as `S_{t+1} = f(S_t, inputs_t)`. Diffusion, growth/decay, neighbor activation, and active/inactive cell transitions are examples when the next state depends only on the current state and current inputs.
+Markovian is not a synonym for any time-varying behavior. Seeded irregular pulses can be deterministic and replayable. Visit-dependent depletion or monitoring recovery is history-aware when the visit history affects value.
 
-- **History-Aware / Non-Markovian:** the field depends on longer history, such as time since last sample, cumulative depletion, persistent monitoring, trend estimates, revisit rewards, or longer forecast-error accumulation.
+## Depletion and Recovery
 
-Markovian is not a synonym for any time-varying behavior. A periodic field can be dynamic and still memoryless because it can be evaluated directly at time `t`. A seeded irregular pulse can be deterministic and replayable rather than stochastic in the simulation sense. A revisit-recovery process becomes history-aware when visits or observation history affect the value.
+Depletion / Recovery belongs in the pure Sample / ROI Demo because it directly changes sample value.
 
-The right Cell Inspector labels the selected behavior as Time-Indexed, State-Evolving, or History-Aware.
+- `None`: no depletion overlay.
+- `Hard Depletion`: sampled cells lose most value.
+- `Soft Depletion`: sampled cells lose part of their value.
+- `Neighborhood Depletion`: nearby cells partially lose value too.
+- `Revisit Recovery`: value returns after enough time has passed.
 
-## Temporal Patterns
+The demo uses deterministic synthetic sample markers rather than actual glider visits. Full mission simulation remains the authoritative source for scored duplicate sampling, cooldown, and recovery rules.
 
-Temporal Pattern controls how value changes over time before the selected process model is applied.
+## Display
 
-- `Static`: value remains fixed over demo time.
-- `Sustained`: value stays active with slow mild variation.
-- `Periodic / Cyclic`: value rises and falls on a regular cycle.
-- `Bursty`: quiet periods alternate with high-value pulses. The current demo uses a deterministic burst centered in a repeating daily-style cycle.
-- `Seasonal / Long Cycle`: slower cyclic variation over a longer window.
-- `Random Pulses`: seeded time buckets produce irregular-looking pulses.
-- `Intermittent Activity`: seeded time buckets switch activity on and off.
+Display controls which sample-value layer is shown:
 
-These are deterministic. Replaying the same seed and configuration at the same demo time gives the same heatmap.
+- `Sample Value`: the current sample-value field.
+- `Depleted Value`: the deterministic depleted-value layer.
+- `Raw Base Value`: the base value before depletion display adjustments.
 
-## Spatial Patterns
-
-Spatial Pattern controls where value appears in the domain.
-
-- `Uniform`: broad value across the domain.
-- `Gradient`: a directional value front or smooth transition.
-- `Single Hotspot`: one dominant high-value region.
-- `Multi Hotspot`: several high-value regions.
-- `Bimodal`: two major modes that encourage assignment and sequencing decisions.
-- `Coastal Band`: value concentrated along a band-like region.
-- `Channel Corridor`: value concentrated along a corridor.
-- `Plume`: plume-shaped value without requiring flow transport in this sample-only demo.
-- `Random Texture`: seeded heterogeneous value.
-
-The separate Distribution control is a diagnostic preset layer over these spatial ideas. It includes uniform random, Gaussian hotspots, clustered hotspots, gradient/front, sparse targets, ridge/corridor, bimodal hotspots, moving hotspot, bursty bloom, and nonuniform random. The sample-only distribution list intentionally excludes the current-advected plume option; use Coupled Fields Demo for current-dependent plume behavior.
-
-## Process Models
-
-Process Model controls how the selected base field is transformed through time.
-
-- `Time-Indexed`: uses the selected field and temporal envelope directly. This preserves compatibility with older saved demo configurations while displaying the clearer educational label.
-- `Growth / Decay`: adds seeded cell pulses so regions intensify, peak, and fade.
-- `Diffusion`: blurs value into neighboring cells through deterministic blur passes.
-- `Neighbor Activation`: combines blur with seeded block activation by time bucket.
-- `Moving Feature`: shifts the field through time so hotspots or fronts translate.
-- `Split / Merge`: mixes shifted copies so a patch can separate or recombine.
-- `Revisit / Recovery`: adds station-like recovery boosts that suggest returning later can regain value. In full mission contexts, visit-dependent recovery is History-Aware.
-- `Forecast Error Drift`: adds seeded bias that increases with time, representing a forecast drifting from the base truth-like field.
-
-These are lightweight educational approximations. They are meant to expose strategy differences, not to claim a physical biological or ocean model.
-
-## Forecast, Truth, And Uncertainty
-
-The Forecast / Truth selector changes which value layer the demo displays.
-
-- `Truth`: shows the raw generated sample field.
-- `Forecast`: shows the field with deterministic per-cell forecast bias.
-- `Uncertainty`: shows a deterministic uncertainty diagnostic with blocky spatial structure and temporal variation.
-- `Depleted`: shows a deterministic moving depletion visualization.
-
-Forecast and uncertainty are useful for teaching robust planning: a route may chase a high forecast, hedge toward a lower-uncertainty region, or intentionally sample uncertain cells for information value.
-
-The depleted view is illustrative in this demo. It does not know about actual glider visits because the demo does not run mission simulation.
-
-## Depletion, Recovery, And Revisit Value
-
-In full missions, sampling rules such as unique, diminishing, cooldown, and persistent determine whether repeated visits keep value, deplete value, or recover across windows.
-
-In the Sample / ROI Field Demo:
-
-- `Depleted` view is a visualization of what depleted-looking value can look like.
-- `Revisit / Recovery` is an evolution-model concept that shows station-like recovery.
-- No glider route is executed.
-- No sampled-cell history is recorded.
-- No score is changed.
-
-Use this demo to understand what revisit and recovery fields look like. Use Challenge Mode or Simulation Lab missions to test actual route scoring and duplicate-sampling rules.
+Forecast, truth, uncertainty, and information-gain views are intentionally not available in this pure demo.
 
 ## Cell Inspector
 
-Click a heatmap cell to inspect it in the right panel. The inspector is the authoritative readout for the selected cell in this demo.
+Click a heatmap cell to inspect it in the right panel.
 
-It reports the selected coordinates, current sample value, normalized value, recent trend, distribution, view, temporal pattern, spatial pattern, state model, process model, uncertainty estimate, depleted-value estimate, hotspot membership, and relevant sample-field metadata.
+The inspector reports:
 
-The inspector updates from the same field generation path used to render the heatmap, so it is the best way to verify whether a visual change is a value change, an uncertainty change, or a depleted-view change.
+- cell coordinate
+- displayed layer
+- sample value and normalized value
+- spatial pattern
+- temporal pattern
+- pattern evolution
+- state model
+- depletion mode
+- cluster/high-value membership
+- trend
+- raw base value
+- depleted value
+- recovery status when relevant
 
-## Relationship To Mission Modes
+It uses the same generated field that draws the heatmap.
 
-Mission Modes use sample-field ideas as objective presets, not as separate engines.
+## Relationship to Mission Modes
 
-- `Survey Sweep`: broad coverage, remaining value, and depletion.
-- `Signal Hunt`: high-value hotspots, uncertainty, and information gain.
-- `Surface & Adapt`: forecast/truth mismatch and later correction.
-- `Fleet Split`: bimodal or multimodal sample regions.
-- `Uncertain Waters`: uncertainty, forecast drift, and robust planning.
-- `Forecast Chase`: time windows, forecast decay, and changing expected value.
-- `Plume Intercept`: moving or bursty value; current-shaped plume details belong in Coupled Fields Demo.
-- `Watch Stations`: revisit and recovery.
-- `Danger Run`: valuable regions near risk.
-- `Long Glide`: sparse targets and route economy.
+The pure Sample / ROI Demo helps explain mission modes where sample value itself is the lesson:
 
-Generated missions may export ordinary temporal ROI frames plus `sampleFieldConfig` metadata so solver packets and datasets can describe the behavior family behind the values.
+- `Survey Sweep`: coverage plus depletion.
+- `Fleet Split`: multiple clusters plus duplicate/depleted value.
+- `Watch Stations`: monitoring stations plus revisit/recovery.
+- `Plume Intercept`: bursty or moving sample-value features when movement is independent of flow.
+- `Long Glide`: sparse targets plus route economy.
 
-## Relationship To Coupled Fields Demo
+Uncertainty-specific modes such as Signal Hunt, Uncertain Waters, Surface & Adapt, and Forecast Chase should point to an uncertainty/forecast experience. Current-coupled sample behavior should point to Coupled Fields Demo.
 
-The Coupled Fields Demo is the interaction view for `F(x,y,t)` and `S(x,y,t)`.
+## What Belongs in Other Demos
 
-Use it when the sample field should depend on currents:
+Use Flow Fields Demo for:
 
-- current-advected plumes
-- eddy-carried blooms
+- current vectors `F(x,y,t)`
+- flow magnitude and direction
+- topology-aware currents
+- particles passively following current
+
+Use Coupled Fields Demo for:
+
+- current-advected sample value
 - flow-stretched hotspots
-- shoreline runoff
-- fronts shaped by the visible current sampler
+- eddy-carried value
+- shoreline runoff shaped by visible currents
 
-The Sample / ROI Field Demo intentionally stays useful without current vectors. That keeps the sample taxonomy clear: temporal pattern, spatial pattern, state model, and process model can be understood before flow coupling is introduced.
+Use Uncertainty / Forecast Demo when available for:
 
-## Strategy Examples
-
-Static multi-hotspot fields reward straightforward route ordering and fleet splitting.
-
-Bursty hotspot fields reward waiting, sequencing, and scrubbing time before committing waypoints.
-
-Bimodal fields reward assigning different gliders to different modes instead of sending the whole fleet to one bright patch.
-
-Forecast error drift rewards robust plans that avoid over-committing to late, uncertain forecast value.
-
-Revisit recovery fields reward monitoring-style routes where returning later can be better than immediately sweeping every cell.
-
-Uncertainty views reward information-seeking behavior when the mission objective values reducing uncertainty, not only collecting high raw value.
+- forecast vs truth
+- uncertainty
+- information gain
+- forecast error
+- update effects
 
 ## Developer Notes
 
@@ -188,26 +175,12 @@ Primary files:
 - `src/core/demo/DemoRoiFields.js`
 - `src/core/generation/SampleFieldConfig.js`
 - `src/core/generation/ROIFieldGenerator.js`
-- `src/core/random/SeededRng.js`
 
-The demo normalizes UI controls into sample-field configuration and creates a deterministic field for the current demo time. Random-looking values use seeded helpers, not per-frame `Math.random()` calls.
-
-Important implementation details:
-
-- Sample-only distributions exclude `currentAdvectedPlume`.
-- Temporal Pattern provides the time envelope.
-- Spatial Pattern provides the base spatial layout.
-- State Model describes whether the sample value is Time-Indexed, State-Evolving, or History-Aware.
-- Process Model applies deterministic synthetic time transforms.
-- Forecast/truth/uncertainty/depleted view is applied after base field generation.
-- The bottom transport changes demo time, not mission simulation time.
-- The demo can run forward or backward because the field is sampled from time, not advanced by mutating persistent simulation state.
+The demo maps friendly pure-sample controls onto existing seeded sample-field generator utilities. Shared current-coupled and forecast-capable generator paths are preserved for missions and other demos, but the pure Sample / ROI Demo hides those concepts.
 
 ## Limitations
 
-- This is a visualization and taxonomy demo, not a mission simulation.
-- Depletion is illustrative and not based on actual glider visits.
-- State-Evolving and History-Aware demo behavior is deterministic synthetic post-processing, not a full ecological, fluid, or stochastic process model.
-- Current-dependent transport belongs in the Coupled Fields Demo.
+- Depletion and recovery are deterministic visual diagnostics, not actual glider visit history.
+- State-Evolving and History-Aware demo behavior is lightweight synthetic post-processing, not a full ecological or stochastic process model.
 - The demo does not validate waypoint routes, compute score, save attempts, or export leaderboard records.
-- It should not be used as evidence that a particular route is executable; use Planning, route validation, simulation, and Debrief for that.
+- It should not be used as evidence that a route is executable; use Planning, route validation, simulation, and Debrief for that.

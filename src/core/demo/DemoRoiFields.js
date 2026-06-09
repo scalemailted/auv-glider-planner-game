@@ -25,10 +25,26 @@ export const ROI_DEMO_DISTRIBUTIONS = [
 export const ROI_DEMO_SAMPLE_ONLY_DISTRIBUTIONS = ROI_DEMO_DISTRIBUTIONS.filter((distribution) => distribution !== 'currentAdvectedPlume');
 export const ROI_DEMO_TIME_MODES = ['static', 'dynamic'];
 export const ROI_DEMO_SPATIAL_PATTERNS = SAMPLE_SPATIAL_PATTERNS;
+export const ROI_DEMO_PURE_SPATIAL_PATTERNS = [
+  'uniformField',
+  'gradientField',
+  'singleCluster',
+  'multipleClusters',
+  'patchyField',
+  'sparseTargets',
+  'frontBoundary',
+  'linearBand',
+  'coastalBand',
+  'monitoringStations',
+  'randomTexture'
+];
 export const ROI_DEMO_TEMPORAL_BEHAVIORS = SAMPLE_TEMPORAL_BEHAVIORS;
 export const ROI_DEMO_TEMPORAL_PATTERNS = ['static', 'sustained', 'periodic', 'bursty', 'seasonal', 'randomPulses', 'intermittent'];
 export const ROI_DEMO_EVOLUTION_MODELS = ['priorAgnostic', 'growthDecay', 'diffusion', 'neighborActivation', 'movingFeature', 'splitMerge', 'revisitRecovery', 'forecastErrorDrift'];
+export const ROI_DEMO_PATTERN_EVOLUTIONS = ['fixed', 'movingFeature', 'growthDecay', 'diffusion', 'neighborActivation', 'splitMerge', 'revisitRecovery'];
 export const ROI_DEMO_STATE_MODELS = ['timeIndexed', 'stateEvolving', 'historyAware'];
+export const ROI_DEMO_DEPLETION_MODES = ['none', 'hard', 'soft', 'neighborhood', 'revisitRecovery'];
+export const ROI_DEMO_DISPLAY_MODES = ['sampleValue', 'depletedValue', 'rawBaseValue'];
 export const ROI_DEMO_DYNAMIC_COMPLEXITY = ['low', 'medium', 'high'];
 
 export function normalizeRoiDemoDistribution(value = 'gaussianHotspots') {
@@ -49,6 +65,10 @@ export function createDemoRoiField({
   temporalBehavior = null,
   temporalPattern = null,
   evolutionModel = 'growthDecay',
+  patternEvolution = null,
+  stateModel = null,
+  depletionMode = 'soft',
+  displayMode = 'sampleValue',
   dynamicComplexity = 'medium',
   forecastView = 'forecast',
   time = 0,
@@ -59,30 +79,38 @@ export function createDemoRoiField({
   const height = Math.max(1, Number(grid.height ?? ROI_DEMO_GRID.height));
   const normalizedDistribution = normalizeRoiDemoDistribution(distribution);
   const normalizedTimeMode = normalizeRoiDemoTimeMode(timeMode);
+  const normalizedPureSpatialPattern = normalizeRoiDemoPureSpatialPattern(spatialPattern ?? pureSpatialPatternFromDistribution(normalizedDistribution));
+  const spatialDefaults = pureSpatialPatternDefaults(normalizedPureSpatialPattern);
   const normalizedTemporalPattern = normalizeRoiDemoTemporalPattern(temporalPattern ?? temporalPatternFromBehavior(temporalBehavior ?? distributionToSampleConfig(normalizedDistribution).temporalBehavior));
-  const normalizedEvolutionModel = normalizeRoiDemoEvolutionModel(evolutionModel);
+  const normalizedPatternEvolution = normalizeRoiDemoPatternEvolution(patternEvolution ?? evolutionModel);
+  const normalizedEvolutionModel = normalizeRoiDemoEvolutionModel(evolutionModelFromPatternEvolution(normalizedPatternEvolution, evolutionModel));
+  const normalizedStateModel = normalizeRoiDemoStateModel(stateModel ?? roiStateModelForEvolutionModel(normalizedEvolutionModel));
+  const normalizedDepletionMode = normalizeRoiDemoDepletionMode(depletionMode);
+  const normalizedDisplayMode = normalizeRoiDemoDisplayMode(displayModeFromLegacyForecastView(displayMode, forecastView));
   const normalizedDynamicComplexity = normalizeRoiDemoDynamicComplexity(dynamicComplexity);
   const effectiveTemporalBehavior = temporalBehavior ?? temporalBehaviorFromPattern(normalizedTemporalPattern, normalizedEvolutionModel);
   const sourceTime = demoTime ?? time;
   const t = normalizedTimeMode === 'dynamic' ? Number(sourceTime) || 0 : 0;
-  const rng = createSeededRng(`${seed}:${normalizedDistribution}:${width}x${height}:${hotspotCount}:${noise}`);
+  const clusterCount = clampInt(hotspotCount, 1, 6, spatialDefaults.clusterCount);
+  const rng = createSeededRng(`${seed}:${normalizedPureSpatialPattern}:${width}x${height}:${clusterCount}:${noise}`);
   const baseField = buildDistribution({
-    distribution: normalizedDistribution,
+    distribution: spatialDefaults.distribution,
     rng,
     seed,
     width,
     height,
-    hotspotCount: Math.max(1, Math.min(8, Math.round(Number(hotspotCount) || 4))),
+    hotspotCount: clusterCount,
     noise: clamp01(noise),
     timeMode: normalizedTimeMode,
-    spatialPattern,
+    spatialPattern: spatialDefaults.sampleSpatialPattern,
     temporalBehavior: effectiveTemporalBehavior,
-    forecastView,
+    forecastView: 'truth',
     time: t
   });
   const behavior = sampleBehaviorMetadata({
     temporalPattern: normalizedTemporalPattern,
     evolutionModel: normalizedEvolutionModel,
+    stateModel: normalizedStateModel,
     dynamicComplexity: normalizedDynamicComplexity,
     time: t
   });
@@ -94,39 +122,59 @@ export function createDemoRoiField({
     evolutionModel: normalizedEvolutionModel,
     dynamicComplexity: normalizedDynamicComplexity
   });
-  const stats = summarizeField(field);
+  const displayedField = applySampleDisplayMode(field, {
+    seed,
+    time: t,
+    depletionMode: normalizedDepletionMode,
+    displayMode: normalizedDisplayMode,
+    dynamicComplexity: normalizedDynamicComplexity
+  });
+  const stats = summarizeField(displayedField);
   return {
-    field,
+    field: displayedField,
+    rawBaseField: baseField,
+    evolvedField: field,
     width,
     height,
-    distribution: normalizedDistribution,
-    distributionLabel: roiDistributionLabel(normalizedDistribution),
+    distribution: spatialDefaults.distribution,
+    distributionLabel: roiDistributionLabel(spatialDefaults.distribution),
     timeMode: normalizedTimeMode,
-    spatialPattern: normalizeRoiDemoSpatialPattern(spatialPattern ?? distributionToSampleConfig(normalizedDistribution).spatialPattern),
+    spatialPattern: spatialDefaults.sampleSpatialPattern,
+    pureSpatialPattern: normalizedPureSpatialPattern,
+    pureSpatialPatternLabel: roiPureSpatialPatternLabel(normalizedPureSpatialPattern),
+    clusterCount,
     temporalBehavior: normalizeRoiDemoTemporalBehavior(effectiveTemporalBehavior),
     temporalPattern: normalizedTemporalPattern,
     temporalPatternLabel: roiTemporalPatternLabel(normalizedTemporalPattern),
     evolutionModel: normalizedEvolutionModel,
     evolutionModelLabel: roiEvolutionModelLabel(normalizedEvolutionModel),
+    patternEvolution: normalizedPatternEvolution,
+    patternEvolutionLabel: roiPatternEvolutionLabel(normalizedPatternEvolution),
+    stateModel: normalizedStateModel,
+    stateModelLabel: roiStateModelLabel(normalizedStateModel),
+    stateModelDescription: roiStateModelDescription(normalizedStateModel),
+    depletionMode: normalizedDepletionMode,
+    depletionModeLabel: roiDepletionModeLabel(normalizedDepletionMode),
+    displayMode: normalizedDisplayMode,
+    displayModeLabel: roiDisplayModeLabel(normalizedDisplayMode),
     dynamicComplexity: normalizedDynamicComplexity,
-    stateModel: behavior.stateModel,
-    stateModelLabel: behavior.stateModelLabel,
-    stateModelDescription: behavior.stateModelDescription,
-    priorMode: behavior.priorMode,
+    priorMode: normalizedStateModel,
     behavior,
-    forecastView,
+    forecastView: 'truth',
     time: t,
     sampleFieldConfig: sampleFieldConfigForDemo({
-      distribution: normalizedDistribution,
+      distribution: spatialDefaults.distribution,
       timeMode: normalizedTimeMode,
-      spatialPattern,
+      spatialPattern: spatialDefaults.sampleSpatialPattern,
       temporalBehavior: effectiveTemporalBehavior,
-      hotspotCount,
+      hotspotCount: clusterCount,
       evolutionModel: normalizedEvolutionModel,
-      dynamicComplexity: normalizedDynamicComplexity
+      dynamicComplexity: normalizedDynamicComplexity,
+      stateModel: normalizedStateModel,
+      depletionMode: normalizedDepletionMode
     }),
     stats,
-    highValueCells: findHighValueCells(field, Math.max(0.68, stats.mean + stats.stdDev * 1.35))
+    highValueCells: findHighValueCells(displayedField, Math.max(0.68, stats.mean + stats.stdDev * 1.35))
   };
 }
 
@@ -150,6 +198,30 @@ export function normalizeRoiDemoSpatialPattern(value = 'multiHotspot') {
   return ROI_DEMO_SPATIAL_PATTERNS.includes(value) ? value : 'multiHotspot';
 }
 
+export function normalizeRoiDemoPureSpatialPattern(value = 'multipleClusters') {
+  if (ROI_DEMO_PURE_SPATIAL_PATTERNS.includes(value)) return value;
+  const aliases = {
+    uniform: 'uniformField',
+    gradient: 'gradientField',
+    singleHotspot: 'singleCluster',
+    multiHotspot: 'multipleClusters',
+    bimodal: 'multipleClusters',
+    coastalBand: 'coastalBand',
+    channelCorridor: 'linearBand',
+    plume: 'frontBoundary',
+    randomTexture: 'randomTexture',
+    gaussianHotspots: 'multipleClusters',
+    clusteredHotspots: 'multipleClusters',
+    sparseTargets: 'sparseTargets',
+    ridgeCorridor: 'linearBand',
+    bimodalHotspots: 'multipleClusters',
+    movingHotspot: 'singleCluster',
+    burstyBloom: 'multipleClusters',
+    nonuniformRandom: 'patchyField'
+  };
+  return aliases[value] ?? 'multipleClusters';
+}
+
 export function normalizeRoiDemoTemporalBehavior(value = 'static') {
   return ROI_DEMO_TEMPORAL_BEHAVIORS.includes(value) ? value : 'static';
 }
@@ -163,6 +235,71 @@ export function normalizeRoiDemoEvolutionModel(value = 'growthDecay') {
   if (value === 'stateEvolving' || value === 'stateful') return 'growthDecay';
   if (value === 'historyAware' || value === 'historyDependent') return 'revisitRecovery';
   return ROI_DEMO_EVOLUTION_MODELS.includes(value) ? value : 'growthDecay';
+}
+
+export function normalizeRoiDemoPatternEvolution(value = 'growthDecay') {
+  const aliases = {
+    priorAgnostic: 'fixed',
+    timeIndexed: 'fixed',
+    fixedInPlace: 'fixed',
+    fixed: 'fixed',
+    growFade: 'growthDecay',
+    growthDecay: 'growthDecay',
+    diffuse: 'diffusion',
+    diffusion: 'diffusion',
+    moving: 'movingFeature',
+    movingFeature: 'movingFeature',
+    neighborActivation: 'neighborActivation',
+    splitMerge: 'splitMerge',
+    revisitRecovery: 'revisitRecovery',
+    historyAware: 'revisitRecovery'
+  };
+  return ROI_DEMO_PATTERN_EVOLUTIONS.includes(aliases[value] ?? value) ? (aliases[value] ?? value) : 'growthDecay';
+}
+
+export function normalizeRoiDemoStateModel(value = 'stateEvolving') {
+  const aliases = {
+    priorAgnostic: 'timeIndexed',
+    timeIndexed: 'timeIndexed',
+    memoryless: 'timeIndexed',
+    stateEvolving: 'stateEvolving',
+    stateful: 'stateEvolving',
+    markovian: 'stateEvolving',
+    historyAware: 'historyAware',
+    historyDependent: 'historyAware',
+    nonMarkovian: 'historyAware'
+  };
+  return ROI_DEMO_STATE_MODELS.includes(aliases[value] ?? value) ? (aliases[value] ?? value) : 'stateEvolving';
+}
+
+export function normalizeRoiDemoDepletionMode(value = 'soft') {
+  const aliases = {
+    none: 'none',
+    hard: 'hard',
+    hardDepletion: 'hard',
+    soft: 'soft',
+    softDepletion: 'soft',
+    neighborhood: 'neighborhood',
+    neighborhoodDepletion: 'neighborhood',
+    revisit: 'revisitRecovery',
+    recovery: 'revisitRecovery',
+    revisitRecovery: 'revisitRecovery'
+  };
+  return ROI_DEMO_DEPLETION_MODES.includes(aliases[value] ?? value) ? (aliases[value] ?? value) : 'soft';
+}
+
+export function normalizeRoiDemoDisplayMode(value = 'sampleValue') {
+  const aliases = {
+    sample: 'sampleValue',
+    value: 'sampleValue',
+    sampleValue: 'sampleValue',
+    depleted: 'depletedValue',
+    depletedValue: 'depletedValue',
+    base: 'rawBaseValue',
+    raw: 'rawBaseValue',
+    rawBaseValue: 'rawBaseValue'
+  };
+  return ROI_DEMO_DISPLAY_MODES.includes(aliases[value] ?? value) ? (aliases[value] ?? value) : 'sampleValue';
 }
 
 export function normalizeRoiDemoDynamicComplexity(value = 'medium') {
@@ -194,6 +331,52 @@ export function roiEvolutionModelLabel(value) {
   }[value] ?? 'Growth / Decay';
 }
 
+export function roiPureSpatialPatternLabel(value) {
+  return {
+    uniformField: 'Uniform Field',
+    gradientField: 'Gradient Field',
+    singleCluster: 'Single Cluster',
+    multipleClusters: 'Multiple Clusters',
+    patchyField: 'Patchy Field',
+    sparseTargets: 'Sparse Targets',
+    frontBoundary: 'Front / Boundary',
+    linearBand: 'Linear Band',
+    coastalBand: 'Coastal Band',
+    monitoringStations: 'Monitoring Stations',
+    randomTexture: 'Random Texture'
+  }[value] ?? 'Multiple Clusters';
+}
+
+export function roiPatternEvolutionLabel(value) {
+  return {
+    fixed: 'Fixed in Place',
+    movingFeature: 'Moving Feature',
+    growthDecay: 'Grow / Fade',
+    diffusion: 'Diffuse / Spread',
+    neighborActivation: 'Neighbor Activation',
+    splitMerge: 'Split / Merge',
+    revisitRecovery: 'Revisit / Recover'
+  }[value] ?? 'Grow / Fade';
+}
+
+export function roiDepletionModeLabel(value) {
+  return {
+    none: 'None',
+    hard: 'Hard Depletion',
+    soft: 'Soft Depletion',
+    neighborhood: 'Neighborhood Depletion',
+    revisitRecovery: 'Revisit Recovery'
+  }[value] ?? 'Soft Depletion';
+}
+
+export function roiDisplayModeLabel(value) {
+  return {
+    sampleValue: 'Sample Value',
+    depletedValue: 'Depleted Value',
+    rawBaseValue: 'Raw Base Value'
+  }[value] ?? 'Sample Value';
+}
+
 export function roiStateModelForEvolutionModel(value) {
   const normalized = normalizeRoiDemoEvolutionModel(value);
   if (normalized === 'priorAgnostic' || normalized === 'movingFeature' || normalized === 'forecastErrorDrift') return 'timeIndexed';
@@ -215,6 +398,56 @@ export function roiStateModelDescription(value) {
     stateEvolving: 'Next state depends on the current field state.',
     historyAware: 'Depends on longer sampling or observation history.'
   }[value] ?? 'Next state depends on the current field state.';
+}
+
+function pureSpatialPatternDefaults(pattern) {
+  return {
+    uniformField: { distribution: 'uniformRandom', sampleSpatialPattern: 'uniform', clusterCount: 1 },
+    gradientField: { distribution: 'gradientFront', sampleSpatialPattern: 'gradient', clusterCount: 1 },
+    singleCluster: { distribution: 'gaussianHotspots', sampleSpatialPattern: 'singleHotspot', clusterCount: 1 },
+    multipleClusters: { distribution: 'gaussianHotspots', sampleSpatialPattern: 'multiHotspot', clusterCount: 3 },
+    patchyField: { distribution: 'clusteredHotspots', sampleSpatialPattern: 'multiHotspot', clusterCount: 4 },
+    sparseTargets: { distribution: 'sparseTargets', sampleSpatialPattern: 'multiHotspot', clusterCount: 5 },
+    frontBoundary: { distribution: 'gradientFront', sampleSpatialPattern: 'gradient', clusterCount: 2 },
+    linearBand: { distribution: 'ridgeCorridor', sampleSpatialPattern: 'coastalBand', clusterCount: 2 },
+    coastalBand: { distribution: 'ridgeCorridor', sampleSpatialPattern: 'coastalBand', clusterCount: 2 },
+    monitoringStations: { distribution: 'sparseTargets', sampleSpatialPattern: 'multiHotspot', clusterCount: 6 },
+    randomTexture: { distribution: 'nonuniformRandom', sampleSpatialPattern: 'randomTexture', clusterCount: 4 }
+  }[pattern] ?? { distribution: 'gaussianHotspots', sampleSpatialPattern: 'multiHotspot', clusterCount: 3 };
+}
+
+function pureSpatialPatternFromDistribution(distribution) {
+  return {
+    uniformRandom: 'uniformField',
+    gaussianHotspots: 'multipleClusters',
+    clusteredHotspots: 'patchyField',
+    gradientFront: 'gradientField',
+    sparseTargets: 'sparseTargets',
+    ridgeCorridor: 'linearBand',
+    bimodalHotspots: 'multipleClusters',
+    movingHotspot: 'singleCluster',
+    burstyBloom: 'multipleClusters',
+    currentAdvectedPlume: 'frontBoundary',
+    nonuniformRandom: 'randomTexture'
+  }[distribution] ?? 'multipleClusters';
+}
+
+function evolutionModelFromPatternEvolution(patternEvolution, fallback) {
+  return {
+    fixed: 'priorAgnostic',
+    movingFeature: 'movingFeature',
+    growthDecay: 'growthDecay',
+    diffusion: 'diffusion',
+    neighborActivation: 'neighborActivation',
+    splitMerge: 'splitMerge',
+    revisitRecovery: 'revisitRecovery'
+  }[patternEvolution] ?? fallback ?? 'growthDecay';
+}
+
+function displayModeFromLegacyForecastView(displayMode, forecastView) {
+  if (displayMode) return displayMode;
+  if (forecastView === 'depleted') return 'depletedValue';
+  return 'sampleValue';
 }
 
 export function roiDemoDistributionDefaults(distribution = 'gaussianHotspots') {
@@ -255,7 +488,7 @@ function buildDistribution({ distribution, rng, seed, width, height, hotspotCoun
   return withNoise(viewAdjusted, rng, noise);
 }
 
-function sampleFieldConfigForDemo({ distribution, timeMode, spatialPattern, temporalBehavior, hotspotCount, evolutionModel, dynamicComplexity }) {
+function sampleFieldConfigForDemo({ distribution, timeMode, spatialPattern, temporalBehavior, hotspotCount, evolutionModel, dynamicComplexity, stateModel, depletionMode }) {
   const defaults = distributionToSampleConfig(distribution);
   const selectedTemporal = timeMode === 'dynamic'
     ? temporalBehavior ?? defaults.temporalBehavior
@@ -265,16 +498,22 @@ function sampleFieldConfigForDemo({ distribution, timeMode, spatialPattern, temp
     ...defaults,
     spatialPattern: spatialPattern ?? defaults.spatialPattern,
     temporalBehavior: selectedTemporal,
+    stateModel,
     mode: timeMode === 'dynamic' ? 'dynamic' : 'static',
     hotspotCount,
-    spatialCorrelation: { enabled: true, radiusCells: 3, anisotropy: distribution === 'currentAdvectedPlume' || selectedTemporal === 'currentAdvected' ? 'currentAligned' : 'none' },
+    spatialCorrelation: { enabled: true, radiusCells: 3, anisotropy: 'none' },
     neighborInfluence: {
-      enabled: ['diffusion', 'neighborActivation', 'splitMerge'].includes(evolutionModel) || selectedTemporal === 'diffusive' || selectedTemporal === 'markovNeighbor' || selectedTemporal === 'currentAdvected',
+      enabled: ['diffusion', 'neighborActivation', 'splitMerge'].includes(evolutionModel) || selectedTemporal === 'diffusive' || selectedTemporal === 'markovNeighbor',
       diffusionRate: complexityValue(complexity, 0.08, 0.14, 0.22),
       growthRate: complexityValue(complexity, 0.025, 0.04, 0.065),
       decayRate: complexityValue(complexity, 0.02, 0.03, 0.045)
     },
-    currentCoupling: { enabled: distribution === 'currentAdvectedPlume' || selectedTemporal === 'currentAdvected', advectionStrength: 0.8 }
+    currentCoupling: { enabled: false, advectionStrength: 0 },
+    depletion: {
+      mode: depletionMode === 'none' ? 'none' : depletionMode === 'hard' ? 'hard' : 'soft',
+      radiusCells: depletionMode === 'neighborhood' ? 2 : 1,
+      recoveryRate: depletionMode === 'revisitRecovery' ? 0.18 : 0
+    }
   }, { roiHotspots: hotspotCount });
 }
 
@@ -335,8 +574,8 @@ function evolutionModelFromDistribution(distribution) {
   }[distribution] ?? 'growthDecay';
 }
 
-function sampleBehaviorMetadata({ temporalPattern, evolutionModel, dynamicComplexity, time }) {
-  const stateModel = roiStateModelForEvolutionModel(evolutionModel);
+function sampleBehaviorMetadata({ temporalPattern, evolutionModel, stateModel: selectedStateModel, dynamicComplexity, time }) {
+  const stateModel = normalizeRoiDemoStateModel(selectedStateModel ?? roiStateModelForEvolutionModel(evolutionModel));
   const cycle = temporalPattern === 'seasonal' ? 72 : temporalPattern === 'intermittent' ? 18 : 24;
   const phase = positiveModulo(time, cycle) / cycle;
   return {
@@ -397,6 +636,31 @@ function applyEvolutionModel(field, { seed, time, timeMode, temporalPattern, evo
     return evolved.map((row, y) => row.map((value, x) => round3(clamp01(value + (seededUnitLike(`${seed}:forecast-drift:${x}:${y}`) - 0.5) * drift))));
   }
   return evolved.map((row) => row.map(round3));
+}
+
+function applySampleDisplayMode(field, { seed, time, depletionMode, displayMode, dynamicComplexity }) {
+  const normalizedDepletion = normalizeRoiDemoDepletionMode(depletionMode);
+  const normalizedDisplay = normalizeRoiDemoDisplayMode(displayMode);
+  if (normalizedDisplay === 'rawBaseValue' || normalizedDepletion === 'none') return field.map((row) => row.map(round3));
+  const complexityScale = complexityValue(dynamicComplexity, 0.85, 1, 1.18);
+  const depleted = field.map((row, y) => row.map((value, x) => {
+    const centerX = 0.3 + 0.22 * Math.sin(time * 0.12);
+    const centerY = 0.54 + 0.1 * Math.cos(time * 0.09);
+    const nx = field[0]?.length > 1 ? x / (field[0].length - 1) : 0;
+    const ny = field.length > 1 ? y / (field.length - 1) : 0;
+    const d2 = (nx - centerX) ** 2 + (ny - centerY) ** 2;
+    const neighborhood = Math.exp(-d2 / (2 * 0.07 ** 2));
+    const sampled = seededUnitLike(`${seed}:demo-sampled:${Math.floor(x / 3)}:${Math.floor(y / 3)}`) > 0.48 ? 1 : 0;
+    const recovery = 0.5 + 0.5 * Math.sin(time * 0.11 + seededUnitLike(`${seed}:recovery-phase:${x}:${y}`) * Math.PI * 2);
+    let multiplier = 1;
+    if (normalizedDepletion === 'hard') multiplier = sampled ? 0.12 : 1 - neighborhood * 0.35;
+    if (normalizedDepletion === 'soft') multiplier = 1 - Math.max(sampled * 0.42, neighborhood * 0.28) * complexityScale;
+    if (normalizedDepletion === 'neighborhood') multiplier = 1 - Math.max(sampled * 0.34, neighborhood * 0.62) * complexityScale;
+    if (normalizedDepletion === 'revisitRecovery') multiplier = 0.52 + recovery * 0.48;
+    return round3(clamp01(value * multiplier));
+  }));
+  if (normalizedDisplay === 'depletedValue') return depleted;
+  return field.map((row, y) => row.map((value, x) => round3(clamp01(value * 0.78 + depleted[y][x] * 0.22))));
 }
 
 function temporalEnvelopeForPattern(pattern, time, seed) {
@@ -610,6 +874,12 @@ function wrap01(value) {
 
 function clamp01(value) {
   return Math.max(0, Math.min(1, Number(value) || 0));
+}
+
+function clampInt(value, min, max, fallback) {
+  const number = Number(value);
+  if (!Number.isFinite(number)) return fallback;
+  return Math.max(min, Math.min(max, Math.round(number)));
 }
 
 function round3(value) {
