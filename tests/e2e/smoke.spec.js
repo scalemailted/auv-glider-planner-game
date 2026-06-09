@@ -353,6 +353,11 @@ test('campaign planning smoke flow reaches debrief', async ({ page }) => {
   expect(roiArtifact.data.frames).toHaveLength(1);
   expect(roiArtifact.data.fields.sampleValue.length).toBe(roiArtifact.data.grid.height);
   expect(roiArtifact.data.fields.eventLikelihood[0].length).toBe(roiArtifact.data.grid.width);
+  expect(roiArtifact.data.metadata.activityDiagnostics.meanValue).toBeGreaterThan(0);
+  expect(roiArtifact.data.metadata.activityDiagnostics.activeFraction).toBeGreaterThan(0.1);
+  expect(roiArtifact.data.frames[0].activityDiagnostics.totalActivityMass).toBeGreaterThan(0);
+  await expect(page.locator('#mission-console')).toContainText('Activity');
+  await expect(page.locator('#mission-console')).toContainText('Injected');
   await expect(page.locator('#mission-console')).toContainText('Sample Field Substrate');
   await expect(page.locator('#mission-console')).toContainText('Event Likelihood Field');
   await expect(page.locator('#mission-console')).toContainText('Spatial Parameters');

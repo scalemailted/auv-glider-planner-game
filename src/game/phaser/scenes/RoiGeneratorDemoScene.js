@@ -80,6 +80,7 @@ export class RoiGeneratorDemoScene extends PhaserScene {
     this.selectedHelpTopic = null;
     this.lastInspectorKey = '';
     this.lastInspectorRenderTime = -Infinity;
+    this.lastDynamicsDebugKey = '';
     this.exportMode = 'currentFrame';
     this.exportStartTime = 0;
     this.exportEndTime = 120;
@@ -120,6 +121,7 @@ export class RoiGeneratorDemoScene extends PhaserScene {
     this.selectedHelpTopic = normalizeHelpTopic(data.selectedHelpTopic);
     this.lastInspectorKey = '';
     this.lastInspectorRenderTime = -Infinity;
+    this.lastDynamicsDebugKey = '';
     this.exportMode = normalizeExportMode(data.exportMode);
     this.exportStartTime = finiteNumber(data.exportStartTime ?? this.demoTime, this.demoTime);
     this.exportEndTime = finiteNumber(data.exportEndTime ?? Math.max(120, this.demoTime), Math.max(120, this.demoTime));
@@ -214,6 +216,16 @@ export class RoiGeneratorDemoScene extends PhaserScene {
 
   rebuildField() {
     this.field = createDemoRoiField({ ...this.sceneConfig(), time: this.demoTime });
+    this.maybeLogFieldDynamics();
+  }
+
+  maybeLogFieldDynamics() {
+    if (!globalThis.ANCHOR_DEBUG_ROI_DYNAMICS || !this.field?.activityDiagnostics) return;
+    const diagnostics = this.field.activityDiagnostics;
+    const key = `${Math.floor((diagnostics.time ?? 0) * 10)}:${diagnostics.temporalPattern}:${diagnostics.spatialEvolution}:${diagnostics.samplingEffect}:${diagnostics.totalActivityMass}`;
+    if (key === this.lastDynamicsDebugKey) return;
+    this.lastDynamicsDebugKey = key;
+    console.debug('[ROIDemo][FieldDynamics]', diagnostics);
   }
 
   renderConsole() {
@@ -267,6 +279,7 @@ export class RoiGeneratorDemoScene extends PhaserScene {
       time: this.demoTime,
       paused: this.paused,
       stats: this.field?.stats,
+      activityDiagnostics: this.field?.activityDiagnostics,
       exportMode: this.exportMode,
       exportStartTime: this.exportStartTime,
       exportEndTime: this.exportEndTime,
@@ -479,9 +492,11 @@ export class RoiGeneratorDemoScene extends PhaserScene {
     this.subtitleText?.setPosition(margin, top + 42);
     this.subtitleText?.setWordWrapWidth(Math.min(780, map.width));
     const stats = this.field?.stats ?? {};
+    const diagnostics = this.field?.activityDiagnostics ?? {};
     const dynamicText = this.timeMode === 'dynamic' || this.eventLikelihoodDynamics === 'dynamic' ? ` | Demo Time: ${this.demoTime.toFixed(1)} hr | Playback: ${this.timeSpeedScale}x | Direction: ${this.playbackDirection === -1 ? 'Reverse' : 'Forward'}` : '';
     const stateModel = this.field?.stateModel ?? roiStateModelForEvolutionModel(this.field?.evolutionModel ?? this.evolutionModel);
-    this.statusText?.setText(`Event Likelihood: ${roiEventLikelihoodLabel(this.field?.eventLikelihood ?? this.eventLikelihood)} (${roiLikelihoodDynamicsLabel(this.field?.eventLikelihoodDynamics ?? this.eventLikelihoodDynamics)}) | Spatial: ${roiPureSpatialPatternLabel(this.field?.pureSpatialPattern ?? this.spatialPattern)} | Value Distribution: ${roiValueDistributionLabel(this.field?.valueDistribution ?? this.valueDistribution)} | Temporal: ${roiTemporalPatternLabel(this.field?.temporalPattern ?? this.temporalPattern)} | Spatial Evolution: ${roiSpatialEvolutionLabel(this.field?.spatialEvolution ?? this.spatialEvolution)} | State Model: ${roiStateModelLabel(stateModel)} | Sampling: ${roiDepletionModeLabel(this.field?.depletionMode ?? this.depletionMode)} | Display: ${roiDisplayModeLabel(this.field?.displayMode ?? this.displayMode)} | Seed: ${this.seed}${dynamicText} | Max: ${formatStat(stats.max)} | Mean: ${formatStat(stats.mean)} | Total: ${formatStat(stats.totalValue)}`);
+    const activityText = `Activity: mean ${formatStat(diagnostics.meanValue ?? stats.mean)} | active ${formatPercent(diagnostics.activeFraction)} | max ${formatStat(diagnostics.maxValue ?? stats.max)} | injected +${formatStat(diagnostics.injectedActivity)}`;
+    this.statusText?.setText(`Event Likelihood: ${roiEventLikelihoodLabel(this.field?.eventLikelihood ?? this.eventLikelihood)} (${roiLikelihoodDynamicsLabel(this.field?.eventLikelihoodDynamics ?? this.eventLikelihoodDynamics)}) | Spatial: ${roiPureSpatialPatternLabel(this.field?.pureSpatialPattern ?? this.spatialPattern)} | Value Distribution: ${roiValueDistributionLabel(this.field?.valueDistribution ?? this.valueDistribution)} | Temporal: ${roiTemporalPatternLabel(this.field?.temporalPattern ?? this.temporalPattern)} | Spatial Evolution: ${roiSpatialEvolutionLabel(this.field?.spatialEvolution ?? this.spatialEvolution)} | State Model: ${roiStateModelLabel(stateModel)} | Sampling: ${roiDepletionModeLabel(this.field?.depletionMode ?? this.depletionMode)} | Display: ${roiDisplayModeLabel(this.field?.displayMode ?? this.displayMode)} | Seed: ${this.seed}${dynamicText} | ${activityText} | Total: ${formatStat(stats.totalValue)}`);
     this.statusText?.setWordWrapWidth(Math.min(1040, map.width));
     this.statusText?.setPosition(margin, map.y + map.height + 18);
   }
@@ -806,6 +821,7 @@ export class RoiGeneratorDemoScene extends PhaserScene {
           evolvedValue: 'sample value after temporal/spatial evolution when available, 0..1'
         },
         stats: field.stats,
+        activityDiagnostics: field.activityDiagnostics,
         highValueCells: field.highValueCells,
         freshnessNote: 'Freshness / Age of Information layers are demo-only unless connected to real mission visit history.',
         historyAwareExport: {
@@ -831,7 +847,8 @@ export class RoiGeneratorDemoScene extends PhaserScene {
         eventLikelihood: cloneField(field.eventLikelihoodField),
         rawBaseValue: cloneField(field.rawBaseField),
         evolvedValue: cloneField(field.evolvedField)
-      }
+      },
+      activityDiagnostics: field.activityDiagnostics
     };
   }
 
@@ -896,6 +913,11 @@ function normalizeExportMode(mode) {
 function formatStat(value) {
   const number = Number(value);
   return Number.isFinite(number) ? number.toFixed(3) : 'N/A';
+}
+
+function formatPercent(value) {
+  const number = Number(value);
+  return Number.isFinite(number) ? `${Math.round(number * 100)}%` : 'N/A';
 }
 
 function valueBandLabel(value) {

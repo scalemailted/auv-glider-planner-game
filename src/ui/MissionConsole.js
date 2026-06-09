@@ -512,8 +512,8 @@ export class MissionConsole {
       </section>
       <section class="console-status">
         <span>Field Stats</span>
-        <strong>Max ${escapeHtml(formatDemoStat(state.stats?.max))} | Mean ${escapeHtml(formatDemoStat(state.stats?.mean))}</strong>
-        <small>${escapeHtml(state.eventLikelihoodLabel ?? roiEventLikelihoodLabel(state.eventLikelihood))} ${escapeHtml(state.eventLikelihoodDynamics === 'dynamic' ? `${roiTemporalPatternLabel(state.eventLikelihoodTemporalPattern)} / ${roiLikelihoodSpatialEvolutionLabel(state.eventLikelihoodSpatialEvolution)}` : 'Static')} / ${escapeHtml(state.spatialPatternLabel ?? roiPureSpatialPatternLabel(state.spatialPattern))} / ${escapeHtml(state.valueDistributionLabel ?? roiValueDistributionLabel(state.valueDistribution))} / ${escapeHtml(state.temporalPatternLabel ?? roiTemporalPatternLabel(state.temporalPattern))} / ${escapeHtml(state.spatialEvolutionLabel ?? roiSpatialEvolutionLabel(state.spatialEvolution ?? state.patternEvolution))} / ${escapeHtml(stateModelLabel)} | Total value ${escapeHtml(formatDemoStat(state.stats?.totalValue))}</small>
+        <strong>Activity ${escapeHtml(formatDemoStat(state.activityDiagnostics?.meanValue ?? state.stats?.mean))} mean | ${escapeHtml(formatPercent(state.activityDiagnostics?.activeFraction))} active | Max ${escapeHtml(formatDemoStat(state.activityDiagnostics?.maxValue ?? state.stats?.max))}</strong>
+        <small>${escapeHtml(state.eventLikelihoodLabel ?? roiEventLikelihoodLabel(state.eventLikelihood))} ${escapeHtml(state.eventLikelihoodDynamics === 'dynamic' ? `${roiTemporalPatternLabel(state.eventLikelihoodTemporalPattern)} / ${roiLikelihoodSpatialEvolutionLabel(state.eventLikelihoodSpatialEvolution)}` : 'Static')} / ${escapeHtml(state.spatialPatternLabel ?? roiPureSpatialPatternLabel(state.spatialPattern))} / ${escapeHtml(state.valueDistributionLabel ?? roiValueDistributionLabel(state.valueDistribution))} / ${escapeHtml(state.temporalPatternLabel ?? roiTemporalPatternLabel(state.temporalPattern))} / ${escapeHtml(state.spatialEvolutionLabel ?? roiSpatialEvolutionLabel(state.spatialEvolution ?? state.patternEvolution))} / ${escapeHtml(stateModelLabel)} | Total ${escapeHtml(formatDemoStat(state.activityDiagnostics?.totalActivityMass ?? state.stats?.totalValue))} | Injected +${escapeHtml(formatDemoStat(state.activityDiagnostics?.injectedActivity))} | Decay -${escapeHtml(formatDemoStat(state.activityDiagnostics?.activityLostToDecay))} | Depletion -${escapeHtml(formatDemoStat(state.activityDiagnostics?.activityLostToDepletion))}</small>
       </section>
       <section class="console-section">
         <h2>Data Export</h2>
@@ -1194,6 +1194,11 @@ function roiForecastViewLabel(view) {
 function formatDemoStat(value) {
   const number = Number(value);
   return Number.isFinite(number) ? number.toFixed(3) : 'N/A';
+}
+
+function formatPercent(value) {
+  const number = Number(value);
+  return Number.isFinite(number) ? `${Math.round(number * 100)}%` : 'N/A';
 }
 
 function roiHelpButtonHtml(groupId, label) {

@@ -27,6 +27,32 @@ L(x,y,t)
 
 The center viewport renders this field as a cell heatmap. Cooler cells have lower sample value; warmer cells have higher sample value. The field is deterministic from the demo seed and controls, so random-looking texture and pulses are replayable rather than unseeded page-load randomness.
 
+The ROI demo is a persistent sample-opportunity process by default. Decay is balanced by regeneration from the Event Likelihood Field unless a future explicit finite/one-shot behavior is selected. This keeps the demo useful for exploring ongoing sampling strategies instead of letting ordinary bursty, periodic, random-walk, or propagation modes collapse into an empty field.
+
+## Activity Balance
+
+Sample value can fade, move, spread, and deplete, but new activity is injected from the Event Likelihood Field. This prevents the field from becoming empty by default and reflects the idea that operational sampling environments continue to produce new opportunities over time.
+
+The time-indexed activity update is deterministic from the same seed and settings:
+
+```text
+retained value
++ likelihood-driven new activity
++ local propagation
+- temporal decay
+- synthetic visit depletion
+```
+
+`Bursty` means activity appears in active windows and quiets between them; future bursts regenerate from `L(x,y,t)`. `Discrete Jump` means the next event source is reseeded or relocated from likelihood-biased regions. `Random Walk` keeps active regions bounded while they move by local seeded steps. `Neighbor Propagation` spreads activity locally and can activate likely nearby cells instead of only smearing values downward.
+
+The left console and Phaser status line include compact activity diagnostics:
+
+```text
+Activity: mean 0.42 | active 61% | max 0.94 | injected +0.12
+```
+
+Set `globalThis.ANCHOR_DEBUG_ROI_DYNAMICS = true` in the browser console to log detailed frame diagnostics, including min/mean/max, active cell count, total activity mass, injected activity, decay loss, depletion loss, boundary loss, regeneration amount, and whether normalization occurred.
+
 ## Why the Demo Separates Pattern, Parameters, and Process
 
 Earlier versions exposed a long list of named examples, but many names mixed different concepts: spatial geometry, number of clusters, temporal behavior, statistical texture, and history-aware sampling effects.
@@ -96,7 +122,7 @@ Overlay mode keeps `S(x,y,t)` as the heatmap and draws high-likelihood cells as 
 
 ## Demo Artifact Export
 
-`Export Demo JSON` downloads an `anchor.demo.sample-roi-field` artifact for Colab/notebook rendering. Choose start time, end time, and timeframe count to include a `frames[]` series sampled from the current settings. It includes the current scene config, demo time, row-major displayed sample value, `L(x,y,t)` event likelihood, raw base value, evolved value when available, field stats, high-value cells, and selected-cell inspector state. Arrays are indexed as `field[row][col]` using top-left origin and cell-center coordinates.
+`Export Demo JSON` downloads an `anchor.demo.sample-roi-field` artifact for Colab/notebook rendering. Choose start time, end time, and timeframe count to include a `frames[]` series sampled from the current settings. It includes the current scene config, demo time, row-major displayed sample value, `L(x,y,t)` event likelihood, raw base value, evolved value when available, field stats, activity diagnostics, high-value cells, and selected-cell inspector state. Arrays are indexed as `field[row][col]` using top-left origin and cell-center coordinates.
 
 Freshness / Age of Information values remain labeled as demo-only synthetic visit effects unless they are later tied to actual mission visits.
 

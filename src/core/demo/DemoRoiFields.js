@@ -199,7 +199,7 @@ export function createDemoRoiField({
     dynamicComplexity: normalizedDynamicComplexity,
     time: sampleTime
   });
-  const field = applyEvolutionModel(baseField, {
+  const evolvedResult = applyEvolutionModel(baseField, {
     seed,
     likelihoodField,
     time: sampleTime,
@@ -209,15 +209,32 @@ export function createDemoRoiField({
     dynamicComplexity: normalizedDynamicComplexity,
     motionScope: normalizedMotionScope
   });
-  const sampleDisplayField = applySampleDisplayMode(field, {
+  const field = evolvedResult.field;
+  const displayResult = applySampleDisplayMode(field, {
     seed,
     time: sampleTime,
     depletionMode: normalizedDepletionMode,
     displayMode: normalizedDisplayMode,
-    dynamicComplexity: normalizedDynamicComplexity
+    dynamicComplexity: normalizedDynamicComplexity,
+    likelihoodField
   });
+  const sampleDisplayField = displayResult.field;
   const displayedField = normalizedDisplayMode === 'eventLikelihood' ? likelihoodField : sampleDisplayField;
   const stats = summarizeField(displayedField);
+  const activityDiagnostics = buildActivityDiagnostics({
+    time: sampleTime,
+    eventLikelihoodMode: normalizedEventLikelihood,
+    spatialPattern: normalizedPureSpatialPattern,
+    temporalPattern: normalizedTemporalPattern,
+    spatialEvolution: normalizedSpatialEvolution,
+    stateModel: normalizedStateModel,
+    samplingEffect: normalizedDepletionMode,
+    baseField,
+    evolvedField: field,
+    displayedField,
+    evolutionDiagnostics: evolvedResult.diagnostics,
+    displayDiagnostics: displayResult.diagnostics
+  });
   return {
     field: displayedField,
     sampleValueField: sampleDisplayField,
@@ -288,6 +305,7 @@ export function createDemoRoiField({
       depletionMode: normalizedDepletionMode
     }),
     stats,
+    activityDiagnostics,
     highValueCells: findHighValueCells(displayedField, Math.max(0.68, stats.mean + stats.stdDev * 1.35))
   };
 }
@@ -983,61 +1001,105 @@ function sampleBehaviorMetadata({ eventLikelihood, temporalPattern, spatialEvolu
 }
 
 function applyEvolutionModel(field, { seed, likelihoodField, time, timeMode, temporalPattern, spatialEvolution, dynamicComplexity, motionScope }) {
-  if (timeMode !== 'dynamic') return field;
+  if (timeMode !== 'dynamic') {
+    return {
+      field: field.map((row) => row.map(round3)),
+      diagnostics: activityDiagnosticsForStage(field, field, field, {
+        temporalEnvelope: 1,
+        injectedActivity: 0,
+        regenerationAmount: 0,
+        activityLostToDecay: 0,
+        activityLostToBoundaries: 0,
+        normalized: false
+      })
+    };
+  }
   const complexityScale = complexityValue(dynamicComplexity, 0.65, 1, 1.35);
   const normalizedMotionScope = normalizeRoiDemoMotionScope(motionScope);
   const temporalEnvelope = temporalEnvelopeForPattern(temporalPattern, time, seed);
-  let evolved = field.map((row) => row.map((value) => clamp01(value * temporalEnvelope)));
-  if (spatialEvolution === 'stationary') return evolved.map((row) => row.map(round3));
+  const retained = field.map((row) => row.map((value) => clamp01(value * temporalEnvelope)));
+  let evolved = retained;
   if (spatialEvolution === 'continuousDrift') {
     const dx = Math.sin(time * 0.13) * 0.14 * complexityScale;
     const dy = Math.cos(time * 0.1) * 0.1 * complexityScale;
-    if (normalizedMotionScope === 'global') return shiftField(evolved, dx, dy);
-    return warpField(evolved, (x, y) => continuousMotionOffset({ seed, x, y, time, complexityScale, motionScope: normalizedMotionScope }));
-  }
-  if (spatialEvolution === 'discreteJump') {
+    evolved = normalizedMotionScope === 'global'
+      ? shiftField(retained, dx, dy)
+      : warpField(retained, (x, y) => continuousMotionOffset({ seed, x, y, time, complexityScale, motionScope: normalizedMotionScope }));
+  } else if (spatialEvolution === 'discreteJump') {
     const cycle = temporalPattern === 'bursty' ? 24 : temporalPattern === 'intermittent' ? 18 : 16;
     const jumpIndex = Math.floor(Math.max(0, time) / cycle);
-    const dx = (seededUnitLike(`${seed}:jump-x:${jumpIndex}`) - 0.5) * 0.72 * complexityScale;
-    const dy = (seededUnitLike(`${seed}:jump-y:${jumpIndex}`) - 0.5) * 0.54 * complexityScale;
     if (normalizedMotionScope === 'global') {
       const bias = likelihoodGradient(likelihoodField, 0.5, 0.5);
-      return shiftField(evolved, dx + bias.dx * 0.16 * complexityScale, dy + bias.dy * 0.12 * complexityScale);
+      evolved = shiftField(retained, (seededUnitLike(`${seed}:jump-x:${jumpIndex}`) - 0.5) * 0.72 * complexityScale + bias.dx * 0.16 * complexityScale, (seededUnitLike(`${seed}:jump-y:${jumpIndex}`) - 0.5) * 0.54 * complexityScale + bias.dy * 0.12 * complexityScale);
+    } else {
+      evolved = warpField(retained, (x, y) => discreteJumpOffset({ seed, likelihoodField, x, y, jumpIndex, complexityScale, motionScope: normalizedMotionScope }));
     }
-    return warpField(evolved, (x, y) => discreteJumpOffset({ seed, likelihoodField, x, y, jumpIndex, complexityScale, motionScope: normalizedMotionScope }));
-  }
-  if (spatialEvolution === 'randomWalk') {
+  } else if (spatialEvolution === 'randomWalk') {
     const step = Math.floor(Math.max(0, time) / 3);
-    let dx = 0;
-    let dy = 0;
-    for (let index = 0; index <= step; index += 1) {
-      dx += (seededUnitLike(`${seed}:walk-x:${index}`) - 0.5) * 0.035 * complexityScale;
-      dy += (seededUnitLike(`${seed}:walk-y:${index}`) - 0.5) * 0.028 * complexityScale;
-    }
     if (normalizedMotionScope === 'global') {
+      let dx = 0;
+      let dy = 0;
+      for (let index = 0; index <= step; index += 1) {
+        dx += (seededUnitLike(`${seed}:walk-x:${index}`) - 0.5) * 0.035 * complexityScale;
+        dy += (seededUnitLike(`${seed}:walk-y:${index}`) - 0.5) * 0.028 * complexityScale;
+      }
       const bias = likelihoodGradient(likelihoodField, 0.5, 0.5);
-      return shiftField(evolved, clampRange(dx + bias.dx * 0.06 * complexityScale, -0.26, 0.26), clampRange(dy + bias.dy * 0.05 * complexityScale, -0.22, 0.22));
+      evolved = shiftField(retained, clampRange(dx + bias.dx * 0.06 * complexityScale, -0.26, 0.26), clampRange(dy + bias.dy * 0.05 * complexityScale, -0.22, 0.22));
+    } else {
+      evolved = warpField(retained, (x, y) => randomWalkOffset({ seed, likelihoodField, x, y, step, complexityScale, motionScope: normalizedMotionScope }));
     }
-    return warpField(evolved, (x, y) => randomWalkOffset({ seed, likelihoodField, x, y, step, complexityScale, motionScope: normalizedMotionScope }));
-  }
-  if (spatialEvolution === 'neighborPropagation') {
-    const activated = diffuseField(evolved, complexityValue(dynamicComplexity, 0.12, 0.2, 0.3));
-    return evolved.map((row, y) => row.map((value, x) => {
+  } else if (spatialEvolution === 'neighborPropagation') {
+    const activated = diffuseField(retained, complexityValue(dynamicComplexity, 0.12, 0.2, 0.3));
+    evolved = retained.map((row, y) => row.map((value, x) => {
       const likelihood = likelihoodAtCell(likelihoodField, x, y);
       const block = seededUnitLike(`${seed}:activation:${Math.floor(x / 3)}:${Math.floor(y / 3)}:${Math.floor(time / 4)}`);
       const threshold = 0.74 - likelihood * 0.26;
-      return round3(clamp01(value * 0.66 + activated[y][x] * (0.18 + likelihood * 0.16) + (block > threshold ? (0.08 + likelihood * 0.12) * complexityScale : 0)));
+      return clamp01(value * 0.66 + activated[y][x] * (0.18 + likelihood * 0.16) + (block > threshold ? (0.08 + likelihood * 0.12) * complexityScale : 0));
     }));
   }
-  return evolved.map((row) => row.map(round3));
+  const balanced = applyPersistentActivityBalance(evolved, {
+    seed,
+    likelihoodField,
+    time,
+    temporalPattern,
+    spatialEvolution,
+    dynamicComplexity
+  });
+  return {
+    field: balanced.field,
+    diagnostics: activityDiagnosticsForStage(field, retained, balanced.field, {
+      temporalEnvelope,
+      injectedActivity: balanced.injectedActivity,
+      regenerationAmount: balanced.regenerationAmount,
+      activityLostToDecay: Math.max(0, fieldTotal(field) - fieldTotal(retained)),
+      activityLostToBoundaries: Math.max(0, fieldTotal(retained) - fieldTotal(evolved)),
+      normalized: false
+    })
+  };
 }
 
-function applySampleDisplayMode(field, { seed, time, depletionMode, displayMode, dynamicComplexity }) {
+function applySampleDisplayMode(field, { seed, time, depletionMode, displayMode, dynamicComplexity, likelihoodField }) {
   const normalizedDepletion = normalizeRoiDemoDepletionMode(depletionMode);
   const normalizedDisplay = normalizeRoiDemoDisplayMode(displayMode);
-  if (normalizedDisplay === 'freshnessRevisitValue' || normalizedDepletion === 'freshnessAge') return createFreshnessField(field, { seed, time, dynamicComplexity });
-  if (normalizedDisplay === 'rawBaseValue' || normalizedDepletion === 'none') return field.map((row) => row.map(round3));
+  if (normalizedDisplay === 'freshnessRevisitValue' || normalizedDepletion === 'freshnessAge') {
+    const freshness = createFreshnessField(field, { seed, time, dynamicComplexity, likelihoodField });
+    return {
+      field: freshness.field,
+      diagnostics: {
+        activityLostToDepletion: freshness.activityLostToDepletion,
+        regenerationAmount: freshness.regenerationAmount,
+        syntheticVisitedCells: freshness.syntheticVisitedCells
+      }
+    };
+  }
+  if (normalizedDisplay === 'rawBaseValue' || normalizedDepletion === 'none') {
+    return {
+      field: field.map((row) => row.map(round3)),
+      diagnostics: { activityLostToDepletion: 0, regenerationAmount: 0, syntheticVisitedCells: 0 }
+    };
+  }
   const complexityScale = complexityValue(dynamicComplexity, 0.85, 1, 1.18);
+  let syntheticVisitedCells = 0;
   const depleted = field.map((row, y) => row.map((value, x) => {
     const centerX = 0.3 + 0.22 * Math.sin(time * 0.12);
     const centerY = 0.54 + 0.1 * Math.cos(time * 0.09);
@@ -1045,7 +1107,9 @@ function applySampleDisplayMode(field, { seed, time, depletionMode, displayMode,
     const ny = field.length > 1 ? y / (field.length - 1) : 0;
     const d2 = (nx - centerX) ** 2 + (ny - centerY) ** 2;
     const neighborhood = Math.exp(-d2 / (2 * 0.07 ** 2));
-    const sampled = seededUnitLike(`${seed}:demo-sampled:${Math.floor(x / 3)}:${Math.floor(y / 3)}`) > 0.48 ? 1 : 0;
+    const visitWindow = Math.floor(Math.max(0, time) / 8);
+    const sampled = seededUnitLike(`${seed}:demo-sampled:${Math.floor(x / 3)}:${Math.floor(y / 3)}:${visitWindow}`) > 0.91 ? 1 : 0;
+    if (sampled) syntheticVisitedCells += 1;
     const recovery = 0.5 + 0.5 * Math.sin(time * 0.11 + seededUnitLike(`${seed}:recovery-phase:${x}:${y}`) * Math.PI * 2);
     let multiplier = 1;
     if (normalizedDepletion === 'hard') multiplier = sampled ? 0.12 : 1 - neighborhood * 0.35;
@@ -1054,18 +1118,118 @@ function applySampleDisplayMode(field, { seed, time, depletionMode, displayMode,
     if (normalizedDepletion === 'revisitRecovery') multiplier = 0.52 + recovery * 0.48;
     return round3(clamp01(value * multiplier));
   }));
-  if (normalizedDisplay === 'depletedValue') return depleted;
-  return field.map((row, y) => row.map((value, x) => round3(clamp01(value * 0.78 + depleted[y][x] * 0.22))));
+  const blended = normalizedDisplay === 'depletedValue'
+    ? depleted
+    : field.map((row, y) => row.map((value, x) => round3(clamp01(value * 0.88 + depleted[y][x] * 0.12))));
+  return {
+    field: blended,
+    diagnostics: {
+      activityLostToDepletion: Math.max(0, fieldTotal(field) - fieldTotal(depleted)),
+      regenerationAmount: 0,
+      syntheticVisitedCells
+    }
+  };
 }
 
-function createFreshnessField(field, { seed, time, dynamicComplexity }) {
+function createFreshnessField(field, { seed, time, dynamicComplexity, likelihoodField }) {
   const complexityScale = complexityValue(dynamicComplexity, 0.8, 1, 1.25);
-  return field.map((row, y) => row.map((_value, x) => {
+  let syntheticVisitedCells = 0;
+  const output = field.map((row, y) => row.map((value, x) => {
     const agePhase = 0.5 + 0.5 * Math.sin(time * 0.09 + seededUnitLike(`${seed}:freshness-phase:${x}:${y}`) * Math.PI * 2);
-    const recentlySampled = seededUnitLike(`${seed}:freshness-sampled:${Math.floor(x / 3)}:${Math.floor(y / 3)}`) > 0.54 ? 1 : 0;
+    const visitWindow = Math.floor(Math.max(0, time) / 8);
+    const recentlySampled = seededUnitLike(`${seed}:freshness-sampled:${Math.floor(x / 3)}:${Math.floor(y / 3)}:${visitWindow}`) > 0.88 ? 1 : 0;
+    if (recentlySampled) syntheticVisitedCells += 1;
     const localRecovery = clamp01(agePhase * complexityScale);
-    return round3(clamp01(recentlySampled ? localRecovery * 0.42 : 0.35 + localRecovery * 0.65));
+    const likelihood = likelihoodAtCell(likelihoodField, x, y);
+    const staleWarmth = 0.24 + localRecovery * 0.5 + likelihood * 0.22;
+    return round3(clamp01(recentlySampled ? Math.max(value * 0.32, localRecovery * 0.35) : Math.max(value * 0.55, staleWarmth)));
   }));
+  return {
+    field: output,
+    activityLostToDepletion: Math.max(0, fieldTotal(field) - fieldTotal(output)),
+    regenerationAmount: Math.max(0, fieldTotal(output) - fieldTotal(field)),
+    syntheticVisitedCells
+  };
+}
+
+function applyPersistentActivityBalance(field, { seed, likelihoodField, time, temporalPattern, spatialEvolution, dynamicComplexity }) {
+  const complexityScale = complexityValue(dynamicComplexity, 0.85, 1, 1.18);
+  const envelope = temporalEnvelopeForPattern(temporalPattern, time, `${seed}:activity-balance`);
+  const backgroundFloor = temporalPattern === 'static' ? 0 : complexityValue(dynamicComplexity, 0.055, 0.08, 0.105);
+  const regenerationRate = regenerationRateForPattern(temporalPattern, envelope, dynamicComplexity);
+  const burstSeed = Math.floor(Math.max(0, time) / (temporalPattern === 'bursty' ? 24 : temporalPattern === 'intermittent' ? 18 : 6));
+  let injectedActivity = 0;
+  let regenerationAmount = 0;
+  const balanced = field.map((row, y) => row.map((value, x) => {
+    const likelihood = likelihoodAtCell(likelihoodField, x, y);
+    const pulse = seededUnitLike(`${seed}:activity-emergence:${x}:${y}:${burstSeed}`);
+    const eventGate = pulse > 0.62 - likelihood * 0.28 ? 1 : 0;
+    const injection = likelihood * regenerationRate * (0.42 + eventGate * 0.58) * complexityScale;
+    const floor = backgroundFloor * (0.32 + likelihood * 0.68);
+    const propagated = spatialEvolution === 'neighborPropagation' ? likelihood * 0.025 * complexityScale : 0;
+    const next = clamp01(Math.max(value, floor) + injection + propagated);
+    injectedActivity += Math.max(0, next - Math.max(value, floor));
+    regenerationAmount += Math.max(0, next - value);
+    return round3(next);
+  }));
+  return {
+    field: balanced,
+    injectedActivity: round3(injectedActivity),
+    regenerationAmount: round3(regenerationAmount)
+  };
+}
+
+function regenerationRateForPattern(pattern, envelope, dynamicComplexity) {
+  const scale = complexityValue(dynamicComplexity, 0.8, 1, 1.15);
+  if (pattern === 'static') return 0;
+  if (pattern === 'sustained') return 0.035 * scale;
+  if (pattern === 'periodic' || pattern === 'seasonal') return (0.018 + envelope * 0.035) * scale;
+  if (pattern === 'randomPulses') return (0.014 + envelope * 0.045) * scale;
+  if (pattern === 'intermittent') return (0.012 + envelope * 0.04) * scale;
+  return (0.014 + envelope * 0.052) * scale;
+}
+
+function activityDiagnosticsForStage(baseField, retainedField, finalField, extra = {}) {
+  return {
+    temporalEnvelope: round3(extra.temporalEnvelope ?? 1),
+    injectedActivity: round3(extra.injectedActivity ?? 0),
+    regenerationAmount: round3(extra.regenerationAmount ?? 0),
+    activityLostToDecay: round3(extra.activityLostToDecay ?? Math.max(0, fieldTotal(baseField) - fieldTotal(retainedField))),
+    activityLostToBoundaries: round3(extra.activityLostToBoundaries ?? Math.max(0, fieldTotal(retainedField) - fieldTotal(finalField))),
+    normalized: Boolean(extra.normalized)
+  };
+}
+
+function buildActivityDiagnostics({ time, eventLikelihoodMode, spatialPattern, temporalPattern, spatialEvolution, stateModel, samplingEffect, baseField, evolvedField, displayedField, evolutionDiagnostics, displayDiagnostics }) {
+  const stats = summarizeField(displayedField);
+  const activeCellCount = countCells(displayedField, 0.07);
+  const highValueCellCount = countCells(displayedField, 0.68);
+  const cellCount = Math.max(1, (displayedField?.length ?? 0) * (displayedField?.[0]?.length ?? 0));
+  return {
+    time: round3(time),
+    eventLikelihoodMode,
+    spatialPattern,
+    temporalPattern,
+    spatialEvolution,
+    stateModel,
+    samplingEffect,
+    minValue: stats.min,
+    meanValue: stats.mean,
+    maxValue: stats.max,
+    activeCellCount,
+    activeFraction: round3(activeCellCount / cellCount),
+    highValueCellCount,
+    totalActivityMass: stats.totalValue,
+    rawActivityMass: round3(fieldTotal(baseField)),
+    evolvedActivityMass: round3(fieldTotal(evolvedField)),
+    injectedActivity: round3(evolutionDiagnostics?.injectedActivity ?? 0),
+    activityLostToDecay: round3(evolutionDiagnostics?.activityLostToDecay ?? 0),
+    activityLostToDepletion: round3(displayDiagnostics?.activityLostToDepletion ?? 0),
+    activityLostToBoundaries: round3(evolutionDiagnostics?.activityLostToBoundaries ?? 0),
+    regenerationAmount: round3((evolutionDiagnostics?.regenerationAmount ?? 0) + (displayDiagnostics?.regenerationAmount ?? 0)),
+    syntheticVisitedCells: displayDiagnostics?.syntheticVisitedCells ?? 0,
+    normalized: Boolean(evolutionDiagnostics?.normalized)
+  };
 }
 
 function scaleHotspotRadii(hotspots, clusterSize = 'medium') {
@@ -1704,6 +1868,14 @@ function summarizeField(field) {
     stdDev: round3(Math.sqrt(variance)),
     totalValue: round3(values.reduce((sum, value) => sum + value, 0))
   };
+}
+
+function fieldTotal(field) {
+  return (field ?? []).flat().reduce((sum, value) => sum + (Number(value) || 0), 0);
+}
+
+function countCells(field, threshold) {
+  return (field ?? []).flat().filter((value) => Number(value) >= threshold).length;
 }
 
 function findHighValueCells(field, threshold) {
