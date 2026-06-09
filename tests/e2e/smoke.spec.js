@@ -476,7 +476,7 @@ test('campaign planning smoke flow reaches debrief', async ({ page }) => {
   await expect(page.locator('#waypoint-timeline [data-roi-behavior-help]')).toContainText('About Event Likelihood / Spawn Distribution: Multi-Modal Likelihood');
   await expect(page.locator('#waypoint-timeline [data-roi-behavior-help]')).toContainText('Where are events likely to originate');
   await page.locator('#mission-console [data-roi-help="spatialPattern"]').click();
-  await expect(page.locator('#waypoint-timeline [data-roi-behavior-help]')).toContainText('About Spatial Pattern: Clustered Field');
+  await expect(page.locator('#waypoint-timeline [data-roi-behavior-help]')).toContainText('About Spatial Pattern / Geometry: Clustered Field');
   await expect(page.locator('#waypoint-timeline [data-roi-behavior-help]')).toContainText('Value appears in one or more coherent blobs');
   await expect(page.locator('#waypoint-timeline [data-roi-behavior-help]')).toContainText('Parameters');
   await page.locator('#mission-console [data-roi-help="valueDistribution"]').click();
@@ -548,7 +548,7 @@ test('campaign planning smoke flow reaches debrief', async ({ page }) => {
   await expect(page.locator('#waypoint-timeline')).toContainText('value distribution');
   await expect(page.locator('#waypoint-timeline')).toContainText('seeded value');
   await expect(page.locator('#waypoint-timeline')).toContainText('value band');
-  await expect(page.locator('#waypoint-timeline')).toContainText('Likelihood is the chance this cell is event-prone');
+  await expect(page.locator('#waypoint-timeline')).toContainText('L(x,y,t) is the event-prone spawn substrate');
   await expect(page.locator('#waypoint-timeline')).toContainText('Sample value is the currently realized reward');
   await expect(page.locator('#waypoint-timeline')).toContainText('pattern parameters');
   await expect(page.locator('#waypoint-timeline')).toContainText('temporal pattern');
@@ -657,7 +657,7 @@ test('campaign planning smoke flow reaches debrief', async ({ page }) => {
   await expect.poll(() => page.evaluate(() => window.anchorGame.phaser.scene.getScene('RoiGeneratorDemoScene').field.motionScope)).toBe('perFeature');
   await page.locator('#roi-demo-spatial-pattern').selectOption('seededTexture');
   await page.locator('#mission-console [data-roi-help="spatialPattern"]').click();
-  await expect(page.locator('#waypoint-timeline [data-roi-behavior-help]')).toContainText('About Spatial Pattern: Seeded Texture');
+  await expect(page.locator('#waypoint-timeline [data-roi-behavior-help]')).toContainText('About Spatial Pattern / Geometry: Seeded Texture');
   await expect(page.locator('#waypoint-timeline [data-roi-behavior-help]')).toContainText('irregular but replayable');
   await page.locator('#roi-demo-spatial-pattern').selectOption('clusteredField');
   await page.locator('#roi-demo-hotspots').evaluate((input) => {
