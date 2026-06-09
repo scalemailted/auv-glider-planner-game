@@ -1,5 +1,6 @@
 export const SAMPLE_FIELD_EXPLAINER_GROUPS = [
   'spatialPattern',
+  'valueDistribution',
   'temporalPattern',
   'spatialEvolution',
   'stateModel',
@@ -12,6 +13,11 @@ export const SAMPLE_FIELD_GROUP_SUMMARIES = {
     label: 'Spatial Pattern',
     question: 'Where is sample value located in space?',
     summary: 'Controls the geometry of sample value across the map.'
+  },
+  valueDistribution: {
+    label: 'Value Distribution',
+    question: 'How are values assigned within the selected spatial pattern?',
+    summary: 'Controls value likelihood, such as constant, uniform random, or Gaussian / Normal values.'
   },
   temporalPattern: {
     label: 'Temporal Pattern',
@@ -41,15 +47,15 @@ export const SAMPLE_FIELD_GROUP_SUMMARIES = {
 };
 
 const SPATIAL_PATTERN_EXPLAINERS = {
-  uniformField: {
-    label: 'Uniform Field',
-    short: 'Even value everywhere; useful as a coverage baseline.',
-    meaning: 'Value is evenly distributed across the valid sampling domain.',
-    expectedBehavior: 'All cells start with similar sample value, with no hotspot, front, band, or strong gradient.',
-    parameters: ['Base Value', 'Noise Level'],
+  constantField: {
+    label: 'Constant Field',
+    short: 'No spatial structure; every cell starts from the same base value before value distribution is applied.',
+    meaning: 'The spatial pattern contributes no geometry, cluster, band, front, or gradient.',
+    expectedBehavior: 'With Constant Value this is a flat heatmap; with Uniform Random or Gaussian / Normal, values vary without spatial structure.',
+    parameters: ['Value Distribution', 'Seed'],
     pairsWellWith: ['Static + No Depletion', 'Sustained + Soft Depletion', 'Freshness / Age of Information'],
     strategy: 'Teaches coverage efficiency and depletion/freshness effects.',
-    boundaryNote: 'Not a hotspot, plume, current feature, or uncertainty layer.'
+    boundaryNote: 'Constant Field is not the same as Uniform Random; random value likelihood is controlled by Value Distribution.'
   },
   gradientField: {
     label: 'Gradient / Trend',
@@ -143,6 +149,39 @@ const SPATIAL_PATTERN_EXPLAINERS = {
   }
 };
 
+const VALUE_DISTRIBUTION_EXPLAINERS = {
+  constantValue: {
+    label: 'Constant Value',
+    short: 'Every cell receives the same base value.',
+    meaning: 'Values are assigned as a constant rather than drawn from a random distribution.',
+    expectedBehavior: 'Constant Field + Constant Value produces a flat heatmap before sampling effects are applied.',
+    parameters: ['Base Value'],
+    pairsWellWith: ['Constant Field', 'No Depletion', 'Raw Base Value'],
+    strategy: 'Use as a baseline when you want geometry, temporal behavior, or sampling effects isolated.',
+    boundaryNote: 'This is not a uniform random distribution.'
+  },
+  uniformRandom: {
+    label: 'Uniform Random',
+    short: 'Each cell is equally likely to receive a low, medium, or high value in the configured range.',
+    meaning: 'Cell values are seeded random draws from a uniform distribution over the allowed value range.',
+    expectedBehavior: 'Values appear irregular, with low, medium, and high values approximately equally likely for the same seed.',
+    parameters: ['Random Seed', 'Minimum', 'Maximum'],
+    pairsWellWith: ['Constant Field', 'Seeded Texture', 'Static'],
+    strategy: 'Teaches planning over unstructured but reproducible value variability.',
+    boundaryNote: 'Uniform Random is value likelihood, not spatial uniformity or a flat field.'
+  },
+  gaussianNormal: {
+    label: 'Gaussian / Normal',
+    short: 'Most values fall near the mean, with fewer low and high extremes.',
+    meaning: 'Cell values are seeded random draws from a bell-shaped distribution centered near the middle value.',
+    expectedBehavior: 'Most cells are mid-range; fewer cells appear very low or very high.',
+    parameters: ['Mean', 'Variance / Spread', 'Random Seed'],
+    pairsWellWith: ['Clustered Field', 'Patchy / Correlated Field', 'Linear Band'],
+    strategy: 'Teaches fields where extreme values are rarer than mid-range values.',
+    boundaryNote: 'Gaussian value distribution is different from Gaussian-shaped spatial clusters.'
+  }
+};
+
 const TEMPORAL_PATTERN_EXPLAINERS = {
   static: {
     label: 'Static',
@@ -150,7 +189,7 @@ const TEMPORAL_PATTERN_EXPLAINERS = {
     meaning: 'The value intensity is fixed unless sampling effects change the displayed layer.',
     expectedBehavior: 'The heatmap shape and intensity stay steady while the demo clock advances.',
     parameters: ['Time Mode', 'Seed', 'Noise Level'],
-    pairsWellWith: ['Uniform Field', 'Clustered Field', 'Raw Base Value'],
+    pairsWellWith: ['Constant Field', 'Clustered Field', 'Raw Base Value'],
     strategy: 'Teaches spatial planning without timing pressure.',
     boundaryNote: 'This is not forecast truth; it is a deterministic sample-value layer.'
   },
@@ -402,7 +441,7 @@ const DISPLAY_LAYER_EXPLAINERS = {
     meaning: 'This layer isolates the underlying spatial/temporal field.',
     expectedBehavior: 'Sampling effects are removed from the display so the base pattern is easier to inspect.',
     parameters: ['Seed', 'Noise Level', 'Spatial Pattern'],
-    pairsWellWith: ['Behavior audits', 'Seeded Texture', 'Uniform Field'],
+    pairsWellWith: ['Behavior audits', 'Seeded Texture', 'Constant Field'],
     strategy: 'Use this to understand the generated field before sampling consequences.',
     boundaryNote: 'Raw base value is not an oracle forecast layer.'
   },
@@ -420,6 +459,7 @@ const DISPLAY_LAYER_EXPLAINERS = {
 
 const GROUP_OPTIONS = {
   spatialPattern: SPATIAL_PATTERN_EXPLAINERS,
+  valueDistribution: VALUE_DISTRIBUTION_EXPLAINERS,
   temporalPattern: TEMPORAL_PATTERN_EXPLAINERS,
   spatialEvolution: SPATIAL_EVOLUTION_EXPLAINERS,
   stateModel: STATE_MODEL_EXPLAINERS,
@@ -429,12 +469,19 @@ const GROUP_OPTIONS = {
 
 const ALIASES = {
   spatialPattern: {
+    uniformField: 'constantField',
+    uniform: 'constantField',
     singleCluster: 'clusteredField',
     multipleClusters: 'clusteredField',
     edgeBand: 'boundaryBand',
     coastalBand: 'boundaryBand',
     randomTexture: 'seededTexture',
     texturedField: 'seededTexture'
+  },
+  valueDistribution: {
+    uniform: 'uniformRandom',
+    gaussian: 'gaussianNormal',
+    normal: 'gaussianNormal'
   },
   spatialEvolution: {
     fixed: 'stationary',
@@ -482,6 +529,7 @@ export function sampleFieldBehaviorExplainer(groupId, value) {
 
 export function sampleFieldCompositionExplainer(state = {}) {
   const spatial = sampleFieldBehaviorExplainer('spatialPattern', state.spatialPattern);
+  const valueDistribution = sampleFieldBehaviorExplainer('valueDistribution', state.valueDistribution);
   const temporal = sampleFieldBehaviorExplainer('temporalPattern', state.temporalPattern);
   const evolution = sampleFieldBehaviorExplainer('spatialEvolution', state.spatialEvolution ?? state.patternEvolution);
   const model = sampleFieldBehaviorExplainer('stateModel', state.stateModel);
@@ -490,13 +538,14 @@ export function sampleFieldCompositionExplainer(state = {}) {
   return {
     label: [
       spatial.label,
+      valueDistribution.label,
       temporal.label,
       evolution.label,
       model.label,
       sampling.label,
       display.label
     ].join(' + '),
-    summary: `${spatial.label} defines where value appears; ${temporal.label} controls when intensity changes; ${evolution.label} controls how the geometry changes over time; ${model.label} describes what the field depends on; ${sampling.label} describes how synthetic visits change value; ${display.label} is the layer currently shown.`,
+    summary: `${spatial.label} defines where value is organized; ${valueDistribution.label} controls how values are assigned within that geometry; ${temporal.label} controls when intensity changes; ${evolution.label} controls how the geometry changes over time; ${model.label} describes what the field depends on; ${sampling.label} describes how synthetic visits change value; ${display.label} is the layer currently shown.`,
     routeNote: 'Current-driven transport, plumes, flow-stretched patterns, forecast, truth, uncertainty, information gain, and forecast error are shown in the Coupled Fields and Uncertainty / Forecast demos.'
   };
 }

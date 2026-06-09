@@ -35,7 +35,7 @@ It is not a mission, planner, leaderboard mode, uncertainty demo, forecast/truth
 
 ## Spatial Patterns
 
-- `Uniform Field`: broad value across the domain.
+- `Constant Field`: no spatial structure; pair it with Constant Value for a flat field or with Uniform Random / Gaussian / Normal for seeded value variation without clusters.
 - `Gradient / Trend`: smooth value change across the domain.
 - `Clustered Field`: one or more high-value sampling regions; use Cluster Count to create one-cluster, two-cluster, or multi-cluster cases.
 - `Patchy / Correlated Field`: irregular grouped patches.

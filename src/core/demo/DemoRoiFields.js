@@ -27,7 +27,7 @@ export const ROI_DEMO_SAMPLE_ONLY_DISTRIBUTIONS = ROI_DEMO_DISTRIBUTIONS.filter(
 export const ROI_DEMO_TIME_MODES = ['static', 'dynamic'];
 export const ROI_DEMO_SPATIAL_PATTERNS = SAMPLE_SPATIAL_PATTERNS;
 export const ROI_DEMO_PURE_SPATIAL_PATTERNS = [
-  'uniformField',
+  'constantField',
   'gradientField',
   'clusteredField',
   'patchyField',
@@ -38,6 +38,7 @@ export const ROI_DEMO_PURE_SPATIAL_PATTERNS = [
   'monitoringStations',
   'seededTexture'
 ];
+export const ROI_DEMO_VALUE_DISTRIBUTIONS = ['constantValue', 'uniformRandom', 'gaussianNormal'];
 export const ROI_DEMO_TEMPORAL_BEHAVIORS = SAMPLE_TEMPORAL_BEHAVIORS;
 export const ROI_DEMO_TEMPORAL_PATTERNS = ['static', 'sustained', 'periodic', 'bursty', 'seasonal', 'randomPulses', 'intermittent'];
 export const ROI_DEMO_SPATIAL_EVOLUTIONS = ['stationary', 'continuousDrift', 'discreteJump', 'randomWalk', 'neighborPropagation'];
@@ -66,6 +67,7 @@ export function createDemoRoiField({
   noise = 0.15,
   timeMode = 'static',
   spatialPattern = null,
+  valueDistribution = null,
   temporalBehavior = null,
   temporalPattern = null,
   evolutionModel = 'stationary',
@@ -87,6 +89,7 @@ export function createDemoRoiField({
   const normalizedTimeMode = normalizeRoiDemoTimeMode(timeMode);
   const legacyClusterCount = legacyClusterCountFromPattern(spatialPattern ?? normalizedDistribution);
   const normalizedPureSpatialPattern = normalizeRoiDemoPureSpatialPattern(spatialPattern ?? pureSpatialPatternFromDistribution(normalizedDistribution));
+  const normalizedValueDistribution = normalizeRoiDemoValueDistribution(valueDistribution ?? valueDistributionFromLegacy(normalizedDistribution, spatialPattern));
   const spatialDefaults = pureSpatialPatternDefaults(normalizedPureSpatialPattern);
   const normalizedTemporalPattern = normalizeRoiDemoTemporalPattern(temporalPattern ?? temporalPatternFromBehavior(temporalBehavior ?? distributionToSampleConfig(normalizedDistribution).temporalBehavior));
   const normalizedSpatialEvolution = normalizeRoiDemoSpatialEvolution(spatialEvolution ?? patternEvolution ?? evolutionModel);
@@ -102,7 +105,7 @@ export function createDemoRoiField({
   const t = normalizedTimeMode === 'dynamic' ? Number(sourceTime) || 0 : 0;
   const clusterCount = clampInt(hotspotCount ?? legacyClusterCount, 1, 6, spatialDefaults.clusterCount);
   const rng = createSeededRng(`${seed}:${normalizedPureSpatialPattern}:${width}x${height}:${clusterCount}:${normalizedClusterSize}:${noise}`);
-  const baseField = buildDistribution({
+  const spatialBaseField = buildDistribution({
     distribution: spatialDefaults.distribution,
     rng,
     seed,
@@ -116,6 +119,11 @@ export function createDemoRoiField({
     temporalBehavior: effectiveTemporalBehavior,
     forecastView: 'truth',
     time: t
+  });
+  const baseField = applyValueDistribution(spatialBaseField, {
+    valueDistribution: normalizedValueDistribution,
+    seed,
+    spatialPattern: normalizedPureSpatialPattern
   });
   const behavior = sampleBehaviorMetadata({
     temporalPattern: normalizedTemporalPattern,
@@ -150,6 +158,9 @@ export function createDemoRoiField({
     height,
     distribution: spatialDefaults.distribution,
     distributionLabel: roiDistributionLabel(spatialDefaults.distribution),
+    valueDistribution: normalizedValueDistribution,
+    valueDistributionLabel: roiValueDistributionLabel(normalizedValueDistribution),
+    valueDistributionSeeded: normalizedValueDistribution !== 'constantValue',
     timeMode: normalizedTimeMode,
     spatialPattern: spatialDefaults.sampleSpatialPattern,
     pureSpatialPattern: normalizedPureSpatialPattern,
@@ -181,6 +192,7 @@ export function createDemoRoiField({
     time: t,
     sampleFieldConfig: sampleFieldConfigForDemo({
       distribution: spatialDefaults.distribution,
+      valueDistribution: normalizedValueDistribution,
       timeMode: normalizedTimeMode,
       spatialPattern: spatialDefaults.sampleSpatialPattern,
       temporalBehavior: effectiveTemporalBehavior,
@@ -221,7 +233,11 @@ export function normalizeRoiDemoSpatialPattern(value = 'multiHotspot') {
 export function normalizeRoiDemoPureSpatialPattern(value = 'clusteredField') {
   if (ROI_DEMO_PURE_SPATIAL_PATTERNS.includes(value)) return value;
   const aliases = {
-    uniform: 'uniformField',
+    uniform: 'constantField',
+    uniformField: 'constantField',
+    constant: 'constantField',
+    constantField: 'constantField',
+    noSpatialStructure: 'constantField',
     gradient: 'gradientField',
     singleHotspot: 'clusteredField',
     singleCluster: 'clusteredField',
@@ -245,6 +261,20 @@ export function normalizeRoiDemoPureSpatialPattern(value = 'clusteredField') {
     nonuniformRandom: 'seededTexture'
   };
   return aliases[value] ?? 'clusteredField';
+}
+
+export function normalizeRoiDemoValueDistribution(value = 'constantValue') {
+  const aliases = {
+    constant: 'constantValue',
+    constantValue: 'constantValue',
+    uniform: 'uniformRandom',
+    uniformRandom: 'uniformRandom',
+    randomUniform: 'uniformRandom',
+    gaussian: 'gaussianNormal',
+    gaussianNormal: 'gaussianNormal',
+    normal: 'gaussianNormal'
+  };
+  return ROI_DEMO_VALUE_DISTRIBUTIONS.includes(aliases[value] ?? value) ? (aliases[value] ?? value) : 'constantValue';
 }
 
 export function normalizeRoiDemoTemporalBehavior(value = 'static') {
@@ -426,7 +456,8 @@ export function roiMotionScopeLabel(value) {
 
 export function roiPureSpatialPatternLabel(value) {
   return {
-    uniformField: 'Uniform Field',
+    constantField: 'Constant Field',
+    uniformField: 'Constant Field',
     gradientField: 'Gradient / Trend',
     clusteredField: 'Clustered Field',
     singleCluster: 'Clustered Field',
@@ -445,17 +476,25 @@ export function roiPureSpatialPatternLabel(value) {
   }[value] ?? 'Clustered Field';
 }
 
+export function roiValueDistributionLabel(value) {
+  return {
+    constantValue: 'Constant Value',
+    uniformRandom: 'Uniform Random',
+    gaussianNormal: 'Gaussian / Normal'
+  }[value] ?? 'Constant Value';
+}
+
 export function roiSpatialPatternHelp(value) {
   const key = normalizeRoiDemoPureSpatialPattern(value);
   return {
-    uniformField: {
-      tooltip: 'Even value everywhere; useful as a coverage baseline.',
-      meaning: 'Value is evenly distributed across the valid sampling domain.',
-      behavior: 'All cells start with similar sample value, with no hotspot, front, band, or strong gradient.',
-      parameters: ['Base Value', 'Noise Level'],
+    constantField: {
+      tooltip: 'No spatial structure; every cell starts from the same base value before the value distribution is applied.',
+      meaning: 'No spatial geometry is introduced by the spatial pattern.',
+      behavior: 'With Constant Value this is a flat heatmap; with Uniform Random or Gaussian / Normal, values vary without clusters, bands, fronts, or gradients.',
+      parameters: ['Value Distribution', 'Seed'],
       pairings: ['Static + No Depletion', 'Sustained + Soft Depletion', 'Freshness / Age of Information'],
       strategy: 'Teaches coverage efficiency and depletion/freshness effects.',
-      not: 'Not a hotspot, plume, current feature, or uncertainty layer.'
+      not: 'Not a uniform random distribution by itself; random value likelihood is controlled by Value Distribution.'
     },
     gradientField: {
       tooltip: 'A smooth value trend across space, such as low-to-high from one side of the map to another.',
@@ -599,7 +638,8 @@ export function roiStateModelDescription(value) {
 
 function pureSpatialPatternDefaults(pattern) {
   return {
-    uniformField: { distribution: 'uniformRandom', sampleSpatialPattern: 'uniform', clusterCount: 1 },
+    constantField: { distribution: 'constantField', sampleSpatialPattern: 'uniform', clusterCount: 1 },
+    uniformField: { distribution: 'constantField', sampleSpatialPattern: 'uniform', clusterCount: 1 },
     gradientField: { distribution: 'gradientFront', sampleSpatialPattern: 'gradient', clusterCount: 1 },
     clusteredField: { distribution: 'gaussianHotspots', sampleSpatialPattern: 'multiHotspot', clusterCount: 3 },
     singleCluster: { distribution: 'gaussianHotspots', sampleSpatialPattern: 'multiHotspot', clusterCount: 1 },
@@ -626,7 +666,7 @@ function defaultMotionScopeForPattern(spatialPattern, spatialEvolution) {
 
 function pureSpatialPatternFromDistribution(distribution) {
   return {
-    uniformRandom: 'uniformField',
+    uniformRandom: 'constantField',
     gaussianHotspots: 'clusteredField',
     clusteredHotspots: 'patchyField',
     gradientFront: 'gradientField',
@@ -670,14 +710,16 @@ export function roiDemoDistributionDefaults(distribution = 'gaussianHotspots') {
     temporalPattern: temporalPatternFromBehavior(defaults.temporalBehavior),
     evolutionModel: spatialEvolutionFromDistribution(distribution),
     spatialEvolution: spatialEvolutionFromDistribution(distribution),
-    distribution: defaults.distribution
+    distribution: defaults.distribution,
+    valueDistribution: valueDistributionFromLegacy(distribution)
   };
 }
 
 export { sampleSpatialPatternLabel, sampleTemporalBehaviorLabel };
 
 function buildDistribution({ distribution, rng, seed, width, height, hotspotCount, clusterSize, noise, timeMode, spatialPattern, temporalBehavior, forecastView, time }) {
-  if (distribution === 'uniformRandom' && spatialPattern === 'uniform') return withNoise(createUniformField(width, height, 0.42), rng, noise * 0.08);
+  if (distribution === 'constantField') return createUniformField(width, height, 0.42);
+  if (distribution === 'uniformRandom' && spatialPattern === 'uniform') return createUniformField(width, height, 0.42);
   if (distribution === 'uniformRandom') return withNoise(createUniformRandom(width, height, rng), rng, noise * 0.35);
   if (distribution === 'clusteredHotspots') {
     return withNoise(generateROI(width, height, time, {
@@ -1145,6 +1187,47 @@ function createUniformRandom(width, height, rng) {
 
 function createUniformField(width, height, value = 0.42) {
   return Array.from({ length: height }, () => Array.from({ length: width }, () => round3(value)));
+}
+
+function applyValueDistribution(field, { valueDistribution = 'constantValue', seed = 'anchor-roi-demo', spatialPattern = 'constantField' } = {}) {
+  const normalized = normalizeRoiDemoValueDistribution(valueDistribution);
+  if (normalized === 'constantValue') return field.map((row) => row.map(round3));
+  const values = field.flat().map(Number);
+  const min = Math.min(...values);
+  const max = Math.max(...values);
+  const flat = Math.abs(max - min) < 0.0001 || normalizeRoiDemoPureSpatialPattern(spatialPattern) === 'constantField';
+  return field.map((row, y) => row.map((value, x) => {
+    const rng = createSeededRng(`${seed}:value-distribution:${normalized}:${x}:${y}`);
+    const draw = normalized === 'gaussianNormal' ? gaussian01(rng) : rng();
+    if (flat) return round3(draw);
+    return round3(clamp01(Number(value) * 0.68 + draw * 0.32));
+  }));
+}
+
+function valueDistributionFromLegacy(distribution, spatialPattern = null) {
+  const pattern = normalizeRoiDemoPureSpatialPattern(spatialPattern);
+  if (pattern === 'constantField' && (spatialPattern === 'uniformRandom' || distribution === 'uniformRandom')) return 'uniformRandom';
+  if (pattern === 'constantField' && spatialPattern != null) return 'constantValue';
+  return {
+    uniformRandom: 'uniformRandom',
+    gaussianHotspots: 'gaussianNormal',
+    clusteredHotspots: 'gaussianNormal',
+    ridgeCorridor: 'gaussianNormal',
+    boundaryBand: 'gaussianNormal',
+    bimodalHotspots: 'gaussianNormal',
+    movingHotspot: 'gaussianNormal',
+    burstyBloom: 'gaussianNormal',
+    sparseTargets: 'gaussianNormal',
+    gradientFront: 'gaussianNormal',
+    nonuniformRandom: 'uniformRandom'
+  }[distribution] ?? 'constantValue';
+}
+
+function gaussian01(rng) {
+  const u1 = Math.max(0.000001, rng());
+  const u2 = rng();
+  const z = Math.sqrt(-2 * Math.log(u1)) * Math.cos(Math.PI * 2 * u2);
+  return clamp01(0.5 + z * 0.16);
 }
 
 function createGradientFront({ width, height, rng, noise, time }) {

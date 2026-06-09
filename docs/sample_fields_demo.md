@@ -50,6 +50,7 @@ Use Flow Fields Demo for `F(x,y,t)`, Coupled Fields Demo for current-dependent s
 The demo builds sample-value behavior from independent axes:
 
 - **Spatial Pattern:** where value appears.
+- **Value Distribution:** how values are assigned within that spatial geometry.
 - **Temporal Pattern:** how intensity changes over time.
 - **Spatial Evolution:** how the spatial distribution moves, jumps, spreads, or propagates.
 - **State Model:** whether the process is time-indexed, frequency-based, state-evolving, or history-aware.
@@ -64,14 +65,27 @@ Every major component in the Sample / ROI Demo has behavior help. The left Missi
 
 | Component Group | What it controls | Example question answered |
 |---|---|---|
-| Spatial Pattern | Where value is located in space | Where are the valuable cells? |
+| Spatial Pattern | Where value is organized in space | Where are the valuable cells? |
+| Value Distribution | How values are assigned within that geometry | Are values constant, uniformly random, or mostly near a mean? |
 | Temporal Pattern | How intensity changes over time | When does value rise, fade, pulse, or stay steady? |
 | Spatial Evolution | How the spatial distribution changes over time | Does the pattern stay fixed, drift, jump, wander, or spread? |
 | State Model | What the field depends on | Is value computed from time, cycles, current state, or longer history? |
 | Sampling Effect | How visits change future value | Does sampling deplete, cool neighbors, or recover later? |
 | Display Layer | Which value layer is visible | Am I viewing raw value, depleted value, freshness, or composed sample value? |
 
-The right-panel Behavior Help view includes a `Current Composition` card that summarizes how the selected components combine, for example `Clustered Field + Bursty + Discrete Jump + Time-Indexed + Soft Depletion + Sample Value`. Current-driven transport, plumes, flow-stretched patterns, forecast, truth, uncertainty, information gain, and forecast error are routed to the Coupled Fields Demo and Uncertainty / Forecast Demo.
+The right-panel Behavior Help view includes a `Current Composition` card that summarizes how the selected components combine, for example `Clustered Field + Gaussian / Normal + Bursty + Discrete Jump + Time-Indexed + Soft Depletion + Sample Value`. Current-driven transport, plumes, flow-stretched patterns, forecast, truth, uncertainty, information gain, and forecast error are routed to the Coupled Fields Demo and Uncertainty / Forecast Demo.
+
+## Spatial Pattern vs Value Distribution
+
+The demo separates the shape of the field from the distribution of values. Spatial Pattern is geometry. Value Distribution is value likelihood.
+
+A Constant Field with Constant Value is flat. A Constant Field with Uniform Random values has no spatial structure, but each cell receives a seeded random value from a uniform distribution. A Gaussian / Normal distribution produces values mostly near a mean, with fewer extremes.
+
+- Clustered Field + Cluster Count 2 creates two spatial clusters.
+- Bimodal Values would create two preferred value ranges.
+- These are different concepts.
+
+The implemented Value Distribution options are Constant Value, Uniform Random, and Gaussian / Normal. Uniform Random means low, medium, and high values are approximately equally likely for the same seed. Gaussian / Normal means most cells fall near the middle value and fewer cells land near the low or high extremes.
 
 ## Spatial Patterns
 
@@ -79,7 +93,7 @@ Spatial Pattern answers: where is sample value located?
 
 | Spatial Pattern | What it shows | Key parameters | Strategy |
 |---|---|---|---|
-| Uniform Field | Even value everywhere | Base value, noise | Coverage efficiency |
+| Constant Field | No spatial structure; every cell starts from the same base value before value distribution is applied | Value distribution, seed | Coverage efficiency / baseline |
 | Gradient / Trend | Smooth spatial trend | Direction, strength, smoothness | Travel vs reward |
 | Clustered Field | `k` coherent value clusters | Cluster count, cluster size, separation | Target selection / assignment |
 | Patchy / Correlated Field | Spatially correlated irregular patches | Correlation length, smoothness, contrast | Local exploration |
@@ -90,7 +104,7 @@ Spatial Pattern answers: where is sample value located?
 | Monitoring Stations | Fixed revisit locations | Station count, recovery | Persistent monitoring |
 | Seeded Texture | Deterministic irregular values | Scale, smoothness, seed | Irregular landscape planning |
 
-- `Uniform Field`: value is broadly distributed.
+- `Constant Field`: no spatial structure is added; Constant Value stays flat, while Uniform Random or Gaussian / Normal can vary values without introducing clusters, bands, fronts, or gradients.
 - `Gradient / Trend`: value changes smoothly across the domain.
 - `Clustered Field`: one or more localized high-value regions.
 - `Patchy / Correlated Field`: locally correlated texture with broad patches.
@@ -101,7 +115,15 @@ Spatial Pattern answers: where is sample value located?
 - `Monitoring Stations`: fixed station-like targets that support revisit strategy.
 - `Seeded Texture`: deterministic fine/coarse value texture with spatial coherence.
 
-The left Mission Console provides quick hover help and compact Explain buttons. The right panel shows the selected `About ...` explainer for Spatial Pattern, Temporal Pattern, Spatial Evolution, State Model, Sampling Effect, and Display Layer.
+The left Mission Console provides quick hover help and compact Explain buttons. The right panel shows the selected `About ...` explainer for Spatial Pattern, Value Distribution, Temporal Pattern, Spatial Evolution, State Model, Sampling Effect, and Display Layer.
+
+## Value Distributions
+
+Value Distribution answers: how are values assigned within the selected spatial pattern?
+
+- `Constant Value`: every cell receives the same base value before other enabled processes.
+- `Uniform Random`: each cell receives a deterministic seeded random draw from a uniform distribution over the allowed range.
+- `Gaussian / Normal`: each cell receives a deterministic seeded draw from a bell-shaped distribution centered near the mean.
 
 ## Spatial Parameters
 

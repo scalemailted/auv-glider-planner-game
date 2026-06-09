@@ -303,6 +303,7 @@ test('campaign planning smoke flow reaches debrief', async ({ page }) => {
   await expect(page.locator('#bottom-timeline [data-action="roi-demo-direction"]')).toHaveText('Direction: Forward');
   await expect(page.locator('#bottom-timeline [data-action="roi-demo-pause"]')).toHaveText('Pause');
   await expect(page.locator('#roi-demo-spatial-pattern')).toBeVisible();
+  await expect(page.locator('#roi-demo-value-distribution')).toBeVisible();
   await expect(page.locator('#roi-demo-cluster-size')).toBeVisible();
   await expect(page.locator('#roi-demo-temporal-pattern')).toBeVisible();
   await expect(page.locator('#roi-demo-spatial-evolution')).toBeVisible();
@@ -321,7 +322,7 @@ test('campaign planning smoke flow reaches debrief', async ({ page }) => {
   await expect(page.locator('#mission-console')).toContainText('State Model');
   await expect(page.locator('#mission-console')).toContainText('Time-Indexed');
   await expect(page.locator('#roi-demo-spatial-pattern option')).toHaveText([
-    'Uniform Field',
+    'Constant Field',
     'Gradient / Trend',
     'Clustered Field',
     'Patchy / Correlated Field',
@@ -336,12 +337,16 @@ test('campaign planning smoke flow reaches debrief', async ({ page }) => {
   await expect(page.locator('#roi-demo-spatial-pattern')).not.toContainText('Multiple Clusters');
   await expect(page.locator('#roi-demo-spatial-pattern')).not.toContainText('Bimodal');
   await expect(page.locator('#mission-console .sample-field-explainer')).toHaveCount(0);
-  await expect(page.locator('#mission-console [data-roi-help]')).toHaveCount(6);
+  await expect(page.locator('#mission-console [data-roi-help]')).toHaveCount(7);
   await expect(page.locator('#mission-console [data-roi-help="spatialPattern"]')).toContainText('Explain Clustered Field');
+  await expect(page.locator('#roi-demo-value-distribution option')).toHaveText(['Constant Value', 'Uniform Random', 'Gaussian / Normal']);
   await page.locator('#mission-console [data-roi-help="spatialPattern"]').click();
   await expect(page.locator('#waypoint-timeline [data-roi-behavior-help]')).toContainText('About Spatial Pattern: Clustered Field');
   await expect(page.locator('#waypoint-timeline [data-roi-behavior-help]')).toContainText('Value appears in one or more coherent blobs');
   await expect(page.locator('#waypoint-timeline [data-roi-behavior-help]')).toContainText('Parameters');
+  await page.locator('#mission-console [data-roi-help="valueDistribution"]').click();
+  await expect(page.locator('#waypoint-timeline [data-roi-behavior-help]')).toContainText('About Value Distribution: Gaussian / Normal');
+  await expect(page.locator('#waypoint-timeline [data-roi-behavior-help]')).toContainText('How are values assigned');
   await page.locator('#mission-console [data-roi-help="temporalPattern"]').click();
   await expect(page.locator('#waypoint-timeline [data-roi-behavior-help]')).toContainText('About Temporal Pattern: Bursty');
   await expect(page.locator('#waypoint-timeline [data-roi-behavior-help]')).toContainText('How does value intensity change over time?');
@@ -393,6 +398,9 @@ test('campaign planning smoke flow reaches debrief', async ({ page }) => {
   await expect(page.locator('#waypoint-timeline')).toContainText('Sample Value');
   await expect(page.locator('#waypoint-timeline')).toContainText('cluster count');
   await expect(page.locator('#waypoint-timeline')).toContainText('cluster size');
+  await expect(page.locator('#waypoint-timeline')).toContainText('value distribution');
+  await expect(page.locator('#waypoint-timeline')).toContainText('seeded value');
+  await expect(page.locator('#waypoint-timeline')).toContainText('value band');
   await expect(page.locator('#waypoint-timeline')).toContainText('pattern parameters');
   await expect(page.locator('#waypoint-timeline')).toContainText('temporal pattern');
   await expect(page.locator('#waypoint-timeline')).toContainText('spatial evolution');
@@ -401,6 +409,39 @@ test('campaign planning smoke flow reaches debrief', async ({ page }) => {
   await expect(page.locator('#waypoint-timeline')).toContainText('state model');
   await page.locator('#roi-demo-spatial-pattern').selectOption('clusteredField');
   await expect.poll(() => page.evaluate(() => window.anchorGame.phaser.scene.getScene('RoiGeneratorDemoScene').spatialPattern)).toBe('clusteredField');
+  await page.locator('#roi-demo-spatial-pattern').selectOption('constantField');
+  await page.locator('#roi-demo-value-distribution').selectOption('constantValue');
+  await page.locator('#roi-demo-depletion-mode').selectOption('none');
+  await page.locator('#roi-demo-display-mode').selectOption('rawBaseValue');
+  await expect.poll(() => page.evaluate(() => window.anchorGame.phaser.scene.getScene('RoiGeneratorDemoScene').spatialPattern)).toBe('constantField');
+  await expect.poll(() => page.evaluate(() => window.anchorGame.phaser.scene.getScene('RoiGeneratorDemoScene').valueDistribution)).toBe('constantValue');
+  await expect(page.evaluate(() => {
+    const values = window.anchorGame.phaser.scene.getScene('RoiGeneratorDemoScene').field.rawBaseField.flat();
+    return Math.max(...values) - Math.min(...values);
+  })).resolves.toBeCloseTo(0, 5);
+  await page.locator('#roi-demo-value-distribution').selectOption('uniformRandom');
+  const uniformStats = await page.evaluate(() => {
+    const scene = window.anchorGame.phaser.scene.getScene('RoiGeneratorDemoScene');
+    const values = scene.field.rawBaseField.flat();
+    return {
+      min: Math.min(...values),
+      max: Math.max(...values),
+      sameSeed: JSON.stringify(scene.field.rawBaseField) === JSON.stringify(scene.field.rawBaseField)
+    };
+  });
+  expect(uniformStats.min).toBeLessThan(0.2);
+  expect(uniformStats.max).toBeGreaterThan(0.8);
+  expect(uniformStats.sameSeed).toBe(true);
+  await page.locator('#roi-demo-value-distribution').selectOption('gaussianNormal');
+  const gaussianStats = await page.evaluate(() => {
+    const values = window.anchorGame.phaser.scene.getScene('RoiGeneratorDemoScene').field.rawBaseField.flat();
+    return {
+      mid: values.filter((value) => value >= 0.35 && value <= 0.65).length,
+      extremes: values.filter((value) => value < 0.2 || value > 0.8).length
+    };
+  });
+  expect(gaussianStats.mid).toBeGreaterThan(gaussianStats.extremes);
+  await page.locator('#roi-demo-spatial-pattern').selectOption('clusteredField');
   await page.locator('#roi-demo-spatial-evolution').selectOption('continuousDrift');
   await expect.poll(() => page.evaluate(() => window.anchorGame.phaser.scene.getScene('RoiGeneratorDemoScene').field.motionScope)).toBe('perFeature');
   await page.locator('#roi-demo-motion-scope').selectOption('global');

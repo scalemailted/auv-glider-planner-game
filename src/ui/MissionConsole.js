@@ -2,7 +2,7 @@ import { CAMPAIGN_LEVELS } from '../core/campaign/CampaignLevels.js';
 import { shortInstanceId } from '../core/identity/GameInstanceId.js';
 import { formatMetric } from '../core/evaluation/PlanComparison.js';
 import { FLOW_DEMO_BOUNDARY_MODES, FLOW_DEMO_CYCLE_DURATIONS, FLOW_DEMO_DYNAMIC_COMPLEXITY_LEVELS, FLOW_DEMO_EVOLUTION_BEHAVIORS, FLOW_DEMO_EVOLUTION_PATTERNS, FLOW_DEMO_EVOLUTION_SPEEDS, FLOW_DEMO_FIELD_MODES, FLOW_DEMO_LAYER_INFLUENCES, FLOW_DEMO_MAGNITUDE_SCALES, FLOW_DEMO_PARTICLE_SPEEDS, FLOW_DEMO_PRESET_CHOICES, FLOW_DEMO_SPATIAL_MOTIONS, FLOW_DEMO_SPATIAL_MOTION_SPEEDS, FLOW_DEMO_TERRAIN_MODES, FLOW_DEMO_VARIATION_LEVELS, normalizeAdditiveLayers } from '../core/demo/FlowFieldDemo.js';
-import { ROI_DEMO_DISTRIBUTIONS, ROI_DEMO_SPATIAL_PATTERNS, ROI_DEMO_TEMPORAL_BEHAVIORS, ROI_DEMO_TIME_MODES, ROI_DEMO_TEMPORAL_PATTERNS, ROI_DEMO_SPATIAL_EVOLUTIONS, ROI_DEMO_MOTION_SCOPES, ROI_DEMO_STATE_MODELS, ROI_DEMO_DEPLETION_MODES, ROI_DEMO_DISPLAY_MODES, ROI_DEMO_DYNAMIC_COMPLEXITY, ROI_DEMO_PURE_SPATIAL_PATTERNS, ROI_DEMO_CLUSTER_SIZES, roiDistributionLabel, roiTemporalPatternLabel, roiStateModelDescription, roiStateModelForEvolutionModel, roiStateModelLabel, roiPureSpatialPatternLabel, roiSpatialEvolutionLabel, roiMotionScopeLabel, roiDepletionModeLabel, roiDisplayModeLabel, roiClusterSizeLabel, sampleSpatialPatternLabel, sampleTemporalBehaviorLabel } from '../core/demo/DemoRoiFields.js';
+import { ROI_DEMO_DISTRIBUTIONS, ROI_DEMO_SPATIAL_PATTERNS, ROI_DEMO_TEMPORAL_BEHAVIORS, ROI_DEMO_TIME_MODES, ROI_DEMO_TEMPORAL_PATTERNS, ROI_DEMO_SPATIAL_EVOLUTIONS, ROI_DEMO_MOTION_SCOPES, ROI_DEMO_STATE_MODELS, ROI_DEMO_DEPLETION_MODES, ROI_DEMO_DISPLAY_MODES, ROI_DEMO_DYNAMIC_COMPLEXITY, ROI_DEMO_PURE_SPATIAL_PATTERNS, ROI_DEMO_VALUE_DISTRIBUTIONS, ROI_DEMO_CLUSTER_SIZES, roiDistributionLabel, roiTemporalPatternLabel, roiStateModelDescription, roiStateModelForEvolutionModel, roiStateModelLabel, roiPureSpatialPatternLabel, roiValueDistributionLabel, roiSpatialEvolutionLabel, roiMotionScopeLabel, roiDepletionModeLabel, roiDisplayModeLabel, roiClusterSizeLabel, sampleSpatialPatternLabel, sampleTemporalBehaviorLabel } from '../core/demo/DemoRoiFields.js';
 import { sampleFieldBehaviorExplainer } from '../core/demo/SampleFieldBehaviorExplainers.js';
 import { EXPERIENCE_MODES, getExperienceModeDefaults } from '../core/experience/ExperienceMode.js';
 import { getVectorPresetConfig } from '../core/generation/VectorFieldPresets.js';
@@ -315,6 +315,7 @@ export class MissionConsole {
     const temporalHelp = sampleFieldBehaviorExplainer('temporalPattern', state.temporalPattern);
     const evolutionHelp = sampleFieldBehaviorExplainer('spatialEvolution', state.spatialEvolution ?? state.patternEvolution);
     const stateHelp = sampleFieldBehaviorExplainer('stateModel', stateModel);
+    const valueDistributionHelp = sampleFieldBehaviorExplainer('valueDistribution', state.valueDistribution);
     const samplingHelp = sampleFieldBehaviorExplainer('samplingEffect', state.depletionMode);
     const displayHelp = sampleFieldBehaviorExplainer('displayLayer', state.displayMode);
     this.root.innerHTML = `
@@ -326,7 +327,7 @@ export class MissionConsole {
       <section class="console-status">
         <span>${escapeHtml(state.status ?? 'ROI field')}</span>
         <strong>${escapeHtml(state.timeMode === 'dynamic' && !state.paused ? 'Animating' : state.paused ? 'Paused' : 'Static')}</strong>
-        <small>${escapeHtml(`${state.spatialPatternLabel ?? roiPureSpatialPatternLabel(state.spatialPattern)} | ${state.temporalPatternLabel ?? roiTemporalPatternLabel(state.temporalPattern)} | ${state.spatialEvolutionLabel ?? roiSpatialEvolutionLabel(state.spatialEvolution ?? state.patternEvolution)}`)}</small>
+        <small>${escapeHtml(`${state.spatialPatternLabel ?? roiPureSpatialPatternLabel(state.spatialPattern)} | ${state.valueDistributionLabel ?? roiValueDistributionLabel(state.valueDistribution)} | ${state.temporalPatternLabel ?? roiTemporalPatternLabel(state.temporalPattern)} | ${state.spatialEvolutionLabel ?? roiSpatialEvolutionLabel(state.spatialEvolution ?? state.patternEvolution)}`)}</small>
       </section>
       <section class="console-section">
         <h2 title="${escapeAttr(spatialHelp.groupSummary)}">Spatial Field <span aria-label="Spatial Pattern help" title="${escapeAttr(spatialHelp.short)}">i</span></h2>
@@ -340,6 +341,16 @@ export class MissionConsole {
           </select>
         </label>
         ${roiHelpButtonHtml('spatialPattern', `Explain ${roiPureSpatialPatternLabel(state.spatialPattern)}`)}
+        <label class="compact-field" title="${escapeAttr(valueDistributionHelp.short)}">
+          <span>Value Distribution <span aria-label="Value Distribution help" title="${escapeAttr(valueDistributionHelp.short)}">i</span></span>
+          <select id="roi-demo-value-distribution" title="${escapeAttr(valueDistributionHelp.short)}">
+            ${ROI_DEMO_VALUE_DISTRIBUTIONS.map((distribution) => {
+              const help = sampleFieldBehaviorExplainer('valueDistribution', distribution);
+              return `<option value="${escapeAttr(distribution)}" ${state.valueDistribution === distribution ? 'selected' : ''} title="${escapeAttr(help.short)}">${escapeHtml(roiValueDistributionLabel(distribution))}</option>`;
+            }).join('')}
+          </select>
+        </label>
+        ${roiHelpButtonHtml('valueDistribution', `Explain ${roiValueDistributionLabel(state.valueDistribution)}`)}
         <label class="compact-field">
           Cluster Count
           <input id="roi-demo-hotspots" type="range" min="1" max="6" step="1" value="${escapeAttr(state.clusterCount ?? state.hotspotCount ?? 3)}" />
@@ -356,7 +367,7 @@ export class MissionConsole {
           <input id="roi-demo-seed" type="text" value="${escapeAttr(state.seed ?? 'anchor-roi-demo')}" />
         </label>
         <button data-action="regenerate" class="console-button">Regenerate</button>
-        <div class="hud-muted">This pure demo does not use current vectors or flow transport.</div>
+        <div class="hud-muted">Spatial Pattern controls geometry; Value Distribution controls value likelihood. This pure demo does not use current vectors or flow transport.</div>
       </section>
       <section class="console-section">
         <h2>Spatial Parameters</h2>
@@ -462,7 +473,7 @@ export class MissionConsole {
       <section class="console-status">
         <span>Field Stats</span>
         <strong>Max ${escapeHtml(formatDemoStat(state.stats?.max))} | Mean ${escapeHtml(formatDemoStat(state.stats?.mean))}</strong>
-        <small>${escapeHtml(state.spatialPatternLabel ?? roiPureSpatialPatternLabel(state.spatialPattern))} / ${escapeHtml(state.temporalPatternLabel ?? roiTemporalPatternLabel(state.temporalPattern))} / ${escapeHtml(state.spatialEvolutionLabel ?? roiSpatialEvolutionLabel(state.spatialEvolution ?? state.patternEvolution))} / ${escapeHtml(stateModelLabel)} | Total value ${escapeHtml(formatDemoStat(state.stats?.totalValue))}</small>
+        <small>${escapeHtml(state.spatialPatternLabel ?? roiPureSpatialPatternLabel(state.spatialPattern))} / ${escapeHtml(state.valueDistributionLabel ?? roiValueDistributionLabel(state.valueDistribution))} / ${escapeHtml(state.temporalPatternLabel ?? roiTemporalPatternLabel(state.temporalPattern))} / ${escapeHtml(state.spatialEvolutionLabel ?? roiSpatialEvolutionLabel(state.spatialEvolution ?? state.patternEvolution))} / ${escapeHtml(stateModelLabel)} | Total value ${escapeHtml(formatDemoStat(state.stats?.totalValue))}</small>
       </section>
       <section class="console-footer">
         <button data-action="menu" class="console-button secondary">Main Menu</button>
@@ -470,6 +481,7 @@ export class MissionConsole {
     `;
     this.app.applyConsoleAccordions?.('roiDemo');
     this.root.querySelector('#roi-demo-spatial-pattern')?.addEventListener('change', (event) => handlers.spatialPattern?.(event.target.value));
+    this.root.querySelector('#roi-demo-value-distribution')?.addEventListener('change', (event) => handlers.valueDistribution?.(event.target.value));
     this.root.querySelector('#roi-demo-seed')?.addEventListener('change', (event) => handlers.seed?.(event.target.value));
     this.root.querySelector('#roi-demo-hotspots')?.addEventListener('input', (event) => handlers.hotspotCount?.(event.target.value));
     this.root.querySelector('#roi-demo-cluster-size')?.addEventListener('change', (event) => handlers.clusterSize?.(event.target.value));
