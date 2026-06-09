@@ -43,6 +43,7 @@ export const ROI_DEMO_TEMPORAL_PATTERNS = ['static', 'sustained', 'periodic', 'b
 export const ROI_DEMO_SPATIAL_EVOLUTIONS = ['stationary', 'continuousDrift', 'discreteJump', 'randomWalk', 'neighborPropagation'];
 export const ROI_DEMO_EVOLUTION_MODELS = ROI_DEMO_SPATIAL_EVOLUTIONS;
 export const ROI_DEMO_PATTERN_EVOLUTIONS = ROI_DEMO_SPATIAL_EVOLUTIONS;
+export const ROI_DEMO_MOTION_SCOPES = ['perFeature', 'localNeighborhood', 'global'];
 export const ROI_DEMO_STATE_MODELS = ['timeIndexed', 'frequencyBased', 'stateEvolving', 'historyAware'];
 export const ROI_DEMO_DEPLETION_MODES = ['none', 'hard', 'soft', 'neighborhood', 'freshnessAge', 'revisitRecovery'];
 export const ROI_DEMO_DISPLAY_MODES = ['sampleValue', 'depletedValue', 'freshnessRevisitValue', 'rawBaseValue'];
@@ -70,6 +71,7 @@ export function createDemoRoiField({
   evolutionModel = 'stationary',
   patternEvolution = null,
   spatialEvolution = null,
+  motionScope = null,
   stateModel = null,
   depletionMode = 'soft',
   displayMode = 'sampleValue',
@@ -89,6 +91,7 @@ export function createDemoRoiField({
   const normalizedTemporalPattern = normalizeRoiDemoTemporalPattern(temporalPattern ?? temporalPatternFromBehavior(temporalBehavior ?? distributionToSampleConfig(normalizedDistribution).temporalBehavior));
   const normalizedSpatialEvolution = normalizeRoiDemoSpatialEvolution(spatialEvolution ?? patternEvolution ?? evolutionModel);
   const normalizedEvolutionModel = normalizedSpatialEvolution;
+  const normalizedMotionScope = normalizeRoiDemoMotionScope(motionScope ?? defaultMotionScopeForPattern(normalizedPureSpatialPattern, normalizedSpatialEvolution));
   const normalizedStateModel = normalizeRoiDemoStateModel(stateModel ?? roiStateModelForEvolutionModel(normalizedEvolutionModel));
   const normalizedDepletionMode = normalizeRoiDemoDepletionMode(depletionMode);
   const normalizedDisplayMode = normalizeRoiDemoDisplayMode(displayModeFromLegacyForecastView(displayMode, forecastView));
@@ -117,6 +120,7 @@ export function createDemoRoiField({
   const behavior = sampleBehaviorMetadata({
     temporalPattern: normalizedTemporalPattern,
     spatialEvolution: normalizedSpatialEvolution,
+    motionScope: normalizedMotionScope,
     stateModel: normalizedStateModel,
     dynamicComplexity: normalizedDynamicComplexity,
     time: t
@@ -127,7 +131,8 @@ export function createDemoRoiField({
     timeMode: normalizedTimeMode,
     temporalPattern: normalizedTemporalPattern,
     spatialEvolution: normalizedSpatialEvolution,
-    dynamicComplexity: normalizedDynamicComplexity
+    dynamicComplexity: normalizedDynamicComplexity,
+    motionScope: normalizedMotionScope
   });
   const displayedField = applySampleDisplayMode(field, {
     seed,
@@ -160,6 +165,8 @@ export function createDemoRoiField({
     patternEvolutionLabel: roiPatternEvolutionLabel(normalizedSpatialEvolution),
     spatialEvolution: normalizedSpatialEvolution,
     spatialEvolutionLabel: roiSpatialEvolutionLabel(normalizedSpatialEvolution),
+    motionScope: normalizedMotionScope,
+    motionScopeLabel: roiMotionScopeLabel(normalizedMotionScope),
     stateModel: normalizedStateModel,
     stateModelLabel: roiStateModelLabel(normalizedStateModel),
     stateModelDescription: roiStateModelDescription(normalizedStateModel),
@@ -180,6 +187,7 @@ export function createDemoRoiField({
       hotspotCount: clusterCount,
       evolutionModel: normalizedEvolutionModel,
       spatialEvolution: normalizedSpatialEvolution,
+      motionScope: normalizedMotionScope,
       dynamicComplexity: normalizedDynamicComplexity,
       stateModel: normalizedStateModel,
       depletionMode: normalizedDepletionMode
@@ -253,7 +261,6 @@ export function normalizeRoiDemoEvolutionModel(value = 'stationary') {
 
 export function normalizeRoiDemoSpatialEvolution(value = 'stationary') {
   const aliases = {
-    priorAgnostic: 'stationary',
     timeIndexed: 'stationary',
     fixedInPlace: 'stationary',
     fixed: 'stationary',
@@ -290,9 +297,26 @@ export function normalizeRoiDemoPatternEvolution(value = 'stationary') {
   return normalizeRoiDemoSpatialEvolution(value);
 }
 
+export function normalizeRoiDemoMotionScope(value = 'perFeature') {
+  const aliases = {
+    perFeature: 'perFeature',
+    feature: 'perFeature',
+    regional: 'perFeature',
+    perRegion: 'perFeature',
+    local: 'localNeighborhood',
+    localNeighborhood: 'localNeighborhood',
+    neighborhood: 'localNeighborhood',
+    neighbor: 'localNeighborhood',
+    global: 'global',
+    domain: 'global',
+    globalShift: 'global'
+  };
+  const normalized = aliases[value] ?? value;
+  return ROI_DEMO_MOTION_SCOPES.includes(normalized) ? normalized : 'perFeature';
+}
+
 export function normalizeRoiDemoStateModel(value = 'stateEvolving') {
   const aliases = {
-    priorAgnostic: 'timeIndexed',
     timeIndexed: 'timeIndexed',
     memoryless: 'timeIndexed',
     frequencyBased: 'frequencyBased',
@@ -390,6 +414,14 @@ export function roiSpatialEvolutionLabel(value) {
     diffusion: 'Neighbor Propagation',
     neighborActivation: 'Neighbor Propagation'
   }[value] ?? 'Stationary';
+}
+
+export function roiMotionScopeLabel(value) {
+  return {
+    perFeature: 'Per Feature',
+    localNeighborhood: 'Local / Neighborhood',
+    global: 'Global'
+  }[value] ?? 'Per Feature';
 }
 
 export function roiPureSpatialPatternLabel(value) {
@@ -585,6 +617,13 @@ function pureSpatialPatternDefaults(pattern) {
   }[pattern] ?? { distribution: 'gaussianHotspots', sampleSpatialPattern: 'multiHotspot', clusterCount: 3 };
 }
 
+function defaultMotionScopeForPattern(spatialPattern, spatialEvolution) {
+  if (spatialEvolution === 'stationary') return 'perFeature';
+  if (spatialEvolution === 'neighborPropagation') return 'localNeighborhood';
+  if (spatialPattern === 'patchyField' || spatialPattern === 'seededTexture') return 'localNeighborhood';
+  return 'perFeature';
+}
+
 function pureSpatialPatternFromDistribution(distribution) {
   return {
     uniformRandom: 'uniformField',
@@ -664,7 +703,7 @@ function buildDistribution({ distribution, rng, seed, width, height, hotspotCoun
   return withNoise(viewAdjusted, rng, noise);
 }
 
-function sampleFieldConfigForDemo({ distribution, timeMode, spatialPattern, temporalBehavior, hotspotCount, evolutionModel, spatialEvolution, dynamicComplexity, stateModel, depletionMode }) {
+function sampleFieldConfigForDemo({ distribution, timeMode, spatialPattern, temporalBehavior, hotspotCount, evolutionModel, spatialEvolution, motionScope, dynamicComplexity, stateModel, depletionMode }) {
   const defaults = distributionToSampleConfig(distribution);
   const selectedTemporal = timeMode === 'dynamic'
     ? temporalBehavior ?? defaults.temporalBehavior
@@ -675,6 +714,7 @@ function sampleFieldConfigForDemo({ distribution, timeMode, spatialPattern, temp
     spatialPattern: spatialPattern ?? defaults.spatialPattern,
     temporalBehavior: selectedTemporal,
     stateModel,
+    motionScope: normalizeRoiDemoMotionScope(motionScope),
     mode: timeMode === 'dynamic' ? 'dynamic' : 'static',
     hotspotCount,
     spatialCorrelation: { enabled: true, radiusCells: 3, anisotropy: 'none' },
@@ -749,8 +789,9 @@ function spatialEvolutionFromDistribution(distribution) {
   }[distribution] ?? 'stationary';
 }
 
-function sampleBehaviorMetadata({ temporalPattern, spatialEvolution, stateModel: selectedStateModel, dynamicComplexity, time }) {
+function sampleBehaviorMetadata({ temporalPattern, spatialEvolution, motionScope, stateModel: selectedStateModel, dynamicComplexity, time }) {
   const stateModel = normalizeRoiDemoStateModel(selectedStateModel ?? roiStateModelForEvolutionModel(spatialEvolution));
+  const normalizedMotionScope = normalizeRoiDemoMotionScope(motionScope);
   const cycle = temporalPattern === 'seasonal' ? 72 : temporalPattern === 'intermittent' ? 18 : 24;
   const phase = positiveModulo(time, cycle) / cycle;
   return {
@@ -758,6 +799,8 @@ function sampleBehaviorMetadata({ temporalPattern, spatialEvolution, stateModel:
     evolutionModel: spatialEvolution,
     spatialEvolution,
     spatialEvolutionLabel: roiSpatialEvolutionLabel(spatialEvolution),
+    motionScope: normalizedMotionScope,
+    motionScopeLabel: roiMotionScopeLabel(normalizedMotionScope),
     dynamicComplexity,
     stateModel,
     stateModelLabel: roiStateModelLabel(stateModel),
@@ -765,27 +808,31 @@ function sampleBehaviorMetadata({ temporalPattern, spatialEvolution, stateModel:
     priorMode: stateModel,
     burstPhase: burstPhaseLabel(phase),
     neighborInfluence: spatialEvolution === 'neighborPropagation' ? dynamicComplexity : 'off',
-    explanation: spatialEvolutionDescription(spatialEvolution)
+    featureMotion: featureMotionDescription(spatialEvolution, normalizedMotionScope),
+    explanation: spatialEvolutionDescription(spatialEvolution, normalizedMotionScope)
   };
 }
 
-function applyEvolutionModel(field, { seed, time, timeMode, temporalPattern, spatialEvolution, dynamicComplexity }) {
+function applyEvolutionModel(field, { seed, time, timeMode, temporalPattern, spatialEvolution, dynamicComplexity, motionScope }) {
   if (timeMode !== 'dynamic') return field;
   const complexityScale = complexityValue(dynamicComplexity, 0.65, 1, 1.35);
+  const normalizedMotionScope = normalizeRoiDemoMotionScope(motionScope);
   const temporalEnvelope = temporalEnvelopeForPattern(temporalPattern, time, seed);
   let evolved = field.map((row) => row.map((value) => clamp01(value * temporalEnvelope)));
   if (spatialEvolution === 'stationary') return evolved.map((row) => row.map(round3));
   if (spatialEvolution === 'continuousDrift') {
     const dx = Math.sin(time * 0.13) * 0.14 * complexityScale;
     const dy = Math.cos(time * 0.1) * 0.1 * complexityScale;
-    return shiftField(evolved, dx, dy);
+    if (normalizedMotionScope === 'global') return shiftField(evolved, dx, dy);
+    return warpField(evolved, (x, y) => continuousMotionOffset({ seed, x, y, time, complexityScale, motionScope: normalizedMotionScope }));
   }
   if (spatialEvolution === 'discreteJump') {
     const cycle = temporalPattern === 'bursty' ? 24 : temporalPattern === 'intermittent' ? 18 : 16;
     const jumpIndex = Math.floor(Math.max(0, time) / cycle);
     const dx = (seededUnitLike(`${seed}:jump-x:${jumpIndex}`) - 0.5) * 0.72 * complexityScale;
     const dy = (seededUnitLike(`${seed}:jump-y:${jumpIndex}`) - 0.5) * 0.54 * complexityScale;
-    return shiftField(evolved, dx, dy);
+    if (normalizedMotionScope === 'global') return shiftField(evolved, dx, dy);
+    return warpField(evolved, (x, y) => discreteJumpOffset({ seed, x, y, jumpIndex, complexityScale, motionScope: normalizedMotionScope }));
   }
   if (spatialEvolution === 'randomWalk') {
     const step = Math.floor(Math.max(0, time) / 3);
@@ -795,7 +842,8 @@ function applyEvolutionModel(field, { seed, time, timeMode, temporalPattern, spa
       dx += (seededUnitLike(`${seed}:walk-x:${index}`) - 0.5) * 0.035 * complexityScale;
       dy += (seededUnitLike(`${seed}:walk-y:${index}`) - 0.5) * 0.028 * complexityScale;
     }
-    return shiftField(evolved, clampRange(dx, -0.26, 0.26), clampRange(dy, -0.22, 0.22));
+    if (normalizedMotionScope === 'global') return shiftField(evolved, clampRange(dx, -0.26, 0.26), clampRange(dy, -0.22, 0.22));
+    return warpField(evolved, (x, y) => randomWalkOffset({ seed, x, y, step, complexityScale, motionScope: normalizedMotionScope }));
   }
   if (spatialEvolution === 'neighborPropagation') {
     const activated = diffuseField(evolved, complexityValue(dynamicComplexity, 0.12, 0.2, 0.3));
@@ -855,14 +903,31 @@ function scaleHotspotRadii(hotspots, clusterSize = 'medium') {
   }));
 }
 
-function spatialEvolutionDescription(value) {
+function spatialEvolutionDescription(value, motionScope = 'perFeature') {
+  const scope = roiMotionScopeLabel(motionScope);
   return {
     stationary: 'The pattern changes intensity but stays in the same location.',
-    continuousDrift: 'The feature moves smoothly through nearby/intermediate locations.',
-    discreteJump: 'The active feature can fade and reappear elsewhere on the next burst or window.',
-    randomWalk: 'The feature wanders by small seeded local steps over time.',
+    continuousDrift: motionScope === 'global'
+      ? 'The whole field shifts together because Motion Scope is Global.'
+      : `Features move smoothly through nearby/intermediate locations using ${scope} motion.`,
+    discreteJump: motionScope === 'global'
+      ? 'The whole active field can relocate on the next burst or window because Motion Scope is Global.'
+      : `Active features can fade and reappear elsewhere by ${scope} region on the next burst or window.`,
+    randomWalk: motionScope === 'global'
+      ? 'The whole field wanders together because Motion Scope is Global.'
+      : `Features wander by small seeded local steps using ${scope} motion.`,
     neighborPropagation: 'Active cells influence nearby cells, spreading activity locally.'
   }[value] ?? 'The pattern changes intensity but stays in the same location.';
+}
+
+function featureMotionDescription(spatialEvolution, motionScope = 'perFeature') {
+  if (spatialEvolution === 'stationary') return 'none; pattern anchored in place';
+  if (spatialEvolution === 'neighborPropagation') return 'local spread; nearby cells influence each other';
+  if (motionScope === 'global') return 'global domain shift; the whole field moves together';
+  if (spatialEvolution === 'continuousDrift') return `${roiMotionScopeLabel(motionScope)} smooth drift; regions use independent seeded trajectories`;
+  if (spatialEvolution === 'randomWalk') return `${roiMotionScopeLabel(motionScope)} seeded walk; regions move by bounded local steps`;
+  if (spatialEvolution === 'discreteJump') return `${roiMotionScopeLabel(motionScope)} seeded relocation; events can reappear in new regions`;
+  return roiMotionScopeLabel(motionScope);
 }
 
 function temporalEnvelopeForPattern(pattern, time, seed) {
@@ -922,6 +987,109 @@ function shiftField(field, dxNorm, dyNorm) {
     const sy = Math.max(0, Math.min(height - 1, Math.round(sourceY * (height - 1))));
     return round3(clamp01(field[sy]?.[sx] ?? 0));
   }));
+}
+
+function warpField(field, offsetAt) {
+  const height = field.length;
+  const width = field[0]?.length ?? 0;
+  return field.map((_row, y) => Array.from({ length: width }, (_value, x) => {
+    const nx = width > 1 ? x / (width - 1) : 0;
+    const ny = height > 1 ? y / (height - 1) : 0;
+    const offset = offsetAt(nx, ny);
+    const sx = Math.max(0, Math.min(width - 1, Math.round((nx - offset.dx) * Math.max(1, width - 1))));
+    const sy = Math.max(0, Math.min(height - 1, Math.round((ny - offset.dy) * Math.max(1, height - 1))));
+    return round3(clamp01(field[sy]?.[sx] ?? 0));
+  }));
+}
+
+function continuousMotionOffset({ seed, x, y, time, complexityScale, motionScope }) {
+  const cols = motionScope === 'localNeighborhood' ? 8 : 4;
+  const rows = motionScope === 'localNeighborhood' ? 6 : 3;
+  const amplitude = (motionScope === 'localNeighborhood' ? 0.055 : 0.12) * complexityScale;
+  return interpolatedRegionalOffset({
+    seed,
+    x,
+    y,
+    cols,
+    rows,
+    valueAt: (ix, iy) => {
+      const phaseX = seededUnitLike(`${seed}:drift-phase-x:${ix}:${iy}`) * Math.PI * 2;
+      const phaseY = seededUnitLike(`${seed}:drift-phase-y:${ix}:${iy}`) * Math.PI * 2;
+      const rateX = 0.08 + seededUnitLike(`${seed}:drift-rate-x:${ix}:${iy}`) * 0.07;
+      const rateY = 0.07 + seededUnitLike(`${seed}:drift-rate-y:${ix}:${iy}`) * 0.06;
+      return {
+        dx: Math.sin(time * rateX + phaseX) * amplitude,
+        dy: Math.cos(time * rateY + phaseY) * amplitude * 0.82
+      };
+    }
+  });
+}
+
+function discreteJumpOffset({ seed, x, y, jumpIndex, complexityScale, motionScope }) {
+  const cols = motionScope === 'localNeighborhood' ? 8 : 4;
+  const rows = motionScope === 'localNeighborhood' ? 6 : 3;
+  const amplitude = (motionScope === 'localNeighborhood' ? 0.18 : 0.42) * complexityScale;
+  return interpolatedRegionalOffset({
+    seed,
+    x,
+    y,
+    cols,
+    rows,
+    valueAt: (ix, iy) => ({
+      dx: (seededUnitLike(`${seed}:jump-region-x:${ix}:${iy}:${jumpIndex}`) - 0.5) * amplitude,
+      dy: (seededUnitLike(`${seed}:jump-region-y:${ix}:${iy}:${jumpIndex}`) - 0.5) * amplitude * 0.75
+    })
+  });
+}
+
+function randomWalkOffset({ seed, x, y, step, complexityScale, motionScope }) {
+  const cols = motionScope === 'localNeighborhood' ? 8 : 4;
+  const rows = motionScope === 'localNeighborhood' ? 6 : 3;
+  const stepScale = (motionScope === 'localNeighborhood' ? 0.012 : 0.024) * complexityScale;
+  const boundX = motionScope === 'localNeighborhood' ? 0.09 : 0.2;
+  const boundY = motionScope === 'localNeighborhood' ? 0.075 : 0.16;
+  return interpolatedRegionalOffset({
+    seed,
+    x,
+    y,
+    cols,
+    rows,
+    valueAt: (ix, iy) => {
+      let dx = 0;
+      let dy = 0;
+      for (let index = 0; index <= step; index += 1) {
+        dx += (seededUnitLike(`${seed}:walk-region-x:${ix}:${iy}:${index}`) - 0.5) * stepScale;
+        dy += (seededUnitLike(`${seed}:walk-region-y:${ix}:${iy}:${index}`) - 0.5) * stepScale * 0.82;
+      }
+      return {
+        dx: clampRange(dx, -boundX, boundX),
+        dy: clampRange(dy, -boundY, boundY)
+      };
+    }
+  });
+}
+
+function interpolatedRegionalOffset({ x, y, cols, rows, valueAt }) {
+  const gx = clampRange(x, 0, 1) * Math.max(1, cols - 1);
+  const gy = clampRange(y, 0, 1) * Math.max(1, rows - 1);
+  const x0 = Math.max(0, Math.min(cols - 1, Math.floor(gx)));
+  const y0 = Math.max(0, Math.min(rows - 1, Math.floor(gy)));
+  const x1 = Math.max(0, Math.min(cols - 1, x0 + 1));
+  const y1 = Math.max(0, Math.min(rows - 1, y0 + 1));
+  const tx = gx - x0;
+  const ty = gy - y0;
+  const a = valueAt(x0, y0);
+  const b = valueAt(x1, y0);
+  const c = valueAt(x0, y1);
+  const d = valueAt(x1, y1);
+  return {
+    dx: lerp(lerp(a.dx, b.dx, tx), lerp(c.dx, d.dx, tx), ty),
+    dy: lerp(lerp(a.dy, b.dy, tx), lerp(c.dy, d.dy, tx), ty)
+  };
+}
+
+function lerp(a, b, t) {
+  return a + (b - a) * t;
 }
 
 function legacyPattern(sampleFieldConfig) {

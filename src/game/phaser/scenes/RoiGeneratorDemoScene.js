@@ -4,6 +4,7 @@ import {
   roiDisplayModeLabel,
   roiPatternEvolutionLabel,
   roiSpatialEvolutionLabel,
+  roiMotionScopeLabel,
   roiPureSpatialPatternLabel,
   roiSpatialPatternHelp,
   roiTemporalPatternLabel,
@@ -21,12 +22,14 @@ import {
   normalizeRoiDemoTemporalPattern,
   normalizeRoiDemoEvolutionModel,
   normalizeRoiDemoPatternEvolution,
+  normalizeRoiDemoMotionScope,
   normalizeRoiDemoStateModel,
   normalizeRoiDemoDepletionMode,
   normalizeRoiDemoDisplayMode,
   normalizeRoiDemoDynamicComplexity,
   normalizeRoiDemoClusterSize
 } from '../../../core/demo/DemoRoiFields.js';
+import { sampleFieldBehaviorExplainer, sampleFieldCompositionExplainer } from '../../../core/demo/SampleFieldBehaviorExplainers.js';
 
 const PhaserScene = globalThis.Phaser?.Scene ?? class {};
 
@@ -47,6 +50,7 @@ export class RoiGeneratorDemoScene extends PhaserScene {
     this.evolutionModel = 'stationary';
     this.patternEvolution = 'stationary';
     this.spatialEvolution = 'stationary';
+    this.motionScope = 'perFeature';
     this.stateModel = 'stateEvolving';
     this.depletionMode = 'soft';
     this.displayMode = 'sampleValue';
@@ -58,6 +62,8 @@ export class RoiGeneratorDemoScene extends PhaserScene {
     this.paused = false;
     this.field = null;
     this.selectedCell = null;
+    this.rightPanelMode = 'cellInspector';
+    this.selectedHelpTopic = null;
     this.lastInspectorKey = '';
     this.lastInspectorRenderTime = -Infinity;
   }
@@ -75,6 +81,7 @@ export class RoiGeneratorDemoScene extends PhaserScene {
     this.spatialEvolution = normalizeRoiDemoPatternEvolution(data.spatialEvolution ?? data.patternEvolution ?? data.evolutionModel ?? distributionDefaults.spatialEvolution ?? distributionDefaults.evolutionModel);
     this.evolutionModel = this.spatialEvolution;
     this.patternEvolution = this.spatialEvolution;
+    this.motionScope = normalizeRoiDemoMotionScope(data.motionScope ?? 'perFeature');
     this.stateModel = normalizeRoiDemoStateModel(data.stateModel);
     this.depletionMode = normalizeRoiDemoDepletionMode(data.depletionMode ?? 'soft');
     this.displayMode = normalizeRoiDemoDisplayMode(data.displayMode ?? 'sampleValue');
@@ -86,6 +93,8 @@ export class RoiGeneratorDemoScene extends PhaserScene {
     this.demoTime = finiteNumber(data.demoTime, 0);
     this.paused = false;
     this.selectedCell = normalizeSelectedCell(data.selectedCell);
+    this.rightPanelMode = normalizeRightPanelMode(data.rightPanelMode);
+    this.selectedHelpTopic = normalizeHelpTopic(data.selectedHelpTopic);
     this.lastInspectorKey = '';
     this.lastInspectorRenderTime = -Infinity;
     this.rebuildField();
@@ -151,6 +160,7 @@ export class RoiGeneratorDemoScene extends PhaserScene {
       evolutionModel: this.evolutionModel,
       patternEvolution: this.patternEvolution,
       spatialEvolution: this.spatialEvolution,
+      motionScope: this.motionScope,
       stateModel: this.stateModel,
       depletionMode: this.depletionMode,
       displayMode: this.displayMode,
@@ -160,6 +170,8 @@ export class RoiGeneratorDemoScene extends PhaserScene {
       playbackDirection: this.playbackDirection,
       demoTime: this.demoTime,
       selectedCell: this.selectedCell,
+      rightPanelMode: this.rightPanelMode,
+      selectedHelpTopic: this.selectedHelpTopic,
       ...overrides
     };
   }
@@ -192,6 +204,8 @@ export class RoiGeneratorDemoScene extends PhaserScene {
       patternEvolutionLabel: roiPatternEvolutionLabel(this.field?.patternEvolution ?? this.patternEvolution),
       spatialEvolution: this.field?.spatialEvolution ?? this.spatialEvolution,
       spatialEvolutionLabel: roiSpatialEvolutionLabel(this.field?.spatialEvolution ?? this.spatialEvolution),
+      motionScope: this.field?.motionScope ?? this.motionScope,
+      motionScopeLabel: roiMotionScopeLabel(this.field?.motionScope ?? this.motionScope),
       dynamicComplexity: this.field?.dynamicComplexity ?? this.dynamicComplexity,
       stateModel: this.field?.stateModel ?? this.stateModel,
       stateModelLabel: this.field?.stateModelLabel ?? roiStateModelLabel(this.stateModel),
@@ -236,6 +250,7 @@ export class RoiGeneratorDemoScene extends PhaserScene {
       evolutionModel: (evolutionModel) => this.scene.restart(this.sceneConfig({ evolutionModel, demoTime: 0 })),
       patternEvolution: (patternEvolution) => this.scene.restart(this.sceneConfig({ patternEvolution, spatialEvolution: patternEvolution, evolutionModel: patternEvolution, demoTime: 0 })),
       spatialEvolution: (spatialEvolution) => this.scene.restart(this.sceneConfig({ spatialEvolution, patternEvolution: spatialEvolution, evolutionModel: spatialEvolution, demoTime: 0 })),
+      motionScope: (motionScope) => this.scene.restart(this.sceneConfig({ motionScope, demoTime: 0 })),
       stateModel: (stateModel) => this.scene.restart(this.sceneConfig({ stateModel, demoTime: 0 })),
       depletionMode: (depletionMode) => this.scene.restart(this.sceneConfig({ depletionMode, demoTime: 0 })),
       displayMode: (displayMode) => this.scene.restart(this.sceneConfig({ displayMode, demoTime: 0 })),
@@ -245,6 +260,7 @@ export class RoiGeneratorDemoScene extends PhaserScene {
         this.renderConsole();
         this.updateTransportBar();
       },
+      behaviorHelp: (groupId) => this.showBehaviorHelp(groupId),
       regenerate: () => this.scene.restart(this.sceneConfig({ seed: nextSeed(this.seed), demoTime: 0 })),
       pause: () => {
         this.paused = !this.paused;
@@ -414,9 +430,31 @@ export class RoiGeneratorDemoScene extends PhaserScene {
     } else {
       this.selectedCell = cell;
     }
+    this.rightPanelMode = 'cellInspector';
     this.lastInspectorRenderTime = -Infinity;
     this.renderCellInspector(true);
     this.draw();
+  }
+
+  showBehaviorHelp(groupId) {
+    this.rightPanelMode = 'behaviorHelp';
+    this.selectedHelpTopic = {
+      groupId,
+      optionId: this.helpOptionForGroup(groupId)
+    };
+    this.lastInspectorRenderTime = -Infinity;
+    this.renderCellInspector(true);
+  }
+
+  helpOptionForGroup(groupId) {
+    return {
+      spatialPattern: this.field?.pureSpatialPattern ?? this.spatialPattern,
+      temporalPattern: this.field?.temporalPattern ?? this.temporalPattern,
+      spatialEvolution: this.field?.spatialEvolution ?? this.spatialEvolution,
+      stateModel: this.field?.stateModel ?? this.stateModel,
+      samplingEffect: this.field?.depletionMode ?? this.depletionMode,
+      displayLayer: this.field?.displayMode ?? this.displayMode
+    }[groupId] ?? null;
   }
 
   cellFromPointer(pointer) {
@@ -508,6 +546,19 @@ export class RoiGeneratorDemoScene extends PhaserScene {
   renderCellInspector(force = false) {
     const root = this.app?.elements?.waypointTimelineRoot;
     if (!root) return;
+    if (this.rightPanelMode === 'behaviorHelp') {
+      const topic = this.selectedHelpTopic ?? null;
+      const key = `behaviorHelp:${topic?.groupId ?? 'empty'}:${topic?.optionId ?? 'empty'}:${this.timeMode}:${this.spatialPattern}:${this.temporalPattern}:${this.spatialEvolution}:${this.motionScope}:${this.depletionMode}:${this.displayMode}`;
+      if (!force && key === this.lastInspectorKey) return;
+      this.lastInspectorKey = key;
+      this.lastInspectorRenderTime = this.demoTime;
+      root.innerHTML = topic ? roiBehaviorHelpHtml(topic, this.behaviorHelpState()) : roiBehaviorHelpEmptyHtml();
+      root.querySelector('[data-action="roi-show-cell-inspector"]')?.addEventListener('click', () => {
+        this.rightPanelMode = 'cellInspector';
+        this.renderCellInspector(true);
+      });
+      return;
+    }
     if (!this.selectedCell) {
       if (force || this.lastInspectorKey !== 'empty') {
         root.innerHTML = roiInspectorEmptyHtml();
@@ -515,11 +566,22 @@ export class RoiGeneratorDemoScene extends PhaserScene {
       }
       return;
     }
-    const key = `${this.selectedCell.col},${this.selectedCell.row}:${this.timeMode}:${this.temporalPattern}:${this.spatialEvolution}:${this.depletionMode}:${this.displayMode}:${this.clusterSize}:${this.paused}`;
+    const key = `${this.selectedCell.col},${this.selectedCell.row}:${this.timeMode}:${this.temporalPattern}:${this.spatialEvolution}:${this.motionScope}:${this.depletionMode}:${this.displayMode}:${this.clusterSize}:${this.paused}`;
     if (!force && key === this.lastInspectorKey && Math.abs(this.demoTime - this.lastInspectorRenderTime) < 0.25) return;
     this.lastInspectorKey = key;
     this.lastInspectorRenderTime = this.demoTime;
     root.innerHTML = roiInspectorHtml(this.inspectSelectedCell());
+  }
+
+  behaviorHelpState() {
+    return {
+      spatialPattern: this.field?.pureSpatialPattern ?? this.spatialPattern,
+      temporalPattern: this.field?.temporalPattern ?? this.temporalPattern,
+      spatialEvolution: this.field?.spatialEvolution ?? this.spatialEvolution,
+      stateModel: this.field?.stateModel ?? this.stateModel,
+      depletionMode: this.field?.depletionMode ?? this.depletionMode,
+      displayMode: this.field?.displayMode ?? this.displayMode
+    };
   }
 
   clearCellInspector() {
@@ -564,6 +626,8 @@ export class RoiGeneratorDemoScene extends PhaserScene {
       patternEvolution: this.field?.patternEvolution ?? this.patternEvolution,
       spatialEvolution: this.field?.spatialEvolution ?? this.spatialEvolution,
       spatialEvolutionLabel: this.field?.spatialEvolutionLabel ?? roiSpatialEvolutionLabel(this.spatialEvolution),
+      motionScope: this.field?.motionScope ?? this.motionScope,
+      motionScopeLabel: this.field?.motionScopeLabel ?? roiMotionScopeLabel(this.motionScope),
       depletionMode: this.field?.depletionMode ?? this.depletionMode,
       displayMode: this.field?.displayMode ?? this.displayMode,
       stateModel: this.field?.stateModel ?? this.stateModel,
@@ -623,6 +687,20 @@ function normalizeSelectedCell(value) {
   return { col: Math.max(0, Math.round(col)), row: Math.max(0, Math.round(row)), x: Math.max(0, Math.round(col)), y: Math.max(0, Math.round(row)) };
 }
 
+function normalizeRightPanelMode(value) {
+  return value === 'behaviorHelp' ? 'behaviorHelp' : 'cellInspector';
+}
+
+function normalizeHelpTopic(value) {
+  if (!value || typeof value !== 'object') return null;
+  const groupId = String(value.groupId ?? '');
+  if (!groupId) return null;
+  return {
+    groupId,
+    optionId: value.optionId == null ? null : String(value.optionId)
+  };
+}
+
 function roiInspectorEmptyHtml() {
   return `
     <section class="cell-inspector-shell">
@@ -642,6 +720,89 @@ function roiInspectorEmptyHtml() {
       </div>
     </section>
   `;
+}
+
+function roiBehaviorHelpEmptyHtml() {
+  return `
+    <section class="cell-inspector-shell behavior-help-shell" data-roi-behavior-help>
+      <div class="cell-inspector-header">
+        <span>Behavior Help</span>
+        <h2>Behavior Help</h2>
+        <p>Click an Explain button beside a Sample / ROI control to learn what that component does.</p>
+      </div>
+      <div class="cell-inspector-card">
+        <strong>Available help</strong>
+        <ul>
+          <li>Spatial Pattern</li>
+          <li>Temporal Pattern</li>
+          <li>Spatial Evolution</li>
+          <li>State Model</li>
+          <li>Sampling Effect</li>
+          <li>Display Layer</li>
+        </ul>
+      </div>
+      <button class="console-button secondary" data-action="roi-show-cell-inspector">Show Cell Inspector</button>
+    </section>
+  `;
+}
+
+function roiBehaviorHelpHtml(topic, state) {
+  const optionId = topic.optionId ?? behaviorHelpOptionForGroup(topic.groupId, state);
+  const help = sampleFieldBehaviorExplainer(topic.groupId, optionId);
+  const composition = sampleFieldCompositionExplainer(state);
+  return `
+    <section class="cell-inspector-shell behavior-help-shell" data-roi-behavior-help>
+      <div class="cell-inspector-header">
+        <span>Behavior Help</span>
+        <h2>About ${escapeHtml(help.groupLabel)}: ${escapeHtml(help.label)}</h2>
+        <p>${escapeHtml(help.question)}</p>
+      </div>
+      <div class="cell-inspector-card selected">
+        <span>Selected Behavior</span>
+        ${metricRows([
+          ['component', help.groupLabel],
+          ['selected', help.label]
+        ])}
+        <small>${escapeHtml(help.short)}</small>
+      </div>
+      <div class="cell-inspector-card">
+        <span>Meaning</span>
+        <p>${escapeHtml(help.meaning)}</p>
+      </div>
+      <div class="cell-inspector-card">
+        <span>Expected Heatmap</span>
+        <p>${escapeHtml(help.expectedBehavior)}</p>
+      </div>
+      <div class="cell-inspector-card">
+        <span>Parameters</span>
+        <p>${escapeHtml((help.parameters ?? []).join(', ') || 'N/A')}</p>
+      </div>
+      <div class="cell-inspector-card">
+        <span>Strategy</span>
+        <p>${escapeHtml(help.strategy)}</p>
+        <small>${escapeHtml((help.pairsWellWith ?? []).length ? `Related modes: ${help.pairsWellWith.join(', ')}` : '')}</small>
+        <small>${escapeHtml(help.boundaryNote)}</small>
+      </div>
+      <div class="cell-inspector-card">
+        <span>Current Composition</span>
+        <small>${escapeHtml(composition.label)}</small>
+        <small>${escapeHtml(composition.summary)}</small>
+        <small>${escapeHtml(composition.routeNote)}</small>
+      </div>
+      <button class="console-button secondary" data-action="roi-show-cell-inspector">Show Cell Inspector</button>
+    </section>
+  `;
+}
+
+function behaviorHelpOptionForGroup(groupId, state) {
+  return {
+    spatialPattern: state.spatialPattern,
+    temporalPattern: state.temporalPattern,
+    spatialEvolution: state.spatialEvolution,
+    stateModel: state.stateModel,
+    samplingEffect: state.depletionMode,
+    displayLayer: state.displayMode
+  }[groupId] ?? null;
 }
 
 function roiInspectorHtml(inspection) {
@@ -673,6 +834,8 @@ function roiInspectorHtml(inspection) {
           ['temporal pattern', roiTemporalPatternLabel(inspection.temporalPattern)],
           ['state model', inspection.stateModelLabel],
           ['spatial evolution', roiSpatialEvolutionLabel(inspection.spatialEvolution)],
+          ['motion scope', inspection.motionScopeLabel],
+          ['feature motion', inspection.behavior?.featureMotion ?? 'n/a'],
           ['burst phase', inspection.behavior?.burstPhase ?? 'n/a'],
           ['dynamic complexity', complexityLabel(inspection.dynamicComplexity)],
           ['cluster membership', inspection.hotspotMembership]

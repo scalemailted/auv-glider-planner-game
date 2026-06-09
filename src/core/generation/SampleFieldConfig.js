@@ -106,8 +106,6 @@ export function normalizeSampleFieldConfig(config = {}, { mode = 'perfectKnowled
 
 export function normalizeStateModel(value, temporalBehavior = 'moving') {
   const aliases = {
-    priorAgnostic: 'timeIndexed',
-    priorIndependent: 'timeIndexed',
     memoryless: 'timeIndexed',
     timeIndexed: 'timeIndexed',
     evolutionary: 'stateEvolving',

@@ -50,9 +50,12 @@ Manual sample-field checks should cover:
 - Sample / ROI Field Demo can regenerate seeded sample-value fields and dynamic value fields, and its controls separate Spatial Field, Spatial Parameters, Temporal Pattern, Spatial Evolution, State Model, Sampling Effects, and Display;
 - Sample / ROI Field Demo spatial patterns are the final pure sample-value set: Uniform Field, Gradient / Trend, Clustered Field, Patchy / Correlated Field, Sparse Targets, Linear Band, Front / Boundary, Boundary Band, Monitoring Stations, and Seeded Texture;
 - Sample / ROI Field Demo exposes Stationary, Continuous Drift, Discrete Jump, Random Walk, and Neighbor Propagation as spatial evolution options;
+- Sample / ROI Field Demo exposes Motion Scope as Per Feature, Local / Neighborhood, and Global, with Per Feature as the default for old continuous-drift/random-walk configs;
+- Sample / ROI Field Demo Continuous Drift and Random Walk do not shift the whole field globally unless Motion Scope is explicitly Global;
 - Sample / ROI Field Demo exposes `Clustered Field` plus Cluster Count and Cluster Size rather than separate Single Cluster, Bimodal, and Multiple Clusters options;
-- Sample / ROI Field Demo shows hover/help text plus `About ...` behavior explainers for Spatial Pattern, Temporal Pattern, Spatial Evolution, State Model, Sampling Effect, and Display Layer;
-- Sample / ROI Field Demo shows a Current Composition summary that explains how selected components combine and routes current-coupled/uncertainty concepts to the Coupled Fields and Uncertainty / Forecast demos;
+- Sample / ROI Field Demo left panel shows compact controls and Explain buttons, not expanded behavior explainer bodies;
+- Sample / ROI Field Demo right panel switches between Cell Inspector and Behavior Help;
+- Sample / ROI Field Demo Behavior Help supports Spatial Pattern, Temporal Pattern, Spatial Evolution, State Model, Sampling Effect, and Display Layer, and includes a Current Composition summary that routes current-coupled/uncertainty concepts to the Coupled Fields and Uncertainty / Forecast demos;
 - Sample / ROI Field Demo inspector reports Pattern Composition and pattern-relevant parameters;
 - Sample / ROI Field Demo labels selected behavior as Time-Indexed, State-Evolving, or History-Aware in the inspector;
 - Sample / ROI Field Demo does not expose Forecast, Truth, Uncertainty, or current-coupled controls;

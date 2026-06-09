@@ -2,8 +2,8 @@ import { CAMPAIGN_LEVELS } from '../core/campaign/CampaignLevels.js';
 import { shortInstanceId } from '../core/identity/GameInstanceId.js';
 import { formatMetric } from '../core/evaluation/PlanComparison.js';
 import { FLOW_DEMO_BOUNDARY_MODES, FLOW_DEMO_CYCLE_DURATIONS, FLOW_DEMO_DYNAMIC_COMPLEXITY_LEVELS, FLOW_DEMO_EVOLUTION_BEHAVIORS, FLOW_DEMO_EVOLUTION_PATTERNS, FLOW_DEMO_EVOLUTION_SPEEDS, FLOW_DEMO_FIELD_MODES, FLOW_DEMO_LAYER_INFLUENCES, FLOW_DEMO_MAGNITUDE_SCALES, FLOW_DEMO_PARTICLE_SPEEDS, FLOW_DEMO_PRESET_CHOICES, FLOW_DEMO_SPATIAL_MOTIONS, FLOW_DEMO_SPATIAL_MOTION_SPEEDS, FLOW_DEMO_TERRAIN_MODES, FLOW_DEMO_VARIATION_LEVELS, normalizeAdditiveLayers } from '../core/demo/FlowFieldDemo.js';
-import { ROI_DEMO_DISTRIBUTIONS, ROI_DEMO_SPATIAL_PATTERNS, ROI_DEMO_TEMPORAL_BEHAVIORS, ROI_DEMO_TIME_MODES, ROI_DEMO_TEMPORAL_PATTERNS, ROI_DEMO_SPATIAL_EVOLUTIONS, ROI_DEMO_STATE_MODELS, ROI_DEMO_DEPLETION_MODES, ROI_DEMO_DISPLAY_MODES, ROI_DEMO_DYNAMIC_COMPLEXITY, ROI_DEMO_PURE_SPATIAL_PATTERNS, ROI_DEMO_CLUSTER_SIZES, roiDistributionLabel, roiTemporalPatternLabel, roiStateModelDescription, roiStateModelForEvolutionModel, roiStateModelLabel, roiPureSpatialPatternLabel, roiSpatialEvolutionLabel, roiDepletionModeLabel, roiDisplayModeLabel, roiClusterSizeLabel, sampleSpatialPatternLabel, sampleTemporalBehaviorLabel } from '../core/demo/DemoRoiFields.js';
-import { sampleFieldBehaviorExplainer, sampleFieldCompositionExplainer } from '../core/demo/SampleFieldBehaviorExplainers.js';
+import { ROI_DEMO_DISTRIBUTIONS, ROI_DEMO_SPATIAL_PATTERNS, ROI_DEMO_TEMPORAL_BEHAVIORS, ROI_DEMO_TIME_MODES, ROI_DEMO_TEMPORAL_PATTERNS, ROI_DEMO_SPATIAL_EVOLUTIONS, ROI_DEMO_MOTION_SCOPES, ROI_DEMO_STATE_MODELS, ROI_DEMO_DEPLETION_MODES, ROI_DEMO_DISPLAY_MODES, ROI_DEMO_DYNAMIC_COMPLEXITY, ROI_DEMO_PURE_SPATIAL_PATTERNS, ROI_DEMO_CLUSTER_SIZES, roiDistributionLabel, roiTemporalPatternLabel, roiStateModelDescription, roiStateModelForEvolutionModel, roiStateModelLabel, roiPureSpatialPatternLabel, roiSpatialEvolutionLabel, roiMotionScopeLabel, roiDepletionModeLabel, roiDisplayModeLabel, roiClusterSizeLabel, sampleSpatialPatternLabel, sampleTemporalBehaviorLabel } from '../core/demo/DemoRoiFields.js';
+import { sampleFieldBehaviorExplainer } from '../core/demo/SampleFieldBehaviorExplainers.js';
 import { EXPERIENCE_MODES, getExperienceModeDefaults } from '../core/experience/ExperienceMode.js';
 import { getVectorPresetConfig } from '../core/generation/VectorFieldPresets.js';
 import { UNCERTAINTY_DEMO_BEHAVIORS, UNCERTAINTY_DEMO_FORECAST_MODELS, UNCERTAINTY_DEMO_PATTERNS, UNCERTAINTY_DEMO_UPDATE_MODELS, UNCERTAINTY_DEMO_VIEW_MODES, forecastModelLabel, uncertaintyBehaviorLabel, uncertaintyPatternLabel, uncertaintyViewLabel, updateModelLabel } from '../core/demo/UncertaintyForecastDemo.js';
@@ -301,14 +301,6 @@ export class MissionConsole {
     const stateHelp = sampleFieldBehaviorExplainer('stateModel', stateModel);
     const samplingHelp = sampleFieldBehaviorExplainer('samplingEffect', state.depletionMode);
     const displayHelp = sampleFieldBehaviorExplainer('displayLayer', state.displayMode);
-    const compositionHelp = sampleFieldCompositionExplainer({
-      spatialPattern: state.spatialPattern,
-      temporalPattern: state.temporalPattern,
-      spatialEvolution: state.spatialEvolution ?? state.patternEvolution,
-      stateModel,
-      depletionMode: state.depletionMode,
-      displayMode: state.displayMode
-    });
     this.root.innerHTML = `
       <section class="console-header">
         <div class="console-kicker">Sample / ROI Field Demo</div>
@@ -331,7 +323,7 @@ export class MissionConsole {
             }).join('')}
           </select>
         </label>
-        ${sampleFieldExplainerHtml('spatialPattern', state.spatialPattern)}
+        ${roiHelpButtonHtml('spatialPattern', `Explain ${roiPureSpatialPatternLabel(state.spatialPattern)}`)}
         <label class="compact-field">
           Cluster Count
           <input id="roi-demo-hotspots" type="range" min="1" max="6" step="1" value="${escapeAttr(state.clusterCount ?? state.hotspotCount ?? 3)}" />
@@ -375,7 +367,7 @@ export class MissionConsole {
             }).join('')}
           </select>
         </label>
-        ${sampleFieldExplainerHtml('temporalPattern', state.temporalPattern)}
+        ${roiHelpButtonHtml('temporalPattern', `Explain ${roiTemporalPatternLabel(state.temporalPattern)}`)}
       </section>
       <section class="console-section">
         <h2 title="${escapeAttr(evolutionHelp.groupSummary)}">Spatial Evolution <span aria-label="Spatial Evolution help" title="${escapeAttr(evolutionHelp.short)}">i</span></h2>
@@ -389,12 +381,19 @@ export class MissionConsole {
           </select>
         </label>
         <label class="compact-field">
+          Motion Scope
+          <select id="roi-demo-motion-scope" title="Controls whether motion shifts the whole field, moves features independently, or evolves local neighborhoods.">
+            ${ROI_DEMO_MOTION_SCOPES.map((scope) => `<option value="${escapeAttr(scope)}" ${state.motionScope === scope ? 'selected' : ''}>${escapeHtml(roiMotionScopeLabel(scope))}</option>`).join('')}
+          </select>
+        </label>
+        <div class="hud-muted">Default motion is ${escapeHtml(roiMotionScopeLabel(state.motionScope ?? 'perFeature'))}; Global preserves whole-field shifting only when explicitly selected.</div>
+        <label class="compact-field">
           Dynamic Complexity
           <select id="roi-demo-dynamic-complexity">
             ${ROI_DEMO_DYNAMIC_COMPLEXITY.map((level) => `<option value="${escapeAttr(level)}" ${state.dynamicComplexity === level ? 'selected' : ''}>${escapeHtml(dynamicComplexityLabel(level))}</option>`).join('')}
           </select>
         </label>
-        ${sampleFieldExplainerHtml('spatialEvolution', state.spatialEvolution ?? state.patternEvolution)}
+        ${roiHelpButtonHtml('spatialEvolution', `Explain ${roiSpatialEvolutionLabel(state.spatialEvolution ?? state.patternEvolution)}`)}
       </section>
       <section class="console-section">
         <h2 title="${escapeAttr(stateHelp.groupSummary)}">State Model <span aria-label="State Model help" title="${escapeAttr(stateHelp.short)}">i</span></h2>
@@ -409,7 +408,7 @@ export class MissionConsole {
           </select>
         </label>
         <div class="hud-muted">Time-Indexed fields are computed directly from position and time; State-Evolving fields use current field state; History-Aware fields depend on longer sampling or observation history.</div>
-        ${sampleFieldExplainerHtml('stateModel', stateModel)}
+        ${roiHelpButtonHtml('stateModel', `Explain ${stateModelLabel}`)}
       </section>
       <section class="console-section">
         <h2 title="${escapeAttr(samplingHelp.groupSummary)}">Sampling Effects <span aria-label="Sampling Effect help" title="${escapeAttr(samplingHelp.short)}">i</span></h2>
@@ -423,7 +422,7 @@ export class MissionConsole {
           </select>
         </label>
         <div class="hud-muted">Demo-only synthetic sample visits: recently visited regions cool down, nearby cells can partially cool, and stale regions recover value over time. Mission scoring uses actual glider visit history.</div>
-        ${sampleFieldExplainerHtml('samplingEffect', state.depletionMode)}
+        ${roiHelpButtonHtml('samplingEffect', `Explain ${roiDepletionModeLabel(state.depletionMode)}`)}
       </section>
       <section class="console-section">
         <h2 title="${escapeAttr(displayHelp.groupSummary)}">Display <span aria-label="Display Layer help" title="${escapeAttr(displayHelp.short)}">i</span></h2>
@@ -442,13 +441,7 @@ export class MissionConsole {
             ${[0.5, 1, 2, 5].map((speed) => `<option value="${escapeAttr(speed)}" ${Number(state.timeSpeedScale ?? 1) === speed ? 'selected' : ''}>${escapeHtml(speed)}x</option>`).join('')}
           </select>
         </label>
-        ${sampleFieldExplainerHtml('displayLayer', state.displayMode)}
-      </section>
-      <section class="console-section">
-        <h2>Current Composition</h2>
-        <div class="hud-muted"><strong>${escapeHtml(compositionHelp.label)}</strong></div>
-        <div class="hud-muted">${escapeHtml(compositionHelp.summary)}</div>
-        <div class="hud-muted">${escapeHtml(compositionHelp.routeNote)}</div>
+        ${roiHelpButtonHtml('displayLayer', `Explain ${roiDisplayModeLabel(state.displayMode)}`)}
       </section>
       <section class="console-status">
         <span>Field Stats</span>
@@ -469,11 +462,15 @@ export class MissionConsole {
     this.root.querySelector('#roi-demo-temporal-pattern')?.addEventListener('change', (event) => handlers.temporalPattern?.(event.target.value));
     this.root.querySelector('#roi-demo-temporal-behavior')?.addEventListener('change', (event) => handlers.temporalBehavior?.(event.target.value));
     this.root.querySelector('#roi-demo-spatial-evolution')?.addEventListener('change', (event) => handlers.spatialEvolution?.(event.target.value));
+    this.root.querySelector('#roi-demo-motion-scope')?.addEventListener('change', (event) => handlers.motionScope?.(event.target.value));
     this.root.querySelector('#roi-demo-state-model')?.addEventListener('change', (event) => handlers.stateModel?.(event.target.value));
     this.root.querySelector('#roi-demo-dynamic-complexity')?.addEventListener('change', (event) => handlers.dynamicComplexity?.(event.target.value));
     this.root.querySelector('#roi-demo-depletion-mode')?.addEventListener('change', (event) => handlers.depletionMode?.(event.target.value));
     this.root.querySelector('#roi-demo-display-mode')?.addEventListener('change', (event) => handlers.displayMode?.(event.target.value));
     this.root.querySelector('#roi-demo-time-speed')?.addEventListener('change', (event) => handlers.timeSpeedScale?.(event.target.value));
+    this.root.querySelectorAll('[data-roi-help]').forEach((button) => {
+      button.addEventListener('click', () => handlers.behaviorHelp?.(button.dataset.roiHelp));
+    });
     this.bind({
       regenerate: handlers.regenerate,
       menu: handlers.menu
@@ -1086,29 +1083,8 @@ function formatDemoStat(value) {
   return Number.isFinite(number) ? number.toFixed(3) : 'N/A';
 }
 
-function sampleFieldExplainerHtml(groupId, value) {
-  const help = sampleFieldBehaviorExplainer(groupId, value);
-  return `
-    <details class="workspace-help roi-pattern-help sample-field-explainer sample-field-explainer-${escapeAttr(groupId)}" open>
-      <summary>About ${escapeHtml(help.groupLabel)}: ${escapeHtml(help.label)}</summary>
-      <div class="hud-muted"><strong>${escapeHtml(help.question)}</strong></div>
-      <div class="hud-muted">${escapeHtml(help.short)}</div>
-      ${compactHelpBlock('Meaning', help.meaning)}
-      ${compactHelpBlock('Expected behavior', help.expectedBehavior)}
-      ${compactHelpList('Key parameters', help.parameters)}
-      ${compactHelpList('Pairs well with', help.pairsWellWith)}
-      ${compactHelpBlock('Strategy', help.strategy)}
-      ${compactHelpBlock('Demo boundary', help.boundaryNote)}
-    </details>
-  `;
-}
-
-function compactHelpBlock(label, value) {
-  return `<div class="hud-muted"><strong>${escapeHtml(label)}:</strong> ${escapeHtml(value)}</div>`;
-}
-
-function compactHelpList(label, values = []) {
-  return `<div class="hud-muted"><strong>${escapeHtml(label)}:</strong> ${escapeHtml((values ?? []).join(', '))}</div>`;
+function roiHelpButtonHtml(groupId, label) {
+  return `<button type="button" class="console-button secondary roi-help-button" data-roi-help="${escapeAttr(groupId)}">${escapeHtml(label)}</button>`;
 }
 
 function nextActionButtonHtml(state) {

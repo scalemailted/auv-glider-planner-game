@@ -56,11 +56,11 @@ The demo builds sample-value behavior from independent axes:
 - **Sampling Effect:** how observation changes future value.
 - **Display Layer:** which value layer the heatmap is currently showing.
 
-A bursty clustered field can behave differently depending on spatial evolution. With Stationary evolution, the same cluster grows and fades in place. With Discrete Jump, each burst can reappear elsewhere. With Continuous Drift, the cluster moves smoothly through the domain. With Random Walk, it moves by local seeded steps. With Neighbor Propagation, activity spreads from active cells to nearby cells.
+A bursty clustered field can behave differently depending on spatial evolution. With Stationary evolution, the same cluster grows and fades in place. With Discrete Jump, each burst can reappear elsewhere. With Continuous Drift, features move smoothly through the domain. With Random Walk, features move by local seeded steps. With Neighbor Propagation, activity spreads from active cells to nearby cells.
 
 ## Behavior Explainers
 
-Every major component in the Sample / ROI Demo has a compact behavior explainer in the Mission Console. The control label and selected option provide short hover help, and the `About ...` details card explains the selected option's meaning, expected heatmap behavior, important parameters, useful pairings, strategy implication, and demo boundary.
+Every major component in the Sample / ROI Demo has behavior help. The left Mission Console stays compact and contains controls plus small `Explain ...` buttons. Clicking an Explain button opens the selected component's `About ...` explainer in the right panel, next to the Cell Inspector. The explainer covers meaning, expected heatmap behavior, important parameters, useful pairings, strategy implication, and demo boundary.
 
 | Component Group | What it controls | Example question answered |
 |---|---|---|
@@ -71,7 +71,7 @@ Every major component in the Sample / ROI Demo has a compact behavior explainer 
 | Sampling Effect | How visits change future value | Does sampling deplete, cool neighbors, or recover later? |
 | Display Layer | Which value layer is visible | Am I viewing raw value, depleted value, freshness, or composed sample value? |
 
-The `Current Composition` card summarizes how the selected components combine, for example `Clustered Field + Bursty + Discrete Jump + Time-Indexed + Soft Depletion + Sample Value`. Current-driven transport, plumes, flow-stretched patterns, forecast, truth, uncertainty, information gain, and forecast error are routed to the Coupled Fields Demo and Uncertainty / Forecast Demo.
+The right-panel Behavior Help view includes a `Current Composition` card that summarizes how the selected components combine, for example `Clustered Field + Bursty + Discrete Jump + Time-Indexed + Soft Depletion + Sample Value`. Current-driven transport, plumes, flow-stretched patterns, forecast, truth, uncertainty, information gain, and forecast error are routed to the Coupled Fields Demo and Uncertainty / Forecast Demo.
 
 ## Spatial Patterns
 
@@ -101,7 +101,7 @@ Spatial Pattern answers: where is sample value located?
 - `Monitoring Stations`: fixed station-like targets that support revisit strategy.
 - `Seeded Texture`: deterministic fine/coarse value texture with spatial coherence.
 
-The left Mission Console provides quick hover help and an `About ...` details card for the selected Spatial Pattern, Temporal Pattern, Spatial Evolution, State Model, Sampling Effect, and Display Layer.
+The left Mission Console provides quick hover help and compact Explain buttons. The right panel shows the selected `About ...` explainer for Spatial Pattern, Temporal Pattern, Spatial Evolution, State Model, Sampling Effect, and Display Layer.
 
 ## Spatial Parameters
 
@@ -133,12 +133,24 @@ A temporal pattern can be dynamic without being stateful. For example, a periodi
 Spatial Evolution answers: how does the spatial distribution itself change over time?
 
 - `Stationary`: the pattern changes intensity but stays in the same location.
-- `Continuous Drift`: the feature moves smoothly through adjacent or intermediate locations.
+- `Continuous Drift`: features move smoothly through adjacent or intermediate locations.
 - `Discrete Jump`: the feature fades, then reappears elsewhere without continuous travel.
-- `Random Walk`: the feature center changes by small seeded local steps over time.
+- `Random Walk`: feature centers or active regions change by small seeded local steps over time.
 - `Neighbor Propagation`: active cells influence nearby cells, spreading activity locally.
 
 Current-advected movement is not part of this demo. Use Coupled Fields Demo when the sample pattern should move because of `F(x,y,t)`.
+
+### Motion Scope
+
+Motion Scope controls whether spatial evolution is global, per-feature, or local:
+
+| Motion Scope | Meaning | Typical use |
+|---|---|---|
+| Per Feature | Each cluster, band, target group, or patch region has its own seeded motion path | Default for Continuous Drift, Random Walk, and Discrete Jump |
+| Local / Neighborhood | Small local regions evolve based on nearby cells or dense local motion | Patchy / Correlated Field, Seeded Texture, Neighbor Propagation |
+| Global | The whole field shifts together as one image | Advanced/demo-only comparison or a moving single band/front |
+
+`Continuous Drift` and `Random Walk` default to `Per Feature`, not `Global`. That means clustered fields move each cluster/region independently instead of sliding the entire heatmap. `Random Walk` is bounded and seeded, so the same seed produces the same local steps. `Discrete Jump` remains the mode where non-local relocation is allowed after fade/quiet windows. `Neighbor Propagation` remains local/neighborhood-based and does not use a whole-domain shift.
 
 ## State Model
 
@@ -174,7 +186,7 @@ The current implementation uses deterministic synthetic visit markers and freshn
 
 ## Cell Inspector
 
-Click a heatmap cell to inspect it in the right panel.
+Click a heatmap cell to inspect it in the right panel. Clicking a cell switches the right panel back to Cell Inspector if Behavior Help was open. Clicking an Explain button in the left controls switches the right panel to Behavior Help while preserving the selected cell.
 
 The inspector reports:
 
@@ -185,6 +197,8 @@ The inspector reports:
 - cluster count and cluster size
 - temporal pattern
 - spatial evolution
+- motion scope
+- feature motion summary
 - state model
 - sampling effect
 - cluster/high-value membership

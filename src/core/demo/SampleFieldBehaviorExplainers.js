@@ -229,10 +229,10 @@ const SPATIAL_EVOLUTION_EXPLAINERS = {
   },
   continuousDrift: {
     label: 'Continuous Drift',
-    short: 'The pattern moves smoothly through intermediate locations.',
-    meaning: 'The spatial distribution translates gradually over demo time.',
-    expectedBehavior: 'Value slides across adjacent cells rather than teleporting.',
-    parameters: ['Drift Direction', 'Drift Speed', 'Dynamic Complexity'],
+    short: 'Features move smoothly through intermediate locations.',
+    meaning: 'Feature centers or local regions drift gradually over demo time rather than shifting the whole domain by default.',
+    expectedBehavior: 'Clusters, patches, bands, or regions slide through adjacent cells independently unless Motion Scope is Global.',
+    parameters: ['Motion Scope', 'Drift Direction', 'Drift Speed', 'Dynamic Complexity'],
     pairsWellWith: ['Sustained', 'Periodic / Cyclic', 'Linear Band'],
     strategy: 'Teaches intercepting and leading a smoothly moving opportunity.',
     boundaryNote: 'This is synthetic sample-value drift, not current-driven transport.'
@@ -250,9 +250,9 @@ const SPATIAL_EVOLUTION_EXPLAINERS = {
   randomWalk: {
     label: 'Random Walk',
     short: 'The pattern moves by local seeded steps.',
-    meaning: 'The next location is produced by local deterministic steps from the current location.',
-    expectedBehavior: 'The feature wanders locally, changing direction over time while remaining replayable.',
-    parameters: ['Step Size', 'Turn Variability', 'Seed'],
+    meaning: 'Feature centers or active regions move by bounded local deterministic steps.',
+    expectedBehavior: 'Regions wander locally and independently while remaining replayable for the same seed; the full map does not move together unless Motion Scope is Global.',
+    parameters: ['Motion Scope', 'Step Size', 'Turn Variability', 'Seed'],
     pairsWellWith: ['State-Evolving', 'Intermittent', 'Clustered Field'],
     strategy: 'Teaches tracking a wandering target without assuming straight-line motion.',
     boundaryNote: 'Random Walk is seeded and reproducible, not Math.random per frame.'
@@ -262,7 +262,7 @@ const SPATIAL_EVOLUTION_EXPLAINERS = {
     short: 'Activity spreads from active cells to nearby cells.',
     meaning: 'Neighboring cells matter because active value can diffuse or activate adjacent locations.',
     expectedBehavior: 'High-value regions expand, blur, or spread to neighboring cells over time.',
-    parameters: ['Propagation Rate', 'Neighbor Radius', 'Decay'],
+    parameters: ['Motion Scope', 'Propagation Rate', 'Neighbor Radius', 'Decay'],
     pairsWellWith: ['Patchy / Correlated Field', 'Seeded Texture', 'State-Evolving'],
     strategy: 'Teaches local search and anticipating spread into adjacent areas.',
     boundaryNote: 'Propagation is sample-value spread, not fluid advection.'
