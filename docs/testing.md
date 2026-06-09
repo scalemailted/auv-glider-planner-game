@@ -48,12 +48,16 @@ Manual sample-field checks should cover:
 - Challenge Mode presets choose sample-field/current/scoring defaults without forking the mission engine;
 - Simulation Lab exposes the detailed sample-field controls directly;
 - Sample / ROI Field Demo can regenerate seeded sample-value fields and dynamic value fields, and its controls separate Spatial Field, Spatial Parameters, Temporal Pattern, Spatial Evolution, State Model, Sampling Effects, and Display;
+- Sample / ROI Field Demo spatial patterns are the final pure sample-value set: Uniform Field, Gradient / Trend, Clustered Field, Patchy / Correlated Field, Sparse Targets, Linear Band, Front / Boundary, Boundary Band, Monitoring Stations, and Seeded Texture;
 - Sample / ROI Field Demo exposes Stationary, Continuous Drift, Discrete Jump, Random Walk, and Neighbor Propagation as spatial evolution options;
 - Sample / ROI Field Demo exposes `Clustered Field` plus Cluster Count and Cluster Size rather than separate Single Cluster, Bimodal, and Multiple Clusters options;
+- Sample / ROI Field Demo shows hover/help text plus `About ...` behavior explainers for Spatial Pattern, Temporal Pattern, Spatial Evolution, State Model, Sampling Effect, and Display Layer;
+- Sample / ROI Field Demo shows a Current Composition summary that explains how selected components combine and routes current-coupled/uncertainty concepts to the Coupled Fields and Uncertainty / Forecast demos;
+- Sample / ROI Field Demo inspector reports Pattern Composition and pattern-relevant parameters;
 - Sample / ROI Field Demo labels selected behavior as Time-Indexed, State-Evolving, or History-Aware in the inspector;
 - Sample / ROI Field Demo does not expose Forecast, Truth, Uncertainty, or current-coupled controls;
 - generated missions preserve `sampleFieldConfig` when configured;
-- scrubbing mission time changes temporal sample fields such as periodic, burst, moving, plume, channel, or texture-like patterns where selected;
+- scrubbing mission time changes temporal sample fields such as periodic, burst, moving, propagating, or seeded texture-like patterns where selected;
 - Coupled Fields Demo, not the sample-only demo, covers current-advected sample behavior;
 - Uncertainty / Forecast Demo exposes Forecast, Truth, Uncertainty, Information Gain, Forecast Error, and Delta After Update views;
 - Uncertainty / Forecast Demo click/update actions reduce uncertainty and report observation state in the Cell Inspector;

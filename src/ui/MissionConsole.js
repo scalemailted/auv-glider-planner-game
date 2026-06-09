@@ -3,6 +3,7 @@ import { shortInstanceId } from '../core/identity/GameInstanceId.js';
 import { formatMetric } from '../core/evaluation/PlanComparison.js';
 import { FLOW_DEMO_BOUNDARY_MODES, FLOW_DEMO_CYCLE_DURATIONS, FLOW_DEMO_DYNAMIC_COMPLEXITY_LEVELS, FLOW_DEMO_EVOLUTION_BEHAVIORS, FLOW_DEMO_EVOLUTION_PATTERNS, FLOW_DEMO_EVOLUTION_SPEEDS, FLOW_DEMO_FIELD_MODES, FLOW_DEMO_LAYER_INFLUENCES, FLOW_DEMO_MAGNITUDE_SCALES, FLOW_DEMO_PARTICLE_SPEEDS, FLOW_DEMO_PRESET_CHOICES, FLOW_DEMO_SPATIAL_MOTIONS, FLOW_DEMO_SPATIAL_MOTION_SPEEDS, FLOW_DEMO_TERRAIN_MODES, FLOW_DEMO_VARIATION_LEVELS, normalizeAdditiveLayers } from '../core/demo/FlowFieldDemo.js';
 import { ROI_DEMO_DISTRIBUTIONS, ROI_DEMO_SPATIAL_PATTERNS, ROI_DEMO_TEMPORAL_BEHAVIORS, ROI_DEMO_TIME_MODES, ROI_DEMO_TEMPORAL_PATTERNS, ROI_DEMO_SPATIAL_EVOLUTIONS, ROI_DEMO_STATE_MODELS, ROI_DEMO_DEPLETION_MODES, ROI_DEMO_DISPLAY_MODES, ROI_DEMO_DYNAMIC_COMPLEXITY, ROI_DEMO_PURE_SPATIAL_PATTERNS, ROI_DEMO_CLUSTER_SIZES, roiDistributionLabel, roiTemporalPatternLabel, roiStateModelDescription, roiStateModelForEvolutionModel, roiStateModelLabel, roiPureSpatialPatternLabel, roiSpatialEvolutionLabel, roiDepletionModeLabel, roiDisplayModeLabel, roiClusterSizeLabel, sampleSpatialPatternLabel, sampleTemporalBehaviorLabel } from '../core/demo/DemoRoiFields.js';
+import { sampleFieldBehaviorExplainer, sampleFieldCompositionExplainer } from '../core/demo/SampleFieldBehaviorExplainers.js';
 import { EXPERIENCE_MODES, getExperienceModeDefaults } from '../core/experience/ExperienceMode.js';
 import { getVectorPresetConfig } from '../core/generation/VectorFieldPresets.js';
 import { UNCERTAINTY_DEMO_BEHAVIORS, UNCERTAINTY_DEMO_FORECAST_MODELS, UNCERTAINTY_DEMO_PATTERNS, UNCERTAINTY_DEMO_UPDATE_MODELS, UNCERTAINTY_DEMO_VIEW_MODES, forecastModelLabel, uncertaintyBehaviorLabel, uncertaintyPatternLabel, uncertaintyViewLabel, updateModelLabel } from '../core/demo/UncertaintyForecastDemo.js';
@@ -294,6 +295,20 @@ export class MissionConsole {
     const stateModel = state.stateModel ?? roiStateModelForEvolutionModel(state.evolutionModel);
     const stateModelLabel = state.stateModelLabel ?? roiStateModelLabel(stateModel);
     const stateModelDescription = state.stateModelDescription ?? roiStateModelDescription(stateModel);
+    const spatialHelp = sampleFieldBehaviorExplainer('spatialPattern', state.spatialPattern);
+    const temporalHelp = sampleFieldBehaviorExplainer('temporalPattern', state.temporalPattern);
+    const evolutionHelp = sampleFieldBehaviorExplainer('spatialEvolution', state.spatialEvolution ?? state.patternEvolution);
+    const stateHelp = sampleFieldBehaviorExplainer('stateModel', stateModel);
+    const samplingHelp = sampleFieldBehaviorExplainer('samplingEffect', state.depletionMode);
+    const displayHelp = sampleFieldBehaviorExplainer('displayLayer', state.displayMode);
+    const compositionHelp = sampleFieldCompositionExplainer({
+      spatialPattern: state.spatialPattern,
+      temporalPattern: state.temporalPattern,
+      spatialEvolution: state.spatialEvolution ?? state.patternEvolution,
+      stateModel,
+      depletionMode: state.depletionMode,
+      displayMode: state.displayMode
+    });
     this.root.innerHTML = `
       <section class="console-header">
         <div class="console-kicker">Sample / ROI Field Demo</div>
@@ -306,13 +321,17 @@ export class MissionConsole {
         <small>${escapeHtml(`${state.spatialPatternLabel ?? roiPureSpatialPatternLabel(state.spatialPattern)} | ${state.temporalPatternLabel ?? roiTemporalPatternLabel(state.temporalPattern)} | ${state.spatialEvolutionLabel ?? roiSpatialEvolutionLabel(state.spatialEvolution ?? state.patternEvolution)}`)}</small>
       </section>
       <section class="console-section">
-        <h2>Spatial Field</h2>
-        <label class="compact-field">
-          Spatial Pattern
-          <select id="roi-demo-spatial-pattern">
-            ${ROI_DEMO_PURE_SPATIAL_PATTERNS.map((pattern) => `<option value="${escapeAttr(pattern)}" ${state.spatialPattern === pattern ? 'selected' : ''}>${escapeHtml(roiPureSpatialPatternLabel(pattern))}</option>`).join('')}
+        <h2 title="${escapeAttr(spatialHelp.groupSummary)}">Spatial Field <span aria-label="Spatial Pattern help" title="${escapeAttr(spatialHelp.short)}">i</span></h2>
+        <label class="compact-field" title="${escapeAttr(spatialHelp.short)}">
+          <span>Spatial Pattern <span aria-label="Pattern help" title="${escapeAttr(spatialHelp.short)}">i</span></span>
+          <select id="roi-demo-spatial-pattern" title="${escapeAttr(spatialHelp.short)}">
+            ${ROI_DEMO_PURE_SPATIAL_PATTERNS.map((pattern) => {
+              const help = sampleFieldBehaviorExplainer('spatialPattern', pattern);
+              return `<option value="${escapeAttr(pattern)}" ${state.spatialPattern === pattern ? 'selected' : ''} title="${escapeAttr(help.short)}">${escapeHtml(roiPureSpatialPatternLabel(pattern))}</option>`;
+            }).join('')}
           </select>
         </label>
+        ${sampleFieldExplainerHtml('spatialPattern', state.spatialPattern)}
         <label class="compact-field">
           Cluster Count
           <input id="roi-demo-hotspots" type="range" min="1" max="6" step="1" value="${escapeAttr(state.clusterCount ?? state.hotspotCount ?? 3)}" />
@@ -340,26 +359,33 @@ export class MissionConsole {
         <div class="hud-muted">Noise ${escapeHtml(Number(state.noise ?? 0.15).toFixed(2))}. Cluster size controls spread; cluster count controls how many centers are generated.</div>
       </section>
       <section class="console-section">
-        <h2>Temporal Pattern</h2>
+        <h2 title="${escapeAttr(temporalHelp.groupSummary)}">Temporal Pattern <span aria-label="Temporal Pattern help" title="${escapeAttr(temporalHelp.short)}">i</span></h2>
         <label class="compact-field">
           Time Mode
           <select id="roi-demo-time-mode">
             ${ROI_DEMO_TIME_MODES.map((mode) => `<option value="${escapeAttr(mode)}" ${state.timeMode === mode ? 'selected' : ''}>${escapeHtml(mode === 'dynamic' ? 'Dynamic' : 'Static')}</option>`).join('')}
           </select>
         </label>
-        <label class="compact-field">
+        <label class="compact-field" title="${escapeAttr(temporalHelp.short)}">
           Temporal Pattern
-          <select id="roi-demo-temporal-pattern">
-            ${ROI_DEMO_TEMPORAL_PATTERNS.map((pattern) => `<option value="${escapeAttr(pattern)}" ${state.temporalPattern === pattern ? 'selected' : ''}>${escapeHtml(roiTemporalPatternLabel(pattern))}</option>`).join('')}
+          <select id="roi-demo-temporal-pattern" title="${escapeAttr(temporalHelp.short)}">
+            ${ROI_DEMO_TEMPORAL_PATTERNS.map((pattern) => {
+              const help = sampleFieldBehaviorExplainer('temporalPattern', pattern);
+              return `<option value="${escapeAttr(pattern)}" ${state.temporalPattern === pattern ? 'selected' : ''} title="${escapeAttr(help.short)}">${escapeHtml(roiTemporalPatternLabel(pattern))}</option>`;
+            }).join('')}
           </select>
         </label>
+        ${sampleFieldExplainerHtml('temporalPattern', state.temporalPattern)}
       </section>
       <section class="console-section">
-        <h2>Spatial Evolution</h2>
-        <label class="compact-field">
+        <h2 title="${escapeAttr(evolutionHelp.groupSummary)}">Spatial Evolution <span aria-label="Spatial Evolution help" title="${escapeAttr(evolutionHelp.short)}">i</span></h2>
+        <label class="compact-field" title="${escapeAttr(evolutionHelp.short)}">
           Spatial Evolution
-          <select id="roi-demo-spatial-evolution">
-            ${ROI_DEMO_SPATIAL_EVOLUTIONS.map((model) => `<option value="${escapeAttr(model)}" ${(state.spatialEvolution ?? state.patternEvolution) === model ? 'selected' : ''}>${escapeHtml(roiSpatialEvolutionLabel(model))}</option>`).join('')}
+          <select id="roi-demo-spatial-evolution" title="${escapeAttr(evolutionHelp.short)}">
+            ${ROI_DEMO_SPATIAL_EVOLUTIONS.map((model) => {
+              const help = sampleFieldBehaviorExplainer('spatialEvolution', model);
+              return `<option value="${escapeAttr(model)}" ${(state.spatialEvolution ?? state.patternEvolution) === model ? 'selected' : ''} title="${escapeAttr(help.short)}">${escapeHtml(roiSpatialEvolutionLabel(model))}</option>`;
+            }).join('')}
           </select>
         </label>
         <label class="compact-field">
@@ -368,34 +394,46 @@ export class MissionConsole {
             ${ROI_DEMO_DYNAMIC_COMPLEXITY.map((level) => `<option value="${escapeAttr(level)}" ${state.dynamicComplexity === level ? 'selected' : ''}>${escapeHtml(dynamicComplexityLabel(level))}</option>`).join('')}
           </select>
         </label>
+        ${sampleFieldExplainerHtml('spatialEvolution', state.spatialEvolution ?? state.patternEvolution)}
       </section>
       <section class="console-section">
-        <h2>State Model</h2>
+        <h2 title="${escapeAttr(stateHelp.groupSummary)}">State Model <span aria-label="State Model help" title="${escapeAttr(stateHelp.short)}">i</span></h2>
         <div class="hud-muted">State Model: ${escapeHtml(stateModelLabel)}. ${escapeHtml(stateModelDescription)}</div>
-        <label class="compact-field">
+        <label class="compact-field" title="${escapeAttr(stateHelp.short)}">
           State Model
-          <select id="roi-demo-state-model">
-            ${ROI_DEMO_STATE_MODELS.map((model) => `<option value="${escapeAttr(model)}" ${stateModel === model ? 'selected' : ''}>${escapeHtml(roiStateModelLabel(model))}</option>`).join('')}
+          <select id="roi-demo-state-model" title="${escapeAttr(stateHelp.short)}">
+            ${ROI_DEMO_STATE_MODELS.map((model) => {
+              const help = sampleFieldBehaviorExplainer('stateModel', model);
+              return `<option value="${escapeAttr(model)}" ${stateModel === model ? 'selected' : ''} title="${escapeAttr(help.short)}">${escapeHtml(roiStateModelLabel(model))}</option>`;
+            }).join('')}
           </select>
         </label>
         <div class="hud-muted">Time-Indexed fields are computed directly from position and time; State-Evolving fields use current field state; History-Aware fields depend on longer sampling or observation history.</div>
+        ${sampleFieldExplainerHtml('stateModel', stateModel)}
       </section>
       <section class="console-section">
-        <h2>Sampling Effects</h2>
-        <label class="compact-field">
+        <h2 title="${escapeAttr(samplingHelp.groupSummary)}">Sampling Effects <span aria-label="Sampling Effect help" title="${escapeAttr(samplingHelp.short)}">i</span></h2>
+        <label class="compact-field" title="${escapeAttr(samplingHelp.short)}">
           Depletion
-          <select id="roi-demo-depletion-mode">
-            ${ROI_DEMO_DEPLETION_MODES.map((mode) => `<option value="${escapeAttr(mode)}" ${state.depletionMode === mode ? 'selected' : ''}>${escapeHtml(roiDepletionModeLabel(mode))}</option>`).join('')}
+          <select id="roi-demo-depletion-mode" title="${escapeAttr(samplingHelp.short)}">
+            ${ROI_DEMO_DEPLETION_MODES.map((mode) => {
+              const help = sampleFieldBehaviorExplainer('samplingEffect', mode);
+              return `<option value="${escapeAttr(mode)}" ${state.depletionMode === mode ? 'selected' : ''} title="${escapeAttr(help.short)}">${escapeHtml(roiDepletionModeLabel(mode))}</option>`;
+            }).join('')}
           </select>
         </label>
-        <div class="hud-muted">Sampling effects model sample visits: recently visited regions cool down, nearby cells can partially cool, and stale regions recover value over time.</div>
+        <div class="hud-muted">Demo-only synthetic sample visits: recently visited regions cool down, nearby cells can partially cool, and stale regions recover value over time. Mission scoring uses actual glider visit history.</div>
+        ${sampleFieldExplainerHtml('samplingEffect', state.depletionMode)}
       </section>
       <section class="console-section">
-        <h2>Display</h2>
-        <label class="compact-field">
+        <h2 title="${escapeAttr(displayHelp.groupSummary)}">Display <span aria-label="Display Layer help" title="${escapeAttr(displayHelp.short)}">i</span></h2>
+        <label class="compact-field" title="${escapeAttr(displayHelp.short)}">
           Display Layer
-          <select id="roi-demo-display-mode">
-            ${ROI_DEMO_DISPLAY_MODES.map((mode) => `<option value="${escapeAttr(mode)}" ${state.displayMode === mode ? 'selected' : ''}>${escapeHtml(roiDisplayModeLabel(mode))}</option>`).join('')}
+          <select id="roi-demo-display-mode" title="${escapeAttr(displayHelp.short)}">
+            ${ROI_DEMO_DISPLAY_MODES.map((mode) => {
+              const help = sampleFieldBehaviorExplainer('displayLayer', mode);
+              return `<option value="${escapeAttr(mode)}" ${state.displayMode === mode ? 'selected' : ''} title="${escapeAttr(help.short)}">${escapeHtml(roiDisplayModeLabel(mode))}</option>`;
+            }).join('')}
           </select>
         </label>
         <label class="compact-field">
@@ -404,6 +442,13 @@ export class MissionConsole {
             ${[0.5, 1, 2, 5].map((speed) => `<option value="${escapeAttr(speed)}" ${Number(state.timeSpeedScale ?? 1) === speed ? 'selected' : ''}>${escapeHtml(speed)}x</option>`).join('')}
           </select>
         </label>
+        ${sampleFieldExplainerHtml('displayLayer', state.displayMode)}
+      </section>
+      <section class="console-section">
+        <h2>Current Composition</h2>
+        <div class="hud-muted"><strong>${escapeHtml(compositionHelp.label)}</strong></div>
+        <div class="hud-muted">${escapeHtml(compositionHelp.summary)}</div>
+        <div class="hud-muted">${escapeHtml(compositionHelp.routeNote)}</div>
       </section>
       <section class="console-status">
         <span>Field Stats</span>
@@ -1039,6 +1084,31 @@ function roiForecastViewLabel(view) {
 function formatDemoStat(value) {
   const number = Number(value);
   return Number.isFinite(number) ? number.toFixed(3) : 'N/A';
+}
+
+function sampleFieldExplainerHtml(groupId, value) {
+  const help = sampleFieldBehaviorExplainer(groupId, value);
+  return `
+    <details class="workspace-help roi-pattern-help sample-field-explainer sample-field-explainer-${escapeAttr(groupId)}" open>
+      <summary>About ${escapeHtml(help.groupLabel)}: ${escapeHtml(help.label)}</summary>
+      <div class="hud-muted"><strong>${escapeHtml(help.question)}</strong></div>
+      <div class="hud-muted">${escapeHtml(help.short)}</div>
+      ${compactHelpBlock('Meaning', help.meaning)}
+      ${compactHelpBlock('Expected behavior', help.expectedBehavior)}
+      ${compactHelpList('Key parameters', help.parameters)}
+      ${compactHelpList('Pairs well with', help.pairsWellWith)}
+      ${compactHelpBlock('Strategy', help.strategy)}
+      ${compactHelpBlock('Demo boundary', help.boundaryNote)}
+    </details>
+  `;
+}
+
+function compactHelpBlock(label, value) {
+  return `<div class="hud-muted"><strong>${escapeHtml(label)}:</strong> ${escapeHtml(value)}</div>`;
+}
+
+function compactHelpList(label, values = []) {
+  return `<div class="hud-muted"><strong>${escapeHtml(label)}:</strong> ${escapeHtml((values ?? []).join(', '))}</div>`;
 }
 
 function nextActionButtonHtml(state) {

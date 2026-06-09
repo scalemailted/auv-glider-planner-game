@@ -3,7 +3,7 @@ import { startStaticServer } from './static-server.mjs';
 
 let server;
 
-test.setTimeout(60000);
+test.setTimeout(90000);
 
 test.beforeAll(async () => {
   server = await startStaticServer({ port: 9321 });
@@ -311,19 +311,31 @@ test('campaign planning smoke flow reaches debrief', async ({ page }) => {
     'Sparse Targets',
     'Linear Band',
     'Front / Boundary',
-    'Edge Band',
+    'Boundary Band',
     'Monitoring Stations',
-    'Random Texture'
+    'Seeded Texture'
   ]);
   await expect(page.locator('#roi-demo-spatial-pattern')).not.toContainText('Single Cluster');
   await expect(page.locator('#roi-demo-spatial-pattern')).not.toContainText('Multiple Clusters');
   await expect(page.locator('#roi-demo-spatial-pattern')).not.toContainText('Bimodal');
+  await expect(page.locator('#mission-console .sample-field-explainer-spatialPattern')).toContainText('About Spatial Pattern: Clustered Field');
+  await expect(page.locator('#mission-console .sample-field-explainer-spatialPattern')).toContainText('One or more coherent value clusters');
+  await expect(page.locator('#mission-console .sample-field-explainer-spatialPattern')).toContainText('Key parameters');
+  await expect(page.locator('#mission-console .sample-field-explainer-temporalPattern')).toContainText('About Temporal Pattern: Bursty');
+  await expect(page.locator('#mission-console .sample-field-explainer-temporalPattern')).toContainText('How does value intensity change over time?');
+  await expect(page.locator('#mission-console .sample-field-explainer-spatialEvolution')).toContainText('About Spatial Evolution: Stationary');
+  await expect(page.locator('#mission-console .sample-field-explainer-stateModel')).toContainText('About State Model:');
+  await expect(page.locator('#mission-console .sample-field-explainer-stateModel')).toContainText('Markovian');
+  await expect(page.locator('#mission-console .sample-field-explainer-samplingEffect')).toContainText('About Sampling Effect: Soft Depletion');
+  await expect(page.locator('#mission-console .sample-field-explainer-displayLayer')).toContainText('About Display Layer: Sample Value');
+  await expect(page.locator('#mission-console')).toContainText('Current Composition');
   await expect(page.locator('#roi-demo-cluster-size option')).toHaveText(['Tight', 'Medium', 'Wide']);
   await expect(page.locator('#roi-demo-spatial-evolution option')).toHaveText(['Stationary', 'Continuous Drift', 'Discrete Jump', 'Random Walk', 'Neighbor Propagation']);
   await expect(page.locator('#roi-demo-display-mode option')).toHaveText(['Sample Value', 'Depleted Value', 'Freshness / Revisit Value', 'Raw Base Value']);
   await expect(page.locator('#mission-console')).not.toContainText('Forecast / Truth');
-  await expect(page.locator('#mission-console')).not.toContainText('Uncertainty');
   await expect(page.locator('#mission-console')).not.toContainText('Current-Advected');
+  await expect(page.locator('#mission-console')).toContainText('Uncertainty / Forecast demos');
+  await expect(page.locator('#mission-console')).not.toContainText('prior-agnostic');
   await expect(page.evaluate(() => window.anchorGame.phaser.scene.getScene('RoiGeneratorDemoScene').timeMode)).resolves.toBe('dynamic');
   const roiDynamicCell = await page.evaluate(() => {
     const scene = window.anchorGame.phaser.scene.getScene('RoiGeneratorDemoScene');
@@ -353,11 +365,16 @@ test('campaign planning smoke flow reaches debrief', async ({ page }) => {
   await expect(page.locator('#waypoint-timeline')).toContainText('Sample Value');
   await expect(page.locator('#waypoint-timeline')).toContainText('cluster count');
   await expect(page.locator('#waypoint-timeline')).toContainText('cluster size');
+  await expect(page.locator('#waypoint-timeline')).toContainText('pattern parameters');
   await expect(page.locator('#waypoint-timeline')).toContainText('temporal pattern');
   await expect(page.locator('#waypoint-timeline')).toContainText('spatial evolution');
   await expect(page.locator('#waypoint-timeline')).toContainText('state model');
   await page.locator('#roi-demo-spatial-pattern').selectOption('clusteredField');
   await expect.poll(() => page.evaluate(() => window.anchorGame.phaser.scene.getScene('RoiGeneratorDemoScene').spatialPattern)).toBe('clusteredField');
+  await page.locator('#roi-demo-spatial-pattern').selectOption('seededTexture');
+  await expect(page.locator('#mission-console .sample-field-explainer-spatialPattern')).toContainText('About Spatial Pattern: Seeded Texture');
+  await expect(page.locator('#mission-console .sample-field-explainer-spatialPattern')).toContainText('irregular but replayable');
+  await page.locator('#roi-demo-spatial-pattern').selectOption('clusteredField');
   await page.locator('#roi-demo-hotspots').evaluate((input) => {
     input.value = '2';
     input.dispatchEvent(new Event('input', { bubbles: true }));

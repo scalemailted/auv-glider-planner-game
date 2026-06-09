@@ -26,7 +26,11 @@ The Challenge Mode UI intentionally separates mission selection from technical s
 
 The sample field describes where and when science value exists. Generated missions can preserve `sampleFieldConfig` metadata for spatial patterns, temporal behavior, stochasticity, current coupling, depletion, and objective-model settings while still exporting ordinary temporal ROI frames for playback, scoring, solver packets, and datasets.
 
-Implemented generated behaviors include static value, hotspot-style value, burst/periodic temporal value, moving or current-advected value, random/noisy fields, neighbor-coupled fields, bimodal/plume/channel/gradient patterns, and texture-like fields where configured. Mission Modes choose sensible presets; Simulation Lab exposes the underlying controls.
+Implemented generated behaviors include static value, hotspot-style value, burst/periodic temporal value, moving value, current-coupled value, neighbor-coupled value, gradients, bands, fronts, clustered fields, sparse targets, monitoring stations, and seeded texture-like fields where configured. Mission Modes choose sensible presets; Simulation Lab exposes the underlying controls.
+
+The pure Sample / ROI Field Demo intentionally presents sample-value geometry rather than physical formation mechanisms. Its spatial taxonomy is Uniform Field, Gradient / Trend, Clustered Field, Patchy / Correlated Field, Sparse Targets, Linear Band, Front / Boundary, Boundary Band, Monitoring Stations, and Seeded Texture. Cluster count is a parameter of Clustered Field, so single-cluster, bimodal, and multi-cluster cases are not separate top-level theories. Flow-specific sample behavior such as current-advected plumes, shoreline runoff, and flow-stretched value belongs in the Coupled Fields Demo.
+
+The Sample / ROI Demo also has behavior explainers for every observable-pattern component: Spatial Pattern, Temporal Pattern, Spatial Evolution, State Model, Sampling Effect, and Display Layer. Each explainer gives a short hover summary plus an `About ...` details card with meaning, expected heatmap behavior, parameters, pairings, strategy implications, and demo boundaries. A Current Composition summary explains how the selected components combine while routing current-coupled and uncertainty concepts to the appropriate demos.
 
 ## Sampling Objectives
 

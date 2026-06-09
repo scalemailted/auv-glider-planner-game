@@ -42,9 +42,9 @@ It is not a mission, planner, leaderboard mode, uncertainty demo, forecast/truth
 - `Sparse Targets`: small high-value targets in a mostly low-value field.
 - `Linear Band`: band-like sample value.
 - `Front / Boundary`: front-like value boundary without flow transport.
-- `Edge Band`: abstract edge-shaped value without implying shoreline currents.
+- `Boundary Band`: abstract edge-shaped value without implying shoreline currents.
 - `Monitoring Stations`: repeated station-like targets.
-- `Random Texture`: seeded random-looking texture with spatially varying amplitude.
+- `Seeded Texture`: deterministic random-looking texture with spatially varying amplitude.
 
 ## Static vs Dynamic Sample Fields
 

@@ -54,12 +54,41 @@ The demo builds sample-value behavior from independent axes:
 - **Spatial Evolution:** how the spatial distribution moves, jumps, spreads, or propagates.
 - **State Model:** whether the process is time-indexed, frequency-based, state-evolving, or history-aware.
 - **Sampling Effect:** how observation changes future value.
+- **Display Layer:** which value layer the heatmap is currently showing.
 
 A bursty clustered field can behave differently depending on spatial evolution. With Stationary evolution, the same cluster grows and fades in place. With Discrete Jump, each burst can reappear elsewhere. With Continuous Drift, the cluster moves smoothly through the domain. With Random Walk, it moves by local seeded steps. With Neighbor Propagation, activity spreads from active cells to nearby cells.
+
+## Behavior Explainers
+
+Every major component in the Sample / ROI Demo has a compact behavior explainer in the Mission Console. The control label and selected option provide short hover help, and the `About ...` details card explains the selected option's meaning, expected heatmap behavior, important parameters, useful pairings, strategy implication, and demo boundary.
+
+| Component Group | What it controls | Example question answered |
+|---|---|---|
+| Spatial Pattern | Where value is located in space | Where are the valuable cells? |
+| Temporal Pattern | How intensity changes over time | When does value rise, fade, pulse, or stay steady? |
+| Spatial Evolution | How the spatial distribution changes over time | Does the pattern stay fixed, drift, jump, wander, or spread? |
+| State Model | What the field depends on | Is value computed from time, cycles, current state, or longer history? |
+| Sampling Effect | How visits change future value | Does sampling deplete, cool neighbors, or recover later? |
+| Display Layer | Which value layer is visible | Am I viewing raw value, depleted value, freshness, or composed sample value? |
+
+The `Current Composition` card summarizes how the selected components combine, for example `Clustered Field + Bursty + Discrete Jump + Time-Indexed + Soft Depletion + Sample Value`. Current-driven transport, plumes, flow-stretched patterns, forecast, truth, uncertainty, information gain, and forecast error are routed to the Coupled Fields Demo and Uncertainty / Forecast Demo.
 
 ## Spatial Patterns
 
 Spatial Pattern answers: where is sample value located?
+
+| Spatial Pattern | What it shows | Key parameters | Strategy |
+|---|---|---|---|
+| Uniform Field | Even value everywhere | Base value, noise | Coverage efficiency |
+| Gradient / Trend | Smooth spatial trend | Direction, strength, smoothness | Travel vs reward |
+| Clustered Field | `k` coherent value clusters | Cluster count, cluster size, separation | Target selection / assignment |
+| Patchy / Correlated Field | Spatially correlated irregular patches | Correlation length, smoothness, contrast | Local exploration |
+| Sparse Targets | Isolated valuable targets | Target count, radius, value | Objective routing |
+| Linear Band | Long narrow value strip | Orientation, width, softness | Follow/cross band |
+| Front / Boundary | Transition between value regions | Sharpness, contrast, boundary mode | Edge sampling |
+| Boundary Band | Value near domain boundary | Side, width, softness | Boundary coverage |
+| Monitoring Stations | Fixed revisit locations | Station count, recovery | Persistent monitoring |
+| Seeded Texture | Deterministic irregular values | Scale, smoothness, seed | Irregular landscape planning |
 
 - `Uniform Field`: value is broadly distributed.
 - `Gradient / Trend`: value changes smoothly across the domain.
@@ -68,9 +97,11 @@ Spatial Pattern answers: where is sample value located?
 - `Sparse Targets`: isolated high-value sample targets.
 - `Linear Band`: a long narrow region of elevated sample value for transects, ridge-like value fields, and corridor-shaped reward fields.
 - `Front / Boundary`: a sharp or soft transition between low-value and high-value regions for boundary-following and edge-sampling strategies.
-- `Edge Band`: an abstract edge-shaped value band, not a coastal or current mechanism.
+- `Boundary Band`: an abstract edge-shaped value band, not a coastal or current mechanism.
 - `Monitoring Stations`: fixed station-like targets that support revisit strategy.
-- `Random Texture`: seeded fine/coarse value texture.
+- `Seeded Texture`: deterministic fine/coarse value texture with spatial coherence.
+
+The left Mission Console provides quick hover help and an `About ...` details card for the selected Spatial Pattern, Temporal Pattern, Spatial Evolution, State Model, Sampling Effect, and Display Layer.
 
 ## Spatial Parameters
 
@@ -79,7 +110,7 @@ Spatial parameters tune how the selected pattern is drawn.
 - `Cluster Count`: number of cluster centers or station-like targets.
 - `Cluster Size`: tight, medium, or wide cluster spread.
 - `Noise / Texture`: seeded local variation added to the field.
-- `Seed`: deterministic replay seed for the visual pattern.
+- `Seed`: deterministic replay seed for the visual pattern. Seeded Texture is random-looking, but it is not arbitrary per-frame noise.
 
 Additional scientific parameters such as correlation length, anisotropy, edge softness, band orientation, and front sharpness can be added later without changing the taxonomy.
 

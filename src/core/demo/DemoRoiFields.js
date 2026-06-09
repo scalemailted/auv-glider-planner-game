@@ -16,6 +16,7 @@ export const ROI_DEMO_DISTRIBUTIONS = [
   'gradientFront',
   'sparseTargets',
   'ridgeCorridor',
+  'boundaryBand',
   'bimodalHotspots',
   'movingHotspot',
   'burstyBloom',
@@ -33,9 +34,9 @@ export const ROI_DEMO_PURE_SPATIAL_PATTERNS = [
   'sparseTargets',
   'linearBand',
   'frontBoundary',
-  'edgeBand',
+  'boundaryBand',
   'monitoringStations',
-  'randomTexture'
+  'seededTexture'
 ];
 export const ROI_DEMO_TEMPORAL_BEHAVIORS = SAMPLE_TEMPORAL_BEHAVIORS;
 export const ROI_DEMO_TEMPORAL_PATTERNS = ['static', 'sustained', 'periodic', 'bursty', 'seasonal', 'randomPulses', 'intermittent'];
@@ -196,6 +197,7 @@ export function roiDistributionLabel(value) {
     gradientFront: 'Gradient / Front',
     sparseTargets: 'Sparse Targets',
     ridgeCorridor: 'Ridge / Corridor',
+    boundaryBand: 'Boundary Band',
     bimodalHotspots: 'Bimodal Hotspots',
     movingHotspot: 'Moving Hotspot',
     burstyBloom: 'Bursty Bloom',
@@ -220,7 +222,11 @@ export function normalizeRoiDemoPureSpatialPattern(value = 'clusteredField') {
     bimodal: 'clusteredField',
     channelCorridor: 'linearBand',
     plume: 'frontBoundary',
-    randomTexture: 'randomTexture',
+    randomTexture: 'seededTexture',
+    seededTexture: 'seededTexture',
+    texturedField: 'seededTexture',
+    edgeBand: 'boundaryBand',
+    boundaryBand: 'boundaryBand',
     gaussianHotspots: 'clusteredField',
     clusteredHotspots: 'clusteredField',
     sparseTargets: 'sparseTargets',
@@ -228,7 +234,7 @@ export function normalizeRoiDemoPureSpatialPattern(value = 'clusteredField') {
     bimodalHotspots: 'clusteredField',
     movingHotspot: 'clusteredField',
     burstyBloom: 'clusteredField',
-    nonuniformRandom: 'patchyField'
+    nonuniformRandom: 'seededTexture'
   };
   return aliases[value] ?? 'clusteredField';
 }
@@ -397,11 +403,118 @@ export function roiPureSpatialPatternLabel(value) {
     sparseTargets: 'Sparse Targets',
     linearBand: 'Linear Band',
     frontBoundary: 'Front / Boundary',
-    edgeBand: 'Edge Band',
-    coastalBand: 'Edge Band',
+    boundaryBand: 'Boundary Band',
+    edgeBand: 'Boundary Band',
+    coastalBand: 'Boundary Band',
     monitoringStations: 'Monitoring Stations',
-    randomTexture: 'Random Texture'
+    seededTexture: 'Seeded Texture',
+    randomTexture: 'Seeded Texture',
+    texturedField: 'Seeded Texture'
   }[value] ?? 'Clustered Field';
+}
+
+export function roiSpatialPatternHelp(value) {
+  const key = normalizeRoiDemoPureSpatialPattern(value);
+  return {
+    uniformField: {
+      tooltip: 'Even value everywhere; useful as a coverage baseline.',
+      meaning: 'Value is evenly distributed across the valid sampling domain.',
+      behavior: 'All cells start with similar sample value, with no hotspot, front, band, or strong gradient.',
+      parameters: ['Base Value', 'Noise Level'],
+      pairings: ['Static + No Depletion', 'Sustained + Soft Depletion', 'Freshness / Age of Information'],
+      strategy: 'Teaches coverage efficiency and depletion/freshness effects.',
+      not: 'Not a hotspot, plume, current feature, or uncertainty layer.'
+    },
+    gradientField: {
+      tooltip: 'A smooth value trend across space, such as low-to-high from one side of the map to another.',
+      meaning: 'Value changes smoothly across the map.',
+      behavior: 'One side or corner has higher value; the field is directional and smooth rather than clustered.',
+      parameters: ['Gradient Direction', 'Gradient Strength', 'Smoothness', 'Noise Level'],
+      pairings: ['Static', 'Periodic', 'Continuous Drift'],
+      strategy: 'Teaches travel-vs-reward tradeoffs along a value trend.',
+      not: 'Not isolated targets or a current front.'
+    },
+    clusteredField: {
+      tooltip: 'One or more coherent value clusters. Use Cluster Count to control how many.',
+      meaning: 'Value appears in one or more coherent blobs.',
+      behavior: 'Cluster Count controls how many modes are generated; Cluster Size controls spread.',
+      parameters: ['Cluster Count', 'Cluster Size', 'Cluster Separation', 'Cluster Intensity Variation', 'Edge Softness'],
+      pairings: ['Bursty + Stationary', 'Bursty + Discrete Jump', 'Periodic + Continuous Drift'],
+      strategy: 'Teaches target selection and multi-agent assignment.',
+      not: 'Not a flow-driven plume or current-advected feature.'
+    },
+    patchyField: {
+      tooltip: 'Irregular patches with spatial correlation; nearby cells tend to have similar values.',
+      meaning: 'Value is irregular but neighboring cells tend to be related.',
+      behavior: 'Spatially coherent patches, not clean Gaussian clusters and not independent per-cell noise.',
+      parameters: ['Correlation Length', 'Patch Size', 'Smoothness', 'Contrast', 'Noise Level'],
+      pairings: ['Neighbor Propagation', 'Intermittent', 'State-Evolving'],
+      strategy: 'Teaches local exploration: a high-value cell may imply nearby value.',
+      not: 'Not arbitrary frame noise.'
+    },
+    sparseTargets: {
+      tooltip: 'A few isolated valuable targets in an otherwise low-value field.',
+      meaning: 'Value exists at isolated target cells or small target regions.',
+      behavior: 'Most cells are low, with a small number of discrete high-value locations.',
+      parameters: ['Target Count', 'Target Radius', 'Target Value', 'Target Spread'],
+      pairings: ['Static', 'Intermittent', 'Bursty', 'Revisit Recovery'],
+      strategy: 'Teaches routing between discrete sampling objectives.',
+      not: 'Not clustered neighborhoods or Gold Star targets.'
+    },
+    linearBand: {
+      tooltip: 'A long narrow value band, useful for transect-like or ridge-like sampling patterns.',
+      meaning: 'A long narrow strip of elevated sample value.',
+      behavior: 'Value is elevated along a straight or gently curved strip.',
+      parameters: ['Band Orientation', 'Band Width', 'Band Position', 'Band Softness', 'Band Contrast'],
+      pairings: ['Static', 'Periodic', 'Continuous Drift'],
+      strategy: 'Teaches following, crossing, or sampling along elongated value regions.',
+      not: 'Not channel transport or current alignment.'
+    },
+    frontBoundary: {
+      tooltip: 'A spatial transition between low and high value; useful for edge or boundary sampling.',
+      meaning: 'A sharp or soft transition between low-value and high-value regions.',
+      behavior: 'Value differs across a boundary; the transition can be sharp or soft.',
+      parameters: ['Front Orientation', 'Front Position', 'Front Sharpness', 'Front Contrast', 'Boundary Value Mode'],
+      pairings: ['Static', 'Periodic', 'Continuous Drift', 'Discrete Jump'],
+      strategy: 'Teaches boundary-following, boundary-crossing, and edge-sampling strategies.',
+      not: 'Not a current front or coastal front.'
+    },
+    boundaryBand: {
+      tooltip: 'A value band near a boundary or edge of the domain.',
+      meaning: 'Value is concentrated near a generic boundary or domain edge.',
+      behavior: 'Value is concentrated along one or more domain edges and decays inward.',
+      parameters: ['Boundary Side', 'Band Width', 'Band Softness', 'Band Intensity'],
+      pairings: ['Sustained', 'Periodic', 'Bursty'],
+      strategy: 'Teaches boundary coverage and edge-following.',
+      not: 'Not coastline, current, or terrain behavior.'
+    },
+    monitoringStations: {
+      tooltip: 'Fixed locations that become valuable to visit or revisit over time.',
+      meaning: 'Fixed stations are valuable to visit or revisit over time.',
+      behavior: 'Station-like points remain fixed and work well with freshness or recovery effects.',
+      parameters: ['Station Count', 'Station Radius', 'Station Value', 'Revisit Interval', 'Recovery Rate'],
+      pairings: ['Revisit Recovery', 'History-Aware', 'Periodic', 'Freshness / Age of Information'],
+      strategy: 'Teaches persistent monitoring and revisit timing.',
+      not: 'Not one-time sparse targets when recovery is enabled.'
+    },
+    seededTexture: {
+      tooltip: 'A deterministic textured value field; irregular but replayable.',
+      meaning: 'A deterministic irregular texture field.',
+      behavior: 'Irregular spatial values are deterministic from seed, not random every frame.',
+      parameters: ['Texture Scale', 'Smoothness', 'Contrast', 'Seed', 'Noise Level'],
+      pairings: ['Static', 'Intermittent', 'State-Evolving', 'Neighbor Propagation'],
+      strategy: 'Teaches planning over irregular value landscapes without obvious clusters or fronts.',
+      not: 'Not arbitrary frame noise or forecast uncertainty.'
+    }
+  }[key] ?? {
+    tooltip: 'Generic sample-value spatial pattern.',
+    meaning: 'Generic sample-value spatial pattern.',
+    behavior: 'The heatmap shows deterministic sample value over space.',
+    parameters: ['Seed', 'Noise Level'],
+    pairings: ['Static'],
+    strategy: 'Teaches spatial sample-value planning.',
+    not: 'Not flow, terrain, or uncertainty behavior.'
+  };
 }
 
 export function roiPatternEvolutionLabel(value) {
@@ -463,9 +576,11 @@ function pureSpatialPatternDefaults(pattern) {
     sparseTargets: { distribution: 'sparseTargets', sampleSpatialPattern: 'multiHotspot', clusterCount: 5 },
     frontBoundary: { distribution: 'gradientFront', sampleSpatialPattern: 'gradient', clusterCount: 2 },
     linearBand: { distribution: 'ridgeCorridor', sampleSpatialPattern: 'coastalBand', clusterCount: 2 },
-    edgeBand: { distribution: 'ridgeCorridor', sampleSpatialPattern: 'coastalBand', clusterCount: 2 },
-    coastalBand: { distribution: 'ridgeCorridor', sampleSpatialPattern: 'coastalBand', clusterCount: 2 },
+    boundaryBand: { distribution: 'boundaryBand', sampleSpatialPattern: 'coastalBand', clusterCount: 2 },
+    edgeBand: { distribution: 'boundaryBand', sampleSpatialPattern: 'coastalBand', clusterCount: 2 },
+    coastalBand: { distribution: 'boundaryBand', sampleSpatialPattern: 'coastalBand', clusterCount: 2 },
     monitoringStations: { distribution: 'sparseTargets', sampleSpatialPattern: 'multiHotspot', clusterCount: 6 },
+    seededTexture: { distribution: 'nonuniformRandom', sampleSpatialPattern: 'randomTexture', clusterCount: 4 },
     randomTexture: { distribution: 'nonuniformRandom', sampleSpatialPattern: 'randomTexture', clusterCount: 4 }
   }[pattern] ?? { distribution: 'gaussianHotspots', sampleSpatialPattern: 'multiHotspot', clusterCount: 3 };
 }
@@ -478,11 +593,12 @@ function pureSpatialPatternFromDistribution(distribution) {
     gradientFront: 'gradientField',
     sparseTargets: 'sparseTargets',
     ridgeCorridor: 'linearBand',
+    boundaryBand: 'boundaryBand',
     bimodalHotspots: 'clusteredField',
     movingHotspot: 'clusteredField',
     burstyBloom: 'clusteredField',
     currentAdvectedPlume: 'frontBoundary',
-    nonuniformRandom: 'randomTexture'
+    nonuniformRandom: 'seededTexture'
   }[distribution] ?? 'clusteredField';
 }
 
@@ -522,6 +638,7 @@ export function roiDemoDistributionDefaults(distribution = 'gaussianHotspots') {
 export { sampleSpatialPatternLabel, sampleTemporalBehaviorLabel };
 
 function buildDistribution({ distribution, rng, seed, width, height, hotspotCount, clusterSize, noise, timeMode, spatialPattern, temporalBehavior, forecastView, time }) {
+  if (distribution === 'uniformRandom' && spatialPattern === 'uniform') return withNoise(createUniformField(width, height, 0.42), rng, noise * 0.08);
   if (distribution === 'uniformRandom') return withNoise(createUniformRandom(width, height, rng), rng, noise * 0.35);
   if (distribution === 'clusteredHotspots') {
     return withNoise(generateROI(width, height, time, {
@@ -533,6 +650,7 @@ function buildDistribution({ distribution, rng, seed, width, height, hotspotCoun
   if (distribution === 'gradientFront') return createGradientFront({ width, height, rng, noise, time });
   if (distribution === 'sparseTargets') return createSparseTargets({ width, height, rng, hotspotCount, noise, time });
   if (distribution === 'ridgeCorridor') return createRidgeCorridor({ width, height, rng, noise, time });
+  if (distribution === 'boundaryBand') return createBoundaryBand({ width, height, rng, noise, time });
   const sampleFieldConfig = sampleFieldConfigForDemo({ distribution, timeMode, spatialPattern, temporalBehavior, hotspotCount });
   const generated = generateROI(width, height, time, {
     seed,
@@ -583,6 +701,7 @@ function distributionToSampleConfig(distribution) {
     gradientFront: { spatialPattern: 'gradient', temporalBehavior: 'periodic', distribution: 'uniform' },
     sparseTargets: { spatialPattern: 'multiHotspot', temporalBehavior: 'bursty', distribution: 'multimodal' },
     ridgeCorridor: { spatialPattern: 'channelCorridor', temporalBehavior: 'periodic', distribution: 'gaussian' },
+    boundaryBand: { spatialPattern: 'coastalBand', temporalBehavior: 'periodic', distribution: 'gaussian' },
     bimodalHotspots: { spatialPattern: 'bimodal', temporalBehavior: 'periodic', distribution: 'bimodal' },
     movingHotspot: { spatialPattern: 'singleHotspot', temporalBehavior: 'moving', distribution: 'gaussian' },
     burstyBloom: { spatialPattern: 'multiHotspot', temporalBehavior: 'bursty', distribution: 'multimodal' },
@@ -856,6 +975,10 @@ function createUniformRandom(width, height, rng) {
   return Array.from({ length: height }, () => Array.from({ length: width }, () => round3(rng())));
 }
 
+function createUniformField(width, height, value = 0.42) {
+  return Array.from({ length: height }, () => Array.from({ length: width }, () => round3(value)));
+}
+
 function createGradientFront({ width, height, rng, noise, time }) {
   const phase = (rng() - 0.5) * 0.12 + Math.sin(time * 0.28) * 0.16;
   const wave = 0.18 + rng() * 0.18;
@@ -899,6 +1022,28 @@ function createRidgeCorridor({ width, height, rng, noise, time }) {
     const ridgeY = center + Math.sin(nx * Math.PI * 2 * frequency + phase) * amplitude;
     const distance = Math.abs(ny - ridgeY);
     const value = Math.exp(-(distance ** 2) / (2 * thickness ** 2)) + (rng() - 0.5) * noise;
+    return round3(clamp01(value));
+  }));
+}
+
+function createBoundaryBand({ width, height, rng, noise, time }) {
+  const side = Math.floor(rng() * 5);
+  const widthNorm = 0.08 + rng() * 0.08;
+  const softness = 0.018 + rng() * 0.035;
+  const intensity = 0.72 + rng() * 0.24;
+  const pulse = 0.88 + 0.12 * Math.sin(time * 0.18 + rng() * Math.PI * 2);
+  return Array.from({ length: height }, (_, y) => Array.from({ length: width }, (_, x) => {
+    const nx = width > 1 ? x / (width - 1) : 0;
+    const ny = height > 1 ? y / (height - 1) : 0;
+    const distances = [
+      ny,
+      1 - ny,
+      nx,
+      1 - nx
+    ];
+    const distance = side >= 4 ? Math.min(...distances) : distances[side];
+    const band = 1 - smoothstep(widthNorm, widthNorm + softness, distance);
+    const value = band * intensity * pulse + (rng() - 0.5) * noise;
     return round3(clamp01(value));
   }));
 }

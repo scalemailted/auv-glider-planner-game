@@ -5,6 +5,7 @@ import {
   roiPatternEvolutionLabel,
   roiSpatialEvolutionLabel,
   roiPureSpatialPatternLabel,
+  roiSpatialPatternHelp,
   roiTemporalPatternLabel,
   roiEvolutionModelLabel,
   roiStateModelDescription,
@@ -536,6 +537,8 @@ export class RoiGeneratorDemoScene extends PhaserScene {
     const hotspot = (this.field?.highValueCells ?? []).find((entry) => entry.x === cell.col && entry.y === cell.row);
     const rawBase = Number(this.field?.rawBaseField?.[cell.row]?.[cell.col] ?? value);
     const depleted = Number(this.field?.field?.[cell.row]?.[cell.col] ?? value);
+    const spatialPattern = this.field?.pureSpatialPattern ?? this.spatialPattern;
+    const spatialHelp = roiSpatialPatternHelp(spatialPattern);
     return {
       cell,
       value,
@@ -544,7 +547,14 @@ export class RoiGeneratorDemoScene extends PhaserScene {
       normalizedValue: stats.max > stats.min ? (value - stats.min) / Math.max(0.0001, stats.max - stats.min) : value,
       mode: this.timeMode,
       distribution: this.distribution,
-      spatialPattern: this.field?.pureSpatialPattern ?? this.spatialPattern,
+      spatialPattern,
+      spatialPatternHelp: spatialHelp,
+      spatialParameterSummary: spatialParameterSummary(spatialPattern, {
+        clusterCount: this.field?.clusterCount ?? this.hotspotCount,
+        clusterSize: this.field?.clusterSize ?? this.clusterSize,
+        seed: this.seed,
+        noise: this.noise
+      }),
       clusterCount: this.field?.clusterCount ?? this.hotspotCount,
       clusterSize: this.field?.clusterSize ?? this.clusterSize,
       temporalPattern: this.field?.temporalPattern ?? this.temporalPattern,
@@ -659,6 +669,7 @@ function roiInspectorHtml(inspection) {
           ['spatial pattern', roiPureSpatialPatternLabel(inspection.spatialPattern)],
           ['cluster count', inspection.clusterCount],
           ['cluster size', roiClusterSizeLabel(inspection.clusterSize)],
+          ['pattern parameters', inspection.spatialParameterSummary],
           ['temporal pattern', roiTemporalPatternLabel(inspection.temporalPattern)],
           ['state model', inspection.stateModelLabel],
           ['spatial evolution', roiSpatialEvolutionLabel(inspection.spatialEvolution)],
@@ -666,6 +677,7 @@ function roiInspectorHtml(inspection) {
           ['dynamic complexity', complexityLabel(inspection.dynamicComplexity)],
           ['cluster membership', inspection.hotspotMembership]
         ])}
+        <small>${escapeHtml(inspection.spatialPatternHelp?.meaning ?? '')}</small>
         <small>${escapeHtml(inspection.behavior?.explanation ?? '')}</small>
       </div>
       <div class="cell-inspector-card">
@@ -694,6 +706,21 @@ function metricRows(rows) {
       `).join('')}
     </div>
   `;
+}
+
+function spatialParameterSummary(pattern, { clusterCount, clusterSize, seed, noise }) {
+  return {
+    uniformField: `base value, noise ${formatStat(noise)}`,
+    gradientField: `directional trend, smoothness, noise ${formatStat(noise)}`,
+    clusteredField: `${clusterCount} cluster(s), ${roiClusterSizeLabel(clusterSize).toLowerCase()} spread`,
+    patchyField: `correlation length, smoothness, contrast, noise ${formatStat(noise)}`,
+    sparseTargets: `target count ${clusterCount}, small radius`,
+    linearBand: 'orientation, width, position, softness',
+    frontBoundary: 'orientation, sharpness, contrast',
+    boundaryBand: 'boundary side, width, softness, intensity',
+    monitoringStations: `station count ${clusterCount}, revisit recovery`,
+    seededTexture: `texture scale, smoothness, seed ${seed}`
+  }[pattern] ?? `seed ${seed}`;
 }
 
 function trendLabel(delta) {
