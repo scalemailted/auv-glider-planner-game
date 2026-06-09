@@ -47,7 +47,7 @@ Manual sample-field checks should cover:
 - the right setup panel shows Mission Snapshot or is hidden, never Mission Waypoints;
 - Challenge Mode presets choose sample-field/current/scoring defaults without forking the mission engine;
 - Simulation Lab exposes the detailed sample-field controls directly;
-- Sample / ROI Field Demo can regenerate seeded sample-value fields and dynamic value fields, and its controls separate Behavior Preset, Event Likelihood Field, Spatial Pattern, Value Distribution, Spatial Parameters, Temporal Pattern, Spatial Evolution, State Model, Sampling Effects, and Display;
+- Sample / ROI Field Demo can regenerate seeded sample-value fields and dynamic value fields, and its controls separate Behavior Preset, Event Likelihood / Spawn Distribution, Spatial Pattern / Geometry, Value Distribution, Temporal Pattern, Spatial Evolution, State Model / Memory, Sampling Effects, and Display;
 - Sample / ROI Field Demo Behavior Preset includes Custom plus Recurring Hotspots, Migrating Patch, Expanding Front, Patchy Rainfall, Drifting Storm Cells, Freshness / Revisit Value, Neighbor Spread, Oscillating Ecological Field, Forest Fire Front (inspired), and Life-Like Cellular Emergence (inspired);
 - selecting a Sample / ROI behavior preset updates the primitive controls, choosing Custom preserves editable primitive controls, modifying a primitive after selecting a preset marks it as modified, and Export Demo JSON includes `behaviorPreset` metadata;
 - Sample / ROI Field Demo event likelihood fields include Uniform Likelihood, Gaussian Likelihood, Multi-Modal Likelihood, Gradient Likelihood, Patchy Likelihood, Seeded Texture Likelihood, and Sparse Candidate Sites, and can be static or dynamic as `L(x,y,t)`;
@@ -59,7 +59,7 @@ Manual sample-field checks should cover:
 - Sample / ROI Field Demo exposes `Clustered Field` plus Cluster Count and Cluster Size rather than separate Single Cluster, Bimodal, and Multiple Clusters options;
 - Sample / ROI Field Demo left panel shows compact controls and Explain buttons, not expanded behavior explainer bodies;
 - Sample / ROI Field Demo right panel switches between Cell Inspector and Behavior Help;
-- Sample / ROI Field Demo Behavior Help supports Behavior Preset, Event Likelihood Field, Spatial Pattern, Value Distribution, Temporal Pattern, Spatial Evolution, State Model, Sampling Effect, and Display Layer, and includes a Current Composition summary that routes current-coupled/uncertainty concepts to the Coupled Fields and Uncertainty / Forecast demos;
+- Sample / ROI Field Demo Behavior Help supports Behavior Preset, Event Likelihood / Spawn Distribution, Spatial Pattern / Geometry, Value Distribution, Temporal Pattern, Spatial Evolution, State Model / Memory, Sampling Effect, and Display Layer, and includes a Current Composition summary that routes current-coupled/uncertainty concepts to the Coupled Fields and Uncertainty / Forecast demos;
 - Sample / ROI Field Demo inspector reports Event Likelihood `L(x,y,t)` separately from Observed Sample Value `S(x,y,t)`, plus Pattern Composition, value distribution, seeded-value status, value band, and pattern-relevant parameters;
 - Sample / ROI Field Demo Display Layer includes Event Likelihood and Sample Value + Likelihood Overlay, and switching to Event Likelihood renders the same `eventLikelihoodField` that drives event origins, jumps, walks, and propagation;
 - Sample / ROI Field Demo labels selected behavior as Time-Indexed, State-Evolving, or History-Aware in the inspector;

@@ -19,14 +19,14 @@ export const SAMPLE_FIELD_GROUP_SUMMARIES = {
     summary: 'Curated starting points that fill in the primitive sample-field controls.'
   },
   eventLikelihood: {
-    label: 'Event Likelihood Field',
+    label: 'Event Likelihood / Spawn Distribution',
     question: 'Where are events likely to originate or move next?',
-    summary: 'Controls the underlying event-proneness substrate used by origins, sparse sites, jumps, walks, and propagation.'
+    summary: 'Controls L(x,y,t): the underlying event-proneness substrate used by origins, sparse sites, jumps, walks, and propagation. This is not the realized sample value.'
   },
   spatialPattern: {
-    label: 'Spatial Pattern',
+    label: 'Spatial Pattern / Geometry',
     question: 'Where is sample value located in space?',
-    summary: 'Controls the geometry of sample value across the map.'
+    summary: 'Controls the geometry of realized sample value once activity exists.'
   },
   valueDistribution: {
     label: 'Value Distribution',
@@ -41,12 +41,12 @@ export const SAMPLE_FIELD_GROUP_SUMMARIES = {
   spatialEvolution: {
     label: 'Spatial Evolution',
     question: 'How does the spatial distribution itself change over time?',
-    summary: 'Controls whether the value pattern stays fixed, drifts, jumps, wanders, or spreads.'
+    summary: 'Controls how activity moves, jumps, spreads, or mutates across space.'
   },
   stateModel: {
-    label: 'State Model',
+    label: 'State Model / Memory',
     question: 'What does the field depend on?',
-    summary: 'Explains whether values are computed from time, cycles, current state, or longer history.'
+    summary: 'Controls whether the next frame is computed directly from time or depends on previous frames and longer history.'
   },
   samplingEffect: {
     label: 'Sampling Effect',
@@ -85,11 +85,11 @@ const EVENT_LIKELIHOOD_EXPLAINERS = {
     label: 'Multi-Modal Likelihood',
     short: 'Events are likely around several seeded source regions.',
     meaning: 'The substrate creates multiple replayable event-prone basins.',
-    expectedBehavior: 'Clusters and targets tend to appear around several source zones rather than uniformly.',
-    parameters: ['Seed', 'Mode Count', 'Mode Spread'],
+    expectedBehavior: 'Event Likelihood view shows separated persistent basins. Sample Value only shows realized activity when a behavior uses those basins.',
+    parameters: ['Seed', 'Mode Count', 'Minimum Mode Separation', 'Domain Coverage', 'Mode Spread'],
     pairsWellWith: ['Clustered Field', 'Discrete Jump', 'Random Walk'],
     strategy: 'Teaches assignment and fallback between several likely event regions.',
-    boundaryNote: 'The modes are deterministic from seed, not regenerated from Math.random during updates.'
+    boundaryNote: 'Multi-Modal Likelihood is a spawn distribution, not a full behavior by itself. The modes are deterministic from seed, not regenerated from Math.random during updates.'
   },
   gradientLikelihood: {
     label: 'Gradient Likelihood',
@@ -162,7 +162,7 @@ const SPATIAL_PATTERN_EXPLAINERS = {
     parameters: ['Cluster Count', 'Cluster Size', 'Cluster Separation', 'Cluster Intensity Variation', 'Edge Softness'],
     pairsWellWith: ['Bursty + Stationary', 'Bursty + Discrete Jump', 'Periodic + Continuous Drift'],
     strategy: 'Teaches target selection and multi-agent assignment.',
-    boundaryNote: 'Not a flow-driven plume or current-advected feature.'
+    boundaryNote: 'Clustered Field is only spatial geometry. Recurrence requires a Temporal Pattern and usually an Event Likelihood substrate.'
   },
   patchyField: {
     label: 'Patchy / Correlated Field',
@@ -729,12 +729,13 @@ function sampleFieldBehaviorPresetExplainer(value) {
     meaning: preset.description,
     expectedBehavior: preset.explanation?.expectedBehavior ?? preset.description,
     parameters: [
-      `Event Likelihood: ${preset.config.eventLikelihood}`,
-      `Spatial Pattern: ${preset.config.spatialPattern}`,
+      `Event Likelihood / Spawn Distribution: ${preset.config.eventLikelihood}`,
+      `Spatial Pattern / Geometry: ${preset.config.spatialPattern}`,
+      `Value Distribution: ${preset.config.valueDistribution}`,
       `Temporal Pattern: ${preset.config.temporalPattern}`,
       `Spatial Evolution: ${preset.config.spatialEvolution}`,
-      `State Model: ${preset.config.stateModel}`,
-      `Sampling Effect: ${preset.config.depletionMode}`
+      `State Model / Memory: ${preset.config.stateModel}`,
+      `Sampling Effects: ${preset.config.depletionMode}`
     ],
     pairsWellWith: [preset.category],
     strategy: preset.strategy,

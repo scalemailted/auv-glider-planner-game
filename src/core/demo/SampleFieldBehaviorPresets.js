@@ -19,9 +19,9 @@ export const SAMPLE_FIELD_BEHAVIOR_PRESETS = [
       valueDistribution: 'gaussianNormal',
       temporalPattern: 'bursty',
       temporalBehavior: 'bursty',
-      spatialEvolution: 'randomWalk',
-      patternEvolution: 'randomWalk',
-      evolutionModel: 'randomWalk',
+      spatialEvolution: 'stationary',
+      patternEvolution: 'stationary',
+      evolutionModel: 'stationary',
       motionScope: 'perFeature',
       stateModel: 'frequencyBased',
       depletionMode: 'soft',
@@ -30,7 +30,7 @@ export const SAMPLE_FIELD_BEHAVIOR_PRESETS = [
       displayMode: 'sampleValue'
     },
     explanation: {
-      expectedBehavior: 'Several separated regions flare up repeatedly, with slight seeded local jitter around each recurring basin.',
+      expectedBehavior: 'The likelihood view shows persistent separated regions where events tend to recur. The sample value view shows which recurring basins are currently active; not every likely basin must be active at every moment.',
       goodForTeaching: 'Recurring-event timing, assignment across known basins, and routes that wait for active windows.'
     }
   },
