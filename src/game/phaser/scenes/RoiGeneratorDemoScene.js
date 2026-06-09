@@ -9,6 +9,7 @@ import {
   roiStateModelDescription,
   roiStateModelForEvolutionModel,
   roiStateModelLabel,
+  roiClusterSizeLabel,
   sampleTemporalBehaviorLabel,
   roiDemoDistributionDefaults,
   normalizeRoiDemoDistribution,
@@ -21,7 +22,8 @@ import {
   normalizeRoiDemoStateModel,
   normalizeRoiDemoDepletionMode,
   normalizeRoiDemoDisplayMode,
-  normalizeRoiDemoDynamicComplexity
+  normalizeRoiDemoDynamicComplexity,
+  normalizeRoiDemoClusterSize
 } from '../../../core/demo/DemoRoiFields.js';
 
 const PhaserScene = globalThis.Phaser?.Scene ?? class {};
@@ -34,9 +36,10 @@ export class RoiGeneratorDemoScene extends PhaserScene {
     this.distribution = 'burstyBloom';
     this.seed = 'anchor-roi-demo';
     this.hotspotCount = 4;
+    this.clusterSize = 'medium';
     this.noise = 0.15;
     this.timeMode = 'dynamic';
-    this.spatialPattern = 'multipleClusters';
+    this.spatialPattern = 'clusteredField';
     this.temporalPattern = 'bursty';
     this.temporalBehavior = 'bursty';
     this.evolutionModel = 'growthDecay';
@@ -61,6 +64,7 @@ export class RoiGeneratorDemoScene extends PhaserScene {
     const distributionDefaults = roiDemoDistributionDefaults(this.distribution);
     this.seed = data.seed ?? 'anchor-roi-demo';
     this.hotspotCount = finiteNumber(data.hotspotCount, 4);
+    this.clusterSize = normalizeRoiDemoClusterSize(data.clusterSize ?? 'medium');
     this.noise = finiteNumber(data.noise, 0.15);
     this.timeMode = normalizeRoiDemoTimeMode(data.timeMode ?? 'dynamic');
     this.spatialPattern = normalizeRoiDemoPureSpatialPattern(data.spatialPattern ?? data.pureSpatialPattern ?? distributionDefaults.spatialPattern);
@@ -134,6 +138,7 @@ export class RoiGeneratorDemoScene extends PhaserScene {
       distribution: this.distribution,
       seed: this.seed,
       hotspotCount: this.hotspotCount,
+      clusterSize: this.clusterSize,
       noise: this.noise,
       timeMode: this.timeMode,
       spatialPattern: this.spatialPattern,
@@ -170,6 +175,8 @@ export class RoiGeneratorDemoScene extends PhaserScene {
       spatialPattern: this.field?.pureSpatialPattern ?? this.spatialPattern,
       spatialPatternLabel: roiPureSpatialPatternLabel(this.field?.pureSpatialPattern ?? this.spatialPattern),
       clusterCount: this.field?.clusterCount ?? this.hotspotCount,
+      clusterSize: this.field?.clusterSize ?? this.clusterSize,
+      clusterSizeLabel: roiClusterSizeLabel(this.field?.clusterSize ?? this.clusterSize),
       temporalPattern: this.field?.temporalPattern ?? this.temporalPattern,
       temporalPatternLabel: roiTemporalPatternLabel(this.field?.temporalPattern ?? this.temporalPattern),
       temporalBehavior: this.field?.temporalBehavior ?? this.temporalBehavior,
@@ -211,6 +218,7 @@ export class RoiGeneratorDemoScene extends PhaserScene {
         this.scene.restart(this.sceneConfig({ seed: this.seed, demoTime: 0 }));
       },
       hotspotCount: (hotspotCount) => this.scene.restart(this.sceneConfig({ hotspotCount: Number(hotspotCount), demoTime: 0 })),
+      clusterSize: (clusterSize) => this.scene.restart(this.sceneConfig({ clusterSize, demoTime: 0 })),
       noise: (noise) => this.scene.restart(this.sceneConfig({ noise: Number(noise), demoTime: 0 })),
       timeMode: (timeMode) => this.scene.restart(this.sceneConfig({ timeMode, demoTime: 0 })),
       spatialPattern: (spatialPattern) => this.scene.restart(this.sceneConfig({ spatialPattern, demoTime: 0 })),
@@ -497,7 +505,7 @@ export class RoiGeneratorDemoScene extends PhaserScene {
       }
       return;
     }
-    const key = `${this.selectedCell.col},${this.selectedCell.row}:${this.timeMode}:${this.temporalPattern}:${this.patternEvolution}:${this.depletionMode}:${this.displayMode}:${this.paused}`;
+    const key = `${this.selectedCell.col},${this.selectedCell.row}:${this.timeMode}:${this.temporalPattern}:${this.patternEvolution}:${this.depletionMode}:${this.displayMode}:${this.clusterSize}:${this.paused}`;
     if (!force && key === this.lastInspectorKey && Math.abs(this.demoTime - this.lastInspectorRenderTime) < 0.25) return;
     this.lastInspectorKey = key;
     this.lastInspectorRenderTime = this.demoTime;
@@ -528,6 +536,8 @@ export class RoiGeneratorDemoScene extends PhaserScene {
       mode: this.timeMode,
       distribution: this.distribution,
       spatialPattern: this.field?.pureSpatialPattern ?? this.spatialPattern,
+      clusterCount: this.field?.clusterCount ?? this.hotspotCount,
+      clusterSize: this.field?.clusterSize ?? this.clusterSize,
       temporalPattern: this.field?.temporalPattern ?? this.temporalPattern,
       temporalBehavior: this.field?.temporalBehavior ?? this.temporalBehavior,
       evolutionModel: this.field?.evolutionModel ?? this.evolutionModel,
@@ -543,7 +553,7 @@ export class RoiGeneratorDemoScene extends PhaserScene {
       depleted,
       hotspotMembership: hotspot ? `cluster/high-value rank ${1 + (this.field.highValueCells ?? []).indexOf(hotspot)}` : 'none',
       lastSampled: this.depletionMode === 'none' ? 'n/a' : 'synthetic demo marker',
-      recovery: this.depletionMode === 'revisitRecovery' ? recoveryLabel(this.demoTime) : 'n/a',
+      recovery: this.depletionMode === 'revisitRecovery' || this.displayMode === 'freshnessRevisitValue' ? recoveryLabel(this.demoTime) : 'n/a',
       sampleFieldConfig: this.field?.sampleFieldConfig,
       demoTime: this.demoTime,
       paused: this.paused
@@ -636,6 +646,8 @@ function roiInspectorHtml(inspection) {
           ['field mode', inspection.mode === 'dynamic' ? 'Dynamic' : 'Static'],
           ['displayed layer', roiDisplayModeLabel(inspection.displayMode)],
           ['spatial pattern', roiPureSpatialPatternLabel(inspection.spatialPattern)],
+          ['cluster count', inspection.clusterCount],
+          ['cluster size', roiClusterSizeLabel(inspection.clusterSize)],
           ['temporal pattern', roiTemporalPatternLabel(inspection.temporalPattern)],
           ['state model', inspection.stateModelLabel],
           ['pattern evolution', roiPatternEvolutionLabel(inspection.patternEvolution)],
@@ -646,7 +658,7 @@ function roiInspectorHtml(inspection) {
         <small>${escapeHtml(inspection.behavior?.explanation ?? '')}</small>
       </div>
       <div class="cell-inspector-card">
-        <span>Depletion / Recovery</span>
+        <span>Sampling Effects</span>
         ${metricRows([
           ['raw base value', formatStat(inspection.rawBase)],
           ['depleted value', formatStat(inspection.depleted)],

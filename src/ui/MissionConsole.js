@@ -2,7 +2,7 @@ import { CAMPAIGN_LEVELS } from '../core/campaign/CampaignLevels.js';
 import { shortInstanceId } from '../core/identity/GameInstanceId.js';
 import { formatMetric } from '../core/evaluation/PlanComparison.js';
 import { FLOW_DEMO_BOUNDARY_MODES, FLOW_DEMO_CYCLE_DURATIONS, FLOW_DEMO_DYNAMIC_COMPLEXITY_LEVELS, FLOW_DEMO_EVOLUTION_BEHAVIORS, FLOW_DEMO_EVOLUTION_PATTERNS, FLOW_DEMO_EVOLUTION_SPEEDS, FLOW_DEMO_FIELD_MODES, FLOW_DEMO_LAYER_INFLUENCES, FLOW_DEMO_MAGNITUDE_SCALES, FLOW_DEMO_PARTICLE_SPEEDS, FLOW_DEMO_PRESET_CHOICES, FLOW_DEMO_SPATIAL_MOTIONS, FLOW_DEMO_SPATIAL_MOTION_SPEEDS, FLOW_DEMO_TERRAIN_MODES, FLOW_DEMO_VARIATION_LEVELS, normalizeAdditiveLayers } from '../core/demo/FlowFieldDemo.js';
-import { ROI_DEMO_DISTRIBUTIONS, ROI_DEMO_SAMPLE_ONLY_DISTRIBUTIONS, ROI_DEMO_SPATIAL_PATTERNS, ROI_DEMO_TEMPORAL_BEHAVIORS, ROI_DEMO_TIME_MODES, ROI_DEMO_TEMPORAL_PATTERNS, ROI_DEMO_EVOLUTION_MODELS, ROI_DEMO_PATTERN_EVOLUTIONS, ROI_DEMO_STATE_MODELS, ROI_DEMO_DEPLETION_MODES, ROI_DEMO_DISPLAY_MODES, ROI_DEMO_DYNAMIC_COMPLEXITY, ROI_DEMO_PURE_SPATIAL_PATTERNS, roiDistributionLabel, roiTemporalPatternLabel, roiEvolutionModelLabel, roiStateModelDescription, roiStateModelForEvolutionModel, roiStateModelLabel, roiPureSpatialPatternLabel, roiPatternEvolutionLabel, roiDepletionModeLabel, roiDisplayModeLabel, sampleSpatialPatternLabel, sampleTemporalBehaviorLabel } from '../core/demo/DemoRoiFields.js';
+import { ROI_DEMO_DISTRIBUTIONS, ROI_DEMO_SPATIAL_PATTERNS, ROI_DEMO_TEMPORAL_BEHAVIORS, ROI_DEMO_TIME_MODES, ROI_DEMO_TEMPORAL_PATTERNS, ROI_DEMO_PATTERN_EVOLUTIONS, ROI_DEMO_STATE_MODELS, ROI_DEMO_DEPLETION_MODES, ROI_DEMO_DISPLAY_MODES, ROI_DEMO_DYNAMIC_COMPLEXITY, ROI_DEMO_PURE_SPATIAL_PATTERNS, ROI_DEMO_CLUSTER_SIZES, roiDistributionLabel, roiTemporalPatternLabel, roiStateModelDescription, roiStateModelForEvolutionModel, roiStateModelLabel, roiPureSpatialPatternLabel, roiPatternEvolutionLabel, roiDepletionModeLabel, roiDisplayModeLabel, roiClusterSizeLabel, sampleSpatialPatternLabel, sampleTemporalBehaviorLabel } from '../core/demo/DemoRoiFields.js';
 import { EXPERIENCE_MODES, getExperienceModeDefaults } from '../core/experience/ExperienceMode.js';
 import { getVectorPresetConfig } from '../core/generation/VectorFieldPresets.js';
 import { UNCERTAINTY_DEMO_BEHAVIORS, UNCERTAINTY_DEMO_FORECAST_MODELS, UNCERTAINTY_DEMO_PATTERNS, UNCERTAINTY_DEMO_UPDATE_MODELS, UNCERTAINTY_DEMO_VIEW_MODES, forecastModelLabel, uncertaintyBehaviorLabel, uncertaintyPatternLabel, uncertaintyViewLabel, updateModelLabel } from '../core/demo/UncertaintyForecastDemo.js';
@@ -306,7 +306,7 @@ export class MissionConsole {
         <small>${escapeHtml(`${state.spatialPatternLabel ?? roiPureSpatialPatternLabel(state.spatialPattern)} | ${state.temporalPatternLabel ?? roiTemporalPatternLabel(state.temporalPattern)} | ${state.patternEvolutionLabel ?? roiPatternEvolutionLabel(state.patternEvolution)}`)}</small>
       </section>
       <section class="console-section">
-        <h2>Spatial Pattern</h2>
+        <h2>Spatial Field</h2>
         <label class="compact-field">
           Spatial Pattern
           <select id="roi-demo-spatial-pattern">
@@ -319,6 +319,12 @@ export class MissionConsole {
         </label>
         <div class="hud-muted">${escapeHtml(state.clusterCount ?? state.hotspotCount ?? 3)} cluster(s)</div>
         <label class="compact-field">
+          Cluster Size
+          <select id="roi-demo-cluster-size">
+            ${ROI_DEMO_CLUSTER_SIZES.map((size) => `<option value="${escapeAttr(size)}" ${state.clusterSize === size ? 'selected' : ''}>${escapeHtml(roiClusterSizeLabel(size))}</option>`).join('')}
+          </select>
+        </label>
+        <label class="compact-field">
           Seed
           <input id="roi-demo-seed" type="text" value="${escapeAttr(state.seed ?? 'anchor-roi-demo')}" />
         </label>
@@ -328,10 +334,10 @@ export class MissionConsole {
       <section class="console-section">
         <h2>Spatial Parameters</h2>
         <label class="compact-field">
-          Texture
+          Noise / Texture
           <input id="roi-demo-noise" type="range" min="0" max="1" step="0.05" value="${escapeAttr(state.noise ?? 0.15)}" />
         </label>
-        <div class="hud-muted">Texture ${escapeHtml(Number(state.noise ?? 0.15).toFixed(2))}</div>
+        <div class="hud-muted">Noise ${escapeHtml(Number(state.noise ?? 0.15).toFixed(2))}. Cluster size controls spread; cluster count controls how many centers are generated.</div>
       </section>
       <section class="console-section">
         <h2>Temporal Pattern</h2>
@@ -375,13 +381,14 @@ export class MissionConsole {
         <div class="hud-muted">Time-Indexed fields are computed directly from position and time; State-Evolving fields use current field state; History-Aware fields depend on longer sampling or observation history.</div>
       </section>
       <section class="console-section">
-        <h2>Depletion / Recovery</h2>
+        <h2>Sampling Effects</h2>
         <label class="compact-field">
           Depletion
           <select id="roi-demo-depletion-mode">
             ${ROI_DEMO_DEPLETION_MODES.map((mode) => `<option value="${escapeAttr(mode)}" ${state.depletionMode === mode ? 'selected' : ''}>${escapeHtml(roiDepletionModeLabel(mode))}</option>`).join('')}
           </select>
         </label>
+        <div class="hud-muted">Sampling effects model sample visits: recently visited regions cool down, nearby cells can partially cool, and stale regions recover value over time.</div>
       </section>
       <section class="console-section">
         <h2>Display</h2>
@@ -411,6 +418,7 @@ export class MissionConsole {
     this.root.querySelector('#roi-demo-spatial-pattern')?.addEventListener('change', (event) => handlers.spatialPattern?.(event.target.value));
     this.root.querySelector('#roi-demo-seed')?.addEventListener('change', (event) => handlers.seed?.(event.target.value));
     this.root.querySelector('#roi-demo-hotspots')?.addEventListener('input', (event) => handlers.hotspotCount?.(event.target.value));
+    this.root.querySelector('#roi-demo-cluster-size')?.addEventListener('change', (event) => handlers.clusterSize?.(event.target.value));
     this.root.querySelector('#roi-demo-noise')?.addEventListener('input', (event) => handlers.noise?.(event.target.value));
     this.root.querySelector('#roi-demo-time-mode')?.addEventListener('change', (event) => handlers.timeMode?.(event.target.value));
     this.root.querySelector('#roi-demo-temporal-pattern')?.addEventListener('change', (event) => handlers.temporalPattern?.(event.target.value));

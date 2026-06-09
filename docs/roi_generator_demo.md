@@ -17,15 +17,16 @@ It is not a mission, planner, leaderboard mode, uncertainty demo, forecast/truth
 
 - `Spatial Pattern`: selects the value-field pattern.
 - `Cluster Count`: changes the number of target regions used by cluster-style patterns.
+- `Cluster Size`: changes whether clustered value is tight, medium, or wide.
 - `Seed`: controls deterministic field generation.
 - `Regenerate`: advances the seed and rebuilds the field.
-- `Texture`: adds seeded texture to the field.
+- `Noise / Texture`: adds seeded texture to the field.
 - `Time Mode`: chooses Static or Dynamic field behavior.
 - `Temporal Pattern`: controls static, sustained, periodic, bursty, intermittent, random-pulse, or long-cycle intensity changes.
 - `Pattern Evolution`: controls fixed, moving, grow/fade, diffuse/spread, neighbor activation, split/merge, or revisit/recover behavior.
 - `State Model`: selects Time-Indexed, State-Evolving, or History-Aware semantics.
-- `Depletion / Recovery`: selects none, hard, soft, neighborhood depletion, or revisit recovery.
-- `Display`: switches between Sample Value, Depleted Value, and Raw Base Value.
+- `Sampling Effects`: selects none, hard, soft, neighborhood depletion, or knowledge-decay / revisit-recovery behavior.
+- `Display`: switches between Sample Value, Depleted Value, Freshness / Revisit Value, and Raw Base Value.
 - `Time Speed`: controls playback speed for dynamic demo time.
 - Bottom `Pause / Resume`: pauses or resumes dynamic evolution.
 - Bottom `Direction`: runs demo time forward or backward.
@@ -35,14 +36,13 @@ It is not a mission, planner, leaderboard mode, uncertainty demo, forecast/truth
 ## Spatial Patterns
 
 - `Uniform Field`: broad value across the domain.
-- `Gradient Field`: smooth value change across the domain.
-- `Single Cluster`: one high-value sampling region.
-- `Multiple Clusters`: several high-value regions; use Cluster Count to create two-cluster or multi-cluster cases.
-- `Patchy Field`: irregular grouped patches.
+- `Gradient / Trend`: smooth value change across the domain.
+- `Clustered Field`: one or more high-value sampling regions; use Cluster Count to create one-cluster, two-cluster, or multi-cluster cases.
+- `Patchy / Correlated Field`: irregular grouped patches.
 - `Sparse Targets`: small high-value targets in a mostly low-value field.
-- `Front / Boundary`: front-like value boundary without flow transport.
 - `Linear Band`: band-like sample value.
-- `Coastal Band`: shoreline-style band without current transport.
+- `Front / Boundary`: front-like value boundary without flow transport.
+- `Edge Band`: abstract edge-shaped value without implying shoreline currents.
 - `Monitoring Stations`: repeated station-like targets.
 - `Random Texture`: seeded random-looking texture with spatially varying amplitude.
 
@@ -50,9 +50,9 @@ It is not a mission, planner, leaderboard mode, uncertainty demo, forecast/truth
 
 Static mode samples the selected field at time zero. Dynamic mode passes advancing demo time into the shared sample-field generator through `createDemoRoiField({ time: demoTime, ... })`, so periodic, bursty, moving, diffusive, random, and neighbor-coupled sample-only fields visibly change over time. Current-advected sample behavior is demonstrated in the Coupled Fields Demo.
 
-The default is intentionally dynamic and visually active: Multiple Clusters, Cluster Count 3, Bursty temporal pattern, Grow / Fade pattern evolution, State-Evolving state model, Soft Depletion, and Sample Value display.
+The default is intentionally dynamic and visually active: Clustered Field, Cluster Count 3, Medium Cluster Size, Bursty temporal pattern, Grow / Fade pattern evolution, State-Evolving state model, Soft Depletion, and Sample Value display.
 
-The left panel now separates sample behavior into Spatial Pattern, Temporal Pattern, Pattern Evolution, State Model, Depletion / Recovery, and Display. The inspector labels each selected cell as Time-Indexed, State-Evolving, or History-Aware so users can tell whether value is computed directly from `x,y,t`, depends on the current field state, or depends on longer sampling/observation history. See [Sample / ROI Field Demo](sample_fields_demo.md) for the taxonomy.
+The left panel separates sample behavior into Spatial Field, Spatial Parameters, Temporal Pattern, Pattern Evolution, State Model, Sampling Effects, and Display. The inspector labels each selected cell as Time-Indexed, State-Evolving, or History-Aware so users can tell whether value is computed directly from `x,y,t`, depends on the current field state, or depends on longer sampling/observation history. See [Sample / ROI Field Demo](sample_fields_demo.md) for the taxonomy and motivation.
 
 ## Cell Inspector
 
@@ -61,7 +61,7 @@ Click any heatmap cell to select it. The right panel updates live with:
 - cell coordinates
 - sample value and normalized value
 - trend over the previous simulated second
-- field mode, spatial pattern, temporal pattern, pattern evolution, and display layer
+- field mode, displayed layer, spatial pattern, cluster count, cluster size, temporal pattern, pattern evolution, and display layer
 - raw base value
 - depleted value
 - hotspot membership

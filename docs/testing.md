@@ -10,7 +10,7 @@ Playwright is optional and intended for development smoke testing.
 
 Greedy Planner is useful for planner smoke checks because it should return promptly, preserve non-selected glider routes, and validate before simulation. See `docs/greedy_planner.md` for the expected selected-glider baseline behavior.
 
-The main menu should expose two top-level accordions: `Challenge Mode` and `Simulation Lab`. Challenge Mode should contain `Play`, `Learn`, and `Compete` visual subsections. Simulation Lab should contain `Experiments`, `Demos`, `Editor & Import Tools`, and `Benchmarks`. Field demos live inside Simulation Lab, not as a separate top-level section. Use `docs/flow_fields_demo.md` when validating static/dynamic fields, additive layers, partition behavior, terrain boundary effects, and topology-aware shoreline risk. Use `docs/sample_fields_demo.md` when validating pure sample-value spatial patterns, temporal patterns, pattern evolution, Time-Indexed/State-Evolving/History-Aware state models, and depletion/recovery displays. Use `docs/coupled_fields_demo.md` for current-dependent sample behavior. Use `docs/uncertainty_forecast_demo.md` for forecast/truth mismatch, uncertainty, information gain, forecast error, and update effects.
+The main menu should expose two top-level accordions: `Challenge Mode` and `Simulation Lab`. Challenge Mode should contain `Play`, `Learn`, and `Compete` visual subsections. Simulation Lab should contain `Experiments`, `Demos`, `Editor & Import Tools`, and `Benchmarks`. Field demos live inside Simulation Lab, not as a separate top-level section. Use `docs/flow_fields_demo.md` when validating static/dynamic fields, additive layers, partition behavior, terrain boundary effects, and topology-aware shoreline risk. Use `docs/sample_fields_demo.md` when validating pure sample-value spatial fields, spatial parameters, temporal patterns, pattern evolution, Time-Indexed/State-Evolving/History-Aware state models, sampling effects, and freshness/revisit displays. Use `docs/coupled_fields_demo.md` for current-dependent sample behavior. Use `docs/uncertainty_forecast_demo.md` for forecast/truth mismatch, uncertainty, information gain, forecast error, and update effects.
 
 ## Challenge Mode vs Simulation Lab
 
@@ -47,7 +47,8 @@ Manual sample-field checks should cover:
 - the right setup panel shows Mission Snapshot or is hidden, never Mission Waypoints;
 - Challenge Mode presets choose sample-field/current/scoring defaults without forking the mission engine;
 - Simulation Lab exposes the detailed sample-field controls directly;
-- Sample / ROI Field Demo can regenerate seeded sample-value fields and dynamic value fields, and its controls separate Spatial Pattern, Temporal Pattern, Pattern Evolution, State Model, Depletion / Recovery, and Display;
+- Sample / ROI Field Demo can regenerate seeded sample-value fields and dynamic value fields, and its controls separate Spatial Field, Spatial Parameters, Temporal Pattern, Pattern Evolution, State Model, Sampling Effects, and Display;
+- Sample / ROI Field Demo exposes `Clustered Field` plus Cluster Count and Cluster Size rather than separate Single Cluster, Bimodal, and Multiple Clusters options;
 - Sample / ROI Field Demo labels selected behavior as Time-Indexed, State-Evolving, or History-Aware in the inspector;
 - Sample / ROI Field Demo does not expose Forecast, Truth, Uncertainty, or current-coupled controls;
 - generated missions preserve `sampleFieldConfig` when configured;

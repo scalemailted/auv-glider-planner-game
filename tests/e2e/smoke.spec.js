@@ -288,18 +288,38 @@ test('campaign planning smoke flow reaches debrief', async ({ page }) => {
   await expect(page.locator('#bottom-timeline [data-action="roi-demo-direction"]')).toHaveText('Direction: Forward');
   await expect(page.locator('#bottom-timeline [data-action="roi-demo-pause"]')).toHaveText('Pause');
   await expect(page.locator('#roi-demo-spatial-pattern')).toBeVisible();
+  await expect(page.locator('#roi-demo-cluster-size')).toBeVisible();
   await expect(page.locator('#roi-demo-temporal-pattern')).toBeVisible();
   await expect(page.locator('#roi-demo-pattern-evolution')).toBeVisible();
   await expect(page.locator('#roi-demo-state-model')).toBeVisible();
   await expect(page.locator('#roi-demo-depletion-mode')).toBeVisible();
   await expect(page.locator('#roi-demo-display-mode')).toBeVisible();
   await expect(page.locator('#roi-demo-dynamic-complexity')).toBeVisible();
+  await expect(page.locator('#mission-console')).toContainText('Spatial Field');
+  await expect(page.locator('#mission-console')).toContainText('Spatial Parameters');
   await expect(page.locator('#mission-console')).toContainText('Temporal Pattern');
   await expect(page.locator('#mission-console')).toContainText('Pattern Evolution');
-  await expect(page.locator('#mission-console')).toContainText('Depletion / Recovery');
+  await expect(page.locator('#mission-console')).toContainText('Sampling Effects');
   await expect(page.locator('#mission-console')).toContainText('Display');
   await expect(page.locator('#mission-console')).toContainText('State Model');
   await expect(page.locator('#mission-console')).toContainText('Time-Indexed');
+  await expect(page.locator('#roi-demo-spatial-pattern option')).toHaveText([
+    'Uniform Field',
+    'Gradient / Trend',
+    'Clustered Field',
+    'Patchy / Correlated Field',
+    'Sparse Targets',
+    'Linear Band',
+    'Front / Boundary',
+    'Edge Band',
+    'Monitoring Stations',
+    'Random Texture'
+  ]);
+  await expect(page.locator('#roi-demo-spatial-pattern')).not.toContainText('Single Cluster');
+  await expect(page.locator('#roi-demo-spatial-pattern')).not.toContainText('Multiple Clusters');
+  await expect(page.locator('#roi-demo-spatial-pattern')).not.toContainText('Bimodal');
+  await expect(page.locator('#roi-demo-cluster-size option')).toHaveText(['Tight', 'Medium', 'Wide']);
+  await expect(page.locator('#roi-demo-display-mode option')).toHaveText(['Sample Value', 'Depleted Value', 'Freshness / Revisit Value', 'Raw Base Value']);
   await expect(page.locator('#mission-console')).not.toContainText('Forecast / Truth');
   await expect(page.locator('#mission-console')).not.toContainText('Uncertainty');
   await expect(page.locator('#mission-console')).not.toContainText('Current-Advected');
@@ -330,11 +350,25 @@ test('campaign planning smoke flow reaches debrief', async ({ page }) => {
   await clickRoiDemoCell(page, roiDynamicCell.col, roiDynamicCell.row);
   await expect(page.locator('#waypoint-timeline')).toContainText(`Cell (${roiDynamicCell.col}, ${roiDynamicCell.row})`);
   await expect(page.locator('#waypoint-timeline')).toContainText('Sample Value');
+  await expect(page.locator('#waypoint-timeline')).toContainText('cluster count');
+  await expect(page.locator('#waypoint-timeline')).toContainText('cluster size');
   await expect(page.locator('#waypoint-timeline')).toContainText('temporal pattern');
   await expect(page.locator('#waypoint-timeline')).toContainText('pattern evolution');
   await expect(page.locator('#waypoint-timeline')).toContainText('state model');
-  await page.locator('#roi-demo-spatial-pattern').selectOption('multipleClusters');
-  await expect.poll(() => page.evaluate(() => window.anchorGame.phaser.scene.getScene('RoiGeneratorDemoScene').spatialPattern)).toBe('multipleClusters');
+  await page.locator('#roi-demo-spatial-pattern').selectOption('clusteredField');
+  await expect.poll(() => page.evaluate(() => window.anchorGame.phaser.scene.getScene('RoiGeneratorDemoScene').spatialPattern)).toBe('clusteredField');
+  await page.locator('#roi-demo-hotspots').evaluate((input) => {
+    input.value = '2';
+    input.dispatchEvent(new Event('input', { bubbles: true }));
+  });
+  await expect.poll(() => page.evaluate(() => window.anchorGame.phaser.scene.getScene('RoiGeneratorDemoScene').hotspotCount)).toBe(2);
+  await page.locator('#roi-demo-hotspots').evaluate((input) => {
+    input.value = '5';
+    input.dispatchEvent(new Event('input', { bubbles: true }));
+  });
+  await expect.poll(() => page.evaluate(() => window.anchorGame.phaser.scene.getScene('RoiGeneratorDemoScene').field.clusterCount)).toBe(5);
+  await page.locator('#roi-demo-cluster-size').selectOption('wide');
+  await expect.poll(() => page.evaluate(() => window.anchorGame.phaser.scene.getScene('RoiGeneratorDemoScene').clusterSize)).toBe('wide');
   await page.locator('#roi-demo-time-mode').selectOption('dynamic');
   await expect.poll(() => page.evaluate(() => window.anchorGame.phaser.scene.getScene('RoiGeneratorDemoScene').timeMode)).toBe('dynamic');
   await page.locator('#roi-demo-temporal-pattern').selectOption('periodic');
@@ -348,6 +382,8 @@ test('campaign planning smoke flow reaches debrief', async ({ page }) => {
   await expect.poll(() => page.evaluate(() => window.anchorGame.phaser.scene.getScene('RoiGeneratorDemoScene').depletionMode)).toBe('soft');
   await page.locator('#roi-demo-display-mode').selectOption('depletedValue');
   await expect.poll(() => page.evaluate(() => window.anchorGame.phaser.scene.getScene('RoiGeneratorDemoScene').displayMode)).toBe('depletedValue');
+  await page.locator('#roi-demo-display-mode').selectOption('freshnessRevisitValue');
+  await expect.poll(() => page.evaluate(() => window.anchorGame.phaser.scene.getScene('RoiGeneratorDemoScene').displayMode)).toBe('freshnessRevisitValue');
   await page.locator('#roi-demo-dynamic-complexity').selectOption('high');
   await expect.poll(() => page.evaluate(() => window.anchorGame.phaser.scene.getScene('RoiGeneratorDemoScene').dynamicComplexity)).toBe('high');
   await page.locator('#bottom-timeline [data-action="roi-demo-pause"]').click();
