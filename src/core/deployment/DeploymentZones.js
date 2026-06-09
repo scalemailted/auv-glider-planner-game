@@ -51,14 +51,14 @@ export function normalizeMissionDeployments(level, mission) {
     if (mode === 'fixedStart') {
       const start = deployment.selectedStart ?? agent.start ?? agent.deployment.selectedStart;
       if (isFiniteCell(start)) {
-        agent.start = { x: Math.round(Number(start.x)), y: Math.round(Number(start.y)) };
+        agent.start = { x: Number(start.x), y: Number(start.y) };
         agent.deployment.selectedStart = { ...agent.start };
       }
     } else if (!isValidSelectedStart(level, mission, agent.id, agent.deployment.selectedStart).valid) {
       agent.deployment.selectedStart = null;
       delete agent.start;
     } else {
-      agent.deployment.selectedStart = roundCell(agent.deployment.selectedStart);
+      agent.deployment.selectedStart = agent.deployment.selectedStart;
       agent.start = { ...agent.deployment.selectedStart };
     }
   }
@@ -77,7 +77,7 @@ export function getSelectedStart(agent) {
   const selected = agent?.deployment?.mode === 'chooseFromZone' || agent?.deployment?.mode === 'chooseFromZones'
     ? agent?.deployment?.selectedStart ?? agent?.selectedStart
     : agent?.deployment?.selectedStart ?? agent?.selectedStart ?? agent?.start;
-  return isFiniteCell(selected) ? roundCell(selected) : null;
+  return isFiniteCell(selected) ? selected : null;
 }
 
 export function requiresDeploymentSelection(mission, agentId) {
@@ -113,9 +113,6 @@ export function isValidSelectedStart(level, mission, agentId, cell) {
   if (level?.layers?.terrain?.[rounded.y]?.[rounded.x]) {
     return { valid: false, message: 'Deployment cell must be water.' };
   }
-  if (level?.layers?.hazards?.[rounded.y]?.[rounded.x]) {
-    return { valid: false, message: 'Deployment cell is inside a hazard. Choose a safer drop-zone cell.' };
-  }
   const agent = mission?.agents?.find((candidate) => candidate.id === agentId);
   if (agent?.deployment?.mode !== 'chooseFromZone' && agent?.deployment?.mode !== 'chooseFromZones') return { valid: true, message: '' };
   const zones = getDeploymentZonesForAgent(level, mission, agentId);
@@ -131,7 +128,7 @@ export function setSelectedStart(level, mission, plan, agentId, cell) {
   if (!validation.valid) return validation;
   const agent = mission?.agents?.find((candidate) => candidate.id === agentId);
   if (!agent) return { valid: false, message: 'No active glider selected.' };
-  const selectedStart = roundCell(cell);
+  const selectedStart = cell;
   agent.deployment ??= { mode: 'fixedStart', zoneId: null, selectedStart };
   agent.deployment.selectedStart = selectedStart;
   const selectedZone = getDeploymentZonesForAgent(level, mission, agentId)
@@ -181,7 +178,7 @@ export function summarizeDeployment(level, mission) {
 
 function normalizeZone(zone, level, index) {
   const cells = Array.isArray(zone.cells) && zone.cells.length
-    ? zone.cells.filter(isFiniteCell).map(roundCell)
+    ? zone.cells.filter(isFiniteCell)
     : cellsFromCircle(level, zone.x ?? zone.cx ?? zone.center?.x, zone.y ?? zone.cy ?? zone.center?.y, zone.radius ?? zone.r ?? 1);
   return {
     id: zone.id ?? `zone_${index + 1}`,

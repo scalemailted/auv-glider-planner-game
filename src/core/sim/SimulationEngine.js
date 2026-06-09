@@ -52,10 +52,11 @@ import { debugSurfaceDecision } from './SurfaceDecisionVisibility.js';
 const MAX_PLAYBACK_STEPS = SIMULATION_LIMITS.maxPlaybackSteps;
 
 export class SimulationEngine {
-  constructor({ level, mission, plan, resumeState = null, trace = null }) {
+  constructor({ level, mission, plan, resumeState = null, trace = null, time = 0 }) {
     this.level = level;
     this.mission = mission;
     this.plan = plan;
+    this.t = time;
     normalizeDeploymentState(this.level, this.mission, this.plan);
     this.initialValidation = validatePlanForExecution({ level: this.level, mission: this.mission, plan: this.plan });
     this.configValidation = validateSimulationConfig(this.level, this.mission, this.plan);
@@ -70,7 +71,6 @@ export class SimulationEngine {
 
   reset() {
     this.agents = (this.mission.agents ?? []).map(createAgent);
-    this.t = 0;
     this.complete = false;
     this.aborted = false;
     this.abortReason = null;
