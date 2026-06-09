@@ -35,6 +35,7 @@ export function validateSampleFieldPreset(presetId, options = {}) {
   const means = frames.map((frame) => frame.meanValue);
   const maxValues = frames.map((frame) => frame.maxValue);
   const ranges = frames.map((frame) => frame.dynamicRange);
+  const bboxCoverages = frames.map((frame) => frame.activeBoundingBoxCoverage);
   const maxComponents = Math.max(...frames.map((frame) => frame.connectedComponents));
   const meanDelta = mean(deltas);
   const meanSpatialCorrelation = mean(frames.map((frame) => frame.spatialCorrelation));
@@ -48,6 +49,7 @@ export function validateSampleFieldPreset(presetId, options = {}) {
   if (preset.id === 'migratingPatch' && centerMovement < 0.08) warnings.push('movement_too_subtle');
   if (preset.id === 'driftingStormCells' && maxComponents < 2) warnings.push('not_enough_distinct_cells');
   if ((preset.id === 'expandingFront' || preset.id === 'forestFireFrontInspired') && avgComponents > 14) warnings.push('front_too_speckled');
+  if (['recurringHotspots', 'patchyRainfall', 'neighborSpread'].includes(preset.id) && mean(bboxCoverages) < 0.18) warnings.push('low_domain_coverage');
   return {
     presetId: preset.id,
     label: preset.label,
@@ -61,6 +63,7 @@ export function validateSampleFieldPreset(presetId, options = {}) {
       meanHighValueCellFraction: round3(mean(highFractions)),
       meanTotalActivityMass: round3(mean(masses)),
       meanDynamicRange: round3(mean(ranges)),
+      meanActiveBoundingBoxCoverage: round3(mean(bboxCoverages)),
       meanFrameDelta: round3(meanDelta),
       centerOfMassMovement: round3(centerMovement),
       meanConnectedComponents: round3(avgComponents),
@@ -86,7 +89,9 @@ function summarizePresetFrame(field, time) {
     activeCellFraction: round3((stats.activeFraction ?? flat.filter((value) => value >= 0.07).length / cellCount)),
     highValueCellFraction: round3(flat.filter((value) => value >= 0.68).length / cellCount),
     totalActivityMass: round3(stats.totalActivityMass ?? stats.totalValue ?? sum(flat)),
-    dynamicRange: round3((stats.maxValue ?? stats.max ?? Math.max(...flat)) - (stats.minValue ?? stats.min ?? Math.min(...flat))),
+    dynamicRange: round3(stats.dynamicRangeAfterContrast ?? ((stats.maxValue ?? stats.max ?? Math.max(...flat)) - (stats.minValue ?? stats.min ?? Math.min(...flat)))),
+    activeBoundingBoxCoverage: round3(stats.activeBoundingBoxCoverage ?? 0),
+    diagnosticWarnings: Array.isArray(stats.diagnosticWarnings) ? stats.diagnosticWarnings : [],
     contrastEnhanced: Boolean(stats.contrastEnhanced),
     contrastStrength: round3(stats.contrastStrength ?? 0),
     centerOfMass: centerOfMass(sampleValueField),

@@ -14,14 +14,14 @@ export const SAMPLE_FIELD_BEHAVIOR_PRESETS = [
       eventLikelihoodTemporalPattern: 'static',
       eventLikelihoodSpatialEvolution: 'stationary',
       spatialPattern: 'clusteredField',
-      hotspotCount: 3,
+      hotspotCount: 4,
       clusterSize: 'medium',
       valueDistribution: 'gaussianNormal',
-      temporalPattern: 'periodic',
-      temporalBehavior: 'periodic',
-      spatialEvolution: 'stationary',
-      patternEvolution: 'stationary',
-      evolutionModel: 'stationary',
+      temporalPattern: 'bursty',
+      temporalBehavior: 'bursty',
+      spatialEvolution: 'randomWalk',
+      patternEvolution: 'randomWalk',
+      evolutionModel: 'randomWalk',
       motionScope: 'perFeature',
       stateModel: 'frequencyBased',
       depletionMode: 'soft',
@@ -30,7 +30,7 @@ export const SAMPLE_FIELD_BEHAVIOR_PRESETS = [
       displayMode: 'sampleValue'
     },
     explanation: {
-      expectedBehavior: 'Several regions are likely to flare up repeatedly. The same regions tend to reactivate.',
+      expectedBehavior: 'Several separated regions flare up repeatedly, with slight seeded local jitter around each recurring basin.',
       goodForTeaching: 'Recurring-event timing, assignment across known basins, and routes that wait for active windows.'
     }
   },
@@ -59,7 +59,7 @@ export const SAMPLE_FIELD_BEHAVIOR_PRESETS = [
       stateModel: 'timeIndexed',
       depletionMode: 'none',
       timeMode: 'dynamic',
-      dynamicComplexity: 'medium',
+      dynamicComplexity: 'high',
       displayMode: 'sampleValue'
     },
     explanation: {
@@ -77,8 +77,8 @@ export const SAMPLE_FIELD_BEHAVIOR_PRESETS = [
     config: {
       eventLikelihood: 'gradientLikelihood',
       eventLikelihoodDynamics: 'static',
-      eventLikelihoodTemporalPattern: 'static',
-      eventLikelihoodSpatialEvolution: 'stationary',
+      eventLikelihoodTemporalPattern: 'wavyMultiFrequency',
+      eventLikelihoodSpatialEvolution: 'randomWalk',
       spatialPattern: 'frontBoundary',
       hotspotCount: 2,
       clusterSize: 'wide',
@@ -113,14 +113,14 @@ export const SAMPLE_FIELD_BEHAVIOR_PRESETS = [
       eventLikelihoodTemporalPattern: 'static',
       eventLikelihoodSpatialEvolution: 'stationary',
       spatialPattern: 'patchyField',
-      hotspotCount: 4,
-      clusterSize: 'medium',
+      hotspotCount: 5,
+      clusterSize: 'wide',
       valueDistribution: 'uniformRandom',
       temporalPattern: 'randomPulses',
       temporalBehavior: 'nonuniformRandom',
-      spatialEvolution: 'stationary',
-      patternEvolution: 'stationary',
-      evolutionModel: 'stationary',
+      spatialEvolution: 'randomWalk',
+      patternEvolution: 'randomWalk',
+      evolutionModel: 'randomWalk',
       motionScope: 'localNeighborhood',
       stateModel: 'timeIndexed',
       depletionMode: 'none',
@@ -129,7 +129,7 @@ export const SAMPLE_FIELD_BEHAVIOR_PRESETS = [
       displayMode: 'sampleValue'
     },
     explanation: {
-      expectedBehavior: 'Many irregular patches appear, strengthen, fade, and reappear in a seeded way.',
+      expectedBehavior: 'Many medium-scale patches across the domain strengthen, fade, and reappear in a seeded way.',
       goodForTeaching: 'Planning over irregular distributed value instead of clean targets.'
     }
   },
@@ -143,13 +143,13 @@ export const SAMPLE_FIELD_BEHAVIOR_PRESETS = [
     config: {
       eventLikelihood: 'multiModalLikelihood',
       eventLikelihoodDynamics: 'dynamic',
-      eventLikelihoodTemporalPattern: 'bursty',
+      eventLikelihoodTemporalPattern: 'rapidPulse',
       eventLikelihoodSpatialEvolution: 'continuousDrift',
       spatialPattern: 'clusteredField',
       hotspotCount: 3,
       clusterSize: 'tight',
       valueDistribution: 'constantValue',
-      temporalPattern: 'periodic',
+      temporalPattern: 'rapidPulse',
       temporalBehavior: 'periodic',
       spatialEvolution: 'continuousDrift',
       patternEvolution: 'continuousDrift',
@@ -162,7 +162,7 @@ export const SAMPLE_FIELD_BEHAVIOR_PRESETS = [
       displayMode: 'sampleValue'
     },
     explanation: {
-      expectedBehavior: 'Compact high-value cells move through the domain and pulse in intensity without collapsing between windows.',
+      expectedBehavior: 'Two or three compact high-value cells move independently through the domain and pulse rapidly without collapsing between windows.',
       goodForTeaching: 'Timing routes to moving, fading high-value cells.'
     }
   },
@@ -248,7 +248,7 @@ export const SAMPLE_FIELD_BEHAVIOR_PRESETS = [
       hotspotCount: 4,
       clusterSize: 'medium',
       valueDistribution: 'gaussianNormal',
-      temporalPattern: 'periodic',
+      temporalPattern: 'wavyMultiFrequency',
       temporalBehavior: 'periodic',
       spatialEvolution: 'stationary',
       patternEvolution: 'stationary',
@@ -261,7 +261,7 @@ export const SAMPLE_FIELD_BEHAVIOR_PRESETS = [
       displayMode: 'sampleValue'
     },
     explanation: {
-      expectedBehavior: 'Different patches pulse over time in predictable cycles.',
+      expectedBehavior: 'Different patches rise and fall with mixed-frequency seeded waves and phase offsets.',
       goodForTeaching: 'Scheduling around recurring peaks.'
     }
   },

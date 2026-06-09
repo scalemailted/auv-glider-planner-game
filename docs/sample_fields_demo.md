@@ -48,10 +48,10 @@ retained value
 The left console and Phaser status line include compact activity and range diagnostics:
 
 ```text
-Activity: mean 0.42 | active 61% | max 0.94 | range 0.82 | injected +0.12
+Activity: mean 0.42 | active 61% | high 13% | max 0.94 | range 0.82 | bbox 48% | components 4 | injected +0.12
 ```
 
-Set `globalThis.ANCHOR_DEBUG_ROI_DYNAMICS = true` in the browser console to log detailed frame diagnostics, including min/mean/max, active cell count, total activity mass, injected activity, decay loss, depletion loss, boundary loss, regeneration amount, dynamic range before/after contrast shaping, and whether normalization occurred.
+Set `globalThis.ANCHOR_DEBUG_ROI_DYNAMICS = true` in the browser console to log detailed frame diagnostics, including min/mean/max, variance, p10/p50/p90, active and high-value cell fractions, active bounding-box coverage, connected components, quadrant occupancy, total activity mass, injected activity, decay loss, depletion loss, boundary loss, regeneration amount, dynamic range before/after contrast shaping, and whether normalization occurred.
 
 ## Why the Demo Separates Pattern, Parameters, and Process
 
@@ -122,7 +122,7 @@ Presets do not replace the primitive controls. Selecting a preset fills in the u
 | Migrating Patch | Smooth feature movement | Gaussian likelihood + clustered field + continuous drift |
 | Expanding Front | Spreading boundary | Front / Boundary + neighbor propagation |
 | Patchy Rainfall | Irregular activity patches | Seeded texture likelihood + patchy field + random pulses |
-| Drifting Storm Cells | Moving compact pulsed cells | Clustered field + periodic pulses + continuous drift |
+| Drifting Storm Cells | Moving compact rapid-pulse cells | Clustered field + rapid pulses + continuous drift |
 | Freshness / Revisit Value | Value recovers after time | History-aware + freshness |
 | Neighbor Spread | Local activation/spread | Patchy field + neighbor propagation |
 | Oscillating Ecological Field | Phase-shifted cycles | Periodic + frequency-based |
@@ -190,7 +190,7 @@ The likelihood substrate can be:
 
 When dynamic, Event Likelihood Field has its own controls:
 
-- `Likelihood Temporal Pattern`: Static, Sustained, Periodic, Bursty, Intermittent, Random Pulses, or Long Cycle.
+- `Likelihood Temporal Pattern`: Static, Sustained, Periodic, Bursty, Intermittent, Rapid Pulse, Pulse Then Silence, Long-Tail Decay, Gaussian Time Envelope, Random Pulses, Wavy / Multi-Frequency, or Long Cycle.
 - `Likelihood Spatial Evolution`: Stationary, Continuous Movement, Discrete Jump, Random Walk, or Neighbor Propagation.
 
 These controls affect `L`, not the already-realized sample-value layer. For example:
@@ -291,7 +291,12 @@ Temporal Pattern answers: how does sample value intensity change over time?
 - `Periodic`: regular rise/fall cycle.
 - `Bursty`: short intense activity followed by quiet periods.
 - `Intermittent`: repeated on/off windows.
+- `Rapid Pulse`: fast repeated activation that remains seeded and coherent.
+- `Pulse Then Silence`: explicit finite one-shot behavior; this is the mode that may intentionally die out.
+- `Long-Tail Decay`: semi-finite behavior with slow fade after activation.
+- `Gaussian Time Envelope`: smooth rise and fall around a peak window.
 - `Random Pulses`: irregular but seeded pulses.
+- `Wavy / Multi-Frequency`: smooth mixed-frequency modulation rather than random blinking.
 - `Long Cycle`: slow seasonal-style cycle.
 
 A temporal pattern can be dynamic without being stateful. For example, a periodic field can be evaluated directly from `S(x,y,t)`.

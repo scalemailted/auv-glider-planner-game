@@ -310,6 +310,46 @@ const TEMPORAL_PATTERN_EXPLAINERS = {
     strategy: 'Teaches intercepting opportunities before they fade.',
     boundaryNote: 'A burst is temporal intensity, not a one-shot extinction event or a moving plume by itself.'
   },
+  rapidPulse: {
+    label: 'Rapid Pulse',
+    short: 'Fast repeated activation with a visible rhythm.',
+    meaning: 'The sample-value amplitude pulses quickly while the base spatial field remains available for later pulses.',
+    expectedBehavior: 'Cells brighten and dim rapidly without degenerating into random frame flicker.',
+    parameters: ['Pulse Rate', 'Amplitude', 'Dynamic Complexity'],
+    pairsWellWith: ['Continuous Drift', 'Clustered Field', 'Sparse Targets'],
+    strategy: 'Teaches timing routes for short but recurring opportunity windows.',
+    boundaryNote: 'Rapid Pulse is repeating, not a finite one-shot event.'
+  },
+  pulseThenSilence: {
+    label: 'Pulse Then Silence',
+    short: 'One finite pulse fades out and does not regenerate.',
+    meaning: 'This is the explicit finite temporal mode. The event occurs once, fades, and then stays quiet.',
+    expectedBehavior: 'A clear rise/fall appears early, followed by near-silence.',
+    parameters: ['Peak Time', 'Pulse Width'],
+    pairsWellWith: ['Sparse Targets', 'Discrete Jump'],
+    strategy: 'Teaches whether a route can reach a finite opportunity before it disappears.',
+    boundaryNote: 'Unlike ordinary Bursty or Random Pulses, this mode may intentionally die out.'
+  },
+  longTailDecay: {
+    label: 'Long-Tail Decay',
+    short: 'A finite or semi-finite activation decays slowly.',
+    meaning: 'The field activates and then fades with a long tail instead of immediately disappearing.',
+    expectedBehavior: 'Values remain useful for a while after the peak but gradually weaken.',
+    parameters: ['Onset Time', 'Decay Half-Life'],
+    pairsWellWith: ['Front Boundary', 'Depleted Value'],
+    strategy: 'Teaches prioritizing aging opportunities.',
+    boundaryNote: 'Long-Tail Decay is semi-finite and should not be the default for persistent presets.'
+  },
+  gaussianEnvelope: {
+    label: 'Gaussian Time Envelope',
+    short: 'A smooth rise and fall around a seeded peak window.',
+    meaning: 'The entire field follows a bell-shaped time envelope over a repeatable cycle.',
+    expectedBehavior: 'Activity gradually warms, peaks, and cools without abrupt blinking.',
+    parameters: ['Peak Time', 'Envelope Width', 'Cycle Length'],
+    pairsWellWith: ['Front Boundary', 'Gradient / Trend', 'Clustered Field'],
+    strategy: 'Teaches planning around a smooth finite-looking forecast window.',
+    boundaryNote: 'The envelope modulates value; it does not move the field by itself.'
+  },
   seasonal: {
     label: 'Seasonal / Long Cycle',
     short: 'Value follows a slower long-period cycle.',
@@ -339,6 +379,16 @@ const TEMPORAL_PATTERN_EXPLAINERS = {
     pairsWellWith: ['Patchy / Correlated Field', 'Sparse Targets', 'Neighbor Propagation'],
     strategy: 'Teaches flexible timing and fallback routing.',
     boundaryNote: 'Intermittent timing does not imply current transport.'
+  },
+  wavyMultiFrequency: {
+    label: 'Wavy / Multi-Frequency',
+    short: 'Several smooth waves combine into a richer cyclic pattern.',
+    meaning: 'The field uses mixed seeded frequencies to avoid a single synchronized blink.',
+    expectedBehavior: 'Intensity ebbs and flows smoothly with stronger and weaker beats over time.',
+    parameters: ['Wave Frequencies', 'Phase Offsets', 'Amplitude'],
+    pairsWellWith: ['Multi-Modal Likelihood', 'Frequency-Based State Model'],
+    strategy: 'Teaches planning around recurring but nontrivial cycles.',
+    boundaryNote: 'This is deterministic seeded modulation, not random pulses.'
   }
 };
 

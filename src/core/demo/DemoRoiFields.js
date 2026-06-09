@@ -51,7 +51,20 @@ export const ROI_DEMO_PURE_SPATIAL_PATTERNS = [
 ];
 export const ROI_DEMO_VALUE_DISTRIBUTIONS = ['constantValue', 'uniformRandom', 'gaussianNormal'];
 export const ROI_DEMO_TEMPORAL_BEHAVIORS = SAMPLE_TEMPORAL_BEHAVIORS;
-export const ROI_DEMO_TEMPORAL_PATTERNS = ['static', 'sustained', 'periodic', 'bursty', 'seasonal', 'randomPulses', 'intermittent'];
+export const ROI_DEMO_TEMPORAL_PATTERNS = [
+  'static',
+  'sustained',
+  'periodic',
+  'bursty',
+  'intermittent',
+  'rapidPulse',
+  'pulseThenSilence',
+  'longTailDecay',
+  'gaussianEnvelope',
+  'randomPulses',
+  'wavyMultiFrequency',
+  'seasonal'
+];
 export const ROI_DEMO_SPATIAL_EVOLUTIONS = ['stationary', 'continuousDrift', 'discreteJump', 'randomWalk', 'neighborPropagation'];
 export const ROI_DEMO_EVOLUTION_MODELS = ROI_DEMO_SPATIAL_EVOLUTIONS;
 export const ROI_DEMO_PATTERN_EVOLUTIONS = ROI_DEMO_SPATIAL_EVOLUTIONS;
@@ -537,9 +550,14 @@ export function roiTemporalPatternLabel(value) {
     sustained: 'Sustained',
     periodic: 'Periodic / Cyclic',
     bursty: 'Bursty',
-    seasonal: 'Seasonal / Long Cycle',
+    rapidPulse: 'Rapid Pulse',
+    pulseThenSilence: 'Pulse Then Silence',
+    longTailDecay: 'Long-Tail Decay',
+    gaussianEnvelope: 'Gaussian Time Envelope',
     randomPulses: 'Random Pulses',
-    intermittent: 'Intermittent Activity'
+    intermittent: 'Intermittent Activity',
+    wavyMultiFrequency: 'Wavy / Multi-Frequency',
+    seasonal: 'Seasonal / Long Cycle'
   }[value] ?? 'Bursty';
 }
 
@@ -960,11 +978,11 @@ function temporalPatternFromBehavior(behavior) {
 
 function temporalBehaviorFromPattern(pattern, spatialEvolution) {
   if (pattern === 'static') return 'static';
-  if (pattern === 'periodic' || pattern === 'seasonal') return 'periodic';
+  if (pattern === 'periodic' || pattern === 'seasonal' || pattern === 'rapidPulse' || pattern === 'gaussianEnvelope' || pattern === 'wavyMultiFrequency') return 'periodic';
   if (pattern === 'randomPulses') return 'nonuniformRandom';
   if (pattern === 'intermittent') return 'markovNeighbor';
   if (spatialEvolution === 'neighborPropagation') return 'markovNeighbor';
-  return pattern === 'bursty' ? 'bursty' : 'periodic';
+  return pattern === 'bursty' || pattern === 'pulseThenSilence' || pattern === 'longTailDecay' ? 'bursty' : 'periodic';
 }
 
 function spatialEvolutionFromDistribution(distribution) {
@@ -1030,8 +1048,8 @@ function applyEvolutionModel(field, { seed, likelihoodField, time, timeMode, tem
   const retained = field.map((row) => row.map((value) => clamp01(value * temporalEnvelope)));
   let evolved = retained;
   if (spatialEvolution === 'continuousDrift') {
-    const dx = Math.sin(time * 0.13) * 0.14 * complexityScale;
-    const dy = Math.cos(time * 0.1) * 0.1 * complexityScale;
+    const dx = Math.sin(time * 0.16) * 0.2 * complexityScale;
+    const dy = Math.cos(time * 0.12) * 0.15 * complexityScale;
     evolved = normalizedMotionScope === 'global'
       ? shiftField(retained, dx, dy)
       : warpField(retained, (x, y) => continuousMotionOffset({ seed, x, y, time, complexityScale, motionScope: normalizedMotionScope }));
@@ -1244,11 +1262,20 @@ function createFreshnessField(field, { seed, time, dynamicComplexity, likelihood
 }
 
 function applyPersistentActivityBalance(field, { seed, likelihoodField, time, temporalPattern, spatialEvolution, dynamicComplexity }) {
+  if (temporalPattern === 'pulseThenSilence') {
+    return {
+      field: field.map((row) => row.map(round3)),
+      injectedActivity: 0,
+      regenerationAmount: 0
+    };
+  }
   const complexityScale = complexityValue(dynamicComplexity, 0.85, 1, 1.18);
   const envelope = temporalEnvelopeForPattern(temporalPattern, time, `${seed}:activity-balance`);
-  const backgroundFloor = temporalPattern === 'static' ? 0 : complexityValue(dynamicComplexity, 0.055, 0.08, 0.105);
+  const backgroundFloor = temporalPattern === 'static' || temporalPattern === 'longTailDecay'
+    ? 0
+    : complexityValue(dynamicComplexity, 0.065, 0.095, 0.125);
   const regenerationRate = regenerationRateForPattern(temporalPattern, envelope, dynamicComplexity);
-  const burstSeed = Math.floor(Math.max(0, time) / (temporalPattern === 'bursty' ? 24 : temporalPattern === 'intermittent' ? 18 : 6));
+  const burstSeed = Math.floor(Math.max(0, time) / (temporalPattern === 'bursty' ? 24 : temporalPattern === 'intermittent' ? 12 : temporalPattern === 'randomPulses' ? 4 : 6));
   let injectedActivity = 0;
   let regenerationAmount = 0;
   const balanced = field.map((row, y) => row.map((value, x) => {
@@ -1273,8 +1300,13 @@ function applyPersistentActivityBalance(field, { seed, likelihoodField, time, te
 function regenerationRateForPattern(pattern, envelope, dynamicComplexity) {
   const scale = complexityValue(dynamicComplexity, 0.8, 1, 1.15);
   if (pattern === 'static') return 0;
-  if (pattern === 'sustained') return 0.035 * scale;
+  if (pattern === 'pulseThenSilence') return 0;
+  if (pattern === 'longTailDecay') return 0.006 * scale;
+  if (pattern === 'sustained') return 0.044 * scale;
   if (pattern === 'periodic' || pattern === 'seasonal') return (0.018 + envelope * 0.035) * scale;
+  if (pattern === 'rapidPulse') return (0.024 + envelope * 0.052) * scale;
+  if (pattern === 'gaussianEnvelope') return (0.012 + envelope * 0.042) * scale;
+  if (pattern === 'wavyMultiFrequency') return (0.022 + envelope * 0.042) * scale;
   if (pattern === 'randomPulses') return (0.014 + envelope * 0.045) * scale;
   if (pattern === 'intermittent') return (0.012 + envelope * 0.04) * scale;
   return (0.014 + envelope * 0.052) * scale;
@@ -1296,6 +1328,16 @@ function buildActivityDiagnostics({ time, eventLikelihoodMode, spatialPattern, t
   const activeCellCount = countCells(displayedField, 0.07);
   const highValueCellCount = countCells(displayedField, 0.68);
   const cellCount = Math.max(1, (displayedField?.length ?? 0) * (displayedField?.[0]?.length ?? 0));
+  const spatialMetrics = spatialActivityMetrics(displayedField, 0.07);
+  const highValueFraction = highValueCellCount / cellCount;
+  const warnings = roiDiagnosticsWarnings({
+    eventLikelihoodMode,
+    spatialPattern,
+    stats,
+    activeFraction: activeCellCount / cellCount,
+    highValueFraction,
+    spatialMetrics
+  });
   return {
     time: round3(time),
     eventLikelihoodMode,
@@ -1307,9 +1349,21 @@ function buildActivityDiagnostics({ time, eventLikelihoodMode, spatialPattern, t
     minValue: stats.min,
     meanValue: stats.mean,
     maxValue: stats.max,
+    variance: stats.variance,
+    stdDev: stats.stdDev,
+    percentile10: stats.percentile10,
+    percentile50: stats.percentile50,
+    percentile90: stats.percentile90,
     activeCellCount,
     activeFraction: round3(activeCellCount / cellCount),
     highValueCellCount,
+    highValueFraction: round3(highValueFraction),
+    activeBoundingBoxCoverage: spatialMetrics.boundingBoxCoverage,
+    activeBoundingBox: spatialMetrics.boundingBox,
+    centerOfMass: spatialMetrics.centerOfMass,
+    connectedComponentCount: spatialMetrics.connectedComponentCount,
+    quadrantOccupancy: spatialMetrics.quadrantOccupancy,
+    diagnosticWarnings: warnings,
     totalActivityMass: stats.totalValue,
     rawActivityMass: round3(fieldTotal(baseField)),
     evolvedActivityMass: round3(fieldTotal(evolvedField)),
@@ -1325,6 +1379,105 @@ function buildActivityDiagnostics({ time, eventLikelihoodMode, spatialPattern, t
     dynamicRangeAfterContrast: round3(displayDiagnostics?.dynamicRangeAfter ?? (stats.max - stats.min)),
     normalized: Boolean(evolutionDiagnostics?.normalized)
   };
+}
+
+function spatialActivityMetrics(field, threshold = 0.07) {
+  const height = field?.length ?? 0;
+  const width = field?.[0]?.length ?? 0;
+  if (!height || !width) {
+    return {
+      boundingBoxCoverage: 0,
+      boundingBox: null,
+      centerOfMass: null,
+      connectedComponentCount: 0,
+      quadrantOccupancy: [0, 0, 0, 0]
+    };
+  }
+  let minX = width;
+  let maxX = -1;
+  let minY = height;
+  let maxY = -1;
+  let mass = 0;
+  let weightedX = 0;
+  let weightedY = 0;
+  const quadrants = [0, 0, 0, 0];
+  const active = Array.from({ length: height }, () => Array.from({ length: width }, () => false));
+  for (let y = 0; y < height; y += 1) {
+    for (let x = 0; x < width; x += 1) {
+      const value = Number(field[y]?.[x] ?? 0);
+      if (value < threshold) continue;
+      active[y][x] = true;
+      minX = Math.min(minX, x);
+      maxX = Math.max(maxX, x);
+      minY = Math.min(minY, y);
+      maxY = Math.max(maxY, y);
+      mass += value;
+      weightedX += x * value;
+      weightedY += y * value;
+      const quadrant = (x >= width / 2 ? 1 : 0) + (y >= height / 2 ? 2 : 0);
+      quadrants[quadrant] += 1;
+    }
+  }
+  if (maxX < minX || maxY < minY) {
+    return {
+      boundingBoxCoverage: 0,
+      boundingBox: null,
+      centerOfMass: null,
+      connectedComponentCount: 0,
+      quadrantOccupancy: [0, 0, 0, 0]
+    };
+  }
+  const bboxArea = (maxX - minX + 1) * (maxY - minY + 1);
+  const activeTotal = Math.max(1, quadrants.reduce((sum, value) => sum + value, 0));
+  return {
+    boundingBoxCoverage: round3(bboxArea / Math.max(1, width * height)),
+    boundingBox: { minX, minY, maxX, maxY },
+    centerOfMass: {
+      x: round3(weightedX / Math.max(0.0001, mass)),
+      y: round3(weightedY / Math.max(0.0001, mass))
+    },
+    connectedComponentCount: connectedComponentCount(active),
+    quadrantOccupancy: quadrants.map((value) => round3(value / activeTotal))
+  };
+}
+
+function connectedComponentCount(active) {
+  const height = active.length;
+  const width = active[0]?.length ?? 0;
+  const visited = Array.from({ length: height }, () => Array.from({ length: width }, () => false));
+  let components = 0;
+  for (let y = 0; y < height; y += 1) {
+    for (let x = 0; x < width; x += 1) {
+      if (!active[y][x] || visited[y][x]) continue;
+      components += 1;
+      const stack = [{ x, y }];
+      visited[y][x] = true;
+      while (stack.length) {
+        const cell = stack.pop();
+        for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
+          const xx = cell.x + dx;
+          const yy = cell.y + dy;
+          if (xx < 0 || yy < 0 || xx >= width || yy >= height || visited[yy][xx] || !active[yy][xx]) continue;
+          visited[yy][xx] = true;
+          stack.push({ x: xx, y: yy });
+        }
+      }
+    }
+  }
+  return components;
+}
+
+function roiDiagnosticsWarnings({ eventLikelihoodMode, spatialPattern, stats, activeFraction, highValueFraction, spatialMetrics }) {
+  const warnings = [];
+  const range = stats.max - stats.min;
+  const broadExpected = ['multiModalLikelihood', 'patchyLikelihood', 'seededTextureLikelihood'].includes(eventLikelihoodMode)
+    || ['patchyField', 'frontBoundary', 'boundaryBand', 'seededTexture'].includes(spatialPattern);
+  if (broadExpected && spatialMetrics.boundingBoxCoverage > 0 && spatialMetrics.boundingBoxCoverage < 0.18) warnings.push('low_domain_coverage');
+  if (eventLikelihoodMode === 'multiModalLikelihood' && spatialMetrics.connectedComponentCount <= 1 && activeFraction < 0.38) warnings.push('multi_modal_collapsed');
+  if (range < 0.15 && spatialPattern !== 'constantField') warnings.push('low_value_range');
+  if (stats.variance < 0.006 && spatialPattern !== 'constantField') warnings.push('low_variance');
+  if (highValueFraction > 0.82 || activeFraction > 0.985) warnings.push('possible_saturation');
+  return warnings;
 }
 
 function scaleHotspotRadii(hotspots, clusterSize = 'medium') {
@@ -1369,18 +1522,47 @@ function featureMotionDescription(spatialEvolution, motionScope = 'perFeature') 
 function temporalEnvelopeForPattern(pattern, time, seed) {
   if (pattern === 'static') return 1;
   if (pattern === 'sustained') return 0.78 + 0.12 * Math.sin(time * 0.08);
-  if (pattern === 'periodic') return 0.56 + 0.5 * (0.5 + 0.5 * Math.sin(time * 0.32));
+  if (pattern === 'periodic') return 0.5 + 0.56 * (0.5 + 0.5 * Math.sin(time * 0.32));
+  if (pattern === 'rapidPulse') return 0.34 + 0.82 * (0.5 + 0.5 * Math.sin(time * 1.08));
   if (pattern === 'seasonal') return 0.5 + 0.55 * (0.5 + 0.5 * Math.sin(time * 0.075));
+  if (pattern === 'gaussianEnvelope') {
+    const cycle = 36;
+    const centered = positiveModulo(time + cycle / 2, cycle) - cycle / 2;
+    return 0.24 + 0.96 * Math.exp(-(centered ** 2) / (2 * 7.5 ** 2));
+  }
+  if (pattern === 'wavyMultiFrequency') {
+    const phase = seededUnitLike(`${seed}:wavy-phase`) * Math.PI * 2;
+    const waveA = 0.5 + 0.5 * Math.sin(time * 0.19 + phase);
+    const waveB = 0.5 + 0.5 * Math.sin(time * 0.43 + phase * 0.37);
+    return 0.36 + 0.46 * waveA + 0.26 * waveB;
+  }
   if (pattern === 'randomPulses') {
-    const pulse = seededUnitLike(`${seed}:pulse:${Math.floor(time / 3)}`);
-    return pulse > 0.58 ? 1.12 : 0.42 + pulse * 0.22;
+    const window = Math.floor(Math.max(0, time) / 4);
+    const pulse = seededUnitLike(`${seed}:pulse:${window}`);
+    const nextPulse = seededUnitLike(`${seed}:pulse:${window + 1}`);
+    const blend = positiveModulo(time, 4) / 4;
+    const smoothed = pulse * (1 - blend) + nextPulse * blend;
+    return smoothed > 0.52 ? 0.92 + smoothed * 0.3 : 0.32 + smoothed * 0.32;
   }
   if (pattern === 'intermittent') {
-    return seededUnitLike(`${seed}:intermittent:${Math.floor(time / 5)}`) > 0.42 ? 0.98 : 0.28;
+    const window = Math.floor(Math.max(0, time) / 6);
+    const gate = seededUnitLike(`${seed}:intermittent:${window}`) > 0.42 ? 1 : 0;
+    const ramp = 0.5 + 0.5 * Math.sin(positiveModulo(time, 6) / 6 * Math.PI * 2 - Math.PI / 2);
+    return gate ? 0.62 + ramp * 0.42 : 0.22 + ramp * 0.16;
+  }
+  if (pattern === 'pulseThenSilence') {
+    const peak = 10;
+    if (time > 32) return 0;
+    return 1.18 * Math.exp(-((time - peak) ** 2) / (2 * 5.2 ** 2));
+  }
+  if (pattern === 'longTailDecay') {
+    const onset = 4;
+    if (time < onset) return 0.35 + time / onset * 0.75;
+    return 0.22 + 0.86 * Math.exp(-(time - onset) / 34);
   }
   const cycle = 24;
   const centered = Math.min(positiveModulo(time - 8, cycle), positiveModulo(8 - time, cycle));
-  return 0.24 + 1.12 * Math.exp(-(centered ** 2) / (2 * 3.2 ** 2));
+  return 0.18 + 1.08 * Math.exp(-(centered ** 2) / (2 * 3.2 ** 2));
 }
 
 function burstPhaseLabel(phase) {
@@ -1441,7 +1623,7 @@ function warpField(field, offsetAt) {
 function continuousMotionOffset({ seed, x, y, time, complexityScale, motionScope }) {
   const cols = motionScope === 'localNeighborhood' ? 8 : 4;
   const rows = motionScope === 'localNeighborhood' ? 6 : 3;
-  const amplitude = (motionScope === 'localNeighborhood' ? 0.055 : 0.12) * complexityScale;
+  const amplitude = (motionScope === 'localNeighborhood' ? 0.075 : 0.16) * complexityScale;
   return interpolatedRegionalOffset({
     seed,
     x,
@@ -1451,8 +1633,8 @@ function continuousMotionOffset({ seed, x, y, time, complexityScale, motionScope
     valueAt: (ix, iy) => {
       const phaseX = seededUnitLike(`${seed}:drift-phase-x:${ix}:${iy}`) * Math.PI * 2;
       const phaseY = seededUnitLike(`${seed}:drift-phase-y:${ix}:${iy}`) * Math.PI * 2;
-      const rateX = 0.08 + seededUnitLike(`${seed}:drift-rate-x:${ix}:${iy}`) * 0.07;
-      const rateY = 0.07 + seededUnitLike(`${seed}:drift-rate-y:${ix}:${iy}`) * 0.06;
+      const rateX = 0.11 + seededUnitLike(`${seed}:drift-rate-x:${ix}:${iy}`) * 0.09;
+      const rateY = 0.1 + seededUnitLike(`${seed}:drift-rate-y:${ix}:${iy}`) * 0.08;
       return {
         dx: Math.sin(time * rateX + phaseX) * amplitude,
         dy: Math.cos(time * rateY + phaseY) * amplitude * 0.82
@@ -1486,9 +1668,9 @@ function discreteJumpOffset({ seed, likelihoodField, x, y, jumpIndex, complexity
 function randomWalkOffset({ seed, likelihoodField, x, y, step, complexityScale, motionScope }) {
   const cols = motionScope === 'localNeighborhood' ? 8 : 4;
   const rows = motionScope === 'localNeighborhood' ? 6 : 3;
-  const stepScale = (motionScope === 'localNeighborhood' ? 0.012 : 0.024) * complexityScale;
-  const boundX = motionScope === 'localNeighborhood' ? 0.09 : 0.2;
-  const boundY = motionScope === 'localNeighborhood' ? 0.075 : 0.16;
+  const stepScale = (motionScope === 'localNeighborhood' ? 0.018 : 0.034) * complexityScale;
+  const boundX = motionScope === 'localNeighborhood' ? 0.13 : 0.28;
+  const boundY = motionScope === 'localNeighborhood' ? 0.105 : 0.22;
   return interpolatedRegionalOffset({
     seed,
     x,
@@ -1619,12 +1801,14 @@ export function createEventLikelihoodField({
       : cached;
   }
   const rng = createSeededRng(`${seed}:event-likelihood:${normalized}:${width}x${height}:${count}`);
-  const centers = Array.from({ length: Math.max(1, count) }, () => ({
-    x: 0.14 + rng() * 0.72,
-    y: 0.16 + rng() * 0.68,
-    radius: 0.09 + rng() * 0.16,
-    strength: 0.55 + rng() * 0.45
-  }));
+  const centers = createSeparatedLikelihoodCenters({
+    seed,
+    width,
+    height,
+    count: normalized === 'gaussianLikelihood' ? 1 : normalized === 'sparseCandidateSites' ? Math.max(4, count * 2) : count,
+    kind: normalized,
+    rng
+  });
   const field = Array.from({ length: height }, (_, y) => Array.from({ length: width }, (_, x) => {
     const nx = width > 1 ? x / (width - 1) : 0;
     const ny = height > 1 ? y / (height - 1) : 0;
@@ -1646,12 +1830,17 @@ export function createEventLikelihoodField({
       return 0.1 + 0.9 * smoothstep(-0.52, 0.52, projected);
     }
     if (normalized === 'patchyLikelihood') {
-      const coarseX = Math.floor(nx * 6);
+      const blobs = centers.reduce((sum, center) => {
+        const d2 = (nx - center.x) ** 2 + (ny - center.y) ** 2;
+        return sum + center.strength * Math.exp(-d2 / (2 * center.radius ** 2));
+      }, 0);
+      const coarseX = Math.floor(nx * 7);
       const coarseY = Math.floor(ny * 5);
-      const local = seededUnitLike(`${seed}:event-likelihood:patch:${coarseX}:${coarseY}`);
-      const neighbor = seededUnitLike(`${seed}:event-likelihood:patch:${coarseX + 1}:${coarseY}`) * 0.35
-        + seededUnitLike(`${seed}:event-likelihood:patch:${coarseX}:${coarseY + 1}`) * 0.35;
-      return 0.08 + 0.74 * local + 0.18 * neighbor;
+      const low = seededUnitLike(`${seed}:event-likelihood:patch:${coarseX}:${coarseY}`);
+      const east = seededUnitLike(`${seed}:event-likelihood:patch:${coarseX + 1}:${coarseY}`);
+      const south = seededUnitLike(`${seed}:event-likelihood:patch:${coarseX}:${coarseY + 1}`);
+      const texture = low * 0.5 + east * 0.22 + south * 0.22;
+      return 0.08 + blobs * 0.68 + texture * 0.34;
     }
     if (normalized === 'seededTextureLikelihood') {
       const low = seededUnitLike(`${seed}:event-likelihood:texture:${Math.floor(nx * 8)}:${Math.floor(ny * 6)}`);
@@ -1672,6 +1861,66 @@ export function createEventLikelihoodField({
   return normalizedDynamics === 'dynamic'
     ? applyLikelihoodBehavior(normalizedField, { seed, time, temporalPattern: normalizedTemporalPattern, spatialEvolution: normalizedSpatialEvolution, dynamicComplexity })
     : normalizedField;
+}
+
+function createSeparatedLikelihoodCenters({ seed, width, height, count, kind, rng }) {
+  const normalizedCount = clampInt(count, 1, 8, 3);
+  const minSeparation = kind === 'sparseCandidateSites'
+    ? 0.18
+    : kind === 'patchyLikelihood'
+      ? 0.22
+      : 0.26;
+  const marginX = kind === 'sparseCandidateSites' ? 0.08 : 0.12;
+  const marginY = kind === 'sparseCandidateSites' ? 0.1 : 0.14;
+  const quadrantAnchors = [
+    { x: 0.24, y: 0.26 },
+    { x: 0.74, y: 0.28 },
+    { x: 0.28, y: 0.72 },
+    { x: 0.72, y: 0.7 },
+    { x: 0.5, y: 0.5 },
+    { x: 0.16, y: 0.5 },
+    { x: 0.84, y: 0.52 },
+    { x: 0.5, y: 0.18 }
+  ];
+  const centers = [];
+  for (let index = 0; index < normalizedCount; index += 1) {
+    const anchor = quadrantAnchors[index % quadrantAnchors.length];
+    let best = null;
+    let bestScore = -Infinity;
+    for (let attempt = 0; attempt < 36; attempt += 1) {
+      const jitter = attempt < 10 ? 0.18 : 0.38;
+      const candidate = {
+        x: clampRange(anchor.x + (rng() - 0.5) * jitter, marginX, 1 - marginX),
+        y: clampRange(anchor.y + (rng() - 0.5) * jitter, marginY, 1 - marginY)
+      };
+      const nearest = centers.reduce((min, center) => Math.min(min, distance2d(candidate.x, candidate.y, center.x, center.y)), Infinity);
+      const edgePenalty = Math.max(0, 0.12 - candidate.x) + Math.max(0, candidate.x - 0.88) + Math.max(0, 0.12 - candidate.y) + Math.max(0, candidate.y - 0.88);
+      const score = nearest - edgePenalty * 0.6 + rng() * 0.05;
+      if (score > bestScore) {
+        bestScore = score;
+        best = candidate;
+      }
+      if (nearest >= minSeparation) break;
+    }
+    const phase = seededUnitLike(`${seed}:event-likelihood:center-phase:${kind}:${index}`) * Math.PI * 2;
+    centers.push({
+      x: best?.x ?? anchor.x,
+      y: best?.y ?? anchor.y,
+      radius: kind === 'sparseCandidateSites'
+        ? 0.036 + rng() * 0.028
+        : kind === 'patchyLikelihood'
+          ? 0.12 + rng() * 0.08
+          : 0.1 + rng() * 0.08,
+      strength: 0.58 + rng() * 0.34,
+      phase,
+      amplitude: 0.82 + rng() * 0.36
+    });
+  }
+  return centers;
+}
+
+function distance2d(ax, ay, bx, by) {
+  return Math.hypot(ax - bx, ay - by);
 }
 
 function applyLikelihoodBehavior(field, { seed, time, temporalPattern, spatialEvolution, dynamicComplexity }) {
@@ -1950,17 +2199,22 @@ function withNoise(field, rng, noise) {
 }
 
 function summarizeField(field) {
-  const values = field.flat().map(Number);
+  const values = field.flat().map(Number).filter(Number.isFinite);
   const count = Math.max(1, values.length);
   const min = Math.min(...values);
   const max = Math.max(...values);
   const mean = values.reduce((sum, value) => sum + value, 0) / count;
   const variance = values.reduce((sum, value) => sum + (value - mean) ** 2, 0) / count;
+  const sorted = [...values].sort((a, b) => a - b);
   return {
     min: round3(min),
     max: round3(max),
     mean: round3(mean),
+    variance: round3(variance),
     stdDev: round3(Math.sqrt(variance)),
+    percentile10: round3(percentileSorted(sorted, 0.1)),
+    percentile50: round3(percentileSorted(sorted, 0.5)),
+    percentile90: round3(percentileSorted(sorted, 0.9)),
     totalValue: round3(values.reduce((sum, value) => sum + value, 0))
   };
 }

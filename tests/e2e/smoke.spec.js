@@ -388,13 +388,13 @@ test('campaign planning smoke flow reaches debrief', async ({ page }) => {
     preset: 'driftingStormCells',
     modified: false,
     spatial: 'clusteredField',
-    temporal: 'periodic',
+    temporal: 'rapidPulse',
     evolution: 'continuousDrift',
     dynamics: 'dynamic'
   });
   await page.locator('#mission-console [data-roi-help="behaviorPreset"]').click();
   await expect(page.locator('#waypoint-timeline [data-roi-behavior-help]')).toContainText('About Behavior Preset: Drifting Storm Cells');
-  await expect(page.locator('#waypoint-timeline [data-roi-behavior-help]')).toContainText('Compact high-value cells move through the domain');
+  await expect(page.locator('#waypoint-timeline [data-roi-behavior-help]')).toContainText('Two or three compact high-value cells move independently');
   const presetArtifact = await downloadDemoArtifact(page);
   expect(presetArtifact.data.behaviorPreset).toMatchObject({
     id: 'driftingStormCells',
