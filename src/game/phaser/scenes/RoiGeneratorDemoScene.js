@@ -1,5 +1,6 @@
 import {
   createDemoRoiField,
+  ROI_DEMO_DEFAULT_DISPLAY_MODE,
   roiDepletionModeLabel,
   roiDisplayModeLabel,
   roiPatternEvolutionLabel,
@@ -74,7 +75,7 @@ export class RoiGeneratorDemoScene extends PhaserScene {
     this.motionScope = 'perFeature';
     this.stateModel = 'stateEvolving';
     this.depletionMode = 'soft';
-    this.displayMode = 'sampleValue';
+    this.displayMode = ROI_DEMO_DEFAULT_DISPLAY_MODE;
     this.dynamicComplexity = 'medium';
     this.behaviorPresetId = CUSTOM_SAMPLE_FIELD_BEHAVIOR_PRESET_ID;
     this.behaviorPresetModified = false;
@@ -117,7 +118,7 @@ export class RoiGeneratorDemoScene extends PhaserScene {
     this.motionScope = normalizeRoiDemoMotionScope(data.motionScope ?? 'perFeature');
     this.stateModel = normalizeRoiDemoStateModel(data.stateModel);
     this.depletionMode = normalizeRoiDemoDepletionMode(data.depletionMode ?? 'soft');
-    this.displayMode = normalizeRoiDemoDisplayMode(data.displayMode ?? 'sampleValue');
+    this.displayMode = normalizeRoiDemoDisplayMode(data.displayMode ?? ROI_DEMO_DEFAULT_DISPLAY_MODE);
     this.dynamicComplexity = normalizeRoiDemoDynamicComplexity(data.dynamicComplexity ?? 'medium');
     this.behaviorPresetId = normalizeSampleFieldBehaviorPresetId(data.behaviorPresetId ?? data.behaviorPreset?.id ?? CUSTOM_SAMPLE_FIELD_BEHAVIOR_PRESET_ID);
     this.behaviorPresetModified = Boolean(data.behaviorPresetModified ?? data.behaviorPreset?.modified);

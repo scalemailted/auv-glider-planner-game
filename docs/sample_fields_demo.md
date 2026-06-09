@@ -145,7 +145,7 @@ The right-panel Behavior Help view includes a `Current Composition` card that su
 
 ## Viewing the Event Likelihood Field
 
-The Display Layer selector can show either the realized sample value `S(x,y,t)`, the Event Likelihood Field `L(x,y,t)`, or `Sample Value + Likelihood Overlay`.
+The Display Layer selector opens on `Sample Value + Likelihood Overlay` by default, and can also show the realized sample value `S(x,y,t)` or the Event Likelihood Field `L(x,y,t)` on its own.
 
 The Event Likelihood view shows the generative substrate that controls where events are likely to form. This is different from realized sample value. With Multi-Modal Likelihood and Bursty temporal behavior, likelihood may remain high in several preferred regions while the realized sample value activates in only one region during a burst. With Discrete Jump spatial evolution, the likelihood field can relocate between burst windows, causing future clusters to appear in different places.
 

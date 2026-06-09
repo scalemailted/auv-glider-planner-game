@@ -345,12 +345,15 @@ test('campaign planning smoke flow reaches debrief', async ({ page }) => {
   await expect(page.locator('#roi-demo-state-model')).toBeVisible();
   await expect(page.locator('#roi-demo-depletion-mode')).toBeVisible();
   await expect(page.locator('#roi-demo-display-mode')).toBeVisible();
+  await expect(page.locator('#roi-demo-display-mode')).toHaveValue('sampleValueLikelihoodOverlay');
+  await expect.poll(() => page.evaluate(() => window.anchorGame.phaser.scene.getScene('RoiGeneratorDemoScene').displayMode)).toBe('sampleValueLikelihoodOverlay');
   await expect(page.locator('#roi-demo-dynamic-complexity')).toBeVisible();
   await expect(page.locator('#mission-console [data-action="export-demo-json"]')).toHaveText('Export Demo JSON');
   const roiArtifact = await downloadDemoArtifact(page);
   expect(roiArtifact.filename).toMatch(/^anchor-sample-roi-field-demo-frame-/);
   expect(roiArtifact.data.type).toBe('anchor.demo.sample-roi-field');
   expect(roiArtifact.data.frames).toHaveLength(1);
+  expect(roiArtifact.data.config.displayMode).toBe('sampleValueLikelihoodOverlay');
   expect(roiArtifact.data.fields.sampleValue.length).toBe(roiArtifact.data.grid.height);
   expect(roiArtifact.data.fields.eventLikelihood[0].length).toBe(roiArtifact.data.grid.width);
   expect(roiArtifact.data.metadata.activityDiagnostics.meanValue).toBeGreaterThan(0);

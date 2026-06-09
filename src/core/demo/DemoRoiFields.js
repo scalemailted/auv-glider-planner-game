@@ -72,6 +72,7 @@ export const ROI_DEMO_MOTION_SCOPES = ['perFeature', 'localNeighborhood', 'globa
 export const ROI_DEMO_STATE_MODELS = ['timeIndexed', 'frequencyBased', 'stateEvolving', 'historyAware'];
 export const ROI_DEMO_DEPLETION_MODES = ['none', 'hard', 'soft', 'neighborhood', 'freshnessAge', 'revisitRecovery'];
 export const ROI_DEMO_DISPLAY_MODES = ['sampleValue', 'eventLikelihood', 'sampleValueLikelihoodOverlay', 'depletedValue', 'freshnessRevisitValue', 'rawBaseValue'];
+export const ROI_DEMO_DEFAULT_DISPLAY_MODE = 'sampleValueLikelihoodOverlay';
 export const ROI_DEMO_DYNAMIC_COMPLEXITY = ['low', 'medium', 'high'];
 export const ROI_DEMO_CLUSTER_SIZES = ['tight', 'medium', 'wide'];
 
@@ -132,7 +133,7 @@ export function createDemoRoiField({
   motionScope = null,
   stateModel = null,
   depletionMode = 'soft',
-  displayMode = 'sampleValue',
+  displayMode = ROI_DEMO_DEFAULT_DISPLAY_MODE,
   dynamicComplexity = 'medium',
   forecastView = 'forecast',
   behaviorPresetId = null,

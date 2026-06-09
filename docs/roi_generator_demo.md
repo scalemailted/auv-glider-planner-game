@@ -52,7 +52,7 @@ It is not a mission, planner, leaderboard mode, uncertainty demo, forecast/truth
 
 Static mode samples the selected field at time zero. Dynamic mode passes advancing demo time into the shared sample-field generator through `createDemoRoiField({ time: demoTime, ... })`, so periodic, bursty, moving, diffusive, random, and neighbor-coupled sample-only fields visibly change over time. Current-advected sample behavior is demonstrated in the Coupled Fields Demo.
 
-The default is intentionally dynamic and visually active: Clustered Field, Cluster Count 3, Medium Cluster Size, Bursty temporal pattern, Stationary spatial evolution, State-Evolving state model, Soft Depletion, and Sample Value display.
+The default is intentionally dynamic and visually active: Clustered Field, Cluster Count 3, Medium Cluster Size, Bursty temporal pattern, Stationary spatial evolution, State-Evolving state model, Soft Depletion, and Sample Value + Likelihood Overlay display.
 
 The left panel separates sample behavior into Event Likelihood / Spawn Distribution, Spatial Pattern / Geometry, Value Distribution, Temporal Pattern, Spatial Evolution, State Model / Memory, Sampling Effects, and Display. The inspector labels each selected cell as Time-Indexed, Frequency-Based, State-Evolving, or History-Aware so users can tell whether value is computed directly from `x,y,t`, follows a cycle, depends on current field state, or depends on longer sampling/observation history. See [Sample / ROI Field Demo](sample_fields_demo.md) for the taxonomy and motivation.
 
