@@ -149,7 +149,6 @@ export class SimulationScene extends PhaserScene {
         <button class="console-button primary" data-action="play">Play / Pause</button>
         <button class="console-button" data-action="step">Step</button>
         <button class="console-button" data-action="finish">Finish Instantly</button>
-        <button class="console-button" data-action="planning">Return To Planning</button>
         <button class="console-button" data-action="debrief">Debrief</button>
       </section>
       <section id="simulation-abort-actions" class="console-section" hidden></section>
@@ -174,7 +173,6 @@ export class SimulationScene extends PhaserScene {
     root.querySelector('[data-action="play"]')?.addEventListener('click', () => this.togglePlay());
     root.querySelector('[data-action="step"]')?.addEventListener('click', () => this.stepOnce());
     root.querySelector('[data-action="finish"]')?.addEventListener('click', () => this.finishSimulation());
-    root.querySelector('[data-action="planning"]')?.addEventListener('click', () => this.scene.start('MissionWorkspaceScene'));
     root.querySelector('[data-action="debrief"]')?.addEventListener('click', () => this.goDebrief());
     root.querySelector('[data-action="menu"]')?.addEventListener('click', () => this.scene.start('MainMenuScene'));
   }
