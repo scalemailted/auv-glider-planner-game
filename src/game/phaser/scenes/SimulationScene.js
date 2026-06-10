@@ -224,7 +224,7 @@ export class SimulationScene extends PhaserScene {
       mission: this.app.state.mission,
       plan: this.app.state.plan,
       trace: this.trace,
-      time: this.app.state.playback.time 
+      time: this.app.state.playback.time
     });
     this.abortNoticeShown = false;
     this.stopReasonNoticeShown = false;
@@ -1177,7 +1177,6 @@ export class SimulationScene extends PhaserScene {
   updateWaypointsFromSurface() {
     const decision = this.engine.awaitingSurfaceDecision;
     traceSimulation(this.trace, { scene: 'SimulationScene', phase: 'surfacing.update', simTime: this.engine.t, message: 'Update waypoints from surface clicked' });
-    const selectedAgentId = decision?.agentId ?? decision?.agents?.[0]?.agentId ?? this.app.state.selectedAgentId;
     this.engine.recordReplanDecision();
     this.syncResult();
     this.app.state.simulationResume = this.engine.createResumeState();
@@ -1190,23 +1189,32 @@ export class SimulationScene extends PhaserScene {
       heading: agent.heading,
       commsState: agent.commsState
     }));
-    console.log(this.app)
-    const waypoints = getAgentPlan(this.app.state.plan, this.app.state.selectedAgentId).waypoints;
-    for (const agent of this.engine.agents) {
-      if (this.app.state.selectedAgentId == agent.id) {
-        var engineAgent = agent;
-        break;
-      }
-    }
-    for (let agent = 0; agent <  this.app.state.mission.agents.length; agent++) {
-      if (this.app.state.selectedAgentId == this.app.state.mission.agents[agent].id) {
-        var missionAgentIndex = agent;
-        break;
-      }
-    }
-      for (const waypoint of engineAgent.completedWaypoints) {
+    for (const [index, agent] of this.engine.agents.entries()) {
+      const waypoints = getAgentPlan(this.app.state.plan, agent.id).waypoints;
+      for (const waypoint of agent.completedWaypoints) {
         this.app.phaser.scene.scenes[3].hud.handlers.remove(this.app.state.agentId, waypoint.waypointIndex);
       }
+      this.app.state.selectedAgentId = agent.id;
+      this.app.state.ui.hoverCell = {
+        x:waypoints[waypoints.length - 1].x, 
+        y:waypoints[waypoints.length - 1].y 
+      }
+      this.app.state.plan.agentPlans[index].selectedStart = {
+        x:agent.x,
+        y:agent.y
+      };
+      this.app.state.mission.agents[index].deployment.selectedStart = {
+        x:agent.x,
+        y:agent.y
+      };
+      this.app.state.mission.agents[index].start = {
+        x:agent.x,
+        y:agent.y
+      };
+      this.app.state.selectedAgentId = agent.id;
+      this.app.state.mission.agents[index].deployment.mode = "fixedStart";
+      this.refresh();
+    }
     this.app.state.surfaceDecision = null;
     this.clearSurfaceDecisionFallback();
     this.clearSimulationWaitState();
@@ -1214,30 +1222,7 @@ export class SimulationScene extends PhaserScene {
     this.app.state.planningTime = this.engine.t;
     this.app.state.selectedWindow = getWindowForTime(this.app.state.level, this.engine.t);
     this.scene.start('MissionWorkspaceScene');
-    this.app.state.selectedAgentId = selectedAgentId;
-    this.app.state.ui.hoverCell = {
-      x:waypoints[waypoints.length - 1].x, 
-      y:waypoints[waypoints.length - 1].y 
     }
-    this.app.state.plan.agentPlans[missionAgentIndex].selectedStart = {
-      x:engineAgent.x,
-      y:engineAgent.y
-    };
-    this.app.state.mission.agents[missionAgentIndex].deployment.selectedStart = {
-      x:engineAgent.x,
-      y:engineAgent.y
-    };
-    this.app.state.mission.agents[missionAgentIndex].start = {
-      x:engineAgent.x,
-      y:engineAgent.y
-    };
-    this.app.state.mission.agents[missionAgentIndex].deployment.mode = "fixedStart";
-    this.app.phaser.scene.scenes[3].hud.handlers.focusWaypoint(this.app.state.selectedAgentId, waypoints.length - 1);
-    this.app.state.ui.selectedWaypoint = {agentId: this.app.state.agentId, waypoint:waypoints[waypoints.length - 1]};
-    this.app.state.ui.planningAnchor.x = waypoints[waypoints.length - 1].x;
-    this.app.state.ui.planningAnchor.y = waypoints[waypoints.length - 1].y;
-    this.refresh();
-  }
 
   finishFromSurface() {
     traceSimulation(this.trace, { scene: 'SimulationScene', phase: 'surfacing.finish', simTime: this.engine?.t ?? 0, message: 'Finish from surface clicked' });

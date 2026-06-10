@@ -64,8 +64,8 @@ export function normalizePlan(plan, level, mission) {
       const validation = isValidSelectedStart(level, mission, agentId, rawAgentPlan.selectedStart);
       if (validation.valid) {
         agentPlan.selectedStart = {
-          x: Math.round(Number(rawAgentPlan.selectedStart.x)),
-          y: Math.round(Number(rawAgentPlan.selectedStart.y))
+          x: Number(rawAgentPlan.selectedStart.x),
+          y: Number(rawAgentPlan.selectedStart.y)
         };
       }
     }
