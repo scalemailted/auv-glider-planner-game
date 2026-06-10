@@ -23,14 +23,14 @@ export const SAMPLE_FIELD_BEHAVIOR_PRESETS = [
       patternEvolution: 'stationary',
       evolutionModel: 'stationary',
       motionScope: 'perFeature',
-      stateModel: 'frequencyBased',
+      stateModel: 'stateEvolving',
       depletionMode: 'soft',
       timeMode: 'dynamic',
       dynamicComplexity: 'medium',
       displayMode: 'sampleValueLikelihoodOverlay'
     },
     explanation: {
-      expectedBehavior: 'The likelihood view shows separated basins that pulse with phase offsets. The sample value view shows which recurring basins are currently active; not every likely basin must be active at every moment.',
+      expectedBehavior: 'The likelihood view shows separated graph communities that cycle through active, cooling, and recovering states. The sample value view shows which recurring basins are currently active; not every likely basin must be active at every moment.',
       goodForTeaching: 'Recurring-event timing, assignment across known basins, and routes that wait for active windows.'
     }
   },

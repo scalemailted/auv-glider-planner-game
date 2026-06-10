@@ -37,6 +37,7 @@ export function validateSampleFieldPreset(presetId, options = {}) {
   const ranges = frames.map((frame) => frame.dynamicRange);
   const bboxCoverages = frames.map((frame) => frame.activeBoundingBoxCoverage);
   const maxComponents = Math.max(...frames.map((frame) => frame.connectedComponents));
+  const graphFrames = frames.filter((frame) => frame.graphUpdateRule && frame.graphUpdateRule !== 'memoryless');
   const meanDelta = mean(deltas);
   const meanSpatialCorrelation = mean(frames.map((frame) => frame.spatialCorrelation));
   const centerMovement = totalCenterMovement(frames.map((frame) => frame.centerOfMass));
@@ -50,6 +51,11 @@ export function validateSampleFieldPreset(presetId, options = {}) {
   if (preset.id === 'driftingStormCells' && maxComponents < 2) warnings.push('not_enough_distinct_cells');
   if ((preset.id === 'expandingFront' || preset.id === 'forestFireFrontInspired') && avgComponents > 14) warnings.push('front_too_speckled');
   if (['recurringHotspots', 'patchyRainfall', 'neighborSpread'].includes(preset.id) && mean(bboxCoverages) < 0.18) warnings.push('low_domain_coverage');
+  if (graphFrames.length && graphFrames.some((frame) => !frame.graphDiagnosticsPresent)) warnings.push('missing_graph_diagnostics');
+  if (graphFrames.length && mean(graphFrames.map((frame) => frame.graphEngagedNodeCount)) < 1) warnings.push('graph_extinction_risk');
+  if (graphFrames.length && graphFrames.every((frame) => frame.graphSaturationWarning)) warnings.push('graph_saturation_risk');
+  if (preset.id === 'recurringHotspots' && Math.max(...frames.map((frame) => frame.graphClusterCount)) < 3) warnings.push('too_few_recurring_clusters');
+  if (preset.id === 'recurringHotspots' && Math.min(...frames.map((frame) => frame.graphMinClusterSeparation || 1)) < 0.16) warnings.push('recurring_clusters_too_close');
   return {
     presetId: preset.id,
     label: preset.label,
@@ -67,7 +73,13 @@ export function validateSampleFieldPreset(presetId, options = {}) {
       meanFrameDelta: round3(meanDelta),
       centerOfMassMovement: round3(centerMovement),
       meanConnectedComponents: round3(avgComponents),
-      meanSpatialCorrelation: round3(meanSpatialCorrelation)
+      meanSpatialCorrelation: round3(meanSpatialCorrelation),
+      graphUpdateRules: [...new Set(frames.map((frame) => frame.graphUpdateRule).filter(Boolean))],
+      meanGraphClusterCount: round3(mean(graphFrames.map((frame) => frame.graphClusterCount))),
+      minGraphClusterSeparation: round3(finiteMin(graphFrames.map((frame) => frame.graphMinClusterSeparation).filter((value) => Number.isFinite(value) && value > 0))),
+      meanGraphActiveNodeCount: round3(mean(graphFrames.map((frame) => frame.graphActiveNodeCount))),
+      meanGraphEngagedNodeCount: round3(mean(graphFrames.map((frame) => frame.graphEngagedNodeCount))),
+      meanGraphMessageTotal: round3(mean(graphFrames.map((frame) => frame.graphMessageTotal)))
     },
     frames: frames.map(({ sampleValueField: _sampleValueField, ...frame }) => frame)
   };
@@ -80,6 +92,7 @@ export function validateSampleFieldPresets(options = {}) {
 function summarizePresetFrame(field, time) {
   const sampleValueField = field.sampleValueField ?? field.field ?? [];
   const stats = field.activityDiagnostics ?? field.stats ?? {};
+  const graphDiagnostics = field.activityDiagnostics?.graphDiagnostics ?? field.graphField?.diagnostics ?? null;
   const flat = sampleValueField.flat().map((value) => Number(value) || 0);
   const cellCount = Math.max(1, flat.length);
   return {
@@ -94,6 +107,16 @@ function summarizePresetFrame(field, time) {
     diagnosticWarnings: Array.isArray(stats.diagnosticWarnings) ? stats.diagnosticWarnings : [],
     contrastEnhanced: Boolean(stats.contrastEnhanced),
     contrastStrength: round3(stats.contrastStrength ?? 0),
+    graphDiagnosticsPresent: Boolean(graphDiagnostics),
+    graphUpdateRule: graphDiagnostics?.updateRule ?? field.graphField?.graph?.updateRule ?? 'memoryless',
+    graphActiveNodeCount: graphDiagnostics?.activeNodeCount ?? 0,
+    graphEngagedNodeCount: graphEngagedNodeCount(graphDiagnostics),
+    graphClusterCount: graphDiagnostics?.clusterCount ?? 0,
+    graphActiveClusterCount: graphDiagnostics?.activeClusterCount ?? 0,
+    graphMinClusterSeparation: round3(graphDiagnostics?.minClusterSeparation ?? 0),
+    graphMessageTotal: round3(graphDiagnostics?.edgeMessageTotal ?? 0),
+    graphSaturationWarning: Boolean(graphDiagnostics?.saturationWarning),
+    graphExtinctionWarning: Boolean(graphDiagnostics?.extinctionWarning),
     centerOfMass: centerOfMass(sampleValueField),
     connectedComponents: connectedComponents(sampleValueField, 0.55),
     spatialCorrelation: localSpatialCorrelation(sampleValueField),
@@ -220,6 +243,11 @@ function consecutiveSaturation(frames, runLength) {
   return false;
 }
 
+function graphEngagedNodeCount(graphDiagnostics) {
+  const counts = graphDiagnostics?.stateCounts ?? {};
+  return ['active', 'crest', 'alive', 'cooling', 'recovering', 'consumed', 'susceptible'].reduce((total, state) => total + (counts[state] ?? 0), 0);
+}
+
 function sum(values) {
   return values.reduce((total, value) => total + (Number(value) || 0), 0);
 }
@@ -227,6 +255,10 @@ function sum(values) {
 function mean(values) {
   if (!values.length) return 0;
   return sum(values) / values.length;
+}
+
+function finiteMin(values) {
+  return values.length ? Math.min(...values) : 0;
 }
 
 function round3(value) {

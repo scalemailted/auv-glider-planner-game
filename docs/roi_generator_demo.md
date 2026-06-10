@@ -28,7 +28,7 @@ It is not a mission, planner, leaderboard mode, uncertainty demo, forecast/truth
 - `Spatial Evolution`: controls stationary, continuous drift, discrete jump, random walk, or neighbor propagation behavior.
 - `State Model`: selects Time-Indexed, State-Evolving, or History-Aware semantics.
 - `Sampling Effects`: selects none, hard, soft, neighborhood depletion, or knowledge-decay / revisit-recovery behavior.
-- `Display`: switches between Sample Value, Depleted Value, Freshness / Revisit Value, and Raw Base Value.
+- `Display`: switches between Sample Value, Event Likelihood, Sample Value + Likelihood Overlay, Graph Communities, Node States, Graph Messages, Community + Messages, Diagnostics Overlay, Depleted Value, Freshness / Revisit Value, and Raw Base Value.
 - `Time Speed`: controls playback speed for dynamic demo time.
 - Bottom `Pause / Resume`: pauses or resumes dynamic evolution.
 - Bottom `Direction`: runs demo time forward or backward.
@@ -56,12 +56,29 @@ The default is intentionally dynamic and visually active: Clustered Field, Clust
 
 The left panel separates sample behavior into Event Likelihood Field, Spatial Pattern / Geometry, Value Distribution, Temporal Pattern, Spatial Evolution, State Model / Memory, Sampling Effects, and Display. The inspector labels each selected cell as Time-Indexed, Frequency-Based, State-Evolving, or History-Aware so users can tell whether value is computed directly from `x,y,t`, follows a cycle, depends on current field state, or depends on longer sampling/observation history. See [Sample / ROI Field Demo](sample_fields_demo.md) for the taxonomy and motivation.
 
+## Hierarchical Graph-Based Field Dynamics
+
+A dynamic ROI field is represented as a hierarchical grid graph when the selected behavior needs local state. Clusters/communities represent regional likelihood `C_k(t)`, cells represent local likelihood/readiness `L_i(t)` and activation `A_i(t)`, and edges represent message influence between neighboring cells. Update rules use each node's current likelihood/sample/freshness state, incoming messages from neighbors, cluster forcing, temporal forcing, and sampling effects to produce the next `L(x,y,t)`, `S(x,y,t)`, and node state.
+
+The graph layer supports memoryless generation, neighbor spread, cooldown/recovery hotspots, front propagation, ripple/wave activation, directed drift, freshness/revisit recovery, and life-like cellular-emergence inspired local rules. Cellular automata are one special case of this graph-message model, not the whole demo. These are simplified teaching analogs, not validated wildfire, ecological, rainfall, crime, or hydrodynamic simulators.
+
+Graph display layers expose that hierarchy directly:
+
+- `Graph Communities` tints cells by community/basin membership, draws community boundaries, and marks community centroids plus cluster centers.
+- `Node States` shows inactive, active, cooling, recovering, susceptible, consumed, and inhibited node states over a muted sample-value heatmap.
+- `Graph Messages` draws only filtered strong local influence edges instead of every graph edge.
+- `Community + Messages` combines community membership, active nodes, strong message edges, and cluster centers.
+- `Diagnostics Overlay` combines likelihood markers, filtered messages, node-state legend glyphs, and state-count proportions.
+
 ## Cell Inspector
 
 Click any heatmap cell to select it. The right panel updates live with:
 
 - cell coordinates
 - sample value and normalized value
+- event likelihood mesh value `L(x,y,t)`, local mesh average, mesh trend, and nearest likelihood node/mode
+- graph node id, update rule, cluster id, cluster likelihood `C_k(t)`, cell likelihood `L_i(t)`, activation `A_i(t)`, state, cooldown, recovery, freshness/age, community id, incoming/outgoing message totals, neighbor count, active-neighbor count, and dominant incoming direction
+- strongest incoming/outgoing local message and inhibited-neighbor count for graph-backed fields
 - trend over the previous simulated second
 - field mode, displayed layer, spatial pattern, cluster count, cluster size, temporal pattern, spatial evolution, and display layer
 - raw base value
@@ -73,7 +90,11 @@ Click any heatmap cell to select it. The right panel updates live with:
 
 The center viewport renders a heatmap over a fixed diagnostic grid. Cooler cells are lower value, warmer cells are higher value, and outlined markers show high-value cells that a greedy planner might be tempted to chase.
 
-The status line reports spatial pattern, temporal pattern, spatial evolution, state model, sampling effect, display mode, seed, demo time when dynamic, and basic field statistics such as max, mean, and total value.
+In overlay mode, the sample-value heatmap `S(x,y,t)` stays underneath a cell-centered likelihood mesh for `L(x,y,t)`. Each cell can render a likelihood dot at its center; dot size, brightness, and rings increase as likelihood approaches activation. Likelihood nodes or modes are sources/basins that influence this mesh, not the full field by themselves.
+
+The status line reports spatial pattern, temporal pattern, spatial evolution, state model, sampling effect, display mode, seed, demo time when dynamic, sample-value statistics, likelihood mesh statistics, and graph diagnostics such as update rule, active node count, and message totals.
+
+Graph views keep the old sample-value-only layer available, but default to Sample Value + Likelihood Overlay so `S(x,y,t)` and `L(x,y,t)` are visible together before switching into hierarchy diagnostics.
 
 ## Implementation
 
@@ -81,6 +102,10 @@ Relevant files:
 
 - `src/game/phaser/scenes/RoiGeneratorDemoScene.js`
 - `src/core/demo/DemoRoiFields.js`
+- `src/core/demo/roi/RoiGraphField.js`
+- `src/core/demo/roi/RoiGraphTopology.js`
+- `src/core/demo/roi/RoiGraphUpdateRules.js`
+- `src/core/demo/roi/RoiGraphDiagnostics.js`
 - `src/core/generation/SampleFieldConfig.js`
 - `src/core/generation/ROIFieldGenerator.js`
 - `src/core/random/SeededRng.js`

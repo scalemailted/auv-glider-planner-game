@@ -358,12 +358,29 @@ test('campaign planning smoke flow reaches debrief', async ({ page }) => {
   expect(roiArtifact.data.fields.eventLikelihood[0].length).toBe(roiArtifact.data.grid.width);
   expect(roiArtifact.data.likelihoodField.type).toBe('multiModalLikelihood');
   expect(roiArtifact.data.likelihoodField.diagnostics.modeCount).toBeGreaterThan(1);
+  expect(roiArtifact.data.likelihoodField.values.length).toBe(roiArtifact.data.grid.height);
+  expect(roiArtifact.data.likelihoodField.mesh).toMatchObject({
+    activeThreshold: 0.25,
+    highThreshold: 0.7,
+    nearTriggerThreshold: 0.9
+  });
+  expect(roiArtifact.data.metadata.likelihoodMesh.highThreshold).toBe(0.7);
+  expect(roiArtifact.data.graphField.graph.topology).toBe('8-neighbor');
+  expect(roiArtifact.data.graphField.graph.hierarchy).toBe('cluster-cell-edge');
+  expect(roiArtifact.data.graphField.graph.nodeCount).toBe(roiArtifact.data.grid.width * roiArtifact.data.grid.height);
+  expect(roiArtifact.data.clusters.length).toBeGreaterThan(1);
+  expect(roiArtifact.data.frames[0].fields.graphState.length).toBe(roiArtifact.data.grid.height);
+  expect(roiArtifact.data.frames[0].fields.graphActivation.length).toBe(roiArtifact.data.grid.height);
+  expect(roiArtifact.data.frames[0].fields.graphClusterLikelihood.length).toBe(roiArtifact.data.grid.height);
+  expect(roiArtifact.data.frames[0].fields.graphIncomingMessage[0].length).toBe(roiArtifact.data.grid.width);
+  expect(roiArtifact.data.likelihoodField.diagnostics.activeLikelihoodCellFraction).toBeGreaterThan(0);
   expect(roiArtifact.data.metadata.activityDiagnostics.meanValue).toBeGreaterThan(0);
   expect(roiArtifact.data.metadata.activityDiagnostics.activeFraction).toBeGreaterThan(0.1);
   expect(roiArtifact.data.frames[0].activityDiagnostics.totalActivityMass).toBeGreaterThan(0);
   expect(roiArtifact.data.behaviorPreset.id).toBe('custom');
   await expect(page.locator('#mission-console')).toContainText('Activity');
   await expect(page.locator('#mission-console')).toContainText('Injected');
+  await expect(page.locator('#mission-console')).toContainText('mesh range');
   await expect(page.locator('#roi-demo-behavior-preset')).toBeVisible();
   await expect(page.locator('#roi-demo-behavior-preset option')).toHaveText([
     'Custom',
@@ -510,6 +527,11 @@ test('campaign planning smoke flow reaches debrief', async ({ page }) => {
     'Sample Value',
     'Event Likelihood',
     'Sample Value + Likelihood Overlay',
+    'Graph Communities',
+    'Node States',
+    'Graph Messages',
+    'Community + Messages',
+    'Diagnostics Overlay',
     'Depleted Value',
     'Freshness / Revisit Value',
     'Raw Base Value'
@@ -555,7 +577,7 @@ test('campaign planning smoke flow reaches debrief', async ({ page }) => {
   await expect(page.locator('#waypoint-timeline')).toContainText('value distribution');
   await expect(page.locator('#waypoint-timeline')).toContainText('seeded value');
   await expect(page.locator('#waypoint-timeline')).toContainText('value band');
-  await expect(page.locator('#waypoint-timeline')).toContainText('L(x,y,t) is the event-prone spawn substrate');
+  await expect(page.locator('#waypoint-timeline')).toContainText('Likelihood mesh values show event potential at every cell');
   await expect(page.locator('#waypoint-timeline')).toContainText('Sample value is the currently realized reward');
   await expect(page.locator('#waypoint-timeline')).toContainText('pattern parameters');
   await expect(page.locator('#waypoint-timeline')).toContainText('temporal pattern');
@@ -563,6 +585,12 @@ test('campaign planning smoke flow reaches debrief', async ({ page }) => {
   await expect(page.locator('#waypoint-timeline')).toContainText('motion scope');
   await expect(page.locator('#waypoint-timeline')).toContainText('feature motion');
   await expect(page.locator('#waypoint-timeline')).toContainText('state model');
+  await expect(page.locator('#waypoint-timeline')).toContainText('Graph Field Node');
+  await expect(page.locator('#waypoint-timeline')).toContainText('C_k(t)');
+  await expect(page.locator('#waypoint-timeline')).toContainText('L_i(t)');
+  await expect(page.locator('#waypoint-timeline')).toContainText('A_i(t)');
+  await expect(page.locator('#waypoint-timeline')).toContainText('incoming message');
+  await expect(page.locator('#waypoint-timeline')).toContainText('active neighbors');
   await page.locator('#roi-demo-spatial-pattern').selectOption('clusteredField');
   await page.locator('#roi-demo-event-likelihood').selectOption('gaussianLikelihood');
   await expect.poll(() => page.evaluate(() => window.anchorGame.phaser.scene.getScene('RoiGeneratorDemoScene').eventLikelihood)).toBe('gaussianLikelihood');
@@ -688,6 +716,8 @@ test('campaign planning smoke flow reaches debrief', async ({ page }) => {
   await expect(page.locator('#bottom-timeline')).toContainText('Behavior: Periodic / Cyclic');
   await page.locator('#roi-demo-spatial-evolution').selectOption('neighborPropagation');
   await expect.poll(() => page.evaluate(() => window.anchorGame.phaser.scene.getScene('RoiGeneratorDemoScene').spatialEvolution)).toBe('neighborPropagation');
+  await expect.poll(() => page.evaluate(() => window.anchorGame.phaser.scene.getScene('RoiGeneratorDemoScene').field.graphField.graph.updateRule)).toBe('neighborSpread');
+  await expect.poll(() => page.evaluate(() => window.anchorGame.phaser.scene.getScene('RoiGeneratorDemoScene').field.activityDiagnostics.graphDiagnostics.activeNodeCount)).toBeGreaterThan(0);
   await page.locator('#roi-demo-spatial-evolution').selectOption('continuousDrift');
   await expect.poll(() => page.evaluate(() => window.anchorGame.phaser.scene.getScene('RoiGeneratorDemoScene').spatialEvolution)).toBe('continuousDrift');
   await page.locator('#roi-demo-spatial-evolution').selectOption('discreteJump');

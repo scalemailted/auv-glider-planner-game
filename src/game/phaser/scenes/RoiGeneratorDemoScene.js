@@ -477,7 +477,7 @@ export class RoiGeneratorDemoScene extends PhaserScene {
     this.graphics.clear();
     this.drawBackground(layout);
     this.drawHeatmap(layout.map);
-    this.drawHighValueMarkers(layout.map);
+    if (!isGraphDisplayMode(this.field.displayMode)) this.drawHighValueMarkers(layout.map);
     this.drawSelectedCell(layout.map);
     this.layoutText(layout);
     this.updateTransportBar();
@@ -499,6 +499,40 @@ export class RoiGeneratorDemoScene extends PhaserScene {
     const height = this.field.height;
     const cellW = map.width / width;
     const cellH = map.height / height;
+    const displayMode = this.field.displayMode;
+    if (displayMode === 'graphCommunities') {
+      this.drawCommunityLayer(map, cellW, cellH, { showHeatmap: false, showCenters: true, showCentroids: true });
+      this.drawGrid(map, cellW, cellH, width, height, 0.2);
+      return;
+    }
+    if (displayMode === 'nodeStates') {
+      this.drawMutedHeatmap(field, map, cellW, cellH, 0.24);
+      this.drawNodeStateLayer(map, cellW, cellH, { showInactive: true });
+      this.drawGrid(map, cellW, cellH, width, height, 0.2);
+      return;
+    }
+    if (displayMode === 'graphMessages') {
+      this.drawMutedHeatmap(field, map, cellW, cellH, 0.18);
+      this.drawGraphMessages(map, cellW, cellH, { showDirections: true, maxEdges: 110 });
+      this.drawNodeStateLayer(map, cellW, cellH, { showInactive: false, compact: true });
+      this.drawGrid(map, cellW, cellH, width, height, 0.16);
+      return;
+    }
+    if (displayMode === 'communityMessages') {
+      this.drawCommunityLayer(map, cellW, cellH, { showHeatmap: true, showCenters: true, showCentroids: false });
+      this.drawGraphMessages(map, cellW, cellH, { showDirections: true, maxEdges: 90 });
+      this.drawNodeStateLayer(map, cellW, cellH, { showInactive: false, compact: true });
+      this.drawGrid(map, cellW, cellH, width, height, 0.18);
+      return;
+    }
+    if (displayMode === 'diagnosticsOverlay') {
+      this.drawMutedHeatmap(field, map, cellW, cellH, 0.36);
+      this.drawLikelihoodMesh(map, cellW, cellH);
+      this.drawGraphMessages(map, cellW, cellH, { showDirections: false, maxEdges: 60, alphaScale: 0.62 });
+      this.drawDiagnosticsOverlay(map, cellW, cellH);
+      this.drawGrid(map, cellW, cellH, width, height, 0.18);
+      return;
+    }
     for (let y = 0; y < height; y += 1) {
       for (let x = 0; x < width; x += 1) {
         const value = Number(field[y]?.[x] ?? 0);
@@ -507,36 +541,230 @@ export class RoiGeneratorDemoScene extends PhaserScene {
         this.graphics.fillRect(map.x + x * cellW, map.y + y * cellH, cellW + 1, cellH + 1);
       }
     }
-    this.graphics.lineStyle(1, 0x163747, 0.28);
+    this.drawGrid(map, cellW, cellH, width, height, 0.28);
+    if (this.field.displayMode === 'sampleValueLikelihoodOverlay' || this.field.displayMode === 'eventLikelihood') {
+      this.drawLikelihoodMesh(map, cellW, cellH);
+    }
+  }
+
+  drawGrid(map, cellW, cellH, width, height, alpha = 0.28) {
+    this.graphics.lineStyle(1, 0x163747, alpha);
     for (let x = 0; x <= width; x += 1) {
       this.graphics.lineBetween(map.x + x * cellW, map.y, map.x + x * cellW, map.y + map.height);
     }
     for (let y = 0; y <= height; y += 1) {
       this.graphics.lineBetween(map.x, map.y + y * cellH, map.x + map.width, map.y + y * cellH);
     }
-    if (this.field.displayMode === 'sampleValueLikelihoodOverlay') {
-      this.drawLikelihoodOverlay(map, cellW, cellH);
+  }
+
+  drawMutedHeatmap(field, map, cellW, cellH, alphaScale = 0.24) {
+    const height = field?.length ?? 0;
+    const width = field?.[0]?.length ?? 0;
+    for (let y = 0; y < height; y += 1) {
+      for (let x = 0; x < width; x += 1) {
+        const value = Number(field[y]?.[x] ?? 0);
+        this.graphics.fillStyle(heatColor(value), alphaScale * (0.35 + value * 0.65));
+        this.graphics.fillRect(map.x + x * cellW, map.y + y * cellH, cellW + 1, cellH + 1);
+      }
     }
   }
 
-  drawLikelihoodOverlay(map, cellW, cellH) {
-    const likelihood = this.field?.eventLikelihoodField ?? [];
+  drawLikelihoodMesh(map, cellW, cellH) {
+    const likelihood = this.field?.likelihoodField?.values ?? this.field?.eventLikelihoodField ?? [];
+    const mesh = this.field?.likelihoodField?.mesh ?? {};
+    const activeThreshold = Number(mesh.activeThreshold ?? 0.25);
+    const highThreshold = Number(mesh.highThreshold ?? 0.7);
+    const nearTriggerThreshold = Number(mesh.nearTriggerThreshold ?? 0.9);
     const width = this.field.width;
     const height = this.field.height;
+    const minCell = Math.min(cellW, cellH);
+    const propagationMode = ['neighborPropagation'].includes(this.field?.eventLikelihoodSpatialEvolution)
+      || ['neighborPropagation'].includes(this.field?.spatialEvolution)
+      || (this.field?.graphField?.graph?.updateRule && this.field.graphField.graph.updateRule !== 'memoryless');
+    if (propagationMode) this.drawLikelihoodNeighborLinks(map, cellW, cellH, likelihood, highThreshold);
     for (let y = 0; y < height; y += 1) {
       for (let x = 0; x < width; x += 1) {
         const value = Number(likelihood[y]?.[x] ?? 0);
-        if (value < 0.42) continue;
         const cx = map.x + (x + 0.5) * cellW;
         const cy = map.y + (y + 0.5) * cellH;
-        const radius = Math.max(1.5, Math.min(cellW, cellH) * (0.1 + value * 0.2));
-        this.graphics.fillStyle(0xf7f7c6, 0.12 + value * 0.34);
+        const visibleValue = Math.max(0.08, value);
+        const radius = Math.max(0.75, minCell * (0.035 + visibleValue * 0.22));
+        const alpha = value < 0.15 ? 0.08 + value * 0.3 : 0.14 + value * 0.42;
+        const color = value >= nearTriggerThreshold ? 0xffffff : value >= highThreshold ? 0xf7f7c6 : value >= activeThreshold ? 0xbbe7d2 : 0x7ebf78;
+        this.graphics.fillStyle(color, alpha);
         this.graphics.fillCircle(cx, cy, radius);
-        if (value >= 0.72) {
-          this.graphics.lineStyle(1, 0xffffff, 0.42 + value * 0.28);
-          this.graphics.strokeCircle(cx, cy, radius + Math.min(cellW, cellH) * 0.16);
+        if (value >= activeThreshold) {
+          const ringColor = value >= nearTriggerThreshold ? 0xffffff : value >= highThreshold ? 0xf4d35e : 0x9ee7c8;
+          const ringAlpha = value >= nearTriggerThreshold ? 0.72 : value >= highThreshold ? 0.48 : 0.26;
+          this.graphics.lineStyle(value >= nearTriggerThreshold ? 2 : 1, ringColor, ringAlpha);
+          this.graphics.strokeCircle(cx, cy, radius + minCell * (value >= nearTriggerThreshold ? 0.15 : 0.08));
+        }
+        if (value >= nearTriggerThreshold && (Math.floor(this.demoTime * 4 + x + y) % 2 === 0)) {
+          this.graphics.lineStyle(1, 0xffffff, 0.28);
+          this.graphics.strokeCircle(cx, cy, radius + minCell * 0.25);
+        }
+        const graphNode = this.field?.graphField?.nodeGrid?.[y]?.[x];
+        if (graphNode?.state && graphNode.state !== 'inactive') {
+          const stateStyle = graphStateStyle(graphNode.state);
+          this.graphics.lineStyle(stateStyle.width, stateStyle.color, stateStyle.alpha);
+          this.graphics.strokeCircle(cx, cy, radius + minCell * stateStyle.radiusScale);
         }
       }
+    }
+  }
+
+  drawLikelihoodNeighborLinks(map, cellW, cellH, likelihood, highThreshold) {
+    const height = likelihood?.length ?? 0;
+    const width = likelihood?.[0]?.length ?? 0;
+    this.graphics.lineStyle(1, 0xdfffe5, 0.13);
+    for (let y = 0; y < height; y += 1) {
+      for (let x = 0; x < width; x += 1) {
+        const value = Number(likelihood[y]?.[x] ?? 0);
+        if (value < highThreshold) continue;
+        const cx = map.x + (x + 0.5) * cellW;
+        const cy = map.y + (y + 0.5) * cellH;
+        for (const [dx, dy] of [[1, 0], [0, 1]]) {
+          const other = Number(likelihood[y + dy]?.[x + dx] ?? 0);
+          if (other < highThreshold) continue;
+          this.graphics.lineBetween(cx, cy, map.x + (x + dx + 0.5) * cellW, map.y + (y + dy + 0.5) * cellH);
+        }
+      }
+    }
+  }
+
+  drawCommunityLayer(map, cellW, cellH, { showHeatmap = false, showCenters = true, showCentroids = true } = {}) {
+    const nodes = this.field?.graphField?.nodeGrid ?? [];
+    const clusters = this.field?.graphField?.clusters ?? [];
+    const field = this.field?.sampleValueField ?? this.field?.field ?? [];
+    const height = this.field?.height ?? nodes.length;
+    const width = this.field?.width ?? nodes[0]?.length ?? 0;
+    if (showHeatmap) this.drawMutedHeatmap(field, map, cellW, cellH, 0.2);
+    for (let y = 0; y < height; y += 1) {
+      for (let x = 0; x < width; x += 1) {
+        const communityId = nodes[y]?.[x]?.communityId ?? 0;
+        const color = communityColor(communityId);
+        this.graphics.fillStyle(color, showHeatmap ? 0.16 : 0.28);
+        this.graphics.fillRect(map.x + x * cellW, map.y + y * cellH, cellW + 1, cellH + 1);
+        const east = nodes[y]?.[x + 1]?.communityId;
+        const south = nodes[y + 1]?.[x]?.communityId;
+        if (east !== undefined && east !== communityId) {
+          this.graphics.lineStyle(1, 0xf3f7d4, 0.42);
+          this.graphics.lineBetween(map.x + (x + 1) * cellW, map.y + y * cellH, map.x + (x + 1) * cellW, map.y + (y + 1) * cellH);
+        }
+        if (south !== undefined && south !== communityId) {
+          this.graphics.lineStyle(1, 0xf3f7d4, 0.42);
+          this.graphics.lineBetween(map.x + x * cellW, map.y + (y + 1) * cellH, map.x + (x + 1) * cellW, map.y + (y + 1) * cellH);
+        }
+      }
+    }
+    if (showCentroids) {
+      for (const centroid of communityCentroids(nodes)) {
+        const cx = map.x + (centroid.x + 0.5) * cellW;
+        const cy = map.y + (centroid.y + 0.5) * cellH;
+        this.graphics.fillStyle(0xffffff, 0.6);
+        this.graphics.fillCircle(cx, cy, Math.max(1.5, Math.min(cellW, cellH) * 0.08));
+        this.graphics.lineStyle(1, communityColor(centroid.communityId), 0.8);
+        this.graphics.strokeCircle(cx, cy, Math.max(3, Math.min(cellW, cellH) * 0.18));
+      }
+    }
+    if (showCenters) {
+      for (const cluster of clusters) {
+        const cx = map.x + (Number(cluster.center?.x ?? cluster.x * (width - 1)) + 0.5) * cellW;
+        const cy = map.y + (Number(cluster.center?.y ?? cluster.y * (height - 1)) + 0.5) * cellH;
+        const radius = Math.max(4, Math.min(cellW, cellH) * (0.22 + Number(cluster.likelihood ?? 0) * 0.18));
+        this.graphics.lineStyle(2, communityColor(cluster.communityId), 0.92);
+        this.graphics.strokeCircle(cx, cy, radius);
+        this.graphics.fillStyle(0xffffff, cluster.state === 'active' ? 0.72 : 0.42);
+        this.graphics.fillCircle(cx, cy, Math.max(2, radius * 0.28));
+      }
+    }
+  }
+
+  drawNodeStateLayer(map, cellW, cellH, { showInactive = false, compact = false } = {}) {
+    const nodes = this.field?.graphField?.nodeGrid ?? [];
+    const height = this.field?.height ?? nodes.length;
+    const width = this.field?.width ?? nodes[0]?.length ?? 0;
+    const minCell = Math.min(cellW, cellH);
+    for (let y = 0; y < height; y += 1) {
+      for (let x = 0; x < width; x += 1) {
+        const node = nodes[y]?.[x];
+        if (!node) continue;
+        if (!showInactive && (!node.state || node.state === 'inactive' || node.state === 'susceptible')) continue;
+        const style = graphStateStyle(node.state);
+        const activation = Math.max(0.08, Number(node.activation ?? node.cellLikelihood ?? node.likelihood ?? 0));
+        const cx = map.x + (x + 0.5) * cellW;
+        const cy = map.y + (y + 0.5) * cellH;
+        const radius = Math.max(1.1, minCell * (compact ? 0.08 + activation * 0.1 : 0.06 + activation * 0.18));
+        this.graphics.fillStyle(style.color, node.state === 'inactive' ? 0.12 : Math.max(0.18, style.alpha * 0.72));
+        this.graphics.fillCircle(cx, cy, radius);
+        this.graphics.lineStyle(style.width, style.color, node.state === 'inactive' ? 0.18 : style.alpha);
+        this.graphics.strokeCircle(cx, cy, radius + minCell * style.radiusScale);
+        if (node.state === 'consumed' || node.state === 'inhibited') {
+          this.graphics.lineStyle(1, style.color, 0.55);
+          this.graphics.lineBetween(cx - radius, cy - radius, cx + radius, cy + radius);
+          this.graphics.lineBetween(cx + radius, cy - radius, cx - radius, cy + radius);
+        }
+      }
+    }
+  }
+
+  drawGraphMessages(map, cellW, cellH, { showDirections = true, maxEdges = 100, alphaScale = 1 } = {}) {
+    const messages = topGraphMessages(this.field?.graphField, { maxEdges });
+    const maxStrength = Math.max(0.0001, ...messages.map((message) => message.strength));
+    for (const message of messages) {
+      const alpha = Math.min(0.68, (0.12 + message.strength / maxStrength * 0.48) * alphaScale);
+      const color = message.sameCommunity ? communityColor(message.communityId) : 0xf4d35e;
+      const sx = map.x + (message.source.x + 0.5) * cellW;
+      const sy = map.y + (message.source.y + 0.5) * cellH;
+      const tx = map.x + (message.target.x + 0.5) * cellW;
+      const ty = map.y + (message.target.y + 0.5) * cellH;
+      this.graphics.lineStyle(message.sameCommunity ? 1 : 2, color, alpha);
+      this.graphics.lineBetween(sx, sy, tx, ty);
+      if (showDirections) {
+        const mx = sx * 0.42 + tx * 0.58;
+        const my = sy * 0.42 + ty * 0.58;
+        const angle = Math.atan2(ty - sy, tx - sx);
+        const size = Math.max(2.4, Math.min(cellW, cellH) * 0.12);
+        this.graphics.fillStyle(color, alpha);
+        this.graphics.fillTriangle(
+          mx + Math.cos(angle) * size,
+          my + Math.sin(angle) * size,
+          mx + Math.cos(angle + 2.45) * size,
+          my + Math.sin(angle + 2.45) * size,
+          mx + Math.cos(angle - 2.45) * size,
+          my + Math.sin(angle - 2.45) * size
+        );
+      }
+    }
+  }
+
+  drawDiagnosticsOverlay(map, cellW, cellH) {
+    const graph = this.field?.activityDiagnostics?.graphDiagnostics ?? this.field?.graphField?.diagnostics ?? {};
+    const legendX = map.x + 14;
+    const legendY = map.y + 14;
+    const states = ['active', 'cooling', 'recovering', 'susceptible', 'consumed', 'inactive'];
+    this.graphics.fillStyle(0x081827, 0.78);
+    this.graphics.fillRoundedRect(legendX - 8, legendY - 8, 190, 86, 6);
+    states.forEach((state, index) => {
+      const style = graphStateStyle(state);
+      const x = legendX + (index % 3) * 58;
+      const y = legendY + Math.floor(index / 3) * 34;
+      this.graphics.fillStyle(style.color, state === 'inactive' ? 0.18 : 0.7);
+      this.graphics.fillCircle(x, y, 5);
+      this.graphics.lineStyle(1, style.color, style.alpha);
+      this.graphics.strokeCircle(x, y, 9);
+    });
+    const barX = legendX;
+    const barY = legendY + 66;
+    const total = Math.max(1, Object.values(graph.stateCounts ?? {}).reduce((sum, value) => sum + Number(value || 0), 0));
+    let offset = 0;
+    for (const state of states) {
+      const count = Number(graph.stateCounts?.[state] ?? 0);
+      if (!count) continue;
+      const width = 170 * count / total;
+      this.graphics.fillStyle(graphStateStyle(state).color, 0.7);
+      this.graphics.fillRect(barX + offset, barY, width, 7);
+      offset += width;
     }
   }
 
@@ -568,8 +796,12 @@ export class RoiGeneratorDemoScene extends PhaserScene {
     const stateModel = this.field?.stateModel ?? roiStateModelForEvolutionModel(this.field?.evolutionModel ?? this.evolutionModel);
     const range = diagnostics.dynamicRangeAfterContrast ?? ((diagnostics.maxValue ?? stats.max ?? 0) - (diagnostics.minValue ?? stats.min ?? 0));
     const warningText = diagnostics.diagnosticWarnings?.length ? ` | warnings ${diagnostics.diagnosticWarnings.join(', ')}` : '';
-    const activityText = `Activity: mean ${formatStat(diagnostics.meanValue ?? stats.mean)} | active ${formatPercent(diagnostics.activeFraction)} | high ${formatPercent(diagnostics.highValueFraction)} | max ${formatStat(diagnostics.maxValue ?? stats.max)} | range ${formatStat(range)} | bbox ${formatPercent(diagnostics.activeBoundingBoxCoverage)} | components ${diagnostics.connectedComponentCount ?? 0} | hotspots ${diagnostics.activeHotspotCount ?? diagnostics.hotspotComponentCount ?? 0} | L/S corr ${formatStat(diagnostics.likelihoodSampleCorrelation)} | injected +${formatStat(diagnostics.injectedActivity)}${warningText}`;
-    this.statusText?.setText(`Event Likelihood: ${roiEventLikelihoodLabel(this.field?.eventLikelihood ?? this.eventLikelihood)} (${roiLikelihoodDynamicsLabel(this.field?.eventLikelihoodDynamics ?? this.eventLikelihoodDynamics)}) | Spatial: ${roiPureSpatialPatternLabel(this.field?.pureSpatialPattern ?? this.spatialPattern)} | Value Distribution: ${roiValueDistributionLabel(this.field?.valueDistribution ?? this.valueDistribution)} | Temporal: ${roiTemporalPatternLabel(this.field?.temporalPattern ?? this.temporalPattern)} | Spatial Evolution: ${roiSpatialEvolutionLabel(this.field?.spatialEvolution ?? this.spatialEvolution)} | State Model: ${roiStateModelLabel(stateModel)} | Sampling: ${roiDepletionModeLabel(this.field?.depletionMode ?? this.depletionMode)} | Display: ${roiDisplayModeLabel(this.field?.displayMode ?? this.displayMode)} | Seed: ${this.seed}${dynamicText} | ${activityText} | Total: ${formatStat(stats.totalValue)}`);
+    const mesh = diagnostics.likelihood ?? this.field?.likelihoodField?.diagnostics ?? {};
+    const meshText = `mesh max ${formatStat(mesh.max)} | mesh active ${formatPercent(mesh.activeLikelihoodCellFraction)} | mesh high ${formatPercent(mesh.highLikelihoodCellFraction)} | near ${formatPercent(mesh.nearTriggerLikelihoodCellFraction)} | modes ${mesh.modeCount ?? 0}`;
+    const graph = diagnostics.graphDiagnostics ?? this.field?.graphField?.diagnostics;
+    const graphText = graph ? ` | graph ${graph.updateRule} | clusters ${graph.clusterCount ?? 0}/${graph.activeClusterCount ?? 0} active | nodes active ${graph.activeNodeCount ?? 0} | states ${formatGraphStateSummary(graph.stateCounts)} | messages ${formatStat(graph.edgeMessageTotal)}` : '';
+    const activityText = `Activity: mean ${formatStat(diagnostics.meanValue ?? stats.mean)} | active ${formatPercent(diagnostics.activeFraction)} | high ${formatPercent(diagnostics.highValueFraction)} | max ${formatStat(diagnostics.maxValue ?? stats.max)} | range ${formatStat(range)} | bbox ${formatPercent(diagnostics.activeBoundingBoxCoverage)} | components ${diagnostics.connectedComponentCount ?? 0} | hotspots ${diagnostics.activeHotspotCount ?? diagnostics.hotspotComponentCount ?? 0} | ${meshText}${graphText} | L/S corr ${formatStat(diagnostics.likelihoodSampleCorrelation)} | injected +${formatStat(diagnostics.injectedActivity)}${warningText}`;
+    this.statusText?.setText(`Event Likelihood Field: ${roiEventLikelihoodLabel(this.field?.eventLikelihood ?? this.eventLikelihood)} (${roiLikelihoodDynamicsLabel(this.field?.eventLikelihoodDynamics ?? this.eventLikelihoodDynamics)}) | Spatial: ${roiPureSpatialPatternLabel(this.field?.pureSpatialPattern ?? this.spatialPattern)} | Value Distribution: ${roiValueDistributionLabel(this.field?.valueDistribution ?? this.valueDistribution)} | Temporal: ${roiTemporalPatternLabel(this.field?.temporalPattern ?? this.temporalPattern)} | Spatial Evolution: ${roiSpatialEvolutionLabel(this.field?.spatialEvolution ?? this.spatialEvolution)} | State Model: ${roiStateModelLabel(stateModel)} | Sampling: ${roiDepletionModeLabel(this.field?.depletionMode ?? this.depletionMode)} | Display: ${roiDisplayModeLabel(this.field?.displayMode ?? this.displayMode)} | Seed: ${this.seed}${dynamicText} | ${activityText} | Total: ${formatStat(stats.totalValue)}`);
     this.statusText?.setWordWrapWidth(Math.min(1040, map.width));
     this.statusText?.setPosition(margin, map.y + map.height + 18);
   }
@@ -794,6 +1026,13 @@ export class RoiGeneratorDemoScene extends PhaserScene {
     const spatialPattern = this.field?.pureSpatialPattern ?? this.spatialPattern;
     const spatialHelp = roiSpatialPatternHelp(spatialPattern);
     const nearestLikelihoodNode = nearestLikelihoodNodeForCell(this.field?.likelihoodField, cell);
+    const localLikelihood = localLikelihoodMeshStats(this.field?.likelihoodField?.values ?? this.field?.eventLikelihoodField, cell);
+    const previousLikelihoodField = previousField.likelihoodField?.values ?? previousField.eventLikelihoodField;
+    const previousLikelihood = Number(previousLikelihoodField?.[cell.row]?.[cell.col] ?? eventLikelihoodValue);
+    const graphNode = this.field?.graphField?.nodeGrid?.[cell.row]?.[cell.col] ?? null;
+    const graphDiagnostics = this.field?.graphField?.diagnostics ?? this.field?.activityDiagnostics?.graphDiagnostics ?? null;
+    const nearestCluster = nearestClusterForCell(this.field?.graphField?.clusters, cell, this.field?.width, this.field?.height);
+    const graphNeighborhood = graphMessageNeighborhood(this.field?.graphField, cell);
     return {
       cell,
       value,
@@ -812,9 +1051,20 @@ export class RoiGeneratorDemoScene extends PhaserScene {
       eventLikelihoodSpatialEvolution: this.field?.eventLikelihoodSpatialEvolution ?? this.eventLikelihoodSpatialEvolution,
       eventLikelihoodSpatialEvolutionLabel: this.field?.eventLikelihoodSpatialEvolutionLabel ?? roiLikelihoodSpatialEvolutionLabel(this.eventLikelihoodSpatialEvolution),
       eventLikelihoodValue,
+      eventLikelihoodDelta: eventLikelihoodValue - previousLikelihood,
       eventLikelihoodBand: likelihoodBandLabel(eventLikelihoodValue),
+      likelihoodMeshPercentile: likelihoodMeshPercentile(eventLikelihoodValue),
+      localLikelihoodAverage: localLikelihood.average,
+      localLikelihoodTrend: likelihoodTrendLabel(eventLikelihoodValue - previousLikelihood, localLikelihood.average),
       likelihoodField: this.field?.likelihoodField,
       nearestLikelihoodNode,
+      graphNode,
+      graphDiagnostics,
+      graphNeighborhood,
+      nearestCluster,
+      graphUpdateRule: this.field?.graphField?.updateRule ?? this.field?.graphField?.graph?.updateRule ?? 'memoryless',
+      graphTopology: this.field?.graphField?.topology ?? this.field?.graphField?.graph?.topology ?? '8-neighbor',
+      graphEdgeCount: this.field?.graphField?.edgeCount ?? this.field?.graphField?.graph?.edgeCount ?? 0,
       spatialPattern,
       valueDistribution: this.field?.valueDistribution ?? this.valueDistribution,
       valueDistributionLabel: this.field?.valueDistributionLabel ?? roiValueDistributionLabel(this.valueDistribution),
@@ -889,6 +1139,8 @@ export class RoiGeneratorDemoScene extends PhaserScene {
       config: this.sceneConfig(),
       fields: currentFrame.fields,
       likelihoodField: currentFrame.likelihoodField,
+      graphField: currentFrame.graphField,
+      clusters: currentFrame.clusters,
       frames,
       selectedCell: this.selectedCell ? this.inspectSelectedCell() : null,
       behaviorPreset,
@@ -905,6 +1157,9 @@ export class RoiGeneratorDemoScene extends PhaserScene {
         stats: field.stats,
         activityDiagnostics: field.activityDiagnostics,
         likelihoodField: field.likelihoodField,
+        likelihoodMesh: field.likelihoodField?.mesh,
+        graphField: field.graphField?.graph,
+        clusters: field.graphField?.clusters,
         highValueCells: field.highValueCells,
         freshnessNote: 'Freshness / Age of Information layers are demo-only unless connected to real mission visit history.',
         historyAwareExport: {
@@ -929,9 +1184,17 @@ export class RoiGeneratorDemoScene extends PhaserScene {
         sampleValue: cloneField(field.sampleValueField ?? field.field),
         eventLikelihood: cloneField(field.eventLikelihoodField),
         rawBaseValue: cloneField(field.rawBaseField),
-        evolvedValue: cloneField(field.evolvedField)
+        evolvedValue: cloneField(field.evolvedField),
+        graphState: cloneField(field.graphField?.stateField),
+        graphActivation: cloneField(field.graphField?.activationField),
+        graphCommunityId: graphCommunityField(field.graphField),
+        graphClusterLikelihood: cloneField(field.graphField?.clusterLikelihoodField),
+        graphIncomingMessage: cloneField(field.graphField?.incomingMessageField),
+        graphTopMessages: topGraphMessages(field.graphField, { maxEdges: 120 })
       },
       likelihoodField: cloneLikelihoodFieldModel(field.likelihoodField),
+      graphField: cloneGraphFieldModel(field.graphField),
+      clusters: cloneClusters(field.graphField?.clusters),
       activityDiagnostics: field.activityDiagnostics,
       behaviorPreset: sampleFieldBehaviorPresetMetadata(this.behaviorPresetId, this.behaviorPresetModified)
     };
@@ -1010,6 +1273,50 @@ function nearestLikelihoodNodeForCell(model, cell) {
     .sort((a, b) => a.distance - b.distance)[0] ?? null;
 }
 
+function nearestClusterForCell(clusters, cell, width, height) {
+  if (!Array.isArray(clusters) || !clusters.length || !width || !height) return null;
+  const nx = width > 1 ? Number(cell.col ?? cell.x ?? 0) / (width - 1) : 0;
+  const ny = height > 1 ? Number(cell.row ?? cell.y ?? 0) / (height - 1) : 0;
+  return clusters
+    .map((cluster) => ({
+      ...cluster,
+      distance: Math.hypot(nx - Number(cluster.x ?? 0), ny - Number(cluster.y ?? 0))
+    }))
+    .sort((a, b) => a.distance - b.distance)[0] ?? null;
+}
+
+function localLikelihoodMeshStats(values, cell) {
+  const row = Number(cell.row ?? cell.y ?? 0);
+  const col = Number(cell.col ?? cell.x ?? 0);
+  const samples = [];
+  for (let y = row - 1; y <= row + 1; y += 1) {
+    for (let x = col - 1; x <= col + 1; x += 1) {
+      if (x === col && y === row) continue;
+      const value = Number(values?.[y]?.[x]);
+      if (Number.isFinite(value)) samples.push(value);
+    }
+  }
+  const average = samples.length ? samples.reduce((sum, value) => sum + value, 0) / samples.length : 0;
+  return { average };
+}
+
+function likelihoodMeshPercentile(value) {
+  const number = Number(value) || 0;
+  if (number >= 0.9) return 'near-triggering';
+  if (number >= 0.7) return 'high';
+  if (number >= 0.25) return 'active';
+  if (number >= 0.15) return 'low';
+  return 'background';
+}
+
+function likelihoodTrendLabel(delta, localAverage) {
+  const change = Number(delta) || 0;
+  if (change > 0.015) return 'increasing';
+  if (change < -0.015) return 'cooling';
+  if (Number(localAverage) >= 0.7) return 'locally high';
+  return 'stable';
+}
+
 function cloneLikelihoodFieldModel(model) {
   if (!model) return null;
   return {
@@ -1021,8 +1328,86 @@ function cloneLikelihoodFieldModel(model) {
       driftVelocity: node.driftVelocity ? { ...node.driftVelocity } : undefined
     })),
     metadata: { ...(model.metadata ?? {}) },
+    mesh: { ...(model.mesh ?? {}) },
     diagnostics: { ...(model.diagnostics ?? {}) }
   };
+}
+
+function cloneGraphFieldModel(model) {
+  if (!model) return null;
+  const topMessages = topGraphMessages(model, { maxEdges: 120 });
+  return {
+    topology: model.topology,
+    nodeCount: model.nodeCount,
+    edgeCount: model.edgeCount,
+    updateRule: model.updateRule,
+    communityCount: model.diagnostics?.clusterCount ?? model.graph?.clusterDiagnostics?.clusterCount ?? model.clusters?.length ?? 0,
+    edgeMessageFields: ['source', 'target', 'strength', 'sameCommunity', 'communityId'],
+    nodeStateFields: [...(model.nodeStateFields ?? model.graph?.nodeStateFields ?? [])],
+    graph: model.graph ? {
+      hierarchy: model.graph.hierarchy,
+      topology: model.graph.topology,
+      nodeCount: model.graph.nodeCount,
+      edgeCount: model.graph.edgeCount,
+      updateRule: model.graph.updateRule,
+      nodeStateFields: [...(model.graph.nodeStateFields ?? [])],
+      diagnostics: { ...(model.graph.diagnostics ?? {}) },
+      clusterDiagnostics: { ...(model.graph.clusterDiagnostics ?? {}) },
+      clusters: cloneClusters(model.graph.clusters),
+      directionalBias: model.graph.directionalBias ? { ...model.graph.directionalBias } : null,
+      communityBoundaryPenalty: model.graph.communityBoundaryPenalty
+    } : null,
+    diagnostics: { ...(model.diagnostics ?? {}) },
+    stateField: cloneField(model.stateField),
+    activationField: cloneField(model.activationField),
+    communityIdField: graphCommunityField(model),
+    clusterLikelihoodField: cloneField(model.clusterLikelihoodField),
+    incomingMessageField: cloneField(model.incomingMessageField),
+    topMessages,
+    clusters: cloneClusters(model.clusters),
+    nodes: (model.nodes ?? []).map((node) => ({
+      id: node.id,
+      row: node.row,
+      col: node.col,
+      clusterId: node.clusterId,
+      clusterLikelihood: node.clusterLikelihood,
+      likelihood: node.likelihood,
+      cellLikelihood: node.cellLikelihood,
+      activation: node.activation,
+      sampleValue: node.sampleValue,
+      state: node.state,
+      cooldown: node.cooldown,
+      recovery: node.recovery,
+      freshness: node.freshness,
+      communityId: node.communityId,
+      incomingMessage: node.incomingMessage,
+      outgoingMessage: node.outgoingMessage,
+      neighborCount: node.neighborCount,
+      activeNeighborCount: node.activeNeighborCount
+    }))
+  };
+}
+
+function cloneClusters(clusters) {
+  if (!Array.isArray(clusters)) return null;
+  return clusters.map((cluster) => ({
+    id: cluster.id,
+    communityId: cluster.communityId,
+    center: cluster.center ? { ...cluster.center } : null,
+    x: cluster.x,
+    y: cluster.y,
+    radius: cluster.radius,
+    likelihood: cluster.likelihood,
+    state: cluster.state,
+    phase: cluster.phase,
+    amplitude: cluster.amplitude,
+    cooldown: cluster.cooldown,
+    recovery: cluster.recovery,
+    growthRate: cluster.growthRate,
+    mobility: cluster.mobility,
+    eventType: cluster.eventType,
+    memberCellCount: cluster.memberCellCount
+  }));
 }
 
 function formatStat(value) {
@@ -1112,9 +1497,10 @@ function roiInspectorEmptyHtml() {
         <ul>
           <li>sample value and normalized value</li>
           <li>event likelihood at the selected cell</li>
+          <li>graph community, node state, and local message influence</li>
           <li>temporal trend and hotspot membership</li>
           <li>state model, spatial evolution, and sampling effect</li>
-          <li>raw and depleted sample-value display layers</li>
+          <li>overlay, graph, raw, and depleted sample-value display layers</li>
         </ul>
       </div>
     </section>
@@ -1221,6 +1607,9 @@ function roiInspectorHtml(inspection) {
         <span>Event Likelihood Field</span>
         ${metricRows([
           ['L(x,y,t)', formatStat(inspection.eventLikelihoodValue)],
+          ['mesh percentile', inspection.likelihoodMeshPercentile],
+          ['local mesh avg', formatStat(inspection.localLikelihoodAverage)],
+          ['mesh trend', inspection.localLikelihoodTrend],
           ['likelihood model', inspection.eventLikelihoodLabel],
           ['dynamics', inspection.eventLikelihoodDynamicsLabel],
           ['temporal pattern', inspection.eventLikelihoodTemporalPatternLabel],
@@ -1232,7 +1621,8 @@ function roiInspectorHtml(inspection) {
           ['node distance', inspection.nearestLikelihoodNode ? formatStat(inspection.nearestLikelihoodNode.distance) : 'n/a'],
           ['role', 'biases event origins, jumps, walks, and propagation']
         ])}
-        <small>L(x,y,t) is the event-prone spawn substrate; it is not the realized sample reward.</small>
+        <small>Likelihood mesh values show event potential at every cell. Nodes are sources or basins that influence the mesh.</small>
+        <small>L(x,y,t) is not the realized sample reward S(x,y,t), and it is not physical current.</small>
       </div>
       <div class="cell-inspector-card selected">
         <span>Observed Sample Value</span>
@@ -1244,6 +1634,34 @@ function roiInspectorHtml(inspection) {
           ['delta / 1s', formatSignedStat(inspection.delta)]
         ])}
         <small>Sample value is the currently realized reward/value after the selected sample-field behavior is composed.</small>
+      </div>
+      <div class="cell-inspector-card">
+        <span>Graph Field Node</span>
+        ${metricRows([
+          ['node id', inspection.graphNode ? inspection.graphNode.id : 'n/a'],
+          ['topology', inspection.graphTopology],
+          ['update rule', inspection.graphUpdateRule],
+          ['cluster id', inspection.graphNode ? inspection.graphNode.clusterId ?? inspection.nearestCluster?.id ?? 'n/a' : 'n/a'],
+          ['C_k(t)', inspection.graphNode ? formatStat(inspection.graphNode.clusterLikelihood) : 'n/a'],
+          ['L_i(t)', inspection.graphNode ? formatStat(inspection.graphNode.cellLikelihood ?? inspection.graphNode.likelihood) : 'n/a'],
+          ['A_i(t)', inspection.graphNode ? formatStat(inspection.graphNode.activation) : 'n/a'],
+          ['state', inspection.graphNode ? inspection.graphNode.state : 'n/a'],
+          ['cooldown', inspection.graphNode ? formatStat(inspection.graphNode.cooldown) : 'n/a'],
+          ['recovery', inspection.graphNode ? formatStat(inspection.graphNode.recovery) : 'n/a'],
+          ['freshness / age', inspection.graphNode ? formatStat(inspection.graphNode.freshness ?? inspection.graphNode.age) : 'n/a'],
+          ['community', inspection.graphNode ? inspection.graphNode.communityId : 'n/a'],
+          ['incoming message', inspection.graphNode ? formatStat(inspection.graphNode.incomingMessage) : 'n/a'],
+          ['outgoing message', inspection.graphNode ? formatStat(inspection.graphNode.outgoingMessage) : 'n/a'],
+          ['neighbor count', inspection.graphNode ? inspection.graphNode.neighborCount : 'n/a'],
+          ['active neighbors', inspection.graphNode ? inspection.graphNode.activeNeighborCount : 'n/a'],
+          ['strongest incoming', inspection.graphNeighborhood?.strongestIncoming ? `${inspection.graphNeighborhood.strongestIncoming.source.x},${inspection.graphNeighborhood.strongestIncoming.source.y} (${formatStat(inspection.graphNeighborhood.strongestIncoming.strength)})` : 'n/a'],
+          ['strongest outgoing', inspection.graphNeighborhood?.strongestOutgoing ? `${inspection.graphNeighborhood.strongestOutgoing.target.x},${inspection.graphNeighborhood.strongestOutgoing.target.y} (${formatStat(inspection.graphNeighborhood.strongestOutgoing.strength)})` : 'n/a'],
+          ['inhibited neighbors', inspection.graphNeighborhood?.inhibitedNeighborCount ?? 'n/a'],
+          ['dominant incoming', inspection.graphNode ? `${inspection.graphNode.dominantIncomingDirection?.x ?? 0}, ${inspection.graphNode.dominantIncomingDirection?.y ?? 0}` : 'n/a']
+        ])}
+        <small>${escapeHtml(inspection.nearestCluster ? `Nearest cluster ${inspection.nearestCluster.id}: state ${inspection.nearestCluster.state}, C=${formatStat(inspection.nearestCluster.likelihood)}, distance ${formatStat(inspection.nearestCluster.distance)}, members ${inspection.nearestCluster.memberCellCount ?? 0}.` : 'No cluster/community metadata for this cell.')}</small>
+        <small>Community membership groups cells into event-likelihood basins. Node state controls whether this cell is active, cooling, recovering, susceptible, consumed, or inhibited.</small>
+        <small>Graph messages pass abstract ROI influence between neighboring cells. This is not physical current F(x,y,t).</small>
       </div>
       <div class="cell-inspector-card">
         <span>Pattern Composition</span>
@@ -1340,6 +1758,143 @@ function recoveryLabel(time) {
   if (phase > 0.72) return 'recovering';
   if (phase < 0.28) return 'recently depleted';
   return 'partial';
+}
+
+function isGraphDisplayMode(mode) {
+  return ['graphCommunities', 'nodeStates', 'graphMessages', 'communityMessages', 'diagnosticsOverlay'].includes(mode);
+}
+
+function communityColor(communityId) {
+  const palette = [0x63e6be, 0x86e7ff, 0xf4d35e, 0xc9a7ff, 0xff8a65, 0x9ee7c8, 0xf7f7c6, 0x7ebf78, 0xe7b7ff, 0x6fd6ff];
+  const index = Math.abs(Math.floor(Number(communityId) || 0)) % palette.length;
+  return palette[index];
+}
+
+function communityCentroids(nodeGrid) {
+  const buckets = new Map();
+  for (let y = 0; y < (nodeGrid?.length ?? 0); y += 1) {
+    for (let x = 0; x < (nodeGrid[y]?.length ?? 0); x += 1) {
+      const node = nodeGrid[y]?.[x];
+      if (!node) continue;
+      const communityId = node.communityId ?? 0;
+      const bucket = buckets.get(communityId) ?? { communityId, x: 0, y: 0, count: 0 };
+      bucket.x += x;
+      bucket.y += y;
+      bucket.count += 1;
+      buckets.set(communityId, bucket);
+    }
+  }
+  return [...buckets.values()].map((bucket) => ({
+    communityId: bucket.communityId,
+    x: bucket.x / Math.max(1, bucket.count),
+    y: bucket.y / Math.max(1, bucket.count),
+    count: bucket.count
+  }));
+}
+
+function graphCommunityField(graphField) {
+  const nodeGrid = graphField?.nodeGrid ?? [];
+  return nodeGrid.map((row) => row.map((node) => node?.communityId ?? null));
+}
+
+function topGraphMessages(graphField, { maxEdges = 100, threshold = 0.04 } = {}) {
+  const nodeGrid = graphField?.nodeGrid ?? [];
+  const messages = [];
+  for (let y = 0; y < nodeGrid.length; y += 1) {
+    for (let x = 0; x < (nodeGrid[y]?.length ?? 0); x += 1) {
+      const source = nodeGrid[y]?.[x];
+      if (!source) continue;
+      for (const [dx, dy] of GRAPH_MESSAGE_NEIGHBORS) {
+        const target = nodeGrid[y + dy]?.[x + dx];
+        if (!target) continue;
+        const strength = graphMessageStrength(source, target);
+        if (strength < threshold) continue;
+        messages.push({
+          source: { x, y, id: source.id },
+          target: { x: x + dx, y: y + dy, id: target.id },
+          strength: Number(strength.toFixed(4)),
+          sameCommunity: source.communityId === target.communityId,
+          communityId: source.communityId ?? null
+        });
+      }
+    }
+  }
+  return messages
+    .sort((a, b) => b.strength - a.strength)
+    .slice(0, Math.max(0, maxEdges));
+}
+
+const GRAPH_MESSAGE_NEIGHBORS = [
+  [1, 0],
+  [-1, 0],
+  [0, 1],
+  [0, -1],
+  [1, 1],
+  [-1, 1],
+  [1, -1],
+  [-1, -1]
+];
+
+function graphMessageStrength(source, target) {
+  const outgoing = Number(source.outgoingMessage ?? source.activation ?? source.cellLikelihood ?? source.likelihood ?? 0);
+  const incoming = Number(target.incomingMessage ?? 0);
+  const targetReadiness = Number(target.cellLikelihood ?? target.likelihood ?? target.activation ?? 0);
+  const stateBoost = target.state === 'susceptible' || target.state === 'recovering' ? 1 : target.state === 'inhibited' || target.state === 'consumed' ? 0.35 : 0.75;
+  const communityFactor = source.communityId === target.communityId ? 1 : 0.52;
+  return Math.max(0, (outgoing * 0.62 + incoming * 0.18 + targetReadiness * 0.2) * stateBoost * communityFactor);
+}
+
+function graphMessageNeighborhood(graphField, cell) {
+  const nodeGrid = graphField?.nodeGrid ?? [];
+  const x = Number(cell?.col ?? cell?.x ?? 0);
+  const y = Number(cell?.row ?? cell?.y ?? 0);
+  const node = nodeGrid[y]?.[x];
+  if (!node) return null;
+  const incoming = [];
+  const outgoing = [];
+  let inhibitedNeighborCount = 0;
+  for (const [dx, dy] of GRAPH_MESSAGE_NEIGHBORS) {
+    const neighbor = nodeGrid[y + dy]?.[x + dx];
+    if (!neighbor) continue;
+    if (neighbor.state === 'inhibited') inhibitedNeighborCount += 1;
+    incoming.push({
+      source: { x: x + dx, y: y + dy, id: neighbor.id },
+      target: { x, y, id: node.id },
+      strength: graphMessageStrength(neighbor, node)
+    });
+    outgoing.push({
+      source: { x, y, id: node.id },
+      target: { x: x + dx, y: y + dy, id: neighbor.id },
+      strength: graphMessageStrength(node, neighbor)
+    });
+  }
+  return {
+    strongestIncoming: incoming.sort((a, b) => b.strength - a.strength)[0] ?? null,
+    strongestOutgoing: outgoing.sort((a, b) => b.strength - a.strength)[0] ?? null,
+    inhibitedNeighborCount
+  };
+}
+
+function formatGraphStateSummary(stateCounts = {}) {
+  const states = ['active', 'cooling', 'recovering', 'susceptible', 'consumed', 'inhibited'];
+  return states
+    .filter((state) => Number(stateCounts[state] ?? 0) > 0)
+    .map((state) => `${state}:${stateCounts[state]}`)
+    .join(', ') || 'n/a';
+}
+
+function graphStateStyle(state) {
+  return {
+    active: { color: 0xffffff, alpha: 0.68, width: 2, radiusScale: 0.22 },
+    crest: { color: 0x86e7ff, alpha: 0.56, width: 2, radiusScale: 0.24 },
+    alive: { color: 0x9ee7c8, alpha: 0.5, width: 1, radiusScale: 0.18 },
+    cooling: { color: 0xf4d35e, alpha: 0.45, width: 1, radiusScale: 0.18 },
+    recovering: { color: 0x63e6be, alpha: 0.38, width: 1, radiusScale: 0.14 },
+    consumed: { color: 0xff8a65, alpha: 0.52, width: 1, radiusScale: 0.16 },
+    inhibited: { color: 0xff8a65, alpha: 0.36, width: 1, radiusScale: 0.12 },
+    inactive: { color: 0x78909c, alpha: 0.16, width: 1, radiusScale: 0.08 },
+    susceptible: { color: 0xcfe8ff, alpha: 0.22, width: 1, radiusScale: 0.1 }
+  }[state] ?? { color: 0xbbe7d2, alpha: 0.28, width: 1, radiusScale: 0.12 };
 }
 
 function seededHash(seed) {

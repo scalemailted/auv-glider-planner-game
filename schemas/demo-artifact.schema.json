@@ -90,6 +90,8 @@
     },
     "fields": { "type": "object" },
     "likelihoodField": { "type": ["object", "null"] },
+    "graphField": { "type": ["object", "null"] },
+    "clusters": { "type": ["array", "null"] },
     "frames": {
       "type": ["array", "null"],
       "items": {

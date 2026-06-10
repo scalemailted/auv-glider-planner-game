@@ -1,3 +1,9 @@
+export const ROI_LIKELIHOOD_MESH_THRESHOLDS = {
+  active: 0.25,
+  high: 0.7,
+  nearTrigger: 0.9
+};
+
 export function buildRoiLikelihoodFieldModel({
   type = 'uniformLikelihood',
   label = 'Uniform Likelihood',
@@ -27,6 +33,12 @@ export function buildRoiLikelihoodFieldModel({
       meanValue: diagnostics.mean,
       variance: diagnostics.variance,
       entropy: diagnostics.entropy
+    },
+    mesh: {
+      activeThreshold: ROI_LIKELIHOOD_MESH_THRESHOLDS.active,
+      highThreshold: ROI_LIKELIHOOD_MESH_THRESHOLDS.high,
+      nearTriggerThreshold: ROI_LIKELIHOOD_MESH_THRESHOLDS.nearTrigger,
+      encoding: 'cell-centered dot mesh; radius and opacity increase with L(x,y,t)'
     },
     diagnostics
   };
@@ -83,9 +95,74 @@ function likelihoodDiagnostics(values, nodes) {
     minPairwiseNodeDistance: spread.minPairwiseDistance,
     modeCenterSpread: spread.centerSpread,
     quadrantOccupancy: spread.quadrantOccupancy,
-    activeLikelihoodArea: round3(flat.filter((value) => value >= 0.35).length / count),
-    highLikelihoodArea: round3(flat.filter((value) => value >= 0.65).length / count)
+    range: round3(max - min),
+    activeLikelihoodCellFraction: round3(flat.filter((value) => value >= ROI_LIKELIHOOD_MESH_THRESHOLDS.active).length / count),
+    highLikelihoodCellFraction: round3(flat.filter((value) => value >= ROI_LIKELIHOOD_MESH_THRESHOLDS.high).length / count),
+    nearTriggerLikelihoodCellFraction: round3(flat.filter((value) => value >= ROI_LIKELIHOOD_MESH_THRESHOLDS.nearTrigger).length / count),
+    activeLikelihoodArea: round3(flat.filter((value) => value >= ROI_LIKELIHOOD_MESH_THRESHOLDS.active).length / count),
+    highLikelihoodArea: round3(flat.filter((value) => value >= ROI_LIKELIHOOD_MESH_THRESHOLDS.high).length / count),
+    highConnectedComponentCount: connectedComponentCount(values, ROI_LIKELIHOOD_MESH_THRESHOLDS.high),
+    localNeighborCorrelation: round3(localNeighborCorrelation(values))
   };
+}
+
+function connectedComponentCount(values, threshold) {
+  const height = values?.length ?? 0;
+  const width = values?.[0]?.length ?? 0;
+  const visited = Array.from({ length: height }, () => Array.from({ length: width }, () => false));
+  let components = 0;
+  for (let y = 0; y < height; y += 1) {
+    for (let x = 0; x < width; x += 1) {
+      if (visited[y][x] || Number(values[y]?.[x] ?? 0) < threshold) continue;
+      components += 1;
+      const stack = [{ x, y }];
+      visited[y][x] = true;
+      while (stack.length) {
+        const cell = stack.pop();
+        for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
+          const xx = cell.x + dx;
+          const yy = cell.y + dy;
+          if (xx < 0 || yy < 0 || xx >= width || yy >= height || visited[yy][xx]) continue;
+          if (Number(values[yy]?.[xx] ?? 0) < threshold) continue;
+          visited[yy][xx] = true;
+          stack.push({ x: xx, y: yy });
+        }
+      }
+    }
+  }
+  return components;
+}
+
+function localNeighborCorrelation(values) {
+  const left = [];
+  const right = [];
+  const height = values?.length ?? 0;
+  const width = values?.[0]?.length ?? 0;
+  for (let y = 0; y < height; y += 1) {
+    for (let x = 0; x < width - 1; x += 1) {
+      left.push(Number(values[y]?.[x] ?? 0));
+      right.push(Number(values[y]?.[x + 1] ?? 0));
+    }
+  }
+  return pearson(left, right);
+}
+
+function pearson(a, b) {
+  const count = Math.min(a.length, b.length);
+  if (!count) return 0;
+  const meanA = a.reduce((sum, value) => sum + value, 0) / count;
+  const meanB = b.reduce((sum, value) => sum + value, 0) / count;
+  let numerator = 0;
+  let denomA = 0;
+  let denomB = 0;
+  for (let index = 0; index < count; index += 1) {
+    const da = a[index] - meanA;
+    const db = b[index] - meanB;
+    numerator += da * db;
+    denomA += da * da;
+    denomB += db * db;
+  }
+  return numerator / Math.max(0.000001, Math.sqrt(denomA * denomB));
 }
 
 function normalizedEntropy(values) {

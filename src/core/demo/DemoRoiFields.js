@@ -8,6 +8,7 @@ import {
   sampleTemporalBehaviorLabel
 } from '../generation/SampleFieldConfig.js';
 import { buildRoiLikelihoodFieldModel } from './roi/RoiLikelihoodField.js';
+import { buildRoiGraphField } from './roi/RoiGraphField.js';
 
 export const ROI_DEMO_GRID = { width: 24, height: 16 };
 const EVENT_LIKELIHOOD_FIELD_CACHE = new Map();
@@ -72,7 +73,19 @@ export const ROI_DEMO_PATTERN_EVOLUTIONS = ROI_DEMO_SPATIAL_EVOLUTIONS;
 export const ROI_DEMO_MOTION_SCOPES = ['perFeature', 'localNeighborhood', 'global'];
 export const ROI_DEMO_STATE_MODELS = ['timeIndexed', 'frequencyBased', 'stateEvolving', 'historyAware'];
 export const ROI_DEMO_DEPLETION_MODES = ['none', 'hard', 'soft', 'neighborhood', 'freshnessAge', 'revisitRecovery'];
-export const ROI_DEMO_DISPLAY_MODES = ['sampleValue', 'eventLikelihood', 'sampleValueLikelihoodOverlay', 'depletedValue', 'freshnessRevisitValue', 'rawBaseValue'];
+export const ROI_DEMO_DISPLAY_MODES = [
+  'sampleValue',
+  'eventLikelihood',
+  'sampleValueLikelihoodOverlay',
+  'graphCommunities',
+  'nodeStates',
+  'graphMessages',
+  'communityMessages',
+  'diagnosticsOverlay',
+  'depletedValue',
+  'freshnessRevisitValue',
+  'rawBaseValue'
+];
 export const ROI_DEMO_DEFAULT_DISPLAY_MODE = 'sampleValueLikelihoodOverlay';
 export const ROI_DEMO_DYNAMIC_COMPLEXITY = ['low', 'medium', 'high'];
 export const ROI_DEMO_CLUSTER_SIZES = ['tight', 'medium', 'wide'];
@@ -168,7 +181,7 @@ export function createDemoRoiField({
   const sampleTime = normalizedTimeMode === 'dynamic' ? Number(sourceTime) || 0 : 0;
   const likelihoodTime = normalizedEventLikelihoodDynamics === 'dynamic' ? Number(sourceTime) || 0 : 0;
   const clusterCount = clampInt(hotspotCount ?? legacyClusterCount, 1, 6, spatialDefaults.clusterCount);
-  const likelihoodField = createEventLikelihoodField({
+  let likelihoodField = createEventLikelihoodField({
     eventLikelihood: normalizedEventLikelihood,
     seed,
     width,
@@ -180,7 +193,7 @@ export function createDemoRoiField({
     dynamicComplexity: normalizedDynamicComplexity,
     time: likelihoodTime
   });
-  const likelihoodFieldModel = createEventLikelihoodFieldModel({
+  let likelihoodFieldModel = createEventLikelihoodFieldModel({
     eventLikelihood: normalizedEventLikelihood,
     label: roiEventLikelihoodLabel(normalizedEventLikelihood),
     values: likelihoodField,
@@ -222,6 +235,39 @@ export function createDemoRoiField({
     seed,
     spatialPattern: normalizedPureSpatialPattern
   });
+  const graphField = buildRoiGraphField({
+    width,
+    height,
+    seed,
+    time: sampleTime,
+    baseSampleField: baseField,
+    likelihoodField,
+    likelihoodNodes: likelihoodFieldModel.nodes,
+    behaviorPresetId,
+    temporalPattern: normalizedTemporalPattern,
+    spatialEvolution: normalizedSpatialEvolution,
+    stateModel: normalizedStateModel,
+    samplingEffect: normalizedDepletionMode,
+    dynamicComplexity: normalizedDynamicComplexity
+  });
+  const graphUpdateActive = graphField.updateRule !== 'memoryless';
+  if (graphUpdateActive) {
+    likelihoodField = graphField.likelihoodField;
+    likelihoodFieldModel = {
+      ...buildRoiLikelihoodFieldModel({
+        type: normalizedEventLikelihood,
+        label: roiEventLikelihoodLabel(normalizedEventLikelihood),
+        values: likelihoodField,
+        nodes: likelihoodFieldModel.nodes,
+        dynamics: normalizedEventLikelihoodDynamics,
+        temporalBehavior: normalizedEventLikelihoodTemporalPattern,
+        spatialEvolution: normalizedEventLikelihoodSpatialEvolution,
+        dynamicComplexity: normalizedDynamicComplexity,
+        time: likelihoodTime
+      }),
+      graphField: graphField.graph
+    };
+  }
   const behavior = sampleBehaviorMetadata({
     eventLikelihood: normalizedEventLikelihood,
     temporalPattern: normalizedTemporalPattern,
@@ -231,17 +277,30 @@ export function createDemoRoiField({
     dynamicComplexity: normalizedDynamicComplexity,
     time: sampleTime
   });
-  const evolvedResult = applyEvolutionModel(baseField, {
-    seed,
-    behaviorPresetId,
-    likelihoodField,
-    time: sampleTime,
-    timeMode: normalizedTimeMode,
-    temporalPattern: normalizedTemporalPattern,
-    spatialEvolution: normalizedSpatialEvolution,
-    dynamicComplexity: normalizedDynamicComplexity,
-    motionScope: normalizedMotionScope
-  });
+  const evolvedResult = graphUpdateActive
+    ? {
+        field: graphField.sampleValueField,
+        diagnostics: {
+          temporalEnvelope: 1,
+          injectedActivity: graphField.diagnostics?.edgeMessageTotal ?? 0,
+          regenerationAmount: graphField.diagnostics?.meanIncomingMessage ?? 0,
+          activityLostToDecay: Math.max(0, fieldTotal(baseField) - fieldTotal(graphField.sampleValueField)),
+          activityLostToBoundaries: 0,
+          normalized: false,
+          graphUpdateRule: graphField.updateRule
+        }
+      }
+    : applyEvolutionModel(baseField, {
+        seed,
+        behaviorPresetId,
+        likelihoodField,
+        time: sampleTime,
+        timeMode: normalizedTimeMode,
+        temporalPattern: normalizedTemporalPattern,
+        spatialEvolution: normalizedSpatialEvolution,
+        dynamicComplexity: normalizedDynamicComplexity,
+        motionScope: normalizedMotionScope
+      });
   const field = evolvedResult.field;
   const displayResult = applySampleDisplayMode(field, {
     seed,
@@ -276,7 +335,9 @@ export function createDemoRoiField({
     evolvedField: field,
     displayedField,
     likelihoodField,
+    likelihoodFieldModel,
     hotspotCount: clusterCount,
+    graphField,
     evolutionDiagnostics: evolvedResult.diagnostics,
     displayDiagnostics: {
       ...displayResult.diagnostics,
@@ -300,6 +361,7 @@ export function createDemoRoiField({
     eventLikelihoodSpatialEvolutionLabel: roiLikelihoodSpatialEvolutionLabel(normalizedEventLikelihoodSpatialEvolution),
     eventLikelihoodField: likelihoodField,
     likelihoodField: likelihoodFieldModel,
+    graphField,
     eventLikelihoodDiagnostics: likelihoodFieldModel.diagnostics,
     distribution: spatialDefaults.distribution,
     distributionLabel: roiDistributionLabel(spatialDefaults.distribution),
@@ -543,6 +605,18 @@ export function normalizeRoiDemoDisplayMode(value = 'sampleValue') {
     sampleValueLikelihoodOverlay: 'sampleValueLikelihoodOverlay',
     likelihoodOverlay: 'sampleValueLikelihoodOverlay',
     sampleWithLikelihoodOverlay: 'sampleValueLikelihoodOverlay',
+    graphCommunities: 'graphCommunities',
+    communities: 'graphCommunities',
+    graphCommunity: 'graphCommunities',
+    nodeStates: 'nodeStates',
+    graphStates: 'nodeStates',
+    graphMessages: 'graphMessages',
+    messages: 'graphMessages',
+    edgeMessages: 'graphMessages',
+    communityMessages: 'communityMessages',
+    communityPlusMessages: 'communityMessages',
+    diagnosticsOverlay: 'diagnosticsOverlay',
+    diagnostics: 'diagnosticsOverlay',
     depleted: 'depletedValue',
     depletedValue: 'depletedValue',
     freshness: 'freshnessRevisitValue',
@@ -799,6 +873,11 @@ export function roiDisplayModeLabel(value) {
     sampleValue: 'Sample Value',
     eventLikelihood: 'Event Likelihood',
     sampleValueLikelihoodOverlay: 'Sample Value + Likelihood Overlay',
+    graphCommunities: 'Graph Communities',
+    nodeStates: 'Node States',
+    graphMessages: 'Graph Messages',
+    communityMessages: 'Community + Messages',
+    diagnosticsOverlay: 'Diagnostics Overlay',
     depletedValue: 'Depleted Value',
     freshnessRevisitValue: 'Freshness / Revisit Value',
     rawBaseValue: 'Raw Base Value'
@@ -1411,7 +1490,7 @@ function activityDiagnosticsForStage(baseField, retainedField, finalField, extra
   };
 }
 
-function buildActivityDiagnostics({ seed, time, behaviorPresetId, eventLikelihoodMode, spatialPattern, temporalPattern, spatialEvolution, stateModel, samplingEffect, baseField, evolvedField, displayedField, likelihoodField, likelihoodFieldModel, hotspotCount, evolutionDiagnostics, displayDiagnostics }) {
+function buildActivityDiagnostics({ seed, time, behaviorPresetId, eventLikelihoodMode, spatialPattern, temporalPattern, spatialEvolution, stateModel, samplingEffect, baseField, evolvedField, displayedField, likelihoodField, likelihoodFieldModel, hotspotCount, graphField, evolutionDiagnostics, displayDiagnostics }) {
   const stats = summarizeField(displayedField);
   const activeCellCount = countCells(displayedField, 0.35);
   const highValueCellCount = countCells(displayedField, 0.65);
@@ -1477,10 +1556,17 @@ function buildActivityDiagnostics({ seed, time, behaviorPresetId, eventLikelihoo
       modeCount: likelihoodFieldModel.diagnostics?.modeCount ?? 0,
       activeModeCount: likelihoodFieldModel.diagnostics?.activeModeCount ?? 0,
       entropy: likelihoodFieldModel.diagnostics?.entropy ?? 0,
+      activeLikelihoodCellFraction: likelihoodFieldModel.diagnostics?.activeLikelihoodCellFraction ?? 0,
+      highLikelihoodCellFraction: likelihoodFieldModel.diagnostics?.highLikelihoodCellFraction ?? 0,
+      nearTriggerLikelihoodCellFraction: likelihoodFieldModel.diagnostics?.nearTriggerLikelihoodCellFraction ?? 0,
+      highConnectedComponentCount: likelihoodFieldModel.diagnostics?.highConnectedComponentCount ?? 0,
+      localNeighborCorrelation: likelihoodFieldModel.diagnostics?.localNeighborCorrelation ?? 0,
       minPairwiseNodeDistance: likelihoodFieldModel.diagnostics?.minPairwiseNodeDistance ?? 0,
       modeCenterSpread: likelihoodFieldModel.diagnostics?.modeCenterSpread ?? 0,
       quadrantOccupancy: likelihoodFieldModel.diagnostics?.quadrantOccupancy ?? [0, 0, 0, 0]
     } : null,
+    graphField: graphField?.graph ?? null,
+    graphDiagnostics: graphField?.diagnostics ?? null,
     featureEvolution,
     recurringHotspots: modeDiagnostics,
     diagnosticWarnings: warnings,

@@ -36,6 +36,25 @@ U(x,y,t): uncertainty / forecast-error scalar field
 
 `L` can pulse, recover, walk, jump, ripple, or propagate as likelihood dynamics, but it is not a physical current and does not move water or gliders.
 
+## Hierarchical Graph-Based Field Dynamics
+
+A dynamic ROI field can be represented as a hierarchical grid graph:
+
+```text
+C_k(t): cluster/community likelihood
+L_i(t): cell likelihood/readiness
+A_i(t): cell activation state
+S_i(t): realized sample value/reward
+```
+
+Clusters or communities represent regional event-proneness such as hotspot basins, monitoring stations, rainfall cells, front regions, or source basins. Cells represent local readiness and activation. Edges represent how activation spreads, inhibits, cools, ignites, recovers, drifts, or propagates through neighboring cells. Sample value is the realized reward generated from cluster likelihood, cell likelihood, activation state, temporal forcing, and sampling effects.
+
+A dynamic ROI field can therefore be represented as a grid graph. Each cell is a node and neighboring cells are connected by edges. Update rules use each node's current state, incoming messages from neighbors, cluster influence, temporal forcing, and sampling effects to produce the next likelihood and sample-value fields.
+
+Graph nodes can carry likelihood `L_i(t)`, sample value `S_i(t)`, activation state, cooldown, recovery, freshness/age, phase, susceptibility, community id, and synthetic last-sampled time. Edges carry neighbor influence, distance, direction, drift bias, spread probability, and community-boundary penalties. Cellular automata are one special case of this graph-message model; the ROI demo also uses graph rules for cooldown/recovery hotspots, neighbor spread, front propagation, ripple activation, directed drift, and freshness/revisit recovery.
+
+These are simplified analog dynamics for teaching sampling strategy. They are not validated wildfire, ecological, rainfall, crime, or hydrodynamic simulators.
+
 Feature-evolution patterns describe how scalar structures move, spread, rotate, deform, or activate:
 
 ```text
@@ -71,7 +90,7 @@ The left console and Phaser status line include compact activity and range diagn
 Activity: mean 0.42 | active 24% | high 8% | max 0.94 | range 0.82 | bbox 48% | components 4 | hotspots 3 | L/S corr 0.71 | injected +0.12
 ```
 
-Set `globalThis.ANCHOR_DEBUG_ROI_DYNAMICS = true` in the browser console to log detailed frame diagnostics, including min/mean/max, variance, p10/p50/p90, active and high-value cell fractions, active bounding-box coverage, connected components, quadrant occupancy, total activity mass, injected activity, decay loss, depletion loss, boundary loss, regeneration amount, dynamic range before/after contrast shaping, and whether normalization occurred.
+Set `globalThis.ANCHOR_DEBUG_ROI_DYNAMICS = true` in the browser console to log detailed frame diagnostics, including min/mean/max, variance, p10/p50/p90, active and high-value cell fractions, active bounding-box coverage, connected components, quadrant occupancy, total activity mass, injected activity, decay loss, depletion loss, boundary loss, regeneration amount, graph update rule, graph node state counts, edge message totals, dynamic range before/after contrast shaping, and whether normalization occurred.
 
 Set `globalThis.ANCHOR_DEBUG_ROI_COMPOSER = true` while inspecting Recurring Hotspots to log persistent likelihood mode centers, pairwise separation, mode-center bounding box, active recurring basin count, high-value component count, likelihood/sample correlation, and temporal phase.
 
@@ -173,9 +192,21 @@ The Event Likelihood view shows the generative substrate that controls where eve
 
 Overlay mode keeps `S(x,y,t)` as the heatmap and draws high-likelihood cells as pale dots/rings on top. Use it to compare where events are likely to originate with where sample value is currently active. The Cell Inspector always reports both `L(x,y,t)` and `S(x,y,t)`, regardless of which display layer is selected.
 
+## Reading the Graph Views
+
+Graph-backed ROI fields expose the hierarchy behind `S(x,y,t)`. `Graph Communities` tints cells by community or basin membership, draws community boundaries, and marks cluster/centroid centers. `Node States` shows inactive, active, cooling, recovering, susceptible, consumed, and inhibited cells over a muted heatmap. `Graph Messages` filters to the strongest local influence edges so the display shows meaningful message flow rather than every neighbor edge. `Community + Messages` combines community regions, active nodes, cluster centers, and strong messages. `Diagnostics Overlay` adds likelihood markers, filtered messages, node-state legend glyphs, and state-count proportions.
+
+The Cell Inspector reports the selected cell's graph node, community, `C_k(t)`, `L_i(t)`, `A_i(t)`, node state, incoming/outgoing message totals, strongest local incoming/outgoing message, inhibited-neighbor count, and nearest cluster. These messages are abstract ROI influence, not physical current vectors.
+
+## Likelihood Mesh Overlay
+
+The likelihood mesh renders `L(x,y,t)` at every cell. Dot size and brightness indicate how close a cell is to becoming event-active. This is different from the sample-value heatmap `S(x,y,t)`, which shows currently realized sampling value.
+
+Likelihood nodes or modes are sources, basins, attractors, or controllers that influence the mesh. They are not the field by themselves. The mesh is the full cell-centered likelihood field. In propagation-style presets, subtle cell-to-cell links can show local high-likelihood neighbor relationships without turning the ROI demo into a physical flow visualization.
+
 ## Demo Artifact Export
 
-`Export Demo JSON` downloads an `anchor.demo.sample-roi-field` artifact for Colab/notebook rendering. Choose start time, end time, and timeframe count to include a `frames[]` series sampled from the current settings. It includes the current scene config, demo time, row-major displayed sample value, `L(x,y,t)` event likelihood, likelihood field metadata/nodes/diagnostics, raw base value, evolved value when available, field stats, activity diagnostics, high-value cells, and selected-cell inspector state. Arrays are indexed as `field[row][col]` using top-left origin and cell-center coordinates.
+`Export Demo JSON` downloads an `anchor.demo.sample-roi-field` artifact for Colab/notebook rendering. Choose start time, end time, and timeframe count to include a `frames[]` series sampled from the current settings. It includes the current scene config, demo time, row-major displayed sample value, `L(x,y,t)` event likelihood, likelihood mesh thresholds, likelihood field metadata/nodes/diagnostics, `graphField` metadata, graph state/message layers, graph community-id layers, filtered top graph messages, raw base value, evolved value when available, field stats, activity diagnostics, high-value cells, and selected-cell inspector state. Arrays are indexed as `field[row][col]` using top-left origin and cell-center coordinates.
 
 Freshness / Age of Information values remain labeled as demo-only synthetic visit effects unless they are later tied to actual mission visits.
 

@@ -21,7 +21,7 @@ export const SAMPLE_FIELD_GROUP_SUMMARIES = {
   eventLikelihood: {
     label: 'Event Likelihood Field',
     question: 'Where are events likely to originate or move next?',
-    summary: 'Controls L(x,y,t): the underlying event-proneness substrate used by origins, sparse sites, jumps, walks, and propagation. This is not the realized sample value.'
+    summary: 'Controls regional cluster likelihood C_k(t) and cell likelihood L_i(t): the event-proneness substrate used by origins, sparse sites, jumps, walks, and propagation. This is not the realized sample value.'
   },
   spatialPattern: {
     label: 'Spatial Pattern / Geometry',
@@ -46,7 +46,7 @@ export const SAMPLE_FIELD_GROUP_SUMMARIES = {
   stateModel: {
     label: 'State Model / Memory',
     question: 'What does the field depend on?',
-    summary: 'Controls whether the next frame is computed directly from time or depends on previous frames and longer history.'
+    summary: 'Controls whether the next frame is computed directly from time or from graph hierarchy state: clusters C_k(t), cell readiness L_i(t), activation A_i(t), and longer history.'
   },
   samplingEffect: {
     label: 'Sampling Effect',
@@ -436,9 +436,9 @@ const SPATIAL_EVOLUTION_EXPLAINERS = {
   neighborPropagation: {
     label: 'Neighbor Propagation',
     short: 'Activity spreads from active cells to nearby cells.',
-    meaning: 'Neighboring cells matter because active value can diffuse or activate adjacent locations.',
-    expectedBehavior: 'High-value regions expand, blur, or spread to neighboring cells over time while new likely cells can activate.',
-    parameters: ['Motion Scope', 'Propagation Rate', 'Neighbor Radius', 'Decay'],
+    meaning: 'Neighboring cells matter because graph edges pass local influence messages between adjacent cell nodes.',
+    expectedBehavior: 'High-value nodes send bounded messages to neighbors, so active regions expand or spread locally without becoming physical current advection.',
+    parameters: ['Motion Scope', 'Graph Topology', 'Propagation Rate', 'Neighbor Radius', 'Decay'],
     pairsWellWith: ['Patchy / Correlated Field', 'Seeded Texture', 'State-Evolving'],
     strategy: 'Teaches local search and anticipating spread into adjacent areas.',
     boundaryNote: 'Propagation is sample-value spread, not fluid advection.'
@@ -469,9 +469,9 @@ const STATE_MODEL_EXPLAINERS = {
   stateEvolving: {
     label: 'State-Evolving',
     short: 'Next field state depends on the current field state.',
-    meaning: 'The field evolves from its current state, which is Markovian when the next state depends only on the current state.',
-    expectedBehavior: 'Propagation, random walks, or local steps depend on the previous/current field state.',
-    parameters: ['Current State', 'Transition Rule', 'Seed'],
+    meaning: 'The field evolves from node state and local graph messages, which is Markovian when the next state depends only on the current graph state.',
+    expectedBehavior: 'Propagation, cooldown/recovery, front motion, ripple activation, or local rules update node likelihood/sample state through graph edges.',
+    parameters: ['Current Node State', 'Incoming Messages', 'Transition Rule', 'Seed'],
     pairsWellWith: ['Random Walk', 'Neighbor Propagation', 'Intermittent Activity'],
     strategy: 'Teaches tracking evolving processes instead of isolated snapshots.',
     boundaryNote: 'State-Evolving is different from History-Aware longer sampling memory.'
@@ -581,6 +581,56 @@ const DISPLAY_LAYER_EXPLAINERS = {
     pairsWellWith: ['Clustered Field', 'Bursty', 'Discrete Jump', 'Multi-Modal Likelihood'],
     strategy: 'Use overlay mode to compare likely origins with currently realized reward.',
     boundaryNote: 'Overlay is explanatory; it does not change the generated field.'
+  },
+  graphCommunities: {
+    label: 'Graph Communities',
+    short: 'Shows the graph community or basin each cell belongs to.',
+    meaning: 'Communities are graph-level groupings used by the ROI hierarchy. They help explain which cells share cluster influence.',
+    expectedBehavior: 'Cells are tinted by community, with boundaries and cluster or centroid markers visible.',
+    parameters: ['Community ID', 'Cluster Center', 'Cell Node'],
+    pairsWellWith: ['Multi-Modal Likelihood', 'Neighbor Propagation', 'State-Evolving'],
+    strategy: 'Use this to understand regional structure before inspecting node state or message flow.',
+    boundaryNote: 'Community color is explanatory metadata, not an extra reward layer.'
+  },
+  nodeStates: {
+    label: 'Node States',
+    short: 'Shows per-cell graph state: active, cooling, recovering, susceptible, consumed, inhibited, or inactive.',
+    meaning: 'Node state explains whether a cell is currently firing, recovering, blocked by history, ready to activate, or inactive.',
+    expectedBehavior: 'Cells render with state-specific glyphs over a muted value heatmap.',
+    parameters: ['Node State', 'Activation A_i(t)', 'Cooldown', 'Recovery'],
+    pairsWellWith: ['State-Evolving', 'Neighbor Propagation', 'History-Aware'],
+    strategy: 'Use this to debug why a high-likelihood cell is or is not realized as sample value.',
+    boundaryNote: 'These are synthetic ROI graph states, not glider or current states.'
+  },
+  graphMessages: {
+    label: 'Graph Messages',
+    short: 'Shows strongest local influence messages between graph nodes.',
+    meaning: 'Messages are abstract ROI influence passed across graph edges. The view filters to high-strength edges so the map stays readable.',
+    expectedBehavior: 'Only top or thresholded directional edges are drawn, with stronger edges brighter and cross-community edges highlighted.',
+    parameters: ['Outgoing Message', 'Incoming Message', 'Edge Strength', 'Community Boundary'],
+    pairsWellWith: ['Neighbor Propagation', 'Random Walk', 'Patchy Likelihood'],
+    strategy: 'Use this to see where activity is likely to spread next.',
+    boundaryNote: 'Graph messages are not physical current vectors.'
+  },
+  communityMessages: {
+    label: 'Community + Messages',
+    short: 'Combines community basins, active nodes, centers, and strongest messages.',
+    meaning: 'This is the compact graph overview: regional membership plus the strongest active influence paths.',
+    expectedBehavior: 'Community tints remain visible while active nodes and top message edges show current graph dynamics.',
+    parameters: ['Community ID', 'Node State', 'Top Messages', 'Cluster Center'],
+    pairsWellWith: ['Multi-Modal Likelihood', 'State-Evolving', 'Neighbor Propagation'],
+    strategy: 'Use this when diagnosing graph behavior without switching between separate graph layers.',
+    boundaryNote: 'This is a combined diagnostic overlay; it does not alter S(x,y,t).'
+  },
+  diagnosticsOverlay: {
+    label: 'Diagnostics Overlay',
+    short: 'Shows graph/community/node/message diagnostics over the field.',
+    meaning: 'Diagnostics mode combines likelihood, filtered message edges, node-state legend, and state-count proportions.',
+    expectedBehavior: 'A muted heatmap is overlaid with likelihood markers, message lines, and graph-state summary glyphs.',
+    parameters: ['State Counts', 'Active Nodes', 'Edge Message Total', 'Likelihood Mesh'],
+    pairsWellWith: ['Preset audits', 'Neighbor Propagation', 'State-Evolving'],
+    strategy: 'Use this as the quick sanity-check view for graph hierarchy behavior.',
+    boundaryNote: 'Diagnostics are explanatory and may be denser than normal display layers.'
   },
   depletedValue: {
     label: 'Depleted Value',
