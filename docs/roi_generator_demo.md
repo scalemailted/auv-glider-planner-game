@@ -1,18 +1,22 @@
-# Sample / ROI Field Demo
+# Spatiotemporal Sampling Process Lab
+
+Legacy name: Sample / ROI Field Demo.
 
 ## Purpose
 
-The Sample / ROI Field Demo visualizes `S(x,y,t)`: where and when the environment is valuable to sample. Unlike the Flow Fields Demo, which shows water motion `F(x,y,t)`, this pure demo shows objective value, reward value, hotspots, bursts, temporal patterns, depletion, and recovery behavior.
+The Spatiotemporal Sampling Process Lab visualizes `S(x,y,t)`: where and when a deterministic or seeded grid process creates value to sample. Unlike the Flow Fields Demo, which shows water motion `F(x,y,t)`, this pure lab shows objective value, reward value, hotspots, bursts, temporal patterns, cell states, rule updates, depletion, and recovery behavior.
 
-It also exposes `L(x,y,t)`, the event likelihood field that controls where sample-value events tend to originate. `L` is not uncertainty. Uncertainty and information gain are covered by the Uncertainty / Forecast Demo; current-driven sample movement is covered by the Coupled Fields Demo.
+It exposes a Source / Initial Field: a deterministic or seeded substrate that controls where process activity starts, recurs, is constrained, or has initial support. Legacy exports may still call this `eventLikelihoodField` or `likelihoodField`, but the user-facing concept is Source / Initial Field. Formal likelihood, uncertainty, belief, forecast error, and information gain are covered by the Uncertainty / Forecast Demo; current-driven sample movement is covered by the Coupled Fields Demo.
+
+The lab is an Example Processes-first component composer. The normal first control is `Mode`: choose Example Processes, Custom Composer, Process Paint, or Random Rule Lab. Example Processes shows the Process Pattern selector; Custom Composer exposes direct primitive editing. Legacy behavior presets remain available only for compatibility/debug workflows. The primitive components are Source / Initial Field, Spatial Pattern / Geometry, Value Distribution, Temporal Pattern, Spatial Evolution / Motion Rule, Interaction Scale / Hierarchy, State / Update Rule, Sampling / Freshness Effect, Display / Diagnostic Layer, Process Paint / Rule Allocation, Seed / Scenario Identity, and Export.
 
 It is not a mission, planner, leaderboard mode, uncertainty demo, forecast/truth demo, or scoring mode. It only visualizes how sample-value regions can be shaped.
 
 ## Layout
 
-- Left Mission Console: explanation, sample-field configuration, display controls, playback speed, seed regeneration, and Main Menu navigation.
+- Left Mission Console: compact component groups, sample-field configuration, display controls, playback speed, seed regeneration, export controls, and Main Menu navigation.
 - Center Phaser viewport: heatmap, high-value markers, selected-cell highlight, and non-obstructive labels only.
-- Right panel: Cell Inspector for the selected sample cell.
+- Right panel: Recipe / Signature View by default, with Cell Inspector after selecting a sample cell, Behavior Help after Explain actions, and Diagnostics for active-source/debug details.
 - Bottom transport: compact infinite-time controls for Reset, Direction, Pause/Resume, Demo Time, Playback, temporal behavior, and Infinite timeline.
 
 ## Controls
@@ -25,15 +29,38 @@ It is not a mission, planner, leaderboard mode, uncertainty demo, forecast/truth
 - `Noise / Texture`: adds seeded texture to the field.
 - `Time Mode`: chooses Static or Dynamic field behavior.
 - `Temporal Pattern`: controls static, sustained, periodic, bursty, intermittent, random-pulse, or long-cycle intensity changes.
-- `Spatial Evolution`: controls stationary, continuous drift, discrete jump, random walk, or neighbor propagation behavior.
+- `Spatial Evolution`: controls stationary, continuous drift, discrete jump, random walk, neighbor propagation, expansion, contraction, divergence, convergence, morph/mutation, shear/stretch, rotational swirl, or branching growth behavior.
+
+## Reference Observable Process Signatures
+
+The Sample / ROI Field Demo includes reference signatures: front propagation, wave / excitable media, birth-death emergence, stationary temporal bursts, diffusion / spread, drift / transport, cyclic dominance, cluster formation, avalanche / burst cascades, predator-prey migration, and freshness / recovery. These are component recipes inspired by known CA/grid-process families, not exact reproductions. Applying a signature updates the editable component controls and scenario exports preserve the signature metadata.
+Phase 6.2 expands this into fourteen user-facing observable-process labels: Propagating Fronts, Excitable Waves, Local Birth-Death Emergence, Recurrent Stationary Hotspots, Diffusive / Epidemic Spread, Directed Drift / Transport, Cyclic Dominance, Domain / Cluster Formation, Threshold Cascades / Avalanches, Interacting Population Migration, Freshness / Recovery, Pattern Formation / Morphogenesis, Congestion / Density Waves, and Structured Signal Propagation. The selector stays broad; known models such as forest-fire CA, Brian's Brain, Game of Life, SIR/SIS/SEIR grids, sandpiles, Ising/voter/Schelling dynamics, traffic CA, and Wireworld live in the reference catalog, right panel, exports, and coverage audit.
+
+The right-panel Recipe / Signature view uses progressive disclosure: a short model list, grouped model-family counts, CA taxonomy tags, observable spatial/temporal/delta signatures, ROI meaning, QA expectations, genotype-like component setup, phenotype-like behavior notes, failure signs, and "what this is not." It remains a teaching/validation taxonomy, not a simulator library.
+- `Interaction Scale`: labels whether behavior acts globally, by cluster/community, by cell/node, by edge/neighbor, or as a hybrid multi-scale process.
 - `State Model`: selects Time-Indexed, State-Evolving, or History-Aware semantics.
 - `Sampling Effects`: selects none, hard, soft, neighborhood depletion, or knowledge-decay / revisit-recovery behavior.
 - `Display`: switches between Sample Value, Event Likelihood, Sample Value + Likelihood Overlay, Graph Communities, Node States, Graph Messages, Community + Messages, Diagnostics Overlay, Depleted Value, Freshness / Revisit Value, and Raw Base Value.
 - `Time Speed`: controls playback speed for dynamic demo time.
+- `Scenario Generation`: creates a compact seeded `anchor.syntheticRoiScenario` time-series from the active pattern source: reference signature, custom component recipe, or legacy preset metadata when using the compatibility path.
 - Bottom `Pause / Resume`: pauses or resumes dynamic evolution.
 - Bottom `Direction`: runs demo time forward or backward.
 - Bottom `Reset`: returns demo time to zero.
 - `Main Menu`: returns to the main menu.
+
+## Scenario Generation
+
+The Export controls include a Scenario Generation card for creating bounded synthetic ROI scenario JSON from the same demo controls already visible in the left panel. The source is the active pattern source shown in the summary card: Reference Observable Process Signature, Custom Component Recipe, or legacy preset metadata when using the compatibility/debug path. Scenario seed, difficulty, duration, frame count, and validation policy are explicit controls.
+
+Generated scenarios use `src/core/demo/roi/RoiScenarioGenerator.js` and `src/core/demo/roi/RoiScenarioValidation.js`. The generator samples deterministic frames from the selected recipe, stores the process contract, sampled parameters, component recipe, graph/message layers, event likelihood `L(x,y,t)`, sample value `S(x,y,t)`, frame labels, diagnostics, and validation result. Validation checks for empty fields, full saturation, temporal variation, and family-specific observable signatures such as recurring basins, fronts, patch movement, or freshness recovery.
+
+`Require PASS Before Export` blocks failed or warning scenarios from export. `Allow WARN Export` permits warning scenarios while preserving the warning summary in the file. These scenarios are simplified educational analog processes, not validated wildfire, rainfall, ecological, crime, or hydrodynamic simulators.
+
+## Behavior Signatures and Isolation
+
+Selecting a Process Pattern automatically opens Recipe / Process Pattern View with observable signature and ROI Meaning sections. The signature states the observable pattern, what should change over time, why cells become important, best display layers, and failure signs. ROI Meaning distinguishes current ROI, near-future ROI, low/depleted/dead regions, and sampling intuition.
+
+The console also has Component Isolation Examples. These buttons load stable seeded recipes for comparing Temporal Patterns, Spatial Evolution, and Interaction Scale while holding most other components fixed. They are meant for teaching component effects; they do not create dataset batches or run planners.
 
 ## Spatial Patterns
 
@@ -69,6 +96,10 @@ Graph display layers expose that hierarchy directly:
 - `Graph Messages` draws only filtered strong local influence edges instead of every graph edge.
 - `Community + Messages` combines community membership, active nodes, strong message edges, and cluster centers.
 - `Diagnostics Overlay` combines likelihood markers, filtered messages, node-state legend glyphs, and state-count proportions.
+
+Each reference signature has a process contract. The Recipe / Signature view lists inspired-by models, observable signature, interaction scale, component recipe table, ROI interpretation, suggested display layers, what the signature is not, and failure signs. This keeps signatures transparent: a user can select a recipe, change one primitive component, and see why the heatmap changed.
+
+When one primitive component is changed after selecting a signature, the left console marks the signature as modified and shows a component isolation hint with the expected effect and recommended views. Compatibility warnings are educational rather than blocking; for example, Event Likelihood view will warn that freshness affects sample value rather than latent likelihood.
 
 ## Cell Inspector
 
@@ -113,6 +144,8 @@ Relevant files:
 The demo uses the shared sample-field config and ROI generator path where practical. `DemoRoiFields.js` normalizes pure sample controls into `SampleFieldConfig`, then calls `generateROI` / `generateSampleField` for cluster, burst, moving, diffuse, random, depletion, and neighbor-coupled sample-value behavior.
 
 The demo uses seeded randomness and does not call `Math.random()` for per-frame field generation. The same seed, spatial pattern, cluster count, texture, time mode, temporal pattern, spatial evolution, depletion, display mode, and demo time reproduce the same heatmap.
+
+Scenario APIs live in `src/core/demo/roi/RoiScenarioGenerator.js` and `src/core/demo/roi/RoiScenarioValidation.js`. They generate seeded time-series scenarios from the active pattern source and return recipe, process contract, reference metadata, sampled parameters, frame labels, diagnostics, and validation without adding a backend.
 
 ## Limitations
 

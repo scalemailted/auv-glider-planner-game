@@ -1,15 +1,21 @@
-# Sample / ROI Field Demo
+# Spatiotemporal Sampling Process Lab
+
+Legacy name: Sample / ROI Field Demo. See also [Spatiotemporal Sampling Process Lab](sampling_process_lab.md).
 
 ## Purpose
 
-The pure Sample / ROI Field Demo visualizes `S(x,y,t)`: sample value, reward value, or objective value at map location `x,y` and demo time `t`.
+The Spatiotemporal Sampling Process Lab visualizes `S(x,y,t)`: sampling value, reward value, or objective value at map location `x,y` and demo time `t`.
 
-It teaches sample-value fields by separating field construction from process behavior. It answers:
+Source / Initial Field is the primary substrate in this lab. It is deterministic or seeded process support, not uncertainty, belief, forecast probability, or Bayesian likelihood. ROI is the output interpretation: cells or regions currently or prospectively important to sample.
 
+It is now organized as a mode-aware, Example Processes, component-based spatiotemporal field composer. The normal first controls are `Mode` and `Process Pattern`: a Process Pattern applies an editable known-process recipe, while `Custom Composer` exposes the same primitive controls directly for user-authored/global component recipes. The primary modes are Example Processes, Custom Composer, Process Paint, and Random Rule Lab. Diagnostics is available through Display / Diagnostic Layer and the right-panel Diagnostics tab rather than as a primary workflow mode. Process Patterns start from the shared Sampling Value display so behavior can be compared consistently; their best display layers remain recommendations. The right panel explains the selected process automatically. Internal and exported fields may still use `referenceSignature` names for compatibility. Legacy behavior presets remain in code for compatibility and debugging, but they are not the normal UI entry point. The demo answers:
+
+- where events can originate or recur
 - what spatial shape the sample-value field has
-- where events are likely to originate before geometry and values are applied
+- how values are assigned inside that shape
 - how intensity changes over time
 - how the spatial distribution moves, jumps, wanders, or propagates over time
+- at what scale the process acts
 - whether the process is time-indexed, state-evolving, or history-aware
 - how sampling, depletion, freshness, and recovery alter value
 
@@ -55,6 +61,10 @@ Graph nodes can carry likelihood `L_i(t)`, sample value `S_i(t)`, activation sta
 
 These are simplified analog dynamics for teaching sampling strategy. They are not validated wildfire, ecological, rainfall, crime, or hydrodynamic simulators.
 
+Process Paint and Random Rule Lab use the canonical deterministic rule-family catalog `sampling-process-rule-families-v1`: `inert`, `propagatingFront`, `excitableWave`, `localBirthDeath`, `diffusiveSpread`, `directedTransport`, `cyclicDominance`, `domainFormation`, `thresholdCascade`, `interactingPopulation`, `freshnessRecovery`, `morphogenesis`, `congestionWave`, `structuredSignal`. Older saved IDs such as `frontPropagation`, `birthDeath`, `diffusionSpread`, `driftTransport`, `clusterFormation`, `cascade`, `predatorPreyMigration`, `signalPropagation`, and `none` remain aliases, but new paint layers and exports write canonical IDs.
+
+When Process Paint is running, the lab advances painted cells through a deterministic CA-style stepper. Each frame emits `stateLayer`, nullable `ruleLayer` cell overrides, canonical `resolvedRuleLayer`, `groupLayer`, `sourceField`, `samplingValueField`, `transitionLayer`, `roiRoleLayer`, and `processMessages`. A `null`/`inherit` rule slot means "use the group rule"; explicit `inert` means "do not update this cell." Movement-like rules use deterministic proposed writes that are resolved after the scan loop, so transported cells are not overwritten by later cell processing. Time-series exports use `initial-frame-then-steps-v1`: frame 0 is the painted initial state, frame 1 is the first update, and later frames continue stepping. The right-panel cell editor reports the canonical rule label, transition record, ROI role, group, source value, and sampling value for the selected cell.
+
 Feature-evolution patterns describe how scalar structures move, spread, rotate, deform, or activate:
 
 ```text
@@ -84,10 +94,10 @@ retained value
 
 `Bursty` means activity appears in active windows and quiets between them; future bursts regenerate from `L(x,y,t)`. `Discrete Jump` means the next event source is reseeded or relocated from likelihood-biased regions. `Random Walk` keeps active regions bounded while they move by local seeded steps. `Neighbor Propagation` spreads activity locally and can activate likely nearby cells instead of only smearing values downward.
 
-The left console and Phaser status line include compact activity and range diagnostics:
+The lab uses progressive disclosure: the left Mission Console stays compact and control-focused, the Phaser status line shows a short mode/recipe/metric summary, and detailed diagnostics live in the right Diagnostics panel.
 
 ```text
-Activity: mean 0.42 | active 24% | high 8% | max 0.94 | range 0.82 | bbox 48% | components 4 | hotspots 3 | L/S corr 0.71 | injected +0.12
+Recurrent Stationary Hotspots · Bursty · Stationary · Sample Value + Likelihood Overlay · t=49.8s · Mean 0.42 · Active 24% · High 8% · Max 0.94
 ```
 
 Set `globalThis.ANCHOR_DEBUG_ROI_DYNAMICS = true` in the browser console to log detailed frame diagnostics, including min/mean/max, variance, p10/p50/p90, active and high-value cell fractions, active bounding-box coverage, connected components, quadrant occupancy, total activity mass, injected activity, decay loss, depletion loss, boundary loss, regeneration amount, graph update rule, graph node state counts, edge message totals, dynamic range before/after contrast shaping, and whether normalization occurred.
@@ -98,7 +108,7 @@ Set `globalThis.ANCHOR_DEBUG_ROI_COMPOSER = true` while inspecting Recurring Hot
 
 Earlier versions exposed a long list of named examples, but many names mixed different concepts: spatial geometry, number of clusters, temporal behavior, statistical texture, and history-aware sampling effects.
 
-The refactored demo separates these concepts. The Event Likelihood Field describes where event origins, sparse candidate sites, jump destinations, random-walk bias, and propagation likelihood come from. It can be static as `L(x,y)` or dynamic as `L(x,y,t)`. The spatial pattern describes how value is organized around that substrate. Spatial parameters describe how that pattern is shaped. Value Distribution describes how values are assigned. The temporal pattern describes how intensity changes over time. Spatial evolution describes how the spatial distribution stays fixed, drifts, jumps, wanders, or propagates. The state model explains whether the field is time-indexed, frequency-based, state-evolving, or history-aware.
+The refactored demo separates these concepts. The Event Likelihood Field describes where event origins, sparse candidate sites, jump destinations, random-walk bias, and propagation likelihood come from. It can be static as `L(x,y)` or dynamic as `L(x,y,t)`. The spatial pattern describes how value is organized around that substrate. Spatial parameters describe how that pattern is shaped. Value Distribution describes how values are assigned. The temporal pattern describes how intensity changes over time. Spatial evolution describes how the spatial distribution stays fixed, drifts, jumps, wanders, propagates, expands, contracts, deforms, swirls, mutates, or branches. The state model explains whether the field is time-indexed, frequency-based, state-evolving, or history-aware.
 
 A two-cluster field is not a separate theory from a three-cluster field. Both are instances of a clustered field with a different cluster count. This is why the demo uses `Clustered Field` plus `Cluster Count` rather than separate Single Cluster, Bimodal, and Multi-Hotspot modes.
 
@@ -130,6 +140,7 @@ The demo builds sample-value behavior from independent axes:
 - **Value Distribution:** how values are assigned within that spatial geometry.
 - **Temporal Pattern:** how intensity changes over time.
 - **Spatial Evolution:** how the spatial distribution moves, jumps, spreads, or propagates.
+- **Interaction Scale / Hierarchy:** whether the behavior acts on the global field, cluster/community, cell/node, edge/neighbor, or a hybrid of scales.
 - **State Model / Memory:** whether the process is time-indexed, frequency-based, state-evolving, or history-aware.
 - **Sampling Effect:** how observation changes future value.
 - **Display Layer:** which value layer the heatmap is currently showing.
@@ -138,24 +149,32 @@ A bursty clustered field can behave differently depending on spatial evolution. 
 
 ## Behavior Explainers
 
-Every major component in the Sample / ROI Demo has behavior help. The left Mission Console stays compact and contains controls plus small `Explain ...` buttons. Clicking an Explain button opens the selected component's `About ...` explainer in the right panel, next to the Cell Inspector. The explainer covers meaning, expected heatmap behavior, important parameters, useful pairings, strategy implication, and demo boundary.
+Every major component in the Sample / ROI Demo has behavior help. The left Mission Console stays compact and contains controls plus small `Explain ...` buttons for primitive components. The selected Process Pattern explains itself automatically in the right panel; it does not need a separate left-panel Explain button. Component explainers cover meaning, expected heatmap behavior, important parameters, useful pairings, strategy implication, and demo boundary.
 
 | Component Group | What it controls | Example question answered |
 |---|---|---|
 | Event Likelihood Field | Where event origins and future activity are likely | Where are events prone to start, jump, walk, or spread? |
 | Spatial Pattern / Geometry | Where value is organized in space | Where are the valuable cells? |
-| Value Distribution | How values are assigned within that geometry | Are values constant, uniformly random, or mostly near a mean? |
+| Value Distribution | How values are assigned within that geometry | Are values constant, uniformly random, near a mean, skewed, bimodal, heavy-tailed, or rare-extreme? |
 | Temporal Pattern | How intensity changes over time | When does value rise, fade, pulse, or stay steady? |
-| Spatial Evolution | How the spatial distribution changes over time | Does the pattern stay fixed, drift, jump, wander, or spread? |
+| Spatial Evolution | How the spatial distribution changes over time | Does the pattern stay fixed, drift, jump, wander, spread, deform, swirl, mutate, or branch? |
+| Interaction Scale / Hierarchy | The scale where the process acts | Is behavior global, basin-level, cell-level, edge-level, or hybrid? |
 | State Model / Memory | What the field depends on | Is value computed from time, cycles, current state, or longer history? |
 | Sampling Effect | How visits change future value | Does sampling deplete, cool neighbors, or recover later? |
 | Display Layer | Which value layer is visible | Am I viewing raw value, depleted value, freshness, or composed sample value? |
 
-## Behavior Presets
+Each Behavior Help page also includes `This component changes`, `This component should not change`, `Look for this in the heatmap`, `Useful display layers`, and `Common confusion`. After changing one primitive from a selected preset, the left console shows a component isolation hint with the expected effect and recommended diagnostic views. Lightweight compatibility warnings call out educationally confusing combinations, such as static temporal forcing with neighbor propagation or freshness effects while viewing only Event Likelihood.
 
-Behavior presets are curated combinations of the primitive sample-field controls. They provide recognizable starting points for common spatiotemporal pattern families, such as recurring hotspots, migrating patches, expanding fronts, patchy rainfall, and freshness/revisit value.
+## Process Patterns and Legacy Presets
 
-Presets do not replace the primitive controls. Selecting a preset fills in the underlying Event Likelihood Field, Spatial Pattern, Value Distribution, Temporal Pattern, Spatial Evolution, State Model, Sampling Effect, and relevant parameters. Users can then modify those controls to create custom behavior. Changing any primitive control after selecting a preset marks it as modified from that preset; choosing `Custom` leaves the primitive controls editable without a preset label.
+The top-level Mode selector decides the workflow:
+
+- `Example Processes`: shows the Process Pattern selector, applies an editable example recipe, and preserves legacy `referenceSignature` metadata for compatibility.
+- `Custom Composer`: hides the Process Pattern selector and lets users edit primitive controls directly. Imported custom recipes, if supported later, belong here.
+
+Process Patterns do not replace primitive controls. Selecting a pattern fills in the underlying Event Likelihood Field, Spatial Pattern, Value Distribution, Temporal Pattern, Spatial Evolution, State Model, Sampling Effect, and relevant parameters. Users can then modify those controls to create custom behavior; the pattern remains marked as modified so the result can still be compared against the original guided process.
+
+Legacy behavior presets are curated combinations of the primitive sample-field controls. They remain available for compatibility, internal mapping, and optional debug workflows, but the normal left-panel UI no longer starts from a visible preset dropdown.
 
 | Preset | What it demonstrates | Key composition |
 |---|---|---|
@@ -172,7 +191,7 @@ Presets do not replace the primitive controls. Selecting a preset fills in the u
 | Forest Fire Front (inspired) | Advancing active front | Front + propagation + depleted residual |
 | Life-Like Cellular Emergence (inspired) | Local-rule emergence | Neighbor propagation + state-evolving |
 
-Some presets are inspired by real-world processes but are simplified educational examples. They are not validated process models and do not add current-field dependencies. Flow-driven examples belong in the Coupled Fields Demo.
+Some Process Patterns and legacy presets are inspired by real-world processes but are simplified educational examples. They are not validated process models and do not add current-field dependencies. Flow-driven examples belong in the Coupled Fields Demo.
 
 Preset sanity checks can be run from Node:
 
@@ -180,7 +199,7 @@ Preset sanity checks can be run from Node:
 node tools/js/audit_sample_field_presets.mjs
 ```
 
-The script evaluates each preset over multiple demo times and reports active fraction, frame-to-frame delta, connected components, center-of-mass movement, spatial correlation, extinction warnings, saturation warnings, and static-dynamic warnings. In the browser console, set `globalThis.ANCHOR_DEBUG_ROI_PRESETS = true` to log a compact per-frame preset audit for the selected preset.
+The legacy audit script evaluates each preset over multiple demo times and reports active fraction, frame-to-frame delta, connected components, center-of-mass movement, spatial correlation, extinction warnings, saturation warnings, and static-dynamic warnings. In the browser console, set `globalThis.ANCHOR_DEBUG_ROI_PRESETS = true` to log compact legacy-preset audit output when using the debug path.
 
 The right-panel Behavior Help view includes a `Current Composition` card that summarizes how the selected components combine, for example `Multi-Modal Likelihood + Clustered Field + Gaussian / Normal + Bursty + Discrete Jump + Time-Indexed + Soft Depletion + Sample Value`. Current-driven transport, plumes, flow-stretched patterns, forecast, truth, uncertainty, information gain, and forecast error are routed to the Coupled Fields Demo and Uncertainty / Forecast Demo.
 
@@ -194,9 +213,47 @@ Overlay mode keeps `S(x,y,t)` as the heatmap and draws high-likelihood cells as 
 
 ## Reading the Graph Views
 
-Graph-backed ROI fields expose the hierarchy behind `S(x,y,t)`. `Graph Communities` tints cells by community or basin membership, draws community boundaries, and marks cluster/centroid centers. `Node States` shows inactive, active, cooling, recovering, susceptible, consumed, and inhibited cells over a muted heatmap. `Graph Messages` filters to the strongest local influence edges so the display shows meaningful message flow rather than every neighbor edge. `Community + Messages` combines community regions, active nodes, cluster centers, and strong messages. `Diagnostics Overlay` adds likelihood markers, filtered messages, node-state legend glyphs, and state-count proportions.
+Graph-backed ROI fields expose the hierarchy behind `S(x,y,t)`. `Graph Topology` shows the structural neighbor graph and community boundaries. `Graph Communities` tints cells by community or basin membership, draws community boundaries, and marks cluster/centroid centers. `Node States` shows inactive, active, cooling, recovering, susceptible, consumed, and inhibited cells over a muted heatmap. `Graph Messages` filters to the strongest local influence edges so the display shows meaningful message flow rather than every neighbor edge. `Community + Messages` combines community regions, active nodes, cluster centers, and strong messages. `State Transitions` highlights nodes that changed state and shows transition causes when the update rule emits them. `ROI Meaning` derives current ROI, near-future ROI, low/depleted/dead cells, and transition boundaries from `S`, `L`, node state, messages, and transitions. `Diagnostics Overlay` adds likelihood markers, filtered messages, node-state legend glyphs, and state-count proportions.
 
-The Cell Inspector reports the selected cell's graph node, community, `C_k(t)`, `L_i(t)`, `A_i(t)`, node state, incoming/outgoing message totals, strongest local incoming/outgoing message, inhibited-neighbor count, and nearest cluster. These messages are abstract ROI influence, not physical current vectors.
+Layered view filters can hide inactive nodes, show transition nodes only, choose message types, threshold or cap messages, select same-community or cross-community edges, and focus incoming/outgoing messages for the selected cell. Dynamic `edgeMessages` are preferred; inferred message edges are labeled as diagnostic fallback. The Cell Inspector reports the selected cell's graph node, community, filter status, `C_k(t)`, `L_i(t)`, `A_i(t)`, node state, incoming/outgoing message totals, strongest local incoming/outgoing message, filtered causal messages, transition record, derived ROI roles, depleted/dead status, inhibited-neighbor count, and nearest cluster. These messages are abstract ROI influence, not physical current vectors.
+
+## Process Contracts and Recipes
+
+Process Patterns are recipes, not opaque models. Each pattern has related models, an observable pattern, ROI interpretation, expected failure signs, best display layers, and a component recipe. The right panel opens on `Process Pattern View` by default so users see Current Lab State before selecting a cell. Process Pattern View shows which component controls likelihood, geometry, value distribution, timing, evolution, memory, sampling effect, and display.
+
+Legacy presets also carry process contracts for backward compatibility and debug comparison. They are documented as internal examples rather than the primary UI.
+
+The Process Pattern and ROI Meaning cards explain the observable heatmap pattern, what should change over time, what makes cells important, best display layers, and failure signs that would make the behavior unrepresentative. ROI Meaning separates current ROI, near-future ROI, low/depleted/dead regions, and the sampling intuition for the selected process.
+
+## Component Isolation Examples
+
+The left console includes Component Isolation Examples for comparing one component while holding the rest of the recipe stable:
+
+- `Compare Temporal Patterns` keeps event likelihood and spatial geometry fixed while cycling sustained, periodic, bursty, intermittent, and pulse-then-silence timing.
+- `Compare Spatial Evolution` keeps value shape and timing fixed while cycling stationary, continuous drift, discrete jump, random walk, neighbor propagation, expansion, contraction, divergence, convergence, morph/mutation, shear/stretch, rotational swirl, and branching growth.
+- `Compare Interaction Scale` keeps a graph-backed patch recipe fixed while cycling global, cluster, cell, edge, and hybrid interpretation.
+
+These examples are teaching controls, not a dataset generator. They use stable seeds so students can watch what changed and what stayed fixed.
+
+## Analytic vs State-Evolving Rules
+
+Recipe View labels the simplified implementation type. Some behaviors are analytic time-indexed analogs, some use state-evolving graph updates, some are local cellular transition rules, and freshness modes are history-aware recovery rules. Analytic analogs are valid teaching tools, but they should not be mistaken for validated domain simulators or physical current models.
+
+## Interaction Scale / Hierarchy
+
+Interaction Scale answers: at what scale does behavior act?
+
+| Interaction Scale | Meaning |
+|---|---|
+| Global Field | The whole field acts as one process. |
+| Cluster / Community | Basins or communities can activate independently. |
+| Cell / Node | Per-cell readiness, activation, cooldown, and recovery matter. |
+| Edge / Neighbor | Neighbor influence and graph messages are central. |
+| Hybrid Multi-Scale | The behavior combines field, community, node, and edge cues. |
+
+Some Phase 2 options are explanatory metadata for analytic rules rather than separate numerical update paths. Graph-backed local rules expose the strongest scale-specific effects through Graph Communities, Node States, Graph Messages, Community + Messages, and Diagnostics Overlay. If a selected combination is only partially supported or potentially confusing, the console reports an educational compatibility warning instead of blocking the configuration.
+
+Graph-backed fields emit causal `edgeMessages` and `nodeTransitions` where available. The Graph Messages display uses emitted messages first and falls back to inferred diagnostic messages only for older/missing graph metadata. Inspector rows label whether message data is emitted or inferred.
 
 ## Likelihood Mesh Overlay
 
@@ -206,9 +263,15 @@ Likelihood nodes or modes are sources, basins, attractors, or controllers that i
 
 ## Demo Artifact Export
 
-`Export Demo JSON` downloads an `anchor.demo.sample-roi-field` artifact for Colab/notebook rendering. Choose start time, end time, and timeframe count to include a `frames[]` series sampled from the current settings. It includes the current scene config, demo time, row-major displayed sample value, `L(x,y,t)` event likelihood, likelihood mesh thresholds, likelihood field metadata/nodes/diagnostics, `graphField` metadata, graph state/message layers, graph community-id layers, filtered top graph messages, raw base value, evolved value when available, field stats, activity diagnostics, high-value cells, and selected-cell inspector state. Arrays are indexed as `field[row][col]` using top-left origin and cell-center coordinates.
+`Export Demo JSON` downloads an `anchor.demo.sample-roi-field` artifact for Colab/notebook rendering. Choose start time, end time, and timeframe count to include a `frames[]` series sampled from the current settings. It includes the current scene config, active `viewFilters`, active `patternSource`, reference signature metadata when active, component recipe, legacy preset metadata when applicable, process contract, active component recipe after modifications, modified component hint, compatibility warnings, ROI interpretation, demo time, row-major displayed sample value, `L(x,y,t)` event likelihood, likelihood mesh thresholds, likelihood field metadata/nodes/diagnostics, `graphField` metadata, graph state/message layers, graph community-id layers, filtered top graph messages, node transitions, raw base value, evolved value when available, field stats, activity diagnostics, high-value cells, and selected-cell inspector state. Arrays are indexed as `field[row][col]` using top-left origin and cell-center coordinates.
 
 Freshness / Age of Information values remain labeled as demo-only synthetic visit effects unless they are later tied to actual mission visits.
+
+## Synthetic Scenario Export
+
+The same Export section also offers Scenario Generation. This creates a compact `anchor.syntheticRoiScenario` artifact from the active pattern source: reference signature, custom component recipe, or legacy preset metadata when using the compatibility path. Controls choose the scenario seed, difficulty, duration, frame count, and validation policy. The exported file includes `S(x,y,t)` sample-value frames, `L(x,y,t)` event-likelihood frames, graph state/message layers when available, process contract metadata, sampled parameters, scenario labels, per-frame labels, diagnostics, and validation summaries.
+
+Scenario validation is observable-pattern validation, not domain-model certification. It checks that the synthetic process is non-empty, not saturated, changes over time, and matches family-specific signatures such as recurring hotspots, propagating fronts, drifting/patchy activity, or freshness recovery. The component toybox remains available for visual exploration; scenario export is the compact seeded handoff format for notebooks and downstream experiments.
 
 ## Event Likelihood Field
 
@@ -253,24 +316,24 @@ The demo uses simplified feature-evolution patterns as validation targets:
 | Random-Walk / Wandering Center | displacement is local and bounded | track mobile sources without assuming teleportation |
 | Birth-Death / Cellular Activation | cells activate, cool, recover, or trigger neighbors | exploit state transitions |
 
-### Event Likelihood Dynamics
+### Source Field Dynamics
 
-The likelihood substrate can be:
+The Source / Initial Field substrate can be:
 
 - `Static`: `L(x,y)` is fixed over time.
 - `Dynamic`: `L(x,y,t)` changes over demo time.
 
-When dynamic, Event Likelihood Field has its own controls:
+When dynamic, Source Field has its own controls:
 
-- `Likelihood Temporal Pattern`: Static, Sustained, Periodic, Bursty, Intermittent, Rapid Pulse, Pulse Then Silence, Long-Tail Decay, Gaussian Time Envelope, Random Pulses, Wavy / Multi-Frequency, or Long Cycle.
-- `Likelihood Spatial Evolution`: Stationary, Continuous Movement, Discrete Jump, Random Walk, or Neighbor Propagation.
+- `Source Temporal Pattern`: Static, Sustained, Periodic, Bursty, Intermittent, Rapid Pulse, Pulse Then Silence, Long-Tail Decay, Gaussian Time Envelope, Random Pulses, Wavy / Multi-Frequency, or Long Cycle.
+- `Source Spatial Evolution`: Stationary, Continuous Movement, Discrete Jump, Random Walk, or Neighbor Propagation.
 
 These controls affect `L`, not the already-realized sample-value layer. For example:
 
 ```text
 Event Likelihood Field: Multi-Modal Likelihood
-Likelihood Temporal Pattern: Bursty
-Likelihood Spatial Evolution: Discrete Jump
+Source Temporal Pattern: Bursty
+Source Spatial Evolution: Discrete Jump
 
 Spatial Pattern: Clustered Field
 Temporal Pattern: Bursty
@@ -303,7 +366,7 @@ Examples:
 - Bimodal Values would create two preferred value ranges.
 - These are different concepts.
 
-The implemented Value Distribution options are Constant Value, Uniform Random, and Gaussian / Normal. Uniform Random means low, medium, and high values are approximately equally likely for the same seed. Gaussian / Normal means most cells fall near the middle value and fewer cells land near the low or high extremes.
+The implemented Value Distribution options are Constant Value, Uniform Random, Gaussian / Normal, Skewed Low, Skewed High, Bimodal Values, Heavy-Tailed, and Rare Extreme Events. Uniform Random means low, medium, and high values are approximately equally likely for the same seed. Gaussian / Normal means most cells fall near the middle value and fewer cells land near the low or high extremes. Skewed Low and Skewed High bias the magnitude distribution without moving the geometry. Bimodal Values separates cells into low and high value bands. Heavy-Tailed creates occasional large values. Rare Extreme Events keeps most values low while preserving sparse replayable extreme cells.
 
 ## Spatial Patterns
 
@@ -333,7 +396,7 @@ Spatial Pattern answers: where is sample value located?
 - `Monitoring Stations`: fixed station-like targets that support revisit strategy.
 - `Seeded Texture`: deterministic fine/coarse value texture with spatial coherence.
 
-The left Mission Console provides quick hover help and compact Explain buttons. The right panel shows the selected `About ...` explainer for Event Likelihood Field, Spatial Pattern, Value Distribution, Temporal Pattern, Spatial Evolution, State Model, Sampling Effect, and Display Layer.
+The left Mission Console provides quick hover help and compact Explain buttons for primitive controls. The right panel shows the selected `About ...` explainer for Event Likelihood Field, Spatial Pattern, Value Distribution, Temporal Pattern, Spatial Evolution, State Model, Sampling Effect, and Display Layer.
 
 ## Value Distributions
 
@@ -342,6 +405,92 @@ Value Distribution answers: how are values assigned within the selected spatial 
 - `Constant Value`: every cell receives the same base value before other enabled processes.
 - `Uniform Random`: each cell receives a deterministic seeded random draw from a uniform distribution over the allowed range.
 - `Gaussian / Normal`: each cell receives a deterministic seeded draw from a bell-shaped distribution centered near the mean.
+- `Skewed Low`: most cells receive lower values while the selected spatial geometry remains unchanged.
+- `Skewed High`: most cells receive higher values, which can make broad active regions look more saturated.
+- `Bimodal Values`: cells tend to fall into low or high value bands rather than mid-range values.
+- `Heavy-Tailed`: most values are modest, with a replayable high-value tail.
+- `Rare Extreme Events`: most values remain low, with sparse deterministic extreme cells.
+
+## Process Patterns
+
+Process Patterns are broad observable-process recipes inspired by known cellular automata and grid-process families. They are not exact reproductions. Their purpose is to connect a recognizable process pattern to the ROI demo's component system:
+
+```text
+known process pattern -> abstract ROI pattern -> editable component recipe -> dynamic heatmap
+```
+
+The visible selector contains broad Process Patterns, not every known model:
+
+- Propagating Fronts
+- Excitable Waves
+- Local Birth-Death Emergence
+- Recurrent Stationary Hotspots
+- Diffusive / Epidemic Spread
+- Directed Drift / Transport
+- Cyclic Dominance
+- Domain / Cluster Formation
+- Threshold Cascades / Avalanches
+- Interacting Population Migration
+- Freshness / Recovery
+- Pattern Formation / Morphogenesis
+- Congestion / Density Waves
+- Structured Signal Propagation
+
+Each Process Pattern sets Event Likelihood, Spatial Pattern, Value Distribution, Temporal Pattern, Spatial Evolution, Interaction Scale, State Model, Sampling Effect, and Display Layer. Users can modify any component afterward; the pattern remains marked as modified so the changed recipe can still be discussed against the original guided process. The right-panel Process Pattern View / Behavior Help panel shows inspired-by models, observable pattern, ROI meaning, best display layers, failure signs, and what the pattern is not.
+
+Examples:
+
+- `frontPropagation` is inspired by forest-fire CA, Eden growth, and invasion percolation. The ROI abstraction is active boundary, near-future susceptible region, and depleted or consumed trail. It is not a wildfire simulator.
+- `waveExcitableMedia` is inspired by Brian's Brain, Greenberg-Hastings, cyclic CA, and reaction-diffusion wave analogs. The ROI abstraction is crest, recovering trail, and near-future activation band.
+- `birthDeathEmergence` is inspired by Conway's Game of Life and Life-like rules. The ROI abstraction is local birth/death, emergent patches, and transition regions.
+
+Future tutorial pages may compare a related CA/grid-process animation with the ROI abstraction heatmap, but this phase does not add GIFs or full CA simulators.
+
+## Process Pattern Coverage
+
+The comprehensive catalog maps many known CA/grid-process models into the broad Process Patterns. Known models appear in the right panel, exports, and coverage audits, not as dropdown clutter. Internal/export compatibility still uses `referenceSignature` field names.
+
+| Signature | Reference model families | Observable behavior | ROI meaning | CA mechanism tags |
+|---|---|---|---|---|
+| Propagating Fronts | forest-fire, Eden growth, percolation, DLA | active boundary and consumed trail | sample the front or susceptible region ahead | stochastic, multi-state, extended-neighbourhood, non-uniform |
+| Excitable Waves | Brian's Brain, Greenberg-Hastings, reaction-diffusion waves | crest, refractory wake, recovery | sample crests or near-future activation bands | multi-state, extended-neighbourhood |
+| Local Birth-Death Emergence | Game of Life, Life-like rules, Generations CA | local births/deaths and emergent patches | inspect transition regions and active components | multi-state, extended-neighbourhood |
+| Recurrent Stationary Hotspots | bursty reports, contact-process-like patches | fixed basins with temporal pulses | time visits around active and recovering basins | asynchronous, stochastic, non-uniform |
+| Diffusive / Epidemic Spread | SIR/SIS/SEIR, contact process, percolation spread | local spread and recovery | watch active cells and neighbors receiving influence | stochastic, multi-state, extended-neighbourhood |
+| Directed Drift / Transport | lattice gas, Lattice-Boltzmann analogs, patch transport | coherent scalar feature movement | lead moving ROI features without treating them as current | continuous scalar, extended-neighbourhood |
+| Cyclic Dominance | rock-paper-scissors, cyclic CA, cyclic ecology | phase-shifted regions and rotating fronts | schedule visits by phase | multi-state, extended-neighbourhood |
+| Domain / Cluster Formation | Ising, voter, majority-rule, Schelling | domains, clusters, and boundaries | sample coherent domains or changing boundaries | stochastic, multi-state, non-uniform |
+| Threshold Cascades / Avalanches | BTW/Manna sandpile, threshold cascades | quiet buildup and sudden cascades | react to rare high-value cascade windows | asynchronous, stochastic, multi-state |
+| Interacting Population Migration | Wa-Tor, lattice Lotka-Volterra, pursuit waves | interacting moving population patches | route between migrating activity basins | multi-state, extended-neighbourhood |
+| Freshness / Recovery | age-of-information, cooldown/recovery, revisit value | sampled cells cool and stale cells recover | avoid repeats and revisit when value recovers | history-aware, multi-state, non-uniform |
+| Pattern Formation / Morphogenesis | Turing/Gray-Scott analogs, spot/stripe formation | spots, stripes, splitting, merging | sample emerging structures and boundaries | continuous scalar, extended-neighbourhood |
+| Congestion / Density Waves | Nagel-Schreckenberg, BML, stop-go waves | moving density clusters and jam/release fronts | sample density fronts before they move on | stochastic, multi-state, extended-neighbourhood |
+| Structured Signal Propagation | Wireworld, signal grids, branching relays | pulses along paths or branching networks | sample active relays or likely next path cells | multi-state, graph/extended, non-uniform |
+
+Run the structural coverage audit with:
+
+```bash
+node tools/js/audit_roi_reference_coverage.mjs
+```
+
+## CA Taxonomy Framing
+
+The local reference paper, `docs/references/2401.08408v2.pdf`, is used as mechanism framing rather than as a model library. The ROI demo uses the distinction:
+
+```text
+component recipe = genotype-like setup
+generated heatmap = phenotype-like observable behavior
+```
+
+The CA mechanism tags map into the ROI composer this way:
+
+- `asynchronous`: irregular or staggered update timing, intermittent activation, and partial update schedules.
+- `stochastic`: seeded random pulses, probabilistic activation, rare events, heavy-tailed values, and rare extremes.
+- `multi-state`: active/cooling/recovering/consumed/susceptible graph states plus continuous `L(x,y,t)` and `S(x,y,t)`.
+- `extended-neighbourhood`: graph edges, interaction scale, local/extended influence, community interactions, and message diagnostics.
+- `non-uniform`: likelihood basins, cluster-specific behavior, heterogeneous substrate, spatially varying parameters, and hybrid updates.
+
+These tags describe scientific grounding and QA expectations. They do not mean the demo implements exact CA rules, exact domain simulators, or validated ecological/traffic/wildfire/epidemic models.
 
 ## Spatial Pattern / Geometry
 
@@ -382,8 +531,16 @@ Spatial Evolution answers: how does the spatial distribution itself change over 
 - `Discrete Jump`: the feature fades, then reappears elsewhere without continuous travel.
 - `Random Walk`: feature centers or active regions change by small seeded local steps over time.
 - `Neighbor Propagation`: active cells influence nearby cells, spreading activity locally.
+- `Expansion`: activity grows outward from seeded centers.
+- `Contraction`: activity concentrates inward toward seeded centers.
+- `Divergence`: activity separates away from seeded centers.
+- `Convergence`: activity pulls toward seeded centers.
+- `Morph / Mutation`: local seeded changes reshape the field without per-frame random flicker.
+- `Shear / Stretch`: the scalar field deforms by synthetic shear or stretch.
+- `Rotational Swirl`: the scalar field rotates around seeded centers.
+- `Branching Growth`: activity spreads along seeded branch-like local paths.
 
-Current-advected movement is not part of this demo. Use Coupled Fields Demo when the sample pattern should move because of `F(x,y,t)`.
+Current-advected movement is not part of this demo. Shear / Stretch and Rotational Swirl are scalar ROI deformation primitives, not physical flow. Use Coupled Fields Demo when the sample pattern should move because of `F(x,y,t)`.
 
 Spatial Pattern and Spatial Evolution are separate:
 
@@ -391,6 +548,9 @@ Spatial Pattern and Spatial Evolution are separate:
 - `Clustered Field + Continuous Drift`: a cluster moves smoothly through adjacent or intermediate positions.
 - `Clustered Field + Discrete Jump`: a cluster fades and reappears elsewhere.
 - `Patchy Field + Neighbor Propagation`: activity spreads locally from active cells.
+- `Front / Boundary + Expansion`: a boundary-like active region grows outward.
+- `Seeded Texture + Morph / Mutation`: local regions reshape while remaining deterministic.
+- `Linear Band + Shear / Stretch`: a band deforms without becoming current-coupled transport.
 
 ### Motion Scope
 
@@ -445,7 +605,7 @@ The current implementation uses deterministic synthetic visit markers and freshn
 
 ## Cell Inspector
 
-Click a heatmap cell to inspect it in the right panel. Clicking a cell switches the right panel back to Cell Inspector if Behavior Help was open. Clicking an Explain button in the left controls switches the right panel to Behavior Help while preserving the selected cell.
+Click a heatmap cell to inspect it in the right panel. Clicking a cell switches the right panel back to Cell Inspector if Behavior Help was open. Clicking a primitive-control Explain button in the left controls switches the right panel to Behavior Help while preserving the selected cell.
 
 The inspector reports:
 

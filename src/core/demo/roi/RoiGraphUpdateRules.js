@@ -1,10 +1,21 @@
+import { processClassForUpdateRule } from './RoiProcessContracts.js';
+
 export function selectRoiGraphUpdateRule({
   behaviorPresetId = null,
+  referenceSignatureId = null,
+  updateRuleHint = null,
   spatialEvolution = 'stationary',
   stateModel = 'timeIndexed',
   depletionMode = 'none',
   temporalPattern = 'static'
 } = {}) {
+  if (updateRuleHint) return updateRuleHint;
+  if (referenceSignatureId === 'birthDeathEmergence') return 'lifeLikeLocalRules';
+  if (referenceSignatureId === 'frontPropagation') return 'frontPropagation';
+  if (referenceSignatureId === 'waveExcitableMedia') return 'rippleWave';
+  if (referenceSignatureId === 'freshnessRecovery') return 'freshnessRecovery';
+  if (referenceSignatureId === 'diffusionSpread' || referenceSignatureId === 'avalancheBurstCascades') return 'neighborSpread';
+  if (referenceSignatureId === 'driftTransport' || referenceSignatureId === 'predatorPreyMigration') return 'directedDrift';
   if (behaviorPresetId === 'recurringHotspots') return 'clusterCooldownRecovery';
   if (behaviorPresetId === 'forestFireFrontInspired' || behaviorPresetId === 'expandingFront') return 'frontPropagation';
   if (behaviorPresetId === 'rippleActivation') return 'rippleWave';
@@ -288,13 +299,24 @@ function materializeGraphResult({ graph, baseSample, likelihood, sample, sourceN
       death: Boolean(local.death)
     };
   });
+  const edgeMessages = emittedEdgeMessages(graph, nodes, updateRule);
+  const nodeTransitions = emittedNodeTransitions(nodes, baseLikelihoodFromSample(baseSample), updateRule);
   return {
     updateRule,
+    processMetadata: {
+      processClass: processClassForUpdateRule(updateRule),
+      messageSource: edgeMessages.length ? 'emitted' : 'none',
+      transitionSource: nodeTransitions.length ? 'emitted' : 'none',
+      explanatoryBoundary: 'Edge messages are abstract ROI influence, not physical current vectors.'
+    },
     topology: graph.topology,
     nodeCount: graph.nodeCount,
     edgeCount: graph.edgeCount,
     nodes,
     nodeGrid: gridFromNodes(nodes, width, height),
+    edgeMessages,
+    nodeTransitions,
+    transitionField: gridFromNodes(nodes, width, height, (node) => nodeTransitions.find((transition) => transition.nodeId === node.id)?.cause ?? 'stable'),
     stateField: gridFromNodes(nodes, width, height, (node) => node.state),
     activationField: gridFromNodes(nodes, width, height, (node) => node.activation),
     clusterLikelihoodField: gridFromNodes(nodes, width, height, (node) => node.clusterLikelihood),
@@ -311,6 +333,111 @@ function materializeGraphResult({ graph, baseSample, likelihood, sample, sourceN
       updateExpression: 'incoming_messages_i(t) + node_self_dynamics_i(t) + temporal_forcing_i(t) + sampling_effect_i(t) -> L_i(t+1), S_i(t+1), state_i(t+1)'
     }
   };
+}
+
+function emittedEdgeMessages(graph, nodes, updateRule) {
+  const byId = new Map(nodes.map((node) => [node.id, node]));
+  return (graph.edges ?? [])
+    .map((edge) => {
+      const source = byId.get(edge.source);
+      const target = byId.get(edge.target);
+      if (!source || !target) return null;
+      const sourceSignal = Number(source.outgoingMessage ?? source.activation ?? source.cellLikelihood ?? 0);
+      const targetReadiness = Number(target.cellLikelihood ?? target.likelihood ?? 0);
+      const strength = round3(sourceSignal * Number(edge.weight ?? 1) * (0.65 + targetReadiness * 0.35));
+      if (strength < 0.035) return null;
+      return {
+        source: edge.source,
+        target: edge.target,
+        sourceCell: { x: source.col, y: source.row },
+        targetCell: { x: target.col, y: target.row },
+        weight: edge.weight,
+        messageStrength: strength,
+        strength,
+        sameCommunity: source.communityId === target.communityId,
+        communityId: source.communityId ?? null,
+        rule: updateRule,
+        cause: messageCause(updateRule, source, target),
+        label: messageLabel(updateRule)
+      };
+    })
+    .filter(Boolean)
+    .sort((a, b) => b.messageStrength - a.messageStrength);
+}
+
+function emittedNodeTransitions(nodes, previousLikelihood, updateRule) {
+  return nodes
+    .map((node) => {
+      const previousValue = Number(previousLikelihood?.[node.row]?.[node.col] ?? 0);
+      const previousState = stateForLikelihood(previousValue);
+      const nextState = node.state;
+      const driverValue = round3(Math.max(Number(node.cellLikelihood ?? 0), Number(node.activation ?? 0), Number(node.incomingMessage ?? 0)));
+      const cause = transitionCause(updateRule, previousState, nextState, node);
+      return {
+        nodeId: node.id,
+        row: node.row,
+        col: node.col,
+        communityId: node.communityId,
+        previousState,
+        nextState,
+        cause,
+        driverValue,
+        label: transitionLabel(cause, nextState)
+      };
+    })
+    .filter((transition) => transition.previousState !== transition.nextState || transition.driverValue >= 0.35);
+}
+
+function baseLikelihoodFromSample(field) {
+  return field;
+}
+
+function messageCause(updateRule, source, target) {
+  if (updateRule === 'frontPropagation') return target.state === 'susceptible' ? 'front_neighbor_pressure' : 'front_residual_influence';
+  if (updateRule === 'rippleWave') return 'wave_crest_neighbor_influence';
+  if (updateRule === 'directedDrift') return 'directional_drift_bias';
+  if (updateRule === 'lifeLikeLocalRules') return 'local_rule_neighbor_count';
+  if (updateRule === 'freshnessRecovery') return 'freshness_recovery_context';
+  if (updateRule === 'clusterCooldownRecovery') return 'cluster_basin_activity';
+  return source.communityId === target.communityId ? 'within_community_neighbor_spread' : 'cross_community_neighbor_spread';
+}
+
+function messageLabel(updateRule) {
+  return {
+    clusterCooldownRecovery: 'cluster basin influence',
+    frontPropagation: 'front propagation message',
+    rippleWave: 'ripple crest message',
+    directedDrift: 'directed drift message',
+    lifeLikeLocalRules: 'local rule neighbor message',
+    freshnessRecovery: 'freshness recovery context',
+    neighborSpread: 'neighbor spread message'
+  }[updateRule] ?? 'ROI graph message';
+}
+
+function transitionCause(updateRule, previousState, nextState, node) {
+  if (previousState === nextState && Number(node.incomingMessage ?? 0) >= 0.35) return 'strong_incoming_message';
+  if (nextState === 'active' || nextState === 'crest' || nextState === 'alive') return updateRule === 'frontPropagation' ? 'front_ignition' : updateRule === 'lifeLikeLocalRules' ? 'local_rule_birth' : 'activation_threshold_crossed';
+  if (nextState === 'cooling') return 'cooldown_after_activity';
+  if (nextState === 'recovering') return 'recovery_or_near_future_interest';
+  if (nextState === 'consumed') return 'burnout_or_depletion';
+  if (nextState === 'susceptible') return 'susceptible_ahead_of_activity';
+  if (nextState === 'inactive' && previousState !== 'inactive') return 'activity_faded';
+  return 'stable';
+}
+
+function transitionLabel(cause, nextState) {
+  return {
+    activation_threshold_crossed: `became ${nextState} after readiness crossed threshold`,
+    front_ignition: 'front reached this cell',
+    local_rule_birth: 'local neighbor rule activated this cell',
+    cooldown_after_activity: 'cooling after recent activity',
+    recovery_or_near_future_interest: 'recovering toward future interest',
+    burnout_or_depletion: 'consumed or depleted behind the active region',
+    susceptible_ahead_of_activity: 'susceptible ahead of active region',
+    activity_faded: 'activity faded below threshold',
+    strong_incoming_message: 'held by strong incoming graph message',
+    stable: 'state remained stable'
+  }[cause] ?? cause;
 }
 
 function nearestSource(sourceNodes, x, y) {

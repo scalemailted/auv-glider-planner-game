@@ -1,3 +1,6 @@
+import { roiProcessContractForPreset } from './roi/RoiProcessContracts.js';
+import { referenceSignatureForPreset, referenceSignatureMetadata } from './roi/RoiReferenceSignatures.js';
+
 export const CUSTOM_SAMPLE_FIELD_BEHAVIOR_PRESET_ID = 'custom';
 
 export const SAMPLE_FIELD_BEHAVIOR_PRESETS = [
@@ -421,11 +424,17 @@ export function sampleFieldBehaviorPresetLabel(value) {
 
 export function sampleFieldBehaviorPresetMetadata(value, modified = false) {
   const preset = sampleFieldBehaviorPresetById(value);
+  const processContract = roiProcessContractForPreset(preset?.id ?? CUSTOM_SAMPLE_FIELD_BEHAVIOR_PRESET_ID, preset?.config ?? {});
+  const referenceSignature = referenceSignatureForPreset(preset?.id);
   return {
     id: preset?.id ?? CUSTOM_SAMPLE_FIELD_BEHAVIOR_PRESET_ID,
     label: preset?.label ?? 'Custom',
     modified: Boolean(preset && modified),
-    category: preset?.category ?? 'Custom composition'
+    category: preset?.category ?? 'Custom composition',
+    processClass: processContract.processClass,
+    interactionScale: processContract.interactionScale,
+    processContract,
+    referenceSignature: referenceSignatureMetadata(referenceSignature?.id)
   };
 }
 

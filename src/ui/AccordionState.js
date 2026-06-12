@@ -1,6 +1,6 @@
 const STORAGE_KEY = 'anchorGliderCommand.ui.accordions.v1';
 
-export function applyMissionConsoleAccordions(root, mode = 'default', defaults = {}) {
+export function applyMissionConsoleAccordions(root, mode = 'default', defaults = {}, options = {}) {
   if (!root) return;
   const sections = [...root.querySelectorAll(':scope > .console-section')];
   if (!sections.length) return;
@@ -24,7 +24,7 @@ export function applyMissionConsoleAccordions(root, mode = 'default', defaults =
       continue;
     }
     const key = section.dataset.accordionKey || slugify(title);
-    const expanded = state[mode][key] ?? defaults[key] ?? defaults[title] ?? true;
+    const expanded = state[mode][key] ?? defaults[key] ?? defaults[title] ?? !options.defaultCollapsed;
     section.dataset.accordionKey = key;
     section.dataset.accordionReady = 'true';
     section.classList.add('accordion-section');

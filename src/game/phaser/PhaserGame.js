@@ -196,11 +196,12 @@ export class PhaserGameApp {
     showToast(this.elements?.toastRoot, message, kind);
   }
 
-  applyConsoleAccordions(mode = 'default', defaults = null) {
+  applyConsoleAccordions(mode = 'default', defaults = null, options = {}) {
     applyMissionConsoleAccordions(
       this.elements?.consoleRoot,
       mode,
-      defaults ?? getAccordionDefaults(mode)
+      defaults ?? getAccordionDefaults(mode),
+      options
     );
   }
 
