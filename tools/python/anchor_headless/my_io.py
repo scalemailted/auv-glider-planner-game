@@ -8,8 +8,8 @@ def load_solver_packet(path):
     packet_path = Path(path)
     with packet_path.open("r", encoding="utf-8") as handle:
         packet = json.load(handle)
-    if packet.get("type") != "anchor.solverPacket":
-        raise ValueError("Expected an anchor.solverPacket JSON file.")
+    # if packet.get("type") != "anchor.solverPacket":
+    #     raise ValueError("Expected an anchor.solverPacket JSON file.")
     return packet
 
 

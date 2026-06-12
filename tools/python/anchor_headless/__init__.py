@@ -5,7 +5,7 @@ not simulate the browser game; ANCHOR remains the official validator, simulator,
 and scorer.
 """
 
-from .io import load_solver_packet, write_plan_json
+from .my_io import load_solver_packet, write_plan_json
 from .world import build_headless_world, summarize_packet
 from .solvers import greedy_forecast_plan
 from .validation import sanity_check_plan

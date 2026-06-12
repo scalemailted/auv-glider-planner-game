@@ -73,6 +73,8 @@ export function buildSolverPacket({ level, mission, plan = null, challengeMode =
     type: 'anchor.solverPacket',
     packetId: createGameInstanceId('PKT'),
     createdAt,
+    level: level,
+    mission: mission,
     levelId: identity.levelId,
     instanceId: identity.instanceId,
     missionId: mission?.missionId ?? null,
