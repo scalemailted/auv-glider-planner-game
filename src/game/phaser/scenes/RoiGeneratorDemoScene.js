@@ -1,24 +1,11 @@
 import {
   createDemoRoiField,
-  ROI_DEMO_DEFAULT_DISPLAY_MODE,
   roiDepletionModeLabel,
   roiDisplayModeLabel,
-  roiPatternEvolutionLabel,
   roiSpatialEvolutionLabel,
-  roiMotionScopeLabel,
-  roiPureSpatialPatternLabel,
-  roiEventLikelihoodLabel,
-  roiLikelihoodDynamicsLabel,
-  roiLikelihoodSpatialEvolutionLabel,
-  roiValueDistributionLabel,
-  roiSpatialPatternHelp,
   roiTemporalPatternLabel,
-  roiEvolutionModelLabel,
-  roiStateModelDescription,
   roiStateModelForEvolutionModel,
   roiStateModelLabel,
-  roiClusterSizeLabel,
-  sampleTemporalBehaviorLabel,
   roiDemoDistributionDefaults,
   normalizeRoiDemoDistribution,
   normalizeRoiDemoEventLikelihood,
@@ -31,24 +18,108 @@ import {
   normalizeRoiDemoEvolutionModel,
   normalizeRoiDemoPatternEvolution,
   normalizeRoiDemoMotionScope,
+  normalizeRoiDemoInteractionScale,
   normalizeRoiDemoStateModel,
   normalizeRoiDemoDepletionMode,
   normalizeRoiDemoDisplayMode,
+  normalizeRoiDemoViewFilters,
   normalizeRoiDemoDynamicComplexity,
   normalizeRoiDemoClusterSize
 } from '../../../core/demo/DemoRoiFields.js';
-import { sampleFieldBehaviorExplainer, sampleFieldCompositionExplainer } from '../../../core/demo/SampleFieldBehaviorExplainers.js';
+import {
+  drawHighValueMarkers,
+  drawSelectedSamplingCell,
+  drawSamplingProcessHeatmap,
+  isGraphDisplayMode
+} from '../renderers/SamplingProcessRenderLayers.js';
+import { generateRoiScenario, ROI_SCENARIO_DIFFICULTIES, ROI_SCENARIO_SOURCE_MODES, ROI_SCENARIO_VALIDATION_MODES } from '../../../core/demo/roi/RoiScenarioGenerator.js';
 import {
   CUSTOM_SAMPLE_FIELD_BEHAVIOR_PRESET_ID,
+  SAMPLE_FIELD_BEHAVIOR_PRESETS,
   normalizeSampleFieldBehaviorPresetId,
   sampleFieldBehaviorPresetById,
   sampleFieldBehaviorPresetMetadata,
   sampleFieldBehaviorPresetLabel
 } from '../../../core/demo/SampleFieldBehaviorPresets.js';
-import { buildDemoArtifactEnvelope, cloneField, demoArtifactFilename, normalizeDemoExportSettings, validateDemoExportSettings } from '../../../core/io/DemoArtifactExporter.js';
+import {
+  CUSTOM_REFERENCE_SIGNATURE_ID,
+  ROI_REFERENCE_SIGNATURES,
+  formatObservableSignature,
+  normalizeReferenceSignatureId,
+  referenceSignatureById,
+  referenceSignatureMetadata,
+  referenceSignatureRecipe
+} from '../../../core/demo/roi/RoiReferenceSignatures.js';
+import { demoArtifactFilename, validateDemoExportSettings } from '../../../core/io/DemoArtifactExporter.js';
 import { downloadJSON } from '../../../core/io/ImportExport.js';
+import {
+  SAMPLING_PROCESS_DEFAULT_DISPLAY_MODE,
+  SAMPLING_PROCESS_LAB_TITLE,
+  SAMPLING_PROCESS_VISIBLE_MODES,
+  normalizeSamplingProcessMode,
+  samplingProcessModeLabel
+} from '../../../core/demo/sampling/SamplingProcessTerminology.js';
+import {
+  normalizeProcessRuleId,
+  processRuleById
+} from '../../../core/demo/sampling/SamplingProcessRules.js';
+import {
+  assignSamplingProcessCell,
+  clearSamplingProcessPaintModel,
+  clearSamplingProcessCell,
+  createBlankSamplingProcessPaintModel,
+  createSamplingProcessPaintModel,
+  validateSamplingProcessPaintModel
+} from '../../../core/demo/sampling/SamplingProcessPaintModel.js';
+import { randomizeSamplingProcessAllocation } from '../../../core/demo/sampling/SamplingProcessRandomizer.js';
+import {
+  buildSamplingProcessLayersForField,
+  buildSamplingProcessPaintField
+} from '../../../core/demo/sampling/SamplingProcessPaintFieldAdapter.js';
+import {
+  buildCustomComposerPatch,
+  buildPatternSourcePatch,
+  buildProcessPaintEntryPatch,
+  buildProcessPaintSelectionPatch,
+  buildRandomizedAllocationPatch,
+  buildSamplingProcessModePatch,
+  buildReferenceSignaturePatch,
+  migrateDiagnosticsProcessMode,
+  processModeFromPatternSource
+} from '../../../core/demo/sampling/SamplingProcessModeController.js';
+import {
+  buildSamplingProcessDemoArtifactExport,
+  buildSamplingProcessDemoArtifactFrame,
+  buildSamplingProcessExportSampling,
+  buildSamplingProcessScenarioMetadata
+} from '../../../core/demo/sampling/SamplingProcessExportBuilder.js';
+import { buildSamplingProcessConsoleHandlers } from '../../../core/demo/sampling/SamplingProcessConsoleHandlers.js';
+import { buildSamplingProcessConsoleState } from '../../../core/demo/sampling/SamplingProcessConsoleViewModel.js';
+import {
+  buildSamplingProcessBehaviorHelpState,
+  buildSamplingProcessCellInspection,
+  buildSamplingProcessComponentRecipe,
+  buildSamplingProcessDiagnosticsState,
+  buildSamplingProcessPaintPanelState,
+  buildSamplingProcessRecipeSignatureState,
+  buildSamplingProcessRecipeSummary
+} from '../../../core/demo/sampling/SamplingProcessViewModel.js';
+import {
+  processPaintCellEditorHtml,
+  processPaintInspectorEmptyHtml,
+  processPaintToolsHtml,
+  roiBehaviorHelpEmptyHtml,
+  roiBehaviorHelpHtml,
+  roiDiagnosticsHtml,
+  roiInspectorEmptyHtml,
+  roiInspectorHtml,
+  roiRecipeSignatureHtml
+} from '../../../ui/sampling/SamplingProcessRightPanel.js';
 
 const PhaserScene = globalThis.Phaser?.Scene ?? class {};
+const ROI_UI_VERSION = 'reference-signature-primary-ui-v1';
+const DEFAULT_REFERENCE_SIGNATURE_ID = 'stationaryTemporalBursts';
+const PATTERN_SOURCES = ['referenceSignature', 'custom', 'legacyPreset'];
 
 export class RoiGeneratorDemoScene extends PhaserScene {
   constructor() {
@@ -73,20 +144,28 @@ export class RoiGeneratorDemoScene extends PhaserScene {
     this.patternEvolution = 'stationary';
     this.spatialEvolution = 'stationary';
     this.motionScope = 'perFeature';
+    this.interactionScale = 'hybrid';
     this.stateModel = 'stateEvolving';
     this.depletionMode = 'soft';
-    this.displayMode = ROI_DEMO_DEFAULT_DISPLAY_MODE;
+    this.displayMode = SAMPLING_PROCESS_DEFAULT_DISPLAY_MODE;
+    this.viewFilters = normalizeRoiDemoViewFilters();
     this.dynamicComplexity = 'medium';
+    this.patternSource = 'referenceSignature';
+    this.processMode = 'referenceSignature';
     this.behaviorPresetId = CUSTOM_SAMPLE_FIELD_BEHAVIOR_PRESET_ID;
     this.behaviorPresetModified = false;
+    this.referenceSignatureId = DEFAULT_REFERENCE_SIGNATURE_ID;
+    this.referenceSignatureModified = false;
+    this.updateRuleHint = null;
     this.forecastView = 'forecast';
     this.demoTime = 0;
     this.timeSpeedScale = 1;
     this.playbackDirection = 1;
     this.paused = false;
     this.field = null;
+    this.processLayers = null;
     this.selectedCell = null;
-    this.rightPanelMode = 'cellInspector';
+    this.rightPanelMode = 'recipeSignature';
     this.selectedHelpTopic = null;
     this.lastInspectorKey = '';
     this.lastInspectorRenderTime = -Infinity;
@@ -95,41 +174,89 @@ export class RoiGeneratorDemoScene extends PhaserScene {
     this.exportStartTime = 0;
     this.exportEndTime = 120;
     this.exportFrameCount = 1;
+    this.scenarioSourceMode = 'currentRecipe';
+    this.scenarioSeed = 'scenario-test-001';
+    this.scenarioDifficulty = 'medium';
+    this.scenarioDuration = 120;
+    this.scenarioFrameCount = 25;
+    this.scenarioValidationMode = 'requirePass';
+    this.generatedScenario = null;
+    this.paintModel = createSamplingProcessPaintModel();
+    this.selectedPaintState = 'active';
+    this.selectedPaintRuleId = 'propagatingFront';
+    this.selectedPaintGroupId = 1;
+    this.selectedPaintSourceValue = 1;
+    this.paintStartMode = 'blankCanvas';
+    this.processPaintRunStarted = false;
+    this.randomRuleSeed = 'sampling-random-001';
+    this.randomRuleMode = 'exploratoryMixedRules';
+    this.randomRuleGroupCount = 4;
+    this.randomRuleActiveFraction = 0.18;
   }
 
   init(data = {}) {
+    const patternSource = normalizePatternSource(data.patternSource, data);
+    const requestedReferenceSignatureId = normalizeReferenceSignatureId(data.referenceSignatureId ?? data.referenceSignature?.id ?? (
+      patternSource === 'referenceSignature' ? DEFAULT_REFERENCE_SIGNATURE_ID : CUSTOM_REFERENCE_SIGNATURE_ID
+    ));
+    const requestedProcessMode = normalizeSamplingProcessMode(data.processMode ?? processModeFromPatternSource(patternSource));
+    const diagnosticsMigration = requestedProcessMode === 'diagnosticsGraphInspection'
+      ? migrateDiagnosticsProcessMode({
+          ...data,
+          activeWorkflowMode: processModeFromPatternSource(patternSource),
+          processMode: processModeFromPatternSource(patternSource)
+        })
+      : null;
+    const processMode = diagnosticsMigration?.processMode ?? requestedProcessMode;
+    const explicitDisplayMode = data.displayMode ?? data.config?.displayMode ?? null;
+    const referenceRecipe = patternSource === 'referenceSignature' ? referenceSignatureRecipe(requestedReferenceSignatureId) : {};
+    const input = { ...referenceRecipe, ...data };
     this.distribution = normalizeRoiDemoDistribution(data.distribution ?? 'burstyBloom');
     const distributionDefaults = roiDemoDistributionDefaults(this.distribution);
-    this.seed = data.seed ?? 'anchor-roi-demo';
-    this.eventLikelihood = normalizeRoiDemoEventLikelihood(data.eventLikelihood ?? distributionDefaults.eventLikelihood ?? 'multiModalLikelihood');
-    this.eventLikelihoodDynamics = normalizeRoiDemoLikelihoodDynamics(data.eventLikelihoodDynamics ?? 'static');
-    this.eventLikelihoodTemporalPattern = normalizeRoiDemoTemporalPattern(data.eventLikelihoodTemporalPattern ?? 'static');
-    this.eventLikelihoodSpatialEvolution = normalizeRoiDemoPatternEvolution(data.eventLikelihoodSpatialEvolution ?? 'stationary');
-    this.hotspotCount = finiteNumber(data.hotspotCount, 3);
-    this.clusterSize = normalizeRoiDemoClusterSize(data.clusterSize ?? 'medium');
-    this.noise = finiteNumber(data.noise, 0.15);
-    this.timeMode = normalizeRoiDemoTimeMode(data.timeMode ?? 'dynamic');
-    this.spatialPattern = normalizeRoiDemoPureSpatialPattern(data.spatialPattern ?? data.pureSpatialPattern ?? distributionDefaults.spatialPattern);
-    this.valueDistribution = normalizeRoiDemoValueDistribution(data.valueDistribution ?? distributionDefaults.valueDistribution);
-    this.temporalPattern = normalizeRoiDemoTemporalPattern(data.temporalPattern ?? distributionDefaults.temporalPattern);
-    this.spatialEvolution = normalizeRoiDemoPatternEvolution(data.spatialEvolution ?? data.patternEvolution ?? data.evolutionModel ?? distributionDefaults.spatialEvolution ?? distributionDefaults.evolutionModel);
+    this.seed = input.seed ?? 'anchor-roi-demo';
+    this.eventLikelihood = normalizeRoiDemoEventLikelihood(input.eventLikelihood ?? distributionDefaults.eventLikelihood ?? 'multiModalLikelihood');
+    this.eventLikelihoodDynamics = normalizeRoiDemoLikelihoodDynamics(input.eventLikelihoodDynamics ?? 'static');
+    this.eventLikelihoodTemporalPattern = normalizeRoiDemoTemporalPattern(input.eventLikelihoodTemporalPattern ?? 'static');
+    this.eventLikelihoodSpatialEvolution = normalizeRoiDemoPatternEvolution(input.eventLikelihoodSpatialEvolution ?? 'stationary');
+    this.hotspotCount = finiteNumber(input.hotspotCount, 3);
+    this.clusterSize = normalizeRoiDemoClusterSize(input.clusterSize ?? 'medium');
+    this.noise = finiteNumber(input.noise, 0.15);
+    this.timeMode = normalizeRoiDemoTimeMode(input.timeMode ?? 'dynamic');
+    this.spatialPattern = normalizeRoiDemoPureSpatialPattern(input.spatialPattern ?? input.pureSpatialPattern ?? distributionDefaults.spatialPattern);
+    this.valueDistribution = normalizeRoiDemoValueDistribution(input.valueDistribution ?? distributionDefaults.valueDistribution);
+    this.temporalPattern = normalizeRoiDemoTemporalPattern(input.temporalPattern ?? distributionDefaults.temporalPattern);
+    this.spatialEvolution = normalizeRoiDemoPatternEvolution(input.spatialEvolution ?? input.patternEvolution ?? input.evolutionModel ?? distributionDefaults.spatialEvolution ?? distributionDefaults.evolutionModel);
     this.evolutionModel = this.spatialEvolution;
     this.patternEvolution = this.spatialEvolution;
-    this.motionScope = normalizeRoiDemoMotionScope(data.motionScope ?? 'perFeature');
-    this.stateModel = normalizeRoiDemoStateModel(data.stateModel);
-    this.depletionMode = normalizeRoiDemoDepletionMode(data.depletionMode ?? 'soft');
-    this.displayMode = normalizeRoiDemoDisplayMode(data.displayMode ?? ROI_DEMO_DEFAULT_DISPLAY_MODE);
-    this.dynamicComplexity = normalizeRoiDemoDynamicComplexity(data.dynamicComplexity ?? 'medium');
-    this.behaviorPresetId = normalizeSampleFieldBehaviorPresetId(data.behaviorPresetId ?? data.behaviorPreset?.id ?? CUSTOM_SAMPLE_FIELD_BEHAVIOR_PRESET_ID);
+    this.motionScope = normalizeRoiDemoMotionScope(input.motionScope ?? 'perFeature');
+    this.stateModel = normalizeRoiDemoStateModel(input.stateModel);
+    this.depletionMode = normalizeRoiDemoDepletionMode(input.depletionMode ?? 'soft');
+    this.displayMode = normalizeRoiDemoDisplayMode(
+      diagnosticsMigration?.displayMode
+        ?? explicitDisplayMode
+        ?? (processMode === 'processPaint' ? 'nodeStates' : SAMPLING_PROCESS_DEFAULT_DISPLAY_MODE)
+    );
+    this.viewFilters = normalizeRoiDemoViewFilters(input.viewFilters ?? input.config?.viewFilters ?? this.viewFilters);
+    this.dynamicComplexity = normalizeRoiDemoDynamicComplexity(input.dynamicComplexity ?? 'medium');
+    this.patternSource = patternSource;
+    this.processMode = processMode;
+    this.behaviorPresetId = patternSource === 'legacyPreset'
+      ? normalizeSampleFieldBehaviorPresetId(input.behaviorPresetId ?? input.behaviorPreset?.id ?? CUSTOM_SAMPLE_FIELD_BEHAVIOR_PRESET_ID)
+      : CUSTOM_SAMPLE_FIELD_BEHAVIOR_PRESET_ID;
     this.behaviorPresetModified = Boolean(data.behaviorPresetModified ?? data.behaviorPreset?.modified);
-    this.temporalBehavior = normalizeRoiDemoTemporalBehavior(data.temporalBehavior ?? distributionDefaults.temporalBehavior);
+    this.referenceSignatureId = patternSource === 'referenceSignature' ? requestedReferenceSignatureId : CUSTOM_REFERENCE_SIGNATURE_ID;
+    this.referenceSignatureModified = Boolean(input.referenceSignatureModified ?? input.referenceSignature?.modified);
+    this.updateRuleHint = patternSource === 'referenceSignature' ? input.updateRuleHint ?? null : null;
+    this.interactionScale = normalizeRoiDemoInteractionScale(input.interactionScale ?? sampleFieldBehaviorPresetMetadata(this.behaviorPresetId).interactionScale ?? 'hybrid');
+    this.modifiedComponent = data.modifiedComponent ?? null;
+    this.temporalBehavior = normalizeRoiDemoTemporalBehavior(input.temporalBehavior ?? distributionDefaults.temporalBehavior);
     this.forecastView = normalizeForecastView(data.forecastView ?? 'forecast');
     this.timeSpeedScale = finiteNumber(data.timeSpeedScale, 1);
     this.playbackDirection = normalizePlaybackDirection(data.playbackDirection);
     this.demoTime = finiteNumber(data.demoTime, 0);
-    this.paused = false;
+    this.paused = this.processMode === 'processPaint' ? data.paused !== false : Boolean(data.paused);
     this.selectedCell = normalizeSelectedCell(data.selectedCell);
-    this.rightPanelMode = normalizeRightPanelMode(data.rightPanelMode);
+    this.rightPanelMode = normalizeRightPanelMode(diagnosticsMigration?.rightPanelMode ?? data.rightPanelMode);
     this.selectedHelpTopic = normalizeHelpTopic(data.selectedHelpTopic);
     this.lastInspectorKey = '';
     this.lastInspectorRenderTime = -Infinity;
@@ -138,6 +265,28 @@ export class RoiGeneratorDemoScene extends PhaserScene {
     this.exportStartTime = finiteNumber(data.exportStartTime ?? this.demoTime, this.demoTime);
     this.exportEndTime = finiteNumber(data.exportEndTime ?? Math.max(120, this.demoTime), Math.max(120, this.demoTime));
     this.exportFrameCount = Math.max(1, Math.round(finiteNumber(data.exportFrameCount, 1)));
+    this.scenarioSourceMode = normalizeScenarioSourceMode(data.scenarioSourceMode);
+    this.scenarioSeed = data.scenarioSeed ?? 'scenario-test-001';
+    this.scenarioDifficulty = normalizeScenarioDifficulty(data.scenarioDifficulty);
+    this.scenarioDuration = Math.max(1, finiteNumber(data.scenarioDuration, 120));
+    this.scenarioFrameCount = Math.max(1, Math.min(240, Math.round(finiteNumber(data.scenarioFrameCount, 25))));
+    this.scenarioValidationMode = normalizeScenarioValidationMode(data.scenarioValidationMode);
+    this.generatedScenario = null;
+    this.paintModel = createSamplingProcessPaintModel({
+      width: 24,
+      height: 16,
+      assignments: data.paintModel ?? data.ruleAllocation ?? {}
+    });
+    this.selectedPaintState = data.selectedPaintState ?? 'active';
+    this.selectedPaintRuleId = normalizeProcessRuleId(data.selectedPaintRuleId ?? 'propagatingFront');
+    this.selectedPaintGroupId = Math.max(0, Math.round(Number(data.selectedPaintGroupId ?? 1)));
+    this.selectedPaintSourceValue = Math.max(0, Math.min(1, Number(data.selectedPaintSourceValue ?? 1)));
+    this.paintStartMode = normalizePaintStartMode(data.paintStartMode);
+    this.processPaintRunStarted = Boolean(data.processPaintRunStarted);
+    this.randomRuleSeed = data.randomRuleSeed ?? 'sampling-random-001';
+    this.randomRuleMode = data.randomRuleMode ?? 'exploratoryMixedRules';
+    this.randomRuleGroupCount = Math.max(1, Math.round(Number(data.randomRuleGroupCount ?? 4)));
+    this.randomRuleActiveFraction = Math.max(0, Math.min(1, Number(data.randomRuleActiveFraction ?? 0.18)));
     this.rebuildField();
   }
 
@@ -152,6 +301,7 @@ export class RoiGeneratorDemoScene extends PhaserScene {
     this.renderCellInspector(true);
     this.buildSceneObjects();
     this.bindInputHandlers();
+    this.bindDocumentTransportControls();
     this.draw();
   }
 
@@ -169,7 +319,8 @@ export class RoiGeneratorDemoScene extends PhaserScene {
   }
 
   update(_time, delta) {
-    if (this.paused || (this.timeMode !== 'dynamic' && this.eventLikelihoodDynamics !== 'dynamic')) {
+    const processPaintRunning = this.processMode === 'processPaint' && this.processPaintRunStarted;
+    if (this.paused || (!processPaintRunning && this.timeMode !== 'dynamic' && this.eventLikelihoodDynamics !== 'dynamic')) {
       this.draw();
       return;
     }
@@ -180,11 +331,24 @@ export class RoiGeneratorDemoScene extends PhaserScene {
   }
 
   title() {
-    return 'Sample / ROI Field Demo';
+    return SAMPLING_PROCESS_LAB_TITLE;
   }
 
   subtitle() {
-    return 'Seeded S(x,y,t) sandbox for inspecting where and when sampling is valuable.';
+    if (this.processMode === 'processPaint') {
+      return 'Process Paint Mode: assign initial state, process rule, group, and source value to cells or groups.';
+    }
+    if (this.processMode === 'randomRuleLab') {
+      return 'Random Rule Lab: generate seeded exploratory rule/state/group allocations and inspect the resulting sampling process.';
+    }
+    const signature = referenceSignatureById(this.referenceSignatureId);
+    if (this.patternSource === 'referenceSignature' && signature) {
+      return `Example Processes: ${signature.label} | Deterministic/seeded observable process: ${formatObservableSignature(signature.expectedObservableSignature)}`;
+    }
+    if (this.patternSource === 'custom') {
+      return `Custom Exploratory Composer | ${this.recipeSummary?.() ?? 'editable primitive components'}`;
+    }
+    return `Legacy Preset: ${sampleFieldBehaviorPresetLabel(this.behaviorPresetId)} | compatibility recipe`;
   }
 
   sceneConfig(overrides = {}) {
@@ -207,15 +371,24 @@ export class RoiGeneratorDemoScene extends PhaserScene {
       patternEvolution: this.patternEvolution,
       spatialEvolution: this.spatialEvolution,
       motionScope: this.motionScope,
+      interactionScale: this.interactionScale,
       stateModel: this.stateModel,
       depletionMode: this.depletionMode,
       displayMode: this.displayMode,
+      viewFilters: this.viewFilters,
       dynamicComplexity: this.dynamicComplexity,
+      patternSource: this.patternSource,
+      processMode: this.processMode,
       behaviorPresetId: this.behaviorPresetId,
       behaviorPresetModified: this.behaviorPresetModified,
+      referenceSignatureId: this.referenceSignatureId,
+      referenceSignatureModified: this.referenceSignatureModified,
+      updateRuleHint: this.updateRuleHint,
+      modifiedComponent: this.modifiedComponent,
       forecastView: this.forecastView,
       timeSpeedScale: this.timeSpeedScale,
       playbackDirection: this.playbackDirection,
+      paused: this.paused,
       demoTime: this.demoTime,
       selectedCell: this.selectedCell,
       rightPanelMode: this.rightPanelMode,
@@ -224,16 +397,177 @@ export class RoiGeneratorDemoScene extends PhaserScene {
       exportStartTime: this.exportStartTime,
       exportEndTime: this.exportEndTime,
       exportFrameCount: this.exportFrameCount,
+      scenarioSourceMode: this.scenarioSourceMode,
+      scenarioSeed: this.scenarioSeed,
+      scenarioDifficulty: this.scenarioDifficulty,
+      scenarioDuration: this.scenarioDuration,
+      scenarioFrameCount: this.scenarioFrameCount,
+      scenarioValidationMode: this.scenarioValidationMode,
+      paintModel: this.paintModel,
+      selectedPaintState: this.selectedPaintState,
+      selectedPaintRuleId: this.selectedPaintRuleId,
+      selectedPaintGroupId: this.selectedPaintGroupId,
+      selectedPaintSourceValue: this.selectedPaintSourceValue,
+      paintStartMode: this.paintStartMode,
+      processPaintRunStarted: this.processPaintRunStarted,
+      randomRuleSeed: this.randomRuleSeed,
+      randomRuleMode: this.randomRuleMode,
+      randomRuleGroupCount: this.randomRuleGroupCount,
+      randomRuleActiveFraction: this.randomRuleActiveFraction,
+      ...overrides
+    };
+  }
+
+  modeControllerContext(overrides = {}) {
+    return {
+      processMode: this.processMode,
+      patternSource: this.patternSource,
+      behaviorPresetId: this.behaviorPresetId,
+      behaviorPresetModified: this.behaviorPresetModified,
+      referenceSignatureId: this.referenceSignatureId,
+      referenceSignatureModified: this.referenceSignatureModified,
+      updateRuleHint: this.updateRuleHint,
+      selectedCell: this.selectedCell,
+      rightPanelMode: this.rightPanelMode,
+      paused: this.paused,
+      processPaintRunStarted: this.processPaintRunStarted,
+      paintStartMode: this.paintStartMode,
+      paintModel: this.paintModel,
+      displayMode: this.displayMode,
+      demoTime: this.demoTime,
+      selectedPaintState: this.selectedPaintState,
+      selectedPaintRuleId: this.selectedPaintRuleId,
+      selectedPaintGroupId: this.selectedPaintGroupId,
+      selectedPaintSourceValue: this.selectedPaintSourceValue,
+      randomRuleSeed: this.randomRuleSeed,
+      randomRuleMode: this.randomRuleMode,
+      randomRuleGroupCount: this.randomRuleGroupCount,
+      randomRuleActiveFraction: this.randomRuleActiveFraction,
       ...overrides
     };
   }
 
   primitiveSceneConfig(overrides = {}) {
     const hasPreset = this.behaviorPresetId !== CUSTOM_SAMPLE_FIELD_BEHAVIOR_PRESET_ID;
+    const hasReferenceSignature = this.referenceSignatureId !== CUSTOM_REFERENCE_SIGNATURE_ID;
     return this.sceneConfig({
       behaviorPresetModified: hasPreset ? true : false,
+      referenceSignatureModified: hasReferenceSignature ? true : false,
+      modifiedComponent: inferModifiedComponent(overrides),
       ...overrides
     });
+  }
+
+  applyPatternSource(patternSource) {
+    if (patternSource === 'custom') {
+      this.scene.restart(this.sceneConfig(buildPatternSourcePatch(this.modeControllerContext(), 'custom')));
+      return;
+    }
+    const signatureId = this.referenceSignatureId !== CUSTOM_REFERENCE_SIGNATURE_ID ? this.referenceSignatureId : DEFAULT_REFERENCE_SIGNATURE_ID;
+    this.applyReferenceSignature(signatureId);
+  }
+
+  applyProcessMode(processMode) {
+    const mode = normalizeSamplingProcessMode(processMode);
+    const patch = buildSamplingProcessModePatch(this.modeControllerContext({
+      blankPaintModel: mode === 'processPaint'
+        ? createBlankSamplingProcessPaintModel({ width: this.field?.width ?? 24, height: this.field?.height ?? 16 })
+        : undefined
+    }), mode);
+    if (mode === 'processPaint') {
+      Object.assign(this, patch);
+      this.lastInspectorKey = '';
+      this.rebuildField();
+      this.renderConsole();
+      this.updateTransportBar();
+      this.renderCellInspector(true);
+      this.draw();
+      return;
+    }
+    this.scene.restart(this.sceneConfig(patch));
+  }
+
+  applyPaintSelection(patch = {}) {
+    const ruleId = normalizeProcessRuleId(patch.ruleId ?? this.selectedPaintRuleId);
+    const rule = processRuleById(ruleId);
+    const state = rule.allowedStates.includes(patch.state ?? this.selectedPaintState)
+      ? (patch.state ?? this.selectedPaintState)
+      : rule.defaultInitialState;
+    this.scene.restart(this.sceneConfig(buildProcessPaintSelectionPatch(this.modeControllerContext(), {
+      ...patch,
+      state,
+      ruleId
+    })));
+  }
+
+  paintSelectedCell(patch = {}) {
+    if (!this.selectedCell) return;
+    const model = createSamplingProcessPaintModel({ width: this.field?.width ?? 24, height: this.field?.height ?? 16, assignments: this.paintModel });
+    const ruleId = normalizeProcessRuleId(patch.ruleId ?? this.selectedPaintRuleId);
+    const rule = processRuleById(ruleId);
+    const state = rule.allowedStates.includes(patch.state ?? this.selectedPaintState)
+      ? (patch.state ?? this.selectedPaintState)
+      : rule.defaultInitialState;
+    assignSamplingProcessCell(model, this.selectedCell, {
+      state,
+      ruleId,
+      groupId: patch.groupId ?? this.selectedPaintGroupId,
+      sourceValue: patch.sourceValue ?? this.selectedPaintSourceValue
+    });
+    this.scene.restart(this.sceneConfig({
+      processMode: 'processPaint',
+      patternSource: 'custom',
+      referenceSignatureId: CUSTOM_REFERENCE_SIGNATURE_ID,
+      paintModel: model,
+      selectedCell: this.selectedCell,
+      rightPanelMode: 'cellInspector',
+      demoTime: this.demoTime
+    }));
+  }
+
+  clearSelectedPaintCell() {
+    if (!this.selectedCell) return;
+    const model = createSamplingProcessPaintModel({ width: this.field?.width ?? 24, height: this.field?.height ?? 16, assignments: this.paintModel });
+    clearSamplingProcessCell(model, this.selectedCell);
+    this.scene.restart(this.sceneConfig({ paintModel: model, selectedCell: this.selectedCell, processMode: 'processPaint', demoTime: this.demoTime }));
+  }
+
+  clearProcessPaintCanvas() {
+    const model = clearSamplingProcessPaintModel(this.paintModel, { width: this.field?.width ?? 24, height: this.field?.height ?? 16 });
+    this.app?.toast?.('Process Paint canvas cleared.', 'info');
+    this.scene.restart(this.sceneConfig({
+      paintModel: model,
+      selectedCell: null,
+      processMode: 'processPaint',
+      patternSource: 'custom',
+      referenceSignatureId: CUSTOM_REFERENCE_SIGNATURE_ID,
+      paintStartMode: 'blankCanvas',
+      processPaintRunStarted: false,
+      paused: true,
+      demoTime: 0,
+      rightPanelMode: 'paintTools'
+    }));
+  }
+
+  runProcessPaintCanvas() {
+    this.paused = false;
+    this.processPaintRunStarted = true;
+    this.renderConsole();
+    this.updateTransportBar();
+    this.renderCellInspector(true);
+    this.draw();
+  }
+
+  randomizeProcessAllocation(patch = {}) {
+    const result = randomizeSamplingProcessAllocation({
+      seed: patch.seed ?? this.randomRuleSeed,
+      width: this.field?.width ?? 24,
+      height: this.field?.height ?? 16,
+      groupCount: patch.groupCount ?? this.randomRuleGroupCount,
+      activeFraction: patch.activeFraction ?? this.randomRuleActiveFraction,
+      mode: patch.mode ?? this.randomRuleMode
+    });
+    this.scene.restart(this.sceneConfig(buildRandomizedAllocationPatch(this.modeControllerContext(), result, patch)));
   }
 
   applyBehaviorPreset(behaviorPresetId) {
@@ -241,8 +575,7 @@ export class RoiGeneratorDemoScene extends PhaserScene {
     const preset = sampleFieldBehaviorPresetById(presetId);
     if (!preset) {
       this.scene.restart(this.sceneConfig({
-        behaviorPresetId: CUSTOM_SAMPLE_FIELD_BEHAVIOR_PRESET_ID,
-        behaviorPresetModified: false,
+        ...buildCustomComposerPatch(this.modeControllerContext()),
         selectedHelpTopic: { groupId: 'behaviorPreset' },
         demoTime: 0
       }));
@@ -250,16 +583,98 @@ export class RoiGeneratorDemoScene extends PhaserScene {
     }
     this.scene.restart(this.sceneConfig({
       ...preset.config,
+      interactionScale: sampleFieldBehaviorPresetMetadata(preset.id).interactionScale,
+      patternSource: 'legacyPreset',
       behaviorPresetId: preset.id,
       behaviorPresetModified: false,
+      referenceSignatureId: sampleFieldBehaviorPresetMetadata(preset.id).referenceSignature?.id ?? CUSTOM_REFERENCE_SIGNATURE_ID,
+      referenceSignatureModified: false,
+      modifiedComponent: null,
       selectedHelpTopic: { groupId: 'behaviorPreset' },
       demoTime: 0
     }));
   }
 
+  applyReferenceSignature(referenceSignatureId) {
+    const signatureId = normalizeReferenceSignatureId(referenceSignatureId);
+    const signature = referenceSignatureById(signatureId);
+    if (!signature) {
+      this.scene.restart(this.sceneConfig({
+        ...buildCustomComposerPatch(this.modeControllerContext()),
+        selectedHelpTopic: null,
+        rightPanelMode: 'recipeSignature',
+        demoTime: 0
+      }));
+      return;
+    }
+    this.scene.restart(this.sceneConfig({
+      ...referenceSignatureRecipe(signature.id),
+      ...buildReferenceSignaturePatch(this.modeControllerContext(), signature.id),
+      modifiedComponent: null,
+      selectedHelpTopic: null,
+      rightPanelMode: 'recipeSignature',
+      demoTime: 0
+    }));
+  }
+
+  applyComponentComparison(comparisonId) {
+    const comparison = componentComparisonRecipe(comparisonId, this);
+    this.scene.restart(this.sceneConfig({
+      ...comparison.config,
+      seed: comparison.seed,
+      behaviorPresetId: CUSTOM_SAMPLE_FIELD_BEHAVIOR_PRESET_ID,
+      behaviorPresetModified: false,
+      patternSource: 'custom',
+      referenceSignatureId: CUSTOM_REFERENCE_SIGNATURE_ID,
+      referenceSignatureModified: false,
+      updateRuleHint: null,
+      modifiedComponent: comparison.modifiedComponent,
+      selectedHelpTopic: { groupId: comparison.helpGroup },
+      demoTime: 0,
+      timeMode: 'dynamic'
+    }));
+  }
+
+  applyViewFilters(patch = {}) {
+    const nextFilters = normalizeRoiDemoViewFilters(mergeViewFilterPatch(this.viewFilters, patch));
+    this.scene.restart(this.sceneConfig({
+      viewFilters: nextFilters,
+      demoTime: this.demoTime,
+      selectedCell: this.selectedCell,
+      rightPanelMode: this.rightPanelMode
+    }));
+  }
+
   rebuildField() {
     this.field = createDemoRoiField({ ...this.sceneConfig(), time: this.demoTime });
+    this.processLayers = this.buildProcessLayers();
+    if (this.processMode === 'processPaint') this.applyProcessPaintCanvasField();
     this.maybeLogFieldDynamics();
+  }
+
+  buildProcessLayers() {
+    return buildSamplingProcessLayersForField({
+      field: this.field,
+      paintModel: this.paintModel,
+      processMode: this.processMode,
+      updateRuleHint: this.updateRuleHint
+    });
+  }
+
+  applyProcessPaintCanvasField() {
+    const result = buildSamplingProcessPaintField({
+      baseField: this.field,
+      processLayers: this.processLayers,
+      paintModel: this.paintModel,
+      seed: this.seed,
+      demoTime: this.demoTime,
+      processPaintRunStarted: this.processPaintRunStarted,
+      paused: this.paused,
+      paintStartMode: this.paintStartMode,
+      displayMode: 'nodeStates'
+    });
+    this.field = result.field;
+    this.processLayers = result.processLayers;
   }
 
   maybeLogFieldDynamics() {
@@ -295,134 +710,246 @@ export class RoiGeneratorDemoScene extends PhaserScene {
   }
 
   renderConsole() {
-    this.app.console?.renderRoiDemoControls?.({
+    const state = buildSamplingProcessConsoleState(this.consoleViewModelContext());
+    const handlers = buildSamplingProcessConsoleHandlers(this);
+    this.app.console?.renderRoiDemoControls?.(state, handlers);
+    this.updateRoiUiDebug();
+  }
+
+  handleSamplingDistributionChange(distribution) {
+    const defaults = roiDemoDistributionDefaults(distribution);
+    this.scene.restart(this.primitiveSceneConfig({
+      distribution,
+      eventLikelihood: defaults.eventLikelihood ?? this.eventLikelihood,
+      eventLikelihoodDynamics: this.eventLikelihoodDynamics,
+      eventLikelihoodTemporalPattern: this.eventLikelihoodTemporalPattern,
+      eventLikelihoodSpatialEvolution: this.eventLikelihoodSpatialEvolution,
+      spatialPattern: defaults.spatialPattern,
+      valueDistribution: defaults.valueDistribution,
+      temporalPattern: defaults.temporalPattern,
+      temporalBehavior: defaults.temporalBehavior,
+      evolutionModel: defaults.spatialEvolution ?? defaults.evolutionModel,
+      patternEvolution: defaults.spatialEvolution ?? defaults.evolutionModel,
+      spatialEvolution: defaults.spatialEvolution ?? defaults.evolutionModel,
+      timeMode: defaults.temporalBehavior === 'static' ? 'static' : this.timeMode,
+      demoTime: 0
+    }));
+  }
+
+  handleSamplingSeedChange(seed) {
+    this.seed = String(seed ?? 'anchor-roi-demo').trim() || 'anchor-roi-demo';
+    this.scene.restart(this.primitiveSceneConfig({ seed: this.seed, demoTime: 0 }));
+  }
+
+  handleSamplingEventLikelihoodChange(eventLikelihood) {
+    this.scene.restart(this.primitiveSceneConfig({ eventLikelihood, demoTime: 0 }));
+  }
+
+  handleSamplingEventLikelihoodDynamicsChange(eventLikelihoodDynamics) {
+    this.scene.restart(this.primitiveSceneConfig({
+      eventLikelihoodDynamics,
+      eventLikelihoodTemporalPattern: eventLikelihoodDynamics === 'dynamic' ? this.eventLikelihoodTemporalPattern : 'static',
+      eventLikelihoodSpatialEvolution: eventLikelihoodDynamics === 'dynamic' ? this.eventLikelihoodSpatialEvolution : 'stationary',
+      demoTime: 0
+    }));
+  }
+
+  handleSamplingEventLikelihoodTemporalPatternChange(eventLikelihoodTemporalPattern) {
+    this.scene.restart(this.primitiveSceneConfig({ eventLikelihoodTemporalPattern, eventLikelihoodDynamics: 'dynamic', demoTime: 0 }));
+  }
+
+  handleSamplingEventLikelihoodSpatialEvolutionChange(eventLikelihoodSpatialEvolution) {
+    this.scene.restart(this.primitiveSceneConfig({ eventLikelihoodSpatialEvolution, eventLikelihoodDynamics: 'dynamic', demoTime: 0 }));
+  }
+
+  handleSamplingHotspotCountChange(hotspotCount) {
+    this.scene.restart(this.primitiveSceneConfig({ hotspotCount: Number(hotspotCount), demoTime: 0 }));
+  }
+
+  handleSamplingClusterSizeChange(clusterSize) {
+    this.scene.restart(this.primitiveSceneConfig({ clusterSize, demoTime: 0 }));
+  }
+
+  handleSamplingNoiseChange(noise) {
+    this.scene.restart(this.primitiveSceneConfig({ noise: Number(noise), demoTime: 0 }));
+  }
+
+  handleSamplingTimeModeChange(timeMode) {
+    this.scene.restart(this.primitiveSceneConfig({ timeMode, demoTime: 0 }));
+  }
+
+  handleSamplingSpatialPatternChange(spatialPattern) {
+    this.scene.restart(this.primitiveSceneConfig({ spatialPattern, demoTime: 0 }));
+  }
+
+  handleSamplingValueDistributionChange(valueDistribution) {
+    this.scene.restart(this.primitiveSceneConfig({ valueDistribution, demoTime: 0 }));
+  }
+
+  handleSamplingTemporalPatternChange(temporalPattern) {
+    this.scene.restart(this.primitiveSceneConfig({ temporalPattern, timeMode: temporalPattern === 'static' ? 'static' : 'dynamic', demoTime: 0 }));
+  }
+
+  handleSamplingTemporalBehaviorChange(temporalBehavior) {
+    this.scene.restart(this.primitiveSceneConfig({ temporalBehavior, timeMode: temporalBehavior === 'static' ? 'static' : 'dynamic', demoTime: 0 }));
+  }
+
+  handleSamplingEvolutionModelChange(evolutionModel) {
+    this.scene.restart(this.primitiveSceneConfig({ evolutionModel, demoTime: 0 }));
+  }
+
+  handleSamplingPatternEvolutionChange(patternEvolution) {
+    this.scene.restart(this.primitiveSceneConfig({ patternEvolution, spatialEvolution: patternEvolution, evolutionModel: patternEvolution, demoTime: 0 }));
+  }
+
+  handleSamplingSpatialEvolutionChange(spatialEvolution) {
+    this.scene.restart(this.primitiveSceneConfig({ spatialEvolution, patternEvolution: spatialEvolution, evolutionModel: spatialEvolution, demoTime: 0 }));
+  }
+
+  handleSamplingMotionScopeChange(motionScope) {
+    this.scene.restart(this.primitiveSceneConfig({ motionScope, demoTime: 0 }));
+  }
+
+  handleSamplingInteractionScaleChange(interactionScale) {
+    this.scene.restart(this.primitiveSceneConfig({ interactionScale, demoTime: 0 }));
+  }
+
+  handleSamplingStateModelChange(stateModel) {
+    this.scene.restart(this.primitiveSceneConfig({ stateModel, demoTime: 0 }));
+  }
+
+  handleSamplingDynamicComplexityChange(dynamicComplexity) {
+    this.scene.restart(this.primitiveSceneConfig({ dynamicComplexity, demoTime: 0 }));
+  }
+
+  handleSamplingDepletionModeChange(depletionMode) {
+    this.scene.restart(this.primitiveSceneConfig({ depletionMode, demoTime: 0 }));
+  }
+
+  handleSamplingDisplayModeChange(displayMode) {
+    this.scene.restart(this.primitiveSceneConfig({ displayMode, demoTime: 0 }));
+  }
+
+  handleSamplingTimeSpeedScaleChange(timeSpeedScale) {
+    this.timeSpeedScale = Number(timeSpeedScale) || 1;
+    this.renderConsole();
+    this.updateTransportBar();
+  }
+
+  handleSamplingRegenerate() {
+    this.scene.restart(this.primitiveSceneConfig({ seed: nextSeed(this.seed), demoTime: 0 }));
+  }
+
+  handleSamplingPause() {
+    this.paused = !this.paused;
+    this.renderConsole();
+    this.updateTransportBar();
+    this.renderCellInspector(true);
+  }
+
+  handleSamplingMainMenu() {
+    this.scene.start('MainMenuScene');
+  }
+
+  consoleViewModelContext() {
+    return {
       title: this.title(),
-      status: `${roiEventLikelihoodLabel(this.field?.eventLikelihood ?? this.eventLikelihood)} event likelihood`,
+      field: this.field,
+      sceneConfig: this.sceneConfig(),
       distribution: this.distribution,
       seed: this.seed,
-      eventLikelihood: this.field?.eventLikelihood ?? this.eventLikelihood,
-      eventLikelihoodLabel: this.field?.eventLikelihoodLabel ?? roiEventLikelihoodLabel(this.eventLikelihood),
-      eventLikelihoodDynamics: this.field?.eventLikelihoodDynamics ?? this.eventLikelihoodDynamics,
-      eventLikelihoodDynamicsLabel: this.field?.eventLikelihoodDynamicsLabel ?? roiLikelihoodDynamicsLabel(this.eventLikelihoodDynamics),
-      eventLikelihoodTemporalPattern: this.field?.eventLikelihoodTemporalPattern ?? this.eventLikelihoodTemporalPattern,
-      eventLikelihoodTemporalPatternLabel: this.field?.eventLikelihoodTemporalPatternLabel ?? roiTemporalPatternLabel(this.eventLikelihoodTemporalPattern),
-      eventLikelihoodSpatialEvolution: this.field?.eventLikelihoodSpatialEvolution ?? this.eventLikelihoodSpatialEvolution,
-      eventLikelihoodSpatialEvolutionLabel: this.field?.eventLikelihoodSpatialEvolutionLabel ?? roiLikelihoodSpatialEvolutionLabel(this.eventLikelihoodSpatialEvolution),
+      eventLikelihood: this.eventLikelihood,
+      eventLikelihoodDynamics: this.eventLikelihoodDynamics,
+      eventLikelihoodTemporalPattern: this.eventLikelihoodTemporalPattern,
+      eventLikelihoodSpatialEvolution: this.eventLikelihoodSpatialEvolution,
       hotspotCount: this.hotspotCount,
+      clusterSize: this.clusterSize,
       noise: this.noise,
       timeMode: this.timeMode,
-      spatialPattern: this.field?.pureSpatialPattern ?? this.spatialPattern,
-      spatialPatternLabel: roiPureSpatialPatternLabel(this.field?.pureSpatialPattern ?? this.spatialPattern),
-      valueDistribution: this.field?.valueDistribution ?? this.valueDistribution,
-      valueDistributionLabel: this.field?.valueDistributionLabel ?? roiValueDistributionLabel(this.valueDistribution),
-      clusterCount: this.field?.clusterCount ?? this.hotspotCount,
-      clusterSize: this.field?.clusterSize ?? this.clusterSize,
-      clusterSizeLabel: roiClusterSizeLabel(this.field?.clusterSize ?? this.clusterSize),
-      temporalPattern: this.field?.temporalPattern ?? this.temporalPattern,
-      temporalPatternLabel: roiTemporalPatternLabel(this.field?.temporalPattern ?? this.temporalPattern),
-      temporalBehavior: this.field?.temporalBehavior ?? this.temporalBehavior,
-      temporalBehaviorLabel: sampleTemporalBehaviorLabel(this.field?.temporalBehavior ?? this.temporalBehavior),
-      evolutionModel: this.field?.evolutionModel ?? this.evolutionModel,
-      evolutionModelLabel: roiEvolutionModelLabel(this.field?.evolutionModel ?? this.evolutionModel),
-      patternEvolution: this.field?.patternEvolution ?? this.patternEvolution,
-      patternEvolutionLabel: roiPatternEvolutionLabel(this.field?.patternEvolution ?? this.patternEvolution),
-      spatialEvolution: this.field?.spatialEvolution ?? this.spatialEvolution,
-      spatialEvolutionLabel: roiSpatialEvolutionLabel(this.field?.spatialEvolution ?? this.spatialEvolution),
-      motionScope: this.field?.motionScope ?? this.motionScope,
-      motionScopeLabel: roiMotionScopeLabel(this.field?.motionScope ?? this.motionScope),
-      dynamicComplexity: this.field?.dynamicComplexity ?? this.dynamicComplexity,
+      spatialPattern: this.spatialPattern,
+      valueDistribution: this.valueDistribution,
+      temporalPattern: this.temporalPattern,
+      temporalBehavior: this.temporalBehavior,
+      evolutionModel: this.evolutionModel,
+      patternEvolution: this.patternEvolution,
+      spatialEvolution: this.spatialEvolution,
+      motionScope: this.motionScope,
+      interactionScale: this.interactionScale,
+      stateModel: this.stateModel,
+      depletionMode: this.depletionMode,
+      displayMode: this.displayMode,
+      viewFilters: this.viewFilters,
+      dynamicComplexity: this.dynamicComplexity,
+      patternSource: this.patternSource,
+      processMode: this.processMode,
       behaviorPresetId: this.behaviorPresetId,
-      behaviorPresetLabel: sampleFieldBehaviorPresetLabel(this.behaviorPresetId),
       behaviorPresetModified: this.behaviorPresetModified,
-      behaviorPreset: sampleFieldBehaviorPresetMetadata(this.behaviorPresetId, this.behaviorPresetModified),
-      stateModel: this.field?.stateModel ?? this.stateModel,
-      stateModelLabel: this.field?.stateModelLabel ?? roiStateModelLabel(this.stateModel),
-      stateModelDescription: this.field?.stateModelDescription ?? roiStateModelDescription(this.stateModel),
-      depletionMode: this.field?.depletionMode ?? this.depletionMode,
-      depletionModeLabel: roiDepletionModeLabel(this.field?.depletionMode ?? this.depletionMode),
-      displayMode: this.field?.displayMode ?? this.displayMode,
-      displayModeLabel: roiDisplayModeLabel(this.field?.displayMode ?? this.displayMode),
-      priorMode: this.field?.priorMode,
+      referenceSignatureId: this.referenceSignatureId,
+      referenceSignatureModified: this.referenceSignatureModified,
+      updateRuleHint: this.updateRuleHint,
+      modifiedComponent: this.modifiedComponent,
       forecastView: this.forecastView,
       timeSpeedScale: this.timeSpeedScale,
       playbackDirection: this.playbackDirection,
-      time: this.demoTime,
+      demoTime: this.demoTime,
       paused: this.paused,
-      stats: this.field?.stats,
-      activityDiagnostics: this.field?.activityDiagnostics,
       exportMode: this.exportMode,
       exportStartTime: this.exportStartTime,
       exportEndTime: this.exportEndTime,
-      exportFrameCount: this.exportFrameCount
-    }, {
-      distribution: (distribution) => {
-        const defaults = roiDemoDistributionDefaults(distribution);
-        this.scene.restart(this.primitiveSceneConfig({
-          distribution,
-          eventLikelihood: defaults.eventLikelihood ?? this.eventLikelihood,
-          eventLikelihoodDynamics: this.eventLikelihoodDynamics,
-          eventLikelihoodTemporalPattern: this.eventLikelihoodTemporalPattern,
-          eventLikelihoodSpatialEvolution: this.eventLikelihoodSpatialEvolution,
-          spatialPattern: defaults.spatialPattern,
-          valueDistribution: defaults.valueDistribution,
-          temporalPattern: defaults.temporalPattern,
-          temporalBehavior: defaults.temporalBehavior,
-          evolutionModel: defaults.spatialEvolution ?? defaults.evolutionModel,
-          patternEvolution: defaults.spatialEvolution ?? defaults.evolutionModel,
-          spatialEvolution: defaults.spatialEvolution ?? defaults.evolutionModel,
-          timeMode: defaults.temporalBehavior === 'static' ? 'static' : this.timeMode,
-          demoTime: 0
-        }));
-      },
-      seed: (seed) => {
-        this.seed = String(seed ?? 'anchor-roi-demo').trim() || 'anchor-roi-demo';
-        this.scene.restart(this.primitiveSceneConfig({ seed: this.seed, demoTime: 0 }));
-      },
-      behaviorPreset: (behaviorPresetId) => this.applyBehaviorPreset(behaviorPresetId),
-      eventLikelihood: (eventLikelihood) => this.scene.restart(this.primitiveSceneConfig({ eventLikelihood, demoTime: 0 })),
-      eventLikelihoodDynamics: (eventLikelihoodDynamics) => this.scene.restart(this.primitiveSceneConfig({
-        eventLikelihoodDynamics,
-        eventLikelihoodTemporalPattern: eventLikelihoodDynamics === 'dynamic' ? this.eventLikelihoodTemporalPattern : 'static',
-        eventLikelihoodSpatialEvolution: eventLikelihoodDynamics === 'dynamic' ? this.eventLikelihoodSpatialEvolution : 'stationary',
-        demoTime: 0
-      })),
-      eventLikelihoodTemporalPattern: (eventLikelihoodTemporalPattern) => this.scene.restart(this.primitiveSceneConfig({ eventLikelihoodTemporalPattern, eventLikelihoodDynamics: 'dynamic', demoTime: 0 })),
-      eventLikelihoodSpatialEvolution: (eventLikelihoodSpatialEvolution) => this.scene.restart(this.primitiveSceneConfig({ eventLikelihoodSpatialEvolution, eventLikelihoodDynamics: 'dynamic', demoTime: 0 })),
-      hotspotCount: (hotspotCount) => this.scene.restart(this.primitiveSceneConfig({ hotspotCount: Number(hotspotCount), demoTime: 0 })),
-      clusterSize: (clusterSize) => this.scene.restart(this.primitiveSceneConfig({ clusterSize, demoTime: 0 })),
-      noise: (noise) => this.scene.restart(this.primitiveSceneConfig({ noise: Number(noise), demoTime: 0 })),
-      timeMode: (timeMode) => this.scene.restart(this.primitiveSceneConfig({ timeMode, demoTime: 0 })),
-      spatialPattern: (spatialPattern) => this.scene.restart(this.primitiveSceneConfig({ spatialPattern, demoTime: 0 })),
-      valueDistribution: (valueDistribution) => this.scene.restart(this.primitiveSceneConfig({ valueDistribution, demoTime: 0 })),
-      temporalPattern: (temporalPattern) => this.scene.restart(this.primitiveSceneConfig({ temporalPattern, timeMode: temporalPattern === 'static' ? 'static' : 'dynamic', demoTime: 0 })),
-      temporalBehavior: (temporalBehavior) => this.scene.restart(this.primitiveSceneConfig({ temporalBehavior, timeMode: temporalBehavior === 'static' ? 'static' : 'dynamic', demoTime: 0 })),
-      evolutionModel: (evolutionModel) => this.scene.restart(this.primitiveSceneConfig({ evolutionModel, demoTime: 0 })),
-      patternEvolution: (patternEvolution) => this.scene.restart(this.primitiveSceneConfig({ patternEvolution, spatialEvolution: patternEvolution, evolutionModel: patternEvolution, demoTime: 0 })),
-      spatialEvolution: (spatialEvolution) => this.scene.restart(this.primitiveSceneConfig({ spatialEvolution, patternEvolution: spatialEvolution, evolutionModel: spatialEvolution, demoTime: 0 })),
-      motionScope: (motionScope) => this.scene.restart(this.primitiveSceneConfig({ motionScope, demoTime: 0 })),
-      stateModel: (stateModel) => this.scene.restart(this.primitiveSceneConfig({ stateModel, demoTime: 0 })),
-      depletionMode: (depletionMode) => this.scene.restart(this.primitiveSceneConfig({ depletionMode, demoTime: 0 })),
-      displayMode: (displayMode) => this.scene.restart(this.primitiveSceneConfig({ displayMode, demoTime: 0 })),
-      dynamicComplexity: (dynamicComplexity) => this.scene.restart(this.primitiveSceneConfig({ dynamicComplexity, demoTime: 0 })),
-      timeSpeedScale: (timeSpeedScale) => {
-        this.timeSpeedScale = Number(timeSpeedScale) || 1;
-        this.renderConsole();
-        this.updateTransportBar();
-      },
-      behaviorHelp: (groupId) => this.showBehaviorHelp(groupId),
-      regenerate: () => this.scene.restart(this.primitiveSceneConfig({ seed: nextSeed(this.seed), demoTime: 0 })),
-      pause: () => {
-        this.paused = !this.paused;
-        this.renderConsole();
-        this.updateTransportBar();
-        this.renderCellInspector(true);
-      },
-      direction: () => this.togglePlaybackDirection(),
-      reset: () => this.resetDemoState(),
-      exportSettings: (patch) => this.updateExportSettings(patch),
-      exportDemoJson: () => this.exportDemoJson(),
-      menu: () => this.scene.start('MainMenuScene')
-    });
+      exportFrameCount: this.exportFrameCount,
+      scenarioSourceMode: this.scenarioSourceMode,
+      scenarioSeed: this.scenarioSeed,
+      scenarioDifficulty: this.scenarioDifficulty,
+      scenarioDuration: this.scenarioDuration,
+      scenarioFrameCount: this.scenarioFrameCount,
+      scenarioValidationMode: this.scenarioValidationMode,
+      generatedScenario: this.generatedScenario,
+      paintModel: this.paintModel,
+      paintStartMode: this.paintStartMode,
+      processPaintRunStarted: this.processPaintRunStarted,
+      selectedPaintState: this.selectedPaintState,
+      selectedPaintRuleId: this.selectedPaintRuleId,
+      selectedPaintGroupId: this.selectedPaintGroupId,
+      selectedPaintSourceValue: this.selectedPaintSourceValue,
+      randomRuleSeed: this.randomRuleSeed,
+      randomRuleMode: this.randomRuleMode,
+      randomRuleGroupCount: this.randomRuleGroupCount,
+      randomRuleActiveFraction: this.randomRuleActiveFraction,
+      uiVersion: ROI_UI_VERSION,
+      referenceSignatureCount: ROI_REFERENCE_SIGNATURES.length,
+      legacyPresetCount: SAMPLE_FIELD_BEHAVIOR_PRESETS.length,
+      legacyPresetsVisible: Boolean(globalThis.ANCHOR_DEBUG_ROI_LEGACY_PRESETS)
+    };
+  }
+
+  updateRoiUiDebug() {
+    const consoleRoot = this.app?.elements?.missionConsoleRoot ?? this.app?.elements?.missionConsole ?? globalThis.document?.getElementById?.('mission-console');
+    const accordionLabels = Array.from(consoleRoot?.querySelectorAll?.('.console-section h2, .accordion-toggle, [data-accordion-key] > button') ?? [])
+      .map((node) => node.textContent?.replace(/\s+/g, ' ').trim())
+      .filter(Boolean);
+    const activeSignature = referenceSignatureById(this.referenceSignatureId);
+    const activePreset = sampleFieldBehaviorPresetById(this.behaviorPresetId);
+    globalThis.ANCHOR_ROI_UI_DEBUG = {
+      uiVersion: ROI_UI_VERSION,
+      referenceSignatureCount: ROI_REFERENCE_SIGNATURES.length,
+      referenceSignatureLabels: ROI_REFERENCE_SIGNATURES.map((signature) => signature.label),
+      legacyPresetCount: SAMPLE_FIELD_BEHAVIOR_PRESETS.length,
+      legacyPresetLabels: SAMPLE_FIELD_BEHAVIOR_PRESETS.map((preset) => preset.label),
+      legacyPresetsVisible: Boolean(globalThis.ANCHOR_DEBUG_ROI_LEGACY_PRESETS),
+      processMode: this.processMode,
+      visibleWorkflowModes: [...SAMPLING_PROCESS_VISIBLE_MODES],
+      diagnosticsAvailableAsView: true,
+      activePatternSource: this.patternSource,
+      activeReferenceSignatureId: activeSignature ? activeSignature.id : null,
+      activeReferenceSignatureLabel: activeSignature ? activeSignature.label : null,
+      referenceSignatureModified: this.referenceSignatureModified,
+      activeLegacyPresetId: this.patternSource === 'legacyPreset' ? this.behaviorPresetId : null,
+      activeLegacyPresetLabel: this.patternSource === 'legacyPreset' ? activePreset?.label ?? null : null,
+      hasValueDistributionAccordion: accordionLabels.some((label) => /^(?:\d+\.\s*)?Value Distribution\b/.test(label)),
+      accordionLabels,
+      rightPanelMode: this.rightPanelMode,
+      activeUpdateRuleHint: this.updateRuleHint
+    };
   }
 
   buildSceneObjects() {
@@ -473,15 +1000,32 @@ export class RoiGeneratorDemoScene extends PhaserScene {
 
   draw() {
     if (!this.graphics || !this.field) return;
+    if (this.processMode === 'processPaint' && !this.selectedCell && this.rightPanelMode === 'recipeSignature') {
+      this.rightPanelMode = 'paintTools';
+      this.lastInspectorKey = '';
+      this.renderCellInspector(true);
+    }
     const layout = this.layout();
     this.graphics.clear();
     this.drawBackground(layout);
-    this.drawHeatmap(layout.map);
-    if (!isGraphDisplayMode(this.field.displayMode)) this.drawHighValueMarkers(layout.map);
-    this.drawSelectedCell(layout.map);
+    const renderContext = this.samplingProcessRenderContext(layout.map);
+    drawSamplingProcessHeatmap(renderContext);
+    if (!isGraphDisplayMode(this.field.displayMode)) drawHighValueMarkers(renderContext);
+    drawSelectedSamplingCell(renderContext);
     this.layoutText(layout);
     this.updateTransportBar();
     this.renderCellInspector();
+  }
+
+  samplingProcessRenderContext(map) {
+    return {
+      graphics: this.graphics,
+      field: this.field,
+      map,
+      viewFilters: this.viewFilters,
+      selectedCell: this.selectedCell,
+      demoTime: this.demoTime
+    };
   }
 
   drawBackground({ width, height, map }) {
@@ -493,315 +1037,31 @@ export class RoiGeneratorDemoScene extends PhaserScene {
     this.graphics.strokeRoundedRect(map.x, map.y, map.width, map.height, 8);
   }
 
-  drawHeatmap(map) {
-    const field = this.field.field;
-    const width = this.field.width;
-    const height = this.field.height;
-    const cellW = map.width / width;
-    const cellH = map.height / height;
-    const displayMode = this.field.displayMode;
-    if (displayMode === 'graphCommunities') {
-      this.drawCommunityLayer(map, cellW, cellH, { showHeatmap: false, showCenters: true, showCentroids: true });
-      this.drawGrid(map, cellW, cellH, width, height, 0.2);
-      return;
-    }
-    if (displayMode === 'nodeStates') {
-      this.drawMutedHeatmap(field, map, cellW, cellH, 0.24);
-      this.drawNodeStateLayer(map, cellW, cellH, { showInactive: true });
-      this.drawGrid(map, cellW, cellH, width, height, 0.2);
-      return;
-    }
-    if (displayMode === 'graphMessages') {
-      this.drawMutedHeatmap(field, map, cellW, cellH, 0.18);
-      this.drawGraphMessages(map, cellW, cellH, { showDirections: true, maxEdges: 110 });
-      this.drawNodeStateLayer(map, cellW, cellH, { showInactive: false, compact: true });
-      this.drawGrid(map, cellW, cellH, width, height, 0.16);
-      return;
-    }
-    if (displayMode === 'communityMessages') {
-      this.drawCommunityLayer(map, cellW, cellH, { showHeatmap: true, showCenters: true, showCentroids: false });
-      this.drawGraphMessages(map, cellW, cellH, { showDirections: true, maxEdges: 90 });
-      this.drawNodeStateLayer(map, cellW, cellH, { showInactive: false, compact: true });
-      this.drawGrid(map, cellW, cellH, width, height, 0.18);
-      return;
-    }
-    if (displayMode === 'diagnosticsOverlay') {
-      this.drawMutedHeatmap(field, map, cellW, cellH, 0.36);
-      this.drawLikelihoodMesh(map, cellW, cellH);
-      this.drawGraphMessages(map, cellW, cellH, { showDirections: false, maxEdges: 60, alphaScale: 0.62 });
-      this.drawDiagnosticsOverlay(map, cellW, cellH);
-      this.drawGrid(map, cellW, cellH, width, height, 0.18);
-      return;
-    }
-    for (let y = 0; y < height; y += 1) {
-      for (let x = 0; x < width; x += 1) {
-        const value = Number(field[y]?.[x] ?? 0);
-        const color = heatColor(value);
-        this.graphics.fillStyle(color, 0.24 + value * 0.72);
-        this.graphics.fillRect(map.x + x * cellW, map.y + y * cellH, cellW + 1, cellH + 1);
-      }
-    }
-    this.drawGrid(map, cellW, cellH, width, height, 0.28);
-    if (this.field.displayMode === 'sampleValueLikelihoodOverlay' || this.field.displayMode === 'eventLikelihood') {
-      this.drawLikelihoodMesh(map, cellW, cellH);
-    }
-  }
-
-  drawGrid(map, cellW, cellH, width, height, alpha = 0.28) {
-    this.graphics.lineStyle(1, 0x163747, alpha);
-    for (let x = 0; x <= width; x += 1) {
-      this.graphics.lineBetween(map.x + x * cellW, map.y, map.x + x * cellW, map.y + map.height);
-    }
-    for (let y = 0; y <= height; y += 1) {
-      this.graphics.lineBetween(map.x, map.y + y * cellH, map.x + map.width, map.y + y * cellH);
-    }
-  }
-
-  drawMutedHeatmap(field, map, cellW, cellH, alphaScale = 0.24) {
-    const height = field?.length ?? 0;
-    const width = field?.[0]?.length ?? 0;
-    for (let y = 0; y < height; y += 1) {
-      for (let x = 0; x < width; x += 1) {
-        const value = Number(field[y]?.[x] ?? 0);
-        this.graphics.fillStyle(heatColor(value), alphaScale * (0.35 + value * 0.65));
-        this.graphics.fillRect(map.x + x * cellW, map.y + y * cellH, cellW + 1, cellH + 1);
-      }
-    }
-  }
-
-  drawLikelihoodMesh(map, cellW, cellH) {
-    const likelihood = this.field?.likelihoodField?.values ?? this.field?.eventLikelihoodField ?? [];
-    const mesh = this.field?.likelihoodField?.mesh ?? {};
-    const activeThreshold = Number(mesh.activeThreshold ?? 0.25);
-    const highThreshold = Number(mesh.highThreshold ?? 0.7);
-    const nearTriggerThreshold = Number(mesh.nearTriggerThreshold ?? 0.9);
-    const width = this.field.width;
-    const height = this.field.height;
-    const minCell = Math.min(cellW, cellH);
-    const propagationMode = ['neighborPropagation'].includes(this.field?.eventLikelihoodSpatialEvolution)
-      || ['neighborPropagation'].includes(this.field?.spatialEvolution)
-      || (this.field?.graphField?.graph?.updateRule && this.field.graphField.graph.updateRule !== 'memoryless');
-    if (propagationMode) this.drawLikelihoodNeighborLinks(map, cellW, cellH, likelihood, highThreshold);
-    for (let y = 0; y < height; y += 1) {
-      for (let x = 0; x < width; x += 1) {
-        const value = Number(likelihood[y]?.[x] ?? 0);
-        const cx = map.x + (x + 0.5) * cellW;
-        const cy = map.y + (y + 0.5) * cellH;
-        const visibleValue = Math.max(0.08, value);
-        const radius = Math.max(0.75, minCell * (0.035 + visibleValue * 0.22));
-        const alpha = value < 0.15 ? 0.08 + value * 0.3 : 0.14 + value * 0.42;
-        const color = value >= nearTriggerThreshold ? 0xffffff : value >= highThreshold ? 0xf7f7c6 : value >= activeThreshold ? 0xbbe7d2 : 0x7ebf78;
-        this.graphics.fillStyle(color, alpha);
-        this.graphics.fillCircle(cx, cy, radius);
-        if (value >= activeThreshold) {
-          const ringColor = value >= nearTriggerThreshold ? 0xffffff : value >= highThreshold ? 0xf4d35e : 0x9ee7c8;
-          const ringAlpha = value >= nearTriggerThreshold ? 0.72 : value >= highThreshold ? 0.48 : 0.26;
-          this.graphics.lineStyle(value >= nearTriggerThreshold ? 2 : 1, ringColor, ringAlpha);
-          this.graphics.strokeCircle(cx, cy, radius + minCell * (value >= nearTriggerThreshold ? 0.15 : 0.08));
-        }
-        if (value >= nearTriggerThreshold && (Math.floor(this.demoTime * 4 + x + y) % 2 === 0)) {
-          this.graphics.lineStyle(1, 0xffffff, 0.28);
-          this.graphics.strokeCircle(cx, cy, radius + minCell * 0.25);
-        }
-        const graphNode = this.field?.graphField?.nodeGrid?.[y]?.[x];
-        if (graphNode?.state && graphNode.state !== 'inactive') {
-          const stateStyle = graphStateStyle(graphNode.state);
-          this.graphics.lineStyle(stateStyle.width, stateStyle.color, stateStyle.alpha);
-          this.graphics.strokeCircle(cx, cy, radius + minCell * stateStyle.radiusScale);
-        }
-      }
-    }
-  }
-
-  drawLikelihoodNeighborLinks(map, cellW, cellH, likelihood, highThreshold) {
-    const height = likelihood?.length ?? 0;
-    const width = likelihood?.[0]?.length ?? 0;
-    this.graphics.lineStyle(1, 0xdfffe5, 0.13);
-    for (let y = 0; y < height; y += 1) {
-      for (let x = 0; x < width; x += 1) {
-        const value = Number(likelihood[y]?.[x] ?? 0);
-        if (value < highThreshold) continue;
-        const cx = map.x + (x + 0.5) * cellW;
-        const cy = map.y + (y + 0.5) * cellH;
-        for (const [dx, dy] of [[1, 0], [0, 1]]) {
-          const other = Number(likelihood[y + dy]?.[x + dx] ?? 0);
-          if (other < highThreshold) continue;
-          this.graphics.lineBetween(cx, cy, map.x + (x + dx + 0.5) * cellW, map.y + (y + dy + 0.5) * cellH);
-        }
-      }
-    }
-  }
-
-  drawCommunityLayer(map, cellW, cellH, { showHeatmap = false, showCenters = true, showCentroids = true } = {}) {
-    const nodes = this.field?.graphField?.nodeGrid ?? [];
-    const clusters = this.field?.graphField?.clusters ?? [];
-    const field = this.field?.sampleValueField ?? this.field?.field ?? [];
-    const height = this.field?.height ?? nodes.length;
-    const width = this.field?.width ?? nodes[0]?.length ?? 0;
-    if (showHeatmap) this.drawMutedHeatmap(field, map, cellW, cellH, 0.2);
-    for (let y = 0; y < height; y += 1) {
-      for (let x = 0; x < width; x += 1) {
-        const communityId = nodes[y]?.[x]?.communityId ?? 0;
-        const color = communityColor(communityId);
-        this.graphics.fillStyle(color, showHeatmap ? 0.16 : 0.28);
-        this.graphics.fillRect(map.x + x * cellW, map.y + y * cellH, cellW + 1, cellH + 1);
-        const east = nodes[y]?.[x + 1]?.communityId;
-        const south = nodes[y + 1]?.[x]?.communityId;
-        if (east !== undefined && east !== communityId) {
-          this.graphics.lineStyle(1, 0xf3f7d4, 0.42);
-          this.graphics.lineBetween(map.x + (x + 1) * cellW, map.y + y * cellH, map.x + (x + 1) * cellW, map.y + (y + 1) * cellH);
-        }
-        if (south !== undefined && south !== communityId) {
-          this.graphics.lineStyle(1, 0xf3f7d4, 0.42);
-          this.graphics.lineBetween(map.x + x * cellW, map.y + (y + 1) * cellH, map.x + (x + 1) * cellW, map.y + (y + 1) * cellH);
-        }
-      }
-    }
-    if (showCentroids) {
-      for (const centroid of communityCentroids(nodes)) {
-        const cx = map.x + (centroid.x + 0.5) * cellW;
-        const cy = map.y + (centroid.y + 0.5) * cellH;
-        this.graphics.fillStyle(0xffffff, 0.6);
-        this.graphics.fillCircle(cx, cy, Math.max(1.5, Math.min(cellW, cellH) * 0.08));
-        this.graphics.lineStyle(1, communityColor(centroid.communityId), 0.8);
-        this.graphics.strokeCircle(cx, cy, Math.max(3, Math.min(cellW, cellH) * 0.18));
-      }
-    }
-    if (showCenters) {
-      for (const cluster of clusters) {
-        const cx = map.x + (Number(cluster.center?.x ?? cluster.x * (width - 1)) + 0.5) * cellW;
-        const cy = map.y + (Number(cluster.center?.y ?? cluster.y * (height - 1)) + 0.5) * cellH;
-        const radius = Math.max(4, Math.min(cellW, cellH) * (0.22 + Number(cluster.likelihood ?? 0) * 0.18));
-        this.graphics.lineStyle(2, communityColor(cluster.communityId), 0.92);
-        this.graphics.strokeCircle(cx, cy, radius);
-        this.graphics.fillStyle(0xffffff, cluster.state === 'active' ? 0.72 : 0.42);
-        this.graphics.fillCircle(cx, cy, Math.max(2, radius * 0.28));
-      }
-    }
-  }
-
-  drawNodeStateLayer(map, cellW, cellH, { showInactive = false, compact = false } = {}) {
-    const nodes = this.field?.graphField?.nodeGrid ?? [];
-    const height = this.field?.height ?? nodes.length;
-    const width = this.field?.width ?? nodes[0]?.length ?? 0;
-    const minCell = Math.min(cellW, cellH);
-    for (let y = 0; y < height; y += 1) {
-      for (let x = 0; x < width; x += 1) {
-        const node = nodes[y]?.[x];
-        if (!node) continue;
-        if (!showInactive && (!node.state || node.state === 'inactive' || node.state === 'susceptible')) continue;
-        const style = graphStateStyle(node.state);
-        const activation = Math.max(0.08, Number(node.activation ?? node.cellLikelihood ?? node.likelihood ?? 0));
-        const cx = map.x + (x + 0.5) * cellW;
-        const cy = map.y + (y + 0.5) * cellH;
-        const radius = Math.max(1.1, minCell * (compact ? 0.08 + activation * 0.1 : 0.06 + activation * 0.18));
-        this.graphics.fillStyle(style.color, node.state === 'inactive' ? 0.12 : Math.max(0.18, style.alpha * 0.72));
-        this.graphics.fillCircle(cx, cy, radius);
-        this.graphics.lineStyle(style.width, style.color, node.state === 'inactive' ? 0.18 : style.alpha);
-        this.graphics.strokeCircle(cx, cy, radius + minCell * style.radiusScale);
-        if (node.state === 'consumed' || node.state === 'inhibited') {
-          this.graphics.lineStyle(1, style.color, 0.55);
-          this.graphics.lineBetween(cx - radius, cy - radius, cx + radius, cy + radius);
-          this.graphics.lineBetween(cx + radius, cy - radius, cx - radius, cy + radius);
-        }
-      }
-    }
-  }
-
-  drawGraphMessages(map, cellW, cellH, { showDirections = true, maxEdges = 100, alphaScale = 1 } = {}) {
-    const messages = topGraphMessages(this.field?.graphField, { maxEdges });
-    const maxStrength = Math.max(0.0001, ...messages.map((message) => message.strength));
-    for (const message of messages) {
-      const alpha = Math.min(0.68, (0.12 + message.strength / maxStrength * 0.48) * alphaScale);
-      const color = message.sameCommunity ? communityColor(message.communityId) : 0xf4d35e;
-      const sx = map.x + (message.source.x + 0.5) * cellW;
-      const sy = map.y + (message.source.y + 0.5) * cellH;
-      const tx = map.x + (message.target.x + 0.5) * cellW;
-      const ty = map.y + (message.target.y + 0.5) * cellH;
-      this.graphics.lineStyle(message.sameCommunity ? 1 : 2, color, alpha);
-      this.graphics.lineBetween(sx, sy, tx, ty);
-      if (showDirections) {
-        const mx = sx * 0.42 + tx * 0.58;
-        const my = sy * 0.42 + ty * 0.58;
-        const angle = Math.atan2(ty - sy, tx - sx);
-        const size = Math.max(2.4, Math.min(cellW, cellH) * 0.12);
-        this.graphics.fillStyle(color, alpha);
-        this.graphics.fillTriangle(
-          mx + Math.cos(angle) * size,
-          my + Math.sin(angle) * size,
-          mx + Math.cos(angle + 2.45) * size,
-          my + Math.sin(angle + 2.45) * size,
-          mx + Math.cos(angle - 2.45) * size,
-          my + Math.sin(angle - 2.45) * size
-        );
-      }
-    }
-  }
-
-  drawDiagnosticsOverlay(map, cellW, cellH) {
-    const graph = this.field?.activityDiagnostics?.graphDiagnostics ?? this.field?.graphField?.diagnostics ?? {};
-    const legendX = map.x + 14;
-    const legendY = map.y + 14;
-    const states = ['active', 'cooling', 'recovering', 'susceptible', 'consumed', 'inactive'];
-    this.graphics.fillStyle(0x081827, 0.78);
-    this.graphics.fillRoundedRect(legendX - 8, legendY - 8, 190, 86, 6);
-    states.forEach((state, index) => {
-      const style = graphStateStyle(state);
-      const x = legendX + (index % 3) * 58;
-      const y = legendY + Math.floor(index / 3) * 34;
-      this.graphics.fillStyle(style.color, state === 'inactive' ? 0.18 : 0.7);
-      this.graphics.fillCircle(x, y, 5);
-      this.graphics.lineStyle(1, style.color, style.alpha);
-      this.graphics.strokeCircle(x, y, 9);
-    });
-    const barX = legendX;
-    const barY = legendY + 66;
-    const total = Math.max(1, Object.values(graph.stateCounts ?? {}).reduce((sum, value) => sum + Number(value || 0), 0));
-    let offset = 0;
-    for (const state of states) {
-      const count = Number(graph.stateCounts?.[state] ?? 0);
-      if (!count) continue;
-      const width = 170 * count / total;
-      this.graphics.fillStyle(graphStateStyle(state).color, 0.7);
-      this.graphics.fillRect(barX + offset, barY, width, 7);
-      offset += width;
-    }
-  }
-
-  drawHighValueMarkers(map) {
-    const width = this.field.width;
-    const height = this.field.height;
-    const cellW = map.width / width;
-    const cellH = map.height / height;
-    for (const cell of this.field.highValueCells ?? []) {
-      const cx = map.x + (cell.x + 0.5) * cellW;
-      const cy = map.y + (cell.y + 0.5) * cellH;
-      const radius = Math.max(3, Math.min(cellW, cellH) * 0.24);
-      this.graphics.lineStyle(1, 0xf7f7c6, 0.72);
-      this.graphics.strokeCircle(cx, cy, radius + cell.value * 3);
-      if (cell.value >= 0.88) {
-        this.graphics.fillStyle(0xffffff, 0.82);
-        this.graphics.fillCircle(cx, cy, Math.max(1.5, radius * 0.36));
-      }
-    }
-  }
-
   layoutText({ margin, top, map }) {
     this.titleText?.setPosition(margin, top);
     this.subtitleText?.setPosition(margin, top + 42);
     this.subtitleText?.setWordWrapWidth(Math.min(780, map.width));
     const stats = this.field?.stats ?? {};
     const diagnostics = this.field?.activityDiagnostics ?? {};
-    const dynamicText = this.timeMode === 'dynamic' || this.eventLikelihoodDynamics === 'dynamic' ? ` | Demo Time: ${this.demoTime.toFixed(1)} hr | Playback: ${this.timeSpeedScale}x | Direction: ${this.playbackDirection === -1 ? 'Reverse' : 'Forward'}` : '';
     const stateModel = this.field?.stateModel ?? roiStateModelForEvolutionModel(this.field?.evolutionModel ?? this.evolutionModel);
-    const range = diagnostics.dynamicRangeAfterContrast ?? ((diagnostics.maxValue ?? stats.max ?? 0) - (diagnostics.minValue ?? stats.min ?? 0));
     const warningText = diagnostics.diagnosticWarnings?.length ? ` | warnings ${diagnostics.diagnosticWarnings.join(', ')}` : '';
-    const mesh = diagnostics.likelihood ?? this.field?.likelihoodField?.diagnostics ?? {};
-    const meshText = `mesh max ${formatStat(mesh.max)} | mesh active ${formatPercent(mesh.activeLikelihoodCellFraction)} | mesh high ${formatPercent(mesh.highLikelihoodCellFraction)} | near ${formatPercent(mesh.nearTriggerLikelihoodCellFraction)} | modes ${mesh.modeCount ?? 0}`;
     const graph = diagnostics.graphDiagnostics ?? this.field?.graphField?.diagnostics;
-    const graphText = graph ? ` | graph ${graph.updateRule} | clusters ${graph.clusterCount ?? 0}/${graph.activeClusterCount ?? 0} active | nodes active ${graph.activeNodeCount ?? 0} | states ${formatGraphStateSummary(graph.stateCounts)} | messages ${formatStat(graph.edgeMessageTotal)}` : '';
-    const activityText = `Activity: mean ${formatStat(diagnostics.meanValue ?? stats.mean)} | active ${formatPercent(diagnostics.activeFraction)} | high ${formatPercent(diagnostics.highValueFraction)} | max ${formatStat(diagnostics.maxValue ?? stats.max)} | range ${formatStat(range)} | bbox ${formatPercent(diagnostics.activeBoundingBoxCoverage)} | components ${diagnostics.connectedComponentCount ?? 0} | hotspots ${diagnostics.activeHotspotCount ?? diagnostics.hotspotComponentCount ?? 0} | ${meshText}${graphText} | L/S corr ${formatStat(diagnostics.likelihoodSampleCorrelation)} | injected +${formatStat(diagnostics.injectedActivity)}${warningText}`;
-    this.statusText?.setText(`Event Likelihood Field: ${roiEventLikelihoodLabel(this.field?.eventLikelihood ?? this.eventLikelihood)} (${roiLikelihoodDynamicsLabel(this.field?.eventLikelihoodDynamics ?? this.eventLikelihoodDynamics)}) | Spatial: ${roiPureSpatialPatternLabel(this.field?.pureSpatialPattern ?? this.spatialPattern)} | Value Distribution: ${roiValueDistributionLabel(this.field?.valueDistribution ?? this.valueDistribution)} | Temporal: ${roiTemporalPatternLabel(this.field?.temporalPattern ?? this.temporalPattern)} | Spatial Evolution: ${roiSpatialEvolutionLabel(this.field?.spatialEvolution ?? this.spatialEvolution)} | State Model: ${roiStateModelLabel(stateModel)} | Sampling: ${roiDepletionModeLabel(this.field?.depletionMode ?? this.depletionMode)} | Display: ${roiDisplayModeLabel(this.field?.displayMode ?? this.displayMode)} | Seed: ${this.seed}${dynamicText} | ${activityText} | Total: ${formatStat(stats.totalValue)}`);
+    if (this.processMode === 'processPaint') {
+      const paintValidation = validateSamplingProcessPaintModel(this.paintModel);
+      this.statusText?.setText(`Process Paint · ${this.paused ? 'Paused editing canvas' : 'Running painted process'} · Painted cells: ${paintValidation.paintedCellCount} · Rule: ${this.selectedPaintRuleId} · Group: ${this.selectedPaintGroupId}`);
+      this.statusText?.setWordWrapWidth(Math.min(1040, map.width));
+      this.statusText?.setPosition(margin, map.y + map.height + 18);
+      return;
+    }
+    const modeLabel = this.processMode === 'referenceSignature'
+      ? `Example Processes: ${referenceSignatureById(this.referenceSignatureId)?.label ?? 'Process Pattern'}`
+      : samplingProcessModeLabel(this.processMode);
+    const baseStatus = `${modeLabel} · ${roiTemporalPatternLabel(this.field?.temporalPattern ?? this.temporalPattern)} · ${roiSpatialEvolutionLabel(this.field?.spatialEvolution ?? this.spatialEvolution)} · ${roiDisplayModeLabel(this.field?.displayMode ?? this.displayMode)} · t=${this.demoTime.toFixed(1)}s`;
+    const compactMetrics = `Mean ${formatStat(diagnostics.meanValue ?? stats.mean)} · Active ${formatPercent(diagnostics.activeFraction)} · High ${formatPercent(diagnostics.highValueFraction)} · Max ${formatStat(diagnostics.maxValue ?? stats.max)}`;
+    const diagnosticsStatus = this.processMode === 'diagnosticsGraphInspection' && graph
+      ? ` · Graph ${graph.updateRule} · States ${formatGraphStateSummary(graph.stateCounts)} · Messages ${formatStat(graph.edgeMessageTotal)}${warningText}`
+      : '';
+    this.statusText?.setText(`${baseStatus} · ${compactMetrics} · State ${roiStateModelLabel(stateModel)} · Sampling ${roiDepletionModeLabel(this.field?.depletionMode ?? this.depletionMode)}${diagnosticsStatus}`);
     this.statusText?.setWordWrapWidth(Math.min(1040, map.width));
     this.statusText?.setPosition(margin, map.y + map.height + 18);
   }
@@ -810,18 +1070,6 @@ export class RoiGeneratorDemoScene extends PhaserScene {
     this.objects?.forEach((object) => object.destroy?.());
     this.objects = [];
     this.graphics = null;
-  }
-
-  drawSelectedCell(map) {
-    if (!this.selectedCell || !this.field) return;
-    const cellW = map.width / this.field.width;
-    const cellH = map.height / this.field.height;
-    const x = map.x + this.selectedCell.col * cellW;
-    const y = map.y + this.selectedCell.row * cellH;
-    this.graphics.fillStyle(0x63e6be, 0.1);
-    this.graphics.fillRect(x + 1, y + 1, Math.max(1, cellW - 2), Math.max(1, cellH - 2));
-    this.graphics.lineStyle(3, 0x63e6be, 0.96);
-    this.graphics.strokeRect(x + 1.5, y + 1.5, Math.max(1, cellW - 3), Math.max(1, cellH - 3));
   }
 
   bindInputHandlers() {
@@ -836,12 +1084,31 @@ export class RoiGeneratorDemoScene extends PhaserScene {
   handlePointerDown(pointer) {
     const cell = this.cellFromPointer(pointer);
     if (!cell) return;
+    if (this.processMode === 'processPaint') {
+      this.selectedCell = cell;
+      this.rightPanelMode = 'cellInspector';
+      const model = createSamplingProcessPaintModel({ width: this.field?.width ?? 24, height: this.field?.height ?? 16, assignments: this.paintModel });
+      assignSamplingProcessCell(model, cell, {
+        state: this.selectedPaintState,
+        ruleId: this.selectedPaintRuleId,
+        groupId: this.selectedPaintGroupId,
+        sourceValue: this.selectedPaintSourceValue
+      });
+      this.paintModel = model;
+      this.rebuildField();
+      this.lastInspectorRenderTime = -Infinity;
+      this.renderConsole();
+      this.renderCellInspector(true);
+      this.draw();
+      return;
+    }
     if (this.selectedCell && this.selectedCell.col === cell.col && this.selectedCell.row === cell.row) {
       this.selectedCell = null;
+      this.rightPanelMode = 'recipeSignature';
     } else {
       this.selectedCell = cell;
+      this.rightPanelMode = 'cellInspector';
     }
-    this.rightPanelMode = 'cellInspector';
     this.lastInspectorRenderTime = -Infinity;
     this.renderCellInspector(true);
     this.draw();
@@ -865,6 +1132,7 @@ export class RoiGeneratorDemoScene extends PhaserScene {
       valueDistribution: this.field?.valueDistribution ?? this.valueDistribution,
       temporalPattern: this.field?.temporalPattern ?? this.temporalPattern,
       spatialEvolution: this.field?.spatialEvolution ?? this.spatialEvolution,
+      interactionScale: this.field?.interactionScale ?? this.interactionScale,
       stateModel: this.field?.stateModel ?? this.stateModel,
       samplingEffect: this.field?.depletionMode ?? this.depletionMode,
       displayLayer: this.field?.displayMode ?? this.displayMode
@@ -903,14 +1171,6 @@ export class RoiGeneratorDemoScene extends PhaserScene {
         </div>
       </section>
     `;
-    root.querySelector('[data-action="roi-demo-reset"]')?.addEventListener('click', () => this.resetDemoState());
-    root.querySelector('[data-action="roi-demo-direction"]')?.addEventListener('click', () => this.togglePlaybackDirection());
-    root.querySelector('[data-action="roi-demo-pause"]')?.addEventListener('click', () => {
-      this.paused = !this.paused;
-      this.renderConsole();
-      this.updateTransportBar();
-      this.renderCellInspector(true);
-    });
     this.transportRefs = {
       root,
       directionButton: root.querySelector('[data-action="roi-demo-direction"]'),
@@ -920,13 +1180,81 @@ export class RoiGeneratorDemoScene extends PhaserScene {
       speed: root.querySelector('[data-roi-demo-speed]'),
       behavior: root.querySelector('[data-roi-demo-behavior]')
     };
+    this.bindTransportControls(root);
     this.updateTransportBar();
+  }
+
+  bindTransportControls(root = this.transportRefs?.root) {
+    if (!root) return;
+    root.onclick = (event) => {
+      const button = event.target?.closest?.('[data-action]');
+      if (!button || !root.contains(button)) return;
+      this.handleTransportAction(button.dataset.action, event);
+    };
+  }
+
+  bindDocumentTransportControls() {
+    if (this.boundDocumentTransportClick) {
+      document.removeEventListener('click', this.boundDocumentTransportClick, true);
+    }
+    this.boundDocumentTransportClick = (event) => {
+      if (!this.scene?.isActive?.()) return;
+      const button = event.target?.closest?.('[data-action]');
+      const root = this.app?.elements?.overlay?.bottomTimeline;
+      if (!button || !root?.contains(button)) return;
+      if (!['roi-demo-reset', 'roi-demo-direction', 'roi-demo-pause'].includes(button.dataset.action)) return;
+      this.handleTransportAction(button.dataset.action, event);
+    };
+    document.addEventListener('click', this.boundDocumentTransportClick, true);
+    this.events?.once?.('shutdown', () => {
+      if (this.boundDocumentTransportClick) {
+        document.removeEventListener('click', this.boundDocumentTransportClick, true);
+        this.boundDocumentTransportClick = null;
+      }
+    });
+  }
+
+  handleTransportAction(action, event = null) {
+    if (!['roi-demo-reset', 'roi-demo-direction', 'roi-demo-pause'].includes(action)) return;
+    event?.preventDefault?.();
+    event?.stopPropagation?.();
+    event?.stopImmediatePropagation?.();
+    if (action === 'roi-demo-reset') {
+      this.resetDemoState();
+      return;
+    }
+    if (action === 'roi-demo-direction') {
+      this.togglePlaybackDirection();
+      return;
+    }
+    this.paused = !this.paused;
+    if (this.processMode === 'processPaint' && !this.paused) this.processPaintRunStarted = true;
+    this.renderConsole();
+    this.updateTransportBar();
+    this.renderCellInspector(true);
+    this.draw();
   }
 
   updateTransportBar() {
     const refs = this.transportRefs ?? {};
     if (!refs.root?.isConnected) return;
+    refs.directionButton = refs.root.querySelector('[data-action="roi-demo-direction"]');
+    refs.pauseButton = refs.root.querySelector('[data-action="roi-demo-pause"]');
+    refs.time = refs.root.querySelector('[data-roi-demo-time]');
+    refs.state = refs.root.querySelector('[data-roi-demo-state]');
+    refs.speed = refs.root.querySelector('[data-roi-demo-speed]');
+    refs.behavior = refs.root.querySelector('[data-roi-demo-behavior]');
+    this.bindTransportControls(refs.root);
     const directionLabel = this.playbackDirection === -1 ? 'Reverse' : 'Forward';
+    if (this.processMode === 'processPaint') {
+      if (refs.time) refs.time.textContent = `${this.paused ? 'Paused editing canvas at' : 'Running painted process at'}: ${this.demoTime.toFixed(1)} s`;
+      if (refs.state) refs.state.textContent = this.paused ? 'Process Paint: paused editing canvas' : 'Process Paint: running from painted state';
+      if (refs.directionButton) refs.directionButton.textContent = `Direction: ${directionLabel}`;
+      if (refs.pauseButton) refs.pauseButton.textContent = this.paused ? 'Run' : 'Pause';
+      if (refs.speed) refs.speed.textContent = `Playback: ${this.timeSpeedScale}x`;
+      if (refs.behavior) refs.behavior.textContent = 'Status: Custom Exploratory';
+      return;
+    }
     if (refs.time) refs.time.textContent = `${this.paused ? 'Paused at' : 'Demo Time'}: ${this.demoTime.toFixed(1)} s`;
     if (refs.state) refs.state.textContent = this.timeMode === 'dynamic' || this.eventLikelihoodDynamics === 'dynamic'
       ? `Dynamic sample field - ${directionLabel.toLowerCase()}`
@@ -959,51 +1287,197 @@ export class RoiGeneratorDemoScene extends PhaserScene {
     this.draw();
   }
 
+  showRecipeSignatureView() {
+    this.rightPanelMode = 'recipeSignature';
+    this.lastInspectorRenderTime = -Infinity;
+    this.renderCellInspector(true);
+  }
+
+  showDiagnosticsView() {
+    this.rightPanelMode = 'diagnostics';
+    this.lastInspectorRenderTime = -Infinity;
+    this.renderCellInspector(true);
+  }
+
   renderCellInspector(force = false) {
     const root = this.app?.elements?.waypointTimelineRoot;
     if (!root) return;
-    if (this.rightPanelMode === 'behaviorHelp') {
-      const topic = this.selectedHelpTopic ?? null;
-      const key = `behaviorHelp:${topic?.groupId ?? 'empty'}:${topic?.optionId ?? 'empty'}:${this.behaviorPresetId}:${this.behaviorPresetModified}:${this.timeMode}:${this.eventLikelihood}:${this.eventLikelihoodDynamics}:${this.eventLikelihoodTemporalPattern}:${this.eventLikelihoodSpatialEvolution}:${this.spatialPattern}:${this.valueDistribution}:${this.temporalPattern}:${this.spatialEvolution}:${this.motionScope}:${this.depletionMode}:${this.displayMode}`;
+    if (this.processMode === 'processPaint' && !this.selectedCell && this.rightPanelMode === 'recipeSignature') {
+      this.rightPanelMode = 'paintTools';
+    }
+    if (this.processMode === 'processPaint' && this.rightPanelMode === 'paintTools') {
+      const key = `paintTools:${this.selectedPaintState}:${this.selectedPaintRuleId}:${this.selectedPaintGroupId}:${this.selectedPaintSourceValue}:${Object.keys(this.paintModel?.cells ?? {}).length}:${this.paused}`;
       if (!force && key === this.lastInspectorKey) return;
       this.lastInspectorKey = key;
       this.lastInspectorRenderTime = this.demoTime;
-      root.innerHTML = topic ? roiBehaviorHelpHtml(topic, this.behaviorHelpState()) : roiBehaviorHelpEmptyHtml();
+      root.innerHTML = processPaintToolsHtml(this.processPaintPanelState());
+      this.bindRightPanelModeButtons(root);
+      this.bindProcessPaintPanelControls(root);
+      this.updateRoiUiDebug();
+      return;
+    }
+    if (this.rightPanelMode === 'recipeSignature') {
+      const key = `recipeSignature:${this.patternSource}:${this.referenceSignatureId}:${this.referenceSignatureModified}:${this.behaviorPresetId}:${this.behaviorPresetModified}:${this.modifiedComponent}:${this.eventLikelihood}:${this.spatialPattern}:${this.valueDistribution}:${this.temporalPattern}:${this.spatialEvolution}:${this.interactionScale}:${this.stateModel}:${this.depletionMode}:${this.displayMode}`;
+      if (!force && key === this.lastInspectorKey) return;
+      this.lastInspectorKey = key;
+      this.lastInspectorRenderTime = this.demoTime;
+      root.innerHTML = roiRecipeSignatureHtml(this.recipeSignatureState());
+      this.bindRightPanelModeButtons(root);
+      this.updateRoiUiDebug();
+      return;
+    }
+    if (this.rightPanelMode === 'diagnostics') {
+      const key = `diagnostics:${this.patternSource}:${this.referenceSignatureId}:${this.referenceSignatureModified}:${this.demoTime.toFixed(1)}:${JSON.stringify(this.field?.activityDiagnostics?.diagnosticWarnings ?? [])}`;
+      if (!force && key === this.lastInspectorKey) return;
+      this.lastInspectorKey = key;
+      this.lastInspectorRenderTime = this.demoTime;
+      root.innerHTML = roiDiagnosticsHtml(this.diagnosticsState());
+      this.bindRightPanelModeButtons(root);
+      this.updateRoiUiDebug();
+      return;
+    }
+    if (this.rightPanelMode === 'behaviorHelp') {
+      const topic = this.selectedHelpTopic ?? null;
+      const key = `behaviorHelp:${topic?.groupId ?? 'empty'}:${topic?.optionId ?? 'empty'}:${this.behaviorPresetId}:${this.behaviorPresetModified}:${this.referenceSignatureId}:${this.referenceSignatureModified}:${this.timeMode}:${this.eventLikelihood}:${this.eventLikelihoodDynamics}:${this.eventLikelihoodTemporalPattern}:${this.eventLikelihoodSpatialEvolution}:${this.spatialPattern}:${this.valueDistribution}:${this.temporalPattern}:${this.spatialEvolution}:${this.motionScope}:${this.interactionScale}:${this.depletionMode}:${this.displayMode}`;
+      if (!force && key === this.lastInspectorKey) return;
+      this.lastInspectorKey = key;
+      this.lastInspectorRenderTime = this.demoTime;
+      root.innerHTML = topic ? roiBehaviorHelpHtml(topic, this.behaviorHelpState()) : roiBehaviorHelpEmptyHtml(this.recipeSignatureState());
+      this.bindRightPanelModeButtons(root);
       root.querySelector('[data-action="roi-show-cell-inspector"]')?.addEventListener('click', () => {
         this.rightPanelMode = 'cellInspector';
         this.renderCellInspector(true);
       });
+      this.updateRoiUiDebug();
       return;
     }
     if (!this.selectedCell) {
-      if (force || this.lastInspectorKey !== 'empty') {
-        root.innerHTML = roiInspectorEmptyHtml();
-        this.lastInspectorKey = 'empty';
-      }
+      const key = `emptyInspector:${this.processMode}:${this.patternSource}:${this.referenceSignatureId}:${this.displayMode}:${this.selectedPaintState}:${this.selectedPaintRuleId}:${this.selectedPaintGroupId}`;
+      if (!force && key === this.lastInspectorKey) return;
+      this.lastInspectorKey = key;
+      this.lastInspectorRenderTime = this.demoTime;
+      root.innerHTML = this.processMode === 'processPaint'
+        ? processPaintInspectorEmptyHtml(this.processPaintPanelState())
+        : roiInspectorEmptyHtml(this.recipeSignatureState());
+      this.bindRightPanelModeButtons(root);
+      this.updateRoiUiDebug();
       return;
     }
-    const key = `${this.selectedCell.col},${this.selectedCell.row}:${this.timeMode}:${this.eventLikelihood}:${this.eventLikelihoodDynamics}:${this.eventLikelihoodTemporalPattern}:${this.eventLikelihoodSpatialEvolution}:${this.spatialPattern}:${this.valueDistribution}:${this.temporalPattern}:${this.spatialEvolution}:${this.motionScope}:${this.depletionMode}:${this.displayMode}:${this.clusterSize}:${this.paused}`;
+    const key = `${this.selectedCell.col},${this.selectedCell.row}:${this.timeMode}:${this.eventLikelihood}:${this.eventLikelihoodDynamics}:${this.eventLikelihoodTemporalPattern}:${this.eventLikelihoodSpatialEvolution}:${this.spatialPattern}:${this.valueDistribution}:${this.temporalPattern}:${this.spatialEvolution}:${this.motionScope}:${this.depletionMode}:${this.displayMode}:${this.clusterSize}:${this.paused}:${this.processMode}:${JSON.stringify(this.paintModel?.cells?.[`${this.selectedCell.col},${this.selectedCell.row}`] ?? null)}`;
     if (!force && key === this.lastInspectorKey && Math.abs(this.demoTime - this.lastInspectorRenderTime) < 0.25) return;
     this.lastInspectorKey = key;
     this.lastInspectorRenderTime = this.demoTime;
-    root.innerHTML = roiInspectorHtml(this.inspectSelectedCell());
+    const inspection = this.inspectSelectedCell();
+    root.innerHTML = this.processMode === 'processPaint'
+      ? processPaintCellEditorHtml(inspection, this.processPaintPanelState())
+      : roiInspectorHtml(inspection);
+    this.bindRightPanelModeButtons(root);
+    if (this.processMode === 'processPaint') this.bindProcessPaintPanelControls(root);
+    this.updateRoiUiDebug();
+  }
+
+  bindRightPanelModeButtons(root) {
+    root.querySelectorAll('[data-roi-panel-mode]').forEach((button) => {
+      button.addEventListener('click', () => {
+        const mode = normalizeRightPanelMode(button.dataset.roiPanelMode);
+        this.rightPanelMode = mode;
+        if (mode === 'behaviorHelp' && !this.selectedHelpTopic) {
+          this.selectedHelpTopic = { groupId: 'behaviorPreset', optionId: this.helpOptionForGroup('behaviorPreset') };
+        }
+        this.renderCellInspector(true);
+      });
+    });
+  }
+
+  bindProcessPaintPanelControls(root) {
+    root.querySelector('#paint-panel-state')?.addEventListener('change', (event) => this.applyPaintSelection({ state: event.target.value }));
+    root.querySelector('#paint-panel-rule')?.addEventListener('change', (event) => this.applyPaintSelection({ ruleId: event.target.value }));
+    root.querySelector('#paint-panel-group')?.addEventListener('input', (event) => this.applyPaintSelection({ groupId: Number(event.target.value) }));
+    root.querySelector('#paint-panel-group')?.addEventListener('change', (event) => this.applyPaintSelection({ groupId: Number(event.target.value) }));
+    root.querySelector('#paint-panel-source')?.addEventListener('input', (event) => this.applyPaintSelection({ sourceValue: Number(event.target.value) }));
+    root.querySelector('#paint-panel-source')?.addEventListener('change', (event) => this.applyPaintSelection({ sourceValue: Number(event.target.value) }));
+    root.querySelector('[data-action="paint-panel-apply"]')?.addEventListener('click', () => this.paintSelectedCell(this.paintSelectionFromPanel(root)));
+    root.querySelector('[data-action="paint-panel-brush"]')?.addEventListener('click', () => this.paintSelectedCell(this.paintSelectionFromPanel(root)));
+    root.querySelector('[data-action="paint-panel-clear-cell"]')?.addEventListener('click', () => this.clearSelectedPaintCell());
+    root.querySelector('[data-action="paint-panel-clear-canvas"]')?.addEventListener('click', () => this.clearProcessPaintCanvas());
+    root.querySelector('[data-action="paint-panel-randomize"]')?.addEventListener('click', () => this.randomizeProcessAllocation({ keepProcessPaint: true }));
+    root.querySelector('[data-action="paint-panel-run"]')?.addEventListener('click', () => this.runProcessPaintCanvas());
+    root.querySelector('[data-action="paint-panel-export"]')?.addEventListener('click', () => this.exportDemoJson());
+    root.querySelector('[data-action="paint-panel-tools"]')?.addEventListener('click', () => {
+      this.selectedCell = null;
+      this.rightPanelMode = 'paintTools';
+      this.renderCellInspector(true);
+      this.draw();
+    });
+  }
+
+  paintSelectionFromPanel(root) {
+    return {
+      state: root?.querySelector('#paint-panel-state')?.value,
+      ruleId: root?.querySelector('#paint-panel-rule')?.value,
+      groupId: Number(root?.querySelector('#paint-panel-group')?.value),
+      sourceValue: Number(root?.querySelector('#paint-panel-source')?.value)
+    };
+  }
+
+  samplingProcessViewModelContext({ includePreviousField = false } = {}) {
+    const sceneConfig = this.sceneConfig();
+    const previousTime = Math.max(0, this.demoTime - 1);
+    return {
+      ...this.exportBuilderContext({ sceneConfig }),
+      distribution: this.distribution,
+      hotspotCount: this.hotspotCount,
+      noise: this.noise,
+      timeMode: this.timeMode,
+      eventLikelihoodDynamics: this.eventLikelihoodDynamics,
+      eventLikelihoodTemporalPattern: this.eventLikelihoodTemporalPattern,
+      eventLikelihoodSpatialEvolution: this.eventLikelihoodSpatialEvolution,
+      temporalBehavior: this.temporalBehavior,
+      evolutionModel: this.evolutionModel,
+      patternEvolution: this.patternEvolution,
+      motionScope: this.motionScope,
+      clusterSize: this.clusterSize,
+      dynamicComplexity: this.dynamicComplexity,
+      selectedPaintState: this.selectedPaintState,
+      selectedPaintRuleId: this.selectedPaintRuleId,
+      selectedPaintGroupId: this.selectedPaintGroupId,
+      selectedPaintSourceValue: this.selectedPaintSourceValue,
+      previousField: includePreviousField ? createDemoRoiField({ ...sceneConfig, time: previousTime, demoTime: previousTime }) : null
+    };
+  }
+
+  processPaintPanelState() {
+    return buildSamplingProcessPaintPanelState(this.samplingProcessViewModelContext());
+  }
+
+  processPaintSettings() {
+    return {
+      brushSize: 1,
+      selectedState: this.selectedPaintState,
+      selectedRuleId: this.selectedPaintRuleId,
+      selectedGroupId: this.selectedPaintGroupId,
+      selectedSourceValue: this.selectedPaintSourceValue,
+      startMode: this.paintStartMode,
+      randomizedSeed: this.paintStartMode === 'seededRandomCanvas' ? this.randomRuleSeed : null,
+      runStarted: this.processPaintRunStarted,
+      paused: this.paused
+    };
+  }
+
+  recipeSignatureState() {
+    return buildSamplingProcessRecipeSignatureState(this.samplingProcessViewModelContext());
+  }
+
+  diagnosticsState() {
+    return buildSamplingProcessDiagnosticsState(this.samplingProcessViewModelContext());
+  }
+
+  recipeSummary() {
+    return buildSamplingProcessRecipeSummary(this.samplingProcessViewModelContext());
   }
 
   behaviorHelpState() {
-    return {
-      eventLikelihood: this.field?.eventLikelihood ?? this.eventLikelihood,
-      eventLikelihoodLabel: this.field?.eventLikelihoodLabel ?? roiEventLikelihoodLabel(this.eventLikelihood),
-      eventLikelihoodDynamics: this.field?.eventLikelihoodDynamics ?? this.eventLikelihoodDynamics,
-      eventLikelihoodTemporalPattern: this.field?.eventLikelihoodTemporalPattern ?? this.eventLikelihoodTemporalPattern,
-      eventLikelihoodSpatialEvolution: this.field?.eventLikelihoodSpatialEvolution ?? this.eventLikelihoodSpatialEvolution,
-      spatialPattern: this.field?.pureSpatialPattern ?? this.spatialPattern,
-      valueDistribution: this.field?.valueDistribution ?? this.valueDistribution,
-      temporalPattern: this.field?.temporalPattern ?? this.temporalPattern,
-      spatialEvolution: this.field?.spatialEvolution ?? this.spatialEvolution,
-      stateModel: this.field?.stateModel ?? this.stateModel,
-      depletionMode: this.field?.depletionMode ?? this.depletionMode,
-      displayMode: this.field?.displayMode ?? this.displayMode
-    };
+    return buildSamplingProcessBehaviorHelpState(this.samplingProcessViewModelContext());
   }
 
   clearCellInspector() {
@@ -1013,96 +1487,7 @@ export class RoiGeneratorDemoScene extends PhaserScene {
   }
 
   inspectSelectedCell() {
-    const cell = this.selectedCell;
-    const value = Number(this.field?.sampleValueField?.[cell.row]?.[cell.col] ?? this.field?.field?.[cell.row]?.[cell.col] ?? 0);
-    const displayedValue = Number(this.field?.field?.[cell.row]?.[cell.col] ?? value);
-    const eventLikelihoodValue = Number(this.field?.eventLikelihoodField?.[cell.row]?.[cell.col] ?? 1);
-    const previousField = createDemoRoiField({ ...this.sceneConfig(), time: Math.max(0, this.demoTime - 1), demoTime: Math.max(0, this.demoTime - 1) });
-    const previous = Number(previousField.sampleValueField?.[cell.row]?.[cell.col] ?? previousField.field?.[cell.row]?.[cell.col] ?? value);
-    const stats = this.field?.stats ?? {};
-    const hotspot = (this.field?.highValueCells ?? []).find((entry) => entry.x === cell.col && entry.y === cell.row);
-    const rawBase = Number(this.field?.rawBaseField?.[cell.row]?.[cell.col] ?? value);
-    const depleted = Number(this.field?.sampleValueField?.[cell.row]?.[cell.col] ?? value);
-    const spatialPattern = this.field?.pureSpatialPattern ?? this.spatialPattern;
-    const spatialHelp = roiSpatialPatternHelp(spatialPattern);
-    const nearestLikelihoodNode = nearestLikelihoodNodeForCell(this.field?.likelihoodField, cell);
-    const localLikelihood = localLikelihoodMeshStats(this.field?.likelihoodField?.values ?? this.field?.eventLikelihoodField, cell);
-    const previousLikelihoodField = previousField.likelihoodField?.values ?? previousField.eventLikelihoodField;
-    const previousLikelihood = Number(previousLikelihoodField?.[cell.row]?.[cell.col] ?? eventLikelihoodValue);
-    const graphNode = this.field?.graphField?.nodeGrid?.[cell.row]?.[cell.col] ?? null;
-    const graphDiagnostics = this.field?.graphField?.diagnostics ?? this.field?.activityDiagnostics?.graphDiagnostics ?? null;
-    const nearestCluster = nearestClusterForCell(this.field?.graphField?.clusters, cell, this.field?.width, this.field?.height);
-    const graphNeighborhood = graphMessageNeighborhood(this.field?.graphField, cell);
-    return {
-      cell,
-      value,
-      displayedValue,
-      previous,
-      delta: value - previous,
-      normalizedValue: stats.max > stats.min ? (value - stats.min) / Math.max(0.0001, stats.max - stats.min) : value,
-      mode: this.timeMode,
-      distribution: this.distribution,
-      eventLikelihood: this.field?.eventLikelihood ?? this.eventLikelihood,
-      eventLikelihoodLabel: this.field?.eventLikelihoodLabel ?? roiEventLikelihoodLabel(this.eventLikelihood),
-      eventLikelihoodDynamics: this.field?.eventLikelihoodDynamics ?? this.eventLikelihoodDynamics,
-      eventLikelihoodDynamicsLabel: this.field?.eventLikelihoodDynamicsLabel ?? roiLikelihoodDynamicsLabel(this.eventLikelihoodDynamics),
-      eventLikelihoodTemporalPattern: this.field?.eventLikelihoodTemporalPattern ?? this.eventLikelihoodTemporalPattern,
-      eventLikelihoodTemporalPatternLabel: this.field?.eventLikelihoodTemporalPatternLabel ?? roiTemporalPatternLabel(this.eventLikelihoodTemporalPattern),
-      eventLikelihoodSpatialEvolution: this.field?.eventLikelihoodSpatialEvolution ?? this.eventLikelihoodSpatialEvolution,
-      eventLikelihoodSpatialEvolutionLabel: this.field?.eventLikelihoodSpatialEvolutionLabel ?? roiLikelihoodSpatialEvolutionLabel(this.eventLikelihoodSpatialEvolution),
-      eventLikelihoodValue,
-      eventLikelihoodDelta: eventLikelihoodValue - previousLikelihood,
-      eventLikelihoodBand: likelihoodBandLabel(eventLikelihoodValue),
-      likelihoodMeshPercentile: likelihoodMeshPercentile(eventLikelihoodValue),
-      localLikelihoodAverage: localLikelihood.average,
-      localLikelihoodTrend: likelihoodTrendLabel(eventLikelihoodValue - previousLikelihood, localLikelihood.average),
-      likelihoodField: this.field?.likelihoodField,
-      nearestLikelihoodNode,
-      graphNode,
-      graphDiagnostics,
-      graphNeighborhood,
-      nearestCluster,
-      graphUpdateRule: this.field?.graphField?.updateRule ?? this.field?.graphField?.graph?.updateRule ?? 'memoryless',
-      graphTopology: this.field?.graphField?.topology ?? this.field?.graphField?.graph?.topology ?? '8-neighbor',
-      graphEdgeCount: this.field?.graphField?.edgeCount ?? this.field?.graphField?.graph?.edgeCount ?? 0,
-      spatialPattern,
-      valueDistribution: this.field?.valueDistribution ?? this.valueDistribution,
-      valueDistributionLabel: this.field?.valueDistributionLabel ?? roiValueDistributionLabel(this.valueDistribution),
-      seededValue: this.field?.valueDistributionSeeded ? 'yes' : 'no',
-      valueBand: valueBandLabel(value),
-      spatialPatternHelp: spatialHelp,
-      spatialParameterSummary: spatialParameterSummary(spatialPattern, {
-        clusterCount: this.field?.clusterCount ?? this.hotspotCount,
-        clusterSize: this.field?.clusterSize ?? this.clusterSize,
-        seed: this.seed,
-        noise: this.noise
-      }),
-      clusterCount: this.field?.clusterCount ?? this.hotspotCount,
-      clusterSize: this.field?.clusterSize ?? this.clusterSize,
-      temporalPattern: this.field?.temporalPattern ?? this.temporalPattern,
-      temporalBehavior: this.field?.temporalBehavior ?? this.temporalBehavior,
-      evolutionModel: this.field?.evolutionModel ?? this.evolutionModel,
-      dynamicComplexity: this.field?.dynamicComplexity ?? this.dynamicComplexity,
-      patternEvolution: this.field?.patternEvolution ?? this.patternEvolution,
-      spatialEvolution: this.field?.spatialEvolution ?? this.spatialEvolution,
-      spatialEvolutionLabel: this.field?.spatialEvolutionLabel ?? roiSpatialEvolutionLabel(this.spatialEvolution),
-      motionScope: this.field?.motionScope ?? this.motionScope,
-      motionScopeLabel: this.field?.motionScopeLabel ?? roiMotionScopeLabel(this.motionScope),
-      depletionMode: this.field?.depletionMode ?? this.depletionMode,
-      displayMode: this.field?.displayMode ?? this.displayMode,
-      stateModel: this.field?.stateModel ?? this.stateModel,
-      stateModelLabel: this.field?.stateModelLabel ?? roiStateModelLabel(this.stateModel),
-      stateModelDescription: this.field?.stateModelDescription ?? roiStateModelDescription(this.stateModel),
-      behavior: this.field?.behavior,
-      rawBase,
-      depleted,
-      hotspotMembership: hotspot ? `cluster/high-value rank ${1 + (this.field.highValueCells ?? []).indexOf(hotspot)}` : 'none',
-      lastSampled: this.depletionMode === 'none' ? 'n/a' : 'synthetic demo marker',
-      recovery: this.depletionMode === 'revisitRecovery' || this.displayMode === 'freshnessRevisitValue' ? recoveryLabel(this.demoTime) : 'n/a',
-      sampleFieldConfig: this.field?.sampleFieldConfig,
-      demoTime: this.demoTime,
-      paused: this.paused
-    };
+    return buildSamplingProcessCellInspection(this.samplingProcessViewModelContext({ includePreviousField: true }));
   }
 
   exportDemoJson() {
@@ -1116,97 +1501,129 @@ export class RoiGeneratorDemoScene extends PhaserScene {
     this.app?.toast?.('Sample / ROI Demo JSON exported.', 'success');
   }
 
-  buildDemoArtifactExport() {
-    const field = this.field ?? {};
-    const sampling = this.demoExportSampling();
-    const currentFrame = this.buildDemoArtifactFrame(this.demoTime, null, field);
-    const frames = sampling.timesSeconds.map((time, index) => this.buildDemoArtifactFrame(time, index));
-    const behaviorPreset = sampleFieldBehaviorPresetMetadata(this.behaviorPresetId, this.behaviorPresetModified);
-    return buildDemoArtifactEnvelope({
-      type: 'anchor.demo.sample-roi-field',
-      demo: this.title(),
-      grid: {
-        width: field.width,
-        height: field.height
-      },
-      time: {
-        demoTimeSeconds: this.demoTime,
-        fieldTimeSeconds: field.time ?? this.demoTime,
-        playbackDirection: this.playbackDirection,
-        playbackSpeed: this.timeSpeedScale
-      },
-      timeSampling: sampling,
-      config: this.sceneConfig(),
-      fields: currentFrame.fields,
-      likelihoodField: currentFrame.likelihoodField,
-      graphField: currentFrame.graphField,
-      clusters: currentFrame.clusters,
-      frames,
-      selectedCell: this.selectedCell ? this.inspectSelectedCell() : null,
-      behaviorPreset,
-      metadata: {
-        behaviorPreset,
-        coordinateConvention: 'Row-major arrays indexed fields[layer][row][col]; values represent cell centers on the demo grid.',
-        units: {
-          displayedValue: 'normalized demo scalar, 0..1',
-          sampleValue: 'normalized realized sample scalar S(x,y,t), 0..1',
-          eventLikelihood: 'normalized event likelihood L(x,y,t), 0..1',
-          rawBaseValue: 'seeded base sample value before temporal/evolution/display effects, 0..1',
-          evolvedValue: 'sample value after temporal/spatial evolution when available, 0..1'
-        },
-        stats: field.stats,
-        activityDiagnostics: field.activityDiagnostics,
-        likelihoodField: field.likelihoodField,
-        likelihoodMesh: field.likelihoodField?.mesh,
-        graphField: field.graphField?.graph,
-        clusters: field.graphField?.clusters,
-        highValueCells: field.highValueCells,
-        freshnessNote: 'Freshness / Age of Information layers are demo-only unless connected to real mission visit history.',
-        historyAwareExport: {
-          supported: true,
-          method: 'deterministic-resample-from-current-config-at-each-requested-time',
-          notes: 'Sampling visits and freshness are synthetic demo effects, not mission glider visit history.'
-        },
-        exportFrameLimit: 240
-      }
-    });
+  generateScenario() {
+    this.generatedScenario = this.buildSyntheticRoiScenario();
+    this.renderConsole();
+    const status = this.generatedScenario.validation?.status ?? 'WARN';
+    this.app?.toast?.(`Scenario validation: ${status}`, status === 'FAIL' ? 'warning' : 'success');
+    return this.generatedScenario;
   }
 
-  buildDemoArtifactFrame(demoTime, index, existingField = null) {
-    const field = existingField ?? createDemoRoiField({ ...this.sceneConfig(), time: demoTime, demoTime });
-    return {
-      index,
-      timeSeconds: demoTime,
-      demoTimeSeconds: demoTime,
-      fieldTimeSeconds: field.time ?? demoTime,
-      fields: {
-        displayedValue: cloneField(field.field),
-        sampleValue: cloneField(field.sampleValueField ?? field.field),
-        eventLikelihood: cloneField(field.eventLikelihoodField),
-        rawBaseValue: cloneField(field.rawBaseField),
-        evolvedValue: cloneField(field.evolvedField),
-        graphState: cloneField(field.graphField?.stateField),
-        graphActivation: cloneField(field.graphField?.activationField),
-        graphCommunityId: graphCommunityField(field.graphField),
-        graphClusterLikelihood: cloneField(field.graphField?.clusterLikelihoodField),
-        graphIncomingMessage: cloneField(field.graphField?.incomingMessageField),
-        graphTopMessages: topGraphMessages(field.graphField, { maxEdges: 120 })
+  exportScenarioJson() {
+    const scenario = this.generatedScenario ?? this.generateScenario();
+    const status = scenario.validation?.status ?? 'FAIL';
+    if (status === 'FAIL') {
+      this.app?.toast?.('Scenario validation failed. Change seed, duration, frame count, or settings before export.', 'warning');
+      return;
+    }
+    if (status === 'WARN' && this.scenarioValidationMode === 'requirePass') {
+      this.app?.toast?.('Scenario validation is WARN. Change validation mode to allow WARN export or adjust settings.', 'warning');
+      return;
+    }
+    downloadJSON(`${scenario.scenarioId}.json`, scenario);
+    this.app?.toast?.('Synthetic ROI scenario JSON exported.', 'success');
+  }
+
+  buildSyntheticRoiScenario() {
+    const behaviorPreset = sampleFieldBehaviorPresetMetadata(this.behaviorPresetId, this.behaviorPresetModified);
+    const sourceMode = normalizeScenarioSourceMode(this.scenarioSourceMode);
+    const scenario = generateRoiScenario({
+      family: this.behaviorPresetId === CUSTOM_SAMPLE_FIELD_BEHAVIOR_PRESET_ID ? 'custom' : this.behaviorPresetId,
+      seed: this.scenarioSeed,
+      difficulty: this.scenarioDifficulty,
+      grid: {
+        width: this.field?.width ?? 24,
+        height: this.field?.height ?? 16
       },
-      likelihoodField: cloneLikelihoodFieldModel(field.likelihoodField),
-      graphField: cloneGraphFieldModel(field.graphField),
-      clusters: cloneClusters(field.graphField?.clusters),
-      activityDiagnostics: field.activityDiagnostics,
-      behaviorPreset: sampleFieldBehaviorPresetMetadata(this.behaviorPresetId, this.behaviorPresetModified)
+      duration: this.scenarioDuration,
+      frameCount: this.scenarioFrameCount,
+      componentRecipe: this.activeComponentRecipe(),
+      processContract: sourceMode === 'currentRecipe' && this.behaviorPresetId !== CUSTOM_SAMPLE_FIELD_BEHAVIOR_PRESET_ID ? behaviorPreset.processContract : null,
+      patternSource: this.patternSource,
+      referenceSignatureId: this.referenceSignatureId,
+      referenceSignatureModified: this.referenceSignatureModified,
+      sourceMode,
+      requireValidation: this.scenarioValidationMode === 'requirePass'
+    });
+    return {
+      ...scenario,
+      ...buildSamplingProcessScenarioMetadata(this.exportBuilderContext(), scenario)
     };
   }
 
-  demoExportSampling() {
-    return normalizeDemoExportSettings({
+  buildDemoArtifactExport() {
+    return buildSamplingProcessDemoArtifactExport(this.exportBuilderContext());
+  }
+
+  exportBuilderContext(overrides = {}) {
+    const sceneConfig = this.sceneConfig();
+    return {
+      title: this.title(),
+      demo: this.title(),
+      demoTime: this.demoTime,
+      field: this.field,
+      processMode: this.processMode,
+      patternSource: this.patternSource,
+      referenceSignatureId: this.referenceSignatureId,
+      referenceSignatureModified: this.referenceSignatureModified,
+      behaviorPresetId: this.behaviorPresetId,
+      behaviorPresetModified: this.behaviorPresetModified,
+      paintModel: this.paintModel,
+      paintStartMode: this.paintStartMode,
+      paintSettings: this.processPaintSettings(),
+      processLayers: this.processLayers,
+      viewFilters: this.viewFilters,
+      selectedCell: this.selectedCell,
+      modifiedComponent: this.modifiedComponent,
       exportMode: this.exportMode,
-      startTimeSeconds: this.exportStartTime,
-      endTimeSeconds: this.exportEndTime,
-      frameCount: this.exportFrameCount
-    }, this.demoTime);
+      exportStartTime: this.exportStartTime,
+      exportEndTime: this.exportEndTime,
+      exportFrameCount: this.exportFrameCount,
+      playbackDirection: this.playbackDirection,
+      timeSpeedScale: this.timeSpeedScale,
+      seed: this.seed,
+      sceneConfig,
+      eventLikelihood: this.eventLikelihood,
+      spatialPattern: this.spatialPattern,
+      valueDistribution: this.valueDistribution,
+      temporalPattern: this.temporalPattern,
+      spatialEvolution: this.spatialEvolution,
+      interactionScale: this.interactionScale,
+      stateModel: this.stateModel,
+      depletionMode: this.depletionMode,
+      displayMode: this.displayMode,
+      buildFrameAtTime: (time, index, fieldOverride = null) => this.buildDemoArtifactFrame(time, index, fieldOverride),
+      inspectSelectedCell: () => this.inspectSelectedCell(),
+      ...overrides
+    };
+  }
+
+  buildDemoArtifactFrame(demoTime, index, existingField = null) {
+    let field = existingField ?? createDemoRoiField({ ...this.sceneConfig(), time: demoTime, demoTime });
+    const processLayers = existingField ? this.processLayers : buildSamplingProcessLayersForField({
+      field,
+      paintModel: this.paintModel,
+      processMode: this.processMode,
+      updateRuleHint: field.graphField?.updateRule ?? this.updateRuleHint
+    });
+    if (this.processMode === 'processPaint' && !existingField) {
+      const result = buildSamplingProcessPaintField({
+        baseField: field,
+        processLayers,
+        paintModel: this.paintModel,
+        seed: this.seed,
+        demoTime,
+        processPaintRunStarted: this.processPaintRunStarted,
+        paused: this.paused,
+        paintStartMode: this.paintStartMode
+      });
+      field = result.field;
+    }
+    return buildSamplingProcessDemoArtifactFrame(this.exportBuilderContext({ field, processLayers }), demoTime, index, field);
+  }
+
+  demoExportSampling() {
+    return buildSamplingProcessExportSampling(this.exportBuilderContext());
   }
 
   updateExportSettings(patch = {}) {
@@ -1224,6 +1641,21 @@ export class RoiGeneratorDemoScene extends PhaserScene {
     this.renderConsole();
   }
 
+  updateScenarioSettings(patch = {}, options = {}) {
+    if (patch.sourceMode !== undefined) this.scenarioSourceMode = normalizeScenarioSourceMode(patch.sourceMode);
+    if (patch.seed !== undefined) this.scenarioSeed = String(patch.seed ?? 'scenario-test-001') || 'scenario-test-001';
+    if (patch.difficulty !== undefined) this.scenarioDifficulty = normalizeScenarioDifficulty(patch.difficulty);
+    if (patch.duration !== undefined) this.scenarioDuration = Math.max(1, finiteNumber(patch.duration, this.scenarioDuration));
+    if (patch.frameCount !== undefined) this.scenarioFrameCount = Math.max(1, Math.min(240, Math.round(finiteNumber(patch.frameCount, this.scenarioFrameCount))));
+    if (patch.validationMode !== undefined) this.scenarioValidationMode = normalizeScenarioValidationMode(patch.validationMode);
+    this.generatedScenario = null;
+    if (options.render !== false) this.renderConsole();
+  }
+
+  activeComponentRecipe() {
+    return buildSamplingProcessComponentRecipe(this.exportBuilderContext());
+  }
+
   exportSettings() {
     return {
       exportMode: this.exportMode,
@@ -1232,15 +1664,6 @@ export class RoiGeneratorDemoScene extends PhaserScene {
       frameCount: this.exportFrameCount
     };
   }
-}
-
-function heatColor(value) {
-  const v = Math.max(0, Math.min(1, Number(value) || 0));
-  if (v < 0.22) return 0x10243b;
-  if (v < 0.45) return 0x1f7a8c;
-  if (v < 0.68) return 0x63c56f;
-  if (v < 0.84) return 0xf4d35e;
-  return 0xff7b54;
 }
 
 function nextSeed(seed) {
@@ -1258,156 +1681,133 @@ function normalizeExportMode(mode) {
   return mode === 'timeWindow' || mode === 'timeSeries' ? 'timeWindow' : 'currentFrame';
 }
 
-function nearestLikelihoodNodeForCell(model, cell) {
-  const nodes = model?.nodes ?? [];
-  const width = model?.values?.[0]?.length ?? 0;
-  const height = model?.values?.length ?? 0;
-  if (!nodes.length || !width || !height) return null;
-  const nx = width > 1 ? Number(cell.col ?? cell.x ?? 0) / (width - 1) : 0;
-  const ny = height > 1 ? Number(cell.row ?? cell.y ?? 0) / (height - 1) : 0;
-  return nodes
-    .map((node) => ({
-      ...node,
-      distance: Math.hypot(nx - Number(node.x ?? 0), ny - Number(node.y ?? 0))
-    }))
-    .sort((a, b) => a.distance - b.distance)[0] ?? null;
+function normalizeScenarioSourceMode(value) {
+  return ROI_SCENARIO_SOURCE_MODES.includes(value) ? value : 'currentRecipe';
 }
 
-function nearestClusterForCell(clusters, cell, width, height) {
-  if (!Array.isArray(clusters) || !clusters.length || !width || !height) return null;
-  const nx = width > 1 ? Number(cell.col ?? cell.x ?? 0) / (width - 1) : 0;
-  const ny = height > 1 ? Number(cell.row ?? cell.y ?? 0) / (height - 1) : 0;
-  return clusters
-    .map((cluster) => ({
-      ...cluster,
-      distance: Math.hypot(nx - Number(cluster.x ?? 0), ny - Number(cluster.y ?? 0))
-    }))
-    .sort((a, b) => a.distance - b.distance)[0] ?? null;
+function normalizeScenarioDifficulty(value) {
+  return ROI_SCENARIO_DIFFICULTIES.includes(value) ? value : 'medium';
 }
 
-function localLikelihoodMeshStats(values, cell) {
-  const row = Number(cell.row ?? cell.y ?? 0);
-  const col = Number(cell.col ?? cell.x ?? 0);
-  const samples = [];
-  for (let y = row - 1; y <= row + 1; y += 1) {
-    for (let x = col - 1; x <= col + 1; x += 1) {
-      if (x === col && y === row) continue;
-      const value = Number(values?.[y]?.[x]);
-      if (Number.isFinite(value)) samples.push(value);
-    }
+function normalizeScenarioValidationMode(value) {
+  return ROI_SCENARIO_VALIDATION_MODES.includes(value) ? value : 'requirePass';
+}
+
+function normalizePatternSource(value, data = {}) {
+  if (PATTERN_SOURCES.includes(value)) return value;
+  const referenceId = normalizeReferenceSignatureId(data.referenceSignatureId ?? data.referenceSignature?.id);
+  if (referenceId !== CUSTOM_REFERENCE_SIGNATURE_ID) return 'referenceSignature';
+  const presetId = normalizeSampleFieldBehaviorPresetId(data.behaviorPresetId ?? data.behaviorPreset?.id ?? CUSTOM_SAMPLE_FIELD_BEHAVIOR_PRESET_ID);
+  if (presetId !== CUSTOM_SAMPLE_FIELD_BEHAVIOR_PRESET_ID) return 'legacyPreset';
+  return value === 'custom' ? 'custom' : 'referenceSignature';
+}
+
+function inferModifiedComponent(patch = {}) {
+  const keys = Object.keys(patch ?? {});
+  if (keys.some((key) => ['eventLikelihood', 'eventLikelihoodDynamics', 'eventLikelihoodTemporalPattern', 'eventLikelihoodSpatialEvolution'].includes(key))) return 'eventLikelihood';
+  if (keys.some((key) => ['spatialPattern', 'hotspotCount', 'clusterSize', 'noise'].includes(key))) return 'spatialPattern';
+  if (keys.includes('valueDistribution')) return 'valueDistribution';
+  if (keys.some((key) => ['temporalPattern', 'temporalBehavior', 'timeMode'].includes(key))) return 'temporalPattern';
+  if (keys.some((key) => ['spatialEvolution', 'patternEvolution', 'evolutionModel', 'motionScope', 'dynamicComplexity'].includes(key))) return 'spatialEvolution';
+  if (keys.includes('interactionScale')) return 'interactionScale';
+  if (keys.includes('stateModel')) return 'stateModel';
+  if (keys.includes('depletionMode')) return 'samplingEffect';
+  if (keys.includes('displayMode')) return 'displayLayer';
+  if (keys.includes('seed')) return 'seed';
+  return null;
+}
+
+function componentComparisonRecipe(comparisonId, scene) {
+  if (comparisonId === 'spatialEvolution') {
+    const spatialEvolution = nextOption(['stationary', 'continuousDrift', 'discreteJump', 'randomWalk', 'neighborPropagation'], scene?.spatialEvolution);
+    return {
+      seed: 'roi-isolate-evolution',
+      modifiedComponent: 'spatialEvolution',
+      helpGroup: 'spatialEvolution',
+      config: {
+        eventLikelihood: 'multiModalLikelihood',
+        eventLikelihoodDynamics: 'dynamic',
+        eventLikelihoodTemporalPattern: 'sustained',
+        eventLikelihoodSpatialEvolution: spatialEvolution,
+        spatialPattern: 'clusteredField',
+        hotspotCount: 3,
+        clusterSize: 'medium',
+        valueDistribution: 'gaussianNormal',
+        temporalPattern: 'sustained',
+        temporalBehavior: 'periodic',
+        spatialEvolution,
+        patternEvolution: spatialEvolution,
+        evolutionModel: spatialEvolution,
+        motionScope: spatialEvolution === 'neighborPropagation' ? 'localNeighborhood' : 'perFeature',
+        interactionScale: spatialEvolution === 'neighborPropagation' ? 'edge' : 'cluster',
+        stateModel: spatialEvolution === 'stationary' || spatialEvolution === 'continuousDrift' ? 'timeIndexed' : 'stateEvolving',
+        depletionMode: 'none',
+        dynamicComplexity: 'medium',
+        displayMode: 'sampleValueLikelihoodOverlay'
+      }
+    };
   }
-  const average = samples.length ? samples.reduce((sum, value) => sum + value, 0) / samples.length : 0;
-  return { average };
-}
-
-function likelihoodMeshPercentile(value) {
-  const number = Number(value) || 0;
-  if (number >= 0.9) return 'near-triggering';
-  if (number >= 0.7) return 'high';
-  if (number >= 0.25) return 'active';
-  if (number >= 0.15) return 'low';
-  return 'background';
-}
-
-function likelihoodTrendLabel(delta, localAverage) {
-  const change = Number(delta) || 0;
-  if (change > 0.015) return 'increasing';
-  if (change < -0.015) return 'cooling';
-  if (Number(localAverage) >= 0.7) return 'locally high';
-  return 'stable';
-}
-
-function cloneLikelihoodFieldModel(model) {
-  if (!model) return null;
+  if (comparisonId === 'interactionScale') {
+    const interactionScale = nextOption(['global', 'cluster', 'cell', 'edge', 'hybrid'], scene?.interactionScale);
+    return {
+      seed: 'roi-isolate-scale',
+      modifiedComponent: 'interactionScale',
+      helpGroup: 'interactionScale',
+      config: {
+        eventLikelihood: 'patchyLikelihood',
+        eventLikelihoodDynamics: 'dynamic',
+        eventLikelihoodTemporalPattern: 'bursty',
+        eventLikelihoodSpatialEvolution: 'neighborPropagation',
+        spatialPattern: 'patchyField',
+        hotspotCount: 4,
+        clusterSize: 'medium',
+        valueDistribution: 'gaussianNormal',
+        temporalPattern: 'bursty',
+        temporalBehavior: 'bursty',
+        spatialEvolution: 'neighborPropagation',
+        patternEvolution: 'neighborPropagation',
+        evolutionModel: 'neighborPropagation',
+        motionScope: 'localNeighborhood',
+        interactionScale,
+        stateModel: 'stateEvolving',
+        depletionMode: 'soft',
+        dynamicComplexity: 'medium',
+        displayMode: 'diagnosticsOverlay'
+      }
+    };
+  }
+  const temporalPattern = nextOption(['sustained', 'periodic', 'bursty', 'intermittent', 'pulseThenSilence'], scene?.temporalPattern);
   return {
-    type: model.type,
-    label: model.label,
-    values: cloneField(model.values),
-    nodes: (model.nodes ?? []).map((node) => ({
-      ...node,
-      driftVelocity: node.driftVelocity ? { ...node.driftVelocity } : undefined
-    })),
-    metadata: { ...(model.metadata ?? {}) },
-    mesh: { ...(model.mesh ?? {}) },
-    diagnostics: { ...(model.diagnostics ?? {}) }
+    seed: 'roi-isolate-temporal',
+    modifiedComponent: 'temporalPattern',
+    helpGroup: 'temporalPattern',
+    config: {
+      eventLikelihood: 'multiModalLikelihood',
+      eventLikelihoodDynamics: 'dynamic',
+      eventLikelihoodTemporalPattern: temporalPattern,
+      eventLikelihoodSpatialEvolution: 'stationary',
+      spatialPattern: 'clusteredField',
+      hotspotCount: 4,
+      clusterSize: 'medium',
+      valueDistribution: 'gaussianNormal',
+      temporalPattern,
+      temporalBehavior: temporalPattern === 'sustained' ? 'periodic' : temporalPattern,
+      spatialEvolution: 'stationary',
+      patternEvolution: 'stationary',
+      evolutionModel: 'stationary',
+      motionScope: 'perFeature',
+      interactionScale: 'cluster',
+      stateModel: 'stateEvolving',
+      depletionMode: 'soft',
+      dynamicComplexity: 'medium',
+      displayMode: 'sampleValueLikelihoodOverlay'
+    }
   };
 }
 
-function cloneGraphFieldModel(model) {
-  if (!model) return null;
-  const topMessages = topGraphMessages(model, { maxEdges: 120 });
-  return {
-    topology: model.topology,
-    nodeCount: model.nodeCount,
-    edgeCount: model.edgeCount,
-    updateRule: model.updateRule,
-    communityCount: model.diagnostics?.clusterCount ?? model.graph?.clusterDiagnostics?.clusterCount ?? model.clusters?.length ?? 0,
-    edgeMessageFields: ['source', 'target', 'strength', 'sameCommunity', 'communityId'],
-    nodeStateFields: [...(model.nodeStateFields ?? model.graph?.nodeStateFields ?? [])],
-    graph: model.graph ? {
-      hierarchy: model.graph.hierarchy,
-      topology: model.graph.topology,
-      nodeCount: model.graph.nodeCount,
-      edgeCount: model.graph.edgeCount,
-      updateRule: model.graph.updateRule,
-      nodeStateFields: [...(model.graph.nodeStateFields ?? [])],
-      diagnostics: { ...(model.graph.diagnostics ?? {}) },
-      clusterDiagnostics: { ...(model.graph.clusterDiagnostics ?? {}) },
-      clusters: cloneClusters(model.graph.clusters),
-      directionalBias: model.graph.directionalBias ? { ...model.graph.directionalBias } : null,
-      communityBoundaryPenalty: model.graph.communityBoundaryPenalty
-    } : null,
-    diagnostics: { ...(model.diagnostics ?? {}) },
-    stateField: cloneField(model.stateField),
-    activationField: cloneField(model.activationField),
-    communityIdField: graphCommunityField(model),
-    clusterLikelihoodField: cloneField(model.clusterLikelihoodField),
-    incomingMessageField: cloneField(model.incomingMessageField),
-    topMessages,
-    clusters: cloneClusters(model.clusters),
-    nodes: (model.nodes ?? []).map((node) => ({
-      id: node.id,
-      row: node.row,
-      col: node.col,
-      clusterId: node.clusterId,
-      clusterLikelihood: node.clusterLikelihood,
-      likelihood: node.likelihood,
-      cellLikelihood: node.cellLikelihood,
-      activation: node.activation,
-      sampleValue: node.sampleValue,
-      state: node.state,
-      cooldown: node.cooldown,
-      recovery: node.recovery,
-      freshness: node.freshness,
-      communityId: node.communityId,
-      incomingMessage: node.incomingMessage,
-      outgoingMessage: node.outgoingMessage,
-      neighborCount: node.neighborCount,
-      activeNeighborCount: node.activeNeighborCount
-    }))
-  };
-}
-
-function cloneClusters(clusters) {
-  if (!Array.isArray(clusters)) return null;
-  return clusters.map((cluster) => ({
-    id: cluster.id,
-    communityId: cluster.communityId,
-    center: cluster.center ? { ...cluster.center } : null,
-    x: cluster.x,
-    y: cluster.y,
-    radius: cluster.radius,
-    likelihood: cluster.likelihood,
-    state: cluster.state,
-    phase: cluster.phase,
-    amplitude: cluster.amplitude,
-    cooldown: cluster.cooldown,
-    recovery: cluster.recovery,
-    growthRate: cluster.growthRate,
-    mobility: cluster.mobility,
-    eventType: cluster.eventType,
-    memberCellCount: cluster.memberCellCount
-  }));
+function nextOption(options, current) {
+  const index = options.indexOf(current);
+  return options[(index + 1) % options.length] ?? options[0];
 }
 
 function formatStat(value) {
@@ -1438,22 +1838,6 @@ function highValueFraction(field, threshold = 0.68) {
   return Number((values.filter((value) => value >= threshold).length / values.length).toFixed(3));
 }
 
-function valueBandLabel(value) {
-  const number = Number(value);
-  if (!Number.isFinite(number)) return 'n/a';
-  if (number < 0.33) return 'low';
-  if (number < 0.67) return 'medium';
-  return 'high';
-}
-
-function likelihoodBandLabel(value) {
-  const number = Number(value);
-  if (!Number.isFinite(number)) return 'n/a';
-  if (number < 0.25) return 'unlikely';
-  if (number < 0.6) return 'possible';
-  return 'event-prone';
-}
-
 function normalizeForecastView(value) {
   return ['forecast', 'truth', 'uncertainty', 'depleted'].includes(value) ? value : 'forecast';
 }
@@ -1471,7 +1855,11 @@ function normalizeSelectedCell(value) {
 }
 
 function normalizeRightPanelMode(value) {
-  return value === 'behaviorHelp' ? 'behaviorHelp' : 'cellInspector';
+  return ['recipeSignature', 'cellInspector', 'behaviorHelp', 'diagnostics', 'paintTools'].includes(value) ? value : 'recipeSignature';
+}
+
+function normalizePaintStartMode(value) {
+  return ['blankCanvas', 'currentSnapshot', 'referenceInitialState', 'seededRandomCanvas'].includes(value) ? value : 'blankCanvas';
 }
 
 function normalizeHelpTopic(value) {
@@ -1484,395 +1872,20 @@ function normalizeHelpTopic(value) {
   };
 }
 
-function roiInspectorEmptyHtml() {
-  return `
-    <section class="cell-inspector-shell">
-      <div class="cell-inspector-header">
-        <span>Sample / ROI Field Demo</span>
-        <h2>Cell Inspector</h2>
-        <p>Click a cell in the sample field to inspect its value behavior over time.</p>
-      </div>
-      <div class="cell-inspector-card">
-        <strong>You can inspect</strong>
-        <ul>
-          <li>sample value and normalized value</li>
-          <li>event likelihood at the selected cell</li>
-          <li>graph community, node state, and local message influence</li>
-          <li>temporal trend and hotspot membership</li>
-          <li>state model, spatial evolution, and sampling effect</li>
-          <li>overlay, graph, raw, and depleted sample-value display layers</li>
-        </ul>
-      </div>
-    </section>
-  `;
-}
-
-function roiBehaviorHelpEmptyHtml() {
-  return `
-    <section class="cell-inspector-shell behavior-help-shell" data-roi-behavior-help>
-      <div class="cell-inspector-header">
-        <span>Behavior Help</span>
-        <h2>Behavior Help</h2>
-        <p>Click an Explain button beside a Sample / ROI control to learn what that component does.</p>
-      </div>
-      <div class="cell-inspector-card">
-        <strong>Available help</strong>
-        <ul>
-          <li>Event Likelihood Field</li>
-          <li>Spatial Pattern / Geometry</li>
-          <li>Value Distribution</li>
-          <li>Temporal Pattern</li>
-          <li>Spatial Evolution</li>
-          <li>State Model / Memory</li>
-          <li>Sampling Effects</li>
-          <li>Display Layer</li>
-        </ul>
-      </div>
-      <button class="console-button secondary" data-action="roi-show-cell-inspector">Show Cell Inspector</button>
-    </section>
-  `;
-}
-
-function roiBehaviorHelpHtml(topic, state) {
-  const optionId = topic.optionId ?? behaviorHelpOptionForGroup(topic.groupId, state);
-  const help = sampleFieldBehaviorExplainer(topic.groupId, optionId);
-  const composition = sampleFieldCompositionExplainer(state);
-  return `
-    <section class="cell-inspector-shell behavior-help-shell" data-roi-behavior-help>
-      <div class="cell-inspector-header">
-        <span>Behavior Help</span>
-        <h2>About ${escapeHtml(help.groupLabel)}: ${escapeHtml(help.label)}</h2>
-        <p>${escapeHtml(help.question)}</p>
-      </div>
-      <div class="cell-inspector-card selected">
-        <span>Selected Behavior</span>
-        ${metricRows([
-          ['component', help.groupLabel],
-          ['selected', help.label]
-        ])}
-        <small>${escapeHtml(help.short)}</small>
-      </div>
-      <div class="cell-inspector-card">
-        <span>Meaning</span>
-        <p>${escapeHtml(help.meaning)}</p>
-      </div>
-      <div class="cell-inspector-card">
-        <span>Expected Heatmap</span>
-        <p>${escapeHtml(help.expectedBehavior)}</p>
-      </div>
-      <div class="cell-inspector-card">
-        <span>Parameters</span>
-        <p>${escapeHtml((help.parameters ?? []).join(', ') || 'N/A')}</p>
-      </div>
-      <div class="cell-inspector-card">
-        <span>Strategy</span>
-        <p>${escapeHtml(help.strategy)}</p>
-        <small>${escapeHtml((help.pairsWellWith ?? []).length ? `Related modes: ${help.pairsWellWith.join(', ')}` : '')}</small>
-        <small>${escapeHtml(help.boundaryNote)}</small>
-      </div>
-      <div class="cell-inspector-card">
-        <span>Current Composition</span>
-        <small>${escapeHtml(composition.label)}</small>
-        <small>${escapeHtml(composition.summary)}</small>
-        <small>${escapeHtml(composition.routeNote)}</small>
-      </div>
-      <button class="console-button secondary" data-action="roi-show-cell-inspector">Show Cell Inspector</button>
-    </section>
-  `;
-}
-
-function behaviorHelpOptionForGroup(groupId, state) {
-  return {
-    behaviorPreset: state.behaviorPresetId,
-    eventLikelihood: state.eventLikelihood,
-    spatialPattern: state.spatialPattern,
-    valueDistribution: state.valueDistribution,
-    temporalPattern: state.temporalPattern,
-    spatialEvolution: state.spatialEvolution,
-    stateModel: state.stateModel,
-    samplingEffect: state.depletionMode,
-    displayLayer: state.displayMode
-  }[groupId] ?? null;
-}
-
-function roiInspectorHtml(inspection) {
-  return `
-    <section class="cell-inspector-shell" data-roi-cell-inspector>
-      <div class="cell-inspector-header">
-        <span>Cell Inspector</span>
-        <h2>Cell (${escapeHtml(inspection.cell.col)}, ${escapeHtml(inspection.cell.row)})</h2>
-        <p>Type: Sample cell | t = ${formatStat(inspection.demoTime)} s</p>
-      </div>
-      <div class="cell-inspector-card">
-        <span>Event Likelihood Field</span>
-        ${metricRows([
-          ['L(x,y,t)', formatStat(inspection.eventLikelihoodValue)],
-          ['mesh percentile', inspection.likelihoodMeshPercentile],
-          ['local mesh avg', formatStat(inspection.localLikelihoodAverage)],
-          ['mesh trend', inspection.localLikelihoodTrend],
-          ['likelihood model', inspection.eventLikelihoodLabel],
-          ['dynamics', inspection.eventLikelihoodDynamicsLabel],
-          ['temporal pattern', inspection.eventLikelihoodTemporalPatternLabel],
-          ['spatial evolution', inspection.eventLikelihoodSpatialEvolutionLabel],
-          ['event-prone', inspection.eventLikelihoodBand],
-          ['nearest node', inspection.nearestLikelihoodNode ? inspection.nearestLikelihoodNode.id : 'none'],
-          ['node state', inspection.nearestLikelihoodNode ? inspection.nearestLikelihoodNode.state : 'n/a'],
-          ['node cooldown', inspection.nearestLikelihoodNode ? formatStat(inspection.nearestLikelihoodNode.cooldown) : 'n/a'],
-          ['node distance', inspection.nearestLikelihoodNode ? formatStat(inspection.nearestLikelihoodNode.distance) : 'n/a'],
-          ['role', 'biases event origins, jumps, walks, and propagation']
-        ])}
-        <small>Likelihood mesh values show event potential at every cell. Nodes are sources or basins that influence the mesh.</small>
-        <small>L(x,y,t) is not the realized sample reward S(x,y,t), and it is not physical current.</small>
-      </div>
-      <div class="cell-inspector-card selected">
-        <span>Observed Sample Value</span>
-        ${metricRows([
-          ['S(x,y,t)', formatStat(inspection.value)],
-          ['displayed value', formatStat(inspection.displayedValue)],
-          ['normalized', formatStat(inspection.normalizedValue)],
-          ['trend', trendLabel(inspection.delta)],
-          ['delta / 1s', formatSignedStat(inspection.delta)]
-        ])}
-        <small>Sample value is the currently realized reward/value after the selected sample-field behavior is composed.</small>
-      </div>
-      <div class="cell-inspector-card">
-        <span>Graph Field Node</span>
-        ${metricRows([
-          ['node id', inspection.graphNode ? inspection.graphNode.id : 'n/a'],
-          ['topology', inspection.graphTopology],
-          ['update rule', inspection.graphUpdateRule],
-          ['cluster id', inspection.graphNode ? inspection.graphNode.clusterId ?? inspection.nearestCluster?.id ?? 'n/a' : 'n/a'],
-          ['C_k(t)', inspection.graphNode ? formatStat(inspection.graphNode.clusterLikelihood) : 'n/a'],
-          ['L_i(t)', inspection.graphNode ? formatStat(inspection.graphNode.cellLikelihood ?? inspection.graphNode.likelihood) : 'n/a'],
-          ['A_i(t)', inspection.graphNode ? formatStat(inspection.graphNode.activation) : 'n/a'],
-          ['state', inspection.graphNode ? inspection.graphNode.state : 'n/a'],
-          ['cooldown', inspection.graphNode ? formatStat(inspection.graphNode.cooldown) : 'n/a'],
-          ['recovery', inspection.graphNode ? formatStat(inspection.graphNode.recovery) : 'n/a'],
-          ['freshness / age', inspection.graphNode ? formatStat(inspection.graphNode.freshness ?? inspection.graphNode.age) : 'n/a'],
-          ['community', inspection.graphNode ? inspection.graphNode.communityId : 'n/a'],
-          ['incoming message', inspection.graphNode ? formatStat(inspection.graphNode.incomingMessage) : 'n/a'],
-          ['outgoing message', inspection.graphNode ? formatStat(inspection.graphNode.outgoingMessage) : 'n/a'],
-          ['neighbor count', inspection.graphNode ? inspection.graphNode.neighborCount : 'n/a'],
-          ['active neighbors', inspection.graphNode ? inspection.graphNode.activeNeighborCount : 'n/a'],
-          ['strongest incoming', inspection.graphNeighborhood?.strongestIncoming ? `${inspection.graphNeighborhood.strongestIncoming.source.x},${inspection.graphNeighborhood.strongestIncoming.source.y} (${formatStat(inspection.graphNeighborhood.strongestIncoming.strength)})` : 'n/a'],
-          ['strongest outgoing', inspection.graphNeighborhood?.strongestOutgoing ? `${inspection.graphNeighborhood.strongestOutgoing.target.x},${inspection.graphNeighborhood.strongestOutgoing.target.y} (${formatStat(inspection.graphNeighborhood.strongestOutgoing.strength)})` : 'n/a'],
-          ['inhibited neighbors', inspection.graphNeighborhood?.inhibitedNeighborCount ?? 'n/a'],
-          ['dominant incoming', inspection.graphNode ? `${inspection.graphNode.dominantIncomingDirection?.x ?? 0}, ${inspection.graphNode.dominantIncomingDirection?.y ?? 0}` : 'n/a']
-        ])}
-        <small>${escapeHtml(inspection.nearestCluster ? `Nearest cluster ${inspection.nearestCluster.id}: state ${inspection.nearestCluster.state}, C=${formatStat(inspection.nearestCluster.likelihood)}, distance ${formatStat(inspection.nearestCluster.distance)}, members ${inspection.nearestCluster.memberCellCount ?? 0}.` : 'No cluster/community metadata for this cell.')}</small>
-        <small>Community membership groups cells into event-likelihood basins. Node state controls whether this cell is active, cooling, recovering, susceptible, consumed, or inhibited.</small>
-        <small>Graph messages pass abstract ROI influence between neighboring cells. This is not physical current F(x,y,t).</small>
-      </div>
-      <div class="cell-inspector-card">
-        <span>Pattern Composition</span>
-        ${metricRows([
-          ['field mode', inspection.mode === 'dynamic' ? 'Dynamic' : 'Static'],
-          ['event likelihood', inspection.eventLikelihoodLabel],
-          ['displayed layer', roiDisplayModeLabel(inspection.displayMode)],
-          ['spatial pattern', roiPureSpatialPatternLabel(inspection.spatialPattern)],
-          ['value distribution', inspection.valueDistributionLabel],
-          ['seeded value', inspection.seededValue],
-          ['value band', inspection.valueBand],
-          ['cluster count', inspection.clusterCount],
-          ['cluster size', roiClusterSizeLabel(inspection.clusterSize)],
-          ['pattern parameters', inspection.spatialParameterSummary],
-          ['temporal pattern', roiTemporalPatternLabel(inspection.temporalPattern)],
-          ['state model', inspection.stateModelLabel],
-          ['spatial evolution', roiSpatialEvolutionLabel(inspection.spatialEvolution)],
-          ['motion scope', inspection.motionScopeLabel],
-          ['feature motion', inspection.behavior?.featureMotion ?? 'n/a'],
-          ['burst phase', inspection.behavior?.burstPhase ?? 'n/a'],
-          ['dynamic complexity', complexityLabel(inspection.dynamicComplexity)],
-          ['cluster membership', inspection.hotspotMembership]
-        ])}
-        <small>${escapeHtml(inspection.spatialPatternHelp?.meaning ?? '')}</small>
-        <small>${escapeHtml(inspection.behavior?.explanation ?? '')}</small>
-      </div>
-      <div class="cell-inspector-card">
-        <span>Sampling Effects</span>
-        ${metricRows([
-          ['raw base value', formatStat(inspection.rawBase)],
-          ['depleted value', formatStat(inspection.depleted)],
-          ['sampling effect', roiDepletionModeLabel(inspection.depletionMode)],
-          ['last sampled', inspection.lastSampled],
-          ['recovery', inspection.recovery],
-          ['neighbor influence', inspection.behavior?.neighborInfluence ?? (inspection.sampleFieldConfig?.neighborInfluence?.enabled ? 'enabled' : 'off')]
-        ])}
-      </div>
-    </section>
-  `;
-}
-
-function metricRows(rows) {
-  return `
-    <div class="cell-inspector-metrics">
-      ${rows.map(([label, value]) => `
-        <div>
-          <span>${escapeHtml(label)}</span>
-          <strong>${escapeHtml(value)}</strong>
-        </div>
-      `).join('')}
-    </div>
-  `;
-}
-
-function spatialParameterSummary(pattern, { clusterCount, clusterSize, seed, noise }) {
-  return {
-    constantField: 'base value; distribution controls value variation',
-    uniformField: 'base value; distribution controls value variation',
-    gradientField: `directional trend, smoothness, noise ${formatStat(noise)}`,
-    clusteredField: `${clusterCount} cluster(s), ${roiClusterSizeLabel(clusterSize).toLowerCase()} spread`,
-    patchyField: `correlation length, smoothness, contrast, noise ${formatStat(noise)}`,
-    sparseTargets: `target count ${clusterCount}, small radius`,
-    linearBand: 'orientation, width, position, softness',
-    frontBoundary: 'orientation, sharpness, contrast',
-    boundaryBand: 'boundary side, width, softness, intensity',
-    monitoringStations: `station count ${clusterCount}, revisit recovery`,
-    seededTexture: `texture scale, smoothness, seed ${seed}`
-  }[pattern] ?? `seed ${seed}`;
-}
-
-function trendLabel(delta) {
-  const value = Number(delta) || 0;
-  if (value > 0.015) return 'rising';
-  if (value < -0.015) return 'falling';
-  return 'stable';
-}
-
-function formatSignedStat(value) {
-  const number = Number(value);
-  if (!Number.isFinite(number)) return 'N/A';
-  return `${number >= 0 ? '+' : ''}${number.toFixed(3)}`;
-}
-
-function complexityLabel(value) {
-  return {
-    low: 'Low',
-    medium: 'Medium',
-    high: 'High'
-  }[value] ?? 'Medium';
-}
-
-function recoveryLabel(time) {
-  const phase = (Math.sin(Number(time) * 0.11) + 1) / 2;
-  if (phase > 0.72) return 'recovering';
-  if (phase < 0.28) return 'recently depleted';
-  return 'partial';
-}
-
-function isGraphDisplayMode(mode) {
-  return ['graphCommunities', 'nodeStates', 'graphMessages', 'communityMessages', 'diagnosticsOverlay'].includes(mode);
-}
-
-function communityColor(communityId) {
-  const palette = [0x63e6be, 0x86e7ff, 0xf4d35e, 0xc9a7ff, 0xff8a65, 0x9ee7c8, 0xf7f7c6, 0x7ebf78, 0xe7b7ff, 0x6fd6ff];
-  const index = Math.abs(Math.floor(Number(communityId) || 0)) % palette.length;
-  return palette[index];
-}
-
-function communityCentroids(nodeGrid) {
-  const buckets = new Map();
-  for (let y = 0; y < (nodeGrid?.length ?? 0); y += 1) {
-    for (let x = 0; x < (nodeGrid[y]?.length ?? 0); x += 1) {
-      const node = nodeGrid[y]?.[x];
-      if (!node) continue;
-      const communityId = node.communityId ?? 0;
-      const bucket = buckets.get(communityId) ?? { communityId, x: 0, y: 0, count: 0 };
-      bucket.x += x;
-      bucket.y += y;
-      bucket.count += 1;
-      buckets.set(communityId, bucket);
+function mergeViewFilterPatch(current, patch = {}) {
+  const next = {
+    ...current,
+    ...patch,
+    nodeStates: {
+      ...(current?.nodeStates ?? {}),
+      ...(patch.nodeStates ?? {})
+    },
+    messageTypes: {
+      ...(current?.messageTypes ?? {}),
+      ...(patch.messageTypes ?? {})
     }
-  }
-  return [...buckets.values()].map((bucket) => ({
-    communityId: bucket.communityId,
-    x: bucket.x / Math.max(1, bucket.count),
-    y: bucket.y / Math.max(1, bucket.count),
-    count: bucket.count
-  }));
-}
-
-function graphCommunityField(graphField) {
-  const nodeGrid = graphField?.nodeGrid ?? [];
-  return nodeGrid.map((row) => row.map((node) => node?.communityId ?? null));
-}
-
-function topGraphMessages(graphField, { maxEdges = 100, threshold = 0.04 } = {}) {
-  const nodeGrid = graphField?.nodeGrid ?? [];
-  const messages = [];
-  for (let y = 0; y < nodeGrid.length; y += 1) {
-    for (let x = 0; x < (nodeGrid[y]?.length ?? 0); x += 1) {
-      const source = nodeGrid[y]?.[x];
-      if (!source) continue;
-      for (const [dx, dy] of GRAPH_MESSAGE_NEIGHBORS) {
-        const target = nodeGrid[y + dy]?.[x + dx];
-        if (!target) continue;
-        const strength = graphMessageStrength(source, target);
-        if (strength < threshold) continue;
-        messages.push({
-          source: { x, y, id: source.id },
-          target: { x: x + dx, y: y + dy, id: target.id },
-          strength: Number(strength.toFixed(4)),
-          sameCommunity: source.communityId === target.communityId,
-          communityId: source.communityId ?? null
-        });
-      }
-    }
-  }
-  return messages
-    .sort((a, b) => b.strength - a.strength)
-    .slice(0, Math.max(0, maxEdges));
-}
-
-const GRAPH_MESSAGE_NEIGHBORS = [
-  [1, 0],
-  [-1, 0],
-  [0, 1],
-  [0, -1],
-  [1, 1],
-  [-1, 1],
-  [1, -1],
-  [-1, -1]
-];
-
-function graphMessageStrength(source, target) {
-  const outgoing = Number(source.outgoingMessage ?? source.activation ?? source.cellLikelihood ?? source.likelihood ?? 0);
-  const incoming = Number(target.incomingMessage ?? 0);
-  const targetReadiness = Number(target.cellLikelihood ?? target.likelihood ?? target.activation ?? 0);
-  const stateBoost = target.state === 'susceptible' || target.state === 'recovering' ? 1 : target.state === 'inhibited' || target.state === 'consumed' ? 0.35 : 0.75;
-  const communityFactor = source.communityId === target.communityId ? 1 : 0.52;
-  return Math.max(0, (outgoing * 0.62 + incoming * 0.18 + targetReadiness * 0.2) * stateBoost * communityFactor);
-}
-
-function graphMessageNeighborhood(graphField, cell) {
-  const nodeGrid = graphField?.nodeGrid ?? [];
-  const x = Number(cell?.col ?? cell?.x ?? 0);
-  const y = Number(cell?.row ?? cell?.y ?? 0);
-  const node = nodeGrid[y]?.[x];
-  if (!node) return null;
-  const incoming = [];
-  const outgoing = [];
-  let inhibitedNeighborCount = 0;
-  for (const [dx, dy] of GRAPH_MESSAGE_NEIGHBORS) {
-    const neighbor = nodeGrid[y + dy]?.[x + dx];
-    if (!neighbor) continue;
-    if (neighbor.state === 'inhibited') inhibitedNeighborCount += 1;
-    incoming.push({
-      source: { x: x + dx, y: y + dy, id: neighbor.id },
-      target: { x, y, id: node.id },
-      strength: graphMessageStrength(neighbor, node)
-    });
-    outgoing.push({
-      source: { x, y, id: node.id },
-      target: { x: x + dx, y: y + dy, id: neighbor.id },
-      strength: graphMessageStrength(node, neighbor)
-    });
-  }
-  return {
-    strongestIncoming: incoming.sort((a, b) => b.strength - a.strength)[0] ?? null,
-    strongestOutgoing: outgoing.sort((a, b) => b.strength - a.strength)[0] ?? null,
-    inhibitedNeighborCount
   };
+  return next;
 }
 
 function formatGraphStateSummary(stateCounts = {}) {
@@ -1881,20 +1894,6 @@ function formatGraphStateSummary(stateCounts = {}) {
     .filter((state) => Number(stateCounts[state] ?? 0) > 0)
     .map((state) => `${state}:${stateCounts[state]}`)
     .join(', ') || 'n/a';
-}
-
-function graphStateStyle(state) {
-  return {
-    active: { color: 0xffffff, alpha: 0.68, width: 2, radiusScale: 0.22 },
-    crest: { color: 0x86e7ff, alpha: 0.56, width: 2, radiusScale: 0.24 },
-    alive: { color: 0x9ee7c8, alpha: 0.5, width: 1, radiusScale: 0.18 },
-    cooling: { color: 0xf4d35e, alpha: 0.45, width: 1, radiusScale: 0.18 },
-    recovering: { color: 0x63e6be, alpha: 0.38, width: 1, radiusScale: 0.14 },
-    consumed: { color: 0xff8a65, alpha: 0.52, width: 1, radiusScale: 0.16 },
-    inhibited: { color: 0xff8a65, alpha: 0.36, width: 1, radiusScale: 0.12 },
-    inactive: { color: 0x78909c, alpha: 0.16, width: 1, radiusScale: 0.08 },
-    susceptible: { color: 0xcfe8ff, alpha: 0.22, width: 1, radiusScale: 0.1 }
-  }[state] ?? { color: 0xbbe7d2, alpha: 0.28, width: 1, radiusScale: 0.12 };
 }
 
 function seededHash(seed) {
@@ -1913,4 +1912,8 @@ function escapeHtml(value) {
     .replaceAll('>', '&gt;')
     .replaceAll('"', '&quot;')
     .replaceAll("'", '&#39;');
+}
+
+function escapeAttr(value) {
+  return escapeHtml(value).replace(/`/g, '&#096;');
 }

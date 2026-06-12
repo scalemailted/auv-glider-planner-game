@@ -1,5 +1,6 @@
 import { createDemoRoiField } from './DemoRoiFields.js';
 import { SAMPLE_FIELD_BEHAVIOR_PRESETS, sampleFieldBehaviorPresetById } from './SampleFieldBehaviorPresets.js';
+import { roiProcessContractForPreset } from './roi/RoiProcessContracts.js';
 
 const DEFAULT_TIMES = [0, 6, 12, 18, 24, 30, 36, 42, 48, 60];
 
@@ -15,6 +16,7 @@ export function validateSampleFieldPreset(presetId, options = {}) {
     };
   }
   const seed = options.seed ?? `preset-audit:${preset.id}`;
+  const processContract = roiProcessContractForPreset(preset.id, preset.config);
   const times = Array.isArray(options.times) && options.times.length ? options.times : DEFAULT_TIMES;
   const frames = times.map((time) => {
     const field = createDemoRoiField({
@@ -35,6 +37,9 @@ export function validateSampleFieldPreset(presetId, options = {}) {
   const means = frames.map((frame) => frame.meanValue);
   const maxValues = frames.map((frame) => frame.maxValue);
   const ranges = frames.map((frame) => frame.dynamicRange);
+  const rareExtremeFractions = frames.map((frame) => frame.rareExtremeFraction);
+  const heavyTailIndicators = frames.map((frame) => frame.heavyTailIndicator);
+  const bimodalSeparations = frames.map((frame) => frame.bimodalSeparation);
   const bboxCoverages = frames.map((frame) => frame.activeBoundingBoxCoverage);
   const maxComponents = Math.max(...frames.map((frame) => frame.connectedComponents));
   const graphFrames = frames.filter((frame) => frame.graphUpdateRule && frame.graphUpdateRule !== 'memoryless');
@@ -59,6 +64,9 @@ export function validateSampleFieldPreset(presetId, options = {}) {
   return {
     presetId: preset.id,
     label: preset.label,
+    processClass: processContract.processClass,
+    interactionScale: processContract.interactionScale,
+    validationSignature: processContract.validationSignature,
     status: warnings.length ? 'WARN' : 'PASS',
     warnings,
     summary: {
@@ -69,6 +77,9 @@ export function validateSampleFieldPreset(presetId, options = {}) {
       meanHighValueCellFraction: round3(mean(highFractions)),
       meanTotalActivityMass: round3(mean(masses)),
       meanDynamicRange: round3(mean(ranges)),
+      meanRareExtremeFraction: round3(mean(rareExtremeFractions)),
+      meanHeavyTailIndicator: round3(mean(heavyTailIndicators)),
+      meanBimodalSeparation: round3(mean(bimodalSeparations)),
       meanActiveBoundingBoxCoverage: round3(mean(bboxCoverages)),
       meanFrameDelta: round3(meanDelta),
       centerOfMassMovement: round3(centerMovement),
@@ -94,13 +105,23 @@ function summarizePresetFrame(field, time) {
   const stats = field.activityDiagnostics ?? field.stats ?? {};
   const graphDiagnostics = field.activityDiagnostics?.graphDiagnostics ?? field.graphField?.diagnostics ?? null;
   const flat = sampleValueField.flat().map((value) => Number(value) || 0);
+  const sorted = [...flat].sort((a, b) => a - b);
   const cellCount = Math.max(1, flat.length);
+  const p10 = percentileSorted(sorted, 0.1);
+  const p25 = percentileSorted(sorted, 0.25);
+  const p75 = percentileSorted(sorted, 0.75);
+  const p90 = percentileSorted(sorted, 0.9);
+  const p99 = percentileSorted(sorted, 0.99);
   return {
     time,
     meanValue: round3(stats.meanValue ?? stats.mean ?? mean(flat)),
     maxValue: round3(stats.maxValue ?? stats.max ?? Math.max(...flat)),
     activeCellFraction: round3((stats.activeFraction ?? flat.filter((value) => value >= 0.07).length / cellCount)),
     highValueCellFraction: round3(flat.filter((value) => value >= 0.68).length / cellCount),
+    rareExtremeFraction: round3(flat.filter((value) => value >= 0.9).length / cellCount),
+    heavyTailIndicator: round3(p99 - p90),
+    bimodalSeparation: round3((p25 < 0.36 && p75 > 0.62) ? p75 - p25 : 0),
+    lowTailSpread: round3(p10 - (sorted[0] ?? 0)),
     totalActivityMass: round3(stats.totalActivityMass ?? stats.totalValue ?? sum(flat)),
     dynamicRange: round3(stats.dynamicRangeAfterContrast ?? ((stats.maxValue ?? stats.max ?? Math.max(...flat)) - (stats.minValue ?? stats.min ?? Math.min(...flat)))),
     activeBoundingBoxCoverage: round3(stats.activeBoundingBoxCoverage ?? 0),
@@ -259,6 +280,16 @@ function mean(values) {
 
 function finiteMin(values) {
   return values.length ? Math.min(...values) : 0;
+}
+
+function percentileSorted(sorted, percentile) {
+  if (!sorted.length) return 0;
+  const index = (sorted.length - 1) * percentile;
+  const lower = Math.floor(index);
+  const upper = Math.ceil(index);
+  if (lower === upper) return sorted[lower];
+  const weight = index - lower;
+  return sorted[lower] * (1 - weight) + sorted[upper] * weight;
 }
 
 function round3(value) {

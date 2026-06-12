@@ -4,7 +4,7 @@ import { startStaticServer } from './static-server.mjs';
 
 let server;
 
-test.setTimeout(150000);
+test.setTimeout(300000);
 
 test.beforeAll(async () => {
   server = await startStaticServer({ port: 9321 });
@@ -42,7 +42,7 @@ test('campaign planning smoke flow reaches debrief', async ({ page }) => {
   await page.locator('#mission-console [data-accordion-key="simulation-lab"] .accordion-header').click();
   await expect(page.locator('#mission-console [data-accordion-key="simulation-lab"] [data-menu-group] h3')).toHaveText(['Experiments', 'Demos', 'Editor & Import Tools', 'Benchmarks']);
   await expect(page.locator('#mission-console [data-accordion-key="simulation-lab"]')).toContainText('Flow Fields Demo');
-  await expect(page.locator('#mission-console [data-accordion-key="simulation-lab"]')).toContainText('Sample / ROI Field Demo');
+  await expect(page.locator('#mission-console [data-accordion-key="simulation-lab"]')).toContainText('Sampling Process Lab');
   await expect(page.locator('#mission-console [data-accordion-key="simulation-lab"]')).toContainText('Coupled Fields Demo');
   await expect(page.locator('#mission-console [data-accordion-key="simulation-lab"]')).toContainText('Uncertainty / Forecast Demo');
   await expect(page.locator('#mission-console')).not.toContainText('Static Flow Field Demo');
@@ -323,38 +323,152 @@ test('campaign planning smoke flow reaches debrief', async ({ page }) => {
 
   await page.locator('#mission-console [data-action="roi-demo"]').click();
   await expect.poll(() => page.evaluate(() => window.anchorGame.phaser.scene.getScene('RoiGeneratorDemoScene').sys.isActive())).toBe(true);
-  await expect(page.locator('#mission-console')).toContainText('Sample / ROI Field Demo');
+  await expect(page.locator('#mission-console')).toContainText('Spatiotemporal Sampling Process Lab');
   await expect(page.evaluate(() => window.anchorGame.phaser.scene.getScene('RoiGeneratorDemoScene').buttons?.length ?? 0)).resolves.toBe(0);
   await expect(page.locator('#mission-summary-hud')).toBeEmpty();
   await expect(page.locator('#agent-performance-hud')).toBeEmpty();
-  await expect(page.locator('#waypoint-timeline')).toContainText('Cell Inspector');
+  await expect(page.locator('#waypoint-timeline')).toContainText('Process Pattern View');
+  await expect(page.locator('#waypoint-timeline')).toContainText('Current Lab State');
+  await expect(page.locator('#waypoint-timeline')).toContainText('Example Processes');
+  await expect(page.locator('#waypoint-timeline')).toContainText('Inspired By');
+  await expect(page.locator('#waypoint-timeline')).toContainText('ROI Meaning');
+  await expect(page.locator('#mission-console [data-sampling-top-card="mode"]')).toContainText('Mode');
+  await expect(page.locator('#mission-console [data-sampling-primary-mode="referenceSignature"]')).toContainText('Process Pattern');
+  await expect(page.locator('#mission-console [data-sampling-top-card="summary"]')).toHaveCount(0);
+  await expect(page.locator('#mission-console')).not.toContainText('Current Summary');
+  await expect(page.locator('#mission-console')).not.toContainText('Pattern Source / Mode');
+  await expect(page.locator('#mission-console [data-sampling-section="sourceField"]')).toHaveCount(0);
+  await expect(page.locator('#mission-console')).not.toContainText('Event Likelihood / Spawn Distribution');
+  await expect(page.locator('#mission-console')).toContainText('Choose how to build or generate the process.');
+  await expect(page.locator('#mission-console')).not.toContainText('Reference Signature is guided');
+  await expectSamplingSectionsCollapsed(page, [
+    'Mode',
+    'Process Pattern',
+    'Display / Diagnostic Layer',
+    'Seed / Scenario Identity',
+    'Export'
+  ]);
+  await expandMissionConsoleSection(page, 'Mode');
+  await expandMissionConsoleSection(page, 'Process Pattern');
+  await expandMissionConsoleSection(page, 'Display / Diagnostic Layer');
+  await expandMissionConsoleSection(page, 'Export');
+  await expect(page.locator('#sampling-process-mode')).toBeVisible();
+  await expect.poll(() => page.evaluate(() => {
+    const mode = document.querySelector('#sampling-process-mode');
+    const signature = document.querySelector('#roi-demo-reference-signature');
+    return Boolean(mode && signature && mode.compareDocumentPosition(signature) & Node.DOCUMENT_POSITION_FOLLOWING);
+  })).toBe(true);
+  await expect(page.locator('#sampling-process-mode option')).toHaveText([
+    'Example Processes',
+    'Custom Composer',
+    'Process Paint',
+    'Random Rule Lab'
+  ]);
+  await expect(page.locator('#sampling-process-mode')).not.toContainText('Diagnostics / Graph Inspection');
+  await expect(page.locator('#roi-demo-pattern-source')).toHaveCount(0);
+  await expect(page.locator('#roi-demo-reference-signature')).toBeVisible();
+  await expect(page.locator('#roi-demo-reference-signature')).toContainText('Propagating Fronts');
+  await expect(page.locator('#roi-demo-reference-signature option')).toHaveText([
+    'Propagating Fronts',
+    'Excitable Waves',
+    'Local Birth-Death Emergence',
+    'Recurrent Stationary Hotspots',
+    'Diffusive / Epidemic Spread',
+    'Directed Drift / Transport',
+    'Cyclic Dominance',
+    'Domain / Cluster Formation',
+    'Threshold Cascades / Avalanches',
+    'Interacting Population Migration',
+    'Freshness / Recovery',
+    'Pattern Formation / Morphogenesis',
+    'Congestion / Density Waves',
+    'Structured Signal Propagation'
+  ]);
+  await expect(page.locator('#waypoint-timeline [data-roi-current-lab-state]')).toContainText('Pattern');
+  await expect(page.locator('#waypoint-timeline [data-roi-current-lab-state]')).toContainText('Pattern-Validated');
+  await expect(page.locator('#waypoint-timeline .sampling-panel-tabs')).toBeVisible();
+  await expect(page.locator('#waypoint-timeline .sampling-panel-tabs')).toContainText('Recipe');
+  await expect(page.locator('#waypoint-timeline .sampling-panel-tabs')).toContainText('Inspector');
+  await expect(page.locator('#waypoint-timeline .sampling-panel-tabs')).toContainText('Help');
+  await expect(page.locator('#waypoint-timeline .sampling-panel-tabs')).toContainText('Diagnostics');
+  await expect.poll(() => page.evaluate(() => {
+    const panel = document.querySelector('#waypoint-timeline');
+    const tabs = panel?.querySelector('.sampling-panel-tabs');
+    const current = panel?.querySelector('[data-roi-current-lab-state]');
+    return Boolean(tabs && current && tabs.compareDocumentPosition(current) & Node.DOCUMENT_POSITION_FOLLOWING);
+  })).toBe(true);
+  await clickRightPanelMode(page, 'diagnostics');
+  await expect(page.locator('#waypoint-timeline [data-roi-diagnostics-view]')).toBeVisible();
+  await expect.poll(() => page.evaluate(() => window.anchorGame.phaser.scene.getScene('RoiGeneratorDemoScene').processMode)).toBe('referenceSignature');
+  await expect(page.locator('#waypoint-timeline')).toContainText('Field / Process Stats');
+  await expect(page.locator('#waypoint-timeline [data-roi-reference-signature-help]')).toHaveCount(0);
+  await clickRightPanelMode(page, 'cellInspector');
+  await expect(page.locator('#waypoint-timeline [data-roi-cell-inspector-empty]')).toBeVisible();
+  await expect(page.locator('#waypoint-timeline')).toContainText('Select a cell on the canvas to inspect its value, state, rule, messages, and ROI role.');
+  await clickRightPanelMode(page, 'recipeSignature');
+  await expect(page.locator('#waypoint-timeline [data-roi-recipe-signature-view]')).toBeVisible();
+  await expect(page.locator('#roi-demo-behavior-preset')).toHaveCount(0);
+  await expect(page.locator('#mission-console')).toContainText('ROI Demo UI: reference-signature-primary-ui-v1');
+  await expect(page.locator('#mission-console')).toContainText('Legacy presets visible: false');
+  await expect(page.evaluate(() => window.ANCHOR_ROI_UI_DEBUG)).resolves.toMatchObject({
+    uiVersion: 'reference-signature-primary-ui-v1',
+    referenceSignatureCount: 14,
+    legacyPresetCount: 12,
+    legacyPresetsVisible: false,
+    activePatternSource: 'referenceSignature',
+    activeReferenceSignatureId: 'stationaryTemporalBursts',
+    hasValueDistributionAccordion: false,
+    rightPanelMode: 'recipeSignature',
+    visibleWorkflowModes: ['referenceSignature', 'customComposer', 'processPaint', 'randomRuleLab'],
+    diagnosticsAvailableAsView: true
+  });
   await expect(page.locator('#bottom-timeline .roi-demo-transport')).toBeVisible();
   await expect(page.locator('#bottom-timeline')).toContainText('Demo Time');
   await expect(page.locator('#bottom-timeline')).toContainText('Infinite timeline');
   await expect(page.locator('#bottom-timeline [data-action="roi-demo-reset"]')).toHaveText('Reset');
   await expect(page.locator('#bottom-timeline [data-action="roi-demo-direction"]')).toHaveText('Direction: Forward');
   await expect(page.locator('#bottom-timeline [data-action="roi-demo-pause"]')).toHaveText('Pause');
-  await expect(page.locator('#roi-demo-event-likelihood')).toBeVisible();
-  await expect(page.locator('#roi-demo-event-likelihood-dynamics')).toBeVisible();
-  await expect(page.locator('#roi-demo-spatial-pattern')).toBeVisible();
-  await expect(page.locator('#roi-demo-value-distribution')).toBeVisible();
-  await expect(page.locator('#roi-demo-cluster-size')).toBeVisible();
-  await expect(page.locator('#roi-demo-temporal-pattern')).toBeVisible();
-  await expect(page.locator('#roi-demo-spatial-evolution')).toBeVisible();
-  await expect(page.locator('#roi-demo-motion-scope')).toBeVisible();
-  await expect(page.locator('#roi-demo-state-model')).toBeVisible();
-  await expect(page.locator('#roi-demo-depletion-mode')).toBeVisible();
+  await expect(page.locator('#roi-demo-event-likelihood')).toHaveCount(0);
+  await expect(page.locator('#roi-demo-event-likelihood-dynamics')).toHaveCount(0);
+  await expect(page.locator('#roi-demo-spatial-pattern')).toHaveCount(0);
+  await expect(page.locator('#roi-demo-value-distribution')).toHaveCount(0);
+  await expect(page.locator('#roi-demo-cluster-size')).toHaveCount(0);
+  await expect(page.locator('#roi-demo-temporal-pattern')).toHaveCount(0);
+  await expect(page.locator('#roi-demo-spatial-evolution')).toHaveCount(0);
+  await expect(page.locator('#roi-demo-motion-scope')).toHaveCount(0);
+  await expect(page.locator('#roi-demo-state-model')).toHaveCount(0);
+  await expect(page.locator('#roi-demo-depletion-mode')).toHaveCount(0);
   await expect(page.locator('#roi-demo-display-mode')).toBeVisible();
-  await expect(page.locator('#roi-demo-display-mode')).toHaveValue('sampleValueLikelihoodOverlay');
-  await expect.poll(() => page.evaluate(() => window.anchorGame.phaser.scene.getScene('RoiGeneratorDemoScene').displayMode)).toBe('sampleValueLikelihoodOverlay');
-  await expect(page.locator('#roi-demo-dynamic-complexity')).toBeVisible();
+  await expect(page.locator('#roi-demo-display-mode')).toHaveValue('sampleValue');
+  await expect.poll(() => page.evaluate(() => window.anchorGame.phaser.scene.getScene('RoiGeneratorDemoScene').displayMode)).toBe('sampleValue');
+  await expect(page.locator('#roi-demo-dynamic-complexity')).toHaveCount(0);
   await expect(page.locator('#mission-console [data-action="export-demo-json"]')).toHaveText('Export Demo JSON');
+  await expect(page.locator('#mission-console')).not.toContainText('Scenario Generation');
+  await expect(page.locator('#mission-console')).not.toContainText('Component Isolation Examples');
   const roiArtifact = await downloadDemoArtifact(page);
   expect(roiArtifact.filename).toMatch(/^anchor-sample-roi-field-demo-frame-/);
-  expect(roiArtifact.data.type).toBe('anchor.demo.sample-roi-field');
+  expect(roiArtifact.data.type).toBe('anchor.demo.sampling-process-field');
+  expect(roiArtifact.data.legacyType).toBe('anchor.demo.sample-roi-field');
+  expect(roiArtifact.data.legacyDemoName).toBe('Sample / ROI Field Demo');
   expect(roiArtifact.data.frames).toHaveLength(1);
-  expect(roiArtifact.data.config.displayMode).toBe('sampleValueLikelihoodOverlay');
+  expect(roiArtifact.data.config.displayMode).toBe('sampleValue');
+  expect(roiArtifact.data.patternSource).toBe('referenceSignature');
+  expect(roiArtifact.data.referenceSignatureId).toBe('stationaryTemporalBursts');
+  expect(roiArtifact.data.referenceSignatureMetadata.label).toBe('Recurrent Stationary Hotspots');
+  expect(roiArtifact.data.referenceSignatureMetadata.caTaxonomy).toBeTruthy();
+  expect(roiArtifact.data.referenceSignatureMetadata.qaExpectations).toBeTruthy();
+  expect(roiArtifact.data.referenceSignatureMetadata.phenotypeMetrics).toBeTruthy();
+  expect(roiArtifact.data.referenceSignatureMetadata.genotypeNotes).toBeTruthy();
+  expect(roiArtifact.data.caTaxonomy).toBeTruthy();
+  expect(roiArtifact.data.qaExpectations).toBeTruthy();
+  expect(roiArtifact.data.componentRecipe.valueDistribution).toBeTruthy();
   expect(roiArtifact.data.fields.sampleValue.length).toBe(roiArtifact.data.grid.height);
+  expect(roiArtifact.data.fields.sourceField.length).toBe(roiArtifact.data.grid.height);
+  expect(roiArtifact.data.fields.legacyEventLikelihoodField.length).toBe(roiArtifact.data.grid.height);
+  expect(roiArtifact.data.fields.stateLayer.length).toBe(roiArtifact.data.grid.height);
+  expect(roiArtifact.data.fields.ruleLayer.length).toBe(roiArtifact.data.grid.height);
+  expect(roiArtifact.data.fields.groupLayer.length).toBe(roiArtifact.data.grid.height);
+  expect(roiArtifact.data.fields.roiRoleLayer.length).toBe(roiArtifact.data.grid.height);
   expect(roiArtifact.data.fields.eventLikelihood[0].length).toBe(roiArtifact.data.grid.width);
   expect(roiArtifact.data.likelihoodField.type).toBe('multiModalLikelihood');
   expect(roiArtifact.data.likelihoodField.diagnostics.modeCount).toBeGreaterThan(1);
@@ -378,93 +492,287 @@ test('campaign planning smoke flow reaches debrief', async ({ page }) => {
   expect(roiArtifact.data.metadata.activityDiagnostics.activeFraction).toBeGreaterThan(0.1);
   expect(roiArtifact.data.frames[0].activityDiagnostics.totalActivityMass).toBeGreaterThan(0);
   expect(roiArtifact.data.behaviorPreset.id).toBe('custom');
-  await expect(page.locator('#mission-console')).toContainText('Activity');
-  await expect(page.locator('#mission-console')).toContainText('Injected');
-  await expect(page.locator('#mission-console')).toContainText('mesh range');
-  await expect(page.locator('#roi-demo-behavior-preset')).toBeVisible();
-  await expect(page.locator('#roi-demo-behavior-preset option')).toHaveText([
-    'Custom',
-    'Recurring Hotspots',
-    'Migrating Patch',
-    'Expanding Front',
-    'Patchy Rainfall',
-    'Drifting Storm Cells',
-    'Freshness / Revisit Value',
-    'Wandering Hotspot',
-    'Neighbor Spread',
-    'Ripple Activation',
-    'Oscillating Ecological Field',
-    'Forest Fire Front (inspired)',
-    'Life-Like Cellular Emergence (inspired)'
+  expect(roiArtifact.data.metadata.patternSource).toBe('referenceSignature');
+
+  await page.locator('#sampling-process-mode').selectOption('customComposer');
+  await expandMissionConsoleSections(page, [
+    'Source / Initial Field',
+    'Spatial Pattern / Geometry',
+    'Value Distribution',
+    'Temporal Pattern',
+    'Spatial Evolution / Motion Rule',
+    'Interaction Scale / Hierarchy',
+    'State Model / Update Rule',
+    'Sampling Effect / Freshness',
+    'Display / Diagnostic Layer',
+    'Seed / Scenario Identity',
+    'Export'
   ]);
-  await page.locator('#roi-demo-behavior-preset').selectOption('driftingStormCells');
+  await expect(page.locator('#roi-demo-event-likelihood')).toBeVisible();
+  await expect(page.locator('#roi-demo-event-likelihood-dynamics')).toBeVisible();
+  await expect(page.locator('#roi-demo-spatial-pattern')).toBeVisible();
+  await expect(page.locator('#roi-demo-value-distribution')).toBeVisible();
+  await expect(page.locator('#roi-demo-cluster-size')).toBeVisible();
+  await expect(page.locator('#roi-demo-temporal-pattern')).toBeVisible();
+  await expect(page.locator('#roi-demo-spatial-evolution')).toBeVisible();
+  await expect(page.locator('#roi-demo-motion-scope')).toBeVisible();
+  await expect(page.locator('#roi-demo-state-model')).toBeVisible();
+  await expect(page.locator('#roi-demo-depletion-mode')).toBeVisible();
+  await expect(page.locator('#roi-demo-dynamic-complexity')).toBeVisible();
+  await expect(page.locator('#mission-console')).toContainText('Scenario Generation');
+  await expect(page.locator('#mission-console')).toContainText('Learn / Compare Components');
+  await expect(page.locator('#mission-console [data-action="roi-compare-temporal"]')).toHaveText('Compare Temporal Patterns');
+  await expect(page.locator('#mission-console [data-action="roi-compare-evolution"]')).toHaveText('Compare Spatial Evolution');
+  await expect(page.locator('#mission-console [data-action="roi-compare-scale"]')).toHaveText('Compare Interaction Scale');
+  await expect(page.locator('#roi-scenario-source option')).toHaveText([
+    'Current Component Recipe',
+    'Active Pattern Source'
+  ]);
+  await expect(page.locator('#roi-scenario-difficulty option')).toHaveText(['Easy', 'Medium', 'Hard']);
+  await expect(page.locator('#roi-scenario-validation-mode option')).toHaveText([
+    'Require PASS Before Export',
+    'Allow WARN Export'
+  ]);
+  await page.locator('#roi-scenario-frame-count').fill('3');
+  await page.locator('#mission-console [data-action="generate-roi-scenario"]').click();
+  await expect(page.locator('#mission-console')).toContainText('Scenario Validation');
+  await expect(page.evaluate(() => {
+    const scene = window.anchorGame.phaser.scene.getScene('RoiGeneratorDemoScene');
+    return {
+      type: scene.generatedScenario?.type,
+      frames: scene.generatedScenario?.frames?.length,
+      validation: scene.generatedScenario?.validation?.status,
+      hasSample: Array.isArray(scene.generatedScenario?.frames?.[0]?.fields?.sampleValue),
+      hasLikelihood: Array.isArray(scene.generatedScenario?.frames?.[0]?.fields?.eventLikelihood)
+    };
+  })).resolves.toMatchObject({
+    type: 'anchor.syntheticRoiScenario',
+    frames: 3,
+    hasSample: true,
+    hasLikelihood: true
+  });
+
+  await page.locator('#sampling-process-mode').selectOption('processPaint');
+  await expandMissionConsoleSections(page, [
+    'Process Paint / Rule Allocation',
+    'Display / Diagnostic Layer',
+    'Seed / Scenario Identity',
+    'Export'
+  ]);
+  await expect(page.locator('#bottom-timeline')).toContainText('Process Paint: paused editing canvas');
+  await expect(page.locator('#roi-demo-event-likelihood')).toHaveCount(0);
+  await expect(page.locator('#roi-demo-spatial-pattern')).toHaveCount(0);
+  await expect(page.locator('#roi-demo-temporal-pattern')).toHaveCount(0);
+  await expect(page.locator('#waypoint-timeline')).toContainText('Process Paint Mode');
+  await expect(page.locator('#waypoint-timeline')).toContainText('Paint Tools');
+  await expect(page.locator('#waypoint-timeline [data-process-paint-tools]')).toBeVisible();
+  await expect(page.locator('#waypoint-timeline .sampling-panel-tabs')).toContainText('Paint Tools');
+  await expect(page.locator('#waypoint-timeline')).toContainText('Clear Canvas');
+  await expect(page.locator('#waypoint-timeline')).toContainText('Randomize Canvas');
+  await expect(page.locator('#waypoint-timeline')).toContainText('Run Process');
+  await expect(page.locator('#sampling-paint-state')).toBeVisible();
   await expect.poll(() => page.evaluate(() => {
     const scene = window.anchorGame.phaser.scene.getScene('RoiGeneratorDemoScene');
     return {
-      preset: scene.behaviorPresetId,
-      modified: scene.behaviorPresetModified,
+      paused: scene.paused,
+      cells: Object.keys(scene.paintModel.cells).length,
+      maxValue: scene.field.stats.max,
+      maxSource: Math.max(...scene.field.sourceField.flat())
+    };
+  })).toEqual({
+    paused: true,
+    cells: 0,
+    maxValue: 0,
+    maxSource: 0
+  });
+  await clickRoiDemoCell(page, 2, 2);
+  await expect(page.locator('#waypoint-timeline')).toContainText('Process Paint Cell');
+  await expect(page.locator('#paint-panel-state')).toBeVisible();
+  await page.locator('#paint-panel-state').selectOption('active');
+  await expect.poll(() => page.evaluate(() => window.anchorGame.phaser.scene.getScene('RoiGeneratorDemoScene').selectedPaintState)).toBe('active');
+  await page.locator('#paint-panel-rule').selectOption('propagatingFront');
+  await expect.poll(() => page.evaluate(() => window.anchorGame.phaser.scene.getScene('RoiGeneratorDemoScene').selectedPaintRuleId)).toBe('propagatingFront');
+  await page.evaluate(() => {
+    document.querySelectorAll('#paint-panel-group').forEach((input) => {
+      input.value = '3';
+      input.dispatchEvent(new Event('input', { bubbles: true }));
+      input.dispatchEvent(new Event('change', { bubbles: true }));
+    });
+    document.querySelectorAll('#paint-panel-source').forEach((input) => {
+      input.value = '0.8';
+      input.dispatchEvent(new Event('input', { bubbles: true }));
+      input.dispatchEvent(new Event('change', { bubbles: true }));
+    });
+  });
+  await page.evaluate(() => {
+    const scene = window.anchorGame.phaser.scene.getScene('RoiGeneratorDemoScene');
+    scene.selectedCell = { col: 2, row: 2 };
+    scene.paintModel.cells['2,2'] = {
+      state: 'active',
+      ruleId: 'propagatingFront',
+      groupId: 3,
+      sourceValue: 0.8
+    };
+    scene.paintModel.groups['3'] = {
+      id: 3,
+      label: 'Group 3',
+      ruleId: 'propagatingFront',
+      interactionScale: 'edge',
+      valueMapId: 'activation-to-sampling-value',
+      sourceProfile: 'painted',
+      parameters: {}
+    };
+    scene.rebuildField();
+    scene.renderConsole();
+    scene.renderCellInspector(true);
+    scene.draw();
+  });
+  await expect.poll(() => page.evaluate(() => window.anchorGame.phaser.scene.getScene('RoiGeneratorDemoScene').paintModel.cells['2,2'])).toMatchObject({
+    state: 'active',
+    ruleId: 'propagatingFront',
+    groupId: 3,
+    sourceValue: 0.8
+  });
+  await expect.poll(() => page.evaluate(() => window.anchorGame.phaser.scene.getScene('RoiGeneratorDemoScene').field.sampleValueField[2][2])).toBeGreaterThan(0);
+  await expect(page.locator('#waypoint-timeline')).toContainText('ruleId');
+  await page.locator('#waypoint-timeline [data-action="paint-panel-run"]').click();
+  await expect.poll(() => page.evaluate(() => window.anchorGame.phaser.scene.getScene('RoiGeneratorDemoScene').paused)).toBe(false);
+  const paintedArtifact = await downloadDemoArtifact(page);
+  expect(paintedArtifact.data.patternMode).toBe('processPaint');
+  expect(paintedArtifact.data.statusLabel).toBe('Custom Exploratory');
+  expect(['active', 'cooling', 'consumed']).toContain(paintedArtifact.data.fields.stateLayer[2][2]);
+  expect(paintedArtifact.data.fields.ruleLayer[2][2]).toBe('propagatingFront');
+  expect(paintedArtifact.data.fields.groupLayer[2][2]).toBe(3);
+  expect(paintedArtifact.data.fields.sourceField[2][2]).toBe(0.8);
+  expect(paintedArtifact.data.paintSettings.selectedState).toBe('active');
+  expect(paintedArtifact.data.processRuleCatalogVersion).toBe('sampling-process-rule-families-v1');
+  expect(paintedArtifact.data.canonicalRuleIds).toContain('propagatingFront');
+  expect(paintedArtifact.data.ruleAliases.frontPropagation).toBe('propagatingFront');
+  expect(paintedArtifact.data.fields.transitionField[2][2].ruleId).toBe('propagatingFront');
+  expect(paintedArtifact.data.groupDefinitions['3']).toBeTruthy();
+  await page.locator('#sampling-process-mode').selectOption('processPaint');
+  await expandMissionConsoleSection(page, 'Process Paint / Rule Allocation');
+  await page.locator('#mission-console [data-action="sampling-paint-reset"]').click();
+  await expect.poll(() => page.evaluate(() => {
+    const scene = window.anchorGame.phaser.scene.getScene('RoiGeneratorDemoScene');
+    return {
+      cells: Object.keys(scene.paintModel.cells).length,
+      maxValue: scene.field.stats.max,
+      maxSource: Math.max(...scene.field.sourceField.flat()),
+      paused: scene.paused
+    };
+  })).toEqual({
+    cells: 0,
+    maxValue: 0,
+    maxSource: 0,
+    paused: true
+  });
+  await page.locator('#mission-console [data-action="sampling-paint-randomize"]').click();
+  const firstPaintRandomCell = await page.evaluate(() => window.anchorGame.phaser.scene.getScene('RoiGeneratorDemoScene').paintModel.cells['0,0']);
+  await page.locator('#mission-console [data-action="sampling-paint-randomize"]').click();
+  await expect.poll(() => page.evaluate(() => window.anchorGame.phaser.scene.getScene('RoiGeneratorDemoScene').paintModel.cells['0,0'])).toEqual(firstPaintRandomCell);
+  await page.evaluate(() => {
+    const scene = window.anchorGame.phaser.scene.getScene('RoiGeneratorDemoScene');
+    scene.processMode = 'randomRuleLab';
+    scene.patternSource = 'custom';
+    scene.paused = false;
+    scene.processPaintRunStarted = false;
+    scene.selectedCell = null;
+    scene.rightPanelMode = 'recipeSignature';
+    scene.renderConsole();
+    scene.renderCellInspector(true);
+    scene.draw();
+  });
+  await expect.poll(() => page.evaluate(() => window.anchorGame.phaser.scene.getScene('RoiGeneratorDemoScene').processMode)).toBe('randomRuleLab');
+  await expandMissionConsoleSection(page, 'Random Rule Lab');
+  await expect(page.locator('#sampling-random-seed')).toBeVisible();
+  await expect(page.locator('#sampling-paint-state')).toHaveCount(0);
+  await expect(page.locator('#roi-demo-spatial-pattern')).toHaveCount(0);
+  await expect(page.locator('#roi-demo-temporal-pattern')).toHaveCount(0);
+  await page.locator('#sampling-random-seed').fill('e2e-random-seed');
+  await page.locator('#sampling-random-seed').dispatchEvent('change');
+  const firstRandomCell = await page.evaluate(() => window.anchorGame.phaser.scene.getScene('RoiGeneratorDemoScene').paintModel.cells['0,0']);
+  await page.locator('#sampling-random-seed').fill('e2e-random-seed');
+  await page.locator('#sampling-random-seed').dispatchEvent('change');
+  await expect.poll(() => page.evaluate(() => window.anchorGame.phaser.scene.getScene('RoiGeneratorDemoScene').paintModel.cells['0,0'])).toEqual(firstRandomCell);
+  await page.locator('#sampling-process-mode').selectOption('referenceSignature');
+  await expandMissionConsoleSection(page, 'Process Pattern');
+  await expect(page.locator('#roi-demo-reference-signature')).toBeVisible();
+  await expect(page.locator('#roi-demo-event-likelihood')).toHaveCount(0);
+  await expect(page.locator('#roi-demo-spatial-pattern')).toHaveCount(0);
+  await expect(page.locator('#sampling-paint-state')).toHaveCount(0);
+  await expect(page.locator('#sampling-random-seed')).toHaveCount(0);
+  await expect(page.locator('#mission-console')).toContainText('Custom Composer');
+  await expect(page.locator('#waypoint-timeline')).toContainText('Full recipe details');
+  await expect(page.locator('#roi-demo-behavior-preset')).toHaveCount(0);
+  await page.locator('#roi-demo-reference-signature').selectOption('frontPropagation');
+  await expect.poll(() => page.evaluate(() => {
+    const scene = window.anchorGame.phaser.scene.getScene('RoiGeneratorDemoScene');
+    return {
+      source: scene.patternSource,
+      signature: scene.referenceSignatureId,
+      modified: scene.referenceSignatureModified,
       spatial: scene.spatialPattern,
       temporal: scene.temporalPattern,
       evolution: scene.spatialEvolution,
       dynamics: scene.eventLikelihoodDynamics
     };
   })).toEqual({
-    preset: 'driftingStormCells',
+    source: 'referenceSignature',
+    signature: 'frontPropagation',
     modified: false,
-    spatial: 'clusteredField',
-    temporal: 'rapidPulse',
-    evolution: 'continuousDrift',
+    spatial: 'frontBoundary',
+    temporal: 'sustained',
+    evolution: 'expansion',
     dynamics: 'dynamic'
   });
-  await page.locator('#mission-console [data-roi-help="behaviorPreset"]').click();
-  await expect(page.locator('#waypoint-timeline [data-roi-behavior-help]')).toContainText('About Behavior Preset: Drifting Storm Cells');
-  await expect(page.locator('#waypoint-timeline [data-roi-behavior-help]')).toContainText('Two or three compact high-value cells move independently');
-  const presetArtifact = await downloadDemoArtifact(page);
-  expect(presetArtifact.data.behaviorPreset).toMatchObject({
-    id: 'driftingStormCells',
-    label: 'Drifting Storm Cells',
-    modified: false
-  });
-  await page.locator('#roi-demo-spatial-evolution').selectOption('randomWalk');
+  await expect(page.locator('#waypoint-timeline [data-roi-current-lab-state]')).toContainText('Propagating Fronts');
+  await expect(page.locator('#waypoint-timeline')).toContainText('Propagating Fronts');
+  await expect(page.locator('#waypoint-timeline')).toContainText('Advanced Details');
+  await expect(page.locator('#waypoint-timeline')).toContainText('CA taxonomy, QA, failure signs, and boundaries');
+  await expect(page.locator('#mission-console [data-roi-help="behaviorPreset"]')).toHaveCount(0);
+  await expect(page.locator('#waypoint-timeline [data-roi-recipe-signature-view]')).toContainText('Propagating Fronts');
+  await expect(page.locator('#waypoint-timeline [data-roi-recipe-signature-view]')).toContainText('Forest-fire CA');
+  await page.locator('#sampling-process-mode').selectOption('customComposer');
   await expect.poll(() => page.evaluate(() => {
     const scene = window.anchorGame.phaser.scene.getScene('RoiGeneratorDemoScene');
     return {
+      source: scene.patternSource,
       preset: scene.behaviorPresetId,
-      modified: scene.behaviorPresetModified,
-      evolution: scene.spatialEvolution
+      presetModified: scene.behaviorPresetModified,
+      signature: scene.referenceSignatureId,
+      referenceModified: scene.referenceSignatureModified,
+      updateRuleHint: scene.updateRuleHint
     };
   })).toEqual({
-    preset: 'driftingStormCells',
-    modified: true,
-    evolution: 'randomWalk'
+    source: 'custom',
+    preset: 'custom',
+    presetModified: false,
+    signature: 'none',
+    referenceModified: false,
+    updateRuleHint: null
   });
-  await expect(page.locator('#mission-console')).toContainText('Modified from Drifting Storm Cells');
-  await page.locator('#roi-demo-behavior-preset').selectOption('custom');
-  await expect.poll(() => page.evaluate(() => {
-    const scene = window.anchorGame.phaser.scene.getScene('RoiGeneratorDemoScene');
-    return {
-      preset: scene.behaviorPresetId,
-      modified: scene.behaviorPresetModified
-    };
-  })).toEqual({ preset: 'custom', modified: false });
   await page.locator('#roi-demo-event-likelihood').selectOption('multiModalLikelihood');
   await page.locator('#roi-demo-event-likelihood-dynamics').selectOption('static');
   await page.locator('#roi-demo-spatial-pattern').selectOption('clusteredField');
   await page.locator('#roi-demo-value-distribution').selectOption('gaussianNormal');
   await page.locator('#roi-demo-temporal-pattern').selectOption('bursty');
   await page.locator('#roi-demo-spatial-evolution').selectOption('stationary');
+  await page.locator('#roi-demo-interaction-scale').selectOption('cluster');
   await page.locator('#roi-demo-state-model').selectOption('stateEvolving');
   await page.locator('#roi-demo-depletion-mode').selectOption('soft');
   await page.locator('#roi-demo-display-mode').selectOption('sampleValue');
-  await expect(page.locator('#mission-console')).toContainText('Event Likelihood Field');
-  await expect(page.locator('#mission-console')).toContainText('Likelihood Field Type');
+  await expect(page.locator('#mission-console')).toContainText('Source / Initial Field');
+  await expect(page.locator('#mission-console')).toContainText('Source Field Type');
   await expect(page.locator('#mission-console')).toContainText('Spatial Pattern / Geometry');
   await expect(page.locator('#mission-console')).toContainText('Temporal Pattern');
   await expect(page.locator('#mission-console')).toContainText('Spatial Evolution');
+  await expect(page.locator('#mission-console')).toContainText('Custom Composer');
   await expect(page.locator('#mission-console')).toContainText('Motion Scope');
-  await expect(page.locator('#mission-console')).toContainText('Sampling Effects');
+  await expect(page.locator('#mission-console')).toContainText('Interaction Scale / Hierarchy');
+  await expect(page.locator('#mission-console')).toContainText('Sampling Effect / Freshness');
   await expect(page.locator('#mission-console')).toContainText('Display');
-  await expect(page.locator('#mission-console')).toContainText('State Model / Memory');
+  await expect(page.locator('#mission-console')).toContainText('State Model / Update Rule');
   await expect(page.locator('#mission-console')).toContainText('Time-Indexed');
   await expect(page.locator('#roi-demo-spatial-pattern option')).toHaveText([
     'Constant Field',
@@ -483,22 +791,34 @@ test('campaign planning smoke flow reaches debrief', async ({ page }) => {
   await expect(page.locator('#roi-demo-spatial-pattern')).not.toContainText('Bimodal');
   await expect(page.locator('#mission-console .sample-field-explainer')).toHaveCount(0);
   await expect(page.locator('#mission-console [data-roi-help]')).toHaveCount(9);
-  await expect(page.locator('#mission-console [data-roi-help="eventLikelihood"]')).toContainText('Explain Multi-Modal Likelihood');
+  await expect(page.locator('#mission-console [data-roi-help="behaviorPreset"]')).toHaveCount(0);
+  await expect(page.locator('#mission-console [data-roi-help="eventLikelihood"]')).toContainText('Explain Multi-Source Basins');
   await expect(page.locator('#mission-console [data-roi-help="spatialPattern"]')).toContainText('Explain Clustered Field');
   await expect(page.locator('#roi-demo-event-likelihood option')).toHaveText([
-    'Uniform Likelihood',
-    'Gaussian Likelihood',
-    'Multi-Modal Likelihood',
-    'Gradient Likelihood',
-    'Patchy Likelihood',
-    'Seeded Texture Likelihood',
-    'Sparse Candidate Sites'
+    'Uniform Source Field',
+    'Gaussian Source Basin',
+    'Multi-Source Basins',
+    'Gradient Source Field',
+    'Patchy Source Field',
+    'Seeded Texture Source Field',
+    'Sparse Source Sites'
   ]);
   await expect(page.locator('#roi-demo-event-likelihood-dynamics option')).toHaveText(['Static', 'Dynamic']);
-  await expect(page.locator('#roi-demo-value-distribution option')).toHaveText(['Constant Value', 'Uniform Random', 'Gaussian / Normal']);
+  await expect(page.locator('#roi-demo-value-distribution option')).toHaveText([
+    'Constant Value',
+    'Uniform Random',
+    'Gaussian / Normal',
+    'Skewed Low',
+    'Skewed High',
+    'Bimodal Values',
+    'Heavy-Tailed',
+    'Rare Extreme Events'
+  ]);
+  await expect(page.locator('#mission-console')).toContainText('Value Distribution');
+  await expect(page.evaluate(() => window.ANCHOR_ROI_UI_DEBUG?.hasValueDistributionAccordion)).resolves.toBe(true);
   await page.locator('#mission-console [data-roi-help="eventLikelihood"]').click();
-  await expect(page.locator('#waypoint-timeline [data-roi-behavior-help]')).toContainText('About Event Likelihood Field: Multi-Modal Likelihood');
-  await expect(page.locator('#waypoint-timeline [data-roi-behavior-help]')).toContainText('Where are events likely to originate');
+  await expect(page.locator('#waypoint-timeline [data-roi-behavior-help]')).toContainText('About Source / Initial Field');
+  await expect(page.locator('#waypoint-timeline [data-roi-behavior-help]')).toContainText('Where does process activity originate');
   await page.locator('#mission-console [data-roi-help="spatialPattern"]').click();
   await expect(page.locator('#waypoint-timeline [data-roi-behavior-help]')).toContainText('About Spatial Pattern / Geometry: Clustered Field');
   await expect(page.locator('#waypoint-timeline [data-roi-behavior-help]')).toContainText('Value appears in one or more coherent blobs');
@@ -510,35 +830,95 @@ test('campaign planning smoke flow reaches debrief', async ({ page }) => {
   await expect(page.locator('#waypoint-timeline [data-roi-behavior-help]')).toContainText('About Temporal Pattern: Bursty');
   await expect(page.locator('#waypoint-timeline [data-roi-behavior-help]')).toContainText('How does value intensity change over time?');
   await page.locator('#mission-console [data-roi-help="spatialEvolution"]').click();
-  await expect(page.locator('#waypoint-timeline [data-roi-behavior-help]')).toContainText('About Spatial Evolution: Stationary');
+  await expect(page.locator('#waypoint-timeline [data-roi-behavior-help]')).toContainText('About Spatial Evolution / Motion Rule: Stationary');
+  await page.locator('#mission-console [data-roi-help="interactionScale"]').click();
+  await expect(page.locator('#waypoint-timeline [data-roi-behavior-help]')).toContainText('About Interaction Scale / Hierarchy: Cluster / Community');
   await page.locator('#mission-console [data-roi-help="stateModel"]').click();
-  await expect(page.locator('#waypoint-timeline [data-roi-behavior-help]')).toContainText('About State Model / Memory:');
+  await expect(page.locator('#waypoint-timeline [data-roi-behavior-help]')).toContainText('About State Model / Update Rule:');
   await expect(page.locator('#waypoint-timeline [data-roi-behavior-help]')).toContainText('Markovian');
   await page.locator('#mission-console [data-roi-help="samplingEffect"]').click();
-  await expect(page.locator('#waypoint-timeline [data-roi-behavior-help]')).toContainText('About Sampling Effect: Soft Depletion');
+  await expect(page.locator('#waypoint-timeline [data-roi-behavior-help]')).toContainText('About Sampling Effect / Freshness: Soft Depletion');
   await page.locator('#mission-console [data-roi-help="displayLayer"]').click();
-  await expect(page.locator('#waypoint-timeline [data-roi-behavior-help]')).toContainText('About Display Layer: Sample Value');
+  await expect(page.locator('#waypoint-timeline [data-roi-behavior-help]')).toContainText('About Display / Diagnostic Layer: Sampling Value');
   await expect(page.locator('#waypoint-timeline [data-roi-behavior-help]')).toContainText('Current Composition');
   await expect(page.locator('#waypoint-timeline [data-roi-behavior-help]')).toContainText('Uncertainty / Forecast demos');
   await expect(page.locator('#roi-demo-cluster-size option')).toHaveText(['Tight', 'Medium', 'Wide']);
-  await expect(page.locator('#roi-demo-spatial-evolution option')).toHaveText(['Stationary', 'Continuous Drift', 'Discrete Jump', 'Random Walk', 'Neighbor Propagation']);
+  await expect(page.locator('#roi-demo-spatial-evolution option')).toHaveText([
+    'Stationary',
+    'Continuous Drift',
+    'Discrete Jump',
+    'Random Walk',
+    'Neighbor Propagation',
+    'Expansion',
+    'Contraction',
+    'Divergence',
+    'Convergence',
+    'Morph / Mutation',
+    'Shear / Stretch',
+    'Rotational Swirl',
+    'Branching Growth'
+  ]);
   await expect(page.locator('#roi-demo-motion-scope option')).toHaveText(['Per Feature', 'Local / Neighborhood', 'Global']);
+  await expect(page.locator('#roi-demo-interaction-scale option')).toHaveText(['Global Field', 'Cluster / Community', 'Cell / Node', 'Edge / Neighbor', 'Hybrid Multi-Scale']);
   await expect(page.locator('#roi-demo-display-mode option')).toHaveText([
-    'Sample Value',
-    'Event Likelihood',
-    'Sample Value + Likelihood Overlay',
+    'Sampling Value',
+    'Source Field',
+    'Sampling Value + Source Overlay',
+    'Graph Topology',
     'Graph Communities',
-    'Node States',
-    'Graph Messages',
+    'Cell / Node States',
+    'Process Influence Messages',
     'Community + Messages',
+    'State Transitions',
+    'ROI Meaning',
     'Diagnostics Overlay',
     'Depleted Value',
     'Freshness / Revisit Value',
     'Raw Base Value'
   ]);
+  await page.locator('#roi-demo-display-mode').selectOption('graphMessages');
+  await expect(page.locator('#roi-filter-message-threshold')).toBeVisible();
+  await page.locator('#roi-filter-message-threshold').evaluate((input) => {
+    input.value = '0.35';
+    input.dispatchEvent(new Event('change', { bubbles: true }));
+  });
+  await expect.poll(() => page.evaluate(() => window.anchorGame.phaser.scene.getScene('RoiGeneratorDemoScene').viewFilters.messageStrengthThreshold)).toBe(0.35);
+  await page.locator('#roi-filter-incoming-selected').check();
+  await expect.poll(() => page.evaluate(() => window.anchorGame.phaser.scene.getScene('RoiGeneratorDemoScene').viewFilters.incomingToSelected)).toBe(true);
+  await page.locator('#roi-demo-display-mode').selectOption('roiMeaning');
+  await expect(page.locator('#roi-filter-meaning-layer')).toBeVisible();
+  await page.locator('#roi-filter-meaning-layer').selectOption('nearFuture');
+  await expect.poll(() => page.evaluate(() => window.anchorGame.phaser.scene.getScene('RoiGeneratorDemoScene').viewFilters.roiMeaningLayer)).toBe('nearFuture');
+  await page.locator('#roi-demo-display-mode').selectOption('diagnosticsOverlay');
+  await clickRightPanelMode(page, 'diagnostics');
+  await expect.poll(() => page.evaluate(() => window.anchorGame.phaser.scene.getScene('RoiGeneratorDemoScene').processMode)).toBe('customComposer');
+  await expect(page.locator('#roi-filter-message-threshold')).toBeVisible();
+  await expect(page.locator('#roi-filter-transition-only')).toBeVisible();
+  await expect(page.locator('#roi-filter-topology-edges')).toBeVisible();
+  await expect(page.locator('#roi-demo-event-likelihood')).toBeVisible();
+  await expect(page.locator('#sampling-paint-state')).toHaveCount(0);
+  await expect(page.locator('#sampling-random-seed')).toHaveCount(0);
+  await expect(page.locator('#waypoint-timeline [data-roi-diagnostics-view]')).toBeVisible();
+  await page.locator('#sampling-process-mode').selectOption('customComposer');
   await expect(page.locator('#mission-console')).not.toContainText('Forecast / Truth');
   await expect(page.locator('#mission-console')).not.toContainText('Current-Advected');
   await expect(page.locator('#mission-console')).not.toContainText('Uncertainty / Forecast demos');
+  await page.locator('#sampling-process-mode').selectOption('referenceSignature');
+  await expandMissionConsoleSection(page, 'Process Pattern');
+  await page.locator('#roi-demo-reference-signature').selectOption('frontPropagation');
+  await expect(page.locator('#roi-demo-display-mode')).toHaveValue('sampleValue');
+  await expect.poll(() => page.evaluate(() => window.anchorGame.phaser.scene.getScene('RoiGeneratorDemoScene').displayMode)).toBe('sampleValue');
+  await expect(page.locator('#mission-console')).not.toContainText('active transition boundary');
+  await expect(page.locator('#mission-console [data-roi-help="behaviorPreset"]')).toHaveCount(0);
+  await expect(page.locator('#waypoint-timeline [data-roi-recipe-signature-view]')).toContainText('Propagating Fronts');
+  await expect(page.locator('#waypoint-timeline [data-roi-recipe-signature-view]')).toContainText('active transition boundary');
+  await expect(page.locator('#waypoint-timeline [data-roi-recipe-signature-view]')).toContainText('Forest-fire CA');
+  await page.locator('#sampling-process-mode').selectOption('customComposer');
+  await expect.poll(() => page.evaluate(() => window.anchorGame.phaser.scene.getScene('RoiGeneratorDemoScene').referenceSignatureId)).toBe('none');
+  await page.locator('#roi-demo-event-likelihood-dynamics').selectOption('static');
+  await expect.poll(() => page.evaluate(() => window.anchorGame.phaser.scene.getScene('RoiGeneratorDemoScene').eventLikelihoodDynamics)).toBe('static');
+  await page.locator('#roi-demo-motion-scope').selectOption('perFeature');
+  await expect.poll(() => page.evaluate(() => window.anchorGame.phaser.scene.getScene('RoiGeneratorDemoScene').field.motionScope)).toBe('perFeature');
   await expect(page.locator('#mission-console')).not.toContainText('prior-agnostic');
   await expect(page.evaluate(() => window.anchorGame.phaser.scene.getScene('RoiGeneratorDemoScene').timeMode)).resolves.toBe('dynamic');
   const roiDynamicCell = await page.evaluate(() => {
@@ -565,20 +945,25 @@ test('campaign planning smoke flow reaches debrief', async ({ page }) => {
   });
   expect(roiDynamicCell.delta).toBeGreaterThan(0.02);
   await clickRoiDemoCell(page, roiDynamicCell.col, roiDynamicCell.row);
+  await expect(page.locator('#waypoint-timeline [data-roi-cell-inspector]')).toBeVisible();
   await expect(page.locator('#waypoint-timeline')).toContainText(`Cell (${roiDynamicCell.col}, ${roiDynamicCell.row})`);
-  await expect(page.locator('#waypoint-timeline')).toContainText('Sample Value');
-  await expect(page.locator('#waypoint-timeline')).toContainText('Event Likelihood Field');
+  await expect(page.locator('#waypoint-timeline [data-roi-panel-mode="recipeSignature"]')).toContainText('Recipe');
+  await page.evaluate(() => document.querySelector('#waypoint-timeline [data-roi-panel-mode="recipeSignature"]')?.click());
+  await expect(page.locator('#waypoint-timeline [data-roi-recipe-signature-view]')).toBeVisible();
+  await page.evaluate(() => document.querySelector('#waypoint-timeline [data-roi-panel-mode="cellInspector"]')?.click());
+  await expect(page.locator('#waypoint-timeline [data-roi-cell-inspector]')).toBeVisible();
+  await expect(page.locator('#waypoint-timeline')).toContainText('Sampling Value');
+  await expect(page.locator('#waypoint-timeline')).toContainText('Source / Initial Field');
   await expect(page.locator('#waypoint-timeline')).toContainText('L(x,y,t)');
-  await expect(page.locator('#waypoint-timeline')).toContainText('Observed Sample Value');
   await expect(page.locator('#waypoint-timeline')).toContainText('S(x,y,t)');
-  await expect(page.locator('#waypoint-timeline')).toContainText('event-prone');
+  await expect(page.locator('#waypoint-timeline')).toContainText('source support');
   await expect(page.locator('#waypoint-timeline')).toContainText('cluster count');
   await expect(page.locator('#waypoint-timeline')).toContainText('cluster size');
   await expect(page.locator('#waypoint-timeline')).toContainText('value distribution');
   await expect(page.locator('#waypoint-timeline')).toContainText('seeded value');
   await expect(page.locator('#waypoint-timeline')).toContainText('value band');
-  await expect(page.locator('#waypoint-timeline')).toContainText('Likelihood mesh values show event potential at every cell');
-  await expect(page.locator('#waypoint-timeline')).toContainText('Sample value is the currently realized reward');
+  await expect(page.locator('#waypoint-timeline')).toContainText('Source mesh values show process support at every cell');
+  await expect(page.locator('#waypoint-timeline')).toContainText('Sampling value is the currently realized value');
   await expect(page.locator('#waypoint-timeline')).toContainText('pattern parameters');
   await expect(page.locator('#waypoint-timeline')).toContainText('temporal pattern');
   await expect(page.locator('#waypoint-timeline')).toContainText('spatial evolution');
@@ -1265,7 +1650,7 @@ test('stochastic mode exposes ensemble and risk controls', async ({ page }) => {
     selectedStart: deploymentCell
   });
   await page.locator('#mission-console [data-action="execute"]').click();
-  await expect.poll(() => page.evaluate(() => window.anchorGame.phaser.scene.getScene('SimulationScene').sys.isActive())).toBe(true);
+  await expect.poll(() => page.evaluate(() => window.anchorGame.phaser.scene.getScene('SimulationScene').sys.isActive()), { timeout: 15000 }).toBe(true);
 });
 
 test('legacy saved level registry scene still opens', async ({ page }) => {
@@ -1504,6 +1889,44 @@ async function expectCenterPanelUsesAvailableSpace(page) {
     usesCenterWidth: true,
     contained: true
   });
+}
+
+async function expectSamplingSectionsCollapsed(page, titles) {
+  await expect.poll(() => page.evaluate((expectedTitles) => {
+    const headers = [...document.querySelectorAll('#mission-console .accordion-header')];
+    return expectedTitles.every((title) => {
+      const header = headers.find((entry) => entry.textContent.replace(/\s+/g, ' ').trim().includes(title));
+      return header?.getAttribute('aria-expanded') === 'false';
+    });
+  }, titles)).toBe(true);
+}
+
+async function expandMissionConsoleSection(page, title) {
+  await expect(page.locator('#mission-console .accordion-header').filter({ hasText: title }).first()).toBeVisible();
+  await page.evaluate((sectionTitle) => {
+    const headers = [...document.querySelectorAll('#mission-console .accordion-header')]
+      .filter((header) => header.textContent.replace(/\s+/g, ' ').trim().includes(sectionTitle));
+    for (const header of headers) {
+      if (header.getAttribute('aria-expanded') !== 'true') header.click();
+    }
+  }, title);
+  await expect.poll(() => page.evaluate((sectionTitle) => {
+    const headers = [...document.querySelectorAll('#mission-console .accordion-header')]
+      .filter((header) => header.textContent.replace(/\s+/g, ' ').trim().includes(sectionTitle));
+    return headers.length > 0 && headers.every((header) => header.getAttribute('aria-expanded') === 'true');
+  }, title)).toBe(true);
+}
+
+async function expandMissionConsoleSections(page, titles) {
+  for (const title of titles) {
+    await expandMissionConsoleSection(page, title);
+  }
+}
+
+async function clickRightPanelMode(page, mode) {
+  await page.evaluate((nextMode) => {
+    document.querySelector(`#waypoint-timeline [data-roi-panel-mode="${nextMode}"]`)?.click();
+  }, mode);
 }
 
 async function startPlanningFromBriefing(page) {

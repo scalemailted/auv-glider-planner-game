@@ -4,7 +4,9 @@ export function summarizeRoiGraphField({
   clusters = [],
   likelihoodField = [],
   sampleValueField = [],
-  updateRule = 'memoryless'
+  updateRule = 'memoryless',
+  edgeMessages = [],
+  nodeTransitions = []
 } = {}) {
   const activeNodes = nodes.filter((node) => isActiveState(node.state));
   const highLikelihoodNodes = nodes.filter((node) => Number(node.likelihood) >= 0.7);
@@ -22,6 +24,10 @@ export function summarizeRoiGraphField({
     highLikelihoodNodeCount: highLikelihoodNodes.length,
     stateCounts,
     edgeMessageTotal: round3(incomingValues.reduce((sum, value) => sum + value, 0)),
+    emittedEdgeMessageCount: edgeMessages.length,
+    emittedEdgeMessageTotal: round3(edgeMessages.reduce((sum, message) => sum + Number(message.messageStrength ?? message.strength ?? 0), 0)),
+    nodeTransitionCount: nodeTransitions.length,
+    transitionCauseCounts: countBy(nodeTransitions, (transition) => transition.cause ?? 'stable'),
     outgoingMessageTotal: round3(outgoingValues.reduce((sum, value) => sum + value, 0)),
     meanIncomingMessage: round3(mean(incomingValues)),
     maxIncomingMessage: round3(Math.max(0, ...incomingValues)),

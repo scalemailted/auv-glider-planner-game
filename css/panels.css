@@ -1126,6 +1126,131 @@
   color: var(--muted);
   font-size: .76rem;
 }
+.sampling-compact-header {
+  padding-bottom: .7rem;
+  margin-bottom: .7rem;
+}
+.sampling-compact-header h1 {
+  font-size: 1.22rem;
+}
+.sampling-compact-summary {
+  gap: .42rem;
+}
+.sampling-control-card,
+.sampling-summary-card {
+  border-color: rgba(141,220,242,0.22);
+  background: rgba(8,17,31,0.5);
+}
+.sampling-control-card h2 {
+  margin-bottom: .42rem;
+}
+.sampling-primary-control select {
+  font-weight: 800;
+}
+.sampling-summary-card {
+  gap: .42rem;
+}
+.sampling-summary-card > span {
+  color: var(--success);
+  font-size: .7rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: .06em;
+}
+.sampling-summary-card > strong {
+  color: var(--text);
+  font-size: .9rem;
+}
+.sampling-details {
+  margin-top: .12rem;
+}
+.sampling-chip-row,
+.sampling-metric-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: .32rem;
+}
+.sampling-chip,
+.sampling-metric-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: .28rem;
+  border: 1px solid rgba(141,220,242,0.18);
+  border-radius: 999px;
+  background: rgba(8,17,31,0.46);
+  color: #dcecff;
+  padding: .22rem .46rem;
+  font-size: .72rem;
+  line-height: 1.15;
+}
+.sampling-metric-chip small {
+  color: var(--muted);
+  font-size: .66rem;
+  text-transform: uppercase;
+  letter-spacing: .04em;
+}
+.sampling-metric-chip strong {
+  color: var(--text);
+  font-size: .74rem;
+}
+.sampling-compact-details {
+  color: var(--muted);
+  font-size: .76rem;
+}
+.sampling-compact-details summary {
+  cursor: pointer;
+  color: #d6e4f7;
+  font-weight: 800;
+}
+.sampling-compact-rows {
+  display: grid;
+  gap: .25rem;
+  margin-top: .35rem;
+}
+.sampling-compact-rows div {
+  display: grid;
+  grid-template-columns: minmax(5.6rem, .45fr) 1fr;
+  gap: .45rem;
+  align-items: baseline;
+}
+.sampling-compact-rows span {
+  color: var(--muted);
+  font-size: .68rem;
+  text-transform: uppercase;
+  letter-spacing: .04em;
+}
+.sampling-compact-rows strong {
+  color: var(--text);
+  font-size: .76rem;
+}
+.sampling-panel-tabs .console-button {
+  width: auto;
+  flex: 1 1 auto;
+  text-align: center;
+  padding: .42rem .5rem;
+  font-size: .74rem;
+}
+.sampling-panel-tabs .console-button:disabled {
+  color: #06121f;
+  background: var(--success);
+  border-color: rgba(255,255,255,0.5);
+}
+.sampling-panel-tabs .sampling-panel-tab-active,
+.sampling-panel-tabs .sampling-panel-tab.active {
+  color: #06121f;
+  background: var(--success);
+  border-color: rgba(255,255,255,0.55);
+  box-shadow: inset 0 0 0 1px rgba(6,18,31,0.25);
+}
+.sampling-empty-state {
+  border-style: dashed;
+}
+.sampling-empty-state p {
+  color: var(--muted);
+}
+.sampling-advanced-card details {
+  color: var(--muted);
+}
 
 .waypoint-shell {
   display: grid;

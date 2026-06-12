@@ -12,6 +12,8 @@ export function buildRoiGraphField({
   likelihoodField = [],
   likelihoodNodes = [],
   behaviorPresetId = null,
+  referenceSignatureId = null,
+  updateRuleHint = null,
   temporalPattern = 'static',
   spatialEvolution = 'stationary',
   stateModel = 'timeIndexed',
@@ -20,6 +22,8 @@ export function buildRoiGraphField({
 } = {}) {
   const rule = selectRoiGraphUpdateRule({
     behaviorPresetId,
+    referenceSignatureId,
+    updateRuleHint,
     spatialEvolution,
     stateModel,
     depletionMode: samplingEffect,
@@ -51,7 +55,7 @@ export function buildRoiGraphField({
     sourceNodes: clusterModel.clusters.length ? clusterModel.clusters : likelihoodNodes,
     clusters: clusterModel.clusters,
     updateRule: rule,
-    seed: `${seed}:roi-graph:${behaviorPresetId ?? 'custom'}`,
+    seed: `${seed}:roi-graph:${referenceSignatureId ?? behaviorPresetId ?? 'custom'}`,
     time,
     temporalPattern,
     dynamicComplexity,
@@ -63,7 +67,9 @@ export function buildRoiGraphField({
     clusters: clusterModel.clusters,
     likelihoodField: result.likelihoodField,
     sampleValueField: result.sampleValueField,
-    updateRule: result.updateRule
+    updateRule: result.updateRule,
+    edgeMessages: result.edgeMessages,
+    nodeTransitions: result.nodeTransitions
   });
   return {
     ...result,

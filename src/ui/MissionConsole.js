@@ -2,9 +2,9 @@ import { CAMPAIGN_LEVELS } from '../core/campaign/CampaignLevels.js';
 import { shortInstanceId } from '../core/identity/GameInstanceId.js';
 import { formatMetric } from '../core/evaluation/PlanComparison.js';
 import { FLOW_DEMO_BOUNDARY_MODES, FLOW_DEMO_CYCLE_DURATIONS, FLOW_DEMO_DYNAMIC_COMPLEXITY_LEVELS, FLOW_DEMO_EVOLUTION_BEHAVIORS, FLOW_DEMO_EVOLUTION_PATTERNS, FLOW_DEMO_EVOLUTION_SPEEDS, FLOW_DEMO_FIELD_MODES, FLOW_DEMO_LAYER_INFLUENCES, FLOW_DEMO_MAGNITUDE_SCALES, FLOW_DEMO_PARTICLE_SPEEDS, FLOW_DEMO_PRESET_CHOICES, FLOW_DEMO_SPATIAL_MOTIONS, FLOW_DEMO_SPATIAL_MOTION_SPEEDS, FLOW_DEMO_TERRAIN_MODES, FLOW_DEMO_VARIATION_LEVELS, normalizeAdditiveLayers } from '../core/demo/FlowFieldDemo.js';
-import { ROI_DEMO_DISTRIBUTIONS, ROI_DEMO_SPATIAL_PATTERNS, ROI_DEMO_TEMPORAL_BEHAVIORS, ROI_DEMO_TIME_MODES, ROI_DEMO_TEMPORAL_PATTERNS, ROI_DEMO_SPATIAL_EVOLUTIONS, ROI_DEMO_LIKELIHOOD_DYNAMICS, ROI_DEMO_MOTION_SCOPES, ROI_DEMO_STATE_MODELS, ROI_DEMO_DEPLETION_MODES, ROI_DEMO_DISPLAY_MODES, ROI_DEMO_DYNAMIC_COMPLEXITY, ROI_DEMO_PURE_SPATIAL_PATTERNS, ROI_DEMO_EVENT_LIKELIHOODS, ROI_DEMO_VALUE_DISTRIBUTIONS, ROI_DEMO_CLUSTER_SIZES, roiDistributionLabel, roiTemporalPatternLabel, roiStateModelDescription, roiStateModelForEvolutionModel, roiStateModelLabel, roiPureSpatialPatternLabel, roiEventLikelihoodLabel, roiLikelihoodDynamicsLabel, roiLikelihoodSpatialEvolutionLabel, roiValueDistributionLabel, roiSpatialEvolutionLabel, roiMotionScopeLabel, roiDepletionModeLabel, roiDisplayModeLabel, roiClusterSizeLabel, sampleSpatialPatternLabel, sampleTemporalBehaviorLabel } from '../core/demo/DemoRoiFields.js';
-import { sampleFieldBehaviorExplainer } from '../core/demo/SampleFieldBehaviorExplainers.js';
-import { SAMPLE_FIELD_BEHAVIOR_PRESET_OPTIONS, CUSTOM_SAMPLE_FIELD_BEHAVIOR_PRESET_ID, sampleFieldBehaviorPresetById, sampleFieldBehaviorPresetSummary } from '../core/demo/SampleFieldBehaviorPresets.js';
+import { ROI_DEMO_DISTRIBUTIONS, ROI_DEMO_SPATIAL_PATTERNS, ROI_DEMO_TEMPORAL_BEHAVIORS, roiDistributionLabel, sampleSpatialPatternLabel, sampleTemporalBehaviorLabel } from '../core/demo/DemoRoiFields.js';
+import { SAMPLING_PROCESS_LAB_MENU_LABEL } from '../core/demo/sampling/SamplingProcessTerminology.js';
+import { samplingProcessConsoleHtml } from './sampling/SamplingProcessConsoleSections.js';
 import { EXPERIENCE_MODES, getExperienceModeDefaults } from '../core/experience/ExperienceMode.js';
 import { getVectorPresetConfig } from '../core/generation/VectorFieldPresets.js';
 import { UNCERTAINTY_DEMO_BEHAVIORS, UNCERTAINTY_DEMO_FORECAST_MODELS, UNCERTAINTY_DEMO_PATTERNS, UNCERTAINTY_DEMO_UPDATE_MODELS, UNCERTAINTY_DEMO_VIEW_MODES, forecastModelLabel, uncertaintyBehaviorLabel, uncertaintyPatternLabel, uncertaintyViewLabel, updateModelLabel } from '../core/demo/UncertaintyForecastDemo.js';
@@ -48,7 +48,7 @@ export class MissionConsole {
         ])}
         ${menuGroupHtml('Demos', [
           menuActionHtml('flow-fields', 'Flow Fields Demo', 'Explore current vectors F(x,y,t).'),
-          menuActionHtml('roi-demo', 'Sample / ROI Field Demo', 'Explore sampling value S(x,y,t).'),
+          menuActionHtml('roi-demo', SAMPLING_PROCESS_LAB_MENU_LABEL, 'Explore deterministic or seeded sampling processes S(x,y,t).'),
           menuActionHtml('coupled-fields', 'Coupled Fields Demo', 'Explore how currents move, shape, or complicate sample value.'),
           menuActionHtml('uncertainty-forecast-demo', 'Uncertainty / Forecast Demo', 'Explore forecast, truth, uncertainty, information gain, and sampling updates.')
         ])}
@@ -317,252 +317,29 @@ export class MissionConsole {
 
   renderRoiDemoControls(state = {}, handlers = {}) {
     if (!this.root) return;
-    const stateModel = state.stateModel ?? roiStateModelForEvolutionModel(state.evolutionModel);
-    const stateModelLabel = state.stateModelLabel ?? roiStateModelLabel(stateModel);
-    const stateModelDescription = state.stateModelDescription ?? roiStateModelDescription(stateModel);
-    const presetHelp = sampleFieldBehaviorExplainer('behaviorPreset', state.behaviorPresetId);
-    const selectedPreset = sampleFieldBehaviorPresetById(state.behaviorPresetId);
-    const presetStatus = state.behaviorPresetId && state.behaviorPresetId !== CUSTOM_SAMPLE_FIELD_BEHAVIOR_PRESET_ID
-      ? state.behaviorPresetModified ? `Modified from ${state.behaviorPresetLabel}` : `Preset: ${state.behaviorPresetLabel}`
-      : 'Preset: Custom';
-    const eventLikelihoodHelp = sampleFieldBehaviorExplainer('eventLikelihood', state.eventLikelihood);
-    const spatialHelp = sampleFieldBehaviorExplainer('spatialPattern', state.spatialPattern);
-    const temporalHelp = sampleFieldBehaviorExplainer('temporalPattern', state.temporalPattern);
-    const evolutionHelp = sampleFieldBehaviorExplainer('spatialEvolution', state.spatialEvolution ?? state.patternEvolution);
-    const stateHelp = sampleFieldBehaviorExplainer('stateModel', stateModel);
-    const valueDistributionHelp = sampleFieldBehaviorExplainer('valueDistribution', state.valueDistribution);
-    const samplingHelp = sampleFieldBehaviorExplainer('samplingEffect', state.depletionMode);
-    const displayHelp = sampleFieldBehaviorExplainer('displayLayer', state.displayMode);
-    const graphDiagnostics = state.activityDiagnostics?.graphDiagnostics ?? state.graphField?.diagnostics;
-    const graphSummary = graphDiagnostics
-      ? ` | Graph ${graphDiagnostics.updateRule} | clusters ${graphDiagnostics.clusterCount ?? 0}/${graphDiagnostics.activeClusterCount ?? 0} active | active nodes ${graphDiagnostics.activeNodeCount ?? 0} | messages ${formatDemoStat(graphDiagnostics.edgeMessageTotal)} | states ${Object.entries(graphDiagnostics.stateCounts ?? {}).map(([key, value]) => `${key}:${value}`).join(', ')}`
-      : '';
-    const likelihoodModeText = state.activityDiagnostics?.recurringHotspots?.modeCount
-      ? `${roiEventLikelihoodLabel(state.eventLikelihood)} (${roiLikelihoodDynamicsLabel(state.eventLikelihoodDynamics)}, ${state.activityDiagnostics.recurringHotspots.modeCount} separated basins)`
-      : `${roiEventLikelihoodLabel(state.eventLikelihood)} (${state.eventLikelihoodDynamics === 'dynamic' ? `${roiTemporalPatternLabel(state.eventLikelihoodTemporalPattern)} / ${roiLikelihoodSpatialEvolutionLabel(state.eventLikelihoodSpatialEvolution)}` : 'Static'})`;
-    const summaryRows = [
-      ['Preset', state.behaviorPresetId && state.behaviorPresetId !== CUSTOM_SAMPLE_FIELD_BEHAVIOR_PRESET_ID ? `${state.behaviorPresetLabel}${state.behaviorPresetModified ? ' (modified)' : ''}` : 'Custom'],
-      ['Likelihood', likelihoodModeText],
-      ['Spatial Pattern', state.spatialPatternLabel ?? roiPureSpatialPatternLabel(state.spatialPattern)],
-      ['Value Distribution', state.valueDistributionLabel ?? roiValueDistributionLabel(state.valueDistribution)],
-      ['Temporal Pattern', state.temporalPatternLabel ?? roiTemporalPatternLabel(state.temporalPattern)],
-      ['Spatial Evolution', state.spatialEvolutionLabel ?? roiSpatialEvolutionLabel(state.spatialEvolution ?? state.patternEvolution)],
-      ['State Update', stateModelLabel],
-      ['Sampling', roiDepletionModeLabel(state.depletionMode)]
-    ];
-    this.root.innerHTML = `
-      <section class="console-header">
-        <div class="console-kicker">Sample / ROI Field Demo</div>
-        <h1>${escapeHtml(state.title ?? 'Sample / ROI Field Demo')}</h1>
-        <p>Visualizes S(x,y,t): where and when the environment is valuable to sample.</p>
-      </section>
-      <section class="console-status">
-        <span>Component Breakdown</span>
-        <strong>${escapeHtml((state.timeMode === 'dynamic' || state.eventLikelihoodDynamics === 'dynamic') && !state.paused ? 'Animating' : state.paused ? 'Paused' : 'Static')}</strong>
-        <small>${summaryRows.map(([label, value]) => `${label}: ${value}`).map(escapeHtml).join(' | ')}</small>
-      </section>
-      <section class="console-section">
-        <h2 title="${escapeAttr(presetHelp.groupSummary)}">Behavior Preset <span aria-label="Behavior Preset help" title="${escapeAttr(presetHelp.short)}">i</span></h2>
-        <label class="compact-field" title="${escapeAttr(presetHelp.short)}">
-          <span>Behavior Preset</span>
-          <select id="roi-demo-behavior-preset" title="${escapeAttr(presetHelp.short)}">
-            ${SAMPLE_FIELD_BEHAVIOR_PRESET_OPTIONS.map((preset) => `<option value="${escapeAttr(preset.id)}" ${state.behaviorPresetId === preset.id || (!state.behaviorPresetId && preset.id === CUSTOM_SAMPLE_FIELD_BEHAVIOR_PRESET_ID) ? 'selected' : ''}>${escapeHtml(preset.label)}</option>`).join('')}
-          </select>
-        </label>
-        ${roiHelpButtonHtml('behaviorPreset', `Explain ${state.behaviorPresetLabel ?? 'Custom'}`)}
-        <div class="hud-muted">${escapeHtml(presetStatus)}</div>
-        ${selectedPreset ? `<div class="hud-muted">Expected: ${escapeHtml(selectedPreset.explanation?.expectedBehavior ?? selectedPreset.description)}</div><div class="hud-muted">Actual current state: active ${escapeHtml(formatPercent(state.activityDiagnostics?.activeFraction))}, hotspots ${escapeHtml(String(state.activityDiagnostics?.activeHotspotCount ?? state.activityDiagnostics?.hotspotComponentCount ?? 0))}, L/S corr ${escapeHtml(formatDemoStat(state.activityDiagnostics?.likelihoodSampleCorrelation))}</div><div class="hud-muted">${summaryRows.map(([label, value]) => `${label}: ${value}`).map(escapeHtml).join(' | ')}</div>` : '<div class="hud-muted">Custom primitive composition. Select a preset to load a curated starting point, then adjust the primitive controls below.</div>'}
-      </section>
-      <section class="console-section">
-        <h2 title="${escapeAttr(eventLikelihoodHelp.groupSummary)}">Event Likelihood Field <span aria-label="Event Likelihood help" title="${escapeAttr(eventLikelihoodHelp.short)}">i</span></h2>
-        <label class="compact-field" title="${escapeAttr(eventLikelihoodHelp.short)}">
-          <span>Likelihood Field Type <span aria-label="Event Likelihood help" title="${escapeAttr(eventLikelihoodHelp.short)}">i</span></span>
-          <select id="roi-demo-event-likelihood" title="${escapeAttr(eventLikelihoodHelp.short)}">
-            ${ROI_DEMO_EVENT_LIKELIHOODS.map((likelihood) => {
-              const help = sampleFieldBehaviorExplainer('eventLikelihood', likelihood);
-              return `<option value="${escapeAttr(likelihood)}" ${state.eventLikelihood === likelihood ? 'selected' : ''} title="${escapeAttr(help.short)}">${escapeHtml(roiEventLikelihoodLabel(likelihood))}</option>`;
-            }).join('')}
-          </select>
-        </label>
-        ${roiHelpButtonHtml('eventLikelihood', `Explain ${roiEventLikelihoodLabel(state.eventLikelihood)}`)}
-        <label class="compact-field">
-          Likelihood Dynamics
-          <select id="roi-demo-event-likelihood-dynamics">
-            ${ROI_DEMO_LIKELIHOOD_DYNAMICS.map((mode) => `<option value="${escapeAttr(mode)}" ${state.eventLikelihoodDynamics === mode ? 'selected' : ''}>${escapeHtml(roiLikelihoodDynamicsLabel(mode))}</option>`).join('')}
-          </select>
-        </label>
-        ${state.eventLikelihoodDynamics === 'dynamic' ? `
-          <label class="compact-field">
-            Likelihood Temporal Pattern
-            <select id="roi-demo-event-likelihood-temporal-pattern">
-              ${ROI_DEMO_TEMPORAL_PATTERNS.map((pattern) => `<option value="${escapeAttr(pattern)}" ${state.eventLikelihoodTemporalPattern === pattern ? 'selected' : ''}>${escapeHtml(roiTemporalPatternLabel(pattern))}</option>`).join('')}
-            </select>
-          </label>
-          <label class="compact-field">
-            Likelihood Spatial Evolution
-            <select id="roi-demo-event-likelihood-spatial-evolution">
-              ${ROI_DEMO_SPATIAL_EVOLUTIONS.map((evolution) => `<option value="${escapeAttr(evolution)}" ${state.eventLikelihoodSpatialEvolution === evolution ? 'selected' : ''}>${escapeHtml(roiLikelihoodSpatialEvolutionLabel(evolution))}</option>`).join('')}
-            </select>
-          </label>
-          <div class="hud-muted">Dynamic likelihood updates L(x,y,t). It controls where future events are likely to originate; the sample-value controls below still define the realized S(x,y,t).</div>
-        ` : ''}
-        <div class="hud-muted">L(x,y,t) mesh range ${escapeHtml(formatDemoStat(state.activityDiagnostics?.likelihood?.min))}-${escapeHtml(formatDemoStat(state.activityDiagnostics?.likelihood?.max))}; active cells ${escapeHtml(formatPercent(state.activityDiagnostics?.likelihood?.activeLikelihoodCellFraction))}; high cells ${escapeHtml(formatPercent(state.activityDiagnostics?.likelihood?.highLikelihoodCellFraction))}; near-trigger ${escapeHtml(formatPercent(state.activityDiagnostics?.likelihood?.nearTriggerLikelihoodCellFraction))}; modes ${escapeHtml(String(state.activityDiagnostics?.likelihood?.modeCount ?? 0))}; active modes ${escapeHtml(String(state.activityDiagnostics?.likelihood?.activeModeCount ?? 0))}; entropy ${escapeHtml(formatDemoStat(state.activityDiagnostics?.likelihood?.entropy))}; spread ${escapeHtml(formatDemoStat(state.activityDiagnostics?.likelihood?.modeCenterSpread))}.</div>
-      </section>
-      <section class="console-section">
-        <h2 title="${escapeAttr(spatialHelp.groupSummary)}">Spatial Pattern / Geometry <span aria-label="Pattern help" title="${escapeAttr(spatialHelp.short)}">i</span></h2>
-        <label class="compact-field" title="${escapeAttr(spatialHelp.short)}">
-          <span>Spatial Pattern <span aria-label="Pattern help" title="${escapeAttr(spatialHelp.short)}">i</span></span>
-          <select id="roi-demo-spatial-pattern" title="${escapeAttr(spatialHelp.short)}">
-            ${ROI_DEMO_PURE_SPATIAL_PATTERNS.map((pattern) => {
-              const help = sampleFieldBehaviorExplainer('spatialPattern', pattern);
-              return `<option value="${escapeAttr(pattern)}" ${state.spatialPattern === pattern ? 'selected' : ''} title="${escapeAttr(help.short)}">${escapeHtml(roiPureSpatialPatternLabel(pattern))}</option>`;
-            }).join('')}
-          </select>
-        </label>
-        ${roiHelpButtonHtml('spatialPattern', `Explain ${roiPureSpatialPatternLabel(state.spatialPattern)}`)}
-        <label class="compact-field" title="${escapeAttr(valueDistributionHelp.short)}">
-          <span>Value Distribution <span aria-label="Value Distribution help" title="${escapeAttr(valueDistributionHelp.short)}">i</span></span>
-          <select id="roi-demo-value-distribution" title="${escapeAttr(valueDistributionHelp.short)}">
-            ${ROI_DEMO_VALUE_DISTRIBUTIONS.map((distribution) => {
-              const help = sampleFieldBehaviorExplainer('valueDistribution', distribution);
-              return `<option value="${escapeAttr(distribution)}" ${state.valueDistribution === distribution ? 'selected' : ''} title="${escapeAttr(help.short)}">${escapeHtml(roiValueDistributionLabel(distribution))}</option>`;
-            }).join('')}
-          </select>
-        </label>
-        ${roiHelpButtonHtml('valueDistribution', `Explain ${roiValueDistributionLabel(state.valueDistribution)}`)}
-        <label class="compact-field">
-          Cluster Count
-          <input id="roi-demo-hotspots" type="range" min="1" max="6" step="1" value="${escapeAttr(state.clusterCount ?? state.hotspotCount ?? 3)}" />
-        </label>
-        <div class="hud-muted">${escapeHtml(state.clusterCount ?? state.hotspotCount ?? 3)} cluster(s)</div>
-        <label class="compact-field">
-          Cluster Size
-          <select id="roi-demo-cluster-size">
-            ${ROI_DEMO_CLUSTER_SIZES.map((size) => `<option value="${escapeAttr(size)}" ${state.clusterSize === size ? 'selected' : ''}>${escapeHtml(roiClusterSizeLabel(size))}</option>`).join('')}
-          </select>
-        </label>
-        <label class="compact-field">
-          Seed
-          <input id="roi-demo-seed" type="text" value="${escapeAttr(state.seed ?? 'anchor-roi-demo')}" />
-        </label>
-        <label class="compact-field">
-          Noise / Texture
-          <input id="roi-demo-noise" type="range" min="0" max="1" step="0.05" value="${escapeAttr(state.noise ?? 0.15)}" />
-        </label>
-        <button data-action="regenerate" class="console-button">Regenerate</button>
-        <div class="hud-muted">Noise ${escapeHtml(Number(state.noise ?? 0.15).toFixed(2))}. Cluster size controls spread; cluster count controls how many centers are generated.</div>
-        <div class="hud-muted">Event Likelihood Field controls L(x,y,t): where events are likely to originate. Spatial Pattern / Geometry and Value Distribution control observed S(x,y,t). This pure demo does not use current vectors, land, or flow transport.</div>
-      </section>
-      <section class="console-section">
-        <h2 title="${escapeAttr(temporalHelp.groupSummary)}">Temporal Pattern <span aria-label="Temporal Pattern help" title="${escapeAttr(temporalHelp.short)}">i</span></h2>
-        <label class="compact-field">
-          Time Mode
-          <select id="roi-demo-time-mode">
-            ${ROI_DEMO_TIME_MODES.map((mode) => `<option value="${escapeAttr(mode)}" ${state.timeMode === mode ? 'selected' : ''}>${escapeHtml(mode === 'dynamic' ? 'Dynamic' : 'Static')}</option>`).join('')}
-          </select>
-        </label>
-        <label class="compact-field" title="${escapeAttr(temporalHelp.short)}">
-          Temporal Pattern
-          <select id="roi-demo-temporal-pattern" title="${escapeAttr(temporalHelp.short)}">
-            ${ROI_DEMO_TEMPORAL_PATTERNS.map((pattern) => {
-              const help = sampleFieldBehaviorExplainer('temporalPattern', pattern);
-              return `<option value="${escapeAttr(pattern)}" ${state.temporalPattern === pattern ? 'selected' : ''} title="${escapeAttr(help.short)}">${escapeHtml(roiTemporalPatternLabel(pattern))}</option>`;
-            }).join('')}
-          </select>
-        </label>
-        ${roiHelpButtonHtml('temporalPattern', `Explain ${roiTemporalPatternLabel(state.temporalPattern)}`)}
-      </section>
-      <section class="console-section">
-        <h2 title="${escapeAttr(evolutionHelp.groupSummary)}">Spatial Evolution <span aria-label="Spatial Evolution help" title="${escapeAttr(evolutionHelp.short)}">i</span></h2>
-        <label class="compact-field" title="${escapeAttr(evolutionHelp.short)}">
-          Spatial Evolution
-          <select id="roi-demo-spatial-evolution" title="${escapeAttr(evolutionHelp.short)}">
-            ${ROI_DEMO_SPATIAL_EVOLUTIONS.map((model) => {
-              const help = sampleFieldBehaviorExplainer('spatialEvolution', model);
-              return `<option value="${escapeAttr(model)}" ${(state.spatialEvolution ?? state.patternEvolution) === model ? 'selected' : ''} title="${escapeAttr(help.short)}">${escapeHtml(roiSpatialEvolutionLabel(model))}</option>`;
-            }).join('')}
-          </select>
-        </label>
-        <label class="compact-field">
-          Motion Scope
-          <select id="roi-demo-motion-scope" title="Controls whether motion shifts the whole field, moves features independently, or evolves local neighborhoods.">
-            ${ROI_DEMO_MOTION_SCOPES.map((scope) => `<option value="${escapeAttr(scope)}" ${state.motionScope === scope ? 'selected' : ''}>${escapeHtml(roiMotionScopeLabel(scope))}</option>`).join('')}
-          </select>
-        </label>
-        <div class="hud-muted">Default motion is ${escapeHtml(roiMotionScopeLabel(state.motionScope ?? 'perFeature'))}; Global preserves whole-field shifting only when explicitly selected.</div>
-        <label class="compact-field">
-          Dynamic Complexity
-          <select id="roi-demo-dynamic-complexity">
-            ${ROI_DEMO_DYNAMIC_COMPLEXITY.map((level) => `<option value="${escapeAttr(level)}" ${state.dynamicComplexity === level ? 'selected' : ''}>${escapeHtml(dynamicComplexityLabel(level))}</option>`).join('')}
-          </select>
-        </label>
-        ${roiHelpButtonHtml('spatialEvolution', `Explain ${roiSpatialEvolutionLabel(state.spatialEvolution ?? state.patternEvolution)}`)}
-      </section>
-      <section class="console-section">
-        <h2 title="${escapeAttr(stateHelp.groupSummary)}">State Model / Memory <span aria-label="State Model help" title="${escapeAttr(stateHelp.short)}">i</span></h2>
-        <div class="hud-muted">State Update Rule: ${escapeHtml(stateModelLabel)}. ${escapeHtml(stateModelDescription)}</div>
-        <label class="compact-field" title="${escapeAttr(stateHelp.short)}">
-          State Model
-          <select id="roi-demo-state-model" title="${escapeAttr(stateHelp.short)}">
-            ${ROI_DEMO_STATE_MODELS.map((model) => {
-              const help = sampleFieldBehaviorExplainer('stateModel', model);
-              return `<option value="${escapeAttr(model)}" ${stateModel === model ? 'selected' : ''} title="${escapeAttr(help.short)}">${escapeHtml(roiStateModelLabel(model))}</option>`;
-            }).join('')}
-          </select>
-        </label>
-        <div class="hud-muted">Time-Indexed fields are computed directly from position and time; State-Evolving fields use current field state; History-Aware fields depend on longer sampling or observation history.</div>
-        ${roiHelpButtonHtml('stateModel', `Explain ${stateModelLabel}`)}
-      </section>
-      <section class="console-section">
-        <h2 title="${escapeAttr(samplingHelp.groupSummary)}">Sampling Effects <span aria-label="Sampling Effect help" title="${escapeAttr(samplingHelp.short)}">i</span></h2>
-        <label class="compact-field" title="${escapeAttr(samplingHelp.short)}">
-          Depletion
-          <select id="roi-demo-depletion-mode" title="${escapeAttr(samplingHelp.short)}">
-            ${ROI_DEMO_DEPLETION_MODES.map((mode) => {
-              const help = sampleFieldBehaviorExplainer('samplingEffect', mode);
-              return `<option value="${escapeAttr(mode)}" ${state.depletionMode === mode ? 'selected' : ''} title="${escapeAttr(help.short)}">${escapeHtml(roiDepletionModeLabel(mode))}</option>`;
-            }).join('')}
-          </select>
-        </label>
-        <div class="hud-muted">Demo-only synthetic sample visits: recently visited regions cool down, nearby cells can partially cool, and stale regions recover value over time. Mission scoring uses actual glider visit history.</div>
-        ${roiHelpButtonHtml('samplingEffect', `Explain ${roiDepletionModeLabel(state.depletionMode)}`)}
-      </section>
-      <section class="console-section">
-        <h2 title="${escapeAttr(displayHelp.groupSummary)}">Display <span aria-label="Display Layer help" title="${escapeAttr(displayHelp.short)}">i</span></h2>
-        <label class="compact-field" title="${escapeAttr(displayHelp.short)}">
-          Display Layer
-          <select id="roi-demo-display-mode" title="${escapeAttr(displayHelp.short)}">
-            ${ROI_DEMO_DISPLAY_MODES.map((mode) => {
-              const help = sampleFieldBehaviorExplainer('displayLayer', mode);
-              return `<option value="${escapeAttr(mode)}" ${state.displayMode === mode ? 'selected' : ''} title="${escapeAttr(help.short)}">${escapeHtml(roiDisplayModeLabel(mode))}</option>`;
-            }).join('')}
-          </select>
-        </label>
-        <label class="compact-field">
-          Time Speed
-          <select id="roi-demo-time-speed">
-            ${[0.5, 1, 2, 5].map((speed) => `<option value="${escapeAttr(speed)}" ${Number(state.timeSpeedScale ?? 1) === speed ? 'selected' : ''}>${escapeHtml(speed)}x</option>`).join('')}
-          </select>
-        </label>
-        ${roiHelpButtonHtml('displayLayer', `Explain ${roiDisplayModeLabel(state.displayMode)}`)}
-      </section>
-      <section class="console-status">
-        <span>Field Stats</span>
-        <strong>Activity ${escapeHtml(formatDemoStat(state.activityDiagnostics?.meanValue ?? state.stats?.mean))} mean | ${escapeHtml(formatPercent(state.activityDiagnostics?.activeFraction))} active | ${escapeHtml(formatPercent(state.activityDiagnostics?.highValueFraction))} high | Max ${escapeHtml(formatDemoStat(state.activityDiagnostics?.maxValue ?? state.stats?.max))} | Range ${escapeHtml(formatDemoStat(state.activityDiagnostics?.dynamicRangeAfterContrast ?? ((state.stats?.max ?? 0) - (state.stats?.min ?? 0))))}</strong>
-        <small>${escapeHtml(state.eventLikelihoodLabel ?? roiEventLikelihoodLabel(state.eventLikelihood))} ${escapeHtml(state.eventLikelihoodDynamics === 'dynamic' ? `${roiTemporalPatternLabel(state.eventLikelihoodTemporalPattern)} / ${roiLikelihoodSpatialEvolutionLabel(state.eventLikelihoodSpatialEvolution)}` : 'Static')} / ${escapeHtml(state.spatialPatternLabel ?? roiPureSpatialPatternLabel(state.spatialPattern))} / ${escapeHtml(state.valueDistributionLabel ?? roiValueDistributionLabel(state.valueDistribution))} / ${escapeHtml(state.temporalPatternLabel ?? roiTemporalPatternLabel(state.temporalPattern))} / ${escapeHtml(state.spatialEvolutionLabel ?? roiSpatialEvolutionLabel(state.spatialEvolution ?? state.patternEvolution))} / ${escapeHtml(stateModelLabel)} | BBox ${escapeHtml(formatPercent(state.activityDiagnostics?.activeBoundingBoxCoverage))} | Components ${escapeHtml(String(state.activityDiagnostics?.connectedComponentCount ?? 0))} | Hotspots ${escapeHtml(String(state.activityDiagnostics?.activeHotspotCount ?? state.activityDiagnostics?.hotspotComponentCount ?? 0))} | L/S corr ${escapeHtml(formatDemoStat(state.activityDiagnostics?.likelihoodSampleCorrelation))} | P10/P50/P90 ${escapeHtml(formatDemoStat(state.activityDiagnostics?.percentile10))}/${escapeHtml(formatDemoStat(state.activityDiagnostics?.percentile50))}/${escapeHtml(formatDemoStat(state.activityDiagnostics?.percentile90))} | Total ${escapeHtml(formatDemoStat(state.activityDiagnostics?.totalActivityMass ?? state.stats?.totalValue))} | Injected +${escapeHtml(formatDemoStat(state.activityDiagnostics?.injectedActivity))}${escapeHtml(graphSummary)} | Contrast ${escapeHtml(state.activityDiagnostics?.contrastEnhanced ? `on ${formatDemoStat(state.activityDiagnostics?.contrastStrength)}` : 'off')} | Decay -${escapeHtml(formatDemoStat(state.activityDiagnostics?.activityLostToDecay))} | Depletion -${escapeHtml(formatDemoStat(state.activityDiagnostics?.activityLostToDepletion))}${state.activityDiagnostics?.diagnosticWarnings?.length ? ` | Warnings ${escapeHtml(state.activityDiagnostics.diagnosticWarnings.join(', '))}` : ''}</small>
-      </section>
-      <section class="console-section">
-        <h2>Data Export</h2>
-        ${demoExportControlsHtml(state)}
-        <button data-action="export-demo-json" class="console-button">Export Demo JSON</button>
-        <div class="hud-muted">Exports S(x,y,t), the cell-centered L(x,y,t) mesh, graphField metadata, graph state/message layers, likelihood nodes, config, and selected-cell inspector state.</div>
-      </section>
-      <section class="console-footer">
-        <button data-action="menu" class="console-button secondary">Main Menu</button>
-      </section>
-    `;
-    this.app.applyConsoleAccordions?.('roiDemo');
+    this.root.innerHTML = samplingProcessConsoleHtml(state);
+    this.app.applyConsoleAccordions?.('roiDemo', null, { defaultCollapsed: true });
+    this.root.querySelector('#sampling-process-mode')?.addEventListener('change', (event) => handlers.processMode?.(event.target.value));
+    this.root.querySelector('#roi-demo-pattern-source')?.addEventListener('change', (event) => handlers.patternSource?.(event.target.value));
+    this.root.querySelector('#sampling-paint-state')?.addEventListener('change', (event) => handlers.paintSelection?.({ state: event.target.value }));
+    this.root.querySelector('#sampling-paint-rule')?.addEventListener('change', (event) => handlers.paintSelection?.({ ruleId: event.target.value }));
+    this.root.querySelector('#sampling-paint-group')?.addEventListener('input', (event) => handlers.paintSelection?.({ groupId: Number(event.target.value) }));
+    this.root.querySelector('#sampling-paint-group')?.addEventListener('change', (event) => handlers.paintSelection?.({ groupId: Number(event.target.value) }));
+    this.root.querySelector('#sampling-paint-source')?.addEventListener('input', (event) => handlers.paintSelection?.({ sourceValue: Number(event.target.value) }));
+    this.root.querySelector('#sampling-paint-source')?.addEventListener('change', (event) => handlers.paintSelection?.({ sourceValue: Number(event.target.value) }));
+    this.root.querySelector('[data-action="sampling-paint-assign"]')?.addEventListener('click', () => handlers.paintSelectedCell?.(this.paintSelectionFromControls()));
+    this.root.querySelector('[data-action="sampling-paint-clear"]')?.addEventListener('click', () => handlers.clearPaintCell?.());
+    this.root.querySelector('[data-action="sampling-paint-reset"]')?.addEventListener('click', () => handlers.clearPaintCanvas?.());
+    this.root.querySelector('[data-action="sampling-paint-randomize"]')?.addEventListener('click', () => handlers.randomizeProcessAllocation?.({ keepProcessPaint: true }));
+    this.root.querySelector('[data-action="sampling-paint-run"]')?.addEventListener('click', () => handlers.runProcessPaint?.());
+    this.root.querySelector('[data-action="sampling-paint-export"]')?.addEventListener('click', () => handlers.exportProcessRecipe?.());
+    this.root.querySelector('#sampling-random-seed')?.addEventListener('change', (event) => handlers.randomizeProcessAllocation?.({ seed: event.target.value }));
+    this.root.querySelector('#sampling-random-mode')?.addEventListener('change', (event) => handlers.randomizeProcessAllocation?.({ mode: event.target.value }));
+    this.root.querySelector('#sampling-random-groups')?.addEventListener('change', (event) => handlers.randomizeProcessAllocation?.({ groupCount: Number(event.target.value) }));
+    this.root.querySelector('#sampling-random-density')?.addEventListener('change', (event) => handlers.randomizeProcessAllocation?.({ activeFraction: Number(event.target.value) }));
+    this.root.querySelector('[data-action="sampling-random-generate"]')?.addEventListener('click', () => handlers.randomizeProcessAllocation?.({}));
     this.root.querySelector('#roi-demo-behavior-preset')?.addEventListener('change', (event) => handlers.behaviorPreset?.(event.target.value));
+    this.root.querySelector('#roi-demo-reference-signature')?.addEventListener('change', (event) => handlers.referenceSignature?.(event.target.value));
     this.root.querySelector('#roi-demo-event-likelihood')?.addEventListener('change', (event) => handlers.eventLikelihood?.(event.target.value));
     this.root.querySelector('#roi-demo-event-likelihood-dynamics')?.addEventListener('change', (event) => handlers.eventLikelihoodDynamics?.(event.target.value));
     this.root.querySelector('#roi-demo-event-likelihood-temporal-pattern')?.addEventListener('change', (event) => handlers.eventLikelihoodTemporalPattern?.(event.target.value));
@@ -578,20 +355,60 @@ export class MissionConsole {
     this.root.querySelector('#roi-demo-temporal-behavior')?.addEventListener('change', (event) => handlers.temporalBehavior?.(event.target.value));
     this.root.querySelector('#roi-demo-spatial-evolution')?.addEventListener('change', (event) => handlers.spatialEvolution?.(event.target.value));
     this.root.querySelector('#roi-demo-motion-scope')?.addEventListener('change', (event) => handlers.motionScope?.(event.target.value));
+    this.root.querySelector('#roi-demo-interaction-scale')?.addEventListener('change', (event) => handlers.interactionScale?.(event.target.value));
     this.root.querySelector('#roi-demo-state-model')?.addEventListener('change', (event) => handlers.stateModel?.(event.target.value));
     this.root.querySelector('#roi-demo-dynamic-complexity')?.addEventListener('change', (event) => handlers.dynamicComplexity?.(event.target.value));
     this.root.querySelector('#roi-demo-depletion-mode')?.addEventListener('change', (event) => handlers.depletionMode?.(event.target.value));
     this.root.querySelector('#roi-demo-display-mode')?.addEventListener('change', (event) => handlers.displayMode?.(event.target.value));
+    this.root.querySelectorAll('[data-roi-node-state-filter]').forEach((input) => {
+      input.addEventListener('change', (event) => handlers.viewFilters?.({ nodeStates: { [event.currentTarget.dataset.roiNodeStateFilter]: event.currentTarget.checked } }));
+    });
+    this.root.querySelector('#roi-filter-transition-only')?.addEventListener('change', (event) => handlers.viewFilters?.({ transitionNodesOnly: event.target.checked }));
+    this.root.querySelector('#roi-filter-fade-inactive')?.addEventListener('change', (event) => handlers.viewFilters?.({ fadeInactiveNodes: event.target.checked }));
+    this.root.querySelector('#roi-filter-topology-edges')?.addEventListener('change', (event) => handlers.viewFilters?.({ showTopologyEdges: event.target.checked }));
+    this.root.querySelector('#roi-filter-message-edges')?.addEventListener('change', (event) => handlers.viewFilters?.({ showActiveMessageEdges: event.target.checked }));
+    this.root.querySelector('#roi-filter-message-threshold')?.addEventListener('change', (event) => handlers.viewFilters?.({ messageStrengthThreshold: Number(event.target.value) }));
+    this.root.querySelector('#roi-filter-max-messages')?.addEventListener('change', (event) => handlers.viewFilters?.({ maxMessages: Number(event.target.value) }));
+    this.root.querySelector('#roi-filter-top-messages')?.addEventListener('change', (event) => handlers.viewFilters?.({ showTopMessagesOnly: event.target.checked }));
+    this.root.querySelectorAll('[data-roi-message-type-filter]').forEach((input) => {
+      input.addEventListener('change', (event) => handlers.viewFilters?.({ messageTypes: { [event.currentTarget.dataset.roiMessageTypeFilter]: event.currentTarget.checked } }));
+    });
+    this.root.querySelector('#roi-filter-same-community')?.addEventListener('change', (event) => handlers.viewFilters?.({ sameCommunity: event.target.checked }));
+    this.root.querySelector('#roi-filter-cross-community')?.addEventListener('change', (event) => handlers.viewFilters?.({ crossCommunity: event.target.checked }));
+    this.root.querySelector('#roi-filter-incoming-selected')?.addEventListener('change', (event) => handlers.viewFilters?.({ incomingToSelected: event.target.checked }));
+    this.root.querySelector('#roi-filter-outgoing-selected')?.addEventListener('change', (event) => handlers.viewFilters?.({ outgoingFromSelected: event.target.checked }));
+    this.root.querySelector('#roi-filter-neighborhood')?.addEventListener('change', (event) => handlers.viewFilters?.({ selectedNeighborhood: event.target.checked }));
+    this.root.querySelector('#roi-filter-meaning-layer')?.addEventListener('change', (event) => handlers.viewFilters?.({ roiMeaningLayer: event.target.value }));
     this.root.querySelector('#roi-demo-time-speed')?.addEventListener('change', (event) => handlers.timeSpeedScale?.(event.target.value));
+    this.root.querySelector('#roi-scenario-source')?.addEventListener('change', (event) => handlers.scenarioSettings?.({ sourceMode: event.target.value }, { render: false }));
+    this.root.querySelector('#roi-scenario-seed')?.addEventListener('change', (event) => handlers.scenarioSettings?.({ seed: event.target.value }, { render: false }));
+    this.root.querySelector('#roi-scenario-difficulty')?.addEventListener('change', (event) => handlers.scenarioSettings?.({ difficulty: event.target.value }, { render: false }));
+    this.root.querySelector('#roi-scenario-duration')?.addEventListener('change', (event) => handlers.scenarioSettings?.({ duration: Number(event.target.value) }, { render: false }));
+    this.root.querySelector('#roi-scenario-frame-count')?.addEventListener('change', (event) => handlers.scenarioSettings?.({ frameCount: Number(event.target.value) }, { render: false }));
+    this.root.querySelector('#roi-scenario-validation-mode')?.addEventListener('change', (event) => handlers.scenarioSettings?.({ validationMode: event.target.value }, { render: false }));
     this.root.querySelectorAll('[data-roi-help]').forEach((button) => {
       button.addEventListener('click', () => handlers.behaviorHelp?.(button.dataset.roiHelp));
     });
     this.bindDemoExportControls(handlers);
     this.bind({
       regenerate: handlers.regenerate,
+      'roi-compare-temporal': () => handlers.compareComponent?.('temporalPatterns'),
+      'roi-compare-evolution': () => handlers.compareComponent?.('spatialEvolution'),
+      'roi-compare-scale': () => handlers.compareComponent?.('interactionScale'),
+      'generate-roi-scenario': handlers.generateScenario,
       'export-demo-json': handlers.exportDemoJson,
+      'export-roi-scenario': handlers.exportScenarioJson,
       menu: handlers.menu
     });
+  }
+
+  paintSelectionFromControls() {
+    return {
+      state: this.root?.querySelector('#sampling-paint-state')?.value,
+      ruleId: this.root?.querySelector('#sampling-paint-rule')?.value,
+      groupId: Number(this.root?.querySelector('#sampling-paint-group')?.value),
+      sourceValue: Number(this.root?.querySelector('#sampling-paint-source')?.value)
+    };
   }
 
   renderCoupledFieldsDemoControls(state = {}, handlers = {}) {
@@ -1236,10 +1053,6 @@ function formatDemoStat(value) {
 function formatPercent(value) {
   const number = Number(value);
   return Number.isFinite(number) ? `${Math.round(number * 100)}%` : 'N/A';
-}
-
-function roiHelpButtonHtml(groupId, label) {
-  return `<button type="button" class="console-button secondary roi-help-button" data-roi-help="${escapeAttr(groupId)}">${escapeHtml(label)}</button>`;
 }
 
 function flowHelpButtonHtml(groupId, label) {

@@ -8,7 +8,7 @@ console.log('Preset Audit Summary');
 for (const result of results) {
   const suffix = result.warnings.length ? `: ${result.warnings.join(', ')}` : '';
   console.log(`- ${result.label}: ${result.status}${suffix}`);
-  console.log(`  active=${result.summary.minActiveCellFraction}/${result.summary.meanActiveCellFraction} high=${result.summary.meanHighValueCellFraction} range=${result.summary.meanDynamicRange} bbox=${result.summary.meanActiveBoundingBoxCoverage} delta=${result.summary.meanFrameDelta} components=${result.summary.meanConnectedComponents} movement=${result.summary.centerOfMassMovement} corr=${result.summary.meanSpatialCorrelation}`);
+  console.log(`  active=${result.summary.minActiveCellFraction}/${result.summary.meanActiveCellFraction} high=${result.summary.meanHighValueCellFraction} rare=${result.summary.meanRareExtremeFraction} tail=${result.summary.meanHeavyTailIndicator} bimodal=${result.summary.meanBimodalSeparation} range=${result.summary.meanDynamicRange} bbox=${result.summary.meanActiveBoundingBoxCoverage} delta=${result.summary.meanFrameDelta} components=${result.summary.meanConnectedComponents} movement=${result.summary.centerOfMassMovement} corr=${result.summary.meanSpatialCorrelation}`);
   if (result.status === 'FAIL') exitCode = 1;
 }
 

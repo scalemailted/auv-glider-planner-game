@@ -9,6 +9,7 @@ import {
 } from '../generation/SampleFieldConfig.js';
 import { buildRoiLikelihoodFieldModel } from './roi/RoiLikelihoodField.js';
 import { buildRoiGraphField } from './roi/RoiGraphField.js';
+import { ROI_INTERACTION_SCALES, roiProcessContractForPreset } from './roi/RoiProcessContracts.js';
 
 export const ROI_DEMO_GRID = { width: 24, height: 16 };
 const EVENT_LIKELIHOOD_FIELD_CACHE = new Map();
@@ -51,7 +52,16 @@ export const ROI_DEMO_PURE_SPATIAL_PATTERNS = [
   'monitoringStations',
   'seededTexture'
 ];
-export const ROI_DEMO_VALUE_DISTRIBUTIONS = ['constantValue', 'uniformRandom', 'gaussianNormal'];
+export const ROI_DEMO_VALUE_DISTRIBUTIONS = [
+  'constantValue',
+  'uniformRandom',
+  'gaussianNormal',
+  'skewedLow',
+  'skewedHigh',
+  'bimodalValues',
+  'heavyTailed',
+  'rareExtremeEvents'
+];
 export const ROI_DEMO_TEMPORAL_BEHAVIORS = SAMPLE_TEMPORAL_BEHAVIORS;
 export const ROI_DEMO_TEMPORAL_PATTERNS = [
   'static',
@@ -67,20 +77,38 @@ export const ROI_DEMO_TEMPORAL_PATTERNS = [
   'wavyMultiFrequency',
   'seasonal'
 ];
-export const ROI_DEMO_SPATIAL_EVOLUTIONS = ['stationary', 'continuousDrift', 'discreteJump', 'randomWalk', 'neighborPropagation'];
+export const ROI_DEMO_SPATIAL_EVOLUTIONS = [
+  'stationary',
+  'continuousDrift',
+  'discreteJump',
+  'randomWalk',
+  'neighborPropagation',
+  'expansion',
+  'contraction',
+  'divergence',
+  'convergence',
+  'morphMutation',
+  'shearStretch',
+  'rotationalSwirl',
+  'branchingGrowth'
+];
 export const ROI_DEMO_EVOLUTION_MODELS = ROI_DEMO_SPATIAL_EVOLUTIONS;
 export const ROI_DEMO_PATTERN_EVOLUTIONS = ROI_DEMO_SPATIAL_EVOLUTIONS;
 export const ROI_DEMO_MOTION_SCOPES = ['perFeature', 'localNeighborhood', 'global'];
+export const ROI_DEMO_INTERACTION_SCALES = ROI_INTERACTION_SCALES;
 export const ROI_DEMO_STATE_MODELS = ['timeIndexed', 'frequencyBased', 'stateEvolving', 'historyAware'];
 export const ROI_DEMO_DEPLETION_MODES = ['none', 'hard', 'soft', 'neighborhood', 'freshnessAge', 'revisitRecovery'];
 export const ROI_DEMO_DISPLAY_MODES = [
   'sampleValue',
   'eventLikelihood',
   'sampleValueLikelihoodOverlay',
+  'graphTopology',
   'graphCommunities',
   'nodeStates',
   'graphMessages',
   'communityMessages',
+  'stateTransitions',
+  'roiMeaning',
   'diagnosticsOverlay',
   'depletedValue',
   'freshnessRevisitValue',
@@ -89,6 +117,43 @@ export const ROI_DEMO_DISPLAY_MODES = [
 export const ROI_DEMO_DEFAULT_DISPLAY_MODE = 'sampleValueLikelihoodOverlay';
 export const ROI_DEMO_DYNAMIC_COMPLEXITY = ['low', 'medium', 'high'];
 export const ROI_DEMO_CLUSTER_SIZES = ['tight', 'medium', 'wide'];
+export const ROI_DEMO_MESSAGE_TYPES = ['activation', 'inhibition', 'recovery', 'cooldown', 'drift', 'generic'];
+export const ROI_DEMO_NODE_STATES = ['active', 'cooling', 'recovering', 'susceptible', 'consumed', 'inactive', 'inhibited', 'crest', 'alive'];
+export const ROI_DEMO_ROI_MEANING_LAYERS = ['all', 'current', 'nearFuture', 'depleted', 'transitionBoundary'];
+export const ROI_DEMO_VIEW_FILTER_DEFAULTS = Object.freeze({
+  nodeStates: Object.freeze({
+    active: true,
+    cooling: true,
+    recovering: true,
+    susceptible: true,
+    consumed: true,
+    inactive: false,
+    inhibited: true,
+    crest: true,
+    alive: true
+  }),
+  transitionNodesOnly: false,
+  fadeInactiveNodes: true,
+  showTopologyEdges: true,
+  showActiveMessageEdges: true,
+  messageStrengthThreshold: 0.12,
+  maxMessages: 80,
+  showTopMessagesOnly: true,
+  messageTypes: Object.freeze({
+    activation: true,
+    inhibition: true,
+    recovery: true,
+    cooldown: true,
+    drift: true,
+    generic: true
+  }),
+  sameCommunity: true,
+  crossCommunity: true,
+  incomingToSelected: false,
+  outgoingFromSelected: false,
+  selectedNeighborhood: true,
+  roiMeaningLayer: 'all'
+});
 
 export function normalizeRoiDemoDistribution(value = 'gaussianHotspots') {
   return ROI_DEMO_DISTRIBUTIONS.includes(value) ? value : 'gaussianHotspots';
@@ -145,12 +210,15 @@ export function createDemoRoiField({
   patternEvolution = null,
   spatialEvolution = null,
   motionScope = null,
+  interactionScale = null,
   stateModel = null,
   depletionMode = 'soft',
   displayMode = ROI_DEMO_DEFAULT_DISPLAY_MODE,
   dynamicComplexity = 'medium',
   forecastView = 'forecast',
   behaviorPresetId = null,
+  referenceSignatureId = null,
+  updateRuleHint = null,
   time = 0,
   demoTime = null,
   grid = ROI_DEMO_GRID
@@ -171,6 +239,11 @@ export function createDemoRoiField({
   const normalizedSpatialEvolution = normalizeRoiDemoSpatialEvolution(spatialEvolution ?? patternEvolution ?? evolutionModel);
   const normalizedEvolutionModel = normalizedSpatialEvolution;
   const normalizedMotionScope = normalizeRoiDemoMotionScope(motionScope ?? defaultMotionScopeForPattern(normalizedPureSpatialPattern, normalizedSpatialEvolution));
+  const normalizedInteractionScale = normalizeRoiDemoInteractionScale(interactionScale ?? roiProcessContractForPreset(behaviorPresetId, {
+    spatialEvolution: normalizedSpatialEvolution,
+    motionScope: normalizedMotionScope,
+    depletionMode
+  }).interactionScale);
   const normalizedStateModel = normalizeRoiDemoStateModel(stateModel ?? roiStateModelForEvolutionModel(normalizedEvolutionModel));
   const normalizedDepletionMode = normalizeRoiDemoDepletionMode(depletionMode);
   const normalizedDisplayMode = normalizeRoiDemoDisplayMode(displayModeFromLegacyForecastView(displayMode, forecastView));
@@ -244,6 +317,8 @@ export function createDemoRoiField({
     likelihoodField,
     likelihoodNodes: likelihoodFieldModel.nodes,
     behaviorPresetId,
+    referenceSignatureId,
+    updateRuleHint,
     temporalPattern: normalizedTemporalPattern,
     spatialEvolution: normalizedSpatialEvolution,
     stateModel: normalizedStateModel,
@@ -273,6 +348,7 @@ export function createDemoRoiField({
     temporalPattern: normalizedTemporalPattern,
     spatialEvolution: normalizedSpatialEvolution,
     motionScope: normalizedMotionScope,
+    interactionScale: normalizedInteractionScale,
     stateModel: normalizedStateModel,
     dynamicComplexity: normalizedDynamicComplexity,
     time: sampleTime
@@ -299,7 +375,8 @@ export function createDemoRoiField({
         temporalPattern: normalizedTemporalPattern,
         spatialEvolution: normalizedSpatialEvolution,
         dynamicComplexity: normalizedDynamicComplexity,
-        motionScope: normalizedMotionScope
+        motionScope: normalizedMotionScope,
+        interactionScale: normalizedInteractionScale
       });
   const field = evolvedResult.field;
   const displayResult = applySampleDisplayMode(field, {
@@ -327,8 +404,10 @@ export function createDemoRoiField({
     behaviorPresetId,
     eventLikelihoodMode: normalizedEventLikelihood,
     spatialPattern: normalizedPureSpatialPattern,
+    valueDistribution: normalizedValueDistribution,
     temporalPattern: normalizedTemporalPattern,
     spatialEvolution: normalizedSpatialEvolution,
+    interactionScale: normalizedInteractionScale,
     stateModel: normalizedStateModel,
     samplingEffect: normalizedDepletionMode,
     baseField,
@@ -347,6 +426,8 @@ export function createDemoRoiField({
   return {
     field: displayedField,
     sampleValueField: sampleDisplayField,
+    samplingValueField: sampleDisplayField,
+    valueLayer: sampleDisplayField,
     rawBaseField: baseField,
     evolvedField: field,
     width,
@@ -360,7 +441,14 @@ export function createDemoRoiField({
     eventLikelihoodSpatialEvolution: normalizedEventLikelihoodSpatialEvolution,
     eventLikelihoodSpatialEvolutionLabel: roiLikelihoodSpatialEvolutionLabel(normalizedEventLikelihoodSpatialEvolution),
     eventLikelihoodField: likelihoodField,
+    sourceField: likelihoodField,
+    sourceFieldValues: likelihoodField,
+    sourceFieldLayer: likelihoodField,
+    processSubstrateField: likelihoodField,
     likelihoodField: likelihoodFieldModel,
+    sourceFieldModel: likelihoodFieldModel,
+    sourceNodes: likelihoodFieldModel.nodes,
+    sourceFieldMetadata: likelihoodFieldModel,
     graphField,
     eventLikelihoodDiagnostics: likelihoodFieldModel.diagnostics,
     distribution: spatialDefaults.distribution,
@@ -385,6 +473,8 @@ export function createDemoRoiField({
     spatialEvolutionLabel: roiSpatialEvolutionLabel(normalizedSpatialEvolution),
     motionScope: normalizedMotionScope,
     motionScopeLabel: roiMotionScopeLabel(normalizedMotionScope),
+    interactionScale: normalizedInteractionScale,
+    interactionScaleLabel: roiInteractionScaleLabel(normalizedInteractionScale),
     stateModel: normalizedStateModel,
     stateModelLabel: roiStateModelLabel(normalizedStateModel),
     stateModelDescription: roiStateModelDescription(normalizedStateModel),
@@ -412,6 +502,7 @@ export function createDemoRoiField({
       evolutionModel: normalizedEvolutionModel,
       spatialEvolution: normalizedSpatialEvolution,
       motionScope: normalizedMotionScope,
+      interactionScale: normalizedInteractionScale,
       dynamicComplexity: normalizedDynamicComplexity,
       stateModel: normalizedStateModel,
       depletionMode: normalizedDepletionMode
@@ -485,7 +576,20 @@ export function normalizeRoiDemoValueDistribution(value = 'constantValue') {
     randomUniform: 'uniformRandom',
     gaussian: 'gaussianNormal',
     gaussianNormal: 'gaussianNormal',
-    normal: 'gaussianNormal'
+    normal: 'gaussianNormal',
+    skewLow: 'skewedLow',
+    lowSkew: 'skewedLow',
+    skewedLow: 'skewedLow',
+    skewHigh: 'skewedHigh',
+    highSkew: 'skewedHigh',
+    skewedHigh: 'skewedHigh',
+    bimodal: 'bimodalValues',
+    bimodalValues: 'bimodalValues',
+    heavyTail: 'heavyTailed',
+    heavyTailed: 'heavyTailed',
+    rareExtreme: 'rareExtremeEvents',
+    rareExtremes: 'rareExtremeEvents',
+    rareExtremeEvents: 'rareExtremeEvents'
   };
   return ROI_DEMO_VALUE_DISTRIBUTIONS.includes(aliases[value] ?? value) ? (aliases[value] ?? value) : 'constantValue';
 }
@@ -529,6 +633,26 @@ export function normalizeRoiDemoSpatialEvolution(value = 'stationary') {
     neighborActivation: 'neighborPropagation',
     propagation: 'neighborPropagation',
     neighborPropagation: 'neighborPropagation',
+    expand: 'expansion',
+    growth: 'expansion',
+    expansion: 'expansion',
+    shrink: 'contraction',
+    contraction: 'contraction',
+    diverge: 'divergence',
+    divergence: 'divergence',
+    converge: 'convergence',
+    convergence: 'convergence',
+    morph: 'morphMutation',
+    mutation: 'morphMutation',
+    morphMutation: 'morphMutation',
+    shear: 'shearStretch',
+    stretch: 'shearStretch',
+    shearStretch: 'shearStretch',
+    swirl: 'rotationalSwirl',
+    rotation: 'rotationalSwirl',
+    rotationalSwirl: 'rotationalSwirl',
+    branching: 'branchingGrowth',
+    branchingGrowth: 'branchingGrowth',
     revisitRecovery: 'stationary',
     historyAware: 'stationary'
   };
@@ -556,6 +680,27 @@ export function normalizeRoiDemoMotionScope(value = 'perFeature') {
   };
   const normalized = aliases[value] ?? value;
   return ROI_DEMO_MOTION_SCOPES.includes(normalized) ? normalized : 'perFeature';
+}
+
+export function normalizeRoiDemoInteractionScale(value = 'hybrid') {
+  const aliases = {
+    global: 'global',
+    globalField: 'global',
+    cluster: 'cluster',
+    community: 'cluster',
+    clusterCommunity: 'cluster',
+    cell: 'cell',
+    node: 'cell',
+    cellNode: 'cell',
+    edge: 'edge',
+    neighbor: 'edge',
+    edgeNeighbor: 'edge',
+    hybrid: 'hybrid',
+    multiScale: 'hybrid',
+    multi: 'hybrid'
+  };
+  const normalized = aliases[value] ?? value;
+  return ROI_DEMO_INTERACTION_SCALES.includes(normalized) ? normalized : 'hybrid';
 }
 
 export function normalizeRoiDemoStateModel(value = 'stateEvolving') {
@@ -605,6 +750,9 @@ export function normalizeRoiDemoDisplayMode(value = 'sampleValue') {
     sampleValueLikelihoodOverlay: 'sampleValueLikelihoodOverlay',
     likelihoodOverlay: 'sampleValueLikelihoodOverlay',
     sampleWithLikelihoodOverlay: 'sampleValueLikelihoodOverlay',
+    graphTopology: 'graphTopology',
+    topology: 'graphTopology',
+    graphEdges: 'graphTopology',
     graphCommunities: 'graphCommunities',
     communities: 'graphCommunities',
     graphCommunity: 'graphCommunities',
@@ -615,6 +763,12 @@ export function normalizeRoiDemoDisplayMode(value = 'sampleValue') {
     edgeMessages: 'graphMessages',
     communityMessages: 'communityMessages',
     communityPlusMessages: 'communityMessages',
+    stateTransitions: 'stateTransitions',
+    transitions: 'stateTransitions',
+    transitionLayer: 'stateTransitions',
+    roiMeaning: 'roiMeaning',
+    roiMeaningOverlay: 'roiMeaning',
+    meaning: 'roiMeaning',
     diagnosticsOverlay: 'diagnosticsOverlay',
     diagnostics: 'diagnosticsOverlay',
     depleted: 'depletedValue',
@@ -627,6 +781,69 @@ export function normalizeRoiDemoDisplayMode(value = 'sampleValue') {
     rawBaseValue: 'rawBaseValue'
   };
   return ROI_DEMO_DISPLAY_MODES.includes(aliases[value] ?? value) ? (aliases[value] ?? value) : 'sampleValue';
+}
+
+export function normalizeRoiDemoViewFilters(value = {}) {
+  const input = value && typeof value === 'object' ? value : {};
+  const defaults = ROI_DEMO_VIEW_FILTER_DEFAULTS;
+  const nodeStates = {};
+  for (const state of ROI_DEMO_NODE_STATES) {
+    nodeStates[state] = input.nodeStates?.[state] === undefined ? defaults.nodeStates[state] : Boolean(input.nodeStates[state]);
+  }
+  const messageTypes = {};
+  for (const type of ROI_DEMO_MESSAGE_TYPES) {
+    messageTypes[type] = input.messageTypes?.[type] === undefined ? defaults.messageTypes[type] : Boolean(input.messageTypes[type]);
+  }
+  return {
+    nodeStates,
+    transitionNodesOnly: Boolean(input.transitionNodesOnly ?? defaults.transitionNodesOnly),
+    fadeInactiveNodes: input.fadeInactiveNodes === undefined ? defaults.fadeInactiveNodes : Boolean(input.fadeInactiveNodes),
+    showTopologyEdges: input.showTopologyEdges === undefined ? defaults.showTopologyEdges : Boolean(input.showTopologyEdges),
+    showActiveMessageEdges: input.showActiveMessageEdges === undefined ? defaults.showActiveMessageEdges : Boolean(input.showActiveMessageEdges),
+    messageStrengthThreshold: clampNumber(input.messageStrengthThreshold, 0, 1, defaults.messageStrengthThreshold),
+    maxMessages: clampInteger(input.maxMessages, 1, 500, defaults.maxMessages),
+    showTopMessagesOnly: input.showTopMessagesOnly === undefined ? defaults.showTopMessagesOnly : Boolean(input.showTopMessagesOnly),
+    messageTypes,
+    sameCommunity: input.sameCommunity === undefined ? defaults.sameCommunity : Boolean(input.sameCommunity),
+    crossCommunity: input.crossCommunity === undefined ? defaults.crossCommunity : Boolean(input.crossCommunity),
+    incomingToSelected: Boolean(input.incomingToSelected ?? defaults.incomingToSelected),
+    outgoingFromSelected: Boolean(input.outgoingFromSelected ?? defaults.outgoingFromSelected),
+    selectedNeighborhood: input.selectedNeighborhood === undefined ? defaults.selectedNeighborhood : Boolean(input.selectedNeighborhood),
+    roiMeaningLayer: ROI_DEMO_ROI_MEANING_LAYERS.includes(input.roiMeaningLayer) ? input.roiMeaningLayer : defaults.roiMeaningLayer
+  };
+}
+
+export function roiDemoDisplayModeNeedsViewFilters(value) {
+  return ['graphTopology', 'graphCommunities', 'nodeStates', 'graphMessages', 'communityMessages', 'stateTransitions', 'roiMeaning', 'diagnosticsOverlay'].includes(normalizeRoiDemoDisplayMode(value));
+}
+
+export function roiDisplayModeCaption(value) {
+  return {
+    sampleValue: 'S(x,y,t): realized sampling value after time, spatial evolution, and sampling effects.',
+    eventLikelihood: 'Source / Initial Field: deterministic or seeded process substrate before realized sampling value.',
+    sampleValueLikelihoodOverlay: 'S(x,y,t) heatmap with Source / Initial Field contour/mesh overlay.',
+    graphTopology: 'Underlying graph edges and communities; topology is structural, not emitted message strength.',
+    graphCommunities: 'Community basins and cluster membership used by graph-backed ROI rules.',
+    nodeStates: 'Node state layer: active, cooling, recovering, susceptible, consumed, inhibited, or inactive.',
+    graphMessages: 'Dynamic process influence messages emitted by the update rule; inferred fallback is diagnostic only.',
+    communityMessages: 'Community basins plus same/cross-community message edges.',
+    stateTransitions: 'Nodes that changed state this frame, with transition causes where emitted by the rule.',
+    roiMeaning: 'Derived ROI roles: current value, near-future value, depleted/dead cells, and transition boundaries.',
+    diagnosticsOverlay: 'Combined diagnostic overlay of L mesh, messages, node states, and state counts.',
+    depletedValue: 'Demo-only depleted/freshness-adjusted sample value unless connected to mission visits.',
+    freshnessRevisitValue: 'Demo-only age-of-information/revisit value unless connected to mission visits.',
+    rawBaseValue: 'Seeded base sample value before temporal evolution, graph updates, and display effects.'
+  }[normalizeRoiDemoDisplayMode(value)] ?? 'Sample / ROI display layer.';
+}
+
+function clampNumber(value, min, max, fallback) {
+  const number = Number(value);
+  if (!Number.isFinite(number)) return fallback;
+  return Math.max(min, Math.min(max, number));
+}
+
+function clampInteger(value, min, max, fallback) {
+  return Math.round(clampNumber(value, min, max, fallback));
 }
 
 export function normalizeRoiDemoDynamicComplexity(value = 'medium') {
@@ -678,7 +895,15 @@ export function roiSpatialEvolutionLabel(value) {
     randomWalk: 'Random Walk',
     neighborPropagation: 'Neighbor Propagation',
     diffusion: 'Neighbor Propagation',
-    neighborActivation: 'Neighbor Propagation'
+    neighborActivation: 'Neighbor Propagation',
+    expansion: 'Expansion',
+    contraction: 'Contraction',
+    divergence: 'Divergence',
+    convergence: 'Convergence',
+    morphMutation: 'Morph / Mutation',
+    shearStretch: 'Shear / Stretch',
+    rotationalSwirl: 'Rotational Swirl',
+    branchingGrowth: 'Branching Growth'
   }[value] ?? 'Stationary';
 }
 
@@ -688,6 +913,16 @@ export function roiMotionScopeLabel(value) {
     localNeighborhood: 'Local / Neighborhood',
     global: 'Global'
   }[value] ?? 'Per Feature';
+}
+
+export function roiInteractionScaleLabel(value) {
+  return {
+    global: 'Global Field',
+    cluster: 'Cluster / Community',
+    cell: 'Cell / Node',
+    edge: 'Edge / Neighbor',
+    hybrid: 'Hybrid Multi-Scale'
+  }[value] ?? 'Hybrid Multi-Scale';
 }
 
 export function roiPureSpatialPatternLabel(value) {
@@ -716,20 +951,25 @@ export function roiValueDistributionLabel(value) {
   return {
     constantValue: 'Constant Value',
     uniformRandom: 'Uniform Random',
-    gaussianNormal: 'Gaussian / Normal'
+    gaussianNormal: 'Gaussian / Normal',
+    skewedLow: 'Skewed Low',
+    skewedHigh: 'Skewed High',
+    bimodalValues: 'Bimodal Values',
+    heavyTailed: 'Heavy-Tailed',
+    rareExtremeEvents: 'Rare Extreme Events'
   }[value] ?? 'Constant Value';
 }
 
 export function roiEventLikelihoodLabel(value) {
   return {
-    uniformLikelihood: 'Uniform Likelihood',
-    gaussianLikelihood: 'Gaussian Likelihood',
-    multiModalLikelihood: 'Multi-Modal Likelihood',
-    gradientLikelihood: 'Gradient Likelihood',
-    patchyLikelihood: 'Patchy Likelihood',
-    seededTextureLikelihood: 'Seeded Texture Likelihood',
-    sparseCandidateSites: 'Sparse Candidate Sites'
-  }[value] ?? 'Uniform Likelihood';
+    uniformLikelihood: 'Uniform Source Field',
+    gaussianLikelihood: 'Gaussian Source Basin',
+    multiModalLikelihood: 'Multi-Source Basins',
+    gradientLikelihood: 'Gradient Source Field',
+    patchyLikelihood: 'Patchy Source Field',
+    seededTextureLikelihood: 'Seeded Texture Source Field',
+    sparseCandidateSites: 'Sparse Source Sites'
+  }[value] ?? 'Uniform Source Field';
 }
 
 export function roiLikelihoodDynamicsLabel(value) {
@@ -745,7 +985,15 @@ export function roiLikelihoodSpatialEvolutionLabel(value) {
     continuousDrift: 'Continuous Movement',
     discreteJump: 'Discrete Jump',
     randomWalk: 'Random Walk',
-    neighborPropagation: 'Neighbor Propagation'
+    neighborPropagation: 'Neighbor Propagation',
+    expansion: 'Expansion',
+    contraction: 'Contraction',
+    divergence: 'Divergence',
+    convergence: 'Convergence',
+    morphMutation: 'Morph / Mutation',
+    shearStretch: 'Shear / Stretch',
+    rotationalSwirl: 'Rotational Swirl',
+    branchingGrowth: 'Branching Growth'
   }[value] ?? 'Stationary';
 }
 
@@ -870,13 +1118,16 @@ export function roiDepletionModeLabel(value) {
 
 export function roiDisplayModeLabel(value) {
   return {
-    sampleValue: 'Sample Value',
-    eventLikelihood: 'Event Likelihood',
-    sampleValueLikelihoodOverlay: 'Sample Value + Likelihood Overlay',
+    sampleValue: 'Sampling Value',
+    eventLikelihood: 'Source Field',
+    sampleValueLikelihoodOverlay: 'Sampling Value + Source Overlay',
+    graphTopology: 'Graph Topology',
     graphCommunities: 'Graph Communities',
-    nodeStates: 'Node States',
-    graphMessages: 'Graph Messages',
+    nodeStates: 'Cell / Node States',
+    graphMessages: 'Process Influence Messages',
     communityMessages: 'Community + Messages',
+    stateTransitions: 'State Transitions',
+    roiMeaning: 'ROI Meaning',
     diagnosticsOverlay: 'Diagnostics Overlay',
     depletedValue: 'Depleted Value',
     freshnessRevisitValue: 'Freshness / Revisit Value',
@@ -886,7 +1137,7 @@ export function roiDisplayModeLabel(value) {
 
 export function roiStateModelForEvolutionModel(value) {
   const normalized = normalizeRoiDemoEvolutionModel(value);
-  if (normalized === 'stationary' || normalized === 'continuousDrift' || normalized === 'discreteJump') return 'timeIndexed';
+  if (['stationary', 'continuousDrift', 'discreteJump', 'shearStretch', 'rotationalSwirl', 'contraction', 'convergence'].includes(normalized)) return 'timeIndexed';
   return 'stateEvolving';
 }
 
@@ -931,7 +1182,8 @@ function pureSpatialPatternDefaults(pattern) {
 
 function defaultMotionScopeForPattern(spatialPattern, spatialEvolution) {
   if (spatialEvolution === 'stationary') return 'perFeature';
-  if (spatialEvolution === 'neighborPropagation') return 'localNeighborhood';
+  if (['neighborPropagation', 'morphMutation', 'branchingGrowth'].includes(spatialEvolution)) return 'localNeighborhood';
+  if (['shearStretch', 'rotationalSwirl', 'expansion', 'contraction', 'divergence', 'convergence'].includes(spatialEvolution)) return 'global';
   if (spatialPattern === 'patchyField' || spatialPattern === 'seededTexture') return 'localNeighborhood';
   return 'perFeature';
 }
@@ -1034,7 +1286,7 @@ function buildDistribution({ distribution, rng, seed, eventLikelihood, likelihoo
   return withNoise(viewAdjusted, rng, noise);
 }
 
-function sampleFieldConfigForDemo({ distribution, eventLikelihood, timeMode, spatialPattern, temporalBehavior, hotspotCount, evolutionModel, spatialEvolution, motionScope, dynamicComplexity, stateModel, depletionMode }) {
+function sampleFieldConfigForDemo({ distribution, eventLikelihood, timeMode, spatialPattern, temporalBehavior, hotspotCount, evolutionModel, spatialEvolution, motionScope, interactionScale, dynamicComplexity, stateModel, depletionMode }) {
   const defaults = distributionToSampleConfig(distribution);
   const selectedTemporal = timeMode === 'dynamic'
     ? temporalBehavior ?? defaults.temporalBehavior
@@ -1047,11 +1299,12 @@ function sampleFieldConfigForDemo({ distribution, eventLikelihood, timeMode, spa
     eventLikelihood: normalizeRoiDemoEventLikelihood(eventLikelihood),
     stateModel,
     motionScope: normalizeRoiDemoMotionScope(motionScope),
+    interactionScale: normalizeRoiDemoInteractionScale(interactionScale),
     mode: timeMode === 'dynamic' ? 'dynamic' : 'static',
     hotspotCount,
     spatialCorrelation: { enabled: true, radiusCells: 3, anisotropy: 'none' },
     neighborInfluence: {
-      enabled: ['neighborPropagation', 'randomWalk'].includes(spatialEvolution ?? evolutionModel) || selectedTemporal === 'diffusive' || selectedTemporal === 'markovNeighbor',
+      enabled: ['neighborPropagation', 'randomWalk', 'expansion', 'divergence', 'branchingGrowth', 'morphMutation'].includes(spatialEvolution ?? evolutionModel) || selectedTemporal === 'diffusive' || selectedTemporal === 'markovNeighbor',
       diffusionRate: complexityValue(complexity, 0.08, 0.14, 0.22),
       growthRate: complexityValue(complexity, 0.025, 0.04, 0.065),
       decayRate: complexityValue(complexity, 0.02, 0.03, 0.045)
@@ -1168,12 +1421,18 @@ function recurringHotspotModeCenters({ seed, width, height, count, eventLikeliho
   });
 }
 
-function sampleBehaviorMetadata({ eventLikelihood, temporalPattern, spatialEvolution, motionScope, stateModel: selectedStateModel, dynamicComplexity, time }) {
+function sampleBehaviorMetadata({ eventLikelihood, temporalPattern, spatialEvolution, motionScope, interactionScale, stateModel: selectedStateModel, dynamicComplexity, time }) {
   const stateModel = normalizeRoiDemoStateModel(selectedStateModel ?? roiStateModelForEvolutionModel(spatialEvolution));
   const normalizedMotionScope = normalizeRoiDemoMotionScope(motionScope);
+  const normalizedInteractionScale = normalizeRoiDemoInteractionScale(interactionScale);
   const normalizedEventLikelihood = normalizeRoiDemoEventLikelihood(eventLikelihood);
   const cycle = temporalPattern === 'seasonal' ? 72 : temporalPattern === 'intermittent' ? 18 : 24;
   const phase = positiveModulo(time, cycle) / cycle;
+  const scaleSupport = interactionScaleSupportDiagnostics({
+    interactionScale: normalizedInteractionScale,
+    spatialEvolution,
+    stateModel
+  });
   return {
     eventLikelihood: normalizedEventLikelihood,
     eventLikelihoodLabel: roiEventLikelihoodLabel(normalizedEventLikelihood),
@@ -1183,19 +1442,22 @@ function sampleBehaviorMetadata({ eventLikelihood, temporalPattern, spatialEvolu
     spatialEvolutionLabel: roiSpatialEvolutionLabel(spatialEvolution),
     motionScope: normalizedMotionScope,
     motionScopeLabel: roiMotionScopeLabel(normalizedMotionScope),
+    interactionScale: normalizedInteractionScale,
+    interactionScaleLabel: roiInteractionScaleLabel(normalizedInteractionScale),
+    interactionScaleSupport: scaleSupport,
     dynamicComplexity,
     stateModel,
     stateModelLabel: roiStateModelLabel(stateModel),
     stateModelDescription: roiStateModelDescription(stateModel),
     priorMode: stateModel,
     burstPhase: burstPhaseLabel(phase),
-    neighborInfluence: spatialEvolution === 'neighborPropagation' ? dynamicComplexity : 'off',
+    neighborInfluence: ['neighborPropagation', 'branchingGrowth', 'expansion', 'divergence', 'morphMutation'].includes(spatialEvolution) ? dynamicComplexity : 'off',
     featureMotion: featureMotionDescription(spatialEvolution, normalizedMotionScope),
     explanation: `${spatialEvolutionDescription(spatialEvolution, normalizedMotionScope)} Event origins are biased by ${roiEventLikelihoodLabel(normalizedEventLikelihood).toLowerCase()}.`
   };
 }
 
-function applyEvolutionModel(field, { seed, behaviorPresetId, likelihoodField, time, timeMode, temporalPattern, spatialEvolution, dynamicComplexity, motionScope }) {
+function applyEvolutionModel(field, { seed, behaviorPresetId, likelihoodField, time, timeMode, temporalPattern, spatialEvolution, dynamicComplexity, motionScope, interactionScale }) {
   if (timeMode !== 'dynamic' || behaviorPresetId === 'recurringHotspots') {
     return {
       field: field.map((row) => row.map(round3)),
@@ -1211,6 +1473,7 @@ function applyEvolutionModel(field, { seed, behaviorPresetId, likelihoodField, t
   }
   const complexityScale = complexityValue(dynamicComplexity, 0.65, 1, 1.35);
   const normalizedMotionScope = normalizeRoiDemoMotionScope(motionScope);
+  const normalizedInteractionScale = normalizeRoiDemoInteractionScale(interactionScale);
   const temporalEnvelope = temporalEnvelopeForPattern(temporalPattern, time, seed);
   const retained = field.map((row) => row.map((value) => clamp01(value * temporalEnvelope)));
   let evolved = retained;
@@ -1251,6 +1514,48 @@ function applyEvolutionModel(field, { seed, behaviorPresetId, likelihoodField, t
       const threshold = 0.74 - likelihood * 0.26;
       return clamp01(value * 0.66 + activated[y][x] * (0.18 + likelihood * 0.16) + (block > threshold ? (0.08 + likelihood * 0.12) * complexityScale : 0));
     }));
+  } else if (spatialEvolution === 'expansion' || spatialEvolution === 'divergence') {
+    const expanded = warpField(retained, (x, y) => radialEvolutionOffset({
+      seed,
+      x,
+      y,
+      time,
+      complexityScale,
+      interactionScale: normalizedInteractionScale,
+      direction: 1
+    }));
+    const spread = diffuseField(expanded, complexityValue(dynamicComplexity, 0.06, 0.11, 0.17));
+    evolved = retained.map((row, y) => row.map((value, x) => clamp01(value * 0.24 + expanded[y][x] * 0.54 + spread[y][x] * 0.22)));
+  } else if (spatialEvolution === 'contraction' || spatialEvolution === 'convergence') {
+    evolved = warpField(retained, (x, y) => radialEvolutionOffset({
+      seed,
+      x,
+      y,
+      time,
+      complexityScale,
+      interactionScale: normalizedInteractionScale,
+      direction: -1
+    }));
+  } else if (spatialEvolution === 'morphMutation') {
+    const warped = warpField(retained, (x, y) => morphMutationOffset({ seed, x, y, time, complexityScale, interactionScale: normalizedInteractionScale }));
+    evolved = warped.map((row, y) => row.map((value, x) => {
+      const cellScale = normalizedInteractionScale === 'cell' || normalizedInteractionScale === 'hybrid' ? 0.1 : 0.045;
+      const mutation = (seededPulse(`${seed}:morph-mutation`, x, y, time) - 0.5) * cellScale * complexityScale;
+      const likelihood = likelihoodAtCell(likelihoodField, x, y);
+      return clamp01(value * 0.86 + likelihood * 0.08 + mutation);
+    }));
+  } else if (spatialEvolution === 'shearStretch') {
+    evolved = warpField(retained, (x, y) => shearStretchOffset({ seed, x, y, time, complexityScale, interactionScale: normalizedInteractionScale }));
+  } else if (spatialEvolution === 'rotationalSwirl') {
+    evolved = warpField(retained, (x, y) => rotationalSwirlOffset({ seed, x, y, time, complexityScale, interactionScale: normalizedInteractionScale }));
+  } else if (spatialEvolution === 'branchingGrowth') {
+    evolved = branchingGrowthField(retained, {
+      seed,
+      time,
+      likelihoodField,
+      dynamicComplexity,
+      interactionScale: normalizedInteractionScale
+    });
   }
   const balanced = applyPersistentActivityBalance(evolved, {
     seed,
@@ -1490,7 +1795,7 @@ function activityDiagnosticsForStage(baseField, retainedField, finalField, extra
   };
 }
 
-function buildActivityDiagnostics({ seed, time, behaviorPresetId, eventLikelihoodMode, spatialPattern, temporalPattern, spatialEvolution, stateModel, samplingEffect, baseField, evolvedField, displayedField, likelihoodField, likelihoodFieldModel, hotspotCount, graphField, evolutionDiagnostics, displayDiagnostics }) {
+function buildActivityDiagnostics({ seed, time, behaviorPresetId, eventLikelihoodMode, spatialPattern, valueDistribution, temporalPattern, spatialEvolution, interactionScale, stateModel, samplingEffect, baseField, evolvedField, displayedField, likelihoodField, likelihoodFieldModel, hotspotCount, graphField, evolutionDiagnostics, displayDiagnostics }) {
   const stats = summarizeField(displayedField);
   const activeCellCount = countCells(displayedField, 0.35);
   const highValueCellCount = countCells(displayedField, 0.65);
@@ -1500,6 +1805,8 @@ function buildActivityDiagnostics({ seed, time, behaviorPresetId, eventLikelihoo
   const featureEvolution = featureEvolutionDiagnostics({
     temporalPattern,
     spatialEvolution,
+    interactionScale,
+    interactionScaleLabel: roiInteractionScaleLabel(interactionScale),
     stateModel,
     spatialMetrics,
     hotspotMetrics,
@@ -1509,9 +1816,20 @@ function buildActivityDiagnostics({ seed, time, behaviorPresetId, eventLikelihoo
     ? recurringHotspotDiagnostics({ seed, time, eventLikelihoodMode, hotspotCount, displayedField, likelihoodField })
     : null;
   const highValueFraction = highValueCellCount / cellCount;
+  const valueShape = valueDistributionShapeDiagnostics(displayedField, valueDistribution);
+  const scaleSupport = interactionScaleSupportDiagnostics({
+    interactionScale,
+    spatialEvolution,
+    stateModel,
+    graphField,
+    motionScope: graphField?.metadata?.motionScope
+  });
   const warnings = roiDiagnosticsWarnings({
     eventLikelihoodMode,
     spatialPattern,
+    valueDistribution,
+    valueShape,
+    scaleSupport,
     stats,
     activeFraction: activeCellCount / cellCount,
     highValueFraction,
@@ -1523,8 +1841,13 @@ function buildActivityDiagnostics({ seed, time, behaviorPresetId, eventLikelihoo
     spatialPattern,
     temporalPattern,
     spatialEvolution,
+    valueDistribution,
     stateModel,
     samplingEffect,
+    interactionScale,
+    interactionScaleLabel: roiInteractionScaleLabel(interactionScale),
+    interactionScaleSupport: scaleSupport,
+    valueDistributionShape: valueShape,
     minValue: stats.min,
     meanValue: stats.mean,
     maxValue: stats.max,
@@ -1673,7 +1996,62 @@ function connectedComponentCount(active) {
   return components;
 }
 
-function roiDiagnosticsWarnings({ eventLikelihoodMode, spatialPattern, stats, activeFraction, highValueFraction, spatialMetrics }) {
+function valueDistributionShapeDiagnostics(field, valueDistribution) {
+  const values = (field ?? []).flat().map(Number).filter(Number.isFinite).sort((a, b) => a - b);
+  const count = Math.max(1, values.length);
+  const p10 = percentileSorted(values, 0.1);
+  const p25 = percentileSorted(values, 0.25);
+  const p50 = percentileSorted(values, 0.5);
+  const p75 = percentileSorted(values, 0.75);
+  const p90 = percentileSorted(values, 0.9);
+  const p99 = percentileSorted(values, 0.99);
+  return {
+    valueDistribution: normalizeRoiDemoValueDistribution(valueDistribution),
+    percentile10: round3(p10),
+    percentile25: round3(p25),
+    percentile50: round3(p50),
+    percentile75: round3(p75),
+    percentile90: round3(p90),
+    percentile99: round3(p99),
+    highTailSpread: round3(p99 - p90),
+    lowTailSpread: round3(p10 - (values[0] ?? 0)),
+    bimodalSeparation: round3((p25 < 0.36 && p75 > 0.62) ? p75 - p25 : 0),
+    rareExtremeFraction: round3(values.filter((value) => value >= 0.9).length / count),
+    lowValueFraction: round3(values.filter((value) => value <= 0.25).length / count),
+    highValueFraction: round3(values.filter((value) => value >= 0.75).length / count)
+  };
+}
+
+function interactionScaleSupportDiagnostics({ interactionScale, spatialEvolution, stateModel, graphField }) {
+  const scale = normalizeRoiDemoInteractionScale(interactionScale);
+  const evolution = normalizeRoiDemoSpatialEvolution(spatialEvolution);
+  const graphActive = graphField?.updateRule && graphField.updateRule !== 'memoryless';
+  const edgeRules = ['neighborPropagation', 'branchingGrowth', 'expansion'];
+  const globalRules = ['continuousDrift', 'discreteJump', 'randomWalk', 'expansion', 'contraction', 'divergence', 'convergence', 'shearStretch', 'rotationalSwirl'];
+  const cellRules = ['randomWalk', 'morphMutation', 'neighborPropagation', 'branchingGrowth'];
+  let status = 'metadata_only';
+  let reason = 'The selected rule does not materially change based on interaction scale.';
+  if ((scale === 'edge' || scale === 'hybrid') && (edgeRules.includes(evolution) || graphActive)) {
+    status = 'active';
+    reason = 'Neighbor or graph-local spread uses edge/community influence.';
+  } else if (scale === 'global' && globalRules.includes(evolution)) {
+    status = 'active';
+    reason = 'The selected evolution applies whole-field deformation or displacement.';
+  } else if ((scale === 'cell' || scale === 'cluster') && cellRules.includes(evolution)) {
+    status = 'active';
+    reason = 'The selected evolution uses local seeded cells or regions.';
+  } else if (stateModel === 'stateEvolving' || graphActive || globalRules.includes(evolution) || cellRules.includes(evolution)) {
+    status = 'partial';
+    reason = 'The evolution changes the field, but this scale mostly affects interpretation and diagnostic grouping.';
+  }
+  return {
+    interactionScale: scale,
+    status,
+    reason
+  };
+}
+
+function roiDiagnosticsWarnings({ eventLikelihoodMode, spatialPattern, valueDistribution, valueShape, scaleSupport, stats, activeFraction, highValueFraction, spatialMetrics }) {
   const warnings = [];
   const range = stats.max - stats.min;
   const broadExpected = ['multiModalLikelihood', 'patchyLikelihood', 'seededTextureLikelihood'].includes(eventLikelihoodMode)
@@ -1683,6 +2061,10 @@ function roiDiagnosticsWarnings({ eventLikelihoodMode, spatialPattern, stats, ac
   if (range < 0.15 && spatialPattern !== 'constantField') warnings.push('low_value_range');
   if (stats.variance < 0.006 && spatialPattern !== 'constantField') warnings.push('low_variance');
   if (highValueFraction > 0.82 || activeFraction > 0.985) warnings.push('possible_saturation');
+  if (valueDistribution === 'rareExtremeEvents' && (valueShape?.rareExtremeFraction ?? 0) <= 0) warnings.push('rare_extremes_not_visible');
+  if (valueDistribution === 'bimodalValues' && (valueShape?.bimodalSeparation ?? 0) < 0.18) warnings.push('bimodal_values_weak');
+  if (valueDistribution === 'heavyTailed' && (valueShape?.highTailSpread ?? 0) < 0.04) warnings.push('heavy_tail_subtle');
+  if (scaleSupport?.status === 'metadata_only') warnings.push('interaction_scale_metadata_only');
   return warnings;
 }
 
@@ -1713,6 +2095,12 @@ function featureEvolutionPatternFor(spatialEvolution, temporalPattern) {
   if (spatialEvolution === 'discreteJump') return 'multiSourcePulsing';
   if (spatialEvolution === 'neighborPropagation' && temporalPattern === 'bursty') return 'frontBoundaryPropagation';
   if (spatialEvolution === 'neighborPropagation') return 'neighborRipplePropagation';
+  if (spatialEvolution === 'expansion' || spatialEvolution === 'divergence') return 'expandingScalarField';
+  if (spatialEvolution === 'contraction' || spatialEvolution === 'convergence') return 'contractingScalarField';
+  if (spatialEvolution === 'morphMutation') return 'morphingLocalField';
+  if (spatialEvolution === 'shearStretch') return 'shearedScalarField';
+  if (spatialEvolution === 'rotationalSwirl') return 'rotatingScalarField';
+  if (spatialEvolution === 'branchingGrowth') return 'branchingLocalGrowth';
   if (temporalPattern === 'wavyMultiFrequency' || temporalPattern === 'periodic' || temporalPattern === 'seasonal') return 'oscillatingField';
   if (temporalPattern === 'bursty' || temporalPattern === 'rapidPulse' || temporalPattern === 'randomPulses') return 'multiSourcePulsing';
   return 'stationaryScalarField';
@@ -1726,6 +2114,12 @@ function featureEvolutionValidationTargets(pattern) {
     multiSourcePulsing: ['mode count >= 3 when configured', 'phase offsets visible', 'same basins recur'],
     neighborRipplePropagation: ['local neighbor activation', 'bounded spread', 'not random flicker'],
     frontBoundaryPropagation: ['visible active front', 'near-neighbor activation', 'behind-front residual'],
+    expandingScalarField: ['outward growth', 'bounded spread', 'not full-domain saturation'],
+    contractingScalarField: ['inward concentration', 'retained activity', 'not extinction'],
+    morphingLocalField: ['local shape changes', 'bounded mutation', 'no independent frame noise'],
+    shearedScalarField: ['visible deformation', 'feature continuity', 'not physical current transport'],
+    rotatingScalarField: ['swirling displacement', 'retained magnitude', 'bounded center movement'],
+    branchingLocalGrowth: ['branch-like local spread', 'neighbor continuity', 'not random speckle'],
     oscillatingField: ['phase changes over time', 'recurring regions', 'value range remains useful']
   }[pattern] ?? ['value range remains useful', 'not saturated', 'not extinct'];
 }
@@ -1824,7 +2218,15 @@ function spatialEvolutionDescription(value, motionScope = 'perFeature') {
     randomWalk: motionScope === 'global'
       ? 'The whole field wanders together because Motion Scope is Global.'
       : `Features wander by small seeded local steps using ${scope} motion.`,
-    neighborPropagation: 'Active cells influence nearby cells, spreading activity locally.'
+    neighborPropagation: 'Active cells influence nearby cells, spreading activity locally.',
+    expansion: 'The active geometry expands outward from a seeded center while preserving replayable structure.',
+    contraction: 'The active geometry contracts toward a seeded center while retaining value mass.',
+    divergence: 'Activity diverges away from seeded centers as a synthetic ROI evolution.',
+    convergence: 'Activity converges toward seeded centers as a synthetic ROI evolution.',
+    morphMutation: 'Local cells mutate and reshape the pattern without using per-frame random noise.',
+    shearStretch: 'The scalar field is sheared or stretched by a synthetic deformation.',
+    rotationalSwirl: 'The scalar field rotates around seeded centers as a synthetic ROI motion.',
+    branchingGrowth: 'Activity spreads along seeded branch gates and nearby cells.'
   }[value] ?? 'The pattern changes intensity but stays in the same location.';
 }
 
@@ -1835,6 +2237,12 @@ function featureMotionDescription(spatialEvolution, motionScope = 'perFeature') 
   if (spatialEvolution === 'continuousDrift') return `${roiMotionScopeLabel(motionScope)} smooth drift; regions use independent seeded trajectories`;
   if (spatialEvolution === 'randomWalk') return `${roiMotionScopeLabel(motionScope)} seeded walk; regions move by bounded local steps`;
   if (spatialEvolution === 'discreteJump') return `${roiMotionScopeLabel(motionScope)} seeded relocation; events can reappear in new regions`;
+  if (spatialEvolution === 'expansion' || spatialEvolution === 'divergence') return `${roiMotionScopeLabel(motionScope)} outward synthetic spread`;
+  if (spatialEvolution === 'contraction' || spatialEvolution === 'convergence') return `${roiMotionScopeLabel(motionScope)} inward synthetic concentration`;
+  if (spatialEvolution === 'morphMutation') return `${roiMotionScopeLabel(motionScope)} local seeded mutation`;
+  if (spatialEvolution === 'shearStretch') return `${roiMotionScopeLabel(motionScope)} shear/stretch deformation`;
+  if (spatialEvolution === 'rotationalSwirl') return `${roiMotionScopeLabel(motionScope)} rotational scalar deformation`;
+  if (spatialEvolution === 'branchingGrowth') return `${roiMotionScopeLabel(motionScope)} seeded branch-like local growth`;
   return roiMotionScopeLabel(motionScope);
 }
 
@@ -2014,6 +2422,96 @@ function randomWalkOffset({ seed, likelihoodField, x, y, step, complexityScale, 
       };
     }
   });
+}
+
+function radialEvolutionOffset({ seed, x, y, time, complexityScale, interactionScale, direction }) {
+  const center = seededEvolutionCenter(seed, time, interactionScale, direction > 0 ? 'expand' : 'contract');
+  const dx = x - center.x;
+  const dy = y - center.y;
+  const distance = Math.max(0.04, Math.hypot(dx, dy));
+  const phase = 0.5 + 0.5 * Math.sin(time * 0.085 + seededUnitLike(`${seed}:radial-phase`) * Math.PI * 2);
+  const scaleFactor = interactionScale === 'global' ? 1.12 : interactionScale === 'edge' ? 0.68 : 0.86;
+  const amount = (0.035 + phase * 0.085) * complexityScale * scaleFactor * direction;
+  return {
+    dx: clampRange((dx / distance) * amount, -0.24, 0.24),
+    dy: clampRange((dy / distance) * amount, -0.2, 0.2)
+  };
+}
+
+function shearStretchOffset({ seed, x, y, time, complexityScale, interactionScale }) {
+  const phase = seededUnitLike(`${seed}:shear-phase`) * Math.PI * 2;
+  const direction = seededUnitLike(`${seed}:shear-direction`) > 0.5 ? 1 : -1;
+  const localWave = interactionScale === 'cell' || interactionScale === 'hybrid'
+    ? Math.sin((x * 4.2 + y * 2.3) * Math.PI + time * 0.12 + phase) * 0.028 * complexityScale
+    : 0;
+  const shear = (y - 0.5) * Math.sin(time * 0.065 + phase) * 0.18 * complexityScale * direction;
+  const stretch = (x - 0.5) * Math.cos(time * 0.052 + phase * 0.7) * 0.05 * complexityScale;
+  return {
+    dx: clampRange(shear + stretch + localWave, -0.28, 0.28),
+    dy: clampRange((y - 0.5) * Math.sin(time * 0.041 + phase) * 0.055 * complexityScale, -0.12, 0.12)
+  };
+}
+
+function rotationalSwirlOffset({ seed, x, y, time, complexityScale, interactionScale }) {
+  const center = seededEvolutionCenter(seed, time, interactionScale, 'swirl');
+  const dx = x - center.x;
+  const dy = y - center.y;
+  const distance = Math.max(0.025, Math.hypot(dx, dy));
+  const falloff = Math.exp(-distance * (interactionScale === 'global' ? 1.4 : 2.6));
+  const direction = seededUnitLike(`${seed}:swirl-direction`) > 0.5 ? 1 : -1;
+  const angle = direction * (0.12 + 0.18 * falloff) * Math.sin(time * 0.075 + seededUnitLike(`${seed}:swirl-phase`) * Math.PI * 2) * complexityScale;
+  const cos = Math.cos(angle);
+  const sin = Math.sin(angle);
+  const rotatedX = dx * cos - dy * sin;
+  const rotatedY = dx * sin + dy * cos;
+  return {
+    dx: clampRange(rotatedX - dx, -0.22, 0.22),
+    dy: clampRange(rotatedY - dy, -0.18, 0.18)
+  };
+}
+
+function morphMutationOffset({ seed, x, y, time, complexityScale, interactionScale }) {
+  const cells = interactionScale === 'cell' ? 10 : interactionScale === 'cluster' ? 4 : 7;
+  const ix = Math.floor(clampRange(x, 0, 0.999) * cells);
+  const iy = Math.floor(clampRange(y, 0, 0.999) * Math.max(3, Math.round(cells * 0.7)));
+  const phaseX = seededUnitLike(`${seed}:morph-phase-x:${ix}:${iy}`) * Math.PI * 2;
+  const phaseY = seededUnitLike(`${seed}:morph-phase-y:${ix}:${iy}`) * Math.PI * 2;
+  const amplitude = (interactionScale === 'cell' ? 0.045 : 0.075) * complexityScale;
+  return {
+    dx: Math.sin(time * 0.11 + phaseX) * amplitude + Math.sin(y * Math.PI * 5 + phaseY) * amplitude * 0.34,
+    dy: Math.cos(time * 0.095 + phaseY) * amplitude * 0.78 + Math.cos(x * Math.PI * 4 + phaseX) * amplitude * 0.26
+  };
+}
+
+function branchingGrowthField(field, { seed, time, likelihoodField, dynamicComplexity, interactionScale }) {
+  const complexityScale = complexityValue(dynamicComplexity, 0.65, 1, 1.35);
+  const spread = diffuseField(field, interactionScale === 'edge' || interactionScale === 'hybrid'
+    ? complexityValue(dynamicComplexity, 0.14, 0.22, 0.32)
+    : complexityValue(dynamicComplexity, 0.08, 0.14, 0.2));
+  const height = field.length;
+  const width = field[0]?.length ?? 0;
+  const branchWindow = Math.floor(Math.max(0, time) / 5);
+  return field.map((row, y) => row.map((value, x) => {
+    const nx = width > 1 ? x / (width - 1) : 0;
+    const ny = height > 1 ? y / (height - 1) : 0;
+    const branchA = seededUnitLike(`${seed}:branch-a:${Math.floor(nx * 8)}:${Math.floor(ny * 6)}:${branchWindow}`);
+    const branchB = Math.sin((nx * 4.5 + ny * 7.2) * Math.PI + time * 0.16 + seededUnitLike(`${seed}:branch-phase`) * Math.PI * 2);
+    const likelihood = likelihoodAtCell(likelihoodField, x, y);
+    const gate = branchA > 0.58 - likelihood * 0.18 || branchB > 0.72;
+    const growth = gate ? (0.045 + likelihood * 0.13) * complexityScale : 0;
+    return clamp01(value * 0.62 + spread[y][x] * 0.32 + growth);
+  }));
+}
+
+function seededEvolutionCenter(seed, time, interactionScale, namespace) {
+  if (interactionScale === 'global') {
+    return { x: 0.5, y: 0.5 };
+  }
+  const window = interactionScale === 'cell' ? Math.floor(Math.max(0, time) / 7) : Math.floor(Math.max(0, time) / 14);
+  return {
+    x: 0.25 + seededUnitLike(`${seed}:${namespace}:center-x:${window}`) * 0.5,
+    y: 0.22 + seededUnitLike(`${seed}:${namespace}:center-y:${window}`) * 0.56
+  };
 }
 
 function interpolatedRegionalOffset({ x, y, cols, rows, valueAt }) {
@@ -2336,6 +2834,40 @@ function likelihoodNodeOffset({ seed, index, spatialEvolution, complexityScale, 
       y: Math.sin(index * 1.3) * ripple * 0.014 * complexityScale
     };
   }
+  if (spatialEvolution === 'expansion' || spatialEvolution === 'divergence' || spatialEvolution === 'contraction' || spatialEvolution === 'convergence') {
+    const center = seededEvolutionCenter(`${seed}:event-likelihood:node:${index}`, time, 'cluster', spatialEvolution);
+    const direction = spatialEvolution === 'expansion' || spatialEvolution === 'divergence' ? 1 : -1;
+    return {
+      x: (center.x - 0.5) * direction * 0.08 * complexityScale,
+      y: (center.y - 0.5) * direction * 0.07 * complexityScale
+    };
+  }
+  if (spatialEvolution === 'morphMutation') {
+    return {
+      x: Math.sin(time * 0.1 + index) * 0.026 * complexityScale,
+      y: Math.cos(time * 0.08 + index * 1.3) * 0.022 * complexityScale
+    };
+  }
+  if (spatialEvolution === 'shearStretch') {
+    return {
+      x: (index % 2 ? 1 : -1) * Math.sin(time * 0.07 + index) * 0.04 * complexityScale,
+      y: Math.cos(time * 0.045 + index) * 0.012 * complexityScale
+    };
+  }
+  if (spatialEvolution === 'rotationalSwirl') {
+    const angle = time * 0.035 * (index % 2 ? 1 : -1);
+    return {
+      x: Math.cos(angle + index) * 0.035 * complexityScale,
+      y: Math.sin(angle + index) * 0.03 * complexityScale
+    };
+  }
+  if (spatialEvolution === 'branchingGrowth') {
+    const window = Math.floor(Math.max(0, time) / 5);
+    return {
+      x: (seededUnitLike(`${seed}:event-likelihood:node-branch-x:${index}:${window}`) - 0.5) * 0.045 * complexityScale,
+      y: (seededUnitLike(`${seed}:event-likelihood:node-branch-y:${index}:${window}`) - 0.5) * 0.04 * complexityScale
+    };
+  }
   return { x: 0, y: 0 };
 }
 
@@ -2446,6 +2978,68 @@ function applyLikelihoodBehavior(field, { seed, time, temporalPattern, spatialEv
       return clamp01(value * 0.7 + activated[y][x] * 0.26 + (block > 0.68 ? 0.1 * complexityScale : 0));
     }));
     return roundLikelihoodField(evolved);
+  }
+  if (spatialEvolution === 'expansion' || spatialEvolution === 'divergence') {
+    const expanded = warpField(evolved, (x, y) => radialEvolutionOffset({
+      seed: `${seed}:event-likelihood`,
+      x,
+      y,
+      time,
+      complexityScale,
+      interactionScale: 'cluster',
+      direction: 1
+    }));
+    return roundLikelihoodField(diffuseField(expanded, complexityValue(dynamicComplexity, 0.04, 0.08, 0.13)));
+  }
+  if (spatialEvolution === 'contraction' || spatialEvolution === 'convergence') {
+    return roundLikelihoodField(warpField(evolved, (x, y) => radialEvolutionOffset({
+      seed: `${seed}:event-likelihood`,
+      x,
+      y,
+      time,
+      complexityScale,
+      interactionScale: 'cluster',
+      direction: -1
+    })));
+  }
+  if (spatialEvolution === 'morphMutation') {
+    return roundLikelihoodField(warpField(evolved, (x, y) => morphMutationOffset({
+      seed: `${seed}:event-likelihood`,
+      x,
+      y,
+      time,
+      complexityScale,
+      interactionScale: 'cell'
+    })));
+  }
+  if (spatialEvolution === 'shearStretch') {
+    return roundLikelihoodField(warpField(evolved, (x, y) => shearStretchOffset({
+      seed: `${seed}:event-likelihood`,
+      x,
+      y,
+      time,
+      complexityScale,
+      interactionScale: 'global'
+    })));
+  }
+  if (spatialEvolution === 'rotationalSwirl') {
+    return roundLikelihoodField(warpField(evolved, (x, y) => rotationalSwirlOffset({
+      seed: `${seed}:event-likelihood`,
+      x,
+      y,
+      time,
+      complexityScale,
+      interactionScale: 'cluster'
+    })));
+  }
+  if (spatialEvolution === 'branchingGrowth') {
+    return roundLikelihoodField(branchingGrowthField(evolved, {
+      seed: `${seed}:event-likelihood`,
+      time,
+      likelihoodField: field,
+      dynamicComplexity,
+      interactionScale: 'edge'
+    }));
   }
   return roundLikelihoodField(evolved);
 }
@@ -2566,10 +3160,53 @@ function applyValueDistribution(field, { valueDistribution = 'constantValue', se
   const flat = Math.abs(max - min) < 0.0001 || normalizeRoiDemoPureSpatialPattern(spatialPattern) === 'constantField';
   return field.map((row, y) => row.map((value, x) => {
     const rng = createSeededRng(`${seed}:value-distribution:${normalized}:${x}:${y}`);
-    const draw = normalized === 'gaussianNormal' ? gaussian01(rng) : rng();
+    const draw = valueDistributionDraw(normalized, rng);
     if (flat) return round3(draw);
-    return round3(clamp01(Number(value) * 0.68 + draw * 0.32));
+    return round3(valueDistributionBlend(normalized, Number(value), draw));
   }));
+}
+
+function valueDistributionDraw(valueDistribution, rng) {
+  if (valueDistribution === 'gaussianNormal') return gaussian01(rng);
+  const u = rng();
+  if (valueDistribution === 'skewedLow') return Math.pow(u, 2.35);
+  if (valueDistribution === 'skewedHigh') return 1 - Math.pow(1 - u, 2.35);
+  if (valueDistribution === 'bimodalValues') {
+    return u < 0.54
+      ? 0.08 + rng() * 0.22
+      : 0.7 + rng() * 0.26;
+  }
+  if (valueDistribution === 'heavyTailed') {
+    return u < 0.86
+      ? Math.pow(rng(), 1.85) * 0.58
+      : 0.68 + Math.pow(rng(), 0.34) * 0.32;
+  }
+  if (valueDistribution === 'rareExtremeEvents') {
+    return u < 0.94
+      ? rng() * 0.3
+      : 0.86 + rng() * 0.14;
+  }
+  return u;
+}
+
+function valueDistributionBlend(valueDistribution, baseValue, draw) {
+  const base = clamp01(baseValue);
+  if (valueDistribution === 'rareExtremeEvents') {
+    return clamp01(draw > 0.85 ? Math.max(base * 0.72, draw) : base * 0.72 + draw * 0.18);
+  }
+  if (valueDistribution === 'heavyTailed') {
+    return clamp01(Math.max(base * 0.66, draw * 0.9) + base * 0.12);
+  }
+  if (valueDistribution === 'bimodalValues') {
+    return clamp01(base * 0.52 + draw * 0.48);
+  }
+  if (valueDistribution === 'skewedLow') {
+    return clamp01(base * 0.62 + draw * 0.38);
+  }
+  if (valueDistribution === 'skewedHigh') {
+    return clamp01(base * 0.5 + draw * 0.5);
+  }
+  return clamp01(base * 0.68 + draw * 0.32);
 }
 
 function valueDistributionFromLegacy(distribution, spatialPattern = null) {
