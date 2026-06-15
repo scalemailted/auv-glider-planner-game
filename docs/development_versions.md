@@ -26,6 +26,21 @@ Challenge Mode also persists `missionMode`. Mission modes are player-facing obje
 
 ## Version / Milestone Log
 
+### FLOW-ScientificAudit - Synthetic Flow Field Diagnostics
+
+- Added pure flow-field math helpers for vector grids, bilinear sampling, speed stats, divergence, vorticity, strain, current assist/opposition, cross-current magnitude, tracer advection, terrain masking, and finite-vector validation.
+- Added scientific metadata and claim boundaries for current presets, including equations, expected diagnostics, validation targets, recommended uses, and explicit `notA` fields.
+- Added Flow Fields Demo diagnostics, UI summary, debug object, export metadata, smoke/audit scripts, and E2E checks for diagnostics and export fields.
+- Preserved the claim boundary: deterministic synthetic ocean-inspired vector fields for teaching and planning intuition, not HYCOM/ROMS/CFD/Navier-Stokes or calibrated forecasts.
+
+### A3.1 - Deterministic Coupled Process Engine Contract
+
+- Added the deterministic coupled playground engine contract for known process `C(x,y,t)`, known flow `F(x,y,t)`, known constraints, and oracle objective `S*(x,y,t)`.
+- Added analytical scalar process engines for Gaussian moving hotspot, source/diffusion/decay, advection/diffusion/decay, growth/diffusion/decay, and front/boundary approximation, plus a CA/grid-process baseline adapter.
+- Added oracle objective construction, algorithmic validation fixtures, export metadata, debug metadata, smoke scripts, and Coupled Fields Demo selectors.
+- Preserved the Process Lab as the CA/local-rule teaching sandbox and kept stochastic belief/uncertainty out of the deterministic coupled objective.
+
+
 ### Learning Labs Static Concept Pages
 
 - Added foundation Learning Labs for `Scientific Computational Modeling` and `Cellular Automata for Ocean-Relevant Processes`. These pages frame CA as a rigorous first computational modeling language and event/process-layer generator, not as a calibrated ocean simulator or final adaptive-sampling priority model.

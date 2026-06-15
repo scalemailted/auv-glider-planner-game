@@ -2,9 +2,9 @@
 
 ## 1. Purpose
 
-The Flow Fields Demo isolates vector-field behavior from the full mission planner. It lets developers, students, researchers, external solver users, and future contributors inspect static currents, dynamic currents, additive field layers, layer influence regions, passive particle drift, and terrain boundary effects before those behaviors are used inside full missions.
+The Flow Fields Demo isolates deterministic synthetic vector-field behavior from the full mission planner. It lets developers, students, researchers, external solver users, and future contributors inspect static currents, dynamic currents, additive field layers, layer influence regions, passive tracer drift, terrain boundary effects, and audited diagnostics before those behaviors are used inside full missions.
 
-This demo validates current behavior. It is not a scored mission, a route planner, a waypoint execution mode, or a leaderboard mode.
+This demo validates current behavior as a teaching vector-field playground. It is not a scored mission, a route planner, a waypoint execution mode, a leaderboard mode, a validated ocean forecast, HYCOM/ROMS/Delft3D output, CFD, or a Navier-Stokes solver.
 
 It sits in the Main Menu `Demos` section alongside the Sample / ROI, Coupled Fields, and Uncertainty / Forecast demos. Demos validate core mechanics; tutorials teach players how to play missions.
 
@@ -18,7 +18,7 @@ F(x,y,t) = <u,v>
 
 `F` is the local current vector at position `x,y` and time `t`. It answers how water moves, how the environment pushes the glider, and how currents affect travel time, energy, drift, shoreline risk, and route validation.
 
-This demo does not teach process support, sample value `S(x,y,t)`, or uncertainty `U(x,y,t)` as primary controls. Use Process Lab for deterministic process examples and `S`, Coupled Fields Demo for `F + S` interactions, and Uncertainty / Forecast Demo for forecast, truth, information gain, and confidence.
+This demo does not teach process support, oracle sampling objective `S*(x,y,t)`, or uncertainty `U(x,y,t)` as primary controls. Use Process Lab for CA/local-rule process examples, Coupled Fields Demo for deterministic known-process + known-flow + constraint + oracle-objective composition, and Uncertainty / Forecast Demo for forecast, truth, information gain, and confidence.
 
 ## 2. Why the Demo Exists
 
@@ -56,12 +56,13 @@ The demo provides a controlled scene for questions like:
 - `Flow Evolution Speed`: scales how fast the sampled current field evolves per unit demo time.
 - `Boundary Mode`: chooses None, Risk Only, Dampen Into Land, or Deflect Along Shore.
 - `Magnitude Scale`: changes how strongly arrow length visualizes sampled magnitude from 0.5x to 2x.
-- `Particle Speed`: changes passive particle speed through the sampled field from 0.5x to 4x without changing field evolution.
+- `Particle Speed`: changes passive tracer speed through the sampled field from 0.5x to 4x without changing field evolution or field magnitude.
+- `Current Field Diagnostics`: reports speed min/mean/max, divergence, vorticity, strain, invalid-vector count, terrain-mask count, claim level, and the explicit not-a-forecast boundary for the current field.
 - Bottom transport `Reset`: resets demo time and respawns particles with the current configuration.
 - Bottom transport `Direction`: toggles demo time between Forward and Reverse playback.
 - Bottom transport `Pause / Resume`: pauses or resumes demo time and particle motion.
 - Bottom transport `Demo Time`: shows the unbounded demo-time clock, playback direction, read-only playback speed, flow evolution speed, and evolution behavior. Continuous behavior is labeled as an infinite timeline; Looping shows the active cycle duration.
-- `Export Demo JSON`: downloads an `anchor.demo.flow-field` artifact for Colab/notebook rendering. Choose start time, end time, and timeframe count to include a `frames[]` series sampled from the current settings. It includes the current config, demo time, flow sample time, row-major `u`, `v`, magnitude, direction, land-mask, topology diagnostics, and selected-cell inspector state.
+- `Export Demo JSON`: downloads an `anchor.demo.flow-field` artifact for Colab/notebook rendering. Choose start time, end time, and timeframe count to include a `frames[]` series sampled from the current settings. It includes the current config, demo time, flow sample time, row-major `u`, `v`, magnitude, direction, land-mask, topology diagnostics, `flowFieldDiagnostics`, `flowFieldModel`, and selected-cell inspector state.
 - Left footer `Main Menu`: returns to the main menu / Simulation Lab launcher.
 - `Cell Inspector`: click any map cell to populate the right panel with current vector behavior for that cell.
 
@@ -134,7 +135,7 @@ Implemented demo presets:
 - `Curl Noise Texture`: synthetic turbulent texture from stream-function-like math.
 - `HYCOM-Inspired Composite`: seeded composite of background drift, jet, eddies, shear, tide, and texture.
 
-These are synthetic ocean-inspired fields, not validated HYCOM forecasts. The HYCOM-inspired composite is a gameplay and diagnostic pattern, not real HYCOM data.
+Each preset now carries scientific metadata: id, label, description, equation, plain-language explanation, claim level, expected diagnostics, recommended use, validation targets, and a `notA` claim boundary. These are deterministic synthetic ocean-inspired or analytical teaching fields, not validated HYCOM forecasts. The HYCOM-inspired composite is a gameplay and diagnostic pattern, not real HYCOM data.
 
 ## 7. Terrain Modes
 
@@ -248,7 +249,7 @@ Hover tooltips, Travel Cost, Risk/Safety, Greedy Planner, simulation drift, and 
 
 ## 9. Particle / Demo Glider Behavior
 
-Demo particles are passive flow visualizers. They sample the active field, move according to field velocity plus a small display bias, orient heading with `atan2(v, u)`, and leave trails.
+Demo particles are passive tracer visualizers. They sample the active field and use the documented display-scaled advection update `p(t + dt) = p(t) + F(p,t) * dt * tracerScale * ParticleSpeed`; they then orient heading with `atan2(v, u)` and leave trails. `tracerScale` is a visual playback scale so trails remain legible in a browser viewport. It is not a change to the physical/vector-field magnitude, and `Magnitude Scale` only changes arrow length.
 
 Particles reset when they leave the domain, exceed their lifetime, or hit land. Arrows over land are hidden.
 
@@ -295,15 +296,19 @@ sampleDemoFlow({ ...fieldConfig, x, y, time: flowSampleTime })
 
 The implementation passes `flowSampleTime = demoTime * flowEvolutionSpeedScale` as the sampler `time`. It updates while dynamic time advances, freezes while paused, and returns to `t = 0.0s` when Reset is pressed. Land cells are selectable too; they show that no navigable water current is applied at that location while nearby water may still be damped, deflected, or marked risky depending on boundary mode.
 
-## 11. Magnitude Diagnostics
+## 11. Current Field Diagnostics
 
-The demo reports min / mean / max current magnitude for the current arrow grid. Use this to verify that non-uniform presets are not accidentally flattened:
+The demo reports speed min / mean / max plus divergence, vorticity, strain, invalid-vector count, terrain-mask count, current assist/cross-current examples, preset validation status, warnings, claim level, and the explicit `notA` boundary. Use this to verify that non-uniform presets are not accidentally flattened and that synthetic claims stay bounded:
 
 - Uniform Drift may be mostly constant.
 - Eddy / Vortex Field should show different center, ring, and far-field magnitudes.
 - Meandering Jet should show a strong corridor and weaker surrounding water.
 - Storm Pulse should show a localized energetic region whose strength changes over time.
 - Additive flow layers should change local magnitude when layers are enabled or their weights change.
+- Uniform Drift should keep divergence and vorticity near zero unless dynamic direction variation is intentionally enabled.
+- Eddy / Vortex and Double Gyre should show nonzero vorticity.
+- Shear and jet presets should show nonzero strain or lateral gradients.
+- Terrain modes should mask land cells; arrows over land are hidden and diagnostics count masked terrain cells.
 
 ## 12. Relationship to Mission Currents
 
@@ -330,6 +335,8 @@ Relevant source files:
 
 - `src/game/phaser/scenes/FlowFieldDemoScene.js`
 - `src/core/demo/FlowFieldDemo.js`
+- `src/core/demo/flow/FlowFieldMath.js`
+- `src/core/demo/flow/FlowFieldDiagnostics.js`
 - `src/core/currents/CurrentFieldSampler.js`
 - `src/core/generation/VectorFieldPresets.js`
 - `src/core/generation/CurrentFieldGenerator.js`
@@ -386,8 +393,8 @@ If mission currents differ from demo:
 
 ## 15. Limitations
 
-- Synthetic fields are not real ocean forecasts.
-- HYCOM-inspired composite is not actual HYCOM data.
+- Synthetic fields are deterministic teaching fields, not real ocean forecasts.
+- HYCOM-inspired composite is not actual HYCOM data, not HYCOM-quality forecast output, and not a calibrated model.
 - Topology-aware behavior is approximate and not full CFD.
 - Demo particles are passive visualizers.
 - Mission gliders use commanded waypoint physics plus current drift, not passive particle motion.

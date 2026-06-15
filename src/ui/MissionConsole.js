@@ -1,4 +1,4 @@
-﻿import { CAMPAIGN_LEVELS } from '../core/campaign/CampaignLevels.js';
+import { CAMPAIGN_LEVELS } from '../core/campaign/CampaignLevels.js';
 import { shortInstanceId } from '../core/identity/GameInstanceId.js';
 import { formatMetric } from '../core/evaluation/PlanComparison.js';
 import { FLOW_DEMO_BOUNDARY_MODES, FLOW_DEMO_CYCLE_DURATIONS, FLOW_DEMO_DYNAMIC_COMPLEXITY_LEVELS, FLOW_DEMO_EVOLUTION_BEHAVIORS, FLOW_DEMO_EVOLUTION_PATTERNS, FLOW_DEMO_EVOLUTION_SPEEDS, FLOW_DEMO_FIELD_MODES, FLOW_DEMO_LAYER_INFLUENCES, FLOW_DEMO_MAGNITUDE_SCALES, FLOW_DEMO_PARTICLE_SPEEDS, FLOW_DEMO_PRESET_CHOICES, FLOW_DEMO_SPATIAL_MOTIONS, FLOW_DEMO_SPATIAL_MOTION_SPEEDS, FLOW_DEMO_TERRAIN_MODES, FLOW_DEMO_VARIATION_LEVELS, normalizeAdditiveLayers } from '../core/demo/FlowFieldDemo.js';
@@ -260,12 +260,14 @@ export class MissionConsole {
             ${FLOW_DEMO_PARTICLE_SPEEDS.map((speed) => `<option value="${escapeAttr(speed)}" ${Number(state.particleSpeedScale ?? 1) === speed ? 'selected' : ''}>${escapeHtml(speed)}x</option>`).join('')}
           </select>
         </label>
+        <div class="hud-muted">Magnitude Scale changes arrow display length only. Particle Speed is a visual tracer multiplier after sampling F(x,y,t).</div>
       </section>
       <section class="console-status">
         <span>Magnitude Range</span>
         <strong>${escapeHtml(formatDemoStat(state.magnitudeStats?.min))} / ${escapeHtml(formatDemoStat(state.magnitudeStats?.mean))} / ${escapeHtml(formatDemoStat(state.magnitudeStats?.max))}</strong>
         <small>Min / mean / max for the current arrow grid.</small>
       </section>
+      ${flowDiagnosticsHtml(state.flowFieldDiagnostics, state.flowFieldModel ?? state.presetMetadata)}
       <section class="console-section">
         <h2>Data Export</h2>
         ${demoExportControlsHtml(state)}
@@ -443,6 +445,8 @@ export class MissionConsole {
     const couplingModes = ['off', 'currentAdvected', 'currentStretched', 'shorelineRunoff', 'eddyCarried'];
     const forecastViews = ['forecast', 'truth', 'uncertainty', 'depleted'];
     const layerToggles = state.layerToggles ?? {};
+    const processEngineOptions = state.processEngineOptions ?? [];
+    const displayLayerOptions = state.displayLayerOptions ?? [];
     this.root.innerHTML = `
       <section class="console-header">
         <div class="console-kicker">Coupled Fields Demo</div>
@@ -460,6 +464,12 @@ export class MissionConsole {
         ${toggleHtml('flowParticles', 'Flow particles', Boolean(layerToggles.flowParticles))}
         ${toggleHtml('sampleHeatmap', 'Sample heatmap', layerToggles.sampleHeatmap !== false)}
         ${toggleHtml('landTopology', 'Land / topology', layerToggles.landTopology !== false)}
+        <label class="compact-field">
+          Display Layer
+          <select id="coupled-display-layer">
+            ${displayLayerOptions.map((layer) => `<option value="${escapeAttr(layer.id)}" ${state.displayLayer === layer.id ? 'selected' : ''}>${escapeHtml(layer.label)}</option>`).join('')}
+          </select>
+        </label>
       </section>
       <section class="console-section">
         <h2>Flow Field</h2>
@@ -525,6 +535,18 @@ export class MissionConsole {
         </label>
       </section>
       <section class="console-section">
+        <h2>Process Engine</h2>
+        <label class="compact-field">
+          Process Engine
+          <select id="coupled-process-engine">
+            ${processEngineOptions.map((engine) => `<option value="${escapeAttr(engine.id)}" ${state.processEngineId === engine.id ? 'selected' : ''}>${escapeHtml(engine.label)}</option>`).join('')}
+          </select>
+        </label>
+        <div class="hud-muted">${escapeHtml(state.processEngine?.inWords ?? 'Known process fields are updated deterministically before the oracle objective is computed.')}</div>
+        <div class="hud-muted">Equation: ${escapeHtml(state.processEngine?.equation ?? 'n/a')}</div>
+        <div class="hud-muted">What this is not: ${escapeHtml(state.processEngine?.notA ?? 'Not a calibrated ocean forecast or uncertainty model.')}</div>
+      </section>
+      <section class="console-section">
         <h2>Coupling</h2>
         <label class="compact-field">
           Coupling Mode
@@ -559,6 +581,8 @@ export class MissionConsole {
     this.root.querySelectorAll('[data-coupled-layer]').forEach((input) => {
       input.addEventListener('change', (event) => handlers.layerToggle?.(event.currentTarget.dataset.coupledLayer, event.target.checked));
     });
+    this.root.querySelector('#coupled-display-layer')?.addEventListener('change', (event) => handlers.displayLayer?.(event.target.value));
+    this.root.querySelector('#coupled-process-engine')?.addEventListener('change', (event) => handlers.processEngineId?.(event.target.value));
     this.root.querySelector('#coupled-flow-preset')?.addEventListener('change', (event) => handlers.flowPreset?.(event.target.value));
     this.root.querySelector('#coupled-dynamic-complexity')?.addEventListener('change', (event) => handlers.dynamicComplexity?.(event.target.value));
     this.root.querySelector('#coupled-evolution-behavior')?.addEventListener('change', (event) => handlers.evolutionBehavior?.(event.target.value));
@@ -1075,6 +1099,46 @@ function roiForecastViewLabel(view) {
 function formatDemoStat(value) {
   const number = Number(value);
   return Number.isFinite(number) ? number.toFixed(3) : 'N/A';
+}
+
+function flowDiagnosticsHtml(diagnostics = {}, model = {}) {
+  const speed = diagnostics?.speedStats ?? {};
+  const divergence = diagnostics?.divergenceStats ?? {};
+  const vorticity = diagnostics?.vorticityStats ?? {};
+  const strain = diagnostics?.strainStats ?? {};
+  const claimLevel = model?.claimLevel ?? 'syntheticOceanInspired';
+  const notA = model?.notA ?? 'validated ocean forecast, CFD solver, or calibrated circulation model.';
+  return `
+    <section class="console-section" data-flow-diagnostics>
+      <h2>Current Field Diagnostics</h2>
+      <div class="cell-inspector-metrics">
+        <div><span>Speed</span><strong>${escapeHtml(formatDiagnosticRange(speed))}</strong></div>
+        <div><span>Mean Divergence</span><strong>${escapeHtml(formatDiagnosticNumber(divergence.mean))}</strong></div>
+        <div><span>Mean Vorticity</span><strong>${escapeHtml(formatDiagnosticNumber(vorticity.mean))}</strong></div>
+        <div><span>Mean Strain</span><strong>${escapeHtml(formatDiagnosticNumber(strain.mean))}</strong></div>
+        <div><span>Invalid Vectors</span><strong>${escapeHtml(diagnostics?.invalidVectorCount ?? 0)}</strong></div>
+        <div><span>Claim Level</span><strong>${escapeHtml(flowClaimLevelLabel(claimLevel))}</strong></div>
+      </div>
+      <div class="hud-muted">Synthetic, deterministic current-vector playground; not a ${escapeHtml(notA)}</div>
+    </section>
+  `;
+}
+
+function formatDiagnosticRange(stats = {}) {
+  return `${formatDiagnosticNumber(stats.min)} / ${formatDiagnosticNumber(stats.mean)} / ${formatDiagnosticNumber(stats.max)}`;
+}
+
+function flowClaimLevelLabel(value) {
+  return String(value ?? 'syntheticOceanInspired')
+    .replace(/([A-Z])/g, ' $1')
+    .replace(/[_-]+/g, ' ')
+    .replace(/^./, (letter) => letter.toUpperCase());
+}
+
+function formatDiagnosticNumber(value) {
+  const number = Number(value);
+  if (!Number.isFinite(number)) return 'n/a';
+  return Math.abs(number) >= 10 ? number.toFixed(1) : number.toFixed(4);
 }
 
 function formatPercent(value) {

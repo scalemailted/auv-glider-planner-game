@@ -1,5 +1,7 @@
 import {
   advanceDemoParticles,
+  buildFlowDemoDiagnostics,
+  buildFlowDemoModelMetadata,
   createDemoParticles,
   createDefaultFlowLayer,
   createDemoTerrain,
@@ -9,6 +11,7 @@ import {
   normalizeBoundaryMode,
   normalizeDynamicComplexity,
   getFlowDemoPresetConfig,
+  getFlowDemoPresetMetadata,
   isDemoLand,
   normalizeAdditiveLayers,
   normalizeEvolutionControls,
@@ -60,6 +63,8 @@ export class FlowFieldDemoScene extends PhaserScene {
     this.playbackDirection = 1;
     this.lastDeltaSeconds = 0;
     this.lastDebugDemoTime = -Infinity;
+    this.flowDiagnostics = null;
+    this.flowFieldModel = null;
     this.selectedCell = null;
     this.rightPanelMode = 'cellInspector';
     this.selectedHelpTopic = null;
@@ -97,6 +102,8 @@ export class FlowFieldDemoScene extends PhaserScene {
     this.playbackDirection = normalizePlaybackDirection(data.playbackDirection);
     this.lastDeltaSeconds = 0;
     this.lastDebugDemoTime = -Infinity;
+    this.flowDiagnostics = null;
+    this.flowFieldModel = null;
     this.selectedCell = normalizeSelectedCell(data.selectedCell);
     this.rightPanelMode = normalizeRightPanelMode(data.rightPanelMode);
     this.selectedHelpTopic = normalizeHelpTopic(data.selectedHelpTopic);
@@ -173,6 +180,7 @@ export class FlowFieldDemoScene extends PhaserScene {
 
   renderConsole() {
     const primaryConfig = getFlowDemoPresetConfig(this.fieldMode, this.preset);
+    const flowDiagnosticState = this.refreshFlowDiagnostics();
     this.app.console?.renderFlowDemoControls?.({
       title: this.title(),
       fieldMode: this.fieldMode,
@@ -196,6 +204,9 @@ export class FlowFieldDemoScene extends PhaserScene {
       particleSpeedScale: this.particleSpeedScale,
       playbackDirection: this.playbackDirection,
       magnitudeStats: summarizeDemoFlowMagnitudes(this.fieldConfig(), this.flowSampleTime()),
+      flowFieldDiagnostics: flowDiagnosticState.diagnostics,
+      flowFieldModel: flowDiagnosticState.model,
+      presetMetadata: flowDiagnosticState.presetMetadata,
       presetConfig: primaryConfig,
       status: `${fieldModeLabel(this.fieldMode)} field`,
       time: this.demoTime,
@@ -362,6 +373,48 @@ export class FlowFieldDemoScene extends PhaserScene {
     return Math.max(0, finiteNumber(time, 0)) * this.flowEvolutionSpeedScale;
   }
 
+  flowDiagnosticsForTime(fieldTime = this.flowSampleTime(), fieldConfig = this.fieldConfig()) {
+    const presetMetadata = getFlowDemoPresetMetadata(this.preset);
+    return {
+      diagnostics: buildFlowDemoDiagnostics(fieldConfig, fieldTime, {
+        deterministicSeed: this.particleSeed(),
+        presetMetadata
+      }),
+      model: buildFlowDemoModelMetadata(fieldConfig, {
+        terrainMode: this.terrainMode,
+        flowEvolutionSpeedScale: this.flowEvolutionSpeedScale,
+        presetMetadata
+      }),
+      presetMetadata
+    };
+  }
+
+  refreshFlowDiagnostics() {
+    const state = this.flowDiagnosticsForTime();
+    this.flowDiagnostics = state.diagnostics;
+    this.flowFieldModel = state.model;
+    globalThis.ANCHOR_FLOW_DEMO_DEBUG = {
+      ...(globalThis.ANCHOR_FLOW_DEMO_DEBUG ?? {}),
+      scene: 'FlowFieldDemoScene',
+      title: this.title(),
+      mode: this.fieldMode,
+      preset: this.preset,
+      terrainMode: this.terrainMode,
+      boundaryMode: this.boundaryMode,
+      demoTime: Number(this.demoTime.toFixed(3)),
+      flowSampleTime: Number(this.flowSampleTime().toFixed(3)),
+      playbackSpeed: this.playbackSpeedScale,
+      flowEvolutionSpeed: this.flowEvolutionSpeedScale,
+      particleSpeed: this.particleSpeedScale,
+      magnitudeScale: this.magnitudeScale,
+      flowFieldDiagnostics: state.diagnostics,
+      flowFieldModel: state.model,
+      presetMetadata: state.presetMetadata,
+      warnings: state.diagnostics?.warnings ?? []
+    };
+    return state;
+  }
+
   buildSceneObjects() {
     this.destroyObjects();
     this.graphics = this.add.graphics();
@@ -410,6 +463,7 @@ export class FlowFieldDemoScene extends PhaserScene {
 
   draw() {
     if (!this.graphics) return;
+    this.refreshFlowDiagnostics();
     const layout = this.layout();
     this.graphics.clear();
     this.drawBackground(layout);
@@ -835,7 +889,8 @@ export class FlowFieldDemoScene extends PhaserScene {
     const sampling = this.demoExportSampling();
     const currentFrame = this.buildDemoArtifactFrame(this.demoTime, null);
     const frames = sampling.timesSeconds.map((time, index) => this.buildDemoArtifactFrame(time, index));
-    return buildDemoArtifactEnvelope({
+    const flowDiagnosticState = this.refreshFlowDiagnostics();
+    const artifact = buildDemoArtifactEnvelope({
       type: 'anchor.demo.flow-field',
       demo: this.title(),
       grid: FLOW_DEMO_GRID,
@@ -859,9 +914,18 @@ export class FlowFieldDemoScene extends PhaserScene {
           directionRadians: 'atan2(v,u), screen-y positive downward'
         },
         magnitudeStats: summarizeDemoFlowMagnitudes(this.fieldConfig(), this.flowSampleTime()),
+        flowFieldDiagnostics: flowDiagnosticState.diagnostics,
+        flowFieldModel: flowDiagnosticState.model,
         exportFrameLimit: 240
-      }
+      },
+      flowFieldDiagnostics: flowDiagnosticState.diagnostics,
+      flowFieldModel: flowDiagnosticState.model
     });
+    return {
+      ...artifact,
+      flowFieldDiagnostics: flowDiagnosticState.diagnostics,
+      flowFieldModel: flowDiagnosticState.model
+    };
   }
 
   buildDemoArtifactFrame(demoTime, index) {
@@ -869,6 +933,7 @@ export class FlowFieldDemoScene extends PhaserScene {
     const height = FLOW_DEMO_GRID.height;
     const fieldConfig = this.fieldConfig();
     const fieldTime = this.flowSampleTime(demoTime);
+    const diagnosticsState = this.flowDiagnosticsForTime(fieldTime, fieldConfig);
     const fields = buildGridFields(width, height, (col, row) => {
       const x = (col + 0.5) / width;
       const y = (row + 0.5) / height;
@@ -890,7 +955,8 @@ export class FlowFieldDemoScene extends PhaserScene {
       timeSeconds: demoTime,
       demoTimeSeconds: demoTime,
       fieldTimeSeconds: fieldTime,
-      fields
+      fields,
+      flowFieldDiagnostics: diagnosticsState.diagnostics
     };
   }
 

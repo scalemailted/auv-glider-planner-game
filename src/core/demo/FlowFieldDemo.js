@@ -1,11 +1,13 @@
 import { createSeededRng } from '../random/SeededRng.js';
 import { CURRENT_COORDINATES, sampleCurrentField } from '../currents/CurrentFieldSampler.js';
-import { getVectorPresetConfig } from '../generation/VectorFieldPresets.js';
+import { getVectorPresetConfig, getVectorPresetScientificMetadata } from '../generation/VectorFieldPresets.js';
+import { buildFlowFieldDiagnostics, buildFlowFieldModelMetadata, buildSampledVectorGrid } from './flow/FlowFieldDiagnostics.js';
 import { FLOW_FIELD_BOUNDARY_MODES, normalizeBoundaryConditions } from '../generation/FlowFieldConfig.js';
 
 const TAU = Math.PI * 2;
 const DEFAULT_TRAIL_LIMIT = 44;
 const MAX_DEMO_MAGNITUDE = 1.35;
+export const FLOW_DEMO_PARTICLE_ADVECTION_DISPLAY_SCALE = 0.18;
 export const FLOW_DEMO_FIELD_DURATION_HOURS = 24;
 export const FLOW_DEMO_GRID = { width: 18, height: 12 };
 export const FLOW_DEMO_FIELD_MODES = ['static', 'dynamic'];
@@ -67,6 +69,58 @@ export function getFlowDemoPresetConfig(mode = 'static', preset = null) {
   });
 }
 
+export function getFlowDemoPresetMetadata(preset = null) {
+  return getVectorPresetScientificMetadata(preset ?? FLOW_DEMO_DEFAULT_PRESETS.dynamic);
+}
+
+export function buildFlowDemoVectorGrid(fieldConfig = {}, time = 0) {
+  return buildSampledVectorGrid({
+    width: FLOW_DEMO_GRID.width,
+    height: FLOW_DEMO_GRID.height,
+    terrainMask: fieldConfig.terrain ?? null,
+    maskTerrain: true,
+    sampler: (x, y) => sampleDemoFlow({ ...fieldConfig, x, y, time })
+  });
+}
+
+export function buildFlowDemoDiagnostics(fieldConfig = {}, time = 0, options = {}) {
+  const { vectorField, rawVectorField } = buildFlowDemoVectorGrid(fieldConfig, time);
+  const presetMetadata = options.presetMetadata ?? getFlowDemoPresetMetadata(fieldConfig.primaryPreset);
+  return buildFlowFieldDiagnostics({
+    vectorField,
+    rawVectorField,
+    terrainMask: fieldConfig.terrain ?? null,
+    presetMetadata,
+    deterministicSeed: options.deterministicSeed ?? null,
+    dx: 1,
+    dy: 1,
+    assistDirection: options.assistDirection ?? { u: 1, v: 0 },
+    maxExpectedMagnitude: MAX_DEMO_MAGNITUDE
+  });
+}
+
+export function buildFlowDemoModelMetadata(fieldConfig = {}, options = {}) {
+  const presetConfig = getFlowDemoPresetConfig(fieldConfig.fieldMode, fieldConfig.primaryPreset);
+  const presetMetadata = options.presetMetadata ?? presetConfig.scientificMetadata ?? getFlowDemoPresetMetadata(presetConfig.preset);
+  return buildFlowFieldModelMetadata({
+    presetId: presetConfig.preset,
+    presetConfig,
+    presetMetadata,
+    parameters: {
+      strength: presetConfig.strength,
+      variability: presetConfig.variability,
+      additiveLayers: normalizeAdditiveLayers(fieldConfig.additiveLayers)
+    },
+    evolutionSettings: {
+      fieldMode: normalizeFieldMode(fieldConfig.fieldMode),
+      flowEvolutionSpeedScale: options.flowEvolutionSpeedScale ?? 1,
+      ...normalizeEvolutionControls(fieldConfig)
+    },
+    terrainMode: options.terrainMode ?? 'none',
+    boundaryMode: normalizeBoundaryMode(fieldConfig.boundaryMode)
+  });
+}
+
 export function sampleDemoFlow(mode = 'static', x = 0, y = 0, time = 0, preset = null) {
   if (typeof mode === 'object') return sampleComposedDemoFlow(mode);
   return sampleComposedDemoFlow({
@@ -99,6 +153,29 @@ export function sampleComposedDemoFlow({
   const mode = normalizeFieldMode(fieldMode);
   const evolution = normalizeEvolutionControls({ evolutionBehavior, cycleDuration, directionVariation, magnitudeVariation, dynamicComplexity, evolutionPattern, spatialMotion, spatialMotionSpeed });
   const boundaryConditions = normalizeDemoBoundaryConditions({ mode: boundaryMode, topologyAware: true });
+  if (terrain && isDemoLand(terrain, x, y)) {
+    const maskedPreset = getFlowDemoPresetConfig(mode, primaryPreset);
+    return withCompositionMetadata({
+      u: 0,
+      v: 0,
+      confidence: 0,
+      source: 'demo-terrain-mask',
+      preset: maskedPreset.preset,
+      presetLabel: maskedPreset.label,
+      warning: maskedPreset.warning,
+      terrainMasked: true
+    }, {
+      mode,
+      primaryPreset: maskedPreset.preset,
+      base: null,
+      layers: [],
+      timeVarying: mode !== 'static',
+      evolution,
+      boundaryConditions,
+      terrainMasked: true,
+      contributors: { base: null, layers: [] }
+    });
+  }
   const base = sampleSingleDemoFlow({ fieldMode: mode, x, y, time, preset: primaryPreset, terrain, evolution, boundaryConditions });
   const layers = normalizeAdditiveLayers(additiveLayers);
   const enabledLayers = layers
@@ -232,14 +309,13 @@ export function advanceDemoParticles(particles, {
     const flow = fieldConfig
       ? field({ ...fieldConfig, x: particle.x, y: particle.y, time })
       : field(mode, particle.x, particle.y, time, preset);
-    const glideBias = {
-      u: 0.035 * Math.cos(particle.biasAngle),
-      v: 0.035 * Math.sin(particle.biasAngle)
-    };
-    const u = (flow.u + glideBias.u) * particle.speedScale * particleSpeedScale;
-    const v = (flow.v + glideBias.v) * particle.speedScale * particleSpeedScale;
-    const nextX = particle.x + u * dt * 0.18;
-    const nextY = particle.y + v * dt * 0.18;
+    // Visual tracers use p(t + dt) = p(t) + F(p,t) * dt with a display-only
+    // speed scale. Magnitude Scale changes arrow length elsewhere and does not
+    // change this sampled physical/vector-field value.
+    const u = flow.u * particle.speedScale * particleSpeedScale;
+    const v = flow.v * particle.speedScale * particleSpeedScale;
+    const nextX = particle.x + u * dt * FLOW_DEMO_PARTICLE_ADVECTION_DISPLAY_SCALE;
+    const nextY = particle.y + v * dt * FLOW_DEMO_PARTICLE_ADVECTION_DISPLAY_SCALE;
     if (fieldConfig?.terrain && isDemoLand(fieldConfig.terrain, nextX, nextY)) {
       particle.landHits = Number(particle.landHits ?? 0) + 1;
       resetParticle(particle);

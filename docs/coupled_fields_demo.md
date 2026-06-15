@@ -2,65 +2,75 @@
 
 ## Purpose
 
-ANCHOR has four field demos. Flow Fields Demo isolates `F(x,y,t)`, the current vector field. Process Lab isolates deterministic process support and `S(x,y,t)` science/sample value. Uncertainty / Forecast Demo isolates forecast, truth, uncertainty, and information gain. Coupled Fields Demo overlays `F(x,y,t)` and `S(x,y,t)` to show current-advected plumes, flow-stretched fronts, shoreline/runoff transport, eddy-carried blooms, channel transport, and other interactions where sampling strategy depends on the underlying flow.
-
-The individual demos remain separate because they teach different concepts. The coupled demo is for inspecting interaction.
-
-## Coupled Field Boundary
-
-The Coupled Fields Demo is the interaction view:
+The Coupled Fields Demo is now the Oracle / Deterministic Coupled Sampling Space playground. It combines:
 
 ```text
-F(x,y,t) + S(x,y,t)
+known process field C(x,y,t)
++ known flow field F(x,y,t) = <u,v>
++ known constraints C_mask(x,y)
+= deterministic oracle sampling objective S*(x,y,t)
 ```
 
-It shows behaviors where sample value is shaped by water motion or topology. Current-advected plumes, flow-stretched fronts, eddy-carried value, shoreline/runoff transport, channel transport, and terrain-constrained sample movement belong here rather than in the pure Sample / ROI Demo.
+It is the bridge between the Process Lab and later stochastic planning work. Process Lab remains the place for CA/local-rule teaching and model-aware initial conditions. Coupled Fields adds analytical scalar update-function engines that are easier to connect to ocean-inspired process/flow interactions.
 
-This demo does not treat uncertainty `U(x,y,t)` as a primary field. If the question is "where is the forecast unreliable?" or "where would sampling reduce uncertainty?", use the Uncertainty / Forecast Demo. If the question is "how does visible flow move or reshape realized sample value?", use this demo.
+## Process Engines
+
+The Process Engine selector includes:
+
+- CA / Grid-Process Baseline
+- Gaussian Patch / Moving Hotspot
+- Source + Diffusion + Decay
+- Advection + Diffusion + Decay
+- Growth + Diffusion + Decay
+- Front / Boundary Approximation
+
+The default is `Advection + Diffusion + Decay`. It uses a stable semi-Lagrangian backtrace against the visible synthetic flow sampler, then applies lightweight diffusion, source, and decay terms. Flow `F(x,y,t)` comes from the same audited deterministic Flow Fields helpers and remains a teaching current field, not a calibrated forecast. These are deterministic synthetic teaching engines, not calibrated ocean models.
+
+## Display Layers
+
+The Display Layer selector separates the fields:
+
+- Process Field `C(x,y,t)`
+- Flow Field `F(x,y,t)`
+- Constraint Mask `C_mask(x,y)`
+- Oracle Objective `S*(x,y,t)`
+- Gradient / Boundary Strength
+- Future Process Field
+- Objective Difference
+
+Event/process intensity is not necessarily the same as sampling objective. A high process value may be unusable because of land or constraints, while a boundary or near-future value can be valuable even when the current process value is lower.
+
+## Oracle Objective Boundary
+
+The oracle objective uses known deterministic fields only:
+
+```text
+S* =
+    w_value * processValue
+  + w_gradient * gradientStrength
+  + w_boundary * boundaryStrength
+  + w_future * nearFutureValue
+  - w_constraint * constraintPenalty
+  - w_hazard * hazardPenalty
+```
+
+It does not use uncertainty, belief, hidden truth, forecast error, expected information gain, or Bayesian updating. Those belong in the Uncertainty / Forecast Demo and later stochastic coupled sampling work.
 
 ## Layout
 
-- Left Mission Console: flow controls, sample controls, coupling mode, layer toggles, playback speed, and Main Menu navigation.
-- Center Phaser viewport: land/water base, sample heatmap, flow arrows, optional flow particles, selected-cell highlight, and compact labels.
-- Right panel: Cell Inspector with Flow, Sample / ROI, and Coupling sections.
-- Bottom transport: Reset, Direction, Pause/Resume, Demo Time, Playback, Coupling, and Infinite timeline.
+- Left Mission Console: process engine selector, display layer selector, flow controls, legacy sample controls, coupling mode, layer toggles, playback speed, and export.
+- Center Phaser viewport: selected scalar layer, optional flow arrows/particles, terrain/constraints, selected-cell highlight, and compact labels.
+- Right panel: engine equation, plain-language explanation, validation status, deterministic/oracle boundary, and cell inspector.
+- Bottom transport: Reset, Direction, Pause/Resume, Demo Time, Playback, selected engine, and Infinite timeline.
 
-## Layer Toggles
+## Export
 
-Implemented toggles:
+`Export Demo JSON` still writes `anchor.demo.coupled-fields`. Existing flow/sample fields are preserved. Flow inputs should be interpreted with the Flow Fields Demo claim boundary: deterministic synthetic, ocean-inspired current vectors, not HYCOM/ROMS/CFD. Exports now add:
 
-- Flow arrows
-- Flow particles
-- Sample heatmap
-- Land / topology
+- `coupledProcessEngine`: engine id, label, claim level, equation, parameters, grid spacing, and validation checks.
+- `oracleObjective`: formula, weights, component names, deterministic flags, and a note that the objective uses known process, flow, and constraints.
+- frame fields for `processField`, `futureProcessField`, `flowU`, `flowV`, `constraintMask`, `gradientStrength`, `boundaryStrength`, and `oracleObjectiveField`.
 
-Flow arrows and sample heatmap are enabled by default. Flow particles are optional to avoid visual overload.
+## Scientific Boundary
 
-## Demo Artifact Export
-
-`Export Demo JSON` downloads an `anchor.demo.coupled-fields` artifact for Colab/notebook rendering. Choose start time, end time, and timeframe count to include a `frames[]` series sampled from the current flow/sample/coupling settings. It includes the current flow config, sample config, coupling mode, demo time, row-major flow vectors, magnitude/direction/topology diagnostics, coupled sample-value arrays, event likelihood when available, high-value cells, and selected-cell inspector state.
-
-The export samples both `F(x,y,t)` and `S(x,y,t)` at the same cell centers used by the rendered heatmap and arrows, so external plots match the visible demo frame.
-
-## Coupling Modes
-
-- `Off`: sample field evolves independently.
-- `Current-Advected`: sample value is backtraced along the same visible current vectors rendered on the canvas.
-- `Current-Stretched`: hotspots are boosted by local current magnitude to suggest elongation along energetic flow.
-- `Shoreline Source / Runoff`: near-shore sample value is boosted and transported by the current.
-- `Eddy-Carried`: moving value is modulated by rotating flow direction.
-
-These are lightweight visual approximations for teaching and debugging. They use the shared flow sampler and shared sample-field generator rather than a separate incompatible demo model.
-
-## Cell Inspector
-
-Click a cell to inspect:
-
-- terrain and topology region
-- flow `u`, `v`, magnitude, direction, dominant behavior, and shoreline risk
-- sample value, temporal trend, and hotspot membership
-- coupling mode, current influence, advection direction, and whether visible flow is used
-
-## Relationship To Mission Modes
-
-The coupled demo does not create missions, score routes, mutate sample depletion from actual glider visits, or write leaderboard entries. It is a visualization tool for understanding when sample-field behavior depends on the current field.
+This demo is not ROMS, HYCOM, Delft3D, CFD, Navier-Stokes, Bayesian data assimilation, GP/GMRF inference, or an adaptive planner. It is a browser-side deterministic teaching sandbox for reasoning about how known process, known flow, constraints, gradients, and near-future fields shape a sampling objective.

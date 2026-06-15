@@ -661,6 +661,8 @@ Uncertainty-specific modes such as Signal Hunt, Uncertain Waters, Surface & Adap
 
 ## Relationship to Coupled Fields Demo
 
+Use Coupled Fields Demo for deterministic/oracle coupled sampling spaces: known process `C(x,y,t)`, known flow `F(x,y,t)`, known constraints, and oracle objective `S*(x,y,t)`. The Coupled Fields Demo now includes analytical update-function engines such as Gaussian patch, source/diffusion/decay, advection/diffusion/decay, growth/diffusion/decay, and front/boundary approximation, plus a CA/grid-process baseline.
+
 Use Coupled Fields Demo for:
 
 - current-advected sample value
