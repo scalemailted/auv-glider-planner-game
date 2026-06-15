@@ -48,7 +48,7 @@ Challenge Mode also persists `missionMode`. Mission modes are player-facing obje
 ### Sampling Process Lab Refactor
 
 - Renamed the visible lab title to Deterministic Spatiotemporal Process Lab and the menu entry to Process Lab.
-- Reframed the guided selector as Example Processes grouped into Foundational CA Models and Observable Process Patterns.
+- Reframed the guided selector as Foundational CA Models and Ocean-Relevant Process Analogs as separate visible contexts.
 - Added process-example metadata for Conway, Forest Fire, SIR, Greenberg-Hastings, Sandpile, Wa-Tor, Traffic CA, Wireworld, and the existing observable-process recipes.
 - Renamed visible Random Rule Lab wording to Rule Allocation Sandbox while preserving internal IDs and export compatibility.
 - Renamed the user-facing Sample / ROI Field Demo to Spatiotemporal Sampling Process Lab while preserving legacy export aliases.
@@ -57,6 +57,8 @@ Challenge Mode also persists `missionMode`. Mission modes are player-facing obje
 - Added a sampling process rule catalog, minimal Process Paint assignment model, deterministic Random Rule Lab allocator, process status labels, and preferred export layers: `sourceField`, `stateLayer`, `ruleLayer`, `groupLayer`, `valueLayer`, `transitionLayer`, `roiRoleLayer`, and `processMessages`.
 - Canonicalized Process Paint rule families under `sampling-process-rule-families-v1`: `inert`, `propagatingFront`, `excitableWave`, `localBirthDeath`, `diffusiveSpread`, `directedTransport`, `cyclicDominance`, `domainFormation`, `thresholdCascade`, `interactingPopulation`, `freshnessRecovery`, `morphogenesis`, `congestionWave`, and `structuredSignal`. Legacy paint IDs remain aliases, while new layers and exports write canonical IDs.
 - Added a deterministic CA-style Process Paint stepper that emits per-frame sampling value, transition, ROI-role, process-message, state-count, rule-count, and group-count diagnostics.
+- Added discrete process generation timing for Foundational CA Models, Ocean-Relevant Process Analogs, Process Paint, and Rule Allocation Sandbox. Rendering remains independent from process updates; default playback is 1 generation per second with Step Generation and fixed tick-rate controls.
+- Added process explainability metric layers and legends for state, neighbor count, rule support, transition class, ignition pressure, infection pressure, threshold proximity, congestion pressure, structured signal support, source support, and sampling interpretation. Exports now preserve process timing, display metric metadata, and compact metric layers.
 - Preserved legacy aliases including `eventLikelihoodField`, `likelihoodField`, `likelihoodNodes`, `behaviorPresetId`, and `sampleValueField`.
 
 ### v0.1 - Static Browser Shell And Phaser Map
@@ -206,3 +208,18 @@ Challenge Mode also persists `missionMode`. Mission modes are player-facing obje
   - [testing.md](testing.md)
   - [../tools/js/README.md](../tools/js/README.md)
   - [../tools/python/README.md](../tools/python/README.md)
+
+## Process Example Contexts
+
+Foundational CA Models are known local-rule models used to teach cells, states, neighborhoods, update rules, and emergent behavior. Ocean-Relevant Process Analogs are simplified CA/grid-process-inspired event or process layers that resemble environmental behaviors important for AUV sampling, but they are not physical flow models or calibrated ocean simulations.
+
+Observable Process Patterns are bridge metadata rather than the primary selector. For example, Forest Fire maps to Propagating Fronts, which bridges to River Plume Front and Shoreline Runoff Pulse analogs. Greenberg-Hastings maps to Excitable Waves. Sandpile maps to Threshold Cascades, which bridges to turbidity or episodic discharge analogs.
+
+Science boundary: the deterministic process demo teaches local process evolution S(x,y,t). Flow Fields teaches current vectors F(x,y,t). Coupled Dynamic Sampling Space combines process plus flow plus constraints. Uncertainty / Forecast adds hidden truth, forecast, belief, observations, and uncertainty. Ocean-relevant analogs in this demo are not calibrated ocean models.
+## Active Example State
+
+The visible Process Lab mode plus the context-specific model or analog selector is the primary identity for the Deterministic Spatiotemporal Process Lab. The mode selector, context-specific model or analog selector, center subtitle, right-panel Current Lab State, debug object, scenario metadata, and exports should agree on the same selected example.
+
+`referenceSignature*` fields remain for compatibility and represent the mapped observable pattern, not the primary selected example. New consumers should prefer the `processExample` block in demo/scenario exports. `processExample.mappedReferenceSignatureId` should match the legacy flat `referenceSignatureId`.
+
+Ocean-Relevant Process Analogs are educational event/process-layer analogs. They are not calibrated flow models, ocean forecasts, uncertainty models, or mission planners; flow coupling and uncertainty realism belong in the coupled and uncertainty demos.

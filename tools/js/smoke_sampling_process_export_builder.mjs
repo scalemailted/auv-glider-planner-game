@@ -68,7 +68,19 @@ const field = {
   interactionScale: 'localNeighborhood',
   stateModel: 'timeIndexed',
   depletionMode: 'recovering',
-  displayMode: 'sampleWithLikelihoodOverlay',
+  displayMode: 'processTransitionView',
+  processTiming: { generationIndex: 7, tickRate: 1, tickIntervalSeconds: 1, frameSemantics: 'discrete-generations-v1' },
+  processDisplayMetric: {
+    metricId: 'transitionClass',
+    metricLabel: 'Transition View',
+    metricCaption: 'Birth, survive, death, or remain inactive under the local neighbor-count rule.',
+    legend: [{ id: 'birth', label: 'birth next', color: '#63e6be', description: 'Inactive cell with exactly three active neighbors.' }]
+  },
+  metricLayers: {
+    neighborCount: [[0, 3], [1, 2]],
+    ruleSupport: [[0, 1], [0.5, 0.75]],
+    transitionClass: [['remainInactive', 'birth'], ['death', 'survive']]
+  },
   stats: { min: 0.1, max: 0.8, mean: 0.45 },
   highValueCells: [{ row: 0, col: 1, value: 0.8 }],
   likelihoodField: {
@@ -153,10 +165,12 @@ const baseContext = {
   demoTime: 7,
   field,
   processLayers,
-  processMode: 'referenceSignature',
+  processMode: 'foundationalCaModels',
   patternSource: 'referenceSignature',
-  exampleProcessId: 'stationaryTemporalBursts',
-  referenceSignatureId: 'stationaryTemporalBursts',
+  exampleTrack: 'foundationalCaModels',
+  exampleProcessId: 'conwayGameOfLife',
+  foundationalCaModelId: 'conwayGameOfLife',
+  referenceSignatureId: 'birthDeathEmergence',
   referenceSignatureModified: false,
   behaviorPresetId: 'custom',
   behaviorPresetModified: false,
@@ -178,6 +192,8 @@ const baseContext = {
   exportFrameCount: 3,
   playbackDirection: 1,
   timeSpeedScale: 1,
+  processTiming: { generationIndex: 7, tickRate: 1, tickIntervalSeconds: 1, frameSemantics: 'discrete-generations-v1' },
+  processDisplayMetric: field.processDisplayMetric,
   seed: 'export-builder-smoke',
   sceneConfig: {
     seed: 'export-builder-smoke',
@@ -204,21 +220,32 @@ assert(referenceArtifact.type === 'anchor.demo.sampling-process-field', 'artifac
 assert(referenceArtifact.legacyType === 'anchor.demo.sample-roi-field', 'artifact legacyType mismatch');
 assert(referenceArtifact.demoName === 'Deterministic Spatiotemporal Process Lab', 'artifact demoName mismatch');
 assert(referenceArtifact.legacyDemoName === 'Sample / ROI Field Demo', 'artifact legacyDemoName mismatch');
-assert(referenceArtifact.exampleProcessId === 'stationaryTemporalBursts', 'exampleProcessId missing');
-assert(referenceArtifact.exampleType === 'observableProcessPattern', 'exampleType missing');
+assert(referenceArtifact.exampleTrack === 'foundationalCaModels', 'exampleTrack missing');
+assert(referenceArtifact.exampleProcessId === 'conwayGameOfLife', 'exampleProcessId missing');
+assert(referenceArtifact.exampleType === 'foundationalCaModel', 'exampleType missing');
+assert(referenceArtifact.processExample?.exampleTrack === referenceArtifact.exampleTrack, 'processExample track should match flat field');
+assert(referenceArtifact.processExample?.exampleProcessId === referenceArtifact.exampleProcessId, 'processExample id should match flat field');
+assert(referenceArtifact.processExample?.mappedReferenceSignatureId === referenceArtifact.referenceSignatureId, 'processExample mapped reference should match legacy referenceSignatureId');
 assert(referenceArtifact.fields.sourceField?.[0]?.[1] === 0.9, 'sourceField alias missing from current fields');
 assert(referenceArtifact.fields.eventLikelihood?.[0]?.[1] === 0.9, 'eventLikelihood field missing');
 assert(referenceArtifact.fields.legacyEventLikelihoodField?.[0]?.[1] === 0.9, 'legacy event likelihood field missing');
 assert(referenceArtifact.fields.samplingValue?.[0]?.[1] === 0.8, 'samplingValue field missing');
 assert(referenceArtifact.fields.sampleValue?.[0]?.[1] === 0.8, 'sampleValue field missing');
+assert(referenceArtifact.processTiming?.generationIndex === 7, 'top-level processTiming generationIndex missing');
+assert(referenceArtifact.processTiming?.tickRate === 1, 'top-level processTiming tickRate missing');
+assert(referenceArtifact.processDisplayMetric?.metricId === 'transitionClass', 'top-level processDisplayMetric missing');
+assert(referenceArtifact.fields.metricLayers?.neighborCount?.[0]?.[1] === 3, 'frame metricLayers neighborCount missing');
+assert(referenceArtifact.fields.metricLayers?.transitionClass?.[0]?.[1] === 'birth', 'frame metricLayers transitionClass missing');
 assert(referenceArtifact.likelihoodField?.values?.[0]?.[1] === 0.9, 'top-level likelihoodField missing values');
-assert(referenceArtifact.referenceSignatureId === 'stationaryTemporalBursts', 'reference signature id missing');
+assert(referenceArtifact.referenceSignatureId === 'birthDeathEmergence', 'reference signature id missing');
 assert(referenceArtifact.referenceSignatureLabel, 'reference signature label missing');
 assert(Array.isArray(referenceArtifact.referenceModels), 'reference models missing');
 assert(referenceArtifact.caTaxonomy, 'CA taxonomy missing');
 assert(referenceArtifact.metadata.referenceSignatureMetadata, 'metadata reference signature missing');
 assert(referenceArtifact.metadata.componentRecipe, 'metadata componentRecipe missing');
 assert(referenceArtifact.metadata.activeComponentRecipe.seed === 'export-builder-smoke', 'active component recipe seed missing');
+assert(referenceArtifact.metadata.processTiming?.frameSemantics === 'discrete-generations-v1', 'metadata processTiming missing frame semantics');
+assert(referenceArtifact.metadata.processDisplayMetric?.metricLabel === 'Transition View', 'metadata processDisplayMetric missing');
 
 const paintArtifact = buildSamplingProcessDemoArtifactExport({
   ...baseContext,
@@ -228,6 +255,8 @@ const paintArtifact = buildSamplingProcessDemoArtifactExport({
   referenceSignatureModified: true
 });
 assert(paintArtifact.processMode === 'processPaint', 'processPaint processMode missing');
+assert(paintArtifact.processExample === null, 'processPaint should not export an active processExample block');
+assert(paintArtifact.exampleProcessId === null, 'processPaint should not export selected example id');
 assert(paintArtifact.ruleAllocation?.cells?.['1,0'], 'processPaint ruleAllocation missing');
 assert(paintArtifact.groupDefinitions?.[1]?.label === 'Smoke Group', 'processPaint groupDefinitions missing');
 assert(paintArtifact.paintStartMode === 'blankCanvas', 'processPaint paintStartMode missing');

@@ -511,11 +511,11 @@ test('campaign planning smoke flow reaches debrief', async ({ page }) => {
   await expect(page.locator('#agent-performance-hud')).toBeEmpty();
   await expect(page.locator('#waypoint-timeline')).toContainText('Process Example View');
   await expect(page.locator('#waypoint-timeline')).toContainText('Current Lab State');
-  await expect(page.locator('#waypoint-timeline')).toContainText('Example Processes');
+  await expect(page.locator('#waypoint-timeline')).toContainText('Foundational CA Models');
   await expect(page.locator('#waypoint-timeline')).toContainText('Inspired By');
   await expect(page.locator('#waypoint-timeline')).toContainText('Sampling Interpretation');
   await expect(page.locator('#mission-console [data-sampling-top-card="mode"]')).toContainText('Mode');
-  await expect(page.locator('#mission-console [data-sampling-primary-mode="referenceSignature"]')).toContainText('Example Process');
+  await expect(page.locator('#mission-console [data-sampling-primary-mode="foundationalCaModels"]')).toContainText('Foundational CA Model');
   await expect(page.locator('#mission-console [data-sampling-top-card="summary"]')).toHaveCount(0);
   await expect(page.locator('#mission-console')).not.toContainText('Current Summary');
   await expect(page.locator('#mission-console')).not.toContainText('Pattern Source / Mode');
@@ -525,13 +525,13 @@ test('campaign planning smoke flow reaches debrief', async ({ page }) => {
   await expect(page.locator('#mission-console')).not.toContainText('Reference Signature is guided');
   await expectSamplingSectionsCollapsed(page, [
     'Mode',
-    'Example Process',
+    'Foundational CA Models',
     'Display / Diagnostic Layer',
     'Seed / Scenario Identity',
     'Export'
   ]);
   await expandMissionConsoleSection(page, 'Mode');
-  await expandMissionConsoleSection(page, 'Example Process');
+  await expandMissionConsoleSection(page, 'Foundational CA Models');
   await expandMissionConsoleSection(page, 'Display / Diagnostic Layer');
   await expandMissionConsoleSection(page, 'Export');
   await expect(page.locator('#sampling-process-mode')).toBeVisible();
@@ -541,23 +541,27 @@ test('campaign planning smoke flow reaches debrief', async ({ page }) => {
     return Boolean(mode && signature && mode.compareDocumentPosition(signature) & Node.DOCUMENT_POSITION_FOLLOWING);
   })).toBe(true);
   await expect(page.locator('#sampling-process-mode option')).toHaveText([
-    'Example Processes',
+    'Foundational CA Models',
+    'Ocean-Relevant Process Analogs',
     'Custom Composer',
     'Process Paint',
     'Rule Allocation Sandbox'
   ]);
   await expect(page.locator('#sampling-process-mode')).not.toContainText('Diagnostics / Graph Inspection');
   await expect(page.locator('#roi-demo-pattern-source')).toHaveCount(0);
-  await expect(page.locator('#roi-demo-reference-signature')).toBeVisible();
-  await expect(page.locator('#roi-demo-reference-signature')).toContainText('Propagating Fronts');
-  await expect(page.locator('#roi-demo-reference-signature optgroup').first()).toHaveAttribute('label', /Foundational CA Models/, { timeout: 5000 });
-  await expect(page.locator('#roi-demo-reference-signature optgroup').nth(1)).toHaveAttribute('label', /Observable Process Patterns/);
-  await expect(page.locator('#roi-demo-reference-signature')).toContainText("Conway's Game of Life");
-  await expect(page.locator('#roi-demo-reference-signature')).toContainText('Forest Fire');
-  await expect(page.locator('#roi-demo-reference-signature')).toContainText('Excitable Waves');
-  await expect(page.locator('#roi-demo-reference-signature')).toContainText('Directed Feature Transport');
-  await expect(page.locator('#waypoint-timeline [data-roi-current-lab-state]')).toContainText('Example');
-  await expect(page.locator('#waypoint-timeline [data-roi-current-lab-state]')).toContainText('Example-Validated');
+  await expect(page.locator('#sampling-process-example-track')).toHaveCount(0);
+  await expect(page.locator('#sampling-process-example-id')).toBeVisible();
+  await expect(page.locator('#sampling-process-example-id')).toContainText("Conway's Game of Life");
+  await expect(page.locator('#sampling-process-example-id')).toContainText('Forest Fire');
+  await expect(page.locator('#sampling-process-example-id')).not.toContainText('River Plume Front');
+  await expect(page.locator('#roi-demo-reference-signature')).not.toContainText('River Plume Front');
+  await expect(page.locator('#roi-demo-reference-signature')).not.toContainText('Bloom Growth / Decay');
+  await expect(page.locator('#waypoint-timeline [data-roi-current-lab-state]')).toContainText('Foundational CA Models');
+  await expect(page.locator('#waypoint-timeline [data-roi-current-lab-state]')).toContainText('Foundational CA Models');
+  await expect(page.locator('#waypoint-timeline [data-roi-current-lab-state]')).toContainText("Conway's Game of Life");
+  await expect(page.locator('#waypoint-timeline [data-roi-current-lab-state]')).toContainText('Mapped Pattern');
+  await expect(page.locator('#waypoint-timeline [data-roi-current-lab-state]')).toContainText('Local Birth-Death Emergence');
+  await expect(page.locator('#waypoint-timeline [data-roi-current-lab-state]')).toContainText('simplifiedFamilyAnalog');
   await expect(page.locator('#waypoint-timeline .sampling-panel-tabs')).toBeVisible();
   await expect(page.locator('#waypoint-timeline .sampling-panel-tabs')).toContainText('Recipe');
   await expect(page.locator('#waypoint-timeline .sampling-panel-tabs')).toContainText('Inspector');
@@ -571,7 +575,7 @@ test('campaign planning smoke flow reaches debrief', async ({ page }) => {
   })).toBe(true);
   await clickRightPanelMode(page, 'diagnostics');
   await expect(page.locator('#waypoint-timeline [data-roi-diagnostics-view]')).toBeVisible();
-  await expect.poll(() => page.evaluate(() => window.anchorGame.phaser.scene.getScene('RoiGeneratorDemoScene').processMode)).toBe('referenceSignature');
+  await expect.poll(() => page.evaluate(() => window.anchorGame.phaser.scene.getScene('RoiGeneratorDemoScene').processMode)).toBe('foundationalCaModels');
   await expect(page.locator('#waypoint-timeline')).toContainText('Field / Process Stats');
   await expect(page.locator('#waypoint-timeline [data-roi-reference-signature-help]')).toHaveCount(0);
   await clickRightPanelMode(page, 'cellInspector');
@@ -580,26 +584,41 @@ test('campaign planning smoke flow reaches debrief', async ({ page }) => {
   await clickRightPanelMode(page, 'recipeSignature');
   await expect(page.locator('#waypoint-timeline [data-roi-recipe-signature-view]')).toBeVisible();
   await expect(page.locator('#roi-demo-behavior-preset')).toHaveCount(0);
-  await expect(page.locator('#mission-console')).toContainText('Process Lab UI: reference-signature-primary-ui-v1');
+  await expect(page.locator('#mission-console')).toContainText('Process Lab UI: process-context-split-ui-v1');
   await expect(page.locator('#mission-console')).toContainText('Legacy presets visible: false');
   await expect(page.evaluate(() => window.ANCHOR_ROI_UI_DEBUG)).resolves.toMatchObject({
-    uiVersion: 'reference-signature-primary-ui-v1',
+    uiVersion: 'process-context-split-ui-v1',
     referenceSignatureCount: 14,
     legacyPresetCount: 12,
     legacyPresetsVisible: false,
     activePatternSource: 'referenceSignature',
-    activeReferenceSignatureId: 'stationaryTemporalBursts',
+    activeProcessContext: 'foundationalCaModels',
+    activeProcessContextLabel: 'Foundational CA Models',
+    activeReferenceSignatureId: 'birthDeathEmergence',
+    activeExampleTrack: 'foundationalCaModels',
+    activeExampleProcessId: 'conwayGameOfLife',
+    activeExampleProcessLabel: "Conway's Game of Life",
+    activeMappedReferenceSignatureId: 'birthDeathEmergence',
+    legacyReferenceMappingConsistent: true,
+    selectorModeMatchesActiveExample: true,
+    selectorMatchesActiveExample: true,
     hasValueDistributionAccordion: false,
     rightPanelMode: 'recipeSignature',
-    visibleWorkflowModes: ['referenceSignature', 'customComposer', 'processPaint', 'randomRuleLab'],
+    visibleWorkflowModes: ['foundationalCaModels', 'oceanProcessAnalogs', 'customComposer', 'processPaint', 'randomRuleLab'],
     diagnosticsAvailableAsView: true
   });
   await expect(page.locator('#bottom-timeline .roi-demo-transport')).toBeVisible();
-  await expect(page.locator('#bottom-timeline')).toContainText('Demo Time');
+  await expect(page.locator('#bottom-timeline')).toContainText('Generation');
+  await expect(page.locator('#bottom-timeline')).toContainText('1 gen/s');
   await expect(page.locator('#bottom-timeline')).toContainText('Infinite timeline');
   await expect(page.locator('#bottom-timeline [data-action="roi-demo-reset"]')).toHaveText('Reset');
-  await expect(page.locator('#bottom-timeline [data-action="roi-demo-direction"]')).toHaveText('Direction: Forward');
-  await expect(page.locator('#bottom-timeline [data-action="roi-demo-pause"]')).toHaveText('Pause');
+  await expect(page.locator('#bottom-timeline [data-action="roi-demo-step-generation"]')).toHaveText('Step Generation');
+  await expect(page.locator('#bottom-timeline [data-roi-demo-tick-rate]')).toHaveValue('1');
+  await page.locator('#bottom-timeline [data-action="roi-demo-pause"]').click();
+  await expect.poll(() => page.evaluate(() => window.anchorGame.phaser.scene.getScene('RoiGeneratorDemoScene').paused)).toBe(true);
+  const generationBeforeStep = await page.evaluate(() => window.anchorGame.phaser.scene.getScene('RoiGeneratorDemoScene').processGenerationIndex);
+  await page.locator('#bottom-timeline [data-action="roi-demo-step-generation"]').click();
+  await expect.poll(() => page.evaluate(() => window.anchorGame.phaser.scene.getScene('RoiGeneratorDemoScene').processGenerationIndex)).toBe(generationBeforeStep + 1);
   await expect(page.locator('#roi-demo-event-likelihood')).toHaveCount(0);
   await expect(page.locator('#roi-demo-event-likelihood-dynamics')).toHaveCount(0);
   await expect(page.locator('#roi-demo-spatial-pattern')).toHaveCount(0);
@@ -611,8 +630,16 @@ test('campaign planning smoke flow reaches debrief', async ({ page }) => {
   await expect(page.locator('#roi-demo-state-model')).toHaveCount(0);
   await expect(page.locator('#roi-demo-depletion-mode')).toHaveCount(0);
   await expect(page.locator('#roi-demo-display-mode')).toBeVisible();
-  await expect(page.locator('#roi-demo-display-mode')).toHaveValue('sampleValue');
-  await expect.poll(() => page.evaluate(() => window.anchorGame.phaser.scene.getScene('RoiGeneratorDemoScene').displayMode)).toBe('sampleValue');
+  await expect(page.locator('#roi-demo-display-mode')).toHaveValue('processTransitionView');
+  await expect(page.locator('#roi-demo-display-mode')).toContainText('State View');
+  await expect(page.locator('#roi-demo-display-mode')).toContainText('Rule Metric');
+  await expect(page.locator('#roi-demo-display-mode')).toContainText('Transition View');
+  await expect.poll(() => page.evaluate(() => window.anchorGame.phaser.scene.getScene('RoiGeneratorDemoScene').displayMode)).toBe('processTransitionView');
+  await expect(page.locator('#waypoint-timeline [data-process-metric-explanation]')).toContainText(/neighbor count/i);
+  await expect(page.locator('#waypoint-timeline [data-process-metric-explanation]')).toContainText(/birth/i);
+  await expect(page.locator('#waypoint-timeline [data-process-metric-explanation]')).toContainText(/surviv/i);
+  await expect(page.locator('#waypoint-timeline [data-process-metric-explanation]')).toContainText(/death|dies/i);
+  await expect(page.locator('#waypoint-timeline [data-process-metric-explanation]')).toContainText('What colors mean');
   await expect(page.locator('#roi-demo-dynamic-complexity')).toHaveCount(0);
   await expect(page.locator('#mission-console [data-action="export-demo-json"]')).toHaveText('Export Demo JSON');
   await expect(page.locator('#mission-console')).not.toContainText('Scenario Generation');
@@ -623,10 +650,24 @@ test('campaign planning smoke flow reaches debrief', async ({ page }) => {
   expect(roiArtifact.data.legacyType).toBe('anchor.demo.sample-roi-field');
   expect(roiArtifact.data.legacyDemoName).toBe('Sample / ROI Field Demo');
   expect(roiArtifact.data.frames).toHaveLength(1);
-  expect(roiArtifact.data.config.displayMode).toBe('sampleValue');
+  expect(roiArtifact.data.config.displayMode).toBe('processTransitionView');
+  expect(roiArtifact.data.processTiming.frameSemantics).toBe('discrete-generations-v1');
+  expect(roiArtifact.data.processTiming.tickRate).toBe(1);
+  expect(roiArtifact.data.processDisplayMetric.metricId).toBe('transitionClass');
+  expect(roiArtifact.data.fields.metricLayers.transitionClass.length).toBe(roiArtifact.data.grid.height);
   expect(roiArtifact.data.patternSource).toBe('referenceSignature');
-  expect(roiArtifact.data.referenceSignatureId).toBe('stationaryTemporalBursts');
-  expect(roiArtifact.data.referenceSignatureMetadata.label).toBe('Recurrent Stationary Hotspots');
+  expect(roiArtifact.data.referenceSignatureId).toBe('birthDeathEmergence');
+  expect(roiArtifact.data.referenceSignatureMetadata.label).toBe('Local Birth-Death Emergence');
+  expect(roiArtifact.data.exampleTrack).toBe('foundationalCaModels');
+  expect(roiArtifact.data.exampleTrackLabel).toBe('Foundational CA Models');
+  expect(roiArtifact.data.exampleProcessId).toBe('conwayGameOfLife');
+  expect(roiArtifact.data.exampleProcessLabel).toBe("Conway's Game of Life");
+  expect(roiArtifact.data.foundationalCaModelId).toBe('conwayGameOfLife');
+  expect(roiArtifact.data.processExample.exampleTrack).toBe('foundationalCaModels');
+  expect(roiArtifact.data.processExample.exampleProcessId).toBe('conwayGameOfLife');
+  expect(roiArtifact.data.processExample.mappedReferenceSignatureId).toBe(roiArtifact.data.referenceSignatureId);
+  expect(roiArtifact.data.processPatternId).toBe('birthDeathEmergence');
+  expect(roiArtifact.data.metadata.exampleTrack).toBe('foundationalCaModels');
   expect(roiArtifact.data.referenceSignatureMetadata.caTaxonomy).toBeTruthy();
   expect(roiArtifact.data.referenceSignatureMetadata.qaExpectations).toBeTruthy();
   expect(roiArtifact.data.referenceSignatureMetadata.phenotypeMetrics).toBeTruthy();
@@ -642,8 +683,8 @@ test('campaign planning smoke flow reaches debrief', async ({ page }) => {
   expect(roiArtifact.data.fields.groupLayer.length).toBe(roiArtifact.data.grid.height);
   expect(roiArtifact.data.fields.roiRoleLayer.length).toBe(roiArtifact.data.grid.height);
   expect(roiArtifact.data.fields.eventLikelihood[0].length).toBe(roiArtifact.data.grid.width);
-  expect(roiArtifact.data.likelihoodField.type).toBe('multiModalLikelihood');
-  expect(roiArtifact.data.likelihoodField.diagnostics.modeCount).toBeGreaterThan(1);
+  expect(roiArtifact.data.likelihoodField.type).toBe('processSourceField');
+  expect(roiArtifact.data.likelihoodField.diagnostics).toBeTruthy();
   expect(roiArtifact.data.likelihoodField.values.length).toBe(roiArtifact.data.grid.height);
   expect(roiArtifact.data.likelihoodField.mesh).toMatchObject({
     activeThreshold: 0.25,
@@ -665,6 +706,34 @@ test('campaign planning smoke flow reaches debrief', async ({ page }) => {
   expect(roiArtifact.data.frames[0].activityDiagnostics.totalActivityMass).toBeGreaterThan(0);
   expect(roiArtifact.data.behaviorPreset.id).toBe('custom');
   expect(roiArtifact.data.metadata.patternSource).toBe('referenceSignature');
+
+  await page.locator('#sampling-process-mode').selectOption('oceanProcessAnalogs');
+  await expandMissionConsoleSection(page, 'Ocean-Relevant Process Analogs');
+  await expect(page.locator('#sampling-process-example-id')).toContainText('River Plume Front');
+  await page.locator('#sampling-process-example-id').selectOption('riverPlumeFront');
+  await expect.poll(() => page.evaluate(() => window.ANCHOR_ROI_UI_DEBUG)).toMatchObject({
+    activeProcessContext: 'oceanProcessAnalogs',
+    activeProcessContextLabel: 'Ocean-Relevant Process Analogs',
+    activeExampleTrack: 'oceanRelevantProcessAnalogs',
+    activeExampleProcessId: 'riverPlumeFront',
+    activeExampleProcessLabel: 'River Plume Front',
+    activeMappedReferenceSignatureId: 'frontPropagation',
+    legacyReferenceMappingConsistent: true,
+    selectorModeMatchesActiveExample: true,
+    selectorMatchesActiveExample: true
+  });
+  await expect(page.locator('#waypoint-timeline [data-roi-current-lab-state]')).toContainText('Ocean-Relevant Process Analogs');
+  await expect(page.locator('#waypoint-timeline [data-roi-current-lab-state]')).toContainText('River Plume Front');
+  await expect(page.locator('#waypoint-timeline [data-roi-current-lab-state]')).toContainText('Requires Flow Coupling');
+  await expect(page.locator('#waypoint-timeline [data-roi-current-lab-state]')).not.toContainText("Conway's Game of Life");
+  await expect(page.locator('#waypoint-timeline')).toContainText('Ocean-Relevant Process Analog');
+  await expect(page.locator('#waypoint-timeline')).toContainText('Mapped Pattern');
+  await expect(page.locator('#waypoint-timeline [data-process-metric-explanation]')).toContainText(/physical downstream transport belongs/i);
+  const oceanArtifact = await downloadDemoArtifact(page);
+  expect(oceanArtifact.data.processExample.exampleTrack).toBe('oceanRelevantProcessAnalogs');
+  expect(oceanArtifact.data.processExample.exampleProcessId).toBe('riverPlumeFront');
+  expect(oceanArtifact.data.processExample.requiresFlowCoupling).toBe(true);
+  expect(oceanArtifact.data.processExample.mappedReferenceSignatureId).toBe(oceanArtifact.data.referenceSignatureId);
 
   await page.locator('#sampling-process-mode').selectOption('customComposer');
   await expandMissionConsoleSections(page, [
@@ -691,6 +760,12 @@ test('campaign planning smoke flow reaches debrief', async ({ page }) => {
   await expect(page.locator('#roi-demo-state-model')).toBeVisible();
   await expect(page.locator('#roi-demo-depletion-mode')).toBeVisible();
   await expect(page.locator('#roi-demo-dynamic-complexity')).toBeVisible();
+  await expect.poll(() => page.evaluate(() => window.ANCHOR_ROI_UI_DEBUG)).toMatchObject({
+    processMode: 'customComposer',
+    activeExampleProcessId: null,
+    activeMappedReferenceSignatureId: null,
+    legacyReferenceMappingConsistent: true
+  });
   await expect(page.locator('#mission-console')).toContainText('Scenario Generation');
   await expect(page.locator('#mission-console')).toContainText('Learn / Compare Components');
   await expect(page.locator('#mission-console [data-action="roi-compare-temporal"]')).toHaveText('Compare Temporal Patterns');
@@ -738,6 +813,18 @@ test('campaign planning smoke flow reaches debrief', async ({ page }) => {
   await expect(page.locator('#waypoint-timeline')).toContainText('Process Paint Mode');
   await expect(page.locator('#waypoint-timeline')).toContainText('Paint Tools');
   await expect(page.locator('#waypoint-timeline [data-process-paint-tools]')).toBeVisible();
+  await expect.poll(() => page.evaluate(() => window.ANCHOR_ROI_UI_DEBUG)).toMatchObject({
+    processMode: 'processPaint',
+    activeExampleProcessId: null,
+    activeMappedReferenceSignatureId: null,
+    legacyReferenceMappingConsistent: true
+  });
+  await expect.poll(() => page.evaluate(() => window.ANCHOR_ROI_UI_DEBUG)).toMatchObject({
+    processMode: 'processPaint',
+    activeExampleProcessId: null,
+    activeMappedReferenceSignatureId: null,
+    legacyReferenceMappingConsistent: true
+  });
   await expect(page.locator('#waypoint-timeline .sampling-panel-tabs')).toContainText('Paint Tools');
   await expect(page.locator('#waypoint-timeline')).toContainText('Clear Canvas');
   await expect(page.locator('#waypoint-timeline')).toContainText('Randomize Canvas');
@@ -867,8 +954,8 @@ test('campaign planning smoke flow reaches debrief', async ({ page }) => {
   await page.locator('#sampling-random-seed').fill('e2e-random-seed');
   await page.locator('#sampling-random-seed').dispatchEvent('change');
   await expect.poll(() => page.evaluate(() => window.anchorGame.phaser.scene.getScene('RoiGeneratorDemoScene').paintModel.cells['0,0'])).toEqual(firstRandomCell);
-  await page.locator('#sampling-process-mode').selectOption('referenceSignature');
-  await expandMissionConsoleSection(page, 'Example Process');
+  await page.locator('#sampling-process-mode').selectOption('foundationalCaModels');
+  await expandMissionConsoleSection(page, 'Foundational CA Models');
   await expect(page.locator('#roi-demo-reference-signature')).toBeVisible();
   await expect(page.locator('#roi-demo-event-likelihood')).toHaveCount(0);
   await expect(page.locator('#roi-demo-spatial-pattern')).toHaveCount(0);
@@ -1033,8 +1120,12 @@ test('campaign planning smoke flow reaches debrief', async ({ page }) => {
   await expect(page.locator('#roi-demo-motion-scope option')).toHaveText(['Per Feature', 'Local / Neighborhood', 'Global']);
   await expect(page.locator('#roi-demo-interaction-scale option')).toHaveText(['Global Field', 'Cluster / Community', 'Cell / Node', 'Edge / Neighbor', 'Hybrid Multi-Scale']);
   await expect(page.locator('#roi-demo-display-mode option')).toHaveText([
-    'Sampling Value',
+    'State View',
+    'Rule Metric',
+    'Transition View',
+    'Sampling Interpretation',
     'Source Field',
+    'Sampling Value',
     'Sampling Value + Source Overlay',
     'Graph Topology',
     'Graph Communities',
@@ -1075,11 +1166,17 @@ test('campaign planning smoke flow reaches debrief', async ({ page }) => {
   await expect(page.locator('#mission-console')).not.toContainText('Forecast / Truth');
   await expect(page.locator('#mission-console')).not.toContainText('Current-Advected');
   await expect(page.locator('#mission-console')).not.toContainText('Uncertainty / Forecast demos');
-  await page.locator('#sampling-process-mode').selectOption('referenceSignature');
-  await expandMissionConsoleSection(page, 'Example Process');
+  await page.locator('#sampling-process-mode').selectOption('foundationalCaModels');
+  await expandMissionConsoleSection(page, 'Foundational CA Models');
   await page.locator('#roi-demo-reference-signature').selectOption('frontPropagation');
-  await expect(page.locator('#roi-demo-display-mode')).toHaveValue('sampleValue');
-  await expect.poll(() => page.evaluate(() => window.anchorGame.phaser.scene.getScene('RoiGeneratorDemoScene').displayMode)).toBe('sampleValue');
+  await expect(page.locator('#roi-demo-display-mode')).toHaveValue('processTransitionView');
+  await expect(page.locator('#roi-demo-display-mode')).toContainText('State View');
+  await expect(page.locator('#roi-demo-display-mode')).toContainText('Rule Metric');
+  await expect(page.locator('#roi-demo-display-mode')).toContainText('Transition View');
+  await expect.poll(() => page.evaluate(() => window.anchorGame.phaser.scene.getScene('RoiGeneratorDemoScene').displayMode)).toBe('processTransitionView');
+  await expect(page.locator('#waypoint-timeline [data-process-metric-explanation]')).toContainText(/ignition pressure|burning neighbor pressure/i);
+  await expect(page.locator('#waypoint-timeline [data-process-metric-explanation]')).toContainText(/consumed|trail/i);
+  await expect(page.locator('#waypoint-timeline [data-process-metric-explanation]')).toContainText('What colors mean');
   await expect(page.locator('#mission-console')).not.toContainText('active transition boundary');
   await expect(page.locator('#mission-console [data-roi-help="behaviorPreset"]')).toHaveCount(0);
   await expect(page.locator('#waypoint-timeline [data-roi-recipe-signature-view]')).toContainText('Propagating Fronts');

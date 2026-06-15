@@ -29,9 +29,11 @@ for (const mode of SAMPLING_PROCESS_MODES) {
   }
 }
 
-assert(samplingProcessModeHasSection('referenceSignature', 'referenceSignature'), 'referenceSignature should include reference selector');
-assert(!samplingProcessModeHasSection('referenceSignature', 'processPaintTools'), 'referenceSignature should exclude Process Paint tools');
-assert(!samplingProcessModeHasSection('referenceSignature', 'randomRuleLab'), 'referenceSignature should exclude Random Rule Lab tools');
+assert(samplingProcessModeHasSection('foundationalCaModels', 'referenceSignature'), 'foundational context should include process example selector');
+assert(samplingProcessModeHasSection('oceanProcessAnalogs', 'referenceSignature'), 'ocean context should include process example selector');
+assert(samplingProcessModeHasSection('referenceSignature', 'referenceSignature'), 'legacy referenceSignature alias should include process example selector');
+assert(!samplingProcessModeHasSection('foundationalCaModels', 'processPaintTools'), 'foundational context should exclude Process Paint tools');
+assert(!samplingProcessModeHasSection('oceanProcessAnalogs', 'randomRuleLab'), 'ocean context should exclude Random Rule Lab tools');
 
 for (const sectionId of fullComposerSections) {
   assert(samplingProcessModeHasSection('customComposer', sectionId), `customComposer should include ${sectionId}`);
@@ -48,7 +50,7 @@ assert(SAMPLING_PROCESS_MODE_UI.diagnosticsGraphInspection.internal === true, 'd
 assert(!SAMPLING_PROCESS_VISIBLE_MODES.includes('diagnosticsGraphInspection'), 'diagnostics should not be visible workflow mode');
 assert(samplingProcessRightPanelDefault('processPaint') === 'paintTools', 'processPaint right panel default mismatch');
 assert(samplingProcessRightPanelDefault('diagnosticsGraphInspection') === 'diagnostics', 'diagnostics right panel default mismatch');
-assert(samplingProcessModeSections('customComposer').length > samplingProcessModeSections('referenceSignature').length, 'custom composer should expose more sections than reference mode');
+assert(samplingProcessModeSections('customComposer').length > samplingProcessModeSections('foundationalCaModels').length, 'custom composer should expose more sections than example contexts');
 assert(Object.keys(SAMPLING_PROCESS_MODE_UI).length === SAMPLING_PROCESS_MODES.length, 'mode UI config count mismatch');
 
 if (failures.length) {

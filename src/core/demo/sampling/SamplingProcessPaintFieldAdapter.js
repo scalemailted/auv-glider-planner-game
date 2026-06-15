@@ -6,7 +6,7 @@ import { samplingProcessStatusLabel } from './SamplingProcessTerminology.js';
 export function buildSamplingProcessLayersForField({
   field = null,
   paintModel = null,
-  processMode = 'referenceSignature',
+  processMode = 'foundationalCaModels',
   updateRuleHint = null
 } = {}) {
   const graphField = field?.graphField ?? {};
@@ -32,6 +32,7 @@ export function buildSamplingProcessPaintField({
   paintModel = null,
   seed = 'anchor-roi-demo',
   demoTime = 0,
+  generationIndex = null,
   processPaintRunStarted = false,
   paused = false,
   paintStartMode = 'blankCanvas',
@@ -47,6 +48,7 @@ export function buildSamplingProcessPaintField({
     groupDefinitions: paintModel?.groups ?? {},
     seed,
     time: demoTime,
+    generationIndex,
     runStarted: processPaintRunStarted
   });
   const displayLayers = evolved.layers;
@@ -57,6 +59,7 @@ export function buildSamplingProcessPaintField({
     evolved,
     samplingValueField,
     paintModel,
+    updateRuleLabel: 'processPaintRuleFamilies',
     width,
     height
   });
@@ -112,6 +115,7 @@ export function buildSamplingProcessGraphField({
   evolved,
   samplingValueField,
   paintModel = null,
+  updateRuleLabel = 'processPaintRuleFamilies',
   width,
   height
 } = {}) {
@@ -119,7 +123,7 @@ export function buildSamplingProcessGraphField({
   const nodeGrid = processPaintNodeGrid(displayLayers, width, height, samplingValueField);
   return {
     ...(baseGraphField ?? {}),
-    updateRule: 'processPaintRuleFamilies',
+    updateRule: updateRuleLabel,
     stateField: displayLayers.stateLayer,
     ruleField: displayLayers.ruleLayer,
     resolvedRuleField: displayLayers.resolvedRuleLayer,
@@ -132,7 +136,7 @@ export function buildSamplingProcessGraphField({
     nodeGrid,
     diagnostics: {
       ...(baseGraphField?.diagnostics ?? {}),
-      updateRule: 'processPaintRuleFamilies',
+      updateRule: updateRuleLabel,
       topology: '8-neighbor',
       nodeCount: width * height,
       activeNodeCount: countLayerValues(displayLayers.stateLayer, 'active'),
@@ -146,7 +150,7 @@ export function buildSamplingProcessGraphField({
   };
 }
 
-export function runProcessPaintEvolutionFromLayers({ layers, width, height, groupDefinitions = {}, seed = 'anchor-roi-demo', time = 0, runStarted = false }) {
+export function runProcessPaintEvolutionFromLayers({ layers, width, height, groupDefinitions = {}, seed = 'anchor-roi-demo', time = 0, generationIndex = null, runStarted = false }) {
   if (!runStarted) {
     const frame = frameFromLayers({
       ...layers,
@@ -187,8 +191,20 @@ export function runProcessPaintEvolutionFromLayers({ layers, width, height, grou
     sourceField: layers.sourceField,
     parameterLayer: layers.parameterLayer
   };
-  const stepCount = Math.max(1, Math.min(240, Math.floor(Number(time || 0) * 1.5) + 1));
+  const requestedGeneration = generationIndex == null ? Math.floor(Number(time || 0) * 1.5) + 1 : Math.round(Number(generationIndex) || 0);
+  const stepCount = Math.max(0, Math.min(240, requestedGeneration));
   let result = null;
+  if (stepCount <= 0) {
+    result = frameFromLayers({
+      ...current,
+      width,
+      height,
+      groupDefinitions,
+      globalRuleId: 'inert',
+      time: 0,
+      seed
+    });
+  }
   for (let step = 0; step < stepCount; step += 1) {
     result = stepSamplingProcess({
       ...current,

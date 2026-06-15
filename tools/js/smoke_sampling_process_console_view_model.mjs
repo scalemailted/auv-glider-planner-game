@@ -33,7 +33,10 @@ function baseField() {
     interactionScale: 'edge',
     stateModel: 'stateEvolving',
     depletionMode: 'soft',
-    displayMode: 'sampleValueLikelihoodOverlay',
+    displayMode: 'processTransitionView',
+    processTiming: { generationIndex: 3, tickRate: 1, tickIntervalSeconds: 1, frameSemantics: 'discrete-generations-v1' },
+    processDisplayMetric: { metricId: 'transitionClass', metricLabel: 'Transition View', metricCaption: 'Next transition class', legend: [] },
+    metricLegend: [],
     clusterCount: 2,
     clusterSize: 'medium',
     dynamicComplexity: 'medium',
@@ -102,7 +105,12 @@ function baseContext(overrides = {}) {
     interactionScale: 'edge',
     stateModel: 'stateEvolving',
     depletionMode: 'soft',
-    displayMode: 'sampleValueLikelihoodOverlay',
+    displayMode: 'processTransitionView',
+    processGenerationIndex: 3,
+    processTickRate: 1,
+    processTickIntervalSeconds: 1,
+    usesDiscreteProcessClock: true,
+    processDisplayMetric: { metricId: 'transitionClass', metricLabel: 'Transition View', metricCaption: 'Next transition class', legend: [] },
     viewFilters: {
       showTopologyEdges: true,
       showActiveMessageEdges: true,
@@ -110,10 +118,13 @@ function baseContext(overrides = {}) {
     },
     dynamicComplexity: 'medium',
     patternSource: 'referenceSignature',
-    processMode: 'referenceSignature',
+    processMode: 'foundationalCaModels',
     behaviorPresetId: 'custom',
     behaviorPresetModified: false,
-    referenceSignatureId: 'stationaryTemporalBursts',
+    referenceSignatureId: 'birthDeathEmergence',
+    exampleTrack: 'foundationalCaModels',
+    exampleProcessId: 'conwayGameOfLife',
+    exampleProcessModified: false,
     referenceSignatureModified: false,
     updateRuleHint: 'propagatingFront',
     modifiedComponent: null,
@@ -149,7 +160,7 @@ function baseContext(overrides = {}) {
     randomRuleMode: 'exploratoryMixedRules',
     randomRuleGroupCount: 4,
     randomRuleActiveFraction: 0.18,
-    uiVersion: 'reference-signature-primary-ui-v1',
+    uiVersion: 'process-context-split-ui-v1',
     referenceSignatureCount: 14,
     legacyPresetCount: 12,
     legacyPresetsVisible: false,
@@ -196,10 +207,24 @@ function assertBaseState(state) {
 const referenceState = buildSamplingProcessConsoleState(baseContext());
 assertBaseState(referenceState);
 assert.equal(referenceState.patternSource, 'referenceSignature');
-assert.ok(referenceState.referenceSignature, 'reference mode should include reference signature metadata');
-assert.equal(referenceState.referenceSignatureId, 'stationaryTemporalBursts');
+assert.ok(referenceState.referenceSignature, 'foundational context should include reference signature metadata');
+assert.equal(referenceState.processModeLabel, 'Foundational CA Models');
+assert.equal(referenceState.referenceSignatureId, 'birthDeathEmergence');
+assert.equal(referenceState.exampleProcessId, 'conwayGameOfLife');
+assert.equal(referenceState.exampleProcessLabel, "Conway's Game of Life");
+assert.equal(referenceState.processExample.exampleProcessId, referenceState.exampleProcessId);
+assert.equal(referenceState.processExample.mappedReferenceSignatureId, referenceState.referenceSignatureId);
+assert.equal(referenceState.exampleTrack, 'foundationalCaModels');
+assert.equal(referenceState.exampleTrackLabel, 'Foundational CA Models');
+assert.ok(referenceState.exampleProcessId, 'foundational context should include selected example process');
+assert.ok(Array.isArray(referenceState.observableProcessPatternTags), 'reference mode should expose observable pattern tags');
 assert.equal(referenceState.referenceSignatureCount, 14);
 assert.equal(referenceState.legacyPresetCount, 12);
+assert.equal(referenceState.processGenerationIndex, 3);
+assert.equal(referenceState.processTickRate, 1);
+assert.equal(referenceState.usesDiscreteProcessClock, true);
+assert.deepEqual(referenceState.processTickRates, [0.25, 0.5, 1, 2, 4, 8]);
+assert.equal(referenceState.processDisplayMetric.metricId, 'transitionClass');
 
 const customState = buildSamplingProcessConsoleState(baseContext({
   patternSource: 'custom',
@@ -209,6 +234,9 @@ const customState = buildSamplingProcessConsoleState(baseContext({
 assertBaseState(customState);
 assert.equal(customState.patternSource, 'custom');
 assert.equal(customState.processMode, 'customComposer');
+assert.equal(customState.processExample.isCustom, true);
+assert.equal(customState.exampleProcessId, null);
+assert.equal(customState.referenceSignatureId, null);
 
 const processPaintState = buildSamplingProcessConsoleState(baseContext({
   patternSource: 'custom',
@@ -216,6 +244,8 @@ const processPaintState = buildSamplingProcessConsoleState(baseContext({
   paused: true
 }));
 assertBaseState(processPaintState);
+assert.equal(processPaintState.processExample.isCustom, true);
+assert.equal(processPaintState.exampleProcessId, null);
 assert.ok(processPaintState.paintValidation, 'process paint state should include paint validation');
 assert.ok(Array.isArray(processPaintState.processRules), 'process paint state should include rule catalog');
 assert.ok(Array.isArray(processPaintState.validPaintStates), 'process paint state should include valid paint states');

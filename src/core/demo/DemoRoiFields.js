@@ -99,8 +99,12 @@ export const ROI_DEMO_INTERACTION_SCALES = ROI_INTERACTION_SCALES;
 export const ROI_DEMO_STATE_MODELS = ['timeIndexed', 'frequencyBased', 'stateEvolving', 'historyAware'];
 export const ROI_DEMO_DEPLETION_MODES = ['none', 'hard', 'soft', 'neighborhood', 'freshnessAge', 'revisitRecovery'];
 export const ROI_DEMO_DISPLAY_MODES = [
-  'sampleValue',
+  'processStateView',
+  'processRuleMetric',
+  'processTransitionView',
+  'samplingInterpretation',
   'eventLikelihood',
+  'sampleValue',
   'sampleValueLikelihoodOverlay',
   'graphTopology',
   'graphCommunities',
@@ -741,6 +745,16 @@ export function normalizeRoiDemoDepletionMode(value = 'soft') {
 
 export function normalizeRoiDemoDisplayMode(value = 'sampleValue') {
   const aliases = {
+    stateView: 'processStateView',
+    processState: 'processStateView',
+    processStateView: 'processStateView',
+    ruleMetric: 'processRuleMetric',
+    processRuleMetric: 'processRuleMetric',
+    transitionView: 'processTransitionView',
+    processTransition: 'processTransitionView',
+    processTransitionView: 'processTransitionView',
+    samplingInterpretation: 'samplingInterpretation',
+    sampleInterpretation: 'samplingInterpretation',
     sample: 'sampleValue',
     value: 'sampleValue',
     sampleValue: 'sampleValue',
@@ -832,7 +846,11 @@ export function roiDisplayModeCaption(value) {
     diagnosticsOverlay: 'Combined diagnostic overlay of L mesh, messages, node states, and state counts.',
     depletedValue: 'Demo-only depleted/freshness-adjusted sample value unless connected to mission visits.',
     freshnessRevisitValue: 'Demo-only age-of-information/revisit value unless connected to mission visits.',
-    rawBaseValue: 'Seeded base sample value before temporal evolution, graph updates, and display effects.'
+    rawBaseValue: 'Seeded base sample value before temporal evolution, graph updates, and display effects.',
+    processStateView: 'State View: deterministic process states or phases such as inactive, active, susceptible, burning, recovering, conductor, or signal.',
+    processRuleMetric: 'Rule Metric: model-specific support such as neighbor count, ignition pressure, infection pressure, threshold proximity, or signal support.',
+    processTransitionView: 'Transition View: next or current generation transition classes such as birth, survive, death, ignite, recover, or release.',
+    samplingInterpretation: 'Sampling Interpretation: derived sampling-value meaning after the rule state is understood.'
   }[normalizeRoiDemoDisplayMode(value)] ?? 'Sample / ROI display layer.';
 }
 
@@ -1131,7 +1149,11 @@ export function roiDisplayModeLabel(value) {
     diagnosticsOverlay: 'Diagnostics Overlay',
     depletedValue: 'Depleted Value',
     freshnessRevisitValue: 'Freshness / Revisit Value',
-    rawBaseValue: 'Raw Base Value'
+    rawBaseValue: 'Raw Base Value',
+    processStateView: 'State View',
+    processRuleMetric: 'Rule Metric',
+    processTransitionView: 'Transition View',
+    samplingInterpretation: 'Sampling Interpretation'
   }[value] ?? 'Sample Value';
 }
 
@@ -3387,3 +3409,4 @@ function clampInt(value, min, max, fallback) {
 function round3(value) {
   return Number((Number(value) || 0).toFixed(3));
 }
+

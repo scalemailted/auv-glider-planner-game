@@ -35,10 +35,19 @@ const FULL_COMPOSER_SECTIONS = [
   'samplingEffect'
 ];
 
+const EXAMPLE_CONTEXT_SECTIONS = ['mode', 'referenceSignature', 'display', 'seed', 'export'];
+
 export const SAMPLING_PROCESS_MODE_UI = {
-  referenceSignature: {
-    description: 'Guided deterministic process-example workflow with a compact left HUD.',
-    leftSections: ['mode', 'referenceSignature', 'display', 'seed', 'export'],
+  foundationalCaModels: {
+    description: 'Guided foundational CA/grid-process workflow with a compact left HUD.',
+    leftSections: EXAMPLE_CONTEXT_SECTIONS,
+    advancedSections: ['editLoadedRecipe'],
+    rightPanelDefault: 'recipeSignature',
+    selectedCellPanel: 'cellInspector'
+  },
+  oceanProcessAnalogs: {
+    description: 'Guided ocean-relevant process analog workflow with a compact left HUD.',
+    leftSections: EXAMPLE_CONTEXT_SECTIONS,
     advancedSections: ['editLoadedRecipe'],
     rightPanelDefault: 'recipeSignature',
     selectedCellPanel: 'cellInspector'
@@ -74,11 +83,11 @@ export const SAMPLING_PROCESS_MODE_UI = {
   }
 };
 
-export function samplingProcessUiConfig(mode = 'referenceSignature') {
-  return SAMPLING_PROCESS_MODE_UI[normalizeSamplingProcessMode(mode)] ?? SAMPLING_PROCESS_MODE_UI.referenceSignature;
+export function samplingProcessUiConfig(mode = 'foundationalCaModels') {
+  return SAMPLING_PROCESS_MODE_UI[normalizeSamplingProcessMode(mode)] ?? SAMPLING_PROCESS_MODE_UI.foundationalCaModels;
 }
 
-export function samplingProcessModeSections(mode = 'referenceSignature') {
+export function samplingProcessModeSections(mode = 'foundationalCaModels') {
   return [...samplingProcessUiConfig(mode).leftSections];
 }
 
@@ -86,6 +95,6 @@ export function samplingProcessModeHasSection(mode, sectionId) {
   return samplingProcessModeSections(mode).includes(sectionId);
 }
 
-export function samplingProcessRightPanelDefault(mode = 'referenceSignature') {
+export function samplingProcessRightPanelDefault(mode = 'foundationalCaModels') {
   return samplingProcessUiConfig(mode).rightPanelDefault;
 }

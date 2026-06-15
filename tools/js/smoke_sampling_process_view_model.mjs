@@ -178,6 +178,11 @@ const context = {
   noise: 0.1,
   seed: 'smoke-seed',
   demoTime: 12,
+  processGenerationIndex: 5,
+  processTickRate: 1,
+  processTickIntervalSeconds: 1,
+  usesDiscreteProcessClock: true,
+  processDisplayMetric: { metricId: 'transitionClass', metricLabel: 'Transition View', metricCaption: 'Transition classes for the selected deterministic process.', legend: [] },
   timeMode: 'dynamic',
   selectedPaintState: 'active',
   selectedPaintRuleId: 'propagatingFront',
@@ -198,8 +203,13 @@ const context = {
 
 const recipeState = buildSamplingProcessRecipeSignatureState(context);
 assert.equal(recipeState.patternSource, 'custom');
+assert.equal(recipeState.processExample.isCustom, true, 'custom composer should resolve processExample as custom');
+assert.equal(recipeState.exampleProcessId, null, 'custom composer should clear selected example id');
 assert.ok(recipeState.componentRecipe, 'recipe/signature state should include componentRecipe');
 assert.equal(recipeState.displayMode, 'diagnosticsOverlay');
+assert.equal(recipeState.processGenerationIndex, 5, 'recipe/signature state should include process generation');
+assert.equal(recipeState.processTickRate, 1, 'recipe/signature state should include process tick rate');
+assert.equal(recipeState.processDisplayMetric.metricId, 'transitionClass', 'recipe/signature state should include process display metric');
 assert.ok(Array.isArray(recipeState.compatibilityWarnings), 'compatibilityWarnings should be an array');
 
 const diagnosticsState = buildSamplingProcessDiagnosticsState(context);

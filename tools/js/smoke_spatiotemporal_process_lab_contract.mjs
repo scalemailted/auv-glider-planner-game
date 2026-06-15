@@ -9,6 +9,7 @@ import {
 import {
   FOUNDATIONAL_CA_MODELS,
   OBSERVABLE_PROCESS_PATTERNS,
+  OCEAN_RELEVANT_PROCESS_ANALOGS,
   spatiotemporalProcessExampleOptions
 } from '../../src/core/demo/sampling/SpatiotemporalProcessExamples.js';
 import { buildSamplingProcessDemoArtifactExport } from '../../src/core/demo/sampling/SamplingProcessExportBuilder.js';
@@ -19,29 +20,57 @@ import { referenceSignatureMetadata } from '../../src/core/demo/roi/RoiReference
 assert.equal(SAMPLING_PROCESS_LAB_TITLE, 'Deterministic Spatiotemporal Process Lab');
 assert.equal(SAMPLING_PROCESS_LAB_MENU_LABEL, 'Process Lab');
 assert.equal(SAMPLING_PROCESS_LEGACY_DEMO_NAME, 'Sample / ROI Field Demo');
-assert(SAMPLING_PROCESS_VISIBLE_MODES.includes('referenceSignature'), 'Example Processes mode missing');
+assert.deepEqual(SAMPLING_PROCESS_VISIBLE_MODES, [
+  'foundationalCaModels',
+  'oceanProcessAnalogs',
+  'customComposer',
+  'processPaint',
+  'randomRuleLab'
+]);
+assert(!SAMPLING_PROCESS_VISIBLE_MODES.includes('referenceSignature'), 'legacy referenceSignature mode must not be visible');
 assert(!SAMPLING_PROCESS_VISIBLE_MODES.includes('diagnosticsGraphInspection'), 'Diagnostics must not be a visible primary mode');
-assert.equal(samplingProcessModeLabel('referenceSignature'), 'Example Processes');
+assert.equal(samplingProcessModeLabel('referenceSignature'), 'Foundational CA Models');
+assert.equal(samplingProcessModeLabel('oceanProcessAnalogs'), 'Ocean-Relevant Process Analogs');
 assert.equal(samplingProcessModeLabel('randomRuleLab'), 'Rule Allocation Sandbox');
 assert(FOUNDATIONAL_CA_MODELS.length >= 8, 'Foundational CA Models missing required entries');
-assert(OBSERVABLE_PROCESS_PATTERNS.length >= 14, 'Observable Process Patterns missing required entries');
+assert(OCEAN_RELEVANT_PROCESS_ANALOGS.length >= 8, 'Ocean-Relevant Process Analogs missing required entries');
+assert(OBSERVABLE_PROCESS_PATTERNS.length >= 14, 'Observable Process Patterns bridge metadata missing required entries');
 
 const optionGroups = spatiotemporalProcessExampleOptions();
-assert.deepEqual(optionGroups.map((group) => group.label), ['Foundational CA Models', 'Observable Process Patterns']);
+assert.deepEqual(optionGroups.map((group) => group.label), ['Foundational CA Models', 'Ocean-Relevant Process Analogs']);
 assert(optionGroups[0].options.some((option) => option.label === "Conway's Game of Life"), 'Conway option missing');
 assert(optionGroups[0].options.some((option) => option.label === 'Forest Fire'), 'Forest Fire option missing');
-assert(optionGroups[1].options.some((option) => option.label === 'Propagating Fronts'), 'Propagating Fronts option missing');
-assert(optionGroups[1].options.some((option) => option.label === 'Excitable Waves'), 'Excitable Waves option missing');
-assert(optionGroups[1].options.some((option) => option.label === 'Directed Feature Transport'), 'Directed Feature Transport rename missing');
+assert(optionGroups[1].options.some((option) => option.label === 'River Plume Front'), 'River Plume Front option missing');
+assert(optionGroups[1].options.some((option) => option.label === 'Oil / Chemical Plume'), 'Oil / Chemical Plume option missing');
 
-const consoleHtml = samplingProcessConsoleHtml(baseState());
-assert(consoleHtml.includes('Deterministic Spatiotemporal Process Lab'), 'console title missing');
-assert(consoleHtml.includes('Example Process'), 'Example Process selector label missing');
-assert(consoleHtml.includes('Foundational CA Models'), 'Foundational CA optgroup missing');
-assert(consoleHtml.includes('Observable Process Patterns'), 'Observable Process optgroup missing');
-assert(consoleHtml.includes("Conway's Game of Life") || consoleHtml.includes('Conway&#039;s Game of Life'), 'Conway visible option missing');
-assert(consoleHtml.includes('Rule Allocation Sandbox'), 'mode selector missing Rule Allocation Sandbox option');
-assert(!consoleHtml.includes('Diagnostics / Graph Inspection</option>'), 'Diagnostics visible mode leaked into selector');
+const foundationalHtml = samplingProcessConsoleHtml(baseState());
+assert(foundationalHtml.includes('Deterministic Spatiotemporal Process Lab'), 'console title missing');
+assert(foundationalHtml.includes('Foundational CA Models'), 'Foundational CA Models context missing');
+assert(foundationalHtml.includes('Foundational CA Model'), 'Foundational CA Model selector label missing');
+assert(foundationalHtml.includes('id="sampling-process-example-id"'), 'track-specific example selector missing');
+assert(foundationalHtml.includes('id="roi-demo-reference-signature"'), 'hidden legacy reference selector missing');
+assert(foundationalHtml.includes("Conway's Game of Life") || foundationalHtml.includes('Conway&#039;s Game of Life'), 'Conway visible option missing');
+assert(foundationalHtml.includes('Rule Allocation Sandbox'), 'mode selector missing Rule Allocation Sandbox option');
+assert(!foundationalHtml.includes('value="referenceSignature"'), 'legacy referenceSignature option leaked into visible mode selector');
+assert(!foundationalHtml.includes('Diagnostics / Graph Inspection</option>'), 'Diagnostics visible mode leaked into selector');
+assert(!foundationalHtml.includes('Example Track'), 'old Example Track selector leaked into normal UI');
+
+const oceanHtml = samplingProcessConsoleHtml(baseState({
+  processMode: 'oceanProcessAnalogs',
+  processModeLabel: 'Ocean-Relevant Process Analogs',
+  exampleTrack: 'oceanRelevantProcessAnalogs',
+  exampleTrackLabel: 'Ocean-Relevant Process Analogs',
+  exampleProcessId: 'riverPlumeFront',
+  oceanProcessAnalogId: 'riverPlumeFront',
+  foundationalCaModelId: null,
+  exampleProcessLabel: 'River Plume Front',
+  exampleType: 'oceanProcessAnalog',
+  referenceSignatureId: 'frontPropagation',
+  referenceSignature: referenceSignatureMetadata('frontPropagation')
+}));
+assert(oceanHtml.includes('Ocean Process Analog'), 'Ocean Process Analog selector label missing');
+assert(oceanHtml.includes('River Plume Front'), 'ocean analog option missing');
+assert(!oceanHtml.includes('Example Track'), 'old Example Track selector leaked into ocean UI');
 
 const rightPanel = roiRecipeSignatureHtml(baseState({
   exampleProcessId: 'conwayGameOfLife',
@@ -65,6 +94,7 @@ const artifact = buildSamplingProcessDemoArtifactExport({
 assert.equal(artifact.demoName, 'Deterministic Spatiotemporal Process Lab');
 assert.equal(artifact.legacyDemoName, 'Sample / ROI Field Demo');
 assert.equal(artifact.referenceSignatureId, 'birthDeathEmergence');
+assert.equal(artifact.exampleTrack, 'foundationalCaModels');
 assert.equal(artifact.exampleProcessId, 'conwayGameOfLife');
 assert.equal(artifact.exampleType, 'foundationalCaModel');
 assert.equal(artifact.metadata.exampleProcessId, 'conwayGameOfLife');
@@ -76,15 +106,19 @@ console.log('PASS deterministic spatiotemporal process lab contract smoke');
 function baseState(overrides = {}) {
   return {
     title: SAMPLING_PROCESS_LAB_TITLE,
-    processMode: 'referenceSignature',
-    processModeLabel: 'Example Processes',
+    processMode: 'foundationalCaModels',
+    processModeLabel: 'Foundational CA Models',
     processStatusLabel: 'Example-Validated',
     patternSource: 'referenceSignature',
-    exampleProcessId: 'frontPropagation',
-    exampleProcessLabel: 'Propagating Fronts',
-    exampleType: 'observableProcessPattern',
-    referenceSignatureId: 'frontPropagation',
-    referenceSignature: referenceSignatureMetadata('frontPropagation'),
+    exampleTrack: 'foundationalCaModels',
+    exampleTrackLabel: 'Foundational CA Models',
+    exampleProcessId: 'conwayGameOfLife',
+    foundationalCaModelId: 'conwayGameOfLife',
+    oceanProcessAnalogId: null,
+    exampleProcessLabel: "Conway's Game of Life",
+    exampleType: 'foundationalCaModel',
+    referenceSignatureId: 'birthDeathEmergence',
+    referenceSignature: referenceSignatureMetadata('birthDeathEmergence'),
     referenceSignatureModified: false,
     hasSection: (section) => ['mode', 'referenceSignature', 'display', 'seed', 'export'].includes(section),
     timeMode: 'dynamic',

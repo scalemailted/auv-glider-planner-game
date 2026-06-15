@@ -35,14 +35,19 @@ const context = {
 
 assert.equal(typeof buildSamplingProcessModePatch, 'function', 'buildSamplingProcessModePatch should export');
 
-const reference = buildSamplingProcessModePatch(context, 'referenceSignature');
-assert.equal(reference.processMode, 'referenceSignature', 'reference patch should set processMode');
-assert.equal(reference.patternSource, 'referenceSignature', 'reference patch should set patternSource=referenceSignature');
-assert.equal(reference.rightPanelMode, 'recipeSignature', 'reference patch should use recipe panel');
-assert.equal(reference.displayMode, SAMPLING_PROCESS_DEFAULT_DISPLAY_MODE, 'reference patch should use shared default display');
-assert.equal(reference.paused, false, 'reference patch should not inherit paused');
-assert.equal(reference.processPaintRunStarted, false, 'reference patch should clear Process Paint run state');
-assert.equal(validateSamplingProcessModeState(reference).status, 'PASS', 'reference patch should validate');
+const reference = buildSamplingProcessModePatch(context, 'foundationalCaModels');
+assert.equal(reference.processMode, 'foundationalCaModels', 'foundational patch should set processMode');
+assert.equal(reference.patternSource, 'referenceSignature', 'foundational patch should set patternSource=referenceSignature');
+assert.equal(reference.rightPanelMode, 'recipeSignature', 'foundational patch should use recipe panel');
+assert.equal(reference.displayMode, 'processTransitionView', 'foundational patch should use semantic transition display');
+assert.equal(reference.paused, false, 'foundational patch should not inherit paused');
+assert.equal(reference.processPaintRunStarted, false, 'foundational patch should clear Process Paint run state');
+assert.equal(validateSamplingProcessModeState(reference).status, 'PASS', 'foundational patch should validate');
+const ocean = buildSamplingProcessModePatch(context, 'oceanProcessAnalogs');
+assert.equal(ocean.processMode, 'oceanProcessAnalogs', 'ocean patch should set processMode');
+assert.equal(ocean.exampleTrack, 'oceanRelevantProcessAnalogs', 'ocean patch should set ocean track');
+assert.equal(ocean.displayMode, 'processRuleMetric', 'ocean patch should use semantic rule-metric display');
+assert.equal(validateSamplingProcessModeState(ocean).status, 'PASS', 'ocean patch should validate');
 
 const custom = buildSamplingProcessModePatch(context, 'customComposer');
 assert.equal(custom.processMode, 'customComposer', 'custom patch should set processMode');
@@ -74,7 +79,7 @@ assert.equal(random.processPaintRunStarted, false, 'random patch should clear ru
 assert.equal(validateSamplingProcessModeState(random).status, 'PASS', 'random patch should validate');
 
 const diagnostics = buildSamplingProcessModePatch(context, 'diagnosticsGraphInspection');
-assert.equal(diagnostics.processMode, context.processMode ?? 'referenceSignature', 'diagnostics patch should preserve active visible workflow mode');
+assert.equal(diagnostics.processMode, context.processMode ?? 'foundationalCaModels', 'diagnostics patch should preserve active visible workflow mode');
 assert.equal(diagnostics.rightPanelMode, 'diagnostics', 'diagnostics patch should use diagnostics panel');
 assert.equal(diagnostics.displayMode, 'diagnosticsOverlay', 'diagnostics patch should default to diagnostics overlay');
 assert.equal(diagnostics.processPaintRunStarted, false, 'diagnostics patch should clear run state');
@@ -88,7 +93,7 @@ assert.equal(buildDiagnosticsEntryPatch({ ...context, preserveDisplayMode: true,
 assert.equal(samplingProcessModeInvariants('processPaint').rightPanelMode, 'paintTools', 'mode invariants should expose paint tools for Process Paint');
 assert.deepEqual(samplingProcessWorkflowModes(), SAMPLING_PROCESS_VISIBLE_MODES, 'workflow mode helper should mirror visible mode list');
 assert.equal(normalizeSamplingProcessMode('diagnostics'), 'diagnosticsGraphInspection', 'diagnostics alias should remain internally accepted');
-assert.equal(normalizeVisibleSamplingProcessMode('diagnosticsGraphInspection'), 'referenceSignature', 'visible normalizer should not expose diagnostics as a workflow');
+assert.equal(normalizeVisibleSamplingProcessMode('diagnosticsGraphInspection'), 'foundationalCaModels', 'visible normalizer should not expose diagnostics as a workflow');
 
 const source = await readFile(controllerPath, 'utf8');
 assert.equal(source.includes('RoiGeneratorDemoScene'), false, 'mode controller should not import or reference the scene');

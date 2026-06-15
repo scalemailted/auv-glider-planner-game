@@ -16,11 +16,11 @@ export const SAMPLE_FIELD_COMPONENT_CONTRACTS = {
   behaviorPreset: {
     label: 'Example Process',
     question: 'Which deterministic process example defines the starting component recipe?',
-    changes: 'Loads an Example Process recipe for Example Processes mode.',
+    changes: 'Loads an Example Process recipe for the guided process context.',
     shouldNotChange: 'A source should not hide the primitive components or become an opaque model.',
     lookFor: 'The component breakdown and expected heatmap behavior in Recipe View.',
     usefulDisplayLayers: ['Sampling Value + Source Overlay', 'Diagnostics Overlay'],
-    commonConfusion: 'Example Processes are editable recipes built from components, not exact CA or domain simulators.'
+    commonConfusion: 'Guided process examples are editable recipes built from components, not exact CA or domain simulators.'
   },
   eventLikelihood: {
     label: 'Source / Initial Field',
@@ -125,3 +125,4 @@ export function sampleFieldComponentQuestion(componentId) {
 export function sampleFieldComponentLabel(componentId) {
   return sampleFieldComponentContract(componentId).label;
 }
+

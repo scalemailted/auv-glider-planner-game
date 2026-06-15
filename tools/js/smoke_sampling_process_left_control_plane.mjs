@@ -9,12 +9,19 @@ import { referenceSignatureMetadata } from '../../src/core/demo/roi/RoiReference
 
 const baseState = {
   title: 'Deterministic Spatiotemporal Process Lab',
-  processMode: 'referenceSignature',
+  processMode: 'foundationalCaModels',
   patternSource: 'referenceSignature',
-  processModeLabel: 'Example Processes',
+  processModeLabel: 'Foundational CA Models',
   processStatusLabel: 'Example-Validated',
-  referenceSignatureId: 'stationaryTemporalBursts',
-  referenceSignature: referenceSignatureMetadata('stationaryTemporalBursts'),
+  exampleTrack: 'foundationalCaModels',
+  exampleTrackLabel: 'Foundational CA Models',
+  exampleProcessId: 'conwayGameOfLife',
+  foundationalCaModelId: 'conwayGameOfLife',
+  oceanProcessAnalogId: null,
+  exampleProcessLabel: "Conway's Game of Life",
+  exampleType: 'foundationalCaModel',
+  referenceSignatureId: 'birthDeathEmergence',
+  referenceSignature: referenceSignatureMetadata('birthDeathEmergence'),
   referenceSignatureModified: false,
   behaviorPresetId: 'custom',
   behaviorPresetModified: false,
@@ -90,17 +97,19 @@ const baseState = {
 };
 
 function stateForMode(processMode) {
+  const exampleMode = ['foundationalCaModels', 'oceanProcessAnalogs'].includes(processMode);
   return {
     ...baseState,
     processMode,
-    patternSource: processMode === 'referenceSignature' ? 'referenceSignature' : 'custom',
+    patternSource: exampleMode ? 'referenceSignature' : 'custom',
     processModeLabel: {
-      referenceSignature: 'Example Processes',
+      foundationalCaModels: 'Foundational CA Models',
+      oceanProcessAnalogs: 'Ocean-Relevant Process Analogs',
       customComposer: 'Custom Composer',
       processPaint: 'Process Paint',
       randomRuleLab: 'Rule Allocation Sandbox',
       diagnosticsGraphInspection: 'Diagnostics / Graph Inspection'
-    }[processMode] ?? 'Example Processes'
+    }[processMode] ?? 'Foundational CA Models'
   };
 }
 
@@ -108,28 +117,32 @@ function assertNoNumericHeadings(html, label) {
   assert.equal(/<h2[^>]*>\s*\d+\./.test(html), false, `${label} should not render numeric heading prefixes`);
 }
 
-const modes = ['referenceSignature', 'customComposer', 'processPaint', 'randomRuleLab', 'diagnosticsGraphInspection'];
+const modes = ['foundationalCaModels', 'oceanProcessAnalogs', 'customComposer', 'processPaint', 'randomRuleLab', 'diagnosticsGraphInspection'];
 for (const mode of modes) {
   assertNoNumericHeadings(samplingProcessConsoleHtml(stateForMode(mode)), mode);
 }
 
-const guidedHtml = samplingProcessConsoleHtml(stateForMode('referenceSignature'));
-assert.equal(guidedHtml.includes('Display / Diagnostic Layer'), true, 'display section should render without a numeric prefix');
-assert.equal(guidedHtml.includes('value="diagnosticsGraphInspection"'), false, 'visible mode selector should not expose Diagnostics / Graph Inspection');
-assert.equal(guidedHtml.includes('id="roi-demo-pattern-source"'), false, 'left panel should not show Pattern Source dropdown');
-assert.equal(guidedHtml.includes('data-roi-help="behaviorPreset"'), false, 'left panel should not show selected-pattern Explain button');
-assert.equal(guidedHtml.includes('Diagnostics Overlay'), true, 'display selector should keep Diagnostics Overlay');
-assert.equal(guidedHtml.includes('10. Display / Diagnostic Layer'), false, 'display section should not render old numeric prefix');
-assert.equal(guidedHtml.includes('Seed / Scenario Identity'), true, 'seed section should render without a numeric prefix');
-assert.equal(guidedHtml.includes('11. Seed / Scenario Identity'), false, 'seed section should not render old numeric prefix');
-assert.equal(guidedHtml.includes('<h2>Export</h2>'), true, 'export section should render without a numeric prefix');
-assert.equal(guidedHtml.includes('12. Export'), false, 'export section should not render old numeric prefix');
-assert.equal(guidedHtml.includes('Field Stats'), false, 'guided left panel should not render standalone Field Stats');
-assert.equal(guidedHtml.includes('id="sampling-process-mode"'), true, 'sampling process mode selector should be preserved');
-assert.equal(guidedHtml.includes('id="roi-demo-reference-signature"'), true, 'reference signature selector should be preserved');
-assert.equal(guidedHtml.includes('id="roi-demo-display-mode"'), true, 'display mode selector should be preserved');
-assert.equal(guidedHtml.includes('id="roi-demo-seed"'), true, 'seed input should be preserved');
-assert.equal(guidedHtml.includes('data-action="export-demo-json"'), true, 'export action should be preserved');
+const foundationalHtml = samplingProcessConsoleHtml(stateForMode('foundationalCaModels'));
+assert.equal(foundationalHtml.includes('Display / Diagnostic Layer'), true, 'display section should render without a numeric prefix');
+assert.equal(foundationalHtml.includes('value="referenceSignature"'), false, 'visible mode selector should not expose legacy referenceSignature');
+assert.equal(foundationalHtml.includes('value="diagnosticsGraphInspection"'), false, 'visible mode selector should not expose Diagnostics / Graph Inspection');
+assert.equal(foundationalHtml.includes('id="roi-demo-pattern-source"'), false, 'left panel should not show Pattern Source dropdown');
+assert.equal(foundationalHtml.includes('data-roi-help="behaviorPreset"'), false, 'left panel should not show selected-pattern Explain button');
+assert.equal(foundationalHtml.includes('Diagnostics Overlay'), true, 'display selector should keep Diagnostics Overlay');
+assert.equal(foundationalHtml.includes('Foundational CA Model'), true, 'foundational selector should render');
+assert.equal(foundationalHtml.includes('Example Track'), false, 'old Example Track selector should not render');
+assert.equal(foundationalHtml.includes('10. Display / Diagnostic Layer'), false, 'display section should not render old numeric prefix');
+assert.equal(foundationalHtml.includes('Seed / Scenario Identity'), true, 'seed section should render without a numeric prefix');
+assert.equal(foundationalHtml.includes('11. Seed / Scenario Identity'), false, 'seed section should not render old numeric prefix');
+assert.equal(foundationalHtml.includes('<h2>Export</h2>'), true, 'export section should render without a numeric prefix');
+assert.equal(foundationalHtml.includes('12. Export'), false, 'export section should not render old numeric prefix');
+assert.equal(foundationalHtml.includes('Field Stats'), false, 'foundational left panel should not render standalone Field Stats');
+assert.equal(foundationalHtml.includes('id="sampling-process-mode"'), true, 'sampling process mode selector should be preserved');
+assert.equal(foundationalHtml.includes('id="sampling-process-example-id"'), true, 'track-specific example selector should be preserved');
+assert.equal(foundationalHtml.includes('id="roi-demo-reference-signature"'), true, 'hidden legacy selector should be preserved');
+assert.equal(foundationalHtml.includes('id="roi-demo-display-mode"'), true, 'display mode selector should be preserved');
+assert.equal(foundationalHtml.includes('id="roi-demo-seed"'), true, 'seed input should be preserved');
+assert.equal(foundationalHtml.includes('data-action="export-demo-json"'), true, 'export action should be preserved');
 
 const paintHtml = samplingProcessConsoleHtml(stateForMode('processPaint'));
 assert.equal(paintHtml.includes('data-action="sampling-paint-run"'), true, 'paint run action should be preserved');
@@ -137,7 +150,7 @@ assert.equal(paintHtml.includes('data-action="sampling-paint-export"'), true, 'p
 assert.equal(paintHtml.includes('Field Stats'), false, 'process paint left panel should not render standalone Field Stats');
 
 const recipeHtml = roiRecipeSignatureHtml({
-  ...stateForMode('referenceSignature'),
+  ...stateForMode('foundationalCaModels'),
   componentRecipe: baseState,
   recipeSummary: 'Multi-Modal Likelihood + Clustered Field + Bursty',
   selectedCell: null
@@ -146,6 +159,8 @@ assert.equal(recipeHtml.includes('Current Lab State'), true, 'right panel should
 for (const label of ['Mean', 'Active %', 'High %', 'Max', 'Messages', 'Transitions']) {
   assert.equal(recipeHtml.includes(label), true, `Current Lab State should include ${label}`);
 }
+assert.equal(recipeHtml.includes('Process Example View'), true, 'right panel should render Process Example View');
+assert.equal(recipeHtml.includes('Foundational CA Model'), true, 'right panel should identify the selected context type');
 assert.equal(recipeHtml.includes('data-roi-panel-mode="recipeSignature"'), true, 'right panel mode selectors should be preserved');
 
 const diagnosticsHtml = roiDiagnosticsHtml(stateForMode('diagnosticsGraphInspection'));

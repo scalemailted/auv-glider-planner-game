@@ -17,15 +17,21 @@ const cssPath = new URL('../../css/panels.css', import.meta.url);
 
 const baseState = {
   title: 'Deterministic Spatiotemporal Process Lab',
-  processMode: 'referenceSignature',
+  processMode: 'foundationalCaModels',
   patternSource: 'referenceSignature',
-  processModeLabel: 'Example Processes',
+  processModeLabel: 'Foundational CA Models',
   processStatusLabel: 'Example-Validated',
-  exampleProcessId: 'stationaryTemporalBursts',
-  spatiotemporalProcessExample: processExampleMetadata('stationaryTemporalBursts'),
-  referenceSignatureId: 'stationaryTemporalBursts',
-  referenceSignatureLabel: 'Recurrent Stationary Hotspots',
-  referenceSignature: referenceSignatureMetadata('stationaryTemporalBursts'),
+  exampleTrack: 'foundationalCaModels',
+  exampleTrackLabel: 'Foundational CA Models',
+  exampleProcessId: 'conwayGameOfLife',
+  foundationalCaModelId: 'conwayGameOfLife',
+  oceanProcessAnalogId: null,
+  exampleProcessLabel: "Conway's Game of Life",
+  exampleType: 'foundationalCaModel',
+  spatiotemporalProcessExample: processExampleMetadata('conwayGameOfLife', false, 'foundationalCaModels'),
+  referenceSignatureId: 'birthDeathEmergence',
+  referenceSignatureLabel: 'Local Birth-Death Emergence',
+  referenceSignature: referenceSignatureMetadata('birthDeathEmergence'),
   referenceSignatureModified: false,
   behaviorPresetId: 'custom',
   behaviorPresetModified: false,
@@ -85,36 +91,41 @@ const baseState = {
 };
 
 function stateForMode(processMode) {
+  const exampleMode = ['foundationalCaModels', 'oceanProcessAnalogs'].includes(processMode);
   return {
     ...baseState,
     processMode,
-    patternSource: processMode === 'referenceSignature' ? 'referenceSignature' : 'custom',
+    patternSource: exampleMode ? 'referenceSignature' : 'custom',
     processModeLabel: {
-      referenceSignature: 'Example Processes',
+      foundationalCaModels: 'Foundational CA Models',
+      oceanProcessAnalogs: 'Ocean-Relevant Process Analogs',
       customComposer: 'Custom Composer',
       processPaint: 'Process Paint',
       randomRuleLab: 'Rule Allocation Sandbox',
       diagnosticsGraphInspection: 'Diagnostics / Graph Inspection'
-    }[processMode] ?? 'Example Processes'
+    }[processMode] ?? 'Foundational CA Models'
   };
 }
 
-const referenceHtml = samplingProcessConsoleHtml(stateForMode('referenceSignature'));
-assert.equal(referenceHtml.includes('sampling-chip'), false, 'reference console should not render summary chips after moving summary right');
-assert.equal(referenceHtml.includes('Full recipe details'), false, 'reference console should not render recipe details after moving summary right');
-assert.equal(referenceHtml.includes('Compose source fields, cell states, spatial structure'), false, 'left header should not show long composer prose');
-assert.equal(referenceHtml.includes('Reference Signature is guided. Custom Composer is global component editing'), false, 'mode section should not show verbose mode paragraph');
-assert.equal(referenceHtml.includes('Example Processes'), true, 'mode selector should show Example Processes');
-assert.equal(referenceHtml.includes('value="diagnosticsGraphInspection"'), false, 'mode selector should not show Diagnostics / Graph Inspection');
-assert.equal(referenceHtml.includes('id="roi-demo-pattern-source"'), false, 'left panel should not show Pattern Source dropdown');
-assert.equal(referenceHtml.includes('data-roi-help="behaviorPreset"'), false, 'left panel should not show selected-pattern Explain button');
-assert.equal(referenceHtml.includes('Diagnostics Overlay'), true, 'display selector should still show Diagnostics Overlay');
-assert.equal(referenceHtml.includes('Example Process'), true, 'guided selector should say Example Process');
-assert.equal(referenceHtml.includes('Current Summary'), false, 'left panel should not show Current Summary card');
-assert.equal(referenceHtml.includes('data-sampling-section="sourceField"'), false, 'reference mode should not include full composer stack');
-assert.equal(referenceHtml.includes('id="roi-demo-reference-signature"'), true, 'reference selector should be preserved');
-assert.equal(referenceHtml.includes('BBox '), false, 'long field stats should not be visible outside diagnostics');
-assert.equal(referenceHtml.includes('Source/S corr'), false, 'dense diagnostic prose should not be visible outside diagnostics');
+const foundationalHtml = samplingProcessConsoleHtml(stateForMode('foundationalCaModels'));
+assert.equal(foundationalHtml.includes('sampling-chip'), false, 'foundational console should not render summary chips after moving summary right');
+assert.equal(foundationalHtml.includes('Full recipe details'), false, 'foundational console should not render recipe details after moving summary right');
+assert.equal(foundationalHtml.includes('Compose source fields, cell states, spatial structure'), false, 'left header should not show long composer prose');
+assert.equal(foundationalHtml.includes('Reference Signature is guided. Custom Composer is global component editing'), false, 'mode section should not show verbose mode paragraph');
+assert.equal(foundationalHtml.includes('Foundational CA Models'), true, 'mode selector should show Foundational CA Models');
+assert.equal(foundationalHtml.includes('Ocean-Relevant Process Analogs'), true, 'mode selector should show Ocean-Relevant Process Analogs');
+assert.equal(foundationalHtml.includes('value="referenceSignature"'), false, 'mode selector should not show legacy referenceSignature');
+assert.equal(foundationalHtml.includes('value="diagnosticsGraphInspection"'), false, 'mode selector should not show Diagnostics / Graph Inspection');
+assert.equal(foundationalHtml.includes('id="roi-demo-pattern-source"'), false, 'left panel should not show Pattern Source dropdown');
+assert.equal(foundationalHtml.includes('data-roi-help="behaviorPreset"'), false, 'left panel should not show selected-pattern Explain button');
+assert.equal(foundationalHtml.includes('Diagnostics Overlay'), true, 'display selector should still show Diagnostics Overlay');
+assert.equal(foundationalHtml.includes('Foundational CA Model'), true, 'guided selector should say Foundational CA Model');
+assert.equal(foundationalHtml.includes('Example Track'), false, 'old Example Track selector should stay hidden');
+assert.equal(foundationalHtml.includes('Current Summary'), false, 'left panel should not show Current Summary card');
+assert.equal(foundationalHtml.includes('data-sampling-section="sourceField"'), false, 'foundational mode should not include full composer stack');
+assert.equal(foundationalHtml.includes('id="roi-demo-reference-signature"'), true, 'hidden legacy reference selector should be preserved');
+assert.equal(foundationalHtml.includes('BBox '), false, 'long field stats should not be visible outside diagnostics');
+assert.equal(foundationalHtml.includes('Source/S corr'), false, 'dense diagnostic prose should not be visible outside diagnostics');
 
 const customHtml = samplingProcessConsoleHtml(stateForMode('customComposer'));
 assert.equal(customHtml.includes('id="roi-demo-event-likelihood"'), true, 'custom composer should keep source selector');
@@ -136,14 +147,14 @@ assert.equal(diagnosticsHtml.includes('Field Stats'), false, 'left diagnostics s
 assert.equal(diagnosticsHtml.includes('data-sampling-section="sourceField"'), false, 'diagnostics should not show composer controls');
 
 const recipeHtml = roiRecipeSignatureHtml({
-  ...stateForMode('referenceSignature'),
+  ...stateForMode('foundationalCaModels'),
   componentRecipe: baseState,
   recipeSummary: 'Multi-Modal Likelihood + Clustered Field + Bursty',
   selectedCell: null
 });
 assert.equal(recipeHtml.includes('Current Lab State'), true, 'right panel should start with current lab state');
 assert.equal(recipeHtml.includes('Process Example View'), true, 'right panel should use process example terminology');
-assert.equal(recipeHtml.includes('Observable Process Pattern'), true, 'recipe view should include process example summary');
+assert.equal(recipeHtml.includes('Foundational CA Model'), true, 'recipe view should include process example summary');
 assert.equal(recipeHtml.includes('Rule -> Update Function'), true, 'recipe view should include update-function teaching card');
 assert.equal(recipeHtml.includes('Sampling Interpretation'), true, 'recipe view should include sampling interpretation card');
 assert.equal(recipeHtml.includes('Advanced Details'), true, 'recipe view should collapse advanced details');

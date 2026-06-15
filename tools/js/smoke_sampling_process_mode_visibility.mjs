@@ -18,7 +18,8 @@ import { roiDiagnosticsHtml, roiRecipeSignatureHtml } from '../../src/ui/samplin
 import { referenceSignatureMetadata, referenceSignatureRecipe } from '../../src/core/demo/roi/RoiReferenceSignatures.js';
 
 const visibleModes = [
-  'referenceSignature',
+  'foundationalCaModels',
+  'oceanProcessAnalogs',
   'customComposer',
   'processPaint',
   'randomRuleLab'
@@ -26,7 +27,7 @@ const visibleModes = [
 
 const baseState = {
   title: 'Deterministic Spatiotemporal Process Lab',
-  processMode: 'referenceSignature',
+  processMode: 'foundationalCaModels',
   patternSource: 'referenceSignature',
   processStatusLabel: 'Example-Validated',
   referenceSignatureId: 'stationaryTemporalBursts',
@@ -71,18 +72,21 @@ const baseState = {
   randomRuleActiveFraction: 0.18
 };
 
-assert.deepEqual(SAMPLING_PROCESS_VISIBLE_MODES, visibleModes, 'visible workflow modes should be the four authoring/generation modes');
+assert.deepEqual(SAMPLING_PROCESS_VISIBLE_MODES, visibleModes, 'visible workflow modes should include the two example contexts plus authoring/generation modes');
 assert.deepEqual(samplingProcessWorkflowModes(), visibleModes, 'workflow mode helper should return the visible mode list');
 assert.equal(SAMPLING_PROCESS_MODES.includes('diagnosticsGraphInspection'), true, 'diagnostics should remain internally accepted');
 assert.equal(SAMPLING_PROCESS_VISIBLE_MODES.includes('diagnosticsGraphInspection'), false, 'diagnostics should not be a visible workflow mode');
 assert.equal(normalizeSamplingProcessMode('diagnostics'), 'diagnosticsGraphInspection', 'legacy diagnostics alias should normalize internally');
-assert.equal(normalizeVisibleSamplingProcessMode('diagnostics'), 'referenceSignature', 'visible mode normalizer should migrate diagnostics to a workflow fallback');
+assert.equal(normalizeVisibleSamplingProcessMode('diagnostics'), 'foundationalCaModels', 'visible mode normalizer should migrate diagnostics to a workflow fallback');
 
 const html = samplingProcessConsoleHtml(baseState);
 const optionValues = [...html.matchAll(/<option value="([^"]+)"/g)].map((match) => match[1]);
-const modeOptionValues = optionValues.slice(optionValues.indexOf('referenceSignature'), optionValues.indexOf('referenceSignature') + visibleModes.length);
+const modeOptionValues = optionValues.slice(optionValues.indexOf('foundationalCaModels'), optionValues.indexOf('foundationalCaModels') + visibleModes.length);
 assert.deepEqual(modeOptionValues, visibleModes, 'mode dropdown should render only visible workflow modes');
-assert.equal(html.includes('<option value="referenceSignature" selected>Example Processes</option>'), true, 'mode dropdown should label referenceSignature as Example Processes');
+assert.equal(html.includes('<option value="foundationalCaModels" selected>Foundational CA Models</option>'), true, 'mode dropdown should label foundational context');
+assert.equal(optionValues.includes('oceanProcessAnalogs'), true, 'mode dropdown should include ocean context');
+assert.equal(html.includes('Ocean-Relevant Process Analogs'), true, 'mode dropdown should label ocean context');
+assert.equal(html.includes('Example Track'), false, 'mode dropdown workflow should not show Example Track');
 assert.equal(html.includes('value="diagnosticsGraphInspection"'), false, 'mode dropdown should not render diagnosticsGraphInspection');
 assert.equal(html.includes('Diagnostics Overlay'), true, 'Display / Diagnostic Layer should still expose Diagnostics Overlay');
 
@@ -96,7 +100,7 @@ assert.equal(rightPanelHtml.includes('data-roi-panel-mode="diagnostics"'), true,
 
 const diagnosticsViewHtml = roiDiagnosticsHtml({
   ...baseState,
-  processMode: 'referenceSignature',
+  processMode: 'foundationalCaModels',
   displayMode: 'diagnosticsOverlay',
   graphDiagnostics: baseState.activityDiagnostics.graphDiagnostics
 });

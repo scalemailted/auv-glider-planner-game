@@ -43,17 +43,29 @@ export const PROCESS_RULE_ALIASES = {
   noRule: 'inert',
   front: 'propagatingFront',
   frontPropagation: 'propagatingFront',
+  propagatingFronts: 'propagatingFront',
   excitable: 'excitableWave',
+  waveExcitableMedia: 'excitableWave',
   birthDeath: 'localBirthDeath',
+  birthDeathEmergence: 'localBirthDeath',
+  lifeLikeLocalRules: 'localBirthDeath',
   diffusion: 'diffusiveSpread',
   diffusionSpread: 'diffusiveSpread',
+  diffusiveSpread: 'diffusiveSpread',
   drift: 'directedTransport',
   driftTransport: 'directedTransport',
+  directedTransport: 'directedTransport',
   clusterFormation: 'domainFormation',
+  domainFormation: 'domainFormation',
   avalanche: 'thresholdCascade',
+  avalancheBurstCascades: 'thresholdCascade',
   cascade: 'thresholdCascade',
   predatorPreyMigration: 'interactingPopulation',
+  interactingPopulation: 'interactingPopulation',
+  congestionDensityWaves: 'congestionWave',
+  patternFormationMorphogenesis: 'morphogenesis',
   signalPropagation: 'structuredSignal',
+  structuredSignalPropagation: 'structuredSignal',
   signal: 'structuredSignal'
 };
 
@@ -198,3 +210,4 @@ function caTaxonomy(overrides = {}) {
     ...overrides
   };
 }
+

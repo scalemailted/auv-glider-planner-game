@@ -7,18 +7,22 @@ import { samplingProcessModeLabel } from '../../src/core/demo/sampling/SamplingP
 import { referenceSignatureMetadata } from '../../src/core/demo/roi/RoiReferenceSignatures.js';
 import { processExampleMetadata } from '../../src/core/demo/sampling/SpatiotemporalProcessExamples.js';
 
-const referenceSignature = referenceSignatureMetadata('stationaryTemporalBursts');
+const referenceSignature = referenceSignatureMetadata('birthDeathEmergence');
 const baseState = {
   title: 'Deterministic Spatiotemporal Process Lab',
-  processMode: 'referenceSignature',
+  processMode: 'foundationalCaModels',
   patternSource: 'referenceSignature',
-  processModeLabel: samplingProcessModeLabel('referenceSignature'),
+  processModeLabel: samplingProcessModeLabel('foundationalCaModels'),
   processStatusLabel: 'Example-Validated',
-  exampleProcessId: 'stationaryTemporalBursts',
-  exampleProcessLabel: 'Recurrent Stationary Hotspots',
-  exampleType: 'observableProcessPattern',
-  spatiotemporalProcessExample: processExampleMetadata('stationaryTemporalBursts'),
-  referenceSignatureId: 'stationaryTemporalBursts',
+  exampleTrack: 'foundationalCaModels',
+  exampleTrackLabel: 'Foundational CA Models',
+  exampleProcessId: 'conwayGameOfLife',
+  foundationalCaModelId: 'conwayGameOfLife',
+  oceanProcessAnalogId: null,
+  exampleProcessLabel: "Conway's Game of Life",
+  exampleType: 'foundationalCaModel',
+  spatiotemporalProcessExample: processExampleMetadata('conwayGameOfLife', false, 'foundationalCaModels'),
+  referenceSignatureId: 'birthDeathEmergence',
   referenceSignatureLabel: referenceSignature.label,
   referenceSignature,
   referenceSignatureModified: false,
@@ -59,15 +63,19 @@ const baseState = {
 };
 
 const html = samplingProcessConsoleHtml(baseState);
-assert.equal(samplingProcessModeLabel('referenceSignature'), 'Example Processes', 'referenceSignature should be labeled Example Processes');
+assert.equal(samplingProcessModeLabel('referenceSignature'), 'Foundational CA Models', 'legacy referenceSignature alias should label as Foundational CA Models');
 assert.equal(html.includes('id="sampling-process-mode"'), true, 'Mode selector should render');
-assert.equal(html.includes('<option value="referenceSignature" selected>Example Processes</option>'), true, 'Mode selector should show Example Processes');
-assert.equal(html.includes('id="roi-demo-reference-signature"'), true, 'Example Process selector should render in Example Processes mode');
-assert.equal(html.includes('Example Process'), true, 'Example Process label should render');
-assert.equal(html.includes('Foundational CA Models'), true, 'Foundational CA Models optgroup should render');
+assert.equal(html.includes('<option value="foundationalCaModels" selected>Foundational CA Models</option>'), true, 'Mode selector should show Foundational CA Models');
+assert.equal(html.includes('<option value="oceanProcessAnalogs"'), true, 'Mode selector should show Ocean-Relevant Process Analogs');
+assert.equal(html.includes('value="referenceSignature"'), false, 'Mode selector should not show legacy referenceSignature');
+assert.equal(html.includes('id="sampling-process-example-id"'), true, 'track-specific process example selector should render');
+assert.equal(html.includes('id="roi-demo-reference-signature"'), true, 'hidden legacy reference selector should render for export compatibility');
+assert.equal(html.includes('Foundational CA Model'), true, 'Foundational CA Model label should render');
+assert.equal(html.includes('Foundational CA Models'), true, 'Foundational CA Models context should render');
+assert.equal(html.includes('Example Track'), false, 'old Example Track selector should not render');
 assert.equal(html.includes('id="roi-demo-pattern-source"'), false, 'Pattern Source dropdown should not render visibly');
-assert.equal(html.includes('Explain Recurrent Stationary Hotspots'), false, 'selected-pattern Explain button should not render');
-assert.equal(html.includes('data-roi-help="behaviorPreset"'), false, 'Example Process card should not render behaviorPreset help button');
+assert.equal(html.includes('Explain Local Birth-Death Emergence'), false, 'selected-pattern Explain button should not render');
+assert.equal(html.includes('data-roi-help="behaviorPreset"'), false, 'example card should not render behaviorPreset help button');
 assert.equal(html.includes('stable likelihood basins |'), false, 'left card should not render long pipe-delimited pattern summary');
 assert.equal(html.includes('Heavy-Tailed changes sample-value magnitude'), false, 'left card should not show stale component explanation');
 
@@ -77,9 +85,14 @@ const customHtml = samplingProcessConsoleHtml({
   patternSource: 'custom',
   processModeLabel: 'Custom Composer',
   referenceSignatureId: 'none',
-  referenceSignature: null
+  referenceSignature: null,
+  exampleTrack: null,
+  exampleProcessId: null,
+  foundationalCaModelId: null,
+  oceanProcessAnalogId: null
 });
-assert.equal(customHtml.includes('id="roi-demo-reference-signature"'), false, 'Custom Composer should not show Example Process selector');
+assert.equal(customHtml.includes('id="sampling-process-example-id"'), false, 'Custom Composer should not show process example selector');
+assert.equal(customHtml.includes('id="roi-demo-reference-signature"'), false, 'Custom Composer should not show hidden legacy selector');
 assert.equal(customHtml.includes('id="roi-demo-pattern-source"'), false, 'Custom Composer should not show Pattern Source dropdown');
 assert.equal(customHtml.includes('Edit global process components.'), true, 'Custom Composer should keep compact primary context');
 
@@ -91,14 +104,28 @@ const rightPanelHtml = roiRecipeSignatureHtml({
 });
 assert.equal(rightPanelHtml.includes('Process Example View'), true, 'right panel should expose Process Example View');
 assert.equal(rightPanelHtml.includes('Current Lab State'), true, 'right panel should include Current Lab State');
-assert.equal(rightPanelHtml.includes('Recurrent Stationary Hotspots'), true, 'right panel should include selected pattern');
+assert.equal(rightPanelHtml.includes("Conway's Game of Life") || rightPanelHtml.includes('Conway&#039;s Game of Life'), true, 'right panel should include selected model');
 assert.equal(rightPanelHtml.includes('Rule -&gt; Update Function') || rightPanelHtml.includes('Rule -> Update Function'), true, 'right panel should explain the update function automatically');
 
-const patch = buildReferenceSignaturePatch({ rightPanelMode: 'diagnostics' }, 'frontPropagation');
-assert.equal(patch.processMode, 'referenceSignature', 'Example Process selection should keep referenceSignature internals');
-assert.equal(patch.patternSource, 'referenceSignature', 'Example Process selection should preserve patternSource');
-assert.equal(patch.rightPanelMode, 'recipeSignature', 'Example Process selection should target the right-panel Recipe view');
-assert.equal(patch.referenceSignatureId, 'frontPropagation', 'Example Process selection should set legacy referenceSignature id');
-assert.equal(patch.selectedHelpTopic, null, 'Example Process selection should not force the Help tab');
+const foundationalPatch = buildReferenceSignaturePatch({ ...baseState, rightPanelMode: 'diagnostics' }, 'forestFire');
+assert.equal(foundationalPatch.processMode, 'foundationalCaModels', 'Foundational CA selection should keep foundational mode');
+assert.equal(foundationalPatch.patternSource, 'referenceSignature', 'Foundational CA selection should preserve patternSource');
+assert.equal(foundationalPatch.rightPanelMode, 'recipeSignature', 'Foundational CA selection should target the right-panel Recipe view');
+assert.equal(foundationalPatch.exampleProcessId, 'forestFire', 'Foundational CA selection should store the example id');
+assert.equal(foundationalPatch.referenceSignatureId, 'frontPropagation', 'Foundational CA selection should set mapped legacy referenceSignature id');
+assert.equal(foundationalPatch.selectedHelpTopic, null, 'Foundational CA selection should not force the Help tab');
+
+const oceanPatch = buildReferenceSignaturePatch({
+  ...baseState,
+  processMode: 'oceanProcessAnalogs',
+  exampleTrack: 'oceanRelevantProcessAnalogs',
+  exampleProcessId: 'riverPlumeFront',
+  oceanProcessAnalogId: 'riverPlumeFront',
+  foundationalCaModelId: null
+}, 'oilChemicalPlume');
+assert.equal(oceanPatch.processMode, 'oceanProcessAnalogs', 'Ocean analog selection should keep ocean mode');
+assert.equal(oceanPatch.exampleTrack, 'oceanRelevantProcessAnalogs', 'Ocean analog selection should keep ocean track');
+assert.equal(oceanPatch.exampleProcessId, 'oilChemicalPlume', 'Ocean analog selection should store the analog id');
+assert.equal(oceanPatch.referenceSignatureId, 'diffusionSpread', 'Ocean analog selection should set mapped legacy referenceSignature id');
 
 console.log('smoke_sampling_process_process_pattern_controls: ok');

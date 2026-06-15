@@ -8,7 +8,7 @@ The Deterministic Spatiotemporal Process Lab visualizes `S(x,y,t)`: where and wh
 
 It exposes a Source / Initial Field: a deterministic or seeded substrate that controls where process activity starts, recurs, is constrained, or has initial support. Legacy exports may still call this `eventLikelihoodField` or `likelihoodField`, but the user-facing concept is Source / Initial Field. Formal likelihood, uncertainty, belief, forecast error, and information gain are covered by the Uncertainty / Forecast Demo; current-driven sample movement is covered by the Coupled Fields Demo.
 
-The lab is an Example Processes-first component composer. The normal first control is `Mode`: choose Example Processes, Custom Composer, Process Paint, or Rule Allocation Sandbox. Example Processes shows the Example Process selector grouped into Foundational CA Models and Observable Process Patterns; Custom Composer exposes direct primitive editing. Legacy behavior presets remain available only for compatibility/debug workflows. The primitive components are Source / Initial Field, Spatial Pattern / Geometry, Value Distribution, Temporal Pattern, Spatial Evolution / Motion Rule, Interaction Scale / Hierarchy, State / Update Rule, Sampling / Freshness Effect, Display / Diagnostic Layer, Process Paint / Rule Allocation, Seed / Scenario Identity, and Export.
+The lab is a process-context component composer. The normal first control is `Mode`: choose Foundational CA Models, Ocean-Relevant Process Analogs, Custom Composer, Process Paint, or Rule Allocation Sandbox. Foundational CA Models and Ocean-Relevant Process Analogs each show a context-specific model or analog selector; Custom Composer exposes direct primitive editing. Legacy behavior presets remain available only for compatibility/debug workflows. The primitive components are Source / Initial Field, Spatial Pattern / Geometry, Value Distribution, Temporal Pattern, Spatial Evolution / Motion Rule, Interaction Scale / Hierarchy, State / Update Rule, Sampling / Freshness Effect, Display / Diagnostic Layer, Process Paint / Rule Allocation, Seed / Scenario Identity, and Export.
 
 It is not a mission, planner, leaderboard mode, uncertainty demo, forecast/truth demo, or scoring mode. It only visualizes how sample-value regions can be shaped.
 
@@ -31,9 +31,9 @@ It is not a mission, planner, leaderboard mode, uncertainty demo, forecast/truth
 - `Temporal Pattern`: controls static, sustained, periodic, bursty, intermittent, random-pulse, or long-cycle intensity changes.
 - `Spatial Evolution`: controls stationary, continuous drift, discrete jump, random walk, neighbor propagation, expansion, contraction, divergence, convergence, morph/mutation, shear/stretch, rotational swirl, or branching growth behavior.
 
-## Reference Observable Process Signatures
+## Process Example Contexts
 
-Process Lab includes Example Processes: Foundational CA Models such as Conway, Forest Fire, SIR, Greenberg-Hastings, Sandpile, Wa-Tor, Traffic CA, and Wireworld, plus Observable Process Patterns such as Propagating Fronts, Excitable Waves, Local Birth-Death Emergence, Recurrent Stationary Hotspots, Diffusive / Epidemic Spread, Directed Feature Transport, Cyclic Dominance, Domain / Cluster Formation, Threshold Cascades / Avalanches, Interacting Population Migration, Freshness / Recovery, Pattern Formation / Morphogenesis, Congestion / Density Waves, and Structured Signal Propagation. These are component recipes inspired by known CA/grid-process families, not exact reproductions. Applying an example updates the editable component controls and scenario exports preserve both new example metadata and legacy reference-signature metadata.
+Process Lab includes two visible process example contexts. Foundational CA Models include Conway, Forest Fire, SIR, Greenberg-Hastings, Sandpile, Wa-Tor, Traffic CA, and Wireworld. Ocean-Relevant Process Analogs include simplified event/process layers such as bloom growth/decay, plume fronts, contaminant plumes, water-mass boundaries, eddy-trapped patches, runoff pulses, turbidity events, and monitoring freshness fields. Observable Process Patterns remain bridge metadata for mapping examples to legacy reference signatures and related behaviors; they are not the primary selector. Applying an example updates the editable component controls and scenario exports preserve both new example metadata and legacy reference-signature metadata.
 
 The right-panel Recipe / Signature view uses progressive disclosure: a short model list, grouped model-family counts, CA taxonomy tags, observable spatial/temporal/delta signatures, ROI meaning, QA expectations, genotype-like component setup, phenotype-like behavior notes, failure signs, and "what this is not." It remains a teaching/validation taxonomy, not a simulator library.
 - `Interaction Scale`: labels whether behavior acts globally, by cluster/community, by cell/node, by edge/neighbor, or as a hybrid multi-scale process.
@@ -152,3 +152,12 @@ Scenario APIs live in `src/core/demo/roi/RoiScenarioGenerator.js` and `src/core/
 - It does not run route planning or scoring.
 - It does not create leaderboard entries.
 - Dynamic mode is a visual generator diagnostic, not a full stochastic truth/forecast replay.
+
+## Process Example Contexts
+
+Foundational CA Models are known local-rule models used to teach cells, states, neighborhoods, update rules, and emergent behavior. Ocean-Relevant Process Analogs are simplified CA/grid-process-inspired event or process layers that resemble environmental behaviors important for AUV sampling, but they are not physical flow models or calibrated ocean simulations.
+
+Observable Process Patterns are bridge metadata rather than the primary selector. For example, Forest Fire maps to Propagating Fronts, which bridges to River Plume Front and Shoreline Runoff Pulse analogs. Greenberg-Hastings maps to Excitable Waves. Sandpile maps to Threshold Cascades, which bridges to turbidity or episodic discharge analogs.
+
+Science boundary: the deterministic process demo teaches local process evolution S(x,y,t). Flow Fields teaches current vectors F(x,y,t). Coupled Dynamic Sampling Space combines process plus flow plus constraints. Uncertainty / Forecast adds hidden truth, forecast, belief, observations, and uncertainty. Ocean-relevant analogs in this demo are not calibrated ocean models.
+

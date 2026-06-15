@@ -6,13 +6,20 @@ import { processRuleById } from '../../src/core/demo/sampling/SamplingProcessRul
 
 const baseState = {
   title: 'Deterministic Spatiotemporal Process Lab',
-  processMode: 'referenceSignature',
+  processMode: 'foundationalCaModels',
   patternSource: 'referenceSignature',
-  processModeLabel: 'Example Processes',
+  processModeLabel: 'Foundational CA Models',
   processStatusLabel: 'Example-Validated',
-  referenceSignatureId: 'stationaryTemporalBursts',
-  referenceSignatureLabel: 'Recurrent Stationary Hotspots',
-  referenceSignature: referenceSignatureMetadata('stationaryTemporalBursts'),
+  exampleTrack: 'foundationalCaModels',
+  exampleTrackLabel: 'Foundational CA Models',
+  exampleProcessId: 'conwayGameOfLife',
+  foundationalCaModelId: 'conwayGameOfLife',
+  oceanProcessAnalogId: null,
+  exampleProcessLabel: "Conway's Game of Life",
+  exampleType: 'foundationalCaModel',
+  referenceSignatureId: 'birthDeathEmergence',
+  referenceSignatureLabel: 'Local Birth-Death Emergence',
+  referenceSignature: referenceSignatureMetadata('birthDeathEmergence'),
   referenceSignatureModified: false,
   behaviorPresetId: 'custom',
   behaviorPresetModified: false,
@@ -73,17 +80,19 @@ const baseState = {
 };
 
 function stateForMode(processMode) {
+  const exampleMode = ['foundationalCaModels', 'oceanProcessAnalogs'].includes(processMode);
   return {
     ...baseState,
     processMode,
-    patternSource: processMode === 'referenceSignature' ? 'referenceSignature' : 'custom',
+    patternSource: exampleMode ? 'referenceSignature' : 'custom',
     processModeLabel: {
-      referenceSignature: 'Example Processes',
+      foundationalCaModels: 'Foundational CA Models',
+      oceanProcessAnalogs: 'Ocean-Relevant Process Analogs',
       customComposer: 'Custom Composer',
       processPaint: 'Process Paint',
       randomRuleLab: 'Rule Allocation Sandbox',
       diagnosticsGraphInspection: 'Diagnostics / Graph Inspection'
-    }[processMode] ?? 'Example Processes'
+    }[processMode] ?? 'Foundational CA Models'
   };
 }
 
@@ -107,21 +116,25 @@ function assertCriticalSelectors(html) {
   }
 }
 
-const referenceHtml = samplingProcessConsoleHtml(stateForMode('referenceSignature'));
-assertCriticalSelectors(referenceHtml);
-assert.ok(referenceHtml.includes('data-sampling-top-card="mode"'), 'reference mode should render Mode control card');
-assert.equal(referenceHtml.includes('value="diagnosticsGraphInspection"'), false, 'mode selector should not expose Diagnostics / Graph Inspection');
-assert.equal(referenceHtml.includes('id="roi-demo-pattern-source"'), false, 'Example Process card should not render Pattern Source dropdown');
-assert.equal(referenceHtml.includes('data-roi-help="behaviorPreset"'), false, 'Example Process card should not render selected-pattern Explain button');
-assert.equal(referenceHtml.includes('Diagnostics Overlay'), true, 'Display / Diagnostic Layer should still expose Diagnostics Overlay');
-assert.ok(referenceHtml.includes('data-sampling-primary-mode="referenceSignature"'), 'guided mode should render Example Process primary card');
-assert.ok(referenceHtml.includes('Example Process'), 'guided mode should label the primary selector Example Process');
-assert.ok(!referenceHtml.includes('data-sampling-top-card="summary"'), 'left panel should not render standalone Current Summary');
-assertOrder(referenceHtml, 'id="sampling-process-mode"', 'id="roi-demo-reference-signature"', 'mode selector should appear before reference selector');
-assertOrder(referenceHtml, 'data-sampling-top-card="mode"', 'data-sampling-top-card="primary"', 'mode card should appear before primary card');
-assertOrder(referenceHtml, 'data-sampling-top-card="primary"', 'data-sampling-section="display"', 'primary card should appear before later sections');
-assert.ok(!referenceHtml.slice(0, indexOfRequired(referenceHtml, 'id="sampling-process-mode"')).includes('Active Source'), 'duplicate Active Source metadata should not appear before mode selector');
-assert.ok(!referenceHtml.includes('Current Summary'), 'Current Summary should move out of the left control panel');
+const foundationalHtml = samplingProcessConsoleHtml(stateForMode('foundationalCaModels'));
+assertCriticalSelectors(foundationalHtml);
+assert.ok(foundationalHtml.includes('data-sampling-top-card="mode"'), 'foundational mode should render Mode control card');
+assert.equal(foundationalHtml.includes('value="referenceSignature"'), false, 'mode selector should not expose legacy referenceSignature');
+assert.equal(foundationalHtml.includes('value="diagnosticsGraphInspection"'), false, 'mode selector should not expose Diagnostics / Graph Inspection');
+assert.equal(foundationalHtml.includes('id="roi-demo-pattern-source"'), false, 'Foundational CA card should not render Pattern Source dropdown');
+assert.equal(foundationalHtml.includes('data-roi-help="behaviorPreset"'), false, 'Foundational CA card should not render selected-pattern Explain button');
+assert.equal(foundationalHtml.includes('Diagnostics Overlay'), true, 'Display / Diagnostic Layer should still expose Diagnostics Overlay');
+assert.ok(foundationalHtml.includes('data-sampling-primary-mode="foundationalCaModels"'), 'foundational mode should render the Foundational CA primary card');
+assert.ok(foundationalHtml.includes('Foundational CA Model'), 'foundational mode should label the primary selector Foundational CA Model');
+assert.ok(foundationalHtml.includes('id="sampling-process-example-id"'), 'foundational mode should render track-specific selector');
+assert.ok(foundationalHtml.includes('id="roi-demo-reference-signature"'), 'foundational mode should preserve hidden legacy selector');
+assert.ok(!foundationalHtml.includes('Example Track'), 'old Example Track selector should not render');
+assert.ok(!foundationalHtml.includes('data-sampling-top-card="summary"'), 'left panel should not render standalone Current Summary');
+assertOrder(foundationalHtml, 'id="sampling-process-mode"', 'id="sampling-process-example-id"', 'mode selector should appear before example selector');
+assertOrder(foundationalHtml, 'data-sampling-top-card="mode"', 'data-sampling-top-card="primary"', 'mode card should appear before primary card');
+assertOrder(foundationalHtml, 'data-sampling-top-card="primary"', 'data-sampling-section="display"', 'primary card should appear before later sections');
+assert.ok(!foundationalHtml.slice(0, indexOfRequired(foundationalHtml, 'id="sampling-process-mode"')).includes('Active Source'), 'duplicate Active Source metadata should not appear before mode selector');
+assert.ok(!foundationalHtml.includes('Current Summary'), 'Current Summary should move out of the left control panel');
 
 const customHtml = samplingProcessConsoleHtml(stateForMode('customComposer'));
 assertCriticalSelectors(customHtml);

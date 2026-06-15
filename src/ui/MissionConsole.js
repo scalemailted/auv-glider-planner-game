@@ -335,6 +335,7 @@ export class MissionConsole {
     if (!this.root) return;
     this.root.innerHTML = samplingProcessConsoleHtml(state);
     this.app.applyConsoleAccordions?.('roiDemo', null, { defaultCollapsed: true });
+
     this.root.querySelector('#sampling-process-mode')?.addEventListener('change', (event) => handlers.processMode?.(event.target.value));
     this.root.querySelector('#roi-demo-pattern-source')?.addEventListener('change', (event) => handlers.patternSource?.(event.target.value));
     this.root.querySelector('#sampling-paint-state')?.addEventListener('change', (event) => handlers.paintSelection?.({ state: event.target.value }));
@@ -355,6 +356,8 @@ export class MissionConsole {
     this.root.querySelector('#sampling-random-density')?.addEventListener('change', (event) => handlers.randomizeProcessAllocation?.({ activeFraction: Number(event.target.value) }));
     this.root.querySelector('[data-action="sampling-random-generate"]')?.addEventListener('click', () => handlers.randomizeProcessAllocation?.({}));
     this.root.querySelector('#roi-demo-behavior-preset')?.addEventListener('change', (event) => handlers.behaviorPreset?.(event.target.value));
+    this.root.querySelector('#sampling-process-example-id')?.addEventListener('input', (event) => handlers.processExample?.(event.target.value));
+    this.root.querySelector('#sampling-process-example-id')?.addEventListener('change', (event) => handlers.processExample?.(event.target.value));
     this.root.querySelector('#roi-demo-reference-signature')?.addEventListener('change', (event) => handlers.referenceSignature?.(event.target.value));
     this.root.querySelector('#roi-demo-event-likelihood')?.addEventListener('change', (event) => handlers.eventLikelihood?.(event.target.value));
     this.root.querySelector('#roi-demo-event-likelihood-dynamics')?.addEventListener('change', (event) => handlers.eventLikelihoodDynamics?.(event.target.value));
@@ -396,6 +399,7 @@ export class MissionConsole {
     this.root.querySelector('#roi-filter-neighborhood')?.addEventListener('change', (event) => handlers.viewFilters?.({ selectedNeighborhood: event.target.checked }));
     this.root.querySelector('#roi-filter-meaning-layer')?.addEventListener('change', (event) => handlers.viewFilters?.({ roiMeaningLayer: event.target.value }));
     this.root.querySelector('#roi-demo-time-speed')?.addEventListener('change', (event) => handlers.timeSpeedScale?.(event.target.value));
+    this.root.querySelector('#sampling-process-tick-rate')?.addEventListener('change', (event) => handlers.tickRate?.(event.target.value));
     this.root.querySelector('#roi-scenario-source')?.addEventListener('change', (event) => handlers.scenarioSettings?.({ sourceMode: event.target.value }, { render: false }));
     this.root.querySelector('#roi-scenario-seed')?.addEventListener('change', (event) => handlers.scenarioSettings?.({ seed: event.target.value }, { render: false }));
     this.root.querySelector('#roi-scenario-difficulty')?.addEventListener('change', (event) => handlers.scenarioSettings?.({ difficulty: event.target.value }, { render: false }));
@@ -412,6 +416,7 @@ export class MissionConsole {
       'roi-compare-evolution': () => handlers.compareComponent?.('spatialEvolution'),
       'roi-compare-scale': () => handlers.compareComponent?.('interactionScale'),
       'generate-roi-scenario': handlers.generateScenario,
+      'sampling-step-generation': handlers.stepGeneration,
       'export-demo-json': handlers.exportDemoJson,
       'export-roi-scenario': handlers.exportScenarioJson,
       menu: handlers.menu
@@ -1175,3 +1180,4 @@ function escapeHtml(value) {
 function escapeAttr(value) {
   return escapeHtml(value).replace(/`/g, '&#096;');
 }
+

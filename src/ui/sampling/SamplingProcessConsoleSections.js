@@ -47,8 +47,11 @@ import {
   referenceSignatureLabel
 } from '../../core/demo/roi/RoiReferenceSignatures.js';
 import {
-  processExampleTypeLabel,
-  spatiotemporalProcessExampleOptions
+  processModeForSpatiotemporalProcessExampleTrack,
+  spatiotemporalProcessExampleOptions,
+  spatiotemporalProcessExampleOptionsByTrack,
+  spatiotemporalProcessExampleTrackForMode,
+  spatiotemporalProcessExampleTrackLabel
 } from '../../core/demo/sampling/SpatiotemporalProcessExamples.js';
 import {
   SAMPLING_PROCESS_LAB_MENU_LABEL,
@@ -177,6 +180,8 @@ export function samplingProcessModeSectionHtml(state) {
 
 export function samplingPrimaryModeControlsHtml(state = {}) {
   return {
+    foundationalCaModels: () => samplingReferenceSignaturePrimaryHtml(state),
+    oceanProcessAnalogs: () => samplingReferenceSignaturePrimaryHtml(state),
     referenceSignature: () => samplingReferenceSignaturePrimaryHtml(state),
     customComposer: () => samplingCustomComposerPrimaryHtml(state),
     processPaint: () => samplingProcessPaintPrimaryHtml(state),
@@ -186,21 +191,16 @@ export function samplingPrimaryModeControlsHtml(state = {}) {
 }
 
 function samplingReferenceSignaturePrimaryHtml(state = {}) {
+  const meta = samplingProcessExampleContextMeta(state);
   return `
-      <section class="console-section sampling-control-card" data-sampling-top-card="primary" data-sampling-primary-mode="referenceSignature">
-        <h2>Example Process</h2>
-        <div class="hud-muted">Choose a deterministic foundational CA model or observable process pattern.</div>
+      <section class="console-section sampling-control-card" data-sampling-top-card="primary" data-sampling-primary-mode="${escapeAttr(meta.mode)}">
+        <h2>${escapeHtml(meta.title)}</h2>
+        <div class="hud-muted">${escapeHtml(meta.helper)}</div>
         ${state.hasSection('referenceSignature') && state.patternSource === 'referenceSignature' ? `
-          <label class="compact-field" title="Choose a deterministic process example.">
-            <span>Example Process</span>
-            <select id="roi-demo-reference-signature">
-              ${spatiotemporalProcessExampleOptions().map((group) => `
-                <optgroup label="${escapeAttr(processExampleTypeLabel(group.type))}">
-                  ${group.options.map((option) => `<option value="${escapeAttr(option.id)}" ${(state.exampleProcessId ?? state.referenceSignatureId ?? CUSTOM_REFERENCE_SIGNATURE_ID) === option.id ? 'selected' : ''}>${escapeHtml(option.label)}</option>`).join('')}
-                </optgroup>
-              `).join('')}
-            </select>
-          </label>
+          ${samplingTrackSpecificExampleSelectorHtml(state)}
+          <select id="roi-demo-reference-signature" class="sr-only" aria-hidden="true" tabindex="-1">
+            ${spatiotemporalProcessExampleOptionsByTrack(meta.track).map((option) => `<option value="${escapeAttr(option.referenceSignatureId ?? option.id)}" ${(state.referenceSignatureId ?? CUSTOM_REFERENCE_SIGNATURE_ID) === (option.referenceSignatureId ?? option.id) ? 'selected' : ''}>${escapeHtml(option.label)}</option>`).join('')}
+          </select>
         ` : `
           ${state.hasSection('sourceField') ? '<div class="hud-muted">Edit the primitive components directly. No guided process is active.</div>' : ''}
         `}
@@ -209,7 +209,7 @@ function samplingReferenceSignaturePrimaryHtml(state = {}) {
         ${state.legacyPresetsVisible ? `
           <details class="hud-muted">
             <summary>Advanced / Legacy Examples</summary>
-            <p>Legacy MVP examples. These are kept for compatibility and debugging. The main educational workflow is Example Processes.</p>
+            <p>Legacy MVP examples are kept for compatibility and debugging. The primary educational workflow is the visible Process Lab mode.</p>
             <label class="compact-field" title="${escapeAttr(state.presetHelp.short)}">
               <span>Legacy Behavior Preset</span>
               <select id="roi-demo-behavior-preset" title="${escapeAttr(state.presetHelp.short)}">
@@ -223,6 +223,38 @@ function samplingReferenceSignaturePrimaryHtml(state = {}) {
   `;
 }
 
+function samplingTrackSpecificExampleSelectorHtml(state = {}) {
+  const meta = samplingProcessExampleContextMeta(state);
+  const selectedExampleId = state.exampleProcessId ?? state.referenceSignatureId ?? CUSTOM_REFERENCE_SIGNATURE_ID;
+  return `
+          <label class="compact-field" title="${escapeAttr(meta.selectorTitle)}">
+            <span>${escapeHtml(meta.selectorLabel)}</span>
+            <select id="sampling-process-example-id">
+              ${spatiotemporalProcessExampleOptionsByTrack(meta.track).map((option) => `<option value="${escapeAttr(option.id)}" ${selectedExampleId === option.id ? 'selected' : ''}>${escapeHtml(option.label)}</option>`).join('')}
+            </select>
+          </label>
+          <div class="hud-muted">${escapeHtml(meta.bridgeNote)}</div>
+  `;
+}
+
+function samplingProcessExampleContextMeta(state = {}) {
+  const track = spatiotemporalProcessExampleTrackForMode(state.processMode)
+    ?? (state.exampleTrack === 'oceanRelevantProcessAnalogs' ? 'oceanRelevantProcessAnalogs' : 'foundationalCaModels');
+  const isOcean = track === 'oceanRelevantProcessAnalogs';
+  return {
+    track,
+    mode: processModeForSpatiotemporalProcessExampleTrack(track),
+    title: isOcean ? 'Ocean-Relevant Process Analogs' : 'Foundational CA Models',
+    helper: isOcean
+      ? 'Choose a simplified environmental process analog. These are event/process layers that become ocean-relevant when coupled with flow, uncertainty, and mission objectives.'
+      : 'Choose a well-known cellular automaton or grid-process teaching model.',
+    selectorLabel: isOcean ? 'Ocean Process Analog' : 'Foundational CA Model',
+    selectorTitle: isOcean ? 'Choose an ocean-relevant process analog.' : 'Choose a foundational cellular automaton model.',
+    bridgeNote: isOcean
+      ? 'Observable Process Patterns remain bridge metadata. Physical flow belongs in the Flow Fields and Coupled Dynamic Sampling Space demos.'
+      : 'Observable Process Patterns remain bridge metadata, not a primary selector.'
+  };
+}
 function samplingCustomComposerPrimaryHtml(state = {}) {
   return `
       <section class="console-section sampling-control-card" data-sampling-top-card="primary" data-sampling-primary-mode="customComposer">
@@ -541,12 +573,23 @@ export function samplingDisplaySectionHtml(state) {
           </select>
         </label>
         ${roiViewFilterControlsHtml({ ...state, forceViewFilters: state.hasSection('graphFilters') })}
-        <label class="compact-field">
-          Time Speed
-          <select id="roi-demo-time-speed">
-            ${[0.5, 1, 2, 5].map((speed) => `<option value="${escapeAttr(speed)}" ${Number(state.timeSpeedScale ?? 1) === speed ? 'selected' : ''}>${escapeHtml(speed)}x</option>`).join('')}
-          </select>
-        </label>
+        ${state.usesDiscreteProcessClock ? `
+          <label class="compact-field">
+            Tick Rate
+            <select id="sampling-process-tick-rate">
+              ${(state.processTickRates ?? [0.25, 0.5, 1, 2, 4, 8]).map((rate) => `<option value="${escapeAttr(rate)}" ${Number(state.processTickRate ?? 1) === Number(rate) ? 'selected' : ''}>${escapeHtml(rate)} gen/s</option>`).join('')}
+            </select>
+          </label>
+          <div class="hud-muted">Generation: ${escapeHtml(state.processGenerationIndex ?? 0)} | Current display metric: ${escapeHtml(state.processDisplayMetric?.metricLabel ?? state.displayModeLabel ?? 'Rule Metric')}</div>
+          <button type="button" data-action="sampling-step-generation" class="console-button secondary">Step Generation</button>
+        ` : `
+          <label class="compact-field">
+            Time Speed
+            <select id="roi-demo-time-speed">
+              ${[0.5, 1, 2, 5].map((speed) => `<option value="${escapeAttr(speed)}" ${Number(state.timeSpeedScale ?? 1) === speed ? 'selected' : ''}>${escapeHtml(speed)}x</option>`).join('')}
+            </select>
+          </label>
+        `}
         ${roiHelpButtonHtml('displayLayer', `Explain ${roiDisplayModeLabel(state.displayMode)}`)}
       </section>
   `;
@@ -772,7 +815,9 @@ function samplingProcessConsoleContext(state = {}) {
     : `${roiEventLikelihoodLabel(state.eventLikelihood)} (${state.eventLikelihoodDynamics === 'dynamic' ? `${roiTemporalPatternLabel(state.eventLikelihoodTemporalPattern)} / ${roiLikelihoodSpatialEvolutionLabel(state.eventLikelihoodSpatialEvolution)}` : 'Static'})`;
   const summaryRows = [
     ['Active Source', patternSourceLabel(patternSource)],
-    ['Example Process', patternSource === 'referenceSignature' ? (state.exampleProcessLabel ?? referenceStatus) : 'None'],
+    ['Track', patternSource === 'referenceSignature' ? (state.exampleTrackLabel ?? spatiotemporalProcessExampleTrackLabel(state.exampleTrack)) : 'n/a'],
+    ['Selected Example', patternSource === 'referenceSignature' ? (state.exampleProcessLabel ?? referenceStatus) : 'None'],
+    ['Mapped Pattern', patternSource === 'referenceSignature' ? (state.referenceSignatureLabel ?? referenceStatus) : 'n/a'],
     ['Source Field', likelihoodModeText],
     ['Spatial Pattern', state.spatialPatternLabel ?? roiPureSpatialPatternLabel(state.spatialPattern)],
     ['Value Distribution', state.valueDistributionLabel ?? roiValueDistributionLabel(state.valueDistribution)],
@@ -792,9 +837,11 @@ function samplingProcessConsoleContext(state = {}) {
   ];
   const sourceSummaryRows = patternSource === 'referenceSignature'
     ? [
-        ['Active Source', 'Example Processes'],
-        ['Example Process', state.exampleProcessLabel ?? referenceStatus],
-        ['Modified', state.referenceSignatureModified ? 'yes' : 'no'],
+        ['Active Source', state.processModeLabel ?? samplingProcessModeLabel(state.processMode)],
+        ['Track', state.exampleTrackLabel ?? spatiotemporalProcessExampleTrackLabel(state.exampleTrack)],
+        ['Selected Example', state.exampleProcessLabel ?? referenceStatus],
+        ['Mapped Pattern', state.referenceSignatureLabel ?? referenceStatus],
+        ['Modified', state.exampleProcessModified || state.referenceSignatureModified ? 'yes' : 'no'],
         ['Modified component', state.componentHint?.label ?? 'none'],
         ['Recipe', recipeSummary]
       ]
@@ -928,10 +975,10 @@ function dynamicComplexityLabel(level) {
 
 function patternSourceLabel(source) {
   return {
-    referenceSignature: 'Example Processes',
+    referenceSignature: 'Process Example Context',
     custom: 'Custom Component Recipe',
     legacyPreset: 'Legacy Preset'
-  }[source] ?? 'Example Processes';
+  }[source] ?? 'Process Example Context';
 }
 
 function compactRecipeSummary(state = {}, stateModelLabel = '') {

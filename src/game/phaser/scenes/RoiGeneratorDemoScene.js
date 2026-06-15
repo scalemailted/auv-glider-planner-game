@@ -61,9 +61,15 @@ import {
 } from '../../../core/demo/sampling/SamplingProcessTerminology.js';
 import {
   normalizeSpatiotemporalProcessExampleId,
+  normalizeSpatiotemporalProcessExampleTrack,
+  processModeForSpatiotemporalProcessExampleTrack,
   referenceSignatureIdForProcessExample,
+  resolveActiveSpatiotemporalProcessExample,
   spatiotemporalProcessExampleById,
-  spatiotemporalProcessExampleLabel
+  spatiotemporalProcessExampleLabel,
+  spatiotemporalProcessExampleTrackForMode,
+  spatiotemporalProcessExampleTrackLabel,
+  spatiotemporalProcessExamplesByTrack
 } from '../../../core/demo/sampling/SpatiotemporalProcessExamples.js';
 import {
   normalizeProcessRuleId,
@@ -80,8 +86,29 @@ import {
 import { randomizeSamplingProcessAllocation } from '../../../core/demo/sampling/SamplingProcessRandomizer.js';
 import {
   buildSamplingProcessLayersForField,
-  buildSamplingProcessPaintField
+  buildSamplingProcessPaintField,
+  buildSamplingProcessGraphField,
+  fieldStats,
+  highValueCellsFromField,
+  sourceFieldDiagnostics
 } from '../../../core/demo/sampling/SamplingProcessPaintFieldAdapter.js';
+import {
+  frameFromLayers,
+  stepSamplingProcess
+} from '../../../core/demo/sampling/SamplingProcessEvolution.js';
+import {
+  buildSamplingProcessMetricLayers,
+  metricDisplayBlock
+} from '../../../core/demo/sampling/SamplingProcessExplainability.js';
+import {
+  SAMPLING_PROCESS_TICK_RATES,
+  DEFAULT_SAMPLING_PROCESS_TICK_RATE,
+  advanceProcessClock,
+  isDiscreteSamplingProcessMode,
+  normalizeProcessTickRate,
+  processTickIntervalSeconds,
+  processTimingExportBlock
+} from '../../../core/demo/sampling/SamplingProcessTiming.js';
 import {
   buildCustomComposerPatch,
   buildPatternSourcePatch,
@@ -123,8 +150,8 @@ import {
 } from '../../../ui/sampling/SamplingProcessRightPanel.js';
 
 const PhaserScene = globalThis.Phaser?.Scene ?? class {};
-const ROI_UI_VERSION = 'reference-signature-primary-ui-v1';
-const DEFAULT_REFERENCE_SIGNATURE_ID = 'stationaryTemporalBursts';
+const ROI_UI_VERSION = 'process-context-split-ui-v1';
+const DEFAULT_REFERENCE_SIGNATURE_ID = 'birthDeathEmergence';
 const PATTERN_SOURCES = ['referenceSignature', 'custom', 'legacyPreset'];
 
 export class RoiGeneratorDemoScene extends PhaserScene {
@@ -157,8 +184,12 @@ export class RoiGeneratorDemoScene extends PhaserScene {
     this.viewFilters = normalizeRoiDemoViewFilters();
     this.dynamicComplexity = 'medium';
     this.patternSource = 'referenceSignature';
-    this.processMode = 'referenceSignature';
-    this.exampleProcessId = DEFAULT_REFERENCE_SIGNATURE_ID;
+    this.processMode = 'foundationalCaModels';
+    this.exampleTrack = 'foundationalCaModels';
+    this.exampleProcessId = 'conwayGameOfLife';
+    this.foundationalCaModelId = 'conwayGameOfLife';
+    this.oceanProcessAnalogId = null;
+    this.exampleProcessModified = false;
     this.behaviorPresetId = CUSTOM_SAMPLE_FIELD_BEHAVIOR_PRESET_ID;
     this.behaviorPresetModified = false;
     this.referenceSignatureId = DEFAULT_REFERENCE_SIGNATURE_ID;
@@ -166,6 +197,12 @@ export class RoiGeneratorDemoScene extends PhaserScene {
     this.updateRuleHint = null;
     this.forecastView = 'forecast';
     this.demoTime = 0;
+    this.processGenerationIndex = 0;
+    this.processTickRate = DEFAULT_SAMPLING_PROCESS_TICK_RATE;
+    this.processTickAccumulator = 0;
+    this.processTickIntervalSeconds = processTickIntervalSeconds(this.processTickRate);
+    this.lastProcessStepTime = null;
+    this.previousProcessStateLayer = null;
     this.timeSpeedScale = 1;
     this.playbackDirection = 1;
     this.paused = false;
@@ -203,10 +240,6 @@ export class RoiGeneratorDemoScene extends PhaserScene {
 
   init(data = {}) {
     const patternSource = normalizePatternSource(data.patternSource, data);
-    const requestedExampleProcessId = normalizeSpatiotemporalProcessExampleId(data.exampleProcessId ?? data.spatiotemporalProcessExample?.id ?? data.referenceSignatureId ?? data.referenceSignature?.id ?? (
-      patternSource === 'referenceSignature' ? DEFAULT_REFERENCE_SIGNATURE_ID : CUSTOM_REFERENCE_SIGNATURE_ID
-    ));
-    const requestedReferenceSignatureId = normalizeReferenceSignatureId(referenceSignatureIdForProcessExample(requestedExampleProcessId) ?? requestedExampleProcessId);
     const requestedProcessMode = normalizeSamplingProcessMode(data.processMode ?? processModeFromPatternSource(patternSource));
     const diagnosticsMigration = requestedProcessMode === 'diagnosticsGraphInspection'
       ? migrateDiagnosticsProcessMode({
@@ -216,8 +249,23 @@ export class RoiGeneratorDemoScene extends PhaserScene {
         })
       : null;
     const processMode = diagnosticsMigration?.processMode ?? requestedProcessMode;
+    const requestedActiveExample = resolveActiveSpatiotemporalProcessExample({
+      exampleTrack: data.exampleTrack ?? data.spatiotemporalProcessExample?.track ?? spatiotemporalProcessExampleTrackForMode(processMode) ?? 'foundationalCaModels',
+      exampleProcessId: data.exampleProcessId ?? data.spatiotemporalProcessExample?.id ?? (patternSource === 'referenceSignature' ? 'conwayGameOfLife' : CUSTOM_REFERENCE_SIGNATURE_ID),
+      foundationalCaModelId: data.foundationalCaModelId,
+      oceanProcessAnalogId: data.oceanProcessAnalogId,
+      referenceSignatureId: data.referenceSignatureId ?? data.referenceSignature?.id,
+      patternSource,
+      processMode,
+      exampleProcessModified: data.exampleProcessModified,
+      referenceSignatureModified: data.referenceSignatureModified ?? data.referenceSignature?.modified
+    });
+    const requestedExampleTrack = requestedActiveExample.exampleTrack;
+    const requestedExampleProcessId = requestedActiveExample.exampleProcessId ?? CUSTOM_REFERENCE_SIGNATURE_ID;
+    const requestedReferenceSignatureId = normalizeReferenceSignatureId(requestedActiveExample.referenceSignatureId ?? CUSTOM_REFERENCE_SIGNATURE_ID);
+    const requestedExample = requestedActiveExample.sourceExample;
     const explicitDisplayMode = data.displayMode ?? data.config?.displayMode ?? null;
-    const referenceRecipe = patternSource === 'referenceSignature' ? referenceSignatureRecipe(requestedReferenceSignatureId) : {};
+    const referenceRecipe = patternSource === 'referenceSignature' && requestedReferenceSignatureId !== CUSTOM_REFERENCE_SIGNATURE_ID ? referenceSignatureRecipe(requestedReferenceSignatureId) : {};
     const input = { ...referenceRecipe, ...data };
     this.distribution = normalizeRoiDemoDistribution(data.distribution ?? 'burstyBloom');
     const distributionDefaults = roiDemoDistributionDefaults(this.distribution);
@@ -242,27 +290,39 @@ export class RoiGeneratorDemoScene extends PhaserScene {
     this.displayMode = normalizeRoiDemoDisplayMode(
       diagnosticsMigration?.displayMode
         ?? explicitDisplayMode
-        ?? (processMode === 'processPaint' ? 'nodeStates' : SAMPLING_PROCESS_DEFAULT_DISPLAY_MODE)
+        ?? defaultProcessDisplayMode(processMode)
     );
     this.viewFilters = normalizeRoiDemoViewFilters(input.viewFilters ?? input.config?.viewFilters ?? this.viewFilters);
     this.dynamicComplexity = normalizeRoiDemoDynamicComplexity(input.dynamicComplexity ?? 'medium');
     this.patternSource = patternSource;
     this.processMode = processMode;
-    this.exampleProcessId = patternSource === 'referenceSignature' ? requestedExampleProcessId : CUSTOM_REFERENCE_SIGNATURE_ID;
+    this.exampleTrack = requestedActiveExample.exampleTrack;
+    this.exampleProcessId = requestedActiveExample.exampleProcessId;
+    this.foundationalCaModelId = requestedActiveExample.foundationalCaModelId;
+    this.oceanProcessAnalogId = requestedActiveExample.oceanProcessAnalogId;
+    this.exampleProcessModified = Boolean(requestedActiveExample.isModified); 
     this.behaviorPresetId = patternSource === 'legacyPreset'
       ? normalizeSampleFieldBehaviorPresetId(input.behaviorPresetId ?? input.behaviorPreset?.id ?? CUSTOM_SAMPLE_FIELD_BEHAVIOR_PRESET_ID)
       : CUSTOM_SAMPLE_FIELD_BEHAVIOR_PRESET_ID;
     this.behaviorPresetModified = Boolean(data.behaviorPresetModified ?? data.behaviorPreset?.modified);
-    this.referenceSignatureId = patternSource === 'referenceSignature' ? requestedReferenceSignatureId : CUSTOM_REFERENCE_SIGNATURE_ID;
+    this.referenceSignatureId = requestedActiveExample.referenceSignatureId ?? CUSTOM_REFERENCE_SIGNATURE_ID;
     this.referenceSignatureModified = Boolean(input.referenceSignatureModified ?? input.referenceSignature?.modified);
-    this.updateRuleHint = patternSource === 'referenceSignature' ? input.updateRuleHint ?? null : null;
+    this.updateRuleHint = patternSource === 'referenceSignature' ? requestedExample?.ruleFamilyId ?? input.updateRuleHint ?? null : null;
     this.interactionScale = normalizeRoiDemoInteractionScale(input.interactionScale ?? sampleFieldBehaviorPresetMetadata(this.behaviorPresetId).interactionScale ?? 'hybrid');
     this.modifiedComponent = data.modifiedComponent ?? null;
     this.temporalBehavior = normalizeRoiDemoTemporalBehavior(input.temporalBehavior ?? distributionDefaults.temporalBehavior);
     this.forecastView = normalizeForecastView(data.forecastView ?? 'forecast');
     this.timeSpeedScale = finiteNumber(data.timeSpeedScale, 1);
     this.playbackDirection = normalizePlaybackDirection(data.playbackDirection);
-    this.demoTime = finiteNumber(data.demoTime, 0);
+    const inputProcessTiming = data.processTiming ?? {};
+    const initialDemoTime = finiteNumber(data.demoTime, 0);
+    this.processTickRate = normalizeProcessTickRate(data.processTickRate ?? inputProcessTiming.tickRate ?? inputProcessTiming.processTickRate);
+    this.processTickIntervalSeconds = processTickIntervalSeconds(this.processTickRate);
+    this.processTickAccumulator = Math.max(0, finiteNumber(data.processTickAccumulator ?? inputProcessTiming.tickAccumulator, 0));
+    this.processGenerationIndex = Math.max(0, Math.round(finiteNumber(data.processGenerationIndex ?? data.generationIndex ?? inputProcessTiming.generationIndex ?? initialDemoTime, initialDemoTime)));
+    this.lastProcessStepTime = Number.isFinite(Number(data.lastProcessStepTime ?? inputProcessTiming.lastProcessStepTime)) ? Number(data.lastProcessStepTime ?? inputProcessTiming.lastProcessStepTime) : null;
+    this.demoTime = isDiscreteSamplingProcessMode(processMode) ? this.processGenerationIndex : initialDemoTime;
+    this.previousProcessStateLayer = null;
     this.paused = this.processMode === 'processPaint' ? data.paused !== false : Boolean(data.paused);
     this.selectedCell = normalizeSelectedCell(data.selectedCell);
     this.rightPanelMode = normalizeRightPanelMode(diagnosticsMigration?.rightPanelMode ?? data.rightPanelMode);
@@ -328,6 +388,18 @@ export class RoiGeneratorDemoScene extends PhaserScene {
   }
 
   update(_time, delta) {
+    if (this.usesDiscreteProcessClock()) {
+      const processPaintWaiting = this.processMode === 'processPaint' && !this.processPaintRunStarted;
+      const clock = advanceProcessClock(this.processTimingState(), Math.max(0, Number(delta ?? 16.67) / 1000), {
+        paused: this.paused || processPaintWaiting,
+        maxCatchUpTicks: 4
+      });
+      this.processTickAccumulator = clock.tickAccumulator;
+      this.lastProcessStepTime = clock.lastProcessStepTime;
+      for (let tick = 0; tick < clock.ticksToAdvance; tick += 1) this.stepProcessGeneration({ render: false, updateUi: false, resetAccumulator: false });
+      this.draw();
+      return;
+    }
     const processPaintRunning = this.processMode === 'processPaint' && this.processPaintRunStarted;
     if (this.paused || (!processPaintRunning && this.timeMode !== 'dynamic' && this.eventLikelihoodDynamics !== 'dynamic')) {
       this.draw();
@@ -342,26 +414,240 @@ export class RoiGeneratorDemoScene extends PhaserScene {
   title() {
     return SAMPLING_PROCESS_LAB_TITLE;
   }
+  activeProcessExampleState(overrides = {}) {
+    return resolveActiveSpatiotemporalProcessExample({
+      exampleTrack: this.exampleTrack,
+      exampleProcessId: this.exampleProcessId,
+      foundationalCaModelId: this.foundationalCaModelId,
+      oceanProcessAnalogId: this.oceanProcessAnalogId,
+      referenceSignatureId: this.referenceSignatureId,
+      patternSource: this.patternSource,
+      processMode: this.processMode,
+      exampleProcessModified: this.exampleProcessModified,
+      referenceSignatureModified: this.referenceSignatureModified,
+      ...overrides
+    });
+  }
 
   subtitle() {
     if (this.processMode === 'processPaint') {
-      return 'Process Paint Mode: assign initial state, process rule, group, and source value to cells or groups.';
+      return 'Process Paint | manual non-uniform rule allocation canvas';
     }
     if (this.processMode === 'randomRuleLab') {
-      return 'Rule Allocation Sandbox: generate seeded exploratory rule/state/group allocations and inspect the resulting deterministic process.';
-    }
-    const example = spatiotemporalProcessExampleById(this.exampleProcessId);
-    const signature = referenceSignatureById(this.referenceSignatureId);
-    if (this.patternSource === 'referenceSignature' && signature) {
-      return `Example Processes: ${example?.label ?? signature.label} | Deterministic/seeded process: ${formatObservableSignature(signature.expectedObservableSignature)}`;
+      return 'Rule Allocation Sandbox | seeded heterogeneous rule allocation';
     }
     if (this.patternSource === 'custom') {
-      return `Custom Exploratory Composer | ${this.recipeSummary?.() ?? 'editable primitive components'}`;
+      return `Custom Composer | ${this.recipeSummary?.() ?? 'editable process recipe'}`;
+    }
+    const active = this.activeProcessExampleState();
+    if (!active.isCustom && active.referenceSignatureLabel) {
+      const prefix = active.exampleType === 'oceanProcessAnalog'
+        ? 'Ocean-Relevant Process Analog'
+        : active.exampleType === 'foundationalCaModel'
+          ? 'Foundational CA Model'
+          : 'Observable Process Pattern';
+      const note = active.requiresFlowCoupling ? 'Flow coupling required later' : 'Deterministic / seeded';
+      return `${prefix}: ${active.exampleProcessLabel} | Pattern: ${active.referenceSignatureLabel} | ${note}`;
     }
     return `Legacy Preset: ${sampleFieldBehaviorPresetLabel(this.behaviorPresetId)} | compatibility recipe`;
   }
 
+  usesDiscreteProcessClock() {
+    return isDiscreteSamplingProcessMode(this.processMode);
+  }
+
+  processTimingState(overrides = {}) {
+    return {
+      generationIndex: this.processGenerationIndex,
+      processGenerationIndex: this.processGenerationIndex,
+      tickRate: this.processTickRate,
+      processTickRate: this.processTickRate,
+      tickAccumulator: this.processTickAccumulator,
+      processTickAccumulator: this.processTickAccumulator,
+      tickIntervalSeconds: this.processTickIntervalSeconds,
+      lastProcessStepTime: this.lastProcessStepTime,
+      ...overrides
+    };
+  }
+
+  activeProcessRuleId() {
+    const active = this.activeProcessExampleState();
+    return normalizeProcessRuleId(this.updateRuleHint ?? active.ruleFamilyId ?? active.sourceExample?.ruleFamilyId ?? this.field?.graphField?.updateRule ?? 'inert');
+  }
+
+  initializeDiscreteProcessField() {
+    const desiredGeneration = Math.max(0, Math.round(Number(this.processGenerationIndex) || 0));
+    const width = this.field?.width ?? this.processLayers?.stateLayer?.[0]?.length ?? 24;
+    const height = this.field?.height ?? this.processLayers?.stateLayer?.length ?? 16;
+    const frame = frameFromLayers({
+      ...this.processLayers,
+      width,
+      height,
+      groupDefinitions: this.paintModel?.groups ?? {},
+      globalRuleId: this.processMode === 'processPaint' ? 'inert' : this.activeProcessRuleId(),
+      time: 0,
+      index: 0,
+      seed: this.seed
+    });
+    this.processGenerationIndex = 0;
+    this.demoTime = 0;
+    this.previousProcessStateLayer = null;
+    this.applyProcessEvolutionFrame(frame, { previousStateLayer: null });
+    if (desiredGeneration > 0 && (this.processMode !== 'processPaint' || this.processPaintRunStarted)) {
+      for (let generation = 0; generation < desiredGeneration; generation += 1) {
+        this.stepProcessGeneration({ render: false, updateUi: false, resetAccumulator: false });
+      }
+    }
+    this.processGenerationIndex = Math.max(this.processGenerationIndex, this.processMode === 'processPaint' && !this.processPaintRunStarted ? 0 : desiredGeneration);
+    this.demoTime = this.processGenerationIndex;
+  }
+
+  stepProcessGeneration({ render = true, updateUi = true, resetAccumulator = true } = {}) {
+    if (!this.usesDiscreteProcessClock()) {
+      this.demoTime = Math.max(0, this.demoTime + this.playbackDirection * this.timeSpeedScale);
+      this.rebuildField();
+      if (render) this.draw();
+      return;
+    }
+    if (this.processMode === 'processPaint') this.processPaintRunStarted = true;
+    if (!this.field) this.field = createDemoRoiField({ ...this.sceneConfig(), time: 0 });
+    if (!this.processLayers) this.processLayers = this.buildProcessLayers();
+    const width = this.field?.width ?? this.processLayers?.stateLayer?.[0]?.length ?? 24;
+    const height = this.field?.height ?? this.processLayers?.stateLayer?.length ?? 16;
+    const previousStateLayer = cloneLayer(this.processLayers.stateLayer);
+    const result = stepSamplingProcess({
+      ...this.processLayers,
+      width,
+      height,
+      groupDefinitions: this.paintModel?.groups ?? {},
+      globalRuleId: this.processMode === 'processPaint' ? 'inert' : this.activeProcessRuleId(),
+      time: this.processGenerationIndex + 1,
+      dt: 1,
+      seed: this.seed
+    });
+    this.processGenerationIndex = Math.max(0, this.processGenerationIndex + 1);
+    this.demoTime = this.processGenerationIndex;
+    if (resetAccumulator) this.processTickAccumulator = 0;
+    this.previousProcessStateLayer = previousStateLayer;
+    this.applyProcessEvolutionFrame(result, { previousStateLayer });
+    if (updateUi) {
+      this.renderConsole();
+      this.updateTransportBar();
+      this.renderCellInspector(true);
+    } else {
+      this.updateTransportBar();
+    }
+    if (render) this.draw();
+  }
+
+  applyProcessEvolutionFrame(evolved = {}, { previousStateLayer = null } = {}) {
+    const width = this.field?.width ?? evolved.stateLayer?.[0]?.length ?? 24;
+    const height = this.field?.height ?? evolved.stateLayer?.length ?? 16;
+    const displayLayers = {
+      stateLayer: evolved.stateLayer,
+      ruleLayer: evolved.ruleLayer,
+      resolvedRuleLayer: evolved.resolvedRuleLayer,
+      groupLayer: evolved.groupLayer,
+      sourceField: evolved.sourceField,
+      parameterLayer: evolved.parameterLayer
+    };
+    const samplingValueField = evolved.samplingValueField ?? this.field?.samplingValueField ?? this.field?.field;
+    const graphField = buildSamplingProcessGraphField({
+      baseGraphField: this.field?.graphField,
+      displayLayers,
+      evolved,
+      samplingValueField,
+      paintModel: this.processMode === 'processPaint' ? this.paintModel : null,
+      updateRuleLabel: this.processMode === 'processPaint' ? 'processPaintRuleFamilies' : this.activeProcessRuleId(),
+      width,
+      height
+    });
+    const stats = fieldStats(samplingValueField);
+    this.processLayers = displayLayers;
+    const metricBundle = buildSamplingProcessMetricLayers({
+      example: this.activeProcessExampleState().sourceExample,
+      ruleId: this.activeProcessRuleId(),
+      stateLayer: displayLayers.stateLayer,
+      previousStateLayer: previousStateLayer ?? displayLayers.stateLayer,
+      sourceField: displayLayers.sourceField,
+      transitionLayer: evolved.transitionLayer,
+      samplingValueField,
+      width,
+      height
+    });
+    const processStateActiveCount = Number(metricBundle.diagnostics?.activeCellCount);
+    const processStateActiveFraction = Number.isFinite(processStateActiveCount) ? processStateActiveCount / Math.max(1, width * height) : 0;
+    const numericActiveFraction = highValueFractionForScene(samplingValueField, 0.01);
+    const sourceActiveFraction = highValueFractionForScene(displayLayers.sourceField, 0.01);
+    const activeFraction = processStateActiveFraction > 0 ? processStateActiveFraction : numericActiveFraction;
+    const metricId = displayMetricIdForMode(this.displayMode, metricBundle.defaultMetricId);
+    const processDisplayMetric = metricDisplayBlock({
+      metricId,
+      example: this.activeProcessExampleState().sourceExample,
+      layers: metricBundle
+    });
+    const displayedField = processDisplayedFieldForMode(this.displayMode, samplingValueField, displayLayers.sourceField, metricBundle.metricLayers, metricId);
+    this.field = {
+      ...this.field,
+      width,
+      height,
+      time: this.processGenerationIndex,
+      field: displayedField,
+      sampleValueField: samplingValueField,
+      samplingValueField,
+      valueLayer: samplingValueField,
+      evolvedField: samplingValueField,
+      eventLikelihoodField: displayLayers.sourceField,
+      sourceField: displayLayers.sourceField,
+      sourceFieldValues: displayLayers.sourceField,
+      processSubstrateField: displayLayers.sourceField,
+      transitionLayer: evolved.transitionLayer,
+      roiRoleLayer: evolved.roiRoleLayer,
+      processMessages: evolved.processMessages,
+      metricLayers: metricBundle.metricLayers,
+      metricLayerDiagnostics: metricBundle.diagnostics,
+      defaultMetricId: metricBundle.defaultMetricId,
+      metricLegend: processDisplayMetric.legend,
+      processDisplayMetric,
+      processTiming: processTimingExportBlock(this.processTimingState()),
+      likelihoodField: {
+        ...(this.field?.likelihoodField ?? {}),
+        type: 'processSourceField',
+        label: 'Source / Initial Field',
+        values: displayLayers.sourceField,
+        diagnostics: sourceFieldDiagnostics(displayLayers.sourceField),
+        mesh: {
+          activeThreshold: 0.25,
+          highThreshold: 0.7,
+          nearTriggerThreshold: 0.9
+        }
+      },
+      graphField,
+      highValueCells: highValueCellsFromField(samplingValueField),
+      stats,
+      activityDiagnostics: {
+        ...(this.field?.activityDiagnostics ?? {}),
+        meanValue: stats.mean,
+        minValue: stats.min,
+        maxValue: stats.max,
+        totalActivityMass: stats.totalValue,
+        activeFraction,
+        processStateActiveFraction,
+        numericActiveFraction,
+        sourceActiveFraction,
+        highValueFraction: highValueFractionForScene(samplingValueField, 0.65),
+        ruleEngineDiagnostics: evolved.diagnostics,
+        metricLayerDiagnostics: metricBundle.diagnostics,
+        processTiming: processTimingExportBlock(this.processTimingState())
+      }
+    };
+  }
+
   sceneConfig(overrides = {}) {
+    const resetsDemoTime = Object.prototype.hasOwnProperty.call(overrides, 'demoTime') && Number(overrides.demoTime) === 0;
+    const processTimingPatch = resetsDemoTime && !Object.prototype.hasOwnProperty.call(overrides, 'processGenerationIndex')
+      ? { processGenerationIndex: 0, processTickAccumulator: 0, lastProcessStepTime: null }
+      : {};
     return {
       distribution: this.distribution,
       seed: this.seed,
@@ -389,7 +675,11 @@ export class RoiGeneratorDemoScene extends PhaserScene {
       dynamicComplexity: this.dynamicComplexity,
       patternSource: this.patternSource,
       processMode: this.processMode,
+      exampleTrack: this.exampleTrack,
       exampleProcessId: this.exampleProcessId,
+      foundationalCaModelId: this.foundationalCaModelId,
+      oceanProcessAnalogId: this.oceanProcessAnalogId,
+      exampleProcessModified: this.exampleProcessModified,
       behaviorPresetId: this.behaviorPresetId,
       behaviorPresetModified: this.behaviorPresetModified,
       referenceSignatureId: this.referenceSignatureId,
@@ -401,6 +691,12 @@ export class RoiGeneratorDemoScene extends PhaserScene {
       playbackDirection: this.playbackDirection,
       paused: this.paused,
       demoTime: this.demoTime,
+      processGenerationIndex: this.processGenerationIndex,
+      processTickRate: this.processTickRate,
+      processTickAccumulator: this.processTickAccumulator,
+      processTickIntervalSeconds: this.processTickIntervalSeconds,
+      lastProcessStepTime: this.lastProcessStepTime,
+      processTiming: processTimingExportBlock(this.processTimingState()),
       selectedCell: this.selectedCell,
       rightPanelMode: this.rightPanelMode,
       selectedHelpTopic: this.selectedHelpTopic,
@@ -425,6 +721,7 @@ export class RoiGeneratorDemoScene extends PhaserScene {
       randomRuleMode: this.randomRuleMode,
       randomRuleGroupCount: this.randomRuleGroupCount,
       randomRuleActiveFraction: this.randomRuleActiveFraction,
+      ...processTimingPatch,
       ...overrides
     };
   }
@@ -436,7 +733,11 @@ export class RoiGeneratorDemoScene extends PhaserScene {
       behaviorPresetId: this.behaviorPresetId,
       behaviorPresetModified: this.behaviorPresetModified,
       referenceSignatureId: this.referenceSignatureId,
+      exampleTrack: this.exampleTrack,
       exampleProcessId: this.exampleProcessId,
+      foundationalCaModelId: this.foundationalCaModelId,
+      oceanProcessAnalogId: this.oceanProcessAnalogId,
+      exampleProcessModified: this.exampleProcessModified,
       referenceSignatureModified: this.referenceSignatureModified,
       updateRuleHint: this.updateRuleHint,
       selectedCell: this.selectedCell,
@@ -447,6 +748,11 @@ export class RoiGeneratorDemoScene extends PhaserScene {
       paintModel: this.paintModel,
       displayMode: this.displayMode,
       demoTime: this.demoTime,
+      processGenerationIndex: this.processGenerationIndex,
+      processTickRate: this.processTickRate,
+      processTickAccumulator: this.processTickAccumulator,
+      processTickIntervalSeconds: this.processTickIntervalSeconds,
+      lastProcessStepTime: this.lastProcessStepTime,
       selectedPaintState: this.selectedPaintState,
       selectedPaintRuleId: this.selectedPaintRuleId,
       selectedPaintGroupId: this.selectedPaintGroupId,
@@ -465,6 +771,7 @@ export class RoiGeneratorDemoScene extends PhaserScene {
     return this.sceneConfig({
       behaviorPresetModified: hasPreset ? true : false,
       referenceSignatureModified: hasReferenceSignature ? true : false,
+      exampleProcessModified: hasReferenceSignature ? true : false,
       modifiedComponent: inferModifiedComponent(overrides),
       ...overrides
     });
@@ -530,6 +837,11 @@ export class RoiGeneratorDemoScene extends PhaserScene {
       processMode: 'processPaint',
       patternSource: 'custom',
       referenceSignatureId: CUSTOM_REFERENCE_SIGNATURE_ID,
+      exampleTrack: null,
+      exampleProcessId: null,
+      foundationalCaModelId: null,
+      oceanProcessAnalogId: null,
+      exampleProcessModified: false,
       paintModel: model,
       selectedCell: this.selectedCell,
       rightPanelMode: 'cellInspector',
@@ -553,6 +865,11 @@ export class RoiGeneratorDemoScene extends PhaserScene {
       processMode: 'processPaint',
       patternSource: 'custom',
       referenceSignatureId: CUSTOM_REFERENCE_SIGNATURE_ID,
+      exampleTrack: null,
+      exampleProcessId: null,
+      foundationalCaModelId: null,
+      oceanProcessAnalogId: null,
+      exampleProcessModified: false,
       paintStartMode: 'blankCanvas',
       processPaintRunStarted: false,
       paused: true,
@@ -607,11 +924,27 @@ export class RoiGeneratorDemoScene extends PhaserScene {
     }));
   }
 
-  applyReferenceSignature(referenceSignatureId) {
-    const exampleId = normalizeSpatiotemporalProcessExampleId(referenceSignatureId);
-    const signatureId = normalizeReferenceSignatureId(referenceSignatureIdForProcessExample(exampleId) ?? referenceSignatureId);
+  applyExampleTrack(track) {
+    const nextTrack = normalizeSpatiotemporalProcessExampleTrack(track);
+    const current = spatiotemporalProcessExampleById(this.exampleProcessId, this.exampleTrack);
+    const nextExampleId = current?.track === nextTrack ? current.id : spatiotemporalProcessExamplesByTrack(nextTrack)[0]?.id;
+    this.applyReferenceSignature(nextExampleId, nextTrack);
+  }
+
+  applyReferenceSignature(referenceSignatureId, track = this.exampleTrack) {
+    const requestedMode = processModeForSpatiotemporalProcessExampleTrack(track ?? spatiotemporalProcessExampleTrackForMode(this.processMode) ?? this.exampleTrack);
+    const active = resolveActiveSpatiotemporalProcessExample({
+      exampleTrack: track,
+      exampleProcessId: referenceSignatureId,
+      referenceSignatureId,
+      patternSource: 'referenceSignature',
+      processMode: requestedMode,
+      exampleProcessModified: false,
+      referenceSignatureModified: false
+    });
+    const signatureId = normalizeReferenceSignatureId(active.referenceSignatureId ?? referenceSignatureId);
     const signature = referenceSignatureById(signatureId);
-    if (!signature) {
+    if (!signature || active.isCustom) {
       this.scene.restart(this.sceneConfig({
         ...buildCustomComposerPatch(this.modeControllerContext()),
         selectedHelpTopic: null,
@@ -620,11 +953,27 @@ export class RoiGeneratorDemoScene extends PhaserScene {
       }));
       return;
     }
+    const processMode = processModeForSpatiotemporalProcessExampleTrack(active.exampleTrack);
     this.scene.restart(this.sceneConfig({
       ...referenceSignatureRecipe(signature.id),
-      ...buildReferenceSignaturePatch(this.modeControllerContext(), signature.id),
-      exampleProcessId: exampleId,
+      ...buildReferenceSignaturePatch(this.modeControllerContext({
+        processMode,
+        exampleTrack: active.exampleTrack,
+        exampleProcessId: active.exampleProcessId,
+        foundationalCaModelId: active.foundationalCaModelId,
+        oceanProcessAnalogId: active.oceanProcessAnalogId
+      }), active.exampleProcessId),
+      patternSource: 'referenceSignature',
+      processMode,
+      exampleTrack: active.exampleTrack,
+      exampleProcessId: active.exampleProcessId,
+      foundationalCaModelId: active.foundationalCaModelId,
+      oceanProcessAnalogId: active.oceanProcessAnalogId,
+      referenceSignatureId: signature.id,
+      referenceSignatureModified: false,
+      exampleProcessModified: false,
       modifiedComponent: null,
+      selectedCell: null,
       selectedHelpTopic: null,
       rightPanelMode: 'recipeSignature',
       demoTime: 0
@@ -640,6 +989,11 @@ export class RoiGeneratorDemoScene extends PhaserScene {
       behaviorPresetModified: false,
       patternSource: 'custom',
       referenceSignatureId: CUSTOM_REFERENCE_SIGNATURE_ID,
+      exampleTrack: null,
+      exampleProcessId: null,
+      foundationalCaModelId: null,
+      oceanProcessAnalogId: null,
+      exampleProcessModified: false,
       referenceSignatureModified: false,
       updateRuleHint: null,
       modifiedComponent: comparison.modifiedComponent,
@@ -660,9 +1014,13 @@ export class RoiGeneratorDemoScene extends PhaserScene {
   }
 
   rebuildField() {
-    this.field = createDemoRoiField({ ...this.sceneConfig(), time: this.demoTime });
+    this.field = createDemoRoiField({ ...this.sceneConfig(), time: this.usesDiscreteProcessClock() ? 0 : this.demoTime });
     this.processLayers = this.buildProcessLayers();
-    if (this.processMode === 'processPaint') this.applyProcessPaintCanvasField();
+    if (this.usesDiscreteProcessClock()) {
+      this.initializeDiscreteProcessField();
+    } else if (this.processMode === 'processPaint') {
+      this.applyProcessPaintCanvasField();
+    }
     this.maybeLogFieldDynamics();
   }
 
@@ -682,6 +1040,7 @@ export class RoiGeneratorDemoScene extends PhaserScene {
       paintModel: this.paintModel,
       seed: this.seed,
       demoTime: this.demoTime,
+      generationIndex: this.processGenerationIndex,
       processPaintRunStarted: this.processPaintRunStarted,
       paused: this.paused,
       paintStartMode: this.paintStartMode,
@@ -841,7 +1200,12 @@ export class RoiGeneratorDemoScene extends PhaserScene {
   }
 
   handleSamplingDisplayModeChange(displayMode) {
-    this.scene.restart(this.primitiveSceneConfig({ displayMode, demoTime: 0 }));
+    this.scene.restart(this.primitiveSceneConfig({
+      displayMode,
+      demoTime: this.demoTime,
+      processGenerationIndex: this.processGenerationIndex,
+      processTickAccumulator: this.processTickAccumulator
+    }));
   }
 
   handleSamplingTimeSpeedScaleChange(timeSpeedScale) {
@@ -850,12 +1214,23 @@ export class RoiGeneratorDemoScene extends PhaserScene {
     this.updateTransportBar();
   }
 
+  handleProcessTickRateChange(tickRate) {
+    this.processTickRate = normalizeProcessTickRate(tickRate);
+    this.processTickIntervalSeconds = processTickIntervalSeconds(this.processTickRate);
+    this.processTickAccumulator = 0;
+    this.renderConsole();
+    this.updateTransportBar();
+    this.renderCellInspector(true);
+  }
+
   handleSamplingRegenerate() {
     this.scene.restart(this.primitiveSceneConfig({ seed: nextSeed(this.seed), demoTime: 0 }));
   }
 
   handleSamplingPause() {
     this.paused = !this.paused;
+    if (this.usesDiscreteProcessClock()) this.processTickAccumulator = 0;
+    if (this.processMode === 'processPaint' && !this.paused) this.processPaintRunStarted = true;
     this.renderConsole();
     this.updateTransportBar();
     this.renderCellInspector(true);
@@ -896,6 +1271,11 @@ export class RoiGeneratorDemoScene extends PhaserScene {
       dynamicComplexity: this.dynamicComplexity,
       patternSource: this.patternSource,
       processMode: this.processMode,
+      exampleTrack: this.exampleTrack,
+      exampleProcessId: this.exampleProcessId,
+      foundationalCaModelId: this.foundationalCaModelId,
+      oceanProcessAnalogId: this.oceanProcessAnalogId,
+      exampleProcessModified: this.exampleProcessModified,
       behaviorPresetId: this.behaviorPresetId,
       behaviorPresetModified: this.behaviorPresetModified,
       referenceSignatureId: this.referenceSignatureId,
@@ -929,6 +1309,14 @@ export class RoiGeneratorDemoScene extends PhaserScene {
       randomRuleMode: this.randomRuleMode,
       randomRuleGroupCount: this.randomRuleGroupCount,
       randomRuleActiveFraction: this.randomRuleActiveFraction,
+      processGenerationIndex: this.processGenerationIndex,
+      processTickRate: this.processTickRate,
+      processTickAccumulator: this.processTickAccumulator,
+      processTickIntervalSeconds: this.processTickIntervalSeconds,
+      lastProcessStepTime: this.lastProcessStepTime,
+      usesDiscreteProcessClock: this.usesDiscreteProcessClock(),
+      processDisplayMetric: this.field?.processDisplayMetric ?? null,
+      metricLegend: this.field?.metricLegend ?? this.field?.processDisplayMetric?.legend ?? [],
       uiVersion: ROI_UI_VERSION,
       referenceSignatureCount: ROI_REFERENCE_SIGNATURES.length,
       legacyPresetCount: SAMPLE_FIELD_BEHAVIOR_PRESETS.length,
@@ -941,8 +1329,26 @@ export class RoiGeneratorDemoScene extends PhaserScene {
     const accordionLabels = Array.from(consoleRoot?.querySelectorAll?.('.console-section h2, .accordion-toggle, [data-accordion-key] > button') ?? [])
       .map((node) => node.textContent?.replace(/\s+/g, ' ').trim())
       .filter(Boolean);
-    const activeSignature = referenceSignatureById(this.referenceSignatureId);
+    const activeExample = this.activeProcessExampleState();
+    const activeSignature = referenceSignatureById(activeExample.referenceSignatureId ?? this.referenceSignatureId);
     const activePreset = sampleFieldBehaviorPresetById(this.behaviorPresetId);
+    const selectorProcessMode = consoleRoot?.querySelector?.('#sampling-process-mode')?.value ?? null;
+    const selectorExampleTrack = consoleRoot?.querySelector?.('#sampling-process-example-track')?.value ?? null;
+    const selectorExampleProcessId = consoleRoot?.querySelector?.('#sampling-process-example-id')?.value ?? null;
+    const rightPanelText = this.app?.elements?.waypointTimelineRoot?.textContent ?? '';
+    const activeProcessContext = activeExample.isCustom
+      ? this.processMode
+      : processModeForSpatiotemporalProcessExampleTrack(activeExample.exampleTrack);
+    const activeProcessContextLabel = samplingProcessModeLabel(activeProcessContext);
+    const selectorModeMatchesActiveExample = activeExample.isCustom
+      ? selectorProcessMode === this.processMode
+      : selectorProcessMode === activeProcessContext;
+    const selectorMatchesActiveExample = activeExample.isCustom
+      ? selectorExampleProcessId == null
+      : selectorExampleProcessId === activeExample.exampleProcessId;
+    const rightPanelMatchesActiveExample = activeExample.isCustom
+      || (rightPanelText.includes(activeExample.exampleProcessLabel ?? '') && rightPanelText.includes(activeExample.referenceSignatureLabel ?? ''));
+    const legacyReferenceMappingConsistent = activeExample.isCustom || activeExample.referenceSignatureId === this.referenceSignatureId;
     globalThis.ANCHOR_ROI_UI_DEBUG = {
       uiVersion: ROI_UI_VERSION,
       referenceSignatureCount: ROI_REFERENCE_SIGNATURES.length,
@@ -954,6 +1360,36 @@ export class RoiGeneratorDemoScene extends PhaserScene {
       visibleWorkflowModes: [...SAMPLING_PROCESS_VISIBLE_MODES],
       diagnosticsAvailableAsView: true,
       activePatternSource: this.patternSource,
+      activeProcessContext,
+      activeProcessContextLabel,
+      activeExampleTrack: activeExample.exampleTrack,
+      activeExampleTrackLabel: activeExample.exampleTrackLabel,
+      activeExampleProcessId: activeExample.exampleProcessId,
+      activeExampleProcessLabel: activeExample.exampleProcessLabel,
+      activeExampleType: activeExample.exampleType,
+      activeFoundationalCaModelId: activeExample.foundationalCaModelId,
+      activeOceanProcessAnalogId: activeExample.oceanProcessAnalogId,
+      activeMappedReferenceSignatureId: activeExample.referenceSignatureId,
+      activeMappedReferenceSignatureLabel: activeExample.referenceSignatureLabel,
+      activeObservableProcessPatternTags: activeExample.observableProcessPatternTags,
+      activeImplementationFidelity: activeExample.implementationFidelity,
+      activeRequiresFlowCoupling: activeExample.requiresFlowCoupling,
+      exampleProcessModified: activeExample.isModified,
+      selectorProcessMode,
+      selectorExampleTrack,
+      selectorExampleProcessId,
+      selectorModeMatchesActiveExample,
+      selectorMatchesActiveExample,
+      rightPanelMatchesActiveExample,
+      exportFieldsExpected: {
+        processExample: !activeExample.isCustom,
+        referenceSignatureId: activeExample.referenceSignatureId,
+        exampleTrack: activeExample.exampleTrack,
+        exampleProcessId: activeExample.exampleProcessId
+      },
+      legacyReferenceMappingConsistent,
+      hasExampleTrackSelector: Boolean(consoleRoot?.querySelector?.('#sampling-process-example-track')),
+      hasTrackSpecificExampleSelector: Boolean(consoleRoot?.querySelector?.('#sampling-process-example-id')), 
       activeReferenceSignatureId: activeSignature ? activeSignature.id : null,
       activeReferenceSignatureLabel: activeSignature ? activeSignature.label : null,
       referenceSignatureModified: this.referenceSignatureModified,
@@ -1067,8 +1503,8 @@ export class RoiGeneratorDemoScene extends PhaserScene {
       this.statusText?.setPosition(margin, map.y + map.height + 18);
       return;
     }
-    const modeLabel = this.processMode === 'referenceSignature'
-      ? `Example Processes: ${spatiotemporalProcessExampleLabel(this.exampleProcessId)}`
+    const modeLabel = ['foundationalCaModels', 'oceanProcessAnalogs', 'referenceSignature'].includes(this.processMode)
+      ? `${samplingProcessModeLabel(this.processMode)}: ${spatiotemporalProcessExampleLabel(this.exampleProcessId)}`
       : samplingProcessModeLabel(this.processMode);
     const baseStatus = `${modeLabel} · ${roiTemporalPatternLabel(this.field?.temporalPattern ?? this.temporalPattern)} · ${roiSpatialEvolutionLabel(this.field?.spatialEvolution ?? this.spatialEvolution)} · ${roiDisplayModeLabel(this.field?.displayMode ?? this.displayMode)} · t=${this.demoTime.toFixed(1)}s`;
     const compactMetrics = `Mean ${formatStat(diagnostics.meanValue ?? stats.mean)} · Active ${formatPercent(diagnostics.activeFraction)} · High ${formatPercent(diagnostics.highValueFraction)} · Max ${formatStat(diagnostics.maxValue ?? stats.max)}`;
@@ -1171,6 +1607,7 @@ export class RoiGeneratorDemoScene extends PhaserScene {
       <section class="hud-panel flow-demo-transport roi-demo-transport" aria-label="Deterministic Spatiotemporal Process Lab transport controls">
         <div class="timeline-buttons flow-demo-transport-actions">
           <button type="button" data-action="roi-demo-reset">Reset</button>
+          <button type="button" data-action="roi-demo-step-generation">Step Generation</button>
           <button type="button" data-action="roi-demo-direction">Direction: Forward</button>
           <button type="button" data-action="roi-demo-pause">Pause</button>
         </div>
@@ -1180,6 +1617,12 @@ export class RoiGeneratorDemoScene extends PhaserScene {
         </div>
         <div class="flow-demo-transport-summary">
           <span data-roi-demo-speed>Playback: 1x</span>
+          <label class="compact-field roi-demo-tick-rate-field">
+            <span>Tick Rate</span>
+            <select data-roi-demo-tick-rate>
+              ${SAMPLING_PROCESS_TICK_RATES.map((rate) => `<option value="${rate}">${rate} gen/s</option>`).join('')}
+            </select>
+          </label>
           <span data-roi-demo-behavior>Behavior: Bursty Bloom</span>
           <span>Infinite timeline</span>
         </div>
@@ -1187,11 +1630,13 @@ export class RoiGeneratorDemoScene extends PhaserScene {
     `;
     this.transportRefs = {
       root,
+      stepButton: root.querySelector('[data-action="roi-demo-step-generation"]'),
       directionButton: root.querySelector('[data-action="roi-demo-direction"]'),
       pauseButton: root.querySelector('[data-action="roi-demo-pause"]'),
       time: root.querySelector('[data-roi-demo-time]'),
       state: root.querySelector('[data-roi-demo-state]'),
       speed: root.querySelector('[data-roi-demo-speed]'),
+      tickRate: root.querySelector('[data-roi-demo-tick-rate]'),
       behavior: root.querySelector('[data-roi-demo-behavior]')
     };
     this.bindTransportControls(root);
@@ -1205,6 +1650,11 @@ export class RoiGeneratorDemoScene extends PhaserScene {
       if (!button || !root.contains(button)) return;
       this.handleTransportAction(button.dataset.action, event);
     };
+    root.onchange = (event) => {
+      const tickRate = event.target?.closest?.('[data-roi-demo-tick-rate]');
+      if (!tickRate || !root.contains(tickRate)) return;
+      this.handleProcessTickRateChange(tickRate.value);
+    };
   }
 
   bindDocumentTransportControls() {
@@ -1216,7 +1666,7 @@ export class RoiGeneratorDemoScene extends PhaserScene {
       const button = event.target?.closest?.('[data-action]');
       const root = this.app?.elements?.overlay?.bottomTimeline;
       if (!button || !root?.contains(button)) return;
-      if (!['roi-demo-reset', 'roi-demo-direction', 'roi-demo-pause'].includes(button.dataset.action)) return;
+      if (!['roi-demo-reset', 'roi-demo-step-generation', 'roi-demo-direction', 'roi-demo-pause'].includes(button.dataset.action)) return;
       this.handleTransportAction(button.dataset.action, event);
     };
     document.addEventListener('click', this.boundDocumentTransportClick, true);
@@ -1229,7 +1679,7 @@ export class RoiGeneratorDemoScene extends PhaserScene {
   }
 
   handleTransportAction(action, event = null) {
-    if (!['roi-demo-reset', 'roi-demo-direction', 'roi-demo-pause'].includes(action)) return;
+    if (!['roi-demo-reset', 'roi-demo-step-generation', 'roi-demo-direction', 'roi-demo-pause'].includes(action)) return;
     event?.preventDefault?.();
     event?.stopPropagation?.();
     event?.stopImmediatePropagation?.();
@@ -1237,11 +1687,16 @@ export class RoiGeneratorDemoScene extends PhaserScene {
       this.resetDemoState();
       return;
     }
+    if (action === 'roi-demo-step-generation') {
+      this.stepProcessGeneration({ render: true, updateUi: true });
+      return;
+    }
     if (action === 'roi-demo-direction') {
       this.togglePlaybackDirection();
       return;
     }
     this.paused = !this.paused;
+    if (this.usesDiscreteProcessClock()) this.processTickAccumulator = 0;
     if (this.processMode === 'processPaint' && !this.paused) this.processPaintRunStarted = true;
     this.renderConsole();
     this.updateTransportBar();
@@ -1252,14 +1707,35 @@ export class RoiGeneratorDemoScene extends PhaserScene {
   updateTransportBar() {
     const refs = this.transportRefs ?? {};
     if (!refs.root?.isConnected) return;
+    refs.stepButton = refs.root.querySelector('[data-action="roi-demo-step-generation"]');
     refs.directionButton = refs.root.querySelector('[data-action="roi-demo-direction"]');
     refs.pauseButton = refs.root.querySelector('[data-action="roi-demo-pause"]');
     refs.time = refs.root.querySelector('[data-roi-demo-time]');
     refs.state = refs.root.querySelector('[data-roi-demo-state]');
     refs.speed = refs.root.querySelector('[data-roi-demo-speed]');
+    refs.tickRate = refs.root.querySelector('[data-roi-demo-tick-rate]');
     refs.behavior = refs.root.querySelector('[data-roi-demo-behavior]');
     this.bindTransportControls(refs.root);
     const directionLabel = this.playbackDirection === -1 ? 'Reverse' : 'Forward';
+    const discreteProcess = this.usesDiscreteProcessClock();
+    if (refs.stepButton) refs.stepButton.hidden = !discreteProcess;
+    if (refs.tickRate) {
+      refs.tickRate.value = String(this.processTickRate);
+      refs.tickRate.disabled = !discreteProcess;
+      if (refs.tickRate.closest?.('label')) refs.tickRate.closest('label').hidden = !discreteProcess;
+    }
+    if (refs.directionButton) refs.directionButton.hidden = discreteProcess;
+    if (discreteProcess) {
+      const status = this.processMode === 'processPaint'
+        ? this.processPaintRunStarted && !this.paused ? 'Process Paint: running from painted state' : 'Process Paint: paused editing canvas'
+        : 'Deterministic process';
+      if (refs.time) refs.time.textContent = `Generation ${this.processGenerationIndex}`;
+      if (refs.state) refs.state.textContent = `Generation ${this.processGenerationIndex} | ${this.processTickRate} gen/s | ${status}`;
+      if (refs.pauseButton) refs.pauseButton.textContent = this.paused ? 'Run' : 'Pause';
+      if (refs.speed) refs.speed.textContent = `Tick Rate: ${this.processTickRate} gen/s`;
+      if (refs.behavior) refs.behavior.textContent = this.field?.processDisplayMetric?.metricLabel ? `Metric: ${this.field.processDisplayMetric.metricLabel}` : 'Metric: Rule support';
+      return;
+    }
     if (this.processMode === 'processPaint') {
       if (refs.time) refs.time.textContent = `${this.paused ? 'Paused editing canvas at' : 'Running painted process at'}: ${this.demoTime.toFixed(1)} s`;
       if (refs.state) refs.state.textContent = this.paused ? 'Process Paint: paused editing canvas' : 'Process Paint: running from painted state';
@@ -1294,6 +1770,11 @@ export class RoiGeneratorDemoScene extends PhaserScene {
 
   resetDemoState() {
     this.demoTime = 0;
+    this.processGenerationIndex = 0;
+    this.processTickAccumulator = 0;
+    this.lastProcessStepTime = null;
+    this.previousProcessStateLayer = null;
+    if (this.processMode === 'processPaint') this.processPaintRunStarted = false;
     this.rebuildField();
     this.renderConsole();
     this.updateTransportBar();
@@ -1555,7 +2036,11 @@ export class RoiGeneratorDemoScene extends PhaserScene {
       processContract: sourceMode === 'currentRecipe' && this.behaviorPresetId !== CUSTOM_SAMPLE_FIELD_BEHAVIOR_PRESET_ID ? behaviorPreset.processContract : null,
       patternSource: this.patternSource,
       referenceSignatureId: this.referenceSignatureId,
+      exampleTrack: this.exampleTrack,
       exampleProcessId: this.exampleProcessId,
+      foundationalCaModelId: this.foundationalCaModelId,
+      oceanProcessAnalogId: this.oceanProcessAnalogId,
+      exampleProcessModified: this.exampleProcessModified,
       referenceSignatureModified: this.referenceSignatureModified,
       sourceMode,
       requireValidation: this.scenarioValidationMode === 'requirePass'
@@ -1579,7 +2064,11 @@ export class RoiGeneratorDemoScene extends PhaserScene {
       field: this.field,
       processMode: this.processMode,
       patternSource: this.patternSource,
+      exampleTrack: this.exampleTrack,
       exampleProcessId: this.exampleProcessId,
+      foundationalCaModelId: this.foundationalCaModelId,
+      oceanProcessAnalogId: this.oceanProcessAnalogId,
+      exampleProcessModified: this.exampleProcessModified,
       referenceSignatureId: this.referenceSignatureId,
       referenceSignatureModified: this.referenceSignatureModified,
       behaviorPresetId: this.behaviorPresetId,
@@ -1597,6 +2086,13 @@ export class RoiGeneratorDemoScene extends PhaserScene {
       exportFrameCount: this.exportFrameCount,
       playbackDirection: this.playbackDirection,
       timeSpeedScale: this.timeSpeedScale,
+      processGenerationIndex: this.processGenerationIndex,
+      processTickRate: this.processTickRate,
+      processTickAccumulator: this.processTickAccumulator,
+      processTickIntervalSeconds: this.processTickIntervalSeconds,
+      processTiming: processTimingExportBlock(this.processTimingState()),
+      processDisplayMetric: this.field?.processDisplayMetric ?? null,
+      metricLayers: this.field?.metricLayers ?? null,
       seed: this.seed,
       sceneConfig,
       eventLikelihood: this.eventLikelihood,
@@ -1629,6 +2125,7 @@ export class RoiGeneratorDemoScene extends PhaserScene {
         paintModel: this.paintModel,
         seed: this.seed,
         demoTime,
+        generationIndex: Math.max(0, Math.round(Number(demoTime) || 0)),
         processPaintRunStarted: this.processPaintRunStarted,
         paused: this.paused,
         paintStartMode: this.paintStartMode
@@ -1691,6 +2188,47 @@ function nextSeed(seed) {
 function finiteNumber(value, fallback = 0) {
   const number = Number(value);
   return Number.isFinite(number) ? number : fallback;
+}
+
+function defaultProcessDisplayMode(processMode) {
+  if (processMode === 'processPaint' || processMode === 'randomRuleLab') return 'processStateView';
+  if (processMode === 'foundationalCaModels') return 'processTransitionView';
+  if (processMode === 'oceanProcessAnalogs') return 'processRuleMetric';
+  return SAMPLING_PROCESS_DEFAULT_DISPLAY_MODE;
+}
+
+function displayMetricIdForMode(displayMode, defaultMetricId = 'ruleSupport') {
+  return {
+    processStateView: 'state',
+    processRuleMetric: defaultMetricId,
+    processTransitionView: 'transitionClass',
+    samplingInterpretation: 'samplingValue',
+    eventLikelihood: 'sourceSupport'
+  }[displayMode] ?? defaultMetricId;
+}
+
+function processDisplayedFieldForMode(displayMode, samplingValueField, sourceField, metricLayers = {}, metricId = 'ruleSupport') {
+  if (displayMode === 'eventLikelihood') return sourceField;
+  const candidate = metricLayers[metricId];
+  if (displayMode === 'processRuleMetric' && Array.isArray(candidate) && typeof candidate?.[0]?.[0] === 'number') return candidate;
+  if (displayMode === 'samplingInterpretation') return metricLayers.samplingValue ?? samplingValueField;
+  return samplingValueField;
+}
+
+function cloneLayer(layer) {
+  return Array.isArray(layer) ? layer.map((row) => Array.isArray(row) ? [...row] : []) : null;
+}
+
+function highValueFractionForScene(field, threshold = 0.65) {
+  let total = 0;
+  let high = 0;
+  for (const row of field ?? []) {
+    for (const value of row ?? []) {
+      total += 1;
+      if (Number(value ?? 0) >= threshold) high += 1;
+    }
+  }
+  return total ? high / total : 0;
 }
 
 function normalizeExportMode(mode) {
@@ -1933,3 +2471,6 @@ function escapeHtml(value) {
 function escapeAttr(value) {
   return escapeHtml(value).replace(/`/g, '&#096;');
 }
+
+
+

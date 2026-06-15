@@ -37,6 +37,7 @@ function makeField(displayMode) {
   const height = 3;
   const sampleValueField = makeGrid(width, height, (x, y) => Math.min(1, 0.12 + x * 0.18 + y * 0.2));
   const eventLikelihoodField = makeGrid(width, height, (x, y) => Math.min(1, 0.18 + ((x + y) % 3) * 0.28));
+  const transitionClass = makeGrid(width, height, (x, y) => ['birth', 'survive', 'death', 'remainInactive'][(x + y) % 4]);
   const nodeGrid = makeGrid(width, height, (x, y) => ({
     id: y * width + x,
     state: ['active', 'cooling', 'recovering', 'susceptible', 'consumed', 'inactive'][(x + y) % 6],
@@ -53,6 +54,17 @@ function makeField(displayMode) {
     field: sampleValueField,
     sampleValueField,
     eventLikelihoodField,
+    samplingValueField: sampleValueField,
+    metricLayers: {
+      state: makeGrid(width, height, (x, y) => ['inactive', 'active', 'cooling', 'recovering'][(x + y) % 4]),
+      neighborCount: makeGrid(width, height, (x, y) => (x + y) % 9),
+      ruleSupport: makeGrid(width, height, (x, y) => Math.min(1, 0.2 + x * 0.2 + y * 0.1)),
+      transitionClass,
+      samplingValue: sampleValueField,
+      sourceSupport: eventLikelihoodField
+    },
+    defaultMetricId: 'transitionClass',
+    processDisplayMetric: { metricId: 'transitionClass', metricLabel: 'Transition View' },
     highValueCells: [{ x: 1, y: 1, value: 0.9 }],
     eventLikelihoodSpatialEvolution: 'neighborPropagation',
     spatialEvolution: 'neighborPropagation',
@@ -169,7 +181,11 @@ const graphModes = [
   'communityMessages',
   'stateTransitions',
   'roiMeaning',
-  'diagnosticsOverlay'
+  'diagnosticsOverlay',
+  'processStateView',
+  'processRuleMetric',
+  'processTransitionView',
+  'samplingInterpretation'
 ];
 
 for (const mode of graphModes) {

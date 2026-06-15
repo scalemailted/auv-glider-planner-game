@@ -45,11 +45,11 @@ import {
   sourceFieldBoundaryNote
 } from './SamplingProcessTerminology.js';
 import {
-  processExampleMetadata,
-  referenceSignatureIdForProcessExample,
-  spatiotemporalProcessExampleById,
-  spatiotemporalProcessExampleLabel
+  resolveActiveSpatiotemporalProcessExample
 } from './SpatiotemporalProcessExamples.js';
+import {
+  SAMPLING_PROCESS_TICK_RATES
+} from './SamplingProcessTiming.js';
 
 export function buildSamplingProcessConsoleState(context = {}) {
   return {
@@ -147,6 +147,13 @@ export function buildSamplingProcessConsoleSummary(context = {}) {
     timeSpeedScale: context.timeSpeedScale,
     playbackDirection: context.playbackDirection,
     time: context.demoTime,
+    processGenerationIndex: context.processGenerationIndex ?? field?.processTiming?.generationIndex ?? 0,
+    processTickRate: context.processTickRate ?? field?.processTiming?.tickRate ?? 1,
+    processTickIntervalSeconds: context.processTickIntervalSeconds ?? field?.processTiming?.tickIntervalSeconds ?? 1,
+    processTickRates: SAMPLING_PROCESS_TICK_RATES,
+    usesDiscreteProcessClock: Boolean(context.usesDiscreteProcessClock),
+    processDisplayMetric: context.processDisplayMetric ?? field?.processDisplayMetric ?? null,
+    metricLegend: context.metricLegend ?? field?.metricLegend ?? field?.processDisplayMetric?.legend ?? [],
     paused: context.paused,
     stats: field?.stats,
     activityDiagnostics: field?.activityDiagnostics,
@@ -160,28 +167,43 @@ export function buildSamplingProcessConsoleSummary(context = {}) {
 
 export function buildSamplingProcessActiveSourceState(context = {}) {
   const behaviorPreset = sampleFieldBehaviorPresetMetadata(context.behaviorPresetId, context.behaviorPresetModified);
-  const requestedExampleId = context.exampleProcessId ?? context.referenceSignatureId;
-  const exampleProcess = processExampleMetadata(requestedExampleId, context.referenceSignatureModified);
-  const mappedReferenceId = referenceSignatureIdForProcessExample(requestedExampleId) ?? context.referenceSignatureId;
+  const activeExample = resolveActiveSpatiotemporalProcessExample(context);
+  const referenceSignature = activeExample.referenceSignature
+    ?? (context.patternSource === 'legacyPreset' ? behaviorPreset.referenceSignature : null);
+  const referenceSignatureId = activeExample.referenceSignatureId ?? referenceSignature?.id ?? null;
   return {
     behaviorPresetId: context.behaviorPresetId,
     behaviorPresetLabel: sampleFieldBehaviorPresetLabel(context.behaviorPresetId),
     behaviorPresetModified: context.behaviorPresetModified,
     behaviorPreset,
-    exampleProcessId: exampleProcess?.id ?? context.referenceSignatureId,
-    exampleProcessLabel: exampleProcess?.label ?? spatiotemporalProcessExampleLabel(context.referenceSignatureId),
-    exampleType: exampleProcess?.exampleType ?? 'observableProcessPattern',
-    foundationalModelId: exampleProcess?.exampleType === 'foundationalCaModel' ? exampleProcess.id : null,
-    observableProcessPatternId: exampleProcess?.exampleType === 'observableProcessPattern' ? exampleProcess.id : exampleProcess?.referenceSignatureId ?? null,
-    spatiotemporalProcessExample: exampleProcess,
-    referenceSignatureId: mappedReferenceId,
-    referenceSignatureLabel: referenceSignatureLabel(mappedReferenceId),
+    processExample: activeExample,
+    exampleTrack: activeExample.exampleTrack,
+    exampleTrackLabel: activeExample.exampleTrackLabel,
+    exampleProcessId: activeExample.exampleProcessId,
+    exampleProcessLabel: activeExample.exampleProcessLabel,
+    exampleType: activeExample.exampleType,
+    exampleProcessModified: activeExample.isModified,
+    foundationalCaModelId: activeExample.foundationalCaModelId,
+    foundationalModelId: activeExample.foundationalCaModelId,
+    oceanProcessAnalogId: activeExample.oceanProcessAnalogId,
+    observableProcessPatternTags: activeExample.observableProcessPatternTags,
+    implementationFidelity: activeExample.implementationFidelity,
+    requiresFlowCoupling: activeExample.requiresFlowCoupling,
+    requiresUncertaintyForMissionRealism: activeExample.requiresUncertaintyForMissionRealism,
+    observableProcessPatternId: activeExample.exampleType === 'observableProcessPattern'
+      ? activeExample.exampleProcessId
+      : activeExample.referenceSignatureId,
+    spatiotemporalProcessExample: activeExample.sourceExample,
+    selectedProcessExample: activeExample.sourceExample,
+    referenceSignatureId,
+    referenceSignatureLabel: activeExample.referenceSignatureLabel ?? referenceSignatureLabel(referenceSignatureId),
+    mappedReferenceSignatureId: activeExample.mappedReferenceSignatureId,
+    mappedReferenceSignatureLabel: activeExample.mappedReferenceSignatureLabel,
     referenceSignatureModified: context.referenceSignatureModified,
-    referenceSignature: referenceSignatureMetadata(mappedReferenceId, context.referenceSignatureModified) ?? behaviorPreset.referenceSignature,
-    selectedProcessExample: spatiotemporalProcessExampleById(requestedExampleId)
+    referenceSignature,
+    activeProcessExample: activeExample
   };
 }
-
 export function buildSamplingProcessPaintConsoleState(context = {}) {
   const selectedPaintRuleId = normalizeProcessRuleId(context.selectedPaintRuleId);
   const selectedPaintRule = processRuleById(selectedPaintRuleId);

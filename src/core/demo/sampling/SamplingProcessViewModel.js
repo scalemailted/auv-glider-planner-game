@@ -34,6 +34,8 @@ import {
   samplingProcessStatusLabel
 } from './SamplingProcessTerminology.js';
 import { buildSamplingProcessComponentRecipeExport } from './SamplingProcessExportBuilder.js';
+import { resolveActiveSpatiotemporalProcessExample } from './SpatiotemporalProcessExamples.js';
+import { isDiscreteSamplingProcessMode } from './SamplingProcessTiming.js';
 
 export function buildSamplingProcessComponentRecipe(context = {}) {
   return buildSamplingProcessComponentRecipeExport(context);
@@ -55,7 +57,9 @@ export function buildSamplingProcessRecipeSummary(context = {}) {
 
 export function buildSamplingProcessRecipeSignatureState(context = {}) {
   const behaviorPreset = sampleFieldBehaviorPresetMetadata(context.behaviorPresetId, context.behaviorPresetModified);
-  const referenceSignature = referenceSignatureMetadata(context.referenceSignatureId, context.referenceSignatureModified)
+  const activeExample = resolveActiveSpatiotemporalProcessExample(context);
+  const referenceSignature = activeExample.referenceSignature
+    ?? referenceSignatureMetadata(activeExample.referenceSignatureId ?? context.referenceSignatureId, context.referenceSignatureModified)
     ?? (context.patternSource === 'legacyPreset' ? behaviorPreset.referenceSignature : null);
   const displayMode = context.field?.displayMode ?? context.displayMode;
   return {
@@ -65,10 +69,31 @@ export function buildSamplingProcessRecipeSignatureState(context = {}) {
     processStatusLabel: samplingProcessStatusLabel({
       mode: context.processMode,
       patternSource: context.patternSource,
-      modified: Boolean(context.referenceSignatureModified || context.behaviorPresetModified || Object.keys(context.paintModel?.cells ?? {}).length > 0),
+      modified: Boolean(activeExample.isModified || context.behaviorPresetModified || Object.keys(context.paintModel?.cells ?? {}).length > 0),
       validationStatus: context.field?.activityDiagnostics?.presetValidation?.status ?? 'PASS'
     }),
+    processExample: activeExample,
+    activeProcessExample: activeExample,
+    exampleTrack: activeExample.exampleTrack,
+    exampleTrackLabel: activeExample.exampleTrackLabel,
+    exampleProcessId: activeExample.exampleProcessId,
+    exampleProcessLabel: activeExample.exampleProcessLabel,
+    exampleType: activeExample.exampleType,
+    foundationalCaModelId: activeExample.foundationalCaModelId,
+    foundationalModelId: activeExample.foundationalCaModelId,
+    oceanProcessAnalogId: activeExample.oceanProcessAnalogId,
+    observableProcessPatternTags: activeExample.observableProcessPatternTags,
+    implementationFidelity: activeExample.implementationFidelity,
+    requiresFlowCoupling: activeExample.requiresFlowCoupling,
+    requiresUncertaintyForMissionRealism: activeExample.requiresUncertaintyForMissionRealism,
+    mappedReferenceSignatureId: activeExample.mappedReferenceSignatureId,
+    mappedReferenceSignatureLabel: activeExample.mappedReferenceSignatureLabel,
+    spatiotemporalProcessExample: activeExample.sourceExample,
+    selectedProcessExample: activeExample.sourceExample,
+    referenceSignatureId: activeExample.referenceSignatureId ?? referenceSignature?.id ?? null,
+    referenceSignatureLabel: activeExample.referenceSignatureLabel ?? referenceSignature?.label ?? null,
     referenceSignatureModified: context.referenceSignatureModified,
+    exampleProcessModified: activeExample.isModified,
     behaviorPreset,
     referenceSignature,
     componentRecipe: context.componentRecipe ?? buildSamplingProcessComponentRecipe(context),
@@ -78,6 +103,12 @@ export function buildSamplingProcessRecipeSignatureState(context = {}) {
     compatibilityWarnings: componentCompatibilityWarnings(context.sceneConfig ?? {}),
     displayMode,
     displayModeLabel: roiDisplayModeLabel(displayMode),
+    processGenerationIndex: context.processGenerationIndex ?? context.field?.processTiming?.generationIndex ?? 0,
+    processTickRate: context.processTickRate ?? context.field?.processTiming?.tickRate ?? 1,
+    processTickIntervalSeconds: context.processTickIntervalSeconds ?? context.field?.processTiming?.tickIntervalSeconds ?? 1,
+    usesDiscreteProcessClock: Boolean(context.usesDiscreteProcessClock ?? isDiscreteSamplingProcessMode(context.processMode)),
+    processDisplayMetric: context.processDisplayMetric ?? context.field?.processDisplayMetric ?? null,
+    metricLegend: context.metricLegend ?? context.field?.metricLegend ?? context.field?.processDisplayMetric?.legend ?? [],
     stats: context.field?.stats,
     activityDiagnostics: context.field?.activityDiagnostics,
     graphDiagnostics: context.field?.activityDiagnostics?.graphDiagnostics ?? context.field?.graphField?.diagnostics,
@@ -115,7 +146,7 @@ export function buildSamplingProcessBehaviorHelpState(context = {}) {
     stateModel: context.field?.stateModel ?? context.stateModel,
     depletionMode: context.field?.depletionMode ?? context.depletionMode,
     displayMode: context.field?.displayMode ?? context.displayMode,
-    referenceSignature: referenceSignatureMetadata(context.referenceSignatureId, context.referenceSignatureModified) ?? behaviorPreset.referenceSignature
+    referenceSignature: resolveActiveSpatiotemporalProcessExample(context).referenceSignature ?? referenceSignatureMetadata(context.referenceSignatureId, context.referenceSignatureModified) ?? behaviorPreset.referenceSignature
   };
 }
 

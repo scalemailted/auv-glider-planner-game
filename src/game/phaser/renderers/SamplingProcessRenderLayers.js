@@ -9,6 +9,27 @@ export function drawSamplingProcessHeatmap(context = {}) {
   const cellW = map.width / width;
   const cellH = map.height / height;
   const displayMode = fieldModel.displayMode;
+  if (displayMode === 'processStateView') {
+    drawProcessStateSemanticLayer(context, cellW, cellH);
+    drawSamplingProcessGrid(context, cellW, cellH, width, height, 0.22);
+    return;
+  }
+  if (displayMode === 'processRuleMetric') {
+    drawProcessMetricLayer(context, cellW, cellH, fieldModel.processDisplayMetric?.metricId ?? fieldModel.defaultMetricId ?? 'ruleSupport');
+    drawSamplingProcessGrid(context, cellW, cellH, width, height, 0.18);
+    return;
+  }
+  if (displayMode === 'processTransitionView') {
+    drawProcessTransitionSemanticLayer(context, cellW, cellH);
+    drawSamplingProcessGrid(context, cellW, cellH, width, height, 0.2);
+    return;
+  }
+  if (displayMode === 'samplingInterpretation') {
+    drawMutedSamplingHeatmap({ ...context, values: fieldModel.samplingValueField ?? field }, cellW, cellH, 0.72);
+    drawSourceFieldMesh(context, cellW, cellH);
+    drawSamplingProcessGrid(context, cellW, cellH, width, height, 0.16);
+    return;
+  }
   if (displayMode === 'graphCommunities') {
     drawCommunityLayer(context, cellW, cellH, { showHeatmap: false, showCenters: true, showCentroids: true });
     if (context.viewFilters?.showTopologyEdges) drawGraphTopologyLayer(context, cellW, cellH, { alphaScale: 0.38 });
@@ -443,10 +464,161 @@ export function drawSelectedSamplingCell(context = {}) {
   graphics.strokeRect(x + 1.5, y + 1.5, Math.max(1, cellW - 3), Math.max(1, cellH - 3));
 }
 
-export function isGraphDisplayMode(mode) {
-  return ['graphTopology', 'graphCommunities', 'nodeStates', 'graphMessages', 'communityMessages', 'stateTransitions', 'roiMeaning', 'diagnosticsOverlay'].includes(mode);
+function drawProcessStateSemanticLayer(context = {}, cellW, cellH) {
+  const { graphics, field, map } = context;
+  if (!graphics || !field || !map) return;
+  const stateLayer = field.metricLayers?.state ?? field.graphField?.stateField ?? field.processLayers?.stateLayer ?? [];
+  const height = stateLayer.length || field.height || 0;
+  const width = stateLayer[0]?.length || field.width || 0;
+  for (let y = 0; y < height; y += 1) {
+    for (let x = 0; x < width; x += 1) {
+      const style = processStateSemanticStyle(stateLayer[y]?.[x]);
+      graphics.fillStyle(style.color, style.alpha);
+      graphics.fillRect(map.x + x * cellW, map.y + y * cellH, cellW + 1, cellH + 1);
+      if (style.strokeAlpha) {
+        graphics.lineStyle(1, style.strokeColor ?? style.color, style.strokeAlpha);
+        graphics.strokeRect(map.x + x * cellW + 1, map.y + y * cellH + 1, Math.max(1, cellW - 2), Math.max(1, cellH - 2));
+      }
+    }
+  }
 }
 
+function drawProcessMetricLayer(context = {}, cellW, cellH, metricId = 'ruleSupport') {
+  const { graphics, field, map } = context;
+  if (!graphics || !field || !map) return;
+  const layers = field.metricLayers ?? {};
+  const layer = layers[metricId] ?? layers.ruleSupport ?? layers.samplingValue ?? field.samplingValueField ?? field.field ?? [];
+  const height = layer.length || field.height || 0;
+  const width = layer[0]?.length || field.width || 0;
+  for (let y = 0; y < height; y += 1) {
+    for (let x = 0; x < width; x += 1) {
+      const value = layer[y]?.[x];
+      const style = typeof value === 'string'
+        ? transitionSemanticStyle(value)
+        : processMetricSemanticStyle(metricId, Number(value ?? 0));
+      graphics.fillStyle(style.color, style.alpha);
+      graphics.fillRect(map.x + x * cellW, map.y + y * cellH, cellW + 1, cellH + 1);
+      if (style.strokeAlpha) {
+        graphics.lineStyle(1, style.strokeColor ?? style.color, style.strokeAlpha);
+        graphics.strokeRect(map.x + x * cellW + 1, map.y + y * cellH + 1, Math.max(1, cellW - 2), Math.max(1, cellH - 2));
+      }
+    }
+  }
+  if (context.viewFilters?.showActiveMessageEdges) drawProcessMessages(context, cellW, cellH, { showDirections: false, maxEdges: Math.min(50, context.viewFilters?.maxMessages ?? 50), alphaScale: 0.4 });
+}
+
+function drawProcessTransitionSemanticLayer(context = {}, cellW, cellH) {
+  const { graphics, field, map } = context;
+  if (!graphics || !field || !map) return;
+  const layer = field.metricLayers?.transitionClass ?? transitionLabelsFromLayer(field.transitionLayer ?? field.graphField?.transitionField) ?? [];
+  const height = layer.length || field.height || 0;
+  const width = layer[0]?.length || field.width || 0;
+  for (let y = 0; y < height; y += 1) {
+    for (let x = 0; x < width; x += 1) {
+      const style = transitionSemanticStyle(layer[y]?.[x]);
+      graphics.fillStyle(style.color, style.alpha);
+      graphics.fillRect(map.x + x * cellW, map.y + y * cellH, cellW + 1, cellH + 1);
+      if (style.strokeAlpha) {
+        graphics.lineStyle(1, style.strokeColor ?? style.color, style.strokeAlpha);
+        graphics.strokeRect(map.x + x * cellW + 1, map.y + y * cellH + 1, Math.max(1, cellW - 2), Math.max(1, cellH - 2));
+      }
+    }
+  }
+}
+
+function processStateSemanticStyle(state) {
+  return {
+    inactive: { color: 0x10243b, alpha: 0.84 },
+    empty: { color: 0x10243b, alpha: 0.78 },
+    susceptible: { color: 0x54788a, alpha: 0.62 },
+    conductor: { color: 0x2e607f, alpha: 0.72 },
+    loaded: { color: 0x6f7f52, alpha: 0.72 },
+    moving: { color: 0x86e7ff, alpha: 0.76 },
+    active: { color: 0xffffff, alpha: 0.94, strokeAlpha: 0.28, strokeColor: 0xf4d35e },
+    alive: { color: 0xf7f7c6, alpha: 0.9, strokeAlpha: 0.22, strokeColor: 0xffffff },
+    burning: { color: 0xff8a65, alpha: 0.92, strokeAlpha: 0.32, strokeColor: 0xffffff },
+    infected: { color: 0xff8a65, alpha: 0.9 },
+    signal: { color: 0xffffff, alpha: 0.94, strokeAlpha: 0.38, strokeColor: 0x86e7ff },
+    crest: { color: 0x86e7ff, alpha: 0.9 },
+    cooling: { color: 0xf4d35e, alpha: 0.72 },
+    refractory: { color: 0xf4d35e, alpha: 0.72 },
+    recovering: { color: 0x63e6be, alpha: 0.6 },
+    released: { color: 0x63e6be, alpha: 0.62 },
+    consumed: { color: 0x6b4a43, alpha: 0.72 },
+    spent: { color: 0x6b4a43, alpha: 0.72 },
+    congested: { color: 0xff8a65, alpha: 0.9 },
+    stale: { color: 0xc9a7ff, alpha: 0.72 },
+    sampled: { color: 0x263b50, alpha: 0.6 }
+  }[state] ?? { color: 0x1f7a8c, alpha: 0.48 };
+}
+
+function processMetricSemanticStyle(metricId, value) {
+  const raw = Number(value) || 0;
+  const v = metricId === 'neighborCount' ? Math.max(0, Math.min(1, raw / 8)) : Math.max(0, Math.min(1, raw));
+  if (metricId === 'neighborCount') {
+    if (raw <= 0) return { color: 0x10243b, alpha: 0.78 };
+    if (raw < 2) return { color: 0x2e607f, alpha: 0.62 };
+    if (raw < 3) return { color: 0x86e7ff, alpha: 0.68 };
+    if (raw === 3) return { color: 0x63e6be, alpha: 0.9, strokeAlpha: 0.24, strokeColor: 0xffffff };
+    if (raw <= 4) return { color: 0xf4d35e, alpha: 0.78 };
+    return { color: 0xff8a65, alpha: 0.78 };
+  }
+  if (/ignition|infection|excitation|threshold|congestion|transport|support|pressure|proximity|load/i.test(metricId)) {
+    if (v < 0.08) return { color: 0x10243b, alpha: 0.76 };
+    if (v < 0.35) return { color: 0x2e607f, alpha: 0.58 + v * 0.35 };
+    if (v < 0.68) return { color: 0x63e6be, alpha: 0.62 + v * 0.28 };
+    if (v < 0.86) return { color: 0xf4d35e, alpha: 0.7 + v * 0.2 };
+    return { color: 0xff8a65, alpha: 0.86, strokeAlpha: 0.2, strokeColor: 0xffffff };
+  }
+  if (/phase|path|occupancy|trail/i.test(metricId)) {
+    if (v < 0.1) return { color: 0x10243b, alpha: 0.74 };
+    if (v < 0.35) return { color: 0x54788a, alpha: 0.62 };
+    if (v < 0.68) return { color: 0x63e6be, alpha: 0.68 };
+    return { color: 0xffffff, alpha: 0.86, strokeAlpha: 0.18, strokeColor: 0xf4d35e };
+  }
+  return { color: heatColor(v), alpha: 0.28 + v * 0.62 };
+}
+
+function transitionSemanticStyle(transition) {
+  return {
+    birth: { color: 0x63e6be, alpha: 0.92, strokeAlpha: 0.24, strokeColor: 0xffffff },
+    survive: { color: 0xffffff, alpha: 0.84, strokeAlpha: 0.2, strokeColor: 0xf7f7c6 },
+    death: { color: 0xff8a65, alpha: 0.86 },
+    remainInactive: { color: 0x10243b, alpha: 0.78 },
+    ignite: { color: 0xff8a65, alpha: 0.9, strokeAlpha: 0.24, strokeColor: 0xffffff },
+    burnOut: { color: 0xf4d35e, alpha: 0.74 },
+    trail: { color: 0x6b4a43, alpha: 0.74 },
+    remainSusceptible: { color: 0x54788a, alpha: 0.56 },
+    infected: { color: 0xff8a65, alpha: 0.88 },
+    recover: { color: 0xf4d35e, alpha: 0.74 },
+    recovering: { color: 0x63e6be, alpha: 0.6 },
+    susceptible: { color: 0x54788a, alpha: 0.56 },
+    wavefront: { color: 0xffffff, alpha: 0.9, strokeAlpha: 0.28, strokeColor: 0x86e7ff },
+    refractory: { color: 0xf4d35e, alpha: 0.72 },
+    recovery: { color: 0x63e6be, alpha: 0.56 },
+    resting: { color: 0x10243b, alpha: 0.76 },
+    cascadeTrigger: { color: 0xffffff, alpha: 0.9, strokeAlpha: 0.24, strokeColor: 0xff8a65 },
+    spent: { color: 0x6b4a43, alpha: 0.74 },
+    loaded: { color: 0xf4d35e, alpha: 0.62 },
+    blockedFront: { color: 0xff8a65, alpha: 0.9 },
+    releaseWave: { color: 0x63e6be, alpha: 0.72 },
+    movingDensity: { color: 0x86e7ff, alpha: 0.76 },
+    empty: { color: 0x10243b, alpha: 0.76 },
+    signalHead: { color: 0xffffff, alpha: 0.92, strokeAlpha: 0.32, strokeColor: 0x86e7ff },
+    signalTail: { color: 0xf4d35e, alpha: 0.72 },
+    conductorPath: { color: 0x2e607f, alpha: 0.72 },
+    remain: { color: 0x1a3348, alpha: 0.58 },
+    changed: { color: 0x63e6be, alpha: 0.72 }
+  }[transition] ?? { color: 0x1a3348, alpha: 0.55 };
+}
+
+function transitionLabelsFromLayer(layer = []) {
+  return layer.map((row) => row.map((entry) => entry?.transitionLabel ?? entry?.label ?? 'remain'));
+}
+
+export function isGraphDisplayMode(mode) {
+  return ['graphTopology', 'graphCommunities', 'nodeStates', 'graphMessages', 'communityMessages', 'stateTransitions', 'roiMeaning', 'diagnosticsOverlay', 'processStateView', 'processRuleMetric', 'processTransitionView', 'samplingInterpretation'].includes(mode);
+}
 export function heatColor(value) {
   const v = Math.max(0, Math.min(1, Number(value) || 0));
   if (v < 0.22) return 0x10243b;
@@ -646,3 +818,4 @@ function graphMessageStrength(source, target) {
   const communityFactor = source.communityId === target.communityId ? 1 : 0.52;
   return Math.max(0, (outgoing * 0.62 + incoming * 0.18 + targetReadiness * 0.2) * stateBoost * communityFactor);
 }
+

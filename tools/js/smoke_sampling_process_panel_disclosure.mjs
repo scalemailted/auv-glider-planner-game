@@ -15,12 +15,19 @@ import { processRuleById } from '../../src/core/demo/sampling/SamplingProcessRul
 
 const baseState = {
   title: 'Deterministic Spatiotemporal Process Lab',
-  processMode: 'referenceSignature',
-  processModeLabel: 'Example Processes',
+  processMode: 'foundationalCaModels',
+  processModeLabel: 'Foundational CA Models',
   processStatusLabel: 'Example-Validated',
   patternSource: 'referenceSignature',
-  referenceSignatureId: 'stationaryTemporalBursts',
-  referenceSignature: referenceSignatureMetadata('stationaryTemporalBursts'),
+  exampleTrack: 'foundationalCaModels',
+  exampleTrackLabel: 'Foundational CA Models',
+  exampleProcessId: 'conwayGameOfLife',
+  foundationalCaModelId: 'conwayGameOfLife',
+  oceanProcessAnalogId: null,
+  exampleProcessLabel: "Conway's Game of Life",
+  exampleType: 'foundationalCaModel',
+  referenceSignatureId: 'birthDeathEmergence',
+  referenceSignature: referenceSignatureMetadata('birthDeathEmergence'),
   referenceSignatureModified: false,
   behaviorPresetId: 'custom',
   behaviorPresetModified: false,
@@ -124,7 +131,9 @@ assert.equal(accordionSource.includes('!options.defaultCollapsed'), true, 'accor
 
 const consoleHtml = samplingProcessConsoleHtml(baseState);
 assert.equal(consoleHtml.includes('id="sampling-process-mode"'), true, 'mode selector should be preserved');
-assert.equal(consoleHtml.includes('id="roi-demo-reference-signature"'), true, 'process pattern selector should be preserved');
+assert.equal(consoleHtml.includes('id="sampling-process-example-id"'), true, 'track-specific process example selector should be preserved');
+assert.equal(consoleHtml.includes('id="roi-demo-reference-signature"'), true, 'hidden legacy reference selector should be preserved');
+assert.equal(consoleHtml.includes('Example Track'), false, 'old Example Track selector should not render');
 assert.equal(consoleHtml.includes('id="roi-demo-display-mode"'), true, 'display selector should be preserved');
 assert.equal(consoleHtml.includes('id="roi-demo-seed"'), true, 'seed input should be preserved');
 assert.equal(consoleHtml.includes('data-action="export-demo-json"'), true, 'export action should be preserved');

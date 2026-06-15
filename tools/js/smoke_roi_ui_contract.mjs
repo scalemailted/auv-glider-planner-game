@@ -20,6 +20,9 @@ import {
   SAMPLING_PROCESS_VISIBLE_MODES
 } from '../../src/core/demo/sampling/SamplingProcessTerminology.js';
 import {
+  resolveActiveSpatiotemporalProcessExample
+} from '../../src/core/demo/sampling/SpatiotemporalProcessExamples.js';
+import {
   samplingProcessModeHasSection,
   samplingProcessRightPanelDefault
 } from '../../src/core/demo/sampling/SamplingProcessUiConfig.js';
@@ -107,15 +110,25 @@ assert(SAMPLING_PROCESS_MODES.includes('processPaint'), 'Process Paint mode miss
 assert(SAMPLING_PROCESS_MODES.includes('randomRuleLab'), 'Random Rule Lab mode missing');
 assert(SAMPLING_PROCESS_MODES.includes('diagnosticsGraphInspection'), 'Diagnostics / Graph Inspection mode missing');
 assert(!SAMPLING_PROCESS_VISIBLE_MODES.includes('diagnosticsGraphInspection'), 'Diagnostics should not be a visible workflow mode');
-assert(SAMPLING_PROCESS_VISIBLE_MODES.length === 4, `expected 4 visible workflow modes, got ${SAMPLING_PROCESS_VISIBLE_MODES.length}`);
-assert(samplingProcessModeHasSection('referenceSignature', 'referenceSignature'), 'reference mode should show reference selector');
-assert(!samplingProcessModeHasSection('referenceSignature', 'sourceField'), 'reference mode should hide source field controls by default');
+assert(SAMPLING_PROCESS_VISIBLE_MODES.length === 5, `expected 5 visible workflow modes, got ${SAMPLING_PROCESS_VISIBLE_MODES.length}`);
+assert(SAMPLING_PROCESS_VISIBLE_MODES.includes('foundationalCaModels'), 'Foundational CA Models mode missing');
+assert(SAMPLING_PROCESS_VISIBLE_MODES.includes('oceanProcessAnalogs'), 'Ocean-Relevant Process Analogs mode missing');
+assert(!SAMPLING_PROCESS_VISIBLE_MODES.includes('referenceSignature'), 'legacy referenceSignature should not be a visible workflow mode');
+assert(samplingProcessModeHasSection('foundationalCaModels', 'referenceSignature'), 'foundational context should show model selector');
+assert(samplingProcessModeHasSection('oceanProcessAnalogs', 'referenceSignature'), 'ocean context should show analog selector');
+assert(samplingProcessModeHasSection('referenceSignature', 'referenceSignature'), 'legacy referenceSignature alias should show process example selector');
+assert(!samplingProcessModeHasSection('foundationalCaModels', 'sourceField'), 'foundational context should hide source field controls by default');
 assert(samplingProcessModeHasSection('customComposer', 'sourceField'), 'custom composer should show source field controls');
 assert(samplingProcessModeHasSection('processPaint', 'processPaintTools'), 'process paint should show paint tools');
 assert(!samplingProcessModeHasSection('processPaint', 'temporalPattern'), 'process paint should hide full composer controls');
 assert(samplingProcessModeHasSection('randomRuleLab', 'randomRuleLab'), 'random rule lab should show random controls');
 assert(samplingProcessModeHasSection('diagnosticsGraphInspection', 'messageFilters'), 'diagnostics should show message filters');
 assert(samplingProcessRightPanelDefault('diagnosticsGraphInspection') === 'diagnostics', 'diagnostics right panel default mismatch');
+const contractActiveExample = resolveActiveSpatiotemporalProcessExample({ exampleTrack: 'foundationalCaModels', exampleProcessId: 'conwayGameOfLife', patternSource: 'referenceSignature', processMode: 'foundationalCaModels' });
+assert(contractActiveExample.exampleProcessId === 'conwayGameOfLife', 'active example resolver should preserve selected foundational example');
+assert(contractActiveExample.referenceSignatureId === 'birthDeathEmergence', 'active example mapped reference mismatch');
+const contractPaintExample = resolveActiveSpatiotemporalProcessExample({ exampleTrack: 'foundationalCaModels', exampleProcessId: 'conwayGameOfLife', patternSource: 'custom', processMode: 'processPaint' });
+assert(contractPaintExample.isCustom && contractPaintExample.exampleProcessId === null, 'process paint should clear active example identity');
 
 const duplicateComponents = SAMPLE_FIELD_COMPONENTS.filter((component, index) => SAMPLE_FIELD_COMPONENTS.indexOf(component) !== index);
 assert(duplicateComponents.length === 0, `duplicate component metadata: ${duplicateComponents.join(', ')}`);

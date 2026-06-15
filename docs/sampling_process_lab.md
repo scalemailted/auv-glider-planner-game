@@ -25,13 +25,25 @@ In this lab, Source / Initial Field is not uncertainty, belief, forecast probabi
 
 ## Modes
 
-- Example Processes: simplified CA/grid-process-inspired examples that load editable component recipes. The selector is grouped into Foundational CA Models and Observable Process Patterns.
+- Foundational CA Models: simplified CA/grid-process-inspired teaching models that load editable component recipes.
+- Ocean-Relevant Process Analogs: simplified environmental process analogs that load editable component recipes and bridge to later flow, uncertainty, and mission demos.
+- Observable Process Patterns: bridge metadata used for mapping examples to legacy reference signatures; not a primary selector.
 - Custom Composer: global primitive component editing, labeled Custom Exploratory unless mapped back to a validated signature.
 - Process Paint: minimal non-uniform CA-style editor for assigning state, rule, group, and source value to selected cells.
 - Rule Allocation Sandbox: seeded random state/rule/group allocation; exploratory unless constrained and validated against an example process.
 
 Diagnostics is not a primary mode. Use Display / Diagnostic Layer and the right-panel Diagnostics tab to inspect states, topology, process influence messages, transitions, groups, and ROI roles for the active workflow.
 
+
+## Discrete Generations And Rule Metrics
+
+Foundational CA Models, Ocean-Relevant Process Analogs, Process Paint, and Rule Allocation Sandbox use a logical generation clock that is separate from the render frame rate. The canvas may render at browser speed, but process state advances only when the accumulated tick interval is reached or when `Step Generation` is clicked.
+
+Default playback is `1 gen/s`. Available tick rates are `0.25`, `0.5`, `1`, `2`, `4`, and `8` generations per second. `Pause` stops logical updates, `Run` resumes them, `Reset` returns to generation 0, and `Step Generation` advances exactly one generation.
+
+Guided process examples default to semantic displays instead of generic heat. `State View` colors deterministic cell states or phases. `Rule Metric` shows the selected model's rule-support layer, such as neighbor count, ignition pressure, infection pressure, threshold proximity, congestion pressure, or signal support. `Transition View` shows the next-transition class. `Sampling Interpretation` shows the derived sampling-value view, and `Source / Initial Field` shows the seeded substrate.
+
+Conway-style local birth-death rules explain neighbor count, birth support, survival support, death, and remain-inactive classes. Forest Fire explains ignition pressure and consumed trail. SIR explains infection pressure and recovery. Excitable Wave, Sandpile, Traffic, and Wireworld expose wavefront/refractory, threshold, congestion, and signal-path metrics. Ocean analogs inherit the mapped rule metrics but remain process-layer analogs; physical downstream transport belongs in Flow Fields and Coupled Dynamic Sampling Space demos.
 ## Process Layers
 
 Exports preserve preferred process names and legacy aliases:
@@ -48,3 +60,5 @@ Exports preserve preferred process names and legacy aliases:
 ## Scientific Framing
 
 The local CA taxonomy reference in `docs/references/2401.08408v2.pdf` is used as mechanism framing, not as a source of exact simulator implementations. The lab uses cells with states, initial/source fields, neighborhoods/graph edges, local update rules, multi-state behavior, extended-neighborhood graph behavior, non-uniform rule allocation, and memory/history-aware behavior as educational abstractions.
+
+

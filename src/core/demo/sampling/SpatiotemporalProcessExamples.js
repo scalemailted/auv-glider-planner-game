@@ -4,10 +4,20 @@ import {
   referenceSignatureMetadata
 } from '../roi/RoiReferenceSignatures.js';
 
+export const SPATIOTEMPORAL_PROCESS_EXAMPLE_TRACKS = [
+  { id: 'foundationalCaModels', label: 'Foundational CA Models' },
+  { id: 'oceanRelevantProcessAnalogs', label: 'Ocean-Relevant Process Analogs' }
+];
+
 export const SPATIOTEMPORAL_PROCESS_EXAMPLE_TYPES = [
   'foundationalCaModel',
+  'oceanProcessAnalog',
   'observableProcessPattern'
 ];
+
+export const OBSERVABLE_PROCESS_PATTERN_TAGS = ['propagatingFront', 'excitableWave', 'localBirthDeath', 'recurrentHotspot', 'diffusiveSpread', 'directedFeatureTransport', 'cyclicDominance', 'domainFormation', 'thresholdCascade', 'interactingPopulation', 'freshnessRecovery', 'morphogenesis', 'congestionWave', 'structuredSignal'];
+
+const FLOW_BOUNDARY_NOTE = 'This analog represents the event/process layer only. Physical current-driven advection belongs in the Flow Fields and Coupled Dynamic Sampling Space demos.';
 
 export const FOUNDATIONAL_CA_MODELS = [
   foundationalCaModel({
@@ -180,33 +190,82 @@ export const FOUNDATIONAL_CA_MODELS = [
   })
 ];
 
+export const OCEAN_RELEVANT_PROCESS_ANALOGS = [
+  oceanProcessAnalog({ id: 'bloomGrowthDecay', label: 'Bloom Growth / Decay', ruleFamilyId: 'morphogenesis', referenceSignatureId: 'patternFormationMorphogenesis', requiresFlowCoupling: false, requiresUncertaintyForMissionRealism: true, environmentalProcess: 'Bloom growth and decay', underlyingCaMechanism: 'morphogenesis + diffusive spread', observableProcessPatternTags: ['morphogenesis', 'diffusiveSpread'], relatedFoundationalModels: ["Conway's Game of Life"], recommendedSamplingStrategy: 'Sample high region, boundary, and stale/revisit zones.', missingScienceLayers: ['chlorophyll sensor model', 'advection for drifting bloom realism'] }),
+  oceanProcessAnalog({ id: 'riverPlumeFront', label: 'River Plume Front', ruleFamilyId: 'propagatingFront', referenceSignatureId: 'frontPropagation', requiresFlowCoupling: true, requiresUncertaintyForMissionRealism: true, environmentalProcess: 'Coastal plume boundary', underlyingCaMechanism: 'propagating front + diffusive spread', observableProcessPatternTags: ['propagatingFront', 'diffusiveSpread'], relatedFoundationalModels: ['Forest Fire', 'SIR / Epidemic CA'], recommendedSamplingStrategy: 'Sample boundary/front, cross-plume transects, and uncertain threshold regions.', missingScienceLayers: ['river discharge', 'salinity sensor model', 'current-driven advection'] }),
+  oceanProcessAnalog({ id: 'oilChemicalPlume', label: 'Oil / Chemical Plume', ruleFamilyId: 'diffusiveSpread', referenceSignatureId: 'diffusionSpread', requiresFlowCoupling: true, requiresUncertaintyForMissionRealism: true, environmentalProcess: 'Contaminant plume', underlyingCaMechanism: 'diffusive spread + directed feature transport preview', observableProcessPatternTags: ['diffusiveSpread', 'directedFeatureTransport'], relatedFoundationalModels: ['SIR / Epidemic CA'], recommendedSamplingStrategy: 'Detect plume, cross-section it, then move up-current/source-seeking in the coupled demo.', missingScienceLayers: ['chemistry', 'source term', 'current advection'] }),
+  oceanProcessAnalog({ id: 'thermoclineWaterMassBoundary', label: 'Thermocline / Water-Mass Boundary', ruleFamilyId: 'domainFormation', referenceSignatureId: 'clusterFormation', requiresFlowCoupling: true, requiresUncertaintyForMissionRealism: true, environmentalProcess: 'Layer or water-mass boundary', underlyingCaMechanism: 'domain formation + propagating front', observableProcessPatternTags: ['domainFormation', 'propagatingFront'], relatedFoundationalModels: ['Forest Fire'], recommendedSamplingStrategy: 'Sample the high-gradient boundary, not just the strongest cell.', missingScienceLayers: ['depth', 'temperature/salinity profile'] }),
+  oceanProcessAnalog({ id: 'eddyTrappedPatch', label: 'Eddy-Trapped Patch', ruleFamilyId: 'recurrentHotspot', referenceSignatureId: 'stationaryTemporalBursts', requiresFlowCoupling: true, requiresUncertaintyForMissionRealism: true, environmentalProcess: 'Retained patch near an eddy', underlyingCaMechanism: 'recurrent hotspot + directed transport preview', observableProcessPatternTags: ['recurrentHotspot', 'directedFeatureTransport'], relatedFoundationalModels: ['Traffic CA'], recommendedSamplingStrategy: 'Sample around retained patch and eddy perimeter in the coupled demo.', missingScienceLayers: ['vorticity', 'current field', 'particle retention model'] }),
+  oceanProcessAnalog({ id: 'shorelineRunoffPulse', label: 'Shoreline Runoff Pulse', ruleFamilyId: 'thresholdCascade', referenceSignatureId: 'avalancheBurstCascades', requiresFlowCoupling: true, requiresUncertaintyForMissionRealism: true, environmentalProcess: 'Episodic coastal discharge', underlyingCaMechanism: 'threshold cascade + propagating front', observableProcessPatternTags: ['thresholdCascade', 'propagatingFront'], relatedFoundationalModels: ['Forest Fire', 'Sandpile / Avalanche'], recommendedSamplingStrategy: 'Sample river-mouth/source region, downstream gradient, and boundary.', missingScienceLayers: ['rainfall forcing', 'coastal currents'] }),
+  oceanProcessAnalog({ id: 'hydrothermalDeepSourcePlume', label: 'Hydrothermal / Deep Source Plume', ruleFamilyId: 'recurrentHotspot', referenceSignatureId: 'stationaryTemporalBursts', requiresFlowCoupling: true, requiresUncertaintyForMissionRealism: true, environmentalProcess: 'Deep source plume', underlyingCaMechanism: 'recurrent stationary hotspot + diffusive spread', observableProcessPatternTags: ['recurrentHotspot', 'diffusiveSpread'], relatedFoundationalModels: ['SIR / Epidemic CA'], recommendedSamplingStrategy: 'Source confirmation, vertical/depth profile, and up-gradient search.', missingScienceLayers: ['depth', 'source term', 'chemical/thermal sensor model'] }),
+  oceanProcessAnalog({ id: 'turbidityEvent', label: 'Turbidity Event', ruleFamilyId: 'thresholdCascade', referenceSignatureId: 'avalancheBurstCascades', requiresFlowCoupling: true, requiresUncertaintyForMissionRealism: true, environmentalProcess: 'Sediment/turbidity pulse', underlyingCaMechanism: 'threshold cascade + diffusive spread', observableProcessPatternTags: ['thresholdCascade', 'diffusiveSpread'], relatedFoundationalModels: ['Sandpile / Avalanche'], recommendedSamplingStrategy: 'Sample after pulse, map spread, and validate forecast.', missingScienceLayers: ['sediment settling', 'bottom resuspension'] }),
+  oceanProcessAnalog({ id: 'hypoxiaRecoveryZone', label: 'Hypoxia / Recovery Zone', ruleFamilyId: 'freshnessRecovery', referenceSignatureId: 'freshnessRecovery', requiresFlowCoupling: false, requiresUncertaintyForMissionRealism: true, environmentalProcess: 'Low-oxygen recovery monitoring', underlyingCaMechanism: 'freshness recovery + domain formation', observableProcessPatternTags: ['freshnessRecovery', 'domainFormation'], relatedFoundationalModels: ['Voter / Majority Rule'], recommendedSamplingStrategy: 'Revisit monitoring, recovery tracking, and stale-region sampling.', missingScienceLayers: ['oxygen dynamics', 'depth profile'] }),
+  oceanProcessAnalog({ id: 'persistentMonitoringFreshnessField', label: 'Persistent Monitoring / Freshness Field', ruleFamilyId: 'freshnessRecovery', referenceSignatureId: 'freshnessRecovery', requiresFlowCoupling: false, requiresUncertaintyForMissionRealism: false, environmentalProcess: 'Age-of-information / revisit value', underlyingCaMechanism: 'freshness recovery', observableProcessPatternTags: ['freshnessRecovery'], relatedFoundationalModels: ['Wireworld'], recommendedSamplingStrategy: 'Revisit stale high-importance regions.', missingScienceLayers: ['mission path history', 'sensor quality model'] })
+];
+
 export const OBSERVABLE_PROCESS_PATTERNS = ROI_REFERENCE_SIGNATURES.map((signature) => observablePatternFromSignature(signature));
 
 export const SPATIOTEMPORAL_PROCESS_EXAMPLES = [
   ...FOUNDATIONAL_CA_MODELS,
+  ...OCEAN_RELEVANT_PROCESS_ANALOGS,
   ...OBSERVABLE_PROCESS_PATTERNS
 ];
 
-export function spatiotemporalProcessExampleById(id) {
-  if (isNoProcessExampleId(id)) return null;
-  const normalized = normalizeSpatiotemporalProcessExampleId(id);
-  return SPATIOTEMPORAL_PROCESS_EXAMPLES.find((example) => example.id === normalized) ?? null;
+export function normalizeSpatiotemporalProcessExampleTrack(value) {
+  const id = String(value ?? '').trim();
+  return SPATIOTEMPORAL_PROCESS_EXAMPLE_TRACKS.some((track) => track.id === id) ? id : 'foundationalCaModels';
 }
 
-export function normalizeSpatiotemporalProcessExampleId(id = 'stationaryTemporalBursts') {
+export function spatiotemporalProcessExampleTrackLabel(track) {
+  const id = normalizeSpatiotemporalProcessExampleTrack(track);
+  return SPATIOTEMPORAL_PROCESS_EXAMPLE_TRACKS.find((entry) => entry.id === id)?.label ?? 'Foundational CA Models';
+}
+
+export function spatiotemporalProcessExampleTrackForMode(mode = 'foundationalCaModels') {
+  const value = String(mode ?? '').trim();
+  if (value === 'oceanProcessAnalogs' || value === 'oceanRelevantProcessAnalogs') return 'oceanRelevantProcessAnalogs';
+  if (value === 'foundationalCaModels' || value === 'referenceSignature' || value === 'exampleProcesses') return 'foundationalCaModels';
+  return null;
+}
+
+export function processModeForSpatiotemporalProcessExampleTrack(track = 'foundationalCaModels') {
+  return normalizeSpatiotemporalProcessExampleTrack(track) === 'oceanRelevantProcessAnalogs'
+    ? 'oceanProcessAnalogs'
+    : 'foundationalCaModels';
+}
+
+export function spatiotemporalProcessExamplesByTrack(track) {
+  const id = normalizeSpatiotemporalProcessExampleTrack(track);
+  return SPATIOTEMPORAL_PROCESS_EXAMPLES.filter((example) => example.track === id);
+}
+
+export function spatiotemporalProcessExampleById(id, track = null) {
+  if (isNoProcessExampleId(id)) return null;
+  const normalized = normalizeSpatiotemporalProcessExampleId(id, track);
+  const candidates = track ? spatiotemporalProcessExamplesByTrack(track) : SPATIOTEMPORAL_PROCESS_EXAMPLES;
+  return candidates.find((example) => example.id === normalized) ?? null;
+}
+
+export function normalizeSpatiotemporalProcessExampleId(id = 'birthDeathEmergence', track = null) {
   if (isNoProcessExampleId(id)) return null;
   const value = String(id ?? '');
-  const exact = SPATIOTEMPORAL_PROCESS_EXAMPLES.find((example) => example.id === value);
+  const candidates = track ? spatiotemporalProcessExamplesByTrack(track) : SPATIOTEMPORAL_PROCESS_EXAMPLES;
+  const exact = candidates.find((example) => example.id === value);
   if (exact) return exact.id;
-  const alias = SPATIOTEMPORAL_PROCESS_EXAMPLES.find((example) => example.aliases?.includes(value));
+  const alias = candidates.find((example) => example.aliases?.includes(value));
   if (alias) return alias.id;
-  const reference = referenceSignatureById(value);
-  if (reference) return reference.id;
-  return 'stationaryTemporalBursts';
+  if (!track) {
+    const any = SPATIOTEMPORAL_PROCESS_EXAMPLES.find((example) => example.id === value || example.aliases?.includes(value));
+    if (any) return any.id;
+    const reference = referenceSignatureById(value);
+    if (reference) return reference.id;
+    return 'conwayGameOfLife';
+  }
+  return spatiotemporalProcessExamplesByTrack(track)[0]?.id ?? 'conwayGameOfLife';
 }
 
 export function spatiotemporalProcessExampleLabel(id) {
-  return spatiotemporalProcessExampleById(id)?.label ?? 'Recurrent Stationary Hotspots';
+  return spatiotemporalProcessExampleById(id)?.label ?? "Conway's Game of Life";
 }
 
 export function spatiotemporalProcessExamplesByType(type) {
@@ -214,21 +273,23 @@ export function spatiotemporalProcessExamplesByType(type) {
 }
 
 export function spatiotemporalProcessExampleOptions() {
-  return SPATIOTEMPORAL_PROCESS_EXAMPLE_TYPES.map((type) => ({
-    type,
-    label: processExampleTypeLabel(type),
-    options: spatiotemporalProcessExamplesByType(type).map((example) => ({
-      id: example.id,
-      label: example.label,
-      referenceSignatureId: example.referenceSignatureId
-    }))
+  return [
+    { type: 'foundationalCaModel', label: 'Foundational CA Models', options: spatiotemporalProcessExampleOptionsByTrack('foundationalCaModels') },
+    { type: 'oceanProcessAnalog', label: 'Ocean-Relevant Process Analogs', options: spatiotemporalProcessExampleOptionsByTrack('oceanRelevantProcessAnalogs') }
+  ];
+}
+
+export function spatiotemporalProcessExampleOptionsByTrack(track) {
+  return spatiotemporalProcessExamplesByTrack(track).map((example) => ({
+    id: example.id, label: example.label, track: example.track, exampleType: example.exampleType, referenceSignatureId: example.referenceSignatureId
   }));
 }
 
 export function processExampleTypeLabel(type) {
   return {
-    foundationalCaModel: 'Foundational CA Models',
-    observableProcessPattern: 'Observable Process Patterns'
+    foundationalCaModel: 'Foundational CA Model',
+    oceanProcessAnalog: 'Ocean-Relevant Process Analog',
+    observableProcessPattern: 'Observable Process Pattern'
   }[type] ?? 'Process Examples';
 }
 
@@ -236,6 +297,7 @@ export function processExampleCoverageMatrix() {
   return SPATIOTEMPORAL_PROCESS_EXAMPLES.map((example) => ({
     id: example.id,
     label: example.label,
+    track: example.track,
     exampleType: example.exampleType,
     ruleFamilyId: example.ruleFamilyId,
     referenceSignatureId: example.referenceSignatureId,
@@ -243,27 +305,202 @@ export function processExampleCoverageMatrix() {
     hasRuleStatement: Array.isArray(example.ruleStatement) && example.ruleStatement.length > 0,
     hasLocalUpdateFunction: Boolean(example.localUpdateFunction),
     hasQaExpectations: Boolean(example.qaExpectations),
+    observableProcessPatternTags: example.observableProcessPatternTags ?? [],
     relatedFoundationalModels: example.relatedFoundationalModels ?? [],
+    relatedOceanAnalogs: example.relatedOceanAnalogs ?? [],
     relatedObservablePatterns: example.relatedObservablePatterns ?? []
   }));
 }
 
-export function referenceSignatureIdForProcessExample(id) {
-  return spatiotemporalProcessExampleById(id)?.referenceSignatureId ?? null;
+export const spatiotemporalProcessExampleCoverageMatrix = processExampleCoverageMatrix;
+
+export function spatiotemporalProcessExampleToRecipe(id) {
+  const example = spatiotemporalProcessExampleById(id);
+  if (!example) return null;
+  return { ...example.componentDefaults, processMode: processModeForSpatiotemporalProcessExampleTrack(example.track), patternSource: 'referenceSignature', referenceSignatureId: example.referenceSignatureId, exampleTrack: example.track, exampleProcessId: example.id, exampleProcessLabel: example.label, exampleType: example.exampleType };
 }
 
-export function processExampleMetadata(id, modified = false) {
-  const example = spatiotemporalProcessExampleById(id);
+export function referenceSignatureIdForProcessExample(id, track = null) {
+  return spatiotemporalProcessExampleById(id, track)?.referenceSignatureId ?? null;
+}
+
+export function processExampleMetadata(id, modified = false, track = null) {
+  const example = spatiotemporalProcessExampleById(id, track);
   if (!example) return null;
   return {
     ...example,
     modified: Boolean(modified),
+    exampleProcessModified: Boolean(modified),
+    exampleTrackLabel: spatiotemporalProcessExampleTrackLabel(example.track),
     referenceSignature: referenceSignatureMetadata(example.referenceSignatureId, modified)
   };
 }
+export function resolveActiveSpatiotemporalProcessExample(context = {}) {
+  const processMode = context.processMode ?? null;
+  const patternSource = context.patternSource ?? null;
+  const modified = Boolean(context.exampleProcessModified ?? context.referenceSignatureModified);
+  if (isCustomProcessExampleContext({ processMode, patternSource })) {
+    return customActiveProcessExampleState({ processMode, patternSource, modified });
+  }
+
+  const modeTrack = spatiotemporalProcessExampleTrackForMode(processMode);
+  const explicitTrack = knownSpatiotemporalProcessExampleTrack(context.exampleTrack);
+  const activeTrack = modeTrack ?? explicitTrack;
+  if (activeTrack) {
+    const trackSpecificId = activeTrack === 'oceanRelevantProcessAnalogs'
+      ? context.oceanProcessAnalogId
+      : context.foundationalCaModelId;
+    const explicitExample = strictSpatiotemporalProcessExample(context.exampleProcessId, activeTrack)
+      ?? strictSpatiotemporalProcessExample(trackSpecificId, activeTrack);
+    if (explicitExample) return activeProcessExampleState(explicitExample, { modified });
+    const referenceExample = exampleForReferenceSignature(context.referenceSignatureId, activeTrack);
+    if (referenceExample) return activeProcessExampleState(referenceExample, { modified, isLegacyFallback: true });
+    const defaultExample = firstExampleForTrack(activeTrack);
+    if (defaultExample) return activeProcessExampleState(defaultExample, { modified });
+  }
+
+  const foundationalExample = strictSpatiotemporalProcessExample(context.foundationalCaModelId, 'foundationalCaModels');
+  if (foundationalExample) return activeProcessExampleState(foundationalExample, { modified });
+
+  const oceanExample = strictSpatiotemporalProcessExample(context.oceanProcessAnalogId, 'oceanRelevantProcessAnalogs');
+  if (oceanExample) return activeProcessExampleState(oceanExample, { modified });
+
+  const directExample = strictSpatiotemporalProcessExample(context.exampleProcessId);
+  if (directExample) return activeProcessExampleState(directExample, { modified });
+
+  const referenceExample = exampleForReferenceSignature(context.referenceSignatureId);
+  if (referenceExample) return activeProcessExampleState(referenceExample, { modified, isLegacyFallback: true });
+
+  const fallback = strictSpatiotemporalProcessExample('conwayGameOfLife', 'foundationalCaModels');
+  return fallback
+    ? activeProcessExampleState(fallback, { modified, isLegacyFallback: true })
+    : customActiveProcessExampleState({ processMode, patternSource, modified, isLegacyFallback: true });
+}
+
+export function activeProcessExampleExportBlock(active = {}) {
+  if (!active || active.isCustom) return null;
+  return {
+    exampleTrack: active.exampleTrack,
+    exampleTrackLabel: active.exampleTrackLabel,
+    exampleProcessId: active.exampleProcessId,
+    exampleProcessLabel: active.exampleProcessLabel,
+    exampleType: active.exampleType,
+    foundationalCaModelId: active.foundationalCaModelId,
+    oceanProcessAnalogId: active.oceanProcessAnalogId,
+    mappedReferenceSignatureId: active.referenceSignatureId,
+    mappedReferenceSignatureLabel: active.referenceSignatureLabel,
+    observableProcessPatternTags: active.observableProcessPatternTags,
+    implementationFidelity: active.implementationFidelity,
+    ruleFamilyId: active.ruleFamilyId,
+    requiresFlowCoupling: active.requiresFlowCoupling,
+    requiresUncertaintyForMissionRealism: active.requiresUncertaintyForMissionRealism,
+    relatedFoundationalModels: active.relatedFoundationalModels,
+    relatedOceanAnalogs: active.relatedOceanAnalogs,
+    modified: Boolean(active.isModified)
+  };
+}
+
+function knownSpatiotemporalProcessExampleTrack(value) {
+  const id = String(value ?? '').trim();
+  return SPATIOTEMPORAL_PROCESS_EXAMPLE_TRACKS.some((track) => track.id === id) ? id : null;
+}
+
+function strictSpatiotemporalProcessExample(id, track = null) {
+  if (isNoProcessExampleId(id)) return null;
+  const value = String(id ?? '').trim();
+  if (!value) return null;
+  const candidates = track ? spatiotemporalProcessExamplesByTrack(track) : SPATIOTEMPORAL_PROCESS_EXAMPLES;
+  return candidates.find((example) => example.id === value)
+    ?? candidates.find((example) => example.aliases?.includes(value))
+    ?? null;
+}
+
+function firstExampleForTrack(track) {
+  return spatiotemporalProcessExamplesByTrack(track)[0] ?? null;
+}
+
+function exampleForReferenceSignature(referenceSignatureId, track = null) {
+  if (isNoProcessExampleId(referenceSignatureId)) return null;
+  const id = String(referenceSignatureId ?? '').trim();
+  if (!id) return null;
+  const candidates = track ? spatiotemporalProcessExamplesByTrack(track) : SPATIOTEMPORAL_PROCESS_EXAMPLES;
+  return candidates.find((example) => example.referenceSignatureId === id || example.id === id)
+    ?? (!track ? OBSERVABLE_PROCESS_PATTERNS.find((example) => example.referenceSignatureId === id || example.id === id) : null)
+    ?? null;
+}
+
+function activeProcessExampleState(example, { modified = false, isLegacyFallback = false } = {}) {
+  const referenceSignature = referenceSignatureMetadata(example.referenceSignatureId, modified);
+  return {
+    exampleTrack: example.track,
+    exampleTrackLabel: spatiotemporalProcessExampleTrackLabel(example.track),
+    exampleProcessId: example.id,
+    exampleProcessLabel: example.label,
+    exampleType: example.exampleType,
+    foundationalCaModelId: example.exampleType === 'foundationalCaModel' ? example.id : null,
+    oceanProcessAnalogId: example.exampleType === 'oceanProcessAnalog' ? example.id : null,
+    referenceSignatureId: referenceSignature?.id ?? example.referenceSignatureId,
+    referenceSignatureLabel: referenceSignature?.label ?? example.referenceSignatureId,
+    mappedReferenceSignatureId: referenceSignature?.id ?? example.referenceSignatureId,
+    mappedReferenceSignatureLabel: referenceSignature?.label ?? example.referenceSignatureId,
+    observableProcessPatternTags: example.observableProcessPatternTags ?? [],
+    implementationFidelity: example.implementationFidelity ?? null,
+    ruleFamilyId: example.ruleFamilyId ?? null,
+    requiresFlowCoupling: example.requiresFlowCoupling ?? null,
+    requiresUncertaintyForMissionRealism: example.requiresUncertaintyForMissionRealism ?? null,
+    relatedFoundationalModels: example.relatedFoundationalModels ?? [],
+    relatedOceanAnalogs: example.relatedOceanAnalogs ?? [],
+    relatedObservablePatterns: example.relatedObservablePatterns ?? [],
+    isLegacyFallback: Boolean(isLegacyFallback),
+    isCustom: false,
+    isModified: Boolean(modified),
+    sourceExample: processExampleMetadata(example.id, modified, example.track),
+    referenceSignature
+  };
+}
+
+function customActiveProcessExampleState({ processMode = null, patternSource = null, modified = false, isLegacyFallback = false } = {}) {
+  return {
+    exampleTrack: null,
+    exampleTrackLabel: null,
+    exampleProcessId: null,
+    exampleProcessLabel: null,
+    exampleType: null,
+    foundationalCaModelId: null,
+    oceanProcessAnalogId: null,
+    referenceSignatureId: null,
+    referenceSignatureLabel: null,
+    mappedReferenceSignatureId: null,
+    mappedReferenceSignatureLabel: null,
+    observableProcessPatternTags: [],
+    implementationFidelity: null,
+    ruleFamilyId: null,
+    requiresFlowCoupling: null,
+    requiresUncertaintyForMissionRealism: null,
+    relatedFoundationalModels: [],
+    relatedOceanAnalogs: [],
+    relatedObservablePatterns: [],
+    isLegacyFallback: Boolean(isLegacyFallback),
+    isCustom: true,
+    isModified: Boolean(modified),
+    processMode,
+    patternSource,
+    sourceExample: null,
+    referenceSignature: null
+  };
+}
+
+function isCustomProcessExampleContext({ processMode, patternSource } = {}) {
+  return patternSource === 'custom'
+    || processMode === 'customComposer'
+    || processMode === 'processPaint'
+    || processMode === 'randomRuleLab';
+}
+
 
 function foundationalCaModel(entry) {
   return {
+    track: 'foundationalCaModels',
     exampleType: 'foundationalCaModel',
     caTaxonomy: {
       updateSchedule: 'synchronous',
@@ -274,6 +511,9 @@ function foundationalCaModel(entry) {
     },
     stateVariables: ['x_i(t)', 'N_i(t)', 'parameters_i'],
     parameterDefinitions: ['seeded initial state', 'state transition thresholds', 'rule-family parameters'],
+    stateVocabulary: entry.stateVocabulary ?? ['inactive', 'active', 'recovering'],
+    neighborhood: entry.neighborhood ?? entry.neighborhoodDefinition ?? 'local neighborhood',
+    observableProcessPatternTags: entry.observableProcessPatternTags ?? entry.relatedObservablePatterns ?? [],
     processStateMeaning: 'Cell state records local process status such as active, inactive, recovering, consumed, or signal-like.',
     observableValueMeaning: 'Observable value is a visualization of the active or sampling-relevant state.',
     samplingInterpretation: 'Active, changing, or near-future cells can be interpreted as sampling-relevant, but sampling is not the identity of the model.',
@@ -293,7 +533,27 @@ function foundationalCaModel(entry) {
     whatTheRuleDoes: entry.canonicalRuleIdea,
     whatTheUpdateFunctionShows: 'A local update function applied across space induces a global field evolution.',
     observablePhenotype: entry.expectedPhenotype,
-    aliases: [entry.id, entry.label, entry.referenceSignatureId],
+    aliases: [entry.id, entry.label, entry.referenceSignatureId, entry.modelFamily],
+    ...entry
+  };
+}
+
+function oceanProcessAnalog(entry) {
+  return {
+    track: 'oceanRelevantProcessAnalogs',
+    exampleType: 'oceanProcessAnalog',
+    componentDefaults: referenceSignatureById(entry.referenceSignatureId)?.componentDefaults ?? {},
+    shortDescription: entry.shortDescription ?? entry.whyOceanRelevant ?? entry.environmentalProcess,
+    processStateMeaning: entry.processStateMeaning ?? 'Grid cells represent simplified event/process state, not physical water parcels.',
+    observableValueMeaning: entry.observableValueMeaning ?? 'Observable value highlights where the process layer is active or sampling-relevant.',
+    samplingInterpretation: entry.samplingInterpretation ?? 'Use this as a sampling-value analogy, then move to coupled demos for flow, constraints, and uncertainty.',
+    suggestedDisplayLayers: entry.suggestedDisplayLayers ?? ['Sampling Value + Source Overlay', 'Cell / Node States', 'State Transitions'],
+    qaExpectations: entry.qaExpectations ?? { expectedPhenotype: entry.shortDescription ?? entry.environmentalProcess, passCriteria: ['non-empty process layer', 'visible process region', 'clear science-boundary note'] },
+    notA: entry.notA ?? 'Not a calibrated ocean simulator, fluid model, salinity forecast, biogeochemical model, or AUV mission planner.',
+    coupledDemoBridgeNote: entry.coupledDemoBridgeNote ?? FLOW_BOUNDARY_NOTE,
+    warning: entry.warning ?? FLOW_BOUNDARY_NOTE,
+    implementationFidelity: entry.implementationFidelity ?? 'observablePatternAnalog',
+    aliases: [entry.id, entry.label, entry.referenceSignatureId, entry.environmentalProcess],
     ...entry
   };
 }
@@ -308,6 +568,7 @@ function observablePatternFromSignature(signature) {
     id: signature.id,
     label,
     aliases: [...new Set([signature.id, signature.label, label, ...(signature.aliases ?? [])])],
+    track: 'observableProcessPatterns',
     exampleType: 'observableProcessPattern',
     shortDescription: signature.simplifiedClaim ?? signature.description,
     processPatternFamily: signature.category,
@@ -326,6 +587,8 @@ function observablePatternFromSignature(signature) {
     suggestedDisplayLayers: signature.bestDisplayLayers ?? [],
     qaExpectations: signature.qaExpectations,
     relatedFoundationalModels,
+    relatedOceanAnalogs: OCEAN_RELEVANT_PROCESS_ANALOGS.filter((analog) => analog.referenceSignatureId === signature.id || analog.observableProcessPatternTags?.includes(ruleFamilyForSignature(signature.id))).map((analog) => analog.id),
+    observableProcessPatternTags: [ruleFamilyForSignature(signature.id)],
     coverageTags: signature.coverageTags ?? signature.referenceCoverageTags ?? [],
     ruleStatement: ruleStatementForSignature(signature),
     localUpdateFunction,
@@ -348,7 +611,7 @@ function ruleFamilyForSignature(id) {
     frontPropagation: 'propagatingFront',
     waveExcitableMedia: 'excitableWave',
     birthDeathEmergence: 'localBirthDeath',
-    stationaryTemporalBursts: 'freshnessRecovery',
+    stationaryTemporalBursts: 'recurrentHotspot',
     diffusionSpread: 'diffusiveSpread',
     driftTransport: 'directedTransport',
     cyclicDominance: 'cyclicDominance',

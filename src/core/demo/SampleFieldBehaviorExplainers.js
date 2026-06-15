@@ -19,7 +19,7 @@ export const SAMPLE_FIELD_GROUP_SUMMARIES = {
   behaviorPreset: {
     label: 'Example Process',
     question: 'Which deterministic Example Process is driving the process behavior?',
-    summary: 'Example Processes are the primary teaching entry point; Custom Composer edits primitive process controls directly.'
+    summary: 'Foundational CA Models and Ocean-Relevant Process Analogs are the guided teaching entry points; Custom Composer edits primitive process controls directly.'
   },
   eventLikelihood: {
     label: 'Source / Initial Field',
@@ -1374,3 +1374,4 @@ function roleForComponent(componentId, selected) {
   };
   return roles[componentId]?.[value] ?? 'Defines this component role in the selected recipe.';
 }
+

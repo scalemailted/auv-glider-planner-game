@@ -8,7 +8,7 @@ The Deterministic Spatiotemporal Process Lab visualizes `S(x,y,t)`: sampling val
 
 Source / Initial Field is the primary substrate in this lab. It is deterministic or seeded process support, not uncertainty, belief, forecast probability, or Bayesian likelihood. ROI is the output interpretation: cells or regions currently or prospectively important to sample.
 
-It is now organized as a mode-aware, Example Processes, component-based spatiotemporal field composer. The normal first controls are `Mode` and `Example Process`: an Example Process applies an editable deterministic process recipe, while `Custom Composer` exposes the same primitive controls directly for user-authored/global component recipes. Example Process options are grouped into Foundational CA Models and Observable Process Patterns. The primary modes are Example Processes, Custom Composer, Process Paint, and Rule Allocation Sandbox. Diagnostics is available through Display / Diagnostic Layer and the right-panel Diagnostics tab rather than as a primary workflow mode. Example Processes start from the shared Sampling Value display so behavior can be compared consistently; their best display layers remain recommendations. The right panel explains the selected process automatically, including its rule/update-function framing. Internal and exported fields may still use `referenceSignature` names for compatibility. Legacy behavior presets remain in code for compatibility and debugging, but they are not the normal UI entry point. The demo answers:
+It is now organized as a mode-aware, context-based spatiotemporal field composer. The normal first controls are `Mode` and a context-specific model or analog selector: an Example Process applies an editable deterministic process recipe, while `Custom Composer` exposes the same primitive controls directly for user-authored/global component recipes. The two guided example contexts are Foundational CA Models and Ocean-Relevant Process Analogs. The primary modes are Foundational CA Models, Ocean-Relevant Process Analogs, Custom Composer, Process Paint, and Rule Allocation Sandbox. Diagnostics is available through Display / Diagnostic Layer and the right-panel Diagnostics tab rather than as a primary workflow mode. Guided process examples now use discrete generation playback and semantic rule displays by default. Foundational CA Models and Ocean-Relevant Process Analogs advance on the process tick clock, not the render loop. The default rate is 1 generation per second, with Step Generation, Run/Pause, Reset, and tick-rate controls. Their default displays explain state, rule metric, transition class, sampling interpretation, or source/initial field rather than generic heat. The right panel explains the selected process automatically, including its rule/update-function framing. Internal and exported fields may still use `referenceSignature` names for compatibility. Legacy behavior presets remain in code for compatibility and debugging, but they are not the normal UI entry point. The demo answers:
 
 - where events can originate or recur
 - what spatial shape the sample-value field has
@@ -63,7 +63,7 @@ These are simplified analog dynamics for teaching sampling strategy. They are no
 
 Process Paint and Rule Allocation Sandbox use the canonical deterministic rule-family catalog `sampling-process-rule-families-v1`: `inert`, `propagatingFront`, `excitableWave`, `localBirthDeath`, `diffusiveSpread`, `directedTransport`, `cyclicDominance`, `domainFormation`, `thresholdCascade`, `interactingPopulation`, `freshnessRecovery`, `morphogenesis`, `congestionWave`, `structuredSignal`. Older saved IDs such as `frontPropagation`, `birthDeath`, `diffusionSpread`, `driftTransport`, `clusterFormation`, `cascade`, `predatorPreyMigration`, `signalPropagation`, and `none` remain aliases, but new paint layers and exports write canonical IDs.
 
-When Process Paint is running, the lab advances painted cells through a deterministic CA-style stepper. Each frame emits `stateLayer`, nullable `ruleLayer` cell overrides, canonical `resolvedRuleLayer`, `groupLayer`, `sourceField`, `samplingValueField`, `transitionLayer`, `roiRoleLayer`, and `processMessages`. A `null`/`inherit` rule slot means "use the group rule"; explicit `inert` means "do not update this cell." Movement-like rules use deterministic proposed writes that are resolved after the scan loop, so transported cells are not overwritten by later cell processing. Time-series exports use `initial-frame-then-steps-v1`: frame 0 is the painted initial state, frame 1 is the first update, and later frames continue stepping. The right-panel cell editor reports the canonical rule label, transition record, ROI role, group, source value, and sampling value for the selected cell.
+When Process Paint is running, the lab advances painted cells through a deterministic CA-style stepper. Each frame emits `stateLayer`, nullable `ruleLayer` cell overrides, canonical `resolvedRuleLayer`, `groupLayer`, `sourceField`, `samplingValueField`, `transitionLayer`, `roiRoleLayer`, and `processMessages`. A `null`/`inherit` rule slot means "use the group rule"; explicit `inert` means "do not update this cell." Movement-like rules use deterministic proposed writes that are resolved after the scan loop, so transported cells are not overwritten by later cell processing. Time-series exports use `initial-frame-then-steps-v1`: frame 0 is the painted initial state, frame 1 is the first update, and later frames continue stepping. Browser playback for discrete process contexts uses `discrete-generations-v1`: render frames are separate from logical generations, and exports record `processTiming` plus `processDisplayMetric`. The right-panel cell editor reports the canonical rule label, transition record, ROI role, group, source value, and sampling value for the selected cell.
 
 Feature-evolution patterns describe how scalar structures move, spread, rotate, deform, or activate:
 
@@ -165,14 +165,14 @@ Every major component in Process Lab has behavior help. The left Mission Console
 
 Each Behavior Help page also includes `This component changes`, `This component should not change`, `Look for this in the heatmap`, `Useful display layers`, and `Common confusion`. After changing one primitive from a selected preset, the left console shows a component isolation hint with the expected effect and recommended diagnostic views. Lightweight compatibility warnings call out educationally confusing combinations, such as static temporal forcing with neighbor propagation or freshness effects while viewing only Event Likelihood.
 
-## Example Processes and Legacy Presets
+## Process Contexts and Legacy Presets
 
 The top-level Mode selector decides the workflow:
 
-- `Example Processes`: shows the Example Process selector, applies an editable example recipe, and preserves legacy `referenceSignature` metadata for compatibility.
+- `Foundational CA Models` and `Ocean-Relevant Process Analogs`: show one context-specific selector, apply an editable example recipe, and preserve legacy `referenceSignature` metadata for compatibility.
 - `Custom Composer`: hides the Example Process selector and lets users edit primitive controls directly. Imported custom recipes, if supported later, belong here.
 
-Example Processes do not replace primitive controls. Selecting an example fills in the underlying Source / Initial Field, Spatial Pattern, Value Distribution, Temporal Pattern, Spatial Evolution, State Model, Sampling Effect, and relevant parameters. Users can then modify those controls to create custom behavior; the example remains marked as modified so the result can still be compared against the original guided process.
+Guided process examples do not replace primitive controls. Selecting an example fills in the underlying Source / Initial Field, Spatial Pattern, Value Distribution, Temporal Pattern, Spatial Evolution, State Model, Sampling Effect, and relevant parameters. Users can then modify those controls to create custom behavior; the example remains marked as modified so the result can still be compared against the original guided process.
 
 Legacy behavior presets are curated combinations of the primitive sample-field controls. They remain available for compatibility, internal mapping, and optional debug workflows, but the normal left-panel UI no longer starts from a visible preset dropdown.
 
@@ -191,7 +191,7 @@ Legacy behavior presets are curated combinations of the primitive sample-field c
 | Forest Fire Front (inspired) | Advancing active front | Front + propagation + depleted residual |
 | Life-Like Cellular Emergence (inspired) | Local-rule emergence | Neighbor propagation + state-evolving |
 
-Some Example Processes and legacy presets are inspired by real-world processes but are simplified educational examples. They are not validated process models and do not add current-field dependencies. Flow-driven examples belong in the Coupled Fields Demo.
+Some guided process examples and legacy presets are inspired by real-world processes but are simplified educational examples. They are not validated process models and do not add current-field dependencies. Flow-driven examples belong in the Coupled Fields Demo.
 
 Preset sanity checks can be run from Node:
 
@@ -219,7 +219,7 @@ Layered view filters can hide inactive nodes, show transition nodes only, choose
 
 ## Process Contracts and Recipes
 
-Example Processes are recipes, not opaque models. Each example has related models, an observable pattern, sampling interpretation, expected failure signs, best display layers, and a component recipe. The right panel opens on `Process Example View` by default so users see Current Lab State before selecting a cell. Process Example View shows which component controls source support, geometry, value distribution, timing, evolution, memory, sampling effect, display, and the local rule/update-function framing.
+Guided process examples are recipes, not opaque models. Each example has related models, an observable pattern, sampling interpretation, expected failure signs, best display layers, and a component recipe. The right panel opens on `Process Example View` by default so users see Current Lab State before selecting a cell. Process Example View shows which component controls source support, geometry, value distribution, timing, evolution, memory, sampling effect, display, and the local rule/update-function framing.
 
 Legacy presets also carry process contracts for backward compatibility and debug comparison. They are documented as internal examples rather than the primary UI.
 
@@ -411,15 +411,15 @@ Value Distribution answers: how are values assigned within the selected spatial 
 - `Heavy-Tailed`: most values are modest, with a replayable high-value tail.
 - `Rare Extreme Events`: most values remain low, with sparse deterministic extreme cells.
 
-## Example Processes
+## Guided Process Examples
 
-Example Processes are deterministic recipes inspired by known cellular automata and grid-process families. They are not exact reproductions. Their purpose is to connect a recognizable process behavior to the Process Lab component system:
+Guided process examples are deterministic recipes inspired by known cellular automata and grid-process families. They are not exact reproductions. Their purpose is to connect a recognizable process behavior to the Process Lab component system:
 
 ```text
 known process model or pattern -> process example -> editable component recipe -> dynamic heatmap
 ```
 
-The visible selector is grouped into Foundational CA Models and Observable Process Patterns.
+The visible mode selector exposes Foundational CA Models and Ocean-Relevant Process Analogs directly. Observable Process Patterns are bridge metadata, not a primary selector.
 
 Foundational CA Models:
 
@@ -461,7 +461,7 @@ Future tutorial pages may compare a related CA/grid-process animation with the R
 
 ## Example Process Coverage
 
-The comprehensive catalog maps known CA/grid-process models into Example Processes. Foundational models appear directly in the selector; related known models also appear in the right panel, exports, and coverage audits. Internal/export compatibility still uses `referenceSignature` field names.
+The comprehensive catalog maps known CA/grid-process models into guided process examples. Foundational models appear directly in the selector; related known models also appear in the right panel, exports, and coverage audits. Internal/export compatibility still uses `referenceSignature` field names.
 
 | Signature | Reference model families | Observable behavior | ROI meaning | CA mechanism tags |
 |---|---|---|---|---|
@@ -686,3 +686,18 @@ The pure Sample / ROI Demo keeps Linear Band and Front / Boundary only as abstra
 - Observer particles are not currently rendered in the pure sample demo.
 - The demo does not validate waypoint routes, compute score, save attempts, or export leaderboard records.
 - It should not be used as evidence that a route is executable; use Planning, route validation, simulation, and Debrief for that.
+
+## Process Example Contexts
+
+Foundational CA Models are known local-rule models used to teach cells, states, neighborhoods, update rules, and emergent behavior. Ocean-Relevant Process Analogs are simplified CA/grid-process-inspired event or process layers that resemble environmental behaviors important for AUV sampling, but they are not physical flow models or calibrated ocean simulations.
+
+Observable Process Patterns are bridge metadata rather than the primary selector. For example, Forest Fire maps to Propagating Fronts, which bridges to River Plume Front and Shoreline Runoff Pulse analogs. Greenberg-Hastings maps to Excitable Waves. Sandpile maps to Threshold Cascades, which bridges to turbidity or episodic discharge analogs.
+
+Science boundary: the deterministic process demo teaches local process evolution S(x,y,t). Flow Fields teaches current vectors F(x,y,t). Coupled Dynamic Sampling Space combines process plus flow plus constraints. Uncertainty / Forecast adds hidden truth, forecast, belief, observations, and uncertainty. Ocean-relevant analogs in this demo are not calibrated ocean models.
+## Active Example State
+
+The visible Process Lab mode plus the context-specific model or analog selector is the primary identity for the Deterministic Spatiotemporal Process Lab. The mode selector, context-specific model or analog selector, center subtitle, right-panel Current Lab State, debug object, scenario metadata, and exports should agree on the same selected example.
+
+`referenceSignature*` fields remain for compatibility and represent the mapped observable pattern, not the primary selected example. New consumers should prefer the `processExample` block in demo/scenario exports. `processExample.mappedReferenceSignatureId` should match the legacy flat `referenceSignatureId`.
+
+Ocean-Relevant Process Analogs are educational event/process-layer analogs. They are not calibrated flow models, ocean forecasts, uncertainty models, or mission planners; flow coupling and uncertainty realism belong in the coupled and uncertainty demos.

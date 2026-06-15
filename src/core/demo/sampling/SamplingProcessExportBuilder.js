@@ -27,9 +27,10 @@ import {
 } from './SamplingProcessRules.js';
 import { validateSamplingProcessPaintModel } from './SamplingProcessPaintModel.js';
 import {
-  processExampleMetadata,
-  referenceSignatureIdForProcessExample
+  activeProcessExampleExportBlock,
+  resolveActiveSpatiotemporalProcessExample
 } from './SpatiotemporalProcessExamples.js';
+import { processTimingExportBlock } from './SamplingProcessTiming.js';
 
 export function buildSamplingProcessDemoArtifactExport(context = {}) {
   const field = context.field ?? {};
@@ -49,6 +50,8 @@ export function buildSamplingProcessDemoArtifactExport(context = {}) {
       : field.activityDiagnostics?.presetValidation?.status ?? 'PASS'
   });
   const ruleMetadata = buildSamplingProcessRuleCatalogMetadata(context);
+  const processTiming = context.processTiming ?? field.processTiming ?? processTimingExportBlock(context);
+  const processDisplayMetric = context.processDisplayMetric ?? field.processDisplayMetric ?? null;
   return buildDemoArtifactEnvelope({
     type: SAMPLING_PROCESS_EXPORT_TYPE,
     legacyType: 'anchor.demo.sample-roi-field',
@@ -66,6 +69,8 @@ export function buildSamplingProcessDemoArtifactExport(context = {}) {
       playbackSpeed: context.timeSpeedScale
     },
     timeSampling: sampling,
+    processTiming,
+    processDisplayMetric,
     config: context.sceneConfig ?? {},
     patternMode: context.processMode,
     validationStatus: statusLabel,
@@ -74,6 +79,7 @@ export function buildSamplingProcessDemoArtifactExport(context = {}) {
     fields: currentFrame?.fields,
     likelihoodField: currentFrame?.likelihoodField,
     graphField: currentFrame?.graphField,
+    metricLayers: cloneMetricLayers(field.metricLayers ?? context.metricLayers),
     clusters: currentFrame?.clusters,
     frames,
     selectedCell: context.selectedCell ? context.inspectSelectedCell?.() ?? context.selectedCellInspection ?? null : null,
@@ -122,6 +128,9 @@ export function buildSamplingProcessDemoArtifactExport(context = {}) {
       likelihoodMesh: field.likelihoodField?.mesh,
       graphField: field.graphField?.graph,
       processMetadata: field.graphField?.processMetadata,
+      processTiming,
+      processDisplayMetric,
+      metricLayers: cloneMetricLayers(field.metricLayers ?? context.metricLayers),
       validation: field.activityDiagnostics?.presetValidation ?? null,
       clusters: field.graphField?.clusters,
       highValueCells: field.highValueCells,
@@ -147,11 +156,15 @@ export function buildSamplingProcessDemoArtifactFrame(context = {}, time, index,
     selectedCell: context.selectedCell
   });
   const demoTime = time ?? context.demoTime ?? field.time ?? 0;
+  const frameProcessTiming = context.processTiming ?? field.processTiming ?? null;
+  const frameProcessDisplayMetric = context.processDisplayMetric ?? field.processDisplayMetric ?? null;
   return {
     index,
     timeSeconds: demoTime,
     demoTimeSeconds: demoTime,
     fieldTimeSeconds: field.time ?? demoTime,
+    processTiming: frameProcessTiming,
+    processDisplayMetric: frameProcessDisplayMetric,
     fields: {
       displayedValue: cloneField(field.field),
       sampleValue: cloneField(field.sampleValueField ?? field.field),
@@ -178,7 +191,8 @@ export function buildSamplingProcessDemoArtifactFrame(context = {}, time, index,
       graphTopMessages: processMessages,
       processMessages,
       edgeMessages: cloneEdgeMessages(field.graphField?.edgeMessages),
-      graphNodeTransitions: cloneNodeTransitions(field.graphField?.nodeTransitions)
+      graphNodeTransitions: cloneNodeTransitions(field.graphField?.nodeTransitions),
+      metricLayers: cloneMetricLayers(field.metricLayers ?? context.metricLayers)
     },
     likelihoodField: cloneLikelihoodFieldModel(field.likelihoodField),
     graphField: cloneGraphFieldModel(field.graphField),
@@ -220,24 +234,46 @@ export function buildSamplingProcessPaintExportMetadata(context = {}) {
 }
 
 export function buildSamplingProcessReferenceExportMetadata(context = {}, behaviorPreset = null) {
-  const processExample = processExampleMetadata(context.exampleProcessId ?? context.referenceSignatureId, context.referenceSignatureModified);
-  const mappedReferenceId = referenceSignatureIdForProcessExample(context.exampleProcessId ?? context.referenceSignatureId) ?? context.referenceSignatureId;
-  const referenceSignature = context.referenceSignature ?? referenceSignatureMetadata(mappedReferenceId, context.referenceSignatureModified);
+  const activeExample = resolveActiveSpatiotemporalProcessExample(context);
+  const processExample = activeExample.sourceExample;
+  const processExampleBlock = activeProcessExampleExportBlock(activeExample);
+  const referenceSignature = activeExample.referenceSignature
+    ?? context.referenceSignature
+    ?? referenceSignatureMetadata(activeExample.referenceSignatureId ?? context.referenceSignatureId, context.referenceSignatureModified);
   const legacyPresetMappedReferenceSignature = context.patternSource === 'legacyPreset'
     ? (behaviorPreset ?? sampleFieldBehaviorPresetMetadata(context.behaviorPresetId, context.behaviorPresetModified)).referenceSignature
     : null;
   const fields = {
-    exampleProcessId: processExample?.id ?? null,
-    exampleProcessLabel: processExample?.label ?? null,
-    exampleType: processExample?.exampleType ?? null,
-    foundationalModelId: processExample?.exampleType === 'foundationalCaModel' ? processExample.id : null,
-    observableProcessPatternId: processExample?.exampleType === 'observableProcessPattern' ? processExample.id : processExample?.referenceSignatureId ?? null,
-    processPatternId: processExample?.referenceSignatureId ?? referenceSignature?.id ?? null,
+    processExample: processExampleBlock,
+    exampleTrack: activeExample.exampleTrack,
+    exampleTrackLabel: activeExample.exampleTrackLabel,
+    exampleProcessId: activeExample.exampleProcessId,
+    exampleProcessLabel: activeExample.exampleProcessLabel,
+    exampleType: activeExample.exampleType,
+    foundationalCaModelId: activeExample.foundationalCaModelId,
+    foundationalModelId: activeExample.foundationalCaModelId,
+    oceanProcessAnalogId: activeExample.oceanProcessAnalogId,
+    exampleProcessModified: activeExample.isModified,
+    observableProcessPatternId: activeExample.exampleType === 'observableProcessPattern'
+      ? activeExample.exampleProcessId
+      : activeExample.referenceSignatureId,
+    processPatternId: activeExample.referenceSignatureId ?? referenceSignature?.id ?? null,
     spatiotemporalProcessExample: processExample,
-    implementationFidelity: processExample?.implementationFidelity ?? null,
-    ruleFamilyId: processExample?.ruleFamilyId ?? null,
-    relatedFoundationalModels: processExample?.relatedFoundationalModels ?? [],
-    relatedObservablePatterns: processExample?.relatedObservablePatterns ?? [],
+    implementationFidelity: activeExample.implementationFidelity,
+    ruleFamilyId: activeExample.ruleFamilyId,
+    relatedFoundationalModels: activeExample.relatedFoundationalModels,
+    relatedOceanAnalogs: activeExample.relatedOceanAnalogs,
+    relatedObservablePatterns: activeExample.relatedObservablePatterns,
+    observableProcessPatternTags: activeExample.observableProcessPatternTags,
+    requiresFlowCoupling: activeExample.requiresFlowCoupling,
+    requiresUncertaintyForMissionRealism: activeExample.requiresUncertaintyForMissionRealism,
+    environmentalProcess: processExample?.environmentalProcess ?? null,
+    underlyingCaMechanism: processExample?.underlyingCaMechanism ?? null,
+    samplingInterpretation: processExample?.samplingInterpretation ?? null,
+    recommendedSamplingStrategy: processExample?.recommendedSamplingStrategy ?? null,
+    missingScienceLayers: processExample?.missingScienceLayers ?? [],
+    notA: processExample?.notA ?? null,
+    coupledDemoBridgeNote: processExample?.coupledDemoBridgeNote ?? null,
     ruleStatement: processExample?.ruleStatement ?? [],
     localUpdateFunction: processExample?.localUpdateFunction ?? null,
     globalUpdateFunction: processExample?.globalUpdateFunction ?? null,
@@ -265,7 +301,6 @@ export function buildSamplingProcessReferenceExportMetadata(context = {}, behavi
     metadataFields: fields
   };
 }
-
 export function buildSamplingProcessComponentRecipeExport(context = {}) {
   return {
     ...(context.sceneConfig ?? {}),
@@ -282,14 +317,27 @@ export function buildSamplingProcessComponentRecipeExport(context = {}) {
 }
 
 export function buildSamplingProcessScenarioMetadata(context = {}, scenario = {}) {
+  const activeExample = resolveActiveSpatiotemporalProcessExample(context);
   return {
     preferredType: SAMPLING_PROCESS_SCENARIO_TYPE,
     legacyType: scenario.type,
     processMode: context.processMode,
+    processExample: activeProcessExampleExportBlock(activeExample),
+    exampleTrack: activeExample.exampleTrack,
+    exampleTrackLabel: activeExample.exampleTrackLabel,
+    exampleProcessId: activeExample.exampleProcessId,
+    exampleProcessLabel: activeExample.exampleProcessLabel,
+    exampleType: activeExample.exampleType,
+    foundationalCaModelId: activeExample.foundationalCaModelId,
+    oceanProcessAnalogId: activeExample.oceanProcessAnalogId,
+    referenceSignatureId: activeExample.referenceSignatureId,
+    referenceSignatureLabel: activeExample.referenceSignatureLabel,
+    requiresFlowCoupling: activeExample.requiresFlowCoupling,
+    observableProcessPatternTags: activeExample.observableProcessPatternTags,
     statusLabel: samplingProcessStatusLabel({
       mode: context.processMode,
       patternSource: context.patternSource,
-      modified: Boolean(context.referenceSignatureModified || context.behaviorPresetModified || Object.keys(context.paintModel?.cells ?? {}).length > 0),
+      modified: Boolean(activeExample.isModified || context.behaviorPresetModified || Object.keys(context.paintModel?.cells ?? {}).length > 0),
       validationStatus: scenario.validation?.status ?? 'PASS'
     }),
     ruleAllocation: context.paintModel
@@ -317,6 +365,43 @@ function buildSamplingProcessActiveComponentRecipeMetadata(context = {}) {
     displayLayer: context.field?.displayMode ?? context.displayMode,
     seed: context.seed
   };
+}
+
+function cloneMetricLayers(metricLayers = null) {
+  if (!metricLayers || typeof metricLayers !== 'object') return null;
+  const allowed = [
+    'neighborCount',
+    'birthSupport',
+    'survivalSupport',
+    'ruleSupport',
+    'transitionClass',
+    'sourceSupport',
+    'samplingValue',
+    'ignitionPressure',
+    'infectionPressure',
+    'excitationPressure',
+    'thresholdProximity',
+    'congestionPressure',
+    'signalSupport',
+    'signalPath',
+    'nextActivationSupport',
+    'statePhase',
+    'consumedTrail',
+    'refractoryPhase',
+    'wavefrontClass',
+    'load',
+    'cascadeTrigger',
+    'occupancy',
+    'blockedFront',
+    'releaseWave',
+    'transportSupport',
+    'recoveryPhase'
+  ];
+  const cloned = {};
+  for (const key of allowed) {
+    if (metricLayers[key]) cloned[key] = cloneField(metricLayers[key]);
+  }
+  return Object.keys(cloned).length ? cloned : null;
 }
 
 function cloneLikelihoodFieldModel(model) {

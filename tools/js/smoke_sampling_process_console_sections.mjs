@@ -78,7 +78,7 @@ function stateForMode(processMode) {
   return {
     ...baseState,
     processMode,
-    patternSource: processMode === 'customComposer' ? 'custom' : 'referenceSignature'
+    patternSource: ['customComposer', 'processPaint', 'randomRuleLab'].includes(processMode) ? 'custom' : 'referenceSignature'
   };
 }
 
@@ -113,12 +113,25 @@ for (const sectionId of SAMPLING_PROCESS_SECTION_IDS) {
   assert(typeof html === 'string' && html.trim().length > 0, `${sectionId} did not render for ${ownerMode}`);
 }
 
-const referenceHtml = samplingProcessConsoleHtml(stateForMode('referenceSignature'));
-assert(SAMPLING_PROCESS_VISIBLE_MODES.length === 4, 'visible workflow mode list should contain four modes');
+const referenceHtml = samplingProcessConsoleHtml(stateForMode('foundationalCaModels'));
+const oceanHtml = samplingProcessConsoleHtml({ ...stateForMode('oceanProcessAnalogs'), exampleTrack: 'oceanRelevantProcessAnalogs', exampleProcessId: 'riverPlumeFront', oceanProcessAnalogId: 'riverPlumeFront', referenceSignatureId: 'frontPropagation' });
+assert(SAMPLING_PROCESS_VISIBLE_MODES.length === 5, 'visible workflow mode list should contain five modes');
+assert(SAMPLING_PROCESS_VISIBLE_MODES.includes('foundationalCaModels'), 'visible modes missing Foundational CA Models');
+assert(SAMPLING_PROCESS_VISIBLE_MODES.includes('oceanProcessAnalogs'), 'visible modes missing Ocean-Relevant Process Analogs');
+assert(!SAMPLING_PROCESS_VISIBLE_MODES.includes('referenceSignature'), 'legacy referenceSignature should not be visible');
 assertExcludes(referenceHtml, 'value="diagnosticsGraphInspection"', 'visible mode selector should not expose diagnostics mode');
 assertExcludes(referenceHtml, 'id="roi-demo-pattern-source"', 'reference mode should not show Pattern Source dropdown');
 assertExcludes(referenceHtml, 'data-roi-help="behaviorPreset"', 'reference mode should not show selected-pattern Explain button');
-assertIncludes(referenceHtml, 'id="roi-demo-reference-signature"', 'reference mode missing reference selector');
+assertExcludes(referenceHtml, 'id="sampling-process-example-track"', 'foundational mode should not show Example Track selector');
+assertIncludes(referenceHtml, 'Foundational CA Models', 'foundational mode missing context label');
+assertIncludes(referenceHtml, 'Foundational CA Model', 'foundational mode missing model selector label');
+assertIncludes(referenceHtml, 'id="sampling-process-example-id"', 'foundational mode missing model selector');
+assertExcludes(referenceHtml, 'River Plume Front', 'foundational selector should not include ocean analogs');
+assertIncludes(oceanHtml, 'Ocean-Relevant Process Analogs', 'ocean mode missing context label');
+assertIncludes(oceanHtml, 'Ocean Process Analog', 'ocean mode missing analog selector label');
+assertIncludes(oceanHtml, 'River Plume Front', 'ocean selector missing River Plume Front');
+assertExcludes(oceanHtml, "Conway's Game of Life", 'ocean selector should not include foundational models');
+assertIncludes(referenceHtml, 'id="roi-demo-reference-signature"', 'reference mode missing hidden legacy reference selector');
 assertExcludes(referenceHtml, 'data-sampling-section="sourceField"', 'reference mode should not show source field composer controls');
 assertExcludes(referenceHtml, 'data-sampling-section="valueDistribution"', 'reference mode should not show value distribution composer controls');
 
