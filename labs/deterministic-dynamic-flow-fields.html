@@ -1,0 +1,232 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Deterministic Dynamic Flow Fields | ANCHOR Learning Labs</title>
+  <link rel="stylesheet" href="../css/labs.css" />
+</head>
+<body>
+  <main class="lab-shell">
+    <header class="lab-header">
+      <nav class="lab-nav" aria-label="Learning Labs navigation">
+        <a href="index.html">Back to Learning Labs</a>
+        <a href="../index.html">Open Main App</a>
+        <a href="../index.html#simulation-lab">Open Flow Fields Sandbox</a>
+      </nav>
+    </header>
+
+    <section class="lab-hero">
+      <div>
+        <p class="lab-kicker">Learning Lab 2</p>
+        <h1>Deterministic Dynamic Flow Fields</h1>
+        <p class="lab-subtitle">Learn how vector fields describe movement through space and time.</p>
+        <div class="lab-badges" aria-label="Flow field article tags">
+          <span>Deterministic / Seeded</span>
+          <span>Vector Fields</span>
+          <span>Flow Magnitude</span>
+          <span>Particle Tracing</span>
+          <span>Dynamic Currents</span>
+          <span>Coupled Demo Foundation</span>
+        </div>
+        <div class="lab-actions">
+          <a class="lab-button" href="index.html">Back to Learning Labs</a>
+          <a class="lab-button" href="../index.html">Open Main App</a>
+          <a class="lab-button primary" href="../index.html#simulation-lab">Open Flow Fields Sandbox</a>
+        </div>
+        <p class="lab-note">Open the main app, then choose Simulation Lab -> Flow Fields Demo if the hash link is not handled by your browser session.</p>
+      </div>
+      <figure class="lab-figure" aria-label="Static arrow-grid flow field diagram">
+        <div class="lab-arrow-diagram" aria-hidden="true">
+          <span class="arrow-short">-></span><span class="arrow-long">-></span><span class="arrow-short">-></span>
+          <span class="arrow-long">-></span><span class="arrow-turn">↗</span><span class="arrow-long">-></span>
+          <span class="arrow-short">-></span><span class="arrow-long">-></span><span class="arrow-short">-></span>
+        </div>
+        <figcaption class="lab-caption"><strong>What to notice:</strong> a flow field is not a heatmap. It is a map of directions and magnitudes.</figcaption>
+      </figure>
+    </section>
+
+    <div class="lab-layout">
+      <aside class="lab-toc" aria-label="Article table of contents">
+        <strong>Table of contents</strong>
+        <a href="#what">1. What is a flow field?</a>
+        <a href="#direction">2. Direction and magnitude</a>
+        <a href="#function">3. Flow as a vector function</a>
+        <a href="#particles">4. Particles as flow tracers</a>
+        <a href="#structure">5. Spatial structure</a>
+        <a href="#time">6. Time-varying deterministic flow</a>
+        <a href="#boundaries">7. Boundaries, land, and topology</a>
+        <a href="#layers">8. Additive flow layers</a>
+        <a href="#transport">9. From flow to transport</a>
+        <a href="#coupled">10. How this connects to coupled sampling spaces</a>
+        <a href="#sandbox">11. Open the full Flow Fields sandbox</a>
+        <a href="#next">12. What comes next</a>
+      </aside>
+
+      <article class="lab-article">
+        <section id="what" class="lab-section">
+          <h2>1. What is a flow field?</h2>
+          <p>A flow field assigns a direction and strength to each point in space. Instead of storing a scalar value like active or inactive, a flow field stores a vector.</p>
+          <div class="lab-equation-row">
+            <div class="lab-math"><code>F(x,y,t) = &lt;u(x,y,t), v(x,y,t)&gt;</code><div class="lab-translation"><strong>In words:</strong> at every position and time, the field tells you which way the water pushes and how strongly it pushes.</div></div>
+          </div>
+          <figure class="lab-figure" aria-label="Arrow grid with varied arrow lengths">
+            <h3>Arrow-grid vector field</h3>
+            <div class="lab-arrow-diagram wide" aria-hidden="true">
+              <span>→</span><span class="arrow-long">→</span><span>↘</span><span class="arrow-short">→</span>
+              <span>→</span><span class="arrow-long">↘</span><span class="arrow-long">→</span><span>→</span>
+              <span class="arrow-short">↗</span><span>→</span><span class="arrow-long">→</span><span class="arrow-short">↘</span>
+            </div>
+            <figcaption class="lab-caption"><strong>What to notice:</strong> longer arrows represent stronger flow; arrow angle represents direction.</figcaption>
+          </figure>
+          <p><strong>Connection to the simulator:</strong> the Flow Fields Demo visualizes current vectors <code>F(x,y,t)</code>, particles, magnitude, terrain, and deterministic evolution presets.</p>
+        </section>
+
+        <section id="direction" class="lab-section">
+          <h2>2. Direction and magnitude</h2>
+          <p>A vector has both direction and magnitude. Direction tells where motion points. Magnitude tells how strong or fast the flow is.</p>
+          <div class="lab-equation-grid">
+            <div class="lab-math"><code>F = &lt;u, v&gt;</code><div class="lab-translation"><strong>In words:</strong> the vector has a horizontal component and a vertical component.</div></div>
+            <div class="lab-math"><code>||F|| = sqrt(u^2 + v^2)</code><div class="lab-translation"><strong>In words:</strong> speed is computed from the horizontal and vertical components.</div></div>
+          </div>
+          <section class="lab-flow-widget" data-widget="flow-vector-components" aria-label="Vector component interactive widget">
+            <h3>Vector Component Widget</h3>
+            <p>Move the sliders to change horizontal and vertical push.</p>
+            <div data-flow-widget="vector-components"></div>
+            <p class="lab-what-to-notice"><strong>What to notice:</strong> changing u affects horizontal push, changing v affects vertical push, and changing both changes direction and strength.</p>
+          </section>
+        </section>
+
+        <section id="function" class="lab-section">
+          <h2>3. Flow as a vector function</h2>
+          <p>The flow vector can vary by location. Nearby locations can point in different directions or have different strength.</p>
+          <div class="lab-math"><code>F(x,y,t) = &lt;u(x,y,t), v(x,y,t)&gt;</code><div class="lab-translation"><strong>In words:</strong> the vector depends on where you are and when you are there.</div></div>
+          <div class="lab-card-grid">
+            <div class="lab-vector-card"><h3>Uniform</h3><code>F(x,y) = &lt;a, 0&gt;</code><p>In words: everything is pushed the same direction.</p></div>
+            <div class="lab-vector-card"><h3>Shear</h3><code>F(x,y) = &lt;k y, 0&gt;</code><p>In words: speed changes with vertical position.</p></div>
+            <div class="lab-vector-card"><h3>Vortex</h3><code>F(x,y) = &lt;-omega(y-c_y), omega(x-c_x)&gt;</code><p>In words: flow rotates around a center.</p></div>
+          </div>
+          <section class="lab-flow-widget" data-widget="flow-field-presets" aria-label="Flow field preset interactive widget">
+            <h3>Flow Field Preset Widget</h3>
+            <p>Compare Uniform, Shear, Vortex, Converging, and Diverging fields on the same canvas.</p>
+            <div data-flow-widget="field-presets"></div>
+            <p class="lab-what-to-notice"><strong>What to notice:</strong> a vector field can change direction, magnitude, or both across space.</p>
+          </section>
+        </section>
+
+        <section id="particles" class="lab-section">
+          <h2>4. Particles as flow tracers</h2>
+          <p>Particles show what the flow does to objects or water parcels. A particle is not the flow itself. It is a tracer that moves through the flow.</p>
+          <div class="lab-math"><code>p(t + &Delta;t) = p(t) + F(p(t), t) &Delta;t</code><div class="lab-translation"><strong>In words:</strong> at each step, the particle samples the flow where it currently is and moves a little in that direction.</div></div>
+          <figure class="lab-figure lab-particle-diagram" aria-label="Particle path diagram">
+            <div aria-hidden="true"><span>p(t)</span><span>+</span><span>local vector</span><span>=</span><span>p(t + &Delta;t)</span></div>
+            <figcaption class="lab-caption"><strong>What to notice:</strong> particle paths reveal transport through the vector field.</figcaption>
+          </figure>
+          <section class="lab-flow-widget" data-widget="flow-particle-tracer" aria-label="Particle tracer interactive widget">
+            <h3>Particle Tracer Widget</h3>
+            <p>Watch seeded particles trace the selected flow field.</p>
+            <div data-flow-widget="particle-tracer"></div>
+            <p class="lab-what-to-notice"><strong>What to notice:</strong> the same arrow field can create straight paths, curls, pileups, or spreading.</p>
+          </section>
+        </section>
+
+        <section id="structure" class="lab-section">
+          <h2>5. Spatial structure: shear, rotation, convergence, divergence</h2>
+          <p>Spatial structure describes how nearby vectors relate to each other.</p>
+          <div class="lab-flow-preset-grid">
+            <article class="lab-flow-mini-card"><h3>Shear</h3><code>F(x,y)=&lt;k y,0&gt;</code><p><strong>In words:</strong> nearby particles move at different speeds.</p><div class="mini-arrow-row">→ → →</div></article>
+            <article class="lab-flow-mini-card"><h3>Rotation</h3><code>F=&lt;-omega(y-c_y), omega(x-c_x)&gt;</code><p><strong>In words:</strong> flow curls around a center.</p><div class="mini-arrow-row">↗ ↻ ↙</div></article>
+            <article class="lab-flow-mini-card"><h3>Convergence</h3><code>F=-alpha&lt;x-c_x,y-c_y&gt;</code><p><strong>In words:</strong> flow moves inward toward a region.</p><div class="mini-arrow-row">→ • ←</div></article>
+            <article class="lab-flow-mini-card"><h3>Divergence</h3><code>F=alpha&lt;x-c_x,y-c_y&gt;</code><p><strong>In words:</strong> flow moves outward away from a region.</p><div class="mini-arrow-row">← • →</div></article>
+          </div>
+        </section>
+
+        <section id="time" class="lab-section">
+          <h2>6. Time-varying deterministic flow</h2>
+          <p>A flow field can change over time. Deterministic means the same preset, seed, and clock produce the same sequence.</p>
+          <div class="lab-equation-grid">
+            <div class="lab-math"><code>F_t(x,y)</code><div class="lab-translation"><strong>In words:</strong> this is the flow field at one moment in the demo clock.</div></div>
+            <div class="lab-math"><code>F(x,y,t) = base(x,y) + oscillation(x,y,t)</code><div class="lab-translation"><strong>In words:</strong> a stable spatial pattern can have a deterministic time-dependent change added to it.</div></div>
+            <div class="lab-math"><code>F(x,y,t) = &lt;a + b sin(omega t), 0&gt;</code><div class="lab-translation"><strong>In words:</strong> the horizontal current smoothly strengthens and weakens with the clock.</div></div>
+          </div>
+          <section class="lab-flow-widget" data-widget="time-varying-flow" aria-label="Time-varying flow interactive widget">
+            <h3>Time-Varying Flow Widget</h3>
+            <p>Animate oscillating uniform flow, rotating vortex flow, or pulsing shear.</p>
+            <div data-flow-widget="time-varying-flow"></div>
+            <p class="lab-what-to-notice"><strong>What to notice:</strong> deterministic dynamic flow changes with time but remains reproducible for the same preset and clock.</p>
+          </section>
+        </section>
+
+        <section id="boundaries" class="lab-section">
+          <h2>7. Boundaries, land, and topology</h2>
+          <p>Real environments contain boundaries: shoreline, islands, channels, obstacles, and no-go cells. A boundary does not just hide part of the map. It can change feasible movement and may redirect flow.</p>
+          <div class="lab-math"><code>C(x,y) = topology mask or movement constraint</code><div class="lab-translation"><strong>In words:</strong> C tells whether a location is open, blocked, or constrained.</div></div>
+          <figure class="lab-figure" aria-label="Topology mask with arrows around an island">
+            <div class="lab-boundary-diagram" aria-hidden="true">
+              <span>→</span><span>↗</span><span class="land">land</span><span>↘</span><span>→</span>
+              <span>→</span><span>↑</span><span class="land">island</span><span>↓</span><span>→</span>
+              <span>→</span><span>↘</span><span class="land">land</span><span>↗</span><span>→</span>
+            </div>
+            <figcaption class="lab-caption"><strong>What to notice:</strong> topology can deflect or damp flow and can block particle or vehicle movement.</figcaption>
+          </figure>
+          <p><strong>Connection to the simulator:</strong> the Flow Fields Demo includes Terrain / land modes and topology-aware fields.</p>
+        </section>
+
+        <section id="layers" class="lab-section">
+          <h2>8. Additive flow layers</h2>
+          <p>Complex flow can be built by adding simpler layers: base channel flow plus eddy, shoreline influence, shear, or oscillating tide.</p>
+          <div class="lab-math"><code>F_total(x,y,t) = F_base(x,y,t) + sum w_j F_j(x,y,t)</code><div class="lab-translation"><strong>In words:</strong> the final current field can be a weighted combination of simpler flow patterns.</div></div>
+          <div class="lab-layer-stack" aria-label="Additive layer stack">
+            <div>base channel flow</div><div>+ eddy layer</div><div>+ shear layer</div><div>+ convergence layer</div><div>= F_total</div>
+          </div>
+          <section class="lab-flow-widget" data-widget="additive-flow-layers" aria-label="Additive flow layers interactive widget">
+            <h3>Additive Flow Layers Widget</h3>
+            <p>Toggle and weight simple deterministic layers, then watch the composed arrow field update.</p>
+            <div data-flow-widget="additive-layers"></div>
+            <p class="lab-what-to-notice"><strong>What to notice:</strong> layer weights change the final vector because each active layer contributes to the sum.</p>
+          </section>
+        </section>
+
+        <section id="transport" class="lab-section">
+          <h2>9. From flow to transport</h2>
+          <p>Flow can move particles or features, but this lab teaches the flow field itself. Transport and coupled sampling are the next layer.</p>
+          <div class="lab-field-stack">
+            <div><code>F(x,y,t)</code><span>flow field: how water moves</span></div>
+            <div><code>X(x,y,t)</code><span>feature/process field: what is happening</span></div>
+            <div><code>next feature position approx current position + F(position,t) &Delta;t</code><span>transport intuition, not yet the full coupled lab</span></div>
+          </div>
+          <figure class="lab-figure" aria-label="Flow arrows next to transported feature preview">
+            <div class="lab-concept-bridge"><div>flow arrows only</div><div>feature blob carried by arrows<br /><strong>next lab</strong></div></div>
+            <figcaption class="lab-caption"><strong>What to notice:</strong> flow and process are separate concepts until a coupled model explicitly combines them.</figcaption>
+          </figure>
+        </section>
+
+        <section id="coupled" class="lab-section">
+          <h2>10. How this connects to coupled sampling spaces</h2>
+          <p>The deterministic process lab taught <code>X(x,y,t)</code> and <code>V(x,y,t)</code>. This flow lab teaches <code>F(x,y,t)</code>. The next lab combines known process, known flow, and constraints.</p>
+          <div class="lab-math"><code>S*(x,y,t) = h(V(x,y,t), F(x,y,t), C(x,y), mission)</code><div class="lab-translation"><strong>In words:</strong> true sampling value can depend on what is happening, how the water moves, and where the vehicle can go.</div></div>
+          <div class="lab-callout"><strong>Boundary:</strong> this is only a preview. This page does not implement uncertainty, posterior belief, hidden truth, information gain, path planning, or mission scoring.</div>
+        </section>
+
+        <section id="sandbox" class="lab-section">
+          <h2>11. Open the full Flow Fields sandbox</h2>
+          <p>The article teaches the concept. The full Flow Fields Demo lets users experiment with base flow field presets, additive layers, particles, terrain, evolution behavior, direction variation, magnitude variation, spatial motion, boundary modes, and data export.</p>
+          <p><a class="lab-button" href="../index.html">Open Main App</a> <a class="lab-button primary" href="../index.html#simulation-lab">Open Simulation Lab</a> <a class="lab-button" href="index.html">Back to Learning Labs</a></p>
+          <p class="lab-note">Open the main app, then choose Simulation Lab -> Flow Fields Demo.</p>
+        </section>
+
+        <section id="next" class="lab-section">
+          <h2>12. What comes next</h2>
+          <div class="lab-roadmap">
+            <div><strong>Next Learning Lab: Oracle / Deterministic Coupled Sampling Space.</strong> Combine known process + known flow + constraints into a known sampling objective.</div>
+            <div><strong>Stochastic / Uncertainty:</strong> hidden truth, observations, posterior belief, uncertainty.</div>
+            <div><strong>Stochastic Coupled Sampling Space:</strong> belief-based sampling objective.</div>
+            <div><strong>Planner / Mission Evaluation:</strong> path choice, reward, cost, regret.</div>
+          </div>
+        </section>
+      </article>
+    </div>
+  </main>
+  <script type="module" src="../src/labs/widgets/FlowFieldLearningWidgets.js"></script>
+</body>
+</html>

@@ -1,0 +1,275 @@
+{
+  "generatedAt": "2026-06-12",
+  "summary": {
+    "learningLabsReadiness": "Ready",
+    "sandboxReadiness": "Partial",
+    "productionModeReadiness": "Partial"
+  },
+  "sandboxes": {
+    "dynamicSpatiotemporalProcess": {
+      "readiness": "Mostly Ready",
+      "existingSystems": [
+        "Deterministic Spatiotemporal Process Lab terminology",
+        "RoiGeneratorDemoScene",
+        "SamplingProcessTerminology",
+        "SamplingProcessRules",
+        "SamplingProcessEvolution",
+        "SamplingProcessPaintModel",
+        "SamplingProcessRandomizer",
+        "SamplingProcessExportBuilder",
+        "RoiReferenceSignatures",
+        "RoiReferenceModelCatalog",
+        "RoiScenarioGenerator",
+        "RoiScenarioValidation"
+      ],
+      "missingSystems": [
+        "final Dynamic Spatiotemporal Process Sandbox naming decision",
+        "common engine contract wrapper",
+        "comparative engine view",
+        "ocean-inspired scalar process engine",
+        "clear separation between teaching CA/grid-process outputs and benchmark production fields"
+      ],
+      "risks": [
+        "legacy ROI/Sample naming can confuse process-vs-estimator boundaries",
+        "large RoiGeneratorDemoScene still owns substantial UI orchestration",
+        "CA/grid-process examples could be over-read as ocean simulators without claim labels"
+      ],
+      "recommendedNextPhases": [
+        "A1 Dynamic Spatiotemporal Process Sandbox Refactor Spec",
+        "A2 Simulator Engine Contract Implementation",
+        "A3 Comparative Ocean Process Engine Sandbox"
+      ]
+    },
+    "flowFields": {
+      "readiness": "Mostly Ready",
+      "existingSystems": [
+        "FlowFieldDemoScene",
+        "FlowFieldDemo core module",
+        "VectorFieldPresets",
+        "CurrentFieldGenerator",
+        "TopologyAwareComposite",
+        "flow demo documentation",
+        "demo artifact exports"
+      ],
+      "missingSystems": [
+        "engine-family wrapper contract",
+        "explicit benchmark-ready claim labeling",
+        "stronger side-by-side comparison with scalar-process engines"
+      ],
+      "risks": [
+        "synthetic topology-aware flow may be mistaken for HYCOM/ROMS data",
+        "large scene can slow future feature isolation"
+      ],
+      "recommendedNextPhases": [
+        "A4 Flow Fields Sandbox Hardening"
+      ]
+    },
+    "oracleCoupled": {
+      "readiness": "Partial",
+      "existingSystems": [
+        "CoupledFieldsDemoScene",
+        "coupled fields documentation",
+        "coupled demo artifact export",
+        "Learning Lab L3 and L5 conceptual pages"
+      ],
+      "missingSystems": [
+        "clear production-grade oracle mission coupling path",
+        "shared acquisition/priority engine contract",
+        "continuous route/value integration across coupled fields"
+      ],
+      "risks": [
+        "coupling demos can imply mission readiness without full route execution semantics",
+        "oracle and belief coupling need sharper UI/metadata boundaries"
+      ],
+      "recommendedNextPhases": [
+        "A5 Oracle Coupled Sandbox Refactor"
+      ]
+    },
+    "uncertainty": {
+      "readiness": "Partial",
+      "existingSystems": [
+        "UncertaintyForecastDemoScene",
+        "UncertaintyForecastDemo core module",
+        "uncertainty documentation",
+        "Learning Labs L4 and L5"
+      ],
+      "missingSystems": [
+        "first-class hidden unknown/hypothesis lifecycle in production missions",
+        "mission-manager diagnosis state",
+        "posterior/acquisition engine contract",
+        "surface update policy state"
+      ],
+      "risks": [
+        "demo truth display is educational and must not leak into fair planner modes",
+        "forecast error and hidden discovery are still more conceptual than production-authoritative"
+      ],
+      "recommendedNextPhases": [
+        "A6 Uncertainty Sandbox Hidden/Expected State Upgrade"
+      ]
+    },
+    "comparativeOceanProcessEngine": {
+      "readiness": "Missing",
+      "existingSystems": [
+        "CA/grid process teaching components",
+        "flow field sampler components",
+        "sample/ROI synthetic process components"
+      ],
+      "missingSystems": [
+        "side-by-side scalar engine comparison sandbox",
+        "advection/diffusion/decay/source plume engine family",
+        "reaction-advection-diffusion examples",
+        "stochastic ensemble scalar process comparison",
+        "difference view and metrics"
+      ],
+      "risks": [
+        "without this sandbox, users may conflate CA teaching rules with ocean-process simulation"
+      ],
+      "recommendedNextPhases": [
+        "A3 Comparative Ocean Process Engine Sandbox"
+      ]
+    },
+    "plannerMissionEvaluation": {
+      "readiness": "Partial",
+      "existingSystems": [
+        "MissionWorkspaceScene",
+        "SimulationScene",
+        "DebriefScene",
+        "Route validation and route preview modules",
+        "Greedy Planner baseline",
+        "Plan import/export",
+        "Learning Lab L6"
+      ],
+      "missingSystems": [
+        "three explicit benchmark modes",
+        "fixed mission-manager policy for Adaptive Benchmark",
+        "full autonomy objective-selection interface",
+        "continuous trajectory/depth production contract"
+      ],
+      "risks": [
+        "current Challenge Mode and Simulation Lab are broad experiences rather than clean benchmark-mode contracts"
+      ],
+      "recommendedNextPhases": [
+        "A8 Planner Benchmark Mode Skeleton",
+        "A9 Adaptive Benchmark Mission Manager",
+        "A10 Full Autonomy Solver Interface"
+      ]
+    }
+  },
+  "productionModes": {
+    "plannerBenchmark": {
+      "readiness": "medium",
+      "existingSystems": [
+        "route planning workspace",
+        "route preview",
+        "route validation",
+        "simulation",
+        "debrief",
+        "solver packet export",
+        "plan import",
+        "fairness labels"
+      ],
+      "missingSystems": [
+        "explicit Planner Benchmark mode label/contract",
+        "fixed stated objective benchmark packs",
+        "benchmark-specific leaderboard/debrief framing"
+      ],
+      "risks": [
+        "mission-mode presets exist but are not yet a clean benchmark taxonomy"
+      ]
+    },
+    "adaptiveBenchmark": {
+      "readiness": "low",
+      "existingSystems": [
+        "surface observation export",
+        "plan-segment import",
+        "uncertainty demo update concepts",
+        "surfacing semantics"
+      ],
+      "missingSystems": [
+        "fixed mission-manager policy",
+        "objective transition state",
+        "diagnosis state",
+        "adaptive objective history",
+        "adaptive debrief"
+      ],
+      "risks": [
+        "route replanning exists as workflow scaffolding but objective selection is not first-class"
+      ]
+    },
+    "fullAutonomyBenchmark": {
+      "readiness": "low",
+      "existingSystems": [
+        "plan import scaffolding",
+        "policy/contingency metadata preservation",
+        "oracle dataset export"
+      ],
+      "missingSystems": [
+        "objective-plus-path action space",
+        "solver policy interface",
+        "fair autonomy metadata",
+        "objective-selection debrief",
+        "leaderboard handling for autonomous agents"
+      ],
+      "risks": [
+        "existing imported plans execute waypoint lists, not autonomous objective policies"
+      ]
+    }
+  },
+  "engineFamilies": {
+    "caGridProcess": {
+      "readiness": "mostlyReadyForTeaching",
+      "classification": "CA/grid-process-inspired teaching model",
+      "wrappableModules": [
+        "SamplingProcessRules",
+        "SamplingProcessEvolution",
+        "SamplingProcessPaintModel",
+        "RoiReferenceSignatures"
+      ]
+    },
+    "oceanInspiredScalar": {
+      "readiness": "missing",
+      "classification": "future ocean-inspired synthetic model",
+      "wrappableModules": []
+    },
+    "flowField": {
+      "readiness": "mostlyReady",
+      "classification": "ocean-inspired synthetic vector field",
+      "wrappableModules": [
+        "FlowFieldDemo",
+        "VectorFieldPresets",
+        "CurrentFieldGenerator",
+        "TopologyAwareComposite"
+      ]
+    },
+    "stochasticBelief": {
+      "readiness": "partial",
+      "classification": "statistical belief model teaching/demo layer",
+      "wrappableModules": [
+        "UncertaintyForecastDemo",
+        "ForecastGenerator",
+        "EnsembleMetrics",
+        "RegretMetrics"
+      ]
+    },
+    "acquisitionPriority": {
+      "readiness": "partial",
+      "classification": "synthetic acquisition/priority layer",
+      "wrappableModules": [
+        "RiskRewardMetrics",
+        "PlanComparison",
+        "PlanningGuidance"
+      ]
+    },
+    "missionExecution": {
+      "readiness": "partial",
+      "classification": "benchmark execution engine",
+      "wrappableModules": [
+        "SimulationScene",
+        "PlanExecutor",
+        "PlanExecutionValidator",
+        "RouteValidityAudit",
+        "ResultExporter"
+      ]
+    }
+  }
+}

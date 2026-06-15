@@ -18,7 +18,7 @@ assert(layers.stateLayer.length === 4, 'random stateLayer height mismatch');
 assert(layers.ruleLayer[0].length === 6, 'random ruleLayer width mismatch');
 
 const scientific = randomizeSamplingProcessAllocation({ seed: 'science', mode: 'scientificRandomization' });
-assert(scientific.statusLabel === 'Pattern-Modified', 'scientific randomization status mismatch');
+assert(scientific.statusLabel === 'Example-Modified', 'scientific randomization status mismatch');
 
 if (failures.length) {
   console.error('Sampling process randomizer smoke failed');

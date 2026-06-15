@@ -26,6 +26,10 @@ import {
   processRuleAliases
 } from './SamplingProcessRules.js';
 import { validateSamplingProcessPaintModel } from './SamplingProcessPaintModel.js';
+import {
+  processExampleMetadata,
+  referenceSignatureIdForProcessExample
+} from './SpatiotemporalProcessExamples.js';
 
 export function buildSamplingProcessDemoArtifactExport(context = {}) {
   const field = context.field ?? {};
@@ -216,11 +220,27 @@ export function buildSamplingProcessPaintExportMetadata(context = {}) {
 }
 
 export function buildSamplingProcessReferenceExportMetadata(context = {}, behaviorPreset = null) {
-  const referenceSignature = context.referenceSignature ?? referenceSignatureMetadata(context.referenceSignatureId, context.referenceSignatureModified);
+  const processExample = processExampleMetadata(context.exampleProcessId ?? context.referenceSignatureId, context.referenceSignatureModified);
+  const mappedReferenceId = referenceSignatureIdForProcessExample(context.exampleProcessId ?? context.referenceSignatureId) ?? context.referenceSignatureId;
+  const referenceSignature = context.referenceSignature ?? referenceSignatureMetadata(mappedReferenceId, context.referenceSignatureModified);
   const legacyPresetMappedReferenceSignature = context.patternSource === 'legacyPreset'
     ? (behaviorPreset ?? sampleFieldBehaviorPresetMetadata(context.behaviorPresetId, context.behaviorPresetModified)).referenceSignature
     : null;
   const fields = {
+    exampleProcessId: processExample?.id ?? null,
+    exampleProcessLabel: processExample?.label ?? null,
+    exampleType: processExample?.exampleType ?? null,
+    foundationalModelId: processExample?.exampleType === 'foundationalCaModel' ? processExample.id : null,
+    observableProcessPatternId: processExample?.exampleType === 'observableProcessPattern' ? processExample.id : processExample?.referenceSignatureId ?? null,
+    processPatternId: processExample?.referenceSignatureId ?? referenceSignature?.id ?? null,
+    spatiotemporalProcessExample: processExample,
+    implementationFidelity: processExample?.implementationFidelity ?? null,
+    ruleFamilyId: processExample?.ruleFamilyId ?? null,
+    relatedFoundationalModels: processExample?.relatedFoundationalModels ?? [],
+    relatedObservablePatterns: processExample?.relatedObservablePatterns ?? [],
+    ruleStatement: processExample?.ruleStatement ?? [],
+    localUpdateFunction: processExample?.localUpdateFunction ?? null,
+    globalUpdateFunction: processExample?.globalUpdateFunction ?? null,
     referenceSignature,
     referenceSignatureId: referenceSignature?.id ?? null,
     referenceSignatureLabel: referenceSignature?.label ?? null,

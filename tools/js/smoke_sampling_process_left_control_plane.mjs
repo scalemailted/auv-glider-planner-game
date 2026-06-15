@@ -8,11 +8,11 @@ import {
 import { referenceSignatureMetadata } from '../../src/core/demo/roi/RoiReferenceSignatures.js';
 
 const baseState = {
-  title: 'Spatiotemporal Sampling Process Lab',
+  title: 'Deterministic Spatiotemporal Process Lab',
   processMode: 'referenceSignature',
   patternSource: 'referenceSignature',
   processModeLabel: 'Example Processes',
-  processStatusLabel: 'Pattern-Validated',
+  processStatusLabel: 'Example-Validated',
   referenceSignatureId: 'stationaryTemporalBursts',
   referenceSignature: referenceSignatureMetadata('stationaryTemporalBursts'),
   referenceSignatureModified: false,
@@ -98,7 +98,7 @@ function stateForMode(processMode) {
       referenceSignature: 'Example Processes',
       customComposer: 'Custom Composer',
       processPaint: 'Process Paint',
-      randomRuleLab: 'Random Rule Lab',
+      randomRuleLab: 'Rule Allocation Sandbox',
       diagnosticsGraphInspection: 'Diagnostics / Graph Inspection'
     }[processMode] ?? 'Example Processes'
   };

@@ -13,6 +13,7 @@ import {
 import { sampleFieldBehaviorExplainer, sampleFieldCompositionExplainer } from '../../core/demo/SampleFieldBehaviorExplainers.js';
 import { formatObservableSignature } from '../../core/demo/roi/RoiReferenceSignatures.js';
 import { normalizeProcessRuleId, processRuleLabel } from '../../core/demo/sampling/SamplingProcessRules.js';
+import { processExampleTypeLabel } from '../../core/demo/sampling/SpatiotemporalProcessExamples.js';
 
 export function roiPanelModeButtonsHtml(activeMode, hasSelectedCell, showPaintTools = false) {
   return `
@@ -34,6 +35,7 @@ function panelModeButtonHtml(mode, label, activeMode) {
 export function roiRecipeSignatureHtml(state) {
   const source = state.patternSource ?? 'referenceSignature';
   const signature = state.referenceSignature;
+  const example = state.spatiotemporalProcessExample ?? state.selectedProcessExample;
   const preset = state.behaviorPreset;
   const componentRows = componentRecipeRows(state.componentRecipe);
   const observable = signature?.expectedObservableSignature ?? {};
@@ -45,31 +47,35 @@ export function roiRecipeSignatureHtml(state) {
     <section class="cell-inspector-shell recipe-signature-shell" data-roi-recipe-signature-view>
       ${roiPanelModeButtonsHtml('recipeSignature', Boolean(state.selectedCell))}
       <div class="cell-inspector-header">
-        <span>Process Pattern View</span>
-        <h2>${escapeHtml(source === 'referenceSignature' && signature ? signature.label : source === 'legacyPreset' ? 'Legacy Preset Recipe' : 'Custom Component Recipe')}</h2>
+        <span>Process Example View</span>
+        <h2>${escapeHtml(source === 'referenceSignature' && (example || signature) ? example?.label ?? signature.label : source === 'legacyPreset' ? 'Legacy Preset Recipe' : 'Custom Component Recipe')}</h2>
         <p>${escapeHtml(source === 'referenceSignature' && signature
-          ? `Simplified observable process: ${formatObservableSignature(signature.expectedObservableSignature)}`
+          ? `Deterministic / seeded process example: ${formatObservableSignature(signature.expectedObservableSignature)}`
           : source === 'legacyPreset'
-            ? 'Legacy MVP preset compatibility view. The main taxonomy is Process Patterns.'
-            : 'Edit primitive components directly or choose a Process Pattern for a guided starting point.')}</p>
+            ? 'Legacy MVP preset compatibility view. The main taxonomy is Example Processes.'
+            : 'Edit primitive components directly or choose an Example Process for a guided starting point.')}</p>
       </div>
       ${currentLabStateCardHtml(state)}
       ${source === 'referenceSignature' && signature ? `
+        ${processExampleSummaryCardHtml(example, signature)}
+        ${updateFunctionCardHtml(example, state.processMode)}
         <div class="cell-inspector-card selected" data-roi-reference-signature-help>
-          <span>Process Pattern - What am I seeing?</span>
+          <span>${escapeHtml(example?.exampleType ? processExampleTypeLabel(example.exampleType) : 'Observable Process Pattern')}</span>
           ${metricRows([
-            ['pattern', `${signature.label}${signature.modified ? ' (modified)' : ''}`],
-            ['category', signature.category],
+            ['example', `${example?.label ?? signature.label}${signature.modified ? ' (modified)' : ''}`],
+            ['category', example?.processPatternFamily ?? signature.category],
+            ['implementation fidelity', example?.implementationFidelity ?? 'observablePatternAnalog'],
+            ['rule family', example?.ruleFamilyId ?? 'n/a'],
             ['observable process', formatObservableSignature(signature.expectedObservableSignature)],
             ['best views', (signature.bestDisplayLayers ?? []).join(', ')]
           ])}
-          <small>Process Patterns are simplified, CA/grid-process-inspired examples. They load editable recipes. They are not exact cellular automata or calibrated domain simulators.</small>
+          <small>Example Processes are deterministic or seeded CA/grid-process-inspired recipes. Sampling value is an optional interpretation layer, not the identity of this lab.</small>
         </div>
         <div class="cell-inspector-card">
-          <span>ROI Meaning / Sampling Meaning</span>
+          <span>Sampling Interpretation</span>
           ${metricRows([
-            ['Current ROI', signature.roiInterpretation?.current],
-            ['Near-Future ROI', signature.roiInterpretation?.nearFuture],
+            ['Current interpretation', signature.roiInterpretation?.current],
+            ['Near-future interpretation', signature.roiInterpretation?.nearFuture],
             ['Depleted / Low-value', signature.roiInterpretation?.lowValue],
             ['Sampling intuition', signature.roiInterpretation?.samplingIntuition]
           ])}
@@ -112,15 +118,15 @@ export function roiRecipeSignatureHtml(state) {
           <span>Legacy Preset</span>
           ${metricRows([
             ['preset', preset?.label],
-            ['mapped process pattern', preset?.referenceSignature?.label ?? 'None'],
-            ['compatibility note', 'Legacy presets are kept for old examples, exports, and debugging; Process Patterns are the main educational workflow.']
+            ['mapped example process', preset?.referenceSignature?.label ?? 'None'],
+            ['compatibility note', 'Legacy presets are kept for old examples, exports, and debugging; Example Processes are the main educational workflow.']
           ])}
         </div>
       ` : `
         <div class="cell-inspector-card selected">
           <span>Component Composer Guide</span>
           <p>Custom mode edits Event Likelihood, Spatial Pattern, Value Distribution, Temporal Pattern, Spatial Evolution, Interaction Scale, State Model, Sampling Effect, and Display Layer directly.</p>
-          <small>Choose a Process Pattern for a guided starting point, or click a cell to inspect local state.</small>
+          <small>Choose an Example Process for a guided starting point, or click a cell to inspect local state.</small>
         </div>
       `}
       ${source === 'referenceSignature' && signature ? '' : `<div class="cell-inspector-card">
@@ -134,6 +140,51 @@ export function roiRecipeSignatureHtml(state) {
   `;
 }
 
+function processExampleSummaryCardHtml(example, signature) {
+  if (!example) return '';
+  const isFoundational = example.exampleType === 'foundationalCaModel';
+  return `
+        <div class="cell-inspector-card selected" data-process-example-summary>
+          <span>${escapeHtml(isFoundational ? 'Foundational CA Model' : 'Observable Process Pattern')}</span>
+          ${metricRows([
+            ['example type', processExampleTypeLabel(example.exampleType)],
+            ['model / family', example.modelFamily ?? example.processPatternFamily ?? signature?.category],
+            ['implementation fidelity', example.implementationFidelity],
+            ['rule family', example.ruleFamilyId],
+            ['teaches', (example.teaches ?? example.coverageTags ?? []).slice(0, 5).join(', ') || 'deterministic process evolution'],
+            ['not a', example.notA ?? signature?.notA]
+          ])}
+          <small>${escapeHtml(example.shortDescription ?? signature?.simplifiedClaim ?? '')}</small>
+        </div>
+  `;
+}
+
+function updateFunctionCardHtml(example, processMode) {
+  const localUpdate = example?.localUpdateFunction ?? 'x_i(t+1) = f(x_i(t), N_i(t), theta_i)';
+  const nonUniformUpdate = 'x_i(t+1) = f_{r(i)}(x_i(t), N_i(t), theta_i)';
+  const globalUpdate = example?.globalUpdateFunction ?? 'X(t+1) = F(X(t))';
+  const statements = example?.ruleStatement ?? [
+    'A cell updates from prior state, neighboring cells, and parameters.',
+    'Applying the local rule across space creates the next field.'
+  ];
+  return `
+        <div class="cell-inspector-card" data-process-update-function-card>
+          <span>Rule -> Update Function</span>
+          <p>${escapeHtml(statements[0])}</p>
+          ${metricRows([
+            ['local update', localUpdate],
+            ['global field', globalUpdate],
+            ...(processMode === 'randomRuleLab' || example?.caTaxonomy?.ruleUniformity?.includes?.('non')
+              ? [['non-uniform update', nonUniformUpdate]]
+              : []),
+            ['state variables', (example?.stateVariables ?? ['x_i(t)', 'N_i(t)', 'theta_i']).join(', ')],
+            ['neighborhood', example?.neighborhoodDefinition ?? example?.caTaxonomy?.neighborhood ?? 'local or graph neighborhood']
+          ])}
+          <small>${escapeHtml(example?.whatTheUpdateFunctionShows ?? 'Cellular automata are concrete demonstrations; update functions are the general language; observable patterns are the behavior produced by those updates.')}</small>
+        </div>
+  `;
+}
+
 export function roiDiagnosticsHtml(state) {
   const diagnostics = state.activityDiagnostics ?? {};
   const graph = state.graphDiagnostics ?? {};
@@ -142,8 +193,8 @@ export function roiDiagnosticsHtml(state) {
       ${roiPanelModeButtonsHtml('diagnostics', Boolean(state.selectedCell), state.processMode === 'processPaint')}
       <div class="cell-inspector-header">
         <span>Validation / Diagnostics</span>
-        <h2>Current ROI Diagnostics</h2>
-        <p>Lightweight checks for the active process pattern or custom component recipe.</p>
+        <h2>Current Process Diagnostics</h2>
+        <p>Lightweight checks for the active deterministic process example or custom component recipe.</p>
       </div>
       ${currentLabStateCardHtml(state)}
       <div class="cell-inspector-card selected">
@@ -185,7 +236,7 @@ export function roiBehaviorHelpEmptyHtml(state = {}) {
       <div class="cell-inspector-header">
         <span>Behavior Help</span>
         <h2>Behavior Help</h2>
-        <p>Click an Explain button beside a Sample / ROI control to learn what that component does.</p>
+        <p>Click an Explain button beside a Process Lab control to learn what that component does.</p>
       </div>
       <div class="cell-inspector-card">
         <strong>Available help</strong>
@@ -266,7 +317,7 @@ export function roiBehaviorHelpHtml(topic, state) {
           ])}
         </div>
         <div class="cell-inspector-card">
-          <span>ROI Meaning</span>
+          <span>Sampling Interpretation</span>
           ${metricRows([
             ['current ROI', help.behaviorSignature?.roiMeaning?.current],
             ['near-future ROI', help.behaviorSignature?.roiMeaning?.nearFuture],
@@ -282,9 +333,9 @@ export function roiBehaviorHelpHtml(topic, state) {
       ` : ''}
       ${state.referenceSignature ? `
         <div class="cell-inspector-card selected">
-          <span>Process Pattern</span>
+          <span>Example Process</span>
           ${metricRows([
-            ['pattern', `${state.referenceSignature.label}${state.referenceSignature.modified ? ' (modified)' : ''}`],
+            ['example', `${state.exampleProcessLabel ?? state.referenceSignature.label}${state.referenceSignature.modified ? ' (modified)' : ''}`],
             ['category', state.referenceSignature.category],
             ['observable pattern', formatObservableSignature(state.referenceSignature.expectedObservableSignature)],
             ['simplified claim', state.referenceSignature.simplifiedClaim],
@@ -300,7 +351,7 @@ export function roiBehaviorHelpHtml(topic, state) {
           ${(state.referenceSignature.referenceModels ?? []).map((model) => `<p><strong>${escapeHtml(model.name)}</strong>: ${escapeHtml(model.usefulBehavior)} <small>${escapeHtml(model.note)}</small></p>`).join('')}
         </div>
         <div class="cell-inspector-card">
-          <span>Pattern ROI Meaning</span>
+          <span>Sampling Interpretation</span>
           ${metricRows([
             ['current ROI', state.referenceSignature.roiInterpretation?.current],
             ['near-future ROI', state.referenceSignature.roiInterpretation?.nearFuture],
@@ -363,12 +414,12 @@ export function processPaintToolsHtml(state = {}) {
         <span>Status</span>
         ${metricRows([
           ['status', state.processStatusLabel ?? 'Custom Exploratory'],
-          ['validation', 'Not pattern-validated'],
+          ['validation', 'Not example-validated'],
           ['painted cells', state.paintValidation?.paintedCellCount ?? 0],
           ['groups', state.paintValidation?.groupCount ?? 0],
           ['playback', state.paused ? 'paused editing canvas' : 'running from painted state']
         ])}
-        <small>Custom Exploratory unless validated against a Process Pattern.</small>
+        <small>Custom Exploratory unless validated against an Example Process.</small>
       </div>
       <div class="console-button-row wrap">
         <button class="console-button secondary" data-action="paint-panel-clear-canvas">Clear Canvas</button>
@@ -650,7 +701,7 @@ function currentLabStateRows(state = {}) {
   }
   if (mode === 'randomRuleLab') {
     return [
-      ['Mode', state.processModeLabel ?? 'Random Rule Lab'],
+      ['Mode', state.processModeLabel ?? 'Rule Allocation Sandbox'],
       ['Seed', state.randomRuleSeed ?? 'sampling-random-001'],
       ['Groups', state.randomRuleGroupCount ?? 4],
       ['Active density', formatPercent(state.randomRuleActiveFraction ?? 0.18)],
@@ -669,7 +720,7 @@ function currentLabStateRows(state = {}) {
   if (state.patternSource === 'referenceSignature' && state.referenceSignature) {
     return [
       ['Mode', state.processModeLabel ?? 'Example Processes'],
-      ['Status', state.processStatusLabel ?? 'Pattern-Validated'],
+      ['Status', state.processStatusLabel ?? 'Example-Validated'],
       ['Pattern', state.referenceSignature.label],
       ['Recipe', state.recipeSummary],
       ['State', roiStateModelLabel(state.componentRecipe?.stateModel)],

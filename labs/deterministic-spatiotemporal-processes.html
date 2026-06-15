@@ -1,0 +1,275 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Deterministic Spatiotemporal Processes | ANCHOR Learning Labs</title>
+  <link rel="stylesheet" href="../css/labs.css" />
+</head>
+<body>
+  <main class="lab-shell">
+    <header class="lab-header">
+      <nav class="lab-nav" aria-label="Learning Labs navigation">
+        <a href="index.html">Back to Learning Labs</a>
+        <a href="../index.html">Open Main App</a>
+        <a href="../index.html">Back to Main App</a>
+        <a href="../index.html#simulation-lab">Open Simulation Lab / Process Sandbox</a>
+      </nav>
+    </header>
+
+    <section class="lab-hero">
+      <div>
+        <p class="lab-kicker">Learning Lab 1</p>
+        <h1>Deterministic Spatiotemporal Processes</h1>
+        <p class="lab-subtitle">Learn how local rules, prior state, and neighboring cells shape a changing spatial world.</p>
+        <div class="lab-badges">
+          <span>Deterministic / Seeded</span>
+          <span>Cellular Automata</span>
+          <span>Update Functions</span>
+          <span>Process Patterns</span>
+          <span>Sampling Interpretation</span>
+        </div>
+        <div class="lab-actions">
+          <a class="lab-button" href="index.html">Back to Learning Labs</a>
+          <a class="lab-button" href="../index.html">Open Main App</a>
+          <a class="lab-button primary" href="../index.html#simulation-lab">Open Simulation Lab / Process Sandbox</a>
+        </div>
+        <p class="lab-note">Open the main app, then choose Simulation Lab if the hash link is not handled by your browser session.</p>
+      </div>
+      <figure class="lab-figure" aria-label="Three static grids showing a process over time">
+        <div class="time-grid-strip" aria-hidden="true">
+          <div><strong>t = 0</strong><div class="mini-grid"><span></span><span class="hot"></span><span></span><span></span><span class="hot"></span><span></span><span></span><span class="hot"></span><span></span></div></div>
+          <div><strong>t = 1</strong><div class="mini-grid"><span></span><span></span><span></span><span class="hot"></span><span class="hot"></span><span class="hot"></span><span></span><span></span><span></span></div></div>
+          <div><strong>t = 2</strong><div class="mini-grid"><span></span><span class="hot"></span><span></span><span></span><span class="hot"></span><span></span><span></span><span class="hot"></span><span></span></div></div>
+        </div>
+        <figcaption class="lab-caption"><strong>What to notice:</strong> the pattern changes, but the rule can stay fixed.</figcaption>
+      </figure>
+    </section>
+
+    <div class="lab-layout">
+      <aside class="lab-toc" aria-label="Article table of contents">
+        <strong>Table of contents</strong>
+        <a href="#process">1. What is a spatiotemporal process?</a>
+        <a href="#deterministic">2. Deterministic and seeded evolution</a>
+        <a href="#cells">3. Cells, states, and neighborhoods</a>
+        <a href="#ca">4. Explicit cellular-automata rules</a>
+        <a href="#functions">5. Rulesets as update functions</a>
+        <a href="#global">6. From local update to global field</a>
+        <a href="#foundational">7. Foundational CA models</a>
+        <a href="#observable">8. Observable process patterns</a>
+        <a href="#allocation">9. Non-uniform / domain rule allocation</a>
+        <a href="#sampling">10. Optional sampling interpretation</a>
+        <a href="#sandbox">11. How this connects to the full sandbox</a>
+        <a href="#next">12. What comes next</a>
+      </aside>
+
+      <article class="lab-article">
+        <section id="process" class="lab-section">
+          <h2>1. What is a spatiotemporal process?</h2>
+          <p>A spatial field assigns a state or value to locations in space. A spatiotemporal process changes that field over time.</p>
+          <div class="lab-concept-map" aria-label="Concept ladder from space to state over space and time">
+            <div>space</div><div>state over space</div><div>state over space and time</div>
+          </div>
+          <div class="lab-equation-grid">
+            <div class="lab-math"><code>X(t)</code><div class="lab-translation"><strong>In words:</strong> X(t) is the whole spatial world at time t.</div></div>
+            <div class="lab-math"><code>X(t+1) = F(X(t))</code><div class="lab-translation"><strong>In words:</strong> The next whole-world state is produced by applying an update function to the current whole-world state.</div></div>
+          </div>
+          <p><strong>Connection to the simulator:</strong> Process Lab heatmaps are frames from a changing field. A route matters because it arrives at a place at a specific time.</p>
+        </section>
+
+        <section id="deterministic" class="lab-section">
+          <h2>2. Deterministic and seeded evolution</h2>
+          <p>Deterministic means the same starting state and same rules produce the same future. Seeded means random-looking initial conditions are generated from a reproducible seed.</p>
+          <div class="lab-callout"><code>same recipe + same seed + same initial state -> same evolution</code></div>
+          <div class="lab-card-grid two">
+            <div class="lab-card"><h3>Seed A replay</h3><p>Seed A creates the same initial grid and the same future frames every time.</p><div class="seed-flow">Seed A -> grid A -> frames A</div></div>
+            <div class="lab-card"><h3>Seed B replay</h3><p>Seed B can look different from Seed A, but it is still repeatable.</p><div class="seed-flow">Seed B -> grid B -> frames B</div></div>
+          </div>
+          <div class="lab-callout"><strong>Boundary:</strong> this lab is a known process generator. The Uncertainty / Forecast Lab later introduces belief, observations, posterior estimates, forecast error, and information gain.</div>
+        </section>
+
+        <section id="cells" class="lab-section">
+          <h2>3. Cells, states, and neighborhoods</h2>
+          <p>A cell is one location in the grid. A state is what the cell currently is. A neighborhood is the set of nearby cells used by the update rule.</p>
+          <div class="lab-card-grid two">
+            <figure class="lab-figure lab-neighborhood" aria-label="Von Neumann neighborhood diagram">
+              <h3>Von Neumann neighborhood</h3>
+              <div class="neighborhood-grid von-neumann" aria-hidden="true"><span></span><span class="neighbor"></span><span></span><span class="neighbor"></span><span class="center"></span><span class="neighbor"></span><span></span><span class="neighbor"></span><span></span></div>
+              <figcaption class="lab-caption"><strong>What to notice:</strong> the rule reads four edge-adjacent cells.</figcaption>
+            </figure>
+            <figure class="lab-figure lab-neighborhood" aria-label="Moore neighborhood diagram">
+              <h3>Moore neighborhood</h3>
+              <div class="neighborhood-grid moore" aria-hidden="true"><span class="neighbor"></span><span class="neighbor"></span><span class="neighbor"></span><span class="neighbor"></span><span class="center"></span><span class="neighbor"></span><span class="neighbor"></span><span class="neighbor"></span><span class="neighbor"></span></div>
+              <figcaption class="lab-caption"><strong>What to notice:</strong> the rule reads all eight surrounding cells.</figcaption>
+            </figure>
+          </div>
+          <div class="lab-equation-grid">
+            <div class="lab-math"><code>x_i(t)</code><div class="lab-translation"><strong>In words:</strong> the state of cell i at time t.</div></div>
+            <div class="lab-math"><code>N_i(t)</code><div class="lab-translation"><strong>In words:</strong> the neighborhood information available to cell i at time t.</div></div>
+            <div class="lab-math"><code>x_i(t+1) = f(x_i(t), N_i(t), theta)</code><div class="lab-translation"><strong>In words:</strong> the next state of cell i is computed from the cell's current state, nearby cell states, and rule parameters.</div></div>
+          </div>
+          <section class="lab-widget" data-widget="neighborhood-update" aria-label="Neighborhood update interactive widget">
+            <h3>Neighborhood update widget</h3>
+            <p>Toggle cells and switch the neighborhood type. The preview uses the Game of Life birth/survival rule to show how one center-cell update depends on local context.</p>
+            <div data-neighborhood-update-widget></div>
+            <p class="lab-what-to-notice"><strong>What to notice:</strong> changing which nearby cells count can change the center cell's next state without changing the center cell itself.</p>
+          </section>
+          <p><strong>Connection to the simulator:</strong> grid cells can store states such as active, inactive, susceptible, cooling, recovering, consumed, loaded, signal, prey, predator, and others.</p>
+        </section>
+
+        <section id="ca" class="lab-section">
+          <h2>4. Explicit cellular-automata rules</h2>
+          <p>Cellular automata are concrete examples of deterministic local-rule systems. Rule 90 is a simple one-dimensional example.</p>
+          <div class="lab-math"><code>x_i(t+1) = x_{i-1}(t) XOR x_{i+1}(t)</code><div class="lab-translation"><strong>In words:</strong> the next state is active if the left and right neighbors disagree.</div></div>
+          <div class="lab-math"><code>x_i(t+1) = x_{i-1}(t) &#8853; x_{i+1}(t)</code><div class="lab-translation"><strong>In words:</strong> the XOR symbol means exactly one of the two neighbors is active.</div></div>
+          <figure class="lab-figure" aria-label="Static Rule 90 spacetime diagram">
+            <h3>Rule 90 spacetime diagram</h3>
+            <div class="static-spacetime" aria-hidden="true">
+              <div>.......#.......</div><div>......#.#......</div><div>.....#...#.....</div><div>....#.#.#.#....</div><div>...#.......#...</div><div>..#.#.....#.#..</div>
+            </div>
+            <figcaption class="lab-caption"><strong>What to notice:</strong> one local rule generates a triangular global pattern.</figcaption>
+          </figure>
+          <section class="lab-widget" data-widget="elementary-ca" aria-label="Elementary cellular automata interactive widget">
+            <h3>Elementary CA spacetime widget</h3>
+            <p>Choose a rule and seed mode. Resetting the same seed repeats the same spacetime pattern.</p>
+            <div data-elementary-ca-widget></div>
+            <p class="lab-what-to-notice"><strong>What to notice:</strong> a one-dimensional local rule can produce structured spacetime behavior from a tiny seed.</p>
+          </section>
+        </section>
+
+        <section id="functions" class="lab-section">
+          <h2>5. Rulesets as update functions</h2>
+          <p>Cellular automata rules and update functions are not competing approaches. A CA ruleset is a concrete finite-state update function.</p>
+          <div class="lab-equation-grid">
+            <div class="lab-card"><h3>Explicit rule statement</h3><ul><li>A live cell survives with 2 or 3 live neighbors.</li><li>A dead cell becomes live with exactly 3 live neighbors.</li><li>Otherwise the cell becomes inactive.</li></ul></div>
+            <div class="lab-math"><code>Let n_i(t) be the active Moore-neighbor count.
+x_i(t+1) =
+  1 if x_i(t)=1 and n_i(t) in {2,3}
+  1 if x_i(t)=0 and n_i(t)=3
+  0 otherwise</code><div class="lab-translation"><strong>In words:</strong> count active neighbors. The count determines birth, survival, or death.</div></div>
+          </div>
+          <figure class="lab-figure" aria-label="Game of Life neighbor count diagram">
+            <h3>Neighbor count</h3>
+            <div class="neighborhood-grid moore count-demo" aria-hidden="true"><span class="neighbor"></span><span></span><span class="neighbor"></span><span></span><span class="center"></span><span></span><span></span><span class="neighbor"></span><span></span></div>
+            <figcaption class="lab-caption"><strong>What to notice:</strong> the center cell sees three active neighbors, a birth condition for a dead cell in Conway's Game of Life.</figcaption>
+          </figure>
+          <section class="lab-widget" data-widget="game-of-life" aria-label="Game of Life interactive widget">
+            <h3>Game of Life mini widget</h3>
+            <p>Step a small deterministic Game of Life grid. Choose a preset or click cells to make a local change before stepping.</p>
+            <div data-game-of-life-widget></div>
+            <p class="lab-what-to-notice"><strong>What to notice:</strong> the same update function is applied to every cell, but different neighbor counts produce birth, survival, or death.</p>
+          </section>
+        </section>
+
+        <section id="global" class="lab-section">
+          <h2>6. From local update to global field</h2>
+          <p>The local function updates one cell. The global function updates every cell.</p>
+          <div class="lab-equation-grid">
+            <div class="lab-math"><code>local: x_i(t+1) = f(x_i(t), N_i(t), theta)</code><div class="lab-translation"><strong>In words:</strong> compute one cell's next state.</div></div>
+            <div class="lab-math"><code>global: X(t+1) = F(X(t))</code><div class="lab-translation"><strong>In words:</strong> apply the local update across the whole field.</div></div>
+          </div>
+          <figure class="lab-figure" aria-label="Pipeline from current grid to next grid">
+            <div class="lab-process-stack">
+              <div>current grid</div><div>neighborhood lookup</div><div>local rule</div><div>next grid</div>
+            </div>
+            <figcaption class="lab-caption"><strong>What to notice:</strong> a global field evolution is many local updates applied together.</figcaption>
+          </figure>
+          <p><strong>Connection to the simulator:</strong> the process stepper records states, transitions, process messages, and observable values so users can inspect why a heatmap changed.</p>
+        </section>
+
+        <section id="foundational" class="lab-section">
+          <h2>7. Foundational CA models</h2>
+          <p>Foundational CA Models are famous rule-based examples used to learn how local rules create global behavior.</p>
+          <div class="lab-card-grid">
+            <article class="lab-card lab-model-card"><h3>Conway's Game of Life</h3><p><strong>Rule idea:</strong> live cells survive with 2 or 3 neighbors; dead cells are born with 3.</p><p><strong>Teaches:</strong> local birth-death emergence.</p><p><strong>Update shape:</strong> <code>x_i(t+1)=f(x_i(t), n_i(t))</code></p><p><strong>Observable:</strong> still lifes, oscillators, moving structures.</p><p><strong>Not:</strong> a calibrated ecology or AUV estimator.</p><p><strong>Related:</strong> Local Birth-Death Emergence.</p></article>
+            <article class="lab-card lab-model-card"><h3>Forest Fire</h3><p><strong>Rule idea:</strong> susceptible cells ignite near active neighbors; active cells burn out.</p><p><strong>Teaches:</strong> fronts, susceptible regions, consumed trails.</p><p><strong>Update shape:</strong> <code>x_i(t+1)=f(x_i(t), burningNeighborCount_i(t), ignitionParameters)</code></p><p><strong>Observable:</strong> moving active boundary.</p><p><strong>Not:</strong> a calibrated wildfire, bloom, or ocean-front simulator.</p><p><strong>Related:</strong> Propagating Fronts.</p></article>
+            <article class="lab-card lab-model-card"><h3>SIR / Epidemic CA</h3><p><strong>Rule idea:</strong> susceptible cells become infected near active cells, then recover.</p><p><strong>Teaches:</strong> spread, recovery, local contact pressure.</p><p><strong>Update shape:</strong> <code>x_i(t+1)=f(x_i(t), infectedNeighborPressure_i(t), recovery_i(t))</code></p><p><strong>Observable:</strong> patchy expanding activity.</p><p><strong>Not:</strong> a public-health forecast.</p><p><strong>Related:</strong> Diffusive / Epidemic Spread.</p></article>
+            <article class="lab-card lab-model-card"><h3>Greenberg-Hastings / Excitable Media</h3><p><strong>Rule idea:</strong> resting cells excite, active cells become refractory, refractory cells recover.</p><p><strong>Teaches:</strong> wave fronts and refractory memory.</p><p><strong>Update shape:</strong> <code>x_i(t+1)=f(x_i(t), excitedNeighborPressure_i(t), refractoryClock_i(t))</code></p><p><strong>Observable:</strong> waves and recovery trails.</p><p><strong>Not:</strong> a full reaction-diffusion solver.</p><p><strong>Related:</strong> Excitable Waves.</p></article>
+            <article class="lab-card lab-model-card"><h3>Sandpile / Avalanche</h3><p><strong>Rule idea:</strong> load accumulates until a threshold releases to neighbors.</p><p><strong>Teaches:</strong> thresholds and cascades.</p><p><strong>Update shape:</strong> <code>x_i(t+1)=f(x_i(t), load_i(t), threshold_i)</code></p><p><strong>Observable:</strong> quiet buildup and sudden bursts.</p><p><strong>Not:</strong> a geophysical hazard model.</p><p><strong>Related:</strong> Threshold Cascades / Avalanches.</p></article>
+            <article class="lab-card lab-model-card"><h3>Wa-Tor / Predator-Prey</h3><p><strong>Rule idea:</strong> prey grows or moves while predators follow or suppress prey.</p><p><strong>Teaches:</strong> interacting populations and pursuit waves.</p><p><strong>Update shape:</strong> <code>x_i(t+1)=f(x_i(t), preyPressure_i(t), predatorPressure_i(t))</code></p><p><strong>Observable:</strong> chasing patches and cycles.</p><p><strong>Not:</strong> a calibrated ecosystem model.</p><p><strong>Related:</strong> Interacting Population Migration.</p></article>
+            <article class="lab-card lab-model-card"><h3>Traffic CA</h3><p><strong>Rule idea:</strong> occupied cells advance when downstream space is open.</p><p><strong>Teaches:</strong> congestion and density waves.</p><p><strong>Update shape:</strong> <code>x_i(t+1)=f(x_i(t), upstreamDensity_i(t), downstreamCapacity_i(t))</code></p><p><strong>Observable:</strong> jams, gaps, and release waves.</p><p><strong>Not:</strong> a nautical traffic planner.</p><p><strong>Related:</strong> Congestion / Density Waves.</p></article>
+            <article class="lab-card lab-model-card"><h3>Wireworld</h3><p><strong>Rule idea:</strong> signal heads, tails, and conductors move along structured paths.</p><p><strong>Teaches:</strong> signal propagation and path constraints.</p><p><strong>Update shape:</strong> <code>x_i(t+1)=f(x_i(t), signalNeighbor_i(t), conductor_i)</code></p><p><strong>Observable:</strong> pulses along paths or branches.</p><p><strong>Not:</strong> a communications network simulator.</p><p><strong>Related:</strong> Structured Signal Propagation.</p></article>
+          </div>
+        </section>
+
+        <section id="observable" class="lab-section">
+          <h2>8. Observable process patterns</h2>
+          <p>Observable Process Patterns are broader behaviors that can be produced by many rule-based systems. They help students recognize how a spatial world changes over time.</p>
+          <div class="lab-card-grid">
+            <article class="lab-card lab-pattern-card"><h3>Propagating Fronts</h3><p><strong>Behavior:</strong> a moving boundary separates active cells from susceptible cells.</p><p><strong>Related:</strong> Forest Fire, Eden growth, invasion percolation.</p><p><strong>Spatial:</strong> active boundary with trail behind it.</p><p><strong>Temporal:</strong> front advances step by step.</p><p><strong>Sampling:</strong> active boundary and likely next cells are high-interest.</p></article>
+            <article class="lab-card lab-pattern-card"><h3>Excitable Waves</h3><p><strong>Behavior:</strong> activity travels, cools down, and can recur.</p><p><strong>Related:</strong> Greenberg-Hastings, Brian's Brain.</p><p><strong>Spatial:</strong> crest and refractory wake.</p><p><strong>Temporal:</strong> pulse then recovery.</p><p><strong>Sampling:</strong> crest or near-future activation band.</p></article>
+            <article class="lab-card lab-pattern-card"><h3>Local Birth-Death Emergence</h3><p><strong>Behavior:</strong> local births and deaths create global structures.</p><p><strong>Related:</strong> Conway's Game of Life.</p><p><strong>Spatial:</strong> patches, oscillators, components.</p><p><strong>Temporal:</strong> local transitions drive emergence.</p><p><strong>Sampling:</strong> inspect active components and boundaries.</p></article>
+            <article class="lab-card lab-pattern-card"><h3>Diffusive / Epidemic Spread</h3><p><strong>Behavior:</strong> activity spreads through local contact.</p><p><strong>Related:</strong> SIR, SIS, contact process.</p><p><strong>Spatial:</strong> spreading patches.</p><p><strong>Temporal:</strong> activation followed by recovery.</p><p><strong>Sampling:</strong> active cells and neighbors receiving influence.</p></article>
+            <article class="lab-card lab-pattern-card"><h3>Threshold Cascades / Avalanches</h3><p><strong>Behavior:</strong> quiet buildup triggers sudden cascades.</p><p><strong>Related:</strong> sandpile, threshold contagion.</p><p><strong>Spatial:</strong> bursts and triggered neighbors.</p><p><strong>Temporal:</strong> low activity punctuated by jumps.</p><p><strong>Sampling:</strong> rare high-value cascade windows.</p></article>
+            <article class="lab-card lab-pattern-card"><h3>Domain / Cluster Formation</h3><p><strong>Behavior:</strong> local agreement forms domains and boundaries.</p><p><strong>Related:</strong> Ising, voter, Schelling analogs.</p><p><strong>Spatial:</strong> coherent clusters.</p><p><strong>Temporal:</strong> boundary motion and consolidation.</p><p><strong>Sampling:</strong> sample changing boundaries or coherent domains.</p></article>
+            <article class="lab-card lab-pattern-card"><h3>Freshness / Recovery</h3><p><strong>Behavior:</strong> sampled or depleted cells recover with age.</p><p><strong>Related:</strong> age of information, cooldown models.</p><p><strong>Spatial:</strong> depleted and recovering zones.</p><p><strong>Temporal:</strong> value returns over time.</p><p><strong>Sampling:</strong> avoid repeats and revisit later.</p></article>
+            <article class="lab-card lab-pattern-card"><h3>Congestion / Density Waves</h3><p><strong>Behavior:</strong> directed density builds, jams, and releases.</p><p><strong>Related:</strong> traffic CA.</p><p><strong>Spatial:</strong> density bands and queues.</p><p><strong>Temporal:</strong> stop-go movement.</p><p><strong>Sampling:</strong> lead density fronts before they move.</p></article>
+            <article class="lab-card lab-pattern-card"><h3>Structured Signal Propagation</h3><p><strong>Behavior:</strong> activity follows paths or branching networks.</p><p><strong>Related:</strong> Wireworld.</p><p><strong>Spatial:</strong> constrained paths.</p><p><strong>Temporal:</strong> pulses propagate along conductors.</p><p><strong>Sampling:</strong> active relays and likely next path cells.</p></article>
+          </div>
+          <figure class="lab-figure" aria-label="Small icons for observable patterns">
+            <div class="pattern-icon-row" aria-hidden="true"><span>front</span><span>wave</span><span>cascade</span><span>domain</span><span>recovery</span><span>signal</span></div>
+            <figcaption class="lab-caption"><strong>What to notice:</strong> patterns are visible behaviors, not claims that one exact named model is being simulated.</figcaption>
+          </figure>
+        </section>
+
+        <section id="allocation" class="lab-section">
+          <h2>9. Non-uniform / domain rule allocation</h2>
+          <p>Classical CA often applies the same rule everywhere. Generalized CA can assign different rules to different cells, groups, or spatial domains.</p>
+          <div class="lab-math"><code>x_i(t+1) = f_{r(i)}(x_i(t), N_i(t), theta_i)</code><div class="lab-translation"><strong>In words:</strong> cell i uses the update function assigned to its rule region, group, or domain.</div></div>
+          <figure class="lab-figure" aria-label="Partitioned grid with colored rule domains">
+            <div class="lab-domain-grid" aria-hidden="true">
+              <span class="domain-a">front</span><span class="domain-a">front</span><span class="domain-b">recovery</span><span class="domain-b">recovery</span>
+              <span class="domain-a">front</span><span class="domain-c">inert</span><span class="domain-b">recovery</span><span class="domain-b">recovery</span>
+              <span class="domain-d">signal</span><span class="domain-d">signal</span><span class="domain-c">inert</span><span class="domain-b">recovery</span>
+              <span class="domain-d">signal</span><span class="domain-d">signal</span><span class="domain-c">inert</span><span class="domain-c">inert</span>
+            </div>
+            <figcaption class="lab-caption"><strong>What to notice:</strong> one map can contain front, recovery, inert boundary, and signal rules.</figcaption>
+          </figure>
+          <section class="lab-widget" data-widget="domain-rule-allocation" aria-label="Domain rule allocation interactive widget">
+            <h3>Domain rule allocation mini widget</h3>
+            <p>Step a grid partitioned into four deterministic domains. Each region follows its own update rule while sharing the same clock.</p>
+            <div data-domain-rule-allocation-widget></div>
+            <p class="lab-what-to-notice"><strong>What to notice:</strong> non-uniform CA can mix stable, decaying, pulsing, and alternating regions in one field.</p>
+          </section>
+          <div class="lab-callout"><strong>Boundary:</strong> this is not physical water flow. Current-driven transport belongs in the Deterministic Dynamic Flow Fields Lab and later coupled labs.</div>
+          <p><strong>Connection to the sandbox:</strong> Process Paint and Rule Allocation Sandbox let users assign states, rules, groups, and source values to cells or regions.</p>
+        </section>
+
+        <section id="sampling" class="lab-section">
+          <h2>10. Optional sampling interpretation</h2>
+          <p>The process evolves first. Sampling interpretation is derived from the process.</p>
+          <div class="lab-process-stack">
+            <div><code>X(x,y,t)</code><span>process state</span></div>
+            <div><code>V(x,y,t)=g(X(x,y,t))</code><span>observable value</span></div>
+            <div><code>S(x,y,t)=h(V(x,y,t), process role, mission context)</code><span>optional sampling interpretation</span></div>
+          </div>
+          <div class="lab-card-grid two">
+            <div class="lab-card"><h3>Process examples</h3><ul><li>active front = current interest</li><li>susceptible near active front = near-future interest</li><li>consumed trail = low interest</li><li>recovering region = revisit interest</li><li>stable inactive background = low interest</li></ul></div>
+            <div class="lab-callout"><strong>Boundary:</strong> real AUV adaptive sampling often uses uncertainty, forecast, Gaussian/Markovian/Bayesian models, information gain, and mission constraints. Those appear in later labs.</div>
+          </div>
+        </section>
+
+        <section id="sandbox" class="lab-section">
+          <h2>11. How this connects to the full sandbox</h2>
+          <h3>How this connects to the full Process Lab</h3>
+          <p>This article gives the concept. The full Process Lab sandbox lets users experiment with Example Processes, Custom Composer, Process Paint, Rule Allocation Sandbox, Display / Diagnostic Layers, and exports.</p>
+          <p>The current sandbox may still carry legacy Sampling Process Lab / Process Lab naming in code or exports. This article introduces the conceptual model that the sandbox is moving toward.</p>
+          <p><a class="lab-button" href="../index.html">Open Main App</a> <a class="lab-button" href="../index.html">Back to Main App</a> <a class="lab-button primary" href="../index.html#simulation-lab">Open Simulation Lab</a> <a class="lab-button" href="index.html">Back to Learning Labs</a></p>
+        </section>
+
+        <section id="next" class="lab-section">
+          <h2>12. What comes next</h2>
+          <div class="lab-roadmap">
+            <div><strong>Next Learning Lab: Deterministic Dynamic Flow Fields.</strong> A vector field describes movement through space and time.</div>
+            <div><strong>Oracle Coupled Sampling Space:</strong> known process + known flow + constraints.</div>
+            <div><strong>Uncertainty / Forecast:</strong> hidden truth, observations, posterior belief, and uncertainty.</div>
+            <div><strong>Stochastic Coupled Sampling Space:</strong> belief-based sampling objective.</div>
+            <div><strong>Planner / Mission Evaluation:</strong> path choice, reward, cost, regret.</div>
+          </div>
+        </section>
+      </article>
+    </div>
+  </main>
+  <script type="module" src="../src/labs/widgets/DeterministicProcessWidgets.js"></script>
+</body>
+</html>

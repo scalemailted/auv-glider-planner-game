@@ -14,10 +14,10 @@ import { referenceSignatureMetadata } from '../../src/core/demo/roi/RoiReference
 import { processRuleById } from '../../src/core/demo/sampling/SamplingProcessRules.js';
 
 const baseState = {
-  title: 'Spatiotemporal Sampling Process Lab',
+  title: 'Deterministic Spatiotemporal Process Lab',
   processMode: 'referenceSignature',
   processModeLabel: 'Example Processes',
-  processStatusLabel: 'Pattern-Validated',
+  processStatusLabel: 'Example-Validated',
   patternSource: 'referenceSignature',
   referenceSignatureId: 'stationaryTemporalBursts',
   referenceSignature: referenceSignatureMetadata('stationaryTemporalBursts'),
@@ -131,7 +131,7 @@ assert.equal(consoleHtml.includes('data-action="export-demo-json"'), true, 'expo
 assertNoOpenDetails(consoleHtml, 'left console');
 
 const recipeHtml = roiRecipeSignatureHtml(baseState);
-assertBefore(recipeHtml, 'sampling-panel-tabs', 'Process Pattern View', 'recipe tabs should be topmost');
+assertBefore(recipeHtml, 'sampling-panel-tabs', 'Process Example View', 'recipe tabs should be topmost');
 assertBefore(recipeHtml, 'sampling-panel-tabs', 'Current Lab State', 'recipe tabs should appear before current state');
 assert.equal(recipeHtml.includes('data-roi-reference-signature-help'), true, 'recipe view should contain recipe content');
 assert.equal(recipeHtml.includes('data-roi-diagnostics-view'), false, 'recipe view should not contain diagnostics body');

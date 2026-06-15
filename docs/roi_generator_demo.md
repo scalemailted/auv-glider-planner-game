@@ -1,14 +1,14 @@
-# Spatiotemporal Sampling Process Lab
+# Deterministic Spatiotemporal Process Lab
 
-Legacy name: Sample / ROI Field Demo.
+Menu label: Process Lab. Legacy name: Sample / ROI Field Demo.
 
 ## Purpose
 
-The Spatiotemporal Sampling Process Lab visualizes `S(x,y,t)`: where and when a deterministic or seeded grid process creates value to sample. Unlike the Flow Fields Demo, which shows water motion `F(x,y,t)`, this pure lab shows objective value, reward value, hotspots, bursts, temporal patterns, cell states, rule updates, depletion, and recovery behavior.
+The Deterministic Spatiotemporal Process Lab visualizes `S(x,y,t)`: where and when a deterministic or seeded grid process creates value to sample. Unlike the Flow Fields Demo, which shows water motion `F(x,y,t)`, this pure lab shows objective value, reward value, hotspots, bursts, temporal patterns, cell states, rule updates, depletion, and recovery behavior.
 
 It exposes a Source / Initial Field: a deterministic or seeded substrate that controls where process activity starts, recurs, is constrained, or has initial support. Legacy exports may still call this `eventLikelihoodField` or `likelihoodField`, but the user-facing concept is Source / Initial Field. Formal likelihood, uncertainty, belief, forecast error, and information gain are covered by the Uncertainty / Forecast Demo; current-driven sample movement is covered by the Coupled Fields Demo.
 
-The lab is an Example Processes-first component composer. The normal first control is `Mode`: choose Example Processes, Custom Composer, Process Paint, or Random Rule Lab. Example Processes shows the Process Pattern selector; Custom Composer exposes direct primitive editing. Legacy behavior presets remain available only for compatibility/debug workflows. The primitive components are Source / Initial Field, Spatial Pattern / Geometry, Value Distribution, Temporal Pattern, Spatial Evolution / Motion Rule, Interaction Scale / Hierarchy, State / Update Rule, Sampling / Freshness Effect, Display / Diagnostic Layer, Process Paint / Rule Allocation, Seed / Scenario Identity, and Export.
+The lab is an Example Processes-first component composer. The normal first control is `Mode`: choose Example Processes, Custom Composer, Process Paint, or Rule Allocation Sandbox. Example Processes shows the Example Process selector grouped into Foundational CA Models and Observable Process Patterns; Custom Composer exposes direct primitive editing. Legacy behavior presets remain available only for compatibility/debug workflows. The primitive components are Source / Initial Field, Spatial Pattern / Geometry, Value Distribution, Temporal Pattern, Spatial Evolution / Motion Rule, Interaction Scale / Hierarchy, State / Update Rule, Sampling / Freshness Effect, Display / Diagnostic Layer, Process Paint / Rule Allocation, Seed / Scenario Identity, and Export.
 
 It is not a mission, planner, leaderboard mode, uncertainty demo, forecast/truth demo, or scoring mode. It only visualizes how sample-value regions can be shaped.
 
@@ -16,7 +16,7 @@ It is not a mission, planner, leaderboard mode, uncertainty demo, forecast/truth
 
 - Left Mission Console: compact component groups, sample-field configuration, display controls, playback speed, seed regeneration, export controls, and Main Menu navigation.
 - Center Phaser viewport: heatmap, high-value markers, selected-cell highlight, and non-obstructive labels only.
-- Right panel: Recipe / Signature View by default, with Cell Inspector after selecting a sample cell, Behavior Help after Explain actions, and Diagnostics for active-source/debug details.
+- Right panel: Process Example View by default, with Cell Inspector after selecting a sample cell, Behavior Help after Explain actions, and Diagnostics for active-source/debug details.
 - Bottom transport: compact infinite-time controls for Reset, Direction, Pause/Resume, Demo Time, Playback, temporal behavior, and Infinite timeline.
 
 ## Controls
@@ -33,8 +33,7 @@ It is not a mission, planner, leaderboard mode, uncertainty demo, forecast/truth
 
 ## Reference Observable Process Signatures
 
-The Sample / ROI Field Demo includes reference signatures: front propagation, wave / excitable media, birth-death emergence, stationary temporal bursts, diffusion / spread, drift / transport, cyclic dominance, cluster formation, avalanche / burst cascades, predator-prey migration, and freshness / recovery. These are component recipes inspired by known CA/grid-process families, not exact reproductions. Applying a signature updates the editable component controls and scenario exports preserve the signature metadata.
-Phase 6.2 expands this into fourteen user-facing observable-process labels: Propagating Fronts, Excitable Waves, Local Birth-Death Emergence, Recurrent Stationary Hotspots, Diffusive / Epidemic Spread, Directed Drift / Transport, Cyclic Dominance, Domain / Cluster Formation, Threshold Cascades / Avalanches, Interacting Population Migration, Freshness / Recovery, Pattern Formation / Morphogenesis, Congestion / Density Waves, and Structured Signal Propagation. The selector stays broad; known models such as forest-fire CA, Brian's Brain, Game of Life, SIR/SIS/SEIR grids, sandpiles, Ising/voter/Schelling dynamics, traffic CA, and Wireworld live in the reference catalog, right panel, exports, and coverage audit.
+Process Lab includes Example Processes: Foundational CA Models such as Conway, Forest Fire, SIR, Greenberg-Hastings, Sandpile, Wa-Tor, Traffic CA, and Wireworld, plus Observable Process Patterns such as Propagating Fronts, Excitable Waves, Local Birth-Death Emergence, Recurrent Stationary Hotspots, Diffusive / Epidemic Spread, Directed Feature Transport, Cyclic Dominance, Domain / Cluster Formation, Threshold Cascades / Avalanches, Interacting Population Migration, Freshness / Recovery, Pattern Formation / Morphogenesis, Congestion / Density Waves, and Structured Signal Propagation. These are component recipes inspired by known CA/grid-process families, not exact reproductions. Applying an example updates the editable component controls and scenario exports preserve both new example metadata and legacy reference-signature metadata.
 
 The right-panel Recipe / Signature view uses progressive disclosure: a short model list, grouped model-family counts, CA taxonomy tags, observable spatial/temporal/delta signatures, ROI meaning, QA expectations, genotype-like component setup, phenotype-like behavior notes, failure signs, and "what this is not." It remains a teaching/validation taxonomy, not a simulator library.
 - `Interaction Scale`: labels whether behavior acts globally, by cluster/community, by cell/node, by edge/neighbor, or as a hybrid multi-scale process.
@@ -58,7 +57,7 @@ Generated scenarios use `src/core/demo/roi/RoiScenarioGenerator.js` and `src/cor
 
 ## Behavior Signatures and Isolation
 
-Selecting a Process Pattern automatically opens Recipe / Process Pattern View with observable signature and ROI Meaning sections. The signature states the observable pattern, what should change over time, why cells become important, best display layers, and failure signs. ROI Meaning distinguishes current ROI, near-future ROI, low/depleted/dead regions, and sampling intuition.
+Selecting an Example Process automatically opens Process Example View with observable signature, rule/update-function, and sampling interpretation sections. The example states the observable pattern, what should change over time, why cells become important, best display layers, and failure signs. Sampling interpretation distinguishes current sampling value, near-future value, low/depleted/dead regions, and sampling intuition.
 
 The console also has Component Isolation Examples. These buttons load stable seeded recipes for comparing Temporal Patterns, Spatial Evolution, and Interaction Scale while holding most other components fixed. They are meant for teaching component effects; they do not create dataset batches or run planners.
 
@@ -81,7 +80,7 @@ Static mode samples the selected field at time zero. Dynamic mode passes advanci
 
 The default is intentionally dynamic and visually active: Clustered Field, Cluster Count 3, Medium Cluster Size, Bursty temporal pattern, Stationary spatial evolution, State-Evolving state model, Soft Depletion, and Sample Value + Likelihood Overlay display.
 
-The left panel separates sample behavior into Event Likelihood Field, Spatial Pattern / Geometry, Value Distribution, Temporal Pattern, Spatial Evolution, State Model / Memory, Sampling Effects, and Display. The inspector labels each selected cell as Time-Indexed, Frequency-Based, State-Evolving, or History-Aware so users can tell whether value is computed directly from `x,y,t`, follows a cycle, depends on current field state, or depends on longer sampling/observation history. See [Sample / ROI Field Demo](sample_fields_demo.md) for the taxonomy and motivation.
+The left panel separates sample behavior into Source / Initial Field, Spatial Pattern / Geometry, Value Distribution, Temporal Pattern, Spatial Evolution, State Model / Memory, Sampling Effects, and Display. The inspector labels each selected cell as Time-Indexed, Frequency-Based, State-Evolving, or History-Aware so users can tell whether value is computed directly from `x,y,t`, follows a cycle, depends on current field state, or depends on longer sampling/observation history. See [legacy Sample / ROI notes](sample_fields_demo.md) for additional taxonomy history.
 
 ## Hierarchical Graph-Based Field Dynamics
 

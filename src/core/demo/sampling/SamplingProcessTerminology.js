@@ -1,5 +1,5 @@
-export const SAMPLING_PROCESS_LAB_TITLE = 'Spatiotemporal Sampling Process Lab';
-export const SAMPLING_PROCESS_LAB_MENU_LABEL = 'Sampling Process Lab';
+export const SAMPLING_PROCESS_LAB_TITLE = 'Deterministic Spatiotemporal Process Lab';
+export const SAMPLING_PROCESS_LAB_MENU_LABEL = 'Process Lab';
 export const SAMPLING_PROCESS_LEGACY_DEMO_NAME = 'Sample / ROI Field Demo';
 export const SAMPLING_PROCESS_EXPORT_TYPE = 'anchor.demo.sampling-process-field';
 export const SAMPLING_PROCESS_LEGACY_EXPORT_TYPE = 'anchor.demo.sample-roi-field';
@@ -26,8 +26,8 @@ export const SAMPLING_PROCESS_WORKFLOW_MODES = SAMPLING_PROCESS_VISIBLE_MODES;
 export const SAMPLING_PROCESS_DEFAULT_DISPLAY_MODE = 'sampleValue';
 
 export const SAMPLING_PROCESS_STATUS_LABELS = [
-  'Pattern-Validated',
-  'Pattern-Modified',
+  'Example-Validated',
+  'Example-Modified',
   'Custom Exploratory',
   'Weak Pattern',
   'Invalid / Diagnostic Only'
@@ -68,17 +68,17 @@ export function samplingProcessModeLabel(value) {
     referenceSignature: 'Example Processes',
     customComposer: 'Custom Composer',
     processPaint: 'Process Paint',
-    randomRuleLab: 'Random Rule Lab',
+    randomRuleLab: 'Rule Allocation Sandbox',
     diagnosticsGraphInspection: 'Diagnostics / Graph Inspection'
   }[normalizeSamplingProcessMode(value)] ?? 'Example Processes';
 }
 
 export function samplingProcessModeDescription(value) {
   return {
-    referenceSignature: 'Choose a simplified CA/grid-process-inspired example and load its editable recipe.',
+    referenceSignature: 'Choose a deterministic CA/grid-process example and load its editable recipe.',
     customComposer: 'Custom Exploratory global component editing without reference validation.',
     processPaint: 'Non-uniform CA-style cell, group, state, and rule allocation editor.',
-    randomRuleLab: 'Seeded random state/rule/group allocation sandbox.',
+    randomRuleLab: 'Seeded non-uniform rule allocation sandbox.',
     diagnosticsGraphInspection: 'Internal compatibility route for opening diagnostics; diagnostics now lives in Display / Diagnostic Layer and the right-panel Diagnostics view.'
   }[normalizeSamplingProcessMode(value)] ?? 'Guided process mode.';
 }
@@ -93,10 +93,18 @@ export function samplingProcessStatusLabel({
   if (validationStatus === 'FAIL' || !hasMeaningfulStructure) return 'Invalid / Diagnostic Only';
   if (validationStatus === 'WARN') return 'Weak Pattern';
   if (normalizeSamplingProcessMode(mode) !== 'referenceSignature' || patternSource !== 'referenceSignature') return 'Custom Exploratory';
-  if (modified) return 'Pattern-Modified';
-  return 'Pattern-Validated';
+  if (modified) return 'Example-Modified';
+  return 'Example-Validated';
+}
+
+export function samplingProcessStatusDisplayLabel(status) {
+  return {
+    'Pattern-Validated': 'Example-Validated',
+    'Pattern-Modified': 'Example-Modified',
+    'Weak Signature': 'Weak Pattern'
+  }[status] ?? status;
 }
 
 export function sourceFieldBoundaryNote() {
-  return 'Source / Initial Field is a deterministic or seeded process substrate, not uncertainty, belief, forecast probability, or Bayesian likelihood. Forecast probability and information gain belong in the Uncertainty / Forecast Demo.';
+  return 'Source / Initial Field is a deterministic or seeded process substrate. Same recipe + same seed + same initial state -> same evolution. It is not uncertainty, belief, forecast probability, or Bayesian likelihood. Formal likelihood, posterior uncertainty, and information gain belong in the Uncertainty / Forecast Demo.';
 }

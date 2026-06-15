@@ -61,6 +61,22 @@ export class MissionConsole {
           menuActionHtml('leaderboard', 'Benchmark Leaderboard', 'Compare Simulation Lab benchmark attempts and solver runs.', 'secondary')
         ])}
       </section>
+      <section class="console-section" data-accordion-key="learning-labs">
+        <h2>Learning Labs</h2>
+        <div class="hud-muted">Guided interactive explanations for the models used by the simulator.</div>
+        ${menuGroupHtml('Concept Pages', [
+          menuLinkHtml('labs/index.html', 'Learning Labs Index', 'ANCHOR Learning Labs course roadmap and syllabus.', 'primary'),
+          menuLinkHtml('labs/deterministic-spatiotemporal-processes.html', 'Deterministic Spatiotemporal Processes', 'Learn how local update rules create evolving fields and sampling opportunities.', 'primary'),
+          menuLinkHtml('labs/deterministic-dynamic-flow-fields.html', 'Deterministic Dynamic Flow Fields', 'Learn how vector current fields describe direction, magnitude, particles, and deterministic flow evolution.', 'primary'),
+          menuLinkHtml('labs/oracle-deterministic-coupled-sampling-space.html', 'Oracle / Deterministic Coupled Sampling Space', 'Learn how known process, flow, constraints, and mission context form a true sampling objective.', 'primary'),
+          menuLinkHtml('labs/stochastic-uncertainty.html', 'Stochastic / Uncertainty', 'Learn how hidden truth, forecasts, noisy observations, and belief updates shape sampling decisions.', 'primary'),
+          menuLinkHtml('labs/stochastic-coupled-sampling-space.html', 'Stochastic Coupled Sampling Space', 'Learn how belief, uncertainty, hidden events, flow, and constraints create acquisition value.', 'primary'),
+          menuLinkHtml('labs/planner-mission-evaluation.html', 'Planner / Mission Evaluation', 'Learn how waypoint routes trade reward, cost, risk, uncertainty, flow, and debrief metrics.', 'primary')
+        ])}
+        ${menuGroupHtml('Roadmap', [
+          menuStaticHtml('Advanced Planning Topics', 'Coming later: receding-horizon search, solver benchmarking, and classroom datasets.')
+        ])}
+      </section>
       <section class="console-status">
         <span>${escapeHtml(mode)}</span>
         <strong>${escapeHtml(status)}</strong>
@@ -1111,6 +1127,25 @@ function menuActionHtml(action, title, description, tone = '') {
       <span>${escapeHtml(title)}</span>
       <small>${escapeHtml(description)}</small>
     </button>
+  `;
+}
+
+function menuLinkHtml(href, title, description, tone = '') {
+  const classes = ['console-button', 'menu-action-button', tone].filter(Boolean).join(' ');
+  return `
+    <a href="${escapeAttr(href)}" target="_blank" rel="noopener noreferrer" class="${classes}">
+      <span>${escapeHtml(title)}</span>
+      <small>${escapeHtml(description)}</small>
+    </a>
+  `;
+}
+
+function menuStaticHtml(title, description) {
+  return `
+    <div class="console-button menu-action-button disabled" aria-disabled="true">
+      <span>${escapeHtml(title)}</span>
+      <small>${escapeHtml(description)}</small>
+    </div>
   `;
 }
 

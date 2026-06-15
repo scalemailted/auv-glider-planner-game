@@ -191,7 +191,7 @@ function caTaxonomy(overrides = {}) {
     stochasticity: 'deterministic / seeded initialization only',
     stateSpace: 'multi-state',
     neighborhood: 'Moore or Von Neumann finite bounded grid',
-    ruleUniformity: 'uniform by default; non-uniform under Process Paint or Random Rule Lab',
+    ruleUniformity: 'uniform by default; non-uniform under Process Paint or Rule Allocation Sandbox',
     memory: 'state plus simple phase/recovery progression',
     boundaryStyle: 'finite bounded grid',
     phenotypeClass: 'spatiotemporal sampling process',

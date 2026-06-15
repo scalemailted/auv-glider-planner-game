@@ -10,7 +10,7 @@ Update it after substantial refactors so future work starts from the current pro
 
 ANCHOR is a static browser-first Phaser 3 game and simulator. The active shell is the Mission Console + Phaser Simulator Viewport + Waypoint Timeline. The browser game is the authoritative validator, simulator, and scorer. External solvers propose JSON plans; ANCHOR validates, simulates, scores, and exports results.
 
-The current app supports tutorials, deterministic and stochastic generated challenges, Mission Briefing, waypoint planning, continuous route validation, simulation playback, Debrief comparison, local leaderboard/best-path records, dataset export, JSON solver contracts, optional Python/Colab templates, and optional Node.js headless solver tools.
+The current app supports tutorials, deterministic and stochastic generated challenges, Mission Briefing, waypoint planning, continuous route validation, simulation playback, Debrief comparison, local leaderboard/best-path records, dataset export, JSON solver contracts, Learning Labs static concept pages, optional Python/Colab templates, and optional Node.js headless solver tools.
 
 ## Challenge Mode vs Simulation Lab
 
@@ -26,8 +26,31 @@ Challenge Mode also persists `missionMode`. Mission modes are player-facing obje
 
 ## Version / Milestone Log
 
+### Learning Labs Static Concept Pages
+
+- Added a top-level `Learning Labs` main-menu accordion for static concept pages that complement, but do not replace, the Phaser Simulation Lab demos.
+- Added `labs/index.html` as the course-style Learning Labs syllabus covering the six-lab path from deterministic processes through mission evaluation.
+- Added the first standalone shell, `Deterministic Spatiotemporal Processes`, with local equations, sampling interpretation, foundational CA model placeholders, static visual placeholders, and links back to the full ANCHOR app.
+- Added `tools/js/smoke_learning_labs_static.mjs` so local checks catch missing lab files, broken required content, accidental external links, and accidental CDN dependencies.
+- Completed the Phase L1 Deterministic Spatiotemporal Processes article with cellular-automata rule explanations, local/global update-function notation, foundational model cards, observable process pattern cards, non-uniform rule allocation, sampling interpretation, and a lightweight elementary-CA widget.
+- Added `tools/js/smoke_learning_lab_deterministic_processes.mjs` for the completed article contract.
+- Completed the Phase L2 Deterministic Dynamic Flow Fields article with vector-field notation, magnitude and particle-tracing equations, spatial structure cards, topology/boundary explanation, additive layer composition, coupled-lab preview, and standalone vanilla-canvas widgets for vector components, flow presets, particle tracing, time-varying flow, and additive layers.
+- Added `tools/js/smoke_learning_lab_flow_fields.mjs` for the flow-fields article contract.
+- Completed the Phase L3 Oracle / Deterministic Coupled Sampling Space article with process + flow + constraint + mission composition, oracle objective notation `S*(x,y,t)`, reachability timing, oracle-vs-stochastic boundary, coupled examples, and standalone vanilla-canvas widgets for flow-carried patches, constraint masks, layer composition, and reachability timing.
+- Added `tools/js/smoke_learning_lab_coupled_sampling_space.mjs` for the coupled sampling-space article contract.
+- Completed the Phase L4 Stochastic / Uncertainty article with hidden truth, forecast/prior state, observations, posterior belief, forecast-error vs hidden-unknown distinction, Bayesian updating, Markov intuition, GP/GMRF intuition, data assimilation, confidence/calibration/surprise, regret, acquisition value, and standalone vanilla widgets for belief updates, forecast diagnosis, Markov transitions, GP-style interpolation, regret, acquisition, and distributions.
+- Added `tools/js/smoke_learning_lab_uncertainty.mjs` for the uncertainty article contract.
+- Completed the Phase L5 Stochastic Coupled Sampling Space article with oracle-vs-belief objectives, expected-state uncertainty versus unknown-event probability, forecast-error versus hidden-event diagnosis, flow-consistent evidence, acquisition composition, reachability-aware value, surfacing update cycles, regret comparison, mission situations, and standalone vanilla widgets for belief-layer stacks, objective comparison, uncertainty maps, hidden-event evidence, acquisition, reachability, updates, and regret.
+- Added `tools/js/smoke_learning_lab_stochastic_coupled_sampling_space.mjs` for the stochastic coupled sampling-space article contract.
+- Completed the Phase L6 Planner / Mission Evaluation article with waypoint-plan semantics, reward/cost/risk tradeoffs, reachability timing, flow-aware planning, Greedy Planner baseline intuition, coverage/front/revisit strategies, uncertainty-aware sampling, forecast-validation versus hidden-event follow-up, oracle/belief/truth-assisted planner labels, regret, surfacing replanning, multi-agent planning, simulation/debrief evaluation, solver workflow fairness, mission strategy cards, and standalone vanilla widgets for route and score concepts.
+- Added `tools/js/smoke_learning_lab_planner_mission_evaluation.mjs` for the planner mission-evaluation article contract.
+
 ### Sampling Process Lab Refactor
 
+- Renamed the visible lab title to Deterministic Spatiotemporal Process Lab and the menu entry to Process Lab.
+- Reframed the guided selector as Example Processes grouped into Foundational CA Models and Observable Process Patterns.
+- Added process-example metadata for Conway, Forest Fire, SIR, Greenberg-Hastings, Sandpile, Wa-Tor, Traffic CA, Wireworld, and the existing observable-process recipes.
+- Renamed visible Random Rule Lab wording to Rule Allocation Sandbox while preserving internal IDs and export compatibility.
 - Renamed the user-facing Sample / ROI Field Demo to Spatiotemporal Sampling Process Lab while preserving legacy export aliases.
 - Reframed Source / Initial Field as the deterministic or seeded process substrate; formal likelihood, belief, forecast error, and information gain remain in the Uncertainty / Forecast Demo.
 - Added process modes for Reference Signature, Custom Composer, Process Paint, and Random Rule Lab.

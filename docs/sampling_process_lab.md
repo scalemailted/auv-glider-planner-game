@@ -1,8 +1,8 @@
-# Spatiotemporal Sampling Process Lab
+# Deterministic Spatiotemporal Process Lab
 
-Legacy name: Sample / ROI Field Demo.
+Menu label: Process Lab. Legacy name: Sample / ROI Field Demo.
 
-The Spatiotemporal Sampling Process Lab teaches deterministic or seeded grid/cellular processes that generate a sampling-value field:
+The Deterministic Spatiotemporal Process Lab teaches deterministic or seeded grid/cellular processes that generate a sampling-value field:
 
 ```text
 S(x,y,t) = value interpretation of an evolving spatiotemporal process
@@ -13,7 +13,7 @@ ROI is the output interpretation: cells or regions currently or prospectively im
 ## Four Demo Boundary
 
 1. Flow Fields Demo teaches vector fields `F(x,y,t)`: currents, eddies, drift, shear, and transport.
-2. Spatiotemporal Sampling Process Lab teaches deterministic or seeded grid/cellular processes that produce `S(x,y,t)`.
+2. Process Lab teaches deterministic or seeded grid/cellular processes that produce `S(x,y,t)`.
 3. Coupled Fields Demo combines flow, sampling processes, terrain, shoreline, and mission-relevant environmental structure.
 4. Uncertainty / Forecast Demo teaches likelihood, belief, probability, uncertainty, forecast-vs-truth, stochastic scenarios, and information gain.
 
@@ -25,10 +25,10 @@ In this lab, Source / Initial Field is not uncertainty, belief, forecast probabi
 
 ## Modes
 
-- Example Processes: simplified CA/grid-process-inspired examples that load editable component recipes.
+- Example Processes: simplified CA/grid-process-inspired examples that load editable component recipes. The selector is grouped into Foundational CA Models and Observable Process Patterns.
 - Custom Composer: global primitive component editing, labeled Custom Exploratory unless mapped back to a validated signature.
 - Process Paint: minimal non-uniform CA-style editor for assigning state, rule, group, and source value to selected cells.
-- Random Rule Lab: seeded random state/rule/group allocation; exploratory unless constrained and validated against a reference signature.
+- Rule Allocation Sandbox: seeded random state/rule/group allocation; exploratory unless constrained and validated against an example process.
 
 Diagnostics is not a primary mode. Use Display / Diagnostic Layer and the right-panel Diagnostics tab to inspect states, topology, process influence messages, transitions, groups, and ROI roles for the active workflow.
 

@@ -17,9 +17,9 @@ export const SAMPLE_FIELD_EXPLAINER_GROUPS = [
 
 export const SAMPLE_FIELD_GROUP_SUMMARIES = {
   behaviorPreset: {
-    label: 'Process Pattern',
-    question: 'Which example Process Pattern is driving the sample-field behavior?',
-    summary: 'Process Patterns are the primary teaching entry point; Custom Composer edits primitive sample-field controls directly.'
+    label: 'Example Process',
+    question: 'Which deterministic Example Process is driving the process behavior?',
+    summary: 'Example Processes are the primary teaching entry point; Custom Composer edits primitive process controls directly.'
   },
   eventLikelihood: {
     label: 'Source / Initial Field',

@@ -60,6 +60,12 @@ import {
   samplingProcessModeLabel
 } from '../../../core/demo/sampling/SamplingProcessTerminology.js';
 import {
+  normalizeSpatiotemporalProcessExampleId,
+  referenceSignatureIdForProcessExample,
+  spatiotemporalProcessExampleById,
+  spatiotemporalProcessExampleLabel
+} from '../../../core/demo/sampling/SpatiotemporalProcessExamples.js';
+import {
   normalizeProcessRuleId,
   processRuleById
 } from '../../../core/demo/sampling/SamplingProcessRules.js';
@@ -152,6 +158,7 @@ export class RoiGeneratorDemoScene extends PhaserScene {
     this.dynamicComplexity = 'medium';
     this.patternSource = 'referenceSignature';
     this.processMode = 'referenceSignature';
+    this.exampleProcessId = DEFAULT_REFERENCE_SIGNATURE_ID;
     this.behaviorPresetId = CUSTOM_SAMPLE_FIELD_BEHAVIOR_PRESET_ID;
     this.behaviorPresetModified = false;
     this.referenceSignatureId = DEFAULT_REFERENCE_SIGNATURE_ID;
@@ -196,9 +203,10 @@ export class RoiGeneratorDemoScene extends PhaserScene {
 
   init(data = {}) {
     const patternSource = normalizePatternSource(data.patternSource, data);
-    const requestedReferenceSignatureId = normalizeReferenceSignatureId(data.referenceSignatureId ?? data.referenceSignature?.id ?? (
+    const requestedExampleProcessId = normalizeSpatiotemporalProcessExampleId(data.exampleProcessId ?? data.spatiotemporalProcessExample?.id ?? data.referenceSignatureId ?? data.referenceSignature?.id ?? (
       patternSource === 'referenceSignature' ? DEFAULT_REFERENCE_SIGNATURE_ID : CUSTOM_REFERENCE_SIGNATURE_ID
     ));
+    const requestedReferenceSignatureId = normalizeReferenceSignatureId(referenceSignatureIdForProcessExample(requestedExampleProcessId) ?? requestedExampleProcessId);
     const requestedProcessMode = normalizeSamplingProcessMode(data.processMode ?? processModeFromPatternSource(patternSource));
     const diagnosticsMigration = requestedProcessMode === 'diagnosticsGraphInspection'
       ? migrateDiagnosticsProcessMode({
@@ -240,6 +248,7 @@ export class RoiGeneratorDemoScene extends PhaserScene {
     this.dynamicComplexity = normalizeRoiDemoDynamicComplexity(input.dynamicComplexity ?? 'medium');
     this.patternSource = patternSource;
     this.processMode = processMode;
+    this.exampleProcessId = patternSource === 'referenceSignature' ? requestedExampleProcessId : CUSTOM_REFERENCE_SIGNATURE_ID;
     this.behaviorPresetId = patternSource === 'legacyPreset'
       ? normalizeSampleFieldBehaviorPresetId(input.behaviorPresetId ?? input.behaviorPreset?.id ?? CUSTOM_SAMPLE_FIELD_BEHAVIOR_PRESET_ID)
       : CUSTOM_SAMPLE_FIELD_BEHAVIOR_PRESET_ID;
@@ -339,11 +348,12 @@ export class RoiGeneratorDemoScene extends PhaserScene {
       return 'Process Paint Mode: assign initial state, process rule, group, and source value to cells or groups.';
     }
     if (this.processMode === 'randomRuleLab') {
-      return 'Random Rule Lab: generate seeded exploratory rule/state/group allocations and inspect the resulting sampling process.';
+      return 'Rule Allocation Sandbox: generate seeded exploratory rule/state/group allocations and inspect the resulting deterministic process.';
     }
+    const example = spatiotemporalProcessExampleById(this.exampleProcessId);
     const signature = referenceSignatureById(this.referenceSignatureId);
     if (this.patternSource === 'referenceSignature' && signature) {
-      return `Example Processes: ${signature.label} | Deterministic/seeded observable process: ${formatObservableSignature(signature.expectedObservableSignature)}`;
+      return `Example Processes: ${example?.label ?? signature.label} | Deterministic/seeded process: ${formatObservableSignature(signature.expectedObservableSignature)}`;
     }
     if (this.patternSource === 'custom') {
       return `Custom Exploratory Composer | ${this.recipeSummary?.() ?? 'editable primitive components'}`;
@@ -379,6 +389,7 @@ export class RoiGeneratorDemoScene extends PhaserScene {
       dynamicComplexity: this.dynamicComplexity,
       patternSource: this.patternSource,
       processMode: this.processMode,
+      exampleProcessId: this.exampleProcessId,
       behaviorPresetId: this.behaviorPresetId,
       behaviorPresetModified: this.behaviorPresetModified,
       referenceSignatureId: this.referenceSignatureId,
@@ -425,6 +436,7 @@ export class RoiGeneratorDemoScene extends PhaserScene {
       behaviorPresetId: this.behaviorPresetId,
       behaviorPresetModified: this.behaviorPresetModified,
       referenceSignatureId: this.referenceSignatureId,
+      exampleProcessId: this.exampleProcessId,
       referenceSignatureModified: this.referenceSignatureModified,
       updateRuleHint: this.updateRuleHint,
       selectedCell: this.selectedCell,
@@ -596,7 +608,8 @@ export class RoiGeneratorDemoScene extends PhaserScene {
   }
 
   applyReferenceSignature(referenceSignatureId) {
-    const signatureId = normalizeReferenceSignatureId(referenceSignatureId);
+    const exampleId = normalizeSpatiotemporalProcessExampleId(referenceSignatureId);
+    const signatureId = normalizeReferenceSignatureId(referenceSignatureIdForProcessExample(exampleId) ?? referenceSignatureId);
     const signature = referenceSignatureById(signatureId);
     if (!signature) {
       this.scene.restart(this.sceneConfig({
@@ -610,6 +623,7 @@ export class RoiGeneratorDemoScene extends PhaserScene {
     this.scene.restart(this.sceneConfig({
       ...referenceSignatureRecipe(signature.id),
       ...buildReferenceSignaturePatch(this.modeControllerContext(), signature.id),
+      exampleProcessId: exampleId,
       modifiedComponent: null,
       selectedHelpTopic: null,
       rightPanelMode: 'recipeSignature',
@@ -1054,7 +1068,7 @@ export class RoiGeneratorDemoScene extends PhaserScene {
       return;
     }
     const modeLabel = this.processMode === 'referenceSignature'
-      ? `Example Processes: ${referenceSignatureById(this.referenceSignatureId)?.label ?? 'Process Pattern'}`
+      ? `Example Processes: ${spatiotemporalProcessExampleLabel(this.exampleProcessId)}`
       : samplingProcessModeLabel(this.processMode);
     const baseStatus = `${modeLabel} · ${roiTemporalPatternLabel(this.field?.temporalPattern ?? this.temporalPattern)} · ${roiSpatialEvolutionLabel(this.field?.spatialEvolution ?? this.spatialEvolution)} · ${roiDisplayModeLabel(this.field?.displayMode ?? this.displayMode)} · t=${this.demoTime.toFixed(1)}s`;
     const compactMetrics = `Mean ${formatStat(diagnostics.meanValue ?? stats.mean)} · Active ${formatPercent(diagnostics.activeFraction)} · High ${formatPercent(diagnostics.highValueFraction)} · Max ${formatStat(diagnostics.maxValue ?? stats.max)}`;
@@ -1154,7 +1168,7 @@ export class RoiGeneratorDemoScene extends PhaserScene {
     const root = this.app?.elements?.overlay?.bottomTimeline;
     if (!root) return;
     root.innerHTML = `
-      <section class="hud-panel flow-demo-transport roi-demo-transport" aria-label="Sample / ROI Field Demo transport controls">
+      <section class="hud-panel flow-demo-transport roi-demo-transport" aria-label="Deterministic Spatiotemporal Process Lab transport controls">
         <div class="timeline-buttons flow-demo-transport-actions">
           <button type="button" data-action="roi-demo-reset">Reset</button>
           <button type="button" data-action="roi-demo-direction">Direction: Forward</button>
@@ -1162,7 +1176,7 @@ export class RoiGeneratorDemoScene extends PhaserScene {
         </div>
         <div class="timeline-readout flow-demo-time-readout">
           <strong data-roi-demo-time>Demo Time: 0.0 s</strong>
-          <span class="hud-muted" data-roi-demo-state>Dynamic sample field</span>
+          <span class="hud-muted" data-roi-demo-state>Deterministic process field</span>
         </div>
         <div class="flow-demo-transport-summary">
           <span data-roi-demo-speed>Playback: 1x</span>
@@ -1498,7 +1512,7 @@ export class RoiGeneratorDemoScene extends PhaserScene {
     }
     const artifact = this.buildDemoArtifactExport();
     downloadJSON(demoArtifactFilename('sample-roi-field', { kind: artifact.timeSampling?.kind }), artifact);
-    this.app?.toast?.('Sample / ROI Demo JSON exported.', 'success');
+    this.app?.toast?.('Process Lab JSON exported.', 'success');
   }
 
   generateScenario() {
@@ -1541,6 +1555,7 @@ export class RoiGeneratorDemoScene extends PhaserScene {
       processContract: sourceMode === 'currentRecipe' && this.behaviorPresetId !== CUSTOM_SAMPLE_FIELD_BEHAVIOR_PRESET_ID ? behaviorPreset.processContract : null,
       patternSource: this.patternSource,
       referenceSignatureId: this.referenceSignatureId,
+      exampleProcessId: this.exampleProcessId,
       referenceSignatureModified: this.referenceSignatureModified,
       sourceMode,
       requireValidation: this.scenarioValidationMode === 'requirePass'
@@ -1564,6 +1579,7 @@ export class RoiGeneratorDemoScene extends PhaserScene {
       field: this.field,
       processMode: this.processMode,
       patternSource: this.patternSource,
+      exampleProcessId: this.exampleProcessId,
       referenceSignatureId: this.referenceSignatureId,
       referenceSignatureModified: this.referenceSignatureModified,
       behaviorPresetId: this.behaviorPresetId,

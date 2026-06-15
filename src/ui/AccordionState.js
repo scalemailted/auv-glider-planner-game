@@ -87,6 +87,7 @@ export function getAccordionDefaults(mode) {
     idle: {
       'challenge-mode': true,
       'simulation-lab': false,
+      'learning-labs': false,
       idle: false,
       status: false
     },

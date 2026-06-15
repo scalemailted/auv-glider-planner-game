@@ -37,7 +37,7 @@ const FULL_COMPOSER_SECTIONS = [
 
 export const SAMPLING_PROCESS_MODE_UI = {
   referenceSignature: {
-    description: 'Guided process-pattern workflow with a compact left HUD.',
+    description: 'Guided deterministic process-example workflow with a compact left HUD.',
     leftSections: ['mode', 'referenceSignature', 'display', 'seed', 'export'],
     advancedSections: ['editLoadedRecipe'],
     rightPanelDefault: 'recipeSignature',
@@ -58,7 +58,7 @@ export const SAMPLING_PROCESS_MODE_UI = {
     selectedCellPanel: 'paintCellEditor'
   },
   randomRuleLab: {
-    description: 'Seeded random process-rule allocation workflow.',
+    description: 'Seeded non-uniform process-rule allocation workflow.',
     leftSections: ['mode', 'randomRuleLab', 'display', 'seed', 'export'],
     advancedSections: [],
     rightPanelDefault: 'recipeSignature',

@@ -2,7 +2,7 @@
 
 ## Purpose
 
-ANCHOR has four field demos. Flow Fields Demo isolates `F(x,y,t)`, the current vector field. Sample / ROI Field Demo isolates `L(x,y,t)` event likelihood and `S(x,y,t)` science/sample value. Uncertainty / Forecast Demo isolates forecast, truth, uncertainty, and information gain. Coupled Fields Demo overlays `F(x,y,t)` and `S(x,y,t)` to show current-advected plumes, flow-stretched fronts, shoreline/runoff transport, eddy-carried blooms, channel transport, and other interactions where sampling strategy depends on the underlying flow.
+ANCHOR has four field demos. Flow Fields Demo isolates `F(x,y,t)`, the current vector field. Process Lab isolates deterministic process support and `S(x,y,t)` science/sample value. Uncertainty / Forecast Demo isolates forecast, truth, uncertainty, and information gain. Coupled Fields Demo overlays `F(x,y,t)` and `S(x,y,t)` to show current-advected plumes, flow-stretched fronts, shoreline/runoff transport, eddy-carried blooms, channel transport, and other interactions where sampling strategy depends on the underlying flow.
 
 The individual demos remain separate because they teach different concepts. The coupled demo is for inspecting interaction.
 

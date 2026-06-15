@@ -15,7 +15,7 @@ const failures = [];
 const assert = (condition, message) => { if (!condition) failures.push(message); };
 
 const baseState = {
-  title: 'Spatiotemporal Sampling Process Lab',
+  title: 'Deterministic Spatiotemporal Process Lab',
   status: 'Demo running',
   paused: false,
   patternSource: 'referenceSignature',
@@ -97,7 +97,7 @@ function numberedHeadings(html) {
 
 for (const mode of SAMPLING_PROCESS_MODES) {
   const html = samplingProcessConsoleHtml(stateForMode(mode));
-  assert(html.includes('Spatiotemporal Sampling Process Lab'), `${mode} missing lab title`);
+  assert(html.includes('Deterministic Spatiotemporal Process Lab'), `${mode} missing lab title`);
   assert(html.includes('data-sampling-section="mode"'), `${mode} missing mode section`);
   const headings = numberedHeadings(html);
   assert(headings.length === 0, `${mode} should not render numeric heading prefixes`);
@@ -136,9 +136,9 @@ assertExcludes(paintHtml, 'id="roi-demo-event-likelihood"', 'process paint shoul
 assertExcludes(paintHtml, 'data-sampling-section="valueDistribution"', 'process paint should not show value distribution composer controls');
 
 const randomHtml = samplingProcessConsoleHtml(stateForMode('randomRuleLab'));
-assertIncludes(randomHtml, 'Random Rule Lab', 'random rule lab missing section');
-assertIncludes(randomHtml, 'id="sampling-random-seed"', 'random rule lab missing seed control');
-assertExcludes(randomHtml, 'id="sampling-paint-state"', 'random rule lab should not show paint state selector');
+assertIncludes(randomHtml, 'Rule Allocation Sandbox', 'rule allocation sandbox missing section');
+assertIncludes(randomHtml, 'id="sampling-random-seed"', 'rule allocation sandbox missing seed control');
+assertExcludes(randomHtml, 'id="sampling-paint-state"', 'rule allocation sandbox should not show paint state selector');
 
 const diagnosticsHtml = samplingProcessConsoleHtml(stateForMode('diagnosticsGraphInspection'));
 assertIncludes(diagnosticsHtml, 'id="roi-filter-message-threshold"', 'diagnostics missing message threshold filter');

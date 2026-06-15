@@ -44,6 +44,12 @@ import {
   samplingProcessStatusLabel,
   sourceFieldBoundaryNote
 } from './SamplingProcessTerminology.js';
+import {
+  processExampleMetadata,
+  referenceSignatureIdForProcessExample,
+  spatiotemporalProcessExampleById,
+  spatiotemporalProcessExampleLabel
+} from './SpatiotemporalProcessExamples.js';
 
 export function buildSamplingProcessConsoleState(context = {}) {
   return {
@@ -154,15 +160,25 @@ export function buildSamplingProcessConsoleSummary(context = {}) {
 
 export function buildSamplingProcessActiveSourceState(context = {}) {
   const behaviorPreset = sampleFieldBehaviorPresetMetadata(context.behaviorPresetId, context.behaviorPresetModified);
+  const requestedExampleId = context.exampleProcessId ?? context.referenceSignatureId;
+  const exampleProcess = processExampleMetadata(requestedExampleId, context.referenceSignatureModified);
+  const mappedReferenceId = referenceSignatureIdForProcessExample(requestedExampleId) ?? context.referenceSignatureId;
   return {
     behaviorPresetId: context.behaviorPresetId,
     behaviorPresetLabel: sampleFieldBehaviorPresetLabel(context.behaviorPresetId),
     behaviorPresetModified: context.behaviorPresetModified,
     behaviorPreset,
-    referenceSignatureId: context.referenceSignatureId,
-    referenceSignatureLabel: referenceSignatureLabel(context.referenceSignatureId),
+    exampleProcessId: exampleProcess?.id ?? context.referenceSignatureId,
+    exampleProcessLabel: exampleProcess?.label ?? spatiotemporalProcessExampleLabel(context.referenceSignatureId),
+    exampleType: exampleProcess?.exampleType ?? 'observableProcessPattern',
+    foundationalModelId: exampleProcess?.exampleType === 'foundationalCaModel' ? exampleProcess.id : null,
+    observableProcessPatternId: exampleProcess?.exampleType === 'observableProcessPattern' ? exampleProcess.id : exampleProcess?.referenceSignatureId ?? null,
+    spatiotemporalProcessExample: exampleProcess,
+    referenceSignatureId: mappedReferenceId,
+    referenceSignatureLabel: referenceSignatureLabel(mappedReferenceId),
     referenceSignatureModified: context.referenceSignatureModified,
-    referenceSignature: referenceSignatureMetadata(context.referenceSignatureId, context.referenceSignatureModified) ?? behaviorPreset.referenceSignature
+    referenceSignature: referenceSignatureMetadata(mappedReferenceId, context.referenceSignatureModified) ?? behaviorPreset.referenceSignature,
+    selectedProcessExample: spatiotemporalProcessExampleById(requestedExampleId)
   };
 }
 

@@ -15,16 +15,16 @@ import {
 const failures = [];
 const assert = (condition, message) => { if (!condition) failures.push(message); };
 
-assert(SAMPLING_PROCESS_LAB_TITLE === 'Spatiotemporal Sampling Process Lab', 'new lab title mismatch');
+assert(SAMPLING_PROCESS_LAB_TITLE === 'Deterministic Spatiotemporal Process Lab', 'new lab title mismatch');
 assert(SAMPLING_PROCESS_LEGACY_DEMO_NAME === 'Sample / ROI Field Demo', 'legacy demo name mismatch');
 for (const mode of ['referenceSignature', 'customComposer', 'processPaint', 'randomRuleLab']) {
   assert(SAMPLING_PROCESS_MODES.includes(mode), `missing process mode ${mode}`);
 }
-for (const status of ['Pattern-Validated', 'Pattern-Modified', 'Custom Exploratory', 'Weak Pattern', 'Invalid / Diagnostic Only']) {
+for (const status of ['Example-Validated', 'Example-Modified', 'Custom Exploratory', 'Weak Pattern', 'Invalid / Diagnostic Only']) {
   assert(SAMPLING_PROCESS_STATUS_LABELS.includes(status), `missing status label ${status}`);
 }
 assert(sourceFieldBoundaryNote().includes('not uncertainty'), 'source field boundary note should demote likelihood/uncertainty');
-assert(samplingProcessStatusLabel({ mode: 'referenceSignature', patternSource: 'referenceSignature', validationStatus: 'PASS' }) === 'Pattern-Validated', 'pattern validated status mismatch');
+assert(samplingProcessStatusLabel({ mode: 'referenceSignature', patternSource: 'referenceSignature', validationStatus: 'PASS' }) === 'Example-Validated', 'example validated status mismatch');
 assert(samplingProcessStatusLabel({ mode: 'customComposer', patternSource: 'custom', validationStatus: 'PASS' }) === 'Custom Exploratory', 'custom exploratory status mismatch');
 assert(samplingProcessStatusLabel({ validationStatus: 'WARN' }) === 'Weak Pattern', 'weak pattern status mismatch');
 

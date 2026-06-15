@@ -1,14 +1,14 @@
-# Spatiotemporal Sampling Process Lab
+# Deterministic Spatiotemporal Process Lab
 
-Legacy name: Sample / ROI Field Demo. See also [Spatiotemporal Sampling Process Lab](sampling_process_lab.md).
+Menu label: Process Lab. Legacy name: Sample / ROI Field Demo. See also [Deterministic Spatiotemporal Process Lab](sampling_process_lab.md).
 
 ## Purpose
 
-The Spatiotemporal Sampling Process Lab visualizes `S(x,y,t)`: sampling value, reward value, or objective value at map location `x,y` and demo time `t`.
+The Deterministic Spatiotemporal Process Lab visualizes `S(x,y,t)`: sampling value, reward value, or objective value at map location `x,y` and demo time `t`.
 
 Source / Initial Field is the primary substrate in this lab. It is deterministic or seeded process support, not uncertainty, belief, forecast probability, or Bayesian likelihood. ROI is the output interpretation: cells or regions currently or prospectively important to sample.
 
-It is now organized as a mode-aware, Example Processes, component-based spatiotemporal field composer. The normal first controls are `Mode` and `Process Pattern`: a Process Pattern applies an editable known-process recipe, while `Custom Composer` exposes the same primitive controls directly for user-authored/global component recipes. The primary modes are Example Processes, Custom Composer, Process Paint, and Random Rule Lab. Diagnostics is available through Display / Diagnostic Layer and the right-panel Diagnostics tab rather than as a primary workflow mode. Process Patterns start from the shared Sampling Value display so behavior can be compared consistently; their best display layers remain recommendations. The right panel explains the selected process automatically. Internal and exported fields may still use `referenceSignature` names for compatibility. Legacy behavior presets remain in code for compatibility and debugging, but they are not the normal UI entry point. The demo answers:
+It is now organized as a mode-aware, Example Processes, component-based spatiotemporal field composer. The normal first controls are `Mode` and `Example Process`: an Example Process applies an editable deterministic process recipe, while `Custom Composer` exposes the same primitive controls directly for user-authored/global component recipes. Example Process options are grouped into Foundational CA Models and Observable Process Patterns. The primary modes are Example Processes, Custom Composer, Process Paint, and Rule Allocation Sandbox. Diagnostics is available through Display / Diagnostic Layer and the right-panel Diagnostics tab rather than as a primary workflow mode. Example Processes start from the shared Sampling Value display so behavior can be compared consistently; their best display layers remain recommendations. The right panel explains the selected process automatically, including its rule/update-function framing. Internal and exported fields may still use `referenceSignature` names for compatibility. Legacy behavior presets remain in code for compatibility and debugging, but they are not the normal UI entry point. The demo answers:
 
 - where events can originate or recur
 - what spatial shape the sample-value field has
@@ -61,7 +61,7 @@ Graph nodes can carry likelihood `L_i(t)`, sample value `S_i(t)`, activation sta
 
 These are simplified analog dynamics for teaching sampling strategy. They are not validated wildfire, ecological, rainfall, crime, or hydrodynamic simulators.
 
-Process Paint and Random Rule Lab use the canonical deterministic rule-family catalog `sampling-process-rule-families-v1`: `inert`, `propagatingFront`, `excitableWave`, `localBirthDeath`, `diffusiveSpread`, `directedTransport`, `cyclicDominance`, `domainFormation`, `thresholdCascade`, `interactingPopulation`, `freshnessRecovery`, `morphogenesis`, `congestionWave`, `structuredSignal`. Older saved IDs such as `frontPropagation`, `birthDeath`, `diffusionSpread`, `driftTransport`, `clusterFormation`, `cascade`, `predatorPreyMigration`, `signalPropagation`, and `none` remain aliases, but new paint layers and exports write canonical IDs.
+Process Paint and Rule Allocation Sandbox use the canonical deterministic rule-family catalog `sampling-process-rule-families-v1`: `inert`, `propagatingFront`, `excitableWave`, `localBirthDeath`, `diffusiveSpread`, `directedTransport`, `cyclicDominance`, `domainFormation`, `thresholdCascade`, `interactingPopulation`, `freshnessRecovery`, `morphogenesis`, `congestionWave`, `structuredSignal`. Older saved IDs such as `frontPropagation`, `birthDeath`, `diffusionSpread`, `driftTransport`, `clusterFormation`, `cascade`, `predatorPreyMigration`, `signalPropagation`, and `none` remain aliases, but new paint layers and exports write canonical IDs.
 
 When Process Paint is running, the lab advances painted cells through a deterministic CA-style stepper. Each frame emits `stateLayer`, nullable `ruleLayer` cell overrides, canonical `resolvedRuleLayer`, `groupLayer`, `sourceField`, `samplingValueField`, `transitionLayer`, `roiRoleLayer`, and `processMessages`. A `null`/`inherit` rule slot means "use the group rule"; explicit `inert` means "do not update this cell." Movement-like rules use deterministic proposed writes that are resolved after the scan loop, so transported cells are not overwritten by later cell processing. Time-series exports use `initial-frame-then-steps-v1`: frame 0 is the painted initial state, frame 1 is the first update, and later frames continue stepping. The right-panel cell editor reports the canonical rule label, transition record, ROI role, group, source value, and sampling value for the selected cell.
 
@@ -149,7 +149,7 @@ A bursty clustered field can behave differently depending on spatial evolution. 
 
 ## Behavior Explainers
 
-Every major component in the Sample / ROI Demo has behavior help. The left Mission Console stays compact and contains controls plus small `Explain ...` buttons for primitive components. The selected Process Pattern explains itself automatically in the right panel; it does not need a separate left-panel Explain button. Component explainers cover meaning, expected heatmap behavior, important parameters, useful pairings, strategy implication, and demo boundary.
+Every major component in Process Lab has behavior help. The left Mission Console stays compact and contains controls plus small `Explain ...` buttons for primitive components. The selected Example Process explains itself automatically in the right panel; it does not need a separate left-panel Explain button. Component explainers cover meaning, expected heatmap behavior, important parameters, useful pairings, strategy implication, and demo boundary.
 
 | Component Group | What it controls | Example question answered |
 |---|---|---|
@@ -165,14 +165,14 @@ Every major component in the Sample / ROI Demo has behavior help. The left Missi
 
 Each Behavior Help page also includes `This component changes`, `This component should not change`, `Look for this in the heatmap`, `Useful display layers`, and `Common confusion`. After changing one primitive from a selected preset, the left console shows a component isolation hint with the expected effect and recommended diagnostic views. Lightweight compatibility warnings call out educationally confusing combinations, such as static temporal forcing with neighbor propagation or freshness effects while viewing only Event Likelihood.
 
-## Process Patterns and Legacy Presets
+## Example Processes and Legacy Presets
 
 The top-level Mode selector decides the workflow:
 
-- `Example Processes`: shows the Process Pattern selector, applies an editable example recipe, and preserves legacy `referenceSignature` metadata for compatibility.
-- `Custom Composer`: hides the Process Pattern selector and lets users edit primitive controls directly. Imported custom recipes, if supported later, belong here.
+- `Example Processes`: shows the Example Process selector, applies an editable example recipe, and preserves legacy `referenceSignature` metadata for compatibility.
+- `Custom Composer`: hides the Example Process selector and lets users edit primitive controls directly. Imported custom recipes, if supported later, belong here.
 
-Process Patterns do not replace primitive controls. Selecting a pattern fills in the underlying Event Likelihood Field, Spatial Pattern, Value Distribution, Temporal Pattern, Spatial Evolution, State Model, Sampling Effect, and relevant parameters. Users can then modify those controls to create custom behavior; the pattern remains marked as modified so the result can still be compared against the original guided process.
+Example Processes do not replace primitive controls. Selecting an example fills in the underlying Source / Initial Field, Spatial Pattern, Value Distribution, Temporal Pattern, Spatial Evolution, State Model, Sampling Effect, and relevant parameters. Users can then modify those controls to create custom behavior; the example remains marked as modified so the result can still be compared against the original guided process.
 
 Legacy behavior presets are curated combinations of the primitive sample-field controls. They remain available for compatibility, internal mapping, and optional debug workflows, but the normal left-panel UI no longer starts from a visible preset dropdown.
 
@@ -191,7 +191,7 @@ Legacy behavior presets are curated combinations of the primitive sample-field c
 | Forest Fire Front (inspired) | Advancing active front | Front + propagation + depleted residual |
 | Life-Like Cellular Emergence (inspired) | Local-rule emergence | Neighbor propagation + state-evolving |
 
-Some Process Patterns and legacy presets are inspired by real-world processes but are simplified educational examples. They are not validated process models and do not add current-field dependencies. Flow-driven examples belong in the Coupled Fields Demo.
+Some Example Processes and legacy presets are inspired by real-world processes but are simplified educational examples. They are not validated process models and do not add current-field dependencies. Flow-driven examples belong in the Coupled Fields Demo.
 
 Preset sanity checks can be run from Node:
 
@@ -219,11 +219,11 @@ Layered view filters can hide inactive nodes, show transition nodes only, choose
 
 ## Process Contracts and Recipes
 
-Process Patterns are recipes, not opaque models. Each pattern has related models, an observable pattern, ROI interpretation, expected failure signs, best display layers, and a component recipe. The right panel opens on `Process Pattern View` by default so users see Current Lab State before selecting a cell. Process Pattern View shows which component controls likelihood, geometry, value distribution, timing, evolution, memory, sampling effect, and display.
+Example Processes are recipes, not opaque models. Each example has related models, an observable pattern, sampling interpretation, expected failure signs, best display layers, and a component recipe. The right panel opens on `Process Example View` by default so users see Current Lab State before selecting a cell. Process Example View shows which component controls source support, geometry, value distribution, timing, evolution, memory, sampling effect, display, and the local rule/update-function framing.
 
 Legacy presets also carry process contracts for backward compatibility and debug comparison. They are documented as internal examples rather than the primary UI.
 
-The Process Pattern and ROI Meaning cards explain the observable heatmap pattern, what should change over time, what makes cells important, best display layers, and failure signs that would make the behavior unrepresentative. ROI Meaning separates current ROI, near-future ROI, low/depleted/dead regions, and the sampling intuition for the selected process.
+The Process Example and Sampling Interpretation cards explain the observable heatmap pattern, what should change over time, what makes cells important, best display layers, and failure signs that would make the behavior unrepresentative. Sampling Interpretation separates current sample value, near-future value, low/depleted/dead regions, and the sampling intuition for the selected process.
 
 ## Component Isolation Examples
 
@@ -411,22 +411,35 @@ Value Distribution answers: how are values assigned within the selected spatial 
 - `Heavy-Tailed`: most values are modest, with a replayable high-value tail.
 - `Rare Extreme Events`: most values remain low, with sparse deterministic extreme cells.
 
-## Process Patterns
+## Example Processes
 
-Process Patterns are broad observable-process recipes inspired by known cellular automata and grid-process families. They are not exact reproductions. Their purpose is to connect a recognizable process pattern to the ROI demo's component system:
+Example Processes are deterministic recipes inspired by known cellular automata and grid-process families. They are not exact reproductions. Their purpose is to connect a recognizable process behavior to the Process Lab component system:
 
 ```text
-known process pattern -> abstract ROI pattern -> editable component recipe -> dynamic heatmap
+known process model or pattern -> process example -> editable component recipe -> dynamic heatmap
 ```
 
-The visible selector contains broad Process Patterns, not every known model:
+The visible selector is grouped into Foundational CA Models and Observable Process Patterns.
+
+Foundational CA Models:
+
+- Conway's Game of Life
+- Forest Fire
+- SIR / Epidemic CA
+- Greenberg-Hastings / Excitable Media
+- Sandpile / Avalanche
+- Wa-Tor / Predator-Prey
+- Traffic CA
+- Wireworld
+
+Observable Process Patterns:
 
 - Propagating Fronts
 - Excitable Waves
 - Local Birth-Death Emergence
 - Recurrent Stationary Hotspots
 - Diffusive / Epidemic Spread
-- Directed Drift / Transport
+- Directed Feature Transport
 - Cyclic Dominance
 - Domain / Cluster Formation
 - Threshold Cascades / Avalanches
@@ -436,7 +449,7 @@ The visible selector contains broad Process Patterns, not every known model:
 - Congestion / Density Waves
 - Structured Signal Propagation
 
-Each Process Pattern sets Event Likelihood, Spatial Pattern, Value Distribution, Temporal Pattern, Spatial Evolution, Interaction Scale, State Model, Sampling Effect, and Display Layer. Users can modify any component afterward; the pattern remains marked as modified so the changed recipe can still be discussed against the original guided process. The right-panel Process Pattern View / Behavior Help panel shows inspired-by models, observable pattern, ROI meaning, best display layers, failure signs, and what the pattern is not.
+Each Example Process sets Source / Initial Field, Spatial Pattern, Value Distribution, Temporal Pattern, Spatial Evolution, Interaction Scale, State Model, Sampling Effect, and Display Layer. Users can modify any component afterward; the example remains marked as modified so the changed recipe can still be discussed against the original guided process. The right-panel Process Example View / Behavior Help panel shows related models, observable pattern, sampling interpretation, best display layers, failure signs, and what the example is not.
 
 Examples:
 
@@ -446,9 +459,9 @@ Examples:
 
 Future tutorial pages may compare a related CA/grid-process animation with the ROI abstraction heatmap, but this phase does not add GIFs or full CA simulators.
 
-## Process Pattern Coverage
+## Example Process Coverage
 
-The comprehensive catalog maps many known CA/grid-process models into the broad Process Patterns. Known models appear in the right panel, exports, and coverage audits, not as dropdown clutter. Internal/export compatibility still uses `referenceSignature` field names.
+The comprehensive catalog maps known CA/grid-process models into Example Processes. Foundational models appear directly in the selector; related known models also appear in the right panel, exports, and coverage audits. Internal/export compatibility still uses `referenceSignature` field names.
 
 | Signature | Reference model families | Observable behavior | ROI meaning | CA mechanism tags |
 |---|---|---|---|---|
@@ -457,7 +470,7 @@ The comprehensive catalog maps many known CA/grid-process models into the broad 
 | Local Birth-Death Emergence | Game of Life, Life-like rules, Generations CA | local births/deaths and emergent patches | inspect transition regions and active components | multi-state, extended-neighbourhood |
 | Recurrent Stationary Hotspots | bursty reports, contact-process-like patches | fixed basins with temporal pulses | time visits around active and recovering basins | asynchronous, stochastic, non-uniform |
 | Diffusive / Epidemic Spread | SIR/SIS/SEIR, contact process, percolation spread | local spread and recovery | watch active cells and neighbors receiving influence | stochastic, multi-state, extended-neighbourhood |
-| Directed Drift / Transport | lattice gas, Lattice-Boltzmann analogs, patch transport | coherent scalar feature movement | lead moving ROI features without treating them as current | continuous scalar, extended-neighbourhood |
+| Directed Feature Transport | lattice gas, Lattice-Boltzmann analogs, patch transport | coherent scalar feature movement | lead moving ROI features without treating them as current | continuous scalar, extended-neighbourhood |
 | Cyclic Dominance | rock-paper-scissors, cyclic CA, cyclic ecology | phase-shifted regions and rotating fronts | schedule visits by phase | multi-state, extended-neighbourhood |
 | Domain / Cluster Formation | Ising, voter, majority-rule, Schelling | domains, clusters, and boundaries | sample coherent domains or changing boundaries | stochastic, multi-state, non-uniform |
 | Threshold Cascades / Avalanches | BTW/Manna sandpile, threshold cascades | quiet buildup and sudden cascades | react to rare high-value cascade windows | asynchronous, stochastic, multi-state |

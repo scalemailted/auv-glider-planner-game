@@ -49,7 +49,7 @@ export function randomizeSamplingProcessAllocation({
   return {
     mode,
     seed,
-    statusLabel: mode === 'scientificRandomization' ? 'Pattern-Modified' : 'Custom Exploratory',
+    statusLabel: mode === 'scientificRandomization' ? 'Example-Modified' : 'Custom Exploratory',
     model: createSamplingProcessPaintModel({ width, height, assignments: { cells, groups } })
   };
 }

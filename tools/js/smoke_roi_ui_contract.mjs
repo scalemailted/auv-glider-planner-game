@@ -30,7 +30,7 @@ const requiredReferenceLabels = [
   'Local Birth-Death Emergence',
   'Recurrent Stationary Hotspots',
   'Diffusive / Epidemic Spread',
-  'Directed Drift / Transport',
+  'Directed Feature Transport',
   'Cyclic Dominance',
   'Domain / Cluster Formation',
   'Threshold Cascades / Avalanches',
@@ -100,9 +100,9 @@ for (const [mode, label] of [
 }
 
 assert(SAMPLE_FIELD_COMPONENTS.includes('valueDistribution'), 'component groups must include valueDistribution');
-assert(sampleFieldComponentLabel('behaviorPreset') === 'Process Pattern', 'first component label should be Process Pattern');
+assert(sampleFieldComponentLabel('behaviorPreset') === 'Example Process', 'first component label should be Example Process');
 assert(sampleFieldComponentLabel('valueDistribution') === 'Value Distribution', 'valueDistribution component label mismatch');
-assert(SAMPLING_PROCESS_LAB_TITLE === 'Spatiotemporal Sampling Process Lab', 'sampling process lab title mismatch');
+assert(SAMPLING_PROCESS_LAB_TITLE === 'Deterministic Spatiotemporal Process Lab', 'sampling process lab title mismatch');
 assert(SAMPLING_PROCESS_MODES.includes('processPaint'), 'Process Paint mode missing');
 assert(SAMPLING_PROCESS_MODES.includes('randomRuleLab'), 'Random Rule Lab mode missing');
 assert(SAMPLING_PROCESS_MODES.includes('diagnosticsGraphInspection'), 'Diagnostics / Graph Inspection mode missing');

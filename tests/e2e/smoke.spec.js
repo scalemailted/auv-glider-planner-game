@@ -14,6 +14,183 @@ test.afterAll(async () => {
   await new Promise((resolve) => server?.close(resolve));
 });
 
+test('learning labs static page is linked from the main menu', async ({ page }) => {
+  await page.goto('/');
+
+  await expect(page.locator('#mission-console')).toContainText('Learning Labs');
+  await page.locator('#mission-console [data-accordion-key="learning-labs"] .accordion-header').click();
+  const indexLink = page.locator('#mission-console a[href="labs/index.html"]');
+  await expect(indexLink).toBeVisible();
+  await expect(indexLink).toHaveText(/Learning Labs Index/);
+  await expect(indexLink).toHaveAttribute('target', '_blank');
+  await expect(indexLink).toHaveAttribute('rel', /noopener/);
+  const labLink = page.locator('#mission-console a[href="labs/deterministic-spatiotemporal-processes.html"]');
+  await expect(labLink).toBeVisible();
+  await expect(labLink).toHaveText(/Deterministic Spatiotemporal Processes/);
+  await expect(labLink).toHaveAttribute('target', '_blank');
+  await expect(labLink).toHaveAttribute('rel', /noopener/);
+  const flowLabLink = page.locator('#mission-console a[href="labs/deterministic-dynamic-flow-fields.html"]');
+  await expect(flowLabLink).toBeVisible();
+  await expect(flowLabLink).toHaveText(/Deterministic Dynamic Flow Fields/);
+  await expect(flowLabLink).toHaveAttribute('target', '_blank');
+  await expect(flowLabLink).toHaveAttribute('rel', /noopener/);
+  const coupledLabLink = page.locator('#mission-console a[href="labs/oracle-deterministic-coupled-sampling-space.html"]');
+  await expect(coupledLabLink).toBeVisible();
+  await expect(coupledLabLink).toHaveText(/Oracle \/ Deterministic Coupled Sampling Space/);
+  await expect(coupledLabLink).toHaveAttribute('target', '_blank');
+  await expect(coupledLabLink).toHaveAttribute('rel', /noopener/);
+  const uncertaintyLabLink = page.locator('#mission-console a[href="labs/stochastic-uncertainty.html"]');
+  await expect(uncertaintyLabLink).toBeVisible();
+  await expect(uncertaintyLabLink).toHaveText(/Stochastic \/ Uncertainty/);
+  await expect(uncertaintyLabLink).toHaveAttribute('target', '_blank');
+  await expect(uncertaintyLabLink).toHaveAttribute('rel', /noopener/);
+  const stochasticCoupledLabLink = page.locator('#mission-console a[href="labs/stochastic-coupled-sampling-space.html"]');
+  await expect(stochasticCoupledLabLink).toBeVisible();
+  await expect(stochasticCoupledLabLink).toHaveText(/Stochastic Coupled Sampling Space/);
+  await expect(stochasticCoupledLabLink).toHaveAttribute('target', '_blank');
+  await expect(stochasticCoupledLabLink).toHaveAttribute('rel', /noopener/);
+  const plannerLabLink = page.locator('#mission-console a[href="labs/planner-mission-evaluation.html"]');
+  await expect(plannerLabLink).toBeVisible();
+  await expect(plannerLabLink).toHaveText(/Planner \/ Mission Evaluation/);
+  await expect(plannerLabLink).toHaveAttribute('target', '_blank');
+  await expect(plannerLabLink).toHaveAttribute('rel', /noopener/);
+
+  await page.goto('/labs/index.html');
+  await expect(page).toHaveTitle(/ANCHOR Learning Labs/);
+  await expect(page.locator('h1')).toContainText('ANCHOR Learning Labs');
+  await expect(page.locator('body')).toContainText('Learning path table of contents');
+  await expect(page.locator('a[href="deterministic-dynamic-flow-fields.html"]').first()).toBeVisible();
+  await expect(page.locator('a[href="oracle-deterministic-coupled-sampling-space.html"]').first()).toBeVisible();
+  await expect(page.locator('a[href="stochastic-uncertainty.html"]').first()).toBeVisible();
+  await expect(page.locator('a[href="stochastic-coupled-sampling-space.html"]').first()).toBeVisible();
+  await expect(page.locator('a[href="planner-mission-evaluation.html"]').first()).toBeVisible();
+  await expect(page.locator('body')).toContainText('Planner / Mission Evaluation');
+
+  await page.goto('/labs/deterministic-spatiotemporal-processes.html');
+  await expect(page).toHaveTitle(/Deterministic Spatiotemporal Processes/);
+  await expect(page.locator('h1')).toContainText('Deterministic Spatiotemporal Processes');
+  await expect(page.locator('.lab-math').first()).toBeVisible();
+  await expect(page.locator('body')).toContainText('x_i(t+1)');
+  await expect(page.locator('body')).toContainText('Foundational CA Models');
+  await expect(page.locator('body')).toContainText('Observable process patterns');
+  await expect(page.locator('body')).toContainText('Deterministic and seeded evolution');
+  await expect(page.locator('body')).toContainText('Optional sampling interpretation');
+  await expect(page.locator('.lab-figure').first()).toBeVisible();
+  await expect(page.locator('[data-elementary-ca-widget]')).toBeVisible();
+  await expect(page.locator('[data-ca-action="reset"]')).toBeVisible();
+  await expect(page.locator('[data-widget="neighborhood-update"]')).toBeVisible();
+  await expect(page.locator('[data-neighborhood-mode]')).toBeVisible();
+  await expect(page.locator('[data-widget="game-of-life"]')).toBeVisible();
+  await expect(page.locator('[data-life-action="step"]')).toBeVisible();
+  await expect(page.locator('[data-widget="domain-rule-allocation"]')).toBeVisible();
+  await expect(page.locator('[data-domain-action="step"]')).toBeVisible();
+  const beforeWidgetText = await page.locator('[data-ca-status]').textContent();
+  await page.locator('[data-ca-action="regenerate"]').click();
+  await expect(page.locator('[data-ca-status]')).not.toHaveText(beforeWidgetText ?? '');
+
+  await page.goto('/labs/deterministic-dynamic-flow-fields.html');
+  await expect(page).toHaveTitle(/Deterministic Dynamic Flow Fields/);
+  await expect(page.locator('h1')).toContainText('Deterministic Dynamic Flow Fields');
+  await expect(page.locator('.lab-toc')).toContainText('What is a flow field?');
+  await expect(page.locator('.lab-math').first()).toContainText('F(x,y,t)');
+  await expect(page.locator('[data-flow-widget="vector-components"]')).toBeVisible();
+  await expect(page.locator('[data-flow-widget="field-presets"]')).toBeVisible();
+  await expect(page.locator('[data-flow-widget="particle-tracer"]')).toBeVisible();
+  await expect(page.locator('[data-flow-canvas]').first()).toBeVisible();
+  await expect(page.locator('body')).toContainText('Open Flow Fields Sandbox');
+  const beforeVectorText = await page.locator('[data-vector-status]').textContent();
+  await page.locator('[data-vector-u]').evaluate((input) => {
+    input.value = '0.2';
+    input.dispatchEvent(new Event('input', { bubbles: true }));
+  });
+  await expect(page.locator('[data-vector-status]')).not.toHaveText(beforeVectorText ?? '');
+  await expect(page.locator('[data-particle-toggle]')).toBeVisible();
+  await expect(page.locator('[data-particle-reset]')).toBeVisible();
+
+  await page.goto('/labs/oracle-deterministic-coupled-sampling-space.html');
+  await expect(page).toHaveTitle(/Oracle \/ Deterministic Coupled Sampling Space/);
+  await expect(page.locator('h1')).toContainText('Oracle / Deterministic Coupled Sampling Space');
+  await expect(page.locator('.lab-toc')).toContainText('Why couple fields?');
+  await expect(page.locator('.lab-math').first()).toBeVisible();
+  await expect(page.locator('body')).toContainText('S*(x,y,t)');
+  await expect(page.locator('[data-coupled-widget="flow-carried-patch"]')).toBeVisible();
+  await expect(page.locator('[data-coupled-widget="layer-composer"]')).toBeVisible();
+  await expect(page.locator('[data-coupled-canvas]').first()).toBeVisible();
+  await expect(page.locator('body')).toContainText('Open Coupled Fields Sandbox');
+  await expect(page.locator('[data-patch-toggle]')).toBeVisible();
+  await expect(page.locator('[data-patch-reset]')).toBeVisible();
+  const beforeLayerText = await page.locator('[data-layer-status]').textContent();
+  await page.locator('[data-layer-flow]').selectOption('vortex');
+  await expect(page.locator('[data-layer-status]')).not.toHaveText(beforeLayerText ?? '');
+
+  await page.goto('/labs/stochastic-uncertainty.html');
+  await expect(page).toHaveTitle(/Stochastic \/ Uncertainty/);
+  await expect(page.locator('h1')).toContainText('Stochastic / Uncertainty');
+  await expect(page.locator('.lab-toc')).toContainText('Why uncertainty?');
+  await expect(page.locator('.lab-math').first()).toBeVisible();
+  await expect(page.locator('[data-uncertainty-widget="bayesian-cell-update"]')).toBeVisible();
+  await expect(page.locator('[data-uncertainty-widget="forecast-error-vs-hidden-event"]')).toBeVisible();
+  await expect(page.locator('[data-uncertainty-widget="regret-information-value"]')).toBeVisible();
+  await expect(page.locator('[data-uncertainty-canvas]').first()).toBeVisible();
+  await expect(page.locator('body')).toContainText('Open Uncertainty / Forecast Sandbox');
+  const beforePosteriorText = await page.locator('[data-bayes-posterior]').textContent();
+  await page.locator('[data-bayes-prior]').evaluate((input) => {
+    input.value = '0.65';
+    input.dispatchEvent(new Event('input', { bubbles: true }));
+  });
+  await expect(page.locator('[data-bayes-posterior]')).not.toHaveText(beforePosteriorText ?? '');
+  await expect(page.locator('[data-feh-scenario]')).toBeVisible();
+  await expect(page.locator('[data-regret-choice="0"]')).toBeVisible();
+  await expect(page.locator('[data-regret-reveal]')).toBeVisible();
+
+  await page.goto('/labs/stochastic-coupled-sampling-space.html');
+  await expect(page).toHaveTitle(/Stochastic Coupled Sampling Space/);
+  await expect(page.locator('h1')).toContainText('Stochastic Coupled Sampling Space');
+  await expect(page.locator('.lab-toc')).toContainText('From oracle coupling to uncertain coupling');
+  await expect(page.locator('.lab-math').first()).toBeVisible();
+  await expect(page.locator('body')).toContainText('A(x,y,t)');
+  await expect(page.locator('body')).toContainText('S*(x,y,t)');
+  await expect(page.locator('[data-stochastic-coupled-widget="belief-layer-stack"]')).toBeVisible();
+  await expect(page.locator('[data-stochastic-coupled-widget="oracle-vs-belief"]')).toBeVisible();
+  await expect(page.locator('[data-stochastic-coupled-widget="acquisition-composer"]')).toBeVisible();
+  await expect(page.locator('[data-stochastic-coupled-widget="oracle-regret-comparison"]')).toBeVisible();
+  await expect(page.locator('[data-stochastic-coupled-canvas]').first()).toBeVisible();
+  await expect(page.locator('body')).toContainText('Open Uncertainty / Forecast Sandbox');
+  await expect(page.locator('body')).toContainText('Open Coupled Fields Sandbox');
+  const beforeAcquisitionText = await page.locator('[data-sc-acq-status]').textContent();
+  await page.locator('[data-sc-acq-weight="unknown"]').evaluate((input) => {
+    input.value = '0.8';
+    input.dispatchEvent(new Event('input', { bubbles: true }));
+  });
+  await expect(page.locator('[data-sc-acq-status]')).not.toHaveText(beforeAcquisitionText ?? '');
+  await expect(page.locator('[data-feh-scenario]')).toBeVisible();
+  await expect(page.locator('[data-regret-choice="0"]')).toBeVisible();
+  await expect(page.locator('[data-regret-reveal]')).toBeVisible();
+
+  await page.goto('/labs/planner-mission-evaluation.html');
+  await expect(page).toHaveTitle(/Planner \/ Mission Evaluation/);
+  await expect(page.locator('h1')).toContainText('Planner / Mission Evaluation');
+  await expect(page.locator('.lab-toc')).toContainText('From fields to routes');
+  await expect(page.locator('.lab-math').first()).toBeVisible();
+  await expect(page.locator('[data-planner-widget="greedy-planner"]')).toBeVisible();
+  await expect(page.locator('[data-planner-widget="reward-cost-tradeoff"]')).toBeVisible();
+  await expect(page.locator('[data-planner-widget="debrief-scorecard"]')).toBeVisible();
+  await expect(page.locator('[data-planner-canvas]').first()).toBeVisible();
+  await expect(page.locator('body')).toContainText('Solver workflow and fairness labels');
+  await expect(page.locator('body')).toContainText('Open Main App');
+  const beforeGreedyText = await page.locator('[data-greedy-status]').textContent();
+  await page.locator('[data-greedy-run]').click();
+  await expect(page.locator('[data-greedy-status]')).not.toHaveText(beforeGreedyText ?? '');
+  const beforeRewardText = await page.locator('[data-rct-output]').textContent();
+  await page.locator('[data-rct-cost]').evaluate((input) => {
+    input.value = '1.1';
+    input.dispatchEvent(new Event('input', { bubbles: true }));
+  });
+  await expect(page.locator('[data-rct-output]')).not.toHaveText(beforeRewardText ?? '');
+  await page.locator('[data-debrief-scenario]').selectOption('hazard');
+  await expect(page.locator('[data-debrief-status]')).toContainText('Hazard hit');
+});
+
 test('campaign planning smoke flow reaches debrief', async ({ page }) => {
   await page.goto('/');
 
@@ -25,11 +202,12 @@ test('campaign planning smoke flow reaches debrief', async ({ page }) => {
   await expect(page.locator('#context-panel')).toBeEmpty();
   await expect(page.locator('#mission-console')).toContainText('ANCHOR: Glider Command');
   await expect(page.locator('#mission-console button.console-button')).toHaveCount(16);
-  await expect(page.locator('#mission-console .accordion-header')).toHaveCount(2);
-  await expect(page.locator('#mission-console > .console-section')).toHaveCount(2);
+  await expect(page.locator('#mission-console .accordion-header')).toHaveCount(3);
+  await expect(page.locator('#mission-console > .console-section')).toHaveCount(3);
   await expect(page.locator('#mission-console')).toContainText('Challenge Mode');
   await expect(page.locator('#mission-console')).toContainText('Simulation Lab');
-  await expect(page.locator('#mission-console .accordion-title')).toHaveText(['Challenge Mode', 'Simulation Lab']);
+  await expect(page.locator('#mission-console')).toContainText('Learning Labs');
+  await expect(page.locator('#mission-console .accordion-title')).toHaveText(['Challenge Mode', 'Simulation Lab', 'Learning Labs']);
   await expect(page.locator('#mission-console [data-accordion-key="challenge-mode"] [data-menu-group] h3')).toHaveText(['Play', 'Learn', 'Compete']);
   await expect(page.locator('#mission-console [data-accordion-key="challenge-mode"]')).toContainText('Mission Modes');
   await expect(page.locator('#mission-console [data-accordion-key="challenge-mode"]')).toContainText('Tutorials');
@@ -42,9 +220,13 @@ test('campaign planning smoke flow reaches debrief', async ({ page }) => {
   await page.locator('#mission-console [data-accordion-key="simulation-lab"] .accordion-header').click();
   await expect(page.locator('#mission-console [data-accordion-key="simulation-lab"] [data-menu-group] h3')).toHaveText(['Experiments', 'Demos', 'Editor & Import Tools', 'Benchmarks']);
   await expect(page.locator('#mission-console [data-accordion-key="simulation-lab"]')).toContainText('Flow Fields Demo');
-  await expect(page.locator('#mission-console [data-accordion-key="simulation-lab"]')).toContainText('Sampling Process Lab');
+  await expect(page.locator('#mission-console [data-accordion-key="simulation-lab"]')).toContainText('Process Lab');
   await expect(page.locator('#mission-console [data-accordion-key="simulation-lab"]')).toContainText('Coupled Fields Demo');
   await expect(page.locator('#mission-console [data-accordion-key="simulation-lab"]')).toContainText('Uncertainty / Forecast Demo');
+  await page.locator('#mission-console [data-accordion-key="learning-labs"] .accordion-header').click();
+  await expect(page.locator('#mission-console [data-accordion-key="learning-labs"] [data-menu-group] h3')).toHaveText(['Concept Pages', 'Roadmap']);
+  await expect(page.locator('#mission-console [data-accordion-key="learning-labs"]')).toContainText('Learning Labs Index');
+  await expect(page.locator('#mission-console [data-accordion-key="learning-labs"]')).toContainText('Deterministic Spatiotemporal Processes');
   await expect(page.locator('#mission-console')).not.toContainText('Static Flow Field Demo');
   await expect(page.locator('#mission-console')).not.toContainText('Temporal Flow Field Demo');
   await expect(page.locator('#mission-console .console-status')).toContainText('No mission loaded');
@@ -323,17 +505,17 @@ test('campaign planning smoke flow reaches debrief', async ({ page }) => {
 
   await page.locator('#mission-console [data-action="roi-demo"]').click();
   await expect.poll(() => page.evaluate(() => window.anchorGame.phaser.scene.getScene('RoiGeneratorDemoScene').sys.isActive())).toBe(true);
-  await expect(page.locator('#mission-console')).toContainText('Spatiotemporal Sampling Process Lab');
+  await expect(page.locator('#mission-console')).toContainText('Deterministic Spatiotemporal Process Lab');
   await expect(page.evaluate(() => window.anchorGame.phaser.scene.getScene('RoiGeneratorDemoScene').buttons?.length ?? 0)).resolves.toBe(0);
   await expect(page.locator('#mission-summary-hud')).toBeEmpty();
   await expect(page.locator('#agent-performance-hud')).toBeEmpty();
-  await expect(page.locator('#waypoint-timeline')).toContainText('Process Pattern View');
+  await expect(page.locator('#waypoint-timeline')).toContainText('Process Example View');
   await expect(page.locator('#waypoint-timeline')).toContainText('Current Lab State');
   await expect(page.locator('#waypoint-timeline')).toContainText('Example Processes');
   await expect(page.locator('#waypoint-timeline')).toContainText('Inspired By');
-  await expect(page.locator('#waypoint-timeline')).toContainText('ROI Meaning');
+  await expect(page.locator('#waypoint-timeline')).toContainText('Sampling Interpretation');
   await expect(page.locator('#mission-console [data-sampling-top-card="mode"]')).toContainText('Mode');
-  await expect(page.locator('#mission-console [data-sampling-primary-mode="referenceSignature"]')).toContainText('Process Pattern');
+  await expect(page.locator('#mission-console [data-sampling-primary-mode="referenceSignature"]')).toContainText('Example Process');
   await expect(page.locator('#mission-console [data-sampling-top-card="summary"]')).toHaveCount(0);
   await expect(page.locator('#mission-console')).not.toContainText('Current Summary');
   await expect(page.locator('#mission-console')).not.toContainText('Pattern Source / Mode');
@@ -343,13 +525,13 @@ test('campaign planning smoke flow reaches debrief', async ({ page }) => {
   await expect(page.locator('#mission-console')).not.toContainText('Reference Signature is guided');
   await expectSamplingSectionsCollapsed(page, [
     'Mode',
-    'Process Pattern',
+    'Example Process',
     'Display / Diagnostic Layer',
     'Seed / Scenario Identity',
     'Export'
   ]);
   await expandMissionConsoleSection(page, 'Mode');
-  await expandMissionConsoleSection(page, 'Process Pattern');
+  await expandMissionConsoleSection(page, 'Example Process');
   await expandMissionConsoleSection(page, 'Display / Diagnostic Layer');
   await expandMissionConsoleSection(page, 'Export');
   await expect(page.locator('#sampling-process-mode')).toBeVisible();
@@ -362,30 +544,20 @@ test('campaign planning smoke flow reaches debrief', async ({ page }) => {
     'Example Processes',
     'Custom Composer',
     'Process Paint',
-    'Random Rule Lab'
+    'Rule Allocation Sandbox'
   ]);
   await expect(page.locator('#sampling-process-mode')).not.toContainText('Diagnostics / Graph Inspection');
   await expect(page.locator('#roi-demo-pattern-source')).toHaveCount(0);
   await expect(page.locator('#roi-demo-reference-signature')).toBeVisible();
   await expect(page.locator('#roi-demo-reference-signature')).toContainText('Propagating Fronts');
-  await expect(page.locator('#roi-demo-reference-signature option')).toHaveText([
-    'Propagating Fronts',
-    'Excitable Waves',
-    'Local Birth-Death Emergence',
-    'Recurrent Stationary Hotspots',
-    'Diffusive / Epidemic Spread',
-    'Directed Drift / Transport',
-    'Cyclic Dominance',
-    'Domain / Cluster Formation',
-    'Threshold Cascades / Avalanches',
-    'Interacting Population Migration',
-    'Freshness / Recovery',
-    'Pattern Formation / Morphogenesis',
-    'Congestion / Density Waves',
-    'Structured Signal Propagation'
-  ]);
-  await expect(page.locator('#waypoint-timeline [data-roi-current-lab-state]')).toContainText('Pattern');
-  await expect(page.locator('#waypoint-timeline [data-roi-current-lab-state]')).toContainText('Pattern-Validated');
+  await expect(page.locator('#roi-demo-reference-signature optgroup').first()).toHaveAttribute('label', /Foundational CA Models/, { timeout: 5000 });
+  await expect(page.locator('#roi-demo-reference-signature optgroup').nth(1)).toHaveAttribute('label', /Observable Process Patterns/);
+  await expect(page.locator('#roi-demo-reference-signature')).toContainText("Conway's Game of Life");
+  await expect(page.locator('#roi-demo-reference-signature')).toContainText('Forest Fire');
+  await expect(page.locator('#roi-demo-reference-signature')).toContainText('Excitable Waves');
+  await expect(page.locator('#roi-demo-reference-signature')).toContainText('Directed Feature Transport');
+  await expect(page.locator('#waypoint-timeline [data-roi-current-lab-state]')).toContainText('Example');
+  await expect(page.locator('#waypoint-timeline [data-roi-current-lab-state]')).toContainText('Example-Validated');
   await expect(page.locator('#waypoint-timeline .sampling-panel-tabs')).toBeVisible();
   await expect(page.locator('#waypoint-timeline .sampling-panel-tabs')).toContainText('Recipe');
   await expect(page.locator('#waypoint-timeline .sampling-panel-tabs')).toContainText('Inspector');
@@ -408,7 +580,7 @@ test('campaign planning smoke flow reaches debrief', async ({ page }) => {
   await clickRightPanelMode(page, 'recipeSignature');
   await expect(page.locator('#waypoint-timeline [data-roi-recipe-signature-view]')).toBeVisible();
   await expect(page.locator('#roi-demo-behavior-preset')).toHaveCount(0);
-  await expect(page.locator('#mission-console')).toContainText('ROI Demo UI: reference-signature-primary-ui-v1');
+  await expect(page.locator('#mission-console')).toContainText('Process Lab UI: reference-signature-primary-ui-v1');
   await expect(page.locator('#mission-console')).toContainText('Legacy presets visible: false');
   await expect(page.evaluate(() => window.ANCHOR_ROI_UI_DEBUG)).resolves.toMatchObject({
     uiVersion: 'reference-signature-primary-ui-v1',
@@ -684,7 +856,7 @@ test('campaign planning smoke flow reaches debrief', async ({ page }) => {
     scene.draw();
   });
   await expect.poll(() => page.evaluate(() => window.anchorGame.phaser.scene.getScene('RoiGeneratorDemoScene').processMode)).toBe('randomRuleLab');
-  await expandMissionConsoleSection(page, 'Random Rule Lab');
+  await expandMissionConsoleSection(page, 'Rule Allocation Sandbox');
   await expect(page.locator('#sampling-random-seed')).toBeVisible();
   await expect(page.locator('#sampling-paint-state')).toHaveCount(0);
   await expect(page.locator('#roi-demo-spatial-pattern')).toHaveCount(0);
@@ -696,7 +868,7 @@ test('campaign planning smoke flow reaches debrief', async ({ page }) => {
   await page.locator('#sampling-random-seed').dispatchEvent('change');
   await expect.poll(() => page.evaluate(() => window.anchorGame.phaser.scene.getScene('RoiGeneratorDemoScene').paintModel.cells['0,0'])).toEqual(firstRandomCell);
   await page.locator('#sampling-process-mode').selectOption('referenceSignature');
-  await expandMissionConsoleSection(page, 'Process Pattern');
+  await expandMissionConsoleSection(page, 'Example Process');
   await expect(page.locator('#roi-demo-reference-signature')).toBeVisible();
   await expect(page.locator('#roi-demo-event-likelihood')).toHaveCount(0);
   await expect(page.locator('#roi-demo-spatial-pattern')).toHaveCount(0);
@@ -904,7 +1076,7 @@ test('campaign planning smoke flow reaches debrief', async ({ page }) => {
   await expect(page.locator('#mission-console')).not.toContainText('Current-Advected');
   await expect(page.locator('#mission-console')).not.toContainText('Uncertainty / Forecast demos');
   await page.locator('#sampling-process-mode').selectOption('referenceSignature');
-  await expandMissionConsoleSection(page, 'Process Pattern');
+  await expandMissionConsoleSection(page, 'Example Process');
   await page.locator('#roi-demo-reference-signature').selectOption('frontPropagation');
   await expect(page.locator('#roi-demo-display-mode')).toHaveValue('sampleValue');
   await expect.poll(() => page.evaluate(() => window.anchorGame.phaser.scene.getScene('RoiGeneratorDemoScene').displayMode)).toBe('sampleValue');

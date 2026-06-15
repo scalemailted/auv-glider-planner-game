@@ -148,13 +148,14 @@ const processLayers = {
 };
 
 const baseContext = {
-  title: 'Spatiotemporal Sampling Process Lab',
-  demo: 'Spatiotemporal Sampling Process Lab',
+  title: 'Deterministic Spatiotemporal Process Lab',
+  demo: 'Deterministic Spatiotemporal Process Lab',
   demoTime: 7,
   field,
   processLayers,
   processMode: 'referenceSignature',
   patternSource: 'referenceSignature',
+  exampleProcessId: 'stationaryTemporalBursts',
   referenceSignatureId: 'stationaryTemporalBursts',
   referenceSignatureModified: false,
   behaviorPresetId: 'custom',
@@ -201,8 +202,10 @@ assert(sampling.timesSeconds.length === 3, 'time-series sampling frame count mis
 const referenceArtifact = buildSamplingProcessDemoArtifactExport(baseContext);
 assert(referenceArtifact.type === 'anchor.demo.sampling-process-field', 'artifact type mismatch');
 assert(referenceArtifact.legacyType === 'anchor.demo.sample-roi-field', 'artifact legacyType mismatch');
-assert(referenceArtifact.demoName === 'Spatiotemporal Sampling Process Lab', 'artifact demoName mismatch');
+assert(referenceArtifact.demoName === 'Deterministic Spatiotemporal Process Lab', 'artifact demoName mismatch');
 assert(referenceArtifact.legacyDemoName === 'Sample / ROI Field Demo', 'artifact legacyDemoName mismatch');
+assert(referenceArtifact.exampleProcessId === 'stationaryTemporalBursts', 'exampleProcessId missing');
+assert(referenceArtifact.exampleType === 'observableProcessPattern', 'exampleType missing');
 assert(referenceArtifact.fields.sourceField?.[0]?.[1] === 0.9, 'sourceField alias missing from current fields');
 assert(referenceArtifact.fields.eventLikelihood?.[0]?.[1] === 0.9, 'eventLikelihood field missing');
 assert(referenceArtifact.fields.legacyEventLikelihoodField?.[0]?.[1] === 0.9, 'legacy event likelihood field missing');

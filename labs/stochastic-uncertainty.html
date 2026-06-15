@@ -1,0 +1,282 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Stochastic / Uncertainty | ANCHOR Learning Labs</title>
+  <link rel="stylesheet" href="../css/labs.css" />
+</head>
+<body>
+  <main class="lab-shell">
+    <header class="lab-header">
+      <nav class="lab-nav" aria-label="Learning Labs navigation">
+        <a href="index.html">Back to Learning Labs</a>
+        <a href="../index.html">Open Main App</a>
+        <a href="../index.html#simulation-lab">Open Uncertainty / Forecast Sandbox</a>
+      </nav>
+    </header>
+
+    <section class="lab-hero">
+      <div>
+        <p class="lab-kicker">Learning Lab 4</p>
+        <h1>Stochastic / Uncertainty</h1>
+        <p class="lab-subtitle">Learn how hidden truth, noisy observations, forecasts, and belief updates shape what we think is valuable to sample.</p>
+        <div class="lab-badges">
+          <span>Stochastic</span>
+          <span>Hidden Truth</span>
+          <span>Forecast Error</span>
+          <span>Bayesian Update</span>
+          <span>Markovian Dynamics</span>
+          <span>Confidence + Regret</span>
+        </div>
+        <div class="lab-actions">
+          <a class="lab-button" href="index.html">Back to Learning Labs</a>
+          <a class="lab-button" href="../index.html">Open Main App</a>
+          <a class="lab-button primary" href="../index.html#simulation-lab">Open Uncertainty / Forecast Sandbox</a>
+        </div>
+        <p class="lab-note">Open the main app, then choose Simulation Lab -> Uncertainty / Forecast Demo if the hash link is not handled by your browser session.</p>
+      </div>
+      <figure class="lab-figure" aria-label="Oracle and uncertain world comparison">
+        <div class="lab-belief-comparison">
+          <div><strong>Oracle world</strong><span>truth visible</span></div>
+          <div><strong>Uncertain world</strong><span>truth hidden, belief and uncertainty shown</span></div>
+        </div>
+        <figcaption class="lab-caption"><strong>What to notice:</strong> the planner may act on belief, but evaluation is eventually judged against truth.</figcaption>
+      </figure>
+    </section>
+
+    <div class="lab-layout">
+      <aside class="lab-toc" aria-label="Article table of contents">
+        <strong>Table of contents</strong>
+        <a href="#why">1. Why uncertainty?</a>
+        <a href="#deterministic">2. Deterministic vs stochastic worlds</a>
+        <a href="#random">3. Random variables, distributions, and realizations</a>
+        <a href="#belief-stack">4. Hidden truth, expected state, observed state, and belief state</a>
+        <a href="#unknowns">5. Inaccurate forecasts vs hidden unknowns</a>
+        <a href="#noise">6. Observations and sensor noise</a>
+        <a href="#bayes">7. Bayesian updating</a>
+        <a href="#markov">8. Markovian state evolution</a>
+        <a href="#hidden-markov">9. Hidden Markov intuition</a>
+        <a href="#gaussian">10. Gaussian fields: GP and GMRF intuition</a>
+        <a href="#assimilation">11. Forecasting, ground truth, and data assimilation</a>
+        <a href="#metrics">12. Measuring uncertainty, confidence, surprise, and calibration</a>
+        <a href="#regret">13. Regret and value of information</a>
+        <a href="#acquisition">14. Acquisition value and next-best sampling</a>
+        <a href="#coupled">15. How this connects to stochastic coupled sampling</a>
+        <a href="#sandbox">16. Open the full Uncertainty / Forecast sandbox</a>
+        <a href="#next">17. What comes next</a>
+      </aside>
+
+      <article class="lab-article">
+        <section id="why" class="lab-section">
+          <h2>1. Why uncertainty?</h2>
+          <p>The first three labs assumed the world was known. In real sampling problems, the vehicle usually has a forecast, uncertainty around that forecast, noisy observations, and beliefs that change over time.</p>
+          <div class="lab-callout"><strong>Perfect knowledge asks:</strong> What is truly valuable?<br /><strong>Uncertainty asks:</strong> What do we believe is valuable, and how confident are we?</div>
+          <div class="lab-belief-stack">
+            <div>Hidden truth <code>T(x,y,t)</code></div>
+            <div>Forecast / prior <code>E(x,y,t)</code> or <code>&mu;_prior(x,y,t)</code></div>
+            <div>Observations <code>z_i</code></div>
+            <div>Posterior belief <code>&mu;_post(x,y,t)</code></div>
+          </div>
+          <p><strong>Connection to the simulator:</strong> the Uncertainty / Forecast Demo shows forecast, truth, uncertainty, information gain, forecast error, and delta after update.</p>
+        </section>
+
+        <section id="deterministic" class="lab-section">
+          <h2>2. Deterministic vs stochastic worlds</h2>
+          <p>A deterministic process gives the same result from the same initial state and rules. A stochastic process includes random variables or uncertain outcomes. Random-looking seeded examples can still be deterministic if the seed is fixed.</p>
+          <div class="lab-equation-grid">
+            <div class="lab-math"><code>X(t+1) = F(X(t))</code><div class="lab-translation"><strong>In words:</strong> the deterministic model gives one next state.</div></div>
+            <div class="lab-math"><code>X(t+1) ~ P(X(t+1) | X(t))</code><div class="lab-translation"><strong>In words:</strong> the stochastic model gives a distribution over possible next states.</div></div>
+          </div>
+          <div class="lab-callout"><strong>What to notice:</strong> stochastic models do not say anything can happen. They define how likely different outcomes are.</div>
+        </section>
+
+        <section id="random" class="lab-section">
+          <h2>3. Random variables, distributions, and realizations</h2>
+          <p>A random variable represents an uncertain quantity. A distribution says how likely possible values are. A realization is one sampled outcome.</p>
+          <div class="lab-equation-grid">
+            <div class="lab-math"><code>X ~ P(X)</code><div class="lab-translation"><strong>In words:</strong> X is a random variable drawn from a probability distribution.</div></div>
+            <div class="lab-math"><code>x_sample ~ P(X)</code><div class="lab-translation"><strong>In words:</strong> a realization is one possible outcome from the distribution.</div></div>
+          </div>
+          <section class="lab-uncertainty-widget" data-widget="distribution-realization" aria-label="Distribution realization widget">
+            <h3>Distribution and Realization Widget</h3>
+            <p>Sample Bernoulli, Normal / Gaussian, or Bimodal outcomes and watch the histogram form.</p>
+            <div data-uncertainty-widget="distribution-realization"></div>
+            <p class="lab-what-to-notice"><strong>What to notice:</strong> one realization can be misleading. A distribution describes many possible realizations.</p>
+          </section>
+        </section>
+
+        <section id="belief-stack" class="lab-section">
+          <h2>4. Hidden truth, expected state, observed state, and belief state</h2>
+          <p>This is the core uncertainty stack: hidden true state, expected or forecast state, observed samples, and updated belief state.</p>
+          <div class="lab-equation-grid">
+            <div class="lab-math"><code>T(x,y,t)</code><div class="lab-translation"><strong>In words:</strong> what is actually happening.</div></div>
+            <div class="lab-math"><code>E(x,y,t) or &mu;_prior(x,y,t)</code><div class="lab-translation"><strong>In words:</strong> what the model predicted before new observations.</div></div>
+            <div class="lab-math"><code>z_i = T(x_i,y_i,t_i) + &epsilon;_i</code><div class="lab-translation"><strong>In words:</strong> a measurement is truth at the sampled location plus sensor noise.</div></div>
+            <div class="lab-math"><code>&mu;_post(x,y,t)</code><div class="lab-translation"><strong>In words:</strong> what the model believes after using observations.</div></div>
+          </div>
+          <section class="lab-uncertainty-widget" data-widget="hidden-truth-forecast" aria-label="Hidden truth forecast observation widget">
+            <h3>Hidden Truth / Forecast / Observation Widget</h3>
+            <p>Add sparse noisy observations, adjust forecast bias and sensor noise, and optionally reveal the hidden truth.</p>
+            <div data-uncertainty-widget="hidden-truth-forecast"></div>
+            <p class="lab-what-to-notice"><strong>What to notice:</strong> the vehicle does not observe the whole truth. It updates belief from sparse noisy samples.</p>
+          </section>
+        </section>
+
+        <section id="unknowns" class="lab-section">
+          <h2>5. Inaccurate forecasts vs hidden unknowns</h2>
+          <p>Not all surprises mean the same thing. A forecast error means we were wrong about something we thought we knew. A hidden unknown means we discovered something we did not know to look for.</p>
+          <div class="lab-card-grid two">
+            <div class="lab-forecast-card"><h3>Inaccurate expected state</h3><p>The expected layer exists, but its value, location, timing, strength, or shape is wrong.</p><p><strong>Examples:</strong> front shifted, hotspot weaker, current underestimated.</p><p><strong>Planning response:</strong> correct forecast, update uncertainty, reduce confidence, replan.</p></div>
+            <div class="lab-hidden-event-card"><h3>Hidden unknown state</h3><p>A real phenomenon was not represented in the forecast at all.</p><p><strong>Examples:</strong> unexpected plume, hidden bloom layer, chemical anomaly.</p><p><strong>Planning response:</strong> create a hypothesis, gather confirmatory samples, reweight objectives.</p></div>
+          </div>
+          <p><strong>Short version:</strong> inaccurate expected state means the forecast was wrong about something it already represented. hidden unknown means samples suggest a new phenomenon. hidden-event confidence should increase only when surprise is coherent, persistent, and context-consistent.</p>
+          <div class="lab-equation-grid">
+            <div class="lab-math"><code>innovation = observed_value - expected_value</code><div class="lab-translation"><strong>In words:</strong> innovation is the gap between what was measured and what the forecast expected at that point.</div></div>
+            <div class="lab-math"><code>surprise = abs(innovation) / sqrt(expected_uncertainty^2 + sensor_noise^2)</code><div class="lab-translation"><strong>In words:</strong> surprise measures how unusual the observation is compared with expected uncertainty and sensor noise.</div></div>
+            <div class="lab-math"><code>hidden_event_evidence = surprise + spatial_coherence + persistence + signature_match + context_consistency</code><div class="lab-translation"><strong>In words:</strong> one surprising sample is not enough to confirm a hidden event.</div></div>
+          </div>
+          <section class="lab-uncertainty-widget" data-widget="forecast-error-vs-hidden-event" aria-label="Forecast error versus hidden event widget">
+            <h3>Forecast Error vs Hidden Event Widget</h3>
+            <p>Compare shifted fronts, weakened hotspots, hidden anomalies, and noisy false alarms.</p>
+            <div data-uncertainty-widget="forecast-error-vs-hidden-event"></div>
+            <p class="lab-what-to-notice"><strong>What to notice:</strong> forecast error changes an existing layer. Hidden unknowns create or activate a new hypothesis layer.</p>
+          </section>
+        </section>
+
+        <section id="noise" class="lab-section">
+          <h2>6. Observations and sensor noise</h2>
+          <p>Measurements are not perfect. Sampling at one point tells you something local, but not everything about the field.</p>
+          <div class="lab-equation-grid">
+            <div class="lab-math"><code>z_i = T_i + &epsilon_i</code><div class="lab-translation"><strong>In words:</strong> observed value equals truth plus measurement error.</div></div>
+            <div class="lab-math"><code>&epsilon_i ~ Normal(0, &sigma;_sensor^2)</code><div class="lab-translation"><strong>In words:</strong> sensor noise is modeled as random error with zero mean and sensor variance.</div></div>
+          </div>
+          <div class="lab-callout"><strong>What to notice:</strong> repeated measurements can reduce noise uncertainty, but they cost time and coverage.</div>
+        </section>
+
+        <section id="bayes" class="lab-section">
+          <h2>7. Bayesian updating</h2>
+          <p>Bayesian updating combines prior belief and new evidence. The prior is what we believed before observing; the likelihood says how compatible the observation is with each possible state; the posterior is what we believe after observing.</p>
+          <div class="lab-math"><code>p(T | z) proportional_to p(z | T) p(T)</code><div class="lab-translation"><strong>In words:</strong> posterior belief is proportional to how likely the observation is under a possible truth times how much we believed that truth before.</div></div>
+          <section class="lab-uncertainty-widget" data-widget="bayesian-cell-update" aria-label="Bayesian cell update widget">
+            <h3>Bayesian Cell Update Widget</h3>
+            <p>Adjust prior event probability and sensor reliability, then compare detected vs not detected observations.</p>
+            <div data-uncertainty-widget="bayesian-cell-update"></div>
+            <p class="lab-what-to-notice"><strong>What to notice:</strong> a detection does not always mean the event is real. It depends on the prior and sensor reliability.</p>
+          </section>
+        </section>
+
+        <section id="markov" class="lab-section">
+          <h2>8. Markovian state evolution</h2>
+          <p>A Markov model assumes the next state depends on the current state, not the entire past.</p>
+          <div class="lab-math"><code>P(X_{t+1} | X_t, X_{t-1}, ...) = P(X_{t+1} | X_t)</code><div class="lab-translation"><strong>In words:</strong> the current state summarizes what matters for predicting the next step.</div></div>
+          <section class="lab-uncertainty-widget" data-widget="markov-transition" aria-label="Markov transition widget">
+            <h3>Markov Transition Widget</h3>
+            <p>Step a probability distribution over Clear, Anomaly, and Recovering states.</p>
+            <div data-uncertainty-widget="markov-transition"></div>
+            <p class="lab-what-to-notice"><strong>What to notice:</strong> Markovian does not mean deterministic. It means current state controls future probabilities.</p>
+          </section>
+        </section>
+
+        <section id="hidden-markov" class="lab-section">
+          <h2>9. Hidden Markov intuition</h2>
+          <p>Sometimes the important state is hidden. The vehicle observes signals that provide evidence about the hidden state.</p>
+          <div class="lab-equation-grid">
+            <div class="lab-math"><code>H_t evolves by a Markov transition</code><div class="lab-translation"><strong>In words:</strong> the real phenomenon changes secretly over time.</div></div>
+            <div class="lab-math"><code>Z_t is generated from H_t with sensor noise</code><div class="lab-translation"><strong>In words:</strong> measurements give clues about the hidden state but do not reveal it perfectly.</div></div>
+          </div>
+          <div class="lab-callout"><strong>What to notice:</strong> the belief can be wrong even when the update is mathematically reasonable.</div>
+        </section>
+
+        <section id="gaussian" class="lab-section">
+          <h2>10. Gaussian fields: GP and GMRF intuition</h2>
+          <p>A Gaussian Process is a smooth field model where nearby points are correlated by a kernel. A Gaussian Markov Random Field is a spatial belief model where local neighbors carry most of the dependency.</p>
+          <div class="lab-equation-grid">
+            <div class="lab-math"><code>f(x) ~ GP(m(x), k(x,x'))</code><div class="lab-translation"><strong>In words:</strong> a Gaussian process describes a distribution over possible smooth fields.</div></div>
+            <div class="lab-math"><code>p(X_i | all other cells) = p(X_i | neighbors)</code><div class="lab-translation"><strong>In words:</strong> a GMRF says each cell mainly depends on nearby cells.</div></div>
+          </div>
+          <section class="lab-uncertainty-widget" data-widget="gaussian-field-intuition" aria-label="Gaussian field intuition widget">
+            <h3>Gaussian Field Intuition Widget</h3>
+            <p>Use a lightweight kernel smoother to see how samples influence mean and uncertainty.</p>
+            <div data-uncertainty-widget="gaussian-field-intuition"></div>
+            <p class="lab-what-to-notice"><strong>What to notice:</strong> samples reduce uncertainty nearby. This is GP-style educational interpolation, not a full GP solver.</p>
+          </section>
+        </section>
+
+        <section id="assimilation" class="lab-section">
+          <h2>11. Forecasting, ground truth, and data assimilation</h2>
+          <p>A forecast is an expected state before observations. Ground truth is what actually happened. Data assimilation updates the forecast using observations.</p>
+          <div class="lab-equation-grid">
+            <div class="lab-math"><code>forecast error = truth - forecast</code><div class="lab-translation"><strong>In words:</strong> forecast error is known only when truth is revealed.</div></div>
+            <div class="lab-math"><code>innovation = observation - forecast_at_observation</code><div class="lab-translation"><strong>In words:</strong> innovation is what we can compute during the mission from observations and forecast.</div></div>
+          </div>
+          <div class="lab-callout"><strong>Connection to the simulator:</strong> truth is shown in the Uncertainty / Forecast Demo for education. Fair planning should treat truth as hidden unless oracle mode is explicit.</div>
+        </section>
+
+        <section id="metrics" class="lab-section">
+          <h2>12. Measuring uncertainty, confidence, surprise, and calibration</h2>
+          <div class="lab-metric-grid">
+            <div class="lab-probability-card"><h3>Uncertainty / variance</h3><code>&sigma;^2(x,y,t)</code><p>How spread out possible values are.</p></div>
+            <div class="lab-probability-card"><h3>Entropy</h3><code>H(p) = -sum p_i log(p_i)</code><p>How uncertain a probability distribution is.</p></div>
+            <div class="lab-probability-card"><h3>Surprise</h3><code>abs(z - &mu;) / sqrt(&sigma;^2 + &sigma;_sensor^2)</code><p>How unexpected an observation is.</p></div>
+            <div class="lab-probability-card"><h3>Calibration</h3><p>When the model says 80% confidence, it should be right about 80% of the time.</p></div>
+          </div>
+          <div class="lab-callout"><strong>Confidence</strong> is trust in an estimate or hypothesis, not certainty.</div>
+        </section>
+
+        <section id="regret" class="lab-section">
+          <h2>13. Regret and value of information</h2>
+          <p>Regret measures what was lost by acting on imperfect belief. A sample is useful if it helps choose better actions later.</p>
+          <div class="lab-equation-grid">
+            <div class="lab-math"><code>regret = oracle value - belief-based value</code><div class="lab-translation"><strong>In words:</strong> regret is the opportunity missed because the planner did not know the truth.</div></div>
+            <div class="lab-math"><code>sampling_priority = expected_value + information_gain + forecast_validation_value + hidden_event_discovery_value - cost</code><div class="lab-translation"><strong>In words:</strong> sample priority can include value, learning, validation, discovery, and travel cost.</div></div>
+          </div>
+          <section class="lab-uncertainty-widget" data-widget="regret-information-value" aria-label="Regret information value widget">
+            <h3>Regret and Information Value Widget</h3>
+            <p>Choose a candidate sample site, reveal the truth, and compare against the oracle best choice.</p>
+            <div data-uncertainty-widget="regret-information-value"></div>
+            <p class="lab-what-to-notice"><strong>What to notice:</strong> the best-looking expected value is not always the best learning action.</p>
+          </section>
+        </section>
+
+        <section id="acquisition" class="lab-section">
+          <h2>14. Acquisition value and next-best sampling</h2>
+          <p>An acquisition function scores where to sample next. It can combine high expected value, high uncertainty, expected information gain, forecast validation, hidden-event confirmation, front classification, and revisit value.</p>
+          <div class="lab-math"><code>A(x,y,t) = w_value &mu;(x,y,t) + w_uncertainty U(x,y,t) + w_surprise H_event(x,y,t) - w_cost cost(x,y)</code><div class="lab-translation"><strong>In words:</strong> the acquisition map is a weighted score that turns belief and uncertainty into sampling priority.</div></div>
+          <section class="lab-uncertainty-widget" data-widget="acquisition-map" aria-label="Acquisition map widget">
+            <h3>Acquisition Map Widget</h3>
+            <p>Adjust weights for expected value, uncertainty, hidden-event suspicion, and cost.</p>
+            <div data-uncertainty-widget="acquisition-map"></div>
+            <p class="lab-what-to-notice"><strong>What to notice:</strong> changing the mission objective changes the sampling map, even if the belief stays the same.</p>
+          </section>
+        </section>
+
+        <section id="coupled" class="lab-section">
+          <h2>15. How this connects to stochastic coupled sampling</h2>
+          <p>The deterministic coupled lab used <code>S*(x,y,t) = h(V,F,C,M)</code>. The stochastic coupled lab will use <code>A(x,y,t) = h(&mu;,U,F,C,M)</code>.</p>
+          <div class="lab-equation-grid">
+            <div class="lab-math"><code>S*(x,y,t) = h(V,F,C,M)</code><div class="lab-translation"><strong>In words:</strong> oracle objective under perfect knowledge.</div></div>
+            <div class="lab-math"><code>A(x,y,t) = h(&mu;,U,F,C,M)</code><div class="lab-translation"><strong>In words:</strong> belief-based objective under uncertainty, flow, constraints, and mission context.</div></div>
+          </div>
+        </section>
+
+        <section id="sandbox" class="lab-section">
+          <h2>16. Open the full Uncertainty / Forecast sandbox</h2>
+          <p>The article teaches the concept. The full sandbox lets users experiment with truth vs forecast, uncertainty layers, observation updates, information gain, forecast behavior, and stochastic experiment settings.</p>
+          <p><a class="lab-button" href="../index.html">Open Main App</a> <a class="lab-button primary" href="../index.html#simulation-lab">Open Simulation Lab</a> <a class="lab-button" href="index.html">Back to Learning Labs</a></p>
+          <p class="lab-note">Open the main app, then choose Simulation Lab -> Uncertainty / Forecast Demo.</p>
+        </section>
+
+        <section id="next" class="lab-section">
+          <h2>17. What comes next</h2>
+          <div class="lab-roadmap">
+            <div><strong>Next Learning Lab: Stochastic Coupled Sampling Space.</strong> Combine process + flow + uncertainty + constraints into a belief-based dynamic sampling objective.</div>
+            <div><strong>Planner / Mission Evaluation:</strong> choose and score paths under value, uncertainty, flow, constraints, cost, and regret.</div>
+          </div>
+        </section>
+      </article>
+    </div>
+  </main>
+  <script type="module" src="../src/labs/widgets/UncertaintyLearningWidgets.js"></script>
+</body>
+</html>

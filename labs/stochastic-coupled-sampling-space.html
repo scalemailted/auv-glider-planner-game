@@ -1,0 +1,269 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Stochastic Coupled Sampling Space | ANCHOR Learning Labs</title>
+  <link rel="stylesheet" href="../css/labs.css" />
+</head>
+<body>
+  <main class="lab-shell">
+    <header class="lab-header">
+      <nav class="lab-nav" aria-label="Learning Labs navigation">
+        <a href="index.html">Back to Learning Labs</a>
+        <a href="../index.html">Open Main App</a>
+        <a href="../index.html#simulation-lab">Open Uncertainty / Forecast Sandbox</a>
+        <a href="../index.html#simulation-lab">Open Coupled Fields Sandbox</a>
+      </nav>
+    </header>
+
+    <section class="lab-hero">
+      <div>
+        <p class="lab-kicker">Learning Lab 5</p>
+        <h1>Stochastic Coupled Sampling Space</h1>
+        <p class="lab-subtitle">Learn how process, flow, uncertainty, observations, and constraints combine into a belief-based sampling objective.</p>
+        <div class="lab-badges">
+          <span>Stochastic Coupling</span>
+          <span>Hidden Truth</span>
+          <span>Forecast Error</span>
+          <span>Hidden Events</span>
+          <span>Acquisition Value</span>
+          <span>Regret</span>
+        </div>
+        <div class="lab-actions">
+          <a class="lab-button" href="index.html">Back to Learning Labs</a>
+          <a class="lab-button" href="../index.html">Open Main App</a>
+          <a class="lab-button primary" href="../index.html#simulation-lab">Open Uncertainty / Forecast Sandbox</a>
+          <a class="lab-button" href="../index.html#simulation-lab">Open Coupled Fields Sandbox</a>
+        </div>
+        <p class="lab-note">Open the main app, then choose Simulation Lab.</p>
+      </div>
+      <figure class="lab-figure" aria-label="Belief objective layer stack">
+        <div class="lab-belief-layer-stack">
+          <div><strong>truth</strong><span>T, X_true, V_true hidden</span></div>
+          <div><strong>forecast</strong><span>E, &mu;_prior, U_expected</span></div>
+          <div><strong>evidence</strong><span>z_i, innovation, surprise</span></div>
+          <div><strong>objective</strong><span>A(x,y,t), reachability, regret</span></div>
+        </div>
+        <figcaption class="lab-caption"><strong>What to notice:</strong> the mission can only plan using belief, but evaluation can compare that belief against oracle truth.</figcaption>
+      </figure>
+    </section>
+
+    <div class="lab-layout">
+      <aside class="lab-toc" aria-label="Article table of contents">
+        <strong>Table of contents</strong>
+        <a href="#oracle-to-uncertain">1. From oracle coupling to uncertain coupling</a>
+        <a href="#layer-stack">2. The layer stack: truth, forecast, flow, constraints, belief</a>
+        <a href="#objectives">3. Oracle objective vs belief objective</a>
+        <a href="#two-uncertainties">4. Expected-state uncertainty and unknown-event probability</a>
+        <a href="#forecast-hidden">5. Forecast error vs hidden unknown</a>
+        <a href="#observations">6. Observations, innovation, and surprise</a>
+        <a href="#flow-evidence">7. Flow consistency and hidden-event evidence</a>
+        <a href="#acquisition">8. Building an acquisition field</a>
+        <a href="#constraints">9. Constraint-aware and reachability-aware value</a>
+        <a href="#surfacing">10. Surfacing, updates, and replanning</a>
+        <a href="#regret">11. Oracle comparison and regret</a>
+        <a href="#situations">12. Example mission situations</a>
+        <a href="#planner">13. How this connects to Planner / Mission Evaluation</a>
+        <a href="#sandboxes">14. Open the full sandboxes</a>
+        <a href="#next">15. What comes next</a>
+      </aside>
+
+      <article class="lab-article">
+        <section id="oracle-to-uncertain" class="lab-section">
+          <h2>1. From oracle coupling to uncertain coupling</h2>
+          <p>The previous coupled-sampling lab used an oracle objective: the true process value, flow, constraints, and mission context were all known. A stochastic coupled sampling space keeps the same field stack, but hides truth behind forecasts, uncertainty, noisy observations, and update cycles.</p>
+          <div class="lab-equation-grid">
+            <div class="lab-math"><code>S*(x,y,t) = h(V_true,F,C,M)</code><div class="lab-translation"><strong>In words:</strong> oracle sampling value uses true value, true flow, constraints, and mission goals.</div></div>
+            <div class="lab-math"><code>A(x,y,t) = h(&mu;_post,U,P_unknown,F,C,M)</code><div class="lab-translation"><strong>In words:</strong> belief-based acquisition uses what the vehicle currently believes and what it still needs to learn.</div></div>
+          </div>
+          <div class="lab-callout"><strong>Core shift:</strong> oracle coupling asks what is truly best. Uncertain coupling asks what is best to do given belief, uncertainty, hidden-event evidence, movement limits, and mission risk.</div>
+        </section>
+
+        <section id="layer-stack" class="lab-section">
+          <h2>2. The layer stack: truth, forecast, flow, constraints, belief</h2>
+          <p>The stochastic coupled stack separates true state, expected state, belief state, current flow, and mission constraints.</p>
+          <div class="lab-symbol-grid">
+            <div><code>T(x,y,t)</code><span>hidden environmental truth</span></div>
+            <div><code>X_true(x,y,t)</code><span>true latent process state</span></div>
+            <div><code>V_true(x,y,t)</code><span>true sampling value produced by the process</span></div>
+            <div><code>E(x,y,t)</code><span>forecast or expected state</span></div>
+            <div><code>&mu;_prior / &mu;_post</code><span>belief before and after observations</span></div>
+            <div><code>U(x,y,t)</code><span>uncertainty field used by the belief objective</span></div>
+            <div><code>F(x,y,t) = &lt;u,v&gt;</code><span>current vector field</span></div>
+            <div><code>C(x,y)</code><span>land, hazard, depth, or policy constraint</span></div>
+            <div><code>M</code><span>mission objective and vehicle limits</span></div>
+          </div>
+          <section class="lab-stochastic-coupled-widget" data-widget="belief-layer-stack" aria-label="Belief layer stack widget">
+            <h3>Belief Layer Stack Widget</h3>
+            <p>Switch between truth, forecast, posterior belief, uncertainty, unknown-event probability, and acquisition value.</p>
+            <div data-stochastic-coupled-widget="belief-layer-stack"></div>
+            <p class="lab-what-to-notice"><strong>What to notice:</strong> tooltip-like field views may refer to the same location, but the field layer answers a different question.</p>
+          </section>
+        </section>
+
+        <section id="objectives" class="lab-section">
+          <h2>3. Oracle objective vs belief objective</h2>
+          <p>The oracle objective is useful for evaluation, benchmarking, and regret. The belief objective is what a fair planner can use during the mission.</p>
+          <div class="lab-card-grid two">
+            <div class="lab-oracle-card"><h3>Oracle objective</h3><p><code>S*(x,y,t) = h(V_true,F,C,M)</code></p><p>Uses the true sampling value. It is the answer key, not the fair planning input.</p></div>
+            <div class="lab-probability-card"><h3>Belief objective</h3><p><code>A(x,y,t) = h(&mu;_post,U,P_unknown,F,C,M)</code></p><p>Uses posterior belief, expected uncertainty, hidden-event probability, flow, constraints, and mission context.</p></div>
+          </div>
+          <section class="lab-stochastic-coupled-widget" data-widget="oracle-vs-belief" aria-label="Oracle versus belief objective widget">
+            <h3>Oracle vs Belief Objective Widget</h3>
+            <p>Change forecast error and uncertainty, then compare belief choice against the hidden oracle objective.</p>
+            <div data-stochastic-coupled-widget="oracle-vs-belief"></div>
+            <p class="lab-what-to-notice"><strong>What to notice:</strong> a rational belief-based decision can still have regret after truth is revealed.</p>
+          </section>
+        </section>
+
+        <section id="two-uncertainties" class="lab-section">
+          <h2>4. Expected-state uncertainty and unknown-event probability</h2>
+          <p>This lab uses two different uncertainty maps. They should not be merged conceptually.</p>
+          <div class="lab-card-grid two">
+            <div class="lab-uncertainty-map-card"><h3><code>U_expected(x,y,t)</code></h3><p>Uncertainty about a forecasted or represented state. It asks: how unsure are we about something the model already knows to represent?</p></div>
+            <div class="lab-uncertainty-map-card"><h3><code>P_unknown(x,y,t)</code></h3><p>Probability that an unmodeled event or hidden phenomenon exists. It asks: is there evidence for something the model did not know to look for?</p></div>
+          </div>
+          <section class="lab-stochastic-coupled-widget" data-widget="two-uncertainty-maps" aria-label="Two uncertainty maps widget">
+            <h3>Two-Uncertainty-Maps Widget</h3>
+            <p>Compare expected-state uncertainty, unknown-event probability, and their combined acquisition pressure.</p>
+            <div data-stochastic-coupled-widget="two-uncertainty-maps"></div>
+            <p class="lab-what-to-notice"><strong>What to notice:</strong> high uncertainty about a known front is not the same as evidence for a hidden plume.</p>
+          </section>
+        </section>
+
+        <section id="forecast-hidden" class="lab-section">
+          <h2>5. Forecast error vs hidden unknown</h2>
+          <p><strong>Inaccurate expected state / forecast error:</strong> “We were wrong about something we thought we knew.”</p>
+          <p><strong>Hidden unknown state:</strong> “We discovered something we did not know to look for.”</p>
+          <div class="lab-card-grid two">
+            <div class="lab-forecast-error-card"><h3>Forecast error</h3><p>A represented feature is shifted, too weak, too strong, or timed incorrectly. The response is to correct the forecast and update confidence.</p></div>
+            <div class="lab-hidden-event-card"><h3>Hidden event</h3><p>A phenomenon was not represented at all. The response is to create a hypothesis layer and gather confirmatory evidence.</p></div>
+          </div>
+          <section class="lab-stochastic-coupled-widget" data-widget="forecast-error-vs-hidden-event" aria-label="Forecast error versus hidden event coupled widget">
+            <h3>Forecast Error vs Hidden Event Coupled Widget</h3>
+            <p>Use surprise, spatial coherence, persistence, signature match, and flow consistency to separate forecast correction from hidden-event discovery.</p>
+            <div data-stochastic-coupled-widget="forecast-error-vs-hidden-event"></div>
+            <p class="lab-what-to-notice"><strong>What to notice:</strong> a single surprising sample is not enough. Hidden-event confidence needs coherent evidence.</p>
+          </section>
+        </section>
+
+        <section id="observations" class="lab-section">
+          <h2>6. Observations, innovation, and surprise</h2>
+          <p>During a mission, the vehicle does not directly see the full truth. It gets sparse noisy measurements and compares them to forecast expectation.</p>
+          <div class="lab-equation-grid">
+            <div class="lab-math"><code>z_i = T(x_i,y_i,t_i) + &epsilon;_i</code><div class="lab-translation"><strong>In words:</strong> each observation equals truth at the sampled place and time plus sensor noise.</div></div>
+            <div class="lab-math"><code>innovation_i = z_i - E(x_i,y_i,t_i)</code><div class="lab-translation"><strong>In words:</strong> innovation is what the observation adds beyond the forecast.</div></div>
+            <div class="lab-math"><code>surprise_i = abs(innovation_i) / sqrt(U_expected_i^2 + &sigma;_sensor^2)</code><div class="lab-translation"><strong>In words:</strong> surprise is high when the measurement is too different to explain by expected uncertainty and sensor noise.</div></div>
+          </div>
+          <div class="lab-callout"><strong>Plain-language rule:</strong> high innovation is a clue; high surprise is a stronger clue; coherent high surprise over space and time is evidence.</div>
+        </section>
+
+        <section id="flow-evidence" class="lab-section">
+          <h2>7. Flow consistency and hidden-event evidence</h2>
+          <p>Hidden-event evidence should respect physics. If an anomaly appears stretched along the current field, persists across surfacing cycles, and matches the sensor signature, it is more credible than isolated noise.</p>
+          <div class="lab-math"><code>hidden_event_evidence = surprise + spatial_coherence + persistence_over_time + sensor_signature_match + flow_consistency</code><div class="lab-translation"><strong>In words:</strong> hidden events become credible when multiple evidence sources agree.</div></div>
+          <div class="lab-callout"><strong>Hidden-event confidence:</strong> the mission should treat hidden-event confidence as a derived belief, not as direct truth. It rises when surprise, spatial coherence, persistence, sensor signature, and flow consistency agree.</div>
+          <section class="lab-stochastic-coupled-widget" data-widget="flow-consistent-anomaly" aria-label="Flow consistent anomaly widget">
+            <h3>Flow-Consistent Anomaly Widget</h3>
+            <p>Adjust anomaly alignment, persistence, and sensor signature match.</p>
+            <div data-stochastic-coupled-widget="flow-consistent-anomaly"></div>
+            <p class="lab-what-to-notice"><strong>What to notice:</strong> flow consistency can turn surprise into a physical hidden-event hypothesis.</p>
+          </section>
+        </section>
+
+        <section id="acquisition" class="lab-section">
+          <h2>8. Building an acquisition field</h2>
+          <p>An acquisition field is a planning surface. It rewards expected value, learning value, hidden-event detection, and forecast validation while penalizing cost and risk.</p>
+          <div class="lab-objective-equation">
+            <code>A(x,y,t) = h(&mu;_post,U,P_unknown,F,C,M)</code>
+            <span>where h may combine posterior value, uncertainty reduction, hidden-event probability, flow assistance, constraints, mission priority, travel cost, and safety risk.</span>
+          </div>
+          <section class="lab-stochastic-coupled-widget" data-widget="acquisition-composer" aria-label="Acquisition composer widget">
+            <h3>Acquisition Composer Widget</h3>
+            <p>Change the objective weights and watch the suggested sampling target move.</p>
+            <div data-stochastic-coupled-widget="acquisition-composer"></div>
+            <p class="lab-what-to-notice"><strong>What to notice:</strong> a planner that only chases high posterior value may ignore high-value learning opportunities.</p>
+          </section>
+        </section>
+
+        <section id="constraints" class="lab-section">
+          <h2>9. Constraint-aware and reachability-aware value</h2>
+          <p>A cell can be scientifically valuable but unreachable, unsafe, too costly, or impossible to sample before the deadline. Coupled sampling must account for <code>C(x,y)</code>, current-assisted movement, fuel, surfacing cadence, depth, land, hazards, and mission time.</p>
+          <div class="lab-math"><code>A_reachable(x,y,t) = A(x,y,t) * reachable(x,y,t,M,F,C)</code><div class="lab-translation"><strong>In words:</strong> executable value is acquisition value filtered by whether the glider can actually get there and sample safely.</div></div>
+          <section class="lab-stochastic-coupled-widget" data-widget="reachable-acquisition" aria-label="Reachable acquisition widget">
+            <h3>Reachable Acquisition Widget</h3>
+            <p>Adjust time budget, flow assist, and cost weight to see how reachable value differs from raw value.</p>
+            <div data-stochastic-coupled-widget="reachable-acquisition"></div>
+            <p class="lab-what-to-notice"><strong>What to notice:</strong> the best science cell is not automatically the best mission waypoint.</p>
+          </section>
+        </section>
+
+        <section id="surfacing" class="lab-section">
+          <h2>10. Surfacing, updates, and replanning</h2>
+          <p>Gliders surface periodically. That creates a mission cycle: collect observations, transmit, assimilate, update posterior belief and uncertainty, rebuild acquisition, then replan.</p>
+          <div class="lab-update-cycle">
+            <div>sample</div><div>surface</div><div>assimilate</div><div>update belief</div><div>replan</div>
+          </div>
+          <section class="lab-stochastic-coupled-widget" data-widget="surface-update-cycle" aria-label="Surface update cycle widget">
+            <h3>Surface Update Cycle Widget</h3>
+            <p>Simulate forecast correction, hidden discovery, or mixed evidence across surfacing cycles.</p>
+            <div data-stochastic-coupled-widget="surface-update-cycle"></div>
+            <p class="lab-what-to-notice"><strong>What to notice:</strong> the route should change after belief changes, not only after the map changes visually.</p>
+          </section>
+        </section>
+
+        <section id="regret" class="lab-section">
+          <h2>11. Oracle comparison and regret</h2>
+          <p>Regret compares the route chosen under belief with the route that would have been chosen if the oracle truth had been available.</p>
+          <div class="lab-math"><code>regret = S*(chosen_oracle_best) - S*(chosen_by_belief)</code><div class="lab-translation"><strong>In words:</strong> regret is how much true value was lost because the planner had to act under incomplete belief.</div></div>
+          <section class="lab-stochastic-coupled-widget" data-widget="oracle-regret-comparison" aria-label="Oracle regret comparison widget">
+            <h3>Oracle Regret Comparison Widget</h3>
+            <p>Choose a belief route, then reveal oracle truth to see regret.</p>
+            <div data-stochastic-coupled-widget="oracle-regret-comparison"></div>
+            <p class="lab-what-to-notice"><strong>What to notice:</strong> low regret can mean a good forecast, a robust acquisition function, or luck.</p>
+          </section>
+        </section>
+
+        <section id="situations" class="lab-section">
+          <h2>12. Example mission situations</h2>
+          <div class="lab-card-grid">
+            <div class="lab-card"><h3>Shifted front</h3><p>Forecast error dominates. Sample across the front to estimate displacement and update <code>&mu;_post</code>.</p></div>
+            <div class="lab-card"><h3>Hidden plume</h3><p><code>P_unknown(x,y,t)</code> dominates. Follow flow-consistent anomalies and gather confirming samples.</p></div>
+            <div class="lab-card"><h3>Strong current corridor</h3><p>High value may be unreachable against flow. Acquisition must respect <code>F(x,y,t)</code> and energy limits.</p></div>
+            <div class="lab-card"><h3>Risky high value</h3><p>Hazards or shallow water can make a high posterior value cell a poor mission choice.</p></div>
+          </div>
+        </section>
+
+        <section id="planner" class="lab-section">
+          <h2>13. How this connects to Planner / Mission Evaluation</h2>
+          <p>Planner / Mission Evaluation should compare route choices using value collected, cost, uncertainty reduction, hidden-event discovery, route feasibility, and regret against oracle evaluation.</p>
+          <div class="lab-route-preview">
+            <div><strong>Planner input</strong><span><code>A(x,y,t)</code>, reachability, vehicle model, surfacing cadence</span></div>
+            <div><strong>Simulation outcome</strong><span>executed path, observations, updates, score</span></div>
+            <div><strong>Evaluation</strong><span>oracle value, learning value, regret, constraint violations</span></div>
+          </div>
+          <div class="lab-callout"><strong>Fairness rule:</strong> fair planners can use forecasts, posterior belief, uncertainty, and observations. They should not use <code>T(x,y,t)</code> or <code>V_true(x,y,t)</code> unless explicitly labeled oracle.</div>
+        </section>
+
+        <section id="sandboxes" class="lab-section">
+          <h2>14. Open the full sandboxes</h2>
+          <p>Use the static widgets to understand the concepts, then open the full simulator views for richer controls, exports, and mission-facing behavior.</p>
+          <div class="lab-actions">
+            <a class="lab-button primary" href="../index.html#simulation-lab">Open Uncertainty / Forecast Sandbox</a>
+            <a class="lab-button" href="../index.html#simulation-lab">Open Coupled Fields Sandbox</a>
+            <a class="lab-button" href="../index.html">Open Main App</a>
+          </div>
+          <p class="lab-note">Open the main app, then choose Simulation Lab.</p>
+        </section>
+
+        <section id="next" class="lab-section">
+          <h2>15. What comes next</h2>
+          <p>The next lab connects this belief-based sampling objective to route planning and mission evaluation. The planner must decide not only where value exists, but whether that value is reachable, executable, informative, and worth the risk.</p>
+        </section>
+      </article>
+    </div>
+  </main>
+  <script type="module" src="../src/labs/widgets/StochasticCoupledLearningWidgets.js"></script>
+</body>
+</html>

@@ -1,5 +1,6 @@
 import { CUSTOM_SAMPLE_FIELD_BEHAVIOR_PRESET_ID } from '../SampleFieldBehaviorPresets.js';
 import { CUSTOM_REFERENCE_SIGNATURE_ID, normalizeReferenceSignatureId } from '../roi/RoiReferenceSignatures.js';
+import { normalizeSpatiotemporalProcessExampleId, referenceSignatureIdForProcessExample } from './SpatiotemporalProcessExamples.js';
 import {
   SAMPLING_PROCESS_DEFAULT_DISPLAY_MODE,
   isVisibleSamplingProcessMode,
@@ -27,9 +28,11 @@ export function buildPatternSourcePatch(context = {}, nextPatternSource = 'refer
 }
 
 export function buildReferenceSignaturePatch(context = {}, referenceSignatureId = null) {
-  const signatureId = normalizeReferenceSignatureId(referenceSignatureId ?? context.referenceSignatureId ?? DEFAULT_SAMPLING_PROCESS_REFERENCE_SIGNATURE_ID);
+  const exampleId = normalizeSpatiotemporalProcessExampleId(referenceSignatureId ?? context.exampleProcessId ?? context.referenceSignatureId ?? DEFAULT_SAMPLING_PROCESS_REFERENCE_SIGNATURE_ID);
+  const signatureId = normalizeReferenceSignatureId(referenceSignatureIdForProcessExample(exampleId) ?? exampleId);
   return {
     ...referenceSignatureInvariantPatch(signatureId),
+    exampleProcessId: exampleId,
     selectedHelpTopic: null,
     demoTime: 0
   };
@@ -41,8 +44,10 @@ export function buildReferenceSignatureEntryPatch(context = {}) {
       ? context.referenceSignatureId
       : DEFAULT_SAMPLING_PROCESS_REFERENCE_SIGNATURE_ID
   );
+  const exampleId = normalizeSpatiotemporalProcessExampleId(context.exampleProcessId ?? signatureId);
   return {
     ...referenceSignatureInvariantPatch(signatureId),
+    exampleProcessId: exampleId,
     selectedCell: null,
     selectedHelpTopic: null,
     demoTime: 0
@@ -56,6 +61,7 @@ export function buildCustomComposerPatch(_context = {}) {
     behaviorPresetId: CUSTOM_SAMPLE_FIELD_BEHAVIOR_PRESET_ID,
     behaviorPresetModified: false,
     referenceSignatureId: CUSTOM_REFERENCE_SIGNATURE_ID,
+    exampleProcessId: CUSTOM_REFERENCE_SIGNATURE_ID,
     referenceSignatureModified: false,
     updateRuleHint: null,
     modifiedComponent: null,
@@ -76,6 +82,7 @@ export function buildProcessPaintEntryPatch(context = {}) {
     behaviorPresetId: CUSTOM_SAMPLE_FIELD_BEHAVIOR_PRESET_ID,
     behaviorPresetModified: false,
     referenceSignatureId: CUSTOM_REFERENCE_SIGNATURE_ID,
+    exampleProcessId: CUSTOM_REFERENCE_SIGNATURE_ID,
     referenceSignatureModified: false,
     updateRuleHint: null,
     modifiedComponent: null,
@@ -98,6 +105,7 @@ export function buildRandomRuleLabEntryPatch(context = {}) {
     behaviorPresetId: CUSTOM_SAMPLE_FIELD_BEHAVIOR_PRESET_ID,
     behaviorPresetModified: false,
     referenceSignatureId: CUSTOM_REFERENCE_SIGNATURE_ID,
+    exampleProcessId: CUSTOM_REFERENCE_SIGNATURE_ID,
     referenceSignatureModified: false,
     updateRuleHint: null,
     modifiedComponent: null,
@@ -150,6 +158,7 @@ export function buildProcessPaintSelectionPatch(context = {}, patch = {}) {
     processMode: 'processPaint',
     patternSource: 'custom',
     referenceSignatureId: CUSTOM_REFERENCE_SIGNATURE_ID,
+    exampleProcessId: CUSTOM_REFERENCE_SIGNATURE_ID,
     referenceSignatureModified: false,
     updateRuleHint: null,
     demoTime: context.demoTime ?? 0
@@ -164,6 +173,7 @@ export function buildRandomizedAllocationPatch(context = {}, allocation = {}, pa
     behaviorPresetId: CUSTOM_SAMPLE_FIELD_BEHAVIOR_PRESET_ID,
     behaviorPresetModified: false,
     referenceSignatureId: CUSTOM_REFERENCE_SIGNATURE_ID,
+    exampleProcessId: CUSTOM_REFERENCE_SIGNATURE_ID,
     referenceSignatureModified: false,
     updateRuleHint: null,
     paintModel: allocation.model,
@@ -217,6 +227,7 @@ function referenceSignatureInvariantPatch(signatureId) {
     processMode: 'referenceSignature',
     patternSource: 'referenceSignature',
     referenceSignatureId: id,
+    exampleProcessId: contextExampleIdForReference(id),
     referenceSignatureModified: false,
     behaviorPresetId: CUSTOM_SAMPLE_FIELD_BEHAVIOR_PRESET_ID,
     behaviorPresetModified: false,
@@ -226,6 +237,10 @@ function referenceSignatureInvariantPatch(signatureId) {
     processPaintRunStarted: false,
     displayMode: SAMPLING_PROCESS_DEFAULT_DISPLAY_MODE
   };
+}
+
+function contextExampleIdForReference(id) {
+  return normalizeSpatiotemporalProcessExampleId(id);
 }
 
 function isGraphDiagnosticDisplayMode(value) {

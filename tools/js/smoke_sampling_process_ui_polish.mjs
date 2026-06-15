@@ -10,16 +10,19 @@ import {
 } from '../../src/ui/sampling/SamplingProcessRightPanel.js';
 import { referenceSignatureMetadata } from '../../src/core/demo/roi/RoiReferenceSignatures.js';
 import { processRuleById } from '../../src/core/demo/sampling/SamplingProcessRules.js';
+import { processExampleMetadata } from '../../src/core/demo/sampling/SpatiotemporalProcessExamples.js';
 
 const consolePath = new URL('../../src/ui/sampling/SamplingProcessConsoleSections.js', import.meta.url);
 const cssPath = new URL('../../css/panels.css', import.meta.url);
 
 const baseState = {
-  title: 'Spatiotemporal Sampling Process Lab',
+  title: 'Deterministic Spatiotemporal Process Lab',
   processMode: 'referenceSignature',
   patternSource: 'referenceSignature',
   processModeLabel: 'Example Processes',
-  processStatusLabel: 'Pattern-Validated',
+  processStatusLabel: 'Example-Validated',
+  exampleProcessId: 'stationaryTemporalBursts',
+  spatiotemporalProcessExample: processExampleMetadata('stationaryTemporalBursts'),
   referenceSignatureId: 'stationaryTemporalBursts',
   referenceSignatureLabel: 'Recurrent Stationary Hotspots',
   referenceSignature: referenceSignatureMetadata('stationaryTemporalBursts'),
@@ -90,7 +93,7 @@ function stateForMode(processMode) {
       referenceSignature: 'Example Processes',
       customComposer: 'Custom Composer',
       processPaint: 'Process Paint',
-      randomRuleLab: 'Random Rule Lab',
+      randomRuleLab: 'Rule Allocation Sandbox',
       diagnosticsGraphInspection: 'Diagnostics / Graph Inspection'
     }[processMode] ?? 'Example Processes'
   };
@@ -106,7 +109,7 @@ assert.equal(referenceHtml.includes('value="diagnosticsGraphInspection"'), false
 assert.equal(referenceHtml.includes('id="roi-demo-pattern-source"'), false, 'left panel should not show Pattern Source dropdown');
 assert.equal(referenceHtml.includes('data-roi-help="behaviorPreset"'), false, 'left panel should not show selected-pattern Explain button');
 assert.equal(referenceHtml.includes('Diagnostics Overlay'), true, 'display selector should still show Diagnostics Overlay');
-assert.equal(referenceHtml.includes('Process Pattern'), true, 'guided selector should say Process Pattern');
+assert.equal(referenceHtml.includes('Example Process'), true, 'guided selector should say Example Process');
 assert.equal(referenceHtml.includes('Current Summary'), false, 'left panel should not show Current Summary card');
 assert.equal(referenceHtml.includes('data-sampling-section="sourceField"'), false, 'reference mode should not include full composer stack');
 assert.equal(referenceHtml.includes('id="roi-demo-reference-signature"'), true, 'reference selector should be preserved');
@@ -138,10 +141,11 @@ const recipeHtml = roiRecipeSignatureHtml({
   recipeSummary: 'Multi-Modal Likelihood + Clustered Field + Bursty',
   selectedCell: null
 });
-assert.equal(recipeHtml.includes('What am I seeing?'), true, 'recipe view should start with plain-language card');
 assert.equal(recipeHtml.includes('Current Lab State'), true, 'right panel should start with current lab state');
-assert.equal(recipeHtml.includes('Process Pattern View'), true, 'right panel should use process pattern terminology');
-assert.equal(recipeHtml.includes('Sampling Meaning'), true, 'recipe view should include sampling meaning card');
+assert.equal(recipeHtml.includes('Process Example View'), true, 'right panel should use process example terminology');
+assert.equal(recipeHtml.includes('Observable Process Pattern'), true, 'recipe view should include process example summary');
+assert.equal(recipeHtml.includes('Rule -> Update Function'), true, 'recipe view should include update-function teaching card');
+assert.equal(recipeHtml.includes('Sampling Interpretation'), true, 'recipe view should include sampling interpretation card');
 assert.equal(recipeHtml.includes('Advanced Details'), true, 'recipe view should collapse advanced details');
 assert.equal(recipeHtml.includes('data-roi-panel-mode="recipeSignature"'), true, 'right-panel mode selector should be preserved');
 assert.equal(recipeHtml.includes('Show Recipe / Signature'), false, 'right-panel tabs should use compact labels');

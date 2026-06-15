@@ -224,7 +224,7 @@ const BASE_ROI_REFERENCE_SIGNATURES = [
   },
   {
     id: 'driftTransport',
-    label: 'Directed Drift / Transport',
+    label: 'Directed Feature Transport',
     category: 'Synthetic transport',
     aliases: ['driftTransport', 'Drift / Transport'],
     referenceModels: [
@@ -561,7 +561,7 @@ const BASE_ROI_REFERENCE_SIGNATURES = [
     bestDisplayLayers: ['Sample Value + Likelihood Overlay', 'Diagnostics Overlay', 'Sample Value'],
     failureSigns: ['no moving density structure', 'random speckle', 'flat band only', 'mistaken for physical flow'],
     validationTargets: ['density wave movement exists', 'periodic variation visible', 'avoid random flicker'],
-    educationalPrompt: 'Compare with Directed Drift / Transport to separate density-wave buildup from generic movement.',
+    educationalPrompt: 'Compare with Directed Feature Transport to separate density-wave buildup from generic movement.',
     implementationNotes: 'Uses scalar ROI density-wave analogs, not vehicle or traffic CA dynamics.',
     notA: 'Not a Nagel-Schreckenberg, BML, vehicle, or road traffic simulator.'
   },

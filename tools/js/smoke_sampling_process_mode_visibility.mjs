@@ -25,10 +25,10 @@ const visibleModes = [
 ];
 
 const baseState = {
-  title: 'Spatiotemporal Sampling Process Lab',
+  title: 'Deterministic Spatiotemporal Process Lab',
   processMode: 'referenceSignature',
   patternSource: 'referenceSignature',
-  processStatusLabel: 'Pattern-Validated',
+  processStatusLabel: 'Example-Validated',
   referenceSignatureId: 'stationaryTemporalBursts',
   referenceSignatureLabel: 'Recurrent Stationary Hotspots',
   referenceSignature: referenceSignatureMetadata('stationaryTemporalBursts'),
@@ -121,8 +121,8 @@ assert.equal(buildSamplingProcessModePatch({ processMode: 'randomRuleLab' }, 'di
 const recipe = referenceSignatureRecipe('frontPropagation');
 const referencePatch = buildReferenceSignaturePatch({}, 'frontPropagation');
 assert.notEqual(recipe.displayMode, undefined, 'reference recipe should keep display recommendation metadata');
-assert.equal({ ...recipe, ...referencePatch }.displayMode, SAMPLING_PROCESS_DEFAULT_DISPLAY_MODE, 'Process Pattern selection should reset to shared default display');
-assert.equal(buildSamplingProcessModePatch({}, 'randomRuleLab').displayMode, SAMPLING_PROCESS_DEFAULT_DISPLAY_MODE, 'Random Rule Lab should use shared default display');
+assert.equal({ ...recipe, ...referencePatch }.displayMode, SAMPLING_PROCESS_DEFAULT_DISPLAY_MODE, 'Example Process selection should reset to shared default display');
+assert.equal(buildSamplingProcessModePatch({}, 'randomRuleLab').displayMode, SAMPLING_PROCESS_DEFAULT_DISPLAY_MODE, 'Rule Allocation Sandbox should use shared default display');
 assert.equal(buildSamplingProcessModePatch({}, 'processPaint').displayMode, 'nodeStates', 'Process Paint should keep nodeStates default');
 
 console.log('smoke_sampling_process_mode_visibility: ok');

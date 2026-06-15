@@ -5,11 +5,11 @@ import { referenceSignatureMetadata } from '../../src/core/demo/roi/RoiReference
 import { processRuleById } from '../../src/core/demo/sampling/SamplingProcessRules.js';
 
 const baseState = {
-  title: 'Spatiotemporal Sampling Process Lab',
+  title: 'Deterministic Spatiotemporal Process Lab',
   processMode: 'referenceSignature',
   patternSource: 'referenceSignature',
   processModeLabel: 'Example Processes',
-  processStatusLabel: 'Pattern-Validated',
+  processStatusLabel: 'Example-Validated',
   referenceSignatureId: 'stationaryTemporalBursts',
   referenceSignatureLabel: 'Recurrent Stationary Hotspots',
   referenceSignature: referenceSignatureMetadata('stationaryTemporalBursts'),
@@ -81,7 +81,7 @@ function stateForMode(processMode) {
       referenceSignature: 'Example Processes',
       customComposer: 'Custom Composer',
       processPaint: 'Process Paint',
-      randomRuleLab: 'Random Rule Lab',
+      randomRuleLab: 'Rule Allocation Sandbox',
       diagnosticsGraphInspection: 'Diagnostics / Graph Inspection'
     }[processMode] ?? 'Example Processes'
   };
@@ -111,11 +111,11 @@ const referenceHtml = samplingProcessConsoleHtml(stateForMode('referenceSignatur
 assertCriticalSelectors(referenceHtml);
 assert.ok(referenceHtml.includes('data-sampling-top-card="mode"'), 'reference mode should render Mode control card');
 assert.equal(referenceHtml.includes('value="diagnosticsGraphInspection"'), false, 'mode selector should not expose Diagnostics / Graph Inspection');
-assert.equal(referenceHtml.includes('id="roi-demo-pattern-source"'), false, 'Process Pattern card should not render Pattern Source dropdown');
-assert.equal(referenceHtml.includes('data-roi-help="behaviorPreset"'), false, 'Process Pattern card should not render selected-pattern Explain button');
+assert.equal(referenceHtml.includes('id="roi-demo-pattern-source"'), false, 'Example Process card should not render Pattern Source dropdown');
+assert.equal(referenceHtml.includes('data-roi-help="behaviorPreset"'), false, 'Example Process card should not render selected-pattern Explain button');
 assert.equal(referenceHtml.includes('Diagnostics Overlay'), true, 'Display / Diagnostic Layer should still expose Diagnostics Overlay');
-assert.ok(referenceHtml.includes('data-sampling-primary-mode="referenceSignature"'), 'guided mode should render Process Pattern primary card');
-assert.ok(referenceHtml.includes('Process Pattern'), 'guided mode should label the primary selector Process Pattern');
+assert.ok(referenceHtml.includes('data-sampling-primary-mode="referenceSignature"'), 'guided mode should render Example Process primary card');
+assert.ok(referenceHtml.includes('Example Process'), 'guided mode should label the primary selector Example Process');
 assert.ok(!referenceHtml.includes('data-sampling-top-card="summary"'), 'left panel should not render standalone Current Summary');
 assertOrder(referenceHtml, 'id="sampling-process-mode"', 'id="roi-demo-reference-signature"', 'mode selector should appear before reference selector');
 assertOrder(referenceHtml, 'data-sampling-top-card="mode"', 'data-sampling-top-card="primary"', 'mode card should appear before primary card');

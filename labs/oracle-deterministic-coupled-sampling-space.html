@@ -1,0 +1,220 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Oracle / Deterministic Coupled Sampling Space | ANCHOR Learning Labs</title>
+  <link rel="stylesheet" href="../css/labs.css" />
+</head>
+<body>
+  <main class="lab-shell">
+    <header class="lab-header">
+      <nav class="lab-nav" aria-label="Learning Labs navigation">
+        <a href="index.html">Back to Learning Labs</a>
+        <a href="../index.html">Open Main App</a>
+        <a href="../index.html#simulation-lab">Open Coupled Fields Sandbox</a>
+      </nav>
+    </header>
+
+    <section class="lab-hero">
+      <div>
+        <p class="lab-kicker">Learning Lab 3</p>
+        <h1>Oracle / Deterministic Coupled Sampling Space</h1>
+        <p class="lab-subtitle">Learn how known process dynamics, known flow, and known constraints combine into a true dynamic sampling objective.</p>
+        <div class="lab-badges">
+          <span>Deterministic / Oracle</span>
+          <span>Process + Flow</span>
+          <span>Constraints</span>
+          <span>Reachability</span>
+          <span>Sampling Objective</span>
+          <span>Coupled Demo Foundation</span>
+        </div>
+        <div class="lab-actions">
+          <a class="lab-button" href="index.html">Back to Learning Labs</a>
+          <a class="lab-button" href="../index.html">Open Main App</a>
+          <a class="lab-button primary" href="../index.html#simulation-lab">Open Coupled Fields Sandbox</a>
+        </div>
+        <p class="lab-note">Open the main app, then choose Simulation Lab -> Coupled Fields Demo if the hash link is not handled by your browser session.</p>
+      </div>
+      <figure class="lab-figure" aria-label="Oracle layer stack">
+        <div class="lab-objective-stack">
+          <div>Process value<br /><code>V(x,y,t)</code></div>
+          <div>Flow<br /><code>F(x,y,t)</code></div>
+          <div>Constraints<br /><code>C(x,y)</code></div>
+          <div>Mission<br /><code>M</code></div>
+          <div>Oracle objective<br /><code>S*(x,y,t)</code></div>
+        </div>
+        <figcaption class="lab-caption"><strong>What to notice:</strong> a sampling objective is composed from multiple known layers.</figcaption>
+      </figure>
+    </section>
+
+    <div class="lab-layout">
+      <aside class="lab-toc" aria-label="Article table of contents">
+        <strong>Table of contents</strong>
+        <a href="#why">1. Why couple fields?</a>
+        <a href="#process-value">2. Process value is not yet sampling value</a>
+        <a href="#flow-reach">3. Flow changes transport and reachability</a>
+        <a href="#constraints">4. Constraints define where sampling is possible</a>
+        <a href="#oracle">5. The oracle sampling objective</a>
+        <a href="#composition">6. Layer composition</a>
+        <a href="#examples">7. Flow-coupled examples</a>
+        <a href="#timing">8. Reachable value and timing</a>
+        <a href="#before-uncertainty">9. Oracle missions before uncertainty</a>
+        <a href="#stochastic-preview">10. How this connects to stochastic coupled sampling</a>
+        <a href="#sandbox">11. Open the full Coupled Fields sandbox</a>
+        <a href="#next">12. What comes next</a>
+      </aside>
+
+      <article class="lab-article">
+        <section id="why" class="lab-section">
+          <h2>1. Why couple fields?</h2>
+          <p>The first lab asked what is happening in the world. The second lab asked how the environment moves. This lab asks: if both are known, where is the true useful sampling space?</p>
+          <div class="lab-objective-stack">
+            <div>Process value<br /><code>V(x,y,t)</code></div>
+            <div>+</div>
+            <div>Flow field<br /><code>F(x,y,t)</code></div>
+            <div>+</div>
+            <div>Constraints<br /><code>C(x,y)</code></div>
+            <div>+</div>
+            <div>Mission interpretation<br /><code>M</code></div>
+            <div>=</div>
+            <div>Oracle sampling objective<br /><code>S*(x,y,t)</code></div>
+          </div>
+          <p><strong>Connection to the simulator:</strong> the Coupled Fields Demo overlays flow arrows, sample/process heatmaps, particles, and land/topology to inspect field interaction.</p>
+        </section>
+
+        <section id="process-value" class="lab-section">
+          <h2>2. Process value is not yet sampling value</h2>
+          <p>A process field tells what is happening. A sampling objective tells what is worth sampling for a mission.</p>
+          <div class="lab-equation-grid">
+            <div class="lab-math"><code>X(x,y,t) = process state</code><div class="lab-translation"><strong>In words:</strong> X is the underlying state of the deterministic process.</div></div>
+            <div class="lab-math"><code>V(x,y,t) = g(X(x,y,t))</code><div class="lab-translation"><strong>In words:</strong> the process state is transformed into observable process value.</div></div>
+            <div class="lab-math"><code>S*(x,y,t) = h(V(x,y,t), mission context)</code><div class="lab-translation"><strong>In words:</strong> the mission decides how process value becomes sampling value.</div></div>
+          </div>
+          <figure class="lab-figure" aria-label="Process value and sampling interpretation grids">
+            <div class="lab-concept-bridge"><div>Process value<br />active front, hotspot, trail</div><div>Sampling interpretation<br />urgent, useful, depleted</div></div>
+            <figcaption class="lab-caption"><strong>What to notice:</strong> high process value may be less useful if it is already known, depleted, or unreachable.</figcaption>
+          </figure>
+        </section>
+
+        <section id="flow-reach" class="lab-section">
+          <h2>3. Flow changes transport and reachability</h2>
+          <p>Flow can carry particles or features, stretch a region, make upstream sampling costly, make downstream sampling easier, and move high-value regions over time.</p>
+          <div class="lab-equation-grid">
+            <div class="lab-math"><code>F(x,y,t) = &lt;u(x,y,t), v(x,y,t)&gt;</code><div class="lab-translation"><strong>In words:</strong> the flow field gives local water movement at each position and time.</div></div>
+            <div class="lab-math"><code>p(t + &Delta;t) = p(t) + F(p(t),t)&Delta;t</code><div class="lab-translation"><strong>In words:</strong> the local flow vector changes where a particle or vehicle-like tracer may move next.</div></div>
+          </div>
+          <section class="lab-coupled-widget" data-widget="flow-carried-patch" aria-label="Flow-carried patch interactive widget">
+            <h3>Flow-Carried Patch Widget</h3>
+            <p>Watch a deterministic process patch shift under a selected flow field.</p>
+            <div data-coupled-widget="flow-carried-patch"></div>
+            <p class="lab-what-to-notice"><strong>What to notice:</strong> the valuable region is not only where it is now. It may be moving.</p>
+          </section>
+        </section>
+
+        <section id="constraints" class="lab-section">
+          <h2>4. Constraints define where sampling is possible</h2>
+          <p>Constraints can represent land, no-go regions, shallow water, obstacles, mission boundaries, unsafe cells, or unreachable cells.</p>
+          <div class="lab-equation-grid">
+            <div class="lab-math"><code>C(x,y)</code><div class="lab-translation"><strong>In words:</strong> C describes whether a location is open, blocked, or constrained.</div></div>
+            <div class="lab-math"><code>feasible(x,y,t) in {0,1}</code><div class="lab-translation"><strong>In words:</strong> feasible is 1 if a location can be sampled and 0 if it cannot.</div></div>
+            <div class="lab-math"><code>S_reachable*(x,y,t) = S*(x,y,t) * feasible(x,y,t)</code><div class="lab-translation"><strong>In words:</strong> a high-value cell with no feasibility contributes zero reachable value.</div></div>
+          </div>
+          <section class="lab-coupled-widget" data-widget="constraint-mask" aria-label="Constraint mask interactive widget">
+            <h3>Constraint Mask Widget</h3>
+            <p>Toggle constraints to compare objective before and after blocked regions are applied.</p>
+            <div data-coupled-widget="constraint-mask"></div>
+            <p class="lab-what-to-notice"><strong>What to notice:</strong> useful domain is shaped by value and feasibility together.</p>
+          </section>
+        </section>
+
+        <section id="oracle" class="lab-section">
+          <h2>5. The oracle sampling objective</h2>
+          <p>Oracle means perfect knowledge. In this deterministic coupled lab, process, flow, constraints, and sampling interpretation are all known.</p>
+          <div class="lab-math"><code>S*(x,y,t) = h(V(x,y,t), F(x,y,t), C(x,y), M)</code><div class="lab-translation"><strong>In words:</strong> the oracle objective is the true known sampling value created from known process, flow, constraints, and mission context.</div></div>
+          <div class="lab-callout"><strong>Boundary:</strong> this deterministic lab is where oracle-guided missions are built. Stochastic belief and forecast error come later.</div>
+        </section>
+
+        <section id="composition" class="lab-section">
+          <h2>6. Layer composition: process + flow + constraints</h2>
+          <p>The coupled objective is a computation over layers: process state X, observable value V, flow F, constraint field C, mission interpretation M, oracle objective S*, and reachable value R.</p>
+          <section class="lab-coupled-widget lab-layer-composer" data-widget="layer-composer" aria-label="Layer composer interactive widget">
+            <h3>Layer Composer Widget</h3>
+            <p>Select a process, flow, constraint, mission interpretation, and layer view.</p>
+            <div data-coupled-widget="layer-composer"></div>
+            <p class="lab-what-to-notice"><strong>What to notice:</strong> the objective view is not just the process heatmap. It is process value filtered by flow, constraints, and mission interpretation.</p>
+          </section>
+        </section>
+
+        <section id="examples" class="lab-section">
+          <h2>7. Flow-coupled examples</h2>
+          <div class="lab-card-grid">
+            <article class="lab-coupled-mini-card"><h3>Flow-carried bloom</h3><p><strong>Process:</strong> high-value biological or chemical patch.</p><p><strong>Flow:</strong> uniform or sheared current moves/stretches the patch.</p><p><strong>Sampling objective:</strong> sample where the patch is now and where it will be soon.</p><p><strong>Not:</strong> a calibrated ocean forecast or biological bloom model.</p></article>
+            <article class="lab-coupled-mini-card"><h3>River plume front</h3><p><strong>Process:</strong> front between plume and background.</p><p><strong>Flow:</strong> channel flow pushes the front downstream.</p><p><strong>Sampling objective:</strong> inspect the active boundary.</p><p><strong>Not:</strong> a hydrology model.</p></article>
+            <article class="lab-coupled-mini-card"><h3>Eddy-trapped patch</h3><p><strong>Process:</strong> coherent high-value patch.</p><p><strong>Flow:</strong> vortex keeps value circulating.</p><p><strong>Sampling objective:</strong> sample the rotating high-value region.</p><p><strong>Not:</strong> a validated eddy forecast.</p></article>
+            <article class="lab-coupled-mini-card"><h3>Current-sheared hotspot</h3><p><strong>Process:</strong> compact hotspot.</p><p><strong>Flow:</strong> shear stretches it into a band.</p><p><strong>Sampling objective:</strong> track the elongated high-value area.</p><p><strong>Not:</strong> a diffusion solver.</p></article>
+            <article class="lab-coupled-mini-card"><h3>Shoreline runoff</h3><p><strong>Process:</strong> near-shore source.</p><p><strong>Flow:</strong> transports value away from land.</p><p><strong>Sampling objective:</strong> sample accessible plume corridors.</p><p><strong>Not:</strong> a watershed model.</p></article>
+            <article class="lab-coupled-mini-card"><h3>Convergence-zone accumulation</h3><p><strong>Process:</strong> weak distributed value.</p><p><strong>Flow:</strong> convergence concentrates value.</p><p><strong>Sampling objective:</strong> sample accumulation zones.</p><p><strong>Not:</strong> a physical assimilation model.</p></article>
+          </div>
+        </section>
+
+        <section id="timing" class="lab-section">
+          <h2>8. Reachable value and timing</h2>
+          <p>A sampling cell can be valuable at the wrong time. A planner needs to consider where value is now, where it will be later, how long it takes to reach it, and how flow assists or resists travel.</p>
+          <div class="lab-equation-grid">
+            <div class="lab-math"><code>arrival_time(p, target)</code><div class="lab-translation"><strong>In words:</strong> estimate when the vehicle could reach the target.</div></div>
+            <div class="lab-math"><code>useful_value(target,t) = S*(target,t) if arrival_time &lt;= t_window</code><div class="lab-translation"><strong>In words:</strong> a cell is useful only if the vehicle can reach it while it still matters.</div></div>
+          </div>
+          <section class="lab-coupled-widget" data-widget="reachability-timing" aria-label="Reachability timing interactive widget">
+            <h3>Timing / Reachability Widget</h3>
+            <p>Adjust a time budget and compare a simple reach region with or without flow assist.</p>
+            <div data-coupled-widget="reachability-timing"></div>
+            <p class="lab-what-to-notice"><strong>What to notice:</strong> this is a reachability intuition widget, not a path-planning algorithm.</p>
+          </section>
+        </section>
+
+        <section id="before-uncertainty" class="lab-section">
+          <h2>9. Oracle missions before uncertainty</h2>
+          <p>Before we ask what the AUV believes, we first need to understand what the true coupled world is.</p>
+          <table class="lab-comparison-table">
+            <thead><tr><th>Oracle / deterministic</th><th>Stochastic / uncertainty</th></tr></thead>
+            <tbody>
+              <tr><td>truth known</td><td>truth hidden</td></tr>
+              <tr><td>objective known</td><td>belief estimated</td></tr>
+              <tr><td>no forecast error</td><td>forecast error possible</td></tr>
+              <tr><td>evaluates ideal opportunity</td><td>evaluates uncertainty-aware decisions</td></tr>
+            </tbody>
+          </table>
+        </section>
+
+        <section id="stochastic-preview" class="lab-section">
+          <h2>10. How this connects to stochastic coupled sampling</h2>
+          <p>The stochastic coupled lab will add hidden truth, forecast or posterior mean, uncertainty, observations, acquisition value, and regret against oracle.</p>
+          <div class="lab-equation-grid">
+            <div class="lab-math"><code>Oracle: S*(x,y,t) = h(V,F,C,M)</code><div class="lab-translation"><strong>In words:</strong> the oracle objective tells us what was truly valuable.</div></div>
+            <div class="lab-math"><code>Belief-based: A(x,y,t) = h(mu,U,F,C,M)</code><div class="lab-translation"><strong>In words:</strong> the belief objective tells us what the vehicle thought was valuable.</div></div>
+            <div class="lab-math"><code>regret = oracle value missed by acting on belief</code><div class="lab-translation"><strong>In words:</strong> regret measures the gap between perfect knowledge and belief-based action.</div></div>
+          </div>
+        </section>
+
+        <section id="sandbox" class="lab-section">
+          <h2>11. Open the full Coupled Fields sandbox</h2>
+          <p>The article teaches the concept. The full sandbox lets users experiment with flow arrows, sample/process heatmap, coupled display layers, land/topology, deterministic shared clock, and exportable coupled fields.</p>
+          <p><a class="lab-button" href="../index.html">Open Main App</a> <a class="lab-button primary" href="../index.html#simulation-lab">Open Simulation Lab</a> <a class="lab-button" href="index.html">Back to Learning Labs</a></p>
+          <p class="lab-note">Open the main app, then choose Simulation Lab -> Coupled Fields Demo.</p>
+        </section>
+
+        <section id="next" class="lab-section">
+          <h2>12. What comes next</h2>
+          <div class="lab-roadmap">
+            <div><strong>Next Learning Lab: Stochastic / Uncertainty.</strong> Truth can be hidden, observations can be noisy, and sampling value can come from uncertainty reduction.</div>
+            <div><strong>Stochastic Coupled Sampling Space:</strong> belief-based objective under flow and constraints.</div>
+            <div><strong>Planner / Mission Evaluation:</strong> path choice, reward, cost, regret.</div>
+          </div>
+        </section>
+      </article>
+    </div>
+  </main>
+  <script type="module" src="../src/labs/widgets/CoupledSamplingLearningWidgets.js"></script>
+</body>
+</html>

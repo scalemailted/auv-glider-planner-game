@@ -43,10 +43,13 @@ import {
 } from '../../core/demo/SampleFieldBehaviorPresets.js';
 import {
   CUSTOM_REFERENCE_SIGNATURE_ID,
-  ROI_REFERENCE_SIGNATURES,
   referenceSignatureById,
   referenceSignatureLabel
 } from '../../core/demo/roi/RoiReferenceSignatures.js';
+import {
+  processExampleTypeLabel,
+  spatiotemporalProcessExampleOptions
+} from '../../core/demo/sampling/SpatiotemporalProcessExamples.js';
 import {
   SAMPLING_PROCESS_LAB_MENU_LABEL,
   SAMPLING_PROCESS_LAB_TITLE,
@@ -185,13 +188,17 @@ export function samplingPrimaryModeControlsHtml(state = {}) {
 function samplingReferenceSignaturePrimaryHtml(state = {}) {
   return `
       <section class="console-section sampling-control-card" data-sampling-top-card="primary" data-sampling-primary-mode="referenceSignature">
-        <h2>Process Pattern</h2>
-        <div class="hud-muted">Choose an example process pattern.</div>
+        <h2>Example Process</h2>
+        <div class="hud-muted">Choose a deterministic foundational CA model or observable process pattern.</div>
         ${state.hasSection('referenceSignature') && state.patternSource === 'referenceSignature' ? `
-          <label class="compact-field" title="Choose a known observable process pattern.">
-            <span>Process Pattern</span>
+          <label class="compact-field" title="Choose a deterministic process example.">
+            <span>Example Process</span>
             <select id="roi-demo-reference-signature">
-              ${ROI_REFERENCE_SIGNATURES.map((signature) => `<option value="${escapeAttr(signature.id)}" ${(state.referenceSignatureId ?? CUSTOM_REFERENCE_SIGNATURE_ID) === signature.id ? 'selected' : ''}>${escapeHtml(signature.label)}</option>`).join('')}
+              ${spatiotemporalProcessExampleOptions().map((group) => `
+                <optgroup label="${escapeAttr(processExampleTypeLabel(group.type))}">
+                  ${group.options.map((option) => `<option value="${escapeAttr(option.id)}" ${(state.exampleProcessId ?? state.referenceSignatureId ?? CUSTOM_REFERENCE_SIGNATURE_ID) === option.id ? 'selected' : ''}>${escapeHtml(option.label)}</option>`).join('')}
+                </optgroup>
+              `).join('')}
             </select>
           </label>
         ` : `
@@ -202,7 +209,7 @@ function samplingReferenceSignaturePrimaryHtml(state = {}) {
         ${state.legacyPresetsVisible ? `
           <details class="hud-muted">
             <summary>Advanced / Legacy Examples</summary>
-            <p>Legacy MVP examples. These are kept for compatibility and debugging. The main educational workflow is guided Process Patterns.</p>
+            <p>Legacy MVP examples. These are kept for compatibility and debugging. The main educational workflow is Example Processes.</p>
             <label class="compact-field" title="${escapeAttr(state.presetHelp.short)}">
               <span>Legacy Behavior Preset</span>
               <select id="roi-demo-behavior-preset" title="${escapeAttr(state.presetHelp.short)}">
@@ -245,7 +252,7 @@ function samplingProcessPaintPrimaryHtml(state = {}) {
 function samplingRandomRuleLabPrimaryHtml(state = {}) {
   return `
       <section class="console-section sampling-control-card" data-sampling-top-card="primary" data-sampling-primary-mode="randomRuleLab">
-        <h2>Random Rule Lab</h2>
+        <h2>Rule Allocation Sandbox</h2>
         <div class="hud-muted">Generate seeded rule, state, group, and source allocations.</div>
         ${compactMetricChipsHtml([
           ['seed', state.randomRuleSeed ?? 'sampling-random-001'],
@@ -618,7 +625,7 @@ export function samplingProcessPaintSectionHtml(state = {}) {
           <select id="sampling-paint-start-mode">
             <option value="blankCanvas" ${state.paintStartMode === 'blankCanvas' ? 'selected' : ''}>Blank Canvas</option>
             <option value="currentSnapshot" disabled>Current Field Snapshot (coming soon)</option>
-            <option value="referenceInitialState" disabled>Current Process Pattern Initial State (coming soon)</option>
+            <option value="referenceInitialState" disabled>Current Example Process Initial State (coming soon)</option>
           </select>
         </label>
         <label class="compact-field">
@@ -660,8 +667,8 @@ export function samplingProcessPaintSectionHtml(state = {}) {
 export function samplingRandomRuleLabSectionHtml(state = {}) {
   return `
       <section class="console-section" data-sampling-section="randomRuleLab">
-        <h2>Random Rule Lab</h2>
-        <div class="hud-muted">Generate a seeded random state/rule/group allocation.</div>
+        <h2>Rule Allocation Sandbox</h2>
+        <div class="hud-muted">Generate a seeded non-uniform state/rule/group allocation.</div>
         <label class="compact-field">
           Randomization Mode
           <select id="sampling-random-mode">
@@ -699,7 +706,7 @@ export function samplingExportSectionHtml(state) {
         <button data-action="export-demo-json" class="console-button">Export Demo JSON</button>
         <details class="sampling-compact-details">
           <summary>Export contents</summary>
-          <div class="hud-muted">Includes S(x,y,t), Source Field mesh, graph metadata, process layers, config, and inspector state.</div>
+          <div class="hud-muted">Includes observable value S(x,y,t), Source / Initial Field mesh, graph metadata, process layers, config, and inspector state.</div>
         </details>
         ${state.hasSection('scenarioGeneration') ? samplingScenarioGenerationSectionHtml(state) : ''}
       </section>
@@ -724,7 +731,7 @@ export function samplingScenarioGenerationSectionHtml(state) {
 export function samplingFooterHtml(state) {
   return `
       <section class="console-footer">
-        <div class="hud-muted">ROI Demo UI: ${escapeHtml(state.uiVersion ?? 'reference-signature-primary-ui-v1')} | Loaded process patterns: ${escapeHtml(state.referenceSignatureCount ?? ROI_REFERENCE_SIGNATURES.length)} | Legacy presets loaded: ${escapeHtml(state.legacyPresetCount ?? SAMPLE_FIELD_BEHAVIOR_PRESETS.length)} | Legacy presets visible: ${escapeHtml(state.legacyPresetsVisible ? 'true' : 'false')}</div>
+        <div class="hud-muted">Process Lab UI: ${escapeHtml(state.uiVersion ?? 'reference-signature-primary-ui-v1')} | Loaded process examples: ${escapeHtml(state.processExampleCount ?? state.referenceSignatureCount ?? spatiotemporalProcessExampleOptions().reduce((total, group) => total + group.options.length, 0))} | Legacy presets loaded: ${escapeHtml(state.legacyPresetCount ?? SAMPLE_FIELD_BEHAVIOR_PRESETS.length)} | Legacy presets visible: ${escapeHtml(state.legacyPresetsVisible ? 'true' : 'false')}</div>
         <button data-action="menu" class="console-button secondary">Main Menu</button>
       </section>
   `;
@@ -765,7 +772,7 @@ function samplingProcessConsoleContext(state = {}) {
     : `${roiEventLikelihoodLabel(state.eventLikelihood)} (${state.eventLikelihoodDynamics === 'dynamic' ? `${roiTemporalPatternLabel(state.eventLikelihoodTemporalPattern)} / ${roiLikelihoodSpatialEvolutionLabel(state.eventLikelihoodSpatialEvolution)}` : 'Static'})`;
   const summaryRows = [
     ['Active Source', patternSourceLabel(patternSource)],
-    ['Pattern', patternSource === 'referenceSignature' ? referenceStatus : 'None'],
+    ['Example Process', patternSource === 'referenceSignature' ? (state.exampleProcessLabel ?? referenceStatus) : 'None'],
     ['Source Field', likelihoodModeText],
     ['Spatial Pattern', state.spatialPatternLabel ?? roiPureSpatialPatternLabel(state.spatialPattern)],
     ['Value Distribution', state.valueDistributionLabel ?? roiValueDistributionLabel(state.valueDistribution)],
@@ -786,7 +793,7 @@ function samplingProcessConsoleContext(state = {}) {
   const sourceSummaryRows = patternSource === 'referenceSignature'
     ? [
         ['Active Source', 'Example Processes'],
-        ['Pattern', referenceStatus],
+        ['Example Process', state.exampleProcessLabel ?? referenceStatus],
         ['Modified', state.referenceSignatureModified ? 'yes' : 'no'],
         ['Modified component', state.componentHint?.label ?? 'none'],
         ['Recipe', recipeSummary]
@@ -795,13 +802,13 @@ function samplingProcessConsoleContext(state = {}) {
       ? [
           ['Active Source', 'Legacy Preset'],
           ['Preset', state.behaviorPresetLabel ?? 'Unknown'],
-          ['Mapped Process Pattern', state.referenceSignature?.label ?? 'None'],
+          ['Mapped Example Process', state.referenceSignature?.label ?? 'None'],
           ['Mode', 'Legacy compatibility mode'],
           ['Recipe', recipeSummary]
         ]
       : [
           ['Active Source', 'Custom Component Recipe'],
-          ['Process Pattern', 'none'],
+          ['Example Process', 'none'],
           ['Recipe', recipeSummary]
         ];
   return {

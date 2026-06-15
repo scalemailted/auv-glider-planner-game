@@ -1,0 +1,372 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Planner / Mission Evaluation | ANCHOR Learning Labs</title>
+  <link rel="stylesheet" href="../css/labs.css" />
+</head>
+<body>
+  <main class="lab-shell">
+    <header class="lab-header">
+      <nav class="lab-nav" aria-label="Learning Labs navigation">
+        <a href="index.html">Back to Learning Labs</a>
+        <a href="../index.html">Open Main App</a>
+        <a href="../index.html">Open Mission Planner / Challenge Mode</a>
+        <a href="../index.html#simulation-lab">Open Simulation Lab</a>
+      </nav>
+    </header>
+
+    <section class="lab-hero">
+      <div>
+        <p class="lab-kicker">Learning Lab 6</p>
+        <h1>Planner / Mission Evaluation</h1>
+        <p class="lab-subtitle">Learn how AUV waypoint plans trade value, uncertainty, flow, cost, risk, and time - then see how simulation and debrief evaluate the result.</p>
+        <div class="lab-badges">
+          <span>Path Planning</span>
+          <span>Reward vs Cost</span>
+          <span>Flow-Aware Routes</span>
+          <span>Uncertainty-Aware Sampling</span>
+          <span>Oracle vs Belief</span>
+          <span>Regret + Debrief</span>
+        </div>
+        <div class="lab-actions">
+          <a class="lab-button" href="index.html">Back to Learning Labs</a>
+          <a class="lab-button" href="../index.html">Open Main App</a>
+          <a class="lab-button primary" href="../index.html">Open Mission Planner / Challenge Mode</a>
+          <a class="lab-button" href="../index.html#simulation-lab">Open Simulation Lab</a>
+        </div>
+        <p class="lab-note">Open the main app, then choose Challenge Mode or Simulation Lab.</p>
+      </div>
+      <figure class="lab-figure" aria-label="Fields to route to debrief pipeline">
+        <div class="lab-planner-pipeline">
+          <div>Process / truth</div>
+          <div>Flow</div>
+          <div>Uncertainty</div>
+          <div>Constraints</div>
+          <div>Acquisition objective</div>
+          <div>Planner</div>
+          <div>Waypoint route</div>
+          <div>Simulation</div>
+          <div>Debrief</div>
+        </div>
+        <figcaption class="lab-caption"><strong>What to notice:</strong> Learning Labs explain, Simulation Demos let users experiment, and Mission tools evaluate.</figcaption>
+      </figure>
+    </section>
+
+    <div class="lab-layout">
+      <aside class="lab-toc" aria-label="Article table of contents">
+        <strong>Table of contents</strong>
+        <a href="#fields-to-routes">1. From fields to routes</a>
+        <a href="#waypoint-plan">2. What is a waypoint plan?</a>
+        <a href="#reward-cost-risk">3. Reward, cost, risk, and constraints</a>
+        <a href="#reachability">4. Reachability and timing</a>
+        <a href="#flow-aware">5. Flow-aware planning</a>
+        <a href="#greedy">6. Greedy planning as a baseline</a>
+        <a href="#strategies">7. Coverage, boundary, and revisit strategies</a>
+        <a href="#uncertainty-aware">8. Uncertainty-aware sampling</a>
+        <a href="#validation-discovery">9. Forecast validation vs hidden-event follow-up</a>
+        <a href="#oracle-belief">10. Oracle vs belief planners</a>
+        <a href="#regret">11. Regret and missed opportunity</a>
+        <a href="#surfacing">12. Surfacing, updates, and replanning</a>
+        <a href="#multi-agent">13. Multi-agent planning</a>
+        <a href="#simulation-referee">14. Simulation is the referee</a>
+        <a href="#debrief">15. Debrief and mission evaluation</a>
+        <a href="#solver">16. Solver workflow and fairness labels</a>
+        <a href="#mission-strategies">17. Example mission strategies</a>
+        <a href="#sandbox">18. Open the full planner sandbox</a>
+        <a href="#next">19. What comes next</a>
+      </aside>
+
+      <article class="lab-article">
+        <section id="fields-to-routes" class="lab-section">
+          <h2>1. From fields to routes</h2>
+          <p>The previous labs produced fields. This lab turns fields into actions. Fields tell the planner where value is, where uncertainty is, where flow helps or hurts, where hazards exist, and where time-sensitive targets appear. A route tells the vehicle where to go, when to go, and what to do there.</p>
+          <div class="lab-equation-grid">
+            <div class="lab-math"><code>A(x,y,t) = acquisition or sampling objective</code><div class="lab-translation"><strong>In words:</strong> A is the map of opportunity.</div></div>
+            <div class="lab-math"><code>P = {p_0, p_1, ..., p_T}</code><div class="lab-translation"><strong>In words:</strong> P is the ordered route through that map.</div></div>
+          </div>
+          <section class="lab-planner-widget" data-widget="field-to-route-overview" aria-label="Field to route overview widget">
+            <h3>Field-to-Route Overview Widget</h3>
+            <p>Toggle value, flow, hazards, and route layers to see how a plan sits on top of the field stack.</p>
+            <div data-planner-widget="field-to-route-overview"></div>
+            <p class="lab-what-to-notice"><strong>What to notice:</strong> the route is not drawn on an empty map. It responds to layered fields.</p>
+          </section>
+        </section>
+
+        <section id="waypoint-plan" class="lab-section">
+          <h2>2. What is a waypoint plan?</h2>
+          <p>A waypoint is an intended place, time, and action. A plan is an ordered list of waypoints. A plan is not the same thing as the actual path; the actual path may drift, miss targets, or stop early during simulation.</p>
+          <div class="lab-equation-grid">
+            <div class="lab-math"><code>p_t = (x_t, y_t, time_t, action_t)</code><div class="lab-translation"><strong>In words:</strong> each waypoint is a planned decision at a place and time.</div></div>
+            <div class="lab-math"><code>P = {p_0, p_1, ..., p_T}</code><div class="lab-translation"><strong>In words:</strong> a route is a sequence of planned decisions.</div></div>
+          </div>
+          <div class="lab-card-grid">
+            <div class="lab-route-card"><h3><code>navigation</code></h3><p>A commanded underwater movement intent.</p></div>
+            <div class="lab-route-card"><h3><code>surface</code></h3><p>A communication/update point.</p></div>
+            <div class="lab-route-card"><h3><code>samplingTarget</code></h3><p>A science target marker; it must be route-connected to become executable.</p></div>
+            <div class="lab-route-card"><h3><code>terminalCarryThrough</code></h3><p>A final command that continues until mission time expires.</p></div>
+          </div>
+          <section class="lab-planner-widget" data-widget="waypoint-sequence" aria-label="Waypoint sequence widget">
+            <h3>Waypoint Sequence Widget</h3>
+            <p>Reorder or delete waypoints and watch ETA/cost change.</p>
+            <div data-planner-widget="waypoint-sequence"></div>
+            <p class="lab-what-to-notice"><strong>What to notice:</strong> the same points in a different order can have a different cost and score.</p>
+          </section>
+        </section>
+
+        <section id="reward-cost-risk" class="lab-section">
+          <h2>3. Reward, cost, risk, and constraints</h2>
+          <p>Planning is a tradeoff. A useful route collects value, but it also spends time and energy and may pass through risk.</p>
+          <div class="lab-math"><code>objective(P) = sum_t reward(p_t,t) - lambda_cost cost(P) - lambda_risk risk(P) - penalties(P)</code><div class="lab-translation"><strong>In words:</strong> the route score balances what you gain against what the route costs.</div></div>
+          <div class="lab-route-metric-grid">
+            <div><strong>Reward</strong><span>sample value, priority targets, information gain, hidden-event confirmation</span></div>
+            <div><strong>Cost</strong><span>travel time, energy, distance, cross-current effort</span></div>
+            <div><strong>Risk</strong><span>hazards, shallow water, shoreline risk, strong currents, low confidence</span></div>
+            <div><strong>Constraints</strong><span>land, no-go cells, duration, fuel, deployment, recovery rules</span></div>
+          </div>
+          <section class="lab-planner-widget" data-widget="reward-cost-tradeoff" aria-label="Reward cost tradeoff widget">
+            <h3>Reward-Cost Tradeoff Widget</h3>
+            <p>Change reward, cost, and risk weights for three candidate targets.</p>
+            <div data-planner-widget="reward-cost-tradeoff"></div>
+            <p class="lab-what-to-notice"><strong>What to notice:</strong> highest value is not always the best target.</p>
+          </section>
+        </section>
+
+        <section id="reachability" class="lab-section">
+          <h2>4. Reachability and timing</h2>
+          <p>A high-value region can be useless if the vehicle cannot reach it in time. Timing matters for moving targets, temporal Gold Stars, active fronts, forecast updates, surfacing windows, mission end time, and stale/revisit value.</p>
+          <p><strong>reachable value:</strong> a cell's scientific value becomes mission value only when the vehicle can reach it safely, on time, and with enough energy.</p>
+          <div class="lab-equation-grid">
+            <div class="lab-math"><code>arrival_time(current, target)</code><div class="lab-translation"><strong>In words:</strong> estimate when the glider reaches a target.</div></div>
+            <div class="lab-math"><code>A_reachable(x,y,t) = A(x,y,t) if arrival_time &lt;= target_window, else 0</code><div class="lab-translation"><strong>In words:</strong> the target only matters if the vehicle can arrive while it is still useful.</div></div>
+            <div class="lab-math"><code>feasible(P) = route obeys time, energy, terrain, safety, and mission constraints</code><div class="lab-translation"><strong>In words:</strong> a route is feasible only when it can actually be executed under the rules.</div></div>
+          </div>
+          <section class="lab-planner-widget" data-widget="reachability-timing" aria-label="Reachability timing widget">
+            <h3>Reachability Timing Widget</h3>
+            <p>Adjust time budget, vehicle speed, target window, and flow assist.</p>
+            <div data-planner-widget="reachability-timing"></div>
+            <p class="lab-what-to-notice"><strong>What to notice:</strong> changing the time budget can change the best target.</p>
+          </section>
+        </section>
+
+        <section id="flow-aware" class="lab-section">
+          <h2>5. Flow-aware planning</h2>
+          <p>Currents are not just visual arrows. They affect drift, speed over ground, energy, cross-current risk, ETA, route shape, and surfacing prediction.</p>
+          <div class="lab-equation-grid">
+            <div class="lab-math"><code>actual motion ~= commanded motion + driftGain * F(x,y,t)</code><div class="lab-translation"><strong>In words:</strong> the current can push the vehicle away from the intended path.</div></div>
+            <div class="lab-math"><code>effective_cost = base_cost - current_assist + cross_current_penalty</code><div class="lab-translation"><strong>In words:</strong> a current can help, resist, or push sideways.</div></div>
+          </div>
+          <section class="lab-planner-widget" data-widget="flow-aware-route" aria-label="Flow aware route widget">
+            <h3>Flow-Aware Route Widget</h3>
+            <p>Compare a direct route with a current-aware route under several flow presets.</p>
+            <div data-planner-widget="flow-aware-route"></div>
+            <p class="lab-what-to-notice"><strong>What to notice:</strong> the shortest route is not always the easiest route.</p>
+          </section>
+        </section>
+
+        <section id="greedy" class="lab-section">
+          <h2>6. Greedy planning as a baseline</h2>
+          <p>A Greedy Planner chooses the next best-looking local option. It is easy to understand and useful as a baseline, but it is not optimal.</p>
+          <div class="lab-math"><code>next_target = argmax_i value_i / travel_cost_i</code><div class="lab-translation"><strong>In words:</strong> pick the next target with the best immediate payoff ratio.</div></div>
+          <section class="lab-planner-widget" data-widget="greedy-planner" aria-label="Greedy planner widget">
+            <h3>Greedy Planner Widget</h3>
+            <p>Step or run simple greedy strategies: nearest value, value per distance, uncertainty per distance, or hidden-event suspicion per distance.</p>
+            <div data-planner-widget="greedy-planner"></div>
+            <p class="lab-what-to-notice"><strong>What to notice:</strong> greedy decisions can be good locally but miss better long-term routes.</p>
+          </section>
+        </section>
+
+        <section id="strategies" class="lab-section">
+          <h2>7. Coverage, boundary, and revisit strategies</h2>
+          <p>Not every mission is "go to the hottest cell." Coverage samples broad space, boundary/front following tracks an edge, revisit planning keeps information fresh, station monitoring visits fixed points on cadence, and anomaly follow-up confirms surprising observations.</p>
+          <div class="lab-equation-grid">
+            <div class="lab-math"><code>coverage(P) = unique_area_sampled(P)</code><div class="lab-translation"><strong>In words:</strong> broad spatial coverage can be the main reward.</div></div>
+            <div class="lab-math"><code>boundary_score(P) = samples_near_front(P)</code><div class="lab-translation"><strong>In words:</strong> front missions reward samples near a moving edge.</div></div>
+            <div class="lab-math"><code>freshness_score(P) = reduction_in_age_of_information(P)</code><div class="lab-translation"><strong>In words:</strong> revisit missions reward reducing stale information.</div></div>
+          </div>
+          <section class="lab-planner-widget" data-widget="strategy-comparison" aria-label="Strategy comparison widget">
+            <h3>Strategy Comparison Widget</h3>
+            <p>Run the same map under greedy value, coverage, boundary, revisit, and uncertainty-reduction strategies.</p>
+            <div data-planner-widget="strategy-comparison"></div>
+            <p class="lab-what-to-notice"><strong>What to notice:</strong> the best route depends on the mission question.</p>
+          </section>
+        </section>
+
+        <section id="uncertainty-aware" class="lab-section">
+          <h2>8. Uncertainty-aware sampling</h2>
+          <p>A planner may sample where value is high, where uncertainty is high, where observations would reduce uncertainty, or where a high-value forecast needs validation.</p>
+          <div class="lab-math"><code>score_belief(P) = sum_t A(p_t,t) - costs - penalties</code><div class="lab-translation"><strong>In words:</strong> belief score uses the forecast-visible acquisition objective, not hidden truth.</div></div>
+          <section class="lab-planner-widget" data-widget="uncertainty-aware-planner" aria-label="Uncertainty aware planner widget">
+            <h3>Uncertainty-Aware Planner Widget</h3>
+            <p>Blend expected value with uncertainty or information gain.</p>
+            <div data-planner-widget="uncertainty-aware-planner"></div>
+            <p class="lab-what-to-notice"><strong>What to notice:</strong> a route can be valuable because it teaches the planner, not only because it immediately collects reward.</p>
+          </section>
+        </section>
+
+        <section id="validation-discovery" class="lab-section">
+          <h2>9. Forecast validation vs hidden-event follow-up</h2>
+          <p>Forecast error response corrects an existing expected map, changes confidence, and replans around the corrected state. Hidden unknown response creates or strengthens a new hypothesis, adds confirmatory sampling objective, follows coherent anomalies, and updates unknown-event probability.</p>
+          <div class="lab-card-grid two">
+            <div class="lab-forecast-error-card"><h3>Forecast validation</h3><p>Sample across a represented feature to learn whether it is shifted, too weak, too strong, or mistimed.</p></div>
+            <div class="lab-hidden-event-card"><h3>Hidden-event follow-up</h3><p>Gather coherent observations that support or reject a new hypothesis.</p></div>
+          </div>
+          <section class="lab-planner-widget" data-widget="validation-vs-discovery-route" aria-label="Forecast validation versus discovery route widget">
+            <h3>Validation vs Discovery Route Widget</h3>
+            <p>Compare a validation transect with a hidden-event follow-up path.</p>
+            <div data-planner-widget="validation-vs-discovery-route"></div>
+            <p class="lab-what-to-notice"><strong>What to notice:</strong> forecast validation and hidden-event follow-up answer different questions.</p>
+          </section>
+        </section>
+
+        <section id="oracle-belief" class="lab-section">
+          <h2>10. Oracle vs belief planners</h2>
+          <p>Oracle planners see truth or true objective and are useful for upper-bound comparison. Belief planners see forecast, posterior, and acquisition fields and are fairer for normal stochastic missions. Truth-assisted planners use some truth information and are useful for debugging only when labeled.</p>
+          <div class="lab-equation-grid">
+            <div class="lab-math"><code>score_oracle(P) = sum_t S*(p_t,t) - costs - penalties</code><div class="lab-translation"><strong>In words:</strong> oracle score evaluates a route against true value.</div></div>
+            <div class="lab-math"><code>score_belief(P) = sum_t A(p_t,t) - costs - penalties</code><div class="lab-translation"><strong>In words:</strong> belief score evaluates what looked good to the fair planner at planning time.</div></div>
+          </div>
+          <section class="lab-planner-widget" data-widget="oracle-vs-belief-planner" aria-label="Oracle versus belief planner widget">
+            <h3>Oracle vs Belief Planner Widget</h3>
+            <p>Switch planner information labels and compare the route that results.</p>
+            <div data-planner-widget="oracle-vs-belief-planner"></div>
+            <p class="lab-what-to-notice"><strong>What to notice:</strong> a solver that sees truth should not be compared as a fair player baseline.</p>
+          </section>
+        </section>
+
+        <section id="regret" class="lab-section">
+          <h2>11. Regret and missed opportunity</h2>
+          <p>Regret measures missed opportunity under imperfect belief. It helps explain whether a route failed because of bad routing, bad forecast, hidden truth, risk, or unlucky stochastic outcome.</p>
+          <div class="lab-equation-grid">
+            <div class="lab-math"><code>regret = score_oracle(P_oracle_best) - score_oracle(P_belief_chosen)</code><div class="lab-translation"><strong>In words:</strong> regret is true value missed by acting on imperfect belief.</div></div>
+            <div class="lab-math"><code>regret = oracle value missed by acting on imperfect belief</code><div class="lab-translation"><strong>In words:</strong> lower regret means the belief route was close to the answer key.</div></div>
+          </div>
+          <section class="lab-planner-widget" data-widget="regret-breakdown" aria-label="Regret breakdown widget">
+            <h3>Regret Breakdown Widget</h3>
+            <p>Choose a route and compare its oracle score to the oracle best route.</p>
+            <div data-planner-widget="regret-breakdown"></div>
+            <p class="lab-what-to-notice"><strong>What to notice:</strong> regret separates achieved score from missed opportunity.</p>
+          </section>
+        </section>
+
+        <section id="surfacing" class="lab-section">
+          <h2>12. Surfacing, updates, and replanning</h2>
+          <p>A surface update can change the planning problem. The vehicle may get a GPS fix, transmit observations, receive new forecasts, update belief, discover route failure, and replace future waypoints.</p>
+          <div class="lab-replanning-cycle">
+            <div>sample</div><div>surface</div><div>update belief</div><div>validate route</div><div>replan</div>
+          </div>
+          <div class="lab-math"><code>P_future = replan(current_state, &mu;_post, U, A, F, C, M)</code><div class="lab-translation"><strong>In words:</strong> after surfacing, future commands should reflect the updated state and belief.</div></div>
+          <section class="lab-planner-widget" data-widget="surface-replanning" aria-label="Surface replanning widget">
+            <h3>Surface Replanning Widget</h3>
+            <p>Apply forecast correction, hidden discovery, or route-failure recovery after surfacing.</p>
+            <div data-planner-widget="surface-replanning"></div>
+            <p class="lab-what-to-notice"><strong>What to notice:</strong> replanning changes future waypoints, not the already-executed past.</p>
+          </section>
+        </section>
+
+        <section id="multi-agent" class="lab-section">
+          <h2>13. Multi-agent planning</h2>
+          <p>Multi-agent planning is not just "run the same route three times." A team should split work, avoid duplicate sampling when it is not useful, share mission reward, and account for different starts or vehicle limits.</p>
+          <div class="lab-equation-grid">
+            <div class="lab-math"><code>P_team = {P_1, P_2, ..., P_N}</code><div class="lab-translation"><strong>In words:</strong> a team plan is one route per glider.</div></div>
+            <div class="lab-math"><code>maximize sum_agents value(P_a) - duplicate_penalty - cost - risk</code><div class="lab-translation"><strong>In words:</strong> team value rewards useful work and penalizes duplicated effort.</div></div>
+          </div>
+          <section class="lab-planner-widget" data-widget="multi-agent-split" aria-label="Multi agent split widget">
+            <h3>Multi-Agent Split Widget</h3>
+            <p>Change agent count and route-splitting strategy.</p>
+            <div data-planner-widget="multi-agent-split"></div>
+            <p class="lab-what-to-notice"><strong>What to notice:</strong> more vehicles do not automatically mean better results if they duplicate work.</p>
+          </section>
+        </section>
+
+        <section id="simulation-referee" class="lab-section">
+          <h2>14. Simulation is the referee</h2>
+          <p>Planning preview estimates route outcome. Simulation executes it. It may reveal current drift, missed waypoints, fuel failure, terrain blocks, hazard contact, stochastic ROI success/failure, forecast mismatch, hidden-event discovery, duplicate penalties, or time expiration.</p>
+          <div class="lab-equation-grid">
+            <div class="lab-math"><code>planned path != actual path</code><div class="lab-translation"><strong>In words:</strong> the route is the command; the simulated path is what actually happened.</div></div>
+            <div class="lab-math"><code>actual motion ~= commanded motion + driftGain * current + optional stochastic perturbation</code><div class="lab-translation"><strong>In words:</strong> simulation applies the environment model to the plan.</div></div>
+          </div>
+          <div class="lab-callout"><strong>Plain language:</strong> the preview helps you plan. The simulation is the referee.</div>
+          <section class="lab-planner-widget" data-widget="planned-vs-actual-path" aria-label="Planned versus actual path widget">
+            <h3>Planned vs Actual Path Widget</h3>
+            <p>Change current strength and drift noise to compare planned and actual paths.</p>
+            <div data-planner-widget="planned-vs-actual-path"></div>
+            <p class="lab-what-to-notice"><strong>What to notice:</strong> a route can look valid in planning but perform differently in simulation.</p>
+          </section>
+        </section>
+
+        <section id="debrief" class="lab-section">
+          <h2>15. Debrief and mission evaluation</h2>
+          <p>Debrief turns execution into learning. It should explain what the plan collected, what it missed, what it cost, what hazards it hit, whether uncertainty caused regret, and whether another planner would have done better.</p>
+          <div class="lab-equation-grid">
+            <div class="lab-math"><code>score = collected_value - energy_cost - hazard_penalty - missed_objective_penalty + bonuses</code><div class="lab-translation"><strong>In words:</strong> score evaluates the mission outcome.</div></div>
+            <div class="lab-math"><code>regret = oracle_score - achieved_score</code><div class="lab-translation"><strong>In words:</strong> regret explains missed opportunity under imperfect knowledge.</div></div>
+          </div>
+          <div class="lab-card-grid">
+            <div class="lab-segment-grade-card">final score</div><div class="lab-segment-grade-card">sample score</div><div class="lab-segment-grade-card">energy used</div><div class="lab-segment-grade-card">hazards hit</div><div class="lab-segment-grade-card">completed/missed waypoints</div><div class="lab-segment-grade-card">forecast regret</div><div class="lab-segment-grade-card">oracle regret</div><div class="lab-segment-grade-card">segment contribution grades</div>
+          </div>
+          <section class="lab-planner-widget" data-widget="debrief-scorecard" aria-label="Debrief scorecard widget">
+            <h3>Debrief Scorecard Widget</h3>
+            <p>Choose route-result scenarios and compare score components.</p>
+            <div data-planner-widget="debrief-scorecard"></div>
+            <p class="lab-what-to-notice"><strong>What to notice:</strong> debrief is not just punishment. It explains why the route behaved the way it did.</p>
+          </section>
+        </section>
+
+        <section id="solver" class="lab-section">
+          <h2>16. Solver workflow and fairness labels</h2>
+          <p>ANCHOR supports browser-native and external solver workflows at the file level: export a challenge or solver packet, let a solver propose an <code>anchor.plan</code>, import it, validate it, simulate it, then debrief score and compare it.</p>
+          <div class="lab-solver-workflow">
+            <div>Export solver packet</div><div>Solver proposes <code>anchor.plan</code></div><div>Game validates</div><div>Game simulates</div><div>Debrief compares</div>
+          </div>
+          <div class="lab-math"><code>planner_information_set = what the planner was allowed to know</code><div class="lab-translation"><strong>In words:</strong> a fair comparison must compare planners with the same information.</div></div>
+          <table class="lab-fairness-table">
+            <thead><tr><th>Label</th><th>Allowed information</th><th>Use</th></tr></thead>
+            <tbody>
+              <tr><td>Fair</td><td>visible forecast/planning data</td><td>normal comparison</td></tr>
+              <tr><td>Truth-assisted</td><td>some hidden truth</td><td>debugging or labeled analysis</td></tr>
+              <tr><td>Oracle</td><td>full truth or true objective</td><td>upper-bound benchmark</td></tr>
+            </tbody>
+          </table>
+          <p><strong>Connection to the simulator:</strong> Manual, Greedy Planner, imported solver, and saved replay attempts should keep route-source and fairness labels visible.</p>
+        </section>
+
+        <section id="mission-strategies" class="lab-section">
+          <h2>17. Example mission strategies</h2>
+          <div class="lab-card-grid">
+            <div class="lab-mission-strategy-card"><h3>Front tracking</h3><p><strong>Priority:</strong> sample moving boundary/front.</p><p><strong>Route:</strong> cross-front transects or along-boundary tracking.</p><p><strong>Metric:</strong> front samples, timing, coverage, energy.</p><p><strong>Common mistake:</strong> chasing old front position after forecast error.</p></div>
+            <div class="lab-mission-strategy-card"><h3>Bloom confirmation</h3><p><strong>Priority:</strong> sample suspected biological signal.</p><p><strong>Route:</strong> confirmatory transect, then downstream follow-up.</p><p><strong>Metric:</strong> hidden-event confidence, coherent anomaly samples, regret.</p><p><strong>Common mistake:</strong> overreacting to one noisy spike.</p></div>
+            <div class="lab-mission-strategy-card"><h3>Plume source localization</h3><p><strong>Priority:</strong> move up-gradient or up-current after confirmation.</p><p><strong>Route:</strong> cross-plume transects, source narrowing.</p><p><strong>Metric:</strong> confirmation, source proximity, cost, hazard exposure.</p><p><strong>Common mistake:</strong> treating a hidden plume like a known static hotspot.</p></div>
+            <div class="lab-mission-strategy-card"><h3>Coverage survey</h3><p><strong>Priority:</strong> sample broad area.</p><p><strong>Route:</strong> lawnmower or space-filling coverage.</p><p><strong>Metric:</strong> coverage, duplicate avoidance, energy.</p><p><strong>Common mistake:</strong> overfocusing on local hotspots.</p></div>
+            <div class="lab-mission-strategy-card"><h3>Revisit monitoring</h3><p><strong>Priority:</strong> keep information fresh.</p><p><strong>Route:</strong> periodic station revisit.</p><p><strong>Metric:</strong> age-of-information reduction, missed revisit windows.</p><p><strong>Common mistake:</strong> revisiting too soon or too late.</p></div>
+            <div class="lab-mission-strategy-card"><h3>Flow-assisted sampling</h3><p><strong>Priority:</strong> use current assist while avoiding drift risk.</p><p><strong>Route:</strong> downstream or cross-current-aware sequence.</p><p><strong>Metric:</strong> energy saved, ETA accuracy, missed waypoint risk.</p><p><strong>Common mistake:</strong> choosing shortest geometric path instead of lowest effective cost.</p></div>
+          </div>
+        </section>
+
+        <section id="sandbox" class="lab-section">
+          <h2>18. Open the full planner sandbox</h2>
+          <p>The article teaches the concept. The full game lets users plan waypoints, preview route cost, use value/risk/travel-cost overlays, execute simulation, review debrief, compare Greedy Planner, export/import plans, export solver packets, and import external solver plans.</p>
+          <div class="lab-actions">
+            <a class="lab-button primary" href="../index.html">Open Main App</a>
+            <a class="lab-button" href="../index.html">Open Challenge Mode</a>
+            <a class="lab-button" href="../index.html#simulation-lab">Open Simulation Lab</a>
+            <a class="lab-button" href="index.html">Back to Learning Labs</a>
+          </div>
+          <p class="lab-note">Open the main app, then choose Challenge Mode or Simulation Lab.</p>
+        </section>
+
+        <section id="next" class="lab-section">
+          <h2>19. What comes next</h2>
+          <p>This completes the first Learning Labs sequence. Students now understand how process fields evolve, how flow fields move, how deterministic coupling creates an oracle sampling space, how uncertainty creates belief and acquisition value, how stochastic coupling creates a belief-based sampling objective, and how planners choose routes and missions are evaluated.</p>
+          <details>
+            <summary>Future advanced labs</summary>
+            <p>Future topics may include exact graph search algorithms, receding-horizon planning, multi-agent coordination, solver benchmarking, reinforcement-learning baselines, real ocean-model data ingestion, and classroom assignments. They are not implemented in this phase.</p>
+          </details>
+        </section>
+      </article>
+    </div>
+  </main>
+  <script type="module" src="../src/labs/widgets/PlannerLearningWidgets.js"></script>
+</body>
+</html>

@@ -18,7 +18,7 @@ F(x,y,t) = <u,v>
 
 `F` is the local current vector at position `x,y` and time `t`. It answers how water moves, how the environment pushes the glider, and how currents affect travel time, energy, drift, shoreline risk, and route validation.
 
-This demo does not teach event likelihood `L(x,y,t)`, sample value `S(x,y,t)`, or uncertainty `U(x,y,t)` as primary controls. Use Sample / ROI Field Demo for `L` and `S`, Coupled Fields Demo for `F + S` interactions, and Uncertainty / Forecast Demo for forecast, truth, information gain, and confidence.
+This demo does not teach process support, sample value `S(x,y,t)`, or uncertainty `U(x,y,t)` as primary controls. Use Process Lab for deterministic process examples and `S`, Coupled Fields Demo for `F + S` interactions, and Uncertainty / Forecast Demo for forecast, truth, information gain, and confidence.
 
 ## 2. Why the Demo Exists
 
@@ -65,7 +65,7 @@ The demo provides a controlled scene for questions like:
 - Left footer `Main Menu`: returns to the main menu / Simulation Lab launcher.
 - `Cell Inspector`: click any map cell to populate the right panel with current vector behavior for that cell.
 
-The Flow Fields Demo follows the same interaction model as the Sample / ROI Field Demo: the left panel contains compact controls, the center canvas shows the field, the bottom bar owns time controls, and the right panel can show either the selected-cell inspector or Behavior Help. Info buttons in the left panel open right-panel explainers for Flow Field / Base Preset, Evolution Behavior, Dynamic Complexity, Direction Variation, Magnitude Variation, Spatial Motion, Land / Topology Mode, Boundary Mode, Display Layers, and Playback vs Evolution Speed. Long explanatory text belongs in the right panel, not inside the left control accordions.
+The Flow Fields Demo follows the same interaction model as Process Lab: the left panel contains compact controls, the center canvas shows the field, the bottom bar owns time controls, and the right panel can show either the selected-cell inspector or Behavior Help. Info buttons in the left panel open right-panel explainers for Flow Field / Base Preset, Evolution Behavior, Dynamic Complexity, Direction Variation, Magnitude Variation, Spatial Motion, Land / Topology Mode, Boundary Mode, Display Layers, and Playback vs Evolution Speed. Long explanatory text belongs in the right panel, not inside the left control accordions.
 
 Particle count is currently fixed by mode: static mode uses fewer particles than dynamic/composite modes.
 
