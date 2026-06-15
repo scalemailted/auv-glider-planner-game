@@ -96,7 +96,19 @@ import {
   frameFromLayers,
   stepSamplingProcess
 } from '../../../core/demo/sampling/SamplingProcessEvolution.js';
-import { buildExampleInitialLayers } from '../../../core/demo/sampling/SamplingProcessExampleFixtures.js';
+import {
+  assignExampleInitialConditionCell,
+  buildExampleInitialConditionLayers,
+  clearExampleInitialConditionEdits,
+  createExampleInitialConditionEditModel,
+  defaultInitialConditionBrush,
+  initialConditionEditCount,
+  initialConditionMatchesFixture,
+  isExampleInitialConditionEditorSupported,
+  normalizeInitialConditionBrush,
+  normalizeInitialConditionFixtureId,
+  normalizeInitialConditionMode
+} from '../../../core/demo/sampling/SamplingProcessInitialConditionEditor.js';
 import { evaluateSamplingProcessExampleBehavior } from '../../../core/demo/sampling/SamplingProcessExampleBehaviorAssertions.js';
 import {
   buildSamplingProcessMetricLayers,
@@ -213,6 +225,12 @@ export class RoiGeneratorDemoScene extends PhaserScene {
     this.activeExampleFixture = null;
     this.activeExampleFixtureValidation = null;
     this.activeExampleBehaviorValidation = null;
+    this.activeInitialCondition = null;
+    this.initialConditionMode = 'curatedSeed';
+    this.selectedInitialConditionFixtureId = 'default';
+    this.initialConditionModel = createExampleInitialConditionEditModel('conwayGameOfLife');
+    this.selectedInitialConditionBrushState = 'active';
+    this.selectedEditedCell = null;
     this.selectedCell = null;
     this.rightPanelMode = 'recipeSignature';
     this.selectedHelpTopic = null;
@@ -351,6 +369,17 @@ export class RoiGeneratorDemoScene extends PhaserScene {
       height: 16,
       assignments: data.paintModel ?? data.ruleAllocation ?? {}
     });
+    const inputInitialCondition = input.initialCondition ?? data.initialCondition ?? {};
+    this.initialConditionMode = normalizeInitialConditionMode(input.initialConditionMode ?? data.initialConditionMode ?? inputInitialCondition.mode);
+    this.selectedInitialConditionFixtureId = normalizeInitialConditionFixtureId(input.selectedInitialConditionFixtureId ?? data.selectedInitialConditionFixtureId ?? inputInitialCondition.fixtureId, requestedExample);
+    const initialConditionBrush = normalizeInitialConditionBrush(requestedExample, input.selectedInitialConditionBrushState ?? data.selectedInitialConditionBrushState ?? inputInitialCondition.brushState);
+    this.selectedInitialConditionBrushState = initialConditionBrush?.id ?? defaultInitialConditionBrush(requestedExample)?.id ?? 'active';
+    this.initialConditionModel = createExampleInitialConditionEditModel(requestedExample, {
+      width: 24,
+      height: 16,
+      assignments: input.initialConditionModel ?? data.initialConditionModel ?? inputInitialCondition.model ?? { cells: input.initialConditionEdits ?? data.initialConditionEdits ?? inputInitialCondition.edits ?? {} }
+    });
+    this.selectedEditedCell = normalizeSelectedCell(input.selectedEditedCell ?? data.selectedEditedCell ?? inputInitialCondition.selectedEditedCell);
     this.selectedPaintState = data.selectedPaintState ?? 'active';
     this.selectedPaintRuleId = normalizeProcessRuleId(data.selectedPaintRuleId ?? 'propagatingFront');
     this.selectedPaintGroupId = Math.max(0, Math.round(Number(data.selectedPaintGroupId ?? 1)));
@@ -429,6 +458,12 @@ export class RoiGeneratorDemoScene extends PhaserScene {
       patternSource: this.patternSource,
       processMode: this.processMode,
       exampleProcessModified: this.exampleProcessModified,
+      initialConditionMode: this.initialConditionMode,
+      selectedInitialConditionFixtureId: this.selectedInitialConditionFixtureId,
+      initialConditionModel: this.initialConditionModel,
+      selectedInitialConditionBrushState: this.selectedInitialConditionBrushState,
+      selectedEditedCell: this.selectedEditedCell,
+      initialCondition: this.activeInitialCondition,
       referenceSignatureModified: this.referenceSignatureModified,
       ...overrides
     });
@@ -616,6 +651,7 @@ export class RoiGeneratorDemoScene extends PhaserScene {
       processDisplayMetric,
       exampleFixtureId: this.activeExampleFixture?.id ?? null,
       exampleFixtureLabel: this.activeExampleFixture?.label ?? null,
+      initialCondition: this.activeInitialCondition,
       behaviorValidation: this.activeExampleBehaviorValidation,
       processTiming: processTimingExportBlock(this.processTimingState()),
       likelihoodField: {
@@ -650,6 +686,7 @@ export class RoiGeneratorDemoScene extends PhaserScene {
         exampleFixtureId: this.activeExampleFixture?.id ?? null,
         exampleFixtureLabel: this.activeExampleFixture?.label ?? null,
         exampleFixtureValidation: this.activeExampleFixtureValidation,
+        initialCondition: this.activeInitialCondition,
         behaviorValidation: this.activeExampleBehaviorValidation
       }
     };
@@ -692,6 +729,12 @@ export class RoiGeneratorDemoScene extends PhaserScene {
       foundationalCaModelId: this.foundationalCaModelId,
       oceanProcessAnalogId: this.oceanProcessAnalogId,
       exampleProcessModified: this.exampleProcessModified,
+      initialConditionMode: this.initialConditionMode,
+      selectedInitialConditionFixtureId: this.selectedInitialConditionFixtureId,
+      initialConditionModel: this.initialConditionModel,
+      selectedInitialConditionBrushState: this.selectedInitialConditionBrushState,
+      selectedEditedCell: this.selectedEditedCell,
+      initialCondition: this.activeInitialCondition,
       behaviorPresetId: this.behaviorPresetId,
       behaviorPresetModified: this.behaviorPresetModified,
       referenceSignatureId: this.referenceSignatureId,
@@ -750,6 +793,12 @@ export class RoiGeneratorDemoScene extends PhaserScene {
       foundationalCaModelId: this.foundationalCaModelId,
       oceanProcessAnalogId: this.oceanProcessAnalogId,
       exampleProcessModified: this.exampleProcessModified,
+      initialConditionMode: this.initialConditionMode,
+      selectedInitialConditionFixtureId: this.selectedInitialConditionFixtureId,
+      initialConditionModel: this.initialConditionModel,
+      selectedInitialConditionBrushState: this.selectedInitialConditionBrushState,
+      selectedEditedCell: this.selectedEditedCell,
+      initialCondition: this.activeInitialCondition,
       referenceSignatureModified: this.referenceSignatureModified,
       updateRuleHint: this.updateRuleHint,
       selectedCell: this.selectedCell,
@@ -815,7 +864,166 @@ export class RoiGeneratorDemoScene extends PhaserScene {
       this.draw();
       return;
     }
-    this.scene.restart(this.sceneConfig(patch));
+    this.scene.restart(this.sceneConfig({
+      ...patch,
+      initialConditionMode: 'curatedSeed',
+      selectedInitialConditionFixtureId: 'default',
+      initialConditionModel: {},
+      selectedInitialConditionBrushState: null,
+      selectedEditedCell: null
+    }));
+  }
+
+
+  guidedInitialConditionExample() {
+    const active = this.activeProcessExampleState();
+    return active.isCustom ? null : active.sourceExample;
+  }
+
+  interactiveInitialConditionIsAvailable() {
+    const example = this.guidedInitialConditionExample();
+    return Boolean(
+      this.patternSource === 'referenceSignature'
+        && ['foundationalCaModels', 'oceanProcessAnalogs'].includes(this.processMode)
+        && isExampleInitialConditionEditorSupported(example)
+    );
+  }
+
+  isInteractiveInitialConditionEnabled() {
+    return this.interactiveInitialConditionIsAvailable() && this.initialConditionMode === 'interactiveCanvas';
+  }
+
+  blankInitialConditionEditModel(example = this.guidedInitialConditionExample()) {
+    return createExampleInitialConditionEditModel(example, {
+      width: this.field?.width ?? 24,
+      height: this.field?.height ?? 16,
+      assignments: {}
+    });
+  }
+
+  applyInitialConditionMode(mode) {
+    const example = this.guidedInitialConditionExample();
+    const normalizedMode = normalizeInitialConditionMode(mode);
+    const selectedFixtureId = normalizedMode === 'deterministicRandomSeed'
+      ? 'randomDeterministic'
+      : normalizeInitialConditionFixtureId(this.selectedInitialConditionFixtureId, example);
+    this.scene.restart(this.sceneConfig({
+      initialConditionMode: normalizedMode,
+      selectedInitialConditionFixtureId: selectedFixtureId,
+      initialConditionModel: this.blankInitialConditionEditModel(example),
+      selectedEditedCell: null,
+      selectedCell: null,
+      rightPanelMode: 'recipeSignature',
+      paused: normalizedMode === 'interactiveCanvas' ? true : this.paused,
+      demoTime: 0,
+      processGenerationIndex: 0,
+      processTickAccumulator: 0,
+      lastProcessStepTime: null
+    }));
+  }
+
+  applyInitialConditionFixture(fixtureId) {
+    const example = this.guidedInitialConditionExample();
+    const selectedFixtureId = normalizeInitialConditionFixtureId(fixtureId, example);
+    this.scene.restart(this.sceneConfig({
+      initialConditionMode: selectedFixtureId === 'randomDeterministic' ? 'deterministicRandomSeed' : this.initialConditionMode,
+      selectedInitialConditionFixtureId: selectedFixtureId,
+      initialConditionModel: this.blankInitialConditionEditModel(example),
+      selectedEditedCell: null,
+      selectedCell: null,
+      rightPanelMode: 'recipeSignature',
+      paused: this.initialConditionMode === 'interactiveCanvas' ? true : this.paused,
+      demoTime: 0,
+      processGenerationIndex: 0,
+      processTickAccumulator: 0,
+      lastProcessStepTime: null
+    }));
+  }
+
+  applyInitialConditionBrush(brushState) {
+    const brush = normalizeInitialConditionBrush(this.guidedInitialConditionExample(), brushState);
+    this.selectedInitialConditionBrushState = brush?.id ?? this.selectedInitialConditionBrushState;
+    this.renderConsole();
+    this.renderCellInspector(true);
+    this.updateRoiUiDebug();
+  }
+
+  clearInitialConditionEdits() {
+    const example = this.guidedInitialConditionExample();
+    this.initialConditionModel = clearExampleInitialConditionEdits(this.initialConditionModel, {
+      example,
+      width: this.field?.width ?? 24,
+      height: this.field?.height ?? 16
+    });
+    this.selectedEditedCell = null;
+    this.selectedCell = null;
+    this.rightPanelMode = 'recipeSignature';
+    this.demoTime = 0;
+    this.processGenerationIndex = 0;
+    this.processTickAccumulator = 0;
+    this.lastProcessStepTime = null;
+    this.previousProcessStateLayer = null;
+    if (this.initialConditionMode === 'interactiveCanvas') this.paused = true;
+    this.lastInspectorRenderTime = -Infinity;
+    this.rebuildField();
+    this.renderConsole();
+    this.updateTransportBar();
+    this.renderCellInspector(true);
+    this.draw();
+  }
+
+  applyInitialConditionCell(cell, options = {}) {
+    if (!this.interactiveInitialConditionIsAvailable()) return false;
+    const example = this.guidedInitialConditionExample();
+    const currentState = this.initialConditionStateAtCell(cell);
+    if (options.sample) {
+      const sampledBrush = normalizeInitialConditionBrush(example, currentState);
+      this.selectedInitialConditionBrushState = sampledBrush?.id ?? this.selectedInitialConditionBrushState;
+      this.renderConsole();
+      return true;
+    }
+    const conwayToggle = example?.id === 'conwayGameOfLife' && !options.brushState && !options.brush && !options.state && !options.clear;
+    const brushState = conwayToggle
+      ? (currentState === 'active' ? 'inactive' : 'active')
+      : options.brushState ?? options.brush ?? this.selectedInitialConditionBrushState;
+    this.initialConditionMode = 'interactiveCanvas';
+    this.initialConditionModel = assignExampleInitialConditionCell(this.initialConditionModel, example, cell, {
+      ...options,
+      brushState,
+      state: options.state,
+      clear: options.clear
+    });
+    this.selectedEditedCell = { col: cell.col, row: cell.row, x: cell.col, y: cell.row };
+    this.selectedCell = this.selectedEditedCell;
+    this.rightPanelMode = 'cellInspector';
+    this.demoTime = 0;
+    this.processGenerationIndex = 0;
+    this.processTickAccumulator = 0;
+    this.lastProcessStepTime = null;
+    this.previousProcessStateLayer = null;
+    this.paused = true;
+    this.lastInspectorRenderTime = -Infinity;
+    this.rebuildField();
+    this.renderConsole();
+    this.updateTransportBar();
+    this.renderCellInspector(true);
+    this.draw();
+    return true;
+  }
+
+  initialConditionStateAtCell(cell) {
+    const example = this.guidedInitialConditionExample();
+    const build = buildExampleInitialConditionLayers(example, {
+      width: this.field?.width ?? 24,
+      height: this.field?.height ?? 16,
+      seed: this.seed,
+      mode: this.initialConditionMode,
+      fixtureId: this.selectedInitialConditionFixtureId,
+      editModel: this.initialConditionModel,
+      brushState: this.selectedInitialConditionBrushState,
+      generationIndex: 0
+    });
+    return build.layers?.stateLayer?.[cell?.row]?.[cell?.col] ?? 'inactive';
   }
 
   applyPaintSelection(patch = {}) {
@@ -961,6 +1169,11 @@ export class RoiGeneratorDemoScene extends PhaserScene {
         ...buildCustomComposerPatch(this.modeControllerContext()),
         selectedHelpTopic: null,
         rightPanelMode: 'recipeSignature',
+        initialConditionMode: 'curatedSeed',
+        selectedInitialConditionFixtureId: 'default',
+        initialConditionModel: {},
+        selectedInitialConditionBrushState: null,
+        selectedEditedCell: null,
         demoTime: 0
       }));
       return;
@@ -988,6 +1201,11 @@ export class RoiGeneratorDemoScene extends PhaserScene {
       selectedCell: null,
       selectedHelpTopic: null,
       rightPanelMode: 'recipeSignature',
+      initialConditionMode: 'curatedSeed',
+      selectedInitialConditionFixtureId: 'default',
+      initialConditionModel: {},
+      selectedInitialConditionBrushState: null,
+      selectedEditedCell: null,
       demoTime: 0
     }));
   }
@@ -1053,11 +1271,17 @@ export class RoiGeneratorDemoScene extends PhaserScene {
     if (this.patternSource !== 'referenceSignature') return null;
     const activeExample = this.activeProcessExampleState();
     if (activeExample.isCustom || !activeExample.sourceExample) return null;
-    const fixtureBuild = buildExampleInitialLayers(activeExample.sourceExample, {
+    const initialCondition = buildExampleInitialConditionLayers(activeExample.sourceExample, {
       width: field?.width ?? 24,
       height: field?.height ?? 16,
-      seed: this.seed
+      seed: this.seed,
+      mode: this.initialConditionMode,
+      fixtureId: this.selectedInitialConditionFixtureId,
+      editModel: this.initialConditionModel,
+      brushState: this.selectedInitialConditionBrushState,
+      generationIndex: this.processGenerationIndex
     });
+    const fixtureBuild = initialCondition.fixtureBuild;
     const behaviorValidation = evaluateSamplingProcessExampleBehavior(activeExample.sourceExample, {
       fixtureBuild,
       seed: this.seed
@@ -1066,6 +1290,8 @@ export class RoiGeneratorDemoScene extends PhaserScene {
       this.activeExampleFixture = fixtureBuild.fixture;
       this.activeExampleFixtureValidation = fixtureBuild.validation;
       this.activeExampleBehaviorValidation = behaviorValidation;
+      this.activeInitialCondition = initialCondition.metadata;
+      this.initialConditionModel = initialCondition.model;
     }
     return fixtureBuild.layers;
   }
@@ -1319,6 +1545,12 @@ export class RoiGeneratorDemoScene extends PhaserScene {
       foundationalCaModelId: this.foundationalCaModelId,
       oceanProcessAnalogId: this.oceanProcessAnalogId,
       exampleProcessModified: this.exampleProcessModified,
+      initialConditionMode: this.initialConditionMode,
+      selectedInitialConditionFixtureId: this.selectedInitialConditionFixtureId,
+      initialConditionModel: this.initialConditionModel,
+      selectedInitialConditionBrushState: this.selectedInitialConditionBrushState,
+      selectedEditedCell: this.selectedEditedCell,
+      initialCondition: this.activeInitialCondition,
       behaviorPresetId: this.behaviorPresetId,
       behaviorPresetModified: this.behaviorPresetModified,
       referenceSignatureId: this.referenceSignatureId,
@@ -1373,6 +1605,8 @@ export class RoiGeneratorDemoScene extends PhaserScene {
       .map((node) => node.textContent?.replace(/\s+/g, ' ').trim())
       .filter(Boolean);
     const activeExample = this.activeProcessExampleState();
+    const activeInitialConditionBrush = normalizeInitialConditionBrush(this.guidedInitialConditionExample(), this.selectedInitialConditionBrushState);
+    const activeInitialConditionEditCount = initialConditionEditCount(this.initialConditionModel);
     const activeSignature = referenceSignatureById(activeExample.referenceSignatureId ?? this.referenceSignatureId);
     const activePreset = sampleFieldBehaviorPresetById(this.behaviorPresetId);
     const selectorProcessMode = consoleRoot?.querySelector?.('#sampling-process-mode')?.value ?? null;
@@ -1419,6 +1653,15 @@ export class RoiGeneratorDemoScene extends PhaserScene {
       activeRequiresFlowCoupling: activeExample.requiresFlowCoupling,
       activeExampleFixtureId: this.activeExampleFixture?.id ?? null,
       activeExampleFixtureLabel: this.activeExampleFixture?.label ?? null,
+      activeInitialConditionMode: this.initialConditionMode,
+      activeFixtureId: this.selectedInitialConditionFixtureId,
+      activeFixtureLabel: this.activeInitialCondition?.fixtureLabel ?? this.activeExampleFixture?.selectedFixtureLabel ?? this.activeExampleFixture?.label ?? null,
+      activeInteractiveEditCount: activeInitialConditionEditCount,
+      activeBrushState: activeInitialConditionBrush,
+      interactiveInitialConditionEnabled: this.isInteractiveInitialConditionEnabled(),
+      generationIndex: this.processGenerationIndex,
+      selectedEditedCell: this.selectedEditedCell,
+      initialConditionMatchesFixture: initialConditionMatchesFixture(this.initialConditionModel),
       activeExampleInitialMeaningfulCellCount: this.activeExampleBehaviorValidation?.metrics?.initialMeaningfulCellCount ?? null,
       activeExampleBehaviorValidationStatus: this.activeExampleBehaviorValidation?.status ?? null,
       activeExampleBehaviorValidationLabel: this.activeExampleBehaviorValidation?.label ?? null,
@@ -1604,6 +1847,13 @@ export class RoiGeneratorDemoScene extends PhaserScene {
       this.draw();
       return;
     }
+    if (this.isInteractiveInitialConditionEnabled()) {
+      this.applyInitialConditionCell(cell, {
+        clear: Boolean(pointer?.rightButtonDown?.() || pointer?.buttons === 2),
+        sample: Boolean(pointer?.event?.shiftKey)
+      });
+      return;
+    }
     if (this.selectedCell && this.selectedCell.col === cell.col && this.selectedCell.row === cell.row) {
       this.selectedCell = null;
       this.rightPanelMode = 'recipeSignature';
@@ -1780,7 +2030,11 @@ export class RoiGeneratorDemoScene extends PhaserScene {
     if (discreteProcess) {
       const status = this.processMode === 'processPaint'
         ? this.processPaintRunStarted && !this.paused ? 'Process Paint: running from painted state' : 'Process Paint: paused editing canvas'
-        : 'Deterministic process';
+        : this.initialConditionMode === 'interactiveCanvas'
+          ? `Interactive Initial Condition: ${this.paused ? 'paused editing generation 0' : 'running edited seed'}`
+          : this.initialConditionMode === 'deterministicRandomSeed'
+            ? 'Deterministic random initial condition'
+            : 'Deterministic process';
       if (refs.time) refs.time.textContent = `Generation ${this.processGenerationIndex}`;
       if (refs.state) refs.state.textContent = `Generation ${this.processGenerationIndex} | ${this.processTickRate} gen/s | ${status}`;
       if (refs.pauseButton) refs.pauseButton.textContent = this.paused ? 'Run' : 'Pause';
@@ -1827,6 +2081,17 @@ export class RoiGeneratorDemoScene extends PhaserScene {
     this.lastProcessStepTime = null;
     this.previousProcessStateLayer = null;
     if (this.processMode === 'processPaint') this.processPaintRunStarted = false;
+    if (this.initialConditionMode === 'interactiveCanvas') {
+      this.initialConditionModel = clearExampleInitialConditionEdits(this.initialConditionModel, {
+        example: this.guidedInitialConditionExample(),
+        width: this.field?.width ?? 24,
+        height: this.field?.height ?? 16
+      });
+      this.selectedEditedCell = null;
+      this.selectedCell = null;
+      this.rightPanelMode = 'recipeSignature';
+      this.paused = true;
+    }
     this.rebuildField();
     this.renderConsole();
     this.updateTransportBar();
@@ -2093,6 +2358,12 @@ export class RoiGeneratorDemoScene extends PhaserScene {
       foundationalCaModelId: this.foundationalCaModelId,
       oceanProcessAnalogId: this.oceanProcessAnalogId,
       exampleProcessModified: this.exampleProcessModified,
+      initialConditionMode: this.initialConditionMode,
+      selectedInitialConditionFixtureId: this.selectedInitialConditionFixtureId,
+      initialConditionModel: this.initialConditionModel,
+      selectedInitialConditionBrushState: this.selectedInitialConditionBrushState,
+      selectedEditedCell: this.selectedEditedCell,
+      initialCondition: this.activeInitialCondition,
       referenceSignatureModified: this.referenceSignatureModified,
       sourceMode,
       requireValidation: this.scenarioValidationMode === 'requirePass'
@@ -2121,6 +2392,12 @@ export class RoiGeneratorDemoScene extends PhaserScene {
       foundationalCaModelId: this.foundationalCaModelId,
       oceanProcessAnalogId: this.oceanProcessAnalogId,
       exampleProcessModified: this.exampleProcessModified,
+      initialConditionMode: this.initialConditionMode,
+      selectedInitialConditionFixtureId: this.selectedInitialConditionFixtureId,
+      initialConditionModel: this.initialConditionModel,
+      selectedInitialConditionBrushState: this.selectedInitialConditionBrushState,
+      selectedEditedCell: this.selectedEditedCell,
+      initialCondition: this.activeInitialCondition,
       referenceSignatureId: this.referenceSignatureId,
       referenceSignatureModified: this.referenceSignatureModified,
       behaviorPresetId: this.behaviorPresetId,
@@ -2528,6 +2805,16 @@ function escapeHtml(value) {
 function escapeAttr(value) {
   return escapeHtml(value).replace(/`/g, '&#096;');
 }
+
+
+
+
+
+
+
+
+
+
 
 
 

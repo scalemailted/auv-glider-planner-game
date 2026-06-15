@@ -1,4 +1,4 @@
-import {
+﻿import {
   roiClusterSizeLabel,
   roiDepletionModeLabel,
   roiDisplayModeCaption,
@@ -50,12 +50,25 @@ import {
 import {
   SAMPLING_PROCESS_TICK_RATES
 } from './SamplingProcessTiming.js';
+import {
+  exampleInitialConditionBrushPalette,
+  exampleInitialConditionFixtureOptions,
+  initialConditionEditCount,
+  initialConditionGuidanceForExample,
+  initialConditionModeOptions,
+  isExampleInitialConditionEditorSupported,
+  normalizeInitialConditionBrush,
+  normalizeInitialConditionFixtureId,
+  normalizeInitialConditionMode,
+  selectedFixtureOption
+} from './SamplingProcessInitialConditionEditor.js';
 
 export function buildSamplingProcessConsoleState(context = {}) {
   return {
     ...buildSamplingProcessConsoleSummary(context),
     ...buildSamplingProcessPaintConsoleState(context),
     ...buildSamplingProcessRandomRuleConsoleState(context),
+    ...buildSamplingProcessInitialConditionConsoleState(context),
     ...buildSamplingProcessExportConsoleState(context),
     ...buildSamplingProcessScenarioConsoleState(context),
     ...buildSamplingProcessActiveSourceState(context)
@@ -235,6 +248,39 @@ export function buildSamplingProcessRandomRuleConsoleState(context = {}) {
   };
 }
 
+export function buildSamplingProcessInitialConditionConsoleState(context = {}) {
+  const activeExample = resolveActiveSpatiotemporalProcessExample(context);
+  const example = activeExample.sourceExample;
+  const editorEnabled = Boolean(
+    context.patternSource === 'referenceSignature'
+      && ['foundationalCaModels', 'oceanProcessAnalogs'].includes(context.processMode)
+      && isExampleInitialConditionEditorSupported(example)
+  );
+  const mode = normalizeInitialConditionMode(context.initialConditionMode ?? context.initialCondition?.mode);
+  const fixtureId = normalizeInitialConditionFixtureId(context.selectedInitialConditionFixtureId ?? context.initialCondition?.fixtureId, example);
+  const fixtureOption = selectedFixtureOption(example, fixtureId);
+  const brush = normalizeInitialConditionBrush(example, context.selectedInitialConditionBrushState ?? context.initialCondition?.brushState);
+  const editCount = initialConditionEditCount(context.initialConditionModel ?? context.initialCondition?.model);
+  const guidance = initialConditionGuidanceForExample(example);
+  return {
+    initialConditionEditorEnabled: editorEnabled,
+    interactiveInitialConditionEnabled: editorEnabled && mode === 'interactiveCanvas',
+    initialConditionMode: mode,
+    initialConditionModeOptions: initialConditionModeOptions(),
+    selectedInitialConditionFixtureId: fixtureId,
+    selectedInitialConditionFixtureLabel: fixtureOption?.label ?? context.initialCondition?.fixtureLabel ?? null,
+    initialConditionFixtureOptions: exampleInitialConditionFixtureOptions(example),
+    selectedInitialConditionBrushState: brush?.id ?? null,
+    selectedInitialConditionBrush: brush,
+    initialConditionBrushPalette: exampleInitialConditionBrushPalette(example),
+    initialConditionEditCount: editCount,
+    initialConditionMatchesFixture: editCount === 0,
+    initialConditionSummary: context.initialCondition ?? null,
+    initialConditionGuidance: guidance,
+    selectedEditedCell: context.selectedEditedCell ?? null
+  };
+}
+
 export function buildSamplingProcessExportConsoleState(context = {}) {
   return {
     exportMode: context.exportMode,
@@ -279,3 +325,4 @@ function scenarioSummaryForConsole(scenario) {
     roiInterpretation: scenario.processContract?.roiInterpretation
   };
 }
+

@@ -52,6 +52,7 @@ export function buildSamplingProcessDemoArtifactExport(context = {}) {
   const ruleMetadata = buildSamplingProcessRuleCatalogMetadata(context);
   const processTiming = context.processTiming ?? field.processTiming ?? processTimingExportBlock(context);
   const processDisplayMetric = context.processDisplayMetric ?? field.processDisplayMetric ?? null;
+  const initialCondition = context.initialCondition ?? field.initialCondition ?? field.activityDiagnostics?.initialCondition ?? null;
   const behaviorValidation = context.behaviorValidation ?? field.behaviorValidation ?? field.activityDiagnostics?.behaviorValidation ?? null;
   const exampleFixtureId = context.exampleFixtureId ?? field.exampleFixtureId ?? field.activityDiagnostics?.exampleFixtureId ?? behaviorValidation?.metrics?.fixtureId ?? null;
   const exampleFixtureLabel = context.exampleFixtureLabel ?? field.exampleFixtureLabel ?? field.activityDiagnostics?.exampleFixtureLabel ?? behaviorValidation?.metrics?.fixtureLabel ?? null;
@@ -74,6 +75,7 @@ export function buildSamplingProcessDemoArtifactExport(context = {}) {
     timeSampling: sampling,
     processTiming,
     processDisplayMetric,
+    initialCondition,
     behaviorValidation,
     exampleFixtureId,
     exampleFixtureLabel,
@@ -136,6 +138,7 @@ export function buildSamplingProcessDemoArtifactExport(context = {}) {
       processMetadata: field.graphField?.processMetadata,
       processTiming,
       processDisplayMetric,
+      initialCondition,
       behaviorValidation,
       exampleFixtureId,
       exampleFixtureLabel,
@@ -207,6 +210,7 @@ export function buildSamplingProcessDemoArtifactFrame(context = {}, time, index,
     graphField: cloneGraphFieldModel(field.graphField),
     clusters: cloneClusters(field.graphField?.clusters),
     activityDiagnostics: field.activityDiagnostics,
+    initialCondition: context.initialCondition ?? field.initialCondition ?? field.activityDiagnostics?.initialCondition ?? null,
     behaviorPreset: context.behaviorPreset ?? sampleFieldBehaviorPresetMetadata(context.behaviorPresetId, context.behaviorPresetModified)
   };
 }
@@ -246,6 +250,7 @@ export function buildSamplingProcessReferenceExportMetadata(context = {}, behavi
   const activeExample = resolveActiveSpatiotemporalProcessExample(context);
   const processExample = activeExample.sourceExample;
   const behaviorValidation = context.behaviorValidation ?? context.field?.behaviorValidation ?? context.field?.activityDiagnostics?.behaviorValidation ?? null;
+  const initialCondition = context.initialCondition ?? context.field?.initialCondition ?? context.field?.activityDiagnostics?.initialCondition ?? null;
   const exampleFixtureId = context.exampleFixtureId ?? context.field?.exampleFixtureId ?? context.field?.activityDiagnostics?.exampleFixtureId ?? behaviorValidation?.metrics?.fixtureId ?? null;
   const exampleFixtureLabel = context.exampleFixtureLabel ?? context.field?.exampleFixtureLabel ?? context.field?.activityDiagnostics?.exampleFixtureLabel ?? behaviorValidation?.metrics?.fixtureLabel ?? null;
   const processExampleBlock = activeProcessExampleExportBlock(activeExample);
@@ -253,6 +258,7 @@ export function buildSamplingProcessReferenceExportMetadata(context = {}, behavi
     ...processExampleBlock,
     exampleFixtureId,
     exampleFixtureLabel,
+    initialCondition,
     behaviorValidation
   } : null;
   const referenceSignature = activeExample.referenceSignature
@@ -270,6 +276,7 @@ export function buildSamplingProcessReferenceExportMetadata(context = {}, behavi
     exampleType: activeExample.exampleType,
     exampleFixtureId,
     exampleFixtureLabel,
+    initialCondition,
     behaviorValidation,
     foundationalCaModelId: activeExample.foundationalCaModelId,
     foundationalModelId: activeExample.foundationalCaModelId,
@@ -340,13 +347,14 @@ export function buildSamplingProcessComponentRecipeExport(context = {}) {
 export function buildSamplingProcessScenarioMetadata(context = {}, scenario = {}) {
   const activeExample = resolveActiveSpatiotemporalProcessExample(context);
   const behaviorValidation = context.behaviorValidation ?? context.field?.behaviorValidation ?? context.field?.activityDiagnostics?.behaviorValidation ?? null;
+  const initialCondition = context.initialCondition ?? context.field?.initialCondition ?? context.field?.activityDiagnostics?.initialCondition ?? null;
   const exampleFixtureId = context.exampleFixtureId ?? context.field?.exampleFixtureId ?? context.field?.activityDiagnostics?.exampleFixtureId ?? behaviorValidation?.metrics?.fixtureId ?? null;
   const exampleFixtureLabel = context.exampleFixtureLabel ?? context.field?.exampleFixtureLabel ?? context.field?.activityDiagnostics?.exampleFixtureLabel ?? behaviorValidation?.metrics?.fixtureLabel ?? null;
   return {
     preferredType: SAMPLING_PROCESS_SCENARIO_TYPE,
     legacyType: scenario.type,
     processMode: context.processMode,
-    processExample: activeProcessExampleExportBlock(activeExample),
+    processExample: { ...(activeProcessExampleExportBlock(activeExample) ?? {}), initialCondition },
     exampleTrack: activeExample.exampleTrack,
     exampleTrackLabel: activeExample.exampleTrackLabel,
     exampleProcessId: activeExample.exampleProcessId,
@@ -354,6 +362,7 @@ export function buildSamplingProcessScenarioMetadata(context = {}, scenario = {}
     exampleType: activeExample.exampleType,
     exampleFixtureId,
     exampleFixtureLabel,
+    initialCondition,
     behaviorValidation,
     foundationalCaModelId: activeExample.foundationalCaModelId,
     oceanProcessAnalogId: activeExample.oceanProcessAnalogId,
@@ -714,5 +723,8 @@ function graphMessageStrength(source, target) {
   const communityFactor = source.communityId === target.communityId ? 1 : 0.52;
   return Math.max(0, (outgoing * 0.62 + incoming * 0.18 + targetReadiness * 0.2) * stateBoost * communityFactor);
 }
+
+
+
 
 

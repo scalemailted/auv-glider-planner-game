@@ -1,4 +1,4 @@
-import {
+﻿import {
   ROI_DEMO_TIME_MODES,
   ROI_DEMO_TEMPORAL_PATTERNS,
   ROI_DEMO_SPATIAL_EVOLUTIONS,
@@ -129,7 +129,7 @@ export function samplingProcessHeaderHtml(state) {
       <section class="console-header sampling-compact-header">
         <div class="console-kicker">${escapeHtml(SAMPLING_PROCESS_LAB_MENU_LABEL)}</div>
         <h1>${escapeHtml(state.title ?? SAMPLING_PROCESS_LAB_TITLE)}</h1>
-        <p>${escapeHtml(state.processModeLabel ?? samplingProcessModeLabel(state.processMode))} · ${escapeHtml(state.processStatusLabel ?? 'Custom Exploratory')}</p>
+        <p>${escapeHtml(state.processModeLabel ?? samplingProcessModeLabel(state.processMode))} Â· ${escapeHtml(state.processStatusLabel ?? 'Custom Exploratory')}</p>
       </section>
   `;
 }
@@ -152,7 +152,7 @@ export function samplingProcessActiveSourceSummaryHtml(state) {
   return `
       <section class="console-status sampling-compact-summary" data-roi-active-source-summary>
         <span>Active Source</span>
-        <strong>${escapeHtml(state.processModeLabel ?? samplingProcessModeLabel(state.processMode))} · ${escapeHtml(state.processStatusLabel ?? 'Custom Exploratory')}</strong>
+        <strong>${escapeHtml(state.processModeLabel ?? samplingProcessModeLabel(state.processMode))} Â· ${escapeHtml(state.processStatusLabel ?? 'Custom Exploratory')}</strong>
         ${compactKeyValueRowsHtml(state.sourceSummaryRows.filter(([label]) => label !== 'Recipe'))}
         ${compactChipRowHtml(state.recipeChipRows)}
         <details class="sampling-compact-details">
@@ -198,6 +198,7 @@ function samplingReferenceSignaturePrimaryHtml(state = {}) {
         <div class="hud-muted">${escapeHtml(meta.helper)}</div>
         ${state.hasSection('referenceSignature') && state.patternSource === 'referenceSignature' ? `
           ${samplingTrackSpecificExampleSelectorHtml(state)}
+          ${samplingInitialConditionControlsHtml(state)}
           <select id="roi-demo-reference-signature" class="sr-only" aria-hidden="true" tabindex="-1">
             ${spatiotemporalProcessExampleOptionsByTrack(meta.track).map((option) => `<option value="${escapeAttr(option.referenceSignatureId ?? option.id)}" ${(state.referenceSignatureId ?? CUSTOM_REFERENCE_SIGNATURE_ID) === (option.referenceSignatureId ?? option.id) ? 'selected' : ''}>${escapeHtml(option.label)}</option>`).join('')}
           </select>
@@ -234,6 +235,42 @@ function samplingTrackSpecificExampleSelectorHtml(state = {}) {
             </select>
           </label>
           <div class="hud-muted">${escapeHtml(meta.bridgeNote)}</div>
+  `;
+}
+
+function samplingInitialConditionControlsHtml(state = {}) {
+  if (!state.initialConditionEditorEnabled) return '';
+  const modes = state.initialConditionModeOptions ?? [];
+  const fixtures = state.initialConditionFixtureOptions ?? [];
+  const brushes = state.initialConditionBrushPalette ?? [];
+  const guidance = state.initialConditionGuidance ?? {};
+  const mode = state.initialConditionMode ?? 'curatedSeed';
+  return `
+          <div class="sampling-initial-condition-controls" data-sampling-initial-condition-controls>
+            <label class="compact-field" title="Choose how generation 0 is initialized.">
+              <span>Initial Condition</span>
+              <select id="sampling-initial-condition-mode">
+                ${modes.map((option) => `<option value="${escapeAttr(option.id)}" ${mode === option.id ? 'selected' : ''}>${escapeHtml(option.label)}</option>`).join('')}
+              </select>
+            </label>
+            <label class="compact-field" title="Choose the curated fixture used as the generation-0 reference.">
+              <span>Fixture</span>
+              <select id="sampling-initial-condition-fixture">
+                ${fixtures.map((option) => `<option value="${escapeAttr(option.id)}" ${state.selectedInitialConditionFixtureId === option.id ? 'selected' : ''}>${escapeHtml(option.label)}</option>`).join('')}
+              </select>
+            </label>
+            <label class="compact-field" title="Brush changes valid initial states only; the example rule remains fixed.">
+              <span>Brush</span>
+              <select id="sampling-initial-condition-brush" ${mode === 'interactiveCanvas' ? '' : 'disabled'}>
+                ${brushes.map((brush) => `<option value="${escapeAttr(brush.id)}" ${state.selectedInitialConditionBrushState === brush.id ? 'selected' : ''}>${escapeHtml(brush.label)}</option>`).join('')}
+              </select>
+            </label>
+            <div class="console-button-row wrap">
+              <button type="button" data-action="sampling-clear-initial-condition-edits" class="console-button secondary" ${state.initialConditionEditCount ? '' : 'disabled'}>Reset to Fixture</button>
+            </div>
+            <div class="hud-muted">${escapeHtml(guidance.prompt ?? 'Edit generation 0, then step one generation.')} Edited cells: ${escapeHtml(state.initialConditionEditCount ?? 0)}. Rule: ${escapeHtml(guidance.ruleLabel ?? 'fixed example rule')}.</div>
+            ${guidance.note ? `<div class="hud-muted warning">${escapeHtml(guidance.note)}</div>` : ''}
+          </div>
   `;
 }
 
@@ -418,7 +455,7 @@ export function samplingSpatialPatternSectionHtml(state) {
             ${ROI_DEMO_CLUSTER_SIZES.map((size) => `<option value="${escapeAttr(size)}" ${state.clusterSize === size ? 'selected' : ''}>${escapeHtml(roiClusterSizeLabel(size))}</option>`).join('')}
           </select>
         </label>
-        <div class="hud-muted">Clusters: ${escapeHtml(state.clusterCount ?? state.hotspotCount ?? 3)} · ${escapeHtml(roiClusterSizeLabel(state.clusterSize))}</div>
+        <div class="hud-muted">Clusters: ${escapeHtml(state.clusterCount ?? state.hotspotCount ?? 3)} Â· ${escapeHtml(roiClusterSizeLabel(state.clusterSize))}</div>
       </section>
   `;
 }
@@ -629,7 +666,7 @@ export function samplingFieldStatsHtml(state) {
         ${state.processMode === 'diagnosticsGraphInspection' ? `
           <details class="sampling-compact-details" open>
             <summary>Advanced Diagnostics</summary>
-            <small>BBox ${escapeHtml(formatPercent(state.activityDiagnostics?.activeBoundingBoxCoverage))} · Components ${escapeHtml(String(state.activityDiagnostics?.connectedComponentCount ?? 0))} · Hotspots ${escapeHtml(String(state.activityDiagnostics?.activeHotspotCount ?? state.activityDiagnostics?.hotspotComponentCount ?? 0))} · L/S corr ${escapeHtml(formatDemoStat(state.activityDiagnostics?.likelihoodSampleCorrelation))} · Total ${escapeHtml(formatDemoStat(state.activityDiagnostics?.totalActivityMass ?? state.stats?.totalValue))}${escapeHtml(state.graphSummary)}</small>
+            <small>BBox ${escapeHtml(formatPercent(state.activityDiagnostics?.activeBoundingBoxCoverage))} Â· Components ${escapeHtml(String(state.activityDiagnostics?.connectedComponentCount ?? 0))} Â· Hotspots ${escapeHtml(String(state.activityDiagnostics?.activeHotspotCount ?? state.activityDiagnostics?.hotspotComponentCount ?? 0))} Â· L/S corr ${escapeHtml(formatDemoStat(state.activityDiagnostics?.likelihoodSampleCorrelation))} Â· Total ${escapeHtml(formatDemoStat(state.activityDiagnostics?.totalActivityMass ?? state.stats?.totalValue))}${escapeHtml(state.graphSummary)}</small>
           </details>
         ` : ''}
       </section>
@@ -1153,3 +1190,4 @@ function escapeHtml(value) {
 function escapeAttr(value) {
   return escapeHtml(value).replace(/`/g, '&#096;');
 }
+

@@ -661,6 +661,38 @@ test('campaign planning smoke flow reaches debrief', async ({ page }) => {
   const generationBeforeStep = await page.evaluate(() => window.anchorGame.phaser.scene.getScene('RoiGeneratorDemoScene').processGenerationIndex);
   await page.locator('#bottom-timeline [data-action="roi-demo-step-generation"]').click();
   await expect.poll(() => page.evaluate(() => window.anchorGame.phaser.scene.getScene('RoiGeneratorDemoScene').processGenerationIndex)).toBe(generationBeforeStep + 1);
+  await expect(page.locator('#sampling-initial-condition-mode')).toBeVisible();
+  await expect(page.locator('#sampling-initial-condition-mode option')).toHaveText([
+    'Curated Seed',
+    'Interactive Canvas',
+    'Deterministic Random Seed'
+  ]);
+  await expect(page.locator('#sampling-initial-condition-fixture')).toContainText('Blinker');
+  await expect(page.locator('#sampling-initial-condition-brush')).toContainText('Active');
+  await page.locator('#sampling-initial-condition-fixture').selectOption('blinker');
+  await expect.poll(() => page.evaluate(() => window.ANCHOR_ROI_UI_DEBUG.activeFixtureId)).toBe('blinker');
+  await page.locator('#sampling-initial-condition-mode').selectOption('interactiveCanvas');
+  await expect.poll(() => page.evaluate(() => window.ANCHOR_ROI_UI_DEBUG.activeInitialConditionMode)).toBe('interactiveCanvas');
+  await page.evaluate(() => {
+    const scene = window.anchorGame.phaser.scene.getScene('RoiGeneratorDemoScene');
+    scene.applyInitialConditionCell({ col: 7, row: 7, x: 7, y: 7 });
+    scene.applyInitialConditionCell({ col: 7, row: 8, x: 7, y: 8 });
+    scene.applyInitialConditionCell({ col: 7, row: 9, x: 7, y: 9 });
+  });
+  await expect.poll(() => page.evaluate(() => window.ANCHOR_ROI_UI_DEBUG.activeInteractiveEditCount)).toBe(3);
+  await expect.poll(() => page.evaluate(() => window.ANCHOR_ROI_UI_DEBUG.generationIndex)).toBe(0);
+  await expect(page.locator('#bottom-timeline')).toContainText('Interactive Initial Condition');
+  await clickRightPanelMode(page, 'recipeSignature');
+  await expect(page.locator('#waypoint-timeline [data-process-initial-condition-card]')).toContainText('B3/S23');
+  await page.locator('#bottom-timeline [data-action="roi-demo-step-generation"]').click();
+  await expect.poll(() => page.evaluate(() => window.ANCHOR_ROI_UI_DEBUG.generationIndex)).toBe(1);
+  await page.locator('#bottom-timeline [data-action="roi-demo-reset"]').click();
+  await expect.poll(() => page.evaluate(() => window.ANCHOR_ROI_UI_DEBUG.activeInteractiveEditCount)).toBe(0);
+  await expect.poll(() => page.evaluate(() => window.ANCHOR_ROI_UI_DEBUG.generationIndex)).toBe(0);
+  await page.locator('#sampling-initial-condition-fixture').selectOption('default');
+  await expect.poll(() => page.evaluate(() => window.ANCHOR_ROI_UI_DEBUG.activeFixtureId)).toBe('default');
+  await page.locator('#sampling-initial-condition-mode').selectOption('curatedSeed');
+  await expect.poll(() => page.evaluate(() => window.ANCHOR_ROI_UI_DEBUG.activeInitialConditionMode)).toBe('curatedSeed');
   await expect(page.locator('#roi-demo-event-likelihood')).toHaveCount(0);
   await expect(page.locator('#roi-demo-event-likelihood-dynamics')).toHaveCount(0);
   await expect(page.locator('#roi-demo-spatial-pattern')).toHaveCount(0);
@@ -713,6 +745,10 @@ test('campaign planning smoke flow reaches debrief', async ({ page }) => {
   expect(roiArtifact.data.processExample.exampleFixtureId).toBe('conwayGameOfLife.default');
   expect(roiArtifact.data.processExample.behaviorValidation.status).toBe('PASS');
   expect(roiArtifact.data.processExample.behaviorValidation.metrics.canonicalRuleCheck).toBe('B3/S23 localBirthDeath');
+  expect(roiArtifact.data.initialCondition.mode).toBe('curatedSeed');
+  expect(roiArtifact.data.initialCondition.fixtureId).toBe('default');
+  expect(roiArtifact.data.initialCondition.editedCellCount).toBe(0);
+  expect(roiArtifact.data.processExample.initialCondition.mode).toBe('curatedSeed');
   expect(roiArtifact.data.processPatternId).toBe('birthDeathEmergence');
   expect(roiArtifact.data.metadata.exampleTrack).toBe('foundationalCaModels');
   expect(roiArtifact.data.referenceSignatureMetadata.caTaxonomy).toBeTruthy();
@@ -762,6 +798,10 @@ test('campaign planning smoke flow reaches debrief', async ({ page }) => {
   });
   await expect(page.locator('#waypoint-timeline [data-process-behavior-qa]')).toContainText('Behavior QA');
   await expect(page.locator('#waypoint-timeline [data-process-behavior-qa]')).toContainText('Forest Fire');
+  await expect(page.locator('#sampling-initial-condition-brush')).toContainText('Susceptible');
+  await expect(page.locator('#sampling-initial-condition-brush')).toContainText('Active');
+  await expect(page.locator('#sampling-initial-condition-brush')).toContainText('Cooling');
+  await expect(page.locator('#sampling-initial-condition-brush')).toContainText('Consumed');
 
   await page.locator('#sampling-process-mode').selectOption('oceanProcessAnalogs');
   await expandMissionConsoleSection(page, 'Ocean-Relevant Process Analogs');
@@ -787,6 +827,8 @@ test('campaign planning smoke flow reaches debrief', async ({ page }) => {
   await expect(page.locator('#waypoint-timeline')).toContainText('Ocean-Relevant Process Analog');
   await expect(page.locator('#waypoint-timeline')).toContainText('Mapped Pattern');
   await expect(page.locator('#waypoint-timeline [data-process-metric-explanation]')).toContainText(/physical downstream transport belongs/i);
+  await expect(page.locator('#waypoint-timeline [data-process-initial-condition-card]')).toContainText(/not physical advection|simplified event-layer/i);
+  await expect(page.locator('#sampling-initial-condition-brush')).toContainText('Source');
   const oceanArtifact = await downloadDemoArtifact(page);
   expect(oceanArtifact.data.processExample.exampleTrack).toBe('oceanRelevantProcessAnalogs');
   expect(oceanArtifact.data.processExample.exampleProcessId).toBe('riverPlumeFront');
@@ -795,6 +837,9 @@ test('campaign planning smoke flow reaches debrief', async ({ page }) => {
   expect(oceanArtifact.data.behaviorValidation.status).toBe('PASS');
   expect(oceanArtifact.data.exampleFixtureId).toBe('riverPlumeFront');
   expect(oceanArtifact.data.processExample.behaviorValidation.status).toBe('PASS');
+  expect(oceanArtifact.data.initialCondition.mode).toBe('curatedSeed');
+  expect(oceanArtifact.data.initialCondition.fixtureId).toBe('default');
+  expect(oceanArtifact.data.processExample.initialCondition.mode).toBe('curatedSeed');
 
   await page.locator('#sampling-process-mode').selectOption('customComposer');
   await expandMissionConsoleSections(page, [
@@ -2306,5 +2351,8 @@ async function cellCenter(page, x, y) {
     };
   }, { x, y });
 }
+
+
+
 
 

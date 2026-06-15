@@ -36,6 +36,12 @@ import {
 import { buildSamplingProcessComponentRecipeExport } from './SamplingProcessExportBuilder.js';
 import { resolveActiveSpatiotemporalProcessExample } from './SpatiotemporalProcessExamples.js';
 import { isDiscreteSamplingProcessMode } from './SamplingProcessTiming.js';
+import {
+  initialConditionEditCount,
+  initialConditionGuidanceForExample,
+  initialConditionMatchesFixture,
+  normalizeInitialConditionBrush
+} from './SamplingProcessInitialConditionEditor.js';
 
 export function buildSamplingProcessComponentRecipe(context = {}) {
   return buildSamplingProcessComponentRecipeExport(context);
@@ -62,6 +68,9 @@ export function buildSamplingProcessRecipeSignatureState(context = {}) {
     ?? referenceSignatureMetadata(activeExample.referenceSignatureId ?? context.referenceSignatureId, context.referenceSignatureModified)
     ?? (context.patternSource === 'legacyPreset' ? behaviorPreset.referenceSignature : null);
   const displayMode = context.field?.displayMode ?? context.displayMode;
+  const initialCondition = context.initialCondition ?? context.field?.initialCondition ?? context.field?.activityDiagnostics?.initialCondition ?? null;
+  const selectedInitialConditionBrush = normalizeInitialConditionBrush(activeExample.sourceExample, context.selectedInitialConditionBrushState ?? initialCondition?.brushState);
+  const initialConditionModel = context.initialConditionModel ?? {};
   return {
     patternSource: context.patternSource,
     processMode: context.processMode,
@@ -114,6 +123,17 @@ export function buildSamplingProcessRecipeSignatureState(context = {}) {
     exampleFixtureLabel: context.exampleFixtureLabel ?? context.field?.exampleFixtureLabel ?? context.field?.activityDiagnostics?.exampleFixtureLabel ?? null,
     exampleFixtureValidation: context.exampleFixtureValidation ?? context.field?.activityDiagnostics?.exampleFixtureValidation ?? null,
     behaviorValidation: context.behaviorValidation ?? context.field?.behaviorValidation ?? context.field?.activityDiagnostics?.behaviorValidation ?? null,
+    initialCondition,
+    initialConditionMode: context.initialConditionMode ?? initialCondition?.mode ?? 'curatedSeed',
+    selectedInitialConditionFixtureId: context.selectedInitialConditionFixtureId ?? initialCondition?.fixtureId ?? 'default',
+    selectedInitialConditionFixtureLabel: initialCondition?.fixtureLabel ?? null,
+    selectedInitialConditionBrushState: context.selectedInitialConditionBrushState ?? selectedInitialConditionBrush?.id ?? null,
+    selectedInitialConditionBrush,
+    initialConditionEditCount: initialConditionEditCount(initialConditionModel),
+    initialConditionMatchesFixture: initialConditionMatchesFixture(initialConditionModel),
+    interactiveInitialConditionEnabled: (context.initialConditionMode ?? initialCondition?.mode) === 'interactiveCanvas',
+    selectedEditedCell: context.selectedEditedCell ?? null,
+    initialConditionGuidance: initialConditionGuidanceForExample(activeExample.sourceExample),
     activeUpdateRuleHint: context.updateRuleHint ?? context.field?.graphField?.updateRule ?? null,
     stats: context.field?.stats,
     activityDiagnostics: context.field?.activityDiagnostics,
@@ -610,4 +630,5 @@ function graphTransitionForCell(graphField, cell) {
   const y = Number(cell?.row ?? cell?.y ?? 0);
   return (graphField?.nodeTransitions ?? []).find((transition) => Number(transition.col) === x && Number(transition.row) === y) ?? null;
 }
+
 

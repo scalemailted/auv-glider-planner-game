@@ -32,6 +32,7 @@ export function buildDemoArtifactEnvelope({
   timeSampling = null,
   processTiming = null,
   processDisplayMetric = null,
+  initialCondition = null,
   behaviorValidation = null,
   exampleFixtureId = null,
   exampleFixtureLabel = null,
@@ -130,6 +131,7 @@ export function buildDemoArtifactEnvelope({
     },
     processTiming,
     processDisplayMetric,
+    initialCondition,
     behaviorValidation,
     exampleFixtureId,
     exampleFixtureLabel,
@@ -330,4 +332,6 @@ function finiteNumber(value, fallback) {
 function normalizeDemoExportMode(mode) {
   return mode === 'timeWindow' || mode === 'timeSeries' ? 'timeWindow' : 'currentFrame';
 }
+
+
 

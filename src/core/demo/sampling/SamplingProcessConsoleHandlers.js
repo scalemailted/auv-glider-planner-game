@@ -1,4 +1,4 @@
-export function buildSamplingProcessConsoleHandlers(scene = {}) {
+﻿export function buildSamplingProcessConsoleHandlers(scene = {}) {
   return {
     distribution: (distribution) => scene.handleSamplingDistributionChange?.(distribution),
     seed: (seed) => scene.handleSamplingSeedChange?.(seed),
@@ -15,6 +15,10 @@ export function buildSamplingProcessConsoleHandlers(scene = {}) {
     exampleTrack: (track) => scene.applyExampleTrack?.(track),
     processExample: (exampleId) => scene.applyReferenceSignature?.(exampleId),
     referenceSignature: (referenceSignatureId) => scene.applyReferenceSignature?.(referenceSignatureId),
+    initialConditionMode: (mode) => scene.applyInitialConditionMode?.(mode),
+    initialConditionFixture: (fixtureId) => scene.applyInitialConditionFixture?.(fixtureId),
+    initialConditionBrush: (brushState) => scene.applyInitialConditionBrush?.(brushState),
+    clearInitialConditionEdits: () => scene.clearInitialConditionEdits?.(),
     compareComponent: (comparisonId) => scene.applyComponentComparison?.(comparisonId),
     eventLikelihood: (eventLikelihood) => scene.handleSamplingEventLikelihoodChange?.(eventLikelihood),
     eventLikelihoodDynamics: (eventLikelihoodDynamics) => scene.handleSamplingEventLikelihoodDynamicsChange?.(eventLikelihoodDynamics),
@@ -54,3 +58,4 @@ export function buildSamplingProcessConsoleHandlers(scene = {}) {
     menu: () => scene.handleSamplingMainMenu?.()
   };
 }
+

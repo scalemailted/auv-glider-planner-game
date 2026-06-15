@@ -1,4 +1,4 @@
-import { CAMPAIGN_LEVELS } from '../core/campaign/CampaignLevels.js';
+﻿import { CAMPAIGN_LEVELS } from '../core/campaign/CampaignLevels.js';
 import { shortInstanceId } from '../core/identity/GameInstanceId.js';
 import { formatMetric } from '../core/evaluation/PlanComparison.js';
 import { FLOW_DEMO_BOUNDARY_MODES, FLOW_DEMO_CYCLE_DURATIONS, FLOW_DEMO_DYNAMIC_COMPLEXITY_LEVELS, FLOW_DEMO_EVOLUTION_BEHAVIORS, FLOW_DEMO_EVOLUTION_PATTERNS, FLOW_DEMO_EVOLUTION_SPEEDS, FLOW_DEMO_FIELD_MODES, FLOW_DEMO_LAYER_INFLUENCES, FLOW_DEMO_MAGNITUDE_SCALES, FLOW_DEMO_PARTICLE_SPEEDS, FLOW_DEMO_PRESET_CHOICES, FLOW_DEMO_SPATIAL_MOTIONS, FLOW_DEMO_SPATIAL_MOTION_SPEEDS, FLOW_DEMO_TERRAIN_MODES, FLOW_DEMO_VARIATION_LEVELS, normalizeAdditiveLayers } from '../core/demo/FlowFieldDemo.js';
@@ -360,6 +360,10 @@ export class MissionConsole {
     this.root.querySelector('#roi-demo-behavior-preset')?.addEventListener('change', (event) => handlers.behaviorPreset?.(event.target.value));
     this.root.querySelector('#sampling-process-example-id')?.addEventListener('input', (event) => handlers.processExample?.(event.target.value));
     this.root.querySelector('#sampling-process-example-id')?.addEventListener('change', (event) => handlers.processExample?.(event.target.value));
+    this.root.querySelector('#sampling-initial-condition-mode')?.addEventListener('change', (event) => handlers.initialConditionMode?.(event.target.value));
+    this.root.querySelector('#sampling-initial-condition-fixture')?.addEventListener('change', (event) => handlers.initialConditionFixture?.(event.target.value));
+    this.root.querySelector('#sampling-initial-condition-brush')?.addEventListener('change', (event) => handlers.initialConditionBrush?.(event.target.value));
+    this.root.querySelector('[data-action="sampling-clear-initial-condition-edits"]')?.addEventListener('click', () => handlers.clearInitialConditionEdits?.());
     this.root.querySelector('#roi-demo-reference-signature')?.addEventListener('change', (event) => handlers.referenceSignature?.(event.target.value));
     this.root.querySelector('#roi-demo-event-likelihood')?.addEventListener('change', (event) => handlers.eventLikelihood?.(event.target.value));
     this.root.querySelector('#roi-demo-event-likelihood-dynamics')?.addEventListener('change', (event) => handlers.eventLikelihoodDynamics?.(event.target.value));
@@ -1182,4 +1186,5 @@ function escapeHtml(value) {
 function escapeAttr(value) {
   return escapeHtml(value).replace(/`/g, '&#096;');
 }
+
 

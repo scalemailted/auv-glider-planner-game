@@ -63,6 +63,7 @@ Challenge Mode also persists `missionMode`. Mission modes are player-facing obje
 - Added discrete process generation timing for Foundational CA Models, Ocean-Relevant Process Analogs, Process Paint, and Rule Allocation Sandbox. Rendering remains independent from process updates; default playback is 1 generation per second with Step Generation and fixed tick-rate controls.
 - Added process explainability metric layers and legends for state, neighbor count, rule support, transition class, ignition pressure, infection pressure, threshold proximity, congestion pressure, structured signal support, source support, and sampling interpretation. Exports now preserve process timing, display metric metadata, and compact metric layers.
 - Added fixture-backed Behavior QA for guided Foundational CA Models and Ocean-Relevant Process Analogs. `SamplingProcessExampleFixtures.js` defines explicit initial layers, and `SamplingProcessExampleBehaviorAssertions.js` runs short deterministic checks through the existing rule engine. The right panel, debug object, and demo exports now include fixture id/label and behavior validation metadata.
+- Added model-aware initial-condition editing for guided Process Lab examples. SamplingProcessInitialConditionEditor.js defines curated, interactive-canvas, and deterministic-random modes; fixed-rule brush palettes; Conway block/blinker/glider fixtures; ocean analog source/front brushes; generation-reset behavior; and exported initialCondition metadata.
 - Preserved legacy aliases including `eventLikelihoodField`, `likelihoodField`, `likelihoodNodes`, `behaviorPresetId`, and `sampleValueField`.
 
 ### v0.1 - Static Browser Shell And Phaser Map
@@ -227,4 +228,5 @@ The visible Process Lab mode plus the context-specific model or analog selector 
 `referenceSignature*` fields remain for compatibility and represent the mapped observable pattern, not the primary selected example. New consumers should prefer the `processExample` block in demo/scenario exports. `processExample.mappedReferenceSignatureId` should match the legacy flat `referenceSignatureId`.
 
 Ocean-Relevant Process Analogs are educational event/process-layer analogs. They are not calibrated flow models, ocean forecasts, uncertainty models, or mission planners; flow coupling and uncertainty realism belong in the coupled and uncertainty demos.
+
 

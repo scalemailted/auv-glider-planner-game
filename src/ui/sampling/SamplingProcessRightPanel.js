@@ -74,6 +74,7 @@ export function roiRecipeSignatureHtml(state) {
       </div>
       
       ${currentLabStateCardHtml(state)}
+      ${initialConditionGuidanceCardHtml(state)}
       ${behaviorValidationCardHtml(state)}
       ${processMetricExplanationCardHtml(state)}
       
@@ -362,6 +363,32 @@ function processExampleSummaryCardHtml(example, signature) {
   `;
 }
 
+function initialConditionGuidanceCardHtml(state = {}) {
+  const guidance = state.initialConditionGuidance ?? {};
+  const initialCondition = state.initialCondition ?? {};
+  const hasGuidance = guidance.ruleLabel || state.initialConditionMode || initialCondition.mode;
+  if (!hasGuidance) return '';
+  const brush = state.selectedInitialConditionBrush ?? initialCondition.brushState ?? {};
+  const selectedCell = state.selectedEditedCell;
+  const selectedCellLabel = selectedCell ? `(${selectedCell.col}, ${selectedCell.row})` : 'none';
+  return `
+        <div class="cell-inspector-card" data-process-initial-condition-card>
+          <span>Interactive Initial Condition</span>
+          ${metricRows([
+            ['mode', state.initialConditionMode ?? initialCondition.mode ?? 'curatedSeed'],
+            ['fixture', state.selectedInitialConditionFixtureLabel ?? initialCondition.fixtureLabel ?? state.selectedInitialConditionFixtureId ?? initialCondition.fixtureId ?? 'default'],
+            ['fixed rule', guidance.ruleLabel ?? brush.ruleId ?? 'example rule'],
+            ['brush', brush.label ?? brush.id ?? state.selectedInitialConditionBrushState ?? 'n/a'],
+            ['edited cells', state.initialConditionEditCount ?? initialCondition.editedCellCount ?? 0],
+            ['matches fixture', state.initialConditionMatchesFixture ?? initialCondition.initialConditionMatchesFixture ? 'yes' : 'no'],
+            ['selected edited cell', selectedCellLabel],
+            ['generation', state.processGenerationIndex ?? initialCondition.generationIndexAtExport ?? 0]
+          ])}
+          <p>${escapeHtml(guidance.prompt ?? 'Edit generation 0, then step one generation to observe the fixed model rule.')}</p>
+          <small>${escapeHtml(guidance.note ?? 'This editor changes initial states only. Process Paint handles arbitrary rule allocation.')}</small>
+        </div>
+  `;
+}
 function behaviorValidationCardHtml(state = {}) {
   const validation = state.behaviorValidation;
   if (!validation) return '';
@@ -547,6 +574,7 @@ export function roiDiagnosticsHtml(state) {
       </div>
       
       ${currentLabStateCardHtml(state)}
+      ${initialConditionGuidanceCardHtml(state)}
       ${behaviorValidationCardHtml(state)}
       ${processMetricExplanationCardHtml(state)}
       
@@ -960,6 +988,7 @@ export function processPaintToolsHtml(state = {}) {
       </div>
       
       ${currentLabStateCardHtml(state)}
+      ${initialConditionGuidanceCardHtml(state)}
       ${behaviorValidationCardHtml(state)}
       ${processMetricExplanationCardHtml(state)}
       
@@ -1111,6 +1140,7 @@ export function processPaintInspectorEmptyHtml(state = {}) {
       </div>
       
       ${currentLabStateCardHtml(state)}
+      ${initialConditionGuidanceCardHtml(state)}
       ${behaviorValidationCardHtml(state)}
       ${processMetricExplanationCardHtml(state)}
     </section>
@@ -1428,6 +1458,7 @@ export function roiInspectorEmptyHtml(state = {}) {
       </div>
       
       ${currentLabStateCardHtml(state)}
+      ${initialConditionGuidanceCardHtml(state)}
       ${behaviorValidationCardHtml(state)}
       ${processMetricExplanationCardHtml(state)}
     </section>
@@ -1530,6 +1561,8 @@ function currentLabStateRows(state = {}) {
       [state.exampleType === 'oceanProcessAnalog' ? 'Analog' : 'Model', state.exampleProcessLabel ?? state.referenceSignature.label],
       
       ['Mapped Pattern', state.referenceSignatureLabel ?? state.referenceSignature.label],
+      ['Initial Condition', `${state.selectedInitialConditionFixtureLabel ?? state.initialCondition?.fixtureLabel ?? state.selectedInitialConditionFixtureId ?? 'default'} / ${state.initialConditionMode ?? state.initialCondition?.mode ?? 'curatedSeed'}`],
+      ['Initial Edits', state.initialConditionEditCount ?? state.initialCondition?.editedCellCount ?? 0],
       
       ['Fidelity', state.implementationFidelity ?? 'observablePatternAnalog'],
       
@@ -1738,5 +1771,6 @@ function escapeHtml(value) {
 function escapeAttr(value) {
   return escapeHtml(value).replace(/`/g, '&#096;');
 }
+
 
 
