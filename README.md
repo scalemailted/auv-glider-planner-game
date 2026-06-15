@@ -12,7 +12,7 @@ Version 2 is a playable static-web game built with vanilla JavaScript, HTML, CSS
 
 - main menu, campaign flow, mission briefing, planning, simulation, debrief, level editor, and dataset export scenes
 - three top-level main menu accordions: Challenge Mode, Simulation Lab, and Learning Labs
-- static Learning Labs concept pages, including a syllabus-style index, deterministic-process article, deterministic dynamic flow-fields article, oracle deterministic coupled sampling-space article, stochastic uncertainty article, stochastic coupled sampling-space article, and Planner / Mission Evaluation article, completing the first six-lab sequence before opening the full sandbox
+- static Learning Labs concept pages, including a syllabus-style index, Scientific Computational Modeling foundation article, CA for Ocean-Relevant Processes foundation article, deterministic-process article, deterministic dynamic flow-fields article, oracle deterministic coupled sampling-space article, stochastic uncertainty article, stochastic coupled sampling-space article, and Planner / Mission Evaluation article
 - Simulation Lab field demos with Flow Fields Demo for current arrows and Process Lab for deterministic spatiotemporal process examples
 - game-first mission planning workspace with a large Phaser map, HTML/CSS mission-control overlays, top selected-glider planning HUD, bottom mission-time slider, waypoint drawer/table, and non-executable planning markers
 - Phaser 3 scene shell with Main Menu, Mission Briefing, Mission Workspace, Simulation, Debrief, Environment Editor, and Dataset Export scenes
@@ -90,13 +90,15 @@ ANCHOR separates four field concepts:
 
 These fields are related but not interchangeable. The demos separate them so students can learn each concept before combining them in planning challenges. Event likelihood is not uncertainty: a high-likelihood region can be well known, and a low-likelihood region can still be uncertain.
 
+Learning Labs now include foundation pages for scientific computational modeling and CA for ocean-relevant processes. CA is presented as a first modeling language and teaching/event-generation layer, not as a final ocean simulator or final adaptive-sampling priority model. Future higher-fidelity model phases should add advection, diffusion, source/sink, decay/growth, flow coupling, stochastic forecast/belief, observations, uncertainty, acquisition functions, and route-aware mission criteria.
+
 Quick loop:
 
 1. Open the game.
 2. Choose one of the expandable areas: Challenge Mode, Simulation Lab, or Learning Labs.
 3. Under Challenge Mode, use `Play` for Mission Modes/custom challenges, `Learn` for Tutorials, or `Compete` for leaderboards.
 4. Under Simulation Lab, use `Experiments`, `Demos`, `Editor & Import Tools`, or `Benchmarks`.
-5. Under Learning Labs, open static concept pages such as Deterministic Spatiotemporal Processes, Deterministic Dynamic Flow Fields, Oracle / Deterministic Coupled Sampling Space, Stochastic / Uncertainty, Stochastic Coupled Sampling Space, and Planner / Mission Evaluation when you want a short explanation before using the sandbox.
+5. Under Learning Labs, open static concept pages such as Scientific Computational Modeling, CA for Ocean-Relevant Processes, Deterministic Spatiotemporal Processes, Deterministic Dynamic Flow Fields, Oracle / Deterministic Coupled Sampling Space, Stochastic / Uncertainty, Stochastic Coupled Sampling Space, and Planner / Mission Evaluation when you want a short explanation before using the sandbox.
 6. Start a tutorial, generate a challenge, import a custom challenge JSON, or use an editor/custom level.
 7. Read Mission Briefing, then click `Start Planning`.
 8. Place waypoint plans directly on the map.

@@ -28,6 +28,9 @@ Challenge Mode also persists `missionMode`. Mission modes are player-facing obje
 
 ### Learning Labs Static Concept Pages
 
+- Added foundation Learning Labs for `Scientific Computational Modeling` and `Cellular Automata for Ocean-Relevant Processes`. These pages frame CA as a rigorous first computational modeling language and event/process-layer generator, not as a calibrated ocean simulator or final adaptive-sampling priority model.
+- Added lightweight standalone widgets for model loops, local-rule neighborhoods, deterministic-vs-stochastic evolution, fuzzy/continuous CA, event-intensity-vs-priority, plume fronts, bloom growth/decay, and freshness/revisit. The pages prepare the later engine ladder: advection, diffusion, source/sink, decay/growth, flow coupling, stochastic forecast/belief, observations, uncertainty, acquisition logic, and route-aware mission criteria.
+
 - Added a top-level `Learning Labs` main-menu accordion for static concept pages that complement, but do not replace, the Phaser Simulation Lab demos.
 - Added `labs/index.html` as the course-style Learning Labs syllabus covering the six-lab path from deterministic processes through mission evaluation.
 - Added the first standalone shell, `Deterministic Spatiotemporal Processes`, with local equations, sampling interpretation, foundational CA model placeholders, static visual placeholders, and links back to the full ANCHOR app.

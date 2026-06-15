@@ -44,6 +44,8 @@ Default playback is `1 gen/s`. Available tick rates are `0.25`, `0.5`, `1`, `2`,
 Guided process examples default to semantic displays instead of generic heat. `State View` colors deterministic cell states or phases. `Rule Metric` shows the selected model's rule-support layer, such as neighbor count, ignition pressure, infection pressure, threshold proximity, congestion pressure, or signal support. `Transition View` shows the next-transition class. `Sampling Interpretation` shows the derived sampling-value view, and `Source / Initial Field` shows the seeded substrate.
 
 Conway-style local birth-death rules explain neighbor count, birth support, survival support, death, and remain-inactive classes. Forest Fire explains ignition pressure and consumed trail. SIR explains infection pressure and recovery. Excitable Wave, Sandpile, Traffic, and Wireworld expose wavefront/refractory, threshold, congestion, and signal-path metrics. Ocean analogs inherit the mapped rule metrics but remain process-layer analogs; physical downstream transport belongs in Flow Fields and Coupled Dynamic Sampling Space demos.
+
+The foundation Learning Labs make the same boundary explicit: CA is a first modeling language and teaching/event-generation layer. More mission-grade environmental models should add advection, diffusion, source/sink, decay/growth, flow coupling, hidden truth, forecast/belief, uncertainty, observations, acquisition functions, and route-aware criteria before claiming final adaptive-sampling priority.
 ## Process Layers
 
 Exports preserve preferred process names and legacy aliases:

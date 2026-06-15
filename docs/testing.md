@@ -119,6 +119,8 @@ npm.cmd run check
 After Learning Labs changes, run:
 
 ```bash
+node tools/js/smoke_learning_lab_scientific_modeling.mjs
+node tools/js/smoke_learning_lab_ca_ocean_processes.mjs
 node tools/js/smoke_learning_lab_deterministic_processes.mjs
 node tools/js/smoke_learning_lab_flow_fields.mjs
 node tools/js/smoke_learning_lab_coupled_sampling_space.mjs
@@ -170,7 +172,7 @@ The e2e smoke tests verify:
 
 - app loads
 - main menu appears
-- Learning Labs links to the Deterministic Spatiotemporal Processes, Deterministic Dynamic Flow Fields, Oracle / Deterministic Coupled Sampling Space, Stochastic / Uncertainty, Stochastic Coupled Sampling Space, and Planner / Mission Evaluation static pages
+- Learning Labs links to the Scientific Computational Modeling, CA for Ocean-Relevant Processes, Deterministic Spatiotemporal Processes, Deterministic Dynamic Flow Fields, Oracle / Deterministic Coupled Sampling Space, Stochastic / Uncertainty, Stochastic Coupled Sampling Space, and Planner / Mission Evaluation static pages
 - Flow Fields Demo opens, switches demo modes, and enables an additive layer
 - ROI Generator Demo opens, switches distributions, regenerates, and returns to main menu
 - level select opens

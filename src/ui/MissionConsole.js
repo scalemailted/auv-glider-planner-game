@@ -66,6 +66,8 @@ export class MissionConsole {
         <div class="hud-muted">Guided interactive explanations for the models used by the simulator.</div>
         ${menuGroupHtml('Concept Pages', [
           menuLinkHtml('labs/index.html', 'Learning Labs Index', 'ANCHOR Learning Labs course roadmap and syllabus.', 'primary'),
+          menuLinkHtml('labs/scientific-computational-modeling.html', 'Scientific Computational Modeling', 'Learn what scientific computational models are and how rules, equations, observations, and validation fit together.', 'primary'),
+          menuLinkHtml('labs/ca-for-ocean-relevant-processes.html', 'CA for Ocean-Relevant Processes', 'Learn how CA/grid-process models can honestly represent ocean-relevant event layers and where their limits are.', 'primary'),
           menuLinkHtml('labs/deterministic-spatiotemporal-processes.html', 'Deterministic Spatiotemporal Processes', 'Learn how local update rules create evolving fields and sampling opportunities.', 'primary'),
           menuLinkHtml('labs/deterministic-dynamic-flow-fields.html', 'Deterministic Dynamic Flow Fields', 'Learn how vector current fields describe direction, magnitude, particles, and deterministic flow evolution.', 'primary'),
           menuLinkHtml('labs/oracle-deterministic-coupled-sampling-space.html', 'Oracle / Deterministic Coupled Sampling Space', 'Learn how known process, flow, constraints, and mission context form a true sampling objective.', 'primary'),

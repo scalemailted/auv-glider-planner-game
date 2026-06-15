@@ -701,3 +701,7 @@ The visible Process Lab mode plus the context-specific model or analog selector 
 `referenceSignature*` fields remain for compatibility and represent the mapped observable pattern, not the primary selected example. New consumers should prefer the `processExample` block in demo/scenario exports. `processExample.mappedReferenceSignatureId` should match the legacy flat `referenceSignatureId`.
 
 Ocean-Relevant Process Analogs are educational event/process-layer analogs. They are not calibrated flow models, ocean forecasts, uncertainty models, or mission planners; flow coupling and uncertainty realism belong in the coupled and uncertainty demos.
+
+## Learning Lab Foundation Notes
+
+The Learning Labs now include foundation pages for Scientific Computational Modeling and CA for Ocean-Relevant Processes. These pages state the current claim boundary: CA/grid-process layers are useful teaching models and event/process generators, but they are not final ocean simulators or final adaptive-sampling priority models. Future higher-fidelity models should add advection, diffusion, source/sink, decay/growth, flow coupling, stochastic forecast/belief, observations, uncertainty, acquisition functions, and route-aware mission criteria.

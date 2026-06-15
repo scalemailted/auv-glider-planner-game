@@ -1,0 +1,242 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Scientific Computational Modeling | ANCHOR Learning Labs</title>
+  <link rel="stylesheet" href="../css/labs.css" />
+</head>
+<body>
+  <main class="lab-shell">
+    <header class="lab-header">
+      <nav class="lab-nav" aria-label="Learning Labs navigation">
+        <a href="index.html">Back to Learning Labs</a>
+        <a href="../index.html">Open Main App</a>
+        <a href="../index.html#simulation-lab">Open Simulation Lab</a>
+      </nav>
+    </header>
+
+    <section class="lab-hero">
+      <div>
+        <p class="lab-kicker">Foundation A</p>
+        <h1>Scientific Computational Modeling</h1>
+        <p class="lab-subtitle">How scientists turn assumptions about the world into executable models, simulations, predictions, and tests.</p>
+        <div class="lab-badges">
+          <span class="lab-claim-badge teaching">Exact CA teaching model</span>
+          <span class="lab-claim-badge analog">Simplified CA/grid-process analog</span>
+          <span class="lab-claim-badge synthetic">Science-inspired synthetic model</span>
+          <span class="lab-claim-badge future">Future higher-fidelity model</span>
+          <span class="lab-claim-badge warning">Not a calibrated ocean simulator</span>
+        </div>
+        <div class="lab-actions">
+          <a class="lab-button" href="index.html">Back to Learning Labs</a>
+          <a class="lab-button primary" href="../index.html#simulation-lab">Open Simulation Lab</a>
+          <a class="lab-button" href="ca-for-ocean-relevant-processes.html">Continue to CA for Ocean-Relevant Processes</a>
+        </div>
+      </div>
+      <figure class="lab-figure" aria-label="Model ladder overview">
+        <div class="lab-roadmap ladder">
+          <div>scientific model</div>
+          <div>state variables</div>
+          <div>rules / equations / probability</div>
+          <div>simulation</div>
+          <div>validation</div>
+          <div>mission planning criteria</div>
+        </div>
+        <figcaption class="lab-caption"><strong>What to notice:</strong> a model is executable reasoning, not just a picture.</figcaption>
+      </figure>
+    </section>
+
+    <div class="lab-layout">
+      <aside class="lab-toc" aria-label="Article table of contents">
+        <strong>Table of contents</strong>
+        <a href="#what">1. What is a scientific computational model?</a>
+        <a href="#observe">2. Why model instead of only observe?</a>
+        <a href="#ingredients">3. State, rules, parameters, and outputs</a>
+        <a href="#deterministic">4. Deterministic models</a>
+        <a href="#ca-first">5. Cellular automata as a first modeling language</a>
+        <a href="#famous-ca">6. Famous CA examples</a>
+        <a href="#updates">7. Update functions and field evolution</a>
+        <a href="#stochastic">8. Stochastic models</a>
+        <a href="#belief">9. Uncertainty, belief, and hidden truth</a>
+        <a href="#generalized">10. Fuzzy, continuous, and generalized CA</a>
+        <a href="#validation">11. Validation: when is a model useful?</a>
+        <a href="#ladder">Model fidelity ladder</a>
+        <a href="#mission-models">12. From CA to more realistic mission models</a>
+        <a href="#anchor-ladder">13. How ANCHOR uses the model ladder</a>
+        <a href="#sandboxes">14. Open the Process Lab and later sandboxes</a>
+      </aside>
+
+      <article class="lab-article">
+        <section id="what" class="lab-section">
+          <h2>1. What is a scientific computational model?</h2>
+          <p>A scientific model is a simplified representation of a real or imagined system. A computational model makes the representation executable: it stores state, applies rules or equations, advances time, generates predictions, and lets people test whether the behavior matches the intended phenomenon.</p>
+          <p><strong>CA is a rigorous first step in computational modeling, not a shortcut for fake hotspots.</strong></p>
+          <section class="lab-widget" data-modeling-widget="model-loop" aria-label="Model loop widget">
+            <h3>Model Loop Widget</h3>
+            <p>This widget steps through the basic cycle: state &rarr; rule/equation &rarr; next state &rarr; observation &rarr; validation.</p>
+            <p class="lab-what-to-notice"><strong>What to notice:</strong> a model is useful only when its assumptions and validation target are explicit.</p>
+          </section>
+        </section>
+
+        <section id="observe" class="lab-section">
+          <h2>2. Why model instead of only observe?</h2>
+          <p>Scientists observe the world, but observation alone is often sparse, noisy, expensive, delayed, or impossible at every place and time. A model lets scientists ask what might happen between measurements, compare competing assumptions, plan future observations, and decide where a vehicle should sample next.</p>
+          <div class="lab-callout">The best sample is not always the brightest cell. The best sample is often the one that most improves the mission's belief about a moving, uncertain ocean feature under flow, depth, energy, risk, and communication constraints.</div>
+        </section>
+
+        <section id="ingredients" class="lab-section">
+          <h2>3. State, rules, parameters, and outputs</h2>
+          <p>ANCHOR uses this structure repeatedly:</p>
+          <div class="lab-card-grid two">
+            <div class="lab-card"><h3>State</h3><p>What is true right now?</p></div>
+            <div class="lab-card"><h3>Rule / equation</h3><p>How does the state change?</p></div>
+            <div class="lab-card"><h3>Parameter</h3><p>What controls the behavior?</p></div>
+            <div class="lab-card"><h3>Observation</h3><p>What can we measure?</p></div>
+            <div class="lab-card"><h3>Prediction</h3><p>What does the model say should happen?</p></div>
+            <div class="lab-card"><h3>Validation</h3><p>Did the model behave like the intended phenomenon?</p></div>
+          </div>
+          <div class="lab-equation-grid">
+            <div class="lab-math"><code>X(t+1) = F(X(t))</code><div class="lab-translation"><strong>In words:</strong> the next whole-world state is produced by applying an update function to the current whole-world state.</div></div>
+            <div class="lab-math"><code>x_i(t+1) = f(x_i(t), N_i(t), theta)</code><div class="lab-translation"><strong>In words:</strong> the next state of cell i depends on its current state, its neighborhood, and parameters.</div></div>
+            <div class="lab-math"><code>X(t+1) ~ P(X(t+1) | X(t))</code><div class="lab-translation"><strong>In words:</strong> the next state is sampled from a probability model conditioned on the current state.</div></div>
+            <div class="lab-math"><code>z_i = T(x_i,y_i,t_i) + epsilon_i</code><div class="lab-translation"><strong>In words:</strong> observation i is the hidden truth at a place and time plus sensor or environmental noise.</div></div>
+            <div class="lab-math"><code>belief_next = update(belief_current, observation, model)</code><div class="lab-translation"><strong>In words:</strong> new evidence changes what the mission believes about the world.</div></div>
+          </div>
+        </section>
+
+        <section id="deterministic" class="lab-section">
+          <h2>4. Deterministic models</h2>
+          <p>A deterministic model gives the same future when it starts from the same state with the same parameters. This is useful for teaching because students can replay a scenario and inspect cause and effect.</p>
+          <div class="lab-callout"><code>same initial state + same rule + same parameters = same future</code></div>
+          <section class="lab-widget" data-modeling-widget="deterministic-vs-stochastic" aria-label="Deterministic versus stochastic widget">
+            <h3>Deterministic vs Stochastic Widget</h3>
+            <p>Step the same initial pattern as a deterministic update and as a seeded stochastic possible outcome.</p>
+            <p class="lab-what-to-notice"><strong>What to notice:</strong> deterministic replay is exact; stochastic replay is repeatable only because the random choice is seeded.</p>
+          </section>
+        </section>
+
+        <section id="ca-first" class="lab-section">
+          <h2>5. Cellular automata as a first modeling language</h2>
+          <p>Cellular automata are discrete dynamical systems. A CA has cells, a state set, an initial condition, neighborhoods, and local update rules. Local rules induce global field evolution.</p>
+          <p><strong>CA is a rigorous first step in computational modeling, not a shortcut for fake hotspots.</strong> It teaches state, neighborhood, update rule, time step, validation, and emergent behavior before students move to continuous fields, uncertainty, and route-aware mission criteria.</p>
+          <section class="lab-widget" data-modeling-widget="local-rule-neighborhood" aria-label="Local rule neighborhood widget">
+            <h3>Local Rule / Neighborhood Widget</h3>
+            <p>Click neighbor cells and change the rule to preview one local update.</p>
+            <p class="lab-what-to-notice"><strong>What to notice:</strong> a local rule reads nearby cells, but repeated updates can create large-scale structure.</p>
+          </section>
+        </section>
+
+        <section id="famous-ca" class="lab-section">
+          <h2>6. Famous CA examples</h2>
+          <p>These examples are useful because each isolates a modeling idea. They are teaching models, not final ocean simulators.</p>
+          <div class="lab-card-grid">
+            <article class="lab-card lab-model-card"><span class="lab-claim-badge teaching">Exact CA teaching model</span><h3>Conway's Game of Life</h3><p><strong>Teaches:</strong> birth, death, emergence, oscillators, and moving structures.</p><p><strong>State vocabulary:</strong> alive, inactive.</p><p><strong>Local update idea:</strong> a live cell survives with two or three neighbors; an inactive cell is born with exactly three neighbors.</p><p><strong>Emerges:</strong> still lifes, oscillators, gliders, and patch reorganization.</p><p><strong>What it is not:</strong> not an ocean model.</p><p><strong>Mission connection:</strong> local rules can create global structure that later becomes a process layer.</p></article>
+            <article class="lab-card lab-model-card"><span class="lab-claim-badge teaching">Exact CA teaching model</span><h3>Forest Fire CA</h3><p><strong>Teaches:</strong> fronts, susceptible fuel, ignition, and consumed trails.</p><p><strong>State vocabulary:</strong> empty, tree/susceptible, burning, consumed.</p><p><strong>Local update idea:</strong> susceptible cells ignite near burning neighbors; burning cells cool or become consumed.</p><p><strong>Emerges:</strong> propagating boundaries and fragmented trails.</p><p><strong>What it is not:</strong> not a calibrated wildfire, bloom, or hydrodynamic model.</p><p><strong>Mission connection:</strong> fronts teach why boundaries can be more valuable than centers.</p></article>
+            <article class="lab-card lab-model-card"><span class="lab-claim-badge teaching">Exact CA teaching model</span><h3>SIR / Epidemic CA</h3><p><strong>Teaches:</strong> spread, recovery, immunity, and local contact pressure.</p><p><strong>State vocabulary:</strong> susceptible, infected, recovered.</p><p><strong>Local update idea:</strong> susceptible cells near infected neighbors can become infected, then recover.</p><p><strong>Emerges:</strong> expanding patches and recovery shadows.</p><p><strong>What it is not:</strong> not a public-health forecast or ocean forecast.</p><p><strong>Mission connection:</strong> it frames diffusive spread and uncertain contact zones.</p></article>
+            <article class="lab-card lab-model-card"><span class="lab-claim-badge teaching">Exact CA teaching model</span><h3>Greenberg-Hastings / Excitable Media</h3><p><strong>Teaches:</strong> wave fronts, refractory memory, and recovery cycles.</p><p><strong>State vocabulary:</strong> resting, excited, refractory.</p><p><strong>Local update idea:</strong> resting cells excite near active neighbors, then pass through refractory states.</p><p><strong>Emerges:</strong> waves, spirals, and recovery trails.</p><p><strong>What it is not:</strong> not a full reaction-diffusion solver.</p><p><strong>Mission connection:</strong> it explains moving crests and recent-activity wakes.</p></article>
+            <article class="lab-card lab-model-card"><span class="lab-claim-badge teaching">Exact CA teaching model</span><h3>Sandpile / Avalanche</h3><p><strong>Teaches:</strong> thresholds, buildup, cascades, and sudden releases.</p><p><strong>State vocabulary:</strong> load, threshold, toppled/released.</p><p><strong>Local update idea:</strong> load accumulates until a threshold redistributes to neighbors.</p><p><strong>Emerges:</strong> rare cascades and bursty activity.</p><p><strong>What it is not:</strong> not a calibrated geophysical hazard model.</p><p><strong>Mission connection:</strong> it motivates monitoring low-probability high-impact transitions.</p></article>
+            <article class="lab-card lab-model-card"><span class="lab-claim-badge teaching">Exact CA teaching model</span><h3>Wa-Tor / Predator-Prey</h3><p><strong>Teaches:</strong> interacting populations, pursuit, resource cycles, and migration waves.</p><p><strong>State vocabulary:</strong> empty, prey, predator.</p><p><strong>Local update idea:</strong> prey move or reproduce; predators move toward prey and may starve.</p><p><strong>Emerges:</strong> cycles, pursuit fronts, and patch collapse.</p><p><strong>What it is not:</strong> not a calibrated ecosystem model.</p><p><strong>Mission connection:</strong> it shows coupled state variables in one grid.</p></article>
+            <article class="lab-card lab-model-card"><span class="lab-claim-badge teaching">Exact CA teaching model</span><h3>Traffic CA</h3><p><strong>Teaches:</strong> congestion, density waves, blockage, and release.</p><p><strong>State vocabulary:</strong> empty, occupied, moving, jammed.</p><p><strong>Local update idea:</strong> occupied cells advance if downstream space is open.</p><p><strong>Emerges:</strong> jams, gaps, and stop-go waves.</p><p><strong>What it is not:</strong> not a nautical traffic planner.</p><p><strong>Mission connection:</strong> it foreshadows reachability and route-cost constraints.</p></article>
+            <article class="lab-card lab-model-card"><span class="lab-claim-badge teaching">Exact CA teaching model</span><h3>Wireworld</h3><p><strong>Teaches:</strong> signal propagation, pathways, memory, and logic-like structures.</p><p><strong>State vocabulary:</strong> empty, conductor, signal head, signal tail.</p><p><strong>Local update idea:</strong> conductor cells activate when adjacent to a signal head; heads become tails.</p><p><strong>Emerges:</strong> pulses along constrained paths.</p><p><strong>What it is not:</strong> not a communications network simulator.</p><p><strong>Mission connection:</strong> it shows process propagation along permitted structure.</p></article>
+          </div>
+        </section>
+
+        <section id="updates" class="lab-section">
+          <h2>7. Update functions and field evolution</h2>
+          <p>An update function is the executable rule. In a grid model, the local update runs for every cell, and the collection of local updates creates the next field.</p>
+          <div class="lab-process-stack">
+            <div>current field <span><code>X(t)</code></span></div>
+            <div>neighborhood reads <span><code>N_i(t)</code></span></div>
+            <div>local rule <span><code>f(...)</code></span></div>
+            <div>next field <span><code>X(t+1)</code></span></div>
+          </div>
+        </section>
+
+        <section id="stochastic" class="lab-section">
+          <h2>8. Stochastic models</h2>
+          <p>Stochastic models include probability. They are useful when the same current state can plausibly lead to multiple futures, or when the hidden state is not fully known.</p>
+          <div class="lab-math"><code>X(t+1) ~ P(X(t+1) | X(t))</code><div class="lab-translation"><strong>In words:</strong> the future is a distribution of possible states, not one guaranteed state.</div></div>
+        </section>
+
+        <section id="belief" class="lab-section">
+          <h2>9. Uncertainty, belief, and hidden truth</h2>
+          <p>More science-aligned mission models distinguish hidden truth, forecast state, observations, belief, uncertainty, hidden-event probability, and visible planning state. The vehicle rarely sees the full truth directly.</p>
+          <div class="lab-equation-grid">
+            <div class="lab-math"><code>z_i = T(x_i,y_i,t_i) + epsilon_i</code><div class="lab-translation"><strong>In words:</strong> a measurement is truth plus noise.</div></div>
+            <div class="lab-math"><code>belief_next = update(belief_current, observation, model)</code><div class="lab-translation"><strong>In words:</strong> the mission updates what it believes after it samples.</div></div>
+          </div>
+        </section>
+
+        <section id="generalized" class="lab-section">
+          <h2>10. Fuzzy, continuous, and generalized CA</h2>
+          <p>Generalized CA can be asynchronous, stochastic, multi-state, continuous or fuzzy, extended-neighborhood, or non-uniform. This is the bridge between binary teaching models and richer field models.</p>
+          <section class="lab-widget" data-modeling-widget="fuzzy-ca" aria-label="Fuzzy continuous CA widget">
+            <h3>Fuzzy / Continuous CA Widget</h3>
+            <p>Compare binary cell values against continuous intensity or membership values.</p>
+            <p class="lab-what-to-notice"><strong>What to notice:</strong> a continuous field can still be updated on a grid, but it no longer claims every cell is simply on or off.</p>
+          </section>
+        </section>
+
+        <section id="validation" class="lab-section">
+          <h2>11. Validation: when is a model useful?</h2>
+          <p>A model is useful when it supports a declared purpose. A teaching CA can be valid for showing emergence while still being invalid as a calibrated ocean simulator.</p>
+          <div class="lab-card-grid two">
+            <div class="lab-card"><h3>Useful validation question</h3><p>Does this rule produce the intended local-to-global behavior?</p></div>
+            <div class="lab-card"><h3>Overclaim to avoid</h3><p>This CA heatmap is not by itself a final ocean forecast or AUV adaptive-sampling priority.</p></div>
+          </div>
+        </section>
+
+        <section id="ladder" class="lab-section">
+          <h2>Model fidelity ladder</h2>
+          <div class="lab-card-grid">
+            <article class="lab-card"><h3>1. Exact / famous CA examples</h3><p><strong>Adds:</strong> known rule systems.</p><p><strong>More realistic because:</strong> it makes local dynamics explicit.</p><p><strong>Still does not claim:</strong> calibrated environmental prediction.</p><p><strong>ANCHOR place:</strong> Process Lab / Foundational CA Models.</p></article>
+            <article class="lab-card"><h3>2. Simplified CA/grid-process analogs</h3><p><strong>Adds:</strong> event-layer analogs such as fronts, blooms, recovery, or freshness.</p><p><strong>More realistic because:</strong> it maps rule behavior to mission-relevant process roles.</p><p><strong>Still does not claim:</strong> full ocean physics.</p><p><strong>ANCHOR place:</strong> Ocean-Relevant Process Analogs.</p></article>
+            <article class="lab-card"><h3>3. Generalized CA: stochastic, multi-state, fuzzy/continuous, extended-neighborhood, non-uniform</h3><p><strong>Adds:</strong> richer states, probabilities, continuous values, and heterogeneous rules.</p><p><strong>More realistic because:</strong> natural systems are rarely binary and uniform.</p><p><strong>Still does not claim:</strong> calibrated transport or inference.</p><p><strong>ANCHOR place:</strong> Custom Composer / Rule Allocation Sandbox.</p></article>
+            <article class="lab-card"><h3>4. Deterministic update-function fields</h3><p><strong>Adds:</strong> explicit field update functions.</p><p><strong>More realistic because:</strong> the process can be treated as a field model.</p><p><strong>Still does not claim:</strong> uncertainty-aware belief.</p><p><strong>ANCHOR place:</strong> Process Lab and future engine contracts.</p></article>
+            <article class="lab-card"><h3>5. Flow-coupled scalar fields</h3><p><strong>Adds:</strong> advection by current fields, diffusion, source/sink, and decay/growth terms.</p><p><strong>More realistic because:</strong> ocean features move with flow.</p><p><strong>Still does not claim:</strong> perfect forecast or observation model.</p><p><strong>ANCHOR place:</strong> Flow Fields and Coupled Fields sandboxes.</p></article>
+            <article class="lab-card"><h3>6. Hidden truth vs forecast/belief fields</h3><p><strong>Adds:</strong> truth, expected state, belief, and uncertainty separation.</p><p><strong>More realistic because:</strong> planners act with imperfect knowledge.</p><p><strong>Still does not claim:</strong> production data assimilation.</p><p><strong>ANCHOR place:</strong> Uncertainty / Forecast Demo.</p></article>
+            <article class="lab-card"><h3>7. Observation and sensor-noise models</h3><p><strong>Adds:</strong> measurement locations, timing, and noisy sensor readings.</p><p><strong>More realistic because:</strong> gliders sample sparse data.</p><p><strong>Still does not claim:</strong> full sensor calibration.</p><p><strong>ANCHOR place:</strong> future observation-model sandbox.</p></article>
+            <article class="lab-card"><h3>8. GP/GMRF/data-assimilation-style belief models</h3><p><strong>Adds:</strong> structured posterior belief and update logic.</p><p><strong>More realistic because:</strong> samples alter belief over space and time.</p><p><strong>Still does not claim:</strong> this phase implements GP, GMRF, or EnKF inference.</p><p><strong>ANCHOR place:</strong> future uncertainty engine.</p></article>
+            <article class="lab-card"><h3>9. Acquisition / sampling-priority models</h3><p><strong>Adds:</strong> value, uncertainty, boundary value, hidden-event suspicion, staleness, and cost.</p><p><strong>More realistic because:</strong> sample choice depends on information gain and mission constraints.</p><p><strong>Still does not claim:</strong> priority equals intensity.</p><p><strong>ANCHOR place:</strong> stochastic coupled sampling spaces.</p></article>
+            <article class="lab-card"><h3>10. Route planning and multi-agent mission evaluation</h3><p><strong>Adds:</strong> route cost, flow assist/opposition, risk, energy, surfacing windows, redundancy, and regret.</p><p><strong>More realistic because:</strong> vehicles must move through constraints.</p><p><strong>Still does not claim:</strong> full operational autonomy.</p><p><strong>ANCHOR place:</strong> Planner / Mission Evaluation and future benchmark modes.</p></article>
+          </div>
+        </section>
+
+        <section id="mission-models" class="lab-section">
+          <h2>12. From CA to more realistic mission models</h2>
+          <p>CA / grid-process models are useful for teaching local update rules and generating simplified event/process layers.</p>
+          <p>More science-aligned environmental models use advection, diffusion, source/sink, decay/growth, flow coupling, hidden truth, forecast, belief, uncertainty, observations, data assimilation, and acquisition logic.</p>
+          <p>Mission-planning models use sampling priority, route cost, flow assist/opposition, hazard/risk, depth profile, energy, surfacing windows, redundancy, and regret.</p>
+        </section>
+
+        <section id="anchor-ladder" class="lab-section">
+          <h2>13. How ANCHOR uses the model ladder</h2>
+          <p>ANCHOR starts with CA and grid-process sandboxes because they are inspectable. Later sandboxes add flow, coupling, stochastic forecast/belief, observations, acquisition value, route constraints, debrief, and benchmarks.</p>
+          <div class="lab-callout"><code>CA &rarr; generalized CA / fuzzy CA &rarr; deterministic update functions &rarr; flow-coupled scalar fields &rarr; stochastic belief / uncertainty &rarr; acquisition / sampling priority &rarr; mission planning criteria</code></div>
+        </section>
+
+        <section id="sandboxes" class="lab-section">
+          <h2>14. Open the Process Lab and later sandboxes</h2>
+          <p>Use the Process Lab to learn local-rule dynamics. Use Flow Fields, Coupled Fields, Uncertainty / Forecast, and Planner / Mission Evaluation to learn why mission-grade sampling needs more than a bright heatmap.</p>
+          <p><a class="lab-button" href="index.html">Back to Learning Labs</a> <a class="lab-button" href="../index.html">Open Main App</a> <a class="lab-button primary" href="../index.html#simulation-lab">Open Simulation Lab</a></p>
+        </section>
+
+        <section id="reading" class="lab-section">
+          <h2>Suggested further reading</h2>
+          <p>Suggested further reading; titles are listed for orientation and are not links.</p>
+          <ul>
+            <li>A Comprehensive Taxonomy of Cellular Automata</li>
+            <li>AUV Adaptive Sampling Methods: A Review</li>
+            <li>Persistent Ocean Monitoring with Underwater Gliders</li>
+            <li>Gaussian Processes for Machine Learning</li>
+            <li>Data Assimilation / Ensemble Kalman Filter references</li>
+            <li>Planning Algorithms</li>
+          </ul>
+        </section>
+      </article>
+    </div>
+  </main>
+  <script type="module" src="../src/labs/widgets/ScientificModelingWidgets.js"></script>
+</body>
+</html>

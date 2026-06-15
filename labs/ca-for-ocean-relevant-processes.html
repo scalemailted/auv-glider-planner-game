@@ -1,0 +1,396 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Cellular Automata for Ocean-Relevant Processes | ANCHOR Learning Labs</title>
+  <link rel="stylesheet" href="../css/labs.css" />
+</head>
+<body>
+  <main class="lab-shell">
+    <header class="lab-header">
+      <nav class="lab-nav" aria-label="Learning Labs navigation">
+        <a href="index.html">Back to Learning Labs</a>
+        <a href="scientific-computational-modeling.html">Scientific Computational Modeling</a>
+        <a href="../index.html">Open Main App</a>
+        <a href="../index.html#simulation-lab">Open Simulation Lab</a>
+      </nav>
+    </header>
+
+    <section class="lab-hero">
+      <div>
+        <p class="lab-kicker">Foundation B</p>
+        <h1>Cellular Automata for Ocean-Relevant Processes</h1>
+        <p class="lab-subtitle">How local-rule process models can approximate environmental event layers such as blooms, plumes, fronts, turbidity events, and recovery zones.</p>
+        <div class="lab-badges">
+          <span class="lab-claim-badge analog">Simplified CA/grid-process analog</span>
+          <span class="lab-claim-badge synthetic">Science-inspired synthetic model</span>
+          <span class="lab-claim-badge future">Future higher-fidelity model</span>
+          <span class="lab-claim-badge warning">Not a calibrated ocean simulator</span>
+        </div>
+        <div class="lab-actions">
+          <a class="lab-button" href="index.html">Back to Learning Labs</a>
+          <a class="lab-button primary" href="../index.html#simulation-lab">Open Simulation Lab</a>
+          <a class="lab-button" href="deterministic-spatiotemporal-processes.html">Open Deterministic Processes Lab</a>
+        </div>
+      </div>
+      <figure class="lab-figure" aria-label="Ocean process modeling ladder">
+        <div class="lab-roadmap ladder">
+          <div>CA event layer</div>
+          <div>flow-coupled process</div>
+          <div>hidden truth / forecast</div>
+          <div>belief update</div>
+          <div>sampling priority</div>
+          <div>route-aware mission</div>
+        </div>
+        <figcaption class="lab-caption"><strong>What to notice:</strong> event intensity is one input to planning, not the final sampling decision.</figcaption>
+      </figure>
+    </section>
+
+    <div class="lab-layout">
+      <aside class="lab-toc" aria-label="Article table of contents">
+        <strong>Table of contents</strong>
+        <a href="#why">1. Why use CA for ocean-relevant process analogs?</a>
+        <a href="#can">2. What CA can model honestly</a>
+        <a href="#cannot">3. What CA cannot model by itself</a>
+        <a href="#bloom">4. Bloom growth / decay</a>
+        <a href="#river-plume">5. River plume front</a>
+        <a href="#oil-plume">6. Oil / chemical plume</a>
+        <a href="#plastic">7. Marine plastic / drifting pollutant</a>
+        <a href="#turbidity">8. Turbidity event / density current</a>
+        <a href="#thermocline">9. Thermocline / water-mass boundary</a>
+        <a href="#eddy">10. Eddy-trapped patch</a>
+        <a href="#runoff">11. Shoreline runoff pulse</a>
+        <a href="#hypoxia">12. Hypoxia / recovery zone</a>
+        <a href="#freshness">13. Persistent monitoring / freshness field</a>
+        <a href="#flow">14. How flow coupling changes the model</a>
+        <a href="#uncertainty">15. How uncertainty changes the sampling priority</a>
+        <a href="#priority">16. Event intensity is not sampling priority</a>
+        <a href="#mission-grade">17. From CA analogs to more true environmental models</a>
+        <a href="#anchor">18. How ANCHOR uses these as mission scenarios</a>
+      </aside>
+
+      <article class="lab-article">
+        <section id="why" class="lab-section">
+          <h2>1. Why use CA for ocean-relevant process analogs?</h2>
+          <p>CA and grid-process methods are useful when a class is learning how local state, neighborhood influence, and time stepping create moving environmental patterns. They can honestly represent event/process layers: where a simplified bloom is active, where a plume edge might be, where recovery is happening, or where revisit value is increasing.</p>
+          <p><strong>CA is a rigorous first step in computational modeling, not a shortcut for fake hotspots.</strong></p>
+          <p>The best sample is not always the brightest cell. The best sample is often the one that most improves the mission's belief about a moving, uncertain ocean feature under flow, depth, energy, risk, and communication constraints.</p>
+        </section>
+
+        <section id="can" class="lab-section">
+          <h2>2. What CA can model honestly</h2>
+          <p>CA / grid-process models are useful for teaching local update rules and generating simplified event/process layers.</p>
+          <div class="lab-card-grid two">
+            <div class="lab-card"><h3>Honest uses</h3><p>Local activation, fronts, patch growth, recovery, source cells, thresholds, domain rules, and freshness/revisit timing.</p></div>
+            <div class="lab-card"><h3>Mission value</h3><p>They create inspectable scenarios where students can reason about sampling a moving or changing field.</p></div>
+          </div>
+        </section>
+
+        <section id="cannot" class="lab-section">
+          <h2>3. What CA cannot model by itself</h2>
+          <p>Simple CA is not a calibrated hydrodynamic ocean simulator. CA alone does not produce final AUV adaptive-sampling priority.</p>
+          <div class="lab-callout">More science-aligned environmental models use advection, diffusion, source/sink, decay/growth, flow coupling, hidden truth, forecast, belief, uncertainty, observations, data assimilation, and acquisition logic.</div>
+          <div class="lab-callout">Mission-planning models use sampling priority, route cost, flow assist/opposition, hazard/risk, depth profile, energy, surfacing windows, redundancy, and regret.</div>
+        </section>
+
+        <section id="bloom" class="lab-section">
+          <h2>4. Bloom growth / decay</h2>
+          <article class="lab-card lab-process-card">
+            <h3>Bloom Growth / Decay</h3>
+            <p><strong>What it models:</strong> a simplified biological or optical event layer with patch expansion and weakening.</p>
+            <p><strong>Scientific inspiration:</strong> local growth, mortality, nutrients, and changing visibility.</p>
+            <p><strong>CA/grid mechanism:</strong> active cells grow into nearby susceptible cells; older cells decay or recover.</p>
+            <p><strong>State variables:</strong> background, susceptible, active bloom, decaying, recovered.</p>
+            <p><strong>Local update idea:</strong> cells near active bloom cells become active; active cells eventually decay.</p>
+            <p><strong>What the colors mean:</strong> bright cells are active bloom; dim cells are decaying or low intensity.</p>
+            <p><strong>What it teaches:</strong> intensity, edge growth, and revisit timing.</p>
+            <p><strong>Requires flow coupling?</strong> yes, for physical transport or deformation.</p>
+            <p><strong>Requires uncertainty?</strong> yes, for realistic mission decisions.</p>
+            <p><strong>Mission-planning relevance:</strong> sample edges, fronts, uncertain growth zones, and stale regions.</p>
+            <p><strong>Sampling strategy:</strong> sample boundary and uncertainty, not only the brightest center.</p>
+            <p><strong>What this is not:</strong> not a calibrated ecology, chlorophyll, or harmful algal bloom forecast.</p>
+            <p><strong>Future higher-fidelity version:</strong> reaction-advection-diffusion with nutrients, light, mortality, sensor noise, and acquisition value.</p>
+          </article>
+          <section class="lab-widget" data-ocean-ca-widget="bloom-growth-decay" aria-label="Bloom growth decay widget">
+            <h3>Bloom Growth / Decay Widget</h3>
+            <p>Step a simplified patch that grows, weakens, and raises revisit questions.</p>
+            <p class="lab-what-to-notice"><strong>What to notice:</strong> patch center intensity and sampling priority can diverge.</p>
+          </section>
+        </section>
+
+        <section id="river-plume" class="lab-section">
+          <h2>5. River plume front</h2>
+          <article class="lab-card lab-process-card">
+            <h3>River Plume Front</h3>
+            <p><strong>What it models:</strong> a coastal source creates a spreading freshwater or contaminant boundary.</p>
+            <p><strong>Scientific inspiration:</strong> river discharge, salinity contrast, coastal transport, and mixing.</p>
+            <p><strong>CA/grid mechanism:</strong> source cells + propagating front + diffusive spread.</p>
+            <p><strong>State variables:</strong> ocean background, source, plume interior, plume edge, dissipating trail.</p>
+            <p><strong>Local update idea:</strong> cells near active plume cells become plume-edge cells; edge cells can become interior plume cells or dissipate.</p>
+            <p><strong>What the colors mean:</strong> bright source/interior, medium uncertain edge, dim dissipating trail.</p>
+            <p><strong>What it teaches:</strong> source, boundary, spread, and why edge uncertainty matters.</p>
+            <p><strong>Requires flow coupling?</strong> yes - physical downstream transport belongs in the Flow Fields and Coupled Sampling Space labs.</p>
+            <p><strong>Requires uncertainty?</strong> yes, because the useful target is often the uncertain boundary.</p>
+            <p><strong>Mission-planning relevance:</strong> validate plume position and boundary displacement.</p>
+            <p><strong>Sampling strategy:</strong> sample the uncertain boundary, not only the plume center.</p>
+            <p><strong>What this is not:</strong> not a calibrated hydrodynamic or salinity model.</p>
+            <p><strong>Future higher-fidelity version:</strong> advection-diffusion-source-decay model with flow field F(x,y,t), sensor noise, forecast uncertainty, and acquisition value.</p>
+          </article>
+          <section class="lab-widget" data-ocean-ca-widget="plume-front" aria-label="Plume front widget">
+            <h3>Plume / Front Analog Widget</h3>
+            <p>Step a source-fed plume analog and watch the edge move.</p>
+            <p class="lab-what-to-notice"><strong>What to notice:</strong> the uncertain edge can be more mission-relevant than the intense source.</p>
+          </section>
+        </section>
+
+        <section id="oil-plume" class="lab-section">
+          <h2>6. Oil / chemical plume</h2>
+          <article class="lab-card lab-process-card">
+            <h3>Oil / Chemical Plume</h3>
+            <p><strong>What it models:</strong> a contaminant event layer with source, spread, dilution, and decay.</p>
+            <p><strong>Scientific inspiration:</strong> pollutant release, chemical weathering, and transport.</p>
+            <p><strong>CA/grid mechanism:</strong> source injection, local spread, decay, and thresholded concern zones.</p>
+            <p><strong>State variables:</strong> clean, contaminated edge, contaminated interior, decaying, restricted.</p>
+            <p><strong>Local update idea:</strong> contamination expands to neighbors, decays over time, and may create hazard penalties.</p>
+            <p><strong>What the colors mean:</strong> brighter means more contaminant intensity, not automatically higher priority.</p>
+            <p><strong>What it teaches:</strong> source/sink thinking and hazard-aware sampling.</p>
+            <p><strong>Requires flow coupling?</strong> yes.</p>
+            <p><strong>Requires uncertainty?</strong> yes.</p>
+            <p><strong>Mission-planning relevance:</strong> balance validation, safety, and reachability.</p>
+            <p><strong>Sampling strategy:</strong> sample safe boundary transects and forecast-error regions.</p>
+            <p><strong>What this is not:</strong> not a fate-and-transport model.</p>
+            <p><strong>Future higher-fidelity version:</strong> flow-coupled advection-diffusion-decay with hazard masks and sensor limits.</p>
+          </article>
+        </section>
+
+        <section id="plastic" class="lab-section">
+          <h2>7. Marine plastic / drifting pollutant</h2>
+          <article class="lab-card lab-process-card">
+            <h3>Marine Plastic / Drifting Pollutant</h3>
+            <p><strong>What it models:</strong> a drifting accumulation or debris-probability layer.</p>
+            <p><strong>Scientific inspiration:</strong> floating debris, convergence zones, and retention regions.</p>
+            <p><strong>CA/grid mechanism:</strong> local accumulation, leakage, and directed neighborhood bias.</p>
+            <p><strong>State variables:</strong> clear, low debris, high debris, trapped, dispersing.</p>
+            <p><strong>Local update idea:</strong> nearby debris increases local debris likelihood; trapped zones hold activity longer.</p>
+            <p><strong>What the colors mean:</strong> debris likelihood or event intensity.</p>
+            <p><strong>What it teaches:</strong> accumulation and retention differ from simple spread.</p>
+            <p><strong>Requires flow coupling?</strong> yes.</p>
+            <p><strong>Requires uncertainty?</strong> yes.</p>
+            <p><strong>Mission-planning relevance:</strong> validate convergence and locate uncertain accumulation bands.</p>
+            <p><strong>Sampling strategy:</strong> sample convergence edges and forecast disagreement zones.</p>
+            <p><strong>What this is not:</strong> not a calibrated particle-tracking model.</p>
+            <p><strong>Future higher-fidelity version:</strong> Lagrangian particle or concentration model with currents, windage, uncertainty, and observation updates.</p>
+          </article>
+        </section>
+
+        <section id="turbidity" class="lab-section">
+          <h2>8. Turbidity event / density current</h2>
+          <article class="lab-card lab-process-card">
+            <h3>Turbidity Event / Density Current</h3>
+            <p><strong>What it models:</strong> a simplified turbid water event or downslope density-driven pulse.</p>
+            <p><strong>Scientific inspiration:</strong> sediment resuspension, runoff, and density-driven flow.</p>
+            <p><strong>CA/grid mechanism:</strong> threshold release, directed propagation, and decay.</p>
+            <p><strong>State variables:</strong> clear, loaded, turbid, settling, recovered.</p>
+            <p><strong>Local update idea:</strong> loaded cells activate near a trigger and spread along a preferred direction.</p>
+            <p><strong>What the colors mean:</strong> turbidity intensity and recent settling.</p>
+            <p><strong>What it teaches:</strong> threshold events and trailing recovery.</p>
+            <p><strong>Requires flow coupling?</strong> yes.</p>
+            <p><strong>Requires uncertainty?</strong> yes.</p>
+            <p><strong>Mission-planning relevance:</strong> track leading edge, avoid unsafe zones, and revisit recovery areas.</p>
+            <p><strong>Sampling strategy:</strong> sample leading edge and settling gradient.</p>
+            <p><strong>What this is not:</strong> not a sediment transport or density-current solver.</p>
+            <p><strong>Future higher-fidelity version:</strong> bathymetry-aware transport with settling velocity, flow, and sensor noise.</p>
+          </article>
+        </section>
+
+        <section id="thermocline" class="lab-section">
+          <h2>9. Thermocline / water-mass boundary</h2>
+          <article class="lab-card lab-process-card">
+            <h3>Thermocline / Water-Mass Boundary</h3>
+            <p><strong>What it models:</strong> a simplified boundary between water masses or depth-layer properties.</p>
+            <p><strong>Scientific inspiration:</strong> fronts, stratification, and gradients.</p>
+            <p><strong>CA/grid mechanism:</strong> boundary cells shift, thicken, or weaken based on neighbors.</p>
+            <p><strong>State variables:</strong> water mass A, boundary, water mass B, mixed.</p>
+            <p><strong>Local update idea:</strong> boundary cells move where neighboring states disagree.</p>
+            <p><strong>What the colors mean:</strong> region identity and boundary uncertainty.</p>
+            <p><strong>What it teaches:</strong> gradients can matter more than extrema.</p>
+            <p><strong>Requires flow coupling?</strong> yes.</p>
+            <p><strong>Requires uncertainty?</strong> yes.</p>
+            <p><strong>Mission-planning relevance:</strong> boundary tracking and validation transects.</p>
+            <p><strong>Sampling strategy:</strong> cross the boundary, not only sample one side.</p>
+            <p><strong>What this is not:</strong> not a 3D stratified ocean model.</p>
+            <p><strong>Future higher-fidelity version:</strong> depth-aware thermodynamic model with observations, forecast uncertainty, and glider profile constraints.</p>
+          </article>
+        </section>
+
+        <section id="eddy" class="lab-section">
+          <h2>10. Eddy-trapped patch</h2>
+          <article class="lab-card lab-process-card">
+            <h3>Eddy-Trapped Patch</h3>
+            <p><strong>What it models:</strong> a patch retained inside a rotating or recirculating feature.</p>
+            <p><strong>Scientific inspiration:</strong> mesoscale/submesoscale eddies and retention zones.</p>
+            <p><strong>CA/grid mechanism:</strong> local persistence and circular neighborhood bias.</p>
+            <p><strong>State variables:</strong> background, trapped patch, edge, leaking trail.</p>
+            <p><strong>Local update idea:</strong> patch cells persist inside a retention mask and leak at edges.</p>
+            <p><strong>What the colors mean:</strong> retained intensity and uncertain boundary.</p>
+            <p><strong>What it teaches:</strong> persistence, recirculation, and boundary monitoring.</p>
+            <p><strong>Requires flow coupling?</strong> yes.</p>
+            <p><strong>Requires uncertainty?</strong> yes.</p>
+            <p><strong>Mission-planning relevance:</strong> map retention boundary and detect leakage.</p>
+            <p><strong>Sampling strategy:</strong> sample around the ring and suspected escape pathways.</p>
+            <p><strong>What this is not:</strong> not a vortex-resolving ocean simulation.</p>
+            <p><strong>Future higher-fidelity version:</strong> flow-driven tracer model with eddy velocity field and ensemble forecast spread.</p>
+          </article>
+        </section>
+
+        <section id="runoff" class="lab-section">
+          <h2>11. Shoreline runoff pulse</h2>
+          <article class="lab-card lab-process-card">
+            <h3>Shoreline Runoff Pulse</h3>
+            <p><strong>What it models:</strong> a short source pulse entering from shore.</p>
+            <p><strong>Scientific inspiration:</strong> stormwater, nutrients, sediments, and coastal discharge.</p>
+            <p><strong>CA/grid mechanism:</strong> boundary source cells activate, spread, then decay.</p>
+            <p><strong>State variables:</strong> clean, source pulse, active runoff, decaying, recovered.</p>
+            <p><strong>Local update idea:</strong> shoreline cells seed activity that moves into nearby water cells.</p>
+            <p><strong>What the colors mean:</strong> pulse strength and decayed trail.</p>
+            <p><strong>What it teaches:</strong> event timing and source-driven uncertainty.</p>
+            <p><strong>Requires flow coupling?</strong> yes.</p>
+            <p><strong>Requires uncertainty?</strong> yes.</p>
+            <p><strong>Mission-planning relevance:</strong> intercept event plume while respecting coastal hazards.</p>
+            <p><strong>Sampling strategy:</strong> sample cross-shore transects and forecast leading edge.</p>
+            <p><strong>What this is not:</strong> not a watershed or nearshore circulation model.</p>
+            <p><strong>Future higher-fidelity version:</strong> source-time-series plus coastal transport, bathymetry, and sensor observations.</p>
+          </article>
+        </section>
+
+        <section id="hypoxia" class="lab-section">
+          <h2>12. Hypoxia / recovery zone</h2>
+          <article class="lab-card lab-process-card">
+            <h3>Hypoxia / Recovery Zone</h3>
+            <p><strong>What it models:</strong> a low-oxygen event layer and later recovery.</p>
+            <p><strong>Scientific inspiration:</strong> oxygen depletion, respiration, mixing, and re-aeration.</p>
+            <p><strong>CA/grid mechanism:</strong> depletion spreads locally; recovery occurs after mixing or time.</p>
+            <p><strong>State variables:</strong> normal, stressed, hypoxic, recovering.</p>
+            <p><strong>Local update idea:</strong> stressed cells become hypoxic near hypoxic neighbors and recover slowly.</p>
+            <p><strong>What the colors mean:</strong> depletion intensity and recovery state.</p>
+            <p><strong>What it teaches:</strong> risk, recovery, and revisit planning.</p>
+            <p><strong>Requires flow coupling?</strong> yes.</p>
+            <p><strong>Requires uncertainty?</strong> yes.</p>
+            <p><strong>Mission-planning relevance:</strong> monitor risky zones and recovery boundaries.</p>
+            <p><strong>Sampling strategy:</strong> sample boundary gradients and areas with stale oxygen belief.</p>
+            <p><strong>What this is not:</strong> not a calibrated biogeochemical model.</p>
+            <p><strong>Future higher-fidelity version:</strong> oxygen budget model with mixing, respiration, forecast uncertainty, and sensor profiles.</p>
+          </article>
+        </section>
+
+        <section id="freshness" class="lab-section">
+          <h2>13. Persistent monitoring / freshness field</h2>
+          <article class="lab-card lab-process-card">
+            <h3>Persistent Monitoring / Freshness Field</h3>
+            <p><strong>What it models:</strong> how value returns when an area has not been sampled recently.</p>
+            <p><strong>Scientific inspiration:</strong> age of information and persistent monitoring.</p>
+            <p><strong>CA/grid mechanism:</strong> sampled cells reset; unsampled cells age and regain value.</p>
+            <p><strong>State variables:</strong> fresh, aging, stale, overdue.</p>
+            <p><strong>Local update idea:</strong> time increases staleness; sampling locally resets staleness.</p>
+            <p><strong>What the colors mean:</strong> higher color means older belief or higher revisit value.</p>
+            <p><strong>What it teaches:</strong> low event intensity can still have high sampling priority.</p>
+            <p><strong>Requires flow coupling?</strong> sometimes, if revisit need depends on transported features.</p>
+            <p><strong>Requires uncertainty?</strong> yes, because stale belief increases uncertainty.</p>
+            <p><strong>Mission-planning relevance:</strong> allocate routes across revisit windows.</p>
+            <p><strong>Sampling strategy:</strong> revisit stale areas while avoiding redundant repeated samples.</p>
+            <p><strong>What this is not:</strong> not a full belief covariance model.</p>
+            <p><strong>Future higher-fidelity version:</strong> age-of-information plus forecast uncertainty and route-aware revisit planning.</p>
+          </article>
+          <section class="lab-widget" data-ocean-ca-widget="freshness-revisit" aria-label="Freshness revisit widget">
+            <h3>Freshness / Revisit Widget</h3>
+            <p>Advance time or sample the center region to see revisit value return.</p>
+            <p class="lab-what-to-notice"><strong>What to notice:</strong> stale cells can become high priority even when event intensity is low.</p>
+          </section>
+        </section>
+
+        <section id="flow" class="lab-section">
+          <h2>14. How flow coupling changes the model</h2>
+          <p>Flow turns a local event layer into a transported environmental process. Without flow coupling, a plume front is a teaching analog. With flow coupling, the model can begin to ask where currents carry the event and which routes are helped or opposed by the field.</p>
+          <div class="lab-math"><code>C_next = C + advection_by_F + diffusion + source - decay</code><div class="lab-translation"><strong>In words:</strong> the concentration changes because currents move it, diffusion spreads it, sources add it, and decay removes it.</div></div>
+        </section>
+
+        <section id="uncertainty" class="lab-section">
+          <h2>15. How uncertainty changes the sampling priority</h2>
+          <p>Uncertainty separates the hidden truth from the forecast and belief. A sample is useful when it reduces the right uncertainty or validates the right forecast error for the mission.</p>
+          <div class="lab-math"><code>belief_next = update(belief_current, observation, model)</code><div class="lab-translation"><strong>In words:</strong> the mission uses a sample to change what it believes about the hidden process.</div></div>
+        </section>
+
+        <section id="priority" class="lab-section">
+          <h2>16. Event intensity is not sampling priority</h2>
+          <p><strong>Event intensity says how much phenomenon is present.</strong></p>
+          <p><strong>Sampling priority says how useful it is to sample there now.</strong></p>
+          <ul>
+            <li>A bloom center may have high intensity but low priority if already well understood.</li>
+            <li>A plume boundary may have lower intensity but high priority if uncertain.</li>
+            <li>A stale monitoring region may have high priority because the model has not been updated recently.</li>
+            <li>A high-value cell may have low priority if it is unreachable, risky, redundant, or costly.</li>
+          </ul>
+          <div class="lab-math"><code>sampling_priority =
+  expected_value
++ uncertainty
++ boundary_value
++ hidden_event_suspicion
++ forecast_validation_value
++ staleness
+- travel_cost
+- current_risk
+- hazard_penalty
+- redundancy_penalty</code><div class="lab-translation"><strong>In words:</strong> priority combines event value and information value, then subtracts route cost, current risk, hazards, and redundant sampling.</div></div>
+          <section class="lab-widget" data-ocean-ca-widget="event-intensity-vs-priority" aria-label="Event intensity versus sampling priority widget">
+            <h3>Event Intensity vs Sampling Priority Widget</h3>
+            <p>Move the uncertainty, cost, and staleness controls to see how the priority map can move away from the brightest event cells.</p>
+            <p class="lab-what-to-notice"><strong>What to notice:</strong> the highest priority cell can be a boundary, stale region, or low-cost validation target.</p>
+          </section>
+        </section>
+
+        <section id="mission-grade" class="lab-section">
+          <h2>17. From CA analogs to more true environmental models</h2>
+          <h3>From CA analog to mission-grade sampling model</h3>
+          <div class="lab-equation-grid">
+            <div class="lab-math"><code>CA event layer:
+x_i(t+1) = f(x_i(t), N_i(t), theta)</code><div class="lab-translation"><strong>In words:</strong> each cell updates from its state, neighborhood, and parameters.</div></div>
+            <div class="lab-math"><code>Deterministic environmental process:
+C_next = C + diffusion + source - decay</code><div class="lab-translation"><strong>In words:</strong> the field spreads, receives input, and weakens over time.</div></div>
+            <div class="lab-math"><code>Flow-coupled process:
+C_next = C + advection_by_F + diffusion + source - decay</code><div class="lab-translation"><strong>In words:</strong> currents move the feature while other process terms change it.</div></div>
+            <div class="lab-math"><code>Stochastic truth/forecast process:
+hidden truth evolves, forecast is imperfect, samples are noisy</code><div class="lab-translation"><strong>In words:</strong> the mission acts on a belief, not on perfect truth.</div></div>
+            <div class="lab-math"><code>Belief update:
+observations update belief mean and uncertainty</code><div class="lab-translation"><strong>In words:</strong> each sample should improve what the model knows.</div></div>
+            <div class="lab-math"><code>Sampling priority:
+priority = value + uncertainty + boundary value + hidden-event suspicion - travel cost - risk - redundancy</code><div class="lab-translation"><strong>In words:</strong> a good sample is useful, reachable, safe, and not redundant.</div></div>
+          </div>
+        </section>
+
+        <section id="anchor" class="lab-section">
+          <h2>18. How ANCHOR uses these as mission scenarios</h2>
+          <p>ANCHOR uses CA and grid-process analogs as transparent teaching scenarios. Later engine contracts should separate static world, hidden truth, expected/forecast state, observations, belief, uncertainty, hidden-event probability, and visible planning state.</p>
+          <p>These analogs prepare students for the engine ladder without pretending that the current CA pages implement full ocean physics, data assimilation, or production route planning.</p>
+          <p><a class="lab-button" href="index.html">Back to Learning Labs</a> <a class="lab-button" href="../index.html">Open Main App</a> <a class="lab-button primary" href="../index.html#simulation-lab">Open Simulation Lab</a></p>
+        </section>
+
+        <section id="reading" class="lab-section">
+          <h2>Suggested further reading</h2>
+          <p>Suggested further reading; titles are listed for orientation and are not links.</p>
+          <ul>
+            <li>A Comprehensive Taxonomy of Cellular Automata</li>
+            <li>AUV Adaptive Sampling Methods: A Review</li>
+            <li>Persistent Ocean Monitoring with Underwater Gliders</li>
+            <li>Adaptive Sampling of Algal Blooms Using AUV and Satellite Imagery</li>
+            <li>Efficient 3D Real-Time Adaptive AUV Sampling of a River Plume Front</li>
+            <li>Gaussian Processes for Machine Learning</li>
+            <li>Data Assimilation / Ensemble Kalman Filter references</li>
+          </ul>
+        </section>
+      </article>
+    </div>
+  </main>
+  <script type="module" src="../src/labs/widgets/OceanCaProcessWidgets.js"></script>
+</body>
+</html>

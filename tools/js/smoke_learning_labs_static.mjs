@@ -204,6 +204,30 @@ assertNotIncludes(contents.uncertaintyLab, 'cdn', files.uncertaintyLab);
 assertNotIncludes(contents.stochasticCoupledLab, 'cdn', files.stochasticCoupledLab);
 assertNotIncludes(contents.plannerLab, 'cdn', files.plannerLab);
 
+
+const scientificWidget = path.join(ROOT, 'src/labs/widgets/ScientificModelingWidgets.js');
+const scientificWidgetSource = await fs.readFile(scientificWidget, 'utf8');
+assertNotIncludes(scientificWidgetSource, 'Phaser', 'src/labs/widgets/ScientificModelingWidgets.js');
+assertNotIncludes(scientificWidgetSource, 'anchorGame', 'src/labs/widgets/ScientificModelingWidgets.js');
+[
+  'ModelLoopWidget',
+  'LocalRuleNeighborhoodWidget',
+  'DeterministicVsStochasticWidget',
+  'FuzzyCaWidget'
+].forEach((needle) => assertIncludes(scientificWidgetSource, needle, 'src/labs/widgets/ScientificModelingWidgets.js'));
+await import(pathToFileUrl(scientificWidget));
+
+const oceanCaWidget = path.join(ROOT, 'src/labs/widgets/OceanCaProcessWidgets.js');
+const oceanCaWidgetSource = await fs.readFile(oceanCaWidget, 'utf8');
+assertNotIncludes(oceanCaWidgetSource, 'Phaser', 'src/labs/widgets/OceanCaProcessWidgets.js');
+assertNotIncludes(oceanCaWidgetSource, 'anchorGame', 'src/labs/widgets/OceanCaProcessWidgets.js');
+[
+  'EventIntensityPriorityWidget',
+  'PlumeFrontWidget',
+  'BloomGrowthDecayWidget',
+  'FreshnessRevisitWidget'
+].forEach((needle) => assertIncludes(oceanCaWidgetSource, needle, 'src/labs/widgets/OceanCaProcessWidgets.js'));
+await import(pathToFileUrl(oceanCaWidget));
 const deterministicWidget = path.join(ROOT, 'src/labs/widgets/DeterministicProcessWidgets.js');
 const deterministicWidgetSource = await fs.readFile(deterministicWidget, 'utf8');
 assertNotIncludes(deterministicWidgetSource, 'Phaser', 'src/labs/widgets/DeterministicProcessWidgets.js');

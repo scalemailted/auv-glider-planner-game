@@ -24,6 +24,16 @@ test('learning labs static page is linked from the main menu', async ({ page }) 
   await expect(indexLink).toHaveText(/Learning Labs Index/);
   await expect(indexLink).toHaveAttribute('target', '_blank');
   await expect(indexLink).toHaveAttribute('rel', /noopener/);
+  const scientificLabLink = page.locator('#mission-console a[href="labs/scientific-computational-modeling.html"]');
+  await expect(scientificLabLink).toBeVisible();
+  await expect(scientificLabLink).toHaveText(/Scientific Computational Modeling/);
+  await expect(scientificLabLink).toHaveAttribute('target', '_blank');
+  await expect(scientificLabLink).toHaveAttribute('rel', /noopener/);
+  const oceanCaLabLink = page.locator('#mission-console a[href="labs/ca-for-ocean-relevant-processes.html"]');
+  await expect(oceanCaLabLink).toBeVisible();
+  await expect(oceanCaLabLink).toHaveText(/CA for Ocean-Relevant Processes/);
+  await expect(oceanCaLabLink).toHaveAttribute('target', '_blank');
+  await expect(oceanCaLabLink).toHaveAttribute('rel', /noopener/);
   const labLink = page.locator('#mission-console a[href="labs/deterministic-spatiotemporal-processes.html"]');
   await expect(labLink).toBeVisible();
   await expect(labLink).toHaveText(/Deterministic Spatiotemporal Processes/);
@@ -59,12 +69,41 @@ test('learning labs static page is linked from the main menu', async ({ page }) 
   await expect(page).toHaveTitle(/ANCHOR Learning Labs/);
   await expect(page.locator('h1')).toContainText('ANCHOR Learning Labs');
   await expect(page.locator('body')).toContainText('Learning path table of contents');
+  await expect(page.locator('body')).toContainText('Foundations');
+  await expect(page.locator('a[href="scientific-computational-modeling.html"]').first()).toBeVisible();
+  await expect(page.locator('a[href="ca-for-ocean-relevant-processes.html"]').first()).toBeVisible();
   await expect(page.locator('a[href="deterministic-dynamic-flow-fields.html"]').first()).toBeVisible();
   await expect(page.locator('a[href="oracle-deterministic-coupled-sampling-space.html"]').first()).toBeVisible();
   await expect(page.locator('a[href="stochastic-uncertainty.html"]').first()).toBeVisible();
   await expect(page.locator('a[href="stochastic-coupled-sampling-space.html"]').first()).toBeVisible();
   await expect(page.locator('a[href="planner-mission-evaluation.html"]').first()).toBeVisible();
   await expect(page.locator('body')).toContainText('Planner / Mission Evaluation');
+
+  await page.goto('/labs/scientific-computational-modeling.html');
+  await expect(page).toHaveTitle(/Scientific Computational Modeling/);
+  await expect(page.locator('h1')).toContainText('Scientific Computational Modeling');
+  await expect(page.locator('.lab-toc')).toContainText('What is a scientific computational model?');
+  await expect(page.locator('.lab-math').first()).toBeVisible();
+  await expect(page.locator('body')).toContainText('X(t+1)');
+  await expect(page.locator('[data-modeling-widget="model-loop"]')).toBeVisible();
+  await expect(page.locator('[data-model-loop-action="step"]')).toBeVisible();
+  const beforeLoopText = await page.locator('[data-model-loop-status]').textContent();
+  await page.locator('[data-model-loop-action="step"]').click();
+  await expect(page.locator('[data-model-loop-status]')).not.toHaveText(beforeLoopText ?? '');
+
+  await page.goto('/labs/ca-for-ocean-relevant-processes.html');
+  await expect(page).toHaveTitle(/Cellular Automata for Ocean-Relevant Processes/);
+  await expect(page.locator('h1')).toContainText('Cellular Automata for Ocean-Relevant Processes');
+  await expect(page.locator('body')).toContainText('Event intensity is not sampling priority');
+  await expect(page.locator('body')).toContainText('From CA analog to mission-grade sampling model');
+  await expect(page.locator('[data-ocean-ca-widget="event-intensity-vs-priority"]')).toBeVisible();
+  await expect(page.locator('[data-priority-uncertainty]')).toBeVisible();
+  const beforePriorityText = await page.locator('[data-priority-status]').textContent();
+  await page.locator('[data-priority-uncertainty]').evaluate((input) => {
+    input.value = '0.85';
+    input.dispatchEvent(new Event('input', { bubbles: true }));
+  });
+  await expect(page.locator('[data-priority-status]')).not.toHaveText(beforePriorityText ?? '');
 
   await page.goto('/labs/deterministic-spatiotemporal-processes.html');
   await expect(page).toHaveTitle(/Deterministic Spatiotemporal Processes/);

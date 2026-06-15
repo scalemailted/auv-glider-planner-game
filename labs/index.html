@@ -20,7 +20,7 @@
         <p class="lab-kicker">Concept Guide</p>
         <h1>ANCHOR Learning Labs</h1>
         <p class="lab-subtitle">Guided interactive explanations for the field models used by the simulator.</p>
-        <p class="lab-subtitle">A guided path from deterministic spatial processes to uncertainty-aware mission planning.</p>
+        <p class="lab-subtitle">These foundation labs explain how ANCHOR moves from CA-style teaching models toward more science-aligned mission models.</p>
         <div class="lab-badges" aria-label="Learning lab tags">
           <span>Concept Guide</span>
           <span>Interactive Articles</span>
@@ -28,18 +28,22 @@
           <span>Mission Modeling Roadmap</span>
         </div>
         <div class="lab-actions">
-          <a class="lab-button primary" href="deterministic-spatiotemporal-processes.html">Start with Deterministic Spatiotemporal Processes</a>
-          <a class="lab-button" href="deterministic-dynamic-flow-fields.html">Continue to Dynamic Flow Fields</a>
-          <a class="lab-button" href="oracle-deterministic-coupled-sampling-space.html">Continue to Oracle Coupled Sampling</a>
-          <a class="lab-button" href="stochastic-uncertainty.html">Continue to Stochastic / Uncertainty</a>
-          <a class="lab-button" href="stochastic-coupled-sampling-space.html">Continue to Stochastic Coupled Sampling</a>
-          <a class="lab-button" href="planner-mission-evaluation.html">Continue to Planner / Mission Evaluation</a>
+          <a class="lab-button primary" href="scientific-computational-modeling.html">Start with Scientific Computational Modeling</a>
+          <a class="lab-button" href="ca-for-ocean-relevant-processes.html">Continue to CA for Ocean-Relevant Processes</a>
+          <a class="lab-button" href="deterministic-spatiotemporal-processes.html">Core Lab 1: Deterministic Spatiotemporal Processes</a>
+          <a class="lab-button" href="deterministic-dynamic-flow-fields.html">Core Lab 2: Dynamic Flow Fields</a>
+          <a class="lab-button" href="oracle-deterministic-coupled-sampling-space.html">Core Lab 3: Oracle Coupled Sampling</a>
+          <a class="lab-button" href="stochastic-uncertainty.html">Core Lab 4: Stochastic / Uncertainty</a>
+          <a class="lab-button" href="stochastic-coupled-sampling-space.html">Core Lab 5: Stochastic Coupled Sampling</a>
+          <a class="lab-button" href="planner-mission-evaluation.html">Core Lab 6: Planner / Mission Evaluation</a>
           <a class="lab-button" href="../index.html#simulation-lab">Open Simulation Lab</a>
           <a class="lab-button" href="../index.html">Back to Main App</a>
         </div>
       </div>
-      <figure class="lab-figure" aria-label="Learning path ladder from process to planner">
+      <figure class="lab-figure" aria-label="Learning path ladder from modeling foundation to planner">
         <div class="lab-roadmap ladder">
+          <div>Scientific modeling</div>
+          <div>CA event layers</div>
           <div>Known process</div>
           <div>Known flow</div>
           <div>Known coupled sampling space</div>
@@ -57,6 +61,7 @@
         <a href="#what">What are Learning Labs?</a>
         <a href="#objectives">Learning objectives</a>
         <a href="#ladder">Model ladder</a>
+        <a href="#foundations">Foundations</a>
         <a href="#path">Learning path</a>
         <a href="#outcome">Final outcome</a>
         <a href="#how">How to use this course</a>
@@ -66,27 +71,23 @@
       <article class="lab-article">
         <section id="what" class="lab-section">
           <h2>What are Learning Labs?</h2>
-          <p>
-            Learning Labs are guided article-style lessons. They explain the ideas behind ANCHOR's field models before
-            students experiment with the full Simulation Lab sandboxes.
-          </p>
+          <p>Learning Labs are guided article-style lessons. They explain the ideas behind ANCHOR's field models before students experiment with the full Simulation Lab sandboxes.</p>
           <div class="lab-card-grid two">
-            <div class="lab-card">
-              <h3>Learning Labs explain</h3>
-              <p>Syllabus pages, concept maps, notation, short translations, and static diagrams build the mental model.</p>
-            </div>
-            <div class="lab-card">
-              <h3>Simulation demos let users experiment</h3>
-              <p>Phaser sandboxes expose the controls, heatmaps, vectors, exports, and mission-facing behavior.</p>
-            </div>
+            <div class="lab-card"><h3>Learning Labs explain</h3><p>Syllabus pages, concept maps, notation, short translations, lightweight widgets, and static diagrams build the mental model.</p></div>
+            <div class="lab-card"><h3>Simulation demos let users experiment</h3><p>Phaser sandboxes expose controls, heatmaps, vectors, exports, and mission-facing behavior.</p></div>
           </div>
           <p>Mission tools evaluate routes, scores, regret, cost, uncertainty reduction, and planner behavior.</p>
+          <div class="lab-callout">CA is a rigorous first step in computational modeling, not a shortcut for fake hotspots.</div>
         </section>
 
         <section id="objectives" class="lab-section">
           <h2>Course-level learning objectives</h2>
           <p>By the end of the Learning Labs, students should be able to:</p>
           <ul class="lab-checklist">
+            <li>describe a scientific computational model</li>
+            <li>identify state variables, rules, parameters, observations, predictions, and validation</li>
+            <li>explain how CA introduces cells, states, neighborhoods, update rules, and emergence</li>
+            <li>distinguish exact CA teaching models from simplified ocean-relevant event/process analogs</li>
             <li>describe a spatial field and a spatiotemporal process</li>
             <li>explain how local rules update a spatial state over time</li>
             <li>distinguish deterministic process evolution from uncertainty estimation</li>
@@ -101,6 +102,8 @@
 
         <section id="ladder" class="lab-section">
           <h2>Big-picture model ladder</h2>
+          <p>The foundation sequence teaches this progression before the core field and mission labs:</p>
+          <div class="lab-callout"><code>scientific model -&gt; state variables -&gt; rules / equations / probability -&gt; simulation -&gt; validation -&gt; CA as first local-rule model -&gt; generalized CA / fuzzy CA -&gt; deterministic update functions -&gt; flow-coupled scalar fields -&gt; stochastic belief / uncertainty -&gt; acquisition / sampling priority -&gt; mission planning criteria</code></div>
           <div class="lab-symbol-grid">
             <div><code>X(x,y,t)</code><span>process state at a place and time</span></div>
             <div><code>V(x,y,t)</code><span>observable value generated by the process</span></div>
@@ -112,77 +115,57 @@
             <div><code>P = {p0, p1, ..., pT}</code><span>planned path through time</span></div>
           </div>
           <figure class="lab-figure" aria-label="Field-layer stack diagram">
-            <svg class="lab-svg" viewBox="0 0 720 170" role="img" aria-label="Process to flow to uncertainty to objective to planner stack">
+            <svg class="lab-svg" viewBox="0 0 760 180" role="img" aria-label="Modeling to process to flow to uncertainty to objective to planner stack">
               <g fill="none" stroke="#42d6b4" stroke-width="2">
-                <rect x="20" y="26" width="120" height="70" rx="6" />
-                <rect x="160" y="44" width="120" height="70" rx="6" />
-                <rect x="300" y="62" width="120" height="70" rx="6" />
-                <rect x="440" y="80" width="120" height="70" rx="6" />
-                <rect x="580" y="98" width="120" height="50" rx="6" />
+                <rect x="20" y="24" width="110" height="62" rx="6" />
+                <rect x="150" y="38" width="110" height="62" rx="6" />
+                <rect x="280" y="52" width="110" height="62" rx="6" />
+                <rect x="410" y="66" width="110" height="62" rx="6" />
+                <rect x="540" y="80" width="110" height="62" rx="6" />
+                <rect x="670" y="94" width="70" height="46" rx="6" />
               </g>
-              <g fill="#e8f4f7" font-family="system-ui" font-size="16" font-weight="700">
-                <text x="48" y="67">Process</text>
-                <text x="198" y="86">Flow</text>
-                <text x="322" y="104">Uncertainty</text>
-                <text x="468" y="122">Objective</text>
-                <text x="608" y="130">Planner</text>
+              <g fill="#e8f4f7" font-family="system-ui" font-size="14" font-weight="700">
+                <text x="44" y="61">Model</text>
+                <text x="174" y="75">Process</text>
+                <text x="316" y="89">Flow</text>
+                <text x="428" y="103">Uncertainty</text>
+                <text x="564" y="117">Objective</text>
+                <text x="686" y="124">Route</text>
               </g>
             </svg>
             <figcaption class="lab-caption">What to notice: ANCHOR builds missions from layered fields, not from one monolithic map.</figcaption>
           </figure>
         </section>
 
+        <section id="foundations" class="lab-section">
+          <h2>Foundations</h2>
+          <p>These foundation labs explain how ANCHOR moves from CA-style teaching models toward more science-aligned mission models.</p>
+          <div class="lab-card-grid two">
+            <a class="lab-card lab-path-card" href="scientific-computational-modeling.html">
+              <span class="lab-status available">Available</span>
+              <h3>Foundation A. Scientific Computational Modeling</h3>
+              <p><strong>Core question:</strong> What are models, why do scientists build them, and how do rules/equations become simulations?</p>
+              <p><strong>Focus:</strong> state, rules, parameters, observations, predictions, validation, deterministic models, stochastic models, fuzzy/generalized CA, and the model fidelity ladder.</p>
+            </a>
+            <a class="lab-card lab-path-card" href="ca-for-ocean-relevant-processes.html">
+              <span class="lab-status available">Available</span>
+              <h3>Foundation B. Cellular Automata for Ocean-Relevant Processes</h3>
+              <p><strong>Core question:</strong> How can CA/grid-process models honestly represent event layers such as blooms, plumes, fronts, and recovery zones?</p>
+              <p><strong>Focus:</strong> scientific claim boundaries, flow coupling, uncertainty, and why event intensity is not sampling priority.</p>
+            </a>
+          </div>
+        </section>
+
         <section id="path" class="lab-section">
           <h2>Learning path table of contents</h2>
+          <h3>Core ANCHOR Field + Mission Labs</h3>
           <div class="lab-card-grid">
-            <a class="lab-card lab-path-card" href="deterministic-spatiotemporal-processes.html">
-              <span class="lab-status available">Available</span>
-              <h3>1. Deterministic Spatiotemporal Processes</h3>
-              <p><strong>Core question:</strong> How can a spatial world change over time under known rules?</p>
-              <p><strong>Math:</strong> <code>x_i(t+1) = f(x_i(t), N_i(t), theta)</code>; <code>X(t+1) = F(X(t))</code></p>
-              <p><strong>Sandbox:</strong> Deterministic Spatiotemporal Process Demo</p>
-              <p><strong>Output:</strong> process state, observable value, transition layer</p>
-            </a>
-            <a class="lab-card lab-path-card" href="deterministic-dynamic-flow-fields.html">
-              <span class="lab-status available">Available</span>
-              <h3>2. Deterministic Dynamic Flow Fields</h3>
-              <p><strong>Core question:</strong> How does the environment move?</p>
-              <p><strong>Math:</strong> <code>F(x,y,t) = &lt;u,v&gt;</code>; <code>p(t+Delta t) = p(t) + F(p(t),t)Delta t</code></p>
-              <p><strong>Sandbox:</strong> Deterministic Dynamic Flow Fields Demo</p>
-              <p><strong>Output:</strong> vector flow field, magnitude, topology</p>
-            </a>
-            <a class="lab-card lab-path-card" href="oracle-deterministic-coupled-sampling-space.html">
-              <span class="lab-status available">Available</span>
-              <h3>3. Oracle / Deterministic Coupled Sampling Space</h3>
-              <p><strong>Core question:</strong> If process and flow are known, what is the true sampling space?</p>
-              <p><strong>Math:</strong> <code>S*(x,y,t) = h(V,F,C,mission)</code></p>
-              <p><strong>Sandbox:</strong> Oracle Coupled Sampling Space Demo</p>
-              <p><strong>Output:</strong> oracle sampling objective</p>
-            </a>
-            <a class="lab-card lab-path-card" href="stochastic-uncertainty.html">
-              <span class="lab-status available">Available</span>
-              <h3>4. Stochastic / Uncertainty</h3>
-              <p><strong>Core question:</strong> What do we believe about an unknown field?</p>
-              <p><strong>Math:</strong> <code>posterior &propto; likelihood x prior</code>; <code>z_i = T(x_i,y_i,t_i) + epsilon</code></p>
-              <p><strong>Sandbox:</strong> Stochastic / Uncertainty Demo</p>
-              <p><strong>Output:</strong> posterior mean, uncertainty, observations, acquisition</p>
-            </a>
-            <a class="lab-card lab-path-card" href="stochastic-coupled-sampling-space.html">
-              <span class="lab-status available">Available</span>
-              <h3>5. Stochastic Coupled Sampling Space</h3>
-              <p><strong>Core question:</strong> Given process + flow + uncertainty + constraints, where should the AUV sample?</p>
-              <p><strong>Math:</strong> <code>A(x,y,t) = h(mu,U,F,C,mission)</code></p>
-              <p><strong>Sandbox:</strong> Stochastic Coupled Sampling Space Demo</p>
-              <p><strong>Output:</strong> belief-based sampling objective, oracle comparison, regret</p>
-            </a>
-            <a class="lab-card lab-path-card" href="planner-mission-evaluation.html">
-              <span class="lab-status available">Available</span>
-              <h3>6. Planner / Mission Evaluation</h3>
-              <p><strong>Core question:</strong> How should an AUV choose a path?</p>
-              <p><strong>Math:</strong> <code>maximize sum A(p_t,t)</code> subject to movement/cost constraints</p>
-              <p><strong>Sandbox:</strong> Planner / Mission Evaluation Demo</p>
-              <p><strong>Output:</strong> path, score, cost, regret, value collected</p>
-            </a>
+            <a class="lab-card lab-path-card" href="deterministic-spatiotemporal-processes.html"><span class="lab-status available">Available</span><h3>Lab 1. Deterministic Spatiotemporal Processes</h3><p><strong>Core question:</strong> How can a spatial world change over time under known rules?</p><p><strong>Math:</strong> <code>x_i(t+1) = f(x_i(t), N_i(t), theta)</code>; <code>X(t+1) = F(X(t))</code></p><p><strong>Sandbox:</strong> Deterministic Spatiotemporal Process Demo</p><p><strong>Output:</strong> process state, observable value, transition layer</p></a>
+            <a class="lab-card lab-path-card" href="deterministic-dynamic-flow-fields.html"><span class="lab-status available">Available</span><h3>Lab 2. Deterministic Dynamic Flow Fields</h3><p><strong>Core question:</strong> How does the environment move?</p><p><strong>Math:</strong> <code>F(x,y,t) = &lt;u,v&gt;</code>; <code>p(t+Delta t) = p(t) + F(p(t),t)Delta t</code></p><p><strong>Sandbox:</strong> Deterministic Dynamic Flow Fields Demo</p><p><strong>Output:</strong> vector flow field, magnitude, topology</p></a>
+            <a class="lab-card lab-path-card" href="oracle-deterministic-coupled-sampling-space.html"><span class="lab-status available">Available</span><h3>Lab 3. Oracle / Deterministic Coupled Sampling Space</h3><p><strong>Core question:</strong> If process and flow are known, what is the true sampling space?</p><p><strong>Math:</strong> <code>S*(x,y,t) = h(V,F,C,mission)</code></p><p><strong>Sandbox:</strong> Oracle Coupled Sampling Space Demo</p><p><strong>Output:</strong> oracle sampling objective</p></a>
+            <a class="lab-card lab-path-card" href="stochastic-uncertainty.html"><span class="lab-status available">Available</span><h3>Lab 4. Stochastic / Uncertainty</h3><p><strong>Core question:</strong> What do we believe about an unknown field?</p><p><strong>Math:</strong> <code>posterior proportional to likelihood x prior</code>; <code>z_i = T(x_i,y_i,t_i) + epsilon</code></p><p><strong>Sandbox:</strong> Stochastic / Uncertainty Demo</p><p><strong>Output:</strong> posterior mean, uncertainty, observations, acquisition</p></a>
+            <a class="lab-card lab-path-card" href="stochastic-coupled-sampling-space.html"><span class="lab-status available">Available</span><h3>Lab 5. Stochastic Coupled Sampling Space</h3><p><strong>Core question:</strong> Given process + flow + uncertainty + constraints, where should the AUV sample?</p><p><strong>Math:</strong> <code>A(x,y,t) = h(mu,U,F,C,mission)</code></p><p><strong>Sandbox:</strong> Stochastic Coupled Sampling Space Demo</p><p><strong>Output:</strong> belief-based sampling objective, oracle comparison, regret</p></a>
+            <a class="lab-card lab-path-card" href="planner-mission-evaluation.html"><span class="lab-status available">Available</span><h3>Lab 6. Planner / Mission Evaluation</h3><p><strong>Core question:</strong> How should an AUV choose a path?</p><p><strong>Math:</strong> <code>maximize sum A(p_t,t)</code> subject to movement/cost constraints</p><p><strong>Sandbox:</strong> Planner / Mission Evaluation Demo</p><p><strong>Output:</strong> path, score, cost, regret, value collected</p></a>
           </div>
         </section>
 
@@ -190,7 +173,7 @@
           <h2>What students should know by the end</h2>
           <div class="lab-callout">
             <p>At the end of this sequence, students should understand how the game builds missions from layered fields:</p>
-            <p><code>process + flow + uncertainty + constraints -> sampling objective -> planned route -> score/evaluation</code></p>
+            <p><code>process + flow + uncertainty + constraints -&gt; sampling objective -&gt; planned route -&gt; score/evaluation</code></p>
           </div>
         </section>
 
@@ -212,6 +195,8 @@
               <h3>Available now</h3>
               <ul>
                 <li>Learning Labs Index</li>
+                <li>Scientific Computational Modeling article</li>
+                <li>Cellular Automata for Ocean-Relevant Processes article</li>
                 <li>Deterministic Spatiotemporal Processes article</li>
                 <li>Deterministic Dynamic Flow Fields article</li>
                 <li>Oracle / Deterministic Coupled Sampling Space article</li>
@@ -221,8 +206,8 @@
               </ul>
             </div>
             <div class="lab-card">
-              <h3>Sequence complete</h3>
-              <p>The first six Learning Labs now cover the path from deterministic field models through mission planning, simulation, debrief, and solver fairness.</p>
+              <h3>Sequence complete for teaching foundation</h3>
+              <p>The Learning Labs now start with scientific modeling and CA-to-ocean-process foundations, then continue through deterministic fields, flow, coupled sampling, uncertainty, stochastic coupling, and planner evaluation.</p>
             </div>
           </div>
         </section>
