@@ -1,4 +1,4 @@
-export const DEMO_ARTIFACT_SCHEMA_VERSION = '1.1';
+﻿export const DEMO_ARTIFACT_SCHEMA_VERSION = '1.1';
 export const DEMO_ARTIFACT_EXPORT_VERSION = 'demo-export-v1';
 export const DEMO_ARTIFACT_MAX_FRAMES = 240;
 
@@ -32,6 +32,9 @@ export function buildDemoArtifactEnvelope({
   timeSampling = null,
   processTiming = null,
   processDisplayMetric = null,
+  behaviorValidation = null,
+  exampleFixtureId = null,
+  exampleFixtureLabel = null,
   selectedCell = null,
   metadata = {},
   behaviorPreset = null,
@@ -127,6 +130,9 @@ export function buildDemoArtifactEnvelope({
     },
     processTiming,
     processDisplayMetric,
+    behaviorValidation,
+    exampleFixtureId,
+    exampleFixtureLabel,
     config,
     patternMode,
     processMode,
@@ -324,3 +330,4 @@ function finiteNumber(value, fallback) {
 function normalizeDemoExportMode(mode) {
   return mode === 'timeWindow' || mode === 'timeSeries' ? 'timeWindow' : 'currentFrame';
 }
+

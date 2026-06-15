@@ -1,4 +1,4 @@
-import { normalizeRoiDemoViewFilters } from '../DemoRoiFields.js';
+﻿import { normalizeRoiDemoViewFilters } from '../DemoRoiFields.js';
 import { sampleFieldBehaviorSignature } from '../SampleFieldBehaviorExplainers.js';
 import { componentCompatibilityWarnings, componentIsolationHint } from '../SampleFieldComponentHints.js';
 import {
@@ -52,6 +52,9 @@ export function buildSamplingProcessDemoArtifactExport(context = {}) {
   const ruleMetadata = buildSamplingProcessRuleCatalogMetadata(context);
   const processTiming = context.processTiming ?? field.processTiming ?? processTimingExportBlock(context);
   const processDisplayMetric = context.processDisplayMetric ?? field.processDisplayMetric ?? null;
+  const behaviorValidation = context.behaviorValidation ?? field.behaviorValidation ?? field.activityDiagnostics?.behaviorValidation ?? null;
+  const exampleFixtureId = context.exampleFixtureId ?? field.exampleFixtureId ?? field.activityDiagnostics?.exampleFixtureId ?? behaviorValidation?.metrics?.fixtureId ?? null;
+  const exampleFixtureLabel = context.exampleFixtureLabel ?? field.exampleFixtureLabel ?? field.activityDiagnostics?.exampleFixtureLabel ?? behaviorValidation?.metrics?.fixtureLabel ?? null;
   return buildDemoArtifactEnvelope({
     type: SAMPLING_PROCESS_EXPORT_TYPE,
     legacyType: 'anchor.demo.sample-roi-field',
@@ -71,6 +74,9 @@ export function buildSamplingProcessDemoArtifactExport(context = {}) {
     timeSampling: sampling,
     processTiming,
     processDisplayMetric,
+    behaviorValidation,
+    exampleFixtureId,
+    exampleFixtureLabel,
     config: context.sceneConfig ?? {},
     patternMode: context.processMode,
     validationStatus: statusLabel,
@@ -130,6 +136,9 @@ export function buildSamplingProcessDemoArtifactExport(context = {}) {
       processMetadata: field.graphField?.processMetadata,
       processTiming,
       processDisplayMetric,
+      behaviorValidation,
+      exampleFixtureId,
+      exampleFixtureLabel,
       metricLayers: cloneMetricLayers(field.metricLayers ?? context.metricLayers),
       validation: field.activityDiagnostics?.presetValidation ?? null,
       clusters: field.graphField?.clusters,
@@ -236,7 +245,16 @@ export function buildSamplingProcessPaintExportMetadata(context = {}) {
 export function buildSamplingProcessReferenceExportMetadata(context = {}, behaviorPreset = null) {
   const activeExample = resolveActiveSpatiotemporalProcessExample(context);
   const processExample = activeExample.sourceExample;
+  const behaviorValidation = context.behaviorValidation ?? context.field?.behaviorValidation ?? context.field?.activityDiagnostics?.behaviorValidation ?? null;
+  const exampleFixtureId = context.exampleFixtureId ?? context.field?.exampleFixtureId ?? context.field?.activityDiagnostics?.exampleFixtureId ?? behaviorValidation?.metrics?.fixtureId ?? null;
+  const exampleFixtureLabel = context.exampleFixtureLabel ?? context.field?.exampleFixtureLabel ?? context.field?.activityDiagnostics?.exampleFixtureLabel ?? behaviorValidation?.metrics?.fixtureLabel ?? null;
   const processExampleBlock = activeProcessExampleExportBlock(activeExample);
+  const enhancedProcessExampleBlock = processExampleBlock ? {
+    ...processExampleBlock,
+    exampleFixtureId,
+    exampleFixtureLabel,
+    behaviorValidation
+  } : null;
   const referenceSignature = activeExample.referenceSignature
     ?? context.referenceSignature
     ?? referenceSignatureMetadata(activeExample.referenceSignatureId ?? context.referenceSignatureId, context.referenceSignatureModified);
@@ -244,12 +262,15 @@ export function buildSamplingProcessReferenceExportMetadata(context = {}, behavi
     ? (behaviorPreset ?? sampleFieldBehaviorPresetMetadata(context.behaviorPresetId, context.behaviorPresetModified)).referenceSignature
     : null;
   const fields = {
-    processExample: processExampleBlock,
+    processExample: enhancedProcessExampleBlock,
     exampleTrack: activeExample.exampleTrack,
     exampleTrackLabel: activeExample.exampleTrackLabel,
     exampleProcessId: activeExample.exampleProcessId,
     exampleProcessLabel: activeExample.exampleProcessLabel,
     exampleType: activeExample.exampleType,
+    exampleFixtureId,
+    exampleFixtureLabel,
+    behaviorValidation,
     foundationalCaModelId: activeExample.foundationalCaModelId,
     foundationalModelId: activeExample.foundationalCaModelId,
     oceanProcessAnalogId: activeExample.oceanProcessAnalogId,
@@ -318,6 +339,9 @@ export function buildSamplingProcessComponentRecipeExport(context = {}) {
 
 export function buildSamplingProcessScenarioMetadata(context = {}, scenario = {}) {
   const activeExample = resolveActiveSpatiotemporalProcessExample(context);
+  const behaviorValidation = context.behaviorValidation ?? context.field?.behaviorValidation ?? context.field?.activityDiagnostics?.behaviorValidation ?? null;
+  const exampleFixtureId = context.exampleFixtureId ?? context.field?.exampleFixtureId ?? context.field?.activityDiagnostics?.exampleFixtureId ?? behaviorValidation?.metrics?.fixtureId ?? null;
+  const exampleFixtureLabel = context.exampleFixtureLabel ?? context.field?.exampleFixtureLabel ?? context.field?.activityDiagnostics?.exampleFixtureLabel ?? behaviorValidation?.metrics?.fixtureLabel ?? null;
   return {
     preferredType: SAMPLING_PROCESS_SCENARIO_TYPE,
     legacyType: scenario.type,
@@ -328,6 +352,9 @@ export function buildSamplingProcessScenarioMetadata(context = {}, scenario = {}
     exampleProcessId: activeExample.exampleProcessId,
     exampleProcessLabel: activeExample.exampleProcessLabel,
     exampleType: activeExample.exampleType,
+    exampleFixtureId,
+    exampleFixtureLabel,
+    behaviorValidation,
     foundationalCaModelId: activeExample.foundationalCaModelId,
     oceanProcessAnalogId: activeExample.oceanProcessAnalogId,
     referenceSignatureId: activeExample.referenceSignatureId,
@@ -687,3 +714,5 @@ function graphMessageStrength(source, target) {
   const communityFactor = source.communityId === target.communityId ? 1 : 0.52;
   return Math.max(0, (outgoing * 0.62 + incoming * 0.18 + targetReadiness * 0.2) * stateBoost * communityFactor);
 }
+
+

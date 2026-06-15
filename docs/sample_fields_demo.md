@@ -1,4 +1,4 @@
-# Deterministic Spatiotemporal Process Lab
+﻿# Deterministic Spatiotemporal Process Lab
 
 Menu label: Process Lab. Legacy name: Sample / ROI Field Demo. See also [Deterministic Spatiotemporal Process Lab](sampling_process_lab.md).
 
@@ -63,6 +63,8 @@ These are simplified analog dynamics for teaching sampling strategy. They are no
 
 Process Paint and Rule Allocation Sandbox use the canonical deterministic rule-family catalog `sampling-process-rule-families-v1`: `inert`, `propagatingFront`, `excitableWave`, `localBirthDeath`, `diffusiveSpread`, `directedTransport`, `cyclicDominance`, `domainFormation`, `thresholdCascade`, `interactingPopulation`, `freshnessRecovery`, `morphogenesis`, `congestionWave`, `structuredSignal`. Older saved IDs such as `frontPropagation`, `birthDeath`, `diffusionSpread`, `driftTransport`, `clusterFormation`, `cascade`, `predatorPreyMigration`, `signalPropagation`, and `none` remain aliases, but new paint layers and exports write canonical IDs.
 
+Guided Foundational CA Models and Ocean-Relevant Process Analogs now start from explicit fixture layers in `SamplingProcessExampleFixtures.js` instead of silently falling back to an empty field. `SamplingProcessExampleBehaviorAssertions.js` runs short deterministic checks through the existing process stepper and reports `PASS`, `WARN`, or `FAIL` for the right-panel Behavior QA card. Conway uses canonical block, blinker, and glider seeds, and its default check validates B3/S23 birth, survival, and death behavior. Ocean analog cards also keep the boundary clear: event/process-layer behavior is shown here, while physical downstream transport belongs in Flow Fields and Coupled Fields.
+
 When Process Paint is running, the lab advances painted cells through a deterministic CA-style stepper. Each frame emits `stateLayer`, nullable `ruleLayer` cell overrides, canonical `resolvedRuleLayer`, `groupLayer`, `sourceField`, `samplingValueField`, `transitionLayer`, `roiRoleLayer`, and `processMessages`. A `null`/`inherit` rule slot means "use the group rule"; explicit `inert` means "do not update this cell." Movement-like rules use deterministic proposed writes that are resolved after the scan loop, so transported cells are not overwritten by later cell processing. Time-series exports use `initial-frame-then-steps-v1`: frame 0 is the painted initial state, frame 1 is the first update, and later frames continue stepping. Browser playback for discrete process contexts uses `discrete-generations-v1`: render frames are separate from logical generations, and exports record `processTiming` plus `processDisplayMetric`. The right-panel cell editor reports the canonical rule label, transition record, ROI role, group, source value, and sampling value for the selected cell.
 
 Feature-evolution patterns describe how scalar structures move, spread, rotate, deform, or activate:
@@ -97,7 +99,7 @@ retained value
 The lab uses progressive disclosure: the left Mission Console stays compact and control-focused, the Phaser status line shows a short mode/recipe/metric summary, and detailed diagnostics live in the right Diagnostics panel.
 
 ```text
-Recurrent Stationary Hotspots · Bursty · Stationary · Sample Value + Likelihood Overlay · t=49.8s · Mean 0.42 · Active 24% · High 8% · Max 0.94
+Recurrent Stationary Hotspots Â· Bursty Â· Stationary Â· Sample Value + Likelihood Overlay Â· t=49.8s Â· Mean 0.42 Â· Active 24% Â· High 8% Â· Max 0.94
 ```
 
 Set `globalThis.ANCHOR_DEBUG_ROI_DYNAMICS = true` in the browser console to log detailed frame diagnostics, including min/mean/max, variance, p10/p50/p90, active and high-value cell fractions, active bounding-box coverage, connected components, quadrant occupancy, total activity mass, injected activity, decay loss, depletion loss, boundary loss, regeneration amount, graph update rule, graph node state counts, edge message totals, dynamic range before/after contrast shaping, and whether normalization occurred.

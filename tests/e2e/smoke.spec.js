@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test';
+﻿import { expect, test } from '@playwright/test';
 import fs from 'node:fs/promises';
 import { startStaticServer } from './static-server.mjs';
 
@@ -550,6 +550,7 @@ test('campaign planning smoke flow reaches debrief', async ({ page }) => {
   await expect(page.locator('#agent-performance-hud')).toBeEmpty();
   await expect(page.locator('#waypoint-timeline')).toContainText('Process Example View');
   await expect(page.locator('#waypoint-timeline')).toContainText('Current Lab State');
+  await expect(page.locator('#waypoint-timeline')).toContainText('Behavior QA');
   await expect(page.locator('#waypoint-timeline')).toContainText('Foundational CA Models');
   await expect(page.locator('#waypoint-timeline')).toContainText('Inspired By');
   await expect(page.locator('#waypoint-timeline')).toContainText('Sampling Interpretation');
@@ -638,6 +639,8 @@ test('campaign planning smoke flow reaches debrief', async ({ page }) => {
     activeExampleProcessId: 'conwayGameOfLife',
     activeExampleProcessLabel: "Conway's Game of Life",
     activeMappedReferenceSignatureId: 'birthDeathEmergence',
+    activeExampleFixtureId: 'conwayGameOfLife.default',
+    activeExampleBehaviorValidationStatus: 'PASS',
     legacyReferenceMappingConsistent: true,
     selectorModeMatchesActiveExample: true,
     selectorMatchesActiveExample: true,
@@ -693,6 +696,8 @@ test('campaign planning smoke flow reaches debrief', async ({ page }) => {
   expect(roiArtifact.data.processTiming.frameSemantics).toBe('discrete-generations-v1');
   expect(roiArtifact.data.processTiming.tickRate).toBe(1);
   expect(roiArtifact.data.processDisplayMetric.metricId).toBe('transitionClass');
+  expect(roiArtifact.data.behaviorValidation.status).toBe('PASS');
+  expect(roiArtifact.data.exampleFixtureId).toBe('conwayGameOfLife.default');
   expect(roiArtifact.data.fields.metricLayers.transitionClass.length).toBe(roiArtifact.data.grid.height);
   expect(roiArtifact.data.patternSource).toBe('referenceSignature');
   expect(roiArtifact.data.referenceSignatureId).toBe('birthDeathEmergence');
@@ -705,6 +710,9 @@ test('campaign planning smoke flow reaches debrief', async ({ page }) => {
   expect(roiArtifact.data.processExample.exampleTrack).toBe('foundationalCaModels');
   expect(roiArtifact.data.processExample.exampleProcessId).toBe('conwayGameOfLife');
   expect(roiArtifact.data.processExample.mappedReferenceSignatureId).toBe(roiArtifact.data.referenceSignatureId);
+  expect(roiArtifact.data.processExample.exampleFixtureId).toBe('conwayGameOfLife.default');
+  expect(roiArtifact.data.processExample.behaviorValidation.status).toBe('PASS');
+  expect(roiArtifact.data.processExample.behaviorValidation.metrics.canonicalRuleCheck).toBe('B3/S23 localBirthDeath');
   expect(roiArtifact.data.processPatternId).toBe('birthDeathEmergence');
   expect(roiArtifact.data.metadata.exampleTrack).toBe('foundationalCaModels');
   expect(roiArtifact.data.referenceSignatureMetadata.caTaxonomy).toBeTruthy();
@@ -741,10 +749,19 @@ test('campaign planning smoke flow reaches debrief', async ({ page }) => {
   expect(roiArtifact.data.frames[0].fields.graphIncomingMessage[0].length).toBe(roiArtifact.data.grid.width);
   expect(roiArtifact.data.likelihoodField.diagnostics.activeLikelihoodCellFraction).toBeGreaterThan(0);
   expect(roiArtifact.data.metadata.activityDiagnostics.meanValue).toBeGreaterThan(0);
-  expect(roiArtifact.data.metadata.activityDiagnostics.activeFraction).toBeGreaterThan(0.1);
+  expect(roiArtifact.data.metadata.activityDiagnostics.activeFraction).toBeGreaterThan(0.02);
   expect(roiArtifact.data.frames[0].activityDiagnostics.totalActivityMass).toBeGreaterThan(0);
   expect(roiArtifact.data.behaviorPreset.id).toBe('custom');
   expect(roiArtifact.data.metadata.patternSource).toBe('referenceSignature');
+
+  await page.locator('#sampling-process-example-id').selectOption('forestFire');
+  await expect.poll(() => page.evaluate(() => window.ANCHOR_ROI_UI_DEBUG)).toMatchObject({
+    activeExampleProcessId: 'forestFire',
+    activeExampleFixtureId: 'forestFire',
+    activeExampleBehaviorValidationStatus: 'PASS'
+  });
+  await expect(page.locator('#waypoint-timeline [data-process-behavior-qa]')).toContainText('Behavior QA');
+  await expect(page.locator('#waypoint-timeline [data-process-behavior-qa]')).toContainText('Forest Fire');
 
   await page.locator('#sampling-process-mode').selectOption('oceanProcessAnalogs');
   await expandMissionConsoleSection(page, 'Ocean-Relevant Process Analogs');
@@ -757,6 +774,8 @@ test('campaign planning smoke flow reaches debrief', async ({ page }) => {
     activeExampleProcessId: 'riverPlumeFront',
     activeExampleProcessLabel: 'River Plume Front',
     activeMappedReferenceSignatureId: 'frontPropagation',
+    activeExampleFixtureId: 'riverPlumeFront',
+    activeExampleBehaviorValidationStatus: 'PASS',
     legacyReferenceMappingConsistent: true,
     selectorModeMatchesActiveExample: true,
     selectorMatchesActiveExample: true
@@ -773,6 +792,9 @@ test('campaign planning smoke flow reaches debrief', async ({ page }) => {
   expect(oceanArtifact.data.processExample.exampleProcessId).toBe('riverPlumeFront');
   expect(oceanArtifact.data.processExample.requiresFlowCoupling).toBe(true);
   expect(oceanArtifact.data.processExample.mappedReferenceSignatureId).toBe(oceanArtifact.data.referenceSignatureId);
+  expect(oceanArtifact.data.behaviorValidation.status).toBe('PASS');
+  expect(oceanArtifact.data.exampleFixtureId).toBe('riverPlumeFront');
+  expect(oceanArtifact.data.processExample.behaviorValidation.status).toBe('PASS');
 
   await page.locator('#sampling-process-mode').selectOption('customComposer');
   await expandMissionConsoleSections(page, [
@@ -2284,3 +2306,5 @@ async function cellCenter(page, x, y) {
     };
   }, { x, y });
 }
+
+

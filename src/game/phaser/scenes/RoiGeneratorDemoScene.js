@@ -1,4 +1,4 @@
-import {
+﻿import {
   createDemoRoiField,
   roiDepletionModeLabel,
   roiDisplayModeLabel,
@@ -96,6 +96,8 @@ import {
   frameFromLayers,
   stepSamplingProcess
 } from '../../../core/demo/sampling/SamplingProcessEvolution.js';
+import { buildExampleInitialLayers } from '../../../core/demo/sampling/SamplingProcessExampleFixtures.js';
+import { evaluateSamplingProcessExampleBehavior } from '../../../core/demo/sampling/SamplingProcessExampleBehaviorAssertions.js';
 import {
   buildSamplingProcessMetricLayers,
   metricDisplayBlock
@@ -208,6 +210,9 @@ export class RoiGeneratorDemoScene extends PhaserScene {
     this.paused = false;
     this.field = null;
     this.processLayers = null;
+    this.activeExampleFixture = null;
+    this.activeExampleFixtureValidation = null;
+    this.activeExampleBehaviorValidation = null;
     this.selectedCell = null;
     this.rightPanelMode = 'recipeSignature';
     this.selectedHelpTopic = null;
@@ -472,7 +477,7 @@ export class RoiGeneratorDemoScene extends PhaserScene {
 
   activeProcessRuleId() {
     const active = this.activeProcessExampleState();
-    return normalizeProcessRuleId(this.updateRuleHint ?? active.ruleFamilyId ?? active.sourceExample?.ruleFamilyId ?? this.field?.graphField?.updateRule ?? 'inert');
+    return normalizeProcessRuleId(this.updateRuleHint ?? this.activeExampleFixture?.ruleId ?? active.ruleFamilyId ?? active.sourceExample?.ruleFamilyId ?? this.field?.graphField?.updateRule ?? 'inert');
   }
 
   initializeDiscreteProcessField() {
@@ -609,6 +614,9 @@ export class RoiGeneratorDemoScene extends PhaserScene {
       defaultMetricId: metricBundle.defaultMetricId,
       metricLegend: processDisplayMetric.legend,
       processDisplayMetric,
+      exampleFixtureId: this.activeExampleFixture?.id ?? null,
+      exampleFixtureLabel: this.activeExampleFixture?.label ?? null,
+      behaviorValidation: this.activeExampleBehaviorValidation,
       processTiming: processTimingExportBlock(this.processTimingState()),
       likelihoodField: {
         ...(this.field?.likelihoodField ?? {}),
@@ -638,7 +646,11 @@ export class RoiGeneratorDemoScene extends PhaserScene {
         highValueFraction: highValueFractionForScene(samplingValueField, 0.65),
         ruleEngineDiagnostics: evolved.diagnostics,
         metricLayerDiagnostics: metricBundle.diagnostics,
-        processTiming: processTimingExportBlock(this.processTimingState())
+        processTiming: processTimingExportBlock(this.processTimingState()),
+        exampleFixtureId: this.activeExampleFixture?.id ?? null,
+        exampleFixtureLabel: this.activeExampleFixture?.label ?? null,
+        exampleFixtureValidation: this.activeExampleFixtureValidation,
+        behaviorValidation: this.activeExampleBehaviorValidation
       }
     };
   }
@@ -1025,12 +1037,43 @@ export class RoiGeneratorDemoScene extends PhaserScene {
   }
 
   buildProcessLayers() {
+    const guidedLayers = this.buildGuidedExampleProcessLayers(this.field, { updateSceneState: true });
+    if (guidedLayers) return guidedLayers;
+    this.clearGuidedExampleBehaviorState();
     return buildSamplingProcessLayersForField({
       field: this.field,
       paintModel: this.paintModel,
       processMode: this.processMode,
       updateRuleHint: this.updateRuleHint
     });
+  }
+
+  buildGuidedExampleProcessLayers(field = this.field, { updateSceneState = false } = {}) {
+    if (!['foundationalCaModels', 'oceanProcessAnalogs'].includes(this.processMode)) return null;
+    if (this.patternSource !== 'referenceSignature') return null;
+    const activeExample = this.activeProcessExampleState();
+    if (activeExample.isCustom || !activeExample.sourceExample) return null;
+    const fixtureBuild = buildExampleInitialLayers(activeExample.sourceExample, {
+      width: field?.width ?? 24,
+      height: field?.height ?? 16,
+      seed: this.seed
+    });
+    const behaviorValidation = evaluateSamplingProcessExampleBehavior(activeExample.sourceExample, {
+      fixtureBuild,
+      seed: this.seed
+    });
+    if (updateSceneState) {
+      this.activeExampleFixture = fixtureBuild.fixture;
+      this.activeExampleFixtureValidation = fixtureBuild.validation;
+      this.activeExampleBehaviorValidation = behaviorValidation;
+    }
+    return fixtureBuild.layers;
+  }
+
+  clearGuidedExampleBehaviorState() {
+    this.activeExampleFixture = null;
+    this.activeExampleFixtureValidation = null;
+    this.activeExampleBehaviorValidation = null;
   }
 
   applyProcessPaintCanvasField() {
@@ -1374,6 +1417,15 @@ export class RoiGeneratorDemoScene extends PhaserScene {
       activeObservableProcessPatternTags: activeExample.observableProcessPatternTags,
       activeImplementationFidelity: activeExample.implementationFidelity,
       activeRequiresFlowCoupling: activeExample.requiresFlowCoupling,
+      activeExampleFixtureId: this.activeExampleFixture?.id ?? null,
+      activeExampleFixtureLabel: this.activeExampleFixture?.label ?? null,
+      activeExampleInitialMeaningfulCellCount: this.activeExampleBehaviorValidation?.metrics?.initialMeaningfulCellCount ?? null,
+      activeExampleBehaviorValidationStatus: this.activeExampleBehaviorValidation?.status ?? null,
+      activeExampleBehaviorValidationLabel: this.activeExampleBehaviorValidation?.label ?? null,
+      activeExampleBehaviorValidationDetails: this.activeExampleBehaviorValidation?.details ?? [],
+      activeExampleDistinctStatesSeen: this.activeExampleBehaviorValidation?.metrics?.distinctStatesSeen ?? [],
+      activeExampleGenerationCount: this.activeExampleBehaviorValidation?.metrics?.generationCount ?? null,
+      activeExampleTransitionCount: this.activeExampleBehaviorValidation?.metrics?.transitionCount ?? null,
       exampleProcessModified: activeExample.isModified,
       selectorProcessMode,
       selectorExampleTrack,
@@ -1498,7 +1550,7 @@ export class RoiGeneratorDemoScene extends PhaserScene {
     const graph = diagnostics.graphDiagnostics ?? this.field?.graphField?.diagnostics;
     if (this.processMode === 'processPaint') {
       const paintValidation = validateSamplingProcessPaintModel(this.paintModel);
-      this.statusText?.setText(`Process Paint · ${this.paused ? 'Paused editing canvas' : 'Running painted process'} · Painted cells: ${paintValidation.paintedCellCount} · Rule: ${this.selectedPaintRuleId} · Group: ${this.selectedPaintGroupId}`);
+      this.statusText?.setText(`Process Paint Â· ${this.paused ? 'Paused editing canvas' : 'Running painted process'} Â· Painted cells: ${paintValidation.paintedCellCount} Â· Rule: ${this.selectedPaintRuleId} Â· Group: ${this.selectedPaintGroupId}`);
       this.statusText?.setWordWrapWidth(Math.min(1040, map.width));
       this.statusText?.setPosition(margin, map.y + map.height + 18);
       return;
@@ -1506,12 +1558,12 @@ export class RoiGeneratorDemoScene extends PhaserScene {
     const modeLabel = ['foundationalCaModels', 'oceanProcessAnalogs', 'referenceSignature'].includes(this.processMode)
       ? `${samplingProcessModeLabel(this.processMode)}: ${spatiotemporalProcessExampleLabel(this.exampleProcessId)}`
       : samplingProcessModeLabel(this.processMode);
-    const baseStatus = `${modeLabel} · ${roiTemporalPatternLabel(this.field?.temporalPattern ?? this.temporalPattern)} · ${roiSpatialEvolutionLabel(this.field?.spatialEvolution ?? this.spatialEvolution)} · ${roiDisplayModeLabel(this.field?.displayMode ?? this.displayMode)} · t=${this.demoTime.toFixed(1)}s`;
-    const compactMetrics = `Mean ${formatStat(diagnostics.meanValue ?? stats.mean)} · Active ${formatPercent(diagnostics.activeFraction)} · High ${formatPercent(diagnostics.highValueFraction)} · Max ${formatStat(diagnostics.maxValue ?? stats.max)}`;
+    const baseStatus = `${modeLabel} Â· ${roiTemporalPatternLabel(this.field?.temporalPattern ?? this.temporalPattern)} Â· ${roiSpatialEvolutionLabel(this.field?.spatialEvolution ?? this.spatialEvolution)} Â· ${roiDisplayModeLabel(this.field?.displayMode ?? this.displayMode)} Â· t=${this.demoTime.toFixed(1)}s`;
+    const compactMetrics = `Mean ${formatStat(diagnostics.meanValue ?? stats.mean)} Â· Active ${formatPercent(diagnostics.activeFraction)} Â· High ${formatPercent(diagnostics.highValueFraction)} Â· Max ${formatStat(diagnostics.maxValue ?? stats.max)}`;
     const diagnosticsStatus = this.processMode === 'diagnosticsGraphInspection' && graph
-      ? ` · Graph ${graph.updateRule} · States ${formatGraphStateSummary(graph.stateCounts)} · Messages ${formatStat(graph.edgeMessageTotal)}${warningText}`
+      ? ` Â· Graph ${graph.updateRule} Â· States ${formatGraphStateSummary(graph.stateCounts)} Â· Messages ${formatStat(graph.edgeMessageTotal)}${warningText}`
       : '';
-    this.statusText?.setText(`${baseStatus} · ${compactMetrics} · State ${roiStateModelLabel(stateModel)} · Sampling ${roiDepletionModeLabel(this.field?.depletionMode ?? this.depletionMode)}${diagnosticsStatus}`);
+    this.statusText?.setText(`${baseStatus} Â· ${compactMetrics} Â· State ${roiStateModelLabel(stateModel)} Â· Sampling ${roiDepletionModeLabel(this.field?.depletionMode ?? this.depletionMode)}${diagnosticsStatus}`);
     this.statusText?.setWordWrapWidth(Math.min(1040, map.width));
     this.statusText?.setPosition(margin, map.y + map.height + 18);
   }
@@ -2077,6 +2129,11 @@ export class RoiGeneratorDemoScene extends PhaserScene {
       paintStartMode: this.paintStartMode,
       paintSettings: this.processPaintSettings(),
       processLayers: this.processLayers,
+      exampleFixture: this.activeExampleFixture,
+      exampleFixtureId: this.activeExampleFixture?.id ?? null,
+      exampleFixtureLabel: this.activeExampleFixture?.label ?? null,
+      exampleFixtureValidation: this.activeExampleFixtureValidation,
+      behaviorValidation: this.activeExampleBehaviorValidation,
       viewFilters: this.viewFilters,
       selectedCell: this.selectedCell,
       modifiedComponent: this.modifiedComponent,
@@ -2112,7 +2169,7 @@ export class RoiGeneratorDemoScene extends PhaserScene {
 
   buildDemoArtifactFrame(demoTime, index, existingField = null) {
     let field = existingField ?? createDemoRoiField({ ...this.sceneConfig(), time: demoTime, demoTime });
-    const processLayers = existingField ? this.processLayers : buildSamplingProcessLayersForField({
+    const processLayers = existingField ? this.processLayers : this.buildGuidedExampleProcessLayers(field) ?? buildSamplingProcessLayersForField({
       field,
       paintModel: this.paintModel,
       processMode: this.processMode,
@@ -2471,6 +2528,9 @@ function escapeHtml(value) {
 function escapeAttr(value) {
   return escapeHtml(value).replace(/`/g, '&#096;');
 }
+
+
+
 
 
 

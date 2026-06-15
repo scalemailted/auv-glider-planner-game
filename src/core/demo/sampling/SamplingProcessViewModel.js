@@ -1,4 +1,4 @@
-import {
+﻿import {
   roiClusterSizeLabel,
   roiDepletionModeLabel,
   roiDisplayModeLabel,
@@ -109,6 +109,12 @@ export function buildSamplingProcessRecipeSignatureState(context = {}) {
     usesDiscreteProcessClock: Boolean(context.usesDiscreteProcessClock ?? isDiscreteSamplingProcessMode(context.processMode)),
     processDisplayMetric: context.processDisplayMetric ?? context.field?.processDisplayMetric ?? null,
     metricLegend: context.metricLegend ?? context.field?.metricLegend ?? context.field?.processDisplayMetric?.legend ?? [],
+    exampleFixture: context.exampleFixture ?? context.field?.exampleFixture ?? null,
+    exampleFixtureId: context.exampleFixtureId ?? context.field?.exampleFixtureId ?? context.field?.activityDiagnostics?.exampleFixtureId ?? null,
+    exampleFixtureLabel: context.exampleFixtureLabel ?? context.field?.exampleFixtureLabel ?? context.field?.activityDiagnostics?.exampleFixtureLabel ?? null,
+    exampleFixtureValidation: context.exampleFixtureValidation ?? context.field?.activityDiagnostics?.exampleFixtureValidation ?? null,
+    behaviorValidation: context.behaviorValidation ?? context.field?.behaviorValidation ?? context.field?.activityDiagnostics?.behaviorValidation ?? null,
+    activeUpdateRuleHint: context.updateRuleHint ?? context.field?.graphField?.updateRule ?? null,
     stats: context.field?.stats,
     activityDiagnostics: context.field?.activityDiagnostics,
     graphDiagnostics: context.field?.activityDiagnostics?.graphDiagnostics ?? context.field?.graphField?.diagnostics,
@@ -604,3 +610,4 @@ function graphTransitionForCell(graphField, cell) {
   const y = Number(cell?.row ?? cell?.y ?? 0);
   return (graphField?.nodeTransitions ?? []).find((transition) => Number(transition.col) === x && Number(transition.row) === y) ?? null;
 }
+

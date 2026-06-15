@@ -1,4 +1,4 @@
-import {
+﻿import {
   roiDepletionModeLabel,
   roiDisplayModeLabel,
   roiEventLikelihoodLabel,
@@ -74,6 +74,7 @@ export function roiRecipeSignatureHtml(state) {
       </div>
       
       ${currentLabStateCardHtml(state)}
+      ${behaviorValidationCardHtml(state)}
       ${processMetricExplanationCardHtml(state)}
       
       ${source === 'referenceSignature' && signature ? `
@@ -361,11 +362,49 @@ function processExampleSummaryCardHtml(example, signature) {
   `;
 }
 
+function behaviorValidationCardHtml(state = {}) {
+  const validation = state.behaviorValidation;
+  if (!validation) return '';
+  const metrics = validation.metrics ?? {};
+  const assertionResults = validation.assertionResults ?? [];
+  const status = validation.status ?? 'WARN';
+  const fixtureId = state.exampleFixtureId ?? metrics.fixtureId ?? 'n/a';
+  const fixtureLabel = state.exampleFixtureLabel ?? metrics.fixtureLabel ?? 'n/a';
+  const distinctStates = (metrics.distinctStatesSeen ?? []).slice(0, 10).join(', ') || 'n/a';
+  const transitionLabels = (metrics.transitionLabelsSeen ?? []).slice(0, 8).join(', ') || 'n/a';
+  const conwayRuleCheck = metrics.canonicalRuleCheck === 'B3/S23 localBirthDeath'
+    ? 'B3/S23 birth/survival/death visible'
+    : metrics.canonicalRuleCheck ?? 'n/a';
+  const flowNote = state.requiresFlowCoupling
+    ? state.spatiotemporalProcessExample?.coupledDemoBridgeNote ?? 'This is an event/process-layer analog; physical downstream transport belongs in the Flow Fields and Coupled Dynamic Sampling Space demos.'
+    : null;
+  return `
+        <div class="cell-inspector-card" data-process-behavior-qa>
+          <span>Behavior QA</span>
+          ${metricRows([
+            ['status', status],
+            ['fixture', `${fixtureLabel} (${fixtureId})`],
+            ['rule check', conwayRuleCheck],
+            ['initial cells', metrics.initialMeaningfulCellCount ?? 'n/a'],
+            ['generations checked', metrics.generationCount ?? 'n/a'],
+            ['transitions', formatStat(metrics.transitionCount)],
+            ['states seen', distinctStates],
+            ['transition labels', transitionLabels]
+          ])}
+          ${assertionResults.length ? `<ul>${assertionResults.slice(0, 6).map((result) => `<li><strong>${escapeHtml(result.status)}</strong>: ${escapeHtml(result.label)}</li>`).join('')}</ul>` : ''}
+          ${(validation.details ?? []).length ? `<small>${escapeHtml(validation.details.join('; '))}</small>` : ''}
+          ${flowNote ? `<small>${escapeHtml(flowNote)}</small>` : ''}
+        </div>
+  `;
+}
 function processMetricExplanationCardHtml(state = {}) {
   const metric = state.processDisplayMetric;
   const example = state.spatiotemporalProcessExample ?? state.selectedProcessExample;
   if (!metric && !example) return '';
-  const ruleId = normalizeProcessRuleId(example?.ruleFamilyId ?? state.activeUpdateRuleHint ?? 'inert');
+  const exampleRuleId = normalizeProcessRuleId(example?.ruleFamilyId ?? 'inert');
+  const ruleId = exampleRuleId === 'inert'
+    ? normalizeProcessRuleId(state.behaviorValidation?.metrics?.ruleId ?? state.activeUpdateRuleHint ?? 'inert')
+    : exampleRuleId;
   const legend = metric?.legend ?? state.metricLegend ?? [];
   const explanation = processMetricExplanationForRule(ruleId, example);
   return `
@@ -508,6 +547,7 @@ export function roiDiagnosticsHtml(state) {
       </div>
       
       ${currentLabStateCardHtml(state)}
+      ${behaviorValidationCardHtml(state)}
       ${processMetricExplanationCardHtml(state)}
       
       <div class="cell-inspector-card selected">
@@ -920,6 +960,7 @@ export function processPaintToolsHtml(state = {}) {
       </div>
       
       ${currentLabStateCardHtml(state)}
+      ${behaviorValidationCardHtml(state)}
       ${processMetricExplanationCardHtml(state)}
       
       <div class="cell-inspector-card selected">
@@ -1070,6 +1111,7 @@ export function processPaintInspectorEmptyHtml(state = {}) {
       </div>
       
       ${currentLabStateCardHtml(state)}
+      ${behaviorValidationCardHtml(state)}
       ${processMetricExplanationCardHtml(state)}
     </section>
   `;
@@ -1386,6 +1428,7 @@ export function roiInspectorEmptyHtml(state = {}) {
       </div>
       
       ${currentLabStateCardHtml(state)}
+      ${behaviorValidationCardHtml(state)}
       ${processMetricExplanationCardHtml(state)}
     </section>
   `;
@@ -1695,3 +1738,5 @@ function escapeHtml(value) {
 function escapeAttr(value) {
   return escapeHtml(value).replace(/`/g, '&#096;');
 }
+
+
