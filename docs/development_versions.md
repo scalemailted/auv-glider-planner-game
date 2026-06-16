@@ -329,3 +329,10 @@ H0 introduces headless schema contracts, canonical field descriptors, mission/ep
 - Added `--combined-json` to `tools/js/headless_oceanbox.mjs` so H1 can write a single `bundle.json` for browser and Colab workflows.
 - Added H2 smoke tests and extended the model-stack integration smoke and import-boundary audit.
 - Preserved the boundary: H2 is an inspection/import workflow only. It does not implement a Python simulator, new planner, official browser scoring, calibrated ocean forecast, backend service, or MARL/RL.
+
+### H2.1 - Checked-In Headless Example Bundle
+
+- Added deterministic checked-in Node/OceanBox-JS combined bundle fixtures under `docs/examples/` for public browser/Colab inspection and oracle/debug instructor workflows.
+- Added `tools/js/generate_headless_example_bundles.mjs` plus fixture and browser-summary roundtrip smokes.
+- Wired the Headless Bundle Viewer `Load Example Bundle` action to the checked-in public fixture.
+- Preserved the boundary: public fixture excludes hidden truth, debug fixture marks hidden truth explicitly, Python/Colab analyze artifacts or call Node, browser ANCHOR remains the visual/referee UI, and no Python simulator, planner, scoring redesign, calibrated forecast, backend, or MARL/RL was added.

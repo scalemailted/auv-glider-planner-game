@@ -100,3 +100,7 @@ node tools/js/headless_oceanbox.mjs simulate --seed demo-001 --out runs/public-d
 ```
 
 Then load `runs/public-demo/bundle.json` in the browser Headless Bundle Viewer or analyze the JSON/CSV files with Python standard-library `json` and `csv`. This remains artifact analysis, not a Python simulator port.
+
+## H2.1 Checked-In Bundle Analysis
+
+Colab/Python can load `docs/examples/headless_oceanbox_js_public_bundle.example.json` directly with standard-library `json` and inspect `bundle["observations"]`, `bundle["gliderTracks"]`, and `bundle["scoreReport"]`. That file is the same public fixture loaded by the browser Headless Bundle Viewer. Python remains an artifact-analysis or Node-calling workflow, not a second simulator.

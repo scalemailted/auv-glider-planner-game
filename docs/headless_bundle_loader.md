@@ -91,3 +91,25 @@ node tools/js/audit_headless_runtime_import_boundaries.mjs
 ```
 
 For browser wiring, run the focused Playwright smoke containing `Headless Bundle Viewer`.
+
+## H2.1 Checked-In Example Bundle
+
+The repo includes deterministic bundle fixtures under `docs/examples/`:
+
+- `headless_oceanbox_js_public_bundle.example.json`: public-safe combined bundle with no `hiddenFields`, no `hidden_fields.json` manifest entry, visible fields excluding `T_hiddenTruth`, and manifest notes that hidden truth export is disabled.
+- `headless_oceanbox_js_bundle.example.json`: oracle/debug combined bundle with hidden truth in `hiddenFields` and manifest visibility marked `hiddenTruth` / `oracle` / `debugAll`.
+
+Regenerate both with:
+
+```bash
+node tools/js/generate_headless_example_bundles.mjs
+```
+
+`Load Example Bundle` in the Headless Bundle Viewer fetches the checked-in public fixture. The same public file can be loaded in Colab/Python with standard-library `json`; Python analyzes the artifact or calls Node and does not reimplement simulation.
+
+Additional fixture checks:
+
+```bash
+node tools/js/smoke_headless_example_bundle_fixture.mjs
+node tools/js/smoke_headless_browser_fixture_roundtrip.mjs
+```

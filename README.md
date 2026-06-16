@@ -869,3 +869,9 @@ See `docs/headless_node_oceanbox_runtime.md`.
 Simulation Lab now includes a browser-side Headless Bundle Viewer under Editor & Import Tools. It imports Node/OceanBox-JS headless `bundle.json` files or separate JSON/CSV bundle files, validates hidden-truth visibility, displays visible fields, observations, glider tracks, score reports, and replay metadata, and exports `anchor.browser.headless-bundle-summary`.
 
 Use `node tools/js/headless_oceanbox.mjs simulate --seed demo-001 --out runs/public-demo --no-hidden-export --combined-json` to produce a public bundle for the viewer. This workflow is static-hosting compatible and does not add a Python simulator, official browser scoring replacement, new planner, calibrated ocean forecast, backend service, or MARL/RL environment. See [H2 browser headless bundle loader](docs/headless_bundle_loader.md).
+
+## H2.1 Checked-In Example Bundle
+
+The repo includes two deterministic Node/OceanBox-JS example bundles in `docs/examples/`. `headless_oceanbox_js_public_bundle.example.json` is public-safe and is loaded by Simulation Lab / Headless Bundle Viewer / `Load Example Bundle`; `headless_oceanbox_js_bundle.example.json` is an oracle/debug fixture with hidden truth explicitly marked as hidden/oracle/debug data.
+
+Regenerate them with `node tools/js/generate_headless_example_bundles.mjs`. Colab/Python can load the public JSON fixture with standard-library `json` and inspect `observations`, `gliderTracks`, and `scoreReport`; it does not reimplement simulation. The headless score remains educational and not official browser scoring.

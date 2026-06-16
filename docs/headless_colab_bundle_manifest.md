@@ -62,3 +62,9 @@ Node headless runtime over portable ANCHOR core logic. Browser ANCHOR remains th
 H2 supports an optional `bundle.json` convenience file. It embeds the manifest, mission config, visible field pack, optional hidden field pack, observations, glider tracks, score report, replay metadata, and episode record in one JSON document with `type: "anchor.headless.bundle"`.
 
 The browser Headless Bundle Viewer also accepts separate files. Observation and track data may be supplied as JSON or CSV. Public bundles should combine `--no-hidden-export` with `--combined-json`; the manifest should state that hidden truth export is disabled, and visible fields must not include `T_hiddenTruth`.
+
+## H2.1 Checked-In Example Bundle
+
+The checked-in public combined bundle at `docs/examples/headless_oceanbox_js_public_bundle.example.json` is the reference Colab/browser fixture. It has `type: "anchor.headless.bundle"`, embeds the manifest and mission config, exposes top-level `observations` and `gliderTracks` arrays for simple notebook loading, and omits hidden truth. The debug fixture at `docs/examples/headless_oceanbox_js_bundle.example.json` includes hidden fields only with explicit hidden/oracle/debug visibility.
+
+Use `tools/js/generate_headless_example_bundles.mjs` to reproduce both fixtures. Colab/Python should load and analyze the JSON artifact or call Node; it should not implement a second simulator.

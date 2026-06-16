@@ -423,3 +423,15 @@ node tools/js/audit_headless_runtime_import_boundaries.mjs
 ```
 
 Focused browser smoke should open Simulation Lab, launch Headless Bundle Viewer, load the example bundle, confirm `globalThis.ANCHOR_HEADLESS_BUNDLE_DEBUG`, and export `anchor.browser.headless-bundle-summary`. The viewer is not official browser scoring and not a Python simulator.
+
+## H2.1 Checked-In Headless Fixture Checks
+
+After changing headless fixture generation, bundle loading, browser summary export, or Colab docs, run:
+
+```bash
+node tools/js/generate_headless_example_bundles.mjs
+node tools/js/smoke_headless_example_bundle_fixture.mjs
+node tools/js/smoke_headless_browser_fixture_roundtrip.mjs
+```
+
+The public fixture must load in the Headless Bundle Viewer via `Load Example Bundle`, validate as PASS or WARN, omit hidden-truth payloads, and export `anchor.browser.headless-bundle-summary` without `T_hiddenTruth`. The debug fixture may include hidden truth only when manifest visibility marks it as `hiddenTruth`, `oracle`, or `debugAll`.

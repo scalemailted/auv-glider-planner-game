@@ -96,3 +96,9 @@ node tools/js/headless_oceanbox.mjs simulate --seed demo-001 --out tmp/oceanbox-
 ```
 
 H2 does not make the headless score official browser scoring and does not add a Python simulator, new planner, calibrated ocean forecast, backend service, or MARL/RL environment. See `docs/headless_bundle_loader.md`.
+
+## H2.1 Checked-In Example Bundle
+
+`tools/js/generate_headless_example_bundles.mjs` uses the Node/OceanBox-JS runtime directly to generate compact deterministic `coastalBloomFront` examples with seed `h2-example-001`, width `12`, and height `8`.
+
+The public fixture is `docs/examples/headless_oceanbox_js_public_bundle.example.json`; it is the default browser `Load Example Bundle` target and is safe for student-facing inspection because hidden truth is omitted. The debug fixture is `docs/examples/headless_oceanbox_js_bundle.example.json`; it is for oracle/instructor workflows and marks hidden truth with explicit hidden/oracle/debug visibility. Neither fixture changes browser scoring, adds a planner, adds a Python simulator, or claims calibrated ocean forecasting.

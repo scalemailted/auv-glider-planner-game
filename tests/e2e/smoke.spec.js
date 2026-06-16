@@ -385,16 +385,21 @@ test('Headless Bundle Viewer opens from Simulation Lab and exports browser summa
   await expect.poll(() => page.evaluate(() => window.ANCHOR_HEADLESS_BUNDLE_DEBUG?.usesPythonSimulator)).toBe(false);
   await expect.poll(() => page.evaluate(() => window.ANCHOR_HEADLESS_BUNDLE_DEBUG?.usesNodeHeadlessRuntime)).toBe(true);
 
+  await expect(page.locator('#mission-console [data-action="load-example-bundle"]')).toBeVisible();
   await page.locator('#mission-console [data-action="load-example-bundle"]').click();
   await expect(page.locator('#mission-console')).toContainText('Visible Fields');
   await expect(page.locator('#mission-console')).toContainText('Observations');
   await expect(page.locator('#mission-console')).toContainText('Glider Tracks');
   await expect(page.locator('#mission-console')).toContainText('Score Report');
+  await expect(page.locator('#mission-console')).toContainText('Replay');
   await expect(page.locator('#mission-console')).toContainText('Visibility');
+  await expect(page.locator('#mission-console')).toContainText('Hidden Disabled');
   await expect(page.locator('#mission-console')).toContainText('Browser ANCHOR remains the official visual referee');
   await expect.poll(() => page.evaluate(() => window.ANCHOR_HEADLESS_BUNDLE_DEBUG?.bundleLoaded)).toBe(true);
   await expect.poll(() => page.evaluate(() => window.ANCHOR_HEADLESS_BUNDLE_DEBUG?.usesPythonSimulator)).toBe(false);
   await expect.poll(() => page.evaluate(() => window.ANCHOR_HEADLESS_BUNDLE_DEBUG?.usesNodeHeadlessRuntime)).toBe(true);
+  await expect.poll(() => page.evaluate(() => ['PASS', 'WARN'].includes(window.ANCHOR_HEADLESS_BUNDLE_DEBUG?.validationStatus))).toBe(true);
+  await expect.poll(() => page.evaluate(() => window.ANCHOR_HEADLESS_BUNDLE_DEBUG?.usesBrowserOfficialScoring)).toBe(false);
   await expect.poll(() => page.evaluate(() => window.ANCHOR_HEADLESS_BUNDLE_DEBUG?.usesMARL)).toBe(false);
   await expect.poll(() => page.evaluate(() => window.ANCHOR_HEADLESS_BUNDLE_DEBUG?.browserSummaryExportAvailable)).toBe(true);
 
@@ -407,6 +412,12 @@ test('Headless Bundle Viewer opens from Simulation Lab and exports browser summa
   expect(summaryJson.type).toBe('anchor.browser.headless-bundle-summary');
   expect(summaryJson.scoreSummary.headlessScoreIsOfficialBrowserScore).toBe(false);
   expect(summaryJson.notA).toContain('not Python simulator');
+  expect(JSON.stringify(summaryJson)).not.toContain('T_hiddenTruth');
+
+  await page.locator('#mission-console [data-action="menu"]').click();
+  await expandMissionConsoleSection(page, 'Simulation Lab');
+  await expect(page.locator('#mission-console [data-accordion-key="simulation-lab"]')).toContainText('Planner Benchmark');
+  await expect(page.locator('#mission-console [data-accordion-key="simulation-lab"]')).toContainText('Adaptive Benchmark');
 });
 test('Planner Benchmark debrief exports benchmark records from synthetic result', async ({ page }) => {
   await page.goto('/');
