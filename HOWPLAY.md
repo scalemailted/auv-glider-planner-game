@@ -1026,3 +1026,6 @@ Adaptive Benchmark can launch the existing setup/planning flow, preserve mission
 ### Adaptive Benchmark Sessions
 
 In Adaptive Benchmark, Debrief now shows an Adaptive Episode Session panel. Save Adaptive Session stores compact leg records, surfacing decisions, and objective history in this browser. Continue to Next Leg carries the recommended objective forward into the existing planning flow; it does not create waypoints or routes. The player or solver still plans each route.
+## Headless / Colab Compatibility
+
+Benchmark, demo, plan, result, and solver-packet exports now have an H0 schema-alignment map for future Colab/OceanBox workflows. This is export compatibility only; the browser remains the simulator/referee and H0 does not add a Python package or new planner.

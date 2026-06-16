@@ -78,3 +78,6 @@ Benchmark Modes P0 defines the architecture skeleton for Planner Benchmark, Adap
 5. finite-field validation
 
 Keep demo-specific helpers in their local modules until a benchmark mode or planner-facing API needs shared semantics.
+## H0 Headless Alignment
+
+The model stack now has a headless schema alignment layer. Process, flow, coupled, uncertainty, S1/S2, planner benchmark, and adaptive benchmark exports can be audited against future headless artifacts and Colab bundle roles. Hidden truth and oracle fields are visibility-sensitive and must not be included in public bundles by default.

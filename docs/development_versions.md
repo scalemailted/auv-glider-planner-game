@@ -312,3 +312,6 @@ Added one-leg Adaptive Benchmark execution preview through existing setup, plann
 ## P8 Adaptive Benchmark Multi-Leg Session
 
 Added compact adaptive episode session persistence, leg records, objective-history review, session panel controls, import/merge helpers, and P8 session/history/leg exports. Continue to Next Leg reuses the existing setup/planning flow and does not generate routes or change scoring.
+## H0 Headless / Colab / OceanBox Schema Alignment
+
+H0 introduces headless schema contracts, canonical field descriptors, mission/episode/manifest contracts, browser-to-headless mapping, adapter skeletons, and audit scripts. It is schema-only and does not implement the Python OceanBox package, new simulation physics, new route planning, or MARL/RL.

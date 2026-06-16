@@ -846,3 +846,6 @@ P7 connects one executed Adaptive Benchmark leg to surfacing/debrief diagnosis a
 ### P8 Adaptive Benchmark Multi-Leg Session
 
 Adaptive Benchmark now persists compact multi-leg episode sessions for manual continuation. Debrief can save/load/delete an adaptive session, review objective history and surfacing decisions, export session/history/leg records, and continue to the next leg through the existing setup/planning flow. P8 does not add a new planner, redesign scoring, automatically run full multi-leg missions, or implement MARL/RL. See `docs/adaptive_benchmark_multileg_session.md`.
+### H0 Headless / Colab / OceanBox Schema Alignment
+
+H0 adds schema contracts and audits for future headless ANCHOR, Colab, and OceanBox workflows. It maps browser exports to canonical mission, field, episode, and bundle-manifest descriptors. H0 does not implement the Python OceanBox package, a new simulator, a new planner, or MARL/RL.

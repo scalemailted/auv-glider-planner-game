@@ -241,3 +241,6 @@ P6 adaptive manager config, state, objective transition, surfacing event, and ma
 ## Adaptive Benchmark P8 Exports
 
 P8 adds `anchor.benchmark.adaptive-episode-session`, `anchor.benchmark.adaptive-objective-history`, `anchor.benchmark.adaptive-leg-record`, and `anchor.benchmark.adaptive-session-summary`. These exports store compact session, leg, objective-history, and summary records. They do not contain generated routes unless a future phase explicitly adds them.
+## H0 `anchor.headless.*` Contracts
+
+H0 defines future headless / Colab / OceanBox schema contracts: `anchor.headless.mission-config`, `anchor.headless.field-pack`, `anchor.headless.episode`, and `anchor.headless.manifest`. Current browser artifacts are mapped to these contracts by `BrowserHeadlessSchemaMap.js`. H0 does not write a full bundle, implement a Python package, implement a new simulator, or add route planning/MARL/RL.

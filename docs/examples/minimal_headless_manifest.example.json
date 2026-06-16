@@ -1,0 +1,70 @@
+{
+  "type": "anchor.headless.manifest",
+  "version": "headless-bundle-manifest-h0",
+  "bundleType": "minimal-colab-preview",
+  "createdAt": "2026-06-16T00:00:00.000Z",
+  "scenarioId": "example-scenario",
+  "missionId": "example-mission",
+  "episodeId": "example-episode",
+  "seed": "example-seed",
+  "runtimeTarget": "colabNotebook",
+  "visibilityTier": "publicScenario",
+  "files": [
+    {
+      "path": "manifest.json",
+      "role": "manifest",
+      "mediaType": "application/json",
+      "schemaType": "anchor.headless.manifest",
+      "visibilityTier": "publicScenario",
+      "description": "Bundle manifest."
+    },
+    {
+      "path": "mission.json",
+      "role": "missionConfig",
+      "mediaType": "application/json",
+      "schemaType": "anchor.headless.mission-config",
+      "visibilityTier": "publicScenario",
+      "description": "Headless mission config."
+    },
+    {
+      "path": "fields/visible_fields.json",
+      "role": "visibleFields",
+      "mediaType": "application/json",
+      "schemaType": "anchor.headless.field-pack",
+      "visibilityTier": "forecastOnly",
+      "description": "Forecast-visible fields such as E_forecast and F_u/F_v."
+    },
+    {
+      "path": "fields/hidden_truth.json",
+      "role": "hiddenFields",
+      "mediaType": "application/json",
+      "schemaType": "anchor.headless.field-pack",
+      "visibilityTier": "hiddenTruth",
+      "description": "Hidden truth arrays, omitted from public bundles unless explicitly requested."
+    },
+    {
+      "path": "tables/observations.csv",
+      "role": "observations",
+      "mediaType": "text/csv",
+      "schemaType": "anchor.headless.observations",
+      "visibilityTier": "beliefOnly",
+      "description": "Observation table."
+    },
+    {
+      "path": "benchmark/episode.json",
+      "role": "benchmarkRecords",
+      "mediaType": "application/json",
+      "schemaType": "anchor.headless.benchmark-episode",
+      "visibilityTier": "publicScenario",
+      "description": "Benchmark episode record."
+    }
+  ],
+  "arrays": [],
+  "tables": [],
+  "json": [],
+  "schemas": [],
+  "checksums": {},
+  "notes": [
+    "H0 example only. No binary arrays are included."
+  ]
+}

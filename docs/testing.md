@@ -385,3 +385,6 @@ P7 adds focused smoke scripts for adaptive runtime, evidence adaptation, surfaci
 ## P8 Adaptive Session Tests
 
 P8 adds smoke coverage for adaptive episode sessions, leg records, compact persistence with fake storage, objective-history view models, session-panel HTML escaping, adaptive artifact import/merge, and P8 exports. Focused Benchmark E2E checks adaptive session review and export controls.
+## H0 Headless Schema Checks
+
+Headless/Colab schema alignment is covered by `smoke_headless_schema_contract.mjs`, `smoke_headless_bundle_manifest.mjs`, `smoke_browser_headless_schema_map.mjs`, `smoke_headless_export_adapter.mjs`, and `audit_headless_schema_alignment.mjs`. These checks verify mapping coverage, visibility-tier handling, and that H0 does not claim a Python package, new simulator, new planner, or MARL/RL implementation.
