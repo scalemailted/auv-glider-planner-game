@@ -1,4 +1,4 @@
-import { validateHeadlessBundleManifest as validateH0Manifest } from './HeadlessBundleManifest.js';
+﻿import { validateHeadlessBundleManifest as validateH0Manifest } from './HeadlessBundleManifest.js';
 import { manifestDisablesHiddenExport } from './HeadlessBundleLoader.js';
 import { HEADLESS_SOLVER_ROUNDTRIP_REPORT_TYPE, isHeadlessRoundtripReportType } from './HeadlessRoundtripTypes.js';
 
@@ -89,6 +89,28 @@ export function validateHeadlessScoreReport(scoreReport = {}) {
   return result(checks, warnings, failures);
 }
 
+
+export function validateHeadlessScienceDiagnostics(scienceDiagnostics = null) {
+  const checks = [];
+  const warnings = [];
+  const failures = [];
+  if (!scienceDiagnostics) {
+    checks.push({ id: 'science-diagnostics-optional', ok: true, detail: 'not present' });
+    return result(checks, warnings, failures, 'low');
+  }
+  checks.push({ id: 'science-diagnostics-present', ok: typeof scienceDiagnostics === 'object' });
+  if (scienceDiagnostics?.type !== 'anchor.headless.science-diagnostics') failures.push(`Science diagnostics type should be anchor.headless.science-diagnostics, got ${scienceDiagnostics?.type ?? 'missing'}.`);
+  if (scienceDiagnostics?.publicSafe !== true) warnings.push('Science diagnostics should mark publicSafe=true.');
+  if (scienceDiagnostics?.hiddenTruthIncluded === true) failures.push('Science diagnostics must not mark hiddenTruthIncluded=true in a public bundle.');
+  if (scienceDiagnostics?.usesProductionDataAssimilation === true) failures.push('Science diagnostics must not claim production data assimilation.');
+  if (scienceDiagnostics?.usesCalibratedOceanForecast === true) failures.push('Science diagnostics must not claim a calibrated ocean forecast.');
+  if (scienceDiagnostics?.usesMARL === true) failures.push('Science diagnostics must not claim MARL/RL.');
+  const text = JSON.stringify(scienceDiagnostics);
+  if (/T_hiddenTruth|trueRoi|eventIntensity/.test(text)) failures.push('Science diagnostics include hidden/oracle field identifiers and are not public-safe.');
+  checks.push({ id: 'science-diagnostics-primary-diagnosis', ok: Boolean(scienceDiagnostics?.primaryDiagnosis), detail: scienceDiagnostics?.primaryDiagnosis ?? 'missing' });
+  if (!scienceDiagnostics?.primaryDiagnosis) warnings.push('Science diagnostics should include primaryDiagnosis.');
+  return result(checks, warnings, failures, failures.length ? 'high' : warnings.length ? 'medium' : 'low');
+}
 export function validateHeadlessRoundtripReport(report = null) {
   const checks = [];
   const warnings = [];
@@ -150,7 +172,8 @@ export function validateHeadlessBundle(bundle = {}) {
       hiddenFieldExported: Boolean(bundle.hiddenFields),
       observationCount: bundle.observations?.length ?? 0,
       trackPointCount: bundle.gliderTracks?.length ?? 0,
-      finalScore: bundle.scoreReport?.finalScore ?? bundle.scoreReport?.final_score ?? null
+      finalScore: bundle.scoreReport?.finalScore ?? bundle.scoreReport?.final_score ?? null,
+      hasScienceDiagnostics: Boolean(bundle.scienceDiagnostics ?? bundle.episode?.scienceDiagnostics)
     }
   };
 }
@@ -181,3 +204,4 @@ function oracleVisible(payload = {}, fieldId) {
   const tier = payload?.fieldVisibility?.[fieldId] ?? payload?.visibilityTier;
   return ['oracle', 'debugAll', 'hiddenTruth'].includes(tier);
 }
+

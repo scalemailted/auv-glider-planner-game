@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test';
+﻿import { expect, test } from '@playwright/test';
 import fs from 'node:fs/promises';
 import { startStaticServer } from './static-server.mjs';
 
@@ -391,6 +391,9 @@ test('Headless Bundle Viewer opens from Simulation Lab and exports browser summa
   await expect(page.locator('#mission-console')).toContainText('Observations');
   await expect(page.locator('#mission-console')).toContainText('Glider Tracks');
   await expect(page.locator('#mission-console')).toContainText('Score Report');
+  await expect(page.locator('#mission-console')).toContainText('Science Diagnosis');
+  await expect(page.locator('#mission-console')).toContainText('Forecast correction means the expected field existed but was wrong.');
+  await expect(page.locator('#mission-console')).toContainText('Hidden event hypothesis means observations may indicate a phenomenon not represented in the forecast.');
   await expect(page.locator('#mission-console')).toContainText('Replay');
   await expect(page.locator('#mission-console')).toContainText('Visibility');
   await expect(page.locator('#mission-console')).toContainText('Hidden Disabled');
@@ -402,6 +405,9 @@ test('Headless Bundle Viewer opens from Simulation Lab and exports browser summa
   await expect.poll(() => page.evaluate(() => window.ANCHOR_HEADLESS_BUNDLE_DEBUG?.usesBrowserOfficialScoring)).toBe(false);
   await expect.poll(() => page.evaluate(() => window.ANCHOR_HEADLESS_BUNDLE_DEBUG?.usesMARL)).toBe(false);
   await expect.poll(() => page.evaluate(() => window.ANCHOR_HEADLESS_BUNDLE_DEBUG?.browserSummaryExportAvailable)).toBe(true);
+  await expect.poll(() => page.evaluate(() => window.ANCHOR_HEADLESS_BUNDLE_DEBUG?.hasScienceDiagnostics)).toBe(true);
+  await expect.poll(() => page.evaluate(() => window.ANCHOR_HEADLESS_BUNDLE_DEBUG?.scienceDiagnosticsPublicSafe)).toBe(true);
+  await expect.poll(() => page.evaluate(() => window.ANCHOR_HEADLESS_BUNDLE_DEBUG?.usesProductionDataAssimilation)).toBe(false);
 
   const [download] = await Promise.all([
     page.waitForEvent('download'),
@@ -411,6 +417,8 @@ test('Headless Bundle Viewer opens from Simulation Lab and exports browser summa
   const summaryJson = JSON.parse(await fs.readFile(await download.path(), 'utf8'));
   expect(summaryJson.type).toBe('anchor.browser.headless-bundle-summary');
   expect(summaryJson.scoreSummary.headlessScoreIsOfficialBrowserScore).toBe(false);
+  expect(summaryJson.scienceDiagnosisSummary.present).toBe(true);
+  expect(summaryJson.scienceDiagnosisSummary.usesProductionDataAssimilation).toBe(false);
   expect(summaryJson.notA).toContain('not Python simulator');
   expect(JSON.stringify(summaryJson)).not.toContain('T_hiddenTruth');
 
@@ -422,6 +430,7 @@ test('Headless Bundle Viewer opens from Simulation Lab and exports browser summa
   await expect(page.locator('#mission-console')).toContainText('Execution Summary');
   await expect(page.locator('#mission-console')).toContainText('Visibility Summary');
   await expect(page.locator('#mission-console')).toContainText('Score Summary');
+  await expect(page.locator('#mission-console')).toContainText('Science Diagnosis');
   await expect.poll(() => page.evaluate(() => window.ANCHOR_HEADLESS_BUNDLE_DEBUG?.roundtripLoaded)).toBe(true);
   await expect.poll(() => page.evaluate(() => window.ANCHOR_HEADLESS_BUNDLE_DEBUG?.roundtripCanonicalType)).toBe('anchor.headless.solver-roundtrip-report');
   await expect.poll(() => page.evaluate(() => window.ANCHOR_HEADLESS_BUNDLE_DEBUG?.solverPacketValidationStatus)).toBe('PASS');
@@ -429,6 +438,8 @@ test('Headless Bundle Viewer opens from Simulation Lab and exports browser summa
   await expect.poll(() => page.evaluate(() => window.ANCHOR_HEADLESS_BUNDLE_DEBUG?.roundtripExecutionStatus)).toBe('PASS');
   await expect.poll(() => page.evaluate(() => window.ANCHOR_HEADLESS_BUNDLE_DEBUG?.roundtripSummaryExportAvailable)).toBe(true);
   await expect.poll(() => page.evaluate(() => window.ANCHOR_HEADLESS_BUNDLE_DEBUG?.usesGeneratedPlan)).toBe(false);
+  await expect.poll(() => page.evaluate(() => window.ANCHOR_HEADLESS_BUNDLE_DEBUG?.hasScienceDiagnostics)).toBe(true);
+  await expect.poll(() => page.evaluate(() => window.ANCHOR_HEADLESS_BUNDLE_DEBUG?.scienceDiagnosticsPublicSafe)).toBe(true);
 
   const [roundtripDownload] = await Promise.all([
     page.waitForEvent('download'),
@@ -441,6 +452,8 @@ test('Headless Bundle Viewer opens from Simulation Lab and exports browser summa
   expect(roundtripSummaryJson.usesPythonSimulator).toBe(false);
   expect(roundtripSummaryJson.usesNewPlanner).toBe(false);
   expect(roundtripSummaryJson.usesBrowserOfficialScoring).toBe(false);
+  expect(roundtripSummaryJson.scienceDiagnosisSummary.present).toBe(true);
+  expect(roundtripSummaryJson.scienceDiagnosisSummary.usesProductionDataAssimilation).toBe(false);
   expect(JSON.stringify(roundtripSummaryJson)).not.toContain('T_hiddenTruth');
 
   await page.locator('#mission-console [data-action="menu"]').click();
@@ -3072,3 +3085,5 @@ async function cellCenter(page, x, y) {
     };
   }, { x, y });
 }
+
+

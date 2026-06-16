@@ -108,3 +108,9 @@ The public fixture is `docs/examples/headless_oceanbox_js_public_bundle.example.
 `tools/js/headless_oceanbox.mjs roundtrip` is the consolidated CLI for bridging browser solver packets to the Node headless runtime. The legacy `tools/js/headless_roundtrip.mjs` wrapper still works. It reads `anchor.solverPacket` plus a submitted `anchor.plan`, checks hidden-truth visibility, runs shared browser plan validation where possible, adapts the selected agent plan to `anchor.headless.waypoint-plan`, then executes the existing H1 runtime.
 
 Public output writes `bundle.json` plus `roundtrip_report.json` without `hidden_fields.json` when `--no-hidden-export` is used. Roundtrip reports use canonical `anchor.headless.solver-roundtrip-report`, and loaders still accept legacy `anchor.headless.roundtrip-report`. Use `--include-hidden-truth` only for explicit oracle/debug workflows. The execution uses the existing H1 synthetic educational runtime fields, so the report marks `usesSyntheticRuntimeFieldsForExecution: true`; browser ANCHOR remains authoritative for official visual scoring.
+
+## P9 Science Diagnostics
+
+Headless episodes now include compact public-safe science diagnostics. Bundle output may include `science_diagnostics.json` plus `scienceDiagnostics` inside `bundle.json`. The diagnostics summarize observation surprise, evidence coherence, forecast-correction state, and hidden-event hypothesis state without embedding hidden truth arrays.
+
+This is an educational heuristic layer only. It does not perform production data assimilation, calibrated forecasting, route planning, scoring changes, or MARL/RL.

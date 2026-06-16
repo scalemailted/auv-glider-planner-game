@@ -1,4 +1,4 @@
-import { normalizeHeadlessFieldId } from './HeadlessSchemaContract.js';
+﻿import { normalizeHeadlessFieldId } from './HeadlessSchemaContract.js';
 
 export const BROWSER_HEADLESS_SCHEMA_MAP_VERSION = 'browser-headless-schema-map-h0';
 
@@ -45,6 +45,11 @@ const BROWSER_HEADLESS_MAP = Object.freeze([
   entry('anchor.headless.solver-roundtrip-report', 'anchor.headless.solver-roundtrip-report', 'ready', true, 'publicScenario', [], 'H3.1 canonical solver-packet / submitted-plan / Node-headless report.'),
   entry('anchor.headless.roundtrip-report', 'anchor.headless.solver-roundtrip-report', 'ready', true, 'publicScenario', [], 'Legacy H3 roundtrip report alias accepted as canonical solver roundtrip report.'),
   entry('anchor.headless.solver-roundtrip-bundle', 'anchor.headless.solver-roundtrip-bundle', 'ready', true, 'publicScenario', [], 'H3.1 combined public bundle with embedded solver roundtrip report.'),
+  entry('anchor.headless.science-diagnostics', 'anchor.headless.science-diagnostics', 'ready', true, 'publicScenario', [], 'P9 compact public-safe science diagnosis summary for browser and Colab inspection.'),
+  entry('anchor.science.forecast-correction', 'anchor.headless.science-diagnostics', 'ready', true, 'publicScenario', [], 'P9 forecast-correction state embedded in science diagnostics.'),
+  entry('anchor.science.hidden-event-hypothesis', 'anchor.headless.science-diagnostics', 'ready', true, 'publicScenario', [], 'P9 hidden-event hypothesis state embedded in science diagnostics.'),
+  entry('anchor.science.discovery-update', 'anchor.headless.science-diagnostics', 'ready', true, 'publicScenario', [], 'P9 science discovery update embedded in science diagnostics.'),
+  entry('anchor.science.discovery-state', 'anchor.headless.science-diagnostics', 'ready', true, 'publicScenario', [], 'P9 science discovery state embedded in science diagnostics.'),
   entry('anchor.browser.headless-roundtrip-summary', 'anchor.headless.solver-roundtrip-report', 'ready', true, 'publicScenario', [], 'Browser summary artifact for H3.1 roundtrip inspection.'),
   entry('anchor.challenge', 'anchor.headless.mission-config', 'partial', true, 'publicScenario', ['challenge includes browser replay/scoring metadata'], 'Extract world, gliders, visible fields, and rules.'),
   entry('anchor.oracleDataset', 'anchor.headless.bundle', 'partial', false, 'hiddenTruth', ['contains hidden truth and training labels'], 'Require explicit oracle/debug visibility in H1 bundle export.'),

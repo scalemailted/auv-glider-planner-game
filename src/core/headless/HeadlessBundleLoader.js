@@ -1,9 +1,9 @@
-import { parseSimpleCsv, normalizeObservationCsvRows, normalizeTrackCsvRows } from './HeadlessCsv.js';
+﻿import { parseSimpleCsv, normalizeObservationCsvRows, normalizeTrackCsvRows } from './HeadlessCsv.js';
 import { HEADLESS_SOLVER_ROUNDTRIP_BUNDLE_TYPE, isHeadlessRoundtripReportType } from './HeadlessRoundtripTypes.js';
 
 export const HEADLESS_BUNDLE_LOADER_VERSION = 'headless-bundle-loader-h2';
 export const HEADLESS_BUNDLE_REQUIRED_FILES = Object.freeze(['manifest.json', 'mission_config.json', 'visible_fields.json', 'score_report.json']);
-export const HEADLESS_BUNDLE_OPTIONAL_FILES = Object.freeze(['hidden_fields.json', 'observations.json', 'observations.csv', 'glider_tracks.json', 'glider_tracks.csv', 'replay.json', 'episode.json', 'bundle.json', 'roundtrip_report.json']);
+export const HEADLESS_BUNDLE_OPTIONAL_FILES = Object.freeze(['hidden_fields.json', 'observations.json', 'observations.csv', 'glider_tracks.json', 'glider_tracks.csv', 'replay.json', 'episode.json', 'bundle.json', 'roundtrip_report.json', 'science_diagnostics.json']);
 
 const LOGICAL_FILE_ALIASES = Object.freeze({
   'manifest.json': 'manifest',
@@ -18,7 +18,8 @@ const LOGICAL_FILE_ALIASES = Object.freeze({
   'replay.json': 'replay',
   'episode.json': 'episode',
   'bundle.json': 'combinedBundle',
-  'roundtrip_report.json': 'roundtripReport'
+  'roundtrip_report.json': 'roundtripReport',
+  'science_diagnostics.json': 'scienceDiagnostics'
 });
 
 export function classifyHeadlessBundleFile(fileName, payload = null) {
@@ -82,6 +83,7 @@ export function normalizeHeadlessBundleFiles(files = []) {
     normalized.replay ??= combined.replay;
     normalized.episode ??= combined.episode;
     normalized.roundtripReport ??= combined.roundtripReport;
+    normalized.scienceDiagnostics ??= combined.scienceDiagnostics ?? combined.episode?.scienceDiagnostics;
   }
   if (normalized.observationsCsv?.rows?.length) normalized.observations ??= { type: 'anchor.headless.observations', observations: normalized.observationsCsv.rows, source: 'csv' };
   if (normalized.gliderTracksCsv?.rows?.length) normalized.gliderTracks ??= { type: 'anchor.headless.trajectory', tracks: normalized.gliderTracksCsv.rows, source: 'csv' };
@@ -121,6 +123,7 @@ export function buildHeadlessBundleFromFiles(bundleFiles) {
     scoreReport: normalized.scoreReport ?? null,
     replay: normalized.replay ?? null,
     roundtripReport: normalized.roundtripReport ?? null,
+    scienceDiagnostics: normalized.scienceDiagnostics ?? normalized.episode?.scienceDiagnostics ?? null,
     episode: normalized.episode ?? null,
     files: Object.keys(normalized.fileMap ?? {}).sort(),
     warnings: [...(normalized.warnings ?? []), ...fileValidation.warnings],
@@ -143,6 +146,7 @@ export function headlessBundleLoadSummary(bundle) {
     trackPointCount: bundle?.gliderTracks?.length ?? 0,
     finalScore: bundle?.scoreReport?.finalScore ?? bundle?.scoreReport?.final_score ?? null,
     hasRoundtripReport: Boolean(bundle?.roundtripReport),
+    hasScienceDiagnostics: Boolean(bundle?.scienceDiagnostics),
     roundtripStatus: bundle?.roundtripReport?.summary?.status ?? null,
     warnings: bundle?.warnings ?? [],
     failures: bundle?.failures ?? []
@@ -181,6 +185,7 @@ function inferLogicalType(fileName, payload) {
   const type = typeof payload === 'object' ? payload?.type : null;
   if (type === 'anchor.headless.bundle' || type === HEADLESS_SOLVER_ROUNDTRIP_BUNDLE_TYPE) return 'combinedBundle';
   if (isHeadlessRoundtripReportType(type)) return 'roundtripReport';
+  if (type === 'anchor.headless.science-diagnostics') return 'scienceDiagnostics';
   if (type === 'anchor.headless.manifest') return 'manifest';
   if (type === 'anchor.headless.mission-config') return 'missionConfig';
   if (type === 'anchor.headless.score-report') return 'scoreReport';
@@ -191,3 +196,4 @@ function inferLogicalType(fileName, payload) {
 function basename(fileName) {
   return String(fileName ?? '').split(/[\\/]/).pop();
 }
+

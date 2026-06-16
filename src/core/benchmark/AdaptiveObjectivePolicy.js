@@ -4,6 +4,7 @@ import {
   normalizeAdaptiveDiagnosisId,
   normalizeAdaptiveObjectiveTransitionId
 } from './AdaptiveMissionManagerContract.js';
+import { normalizeScienceDiagnosisId, recommendedObjectiveForScienceDiagnosis } from '../science/ScienceDiagnosisTypes.js';
 
 export const ADAPTIVE_OBJECTIVE_POLICY_VERSION = 'adaptive-objective-policy-p6';
 
@@ -44,8 +45,10 @@ export function selectNextAdaptiveObjective({
   const currentObjectiveId = objectiveIdFrom(currentObjective ?? missionContext.currentObjectiveId ?? diagnosis?.activeObjectiveId ?? 'reconnaissanceSurvey');
   const diagnosisId = normalizeAdaptiveDiagnosisId(diagnosis?.primaryDiagnosis ?? diagnosis?.diagnosisId);
   let transitionId = normalizeAdaptiveObjectiveTransitionId(diagnosis?.recommendedTransitionId ?? DIAGNOSIS_TO_TRANSITION[diagnosisId]);
+  const sciencePolicy = scienceObjectivePolicy(diagnosis, missionContext, currentObjectiveId);
+  if (sciencePolicy?.transitionId) transitionId = normalizeAdaptiveObjectiveTransitionId(sciencePolicy.transitionId);
   if (diagnosisId === 'agreesWithForecast' && currentObjectiveId === 'exploitKnownValue') transitionId = 'keepCurrentObjective';
-  const proposedObjectiveId = normalizeMissionObjectiveId(diagnosis?.recommendedObjectiveId ?? TRANSITION_TO_OBJECTIVE[transitionId] ?? currentObjectiveId);
+  const proposedObjectiveId = normalizeMissionObjectiveId(sciencePolicy?.objectiveId ?? diagnosis?.recommendedObjectiveId ?? TRANSITION_TO_OBJECTIVE[transitionId] ?? currentObjectiveId);
   const allowedObjectives = Array.isArray(managerConfig.allowedObjectives) && managerConfig.allowedObjectives.length
     ? managerConfig.allowedObjectives.map((id) => normalizeMissionObjectiveId(id))
     : MISSION_OBJECTIVE_IDS;
@@ -67,6 +70,7 @@ export function selectNextAdaptiveObjective({
     notes: [
       'Objective authority belongs to the mission manager.',
       'Route authority remains with the player or solver.',
+      ...(sciencePolicy?.note ? [sciencePolicy.note] : []),
       ...(Array.isArray(diagnosis?.warnings) ? diagnosis.warnings : []),
       ...(Array.isArray(missionContext.notes) ? missionContext.notes : [])
     ]
@@ -155,6 +159,40 @@ export function adaptiveObjectiveTransitionSummary(record = {}) {
   };
 }
 
+function scienceObjectivePolicy(diagnosis = {}, missionContext = {}, currentObjectiveId = 'reconnaissanceSurvey') {
+  const source = diagnosis.primaryScienceDiagnosis ?? diagnosis.scienceDiscovery?.primaryDiagnosis ?? missionContext.scienceDiscovery?.primaryDiagnosis;
+  if (!source) return null;
+  const scienceDiagnosisId = normalizeScienceDiagnosisId(source, null);
+  if (!scienceDiagnosisId) return null;
+  const objectiveId = diagnosis.recommendedObjectiveId
+    ?? missionContext.scienceDiscovery?.recommendedObjectiveId
+    ?? recommendedObjectiveForScienceDiagnosis(scienceDiagnosisId, {
+      currentObjectiveId,
+      eventFamily: diagnosis.hiddenEventHypothesisSummary?.eventFamily ?? missionContext.scienceDiscovery?.hiddenEventHypothesis?.eventFamily
+    });
+  const transitionId = transitionForScienceObjective(scienceDiagnosisId, objectiveId, currentObjectiveId);
+  return {
+    scienceDiagnosisId,
+    objectiveId,
+    transitionId,
+    note: `P9 science diagnosis ${scienceDiagnosisId} mapped to ${objectiveId}; objective authority remains with the mission manager.`
+  };
+}
+
+function transitionForScienceObjective(scienceDiagnosisId, objectiveId, currentObjectiveId) {
+  if (scienceDiagnosisId === 'likelySensorNoise' || scienceDiagnosisId === 'insufficientEvidence') return 'pauseForMoreEvidence';
+  if (scienceDiagnosisId === 'agreesWithForecast' && currentObjectiveId === 'exploitKnownValue') return 'keepCurrentObjective';
+  return {
+    reduceUncertainty: 'switchToReduceUncertainty',
+    validateForecast: 'switchToValidateForecast',
+    confirmHiddenEvent: 'switchToConfirmHiddenEvent',
+    mapBoundary: 'switchToMapBoundary',
+    trackFeature: 'switchToTrackFeature',
+    localizeSource: 'switchToLocalizeSource',
+    revisitStaleRegion: 'switchToRevisitStaleRegion',
+    exploitKnownValue: 'switchToExploitKnownValue'
+  }[objectiveId] ?? 'keepCurrentObjective';
+}
 function objectiveIdFrom(value) {
   if (value && typeof value === 'object') return normalizeMissionObjectiveId(value.id ?? value.objectiveId);
   return normalizeMissionObjectiveId(value);
@@ -166,6 +204,7 @@ function buildEvidenceSummary(diagnosis = {}, missionContext = {}) {
     observationCount: source.observationCount ?? missionContext.observationCount,
     recentObservationCount: source.recentObservationCount ?? missionContext.recentObservationCount,
     primaryDiagnosis: diagnosis?.primaryDiagnosis,
+    primaryScienceDiagnosis: diagnosis?.primaryScienceDiagnosis ?? source.primaryScienceDiagnosis ?? missionContext.scienceDiscovery?.primaryDiagnosis,
     confidence: diagnosis?.confidence,
     fieldsAvailable: source.fieldsAvailable ?? missionContext.fieldsAvailable,
     topScores: source.topScores ?? diagnosis?.scores
@@ -177,6 +216,7 @@ function normalizeEvidenceSummary(value = {}) {
     observationCount: Math.max(0, Math.round(finiteNumber(value.observationCount, 0))),
     recentObservationCount: Math.max(0, Math.round(finiteNumber(value.recentObservationCount, 0))),
     primaryDiagnosis: value.primaryDiagnosis ? normalizeAdaptiveDiagnosisId(value.primaryDiagnosis) : null,
+    primaryScienceDiagnosis: value.primaryScienceDiagnosis ? String(value.primaryScienceDiagnosis) : null,
     confidence: clamp01(value.confidence, 0),
     fieldsAvailable: normalizeStringList(value.fieldsAvailable),
     topScores: normalizeTopScores(value.topScores)
@@ -213,3 +253,5 @@ function clamp01(value, fallback = 0) {
   const number = Number(value);
   return Number.isFinite(number) ? Math.max(0, Math.min(1, number)) : fallback;
 }
+
+

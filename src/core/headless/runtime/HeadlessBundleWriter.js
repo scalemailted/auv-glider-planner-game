@@ -1,4 +1,4 @@
-import fs from 'node:fs';
+﻿import fs from 'node:fs';
 import path from 'node:path';
 
 import { createHeadlessBundleManifest as createH0HeadlessBundleManifest } from '../HeadlessBundleManifest.js';
@@ -11,6 +11,7 @@ export function createHeadlessBundleManifest(episode, options = {}) {
   const includeHidden = options.includeHiddenTruth !== false;
   const combinedJson = options.combinedJson === true;
   const roundtripReport = options.roundtripReport ?? episode?.roundtripReport ?? null;
+  const hasScienceDiagnostics = Boolean(episode?.scienceDiagnostics);
   const combinedBundleType = roundtripReport ? HEADLESS_SOLVER_ROUNDTRIP_BUNDLE_TYPE : 'anchor.headless.bundle';
   const files = [
     fileEntry('manifest.json', 'manifest', 'anchor.headless.manifest', 'publicScenario', 'Bundle manifest.'),
@@ -24,6 +25,9 @@ export function createHeadlessBundleManifest(episode, options = {}) {
     fileEntry('replay.json', 'replay', 'anchor.headless.replay', 'publicScenario', 'Lightweight replay path and observation references.'),
     fileEntry('episode.json', 'benchmarkRecords', 'anchor.headless.benchmark-episode', 'publicScenario', 'Complete H1 headless episode artifact.')
   ];
+  if (hasScienceDiagnostics) {
+    files.splice(7, 0, fileEntry('science_diagnostics.json', 'scienceDiagnostics', 'anchor.headless.science-diagnostics', 'publicScenario', 'Compact P9 public-safe forecast-correction and hidden-event hypothesis diagnostics.'));
+  }
   if (includeHidden) {
     files.splice(3, 0, fileEntry('hidden_fields.json', 'hiddenFields', 'anchor.headless.field-pack', 'hiddenTruth', 'Hidden truth and oracle-only fields for instructor/debug use.'));
   }
@@ -35,6 +39,7 @@ export function createHeadlessBundleManifest(episode, options = {}) {
   }
 
   const jsonFiles = ['mission_config.json', 'score_report.json', 'replay.json', 'episode.json'];
+  if (hasScienceDiagnostics) jsonFiles.push('science_diagnostics.json');
   if (combinedJson) jsonFiles.push('bundle.json');
   if (options.roundtripReport || episode?.roundtripReport) jsonFiles.push('roundtrip_report.json');
 
@@ -61,7 +66,8 @@ export function createHeadlessBundleManifest(episode, options = {}) {
       'Node headless runtime over portable ANCHOR core logic. Browser ANCHOR remains the official visual referee and scoring UI.',
       includeHidden ? 'Hidden truth export enabled for debug/instructor workflows.' : 'Hidden truth export disabled; hidden_fields.json omitted.',
       combinedJson ? 'bundle.json is a convenience single-file import for the H2 browser bundle viewer.' : 'Multi-file bundle export; pass combinedJson to also emit bundle.json.',
-      'H1/H2 do not implement Python OceanBox, a new planner, MARL/RL, or calibrated ocean forecasting.'
+      'P9 science diagnostics are public-safe educational heuristics and do not embed hidden truth fields.',
+      'H1/H2/H3/P9 do not implement Python OceanBox, a new planner, MARL/RL, production data assimilation, or calibrated ocean forecasting.'
     ]
   });
 }
@@ -80,6 +86,7 @@ export function headlessBundleFiles(episode, options = {}) {
     'glider_tracks.json': stableJson({ type: 'anchor.headless.trajectory', version: 'headless-runtime-tracks-h1', tracks: episode.tracks ?? [] }),
     'glider_tracks.csv': tracksCsv(episode.tracks ?? []),
     'score_report.json': stableJson(episode.scoreReport),
+    ...(episode.scienceDiagnostics ? { 'science_diagnostics.json': stableJson(episode.scienceDiagnostics) } : {}),
     'replay.json': stableJson(episode.replay),
     'episode.json': stableJson(stripBundleEpisode(episode, includeHidden))
   };
@@ -108,6 +115,7 @@ export function createHeadlessCombinedBundle(episode, options = {}) {
     observations: episode.observations ?? [],
     gliderTracks: episode.tracks ?? [],
     scoreReport: episode.scoreReport,
+    scienceDiagnostics: episode.scienceDiagnostics ?? null,
     replay: episode.replay,
     roundtripReport,
     episode: stripBundleEpisode(episode, includeHidden),
@@ -150,6 +158,7 @@ export function headlessBundleSummary(outputDir) {
     hiddenTruthExported: files.includes('hidden_fields.json'),
     combinedBundle: files.includes('bundle.json'),
     finalScoreFile: files.includes('score_report.json'),
+    scienceDiagnostics: files.includes('science_diagnostics.json'),
     observationCsv: files.includes('observations.csv'),
     trackCsv: files.includes('glider_tracks.csv'),
     manifestNotes: manifest?.notes ?? []
@@ -224,4 +233,3 @@ function csvValue(value) {
 function stableJson(value) {
   return `${JSON.stringify(value, null, 2)}\n`;
 }
-

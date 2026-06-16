@@ -76,3 +76,9 @@ H3.1 adds an optional bundle role `roundtripReport` stored as `roundtrip_report.
 Colab/Python may load this report with standard-library `json` alongside `bundle.json` to analyze the artifact. Python should not reimplement the simulator; it either analyzes the files or calls Node/OceanBox-JS.
 
 Checked-in public examples live at `docs/examples/headless_solver_packet.example.json`, `docs/examples/headless_solver_plan.example.json`, `docs/examples/headless_solver_roundtrip_report.example.json`, and `docs/examples/headless_solver_roundtrip_bundle.example.json`. The browser viewer loads the roundtrip bundle through `Load Example Roundtrip`, and Colab/Python can read the same JSON artifacts with standard-library `json`.
+
+## P9 Science Diagnostics
+
+P9 adds an optional public bundle role `scienceDiagnostics` stored as `science_diagnostics.json` with type `anchor.headless.science-diagnostics`. Combined bundles embed the same object as `scienceDiagnostics`, and roundtrip reports may include `scienceDiagnosticsSummary`.
+
+The artifact summarizes forecast-correction state and hidden-event hypothesis state without embedding `T_hiddenTruth` or hidden field arrays. It is for browser/Colab inspection only and does not claim production data assimilation, calibrated ocean forecasting, a new planner, official browser scoring, or MARL/RL.

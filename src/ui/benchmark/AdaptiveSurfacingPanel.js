@@ -1,4 +1,4 @@
-export function adaptiveSurfacingPanelHtml(viewModelOrDecision = {}) {
+﻿export function adaptiveSurfacingPanelHtml(viewModelOrDecision = {}) {
   const decision = viewModelOrDecision.decision ?? viewModelOrDecision;
   const handoff = viewModelOrDecision.nextLegHandoff ?? viewModelOrDecision.handoff ?? null;
   const partial = Boolean(decision?.evidence?.diagnostics?.partialEvidence || decision?.warnings?.length);
@@ -10,6 +10,7 @@ export function adaptiveSurfacingPanelHtml(viewModelOrDecision = {}) {
       <p>P7 does not add a new route planner, scoring redesign, or MARL/RL.</p>
       ${partial ? '<p>Evidence is partial because the current result does not contain all uncertainty or observation fields.</p>' : ''}
       ${adaptiveEvidenceSnapshotHtml(decision)}
+      ${adaptiveScienceDiscoveryHtml(decision)}
       ${adaptiveDiagnosisHtml(decision)}
       ${adaptiveObjectiveTransitionHtml(decision)}
       ${handoff ? adaptiveNextLegHandoffHtml(handoff) : '<p><strong>Plan Next Leg</strong>: Next-leg config will be available after the surfacing decision is built.</p>'}
@@ -34,6 +35,49 @@ export function adaptiveEvidenceSnapshotHtml(decision = {}) {
       </div>
       <p>Imported or current observations may be incomplete; the manager reports partial-evidence warnings when needed.</p>
       ${warnings.length ? `<p class="warning">${escapeHtml(warnings.join(' '))}</p>` : ''}
+    </section>
+  `;
+}
+
+export function adaptiveScienceDiscoveryHtml(decision = {}) {
+  const science = decision.scienceDiscovery ?? decision.diagnosis?.scienceDiscovery ?? decision.evidence?.scienceDiscovery ?? null;
+  const diagnosis = decision.diagnosis ?? {};
+  const forecast = decision.evidence?.forecastCorrectionSummary ?? diagnosis.forecastCorrectionSummary ?? science?.forecastCorrection ?? null;
+  const hidden = decision.evidence?.hiddenEventHypothesisSummary ?? diagnosis.hiddenEventHypothesisSummary ?? science?.hiddenEventHypothesis ?? null;
+  if (!science && !forecast && !hidden && !diagnosis.primaryScienceDiagnosis) {
+    return `
+      <section data-adaptive-science-discovery>
+        <h3>Science Discovery</h3>
+        <p>Science discovery diagnostics were not available for this leg.</p>
+        <p>Forecast correction means the expected field existed but was wrong.</p>
+        <p>Hidden event hypothesis means observations may indicate a phenomenon not represented in the forecast.</p>
+        <p>P9 uses transparent educational heuristics, not production data assimilation.</p>
+      </section>
+    `;
+  }
+  return `
+    <section data-adaptive-science-discovery>
+      <h3>Science Discovery</h3>
+      <div class="cell-inspector-metrics">
+        <div><span>Science Diagnosis</span><strong>${escapeHtml(diagnosis.primaryScienceDiagnosisLabel ?? science?.primaryDiagnosisLabel ?? diagnosis.primaryScienceDiagnosis ?? science?.primaryDiagnosis ?? 'Unknown')}</strong></div>
+        <div><span>Confidence</span><strong>${escapeHtml(formatPercent(science?.confidence ?? diagnosis.confidence))}</strong></div>
+        <div><span>Recommended Objective</span><strong>${escapeHtml(science?.recommendedObjectiveId ?? diagnosis.recommendedObjectiveId ?? 'Unknown')}</strong></div>
+      </div>
+      <h4>Forecast Update</h4>
+      <div class="cell-inspector-metrics">
+        <div><span>Status</span><strong>${escapeHtml(forecast?.status ?? 'not available')}</strong></div>
+        <div><span>Diagnosis</span><strong>${escapeHtml(forecast?.diagnosisId ?? 'n/a')}</strong></div>
+        <div><span>Correction</span><strong>${escapeHtml(forecast?.correctionKind ?? forecast?.correction?.kind ?? 'n/a')}</strong></div>
+      </div>
+      <p>Forecast correction means the expected field existed but was wrong.</p>
+      <h4>Discovery Update</h4>
+      <div class="cell-inspector-metrics">
+        <div><span>Status</span><strong>${escapeHtml(hidden?.status ?? 'not available')}</strong></div>
+        <div><span>Diagnosis</span><strong>${escapeHtml(hidden?.diagnosisId ?? 'n/a')}</strong></div>
+        <div><span>Event Family</span><strong>${escapeHtml(hidden?.eventFamily ?? 'unknown')}</strong></div>
+      </div>
+      <p>Hidden event hypothesis means observations may indicate a phenomenon not represented in the forecast.</p>
+      <p>P9 uses transparent educational heuristics, not production data assimilation.</p>
     </section>
   `;
 }

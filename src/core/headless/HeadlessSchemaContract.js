@@ -1,4 +1,4 @@
-export const HEADLESS_SCHEMA_CONTRACT_VERSION = 'headless-schema-contract-h0';
+﻿export const HEADLESS_SCHEMA_CONTRACT_VERSION = 'headless-schema-contract-h0';
 
 export const HEADLESS_ARTIFACT_TYPES = Object.freeze([
   'anchor.headless.bundle',
@@ -15,6 +15,11 @@ export const HEADLESS_ARTIFACT_TYPES = Object.freeze([
   'anchor.headless.solver-roundtrip-report',
   'anchor.headless.roundtrip-report',
   'anchor.headless.solver-roundtrip-bundle',
+  'anchor.headless.science-diagnostics',
+  'anchor.science.forecast-correction',
+  'anchor.science.hidden-event-hypothesis',
+  'anchor.science.discovery-update',
+  'anchor.science.discovery-state',
   'anchor.headless.colab-notebook-config'
 ]);
 
@@ -98,6 +103,11 @@ const ARTIFACT_ALIASES = new Map([
   ['roundtrip-report', 'anchor.headless.solver-roundtrip-report'],
   ['legacyRoundtripReport', 'anchor.headless.roundtrip-report'],
   ['solverRoundtripBundle', 'anchor.headless.solver-roundtrip-bundle'],
+  ['scienceDiagnostics', 'anchor.headless.science-diagnostics'],
+  ['forecastCorrection', 'anchor.science.forecast-correction'],
+  ['hiddenEventHypothesis', 'anchor.science.hidden-event-hypothesis'],
+  ['scienceDiscoveryUpdate', 'anchor.science.discovery-update'],
+  ['scienceDiscoveryState', 'anchor.science.discovery-state'],
   ['solver-roundtrip-bundle', 'anchor.headless.solver-roundtrip-bundle']
 ]);
 
@@ -226,3 +236,5 @@ function normalizeStringList(values = []) {
 function compactObject(value = {}) {
   return Object.fromEntries(Object.entries(value).filter(([_key, entry]) => entry !== undefined));
 }
+
+

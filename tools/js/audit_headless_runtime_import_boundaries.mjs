@@ -1,4 +1,4 @@
-import assert from 'node:assert/strict';
+﻿import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
 
@@ -48,3 +48,4 @@ for (const file of files) {
 
 assert.deepEqual(violations, [], `Headless runtime import boundary violations:\n${violations.join('\n')}`);
 console.log('Headless runtime import boundary audit passed');
+

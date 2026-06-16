@@ -1065,3 +1065,7 @@ node tools/js/headless_roundtrip.mjs solver-packet.json plan.json --out runs/h3-
 ```
 
 Open Simulation Lab / Headless Bundle Viewer and load `runs/h3-roundtrip/bundle.json`. The viewer shows visible fields, observations, tracks, score, replay, and a Roundtrip Report section when the bundle includes `roundtrip_report.json`. Public roundtrips withhold hidden truth by default. This workflow executes a submitted plan in Node/OceanBox-JS for compatibility and artifact analysis; browser ANCHOR remains the visual/referee/scoring UI.
+
+## P9 Hidden Event Hypothesis / Forecast Correction
+
+Headless bundles and Adaptive Benchmark surfacing reviews may show a Science Diagnosis section. Forecast correction means the expected field existed but was wrong. Hidden event hypothesis means observations may indicate a phenomenon not represented in the forecast. These diagnostics are transparent educational heuristics, not production data assimilation or calibrated ocean forecasting, and they do not change scoring or generate routes.

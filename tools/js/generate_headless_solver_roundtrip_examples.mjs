@@ -1,4 +1,4 @@
-#!/usr/bin/env node
+﻿#!/usr/bin/env node
 import fs from 'node:fs';
 import path from 'node:path';
 
@@ -77,6 +77,7 @@ const report = {
       'glider_tracks.json',
       'glider_tracks.csv',
       'score_report.json',
+      'science_diagnostics.json',
       'replay.json',
       'episode.json',
       'roundtrip_report.json'
@@ -121,6 +122,9 @@ function assertPublicFixture(packet, plan, report, bundle) {
   if (bundle.manifest?.files?.some((entry) => entry?.path === 'hidden_fields.json')) throw new Error('Public roundtrip manifest lists hidden_fields.json.');
   if (report.summary?.hiddenTruthExported !== false) throw new Error('Public roundtrip report must mark hiddenTruthExported=false.');
   if (report.hiddenTruthLeakCheck?.solverVisibleHiddenTruthIncluded !== false) throw new Error('Public roundtrip report detected solver-visible hidden truth.');
+  if (bundle.scienceDiagnostics?.type !== 'anchor.headless.science-diagnostics') throw new Error('Public roundtrip bundle must include P9 science diagnostics.');
+  if (report.scienceDiagnosticsSummary?.present !== true) throw new Error('Public roundtrip report must include P9 science diagnostics summary.');
+  if (JSON.stringify(bundle.scienceDiagnostics).includes('T_hiddenTruth')) throw new Error('Public roundtrip science diagnostics leak T_hiddenTruth.');
 }
 
 function readJson(filePath) {
@@ -130,3 +134,4 @@ function readJson(filePath) {
 function writeJson(filePath, value) {
   fs.writeFileSync(filePath, `${JSON.stringify(value, null, 2)}\n`, 'utf8');
 }
+

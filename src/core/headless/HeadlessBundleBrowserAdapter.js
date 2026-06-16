@@ -1,5 +1,5 @@
-import { validateHeadlessBundle } from './HeadlessBundleValidation.js';
-import { buildHeadlessBundleViewModel, headlessBundleObservationSummary, headlessBundleReplaySummary, headlessBundleRoundtripSummary, headlessBundleScoreSummary, headlessBundleTrackSummary, headlessBundleVisibilitySummary } from './HeadlessBundleViewModel.js';
+﻿import { validateHeadlessBundle } from './HeadlessBundleValidation.js';
+import { buildHeadlessBundleViewModel, headlessBundleObservationSummary, headlessBundleReplaySummary, headlessBundleRoundtripSummary, headlessBundleScienceDiagnosisSummary, headlessBundleScoreSummary, headlessBundleTrackSummary, headlessBundleVisibilitySummary } from './HeadlessBundleViewModel.js';
 import { BROWSER_HEADLESS_ROUNDTRIP_SUMMARY_TYPE, HEADLESS_SOLVER_ROUNDTRIP_REPORT_TYPE } from './HeadlessRoundtripTypes.js';
 
 export const HEADLESS_BUNDLE_BROWSER_ADAPTER_VERSION = 'headless-bundle-browser-adapter-h2';
@@ -21,6 +21,7 @@ export function buildBrowserHeadlessBundleSummaryArtifact(bundle = {}) {
     trackSummary: headlessBundleTrackSummary(bundle),
     scoreSummary: buildBrowserHeadlessScoreComparisonDescriptor(bundle),
     roundtripSummary: headlessBundleRoundtripSummary(bundle),
+    scienceDiagnosisSummary: headlessBundleScienceDiagnosisSummary(bundle),
     replaySummary: headlessBundleReplaySummary(bundle),
     validation,
     notes: ['Browser-side summary artifact for inspecting a Node/OceanBox-JS headless bundle.'],
@@ -55,6 +56,7 @@ export function buildBrowserHeadlessRoundtripSummaryArtifact(bundle = {}) {
     usesNodeHeadlessRuntime: roundtripSummary.usesNodeHeadlessRuntime,
     usesBrowserOfficialScoring: roundtripSummary.usesBrowserOfficialScoring,
     usesMARL: roundtripSummary.usesMARL,
+    scienceDiagnosisSummary: headlessBundleScienceDiagnosisSummary(bundle),
     validationStatus: validation.status,
     bundleVisibilityRisk: validation.visibilityRisk,
     notes: ['Browser-side summary artifact for a solver-packet / plan / Node-headless roundtrip.'],
@@ -86,6 +88,7 @@ export function buildBrowserHeadlessBundleDebugObject(bundle = {}) {
   const validation = validateHeadlessBundle(bundle);
   const viewModel = buildHeadlessBundleViewModel(bundle);
   const roundtrip = viewModel.roundtripSummary ?? {};
+  const science = viewModel.scienceDiagnosisSummary ?? headlessBundleScienceDiagnosisSummary(bundle);
   return {
     version: HEADLESS_BUNDLE_BROWSER_ADAPTER_VERSION,
     bundleLoaded: Boolean(bundle?.manifest || bundle?.visibleFields),
@@ -111,6 +114,13 @@ export function buildBrowserHeadlessBundleDebugObject(bundle = {}) {
     roundtripExecutionStatus: roundtrip.executionStatus ?? null,
     roundtripVisibilityRisk: roundtrip.visibilityRisk ?? null,
     roundtripSummaryExportAvailable: Boolean(bundle.roundtripReport),
+    hasScienceDiagnostics: science.present === true,
+    sciencePrimaryDiagnosis: science.primaryDiagnosis ?? null,
+    scienceForecastCorrectionStatus: science.forecastCorrectionStatus ?? null,
+    scienceHiddenEventStatus: science.hiddenEventStatus ?? null,
+    scienceRecommendedObjective: science.recommendedObjectiveId ?? null,
+    scienceDiagnosticsPublicSafe: science.publicSafe !== false && science.hiddenTruthIncluded !== true,
+    usesProductionDataAssimilation: science.usesProductionDataAssimilation === true,
     browserSummaryExportAvailable: true,
     usesGeneratedPlan: roundtrip.usesGeneratedPlan === true,
     usesBrowserOfficialScoring: false,
@@ -120,3 +130,4 @@ export function buildBrowserHeadlessBundleDebugObject(bundle = {}) {
     usesMARL: false
   };
 }
+

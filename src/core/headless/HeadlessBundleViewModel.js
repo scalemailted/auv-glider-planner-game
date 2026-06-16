@@ -1,4 +1,4 @@
-import { validateHeadlessBundle } from './HeadlessBundleValidation.js';
+﻿import { validateHeadlessBundle } from './HeadlessBundleValidation.js';
 import { HEADLESS_SOLVER_ROUNDTRIP_REPORT_TYPE, isHeadlessRoundtripReportType } from './HeadlessRoundtripTypes.js';
 
 export const HEADLESS_BUNDLE_VIEW_MODEL_VERSION = 'headless-bundle-view-model-h2';
@@ -16,6 +16,7 @@ export function buildHeadlessBundleViewModel(bundle = {}) {
     trackSummary: headlessBundleTrackSummary(bundle),
     scoreSummary: headlessBundleScoreSummary(bundle),
     roundtripSummary: headlessBundleRoundtripSummary(bundle),
+    scienceDiagnosisSummary: headlessBundleScienceDiagnosisSummary(bundle),
     replaySummary: headlessBundleReplaySummary(bundle),
     visibilitySummary: headlessBundleVisibilitySummary(bundle, validation),
     validation,
@@ -108,6 +109,44 @@ export function headlessBundleRoundtripSummary(bundle = {}) {
   };
 }
 
+
+export function headlessBundleScienceDiagnosisSummary(bundle = {}) {
+  const diagnostics = bundle.scienceDiagnostics ?? bundle.episode?.scienceDiagnostics ?? bundle.roundtripReport?.scienceDiagnosticsSummary ?? null;
+  if (!diagnostics) {
+    return {
+      present: false,
+      primaryDiagnosis: null,
+      forecastCorrectionStatus: null,
+      hiddenEventStatus: null,
+      recommendedObjectiveId: null,
+      publicSafe: true,
+      usesProductionDataAssimilation: false,
+      usesCalibratedOceanForecast: false,
+      usesMARL: false
+    };
+  }
+  const summary = diagnostics.discoverySummary ?? diagnostics;
+  return {
+    present: true,
+    type: diagnostics.type ?? null,
+    episodeId: diagnostics.episodeId ?? summary.episodeId ?? null,
+    primaryDiagnosis: diagnostics.primaryDiagnosis ?? summary.primaryDiagnosis ?? null,
+    primaryDiagnosisLabel: diagnostics.primaryDiagnosisLabel ?? summary.primaryDiagnosisLabel ?? null,
+    diagnosisClass: diagnostics.diagnosisClass ?? summary.diagnosisClass ?? null,
+    confidence: diagnostics.confidence ?? summary.confidence ?? null,
+    recommendedObjectiveId: diagnostics.recommendedObjectiveId ?? summary.recommendedObjectiveId ?? null,
+    forecastCorrectionStatus: diagnostics.forecastCorrection?.status ?? summary.forecastCorrectionStatus ?? null,
+    hiddenEventStatus: diagnostics.hiddenEventHypothesis?.status ?? summary.hiddenEventStatus ?? null,
+    surpriseSummary: diagnostics.surpriseSummary ?? summary.surprise ?? null,
+    coherenceSummary: diagnostics.coherenceSummary ?? summary.coherence ?? null,
+    publicSafe: diagnostics.publicSafe !== false,
+    hiddenTruthIncluded: diagnostics.hiddenTruthIncluded === true,
+    usesProductionDataAssimilation: diagnostics.usesProductionDataAssimilation === true,
+    usesCalibratedOceanForecast: diagnostics.usesCalibratedOceanForecast === true,
+    usesMARL: diagnostics.usesMARL === true,
+    notA: diagnostics.notA ?? []
+  };
+}
 export function headlessBundleReplaySummary(bundle = {}) {
   const replay = bundle.replay ?? {};
   return {
@@ -143,6 +182,7 @@ export function headlessBundleViewModelSummary(viewModel = {}) {
     trackPointCount: viewModel.trackSummary?.count ?? 0,
     finalScore: viewModel.scoreSummary?.finalScore ?? null,
     roundtripStatus: viewModel.roundtripSummary?.status ?? null,
+    sciencePrimaryDiagnosis: viewModel.scienceDiagnosisSummary?.primaryDiagnosis ?? null,
     visibilityRisk: viewModel.visibilitySummary?.visibilityRisk ?? 'unknown'
   };
 }
@@ -202,3 +242,5 @@ function sum(values) { return values.map(Number).filter(Number.isFinite).reduce(
 function mean(values) { const finite = values.map(Number).filter(Number.isFinite); return finite.length ? sum(finite) / finite.length : null; }
 function min(values) { const finite = values.map(Number).filter(Number.isFinite); return finite.length ? Math.min(...finite) : null; }
 function max(values) { const finite = values.map(Number).filter(Number.isFinite); return finite.length ? Math.max(...finite) : null; }
+
+

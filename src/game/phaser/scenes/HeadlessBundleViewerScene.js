@@ -1,4 +1,4 @@
-import { buildHeadlessBundleFromFiles } from '../../../core/headless/HeadlessBundleLoader.js';
+﻿import { buildHeadlessBundleFromFiles } from '../../../core/headless/HeadlessBundleLoader.js';
 import { buildHeadlessBundleViewModel } from '../../../core/headless/HeadlessBundleViewModel.js';
 import {
   buildBrowserHeadlessBundleDebugObject,
@@ -162,6 +162,13 @@ export class HeadlessBundleViewerScene extends PhaserScene {
       browserSummaryExportAvailable: false,
       roundtripSummaryExportAvailable: false,
       roundtripLoaded: false,
+      hasScienceDiagnostics: false,
+      sciencePrimaryDiagnosis: null,
+      scienceForecastCorrectionStatus: null,
+      scienceHiddenEventStatus: null,
+      scienceRecommendedObjective: null,
+      scienceDiagnosticsPublicSafe: true,
+      usesProductionDataAssimilation: false,
       roundtripReportType: null,
       roundtripCanonicalType: null,
       solverPacketValidationStatus: null,
@@ -225,4 +232,5 @@ function escapeHtml(value) {
     "'": '&#039;'
   }[char]));
 }
+
 

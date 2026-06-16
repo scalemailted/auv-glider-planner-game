@@ -1,4 +1,4 @@
-export function headlessBundleViewerPanelHtml(viewModel = {}) {
+﻿export function headlessBundleViewerPanelHtml(viewModel = {}) {
   return `
     <section class="console-header headless-bundle-viewer-panel">
       <div class="console-kicker">Headless Bundle Viewer</div>
@@ -17,6 +17,7 @@ export function headlessBundleViewerPanelHtml(viewModel = {}) {
     ${headlessBundleTracksHtml(viewModel)}
     ${headlessBundleScoreHtml(viewModel)}
     ${headlessBundleRoundtripHtml(viewModel)}
+    ${headlessBundleScienceDiagnosisHtml(viewModel)}
     ${headlessBundleReplayHtml(viewModel)}
     ${warningsHtml(viewModel)}
     ${headlessBundleExportPanelHtml(viewModel)}
@@ -166,6 +167,38 @@ export function headlessBundleRoundtripHtml(viewModel = {}) {
         ${metricHtml('Official Browser Score', summary.usesBrowserOfficialScoring ? 'yes' : 'no')}
       </div>
       <div class="hud-muted">Solver packet to submitted plan to Node/OceanBox-JS headless bundle roundtrip. Browser scoring remains authoritative.</div>
+    </section>
+  `;
+}
+
+export function headlessBundleScienceDiagnosisHtml(viewModel = {}) {
+  const summary = viewModel.scienceDiagnosisSummary ?? {};
+  return `
+    <section class="console-section" data-headless-science-diagnosis>
+      <h2>Science Diagnosis</h2>
+      ${summary.present ? `
+        <div class="cell-inspector-metrics">
+          ${metricHtml('Primary', summary.primaryDiagnosisLabel ?? summary.primaryDiagnosis)}
+          ${metricHtml('Class', summary.diagnosisClass)}
+          ${metricHtml('Confidence', formatNumber(summary.confidence))}
+          ${metricHtml('Objective', summary.recommendedObjectiveId)}
+        </div>
+        <h3>Forecast Update</h3>
+        <div class="cell-inspector-metrics">
+          ${metricHtml('Status', summary.forecastCorrectionStatus ?? 'unknown')}
+          ${metricHtml('Production Assimilation', summary.usesProductionDataAssimilation ? 'yes' : 'no')}
+          ${metricHtml('Calibrated Forecast', summary.usesCalibratedOceanForecast ? 'yes' : 'no')}
+        </div>
+        <h3>Discovery Update</h3>
+        <div class="cell-inspector-metrics">
+          ${metricHtml('Hidden Event Status', summary.hiddenEventStatus ?? 'unknown')}
+          ${metricHtml('Public Safe', summary.publicSafe ? 'yes' : 'no')}
+          ${metricHtml('MARL / RL', summary.usesMARL ? 'yes' : 'no')}
+        </div>
+      ` : '<div class="hud-muted">Science discovery diagnostics were not available for this bundle.</div>'}
+      <div class="hud-muted">Forecast correction means the expected field existed but was wrong.</div>
+      <div class="hud-muted">Hidden event hypothesis means observations may indicate a phenomenon not represented in the forecast.</div>
+      <div class="hud-muted">P9 uses transparent educational heuristics, not production data assimilation.</div>
     </section>
   `;
 }

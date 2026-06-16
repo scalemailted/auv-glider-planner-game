@@ -1,6 +1,7 @@
-import { createAdaptiveEvidenceSnapshot, validateAdaptiveEvidenceSnapshot } from './AdaptiveDiagnosisModel.js';
+﻿import { createAdaptiveEvidenceSnapshot, validateAdaptiveEvidenceSnapshot } from './AdaptiveDiagnosisModel.js';
 import { normalizeMissionObjectiveId } from './MissionObjectiveTaxonomy.js';
 import { extractBenchmarkMetadata } from './BenchmarkMetadata.js';
+import { analyzeScienceEvidence, scienceDiscoverySummary } from '../science/ScienceDiscoveryLifecycle.js';
 
 export const ADAPTIVE_EVIDENCE_ADAPTER_VERSION = 'adaptive-evidence-adapter-p7';
 
@@ -13,6 +14,7 @@ export function buildAdaptiveEvidenceFromResult({ result = {}, plan = null, miss
   const stalenessSummary = extractStalenessSummary(source);
   const boundarySummary = extractBoundarySummary(source);
   const hazardSummary = extractHazardReachabilitySummary(source);
+  const scienceSummary = extractScienceDiscoverySummary(source);
   const metadata = extractBenchmarkMetadata(source) ?? extractBenchmarkMetadata(plan) ?? extractBenchmarkMetadata(mission) ?? extractBenchmarkMetadata(level) ?? {};
   const warnings = mergeUnique([
     ...observationSummary.warnings,
@@ -21,7 +23,8 @@ export function buildAdaptiveEvidenceFromResult({ result = {}, plan = null, miss
     ...hiddenEventSummary.warnings,
     ...stalenessSummary.warnings,
     ...boundarySummary.warnings,
-    ...hazardSummary.warnings
+    ...hazardSummary.warnings,
+    ...scienceSummary.warnings
   ]);
   const activeObjectiveId = normalizeMissionObjectiveId(options.activeObjectiveId ?? previousManagerState?.currentObjectiveId ?? source.adaptiveBenchmark?.activeObjective?.id ?? source.adaptiveBenchmark?.activeObjectiveId ?? metadata.activeObjectiveId ?? metadata.objectiveId ?? 'reconnaissanceSurvey');
   const previousObjectiveId = normalizeMissionObjectiveId(options.previousObjectiveId ?? previousManagerState?.objectiveHistory?.at?.(-2)?.objectiveId ?? previousManagerState?.objectiveHistory?.at?.(-1)?.objectiveId ?? activeObjectiveId);
@@ -33,6 +36,7 @@ export function buildAdaptiveEvidenceFromResult({ result = {}, plan = null, miss
     ...stalenessSummary.fieldsAvailable,
     ...boundarySummary.fieldsAvailable,
     ...hazardSummary.fieldsAvailable,
+    ...scienceSummary.fieldsAvailable,
     ...(Array.isArray(options.fieldsAvailable) ? options.fieldsAvailable : [])
   ]);
   return createAdaptiveEvidenceSnapshot({
@@ -56,6 +60,12 @@ export function buildAdaptiveEvidenceFromResult({ result = {}, plan = null, miss
     previousObjectiveId,
     candidateObjectives: options.candidateObjectives ?? previousManagerState?.allowedObjectives ?? previousManagerState?.candidateObjectives,
     fieldsAvailable,
+    scienceDiscovery: scienceSummary.discoveryUpdate ?? scienceSummary.raw ?? null,
+    primaryScienceDiagnosis: scienceSummary.primaryDiagnosis,
+    surpriseSummary: scienceSummary.surpriseSummary,
+    coherenceSummary: scienceSummary.coherenceSummary,
+    forecastCorrectionSummary: scienceSummary.forecastCorrection,
+    hiddenEventHypothesisSummary: scienceSummary.hiddenEventHypothesis,
     diagnostics: {
       version: ADAPTIVE_EVIDENCE_ADAPTER_VERSION,
       observationSummary: stripWarnings(observationSummary),
@@ -65,6 +75,7 @@ export function buildAdaptiveEvidenceFromResult({ result = {}, plan = null, miss
       stalenessSummary: stripWarnings(stalenessSummary),
       boundarySummary: stripWarnings(boundarySummary),
       hazardReachabilitySummary: stripWarnings(hazardSummary),
+      scienceDiscoverySummary: stripWarnings(scienceSummary),
       routeExecutionRecordAvailable: Boolean(routeExecutionRecord),
       runRecordAvailable: Boolean(runRecord),
       partialEvidence: warnings.length > 0,
@@ -140,6 +151,67 @@ export function buildAdaptiveEvidenceFromFlowCoupledSampling(debugOrExport = {},
   });
 }
 
+
+export function extractScienceDiscoverySummary(result = {}) {
+  const explicit = result.scienceDiagnostics
+    ?? result.scienceDiscovery
+    ?? result.diagnostics?.scienceDiagnostics
+    ?? result.diagnostics?.scienceDiscovery
+    ?? result.adaptiveEvidence?.scienceDiscovery
+    ?? result.episode?.scienceDiagnostics
+    ?? null;
+  if (explicit && typeof explicit === 'object') {
+    const summary = scienceDiscoverySummary(explicit);
+    return {
+      ...summary,
+      raw: cloneJson(explicit),
+      discoveryUpdate: explicit.discoveryUpdate ?? explicit,
+      surpriseSummary: explicit.surpriseSummary ?? explicit.discoveryUpdate?.surpriseSummary ?? summary.surprise,
+      coherenceSummary: explicit.coherenceSummary ?? explicit.discoveryUpdate?.coherenceSummary ?? summary.coherence,
+      forecastCorrection: explicit.forecastCorrection ?? explicit.discoveryUpdate?.forecastCorrection ?? null,
+      hiddenEventHypothesis: explicit.hiddenEventHypothesis ?? explicit.discoveryUpdate?.hiddenEventHypothesis ?? null,
+      fieldsAvailable: ['scienceDiscovery'],
+      warnings: []
+    };
+  }
+  const observations = Array.isArray(result.observations)
+    ? result.observations
+    : Array.isArray(result.samples)
+      ? result.samples
+      : [];
+  if (observations.length) {
+    const update = analyzeScienceEvidence({
+      observations,
+      context: {
+        episodeId: result.episodeId ?? result.summary?.episodeId ?? 'adaptive-result-science-discovery',
+        forecastCanExplain: result.forecastCanExplain ?? result.summary?.forecastCanExplain,
+        eventFamily: result.eventFamily ?? result.hiddenEvent?.eventFamily
+      }
+    });
+    const summary = scienceDiscoverySummary(update);
+    return {
+      ...summary,
+      raw: update,
+      discoveryUpdate: update,
+      surpriseSummary: update.surpriseSummary,
+      coherenceSummary: update.coherenceSummary,
+      forecastCorrection: update.forecastCorrection,
+      hiddenEventHypothesis: update.hiddenEventHypothesis,
+      fieldsAvailable: ['scienceDiscovery', 'observations'],
+      warnings: update.warnings ?? []
+    };
+  }
+  return {
+    present: false,
+    primaryDiagnosis: null,
+    surpriseSummary: null,
+    coherenceSummary: null,
+    forecastCorrection: null,
+    hiddenEventHypothesis: null,
+    fieldsAvailable: [],
+    warnings: ['Science discovery diagnostics were not present in the result.']
+  };
+}
 export function extractObservationSummary(result = {}) {
   const events = Array.isArray(result.events) ? result.events : [];
   const sampleEvents = events.filter((event) => ['sample', 'observation', 'surfaceObservation', 'sampleCollected'].includes(event?.type));
@@ -252,3 +324,5 @@ function cloneJson(value) {
     return value;
   }
 }
+
+

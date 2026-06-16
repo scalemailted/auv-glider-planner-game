@@ -103,6 +103,51 @@
       "notBrowserOfficialScoring": true
     }
   },
+  "scienceDiagnosticsSummary": {
+    "type": "anchor.science.discovery-summary",
+    "version": "science-discovery-lifecycle-p9",
+    "present": true,
+    "episodeId": "h1-node-headless-sample_headless_level-h3.1-roundtrip-example-001",
+    "primaryDiagnosis": "agreesWithForecast",
+    "primaryDiagnosisLabel": "Agrees With Forecast",
+    "diagnosisClass": "forecastAgreement",
+    "confidence": 0.62,
+    "recommendedObjectiveId": "reconnaissanceSurvey",
+    "forecastCorrectionStatus": "collectingEvidence",
+    "hiddenEventStatus": "collectingEvidence",
+    "surprise": {
+      "type": "anchor.science.observation-surprise-summary",
+      "version": "observation-surprise-model-p9",
+      "count": 9,
+      "finiteCount": 9,
+      "meanSurprise": 0.4611,
+      "maxSurprise": 1.3125,
+      "meanInnovation": 0.0926,
+      "meanAbsInnovation": 0.1023,
+      "highSurpriseCount": 0,
+      "extremeSurpriseCount": 0,
+      "publicSafe": true
+    },
+    "coherence": {
+      "type": "anchor.science.evidence-coherence-summary",
+      "version": "evidence-coherence-model-p9",
+      "observationCount": 9,
+      "highSurpriseCount": 0,
+      "highSurpriseRatio": 0,
+      "evidenceConfidence": 0.04,
+      "coherenceLevel": "none",
+      "spatialScore": 0,
+      "temporalScore": 0,
+      "signScore": 0,
+      "flowStatus": "unavailable",
+      "publicSafe": true
+    },
+    "publicSafe": true,
+    "hiddenTruthIncluded": false,
+    "usesProductionDataAssimilation": false,
+    "usesCalibratedOceanForecast": false,
+    "usesMARL": false
+  },
   "output": {
     "outputDir": "docs/examples",
     "combinedBundlePath": "docs\\examples\\headless_solver_roundtrip_bundle.example.json",
@@ -118,6 +163,7 @@
       "glider_tracks.json",
       "glider_tracks.csv",
       "score_report.json",
+      "science_diagnostics.json",
       "replay.json",
       "episode.json",
       "roundtrip_report.json"
@@ -136,12 +182,14 @@
     "observationCount": 9,
     "trackPointCount": 9,
     "hiddenTruthExported": false,
-    "browserOfficialScoring": false
+    "browserOfficialScoring": false,
+    "sciencePrimaryDiagnosis": "agreesWithForecast"
   },
   "boundary": [
     "Node/OceanBox-JS validates and executes a submitted plan through the H1 headless runtime.",
     "Browser ANCHOR remains the official visual referee and scoring UI.",
     "Headless score is educational and not official browser scoring.",
-    "H3 does not add a Python simulator, new route planner, calibrated ocean forecast, backend service, or MARL/RL."
+    "P9 science diagnostics distinguish forecast correction from hidden-event hypotheses using transparent educational heuristics.",
+    "H3/P9 does not add a Python simulator, new route planner, calibrated ocean forecast, backend service, production data assimilation, or MARL/RL."
   ]
 }

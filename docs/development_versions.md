@@ -349,3 +349,8 @@ H0 introduces headless schema contracts, canonical field descriptors, mission/ep
 - Added canonical `anchor.headless.solver-roundtrip-report` while retaining legacy `anchor.headless.roundtrip-report` as an accepted alias.
 - Added `anchor.headless.solver-roundtrip-bundle`, `anchor.browser.headless-roundtrip-summary`, compatibility adapters, checked-in roundtrip examples, consolidated `headless_oceanbox.mjs` subcommands, fixture generation, visibility audit, and browser `Load Example Roundtrip` support.
 - Preserved the boundary: H3.1 does not add a planner, official browser scoring replacement, Python simulator, calibrated forecast, backend service, or MARL/RL.
+## P9 Hidden Event Hypothesis / Forecast Correction
+
+- Added pure JS science diagnosis modules under `src/core/science/` for observation surprise, evidence coherence, forecast-correction state, hidden-event hypothesis state, and science discovery lifecycle fixtures.
+- Integrated compact public-safe `anchor.headless.science-diagnostics` into Adaptive Benchmark surfacing review, Node/OceanBox-JS episodes, headless bundles, solver-roundtrip reports, Headless Bundle Viewer, browser summaries, and checked-in examples.
+- Preserved the boundary: P9 does not add production data assimilation, calibrated ocean forecasting, a new planner, scoring changes, a Python simulator, backend services, or MARL/RL.

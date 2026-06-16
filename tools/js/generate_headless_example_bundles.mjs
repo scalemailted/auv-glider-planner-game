@@ -45,7 +45,8 @@ console.log(JSON.stringify({
     visibleFields: Object.keys(publicBundle.visibleFields?.fields ?? {}),
     observations: publicBundle.observations?.length ?? 0,
     gliderTracks: publicBundle.gliderTracks?.length ?? 0,
-    finalScore: publicBundle.scoreReport?.finalScore ?? null
+    finalScore: publicBundle.scoreReport?.finalScore ?? null,
+    sciencePrimaryDiagnosis: publicBundle.scienceDiagnostics?.primaryDiagnosis ?? null
   }
 }, null, 2));
 
@@ -79,6 +80,8 @@ function assertBundleBase(bundle, label) {
   if (!Array.isArray(bundle?.gliderTracks) || bundle.gliderTracks.length === 0) throw new Error(`${label} fixture must include gliderTracks array.`);
   if (!bundle?.scoreReport) throw new Error(`${label} fixture must include scoreReport.`);
   if (!bundle?.replay) throw new Error(`${label} fixture must include replay.`);
+  if (bundle?.scienceDiagnostics?.type !== 'anchor.headless.science-diagnostics') throw new Error(label + ' fixture must include P9 science diagnostics.');
+  if (JSON.stringify(bundle.scienceDiagnostics).includes('T_hiddenTruth')) throw new Error(label + ' fixture science diagnostics leak T_hiddenTruth.');
 }
 
 function visibleFieldIds(bundle) {
@@ -88,3 +91,8 @@ function visibleFieldIds(bundle) {
 function writeStableJson(filePath, value) {
   fs.writeFileSync(filePath, `${JSON.stringify(value, null, 2)}\n`, 'utf8');
 }
+
+
+
+
+

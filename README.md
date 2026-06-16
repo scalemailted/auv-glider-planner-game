@@ -887,3 +887,7 @@ node tools/js/headless_oceanbox.mjs roundtrip --solver-packet docs/examples/head
 ```
 
 The older `tools/js/headless_roundtrip.mjs` wrapper still works. The canonical report type is `anchor.headless.solver-roundtrip-report`; loaders still accept legacy `anchor.headless.roundtrip-report`. Roundtrip bundles use `anchor.headless.solver-roundtrip-bundle`, and the Headless Bundle Viewer can load `docs/examples/headless_solver_roundtrip_bundle.example.json` through `Load Example Roundtrip` and export `anchor.browser.headless-roundtrip-summary`. Public output omits hidden truth by default. H3.1 does not add a planner, does not make headless scoring official browser scoring, and does not add a Python simulator, backend, calibrated forecast, or MARL/RL. See [Headless Solver Packet Roundtrip](docs/headless_solver_packet_roundtrip.md).
+
+### P9 Hidden Event Hypothesis / Forecast Correction
+
+P9 adds compact science diagnostics to Adaptive Benchmark and Node/OceanBox-JS headless bundles. The new `anchor.headless.science-diagnostics` artifact distinguishes forecast correction from hidden-event hypotheses using transparent educational heuristics. It is public-safe, does not embed `T_hiddenTruth`, and does not add production data assimilation, a calibrated ocean forecast, a planner, scoring changes, or MARL/RL. See [Hidden Event Hypothesis / Forecast-Correction Lifecycle](docs/hidden_event_forecast_correction_lifecycle.md).

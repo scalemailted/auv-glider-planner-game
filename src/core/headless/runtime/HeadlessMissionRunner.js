@@ -5,6 +5,7 @@ import { simulateHeadlessGliderRoute } from './HeadlessGlider.js';
 import { computeHeadlessSamplingPriority, computeHeadlessPriorityComponents, headlessPrioritySummary } from './HeadlessPriority.js';
 import { createDefaultHeadlessRuntimeConfig, validateHeadlessRuntimeConfig } from './HeadlessRuntimeConfig.js';
 import { computeHeadlessScoreReport } from './HeadlessScoring.js';
+import { analyzeScienceEvidence, buildScienceDiagnosticsArtifact, scienceDiscoverySummary } from '../../science/ScienceDiscoveryLifecycle.js';
 
 export const HEADLESS_MISSION_RUNNER_VERSION = 'headless-mission-runner-h1';
 
@@ -60,6 +61,22 @@ export function simulateHeadlessEpisode(configInput = {}, planInput = null) {
     tracks: routeResult.tracks,
     missionConfig
   });
+  const episodeId = `h1-node-headless-${config.scenario}-${config.seed}`;
+  const scienceDiscovery = analyzeScienceEvidence({
+    observations: routeResult.observations,
+    context: {
+      episodeId,
+      forecastCanExplain: config.scienceDiagnostics?.forecastCanExplain ?? true,
+      eventFamily: config.scienceDiagnostics?.eventFamily ?? 'unknownAnomaly',
+      currentObjectiveId: missionConfig.objectives?.[0]?.objectiveId ?? missionConfig.objectives?.[0]?.id ?? 'reconnaissanceSurvey'
+    },
+    options: { createdAt: config.createdAt ?? null }
+  });
+  const scienceDiagnostics = buildScienceDiagnosticsArtifact(scienceDiscovery, {
+    episodeId,
+    createdAt: config.createdAt ?? null,
+    source: 'nodeHeadlessRuntime'
+  });
   const actions = plan.waypoints.map((waypoint, index) => ({
     id: `action-wp-${index + 1}`,
     type: 'waypointTarget',
@@ -88,7 +105,7 @@ export function simulateHeadlessEpisode(configInput = {}, planInput = null) {
   const episode = {
     type: 'anchor.headless.episode',
     version: HEADLESS_MISSION_RUNNER_VERSION,
-    episodeId: `h1-node-headless-${config.scenario}-${config.seed}`,
+    episodeId,
     runtimeTarget: 'nodeHeadless',
     seed: config.seed,
     missionConfig,
@@ -105,6 +122,8 @@ export function simulateHeadlessEpisode(configInput = {}, planInput = null) {
       reason: 'mission-complete-summary-export'
     }],
     scoreReport,
+    scienceDiscovery,
+    scienceDiagnostics,
     replay,
     diagnostics: {
       runtimeVersion: HEADLESS_MISSION_RUNNER_VERSION,
@@ -112,6 +131,7 @@ export function simulateHeadlessEpisode(configInput = {}, planInput = null) {
       deterministic: true,
       routeGenerated: false,
       usesProvidedWaypoints: true,
+      scienceDiscoverySummary: scienceDiscoverySummary(scienceDiagnostics),
       calibratedOceanForecast: false,
       implementsNewPlanner: false,
       implementsMARL: false,
@@ -139,3 +159,6 @@ export function simulateHeadlessEpisode(configInput = {}, planInput = null) {
   });
   return episode;
 }
+
+
+

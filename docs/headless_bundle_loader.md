@@ -137,3 +137,6 @@ The legacy wrapper remains valid:
 ```bash
 node tools/js/headless_roundtrip.mjs docs/examples/headless_solver_packet.example.json docs/examples/headless_solver_plan.example.json --out runs/h3-roundtrip
 ```
+## P9 Science Diagnostics
+
+P9 bundles may include `science_diagnostics.json` and combined bundles may embed `scienceDiagnostics`. The Headless Bundle Viewer displays this as Science Diagnosis with Forecast Update and Discovery Update summaries. The artifact is public-safe and must not contain `T_hiddenTruth`; it does not add production data assimilation, calibrated ocean forecasting, route planning, official browser scoring, or MARL/RL.

@@ -50,3 +50,6 @@ node tools/js/generate_headless_solver_roundtrip_examples.mjs
 ```
 
 The public examples omit hidden field export, keep `T_hiddenTruth` out of solver-visible fields and browser summary artifacts, and mark headless scoring as educational. Browser ANCHOR remains the official visual referee and scoring UI. This workflow does not add a route planner, Python simulator, backend, calibrated ocean forecast, or MARL/RL.
+## P9 Science Diagnostics
+
+Roundtrip reports may include `scienceDiagnosticsSummary`, and roundtrip bundles may include `scienceDiagnostics` / `science_diagnostics.json`. These summaries distinguish forecast correction from hidden-event hypotheses for browser and Colab inspection. They are public-safe, omit `T_hiddenTruth`, and do not change the submitted-plan execution or score.

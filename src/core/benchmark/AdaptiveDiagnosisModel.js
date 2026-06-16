@@ -4,6 +4,13 @@
   createAdaptiveMissionManagerConfig,
   normalizeAdaptiveDiagnosisId
 } from './AdaptiveMissionManagerContract.js';
+import {
+  classifyScienceDiagnosis,
+  normalizeScienceDiagnosisId,
+  recommendedObjectiveForScienceDiagnosis,
+  scienceDiagnosisLabel
+} from '../science/ScienceDiagnosisTypes.js';
+import { scienceDiscoverySummary } from '../science/ScienceDiscoveryLifecycle.js';
 
 export const ADAPTIVE_DIAGNOSIS_MODEL_VERSION = 'adaptive-diagnosis-model-p6';
 
@@ -61,6 +68,12 @@ export function createAdaptiveEvidenceSnapshot(options = {}) {
       'hiddenEventProbability',
       'staleness'
     ]),
+    scienceDiscovery: normalizeScienceDiscovery(options.scienceDiscovery ?? options.scienceDiagnostics ?? options.diagnostics?.scienceDiscoverySummary),
+    primaryScienceDiagnosis: normalizePrimaryScienceDiagnosis(options.primaryScienceDiagnosis ?? options.scienceDiscovery?.primaryDiagnosis ?? options.scienceDiagnostics?.primaryDiagnosis ?? options.diagnostics?.scienceDiscoverySummary?.primaryDiagnosis),
+    surpriseSummary: cloneJson(options.surpriseSummary ?? options.scienceDiscovery?.surpriseSummary ?? options.scienceDiagnostics?.surpriseSummary ?? null),
+    coherenceSummary: cloneJson(options.coherenceSummary ?? options.scienceDiscovery?.coherenceSummary ?? options.scienceDiagnostics?.coherenceSummary ?? null),
+    forecastCorrectionSummary: cloneJson(options.forecastCorrectionSummary ?? options.forecastCorrection ?? options.scienceDiscovery?.forecastCorrection ?? options.scienceDiagnostics?.forecastCorrection ?? null),
+    hiddenEventHypothesisSummary: cloneJson(options.hiddenEventHypothesisSummary ?? options.hiddenEventHypothesis ?? options.scienceDiscovery?.hiddenEventHypothesis ?? options.scienceDiagnostics?.hiddenEventHypothesis ?? null),
     diagnostics: cloneJson(options.diagnostics ?? {}),
     notes: normalizeStringList(options.notes)
   };
@@ -151,13 +164,19 @@ export function computeAdaptiveDiagnosis(evidenceInput = {}, configInput = {}) {
   const config = configInput?.type === 'anchor.benchmark.adaptive-manager-config'
     ? configInput
     : createAdaptiveMissionManagerConfig(configInput);
-  const scores = computeAdaptiveDiagnosisScores(evidence, config);
+  const baseScores = computeAdaptiveDiagnosisScores(evidence, config);
+  const scienceOverride = scienceOverrideForEvidence(evidence);
+  const scores = scienceOverride
+    ? { ...baseScores, [scienceOverride.adaptiveDiagnosisId]: roundScore(Math.max(baseScores[scienceOverride.adaptiveDiagnosisId] ?? 0, scienceOverride.confidence)) }
+    : baseScores;
   const entries = Object.entries(scores).sort((a, b) => b[1] - a[1]);
-  const [primaryDiagnosis, confidence = 0] = entries[0] ?? ['insufficientEvidence', 0];
+  const [scoredPrimary, scoredConfidence = 0] = entries[0] ?? ['insufficientEvidence', 0];
+  const primaryDiagnosis = scienceOverride?.adaptiveDiagnosisId ?? scoredPrimary;
+  const confidence = scienceOverride ? Math.max(scienceOverride.confidence, scoredConfidence) : scoredConfidence;
   const normalizedPrimary = normalizeAdaptiveDiagnosisId(primaryDiagnosis);
   const diagnosisDefinition = adaptiveDiagnosisById(normalizedPrimary);
-  const recommendedTransitionId = transitionForDiagnosis(normalizedPrimary, evidence.activeObjectiveId);
-  const recommendedObjectiveId = objectiveForDiagnosis(normalizedPrimary, evidence.activeObjectiveId);
+  const recommendedTransitionId = scienceOverride?.recommendedTransitionId ?? transitionForDiagnosis(normalizedPrimary, evidence.activeObjectiveId);
+  const recommendedObjectiveId = scienceOverride?.recommendedObjectiveId ?? objectiveForDiagnosis(normalizedPrimary, evidence.activeObjectiveId);
   const secondaryDiagnoses = entries
     .slice(1)
     .filter(([, score]) => score >= Math.max(0.25, confidence - 0.28))
@@ -181,8 +200,14 @@ export function computeAdaptiveDiagnosis(evidenceInput = {}, configInput = {}) {
     recommendedTransitionId,
     recommendedObjectiveId,
     recommendedResponse: recommendedResponseForTransition(recommendedTransitionId),
-    rationale: adaptiveDiagnosisExplanation({ primaryDiagnosis: normalizedPrimary, scores, evidence, confidence }),
-    warnings: diagnosisWarnings(normalizedPrimary, evidence, config)
+    primaryScienceDiagnosis: scienceOverride?.scienceDiagnosisId ?? evidence.primaryScienceDiagnosis ?? evidence.scienceDiscovery?.primaryDiagnosis ?? null,
+    primaryScienceDiagnosisLabel: scienceOverride?.scienceDiagnosisId ? scienceDiagnosisLabel(scienceOverride.scienceDiagnosisId) : null,
+    scienceDiagnosisClass: scienceOverride?.diagnosisClass ?? (evidence.primaryScienceDiagnosis ? classifyScienceDiagnosis(evidence.primaryScienceDiagnosis) : null),
+    scienceDiscovery: scienceOverride?.summary ?? evidence.scienceDiscovery ?? null,
+    forecastCorrectionSummary: evidence.forecastCorrectionSummary ?? scienceOverride?.summary?.forecastCorrection ?? null,
+    hiddenEventHypothesisSummary: evidence.hiddenEventHypothesisSummary ?? scienceOverride?.summary?.hiddenEventHypothesis ?? null,
+    rationale: scienceOverride ? scienceAdaptiveDiagnosisExplanation({ scienceOverride, primaryDiagnosis: normalizedPrimary, scores, evidence, confidence }) : adaptiveDiagnosisExplanation({ primaryDiagnosis: normalizedPrimary, scores, evidence, confidence }),
+    warnings: diagnosisWarnings(normalizedPrimary, evidence, config, scienceOverride)
   };
   return diagnosis;
 }
@@ -198,6 +223,60 @@ export function adaptiveDiagnosisExplanation(diagnosisInput = {}) {
   return `${label}: ${component} is the strongest transparent rule signal (score ${score.toFixed(2)}).${activeObjective} This is an educational rule diagnosis, not Bayesian inference or production data assimilation.`;
 }
 
+function scienceOverrideForEvidence(evidence = {}) {
+  const source = evidence.scienceDiscovery ?? evidence.scienceDiagnostics ?? null;
+  const summary = source ? scienceDiscoverySummary(source) : null;
+  const scienceDiagnosisId = normalizePrimaryScienceDiagnosis(evidence.primaryScienceDiagnosis ?? summary?.primaryDiagnosis ?? source?.primaryDiagnosis);
+  if (!scienceDiagnosisId) return null;
+  const adaptiveDiagnosisId = adaptiveDiagnosisForScience(scienceDiagnosisId);
+  const confidence = clamp01(summary?.confidence ?? source?.confidence ?? evidence.coherenceSummary?.evidenceConfidence ?? 0.55, 0.55);
+  const recommendedObjectiveId = summary?.recommendedObjectiveId ?? recommendedObjectiveForScienceDiagnosis(scienceDiagnosisId, {
+    currentObjectiveId: evidence.activeObjectiveId,
+    eventFamily: source?.hiddenEventHypothesis?.eventFamily ?? evidence.hiddenEventHypothesisSummary?.eventFamily
+  });
+  return {
+    scienceDiagnosisId,
+    adaptiveDiagnosisId,
+    confidence,
+    diagnosisClass: classifyScienceDiagnosis(scienceDiagnosisId),
+    recommendedObjectiveId,
+    recommendedTransitionId: scienceTransitionForObjective(scienceDiagnosisId, recommendedObjectiveId, evidence.activeObjectiveId),
+    summary
+  };
+}
+
+function adaptiveDiagnosisForScience(scienceDiagnosisId) {
+  const normalized = normalizeScienceDiagnosisId(scienceDiagnosisId);
+  if (normalized === 'agreesWithForecast') return 'agreesWithForecast';
+  if (['forecastDisplacement', 'forecastIntensityError', 'forecastTimingError', 'forecastDepthMismatch', 'boundaryShift'].includes(normalized)) return 'likelyForecastError';
+  if (normalized === 'possibleHiddenEvent') return 'possibleHiddenEvent';
+  if (normalized === 'likelyHiddenEvent' || normalized === 'hiddenEventConfirmed') return 'likelyHiddenEvent';
+  if (normalized === 'mixedForecastErrorAndHiddenEvent') return 'possibleHiddenEvent';
+  if (normalized === 'likelySensorNoise') return 'likelyNoiseOrFalseAlarm';
+  return 'insufficientEvidence';
+}
+
+function scienceTransitionForObjective(scienceDiagnosisId, recommendedObjectiveId, activeObjectiveId) {
+  const normalized = normalizeScienceDiagnosisId(scienceDiagnosisId);
+  if (normalized === 'agreesWithForecast') return activeObjectiveId === 'exploitKnownValue' ? 'keepCurrentObjective' : 'switchToExploitKnownValue';
+  if (normalized === 'likelySensorNoise' || normalized === 'insufficientEvidence') return 'pauseForMoreEvidence';
+  return {
+    reduceUncertainty: 'switchToReduceUncertainty',
+    validateForecast: 'switchToValidateForecast',
+    confirmHiddenEvent: 'switchToConfirmHiddenEvent',
+    mapBoundary: 'switchToMapBoundary',
+    trackFeature: 'switchToTrackFeature',
+    localizeSource: 'switchToLocalizeSource',
+    revisitStaleRegion: 'switchToRevisitStaleRegion',
+    exploitKnownValue: 'switchToExploitKnownValue'
+  }[recommendedObjectiveId] ?? 'keepCurrentObjective';
+}
+
+function scienceAdaptiveDiagnosisExplanation({ scienceOverride, primaryDiagnosis, scores, evidence, confidence }) {
+  const scienceLabel = scienceDiagnosisLabel(scienceOverride.scienceDiagnosisId);
+  const base = adaptiveDiagnosisExplanation({ primaryDiagnosis, scores, evidence, confidence });
+  return `${base} P9 science discovery primary diagnosis is ${scienceLabel}; forecast-correction and hidden-event states are educational summaries, not production data assimilation.`;
+}
 function transitionForDiagnosis(id, activeObjectiveId) {
   const current = String(activeObjectiveId ?? 'reconnaissanceSurvey');
   if (id === 'agreesWithForecast') return current === 'exploitKnownValue' ? 'keepCurrentObjective' : 'switchToExploitKnownValue';
@@ -246,15 +325,26 @@ function recommendedResponseForTransition(transitionId) {
   }[transitionId] ?? 'Keep the current objective.';
 }
 
-function diagnosisWarnings(id, evidence, config) {
+function diagnosisWarnings(id, evidence, config, scienceOverride = null) {
   const warnings = [];
   if (id === 'hazardOrReachabilityIssue') warnings.push('Hazard or reachability pressure is high; route choice remains outside the P6 mission-manager contract.');
   if (id === 'insufficientEvidence') warnings.push('Evidence is too sparse for a confident objective switch.');
   if (id === 'likelyNoiseOrFalseAlarm') warnings.push('Noise or false-alarm risk is high; the manager avoids overreacting to weak evidence.');
+  if (scienceOverride) warnings.push('P9 science discovery diagnostics are transparent educational heuristics, not production data assimilation.');
+  if (scienceOverride?.scienceDiagnosisId === 'mixedForecastErrorAndHiddenEvent') warnings.push('Forecast correction and hidden-event explanations both remain plausible; confirm the event before treating it as a new source.');
   if (evidence.hazardPressure >= Number(config.thresholds?.hazardPressure ?? 0.65)) warnings.push('High hazard pressure should be handled by the route planner or player in a later phase.');
   return warnings;
 }
 
+function normalizeScienceDiscovery(value) {
+  if (!value || typeof value !== 'object') return null;
+  return cloneJson(value.discoverySummary ? value : scienceDiscoverySummary(value));
+}
+
+function normalizePrimaryScienceDiagnosis(value) {
+  if (!value) return null;
+  return normalizeScienceDiagnosisId(value, null);
+}
 function numericEvidenceKeys() {
   return ['time', 'observationCount', 'recentObservationCount', ...normalizedScoreKeys()];
 }
@@ -310,3 +400,8 @@ function cloneJson(value) {
     return value;
   }
 }
+
+
+
+
+

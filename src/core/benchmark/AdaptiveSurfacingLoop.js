@@ -1,4 +1,4 @@
-import { computeAdaptiveDiagnosis } from './AdaptiveDiagnosisModel.js';
+﻿import { computeAdaptiveDiagnosis } from './AdaptiveDiagnosisModel.js';
 import { selectNextAdaptiveObjective } from './AdaptiveObjectivePolicy.js';
 import { applyAdaptiveEvidenceSnapshot, applyAdaptiveObjectiveTransition, createAdaptiveMissionManagerState } from './AdaptiveMissionManagerState.js';
 import { createAdaptiveMissionManagerConfig } from './AdaptiveMissionManagerContract.js';
@@ -49,14 +49,16 @@ export function runAdaptiveSurfacingDecision({ runtimeContext, evidence, surfaci
       observationCount: enrichedEvidence.observationCount,
       recentObservationCount: enrichedEvidence.recentObservationCount,
       fieldsAvailable: enrichedEvidence.fieldsAvailable,
-      notes: ['P7 surfacing loop recommends an objective only; it does not plan a route.']
+      scienceDiscovery: enrichedEvidence.scienceDiscovery ?? diagnosis.scienceDiscovery ?? null,
+      notes: ['P7 surfacing loop recommends an objective only; it does not plan a route.', 'P9 science diagnostics are educational heuristics when present.']
     }
   });
   const transition = objectiveSelection.transitionRecord;
   const after = applyAdaptiveObjectiveTransition(withEvidence, transition);
   const warnings = mergeUnique([
     ...(Array.isArray(enrichedEvidence.diagnostics?.warnings) ? enrichedEvidence.diagnostics.warnings : []),
-    ...(Array.isArray(diagnosis.warnings) ? diagnosis.warnings : [])
+    ...(Array.isArray(diagnosis.warnings) ? diagnosis.warnings : []),
+    ...(Array.isArray(enrichedEvidence.scienceDiscovery?.warnings) ? enrichedEvidence.scienceDiscovery.warnings : [])
   ]);
   return {
     type: 'anchor.benchmark.adaptive-surfacing-decision',
@@ -67,6 +69,7 @@ export function runAdaptiveSurfacingDecision({ runtimeContext, evidence, surfaci
     legIndex: input.runtimeContext.activeLegIndex,
     surfacingEvent: cloneJson(input.surfacingEvent),
     evidence: enrichedEvidence,
+    scienceDiscovery: enrichedEvidence.scienceDiscovery ?? diagnosis.scienceDiscovery ?? null,
     diagnosis,
     objectiveTransition: transition,
     previousObjective: missionObjectiveById(transition.fromObjectiveId),
@@ -95,6 +98,7 @@ export function adaptiveSurfacingDecisionSummary(decision = {}) {
     benchmarkMode: decision.benchmarkMode,
     legIndex: decision.legIndex,
     primaryDiagnosis: decision.diagnosis?.primaryDiagnosis ?? null,
+    primaryScienceDiagnosis: decision.diagnosis?.primaryScienceDiagnosis ?? decision.scienceDiscovery?.primaryDiagnosis ?? null,
     confidence: decision.diagnosis?.confidence ?? 0,
     fromObjectiveId: decision.objectiveTransition?.fromObjectiveId ?? decision.previousObjective?.id ?? null,
     recommendedObjectiveId: decision.objectiveTransition?.toObjectiveId ?? decision.recommendedObjective?.id ?? null,
@@ -145,3 +149,5 @@ function cloneJson(value) {
     return value;
   }
 }
+
+

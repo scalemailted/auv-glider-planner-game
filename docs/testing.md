@@ -455,3 +455,22 @@ node tools/js/headless_oceanbox.mjs roundtrip --solver-packet docs/examples/head
 ```
 
 The public roundtrip should validate packet visibility as PASS, validate the submitted plan as PASS, write canonical `anchor.headless.solver-roundtrip-report`, write `anchor.headless.solver-roundtrip-bundle`, omit `hidden_fields.json`, load through the Headless Bundle Viewer via `Load Example Roundtrip`, and export `anchor.browser.headless-roundtrip-summary` without `T_hiddenTruth`.
+
+## P9 Hidden Event / Forecast-Correction Checks
+
+Run these after changing `src/core/science/`, Adaptive Benchmark science integration, or headless science diagnostics:
+
+```bash
+node tools/js/smoke_science_diagnosis_types.mjs
+node tools/js/smoke_observation_surprise_model.mjs
+node tools/js/smoke_evidence_coherence_model.mjs
+node tools/js/smoke_forecast_correction_state.mjs
+node tools/js/smoke_hidden_event_hypothesis_state.mjs
+node tools/js/smoke_science_discovery_lifecycle.mjs
+node tools/js/smoke_science_discovery_fixtures.mjs
+node tools/js/smoke_adaptive_science_diagnosis_integration.mjs
+node tools/js/smoke_headless_science_diagnostics.mjs
+node tools/js/smoke_headless_roundtrip_science_diagnostics.mjs
+```
+
+The checks verify that forecast correction and hidden-event hypotheses are distinct, science diagnostics remain public-safe, and no artifact claims production data assimilation, calibrated ocean forecasting, route planning, scoring changes, or MARL/RL.

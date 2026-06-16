@@ -1,10 +1,11 @@
-import { validatePlanForExecution } from '../planning/PlanExecutionValidator.js';
+﻿import { validatePlanForExecution } from '../planning/PlanExecutionValidator.js';
 import { readHeadlessSolverPacket, summarizeHeadlessPacket } from './SolverPacketReader.js';
 import { buildHeadlessPlanningWorld } from './HeadlessPlanningWorld.js';
 import { createDefaultHeadlessRuntimeConfig, headlessRuntimeConfigSummary } from './runtime/HeadlessRuntimeConfig.js';
 import { runHeadlessMissionWithPlan } from './runtime/HeadlessMissionRunner.js';
 import { headlessScoreReportSummary } from './runtime/HeadlessScoring.js';
 import { roundtripReportTypeMetadata } from './HeadlessRoundtripTypes.js';
+import { scienceDiscoverySummary } from '../science/ScienceDiscoveryLifecycle.js';
 
 export const HEADLESS_ROUNDTRIP_VERSION = 'headless-solver-packet-roundtrip-h3';
 
@@ -187,6 +188,7 @@ export function buildHeadlessRoundtripReport({ context, world, packet, plan, sel
   const outputDir = options.outputDir ?? null;
   const includeHiddenTruth = options.includeHiddenTruth === true;
   const scoreSummary = headlessScoreReportSummary(episode.scoreReport);
+  const scienceDiagnosticsSummary = scienceDiscoverySummary(episode.scienceDiagnostics ?? episode.scienceDiscovery ?? {});
   return {
     schemaVersion: '1.0',
     ...roundtripReportTypeMetadata(),
@@ -235,6 +237,7 @@ export function buildHeadlessRoundtripReport({ context, world, packet, plan, sel
       trackPointCount: episode.tracks?.length ?? 0,
       scoreSummary
     },
+    scienceDiagnosticsSummary,
     output: {
       outputDir,
       combinedBundlePath: outputDir ? `${outputDir.replace(/\\/g, '/')}/bundle.json` : null,
@@ -254,13 +257,15 @@ export function buildHeadlessRoundtripReport({ context, world, packet, plan, sel
       observationCount: episode.observations?.length ?? 0,
       trackPointCount: episode.tracks?.length ?? 0,
       hiddenTruthExported: includeHiddenTruth,
-      browserOfficialScoring: false
+      browserOfficialScoring: false,
+      sciencePrimaryDiagnosis: scienceDiagnosticsSummary.primaryDiagnosis ?? null
     },
     boundary: [
       'Node/OceanBox-JS validates and executes a submitted plan through the H1 headless runtime.',
       'Browser ANCHOR remains the official visual referee and scoring UI.',
       'Headless score is educational and not official browser scoring.',
-      'H3 does not add a Python simulator, new route planner, calibrated ocean forecast, backend service, or MARL/RL.'
+      'P9 science diagnostics distinguish forecast correction from hidden-event hypotheses using transparent educational heuristics.',
+      'H3/P9 does not add a Python simulator, new route planner, calibrated ocean forecast, backend service, production data assimilation, or MARL/RL.'
     ]
   };
 }
@@ -334,3 +339,4 @@ function finiteOrNull(value) {
 function round(value) {
   return Number(Number(value ?? 0).toFixed(6));
 }
+

@@ -1,4 +1,4 @@
-import assert from 'node:assert/strict';
+﻿import assert from 'node:assert/strict';
 import fs from 'node:fs';
 
 import {
@@ -99,6 +99,9 @@ import { createHeadlessFieldPack } from '../../src/core/headless/runtime/Headles
 import { simulateHeadlessGliderRoute } from '../../src/core/headless/runtime/HeadlessGlider.js';
 import { runHeadlessMission } from '../../src/core/headless/runtime/HeadlessMissionRunner.js';
 import { headlessBundleFiles } from '../../src/core/headless/runtime/HeadlessBundleWriter.js';
+import { analyzeScienceEvidence, buildScienceDiagnosticsArtifact } from '../../src/core/science/ScienceDiscoveryLifecycle.js';
+import { runScienceDiscoveryFixture } from '../../src/core/science/ScienceDiscoveryFixtures.js';
+import { normalizeScienceDiagnosisId } from '../../src/core/science/ScienceDiagnosisTypes.js';
 import { HEADLESS_SOLVER_ROUNDTRIP_REPORT_TYPE, HEADLESS_SOLVER_ROUNDTRIP_BUNDLE_TYPE } from '../../src/core/headless/HeadlessRoundtripTypes.js';
 import '../../src/labs/widgets/SamplingActionValueWidgets.js';
 import { FlowFieldDemoScene } from '../../src/game/phaser/scenes/FlowFieldDemoScene.js';
@@ -115,6 +118,23 @@ function assertFieldNonEmpty(field, label) {
   assert.ok(field.flat().some((value) => Number(value) > 0 || (typeof value === 'string' && value !== 'inactive' && value !== 'empty')), `${label} should not be empty`);
 }
 
+
+// P9 science diagnosis modules: forecast correction vs hidden-event hypothesis lifecycle.
+assert.equal(normalizeScienceDiagnosisId('likelyForecastError'), 'forecastIntensityError', 'P9 science diagnosis aliases normalize');
+const p9ScienceUpdate = analyzeScienceEvidence({
+  observations: [
+    { observationId: 'p9-a', timeSeconds: 0, x: 4, y: 4, observedValue: 1.2, forecastValue: 0.2, sensorNoiseStd: 0.1 },
+    { observationId: 'p9-b', timeSeconds: 120, x: 4.2, y: 4.1, observedValue: 1.25, forecastValue: 0.2, sensorNoiseStd: 0.1 },
+    { observationId: 'p9-c', timeSeconds: 240, x: 3.8, y: 4.1, observedValue: 1.18, forecastValue: 0.2, sensorNoiseStd: 0.1 }
+  ],
+  context: { episodeId: 'model-stack-p9-science', forecastCanExplain: false, eventFamily: 'hiddenPlume' }
+});
+assert.equal(p9ScienceUpdate.type, 'anchor.science.discovery-update', 'P9 science discovery modules import and run');
+assert.equal(p9ScienceUpdate.primaryDiagnosis, 'likelyHiddenEvent', 'P9 hidden-event diagnosis is distinct from forecast correction');
+const p9ScienceDiagnostics = buildScienceDiagnosticsArtifact(p9ScienceUpdate, { episodeId: 'model-stack-p9-science' });
+assert.equal(p9ScienceDiagnostics.type, 'anchor.headless.science-diagnostics', 'P9 headless science diagnostics artifact builds');
+assert.equal(JSON.stringify(p9ScienceDiagnostics).includes('T_hiddenTruth'), false, 'P9 science diagnostics do not expose hidden truth field IDs');
+assert.equal(runScienceDiscoveryFixture('forecastIntensityError').passed, true, 'P9 science fixtures pass');
 // Process Lab imports, fixtures, behavior checks, export metadata, and debug object.
 assert.ok(FOUNDATIONAL_CA_MODELS.length >= 4, 'Process Lab foundational examples import');
 for (const id of ['conwayGameOfLife', 'forestFire', 'sirEpidemicCa', 'sandpileAvalanche']) {
@@ -481,6 +501,8 @@ assert.equal(h1Episode.diagnostics.calibratedOceanForecast, false, 'H1 does not 
 const h1Files = headlessBundleFiles(h1Episode, { includeHiddenTruth: false });
 assert.equal(Object.hasOwn(h1Files, 'hidden_fields.json'), false, 'H1 can omit hidden truth bundle file');
 assert.equal(h1Files['visible_fields.json'].includes('T_hiddenTruth'), false, 'H1 visible fields omit hidden truth');
+assert.equal(h1Episode.scienceDiagnostics?.type, 'anchor.headless.science-diagnostics', 'P9 science diagnostics attach to H1 headless episodes');
+assert.equal(h1Files['science_diagnostics.json'].includes('T_hiddenTruth'), false, 'P9 science diagnostics export omits hidden truth field IDs');
 const h1RuntimeSourceFiles = [
   'src/core/headless/runtime/HeadlessRuntimeConfig.js',
   'src/core/headless/runtime/HeadlessGrid.js',
@@ -834,3 +856,4 @@ assert.ok(coupledSceneSource.includes('What Colors Mean'), 'Coupled right panel 
 assert.ok(coupledSceneSource.includes('uses uncertainty'), 'Coupled right panel states uncertainty boundary');
 
 console.log('Model stack integration smoke passed');
+

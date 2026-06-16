@@ -1,4 +1,4 @@
-import { normalizeHeadlessArtifactType, normalizeHeadlessVisibilityTier } from './HeadlessSchemaContract.js';
+﻿import { normalizeHeadlessArtifactType, normalizeHeadlessVisibilityTier } from './HeadlessSchemaContract.js';
 
 export const HEADLESS_BUNDLE_MANIFEST_VERSION = 'headless-bundle-manifest-h0';
 
@@ -18,6 +18,7 @@ export const HEADLESS_BUNDLE_FILE_ROLES = Object.freeze([
   'surfacingReports',
   'benchmarkRecords',
   'scoreReport',
+  'scienceDiagnostics',
   'replay',
   'notebookConfig'
 ]);
@@ -97,3 +98,4 @@ function normalizeArray(values = []) { return Array.isArray(values) ? values : v
 function normalizeStringList(values = []) { return normalizeArray(values).map((value) => String(value)).filter(Boolean); }
 function cloneJson(value) { if (value === undefined || value === null) return value ?? null; try { return JSON.parse(JSON.stringify(value)); } catch { return value; } }
 function compactObject(value = {}) { return Object.fromEntries(Object.entries(value).filter(([_key, entry]) => entry !== undefined)); }
+

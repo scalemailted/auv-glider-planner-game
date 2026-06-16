@@ -89,3 +89,7 @@ node tools/js/headless_oceanbox.mjs roundtrip --solver-packet docs/examples/head
 The consolidated CLI writes a public `bundle.json` and `roundtrip_report.json` when `--no-hidden-export` is used. The legacy `tools/js/headless_roundtrip.mjs` wrapper still works. It validates solver-packet visibility, validates plan structure/route compatibility, adapts the submitted route to the existing H1 runtime, and does not generate a new planner route. Use `--include-hidden-truth --oracle` only for explicit oracle/debug runs.
 
 Regenerate the checked-in H3.1 roundtrip examples with `node tools/js/generate_headless_solver_roundtrip_examples.mjs` and validate them with `node tools/js/smoke_headless_roundtrip_fixtures.mjs`.
+
+## P9 Science Diagnostics
+
+Headless simulation and roundtrip commands may write `science_diagnostics.json` and embed `scienceDiagnostics` in `bundle.json`. Browser summaries expose this as a Science Diagnosis section. The diagnostics are educational heuristics only: no production data assimilation, calibrated ocean forecast, new planner, official browser scoring, Python simulator, or MARL/RL is added.
