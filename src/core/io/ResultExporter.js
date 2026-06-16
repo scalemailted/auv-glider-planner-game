@@ -10,9 +10,13 @@ import {
   buildRouteExecutionRecordFromResult
 } from '../benchmark/BenchmarkResultAdapter.js';
 import {
+  buildAdaptiveEpisodeSessionExport,
   buildAdaptiveEpisodeTraceExport,
   buildAdaptiveLaunchConfigExport,
+  buildAdaptiveLegRecordExport,
   buildAdaptiveNextLegConfigExport,
+  buildAdaptiveObjectiveHistoryExport,
+  buildAdaptiveSessionSummaryExport,
   buildAdaptiveSurfacingDecisionExport,
   buildBenchmarkAttemptSetExport,
   buildBenchmarkRouteExecutionExport,
@@ -32,6 +36,14 @@ import { runAdaptiveSurfacingDecision } from '../benchmark/AdaptiveSurfacingLoop
 import { createAdaptiveNextLegConfig } from '../benchmark/AdaptiveNextLegHandoff.js';
 import { appendAdaptiveLegResult, appendAdaptiveSurfacingDecision, createAdaptiveEpisodeTrace } from '../benchmark/AdaptiveEpisodeTrace.js';
 import { deriveAdaptiveBenchmarkContextFromState } from '../benchmark/AdaptiveBenchmarkRuntime.js';
+import { createAdaptiveLegRecord } from '../benchmark/AdaptiveLegRecord.js';
+import {
+  addAdaptiveLegToSession,
+  addAdaptiveNextLegHandoffToSession,
+  addAdaptiveSurfacingDecisionToSession,
+  createAdaptiveEpisodeSession
+} from '../benchmark/AdaptiveEpisodeSession.js';
+import { buildAdaptiveObjectiveHistoryViewModel } from '../benchmark/AdaptiveObjectiveHistoryViewModel.js';
 import {
   benchmarkComparisonSummary,
   buildBenchmarkComparisonViewModel
@@ -752,6 +764,67 @@ export function buildAdaptiveLaunchConfigExportFromResult({ level, mission, plan
   const context = runtimeContext ?? deriveAdaptiveBenchmarkContextFromState({ level, mission, plan, result, benchmarkModeConfig: options.benchmarkModeConfig, adaptiveManagerState: options.managerState, adaptiveManagerConfig: options.managerConfig });
   return buildAdaptiveLaunchConfigExport({ runtimeContext: context ?? {}, ...options }, options.export ?? {});
 }
+export function buildAdaptiveLegRecordExportFromResult({ level, mission, plan, result, runtimeContext = null, surfacingDecision = null, nextLegHandoff = null, routeExecutionRecord = null, runRecord = null, options = {} } = {}) {
+  const context = runtimeContext ?? deriveAdaptiveBenchmarkContextFromState({ level, mission, plan, result, benchmarkModeConfig: options.benchmarkModeConfig, adaptiveManagerState: options.managerState, adaptiveManagerConfig: options.managerConfig });
+  const decision = surfacingDecision ?? buildAdaptiveSurfacingDecisionExportFromResult({ level, mission, plan, result, runtimeContext: context, routeExecutionRecord, runRecord, options });
+  const handoff = nextLegHandoff ?? createAdaptiveNextLegConfig({ runtimeContext: context ?? {}, surfacingDecision: decision ?? {}, previousResult: result, options });
+  const record = createAdaptiveLegRecord({
+    runtimeContext: context ?? {},
+    legIndex: context?.activeLegIndex ?? result?.adaptiveBenchmark?.activeLegIndex ?? 0,
+    objectiveId: context?.activeObjective?.id,
+    plan,
+    result,
+    runRecord,
+    routeExecutionRecord,
+    evidence: decision?.evidence,
+    surfacingEvent: decision?.surfacingEvent,
+    diagnosis: decision?.diagnosis,
+    objectiveTransition: decision?.objectiveTransition,
+    nextLegHandoff: handoff,
+    status: 'nextObjectiveRecommended',
+    metrics: routeExecutionRecord?.metrics ?? result?.summary ?? {},
+    notes: ['P8 adaptive leg record export copies existing result metrics; it does not recompute scoring.']
+  });
+  return buildAdaptiveLegRecordExport(record, options.export ?? {});
+}
+
+export function buildAdaptiveEpisodeSessionExportFromResult({ level, mission, plan, result, runtimeContext = null, surfacingDecision = null, nextLegHandoff = null, routeExecutionRecord = null, runRecord = null, session = null, options = {} } = {}) {
+  const context = runtimeContext ?? deriveAdaptiveBenchmarkContextFromState({ level, mission, plan, result, benchmarkModeConfig: options.benchmarkModeConfig, adaptiveManagerState: options.managerState, adaptiveManagerConfig: options.managerConfig });
+  const decision = surfacingDecision ?? buildAdaptiveSurfacingDecisionExportFromResult({ level, mission, plan, result, runtimeContext: context, routeExecutionRecord, runRecord, options });
+  const handoff = nextLegHandoff ?? createAdaptiveNextLegConfig({ runtimeContext: context ?? {}, surfacingDecision: decision ?? {}, previousResult: result, options });
+  const leg = createAdaptiveLegRecord({
+    runtimeContext: context ?? {},
+    legIndex: context?.activeLegIndex ?? 0,
+    objectiveId: context?.activeObjective?.id,
+    plan,
+    result,
+    runRecord,
+    routeExecutionRecord,
+    evidence: decision?.evidence,
+    surfacingEvent: decision?.surfacingEvent,
+    diagnosis: decision?.diagnosis,
+    objectiveTransition: decision?.objectiveTransition,
+    nextLegHandoff: handoff,
+    status: 'nextObjectiveRecommended',
+    metrics: routeExecutionRecord?.metrics ?? result?.summary ?? {}
+  });
+  const base = createAdaptiveEpisodeSession(session ?? context ?? {});
+  const withLeg = addAdaptiveLegToSession(base, leg);
+  const withDecision = addAdaptiveSurfacingDecisionToSession(withLeg, decision);
+  const withHandoff = addAdaptiveNextLegHandoffToSession(withDecision, handoff);
+  return buildAdaptiveEpisodeSessionExport(withHandoff, options.export ?? {});
+}
+
+export function buildAdaptiveObjectiveHistoryExportFromResult({ level, mission, plan, result, runtimeContext = null, session = null, options = {} } = {}) {
+  const sessionExport = buildAdaptiveEpisodeSessionExportFromResult({ level, mission, plan, result, runtimeContext, session, options });
+  const viewModel = buildAdaptiveObjectiveHistoryViewModel({ session: sessionExport.session ?? sessionExport });
+  return buildAdaptiveObjectiveHistoryExport(viewModel, options.export ?? {});
+}
+
+export function buildAdaptiveSessionSummaryExportFromResult({ level, mission, plan, result, runtimeContext = null, session = null, options = {} } = {}) {
+  const sessionExport = buildAdaptiveEpisodeSessionExportFromResult({ level, mission, plan, result, runtimeContext, session, options });
+  return buildAdaptiveSessionSummaryExport(sessionExport.session ?? sessionExport, options.export ?? {});
+}
 function normalizeBenchmarkExportContext({
   level,
   mission,
@@ -810,6 +883,10 @@ function benchmarkExportTypes() {
     'anchor.benchmark.adaptive-surfacing-decision',
     'anchor.benchmark.adaptive-next-leg-config',
     'anchor.benchmark.adaptive-episode-trace',
-    'anchor.benchmark.adaptive-launch-config'
+    'anchor.benchmark.adaptive-launch-config',
+    'anchor.benchmark.adaptive-episode-session',
+    'anchor.benchmark.adaptive-objective-history',
+    'anchor.benchmark.adaptive-leg-record',
+    'anchor.benchmark.adaptive-session-summary'
   ];
 }

@@ -59,7 +59,7 @@ import { buildBenchmarkAttemptSessionExport, buildBenchmarkComparisonExportFromR
 import { parseBenchmarkArtifact } from '../../src/core/benchmark/BenchmarkArtifactImport.js';
 import { buildBenchmarkImportViewModel } from '../../src/core/benchmark/BenchmarkImportViewModel.js';
 import { benchmarkImportPanelHtml } from '../../src/ui/benchmark/BenchmarkImportPanel.js';
-import { buildAdaptiveLaunchConfigExport, buildAdaptiveManagerPreviewExport, buildAdaptiveNextLegConfigExport, buildAdaptiveSurfacingDecisionExport, buildBenchmarkModeConfigExport } from '../../src/core/benchmark/BenchmarkModeExporter.js';
+import { buildAdaptiveEpisodeSessionExport, buildAdaptiveLaunchConfigExport, buildAdaptiveLegRecordExport, buildAdaptiveManagerPreviewExport, buildAdaptiveNextLegConfigExport, buildAdaptiveObjectiveHistoryExport, buildAdaptiveSessionSummaryExport, buildAdaptiveSurfacingDecisionExport, buildBenchmarkModeConfigExport } from '../../src/core/benchmark/BenchmarkModeExporter.js';
 import { ADAPTIVE_MISSION_MANAGER_CONTRACT_VERSION, createAdaptiveMissionManagerConfig, validateAdaptiveMissionManagerConfig } from '../../src/core/benchmark/AdaptiveMissionManagerContract.js';
 import { computeAdaptiveDiagnosis } from '../../src/core/benchmark/AdaptiveDiagnosisModel.js';
 import { selectNextAdaptiveObjective } from '../../src/core/benchmark/AdaptiveObjectivePolicy.js';
@@ -74,6 +74,12 @@ import { runAdaptiveSurfacingDecision } from '../../src/core/benchmark/AdaptiveS
 import { createAdaptiveNextLegConfig } from '../../src/core/benchmark/AdaptiveNextLegHandoff.js';
 import { appendAdaptiveSurfacingDecision, createAdaptiveEpisodeTrace } from '../../src/core/benchmark/AdaptiveEpisodeTrace.js';
 import { adaptiveSurfacingPanelHtml } from '../../src/ui/benchmark/AdaptiveSurfacingPanel.js';
+import { createAdaptiveLegRecord } from '../../src/core/benchmark/AdaptiveLegRecord.js';
+import { addAdaptiveLegToSession, addAdaptiveNextLegHandoffToSession, createAdaptiveEpisodeSession } from '../../src/core/benchmark/AdaptiveEpisodeSession.js';
+import { saveAdaptiveEpisodeSession, loadAdaptiveEpisodeSession } from '../../src/core/benchmark/AdaptiveEpisodePersistence.js';
+import { buildAdaptiveObjectiveHistoryViewModel } from '../../src/core/benchmark/AdaptiveObjectiveHistoryViewModel.js';
+import { adaptiveEpisodeSessionPanelHtml } from '../../src/ui/benchmark/AdaptiveEpisodeSessionPanel.js';
+import { classifyAdaptiveEpisodeArtifact, mergeAdaptiveEpisodeArtifacts } from '../../src/core/benchmark/AdaptiveEpisodeImport.js';
 import '../../src/labs/widgets/SamplingActionValueWidgets.js';
 import { FlowFieldDemoScene } from '../../src/game/phaser/scenes/FlowFieldDemoScene.js';
 import { RoiGeneratorDemoScene } from '../../src/game/phaser/scenes/RoiGeneratorDemoScene.js';
@@ -396,6 +402,21 @@ assert.ok(adaptiveSurfacingPanelHtml({ decision: p7Decision, nextLegHandoff: p7H
 assert.equal(buildAdaptiveSurfacingDecisionExport(p7Decision).usesNewPlanner, false, 'P7 surfacing export excludes new planner');
 assert.equal(buildAdaptiveNextLegConfigExport(p7Handoff).usesMissionScoringRedesign, false, 'P7 handoff export excludes scoring redesign');
 assert.equal(buildAdaptiveLaunchConfigExport({ runtimeContext: adaptiveRuntime }).usesMARL, false, 'P7 launch export excludes MARL');
+const p8Leg = createAdaptiveLegRecord({ runtimeContext: adaptiveRuntime, legIndex: 0, objectiveId: adaptiveRuntime.activeObjective.id, metrics: { finalScore: 3 } });
+let p8Session = addAdaptiveLegToSession(createAdaptiveEpisodeSession({ runtimeContext: adaptiveRuntime }), p8Leg);
+p8Session = addAdaptiveNextLegHandoffToSession(p8Session, p7Handoff);
+const p8HistoryVm = buildAdaptiveObjectiveHistoryViewModel({ session: p8Session });
+assert.equal(p8Session.benchmarkMode, 'adaptiveBenchmark', 'P8 adaptive multi-leg session exists');
+assert.equal(buildAdaptiveEpisodeSessionExport(p8Session).usesNewPlanner, false, 'P8 session export excludes new planner');
+assert.equal(buildAdaptiveObjectiveHistoryExport(p8HistoryVm).usesMissionScoringRedesign, false, 'P8 objective-history export excludes scoring redesign');
+assert.equal(buildAdaptiveLegRecordExport(p8Leg).usesMARL, false, 'P8 leg export excludes MARL');
+assert.equal(buildAdaptiveSessionSummaryExport(p8Session).type, 'anchor.benchmark.adaptive-session-summary', 'P8 session summary export exists');
+assert.ok(adaptiveEpisodeSessionPanelHtml(p8HistoryVm).includes('Adaptive Episode Session'), 'P8 adaptive session panel renders');
+assert.equal(classifyAdaptiveEpisodeArtifact(buildAdaptiveEpisodeSessionExport(p8Session)).supported, true, 'P8 adaptive session import classification works');
+assert.equal(mergeAdaptiveEpisodeArtifacts({ session: p8Session, artifacts: [buildAdaptiveEpisodeSessionExport(p8Session)] }).session.benchmarkMode, 'adaptiveBenchmark', 'P8 adaptive session merge works');
+const p8FakeStorage = (() => { const data = new Map(); return { get length() { return data.size; }, key(index) { return [...data.keys()][index] ?? null; }, getItem(key) { return data.has(key) ? data.get(key) : null; }, setItem(key, value) { data.set(key, String(value)); }, removeItem(key) { data.delete(key); } }; })();
+assert.equal(saveAdaptiveEpisodeSession(p8Session, p8FakeStorage).ok, true, 'P8 adaptive session persistence saves');
+assert.equal(loadAdaptiveEpisodeSession(p8Session.episodeId, p8FakeStorage).ok, true, 'P8 adaptive session persistence loads');
 // P1 benchmark route-execution contracts and adapter boundaries.
 const p1Episode = createBenchmarkEpisodeConfig({ benchmarkMode: 'plannerBenchmark' });
 assert.equal(validateBenchmarkEpisodeConfig(p1Episode).status, 'PASS', 'P1 benchmark episode config validates');
@@ -637,6 +658,12 @@ const claimFiles = [
   'src/core/benchmark/AdaptiveNextLegHandoff.js',
   'src/core/benchmark/AdaptiveEpisodeTrace.js',
   'src/ui/benchmark/AdaptiveBenchmarkPanel.js',
+  'src/core/benchmark/AdaptiveEpisodeSession.js',
+  'src/core/benchmark/AdaptiveLegRecord.js',
+  'src/core/benchmark/AdaptiveEpisodePersistence.js',
+  'src/core/benchmark/AdaptiveObjectiveHistoryViewModel.js',
+  'src/ui/benchmark/AdaptiveEpisodeSessionPanel.js',
+  'src/core/benchmark/AdaptiveEpisodeImport.js',
   'src/ui/benchmark/AdaptiveSurfacingPanel.js',
   'src/core/benchmark/BenchmarkEpisodeRuntime.js',
   'src/core/benchmark/BenchmarkAttemptSession.js',

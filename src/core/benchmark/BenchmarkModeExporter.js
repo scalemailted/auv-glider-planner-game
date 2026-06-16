@@ -50,6 +50,21 @@ import {
   createAdaptiveEpisodeTrace
 } from './AdaptiveEpisodeTrace.js';
 import { createAdaptiveBenchmarkLaunchConfig } from './BenchmarkLaunchBridge.js';
+import {
+  ADAPTIVE_EPISODE_SESSION_VERSION,
+  adaptiveEpisodeSessionSummary,
+  createAdaptiveEpisodeSession
+} from './AdaptiveEpisodeSession.js';
+import {
+  ADAPTIVE_LEG_RECORD_VERSION,
+  adaptiveLegRecordSummary,
+  createAdaptiveLegRecord
+} from './AdaptiveLegRecord.js';
+import {
+  ADAPTIVE_OBJECTIVE_HISTORY_VIEW_MODEL_VERSION,
+  adaptiveObjectiveHistorySummary,
+  buildAdaptiveObjectiveHistoryViewModel
+} from './AdaptiveObjectiveHistoryViewModel.js';
 
 export const BENCHMARK_MODE_CONFIG_EXPORT_TYPE = 'anchor.benchmark.mode-config';
 export const BENCHMARK_MODE_CONFIG_EXPORT_VERSION = 'benchmark-mode-config-export-p0';
@@ -68,6 +83,11 @@ export const BENCHMARK_ADAPTIVE_SURFACING_DECISION_EXPORT_TYPE = 'anchor.benchma
 export const BENCHMARK_ADAPTIVE_NEXT_LEG_CONFIG_EXPORT_TYPE = 'anchor.benchmark.adaptive-next-leg-config';
 export const BENCHMARK_ADAPTIVE_EPISODE_TRACE_EXPORT_TYPE = 'anchor.benchmark.adaptive-episode-trace';
 export const BENCHMARK_ADAPTIVE_LAUNCH_CONFIG_EXPORT_TYPE = 'anchor.benchmark.adaptive-launch-config';
+export const BENCHMARK_ADAPTIVE_EPISODE_SESSION_EXPORT_TYPE = 'anchor.benchmark.adaptive-episode-session';
+export const BENCHMARK_ADAPTIVE_OBJECTIVE_HISTORY_EXPORT_TYPE = 'anchor.benchmark.adaptive-objective-history';
+export const BENCHMARK_ADAPTIVE_LEG_RECORD_EXPORT_TYPE = 'anchor.benchmark.adaptive-leg-record';
+export const BENCHMARK_ADAPTIVE_SESSION_SUMMARY_EXPORT_TYPE = 'anchor.benchmark.adaptive-session-summary';
+export const BENCHMARK_ADAPTIVE_P8_EXPORT_VERSION = 'benchmark-adaptive-export-p8';
 
 export function buildBenchmarkModeConfigExport(options = {}) {
   const benchmarkModeConfig = createBenchmarkModeConfig(options);
@@ -322,6 +342,97 @@ export function buildAdaptiveLaunchConfigExport(configOrOptions = {}, options = 
     usesMARL: false
   };
 }
+export function buildAdaptiveEpisodeSessionExport(sessionOrOptions = {}, options = {}) {
+  const session = sessionOrOptions?.type === BENCHMARK_ADAPTIVE_EPISODE_SESSION_EXPORT_TYPE
+    ? createAdaptiveEpisodeSession(sessionOrOptions.session ?? sessionOrOptions)
+    : createAdaptiveEpisodeSession(sessionOrOptions);
+  return {
+    ...cloneJson(session),
+    type: BENCHMARK_ADAPTIVE_EPISODE_SESSION_EXPORT_TYPE,
+    exportVersion: BENCHMARK_ADAPTIVE_P8_EXPORT_VERSION,
+    adaptiveEpisodeSessionVersion: ADAPTIVE_EPISODE_SESSION_VERSION,
+    createdAt: options.createdAt ?? new Date().toISOString(),
+    session: cloneJson(session),
+    summary: adaptiveEpisodeSessionSummary(session),
+    boundaryFlags: adaptiveBoundaryFlags(),
+    usesExistingSimulation: true,
+    usesNewPlanner: false,
+    usesMissionScoringRedesign: false,
+    usesMARL: false,
+    notes: [
+      'P8 adaptive episode session stores legs, surfacing decisions, and objective history.',
+      'It does not generate routes or redesign scoring.',
+      ...(Array.isArray(options.notes) ? options.notes : [])
+    ]
+  };
+}
+
+export function buildAdaptiveObjectiveHistoryExport(viewModelOrOptions = {}, options = {}) {
+  const viewModel = viewModelOrOptions?.version === ADAPTIVE_OBJECTIVE_HISTORY_VIEW_MODEL_VERSION
+    ? viewModelOrOptions
+    : buildAdaptiveObjectiveHistoryViewModel({ session: viewModelOrOptions.session ?? viewModelOrOptions, ...options });
+  return {
+    type: BENCHMARK_ADAPTIVE_OBJECTIVE_HISTORY_EXPORT_TYPE,
+    version: BENCHMARK_ADAPTIVE_P8_EXPORT_VERSION,
+    adaptiveObjectiveHistoryViewModelVersion: ADAPTIVE_OBJECTIVE_HISTORY_VIEW_MODEL_VERSION,
+    createdAt: options.createdAt ?? new Date().toISOString(),
+    benchmarkMode: 'adaptiveBenchmark',
+    episodeId: viewModel.episodeId,
+    objectiveAuthority: 'missionManager',
+    routeAuthority: 'playerOrSolver',
+    viewModel: cloneJson(viewModel),
+    objectiveTimeline: cloneJson(viewModel.objectiveTimeline ?? []),
+    metricCards: cloneJson(viewModel.metricCards ?? []),
+    summary: adaptiveObjectiveHistorySummary(viewModel),
+    boundaryFlags: adaptiveBoundaryFlags(),
+    usesExistingSimulation: true,
+    usesNewPlanner: false,
+    usesMissionScoringRedesign: false,
+    usesMARL: false
+  };
+}
+
+export function buildAdaptiveLegRecordExport(recordOrOptions = {}, options = {}) {
+  const record = recordOrOptions?.type === 'anchor.benchmark.adaptive-leg'
+    ? createAdaptiveLegRecord(recordOrOptions)
+    : createAdaptiveLegRecord(recordOrOptions);
+  return {
+    type: BENCHMARK_ADAPTIVE_LEG_RECORD_EXPORT_TYPE,
+    version: BENCHMARK_ADAPTIVE_P8_EXPORT_VERSION,
+    adaptiveLegRecordVersion: ADAPTIVE_LEG_RECORD_VERSION,
+    createdAt: options.createdAt ?? new Date().toISOString(),
+    benchmarkMode: 'adaptiveBenchmark',
+    episodeId: record.episodeId,
+    legIndex: record.legIndex,
+    legRecord: cloneJson(record),
+    summary: adaptiveLegRecordSummary(record),
+    boundaryFlags: adaptiveBoundaryFlags(),
+    usesExistingSimulation: true,
+    usesNewPlanner: false,
+    usesMissionScoringRedesign: false,
+    usesMARL: false
+  };
+}
+
+export function buildAdaptiveSessionSummaryExport(sessionOrOptions = {}, options = {}) {
+  const session = createAdaptiveEpisodeSession(sessionOrOptions.session ?? sessionOrOptions);
+  return {
+    type: BENCHMARK_ADAPTIVE_SESSION_SUMMARY_EXPORT_TYPE,
+    version: BENCHMARK_ADAPTIVE_P8_EXPORT_VERSION,
+    adaptiveEpisodeSessionVersion: ADAPTIVE_EPISODE_SESSION_VERSION,
+    createdAt: options.createdAt ?? new Date().toISOString(),
+    benchmarkMode: 'adaptiveBenchmark',
+    episodeId: session.episodeId,
+    summary: adaptiveEpisodeSessionSummary(session),
+    objectiveHistory: cloneJson(session.objectiveHistory),
+    legSummaries: session.legs.map((leg) => adaptiveLegRecordSummary(leg)),
+    boundaryFlags: adaptiveBoundaryFlags(),
+    usesExistingSimulation: true,
+    usesNewPlanner: false,
+    usesMissionScoringRedesign: false,
+    usesMARL: false
+  };
+}
 export function benchmarkModeConfigFilename(config = {}) {
   const mode = createBenchmarkModeConfig(config).benchmarkMode;
   return `anchor-benchmark-mode-config-${mode}.json`;
@@ -347,6 +458,7 @@ function adaptiveBoundaryFlags() {
     usesMARL: false,
     usesProductionDataAssimilation: false,
     adaptiveExecutionPreviewAvailable: true,
+    adaptiveMultiLegSessionAvailable: true,
     adaptiveExecutionImplemented: false
   };
 }

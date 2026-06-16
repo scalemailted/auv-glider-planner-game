@@ -842,3 +842,7 @@ Adaptive Benchmark now previews a transparent mission manager that recommends ob
 ## P7 Adaptive Benchmark Surfacing Loop
 
 P7 connects one executed Adaptive Benchmark leg to surfacing/debrief diagnosis and next-objective recommendation. It does not add a new planner, redesign scoring, automatically run full multi-leg adaptive missions, or implement MARL/RL. See `docs/adaptive_benchmark_surfacing_loop.md`.
+
+### P8 Adaptive Benchmark Multi-Leg Session
+
+Adaptive Benchmark now persists compact multi-leg episode sessions for manual continuation. Debrief can save/load/delete an adaptive session, review objective history and surfacing decisions, export session/history/leg records, and continue to the next leg through the existing setup/planning flow. P8 does not add a new planner, redesign scoring, automatically run full multi-leg missions, or implement MARL/RL. See `docs/adaptive_benchmark_multileg_session.md`.

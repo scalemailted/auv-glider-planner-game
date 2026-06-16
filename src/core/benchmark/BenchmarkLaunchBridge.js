@@ -3,6 +3,8 @@ import { createBenchmarkEpisodeConfig, createBenchmarkEpisodeState } from './Ben
 import { createBenchmarkModeConfig } from './BenchmarkModeContract.js';
 import { BENCHMARK_METADATA_VERSION } from './BenchmarkMetadata.js';
 import { initializeAdaptiveBenchmarkEpisode } from './AdaptiveBenchmarkRuntime.js';
+import { createAdaptiveEpisodeSession } from './AdaptiveEpisodeSession.js';
+import { missionObjectiveById } from './MissionObjectiveTaxonomy.js';
 
 export function createPlannerBenchmarkSetupPayload(options = {}) {
   const benchmarkModeConfig = createBenchmarkModeConfig({
@@ -147,6 +149,82 @@ export function openAdaptiveBenchmarkSetup({ app, scene, runtimeContext, adaptiv
   return { launched: false, reason: 'setup-entry-not-available', payload };
 }
 
+export function createAdaptiveContinueLegPayload(session, handoff = {}) {
+  const normalizedSession = createAdaptiveEpisodeSession(session ?? {});
+  const handoffLegIndex = Number(handoff?.legIndex);
+  const nextLegIndex = Number.isFinite(handoffLegIndex)
+    ? Math.max(0, Math.round(handoffLegIndex))
+    : Math.max(0, normalizedSession.currentLegIndex + 1);
+  const objective = missionObjectiveById(handoff?.recommendedObjectiveId ?? handoff?.transition?.toObjectiveId ?? normalizedSession.currentObjectiveId);
+  const managerState = {
+    ...(handoff?.managerState ?? {}),
+    episodeId: normalizedSession.episodeId,
+    policyId: normalizedSession.policyId,
+    currentObjectiveId: objective.id,
+    objectiveHistory: cloneJson(normalizedSession.objectiveHistory)
+  };
+  const runtimeContext = initializeAdaptiveBenchmarkEpisode({
+    episodeId: normalizedSession.episodeId,
+    benchmarkMode: 'adaptiveBenchmark',
+    benchmarkModeConfig: {
+      benchmarkMode: 'adaptiveBenchmark',
+      informationAccessTier: normalizedSession.informationAccessTier,
+      worldModelTier: normalizedSession.worldModelTier,
+      objectiveAuthority: 'missionManager',
+      routeAuthority: 'playerOrSolver'
+    },
+    adaptiveManagerConfig: {
+      episodeId: normalizedSession.episodeId,
+      policyId: normalizedSession.policyId,
+      informationAccessTier: normalizedSession.informationAccessTier,
+      worldModelTier: normalizedSession.worldModelTier
+    },
+    adaptiveManagerState: managerState,
+    activeObjective: objective,
+    activeLegIndex: nextLegIndex,
+    informationAccessTier: normalizedSession.informationAccessTier,
+    worldModelTier: normalizedSession.worldModelTier,
+    fairnessLabel: normalizedSession.fairnessLabel,
+    notes: [
+      'P8 continue-leg payload carries the recommended objective forward.',
+      'The player or solver still plans the route. No waypoints or route are generated.'
+    ]
+  });
+  const launchConfig = createAdaptiveBenchmarkLaunchConfig({ runtimeContext });
+  return {
+    type: 'anchor.benchmark.adaptive-continue-leg-payload',
+    version: 'adaptive-continue-leg-payload-p8',
+    episodeId: normalizedSession.episodeId,
+    benchmarkMode: 'adaptiveBenchmark',
+    legIndex: nextLegIndex,
+    currentLegIndex: normalizedSession.currentLegIndex,
+    recommendedObjectiveId: objective.id,
+    recommendedObjectiveLabel: objective.label,
+    objectiveAuthority: 'missionManager',
+    routeAuthority: 'playerOrSolver',
+    informationAccessTier: normalizedSession.informationAccessTier,
+    worldModelTier: normalizedSession.worldModelTier,
+    fairnessLabel: normalizedSession.fairnessLabel,
+    session: cloneJson(normalizedSession),
+    nextLegHandoff: cloneJson(handoff ?? null),
+    runtimeContext,
+    launchConfig,
+    generatedWaypoints: false,
+    generatedRoute: false,
+    notes: [
+      'Continue to Next Leg preserves episode and objective history.',
+      'It opens the existing setup/planning flow and does not create waypoints or routes.'
+    ]
+  };
+}
+
+export function isAdaptiveContinueLegPayload(payload) {
+  return Boolean(payload && typeof payload === 'object' && payload.type === 'anchor.benchmark.adaptive-continue-leg-payload' && payload.benchmarkMode === 'adaptiveBenchmark');
+}
+
+export function deriveAdaptiveLaunchPayloadFromSession(session, handoff = null) {
+  return createAdaptiveContinueLegPayload(session, handoff ?? (Array.isArray(session?.nextLegHandoffs) ? session.nextLegHandoffs.at(-1) : null)).launchConfig;
+}
 export function benchmarkMetadataFromPayload(payload = {}) {
   const config = payload.benchmarkModeConfig ?? payload.episodeConfig?.benchmarkModeConfig ?? createBenchmarkModeConfig({ benchmarkMode: 'plannerBenchmark' });
   return {

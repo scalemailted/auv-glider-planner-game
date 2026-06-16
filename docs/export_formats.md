@@ -237,3 +237,7 @@ P7 adds these export types:
 - `anchor.benchmark.adaptive-launch-config`
 
 P6 adaptive manager config, state, objective transition, surfacing event, and manager preview exports remain supported. P7 exports do not contain generated routes unless a future phase explicitly adds them.
+
+## Adaptive Benchmark P8 Exports
+
+P8 adds `anchor.benchmark.adaptive-episode-session`, `anchor.benchmark.adaptive-objective-history`, `anchor.benchmark.adaptive-leg-record`, and `anchor.benchmark.adaptive-session-summary`. These exports store compact session, leg, objective-history, and summary records. They do not contain generated routes unless a future phase explicitly adds them.

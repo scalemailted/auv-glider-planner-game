@@ -1022,3 +1022,7 @@ In Simulation Lab, open Benchmark Modes and choose Adaptive Benchmark to inspect
 ## Adaptive Benchmark Surfacing Loop (P7)
 
 Adaptive Benchmark can launch the existing setup/planning flow, preserve mission-manager metadata through one leg, and show a surfacing review in Debrief. The mission manager recommends the next objective; the player or solver still plans the route. P7 does not add a new planner, scoring redesign, automatic multi-leg execution, full autonomy, or MARL/RL.
+
+### Adaptive Benchmark Sessions
+
+In Adaptive Benchmark, Debrief now shows an Adaptive Episode Session panel. Save Adaptive Session stores compact leg records, surfacing decisions, and objective history in this browser. Continue to Next Leg carries the recommended objective forward into the existing planning flow; it does not create waypoints or routes. The player or solver still plans each route.

@@ -124,3 +124,7 @@ P6 adds `AdaptiveMissionManagerContract`, `AdaptiveDiagnosisModel`, `AdaptiveObj
 ## P7 Adaptive Execution Preview
 
 Adaptive Benchmark now supports a one-leg execution preview: setup launch, existing route planning, existing simulation, debrief surfacing diagnosis, next-objective recommendation, and next-leg handoff export. Planner Benchmark remains fixed-objective comparison. Full Autonomy remains contract-only. P7 does not add route generation, scoring redesign, full multi-leg adaptive execution, or MARL/RL.
+
+## P8 Adaptive Session Boundary
+
+Adaptive Benchmark supports compact multi-leg session persistence and objective-history review. Planner Benchmark remains fixed-objective attempt comparison. Full Autonomy remains contract-only. P8 does not add route generation, scoring redesign, automatic full-mission execution, or MARL/RL.

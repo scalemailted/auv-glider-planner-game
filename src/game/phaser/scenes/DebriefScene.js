@@ -9,10 +9,14 @@ import {
   buildResultExport
 } from '../../../core/io/ResultExporter.js';
 import {
+  buildAdaptiveEpisodeSessionExport,
   buildAdaptiveEpisodeTraceExport,
+  buildAdaptiveLegRecordExport,
   buildAdaptiveManagerStateExport,
   buildAdaptiveNextLegConfigExport,
+  buildAdaptiveObjectiveHistoryExport,
   buildAdaptiveObjectiveTransitionExport,
+  buildAdaptiveSessionSummaryExport,
   buildAdaptiveSurfacingDecisionExport
 } from '../../../core/benchmark/BenchmarkModeExporter.js';
 import { attachIdentityToPlan, shortInstanceId } from '../../../core/identity/GameInstanceId.js';
@@ -46,6 +50,22 @@ import {
   extractPlannerBenchmarkContextFromState
 } from '../../../core/benchmark/BenchmarkEpisodeRuntime.js';
 import { deriveAdaptiveBenchmarkContextFromState } from '../../../core/benchmark/AdaptiveBenchmarkRuntime.js';
+import { createAdaptiveLegRecord } from '../../../core/benchmark/AdaptiveLegRecord.js';
+import {
+  addAdaptiveLegToSession,
+  addAdaptiveNextLegHandoffToSession,
+  addAdaptiveSurfacingDecisionToSession,
+  adaptiveEpisodeSessionSummary,
+  createAdaptiveEpisodeSession
+} from '../../../core/benchmark/AdaptiveEpisodeSession.js';
+import {
+  deleteAdaptiveEpisodeSession,
+  listAdaptiveEpisodeSessions,
+  loadAdaptiveEpisodeSession,
+  saveAdaptiveEpisodeSession
+} from '../../../core/benchmark/AdaptiveEpisodePersistence.js';
+import { buildAdaptiveObjectiveHistoryViewModel } from '../../../core/benchmark/AdaptiveObjectiveHistoryViewModel.js';
+import { createAdaptiveContinueLegPayload, openAdaptiveBenchmarkSetup } from '../../../core/benchmark/BenchmarkLaunchBridge.js';
 import { buildAdaptiveEvidenceFromResult } from '../../../core/benchmark/AdaptiveEvidenceAdapter.js';
 import { createAdaptiveSurfacingEvent } from '../../../core/benchmark/AdaptiveSurfacingEvent.js';
 import { runAdaptiveSurfacingDecision } from '../../../core/benchmark/AdaptiveSurfacingLoop.js';
@@ -61,6 +81,7 @@ import {
 } from '../../../core/benchmark/BenchmarkRouteOverlayViewModel.js';
 import { benchmarkDebriefPanelHtml } from '../../../ui/benchmark/BenchmarkDebriefPanel.js';
 import { adaptiveSurfacingPanelHtml as adaptiveSurfacingPanelMarkup } from '../../../ui/benchmark/AdaptiveSurfacingPanel.js';
+import { adaptiveEpisodeSessionPanelHtml as adaptiveEpisodeSessionPanelMarkup } from '../../../ui/benchmark/AdaptiveEpisodeSessionPanel.js';
 import {
   BENCHMARK_IMPORT_SUPPORTED_TYPES,
   mergeBenchmarkArtifactsIntoAttemptSession,
@@ -210,6 +231,7 @@ export class DebriefScene extends PhaserScene {
           ${this.importedPlanPanelHtml(result)}
           ${this.benchmarkPanelHtml(result)}
           ${this.adaptiveSurfacingPanelHtml(result)}
+          ${this.adaptiveSessionPanelHtml(result)}
           ${this.stopReasonPanelHtml(result)}
           ${this.priorityTargetPanelHtml(result)}
           ${this.segmentContributionPanelHtml(result)}
@@ -409,6 +431,10 @@ export class DebriefScene extends PhaserScene {
       this.app.state.adaptiveSurfacingDecision = null;
       this.app.state.adaptiveNextLegHandoff = null;
       this.app.state.adaptiveEpisodeTrace = null;
+      this.app.state.adaptiveCurrentLegRecord = null;
+      this.app.state.adaptiveEpisodeSession = null;
+      this.app.state.adaptiveObjectiveHistoryViewModel = null;
+      this.app.state.adaptiveContinueLegPayload = null;
       this.app.state.benchmarkComparisonViewModel = null;
       this.app.state.benchmarkRouteReviewViewModel = null;
       this.app.state.benchmarkRouteGeometry = null;
@@ -536,9 +562,34 @@ export class DebriefScene extends PhaserScene {
       status: 'completed'
     });
     const trace = appendAdaptiveSurfacingDecision(traceWithLeg, decision);
+    const legRecord = createAdaptiveLegRecord({
+      runtimeContext: context,
+      legIndex: context.activeLegIndex,
+      objectiveId: context.activeObjective?.id,
+      plan: this.app.state.plan,
+      result,
+      evidence,
+      surfacingEvent,
+      diagnosis: decision.diagnosis,
+      objectiveTransition: decision.objectiveTransition,
+      nextLegHandoff,
+      status: 'nextObjectiveRecommended',
+      metrics: result.summary ?? {},
+      notes: ['P8 adaptive leg record built from the current debrief result.']
+    });
+    const sessionBase = this.resolveAdaptiveEpisodeSession(context);
+    const sessionWithLeg = addAdaptiveLegToSession(sessionBase, legRecord);
+    const sessionWithDecision = addAdaptiveSurfacingDecisionToSession(sessionWithLeg, decision);
+    const adaptiveSession = addAdaptiveNextLegHandoffToSession(sessionWithDecision, nextLegHandoff);
+    const objectiveHistoryViewModel = buildAdaptiveObjectiveHistoryViewModel({ session: adaptiveSession });
+    const continueLegPayload = createAdaptiveContinueLegPayload(adaptiveSession, nextLegHandoff);
     this.app.state.adaptiveSurfacingDecision = decision;
     this.app.state.adaptiveNextLegHandoff = nextLegHandoff;
     this.app.state.adaptiveEpisodeTrace = trace;
+    this.app.state.adaptiveCurrentLegRecord = legRecord;
+    this.app.state.adaptiveEpisodeSession = adaptiveSession;
+    this.app.state.adaptiveObjectiveHistoryViewModel = objectiveHistoryViewModel;
+    this.app.state.adaptiveContinueLegPayload = continueLegPayload;
     this.app.state.adaptiveManagerState = decision.managerStateAfter;
     this.app.state.adaptiveBenchmarkRuntimeContext = {
       ...context,
@@ -546,7 +597,8 @@ export class DebriefScene extends PhaserScene {
       activeObjective: decision.recommendedObjective,
       activeLegIndex: context.activeLegIndex
     };
-    this.refreshAdaptiveExecutionDebug({ context, decision, nextLegHandoff, trace });
+    this.listPersistedAdaptiveSessions();
+    this.refreshAdaptiveExecutionDebug({ context, decision, nextLegHandoff, trace, session: adaptiveSession, legRecord, objectiveHistoryViewModel, continueLegPayload });
     return decision;
   }
 
@@ -556,6 +608,145 @@ export class DebriefScene extends PhaserScene {
     return adaptiveSurfacingPanelMarkup({ decision, nextLegHandoff: this.app.state.adaptiveNextLegHandoff });
   }
 
+  adaptiveSessionPanelHtml() {
+    const viewModel = this.app.state.adaptiveObjectiveHistoryViewModel;
+    if (!viewModel) return '';
+    return adaptiveEpisodeSessionPanelMarkup({
+      ...viewModel,
+      nextLegAvailable: Boolean(this.app.state.adaptiveNextLegHandoff),
+      sessionSummary: adaptiveEpisodeSessionSummary(this.app.state.adaptiveEpisodeSession)
+    });
+  }
+
+  buildAdaptiveEpisodeSessionExport() {
+    return buildAdaptiveEpisodeSessionExport(this.app.state.adaptiveEpisodeSession);
+  }
+
+  buildAdaptiveObjectiveHistoryExport() {
+    return buildAdaptiveObjectiveHistoryExport(this.app.state.adaptiveObjectiveHistoryViewModel ?? buildAdaptiveObjectiveHistoryViewModel({ session: this.app.state.adaptiveEpisodeSession }));
+  }
+
+  buildAdaptiveLegRecordExport() {
+    return buildAdaptiveLegRecordExport(this.app.state.adaptiveCurrentLegRecord);
+  }
+
+  buildAdaptiveSessionSummaryExport() {
+    return buildAdaptiveSessionSummaryExport(this.app.state.adaptiveEpisodeSession);
+  }
+
+  resolveAdaptiveEpisodeSession(context) {
+    const current = this.app.state.adaptiveEpisodeSession;
+    if (current?.episodeId === context.episodeId && current?.benchmarkMode === 'adaptiveBenchmark') return current;
+    const loaded = loadAdaptiveEpisodeSession(context.episodeId);
+    this.app.state.adaptiveSessionLoaded = Boolean(loaded.ok);
+    this.app.state.adaptiveSessionLoadedForEpisode = loaded.ok ? context.episodeId : null;
+    if (loaded.ok) return loaded.session;
+    return createAdaptiveEpisodeSession({
+      runtimeContext: context,
+      status: 'planningLeg',
+      notes: ['P8 adaptive episode session created in debrief.']
+    });
+  }
+
+  listPersistedAdaptiveSessions() {
+    const listed = listAdaptiveEpisodeSessions();
+    this.app.state.adaptivePersistedSessions = listed.sessions ?? [];
+    return listed.sessions ?? [];
+  }
+
+  saveAdaptiveSessionForCurrentResult() {
+    const session = this.app.state.adaptiveEpisodeSession;
+    if (!session?.episodeId) {
+      this.app.toast?.('No adaptive episode session is available to save.', 'warning');
+      return;
+    }
+    const saved = saveAdaptiveEpisodeSession(session);
+    this.app.state.adaptiveSessionSaved = Boolean(saved.ok);
+    if (!saved.ok) this.app.state.adaptiveLastSessionWarnings = [saved.reason ?? saved.error ?? 'Unable to save adaptive episode session.'];
+    this.listPersistedAdaptiveSessions();
+    this.refreshAdaptiveExecutionDebug({
+      context: this.adaptiveBenchmarkContext(this.app.state.result),
+      decision: this.app.state.adaptiveSurfacingDecision,
+      nextLegHandoff: this.app.state.adaptiveNextLegHandoff,
+      trace: this.app.state.adaptiveEpisodeTrace,
+      session: this.app.state.adaptiveEpisodeSession,
+      legRecord: this.app.state.adaptiveCurrentLegRecord,
+      objectiveHistoryViewModel: this.app.state.adaptiveObjectiveHistoryViewModel,
+      continueLegPayload: this.app.state.adaptiveContinueLegPayload
+    });
+    this.app.toast?.(saved.ok ? 'Adaptive episode session saved in this browser.' : (saved.reason ?? 'Unable to save adaptive episode session.'), saved.ok ? 'success' : 'warning');
+    this.renderDebrief();
+  }
+
+  loadCurrentAdaptiveSession() {
+    const episodeId = this.app.state.adaptiveEpisodeSession?.episodeId ?? this.adaptiveBenchmarkContext(this.app.state.result)?.episodeId;
+    if (!episodeId) return;
+    const loaded = loadAdaptiveEpisodeSession(episodeId);
+    if (loaded.ok) {
+      this.app.state.adaptiveEpisodeSession = loaded.session;
+      this.app.state.adaptiveObjectiveHistoryViewModel = buildAdaptiveObjectiveHistoryViewModel({ session: loaded.session });
+      this.app.state.adaptiveContinueLegPayload = createAdaptiveContinueLegPayload(loaded.session, loaded.session.nextLegHandoffs?.at(-1));
+      this.app.state.adaptiveSessionLoaded = true;
+      this.app.toast?.('Saved adaptive episode session loaded.', 'success');
+    } else {
+      this.app.state.adaptiveLastSessionWarnings = [loaded.reason ?? loaded.error ?? 'Unable to load saved adaptive episode session.'];
+      this.app.toast?.(loaded.reason ?? 'Unable to load saved adaptive episode session.', 'warning');
+    }
+    this.listPersistedAdaptiveSessions();
+    this.renderDebrief();
+  }
+
+  deleteCurrentAdaptiveSession() {
+    const episodeId = this.app.state.adaptiveEpisodeSession?.episodeId ?? this.adaptiveBenchmarkContext(this.app.state.result)?.episodeId;
+    if (!episodeId) return;
+    const deleted = deleteAdaptiveEpisodeSession(episodeId);
+    this.app.state.adaptiveSessionSaved = false;
+    this.app.state.adaptiveSessionLoaded = false;
+    if (!deleted.ok) this.app.state.adaptiveLastSessionWarnings = [deleted.reason ?? deleted.error ?? 'Unable to delete saved adaptive episode session.'];
+    this.listPersistedAdaptiveSessions();
+    this.app.toast?.(deleted.ok ? 'Saved adaptive episode session deleted.' : (deleted.reason ?? 'Unable to delete saved adaptive episode session.'), deleted.ok ? 'info' : 'warning');
+    this.renderDebrief();
+  }
+
+  continueAdaptiveNextLeg() {
+    const session = this.app.state.adaptiveEpisodeSession;
+    const handoff = this.app.state.adaptiveNextLegHandoff ?? session?.nextLegHandoffs?.at(-1);
+    if (!session || !handoff) {
+      this.app.toast?.('No adaptive next-leg handoff is available.', 'warning');
+      return;
+    }
+    const payload = createAdaptiveContinueLegPayload(session, handoff);
+    this.app.state.adaptiveContinueLegPayload = payload;
+    const result = openAdaptiveBenchmarkSetup({
+      app: this.app,
+      scene: this,
+      runtimeContext: payload.runtimeContext,
+      adaptiveManagerConfig: payload.runtimeContext.adaptiveManagerConfig,
+      adaptiveManagerState: payload.runtimeContext.adaptiveManagerState,
+      benchmarkModeConfig: payload.runtimeContext.benchmarkModeConfig,
+      activeObjective: payload.runtimeContext.activeObjective,
+      legIndex: payload.legIndex
+    });
+    if (!result.launched) {
+      this.app.toast?.('Adaptive setup bridge is unavailable; export the next-leg config instead.', 'warning');
+      this.renderDebrief();
+      return;
+    }
+    this.app.state.adaptiveEpisodeSession = session;
+    this.leaveDebrief(() => {});
+  }
+
+  reviewPreviousAdaptiveLeg() {
+    const session = this.app.state.adaptiveEpisodeSession;
+    if (!session?.legs?.length) {
+      this.app.toast?.('No previous adaptive leg is available to review.', 'info');
+      return;
+    }
+    const current = Number(this.app.state.adaptiveSelectedLegIndex ?? session.currentLegIndex);
+    this.app.state.adaptiveSelectedLegIndex = Math.max(0, current - 1);
+    this.app.toast?.(`Reviewing adaptive leg ${this.app.state.adaptiveSelectedLegIndex}.`, 'info');
+    this.renderDebrief();
+  }
   buildAdaptiveSurfacingDecisionExport() {
     return buildAdaptiveSurfacingDecisionExport(this.app.state.adaptiveSurfacingDecision);
   }
@@ -576,14 +767,20 @@ export class DebriefScene extends PhaserScene {
     return buildAdaptiveEpisodeTraceExport(this.app.state.adaptiveEpisodeTrace);
   }
 
-  refreshAdaptiveExecutionDebug({ context = null, decision = null, nextLegHandoff = null, trace = null } = {}) {
+  refreshAdaptiveExecutionDebug({ context = null, decision = null, nextLegHandoff = null, trace = null, session = this.app?.state?.adaptiveEpisodeSession, legRecord = this.app?.state?.adaptiveCurrentLegRecord, objectiveHistoryViewModel = this.app?.state?.adaptiveObjectiveHistoryViewModel, continueLegPayload = this.app?.state?.adaptiveContinueLegPayload } = {}) {
+    const savedSessions = this.app?.state?.adaptivePersistedSessions ?? this.listPersistedAdaptiveSessions?.() ?? [];
     const exportTypes = [
       'anchor.benchmark.adaptive-surfacing-decision',
       'anchor.benchmark.adaptive-manager-state',
       'anchor.benchmark.adaptive-objective-transition',
       'anchor.benchmark.adaptive-next-leg-config',
-      'anchor.benchmark.adaptive-episode-trace'
+      'anchor.benchmark.adaptive-episode-trace',
+      'anchor.benchmark.adaptive-episode-session',
+      'anchor.benchmark.adaptive-objective-history',
+      'anchor.benchmark.adaptive-leg-record',
+      'anchor.benchmark.adaptive-session-summary'
     ];
+    const sessionSummary = session ? adaptiveEpisodeSessionSummary(session) : null;
     globalThis.ANCHOR_ADAPTIVE_EXECUTION_DEBUG = decision ? {
       version: decision.version,
       episodeId: decision.episodeId,
@@ -602,12 +799,42 @@ export class DebriefScene extends PhaserScene {
       nextLegHandoff,
       traceSummary: trace ? { legCount: trace.legs?.length ?? 0, surfacingDecisionCount: trace.surfacingDecisions?.length ?? 0 } : null,
       exportTypes,
+      hasAdaptiveEpisodeSession: Boolean(session),
+      adaptiveSessionLoaded: Boolean(this.app?.state?.adaptiveSessionLoaded),
+      adaptiveSessionSaved: Boolean(this.app?.state?.adaptiveSessionSaved),
+      adaptiveSessionLegCount: sessionSummary?.legCount ?? 0,
+      adaptiveSessionSurfacingDecisionCount: sessionSummary?.surfacingDecisionCount ?? 0,
+      adaptiveObjectiveHistory: session?.objectiveHistory ?? [],
+      adaptiveCurrentLegIndex: session?.currentLegIndex ?? decision.legIndex,
+      adaptivePreviousLegIndex: Math.max(0, Number(session?.currentLegIndex ?? decision.legIndex ?? 0) - 1),
+      adaptiveNextLegAvailable: Boolean(nextLegHandoff),
+      adaptiveContinueLegPayloadAvailable: Boolean(continueLegPayload),
+      adaptiveSessionExportAvailable: Boolean(session),
+      adaptiveObjectiveHistoryExportAvailable: Boolean(objectiveHistoryViewModel),
+      savedAdaptiveSessionCount: savedSessions.length,
+      availableSavedAdaptiveEpisodes: savedSessions.map((entry) => ({ episodeId: entry.episodeId, legCount: entry.legCount, currentObjectiveId: entry.currentObjectiveId, updatedAt: entry.updatedAt ?? entry.savedAt })),
+      lastAdaptiveSessionWarnings: this.app?.state?.adaptiveLastSessionWarnings ?? session?.warnings ?? [],
       hasPartialEvidenceWarning: Boolean(decision.evidence?.diagnostics?.partialEvidence || decision.warnings?.length),
       usesExistingSimulation: true,
       usesNewPlanner: false,
       usesMissionScoringRedesign: false,
       usesMARL: false
     } : { available: false, benchmarkMode: context?.benchmarkMode ?? null };
+    globalThis.ANCHOR_ADAPTIVE_SESSION_DEBUG = session ? {
+      version: session.version,
+      episodeId: session.episodeId,
+      session,
+      objectiveHistory: session.objectiveHistory,
+      legSummaries: session.legs?.map((leg) => ({ legIndex: leg.legIndex, objectiveId: leg.objectiveId, status: leg.status, resultId: leg.resultId })) ?? [],
+      persisted: Boolean(this.app?.state?.adaptiveSessionSaved || this.app?.state?.adaptiveSessionLoaded),
+      storageAvailable: !(listAdaptiveEpisodeSessions().unavailable),
+      exportTypes,
+      currentLegRecord: legRecord,
+      continueLegPayload,
+      usesNewPlanner: false,
+      usesMissionScoringRedesign: false,
+      usesMARL: false
+    } : { available: false };
   }
   resolveBenchmarkAttemptSession(context) {
     const current = this.app.state.benchmarkAttemptSession;
@@ -1022,6 +1249,15 @@ export class DebriefScene extends PhaserScene {
     root.querySelector('[data-action="export-adaptive-objective-transition"]')?.addEventListener('click', () => downloadJson('anchor_adaptive_objective_transition.json', this.buildAdaptiveObjectiveTransitionExport()));
     root.querySelector('[data-action="export-adaptive-next-leg-config"]')?.addEventListener('click', () => downloadJson('anchor_adaptive_next_leg_config.json', this.buildAdaptiveNextLegConfigExport()));
     root.querySelector('[data-action="export-adaptive-episode-trace"]')?.addEventListener('click', () => downloadJson('anchor_adaptive_episode_trace.json', this.buildAdaptiveEpisodeTraceExport()));
+    root.querySelector('[data-action="export-adaptive-episode-session"]')?.addEventListener('click', () => downloadJson('anchor_adaptive_episode_session.json', this.buildAdaptiveEpisodeSessionExport()));
+    root.querySelector('[data-action="export-adaptive-objective-history"]')?.addEventListener('click', () => downloadJson('anchor_adaptive_objective_history.json', this.buildAdaptiveObjectiveHistoryExport()));
+    root.querySelector('[data-action="export-adaptive-leg-record"]')?.addEventListener('click', () => downloadJson('anchor_adaptive_leg_record.json', this.buildAdaptiveLegRecordExport()));
+    root.querySelector('[data-action="export-adaptive-session-summary"]')?.addEventListener('click', () => downloadJson('anchor_adaptive_session_summary.json', this.buildAdaptiveSessionSummaryExport()));
+    root.querySelector('[data-action="save-adaptive-session"]')?.addEventListener('click', () => this.saveAdaptiveSessionForCurrentResult());
+    root.querySelector('[data-action="load-adaptive-session"]')?.addEventListener('click', () => this.loadCurrentAdaptiveSession());
+    root.querySelector('[data-action="delete-adaptive-session"]')?.addEventListener('click', () => this.deleteCurrentAdaptiveSession());
+    root.querySelector('[data-action="continue-adaptive-next-leg"]')?.addEventListener('click', () => this.continueAdaptiveNextLeg());
+    root.querySelector('[data-action="review-adaptive-previous-leg"]')?.addEventListener('click', () => this.reviewPreviousAdaptiveLeg());
     root.querySelector('[data-action="save-benchmark-attempt-session"]')?.addEventListener('click', () => this.saveBenchmarkAttemptSessionForCurrentResult());
     root.querySelector('[data-action="delete-benchmark-attempt-session"]')?.addEventListener('click', () => this.deleteCurrentBenchmarkAttemptSession());
     root.querySelector('[data-action="merge-compatible-benchmark-imports"]')?.addEventListener('click', () => this.mergeCompatibleBenchmarkImports());

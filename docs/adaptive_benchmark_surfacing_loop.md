@@ -39,3 +39,7 @@ The adaptive episode trace is an exportable record for future multi-leg adaptive
 - Production data assimilation or calibrated ocean forecasting.
 
 Planner Benchmark remains the fixed-objective route comparison mode. Full Autonomy Benchmark remains contract-only.
+
+## P8 Multi-Leg Session Update
+
+P8 keeps the P7 surfacing review and adds persistent adaptive episode sessions. A session stores compact leg records, surfacing decisions, next-leg handoffs, and objective history so the user can manually continue to the next leg. P8 does not generate routes, redesign scoring, or implement MARL/RL.

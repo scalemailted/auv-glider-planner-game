@@ -308,3 +308,7 @@ P4 adds route geometry adaptation, Route Overlay / Map rendering, route review l
 ## P7 - Adaptive Benchmark Surfacing Loop
 
 Added one-leg Adaptive Benchmark execution preview through existing setup, planning, simulation, and debrief. Debrief now builds adaptive evidence, surfacing decision, next-leg handoff, and episode trace exports. No new planner, scoring redesign, full autonomy, or MARL/RL is implemented.
+
+## P8 Adaptive Benchmark Multi-Leg Session
+
+Added compact adaptive episode session persistence, leg records, objective-history review, session panel controls, import/merge helpers, and P8 session/history/leg exports. Continue to Next Leg reuses the existing setup/planning flow and does not generate routes or change scoring.

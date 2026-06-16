@@ -381,3 +381,7 @@ The focused Benchmark Playwright grep should confirm Adaptive Benchmark shows Mi
 ## P7 Adaptive Benchmark Tests
 
 P7 adds focused smoke scripts for adaptive runtime, evidence adaptation, surfacing loop decisions, next-leg handoff, episode trace, surfacing panel HTML, and execution exports. Focused Benchmark E2E checks Adaptive Benchmark overview launch/export controls and a synthetic Debrief surfacing review.
+
+## P8 Adaptive Session Tests
+
+P8 adds smoke coverage for adaptive episode sessions, leg records, compact persistence with fake storage, objective-history view models, session-panel HTML escaping, adaptive artifact import/merge, and P8 exports. Focused Benchmark E2E checks adaptive session review and export controls.

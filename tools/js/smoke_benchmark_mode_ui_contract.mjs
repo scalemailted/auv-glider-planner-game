@@ -30,12 +30,14 @@ assert.ok(missionConsole.includes('Export Route Execution Record'), 'Debrief con
 assert.ok(missionConsole.includes('Export Benchmark Attempt Set'), 'Debrief console includes attempt-set export control');
 assert.ok(missionConsole.includes('Export Benchmark Comparison'), 'Debrief console includes comparison export control');
 assert.ok(missionConsole.includes('Adaptive Mission Manager'), 'Adaptive Benchmark UI mentions mission manager');
-assert.ok(missionConsole.includes('P7 Adaptive Execution Preview'), 'Adaptive Benchmark UI mentions P7 execution preview');
-assert.ok(missionConsole.includes('Open Adaptive Benchmark Setup'), 'Adaptive Benchmark UI includes setup launch');
-assert.ok(missionConsole.includes('surfacing decision in debrief'), 'Adaptive Benchmark UI mentions surfacing decision in debrief');
+assert.ok(missionConsole.includes('P8 Adaptive Multi-Leg Session'), 'Adaptive Benchmark UI mentions P8 adaptive session');
+assert.ok(missionConsole.includes('Start New Adaptive Episode'), 'Adaptive Benchmark UI includes new episode launch');
+assert.ok(missionConsole.includes('Continue Saved Adaptive Episode'), 'Adaptive Benchmark UI includes saved-session continuation');
+assert.ok(missionConsole.includes('Saved Adaptive Benchmark Sessions'), 'Adaptive Benchmark UI includes saved sessions');
+assert.ok(missionConsole.includes('surfacing decisions'), 'Adaptive Benchmark UI mentions surfacing decisions');
 assert.ok(missionConsole.includes('The player or solver still chooses the route'), 'Adaptive Benchmark UI says player/solver chooses route');
 assert.ok(adaptivePanel.includes('The player or solver still chooses the route'), 'Adaptive panel says player/solver chooses route');
-assert.ok(adaptivePanel.includes('P7 connects one executed leg'), 'Adaptive panel states P7 surfacing-loop boundary');
+assert.ok(adaptivePanel.includes('P8 persists adaptive leg records'), 'Adaptive panel states P8 session boundary');
 assert.ok(adaptivePanel.includes('MARL/RL'), 'Adaptive panel states no MARL/RL boundary');
 assert.ok(missionConsole.includes('Solver/agent objective and route authority are defined by contract; execution later.'), 'Full Autonomy placeholder boundary is visible');
 assert.ok(phaserGame.includes('BenchmarkModeOverviewScene'), 'PhaserGame registers BenchmarkModeOverviewScene');
@@ -53,6 +55,9 @@ assert.ok(debriefScene.includes('hasComparisonViewModel'), 'Debrief benchmark de
 assert.ok(debriefScene.includes('hasRouteReviewViewModel'), 'Debrief benchmark debug includes route review view model field');
 assert.ok(debriefScene.includes('ANCHOR_ADAPTIVE_EXECUTION_DEBUG'), 'Debrief scene exposes adaptive execution debug object');
 assert.ok(debriefScene.includes('AdaptiveSurfacingPanel'), 'Debrief scene imports adaptive surfacing panel');
+assert.ok(debriefScene.includes('AdaptiveEpisodeSessionPanel'), 'Debrief scene imports adaptive session panel');
+assert.ok(debriefScene.includes('ANCHOR_ADAPTIVE_SESSION_DEBUG'), 'Debrief scene exposes adaptive session debug object');
+assert.ok(debriefScene.includes('adaptiveSessionLegCount'), 'Adaptive debug exposes session leg count');
 
 const exportJson = buildBenchmarkModeConfigExport({ benchmarkMode: 'plannerBenchmark' });
 assert.equal(exportJson.type, 'anchor.benchmark.mode-config', 'benchmark export type');

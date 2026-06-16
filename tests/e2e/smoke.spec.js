@@ -304,10 +304,10 @@ test('Benchmark modes overview opens from Simulation Lab', async ({ page }) => {
   await expect(page.locator('#mission-console')).toContainText('Mission Manager');
   await expect(page.locator('#mission-console')).toContainText('Objective Authority');
   await expect(page.locator('#mission-console')).toContainText('The player or solver still chooses the route');
-  await expect(page.locator('#mission-console')).toContainText('Open Adaptive Benchmark Setup');
-  await expect(page.locator('#mission-console')).toContainText('surfacing decision in debrief');
+  await expect(page.locator('#mission-console')).toContainText('Start New Adaptive Episode');
+  await expect(page.locator('#mission-console')).toContainText('surfacing decisions');
   await expect(page.locator('#mission-console')).toContainText('route planning');
-  await expect(page.locator('#mission-console')).toContainText('P7 connects one executed leg');
+  await expect(page.locator('#mission-console')).toContainText('P8 persists adaptive leg records');
   await expect(page.locator('#mission-console')).toContainText('Likely Forecast Error');
   await expect(page.locator('#mission-console')).toContainText('Validate Forecast');
   await expect.poll(() => page.evaluate(() => window.ANCHOR_BENCHMARK_MODE_DEBUG?.adaptiveObjectiveAuthority)).toBe('missionManager');
@@ -557,7 +557,7 @@ test('Planner Benchmark debrief exports benchmark records from synthetic result'
   expect(attemptJson.attempts.length).toBeGreaterThanOrEqual(1);
 });
 
-test('Adaptive Benchmark synthetic debrief shows surfacing review and exports P7 records', async ({ page }) => {
+test('Adaptive Benchmark synthetic debrief shows surfacing review and exports P8 session records', async ({ page }) => {
   await page.goto('/');
   await expect.poll(() => page.evaluate(() => window.anchorGame?.phaser?.scene.getScene('MainMenuScene')?.sys.isActive() ?? false)).toBe(true);
 
@@ -644,11 +644,20 @@ test('Adaptive Benchmark synthetic debrief shows surfacing review and exports P7
   await expect(page.locator('#debrief-root')).toContainText('Diagnosis');
   await expect(page.locator('#debrief-root')).toContainText('Recommended Next Objective');
   await expect(page.locator('#debrief-root')).toContainText('Plan Next Leg');
+  await expect(page.locator('#debrief-root')).toContainText('Adaptive Episode Session');
+  await expect(page.locator('#debrief-root')).toContainText('Objective History');
+  await expect(page.locator('#debrief-root')).toContainText('Continue to Next Leg');
+  await expect(page.locator('#debrief-root')).toContainText('Save Adaptive Session');
+  await expect(page.locator('#debrief-root')).toContainText('does not generate waypoints or routes');
   await expect(page.locator('#debrief-root')).toContainText('new route planner');
   await expect(page.locator('#debrief-root')).toContainText('MARL/RL');
   await expect.poll(() => page.evaluate(() => window.ANCHOR_ADAPTIVE_EXECUTION_DEBUG?.benchmarkMode)).toBe('adaptiveBenchmark');
+  await expect.poll(() => page.evaluate(() => window.ANCHOR_ADAPTIVE_EXECUTION_DEBUG?.hasAdaptiveEpisodeSession)).toBe(true);
+  await expect.poll(() => page.evaluate(() => window.ANCHOR_ADAPTIVE_EXECUTION_DEBUG?.adaptiveSessionLegCount >= 1)).toBe(true);
+  await expect.poll(() => page.evaluate(() => window.ANCHOR_ADAPTIVE_EXECUTION_DEBUG?.adaptiveNextLegAvailable)).toBe(true);
   await expect.poll(() => page.evaluate(() => window.ANCHOR_ADAPTIVE_EXECUTION_DEBUG?.usesNewPlanner)).toBe(false);
   await expect.poll(() => page.evaluate(() => window.ANCHOR_ADAPTIVE_EXECUTION_DEBUG?.usesMARL)).toBe(false);
+  await expect.poll(() => page.evaluate(() => window.ANCHOR_ADAPTIVE_SESSION_DEBUG?.usesMissionScoringRedesign)).toBe(false);
 
   const [decisionDownload] = await Promise.all([
     page.waitForEvent('download'),
@@ -669,6 +678,39 @@ test('Adaptive Benchmark synthetic debrief shows surfacing review and exports P7
   expect(handoffJson.type).toBe('anchor.benchmark.adaptive-next-leg-config');
   expect(handoffJson.routeAuthority).toBe('playerOrSolver');
   expect(handoffJson.waypoints).toBeUndefined();
+
+  await page.locator('#debrief-root [data-action="save-adaptive-session"]').click();
+  await expect.poll(() => page.evaluate(() => window.ANCHOR_ADAPTIVE_EXECUTION_DEBUG?.adaptiveSessionSaved || window.ANCHOR_ADAPTIVE_EXECUTION_DEBUG?.savedAdaptiveSessionCount >= 1)).toBe(true);
+
+  const [sessionDownload] = await Promise.all([
+    page.waitForEvent('download'),
+    page.locator('#debrief-root [data-action="export-adaptive-episode-session"]').click()
+  ]);
+  const sessionJson = JSON.parse(await fs.readFile(await sessionDownload.path(), 'utf8'));
+  expect(sessionJson.type).toBe('anchor.benchmark.adaptive-episode-session');
+  expect(sessionJson.benchmarkMode).toBe('adaptiveBenchmark');
+  expect(sessionJson.objectiveAuthority).toBe('missionManager');
+  expect(sessionJson.routeAuthority).toBe('playerOrSolver');
+  expect(sessionJson.legs.length).toBeGreaterThanOrEqual(1);
+  expect(sessionJson.objectiveHistory.length).toBeGreaterThanOrEqual(1);
+
+  const [historyDownload] = await Promise.all([
+    page.waitForEvent('download'),
+    page.locator('#debrief-root [data-action="export-adaptive-objective-history"]').click()
+  ]);
+  const historyJson = JSON.parse(await fs.readFile(await historyDownload.path(), 'utf8'));
+  expect(historyJson.type).toBe('anchor.benchmark.adaptive-objective-history');
+  expect(historyJson.objectiveAuthority).toBe('missionManager');
+  expect(historyJson.routeAuthority).toBe('playerOrSolver');
+
+  await page.locator('#debrief-root [data-action="continue-adaptive-next-leg"]').click();
+  await expect.poll(() => page.evaluate(() => window.anchorGame.phaser.scene.getScene('MissionBriefingScene').sys.isActive()), { timeout: 15000 }).toBe(true);
+  await expect.poll(() => page.evaluate(() => window.anchorGame.state.pendingBenchmarkEpisode?.episodeState?.episodeId)).toBe('e2e-adaptive-benchmark-episode');
+  await expect.poll(() => page.evaluate(() => window.anchorGame.state.pendingBenchmarkEpisode?.legIndex)).toBe(1);
+  await expect.poll(() => page.evaluate(() => {
+    const payload = window.anchorGame.state.pendingBenchmarkEpisode;
+    return Boolean(payload && !payload.launchConfig?.waypoints && !payload.launchConfig?.route && !payload.launchConfig?.agentPlans);
+  })).toBe(true);
 });
 test('campaign planning smoke flow reaches debrief', async ({ page }) => {
   await page.goto('/');

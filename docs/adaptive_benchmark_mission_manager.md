@@ -89,3 +89,7 @@ Recommended next implementation is an execution-preview surfacing loop that stil
 ## P7 Surfacing Loop Update
 
 P7 extends the mission-manager preview into an executable one-leg surfacing loop. Adaptive Benchmark setup uses the existing planning and simulation workflow, then Debrief builds evidence, runs diagnosis, recommends the next objective, and exports next-leg handoff records. This remains an educational preview: no new route planner, scoring redesign, automatic multi-leg execution, or MARL/RL is included.
+
+## P8 Session Persistence
+
+The adaptive mission manager can now be reviewed across a saved episode session. Objective changes, surfacing decisions, and compact leg records persist across manual continuation. The mission manager recommends objectives; the player or solver still plans routes.

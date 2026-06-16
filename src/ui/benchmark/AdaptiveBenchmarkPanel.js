@@ -75,7 +75,8 @@ export function adaptiveBenchmarkBoundaryHtml(viewModel = {}) {
       <ul>${implemented.map((item) => `<li>${escapeHtml(item)}</li>`).join('')}</ul>
       <h3>What is not implemented yet</h3>
       <ul>${notImplemented.map((item) => `<li>${escapeHtml(item)}</li>`).join('')}</ul>
-      <div class="hud-muted">P7 connects one executed leg to surfacing diagnosis and next-objective recommendation. It does not add automatic route generation, scoring redesign, or MARL/RL.</div>
+      <div class="hud-muted">P7 connects one executed leg to surfacing review and next-objective handoff without automatic route generation.</div>
+      <div class="hud-muted">P8 persists adaptive leg records, surfacing decisions, and objective history for manual continuation. It does not add automatic route generation, scoring redesign, or MARL/RL.</div>
     </section>
   `;
 }
