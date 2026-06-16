@@ -280,4 +280,6 @@ The visible Process Lab mode plus the context-specific model or analog selector 
 
 Ocean-Relevant Process Analogs are educational event/process-layer analogs. They are not calibrated flow models, ocean forecasts, uncertainty models, or mission planners; flow coupling and uncertainty realism belong in the coupled and uncertainty demos.
 
+## P2 Planner Benchmark Execution Integration
 
+Planner Benchmark now carries episode metadata through the existing setup/planning/simulation/debrief path and exposes Debrief exports for benchmark run records, route execution records, and attempt sets. Adaptive Benchmark and Full Autonomy Benchmark remain contract-only. No planner algorithm, scoring redesign, MARL/RL, or adaptive objective execution was added.

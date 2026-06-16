@@ -6,6 +6,22 @@ import { normalizeExperienceMode } from '../experience/ExperienceMode.js';
 import { normalizeNavigationUncertaintyConfig } from '../navigation/NavigationUncertainty.js';
 import { extractBenchmarkMetadata } from '../benchmark/BenchmarkMetadata.js';
 import {
+  buildBenchmarkRunRecordFromResult,
+  buildRouteExecutionRecordFromResult
+} from '../benchmark/BenchmarkResultAdapter.js';
+import {
+  buildBenchmarkAttemptSetExport,
+  buildBenchmarkRouteExecutionExport,
+  buildBenchmarkRunRecordExport
+} from '../benchmark/BenchmarkModeExporter.js';
+import { createBenchmarkAttemptSet } from '../benchmark/BenchmarkAttemptRegistry.js';
+import {
+  attemptSourceFromRouteSourceLabel,
+  fairnessLabelFromAttemptSourceAndAccess,
+  routeSourceLabelFromAttemptSource
+} from '../benchmark/BenchmarkAttemptSourceMapping.js';
+import { initializePlannerBenchmarkEpisode } from '../benchmark/BenchmarkEpisodeRuntime.js';
+import {
   buildScenarioFingerprint,
   classifyRouteSource,
   leaderboardScopeForExperience
@@ -160,5 +176,227 @@ export function buildResultExport({ level, mission, plan, result, label = 'Manua
     }),
     debugTrace: cloneJson(result?.debugTrace ?? result?.simulationTrace ?? null),
     rawResult: cloneJson(result ?? null)
+  };
+}
+
+export function buildBenchmarkRunRecordExportFromResult({
+  level,
+  mission,
+  plan,
+  result,
+  debriefMetrics = null,
+  benchmarkModeConfig = null,
+  episodeConfig = null,
+  attemptSource = null,
+  routeSourceLabel = null,
+  fairnessLabel = null
+} = {}) {
+  const context = normalizeBenchmarkExportContext({
+    level,
+    mission,
+    plan,
+    result,
+    benchmarkModeConfig,
+    episodeConfig,
+    attemptSource,
+    routeSourceLabel,
+    fairnessLabel
+  });
+  const runRecord = buildBenchmarkRunRecordFromResult({
+    benchmarkModeConfig: context.benchmarkModeConfig,
+    episodeConfig: context.episodeConfig,
+    level,
+    mission,
+    plan,
+    result,
+    attemptSource: context.attemptSource,
+    routeSourceLabel: context.routeSourceLabel
+  });
+  runRecord.diagnostics = {
+    ...(runRecord.diagnostics ?? {}),
+    episodeId: context.episodeId,
+    attemptSource: context.attemptSource,
+    routeSourceLabel: context.routeSourceLabel,
+    debriefMetrics: cloneJson(debriefMetrics),
+    usesExistingSimulation: true,
+    usesExistingDebrief: true,
+    usesNewPlanner: false,
+    usesMissionScoringRedesign: false,
+    usesMARL: false
+  };
+  return {
+    ...buildBenchmarkRunRecordExport(runRecord, {
+      notes: ['P2 export normalized from existing simulator and debrief data.']
+    }),
+    benchmarkMode: 'plannerBenchmark',
+    episodeId: context.episodeId,
+    objectiveAuthority: 'fixed',
+    routeAuthority: 'playerOrSolver',
+    informationAccessTier: context.benchmarkModeConfig.informationAccessTier,
+    fairnessLabel: context.fairnessLabel,
+    boundaryFlags: benchmarkExecutionBoundaryFlags()
+  };
+}
+
+export function buildBenchmarkRouteExecutionExportFromResult({
+  level,
+  mission,
+  plan,
+  result,
+  benchmarkModeConfig = null,
+  episodeConfig = null,
+  attemptSource = null,
+  routeSourceLabel = null,
+  fairnessLabel = null
+} = {}) {
+  const context = normalizeBenchmarkExportContext({
+    level,
+    mission,
+    plan,
+    result,
+    benchmarkModeConfig,
+    episodeConfig,
+    attemptSource,
+    routeSourceLabel,
+    fairnessLabel
+  });
+  const routeExecutionRecord = buildRouteExecutionRecordFromResult({
+    benchmarkModeConfig: context.benchmarkModeConfig,
+    episodeConfig: context.episodeConfig,
+    level,
+    mission,
+    plan,
+    result,
+    attemptSource: context.attemptSource,
+    routeSourceLabel: context.routeSourceLabel,
+    fairnessLabel: context.fairnessLabel
+  });
+  routeExecutionRecord.diagnostics = {
+    ...(routeExecutionRecord.diagnostics ?? {}),
+    usesExistingSimulation: true,
+    usesExistingDebrief: true,
+    usesNewPlanner: false,
+    usesMissionScoringRedesign: false,
+    usesMARL: false
+  };
+  return {
+    ...buildBenchmarkRouteExecutionExport(routeExecutionRecord),
+    boundaryFlags: benchmarkExecutionBoundaryFlags()
+  };
+}
+
+export function buildBenchmarkAttemptSetExportFromResult({
+  level,
+  mission,
+  plan,
+  result,
+  attemptSession = null,
+  benchmarkModeConfig = null,
+  episodeConfig = null,
+  attemptSource = null,
+  routeSourceLabel = null,
+  fairnessLabel = null
+} = {}) {
+  const context = normalizeBenchmarkExportContext({
+    level,
+    mission,
+    plan,
+    result,
+    benchmarkModeConfig,
+    episodeConfig,
+    attemptSource,
+    routeSourceLabel,
+    fairnessLabel
+  });
+  const routeExecutionRecord = buildRouteExecutionRecordFromResult({
+    benchmarkModeConfig: context.benchmarkModeConfig,
+    episodeConfig: context.episodeConfig,
+    level,
+    mission,
+    plan,
+    result,
+    attemptSource: context.attemptSource,
+    routeSourceLabel: context.routeSourceLabel,
+    fairnessLabel: context.fairnessLabel
+  });
+  const runRecord = buildBenchmarkRunRecordFromResult({
+    benchmarkModeConfig: context.benchmarkModeConfig,
+    episodeConfig: context.episodeConfig,
+    level,
+    mission,
+    plan,
+    result,
+    attemptSource: context.attemptSource,
+    routeSourceLabel: context.routeSourceLabel
+  });
+  const attempts = Array.isArray(attemptSession?.attempts) && attemptSession.attempts.length
+    ? attemptSession.attempts
+    : [{
+        episodeId: context.episodeId,
+        benchmarkMode: 'plannerBenchmark',
+        attemptSource: context.attemptSource,
+        routeSourceLabel: context.routeSourceLabel,
+        fairnessLabel: context.fairnessLabel,
+        routeExecutionRecord,
+        runRecord,
+        metrics: routeExecutionRecord.metrics,
+        status: routeExecutionRecord.validation?.status ?? 'completed'
+      }];
+  const attemptSet = createBenchmarkAttemptSet({
+    episodeId: context.episodeId,
+    benchmarkMode: 'plannerBenchmark',
+    attempts,
+    notes: ['P2 attempt set compares existing route/simulation/debrief attempts; no new planner or scoring is introduced.']
+  });
+  return {
+    ...buildBenchmarkAttemptSetExport(attemptSet),
+    boundaryFlags: benchmarkExecutionBoundaryFlags()
+  };
+}
+
+function normalizeBenchmarkExportContext({
+  level,
+  mission,
+  plan,
+  result,
+  benchmarkModeConfig,
+  episodeConfig,
+  attemptSource,
+  routeSourceLabel,
+  fairnessLabel
+} = {}) {
+  const metadata = extractBenchmarkMetadata(result)
+    ?? extractBenchmarkMetadata(plan)
+    ?? extractBenchmarkMetadata(mission)
+    ?? extractBenchmarkMetadata(level)
+    ?? null;
+  const sourceLabel = routeSourceLabel ?? result?.planName ?? result?.source ?? classifyRouteSource(plan, { label: 'Manual Player Plan', result });
+  const source = attemptSource ?? metadata?.attemptSource ?? attemptSourceFromRouteSourceLabel(sourceLabel);
+  const context = initializePlannerBenchmarkEpisode({
+    metadata,
+    benchmarkModeConfig: benchmarkModeConfig ?? metadata ?? { benchmarkMode: 'plannerBenchmark' },
+    episodeConfig,
+    activeAttemptSource: source,
+    levelId: level?.levelId,
+    missionId: mission?.missionId ?? mission?.id,
+    seed: level?.meta?.seed ?? result?.seed,
+    createIfMissing: true
+  });
+  return {
+    ...context,
+    episodeConfig: episodeConfig ?? context.episodeConfig,
+    attemptSource: source,
+    routeSourceLabel: sourceLabel || routeSourceLabelFromAttemptSource(source),
+    fairnessLabel: fairnessLabel ?? context.fairnessLabel ?? fairnessLabelFromAttemptSourceAndAccess(source, context.informationAccessTier)
+  };
+}
+
+function benchmarkExecutionBoundaryFlags() {
+  return {
+    usesExistingSimulation: true,
+    usesExistingDebrief: true,
+    usesNewPlanner: false,
+    usesMissionScoringRedesign: false,
+    usesMARL: false
   };
 }

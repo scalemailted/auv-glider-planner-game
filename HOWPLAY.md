@@ -999,4 +999,6 @@ Observable Process Patterns are bridge metadata rather than the primary selector
 
 Science boundary: the deterministic process demo teaches local process evolution S(x,y,t). Flow Fields teaches current vectors F(x,y,t). Coupled Dynamic Sampling Space combines process plus flow plus constraints. Uncertainty / Forecast adds hidden truth, forecast, belief, observations, and uncertainty. Ocean-relevant analogs in this demo are not calibrated ocean models.
 
+## Planner Benchmark Records
 
+In Simulation Lab, open Benchmark Modes, choose Planner Benchmark, and use Open Planner Benchmark Setup to enter the normal setup/planning/simulation flow. When the run reaches Debrief, a Planner Benchmark section can export a Benchmark Run Record, Route Execution Record, and Benchmark Attempt Set. Manual, Greedy Planner, and imported solver attempts are normalized for comparison under the same episode identity. P2 does not add a new planner or change scoring.

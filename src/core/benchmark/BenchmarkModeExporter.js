@@ -42,7 +42,7 @@ export function buildBenchmarkModeConfigExport(options = {}) {
     },
     notes: [
       'P0 defines benchmark architecture contracts only.',
-      'P1 adds adapter-only route-execution records using existing planning, simulation, and debrief data.',
+      'P2 emits benchmark run, route-execution, and attempt-set records from existing planning, simulation, and debrief data.',
       'Route planning, mission scoring, and MARL/RL training are not implemented by this export.',
       ...(Array.isArray(options.notes) ? options.notes : [])
     ]
@@ -60,7 +60,7 @@ export function buildBenchmarkEpisodeConfigExport(options = {}) {
     createdAt: options.createdAt ?? new Date().toISOString(),
     notes: [
       ...(Array.isArray(episodeConfig.notes) ? episodeConfig.notes : []),
-      'P1 episode config describes existing planning/simulation/debrief execution. It does not add a new planner.'
+      'P2 episode config follows existing planning/simulation/debrief execution. It does not add a new planner or scoring redesign.'
     ]
   };
 }

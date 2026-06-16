@@ -37,6 +37,11 @@ import {
   isSurfaceDecisionModalVisible
 } from '../../../core/sim/SurfaceDecisionVisibility.js';
 import { getAgentPlan, removeWaypoint } from '../../../core/planning/WaypointPlan.js';
+import {
+  derivePlannerBenchmarkAttemptContext,
+  extractPlannerBenchmarkContextFromState
+} from '../../../core/benchmark/BenchmarkEpisodeRuntime.js';
+import { attemptSourceFromRouteSourceLabel } from '../../../core/benchmark/BenchmarkAttemptSourceMapping.js';
 
 const PhaserScene = globalThis.Phaser?.Scene ?? class {};
 
@@ -446,10 +451,51 @@ export class SimulationScene extends PhaserScene {
         depth: Boolean(this.app.state.level?.layers?.depth)
       }
     }, this.app.state.level, this.app.state.mission);
+    this.annotateBenchmarkResult(result, source);
     annotateStochasticResult(this.app.state, result);
     storePlanResult(this.app.state, { source, plan: this.app.state.plan, result });
     result.comparison = comparePlanResults(this.app.state.planResults);
     this.app.state.result = result;
+  }
+
+  annotateBenchmarkResult(result, source = 'manual') {
+    const context = extractPlannerBenchmarkContextFromState(this.app.state);
+    if (!context || !result) return null;
+    const attemptContext = derivePlannerBenchmarkAttemptContext({
+      ...context,
+      attemptSource: attemptSourceFromRouteSourceLabel(source),
+      routeSourceLabel: source
+    });
+    this.app.state.benchmarkRuntimeContext = attemptContext;
+    this.app.state.benchmarkModeConfig = attemptContext.benchmarkModeConfig;
+    this.app.state.benchmarkEpisode = {
+      ...(this.app.state.benchmarkEpisode ?? {}),
+      episodeId: attemptContext.episodeId,
+      phase: this.engine?.complete ? 'debrief' : 'executing',
+      activeAttemptSource: attemptContext.activeAttemptSource,
+      activeObjective: attemptContext.activeObjective,
+      activeResultId: result.resultId ?? result.id ?? null,
+      updatedAt: new Date().toISOString()
+    };
+    const baseMetadata = this.app.state.plan?.meta?.benchmarkMetadata
+      ?? this.app.state.mission?.meta?.benchmarkMetadata
+      ?? this.app.state.level?.meta?.benchmarkMetadata
+      ?? {};
+    result.benchmarkMetadata = {
+      ...baseMetadata,
+      benchmarkMode: 'plannerBenchmark',
+      benchmarkModeConfigVersion: attemptContext.benchmarkModeConfig?.version ?? baseMetadata.benchmarkModeConfigVersion ?? null,
+      episodeId: attemptContext.episodeId,
+      informationAccessTier: attemptContext.informationAccessTier,
+      objectiveAuthority: 'fixed',
+      routeAuthority: 'playerOrSolver',
+      fairnessLabel: attemptContext.fairnessLabel,
+      attemptSource: attemptContext.activeAttemptSource,
+      worldModelTier: attemptContext.worldModelTier,
+      metadataVersion: baseMetadata.metadataVersion ?? 'benchmark-metadata-p2'
+    };
+    result.benchmarkRuntimeContext = attemptContext;
+    return attemptContext;
   }
 
   refresh() {

@@ -61,20 +61,25 @@ export class BenchmarkModeOverviewScene extends PhaserScene {
   }
 
   renderConsole() {
+    const p2ImplementedSystems = ['benchmarkEpisodeRuntime', 'benchmarkAttemptSession', 'benchmarkResultAdapter', 'result/debrief adapter'];
     this.app.console?.renderBenchmarkModeOverviewControls?.({
       config: this.config,
-      state: this.state,
+      state: {
+        ...this.state,
+        implementedSystems: [...this.state.implementedSystems, ...p2ImplementedSystems]
+      },
       summary: benchmarkModeSummary(this.config),
       episodeConfig: this.episodeConfig,
       episodeState: this.episodeState,
       objectiveOptions: missionObjectiveOptions().slice(0, 6),
       p1Implemented: [
         'benchmark mode config',
-        'episode config',
-        'route execution record schema',
+        'episode metadata propagation',
+        'existing setup/planning/simulation/debrief path',
         'result/debrief adapter',
-        'attempt comparison record',
-        'export contracts'
+        'benchmark run-record export from Debrief',
+        'route-execution export from Debrief',
+        'attempt-set comparison export'
       ],
       p1NotImplemented: [
         'new route planner',
@@ -107,7 +112,7 @@ export class BenchmarkModeOverviewScene extends PhaserScene {
 
   openPlannerBenchmarkSetup() {
     if (this.config.benchmarkMode !== 'plannerBenchmark') {
-      this.app.toast?.('Only Planner Benchmark has a P1 setup bridge. Other modes are contract-only.', 'info');
+      this.app.toast?.('Only Planner Benchmark has a P2 setup bridge. Adaptive and Full Autonomy remain contract-only.', 'info');
       return;
     }
     const result = openPlannerBenchmarkSetup({
@@ -135,13 +140,13 @@ export class BenchmarkModeOverviewScene extends PhaserScene {
       runRecordVersion: BENCHMARK_RUN_RECORD_VERSION,
       routeExecutionRecordVersion: BENCHMARK_ROUTE_EXECUTION_RECORD_VERSION,
       plannerBenchmarkLaunchAvailable: this.config.benchmarkMode === 'plannerBenchmark',
-      routeExecutionImplemented: 'adapter-only',
+      routeExecutionImplemented: 'existing-simulator-debrief-export',
       missionScoringImplemented: false,
       usesExistingSimulation: true,
       usesExistingDebrief: true,
       supportedAttemptSources: [...BENCHMARK_ATTEMPT_SOURCE_IDS],
       supportedExportTypes,
-      implementedSystems: [...this.state.implementedSystems, 'benchmarkEpisodeContract', 'benchmarkResultAdapter'],
+      implementedSystems: [...this.state.implementedSystems, 'benchmarkEpisodeRuntime', 'benchmarkAttemptSession', 'benchmarkResultAdapter'],
       missingSystems: [...this.state.missingSystems],
       visibleLayers: [...this.state.visibleLayers],
       exportFlags: { ...this.state.exportFlags, benchmarkEpisodeConfig: true, routeExecutionRecord: true }
@@ -179,7 +184,7 @@ export class BenchmarkModeOverviewScene extends PhaserScene {
       `World model tier: ${this.state.summary.worldModel.label}`
     ], bodyStyle));
     y += 128;
-    this.objects.push(this.add.text(x, y, 'P1 status: adapter-only route execution records. Existing simulator and debrief remain the execution/scoring path.', mutedStyle));
+    this.objects.push(this.add.text(x, y, 'P2 status: existing planning, simulator, and debrief can emit benchmark run, route-execution, and attempt-set records.', mutedStyle));
     y += 60;
     this.objects.push(this.add.text(x, y, 'Not implemented here: new route planner, mission-manager switching, full autonomy, MARL/RL, or production scoring redesign.', mutedStyle));
   }
@@ -193,8 +198,8 @@ export class BenchmarkModeOverviewScene extends PhaserScene {
 function modeCardText(mode) {
   return {
     plannerBenchmark: 'Objective is fixed. Plan manually, use Greedy Planner, or import a solver plan. Execute through the existing simulator and compare results in Debrief.',
-    adaptiveBenchmark: 'Mission manager objective updates are defined by contract but not executed in P1.',
-    fullAutonomyBenchmark: 'Solver/agent objective and route authority are defined by contract but not executed in P1.'
+    adaptiveBenchmark: 'Mission manager objective updates are defined by contract; execution later.',
+    fullAutonomyBenchmark: 'Solver/agent objective and route authority are defined by contract; execution later.'
   }[mode] ?? 'Benchmark mode contract.';
 }
 

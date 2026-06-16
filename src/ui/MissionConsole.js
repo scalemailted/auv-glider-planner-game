@@ -1185,6 +1185,7 @@ export class MissionConsole {
     const stochasticEnabled = Boolean(state?.stochastic?.enabled);
     const experience = getExperienceModeDefaults(result?.experienceMode ?? state?.experienceMode);
     const simulationLab = (result?.experienceMode ?? state?.experienceMode) === EXPERIENCE_MODES.simulationLab;
+    const benchmarkExportAvailable = Boolean(result?.benchmarkMetadata ?? state?.benchmarkRuntimeContext ?? state?.currentScenario?.benchmarkMetadata);
     this.root.innerHTML = `
       <section class="console-header">
         <div class="console-kicker">Debrief Console</div>
@@ -1213,6 +1214,11 @@ export class MissionConsole {
         <button class="console-button" data-action="export-result">Export Result JSON</button>
         <button class="console-button" data-action="export-aar">Export AAR</button>
         <button class="console-button" data-action="export-compare">Export Compare</button>
+        ${benchmarkExportAvailable ? `
+          <button class="console-button" data-action="export-benchmark-run">Export Benchmark Run Record</button>
+          <button class="console-button" data-action="export-benchmark-route">Export Route Execution Record</button>
+          <button class="console-button" data-action="export-benchmark-attempt-set">Export Benchmark Attempt Set</button>
+        ` : ''}
       </section>
       <section class="console-section">
         <h2>Solver / Comparison</h2>
@@ -1269,7 +1275,7 @@ export class MissionConsole {
     const p1NotImplemented = Array.isArray(payload.p1NotImplemented) ? payload.p1NotImplemented : [];
     const plannerSetupHtml = config.benchmarkMode === 'plannerBenchmark'
       ? '<button data-action="benchmark-open-setup" class="console-button">Open Planner Benchmark Setup</button>'
-      : '<div class="hud-muted">Contract defined / execution later. This mode does not launch route execution in P1.</div>';
+      : '<div class="hud-muted">Contract defined; execution later. This mode does not launch route execution in P2.</div>';
     this.root.innerHTML = `
       <section class="console-header">
         <div class="console-kicker">Benchmark Mode</div>
@@ -1277,9 +1283,9 @@ export class MissionConsole {
         <p>${escapeHtml(benchmarkModeP1Text(config.benchmarkMode))}</p>
       </section>
       <section class="console-status">
-        <span>P1 Route-Execution Contract</span>
+        <span>P2 Execution Integration</span>
         <strong>${escapeHtml(benchmarkImplementedLabel(config.implemented))}</strong>
-        <small>Adapter-only / not full route planning. Existing simulator and debrief remain the execution and scoring path.</small>
+        <small>Existing simulator and debrief produce benchmark records. No new planner or scoring redesign is added.</small>
       </section>
       <section class="console-section">
         <h2>Authority Split</h2>
@@ -1299,7 +1305,7 @@ export class MissionConsole {
         ${plannerSetupHtml}
       </section>
       <section class="console-section">
-        <h2>P1 Status</h2>
+        <h2>P2 Status</h2>
         <div class="panel-stack">
           <div><strong>Implemented now</strong><ul>${p1Implemented.map((item) => `<li>${escapeHtml(item)}</li>`).join('')}</ul></div>
           <div><strong>Not implemented yet</strong><ul>${p1NotImplemented.map((item) => `<li>${escapeHtml(item)}</li>`).join('')}</ul></div>
@@ -1333,7 +1339,7 @@ export class MissionConsole {
         <h2>Export</h2>
         <button data-action="export-benchmark-config" class="console-button">Export Benchmark Config JSON</button>
         <button data-action="export-benchmark-episode" class="console-button secondary">Export Benchmark Episode JSON</button>
-        <div class="hud-muted">Exports anchor.benchmark.mode-config and anchor.benchmark.episode-config. P1 also defines run-record, route-execution, and attempt-set export contracts.</div>
+        <div class="hud-muted">Exports anchor.benchmark.mode-config and anchor.benchmark.episode-config. P2 debrief can export run-record, route-execution, and attempt-set JSON.</div>
       </section>
       <section class="console-footer">
         <button data-action="menu" class="console-button secondary">Main Menu</button>
@@ -1381,16 +1387,16 @@ function benchmarkAuthorityText(value, kind) {
 function benchmarkModeBoundaryText(mode) {
   return {
     plannerBenchmark: 'Objective is fixed. Plan manually, use Greedy Planner, or import a solver plan. Execute through the existing simulator and compare results in Debrief.',
-    adaptiveBenchmark: 'Mission manager objective updates are defined by contract but not executed in P1.',
-    fullAutonomyBenchmark: 'Solver/agent objective and route authority are defined by contract but not executed in P1.'
-  }[mode] ?? 'P1 defines benchmark route-execution contracts; it does not add a planner, scoring redesign, or MARL/RL.';
+    adaptiveBenchmark: 'Mission manager objective updates are defined by contract; execution later.',
+    fullAutonomyBenchmark: 'Solver/agent objective and route authority are defined by contract; execution later.'
+  }[mode] ?? 'P2 integrates benchmark records with the existing simulator/debrief; it does not add a planner, scoring redesign, or MARL/RL.';
 }
 
 function benchmarkModeP1Text(mode) {
   return {
     plannerBenchmark: 'Objective is fixed. Player or solver chooses route through existing planning, simulator, and debrief systems.',
-    adaptiveBenchmark: 'Mission manager objective updates are contract-defined placeholders in P1.',
-    fullAutonomyBenchmark: 'Solver/agent objective and route authority are contract-defined placeholders in P1.'
+    adaptiveBenchmark: 'Mission manager objective updates are contract-defined placeholders; execution later.',
+    fullAutonomyBenchmark: 'Solver/agent objective and route authority are contract-defined placeholders; execution later.'
   }[mode] ?? 'Benchmark route-execution contract overview.';
 }
 

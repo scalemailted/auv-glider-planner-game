@@ -8,13 +8,13 @@ export function createPlannerBenchmarkSetupPayload(options = {}) {
     benchmarkMode: 'plannerBenchmark',
     informationAccessTier: options.informationAccessTier ?? 'forecastOnly',
     worldModelTier: options.worldModelTier ?? 'flowCoupledAction',
-    notes: ['Planner Benchmark P1 setup payload.']
+    notes: ['Planner Benchmark P2 setup payload.']
   });
   const episodeConfig = createBenchmarkEpisodeConfig({
     benchmarkModeConfig,
     objective: options.objective,
     seed: options.seed,
-    notes: ['P1 uses existing planning workspace, simulator, and debrief.']
+    notes: ['P2 uses the existing planning workspace, simulator, and debrief to emit benchmark records.']
   });
   const episodeState = createBenchmarkEpisodeState({
     episodeConfig,

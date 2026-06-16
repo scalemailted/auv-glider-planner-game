@@ -120,7 +120,7 @@ Quick loop:
 - [Sampling Priority Demo](docs/sampling_priority_demo.md)
 - [Flow-Coupled Sampling Demo](docs/flow_coupled_sampling_demo.md)
 - [Benchmark Modes](docs/benchmark_modes.md)
-- [Benchmark Route Execution Contract](docs/benchmark_route_execution_contract.md)
+- [Benchmark Route Execution Contract](docs/benchmark_route_execution_contract.md)`r`n- [Planner Benchmark Execution](docs/planner_benchmark_execution.md)
 - [Solver workflow](docs/solver_workflow.md)
 - [Export formats](docs/export_formats.md)
 - [Plan format](docs/plan_format.md)
@@ -155,7 +155,7 @@ Field concepts stay separate: `F(x,y,t)` is a physical current vector field, `C_
 
 `Flow-Coupled Sampling Demo` computes glider-specific direct-target action value `Q_glider(g,x,y,t)` from `A_global`, future priority, current assist/opposition, cross-current risk, travel time, energy cost, time windows, hazards, reachability, and redundancy. The [Sampling Priority to Glider Action Value Learning Lab](labs/sampling-priority-to-glider-action-value.html) explains this bridge from global sampling priority to planner/mission evaluation. It is not full route planning, mission scoring, calibrated glider dynamics, calibrated ocean forecasting, or a production vehicle controller. See [Flow-Coupled Sampling Demo](docs/flow_coupled_sampling_demo.md).
 
-`Benchmark Modes` defines the architecture skeleton for Planner Benchmark, Adaptive Benchmark, and Full Autonomy Benchmark. P1 adds adapter-only episode, route-execution, result/debrief, attempt-set, metadata, and export contracts for using the existing planning workspace, simulator, and Debrief. It does not implement a new planner, redesign scoring, or add MARL. See [Benchmark Modes](docs/benchmark_modes.md) and [Benchmark Route Execution Contract](docs/benchmark_route_execution_contract.md).
+`Benchmark Modes` defines the architecture skeleton for Planner Benchmark, Adaptive Benchmark, and Full Autonomy Benchmark. P2 lets Planner Benchmark use the existing planning workspace, simulator, and Debrief to emit run-record, route-execution, and attempt-set exports. It does not implement a new planner, redesign scoring, adaptive objective execution, full autonomy, or MARL. See [Benchmark Modes](docs/benchmark_modes.md), [Benchmark Route Execution Contract](docs/benchmark_route_execution_contract.md), and [Planner Benchmark Execution](docs/planner_benchmark_execution.md).
 
 All field demos include `Export Demo JSON` for notebook artifacts. Flow exports now include `flowFieldDiagnostics` and `flowFieldModel` so notebooks can see the synthetic model claim boundary and audited vector-field summaries. Choose start time, end time, and timeframe count to export a bounded `frames[]` series using the current demo settings, while the top-level `fields` preserve the currently visible frame. These exports capture row-major field arrays, scene config, demo time, selected-cell inspector state, units, and coordinate convention. Sample / ROI exports also include graph-field metadata, community-id grids, process timing, current display metric metadata, optional metric layers, and per-frame graph state/message layers when the graph engine is active. The Sample / ROI demo additionally offers `Export Scenario JSON` for the compact validated `anchor.syntheticRoiScenario` time-series format. Sampling Priority exports include `samplingPriorityModel`, component fields, `candidateSamplePoints`, and `priorityDiagnostics` with route/flow coupling flags set false. Flow-Coupled Sampling exports include `flowCoupledSamplingModel`, `gliderActionContext`, component fields, `candidateTargets`, and `actionValueDiagnostics` with flow coupling true and route planning false. See [Export Formats](docs/export_formats.md).
 
@@ -819,4 +819,6 @@ Observable Process Patterns are bridge metadata rather than the primary selector
 
 Science boundary: the deterministic process demo teaches local process evolution S(x,y,t). Flow Fields teaches current vectors F(x,y,t). Coupled Dynamic Sampling Space combines process plus flow plus constraints. Uncertainty / Forecast adds hidden truth, forecast, belief, observations, and uncertainty. Ocean-relevant analogs in this demo are not calibrated ocean models.
 
+### Planner Benchmark Execution
 
+Planner Benchmark can now use the existing Simulation Lab setup, planning workspace, simulator, and Debrief to emit benchmark run-record, route-execution, and attempt-set JSON. This is metadata propagation and export normalization only: it does not add a new planner, scoring redesign, adaptive objective switching, full autonomy, or MARL/RL training. See [Planner Benchmark Execution](docs/planner_benchmark_execution.md).

@@ -97,3 +97,7 @@ The mode-config export includes objective authority, route authority, informatio
 ## What P0/P1 Do Not Implement
 
 P0 does not implement route planning, mission scoring, or MARL. P0/P1 do not implement new route planning algorithms, mission scoring redesign, adaptive objective management, solver training, RL, MARL, new process engines, new flow engines, or new uncertainty engines. P1 is a contract and adapter layer over existing planning, simulation, and debrief systems.
+
+## P2 Planner Benchmark Execution
+
+P2 makes `plannerBenchmark` executable through the existing mission loop. Planner Benchmark Setup enters the normal briefing/planning workspace, Simulation runs the existing route execution engine, and Debrief can export `anchor.benchmark.run-record`, `anchor.benchmark.route-execution`, and `anchor.benchmark.attempt-set` JSON. P2 still does not add a new planner, optimal path search, scoring redesign, adaptive objective switching, full autonomy, or MARL/RL training. See [Planner Benchmark Execution](planner_benchmark_execution.md).

@@ -199,3 +199,7 @@ The visible Process Lab mode plus the context-specific model or analog selector 
 `referenceSignature*` fields remain for compatibility and represent the mapped observable pattern, not the primary selected example. New consumers should prefer the `processExample` block in demo/scenario exports. `processExample.mappedReferenceSignatureId` should match the legacy flat `referenceSignatureId`.
 
 Ocean-Relevant Process Analogs are educational event/process-layer analogs. They are not calibrated flow models, ocean forecasts, uncertainty models, or mission planners; flow coupling and uncertainty realism belong in the coupled and uncertainty demos.
+
+## `anchor.benchmark.*.json`
+
+Planner Benchmark Debrief exports three benchmark JSON products in P2: `anchor.benchmark.run-record`, `anchor.benchmark.route-execution`, and `anchor.benchmark.attempt-set`. They are normalized records built from the existing planner, simulator, and debrief result. They include fixed objective authority, player-or-solver route authority, information-access/fairness metadata, nullable metrics, and boundary flags such as `usesExistingSimulation: true`, `usesExistingDebrief: true`, `usesNewPlanner: false`, and `usesMissionScoringRedesign: false`.

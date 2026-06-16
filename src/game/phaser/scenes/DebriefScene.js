@@ -1,5 +1,10 @@
 import { buildMarkdownAAR } from '../../../core/io/ReportExporter.js';
-import { buildResultExport } from '../../../core/io/ResultExporter.js';
+import {
+  buildBenchmarkAttemptSetExportFromResult,
+  buildBenchmarkRouteExecutionExportFromResult,
+  buildBenchmarkRunRecordExportFromResult,
+  buildResultExport
+} from '../../../core/io/ResultExporter.js';
 import { attachIdentityToPlan, shortInstanceId } from '../../../core/identity/GameInstanceId.js';
 import { comparePlanResults, formatMetric } from '../../../core/evaluation/PlanComparison.js';
 import { temporalGreedySolver } from '../../../core/planning/BaselineSolvers.js';
@@ -21,6 +26,16 @@ import { getMissionModePreset } from '../../../core/missions/MissionModeRegistry
 import { navigationUncertaintyLabel, normalizeNavigationUncertaintyConfig } from '../../../core/navigation/NavigationUncertainty.js';
 import { PhaserButton } from '../ui/Button.js';
 import { downloadJson, downloadText } from '../ui/FileBridge.js';
+import {
+  addResultToBenchmarkAttemptSession,
+  benchmarkAttemptSessionSummary,
+  createBenchmarkAttemptSession
+} from '../../../core/benchmark/BenchmarkAttemptSession.js';
+import {
+  derivePlannerBenchmarkAttemptContext,
+  extractPlannerBenchmarkContextFromState
+} from '../../../core/benchmark/BenchmarkEpisodeRuntime.js';
+import { attemptSourceFromRouteSourceLabel } from '../../../core/benchmark/BenchmarkAttemptSourceMapping.js';
 
 const PhaserScene = globalThis.Phaser?.Scene ?? class {};
 
@@ -69,6 +84,7 @@ export class DebriefScene extends PhaserScene {
     }
     this.saveLeaderboardAttempt(result);
     result.comparison = comparePlanResults(this.app.state.planResults ?? {});
+    this.prepareBenchmarkDebrief(result);
     this.graphics?.clear();
     this.renderDebriefOverlay({ result });
   }
@@ -81,6 +97,8 @@ export class DebriefScene extends PhaserScene {
     root.innerHTML = empty ? this.emptyDebriefHtml() : this.debriefHtml(result);
     (this.app.elements.gameContainer ?? document.body).appendChild(root);
     this.debriefRoot = root;
+    if (empty) root.querySelector('[data-action="menu"]')?.addEventListener('click', () => this.leaveDebrief(() => this.scene.start('MainMenuScene')));
+    else this.bindDebriefActions(root, result);
   }
 
   emptyDebriefHtml() {
@@ -153,6 +171,7 @@ export class DebriefScene extends PhaserScene {
           ${this.missionOptionsPanelHtml(result)}
           ${this.tutorialPanelHtml(result)}
           ${this.importedPlanPanelHtml(result)}
+          ${this.benchmarkPanelHtml(result)}
           ${this.stopReasonPanelHtml(result)}
           ${this.priorityTargetPanelHtml(result)}
           ${this.segmentContributionPanelHtml(result)}
@@ -341,6 +360,158 @@ export class DebriefScene extends PhaserScene {
     });
   }
 
+  prepareBenchmarkDebrief(result) {
+    const context = this.benchmarkAttemptContext(result);
+    if (!context) {
+      this.refreshBenchmarkExecutionDebug({ result, context: null });
+      return null;
+    }
+    const routeExecutionExport = this.buildBenchmarkRouteExecutionExport(result, context);
+    const runRecordExport = this.buildBenchmarkRunRecordExport(result, context);
+    const session = addResultToBenchmarkAttemptSession(
+      this.app.state.benchmarkAttemptSession ?? createBenchmarkAttemptSession({ episodeId: context.episodeId, benchmarkMode: 'plannerBenchmark' }),
+      {
+        episodeId: context.episodeId,
+        benchmarkMode: 'plannerBenchmark',
+        attemptSource: context.activeAttemptSource,
+        routeSourceLabel: result?.planName ?? result?.source ?? context.routeSourceLabel,
+        fairnessLabel: context.fairnessLabel,
+        result,
+        runRecord: runRecordExport.runRecord,
+        routeExecutionRecord: routeExecutionExport,
+        metrics: routeExecutionExport.metrics
+      }
+    );
+    this.app.state.benchmarkAttemptSession = session;
+    this.refreshBenchmarkExecutionDebug({ result, context, runRecordExport, routeExecutionExport, attemptSession: session });
+    return session;
+  }
+
+  benchmarkAttemptContext(result = null) {
+    const base = extractPlannerBenchmarkContextFromState({
+      ...this.app.state,
+      result: result ?? this.app.state.result
+    });
+    if (!base) return null;
+    return derivePlannerBenchmarkAttemptContext({
+      ...base,
+      attemptSource: attemptSourceFromRouteSourceLabel(result?.source ?? this.app.state.currentPlanSource ?? 'manual'),
+      routeSourceLabel: result?.planName ?? result?.source ?? this.app.state.currentPlanSource ?? 'manual'
+    });
+  }
+
+  buildBenchmarkExportContext(result, context = this.benchmarkAttemptContext(result)) {
+    return {
+      level: this.app.state.level,
+      mission: this.app.state.mission,
+      plan: this.app.state.plan,
+      result,
+      attemptSession: this.app.state.benchmarkAttemptSession,
+      benchmarkModeConfig: context?.benchmarkModeConfig ?? this.app.state.benchmarkModeConfig,
+      episodeConfig: context?.episodeConfig,
+      attemptSource: context?.activeAttemptSource,
+      routeSourceLabel: result?.planName ?? result?.source ?? context?.routeSourceLabel,
+      fairnessLabel: context?.fairnessLabel,
+      debriefMetrics: {
+        comparison: result?.comparison ?? null,
+        rating: result?.rating ?? null,
+        summary: result?.summary ?? null
+      }
+    };
+  }
+
+  buildBenchmarkRunRecordExport(result, context = this.benchmarkAttemptContext(result)) {
+    return buildBenchmarkRunRecordExportFromResult(this.buildBenchmarkExportContext(result, context));
+  }
+
+  buildBenchmarkRouteExecutionExport(result, context = this.benchmarkAttemptContext(result)) {
+    return buildBenchmarkRouteExecutionExportFromResult(this.buildBenchmarkExportContext(result, context));
+  }
+
+  buildBenchmarkAttemptSetExport(result, context = this.benchmarkAttemptContext(result)) {
+    return buildBenchmarkAttemptSetExportFromResult(this.buildBenchmarkExportContext(result, context));
+  }
+
+  benchmarkPanelHtml(result) {
+    const context = this.benchmarkAttemptContext(result);
+    if (!context) return '';
+    const sessionSummary = benchmarkAttemptSessionSummary(this.app.state.benchmarkAttemptSession ?? createBenchmarkAttemptSession({
+      episodeId: context.episodeId,
+      benchmarkMode: 'plannerBenchmark'
+    }));
+    const comparison = sessionSummary.comparison ?? {};
+    const objectiveLabel = context.activeObjective?.label ?? context.activeObjective?.id ?? 'Fixed mission objective';
+    const attemptLabel = labelize(context.activeAttemptSource, 'Benchmark Attempt');
+    const comparisonRows = [
+      ['Best score', comparison.bestFinalScore],
+      ['Lowest energy', comparison.lowestEnergyUsed],
+      ['Fewest hazards', comparison.fewestHazardsHit],
+      ['Highest sample score', comparison.highestSampleScore]
+    ].filter(([, item]) => item);
+    return `
+      <article class="debrief-panel planner-benchmark-panel">
+        <h2>Planner Benchmark</h2>
+        <p>Episode: ${escapeHtml(context.episodeId)}</p>
+        <p>Attempt: ${escapeHtml(attemptLabel)} | Fairness: ${escapeHtml(context.fairnessLabel)} | Objective: ${escapeHtml(objectiveLabel)}</p>
+        <p>Benchmark Records: Run Record available | Route Execution available | Attempt Set available</p>
+        <p>Implemented in P2: existing planner, simulator, and debrief produce normalized benchmark records. Not implemented in P2: new route planner, optimal path search, scoring redesign, adaptive switching, full autonomy, or MARL/RL training.</p>
+        ${comparisonRows.length ? `
+          <div class="debrief-table-wrap">
+            <table class="debrief-table">
+              <thead><tr><th>Attempt Comparison</th><th>Winner</th><th>Value</th></tr></thead>
+              <tbody>
+                ${comparisonRows.map(([label, item]) => `
+                  <tr>
+                    <td>${escapeHtml(label)}</td>
+                    <td>${escapeHtml(item.routeSourceLabel ?? item.attemptSource ?? 'N/A')}</td>
+                    <td>${escapeHtml(formatMetric(item.value))}</td>
+                  </tr>
+                `).join('')}
+              </tbody>
+            </table>
+          </div>
+        ` : '<p>Attempt Comparison: run manual, Greedy Planner, or imported attempts under this episode to compare results.</p>'}
+        <div class="debrief-actions inline-actions">
+          <button class="debrief-button" data-action="export-benchmark-run">Export Benchmark Run Record</button>
+          <button class="debrief-button" data-action="export-benchmark-route">Export Route Execution Record</button>
+          <button class="debrief-button" data-action="export-benchmark-attempt-set">Export Benchmark Attempt Set</button>
+        </div>
+      </article>
+    `;
+  }
+
+  refreshBenchmarkExecutionDebug({ result = null, context = null, runRecordExport = null, routeExecutionExport = null, attemptSession = null } = {}) {
+    const summary = result?.summary ?? {};
+    globalThis.ANCHOR_BENCHMARK_EXECUTION_DEBUG = {
+      version: 'benchmark-execution-p2',
+      episodeId: context?.episodeId ?? null,
+      benchmarkMode: context?.benchmarkMode ?? null,
+      phase: this.app?.state?.mode ?? 'debrief',
+      activeAttemptSource: context?.activeAttemptSource ?? null,
+      routeSourceLabel: result?.planName ?? result?.source ?? context?.routeSourceLabel ?? null,
+      fairnessLabel: context?.fairnessLabel ?? null,
+      informationAccessTier: context?.informationAccessTier ?? null,
+      objectiveAuthority: context?.objectiveAuthority ?? null,
+      routeAuthority: context?.routeAuthority ?? null,
+      hasBenchmarkMetadata: Boolean(context),
+      hasBenchmarkRunRecord: Boolean(runRecordExport?.runRecord),
+      hasRouteExecutionRecord: Boolean(routeExecutionExport?.type === 'anchor.benchmark.route-execution'),
+      hasAttemptSet: Boolean(attemptSession?.attempts),
+      metrics: {
+        finalScore: summary.finalScore ?? null,
+        sampleScore: summary.sampleScore ?? summary.realizedSampleScore ?? null,
+        energyUsed: summary.energyUsed ?? null,
+        hazardsHit: summary.hazardsHit ?? null,
+        duplicateSamples: summary.duplicateSamples ?? null
+      },
+      exportTypes: ['anchor.benchmark.run-record', 'anchor.benchmark.route-execution', 'anchor.benchmark.attempt-set'],
+      usesExistingSimulation: true,
+      usesExistingDebrief: true,
+      usesNewPlanner: false,
+      usesMissionScoringRedesign: false,
+      usesMARL: false
+    };
+  }
   riskPanelHtml(result) {
     const s = result?.summary ?? {};
     const drift = result?.drift ?? {};
@@ -464,6 +635,9 @@ export class DebriefScene extends PhaserScene {
       result
     }), 'text/markdown'));
     root.querySelector('[data-action="export-compare"]')?.addEventListener('click', () => downloadJson('anchor_plan_comparison.json', result?.comparison ?? comparePlanResults(this.app.state.planResults ?? {})));
+    root.querySelector('[data-action="export-benchmark-run"]')?.addEventListener('click', () => downloadJson('anchor_benchmark_run_record.json', this.buildBenchmarkRunRecordExport(result)));
+    root.querySelector('[data-action="export-benchmark-route"]')?.addEventListener('click', () => downloadJson('anchor_benchmark_route_execution.json', this.buildBenchmarkRouteExecutionExport(result)));
+    root.querySelector('[data-action="export-benchmark-attempt-set"]')?.addEventListener('click', () => downloadJson('anchor_benchmark_attempt_set.json', this.buildBenchmarkAttemptSetExport(result)));
     root.querySelector('[data-action="next-scenario"]')?.addEventListener('click', () => this.leaveDebrief(() => this.getScenarioNextAction()?.onClick?.()));
   }
 
@@ -497,6 +671,9 @@ export class DebriefScene extends PhaserScene {
         comparison: result?.comparison
       })),
       'export-compare': () => downloadJson('anchor_plan_comparison.json', result?.comparison ?? comparePlanResults(this.app.state.planResults ?? {})),
+      'export-benchmark-run': () => downloadJson('anchor_benchmark_run_record.json', this.buildBenchmarkRunRecordExport(result)),
+      'export-benchmark-route': () => downloadJson('anchor_benchmark_route_execution.json', this.buildBenchmarkRouteExecutionExport(result)),
+      'export-benchmark-attempt-set': () => downloadJson('anchor_benchmark_attempt_set.json', this.buildBenchmarkAttemptSetExport(result)),
       'temporal-greedy': () => this.leaveDebrief(() => this.simulateTemporalGreedy())
     });
   }

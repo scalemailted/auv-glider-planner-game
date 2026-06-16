@@ -270,14 +270,15 @@ test('Benchmark modes overview opens from Simulation Lab', async ({ page }) => {
   await expect(page.locator('#mission-console')).toContainText('Planner Benchmark');
   await expect(page.locator('#mission-console')).toContainText('Objective is fixed / given');
   await expect(page.locator('#mission-console')).toContainText('Player or solver chooses route');
-  await expect(page.locator('#mission-console')).toContainText('Adapter-only / not full route planning');
-  await expect(page.locator('#mission-console')).toContainText('route execution record schema');
+  await expect(page.locator('#mission-console')).toContainText('P2 Execution Integration');
+  await expect(page.locator('#mission-console')).toContainText('Existing simulator and debrief produce benchmark records');
+  await expect(page.locator('#mission-console')).toContainText('benchmark run-record export from Debrief');
   await expect(page.locator('#mission-console')).toContainText('result/debrief adapter');
   await expect(page.locator('#mission-console')).toContainText('Open Planner Benchmark Setup');
   await expect.poll(() => page.evaluate(() => window.ANCHOR_BENCHMARK_MODE_DEBUG?.benchmarkMode)).toBe('plannerBenchmark');
   await expect.poll(() => page.evaluate(() => window.ANCHOR_BENCHMARK_MODE_DEBUG?.usesMARL)).toBe(false);
   await expect.poll(() => page.evaluate(() => window.ANCHOR_BENCHMARK_MODE_DEBUG?.usesMissionScoring)).toBe(false);
-  await expect.poll(() => page.evaluate(() => window.ANCHOR_BENCHMARK_MODE_DEBUG?.routeExecutionImplemented)).toBe('adapter-only');
+  await expect.poll(() => page.evaluate(() => window.ANCHOR_BENCHMARK_MODE_DEBUG?.routeExecutionImplemented)).toBe('existing-simulator-debrief-export');
   const [download] = await Promise.all([
     page.waitForEvent('download'),
     page.locator('#mission-console [data-action="export-benchmark-config"]').click()
@@ -297,7 +298,7 @@ test('Benchmark modes overview opens from Simulation Lab', async ({ page }) => {
   await expandMissionConsoleSection(page, 'Simulation Lab');
   await page.locator('#mission-console [data-action="benchmark-adaptive"]').click();
   await expect(page.locator('#mission-console')).toContainText('Adaptive Benchmark');
-  await expect(page.locator('#mission-console')).toContainText('Mission manager objective updates are defined by contract but not executed in P1');
+  await expect(page.locator('#mission-console')).toContainText('Mission manager objective updates are defined by contract; execution later');
   await expect(page.locator('#mission-console')).toContainText('Player or solver chooses route');
 
   await page.locator('#mission-console [data-action="menu"]').click();
@@ -305,7 +306,7 @@ test('Benchmark modes overview opens from Simulation Lab', async ({ page }) => {
   await page.locator('#mission-console [data-action="benchmark-full-autonomy"]').click();
   await expect(page.locator('#mission-console')).toContainText('Full Autonomy Benchmark');
   await expect(page.locator('#mission-console')).toContainText('Solver/agent chooses objective and route');
-  await expect(page.locator('#mission-console')).toContainText('Solver/agent objective and route authority are defined by contract but not executed in P1');
+  await expect(page.locator('#mission-console')).toContainText('Solver/agent objective and route authority are defined by contract; execution later');
 
   await page.locator('#mission-console [data-action="benchmark-open-sampling-priority"]').click();
   await expect.poll(() => page.evaluate(() => window.anchorGame.phaser.scene.getScene('SamplingPriorityDemoScene').sys.isActive())).toBe(true);
@@ -315,6 +316,129 @@ test('Benchmark modes overview opens from Simulation Lab', async ({ page }) => {
   await page.locator('#mission-console [data-action="flow-coupled-sampling-demo"]').click();
   await expect.poll(() => page.evaluate(() => window.anchorGame.phaser.scene.getScene('FlowCoupledSamplingDemoScene').sys.isActive())).toBe(true);
   await expect(page.locator('#mission-console')).toContainText('Flow-Coupled Sampling Demo');
+});
+
+test('Planner Benchmark debrief exports benchmark records from synthetic result', async ({ page }) => {
+  await page.goto('/');
+  await expect.poll(() => page.evaluate(() => window.anchorGame?.phaser?.scene.getScene('MainMenuScene')?.sys.isActive() ?? false)).toBe(true);
+
+  await page.evaluate(() => {
+    const benchmarkMetadata = {
+      benchmarkMode: 'plannerBenchmark',
+      benchmarkModeConfigVersion: 'benchmark-mode-contract-p0',
+      episodeId: 'e2e-planner-benchmark-episode',
+      informationAccessTier: 'forecastOnly',
+      objectiveAuthority: 'fixed',
+      routeAuthority: 'playerOrSolver',
+      fairnessLabel: 'Forecast-only',
+      attemptSource: 'manualPlayer',
+      worldModelTier: 'flowCoupledAction',
+      metadataVersion: 'benchmark-metadata-p2'
+    };
+    const level = {
+      levelId: 'e2e-benchmark-level',
+      instanceId: 'e2e-benchmark-instance',
+      challengeMode: 'perfectKnowledge',
+      width: 6,
+      height: 6,
+      duration: 4,
+      world: { grid: { width: 6, height: 6 }, time: { dt: 1, duration: 4 } },
+      layers: {
+        terrain: Array.from({ length: 6 }, () => Array(6).fill(0)),
+        hazards: Array.from({ length: 6 }, () => Array(6).fill(0)),
+        bases: [{ x: 0, y: 0 }],
+        truth: {
+          frames: [{
+            t: 0,
+            current: Array.from({ length: 6 }, () => Array.from({ length: 6 }, () => [0, 0])),
+            roi: Array.from({ length: 6 }, () => Array(6).fill(0))
+          }]
+        }
+      },
+      meta: { seed: 'e2e-benchmark', experienceMode: 'simulationLab', benchmarkMetadata }
+    };
+    const mission = {
+      missionId: 'e2e-benchmark-mission',
+      meta: { experienceMode: 'simulationLab', benchmarkMetadata },
+      agents: [{ id: 'g1', label: 'Glider 1', start: { x: 0, y: 0 } }],
+      rules: {}
+    };
+    const plan = {
+      type: 'anchor.plan',
+      planId: 'e2e-benchmark-plan',
+      meta: { valid: true, benchmarkMetadata },
+      agentPlans: [{ agentId: 'g1', selectedStart: { x: 0, y: 0 }, waypoints: [{ x: 2, y: 2, t: 1, segmentEnergy: 2 }] }]
+    };
+    const result = {
+      resultId: 'e2e-benchmark-result',
+      levelId: level.levelId,
+      missionId: mission.missionId,
+      instanceId: level.instanceId,
+      challengeMode: 'perfectKnowledge',
+      experienceMode: 'simulationLab',
+      source: 'manual',
+      planName: 'Manual Player Plan',
+      benchmarkMetadata,
+      summary: { finalScore: 42, sampleScore: 18, energyUsed: 6, hazardsHit: 0, duplicateSamples: 0, completedWaypoints: 1, missedWaypoints: 0 },
+      events: [{ type: 'sample', time: 1, agentId: 'g1', x: 2, y: 2, value: 9 }]
+    };
+    const app = window.anchorGame;
+    app.state.level = level;
+    app.state.mission = mission;
+    app.state.plan = plan;
+    app.state.result = result;
+    app.state.currentPlanSource = 'manual';
+    app.state.challengeMode = 'perfectKnowledge';
+    app.state.experienceMode = 'simulationLab';
+    app.state.currentScenario = { source: 'plannerBenchmarkSetup', benchmarkMetadata };
+    app.state.benchmarkRuntimeContext = null;
+    app.state.benchmarkModeConfig = null;
+    app.state.benchmarkAttemptSession = null;
+    app.state.ui ??= {};
+    app.state.playback ??= { time: 0 };
+    app.state.planResults = { manual: { source: 'manual', plan, result, summary: { finalScore: 42, realizedValue: 18, energyUsed: 6, riskExposure: 0 } } };
+    app.phaser.scene.getScene('MainMenuScene').scene.start('DebriefScene');
+  });
+
+  await expect.poll(() => page.evaluate(() => window.anchorGame.phaser.scene.getScene('DebriefScene').sys.isActive())).toBe(true);
+  await expect(page.locator('#debrief-root')).toContainText('Planner Benchmark');
+  await expect(page.locator('#debrief-root')).toContainText('Export Benchmark Run Record');
+  await expect(page.locator('#debrief-root')).toContainText('Export Route Execution Record');
+  await expect(page.locator('#debrief-root')).toContainText('Export Benchmark Attempt Set');
+  await expect(page.locator('#debrief-root')).toContainText('Implemented in P2');
+  await expect(page.locator('#mission-console')).toContainText('Export Result JSON');
+  await expect.poll(() => page.evaluate(() => window.ANCHOR_BENCHMARK_EXECUTION_DEBUG?.hasBenchmarkRunRecord)).toBe(true);
+  await expect.poll(() => page.evaluate(() => window.ANCHOR_BENCHMARK_EXECUTION_DEBUG?.usesNewPlanner)).toBe(false);
+
+  const [runDownload] = await Promise.all([
+    page.waitForEvent('download'),
+    page.locator('#debrief-root [data-action="export-benchmark-run"]').click()
+  ]);
+  const runJson = JSON.parse(await fs.readFile(await runDownload.path(), 'utf8'));
+  expect(runJson.type).toBe('anchor.benchmark.run-record');
+  expect(runJson.runRecord.benchmarkMode).toBe('plannerBenchmark');
+  expect(runJson.runRecord.objectiveAuthority).toBe('fixed');
+  expect(runJson.runRecord.routeAuthority).toBe('playerOrSolver');
+  expect(runJson.runRecord.diagnostics.usesNewPlanner).toBe(false);
+  expect(runJson.runRecord.diagnostics.usesMissionScoringRedesign).toBe(false);
+
+  const [routeDownload] = await Promise.all([
+    page.waitForEvent('download'),
+    page.locator('#debrief-root [data-action="export-benchmark-route"]').click()
+  ]);
+  const routeJson = JSON.parse(await fs.readFile(await routeDownload.path(), 'utf8'));
+  expect(routeJson.type).toBe('anchor.benchmark.route-execution');
+  expect(routeJson.benchmarkMode).toBe('plannerBenchmark');
+  expect(routeJson.attemptSource).toBe('manualPlayer');
+
+  const [attemptDownload] = await Promise.all([
+    page.waitForEvent('download'),
+    page.locator('#debrief-root [data-action="export-benchmark-attempt-set"]').click()
+  ]);
+  const attemptJson = JSON.parse(await fs.readFile(await attemptDownload.path(), 'utf8'));
+  expect(attemptJson.type).toBe('anchor.benchmark.attempt-set');
+  expect(attemptJson.episodeId).toBe('e2e-planner-benchmark-episode');
+  expect(attemptJson.attempts.length).toBeGreaterThanOrEqual(1);
 });
 
 test('campaign planning smoke flow reaches debrief', async ({ page }) => {

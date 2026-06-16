@@ -327,4 +327,6 @@ The visible Process Lab mode plus the context-specific model or analog selector 
 
 Ocean-Relevant Process Analogs are educational event/process-layer analogs. They are not calibrated flow models, ocean forecasts, uncertainty models, or mission planners; flow coupling and uncertainty realism belong in the coupled and uncertainty demos.
 
+## Planner Benchmark P2 Checks
 
+Planner Benchmark execution integration is covered by `node tools\js\smoke_benchmark_episode_runtime.mjs`, `node tools\js\smoke_benchmark_metadata_pipeline.mjs`, `node tools\js\smoke_benchmark_result_exports.mjs`, and `node tools\js\smoke_benchmark_attempt_session.mjs`. The focused Playwright benchmark grep checks the Benchmark Modes overview and a synthetic Debrief export path for run-record, route-execution, and attempt-set JSON. P2 uses the existing simulator/debrief and does not add a new planner or scoring redesign.

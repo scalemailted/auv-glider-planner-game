@@ -73,3 +73,7 @@ P1 does not implement a new planner. It does not implement A*, Dijkstra, RRT, MP
 ## Relationship To Existing Systems
 
 Use the existing Planning scene to place or import routes. Use the existing Simulator to execute routes. Use the existing Debrief to compute score, energy, risk, route quality, and comparison rows. P1 adds portable benchmark records around those systems so Planner Benchmark can become executable in the next phase without rewriting them.
+
+## P2 Execution Integration
+
+P2 keeps the P1 contracts but wires them into the existing Planner Benchmark path. Benchmark metadata follows setup into generated level/mission state, plan metadata, simulation result metadata, and Debrief exports where practical. Debrief builds run-record, route-execution, and attempt-set exports from existing route/simulation/debrief data. The official scoring path is unchanged.

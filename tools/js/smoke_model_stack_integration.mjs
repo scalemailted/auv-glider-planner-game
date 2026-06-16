@@ -47,6 +47,9 @@ import { createRouteExecutionRecord, validateRouteExecutionRecord } from '../../
 import { buildBenchmarkRunRecordFromResult } from '../../src/core/benchmark/BenchmarkResultAdapter.js';
 import { attachBenchmarkMetadataToLevel, validateBenchmarkMetadata } from '../../src/core/benchmark/BenchmarkMetadata.js';
 import { createBenchmarkModeState } from '../../src/core/benchmark/BenchmarkModeState.js';
+import { initializePlannerBenchmarkEpisode } from '../../src/core/benchmark/BenchmarkEpisodeRuntime.js';
+import { addResultToBenchmarkAttemptSession, createBenchmarkAttemptSession } from '../../src/core/benchmark/BenchmarkAttemptSession.js';
+import { buildBenchmarkRunRecordExportFromResult } from '../../src/core/io/ResultExporter.js';
 import { buildBenchmarkModeConfigExport } from '../../src/core/benchmark/BenchmarkModeExporter.js';
 import '../../src/labs/widgets/SamplingActionValueWidgets.js';
 import { FlowFieldDemoScene } from '../../src/game/phaser/scenes/FlowFieldDemoScene.js';
@@ -334,6 +337,50 @@ const p1LevelWithMetadata = attachBenchmarkMetadataToLevel({ levelId: 'model-sta
 assert.equal(validateBenchmarkMetadata(p1LevelWithMetadata.meta.benchmarkMetadata).status, 'PASS', 'P1 metadata validates');
 assert.equal(p1RunRecord.diagnostics.doesNotSimulateRoutes, true, 'P1 adapter does not simulate routes');
 assert.equal(p1RunRecord.diagnostics.doesNotComputeOfficialScores, true, 'P1 adapter does not compute official scores');
+
+// P2 benchmark execution integration: runtime context, attempt session, debrief export wrappers, and boundaries.
+const p2RuntimeContext = initializePlannerBenchmarkEpisode({
+  episodeId: 'model-stack-p2-episode',
+  levelId: 'model-stack-level',
+  missionId: 'model-stack-mission',
+  informationAccessTier: 'forecastOnly',
+  activeAttemptSource: 'manualPlayer'
+});
+assert.equal(p2RuntimeContext.benchmarkMode, 'plannerBenchmark', 'P2 benchmark runtime context validates');
+assert.equal(p2RuntimeContext.objectiveAuthority, 'fixed', 'P2 keeps objective fixed');
+assert.equal(p2RuntimeContext.routeAuthority, 'playerOrSolver', 'P2 keeps player/solver route authority');
+let p2AttemptSession = createBenchmarkAttemptSession({ episodeId: p2RuntimeContext.episodeId, benchmarkMode: 'plannerBenchmark' });
+p2AttemptSession = addResultToBenchmarkAttemptSession(p2AttemptSession, {
+  episodeId: p2RuntimeContext.episodeId,
+  attemptSource: 'manualPlayer',
+  routeSourceLabel: 'Manual Player Plan',
+  fairnessLabel: 'Forecast-only',
+  result: { resultId: 'model-stack-p2-result' },
+  metrics: { finalScore: 10, sampleScore: 4, energyUsed: 2 }
+});
+assert.equal(p2AttemptSession.attempts.length, 1, 'P2 attempt session records an attempt');
+const p2RunExport = buildBenchmarkRunRecordExportFromResult({
+  level: { levelId: 'model-stack-level', meta: { benchmarkMetadata: { benchmarkMode: 'plannerBenchmark', episodeId: p2RuntimeContext.episodeId, informationAccessTier: 'forecastOnly', objectiveAuthority: 'fixed', routeAuthority: 'playerOrSolver', fairnessLabel: 'Forecast-only', worldModelTier: 'flowCoupledAction' } } },
+  mission: { missionId: 'model-stack-mission', agents: [{ id: 'g1' }] },
+  plan: { type: 'anchor.plan', agentPlans: [{ agentId: 'g1', waypoints: [{ x: 1, y: 1, t: 1 }] }] },
+  result: { resultId: 'model-stack-p2-result', source: 'manual', summary: { finalScore: 10, sampleScore: 4, energyUsed: 2 } }
+});
+assert.equal(p2RunExport.type, 'anchor.benchmark.run-record', 'P2 run-record export wrapper type');
+assert.equal(p2RunExport.boundaryFlags.usesExistingSimulation, true, 'P2 uses existing simulation');
+assert.equal(p2RunExport.boundaryFlags.usesExistingDebrief, true, 'P2 uses existing debrief');
+assert.equal(p2RunExport.boundaryFlags.usesNewPlanner, false, 'P2 does not add a new planner');
+assert.equal(p2RunExport.boundaryFlags.usesMissionScoringRedesign, false, 'P2 does not redesign scoring');
+const p2BenchmarkExecutionSource = [
+  'src/core/benchmark/BenchmarkEpisodeRuntime.js',
+  'src/core/benchmark/BenchmarkAttemptSession.js',
+  'src/core/io/ResultExporter.js',
+  'src/game/phaser/scenes/DebriefScene.js'
+].map((file) => fs.readFileSync(file, 'utf8')).join('\n');
+assert.ok(p2BenchmarkExecutionSource.includes('ANCHOR_BENCHMARK_EXECUTION_DEBUG'), 'P2 source exposes benchmark execution debug marker');
+assert.ok(p2BenchmarkExecutionSource.includes('usesExistingSimulation: true'), 'P2 source marks existing simulation');
+assert.ok(p2BenchmarkExecutionSource.includes('usesExistingDebrief: true'), 'P2 source marks existing debrief');
+assert.ok(p2BenchmarkExecutionSource.includes('usesNewPlanner: false'), 'P2 source excludes new planner');
+assert.ok(p2BenchmarkExecutionSource.includes('usesMARL: false'), 'P2 source excludes MARL');
 const p1BenchmarkContractSource = [
   'src/core/benchmark/BenchmarkEpisodeContract.js',
   'src/core/benchmark/BenchmarkRouteExecutionRecord.js',
@@ -397,7 +444,12 @@ const claimFiles = [
   'src/core/demo/flowCoupledSampling/GliderActionValueModel.js',
   'src/core/benchmark/BenchmarkModeContract.js',
   'src/core/benchmark/BenchmarkModeExporter.js',
+  'src/core/benchmark/BenchmarkEpisodeRuntime.js',
+  'src/core/benchmark/BenchmarkAttemptSession.js',
+  'src/core/benchmark/BenchmarkAttemptSourceMapping.js',
+  'src/core/io/ResultExporter.js',
   'src/game/phaser/scenes/BenchmarkModeOverviewScene.js',
+  'src/game/phaser/scenes/DebriefScene.js',
   'src/core/demo/sampling/SpatiotemporalProcessExamples.js',
   'src/game/phaser/scenes/CoupledFieldsDemoScene.js',
   'src/game/phaser/scenes/FlowFieldDemoScene.js'

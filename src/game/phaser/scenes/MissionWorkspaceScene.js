@@ -89,6 +89,13 @@ import {
   requiresDeploymentSelection,
   setSelectedStart
 } from '../../../core/deployment/DeploymentZones.js';
+import { attachBenchmarkMetadataToPlan } from '../../../core/benchmark/BenchmarkMetadata.js';
+import {
+  derivePlannerBenchmarkAttemptContext,
+  extractPlannerBenchmarkContextFromState
+} from '../../../core/benchmark/BenchmarkEpisodeRuntime.js';
+import { attemptSourceFromRouteSourceLabel } from '../../../core/benchmark/BenchmarkAttemptSourceMapping.js';
+
 
 const PhaserScene = globalThis.Phaser?.Scene ?? class {};
 
@@ -1147,8 +1154,9 @@ export class MissionWorkspaceScene extends PhaserScene {
       : normalized.meta?.solver || normalized.meta?.source === 'solver' || normalized.meta?.source === 'importedSolver' || normalized.meta?.source === 'tutorialDemo' || normalized.planner
         ? 'importedSolver'
         : 'manual';
-    if (this.app.state.currentPlanSource === 'importedSolver' || this.app.state.currentPlanSource === 'oracleSolver') this.app.state.solverPlan = normalized;
-    else this.app.state.manualPlan = normalized;
+    this.syncPlannerBenchmarkPlanContext(this.app.state.currentPlanSource);
+    if (this.app.state.currentPlanSource === 'importedSolver' || this.app.state.currentPlanSource === 'oracleSolver') this.app.state.solverPlan = this.app.state.plan;
+    else this.app.state.manualPlan = this.app.state.plan;
     this.clearSelectedWaypoint();
     this.refreshPanels();
     this.refreshMap();
@@ -1163,6 +1171,7 @@ export class MissionWorkspaceScene extends PhaserScene {
   clearImportedPlan() {
     this.app.state.plan = createEmptyPlan(this.app.state.level, this.app.state.mission);
     this.app.state.currentPlanSource = 'manual';
+    this.syncPlannerBenchmarkPlanContext('manual');
     this.app.state.manualPlan = this.app.state.plan;
     this.app.state.solverPlan = null;
     this.app.state.importedPlanSummary = null;
@@ -1430,7 +1439,31 @@ export class MissionWorkspaceScene extends PhaserScene {
 
   markManualPlan() {
     this.app.state.currentPlanSource = 'manual';
+    this.syncPlannerBenchmarkPlanContext('manual');
     this.app.state.manualPlan = this.app.state.plan;
+  }
+
+  syncPlannerBenchmarkPlanContext(routeSource = 'manual') {
+    const context = extractPlannerBenchmarkContextFromState(this.app.state);
+    if (!context || !this.app.state.plan) return null;
+    const attemptSource = attemptSourceFromRouteSourceLabel(routeSource);
+    const attemptContext = derivePlannerBenchmarkAttemptContext({
+      ...context,
+      attemptSource,
+      routeSourceLabel: routeSource
+    });
+    this.app.state.benchmarkRuntimeContext = attemptContext;
+    this.app.state.benchmarkModeConfig = attemptContext.benchmarkModeConfig;
+    this.app.state.benchmarkEpisode = {
+      ...(this.app.state.benchmarkEpisode ?? {}),
+      episodeId: attemptContext.episodeId,
+      phase: 'planning',
+      activeAttemptSource: attemptContext.activeAttemptSource,
+      activeObjective: attemptContext.activeObjective,
+      updatedAt: new Date().toISOString()
+    };
+    this.app.state.plan = attachBenchmarkMetadataToPlan(this.app.state.plan, attemptContext);
+    return attemptContext;
   }
 
   executePlan() {
@@ -1459,6 +1492,7 @@ export class MissionWorkspaceScene extends PhaserScene {
       return;
     }
     this.app.state.plan = normalizePlan(this.app.state.plan, this.app.state.level, this.app.state.mission);
+    this.syncPlannerBenchmarkPlanContext(this.app.state.currentPlanSource ?? 'manual');
     recomputeAllWaypointTiming(this.app.state);
     const routeAudit = this.refreshRouteAudit();
     traceSimulation(this.app.state.simulationTrace, {
@@ -1497,6 +1531,7 @@ export class MissionWorkspaceScene extends PhaserScene {
       message: 'Plan validation passed'
     });
     attachIdentityToPlan(this.app.state.plan, this.app.state.level, this.app.state.mission);
+    this.syncPlannerBenchmarkPlanContext(this.app.state.currentPlanSource ?? 'manual');
     if (this.app.state.currentPlanSource === 'manual') this.app.state.manualPlan = this.app.state.plan;
     this.clearPlanningPreviewState();
     this.app.state.mode = 'simulation';
@@ -1592,6 +1627,7 @@ export class MissionWorkspaceScene extends PhaserScene {
       usesOracle: false,
       source: 'game'
     };
+    this.syncPlannerBenchmarkPlanContext(this.app.state.currentPlanSource ?? 'manual');
     this.app.state.plan.meta.stochastic = this.app.state.stochastic?.enabled ? {
       seed: this.app.state.stochastic.seed,
       roiScoringMode: this.app.state.stochastic.roiScoringMode,
@@ -1760,6 +1796,7 @@ export class MissionWorkspaceScene extends PhaserScene {
       if (!result.ok && liveAppendState.acceptedWaypoints <= 0) throw new Error(result.error ?? 'Greedy Planner planning failed.');
       this.finishTemporalGreedyLivePlan(result, liveAppendState);
       this.app.state.currentPlanSource = 'temporalGreedy';
+      this.syncPlannerBenchmarkPlanContext('temporalGreedy');
       this.app.state.temporalGreedyPlan = this.app.state.plan;
       this.refreshMap();
       const toastLevel = !result.ok || this.app.state.plan?.meta?.valid === false ? 'warning' : 'success';
@@ -1795,6 +1832,7 @@ export class MissionWorkspaceScene extends PhaserScene {
       const selectedIndex = Math.max(0, (this.app.state.plan?.agentPlans?.find((plan) => plan.agentId === agentId)?.waypoints?.length ?? 1) - 1);
       this.afterPlanChanged(agentId, { selectedIndex });
       this.app.state.currentPlanSource = 'temporalGreedy';
+      this.syncPlannerBenchmarkPlanContext('temporalGreedy');
       this.app.state.temporalGreedyPlan = this.app.state.plan;
       this.app.state.ui.plannerState ??= {};
       this.app.state.ui.plannerState.temporalGreedyLastProgress = progress.summarySoFar ?? null;
