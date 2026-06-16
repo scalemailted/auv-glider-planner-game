@@ -1,0 +1,86 @@
+﻿# H1 Node Headless / OceanBox-JS Runtime
+
+H1 adds a minimal Node.js headless runtime scaffold for ANCHOR-compatible mission experiments.
+
+Required boundary language:
+
+```text
+Node headless runtime over portable ANCHOR core logic. Browser ANCHOR remains the official visual referee and scoring UI.
+```
+
+## Why Node / JavaScript
+
+The canonical non-browser runtime is JavaScript running under Node. That keeps the headless path close to the portable ANCHOR core contracts and reduces drift from the browser game. Colab can call the Node CLI or analyze the generated JSON/CSV bundle. Python remains an optional analysis or wrapper layer, not a second simulator.
+
+## What H1 Implements
+
+- Deterministic runtime config for `coastalBloomFront`.
+- Small `field[z][row][col]` arrays for `T_hiddenTruth`, `E_forecast`, `mu_belief`, `U_uncertainty`, `P_unknown`, `A_global`, `F_u`, `F_v`, `hazard`, `constraintMask`, `staleness`, and `boundaryStrength`.
+- Synthetic coastal front plus bloom hidden truth, shifted forecast, initial belief, uncertainty, hidden-event suspicion, hazards, masks, staleness, boundary strength, and simple depth-varying flow.
+- Fixed waypoint execution for one glider crossing the front/bloom boundary.
+- Deterministic noisy observations from hidden truth.
+- Educational local belief and uncertainty update.
+- Vehicle-independent sampling priority `A_global`.
+- Educational score report.
+- Colab-ready JSON/CSV bundle export.
+- Node CLI entry point.
+
+## What H1 Does Not Implement
+
+H1 does not implement a Python OceanBox simulator, a backend server, a new route planner, A*/MPC/RL/MARL, production data assimilation, a calibrated ocean model, HYCOM/ROMS/Delft3D-quality forecasting, production glider control, or replacement browser scoring.
+
+## CLI
+
+```bash
+node tools/js/headless_oceanbox.mjs simulate --seed demo-001 --out tmp/oceanbox-js-demo
+```
+
+Useful options:
+
+```bash
+node tools/js/headless_oceanbox.mjs simulate --seed demo-001 --out tmp/oceanbox-js-public --no-hidden-export
+node tools/js/headless_oceanbox.mjs simulate --seed demo-001 --summary-only
+node tools/js/headless_oceanbox.mjs simulate --seed demo-001 --width 32 --height 24 --scenario coastal_bloom_front
+```
+
+## Bundle Files
+
+Default output includes:
+
+- `manifest.json`
+- `mission_config.json`
+- `visible_fields.json`
+- `hidden_fields.json`
+- `observations.json`
+- `observations.csv`
+- `glider_tracks.json`
+- `glider_tracks.csv`
+- `score_report.json`
+- `replay.json`
+- `episode.json`
+
+`visible_fields.json` excludes `T_hiddenTruth`. `hidden_fields.json` is written only when hidden export is enabled and is marked as hidden truth/oracle visibility in the manifest. Use `--no-hidden-export` for public or student-facing bundles that should omit hidden truth.
+
+## Relationship To Browser ANCHOR
+
+The Node runtime is a reproducible headless scaffold for portable JSON/CSV artifacts. Browser ANCHOR remains the official visual referee, scoring UI, benchmark comparison surface, and player-facing debrief. Browser and Node should converge through shared portable contracts, not duplicate implementations.
+
+## Relationship To Colab
+
+Colab notebooks should either call the Node CLI when the repository and Node are available, or load pre-generated bundles and analyze `observations.csv`, `glider_tracks.csv`, and `score_report.json`. Colab should not reimplement the simulator in Python for H1.
+
+## Validation
+
+Run:
+
+```bash
+node tools/js/smoke_headless_runtime_config.mjs
+node tools/js/smoke_headless_grid_fields.mjs
+node tools/js/smoke_headless_flow.mjs
+node tools/js/smoke_headless_observation_glider.mjs
+node tools/js/smoke_headless_belief_priority.mjs
+node tools/js/smoke_headless_mission_runner.mjs
+node tools/js/smoke_headless_bundle_writer.mjs
+node tools/js/smoke_headless_oceanbox_cli.mjs
+node tools/js/audit_headless_runtime_import_boundaries.mjs
+```

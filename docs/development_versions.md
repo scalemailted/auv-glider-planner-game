@@ -315,3 +315,10 @@ Added compact adaptive episode session persistence, leg records, objective-histo
 ## H0 Headless / Colab / OceanBox Schema Alignment
 
 H0 introduces headless schema contracts, canonical field descriptors, mission/episode/manifest contracts, browser-to-headless mapping, adapter skeletons, and audit scripts. It is schema-only and does not implement the Python OceanBox package, new simulation physics, new route planning, or MARL/RL.
+
+### H1 - Node Headless Core / OceanBox-JS Runtime Scaffold
+
+- Added pure JS runtime modules under `src/core/headless/runtime/` for config, grids, synthetic fields, flow helpers, fixed waypoint execution, observations, educational belief update, sampling priority, educational score reports, mission running, and bundle writing.
+- Added `tools/js/headless_oceanbox.mjs` for deterministic headless simulation and JSON/CSV bundle export.
+- Added H1 smoke scripts and runtime import-boundary audit.
+- Preserved the boundary: Node headless runtime over portable ANCHOR core logic. Browser ANCHOR remains the official visual referee and scoring UI. H1 does not implement Python OceanBox, a new planner, calibrated ocean forecasting, production data assimilation, or MARL/RL.

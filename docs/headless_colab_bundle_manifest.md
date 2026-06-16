@@ -51,3 +51,8 @@ A notebook should be able to load a manifest, inspect mission configuration, rea
 ## Hidden Truth Protection
 
 Public or forecast-only bundles must not include hidden truth arrays by default. If a bundle includes hidden truth, the manifest must mark the file entry with `hiddenTruth`, `oracle`, or `debugAll`.
+## H1 Node Headless Bundle Visibility
+
+H1 Node bundles use the H0 manifest roles and visibility tiers. `visible_fields.json` contains forecast, belief, uncertainty, priority, flow, hazard, mask, staleness, and boundary fields. `hidden_fields.json` contains `T_hiddenTruth` only when hidden export is enabled. Public bundles should use `--no-hidden-export`.
+
+Node headless runtime over portable ANCHOR core logic. Browser ANCHOR remains the official visual referee and scoring UI.

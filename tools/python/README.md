@@ -78,3 +78,15 @@ Notebook/Python validation is intentionally lightweight. The browser game remain
 - `export.py` writes project-compatible `anchor.plan` metadata.
 
 These helpers are intentionally not a Python port of the browser simulator.
+
+## OceanBox-JS / Node Headless Runtime
+
+H1 does not add a Python OceanBox simulator. The canonical non-browser runtime is Node.js so it can reuse portable ANCHOR JavaScript contracts.
+
+Colab/Python workflows should call:
+
+```bash
+node tools/js/headless_oceanbox.mjs simulate --seed demo-001 --out runs/demo
+```
+
+or load a pre-generated bundle and analyze `observations.csv`, `glider_tracks.csv`, and `score_report.json`. Node headless runtime over portable ANCHOR core logic. Browser ANCHOR remains the official visual referee and scoring UI.

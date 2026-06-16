@@ -1,8 +1,8 @@
-# H0 Headless / Colab / OceanBox Schema Alignment
+﻿# H0 Headless / Colab / OceanBox Schema Alignment
 
 H0 defines the schema bridge between browser ANCHOR and a future headless ANCHOR / OceanBox environment. It is an audit and contract layer only.
 
-Browser ANCHOR remains the visual referee and teaching tool: learn, play, plan, simulate, debrief, compare, and export. Headless ANCHOR / OceanBox is the future reproducible computational backend: generate, simulate, batch, solve, analyze, export, and reproduce in Node, Python, or Colab.
+Browser ANCHOR remains the visual referee and teaching tool: learn, play, plan, simulate, debrief, compare, and export. Headless ANCHOR / OceanBox is the future reproducible computational backend. H1 makes Node.js the canonical non-browser runtime because it can import portable ANCHOR JavaScript core modules. Python/Colab remains a wrapper and analysis workflow around the same artifacts.
 
 ## What H0 Implements
 
@@ -69,9 +69,12 @@ Partial areas:
 
 H0 does not implement the Python OceanBox package. It does not implement a new simulator, route planner, scoring redesign, backend storage, MARL/RL, or full autonomy.
 
-## Recommended H1 Actions
+## H1 Update - Node Headless Runtime
 
-- Scaffold the Python package and Colab loader around the H0 manifest contract.
-- Add a real browser export that writes a compact Colab bundle manifest plus JSON/CSV tables.
-- Normalize observations, glider tracks, actions, score reports, and surfacing reports.
-- Add visibility checks that prevent accidental hidden-truth export in public bundles.
+H1 is Node Headless Core / OceanBox-JS Runtime, not a Python simulator package.
+
+Node headless runtime over portable ANCHOR core logic. Browser ANCHOR remains the official visual referee and scoring UI.
+
+H1 adds a deterministic educational Node runtime, fixed waypoint execution, noisy observations, local belief/uncertainty updates, sampling priority, score reports, CLI, and JSON/CSV bundles. It does not add Python OceanBox, a new route planner, calibrated forecasting, or MARL/RL.
+
+Recommended next actions after H1 are browser-compatible bundle loading and Colab workflow polish around the Node-generated artifacts.

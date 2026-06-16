@@ -244,3 +244,11 @@ P8 adds `anchor.benchmark.adaptive-episode-session`, `anchor.benchmark.adaptive-
 ## H0 `anchor.headless.*` Contracts
 
 H0 defines future headless / Colab / OceanBox schema contracts: `anchor.headless.mission-config`, `anchor.headless.field-pack`, `anchor.headless.episode`, and `anchor.headless.manifest`. Current browser artifacts are mapped to these contracts by `BrowserHeadlessSchemaMap.js`. H0 does not write a full bundle, implement a Python package, implement a new simulator, or add route planning/MARL/RL.
+
+## H1 Node Headless Bundle
+
+The Node headless runtime writes a Colab-ready bundle with `manifest.json`, `mission_config.json`, `visible_fields.json`, optional `hidden_fields.json`, `observations.json`, `observations.csv`, `glider_tracks.json`, `glider_tracks.csv`, `score_report.json`, `replay.json`, and `episode.json`.
+
+`visible_fields.json` must not contain `T_hiddenTruth`. Hidden truth appears only in `hidden_fields.json` when hidden export is enabled and the manifest marks it as `hiddenTruth`/`oracle` visibility.
+
+Node headless runtime over portable ANCHOR core logic. Browser ANCHOR remains the official visual referee and scoring UI. H1 does not implement Python OceanBox, a new planner, calibrated ocean forecasting, or MARL/RL.

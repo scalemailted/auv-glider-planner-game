@@ -87,6 +87,12 @@ import { createHeadlessEpisode } from '../../src/core/headless/HeadlessEpisodeSc
 import { createHeadlessBundleManifest } from '../../src/core/headless/HeadlessBundleManifest.js';
 import { browserHeadlessMappingSummary, exportTypeHeadlessCompatibility } from '../../src/core/headless/BrowserHeadlessSchemaMap.js';
 import { buildHeadlessFieldPackDescriptorFromDemoArtifact, validateHeadlessAdapterOutput } from '../../src/core/headless/HeadlessExportAdapter.js';
+import { createDefaultHeadlessRuntimeConfig, validateHeadlessRuntimeConfig } from '../../src/core/headless/runtime/HeadlessRuntimeConfig.js';
+import { createHeadlessGrid, field3dStats as headlessField3dStats } from '../../src/core/headless/runtime/HeadlessGrid.js';
+import { createHeadlessFieldPack } from '../../src/core/headless/runtime/HeadlessFields.js';
+import { simulateHeadlessGliderRoute } from '../../src/core/headless/runtime/HeadlessGlider.js';
+import { runHeadlessMission } from '../../src/core/headless/runtime/HeadlessMissionRunner.js';
+import { headlessBundleFiles } from '../../src/core/headless/runtime/HeadlessBundleWriter.js';
 import '../../src/labs/widgets/SamplingActionValueWidgets.js';
 import { FlowFieldDemoScene } from '../../src/game/phaser/scenes/FlowFieldDemoScene.js';
 import { RoiGeneratorDemoScene } from '../../src/game/phaser/scenes/RoiGeneratorDemoScene.js';
@@ -442,6 +448,46 @@ assert.deepEqual(h0MapSummary.unmappedRequiredP8Types, [], 'H0 maps required P8 
 assert.equal(exportTypeHeadlessCompatibility('anchor.solverPacket').headlessType, 'anchor.headless.mission-config', 'H0 maps solver packet');
 const h0FieldPack = buildHeadlessFieldPackDescriptorFromDemoArtifact({ type: 'anchor.demo.flow-field', grid: { width: 2, height: 2 }, fields: { current: [[[0, 0]]] } });
 assert.equal(validateHeadlessAdapterOutput(h0FieldPack).valid, true, 'H0 adapter output validates');
+const h1Config = createDefaultHeadlessRuntimeConfig({ seed: 'model-stack-h1-smoke', width: 12, height: 8 });
+assert.equal(validateHeadlessRuntimeConfig(h1Config).status, 'PASS', 'H1 runtime config validates');
+assert.deepEqual(createHeadlessGrid(h1Config).shape, [3, 8, 12], 'H1 grid uses field[z][row][col] shape');
+const h1FieldPack = createHeadlessFieldPack(h1Config);
+assert.equal(h1FieldPack.type, 'anchor.headless.field-pack', 'H1 field pack exists');
+assert.equal(h1FieldPack.fieldVisibility.T_hiddenTruth, 'hiddenTruth', 'H1 protects hidden truth visibility');
+assert.equal(headlessField3dStats(h1FieldPack.fields.A_global).invalidCount, 0, 'H1 A_global is finite');
+const h1RouteResult = simulateHeadlessGliderRoute({
+  fieldPack: h1FieldPack,
+  glider: h1Config.missionConfig.gliders[0],
+  waypoints: h1Config.plan.waypoints,
+  missionConfig: { ...h1Config.missionConfig, sensorNoise: h1Config.sensorNoise, planningRules: { stepDistance: h1Config.stepDistance } },
+  seed: h1Config.seed
+});
+assert.ok(h1RouteResult.observations.length > 0, 'H1 glider simulation produces observations');
+const h1Episode = runHeadlessMission(h1Config);
+assert.equal(h1Episode.type, 'anchor.headless.episode', 'H1 mission runner returns an episode');
+assert.equal(h1Episode.diagnostics.implementsNewPlanner, false, 'H1 does not claim a new planner');
+assert.equal(h1Episode.diagnostics.implementsMARL, false, 'H1 does not claim MARL/RL');
+assert.equal(h1Episode.diagnostics.calibratedOceanForecast, false, 'H1 does not claim calibrated ocean forecasting');
+const h1Files = headlessBundleFiles(h1Episode, { includeHiddenTruth: false });
+assert.equal(Object.hasOwn(h1Files, 'hidden_fields.json'), false, 'H1 can omit hidden truth bundle file');
+assert.equal(h1Files['visible_fields.json'].includes('T_hiddenTruth'), false, 'H1 visible fields omit hidden truth');
+const h1RuntimeSourceFiles = [
+  'src/core/headless/runtime/HeadlessRuntimeConfig.js',
+  'src/core/headless/runtime/HeadlessGrid.js',
+  'src/core/headless/runtime/HeadlessFields.js',
+  'src/core/headless/runtime/HeadlessFlow.js',
+  'src/core/headless/runtime/HeadlessGlider.js',
+  'src/core/headless/runtime/HeadlessObservation.js',
+  'src/core/headless/runtime/HeadlessBeliefUpdate.js',
+  'src/core/headless/runtime/HeadlessPriority.js',
+  'src/core/headless/runtime/HeadlessScoring.js',
+  'src/core/headless/runtime/HeadlessMissionRunner.js',
+  'src/core/headless/runtime/HeadlessBundleWriter.js',
+  'tools/js/headless_oceanbox.mjs'
+];
+const h1RuntimeSource = h1RuntimeSourceFiles.map((file) => fs.readFileSync(file, 'utf8')).join('\n');
+assert.equal(/Phaser|localStorage|src[\\/]game[\\/]phaser|src[\\/]ui[\\/]|\bwindow\b|\bdocument\b/.test(h1RuntimeSource), false, 'H1 runtime avoids browser, Phaser, DOM, UI, and localStorage imports');
+assert.equal(/implementsPythonSimulator:\s*true|implementsNewPlanner:\s*true|implementsMARL:\s*true/i.test(h1RuntimeSource), false, 'H1 runtime avoids Python/new-planner/MARL claims');
 const p8FakeStorage = (() => { const data = new Map(); return { get length() { return data.size; }, key(index) { return [...data.keys()][index] ?? null; }, getItem(key) { return data.has(key) ? data.get(key) : null; }, setItem(key, value) { data.set(key, String(value)); }, removeItem(key) { data.delete(key); } }; })();
 assert.equal(saveAdaptiveEpisodeSession(p8Session, p8FakeStorage).ok, true, 'P8 adaptive session persistence saves');
 assert.equal(loadAdaptiveEpisodeSession(p8Session.episodeId, p8FakeStorage).ok, true, 'P8 adaptive session persistence loads');
@@ -650,6 +696,9 @@ const claimFiles = [
   'docs/sampling_priority_demo.md',
   'docs/flow_coupled_sampling_demo.md',
   'docs/model_stack_integration_notes.md',
+  'docs/headless_node_oceanbox_runtime.md',
+  'docs/headless_colab_oceanbox_schema_alignment.md',
+  'docs/headless_colab_bundle_manifest.md',
   'docs/benchmark_modes.md',
   'docs/adaptive_benchmark_mission_manager.md',
   'src/core/benchmark/BenchmarkAttemptRegistry.js',

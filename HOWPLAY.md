@@ -1029,3 +1029,17 @@ In Adaptive Benchmark, Debrief now shows an Adaptive Episode Session panel. Save
 ## Headless / Colab Compatibility
 
 Benchmark, demo, plan, result, and solver-packet exports now have an H0 schema-alignment map for future Colab/OceanBox workflows. This is export compatibility only; the browser remains the simulator/referee and H0 does not add a Python package or new planner.
+
+## H1 Node Headless / OceanBox-JS Runtime
+
+Node headless runtime over portable ANCHOR core logic. Browser ANCHOR remains the official visual referee and scoring UI.
+
+H1 adds a small deterministic Node CLI/runtime that generates schema-aligned synthetic fields, executes fixed waypoint plans, writes observations/tracks/score reports, and exports Colab-ready JSON/CSV bundles. It does not implement a Python simulator, a new planner, calibrated ocean forecasting, or MARL/RL.
+
+Run:
+
+```bash
+node tools/js/headless_oceanbox.mjs simulate --seed demo-001 --out tmp/oceanbox-js-demo
+```
+
+See `docs/headless_node_oceanbox_runtime.md`.

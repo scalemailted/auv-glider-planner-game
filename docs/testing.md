@@ -388,3 +388,21 @@ P8 adds smoke coverage for adaptive episode sessions, leg records, compact persi
 ## H0 Headless Schema Checks
 
 Headless/Colab schema alignment is covered by `smoke_headless_schema_contract.mjs`, `smoke_headless_bundle_manifest.mjs`, `smoke_browser_headless_schema_map.mjs`, `smoke_headless_export_adapter.mjs`, and `audit_headless_schema_alignment.mjs`. These checks verify mapping coverage, visibility-tier handling, and that H0 does not claim a Python package, new simulator, new planner, or MARL/RL implementation.
+
+## H1 Node Headless Runtime Checks
+
+Run these after changing `src/core/headless/runtime/`, `tools/js/headless_oceanbox.mjs`, or headless bundle docs:
+
+```bash
+node tools/js/smoke_headless_runtime_config.mjs
+node tools/js/smoke_headless_grid_fields.mjs
+node tools/js/smoke_headless_flow.mjs
+node tools/js/smoke_headless_observation_glider.mjs
+node tools/js/smoke_headless_belief_priority.mjs
+node tools/js/smoke_headless_mission_runner.mjs
+node tools/js/smoke_headless_bundle_writer.mjs
+node tools/js/smoke_headless_oceanbox_cli.mjs
+node tools/js/audit_headless_runtime_import_boundaries.mjs
+```
+
+The import-boundary audit keeps H1 free of Phaser, DOM, UI modules, browser scenes, and localStorage. Node headless runtime over portable ANCHOR core logic. Browser ANCHOR remains the official visual referee and scoring UI.

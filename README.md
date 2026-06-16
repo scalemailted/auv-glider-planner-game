@@ -849,3 +849,17 @@ Adaptive Benchmark now persists compact multi-leg episode sessions for manual co
 ### H0 Headless / Colab / OceanBox Schema Alignment
 
 H0 adds schema contracts and audits for future headless ANCHOR, Colab, and OceanBox workflows. It maps browser exports to canonical mission, field, episode, and bundle-manifest descriptors. H0 does not implement the Python OceanBox package, a new simulator, a new planner, or MARL/RL.
+
+## H1 Node Headless / OceanBox-JS Runtime
+
+Node headless runtime over portable ANCHOR core logic. Browser ANCHOR remains the official visual referee and scoring UI.
+
+H1 adds a small deterministic Node CLI/runtime that generates schema-aligned synthetic fields, executes fixed waypoint plans, writes observations/tracks/score reports, and exports Colab-ready JSON/CSV bundles. It does not implement a Python simulator, a new planner, calibrated ocean forecasting, or MARL/RL.
+
+Run:
+
+```bash
+node tools/js/headless_oceanbox.mjs simulate --seed demo-001 --out tmp/oceanbox-js-demo
+```
+
+See `docs/headless_node_oceanbox_runtime.md`.

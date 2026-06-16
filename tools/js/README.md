@@ -46,3 +46,14 @@ Node proposes. Game validates. Game simulates. Game scores.
 ```
 
 The Node tools are useful for CI-style contract checks and external solver prototyping. They do not replace browser Debrief, leaderboard scoring, stochastic replay, or route-failure recovery UI.
+
+## OceanBox-JS Headless Runtime
+
+H1 adds a deterministic Node runtime and CLI:
+
+```bash
+node tools/js/headless_oceanbox.mjs simulate --seed demo-001 --out tmp/oceanbox-js-demo
+node tools/js/headless_oceanbox.mjs simulate --seed demo-001 --out tmp/oceanbox-js-public --no-hidden-export
+```
+
+Node headless runtime over portable ANCHOR core logic. Browser ANCHOR remains the official visual referee and scoring UI. This runtime writes JSON/CSV bundles for Colab-style analysis; it is not a Python simulator, a new planner, calibrated ocean forecast, or MARL/RL environment.
