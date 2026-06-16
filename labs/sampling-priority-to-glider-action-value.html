@@ -1,0 +1,266 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>From Sampling Priority to Glider Action Value | ANCHOR Learning Labs</title>
+  <link rel="stylesheet" href="../css/labs.css" />
+</head>
+<body>
+  <main class="lab-shell">
+    <header class="lab-header">
+      <nav class="lab-nav" aria-label="Learning Labs navigation">
+        <a href="index.html">Back to Learning Labs</a>
+        <a href="../index.html">Open Main App</a>
+        <a href="../index.html#simulation-lab">Open Simulation Lab</a>
+      </nav>
+    </header>
+
+    <section class="lab-hero">
+      <div>
+        <p class="lab-kicker">Sandbox Companion</p>
+        <h1>From Sampling Priority to Glider Action Value</h1>
+        <p class="lab-subtitle">Why the best scientific sample is not always the best target for a specific glider.</p>
+        <div class="lab-badges">
+          <span>A_global</span>
+          <span>Q_glider</span>
+          <span>Sampling Priority</span>
+          <span>Flow-Coupled Action Value</span>
+          <span>Not Route Planning</span>
+        </div>
+        <div class="lab-actions">
+          <a class="lab-button" href="index.html">Back to Learning Labs</a>
+          <a class="lab-button" href="../index.html#simulation-lab">Open Sampling Priority Demo</a>
+          <a class="lab-button primary" href="../index.html#simulation-lab">Open Flow-Coupled Sampling Demo</a>
+          <a class="lab-button" href="deterministic-dynamic-flow-fields.html">Open Flow Fields Demo</a>
+          <a class="lab-button" href="planner-mission-evaluation.html">Planner / Mission Evaluation</a>
+        </div>
+        <p class="lab-note">Open the main app, then choose Simulation Lab -> Sampling Priority Demo or Flow-Coupled Sampling Demo.</p>
+      </div>
+      <figure class="lab-figure" aria-label="Concept ladder from event intensity to planning">
+        <div class="lab-roadmap ladder">
+          <div>event intensity</div>
+          <div>scientific ROI</div>
+          <div>belief / uncertainty</div>
+          <div>A_global</div>
+          <div>candidate sample points</div>
+          <div>Q_glider</div>
+          <div>future route planning</div>
+        </div>
+        <figcaption class="lab-caption"><strong>What to notice:</strong> the game separates science usefulness, glider-specific target value, and future waypoint planning.</figcaption>
+      </figure>
+    </section>
+
+    <div class="lab-layout">
+      <aside class="lab-toc" aria-label="Article table of contents">
+        <strong>Table of contents</strong>
+        <a href="#hotspot">1. The problem</a>
+        <a href="#terms">2. Terms</a>
+        <a href="#global">3. A_global</a>
+        <a href="#candidates">4. Candidate sample points</a>
+        <a href="#flow">5. Why flow changes the decision</a>
+        <a href="#q">6. Q_glider</a>
+        <a href="#bad-action">7. Bad glider action</a>
+        <a href="#assist">8. Current assist</a>
+        <a href="#intercept">9. Future intercept</a>
+        <a href="#redundancy">10. Two gliders</a>
+        <a href="#not-route">11. Not route planning yet</a>
+        <a href="#planner">12. Planner connection</a>
+        <a href="#sandboxes">13. Open the sandboxes</a>
+      </aside>
+
+      <article class="lab-article">
+        <section id="hotspot" class="lab-section">
+          <h2>1. The problem: sampling is not hotspot chasing</h2>
+          <p>The central teaching message is simple: the best sample is not always the brightest cell. The best scientific target is not always the best glider action.</p>
+          <p>A bright event center may already be well understood. A lower-intensity boundary may be uncertain and scientifically valuable. A stale region may deserve a revisit. A high-priority cell may still be unreachable, current-opposed, hazardous, expensive, late, or redundant for one specific glider.</p>
+          <div class="lab-callout">
+            <h3>Event intensity is not sampling priority</h3>
+            <p>A bloom center may have high intensity but low priority if it is already well understood. A plume boundary may have lower intensity but high priority if it is uncertain. A stale region may have high priority because the last sample is old.</p>
+          </div>
+          <section class="lab-planner-widget" aria-label="Event intensity versus sampling priority widget">
+            <h3>Widget 1. Event Intensity vs Sampling Priority</h3>
+            <p>Adjust value, uncertainty, boundary, staleness, and hazard weights. The A_global candidate markers can move away from the brightest event cell.</p>
+            <div data-sampling-action-widget="priority-vs-intensity"></div>
+            <p class="lab-what-to-notice"><strong>What to notice:</strong> the brightest event cell may not be the highest-priority sample.</p>
+          </section>
+        </section>
+
+        <section id="terms" class="lab-section">
+          <h2>2. Event intensity, ROI, priority, and action value</h2>
+          <div class="lab-symbol-grid">
+            <div><code>eventIntensity(x,y,t)</code><span>How much phenomenon is physically present.</span></div>
+            <div><code>trueRoi(x,y,t)</code><span>What is scientifically valuable if truth is known.</span></div>
+            <div><code>beliefRoi(x,y,t)</code><span>What the planner currently believes is valuable.</span></div>
+            <div><code>A_global(x,y,t)</code><span>Where a measurement would be scientifically useful before considering a particular glider.</span></div>
+            <div><code>Q_glider(g,x,y,t)</code><span>Whether a location is a good target for a specific glider, given flow, reachability, energy, timing, hazards, and redundancy.</span></div>
+            <div><code>candidateSamplePoint</code><span>A proposed location derived from the sampling-priority or action-value map.</span></div>
+            <div><code>routePlan</code><span>A sequence of waypoints or actions, not implemented by S1/S2.</span></div>
+          </div>
+          <div class="lab-callout"><strong>A_global is vehicle-independent.</strong><br /><strong>Q_glider is vehicle-dependent.</strong></div>
+        </section>
+
+        <section id="global" class="lab-section">
+          <h2>3. Global sampling priority A_global(x,y,t)</h2>
+          <p>The Sampling Priority Demo computes a global, vehicle-independent science-priority map. It answers: where would a measurement be scientifically useful next?</p>
+          <div class="lab-math">
+            <code>A_global(x,y,t) =
+    w_value       * beliefRoi
+  + w_uncertainty * expectedUncertainty
+  + w_boundary    * boundaryStrength
+  + w_forecast    * forecastValidation
+  + w_unknown     * hiddenEventProbability
+  + w_staleness   * staleness
+  - w_hazard      * hazard
+  - w_redundancy  * recentSamplePenalty</code>
+            <div class="lab-translation"><strong>In words:</strong> This map asks where a sample would be scientifically useful, before deciding whether a specific glider can get there.</div>
+          </div>
+          <p>The terms can represent believed scientific value, uncertainty reduction, edge mapping, forecast validation, hidden-event follow-up, revisit value, hazards, and recent-sample redundancy. It does not evaluate currentAssist, crossCurrentRisk, energyCost, vehicle assignment, or route feasibility.</p>
+        </section>
+
+        <section id="candidates" class="lab-section">
+          <h2>4. Candidate sample points</h2>
+          <p>A continuous-looking priority map still has to become a short list of proposed sampling locations. A <code>candidateSamplePoint</code> is one such proposal. It can be selected as a diverse top-K cell, a local maximum, a boundary point, an uncertainty point, a hidden-event follow-up, a staleness revisit, or a forecast-validation point.</p>
+          <div class="lab-card-grid two">
+            <div class="lab-card">
+              <h3>What a candidate is</h3>
+              <p>A compact teaching object: location, priority score, reason label, and component breakdown.</p>
+            </div>
+            <div class="lab-card">
+              <h3>What a candidate is not</h3>
+              <p>It is not an executable route, not a vehicle controller command, and not a guarantee that one glider should go there now.</p>
+            </div>
+          </div>
+        </section>
+
+        <section id="flow" class="lab-section">
+          <h2>5. Why flow changes the decision</h2>
+          <p>Currents change whether a direct target is cheap, slow, risky, or late. A target may be scientifically useful but current-opposed. Another target may be lower priority but aligned with flow, reachable sooner, and cheaper in energy.</p>
+          <div class="lab-callout">
+            <h3>Sampling priority is not glider action value</h3>
+            <p>A high-priority target can be a bad glider action if the current opposes travel, cross-current drift is high, energy cost is high, or the glider arrives too late.</p>
+          </div>
+          <section class="lab-planner-widget" aria-label="Sampling priority to glider action value widget">
+            <h3>Widget 2. Sampling Priority to Glider Action Value</h3>
+            <p>Adjust current assist, travel, energy, and cross-current weights. The best Q_glider target can differ from the best A_global cell.</p>
+            <div data-sampling-action-widget="priority-to-action"></div>
+            <p class="lab-what-to-notice"><strong>What to notice:</strong> a high-priority target may be a bad target for this glider.</p>
+          </section>
+        </section>
+
+        <section id="q" class="lab-section">
+          <h2>6. Glider action value Q_glider(g,x,y,t)</h2>
+          <p>The Flow-Coupled Sampling Demo computes a glider-specific direct-target action-value map. It answers: given a global science-priority map, where should this specific glider actually go now?</p>
+          <div class="lab-math">
+            <code>Q_glider(g,x,y,t) =
+    w_priority   * A_global(x,y,t_arrival)
+  + w_assist     * currentAssist
+  + w_future     * futurePriority
+  - w_travel     * travelCost
+  - w_energy     * energyCost
+  - w_current    * currentOpposition
+  - w_cross      * crossCurrentRisk
+  - w_time       * missedWindowPenalty
+  - w_hazard     * hazardPenalty
+  - w_redundancy * redundancyPenalty</code>
+            <div class="lab-translation"><strong>In words:</strong> This map asks whether a scientifically useful location is a good target for this glider right now.</div>
+          </div>
+          <p>Unlike <code>A_global</code>, <code>Q_glider</code> depends on the selected glider, its start, speed and budgets, the flow field <code>F(x,y,t)</code>, reachability, direct-leg timing, hazards, and teammate/recent-sample redundancy.</p>
+        </section>
+
+        <section id="bad-action" class="lab-section">
+          <h2>7. Example: high-priority target, bad glider action</h2>
+          <p>A high-priority target can be a bad action when the selected glider must fight current, spend too much energy, cross a strong lateral flow, or arrive after the useful window. This does not mean the science target is bad. It means this glider, at this time, is a poor match for that target.</p>
+          <div class="lab-equation-grid">
+            <div class="lab-math"><code>A_global(target) is high</code><div class="lab-translation"><strong>In words:</strong> the sample would be scientifically useful.</div></div>
+            <div class="lab-math"><code>Q_glider(target) is low</code><div class="lab-translation"><strong>In words:</strong> this direct action is costly, risky, late, or redundant.</div></div>
+          </div>
+        </section>
+
+        <section id="assist" class="lab-section">
+          <h2>8. Example: lower-priority target, better current assist</h2>
+          <p>A lower-priority target can become the better glider action if the current helps the vehicle reach it, while the brighter target lies up-current. That is why the S2 demo makes currentAssist and currentOpposition visible components instead of hiding them inside one score.</p>
+          <section class="lab-planner-widget" aria-label="Current assist and opposition widget">
+            <h3>Widget 3. Current Assist / Opposition</h3>
+            <p>Increase flow strength. Target B has lower science priority, but it may become a better glider action when the current helps the leg.</p>
+            <div data-sampling-action-widget="current-assist"></div>
+            <p class="lab-what-to-notice"><strong>What to notice:</strong> flow can make a lower-priority target more attractive.</p>
+          </section>
+        </section>
+
+        <section id="intercept" class="lab-section">
+          <h2>9. Example: future intercept instead of chasing the center</h2>
+          <p>A moving feature should not always be chased at its current center. If the glider will arrive later, the action-value map should consider <code>A_global(x,y,t_arrival)</code> and futurePriority. In the Flow-Coupled Sampling Demo, the downstream intercept scenario shows why a useful future target can differ from the brightest current cell.</p>
+          <div class="lab-callout"><strong>Plain language:</strong> sample where the feature will be useful when the glider arrives, not only where it is brightest now.</div>
+        </section>
+
+        <section id="redundancy" class="lab-section">
+          <h2>10. Example: two gliders and redundancy</h2>
+          <p>Two gliders should not automatically chase the same candidate. If confirmation is not the mission, the team should reduce duplicate samples and spread effort across useful targets. This is why S2 includes recent-sample and teammate redundancy as penalties, not hidden side effects.</p>
+          <section class="lab-planner-widget" aria-label="Two glider redundancy widget">
+            <h3>Widget 4. Redundancy Preview</h3>
+            <p>Toggle the redundancy penalty and watch candidate ranking change for the selected glider.</p>
+            <div data-sampling-action-widget="redundancy"></div>
+            <p class="lab-what-to-notice"><strong>What to notice:</strong> multiple gliders should avoid wasting effort on the same target unless confirmation is the mission.</p>
+          </section>
+        </section>
+
+        <section id="not-route" class="lab-section">
+          <h2>11. What this still is not: not route planning yet</h2>
+          <div class="lab-callout">
+            <h3>Action value is not route planning</h3>
+            <p>S2 evaluates one-step target options. A full route planner must sequence multiple waypoints over time.</p>
+          </div>
+          <ul class="lab-checklist">
+            <li>This is not a calibrated ocean model.</li>
+            <li>This is not a production data-assimilation system.</li>
+            <li>This is not a GP/GMRF planner.</li>
+            <li>This is not full route planning.</li>
+            <li>This is not a glider vehicle controller.</li>
+            <li>This is not a MARL environment yet.</li>
+          </ul>
+          <p>But it is a useful bridge between belief-based sampling maps and route planning.</p>
+        </section>
+
+        <section id="planner" class="lab-section">
+          <h2>12. How this connects to Planner / Mission Evaluation</h2>
+          <p>The Planner / Mission Evaluation lab is where single-step targets become route and mission questions. A route planner must choose a sequence, manage time and energy over many legs, compare planner policies fairly, simulate execution, and evaluate debrief metrics.</p>
+          <div class="lab-concept-bridge">
+            <div><strong>S1</strong><br />Where is a sample scientifically useful?</div>
+            <div><strong>S2</strong><br />Is that target good for this glider now?</div>
+            <div><strong>Planner</strong><br />Which sequence of waypoints should the mission execute?</div>
+          </div>
+        </section>
+
+        <section id="sandboxes" class="lab-section">
+          <h2>13. Open the sandboxes</h2>
+          <p>Use this article as the explanation, then open the sandboxes to experiment with the live models.</p>
+          <div class="lab-card-grid two">
+            <a class="lab-card lab-path-card" href="../index.html#simulation-lab">
+              <span class="lab-status available">Sandbox</span>
+              <h3>Sampling Priority Demo</h3>
+              <p>Computes vehicle-independent science usefulness <code>A_global(x,y,t)</code> and reason-labeled candidate sample points.</p>
+            </a>
+            <a class="lab-card lab-path-card" href="../index.html#simulation-lab">
+              <span class="lab-status available">Sandbox</span>
+              <h3>Flow-Coupled Sampling Demo</h3>
+              <p>Computes glider-specific direct-target action value <code>Q_glider(g,x,y,t)</code> under flow, energy, timing, hazards, and redundancy.</p>
+            </a>
+            <a class="lab-card lab-path-card" href="deterministic-dynamic-flow-fields.html">
+              <span class="lab-status available">Learning Lab</span>
+              <h3>Flow Fields Demo</h3>
+              <p>Review vector field <code>F(x,y,t)</code>, direction, magnitude, and deterministic flow behavior.</p>
+            </a>
+            <a class="lab-card lab-path-card" href="planner-mission-evaluation.html">
+              <span class="lab-status available">Learning Lab</span>
+              <h3>Planner / Mission Evaluation</h3>
+              <p>Continue to waypoint sequences, costs, risk, debrief, solver packets, and fair planner comparison.</p>
+            </a>
+          </div>
+        </section>
+      </article>
+    </div>
+  </main>
+  <script type="module" src="../src/labs/widgets/SamplingActionValueWidgets.js"></script>
+</body>
+</html>

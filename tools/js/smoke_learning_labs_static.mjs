@@ -10,6 +10,7 @@ const files = {
   coupledLab: 'labs/oracle-deterministic-coupled-sampling-space.html',
   uncertaintyLab: 'labs/stochastic-uncertainty.html',
   stochasticCoupledLab: 'labs/stochastic-coupled-sampling-space.html',
+  samplingActionLab: 'labs/sampling-priority-to-glider-action-value.html',
   plannerLab: 'labs/planner-mission-evaluation.html',
   labsCss: 'css/labs.css',
   missionConsole: 'src/ui/MissionConsole.js'
@@ -27,6 +28,7 @@ const contents = Object.fromEntries(await Promise.all(
   'Oracle / Deterministic Coupled Sampling Space',
   'Stochastic / Uncertainty',
   'Stochastic Coupled Sampling Space',
+  'Sampling Priority to Glider Action Value',
   'Planner / Mission Evaluation',
   'Course-level learning objectives',
   'Learning path table of contents',
@@ -34,6 +36,7 @@ const contents = Object.fromEntries(await Promise.all(
   'oracle-deterministic-coupled-sampling-space.html',
   'stochastic-uncertainty.html',
   'stochastic-coupled-sampling-space.html',
+  'sampling-priority-to-glider-action-value.html',
   'planner-mission-evaluation.html',
   'Known process',
   'Known flow',
@@ -138,6 +141,25 @@ const contents = Object.fromEntries(await Promise.all(
 ].forEach((needle) => assertIncludes(contents.stochasticCoupledLab, needle, files.stochasticCoupledLab));
 
 [
+  'From Sampling Priority to Glider Action Value',
+  'Event intensity is not sampling priority',
+  'Sampling priority is not glider action value',
+  'Action value is not route planning',
+  'A_global',
+  'Q_glider',
+  'currentAssist',
+  'crossCurrentRisk',
+  'energyCost',
+  'redundancyPenalty',
+  'data-sampling-action-widget="priority-vs-intensity"',
+  'data-sampling-action-widget="priority-to-action"',
+  '../src/labs/widgets/SamplingActionValueWidgets.js',
+  'Back to Learning Labs',
+  'Sampling Priority Demo',
+  'Flow-Coupled Sampling Demo'
+].forEach((needle) => assertIncludes(contents.samplingActionLab, needle, files.samplingActionLab));
+
+[
   'Planner / Mission Evaluation',
   'From fields to routes',
   'Reward, cost, risk, and constraints',
@@ -184,6 +206,7 @@ const contents = Object.fromEntries(await Promise.all(
   'labs/oracle-deterministic-coupled-sampling-space.html',
   'labs/stochastic-uncertainty.html',
   'labs/stochastic-coupled-sampling-space.html',
+  'labs/sampling-priority-to-glider-action-value.html',
   'labs/planner-mission-evaluation.html',
   'target="_blank"',
   'rel="noopener noreferrer"'
@@ -195,6 +218,7 @@ assertNoExternalLinks(contents.flowLab, files.flowLab);
 assertNoExternalLinks(contents.coupledLab, files.coupledLab);
 assertNoExternalLinks(contents.uncertaintyLab, files.uncertaintyLab);
 assertNoExternalLinks(contents.stochasticCoupledLab, files.stochasticCoupledLab);
+assertNoExternalLinks(contents.samplingActionLab, files.samplingActionLab);
 assertNoExternalLinks(contents.plannerLab, files.plannerLab);
 assertNotIncludes(contents.labsIndex, 'cdn', files.labsIndex);
 assertNotIncludes(contents.deterministicLab, 'cdn', files.deterministicLab);
@@ -202,6 +226,7 @@ assertNotIncludes(contents.flowLab, 'cdn', files.flowLab);
 assertNotIncludes(contents.coupledLab, 'cdn', files.coupledLab);
 assertNotIncludes(contents.uncertaintyLab, 'cdn', files.uncertaintyLab);
 assertNotIncludes(contents.stochasticCoupledLab, 'cdn', files.stochasticCoupledLab);
+assertNotIncludes(contents.samplingActionLab, 'cdn', files.samplingActionLab);
 assertNotIncludes(contents.plannerLab, 'cdn', files.plannerLab);
 
 
@@ -288,6 +313,19 @@ assertNotIncludes(stochasticCoupledWidgetSource, ' from ', 'src/labs/widgets/Sto
   'OracleRegretComparisonWidget'
 ].forEach((needle) => assertIncludes(stochasticCoupledWidgetSource, needle, 'src/labs/widgets/StochasticCoupledLearningWidgets.js'));
 await import(pathToFileUrl(stochasticCoupledWidget));
+
+const samplingActionWidget = path.join(ROOT, 'src/labs/widgets/SamplingActionValueWidgets.js');
+const samplingActionWidgetSource = await fs.readFile(samplingActionWidget, 'utf8');
+assertNotIncludes(samplingActionWidgetSource, 'Phaser', 'src/labs/widgets/SamplingActionValueWidgets.js');
+assertNotIncludes(samplingActionWidgetSource, 'anchorGame', 'src/labs/widgets/SamplingActionValueWidgets.js');
+assertNotIncludes(samplingActionWidgetSource, ' from ', 'src/labs/widgets/SamplingActionValueWidgets.js');
+[
+  'PriorityVsIntensityWidget',
+  'PriorityToActionWidget',
+  'CurrentAssistWidget',
+  'RedundancyWidget'
+].forEach((needle) => assertIncludes(samplingActionWidgetSource, needle, 'src/labs/widgets/SamplingActionValueWidgets.js'));
+await import(pathToFileUrl(samplingActionWidget));
 
 const plannerWidget = path.join(ROOT, 'src/labs/widgets/PlannerLearningWidgets.js');
 const plannerWidgetSource = await fs.readFile(plannerWidget, 'utf8');

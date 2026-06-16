@@ -1,4 +1,4 @@
-﻿export const DEMO_ARTIFACT_SCHEMA_VERSION = '1.1';
+export const DEMO_ARTIFACT_SCHEMA_VERSION = '1.1';
 export const DEMO_ARTIFACT_EXPORT_VERSION = 'demo-export-v1';
 export const DEMO_ARTIFACT_MAX_FRAMES = 240;
 
@@ -25,6 +25,17 @@ export function buildDemoArtifactEnvelope({
   fields = {},
   flowFieldDiagnostics = null,
   flowFieldModel = null,
+  uncertaintyModel = null,
+  observationModel = null,
+  beliefState = null,
+  diagnostics = null,
+  samplingPriorityModel = null,
+  candidateSamplePoints = null,
+  priorityDiagnostics = null,
+  flowCoupledSamplingModel = null,
+  gliderActionContext = null,
+  candidateTargets = null,
+  actionValueDiagnostics = null,
   likelihoodField = null,
   graphField = null,
   metricLayers = null,
@@ -152,6 +163,17 @@ export function buildDemoArtifactEnvelope({
     fields,
     flowFieldDiagnostics,
     flowFieldModel,
+    uncertaintyModel,
+    observationModel,
+    beliefState,
+    diagnostics,
+    samplingPriorityModel,
+    candidateSamplePoints,
+    priorityDiagnostics,
+    flowCoupledSamplingModel,
+    gliderActionContext,
+    candidateTargets,
+    actionValueDiagnostics,
     likelihoodField,
     graphField,
     metricLayers,

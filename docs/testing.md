@@ -1,4 +1,4 @@
-﻿# Testing
+# Testing
 
 The browser game does not require npm, Playwright, or a build step for normal use. Normal local serving still works with:
 
@@ -10,7 +10,7 @@ Playwright is optional and intended for development smoke testing.
 
 Greedy Planner is useful for planner smoke checks because it should return promptly, preserve non-selected glider routes, and validate before simulation. See `docs/greedy_planner.md` for the expected selected-glider baseline behavior.
 
-The main menu should expose three top-level accordions: `Challenge Mode`, `Simulation Lab`, and `Learning Labs`. Challenge Mode should contain `Play`, `Learn`, and `Compete` visual subsections. Simulation Lab should contain `Experiments`, `Demos`, `Editor & Import Tools`, and `Benchmarks`. Learning Labs should expose static concept pages, starting with `Deterministic Spatiotemporal Processes`, that open outside the Phaser simulator. Field demos live inside Simulation Lab, not as a separate top-level section. Use `docs/flow_fields_demo.md` when validating `F(x,y,t)` current vectors, static/dynamic fields, additive layers, partition behavior, terrain boundary effects, and topology-aware shoreline risk. Use `docs/sample_fields_demo.md` when validating `L(x,y,t)` event likelihood, `S(x,y,t)` sample value, pure sample-value spatial fields, spatial parameters, temporal patterns, spatial evolution, Time-Indexed/Frequency-Based/State-Evolving/History-Aware state models, sampling effects, and freshness/revisit displays. Use `docs/coupled_fields_demo.md` for deterministic/oracle coupled sampling spaces: known process `C(x,y,t)`, known flow `F(x,y,t)`, known constraints, analytical process engines, and oracle objective `S*(x,y,t)`. Use `docs/uncertainty_forecast_demo.md` for `U(x,y,t)`, forecast/truth mismatch, uncertainty, information gain, forecast error, and update effects. Use the Stochastic Coupled Sampling Space learning lab when validating the teaching layer that combines posterior belief, expected uncertainty, unknown-event probability, flow, constraints, acquisition value, and oracle regret.
+The main menu should expose three top-level accordions: `Challenge Mode`, `Simulation Lab`, and `Learning Labs`. Challenge Mode should contain `Play`, `Learn`, and `Compete` visual subsections. Simulation Lab should contain `Experiments`, `Demos`, `Editor & Import Tools`, and `Benchmarks`. Learning Labs should expose static concept pages, starting with `Deterministic Spatiotemporal Processes`, that open outside the Phaser simulator. Field demos live inside Simulation Lab, not as a separate top-level section. Use `docs/flow_fields_demo.md` when validating `F(x,y,t)` current vectors, static/dynamic fields, additive layers, partition behavior, terrain boundary effects, and topology-aware shoreline risk. Use `docs/sample_fields_demo.md` when validating `L(x,y,t)` event likelihood, `S(x,y,t)` sample value, pure sample-value spatial fields, spatial parameters, temporal patterns, spatial evolution, Time-Indexed/Frequency-Based/State-Evolving/History-Aware state models, sampling effects, and freshness/revisit displays. Use `docs/coupled_fields_demo.md` for deterministic/oracle coupled sampling spaces: known process `C(x,y,t)`, known flow `F(x,y,t)`, known constraints, analytical process engines, and oracle objective `S*(x,y,t)`. Use `docs/uncertainty_forecast_demo.md` for hidden truth, forecast/expected state, noisy observations, belief, expected-state uncertainty, surprise, forecast error, unknown-event probability, and sampling-priority preview. Use the Stochastic Coupled Sampling Space learning lab when validating the teaching layer that combines posterior belief, expected uncertainty, unknown-event probability, flow, constraints, acquisition value, and oracle regret. Use docs/sampling_priority_demo.md for S1 global A_global(x,y,t). Use labs/sampling-priority-to-glider-action-value.html when validating the Learning Lab bridge between vehicle-independent science priority and glider-specific action value. Use docs/flow_coupled_sampling_demo.md for S2 glider-specific direct-leg Q_glider(g,x,y,t) action value; it must keep route planning, mission scoring, calibrated glider dynamics, and calibrated ocean forecasts out of scope.
 
 ## Challenge Mode vs Simulation Lab
 
@@ -87,8 +87,9 @@ Manual sample-field checks should cover:
 - generated missions preserve `sampleFieldConfig` when configured;
 - scrubbing mission time changes temporal sample fields such as periodic, burst, moving, propagating, or seeded texture-like patterns where selected;
 - Coupled Fields Demo, not the sample-only demo, covers current-advected sample behavior;
-- Uncertainty / Forecast Demo exposes Forecast, Truth, Uncertainty, Information Gain, Forecast Error, and Delta After Update views;
-- Uncertainty / Forecast Demo click/update actions reduce uncertainty and report observation state in the Cell Inspector;
+- Uncertainty / Forecast Demo exposes Hidden Truth, Forecast / Expected State, Observations, Belief / Updated Estimate, Expected-State Uncertainty, Innovation, Surprise, Forecast Error, Unknown-Event Probability, and Sampling-Priority Preview views;
+- Uncertainty / Forecast Demo Add Samples / Update Belief actions create noisy observations, update belief, reduce nearby uncertainty, and report forecast-error, hidden-event, and false-alarm diagnosis in the explanation panel;
+- Sampling Priority Demo opens from Simulation Lab, exposes Scenario / Sampling Method / View Layer / Candidate Mode controls, states that event intensity is not sampling priority, generates candidate sample points, exports `samplingPriorityModel`, `candidateSamplePoints`, and `priorityDiagnostics`, and marks route/flow coupling false;
 - Gold Star / priority targets remain separate from ROI cells and are labeled as sampling targets or objectives rather than GPS waypoint truth;
 - solver packets and result exports preserve visible sample-field metadata while fair stochastic packets omit hidden truth.
 
@@ -116,6 +117,42 @@ After JavaScript changes, run:
 
 ```bash
 npm.cmd run check
+```
+
+For Process Lab / Flow Fields Demo / Coupled Fields Demo integration checkpoints, also run:
+
+```bash
+node tools/js/smoke_model_stack_integration.mjs
+```
+
+For the U0/U1 Uncertainty / Forecast belief-state sandbox, also run:
+
+```bash
+node tools/js/smoke_uncertainty_field_math.mjs
+node tools/js/smoke_uncertainty_observation_model.mjs
+node tools/js/smoke_uncertainty_belief_update.mjs
+node tools/js/smoke_uncertainty_diagnostics.mjs
+node tools/js/smoke_uncertainty_forecast_demo.mjs
+```
+
+For the S1 Sampling Priority / Acquisition sandbox, also run:
+
+```bash
+node tools/js/smoke_sampling_priority_field_math.mjs
+node tools/js/smoke_sampling_priority_model.mjs
+node tools/js/smoke_sampling_priority_scenarios.mjs
+node tools/js/smoke_sampling_priority_candidates.mjs
+node tools/js/smoke_sampling_priority_demo.mjs
+```
+
+For the S2 Flow-Coupled Sampling / Glider Action Value sandbox, also run:
+
+```bash
+node tools/js/smoke_flow_coupled_sampling_field_math.mjs
+node tools/js/smoke_glider_action_value_model.mjs
+node tools/js/smoke_flow_coupled_sampling_scenarios.mjs
+node tools/js/smoke_glider_action_candidates.mjs
+node tools/js/smoke_flow_coupled_sampling_demo.mjs
 ```
 
 After Learning Labs changes, run:
@@ -174,7 +211,7 @@ The e2e smoke tests verify:
 
 - app loads
 - main menu appears
-- Learning Labs links to the Scientific Computational Modeling, CA for Ocean-Relevant Processes, Deterministic Spatiotemporal Processes, Deterministic Dynamic Flow Fields, Oracle / Deterministic Coupled Sampling Space, Stochastic / Uncertainty, Stochastic Coupled Sampling Space, and Planner / Mission Evaluation static pages
+- Learning Labs links to the Scientific Computational Modeling, CA for Ocean-Relevant Processes, Deterministic Spatiotemporal Processes, Deterministic Dynamic Flow Fields, Oracle / Deterministic Coupled Sampling Space, Stochastic / Uncertainty, Stochastic Coupled Sampling Space, Sampling Priority to Glider Action Value, and Planner / Mission Evaluation static pages
 - Flow Fields Demo opens, switches demo modes, shows Current Field Diagnostics, switches Uniform/Eddy presets, exports `flowFieldDiagnostics` / `flowFieldModel`, and enables an additive layer
 - ROI Generator Demo opens, switches distributions, regenerates, and returns to main menu
 - level select opens

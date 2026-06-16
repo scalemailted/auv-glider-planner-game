@@ -54,7 +54,7 @@ S* =
   - w_hazard * hazardPenalty
 ```
 
-It does not use uncertainty, belief, hidden truth, forecast error, expected information gain, or Bayesian updating. Those belong in the Uncertainty / Forecast Demo and later stochastic coupled sampling work.
+It does not use uncertainty, belief, hidden truth, forecast error, unknown-event probability, sampling-priority preview, or Bayesian updating. Those belong in the Uncertainty / Forecast Demo. Global acquisition value and candidate sample points belong in the Sampling Priority Demo; flow-coupled glider action value remains later work.
 
 ## Layout
 

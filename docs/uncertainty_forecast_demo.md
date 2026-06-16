@@ -2,123 +2,108 @@
 
 ## Purpose
 
-The Uncertainty / Forecast Demo teaches what is known, unknown, wrong, or learned in a forecast-planning setting.
+The Uncertainty / Forecast Demo is a browser-side belief-state playground. It teaches that the vehicle does not know hidden truth directly: it acts from forecast, belief, uncertainty, and observations.
 
-It is separate from the pure Sample / ROI Demo. Sample value answers where sampling is valuable. Uncertainty answers where the planner does not know enough. Information gain answers where sampling is expected to teach the most.
+The demo separates hidden truth, forecast/expected state, noisy observations, posterior-like belief, expected-state uncertainty, innovation, surprise, forecast error, unknown-event probability, and a sampling-priority preview.
 
-## Concept Boundary
+This is an educational stochastic uncertainty sandbox. It is not a production GP/GMRF solver, Kalman/EnKF filter, calibrated data-assimilation system, operational ocean forecast, hydrodynamic model, mission planner, route optimizer, or real sensor-processing pipeline.
 
-The Uncertainty / Forecast Demo teaches:
+## Layer Concepts
+
+- `T(x,y,t)` Hidden Truth: the synthetic reference phenomenon, shown only for teaching.
+- `E(x,y,t)` Forecast / Expected State: what the model expected before observations.
+- `mu(x,y,t)` Belief / Updated Estimate: a posterior-like educational estimate after observations.
+- `U_expected(x,y,t)` Expected-State Uncertainty: how uncertain the expected state remains.
+- `z_i` Observed Samples: noisy measurements from hidden truth.
+- Innovation: `observed - expected`, shown as a display-normalized signed mismatch.
+- Surprise: normalized forecast mismatch using innovation, uncertainty, and sensor noise.
+- Forecast Error: where an expected layer exists but is wrong in location, timing, shape, or strength.
+- Unknown-Event Probability: evidence that a phenomenon may exist but was missing from the forecast hypothesis.
+- Sampling-Priority Preview: a non-route-aware preview of where sampling may be scientifically useful next.
+
+## Forecast Error vs Hidden Unknown
+
+Forecast error means: "We had a forecast, but it was wrong." Examples include a shifted front, weakened hotspot, late feature, or intensity mismatch.
+
+Hidden unknown means: "We discovered something we did not know to look for." Examples include an unexpected plume or hidden bloom layer that was absent from the forecast.
+
+The demo keeps these separate. Expected-state uncertainty is not unknown-event probability, and sampling priority is not event intensity. The full Sampling Priority Demo turns these ideas into a global vehicle-independent acquisition field A_global(x,y,t) without route planning or flow-coupled action value.
+
+## Scenarios
+
+Implemented deterministic seeded scenarios:
+
+- Accurate Forecast
+- Shifted Front
+- Weakened Hotspot
+- Hidden Plume
+- Hidden Bloom Layer
+- Noisy False Alarm
+- Stale Monitoring Field
+
+These are synthetic educational scenarios, not calibrated ocean scenarios.
+
+## Observation And Belief Update
+
+Samples use:
 
 ```text
-U(x,y,t)
+z_i = T(x_i,y_i,t_i) + epsilon_i
 ```
 
-`U` is uncertainty, lack of confidence, or expected information gain at position `x,y` and time `t`. It answers where the forecast is unreliable, where the planner does not know enough, and where observation could reduce uncertainty.
+The UI exposes sensor noise, sample count, observation path, update model, length scale, staleness rate, Add Samples, Update Belief, Reset Observations, and Reveal Truth.
 
-It does not use event likelihood `L(x,y,t)` as a primary control. Likelihood describes where events tend to occur. Uncertainty describes what the planner does not know.
+Belief updates are educational models:
 
-Only uncertainty about the event likelihood field belongs in the Uncertainty / Forecast Demo. The event likelihood field itself belongs in the Sample / ROI Demo as the generative substrate for sample-value events.
+- No Update
+- Nearest Sample Blend
+- Kernel Smoother
+- Bayesian-Lite Cell Update
 
-## Forecast vs Truth
+Near observations, belief moves toward observed values and expected-state uncertainty decreases. Far from observations, belief remains closer to forecast. Staleness can increase uncertainty where information is old.
 
-The demo distinguishes:
+## Diagnosis Panel
 
-- `Truth`: the reference environment state.
-- `Forecast`: the player or solver belief.
-- `Forecast Error`: the absolute difference between forecast and truth.
+The right/explanation panel reports:
 
-Truth is visible in this demo for educational inspection only. Fair solver packets should use forecast-visible data and should not expose hidden truth unless an oracle export is explicitly labeled.
+- current layer and layer-specific color meaning
+- scenario
+- primary diagnosis
+- forecast error score
+- hidden-event confidence
+- noise false-alarm risk
+- mean uncertainty
+- observation count
+- mean surprise
+- recommended response
 
-## Uncertainty
+Noisy false-alarm cases warn against overreacting to isolated samples. Hidden-event cases recommend confirmatory sampling. Forecast-error cases recommend correcting or validating the forecasted feature.
 
-Uncertainty is a confidence/risk-of-being-wrong field. High uncertainty means the forecast is less reliable or under-observed. It is not the same as high sample value.
+## Sampling-Priority Preview
 
-## Likelihood Is Not Uncertainty
+The sampling-priority preview combines belief value, expected uncertainty, local surprise/forecast validation, unknown-event probability, staleness, and recent-sample redundancy.
 
-A region can be high likelihood and low uncertainty: events often occur there and the model knows it well.
-
-A region can be low likelihood and high uncertainty: events are unlikely, but the model is unsure.
-
-A region can be high value and low uncertainty: it is worth sampling, but not very informative.
-
-A region can be low value and high information gain: it is not valuable as a concentration, but sampling there may reduce uncertainty.
-
-## Information Gain
-
-Information Gain estimates where a sample would be useful because it reduces uncertainty. It combines uncertainty with whether the forecast value could plausibly change planning decisions.
-
-## Forecast Error
-
-Forecast Error shows where the forecast differs from truth. It is useful for teaching robust planning and for explaining why a plan that looked good under a forecast can score poorly against truth.
-
-## Delta After Update
-
-Delta After Update shows how much uncertainty was reduced by sample or surface-update events. Click a cell or use update buttons to create observations.
+It is not route planning. It has no travel-cost optimization, multi-agent assignment, mission scoring, or planner integration.
 
 ## Demo Artifact Export
 
-`Export Demo JSON` downloads an `anchor.demo.uncertainty-forecast` artifact for Colab/notebook rendering. Choose start time, end time, and timeframe count to include a `frames[]` series sampled from the current forecast/uncertainty settings. It includes the current config, demo time, displayed layer, forecast, truth, uncertainty, information gain, forecast error, delta-after-update, observations summary, fairness metadata, and selected-cell inspector state. Arrays are row-major and indexed as `field[row][col]`.
+`Export Demo JSON` downloads an `anchor.demo.uncertainty-forecast` artifact. It includes:
 
-Truth is exported because this is an educational demo artifact. Fair solver packets should continue to use forecast/uncertainty data only unless an oracle export is explicitly requested.
+- `uncertaintyModel`
+- `observationModel`
+- `beliefState`
+- `diagnostics`
+- hidden truth, forecast, observations, belief, uncertainty, innovation, surprise, forecast error, unknown-event probability, sampling-priority preview
+- legacy aliases such as `truth`, `informationGain`, and `deltaAfterUpdate`
 
-## Uncertainty Spatial Patterns
+Truth is exported because this is an educational demo artifact. Fair solver packets should use forecast, belief, uncertainty, and observations only unless an oracle export is explicitly labeled.
 
-Implemented patterns:
+## Relationship To Other Demos
 
-- Uniform Uncertainty
-- Gaussian Uncertainty Region
-- Clustered Uncertainty
-- Boundary / Front Uncertainty
-- Sparse Unknown Targets
-- Patchy Uncertainty
-- High Uncertainty Near Unobserved Regions
+Process Lab teaches deterministic or seeded process evolution and sample-value interpretation.
 
-## Uncertainty Temporal Behavior
+Flow Fields Demo teaches deterministic synthetic current vectors `F(x,y,t)` and diagnostics.
 
-Implemented behavior controls:
+Coupled Fields Demo teaches known process + known flow + known constraints + deterministic oracle objective. It intentionally does not use belief or uncertainty.
 
-- Constant
-- Growth Over Time
-- Confidence Decay
-- Bursty Forecast Breakdown
-- Reduction After Sampling
-- Recovery / Regrowth
-
-These are deterministic seeded teaching fields, not operational forecast products.
-
-## Update Models
-
-Implemented update models:
-
-- No Update
-- Local Sample Update
-- Neighbor Update
-- Surface Update
-- Global Refresh
-
-Clicking a cell simulates a sample observation. `Apply Sample Update` observes the selected cell, `Surface Update` creates a larger center refresh, and `Reset Observations` clears the update history.
-
-## Solver Fairness
-
-Forecast-visible data can be used by fair solvers. Truth is hidden during fair planning. Oracle exports may expose truth, but they must be labeled as oracle/truth-assisted. This demo shows truth so students can learn the difference between belief and reference state.
-
-## Relationship to Mission Modes
-
-This demo supports:
-
-- `Signal Hunt`: information gain and uncertainty reduction.
-- `Uncertain Waters`: forecast/truth mismatch.
-- `Surface & Adapt`: update after surfacing.
-- `Forecast Chase`: confidence decay over time.
-
-## Relationship to Sample / ROI Demo
-
-The Sample / ROI Demo focuses on value patterns: where reward appears, changes, depletes, and recovers. It does not show forecast/truth, uncertainty, or information gain controls. Those concepts belong here.
-
-## Limitations
-
-- Update effects are deterministic visual diagnostics.
-- Truth visibility is educational and should not be interpreted as fair solver visibility.
-- This is not a full Bayesian filter, data assimilation system, or operational ocean forecast.
-- The demo does not create missions, waypoint plans, scores, or leaderboard records.
+Stochastic Coupled Sampling Space comes later; it should build on this uncertainty demo before any full planner or MARL work.

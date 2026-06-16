@@ -1,4 +1,4 @@
-﻿# Deterministic Spatiotemporal Process Lab
+# Deterministic Spatiotemporal Process Lab
 
 Menu label: Process Lab. Legacy name: Sample / ROI Field Demo. See also [Deterministic Spatiotemporal Process Lab](sampling_process_lab.md).
 
@@ -129,11 +129,11 @@ This demo does not show:
 - flow-stretched sample value
 - forecast vs truth
 - uncertainty
-- information gain
+- belief / expected-state uncertainty / surprise
 - forecast error
-- update assimilation
+- belief-update assimilation intuition
 
-Use Flow Fields Demo for `F(x,y,t)`, Coupled Fields Demo for current-dependent sample behavior, and Uncertainty / Forecast Demo for forecast/truth/uncertainty concepts.
+Use Flow Fields Demo for `F(x,y,t)`, Coupled Fields Demo for current-dependent sample behavior, and Uncertainty / Forecast Demo for hidden truth, forecast, belief, uncertainty, surprise, forecast error, hidden-event probability, and sampling-priority concepts.
 
 ## Observable Pattern Composition
 
@@ -205,7 +205,7 @@ node tools/js/audit_sample_field_presets.mjs
 
 The legacy audit script evaluates each preset over multiple demo times and reports active fraction, frame-to-frame delta, connected components, center-of-mass movement, spatial correlation, extinction warnings, saturation warnings, and static-dynamic warnings. In the browser console, set `globalThis.ANCHOR_DEBUG_ROI_PRESETS = true` to log compact legacy-preset audit output when using the debug path.
 
-The right-panel Behavior Help view includes a `Current Composition` card that summarizes how the selected components combine, for example `Multi-Modal Likelihood + Clustered Field + Gaussian / Normal + Bursty + Discrete Jump + Time-Indexed + Soft Depletion + Sample Value`. Current-driven transport, plumes, flow-stretched patterns, forecast, truth, uncertainty, information gain, and forecast error are routed to the Coupled Fields Demo and Uncertainty / Forecast Demo.
+The right-panel Behavior Help view includes a `Current Composition` card that summarizes how the selected components combine, for example `Multi-Modal Likelihood + Clustered Field + Gaussian / Normal + Bursty + Discrete Jump + Time-Indexed + Soft Depletion + Sample Value`. Current-driven transport, plumes, flow-stretched patterns, forecast, truth, uncertainty, belief, surprise, forecast error, hidden-event suspicion, and acquisition-priority concepts are routed to the Coupled Fields Demo, Uncertainty / Forecast Demo, and Sampling Priority Demo.
 
 ## Viewing the Event Likelihood Field
 
@@ -699,7 +699,7 @@ Foundational CA Models are known local-rule models used to teach cells, states, 
 
 Observable Process Patterns are bridge metadata rather than the primary selector. For example, Forest Fire maps to Propagating Fronts, which bridges to River Plume Front and Shoreline Runoff Pulse analogs. Greenberg-Hastings maps to Excitable Waves. Sandpile maps to Threshold Cascades, which bridges to turbidity or episodic discharge analogs.
 
-Science boundary: the deterministic process demo teaches local process evolution S(x,y,t). Flow Fields teaches current vectors F(x,y,t). Coupled Dynamic Sampling Space combines process plus flow plus constraints. Uncertainty / Forecast adds hidden truth, forecast, belief, observations, and uncertainty. Ocean-relevant analogs in this demo are not calibrated ocean models.
+Science boundary: the deterministic process demo teaches local process evolution S(x,y,t). Flow Fields teaches current vectors F(x,y,t). Coupled Dynamic Sampling Space combines process plus flow plus constraints. Uncertainty / Forecast adds hidden truth, forecast, belief, observations, and uncertainty. Sampling Priority adds global acquisition value before route planning. Ocean-relevant analogs in this demo are not calibrated ocean models.
 ## Active Example State
 
 The visible Process Lab mode plus the context-specific model or analog selector is the primary identity for the Deterministic Spatiotemporal Process Lab. The mode selector, context-specific model or analog selector, center subtitle, right-panel Current Lab State, debug object, scenario metadata, and exports should agree on the same selected example.

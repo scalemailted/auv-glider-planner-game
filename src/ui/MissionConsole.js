@@ -7,7 +7,13 @@ import { SAMPLING_PROCESS_LAB_MENU_LABEL } from '../core/demo/sampling/SamplingP
 import { samplingProcessConsoleHtml } from './sampling/SamplingProcessConsoleSections.js';
 import { EXPERIENCE_MODES, getExperienceModeDefaults } from '../core/experience/ExperienceMode.js';
 import { getVectorPresetConfig } from '../core/generation/VectorFieldPresets.js';
-import { UNCERTAINTY_DEMO_BEHAVIORS, UNCERTAINTY_DEMO_FORECAST_MODELS, UNCERTAINTY_DEMO_PATTERNS, UNCERTAINTY_DEMO_UPDATE_MODELS, UNCERTAINTY_DEMO_VIEW_MODES, forecastModelLabel, uncertaintyBehaviorLabel, uncertaintyPatternLabel, uncertaintyViewLabel, updateModelLabel } from '../core/demo/UncertaintyForecastDemo.js';
+import { UNCERTAINTY_DEMO_OBSERVATION_PATHS, UNCERTAINTY_DEMO_UPDATE_MODELS, UNCERTAINTY_DEMO_VIEW_MODES, UNCERTAINTY_SCENARIO_IDS, forecastModelLabel, observationPathLabel, uncertaintyViewLabel, updateModelLabel } from '../core/demo/UncertaintyForecastDemo.js';
+import { SAMPLING_PRIORITY_SCENARIO_IDS, samplingPriorityScenarioLabel } from '../core/demo/samplingPriority/SamplingPriorityScenarios.js';
+import { SAMPLING_PRIORITY_METHOD_IDS, samplingPriorityMethodLabel } from '../core/demo/samplingPriority/SamplingPriorityModel.js';
+import { SAMPLING_PRIORITY_CANDIDATE_MODES, samplingPriorityCandidateModeLabel } from '../core/demo/samplingPriority/SamplingPriorityCandidates.js';
+import { FLOW_COUPLED_SAMPLING_SCENARIO_IDS, flowCoupledSamplingScenarioLabel } from '../core/demo/flowCoupledSampling/FlowCoupledSamplingScenarios.js';
+import { GLIDER_ACTION_METHOD_IDS, gliderActionMethodLabel } from '../core/demo/flowCoupledSampling/GliderActionValueModel.js';
+import { GLIDER_ACTION_CANDIDATE_MODES, gliderActionCandidateModeLabel } from '../core/demo/flowCoupledSampling/GliderActionCandidates.js';
 
 export class MissionConsole {
   constructor(app, root) {
@@ -50,7 +56,9 @@ export class MissionConsole {
           menuActionHtml('flow-fields', 'Flow Fields Demo', 'Explore current vectors F(x,y,t).'),
           menuActionHtml('roi-demo', SAMPLING_PROCESS_LAB_MENU_LABEL, 'Explore deterministic or seeded sampling processes S(x,y,t).'),
           menuActionHtml('coupled-fields', 'Coupled Fields Demo', 'Explore how currents move, shape, or complicate sample value.'),
-          menuActionHtml('uncertainty-forecast-demo', 'Uncertainty / Forecast Demo', 'Explore forecast, truth, uncertainty, information gain, and sampling updates.')
+          menuActionHtml('uncertainty-forecast-demo', 'Uncertainty / Forecast Demo', 'Explore forecast, truth, uncertainty, information gain, and sampling updates.'),
+          menuActionHtml('sampling-priority-demo', 'Sampling Priority Demo', 'Explore how belief, uncertainty, boundaries, hidden-event suspicion, staleness, hazards, and redundancy become candidate sample locations.'),
+          menuActionHtml('flow-coupled-sampling-demo', 'Flow-Coupled Sampling Demo', 'Evaluate which high-priority sample targets are actually good for a glider after currents, reachability, energy, timing, hazards, and redundancy.')
         ])}
         ${menuGroupHtml('Editor & Import Tools', [
           menuActionHtml('editor', 'Mission Editor', 'Build and export custom scenario/challenge packages.'),
@@ -73,6 +81,7 @@ export class MissionConsole {
           menuLinkHtml('labs/oracle-deterministic-coupled-sampling-space.html', 'Oracle / Deterministic Coupled Sampling Space', 'Learn how known process, flow, constraints, and mission context form a true sampling objective.', 'primary'),
           menuLinkHtml('labs/stochastic-uncertainty.html', 'Stochastic / Uncertainty', 'Learn how hidden truth, forecasts, noisy observations, and belief updates shape sampling decisions.', 'primary'),
           menuLinkHtml('labs/stochastic-coupled-sampling-space.html', 'Stochastic Coupled Sampling Space', 'Learn how belief, uncertainty, hidden events, flow, and constraints create acquisition value.', 'primary'),
+          menuLinkHtml('labs/sampling-priority-to-glider-action-value.html', 'Sampling Priority to Glider Action Value', 'Learn why A_global science priority differs from Q_glider action value before route planning.', 'primary'),
           menuLinkHtml('labs/planner-mission-evaluation.html', 'Planner / Mission Evaluation', 'Learn how waypoint routes trade reward, cost, risk, uncertainty, flow, and debrief metrics.', 'primary')
         ])}
         ${menuGroupHtml('Roadmap', [
@@ -91,6 +100,8 @@ export class MissionConsole {
       'roi-demo': () => this.app.phaser.scene.start('RoiGeneratorDemoScene'),
       'coupled-fields': () => this.app.phaser.scene.start('CoupledFieldsDemoScene'),
       'uncertainty-forecast-demo': () => this.app.phaser.scene.start('UncertaintyForecastDemoScene'),
+      'sampling-priority-demo': () => this.app.phaser.scene.start('SamplingPriorityDemoScene'),
+      'flow-coupled-sampling-demo': () => this.app.phaser.scene.start('FlowCoupledSamplingDemoScene'),
       tutorial: () => this.mainMenuScene()?.openTutorialBrowser?.(),
       'play-challenge': () => this.mainMenuScene()?.openChallengeSetup?.('perfectKnowledge', EXPERIENCE_MODES.challenge),
       'play-custom-challenge': () => this.app.phaser.scene.start('LoadLevelJsonScene', { preferredExperienceMode: EXPERIENCE_MODES.challenge }),
@@ -607,66 +618,84 @@ export class MissionConsole {
       <section class="console-header">
         <div class="console-kicker">Uncertainty / Forecast Demo</div>
         <h1>${escapeHtml(state.title ?? 'Uncertainty / Forecast Demo')}</h1>
-        <p>Explore what is known, unknown, wrong, or learned in forecast planning fields.</p>
+        <p>Explore hidden truth, forecast, noisy observations, belief, surprise, forecast error, hidden-event suspicion, and sampling-priority preview.</p>
       </section>
       <section class="console-status">
-        <span>${escapeHtml(state.status ?? 'Uncertainty layer')}</span>
+        <span>${escapeHtml(state.status ?? 'Expected-State Uncertainty layer')}</span>
         <strong>${escapeHtml(state.paused ? 'Paused' : 'Animating')}</strong>
-        <small>${escapeHtml(`${state.forecastModelLabel ?? forecastModelLabel(state.forecastModel)} | ${state.updateModelLabel ?? updateModelLabel(state.updateModel)} | Observations ${state.observationCount ?? 0}`)}</small>
+        <small>${escapeHtml(`${state.scenarioLabel ?? forecastModelLabel(state.scenarioId)} | ${state.updateModelLabel ?? updateModelLabel(state.updateModel)} | Observations ${state.observationCount ?? 0}`)}</small>
       </section>
       <section class="console-section">
-        <h2>Displayed Layer</h2>
+        <h2>Scenario</h2>
         <label class="compact-field">
-          View
-          <select id="uncertainty-demo-view">
-            ${UNCERTAINTY_DEMO_VIEW_MODES.map((view) => `<option value="${escapeAttr(view)}" ${state.viewMode === view ? 'selected' : ''}>${escapeHtml(uncertaintyViewLabel(view))}</option>`).join('')}
-          </select>
-        </label>
-        <div class="hud-muted">Truth is shown here for education only. Fair solver packets hide truth unless oracle mode is explicit.</div>
-      </section>
-      <section class="console-section">
-        <h2>Uncertainty Pattern</h2>
-        <label class="compact-field">
-          Spatial Pattern
-          <select id="uncertainty-demo-pattern">
-            ${UNCERTAINTY_DEMO_PATTERNS.map((pattern) => `<option value="${escapeAttr(pattern)}" ${state.uncertaintyPattern === pattern ? 'selected' : ''}>${escapeHtml(uncertaintyPatternLabel(pattern))}</option>`).join('')}
+          Scenario
+          <select id="uncertainty-demo-scenario">
+            ${UNCERTAINTY_SCENARIO_IDS.map((scenario) => `<option value="${escapeAttr(scenario)}" ${state.scenarioId === scenario ? 'selected' : ''}>${escapeHtml(forecastModelLabel(scenario))}</option>`).join('')}
           </select>
         </label>
         <label class="compact-field">
           Seed
           <input id="uncertainty-demo-seed" type="text" value="${escapeAttr(state.seed ?? 'anchor-uncertainty-demo')}" />
         </label>
+        <div class="hud-muted">${escapeHtml(state.scenarioNote ?? 'Synthetic educational scenario, not a calibrated ocean forecast.')}</div>
       </section>
       <section class="console-section">
-        <h2>Forecast Model</h2>
+        <h2>View Layer</h2>
         <label class="compact-field">
-          Forecast Model
-          <select id="uncertainty-demo-forecast-model">
-            ${UNCERTAINTY_DEMO_FORECAST_MODELS.map((model) => `<option value="${escapeAttr(model)}" ${state.forecastModel === model ? 'selected' : ''}>${escapeHtml(forecastModelLabel(model))}</option>`).join('')}
+          View
+          <select id="uncertainty-demo-view">
+            ${UNCERTAINTY_DEMO_VIEW_MODES.map((view) => `<option value="${escapeAttr(view)}" ${state.viewMode === view ? 'selected' : ''}>${escapeHtml(uncertaintyViewLabel(view))}</option>`).join('')}
           </select>
         </label>
+        <label class="compact-field checkbox-field">
+          <input id="uncertainty-demo-reveal-truth" type="checkbox" ${state.revealTruth ? 'checked' : ''} />
+          Reveal Truth
+        </label>
+        <div class="hud-muted">${escapeHtml(state.layerCaption ?? 'Layer caption unavailable.')}</div>
       </section>
       <section class="console-section">
-        <h2>Uncertainty Behavior</h2>
+        <h2>Observations</h2>
         <label class="compact-field">
-          Behavior
-          <select id="uncertainty-demo-behavior">
-            ${UNCERTAINTY_DEMO_BEHAVIORS.map((behavior) => `<option value="${escapeAttr(behavior)}" ${state.uncertaintyBehavior === behavior ? 'selected' : ''}>${escapeHtml(uncertaintyBehaviorLabel(behavior))}</option>`).join('')}
+          Sensor Noise
+          <input id="uncertainty-demo-sensor-noise" type="number" min="0" max="0.6" step="0.01" value="${escapeAttr(state.sensorNoise ?? 0.08)}" />
+        </label>
+        <label class="compact-field">
+          Sample Count
+          <input id="uncertainty-demo-sample-count" type="number" min="1" max="32" step="1" value="${escapeAttr(state.sampleCount ?? 8)}" />
+        </label>
+        <label class="compact-field">
+          Observation Path
+          <select id="uncertainty-demo-observation-path">
+            ${UNCERTAINTY_DEMO_OBSERVATION_PATHS.map((path) => `<option value="${escapeAttr(path)}" ${state.observationPath === path ? 'selected' : ''}>${escapeHtml(observationPathLabel(path))}</option>`).join('')}
           </select>
         </label>
+        <button data-action="uncertainty-add-samples" class="console-button">Add Samples</button>
+        <button data-action="uncertainty-reset-observations" class="console-button secondary">Reset Observations</button>
+        <div class="hud-muted">Samples are noisy observations z_i = T(x_i,y_i,t_i) + epsilon_i. Clicking the map also adds one sample.</div>
       </section>
       <section class="console-section">
-        <h2>Update Model</h2>
+        <h2>Belief Update</h2>
         <label class="compact-field">
           Update Model
           <select id="uncertainty-demo-update-model">
             ${UNCERTAINTY_DEMO_UPDATE_MODELS.map((model) => `<option value="${escapeAttr(model)}" ${state.updateModel === model ? 'selected' : ''}>${escapeHtml(updateModelLabel(model))}</option>`).join('')}
           </select>
         </label>
-        <button data-action="uncertainty-apply-sample" class="console-button">Apply Sample Update</button>
-        <button data-action="uncertainty-surface-update" class="console-button secondary">Surface Update</button>
-        <button data-action="uncertainty-reset-observations" class="console-button secondary">Reset Observations</button>
-        <div class="hud-muted">Clicking the map also simulates a sample observation at that cell.</div>
+        <label class="compact-field">
+          Length Scale
+          <input id="uncertainty-demo-length-scale" type="number" min="0.5" max="8" step="0.1" value="${escapeAttr(state.lengthScale ?? 2.6)}" />
+        </label>
+        <label class="compact-field">
+          Staleness Rate
+          <input id="uncertainty-demo-staleness-rate" type="number" min="0" max="0.08" step="0.002" value="${escapeAttr(state.stalenessRate ?? 0.012)}" />
+        </label>
+        <button data-action="uncertainty-update-belief" class="console-button">Update Belief</button>
+        <div class="hud-muted">Kernel smoother / Bayesian-lite educational update, not a production GP, GMRF, Kalman, EnKF, or calibrated data-assimilation system.</div>
+      </section>
+      <section class="console-status">
+        <span>Diagnosis</span>
+        <strong>${escapeHtml(state.diagnostics?.primaryDiagnosis ?? 'insufficientEvidence')}</strong>
+        <small>${escapeHtml(`forecast error ${formatDemoStat(state.diagnostics?.forecastErrorScore)} | hidden-event ${formatDemoStat(state.diagnostics?.hiddenEventConfidence)} | false-alarm ${formatDemoStat(state.diagnostics?.noiseFalseAlarmRisk)}`)}</small>
       </section>
       <section class="console-section">
         <h2>Playback</h2>
@@ -680,37 +709,322 @@ export class MissionConsole {
       <section class="console-status">
         <span>Layer Stats</span>
         <strong>Max ${escapeHtml(formatDemoStat(state.stats?.max))} | Mean ${escapeHtml(formatDemoStat(state.stats?.mean))}</strong>
-        <small>${escapeHtml(state.viewModeLabel ?? uncertaintyViewLabel(state.viewMode))} | Total ${escapeHtml(formatDemoStat(state.stats?.totalValue))}</small>
+        <small>${escapeHtml(state.viewModeLabel ?? uncertaintyViewLabel(state.viewMode))} | Sampling priority is not event intensity.</small>
       </section>
       <section class="console-section">
         <h2>Data Export</h2>
         ${demoExportControlsHtml(state)}
         <button data-action="export-demo-json" class="console-button">Export Demo JSON</button>
-        <div class="hud-muted">Exports forecast, truth, uncertainty, information-gain, error, update, and displayed grids across the selected time range.</div>
+        <div class="hud-muted">Exports uncertaintyModel, observationModel, beliefState, diagnostics, fields, observations, and legacy aliases.</div>
       </section>
       <section class="console-footer">
         <button data-action="menu" class="console-button secondary">Main Menu</button>
       </section>
     `;
     this.app.applyConsoleAccordions?.('uncertaintyForecastDemo');
+    this.root.querySelector('#uncertainty-demo-scenario')?.addEventListener('change', (event) => handlers.scenarioId?.(event.target.value));
     this.root.querySelector('#uncertainty-demo-view')?.addEventListener('change', (event) => handlers.viewMode?.(event.target.value));
-    this.root.querySelector('#uncertainty-demo-pattern')?.addEventListener('change', (event) => handlers.uncertaintyPattern?.(event.target.value));
     this.root.querySelector('#uncertainty-demo-seed')?.addEventListener('change', (event) => handlers.seed?.(event.target.value));
-    this.root.querySelector('#uncertainty-demo-forecast-model')?.addEventListener('change', (event) => handlers.forecastModel?.(event.target.value));
-    this.root.querySelector('#uncertainty-demo-behavior')?.addEventListener('change', (event) => handlers.uncertaintyBehavior?.(event.target.value));
     this.root.querySelector('#uncertainty-demo-update-model')?.addEventListener('change', (event) => handlers.updateModel?.(event.target.value));
+    this.root.querySelector('#uncertainty-demo-sensor-noise')?.addEventListener('change', (event) => handlers.sensorNoise?.(event.target.value));
+    this.root.querySelector('#uncertainty-demo-sample-count')?.addEventListener('change', (event) => handlers.sampleCount?.(event.target.value));
+    this.root.querySelector('#uncertainty-demo-observation-path')?.addEventListener('change', (event) => handlers.observationPath?.(event.target.value));
+    this.root.querySelector('#uncertainty-demo-length-scale')?.addEventListener('change', (event) => handlers.lengthScale?.(event.target.value));
+    this.root.querySelector('#uncertainty-demo-staleness-rate')?.addEventListener('change', (event) => handlers.stalenessRate?.(event.target.value));
+    this.root.querySelector('#uncertainty-demo-reveal-truth')?.addEventListener('change', (event) => handlers.revealTruth?.(event.target.checked));
     this.root.querySelector('#uncertainty-demo-playback-speed')?.addEventListener('change', (event) => handlers.playbackSpeedScale?.(event.target.value));
     this.bindDemoExportControls(handlers);
     this.bind({
-      'uncertainty-apply-sample': handlers.applySampleUpdate,
-      'uncertainty-surface-update': handlers.surfaceUpdate,
+      'uncertainty-add-samples': handlers.addSamples,
+      'uncertainty-update-belief': handlers.updateBelief,
       'uncertainty-reset-observations': handlers.resetObservations,
       'export-demo-json': handlers.exportDemoJson,
       menu: handlers.menu
     });
   }
-
-  renderLeaderboardControls(state = {}, handlers = {}) {
+  renderSamplingPriorityDemoControls(state = {}, handlers = {}) {
+    if (!this.root) return;
+    const weights = state.weights ?? {};
+    const topCandidates = (state.candidateSamplePoints ?? []).slice(0, 3);
+    this.root.innerHTML = `
+      <section class="console-header">
+        <div class="console-kicker">Sampling Priority / Acquisition Demo</div>
+        <h1>${escapeHtml(state.title ?? 'Sampling Priority Demo')}</h1>
+        <p>Explore global sampling usefulness A_global(x,y,t) before route planning.</p>
+      </section>
+      <section class="console-status">
+        <span>${escapeHtml(state.status ?? 'Sampling Priority layer')}</span>
+        <strong>${escapeHtml(state.methodLabel ?? samplingPriorityMethodLabel(state.methodId))}</strong>
+        <small>Event intensity is not sampling priority. This is not route planning or flow-coupled action value.</small>
+      </section>
+      <section class="console-section">
+        <h2>Scenario</h2>
+        <label class="compact-field">
+          Scenario
+          <select id="sampling-priority-scenario">
+            ${SAMPLING_PRIORITY_SCENARIO_IDS.map((scenario) => `<option value="${escapeAttr(scenario)}" ${state.scenarioId === scenario ? 'selected' : ''}>${escapeHtml(samplingPriorityScenarioLabel(scenario))}</option>`).join('')}
+          </select>
+        </label>
+        <label class="compact-field">
+          Seed
+          <input id="sampling-priority-seed" type="text" value="${escapeAttr(state.seed ?? 'anchor-sampling-priority-demo')}" />
+        </label>
+        <label class="compact-field">
+          Mission Objective Preset
+          <select id="sampling-priority-objective-preset">
+            ${['balancedScience', 'mappingFronts', 'validateForecast', 'hiddenEventFollowup', 'revisitMonitoring'].map((preset) => `<option value="${escapeAttr(preset)}" ${state.missionObjectivePreset === preset ? 'selected' : ''}>${escapeHtml(samplingPriorityObjectivePresetLabel(preset))}</option>`).join('')}
+          </select>
+        </label>
+        <div class="hud-muted">${escapeHtml(state.scenarioNote ?? 'Synthetic educational scenario, not a calibrated ocean forecast.')}</div>
+      </section>
+      <section class="console-section">
+        <h2>Sampling Selection</h2>
+        <label class="compact-field">
+          Sampling Method
+          <select id="sampling-priority-method">
+            ${SAMPLING_PRIORITY_METHOD_IDS.map((method) => `<option value="${escapeAttr(method)}" ${state.methodId === method ? 'selected' : ''}>${escapeHtml(samplingPriorityMethodLabel(method))}</option>`).join('')}
+          </select>
+        </label>
+        <label class="compact-field">
+          Candidate Mode
+          <select id="sampling-priority-candidate-mode">
+            ${SAMPLING_PRIORITY_CANDIDATE_MODES.map((mode) => `<option value="${escapeAttr(mode)}" ${state.candidateMode === mode ? 'selected' : ''}>${escapeHtml(samplingPriorityCandidateModeLabel(mode))}</option>`).join('')}
+          </select>
+        </label>
+        <label class="compact-field">
+          Candidate Count
+          <input id="sampling-priority-candidate-count" type="number" min="1" max="16" step="1" value="${escapeAttr(state.candidateCount ?? 6)}" />
+        </label>
+        <label class="compact-field">
+          Minimum Distance
+          <input id="sampling-priority-min-distance" type="number" min="1" max="8" step="0.5" value="${escapeAttr(state.minDistance ?? 3)}" />
+        </label>
+        <div class="hud-muted">Candidate sample points are derived from the priority field. They are not assigned to vehicles and do not include travel cost or current risk.</div>
+      </section>
+      <section class="console-section">
+        <h2>View Layer</h2>
+        <label class="compact-field">
+          View Layer
+          <select id="sampling-priority-view">
+            ${samplingPriorityViewLayerOptions().map((layer) => `<option value="${escapeAttr(layer.id)}" ${state.viewLayer === layer.id ? 'selected' : ''}>${escapeHtml(layer.label)}</option>`).join('')}
+          </select>
+        </label>
+        <div class="hud-muted">${escapeHtml(state.viewLayerCaption ?? 'High value means more of the selected sampling-priority layer.')}</div>
+      </section>
+      <section class="console-section">
+        <h2>Advanced Weights</h2>
+        <details>
+          <summary>Component weights and method parameters</summary>
+          ${samplingPriorityWeightInputHtml('value', 'Value', weights.value)}
+          ${samplingPriorityWeightInputHtml('uncertainty', 'Uncertainty', weights.uncertainty)}
+          ${samplingPriorityWeightInputHtml('boundary', 'Boundary', weights.boundary)}
+          ${samplingPriorityWeightInputHtml('forecast', 'Forecast validation', weights.forecast)}
+          ${samplingPriorityWeightInputHtml('unknown', 'Hidden event', weights.unknown)}
+          ${samplingPriorityWeightInputHtml('staleness', 'Staleness', weights.staleness)}
+          ${samplingPriorityWeightInputHtml('hazard', 'Hazard penalty', weights.hazard)}
+          ${samplingPriorityWeightInputHtml('redundancy', 'Redundancy penalty', weights.redundancy)}
+          <label class="compact-field">
+            Threshold
+            <input id="sampling-priority-threshold" type="number" min="0.05" max="0.95" step="0.05" value="${escapeAttr(state.threshold ?? 0.5)}" />
+          </label>
+          <label class="compact-field">
+            UCB Beta
+            <input id="sampling-priority-beta" type="number" min="0" max="3" step="0.05" value="${escapeAttr(state.beta ?? 0.65)}" />
+          </label>
+          <div class="hud-muted">Travel cost, current risk, route feasibility, and vehicle energy are disabled here. Later: Flow-Coupled Action Value.</div>
+        </details>
+      </section>
+      <section class="console-status">
+        <span>Candidate Rationale</span>
+        <strong>${escapeHtml(topCandidates.map((candidate) => `#${candidate.id?.replace('candidate-', '') ?? '?'} ${candidate.reason}`).join(' | ') || 'No candidates')}</strong>
+        <small>Top candidates are scientifically useful sample locations, not glider commands.</small>
+      </section>
+      <section class="console-status">
+        <span>Layer Stats</span>
+        <strong>Max ${escapeHtml(formatDemoStat(state.stats?.max))} | Mean ${escapeHtml(formatDemoStat(state.stats?.mean))}</strong>
+        <small>Validation: ${escapeHtml(state.validation?.status ?? 'n/a')} | Educational acquisition model, not a production GP/GMRF planner.</small>
+      </section>
+      <section class="console-section">
+        <h2>Data Export</h2>
+        ${demoExportControlsHtml(state)}
+        <button data-action="export-demo-json" class="console-button">Export Demo JSON</button>
+        <button data-action="sampling-priority-reset" class="console-button secondary">Reset</button>
+        <div class="hud-muted">Exports samplingPriorityModel, fields, candidateSamplePoints, and priorityDiagnostics.</div>
+      </section>
+      <section class="console-footer">
+        <button data-action="menu" class="console-button secondary">Main Menu</button>
+      </section>
+    `;
+    this.app.applyConsoleAccordions?.('samplingPriorityDemo');
+    this.root.querySelector('#sampling-priority-scenario')?.addEventListener('change', (event) => handlers.scenarioId?.(event.target.value));
+    this.root.querySelector('#sampling-priority-method')?.addEventListener('change', (event) => handlers.methodId?.(event.target.value));
+    this.root.querySelector('#sampling-priority-view')?.addEventListener('change', (event) => handlers.viewLayer?.(event.target.value));
+    this.root.querySelector('#sampling-priority-candidate-mode')?.addEventListener('change', (event) => handlers.candidateMode?.(event.target.value));
+    this.root.querySelector('#sampling-priority-candidate-count')?.addEventListener('change', (event) => handlers.candidateCount?.(event.target.value));
+    this.root.querySelector('#sampling-priority-min-distance')?.addEventListener('change', (event) => handlers.minDistance?.(event.target.value));
+    this.root.querySelector('#sampling-priority-threshold')?.addEventListener('change', (event) => handlers.threshold?.(event.target.value));
+    this.root.querySelector('#sampling-priority-beta')?.addEventListener('change', (event) => handlers.beta?.(event.target.value));
+    this.root.querySelector('#sampling-priority-seed')?.addEventListener('change', (event) => handlers.seed?.(event.target.value));
+    this.root.querySelector('#sampling-priority-objective-preset')?.addEventListener('change', (event) => handlers.objectivePreset?.(event.target.value));
+    this.root.querySelectorAll('[data-sampling-priority-weight]').forEach((input) => {
+      input.addEventListener('change', (event) => handlers.weight?.(event.currentTarget.dataset.samplingPriorityWeight, event.target.value));
+    });
+    this.bindDemoExportControls(handlers);
+    this.bind({
+      'sampling-priority-reset': handlers.reset,
+      'export-demo-json': handlers.exportDemoJson,
+      menu: handlers.menu
+    });
+  }
+  renderFlowCoupledSamplingDemoControls(state = {}, handlers = {}) {
+    if (!this.root) return;
+    const weights = state.weights ?? {};
+    const topCandidates = (state.candidateTargets ?? []).slice(0, 3);
+    this.root.innerHTML = `
+      <section class="console-header">
+        <div class="console-kicker">Flow-Coupled Sampling / Glider Action Value</div>
+        <h1>${escapeHtml(state.title ?? 'Flow-Coupled Sampling Demo')}</h1>
+        <p>Evaluate glider-specific action value Q_glider(g,x,y,t) after currents, reachability, energy, timing, hazards, and redundancy.</p>
+      </section>
+      <section class="console-status">
+        <span>${escapeHtml(state.status ?? 'Glider Action Value layer')}</span>
+        <strong>${escapeHtml(state.methodLabel ?? gliderActionMethodLabel(state.methodId))}</strong>
+        <small>Science priority is not action value. Educational flow-coupled action-value model, not full route planning.</small>
+      </section>
+      <section class="console-section">
+        <h2>Scenario</h2>
+        <label class="compact-field">
+          Scenario
+          <select id="flow-coupled-sampling-scenario">
+            ${FLOW_COUPLED_SAMPLING_SCENARIO_IDS.map((scenario) => `<option value="${escapeAttr(scenario)}" ${state.scenarioId === scenario ? 'selected' : ''}>${escapeHtml(flowCoupledSamplingScenarioLabel(scenario))}</option>`).join('')}
+          </select>
+        </label>
+        <label class="compact-field">
+          Seed
+          <input id="flow-coupled-sampling-seed" type="text" value="${escapeAttr(state.seed ?? 'anchor-flow-coupled-sampling-demo')}" />
+        </label>
+        <div class="hud-muted">${escapeHtml(state.scenarioNote ?? 'Synthetic educational scenario, not a calibrated glider mission or ocean forecast.')}</div>
+      </section>
+      <section class="console-section">
+        <h2>Glider State</h2>
+        <label class="compact-field">
+          Selected Glider
+          <select id="flow-coupled-sampling-glider">
+            ${(state.gliders ?? []).map((glider) => `<option value="${escapeAttr(glider.id)}" ${state.selectedGliderId === glider.id ? 'selected' : ''}>${escapeHtml(glider.label ?? glider.id)}</option>`).join('')}
+          </select>
+        </label>
+        <label class="compact-field">
+          Glider Speed
+          <input id="flow-coupled-sampling-speed" type="number" min="0.2" max="5" step="0.05" value="${escapeAttr(formatDemoStat(state.gliderSpeed ?? 2))}" />
+        </label>
+        <label class="compact-field">
+          Time Budget
+          <input id="flow-coupled-sampling-time-budget" type="number" min="1" max="30" step="0.5" value="${escapeAttr(formatDemoStat(state.timeBudget ?? 12))}" />
+        </label>
+        <label class="compact-field">
+          Energy Budget
+          <input id="flow-coupled-sampling-energy-budget" type="number" min="0.05" max="1" step="0.01" value="${escapeAttr(formatDemoStat(state.energyBudget ?? 0.82))}" />
+        </label>
+      </section>
+      <section class="console-section">
+        <h2>Action Selection</h2>
+        <label class="compact-field">
+          Action Method
+          <select id="flow-coupled-sampling-method">
+            ${GLIDER_ACTION_METHOD_IDS.map((method) => `<option value="${escapeAttr(method)}" ${state.methodId === method ? 'selected' : ''}>${escapeHtml(gliderActionMethodLabel(method))}</option>`).join('')}
+          </select>
+        </label>
+        <label class="compact-field">
+          Candidate Mode
+          <select id="flow-coupled-sampling-candidate-mode">
+            ${GLIDER_ACTION_CANDIDATE_MODES.map((mode) => `<option value="${escapeAttr(mode)}" ${state.candidateMode === mode ? 'selected' : ''}>${escapeHtml(gliderActionCandidateModeLabel(mode))}</option>`).join('')}
+          </select>
+        </label>
+        <label class="compact-field">
+          Candidate Count
+          <input id="flow-coupled-sampling-candidate-count" type="number" min="1" max="16" step="1" value="${escapeAttr(state.candidateCount ?? 6)}" />
+        </label>
+        <label class="compact-field">
+          Diversity Radius
+          <input id="flow-coupled-sampling-min-distance" type="number" min="1" max="8" step="0.5" value="${escapeAttr(state.minDistance ?? 3)}" />
+        </label>
+        <div class="hud-muted">Candidate targets are one-leg direct actions. They are not route plans or waypoint optimizations.</div>
+      </section>
+      <section class="console-section">
+        <h2>View Layer</h2>
+        <label class="compact-field">
+          View Layer
+          <select id="flow-coupled-sampling-view">
+            ${flowCoupledSamplingViewLayerOptions().map((layer) => `<option value="${escapeAttr(layer.id)}" ${state.viewLayer === layer.id ? 'selected' : ''}>${escapeHtml(layer.label)}</option>`).join('')}
+          </select>
+        </label>
+        <label class="compact-field checkbox-field">
+          <input id="flow-coupled-sampling-flow-arrows" type="checkbox" ${state.showFlowArrows === false ? '' : 'checked'} />
+          Show flow arrows
+        </label>
+        <div class="hud-muted">${escapeHtml(state.viewLayerCaption ?? 'High value means more of the selected action-value layer.')}</div>
+      </section>
+      <section class="console-section">
+        <h2>Advanced Weights</h2>
+        <details>
+          <summary>Formula weights</summary>
+          ${flowCoupledSamplingWeightInputHtml('priority', 'A_global priority', weights.priority)}
+          ${flowCoupledSamplingWeightInputHtml('future', 'Future priority', weights.future)}
+          ${flowCoupledSamplingWeightInputHtml('assist', 'Current assist', weights.assist)}
+          ${flowCoupledSamplingWeightInputHtml('distance', 'Travel distance', weights.distance)}
+          ${flowCoupledSamplingWeightInputHtml('time', 'Arrival time', weights.time)}
+          ${flowCoupledSamplingWeightInputHtml('energy', 'Energy cost', weights.energy)}
+          ${flowCoupledSamplingWeightInputHtml('current', 'Current opposition', weights.current)}
+          ${flowCoupledSamplingWeightInputHtml('cross', 'Cross-current risk', weights.cross)}
+          ${flowCoupledSamplingWeightInputHtml('hazard', 'Hazard penalty', weights.hazard)}
+          ${flowCoupledSamplingWeightInputHtml('window', 'Missed window', weights.window)}
+          ${flowCoupledSamplingWeightInputHtml('redundancy', 'Redundancy penalty', weights.redundancy)}
+        </details>
+      </section>
+      <section class="console-status">
+        <span>Candidate Rationale</span>
+        <strong>${escapeHtml(topCandidates.map((candidate) => `#${candidate.id?.replace('candidate-', '') ?? '?'} ${candidate.reason}`).join(' | ') || 'No candidates')}</strong>
+        <small>Top targets are ranked for ${escapeHtml(state.selectedGliderId ?? 'the selected glider')}.</small>
+      </section>
+      <section class="console-status">
+        <span>Layer Stats</span>
+        <strong>Max ${escapeHtml(formatDemoStat(state.stats?.max))} | Mean ${escapeHtml(formatDemoStat(state.stats?.mean))}</strong>
+        <small>Validation: ${escapeHtml(state.validation?.status ?? 'n/a')} | Not mission scoring or a production vehicle controller.</small>
+      </section>
+      <section class="console-section">
+        <h2>Data Export</h2>
+        ${demoExportControlsHtml(state)}
+        <button data-action="export-demo-json" class="console-button">Export Demo JSON</button>
+        <button data-action="flow-coupled-sampling-reset" class="console-button secondary">Reset</button>
+        <div class="hud-muted">Exports flowCoupledSamplingModel, gliderActionContext, fields, candidateTargets, and actionValueDiagnostics.</div>
+      </section>
+      <section class="console-footer">
+        <button data-action="menu" class="console-button secondary">Main Menu</button>
+      </section>
+    `;
+    this.app.applyConsoleAccordions?.('flowCoupledSamplingDemo');
+    this.root.querySelector('#flow-coupled-sampling-scenario')?.addEventListener('change', (event) => handlers.scenarioId?.(event.target.value));
+    this.root.querySelector('#flow-coupled-sampling-method')?.addEventListener('change', (event) => handlers.methodId?.(event.target.value));
+    this.root.querySelector('#flow-coupled-sampling-view')?.addEventListener('change', (event) => handlers.viewLayer?.(event.target.value));
+    this.root.querySelector('#flow-coupled-sampling-candidate-mode')?.addEventListener('change', (event) => handlers.candidateMode?.(event.target.value));
+    this.root.querySelector('#flow-coupled-sampling-candidate-count')?.addEventListener('change', (event) => handlers.candidateCount?.(event.target.value));
+    this.root.querySelector('#flow-coupled-sampling-min-distance')?.addEventListener('change', (event) => handlers.minDistance?.(event.target.value));
+    this.root.querySelector('#flow-coupled-sampling-glider')?.addEventListener('change', (event) => handlers.selectedGliderId?.(event.target.value));
+    this.root.querySelector('#flow-coupled-sampling-speed')?.addEventListener('change', (event) => handlers.gliderSpeed?.(event.target.value));
+    this.root.querySelector('#flow-coupled-sampling-time-budget')?.addEventListener('change', (event) => handlers.timeBudget?.(event.target.value));
+    this.root.querySelector('#flow-coupled-sampling-energy-budget')?.addEventListener('change', (event) => handlers.energyBudget?.(event.target.value));
+    this.root.querySelector('#flow-coupled-sampling-seed')?.addEventListener('change', (event) => handlers.seed?.(event.target.value));
+    this.root.querySelector('#flow-coupled-sampling-flow-arrows')?.addEventListener('change', (event) => handlers.showFlowArrows?.(event.target.checked));
+    this.root.querySelectorAll('[data-flow-coupled-sampling-weight]').forEach((input) => {
+      input.addEventListener('change', (event) => handlers.weight?.(event.currentTarget.dataset.flowCoupledSamplingWeight, event.target.value));
+    });
+    this.bindDemoExportControls(handlers);
+    this.bind({
+      'flow-coupled-sampling-reset': handlers.reset,
+      'export-demo-json': handlers.exportDemoJson,
+      menu: handlers.menu
+    });
+  }  renderLeaderboardControls(state = {}, handlers = {}) {
     if (!this.root) return;
     const filters = [
       ['challenge', 'Challenge'],
@@ -1141,7 +1455,72 @@ function formatDiagnosticNumber(value) {
   return Math.abs(number) >= 10 ? number.toFixed(1) : number.toFixed(4);
 }
 
-function formatPercent(value) {
+function samplingPriorityViewLayerOptions() {
+  return [
+    ['eventIntensity', 'Event Intensity'],
+    ['trueRoi', 'True ROI / Oracle Value'],
+    ['beliefRoi', 'Forecast / Belief ROI'],
+    ['expectedUncertainty', 'Expected-State Uncertainty'],
+    ['boundaryStrength', 'Boundary / Gradient Value'],
+    ['forecastValidation', 'Forecast-Validation Value'],
+    ['hiddenEventProbability', 'Hidden-Event Probability'],
+    ['staleness', 'Staleness / Revisit Value'],
+    ['hazard', 'Hazard / Constraint Penalty'],
+    ['recentSamplePenalty', 'Redundancy / Recent-Sample Penalty'],
+    ['samplingPriority', 'Sampling Priority'],
+    ['candidateSamplePoints', 'Candidate Sample Points'],
+    ['priorityEventDifference', 'Priority vs Event Difference']
+  ].map(([id, label]) => ({ id, label }));
+}
+
+function samplingPriorityObjectivePresetLabel(value) {
+  return {
+    balancedScience: 'Balanced Science',
+    mappingFronts: 'Map Fronts / Boundaries',
+    validateForecast: 'Validate Forecast',
+    hiddenEventFollowup: 'Hidden-Event Follow-up',
+    revisitMonitoring: 'Revisit Monitoring'
+  }[value] ?? 'Balanced Science';
+}
+
+function samplingPriorityWeightInputHtml(key, label, value) {
+  const number = Number.isFinite(Number(value)) ? Number(value) : 0;
+  return `
+    <label class="compact-field">
+      ${escapeHtml(label)}
+      <input data-sampling-priority-weight="${escapeAttr(key)}" type="number" min="0" max="2" step="0.05" value="${escapeAttr(number.toFixed(2))}" />
+    </label>
+  `;
+}
+function flowCoupledSamplingViewLayerOptions() {
+  return [
+    ['globalSciencePriority', 'Global Science Priority A_global'],
+    ['futurePriority', 'Future Priority'],
+    ['flowField', 'Flow Field F(x,y,t)'],
+    ['currentAssist', 'Current Assist'],
+    ['currentOpposition', 'Current Opposition'],
+    ['crossCurrentRisk', 'Cross-Current Risk'],
+    ['travelDistance', 'Travel Distance'],
+    ['arrivalTime', 'Arrival Time'],
+    ['energyCost', 'Energy Cost'],
+    ['reachableMask', 'Reachable Mask'],
+    ['hazardPenalty', 'Hazard / Constraint Penalty'],
+    ['redundancyPenalty', 'Redundancy Penalty'],
+    ['gliderActionValue', 'Glider Action Value Q_glider'],
+    ['candidateTargets', 'Candidate Targets'],
+    ['priorityActionDifference', 'Priority vs Action Difference']
+  ].map(([id, label]) => ({ id, label }));
+}
+
+function flowCoupledSamplingWeightInputHtml(key, label, value) {
+  const number = Number.isFinite(Number(value)) ? Number(value) : 0;
+  return `
+    <label class="compact-field">
+      ${escapeHtml(label)}
+      <input data-flow-coupled-sampling-weight="${escapeAttr(key)}" type="number" min="0" max="2" step="0.05" value="${escapeAttr(number.toFixed(2))}" />
+    </label>
+  `;
+}function formatPercent(value) {
   const number = Number(value);
   return Number.isFinite(number) ? `${Math.round(number * 100)}%` : 'N/A';
 }

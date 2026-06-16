@@ -6,7 +6,7 @@ The Flow Fields Demo isolates deterministic synthetic vector-field behavior from
 
 This demo validates current behavior as a teaching vector-field playground. It is not a scored mission, a route planner, a waypoint execution mode, a leaderboard mode, a validated ocean forecast, HYCOM/ROMS/Delft3D output, CFD, or a Navier-Stokes solver.
 
-It sits in the Main Menu `Demos` section alongside the Sample / ROI, Coupled Fields, and Uncertainty / Forecast demos. Demos validate core mechanics; tutorials teach players how to play missions.
+It sits in the Main Menu `Demos` section alongside Process Lab, Coupled Fields, Uncertainty / Forecast, Sampling Priority, and Flow-Coupled Sampling demos. Demos validate core mechanics; tutorials teach players how to play missions.
 
 ## Concept Boundary
 
@@ -18,7 +18,7 @@ F(x,y,t) = <u,v>
 
 `F` is the local current vector at position `x,y` and time `t`. It answers how water moves, how the environment pushes the glider, and how currents affect travel time, energy, drift, shoreline risk, and route validation.
 
-This demo does not teach process support, oracle sampling objective `S*(x,y,t)`, or uncertainty `U(x,y,t)` as primary controls. Use Process Lab for CA/local-rule process examples, Coupled Fields Demo for deterministic known-process + known-flow + constraint + oracle-objective composition, and Uncertainty / Forecast Demo for forecast, truth, information gain, and confidence.
+This demo does not teach process support, oracle sampling objective `S*(x,y,t)`, uncertainty `U(x,y,t)`, global acquisition priority `A_global(x,y,t)`, or glider action value `Q_glider(g,x,y,t)` as primary controls. Use Process Lab for CA/local-rule process examples, Coupled Fields Demo for deterministic known-process + known-flow + constraint + oracle-objective composition, Uncertainty / Forecast Demo for hidden truth, forecast/expected state, observations, belief, surprise, forecast error, hidden-event suspicion, and sampling-priority preview, Sampling Priority Demo for global `A_global`, and Flow-Coupled Sampling Demo for direct-leg current-aware `Q_glider` target evaluation.
 
 ## 2. Why the Demo Exists
 

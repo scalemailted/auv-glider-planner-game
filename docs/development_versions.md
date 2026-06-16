@@ -1,4 +1,4 @@
-﻿# Development Versions and Project State
+# Development Versions and Project State
 
 ## Purpose
 
@@ -25,6 +25,28 @@ Both modes use the same terrain, current fields, hazards, glider physics, scorin
 Challenge Mode also persists `missionMode`. Mission modes are player-facing objective presets such as Survey Sweep, Signal Hunt, Plume Intercept, Danger Run, and Long Glide. They map to shared technical defaults for sample-field behavior, current-field behavior, sampling rules, scoring weights, route-grade weights, and replay/export metadata. Simulation Lab remains the detailed configuration path.
 
 ## Version / Milestone Log
+
+### S2 - Flow-Coupled Sampling / Glider Action Value Sandbox
+
+- Added the Flow-Coupled Sampling Demo for glider-specific direct-leg action value `Q_glider(g,x,y,t)`.
+- Added pure flow-coupled sampling modules for scalar/vector field math wrappers, seeded scenarios, direct-leg action-value methods, candidate target generation, and validation fixtures.
+- Added deterministic scenarios for current-assisted target, current-opposed target, cross-current risk, downstream intercept, hazard gap, stale near vs valuable far, two-glider redundancy preview, and mixed flow mission.
+- Added action methods for balanced action value, fastest reachable, energy-aware, current-assisted, risk-avoidant, intercept-future-priority, redundancy-aware, and science-first selection.
+- Added export metadata (`flowCoupledSamplingModel`, `gliderActionContext`, `candidateTargets`, `actionValueDiagnostics`), debug object, smoke scripts, and E2E coverage.
+- Preserved the boundary: educational flow-coupled target selection, not full route planning, not optimal path planning, not mission scoring, not calibrated glider dynamics, not calibrated ocean forecasting, and not a production vehicle controller.
+### S1 - Modern Sampling Priority / Acquisition Sandbox
+
+- Added the Sampling Priority Demo for global vehicle-independent acquisition value `A_global(x,y,t)`.
+- Added pure sampling-priority modules for scalar field math, seeded scenarios, acquisition methods, candidate generation, and validation fixtures.
+- Added deterministic scenarios for known hotspot, uncertain front, forecast validation, hidden plume follow-up, bloom boundary, stale monitoring, hazard suppression, and mixed mission.
+- Added candidate sample points with reason labels, export metadata (`samplingPriorityModel`, `candidateSamplePoints`, `priorityDiagnostics`), debug object, smoke scripts, and E2E coverage.
+- Preserved the boundary: educational acquisition model, not route planning, not flow-coupled action value, not production GP/GMRF optimization, not calibrated data assimilation, and not a mission scoring engine.
+### U0/U1 - Stochastic Uncertainty Belief-State Sandbox
+
+- Added a pure uncertainty belief-state contract for hidden truth, forecast/expected state, noisy observations, belief mean, expected-state uncertainty, innovation, surprise, forecast error, unknown-event probability, and sampling-priority preview.
+- Added deterministic educational scenarios for accurate forecast, shifted front, weakened hotspot, hidden plume, hidden bloom layer, noisy false alarm, and stale monitoring field.
+- Added observation, kernel/Bayesian-lite update, forecast-error/hidden-event diagnostics, sampling-priority preview, export metadata, debug object, smoke scripts, and E2E coverage.
+- Preserved the boundary: educational belief-update model, not production GP/GMRF/data assimilation, calibrated ocean forecast, mission planner, route optimizer, or sensor-processing pipeline.
 
 ### FLOW-ScientificAudit - Synthetic Flow Field Diagnostics
 
@@ -62,6 +84,8 @@ Challenge Mode also persists `missionMode`. Mission modes are player-facing obje
 - Added `tools/js/smoke_learning_lab_stochastic_coupled_sampling_space.mjs` for the stochastic coupled sampling-space article contract.
 - Completed the Phase L6 Planner / Mission Evaluation article with waypoint-plan semantics, reward/cost/risk tradeoffs, reachability timing, flow-aware planning, Greedy Planner baseline intuition, coverage/front/revisit strategies, uncertainty-aware sampling, forecast-validation versus hidden-event follow-up, oracle/belief/truth-assisted planner labels, regret, surfacing replanning, multi-agent planning, simulation/debrief evaluation, solver workflow fairness, mission strategy cards, and standalone vanilla widgets for route and score concepts.
 - Added `tools/js/smoke_learning_lab_planner_mission_evaluation.mjs` for the planner mission-evaluation article contract.
+- Completed the L-SamplingActionValue bridge article with event intensity, ROI, belief/uncertainty, `A_global(x,y,t)`, candidate sample points, `Q_glider(g,x,y,t)`, flow assist/opposition, energy, timing, hazards, redundancy, and the boundary before route planning.
+- Added `tools/js/smoke_learning_lab_sampling_action_value.mjs` for the Sampling Priority to Glider Action Value article contract.
 
 ### Sampling Process Lab Refactor
 
@@ -70,7 +94,7 @@ Challenge Mode also persists `missionMode`. Mission modes are player-facing obje
 - Added process-example metadata for Conway, Forest Fire, SIR, Greenberg-Hastings, Sandpile, Wa-Tor, Traffic CA, Wireworld, and the existing observable-process recipes.
 - Renamed visible Random Rule Lab wording to Rule Allocation Sandbox while preserving internal IDs and export compatibility.
 - Renamed the user-facing Sample / ROI Field Demo to Spatiotemporal Sampling Process Lab while preserving legacy export aliases.
-- Reframed Source / Initial Field as the deterministic or seeded process substrate; formal likelihood, belief, forecast error, and information gain remain in the Uncertainty / Forecast Demo.
+- Reframed Source / Initial Field as the deterministic or seeded process substrate; belief, expected-state uncertainty, surprise, forecast error, hidden-event diagnosis, and sampling-priority preview remain in the Uncertainty / Forecast Demo.
 - Added process modes for Reference Signature, Custom Composer, Process Paint, and Random Rule Lab.
 - Added a sampling process rule catalog, minimal Process Paint assignment model, deterministic Random Rule Lab allocator, process status labels, and preferred export layers: `sourceField`, `stateLayer`, `ruleLayer`, `groupLayer`, `valueLayer`, `transitionLayer`, `roiRoleLayer`, and `processMessages`.
 - Canonicalized Process Paint rule families under `sampling-process-rule-families-v1`: `inert`, `propagatingFront`, `excitableWave`, `localBirthDeath`, `diffusiveSpread`, `directedTransport`, `cyclicDominance`, `domainFormation`, `thresholdCascade`, `interactingPopulation`, `freshnessRecovery`, `morphogenesis`, `congestionWave`, and `structuredSignal`. Legacy paint IDs remain aliases, while new layers and exports write canonical IDs.
@@ -169,7 +193,7 @@ Challenge Mode also persists `missionMode`. Mission modes are player-facing obje
 - Added Phase-6.1 ROI Demo UI refactor. The Sample / ROI Field Demo is now reference-signature-primary in normal UI: `Pattern Source / Reference Signature` replaces the preset-first selector, Reference Observable Process Signature is the default source, `Custom Component Recipe` exposes direct primitive editing, and legacy behavior presets are hidden unless the debug/compatibility path is enabled. The right panel defaults to `Recipe / Signature View` instead of an empty Cell Inspector, Value Distribution is a first-class accordion section, the left console includes an Active Source summary and UI version stamp, `globalThis.ANCHOR_ROI_UI_DEBUG` exposes the active UI contract, and demo/scenario exports preserve `patternSource`, reference metadata, component recipe, and legacy preset metadata where applicable.
 - Added Phase-6.2 Reference Signature Taxonomy. The ROI reference selector now uses 14 broad observable-process labels, keeps old IDs as aliases for compatibility, and adds a 90-entry reference model catalog covering CA/grid-process families such as forest-fire/Eden/percolation growth, excitable media, Life-like birth/death rules, epidemic grids, lattice transport analogs, cyclic dominance, Ising/voter/Schelling domain formation, sandpile cascades, predator-prey migration, freshness/recovery, reaction-diffusion morphology, traffic density waves, and structured signal propagation. Signatures now carry CA mechanism metadata, QA expectations, phenotype metrics, genotype-like component setup notes, taxonomy justification, and richer export metadata. `tools/js/audit_roi_reference_coverage.mjs` audits catalog coverage, CA-family coverage, missing fields, duplicate model IDs, signatures without models, and models without valid signatures.
 - Refactored the graph-message layer into a hierarchy: cluster/community likelihood `C_k(t)` defines regional tendency, cell likelihood/readiness `L_i(t)` defines local activation potential, cell activation `A_i(t)` records whether the node is firing/cooling/recovering/consumed, and sample value `S_i(t)` is the realized reward. Exports now include top-level cluster metadata plus per-frame activation and cluster-likelihood layers so external notebooks can distinguish clusters, cells, edges, and realized value.
-- Added a dedicated Uncertainty / Forecast Demo for forecast, truth, uncertainty, information gain, forecast error, and update behavior. See [uncertainty_forecast_demo.md](uncertainty_forecast_demo.md).
+- Added a dedicated Uncertainty / Forecast Demo for hidden truth, forecast/expected state, observations, belief, expected-state uncertainty, surprise, forecast error, unknown-event probability, sampling-priority preview, and educational belief updates. See [uncertainty_forecast_demo.md](uncertainty_forecast_demo.md).
 - Added segment contribution grades and route-quality summaries so manual, Greedy Planner, and imported-solver routes can be explained with the same vocabulary.
 - Added explicit waypoint semantics for `navigation`, `surface`, `samplingTarget`, and `terminalCarryThrough` waypoints, while preserving old plans by defaulting missing kinds to `navigation`.
 - Added semantic timeline events for navigation intent, surface/update windows, sampling targets, and terminal carry-through outcomes while preserving existing `waypointReached` and `missedWaypoint` events.

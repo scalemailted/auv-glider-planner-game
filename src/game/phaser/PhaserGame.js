@@ -13,6 +13,8 @@ import { FlowFieldDemoScene } from './scenes/FlowFieldDemoScene.js';
 import { RoiGeneratorDemoScene } from './scenes/RoiGeneratorDemoScene.js';
 import { CoupledFieldsDemoScene } from './scenes/CoupledFieldsDemoScene.js';
 import { UncertaintyForecastDemoScene } from './scenes/UncertaintyForecastDemoScene.js';
+import { SamplingPriorityDemoScene } from './scenes/SamplingPriorityDemoScene.js';
+import { FlowCoupledSamplingDemoScene } from './scenes/FlowCoupledSamplingDemoScene.js';
 import { LoadLevelByIdScene } from './scenes/LoadLevelByIdScene.js';
 import { LoadLevelJsonScene } from './scenes/LoadLevelJsonScene.js';
 import { PHASER_HEIGHT, PHASER_WIDTH } from './PhaserCoreAdapter.js';
@@ -58,6 +60,8 @@ export class PhaserGameApp {
         RoiGeneratorDemoScene,
         CoupledFieldsDemoScene,
         UncertaintyForecastDemoScene,
+        SamplingPriorityDemoScene,
+        FlowCoupledSamplingDemoScene,
         LoadLevelJsonScene,
         LoadLevelByIdScene
       ],
@@ -243,7 +247,9 @@ function sceneKey(name) {
     datasetExport: 'DatasetExportScene',
     flowDemo: 'FlowFieldDemoScene',
     roiDemo: 'RoiGeneratorDemoScene',
-    uncertaintyForecastDemo: 'UncertaintyForecastDemoScene'
+    uncertaintyForecastDemo: 'UncertaintyForecastDemoScene',
+    samplingPriorityDemo: 'SamplingPriorityDemoScene',
+    flowCoupledSamplingDemo: 'FlowCoupledSamplingDemoScene'
   };
   return aliases[name] ?? name;
 }

@@ -15,6 +15,8 @@ test.afterAll(async () => {
 });
 
 test('learning labs static page is linked from the main menu', async ({ page }) => {
+  const pageErrors = [];
+  page.on('pageerror', (error) => pageErrors.push(error.message));
   await page.goto('/');
 
   await expect(page.locator('#mission-console')).toContainText('Learning Labs');
@@ -59,6 +61,11 @@ test('learning labs static page is linked from the main menu', async ({ page }) 
   await expect(stochasticCoupledLabLink).toHaveText(/Stochastic Coupled Sampling Space/);
   await expect(stochasticCoupledLabLink).toHaveAttribute('target', '_blank');
   await expect(stochasticCoupledLabLink).toHaveAttribute('rel', /noopener/);
+  const samplingActionLabLink = page.locator('#mission-console a[href="labs/sampling-priority-to-glider-action-value.html"]');
+  await expect(samplingActionLabLink).toBeVisible();
+  await expect(samplingActionLabLink).toHaveText(/Sampling Priority to Glider Action Value/);
+  await expect(samplingActionLabLink).toHaveAttribute('target', '_blank');
+  await expect(samplingActionLabLink).toHaveAttribute('rel', /noopener/);
   const plannerLabLink = page.locator('#mission-console a[href="labs/planner-mission-evaluation.html"]');
   await expect(plannerLabLink).toBeVisible();
   await expect(plannerLabLink).toHaveText(/Planner \/ Mission Evaluation/);
@@ -76,7 +83,9 @@ test('learning labs static page is linked from the main menu', async ({ page }) 
   await expect(page.locator('a[href="oracle-deterministic-coupled-sampling-space.html"]').first()).toBeVisible();
   await expect(page.locator('a[href="stochastic-uncertainty.html"]').first()).toBeVisible();
   await expect(page.locator('a[href="stochastic-coupled-sampling-space.html"]').first()).toBeVisible();
+  await expect(page.locator('a[href="sampling-priority-to-glider-action-value.html"]').first()).toBeVisible();
   await expect(page.locator('a[href="planner-mission-evaluation.html"]').first()).toBeVisible();
+  await expect(page.locator('body')).toContainText('Sampling Priority to Glider Action Value');
   await expect(page.locator('body')).toContainText('Planner / Mission Evaluation');
 
   await page.goto('/labs/scientific-computational-modeling.html');
@@ -206,6 +215,26 @@ test('learning labs static page is linked from the main menu', async ({ page }) 
   await expect(page.locator('[data-regret-choice="0"]')).toBeVisible();
   await expect(page.locator('[data-regret-reveal]')).toBeVisible();
 
+  pageErrors.length = 0;
+  await page.goto('/labs/sampling-priority-to-glider-action-value.html');
+  await expect(page).toHaveTitle(/From Sampling Priority to Glider Action Value/);
+  await expect(page.locator('h1')).toContainText('From Sampling Priority to Glider Action Value');
+  await expect(page.locator('body')).toContainText('Event intensity is not sampling priority');
+  await expect(page.locator('body')).toContainText('Sampling priority is not glider action value');
+  await expect(page.locator('body')).toContainText('Action value is not route planning');
+  await expect(page.locator('[data-sampling-action-widget="priority-vs-intensity"]')).toBeVisible();
+  await expect(page.locator('[data-sampling-action-widget="priority-to-action"]')).toBeVisible();
+  await expect(page.locator('[data-sampling-action-canvas]').first()).toBeVisible();
+  await expect(page.locator('a').filter({ hasText: 'Sampling Priority Demo' }).first()).toBeVisible();
+  await expect(page.locator('a').filter({ hasText: 'Flow-Coupled Sampling Demo' }).first()).toBeVisible();
+  const beforeSamplingActionText = await page.locator('[data-sampling-action-status]').first().textContent();
+  await page.locator('[data-action-value-weight]').evaluate((input) => {
+    input.value = '0.15';
+    input.dispatchEvent(new Event('input', { bubbles: true }));
+  });
+  await expect(page.locator('[data-sampling-action-status]').first()).not.toHaveText(beforeSamplingActionText ?? '');
+  expect(pageErrors).toEqual([]);
+
   await page.goto('/labs/planner-mission-evaluation.html');
   await expect(page).toHaveTitle(/Planner \/ Mission Evaluation/);
   await expect(page.locator('h1')).toContainText('Planner / Mission Evaluation');
@@ -240,7 +269,7 @@ test('campaign planning smoke flow reaches debrief', async ({ page }) => {
   await expect(page.locator('#right-panel')).toHaveCount(0);
   await expect(page.locator('#context-panel')).toBeEmpty();
   await expect(page.locator('#mission-console')).toContainText('ANCHOR: Glider Command');
-  await expect(page.locator('#mission-console button.console-button')).toHaveCount(16);
+  await expect(page.locator('#mission-console button.console-button')).toHaveCount(18);
   await expect(page.locator('#mission-console .accordion-header')).toHaveCount(3);
   await expect(page.locator('#mission-console > .console-section')).toHaveCount(3);
   await expect(page.locator('#mission-console')).toContainText('Challenge Mode');
@@ -262,6 +291,7 @@ test('campaign planning smoke flow reaches debrief', async ({ page }) => {
   await expect(page.locator('#mission-console [data-accordion-key="simulation-lab"]')).toContainText('Process Lab');
   await expect(page.locator('#mission-console [data-accordion-key="simulation-lab"]')).toContainText('Coupled Fields Demo');
   await expect(page.locator('#mission-console [data-accordion-key="simulation-lab"]')).toContainText('Uncertainty / Forecast Demo');
+  await expect(page.locator('#mission-console [data-accordion-key="simulation-lab"]')).toContainText('Sampling Priority Demo');
   await page.locator('#mission-console [data-accordion-key="learning-labs"] .accordion-header').click();
   await expect(page.locator('#mission-console [data-accordion-key="learning-labs"] [data-menu-group] h3')).toHaveText(['Concept Pages', 'Roadmap']);
   await expect(page.locator('#mission-console [data-accordion-key="learning-labs"]')).toContainText('Learning Labs Index');
@@ -1608,36 +1638,146 @@ test('campaign planning smoke flow reaches debrief', async ({ page }) => {
   await expect.poll(() => page.evaluate(() => window.anchorGame.phaser.scene.getScene('UncertaintyForecastDemoScene').sys.isActive())).toBe(true);
   await expect(page.locator('#mission-console')).toContainText('Uncertainty / Forecast Demo');
   await expect(page.locator('#bottom-timeline .uncertainty-demo-transport')).toBeVisible();
+  await expect(page.locator('#uncertainty-demo-scenario')).toBeVisible();
+  await expect(page.locator('#uncertainty-demo-scenario')).toContainText('Accurate Forecast');
+  await expect(page.locator('#uncertainty-demo-scenario')).toContainText('Hidden Plume');
   await expect(page.locator('#uncertainty-demo-view')).toBeVisible();
-  await expect(page.locator('#uncertainty-demo-view')).toContainText('Forecast');
-  await expect(page.locator('#uncertainty-demo-view')).toContainText('Truth');
-  await expect(page.locator('#uncertainty-demo-view')).toContainText('Uncertainty');
-  await expect(page.locator('#uncertainty-demo-view')).toContainText('Information Gain');
-  await expect(page.locator('#uncertainty-demo-view')).toContainText('Forecast Error');
-  await expect(page.locator('#uncertainty-demo-view')).toContainText('Delta After Update');
+  await expect(page.locator('#uncertainty-demo-view')).toContainText('Hidden Truth');
+  await expect(page.locator('#uncertainty-demo-view')).toContainText('Forecast / Expected State');
+  await expect(page.locator('#uncertainty-demo-view')).toContainText('Belief / Updated Estimate');
+  await expect(page.locator('#uncertainty-demo-view')).toContainText('Expected-State Uncertainty');
+  await expect(page.locator('#uncertainty-demo-view')).toContainText('Surprise');
+  await expect(page.locator('#uncertainty-demo-view')).toContainText('Unknown-Event Probability');
+  await expect(page.locator('#uncertainty-demo-view')).toContainText('Sampling-Priority Preview');
+
+  await page.locator('#uncertainty-demo-scenario').selectOption('shiftedFront');
+  await expect.poll(() => page.evaluate(() => window.anchorGame.phaser.scene.getScene('UncertaintyForecastDemoScene').scenarioId)).toBe('shiftedFront');
+  await page.locator('#uncertainty-demo-view').selectOption('forecast');
+  await expect.poll(() => page.evaluate(() => window.anchorGame.phaser.scene.getScene('UncertaintyForecastDemoScene').viewMode)).toBe('forecast');
+  await expect(page.locator('#waypoint-timeline')).toContainText('expected state');
+  await page.locator('#uncertainty-demo-view').selectOption('hiddenTruth');
+  await expect(page.locator('#mission-console')).toContainText('Reveal Truth');
+  await expect(page.locator('#waypoint-timeline')).toContainText('Truth');
+
+  const shiftedBefore = await page.evaluate(() => window.anchorGame.phaser.scene.getScene('UncertaintyForecastDemoScene').observations.length);
+  await page.locator('#mission-console [data-action="uncertainty-add-samples"]').click();
+  await expect.poll(() => page.evaluate(() => window.anchorGame.phaser.scene.getScene('UncertaintyForecastDemoScene').observations.length)).toBeGreaterThan(shiftedBefore);
+  await page.locator('#mission-console [data-action="uncertainty-update-belief"]').click();
+  await expect.poll(() => page.evaluate(() => window.ANCHOR_UNCERTAINTY_DEMO_DEBUG?.fieldsFinite)).toBe(true);
+  await expect(page.locator('#waypoint-timeline')).toContainText('likely forecast error');
+
+  await page.locator('#uncertainty-demo-scenario').selectOption('hiddenPlume');
+  await page.locator('#mission-console [data-action="uncertainty-add-samples"]').click();
+  await expect(page.locator('#waypoint-timeline')).toContainText(/hidden event|possible hidden event|confirmatory samples/i);
+
+  await page.locator('#uncertainty-demo-scenario').selectOption('noisyFalseAlarm');
+  await page.locator('#mission-console [data-action="uncertainty-add-samples"]').click();
+  await expect(page.locator('#waypoint-timeline')).toContainText(/Do not overreact|false alarm|likely noise/i);
+
+  await page.locator('#uncertainty-demo-view').selectOption('samplingPriorityPreview');
+  await expect(page.locator('#waypoint-timeline')).toContainText('Sampling priority is not event intensity');
   await expect(page.locator('#mission-console [data-action="export-demo-json"]')).toHaveText('Export Demo JSON');
   const uncertaintyArtifact = await downloadDemoArtifact(page);
   expect(uncertaintyArtifact.filename).toMatch(/^anchor-uncertainty-forecast-demo-frame-/);
   expect(uncertaintyArtifact.data.type).toBe('anchor.demo.uncertainty-forecast');
+  expect(uncertaintyArtifact.data.uncertaintyModel.scenarioId).toBe('noisyFalseAlarm');
+  expect(uncertaintyArtifact.data.observationModel.formula).toBe('z_i = T(x_i,y_i,t_i) + epsilon_i');
+  expect(uncertaintyArtifact.data.beliefState.hasBeliefMean).toBe(true);
+  expect(uncertaintyArtifact.data.beliefState.hasExpectedUncertainty).toBe(true);
+  expect(uncertaintyArtifact.data.diagnostics.primaryDiagnosis).toBeTruthy();
   expect(uncertaintyArtifact.data.frames).toHaveLength(1);
   expect(uncertaintyArtifact.data.fields.forecast.length).toBe(uncertaintyArtifact.data.grid.height);
+  expect(uncertaintyArtifact.data.fields.belief.length).toBe(uncertaintyArtifact.data.grid.height);
+  expect(uncertaintyArtifact.data.fields.unknownEventProbability.length).toBe(uncertaintyArtifact.data.grid.height);
+  expect(uncertaintyArtifact.data.fields.samplingPriorityPreview.length).toBe(uncertaintyArtifact.data.grid.height);
   expect(uncertaintyArtifact.data.fairness.truthAllowedForFairSolver).toBe(false);
-  await page.locator('#uncertainty-demo-view').selectOption('forecastError');
-  await expect.poll(() => page.evaluate(() => window.anchorGame.phaser.scene.getScene('UncertaintyForecastDemoScene').viewMode)).toBe('forecastError');
-  await page.locator('#uncertainty-demo-forecast-model').selectOption('driftingForecast');
-  await expect.poll(() => page.evaluate(() => window.anchorGame.phaser.scene.getScene('UncertaintyForecastDemoScene').forecastModel)).toBe('driftingForecast');
-  await clickUncertaintyDemoCell(page, 10, 7);
-  await expect(page.locator('#waypoint-timeline')).toContainText('Forecast vs Truth');
-  await expect(page.locator('#waypoint-timeline')).toContainText('forecast error');
-  await expect(page.locator('#waypoint-timeline')).toContainText('information gain');
-  const beforeUpdate = await page.evaluate(() => window.anchorGame.phaser.scene.getScene('UncertaintyForecastDemoScene').observations.length);
-  await page.locator('#mission-console [data-action="uncertainty-apply-sample"]').click();
-  await expect.poll(() => page.evaluate(() => window.anchorGame.phaser.scene.getScene('UncertaintyForecastDemoScene').observations.length)).toBeGreaterThan(beforeUpdate);
+
   await page.locator('#mission-console [data-action="uncertainty-reset-observations"]').click();
   await expect.poll(() => page.evaluate(() => window.anchorGame.phaser.scene.getScene('UncertaintyForecastDemoScene').observations.length)).toBe(0);
   await page.locator('#mission-console [data-action="menu"]').click();
   await expect.poll(() => page.evaluate(() => window.anchorGame.phaser.scene.getScene('MainMenuScene').sys.isActive())).toBe(true);
+  await page.locator('#mission-console [data-action="sampling-priority-demo"]').click();
+  await expect.poll(() => page.evaluate(() => window.anchorGame.phaser.scene.getScene('SamplingPriorityDemoScene').sys.isActive())).toBe(true);
+  await expect(page.locator('#mission-console')).toContainText('Sampling Priority Demo');
+  await expect(page.locator('#sampling-priority-scenario')).toBeVisible();
+  await expect(page.locator('#sampling-priority-method')).toBeVisible();
+  await expect(page.locator('#sampling-priority-view')).toBeVisible();
+  await expect(page.locator('#sampling-priority-candidate-mode')).toBeVisible();
+  await expect(page.locator('#waypoint-timeline')).toContainText('Event intensity is not sampling priority');
+  await expect(page.locator('#waypoint-timeline')).toContainText('not route planning');
 
+  await page.locator('#sampling-priority-scenario').selectOption('uncertainFront');
+  await page.locator('#sampling-priority-method').selectOption('boundaryMapping');
+  await expect.poll(() => page.evaluate(() => window.anchorGame.phaser.scene.getScene('SamplingPriorityDemoScene').methodId)).toBe('boundaryMapping');
+  await expect.poll(() => page.evaluate(() => window.ANCHOR_SAMPLING_PRIORITY_DEMO_DEBUG?.candidateSamplePoints?.length ?? 0)).toBeGreaterThan(0);
+  await expect.poll(() => page.evaluate(() => window.ANCHOR_SAMPLING_PRIORITY_DEMO_DEBUG?.usesRoutePlanning)).toBe(false);
+  await expect.poll(() => page.evaluate(() => window.ANCHOR_SAMPLING_PRIORITY_DEMO_DEBUG?.usesFlowCoupling)).toBe(false);
+
+  await page.locator('#sampling-priority-scenario').selectOption('hiddenPlumeFollowup');
+  await page.locator('#sampling-priority-method').selectOption('hiddenEventFollowup');
+  await expect(page.locator('#waypoint-timeline')).toContainText(/hidden-event follow-up/i);
+
+  await page.locator('#sampling-priority-scenario').selectOption('staleMonitoring');
+  await page.locator('#sampling-priority-method').selectOption('stalenessRevisit');
+  await expect(page.locator('#waypoint-timeline')).toContainText(/revisit|stale/i);
+
+  await page.locator('#sampling-priority-view').selectOption('samplingPriority');
+  await expect(page.locator('#mission-console [data-action="export-demo-json"]')).toHaveText('Export Demo JSON');
+  const samplingPriorityArtifact = await downloadDemoArtifact(page);
+  expect(samplingPriorityArtifact.filename).toMatch(/^anchor-sampling-priority-demo-frame-/);
+  expect(samplingPriorityArtifact.data.type).toBe('anchor.demo.sampling-priority');
+  expect(samplingPriorityArtifact.data.samplingPriorityModel).toBeTruthy();
+  expect(samplingPriorityArtifact.data.candidateSamplePoints.length).toBeGreaterThan(0);
+  expect(samplingPriorityArtifact.data.priorityDiagnostics).toBeTruthy();
+  expect(samplingPriorityArtifact.data.priorityDiagnostics.usesRoutePlanning).toBe(false);
+  expect(samplingPriorityArtifact.data.priorityDiagnostics.usesFlowCoupling).toBe(false);
+  expect(samplingPriorityArtifact.data.fields.samplingPriorityField.length).toBe(samplingPriorityArtifact.data.grid.height);
+  expect(samplingPriorityArtifact.data.fields.eventIntensityField.length).toBe(samplingPriorityArtifact.data.grid.height);
+
+  await page.locator('#mission-console [data-action="menu"]').click();
+  await expect.poll(() => page.evaluate(() => window.anchorGame.phaser.scene.getScene('MainMenuScene').sys.isActive())).toBe(true);
+  await page.locator('#mission-console [data-action="flow-coupled-sampling-demo"]').click();
+  await expect.poll(() => page.evaluate(() => window.anchorGame.phaser.scene.getScene('FlowCoupledSamplingDemoScene').sys.isActive())).toBe(true);
+  await expect(page.locator('#mission-console')).toContainText('Flow-Coupled Sampling Demo');
+  await expect(page.locator('#flow-coupled-sampling-scenario')).toBeVisible();
+  await expect(page.locator('#flow-coupled-sampling-method')).toBeVisible();
+  await expect(page.locator('#flow-coupled-sampling-view')).toBeVisible();
+  await expect(page.locator('#flow-coupled-sampling-candidate-mode')).toBeVisible();
+  await expect(page.locator('#waypoint-timeline')).toContainText('Science priority is not action value');
+  await expect(page.locator('#waypoint-timeline')).toContainText('Not full route planning');
+  await expect(page.locator('#waypoint-timeline')).toContainText(/flow|current assist|opposition/i);
+
+  await page.locator('#flow-coupled-sampling-scenario').selectOption('currentOpposedTarget');
+  await page.locator('#flow-coupled-sampling-method').selectOption('riskAvoidant');
+  await expect.poll(() => page.evaluate(() => window.anchorGame.phaser.scene.getScene('FlowCoupledSamplingDemoScene').methodId)).toBe('riskAvoidant');
+  await expect.poll(() => page.evaluate(() => window.ANCHOR_FLOW_COUPLED_SAMPLING_DEMO_DEBUG?.candidateTargets?.length ?? 0)).toBeGreaterThan(0);
+  await expect.poll(() => page.evaluate(() => window.ANCHOR_FLOW_COUPLED_SAMPLING_DEMO_DEBUG?.usesFlowCoupling)).toBe(true);
+  await expect.poll(() => page.evaluate(() => window.ANCHOR_FLOW_COUPLED_SAMPLING_DEMO_DEBUG?.usesRoutePlanning)).toBe(false);
+
+  await page.locator('#flow-coupled-sampling-scenario').selectOption('downstreamIntercept');
+  await page.locator('#flow-coupled-sampling-method').selectOption('interceptFuturePriority');
+  await expect(page.locator('#waypoint-timeline')).toContainText(/future|intercept/i);
+  await page.locator('#flow-coupled-sampling-view').selectOption('currentAssist');
+  await expect.poll(() => page.evaluate(() => Boolean(window.ANCHOR_FLOW_COUPLED_SAMPLING_DEMO_DEBUG?.currentAssistStats))).toBe(true);
+  await page.locator('#flow-coupled-sampling-view').selectOption('currentOpposition');
+  await expect.poll(() => page.evaluate(() => Boolean(window.ANCHOR_FLOW_COUPLED_SAMPLING_DEMO_DEBUG?.currentOppositionStats))).toBe(true);
+  await page.locator('#flow-coupled-sampling-view').selectOption('gliderActionValue');
+
+  await expect(page.locator('#mission-console [data-action="export-demo-json"]')).toHaveText('Export Demo JSON');
+  const flowCoupledArtifact = await downloadDemoArtifact(page);
+  expect(flowCoupledArtifact.filename).toMatch(/^anchor-flow-coupled-sampling-demo-frame-/);
+  expect(flowCoupledArtifact.data.type).toBe('anchor.demo.flow-coupled-sampling');
+  expect(flowCoupledArtifact.data.flowCoupledSamplingModel).toBeTruthy();
+  expect(flowCoupledArtifact.data.gliderActionContext).toBeTruthy();
+  expect(flowCoupledArtifact.data.candidateTargets.length).toBeGreaterThan(0);
+  expect(flowCoupledArtifact.data.actionValueDiagnostics).toBeTruthy();
+  expect(flowCoupledArtifact.data.flowCoupledSamplingModel.usesFlowCoupling).toBe(true);
+  expect(flowCoupledArtifact.data.flowCoupledSamplingModel.usesRoutePlanning).toBe(false);
+  expect(flowCoupledArtifact.data.fields.actionValueField.length).toBe(flowCoupledArtifact.data.grid.height);
+  expect(flowCoupledArtifact.data.fields.globalPriorityField.length).toBe(flowCoupledArtifact.data.grid.height);
+
+  await page.locator('#mission-console [data-action="menu"]').click();
+  await expect.poll(() => page.evaluate(() => window.anchorGame.phaser.scene.getScene('MainMenuScene').sys.isActive())).toBe(true);
   await page.evaluate(() => window.anchorGame.phaser.scene.getScene('MainMenuScene').startCampaignLevel('tutorial_01_first_deployment'));
   await expect.poll(() => page.evaluate(() => window.anchorGame.state.level?.levelId)).toBe('tutorial_01_first_deployment');
   await expect.poll(() => page.evaluate(() => window.anchorGame.phaser.scene.getScene('MissionBriefingScene').sys.isActive())).toBe(true);

@@ -1114,6 +1114,7 @@ function coupledInspectorEmptyHtml(panel = {}) {
     '<p>Known process field, known flow field, known constraints, and deterministic sampling objective are shown separately.</p>',
     '</div>',
     coupledEngineCardHtml(panel),
+    coupledColorMeaningCardHtml(panel),
     '<div class="cell-inspector-card">',
     '<strong>Inspect interaction</strong>',
     '<ul>',
@@ -1135,6 +1136,7 @@ function coupledInspectorHtml(inspection, panel = {}) {
     '<p>Terrain: ' + escapeHtml(inspection.terrain) + ' | Topology: ' + escapeHtml(labelize(inspection.topologyRegion)) + '</p>',
     '</div>',
     coupledEngineCardHtml(panel),
+    coupledColorMeaningCardHtml(panel),
     '<div class="cell-inspector-card selected">',
     '<span>Flow</span>',
     metricRows([
@@ -1198,7 +1200,21 @@ function coupledEngineCardHtml(panel = {}) {
     '</div>'
   ].join('');
 }
-
+function coupledColorMeaningCardHtml(panel = {}) {
+  return [
+    '<div class="cell-inspector-card" data-coupled-color-meaning-card>',
+    '<span>What Colors Mean</span>',
+    metricRows([
+      ['displayed layer', panel.displayLayerLabel ?? 'Oracle Objective'],
+      ['dark blue', 'low displayed value'],
+      ['teal / green', 'medium displayed value'],
+      ['yellow / orange', 'high displayed value'],
+      ['cyan arrows', 'F(x,y,t) direction and display-scaled magnitude']
+    ]),
+    '<small>Olive cells are terrain or constraint masks. Values are deterministic synthetic teaching fields, not calibrated ocean forecasts or uncertainty estimates.</small>',
+    '</div>'
+  ].join('');
+}
 function metricRows(rows) {
   return `
     <div class="cell-inspector-metrics">
