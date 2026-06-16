@@ -77,3 +77,13 @@ node tools/js/generate_headless_example_bundles.mjs
 ```
 
 The script writes `docs/examples/headless_oceanbox_js_public_bundle.example.json` and `docs/examples/headless_oceanbox_js_bundle.example.json`, verifies that the public fixture omits hidden truth, and verifies that the debug fixture marks hidden fields as hidden/oracle/debug. Run `smoke_headless_example_bundle_fixture.mjs` and `smoke_headless_browser_fixture_roundtrip.mjs` after fixture changes.
+
+## H3 Solver Packet Roundtrip
+
+Run a submitted plan through the Node/OceanBox-JS headless compatibility path:
+
+```bash
+node tools/js/headless_roundtrip.mjs tools/js/examples/sample_solver_packet.json tools/js/examples/sample_headless_roundtrip_plan.json --out runs/h3-roundtrip
+```
+
+The CLI writes a public `bundle.json` and `roundtrip_report.json` by default. It validates solver-packet visibility, validates plan structure/route compatibility, adapts the submitted route to the existing H1 runtime, and does not generate a new planner route. Use `--include-hidden-truth --oracle` only for explicit oracle/debug runs.

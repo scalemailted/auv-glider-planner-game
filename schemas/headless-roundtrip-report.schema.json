@@ -1,0 +1,53 @@
+{
+  "schemaVersion": "1.0",
+  "type": "schema",
+  "describes": "anchor.headless.roundtrip-report",
+  "required": [
+    "schemaVersion",
+    "type",
+    "version",
+    "source",
+    "packetSummary",
+    "visibilityValidation",
+    "planValidation",
+    "runtime",
+    "episode",
+    "output",
+    "hiddenTruthLeakCheck",
+    "summary",
+    "boundary"
+  ],
+  "source": {
+    "packetId": "source anchor.solverPacket packet id",
+    "planId": "submitted anchor.plan id",
+    "selectedAgentId": "agent plan adapted into the single-glider H1 runtime path",
+    "challengeId": "challenge or instance id from the packet",
+    "replaySeedAnchor": "seed/replay identity carried from the packet"
+  },
+  "visibilityValidation": {
+    "status": "PASS | WARN | FAIL",
+    "hiddenTruthIncluded": "true only for explicit oracle/debug packet workflows",
+    "visibleFieldIds": "field keys detected in solver-visible planning data"
+  },
+  "planValidation": {
+    "status": "PASS | WARN | FAIL",
+    "errors": "blocking validation messages",
+    "warnings": "non-blocking validation messages",
+    "routeIssueCount": "shared browser route validation issue count when available"
+  },
+  "runtime": {
+    "usesNodeHeadlessRuntime": true,
+    "usesProvidedPlan": true,
+    "usesNewPlanner": false,
+    "usesBrowserOfficialScoring": false,
+    "usesPythonSimulator": false,
+    "usesMARL": false,
+    "usesSyntheticRuntimeFieldsForExecution": "H3 bridge uses existing H1 educational runtime fields"
+  },
+  "output": {
+    "combinedBundlePath": "bundle.json path when emitted",
+    "roundtripReportPath": "roundtrip_report.json path",
+    "hiddenTruthExported": "false for public default exports"
+  },
+  "notes": "H3 reports document compatibility from solver packet to submitted plan to Node headless bundle. They do not make headless scoring official browser scoring and do not add a planner, Python simulator, calibrated forecast, backend, or MARL/RL."
+}

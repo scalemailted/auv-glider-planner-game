@@ -1,4 +1,4 @@
-﻿import fs from 'node:fs';
+import fs from 'node:fs';
 import path from 'node:path';
 
 import { createHeadlessBundleManifest as createH0HeadlessBundleManifest } from '../HeadlessBundleManifest.js';
@@ -27,9 +27,13 @@ export function createHeadlessBundleManifest(episode, options = {}) {
   if (combinedJson) {
     files.push(fileEntry('bundle.json', 'combinedBundle', 'anchor.headless.bundle', 'publicScenario', 'Single-file H2 browser import bundle.'));
   }
+  if (options.roundtripReport || episode?.roundtripReport) {
+    files.push(fileEntry('roundtrip_report.json', 'roundtripReport', 'anchor.headless.roundtrip-report', 'publicScenario', 'H3 solver-packet / plan / headless-bundle roundtrip report.'));
+  }
 
   const jsonFiles = ['mission_config.json', 'score_report.json', 'replay.json', 'episode.json'];
   if (combinedJson) jsonFiles.push('bundle.json');
+  if (options.roundtripReport || episode?.roundtripReport) jsonFiles.push('roundtrip_report.json');
 
   return createH0HeadlessBundleManifest({
     createdAt: options.createdAt,
@@ -62,7 +66,8 @@ export function createHeadlessBundleManifest(episode, options = {}) {
 export function headlessBundleFiles(episode, options = {}) {
   const includeHidden = options.includeHiddenTruth !== false;
   const combinedJson = options.combinedJson === true;
-  const manifest = createHeadlessBundleManifest(episode, { includeHiddenTruth: includeHidden, combinedJson, createdAt: options.createdAt });
+  const roundtripReport = options.roundtripReport ?? episode.roundtripReport ?? null;
+  const manifest = createHeadlessBundleManifest(episode, { includeHiddenTruth: includeHidden, combinedJson, createdAt: options.createdAt, roundtripReport });
   const files = {
     'manifest.json': stableJson(manifest),
     'mission_config.json': stableJson(episode.missionConfig),
@@ -78,15 +83,19 @@ export function headlessBundleFiles(episode, options = {}) {
   if (includeHidden) {
     files['hidden_fields.json'] = stableJson(buildFieldPackFile(episode.fieldPackBefore, HIDDEN_FIELD_IDS, 'hiddenTruth'));
   }
+  if (roundtripReport) {
+    files['roundtrip_report.json'] = stableJson(roundtripReport);
+  }
   if (combinedJson) {
-    files['bundle.json'] = stableJson(createHeadlessCombinedBundle(episode, { includeHiddenTruth: includeHidden, createdAt: options.createdAt }));
+    files['bundle.json'] = stableJson(createHeadlessCombinedBundle(episode, { includeHiddenTruth: includeHidden, createdAt: options.createdAt, roundtripReport }));
   }
   return files;
 }
 
 export function createHeadlessCombinedBundle(episode, options = {}) {
   const includeHidden = options.includeHiddenTruth !== false;
-  const manifest = createHeadlessBundleManifest(episode, { includeHiddenTruth: includeHidden, combinedJson: true, createdAt: options.createdAt });
+  const roundtripReport = options.roundtripReport ?? episode.roundtripReport ?? null;
+  const manifest = createHeadlessBundleManifest(episode, { includeHiddenTruth: includeHidden, combinedJson: true, createdAt: options.createdAt, roundtripReport });
   const bundle = {
     type: 'anchor.headless.bundle',
     version: 'headless-combined-bundle-h2',
@@ -97,6 +106,7 @@ export function createHeadlessCombinedBundle(episode, options = {}) {
     gliderTracks: episode.tracks ?? [],
     scoreReport: episode.scoreReport,
     replay: episode.replay,
+    roundtripReport,
     episode: stripBundleEpisode(episode, includeHidden),
     notes: [
       'Combined bundle for browser import. Browser ANCHOR remains the official visual referee and browser scoring UI.',

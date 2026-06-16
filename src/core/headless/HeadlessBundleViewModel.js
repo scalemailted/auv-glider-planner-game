@@ -14,6 +14,7 @@ export function buildHeadlessBundleViewModel(bundle = {}) {
     observationSummary: headlessBundleObservationSummary(bundle),
     trackSummary: headlessBundleTrackSummary(bundle),
     scoreSummary: headlessBundleScoreSummary(bundle),
+    roundtripSummary: headlessBundleRoundtripSummary(bundle),
     replaySummary: headlessBundleReplaySummary(bundle),
     visibilitySummary: headlessBundleVisibilitySummary(bundle, validation),
     validation,
@@ -68,6 +69,23 @@ export function headlessBundleScoreSummary(bundle = {}) {
   };
 }
 
+export function headlessBundleRoundtripSummary(bundle = {}) {
+  const report = bundle.roundtripReport ?? {};
+  return {
+    present: Boolean(bundle.roundtripReport),
+    type: report.type ?? null,
+    status: report.summary?.status ?? null,
+    packetId: report.source?.packetId ?? null,
+    planId: report.source?.planId ?? null,
+    selectedAgentId: report.source?.selectedAgentId ?? null,
+    finalScore: report.summary?.finalScore ?? report.episode?.scoreSummary?.finalScore ?? null,
+    observationCount: report.summary?.observationCount ?? report.episode?.observationCount ?? null,
+    trackPointCount: report.summary?.trackPointCount ?? report.episode?.trackPointCount ?? null,
+    hiddenTruthExported: report.summary?.hiddenTruthExported ?? report.output?.hiddenTruthExported ?? false,
+    browserOfficialScoring: report.summary?.browserOfficialScoring ?? false
+  };
+}
+
 export function headlessBundleReplaySummary(bundle = {}) {
   const replay = bundle.replay ?? {};
   return {
@@ -102,6 +120,7 @@ export function headlessBundleViewModelSummary(viewModel = {}) {
     observationCount: viewModel.observationSummary?.count ?? 0,
     trackPointCount: viewModel.trackSummary?.count ?? 0,
     finalScore: viewModel.scoreSummary?.finalScore ?? null,
+    roundtripStatus: viewModel.roundtripSummary?.status ?? null,
     visibilityRisk: viewModel.visibilitySummary?.visibilityRisk ?? 'unknown'
   };
 }

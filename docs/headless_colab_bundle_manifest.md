@@ -68,3 +68,9 @@ The browser Headless Bundle Viewer also accepts separate files. Observation and 
 The checked-in public combined bundle at `docs/examples/headless_oceanbox_js_public_bundle.example.json` is the reference Colab/browser fixture. It has `type: "anchor.headless.bundle"`, embeds the manifest and mission config, exposes top-level `observations` and `gliderTracks` arrays for simple notebook loading, and omits hidden truth. The debug fixture at `docs/examples/headless_oceanbox_js_bundle.example.json` includes hidden fields only with explicit hidden/oracle/debug visibility.
 
 Use `tools/js/generate_headless_example_bundles.mjs` to reproduce both fixtures. Colab/Python should load and analyze the JSON artifact or call Node; it should not implement a second simulator.
+
+## H3 Roundtrip Report Role
+
+H3 adds an optional bundle role `roundtripReport` stored as `roundtrip_report.json` with type `anchor.headless.roundtrip-report`. It records source packet/plan ids, solver-packet visibility validation, submitted-plan validation, runtime boundary flags, output paths, score summary, and hidden-truth leak checks.
+
+Colab/Python may load this report with standard-library `json` alongside `bundle.json` to analyze the artifact. Python should not reimplement the simulator; it either analyzes the files or calls Node/OceanBox-JS.

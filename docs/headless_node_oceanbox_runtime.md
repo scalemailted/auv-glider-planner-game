@@ -102,3 +102,9 @@ H2 does not make the headless score official browser scoring and does not add a 
 `tools/js/generate_headless_example_bundles.mjs` uses the Node/OceanBox-JS runtime directly to generate compact deterministic `coastalBloomFront` examples with seed `h2-example-001`, width `12`, and height `8`.
 
 The public fixture is `docs/examples/headless_oceanbox_js_public_bundle.example.json`; it is the default browser `Load Example Bundle` target and is safe for student-facing inspection because hidden truth is omitted. The debug fixture is `docs/examples/headless_oceanbox_js_bundle.example.json`; it is for oracle/instructor workflows and marks hidden truth with explicit hidden/oracle/debug visibility. Neither fixture changes browser scoring, adds a planner, adds a Python simulator, or claims calibrated ocean forecasting.
+
+## H3 Solver Packet Roundtrip CLI
+
+`tools/js/headless_roundtrip.mjs` bridges browser solver packets to the Node headless runtime. It reads `anchor.solverPacket` plus a submitted `anchor.plan`, checks hidden-truth visibility, runs shared browser plan validation where possible, adapts the selected agent plan to `anchor.headless.waypoint-plan`, then executes the existing H1 runtime.
+
+Default output is public-safe and writes `bundle.json` plus `roundtrip_report.json` without `hidden_fields.json`. Use `--include-hidden-truth` only for explicit oracle/debug workflows. The execution uses the existing H1 synthetic educational runtime fields, so the report marks `usesSyntheticRuntimeFieldsForExecution: true`; browser ANCHOR remains authoritative for official visual scoring.

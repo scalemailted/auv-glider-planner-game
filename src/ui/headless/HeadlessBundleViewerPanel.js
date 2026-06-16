@@ -16,6 +16,7 @@ export function headlessBundleViewerPanelHtml(viewModel = {}) {
     ${headlessBundleObservationsHtml(viewModel)}
     ${headlessBundleTracksHtml(viewModel)}
     ${headlessBundleScoreHtml(viewModel)}
+    ${headlessBundleRoundtripHtml(viewModel)}
     ${headlessBundleReplayHtml(viewModel)}
     ${warningsHtml(viewModel)}
     ${headlessBundleExportPanelHtml(viewModel)}
@@ -117,6 +118,25 @@ export function headlessBundleScoreHtml(viewModel = {}) {
         ${metricHtml('Official Browser Score', summary.notBrowserOfficialScoring ? 'no' : 'not marked')}
       </div>
       <div class="hud-muted">Headless score is an educational headless score, not official browser scoring.</div>
+    </section>
+  `;
+}
+
+export function headlessBundleRoundtripHtml(viewModel = {}) {
+  const summary = viewModel.roundtripSummary ?? {};
+  if (!summary.present) return '';
+  return `
+    <section class="console-section">
+      <h2>Roundtrip Report</h2>
+      <div class="cell-inspector-metrics">
+        ${metricHtml('Status', summary.status ?? 'unknown')}
+        ${metricHtml('Packet', summary.packetId)}
+        ${metricHtml('Plan', summary.planId)}
+        ${metricHtml('Agent', summary.selectedAgentId)}
+        ${metricHtml('Hidden Exported', summary.hiddenTruthExported ? 'yes' : 'no')}
+        ${metricHtml('Official Browser Score', summary.browserOfficialScoring ? 'yes' : 'no')}
+      </div>
+      <div class="hud-muted">Solver packet to submitted plan to Node/OceanBox-JS headless bundle roundtrip. Browser scoring remains authoritative.</div>
     </section>
   `;
 }

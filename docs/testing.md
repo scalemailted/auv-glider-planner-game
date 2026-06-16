@@ -435,3 +435,15 @@ node tools/js/smoke_headless_browser_fixture_roundtrip.mjs
 ```
 
 The public fixture must load in the Headless Bundle Viewer via `Load Example Bundle`, validate as PASS or WARN, omit hidden-truth payloads, and export `anchor.browser.headless-bundle-summary` without `T_hiddenTruth`. The debug fixture may include hidden truth only when manifest visibility marks it as `hiddenTruth`, `oracle`, or `debugAll`.
+
+## H3 Solver Packet Roundtrip Checks
+
+After changing solver-packet adapters, headless bundle writing/loading, or roundtrip docs, run:
+
+```bash
+node tools/js/smoke_headless_solver_packet_roundtrip.mjs
+node tools/js/smoke_headless_roundtrip_cli.mjs
+node tools/js/headless_roundtrip.mjs tools/js/examples/sample_solver_packet.json tools/js/examples/sample_headless_roundtrip_plan.json --out runs/h3-roundtrip
+```
+
+The public roundtrip should validate packet visibility as PASS, validate the submitted plan as PASS, write `bundle.json` and `roundtrip_report.json`, omit `hidden_fields.json`, load through the Headless Bundle Viewer, and export a browser summary without `T_hiddenTruth`.

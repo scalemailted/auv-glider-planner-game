@@ -93,3 +93,30 @@ node tools/js/generate_headless_example_bundles.mjs
 ```
 
 Colab/Python analyzes artifacts or calls Node. It does not reimplement simulation. Node/OceanBox-JS is the canonical non-browser runtime. Browser ANCHOR remains the visual/referee UI. The headless score is an educational headless score, not official browser scoring.
+
+## Load a H3 roundtrip report
+
+After running the Node roundtrip CLI, inspect the report with standard-library Python:
+
+```python
+import json
+from pathlib import Path
+
+report_path = Path("runs/h3-roundtrip/roundtrip_report.json")
+report = json.loads(report_path.read_text(encoding="utf-8"))
+
+print(report["type"])
+print(report["summary"]["status"])
+print(report["source"]["packetId"])
+print(report["source"]["planId"])
+print(report["summary"]["finalScore"])
+print(report["summary"]["hiddenTruthExported"])
+```
+
+Generate the files with Node:
+
+```text
+node tools/js/headless_roundtrip.mjs tools/js/examples/sample_solver_packet.json tools/js/examples/sample_headless_roundtrip_plan.json --out runs/h3-roundtrip
+```
+
+Colab/Python analyzes the bundle/report or calls Node. It does not reimplement simulation, route planning, browser scoring, calibrated ocean forecasts, or MARL/RL.

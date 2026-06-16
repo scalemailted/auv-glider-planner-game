@@ -1,0 +1,87 @@
+{
+  "schemaVersion": "2.0",
+  "type": "anchor.plan",
+  "planId": "sample-headless-roundtrip-plan",
+  "levelId": "sample_headless_level",
+  "instanceId": "CHALLENGE-SAMPLE-HEADLESS",
+  "challengeId": "CHALLENGE-SAMPLE-HEADLESS",
+  "missionId": "sample_headless_mission",
+  "executionMode": "timedOpenLoop",
+  "planner": {
+    "name": "sample-submitted-plan-v1",
+    "label": "Sample Submitted Plan",
+    "type": "importedSolver",
+    "usesForecast": true,
+    "usesTruth": false,
+    "usesOracle": false,
+    "source": "external"
+  },
+  "meta": {
+    "name": "Sample Headless Roundtrip Plan",
+    "createdAt": "2026-06-16T00:00:00.000Z",
+    "source": "importedSolver",
+    "solver": "tools/js/examples/sample_headless_roundtrip_plan.json",
+    "strategy": "sample-static-waypoints",
+    "visiblePlanningSource": "forecast",
+    "replaySeedAnchor": "CHALLENGE-SAMPLE-HEADLESS",
+    "generationVersion": "sample-v1",
+    "fairness": {
+      "usesForecast": true,
+      "usesTruth": false,
+      "usesOracle": false,
+      "note": "Sample plan for H3 roundtrip compatibility. Browser ANCHOR remains authoritative."
+    }
+  },
+  "agentPlans": [
+    {
+      "agentId": "glider_01",
+      "selectedStart": { "x": 0, "y": 0 },
+      "waypoints": [
+        {
+          "id": "glider_01_sample_wp_001",
+          "kind": "samplingTarget",
+          "window": 0,
+          "t": 1.886,
+          "estimatedArrivalTime": 1.886,
+          "x": 2,
+          "y": 2,
+          "action": "sample",
+          "note": "sample static plan expectedValue=0.9"
+        },
+        {
+          "id": "glider_01_sample_wp_002",
+          "kind": "samplingTarget",
+          "window": 1,
+          "t": 2.828,
+          "estimatedArrivalTime": 2.828,
+          "x": 3,
+          "y": 3,
+          "action": "sample",
+          "note": "sample static plan expectedValue=0.8"
+        },
+        {
+          "id": "glider_01_sample_wp_003",
+          "kind": "navigation",
+          "window": 2,
+          "t": 3.495,
+          "estimatedArrivalTime": 3.495,
+          "x": 3,
+          "y": 2,
+          "action": "sample",
+          "note": "sample static plan expectedValue=0.4"
+        },
+        {
+          "id": "glider_01_sample_wp_004",
+          "kind": "samplingTarget",
+          "window": 3,
+          "t": 4.438,
+          "estimatedArrivalTime": 4.438,
+          "x": 2,
+          "y": 1,
+          "action": "sample",
+          "note": "sample static plan expectedValue=0.5"
+        }
+      ]
+    }
+  ]
+}

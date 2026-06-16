@@ -113,3 +113,15 @@ Additional fixture checks:
 node tools/js/smoke_headless_example_bundle_fixture.mjs
 node tools/js/smoke_headless_browser_fixture_roundtrip.mjs
 ```
+
+## H3 Solver Packet / Plan Roundtrip Reports
+
+H3 bundles may include `roundtrip_report.json` with `type: "anchor.headless.roundtrip-report"`. The browser loader accepts that file either as a separate selected JSON file or embedded in `bundle.json` as `roundtripReport`.
+
+The Headless Bundle Viewer displays a `Roundtrip Report` section with packet id, submitted plan id, selected agent, status, hidden-truth export state, and the official-browser-score boundary. The report documents `solver packet -> submitted plan -> Node headless episode -> bundle`; it does not run browser scoring and does not add a planner.
+
+Generate a sample public roundtrip with:
+
+```bash
+node tools/js/headless_roundtrip.mjs tools/js/examples/sample_solver_packet.json tools/js/examples/sample_headless_roundtrip_plan.json --out runs/h3-roundtrip
+```

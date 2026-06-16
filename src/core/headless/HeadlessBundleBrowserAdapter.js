@@ -1,5 +1,5 @@
 import { validateHeadlessBundle } from './HeadlessBundleValidation.js';
-import { buildHeadlessBundleViewModel, headlessBundleObservationSummary, headlessBundleReplaySummary, headlessBundleScoreSummary, headlessBundleTrackSummary, headlessBundleVisibilitySummary } from './HeadlessBundleViewModel.js';
+import { buildHeadlessBundleViewModel, headlessBundleObservationSummary, headlessBundleReplaySummary, headlessBundleRoundtripSummary, headlessBundleScoreSummary, headlessBundleTrackSummary, headlessBundleVisibilitySummary } from './HeadlessBundleViewModel.js';
 
 export const HEADLESS_BUNDLE_BROWSER_ADAPTER_VERSION = 'headless-bundle-browser-adapter-h2';
 
@@ -19,6 +19,7 @@ export function buildBrowserHeadlessBundleSummaryArtifact(bundle = {}) {
     observationSummary: headlessBundleObservationSummary(bundle),
     trackSummary: headlessBundleTrackSummary(bundle),
     scoreSummary: buildBrowserHeadlessScoreComparisonDescriptor(bundle),
+    roundtripSummary: headlessBundleRoundtripSummary(bundle),
     replaySummary: headlessBundleReplaySummary(bundle),
     validation,
     notes: ['Browser-side summary artifact for inspecting a Node/OceanBox-JS headless bundle.'],
@@ -65,6 +66,8 @@ export function buildBrowserHeadlessBundleDebugObject(bundle = {}) {
     observationCount: viewModel.observationSummary.count,
     trackPointCount: viewModel.trackSummary.count,
     finalScore: viewModel.scoreSummary.finalScore,
+    roundtripReportLoaded: Boolean(bundle.roundtripReport),
+    roundtripStatus: bundle.roundtripReport?.summary?.status ?? null,
     browserSummaryExportAvailable: true,
     usesBrowserOfficialScoring: false,
     usesPythonSimulator: false,

@@ -12,6 +12,7 @@ export const HEADLESS_ARTIFACT_TYPES = Object.freeze([
   'anchor.headless.benchmark-episode',
   'anchor.headless.replay',
   'anchor.headless.score-report',
+  'anchor.headless.roundtrip-report',
   'anchor.headless.colab-notebook-config'
 ]);
 
@@ -88,7 +89,9 @@ const ARTIFACT_ALIASES = new Map([
   ['field-pack', 'anchor.headless.field-pack'],
   ['episode', 'anchor.headless.benchmark-episode'],
   ['benchmarkEpisode', 'anchor.headless.benchmark-episode'],
-  ['scoreReport', 'anchor.headless.score-report']
+  ['scoreReport', 'anchor.headless.score-report'],
+  ['roundtripReport', 'anchor.headless.roundtrip-report'],
+  ['roundtrip-report', 'anchor.headless.roundtrip-report']
 ]);
 
 const VISIBILITY_ALIASES = new Map([

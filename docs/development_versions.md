@@ -336,3 +336,10 @@ H0 introduces headless schema contracts, canonical field descriptors, mission/ep
 - Added `tools/js/generate_headless_example_bundles.mjs` plus fixture and browser-summary roundtrip smokes.
 - Wired the Headless Bundle Viewer `Load Example Bundle` action to the checked-in public fixture.
 - Preserved the boundary: public fixture excludes hidden truth, debug fixture marks hidden truth explicitly, Python/Colab analyze artifacts or call Node, browser ANCHOR remains the visual/referee UI, and no Python simulator, planner, scoring redesign, calibrated forecast, backend, or MARL/RL was added.
+
+### H3 - Solver Packet / Headless Bundle Roundtrip Compatibility
+
+- Added `HeadlessRoundtrip.js` and `tools/js/headless_roundtrip.mjs` to validate a browser solver packet, validate a submitted `anchor.plan`, adapt one agent route to the existing H1 waypoint-plan shape, execute it through the Node/OceanBox-JS runtime, and emit a headless bundle plus `anchor.headless.roundtrip-report`.
+- Added optional roundtrip-report support to the headless bundle writer, loader, view model, browser summary adapter, and Headless Bundle Viewer panel.
+- Added a stable sample submitted plan fixture and H3 smoke tests for adapter and CLI roundtrips.
+- Preserved the boundary: H3 does not add a planner, official browser scoring replacement, Python simulator, calibrated forecast, backend service, or MARL/RL.
