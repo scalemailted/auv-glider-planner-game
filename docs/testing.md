@@ -10,7 +10,7 @@ Playwright is optional and intended for development smoke testing.
 
 Greedy Planner is useful for planner smoke checks because it should return promptly, preserve non-selected glider routes, and validate before simulation. See `docs/greedy_planner.md` for the expected selected-glider baseline behavior.
 
-The main menu should expose three top-level accordions: `Challenge Mode`, `Simulation Lab`, and `Learning Labs`. Challenge Mode should contain `Play`, `Learn`, and `Compete` visual subsections. Simulation Lab should contain `Experiments`, `Benchmark Modes`, `Demos`, `Editor & Import Tools`, and `Benchmarks`. Learning Labs should expose static concept pages, starting with `Deterministic Spatiotemporal Processes`, that open outside the Phaser simulator. Field demos live inside Simulation Lab, not as a separate top-level section. Use `docs/flow_fields_demo.md` when validating `F(x,y,t)` current vectors, static/dynamic fields, additive layers, partition behavior, terrain boundary effects, and topology-aware shoreline risk. Use `docs/sample_fields_demo.md` when validating `L(x,y,t)` event likelihood, `S(x,y,t)` sample value, pure sample-value spatial fields, spatial parameters, temporal patterns, spatial evolution, Time-Indexed/Frequency-Based/State-Evolving/History-Aware state models, sampling effects, and freshness/revisit displays. Use `docs/coupled_fields_demo.md` for deterministic/oracle coupled sampling spaces: known process `C(x,y,t)`, known flow `F(x,y,t)`, known constraints, analytical process engines, and oracle objective `S*(x,y,t)`. Use `docs/uncertainty_forecast_demo.md` for hidden truth, forecast/expected state, noisy observations, belief, expected-state uncertainty, surprise, forecast error, unknown-event probability, and sampling-priority preview. Use the Stochastic Coupled Sampling Space learning lab when validating the teaching layer that combines posterior belief, expected uncertainty, unknown-event probability, flow, constraints, acquisition value, and oracle regret. Use docs/sampling_priority_demo.md for S1 global A_global(x,y,t). Use labs/sampling-priority-to-glider-action-value.html when validating the Learning Lab bridge between vehicle-independent science priority and glider-specific action value. Use docs/flow_coupled_sampling_demo.md for S2 glider-specific direct-leg Q_glider(g,x,y,t) action value; it must keep route planning, mission scoring, calibrated glider dynamics, and calibrated ocean forecasts out of scope. Use docs/benchmark_route_execution_contract.md when validating P1 benchmark episode configs, route-execution records, result/debrief adapters, attempt sets, and the boundary that P1 does not add a new planner or scoring redesign.
+The main menu should expose three top-level accordions: `Challenge Mode`, `Simulation Lab`, and `Learning Labs`. Challenge Mode should contain `Play`, `Learn`, and `Compete` visual subsections. Simulation Lab should contain `Experiments`, `Benchmark Modes`, `Demos`, `Editor & Import Tools`, and `Benchmarks`. Learning Labs should expose static concept pages, starting with `Deterministic Spatiotemporal Processes`, that open outside the Phaser simulator. Field demos live inside Simulation Lab, not as a separate top-level section. Use `docs/flow_fields_demo.md` when validating `F(x,y,t)` current vectors, static/dynamic fields, additive layers, partition behavior, terrain boundary effects, and topology-aware shoreline risk. Use `docs/sample_fields_demo.md` when validating `L(x,y,t)` event likelihood, `S(x,y,t)` sample value, pure sample-value spatial fields, spatial parameters, temporal patterns, spatial evolution, Time-Indexed/Frequency-Based/State-Evolving/History-Aware state models, sampling effects, and freshness/revisit displays. Use `docs/coupled_fields_demo.md` for deterministic/oracle coupled sampling spaces: known process `C(x,y,t)`, known flow `F(x,y,t)`, known constraints, analytical process engines, and oracle objective `S*(x,y,t)`. Use `docs/uncertainty_forecast_demo.md` for hidden truth, forecast/expected state, noisy observations, belief, expected-state uncertainty, surprise, forecast error, unknown-event probability, and sampling-priority preview. Use the Stochastic Coupled Sampling Space learning lab when validating the teaching layer that combines posterior belief, expected uncertainty, unknown-event probability, flow, constraints, acquisition value, and oracle regret. Use docs/sampling_priority_demo.md for S1 global A_global(x,y,t). Use labs/sampling-priority-to-glider-action-value.html when validating the Learning Lab bridge between vehicle-independent science priority and glider-specific action value. Use docs/flow_coupled_sampling_demo.md for S2 glider-specific direct-leg Q_glider(g,x,y,t) action value; it must keep route planning, mission scoring, calibrated glider dynamics, and calibrated ocean forecasts out of scope. Use docs/benchmark_route_execution_contract.md when validating P1 benchmark episode configs, route-execution records, result/debrief adapters, attempt sets, and the boundary that P1 does not add a new planner or scoring redesign. Use docs/planner_benchmark_route_overlay.md when validating P4 route overlay geometry, layer controls, segment/waypoint details, export metadata, and the boundary that P4 only visualizes existing planned/executed routes.
 
 ## Challenge Mode vs Simulation Lab
 
@@ -334,3 +334,29 @@ Planner Benchmark execution integration is covered by `node tools\js\smoke_bench
 ## P3 Benchmark Comparison Smokes
 
 P3 adds smoke tests for `BenchmarkComparisonViewModel`, `BenchmarkRouteReviewViewModel`, `BenchmarkDebriefPanel`, and the `anchor.benchmark.comparison` export. These tests verify that comparison UI remains an interpretation layer and does not add a new planner or scoring redesign.
+
+## P4 Benchmark Route Overlay Smokes
+
+P4 route overlay coverage is in:
+
+```bash
+node tools/js/smoke_benchmark_route_geometry_adapter.mjs
+node tools/js/smoke_benchmark_route_overlay_view_model.mjs
+node tools/js/smoke_benchmark_route_overlay_panel.mjs
+node tools/js/smoke_benchmark_route_overlay_export.mjs
+```
+
+The focused benchmark Playwright grep checks Route Overlay visibility, layer selection, debug fields, and `anchor.benchmark.route-overlay` export JSON.
+## P5 Planner Benchmark Import / Persistence Smokes
+
+Run these after changing benchmark artifact import, attempt persistence, or Debrief import UI:
+
+```bash
+node tools/js/smoke_benchmark_artifact_import.mjs
+node tools/js/smoke_benchmark_attempt_persistence.mjs
+node tools/js/smoke_benchmark_import_view_model.mjs
+node tools/js/smoke_benchmark_import_panel.mjs
+node tools/js/smoke_benchmark_attempt_session_export.mjs
+```
+
+These checks are browser-free and use fake storage where local persistence is needed.

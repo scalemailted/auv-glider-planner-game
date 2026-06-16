@@ -58,6 +58,7 @@ export function addResultToBenchmarkAttemptSession(session, resultContext = {}) 
     status: resultContext.status ?? routeExecutionRecord?.validation?.status ?? 'completed',
     routeExecutionRecord,
     runRecord,
+    routeGeometry: resultContext.routeGeometry ?? resultContext.routeOverlay?.geometry ?? null,
     metrics: createRouteExecutionMetrics(resultContext.metrics ?? routeExecutionRecord?.metrics ?? result?.summary ?? {}),
     notes: resultContext.notes
   });

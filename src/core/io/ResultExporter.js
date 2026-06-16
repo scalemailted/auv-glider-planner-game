@@ -15,6 +15,7 @@ import {
   buildBenchmarkRunRecordExport
 } from '../benchmark/BenchmarkModeExporter.js';
 import { createBenchmarkAttemptSet } from '../benchmark/BenchmarkAttemptRegistry.js';
+import { createBenchmarkAttemptSession, benchmarkAttemptSessionSummary } from '../benchmark/BenchmarkAttemptSession.js';
 import {
   attemptSourceFromRouteSourceLabel,
   fairnessLabelFromAttemptSourceAndAccess,
@@ -29,6 +30,15 @@ import {
   buildBenchmarkRouteReviewViewModel,
   routeReviewSummary
 } from '../benchmark/BenchmarkRouteReviewViewModel.js';
+import {
+  extractRouteGeometryFromPlan,
+  extractRouteGeometryFromResult,
+  extractRouteGeometryFromRouteExecutionRecord
+} from '../benchmark/BenchmarkRouteGeometryAdapter.js';
+import {
+  benchmarkRouteOverlaySummary,
+  buildBenchmarkRouteOverlayViewModel
+} from '../benchmark/BenchmarkRouteOverlayViewModel.js';
 import {
   buildScenarioFingerprint,
   classifyRouteSource,
@@ -472,6 +482,210 @@ export function buildBenchmarkComparisonExportFromResult({
   };
 }
 
+export function buildBenchmarkRouteOverlayExportFromResult({
+  level,
+  mission,
+  plan,
+  result,
+  attemptSession = null,
+  benchmarkModeConfig = null,
+  episodeConfig = null,
+  attemptSource = null,
+  routeSourceLabel = null,
+  fairnessLabel = null,
+  selectedOverlayLayer = 'routeStatus'
+} = {}) {
+  const context = normalizeBenchmarkExportContext({
+    level,
+    mission,
+    plan,
+    result,
+    benchmarkModeConfig,
+    episodeConfig,
+    attemptSource,
+    routeSourceLabel,
+    fairnessLabel
+  });
+  const routeExecutionRecord = buildRouteExecutionRecordFromResult({
+    benchmarkModeConfig: context.benchmarkModeConfig,
+    episodeConfig: context.episodeConfig,
+    level,
+    mission,
+    plan,
+    result,
+    attemptSource: context.attemptSource,
+    routeSourceLabel: context.routeSourceLabel,
+    fairnessLabel: context.fairnessLabel
+  });
+  routeExecutionRecord.diagnostics = {
+    ...(routeExecutionRecord.diagnostics ?? {}),
+    usesExistingSimulation: true,
+    usesExistingDebrief: true,
+    usesNewPlanner: false,
+    usesMissionScoringRedesign: false,
+    usesMARL: false
+  };
+  const runRecord = buildBenchmarkRunRecordFromResult({
+    benchmarkModeConfig: context.benchmarkModeConfig,
+    episodeConfig: context.episodeConfig,
+    level,
+    mission,
+    plan,
+    result,
+    attemptSource: context.attemptSource,
+    routeSourceLabel: context.routeSourceLabel
+  });
+  const attempts = Array.isArray(attemptSession?.attempts) && attemptSession.attempts.length
+    ? attemptSession.attempts
+    : [{
+        episodeId: context.episodeId,
+        benchmarkMode: 'plannerBenchmark',
+        attemptSource: context.attemptSource,
+        routeSourceLabel: context.routeSourceLabel,
+        fairnessLabel: context.fairnessLabel,
+        routeExecutionRecord,
+        runRecord,
+        metrics: routeExecutionRecord.metrics,
+        status: routeExecutionRecord.validation?.status ?? 'completed'
+      }];
+  const attemptSet = createBenchmarkAttemptSet({
+    episodeId: context.episodeId,
+    benchmarkMode: 'plannerBenchmark',
+    attempts,
+    notes: ['P4 route overlay reviews existing planned/executed route geometry; it does not compute a new path.']
+  });
+  const activeAttempt = attemptSet.attempts.find((attempt) => attempt.resultId && attempt.resultId === routeExecutionRecord.resultId)
+    ?? attemptSet.attempts.at(-1)
+    ?? null;
+  const routeRecordGeometry = extractRouteGeometryFromRouteExecutionRecord(routeExecutionRecord);
+  const routeGeometry = routeRecordGeometry.segments.length || routeRecordGeometry.waypoints.length
+    ? routeRecordGeometry
+    : (plan ? extractRouteGeometryFromPlan(plan) : extractRouteGeometryFromResult(result));
+  const comparisonViewModel = buildBenchmarkComparisonViewModel({
+    attemptSet,
+    activeAttempt,
+    benchmarkModeConfig: context.benchmarkModeConfig,
+    episodeConfig: context.episodeConfig,
+    routeExecutionRecords: [routeExecutionRecord],
+    runRecords: [runRecord]
+  });
+  const routeReview = buildBenchmarkRouteReviewViewModel({ routeExecutionRecord, plan, result });
+  const overlayViewModel = buildBenchmarkRouteOverlayViewModel({
+    attemptSet,
+    activeAttempt,
+    routeExecutionRecord,
+    routeGeometry,
+    routeReviewViewModel: routeReview,
+    comparisonViewModel,
+    selectedOverlayLayer
+  });
+  return {
+    type: 'anchor.benchmark.route-overlay',
+    version: 'benchmark-route-overlay-export-p4',
+    createdAt: new Date().toISOString(),
+    benchmarkMode: overlayViewModel.benchmarkMode,
+    episodeId: overlayViewModel.episodeId,
+    attemptId: overlayViewModel.attemptId,
+    attemptSource: overlayViewModel.attemptSource,
+    routeSourceLabel: overlayViewModel.routeSourceLabel,
+    fairnessLabel: overlayViewModel.fairnessLabel,
+    selectedOverlayLayer: overlayViewModel.selectedOverlayLayer,
+    geometry: cloneJson(routeGeometry),
+    overlayViewModelSummary: benchmarkRouteOverlaySummary(overlayViewModel),
+    legend: cloneJson(overlayViewModel.legend),
+    warnings: cloneJson(overlayViewModel.warnings),
+    notes: [
+      'Route Overlay shows the executed or planned path using the data available from the existing simulator and debrief records.',
+      'This visualization does not compute a new path. It reviews the path that was already planned and simulated.',
+      'P4 does not add a new planner, scoring redesign, or MARL/RL.'
+    ],
+    boundaryFlags: benchmarkExecutionBoundaryFlags(),
+    usesExistingSimulation: true,
+    usesExistingDebrief: true,
+    usesNewPlanner: false,
+    usesMissionScoringRedesign: false,
+    usesMARL: false
+  };
+}
+export function buildBenchmarkAttemptSessionExport({
+  level,
+  mission,
+  plan,
+  result,
+  attemptSession = null,
+  session = null,
+  comparisonViewModel = null,
+  routeOverlayViewModel = null,
+  benchmarkModeConfig = null,
+  episodeConfig = null,
+  attemptSource = null,
+  routeSourceLabel = null,
+  fairnessLabel = null
+} = {}) {
+  const hasResultContext = Boolean(result || level || mission || plan || benchmarkModeConfig || episodeConfig);
+  const context = hasResultContext ? normalizeBenchmarkExportContext({
+    level,
+    mission,
+    plan,
+    result,
+    benchmarkModeConfig,
+    episodeConfig,
+    attemptSource,
+    routeSourceLabel,
+    fairnessLabel
+  }) : null;
+  const normalizedSession = createBenchmarkAttemptSession(attemptSession ?? session ?? {
+    episodeId: context?.episodeId,
+    benchmarkMode: context?.benchmarkMode ?? 'plannerBenchmark',
+    attempts: []
+  });
+  const attemptSet = createBenchmarkAttemptSet({
+    episodeId: normalizedSession.episodeId,
+    benchmarkMode: normalizedSession.benchmarkMode,
+    attempts: normalizedSession.attempts,
+    notes: ['P5 attempt session export preserves imported/saved attempt records for comparison.']
+  });
+  const comparison = comparisonViewModel ?? buildBenchmarkComparisonViewModel({
+    attemptSet,
+    activeAttempt: attemptSet.attempts.at(-1) ?? null,
+    benchmarkModeConfig: context?.benchmarkModeConfig,
+    episodeConfig: context?.episodeConfig
+  });
+  const routeGeometryAvailability = normalizedSession.attempts.map((attempt) => ({
+    attemptId: attempt.attemptId ?? null,
+    routeSourceLabel: attempt.routeSourceLabel ?? null,
+    hasRouteGeometry: Boolean(attempt.routeGeometry?.segments?.length || attempt.routeGeometry?.waypoints?.length || attempt.routeExecutionRecord?.segments?.length),
+    segmentCount: attempt.routeGeometry?.segments?.length ?? attempt.routeExecutionRecord?.segments?.length ?? 0,
+    waypointCount: attempt.routeGeometry?.waypoints?.length ?? 0
+  }));
+  return {
+    type: 'anchor.benchmark.attempt-session',
+    version: 'benchmark-attempt-session-export-p5',
+    createdAt: new Date().toISOString(),
+    benchmarkMode: normalizedSession.benchmarkMode,
+    episodeId: normalizedSession.episodeId,
+    session: cloneJson(normalizedSession),
+    attempts: cloneJson(normalizedSession.attempts),
+    summary: benchmarkAttemptSessionSummary(normalizedSession),
+    comparisonSummary: benchmarkComparisonSummary(comparison),
+    comparison: cloneJson(comparison),
+    routeOverlaySummary: routeOverlayViewModel ? benchmarkRouteOverlaySummary(routeOverlayViewModel) : null,
+    routeGeometryAvailability,
+    availableBenchmarkExports: benchmarkExportTypes(),
+    boundaryFlags: benchmarkExecutionBoundaryFlags(),
+    usesExistingSimulation: true,
+    usesExistingDebrief: true,
+    usesNewPlanner: false,
+    usesMissionScoringRedesign: false,
+    usesMARL: false,
+    notes: [
+      'Attempt sessions let you compare multiple plans for the same fixed benchmark objective.',
+      'P5 does not recompute scores. It compares metrics stored in benchmark records.',
+      'This export stores compact attempt summaries and route geometry, not full hidden ocean fields.'
+    ]
+  };
+}
+
 function normalizeBenchmarkExportContext({
   level,
   mission,
@@ -524,6 +738,8 @@ function benchmarkExportTypes() {
     'anchor.benchmark.run-record',
     'anchor.benchmark.route-execution',
     'anchor.benchmark.attempt-set',
-    'anchor.benchmark.comparison'
+    'anchor.benchmark.comparison',
+    'anchor.benchmark.route-overlay',
+    'anchor.benchmark.attempt-session'
   ];
 }

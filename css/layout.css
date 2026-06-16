@@ -821,3 +821,201 @@ body.debrief-fullscreen #ui-root .overlay-panel {
     grid-template-columns: 1fr;
   }
 }
+
+.benchmark-route-overlay {
+  display: grid;
+  gap: .75rem;
+}
+
+.benchmark-route-layer-control {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: .5rem;
+  color: var(--muted);
+  font-size: .86rem;
+  font-weight: 800;
+}
+
+.benchmark-route-layer-control select {
+  min-height: 2.1rem;
+  max-width: min(100%, 18rem);
+}
+
+.benchmark-route-svg {
+  width: 100%;
+  max-height: 22rem;
+  min-height: 13rem;
+  border: 1px solid rgba(141, 220, 242, 0.18);
+  border-radius: 8px;
+  background: rgba(6, 17, 31, 0.68);
+}
+
+.benchmark-route-map-bg {
+  fill: rgba(8, 24, 39, 0.88);
+  stroke: rgba(141, 220, 242, 0.22);
+}
+
+.benchmark-route-grid line {
+  stroke: rgba(141, 220, 242, 0.1);
+  stroke-width: .32;
+}
+
+.benchmark-route-segment {
+  stroke: rgba(141, 220, 242, 0.8);
+  stroke-width: 2.2;
+  stroke-linecap: round;
+}
+
+.benchmark-route-segment.selected {
+  stroke-width: 4.4;
+}
+
+.benchmark-route-waypoint {
+  fill: #dff8ff;
+  stroke: #06111f;
+  stroke-width: .8;
+}
+
+.benchmark-route-waypoint.selected {
+  stroke: #ffffff;
+  stroke-width: 1.4;
+}
+
+.benchmark-route-waypoint-label,
+.benchmark-route-attempt-label {
+  fill: #dff8ff;
+  font-size: 3px;
+  font-weight: 800;
+}
+
+.segment-good,
+.benchmark-route-legend-swatch.segment-good {
+  stroke: #63e6be;
+  fill: #63e6be;
+}
+
+.segment-warning,
+.benchmark-route-legend-swatch.segment-warning,
+.waypoint-warning,
+.benchmark-route-legend-swatch.waypoint-warning,
+.energy-high,
+.benchmark-route-legend-swatch.energy-high,
+.cross-current-risk,
+.benchmark-route-legend-swatch.cross-current-risk {
+  stroke: #ffd166;
+  fill: #ffd166;
+}
+
+.segment-danger,
+.benchmark-route-legend-swatch.segment-danger,
+.waypoint-missed,
+.benchmark-route-legend-swatch.waypoint-missed,
+.hazard-risk,
+.benchmark-route-legend-swatch.hazard-risk,
+.current-opposed,
+.benchmark-route-legend-swatch.current-opposed {
+  stroke: #ff6b6b;
+  fill: #ff6b6b;
+}
+
+.segment-neutral,
+.benchmark-route-legend-swatch.segment-neutral,
+.attempt-muted,
+.benchmark-route-legend-swatch.attempt-muted {
+  stroke: rgba(207, 224, 244, 0.66);
+  fill: rgba(207, 224, 244, 0.66);
+}
+
+.waypoint-complete,
+.benchmark-route-legend-swatch.waypoint-complete,
+.energy-low,
+.benchmark-route-legend-swatch.energy-low,
+.current-assist,
+.benchmark-route-legend-swatch.current-assist,
+.attempt-primary,
+.benchmark-route-legend-swatch.attempt-primary {
+  stroke: #54c7ec;
+  fill: #54c7ec;
+}
+
+.attempt-secondary,
+.benchmark-route-legend-swatch.attempt-secondary {
+  stroke: #b5a7ff;
+  fill: #b5a7ff;
+}
+
+.benchmark-route-legend,
+.benchmark-route-detail-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 220px), 1fr));
+  gap: .55rem;
+}
+
+.benchmark-route-legend div,
+.benchmark-route-detail {
+  min-width: 0;
+  padding: .65rem;
+  border: 1px solid rgba(141, 220, 242, 0.14);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.045);
+}
+
+.benchmark-route-legend div {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: .18rem .45rem;
+  align-items: center;
+}
+
+.benchmark-route-legend-swatch {
+  width: .85rem;
+  height: .85rem;
+  border-radius: 999px;
+}
+
+.benchmark-route-legend small {
+  grid-column: 2;
+  color: var(--muted);
+}
+
+.benchmark-route-detail h4 {
+  margin: 0 0 .45rem;
+  color: var(--success);
+  font-size: .88rem;
+}
+
+.benchmark-route-warning {
+  padding: .55rem .65rem;
+  border: 1px solid rgba(255, 209, 102, 0.28);
+  border-radius: 8px;
+  color: #ffe7a6;
+  background: rgba(255, 209, 102, 0.08);
+}
+
+.debrief-button.compact {
+  min-height: 1.8rem;
+  padding: .32rem .5rem;
+  font-size: .78rem;
+}
+.benchmark-import-panel {
+  display: grid;
+  gap: .75rem;
+}
+
+.benchmark-import-controls .benchmark-import-file-label {
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.debrief-table tr.warning td {
+  color: #ffe7a6;
+}
+
+.benchmark-import-empty {
+  padding: .55rem .65rem;
+  border: 1px dashed rgba(141, 220, 242, 0.2);
+  border-radius: 8px;
+}

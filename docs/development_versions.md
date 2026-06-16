@@ -1,3 +1,10 @@
+### P5 - Planner Benchmark Attempt Import / Persistence
+
+- Added benchmark artifact import for run-record, route-execution, attempt-set, attempt-session, comparison, route-overlay, and benchmark result JSON.
+- Added compact browser-local attempt-session persistence keyed by benchmark episode id.
+- Added Debrief controls for saving, loading, importing, merging compatible attempts, and exporting `anchor.benchmark.attempt-session`.
+- Extended Route Overlay attempt-comparison mode to draw multiple embedded route geometries.
+- Preserved the boundary: P5 does not rerun simulations, recompute scores, add a planner, change scoring, or train RL/MARL.
 # Development Versions and Project State
 
 ## Purpose
@@ -287,3 +294,7 @@ Planner Benchmark now carries episode metadata through the existing setup/planni
 ## P3 - Planner Benchmark Attempt Comparison UI
 
 P3 adds Debrief attempt comparison, route review, fairness/source labels, and `anchor.benchmark.comparison` export support. It preserves P0/P1/P2 fields and keeps Adaptive Benchmark and Full Autonomy Benchmark contract-only.
+
+## P4 - Planner Benchmark Route Review Overlay
+
+P4 adds route geometry adaptation, Route Overlay / Map rendering, route review layer controls, segment/waypoint detail inspection, `anchor.benchmark.route-overlay` export support, and route overlay debug fields. It preserves P0/P1/P2/P3 fields and does not add a new planner, scoring redesign, MARL/RL, or adaptive objective execution.

@@ -1001,8 +1001,16 @@ Science boundary: the deterministic process demo teaches local process evolution
 
 ## Planner Benchmark Records
 
-In Simulation Lab, open Benchmark Modes, choose Planner Benchmark, and use Open Planner Benchmark Setup to enter the normal setup/planning/simulation flow. When the run reaches Debrief, a Planner Benchmark section can export a Benchmark Run Record, Route Execution Record, and Benchmark Attempt Set. Manual, Greedy Planner, and imported solver attempts are normalized for comparison under the same episode identity. P2 does not add a new planner or change scoring.
+In Simulation Lab, open Benchmark Modes, choose Planner Benchmark, and use Open Planner Benchmark Setup to enter the normal setup/planning/simulation flow. When the run reaches Debrief, a Planner Benchmark section can export a Benchmark Run Record, Route Execution Record, Benchmark Attempt Set, Benchmark Comparison, and Route Overlay. Manual, Greedy Planner, and imported solver attempts are normalized for comparison under the same episode identity. These benchmark layers do not add a new planner or change scoring.
 
 ## Planner Benchmark Attempt Comparison
 
-In Simulation Lab, Planner Benchmark Debrief can show Attempt Comparison and Route Review for benchmark runs. Use it to compare fairness labels, score, energy, hazards, missed waypoints, and duplicate samples. P3 does not add a new planner or scoring redesign.
+In Simulation Lab, Planner Benchmark Debrief can show Attempt Comparison, Route Review, and Route Overlay for benchmark runs. Use it to compare fairness labels, score, energy, hazards, missed waypoints, duplicate samples, and route segments. P4 adds visualization only; it does not add a new planner or scoring redesign.
+
+## Planner Benchmark Route Overlay
+
+Route Overlay shows the executed or planned path using existing simulator and debrief records. Use the Route Review Layer selector to inspect status, energy, hazards, current assist/opposition, cross-current risk, sample value, waypoint completion, or attempt comparison. The overlay reviews the route that was already planned and simulated; it does not compute a new path.
+
+## Planner Benchmark Attempt Sessions
+
+After a Planner Benchmark run, Debrief includes an Attempt Import / Session Persistence panel. Use it to save the current compact attempt session in this browser, import exported benchmark JSON from another run, merge compatible attempts for the same episode, and export an nchor.benchmark.attempt-session file. Imports do not rerun the simulation or recompute scores; they compare the metrics already stored in benchmark records.

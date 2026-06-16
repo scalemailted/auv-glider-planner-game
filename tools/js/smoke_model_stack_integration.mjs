@@ -51,8 +51,14 @@ import { initializePlannerBenchmarkEpisode } from '../../src/core/benchmark/Benc
 import { addResultToBenchmarkAttemptSession, createBenchmarkAttemptSession } from '../../src/core/benchmark/BenchmarkAttemptSession.js';
 import { buildBenchmarkComparisonViewModel } from '../../src/core/benchmark/BenchmarkComparisonViewModel.js';
 import { buildBenchmarkRouteReviewViewModel } from '../../src/core/benchmark/BenchmarkRouteReviewViewModel.js';
+import { extractRouteGeometryFromPlan } from '../../src/core/benchmark/BenchmarkRouteGeometryAdapter.js';
+import { buildBenchmarkRouteOverlayViewModel } from '../../src/core/benchmark/BenchmarkRouteOverlayViewModel.js';
 import { benchmarkDebriefPanelHtml } from '../../src/ui/benchmark/BenchmarkDebriefPanel.js';
-import { buildBenchmarkComparisonExportFromResult, buildBenchmarkRunRecordExportFromResult } from '../../src/core/io/ResultExporter.js';
+import { benchmarkRouteOverlayPanelHtml } from '../../src/ui/benchmark/BenchmarkRouteOverlayPanel.js';
+import { buildBenchmarkAttemptSessionExport, buildBenchmarkComparisonExportFromResult, buildBenchmarkRouteOverlayExportFromResult, buildBenchmarkRunRecordExportFromResult } from '../../src/core/io/ResultExporter.js';
+import { parseBenchmarkArtifact } from '../../src/core/benchmark/BenchmarkArtifactImport.js';
+import { buildBenchmarkImportViewModel } from '../../src/core/benchmark/BenchmarkImportViewModel.js';
+import { benchmarkImportPanelHtml } from '../../src/ui/benchmark/BenchmarkImportPanel.js';
 import { buildBenchmarkModeConfigExport } from '../../src/core/benchmark/BenchmarkModeExporter.js';
 import '../../src/labs/widgets/SamplingActionValueWidgets.js';
 import { FlowFieldDemoScene } from '../../src/game/phaser/scenes/FlowFieldDemoScene.js';
@@ -410,6 +416,70 @@ assert.equal(p3ComparisonExport.type, 'anchor.benchmark.comparison', 'P3 compari
 assert.equal(p3ComparisonExport.usesNewPlanner, false, 'P3 does not add a new planner');
 assert.equal(p3ComparisonExport.usesMissionScoringRedesign, false, 'P3 does not redesign scoring');
 assert.equal(p3ComparisonExport.usesMARL, false, 'P3 does not add MARL');
+const p4RouteGeometry = extractRouteGeometryFromPlan({
+  type: 'anchor.plan',
+  planId: 'model-stack-p4-plan',
+  agentPlans: [{ agentId: 'g1', selectedStart: { x: 0, y: 0 }, waypoints: [{ x: 1, y: 1, t: 1, segmentEnergy: 2 }, { x: 3, y: 2, t: 2, crossCurrent: 0.8, hazardPenalty: 1 }] }]
+});
+const p4OverlayViewModel = buildBenchmarkRouteOverlayViewModel({
+  routeGeometry: p4RouteGeometry,
+  routeReviewViewModel: p3RouteReviewViewModel,
+  comparisonViewModel: p3ComparisonViewModel,
+  selectedOverlayLayer: 'hazards'
+});
+assert.equal(p4OverlayViewModel.selectedOverlayLayer, 'hazards', 'P4 route overlay layer is selectable');
+assert.equal(p4OverlayViewModel.usesNewPlanner, false, 'P4 route overlay does not add a new planner');
+assert.equal(p4OverlayViewModel.usesMissionScoringRedesign, false, 'P4 route overlay does not redesign scoring');
+assert.equal(p4OverlayViewModel.usesMARL, false, 'P4 route overlay excludes MARL');
+const p4OverlayHtml = benchmarkRouteOverlayPanelHtml(p4OverlayViewModel);
+assert.ok(p4OverlayHtml.includes('Route Overlay'), 'P4 route overlay panel renders');
+assert.ok(p4OverlayHtml.includes('does not compute a new path'), 'P4 panel states no-new-path boundary');
+const p4DebriefHtml = benchmarkDebriefPanelHtml({ ...p3ComparisonViewModel, routeReview: p3RouteReviewViewModel, routeOverlay: p4OverlayViewModel, exportState: { comparison: true, routeOverlay: true } });
+assert.ok(p4DebriefHtml.includes('Export Route Overlay'), 'P4 debrief panel includes route overlay export');
+const p4OverlayExport = buildBenchmarkRouteOverlayExportFromResult({
+  level: { levelId: 'model-stack-level', meta: { benchmarkMetadata: { benchmarkMode: 'plannerBenchmark', episodeId: p2RuntimeContext.episodeId, informationAccessTier: 'forecastOnly', objectiveAuthority: 'fixed', routeAuthority: 'playerOrSolver', fairnessLabel: 'Forecast-only', worldModelTier: 'flowCoupledAction' } } },
+  mission: { missionId: 'model-stack-mission', agents: [{ id: 'g1' }] },
+  plan: { type: 'anchor.plan', agentPlans: [{ agentId: 'g1', selectedStart: { x: 0, y: 0 }, waypoints: [{ x: 1, y: 1, t: 1, segmentEnergy: 2 }] }] },
+  result: { resultId: 'model-stack-p4-result', source: 'manual', summary: { finalScore: 10, sampleScore: 4, energyUsed: 2 } },
+  selectedOverlayLayer: 'energyCost'
+});
+assert.equal(p4OverlayExport.type, 'anchor.benchmark.route-overlay', 'P4 route overlay export type');
+assert.equal(p4OverlayExport.selectedOverlayLayer, 'energyCost', 'P4 route overlay export preserves selected layer');
+assert.equal(p4OverlayExport.usesNewPlanner, false, 'P4 export excludes new planner');
+assert.equal(p4OverlayExport.usesMissionScoringRedesign, false, 'P4 export excludes scoring redesign');
+assert.equal(p4OverlayExport.usesMARL, false, 'P4 export excludes MARL');
+const p5AttemptSessionExport = buildBenchmarkAttemptSessionExport({
+  attemptSession: p2AttemptSession,
+  comparisonViewModel: p3ComparisonViewModel,
+  routeOverlayViewModel: p4OverlayViewModel
+});
+assert.equal(p5AttemptSessionExport.type, 'anchor.benchmark.attempt-session', 'P5 attempt-session export type');
+assert.equal(p5AttemptSessionExport.usesNewPlanner, false, 'P5 attempt session export excludes new planner');
+assert.equal(p5AttemptSessionExport.usesMissionScoringRedesign, false, 'P5 attempt session export excludes scoring redesign');
+assert.equal(p5AttemptSessionExport.usesMARL, false, 'P5 attempt session export excludes MARL');
+const p5ParsedAttemptSession = parseBenchmarkArtifact(p5AttemptSessionExport);
+assert.equal(p5ParsedAttemptSession.valid, true, 'P5 attempt-session export parses through import parser');
+const p5ImportViewModel = buildBenchmarkImportViewModel({
+  currentEpisode: { episodeId: p2RuntimeContext.episodeId, benchmarkMode: 'plannerBenchmark' },
+  currentSession: p2AttemptSession,
+  importedArtifacts: p5ParsedAttemptSession.artifacts,
+  persistedSessions: [{ episodeId: p2RuntimeContext.episodeId, benchmarkMode: 'plannerBenchmark', attemptCount: 1, routeGeometryCount: 0, savedAt: '2026-06-16T00:00:00.000Z' }]
+});
+assert.equal(p5ImportViewModel.compatibleImportCount, 1, 'P5 import view model marks matching session compatible');
+const p5ImportPanelHtml = benchmarkImportPanelHtml(p5ImportViewModel);
+assert.ok(p5ImportPanelHtml.includes('Attempt sessions let you compare multiple plans'), 'P5 import panel states attempt-session purpose');
+assert.ok(p5ImportPanelHtml.includes('P5 does not recompute scores'), 'P5 import panel states no-recompute boundary');
+assert.ok(p5ImportPanelHtml.includes('Local persistence stores compact attempt summaries'), 'P5 import panel states compact persistence boundary');
+const p5BenchmarkSource = [
+  'src/core/benchmark/BenchmarkArtifactImport.js',
+  'src/core/benchmark/BenchmarkAttemptPersistence.js',
+  'src/core/benchmark/BenchmarkImportViewModel.js',
+  'src/ui/benchmark/BenchmarkImportPanel.js',
+  'src/game/phaser/scenes/DebriefScene.js'
+].map((file) => fs.readFileSync(file, 'utf8')).join('\n');
+assert.ok(p5BenchmarkSource.includes('hasAttemptPersistence'), 'P5 source exposes attempt persistence debug field');
+assert.ok(p5BenchmarkSource.includes('importedArtifactCount'), 'P5 source exposes import count debug field');
+assert.ok(p5BenchmarkSource.includes('availableBenchmarkImportTypes'), 'P5 source exposes import type debug field');
 const p1BenchmarkContractSource = [
   'src/core/benchmark/BenchmarkEpisodeContract.js',
   'src/core/benchmark/BenchmarkRouteExecutionRecord.js',
@@ -464,6 +534,8 @@ const claimFiles = [
   'docs/benchmark_route_execution_contract.md',
   'docs/planner_benchmark_execution.md',
   'docs/planner_benchmark_attempt_comparison.md',
+  'docs/planner_benchmark_route_overlay.md',
+  'docs/planner_benchmark_attempt_import_persistence.md',
   'labs/sampling-priority-to-glider-action-value.html',
   'src/core/demo/FlowFieldDemo.js',
   'src/core/demo/flow/FlowFieldDiagnostics.js',
@@ -481,6 +553,13 @@ const claimFiles = [
   'src/core/benchmark/BenchmarkComparisonViewModel.js',
   'src/core/benchmark/BenchmarkRouteReviewViewModel.js',
   'src/ui/benchmark/BenchmarkDebriefPanel.js',
+  'src/ui/benchmark/BenchmarkRouteOverlayPanel.js',
+  'src/core/benchmark/BenchmarkRouteGeometryAdapter.js',
+  'src/core/benchmark/BenchmarkRouteOverlayViewModel.js',
+  'src/core/benchmark/BenchmarkArtifactImport.js',
+  'src/core/benchmark/BenchmarkAttemptPersistence.js',
+  'src/core/benchmark/BenchmarkImportViewModel.js',
+  'src/ui/benchmark/BenchmarkImportPanel.js',
   'src/core/io/ResultExporter.js',
   'src/game/phaser/scenes/BenchmarkModeOverviewScene.js',
   'src/game/phaser/scenes/DebriefScene.js',

@@ -81,3 +81,7 @@ P2 keeps the P1 contracts but wires them into the existing Planner Benchmark pat
 ## P3 Debrief Comparison Layer
 
 Route-execution records can now feed a Planner Benchmark Debrief comparison panel. The panel uses existing metrics and segment records to explain attempt outcomes. It does not change the route-execution contract, add a new planner, or redesign scoring.
+
+## P4 Route Overlay Relationship
+
+P4 consumes `anchor.benchmark.route-execution` records as a visualization source. The route overlay adapter preserves existing segment geometry and falls back to waypoint geometry when segment metrics are missing. It does not change the route-execution contract, compute a new path, simulate routes, or compute official scores. See [Planner Benchmark Route Overlay](planner_benchmark_route_overlay.md).

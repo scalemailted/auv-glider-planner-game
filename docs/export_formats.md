@@ -207,3 +207,9 @@ Planner Benchmark Debrief exports three benchmark JSON products in P2: `anchor.b
 ## `anchor.benchmark.comparison`
 
 P3 adds `anchor.benchmark.comparison` for Planner Benchmark Debrief. It includes attempts, rankings, comparison summary, route review, fairness labels, available benchmark export types, and boundary flags showing existing simulator/debrief, no new planner, no scoring redesign, and no MARL/RL.
+
+P4 adds `anchor.benchmark.route-overlay`. It includes selected overlay layer, normalized route geometry, overlay summary, legend, warnings, notes, and the same benchmark boundary flags. The route overlay export records visualization state for an existing planned/executed path; it does not compute a new path or score.
+
+## Planner Benchmark Attempt Sessions
+
+nchor.benchmark.attempt-session is a P5 consolidated Planner Benchmark export. It contains compact attempts for one benchmark episode, comparison summary metadata, route-geometry availability, boundary flags, and notes that scores are not recomputed. It is importable by the Debrief import panel when the episode and benchmark mode are compatible. It stores compact route geometry and metrics, not full hidden ocean fields or full simulator frame tensors.

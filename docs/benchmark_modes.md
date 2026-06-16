@@ -105,3 +105,11 @@ P2 makes `plannerBenchmark` executable through the existing mission loop. Planne
 ## P3 Planner Benchmark Comparison
 
 Planner Benchmark now has a Debrief comparison layer for fixed-objective attempts. Adaptive Benchmark and Full Autonomy Benchmark remain contract-only. P3 does not implement route planning, mission scoring, adaptive objective switching, or MARL/RL.
+
+## P4 Planner Benchmark Route Overlay
+
+Planner Benchmark Debrief now includes a Route Overlay / Map for existing planned or executed routes, with layer controls, segment/waypoint details, and an `anchor.benchmark.route-overlay` export. Adaptive Benchmark and Full Autonomy Benchmark remain contract-only. P4 does not implement route planning, mission scoring, adaptive objective switching, or MARL/RL. See [Planner Benchmark Route Overlay](planner_benchmark_route_overlay.md).
+
+## P5 Planner Benchmark Attempt Import / Persistence
+
+Planner Benchmark Debrief now supports compact browser-local attempt sessions, compatible benchmark artifact import, and nchor.benchmark.attempt-session export. Adaptive Benchmark and Full Autonomy Benchmark remain contract-only. P5 does not implement route planning, scoring redesign, adaptive objective switching, full autonomy, or MARL/RL. See [Planner Benchmark Attempt Import / Persistence](planner_benchmark_attempt_import_persistence.md).

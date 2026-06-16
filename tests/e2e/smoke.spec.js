@@ -406,6 +406,12 @@ test('Planner Benchmark debrief exports benchmark records from synthetic result'
   await expect(page.locator('#debrief-root')).toContainText('Fairness');
   await expect(page.locator('#debrief-root')).toContainText('Attempt Comparison');
   await expect(page.locator('#debrief-root')).toContainText('Route Review');
+  await expect(page.locator('#debrief-root')).toContainText('Route Overlay');
+  await expect(page.locator('#debrief-root [data-benchmark-route-overlay]')).toBeVisible();
+  await expect(page.locator('#debrief-root .benchmark-route-svg')).toBeVisible();
+  await expect(page.locator('#debrief-root [data-benchmark-route-layer]')).toBeVisible();
+  await page.locator('#debrief-root [data-benchmark-route-layer]').selectOption('energyCost');
+  await expect(page.locator('#debrief-root [data-benchmark-route-layer]')).toHaveValue('energyCost');
   await expect(page.locator('#debrief-root')).toContainText('existing simulator');
   await expect(page.locator('#debrief-root')).toContainText('existing debrief');
   await expect(page.locator('#debrief-root')).toContainText('does not add a new planner');
@@ -414,11 +420,36 @@ test('Planner Benchmark debrief exports benchmark records from synthetic result'
   await expect(page.locator('#debrief-root')).toContainText('Export Route Execution Record');
   await expect(page.locator('#debrief-root')).toContainText('Export Benchmark Attempt Set');
   await expect(page.locator('#debrief-root')).toContainText('Export Benchmark Comparison');
+  await expect(page.locator('#debrief-root')).toContainText('Export Route Overlay');
+  await expect(page.locator('#debrief-root')).toContainText('Attempt Import / Session Persistence');
+  await expect(page.locator('#debrief-root')).toContainText('Save Current Attempt Session');
+  await expect(page.locator('#debrief-root')).toContainText('Export Attempt Session');
   await expect(page.locator('#mission-console')).toContainText('Export Result JSON');
+  await expect(page.locator('#mission-console')).toContainText('Export Attempt Session');
   await expect.poll(() => page.evaluate(() => window.ANCHOR_BENCHMARK_EXECUTION_DEBUG?.hasBenchmarkRunRecord)).toBe(true);
   await expect.poll(() => page.evaluate(() => window.ANCHOR_BENCHMARK_EXECUTION_DEBUG?.hasComparisonViewModel)).toBe(true);
   await expect.poll(() => page.evaluate(() => window.ANCHOR_BENCHMARK_EXECUTION_DEBUG?.hasRouteReviewViewModel)).toBe(true);
+  await expect.poll(() => page.evaluate(() => window.ANCHOR_BENCHMARK_EXECUTION_DEBUG?.hasRouteOverlayViewModel)).toBe(true);
+  await expect.poll(() => page.evaluate(() => window.ANCHOR_BENCHMARK_EXECUTION_DEBUG?.routeOverlayExportAvailable)).toBe(true);
+  await expect.poll(() => page.evaluate(() => window.ANCHOR_BENCHMARK_EXECUTION_DEBUG?.hasAttemptPersistence)).toBe(true);
+  await expect.poll(() => page.evaluate(() => window.ANCHOR_BENCHMARK_EXECUTION_DEBUG?.currentAttemptSessionAttemptCount)).toBeGreaterThanOrEqual(1);
+  await expect.poll(() => page.evaluate(() => window.ANCHOR_BENCHMARK_EXECUTION_DEBUG?.availableBenchmarkImportTypes?.includes('anchor.benchmark.route-execution'))).toBe(true);
   await expect.poll(() => page.evaluate(() => window.ANCHOR_BENCHMARK_EXECUTION_DEBUG?.usesNewPlanner)).toBe(false);
+  await expect.poll(() => page.evaluate(() => window.ANCHOR_BENCHMARK_EXECUTION_DEBUG?.usesMissionScoringRedesign)).toBe(false);
+
+  await page.locator('#debrief-root [data-action="save-benchmark-attempt-session"]').click();
+  await expect.poll(() => page.evaluate(() => window.ANCHOR_BENCHMARK_EXECUTION_DEBUG?.attemptSessionSaved)).toBe(true);
+  await expect.poll(() => page.evaluate(() => window.ANCHOR_BENCHMARK_EXECUTION_DEBUG?.persistedAttemptSessionCount)).toBeGreaterThanOrEqual(1);
+
+  const [sessionDownload] = await Promise.all([
+    page.waitForEvent('download'),
+    page.locator('#debrief-root [data-action="export-benchmark-attempt-session"]').first().click()
+  ]);
+  const sessionJson = JSON.parse(await fs.readFile(await sessionDownload.path(), 'utf8'));
+  expect(sessionJson.type).toBe('anchor.benchmark.attempt-session');
+  expect(sessionJson.episodeId).toBe('e2e-planner-benchmark-episode');
+  expect(sessionJson.attempts.length).toBeGreaterThanOrEqual(1);
+  expect(sessionJson.usesNewPlanner).toBe(false);
 
   const [runDownload] = await Promise.all([
     page.waitForEvent('download'),
@@ -453,6 +484,16 @@ test('Planner Benchmark debrief exports benchmark records from synthetic result'
   expect(comparisonJson.usesNewPlanner).toBe(false);
   expect(comparisonJson.usesMissionScoringRedesign).toBe(false);
 
+  const [overlayDownload] = await Promise.all([
+    page.waitForEvent('download'),
+    page.locator('#debrief-root [data-action="export-benchmark-route-overlay"]').click()
+  ]);
+  const overlayJson = JSON.parse(await fs.readFile(await overlayDownload.path(), 'utf8'));
+  expect(overlayJson.type).toBe('anchor.benchmark.route-overlay');
+  expect(overlayJson.geometry).toBeTruthy();
+  expect(overlayJson.selectedOverlayLayer).toBe('energyCost');
+  expect(overlayJson.usesNewPlanner).toBe(false);
+  expect(overlayJson.usesMissionScoringRedesign).toBe(false);
   const [attemptDownload] = await Promise.all([
     page.waitForEvent('download'),
     page.locator('#debrief-root [data-action="export-benchmark-attempt-set"]').click()

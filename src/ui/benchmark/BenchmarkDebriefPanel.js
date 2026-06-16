@@ -1,12 +1,16 @@
+import { benchmarkImportPanelHtml } from './BenchmarkImportPanel.js';
+import { benchmarkRouteOverlayPanelHtml } from './BenchmarkRouteOverlayPanel.js';
+
 export function benchmarkDebriefPanelHtml(viewModel = {}) {
   if (!viewModel || viewModel.attemptCount == null) return '';
   const routeReview = viewModel.routeReview ?? null;
+  const routeOverlay = viewModel.routeOverlay ?? null;
   const exportState = viewModel.exportState ?? {};
   return `
     <article class="debrief-panel planner-benchmark-panel" data-benchmark-debrief-panel>
       <h2>Planner Benchmark</h2>
       <p>Planner Benchmark compares attempts under a fixed objective. The route was executed by the existing simulator and scored by the existing debrief system.</p>
-      <p>Comparison metrics are normalized from existing results. P3 does not add a new planner or redesign scoring.</p>
+      <p>Comparison metrics are normalized from existing results. P5 does not add a new planner or redesign scoring.</p>
       <p>Fairness labels describe what information the attempt was allowed to use.</p>
       <div class="cell-inspector-metrics">
         ${benchmarkMetricCardHtml({ label: 'Benchmark Mode', value: viewModel.benchmarkMode ?? 'plannerBenchmark' })}
@@ -17,6 +21,8 @@ export function benchmarkDebriefPanelHtml(viewModel = {}) {
       <div class="hud-muted">uses existing simulator/debrief | no new planner | no scoring redesign | no MARL/RL</div>
       ${benchmarkAttemptComparisonHtml(viewModel)}
       ${routeReview ? benchmarkRouteReviewHtml(routeReview) : ''}
+      ${routeOverlay ? benchmarkRouteOverlayPanelHtml(routeOverlay) : ''}
+      ${viewModel.importViewModel ? benchmarkImportPanelHtml(viewModel.importViewModel) : ''}
       ${benchmarkExportPanelHtml(exportState)}
     </article>
   `;
@@ -106,6 +112,8 @@ export function benchmarkRouteReviewHtml(routeReviewViewModel = {}) {
 
 export function benchmarkExportPanelHtml(exportState = {}) {
   const comparison = exportState.comparison !== false;
+  const routeOverlay = exportState.routeOverlay !== false;
+  const attemptSession = exportState.attemptSession !== false;
   return `
     <section class="benchmark-debrief-subsection" data-benchmark-export-panel>
       <h3>Benchmark Exports</h3>
@@ -114,8 +122,10 @@ export function benchmarkExportPanelHtml(exportState = {}) {
         <button class="debrief-button" data-action="export-benchmark-route">Export Route Execution Record</button>
         <button class="debrief-button" data-action="export-benchmark-attempt-set">Export Benchmark Attempt Set</button>
         ${comparison ? '<button class="debrief-button" data-action="export-benchmark-comparison">Export Benchmark Comparison</button>' : ''}
+        ${routeOverlay ? '<button class="debrief-button" data-action="export-benchmark-route-overlay">Export Route Overlay</button>' : ''}
+        ${attemptSession ? '<button class="debrief-button" data-action="export-benchmark-attempt-session">Export Attempt Session</button>' : ''}
       </div>
-      <p class="hud-muted">Available benchmark exports: run record, route execution, attempt set${comparison ? ', comparison' : ''}.</p>
+      <p class="hud-muted">Available benchmark exports: run record, route execution, attempt set${comparison ? ', comparison' : ''}${routeOverlay ? ', route overlay' : ''}${attemptSession ? ', attempt session' : ''}.</p>
     </section>
   `;
 }
@@ -164,6 +174,7 @@ function studentFairnessLabel(label) {
     'Debug / All Layers': 'Debug / All Layers'
   }[text] ?? text) || 'No fairness label';
 }
+
 function escapeHtml(value) {
   return String(value ?? '').replace(/[&<>"']/g, (char) => ({
     '&': '&amp;',

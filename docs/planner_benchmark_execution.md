@@ -34,6 +34,7 @@ Debrief can export:
 - `anchor.benchmark.run-record`: a wrapper around a normalized `anchor.benchmark.run`
 - `anchor.benchmark.route-execution`: validation, segments, metrics, and route metadata
 - `anchor.benchmark.attempt-set`: one or more attempts grouped by episode
+- `anchor.benchmark.route-overlay`: P4 route visualization state, normalized geometry, legend, warnings, and boundary flags
 
 The exports normalize existing simulator/debrief metrics. They do not compute a new official score.
 
@@ -59,7 +60,7 @@ The in-memory attempt session summarizes:
 - fewest hazards
 - highest sample score
 
-No persistent benchmark attempt store is added in P2. Existing leaderboard and result exports remain separate.
+P2 kept attempt sessions in memory only. P5 adds browser-local compact attempt-session persistence by episode id; existing leaderboard and result exports remain separate.
 
 ## Other Modes
 
@@ -69,3 +70,11 @@ Adaptive Benchmark and Full Autonomy Benchmark remain contract-only placeholders
 ## P3 Attempt Comparison And Route Review
 
 P3 adds a Debrief interpretation layer over the P2 benchmark records. It shows attempt comparison, route review, fairness/source labels, and a `anchor.benchmark.comparison` export. It does not add a new planner, does not redesign scoring, and does not add MARL/RL.
+
+## P4 Route Overlay
+
+P4 adds Route Overlay / Map to Planner Benchmark Debrief. It draws the route from existing route-execution segments when available, falls back to waypoint geometry when segment metrics are partial, and exports `anchor.benchmark.route-overlay`. It does not add a new planner, compute optimized routes, redesign scoring, or add MARL/RL. See [Planner Benchmark Route Overlay](planner_benchmark_route_overlay.md).
+
+## P5 Attempt Import And Persistence
+
+P5 adds a Debrief panel for compact local attempt-session save/load, benchmark JSON import, compatible-attempt merge, and nchor.benchmark.attempt-session export. Imported attempts are not rerun and scores are not recomputed; stored metrics are compared as exported. See [Planner Benchmark Attempt Import / Persistence](planner_benchmark_attempt_import_persistence.md).

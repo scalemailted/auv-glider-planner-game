@@ -65,4 +65,7 @@ P2 made the existing setup, planning, simulation, and debrief flow emit benchmar
 
 ## Future Work
 
-P4 can add route review overlays and path visualization. Later planner execution or scoring work should stay separate from this P3 interpretability layer.
+P4 adds route review overlays and path visualization in Debrief. Later planner execution or scoring work should stay separate from the P3/P4 interpretability layers.
+## P4 Route Overlay
+
+P4 adds a Route Overlay / Map panel, route review layer selector, segment and waypoint details, and an `anchor.benchmark.route-overlay` export. It visualizes existing planned/executed geometry and does not compute a new path, add a planner, or redesign scoring. See [Planner Benchmark Route Overlay](planner_benchmark_route_overlay.md).

@@ -25,8 +25,11 @@ export function createBenchmarkAttempt(options = {}) {
     status: normalizeBenchmarkExecutionStatus(options.status ?? options.routeExecutionRecord?.validation?.status ?? 'notStarted'),
     routeExecutionRecord: cloneJson(options.routeExecutionRecord ?? null),
     runRecord: cloneJson(options.runRecord ?? null),
+    routeGeometry: cloneJson(options.routeGeometry ?? options.routeOverlay?.geometry ?? options.routeOverlayExport?.geometry ?? null),
+    importMetadata: cloneJson(options.importMetadata ?? null),
     metrics: createRouteExecutionMetrics(metrics),
     createdAt: options.createdAt ?? new Date().toISOString(),
+    updatedAt: options.updatedAt ?? options.createdAt ?? new Date().toISOString(),
     notes: normalizeStringList(options.notes)
   };
 }
@@ -41,6 +44,7 @@ export function createBenchmarkAttemptSet(options = {}) {
     attempts,
     comparison: compareBenchmarkAttempts(attempts),
     createdAt: options.createdAt ?? new Date().toISOString(),
+    updatedAt: options.updatedAt ?? options.createdAt ?? new Date().toISOString(),
     notes: normalizeStringList(options.notes)
   };
 }

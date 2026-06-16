@@ -1,7 +1,9 @@
 import { buildMarkdownAAR } from '../../../core/io/ReportExporter.js';
 import {
+  buildBenchmarkAttemptSessionExport as buildBenchmarkAttemptSessionExportData,
   buildBenchmarkAttemptSetExportFromResult,
   buildBenchmarkComparisonExportFromResult,
+  buildBenchmarkRouteOverlayExportFromResult,
   buildBenchmarkRouteExecutionExportFromResult,
   buildBenchmarkRunRecordExportFromResult,
   buildResultExport
@@ -26,7 +28,7 @@ import { EXPERIENCE_MODES, experienceModeLabel } from '../../../core/experience/
 import { getMissionModePreset } from '../../../core/missions/MissionModeRegistry.js';
 import { navigationUncertaintyLabel, normalizeNavigationUncertaintyConfig } from '../../../core/navigation/NavigationUncertainty.js';
 import { PhaserButton } from '../ui/Button.js';
-import { downloadJson, downloadText } from '../ui/FileBridge.js';
+import { downloadJson, downloadText, readJsonFile } from '../ui/FileBridge.js';
 import {
   addResultToBenchmarkAttemptSession,
   benchmarkAttemptSessionSummary,
@@ -39,7 +41,24 @@ import {
 import { attemptSourceFromRouteSourceLabel } from '../../../core/benchmark/BenchmarkAttemptSourceMapping.js';
 import { buildBenchmarkComparisonViewModel, benchmarkMetricDefinitions } from '../../../core/benchmark/BenchmarkComparisonViewModel.js';
 import { buildBenchmarkRouteReviewViewModel } from '../../../core/benchmark/BenchmarkRouteReviewViewModel.js';
+import { extractRouteGeometryFromRouteExecutionRecord, routeGeometryStats } from '../../../core/benchmark/BenchmarkRouteGeometryAdapter.js';
+import {
+  benchmarkRouteOverlayLayerOptions,
+  buildBenchmarkRouteOverlayViewModel
+} from '../../../core/benchmark/BenchmarkRouteOverlayViewModel.js';
 import { benchmarkDebriefPanelHtml } from '../../../ui/benchmark/BenchmarkDebriefPanel.js';
+import {
+  BENCHMARK_IMPORT_SUPPORTED_TYPES,
+  mergeBenchmarkArtifactsIntoAttemptSession,
+  parseBenchmarkArtifact
+} from '../../../core/benchmark/BenchmarkArtifactImport.js';
+import { buildBenchmarkImportViewModel, benchmarkImportSummary } from '../../../core/benchmark/BenchmarkImportViewModel.js';
+import {
+  deleteBenchmarkAttemptSession,
+  listBenchmarkAttemptSessions,
+  loadBenchmarkAttemptSession,
+  saveBenchmarkAttemptSession
+} from '../../../core/benchmark/BenchmarkAttemptPersistence.js';
 
 const PhaserScene = globalThis.Phaser?.Scene ?? class {};
 
@@ -284,7 +303,7 @@ export class DebriefScene extends PhaserScene {
             </table>
           </div>
         ` : ''}
-        ${segments.length ? `<p>Key segments: ${escapeHtml(segments.map((segment) => `${segment.grade} ${segment.roleLabels?.[0] ?? 'transit'}`).join(' · '))}</p>` : ''}
+        ${segments.length ? `<p>Key segments: ${escapeHtml(segments.map((segment) => `${segment.grade} ${segment.roleLabels?.[0] ?? 'transit'}`).join(' ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã¢â‚¬Â¦Ãƒâ€šÃ‚Â¡ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€¦Ã‚Â¡ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â· '))}</p>` : ''}
       </article>
     `;
   }
@@ -369,28 +388,32 @@ export class DebriefScene extends PhaserScene {
     if (!context) {
       this.app.state.benchmarkComparisonViewModel = null;
       this.app.state.benchmarkRouteReviewViewModel = null;
+      this.app.state.benchmarkRouteGeometry = null;
+      this.app.state.benchmarkRouteOverlayViewModel = null;
+      this.app.state.benchmarkImportViewModel = null;
       this.refreshBenchmarkExecutionDebug({ result, context: null });
       return null;
     }
     const routeExecutionExport = this.buildBenchmarkRouteExecutionExport(result, context);
     const runRecordExport = this.buildBenchmarkRunRecordExport(result, context);
-    const session = addResultToBenchmarkAttemptSession(
-      this.app.state.benchmarkAttemptSession ?? createBenchmarkAttemptSession({ episodeId: context.episodeId, benchmarkMode: 'plannerBenchmark' }),
-      {
-        episodeId: context.episodeId,
-        benchmarkMode: 'plannerBenchmark',
-        attemptSource: context.activeAttemptSource,
-        routeSourceLabel: result?.planName ?? result?.source ?? context.routeSourceLabel,
-        fairnessLabel: context.fairnessLabel,
-        result,
-        runRecord: runRecordExport.runRecord,
-        routeExecutionRecord: routeExecutionExport,
-        metrics: routeExecutionExport.metrics
-      }
-    );
+    const routeGeometry = extractRouteGeometryFromRouteExecutionRecord(routeExecutionExport);
+    const baseSession = this.resolveBenchmarkAttemptSession(context);
+    const session = addResultToBenchmarkAttemptSession(baseSession, {
+      episodeId: context.episodeId,
+      benchmarkMode: 'plannerBenchmark',
+      attemptSource: context.activeAttemptSource,
+      routeSourceLabel: result?.planName ?? result?.source ?? context.routeSourceLabel,
+      fairnessLabel: context.fairnessLabel,
+      result,
+      runRecord: runRecordExport.runRecord,
+      routeExecutionRecord: routeExecutionExport,
+      routeGeometry,
+      metrics: routeExecutionExport.metrics
+    });
     this.app.state.benchmarkAttemptSession = session;
     const attemptSetExport = this.buildBenchmarkAttemptSetExport(result, context);
-    const activeAttempt = (attemptSetExport.attempts ?? []).find((attempt) => attempt.resultId && attempt.resultId === routeExecutionExport.resultId)
+    const activeAttempt = (attemptSetExport.attempts ?? []).find((attempt) => attempt.resultId && routeExecutionExport.resultId && attempt.resultId === routeExecutionExport.resultId)
+      ?? (attemptSetExport.attempts ?? []).find((attempt) => attempt.attemptSource === context.activeAttemptSource && attempt.routeSourceLabel === (result?.planName ?? result?.source ?? context.routeSourceLabel))
       ?? (attemptSetExport.attempts ?? []).at(-1)
       ?? null;
     const comparisonViewModel = buildBenchmarkComparisonViewModel({
@@ -406,9 +429,32 @@ export class DebriefScene extends PhaserScene {
       plan: this.app.state.plan,
       result
     });
+    const routeOverlayViewModel = buildBenchmarkRouteOverlayViewModel({
+      attemptSet: attemptSetExport,
+      activeAttempt,
+      routeExecutionRecord: routeExecutionExport,
+      routeGeometry,
+      routeReviewViewModel,
+      comparisonViewModel,
+      selectedOverlayLayer: this.app.state.benchmarkRouteOverlayLayer ?? 'routeStatus',
+      selectedSegmentIndex: this.app.state.benchmarkSelectedRouteSegmentIndex,
+      selectedWaypointIndex: this.app.state.benchmarkSelectedRouteWaypointIndex,
+      selectedOverlayAttemptId: this.app.state.benchmarkSelectedOverlayAttemptId
+    });
+    const importViewModel = buildBenchmarkImportViewModel({
+      currentEpisode: this.currentBenchmarkEpisodeDescriptor(context),
+      currentSession: session,
+      importedArtifacts: this.app.state.benchmarkImportedArtifacts ?? [],
+      persistedSessions: this.listPersistedBenchmarkSessions()
+    });
     this.app.state.benchmarkComparisonViewModel = comparisonViewModel;
     this.app.state.benchmarkRouteReviewViewModel = routeReviewViewModel;
+    this.app.state.benchmarkRouteGeometry = routeGeometry;
+    this.app.state.benchmarkRouteOverlayViewModel = routeOverlayViewModel;
+    this.app.state.benchmarkRouteOverlayLayer = routeOverlayViewModel.selectedOverlayLayer;
+    this.app.state.benchmarkSelectedOverlayAttemptId = routeOverlayViewModel.selectedOverlayAttemptId;
     this.app.state.benchmarkAttemptSetExport = attemptSetExport;
+    this.app.state.benchmarkImportViewModel = importViewModel;
     this.refreshBenchmarkExecutionDebug({
       result,
       context,
@@ -417,9 +463,36 @@ export class DebriefScene extends PhaserScene {
       attemptSession: session,
       attemptSetExport,
       comparisonViewModel,
-      routeReviewViewModel
+      routeReviewViewModel,
+      routeOverlayViewModel
     });
     return session;
+  }
+  resolveBenchmarkAttemptSession(context) {
+    const current = this.app.state.benchmarkAttemptSession;
+    if (current?.episodeId === context.episodeId && current?.benchmarkMode === 'plannerBenchmark') return current;
+    const loaded = loadBenchmarkAttemptSession(context.episodeId);
+    this.app.state.benchmarkAttemptSessionLoaded = Boolean(loaded.ok);
+    this.app.state.benchmarkAttemptSessionLoadedForEpisode = loaded.ok ? context.episodeId : null;
+    if (loaded.ok) return loaded.session;
+    return createBenchmarkAttemptSession({ episodeId: context.episodeId, benchmarkMode: 'plannerBenchmark' });
+  }
+
+  listPersistedBenchmarkSessions() {
+    const listed = listBenchmarkAttemptSessions();
+    this.app.state.benchmarkPersistedAttemptSessions = listed.sessions ?? [];
+    return listed.sessions ?? [];
+  }
+
+  currentBenchmarkEpisodeDescriptor(context = this.benchmarkAttemptContext(this.app.state.result)) {
+    return {
+      episodeId: context?.episodeId ?? this.app.state.benchmarkAttemptSession?.episodeId ?? null,
+      benchmarkMode: context?.benchmarkMode ?? this.app.state.benchmarkAttemptSession?.benchmarkMode ?? 'plannerBenchmark',
+      levelId: this.app.state.level?.levelId ?? this.app.state.result?.levelId ?? null,
+      missionId: this.app.state.mission?.missionId ?? this.app.state.mission?.id ?? this.app.state.result?.missionId ?? null,
+      level: this.app.state.level,
+      mission: this.app.state.mission
+    };
   }
   benchmarkAttemptContext(result = null) {
     const base = extractPlannerBenchmarkContextFromState({
@@ -469,6 +542,103 @@ export class DebriefScene extends PhaserScene {
   buildBenchmarkComparisonExport(result, context = this.benchmarkAttemptContext(result)) {
     return buildBenchmarkComparisonExportFromResult(this.buildBenchmarkExportContext(result, context));
   }
+
+  buildBenchmarkAttemptSessionExport(result, context = this.benchmarkAttemptContext(result)) {
+    return buildBenchmarkAttemptSessionExportData({
+      ...this.buildBenchmarkExportContext(result, context),
+      comparisonViewModel: this.app.state.benchmarkComparisonViewModel,
+      routeOverlayViewModel: this.app.state.benchmarkRouteOverlayViewModel
+    });
+  }
+
+  saveBenchmarkAttemptSessionForCurrentResult() {
+    const session = this.app.state.benchmarkAttemptSession;
+    if (!session?.attempts?.length) {
+      this.app.toast?.('No benchmark attempt session is available to save.', 'warning');
+      return;
+    }
+    const saved = saveBenchmarkAttemptSession(session);
+    this.app.state.benchmarkAttemptSessionSaved = Boolean(saved.ok);
+    if (!saved.ok) this.app.state.benchmarkLastImportWarnings = [saved.reason ?? saved.error ?? 'Unable to save attempt session.'];
+    this.app.toast?.(saved.ok ? 'Benchmark attempt session saved in this browser.' : (saved.reason ?? 'Unable to save benchmark attempt session.'), saved.ok ? 'success' : 'warning');
+    this.renderDebrief();
+  }
+
+  deleteCurrentBenchmarkAttemptSession() {
+    const episodeId = this.app.state.benchmarkAttemptSession?.episodeId ?? this.benchmarkAttemptContext(this.app.state.result)?.episodeId;
+    if (!episodeId) return;
+    const deleted = deleteBenchmarkAttemptSession(episodeId);
+    this.app.state.benchmarkAttemptSessionSaved = false;
+    this.app.state.benchmarkAttemptSessionLoaded = false;
+    if (!deleted.ok) this.app.state.benchmarkLastImportWarnings = [deleted.reason ?? deleted.error ?? 'Unable to delete saved attempt session.'];
+    this.app.toast?.(deleted.ok ? 'Saved benchmark attempt session deleted.' : (deleted.reason ?? 'Unable to delete saved attempt session.'), deleted.ok ? 'info' : 'warning');
+    this.renderDebrief();
+  }
+
+  loadPersistedBenchmarkAttemptSession(episodeId) {
+    const loaded = loadBenchmarkAttemptSession(episodeId);
+    if (loaded.ok) {
+      this.app.state.benchmarkAttemptSession = loaded.session;
+      this.app.state.benchmarkAttemptSessionLoaded = true;
+      this.app.state.benchmarkAttemptSessionLoadedForEpisode = loaded.session.episodeId;
+      this.app.toast?.('Saved benchmark attempt session loaded.', 'success');
+    } else {
+      this.app.state.benchmarkLastImportWarnings = [loaded.reason ?? loaded.error ?? 'Unable to load saved benchmark attempt session.'];
+      this.app.toast?.(loaded.reason ?? 'Unable to load saved benchmark attempt session.', 'warning');
+    }
+    this.renderDebrief();
+  }
+
+  async importBenchmarkArtifactFiles(files) {
+    const fileList = Array.from(files ?? []);
+    if (!fileList.length) return;
+    const imported = [];
+    const warnings = [];
+    for (const file of fileList) {
+      try {
+        const payload = await readJsonFile(file);
+        const parsed = parseBenchmarkArtifact(payload);
+        imported.push(...parsed.artifacts.map((artifact) => ({ ...artifact, fileName: file.name })));
+        warnings.push(...(parsed.errors ?? []), ...(parsed.warnings ?? []));
+      } catch (error) {
+        warnings.push(`${file.name}: ${String(error?.message ?? error)}`);
+      }
+    }
+    this.app.state.benchmarkImportedArtifacts = [
+      ...(this.app.state.benchmarkImportedArtifacts ?? []),
+      ...imported
+    ].slice(-12);
+    this.app.state.benchmarkLastImportWarnings = warnings;
+    this.app.toast?.(imported.length ? `Staged ${imported.length} benchmark artifact(s).` : 'No compatible benchmark artifacts were staged.', imported.length ? 'success' : 'warning');
+    this.renderDebrief();
+  }
+
+  mergeCompatibleBenchmarkImports() {
+    const artifacts = this.app.state.benchmarkImportedArtifacts ?? [];
+    const session = this.app.state.benchmarkAttemptSession;
+    const context = this.benchmarkAttemptContext(this.app.state.result);
+    if (!session || !artifacts.length || !context) {
+      this.app.toast?.('No compatible benchmark imports are staged.', 'warning');
+      return;
+    }
+    const merged = mergeBenchmarkArtifactsIntoAttemptSession({
+      session,
+      artifacts,
+      currentEpisode: this.currentBenchmarkEpisodeDescriptor(context)
+    });
+    this.app.state.benchmarkAttemptSession = merged.session;
+    this.app.state.benchmarkLastImportWarnings = merged.warnings;
+    this.app.state.benchmarkCompatibleImportCount = merged.mergedCount;
+    this.app.state.benchmarkIncompatibleImportCount = merged.skippedCount;
+    this.app.toast?.(merged.mergedCount ? `Merged ${merged.mergedCount} imported attempt(s).` : 'No compatible imports were merged.', merged.mergedCount ? 'success' : 'warning');
+    this.renderDebrief();
+  }
+  buildBenchmarkRouteOverlayExport(result, context = this.benchmarkAttemptContext(result)) {
+    return buildBenchmarkRouteOverlayExportFromResult({
+      ...this.buildBenchmarkExportContext(result, context),
+      selectedOverlayLayer: this.app.state.benchmarkRouteOverlayLayer ?? 'routeStatus'
+    });
+  }
   benchmarkPanelHtml(result) {
     const context = this.benchmarkAttemptContext(result);
     if (!context) return '';
@@ -477,21 +647,29 @@ export class DebriefScene extends PhaserScene {
     return benchmarkDebriefPanelHtml({
       ...comparisonViewModel,
       routeReview: this.app.state.benchmarkRouteReviewViewModel,
+      routeOverlay: this.app.state.benchmarkRouteOverlayViewModel,
+      importViewModel: this.app.state.benchmarkImportViewModel,
       exportState: {
         runRecord: true,
         routeExecution: true,
         attemptSet: true,
-        comparison: true
+        comparison: true,
+        routeOverlay: true,
+        attemptSession: true
       }
     });
   }
-  refreshBenchmarkExecutionDebug({ result = null, context = null, runRecordExport = null, routeExecutionExport = null, attemptSession = null, attemptSetExport = null, comparisonViewModel = null, routeReviewViewModel = null } = {}) {
+  refreshBenchmarkExecutionDebug({ result = null, context = null, runRecordExport = null, routeExecutionExport = null, attemptSession = null, attemptSetExport = null, comparisonViewModel = null, routeReviewViewModel = null, routeOverlayViewModel = null } = {}) {
     const summary = result?.summary ?? {};
     const comparison = comparisonViewModel ?? this.app?.state?.benchmarkComparisonViewModel ?? null;
     const routeReview = routeReviewViewModel ?? this.app?.state?.benchmarkRouteReviewViewModel ?? null;
-    const exportTypes = ['anchor.benchmark.run-record', 'anchor.benchmark.route-execution', 'anchor.benchmark.attempt-set', 'anchor.benchmark.comparison'];
+    const routeOverlay = routeOverlayViewModel ?? this.app?.state?.benchmarkRouteOverlayViewModel ?? null;
+    const routeGeometry = this.app?.state?.benchmarkRouteGeometry ?? null;
+    const importViewModel = this.app?.state?.benchmarkImportViewModel ?? null;
+    const persistedSessions = this.app?.state?.benchmarkPersistedAttemptSessions ?? [];
+    const exportTypes = ['anchor.benchmark.run-record', 'anchor.benchmark.route-execution', 'anchor.benchmark.attempt-set', 'anchor.benchmark.comparison', 'anchor.benchmark.route-overlay', 'anchor.benchmark.attempt-session'];
     globalThis.ANCHOR_BENCHMARK_EXECUTION_DEBUG = {
-      version: 'benchmark-execution-p3',
+      version: 'benchmark-execution-p5',
       episodeId: context?.episodeId ?? comparison?.episodeId ?? null,
       benchmarkMode: context?.benchmarkMode ?? comparison?.benchmarkMode ?? null,
       phase: this.app?.state?.mode ?? 'debrief',
@@ -508,6 +686,7 @@ export class DebriefScene extends PhaserScene {
       hasAttemptSet: Boolean(attemptSession?.attempts ?? attemptSetExport?.attempts),
       hasComparisonViewModel: Boolean(comparison),
       hasRouteReviewViewModel: Boolean(routeReview),
+      hasRouteOverlayViewModel: Boolean(routeOverlay),
       attemptCount: comparison?.attemptCount ?? attemptSession?.attempts?.length ?? 0,
       bestAttemptByScore: comparison?.bestAttemptByScore ?? null,
       lowestEnergyAttempt: comparison?.lowestEnergyAttempt ?? null,
@@ -529,6 +708,28 @@ export class DebriefScene extends PhaserScene {
         segmentCount: routeReview.segmentCount,
         warnings: routeReview.warnings
       } : null,
+      routeOverlayLayer: routeOverlay?.selectedOverlayLayer ?? this.app?.state?.benchmarkRouteOverlayLayer ?? 'routeStatus',
+      routeGeometryStats: routeOverlay?.stats ?? (routeGeometry ? routeGeometryStats(routeGeometry) : null),
+      routeOverlayWarnings: routeOverlay?.warnings ?? [],
+      selectedRouteSegment: routeOverlay?.selectedSegment ?? null,
+      selectedRouteWaypoint: routeOverlay?.selectedWaypoint ?? null,
+      availableRouteOverlayLayers: benchmarkRouteOverlayLayerOptions(),
+      routeOverlayExportAvailable: Boolean(routeOverlay),
+      multiAttemptOverlayAvailable: Boolean(routeOverlay?.attemptComparison?.multiAttemptOverlayAvailable),
+      hasAttemptPersistence: true,
+      attemptSessionLoaded: Boolean(this.app?.state?.benchmarkAttemptSessionLoaded),
+      attemptSessionSaved: Boolean(this.app?.state?.benchmarkAttemptSessionSaved),
+      persistedAttemptSessionCount: persistedSessions.length,
+      currentAttemptSessionAttemptCount: attemptSession?.attempts?.length ?? this.app?.state?.benchmarkAttemptSession?.attempts?.length ?? 0,
+      importedArtifactCount: importViewModel?.importedArtifactCount ?? this.app?.state?.benchmarkImportedArtifacts?.length ?? 0,
+      compatibleImportCount: importViewModel?.compatibleImportCount ?? this.app?.state?.benchmarkCompatibleImportCount ?? 0,
+      incompatibleImportCount: importViewModel?.incompatibleImportCount ?? this.app?.state?.benchmarkIncompatibleImportCount ?? 0,
+      lastImportWarnings: this.app?.state?.benchmarkLastImportWarnings ?? importViewModel?.warnings ?? [],
+      multiAttemptRouteGeometryCount: routeOverlay?.attemptComparison?.routeGeometryCount ?? 0,
+      selectedOverlayAttemptId: routeOverlay?.selectedOverlayAttemptId ?? this.app?.state?.benchmarkSelectedOverlayAttemptId ?? null,
+      availablePersistedEpisodes: persistedSessions.map((session) => session.episodeId).filter(Boolean),
+      availableBenchmarkImportTypes: [...BENCHMARK_IMPORT_SUPPORTED_TYPES],
+      benchmarkImportSummary: importViewModel ? benchmarkImportSummary(importViewModel) : null,
       benchmarkMetricDefinitions: benchmarkMetricDefinitions(),
       availableBenchmarkExports: exportTypes,
       metrics: {
@@ -673,9 +874,27 @@ export class DebriefScene extends PhaserScene {
     root.querySelector('[data-action="export-benchmark-route"]')?.addEventListener('click', () => downloadJson('anchor_benchmark_route_execution.json', this.buildBenchmarkRouteExecutionExport(result)));
     root.querySelector('[data-action="export-benchmark-attempt-set"]')?.addEventListener('click', () => downloadJson('anchor_benchmark_attempt_set.json', this.buildBenchmarkAttemptSetExport(result)));
     root.querySelector('[data-action="export-benchmark-comparison"]')?.addEventListener('click', () => downloadJson('anchor_benchmark_comparison.json', this.buildBenchmarkComparisonExport(result)));
+    root.querySelector('[data-action="export-benchmark-route-overlay"]')?.addEventListener('click', () => downloadJson('anchor_benchmark_route_overlay.json', this.buildBenchmarkRouteOverlayExport(result)));
+    root.querySelectorAll('[data-action="export-benchmark-attempt-session"]').forEach((button) => button.addEventListener('click', () => downloadJson('anchor_benchmark_attempt_session.json', this.buildBenchmarkAttemptSessionExport(result))));
+    root.querySelector('[data-action="save-benchmark-attempt-session"]')?.addEventListener('click', () => this.saveBenchmarkAttemptSessionForCurrentResult());
+    root.querySelector('[data-action="delete-benchmark-attempt-session"]')?.addEventListener('click', () => this.deleteCurrentBenchmarkAttemptSession());
+    root.querySelector('[data-action="merge-compatible-benchmark-imports"]')?.addEventListener('click', () => this.mergeCompatibleBenchmarkImports());
+    root.querySelector('[data-benchmark-import-file]')?.addEventListener('change', (event) => this.importBenchmarkArtifactFiles(event.target.files));
+    root.querySelectorAll('[data-benchmark-load-session]').forEach((button) => button.addEventListener('click', () => this.loadPersistedBenchmarkAttemptSession(button.dataset.benchmarkLoadSession)));
+    root.querySelectorAll('[data-benchmark-overlay-attempt]').forEach((button) => button.addEventListener('click', () => this.updateBenchmarkRouteOverlay({ result, selectedOverlayAttemptId: button.dataset.benchmarkOverlayAttempt })));
+    root.querySelector('[data-benchmark-route-layer]')?.addEventListener('change', (event) => this.updateBenchmarkRouteOverlay({ result, selectedOverlayLayer: event.target.value }));
+    root.querySelectorAll('[data-benchmark-route-segment]').forEach((button) => button.addEventListener('click', () => this.updateBenchmarkRouteOverlay({ result, selectedSegmentIndex: Number(button.dataset.benchmarkRouteSegment) })));
+    root.querySelectorAll('[data-benchmark-route-waypoint]').forEach((button) => button.addEventListener('click', () => this.updateBenchmarkRouteOverlay({ result, selectedWaypointIndex: Number(button.dataset.benchmarkRouteWaypoint) })));
     root.querySelector('[data-action="next-scenario"]')?.addEventListener('click', () => this.leaveDebrief(() => this.getScenarioNextAction()?.onClick?.()));
   }
 
+  updateBenchmarkRouteOverlay({ result = this.app.state.result, selectedOverlayLayer = null, selectedSegmentIndex = null, selectedWaypointIndex = null, selectedOverlayAttemptId = null } = {}) {
+    if (selectedOverlayLayer != null) this.app.state.benchmarkRouteOverlayLayer = selectedOverlayLayer;
+    if (selectedSegmentIndex != null && Number.isFinite(Number(selectedSegmentIndex))) this.app.state.benchmarkSelectedRouteSegmentIndex = Number(selectedSegmentIndex);
+    if (selectedWaypointIndex != null && Number.isFinite(Number(selectedWaypointIndex))) this.app.state.benchmarkSelectedRouteWaypointIndex = Number(selectedWaypointIndex);
+    if (selectedOverlayAttemptId != null) this.app.state.benchmarkSelectedOverlayAttemptId = String(selectedOverlayAttemptId);
+    this.renderDebrief();
+  }
   leaveDebrief(callback) {
     this.destroyDebriefRoot();
     this.app.setDebriefFullscreen(false);
@@ -710,6 +929,8 @@ export class DebriefScene extends PhaserScene {
       'export-benchmark-route': () => downloadJson('anchor_benchmark_route_execution.json', this.buildBenchmarkRouteExecutionExport(result)),
       'export-benchmark-attempt-set': () => downloadJson('anchor_benchmark_attempt_set.json', this.buildBenchmarkAttemptSetExport(result)),
       'export-benchmark-comparison': () => downloadJson('anchor_benchmark_comparison.json', this.buildBenchmarkComparisonExport(result)),
+      'export-benchmark-route-overlay': () => downloadJson('anchor_benchmark_route_overlay.json', this.buildBenchmarkRouteOverlayExport(result)),
+      'export-benchmark-attempt-session': () => downloadJson('anchor_benchmark_attempt_session.json', this.buildBenchmarkAttemptSessionExport(result)),
       'temporal-greedy': () => this.leaveDebrief(() => this.simulateTemporalGreedy())
     });
   }

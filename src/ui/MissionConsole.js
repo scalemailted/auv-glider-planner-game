@@ -1219,6 +1219,8 @@ export class MissionConsole {
           <button class="console-button" data-action="export-benchmark-route">Export Route Execution Record</button>
           <button class="console-button" data-action="export-benchmark-attempt-set">Export Benchmark Attempt Set</button>
           <button class="console-button" data-action="export-benchmark-comparison">Export Benchmark Comparison</button>
+          <button class="console-button" data-action="export-benchmark-route-overlay">Export Route Overlay</button>
+          <button class="console-button" data-action="export-benchmark-attempt-session">Export Attempt Session</button>
         ` : ''}
       </section>
       <section class="console-section">
@@ -1274,6 +1276,7 @@ export class MissionConsole {
     const missingSystems = state.missingSystems ?? [];
     const p1Implemented = Array.isArray(payload.p1Implemented) ? payload.p1Implemented : [];
     const p1NotImplemented = Array.isArray(payload.p1NotImplemented) ? payload.p1NotImplemented : [];
+    const savedAttemptSessions = Array.isArray(payload.savedAttemptSessions) ? payload.savedAttemptSessions : [];
     const plannerSetupHtml = config.benchmarkMode === 'plannerBenchmark'
       ? '<button data-action="benchmark-open-setup" class="console-button">Open Planner Benchmark Setup</button>'
       : '<div class="hud-muted">Contract defined; execution later. This mode does not launch route execution in P2.</div>';
@@ -1306,7 +1309,15 @@ export class MissionConsole {
         ${plannerSetupHtml}
       </section>
       <section class="console-section">
-        <h2>P2 Status</h2>
+        <h2>Saved Attempt Sessions</h2>
+        ${savedAttemptSessions.length ? `
+          <div class="panel-stack">
+            ${savedAttemptSessions.slice(0, 5).map((session) => `<div class="hud-muted"><strong>${escapeHtml(session.episodeId ?? 'unknown episode')}</strong>: ${escapeHtml(session.attemptCount ?? 0)} attempt(s), ${escapeHtml(session.routeGeometryCount ?? 0)} route(s) saved.</div>`).join('')}
+          </div>
+        ` : '<div class="hud-muted">No saved Planner Benchmark attempt sessions are stored in this browser yet.</div>'}
+      </section>
+      <section class="console-section">
+        <h2>P2/P5 Status</h2>
         <div class="panel-stack">
           <div><strong>Implemented now</strong><ul>${p1Implemented.map((item) => `<li>${escapeHtml(item)}</li>`).join('')}</ul></div>
           <div><strong>Not implemented yet</strong><ul>${p1NotImplemented.map((item) => `<li>${escapeHtml(item)}</li>`).join('')}</ul></div>

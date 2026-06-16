@@ -12,6 +12,7 @@ import { BENCHMARK_RUN_RECORD_VERSION } from '../../../core/benchmark/BenchmarkR
 import { missionObjectiveOptions } from '../../../core/benchmark/MissionObjectiveTaxonomy.js';
 import { openPlannerBenchmarkSetup } from '../../../core/benchmark/BenchmarkLaunchBridge.js';
 import { downloadJSON } from '../../../core/io/ImportExport.js';
+import { listBenchmarkAttemptSessions } from '../../../core/benchmark/BenchmarkAttemptPersistence.js';
 
 const PhaserScene = globalThis.Phaser?.Scene ?? class {};
 
@@ -72,6 +73,7 @@ export class BenchmarkModeOverviewScene extends PhaserScene {
       episodeConfig: this.episodeConfig,
       episodeState: this.episodeState,
       objectiveOptions: missionObjectiveOptions().slice(0, 6),
+      savedAttemptSessions: this.savedBenchmarkAttemptSessionSummaries(),
       p1Implemented: [
         'benchmark mode config',
         'episode metadata propagation',
@@ -98,6 +100,16 @@ export class BenchmarkModeOverviewScene extends PhaserScene {
       openPlannerEvaluation: () => this.scene.start('DatasetExportScene'),
       menu: () => this.scene.start('MainMenuScene')
     });
+  }
+
+  savedBenchmarkAttemptSessionSummaries() {
+    return (listBenchmarkAttemptSessions().sessions ?? []).map((session) => ({
+      episodeId: session.episodeId,
+      benchmarkMode: session.benchmarkMode,
+      attemptCount: session.attemptCount,
+      routeGeometryCount: session.routeGeometryCount,
+      savedAt: session.savedAt
+    }));
   }
 
   exportConfigJson() {
@@ -139,13 +151,14 @@ export class BenchmarkModeOverviewScene extends PhaserScene {
       episodeContractVersion: BENCHMARK_EPISODE_CONTRACT_VERSION,
       runRecordVersion: BENCHMARK_RUN_RECORD_VERSION,
       routeExecutionRecordVersion: BENCHMARK_ROUTE_EXECUTION_RECORD_VERSION,
+      savedAttemptSessionCount: this.savedBenchmarkAttemptSessionSummaries().length,
       plannerBenchmarkLaunchAvailable: this.config.benchmarkMode === 'plannerBenchmark',
       routeExecutionImplemented: 'existing-simulator-debrief-export',
       missionScoringImplemented: false,
       usesExistingSimulation: true,
       usesExistingDebrief: true,
       supportedAttemptSources: [...BENCHMARK_ATTEMPT_SOURCE_IDS],
-      supportedExportTypes,
+      supportedExportTypes: [...supportedExportTypes, 'anchor.benchmark.route-overlay', 'anchor.benchmark.attempt-session'],
       implementedSystems: [...this.state.implementedSystems, 'benchmarkEpisodeRuntime', 'benchmarkAttemptSession', 'benchmarkResultAdapter'],
       missingSystems: [...this.state.missingSystems],
       visibleLayers: [...this.state.visibleLayers],

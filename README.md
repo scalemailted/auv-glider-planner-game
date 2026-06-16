@@ -120,7 +120,9 @@ Quick loop:
 - [Sampling Priority Demo](docs/sampling_priority_demo.md)
 - [Flow-Coupled Sampling Demo](docs/flow_coupled_sampling_demo.md)
 - [Benchmark Modes](docs/benchmark_modes.md)
-- [Benchmark Route Execution Contract](docs/benchmark_route_execution_contract.md)`r`n- [Planner Benchmark Execution](docs/planner_benchmark_execution.md)
+- [Benchmark Route Execution Contract](docs/benchmark_route_execution_contract.md)
+- [Planner Benchmark Execution](docs/planner_benchmark_execution.md)
+- [Planner Benchmark Route Overlay](docs/planner_benchmark_route_overlay.md)
 - [Solver workflow](docs/solver_workflow.md)
 - [Export formats](docs/export_formats.md)
 - [Plan format](docs/plan_format.md)
@@ -155,7 +157,7 @@ Field concepts stay separate: `F(x,y,t)` is a physical current vector field, `C_
 
 `Flow-Coupled Sampling Demo` computes glider-specific direct-target action value `Q_glider(g,x,y,t)` from `A_global`, future priority, current assist/opposition, cross-current risk, travel time, energy cost, time windows, hazards, reachability, and redundancy. The [Sampling Priority to Glider Action Value Learning Lab](labs/sampling-priority-to-glider-action-value.html) explains this bridge from global sampling priority to planner/mission evaluation. It is not full route planning, mission scoring, calibrated glider dynamics, calibrated ocean forecasting, or a production vehicle controller. See [Flow-Coupled Sampling Demo](docs/flow_coupled_sampling_demo.md).
 
-`Benchmark Modes` defines the architecture skeleton for Planner Benchmark, Adaptive Benchmark, and Full Autonomy Benchmark. P2 lets Planner Benchmark use the existing planning workspace, simulator, and Debrief to emit run-record, route-execution, and attempt-set exports. It does not implement a new planner, redesign scoring, adaptive objective execution, full autonomy, or MARL. See [Benchmark Modes](docs/benchmark_modes.md), [Benchmark Route Execution Contract](docs/benchmark_route_execution_contract.md), and [Planner Benchmark Execution](docs/planner_benchmark_execution.md).
+`Benchmark Modes` defines the architecture skeleton for Planner Benchmark, Adaptive Benchmark, and Full Autonomy Benchmark. P2 lets Planner Benchmark use the existing planning workspace, simulator, and Debrief to emit run-record, route-execution, and attempt-set exports. It does not implement a new planner, redesign scoring, adaptive objective execution, full autonomy, or MARL. See [Benchmark Modes](docs/benchmark_modes.md), [Benchmark Route Execution Contract](docs/benchmark_route_execution_contract.md), [Planner Benchmark Execution](docs/planner_benchmark_execution.md), and [Planner Benchmark Route Overlay](docs/planner_benchmark_route_overlay.md).
 
 All field demos include `Export Demo JSON` for notebook artifacts. Flow exports now include `flowFieldDiagnostics` and `flowFieldModel` so notebooks can see the synthetic model claim boundary and audited vector-field summaries. Choose start time, end time, and timeframe count to export a bounded `frames[]` series using the current demo settings, while the top-level `fields` preserve the currently visible frame. These exports capture row-major field arrays, scene config, demo time, selected-cell inspector state, units, and coordinate convention. Sample / ROI exports also include graph-field metadata, community-id grids, process timing, current display metric metadata, optional metric layers, and per-frame graph state/message layers when the graph engine is active. The Sample / ROI demo additionally offers `Export Scenario JSON` for the compact validated `anchor.syntheticRoiScenario` time-series format. Sampling Priority exports include `samplingPriorityModel`, component fields, `candidateSamplePoints`, and `priorityDiagnostics` with route/flow coupling flags set false. Flow-Coupled Sampling exports include `flowCoupledSamplingModel`, `gliderActionContext`, component fields, `candidateTargets`, and `actionValueDiagnostics` with flow coupling true and route planning false. See [Export Formats](docs/export_formats.md).
 
@@ -826,3 +828,7 @@ Planner Benchmark can now use the existing Simulation Lab setup, planning worksp
 ### Planner Benchmark P3 Attempt Comparison
 
 Planner Benchmark Debrief now includes attempt comparison and route review for existing benchmark attempts. P3 does not add a new planner and does not redesign scoring; it makes manual, greedy, imported, oracle, and placeholder attempts easier to compare in Debrief. See `docs/planner_benchmark_attempt_comparison.md`.
+
+### Planner Benchmark P4 Route Overlay
+
+Planner Benchmark Debrief now includes Route Overlay / Map for existing benchmark routes, a route review layer selector, segment/waypoint details, and `anchor.benchmark.route-overlay` export support. P4 visualizes routes already planned or executed by existing systems; it does not add a new planner, redesign scoring, or add MARL/RL. See [Planner Benchmark Route Overlay](docs/planner_benchmark_route_overlay.md).
