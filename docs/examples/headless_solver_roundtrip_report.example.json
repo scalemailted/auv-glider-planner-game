@@ -1,0 +1,147 @@
+{
+  "schemaVersion": "1.0",
+  "type": "anchor.headless.solver-roundtrip-report",
+  "legacyType": "anchor.headless.roundtrip-report",
+  "aliases": [
+    "anchor.headless.roundtrip-report"
+  ],
+  "canonicalType": "anchor.headless.solver-roundtrip-report",
+  "version": "headless-solver-packet-roundtrip-h3",
+  "createdAt": "2026-06-16T00:00:00.000Z",
+  "source": {
+    "packetId": "H3-1-SOLVER-PACKET-EXAMPLE",
+    "planId": "h3-1-solver-roundtrip-plan-example",
+    "selectedAgentId": "glider_01",
+    "challengeId": "H3-1-ROUNDTRIP-EXAMPLE",
+    "replaySeedAnchor": "H3-1-ROUNDTRIP-EXAMPLE"
+  },
+  "packetSummary": {
+    "challengeId": "H3-1-ROUNDTRIP-EXAMPLE",
+    "replaySeedAnchor": "H3-1-ROUNDTRIP-EXAMPLE",
+    "generationVersion": "sample-v1",
+    "missionDuration": 8,
+    "planningWindow": 2,
+    "grid": {
+      "width": 5,
+      "height": 5
+    },
+    "agents": 1,
+    "visiblePlanningSource": "forecast",
+    "forecastAvailable": true,
+    "oracleMode": false
+  },
+  "visibilityValidation": {
+    "ok": true,
+    "status": "PASS",
+    "errors": [],
+    "warnings": [],
+    "hiddenTruthIncluded": false,
+    "visibleFieldIds": [
+      "terrain",
+      "hazards",
+      "forecast"
+    ],
+    "oracleMode": false,
+    "publicChallenge": true,
+    "forecastIncluded": true
+  },
+  "planValidation": {
+    "ok": true,
+    "status": "PASS",
+    "errors": [],
+    "warnings": [],
+    "routeIssueCount": 0,
+    "diagnosticCount": 0
+  },
+  "runtime": {
+    "config": {
+      "version": "headless-node-runtime-h1",
+      "scenario": "sample_headless_level",
+      "seed": "h3.1-roundtrip-example-001",
+      "width": 5,
+      "height": 5,
+      "depthLayers": [
+        "surface",
+        "thermocline",
+        "deep"
+      ],
+      "fieldCount": 12,
+      "waypointCount": 5,
+      "gliderCount": 1,
+      "valid": true,
+      "warnings": [],
+      "boundary": "Node headless runtime over portable ANCHOR core logic. Browser ANCHOR remains the official visual referee and scoring UI."
+    },
+    "adaptedPlan": {
+      "type": "anchor.headless.waypoint-plan",
+      "planId": "h3-1-solver-roundtrip-plan-example",
+      "gliderId": "glider_01",
+      "waypointCount": 5,
+      "routeAuthority": "submittedAnchorPlan",
+      "generatesRoute": false
+    },
+    "usesNodeHeadlessRuntime": true,
+    "usesProvidedPlan": true,
+    "usesNewPlanner": false,
+    "usesBrowserOfficialScoring": false,
+    "usesPythonSimulator": false,
+    "usesMARL": false,
+    "usesPacketVisibleFieldsForPlanningValidation": true,
+    "usesSyntheticRuntimeFieldsForExecution": true
+  },
+  "episode": {
+    "episodeId": "h1-node-headless-sample_headless_level-h3.1-roundtrip-example-001",
+    "seed": "h3.1-roundtrip-example-001",
+    "observationCount": 9,
+    "trackPointCount": 9,
+    "scoreSummary": {
+      "type": "anchor.headless.score-report",
+      "finalScore": 28.90572,
+      "observationCount": 9,
+      "energyUsed": 8.212365,
+      "hazardExposures": 0,
+      "notBrowserOfficialScoring": true
+    }
+  },
+  "output": {
+    "outputDir": "docs/examples",
+    "combinedBundlePath": "docs\\examples\\headless_solver_roundtrip_bundle.example.json",
+    "roundtripReportPath": "docs\\examples\\headless_solver_roundtrip_report.example.json",
+    "hiddenTruthExported": false,
+    "files": [
+      "bundle.json",
+      "manifest.json",
+      "mission_config.json",
+      "visible_fields.json",
+      "observations.json",
+      "observations.csv",
+      "glider_tracks.json",
+      "glider_tracks.csv",
+      "score_report.json",
+      "replay.json",
+      "episode.json",
+      "roundtrip_report.json"
+    ]
+  },
+  "hiddenTruthLeakCheck": {
+    "solverVisibleHiddenTruthIncluded": false,
+    "publicBundleRequested": true,
+    "publicBundleShouldOmitHiddenFields": true,
+    "status": "PASS"
+  },
+  "summary": {
+    "ok": true,
+    "status": "PASS",
+    "finalScore": 28.90572,
+    "observationCount": 9,
+    "trackPointCount": 9,
+    "hiddenTruthExported": false,
+    "browserOfficialScoring": false
+  },
+  "boundary": [
+    "Node/OceanBox-JS validates and executes a submitted plan through the H1 headless runtime.",
+    "Browser ANCHOR remains the official visual referee and scoring UI.",
+    "Headless score is educational and not official browser scoring.",
+    "H3 does not add a Python simulator, new route planner, calibrated ocean forecast, backend service, or MARL/RL."
+  ]
+}

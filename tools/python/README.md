@@ -105,6 +105,6 @@ Then load `runs/public-demo/bundle.json` in the browser Headless Bundle Viewer o
 
 Colab/Python can load `docs/examples/headless_oceanbox_js_public_bundle.example.json` directly with standard-library `json` and inspect `bundle["observations"]`, `bundle["gliderTracks"]`, and `bundle["scoreReport"]`. That file is the same public fixture loaded by the browser Headless Bundle Viewer. Python remains an artifact-analysis or Node-calling workflow, not a second simulator.
 
-## H3 Roundtrip Artifact Analysis
+## H3.1 Roundtrip Artifact Analysis
 
-After Node writes `runs/h3-roundtrip/bundle.json` and `roundtrip_report.json`, Python/Colab can read both with standard-library `json` for analysis. The report states whether packet visibility and plan validation passed, which plan/agent was executed, whether hidden truth was exported, and that headless scoring is not official browser scoring. Python remains an artifact-analysis or Node-calling workflow, not a simulator implementation.
+After Node writes `runs/h3-roundtrip/bundle.json` and `roundtrip_report.json`, or when using the checked-in `docs/examples/headless_solver_roundtrip_bundle.example.json` and `docs/examples/headless_solver_roundtrip_report.example.json`, Python/Colab can read both with standard-library `json` for analysis. The report states whether packet visibility and plan validation passed, which plan/agent was executed, whether hidden truth was exported, and that headless scoring is not official browser scoring. Python remains an artifact-analysis or Node-calling workflow, not a simulator implementation.

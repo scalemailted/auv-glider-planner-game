@@ -1,8 +1,9 @@
-﻿import { buildHeadlessBundleFromFiles } from '../../../core/headless/HeadlessBundleLoader.js';
+import { buildHeadlessBundleFromFiles } from '../../../core/headless/HeadlessBundleLoader.js';
 import { buildHeadlessBundleViewModel } from '../../../core/headless/HeadlessBundleViewModel.js';
 import {
   buildBrowserHeadlessBundleDebugObject,
-  buildBrowserHeadlessBundleSummaryArtifact
+  buildBrowserHeadlessBundleSummaryArtifact,
+  buildBrowserHeadlessRoundtripSummaryArtifact
 } from '../../../core/headless/HeadlessBundleBrowserAdapter.js';
 import { downloadJSON } from '../../../core/io/ImportExport.js';
 import { headlessBundleViewerPanelHtml } from '../../../ui/headless/HeadlessBundleViewerPanel.js';
@@ -50,6 +51,7 @@ export class HeadlessBundleViewerScene extends PhaserScene {
         <h2>Import</h2>
         <div class="panel-stack">
           <button class="console-button primary" data-action="load-example-bundle">Load Example Bundle</button>
+          <button class="console-button secondary" data-action="load-example-roundtrip">Load Example Roundtrip</button>
           <label class="console-button secondary" for="headless-bundle-file-input">Choose Combined or Multiple Bundle Files</label>
           <input id="headless-bundle-file-input" data-headless-bundle-files type="file" multiple accept=".json,.csv,application/json,text/csv" hidden />
           <button class="console-button secondary" data-action="menu">Main Menu</button>
@@ -67,7 +69,9 @@ export class HeadlessBundleViewerScene extends PhaserScene {
 
     const root = this.app.elements?.consoleRoot ?? globalThis.document;
     root?.querySelector?.('[data-action="load-example-bundle"]')?.addEventListener('click', () => this.loadExampleBundle());
+    root?.querySelector?.('[data-action="load-example-roundtrip"]')?.addEventListener('click', () => this.loadExampleRoundtrip());
     root?.querySelector?.('[data-action="export-browser-summary"]')?.addEventListener('click', () => this.exportBrowserSummary());
+    root?.querySelector?.('[data-action="export-browser-roundtrip-summary"]')?.addEventListener('click', () => this.exportBrowserRoundtripSummary());
     root?.querySelector?.('[data-action="menu"]')?.addEventListener('click', () => this.scene.start('MainMenuScene'));
     root?.querySelector?.('[data-headless-bundle-files]')?.addEventListener('change', (event) => this.loadSelectedFiles(event.target.files));
   }
@@ -104,6 +108,21 @@ export class HeadlessBundleViewerScene extends PhaserScene {
     }
   }
 
+  async loadExampleRoundtrip() {
+    const fileName = 'docs/examples/headless_solver_roundtrip_bundle.example.json';
+    try {
+      const response = await fetch(fileName, { cache: 'no-store' });
+      if (!response.ok) throw new Error(`Unable to load ${fileName}: HTTP ${response.status}`);
+      const payload = await response.json();
+      const bundle = buildHeadlessBundleFromFiles([{ fileName: 'bundle.json', payload }]);
+      this.setBundle(bundle, `Loaded checked-in solver roundtrip example from ${fileName}.`);
+    } catch (error) {
+      this.lastError = error?.message ?? String(error);
+      this.statusMessage = 'Example roundtrip load failed.';
+      this.renderPanel();
+      this.refreshDebugObject();
+    }
+  }
   setBundle(bundle, statusMessage) {
     this.bundle = bundle;
     this.statusMessage = statusMessage;
@@ -121,6 +140,13 @@ export class HeadlessBundleViewerScene extends PhaserScene {
     downloadJSON('anchor_headless_bundle_browser_summary.json', buildBrowserHeadlessBundleSummaryArtifact(this.bundle));
   }
 
+  exportBrowserRoundtripSummary() {
+    if (!this.bundle?.roundtripReport) {
+      this.app.toast?.('Load a solver roundtrip bundle before exporting a roundtrip summary.', 'warning');
+      return;
+    }
+    downloadJSON('anchor_headless_roundtrip_browser_summary.json', buildBrowserHeadlessRoundtripSummaryArtifact(this.bundle));
+  }
   refreshDebugObject() {
     globalThis.ANCHOR_HEADLESS_BUNDLE_DEBUG = this.bundle ? {
       ...buildBrowserHeadlessBundleDebugObject(this.bundle),
@@ -134,6 +160,15 @@ export class HeadlessBundleViewerScene extends PhaserScene {
       validationStatus: 'EMPTY',
       visibilityRisk: 'unknown',
       browserSummaryExportAvailable: false,
+      roundtripSummaryExportAvailable: false,
+      roundtripLoaded: false,
+      roundtripReportType: null,
+      roundtripCanonicalType: null,
+      solverPacketValidationStatus: null,
+      planValidationStatus: null,
+      roundtripExecutionStatus: null,
+      roundtripVisibilityRisk: null,
+      usesGeneratedPlan: false,
       usesBrowserOfficialScoring: false,
       usesPythonSimulator: false,
       usesNodeHeadlessRuntime: true,

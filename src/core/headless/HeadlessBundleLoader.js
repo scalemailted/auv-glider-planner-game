@@ -1,4 +1,5 @@
 import { parseSimpleCsv, normalizeObservationCsvRows, normalizeTrackCsvRows } from './HeadlessCsv.js';
+import { HEADLESS_SOLVER_ROUNDTRIP_BUNDLE_TYPE, isHeadlessRoundtripReportType } from './HeadlessRoundtripTypes.js';
 
 export const HEADLESS_BUNDLE_LOADER_VERSION = 'headless-bundle-loader-h2';
 export const HEADLESS_BUNDLE_REQUIRED_FILES = Object.freeze(['manifest.json', 'mission_config.json', 'visible_fields.json', 'score_report.json']);
@@ -69,7 +70,7 @@ export function normalizeHeadlessBundleFiles(files = []) {
     if (parsed.logicalType) normalized[parsed.logicalType] = parsed.payload;
     else warnings.push(`Unknown file ${parsed.fileName} was kept as an extra file.`);
   }
-  if (normalized.combinedBundle?.type === 'anchor.headless.bundle') {
+  if (isHeadlessCombinedBundlePayload(normalized.combinedBundle)) {
     const combined = normalized.combinedBundle;
     normalized.manifest ??= combined.manifest;
     normalized.missionConfig ??= combined.missionConfig;
@@ -109,7 +110,7 @@ export function buildHeadlessBundleFromFiles(bundleFiles) {
   const normalized = bundleFiles?.fileMap ? bundleFiles : normalizeHeadlessBundleFiles(bundleFiles);
   const fileValidation = validateHeadlessBundleFiles(normalized);
   return {
-    type: 'anchor.headless.bundle',
+    type: isHeadlessCombinedBundlePayload(normalized.combinedBundle) ? normalized.combinedBundle.type : 'anchor.headless.bundle',
     version: HEADLESS_BUNDLE_LOADER_VERSION,
     manifest: normalized.manifest ?? null,
     missionConfig: normalized.missionConfig ?? null,
@@ -172,10 +173,14 @@ function normalizeTracksPayload(payload) {
   return [];
 }
 
+function isHeadlessCombinedBundlePayload(payload) {
+  return payload?.type === 'anchor.headless.bundle' || payload?.type === HEADLESS_SOLVER_ROUNDTRIP_BUNDLE_TYPE;
+}
+
 function inferLogicalType(fileName, payload) {
   const type = typeof payload === 'object' ? payload?.type : null;
-  if (type === 'anchor.headless.bundle') return 'combinedBundle';
-  if (type === 'anchor.headless.roundtrip-report') return 'roundtripReport';
+  if (type === 'anchor.headless.bundle' || type === HEADLESS_SOLVER_ROUNDTRIP_BUNDLE_TYPE) return 'combinedBundle';
+  if (isHeadlessRoundtripReportType(type)) return 'roundtripReport';
   if (type === 'anchor.headless.manifest') return 'manifest';
   if (type === 'anchor.headless.mission-config') return 'missionConfig';
   if (type === 'anchor.headless.score-report') return 'scoreReport';

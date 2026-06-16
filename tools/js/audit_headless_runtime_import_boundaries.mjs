@@ -12,6 +12,12 @@ files.push(
   'src/core/headless/HeadlessBundleValidation.js',
   'src/core/headless/HeadlessBundleViewModel.js',
   'src/core/headless/HeadlessBundleBrowserAdapter.js',
+  'src/core/headless/HeadlessRoundtrip.js',
+  'src/core/headless/HeadlessRoundtripTypes.js',
+  'src/core/headless/HeadlessSolverPacketAdapter.js',
+  'src/core/headless/HeadlessPlanAdapter.js',
+  'src/core/headless/HeadlessSolverRoundtrip.js',
+  'src/core/headless/HeadlessRoundtripExport.js',
   'tools/js/headless_oceanbox.mjs'
 );
 

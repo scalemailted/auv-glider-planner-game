@@ -343,3 +343,9 @@ H0 introduces headless schema contracts, canonical field descriptors, mission/ep
 - Added optional roundtrip-report support to the headless bundle writer, loader, view model, browser summary adapter, and Headless Bundle Viewer panel.
 - Added a stable sample submitted plan fixture and H3 smoke tests for adapter and CLI roundtrips.
 - Preserved the boundary: H3 does not add a planner, official browser scoring replacement, Python simulator, calibrated forecast, backend service, or MARL/RL.
+
+### H3.1 - Solver Roundtrip Contract Normalization
+
+- Added canonical `anchor.headless.solver-roundtrip-report` while retaining legacy `anchor.headless.roundtrip-report` as an accepted alias.
+- Added `anchor.headless.solver-roundtrip-bundle`, `anchor.browser.headless-roundtrip-summary`, compatibility adapters, checked-in roundtrip examples, consolidated `headless_oceanbox.mjs` subcommands, fixture generation, visibility audit, and browser `Load Example Roundtrip` support.
+- Preserved the boundary: H3.1 does not add a planner, official browser scoring replacement, Python simulator, calibrated forecast, backend service, or MARL/RL.

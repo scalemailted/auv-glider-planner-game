@@ -78,12 +78,14 @@ node tools/js/generate_headless_example_bundles.mjs
 
 The script writes `docs/examples/headless_oceanbox_js_public_bundle.example.json` and `docs/examples/headless_oceanbox_js_bundle.example.json`, verifies that the public fixture omits hidden truth, and verifies that the debug fixture marks hidden fields as hidden/oracle/debug. Run `smoke_headless_example_bundle_fixture.mjs` and `smoke_headless_browser_fixture_roundtrip.mjs` after fixture changes.
 
-## H3 Solver Packet Roundtrip
+## H3.1 Solver Packet Roundtrip
 
 Run a submitted plan through the Node/OceanBox-JS headless compatibility path:
 
 ```bash
-node tools/js/headless_roundtrip.mjs tools/js/examples/sample_solver_packet.json tools/js/examples/sample_headless_roundtrip_plan.json --out runs/h3-roundtrip
+node tools/js/headless_oceanbox.mjs roundtrip --solver-packet docs/examples/headless_solver_packet.example.json --plan docs/examples/headless_solver_plan.example.json --out runs/h3-roundtrip --combined-json --no-hidden-export
 ```
 
-The CLI writes a public `bundle.json` and `roundtrip_report.json` by default. It validates solver-packet visibility, validates plan structure/route compatibility, adapts the submitted route to the existing H1 runtime, and does not generate a new planner route. Use `--include-hidden-truth --oracle` only for explicit oracle/debug runs.
+The consolidated CLI writes a public `bundle.json` and `roundtrip_report.json` when `--no-hidden-export` is used. The legacy `tools/js/headless_roundtrip.mjs` wrapper still works. It validates solver-packet visibility, validates plan structure/route compatibility, adapts the submitted route to the existing H1 runtime, and does not generate a new planner route. Use `--include-hidden-truth --oracle` only for explicit oracle/debug runs.
+
+Regenerate the checked-in H3.1 roundtrip examples with `node tools/js/generate_headless_solver_roundtrip_examples.mjs` and validate them with `node tools/js/smoke_headless_roundtrip_fixtures.mjs`.

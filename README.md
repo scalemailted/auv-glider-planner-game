@@ -876,12 +876,14 @@ The repo includes two deterministic Node/OceanBox-JS example bundles in `docs/ex
 
 Regenerate them with `node tools/js/generate_headless_example_bundles.mjs`. Colab/Python can load the public JSON fixture with standard-library `json` and inspect `observations`, `gliderTracks`, and `scoreReport`; it does not reimplement simulation. The headless score remains educational and not official browser scoring.
 
-## H3 Solver Packet / Headless Bundle Roundtrip
+## H3.1 Solver Packet / Headless Bundle Roundtrip
 
-H3 connects the existing browser solver-packet workflow to the Node/OceanBox-JS headless runtime. Given an `anchor.solverPacket` and a submitted `anchor.plan`, run:
+H3.1 connects the existing browser solver-packet workflow to the Node/OceanBox-JS headless runtime. Validate or run the checked-in example artifacts with:
 
 ```bash
-node tools/js/headless_roundtrip.mjs tools/js/examples/sample_solver_packet.json tools/js/examples/sample_headless_roundtrip_plan.json --out runs/h3-roundtrip
+node tools/js/headless_oceanbox.mjs validate-solver-packet --solver-packet docs/examples/headless_solver_packet.example.json
+node tools/js/headless_oceanbox.mjs validate-plan --solver-packet docs/examples/headless_solver_packet.example.json --plan docs/examples/headless_solver_plan.example.json
+node tools/js/headless_oceanbox.mjs roundtrip --solver-packet docs/examples/headless_solver_packet.example.json --plan docs/examples/headless_solver_plan.example.json --out runs/h3-roundtrip --combined-json --no-hidden-export
 ```
 
-The command validates solver-packet visibility, validates the plan against the packet mission/grid, adapts one submitted agent route into the existing single-glider headless waypoint-plan shape, executes it with the H1 runtime, and writes `bundle.json` plus `roundtrip_report.json`. Public output omits hidden truth by default. The browser Headless Bundle Viewer can load the generated `bundle.json` and displays the embedded roundtrip report when present. H3 does not add a planner, does not make headless scoring official browser scoring, and does not add a Python simulator, backend, calibrated forecast, or MARL/RL.
+The older `tools/js/headless_roundtrip.mjs` wrapper still works. The canonical report type is `anchor.headless.solver-roundtrip-report`; loaders still accept legacy `anchor.headless.roundtrip-report`. Roundtrip bundles use `anchor.headless.solver-roundtrip-bundle`, and the Headless Bundle Viewer can load `docs/examples/headless_solver_roundtrip_bundle.example.json` through `Load Example Roundtrip` and export `anchor.browser.headless-roundtrip-summary`. Public output omits hidden truth by default. H3.1 does not add a planner, does not make headless scoring official browser scoring, and does not add a Python simulator, backend, calibrated forecast, or MARL/RL. See [Headless Solver Packet Roundtrip](docs/headless_solver_packet_roundtrip.md).

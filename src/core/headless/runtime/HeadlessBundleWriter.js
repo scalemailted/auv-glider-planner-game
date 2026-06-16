@@ -2,6 +2,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 
 import { createHeadlessBundleManifest as createH0HeadlessBundleManifest } from '../HeadlessBundleManifest.js';
+import { HEADLESS_SOLVER_ROUNDTRIP_BUNDLE_TYPE, HEADLESS_SOLVER_ROUNDTRIP_REPORT_TYPE } from '../HeadlessRoundtripTypes.js';
 
 const VISIBLE_FIELD_IDS = Object.freeze(['E_forecast', 'mu_belief', 'U_uncertainty', 'P_unknown', 'A_global', 'F_u', 'F_v', 'hazard', 'constraintMask', 'staleness', 'boundaryStrength']);
 const HIDDEN_FIELD_IDS = Object.freeze(['T_hiddenTruth']);
@@ -9,6 +10,8 @@ const HIDDEN_FIELD_IDS = Object.freeze(['T_hiddenTruth']);
 export function createHeadlessBundleManifest(episode, options = {}) {
   const includeHidden = options.includeHiddenTruth !== false;
   const combinedJson = options.combinedJson === true;
+  const roundtripReport = options.roundtripReport ?? episode?.roundtripReport ?? null;
+  const combinedBundleType = roundtripReport ? HEADLESS_SOLVER_ROUNDTRIP_BUNDLE_TYPE : 'anchor.headless.bundle';
   const files = [
     fileEntry('manifest.json', 'manifest', 'anchor.headless.manifest', 'publicScenario', 'Bundle manifest.'),
     fileEntry('mission_config.json', 'missionConfig', 'anchor.headless.mission-config', 'publicScenario', 'Mission config used by the Node headless runtime.'),
@@ -25,10 +28,10 @@ export function createHeadlessBundleManifest(episode, options = {}) {
     files.splice(3, 0, fileEntry('hidden_fields.json', 'hiddenFields', 'anchor.headless.field-pack', 'hiddenTruth', 'Hidden truth and oracle-only fields for instructor/debug use.'));
   }
   if (combinedJson) {
-    files.push(fileEntry('bundle.json', 'combinedBundle', 'anchor.headless.bundle', 'publicScenario', 'Single-file H2 browser import bundle.'));
+    files.push(fileEntry('bundle.json', 'combinedBundle', combinedBundleType, 'publicScenario', roundtripReport ? 'Single-file H3.1 solver roundtrip browser import bundle.' : 'Single-file H2 browser import bundle.'));
   }
   if (options.roundtripReport || episode?.roundtripReport) {
-    files.push(fileEntry('roundtrip_report.json', 'roundtripReport', 'anchor.headless.roundtrip-report', 'publicScenario', 'H3 solver-packet / plan / headless-bundle roundtrip report.'));
+    files.push(fileEntry('roundtrip_report.json', 'roundtripReport', HEADLESS_SOLVER_ROUNDTRIP_REPORT_TYPE, 'publicScenario', 'H3.1 solver-packet / plan / headless-bundle roundtrip report.'));
   }
 
   const jsonFiles = ['mission_config.json', 'score_report.json', 'replay.json', 'episode.json'];
@@ -66,7 +69,7 @@ export function createHeadlessBundleManifest(episode, options = {}) {
 export function headlessBundleFiles(episode, options = {}) {
   const includeHidden = options.includeHiddenTruth !== false;
   const combinedJson = options.combinedJson === true;
-  const roundtripReport = options.roundtripReport ?? episode.roundtripReport ?? null;
+  const roundtripReport = options.roundtripReport ?? episode?.roundtripReport ?? null;
   const manifest = createHeadlessBundleManifest(episode, { includeHiddenTruth: includeHidden, combinedJson, createdAt: options.createdAt, roundtripReport });
   const files = {
     'manifest.json': stableJson(manifest),
@@ -97,8 +100,8 @@ export function createHeadlessCombinedBundle(episode, options = {}) {
   const roundtripReport = options.roundtripReport ?? episode.roundtripReport ?? null;
   const manifest = createHeadlessBundleManifest(episode, { includeHiddenTruth: includeHidden, combinedJson: true, createdAt: options.createdAt, roundtripReport });
   const bundle = {
-    type: 'anchor.headless.bundle',
-    version: 'headless-combined-bundle-h2',
+    type: roundtripReport ? HEADLESS_SOLVER_ROUNDTRIP_BUNDLE_TYPE : 'anchor.headless.bundle',
+    version: roundtripReport ? 'headless-solver-roundtrip-bundle-h3.1' : 'headless-combined-bundle-h2',
     manifest,
     missionConfig: episode.missionConfig,
     visibleFields: buildFieldPackFile(episode.fieldPackAfter ?? episode.fieldPackBefore, VISIBLE_FIELD_IDS, 'publicScenario'),
@@ -179,10 +182,17 @@ function buildFieldPackFile(fieldPack, fieldIds, visibilityTier) {
 function stripBundleEpisode(episode, includeHidden) {
   const copy = JSON.parse(JSON.stringify(episode));
   if (!includeHidden) {
-    delete copy.fieldPackBefore?.fields?.T_hiddenTruth;
-    delete copy.fieldPackAfter?.fields?.T_hiddenTruth;
+    stripHiddenTruthFromFieldPack(copy.fieldPackBefore);
+    stripHiddenTruthFromFieldPack(copy.fieldPackAfter);
   }
   return copy;
+}
+
+function stripHiddenTruthFromFieldPack(fieldPack) {
+  if (!fieldPack) return;
+  delete fieldPack.fields?.T_hiddenTruth;
+  delete fieldPack.fieldVisibility?.T_hiddenTruth;
+  if (Array.isArray(fieldPack.fieldIds)) fieldPack.fieldIds = fieldPack.fieldIds.filter((id) => id !== 'T_hiddenTruth');
 }
 
 function fileEntry(pathValue, role, schemaType, visibilityTier, description) {

@@ -436,14 +436,22 @@ node tools/js/smoke_headless_browser_fixture_roundtrip.mjs
 
 The public fixture must load in the Headless Bundle Viewer via `Load Example Bundle`, validate as PASS or WARN, omit hidden-truth payloads, and export `anchor.browser.headless-bundle-summary` without `T_hiddenTruth`. The debug fixture may include hidden truth only when manifest visibility marks it as `hiddenTruth`, `oracle`, or `debugAll`.
 
-## H3 Solver Packet Roundtrip Checks
+## H3.1 Solver Packet Roundtrip Checks
 
 After changing solver-packet adapters, headless bundle writing/loading, or roundtrip docs, run:
 
 ```bash
+node tools/js/generate_headless_solver_roundtrip_examples.mjs
+node tools/js/smoke_headless_solver_packet_adapter.mjs
+node tools/js/smoke_headless_plan_adapter.mjs
+node tools/js/smoke_headless_solver_roundtrip_contract.mjs
+node tools/js/smoke_headless_roundtrip_export_contract.mjs
+node tools/js/smoke_headless_roundtrip_cli_consolidation.mjs
+node tools/js/smoke_headless_roundtrip_fixtures.mjs
+node tools/js/audit_headless_roundtrip_visibility.mjs
 node tools/js/smoke_headless_solver_packet_roundtrip.mjs
 node tools/js/smoke_headless_roundtrip_cli.mjs
-node tools/js/headless_roundtrip.mjs tools/js/examples/sample_solver_packet.json tools/js/examples/sample_headless_roundtrip_plan.json --out runs/h3-roundtrip
+node tools/js/headless_oceanbox.mjs roundtrip --solver-packet docs/examples/headless_solver_packet.example.json --plan docs/examples/headless_solver_plan.example.json --out runs/h3-roundtrip --combined-json --no-hidden-export
 ```
 
-The public roundtrip should validate packet visibility as PASS, validate the submitted plan as PASS, write `bundle.json` and `roundtrip_report.json`, omit `hidden_fields.json`, load through the Headless Bundle Viewer, and export a browser summary without `T_hiddenTruth`.
+The public roundtrip should validate packet visibility as PASS, validate the submitted plan as PASS, write canonical `anchor.headless.solver-roundtrip-report`, write `anchor.headless.solver-roundtrip-bundle`, omit `hidden_fields.json`, load through the Headless Bundle Viewer via `Load Example Roundtrip`, and export `anchor.browser.headless-roundtrip-summary` without `T_hiddenTruth`.

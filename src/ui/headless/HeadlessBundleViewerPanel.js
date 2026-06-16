@@ -127,14 +127,43 @@ export function headlessBundleRoundtripHtml(viewModel = {}) {
   if (!summary.present) return '';
   return `
     <section class="console-section">
-      <h2>Roundtrip Report</h2>
+      <h2>Roundtrip Summary</h2>
       <div class="cell-inspector-metrics">
+        ${metricHtml('Report Type', summary.canonicalType ?? summary.type)}
         ${metricHtml('Status', summary.status ?? 'unknown')}
         ${metricHtml('Packet', summary.packetId)}
         ${metricHtml('Plan', summary.planId)}
         ${metricHtml('Agent', summary.selectedAgentId)}
+      </div>
+      <h3>Solver Packet Validation</h3>
+      <div class="cell-inspector-metrics">
+        ${metricHtml('Visibility Status', summary.solverPacketValidationStatus ?? 'unknown')}
+        ${metricHtml('Visibility Risk', summary.visibilityRisk ?? 'unknown')}
         ${metricHtml('Hidden Exported', summary.hiddenTruthExported ? 'yes' : 'no')}
-        ${metricHtml('Official Browser Score', summary.browserOfficialScoring ? 'yes' : 'no')}
+      </div>
+      <h3>Plan Validation</h3>
+      <div class="cell-inspector-metrics">
+        ${metricHtml('Plan Status', summary.planValidationStatus ?? 'unknown')}
+        ${metricHtml('Generated Plan', summary.usesGeneratedPlan ? 'yes' : 'no')}
+        ${metricHtml('New Planner', summary.usesNewPlanner ? 'yes' : 'no')}
+      </div>
+      <h3>Execution Summary</h3>
+      <div class="cell-inspector-metrics">
+        ${metricHtml('Execution', summary.executionStatus ?? 'unknown')}
+        ${metricHtml('Observations', summary.observationCount)}
+        ${metricHtml('Track Points', summary.trackPointCount)}
+        ${metricHtml('Node Runtime', summary.usesNodeHeadlessRuntime ? 'yes' : 'no')}
+      </div>
+      <h3>Visibility Summary</h3>
+      <div class="cell-inspector-metrics">
+        ${metricHtml('Hidden Leak Check', summary.hiddenTruthLeakStatus ?? 'unknown')}
+        ${metricHtml('Python Simulator', summary.usesPythonSimulator ? 'yes' : 'no')}
+        ${metricHtml('MARL / RL', summary.usesMARL ? 'yes' : 'no')}
+      </div>
+      <h3>Score Summary</h3>
+      <div class="cell-inspector-metrics">
+        ${metricHtml('Final Score', formatNumber(summary.finalScore))}
+        ${metricHtml('Official Browser Score', summary.usesBrowserOfficialScoring ? 'yes' : 'no')}
       </div>
       <div class="hud-muted">Solver packet to submitted plan to Node/OceanBox-JS headless bundle roundtrip. Browser scoring remains authoritative.</div>
     </section>
@@ -158,11 +187,14 @@ export function headlessBundleReplayHtml(viewModel = {}) {
 
 export function headlessBundleExportPanelHtml(viewModel = {}) {
   const disabled = viewModel?.bundleStatus ? '' : 'disabled';
+  const roundtripDisabled = viewModel?.roundtripSummary?.present ? '' : 'disabled';
   return `
     <section class="console-section">
       <h2>Export</h2>
       <button class="console-button primary" data-action="export-browser-summary" ${disabled}>Export Browser Summary JSON</button>
+      <button class="console-button secondary" data-action="export-browser-roundtrip-summary" ${roundtripDisabled}>Export Roundtrip Summary JSON</button>
       <div class="hud-muted">Exports anchor.browser.headless-bundle-summary for browser-side inspection and comparison only.</div>
+      <div class="hud-muted">Roundtrip export writes anchor.browser.headless-roundtrip-summary when a solver-packet roundtrip report is loaded.</div>
     </section>
   `;
 }

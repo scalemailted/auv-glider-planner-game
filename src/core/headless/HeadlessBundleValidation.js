@@ -1,5 +1,6 @@
 import { validateHeadlessBundleManifest as validateH0Manifest } from './HeadlessBundleManifest.js';
 import { manifestDisablesHiddenExport } from './HeadlessBundleLoader.js';
+import { HEADLESS_SOLVER_ROUNDTRIP_REPORT_TYPE, isHeadlessRoundtripReportType } from './HeadlessRoundtripTypes.js';
 
 export const HEADLESS_BUNDLE_VALIDATION_VERSION = 'headless-bundle-validation-h2';
 
@@ -88,6 +89,26 @@ export function validateHeadlessScoreReport(scoreReport = {}) {
   return result(checks, warnings, failures);
 }
 
+export function validateHeadlessRoundtripReport(report = null) {
+  const checks = [];
+  const warnings = [];
+  const failures = [];
+  if (!report) {
+    checks.push({ id: 'roundtrip-report-optional', ok: true, detail: 'not present' });
+    return result(checks, warnings, failures, 'low');
+  }
+  checks.push({ id: 'roundtrip-report-present', ok: typeof report === 'object' });
+  const recognized = isHeadlessRoundtripReportType(report?.type) || report?.canonicalType === HEADLESS_SOLVER_ROUNDTRIP_REPORT_TYPE;
+  checks.push({ id: 'roundtrip-report-type', ok: recognized, detail: report?.type ?? 'missing' });
+  if (!recognized) failures.push(`Roundtrip report type should be ${HEADLESS_SOLVER_ROUNDTRIP_REPORT_TYPE} or a known alias.`);
+  if (report?.runtime?.usesNodeHeadlessRuntime !== true) failures.push('Roundtrip report must mark usesNodeHeadlessRuntime=true.');
+  if (report?.runtime?.usesPythonSimulator === true) failures.push('Roundtrip report must not claim a Python simulator.');
+  if (report?.runtime?.usesBrowserOfficialScoring === true || report?.summary?.browserOfficialScoring === true) failures.push('Roundtrip report must not claim official browser scoring.');
+  if (report?.runtime?.usesNewPlanner === true) failures.push('Roundtrip report must not claim a new planner.');
+  if (report?.runtime?.usesMARL === true) failures.push('Roundtrip report must not claim MARL/RL.');
+  if (report?.summary?.hiddenTruthExported === true && report?.visibilityValidation?.oracleMode !== true) warnings.push('Roundtrip exported hidden truth outside explicit oracle/debug validation.');
+  return result(checks, warnings, failures, failures.length ? 'high' : warnings.length ? 'medium' : 'low');
+}
 export function validateHeadlessReplay(replay = null) {
   const checks = [];
   const warnings = [];
@@ -108,6 +129,7 @@ export function validateHeadlessBundle(bundle = {}) {
     observations: validateHeadlessObservations(bundle.observations),
     tracks: validateHeadlessTracks(bundle.gliderTracks),
     scoreReport: validateHeadlessScoreReport(bundle.scoreReport),
+    roundtripReport: validateHeadlessRoundtripReport(bundle.roundtripReport),
     replay: validateHeadlessReplay(bundle.replay)
   };
   const checks = Object.entries(validations).flatMap(([scope, validation]) => validation.checks.map((check) => ({ ...check, scope })));

@@ -114,14 +114,26 @@ node tools/js/smoke_headless_example_bundle_fixture.mjs
 node tools/js/smoke_headless_browser_fixture_roundtrip.mjs
 ```
 
-## H3 Solver Packet / Plan Roundtrip Reports
+## H3.1 Solver Packet / Plan Roundtrip Reports
 
-H3 bundles may include `roundtrip_report.json` with `type: "anchor.headless.roundtrip-report"`. The browser loader accepts that file either as a separate selected JSON file or embedded in `bundle.json` as `roundtripReport`.
+H3.1 bundles may include `roundtrip_report.json` with canonical `type: "anchor.headless.solver-roundtrip-report"`. The browser loader also accepts the H3 legacy alias `anchor.headless.roundtrip-report`. A combined roundtrip example bundle uses `type: "anchor.headless.solver-roundtrip-bundle"` and embeds the report as `roundtripReport`.
 
-The Headless Bundle Viewer displays a `Roundtrip Report` section with packet id, submitted plan id, selected agent, status, hidden-truth export state, and the official-browser-score boundary. The report documents `solver packet -> submitted plan -> Node headless episode -> bundle`; it does not run browser scoring and does not add a planner.
+The Headless Bundle Viewer displays Roundtrip Summary, Solver Packet Validation, Plan Validation, Execution Summary, Visibility Summary, and Score Summary sections. The viewer can load `docs/examples/headless_solver_roundtrip_bundle.example.json` through `Load Example Roundtrip` and export `anchor.browser.headless-roundtrip-summary`.
 
-Generate a sample public roundtrip with:
+Generate the checked-in public examples with:
 
 ```bash
-node tools/js/headless_roundtrip.mjs tools/js/examples/sample_solver_packet.json tools/js/examples/sample_headless_roundtrip_plan.json --out runs/h3-roundtrip
+node tools/js/generate_headless_solver_roundtrip_examples.mjs
+```
+
+Run the consolidated CLI with:
+
+```bash
+node tools/js/headless_oceanbox.mjs roundtrip --solver-packet docs/examples/headless_solver_packet.example.json --plan docs/examples/headless_solver_plan.example.json --out runs/h3-roundtrip --combined-json --no-hidden-export
+```
+
+The legacy wrapper remains valid:
+
+```bash
+node tools/js/headless_roundtrip.mjs docs/examples/headless_solver_packet.example.json docs/examples/headless_solver_plan.example.json --out runs/h3-roundtrip
 ```

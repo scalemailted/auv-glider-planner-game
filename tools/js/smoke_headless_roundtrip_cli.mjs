@@ -26,7 +26,7 @@ for (const fileName of expectedFiles) assert.equal(fs.existsSync(path.join(outpu
 assert.equal(fs.existsSync(path.join(outputDir, 'hidden_fields.json')), false, 'public CLI roundtrip omits hidden_fields.json');
 
 const report = JSON.parse(fs.readFileSync(path.join(outputDir, 'roundtrip_report.json'), 'utf8'));
-assert.equal(report.type, 'anchor.headless.roundtrip-report', 'roundtrip report type');
+assert.equal(report.type, 'anchor.headless.solver-roundtrip-report', 'roundtrip report type');
 assert.equal(report.summary.status, 'PASS', 'roundtrip report status');
 assert.equal(report.runtime.usesNodeHeadlessRuntime, true, 'report marks Node runtime');
 assert.equal(report.runtime.usesNewPlanner, false, 'report does not claim new planner');
@@ -34,9 +34,9 @@ assert.equal(report.runtime.usesPythonSimulator, false, 'report does not claim P
 assert.equal(report.summary.hiddenTruthExported, false, 'report marks public hidden export');
 
 const bundle = JSON.parse(fs.readFileSync(path.join(outputDir, 'bundle.json'), 'utf8'));
-assert.equal(bundle.type, 'anchor.headless.bundle', 'combined bundle type');
+assert.equal(bundle.type, 'anchor.headless.solver-roundtrip-bundle', 'roundtrip bundle type');
 assert.equal(bundle.hiddenFields, null, 'combined bundle omits hiddenFields');
-assert.equal(bundle.roundtripReport?.type, 'anchor.headless.roundtrip-report', 'combined bundle embeds report');
+assert.equal(bundle.roundtripReport?.type, 'anchor.headless.solver-roundtrip-report', 'combined bundle embeds report');
 const loaded = buildHeadlessBundleFromFiles([{ fileName: 'bundle.json', payload: bundle }]);
 assert.deepEqual(loaded.failures, [], 'browser loader accepts CLI roundtrip bundle');
 const artifact = buildBrowserHeadlessBundleSummaryArtifact(loaded);

@@ -1,5 +1,6 @@
 import { validateHeadlessBundle } from './HeadlessBundleValidation.js';
 import { buildHeadlessBundleViewModel, headlessBundleObservationSummary, headlessBundleReplaySummary, headlessBundleRoundtripSummary, headlessBundleScoreSummary, headlessBundleTrackSummary, headlessBundleVisibilitySummary } from './HeadlessBundleViewModel.js';
+import { BROWSER_HEADLESS_ROUNDTRIP_SUMMARY_TYPE, HEADLESS_SOLVER_ROUNDTRIP_REPORT_TYPE } from './HeadlessRoundtripTypes.js';
 
 export const HEADLESS_BUNDLE_BROWSER_ADAPTER_VERSION = 'headless-bundle-browser-adapter-h2';
 
@@ -27,6 +28,39 @@ export function buildBrowserHeadlessBundleSummaryArtifact(bundle = {}) {
   };
 }
 
+export function buildBrowserHeadlessRoundtripSummaryArtifact(bundle = {}) {
+  const validation = validateHeadlessBundle(bundle);
+  const roundtripSummary = headlessBundleRoundtripSummary(bundle);
+  return {
+    type: BROWSER_HEADLESS_ROUNDTRIP_SUMMARY_TYPE,
+    version: HEADLESS_BUNDLE_BROWSER_ADAPTER_VERSION,
+    sourceBundleType: bundle.manifest?.bundleType ?? bundle.type ?? null,
+    sourceReportType: roundtripSummary.type,
+    canonicalReportType: roundtripSummary.canonicalType ?? HEADLESS_SOLVER_ROUNDTRIP_REPORT_TYPE,
+    packetId: roundtripSummary.packetId,
+    planId: roundtripSummary.planId,
+    selectedAgentId: roundtripSummary.selectedAgentId,
+    solverPacketValidationStatus: roundtripSummary.solverPacketValidationStatus,
+    planValidationStatus: roundtripSummary.planValidationStatus,
+    executionStatus: roundtripSummary.executionStatus,
+    visibilityRisk: roundtripSummary.visibilityRisk,
+    hiddenTruthExported: roundtripSummary.hiddenTruthExported,
+    hiddenTruthLeakStatus: roundtripSummary.hiddenTruthLeakStatus,
+    finalScore: roundtripSummary.finalScore,
+    observationCount: roundtripSummary.observationCount,
+    trackPointCount: roundtripSummary.trackPointCount,
+    usesGeneratedPlan: roundtripSummary.usesGeneratedPlan,
+    usesNewPlanner: roundtripSummary.usesNewPlanner,
+    usesPythonSimulator: roundtripSummary.usesPythonSimulator,
+    usesNodeHeadlessRuntime: roundtripSummary.usesNodeHeadlessRuntime,
+    usesBrowserOfficialScoring: roundtripSummary.usesBrowserOfficialScoring,
+    usesMARL: roundtripSummary.usesMARL,
+    validationStatus: validation.status,
+    bundleVisibilityRisk: validation.visibilityRisk,
+    notes: ['Browser-side summary artifact for a solver-packet / plan / Node-headless roundtrip.'],
+    notA: ['not browser official score', 'not calibrated ocean model', 'not Python simulator', 'not route planner', 'not MARL/RL']
+  };
+}
 export function buildBrowserHeadlessReplayDescriptor(bundle = {}) {
   return { type: 'anchor.browser.headless-replay-descriptor', ...headlessBundleReplaySummary(bundle), officialBrowserReplay: false };
 }
@@ -51,6 +85,7 @@ export function buildBrowserHeadlessScoreComparisonDescriptor(bundle = {}) {
 export function buildBrowserHeadlessBundleDebugObject(bundle = {}) {
   const validation = validateHeadlessBundle(bundle);
   const viewModel = buildHeadlessBundleViewModel(bundle);
+  const roundtrip = viewModel.roundtripSummary ?? {};
   return {
     version: HEADLESS_BUNDLE_BROWSER_ADAPTER_VERSION,
     bundleLoaded: Boolean(bundle?.manifest || bundle?.visibleFields),
@@ -66,12 +101,22 @@ export function buildBrowserHeadlessBundleDebugObject(bundle = {}) {
     observationCount: viewModel.observationSummary.count,
     trackPointCount: viewModel.trackSummary.count,
     finalScore: viewModel.scoreSummary.finalScore,
+    roundtripLoaded: Boolean(bundle.roundtripReport),
     roundtripReportLoaded: Boolean(bundle.roundtripReport),
-    roundtripStatus: bundle.roundtripReport?.summary?.status ?? null,
+    roundtripStatus: roundtrip.status ?? null,
+    roundtripReportType: roundtrip.type ?? null,
+    roundtripCanonicalType: roundtrip.canonicalType ?? null,
+    solverPacketValidationStatus: roundtrip.solverPacketValidationStatus ?? null,
+    planValidationStatus: roundtrip.planValidationStatus ?? null,
+    roundtripExecutionStatus: roundtrip.executionStatus ?? null,
+    roundtripVisibilityRisk: roundtrip.visibilityRisk ?? null,
+    roundtripSummaryExportAvailable: Boolean(bundle.roundtripReport),
     browserSummaryExportAvailable: true,
+    usesGeneratedPlan: roundtrip.usesGeneratedPlan === true,
     usesBrowserOfficialScoring: false,
     usesPythonSimulator: false,
     usesNodeHeadlessRuntime: true,
+    usesNewPlanner: false,
     usesMARL: false
   };
 }

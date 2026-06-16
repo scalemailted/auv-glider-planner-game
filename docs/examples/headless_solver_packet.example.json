@@ -1,0 +1,412 @@
+{
+  "schemaVersion": "2.0",
+  "type": "anchor.solverPacket",
+  "packetId": "H3-1-SOLVER-PACKET-EXAMPLE",
+  "createdAt": "2026-06-16T00:00:00.000Z",
+  "levelId": "sample_headless_level",
+  "instanceId": "H3-1-ROUNDTRIP-EXAMPLE",
+  "missionId": "sample_headless_mission",
+  "challengeMode": "forecast",
+  "visiblePlanningSource": "forecast",
+  "visibility": {
+    "truthIncluded": false,
+    "forecastIncluded": true,
+    "oracleMode": false,
+    "publicChallenge": true
+  },
+  "level": {
+    "schemaVersion": "2.0",
+    "type": "anchor.level",
+    "levelId": "sample_headless_level",
+    "instanceId": "CHALLENGE-SAMPLE-HEADLESS",
+    "challengeMode": "forecast",
+    "meta": {
+      "name": "Sample Headless Solver Packet",
+      "generationVersion": "sample-v1"
+    },
+    "world": {
+      "grid": {
+        "width": 5,
+        "height": 5,
+        "cellSizeMeters": 100
+      },
+      "time": {
+        "dt": 1,
+        "duration": 8,
+        "planningWindow": 2
+      }
+    },
+    "layers": {
+      "terrain": [
+        [
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        [
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        [
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        [
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        [
+          0,
+          0,
+          0,
+          0,
+          0
+        ]
+      ],
+      "hazards": [
+        [
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        [
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        [
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        [
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        [
+          0,
+          0,
+          0,
+          0,
+          0
+        ]
+      ]
+    }
+  },
+  "mission": {
+    "schemaVersion": "2.0",
+    "type": "anchor.mission",
+    "missionId": "sample_headless_mission",
+    "agents": [
+      {
+        "id": "glider_01",
+        "label": "Glider 01",
+        "start": {
+          "x": 0,
+          "y": 0
+        },
+        "battery": 20,
+        "maxSpeed": 1.5,
+        "waypointTolerance": 0.35
+      }
+    ],
+    "rules": {
+      "roiThreshold": 0.1
+    },
+    "physics": {
+      "driftGain": 0,
+      "energyPerCell": 1
+    },
+    "scoring": {
+      "sampleWeight": 100
+    }
+  },
+  "missionRules": {},
+  "deployment": {
+    "agents": [
+      {
+        "agentId": "glider_01",
+        "mode": "fixed",
+        "selectedStart": {
+          "x": 0,
+          "y": 0
+        },
+        "allowedCells": []
+      }
+    ]
+  },
+  "connectivity": {
+    "validated": true,
+    "deploymentConnected": true,
+    "reachableNavigableRatio": 1,
+    "roiReachableRatio": 1,
+    "warnings": []
+  },
+  "stochasticConfig": {
+    "enabled": true,
+    "seed": "h3.1-roundtrip-example-001",
+    "roiScoringMode": "expectedValue",
+    "selectedForecastMember": "ensemble_mean"
+  },
+  "truthVisibility": "hidden",
+  "planningData": {
+    "hiddenTruthIncluded": false,
+    "forecastAvailable": true,
+    "selectedForecastMemberId": "ensemble_mean",
+    "roiViewMode": "expectedValue",
+    "visibleFields": {
+      "terrain": [
+        [
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        [
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        [
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        [
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        [
+          0,
+          0,
+          0,
+          0,
+          0
+        ]
+      ],
+      "hazards": [
+        [
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        [
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        [
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        [
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        [
+          0,
+          0,
+          0,
+          0,
+          0
+        ]
+      ],
+      "forecast": {
+        "frames": [
+          {
+            "t": 0,
+            "current": [
+              [
+                [
+                  0,
+                  0
+                ],
+                [
+                  0,
+                  0
+                ],
+                [
+                  0,
+                  0
+                ],
+                [
+                  0,
+                  0
+                ],
+                [
+                  0,
+                  0
+                ]
+              ],
+              [
+                [
+                  0,
+                  0
+                ],
+                [
+                  0,
+                  0
+                ],
+                [
+                  0,
+                  0
+                ],
+                [
+                  0,
+                  0
+                ],
+                [
+                  0,
+                  0
+                ]
+              ],
+              [
+                [
+                  0,
+                  0
+                ],
+                [
+                  0,
+                  0
+                ],
+                [
+                  0,
+                  0
+                ],
+                [
+                  0,
+                  0
+                ],
+                [
+                  0,
+                  0
+                ]
+              ],
+              [
+                [
+                  0,
+                  0
+                ],
+                [
+                  0,
+                  0
+                ],
+                [
+                  0,
+                  0
+                ],
+                [
+                  0,
+                  0
+                ],
+                [
+                  0,
+                  0
+                ]
+              ],
+              [
+                [
+                  0,
+                  0
+                ],
+                [
+                  0,
+                  0
+                ],
+                [
+                  0,
+                  0
+                ],
+                [
+                  0,
+                  0
+                ],
+                [
+                  0,
+                  0
+                ]
+              ]
+            ],
+            "roi": [
+              [
+                0,
+                0.1,
+                0.2,
+                0.1,
+                0
+              ],
+              [
+                0,
+                0.2,
+                0.5,
+                0.3,
+                0
+              ],
+              [
+                0,
+                0.3,
+                0.9,
+                0.4,
+                0
+              ],
+              [
+                0,
+                0.2,
+                0.4,
+                0.8,
+                0
+              ],
+              [
+                0,
+                0,
+                0.1,
+                0.2,
+                0
+              ]
+            ]
+          }
+        ]
+      }
+    }
+  },
+  "expectedPlanFormat": "anchor.plan",
+  "challengeId": "H3-1-ROUNDTRIP-EXAMPLE"
+}

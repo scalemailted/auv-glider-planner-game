@@ -69,8 +69,10 @@ The checked-in public combined bundle at `docs/examples/headless_oceanbox_js_pub
 
 Use `tools/js/generate_headless_example_bundles.mjs` to reproduce both fixtures. Colab/Python should load and analyze the JSON artifact or call Node; it should not implement a second simulator.
 
-## H3 Roundtrip Report Role
+## H3.1 Roundtrip Report Role
 
-H3 adds an optional bundle role `roundtripReport` stored as `roundtrip_report.json` with type `anchor.headless.roundtrip-report`. It records source packet/plan ids, solver-packet visibility validation, submitted-plan validation, runtime boundary flags, output paths, score summary, and hidden-truth leak checks.
+H3.1 adds an optional bundle role `roundtripReport` stored as `roundtrip_report.json` with canonical type `anchor.headless.solver-roundtrip-report`; loaders still accept legacy `anchor.headless.roundtrip-report`. It records source packet/plan ids, solver-packet visibility validation, submitted-plan validation, runtime boundary flags, output paths, score summary, and hidden-truth leak checks.
 
 Colab/Python may load this report with standard-library `json` alongside `bundle.json` to analyze the artifact. Python should not reimplement the simulator; it either analyzes the files or calls Node/OceanBox-JS.
+
+Checked-in public examples live at `docs/examples/headless_solver_packet.example.json`, `docs/examples/headless_solver_plan.example.json`, `docs/examples/headless_solver_roundtrip_report.example.json`, and `docs/examples/headless_solver_roundtrip_bundle.example.json`. The browser viewer loads the roundtrip bundle through `Load Example Roundtrip`, and Colab/Python can read the same JSON artifacts with standard-library `json`.

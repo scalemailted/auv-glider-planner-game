@@ -414,6 +414,35 @@ test('Headless Bundle Viewer opens from Simulation Lab and exports browser summa
   expect(summaryJson.notA).toContain('not Python simulator');
   expect(JSON.stringify(summaryJson)).not.toContain('T_hiddenTruth');
 
+  await expect(page.locator('#mission-console [data-action="load-example-roundtrip"]')).toBeVisible();
+  await page.locator('#mission-console [data-action="load-example-roundtrip"]').click();
+  await expect(page.locator('#mission-console')).toContainText('Roundtrip Summary');
+  await expect(page.locator('#mission-console')).toContainText('Solver Packet Validation');
+  await expect(page.locator('#mission-console')).toContainText('Plan Validation');
+  await expect(page.locator('#mission-console')).toContainText('Execution Summary');
+  await expect(page.locator('#mission-console')).toContainText('Visibility Summary');
+  await expect(page.locator('#mission-console')).toContainText('Score Summary');
+  await expect.poll(() => page.evaluate(() => window.ANCHOR_HEADLESS_BUNDLE_DEBUG?.roundtripLoaded)).toBe(true);
+  await expect.poll(() => page.evaluate(() => window.ANCHOR_HEADLESS_BUNDLE_DEBUG?.roundtripCanonicalType)).toBe('anchor.headless.solver-roundtrip-report');
+  await expect.poll(() => page.evaluate(() => window.ANCHOR_HEADLESS_BUNDLE_DEBUG?.solverPacketValidationStatus)).toBe('PASS');
+  await expect.poll(() => page.evaluate(() => window.ANCHOR_HEADLESS_BUNDLE_DEBUG?.planValidationStatus)).toBe('PASS');
+  await expect.poll(() => page.evaluate(() => window.ANCHOR_HEADLESS_BUNDLE_DEBUG?.roundtripExecutionStatus)).toBe('PASS');
+  await expect.poll(() => page.evaluate(() => window.ANCHOR_HEADLESS_BUNDLE_DEBUG?.roundtripSummaryExportAvailable)).toBe(true);
+  await expect.poll(() => page.evaluate(() => window.ANCHOR_HEADLESS_BUNDLE_DEBUG?.usesGeneratedPlan)).toBe(false);
+
+  const [roundtripDownload] = await Promise.all([
+    page.waitForEvent('download'),
+    page.locator('#mission-console [data-action="export-browser-roundtrip-summary"]').click()
+  ]);
+  expect(roundtripDownload.suggestedFilename()).toBe('anchor_headless_roundtrip_browser_summary.json');
+  const roundtripSummaryJson = JSON.parse(await fs.readFile(await roundtripDownload.path(), 'utf8'));
+  expect(roundtripSummaryJson.type).toBe('anchor.browser.headless-roundtrip-summary');
+  expect(roundtripSummaryJson.canonicalReportType).toBe('anchor.headless.solver-roundtrip-report');
+  expect(roundtripSummaryJson.usesPythonSimulator).toBe(false);
+  expect(roundtripSummaryJson.usesNewPlanner).toBe(false);
+  expect(roundtripSummaryJson.usesBrowserOfficialScoring).toBe(false);
+  expect(JSON.stringify(roundtripSummaryJson)).not.toContain('T_hiddenTruth');
+
   await page.locator('#mission-console [data-action="menu"]').click();
   await expandMissionConsoleSection(page, 'Simulation Lab');
   await expect(page.locator('#mission-console [data-accordion-key="simulation-lab"]')).toContainText('Planner Benchmark');

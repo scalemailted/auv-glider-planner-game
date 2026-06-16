@@ -22,7 +22,7 @@ assert.equal(roundtrip.visibilityValidation.status, 'PASS', 'visibility validati
 assert.equal(roundtrip.planValidation.status, 'PASS', 'plan validation passes');
 assert.equal(roundtrip.runtimePlan.gliderId, 'glider_01', 'agent plan adapts to runtime glider id');
 assert.equal(roundtrip.runtimePlan.generatesRoute, false, 'roundtrip executes submitted plan, not generated route');
-assert.equal(roundtrip.report.type, 'anchor.headless.roundtrip-report', 'roundtrip report type');
+assert.equal(roundtrip.report.type, 'anchor.headless.solver-roundtrip-report', 'roundtrip report type');
 assert.equal(roundtrip.report.runtime.usesNewPlanner, false, 'roundtrip does not add a planner');
 assert.equal(roundtrip.report.runtime.usesPythonSimulator, false, 'roundtrip does not use Python simulator');
 assert.equal(roundtrip.report.runtime.usesBrowserOfficialScoring, false, 'roundtrip score is not official browser score');
@@ -34,10 +34,10 @@ assert.equal(Number.isFinite(roundtrip.episode.scoreReport.finalScore), true, 'r
 const combined = createHeadlessCombinedBundle(roundtrip.episode, { includeHiddenTruth: false, roundtripReport: roundtrip.report });
 assert.equal(combined.hiddenFields, null, 'public combined bundle omits hiddenFields');
 assert.equal(Object.hasOwn(combined.visibleFields.fields, 'T_hiddenTruth'), false, 'public visible fields exclude T_hiddenTruth');
-assert.equal(combined.roundtripReport.type, 'anchor.headless.roundtrip-report', 'combined bundle embeds roundtrip report');
+assert.equal(combined.roundtripReport.type, 'anchor.headless.solver-roundtrip-report', 'combined bundle embeds roundtrip report');
 const loaded = buildHeadlessBundleFromFiles([{ fileName: 'bundle.json', payload: combined }]);
 assert.deepEqual(loaded.failures, [], 'loader accepts roundtrip combined bundle');
-assert.equal(loaded.roundtripReport.type, 'anchor.headless.roundtrip-report', 'loader preserves roundtrip report');
+assert.equal(loaded.roundtripReport.type, 'anchor.headless.solver-roundtrip-report', 'loader preserves roundtrip report');
 const artifact = buildBrowserHeadlessBundleSummaryArtifact(loaded);
 assert.equal(artifact.type, 'anchor.browser.headless-bundle-summary', 'browser summary artifact type');
 assert.equal(artifact.roundtripSummary.status, 'PASS', 'browser summary exposes roundtrip status');

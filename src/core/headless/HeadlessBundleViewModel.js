@@ -1,4 +1,5 @@
 import { validateHeadlessBundle } from './HeadlessBundleValidation.js';
+import { HEADLESS_SOLVER_ROUNDTRIP_REPORT_TYPE, isHeadlessRoundtripReportType } from './HeadlessRoundtripTypes.js';
 
 export const HEADLESS_BUNDLE_VIEW_MODEL_VERSION = 'headless-bundle-view-model-h2';
 
@@ -71,18 +72,39 @@ export function headlessBundleScoreSummary(bundle = {}) {
 
 export function headlessBundleRoundtripSummary(bundle = {}) {
   const report = bundle.roundtripReport ?? {};
+  const type = report.type ?? null;
+  const canonicalType = report.canonicalType ?? (isHeadlessRoundtripReportType(type) ? HEADLESS_SOLVER_ROUNDTRIP_REPORT_TYPE : null);
+  const hiddenTruthExported = report.summary?.hiddenTruthExported ?? report.output?.hiddenTruthExported ?? false;
+  const hiddenLeakStatus = report.hiddenTruthLeakCheck?.status ?? null;
   return {
     present: Boolean(bundle.roundtripReport),
-    type: report.type ?? null,
+    type,
+    reportType: type,
+    canonicalType,
+    legacyType: report.legacyType ?? null,
     status: report.summary?.status ?? null,
+    solverPacketValidationStatus: report.visibilityValidation?.status ?? null,
+    visibilityValidationStatus: report.visibilityValidation?.status ?? null,
+    planValidationStatus: report.planValidation?.status ?? null,
+    executionStatus: report.summary?.status ?? null,
     packetId: report.source?.packetId ?? null,
     planId: report.source?.planId ?? null,
     selectedAgentId: report.source?.selectedAgentId ?? null,
     finalScore: report.summary?.finalScore ?? report.episode?.scoreSummary?.finalScore ?? null,
     observationCount: report.summary?.observationCount ?? report.episode?.observationCount ?? null,
     trackPointCount: report.summary?.trackPointCount ?? report.episode?.trackPointCount ?? null,
-    hiddenTruthExported: report.summary?.hiddenTruthExported ?? report.output?.hiddenTruthExported ?? false,
-    browserOfficialScoring: report.summary?.browserOfficialScoring ?? false
+    hiddenTruthExported,
+    hiddenTruthLeakStatus: hiddenLeakStatus,
+    visibilityRisk: hiddenLeakStatus === 'FAIL' ? 'high' : hiddenTruthExported ? 'medium' : 'low',
+    browserOfficialScoring: report.summary?.browserOfficialScoring ?? false,
+    usesNodeHeadlessRuntime: report.runtime?.usesNodeHeadlessRuntime === true,
+    usesBrowserOfficialScoring: report.runtime?.usesBrowserOfficialScoring === true || report.summary?.browserOfficialScoring === true,
+    usesPythonSimulator: report.runtime?.usesPythonSimulator === true,
+    usesNewPlanner: report.runtime?.usesNewPlanner === true,
+    usesMARL: report.runtime?.usesMARL === true,
+    usesGeneratedPlan: report.runtime?.usesGeneratedPlan === true || report.runtime?.adaptedPlan?.generatesRoute === true,
+    adaptedPlan: report.runtime?.adaptedPlan ?? null,
+    output: report.output ?? null
   };
 }
 

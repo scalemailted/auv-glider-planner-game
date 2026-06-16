@@ -4,6 +4,7 @@ import { buildHeadlessPlanningWorld } from './HeadlessPlanningWorld.js';
 import { createDefaultHeadlessRuntimeConfig, headlessRuntimeConfigSummary } from './runtime/HeadlessRuntimeConfig.js';
 import { runHeadlessMissionWithPlan } from './runtime/HeadlessMissionRunner.js';
 import { headlessScoreReportSummary } from './runtime/HeadlessScoring.js';
+import { roundtripReportTypeMetadata } from './HeadlessRoundtripTypes.js';
 
 export const HEADLESS_ROUNDTRIP_VERSION = 'headless-solver-packet-roundtrip-h3';
 
@@ -188,7 +189,7 @@ export function buildHeadlessRoundtripReport({ context, world, packet, plan, sel
   const scoreSummary = headlessScoreReportSummary(episode.scoreReport);
   return {
     schemaVersion: '1.0',
-    type: 'anchor.headless.roundtrip-report',
+    ...roundtripReportTypeMetadata(),
     version: HEADLESS_ROUNDTRIP_VERSION,
     createdAt: options.createdAt ?? new Date().toISOString(),
     source: {

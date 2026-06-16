@@ -1,10 +1,18 @@
 {
   "schemaVersion": "1.0",
   "type": "schema",
-  "describes": "anchor.headless.roundtrip-report",
+  "describes": "anchor.headless.solver-roundtrip-report",
+  "canonicalType": "anchor.headless.solver-roundtrip-report",
+  "legacyAliases": ["anchor.headless.roundtrip-report"],
+  "relatedTypes": {
+    "combinedBundle": "anchor.headless.solver-roundtrip-bundle",
+    "browserSummary": "anchor.browser.headless-roundtrip-summary"
+  },
   "required": [
     "schemaVersion",
     "type",
+    "canonicalType",
+    "legacyType",
     "version",
     "source",
     "packetSummary",
@@ -42,12 +50,12 @@
     "usesBrowserOfficialScoring": false,
     "usesPythonSimulator": false,
     "usesMARL": false,
-    "usesSyntheticRuntimeFieldsForExecution": "H3 bridge uses existing H1 educational runtime fields"
+    "usesSyntheticRuntimeFieldsForExecution": "H3/H3.1 bridge uses existing H1 educational runtime fields"
   },
   "output": {
     "combinedBundlePath": "bundle.json path when emitted",
     "roundtripReportPath": "roundtrip_report.json path",
     "hiddenTruthExported": "false for public default exports"
   },
-  "notes": "H3 reports document compatibility from solver packet to submitted plan to Node headless bundle. They do not make headless scoring official browser scoring and do not add a planner, Python simulator, calibrated forecast, backend, or MARL/RL."
+  "notes": "H3.1 reports document compatibility from solver packet to submitted plan to Node headless bundle. Consumers should write the canonical type anchor.headless.solver-roundtrip-report and may accept legacy anchor.headless.roundtrip-report. The report does not make headless scoring official browser scoring and does not add a planner, Python simulator, calibrated forecast, backend, or MARL/RL."
 }
