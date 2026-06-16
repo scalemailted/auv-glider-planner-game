@@ -4,6 +4,7 @@ import { evaluateExactReplayAvailability, getReplaySeedContract } from '../rando
 import { summarizeCurrentFieldConfig } from '../generation/FlowFieldConfig.js';
 import { normalizeExperienceMode } from '../experience/ExperienceMode.js';
 import { normalizeNavigationUncertaintyConfig } from '../navigation/NavigationUncertainty.js';
+import { extractBenchmarkMetadata } from '../benchmark/BenchmarkMetadata.js';
 import {
   buildScenarioFingerprint,
   classifyRouteSource,
@@ -34,6 +35,11 @@ export function buildResultExport({ level, mission, plan, result, label = 'Manua
     ?? mission?.meta?.missionMode
     ?? challenge?.missionMode
     ?? level?.meta?.generationConfig?.missionMode
+    ?? null;
+  const benchmarkMetadata = extractBenchmarkMetadata(result)
+    ?? extractBenchmarkMetadata(plan)
+    ?? extractBenchmarkMetadata(mission)
+    ?? extractBenchmarkMetadata(level)
     ?? null;
   const navigationUncertainty = normalizeNavigationUncertaintyConfig(
     result?.navigationUncertainty
@@ -84,6 +90,7 @@ export function buildResultExport({ level, mission, plan, result, label = 'Manua
     executionMode: plan?.executionMode ?? plan?.meta?.executionMode ?? 'openLoop',
     importedPlanMetadata: plan?.importMetadata ?? null,
     planner,
+    ...(benchmarkMetadata ? { benchmarkMetadata: cloneJson(benchmarkMetadata) } : {}),
     fairness: {
       usesForecast: Boolean(plan?.planner?.usesForecast ?? plan?.meta?.planner?.usesForecast),
       usesTruth: Boolean(plan?.planner?.usesTruth ?? plan?.meta?.planner?.usesTruth),

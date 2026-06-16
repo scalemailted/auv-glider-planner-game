@@ -26,13 +26,29 @@ import {
 } from '../../src/core/demo/coupled/CoupledProcessEngineContract.js';
 import { computeOracleSamplingObjective } from '../../src/core/demo/coupled/OracleCoupledObjective.js';
 import { createGrid } from '../../src/core/demo/coupled/CoupledFieldMath.js';
+import {
+  UNCERTAINTY_SCENARIO_IDS,
+  createUncertaintyForecastField
+} from '../../src/core/demo/UncertaintyForecastDemo.js';
+import { applyObservationSet } from '../../src/core/demo/uncertainty/ObservationModel.js';
 import { createSamplingPriorityScenario } from '../../src/core/demo/samplingPriority/SamplingPriorityScenarios.js';
 import { computeSamplingPriority } from '../../src/core/demo/samplingPriority/SamplingPriorityModel.js';
 import { generateCandidateSamplePoints } from '../../src/core/demo/samplingPriority/SamplingPriorityCandidates.js';
 import { createFlowCoupledSamplingScenario } from '../../src/core/demo/flowCoupledSampling/FlowCoupledSamplingScenarios.js';
 import { computeGliderActionValue } from '../../src/core/demo/flowCoupledSampling/GliderActionValueModel.js';
 import { generateGliderActionCandidates } from '../../src/core/demo/flowCoupledSampling/GliderActionCandidates.js';
+import { UncertaintyForecastDemoScene } from '../../src/game/phaser/scenes/UncertaintyForecastDemoScene.js';
+import { SamplingPriorityDemoScene } from '../../src/game/phaser/scenes/SamplingPriorityDemoScene.js';
 import { FlowCoupledSamplingDemoScene } from '../../src/game/phaser/scenes/FlowCoupledSamplingDemoScene.js';
+import { BenchmarkModeOverviewScene } from '../../src/game/phaser/scenes/BenchmarkModeOverviewScene.js';
+import { BENCHMARK_MODE_IDS, createBenchmarkModeConfig, validateBenchmarkModeConfig } from '../../src/core/benchmark/BenchmarkModeContract.js';
+import { createBenchmarkEpisodeConfig, validateBenchmarkEpisodeConfig } from '../../src/core/benchmark/BenchmarkEpisodeContract.js';
+import { createRouteExecutionRecord, validateRouteExecutionRecord } from '../../src/core/benchmark/BenchmarkRouteExecutionRecord.js';
+import { buildBenchmarkRunRecordFromResult } from '../../src/core/benchmark/BenchmarkResultAdapter.js';
+import { attachBenchmarkMetadataToLevel, validateBenchmarkMetadata } from '../../src/core/benchmark/BenchmarkMetadata.js';
+import { createBenchmarkModeState } from '../../src/core/benchmark/BenchmarkModeState.js';
+import { buildBenchmarkModeConfigExport } from '../../src/core/benchmark/BenchmarkModeExporter.js';
+import '../../src/labs/widgets/SamplingActionValueWidgets.js';
 import { FlowFieldDemoScene } from '../../src/game/phaser/scenes/FlowFieldDemoScene.js';
 import { RoiGeneratorDemoScene } from '../../src/game/phaser/scenes/RoiGeneratorDemoScene.js';
 import { CoupledFieldsDemoScene } from '../../src/game/phaser/scenes/CoupledFieldsDemoScene.js';
@@ -196,7 +212,34 @@ assert.ok(coupledArtifact.frames?.[0]?.fields?.coupledProcess?.flowU, 'Coupled f
 assert.ok(coupledArtifact.frames?.[0]?.fields?.coupledProcess?.constraintMask, 'Coupled frame exports constraint layer');
 assert.ok(coupledArtifact.frames?.[0]?.fields?.coupledProcess?.oracleObjectiveField, 'Coupled frame exports objective layer');
 
+// Uncertainty imports, belief-state metadata, export metadata, and debug object.
+assert.ok(UNCERTAINTY_SCENARIO_IDS.includes('hiddenPlume'), 'Uncertainty scenario registry imports');
+const uncertaintyBase = createUncertaintyForecastField({ scenarioId: 'hiddenPlume', seed: 'model-stack-smoke' });
+const uncertaintyObservations = applyObservationSet({
+  truthField: uncertaintyBase.hiddenTruthField,
+  forecastField: uncertaintyBase.forecastField,
+  uncertaintyField: uncertaintyBase.expectedUncertaintyField,
+  scenarioId: 'hiddenPlume',
+  pattern: 'clusterFollowup',
+  count: 6,
+  seed: 'model-stack-smoke',
+  sensorNoise: 0.03
+});
+const uncertaintyField = createUncertaintyForecastField({ scenarioId: 'hiddenPlume', viewMode: 'samplingPriorityPreview', observations: uncertaintyObservations });
+assert.equal(uncertaintyField.fieldsFinite, true, 'Uncertainty field generation is finite');
+assert.ok(uncertaintyField.diagnostics, 'Uncertainty diagnostics are present');
+const uncertaintyScene = new UncertaintyForecastDemoScene();
+uncertaintyScene.init({ scenarioId: 'hiddenPlume', viewMode: 'samplingPriorityPreview', observations: uncertaintyObservations, sensorNoise: 0.03 });
+const uncertaintyArtifact = uncertaintyScene.buildDemoArtifactExport();
+assert.equal(uncertaintyArtifact.type, 'anchor.demo.uncertainty-forecast', 'Uncertainty export type is stable');
+assert.ok(uncertaintyArtifact.uncertaintyModel, 'Uncertainty export preserves uncertaintyModel');
+assert.ok(uncertaintyArtifact.observationModel, 'Uncertainty export preserves observationModel');
+assert.ok(uncertaintyArtifact.beliefState, 'Uncertainty export preserves beliefState');
+assert.ok(uncertaintyArtifact.diagnostics, 'Uncertainty export preserves diagnostics');
+assert.equal(globalThis.ANCHOR_UNCERTAINTY_DEMO_DEBUG?.usesPlanner, false, 'Uncertainty debug object excludes planner use');
+
 // Sampling Priority imports, global-acquisition metadata, and route/flow boundary.
+assert.equal(typeof SamplingPriorityDemoScene, 'function', 'Sampling Priority scene module imports');
 const samplingPriorityScenario = createSamplingPriorityScenario({ scenarioId: 'mixedMission', seed: 'model-stack-smoke' });
 const samplingPriority = computeSamplingPriority({ scenario: samplingPriorityScenario, methodId: 'balancedMission' });
 const samplingCandidates = generateCandidateSamplePoints({
@@ -238,6 +281,7 @@ assert.ok(flowCoupledAction.components.globalPriority, 'Flow-Coupled Sampling co
 assert.notDeepEqual(flowCoupledAction.actionValueField, flowCoupledAction.components.globalPriority, 'Q_glider differs from A_global after vehicle costs');
 assert.ok(flowCoupledCandidates.length > 0, 'Flow-Coupled Sampling generates candidate direct targets');
 assert.equal(samplingPriority.usesFlowCoupling, false, 'S1 remains vehicle-independent after S2 import');
+assert.equal(typeof FlowCoupledSamplingDemoScene, 'function', 'Flow-Coupled Sampling scene module imports');
 const flowCoupledScene = new FlowCoupledSamplingDemoScene();
 flowCoupledScene.init({ scenarioId: 'currentOpposedTarget', methodId: 'balancedActionValue', exportMode: 'currentFrame' });
 assert.equal(globalThis.ANCHOR_FLOW_COUPLED_SAMPLING_DEMO_DEBUG?.usesFlowCoupling, true, 'Flow-Coupled debug object marks flow coupling');
@@ -248,6 +292,79 @@ assert.ok(flowCoupledArtifact.flowCoupledSamplingModel, 'Flow-Coupled export pre
 assert.ok(flowCoupledArtifact.gliderActionContext, 'Flow-Coupled export preserves glider action context');
 assert.ok(flowCoupledArtifact.candidateTargets?.length > 0, 'Flow-Coupled export preserves candidate targets');
 assert.equal(flowCoupledArtifact.actionValueDiagnostics.usesRoutePlanning, false, 'Flow-Coupled diagnostics exclude route planning');
+// Benchmark mode architecture skeleton: P0 contracts and boundaries.
+assert.equal(typeof BenchmarkModeOverviewScene, 'function', 'Benchmark Mode overview scene module imports');
+assert.deepEqual(BENCHMARK_MODE_IDS, ['plannerBenchmark', 'adaptiveBenchmark', 'fullAutonomyBenchmark'], 'P0 benchmark modes exist');
+for (const benchmarkMode of BENCHMARK_MODE_IDS) {
+  const benchmarkConfig = createBenchmarkModeConfig({ benchmarkMode });
+  const benchmarkState = createBenchmarkModeState(benchmarkConfig);
+  const benchmarkExport = buildBenchmarkModeConfigExport(benchmarkConfig);
+  assert.equal(validateBenchmarkModeConfig(benchmarkConfig).status, 'PASS', `${benchmarkMode} config validates`);
+  assert.equal(benchmarkState.debugFlags.usesMARL, false, `${benchmarkMode} does not implement MARL`);
+  assert.equal(benchmarkState.debugFlags.usesMissionScoring, false, `${benchmarkMode} does not implement mission scoring`);
+  assert.equal(benchmarkState.debugFlags.usesRoutePlanning, false, `${benchmarkMode} does not implement full route planning`);
+  assert.ok(benchmarkState.implementedSystems.includes('samplingPriorityDemo'), `${benchmarkMode} references S1 prerequisite system`);
+  assert.ok(benchmarkState.implementedSystems.includes('flowCoupledSamplingDemo'), `${benchmarkMode} references S2 prerequisite system`);
+  assert.equal(benchmarkExport.type, 'anchor.benchmark.mode-config', `${benchmarkMode} export type`);
+}
+
+// P1 benchmark route-execution contracts and adapter boundaries.
+const p1Episode = createBenchmarkEpisodeConfig({ benchmarkMode: 'plannerBenchmark' });
+assert.equal(validateBenchmarkEpisodeConfig(p1Episode).status, 'PASS', 'P1 benchmark episode config validates');
+const p1RouteRecord = createRouteExecutionRecord({
+  benchmarkMode: 'plannerBenchmark',
+  episodeId: 'model-stack-smoke-episode',
+  attemptSource: 'manualPlayer',
+  fairnessLabel: 'Forecast-only',
+  validation: { ok: true },
+  metrics: { finalScore: 10, energyUsed: 2 }
+});
+assert.equal(validateRouteExecutionRecord(p1RouteRecord).status, 'PASS', 'P1 route execution record validates');
+const p1RunRecord = buildBenchmarkRunRecordFromResult({
+  benchmarkModeConfig: { benchmarkMode: 'plannerBenchmark' },
+  episodeConfig: p1Episode,
+  level: { levelId: 'model-stack-level', meta: { seed: 'model-stack' } },
+  mission: { missionId: 'model-stack-mission', agents: [{ id: 'g1' }] },
+  plan: { type: 'anchor.plan', agentPlans: [{ agentId: 'g1', waypoints: [{ x: 1, y: 1, t: 1 }] }] },
+  result: { summary: { finalScore: 10, sampleScore: 4, energyUsed: 2 } },
+  attemptSource: 'manualPlayer'
+});
+assert.equal(p1RunRecord.type, 'anchor.benchmark.run', 'P1 adapter returns benchmark run record');
+const p1LevelWithMetadata = attachBenchmarkMetadataToLevel({ levelId: 'model-stack-level' }, { benchmarkMode: 'plannerBenchmark', episodeId: 'model-stack-smoke-episode' });
+assert.equal(validateBenchmarkMetadata(p1LevelWithMetadata.meta.benchmarkMetadata).status, 'PASS', 'P1 metadata validates');
+assert.equal(p1RunRecord.diagnostics.doesNotSimulateRoutes, true, 'P1 adapter does not simulate routes');
+assert.equal(p1RunRecord.diagnostics.doesNotComputeOfficialScores, true, 'P1 adapter does not compute official scores');
+const p1BenchmarkContractSource = [
+  'src/core/benchmark/BenchmarkEpisodeContract.js',
+  'src/core/benchmark/BenchmarkRouteExecutionRecord.js',
+  'src/core/benchmark/BenchmarkResultAdapter.js',
+  'src/core/benchmark/BenchmarkLaunchBridge.js',
+  'src/game/phaser/scenes/BenchmarkModeOverviewScene.js'
+].map((file) => fs.readFileSync(file, 'utf8')).join('\n');
+assert.equal(/implements? (a )?new route planner/i.test(p1BenchmarkContractSource), false, 'P1 does not claim a new route planner');
+// Learning Lab bridge and Mission Console menu guards.
+const learningLabSource = fs.readFileSync('labs/sampling-priority-to-glider-action-value.html', 'utf8');
+assert.ok(learningLabSource.includes('A_global'), 'Learning Lab contains A_global');
+assert.ok(learningLabSource.includes('Q_glider'), 'Learning Lab contains Q_glider');
+assert.ok(learningLabSource.includes('Event intensity is not sampling priority'), 'Learning Lab states event-intensity boundary');
+assert.ok(learningLabSource.includes('Action value is not route planning'), 'Learning Lab states route-planning boundary');
+const missionConsoleSource = fs.readFileSync('src/ui/MissionConsole.js', 'utf8');
+const missionConsoleChecks = [
+  ['Flow Fields Demo', ['Flow Fields Demo']],
+  ['Coupled Fields Demo', ['Coupled Fields Demo']],
+  ['Uncertainty / Forecast Demo', ['Uncertainty / Forecast Demo']],
+  ['Sampling Priority Demo', ['Sampling Priority Demo']],
+  ['Flow-Coupled Sampling Demo', ['Flow-Coupled Sampling Demo']],
+  ['Planner Benchmark', ['Planner Benchmark']],
+  ['Adaptive Benchmark', ['Adaptive Benchmark']],
+  ['Full Autonomy Benchmark', ['Full Autonomy Benchmark']],
+  ['Process Lab / Sampling Process Lab', ['Process Lab', 'Sampling Process Lab', 'Spatiotemporal Sampling Process Lab', 'SAMPLING_PROCESS_LAB_MENU_LABEL']]
+];
+missionConsoleChecks.forEach(([name, labels]) => {
+  assert.ok(labels.some((label) => missionConsoleSource.includes(label)), `Mission Console contains ${name}`);
+});
+assert.ok(missionConsoleSource.includes('RoiGeneratorDemoScene'), 'Mission Console binds Process Lab to RoiGeneratorDemoScene');
+
 // Claim-boundary guard: calibrated forecast claims must be explicitly negated/bounded.
 const claimFiles = [
   'README.md',
@@ -258,10 +375,29 @@ const claimFiles = [
   'docs/export_formats.md',
   'docs/testing.md',
   'docs/development_versions.md',
+  'docs/uncertainty_forecast_demo.md',
+  'docs/sampling_priority_demo.md',
+  'docs/flow_coupled_sampling_demo.md',
+  'docs/model_stack_integration_notes.md',
+  'docs/benchmark_modes.md',
+  'src/core/benchmark/BenchmarkAttemptRegistry.js',
+  'src/core/benchmark/BenchmarkMetadata.js',
+  'src/core/benchmark/BenchmarkResultAdapter.js',
+  'src/core/benchmark/BenchmarkRouteExecutionRecord.js',
+  'src/core/benchmark/BenchmarkEpisodeContract.js',
+  'docs/benchmark_route_execution_contract.md',
+  'labs/sampling-priority-to-glider-action-value.html',
   'src/core/demo/FlowFieldDemo.js',
   'src/core/demo/flow/FlowFieldDiagnostics.js',
   'src/core/demo/coupled/AnalyticScalarProcessEngines.js',
   'src/core/demo/coupled/OracleCoupledObjective.js',
+  'src/core/demo/UncertaintyForecastDemo.js',
+  'src/core/demo/uncertainty/UncertaintyFieldMath.js',
+  'src/core/demo/samplingPriority/SamplingPriorityModel.js',
+  'src/core/demo/flowCoupledSampling/GliderActionValueModel.js',
+  'src/core/benchmark/BenchmarkModeContract.js',
+  'src/core/benchmark/BenchmarkModeExporter.js',
+  'src/game/phaser/scenes/BenchmarkModeOverviewScene.js',
   'src/core/demo/sampling/SpatiotemporalProcessExamples.js',
   'src/game/phaser/scenes/CoupledFieldsDemoScene.js',
   'src/game/phaser/scenes/FlowFieldDemoScene.js'

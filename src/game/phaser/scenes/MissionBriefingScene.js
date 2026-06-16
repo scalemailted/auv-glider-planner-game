@@ -39,6 +39,7 @@ import { importFlowFieldJson, summarizeImportedFlowField } from '../../../core/i
 import { EXPERIENCE_MODES } from '../../../core/experience/ExperienceMode.js';
 import { MISSION_MODE_PRESETS, getMissionModePreset, missionModeLabel } from '../../../core/missions/MissionModeRegistry.js';
 import { NAVIGATION_UNCERTAINTY_LEVELS, navigationUncertaintyLabel, normalizeNavigationUncertaintyConfig } from '../../../core/navigation/NavigationUncertainty.js';
+import { attachBenchmarkMetadataToLevel, attachBenchmarkMetadataToMission } from '../../../core/benchmark/BenchmarkMetadata.js';
 
 const PhaserScene = globalThis.Phaser?.Scene ?? class {};
 
@@ -564,7 +565,7 @@ export class MissionBriefingScene extends PhaserScene {
   }
 
   generateConfiguredScenario() {
-    const { level, mission, config } = generateScenarioFromConfig(this.app.state.pendingScenarioSetup);
+    let { level, mission, config } = generateScenarioFromConfig(this.app.state.pendingScenarioSetup);
     const experienceMode = this.app.state.currentScenario?.experienceMode ?? this.app.state.experienceMode ?? EXPERIENCE_MODES.simulationLab;
     level.meta ??= {};
     level.meta.experienceMode = experienceMode;
@@ -572,6 +573,16 @@ export class MissionBriefingScene extends PhaserScene {
     mission.meta ??= {};
     mission.meta.experienceMode = experienceMode;
     mission.meta.missionMode = config.missionMode;
+    const benchmarkPayload = this.app.state.pendingBenchmarkEpisode ?? null;
+    if (benchmarkPayload?.benchmarkModeConfig) {
+      const benchmarkMetadataInput = {
+        ...benchmarkPayload.benchmarkModeConfig,
+        episodeId: benchmarkPayload.episodeState?.episodeId,
+        attemptSource: benchmarkPayload.episodeState?.activeAttemptSource ?? 'manualPlayer'
+      };
+      level = attachBenchmarkMetadataToLevel(level, benchmarkMetadataInput);
+      mission = attachBenchmarkMetadataToMission(mission, benchmarkMetadataInput);
+    }
     this.app.state.pendingScenarioSetup = null;
     this.clearChallengeSetupView();
     this.app.state.ui.mapCamera = { zoom: 1, panX: 0, panY: 0 };
@@ -583,10 +594,17 @@ export class MissionBriefingScene extends PhaserScene {
       mission,
       challengeMode: config.mode,
       experienceMode,
-      source: experienceMode === EXPERIENCE_MODES.simulationLab
-        ? (config.mode === 'forecast' ? 'stochasticExperiment' : 'deterministicExperiment')
-        : (config.mode === 'forecast' ? 'stochasticChallenge' : 'deterministicChallenge')
+      source: benchmarkPayload
+        ? 'plannerBenchmarkSetup'
+        : experienceMode === EXPERIENCE_MODES.simulationLab
+          ? (config.mode === 'forecast' ? 'stochasticExperiment' : 'deterministicExperiment')
+          : (config.mode === 'forecast' ? 'stochasticChallenge' : 'deterministicChallenge')
     });
+    if (benchmarkPayload?.benchmarkModeConfig) {
+      this.app.state.benchmarkModeConfig = benchmarkPayload.benchmarkModeConfig;
+      this.app.state.benchmarkEpisode = benchmarkPayload.episodeState;
+      if (this.app.state.currentScenario) this.app.state.currentScenario.benchmarkMetadata = level.meta?.benchmarkMetadata ?? null;
+    }
     resetPlanResultStore(this.app.state);
     markBriefingSeen(this.app.state);
     this.scene.start('MissionWorkspaceScene');

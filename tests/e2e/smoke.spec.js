@@ -259,6 +259,64 @@ test('learning labs static page is linked from the main menu', async ({ page }) 
   await expect(page.locator('[data-debrief-status]')).toContainText('Hazard hit');
 });
 
+test('Benchmark modes overview opens from Simulation Lab', async ({ page }) => {
+  await page.goto('/');
+  await expect(page.locator('#mission-console')).toContainText('Simulation Lab');
+  await expandMissionConsoleSection(page, 'Simulation Lab');
+  await expect(page.locator('#mission-console [data-accordion-key="simulation-lab"]')).toContainText('Benchmark Modes');
+
+  await page.locator('#mission-console [data-action="benchmark-planner"]').click();
+  await expect.poll(() => page.evaluate(() => window.anchorGame.phaser.scene.getScene('BenchmarkModeOverviewScene').sys.isActive())).toBe(true);
+  await expect(page.locator('#mission-console')).toContainText('Planner Benchmark');
+  await expect(page.locator('#mission-console')).toContainText('Objective is fixed / given');
+  await expect(page.locator('#mission-console')).toContainText('Player or solver chooses route');
+  await expect(page.locator('#mission-console')).toContainText('Adapter-only / not full route planning');
+  await expect(page.locator('#mission-console')).toContainText('route execution record schema');
+  await expect(page.locator('#mission-console')).toContainText('result/debrief adapter');
+  await expect(page.locator('#mission-console')).toContainText('Open Planner Benchmark Setup');
+  await expect.poll(() => page.evaluate(() => window.ANCHOR_BENCHMARK_MODE_DEBUG?.benchmarkMode)).toBe('plannerBenchmark');
+  await expect.poll(() => page.evaluate(() => window.ANCHOR_BENCHMARK_MODE_DEBUG?.usesMARL)).toBe(false);
+  await expect.poll(() => page.evaluate(() => window.ANCHOR_BENCHMARK_MODE_DEBUG?.usesMissionScoring)).toBe(false);
+  await expect.poll(() => page.evaluate(() => window.ANCHOR_BENCHMARK_MODE_DEBUG?.routeExecutionImplemented)).toBe('adapter-only');
+  const [download] = await Promise.all([
+    page.waitForEvent('download'),
+    page.locator('#mission-console [data-action="export-benchmark-config"]').click()
+  ]);
+  expect(download.suggestedFilename()).toMatch(/^anchor-benchmark-mode-config-plannerBenchmark\.json$/);
+
+  const [episodeDownload] = await Promise.all([
+    page.waitForEvent('download'),
+    page.locator('#mission-console [data-action="export-benchmark-episode"]').click()
+  ]);
+  expect(episodeDownload.suggestedFilename()).toMatch(/^anchor-benchmark-episode-plannerBenchmark\.json$/);
+  const episodePath = await episodeDownload.path();
+  const episodeJson = JSON.parse(await fs.readFile(episodePath, 'utf8'));
+  expect(episodeJson.type).toBe('anchor.benchmark.episode-config');
+
+  await page.locator('#mission-console [data-action="menu"]').click();
+  await expandMissionConsoleSection(page, 'Simulation Lab');
+  await page.locator('#mission-console [data-action="benchmark-adaptive"]').click();
+  await expect(page.locator('#mission-console')).toContainText('Adaptive Benchmark');
+  await expect(page.locator('#mission-console')).toContainText('Mission manager objective updates are defined by contract but not executed in P1');
+  await expect(page.locator('#mission-console')).toContainText('Player or solver chooses route');
+
+  await page.locator('#mission-console [data-action="menu"]').click();
+  await expandMissionConsoleSection(page, 'Simulation Lab');
+  await page.locator('#mission-console [data-action="benchmark-full-autonomy"]').click();
+  await expect(page.locator('#mission-console')).toContainText('Full Autonomy Benchmark');
+  await expect(page.locator('#mission-console')).toContainText('Solver/agent chooses objective and route');
+  await expect(page.locator('#mission-console')).toContainText('Solver/agent objective and route authority are defined by contract but not executed in P1');
+
+  await page.locator('#mission-console [data-action="benchmark-open-sampling-priority"]').click();
+  await expect.poll(() => page.evaluate(() => window.anchorGame.phaser.scene.getScene('SamplingPriorityDemoScene').sys.isActive())).toBe(true);
+  await expect(page.locator('#mission-console')).toContainText('Sampling Priority Demo');
+  await page.locator('#mission-console [data-action="menu"]').click();
+  await expandMissionConsoleSection(page, 'Simulation Lab');
+  await page.locator('#mission-console [data-action="flow-coupled-sampling-demo"]').click();
+  await expect.poll(() => page.evaluate(() => window.anchorGame.phaser.scene.getScene('FlowCoupledSamplingDemoScene').sys.isActive())).toBe(true);
+  await expect(page.locator('#mission-console')).toContainText('Flow-Coupled Sampling Demo');
+});
+
 test('campaign planning smoke flow reaches debrief', async ({ page }) => {
   await page.goto('/');
 
@@ -269,7 +327,7 @@ test('campaign planning smoke flow reaches debrief', async ({ page }) => {
   await expect(page.locator('#right-panel')).toHaveCount(0);
   await expect(page.locator('#context-panel')).toBeEmpty();
   await expect(page.locator('#mission-console')).toContainText('ANCHOR: Glider Command');
-  await expect(page.locator('#mission-console button.console-button')).toHaveCount(18);
+  await expect(page.locator('#mission-console button.console-button')).toHaveCount(21);
   await expect(page.locator('#mission-console .accordion-header')).toHaveCount(3);
   await expect(page.locator('#mission-console > .console-section')).toHaveCount(3);
   await expect(page.locator('#mission-console')).toContainText('Challenge Mode');
@@ -285,8 +343,11 @@ test('campaign planning smoke flow reaches debrief', async ({ page }) => {
   await expect(page.locator('#mission-console [data-accordion-key="simulation-lab"]')).toContainText('Mission Editor');
   await expect(page.locator('#mission-console [data-accordion-key="simulation-lab"]')).toContainText('Import / Export Tools');
   await expect(page.locator('#mission-console [data-accordion-key="simulation-lab"]')).toContainText('Benchmark Leaderboard');
-  await page.locator('#mission-console [data-accordion-key="simulation-lab"] .accordion-header').click();
-  await expect(page.locator('#mission-console [data-accordion-key="simulation-lab"] [data-menu-group] h3')).toHaveText(['Experiments', 'Demos', 'Editor & Import Tools', 'Benchmarks']);
+  await expect(page.locator('#mission-console [data-accordion-key="simulation-lab"]')).toContainText('Planner Benchmark');
+  await expect(page.locator('#mission-console [data-accordion-key="simulation-lab"]')).toContainText('Adaptive Benchmark');
+  await expect(page.locator('#mission-console [data-accordion-key="simulation-lab"]')).toContainText('Full Autonomy Benchmark');
+  await expandMissionConsoleSection(page, 'Simulation Lab');
+  await expect(page.locator('#mission-console [data-accordion-key="simulation-lab"] [data-menu-group] h3')).toHaveText(['Experiments', 'Benchmark Modes', 'Demos', 'Editor & Import Tools', 'Benchmarks']);
   await expect(page.locator('#mission-console [data-accordion-key="simulation-lab"]')).toContainText('Flow Fields Demo');
   await expect(page.locator('#mission-console [data-accordion-key="simulation-lab"]')).toContainText('Process Lab');
   await expect(page.locator('#mission-console [data-accordion-key="simulation-lab"]')).toContainText('Coupled Fields Demo');

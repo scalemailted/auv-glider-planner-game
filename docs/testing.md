@@ -10,7 +10,7 @@ Playwright is optional and intended for development smoke testing.
 
 Greedy Planner is useful for planner smoke checks because it should return promptly, preserve non-selected glider routes, and validate before simulation. See `docs/greedy_planner.md` for the expected selected-glider baseline behavior.
 
-The main menu should expose three top-level accordions: `Challenge Mode`, `Simulation Lab`, and `Learning Labs`. Challenge Mode should contain `Play`, `Learn`, and `Compete` visual subsections. Simulation Lab should contain `Experiments`, `Demos`, `Editor & Import Tools`, and `Benchmarks`. Learning Labs should expose static concept pages, starting with `Deterministic Spatiotemporal Processes`, that open outside the Phaser simulator. Field demos live inside Simulation Lab, not as a separate top-level section. Use `docs/flow_fields_demo.md` when validating `F(x,y,t)` current vectors, static/dynamic fields, additive layers, partition behavior, terrain boundary effects, and topology-aware shoreline risk. Use `docs/sample_fields_demo.md` when validating `L(x,y,t)` event likelihood, `S(x,y,t)` sample value, pure sample-value spatial fields, spatial parameters, temporal patterns, spatial evolution, Time-Indexed/Frequency-Based/State-Evolving/History-Aware state models, sampling effects, and freshness/revisit displays. Use `docs/coupled_fields_demo.md` for deterministic/oracle coupled sampling spaces: known process `C(x,y,t)`, known flow `F(x,y,t)`, known constraints, analytical process engines, and oracle objective `S*(x,y,t)`. Use `docs/uncertainty_forecast_demo.md` for hidden truth, forecast/expected state, noisy observations, belief, expected-state uncertainty, surprise, forecast error, unknown-event probability, and sampling-priority preview. Use the Stochastic Coupled Sampling Space learning lab when validating the teaching layer that combines posterior belief, expected uncertainty, unknown-event probability, flow, constraints, acquisition value, and oracle regret. Use docs/sampling_priority_demo.md for S1 global A_global(x,y,t). Use labs/sampling-priority-to-glider-action-value.html when validating the Learning Lab bridge between vehicle-independent science priority and glider-specific action value. Use docs/flow_coupled_sampling_demo.md for S2 glider-specific direct-leg Q_glider(g,x,y,t) action value; it must keep route planning, mission scoring, calibrated glider dynamics, and calibrated ocean forecasts out of scope.
+The main menu should expose three top-level accordions: `Challenge Mode`, `Simulation Lab`, and `Learning Labs`. Challenge Mode should contain `Play`, `Learn`, and `Compete` visual subsections. Simulation Lab should contain `Experiments`, `Benchmark Modes`, `Demos`, `Editor & Import Tools`, and `Benchmarks`. Learning Labs should expose static concept pages, starting with `Deterministic Spatiotemporal Processes`, that open outside the Phaser simulator. Field demos live inside Simulation Lab, not as a separate top-level section. Use `docs/flow_fields_demo.md` when validating `F(x,y,t)` current vectors, static/dynamic fields, additive layers, partition behavior, terrain boundary effects, and topology-aware shoreline risk. Use `docs/sample_fields_demo.md` when validating `L(x,y,t)` event likelihood, `S(x,y,t)` sample value, pure sample-value spatial fields, spatial parameters, temporal patterns, spatial evolution, Time-Indexed/Frequency-Based/State-Evolving/History-Aware state models, sampling effects, and freshness/revisit displays. Use `docs/coupled_fields_demo.md` for deterministic/oracle coupled sampling spaces: known process `C(x,y,t)`, known flow `F(x,y,t)`, known constraints, analytical process engines, and oracle objective `S*(x,y,t)`. Use `docs/uncertainty_forecast_demo.md` for hidden truth, forecast/expected state, noisy observations, belief, expected-state uncertainty, surprise, forecast error, unknown-event probability, and sampling-priority preview. Use the Stochastic Coupled Sampling Space learning lab when validating the teaching layer that combines posterior belief, expected uncertainty, unknown-event probability, flow, constraints, acquisition value, and oracle regret. Use docs/sampling_priority_demo.md for S1 global A_global(x,y,t). Use labs/sampling-priority-to-glider-action-value.html when validating the Learning Lab bridge between vehicle-independent science priority and glider-specific action value. Use docs/flow_coupled_sampling_demo.md for S2 glider-specific direct-leg Q_glider(g,x,y,t) action value; it must keep route planning, mission scoring, calibrated glider dynamics, and calibrated ocean forecasts out of scope. Use docs/benchmark_route_execution_contract.md when validating P1 benchmark episode configs, route-execution records, result/debrief adapters, attempt sets, and the boundary that P1 does not add a new planner or scoring redesign.
 
 ## Challenge Mode vs Simulation Lab
 
@@ -119,10 +119,31 @@ After JavaScript changes, run:
 npm.cmd run check
 ```
 
-For Process Lab / Flow Fields Demo / Coupled Fields Demo integration checkpoints, also run:
+For model-stack integration checkpoints, also run:
 
 ```bash
+node tools/js/audit_model_stack_inventory.mjs
 node tools/js/smoke_model_stack_integration.mjs
+node tools/js/audit_demo_export_metadata.mjs
+node tools/js/audit_docs_model_stack_links.mjs
+```
+
+For the P0 Benchmark Mode architecture skeleton, also run:
+
+```bash
+node tools/js/smoke_benchmark_mode_contract.mjs
+node tools/js/smoke_benchmark_run_record.mjs
+node tools/js/smoke_mission_objective_taxonomy.mjs
+node tools/js/smoke_benchmark_mode_ui_contract.mjs
+```
+
+For the P1 Planner / Mission Evaluation route-execution contract, also run:
+
+```bash
+node tools/js/smoke_benchmark_episode_contract.mjs
+node tools/js/smoke_benchmark_route_execution_record.mjs
+node tools/js/smoke_benchmark_result_adapter.mjs
+node tools/js/smoke_benchmark_attempt_registry.mjs
 ```
 
 For the U0/U1 Uncertainty / Forecast belief-state sandbox, also run:

@@ -26,6 +26,18 @@ Challenge Mode also persists `missionMode`. Mission modes are player-facing obje
 
 ## Version / Milestone Log
 
+### P1 - Planner / Mission Evaluation Route-Execution Contract
+
+- Added pure benchmark episode, route-execution, metadata, result-adapter, and attempt-registry contracts.
+- Added Planner Benchmark episode export and a low-risk setup bridge into the existing Simulation Lab planning flow.
+- Preserved the boundary: P1 normalizes existing planning, simulation, and debrief data; it does not implement a new planner, redesign scoring, or add MARL/RL.
+
+### P0 - Benchmark Mode Architecture Skeleton
+
+- Added first-class benchmark mode contracts for Planner Benchmark, Adaptive Benchmark, and Full Autonomy Benchmark.
+- Added explicit objective authority, route authority, information-access tiers, world-model tiers, fairness labels, run-record skeletons, and mission-objective taxonomy metadata.
+- Added a lightweight Benchmark Mode overview scene under Simulation Lab plus `anchor.benchmark.mode-config` export metadata and debug object.
+- Preserved the boundary: P0 defines the benchmark architecture skeleton and does not implement route planning, mission scoring, adaptive objective management, RL, or MARL.
 ### S2 - Flow-Coupled Sampling / Glider Action Value Sandbox
 
 - Added the Flow-Coupled Sampling Demo for glider-specific direct-leg action value `Q_glider(g,x,y,t)`.

@@ -52,6 +52,11 @@ export class MissionConsole {
           menuActionHtml('deterministic', 'Deterministic Experiment', 'Configure a perfect-knowledge reproducible scenario.'),
           menuActionHtml('stochastic', 'Stochastic Experiment', 'Configure forecast, ensemble, hidden-truth, and uncertainty settings.')
         ])}
+        ${menuGroupHtml('Benchmark Modes', [
+          menuActionHtml('benchmark-planner', 'Planner Benchmark', 'Objective is fixed/given; player or solver chooses the route path.', 'primary'),
+          menuActionHtml('benchmark-adaptive', 'Adaptive Benchmark', 'Transparent mission manager updates objectives after observations or belief.'),
+          menuActionHtml('benchmark-full-autonomy', 'Full Autonomy Benchmark', 'Future solver/agent mode: objective and route authority both belong to the agent.')
+        ])}
         ${menuGroupHtml('Demos', [
           menuActionHtml('flow-fields', 'Flow Fields Demo', 'Explore current vectors F(x,y,t).'),
           menuActionHtml('roi-demo', SAMPLING_PROCESS_LAB_MENU_LABEL, 'Explore deterministic or seeded sampling processes S(x,y,t).'),
@@ -102,6 +107,9 @@ export class MissionConsole {
       'uncertainty-forecast-demo': () => this.app.phaser.scene.start('UncertaintyForecastDemoScene'),
       'sampling-priority-demo': () => this.app.phaser.scene.start('SamplingPriorityDemoScene'),
       'flow-coupled-sampling-demo': () => this.app.phaser.scene.start('FlowCoupledSamplingDemoScene'),
+      'benchmark-planner': () => this.app.phaser.scene.start('BenchmarkModeOverviewScene', { benchmarkMode: 'plannerBenchmark' }),
+      'benchmark-adaptive': () => this.app.phaser.scene.start('BenchmarkModeOverviewScene', { benchmarkMode: 'adaptiveBenchmark' }),
+      'benchmark-full-autonomy': () => this.app.phaser.scene.start('BenchmarkModeOverviewScene', { benchmarkMode: 'fullAutonomyBenchmark' }),
       tutorial: () => this.mainMenuScene()?.openTutorialBrowser?.(),
       'play-challenge': () => this.mainMenuScene()?.openChallengeSetup?.('perfectKnowledge', EXPERIENCE_MODES.challenge),
       'play-custom-challenge': () => this.app.phaser.scene.start('LoadLevelJsonScene', { preferredExperienceMode: EXPERIENCE_MODES.challenge }),
@@ -1247,11 +1255,143 @@ export class MissionConsole {
     });
   }
 
+  renderBenchmarkModeOverviewControls(payload = {}, handlers = {}) {
+    if (!this.root) return;
+    const config = payload.config ?? {};
+    const state = payload.state ?? {};
+    const summary = payload.summary ?? {};
+    const episodeConfig = payload.episodeConfig ?? {};
+    const objectiveOptions = Array.isArray(payload.objectiveOptions) ? payload.objectiveOptions : [];
+    const visibleLayers = state.visibleLayers ?? [];
+    const implementedSystems = state.implementedSystems ?? [];
+    const missingSystems = state.missingSystems ?? [];
+    const p1Implemented = Array.isArray(payload.p1Implemented) ? payload.p1Implemented : [];
+    const p1NotImplemented = Array.isArray(payload.p1NotImplemented) ? payload.p1NotImplemented : [];
+    const plannerSetupHtml = config.benchmarkMode === 'plannerBenchmark'
+      ? '<button data-action="benchmark-open-setup" class="console-button">Open Planner Benchmark Setup</button>'
+      : '<div class="hud-muted">Contract defined / execution later. This mode does not launch route execution in P1.</div>';
+    this.root.innerHTML = `
+      <section class="console-header">
+        <div class="console-kicker">Benchmark Mode</div>
+        <h1>${escapeHtml(config.label ?? 'Benchmark Mode')}</h1>
+        <p>${escapeHtml(benchmarkModeP1Text(config.benchmarkMode))}</p>
+      </section>
+      <section class="console-status">
+        <span>P1 Route-Execution Contract</span>
+        <strong>${escapeHtml(benchmarkImplementedLabel(config.implemented))}</strong>
+        <small>Adapter-only / not full route planning. Existing simulator and debrief remain the execution and scoring path.</small>
+      </section>
+      <section class="console-section">
+        <h2>Authority Split</h2>
+        <div class="cell-inspector-metrics">
+          <div><span>Objective Authority</span><strong>${escapeHtml(benchmarkAuthorityText(config.objectiveAuthority, 'objective'))}</strong></div>
+          <div><span>Route Authority</span><strong>${escapeHtml(benchmarkAuthorityText(config.routeAuthority, 'route'))}</strong></div>
+          <div><span>Information Access</span><strong>${escapeHtml(summary.informationAccessTier ?? config.informationAccessTier ?? 'forecastOnly')}</strong></div>
+          <div><span>Fairness Label</span><strong>${escapeHtml(config.fairnessLabel ?? 'Forecast-only')}</strong></div>
+          <div><span>World Model</span><strong>${escapeHtml(summary.worldModelTier ?? config.worldModelTier ?? 'flowCoupledAction')}</strong></div>
+        </div>
+        <div class="hud-muted">${escapeHtml(benchmarkModeBoundaryText(config.benchmarkMode))}</div>
+      </section>
+      <section class="console-section">
+        <h2>Route Execution Contract</h2>
+        <div class="hud-muted">Planner Benchmark can describe one benchmark episode, compare manual / Greedy Planner / imported solver attempts, and normalize existing debrief metrics into benchmark records.</div>
+        <div class="hud-muted">Episode: ${escapeHtml(episodeConfig.type ?? 'anchor.benchmark.episode-config')} | Attempts: ${escapeHtml((episodeConfig.allowedAttemptSources ?? []).join(', ') || 'defined by mode')}</div>
+        ${plannerSetupHtml}
+      </section>
+      <section class="console-section">
+        <h2>P1 Status</h2>
+        <div class="panel-stack">
+          <div><strong>Implemented now</strong><ul>${p1Implemented.map((item) => `<li>${escapeHtml(item)}</li>`).join('')}</ul></div>
+          <div><strong>Not implemented yet</strong><ul>${p1NotImplemented.map((item) => `<li>${escapeHtml(item)}</li>`).join('')}</ul></div>
+        </div>
+      </section>
+      <section class="console-section">
+        <h2>Visible Model Layers</h2>
+        <div class="hud-muted">${escapeHtml(visibleLayers.join(', ') || 'Defined by benchmark mode contract.')}</div>
+      </section>
+      <section class="console-section">
+        <h2>Objective Taxonomy Preview</h2>
+        <div class="panel-stack">
+          ${objectiveOptions.map((objective) => `<div class="hud-muted"><strong>${escapeHtml(objective.label)}</strong>: ${escapeHtml(objective.description)}</div>`).join('')}
+        </div>
+      </section>
+      <section class="console-section">
+        <h2>Related Sandboxes</h2>
+        <div class="panel-stack">
+          <button data-action="benchmark-open-sampling-priority" class="console-button secondary">Sampling Priority Demo</button>
+          <button data-action="benchmark-open-flow-coupled" class="console-button secondary">Flow-Coupled Sampling Demo</button>
+          <button data-action="benchmark-open-uncertainty" class="console-button secondary">Uncertainty / Forecast Demo</button>
+          <button data-action="benchmark-open-planner-evaluation" class="console-button secondary">Planner / Mission Evaluation</button>
+        </div>
+      </section>
+      <section class="console-section">
+        <h2>Contract Inventory</h2>
+        <div class="hud-muted">Implemented systems: ${escapeHtml(implementedSystems.join(', ') || 'contract skeleton')}</div>
+        <div class="hud-muted">Future systems: ${escapeHtml(missingSystems.join(', ') || 'route execution and scoring')}</div>
+      </section>
+      <section class="console-section">
+        <h2>Export</h2>
+        <button data-action="export-benchmark-config" class="console-button">Export Benchmark Config JSON</button>
+        <button data-action="export-benchmark-episode" class="console-button secondary">Export Benchmark Episode JSON</button>
+        <div class="hud-muted">Exports anchor.benchmark.mode-config and anchor.benchmark.episode-config. P1 also defines run-record, route-execution, and attempt-set export contracts.</div>
+      </section>
+      <section class="console-footer">
+        <button data-action="menu" class="console-button secondary">Main Menu</button>
+      </section>
+    `;
+    this.app.applyConsoleAccordions?.('benchmarkModeOverview', null, { defaultCollapsed: false });
+    this.bind({
+      'benchmark-open-setup': handlers.openBenchmarkSetup,
+      'benchmark-open-sampling-priority': handlers.openSamplingPriority,
+      'benchmark-open-flow-coupled': handlers.openFlowCoupledSampling,
+      'benchmark-open-uncertainty': handlers.openUncertainty,
+      'benchmark-open-planner-evaluation': handlers.openPlannerEvaluation,
+      'export-benchmark-config': handlers.exportConfig,
+      'export-benchmark-episode': handlers.exportEpisode,
+      menu: handlers.menu
+    });
+  }
+
   bind(actions) {
     this.root.querySelectorAll('[data-action]').forEach((button) => {
       button.addEventListener('click', () => actions[button.dataset.action]?.());
     });
   }
+}
+
+function benchmarkImplementedLabel(value) {
+  if (value === true) return 'Implemented';
+  if (value === false) return 'Placeholder';
+  return 'Partial';
+}
+
+function benchmarkAuthorityText(value, kind) {
+  const objectiveLabels = {
+    fixed: 'Objective is fixed / given',
+    missionManager: 'Transparent mission manager chooses objectives after observations or belief',
+    solverOrAgent: 'Solver/agent chooses objective and route'
+  };
+  const routeLabels = {
+    playerOrSolver: 'Player or solver chooses route',
+    solverOrAgent: 'Solver/agent chooses objective and route'
+  };
+  return (kind === 'route' ? routeLabels : objectiveLabels)[value] ?? String(value ?? 'unknown');
+}
+
+function benchmarkModeBoundaryText(mode) {
+  return {
+    plannerBenchmark: 'Objective is fixed. Plan manually, use Greedy Planner, or import a solver plan. Execute through the existing simulator and compare results in Debrief.',
+    adaptiveBenchmark: 'Mission manager objective updates are defined by contract but not executed in P1.',
+    fullAutonomyBenchmark: 'Solver/agent objective and route authority are defined by contract but not executed in P1.'
+  }[mode] ?? 'P1 defines benchmark route-execution contracts; it does not add a planner, scoring redesign, or MARL/RL.';
+}
+
+function benchmarkModeP1Text(mode) {
+  return {
+    plannerBenchmark: 'Objective is fixed. Player or solver chooses route through existing planning, simulator, and debrief systems.',
+    adaptiveBenchmark: 'Mission manager objective updates are contract-defined placeholders in P1.',
+    fullAutonomyBenchmark: 'Solver/agent objective and route authority are contract-defined placeholders in P1.'
+  }[mode] ?? 'Benchmark route-execution contract overview.';
 }
 
 function flowModeLabel(mode) {

@@ -13,7 +13,7 @@ Version 2 is a playable static-web game built with vanilla JavaScript, HTML, CSS
 - main menu, campaign flow, mission briefing, planning, simulation, debrief, level editor, and dataset export scenes
 - three top-level main menu accordions: Challenge Mode, Simulation Lab, and Learning Labs
 - static Learning Labs concept pages, including a syllabus-style index, Scientific Computational Modeling foundation article, CA for Ocean-Relevant Processes foundation article, deterministic-process article, deterministic dynamic flow-fields article, oracle deterministic coupled sampling-space article, stochastic uncertainty article, stochastic coupled sampling-space article, Sampling Priority to Glider Action Value bridge article, and Planner / Mission Evaluation article
-- Simulation Lab field demos with Flow Fields Demo for current arrows, Process Lab for deterministic spatiotemporal process examples, Uncertainty / Forecast Demo for belief-state teaching, Sampling Priority Demo for global acquisition / sampling usefulness, and Flow-Coupled Sampling Demo for glider-specific direct-target action value
+- Simulation Lab field demos with Flow Fields Demo for current arrows, Process Lab for deterministic spatiotemporal process examples, Uncertainty / Forecast Demo for belief-state teaching, Sampling Priority Demo for global acquisition / sampling usefulness, Flow-Coupled Sampling Demo for glider-specific direct-target action value, and Benchmark Modes for Planner / Adaptive / Full Autonomy architecture contracts plus P1 route-execution adapter contracts
 - game-first mission planning workspace with a large Phaser map, HTML/CSS mission-control overlays, top selected-glider planning HUD, bottom mission-time slider, waypoint drawer/table, and non-executable planning markers
 - Phaser 3 scene shell with Main Menu, Mission Briefing, Mission Workspace, Simulation, Debrief, Environment Editor, and Dataset Export scenes
 - fourteen staged tutorial lessons built from handcrafted tutorial scenarios
@@ -97,7 +97,7 @@ Quick loop:
 1. Open the game.
 2. Choose one of the expandable areas: Challenge Mode, Simulation Lab, or Learning Labs.
 3. Under Challenge Mode, use `Play` for Mission Modes/custom challenges, `Learn` for Tutorials, or `Compete` for leaderboards.
-4. Under Simulation Lab, use `Experiments`, `Demos`, `Editor & Import Tools`, or `Benchmarks`.
+4. Under Simulation Lab, use `Experiments`, `Benchmark Modes`, `Demos`, `Editor & Import Tools`, or `Benchmarks`.
 5. Under Learning Labs, open static concept pages such as Scientific Computational Modeling, CA for Ocean-Relevant Processes, Deterministic Spatiotemporal Processes, Deterministic Dynamic Flow Fields, Oracle / Deterministic Coupled Sampling Space, Stochastic / Uncertainty, Stochastic Coupled Sampling Space, Sampling Priority to Glider Action Value, and Planner / Mission Evaluation when you want a short explanation before using the sandbox.
 6. Start a tutorial, generate a challenge, import a custom challenge JSON, or use an editor/custom level.
 7. Read Mission Briefing, then click `Start Planning`.
@@ -119,6 +119,8 @@ Quick loop:
 - [Uncertainty / Forecast Demo](docs/uncertainty_forecast_demo.md)
 - [Sampling Priority Demo](docs/sampling_priority_demo.md)
 - [Flow-Coupled Sampling Demo](docs/flow_coupled_sampling_demo.md)
+- [Benchmark Modes](docs/benchmark_modes.md)
+- [Benchmark Route Execution Contract](docs/benchmark_route_execution_contract.md)
 - [Solver workflow](docs/solver_workflow.md)
 - [Export formats](docs/export_formats.md)
 - [Plan format](docs/plan_format.md)
@@ -152,6 +154,8 @@ Field concepts stay separate: `F(x,y,t)` is a physical current vector field, `C_
 `Sampling Priority Demo` computes a global vehicle-independent acquisition field `A_global(x,y,t)` from belief ROI, uncertainty, boundary value, forecast-validation value, hidden-event suspicion, staleness, hazard suppression, and redundancy suppression. It teaches that event intensity is not sampling priority and generates reason-labeled candidate sample points. It is not route planning, not flow-coupled action value, and not a production GP/GMRF optimizer or calibrated data-assimilation system. See [Sampling Priority Demo](docs/sampling_priority_demo.md).
 
 `Flow-Coupled Sampling Demo` computes glider-specific direct-target action value `Q_glider(g,x,y,t)` from `A_global`, future priority, current assist/opposition, cross-current risk, travel time, energy cost, time windows, hazards, reachability, and redundancy. The [Sampling Priority to Glider Action Value Learning Lab](labs/sampling-priority-to-glider-action-value.html) explains this bridge from global sampling priority to planner/mission evaluation. It is not full route planning, mission scoring, calibrated glider dynamics, calibrated ocean forecasting, or a production vehicle controller. See [Flow-Coupled Sampling Demo](docs/flow_coupled_sampling_demo.md).
+
+`Benchmark Modes` defines the architecture skeleton for Planner Benchmark, Adaptive Benchmark, and Full Autonomy Benchmark. P1 adds adapter-only episode, route-execution, result/debrief, attempt-set, metadata, and export contracts for using the existing planning workspace, simulator, and Debrief. It does not implement a new planner, redesign scoring, or add MARL. See [Benchmark Modes](docs/benchmark_modes.md) and [Benchmark Route Execution Contract](docs/benchmark_route_execution_contract.md).
 
 All field demos include `Export Demo JSON` for notebook artifacts. Flow exports now include `flowFieldDiagnostics` and `flowFieldModel` so notebooks can see the synthetic model claim boundary and audited vector-field summaries. Choose start time, end time, and timeframe count to export a bounded `frames[]` series using the current demo settings, while the top-level `fields` preserve the currently visible frame. These exports capture row-major field arrays, scene config, demo time, selected-cell inspector state, units, and coordinate convention. Sample / ROI exports also include graph-field metadata, community-id grids, process timing, current display metric metadata, optional metric layers, and per-frame graph state/message layers when the graph engine is active. The Sample / ROI demo additionally offers `Export Scenario JSON` for the compact validated `anchor.syntheticRoiScenario` time-series format. Sampling Priority exports include `samplingPriorityModel`, component fields, `candidateSamplePoints`, and `priorityDiagnostics` with route/flow coupling flags set false. Flow-Coupled Sampling exports include `flowCoupledSamplingModel`, `gliderActionContext`, component fields, `candidateTargets`, and `actionValueDiagnostics` with flow coupling true and route planning false. See [Export Formats](docs/export_formats.md).
 

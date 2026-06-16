@@ -121,6 +121,16 @@ The scenario export stores `scenarioVersion: "roi-scenario-v1"`, scenario id, fa
 
 Validation reports `PASS`, `WARN`, or `FAIL`, with human summary, observable pattern note, ROI meaning, reference-signature context when present, warnings/failures, signature checks, metrics, preset-audit results, and recommended fixes. Reference-aware scenarios preserve `referenceSignatureId`, `referenceSignatureLabel`, aliases, category, reference catalog version, `referenceModels`, coverage tags, CA taxonomy metadata, `expectedObservableSignature`, `qaExpectations`, `phenotypeMetrics`, `genotypeNotes`, `taxonomyJustification`, component defaults, `referenceRoiInterpretation`, and `referenceFailureSigns`. `Require PASS Before Export` blocks warning and failed scenarios; `Allow WARN Export` permits warnings while preserving diagnostics. These files are deterministic synthetic analog processes, not validated domain simulators. Batch datasets and algorithm evaluation are intentionally out of scope for this format.
 
+## `anchor.benchmark.mode-config.json`
+
+`type: "anchor.benchmark.mode-config"` is the Benchmark Modes architecture export. It records a benchmark-mode configuration, objective taxonomy version, run-record version, authority split, information-access tier, world-model tier, fairness label, implemented systems, missing systems, visible layers, debug flags, and P1 adapter-only boundary notes.
+
+Planner Benchmark, Adaptive Benchmark, and Full Autonomy Benchmark mode-config exports are contract metadata. P1 adds optional `anchor.benchmark.episode-config`, `anchor.benchmark.run-record`, `anchor.benchmark.route-execution`, and `anchor.benchmark.attempt-set` exports.
+
+`anchor.benchmark.episode-config` describes one benchmark episode: benchmark mode, objective, authority split, information access, world-model tier, fairness label, ids, seed, allowed attempt sources, and required exports. `anchor.benchmark.route-execution` normalizes an existing route attempt with validation, segment summaries, nullable metrics, diagnostics, and export references. `anchor.benchmark.run-record` wraps a BenchmarkRunRecord-compatible `anchor.benchmark.run`. `anchor.benchmark.attempt-set` compares portable attempt records for best score, lowest energy, highest sample score, fewest hazards, and least duplicate sampling.
+
+P1 does not implement a new planner, does not redesign scoring, and does not add adaptive objective switching, solver training, RL, or MARL. It normalizes existing planning, simulation, and debrief data. `anchor.result` may include optional `benchmarkMetadata` only when benchmark metadata was attached before export.
+
 ## `anchor.plan.json`
 
 `type: "anchor.plan"` is the imported/exported route format. It supports executable `openLoop` and `timedOpenLoop` plans now, preserves `surfaceUpdateBundle` metadata with a safe import warning, and recognizes `policy` / `contingencyTable` as non-executable scaffolds. Planner metadata declares whether the route used forecast, truth, or oracle data.

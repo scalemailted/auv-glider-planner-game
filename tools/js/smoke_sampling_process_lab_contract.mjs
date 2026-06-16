@@ -8,6 +8,7 @@ import {
   SAMPLING_PROCESS_LEGACY_DEMO_NAME,
   SAMPLING_PROCESS_MODES,
   SAMPLING_PROCESS_STATUS_LABELS,
+  normalizeSamplingProcessMode,
   samplingProcessStatusLabel,
   sourceFieldBoundaryNote
 } from '../../src/core/demo/sampling/SamplingProcessTerminology.js';
@@ -17,9 +18,10 @@ const assert = (condition, message) => { if (!condition) failures.push(message);
 
 assert(SAMPLING_PROCESS_LAB_TITLE === 'Deterministic Spatiotemporal Process Lab', 'new lab title mismatch');
 assert(SAMPLING_PROCESS_LEGACY_DEMO_NAME === 'Sample / ROI Field Demo', 'legacy demo name mismatch');
-for (const mode of ['referenceSignature', 'customComposer', 'processPaint', 'randomRuleLab']) {
+for (const mode of ['foundationalCaModels', 'oceanProcessAnalogs', 'customComposer', 'processPaint', 'randomRuleLab', 'diagnosticsGraphInspection']) {
   assert(SAMPLING_PROCESS_MODES.includes(mode), `missing process mode ${mode}`);
 }
+assert(normalizeSamplingProcessMode('referenceSignature') === 'foundationalCaModels', 'referenceSignature alias should normalize to foundationalCaModels');
 for (const status of ['Example-Validated', 'Example-Modified', 'Custom Exploratory', 'Weak Pattern', 'Invalid / Diagnostic Only']) {
   assert(SAMPLING_PROCESS_STATUS_LABELS.includes(status), `missing status label ${status}`);
 }

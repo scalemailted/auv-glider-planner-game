@@ -15,6 +15,7 @@ import { CoupledFieldsDemoScene } from './scenes/CoupledFieldsDemoScene.js';
 import { UncertaintyForecastDemoScene } from './scenes/UncertaintyForecastDemoScene.js';
 import { SamplingPriorityDemoScene } from './scenes/SamplingPriorityDemoScene.js';
 import { FlowCoupledSamplingDemoScene } from './scenes/FlowCoupledSamplingDemoScene.js';
+import { BenchmarkModeOverviewScene } from './scenes/BenchmarkModeOverviewScene.js';
 import { LoadLevelByIdScene } from './scenes/LoadLevelByIdScene.js';
 import { LoadLevelJsonScene } from './scenes/LoadLevelJsonScene.js';
 import { PHASER_HEIGHT, PHASER_WIDTH } from './PhaserCoreAdapter.js';
@@ -62,6 +63,7 @@ export class PhaserGameApp {
         UncertaintyForecastDemoScene,
         SamplingPriorityDemoScene,
         FlowCoupledSamplingDemoScene,
+        BenchmarkModeOverviewScene,
         LoadLevelJsonScene,
         LoadLevelByIdScene
       ],
@@ -249,7 +251,8 @@ function sceneKey(name) {
     roiDemo: 'RoiGeneratorDemoScene',
     uncertaintyForecastDemo: 'UncertaintyForecastDemoScene',
     samplingPriorityDemo: 'SamplingPriorityDemoScene',
-    flowCoupledSamplingDemo: 'FlowCoupledSamplingDemoScene'
+    flowCoupledSamplingDemo: 'FlowCoupledSamplingDemoScene',
+    benchmarkModeOverview: 'BenchmarkModeOverviewScene'
   };
   return aliases[name] ?? name;
 }
