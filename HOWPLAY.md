@@ -1002,3 +1002,7 @@ Science boundary: the deterministic process demo teaches local process evolution
 ## Planner Benchmark Records
 
 In Simulation Lab, open Benchmark Modes, choose Planner Benchmark, and use Open Planner Benchmark Setup to enter the normal setup/planning/simulation flow. When the run reaches Debrief, a Planner Benchmark section can export a Benchmark Run Record, Route Execution Record, and Benchmark Attempt Set. Manual, Greedy Planner, and imported solver attempts are normalized for comparison under the same episode identity. P2 does not add a new planner or change scoring.
+
+## Planner Benchmark Attempt Comparison
+
+In Simulation Lab, Planner Benchmark Debrief can show Attempt Comparison and Route Review for benchmark runs. Use it to compare fairness labels, score, energy, hazards, missed waypoints, and duplicate samples. P3 does not add a new planner or scoring redesign.

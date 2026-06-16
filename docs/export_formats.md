@@ -203,3 +203,7 @@ Ocean-Relevant Process Analogs are educational event/process-layer analogs. They
 ## `anchor.benchmark.*.json`
 
 Planner Benchmark Debrief exports three benchmark JSON products in P2: `anchor.benchmark.run-record`, `anchor.benchmark.route-execution`, and `anchor.benchmark.attempt-set`. They are normalized records built from the existing planner, simulator, and debrief result. They include fixed objective authority, player-or-solver route authority, information-access/fairness metadata, nullable metrics, and boundary flags such as `usesExistingSimulation: true`, `usesExistingDebrief: true`, `usesNewPlanner: false`, and `usesMissionScoringRedesign: false`.
+
+## `anchor.benchmark.comparison`
+
+P3 adds `anchor.benchmark.comparison` for Planner Benchmark Debrief. It includes attempts, rankings, comparison summary, route review, fairness labels, available benchmark export types, and boundary flags showing existing simulator/debrief, no new planner, no scoring redesign, and no MARL/RL.

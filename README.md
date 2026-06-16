@@ -822,3 +822,7 @@ Science boundary: the deterministic process demo teaches local process evolution
 ### Planner Benchmark Execution
 
 Planner Benchmark can now use the existing Simulation Lab setup, planning workspace, simulator, and Debrief to emit benchmark run-record, route-execution, and attempt-set JSON. This is metadata propagation and export normalization only: it does not add a new planner, scoring redesign, adaptive objective switching, full autonomy, or MARL/RL training. See [Planner Benchmark Execution](docs/planner_benchmark_execution.md).
+
+### Planner Benchmark P3 Attempt Comparison
+
+Planner Benchmark Debrief now includes attempt comparison and route review for existing benchmark attempts. P3 does not add a new planner and does not redesign scoring; it makes manual, greedy, imported, oracle, and placeholder attempts easier to compare in Debrief. See `docs/planner_benchmark_attempt_comparison.md`.

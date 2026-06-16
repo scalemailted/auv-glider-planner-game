@@ -22,6 +22,14 @@ import {
 } from '../benchmark/BenchmarkAttemptSourceMapping.js';
 import { initializePlannerBenchmarkEpisode } from '../benchmark/BenchmarkEpisodeRuntime.js';
 import {
+  benchmarkComparisonSummary,
+  buildBenchmarkComparisonViewModel
+} from '../benchmark/BenchmarkComparisonViewModel.js';
+import {
+  buildBenchmarkRouteReviewViewModel,
+  routeReviewSummary
+} from '../benchmark/BenchmarkRouteReviewViewModel.js';
+import {
   buildScenarioFingerprint,
   classifyRouteSource,
   leaderboardScopeForExperience
@@ -353,6 +361,116 @@ export function buildBenchmarkAttemptSetExportFromResult({
     boundaryFlags: benchmarkExecutionBoundaryFlags()
   };
 }
+export function buildBenchmarkComparisonExportFromResult({
+  level,
+  mission,
+  plan,
+  result,
+  attemptSession = null,
+  benchmarkModeConfig = null,
+  episodeConfig = null,
+  attemptSource = null,
+  routeSourceLabel = null,
+  fairnessLabel = null
+} = {}) {
+  const context = normalizeBenchmarkExportContext({
+    level,
+    mission,
+    plan,
+    result,
+    benchmarkModeConfig,
+    episodeConfig,
+    attemptSource,
+    routeSourceLabel,
+    fairnessLabel
+  });
+  const routeExecutionRecord = buildRouteExecutionRecordFromResult({
+    benchmarkModeConfig: context.benchmarkModeConfig,
+    episodeConfig: context.episodeConfig,
+    level,
+    mission,
+    plan,
+    result,
+    attemptSource: context.attemptSource,
+    routeSourceLabel: context.routeSourceLabel,
+    fairnessLabel: context.fairnessLabel
+  });
+  routeExecutionRecord.diagnostics = {
+    ...(routeExecutionRecord.diagnostics ?? {}),
+    usesExistingSimulation: true,
+    usesExistingDebrief: true,
+    usesNewPlanner: false,
+    usesMissionScoringRedesign: false,
+    usesMARL: false
+  };
+  const runRecord = buildBenchmarkRunRecordFromResult({
+    benchmarkModeConfig: context.benchmarkModeConfig,
+    episodeConfig: context.episodeConfig,
+    level,
+    mission,
+    plan,
+    result,
+    attemptSource: context.attemptSource,
+    routeSourceLabel: context.routeSourceLabel
+  });
+  const attempts = Array.isArray(attemptSession?.attempts) && attemptSession.attempts.length
+    ? attemptSession.attempts
+    : [{
+        episodeId: context.episodeId,
+        benchmarkMode: 'plannerBenchmark',
+        attemptSource: context.attemptSource,
+        routeSourceLabel: context.routeSourceLabel,
+        fairnessLabel: context.fairnessLabel,
+        routeExecutionRecord,
+        runRecord,
+        metrics: routeExecutionRecord.metrics,
+        status: routeExecutionRecord.validation?.status ?? 'completed'
+      }];
+  const attemptSet = createBenchmarkAttemptSet({
+    episodeId: context.episodeId,
+    benchmarkMode: 'plannerBenchmark',
+    attempts,
+    notes: ['P3 comparison export summarizes existing attempts; it does not add a planner or redesign scoring.']
+  });
+  const activeAttempt = attemptSet.attempts.find((attempt) => attempt.resultId && attempt.resultId === routeExecutionRecord.resultId)
+    ?? attemptSet.attempts.at(-1)
+    ?? null;
+  const comparisonViewModel = buildBenchmarkComparisonViewModel({
+    attemptSet,
+    activeAttempt,
+    benchmarkModeConfig: context.benchmarkModeConfig,
+    episodeConfig: context.episodeConfig,
+    routeExecutionRecords: [routeExecutionRecord],
+    runRecords: [runRecord]
+  });
+  const routeReview = buildBenchmarkRouteReviewViewModel({ routeExecutionRecord, plan, result });
+  const availableBenchmarkExports = benchmarkExportTypes();
+  return {
+    type: 'anchor.benchmark.comparison',
+    version: 'benchmark-comparison-export-p3',
+    createdAt: new Date().toISOString(),
+    benchmarkMode: comparisonViewModel.benchmarkMode,
+    episodeId: comparisonViewModel.episodeId,
+    attempts: cloneJson(comparisonViewModel.attempts),
+    rankings: cloneJson(comparisonViewModel.rankings),
+    comparisonSummary: benchmarkComparisonSummary(comparisonViewModel),
+    routeReview: cloneJson(routeReview),
+    routeReviewSummary: routeReviewSummary(routeReview),
+    fairnessLabels: [...new Set(comparisonViewModel.attempts.map((attempt) => attempt.fairnessLabel).filter(Boolean))],
+    availableBenchmarkExports,
+    boundaryFlags: benchmarkExecutionBoundaryFlags(),
+    usesExistingSimulation: true,
+    usesExistingDebrief: true,
+    usesNewPlanner: false,
+    usesMissionScoringRedesign: false,
+    usesMARL: false,
+    notes: [
+      'Planner Benchmark compares attempts under a fixed objective.',
+      'Comparison metrics are normalized from existing results. P3 does not add a new planner or redesign scoring.',
+      'Route review explains what happened during execution; it is not an optimization algorithm.'
+    ]
+  };
+}
 
 function normalizeBenchmarkExportContext({
   level,
@@ -399,4 +517,13 @@ function benchmarkExecutionBoundaryFlags() {
     usesMissionScoringRedesign: false,
     usesMARL: false
   };
+}
+
+function benchmarkExportTypes() {
+  return [
+    'anchor.benchmark.run-record',
+    'anchor.benchmark.route-execution',
+    'anchor.benchmark.attempt-set',
+    'anchor.benchmark.comparison'
+  ];
 }

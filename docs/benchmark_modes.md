@@ -101,3 +101,7 @@ P0 does not implement route planning, mission scoring, or MARL. P0/P1 do not imp
 ## P2 Planner Benchmark Execution
 
 P2 makes `plannerBenchmark` executable through the existing mission loop. Planner Benchmark Setup enters the normal briefing/planning workspace, Simulation runs the existing route execution engine, and Debrief can export `anchor.benchmark.run-record`, `anchor.benchmark.route-execution`, and `anchor.benchmark.attempt-set` JSON. P2 still does not add a new planner, optimal path search, scoring redesign, adaptive objective switching, full autonomy, or MARL/RL training. See [Planner Benchmark Execution](planner_benchmark_execution.md).
+
+## P3 Planner Benchmark Comparison
+
+Planner Benchmark now has a Debrief comparison layer for fixed-objective attempts. Adaptive Benchmark and Full Autonomy Benchmark remain contract-only. P3 does not implement route planning, mission scoring, adaptive objective switching, or MARL/RL.

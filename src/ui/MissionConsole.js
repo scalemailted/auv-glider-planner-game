@@ -1218,6 +1218,7 @@ export class MissionConsole {
           <button class="console-button" data-action="export-benchmark-run">Export Benchmark Run Record</button>
           <button class="console-button" data-action="export-benchmark-route">Export Route Execution Record</button>
           <button class="console-button" data-action="export-benchmark-attempt-set">Export Benchmark Attempt Set</button>
+          <button class="console-button" data-action="export-benchmark-comparison">Export Benchmark Comparison</button>
         ` : ''}
       </section>
       <section class="console-section">

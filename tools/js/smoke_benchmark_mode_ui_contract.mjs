@@ -26,6 +26,7 @@ assert.ok(missionConsole.includes('Existing simulator and debrief produce benchm
 assert.ok(missionConsole.includes('Export Benchmark Run Record'), 'Debrief console includes run-record export control');
 assert.ok(missionConsole.includes('Export Route Execution Record'), 'Debrief console includes route-execution export control');
 assert.ok(missionConsole.includes('Export Benchmark Attempt Set'), 'Debrief console includes attempt-set export control');
+assert.ok(missionConsole.includes('Export Benchmark Comparison'), 'Debrief console includes comparison export control');
 assert.ok(missionConsole.includes('Mission manager objective updates are defined by contract; execution later.'), 'Adaptive placeholder boundary is visible');
 assert.ok(missionConsole.includes('Solver/agent objective and route authority are defined by contract; execution later.'), 'Full Autonomy placeholder boundary is visible');
 assert.ok(phaserGame.includes('BenchmarkModeOverviewScene'), 'PhaserGame registers BenchmarkModeOverviewScene');
@@ -35,6 +36,8 @@ assert.ok(benchmarkScene.includes('ANCHOR_BENCHMARK_EPISODE_DEBUG'), 'Benchmark 
 assert.ok(debriefScene.includes('ANCHOR_BENCHMARK_EXECUTION_DEBUG'), 'Debrief scene exposes benchmark execution debug object');
 assert.ok(debriefScene.includes('usesExistingSimulation: true'), 'Debrief benchmark debug marks existing simulation');
 assert.ok(debriefScene.includes('usesNewPlanner: false'), 'Debrief benchmark debug excludes new planner');
+assert.ok(debriefScene.includes('hasComparisonViewModel'), 'Debrief benchmark debug includes comparison view model field');
+assert.ok(debriefScene.includes('hasRouteReviewViewModel'), 'Debrief benchmark debug includes route review view model field');
 
 const exportJson = buildBenchmarkModeConfigExport({ benchmarkMode: 'plannerBenchmark' });
 assert.equal(exportJson.type, 'anchor.benchmark.mode-config', 'benchmark export type');

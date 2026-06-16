@@ -65,3 +65,7 @@ No persistent benchmark attempt store is added in P2. Existing leaderboard and r
 
 Adaptive Benchmark and Full Autonomy Benchmark remain contract-only placeholders. Their authority splits and metadata are visible, but P2 does not execute adaptive objective management or autonomous solver/agent control.
 
+
+## P3 Attempt Comparison And Route Review
+
+P3 adds a Debrief interpretation layer over the P2 benchmark records. It shows attempt comparison, route review, fairness/source labels, and a `anchor.benchmark.comparison` export. It does not add a new planner, does not redesign scoring, and does not add MARL/RL.

@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 
 import {
   buildBenchmarkAttemptSetExportFromResult,
+  buildBenchmarkComparisonExportFromResult,
   buildBenchmarkRouteExecutionExportFromResult,
   buildBenchmarkRunRecordExportFromResult
 } from '../../src/core/io/ResultExporter.js';
@@ -72,6 +73,17 @@ assert.equal(attemptSet.type, 'anchor.benchmark.attempt-set', 'attempt-set expor
 assert.equal(attemptSet.episodeId, 'export-episode', 'attempt set episode');
 assert.equal(attemptSet.attempts.length, 1, 'attempt set includes current attempt');
 
+
+const comparisonExport = buildBenchmarkComparisonExportFromResult({ level, mission, plan, result });
+assert.equal(comparisonExport.type, 'anchor.benchmark.comparison', 'comparison export type');
+assert.ok(comparisonExport.rankings.finalScore.length >= 1, 'comparison export includes rankings');
+assert.ok(comparisonExport.routeReview, 'comparison export includes route review');
+assert.equal(comparisonExport.usesNewPlanner, false, 'comparison export does not add planner');
+assert.equal(comparisonExport.usesMissionScoringRedesign, false, 'comparison export does not redesign scoring');
+assert.ok(comparisonExport.availableBenchmarkExports.includes('anchor.benchmark.run-record'), 'comparison export discovers run-record type');
+assert.ok(comparisonExport.availableBenchmarkExports.includes('anchor.benchmark.route-execution'), 'comparison export discovers route-execution type');
+assert.ok(comparisonExport.availableBenchmarkExports.includes('anchor.benchmark.attempt-set'), 'comparison export discovers attempt-set type');
+assert.ok(comparisonExport.availableBenchmarkExports.includes('anchor.benchmark.comparison'), 'comparison export discovers comparison type');
 const sparse = buildBenchmarkRouteExecutionExportFromResult({
   level,
   mission,

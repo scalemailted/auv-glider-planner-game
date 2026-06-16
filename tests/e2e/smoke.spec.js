@@ -402,12 +402,22 @@ test('Planner Benchmark debrief exports benchmark records from synthetic result'
 
   await expect.poll(() => page.evaluate(() => window.anchorGame.phaser.scene.getScene('DebriefScene').sys.isActive())).toBe(true);
   await expect(page.locator('#debrief-root')).toContainText('Planner Benchmark');
+  await expect(page.locator('#debrief-root')).toContainText('Attempt');
+  await expect(page.locator('#debrief-root')).toContainText('Fairness');
+  await expect(page.locator('#debrief-root')).toContainText('Attempt Comparison');
+  await expect(page.locator('#debrief-root')).toContainText('Route Review');
+  await expect(page.locator('#debrief-root')).toContainText('existing simulator');
+  await expect(page.locator('#debrief-root')).toContainText('existing debrief');
+  await expect(page.locator('#debrief-root')).toContainText('does not add a new planner');
+  await expect(page.locator('#debrief-root')).toContainText('redesign scoring');
   await expect(page.locator('#debrief-root')).toContainText('Export Benchmark Run Record');
   await expect(page.locator('#debrief-root')).toContainText('Export Route Execution Record');
   await expect(page.locator('#debrief-root')).toContainText('Export Benchmark Attempt Set');
-  await expect(page.locator('#debrief-root')).toContainText('Implemented in P2');
+  await expect(page.locator('#debrief-root')).toContainText('Export Benchmark Comparison');
   await expect(page.locator('#mission-console')).toContainText('Export Result JSON');
   await expect.poll(() => page.evaluate(() => window.ANCHOR_BENCHMARK_EXECUTION_DEBUG?.hasBenchmarkRunRecord)).toBe(true);
+  await expect.poll(() => page.evaluate(() => window.ANCHOR_BENCHMARK_EXECUTION_DEBUG?.hasComparisonViewModel)).toBe(true);
+  await expect.poll(() => page.evaluate(() => window.ANCHOR_BENCHMARK_EXECUTION_DEBUG?.hasRouteReviewViewModel)).toBe(true);
   await expect.poll(() => page.evaluate(() => window.ANCHOR_BENCHMARK_EXECUTION_DEBUG?.usesNewPlanner)).toBe(false);
 
   const [runDownload] = await Promise.all([
@@ -430,6 +440,18 @@ test('Planner Benchmark debrief exports benchmark records from synthetic result'
   expect(routeJson.type).toBe('anchor.benchmark.route-execution');
   expect(routeJson.benchmarkMode).toBe('plannerBenchmark');
   expect(routeJson.attemptSource).toBe('manualPlayer');
+
+  const [comparisonDownload] = await Promise.all([
+    page.waitForEvent('download'),
+    page.locator('#debrief-root [data-action="export-benchmark-comparison"]').click()
+  ]);
+  const comparisonJson = JSON.parse(await fs.readFile(await comparisonDownload.path(), 'utf8'));
+  expect(comparisonJson.type).toBe('anchor.benchmark.comparison');
+  expect(comparisonJson.benchmarkMode).toBe('plannerBenchmark');
+  expect(comparisonJson.rankings).toBeTruthy();
+  expect(comparisonJson.routeReview).toBeTruthy();
+  expect(comparisonJson.usesNewPlanner).toBe(false);
+  expect(comparisonJson.usesMissionScoringRedesign).toBe(false);
 
   const [attemptDownload] = await Promise.all([
     page.waitForEvent('download'),

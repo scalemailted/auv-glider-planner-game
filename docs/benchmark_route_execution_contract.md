@@ -77,3 +77,7 @@ Use the existing Planning scene to place or import routes. Use the existing Simu
 ## P2 Execution Integration
 
 P2 keeps the P1 contracts but wires them into the existing Planner Benchmark path. Benchmark metadata follows setup into generated level/mission state, plan metadata, simulation result metadata, and Debrief exports where practical. Debrief builds run-record, route-execution, and attempt-set exports from existing route/simulation/debrief data. The official scoring path is unchanged.
+
+## P3 Debrief Comparison Layer
+
+Route-execution records can now feed a Planner Benchmark Debrief comparison panel. The panel uses existing metrics and segment records to explain attempt outcomes. It does not change the route-execution contract, add a new planner, or redesign scoring.

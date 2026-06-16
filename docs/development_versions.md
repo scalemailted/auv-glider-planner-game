@@ -283,3 +283,7 @@ Ocean-Relevant Process Analogs are educational event/process-layer analogs. They
 ## P2 Planner Benchmark Execution Integration
 
 Planner Benchmark now carries episode metadata through the existing setup/planning/simulation/debrief path and exposes Debrief exports for benchmark run records, route execution records, and attempt sets. Adaptive Benchmark and Full Autonomy Benchmark remain contract-only. No planner algorithm, scoring redesign, MARL/RL, or adaptive objective execution was added.
+
+## P3 - Planner Benchmark Attempt Comparison UI
+
+P3 adds Debrief attempt comparison, route review, fairness/source labels, and `anchor.benchmark.comparison` export support. It preserves P0/P1/P2 fields and keeps Adaptive Benchmark and Full Autonomy Benchmark contract-only.

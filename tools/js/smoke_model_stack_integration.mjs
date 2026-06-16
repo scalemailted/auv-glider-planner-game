@@ -49,7 +49,10 @@ import { attachBenchmarkMetadataToLevel, validateBenchmarkMetadata } from '../..
 import { createBenchmarkModeState } from '../../src/core/benchmark/BenchmarkModeState.js';
 import { initializePlannerBenchmarkEpisode } from '../../src/core/benchmark/BenchmarkEpisodeRuntime.js';
 import { addResultToBenchmarkAttemptSession, createBenchmarkAttemptSession } from '../../src/core/benchmark/BenchmarkAttemptSession.js';
-import { buildBenchmarkRunRecordExportFromResult } from '../../src/core/io/ResultExporter.js';
+import { buildBenchmarkComparisonViewModel } from '../../src/core/benchmark/BenchmarkComparisonViewModel.js';
+import { buildBenchmarkRouteReviewViewModel } from '../../src/core/benchmark/BenchmarkRouteReviewViewModel.js';
+import { benchmarkDebriefPanelHtml } from '../../src/ui/benchmark/BenchmarkDebriefPanel.js';
+import { buildBenchmarkComparisonExportFromResult, buildBenchmarkRunRecordExportFromResult } from '../../src/core/io/ResultExporter.js';
 import { buildBenchmarkModeConfigExport } from '../../src/core/benchmark/BenchmarkModeExporter.js';
 import '../../src/labs/widgets/SamplingActionValueWidgets.js';
 import { FlowFieldDemoScene } from '../../src/game/phaser/scenes/FlowFieldDemoScene.js';
@@ -381,6 +384,32 @@ assert.ok(p2BenchmarkExecutionSource.includes('usesExistingSimulation: true'), '
 assert.ok(p2BenchmarkExecutionSource.includes('usesExistingDebrief: true'), 'P2 source marks existing debrief');
 assert.ok(p2BenchmarkExecutionSource.includes('usesNewPlanner: false'), 'P2 source excludes new planner');
 assert.ok(p2BenchmarkExecutionSource.includes('usesMARL: false'), 'P2 source excludes MARL');
+
+// P3 benchmark comparison UI: pure view models, debrief panel HTML, comparison export, and boundaries.
+const p3ComparisonViewModel = buildBenchmarkComparisonViewModel({ attemptSet: p2AttemptSession });
+assert.equal(p3ComparisonViewModel.attemptCount, 1, 'P3 comparison view model sees P2 attempt session');
+assert.equal(p3ComparisonViewModel.bestAttemptByScore?.attemptSource, 'manualPlayer', 'P3 comparison ranks manual attempt');
+const p3RouteReviewViewModel = buildBenchmarkRouteReviewViewModel({
+  routeExecutionRecord: p1RouteRecord,
+  plan: { type: 'anchor.plan', agentPlans: [{ agentId: 'g1', selectedStart: { x: 0, y: 0 }, waypoints: [{ x: 1, y: 1, t: 1, segmentEnergy: 2 }] }] },
+  result: { summary: { finalScore: 10, sampleScore: 4, energyUsed: 2 } }
+});
+assert.equal(p3RouteReviewViewModel.segmentCards.length, 1, 'P3 route review creates segment cards');
+const p3PanelHtml = benchmarkDebriefPanelHtml({ ...p3ComparisonViewModel, routeReview: p3RouteReviewViewModel, exportState: { comparison: true } });
+assert.ok(p3PanelHtml.includes('Planner Benchmark'), 'P3 debrief panel renders Planner Benchmark');
+assert.ok(p3PanelHtml.includes('Attempt Comparison'), 'P3 debrief panel renders attempt comparison');
+assert.ok(p3PanelHtml.includes('Route Review'), 'P3 debrief panel renders route review');
+const p3ComparisonExport = buildBenchmarkComparisonExportFromResult({
+  level: { levelId: 'model-stack-level', meta: { benchmarkMetadata: { benchmarkMode: 'plannerBenchmark', episodeId: p2RuntimeContext.episodeId, informationAccessTier: 'forecastOnly', objectiveAuthority: 'fixed', routeAuthority: 'playerOrSolver', fairnessLabel: 'Forecast-only', worldModelTier: 'flowCoupledAction' } } },
+  mission: { missionId: 'model-stack-mission', agents: [{ id: 'g1' }] },
+  plan: { type: 'anchor.plan', agentPlans: [{ agentId: 'g1', waypoints: [{ x: 1, y: 1, t: 1 }] }] },
+  result: { resultId: 'model-stack-p3-result', source: 'manual', summary: { finalScore: 10, sampleScore: 4, energyUsed: 2 } },
+  attemptSession: p2AttemptSession
+});
+assert.equal(p3ComparisonExport.type, 'anchor.benchmark.comparison', 'P3 comparison export type');
+assert.equal(p3ComparisonExport.usesNewPlanner, false, 'P3 does not add a new planner');
+assert.equal(p3ComparisonExport.usesMissionScoringRedesign, false, 'P3 does not redesign scoring');
+assert.equal(p3ComparisonExport.usesMARL, false, 'P3 does not add MARL');
 const p1BenchmarkContractSource = [
   'src/core/benchmark/BenchmarkEpisodeContract.js',
   'src/core/benchmark/BenchmarkRouteExecutionRecord.js',
@@ -433,6 +462,8 @@ const claimFiles = [
   'src/core/benchmark/BenchmarkRouteExecutionRecord.js',
   'src/core/benchmark/BenchmarkEpisodeContract.js',
   'docs/benchmark_route_execution_contract.md',
+  'docs/planner_benchmark_execution.md',
+  'docs/planner_benchmark_attempt_comparison.md',
   'labs/sampling-priority-to-glider-action-value.html',
   'src/core/demo/FlowFieldDemo.js',
   'src/core/demo/flow/FlowFieldDiagnostics.js',
@@ -447,6 +478,9 @@ const claimFiles = [
   'src/core/benchmark/BenchmarkEpisodeRuntime.js',
   'src/core/benchmark/BenchmarkAttemptSession.js',
   'src/core/benchmark/BenchmarkAttemptSourceMapping.js',
+  'src/core/benchmark/BenchmarkComparisonViewModel.js',
+  'src/core/benchmark/BenchmarkRouteReviewViewModel.js',
+  'src/ui/benchmark/BenchmarkDebriefPanel.js',
   'src/core/io/ResultExporter.js',
   'src/game/phaser/scenes/BenchmarkModeOverviewScene.js',
   'src/game/phaser/scenes/DebriefScene.js',
