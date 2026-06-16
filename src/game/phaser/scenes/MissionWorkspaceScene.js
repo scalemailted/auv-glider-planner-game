@@ -94,6 +94,7 @@ import {
   derivePlannerBenchmarkAttemptContext,
   extractPlannerBenchmarkContextFromState
 } from '../../../core/benchmark/BenchmarkEpisodeRuntime.js';
+import { deriveAdaptiveBenchmarkContextFromState } from '../../../core/benchmark/AdaptiveBenchmarkRuntime.js';
 import { attemptSourceFromRouteSourceLabel } from '../../../core/benchmark/BenchmarkAttemptSourceMapping.js';
 
 
@@ -1172,6 +1173,7 @@ export class MissionWorkspaceScene extends PhaserScene {
     this.app.state.plan = createEmptyPlan(this.app.state.level, this.app.state.mission);
     this.app.state.currentPlanSource = 'manual';
     this.syncPlannerBenchmarkPlanContext('manual');
+    this.syncAdaptiveBenchmarkPlanContext();
     this.app.state.manualPlan = this.app.state.plan;
     this.app.state.solverPlan = null;
     this.app.state.importedPlanSummary = null;
@@ -1440,6 +1442,7 @@ export class MissionWorkspaceScene extends PhaserScene {
   markManualPlan() {
     this.app.state.currentPlanSource = 'manual';
     this.syncPlannerBenchmarkPlanContext('manual');
+    this.syncAdaptiveBenchmarkPlanContext();
     this.app.state.manualPlan = this.app.state.plan;
   }
 
@@ -1466,6 +1469,43 @@ export class MissionWorkspaceScene extends PhaserScene {
     return attemptContext;
   }
 
+  syncAdaptiveBenchmarkPlanContext() {
+    const context = deriveAdaptiveBenchmarkContextFromState(this.app.state);
+    if (!context || !this.app.state.plan) return null;
+    const updatedAt = new Date().toISOString();
+    this.app.state.adaptiveBenchmarkRuntimeContext = context;
+    this.app.state.benchmarkRuntimeContext = context;
+    this.app.state.benchmarkModeConfig = context.benchmarkModeConfig;
+    this.app.state.adaptiveManagerConfig = context.adaptiveManagerConfig;
+    this.app.state.adaptiveManagerState = context.adaptiveManagerState;
+    this.app.state.benchmarkEpisode = {
+      ...(this.app.state.benchmarkEpisode ?? {}),
+      episodeId: context.episodeId,
+      benchmarkMode: 'adaptiveBenchmark',
+      phase: 'planning',
+      activeObjective: context.activeObjective,
+      activeLegIndex: context.activeLegIndex,
+      updatedAt
+    };
+    const plan = attachBenchmarkMetadataToPlan(this.app.state.plan, context);
+    plan.meta ??= {};
+    plan.meta.adaptiveBenchmark = {
+      version: context.version,
+      episodeId: context.episodeId,
+      benchmarkMode: 'adaptiveBenchmark',
+      activeLegIndex: context.activeLegIndex,
+      activeObjective: context.activeObjective,
+      adaptiveManagerConfig: context.adaptiveManagerConfig,
+      adaptiveManagerState: context.adaptiveManagerState,
+      objectiveAuthority: context.objectiveAuthority,
+      routeAuthority: context.routeAuthority,
+      informationAccessTier: context.informationAccessTier,
+      worldModelTier: context.worldModelTier,
+      updatedAt
+    };
+    this.app.state.plan = plan;
+    return context;
+  }
   executePlan() {
     this.app.state.simulationTrace = createSimulationTrace();
     traceSimulation(this.app.state.simulationTrace, {
@@ -1493,6 +1533,7 @@ export class MissionWorkspaceScene extends PhaserScene {
     }
     this.app.state.plan = normalizePlan(this.app.state.plan, this.app.state.level, this.app.state.mission);
     this.syncPlannerBenchmarkPlanContext(this.app.state.currentPlanSource ?? 'manual');
+    this.syncAdaptiveBenchmarkPlanContext();
     recomputeAllWaypointTiming(this.app.state);
     const routeAudit = this.refreshRouteAudit();
     traceSimulation(this.app.state.simulationTrace, {
@@ -1532,6 +1573,7 @@ export class MissionWorkspaceScene extends PhaserScene {
     });
     attachIdentityToPlan(this.app.state.plan, this.app.state.level, this.app.state.mission);
     this.syncPlannerBenchmarkPlanContext(this.app.state.currentPlanSource ?? 'manual');
+    this.syncAdaptiveBenchmarkPlanContext();
     if (this.app.state.currentPlanSource === 'manual') this.app.state.manualPlan = this.app.state.plan;
     this.clearPlanningPreviewState();
     this.app.state.mode = 'simulation';
@@ -1628,6 +1670,7 @@ export class MissionWorkspaceScene extends PhaserScene {
       source: 'game'
     };
     this.syncPlannerBenchmarkPlanContext(this.app.state.currentPlanSource ?? 'manual');
+    this.syncAdaptiveBenchmarkPlanContext();
     this.app.state.plan.meta.stochastic = this.app.state.stochastic?.enabled ? {
       seed: this.app.state.stochastic.seed,
       roiScoringMode: this.app.state.stochastic.roiScoringMode,

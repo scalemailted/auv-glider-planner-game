@@ -10,6 +10,10 @@ import {
   buildRouteExecutionRecordFromResult
 } from '../benchmark/BenchmarkResultAdapter.js';
 import {
+  buildAdaptiveEpisodeTraceExport,
+  buildAdaptiveLaunchConfigExport,
+  buildAdaptiveNextLegConfigExport,
+  buildAdaptiveSurfacingDecisionExport,
   buildBenchmarkAttemptSetExport,
   buildBenchmarkRouteExecutionExport,
   buildBenchmarkRunRecordExport
@@ -22,6 +26,12 @@ import {
   routeSourceLabelFromAttemptSource
 } from '../benchmark/BenchmarkAttemptSourceMapping.js';
 import { initializePlannerBenchmarkEpisode } from '../benchmark/BenchmarkEpisodeRuntime.js';
+import { buildAdaptiveEvidenceFromResult } from '../benchmark/AdaptiveEvidenceAdapter.js';
+import { createAdaptiveSurfacingEvent } from '../benchmark/AdaptiveSurfacingEvent.js';
+import { runAdaptiveSurfacingDecision } from '../benchmark/AdaptiveSurfacingLoop.js';
+import { createAdaptiveNextLegConfig } from '../benchmark/AdaptiveNextLegHandoff.js';
+import { appendAdaptiveLegResult, appendAdaptiveSurfacingDecision, createAdaptiveEpisodeTrace } from '../benchmark/AdaptiveEpisodeTrace.js';
+import { deriveAdaptiveBenchmarkContextFromState } from '../benchmark/AdaptiveBenchmarkRuntime.js';
 import {
   benchmarkComparisonSummary,
   buildBenchmarkComparisonViewModel
@@ -686,6 +696,62 @@ export function buildBenchmarkAttemptSessionExport({
   };
 }
 
+export function buildAdaptiveSurfacingDecisionExportFromResult({
+  level,
+  mission,
+  plan,
+  result,
+  runtimeContext = null,
+  routeExecutionRecord = null,
+  runRecord = null,
+  options = {}
+} = {}) {
+  const context = runtimeContext ?? deriveAdaptiveBenchmarkContextFromState({ level, mission, plan, result, benchmarkModeConfig: options.benchmarkModeConfig, adaptiveManagerState: options.managerState, adaptiveManagerConfig: options.managerConfig });
+  const evidence = buildAdaptiveEvidenceFromResult({ result, plan, mission, level, routeExecutionRecord, runRecord, previousManagerState: context?.adaptiveManagerState, options: { episodeId: context?.episodeId, activeObjectiveId: context?.activeObjective?.id, ...options.evidence } });
+  const surfacingEvent = createAdaptiveSurfacingEvent({
+    episodeId: context?.episodeId ?? evidence.episodeId,
+    time: evidence.time,
+    samplesUploaded: evidence.observationCount,
+    observationsReceived: evidence.recentObservationCount,
+    notes: ['P7 surfacing event generated from result/debrief evidence.']
+  });
+  const decision = runAdaptiveSurfacingDecision({
+    runtimeContext: context ?? {},
+    evidence,
+    surfacingEvent,
+    managerConfig: options.managerConfig ?? context?.adaptiveManagerConfig,
+    managerState: options.managerState ?? context?.adaptiveManagerState
+  });
+  return buildAdaptiveSurfacingDecisionExport(decision, options.export ?? {});
+}
+
+export function buildAdaptiveNextLegConfigExportFromResult({ level, mission, plan, result, runtimeContext = null, surfacingDecision = null, options = {} } = {}) {
+  const context = runtimeContext ?? deriveAdaptiveBenchmarkContextFromState({ level, mission, plan, result, benchmarkModeConfig: options.benchmarkModeConfig, adaptiveManagerState: options.managerState, adaptiveManagerConfig: options.managerConfig });
+  const decision = surfacingDecision ?? buildAdaptiveSurfacingDecisionExportFromResult({ level, mission, plan, result, runtimeContext: context, options });
+  const handoff = createAdaptiveNextLegConfig({ runtimeContext: context ?? {}, surfacingDecision: decision ?? surfacingDecision ?? {}, previousResult: result, options });
+  return buildAdaptiveNextLegConfigExport(handoff, options.export ?? {});
+}
+
+export function buildAdaptiveEpisodeTraceExportFromResult({ level, mission, plan, result, runtimeContext = null, surfacingDecision = null, routeExecutionRecord = null, runRecord = null, options = {} } = {}) {
+  const context = runtimeContext ?? deriveAdaptiveBenchmarkContextFromState({ level, mission, plan, result, benchmarkModeConfig: options.benchmarkModeConfig, adaptiveManagerState: options.managerState, adaptiveManagerConfig: options.managerConfig });
+  const decision = surfacingDecision ?? buildAdaptiveSurfacingDecisionExportFromResult({ level, mission, plan, result, runtimeContext: context, routeExecutionRecord, runRecord, options });
+  const baseTrace = createAdaptiveEpisodeTrace({ runtimeContext: context ?? {}, notes: ['P7 trace generated from one executed adaptive benchmark leg.'] });
+  const withLeg = appendAdaptiveLegResult(baseTrace, {
+    legIndex: context?.activeLegIndex ?? 0,
+    objectiveId: context?.activeObjective?.id,
+    planId: plan?.planId ?? plan?.id,
+    resultId: result?.resultId ?? result?.id,
+    routeExecutionRecord,
+    runRecord,
+    status: result?.summary?.stopReason ? 'completedWithStopReason' : 'completed'
+  });
+  return buildAdaptiveEpisodeTraceExport(appendAdaptiveSurfacingDecision(withLeg, decision), options.export ?? {});
+}
+
+export function buildAdaptiveLaunchConfigExportFromResult({ level, mission, plan, result, runtimeContext = null, options = {} } = {}) {
+  const context = runtimeContext ?? deriveAdaptiveBenchmarkContextFromState({ level, mission, plan, result, benchmarkModeConfig: options.benchmarkModeConfig, adaptiveManagerState: options.managerState, adaptiveManagerConfig: options.managerConfig });
+  return buildAdaptiveLaunchConfigExport({ runtimeContext: context ?? {}, ...options }, options.export ?? {});
+}
 function normalizeBenchmarkExportContext({
   level,
   mission,
@@ -740,6 +806,10 @@ function benchmarkExportTypes() {
     'anchor.benchmark.attempt-set',
     'anchor.benchmark.comparison',
     'anchor.benchmark.route-overlay',
-    'anchor.benchmark.attempt-session'
+    'anchor.benchmark.attempt-session',
+    'anchor.benchmark.adaptive-surfacing-decision',
+    'anchor.benchmark.adaptive-next-leg-config',
+    'anchor.benchmark.adaptive-episode-trace',
+    'anchor.benchmark.adaptive-launch-config'
   ];
 }

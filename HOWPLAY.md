@@ -1,4 +1,4 @@
-﻿# How To Play ANCHOR: Glider Command
+# How To Play ANCHOR: Glider Command
 
 This guide explains how to play the game, what the screens mean, how scoring works, and how to use exports and solvers.
 
@@ -1018,3 +1018,7 @@ After a Planner Benchmark run, Debrief includes an Attempt Import / Session Pers
 ### Adaptive Benchmark Mission Manager
 
 In Simulation Lab, open Benchmark Modes and choose Adaptive Benchmark to inspect the P6 mission-manager preview. Use the policy and fixture selectors to compare cases such as Shifted Front Forecast Error, Possible Hidden Plume, and Stale Monitoring Revisit. The panel shows diagnosis, current objective, recommended objective, evidence summary, objective history, and export buttons for adaptive manager JSON. P6 does not execute adaptive routes; use Planner Benchmark for executable fixed-objective route attempts.
+
+## Adaptive Benchmark Surfacing Loop (P7)
+
+Adaptive Benchmark can launch the existing setup/planning flow, preserve mission-manager metadata through one leg, and show a surfacing review in Debrief. The mission manager recommends the next objective; the player or solver still plans the route. P7 does not add a new planner, scoring redesign, automatic multi-leg execution, full autonomy, or MARL/RL.

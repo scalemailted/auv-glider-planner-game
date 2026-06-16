@@ -1,4 +1,4 @@
-﻿# Planner Benchmark Execution
+# Planner Benchmark Execution
 
 P2 makes Planner Benchmark executable through the existing ANCHOR mission loop:
 
@@ -79,3 +79,7 @@ P4 adds Route Overlay / Map to Planner Benchmark Debrief. It draws the route fro
 
 P5 adds a Debrief panel for compact local attempt-session save/load, benchmark JSON import, compatible-attempt merge, and `anchor.benchmark.attempt-session` export. Imported attempts are not rerun and scores are not recomputed; stored metrics are compared as exported. See [Planner Benchmark Attempt Import / Persistence](planner_benchmark_attempt_import_persistence.md).
 
+
+## Relation To Adaptive Benchmark P7
+
+Planner Benchmark remains the fixed-objective mode. Adaptive Benchmark P7 uses the same setup -> planning -> simulation -> debrief path for one leg, then updates only the recommended next objective at surfacing/debrief time. The next route is still planned manually or by an external solver.

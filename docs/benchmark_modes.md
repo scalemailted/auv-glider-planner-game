@@ -1,4 +1,4 @@
-﻿# Benchmark Modes
+# Benchmark Modes
 
 P0 defines the benchmark architecture skeleton. P1 adds adapter-only route-execution and mission-evaluation contracts that wrap existing planning, simulation, and debrief data. P1 does not implement a new planner, redesign scoring, or add MARL.
 
@@ -120,3 +120,7 @@ Adaptive Benchmark now exposes a mission-manager preview UI and export path. The
 
 P6 adds `AdaptiveMissionManagerContract`, `AdaptiveDiagnosisModel`, `AdaptiveObjectivePolicy`, manager state, surfacing-event records, fixtures, view model, UI panel, debug fields, and adaptive benchmark exports. It does not add adaptive route execution, a new planner, scoring redesign, full autonomy, MARL/RL, or calibrated ocean data assimilation. See [Adaptive Benchmark Mission Manager](adaptive_benchmark_mission_manager.md).
 
+
+## P7 Adaptive Execution Preview
+
+Adaptive Benchmark now supports a one-leg execution preview: setup launch, existing route planning, existing simulation, debrief surfacing diagnosis, next-objective recommendation, and next-leg handoff export. Planner Benchmark remains fixed-objective comparison. Full Autonomy remains contract-only. P7 does not add route generation, scoring redesign, full multi-leg adaptive execution, or MARL/RL.

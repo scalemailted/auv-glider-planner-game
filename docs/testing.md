@@ -1,4 +1,4 @@
-﻿# Testing
+# Testing
 
 The browser game does not require npm, Playwright, or a build step for normal use. Normal local serving still works with:
 
@@ -377,3 +377,7 @@ node tools/js/smoke_adaptive_benchmark_exports.mjs
 ```
 
 The focused Benchmark Playwright grep should confirm Adaptive Benchmark shows Mission Manager, objective authority, player/solver route authority, fixture switching, recommended objectives, and adaptive preview export JSON. P6 does not run adaptive routes, add route planning, redesign scoring, or add MARL/RL.
+
+## P7 Adaptive Benchmark Tests
+
+P7 adds focused smoke scripts for adaptive runtime, evidence adaptation, surfacing loop decisions, next-leg handoff, episode trace, surfacing panel HTML, and execution exports. Focused Benchmark E2E checks Adaptive Benchmark overview launch/export controls and a synthetic Debrief surfacing review.

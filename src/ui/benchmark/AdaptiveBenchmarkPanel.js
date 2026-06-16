@@ -1,4 +1,4 @@
-﻿export function adaptiveBenchmarkPanelHtml(viewModel = {}) {
+export function adaptiveBenchmarkPanelHtml(viewModel = {}) {
   return `
     <div class="adaptive-benchmark-panel" data-adaptive-benchmark-panel>
       <div class="hud-muted">Adaptive Benchmark gives objective authority to a transparent mission manager. The player or solver still chooses the route.</div>
@@ -75,7 +75,7 @@ export function adaptiveBenchmarkBoundaryHtml(viewModel = {}) {
       <ul>${implemented.map((item) => `<li>${escapeHtml(item)}</li>`).join('')}</ul>
       <h3>What is not implemented yet</h3>
       <ul>${notImplemented.map((item) => `<li>${escapeHtml(item)}</li>`).join('')}</ul>
-      <div class="hud-muted">P6 does not implement full route execution for adaptive missions, new route planning, scoring redesign, or MARL/RL.</div>
+      <div class="hud-muted">P7 connects one executed leg to surfacing diagnosis and next-objective recommendation. It does not add automatic route generation, scoring redesign, or MARL/RL.</div>
     </section>
   `;
 }

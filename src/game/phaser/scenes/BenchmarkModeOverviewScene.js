@@ -1,4 +1,4 @@
-﻿import { createBenchmarkModeConfig, benchmarkModeSummary } from '../../../core/benchmark/BenchmarkModeContract.js';
+import { createBenchmarkModeConfig, benchmarkModeSummary } from '../../../core/benchmark/BenchmarkModeContract.js';
 import { createBenchmarkModeState } from '../../../core/benchmark/BenchmarkModeState.js';
 import {
   adaptiveBenchmarkExportFilename,
@@ -7,6 +7,7 @@ import {
   buildAdaptiveManagerConfigExport,
   buildAdaptiveManagerPreviewExport,
   buildAdaptiveManagerStateExport,
+  buildAdaptiveLaunchConfigExport,
   buildAdaptiveObjectiveTransitionExport,
   buildAdaptiveSurfacingEventExport,
   buildBenchmarkEpisodeConfigExport,
@@ -16,7 +17,7 @@ import { createBenchmarkEpisodeConfig, createBenchmarkEpisodeState, BENCHMARK_AT
 import { BENCHMARK_ROUTE_EXECUTION_RECORD_VERSION } from '../../../core/benchmark/BenchmarkRouteExecutionRecord.js';
 import { BENCHMARK_RUN_RECORD_VERSION } from '../../../core/benchmark/BenchmarkRunRecord.js';
 import { missionObjectiveOptions } from '../../../core/benchmark/MissionObjectiveTaxonomy.js';
-import { openPlannerBenchmarkSetup } from '../../../core/benchmark/BenchmarkLaunchBridge.js';
+import { openAdaptiveBenchmarkSetup, openPlannerBenchmarkSetup } from '../../../core/benchmark/BenchmarkLaunchBridge.js';
 import { downloadJSON } from '../../../core/io/ImportExport.js';
 import { listBenchmarkAttemptSessions } from '../../../core/benchmark/BenchmarkAttemptPersistence.js';
 import { ADAPTIVE_MISSION_MANAGER_CONTRACT_VERSION, adaptiveManagerPolicyOptions } from '../../../core/benchmark/AdaptiveMissionManagerContract.js';
@@ -99,12 +100,16 @@ export class BenchmarkModeOverviewScene extends PhaserScene {
           'objective-transition policy',
           'surfacing/communication records',
           'adaptive manager preview',
+          'adaptive setup metadata',
+          'surfacing decision in Debrief',
+          'next-leg handoff config',
           'adaptive manager exports'
         ]
       : [];
     const p1NotImplemented = this.config.benchmarkMode === 'adaptiveBenchmark'
       ? [
-          'adaptive route execution',
+          'automatic route generation',
+          'full adaptive multi-leg execution',
           'new route planner',
           'mission scoring redesign',
           'full autonomy',
@@ -153,6 +158,7 @@ export class BenchmarkModeOverviewScene extends PhaserScene {
       exportAdaptiveObjectiveTransition: () => this.exportAdaptiveObjectiveTransitionJson(),
       exportAdaptiveSurfacingEvent: () => this.exportAdaptiveSurfacingEventJson(),
       exportAdaptiveManagerPreview: () => this.exportAdaptiveManagerPreviewJson(),
+      exportAdaptiveLaunchConfig: () => this.exportAdaptiveLaunchConfigJson(),
       selectAdaptiveFixture: (fixtureId) => this.selectAdaptiveFixture(fixtureId),
       selectAdaptivePolicy: (policyId) => this.selectAdaptivePolicy(policyId),
       openBenchmarkSetup: () => this.openPlannerBenchmarkSetup(),
@@ -226,7 +232,7 @@ export class BenchmarkModeOverviewScene extends PhaserScene {
       observationsReceived: preview.evidence.recentObservationCount,
       diagnosisTriggered: true,
       objectiveUpdateAllowed: true,
-      notes: ['Synthetic P6 surfacing event generated from adaptive benchmark preview.']
+      notes: ['Synthetic P7 surfacing event generated from adaptive benchmark preview.']
     }));
   }
 
@@ -236,9 +242,38 @@ export class BenchmarkModeOverviewScene extends PhaserScene {
     downloadJSON(adaptiveBenchmarkExportFilename('manager-preview', { fixtureId: this.adaptiveFixtureId }), buildAdaptiveManagerPreviewExport(preview));
   }
 
+  exportAdaptiveLaunchConfigJson() {
+    const preview = this.buildAdaptivePreview();
+    if (!preview) return;
+    downloadJSON(adaptiveBenchmarkExportFilename('launch-config', { fixtureId: this.adaptiveFixtureId }), buildAdaptiveLaunchConfigExport({
+      benchmarkModeConfig: this.config,
+      adaptiveManagerConfig: preview.managerConfig,
+      adaptiveManagerState: preview.initialState ?? preview.managerState,
+      activeObjective: preview.viewModel.currentObjective,
+      episodeId: this.episodeState.episodeId,
+      activeLegIndex: 0,
+      notes: ['Exported from Adaptive Benchmark overview.']
+    }));
+  }
+
   openPlannerBenchmarkSetup() {
+    if (this.config.benchmarkMode === 'adaptiveBenchmark') {
+      const preview = this.buildAdaptivePreview();
+      const result = openAdaptiveBenchmarkSetup({
+        app: this.app,
+        scene: this,
+        benchmarkModeConfig: this.config,
+        adaptiveManagerConfig: preview?.managerConfig,
+        adaptiveManagerState: preview?.initialState ?? preview?.managerState,
+        activeObjective: preview?.viewModel?.currentObjective,
+        legIndex: 0
+      });
+      if (!result.launched) this.app.toast?.('Adaptive setup bridge is unavailable; export the launch config instead.', 'warning');
+      this.refreshDebugObject();
+      return;
+    }
     if (this.config.benchmarkMode !== 'plannerBenchmark') {
-      this.app.toast?.('Only Planner Benchmark has a P2 setup bridge. Adaptive Benchmark previews mission-manager decisions but does not execute adaptive routes.', 'info');
+      this.app.toast?.('This benchmark mode is contract-only in P7.', 'info');
       return;
     }
     const result = openPlannerBenchmarkSetup({
@@ -268,7 +303,11 @@ export class BenchmarkModeOverviewScene extends PhaserScene {
       'anchor.benchmark.adaptive-manager-state',
       'anchor.benchmark.adaptive-objective-transition',
       'anchor.benchmark.adaptive-surfacing-event',
-      'anchor.benchmark.adaptive-manager-preview'
+      'anchor.benchmark.adaptive-manager-preview',
+      'anchor.benchmark.adaptive-surfacing-decision',
+      'anchor.benchmark.adaptive-next-leg-config',
+      'anchor.benchmark.adaptive-episode-trace',
+      'anchor.benchmark.adaptive-launch-config'
     ];
     globalThis.ANCHOR_BENCHMARK_MODE_DEBUG = {
       ...this.state.debugFlags,
@@ -286,7 +325,7 @@ export class BenchmarkModeOverviewScene extends PhaserScene {
       implementedSystems: [...this.state.implementedSystems, 'benchmarkEpisodeRuntime', 'benchmarkAttemptSession', 'benchmarkResultAdapter', ...(adaptivePreview ? ['adaptiveMissionManagerContract', 'adaptiveDiagnosisModel', 'adaptiveObjectivePolicy'] : [])],
       missingSystems: [...this.state.missingSystems],
       visibleLayers: [...this.state.visibleLayers],
-      exportFlags: { ...this.state.exportFlags, benchmarkEpisodeConfig: true, routeExecutionRecord: true, adaptiveManagerPreview: Boolean(adaptivePreview) },
+      exportFlags: { ...this.state.exportFlags, benchmarkEpisodeConfig: true, routeExecutionRecord: true, adaptiveManagerPreview: Boolean(adaptivePreview), adaptiveLaunchConfig: Boolean(adaptivePreview) },
       ...(adaptivePreview ? adaptiveDebugFields(adaptivePreview, adaptiveExportTypes) : {})
     };
     globalThis.ANCHOR_BENCHMARK_EPISODE_DEBUG = {
@@ -314,7 +353,11 @@ export class BenchmarkModeOverviewScene extends PhaserScene {
         managerState: 'anchor.benchmark.adaptive-manager-state',
         objectiveTransition: 'anchor.benchmark.adaptive-objective-transition',
         surfacingEvent: 'anchor.benchmark.adaptive-surfacing-event',
-        managerPreview: 'anchor.benchmark.adaptive-manager-preview'
+        managerPreview: 'anchor.benchmark.adaptive-manager-preview',
+        surfacingDecision: 'anchor.benchmark.adaptive-surfacing-decision',
+        nextLegConfig: 'anchor.benchmark.adaptive-next-leg-config',
+        episodeTrace: 'anchor.benchmark.adaptive-episode-trace',
+        launchConfig: 'anchor.benchmark.adaptive-launch-config'
       },
       usesRoutePlanning: false,
       usesMissionScoring: false,
@@ -347,7 +390,7 @@ export class BenchmarkModeOverviewScene extends PhaserScene {
     ], bodyStyle));
     y += 128;
     this.objects.push(this.add.text(x, y, adaptivePreview
-      ? `P6 status: mission-manager preview recommends ${adaptivePreview.viewModel.recommendedObjective.label} from ${adaptivePreview.viewModel.diagnosis.label}.`
+      ? `P7 status: mission-manager preview recommends ${adaptivePreview.viewModel.recommendedObjective.label} from ${adaptivePreview.viewModel.diagnosis.label}.`
       : 'P2 status: existing planning, simulator, and debrief can emit benchmark run, route-execution, and attempt-set records.', mutedStyle));
     y += 60;
     this.objects.push(this.add.text(x, y, 'Not implemented here: adaptive route execution, new route planner, mission scoring redesign, full autonomy, MARL/RL, or production data assimilation.', mutedStyle));
@@ -372,8 +415,14 @@ function adaptiveDebugFields(preview, exportTypes) {
     adaptiveObjectiveAuthority: 'missionManager',
     adaptiveRouteAuthority: 'playerOrSolver',
     adaptiveExportsAvailable: [...exportTypes],
+    adaptiveLaunchAvailable: true,
+    adaptiveExecutionPreviewAvailable: true,
+    adaptiveNextLegHandoffAvailable: true,
+    adaptiveCurrentLegIndex: 0,
+    adaptiveSurfacingDecisionAvailable: false,
     adaptiveExecutionImplemented: false,
     usesAdaptiveMissionManager: true,
+    usesAdaptiveRouteExecution: 'existing-simulator-leg-only',
     usesRoutePlanning: false,
     usesMissionScoring: false,
     usesMARL: false
@@ -389,7 +438,7 @@ function modeCardText(mode, adaptivePreview = null) {
   }
   return {
     plannerBenchmark: 'Objective is fixed. Plan manually, use Greedy Planner, or import a solver plan. Execute through the existing simulator and compare results in Debrief.',
-    adaptiveBenchmark: 'Mission manager objective updates are defined by contract; execution later.',
+    adaptiveBenchmark: 'Mission manager objective updates run at surfacing/debrief for one executed preview leg; full multi-leg execution later.',
     fullAutonomyBenchmark: 'Solver/agent objective and route authority are defined by contract; execution later.'
   }[mode] ?? 'Benchmark mode contract.';
 }

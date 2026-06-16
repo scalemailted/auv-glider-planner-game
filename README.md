@@ -1,4 +1,4 @@
-﻿# ANCHOR: Glider Command
+# ANCHOR: Glider Command
 
 **ANCHOR** is a browser-based serious game and simulation sandbox for multi-agent underwater glider mission planning. Players plan waypoint missions, simulate glider behavior under dynamic currents, sample fields, hazards, terrain, energy limits, and forecast uncertainty, then review scores and export data for external solvers.
 
@@ -838,3 +838,7 @@ Planner Benchmark Debrief now includes Route Overlay / Map for existing benchmar
 
 Adaptive Benchmark now previews a transparent mission manager that recommends objectives such as reducing uncertainty, validating forecasts, confirming hidden events, mapping boundaries, localizing sources, revisiting stale regions, or exploiting known value. Exports include adaptive manager config, state, objective transition, surfacing event, and preview JSON. P6 does not execute adaptive routes, add a route planner, redesign scoring, add full autonomy, or add MARL/RL.
 
+
+## P7 Adaptive Benchmark Surfacing Loop
+
+P7 connects one executed Adaptive Benchmark leg to surfacing/debrief diagnosis and next-objective recommendation. It does not add a new planner, redesign scoring, automatically run full multi-leg adaptive missions, or implement MARL/RL. See `docs/adaptive_benchmark_surfacing_loop.md`.

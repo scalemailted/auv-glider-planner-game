@@ -1,4 +1,4 @@
-﻿import { adaptiveDiagnosisById } from './AdaptiveMissionManagerContract.js';
+import { adaptiveDiagnosisById } from './AdaptiveMissionManagerContract.js';
 import { missionObjectiveById } from './MissionObjectiveTaxonomy.js';
 
 export const ADAPTIVE_BENCHMARK_VIEW_MODEL_VERSION = 'adaptive-benchmark-view-model-p6';
@@ -59,10 +59,14 @@ export function buildAdaptiveBenchmarkViewModel({
       'objective-transition policy',
       'surfacing/communication records',
       'adaptive manager preview',
-      'adaptive exports'
+      'adaptive exports',
+      'adaptive setup metadata',
+      'surfacing decision in debrief',
+      'next-leg handoff config'
     ],
     notImplemented: [
-      'adaptive route execution',
+      'automatic route generation',
+      'full adaptive multi-leg execution',
       'route planning',
       'mission scoring',
       'scoring redesign',

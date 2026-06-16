@@ -1,4 +1,4 @@
-﻿import { CAMPAIGN_LEVELS } from '../core/campaign/CampaignLevels.js';
+import { CAMPAIGN_LEVELS } from '../core/campaign/CampaignLevels.js';
 import { shortInstanceId } from '../core/identity/GameInstanceId.js';
 import { formatMetric } from '../core/evaluation/PlanComparison.js';
 import { FLOW_DEMO_BOUNDARY_MODES, FLOW_DEMO_CYCLE_DURATIONS, FLOW_DEMO_DYNAMIC_COMPLEXITY_LEVELS, FLOW_DEMO_EVOLUTION_BEHAVIORS, FLOW_DEMO_EVOLUTION_PATTERNS, FLOW_DEMO_EVOLUTION_SPEEDS, FLOW_DEMO_FIELD_MODES, FLOW_DEMO_LAYER_INFLUENCES, FLOW_DEMO_MAGNITUDE_SCALES, FLOW_DEMO_PARTICLE_SPEEDS, FLOW_DEMO_PRESET_CHOICES, FLOW_DEMO_SPATIAL_MOTIONS, FLOW_DEMO_SPATIAL_MOTION_SPEEDS, FLOW_DEMO_TERRAIN_MODES, FLOW_DEMO_VARIATION_LEVELS, normalizeAdditiveLayers } from '../core/demo/FlowFieldDemo.js';
@@ -1284,11 +1284,11 @@ export class MissionConsole {
     const plannerSetupHtml = config.benchmarkMode === 'plannerBenchmark'
       ? '<button data-action="benchmark-open-setup" class="console-button">Open Planner Benchmark Setup</button>'
       : config.benchmarkMode === 'adaptiveBenchmark'
-        ? '<div class="hud-muted">Adaptive Benchmark previews mission-manager objective updates. P6 does not launch adaptive route execution.</div>'
+        ? '<button data-action="benchmark-open-setup" class="console-button">Open Adaptive Benchmark Setup</button><div class="hud-muted">P7 launches the existing setup/planning flow with adaptive mission-manager metadata. The player or solver chooses route.</div>'
         : '<div class="hud-muted">Contract defined; execution later. This mode does not launch route execution in P2.</div>';
-    const statusLabel = config.benchmarkMode === 'adaptiveBenchmark' ? 'P6 Adaptive Mission Manager Contract' : 'P2 Execution Integration';
+    const statusLabel = config.benchmarkMode === 'adaptiveBenchmark' ? 'P7 Adaptive Execution Preview' : 'P2 Execution Integration';
     const statusDetail = config.benchmarkMode === 'adaptiveBenchmark'
-      ? 'Mission manager preview records are exportable. No new planner, scoring redesign, or MARL/RL is added.'
+      ? 'Adaptive setup metadata, surfacing decision in debrief, next-leg handoff, and exports are available. No new planner, scoring redesign, or MARL/RL is added.'
       : 'Existing simulator and debrief produce benchmark records. No new planner or scoring redesign is added.';
     const adaptivePanelHtml = adaptivePreview ? `
       <section class="console-section" data-adaptive-benchmark-overview>
@@ -1312,6 +1312,7 @@ export class MissionConsole {
           <button data-action="export-adaptive-manager-state" class="console-button secondary">Export Adaptive Manager State</button>
           <button data-action="export-adaptive-objective-transition" class="console-button secondary">Export Adaptive Objective Transition</button>
           <button data-action="export-adaptive-surfacing-event" class="console-button secondary">Export Adaptive Surfacing Event</button>
+          <button data-action="export-adaptive-launch-config" class="console-button secondary">Export Adaptive Launch Config</button>
         </div>
       </section>
     ` : '';
@@ -1353,7 +1354,7 @@ export class MissionConsole {
         ` : '<div class="hud-muted">No saved Planner Benchmark attempt sessions are stored in this browser yet.</div>'}
       </section>
       <section class="console-section">
-        <h2>P2/P5/P6 Status</h2>
+        <h2>P2/P5/P6/P7 Status</h2>
         <div class="panel-stack">
           <div><strong>Implemented now</strong><ul>${p1Implemented.map((item) => `<li>${escapeHtml(item)}</li>`).join('')}</ul></div>
           <div><strong>Not implemented yet</strong><ul>${p1NotImplemented.map((item) => `<li>${escapeHtml(item)}</li>`).join('')}</ul></div>
@@ -1387,7 +1388,7 @@ export class MissionConsole {
         <h2>Export</h2>
         <button data-action="export-benchmark-config" class="console-button">Export Benchmark Config JSON</button>
         <button data-action="export-benchmark-episode" class="console-button secondary">Export Benchmark Episode JSON</button>
-        <div class="hud-muted">Exports anchor.benchmark.mode-config and anchor.benchmark.episode-config. P2 debrief can export run-record, route-execution, and attempt-set JSON. Adaptive Benchmark also exports P6 mission-manager records.</div>
+        <div class="hud-muted">Exports anchor.benchmark.mode-config and anchor.benchmark.episode-config. P2 debrief can export run-record, route-execution, and attempt-set JSON. Adaptive Benchmark also exports P6 mission-manager records and P7 launch/surfacing/next-leg records.</div>
       </section>
       <section class="console-footer">
         <button data-action="menu" class="console-button secondary">Main Menu</button>
@@ -1407,6 +1408,7 @@ export class MissionConsole {
       'export-adaptive-objective-transition': handlers.exportAdaptiveObjectiveTransition,
       'export-adaptive-surfacing-event': handlers.exportAdaptiveSurfacingEvent,
       'export-adaptive-manager-preview': handlers.exportAdaptiveManagerPreview,
+      'export-adaptive-launch-config': handlers.exportAdaptiveLaunchConfig,
       menu: handlers.menu
     });
     this.root.querySelector('#adaptive-benchmark-fixture')?.addEventListener('change', (event) => {
@@ -1446,7 +1448,7 @@ function benchmarkAuthorityText(value, kind) {
 function benchmarkModeBoundaryText(mode) {
   return {
     plannerBenchmark: 'Objective is fixed. Plan manually, use Greedy Planner, or import a solver plan. Execute through the existing simulator and compare results in Debrief.',
-    adaptiveBenchmark: 'Mission manager objective updates are previewed by a transparent P6 contract. The player or solver still chooses the route; adaptive route execution is not implemented yet.',
+    adaptiveBenchmark: 'Mission manager objective updates run at surfacing/debrief time for one executed preview leg. The player or solver still chooses the route; P7 does not add a route planner, scoring redesign, or MARL/RL.',
     fullAutonomyBenchmark: 'Solver/agent objective and route authority are defined by contract; execution later.'
   }[mode] ?? 'P2 integrates benchmark records with the existing simulator/debrief; it does not add a planner, scoring redesign, or MARL/RL.';
 }
@@ -1834,9 +1836,3 @@ function escapeHtml(value) {
 function escapeAttr(value) {
   return escapeHtml(value).replace(/`/g, '&#096;');
 }
-
-
-
-
-
-

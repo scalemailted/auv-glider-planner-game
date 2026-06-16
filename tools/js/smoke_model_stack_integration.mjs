@@ -1,4 +1,4 @@
-﻿import assert from 'node:assert/strict';
+import assert from 'node:assert/strict';
 import fs from 'node:fs';
 
 import {
@@ -59,7 +59,7 @@ import { buildBenchmarkAttemptSessionExport, buildBenchmarkComparisonExportFromR
 import { parseBenchmarkArtifact } from '../../src/core/benchmark/BenchmarkArtifactImport.js';
 import { buildBenchmarkImportViewModel } from '../../src/core/benchmark/BenchmarkImportViewModel.js';
 import { benchmarkImportPanelHtml } from '../../src/ui/benchmark/BenchmarkImportPanel.js';
-import { buildAdaptiveManagerPreviewExport, buildBenchmarkModeConfigExport } from '../../src/core/benchmark/BenchmarkModeExporter.js';
+import { buildAdaptiveLaunchConfigExport, buildAdaptiveManagerPreviewExport, buildAdaptiveNextLegConfigExport, buildAdaptiveSurfacingDecisionExport, buildBenchmarkModeConfigExport } from '../../src/core/benchmark/BenchmarkModeExporter.js';
 import { ADAPTIVE_MISSION_MANAGER_CONTRACT_VERSION, createAdaptiveMissionManagerConfig, validateAdaptiveMissionManagerConfig } from '../../src/core/benchmark/AdaptiveMissionManagerContract.js';
 import { computeAdaptiveDiagnosis } from '../../src/core/benchmark/AdaptiveDiagnosisModel.js';
 import { selectNextAdaptiveObjective } from '../../src/core/benchmark/AdaptiveObjectivePolicy.js';
@@ -68,6 +68,12 @@ import { createAdaptiveSurfacingEvent, validateAdaptiveSurfacingEvent } from '..
 import { runAdaptiveManagerFixture } from '../../src/core/benchmark/AdaptiveMissionManagerFixtures.js';
 import { adaptiveBenchmarkViewModelSummary, buildAdaptiveBenchmarkViewModel } from '../../src/core/benchmark/AdaptiveBenchmarkViewModel.js';
 import { adaptiveBenchmarkPanelHtml } from '../../src/ui/benchmark/AdaptiveBenchmarkPanel.js';
+import { initializeAdaptiveBenchmarkEpisode } from '../../src/core/benchmark/AdaptiveBenchmarkRuntime.js';
+import { buildAdaptiveEvidenceFromResult } from '../../src/core/benchmark/AdaptiveEvidenceAdapter.js';
+import { runAdaptiveSurfacingDecision } from '../../src/core/benchmark/AdaptiveSurfacingLoop.js';
+import { createAdaptiveNextLegConfig } from '../../src/core/benchmark/AdaptiveNextLegHandoff.js';
+import { appendAdaptiveSurfacingDecision, createAdaptiveEpisodeTrace } from '../../src/core/benchmark/AdaptiveEpisodeTrace.js';
+import { adaptiveSurfacingPanelHtml } from '../../src/ui/benchmark/AdaptiveSurfacingPanel.js';
 import '../../src/labs/widgets/SamplingActionValueWidgets.js';
 import { FlowFieldDemoScene } from '../../src/game/phaser/scenes/FlowFieldDemoScene.js';
 import { RoiGeneratorDemoScene } from '../../src/game/phaser/scenes/RoiGeneratorDemoScene.js';
@@ -366,6 +372,30 @@ assert.equal(adaptivePreviewExport.usesRoutePlanning, false, 'P6 adaptive previe
 assert.equal(adaptivePreviewExport.usesMissionScoring, false, 'P6 adaptive preview export excludes mission scoring');
 assert.equal(adaptivePreviewExport.usesMARL, false, 'P6 adaptive preview export excludes MARL');
 assert.equal(typeof ADAPTIVE_MISSION_MANAGER_CONTRACT_VERSION, 'string', 'P6 adaptive contract version exports');
+const adaptiveRuntime = initializeAdaptiveBenchmarkEpisode({ episodeId: 'model-stack-p7-episode', adaptiveManagerConfig: adaptiveFixture.managerConfig, adaptiveManagerState: adaptiveFixture.initialState });
+assert.equal(adaptiveRuntime.objectiveAuthority, 'missionManager', 'P7 adaptive runtime keeps mission-manager objective authority');
+assert.equal(adaptiveRuntime.routeAuthority, 'playerOrSolver', 'P7 adaptive runtime keeps player/solver route authority');
+const p7Evidence = buildAdaptiveEvidenceFromResult({
+  result: {
+    benchmarkMetadata: { benchmarkMode: 'adaptiveBenchmark', episodeId: adaptiveRuntime.episodeId, benchmarkModeConfigVersion: 'benchmark-mode-contract-p0', informationAccessTier: 'beliefOnly', objectiveAuthority: 'missionManager', routeAuthority: 'playerOrSolver', worldModelTier: 'stochasticBelief' },
+    summary: { observationCount: 5, recentObservationCount: 3, forecastErrorScore: 0.7 },
+    adaptiveEvidence: { hiddenEventConfidence: 0.64 }
+  },
+  previousManagerState: adaptiveRuntime.adaptiveManagerState
+});
+const p7Decision = runAdaptiveSurfacingDecision({ runtimeContext: adaptiveRuntime, evidence: p7Evidence, managerConfig: adaptiveRuntime.adaptiveManagerConfig, managerState: adaptiveRuntime.adaptiveManagerState });
+assert.equal(p7Decision.routeAuthority, 'playerOrSolver', 'P7 surfacing decision keeps player/solver route authority');
+assert.equal(p7Decision.notA.includes('not route planning'), true, 'P7 surfacing decision excludes route planning');
+assert.equal(p7Decision.notA.includes('not MARL/RL'), true, 'P7 surfacing decision excludes MARL/RL');
+const p7Handoff = createAdaptiveNextLegConfig({ runtimeContext: adaptiveRuntime, surfacingDecision: p7Decision });
+assert.equal(p7Handoff.routeAuthority, 'playerOrSolver', 'P7 next-leg handoff keeps route authority');
+assert.equal(p7Handoff.waypoints, undefined, 'P7 next-leg handoff does not generate waypoints');
+const p7Trace = appendAdaptiveSurfacingDecision(createAdaptiveEpisodeTrace({ runtimeContext: adaptiveRuntime }), p7Decision);
+assert.equal(p7Trace.surfacingDecisions.length, 1, 'P7 trace records surfacing decision');
+assert.ok(adaptiveSurfacingPanelHtml({ decision: p7Decision, nextLegHandoff: p7Handoff }).includes('Adaptive Benchmark Surfacing Review'), 'P7 adaptive surfacing panel renders');
+assert.equal(buildAdaptiveSurfacingDecisionExport(p7Decision).usesNewPlanner, false, 'P7 surfacing export excludes new planner');
+assert.equal(buildAdaptiveNextLegConfigExport(p7Handoff).usesMissionScoringRedesign, false, 'P7 handoff export excludes scoring redesign');
+assert.equal(buildAdaptiveLaunchConfigExport({ runtimeContext: adaptiveRuntime }).usesMARL, false, 'P7 launch export excludes MARL');
 // P1 benchmark route-execution contracts and adapter boundaries.
 const p1Episode = createBenchmarkEpisodeConfig({ benchmarkMode: 'plannerBenchmark' });
 assert.equal(validateBenchmarkEpisodeConfig(p1Episode).status, 'PASS', 'P1 benchmark episode config validates');
@@ -601,7 +631,13 @@ const claimFiles = [
   'src/core/benchmark/AdaptiveSurfacingEvent.js',
   'src/core/benchmark/AdaptiveMissionManagerFixtures.js',
   'src/core/benchmark/AdaptiveBenchmarkViewModel.js',
+  'src/core/benchmark/AdaptiveBenchmarkRuntime.js',
+  'src/core/benchmark/AdaptiveEvidenceAdapter.js',
+  'src/core/benchmark/AdaptiveSurfacingLoop.js',
+  'src/core/benchmark/AdaptiveNextLegHandoff.js',
+  'src/core/benchmark/AdaptiveEpisodeTrace.js',
   'src/ui/benchmark/AdaptiveBenchmarkPanel.js',
+  'src/ui/benchmark/AdaptiveSurfacingPanel.js',
   'src/core/benchmark/BenchmarkEpisodeRuntime.js',
   'src/core/benchmark/BenchmarkAttemptSession.js',
   'src/core/benchmark/BenchmarkAttemptSourceMapping.js',
@@ -647,5 +683,3 @@ assert.ok(coupledSceneSource.includes('What Colors Mean'), 'Coupled right panel 
 assert.ok(coupledSceneSource.includes('uses uncertainty'), 'Coupled right panel states uncertainty boundary');
 
 console.log('Model stack integration smoke passed');
-
-

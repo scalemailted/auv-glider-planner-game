@@ -40,6 +40,7 @@ import { EXPERIENCE_MODES } from '../../../core/experience/ExperienceMode.js';
 import { MISSION_MODE_PRESETS, getMissionModePreset, missionModeLabel } from '../../../core/missions/MissionModeRegistry.js';
 import { NAVIGATION_UNCERTAINTY_LEVELS, navigationUncertaintyLabel, normalizeNavigationUncertaintyConfig } from '../../../core/navigation/NavigationUncertainty.js';
 import { attachBenchmarkMetadataToLevel, attachBenchmarkMetadataToMission } from '../../../core/benchmark/BenchmarkMetadata.js';
+import { adaptiveMetadataFromPayload } from '../../../core/benchmark/BenchmarkLaunchBridge.js';
 
 const PhaserScene = globalThis.Phaser?.Scene ?? class {};
 
@@ -582,6 +583,13 @@ export class MissionBriefingScene extends PhaserScene {
       };
       level = attachBenchmarkMetadataToLevel(level, benchmarkMetadataInput);
       mission = attachBenchmarkMetadataToMission(mission, benchmarkMetadataInput);
+      if (benchmarkPayload.benchmarkModeConfig.benchmarkMode === 'adaptiveBenchmark') {
+        const adaptiveMetadata = adaptiveMetadataFromPayload(benchmarkPayload);
+        level.meta ??= {};
+        mission.meta ??= {};
+        level.meta.adaptiveBenchmark = adaptiveMetadata;
+        mission.meta.adaptiveBenchmark = adaptiveMetadata;
+      }
     }
     this.app.state.pendingScenarioSetup = null;
     this.clearChallengeSetupView();
@@ -595,7 +603,7 @@ export class MissionBriefingScene extends PhaserScene {
       challengeMode: config.mode,
       experienceMode,
       source: benchmarkPayload
-        ? 'plannerBenchmarkSetup'
+        ? (benchmarkPayload.benchmarkModeConfig?.benchmarkMode === 'adaptiveBenchmark' ? 'adaptiveBenchmarkSetup' : 'plannerBenchmarkSetup')
         : experienceMode === EXPERIENCE_MODES.simulationLab
           ? (config.mode === 'forecast' ? 'stochasticExperiment' : 'deterministicExperiment')
           : (config.mode === 'forecast' ? 'stochasticChallenge' : 'deterministicChallenge')
@@ -603,7 +611,15 @@ export class MissionBriefingScene extends PhaserScene {
     if (benchmarkPayload?.benchmarkModeConfig) {
       this.app.state.benchmarkModeConfig = benchmarkPayload.benchmarkModeConfig;
       this.app.state.benchmarkEpisode = benchmarkPayload.episodeState;
-      if (this.app.state.currentScenario) this.app.state.currentScenario.benchmarkMetadata = level.meta?.benchmarkMetadata ?? null;
+      if (benchmarkPayload.benchmarkModeConfig.benchmarkMode === 'adaptiveBenchmark') {
+        this.app.state.adaptiveBenchmarkRuntimeContext = benchmarkPayload.adaptiveRuntimeContext ?? benchmarkPayload.launchConfig?.runtimeContext ?? null;
+        this.app.state.adaptiveManagerConfig = benchmarkPayload.adaptiveManagerConfig ?? null;
+        this.app.state.adaptiveManagerState = benchmarkPayload.adaptiveManagerState ?? null;
+      }
+      if (this.app.state.currentScenario) {
+        this.app.state.currentScenario.benchmarkMetadata = level.meta?.benchmarkMetadata ?? null;
+        this.app.state.currentScenario.adaptiveBenchmark = level.meta?.adaptiveBenchmark ?? null;
+      }
     }
     resetPlanResultStore(this.app.state);
     markBriefingSeen(this.app.state);

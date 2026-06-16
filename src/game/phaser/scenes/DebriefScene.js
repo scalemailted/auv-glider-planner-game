@@ -8,6 +8,13 @@ import {
   buildBenchmarkRunRecordExportFromResult,
   buildResultExport
 } from '../../../core/io/ResultExporter.js';
+import {
+  buildAdaptiveEpisodeTraceExport,
+  buildAdaptiveManagerStateExport,
+  buildAdaptiveNextLegConfigExport,
+  buildAdaptiveObjectiveTransitionExport,
+  buildAdaptiveSurfacingDecisionExport
+} from '../../../core/benchmark/BenchmarkModeExporter.js';
 import { attachIdentityToPlan, shortInstanceId } from '../../../core/identity/GameInstanceId.js';
 import { comparePlanResults, formatMetric } from '../../../core/evaluation/PlanComparison.js';
 import { temporalGreedySolver } from '../../../core/planning/BaselineSolvers.js';
@@ -38,6 +45,12 @@ import {
   derivePlannerBenchmarkAttemptContext,
   extractPlannerBenchmarkContextFromState
 } from '../../../core/benchmark/BenchmarkEpisodeRuntime.js';
+import { deriveAdaptiveBenchmarkContextFromState } from '../../../core/benchmark/AdaptiveBenchmarkRuntime.js';
+import { buildAdaptiveEvidenceFromResult } from '../../../core/benchmark/AdaptiveEvidenceAdapter.js';
+import { createAdaptiveSurfacingEvent } from '../../../core/benchmark/AdaptiveSurfacingEvent.js';
+import { runAdaptiveSurfacingDecision } from '../../../core/benchmark/AdaptiveSurfacingLoop.js';
+import { createAdaptiveNextLegConfig } from '../../../core/benchmark/AdaptiveNextLegHandoff.js';
+import { appendAdaptiveLegResult, appendAdaptiveSurfacingDecision, createAdaptiveEpisodeTrace } from '../../../core/benchmark/AdaptiveEpisodeTrace.js';
 import { attemptSourceFromRouteSourceLabel } from '../../../core/benchmark/BenchmarkAttemptSourceMapping.js';
 import { buildBenchmarkComparisonViewModel, benchmarkMetricDefinitions } from '../../../core/benchmark/BenchmarkComparisonViewModel.js';
 import { buildBenchmarkRouteReviewViewModel } from '../../../core/benchmark/BenchmarkRouteReviewViewModel.js';
@@ -47,6 +60,7 @@ import {
   buildBenchmarkRouteOverlayViewModel
 } from '../../../core/benchmark/BenchmarkRouteOverlayViewModel.js';
 import { benchmarkDebriefPanelHtml } from '../../../ui/benchmark/BenchmarkDebriefPanel.js';
+import { adaptiveSurfacingPanelHtml as adaptiveSurfacingPanelMarkup } from '../../../ui/benchmark/AdaptiveSurfacingPanel.js';
 import {
   BENCHMARK_IMPORT_SUPPORTED_TYPES,
   mergeBenchmarkArtifactsIntoAttemptSession,
@@ -195,6 +209,7 @@ export class DebriefScene extends PhaserScene {
           ${this.tutorialPanelHtml(result)}
           ${this.importedPlanPanelHtml(result)}
           ${this.benchmarkPanelHtml(result)}
+          ${this.adaptiveSurfacingPanelHtml(result)}
           ${this.stopReasonPanelHtml(result)}
           ${this.priorityTargetPanelHtml(result)}
           ${this.segmentContributionPanelHtml(result)}
@@ -303,7 +318,7 @@ export class DebriefScene extends PhaserScene {
             </table>
           </div>
         ` : ''}
-        ${segments.length ? `<p>Key segments: ${escapeHtml(segments.map((segment) => `${segment.grade} ${segment.roleLabels?.[0] ?? 'transit'}`).join(' ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã¢â‚¬Â¦Ãƒâ€šÃ‚Â¡ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€¦Ã‚Â¡ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â· '))}</p>` : ''}
+        ${segments.length ? `<p>Key segments: ${escapeHtml(segments.map((segment) => `${segment.grade} ${segment.roleLabels?.[0] ?? 'transit'}`).join(' ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â‚¬Å¾Ã‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€¦Ã‚Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¦ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¡ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã¢â‚¬Â¦Ãƒâ€šÃ‚Â¡ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€¦Ã‚Â¡ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â· '))}</p>` : ''}
       </article>
     `;
   }
@@ -384,8 +399,16 @@ export class DebriefScene extends PhaserScene {
   }
 
   prepareBenchmarkDebrief(result) {
+    const adaptiveContext = this.adaptiveBenchmarkContext(result);
+    if (adaptiveContext) {
+      this.prepareAdaptiveBenchmarkDebrief(result, adaptiveContext);
+      return null;
+    }
     const context = this.benchmarkAttemptContext(result);
     if (!context) {
+      this.app.state.adaptiveSurfacingDecision = null;
+      this.app.state.adaptiveNextLegHandoff = null;
+      this.app.state.adaptiveEpisodeTrace = null;
       this.app.state.benchmarkComparisonViewModel = null;
       this.app.state.benchmarkRouteReviewViewModel = null;
       this.app.state.benchmarkRouteGeometry = null;
@@ -467,6 +490,124 @@ export class DebriefScene extends PhaserScene {
       routeOverlayViewModel
     });
     return session;
+  }
+
+  adaptiveBenchmarkContext(result = null) {
+    return deriveAdaptiveBenchmarkContextFromState({
+      ...this.app.state,
+      result: result ?? this.app.state.result
+    });
+  }
+
+  prepareAdaptiveBenchmarkDebrief(result, context = this.adaptiveBenchmarkContext(result)) {
+    if (!context || !result) return null;
+    const evidence = buildAdaptiveEvidenceFromResult({
+      result,
+      plan: this.app.state.plan,
+      mission: this.app.state.mission,
+      level: this.app.state.level,
+      previousManagerState: context.adaptiveManagerState,
+      options: {
+        episodeId: context.episodeId,
+        activeObjectiveId: context.activeObjective?.id
+      }
+    });
+    const surfacingEvent = createAdaptiveSurfacingEvent({
+      episodeId: context.episodeId,
+      time: evidence.time,
+      samplesUploaded: evidence.observationCount,
+      observationsReceived: evidence.recentObservationCount,
+      notes: ['P7 debrief surfacing event built from current result evidence.']
+    });
+    const decision = runAdaptiveSurfacingDecision({
+      runtimeContext: context,
+      evidence,
+      surfacingEvent,
+      managerConfig: context.adaptiveManagerConfig,
+      managerState: context.adaptiveManagerState
+    });
+    const nextLegHandoff = createAdaptiveNextLegConfig({ runtimeContext: context, surfacingDecision: decision, previousResult: result });
+    const traceBase = createAdaptiveEpisodeTrace({ runtimeContext: context, notes: ['P7 one-leg adaptive execution preview trace.'] });
+    const traceWithLeg = appendAdaptiveLegResult(traceBase, {
+      legIndex: context.activeLegIndex,
+      objectiveId: context.activeObjective?.id,
+      planId: this.app.state.plan?.planId ?? this.app.state.plan?.id,
+      resultId: result.resultId ?? result.id,
+      status: 'completed'
+    });
+    const trace = appendAdaptiveSurfacingDecision(traceWithLeg, decision);
+    this.app.state.adaptiveSurfacingDecision = decision;
+    this.app.state.adaptiveNextLegHandoff = nextLegHandoff;
+    this.app.state.adaptiveEpisodeTrace = trace;
+    this.app.state.adaptiveManagerState = decision.managerStateAfter;
+    this.app.state.adaptiveBenchmarkRuntimeContext = {
+      ...context,
+      adaptiveManagerState: decision.managerStateAfter,
+      activeObjective: decision.recommendedObjective,
+      activeLegIndex: context.activeLegIndex
+    };
+    this.refreshAdaptiveExecutionDebug({ context, decision, nextLegHandoff, trace });
+    return decision;
+  }
+
+  adaptiveSurfacingPanelHtml() {
+    const decision = this.app.state.adaptiveSurfacingDecision;
+    if (!decision) return '';
+    return adaptiveSurfacingPanelMarkup({ decision, nextLegHandoff: this.app.state.adaptiveNextLegHandoff });
+  }
+
+  buildAdaptiveSurfacingDecisionExport() {
+    return buildAdaptiveSurfacingDecisionExport(this.app.state.adaptiveSurfacingDecision);
+  }
+
+  buildAdaptiveManagerStateExport() {
+    return buildAdaptiveManagerStateExport(this.app.state.adaptiveSurfacingDecision?.managerStateAfter ?? this.app.state.adaptiveManagerState);
+  }
+
+  buildAdaptiveObjectiveTransitionExport() {
+    return buildAdaptiveObjectiveTransitionExport(this.app.state.adaptiveSurfacingDecision?.objectiveTransition);
+  }
+
+  buildAdaptiveNextLegConfigExport() {
+    return buildAdaptiveNextLegConfigExport(this.app.state.adaptiveNextLegHandoff);
+  }
+
+  buildAdaptiveEpisodeTraceExport() {
+    return buildAdaptiveEpisodeTraceExport(this.app.state.adaptiveEpisodeTrace);
+  }
+
+  refreshAdaptiveExecutionDebug({ context = null, decision = null, nextLegHandoff = null, trace = null } = {}) {
+    const exportTypes = [
+      'anchor.benchmark.adaptive-surfacing-decision',
+      'anchor.benchmark.adaptive-manager-state',
+      'anchor.benchmark.adaptive-objective-transition',
+      'anchor.benchmark.adaptive-next-leg-config',
+      'anchor.benchmark.adaptive-episode-trace'
+    ];
+    globalThis.ANCHOR_ADAPTIVE_EXECUTION_DEBUG = decision ? {
+      version: decision.version,
+      episodeId: decision.episodeId,
+      benchmarkMode: 'adaptiveBenchmark',
+      legIndex: decision.legIndex,
+      policyId: context?.adaptiveManagerConfig?.policyId ?? decision.managerStateBefore?.policyId,
+      currentObjectiveId: decision.previousObjective?.id ?? decision.objectiveTransition?.fromObjectiveId,
+      recommendedObjectiveId: decision.recommendedObjective?.id ?? decision.objectiveTransition?.toObjectiveId,
+      primaryDiagnosis: decision.diagnosis?.primaryDiagnosis,
+      confidence: decision.diagnosis?.confidence,
+      evidence: decision.evidence,
+      surfacingEvent: decision.surfacingEvent,
+      objectiveTransition: decision.objectiveTransition,
+      managerStateBefore: decision.managerStateBefore,
+      managerStateAfter: decision.managerStateAfter,
+      nextLegHandoff,
+      traceSummary: trace ? { legCount: trace.legs?.length ?? 0, surfacingDecisionCount: trace.surfacingDecisions?.length ?? 0 } : null,
+      exportTypes,
+      hasPartialEvidenceWarning: Boolean(decision.evidence?.diagnostics?.partialEvidence || decision.warnings?.length),
+      usesExistingSimulation: true,
+      usesNewPlanner: false,
+      usesMissionScoringRedesign: false,
+      usesMARL: false
+    } : { available: false, benchmarkMode: context?.benchmarkMode ?? null };
   }
   resolveBenchmarkAttemptSession(context) {
     const current = this.app.state.benchmarkAttemptSession;
@@ -876,6 +1017,11 @@ export class DebriefScene extends PhaserScene {
     root.querySelector('[data-action="export-benchmark-comparison"]')?.addEventListener('click', () => downloadJson('anchor_benchmark_comparison.json', this.buildBenchmarkComparisonExport(result)));
     root.querySelector('[data-action="export-benchmark-route-overlay"]')?.addEventListener('click', () => downloadJson('anchor_benchmark_route_overlay.json', this.buildBenchmarkRouteOverlayExport(result)));
     root.querySelectorAll('[data-action="export-benchmark-attempt-session"]').forEach((button) => button.addEventListener('click', () => downloadJson('anchor_benchmark_attempt_session.json', this.buildBenchmarkAttemptSessionExport(result))));
+    root.querySelector('[data-action="export-adaptive-surfacing-decision"]')?.addEventListener('click', () => downloadJson('anchor_adaptive_surfacing_decision.json', this.buildAdaptiveSurfacingDecisionExport()));
+    root.querySelector('[data-action="export-adaptive-manager-state"]')?.addEventListener('click', () => downloadJson('anchor_adaptive_manager_state.json', this.buildAdaptiveManagerStateExport()));
+    root.querySelector('[data-action="export-adaptive-objective-transition"]')?.addEventListener('click', () => downloadJson('anchor_adaptive_objective_transition.json', this.buildAdaptiveObjectiveTransitionExport()));
+    root.querySelector('[data-action="export-adaptive-next-leg-config"]')?.addEventListener('click', () => downloadJson('anchor_adaptive_next_leg_config.json', this.buildAdaptiveNextLegConfigExport()));
+    root.querySelector('[data-action="export-adaptive-episode-trace"]')?.addEventListener('click', () => downloadJson('anchor_adaptive_episode_trace.json', this.buildAdaptiveEpisodeTraceExport()));
     root.querySelector('[data-action="save-benchmark-attempt-session"]')?.addEventListener('click', () => this.saveBenchmarkAttemptSessionForCurrentResult());
     root.querySelector('[data-action="delete-benchmark-attempt-session"]')?.addEventListener('click', () => this.deleteCurrentBenchmarkAttemptSession());
     root.querySelector('[data-action="merge-compatible-benchmark-imports"]')?.addEventListener('click', () => this.mergeCompatibleBenchmarkImports());

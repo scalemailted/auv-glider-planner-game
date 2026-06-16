@@ -41,6 +41,7 @@ import {
   derivePlannerBenchmarkAttemptContext,
   extractPlannerBenchmarkContextFromState
 } from '../../../core/benchmark/BenchmarkEpisodeRuntime.js';
+import { deriveAdaptiveBenchmarkContextFromState } from '../../../core/benchmark/AdaptiveBenchmarkRuntime.js';
 import { attemptSourceFromRouteSourceLabel } from '../../../core/benchmark/BenchmarkAttemptSourceMapping.js';
 
 const PhaserScene = globalThis.Phaser?.Scene ?? class {};
@@ -231,7 +232,7 @@ export class SimulationScene extends PhaserScene {
       mission: this.app.state.mission,
       plan: this.app.state.plan,
       trace: this.trace,
-      time: this.app.state.playback.time 
+      time: this.app.state.playback.time
     });
     this.abortNoticeShown = false;
     this.stopReasonNoticeShown = false;
@@ -459,21 +460,59 @@ export class SimulationScene extends PhaserScene {
   }
 
   annotateBenchmarkResult(result, source = 'manual') {
+    if (!result) return null;
     const context = extractPlannerBenchmarkContextFromState(this.app.state);
-    if (!context || !result) return null;
-    const attemptContext = derivePlannerBenchmarkAttemptContext({
-      ...context,
-      attemptSource: attemptSourceFromRouteSourceLabel(source),
-      routeSourceLabel: source
-    });
-    this.app.state.benchmarkRuntimeContext = attemptContext;
-    this.app.state.benchmarkModeConfig = attemptContext.benchmarkModeConfig;
+    if (context) {
+      const attemptContext = derivePlannerBenchmarkAttemptContext({
+        ...context,
+        attemptSource: attemptSourceFromRouteSourceLabel(source),
+        routeSourceLabel: source
+      });
+      this.app.state.benchmarkRuntimeContext = attemptContext;
+      this.app.state.benchmarkModeConfig = attemptContext.benchmarkModeConfig;
+      this.app.state.benchmarkEpisode = {
+        ...(this.app.state.benchmarkEpisode ?? {}),
+        episodeId: attemptContext.episodeId,
+        phase: this.engine?.complete ? 'debrief' : 'executing',
+        activeAttemptSource: attemptContext.activeAttemptSource,
+        activeObjective: attemptContext.activeObjective,
+        activeResultId: result.resultId ?? result.id ?? null,
+        updatedAt: new Date().toISOString()
+      };
+      const baseMetadata = this.app.state.plan?.meta?.benchmarkMetadata
+        ?? this.app.state.mission?.meta?.benchmarkMetadata
+        ?? this.app.state.level?.meta?.benchmarkMetadata
+        ?? {};
+      result.benchmarkMetadata = {
+        ...baseMetadata,
+        benchmarkMode: 'plannerBenchmark',
+        benchmarkModeConfigVersion: attemptContext.benchmarkModeConfig?.version ?? baseMetadata.benchmarkModeConfigVersion ?? null,
+        episodeId: attemptContext.episodeId,
+        informationAccessTier: attemptContext.informationAccessTier,
+        objectiveAuthority: 'fixed',
+        routeAuthority: 'playerOrSolver',
+        fairnessLabel: attemptContext.fairnessLabel,
+        attemptSource: attemptContext.activeAttemptSource,
+        worldModelTier: attemptContext.worldModelTier,
+        metadataVersion: baseMetadata.metadataVersion ?? 'benchmark-metadata-p2'
+      };
+      result.benchmarkRuntimeContext = attemptContext;
+      return attemptContext;
+    }
+    const adaptiveContext = deriveAdaptiveBenchmarkContextFromState(this.app.state);
+    if (!adaptiveContext) return null;
+    this.app.state.benchmarkRuntimeContext = adaptiveContext;
+    this.app.state.adaptiveBenchmarkRuntimeContext = adaptiveContext;
+    this.app.state.benchmarkModeConfig = adaptiveContext.benchmarkModeConfig;
+    this.app.state.adaptiveManagerConfig = adaptiveContext.adaptiveManagerConfig;
+    this.app.state.adaptiveManagerState = adaptiveContext.adaptiveManagerState;
     this.app.state.benchmarkEpisode = {
       ...(this.app.state.benchmarkEpisode ?? {}),
-      episodeId: attemptContext.episodeId,
+      episodeId: adaptiveContext.episodeId,
       phase: this.engine?.complete ? 'debrief' : 'executing',
-      activeAttemptSource: attemptContext.activeAttemptSource,
-      activeObjective: attemptContext.activeObjective,
+      activeObjective: adaptiveContext.activeObjective,
+      activeLegIndex: adaptiveContext.activeLegIndex,
+      adaptiveManagerState: adaptiveContext.adaptiveManagerState,
       activeResultId: result.resultId ?? result.id ?? null,
       updatedAt: new Date().toISOString()
     };
@@ -483,19 +522,32 @@ export class SimulationScene extends PhaserScene {
       ?? {};
     result.benchmarkMetadata = {
       ...baseMetadata,
-      benchmarkMode: 'plannerBenchmark',
-      benchmarkModeConfigVersion: attemptContext.benchmarkModeConfig?.version ?? baseMetadata.benchmarkModeConfigVersion ?? null,
-      episodeId: attemptContext.episodeId,
-      informationAccessTier: attemptContext.informationAccessTier,
-      objectiveAuthority: 'fixed',
+      benchmarkMode: 'adaptiveBenchmark',
+      benchmarkModeConfigVersion: adaptiveContext.benchmarkModeConfig?.version ?? baseMetadata.benchmarkModeConfigVersion ?? null,
+      episodeId: adaptiveContext.episodeId,
+      informationAccessTier: adaptiveContext.informationAccessTier,
+      objectiveAuthority: 'missionManager',
       routeAuthority: 'playerOrSolver',
-      fairnessLabel: attemptContext.fairnessLabel,
-      attemptSource: attemptContext.activeAttemptSource,
-      worldModelTier: attemptContext.worldModelTier,
-      metadataVersion: baseMetadata.metadataVersion ?? 'benchmark-metadata-p2'
+      fairnessLabel: adaptiveContext.fairnessLabel,
+      attemptSource: 'manualPlayer',
+      worldModelTier: adaptiveContext.worldModelTier,
+      activeObjectiveId: adaptiveContext.activeObjective?.id,
+      activeLegIndex: adaptiveContext.activeLegIndex,
+      metadataVersion: baseMetadata.metadataVersion ?? 'benchmark-metadata-p7'
     };
-    result.benchmarkRuntimeContext = attemptContext;
-    return attemptContext;
+    result.adaptiveBenchmark = {
+      benchmarkMode: 'adaptiveBenchmark',
+      episodeId: adaptiveContext.episodeId,
+      activeLegIndex: adaptiveContext.activeLegIndex,
+      activeObjective: adaptiveContext.activeObjective,
+      adaptiveManagerConfig: adaptiveContext.adaptiveManagerConfig,
+      adaptiveManagerState: adaptiveContext.adaptiveManagerState,
+      runtimeContext: adaptiveContext,
+      objectiveAuthority: 'missionManager',
+      routeAuthority: 'playerOrSolver'
+    };
+    result.benchmarkRuntimeContext = adaptiveContext;
+    return adaptiveContext;
   }
 
   refresh() {
@@ -1264,8 +1316,8 @@ export class SimulationScene extends PhaserScene {
     this.scene.start('MissionWorkspaceScene');
     this.app.state.selectedAgentId = selectedAgentId;
     this.app.state.ui.hoverCell = {
-      x:waypoints[waypoints.length - 1].x, 
-      y:waypoints[waypoints.length - 1].y 
+      x:waypoints[waypoints.length - 1].x,
+      y:waypoints[waypoints.length - 1].y
     }
     this.app.state.plan.agentPlans[missionAgentIndex].selectedStart = {
       x:engineAgent.x,

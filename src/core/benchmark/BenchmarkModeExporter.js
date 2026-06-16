@@ -1,4 +1,4 @@
-﻿import { BENCHMARK_MODE_CONTRACT_VERSION, createBenchmarkModeConfig } from './BenchmarkModeContract.js';
+import { BENCHMARK_MODE_CONTRACT_VERSION, createBenchmarkModeConfig } from './BenchmarkModeContract.js';
 import { createBenchmarkModeState } from './BenchmarkModeState.js';
 import { MISSION_OBJECTIVE_TAXONOMY_VERSION } from './MissionObjectiveTaxonomy.js';
 import { BENCHMARK_RUN_RECORD_VERSION } from './BenchmarkRunRecord.js';
@@ -34,6 +34,22 @@ import {
   adaptiveBenchmarkViewModelSummary,
   buildAdaptiveBenchmarkViewModel
 } from './AdaptiveBenchmarkViewModel.js';
+import {
+  ADAPTIVE_SURFACING_LOOP_VERSION,
+  adaptiveSurfacingDecisionSummary,
+  runAdaptiveSurfacingDecision
+} from './AdaptiveSurfacingLoop.js';
+import {
+  ADAPTIVE_NEXT_LEG_HANDOFF_VERSION,
+  adaptiveNextLegSummary,
+  createAdaptiveNextLegConfig
+} from './AdaptiveNextLegHandoff.js';
+import {
+  ADAPTIVE_EPISODE_TRACE_VERSION,
+  adaptiveEpisodeTraceSummary,
+  createAdaptiveEpisodeTrace
+} from './AdaptiveEpisodeTrace.js';
+import { createAdaptiveBenchmarkLaunchConfig } from './BenchmarkLaunchBridge.js';
 
 export const BENCHMARK_MODE_CONFIG_EXPORT_TYPE = 'anchor.benchmark.mode-config';
 export const BENCHMARK_MODE_CONFIG_EXPORT_VERSION = 'benchmark-mode-config-export-p0';
@@ -48,6 +64,10 @@ export const BENCHMARK_ADAPTIVE_MANAGER_STATE_EXPORT_TYPE = 'anchor.benchmark.ad
 export const BENCHMARK_ADAPTIVE_OBJECTIVE_TRANSITION_EXPORT_TYPE = 'anchor.benchmark.adaptive-objective-transition';
 export const BENCHMARK_ADAPTIVE_SURFACING_EVENT_EXPORT_TYPE = 'anchor.benchmark.adaptive-surfacing-event';
 export const BENCHMARK_ADAPTIVE_MANAGER_PREVIEW_EXPORT_TYPE = 'anchor.benchmark.adaptive-manager-preview';
+export const BENCHMARK_ADAPTIVE_SURFACING_DECISION_EXPORT_TYPE = 'anchor.benchmark.adaptive-surfacing-decision';
+export const BENCHMARK_ADAPTIVE_NEXT_LEG_CONFIG_EXPORT_TYPE = 'anchor.benchmark.adaptive-next-leg-config';
+export const BENCHMARK_ADAPTIVE_EPISODE_TRACE_EXPORT_TYPE = 'anchor.benchmark.adaptive-episode-trace';
+export const BENCHMARK_ADAPTIVE_LAUNCH_CONFIG_EXPORT_TYPE = 'anchor.benchmark.adaptive-launch-config';
 
 export function buildBenchmarkModeConfigExport(options = {}) {
   const benchmarkModeConfig = createBenchmarkModeConfig(options);
@@ -76,6 +96,7 @@ export function buildBenchmarkModeConfigExport(options = {}) {
       'P0 defines benchmark architecture contracts only.',
       'P2 emits benchmark run, route-execution, and attempt-set records from existing planning, simulation, and debrief data.',
       'P6 adds Adaptive Benchmark mission-manager preview exports without adaptive route execution.',
+      'P7 adds an adaptive execution preview loop at surfacing/debrief time without adding a route planner or scoring redesign.',
       'Route planning, mission scoring, and MARL/RL training are not implemented by this export.',
       ...(Array.isArray(options.notes) ? options.notes : [])
     ]
@@ -232,6 +253,75 @@ export function buildAdaptiveManagerPreviewExport(previewOrOptions = {}, options
   };
 }
 
+export function buildAdaptiveSurfacingDecisionExport(decisionOrOptions = {}, options = {}) {
+  const decision = decisionOrOptions?.type === BENCHMARK_ADAPTIVE_SURFACING_DECISION_EXPORT_TYPE
+    ? decisionOrOptions
+    : runAdaptiveSurfacingDecision(decisionOrOptions);
+  return {
+    ...cloneJson(decision),
+    exportVersion: 'benchmark-adaptive-export-p7',
+    adaptiveSurfacingLoopVersion: ADAPTIVE_SURFACING_LOOP_VERSION,
+    createdAt: options.createdAt ?? new Date().toISOString(),
+    summary: adaptiveSurfacingDecisionSummary(decision),
+    boundaryFlags: adaptiveBoundaryFlags(),
+    usesExistingSimulation: true,
+    usesNewPlanner: false,
+    usesMissionScoringRedesign: false,
+    usesMARL: false
+  };
+}
+
+export function buildAdaptiveNextLegConfigExport(configOrOptions = {}, options = {}) {
+  const config = configOrOptions?.type === BENCHMARK_ADAPTIVE_NEXT_LEG_CONFIG_EXPORT_TYPE
+    ? configOrOptions
+    : createAdaptiveNextLegConfig(configOrOptions);
+  return {
+    ...cloneJson(config),
+    exportVersion: 'benchmark-adaptive-export-p7',
+    adaptiveNextLegHandoffVersion: ADAPTIVE_NEXT_LEG_HANDOFF_VERSION,
+    createdAt: options.createdAt ?? new Date().toISOString(),
+    summary: adaptiveNextLegSummary(config),
+    boundaryFlags: adaptiveBoundaryFlags(),
+    usesExistingSimulation: true,
+    usesNewPlanner: false,
+    usesMissionScoringRedesign: false,
+    usesMARL: false
+  };
+}
+
+export function buildAdaptiveEpisodeTraceExport(traceOrOptions = {}, options = {}) {
+  const trace = traceOrOptions?.type === BENCHMARK_ADAPTIVE_EPISODE_TRACE_EXPORT_TYPE
+    ? traceOrOptions
+    : createAdaptiveEpisodeTrace(traceOrOptions);
+  return {
+    ...cloneJson(trace),
+    exportVersion: 'benchmark-adaptive-export-p7',
+    adaptiveEpisodeTraceVersion: ADAPTIVE_EPISODE_TRACE_VERSION,
+    createdAt: options.createdAt ?? new Date().toISOString(),
+    summary: adaptiveEpisodeTraceSummary(trace),
+    boundaryFlags: adaptiveBoundaryFlags(),
+    usesExistingSimulation: true,
+    usesNewPlanner: false,
+    usesMissionScoringRedesign: false,
+    usesMARL: false
+  };
+}
+
+export function buildAdaptiveLaunchConfigExport(configOrOptions = {}, options = {}) {
+  const config = configOrOptions?.type === BENCHMARK_ADAPTIVE_LAUNCH_CONFIG_EXPORT_TYPE
+    ? configOrOptions
+    : createAdaptiveBenchmarkLaunchConfig(configOrOptions);
+  return {
+    ...cloneJson(config),
+    exportVersion: 'benchmark-adaptive-export-p7',
+    createdAt: options.createdAt ?? new Date().toISOString(),
+    boundaryFlags: adaptiveBoundaryFlags(),
+    usesExistingSetupPlanningFlow: true,
+    usesNewPlanner: false,
+    usesMissionScoringRedesign: false,
+    usesMARL: false
+  };
+}
 export function benchmarkModeConfigFilename(config = {}) {
   const mode = createBenchmarkModeConfig(config).benchmarkMode;
   return `anchor-benchmark-mode-config-${mode}.json`;
@@ -256,6 +346,7 @@ function adaptiveBoundaryFlags() {
     usesMissionScoring: false,
     usesMARL: false,
     usesProductionDataAssimilation: false,
+    adaptiveExecutionPreviewAvailable: true,
     adaptiveExecutionImplemented: false
   };
 }

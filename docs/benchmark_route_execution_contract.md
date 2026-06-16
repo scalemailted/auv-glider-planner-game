@@ -1,4 +1,4 @@
-﻿# P1 Planner / Mission Evaluation Route-Execution Contract
+# P1 Planner / Mission Evaluation Route-Execution Contract
 
 P1 connects Benchmark Modes to the existing planning, simulation, and debrief systems through contracts and adapters. This document covers the benchmark episode lifecycle, route execution record, and result/debrief adapter. It does not implement a new planner and does not redesign scoring.
 
@@ -89,3 +89,7 @@ P4 consumes `anchor.benchmark.route-execution` records as a visualization source
 ## P6 Adaptive Benchmark Relationship
 
 P6 adds an Adaptive Benchmark mission-manager contract beside this route-execution contract. The adaptive manager can recommend a next objective from observations, uncertainty, forecast error, hidden-event suspicion, staleness, source evidence, hazards, and mission state. It still does not execute routes. Route authority remains `playerOrSolver`, and scoring remains unchanged. See [Adaptive Benchmark Mission Manager](adaptive_benchmark_mission_manager.md).
+
+## Adaptive P7 Boundary
+
+The P7 adaptive surfacing loop reuses the existing route-execution contract for one leg. It preserves adaptive metadata and exports surfacing decisions, but it does not change route validation, route execution, scoring, or planner behavior.

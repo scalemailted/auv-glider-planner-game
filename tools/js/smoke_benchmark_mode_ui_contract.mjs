@@ -1,4 +1,4 @@
-﻿import assert from 'node:assert/strict';
+import assert from 'node:assert/strict';
 import fs from 'node:fs';
 
 import { BenchmarkModeOverviewScene } from '../../src/game/phaser/scenes/BenchmarkModeOverviewScene.js';
@@ -30,15 +30,19 @@ assert.ok(missionConsole.includes('Export Route Execution Record'), 'Debrief con
 assert.ok(missionConsole.includes('Export Benchmark Attempt Set'), 'Debrief console includes attempt-set export control');
 assert.ok(missionConsole.includes('Export Benchmark Comparison'), 'Debrief console includes comparison export control');
 assert.ok(missionConsole.includes('Adaptive Mission Manager'), 'Adaptive Benchmark UI mentions mission manager');
-assert.ok(missionConsole.includes('P6 Adaptive Mission Manager Contract'), 'Adaptive Benchmark UI mentions P6 contract');
-assert.ok(missionConsole.includes('Adaptive Benchmark previews mission-manager objective updates'), 'Adaptive Benchmark UI states preview boundary');
+assert.ok(missionConsole.includes('P7 Adaptive Execution Preview'), 'Adaptive Benchmark UI mentions P7 execution preview');
+assert.ok(missionConsole.includes('Open Adaptive Benchmark Setup'), 'Adaptive Benchmark UI includes setup launch');
+assert.ok(missionConsole.includes('surfacing decision in debrief'), 'Adaptive Benchmark UI mentions surfacing decision in debrief');
+assert.ok(missionConsole.includes('The player or solver still chooses the route'), 'Adaptive Benchmark UI says player/solver chooses route');
 assert.ok(adaptivePanel.includes('The player or solver still chooses the route'), 'Adaptive panel says player/solver chooses route');
-assert.ok(adaptivePanel.includes('P6 does not implement full route execution for adaptive missions'), 'Adaptive panel states no adaptive route execution');
+assert.ok(adaptivePanel.includes('P7 connects one executed leg'), 'Adaptive panel states P7 surfacing-loop boundary');
 assert.ok(adaptivePanel.includes('MARL/RL'), 'Adaptive panel states no MARL/RL boundary');
 assert.ok(missionConsole.includes('Solver/agent objective and route authority are defined by contract; execution later.'), 'Full Autonomy placeholder boundary is visible');
 assert.ok(phaserGame.includes('BenchmarkModeOverviewScene'), 'PhaserGame registers BenchmarkModeOverviewScene');
 assert.equal(typeof BenchmarkModeOverviewScene, 'function', 'BenchmarkModeOverviewScene imports');
-assert.ok(benchmarkScene.includes('openPlannerBenchmarkSetup'), 'Benchmark scene imports launch bridge');
+assert.ok(benchmarkScene.includes('openPlannerBenchmarkSetup'), 'Benchmark scene imports planner launch bridge');
+assert.ok(benchmarkScene.includes('openAdaptiveBenchmarkSetup'), 'Benchmark scene imports adaptive launch bridge');
+assert.ok(benchmarkScene.includes('adaptiveLaunchAvailable'), 'Benchmark debug exposes adaptive launch availability');
 assert.ok(benchmarkScene.includes('ANCHOR_BENCHMARK_EPISODE_DEBUG'), 'Benchmark scene exposes episode debug object');
 assert.ok(benchmarkScene.includes('ANCHOR_ADAPTIVE_BENCHMARK_DEBUG'), 'Benchmark scene exposes adaptive debug object');
 assert.ok(benchmarkScene.includes('buildAdaptiveManagerPreviewExport'), 'Benchmark scene supports adaptive preview export');
@@ -47,6 +51,8 @@ assert.ok(debriefScene.includes('usesExistingSimulation: true'), 'Debrief benchm
 assert.ok(debriefScene.includes('usesNewPlanner: false'), 'Debrief benchmark debug excludes new planner');
 assert.ok(debriefScene.includes('hasComparisonViewModel'), 'Debrief benchmark debug includes comparison view model field');
 assert.ok(debriefScene.includes('hasRouteReviewViewModel'), 'Debrief benchmark debug includes route review view model field');
+assert.ok(debriefScene.includes('ANCHOR_ADAPTIVE_EXECUTION_DEBUG'), 'Debrief scene exposes adaptive execution debug object');
+assert.ok(debriefScene.includes('AdaptiveSurfacingPanel'), 'Debrief scene imports adaptive surfacing panel');
 
 const exportJson = buildBenchmarkModeConfigExport({ benchmarkMode: 'plannerBenchmark' });
 assert.equal(exportJson.type, 'anchor.benchmark.mode-config', 'benchmark export type');
@@ -67,4 +73,3 @@ assert.ok(episodeJson.allowedAttemptSources.includes('greedyPlanner'), 'episode 
 assert.ok(episodeJson.allowedAttemptSources.includes('importedSolver'), 'episode export permits imported solver attempts');
 
 console.log('smoke_benchmark_mode_ui_contract: ok');
-

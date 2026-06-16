@@ -1,4 +1,4 @@
-﻿# Adaptive Benchmark Mission Manager
+# Adaptive Benchmark Mission Manager
 
 P6 makes Adaptive Benchmark a transparent mission-manager preview instead of only a placeholder.
 
@@ -85,3 +85,7 @@ P6 defines surfacing and communication-window records for future adaptive execut
 
 Recommended next implementation is an execution-preview surfacing loop that still keeps route choice with the player or solver.
 
+
+## P7 Surfacing Loop Update
+
+P7 extends the mission-manager preview into an executable one-leg surfacing loop. Adaptive Benchmark setup uses the existing planning and simulation workflow, then Debrief builds evidence, runs diagnosis, recommends the next objective, and exports next-leg handoff records. This remains an educational preview: no new route planner, scoring redesign, automatic multi-leg execution, or MARL/RL is included.

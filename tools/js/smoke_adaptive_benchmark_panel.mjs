@@ -1,4 +1,4 @@
-﻿import assert from 'node:assert/strict';
+import assert from 'node:assert/strict';
 
 import { runAdaptiveManagerFixture } from '../../src/core/benchmark/AdaptiveMissionManagerFixtures.js';
 import { buildAdaptiveBenchmarkViewModel } from '../../src/core/benchmark/AdaptiveBenchmarkViewModel.js';
@@ -20,7 +20,7 @@ for (const text of ['Adaptive Benchmark', 'Mission Manager', 'Diagnosis', 'Recom
 assert.ok(html.includes('route planning'), 'HTML includes no route planning boundary');
 assert.ok(html.includes('MARL/RL'), 'HTML includes no MARL/RL boundary');
 assert.ok(html.includes('Adaptive Benchmark gives objective authority to a transparent mission manager. The player or solver still chooses the route.'), 'required authority copy exists');
-assert.ok(html.includes('P6 does not implement full route execution for adaptive missions, new route planning, scoring redesign, or MARL/RL.'), 'required P6 boundary copy exists');
+assert.ok(html.includes('P7 connects one executed leg') && html.includes('automatic route generation'), 'required P7 boundary copy exists');
 
 const unsafe = adaptiveBenchmarkPanelHtml({
   currentObjective: { label: '<script>alert(1)</script>' },

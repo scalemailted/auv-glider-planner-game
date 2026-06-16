@@ -1,4 +1,4 @@
-﻿# Export Formats
+# Export Formats
 
 ANCHOR uses separate JSON products for different workflows.
 
@@ -226,3 +226,14 @@ Related adaptive exports are:
 - `anchor.benchmark.adaptive-surfacing-event`
 
 These files document transparent mission-manager objective updates. They are not route-execution records, do not contain optimized routes, do not recompute scores, do not implement full autonomy, and do not train RL/MARL policies.
+
+## Adaptive Benchmark P7 Exports
+
+P7 adds these export types:
+
+- `anchor.benchmark.adaptive-surfacing-decision`
+- `anchor.benchmark.adaptive-next-leg-config`
+- `anchor.benchmark.adaptive-episode-trace`
+- `anchor.benchmark.adaptive-launch-config`
+
+P6 adaptive manager config, state, objective transition, surfacing event, and manager preview exports remain supported. P7 exports do not contain generated routes unless a future phase explicitly adds them.

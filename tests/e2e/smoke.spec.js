@@ -1,4 +1,4 @@
-﻿import { expect, test } from '@playwright/test';
+import { expect, test } from '@playwright/test';
 import fs from 'node:fs/promises';
 import { startStaticServer } from './static-server.mjs';
 
@@ -304,14 +304,18 @@ test('Benchmark modes overview opens from Simulation Lab', async ({ page }) => {
   await expect(page.locator('#mission-console')).toContainText('Mission Manager');
   await expect(page.locator('#mission-console')).toContainText('Objective Authority');
   await expect(page.locator('#mission-console')).toContainText('The player or solver still chooses the route');
+  await expect(page.locator('#mission-console')).toContainText('Open Adaptive Benchmark Setup');
+  await expect(page.locator('#mission-console')).toContainText('surfacing decision in debrief');
   await expect(page.locator('#mission-console')).toContainText('route planning');
-  await expect(page.locator('#mission-console')).toContainText('P6 does not implement full route execution');
+  await expect(page.locator('#mission-console')).toContainText('P7 connects one executed leg');
   await expect(page.locator('#mission-console')).toContainText('Likely Forecast Error');
   await expect(page.locator('#mission-console')).toContainText('Validate Forecast');
   await expect.poll(() => page.evaluate(() => window.ANCHOR_BENCHMARK_MODE_DEBUG?.adaptiveObjectiveAuthority)).toBe('missionManager');
   await expect.poll(() => page.evaluate(() => window.ANCHOR_BENCHMARK_MODE_DEBUG?.adaptiveRouteAuthority)).toBe('playerOrSolver');
   await expect.poll(() => page.evaluate(() => window.ANCHOR_BENCHMARK_MODE_DEBUG?.usesRoutePlanning)).toBe(false);
   await expect.poll(() => page.evaluate(() => window.ANCHOR_BENCHMARK_MODE_DEBUG?.usesMARL)).toBe(false);
+  await expect.poll(() => page.evaluate(() => window.ANCHOR_BENCHMARK_MODE_DEBUG?.adaptiveLaunchAvailable)).toBe(true);
+  await expect.poll(() => page.evaluate(() => window.ANCHOR_BENCHMARK_MODE_DEBUG?.adaptiveExecutionPreviewAvailable)).toBe(true);
 
   await page.locator('#adaptive-benchmark-fixture').selectOption('possibleHiddenPlume');
   await expect(page.locator('#mission-console')).toContainText('Possible Hidden Event');
@@ -332,6 +336,20 @@ test('Benchmark modes overview opens from Simulation Lab', async ({ page }) => {
   expect(adaptivePreviewJson.routeAuthority).toBe('playerOrSolver');
   expect(adaptivePreviewJson.usesRoutePlanning).toBe(false);
   expect(adaptivePreviewJson.usesMARL).toBe(false);
+
+  const [adaptiveLaunchDownload] = await Promise.all([
+    page.waitForEvent('download'),
+    page.locator('#mission-console [data-action="export-adaptive-launch-config"]').click()
+  ]);
+  const adaptiveLaunchJson = JSON.parse(await fs.readFile(await adaptiveLaunchDownload.path(), 'utf8'));
+  expect(adaptiveLaunchJson.type).toBe('anchor.benchmark.adaptive-launch-config');
+  expect(adaptiveLaunchJson.routeAuthority).toBe('playerOrSolver');
+  expect(adaptiveLaunchJson.usesMARL).toBe(false);
+
+  await page.locator('#mission-console [data-action="benchmark-open-setup"]').click();
+  await expect.poll(() => page.evaluate(() => window.anchorGame.phaser.scene.getScene('MissionBriefingScene').sys.isActive()), { timeout: 15000 }).toBe(true);
+  await expect.poll(() => page.evaluate(() => window.anchorGame.state.pendingBenchmarkEpisode?.benchmarkModeConfig?.benchmarkMode)).toBe('adaptiveBenchmark');
+  await expect.poll(() => page.evaluate(() => window.anchorGame.state.adaptiveBenchmarkRuntimeContext?.routeAuthority)).toBe('playerOrSolver');
 
   await page.goto('/');
   await expect.poll(() => page.evaluate(() => window.anchorGame?.phaser?.scene.getScene('MainMenuScene')?.sys.isActive() ?? false)).toBe(true);
@@ -539,6 +557,119 @@ test('Planner Benchmark debrief exports benchmark records from synthetic result'
   expect(attemptJson.attempts.length).toBeGreaterThanOrEqual(1);
 });
 
+test('Adaptive Benchmark synthetic debrief shows surfacing review and exports P7 records', async ({ page }) => {
+  await page.goto('/');
+  await expect.poll(() => page.evaluate(() => window.anchorGame?.phaser?.scene.getScene('MainMenuScene')?.sys.isActive() ?? false)).toBe(true);
+
+  await page.evaluate(() => {
+    const benchmarkMetadata = {
+      benchmarkMode: 'adaptiveBenchmark',
+      benchmarkModeConfigVersion: 'benchmark-mode-contract-p0',
+      episodeId: 'e2e-adaptive-benchmark-episode',
+      informationAccessTier: 'beliefOnly',
+      objectiveAuthority: 'missionManager',
+      routeAuthority: 'playerOrSolver',
+      fairnessLabel: 'Belief-only',
+      attemptSource: 'manualPlayer',
+      worldModelTier: 'stochasticBelief',
+      activeObjectiveId: 'validateForecast',
+      activeLegIndex: 0,
+      metadataVersion: 'benchmark-metadata-p7'
+    };
+    const adaptiveManagerConfig = {
+      type: 'anchor.benchmark.adaptive-manager-config',
+      version: 'adaptive-mission-manager-contract-p6',
+      policyId: 'transparentRuleManager',
+      policyLabel: 'Transparent Rule Manager',
+      benchmarkMode: 'adaptiveBenchmark',
+      objectiveAuthority: 'missionManager',
+      routeAuthority: 'playerOrSolver',
+      informationAccessTier: 'beliefOnly',
+      worldModelTier: 'stochasticBelief',
+      decisionCadence: 'surfacingWindow',
+      surfacingRequired: true,
+      thresholds: { highUncertainty: 0.65, highForecastError: 0.6, hiddenEvent: 0.62, likelyHiddenEvent: 0.78, boundaryAmbiguity: 0.58, staleRegion: 0.6, sourceLocalization: 0.6, noiseFalseAlarm: 0.7, hazardPressure: 0.65, minConfidence: 0.35 },
+      weights: { uncertainty: 1, forecastError: 1, hiddenEvent: 1, boundary: 1, staleness: 1, sourceLocalization: 1, hazard: 1, evidenceConservatism: 1 },
+      allowedObjectives: ['exploitKnownValue', 'reduceUncertainty', 'validateForecast', 'confirmHiddenEvent', 'mapBoundary', 'localizeSource', 'revisitStaleRegion'],
+      claimLevel: 'syntheticTransparentContract',
+      notA: ['not a production autonomy system', 'not MARL/RL', 'not a route planner', 'not calibrated ocean data assimilation'],
+      notes: []
+    };
+    const adaptiveManagerState = {
+      type: 'anchor.benchmark.adaptive-manager-state',
+      version: 'adaptive-manager-state-p6',
+      episodeId: benchmarkMetadata.episodeId,
+      benchmarkMode: 'adaptiveBenchmark',
+      policyId: 'transparentRuleManager',
+      currentObjectiveId: 'validateForecast',
+      objectiveHistory: [{ time: 0, objectiveId: 'validateForecast', transitionId: 'initialObjective', authority: 'missionManager', rationale: 'Initial adaptive E2E objective.' }],
+      diagnosisHistory: [],
+      evidenceHistory: [],
+      surfacingEvents: [],
+      decisionCount: 0,
+      lastDecisionTime: null,
+      routeAuthority: 'playerOrSolver',
+      objectiveAuthority: 'missionManager',
+      status: 'awaitingEvidence',
+      warnings: []
+    };
+    const adaptiveBenchmark = { benchmarkMode: 'adaptiveBenchmark', episodeId: benchmarkMetadata.episodeId, activeLegIndex: 0, activeObjective: { id: 'validateForecast', label: 'Validate Forecast' }, adaptiveManagerConfig, adaptiveManagerState, objectiveAuthority: 'missionManager', routeAuthority: 'playerOrSolver' };
+    const level = { levelId: 'e2e-adaptive-level', instanceId: 'e2e-adaptive-instance', challengeMode: 'forecast', world: { grid: { width: 6, height: 6 }, time: { dt: 1, duration: 4 } }, layers: { terrain: Array.from({ length: 6 }, () => Array(6).fill(0)), hazards: Array.from({ length: 6 }, () => Array(6).fill(0)), bases: [{ x: 0, y: 0 }], truth: { frames: [{ t: 0, current: Array.from({ length: 6 }, () => Array.from({ length: 6 }, () => [0, 0])), roi: Array.from({ length: 6 }, () => Array(6).fill(0)) }] } }, meta: { seed: 'e2e-adaptive', experienceMode: 'simulationLab', benchmarkMetadata, adaptiveBenchmark } };
+    const mission = { missionId: 'e2e-adaptive-mission', meta: { experienceMode: 'simulationLab', benchmarkMetadata, adaptiveBenchmark }, agents: [{ id: 'g1', label: 'Glider 1', start: { x: 0, y: 0 } }], rules: {} };
+    const plan = { type: 'anchor.plan', planId: 'e2e-adaptive-plan', meta: { valid: true, benchmarkMetadata, adaptiveBenchmark }, agentPlans: [{ agentId: 'g1', selectedStart: { x: 0, y: 0 }, waypoints: [{ x: 2, y: 2, t: 1, segmentEnergy: 2 }] }] };
+    const result = { resultId: 'e2e-adaptive-result', levelId: level.levelId, missionId: mission.missionId, instanceId: level.instanceId, challengeMode: 'forecast', experienceMode: 'simulationLab', source: 'manual', planName: 'Manual Player Plan', benchmarkMetadata, adaptiveBenchmark, summary: { finalScore: 38, sampleScore: 16, energyUsed: 7, hazardsHit: 0, duplicateSamples: 0, completedWaypoints: 1, missedWaypoints: 0, observationCount: 5, recentObservationCount: 3, forecastErrorScore: 0.72 }, adaptiveEvidence: { hiddenEventConfidence: 0.68, meanUncertainty: 0.42, maxUncertainty: 0.6, stalenessScore: 0.3 }, events: [{ type: 'sample', time: 1, agentId: 'g1', x: 2, y: 2, value: 9 }] };
+    const app = window.anchorGame;
+    app.state.level = level;
+    app.state.mission = mission;
+    app.state.plan = plan;
+    app.state.result = result;
+    app.state.currentPlanSource = 'manual';
+    app.state.challengeMode = 'forecast';
+    app.state.experienceMode = 'simulationLab';
+    app.state.currentScenario = { source: 'adaptiveBenchmarkSetup', benchmarkMetadata, adaptiveBenchmark };
+    app.state.benchmarkModeConfig = null;
+    app.state.benchmarkAttemptSession = null;
+    app.state.adaptiveManagerConfig = adaptiveManagerConfig;
+    app.state.adaptiveManagerState = adaptiveManagerState;
+    app.state.adaptiveBenchmarkRuntimeContext = null;
+    app.state.ui ??= {};
+    app.state.playback ??= { time: 0 };
+    app.state.planResults = { manual: { source: 'manual', plan, result, summary: { finalScore: 38, realizedValue: 16, energyUsed: 7, riskExposure: 0 } } };
+    app.phaser.scene.getScene('MainMenuScene').scene.start('DebriefScene');
+  });
+
+  await expect.poll(() => page.evaluate(() => window.anchorGame.phaser.scene.getScene('DebriefScene').sys.isActive())).toBe(true);
+  await expect(page.locator('#debrief-root')).toContainText('Adaptive Benchmark Surfacing Review');
+  await expect(page.locator('#debrief-root')).toContainText('Evidence Summary');
+  await expect(page.locator('#debrief-root')).toContainText('Diagnosis');
+  await expect(page.locator('#debrief-root')).toContainText('Recommended Next Objective');
+  await expect(page.locator('#debrief-root')).toContainText('Plan Next Leg');
+  await expect(page.locator('#debrief-root')).toContainText('new route planner');
+  await expect(page.locator('#debrief-root')).toContainText('MARL/RL');
+  await expect.poll(() => page.evaluate(() => window.ANCHOR_ADAPTIVE_EXECUTION_DEBUG?.benchmarkMode)).toBe('adaptiveBenchmark');
+  await expect.poll(() => page.evaluate(() => window.ANCHOR_ADAPTIVE_EXECUTION_DEBUG?.usesNewPlanner)).toBe(false);
+  await expect.poll(() => page.evaluate(() => window.ANCHOR_ADAPTIVE_EXECUTION_DEBUG?.usesMARL)).toBe(false);
+
+  const [decisionDownload] = await Promise.all([
+    page.waitForEvent('download'),
+    page.locator('#debrief-root [data-action="export-adaptive-surfacing-decision"]').click()
+  ]);
+  const decisionJson = JSON.parse(await fs.readFile(await decisionDownload.path(), 'utf8'));
+  expect(decisionJson.type).toBe('anchor.benchmark.adaptive-surfacing-decision');
+  expect(decisionJson.benchmarkMode).toBe('adaptiveBenchmark');
+  expect(decisionJson.objectiveAuthority).toBe('missionManager');
+  expect(decisionJson.routeAuthority).toBe('playerOrSolver');
+  expect(decisionJson.usesMARL).toBe(false);
+
+  const [handoffDownload] = await Promise.all([
+    page.waitForEvent('download'),
+    page.locator('#debrief-root [data-action="export-adaptive-next-leg-config"]').click()
+  ]);
+  const handoffJson = JSON.parse(await fs.readFile(await handoffDownload.path(), 'utf8'));
+  expect(handoffJson.type).toBe('anchor.benchmark.adaptive-next-leg-config');
+  expect(handoffJson.routeAuthority).toBe('playerOrSolver');
+  expect(handoffJson.waypoints).toBeUndefined();
+});
 test('campaign planning smoke flow reaches debrief', async ({ page }) => {
   await page.goto('/');
 
@@ -2821,12 +2952,3 @@ async function cellCenter(page, x, y) {
     };
   }, { x, y });
 }
-
-
-
-
-
-
-
-
-

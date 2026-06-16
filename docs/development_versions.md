@@ -1,4 +1,4 @@
-﻿### P6 - Adaptive Benchmark Mission Manager Contract
+### P6 - Adaptive Benchmark Mission Manager Contract
 
 - Added Adaptive Benchmark mission-manager config, diagnosis, objective-transition policy, manager state, surfacing-event records, synthetic fixtures, preview view model, UI panel, adaptive exports, debug fields, smoke tests, and docs.
 - Adaptive Benchmark now means objective authority belongs to a transparent mission manager while route authority remains with the player or solver.
@@ -304,3 +304,7 @@ P3 adds Debrief attempt comparison, route review, fairness/source labels, and `a
 
 P4 adds route geometry adaptation, Route Overlay / Map rendering, route review layer controls, segment/waypoint detail inspection, `anchor.benchmark.route-overlay` export support, and route overlay debug fields. It preserves P0/P1/P2/P3 fields and does not add a new planner, scoring redesign, MARL/RL, or adaptive objective execution.
 
+
+## P7 - Adaptive Benchmark Surfacing Loop
+
+Added one-leg Adaptive Benchmark execution preview through existing setup, planning, simulation, and debrief. Debrief now builds adaptive evidence, surfacing decision, next-leg handoff, and episode trace exports. No new planner, scoring redesign, full autonomy, or MARL/RL is implemented.

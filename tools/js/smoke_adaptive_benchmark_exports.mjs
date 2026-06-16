@@ -1,15 +1,23 @@
-﻿import assert from 'node:assert/strict';
+import assert from 'node:assert/strict';
 
 import {
   BENCHMARK_ADAPTIVE_MANAGER_CONFIG_EXPORT_TYPE,
   BENCHMARK_ADAPTIVE_MANAGER_PREVIEW_EXPORT_TYPE,
+  BENCHMARK_ADAPTIVE_EPISODE_TRACE_EXPORT_TYPE,
+  BENCHMARK_ADAPTIVE_LAUNCH_CONFIG_EXPORT_TYPE,
   BENCHMARK_ADAPTIVE_MANAGER_STATE_EXPORT_TYPE,
   BENCHMARK_ADAPTIVE_OBJECTIVE_TRANSITION_EXPORT_TYPE,
+  BENCHMARK_ADAPTIVE_NEXT_LEG_CONFIG_EXPORT_TYPE,
+  BENCHMARK_ADAPTIVE_SURFACING_DECISION_EXPORT_TYPE,
   BENCHMARK_ADAPTIVE_SURFACING_EVENT_EXPORT_TYPE,
   buildAdaptiveManagerConfigExport,
   buildAdaptiveManagerPreviewExport,
+  buildAdaptiveEpisodeTraceExport,
+  buildAdaptiveLaunchConfigExport,
   buildAdaptiveManagerStateExport,
   buildAdaptiveObjectiveTransitionExport,
+  buildAdaptiveNextLegConfigExport,
+  buildAdaptiveSurfacingDecisionExport,
   buildAdaptiveSurfacingEventExport,
   buildBenchmarkAttemptSetExport,
   buildBenchmarkEpisodeConfigExport,
@@ -35,6 +43,20 @@ assert.equal(previewExport.objectiveAuthority, 'missionManager', 'preview object
 assert.equal(previewExport.routeAuthority, 'playerOrSolver', 'preview route authority');
 assert.equal(previewExport.usesRoutePlanning, false, 'preview excludes route planning');
 assert.equal(previewExport.usesMARL, false, 'preview excludes MARL');
+
+const decisionExport = buildAdaptiveSurfacingDecisionExport({
+  runtimeContext: { episodeId: fixture.managerState.episodeId, adaptiveManagerConfig: fixture.managerConfig, adaptiveManagerState: fixture.initialState },
+  evidence: fixture.evidence,
+  managerConfig: fixture.managerConfig,
+  managerState: fixture.initialState
+});
+assert.equal(decisionExport.type, BENCHMARK_ADAPTIVE_SURFACING_DECISION_EXPORT_TYPE, 'surfacing decision export works');
+const nextLegExport = buildAdaptiveNextLegConfigExport({ runtimeContext: { episodeId: fixture.managerState.episodeId }, surfacingDecision: decisionExport });
+assert.equal(nextLegExport.type, BENCHMARK_ADAPTIVE_NEXT_LEG_CONFIG_EXPORT_TYPE, 'next-leg config export works');
+const traceExport = buildAdaptiveEpisodeTraceExport({ episodeId: fixture.managerState.episodeId });
+assert.equal(traceExport.type, BENCHMARK_ADAPTIVE_EPISODE_TRACE_EXPORT_TYPE, 'episode trace export works');
+const launchExport = buildAdaptiveLaunchConfigExport({ episodeId: fixture.managerState.episodeId, adaptiveManagerConfig: fixture.managerConfig, adaptiveManagerState: fixture.initialState });
+assert.equal(launchExport.type, BENCHMARK_ADAPTIVE_LAUNCH_CONFIG_EXPORT_TYPE, 'launch config export works');
 
 assert.equal(buildBenchmarkModeConfigExport({ benchmarkMode: 'plannerBenchmark' }).type, 'anchor.benchmark.mode-config', 'existing mode-config export still works');
 assert.equal(buildBenchmarkEpisodeConfigExport({ benchmarkMode: 'plannerBenchmark' }).type, 'anchor.benchmark.episode-config', 'existing episode export still works');
