@@ -1,4 +1,4 @@
-# Export Formats
+﻿# Export Formats
 
 ANCHOR uses separate JSON products for different workflows.
 
@@ -125,11 +125,11 @@ Validation reports `PASS`, `WARN`, or `FAIL`, with human summary, observable pat
 
 `type: "anchor.benchmark.mode-config"` is the Benchmark Modes architecture export. It records a benchmark-mode configuration, objective taxonomy version, run-record version, authority split, information-access tier, world-model tier, fairness label, implemented systems, missing systems, visible layers, debug flags, and P1 adapter-only boundary notes.
 
-Planner Benchmark, Adaptive Benchmark, and Full Autonomy Benchmark mode-config exports are contract metadata. P1 adds optional `anchor.benchmark.episode-config`, `anchor.benchmark.run-record`, `anchor.benchmark.route-execution`, and `anchor.benchmark.attempt-set` exports.
+Planner Benchmark, Adaptive Benchmark, and Full Autonomy Benchmark mode-config exports are contract metadata. P1 adds optional `anchor.benchmark.episode-config`, `anchor.benchmark.run-record`, `anchor.benchmark.route-execution`, and `anchor.benchmark.attempt-set` exports. P6 adds Adaptive Benchmark mission-manager exports: `anchor.benchmark.adaptive-manager-config`, `anchor.benchmark.adaptive-manager-state`, `anchor.benchmark.adaptive-objective-transition`, `anchor.benchmark.adaptive-surfacing-event`, and `anchor.benchmark.adaptive-manager-preview`.
 
 `anchor.benchmark.episode-config` describes one benchmark episode: benchmark mode, objective, authority split, information access, world-model tier, fairness label, ids, seed, allowed attempt sources, and required exports. `anchor.benchmark.route-execution` normalizes an existing route attempt with validation, segment summaries, nullable metrics, diagnostics, and export references. `anchor.benchmark.run-record` wraps a BenchmarkRunRecord-compatible `anchor.benchmark.run`. `anchor.benchmark.attempt-set` compares portable attempt records for best score, lowest energy, highest sample score, fewest hazards, and least duplicate sampling.
 
-P1 does not implement a new planner, does not redesign scoring, and does not add adaptive objective switching, solver training, RL, or MARL. It normalizes existing planning, simulation, and debrief data. `anchor.result` may include optional `benchmarkMetadata` only when benchmark metadata was attached before export.
+P1 does not implement a new planner, does not redesign scoring, and does not add adaptive objective switching, solver training, RL, or MARL. P6 adds adaptive objective preview records only; it still does not execute adaptive routes, add a planner, redesign scoring, or train MARL/RL. It normalizes existing planning, simulation, and debrief data. `anchor.result` may include optional `benchmarkMetadata` only when benchmark metadata was attached before export.
 
 ## `anchor.plan.json`
 
@@ -212,4 +212,17 @@ P4 adds `anchor.benchmark.route-overlay`. It includes selected overlay layer, no
 
 ## Planner Benchmark Attempt Sessions
 
-nchor.benchmark.attempt-session is a P5 consolidated Planner Benchmark export. It contains compact attempts for one benchmark episode, comparison summary metadata, route-geometry availability, boundary flags, and notes that scores are not recomputed. It is importable by the Debrief import panel when the episode and benchmark mode are compatible. It stores compact route geometry and metrics, not full hidden ocean fields or full simulator frame tensors.
+`anchor.benchmark.attempt-session` is a P5 consolidated Planner Benchmark export. It contains compact attempts for one benchmark episode, comparison summary metadata, route-geometry availability, boundary flags, and notes that scores are not recomputed. It is importable by the Debrief import panel when the episode and benchmark mode are compatible. It stores compact route geometry and metrics, not full hidden ocean fields or full simulator frame tensors.
+
+## `anchor.benchmark.adaptive-manager-preview`
+
+P6 adds Adaptive Benchmark mission-manager preview exports. The main preview file uses `type: "anchor.benchmark.adaptive-manager-preview"` and contains benchmark mode, objective authority `missionManager`, route authority `playerOrSolver`, fixture id, manager config, manager state, evidence snapshot, diagnosis, objective transition, view model, summary, and boundary flags.
+
+Related adaptive exports are:
+
+- `anchor.benchmark.adaptive-manager-config`
+- `anchor.benchmark.adaptive-manager-state`
+- `anchor.benchmark.adaptive-objective-transition`
+- `anchor.benchmark.adaptive-surfacing-event`
+
+These files document transparent mission-manager objective updates. They are not route-execution records, do not contain optimized routes, do not recompute scores, do not implement full autonomy, and do not train RL/MARL policies.

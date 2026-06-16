@@ -1,4 +1,4 @@
-# P1 Planner / Mission Evaluation Route-Execution Contract
+﻿# P1 Planner / Mission Evaluation Route-Execution Contract
 
 P1 connects Benchmark Modes to the existing planning, simulation, and debrief systems through contracts and adapters. This document covers the benchmark episode lifecycle, route execution record, and result/debrief adapter. It does not implement a new planner and does not redesign scoring.
 
@@ -85,3 +85,7 @@ Route-execution records can now feed a Planner Benchmark Debrief comparison pane
 ## P4 Route Overlay Relationship
 
 P4 consumes `anchor.benchmark.route-execution` records as a visualization source. The route overlay adapter preserves existing segment geometry and falls back to waypoint geometry when segment metrics are missing. It does not change the route-execution contract, compute a new path, simulate routes, or compute official scores. See [Planner Benchmark Route Overlay](planner_benchmark_route_overlay.md).
+
+## P6 Adaptive Benchmark Relationship
+
+P6 adds an Adaptive Benchmark mission-manager contract beside this route-execution contract. The adaptive manager can recommend a next objective from observations, uncertainty, forecast error, hidden-event suspicion, staleness, source evidence, hazards, and mission state. It still does not execute routes. Route authority remains `playerOrSolver`, and scoring remains unchanged. See [Adaptive Benchmark Mission Manager](adaptive_benchmark_mission_manager.md).

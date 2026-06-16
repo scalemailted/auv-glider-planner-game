@@ -1,4 +1,4 @@
-import { CAMPAIGN_LEVELS } from '../core/campaign/CampaignLevels.js';
+﻿import { CAMPAIGN_LEVELS } from '../core/campaign/CampaignLevels.js';
 import { shortInstanceId } from '../core/identity/GameInstanceId.js';
 import { formatMetric } from '../core/evaluation/PlanComparison.js';
 import { FLOW_DEMO_BOUNDARY_MODES, FLOW_DEMO_CYCLE_DURATIONS, FLOW_DEMO_DYNAMIC_COMPLEXITY_LEVELS, FLOW_DEMO_EVOLUTION_BEHAVIORS, FLOW_DEMO_EVOLUTION_PATTERNS, FLOW_DEMO_EVOLUTION_SPEEDS, FLOW_DEMO_FIELD_MODES, FLOW_DEMO_LAYER_INFLUENCES, FLOW_DEMO_MAGNITUDE_SCALES, FLOW_DEMO_PARTICLE_SPEEDS, FLOW_DEMO_PRESET_CHOICES, FLOW_DEMO_SPATIAL_MOTIONS, FLOW_DEMO_SPATIAL_MOTION_SPEEDS, FLOW_DEMO_TERRAIN_MODES, FLOW_DEMO_VARIATION_LEVELS, normalizeAdditiveLayers } from '../core/demo/FlowFieldDemo.js';
@@ -14,6 +14,7 @@ import { SAMPLING_PRIORITY_CANDIDATE_MODES, samplingPriorityCandidateModeLabel }
 import { FLOW_COUPLED_SAMPLING_SCENARIO_IDS, flowCoupledSamplingScenarioLabel } from '../core/demo/flowCoupledSampling/FlowCoupledSamplingScenarios.js';
 import { GLIDER_ACTION_METHOD_IDS, gliderActionMethodLabel } from '../core/demo/flowCoupledSampling/GliderActionValueModel.js';
 import { GLIDER_ACTION_CANDIDATE_MODES, gliderActionCandidateModeLabel } from '../core/demo/flowCoupledSampling/GliderActionCandidates.js';
+import { adaptiveBenchmarkPanelHtml } from './benchmark/AdaptiveBenchmarkPanel.js';
 
 export class MissionConsole {
   constructor(app, root) {
@@ -1277,9 +1278,43 @@ export class MissionConsole {
     const p1Implemented = Array.isArray(payload.p1Implemented) ? payload.p1Implemented : [];
     const p1NotImplemented = Array.isArray(payload.p1NotImplemented) ? payload.p1NotImplemented : [];
     const savedAttemptSessions = Array.isArray(payload.savedAttemptSessions) ? payload.savedAttemptSessions : [];
+    const adaptivePreview = payload.adaptivePreview ?? null;
+    const adaptiveFixtureOptions = Array.isArray(payload.adaptiveFixtureOptions) ? payload.adaptiveFixtureOptions : [];
+    const adaptivePolicyOptions = Array.isArray(payload.adaptivePolicyOptions) ? payload.adaptivePolicyOptions : [];
     const plannerSetupHtml = config.benchmarkMode === 'plannerBenchmark'
       ? '<button data-action="benchmark-open-setup" class="console-button">Open Planner Benchmark Setup</button>'
-      : '<div class="hud-muted">Contract defined; execution later. This mode does not launch route execution in P2.</div>';
+      : config.benchmarkMode === 'adaptiveBenchmark'
+        ? '<div class="hud-muted">Adaptive Benchmark previews mission-manager objective updates. P6 does not launch adaptive route execution.</div>'
+        : '<div class="hud-muted">Contract defined; execution later. This mode does not launch route execution in P2.</div>';
+    const statusLabel = config.benchmarkMode === 'adaptiveBenchmark' ? 'P6 Adaptive Mission Manager Contract' : 'P2 Execution Integration';
+    const statusDetail = config.benchmarkMode === 'adaptiveBenchmark'
+      ? 'Mission manager preview records are exportable. No new planner, scoring redesign, or MARL/RL is added.'
+      : 'Existing simulator and debrief produce benchmark records. No new planner or scoring redesign is added.';
+    const adaptivePanelHtml = adaptivePreview ? `
+      <section class="console-section" data-adaptive-benchmark-overview>
+        <h2>Adaptive Mission Manager</h2>
+        <label class="compact-field">
+          Policy
+          <select id="adaptive-benchmark-policy">
+            ${adaptivePolicyOptions.map((policy) => `<option value="${escapeAttr(policy.id)}" ${policy.id === payload.adaptivePolicyId ? 'selected' : ''}>${escapeHtml(policy.label)}</option>`).join('')}
+          </select>
+        </label>
+        <label class="compact-field">
+          Fixture
+          <select id="adaptive-benchmark-fixture">
+            ${adaptiveFixtureOptions.map((fixture) => `<option value="${escapeAttr(fixture.id)}" ${fixture.id === payload.adaptiveFixtureId ? 'selected' : ''}>${escapeHtml(fixture.label)}</option>`).join('')}
+          </select>
+        </label>
+        ${adaptiveBenchmarkPanelHtml(adaptivePreview.viewModel)}
+        <div class="panel-stack">
+          <button data-action="export-adaptive-manager-preview" class="console-button">Export Adaptive Manager Preview</button>
+          <button data-action="export-adaptive-manager-config" class="console-button secondary">Export Adaptive Manager Config</button>
+          <button data-action="export-adaptive-manager-state" class="console-button secondary">Export Adaptive Manager State</button>
+          <button data-action="export-adaptive-objective-transition" class="console-button secondary">Export Adaptive Objective Transition</button>
+          <button data-action="export-adaptive-surfacing-event" class="console-button secondary">Export Adaptive Surfacing Event</button>
+        </div>
+      </section>
+    ` : '';
     this.root.innerHTML = `
       <section class="console-header">
         <div class="console-kicker">Benchmark Mode</div>
@@ -1287,9 +1322,9 @@ export class MissionConsole {
         <p>${escapeHtml(benchmarkModeP1Text(config.benchmarkMode))}</p>
       </section>
       <section class="console-status">
-        <span>P2 Execution Integration</span>
+        <span>${escapeHtml(statusLabel)}</span>
         <strong>${escapeHtml(benchmarkImplementedLabel(config.implemented))}</strong>
-        <small>Existing simulator and debrief produce benchmark records. No new planner or scoring redesign is added.</small>
+        <small>${escapeHtml(statusDetail)}</small>
       </section>
       <section class="console-section">
         <h2>Authority Split</h2>
@@ -1308,6 +1343,7 @@ export class MissionConsole {
         <div class="hud-muted">Episode: ${escapeHtml(episodeConfig.type ?? 'anchor.benchmark.episode-config')} | Attempts: ${escapeHtml((episodeConfig.allowedAttemptSources ?? []).join(', ') || 'defined by mode')}</div>
         ${plannerSetupHtml}
       </section>
+      ${adaptivePanelHtml}
       <section class="console-section">
         <h2>Saved Attempt Sessions</h2>
         ${savedAttemptSessions.length ? `
@@ -1317,7 +1353,7 @@ export class MissionConsole {
         ` : '<div class="hud-muted">No saved Planner Benchmark attempt sessions are stored in this browser yet.</div>'}
       </section>
       <section class="console-section">
-        <h2>P2/P5 Status</h2>
+        <h2>P2/P5/P6 Status</h2>
         <div class="panel-stack">
           <div><strong>Implemented now</strong><ul>${p1Implemented.map((item) => `<li>${escapeHtml(item)}</li>`).join('')}</ul></div>
           <div><strong>Not implemented yet</strong><ul>${p1NotImplemented.map((item) => `<li>${escapeHtml(item)}</li>`).join('')}</ul></div>
@@ -1351,7 +1387,7 @@ export class MissionConsole {
         <h2>Export</h2>
         <button data-action="export-benchmark-config" class="console-button">Export Benchmark Config JSON</button>
         <button data-action="export-benchmark-episode" class="console-button secondary">Export Benchmark Episode JSON</button>
-        <div class="hud-muted">Exports anchor.benchmark.mode-config and anchor.benchmark.episode-config. P2 debrief can export run-record, route-execution, and attempt-set JSON.</div>
+        <div class="hud-muted">Exports anchor.benchmark.mode-config and anchor.benchmark.episode-config. P2 debrief can export run-record, route-execution, and attempt-set JSON. Adaptive Benchmark also exports P6 mission-manager records.</div>
       </section>
       <section class="console-footer">
         <button data-action="menu" class="console-button secondary">Main Menu</button>
@@ -1366,7 +1402,18 @@ export class MissionConsole {
       'benchmark-open-planner-evaluation': handlers.openPlannerEvaluation,
       'export-benchmark-config': handlers.exportConfig,
       'export-benchmark-episode': handlers.exportEpisode,
+      'export-adaptive-manager-config': handlers.exportAdaptiveManagerConfig,
+      'export-adaptive-manager-state': handlers.exportAdaptiveManagerState,
+      'export-adaptive-objective-transition': handlers.exportAdaptiveObjectiveTransition,
+      'export-adaptive-surfacing-event': handlers.exportAdaptiveSurfacingEvent,
+      'export-adaptive-manager-preview': handlers.exportAdaptiveManagerPreview,
       menu: handlers.menu
+    });
+    this.root.querySelector('#adaptive-benchmark-fixture')?.addEventListener('change', (event) => {
+      handlers.selectAdaptiveFixture?.(event.target.value);
+    });
+    this.root.querySelector('#adaptive-benchmark-policy')?.addEventListener('change', (event) => {
+      handlers.selectAdaptivePolicy?.(event.target.value);
     });
   }
 
@@ -1399,7 +1446,7 @@ function benchmarkAuthorityText(value, kind) {
 function benchmarkModeBoundaryText(mode) {
   return {
     plannerBenchmark: 'Objective is fixed. Plan manually, use Greedy Planner, or import a solver plan. Execute through the existing simulator and compare results in Debrief.',
-    adaptiveBenchmark: 'Mission manager objective updates are defined by contract; execution later.',
+    adaptiveBenchmark: 'Mission manager objective updates are previewed by a transparent P6 contract. The player or solver still chooses the route; adaptive route execution is not implemented yet.',
     fullAutonomyBenchmark: 'Solver/agent objective and route authority are defined by contract; execution later.'
   }[mode] ?? 'P2 integrates benchmark records with the existing simulator/debrief; it does not add a planner, scoring redesign, or MARL/RL.';
 }
@@ -1407,7 +1454,7 @@ function benchmarkModeBoundaryText(mode) {
 function benchmarkModeP1Text(mode) {
   return {
     plannerBenchmark: 'Objective is fixed. Player or solver chooses route through existing planning, simulator, and debrief systems.',
-    adaptiveBenchmark: 'Mission manager objective updates are contract-defined placeholders; execution later.',
+    adaptiveBenchmark: 'Mission manager recommends objectives from observations, uncertainty, forecast error, hidden-event suspicion, staleness, and mission state; player or solver chooses the route.',
     fullAutonomyBenchmark: 'Solver/agent objective and route authority are contract-defined placeholders; execution later.'
   }[mode] ?? 'Benchmark route-execution contract overview.';
 }
@@ -1787,5 +1834,9 @@ function escapeHtml(value) {
 function escapeAttr(value) {
   return escapeHtml(value).replace(/`/g, '&#096;');
 }
+
+
+
+
 
 

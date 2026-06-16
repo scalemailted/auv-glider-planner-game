@@ -1,4 +1,4 @@
-# Benchmark Modes
+﻿# Benchmark Modes
 
 P0 defines the benchmark architecture skeleton. P1 adds adapter-only route-execution and mission-evaluation contracts that wrap existing planning, simulation, and debrief data. P1 does not implement a new planner, redesign scoring, or add MARL.
 
@@ -32,7 +32,7 @@ This mode is for comparing manual planning, Greedy Planner routes, imported rout
 - default fairness label: Belief-only
 - default world-model tier: `stochasticBelief`
 
-This mode is intended for forecast correction, hidden-event confirmation, boundary mapping, source follow-up, and stale-region revisit. P0 does not implement the objective manager.
+This mode is intended for forecast correction, hidden-event confirmation, boundary mapping, source follow-up, and stale-region revisit. P6 adds a transparent mission-manager contract, diagnosis model, objective-transition policy, preview fixtures, and adaptive exports. It does not execute adaptive routes, add a new planner, redesign scoring, or add MARL/RL.
 
 ## Full Autonomy Benchmark
 
@@ -92,7 +92,7 @@ Benchmark overview exports use:
 }
 ```
 
-The mode-config export includes objective authority, route authority, information-access tier, world-model tier, fairness label, implemented systems, missing systems, and limitations. P1 also defines `anchor.benchmark.episode-config`, `anchor.benchmark.run-record`, `anchor.benchmark.route-execution`, and `anchor.benchmark.attempt-set` exports.
+The mode-config export includes objective authority, route authority, information-access tier, world-model tier, fairness label, implemented systems, missing systems, and limitations. P1 also defines `anchor.benchmark.episode-config`, `anchor.benchmark.run-record`, `anchor.benchmark.route-execution`, and `anchor.benchmark.attempt-set` exports. P6 adds `anchor.benchmark.adaptive-manager-config`, `anchor.benchmark.adaptive-manager-state`, `anchor.benchmark.adaptive-objective-transition`, `anchor.benchmark.adaptive-surfacing-event`, and `anchor.benchmark.adaptive-manager-preview`.
 
 ## What P0/P1 Do Not Implement
 
@@ -104,12 +104,19 @@ P2 makes `plannerBenchmark` executable through the existing mission loop. Planne
 
 ## P3 Planner Benchmark Comparison
 
-Planner Benchmark now has a Debrief comparison layer for fixed-objective attempts. Adaptive Benchmark and Full Autonomy Benchmark remain contract-only. P3 does not implement route planning, mission scoring, adaptive objective switching, or MARL/RL.
+Planner Benchmark now has a Debrief comparison layer for fixed-objective attempts. Adaptive Benchmark has a P6 mission-manager preview contract, while Full Autonomy Benchmark remains contract-only. P3 does not implement route planning, mission scoring, adaptive route execution, or MARL/RL.
 
 ## P4 Planner Benchmark Route Overlay
 
-Planner Benchmark Debrief now includes a Route Overlay / Map for existing planned or executed routes, with layer controls, segment/waypoint details, and an `anchor.benchmark.route-overlay` export. Adaptive Benchmark and Full Autonomy Benchmark remain contract-only. P4 does not implement route planning, mission scoring, adaptive objective switching, or MARL/RL. See [Planner Benchmark Route Overlay](planner_benchmark_route_overlay.md).
+Planner Benchmark Debrief now includes a Route Overlay / Map for existing planned or executed routes, with layer controls, segment/waypoint details, and an `anchor.benchmark.route-overlay` export. Adaptive Benchmark has a P6 mission-manager preview contract, while Full Autonomy Benchmark remains contract-only. P4 does not implement route planning, mission scoring, adaptive route execution, or MARL/RL. See [Planner Benchmark Route Overlay](planner_benchmark_route_overlay.md).
 
 ## P5 Planner Benchmark Attempt Import / Persistence
 
-Planner Benchmark Debrief now supports compact browser-local attempt sessions, compatible benchmark artifact import, and nchor.benchmark.attempt-session export. Adaptive Benchmark and Full Autonomy Benchmark remain contract-only. P5 does not implement route planning, scoring redesign, adaptive objective switching, full autonomy, or MARL/RL. See [Planner Benchmark Attempt Import / Persistence](planner_benchmark_attempt_import_persistence.md).
+Planner Benchmark Debrief now supports compact browser-local attempt sessions, compatible benchmark artifact import, and `anchor.benchmark.attempt-session` export. Adaptive Benchmark has a P6 mission-manager preview contract, while Full Autonomy Benchmark remains contract-only. P5 does not implement route planning, scoring redesign, adaptive route execution, full autonomy, or MARL/RL. See [Planner Benchmark Attempt Import / Persistence](planner_benchmark_attempt_import_persistence.md).
+
+## P6 Adaptive Benchmark Mission Manager
+
+Adaptive Benchmark now exposes a mission-manager preview UI and export path. The manager uses synthetic observation, uncertainty, forecast-error, hidden-event, staleness, source-localization, hazard, and mission-state signals to recommend the next objective. The player or solver still chooses the route.
+
+P6 adds `AdaptiveMissionManagerContract`, `AdaptiveDiagnosisModel`, `AdaptiveObjectivePolicy`, manager state, surfacing-event records, fixtures, view model, UI panel, debug fields, and adaptive benchmark exports. It does not add adaptive route execution, a new planner, scoring redesign, full autonomy, MARL/RL, or calibrated ocean data assimilation. See [Adaptive Benchmark Mission Manager](adaptive_benchmark_mission_manager.md).
+

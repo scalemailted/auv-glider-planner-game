@@ -1,4 +1,4 @@
-# Planner Benchmark Attempt Import / Persistence
+﻿# Planner Benchmark Attempt Import / Persistence
 
 P5 adds browser-side attempt-session persistence and benchmark artifact import for Planner Benchmark debriefs.
 
@@ -68,3 +68,6 @@ node tools/js/smoke_benchmark_import_view_model.mjs
 node tools/js/smoke_benchmark_import_panel.mjs
 node tools/js/smoke_benchmark_attempt_session_export.mjs
 ```
+## P6 Adaptive Export Boundary
+
+P6 adaptive manager exports are preview artifacts, not rerunnable route attempts. `anchor.benchmark.adaptive-manager-preview`, manager state, objective-transition, and surfacing-event files document mission-manager decisions. They are not merged into Planner Benchmark attempt sessions and do not recompute scores or route geometry.

@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test';
+﻿import { expect, test } from '@playwright/test';
 import fs from 'node:fs/promises';
 import { startStaticServer } from './static-server.mjs';
 
@@ -294,16 +294,51 @@ test('Benchmark modes overview opens from Simulation Lab', async ({ page }) => {
   const episodeJson = JSON.parse(await fs.readFile(episodePath, 'utf8'));
   expect(episodeJson.type).toBe('anchor.benchmark.episode-config');
 
-  await page.locator('#mission-console [data-action="menu"]').click();
+  await page.goto('/');
+  await expect.poll(() => page.evaluate(() => window.anchorGame?.phaser?.scene.getScene('MainMenuScene')?.sys.isActive() ?? false)).toBe(true);
+  await expect(page.locator('#mission-console')).toContainText('Simulation Lab');
   await expandMissionConsoleSection(page, 'Simulation Lab');
   await page.locator('#mission-console [data-action="benchmark-adaptive"]').click();
+  await expect.poll(() => page.evaluate(() => window.ANCHOR_BENCHMARK_MODE_DEBUG?.benchmarkMode)).toBe('adaptiveBenchmark');
   await expect(page.locator('#mission-console')).toContainText('Adaptive Benchmark');
-  await expect(page.locator('#mission-console')).toContainText('Mission manager objective updates are defined by contract; execution later');
-  await expect(page.locator('#mission-console')).toContainText('Player or solver chooses route');
+  await expect(page.locator('#mission-console')).toContainText('Mission Manager');
+  await expect(page.locator('#mission-console')).toContainText('Objective Authority');
+  await expect(page.locator('#mission-console')).toContainText('The player or solver still chooses the route');
+  await expect(page.locator('#mission-console')).toContainText('route planning');
+  await expect(page.locator('#mission-console')).toContainText('P6 does not implement full route execution');
+  await expect(page.locator('#mission-console')).toContainText('Likely Forecast Error');
+  await expect(page.locator('#mission-console')).toContainText('Validate Forecast');
+  await expect.poll(() => page.evaluate(() => window.ANCHOR_BENCHMARK_MODE_DEBUG?.adaptiveObjectiveAuthority)).toBe('missionManager');
+  await expect.poll(() => page.evaluate(() => window.ANCHOR_BENCHMARK_MODE_DEBUG?.adaptiveRouteAuthority)).toBe('playerOrSolver');
+  await expect.poll(() => page.evaluate(() => window.ANCHOR_BENCHMARK_MODE_DEBUG?.usesRoutePlanning)).toBe(false);
+  await expect.poll(() => page.evaluate(() => window.ANCHOR_BENCHMARK_MODE_DEBUG?.usesMARL)).toBe(false);
 
-  await page.locator('#mission-console [data-action="menu"]').click();
+  await page.locator('#adaptive-benchmark-fixture').selectOption('possibleHiddenPlume');
+  await expect(page.locator('#mission-console')).toContainText('Possible Hidden Event');
+  await expect(page.locator('#mission-console')).toContainText('Confirm Hidden Event');
+  await page.locator('#adaptive-benchmark-fixture').selectOption('staleMonitoringRevisit');
+  await expect(page.locator('#mission-console')).toContainText('Stale Region Needs Revisit');
+  await expect(page.locator('#mission-console')).toContainText('Revisit Stale Region');
+
+  const [adaptivePreviewDownload] = await Promise.all([
+    page.waitForEvent('download'),
+    page.locator('#mission-console [data-action="export-adaptive-manager-preview"]').click()
+  ]);
+  const adaptivePreviewPath = await adaptivePreviewDownload.path();
+  const adaptivePreviewJson = JSON.parse(await fs.readFile(adaptivePreviewPath, 'utf8'));
+  expect(adaptivePreviewJson.type).toBe('anchor.benchmark.adaptive-manager-preview');
+  expect(adaptivePreviewJson.benchmarkMode).toBe('adaptiveBenchmark');
+  expect(adaptivePreviewJson.objectiveAuthority).toBe('missionManager');
+  expect(adaptivePreviewJson.routeAuthority).toBe('playerOrSolver');
+  expect(adaptivePreviewJson.usesRoutePlanning).toBe(false);
+  expect(adaptivePreviewJson.usesMARL).toBe(false);
+
+  await page.goto('/');
+  await expect.poll(() => page.evaluate(() => window.anchorGame?.phaser?.scene.getScene('MainMenuScene')?.sys.isActive() ?? false)).toBe(true);
+  await expect(page.locator('#mission-console')).toContainText('Simulation Lab');
   await expandMissionConsoleSection(page, 'Simulation Lab');
   await page.locator('#mission-console [data-action="benchmark-full-autonomy"]').click();
+  await expect.poll(() => page.evaluate(() => window.ANCHOR_BENCHMARK_MODE_DEBUG?.benchmarkMode)).toBe('fullAutonomyBenchmark');
   await expect(page.locator('#mission-console')).toContainText('Full Autonomy Benchmark');
   await expect(page.locator('#mission-console')).toContainText('Solver/agent chooses objective and route');
   await expect(page.locator('#mission-console')).toContainText('Solver/agent objective and route authority are defined by contract; execution later');
@@ -2786,6 +2821,10 @@ async function cellCenter(page, x, y) {
     };
   }, { x, y });
 }
+
+
+
+
 
 
 

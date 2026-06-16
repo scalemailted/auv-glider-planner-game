@@ -1,4 +1,4 @@
-import { BENCHMARK_MODE_CONTRACT_VERSION, createBenchmarkModeConfig } from './BenchmarkModeContract.js';
+﻿import { BENCHMARK_MODE_CONTRACT_VERSION, createBenchmarkModeConfig } from './BenchmarkModeContract.js';
 import { createBenchmarkModeState } from './BenchmarkModeState.js';
 import { MISSION_OBJECTIVE_TAXONOMY_VERSION } from './MissionObjectiveTaxonomy.js';
 import { BENCHMARK_RUN_RECORD_VERSION } from './BenchmarkRunRecord.js';
@@ -8,6 +8,32 @@ import {
   createRouteExecutionRecord
 } from './BenchmarkRouteExecutionRecord.js';
 import { BENCHMARK_ATTEMPT_SET_VERSION, createBenchmarkAttemptSet } from './BenchmarkAttemptRegistry.js';
+import {
+  ADAPTIVE_MISSION_MANAGER_CONTRACT_VERSION,
+  adaptiveMissionManagerSummary,
+  createAdaptiveMissionManagerConfig
+} from './AdaptiveMissionManagerContract.js';
+import {
+  ADAPTIVE_MISSION_MANAGER_STATE_VERSION,
+  adaptiveMissionManagerStateSummary,
+  createAdaptiveMissionManagerState
+} from './AdaptiveMissionManagerState.js';
+import {
+  ADAPTIVE_OBJECTIVE_POLICY_VERSION,
+  adaptiveObjectiveTransitionSummary,
+  createAdaptiveObjectiveTransitionRecord
+} from './AdaptiveObjectivePolicy.js';
+import {
+  ADAPTIVE_SURFACING_EVENT_VERSION,
+  adaptiveSurfacingEventSummary,
+  createAdaptiveSurfacingEvent
+} from './AdaptiveSurfacingEvent.js';
+import { runAdaptiveManagerFixture } from './AdaptiveMissionManagerFixtures.js';
+import {
+  ADAPTIVE_BENCHMARK_VIEW_MODEL_VERSION,
+  adaptiveBenchmarkViewModelSummary,
+  buildAdaptiveBenchmarkViewModel
+} from './AdaptiveBenchmarkViewModel.js';
 
 export const BENCHMARK_MODE_CONFIG_EXPORT_TYPE = 'anchor.benchmark.mode-config';
 export const BENCHMARK_MODE_CONFIG_EXPORT_VERSION = 'benchmark-mode-config-export-p0';
@@ -16,6 +42,12 @@ export const BENCHMARK_RUN_RECORD_EXPORT_TYPE = 'anchor.benchmark.run-record';
 export const BENCHMARK_ROUTE_EXECUTION_EXPORT_TYPE = 'anchor.benchmark.route-execution';
 export const BENCHMARK_ATTEMPT_SET_EXPORT_TYPE = 'anchor.benchmark.attempt-set';
 export const BENCHMARK_P1_EXPORT_VERSION = 'benchmark-contract-export-p1';
+export const BENCHMARK_ADAPTIVE_EXPORT_VERSION = 'benchmark-adaptive-export-p6';
+export const BENCHMARK_ADAPTIVE_MANAGER_CONFIG_EXPORT_TYPE = 'anchor.benchmark.adaptive-manager-config';
+export const BENCHMARK_ADAPTIVE_MANAGER_STATE_EXPORT_TYPE = 'anchor.benchmark.adaptive-manager-state';
+export const BENCHMARK_ADAPTIVE_OBJECTIVE_TRANSITION_EXPORT_TYPE = 'anchor.benchmark.adaptive-objective-transition';
+export const BENCHMARK_ADAPTIVE_SURFACING_EVENT_EXPORT_TYPE = 'anchor.benchmark.adaptive-surfacing-event';
+export const BENCHMARK_ADAPTIVE_MANAGER_PREVIEW_EXPORT_TYPE = 'anchor.benchmark.adaptive-manager-preview';
 
 export function buildBenchmarkModeConfigExport(options = {}) {
   const benchmarkModeConfig = createBenchmarkModeConfig(options);
@@ -43,6 +75,7 @@ export function buildBenchmarkModeConfigExport(options = {}) {
     notes: [
       'P0 defines benchmark architecture contracts only.',
       'P2 emits benchmark run, route-execution, and attempt-set records from existing planning, simulation, and debrief data.',
+      'P6 adds Adaptive Benchmark mission-manager preview exports without adaptive route execution.',
       'Route planning, mission scoring, and MARL/RL training are not implemented by this export.',
       ...(Array.isArray(options.notes) ? options.notes : [])
     ]
@@ -100,6 +133,105 @@ export function buildBenchmarkAttemptSetExport(attemptSet = {}, options = {}) {
   };
 }
 
+export function buildAdaptiveManagerConfigExport(configOrOptions = {}, options = {}) {
+  const config = configOrOptions?.type === BENCHMARK_ADAPTIVE_MANAGER_CONFIG_EXPORT_TYPE
+    ? configOrOptions
+    : createAdaptiveMissionManagerConfig(configOrOptions);
+  return {
+    ...cloneJson(config),
+    exportVersion: BENCHMARK_ADAPTIVE_EXPORT_VERSION,
+    adaptiveManagerContractVersion: ADAPTIVE_MISSION_MANAGER_CONTRACT_VERSION,
+    createdAt: options.createdAt ?? new Date().toISOString(),
+    summary: adaptiveMissionManagerSummary(config),
+    boundaryFlags: adaptiveBoundaryFlags(),
+    notes: [
+      ...(Array.isArray(config.notes) ? config.notes : []),
+      'P6 Adaptive Benchmark config gives objective authority to the mission manager and route authority to the player or solver.'
+    ]
+  };
+}
+
+export function buildAdaptiveManagerStateExport(stateOrOptions = {}, options = {}) {
+  const state = stateOrOptions?.type === BENCHMARK_ADAPTIVE_MANAGER_STATE_EXPORT_TYPE
+    ? stateOrOptions
+    : createAdaptiveMissionManagerState(stateOrOptions);
+  return {
+    ...cloneJson(state),
+    exportVersion: BENCHMARK_ADAPTIVE_EXPORT_VERSION,
+    adaptiveManagerStateVersion: ADAPTIVE_MISSION_MANAGER_STATE_VERSION,
+    createdAt: options.createdAt ?? new Date().toISOString(),
+    summary: adaptiveMissionManagerStateSummary(state),
+    boundaryFlags: adaptiveBoundaryFlags()
+  };
+}
+
+export function buildAdaptiveObjectiveTransitionExport(transitionOrOptions = {}, options = {}) {
+  const transition = transitionOrOptions?.type === BENCHMARK_ADAPTIVE_OBJECTIVE_TRANSITION_EXPORT_TYPE
+    ? transitionOrOptions
+    : createAdaptiveObjectiveTransitionRecord(transitionOrOptions);
+  return {
+    ...cloneJson(transition),
+    exportVersion: BENCHMARK_ADAPTIVE_EXPORT_VERSION,
+    adaptiveObjectivePolicyVersion: ADAPTIVE_OBJECTIVE_POLICY_VERSION,
+    createdAt: options.createdAt ?? new Date().toISOString(),
+    summary: adaptiveObjectiveTransitionSummary(transition),
+    boundaryFlags: adaptiveBoundaryFlags()
+  };
+}
+
+export function buildAdaptiveSurfacingEventExport(eventOrOptions = {}, options = {}) {
+  const event = eventOrOptions?.type === BENCHMARK_ADAPTIVE_SURFACING_EVENT_EXPORT_TYPE
+    ? eventOrOptions
+    : createAdaptiveSurfacingEvent(eventOrOptions);
+  return {
+    ...cloneJson(event),
+    exportVersion: BENCHMARK_ADAPTIVE_EXPORT_VERSION,
+    adaptiveSurfacingEventVersion: ADAPTIVE_SURFACING_EVENT_VERSION,
+    createdAt: options.createdAt ?? new Date().toISOString(),
+    summary: adaptiveSurfacingEventSummary(event),
+    boundaryFlags: adaptiveBoundaryFlags()
+  };
+}
+
+export function buildAdaptiveManagerPreviewExport(previewOrOptions = {}, options = {}) {
+  const source = previewOrOptions.viewModel || previewOrOptions.managerConfig
+    ? previewOrOptions
+    : runAdaptiveManagerFixture(previewOrOptions.fixtureId ?? options.fixtureId ?? 'shiftedFrontForecastError', previewOrOptions);
+  const viewModel = source.viewModel ?? buildAdaptiveBenchmarkViewModel({
+    managerConfig: source.managerConfig,
+    managerState: source.managerState,
+    evidence: source.evidence,
+    diagnosis: source.diagnosis,
+    transition: source.transition,
+    fixture: source
+  });
+  return {
+    type: BENCHMARK_ADAPTIVE_MANAGER_PREVIEW_EXPORT_TYPE,
+    version: BENCHMARK_ADAPTIVE_EXPORT_VERSION,
+    adaptiveBenchmarkViewModelVersion: ADAPTIVE_BENCHMARK_VIEW_MODEL_VERSION,
+    createdAt: options.createdAt ?? new Date().toISOString(),
+    benchmarkMode: 'adaptiveBenchmark',
+    objectiveAuthority: 'missionManager',
+    routeAuthority: 'playerOrSolver',
+    fixtureId: source.fixtureId ?? viewModel.fixtureId ?? null,
+    managerConfig: cloneJson(source.managerConfig),
+    managerState: cloneJson(source.managerState),
+    evidence: cloneJson(source.evidence),
+    diagnosis: cloneJson(source.diagnosis),
+    transition: cloneJson(source.transition),
+    viewModel: cloneJson(viewModel),
+    summary: adaptiveBenchmarkViewModelSummary(viewModel),
+    boundaryFlags: adaptiveBoundaryFlags(),
+    usesRoutePlanning: false,
+    usesMissionScoring: false,
+    usesMARL: false,
+    notes: [
+      'P6 Adaptive Benchmark preview is contract-first and does not execute adaptive routes.',
+      'The mission manager recommends objectives; route planning remains with the player or solver.'
+    ]
+  };
+}
+
 export function benchmarkModeConfigFilename(config = {}) {
   const mode = createBenchmarkModeConfig(config).benchmarkMode;
   return `anchor-benchmark-mode-config-${mode}.json`;
@@ -108,6 +240,28 @@ export function benchmarkModeConfigFilename(config = {}) {
 export function benchmarkEpisodeConfigFilename(config = {}) {
   const mode = createBenchmarkEpisodeConfig(config).benchmarkMode;
   return `anchor-benchmark-episode-${mode}.json`;
+}
+
+export function adaptiveBenchmarkExportFilename(kind = 'preview', options = {}) {
+  const fixture = options.fixtureId ? `-${sanitizeFilename(options.fixtureId)}` : '';
+  return `anchor-adaptive-benchmark-${sanitizeFilename(kind)}${fixture}.json`;
+}
+
+function adaptiveBoundaryFlags() {
+  return {
+    objectiveAuthority: 'missionManager',
+    routeAuthority: 'playerOrSolver',
+    usesAdaptiveMissionManager: true,
+    usesRoutePlanning: false,
+    usesMissionScoring: false,
+    usesMARL: false,
+    usesProductionDataAssimilation: false,
+    adaptiveExecutionImplemented: false
+  };
+}
+
+function sanitizeFilename(value) {
+  return String(value ?? 'export').replace(/[^a-z0-9_-]+/gi, '-').replace(/^-+|-+$/g, '') || 'export';
 }
 
 function normalizeNotes(notes) {

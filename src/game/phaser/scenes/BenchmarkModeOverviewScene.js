@@ -1,8 +1,14 @@
-import { createBenchmarkModeConfig, benchmarkModeSummary } from '../../../core/benchmark/BenchmarkModeContract.js';
+﻿import { createBenchmarkModeConfig, benchmarkModeSummary } from '../../../core/benchmark/BenchmarkModeContract.js';
 import { createBenchmarkModeState } from '../../../core/benchmark/BenchmarkModeState.js';
 import {
+  adaptiveBenchmarkExportFilename,
   benchmarkEpisodeConfigFilename,
   benchmarkModeConfigFilename,
+  buildAdaptiveManagerConfigExport,
+  buildAdaptiveManagerPreviewExport,
+  buildAdaptiveManagerStateExport,
+  buildAdaptiveObjectiveTransitionExport,
+  buildAdaptiveSurfacingEventExport,
   buildBenchmarkEpisodeConfigExport,
   buildBenchmarkModeConfigExport
 } from '../../../core/benchmark/BenchmarkModeExporter.js';
@@ -13,6 +19,9 @@ import { missionObjectiveOptions } from '../../../core/benchmark/MissionObjectiv
 import { openPlannerBenchmarkSetup } from '../../../core/benchmark/BenchmarkLaunchBridge.js';
 import { downloadJSON } from '../../../core/io/ImportExport.js';
 import { listBenchmarkAttemptSessions } from '../../../core/benchmark/BenchmarkAttemptPersistence.js';
+import { ADAPTIVE_MISSION_MANAGER_CONTRACT_VERSION, adaptiveManagerPolicyOptions } from '../../../core/benchmark/AdaptiveMissionManagerContract.js';
+import { adaptiveManagerFixtureOptions, runAdaptiveManagerFixture } from '../../../core/benchmark/AdaptiveMissionManagerFixtures.js';
+import { buildAdaptiveBenchmarkViewModel } from '../../../core/benchmark/AdaptiveBenchmarkViewModel.js';
 
 const PhaserScene = globalThis.Phaser?.Scene ?? class {};
 
@@ -39,6 +48,8 @@ export class BenchmarkModeOverviewScene extends PhaserScene {
       phase: 'setup',
       activeAttemptSource: this.config.benchmarkMode === 'fullAutonomyBenchmark' ? 'externalSolver' : 'manualPlayer'
     });
+    this.adaptiveFixtureId = data.adaptiveFixtureId ?? 'shiftedFrontForecastError';
+    this.adaptivePolicyId = data.adaptivePolicyId ?? 'transparentRuleManager';
   }
 
   create() {
@@ -61,19 +72,68 @@ export class BenchmarkModeOverviewScene extends PhaserScene {
     this.draw();
   }
 
+  buildAdaptivePreview() {
+    if (this.config.benchmarkMode !== 'adaptiveBenchmark') return null;
+    const fixture = runAdaptiveManagerFixture(this.adaptiveFixtureId, {
+      policyId: this.adaptivePolicyId,
+      episodeId: this.episodeState?.episodeId ?? this.episodeConfig?.episodeId
+    });
+    const viewModel = buildAdaptiveBenchmarkViewModel({
+      managerConfig: fixture.managerConfig,
+      managerState: fixture.managerState,
+      evidence: fixture.evidence,
+      diagnosis: fixture.diagnosis,
+      transition: fixture.transition,
+      fixture
+    });
+    return { ...fixture, viewModel };
+  }
+
   renderConsole() {
+    const adaptivePreview = this.buildAdaptivePreview();
     const p2ImplementedSystems = ['benchmarkEpisodeRuntime', 'benchmarkAttemptSession', 'benchmarkResultAdapter', 'result/debrief adapter'];
+    const adaptiveImplemented = this.config.benchmarkMode === 'adaptiveBenchmark'
+      ? [
+          'adaptive mission-manager contract',
+          'adaptive diagnosis model',
+          'objective-transition policy',
+          'surfacing/communication records',
+          'adaptive manager preview',
+          'adaptive manager exports'
+        ]
+      : [];
+    const p1NotImplemented = this.config.benchmarkMode === 'adaptiveBenchmark'
+      ? [
+          'adaptive route execution',
+          'new route planner',
+          'mission scoring redesign',
+          'full autonomy',
+          'MARL/RL',
+          'production data assimilation'
+        ]
+      : [
+          'new route planner',
+          'mission-manager objective switching',
+          'full autonomy',
+          'MARL/RL',
+          'production scoring redesign'
+        ];
     this.app.console?.renderBenchmarkModeOverviewControls?.({
       config: this.config,
       state: {
         ...this.state,
-        implementedSystems: [...this.state.implementedSystems, ...p2ImplementedSystems]
+        implementedSystems: [...this.state.implementedSystems, ...p2ImplementedSystems, ...adaptiveImplemented]
       },
       summary: benchmarkModeSummary(this.config),
       episodeConfig: this.episodeConfig,
       episodeState: this.episodeState,
-      objectiveOptions: missionObjectiveOptions().slice(0, 6),
+      objectiveOptions: missionObjectiveOptions().slice(0, 8),
       savedAttemptSessions: this.savedBenchmarkAttemptSessionSummaries(),
+      adaptivePreview,
+      adaptiveFixtureId: this.adaptiveFixtureId,
+      adaptivePolicyId: this.adaptivePolicyId,
+      adaptiveFixtureOptions: adaptiveManagerFixtureOptions(),
+      adaptivePolicyOptions: adaptiveManagerPolicyOptions(),
       p1Implemented: [
         'benchmark mode config',
         'episode metadata propagation',
@@ -81,18 +141,20 @@ export class BenchmarkModeOverviewScene extends PhaserScene {
         'result/debrief adapter',
         'benchmark run-record export from Debrief',
         'route-execution export from Debrief',
-        'attempt-set comparison export'
+        'attempt-set comparison export',
+        ...adaptiveImplemented
       ],
-      p1NotImplemented: [
-        'new route planner',
-        'mission-manager objective switching',
-        'full autonomy',
-        'MARL/RL',
-        'production scoring redesign'
-      ]
+      p1NotImplemented
     }, {
       exportConfig: () => this.exportConfigJson(),
       exportEpisode: () => this.exportEpisodeConfigJson(),
+      exportAdaptiveManagerConfig: () => this.exportAdaptiveManagerConfigJson(),
+      exportAdaptiveManagerState: () => this.exportAdaptiveManagerStateJson(),
+      exportAdaptiveObjectiveTransition: () => this.exportAdaptiveObjectiveTransitionJson(),
+      exportAdaptiveSurfacingEvent: () => this.exportAdaptiveSurfacingEventJson(),
+      exportAdaptiveManagerPreview: () => this.exportAdaptiveManagerPreviewJson(),
+      selectAdaptiveFixture: (fixtureId) => this.selectAdaptiveFixture(fixtureId),
+      selectAdaptivePolicy: (policyId) => this.selectAdaptivePolicy(policyId),
       openBenchmarkSetup: () => this.openPlannerBenchmarkSetup(),
       openSamplingPriority: () => this.scene.start('SamplingPriorityDemoScene'),
       openFlowCoupledSampling: () => this.scene.start('FlowCoupledSamplingDemoScene'),
@@ -100,6 +162,20 @@ export class BenchmarkModeOverviewScene extends PhaserScene {
       openPlannerEvaluation: () => this.scene.start('DatasetExportScene'),
       menu: () => this.scene.start('MainMenuScene')
     });
+  }
+
+  selectAdaptiveFixture(fixtureId) {
+    this.adaptiveFixtureId = fixtureId;
+    this.renderConsole();
+    this.refreshDebugObject();
+    this.draw();
+  }
+
+  selectAdaptivePolicy(policyId) {
+    this.adaptivePolicyId = policyId;
+    this.renderConsole();
+    this.refreshDebugObject();
+    this.draw();
   }
 
   savedBenchmarkAttemptSessionSummaries() {
@@ -122,9 +198,47 @@ export class BenchmarkModeOverviewScene extends PhaserScene {
     downloadJSON(benchmarkEpisodeConfigFilename(this.episodeConfig), exportData);
   }
 
+  exportAdaptiveManagerConfigJson() {
+    const preview = this.buildAdaptivePreview();
+    if (!preview) return;
+    downloadJSON(adaptiveBenchmarkExportFilename('manager-config', { fixtureId: this.adaptiveFixtureId }), buildAdaptiveManagerConfigExport(preview.managerConfig));
+  }
+
+  exportAdaptiveManagerStateJson() {
+    const preview = this.buildAdaptivePreview();
+    if (!preview) return;
+    downloadJSON(adaptiveBenchmarkExportFilename('manager-state', { fixtureId: this.adaptiveFixtureId }), buildAdaptiveManagerStateExport(preview.managerState));
+  }
+
+  exportAdaptiveObjectiveTransitionJson() {
+    const preview = this.buildAdaptivePreview();
+    if (!preview) return;
+    downloadJSON(adaptiveBenchmarkExportFilename('objective-transition', { fixtureId: this.adaptiveFixtureId }), buildAdaptiveObjectiveTransitionExport(preview.transition));
+  }
+
+  exportAdaptiveSurfacingEventJson() {
+    const preview = this.buildAdaptivePreview();
+    if (!preview) return;
+    downloadJSON(adaptiveBenchmarkExportFilename('surfacing-event', { fixtureId: this.adaptiveFixtureId }), buildAdaptiveSurfacingEventExport({
+      episodeId: this.episodeState.episodeId,
+      time: preview.evidence.time,
+      samplesUploaded: preview.evidence.observationCount,
+      observationsReceived: preview.evidence.recentObservationCount,
+      diagnosisTriggered: true,
+      objectiveUpdateAllowed: true,
+      notes: ['Synthetic P6 surfacing event generated from adaptive benchmark preview.']
+    }));
+  }
+
+  exportAdaptiveManagerPreviewJson() {
+    const preview = this.buildAdaptivePreview();
+    if (!preview) return;
+    downloadJSON(adaptiveBenchmarkExportFilename('manager-preview', { fixtureId: this.adaptiveFixtureId }), buildAdaptiveManagerPreviewExport(preview));
+  }
+
   openPlannerBenchmarkSetup() {
     if (this.config.benchmarkMode !== 'plannerBenchmark') {
-      this.app.toast?.('Only Planner Benchmark has a P2 setup bridge. Adaptive and Full Autonomy remain contract-only.', 'info');
+      this.app.toast?.('Only Planner Benchmark has a P2 setup bridge. Adaptive Benchmark previews mission-manager decisions but does not execute adaptive routes.', 'info');
       return;
     }
     const result = openPlannerBenchmarkSetup({
@@ -139,12 +253,22 @@ export class BenchmarkModeOverviewScene extends PhaserScene {
   }
 
   refreshDebugObject() {
+    const adaptivePreview = this.buildAdaptivePreview();
     const supportedExportTypes = [
       'anchor.benchmark.mode-config',
       'anchor.benchmark.episode-config',
       'anchor.benchmark.run-record',
       'anchor.benchmark.route-execution',
-      'anchor.benchmark.attempt-set'
+      'anchor.benchmark.attempt-set',
+      'anchor.benchmark.route-overlay',
+      'anchor.benchmark.attempt-session'
+    ];
+    const adaptiveExportTypes = [
+      'anchor.benchmark.adaptive-manager-config',
+      'anchor.benchmark.adaptive-manager-state',
+      'anchor.benchmark.adaptive-objective-transition',
+      'anchor.benchmark.adaptive-surfacing-event',
+      'anchor.benchmark.adaptive-manager-preview'
     ];
     globalThis.ANCHOR_BENCHMARK_MODE_DEBUG = {
       ...this.state.debugFlags,
@@ -158,11 +282,12 @@ export class BenchmarkModeOverviewScene extends PhaserScene {
       usesExistingSimulation: true,
       usesExistingDebrief: true,
       supportedAttemptSources: [...BENCHMARK_ATTEMPT_SOURCE_IDS],
-      supportedExportTypes: [...supportedExportTypes, 'anchor.benchmark.route-overlay', 'anchor.benchmark.attempt-session'],
-      implementedSystems: [...this.state.implementedSystems, 'benchmarkEpisodeRuntime', 'benchmarkAttemptSession', 'benchmarkResultAdapter'],
+      supportedExportTypes: [...supportedExportTypes, ...(adaptivePreview ? adaptiveExportTypes : [])],
+      implementedSystems: [...this.state.implementedSystems, 'benchmarkEpisodeRuntime', 'benchmarkAttemptSession', 'benchmarkResultAdapter', ...(adaptivePreview ? ['adaptiveMissionManagerContract', 'adaptiveDiagnosisModel', 'adaptiveObjectivePolicy'] : [])],
       missingSystems: [...this.state.missingSystems],
       visibleLayers: [...this.state.visibleLayers],
-      exportFlags: { ...this.state.exportFlags, benchmarkEpisodeConfig: true, routeExecutionRecord: true }
+      exportFlags: { ...this.state.exportFlags, benchmarkEpisodeConfig: true, routeExecutionRecord: true, adaptiveManagerPreview: Boolean(adaptivePreview) },
+      ...(adaptivePreview ? adaptiveDebugFields(adaptivePreview, adaptiveExportTypes) : {})
     };
     globalThis.ANCHOR_BENCHMARK_EPISODE_DEBUG = {
       episodeId: this.episodeState.episodeId,
@@ -175,6 +300,29 @@ export class BenchmarkModeOverviewScene extends PhaserScene {
       routeAuthority: this.config.routeAuthority,
       fairnessLabel: this.config.fairnessLabel
     };
+    globalThis.ANCHOR_ADAPTIVE_BENCHMARK_DEBUG = adaptivePreview ? {
+      version: ADAPTIVE_MISSION_MANAGER_CONTRACT_VERSION,
+      fixtureId: adaptivePreview.fixtureId,
+      managerConfig: adaptivePreview.managerConfig,
+      managerState: adaptivePreview.managerState,
+      evidence: adaptivePreview.evidence,
+      diagnosis: adaptivePreview.diagnosis,
+      transition: adaptivePreview.transition,
+      viewModel: adaptivePreview.viewModel,
+      exports: {
+        managerConfig: 'anchor.benchmark.adaptive-manager-config',
+        managerState: 'anchor.benchmark.adaptive-manager-state',
+        objectiveTransition: 'anchor.benchmark.adaptive-objective-transition',
+        surfacingEvent: 'anchor.benchmark.adaptive-surfacing-event',
+        managerPreview: 'anchor.benchmark.adaptive-manager-preview'
+      },
+      usesRoutePlanning: false,
+      usesMissionScoring: false,
+      usesMARL: false
+    } : {
+      available: false,
+      benchmarkMode: this.config.benchmarkMode
+    };
   }
 
   draw() {
@@ -186,10 +334,11 @@ export class BenchmarkModeOverviewScene extends PhaserScene {
     const titleStyle = { fontFamily: 'system-ui', fontSize: '34px', color: '#eef6ff', fontStyle: '700' };
     const bodyStyle = { fontFamily: 'system-ui', fontSize: '18px', color: '#c7d7ee', lineSpacing: 8, wordWrap: { width: Math.max(420, width * 0.72) } };
     const mutedStyle = { fontFamily: 'system-ui', fontSize: '15px', color: '#8fa8c8', lineSpacing: 6, wordWrap: { width: Math.max(420, width * 0.72) } };
+    const adaptivePreview = this.buildAdaptivePreview();
     this.objects.push(this.add.text(x, y, this.config.label, titleStyle));
     y += 52;
-    this.objects.push(this.add.text(x, y, modeCardText(this.config.benchmarkMode), bodyStyle));
-    y += 88;
+    this.objects.push(this.add.text(x, y, modeCardText(this.config.benchmarkMode, adaptivePreview), bodyStyle));
+    y += adaptivePreview ? 120 : 88;
     this.objects.push(this.add.text(x, y, [
       `Objective authority: ${authorityLabel(this.config.objectiveAuthority)}`,
       `Route authority: ${authorityLabel(this.config.routeAuthority)}`,
@@ -197,9 +346,11 @@ export class BenchmarkModeOverviewScene extends PhaserScene {
       `World model tier: ${this.state.summary.worldModel.label}`
     ], bodyStyle));
     y += 128;
-    this.objects.push(this.add.text(x, y, 'P2 status: existing planning, simulator, and debrief can emit benchmark run, route-execution, and attempt-set records.', mutedStyle));
+    this.objects.push(this.add.text(x, y, adaptivePreview
+      ? `P6 status: mission-manager preview recommends ${adaptivePreview.viewModel.recommendedObjective.label} from ${adaptivePreview.viewModel.diagnosis.label}.`
+      : 'P2 status: existing planning, simulator, and debrief can emit benchmark run, route-execution, and attempt-set records.', mutedStyle));
     y += 60;
-    this.objects.push(this.add.text(x, y, 'Not implemented here: new route planner, mission-manager switching, full autonomy, MARL/RL, or production scoring redesign.', mutedStyle));
+    this.objects.push(this.add.text(x, y, 'Not implemented here: adaptive route execution, new route planner, mission scoring redesign, full autonomy, MARL/RL, or production data assimilation.', mutedStyle));
   }
 
   destroyObjects() {
@@ -208,7 +359,34 @@ export class BenchmarkModeOverviewScene extends PhaserScene {
   }
 }
 
-function modeCardText(mode) {
+function adaptiveDebugFields(preview, exportTypes) {
+  return {
+    adaptiveManagerContractVersion: ADAPTIVE_MISSION_MANAGER_CONTRACT_VERSION,
+    adaptiveManagerPolicyId: preview.managerConfig.policyId,
+    adaptiveFixtureId: preview.fixtureId,
+    adaptiveCurrentObjectiveId: preview.transition.fromObjectiveId,
+    adaptiveRecommendedObjectiveId: preview.transition.toObjectiveId,
+    adaptivePrimaryDiagnosis: preview.diagnosis.primaryDiagnosis,
+    adaptiveDiagnosisConfidence: preview.diagnosis.confidence,
+    adaptiveTransitionId: preview.transition.transitionId,
+    adaptiveObjectiveAuthority: 'missionManager',
+    adaptiveRouteAuthority: 'playerOrSolver',
+    adaptiveExportsAvailable: [...exportTypes],
+    adaptiveExecutionImplemented: false,
+    usesAdaptiveMissionManager: true,
+    usesRoutePlanning: false,
+    usesMissionScoring: false,
+    usesMARL: false
+  };
+}
+
+function modeCardText(mode, adaptivePreview = null) {
+  if (mode === 'adaptiveBenchmark' && adaptivePreview) {
+    return [
+      'Adaptive Benchmark gives objective authority to a transparent mission manager. The player or solver still chooses the route.',
+      `Preview fixture: ${adaptivePreview.label}. Diagnosis: ${adaptivePreview.viewModel.diagnosis.label}. Recommended objective: ${adaptivePreview.viewModel.recommendedObjective.label}.`
+    ];
+  }
   return {
     plannerBenchmark: 'Objective is fixed. Plan manually, use Greedy Planner, or import a solver plan. Execute through the existing simulator and compare results in Debrief.',
     adaptiveBenchmark: 'Mission manager objective updates are defined by contract; execution later.',

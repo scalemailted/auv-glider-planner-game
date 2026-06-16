@@ -1,4 +1,4 @@
-# Planner Benchmark Execution
+﻿# Planner Benchmark Execution
 
 P2 makes Planner Benchmark executable through the existing ANCHOR mission loop:
 
@@ -64,7 +64,7 @@ P2 kept attempt sessions in memory only. P5 adds browser-local compact attempt-s
 
 ## Other Modes
 
-Adaptive Benchmark and Full Autonomy Benchmark remain contract-only placeholders. Their authority splits and metadata are visible, but P2 does not execute adaptive objective management or autonomous solver/agent control.
+In P2, Adaptive Benchmark and Full Autonomy Benchmark were contract-only placeholders. In the current P6 state, Adaptive Benchmark has a mission-manager preview and adaptive export records, but it still does not execute adaptive routes or autonomous solver/agent control.
 
 
 ## P3 Attempt Comparison And Route Review
@@ -77,4 +77,5 @@ P4 adds Route Overlay / Map to Planner Benchmark Debrief. It draws the route fro
 
 ## P5 Attempt Import And Persistence
 
-P5 adds a Debrief panel for compact local attempt-session save/load, benchmark JSON import, compatible-attempt merge, and nchor.benchmark.attempt-session export. Imported attempts are not rerun and scores are not recomputed; stored metrics are compared as exported. See [Planner Benchmark Attempt Import / Persistence](planner_benchmark_attempt_import_persistence.md).
+P5 adds a Debrief panel for compact local attempt-session save/load, benchmark JSON import, compatible-attempt merge, and `anchor.benchmark.attempt-session` export. Imported attempts are not rerun and scores are not recomputed; stored metrics are compared as exported. See [Planner Benchmark Attempt Import / Persistence](planner_benchmark_attempt_import_persistence.md).
+

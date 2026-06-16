@@ -1,3 +1,8 @@
+﻿### P6 - Adaptive Benchmark Mission Manager Contract
+
+- Added Adaptive Benchmark mission-manager config, diagnosis, objective-transition policy, manager state, surfacing-event records, synthetic fixtures, preview view model, UI panel, adaptive exports, debug fields, smoke tests, and docs.
+- Adaptive Benchmark now means objective authority belongs to a transparent mission manager while route authority remains with the player or solver.
+- Preserved the boundary: P6 does not execute adaptive routes, add a route planner, redesign scoring, add full autonomy, add calibrated data assimilation, or train RL/MARL.
 ### P5 - Planner Benchmark Attempt Import / Persistence
 
 - Added benchmark artifact import for run-record, route-execution, attempt-set, attempt-session, comparison, route-overlay, and benchmark result JSON.
@@ -289,12 +294,13 @@ Ocean-Relevant Process Analogs are educational event/process-layer analogs. They
 
 ## P2 Planner Benchmark Execution Integration
 
-Planner Benchmark now carries episode metadata through the existing setup/planning/simulation/debrief path and exposes Debrief exports for benchmark run records, route execution records, and attempt sets. Adaptive Benchmark and Full Autonomy Benchmark remain contract-only. No planner algorithm, scoring redesign, MARL/RL, or adaptive objective execution was added.
+Planner Benchmark now carries episode metadata through the existing setup/planning/simulation/debrief path and exposes Debrief exports for benchmark run records, route execution records, and attempt sets. Later P6 adds an Adaptive Benchmark mission-manager preview, but P2 itself added no planner algorithm, scoring redesign, MARL/RL, or adaptive objective execution.
 
 ## P3 - Planner Benchmark Attempt Comparison UI
 
-P3 adds Debrief attempt comparison, route review, fairness/source labels, and `anchor.benchmark.comparison` export support. It preserves P0/P1/P2 fields and keeps Adaptive Benchmark and Full Autonomy Benchmark contract-only.
+P3 adds Debrief attempt comparison, route review, fairness/source labels, and `anchor.benchmark.comparison` export support. It preserves P0/P1/P2 fields; Adaptive Benchmark receives its mission-manager preview later in P6.
 
 ## P4 - Planner Benchmark Route Review Overlay
 
 P4 adds route geometry adaptation, Route Overlay / Map rendering, route review layer controls, segment/waypoint detail inspection, `anchor.benchmark.route-overlay` export support, and route overlay debug fields. It preserves P0/P1/P2/P3 fields and does not add a new planner, scoring redesign, MARL/RL, or adaptive objective execution.
+
