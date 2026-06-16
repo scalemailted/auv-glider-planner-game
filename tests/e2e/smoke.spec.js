@@ -371,6 +371,43 @@ test('Benchmark modes overview opens from Simulation Lab', async ({ page }) => {
   await expect(page.locator('#mission-console')).toContainText('Flow-Coupled Sampling Demo');
 });
 
+test('Headless Bundle Viewer opens from Simulation Lab and exports browser summary', async ({ page }) => {
+  await page.goto('/');
+  await expect(page.locator('#mission-console')).toContainText('Simulation Lab');
+  await expandMissionConsoleSection(page, 'Simulation Lab');
+  await expect(page.locator('#mission-console [data-accordion-key="simulation-lab"]')).toContainText('Headless Bundle Viewer');
+
+  await page.locator('#mission-console [data-action="headless-bundle-viewer"]').click();
+  await expect.poll(() => page.evaluate(() => window.anchorGame.phaser.scene.getScene('HeadlessBundleViewerScene').sys.isActive())).toBe(true);
+  await expect(page.locator('#mission-console')).toContainText('Headless Bundle Viewer');
+  await expect(page.locator('#mission-console')).toContainText('No bundle has been loaded');
+  await expect.poll(() => page.evaluate(() => window.ANCHOR_HEADLESS_BUNDLE_DEBUG?.bundleLoaded)).toBe(false);
+  await expect.poll(() => page.evaluate(() => window.ANCHOR_HEADLESS_BUNDLE_DEBUG?.usesPythonSimulator)).toBe(false);
+  await expect.poll(() => page.evaluate(() => window.ANCHOR_HEADLESS_BUNDLE_DEBUG?.usesNodeHeadlessRuntime)).toBe(true);
+
+  await page.locator('#mission-console [data-action="load-example-bundle"]').click();
+  await expect(page.locator('#mission-console')).toContainText('Visible Fields');
+  await expect(page.locator('#mission-console')).toContainText('Observations');
+  await expect(page.locator('#mission-console')).toContainText('Glider Tracks');
+  await expect(page.locator('#mission-console')).toContainText('Score Report');
+  await expect(page.locator('#mission-console')).toContainText('Visibility');
+  await expect(page.locator('#mission-console')).toContainText('Browser ANCHOR remains the official visual referee');
+  await expect.poll(() => page.evaluate(() => window.ANCHOR_HEADLESS_BUNDLE_DEBUG?.bundleLoaded)).toBe(true);
+  await expect.poll(() => page.evaluate(() => window.ANCHOR_HEADLESS_BUNDLE_DEBUG?.usesPythonSimulator)).toBe(false);
+  await expect.poll(() => page.evaluate(() => window.ANCHOR_HEADLESS_BUNDLE_DEBUG?.usesNodeHeadlessRuntime)).toBe(true);
+  await expect.poll(() => page.evaluate(() => window.ANCHOR_HEADLESS_BUNDLE_DEBUG?.usesMARL)).toBe(false);
+  await expect.poll(() => page.evaluate(() => window.ANCHOR_HEADLESS_BUNDLE_DEBUG?.browserSummaryExportAvailable)).toBe(true);
+
+  const [download] = await Promise.all([
+    page.waitForEvent('download'),
+    page.locator('#mission-console [data-action="export-browser-summary"]').click()
+  ]);
+  expect(download.suggestedFilename()).toBe('anchor_headless_bundle_browser_summary.json');
+  const summaryJson = JSON.parse(await fs.readFile(await download.path(), 'utf8'));
+  expect(summaryJson.type).toBe('anchor.browser.headless-bundle-summary');
+  expect(summaryJson.scoreSummary.headlessScoreIsOfficialBrowserScore).toBe(false);
+  expect(summaryJson.notA).toContain('not Python simulator');
+});
 test('Planner Benchmark debrief exports benchmark records from synthetic result', async ({ page }) => {
   await page.goto('/');
   await expect.poll(() => page.evaluate(() => window.anchorGame?.phaser?.scene.getScene('MainMenuScene')?.sys.isActive() ?? false)).toBe(true);
@@ -722,7 +759,7 @@ test('campaign planning smoke flow reaches debrief', async ({ page }) => {
   await expect(page.locator('#right-panel')).toHaveCount(0);
   await expect(page.locator('#context-panel')).toBeEmpty();
   await expect(page.locator('#mission-console')).toContainText('ANCHOR: Glider Command');
-  await expect(page.locator('#mission-console button.console-button')).toHaveCount(21);
+  await expect(page.locator('#mission-console button.console-button')).toHaveCount(22);
   await expect(page.locator('#mission-console .accordion-header')).toHaveCount(3);
   await expect(page.locator('#mission-console > .console-section')).toHaveCount(3);
   await expect(page.locator('#mission-console')).toContainText('Challenge Mode');
@@ -737,6 +774,7 @@ test('campaign planning smoke flow reaches debrief', async ({ page }) => {
   await expect(page.locator('#mission-console [data-accordion-key="simulation-lab"]')).toContainText('Deterministic Experiment');
   await expect(page.locator('#mission-console [data-accordion-key="simulation-lab"]')).toContainText('Mission Editor');
   await expect(page.locator('#mission-console [data-accordion-key="simulation-lab"]')).toContainText('Import / Export Tools');
+  await expect(page.locator('#mission-console [data-accordion-key="simulation-lab"]')).toContainText('Headless Bundle Viewer');
   await expect(page.locator('#mission-console [data-accordion-key="simulation-lab"]')).toContainText('Benchmark Leaderboard');
   await expect(page.locator('#mission-console [data-accordion-key="simulation-lab"]')).toContainText('Planner Benchmark');
   await expect(page.locator('#mission-console [data-accordion-key="simulation-lab"]')).toContainText('Adaptive Benchmark');

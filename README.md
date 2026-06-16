@@ -863,3 +863,9 @@ node tools/js/headless_oceanbox.mjs simulate --seed demo-001 --out tmp/oceanbox-
 ```
 
 See `docs/headless_node_oceanbox_runtime.md`.
+
+## H2 Headless Bundle Viewer
+
+Simulation Lab now includes a browser-side Headless Bundle Viewer under Editor & Import Tools. It imports Node/OceanBox-JS headless `bundle.json` files or separate JSON/CSV bundle files, validates hidden-truth visibility, displays visible fields, observations, glider tracks, score reports, and replay metadata, and exports `anchor.browser.headless-bundle-summary`.
+
+Use `node tools/js/headless_oceanbox.mjs simulate --seed demo-001 --out runs/public-demo --no-hidden-export --combined-json` to produce a public bundle for the viewer. This workflow is static-hosting compatible and does not add a Python simulator, official browser scoring replacement, new planner, calibrated ocean forecast, backend service, or MARL/RL environment. See [H2 browser headless bundle loader](docs/headless_bundle_loader.md).

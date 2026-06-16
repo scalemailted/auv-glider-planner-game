@@ -1,4 +1,4 @@
-﻿# H1 Node Headless / OceanBox-JS Runtime
+# H1 Node Headless / OceanBox-JS Runtime
 
 H1 adds a minimal Node.js headless runtime scaffold for ANCHOR-compatible mission experiments.
 
@@ -84,3 +84,15 @@ node tools/js/smoke_headless_bundle_writer.mjs
 node tools/js/smoke_headless_oceanbox_cli.mjs
 node tools/js/audit_headless_runtime_import_boundaries.mjs
 ```
+
+## H2 Browser Bundle Loader
+
+H2 adds a static-browser Headless Bundle Viewer under Simulation Lab / Editor & Import Tools. It loads `bundle.json` or separate JSON/CSV files, validates hidden-truth visibility, displays visible fields, observations, glider tracks, score report, replay metadata, and exports `anchor.browser.headless-bundle-summary`.
+
+Use `--combined-json` to write `bundle.json` next to the existing H1 bundle files:
+
+```bash
+node tools/js/headless_oceanbox.mjs simulate --seed demo-001 --out tmp/oceanbox-js-public --no-hidden-export --combined-json
+```
+
+H2 does not make the headless score official browser scoring and does not add a Python simulator, new planner, calibrated ocean forecast, backend service, or MARL/RL environment. See `docs/headless_bundle_loader.md`.

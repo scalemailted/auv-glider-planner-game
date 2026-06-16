@@ -1,4 +1,4 @@
-﻿# H0 Headless / Colab / OceanBox Schema Alignment
+# H0 Headless / Colab / OceanBox Schema Alignment
 
 H0 defines the schema bridge between browser ANCHOR and a future headless ANCHOR / OceanBox environment. It is an audit and contract layer only.
 
@@ -78,3 +78,9 @@ Node headless runtime over portable ANCHOR core logic. Browser ANCHOR remains th
 H1 adds a deterministic educational Node runtime, fixed waypoint execution, noisy observations, local belief/uncertainty updates, sampling priority, score reports, CLI, and JSON/CSV bundles. It does not add Python OceanBox, a new route planner, calibrated forecasting, or MARL/RL.
 
 Recommended next actions after H1 are browser-compatible bundle loading and Colab workflow polish around the Node-generated artifacts.
+
+## H2 Update - Browser Bundle Loader
+
+H2 adds a browser-compatible loader for H1 Node/OceanBox-JS bundle artifacts. The browser viewer imports `bundle.json` or separate JSON/CSV files, checks hidden-truth visibility, and exports a compact browser summary. It is an inspection and comparison workflow only; Browser ANCHOR remains the official visual referee and scoring UI.
+
+Colab workflows can either call the Node CLI with `--combined-json` or load pre-generated public bundles with standard-library `json` and `csv`. H2 still does not implement a Python simulator, new planner, calibrated forecast model, or MARL/RL environment.

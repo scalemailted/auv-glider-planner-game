@@ -81,3 +81,7 @@ Keep demo-specific helpers in their local modules until a benchmark mode or plan
 ## H0 Headless Alignment
 
 The model stack now has a headless schema alignment layer. Process, flow, coupled, uncertainty, S1/S2, planner benchmark, and adaptive benchmark exports can be audited against future headless artifacts and Colab bundle roles. Hidden truth and oracle fields are visibility-sensitive and must not be included in public bundles by default.
+
+## H2 Headless Bundle Loader
+
+H2 adds browser-compatible import and inspection for Node/OceanBox-JS headless bundles. This sits beside the model stack rather than inside the scientific engines: it loads artifacts, validates visibility, summarizes fields/tables/scores, and exports browser summaries. It does not change process, flow, coupled, uncertainty, sampling-priority, action-value, planning, or scoring behavior.

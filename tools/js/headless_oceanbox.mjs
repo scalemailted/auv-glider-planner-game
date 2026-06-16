@@ -1,4 +1,4 @@
-﻿import { runHeadlessMission } from '../../src/core/headless/runtime/HeadlessMissionRunner.js';
+import { runHeadlessMission } from '../../src/core/headless/runtime/HeadlessMissionRunner.js';
 import { createDefaultHeadlessRuntimeConfig, headlessRuntimeConfigSummary } from '../../src/core/headless/runtime/HeadlessRuntimeConfig.js';
 import { writeHeadlessBundle } from '../../src/core/headless/runtime/HeadlessBundleWriter.js';
 import { headlessScoreReportSummary } from '../../src/core/headless/runtime/HeadlessScoring.js';
@@ -20,7 +20,7 @@ try {
   let bundleSummary = null;
   if (!args.summaryOnly) {
     const outputDir = args.out ?? 'tmp/oceanbox-js-demo';
-    bundleSummary = writeHeadlessBundle(episode, outputDir, { includeHiddenTruth: !args.noHiddenExport });
+    bundleSummary = writeHeadlessBundle(episode, outputDir, { includeHiddenTruth: !args.noHiddenExport, combinedJson: args.combinedJson });
   }
   const summary = {
     command: 'simulate',
@@ -33,6 +33,7 @@ try {
     trackPointCount: episode.tracks.length,
     score: headlessScoreReportSummary(episode.scoreReport),
     bundle: bundleSummary,
+    combinedBundle: bundleSummary?.combinedBundle === true,
     boundary: 'Node headless runtime over portable ANCHOR core logic. Browser ANCHOR remains the official visual referee and scoring UI.'
   };
   console.log(JSON.stringify(summary, null, 2));
@@ -51,6 +52,7 @@ function parseArgs(argv) {
     else if (arg === '--height') result.height = Number(argv[++index]);
     else if (arg === '--scenario') result.scenario = argv[++index];
     else if (arg === '--no-hidden-export') result.noHiddenExport = true;
+    else if (arg === '--combined-json') result.combinedJson = true;
     else if (arg === '--summary-only') result.summaryOnly = true;
     else if (arg === '--help' || arg === '-h') result.command = null;
     else throw new Error(`Unknown option ${arg}`);
@@ -59,6 +61,5 @@ function parseArgs(argv) {
 }
 
 function printUsage() {
-  console.log('Usage: node tools/js/headless_oceanbox.mjs simulate --seed demo-001 --out tmp/oceanbox-js-demo [--width 32] [--height 24] [--scenario coastal_bloom_front] [--no-hidden-export] [--summary-only]');
+  console.log('Usage: node tools/js/headless_oceanbox.mjs simulate --seed demo-001 --out tmp/oceanbox-js-demo [--width 32] [--height 24] [--scenario coastal_bloom_front] [--no-hidden-export] [--combined-json] [--summary-only]');
 }
-

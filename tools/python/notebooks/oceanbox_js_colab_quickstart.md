@@ -1,4 +1,4 @@
-﻿# OceanBox-JS Colab Quickstart
+# OceanBox-JS Colab Quickstart
 
 H1 uses Node.js as the canonical non-browser runtime. Python/Colab notebooks are wrappers or analysis workflows around JSON/CSV artifacts, not a second simulator.
 
@@ -51,3 +51,13 @@ node tools/js/headless_oceanbox.mjs simulate --seed demo-001 --out runs/public-d
 
 H1 does not implement a Python OceanBox simulator, new route planner, RL/MARL environment, production controller, production data assimilation, or calibrated ocean forecast.
 
+
+## H2 Browser Bundle Viewer
+
+Generate a single browser-importable bundle when Node is available:
+
+```bash
+node tools/js/headless_oceanbox.mjs simulate --seed demo-001 --out runs/demo --combined-json
+```
+
+The same `runs/demo/bundle.json` file can be loaded in ANCHOR under Simulation Lab / Editor & Import Tools / Headless Bundle Viewer. The browser viewer validates visibility, summarizes fields/tables/scores, and exports `anchor.browser.headless-bundle-summary` for comparison. It does not replace browser Simulation or Debrief scoring.

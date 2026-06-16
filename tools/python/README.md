@@ -90,3 +90,13 @@ node tools/js/headless_oceanbox.mjs simulate --seed demo-001 --out runs/demo
 ```
 
 or load a pre-generated bundle and analyze `observations.csv`, `glider_tracks.csv`, and `score_report.json`. Node headless runtime over portable ANCHOR core logic. Browser ANCHOR remains the official visual referee and scoring UI.
+
+## H2 Browser Bundle Loader Workflow
+
+For browser/Colab bundle inspection, generate a public bundle with Node:
+
+```bash
+node tools/js/headless_oceanbox.mjs simulate --seed demo-001 --out runs/public-demo --no-hidden-export --combined-json
+```
+
+Then load `runs/public-demo/bundle.json` in the browser Headless Bundle Viewer or analyze the JSON/CSV files with Python standard-library `json` and `csv`. This remains artifact analysis, not a Python simulator port.

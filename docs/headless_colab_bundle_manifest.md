@@ -56,3 +56,9 @@ Public or forecast-only bundles must not include hidden truth arrays by default.
 H1 Node bundles use the H0 manifest roles and visibility tiers. `visible_fields.json` contains forecast, belief, uncertainty, priority, flow, hazard, mask, staleness, and boundary fields. `hidden_fields.json` contains `T_hiddenTruth` only when hidden export is enabled. Public bundles should use `--no-hidden-export`.
 
 Node headless runtime over portable ANCHOR core logic. Browser ANCHOR remains the official visual referee and scoring UI.
+
+## H2 Combined Bundle
+
+H2 supports an optional `bundle.json` convenience file. It embeds the manifest, mission config, visible field pack, optional hidden field pack, observations, glider tracks, score report, replay metadata, and episode record in one JSON document with `type: "anchor.headless.bundle"`.
+
+The browser Headless Bundle Viewer also accepts separate files. Observation and track data may be supplied as JSON or CSV. Public bundles should combine `--no-hidden-export` with `--combined-json`; the manifest should state that hidden truth export is disabled, and visible fields must not include `T_hiddenTruth`.

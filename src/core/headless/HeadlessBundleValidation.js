@@ -1,0 +1,161 @@
+import { validateHeadlessBundleManifest as validateH0Manifest } from './HeadlessBundleManifest.js';
+import { manifestDisablesHiddenExport } from './HeadlessBundleLoader.js';
+
+export const HEADLESS_BUNDLE_VALIDATION_VERSION = 'headless-bundle-validation-h2';
+
+export function validateHeadlessBundleManifest(manifest = {}) {
+  const checks = [];
+  const warnings = [];
+  const failures = [];
+  if (!manifest || typeof manifest !== 'object') failures.push('Manifest must be an object.');
+  if (manifest?.type !== 'anchor.headless.manifest') failures.push(`Manifest type should be anchor.headless.manifest, got ${manifest?.type ?? 'missing'}.`);
+  const h0 = validateH0Manifest(manifest ?? {});
+  warnings.push(...(h0.warnings ?? []).map((warning) => `manifest: ${warning}`));
+  failures.push(...(h0.errors ?? []).map((failure) => `manifest: ${failure}`));
+  checks.push({ id: 'manifest-type', ok: manifest?.type === 'anchor.headless.manifest' });
+  return result(checks, warnings, failures);
+}
+
+export function validateHeadlessVisibleFields(visibleFields = {}) {
+  const checks = [];
+  const warnings = [];
+  const failures = [];
+  const fieldIds = visibleFieldIds(visibleFields);
+  checks.push({ id: 'visible-fields-present', ok: fieldIds.length > 0, detail: `${fieldIds.length} field(s)` });
+  if (!fieldIds.length) warnings.push('Visible fields are missing or empty.');
+  if (fieldIds.includes('T_hiddenTruth')) failures.push('Visible fields include T_hiddenTruth, which would leak hidden truth.');
+  if (fieldIds.includes('trueRoi') && !oracleVisible(visibleFields, 'trueRoi')) failures.push('Visible fields include trueRoi without oracle/debug visibility.');
+  if (fieldIds.includes('eventIntensity') && !oracleVisible(visibleFields, 'eventIntensity')) failures.push('Visible fields include eventIntensity without oracle/debug visibility.');
+  return result(checks, warnings, failures, failures.length ? 'high' : 'low');
+}
+
+export function validateHeadlessHiddenFields(hiddenFields = null, manifest = {}) {
+  const checks = [];
+  const warnings = [];
+  const failures = [];
+  const hiddenFile = (manifest?.files ?? []).find((entry) => entry?.path === 'hidden_fields.json' || entry?.role === 'hiddenFields');
+  const disabled = manifestDisablesHiddenExport(manifest);
+  if (!hiddenFields) {
+    checks.push({ id: 'hidden-fields-omitted', ok: disabled || !hiddenFile });
+    if (disabled) return result(checks, warnings, failures, 'low');
+    if (hiddenFile) failures.push('Manifest lists hidden fields but hidden_fields.json is missing.');
+    else warnings.push('Hidden fields are absent; this is acceptable for public bundles if hidden export is disabled.');
+    return result(checks, warnings, failures, failures.length ? 'medium' : 'low');
+  }
+  const tier = hiddenFile?.visibilityTier ?? hiddenFields.visibilityTier ?? null;
+  checks.push({ id: 'hidden-fields-tier', ok: ['hiddenTruth', 'oracle', 'debugAll'].includes(tier), detail: tier });
+  if (!['hiddenTruth', 'oracle', 'debugAll'].includes(tier)) failures.push('hidden_fields.json must be marked hiddenTruth, oracle, or debugAll in the manifest.');
+  return result(checks, warnings, failures, failures.length ? 'high' : 'low');
+}
+
+export function validateHeadlessObservations(observations = []) {
+  const list = Array.isArray(observations) ? observations : [];
+  const checks = [{ id: 'observations-array', ok: Array.isArray(observations), detail: `${list.length} row(s)` }];
+  const warnings = [];
+  const failures = [];
+  list.slice(0, 20).forEach((row, index) => {
+    if (!row.observationId && row.index === undefined) warnings.push(`Observation ${index + 1} lacks observationId/index.`);
+    for (const key of ['timeSeconds', 'gliderId', 'x', 'y']) {
+      if (row[key] === undefined || row[key] === null || row[key] === '') warnings.push(`Observation ${index + 1} lacks ${key}.`);
+    }
+    if (row.observedValue === undefined && row.value === undefined) warnings.push(`Observation ${index + 1} lacks observedValue/value.`);
+  });
+  return result(checks, warnings, failures);
+}
+
+export function validateHeadlessTracks(tracks = []) {
+  const list = Array.isArray(tracks) ? tracks : [];
+  const checks = [{ id: 'tracks-array', ok: Array.isArray(tracks), detail: `${list.length} row(s)` }];
+  const warnings = [];
+  const failures = [];
+  list.slice(0, 20).forEach((row, index) => {
+    for (const key of ['timeSeconds', 'gliderId', 'x', 'y']) {
+      if (row[key] === undefined || row[key] === null || row[key] === '') warnings.push(`Track point ${index + 1} lacks ${key}.`);
+    }
+  });
+  return result(checks, warnings, failures);
+}
+
+export function validateHeadlessScoreReport(scoreReport = {}) {
+  const checks = [];
+  const warnings = [];
+  const failures = [];
+  if (!scoreReport || typeof scoreReport !== 'object') failures.push('Score report is missing.');
+  const finalScore = scoreReport?.finalScore ?? scoreReport?.final_score;
+  checks.push({ id: 'score-final-score', ok: Number.isFinite(Number(finalScore)), detail: finalScore });
+  if (!Number.isFinite(Number(finalScore))) warnings.push('Score report should include finalScore or final_score.');
+  if (scoreReport?.notBrowserOfficialScoring !== true) warnings.push('Score report should mark notBrowserOfficialScoring=true.');
+  return result(checks, warnings, failures);
+}
+
+export function validateHeadlessReplay(replay = null) {
+  const checks = [];
+  const warnings = [];
+  const failures = [];
+  if (!replay) {
+    warnings.push('Replay metadata is missing.');
+    return result(checks, warnings, failures);
+  }
+  checks.push({ id: 'replay-present', ok: typeof replay === 'object' });
+  return result(checks, warnings, failures);
+}
+
+export function validateHeadlessBundle(bundle = {}) {
+  const validations = {
+    manifest: validateHeadlessBundleManifest(bundle.manifest),
+    visibleFields: validateHeadlessVisibleFields(bundle.visibleFields),
+    hiddenFields: validateHeadlessHiddenFields(bundle.hiddenFields, bundle.manifest),
+    observations: validateHeadlessObservations(bundle.observations),
+    tracks: validateHeadlessTracks(bundle.gliderTracks),
+    scoreReport: validateHeadlessScoreReport(bundle.scoreReport),
+    replay: validateHeadlessReplay(bundle.replay)
+  };
+  const checks = Object.entries(validations).flatMap(([scope, validation]) => validation.checks.map((check) => ({ ...check, scope })));
+  const warnings = [...(bundle.warnings ?? []), ...Object.values(validations).flatMap((validation) => validation.warnings)];
+  const failures = [...(bundle.failures ?? []), ...Object.values(validations).flatMap((validation) => validation.failures)];
+  const visibilityRisk = failures.some((failure) => /hidden truth|T_hiddenTruth|trueRoi|eventIntensity/i.test(failure)) ? 'high' : warnings.some((warning) => /hidden/i.test(warning)) ? 'medium' : 'low';
+  return {
+    status: failures.length ? 'FAIL' : warnings.length ? 'WARN' : 'PASS',
+    checks,
+    warnings,
+    failures,
+    visibilityRisk,
+    summary: {
+      checkCount: checks.length,
+      warningCount: warnings.length,
+      failureCount: failures.length,
+      visibleFieldCount: visibleFieldIds(bundle.visibleFields).length,
+      hiddenFieldExported: Boolean(bundle.hiddenFields),
+      observationCount: bundle.observations?.length ?? 0,
+      trackPointCount: bundle.gliderTracks?.length ?? 0,
+      finalScore: bundle.scoreReport?.finalScore ?? bundle.scoreReport?.final_score ?? null
+    }
+  };
+}
+
+export function headlessBundleValidationSummary(validation = {}) {
+  return {
+    status: validation.status ?? 'FAIL',
+    visibilityRisk: validation.visibilityRisk ?? 'unknown',
+    warningCount: validation.warnings?.length ?? 0,
+    failureCount: validation.failures?.length ?? 0,
+    checkCount: validation.checks?.length ?? 0,
+    summary: validation.summary ?? {}
+  };
+}
+
+function result(checks, warnings, failures, visibilityRisk = failures.length ? 'high' : warnings.length ? 'medium' : 'low') {
+  return { status: failures.length ? 'FAIL' : warnings.length ? 'WARN' : 'PASS', checks, warnings, failures, visibilityRisk };
+}
+
+function visibleFieldIds(payload = {}) {
+  const ids = new Set();
+  if (Array.isArray(payload?.fieldIds)) payload.fieldIds.forEach((id) => ids.add(id));
+  Object.keys(payload?.fields ?? {}).forEach((id) => ids.add(id));
+  return [...ids];
+}
+
+function oracleVisible(payload = {}, fieldId) {
+  const tier = payload?.fieldVisibility?.[fieldId] ?? payload?.visibilityTier;
+  return ['oracle', 'debugAll', 'hiddenTruth'].includes(tier);
+}

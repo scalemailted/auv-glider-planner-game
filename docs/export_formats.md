@@ -252,3 +252,15 @@ The Node headless runtime writes a Colab-ready bundle with `manifest.json`, `mis
 `visible_fields.json` must not contain `T_hiddenTruth`. Hidden truth appears only in `hidden_fields.json` when hidden export is enabled and the manifest marks it as `hiddenTruth`/`oracle` visibility.
 
 Node headless runtime over portable ANCHOR core logic. Browser ANCHOR remains the official visual referee and scoring UI. H1 does not implement Python OceanBox, a new planner, calibrated ocean forecasting, or MARL/RL.
+
+## `anchor.headless.bundle.json`
+
+`type: "anchor.headless.bundle"` is the H2 combined Node/OceanBox-JS headless bundle format for browser and Colab inspection. It embeds the H0 manifest, H1 mission config, visible fields, optional hidden fields, observations, glider tracks, score report, replay metadata, and episode record.
+
+Create it with:
+
+```bash
+node tools/js/headless_oceanbox.mjs simulate --seed demo-001 --out runs/public-demo --no-hidden-export --combined-json
+```
+
+The browser Headless Bundle Viewer loads `bundle.json` or the separate JSON/CSV files and exports `anchor.browser.headless-bundle-summary`. It does not run official browser scoring, does not create a new route planner, and does not claim calibrated ocean forecasts.

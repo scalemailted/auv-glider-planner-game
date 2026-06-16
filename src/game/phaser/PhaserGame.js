@@ -16,6 +16,7 @@ import { UncertaintyForecastDemoScene } from './scenes/UncertaintyForecastDemoSc
 import { SamplingPriorityDemoScene } from './scenes/SamplingPriorityDemoScene.js';
 import { FlowCoupledSamplingDemoScene } from './scenes/FlowCoupledSamplingDemoScene.js';
 import { BenchmarkModeOverviewScene } from './scenes/BenchmarkModeOverviewScene.js';
+import { HeadlessBundleViewerScene } from './scenes/HeadlessBundleViewerScene.js';
 import { LoadLevelByIdScene } from './scenes/LoadLevelByIdScene.js';
 import { LoadLevelJsonScene } from './scenes/LoadLevelJsonScene.js';
 import { PHASER_HEIGHT, PHASER_WIDTH } from './PhaserCoreAdapter.js';
@@ -64,6 +65,7 @@ export class PhaserGameApp {
         SamplingPriorityDemoScene,
         FlowCoupledSamplingDemoScene,
         BenchmarkModeOverviewScene,
+        HeadlessBundleViewerScene,
         LoadLevelJsonScene,
         LoadLevelByIdScene
       ],
@@ -252,7 +254,8 @@ function sceneKey(name) {
     uncertaintyForecastDemo: 'UncertaintyForecastDemoScene',
     samplingPriorityDemo: 'SamplingPriorityDemoScene',
     flowCoupledSamplingDemo: 'FlowCoupledSamplingDemoScene',
-    benchmarkModeOverview: 'BenchmarkModeOverviewScene'
+    benchmarkModeOverview: 'BenchmarkModeOverviewScene',
+    headlessBundleViewer: 'HeadlessBundleViewerScene'
   };
   return aliases[name] ?? name;
 }

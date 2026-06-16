@@ -41,6 +41,7 @@ import { UncertaintyForecastDemoScene } from '../../src/game/phaser/scenes/Uncer
 import { SamplingPriorityDemoScene } from '../../src/game/phaser/scenes/SamplingPriorityDemoScene.js';
 import { FlowCoupledSamplingDemoScene } from '../../src/game/phaser/scenes/FlowCoupledSamplingDemoScene.js';
 import { BenchmarkModeOverviewScene } from '../../src/game/phaser/scenes/BenchmarkModeOverviewScene.js';
+import { HeadlessBundleViewerScene } from '../../src/game/phaser/scenes/HeadlessBundleViewerScene.js';
 import { BENCHMARK_MODE_IDS, createBenchmarkModeConfig, validateBenchmarkModeConfig } from '../../src/core/benchmark/BenchmarkModeContract.js';
 import { createBenchmarkEpisodeConfig, validateBenchmarkEpisodeConfig } from '../../src/core/benchmark/BenchmarkEpisodeContract.js';
 import { createRouteExecutionRecord, validateRouteExecutionRecord } from '../../src/core/benchmark/BenchmarkRouteExecutionRecord.js';
@@ -87,6 +88,11 @@ import { createHeadlessEpisode } from '../../src/core/headless/HeadlessEpisodeSc
 import { createHeadlessBundleManifest } from '../../src/core/headless/HeadlessBundleManifest.js';
 import { browserHeadlessMappingSummary, exportTypeHeadlessCompatibility } from '../../src/core/headless/BrowserHeadlessSchemaMap.js';
 import { buildHeadlessFieldPackDescriptorFromDemoArtifact, validateHeadlessAdapterOutput } from '../../src/core/headless/HeadlessExportAdapter.js';
+import { buildHeadlessBundleFromFiles } from '../../src/core/headless/HeadlessBundleLoader.js';
+import { validateHeadlessBundle } from '../../src/core/headless/HeadlessBundleValidation.js';
+import { buildHeadlessBundleViewModel } from '../../src/core/headless/HeadlessBundleViewModel.js';
+import { buildBrowserHeadlessBundleDebugObject, buildBrowserHeadlessBundleSummaryArtifact } from '../../src/core/headless/HeadlessBundleBrowserAdapter.js';
+import { headlessBundleViewerPanelHtml } from '../../src/ui/headless/HeadlessBundleViewerPanel.js';
 import { createDefaultHeadlessRuntimeConfig, validateHeadlessRuntimeConfig } from '../../src/core/headless/runtime/HeadlessRuntimeConfig.js';
 import { createHeadlessGrid, field3dStats as headlessField3dStats } from '../../src/core/headless/runtime/HeadlessGrid.js';
 import { createHeadlessFieldPack } from '../../src/core/headless/runtime/HeadlessFields.js';
@@ -488,6 +494,25 @@ const h1RuntimeSourceFiles = [
 const h1RuntimeSource = h1RuntimeSourceFiles.map((file) => fs.readFileSync(file, 'utf8')).join('\n');
 assert.equal(/Phaser|localStorage|src[\\/]game[\\/]phaser|src[\\/]ui[\\/]|\bwindow\b|\bdocument\b/.test(h1RuntimeSource), false, 'H1 runtime avoids browser, Phaser, DOM, UI, and localStorage imports');
 assert.equal(/implementsPythonSimulator:\s*true|implementsNewPlanner:\s*true|implementsMARL:\s*true/i.test(h1RuntimeSource), false, 'H1 runtime avoids Python/new-planner/MARL claims');
+const h2Files = headlessBundleFiles(h1Episode, { includeHiddenTruth: false, combinedJson: true });
+assert.ok(h2Files['bundle.json'], 'H2 combined bundle export includes bundle.json');
+const h2Bundle = buildHeadlessBundleFromFiles([{ fileName: 'bundle.json', text: h2Files['bundle.json'] }]);
+assert.equal(h2Bundle.failures.length, 0, 'H2 combined bundle loads without loader failures');
+const h2Validation = validateHeadlessBundle(h2Bundle);
+assert.notEqual(h2Validation.status, 'FAIL', 'H2 bundle validation does not fail');
+assert.equal(h2Validation.summary.hiddenFieldExported, false, 'H2 public bundle omits hidden fields');
+const h2ViewModel = buildHeadlessBundleViewModel(h2Bundle);
+assert.ok(h2ViewModel.fieldCards.length > 0, 'H2 bundle view-model exposes field cards');
+const h2BrowserArtifact = buildBrowserHeadlessBundleSummaryArtifact(h2Bundle);
+assert.equal(h2BrowserArtifact.type, 'anchor.browser.headless-bundle-summary', 'H2 browser summary artifact type');
+assert.equal(h2BrowserArtifact.scoreSummary.headlessScoreIsOfficialBrowserScore, false, 'H2 browser summary keeps scoring boundary');
+const h2Debug = buildBrowserHeadlessBundleDebugObject(h2Bundle);
+assert.equal(h2Debug.usesPythonSimulator, false, 'H2 debug object excludes Python simulator');
+assert.equal(h2Debug.usesNodeHeadlessRuntime, true, 'H2 debug object marks Node headless runtime');
+const h2PanelHtml = headlessBundleViewerPanelHtml(h2ViewModel);
+assert.ok(h2PanelHtml.includes('Headless Bundle Viewer'), 'H2 viewer panel renders title');
+assert.ok(h2PanelHtml.includes('Browser ANCHOR remains the official visual referee'), 'H2 viewer panel states browser referee boundary');
+assert.equal(typeof HeadlessBundleViewerScene, 'function', 'H2 viewer scene imports');
 const p8FakeStorage = (() => { const data = new Map(); return { get length() { return data.size; }, key(index) { return [...data.keys()][index] ?? null; }, getItem(key) { return data.has(key) ? data.get(key) : null; }, setItem(key, value) { data.set(key, String(value)); }, removeItem(key) { data.delete(key); } }; })();
 assert.equal(saveAdaptiveEpisodeSession(p8Session, p8FakeStorage).ok, true, 'P8 adaptive session persistence saves');
 assert.equal(loadAdaptiveEpisodeSession(p8Session.episodeId, p8FakeStorage).ok, true, 'P8 adaptive session persistence loads');
@@ -681,6 +706,7 @@ missionConsoleChecks.forEach(([name, labels]) => {
   assert.ok(labels.some((label) => missionConsoleSource.includes(label)), `Mission Console contains ${name}`);
 });
 assert.ok(missionConsoleSource.includes('RoiGeneratorDemoScene'), 'Mission Console binds Process Lab to RoiGeneratorDemoScene');
+assert.ok(missionConsoleSource.includes('HeadlessBundleViewerScene'), 'Mission Console binds H2 viewer to HeadlessBundleViewerScene');
 
 // Claim-boundary guard: calibrated forecast claims must be explicitly negated/bounded.
 const claimFiles = [
@@ -699,6 +725,14 @@ const claimFiles = [
   'docs/headless_node_oceanbox_runtime.md',
   'docs/headless_colab_oceanbox_schema_alignment.md',
   'docs/headless_colab_bundle_manifest.md',
+  'docs/headless_bundle_loader.md',
+  'src/core/headless/HeadlessCsv.js',
+  'src/core/headless/HeadlessBundleLoader.js',
+  'src/core/headless/HeadlessBundleValidation.js',
+  'src/core/headless/HeadlessBundleViewModel.js',
+  'src/core/headless/HeadlessBundleBrowserAdapter.js',
+  'src/ui/headless/HeadlessBundleViewerPanel.js',
+  'src/game/phaser/scenes/HeadlessBundleViewerScene.js',
   'docs/benchmark_modes.md',
   'docs/adaptive_benchmark_mission_manager.md',
   'src/core/benchmark/BenchmarkAttemptRegistry.js',

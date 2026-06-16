@@ -1043,3 +1043,9 @@ node tools/js/headless_oceanbox.mjs simulate --seed demo-001 --out tmp/oceanbox-
 ```
 
 See `docs/headless_node_oceanbox_runtime.md`.
+
+## Headless Bundle Viewer
+
+Simulation Lab / Editor & Import Tools includes Headless Bundle Viewer for inspecting Node/OceanBox-JS headless mission bundles. Load `bundle.json` or separate manifest, mission config, visible field, observation, track, score, replay, and episode files. The viewer summarizes visible fields, observations, glider tracks, score reports, replay metadata, warnings, failures, and visibility status, then can export `anchor.browser.headless-bundle-summary`.
+
+The viewer is for inspection and comparison only. Browser ANCHOR remains the official visual referee and scoring UI, and the viewer does not add a Python simulator, planner, calibrated ocean forecast, or MARL/RL.

@@ -406,3 +406,20 @@ node tools/js/audit_headless_runtime_import_boundaries.mjs
 ```
 
 The import-boundary audit keeps H1 free of Phaser, DOM, UI modules, browser scenes, and localStorage. Node headless runtime over portable ANCHOR core logic. Browser ANCHOR remains the official visual referee and scoring UI.
+
+## H2 Browser Headless Bundle Loader Checks
+
+Run these after changing `src/core/headless/HeadlessBundle*.js`, `src/core/headless/HeadlessCsv.js`, `src/ui/headless/`, `HeadlessBundleViewerScene`, or `tools/js/headless_oceanbox.mjs`:
+
+```bash
+node tools/js/smoke_headless_csv.mjs
+node tools/js/smoke_headless_bundle_loader.mjs
+node tools/js/smoke_headless_bundle_validation.mjs
+node tools/js/smoke_headless_bundle_view_model.mjs
+node tools/js/smoke_headless_bundle_browser_adapter.mjs
+node tools/js/smoke_headless_bundle_viewer_panel.mjs
+node tools/js/smoke_headless_bundle_combined_export.mjs
+node tools/js/audit_headless_runtime_import_boundaries.mjs
+```
+
+Focused browser smoke should open Simulation Lab, launch Headless Bundle Viewer, load the example bundle, confirm `globalThis.ANCHOR_HEADLESS_BUNDLE_DEBUG`, and export `anchor.browser.headless-bundle-summary`. The viewer is not official browser scoring and not a Python simulator.

@@ -322,3 +322,10 @@ H0 introduces headless schema contracts, canonical field descriptors, mission/ep
 - Added `tools/js/headless_oceanbox.mjs` for deterministic headless simulation and JSON/CSV bundle export.
 - Added H1 smoke scripts and runtime import-boundary audit.
 - Preserved the boundary: Node headless runtime over portable ANCHOR core logic. Browser ANCHOR remains the official visual referee and scoring UI. H1 does not implement Python OceanBox, a new planner, calibrated ocean forecasting, production data assimilation, or MARL/RL.
+
+### H2 - Browser-Compatible Headless Bundle Loader and Colab Workflow
+
+- Added browser-safe CSV parsing, bundle loading, validation, view-model, browser adapter, and Headless Bundle Viewer panel/scene for Node/OceanBox-JS headless artifacts.
+- Added `--combined-json` to `tools/js/headless_oceanbox.mjs` so H1 can write a single `bundle.json` for browser and Colab workflows.
+- Added H2 smoke tests and extended the model-stack integration smoke and import-boundary audit.
+- Preserved the boundary: H2 is an inspection/import workflow only. It does not implement a Python simulator, new planner, official browser scoring, calibrated ocean forecast, backend service, or MARL/RL.

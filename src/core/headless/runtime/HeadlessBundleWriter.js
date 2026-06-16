@@ -8,6 +8,7 @@ const HIDDEN_FIELD_IDS = Object.freeze(['T_hiddenTruth']);
 
 export function createHeadlessBundleManifest(episode, options = {}) {
   const includeHidden = options.includeHiddenTruth !== false;
+  const combinedJson = options.combinedJson === true;
   const files = [
     fileEntry('manifest.json', 'manifest', 'anchor.headless.manifest', 'publicScenario', 'Bundle manifest.'),
     fileEntry('mission_config.json', 'missionConfig', 'anchor.headless.mission-config', 'publicScenario', 'Mission config used by the Node headless runtime.'),
@@ -23,7 +24,15 @@ export function createHeadlessBundleManifest(episode, options = {}) {
   if (includeHidden) {
     files.splice(3, 0, fileEntry('hidden_fields.json', 'hiddenFields', 'anchor.headless.field-pack', 'hiddenTruth', 'Hidden truth and oracle-only fields for instructor/debug use.'));
   }
+  if (combinedJson) {
+    files.push(fileEntry('bundle.json', 'combinedBundle', 'anchor.headless.bundle', 'publicScenario', 'Single-file H2 browser import bundle.'));
+  }
+
+  const jsonFiles = ['mission_config.json', 'score_report.json', 'replay.json', 'episode.json'];
+  if (combinedJson) jsonFiles.push('bundle.json');
+
   return createH0HeadlessBundleManifest({
+    createdAt: options.createdAt,
     bundleType: 'oceanbox-js-h1-headless-runtime',
     runtimeTarget: 'nodeHeadless',
     scenarioId: episode?.missionConfig?.scenarioId ?? episode?.fieldPackBefore?.scenario ?? null,
@@ -40,18 +49,20 @@ export function createHeadlessBundleManifest(episode, options = {}) {
       { path: 'observations.csv', rowCount: episode?.observations?.length ?? 0 },
       { path: 'glider_tracks.csv', rowCount: episode?.tracks?.length ?? 0 }
     ],
-    json: ['mission_config.json', 'score_report.json', 'replay.json', 'episode.json'],
+    json: jsonFiles,
     notes: [
       'Node headless runtime over portable ANCHOR core logic. Browser ANCHOR remains the official visual referee and scoring UI.',
       includeHidden ? 'Hidden truth export enabled for debug/instructor workflows.' : 'Hidden truth export disabled; hidden_fields.json omitted.',
-      'H1 does not implement Python OceanBox, a new planner, MARL/RL, or calibrated ocean forecasting.'
+      combinedJson ? 'bundle.json is a convenience single-file import for the H2 browser bundle viewer.' : 'Multi-file bundle export; pass combinedJson to also emit bundle.json.',
+      'H1/H2 do not implement Python OceanBox, a new planner, MARL/RL, or calibrated ocean forecasting.'
     ]
   });
 }
 
 export function headlessBundleFiles(episode, options = {}) {
   const includeHidden = options.includeHiddenTruth !== false;
-  const manifest = createHeadlessBundleManifest(episode, { includeHiddenTruth: includeHidden });
+  const combinedJson = options.combinedJson === true;
+  const manifest = createHeadlessBundleManifest(episode, { includeHiddenTruth: includeHidden, combinedJson, createdAt: options.createdAt });
   const files = {
     'manifest.json': stableJson(manifest),
     'mission_config.json': stableJson(episode.missionConfig),
@@ -67,7 +78,37 @@ export function headlessBundleFiles(episode, options = {}) {
   if (includeHidden) {
     files['hidden_fields.json'] = stableJson(buildFieldPackFile(episode.fieldPackBefore, HIDDEN_FIELD_IDS, 'hiddenTruth'));
   }
+  if (combinedJson) {
+    files['bundle.json'] = stableJson(createHeadlessCombinedBundle(episode, { includeHiddenTruth: includeHidden, createdAt: options.createdAt }));
+  }
   return files;
+}
+
+export function createHeadlessCombinedBundle(episode, options = {}) {
+  const includeHidden = options.includeHiddenTruth !== false;
+  const manifest = createHeadlessBundleManifest(episode, { includeHiddenTruth: includeHidden, combinedJson: true, createdAt: options.createdAt });
+  const bundle = {
+    type: 'anchor.headless.bundle',
+    version: 'headless-combined-bundle-h2',
+    manifest,
+    missionConfig: episode.missionConfig,
+    visibleFields: buildFieldPackFile(episode.fieldPackAfter ?? episode.fieldPackBefore, VISIBLE_FIELD_IDS, 'publicScenario'),
+    observations: episode.observations ?? [],
+    gliderTracks: episode.tracks ?? [],
+    scoreReport: episode.scoreReport,
+    replay: episode.replay,
+    episode: stripBundleEpisode(episode, includeHidden),
+    notes: [
+      'Combined bundle for browser import. Browser ANCHOR remains the official visual referee and browser scoring UI.',
+      includeHidden ? 'Hidden fields are included for oracle/debug workflows.' : 'Hidden fields omitted because hidden export is disabled.'
+    ]
+  };
+  if (includeHidden) {
+    bundle.hiddenFields = buildFieldPackFile(episode.fieldPackBefore, HIDDEN_FIELD_IDS, 'hiddenTruth');
+  } else {
+    bundle.hiddenFields = null;
+  }
+  return bundle;
 }
 
 export function writeHeadlessBundle(episode, outputDir, options = {}) {
@@ -94,6 +135,7 @@ export function headlessBundleSummary(outputDir) {
     files,
     hasManifest: Boolean(manifest),
     hiddenTruthExported: files.includes('hidden_fields.json'),
+    combinedBundle: files.includes('bundle.json'),
     finalScoreFile: files.includes('score_report.json'),
     observationCsv: files.includes('observations.csv'),
     trackCsv: files.includes('glider_tracks.csv'),
@@ -162,3 +204,4 @@ function csvValue(value) {
 function stableJson(value) {
   return `${JSON.stringify(value, null, 2)}\n`;
 }
+

@@ -1,4 +1,4 @@
-﻿import assert from 'node:assert/strict';
+import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
 
@@ -6,7 +6,14 @@ const runtimeDir = 'src/core/headless/runtime';
 const files = fs.readdirSync(runtimeDir)
   .filter((name) => name.endsWith('.js'))
   .map((name) => path.join(runtimeDir, name));
-files.push('tools/js/headless_oceanbox.mjs');
+files.push(
+  'src/core/headless/HeadlessCsv.js',
+  'src/core/headless/HeadlessBundleLoader.js',
+  'src/core/headless/HeadlessBundleValidation.js',
+  'src/core/headless/HeadlessBundleViewModel.js',
+  'src/core/headless/HeadlessBundleBrowserAdapter.js',
+  'tools/js/headless_oceanbox.mjs'
+);
 
 const bannedPatterns = [
   /Phaser/i,

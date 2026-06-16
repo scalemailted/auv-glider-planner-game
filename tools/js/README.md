@@ -57,3 +57,13 @@ node tools/js/headless_oceanbox.mjs simulate --seed demo-001 --out tmp/oceanbox-
 ```
 
 Node headless runtime over portable ANCHOR core logic. Browser ANCHOR remains the official visual referee and scoring UI. This runtime writes JSON/CSV bundles for Colab-style analysis; it is not a Python simulator, a new planner, calibrated ocean forecast, or MARL/RL environment.
+
+## H2 Browser Bundle Loader
+
+Use `--combined-json` to write `bundle.json`, then open Simulation Lab / Headless Bundle Viewer to inspect the bundle and export `anchor.browser.headless-bundle-summary`:
+
+```bash
+node tools/js/headless_oceanbox.mjs simulate --seed demo-001 --out tmp/oceanbox-js-public --no-hidden-export --combined-json
+```
+
+The viewer is browser-side inspection only; it is not official scoring and not a Python simulator.

@@ -68,7 +68,8 @@ export class MissionConsole {
         ])}
         ${menuGroupHtml('Editor & Import Tools', [
           menuActionHtml('editor', 'Mission Editor', 'Build and export custom scenario/challenge packages.'),
-          menuActionHtml('load-json', 'Import / Export Tools', 'Load challenge, level, result, oracle, and custom JSON packages.')
+          menuActionHtml('load-json', 'Import / Export Tools', 'Load challenge, level, result, oracle, and custom JSON packages.'),
+          menuActionHtml('headless-bundle-viewer', 'Headless Bundle Viewer', 'Import and inspect Node/OceanBox-JS headless mission bundles, observations, tracks, and score reports.')
         ])}
         ${menuGroupHtml('Benchmarks', [
           menuActionHtml('dataset', 'External Solver Evaluation', 'Export datasets and packets for solver or ML workflows.', 'secondary'),
@@ -120,6 +121,7 @@ export class MissionConsole {
       stochastic: () => this.mainMenuScene()?.openChallengeSetup?.('forecast', EXPERIENCE_MODES.simulationLab),
       editor: () => this.app.phaser.scene.start('EnvironmentEditorScene'),
       'load-json': () => this.app.phaser.scene.start('LoadLevelJsonScene'),
+      'headless-bundle-viewer': () => this.app.phaser.scene.start('HeadlessBundleViewerScene'),
       dataset: () => this.app.phaser.scene.start('DatasetExportScene'),
       leaderboard: () => this.mainMenuScene()?.openLeaderboard?.()
     });
