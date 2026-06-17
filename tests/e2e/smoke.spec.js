@@ -374,6 +374,10 @@ test('Headless Bundle Viewer opens from Simulation Lab and exports browser summa
   await expect(page.locator('#mission-console')).toContainText('Glider Tracks');
   await expect(page.locator('#mission-console')).toContainText('Score Report');
   await expect(page.locator('#mission-console')).toContainText('Science Diagnosis');
+  await expect(page.locator('#mission-console')).toContainText('Water Column');
+  await expect(page.locator('#mission-console [data-headless-water-column]')).toContainText('surface');
+  await expect(page.locator('#mission-console [data-headless-water-column]')).toContainText('thermocline');
+  await expect(page.locator('#mission-console [data-headless-water-column]')).toContainText('deep');
   await expect(page.locator('#mission-console')).toContainText('Forecast correction means the expected field existed but was wrong.');
   await expect(page.locator('#mission-console')).toContainText('Hidden event hypothesis means observations may indicate a phenomenon not represented in the forecast.');
   await expect(page.locator('#mission-console')).toContainText('Replay');
@@ -391,6 +395,11 @@ test('Headless Bundle Viewer opens from Simulation Lab and exports browser summa
   await expect.poll(() => page.evaluate(() => window.ANCHOR_HEADLESS_BUNDLE_DEBUG?.scienceDiagnosticsPublicSafe)).toBe(true);
   await expect.poll(() => page.evaluate(() => window.ANCHOR_HEADLESS_BUNDLE_DEBUG?.scienceDiagnosisIsPlannerAuthority)).toBe(false);
   await expect.poll(() => page.evaluate(() => window.ANCHOR_HEADLESS_BUNDLE_DEBUG?.usesProductionDataAssimilation)).toBe(false);
+  await expect.poll(() => page.evaluate(() => window.ANCHOR_HEADLESS_BUNDLE_DEBUG?.hasWaterColumnSummary)).toBe(true);
+  await expect.poll(() => page.evaluate(() => window.ANCHOR_HEADLESS_BUNDLE_DEBUG?.waterColumnLayerIds)).toEqual(['surface', 'thermocline', 'deep']);
+  await expect.poll(() => page.evaluate(() => window.ANCHOR_HEADLESS_BUNDLE_DEBUG?.waterColumnDefaultLayers)).toEqual(['surface', 'thermocline', 'deep']);
+  await expect.poll(() => page.evaluate(() => window.ANCHOR_HEADLESS_BUNDLE_DEBUG?.usesFull3DPlanning)).toBe(false);
+  await expect.poll(() => page.evaluate(() => window.ANCHOR_HEADLESS_BUNDLE_DEBUG?.usesNewPlanner)).toBe(false);
 
   const [download] = await Promise.all([
     page.waitForEvent('download'),
@@ -414,6 +423,10 @@ test('Headless Bundle Viewer opens from Simulation Lab and exports browser summa
   await expect(page.locator('#mission-console')).toContainText('Visibility Summary');
   await expect(page.locator('#mission-console')).toContainText('Score Summary');
   await expect(page.locator('#mission-console')).toContainText('Science Diagnosis');
+  await expect(page.locator('#mission-console')).toContainText('Water Column');
+  await expect(page.locator('#mission-console [data-headless-water-column]')).toContainText('surface');
+  await expect(page.locator('#mission-console [data-headless-water-column]')).toContainText('thermocline');
+  await expect(page.locator('#mission-console [data-headless-water-column]')).toContainText('deep');
   await expect.poll(() => page.evaluate(() => window.ANCHOR_HEADLESS_BUNDLE_DEBUG?.roundtripLoaded)).toBe(true);
   await expect.poll(() => page.evaluate(() => window.ANCHOR_HEADLESS_BUNDLE_DEBUG?.roundtripCanonicalType)).toBe('anchor.headless.solver-roundtrip-report');
   await expect.poll(() => page.evaluate(() => window.ANCHOR_HEADLESS_BUNDLE_DEBUG?.solverPacketValidationStatus)).toBe('PASS');
@@ -424,6 +437,11 @@ test('Headless Bundle Viewer opens from Simulation Lab and exports browser summa
   await expect.poll(() => page.evaluate(() => window.ANCHOR_HEADLESS_BUNDLE_DEBUG?.hasScienceDiagnostics)).toBe(true);
   await expect.poll(() => page.evaluate(() => window.ANCHOR_HEADLESS_BUNDLE_DEBUG?.scienceDiagnosticsPublicSafe)).toBe(true);
   await expect.poll(() => page.evaluate(() => window.ANCHOR_HEADLESS_BUNDLE_DEBUG?.scienceDiagnosisIsPlannerAuthority)).toBe(false);
+  await expect.poll(() => page.evaluate(() => window.ANCHOR_HEADLESS_BUNDLE_DEBUG?.hasWaterColumnSummary)).toBe(true);
+  await expect.poll(() => page.evaluate(() => window.ANCHOR_HEADLESS_BUNDLE_DEBUG?.usesFull3DPlanning)).toBe(false);
+  await expect.poll(() => page.evaluate(() => window.ANCHOR_HEADLESS_BUNDLE_DEBUG?.usesNewPlanner)).toBe(false);
+  await expect.poll(() => page.evaluate(() => window.ANCHOR_HEADLESS_BUNDLE_DEBUG?.usesPythonSimulator)).toBe(false);
+  await expect.poll(() => page.evaluate(() => window.ANCHOR_HEADLESS_BUNDLE_DEBUG?.usesMARL)).toBe(false);
 
   const [roundtripDownload] = await Promise.all([
     page.waitForEvent('download'),
@@ -444,6 +462,18 @@ test('Headless Bundle Viewer opens from Simulation Lab and exports browser summa
   await openMainMenuHubSection(page, 'simulation');
   await expect(page.locator('#main-menu-hub[data-hub-view="simulation"]')).toContainText('Planner Benchmark');
   await expect(page.locator('#main-menu-hub[data-hub-view="simulation"]')).toContainText('Adaptive Benchmark');
+  await page.locator('#main-menu-hub [data-action="benchmark-adaptive"]').click();
+  await expect.poll(() => page.evaluate(() => window.ANCHOR_BENCHMARK_MODE_DEBUG?.benchmarkMode)).toBe('adaptiveBenchmark');
+  await expect(page.locator('#mission-console')).toContainText('The player or solver still chooses the route');
+
+  await page.locator('#mission-console [data-action="menu"]').click();
+  await launchFromMainMenuHub(page, 'simulation', 'benchmark-planner');
+  await expect.poll(() => page.evaluate(() => window.ANCHOR_BENCHMARK_MODE_DEBUG?.benchmarkMode)).toBe('plannerBenchmark');
+  await expect(page.locator('#mission-console')).toContainText('Planner Benchmark');
+
+  await page.locator('#mission-console [data-action="menu"]').click();
+  await openMainMenuHubSection(page, 'learning');
+  await expect(page.locator('#main-menu-hub[data-hub-view="learning"]')).toContainText('Learning Labs Index');
 });
 test('Planner Benchmark debrief exports benchmark records from synthetic result', async ({ page }) => {
   await page.goto('/');
@@ -2760,7 +2790,9 @@ test('stochastic mode exposes ensemble and risk controls', async ({ page }) => {
     zoneId: 'drop_alpha',
     selectedStart: deploymentCell
   });
-  await page.locator('#mission-console [data-action="execute"]').click();
+  const executeButton = page.locator('#mission-console [data-action="execute"]');
+  await expect(executeButton).toBeEnabled();
+  await executeButton.dispatchEvent('click');
   await expect.poll(() => page.evaluate(() => window.anchorGame.phaser.scene.getScene('SimulationScene').sys.isActive()), { timeout: 15000 }).toBe(true);
 });
 

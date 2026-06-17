@@ -209,6 +209,7 @@ async function verifyDocsListedSmokeScripts() {
 
 async function verifySceneReferences() {
   const missionConsole = await readIfExists('src/ui/MissionConsole.js');
+  const mainMenu = await readIfExists('src/game/phaser/scenes/MainMenuScene.js');
   const phaserGame = await readIfExists('src/game/phaser/PhaserGame.js');
   const expected = [
     {
@@ -267,8 +268,8 @@ async function verifySceneReferences() {
     }
   ];
   for (const entry of expected) {
-    const hasLabel = entry.labels.some((label) => missionConsole.includes(label));
-    if (!hasLabel) failures.push(`MissionConsole missing menu label: ${entry.label}`);
+    const hasLabel = entry.labels.some((label) => missionConsole.includes(label) || mainMenu.includes(label));
+    if (!hasLabel) failures.push(`Product shell missing hub/menu label: ${entry.label}`);
     if (!phaserGame.includes(entry.sceneName) && !missionConsole.includes(entry.sceneName)) failures.push(`Scene not registered or referenced: ${entry.sceneName}`);
     if (!(await exists(entry.file))) failures.push(`Referenced scene file missing: ${entry.file}`);
   }
