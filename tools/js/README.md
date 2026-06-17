@@ -122,3 +122,16 @@ node tools/js/audit_water_column_public_safety.mjs
 ## MOTION-R1 Motion Runtime Flags
 
 `tools/js/headless_oceanbox.mjs simulate` and `roundtrip` accept optional motion flags: `--motion-aware`, `--motion-model`, `--control-step`, `--glider-speed`, `--heading-rate-limit`, and `--drift-gain`. When enabled, Node/OceanBox-JS emits public-safe motion trajectory/control/diagnostic artifacts. This is deterministic JS execution, not WebGPU, not a new planner, not official browser scoring, and not MARL/RL.
+
+## GFX-ARCH-R1 Renderer Boundary Checks
+
+Renderer architecture smokes validate the pure renderer contracts and Simulation Lab preview without adding Three.js, WebGPU, WebGPU-Ocean, a new planner, scoring changes, Python simulation, or MARL/RL:
+
+```bash
+node tools/js/smoke_renderer_capability_model.mjs
+node tools/js/smoke_renderer_host_contract.mjs
+node tools/js/smoke_ocean_world_render_view_model.mjs
+node tools/js/smoke_renderer_architecture_preview_scene.mjs
+```
+
+These checks keep WebGPU as progressive enhancement and confirm renderer view models do not own simulation, scoring, planning, or hidden truth.

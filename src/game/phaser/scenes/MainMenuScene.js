@@ -39,6 +39,7 @@ const SIMULATION_LAB_ACTIONS = [
   'Uncertainty / Forecast Demo',
   'Sampling Priority Demo',
   'Flow-Coupled Sampling Demo',
+  'Renderer Architecture Preview',
   'Planner Benchmark',
   'Adaptive Benchmark',
   'Full Autonomy Benchmark',
@@ -272,7 +273,8 @@ export class MainMenuScene extends PhaserScene {
           hubActionHtml('uncertainty-forecast-demo', 'Uncertainty / Forecast Demo', 'Compare truth, forecast, belief, uncertainty, and observations.'),
           hubActionHtml('sampling-priority-demo', 'Sampling Priority Demo', 'Turn belief, uncertainty, boundaries, hazards, and hidden-event suspicion into A_global.'),
           hubActionHtml('flow-coupled-sampling-demo', 'Flow-Coupled Sampling Demo', 'Evaluate Q_glider action value under currents, reachability, energy, and redundancy.'),
-          hubActionHtml('motion-planning-demo', 'Motion Planning Demo', 'Compare planned waypoint intent with realized glider motion under currents and control limits.')
+          hubActionHtml('motion-planning-demo', 'Motion Planning Demo', 'Compare planned waypoint intent with realized glider motion under currents and control limits.'),
+          hubActionHtml('renderer-architecture-preview', 'Renderer Architecture Preview', 'Inspect Phaser shell plus future 3D renderer boundary and fallback capabilities.')
         ])}
         ${hubGroupHtml('Benchmark Modes', [
           hubActionHtml('benchmark-planner', 'Planner Benchmark', 'Objective fixed; player or solver chooses the route.', 'primary'),
@@ -329,6 +331,7 @@ export class MainMenuScene extends PhaserScene {
       'sampling-priority-demo': () => scene.start('SamplingPriorityDemoScene'),
       'flow-coupled-sampling-demo': () => scene.start('FlowCoupledSamplingDemoScene'),
       'motion-planning-demo': () => scene.start('MotionPlanningDemoScene'),
+      'renderer-architecture-preview': () => scene.start('RendererArchitecturePreviewScene'),
       'benchmark-planner': () => scene.start('BenchmarkModeOverviewScene', { benchmarkMode: 'plannerBenchmark' }),
       'benchmark-adaptive': () => scene.start('BenchmarkModeOverviewScene', { benchmarkMode: 'adaptiveBenchmark' }),
       'benchmark-full-autonomy': () => scene.start('BenchmarkModeOverviewScene', { benchmarkMode: 'fullAutonomyBenchmark' }),

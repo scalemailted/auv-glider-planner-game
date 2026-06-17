@@ -105,11 +105,16 @@ import { normalizeScienceDiagnosisId } from '../../src/core/science/ScienceDiagn
 import { HEADLESS_SOLVER_ROUNDTRIP_REPORT_TYPE, HEADLESS_SOLVER_ROUNDTRIP_BUNDLE_TYPE } from '../../src/core/headless/HeadlessRoundtripTypes.js';
 import { createGliderMotionConfig, validateGliderMotionConfig } from '../../src/core/motion/GliderMotionSchema.js';
 import { trajectoryMotionSummary, validateMotionTrajectory } from '../../src/core/motion/GliderTrajectorySimulator.js';
+import { detectRendererCapabilities, rendererCapabilitySummary } from '../../src/core/rendering/RendererCapabilityModel.js';
+import { createRendererHostConfig, createRendererSceneDescriptor, rendererHostSummary, validateRendererHostConfig } from '../../src/core/rendering/RendererHostContract.js';
+import { buildOceanWorldRenderViewModel, oceanWorldRenderViewModelSummary } from '../../src/core/rendering/OceanWorldRenderViewModel.js';
+import { rendererHostPanelHtml } from '../../src/ui/rendering/RendererHostPanel.js';
 import '../../src/labs/widgets/SamplingActionValueWidgets.js';
 import { FlowFieldDemoScene } from '../../src/game/phaser/scenes/FlowFieldDemoScene.js';
 import { RoiGeneratorDemoScene } from '../../src/game/phaser/scenes/RoiGeneratorDemoScene.js';
 import { CoupledFieldsDemoScene } from '../../src/game/phaser/scenes/CoupledFieldsDemoScene.js';
 import { MotionPlanningDemoScene } from '../../src/game/phaser/scenes/MotionPlanningDemoScene.js';
+import { RendererArchitecturePreviewScene } from '../../src/game/phaser/scenes/RendererArchitecturePreviewScene.js';
 
 function assertFiniteNumber(value, label) {
   assert.equal(Number.isFinite(Number(value)), true, `${label} should be finite`);
@@ -541,6 +546,76 @@ assert.equal(globalThis.ANCHOR_MOTION_PLANNING_DEMO_DEBUG?.usesMotionDynamics, t
 assert.equal(globalThis.ANCHOR_MOTION_PLANNING_DEMO_DEBUG?.usesWebGPUFluid, false, 'MOTION-R1 demo debug keeps WebGPU boundary');
 assert.equal(globalThis.ANCHOR_MOTION_PLANNING_DEMO_DEBUG?.notTopLevelMode, true, 'MOTION-R1 demo debug marks Simulation Lab sandbox placement');
 
+
+// GFX-ARCH-R1 renderer boundary: capability model, host contract, public view model, and preview scene.
+const gfxCaps = detectRendererCapabilities({
+  supportsCanvas2D: true,
+  supportsWebGL: true,
+  supportsWebGPU: false,
+  supportsThree: false,
+  phaserAvailable: true,
+  preferredBackend: 'threeWebGL'
+});
+const gfxCapsSummary = rendererCapabilitySummary(gfxCaps);
+assert.equal(gfxCapsSummary.webgpuProgressiveEnhancement, true, 'GFX-ARCH-R1 marks WebGPU as progressive enhancement');
+assert.equal(gfxCapsSummary.ownsSimulationState, false, 'GFX-ARCH-R1 renderer capabilities do not own simulation state');
+assert.equal(gfxCapsSummary.ownsScoring, false, 'GFX-ARCH-R1 renderer capabilities do not own scoring');
+assert.equal(gfxCapsSummary.ownsPlanning, false, 'GFX-ARCH-R1 renderer capabilities do not own planning');
+assert.equal(gfxCapsSummary.usesWebGPUFluid, false, 'GFX-ARCH-R1 renderer capabilities do not implement WebGPU fluid');
+assert.equal(gfxCapsSummary.usesMARL, false, 'GFX-ARCH-R1 renderer capabilities exclude MARL/RL');
+const gfxSceneDescriptor = createRendererSceneDescriptor({
+  id: 'future-ocean-world-renderer',
+  label: 'Future Ocean World Renderer',
+  rendererBackend: gfxCaps.preferredBackend,
+  fallbackBackend: gfxCaps.fallbackBackend,
+  purpose: 'Future bathymetry, depth-layer, planned-vs-realized trajectory renderer.',
+  optionalCapabilities: ['webgl', 'webgpu', 'three'],
+  consumesViewModelTypes: ['anchor.rendering.ocean-world-view-model']
+});
+const gfxHostConfig = createRendererHostConfig({
+  id: 'anchor-browser-renderer-host',
+  label: 'ANCHOR Browser Renderer Host',
+  capabilities: gfxCaps,
+  scenes: [gfxSceneDescriptor]
+});
+assert.equal(validateRendererHostConfig(gfxHostConfig).status, 'PASS', 'GFX-ARCH-R1 renderer host validates');
+assert.equal(rendererHostSummary(gfxHostConfig).sceneCount, 1, 'GFX-ARCH-R1 renderer host registers one descriptor');
+const gfxOceanViewModel = buildOceanWorldRenderViewModel({
+  missionConfig: { world: { grid: { width: 12, height: 8 } }, waterColumnConfig: { depthLayerIds: ['surface', 'thermocline', 'deep'] } },
+  waterColumnSummary: { waterColumnConfig: { depthLayerIds: ['surface', 'thermocline', 'deep'] }, verticalCoverage: 'broad', publicSafe: true },
+  bathymetrySummary: { minDepthMeters: 8, maxDepthMeters: 120, meanDepthMeters: 52, source: 'synthetic-smoke' },
+  motionTrajectory: {
+    plannedWaypoints: [{ id: 'wp-1', x: 1, y: 6, depthLayerId: 'surface' }, { id: 'wp-2', x: 5, y: 4, depthLayerId: 'thermocline' }],
+    realizedTrack: [{ id: 'track-1', x: 1, y: 6, depthLayerId: 'surface' }, { id: 'track-2', x: 4.6, y: 4.3, depthLayerId: 'thermocline' }],
+    sampledObservations: [{ id: 'sample-1', x: 4.6, y: 4.3, depthLayerId: 'thermocline', value: 0.72 }],
+    T_hiddenTruth: [[1, 2, 3]]
+  }
+});
+const gfxOceanSummary = oceanWorldRenderViewModelSummary(gfxOceanViewModel);
+assert.equal(gfxOceanSummary.depthLayerCount, 3, 'GFX-ARCH-R1 ocean view model exposes depth layers');
+assert.equal(gfxOceanSummary.ownsSimulationState, false, 'GFX-ARCH-R1 ocean view model does not own simulation state');
+assert.equal(gfxOceanSummary.ownsScoring, false, 'GFX-ARCH-R1 ocean view model does not own scoring');
+assert.equal(gfxOceanSummary.ownsPlanning, false, 'GFX-ARCH-R1 ocean view model does not own planning');
+assert.equal(gfxOceanSummary.usesWebGPUFluid, false, 'GFX-ARCH-R1 ocean view model excludes WebGPU fluid');
+assert.equal(JSON.stringify(gfxOceanViewModel).includes('T_hiddenTruth'), false, 'GFX-ARCH-R1 ocean view model omits hidden truth identifiers');
+const gfxPanelHtml = rendererHostPanelHtml({
+  capabilities: gfxCapsSummary,
+  hostSummary: rendererHostSummary(gfxHostConfig),
+  oceanWorldSummary: gfxOceanSummary
+});
+assert.ok(gfxPanelHtml.includes('Renderer Boundary'), 'GFX-ARCH-R1 panel renders renderer boundary');
+assert.ok(gfxPanelHtml.includes('Phaser shell remains active'), 'GFX-ARCH-R1 panel states Phaser shell boundary');
+assert.ok(gfxPanelHtml.includes('WebGPU is progressive enhancement'), 'GFX-ARCH-R1 panel states WebGPU is progressive enhancement');
+assert.ok(gfxPanelHtml.includes('Renderer does not own scoring, planning, or simulation'), 'GFX-ARCH-R1 panel states authority boundary');
+const gfxScene = new RendererArchitecturePreviewScene();
+gfxScene.buildPreviewModel({ globals: {}, preferredBackend: 'threeWebGL' });
+gfxScene.refreshDebugObject(true);
+assert.equal(globalThis.ANCHOR_RENDERER_ARCH_DEBUG?.phaserShellActive, true, 'GFX-ARCH-R1 debug object marks Phaser shell active');
+assert.equal(globalThis.ANCHOR_RENDERER_ARCH_DEBUG?.ownsSimulationState, false, 'GFX-ARCH-R1 debug object excludes simulation ownership');
+assert.equal(globalThis.ANCHOR_RENDERER_ARCH_DEBUG?.ownsScoring, false, 'GFX-ARCH-R1 debug object excludes scoring ownership');
+assert.equal(globalThis.ANCHOR_RENDERER_ARCH_DEBUG?.ownsPlanning, false, 'GFX-ARCH-R1 debug object excludes planning ownership');
+assert.equal(globalThis.ANCHOR_RENDERER_ARCH_DEBUG?.usesWebGPUFluid, false, 'GFX-ARCH-R1 debug object excludes WebGPU fluid');
+assert.equal(globalThis.ANCHOR_RENDERER_ARCH_DEBUG?.usesMARL, false, 'GFX-ARCH-R1 debug object excludes MARL/RL');
 const h1Files = headlessBundleFiles(h1Episode, { includeHiddenTruth: false });
 assert.equal(Object.hasOwn(h1Files, 'hidden_fields.json'), false, 'H1 can omit hidden truth bundle file');
 assert.equal(h1Files['visible_fields.json'].includes('T_hiddenTruth'), false, 'H1 visible fields omit hidden truth');
@@ -905,7 +980,13 @@ const claimFiles = [
   'src/core/demo/sampling/SpatiotemporalProcessExamples.js',
   'src/game/phaser/scenes/CoupledFieldsDemoScene.js',
   'src/game/phaser/scenes/FlowFieldDemoScene.js',
-  'src/game/phaser/scenes/MotionPlanningDemoScene.js'
+  'src/game/phaser/scenes/MotionPlanningDemoScene.js',
+  'src/core/rendering/RendererCapabilityModel.js',
+  'src/core/rendering/RendererHostContract.js',
+  'src/core/rendering/OceanWorldRenderViewModel.js',
+  'src/ui/rendering/RendererHostPanel.js',
+  'src/game/phaser/scenes/RendererArchitecturePreviewScene.js',
+  'docs/renderer_architecture_and_webgpu_strategy.md'
 ];
 const riskyClaimPattern = /((calibrated|validated|operational|HYCOM-quality|HYCOM|ROMS|Delft3D)[^\n.]{0,80}\b(forecast|model|data|output)\b)|(\b(forecast|model|data|output)\b[^\n.]{0,80}(calibrated|validated|operational|HYCOM-quality|HYCOM|ROMS|Delft3D))|real HYCOM data|actual HYCOM data/i;
 const boundaryPattern = /\bnot\b|\bno\b|notA|not-a|boundar|synthetic|inspired|teaching|scaffold|optional|claim level/i;

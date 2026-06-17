@@ -1,4 +1,4 @@
-﻿import assert from 'node:assert/strict';
+import assert from 'node:assert/strict';
 import fs from 'node:fs';
 
 const mainMenuPath = 'src/game/phaser/scenes/MainMenuScene.js';
@@ -29,7 +29,7 @@ assert.ok(mainMenu.includes('usesMARL: false'), 'debug object says no MARL');
 for (const label of ['Challenge Mode', 'Simulation Lab', 'Learning Labs']) {
   assert.ok(mainMenu.includes(label), `hub includes primary card ${label}`);
 }
-for (const label of ['Sampling Process Lab', 'Flow Fields Demo', 'Coupled Fields Demo', 'Uncertainty / Forecast Demo', 'Planner Benchmark', 'Adaptive Benchmark', 'Headless Bundle Viewer']) {
+for (const label of ['Sampling Process Lab', 'Flow Fields Demo', 'Coupled Fields Demo', 'Uncertainty / Forecast Demo', 'Renderer Architecture Preview', 'Planner Benchmark', 'Adaptive Benchmark', 'Headless Bundle Viewer']) {
   assert.ok(mainMenu.includes(label), `hub includes simulation lab action ${label}`);
 }
 for (const label of ['Start Guided Challenge', 'Quick Random Challenge', 'Play Custom Challenge / Import Challenge JSON']) {

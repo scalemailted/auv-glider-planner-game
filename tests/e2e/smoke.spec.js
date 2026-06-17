@@ -402,6 +402,32 @@ test('Motion Planning Demo opens from Simulation Lab and preserves benchmark/hea
   await expect(page.locator('#mission-console')).toContainText('Adaptive Benchmark');
 });
 
+test('Renderer Architecture Preview opens from Simulation Lab', async ({ page }) => {
+  await page.goto('/');
+  await expect(page.locator('#main-menu-hub')).toBeVisible();
+  await openMainMenuHubSection(page, 'simulation');
+  const simulationHub = page.locator('#main-menu-hub[data-hub-view="simulation"]');
+  await expect(simulationHub).toContainText('Renderer Architecture Preview');
+
+  await simulationHub.locator('[data-action="renderer-architecture-preview"]').click();
+  await expect.poll(() => page.evaluate(() => window.anchorGame.phaser.scene.getScene('RendererArchitecturePreviewScene').sys.isActive())).toBe(true);
+  await expect(page.locator('#mission-console')).toContainText('Renderer Boundary');
+  await expect(page.locator('#mission-console')).toContainText('Phaser shell remains active');
+  await expect(page.locator('#mission-console')).toContainText('WebGPU is progressive enhancement');
+  await expect(page.locator('#mission-console')).toContainText('Renderer does not own scoring, planning, or simulation');
+  await expect(page.locator('#mission-console')).toContainText('No WebGPU fluid simulation');
+  await expect(page.locator('#mission-console')).toContainText('no Python simulator');
+  await expect.poll(() => page.evaluate(() => window.ANCHOR_RENDERER_ARCH_DEBUG?.phaserShellActive)).toBe(true);
+  await expect.poll(() => page.evaluate(() => window.ANCHOR_RENDERER_ARCH_DEBUG?.ownsSimulationState)).toBe(false);
+  await expect.poll(() => page.evaluate(() => window.ANCHOR_RENDERER_ARCH_DEBUG?.ownsScoring)).toBe(false);
+  await expect.poll(() => page.evaluate(() => window.ANCHOR_RENDERER_ARCH_DEBUG?.ownsPlanning)).toBe(false);
+  await expect.poll(() => page.evaluate(() => window.ANCHOR_RENDERER_ARCH_DEBUG?.usesWebGPUFluid)).toBe(false);
+  await expect.poll(() => page.evaluate(() => window.ANCHOR_RENDERER_ARCH_DEBUG?.usesMARL)).toBe(false);
+  await expect.poll(() => page.evaluate(() => window.ANCHOR_RENDERER_ARCH_DEBUG?.webgpuRequired)).toBe(false);
+
+  await page.locator('#mission-console [data-action="menu"]').click();
+  await expect.poll(() => page.evaluate(() => window.anchorGame.phaser.scene.getScene('MainMenuScene').sys.isActive())).toBe(true);
+});
 test('Headless Bundle Viewer opens from Simulation Lab and exports browser summary', async ({ page }) => {
   await page.goto('/');
   await openMainMenuHubSection(page, 'simulation');

@@ -38,6 +38,12 @@ Challenge Mode also persists `missionMode`. Mission modes are player-facing obje
 
 ## Version / Milestone Log
 
+### GFX-ARCH-R1 - Renderer Boundary and WebGPU Feasibility Scaffold
+
+- Added pure renderer capability, renderer host, and public-safe ocean-world render view-model contracts under `src/core/rendering/`.
+- Added a lightweight Renderer Architecture Preview scene in Simulation Lab and `ANCHOR_RENDERER_ARCH_DEBUG` for boundary checks.
+- Kept Phaser as the current app/game shell while documenting Three.js/WebGL/WebGPU as future pluggable renderer layers.
+- Preserved the boundary: GFX-ARCH-R1 does not add Three.js, WebGPU, WebGPU-Ocean, fluid simulation, full 3D route planning, a new planner, scoring changes, a Python simulator, MARL/RL, or calibrated ocean forecasting.
 ### UI-R1 - Full-Viewport Main Menu / Product Hub
 
 - Replaced the idle sidebar-first landing surface with a full-viewport Main Menu / Product Hub for Challenge Mode, Simulation Lab, and Learning Labs.

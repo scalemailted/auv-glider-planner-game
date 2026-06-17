@@ -13,9 +13,9 @@ Version 2 is a playable static-web game built with vanilla JavaScript, HTML, CSS
 - main menu, campaign flow, mission briefing, planning, simulation, debrief, level editor, and dataset export scenes
 - full-viewport Main Menu / Product Hub with three primary cards: Challenge Mode, Simulation Lab, and Learning Labs
 - static Learning Labs concept pages, including a syllabus-style index, Scientific Computational Modeling foundation article, CA for Ocean-Relevant Processes foundation article, deterministic-process article, deterministic dynamic flow-fields article, oracle deterministic coupled sampling-space article, stochastic uncertainty article, stochastic coupled sampling-space article, Sampling Priority to Glider Action Value bridge article, and Planner / Mission Evaluation article
-- Simulation Lab field demos with Flow Fields Demo for current arrows, Process Lab for deterministic spatiotemporal process examples, Uncertainty / Forecast Demo for belief-state teaching, Sampling Priority Demo for global acquisition / sampling usefulness, Flow-Coupled Sampling Demo for glider-specific direct-target action value, and Benchmark Modes for Planner / Adaptive / Full Autonomy architecture contracts plus P1 route-execution adapter contracts
+- Simulation Lab field demos with Flow Fields Demo for current arrows, Process Lab for deterministic spatiotemporal process examples, Uncertainty / Forecast Demo for belief-state teaching, Sampling Priority Demo for global acquisition / sampling usefulness, Flow-Coupled Sampling Demo for glider-specific direct-target action value, Motion Planning Demo for planned-vs-realized trajectory inspection, Renderer Architecture Preview for the future 3D renderer boundary, and Benchmark Modes for Planner / Adaptive / Full Autonomy architecture contracts plus route-execution adapter contracts
 - game-first mission planning workspace with a large Phaser map, HTML/CSS mission-control overlays, top selected-glider planning HUD, bottom mission-time slider, waypoint drawer/table, and non-executable planning markers
-- Phaser 3 scene shell with Main Menu, Mission Briefing, Mission Workspace, Simulation, Debrief, Environment Editor, and Dataset Export scenes
+- Phaser 3 scene shell with Main Menu, Mission Briefing, Mission Workspace, Simulation, Debrief, Environment Editor, Dataset Export, and renderer architecture preview scenes
 - fourteen staged tutorial lessons built from handcrafted tutorial scenarios
 - guided tutorial prompts in the Planning scene
 - waypoint placement, timeline/list editing, deletion, reordering, import, and export
@@ -125,6 +125,7 @@ Quick loop:
 - [Planner Benchmark Route Overlay](docs/planner_benchmark_route_overlay.md)
 - [Adaptive Benchmark Mission Manager](docs/adaptive_benchmark_mission_manager.md)
 - [2.5D Water-Column Sampling Model](docs/water_column_2p5d_sampling_model.md)
+- [Renderer Architecture and WebGPU Strategy](docs/renderer_architecture_and_webgpu_strategy.md)
 - [Solver workflow](docs/solver_workflow.md)
 - [Export formats](docs/export_formats.md)
 - [Plan format](docs/plan_format.md)
@@ -156,6 +157,8 @@ Field concepts stay separate: `F(x,y,t)` is a physical current vector field, `C_
 `Uncertainty / Forecast Demo` visualizes hidden truth, forecast/expected state, noisy observations, belief, expected-state uncertainty, innovation, surprise, forecast error, unknown-event probability, and sampling-priority preview. It includes seven seeded educational scenarios, kernel/Bayesian-lite belief updates, forecast-error versus hidden-event diagnosis, and a right explanation/inspector panel. Truth is shown for education only; fair solver packets should treat truth as hidden unless oracle mode is explicit. See [Uncertainty / Forecast Demo](docs/uncertainty_forecast_demo.md).
 
 `Sampling Priority Demo` computes a global vehicle-independent acquisition field `A_global(x,y,t)` from belief ROI, uncertainty, boundary value, forecast-validation value, hidden-event suspicion, staleness, hazard suppression, and redundancy suppression. It teaches that event intensity is not sampling priority and generates reason-labeled candidate sample points. It is not route planning, not flow-coupled action value, and not a production GP/GMRF optimizer or calibrated data-assimilation system. See [Sampling Priority Demo](docs/sampling_priority_demo.md).
+
+`Renderer Architecture Preview` is a Simulation Lab scaffold for the future rendering stack. It keeps Phaser as the app/game shell, treats Three.js/WebGL/WebGPU as future pluggable renderer layers, and verifies that renderer view models do not own simulation, scoring, planning, hidden truth, WebGPU fluid simulation, Python simulation, or MARL/RL. See [Renderer Architecture and WebGPU Strategy](docs/renderer_architecture_and_webgpu_strategy.md).
 
 `Flow-Coupled Sampling Demo` computes glider-specific direct-target action value `Q_glider(g,x,y,t)` from `A_global`, future priority, current assist/opposition, cross-current risk, travel time, energy cost, time windows, hazards, reachability, and redundancy. The [Sampling Priority to Glider Action Value Learning Lab](labs/sampling-priority-to-glider-action-value.html) explains this bridge from global sampling priority to planner/mission evaluation. It is not full route planning, mission scoring, calibrated glider dynamics, calibrated ocean forecasting, or a production vehicle controller. See [Flow-Coupled Sampling Demo](docs/flow_coupled_sampling_demo.md).
 
@@ -648,7 +651,6 @@ npm.cmd run test:e2e
 `npm.cmd run check` runs `node tools/check-js.mjs` for repository JavaScript syntax/import checks. Playwright requires optional npm setup. On non-Windows shells, use `npm run check` and `npm run test:e2e`.
 
 ## Architecture
-
 The project is intentionally static and dependency-light.
 
 ```text

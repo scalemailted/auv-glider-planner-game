@@ -24,7 +24,7 @@ Browser ANCHOR is the visual game and referee. Node/OceanBox-JS is the canonical
 
 ### Browser ANCHOR
 
-Browser ANCHOR is the visual game, referee, and debrief UI. It owns the player-facing planning flow, simulation screens, tutorial/challenge routes, benchmark UI, adaptive surfacing review, and Headless Bundle Viewer. Browser scoring remains the official gameplay scoring surface.
+Browser ANCHOR is the visual game, referee, and debrief UI. Phaser remains the current app/game shell. GFX-ARCH-R1 adds a renderer boundary so future Three.js/WebGL/WebGPU environmental renderers can consume public-safe view models without owning simulation, scoring, planning, or hidden truth. It owns the player-facing planning flow, simulation screens, tutorial/challenge routes, benchmark UI, adaptive surfacing review, and Headless Bundle Viewer. Browser scoring remains the official gameplay scoring surface.
 
 Product surfaces include:
 
@@ -219,15 +219,16 @@ Boundaries:
 
 Active/near-term work should stabilize the current scientific game and headless architecture before adding large new systems.
 
-1. P11 - 2.5D Water-Column Sampling and Depth-Layer Mission Model: harden browser/headless parity, teaching copy, and fixture coverage around the new water-column foundation.
-2. H4 - Headless Replay / Browser Replay Alignment: make headless episode replay inspectable in Browser ANCHOR with clearer route, observation, score, and diagnosis alignment.
-3. P12 - Multi-Glider Cooperative Sampling and Redundancy-Aware Assignment: extend objectives and diagnostics for multiple vehicles while avoiding duplicate samples and redundant coverage.
-4. Learning Lab for Benchmark Modes + Headless Workflow + Hidden Discovery: teach Planner, Adaptive, Full Autonomy, solver-packet roundtrip, forecast correction, hidden-event hypothesis, and 2.5D sampling.
-5. Blind Discovery / Hidden-State Mode implementation: hide ocean fields until sampled and build gameplay around sparse observations and belief construction.
-6. Production mission scoring synthesis: align science value, uncertainty, discovery, energy, hazards, redundancy, and regret without replacing official browser scoring with headless scoring.
-7. Scenario packs and classroom assignment packs: provide reproducible missions for teaching and benchmark comparisons.
-8. Replay/debrief polish: improve comparisons, route explanation, depth-layer summaries, and regret narratives.
-9. Manual QA and performance pass: keep the static browser app responsive and testable as fields and artifacts grow.
+1. ENV-R1 - Three.js Bathymetric World View with Toggleable Depth Layers: build on the renderer boundary with a future pluggable 3D view while keeping Phaser as shell and portable JS as authority.
+2. P11 - 2.5D Water-Column Sampling and Depth-Layer Mission Model: harden browser/headless parity, teaching copy, and fixture coverage around the new water-column foundation.
+3. H4 - Headless Replay / Browser Replay Alignment: make headless episode replay inspectable in Browser ANCHOR with clearer route, observation, score, and diagnosis alignment.
+4. P12 - Multi-Glider Cooperative Sampling and Redundancy-Aware Assignment: extend objectives and diagnostics for multiple vehicles while avoiding duplicate samples and redundant coverage.
+5. Learning Lab for Benchmark Modes + Headless Workflow + Hidden Discovery: teach Planner, Adaptive, Full Autonomy, solver-packet roundtrip, forecast correction, hidden-event hypothesis, and 2.5D sampling.
+6. Blind Discovery / Hidden-State Mode implementation: hide ocean fields until sampled and build gameplay around sparse observations and belief construction.
+7. Production mission scoring synthesis: align science value, uncertainty, discovery, energy, hazards, redundancy, and regret without replacing official browser scoring with headless scoring.
+8. Scenario packs and classroom assignment packs: provide reproducible missions for teaching and benchmark comparisons.
+9. Replay/debrief polish: improve comparisons, route explanation, depth-layer summaries, and regret narratives.
+10. Manual QA and performance pass: keep the static browser app responsive and testable as fields and artifacts grow.
 
 ## 12. Medium-Term Priorities
 
@@ -270,6 +271,8 @@ Current boundaries:
 - No Python simulator reimplementation.
 - No MARL/RL training implementation yet.
 - No full 3D route planning yet.
+- No requirement to remove Phaser; future 3D rendering should be a pluggable renderer layer first.
+- No WebGPU fluid simulation in the canonical mission engine.
 - No production data assimilation, GP, or GMRF claim.
 - No official browser scoring replacement by headless score.
 - No multiplayer/account system in the current static app.
@@ -286,3 +289,9 @@ Current boundaries:
 ## MOTION-R1 Execution Model Checkpoint
 
 MOTION-R1 is implemented as a core execution-model layer plus a Simulation Lab sandbox, not as a fourth authority mode. Planner Benchmark, Adaptive Benchmark, and Full Autonomy Benchmark remain the authority modes. The motion layer represents planned waypoints, control commands, deterministic glider state updates, realized trajectories, sampled observations, motion diagnostics, and public-safe bundle summaries. Future ENV/GFX work may improve bathymetry/depth visualization or explore WebGPU fluid coupling, but Node/OceanBox-JS remains canonical for deterministic replay and artifact generation.
+
+## GFX-ARCH-R1 Renderer Boundary Checkpoint
+
+GFX-ARCH-R1 keeps Phaser as the app/game shell and adds pure renderer boundary contracts for capability detection, renderer host descriptors, and public-safe ocean-world render view models. Renderer Architecture Preview appears under Simulation Lab as an inspection scaffold, not a final 3D scene.
+
+Future renderer work should start with ENV-R1: a Three.js/WebGL bathymetric world view with toggleable depth layers. WebGPU remains progressive enhancement. WebGPU-Ocean-style fluid work remains a future sandbox/reference, not the canonical mission engine. The renderer layer must not own simulation state, browser scoring, planning, headless runtime behavior, hidden truth, Python simulation, or MARL/RL.
