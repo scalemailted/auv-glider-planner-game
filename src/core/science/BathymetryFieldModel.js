@@ -1,7 +1,7 @@
 import { createSeededRng, seededUnit } from '../random/SeededRng.js';
 import { createBathymetryConfig, validateBathymetryConfig } from './BathymetrySchema.js';
 
-export const BATHYMETRY_FIELD_MODEL_VERSION = 'bathymetry-field-model-env-r1';
+export const BATHYMETRY_FIELD_MODEL_VERSION = 'bathymetry-field-model-gfx-r2';
 
 export function createBathymetryField(options = {}) {
   if (options.depthMeters && Array.isArray(options.depthMeters)) {
@@ -177,6 +177,249 @@ export function sampleBathymetryAt(bathymetry, x, y) {
   return round(lerp(a, b, ty));
 }
 
+export function createCoastalOperationalBathymetry(options = {}) {
+  return createScenarioBathymetry({ ...options, scenarioId: 'coastalShelf', featureIds: ['landCoast', 'continentalShelf', 'shelfBreak', 'deepBasin', 'submarineCanyon', 'seamount', 'riverMouth', 'bottomHazards'] });
+}
+
+export function createIslandArcBathymetry(options = {}) {
+  return createScenarioBathymetry({ ...options, scenarioId: 'islandArc', featureIds: ['landCoast', 'continentalShelf', 'deepBasin', 'islandArc', 'submarineRidge', 'seamount', 'bottomHazards'] });
+}
+
+export function createShelfCanyonBathymetry(options = {}) {
+  return createScenarioBathymetry({ ...options, scenarioId: 'shelfCanyon', featureIds: ['landCoast', 'continentalShelf', 'shelfBreak', 'submarineCanyon', 'deepBasin', 'riverMouth', 'bottomHazards'] });
+}
+
+export function createBasinSeamountBathymetry(options = {}) {
+  return createScenarioBathymetry({ ...options, scenarioId: 'basinSeamount', featureIds: ['landCoast', 'continentalShelf', 'deepBasin', 'seamount', 'submarineRidge', 'bottomHazards'] });
+}
+
+export function bathymetryToTerrainMeshData(bathymetry, options = {}) {
+  const depth = bathymetry?.depthMeters ?? [];
+  const height = depth.length;
+  const width = depth[0]?.length ?? 0;
+  const verticalExaggeration = finiteNumber(options.verticalExaggeration, bathymetry?.config?.verticalExaggeration ?? 1.5);
+  const horizontalScale = finiteNumber(options.horizontalScale, 1);
+  const depthScale = finiteNumber(options.depthScale, 0.055);
+  const vertices = [];
+  const colors = [];
+  const uvs = [];
+  const indices = [];
+  const landMask = booleanLandMask(bathymetry);
+  const maxDepth = Math.max(1, bathymetryFieldStats(bathymetry).maxDepthMeters);
+  for (let y = 0; y < height; y += 1) {
+    for (let x = 0; x < width; x += 1) {
+      const d = Number(depth[y]?.[x] ?? 0);
+      const isLand = landMask[y]?.[x] === true;
+      const worldX = (x - (width - 1) / 2) * horizontalScale;
+      const worldZ = (y - (height - 1) / 2) * horizontalScale;
+      const worldY = isLand ? 1.8 + terrainNoise(x, y, bathymetry.seed) * 0.7 : -d * depthScale * verticalExaggeration;
+      vertices.push(round(worldX), round(worldY), round(worldZ));
+      const color = terrainColor(d, maxDepth, isLand);
+      colors.push(color[0], color[1], color[2]);
+      uvs.push(width <= 1 ? 0 : x / (width - 1), height <= 1 ? 0 : y / (height - 1));
+    }
+  }
+  for (let y = 0; y < height - 1; y += 1) {
+    for (let x = 0; x < width - 1; x += 1) {
+      const a = y * width + x;
+      const b = a + 1;
+      const c = a + width;
+      const d = c + 1;
+      indices.push(a, c, b, b, c, d);
+    }
+  }
+  return {
+    type: 'anchor.science.bathymetry-terrain-mesh-data',
+    version: BATHYMETRY_FIELD_MODEL_VERSION,
+    width,
+    height,
+    verticalExaggeration,
+    horizontalScale,
+    depthScale,
+    vertices,
+    colors,
+    uvs,
+    indices,
+    vertexCount: vertices.length / 3,
+    triangleCount: indices.length / 3,
+    landMask,
+    coastlineEdges: extractCoastlineEdges(landMask),
+    depthRange: bathymetryFeatureSummary(bathymetry).depthRange,
+    publicSafe: true,
+    calibratedSurveyData: false,
+    containsHiddenTruth: false
+  };
+}
+
+export function extractCoastlineEdges(landMaskInput, options = {}) {
+  const landMask = normalizeLandMaskInput(landMaskInput);
+  const height = landMask.length;
+  const width = landMask[0]?.length ?? 0;
+  const edges = [];
+  const scale = finiteNumber(options.horizontalScale, 1);
+  const offsetX = (width - 1) / 2;
+  const offsetY = (height - 1) / 2;
+  for (let y = 0; y < height; y += 1) {
+    for (let x = 0; x < width; x += 1) {
+      const isLand = landMask[y]?.[x] === true;
+      if (x < width - 1 && isLand !== (landMask[y]?.[x + 1] === true)) {
+        edges.push(coastEdge(x + 0.5, y - 0.5, x + 0.5, y + 0.5, offsetX, offsetY, scale));
+      }
+      if (y < height - 1 && isLand !== (landMask[y + 1]?.[x] === true)) {
+        edges.push(coastEdge(x - 0.5, y + 0.5, x + 0.5, y + 0.5, offsetX, offsetY, scale));
+      }
+    }
+  }
+  return edges.map((edge, index) => ({ id: `coastline-edge-${index + 1}`, ...edge }));
+}
+
+function createScenarioBathymetry(options = {}) {
+  const scenarioId = options.scenarioId ?? 'coastalShelf';
+  const featureIds = options.featureIds ?? ['landCoast', 'continentalShelf', 'shelfBreak', 'deepBasin', 'submarineCanyon', 'seamount', 'bottomHazards'];
+  const config = createBathymetryConfig({
+    ...options,
+    width: options.width ?? 56,
+    height: options.height ?? 36,
+    maxDepthMeters: options.maxDepthMeters ?? 260,
+    features: featureIds
+  });
+  const seed = String(options.seed ?? `bathymetry-${scenarioId}`);
+  const depthMeters = [];
+  const landMask = [];
+  for (let y = 0; y < config.height; y += 1) {
+    const row = [];
+    const landRow = [];
+    const ny = config.height <= 1 ? 0 : y / (config.height - 1);
+    for (let x = 0; x < config.width; x += 1) {
+      const nx = config.width <= 1 ? 0 : x / (config.width - 1);
+      const cell = scenarioDepthCell(nx, ny, scenarioId, config, seed, x, y);
+      row.push(round(cell.depthMeters));
+      landRow.push(cell.land);
+    }
+    depthMeters.push(row);
+    landMask.push(landRow);
+  }
+  const bathymetry = createBathymetryField({ ...options, seed, width: config.width, height: config.height, maxDepthMeters: config.maxDepthMeters, features: featureIds, depthMeters, synthetic: true });
+  bathymetry.version = 'bathymetry-field-model-gfx-r2';
+  bathymetry.scenarioId = scenarioId;
+  bathymetry.landMask = landMask;
+  bathymetry.landSeaMask = landMask.map((row) => row.map((cell) => cell ? 'land' : 'water'));
+  bathymetry.depthAccessibility = createDepthAccessibilityField(bathymetry, options);
+  bathymetry.hazardField = createBathymetryHazardField(bathymetry, options);
+  bathymetry.bottomHazardZones = extractBottomHazardZones(bathymetry, { maxZones: options.maxHazardZones ?? 18 });
+  bathymetry.coastlineEdges = extractCoastlineEdges(landMask);
+  bathymetry.featureIds = featureIds.slice();
+  bathymetry.featureSummary = bathymetryFeatureSummary(bathymetry);
+  bathymetry.stats = bathymetryFieldStats(bathymetry);
+  bathymetry.synthetic = true;
+  bathymetry.publicSafe = true;
+  bathymetry.calibratedSurveyData = false;
+  bathymetry.containsHiddenTruth = false;
+  return bathymetry;
+}
+
+function scenarioDepthCell(nx, ny, scenarioId, config, seed, x, y) {
+  const coast = scenarioCoastlineX(ny, scenarioId);
+  const islandInfluence = islandArcLandInfluence(nx, ny, scenarioId);
+  const land = nx < coast || islandInfluence.land;
+  if (land) return { depthMeters: 0, land: true };
+  const offshore = clamp((nx - coast) / Math.max(0.02, 1 - coast), 0, 1);
+  const shelf = 10 + 64 * smoothstep(0.02, 0.34, offshore);
+  const shelfBreak = 58 * ridgeShape(offshore, 0.42, 0.055);
+  const basin = 58 + config.maxDepthMeters * 0.72 * smoothstep(0.34, 0.96, offshore);
+  let depth = shelf + basin * 0.54 + shelfBreak;
+  if (scenarioId === 'shelfCanyon' || scenarioId === 'coastalShelf') {
+    const canyonAxis = coast + 0.18 + 0.2 * ny + 0.035 * Math.sin(ny * Math.PI * 4.2);
+    const canyon = Math.exp(-((nx - canyonAxis) ** 2) / 0.0028) * smoothstep(0.1, 0.86, offshore);
+    depth += 92 * canyon;
+  }
+  if (scenarioId === 'islandArc') {
+    depth += 32 * Math.sin(ny * Math.PI * 5.5) * smoothstep(0.35, 0.82, offshore);
+    depth -= 72 * islandInfluence.seamount;
+    depth -= 28 * Math.exp(-((ny - 0.63) ** 2) / 0.012) * smoothstep(0.36, 0.72, nx);
+  }
+  if (scenarioId === 'basinSeamount') {
+    depth += 54 * smoothstep(0.48, 0.9, nx);
+    depth -= 112 * Math.exp(-(((nx - 0.72) ** 2) / 0.012 + ((ny - 0.42) ** 2) / 0.02));
+    depth -= 42 * Math.exp(-((ny - 0.68) ** 2) / 0.01) * smoothstep(0.46, 0.85, nx);
+  } else {
+    depth -= 62 * Math.exp(-(((nx - 0.76) ** 2) / 0.014 + ((ny - 0.3) ** 2) / 0.025));
+  }
+  const estuary = Math.exp(-(((nx - coast - 0.025) ** 2) / 0.006 + ((ny - 0.62) ** 2) / 0.016));
+  if (scenarioId !== 'basinSeamount') depth = Math.max(depth, 8 + 24 * estuary);
+  const roughness = (seededUnit(`${seed}:rough:${x}:${y}`) - 0.5) * 5.6 + terrainNoise(x, y, seed) * 2.4;
+  return { depthMeters: clamp(depth + roughness, config.minDepthMeters, config.maxDepthMeters), land: false };
+}
+
+function scenarioCoastlineX(ny, scenarioId) {
+  const bay = scenarioId === 'shelfCanyon' || scenarioId === 'coastalShelf' ? 0.07 * Math.exp(-((ny - 0.6) ** 2) / 0.028) : 0.025 * Math.exp(-((ny - 0.28) ** 2) / 0.02);
+  const headland = scenarioId === 'basinSeamount' ? 0.035 * Math.exp(-((ny - 0.18) ** 2) / 0.016) : 0;
+  return clamp(0.1 + 0.045 * Math.sin(ny * Math.PI * 2.7 + 0.45) + bay + headland, 0.03, 0.27);
+}
+
+function islandArcLandInfluence(nx, ny, scenarioId) {
+  if (scenarioId !== 'islandArc') return { land: false, seamount: 0 };
+  const islands = [
+    { x: 0.52, y: 0.24, rx: 0.045, ry: 0.072 },
+    { x: 0.6, y: 0.42, rx: 0.036, ry: 0.06 },
+    { x: 0.68, y: 0.61, rx: 0.032, ry: 0.052 }
+  ];
+  let seamount = 0;
+  for (const island of islands) {
+    const d = ((nx - island.x) ** 2) / (island.rx ** 2) + ((ny - island.y) ** 2) / (island.ry ** 2);
+    if (d <= 1) return { land: true, seamount: 1 };
+    seamount = Math.max(seamount, Math.exp(-d * 0.62));
+  }
+  return { land: false, seamount };
+}
+
+function extractBottomHazardZones(bathymetry, options = {}) {
+  const hazard = bathymetry?.hazardField ?? createBathymetryHazardField(bathymetry);
+  const zones = [];
+  for (let y = 0; y < hazard.length; y += 1) {
+    for (let x = 0; x < (hazard[y]?.length ?? 0); x += 1) {
+      const value = Number(hazard[y][x]);
+      if (value >= 0.58) zones.push({ id: `bottom-hazard-${x}-${y}`, x, y, value: round(value), kind: value >= 0.95 ? 'land-or-grounding' : 'steep-or-shallow-bottom' });
+    }
+  }
+  return zones.sort((a, b) => b.value - a.value).slice(0, Math.max(0, Number(options.maxZones ?? 18) || 18));
+}
+
+function booleanLandMask(bathymetry) {
+  if (Array.isArray(bathymetry?.landMask)) return normalizeLandMaskInput(bathymetry.landMask);
+  return normalizeLandMaskInput(bathymetry?.landSeaMask ?? createLandSeaMaskFromBathymetry(bathymetry));
+}
+
+function normalizeLandMaskInput(input = []) {
+  return (Array.isArray(input) ? input : []).map((row) => (Array.isArray(row) ? row : []).map((value) => {
+    if (value === true || value === 'land') return true;
+    if (value === false || value === 'water') return false;
+    const number = Number(value);
+    return Number.isFinite(number) ? number <= 0 : false;
+  }));
+}
+
+function coastEdge(x1, y1, x2, y2, offsetX, offsetY, scale) {
+  return {
+    start: { x: round((x1 - offsetX) * scale), y: 0.18, z: round((y1 - offsetY) * scale) },
+    end: { x: round((x2 - offsetX) * scale), y: 0.18, z: round((y2 - offsetY) * scale) },
+    publicSafe: true
+  };
+}
+
+function terrainColor(depth, maxDepth, isLand) {
+  if (isLand) return [0.32, 0.38, 0.24];
+  const t = clamp(Number(depth) / Math.max(1, maxDepth), 0, 1);
+  if (t < 0.2) return [0.18, 0.58, 0.58];
+  if (t < 0.42) return [0.1, 0.38, 0.58];
+  if (t < 0.72) return [0.05, 0.18, 0.4];
+  return [0.025, 0.065, 0.18];
+}
+
+function terrainNoise(x, y, seed) {
+  return (seededUnit(`${seed}:terrain:${Math.floor(x / 2)}:${Math.floor(y / 2)}`) - 0.5)
+    + (seededUnit(`${seed}:terrain-hi:${x}:${y}`) - 0.5) * 0.55;
+}
 export function validateBathymetryField(bathymetry, configInput = bathymetry?.config ?? {}) {
   const errors = [];
   const warnings = [];

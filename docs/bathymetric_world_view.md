@@ -1,36 +1,44 @@
 # Bathymetric World View
 
-ENV-R1 adds a first bathymetric world viewer for ANCHOR's 2.5D AUV/glider mission model. It is a browser visualization layer over existing portable JS mission state: x, y, depthLayer, time, fields, observations, planned route, realized trajectory, motion diagnostics, and water-column summaries.
+GFX-R2 upgrades the ENV-R1 bathymetric world viewer from a Phaser-only proof of concept to a dedicated Three.js/WebGL renderer hosted inside the existing Phaser app shell. It is still a browser visualization layer over existing portable JS mission state: x, y, depth layer, time, fields, observations, planned route, realized trajectory, motion diagnostics, and water-column summaries.
 
 ## Why This Exists
 
-The tactical mission can still be planned from a top-down route, while the science happens in a water column. The Bathymetric World View makes that distinction visible by showing route intent at the surface, subsurface sampling points, depth-layer sheets, and a synthetic seafloor beneath the tactical map.
+The tactical mission is still planned from a top-down route, while the science happens in a water column. The Bathymetric World View makes that distinction visible by showing route intent at the surface, subsurface sampling points, depth-layer sheets, currents, and a synthetic seafloor beneath the tactical map.
+
+## Renderer Architecture
+
+Phaser remains the product shell and scene router. `src/game/three/ThreeBathymetryRenderer.js` owns a separate Three.js scene/camera/canvas mounted by `BathymetryWorldViewScene`. The renderer consumes a public-safe view model from `src/core/rendering/BathymetryWorldRenderViewModel.js` and does not import simulation, scoring, planning, benchmark, or hidden-truth authority modules.
+
+Three.js is used directly. Enable3D is not used because this view does not need a physics wrapper or Phaser-to-Three abstraction. WebGPU-Ocean is not integrated because ANCHOR still needs a static-hosted WebGL path and the current goal is environmental visualization, not a fluid solver.
 
 ## 2.5D State vs 3D Visualization
 
-2.5D means the mission remains waypoint/dive-profile based, while the view shows simplified depth layers under the tactical map. The viewer projects that state into an oblique layered ocean scene. It does not make route planning a free-form 3D problem.
+2.5D means the mission remains waypoint and dive-profile based, while the view shows simplified depth layers under the tactical map. The renderer projects that state into an oblique ocean scene. It does not make route planning a free-form 3D problem.
 
-## Bathymetry vs Water Column
+## Synthetic Terrain Scenarios
 
-Bathymetry is environmental geometry. It does not replace the 2.5D water-column model. The bottom surface gives context for shelves, canyon-like features, shallow areas, and deep basin structure. The water-column state still owns depth layers, observations, priorities, belief/uncertainty summaries, and sampling interpretation.
+The viewer includes seeded synthetic scenarios for Coastal Shelf, Shelf Canyon, Island Arc, and Basin + Seamount. These fields include land/coast masks, coastline edges, continental shelf, shelf break, deep basin, canyon or ridge structure, seamount or island features, and bottom hazard zones. They are designed to look like plausible educational ocean terrain, not calibrated survey products.
+
+A future real-data pipeline should ingest public datasets such as GEBCO or ETOPO bathymetry and Natural Earth coastline masks through an explicit data manifest, cache, and attribution path. GFX-R2 does not download or bundle real bathymetry.
 
 ## Displayed Geometry
 
-The ENV-R1 viewer can show a synthetic bathymetric bottom surface, semi-transparent water surface, surface/thermocline/deep depth-layer planes, surface waypoints, planned route, realized trajectory, sampling points, and a dive-profile path.
+The Three.js view can show synthetic bathymetric terrain, a translucent water surface, surface/thermocline/deep depth-layer planes, surface waypoints, planned route, realized trajectory, sampling points, dive-profile path, flow vectors, coastlines, and bottom-hazard markers.
 
-Surface waypoints are route intent. Sampling points show where observations were actually collected. The planned route and realized trajectory are shown separately because MOTION-R1 dynamics can produce drift and track error under currents and control limits.
+Surface waypoints are route intent. Sampling points show where observations were actually collected. The planned route and realized trajectory are shown separately because motion dynamics can produce drift and track error under currents and control limits.
+
+## Public-Safe View Model
+
+The render view model preserves public-safe fields only. It includes mesh data, layer visibility, geometry summaries, route and sampling geometry, and explicit boundary flags such as `ownsSimulationState: false`, `ownsScoring: false`, `ownsPlanning: false`, `usesFull3DPlanning: false`, `usesWebGPUFluid: false`, and `usesMARL: false`.
 
 ## Currents Boundary
 
-Terrain-flow accumulation is not ocean current. Ocean current remains F(x,y,z,t). Bathymetry provides environmental context and constraints; it is not a hydrodynamic current solver.
+Terrain-flow accumulation is not ocean current. Ocean current remains `F(x,y,z,t)`. Bathymetry provides environmental context and constraints; it is not a hydrodynamic current solver and does not turn terrain slope into the mission current model.
 
-## Future WebGPU Relationship
+## What GFX-R2 Does Not Implement
 
-ENV-R1 uses the renderer boundary from GFX-ARCH-R1 and keeps Phaser as the app shell. If future Three.js or WebGPU work is added, it should consume the same public-safe view models. ENV-R1 ships no WebGPU-Ocean, SWE, RichDEM, external DEM, or WebGPU fluid-simulation dependency.
-
-## What ENV-R1 Does Not Implement
-
-ENV-R1 does not add full 3D route planning, a new planner, route optimization, A*, Dijkstra, RRT, MPC, RL, MARL, production hydrodynamics, calibrated bathymetric survey data, production navigation charts, a Python simulator, backend services, or scoring changes.
+GFX-R2 does not add full 3D route planning, a new planner, route optimization, A*, Dijkstra, RRT, MPC, RL, MARL, production hydrodynamics, calibrated bathymetric survey data, production navigation charts, WebGPU fluid simulation, a Python simulator, backend services, or scoring changes.
 
 ## Headless Bundles
 

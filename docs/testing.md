@@ -1,6 +1,6 @@
 # Testing
 
-The browser game does not require npm, Playwright, or a build step for normal use. Normal local serving still works with:
+The browser game does not require a build step, backend, or Playwright for normal use. GFX-R2 uses the npm `three` dependency for the 3D Bathymetric World View, so run `npm install` after a fresh checkout if `node_modules/three` is not present. Normal local serving still works with:
 
 ```bash
 python -m http.server 8000
@@ -516,4 +516,4 @@ node tools/js/audit_water_column_no_3d_planning_claims.mjs
 
 For MOTION-R1, run the focused motion smokes: `smoke_glider_motion_schema`, `smoke_motion_environment_sampler`, `smoke_glider_dynamics_model`, `smoke_plan_control_adapter`, `smoke_glider_trajectory_simulator`, `smoke_motion_diagnostics`, `smoke_headless_motion_runtime`, `smoke_headless_roundtrip_motion`, `smoke_headless_motion_viewer_panel`, `smoke_motion_planning_demo_scene`, and `audit_motion_planning_boundaries`. The focused Playwright grep should open Simulation Lab, launch Motion Planning Demo, verify path-planning vs motion-planning copy, inspect `ANCHOR_MOTION_PLANNING_DEMO_DEBUG`, then confirm Headless Bundle Viewer, Planner Benchmark, and Adaptive Benchmark still open.
 
-ENV-R1 bathymetry checks: run `node tools/js/smoke_bathymetry_schema.mjs`, `node tools/js/smoke_bathymetry_field_model.mjs`, `node tools/js/smoke_bathymetry_mesh_model.mjs`, `node tools/js/smoke_ocean_world_geometry_adapter.mjs`, `node tools/js/smoke_bathymetry_world_view_scene.mjs`, `node tools/js/smoke_headless_bathymetry_runtime.mjs`, `node tools/js/smoke_headless_bathymetry_viewer_panel.mjs`, and `node tools/js/audit_bathymetry_boundaries.mjs`.
+ENV-R1/GFX-R2 bathymetry checks: run `node tools/js/smoke_bathymetry_schema.mjs`, `node tools/js/smoke_bathymetry_field_model.mjs`, `node tools/js/smoke_bathymetry_mesh_model.mjs`, `node tools/js/smoke_ocean_world_geometry_adapter.mjs`, `node tools/js/smoke_bathymetry_world_view_scene.mjs`, `node tools/js/smoke_bathymetry_world_render_view_model.mjs`, `node tools/js/smoke_three_bathymetry_renderer_contract.mjs`, `node tools/js/smoke_bathymetry_visual_quality_contract.mjs`, `node tools/js/smoke_bathymetry_three_scene.mjs`, `node tools/js/smoke_three_bathymetry_browser_pixels.mjs`, `node tools/js/smoke_headless_bathymetry_runtime.mjs`, `node tools/js/smoke_headless_bathymetry_viewer_panel.mjs`, `node tools/js/audit_bathymetry_boundaries.mjs`, and `node tools/js/audit_bathymetry_renderer_boundaries.mjs`.

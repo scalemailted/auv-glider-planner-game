@@ -103,7 +103,7 @@ import { analyzeScienceEvidence, buildScienceDiagnosticsArtifact } from '../../s
 import { runScienceDiscoveryFixture } from '../../src/core/science/ScienceDiscoveryFixtures.js';
 import { normalizeScienceDiagnosisId } from '../../src/core/science/ScienceDiagnosisTypes.js';
 import { createBathymetryConfig, validateBathymetryConfig } from '../../src/core/science/BathymetrySchema.js';
-import { createSyntheticBathymetryField, validateBathymetryField } from '../../src/core/science/BathymetryFieldModel.js';
+import { createCoastalOperationalBathymetry, createSyntheticBathymetryField, validateBathymetryField } from '../../src/core/science/BathymetryFieldModel.js';
 import { createBathymetryMesh, validateBathymetryMesh } from '../../src/core/science/BathymetryMeshModel.js';
 import { buildOceanWorldGeometry, validateOceanWorldGeometry } from '../../src/core/science/OceanWorldGeometryAdapter.js';
 import { HEADLESS_SOLVER_ROUNDTRIP_REPORT_TYPE, HEADLESS_SOLVER_ROUNDTRIP_BUNDLE_TYPE } from '../../src/core/headless/HeadlessRoundtripTypes.js';
@@ -112,6 +112,8 @@ import { trajectoryMotionSummary, validateMotionTrajectory } from '../../src/cor
 import { detectRendererCapabilities, rendererCapabilitySummary } from '../../src/core/rendering/RendererCapabilityModel.js';
 import { createRendererHostConfig, createRendererSceneDescriptor, rendererHostSummary, validateRendererHostConfig } from '../../src/core/rendering/RendererHostContract.js';
 import { buildOceanWorldRenderViewModel, oceanWorldRenderViewModelSummary } from '../../src/core/rendering/OceanWorldRenderViewModel.js';
+import { buildBathymetryWorldRenderViewModel, bathymetryWorldRenderViewModelSummary } from '../../src/core/rendering/BathymetryWorldRenderViewModel.js';
+import { THREE_BATHYMETRY_RENDERER_VERSION, threeBathymetryRendererSummary } from '../../src/game/three/ThreeBathymetryRenderer.js';
 import { rendererHostPanelHtml } from '../../src/ui/rendering/RendererHostPanel.js';
 import '../../src/labs/widgets/SamplingActionValueWidgets.js';
 import { FlowFieldDemoScene } from '../../src/game/phaser/scenes/FlowFieldDemoScene.js';
@@ -629,11 +631,31 @@ assert.equal(envOceanSummary.usesFull3DPlanning, false, 'ENV-R1 render view mode
 assert.equal(envOceanSummary.usesHydrodynamicSolver, false, 'ENV-R1 render view model excludes hydrodynamic solver');
 assert.equal(envOceanSummary.usesTerrainFlowAsOceanCurrent, false, 'ENV-R1 render view model preserves current boundary');
 assert.ok(envOceanViewModel.depthLayerPlanes.length >= 3, 'ENV-R1 render view model exposes depth-layer planes');
+const gfxR2Bathymetry = createCoastalOperationalBathymetry({ seed: 'model-stack-gfx-r2', width: 18, height: 12 });
+const gfxR2BathymetryViewModel = buildBathymetryWorldRenderViewModel({
+  bathymetry: gfxR2Bathymetry,
+  waterColumnConfig: { depthLayerIds: ['surface', 'thermocline', 'deep'] },
+  plan: { waypoints: [{ x: 2, y: 9 }, { x: 9, y: 5, depthLayerId: 'thermocline', depthMeters: 35 }] },
+  observations: [{ observationId: 'gfx-r2-obs-1', x: 9, y: 5, depthLayerId: 'thermocline', depthMeters: 35, observedValue: 0.7 }]
+});
+const gfxR2BathymetrySummary = bathymetryWorldRenderViewModelSummary(gfxR2BathymetryViewModel);
+assert.ok(gfxR2BathymetrySummary.terrainVertexCount > 0, 'GFX-R2 bathymetry view model exposes terrain mesh');
+assert.ok(gfxR2BathymetrySummary.coastlineEdgeCount > 0, 'GFX-R2 bathymetry view model exposes coastline edges');
+assert.equal(gfxR2BathymetrySummary.ownsSimulationState, false, 'GFX-R2 bathymetry view model excludes simulation ownership');
+assert.equal(gfxR2BathymetrySummary.ownsScoring, false, 'GFX-R2 bathymetry view model excludes scoring ownership');
+assert.equal(gfxR2BathymetrySummary.ownsPlanning, false, 'GFX-R2 bathymetry view model excludes planning ownership');
+assert.equal(typeof THREE_BATHYMETRY_RENDERER_VERSION, 'string', 'GFX-R2 Three bathymetry renderer imports');
+const gfxR2RendererSummary = threeBathymetryRendererSummary({ threeAvailable: true, groups: {}, viewModel: gfxR2BathymetryViewModel, layerVisibility: {}, cameraState: {} });
+assert.equal(gfxR2RendererSummary.renderer, 'three', 'GFX-R2 renderer summary marks Three renderer');
+assert.equal(gfxR2RendererSummary.usesFull3DPlanning, false, 'GFX-R2 renderer excludes full 3D planning');
+assert.equal(gfxR2RendererSummary.usesWebGPUFluid, false, 'GFX-R2 renderer excludes WebGPU fluid');
+assert.equal(gfxR2RendererSummary.usesEnable3D, false, 'GFX-R2 renderer excludes Enable3D');
 const envScene = new BathymetryWorldViewScene();
 assert.equal(envScene.scene?.key ?? 'BathymetryWorldViewScene', 'BathymetryWorldViewScene', 'ENV-R1 BathymetryWorldViewScene imports');
 const envSceneSource = fs.readFileSync('src/game/phaser/scenes/BathymetryWorldViewScene.js', 'utf8');
 assert.ok(envSceneSource.includes('ANCHOR_BATHYMETRY_VIEW_DEBUG'), 'ENV-R1 debug object exists');
 assert.ok(envSceneSource.includes('usesHydrodynamicSolver: false'), 'ENV-R1 debug object preserves hydrodynamic boundary');
+assert.ok(envSceneSource.includes('usesThreeRenderer: true'), 'GFX-R2 debug object marks Three renderer');
 const gfxPanelHtml = rendererHostPanelHtml({
   capabilities: gfxCapsSummary,
   hostSummary: rendererHostSummary(gfxHostConfig),

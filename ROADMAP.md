@@ -221,7 +221,7 @@ Boundaries:
 
 Active/near-term work should stabilize the current scientific game and headless architecture before adding large new systems.
 
-1. ENV-R1 - Bathymetric World View with Toggleable Depth Layers: stabilize the implemented dependency-free Phaser pseudo-3D view while keeping Phaser as shell and portable JS as authority.
+1. GFX-R2 - Three.js Bathymetric World Renderer: stabilize the active Three.js/WebGL bathymetry view while keeping Phaser as shell and portable JS as authority.
 2. P11 - 2.5D Water-Column Sampling and Depth-Layer Mission Model: harden browser/headless parity, teaching copy, and fixture coverage around the new water-column foundation.
 3. H4 - Headless Replay / Browser Replay Alignment: make headless episode replay inspectable in Browser ANCHOR with clearer route, observation, score, and diagnosis alignment.
 4. P12 - Multi-Glider Cooperative Sampling and Redundancy-Aware Assignment: extend objectives and diagnostics for multiple vehicles while avoiding duplicate samples and redundant coverage.
@@ -296,5 +296,5 @@ MOTION-R1 is implemented as a core execution-model layer plus a Simulation Lab s
 
 GFX-ARCH-R1 keeps Phaser as the app/game shell and adds pure renderer boundary contracts for capability detection, renderer host descriptors, and public-safe ocean-world render view models. Renderer Architecture Preview appears under Simulation Lab as an inspection scaffold, not a final 3D scene.
 
-ENV-R1 starts this path with a dependency-free Phaser pseudo-3D bathymetric world view and toggleable depth layers. Future Three.js/WebGL/WebGPU work can consume the same public-safe view models. WebGPU-Ocean-style fluid work remains a future sandbox/reference, not the canonical mission engine. The renderer layer must not own simulation state, browser scoring, planning, headless runtime behavior, hidden truth, Python simulation, or MARL/RL.
-ENV-R1 Bathymetric World View adds bathymetry visualization over the 2.5D model; it does not add full 3D route planning, WebGPU-Ocean, a Python simulator, or MARL/RL.
+ENV-R1 established the bathymetric world view and toggleable depth-layer concept. GFX-R2 upgrades that view to a dedicated Three.js/WebGL renderer that consumes public-safe view models while Phaser remains the app shell. WebGPU-Ocean-style fluid work remains a future sandbox/reference, not the canonical mission engine. The renderer layer must not own simulation state, browser scoring, planning, headless runtime behavior, hidden truth, Python simulation, or MARL/RL.
+GFX-R2 Bathymetric World View adds higher-quality synthetic bathymetry visualization over the 2.5D model; it does not add full 3D route planning, WebGPU-Ocean, a Python simulator, or MARL/RL.

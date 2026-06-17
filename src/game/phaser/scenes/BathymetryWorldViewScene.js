@@ -1,31 +1,56 @@
 import { normalizeBathymetryViewMode } from '../../../core/science/BathymetrySchema.js';
-import { createSyntheticBathymetryField } from '../../../core/science/BathymetryFieldModel.js';
+import {
+  createBasinSeamountBathymetry,
+  createCoastalOperationalBathymetry,
+  createIslandArcBathymetry,
+  createShelfCanyonBathymetry
+} from '../../../core/science/BathymetryFieldModel.js';
 import { createBathymetryCamera, updateBathymetryCamera } from '../../../core/science/BathymetryMeshModel.js';
-import { buildOceanWorldGeometry, oceanWorldGeometrySummary } from '../../../core/science/OceanWorldGeometryAdapter.js';
 import { normalizeWaterColumnConfig } from '../../../core/science/WaterColumnSchema.js';
-import { drawBathymetryWorld, BATHYMETRY_WORLD_RENDERER_VERSION } from '../renderers/BathymetryWorldRenderer.js';
+import {
+  buildBathymetryWorldRenderViewModel,
+  bathymetryWorldRenderViewModelSummary
+} from '../../../core/rendering/BathymetryWorldRenderViewModel.js';
+import {
+  createThreeBathymetryRenderer,
+  disposeThreeBathymetryRenderer,
+  resizeThreeBathymetryRenderer,
+  setBathymetryCamera,
+  setBathymetryLayerVisibility,
+  threeBathymetryRendererSummary,
+  updateThreeBathymetryScene
+} from '../../three/ThreeBathymetryRenderer.js';
 
 const PhaserScene = globalThis.Phaser?.Scene ?? class {};
 
-export const BATHYMETRY_WORLD_VIEW_SCENE_VERSION = 'bathymetry-world-view-scene-env-r1';
+export const BATHYMETRY_WORLD_VIEW_SCENE_VERSION = 'bathymetry-world-view-scene-gfx-r2';
+
+const TERRAIN_SCENARIOS = {
+  coastalShelf: { label: 'Coastal Shelf', create: createCoastalOperationalBathymetry },
+  shelfCanyon: { label: 'Shelf Canyon', create: createShelfCanyonBathymetry },
+  islandArc: { label: 'Island Arc', create: createIslandArcBathymetry },
+  basinSeamount: { label: 'Basin + Seamount', create: createBasinSeamountBathymetry }
+};
 
 export class BathymetryWorldViewScene extends PhaserScene {
   constructor() {
     super('BathymetryWorldViewScene');
     this.objects = [];
-    this.legendObjects = [];
     this.viewMode = 'obliqueBathymetry';
-    this.camera = createBathymetryCamera({ yaw: -34, pitch: 48, zoom: 20, verticalExaggeration: 1.5 });
+    this.terrainScenario = 'coastalShelf';
+    this.camera = createBathymetryCamera({ yaw: -42, pitch: 42, zoom: 58, verticalExaggeration: 1.8 });
     this.layerVisibility = {
       bathymetry: true,
       waterSurface: true,
       surface: true,
       thermocline: true,
       deep: true,
-      plannedPath: true,
-      realizedTrajectory: true,
+      surfaceWaypoints: true,
       samplingPoints: true,
-      diveProfilePath: true
+      plannedRoute: true,
+      realizedTrajectory: true,
+      diveProfilePath: true,
+      flowVectors: true
     };
   }
 
@@ -35,66 +60,46 @@ export class BathymetryWorldViewScene extends PhaserScene {
     this.app.state.mode = 'bathymetryWorldView';
     this.app.clearPanels();
     this.app.elements.shell?.classList.remove('planning-workspace');
-    this.app.setSceneLabel('Bathymetric World View');
-    this.rebuildGeometry();
+    this.app.setSceneLabel('3D Bathymetric World View');
+    this.drawPhaserBackdrop();
+    this.mountRendererContainer();
+    this.rebuildWorld();
+    this.initializeRenderer();
     this.renderConsole();
-    this.buildSceneObjects();
-    this.draw();
+    this.renderThreeScene();
     this.refreshDebugObject(true);
   }
 
   shutdown() {
-    this.destroyObjects();
+    this.destroyRenderer();
+    this.clearObjects();
     this.refreshDebugObject(false);
   }
 
   handleViewportResize() {
     if (!this.sys?.isActive?.()) return;
-    this.buildSceneObjects();
-    this.draw();
+    this.drawPhaserBackdrop();
+    resizeThreeBathymetryRenderer(this.threeRenderer);
+    this.refreshDebugObject(true);
   }
 
-  rebuildGeometry() {
+  rebuildWorld() {
     this.waterColumnConfig = normalizeWaterColumnConfig({
       depthLayerIds: ['surface', 'thermocline', 'deep'],
       diveProfileId: 'sawtoothProfile'
     });
-    this.bathymetry = createSyntheticBathymetryField({
-      seed: 'env-r1-bathymetry-view',
-      width: 30,
-      height: 20,
-      maxDepthMeters: 180,
+    const createBathymetry = TERRAIN_SCENARIOS[this.terrainScenario]?.create ?? createCoastalOperationalBathymetry;
+    this.bathymetry = createBathymetry({
+      seed: `gfx-r2-${this.terrainScenario}`,
+      width: 58,
+      height: 38,
+      maxDepthMeters: 280,
       verticalExaggeration: this.camera.verticalExaggeration,
-      defaultViewMode: this.viewMode,
-      features: ['continentalShelf', 'shelfBreak', 'submarineCanyon', 'abyssalPlain', 'seamount', 'riverMouth']
+      defaultViewMode: this.viewMode
     });
-    this.plan = {
-      type: 'anchor.demo.bathymetry-view-plan',
-      planId: 'env-r1-example-plan',
-      gliderId: 'glider-env-r1',
-      diveProfileId: 'sawtoothProfile',
-      generatesRoute: false,
-      waypoints: [
-        { waypointId: 'wp-1', x: 4, y: 16, depthLayerId: 'surface', depthMeters: 0 },
-        { waypointId: 'wp-2', x: 9, y: 12, depthLayerId: 'thermocline', depthMeters: 35 },
-        { waypointId: 'wp-3', x: 15, y: 10, depthLayerId: 'deep', depthMeters: 120 },
-        { waypointId: 'wp-4', x: 22, y: 7, depthLayerId: 'thermocline', depthMeters: 35 },
-        { waypointId: 'wp-5', x: 27, y: 4, depthLayerId: 'surface', depthMeters: 0 }
-      ]
-    };
-    this.tracks = [
-      { id: 'track-1', x: 4, y: 16, depthLayerId: 'surface', depthMeters: 0, timeSeconds: 0 },
-      { id: 'track-2', x: 7.8, y: 13.1, depthLayerId: 'thermocline', depthMeters: 32, timeSeconds: 600, trackError: 0.2 },
-      { id: 'track-3', x: 13.7, y: 10.9, depthLayerId: 'deep', depthMeters: 112, timeSeconds: 1320, trackError: 0.6 },
-      { id: 'track-4', x: 20.5, y: 7.7, depthLayerId: 'thermocline', depthMeters: 38, timeSeconds: 2040, trackError: 0.5 },
-      { id: 'track-5', x: 26.2, y: 4.8, depthLayerId: 'surface', depthMeters: 0, timeSeconds: 2760, trackError: 0.4 }
-    ];
-    this.observations = [
-      { observationId: 'obs-surface-1', x: 4, y: 16, depthLayerId: 'surface', depthMeters: 0, observedValue: 0.34, timeSeconds: 0 },
-      { observationId: 'obs-thermocline-1', x: 7.8, y: 13.1, depthLayerId: 'thermocline', depthMeters: 32, observedValue: 0.66, timeSeconds: 600 },
-      { observationId: 'obs-deep-1', x: 13.7, y: 10.9, depthLayerId: 'deep', depthMeters: 112, observedValue: 0.48, timeSeconds: 1320 },
-      { observationId: 'obs-thermocline-2', x: 20.5, y: 7.7, depthLayerId: 'thermocline', depthMeters: 38, observedValue: 0.72, timeSeconds: 2040 }
-    ];
+    this.plan = createDemoPlan(this.terrainScenario);
+    this.tracks = createDemoTrack(this.plan);
+    this.observations = createDemoObservations(this.tracks);
     this.motionTrajectory = {
       type: 'anchor.motion.trajectory',
       planId: this.plan.planId,
@@ -105,10 +110,10 @@ export class BathymetryWorldViewScene extends PhaserScene {
       motionDiagnostics: {
         summary: {
           motionModelId: 'depthLayerKinematic',
-          plannedDistance: 27.8,
-          realizedDistance: 29.1,
-          meanTrackError: 0.42,
-          energyUsed: 21.4,
+          plannedDistance: 42.6,
+          realizedDistance: 44.3,
+          meanTrackError: 0.54,
+          energyUsed: 29.2,
           sampledPointCount: this.observations.length
         }
       },
@@ -116,24 +121,42 @@ export class BathymetryWorldViewScene extends PhaserScene {
       usesWebGPUFluid: false,
       usesMARL: false
     };
-    this.geometry = buildOceanWorldGeometry({
-      missionConfig: { world: { width: 30, height: 20, waterColumnConfig: this.waterColumnConfig, bathymetryConfig: this.bathymetry.config } },
+    this.viewModel = buildBathymetryWorldRenderViewModel({
       bathymetry: this.bathymetry,
       waterColumnConfig: this.waterColumnConfig,
-      observations: this.observations,
-      tracks: this.tracks,
-      motionTrajectory: this.motionTrajectory,
       plan: this.plan,
+      tracks: this.tracks,
+      observations: this.observations,
+      motionTrajectory: this.motionTrajectory,
+      scienceDiagnostics: { primaryDiagnosis: 'syntheticBathymetryInspection', publicSafe: true },
       options: {
-        flowOverlaySummary: { present: true, currentField: 'F(x,y,z,t)', note: 'Terrain-flow accumulation is not ocean current.' },
-        motionDynamicsSummary: this.motionTrajectory.motionDiagnostics.summary
+        verticalExaggeration: this.camera.verticalExaggeration,
+        terrainScenario: this.terrainScenario,
+        layerVisibility: this.layerVisibility,
+        flowVectorStride: 6
       }
     });
+  }
+
+  initializeRenderer() {
+    if (this.threeRenderer || !this.rendererContainer) return;
+    this.threeRenderer = createThreeBathymetryRenderer(this.rendererContainer, {
+      camera: this.camera,
+      layerVisibility: this.layerVisibility
+    });
+  }
+
+  renderThreeScene() {
+    if (!this.threeRenderer) return;
+    updateThreeBathymetryScene(this.threeRenderer, this.viewModel);
+    setBathymetryLayerVisibility(this.threeRenderer, this.layerVisibility);
+    setBathymetryCamera(this.threeRenderer, this.camera);
   }
 
   renderConsole() {
     this.app.console?.renderBathymetryWorldViewControls?.(this.controlState(), {
       viewMode: (value) => this.patch({ viewMode: normalizeBathymetryViewMode(value) }),
+      terrainScenario: (value) => this.patch({ terrainScenario: TERRAIN_SCENARIOS[value] ? value : 'coastalShelf' }, true),
       yaw: (value) => this.patchCamera({ yaw: Number(value) }),
       pitch: (value) => this.patchCamera({ pitch: Number(value) }),
       zoom: (value) => this.patchCamera({ zoom: Number(value) }),
@@ -146,207 +169,181 @@ export class BathymetryWorldViewScene extends PhaserScene {
 
   controlState() {
     return {
-      title: 'Bathymetric World View',
-      status: 'Layered ocean view',
+      title: '3D Bathymetric World View',
+      status: 'Three.js ocean terrain renderer',
       viewMode: this.viewMode,
+      terrainScenario: this.terrainScenario,
+      terrainScenarios: Object.entries(TERRAIN_SCENARIOS).map(([id, value]) => ({ id, label: value.label })),
       camera: this.camera,
       layerVisibility: this.layerVisibility,
-      summary: oceanWorldGeometrySummary(this.geometry)
+      summary: bathymetryWorldRenderViewModelSummary(this.viewModel ?? {})
     };
   }
 
-  patch(patch = {}) {
+  patch(patch = {}, forceRebuild = false) {
     Object.assign(this, patch);
-    this.rebuildGeometry();
+    if (forceRebuild || patch.viewMode || patch.terrainScenario) this.rebuildWorld();
     this.renderConsole();
-    this.draw();
+    this.renderThreeScene();
     this.refreshDebugObject(true);
   }
 
   patchCamera(patch = {}, rebuild = false) {
     this.camera = updateBathymetryCamera(this.camera, patch);
-    if (rebuild) this.rebuildGeometry();
+    if (rebuild) this.rebuildWorld();
     this.renderConsole();
-    this.draw();
+    this.renderThreeScene();
     this.refreshDebugObject(true);
   }
 
   patchLayerVisibility(key, value) {
     this.layerVisibility = { ...this.layerVisibility, [key]: Boolean(value) };
     this.renderConsole();
-    this.draw();
+    setBathymetryLayerVisibility(this.threeRenderer, this.layerVisibility);
     this.refreshDebugObject(true);
   }
 
   resetCamera() {
-    this.camera = createBathymetryCamera({ yaw: -34, pitch: 48, zoom: 20, verticalExaggeration: 1.5 });
+    this.camera = createBathymetryCamera({ yaw: -42, pitch: 42, zoom: 58, verticalExaggeration: 1.8 });
     this.layerVisibility = {
       bathymetry: true,
       waterSurface: true,
       surface: true,
       thermocline: true,
       deep: true,
-      plannedPath: true,
-      realizedTrajectory: true,
+      surfaceWaypoints: true,
       samplingPoints: true,
-      diveProfilePath: true
+      plannedRoute: true,
+      realizedTrajectory: true,
+      diveProfilePath: true,
+      flowVectors: true
     };
-    this.patch({});
+    this.rebuildWorld();
+    this.renderConsole();
+    this.renderThreeScene();
+    this.refreshDebugObject(true);
   }
 
-  buildSceneObjects() {
-    this.destroyObjects();
-    this.graphics = this.add.graphics();
-    this.titleText = this.add.text(0, 0, 'Bathymetric World View', {
-      fontFamily: 'system-ui',
-      fontSize: '29px',
-      fontStyle: '700',
-      color: '#eef6ff'
-    }).setOrigin(0, 0);
-    this.subtitleText = this.add.text(0, 0, '2.5D mission state rendered as synthetic bathymetry, transparent depth layers, route intent, sampling points, and realized trajectory.', {
-      fontFamily: 'system-ui',
-      fontSize: '14px',
-      color: '#b5cbe5',
-      wordWrap: { width: 960 }
-    }).setOrigin(0, 0);
-    this.copyText = this.add.text(0, 0, '', {
-      fontFamily: 'system-ui',
-      fontSize: '12px',
-      color: '#d7e7f7',
-      lineSpacing: 5,
-      wordWrap: { width: 760 }
-    }).setOrigin(0, 0);
-    this.objects.push(this.graphics, this.titleText, this.subtitleText, this.copyText);
+  mountRendererContainer() {
+    const host = this.app?.elements?.viewportShell ?? this.app?.elements?.gameContainer ?? globalThis.document?.getElementById?.('viewport-shell');
+    if (!host || this.rendererContainer) return;
+    this.rendererContainer = globalThis.document.createElement('div');
+    this.rendererContainer.id = 'bathymetry-three-renderer-host';
+    this.rendererContainer.className = 'bathymetry-three-renderer-host';
+    host.appendChild(this.rendererContainer);
   }
 
-  draw() {
-    if (!this.graphics) return;
-    this.destroyLegendObjects();
-    this.graphics.clear();
-    const layout = this.layout();
-    this.graphics.fillGradientStyle(0x06111f, 0x0b273d, 0x071827, 0x04101d, 1);
-    this.graphics.fillRect(0, 0, layout.width, layout.height);
-    this.graphics.lineStyle(1, 0x65c7f0, 0.08);
-    for (let y = layout.top + 72; y < layout.height; y += 54) this.graphics.lineBetween(0, y, layout.width, y + Math.sin(y * 0.02) * 12);
-    this.titleText.setPosition(layout.margin, layout.top);
-    this.subtitleText.setPosition(layout.margin, layout.top + 40);
-    this.copyText.setPosition(layout.margin, layout.height - layout.copyHeight).setText([
-      '2.5D means the mission remains waypoint/dive-profile based, while the view shows simplified depth layers under the tactical map.',
-      'Bathymetry is environmental geometry. It does not replace the water-column state model.',
-      'Surface waypoints are route intent. Sampling points show where observations were actually collected.',
-      'ENV-R1 does not add full 3D route planning, a new planner, production hydrodynamics, or MARL/RL.'
-    ].join('\n'));
-    const camera = updateBathymetryCamera(this.camera, {
-      centerX: 14.5,
-      centerY: 9.5,
-      panX: layout.map.x + layout.map.width * 0.5 + Number(this.camera.panX ?? 0),
-      panY: layout.map.y + layout.map.height * 0.52 + Number(this.camera.panY ?? 0)
-    });
-    this.graphics.fillStyle(0x081827, 0.78);
-    this.graphics.fillRoundedRect(layout.map.x, layout.map.y, layout.map.width, layout.map.height, 8);
-    this.graphics.lineStyle(1, 0x8fe9ff, 0.26);
-    this.graphics.strokeRoundedRect(layout.map.x, layout.map.y, layout.map.width, layout.map.height, 8);
-    drawBathymetryWorld(this.graphics, this.geometry, camera, {
-      showBathymetry: this.layerVisibility.bathymetry,
-      showWaterSurface: this.layerVisibility.waterSurface,
-      layerVisibility: this.layerVisibility,
-      showPlannedPath: this.layerVisibility.plannedPath,
-      showRealizedTrajectory: this.layerVisibility.realizedTrajectory,
-      showSamplingPoints: this.layerVisibility.samplingPoints,
-      showDiveProfilePath: this.layerVisibility.diveProfilePath,
-      drawLabels: false
-    });
-    this.drawLegend(layout);
+  destroyRenderer() {
+    disposeThreeBathymetryRenderer(this.threeRenderer);
+    this.threeRenderer = null;
+    this.rendererContainer?.remove?.();
+    this.rendererContainer = null;
+    this.resizeObserver?.disconnect?.();
+    this.resizeObserver = null;
   }
 
-  drawLegend(layout) {
-    const x = layout.map.x + 16;
-    let y = layout.map.y + 14;
-    const items = [
-      ['Water surface', 0x8fe9ff],
-      ['Surface layer', 0x8fe9ff],
-      ['Thermocline layer', 0xf6d365],
-      ['Deep layer', 0xcba6f7],
-      ['Planned route', 0xf6d365],
-      ['Realized trajectory', 0x63e6be],
-      ['Sampling points', 0xffffff]
-    ];
-    this.graphics.fillStyle(0x06111f, 0.62);
-    this.graphics.fillRoundedRect(x - 10, y - 8, 188, items.length * 19 + 14, 6);
-    for (const [label, color] of items) {
-      this.graphics.fillStyle(color, 0.85);
-      this.graphics.fillCircle(x, y + 6, 4);
-      const text = this.add.text(x + 12, y, label, {
-        fontFamily: 'system-ui',
-        fontSize: '11px',
-        color: '#d7e7f7'
-      }).setOrigin(0, 0);
-      this.legendObjects.push(text);
-      this.objects.push(text);
-      y += 19;
-    }
-  }
-
-  layout() {
+  drawPhaserBackdrop() {
+    this.clearObjects();
     const width = Math.max(1, Number(this.scale?.width ?? 1280));
     const height = Math.max(1, Number(this.scale?.height ?? 820));
-    const margin = Math.max(22, Math.min(54, width * 0.045));
-    const top = Math.max(22, Math.min(42, height * 0.055));
-    const copyHeight = 92;
-    return {
-      width,
-      height,
-      margin,
-      top,
-      copyHeight,
-      map: {
-        x: margin,
-        y: top + 88,
-        width: Math.max(320, width - margin * 2),
-        height: Math.max(260, height - top - 112 - copyHeight)
-      }
-    };
+    const graphics = this.add.graphics();
+    graphics.fillGradientStyle(0x03101d, 0x08243a, 0x061827, 0x020812, 1);
+    graphics.fillRect(0, 0, width, height);
+    this.objects.push(graphics);
+  }
+
+  clearObjects() {
+    this.objects?.forEach((object) => object.destroy?.());
+    this.objects = [];
   }
 
   refreshDebugObject(active = true) {
-    const summary = oceanWorldGeometrySummary(this.geometry ?? {});
+    const summary = bathymetryWorldRenderViewModelSummary(this.viewModel ?? {});
+    const rendererSummary = threeBathymetryRendererSummary(this.threeRenderer ?? {});
     globalThis.ANCHOR_BATHYMETRY_VIEW_DEBUG = {
       version: BATHYMETRY_WORLD_VIEW_SCENE_VERSION,
       active: Boolean(active),
-      rendererBackend: 'phaserGraphicsPseudo3D',
-      rendererVersion: BATHYMETRY_WORLD_RENDERER_VERSION,
-      usesThree: false,
-      usesPseudo3DProjection: true,
-      bathymetryConfig: this.bathymetry?.config ?? null,
-      depthRange: summary.bathymetryDepthRange,
-      featureIds: summary.bathymetryFeatureIds,
-      camera: this.camera,
+      renderer: 'three',
+      rendererBackend: 'three',
+      threeAvailable: rendererSummary.threeAvailable === true,
+      terrainScenario: this.terrainScenario,
+      bathymetryDepthRange: summary.depthRange,
+      depthRange: summary.depthRange,
+      featureIds: summary.featureIds,
+      terrainVertexCount: summary.terrainVertexCount,
+      coastlineEdgeCount: summary.coastlineEdgeCount,
+      depthLayerCount: summary.depthLayerCount,
+      bottomHazardZoneCount: summary.bottomHazardZoneCount,
       layerVisibility: this.layerVisibility,
+      camera: this.camera,
       surfaceWaypointCount: summary.surfaceWaypointCount,
       samplingPointCount: summary.samplingPointCount,
       plannedPathPointCount: summary.plannedPathPointCount,
       realizedTrajectoryPointCount: summary.realizedTrajectoryPointCount,
-      hasDiveProfilePath: summary.hasDiveProfilePath,
+      flowVectorCount: summary.flowVectorCount,
+      usesThreeRenderer: true,
+      usesThree: true,
+      usesEnable3D: false,
       usesFull3DPlanning: false,
+      usesWebGPUFluid: false,
       usesHydrodynamicSolver: false,
       usesTerrainFlowAsOceanCurrent: false,
-      usesWebGPUFluid: false,
       usesMARL: false,
       ownsSimulationState: false,
       ownsScoring: false,
-      ownsPlanning: false
+      ownsPlanning: false,
+      rendererSummary
     };
   }
+}
 
-  destroyObjects() {
-    this.destroyLegendObjects();
-    for (const object of this.objects ?? []) object?.destroy?.();
-    this.objects = [];
-  }
+function createDemoPlan(scenarioId) {
+  const canyonRoute = scenarioId === 'shelfCanyon' || scenarioId === 'coastalShelf';
+  const waypoints = canyonRoute
+    ? [
+        { waypointId: 'wp-1', x: 7, y: 30, depthLayerId: 'surface', depthMeters: 0 },
+        { waypointId: 'wp-2', x: 15, y: 25, depthLayerId: 'thermocline', depthMeters: 35 },
+        { waypointId: 'wp-3', x: 25, y: 19, depthLayerId: 'deep', depthMeters: 120 },
+        { waypointId: 'wp-4', x: 38, y: 13, depthLayerId: 'thermocline', depthMeters: 35 },
+        { waypointId: 'wp-5', x: 50, y: 8, depthLayerId: 'surface', depthMeters: 0 }
+      ]
+    : [
+        { waypointId: 'wp-1', x: 8, y: 29, depthLayerId: 'surface', depthMeters: 0 },
+        { waypointId: 'wp-2', x: 20, y: 22, depthLayerId: 'thermocline', depthMeters: 35 },
+        { waypointId: 'wp-3', x: 32, y: 16, depthLayerId: 'deep', depthMeters: 120 },
+        { waypointId: 'wp-4', x: 44, y: 21, depthLayerId: 'thermocline', depthMeters: 35 },
+        { waypointId: 'wp-5', x: 52, y: 12, depthLayerId: 'surface', depthMeters: 0 }
+      ];
+  return {
+    type: 'anchor.demo.bathymetry-view-plan',
+    planId: `gfx-r2-${scenarioId}-plan`,
+    gliderId: 'glider-gfx-r2',
+    diveProfileId: 'sawtoothProfile',
+    generatesRoute: false,
+    waypoints
+  };
+}
 
-  destroyLegendObjects() {
-    for (const object of this.legendObjects ?? []) object?.destroy?.();
-    this.legendObjects = [];
-    this.objects = (this.objects ?? []).filter((object) => !object?.destroyed);
-  }
+function createDemoTrack(plan) {
+  return (plan.waypoints ?? []).map((point, index) => ({
+    id: `track-${index + 1}`,
+    x: Number(point.x) + (index % 2 === 0 ? 0.4 : -0.7),
+    y: Number(point.y) + (index % 2 === 0 ? -0.5 : 0.6),
+    depthLayerId: point.depthLayerId,
+    depthMeters: point.depthMeters,
+    timeSeconds: index * 660,
+    trackError: index === 0 ? 0 : 0.3 + index * 0.08
+  }));
+}
+
+function createDemoObservations(tracks) {
+  return (tracks ?? []).filter((_point, index) => index > 0 && index < tracks.length - 1).map((point, index) => ({
+    observationId: `obs-${index + 1}`,
+    x: point.x,
+    y: point.y,
+    depthLayerId: point.depthLayerId,
+    depthMeters: point.depthMeters,
+    observedValue: Number((0.42 + index * 0.12).toFixed(2)),
+    timeSeconds: point.timeSeconds
+  }));
 }

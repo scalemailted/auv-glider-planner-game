@@ -407,28 +407,34 @@ test('Bathymetric World View opens from Simulation Lab and preserves adjacent ro
   await expect(page.locator('#main-menu-hub')).toBeVisible();
   await openMainMenuHubSection(page, 'simulation');
   const simulationHub = page.locator('#main-menu-hub[data-hub-view="simulation"]');
-  await expect(simulationHub).toContainText('Bathymetric World View');
+  await expect(simulationHub).toContainText('3D Bathymetric World View');
 
   await simulationHub.locator('[data-action="bathymetry-world-view"]').click();
   await expect.poll(() => page.evaluate(() => window.anchorGame.phaser.scene.getScene('BathymetryWorldViewScene').sys.isActive())).toBe(true);
-  await expect(page.locator('#mission-console')).toContainText('Bathymetric World View');
+  await expect(page.locator('#mission-console')).toContainText('3D Bathymetric World View');
   await expect(page.locator('#mission-console')).toContainText('2.5D mission state');
   await expect(page.locator('#mission-console')).toContainText('Bathymetry is environmental geometry');
   await expect(page.locator('#mission-console')).toContainText('Surface waypoints are route intent');
   await expect(page.locator('#mission-console')).toContainText('Sampling points are where observations are collected');
   await expect(page.locator('#mission-console')).toContainText('Terrain-flow accumulation is not ocean current');
+  await expect(page.locator('#bathymetry-terrain-scenario')).toBeVisible();
   await expect(page.locator('#bathymetry-view-mode')).toBeVisible();
+  await expect(page.locator('.bathymetry-three-renderer-host')).toBeVisible();
+  await expect(page.locator('.three-bathymetry-canvas')).toBeVisible();
   await expect(page.locator('#mission-console [data-bathymetry-camera="verticalExaggeration"]')).toBeVisible();
   await expect(page.locator('#mission-console [data-bathymetry-toggle="waterSurface"]')).toBeVisible();
   await expect(page.locator('#mission-console [data-bathymetry-toggle="surface"]')).toBeVisible();
   await expect(page.locator('#mission-console [data-bathymetry-toggle="thermocline"]')).toBeVisible();
   await expect(page.locator('#mission-console [data-bathymetry-toggle="deep"]')).toBeVisible();
+  await expect(page.locator('#mission-console [data-bathymetry-toggle="surfaceWaypoints"]')).toBeVisible();
   await expect(page.locator('#mission-console [data-bathymetry-toggle="samplingPoints"]')).toBeVisible();
+  await expect(page.locator('#mission-console [data-bathymetry-toggle="flowVectors"]')).toBeVisible();
   await expect(page.locator('#mission-console')).toContainText('Reset Camera');
   await expect.poll(() => page.evaluate(() => window.ANCHOR_BATHYMETRY_VIEW_DEBUG?.active)).toBe(true);
-  await expect.poll(() => page.evaluate(() => window.ANCHOR_BATHYMETRY_VIEW_DEBUG?.rendererBackend)).toBe('phaserGraphicsPseudo3D');
-  await expect.poll(() => page.evaluate(() => window.ANCHOR_BATHYMETRY_VIEW_DEBUG?.usesThree)).toBe(false);
-  await expect.poll(() => page.evaluate(() => window.ANCHOR_BATHYMETRY_VIEW_DEBUG?.usesPseudo3DProjection)).toBe(true);
+  await expect.poll(() => page.evaluate(() => window.ANCHOR_BATHYMETRY_VIEW_DEBUG?.rendererBackend)).toBe('three');
+  await expect.poll(() => page.evaluate(() => window.ANCHOR_BATHYMETRY_VIEW_DEBUG?.usesThreeRenderer)).toBe(true);
+  await expect.poll(() => page.evaluate(() => window.ANCHOR_BATHYMETRY_VIEW_DEBUG?.usesThree)).toBe(true);
+  await expect.poll(() => page.evaluate(() => window.ANCHOR_BATHYMETRY_VIEW_DEBUG?.usesEnable3D)).toBe(false);
   await expect.poll(() => page.evaluate(() => window.ANCHOR_BATHYMETRY_VIEW_DEBUG?.usesFull3DPlanning)).toBe(false);
   await expect.poll(() => page.evaluate(() => window.ANCHOR_BATHYMETRY_VIEW_DEBUG?.usesHydrodynamicSolver)).toBe(false);
   await expect.poll(() => page.evaluate(() => window.ANCHOR_BATHYMETRY_VIEW_DEBUG?.usesTerrainFlowAsOceanCurrent)).toBe(false);
@@ -437,13 +443,18 @@ test('Bathymetric World View opens from Simulation Lab and preserves adjacent ro
   await expect.poll(() => page.evaluate(() => window.ANCHOR_BATHYMETRY_VIEW_DEBUG?.ownsSimulationState)).toBe(false);
   await expect.poll(() => page.evaluate(() => window.ANCHOR_BATHYMETRY_VIEW_DEBUG?.ownsScoring)).toBe(false);
   await expect.poll(() => page.evaluate(() => window.ANCHOR_BATHYMETRY_VIEW_DEBUG?.ownsPlanning)).toBe(false);
+  await expect.poll(() => page.evaluate(() => window.ANCHOR_BATHYMETRY_VIEW_DEBUG?.terrainVertexCount > 0)).toBe(true);
+  await expect.poll(() => page.evaluate(() => window.ANCHOR_BATHYMETRY_VIEW_DEBUG?.coastlineEdgeCount > 0)).toBe(true);
   await expect.poll(() => page.evaluate(() => window.ANCHOR_BATHYMETRY_VIEW_DEBUG?.surfaceWaypointCount > 0)).toBe(true);
   await expect.poll(() => page.evaluate(() => window.ANCHOR_BATHYMETRY_VIEW_DEBUG?.samplingPointCount > 0)).toBe(true);
 
   await page.locator('#mission-console [data-bathymetry-toggle="waterSurface"]').uncheck();
   await expect.poll(() => page.evaluate(() => window.ANCHOR_BATHYMETRY_VIEW_DEBUG?.layerVisibility?.waterSurface)).toBe(false);
+  await page.locator('#mission-console [data-bathymetry-toggle="thermocline"]').uncheck();
+  await expect.poll(() => page.evaluate(() => window.ANCHOR_BATHYMETRY_VIEW_DEBUG?.layerVisibility?.thermocline)).toBe(false);
   await page.locator('#mission-console [data-action="bathymetry-reset-camera"]').click();
   await expect.poll(() => page.evaluate(() => window.ANCHOR_BATHYMETRY_VIEW_DEBUG?.layerVisibility?.waterSurface)).toBe(true);
+  await expect.poll(() => page.evaluate(() => window.ANCHOR_BATHYMETRY_VIEW_DEBUG?.layerVisibility?.thermocline)).toBe(true);
 
   await page.locator('#mission-console [data-action="menu"]').click();
   await openMainMenuHubSection(page, 'simulation');

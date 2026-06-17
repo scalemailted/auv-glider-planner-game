@@ -125,14 +125,20 @@ node tools/js/audit_water_column_public_safety.mjs
 
 ## GFX-ARCH-R1 Renderer Boundary Checks
 
-Renderer architecture smokes validate the pure renderer contracts and Simulation Lab preview without adding Three.js, WebGPU, WebGPU-Ocean, a new planner, scoring changes, Python simulation, or MARL/RL:
+Renderer architecture smokes validate the pure renderer contracts, Simulation Lab preview, and GFX-R2 Three.js bathymetry renderer without adding WebGPU, WebGPU-Ocean, a new planner, scoring changes, Python simulation, or MARL/RL:
 
 ```bash
 node tools/js/smoke_renderer_capability_model.mjs
 node tools/js/smoke_renderer_host_contract.mjs
 node tools/js/smoke_ocean_world_render_view_model.mjs
 node tools/js/smoke_renderer_architecture_preview_scene.mjs
+node tools/js/smoke_bathymetry_world_render_view_model.mjs
+node tools/js/smoke_three_bathymetry_renderer_contract.mjs
+node tools/js/smoke_bathymetry_visual_quality_contract.mjs
+node tools/js/smoke_bathymetry_three_scene.mjs
+node tools/js/smoke_three_bathymetry_browser_pixels.mjs
+node tools/js/audit_bathymetry_renderer_boundaries.mjs
 ```
 
-These checks keep WebGPU as progressive enhancement and confirm renderer view models do not own simulation, scoring, planning, or hidden truth.
-ENV-R1: `tools/js/headless_oceanbox.mjs` supports `--bathymetry`, `--no-bathymetry`, `--bathymetry-view`, and `--vertical-exaggeration` for public-safe bathymetry summaries. This does not add a planner, full 3D route planning, or a hydrodynamic solver.
+These checks keep WebGPU as progressive enhancement and confirm renderer view models do not own simulation, scoring, planning, or hidden truth. GFX-R2 uses Three.js/WebGL directly and does not use Enable3D.
+ENV-R1/GFX-R2: `tools/js/headless_oceanbox.mjs` supports `--bathymetry`, `--no-bathymetry`, `--bathymetry-view`, and `--vertical-exaggeration` for public-safe bathymetry summaries. This does not add a planner, full 3D route planning, or a hydrodynamic solver.

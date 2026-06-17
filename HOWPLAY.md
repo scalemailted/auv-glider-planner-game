@@ -1084,4 +1084,4 @@ Headless bundles, solver roundtrips, and Adaptive Benchmark surfacing reviews ca
 
 Open `Simulation Lab` and choose `Motion Planning Demo` to compare a dashed planned route with the realized glider trajectory under currents, dive profile, speed, heading-rate limit, drift gain, and energy constraints. Path planning chooses waypoints; motion planning evaluates execution. Motion dynamics does not generate routes, does not change Challenge Mode scoring, and does not add WebGPU, a Python simulator, or MARL/RL.
 
-Simulation Lab also includes Bathymetric World View: a synthetic layered ocean visualization that separates surface waypoints, subsurface sampling points, water surface, depth layers, and bathymetry. It is not full 3D route planning.
+Simulation Lab also includes 3D Bathymetric World View: a Three.js/WebGL synthetic ocean visualization that separates surface waypoints, subsurface sampling points, water surface, depth layers, currents, coastlines, bottom hazards, and bathymetry. It is not full 3D route planning.

@@ -963,33 +963,45 @@ export class MissionConsole {
     if (!this.root) return;
     const camera = state.camera ?? {};
     const visibility = state.layerVisibility ?? {};
-    const viewModes = ['topDown', 'obliqueBathymetry', 'layerStack', 'surfaceAndBottom', 'missionProfile', 'replayView'];
+    const viewModes = ['obliqueBathymetry', 'topDown', 'layerStack', 'missionProfile'];
+    const terrainScenarios = state.terrainScenarios ?? [
+      { id: 'coastalShelf', label: 'Coastal Shelf' },
+      { id: 'shelfCanyon', label: 'Shelf Canyon' },
+      { id: 'islandArc', label: 'Island Arc' },
+      { id: 'basinSeamount', label: 'Basin + Seamount' }
+    ];
     const toggles = [
       ['bathymetry', 'Toggle Bathymetry'],
       ['waterSurface', 'Toggle Water Surface'],
       ['surface', 'Toggle Surface Layer'],
       ['thermocline', 'Toggle Thermocline Layer'],
       ['deep', 'Toggle Deep Layer'],
-      ['plannedPath', 'Toggle Planned Path'],
+      ['surfaceWaypoints', 'Toggle Surface Waypoints'],
+      ['samplingPoints', 'Toggle Sampling Points'],
+      ['plannedRoute', 'Toggle Planned Route'],
       ['realizedTrajectory', 'Toggle Realized Trajectory'],
-      ['samplingPoints', 'Toggle Sampling Points']
+      ['flowVectors', 'Toggle Flow Vectors']
     ];
     this.root.innerHTML = `
       <section class="console-header">
-        <div class="console-kicker">Bathymetric World View</div>
-        <h1>${escapeHtml(state.title ?? 'Bathymetric World View')}</h1>
-        <p>Bathymetric World View renders the existing 2.5D mission state as a layered ocean view.</p>
+        <div class="console-kicker">3D Bathymetric World View</div>
+        <h1>${escapeHtml(state.title ?? '3D Bathymetric World View')}</h1>
+        <p>3D view renders the existing 2.5D mission state. It does not replace the canonical model.</p>
       </section>
       <section class="console-status">
-        <span>${escapeHtml(state.status ?? 'Viewer ready')}</span>
-        <strong>${escapeHtml(state.viewMode ?? 'obliqueBathymetry')}</strong>
-        <small>Surface waypoints are route intent. Sampling points are where observations are collected.</small>
+        <span>${escapeHtml(state.status ?? 'Three.js renderer ready')}</span>
+        <strong>${escapeHtml(bathymetryViewModeLabel(state.viewMode ?? 'obliqueBathymetry'))}</strong>
+        <small>Surface waypoints show route intent. Sampling points show where observations are collected.</small>
       </section>
       <section class="console-section">
-        <h2>What This Shows</h2>
-        <div class="hud-muted">2.5D means the mission remains waypoint/dive-profile based, while the view shows simplified depth layers under the tactical map.</div>
-        <div class="hud-muted">Bathymetry is environmental geometry. It does not replace the water-column state model.</div>
-        <div class="hud-muted">This viewer does not perform full 3D route planning.</div>
+        <h2>Terrain Scenario</h2>
+        <label class="compact-field">
+          Terrain Scenario
+          <select id="bathymetry-terrain-scenario">
+            ${terrainScenarios.map((scenario) => `<option value="${escapeAttr(scenario.id)}" ${state.terrainScenario === scenario.id ? 'selected' : ''}>${escapeHtml(scenario.label ?? bathymetryTerrainScenarioLabel(scenario.id))}</option>`).join('')}
+          </select>
+        </label>
+        <div class="hud-muted">Synthetic bathymetry now: coast, shelf, basin, canyon/ridge, seamount/island, and bottom hazards. Real GEBCO/ETOPO/Natural Earth fixtures are future data pipeline work.</div>
       </section>
       <section class="console-section">
         <h2>View Mode</h2>
@@ -1002,10 +1014,10 @@ export class MissionConsole {
       </section>
       <section class="console-section">
         <h2>Camera</h2>
-        ${bathymetryRangeInputHtml('yaw', 'Yaw', camera.yaw ?? -34, -90, 90, 1)}
-        ${bathymetryRangeInputHtml('pitch', 'Pitch', camera.pitch ?? 48, 8, 78, 1)}
-        ${bathymetryRangeInputHtml('zoom', 'Zoom', camera.zoom ?? 20, 8, 42, 1)}
-        ${bathymetryRangeInputHtml('verticalExaggeration', 'Vertical Exaggeration', camera.verticalExaggeration ?? 1.5, 0.5, 5, 0.1)}
+        ${bathymetryRangeInputHtml('yaw', 'Yaw', camera.yaw ?? -42, -180, 180, 1)}
+        ${bathymetryRangeInputHtml('pitch', 'Pitch', camera.pitch ?? 42, 8, 78, 1)}
+        ${bathymetryRangeInputHtml('zoom', 'Zoom', camera.zoom ?? 58, 12, 180, 1)}
+        ${bathymetryRangeInputHtml('verticalExaggeration', 'Vertical Exaggeration', camera.verticalExaggeration ?? 1.8, 0.5, 6, 0.1)}
         <button data-action="bathymetry-reset-camera" class="console-button secondary">Reset Camera</button>
       </section>
       <section class="console-section">
@@ -1015,16 +1027,20 @@ export class MissionConsole {
       <section class="console-section">
         <h2>Summary</h2>
         <div class="cell-inspector-metrics">
+          <div><span>Terrain Vertices</span><strong>${escapeHtml(state.summary?.terrainVertexCount ?? 0)}</strong></div>
+          <div><span>Coastline Edges</span><strong>${escapeHtml(state.summary?.coastlineEdgeCount ?? 0)}</strong></div>
           <div><span>Surface Waypoints</span><strong>${escapeHtml(state.summary?.surfaceWaypointCount ?? 0)}</strong></div>
           <div><span>Sampling Points</span><strong>${escapeHtml(state.summary?.samplingPointCount ?? 0)}</strong></div>
-          <div><span>Planned Points</span><strong>${escapeHtml(state.summary?.plannedPathPointCount ?? 0)}</strong></div>
-          <div><span>Realized Points</span><strong>${escapeHtml(state.summary?.realizedTrajectoryPointCount ?? 0)}</strong></div>
+          <div><span>Flow Vectors</span><strong>${escapeHtml(state.summary?.flowVectorCount ?? 0)}</strong></div>
         </div>
       </section>
       <section class="console-section">
         <h2>Boundary</h2>
-        <div class="hud-muted">ENV-R1 does not add full 3D route planning, a new planner, production hydrodynamics, or MARL/RL.</div>
+        <div class="hud-muted">3D view renders the existing 2.5D mission state. It does not replace the canonical model.</div>
+        <div class="hud-muted">Bathymetry is environmental geometry; it does not replace water-column state.</div>
+        <div class="hud-muted">Surface waypoints are route intent. Sampling points are where observations are collected.</div>
         <div class="hud-muted">Terrain-flow accumulation is not ocean current. Ocean current remains F(x,y,z,t).</div>
+        <div class="hud-muted">GFX-R2 adds a Three.js renderer only; it does not add full 3D route planning, new scoring, WebGPU fluid simulation, Python simulation, or MARL/RL.</div>
       </section>
       <section class="console-footer">
         <button data-action="menu" class="console-button secondary">Main Menu</button>
@@ -1032,6 +1048,7 @@ export class MissionConsole {
     `;
     this.app.applyConsoleAccordions?.('bathymetryWorldView');
     this.root.querySelector('#bathymetry-view-mode')?.addEventListener('change', (event) => handlers.viewMode?.(event.target.value));
+    this.root.querySelector('#bathymetry-terrain-scenario')?.addEventListener('change', (event) => handlers.terrainScenario?.(event.target.value));
     this.root.querySelectorAll('[data-bathymetry-camera]').forEach((input) => {
       input.addEventListener('input', (event) => handlers[event.currentTarget.dataset.bathymetryCamera]?.(event.target.value));
     });
@@ -1042,8 +1059,7 @@ export class MissionConsole {
       'bathymetry-reset-camera': handlers.resetCamera,
       menu: handlers.menu
     });
-  }
-  renderMotionPlanningDemoControls(state = {}, handlers = {}) {
+  }  renderMotionPlanningDemoControls(state = {}, handlers = {}) {
     if (!this.root) return;
     const motionModels = ['kinematicVectorField', 'depthLayerKinematic', 'currentShearKinematic', 'bathymetryAwareKinematic', 'fluidCoupledPreview'];
     const diveProfiles = ['surfaceOnly', 'sawtoothProfile', 'thermoclineDive', 'deepDive', 'fullProfile'];
@@ -1586,6 +1602,15 @@ function bathymetryToggleHtml(key, label, checked) {
       ${escapeHtml(label)}
     </label>
   `;
+}
+
+function bathymetryTerrainScenarioLabel(id) {
+  return ({
+    coastalShelf: 'Coastal Shelf',
+    shelfCanyon: 'Shelf Canyon',
+    islandArc: 'Island Arc',
+    basinSeamount: 'Basin + Seamount'
+  })[id] ?? id;
 }
 
 function bathymetryViewModeLabel(id) {
