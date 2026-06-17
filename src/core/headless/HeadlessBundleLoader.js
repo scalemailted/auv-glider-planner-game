@@ -3,7 +3,7 @@ import { HEADLESS_SOLVER_ROUNDTRIP_BUNDLE_TYPE, isHeadlessRoundtripReportType } 
 
 export const HEADLESS_BUNDLE_LOADER_VERSION = 'headless-bundle-loader-h2';
 export const HEADLESS_BUNDLE_REQUIRED_FILES = Object.freeze(['manifest.json', 'mission_config.json', 'visible_fields.json', 'score_report.json']);
-export const HEADLESS_BUNDLE_OPTIONAL_FILES = Object.freeze(['hidden_fields.json', 'observations.json', 'observations.csv', 'glider_tracks.json', 'glider_tracks.csv', 'replay.json', 'episode.json', 'bundle.json', 'roundtrip_report.json', 'science_diagnostics.json', 'water_column_summary.json', 'depth_layer_priority.json', 'motion_trajectory.json', 'control_trace.json', 'motion_diagnostics.json']);
+export const HEADLESS_BUNDLE_OPTIONAL_FILES = Object.freeze(['hidden_fields.json', 'observations.json', 'observations.csv', 'glider_tracks.json', 'glider_tracks.csv', 'replay.json', 'episode.json', 'bundle.json', 'roundtrip_report.json', 'science_diagnostics.json', 'water_column_summary.json', 'depth_layer_priority.json', 'motion_trajectory.json', 'control_trace.json', 'motion_diagnostics.json', 'bathymetry_summary.json', 'mission_geometry_summary.json']);
 
 const LOGICAL_FILE_ALIASES = Object.freeze({
   'manifest.json': 'manifest',
@@ -24,7 +24,9 @@ const LOGICAL_FILE_ALIASES = Object.freeze({
   'depth_layer_priority.json': 'depthLayerPriority',
   'motion_trajectory.json': 'motionTrajectory',
   'control_trace.json': 'controlTrace',
-  'motion_diagnostics.json': 'motionDiagnostics'
+  'motion_diagnostics.json': 'motionDiagnostics',
+  'bathymetry_summary.json': 'bathymetrySummary',
+  'mission_geometry_summary.json': 'missionGeometrySummary'
 });
 
 export function classifyHeadlessBundleFile(fileName, payload = null) {
@@ -95,6 +97,8 @@ export function normalizeHeadlessBundleFiles(files = []) {
     normalized.motionTrajectory ??= combined.motionTrajectory ?? combined.episode?.motionTrajectory;
     normalized.controlTrace ??= combined.controlTrace ?? combined.episode?.controlTrace ?? combined.episode?.motionTrajectory?.controlCommands;
     normalized.motionDiagnostics ??= combined.motionDiagnostics ?? combined.episode?.motionDiagnostics ?? combined.episode?.motionTrajectory?.motionDiagnostics;
+    normalized.bathymetrySummary ??= combined.bathymetrySummary ?? combined.episode?.bathymetrySummary ?? combined.visibleFields?.bathymetrySummary;
+    normalized.missionGeometrySummary ??= combined.missionGeometrySummary ?? combined.episode?.missionGeometrySummary;
   }
   if (normalized.observationsCsv?.rows?.length) normalized.observations ??= { type: 'anchor.headless.observations', observations: normalized.observationsCsv.rows, source: 'csv' };
   if (normalized.gliderTracksCsv?.rows?.length) normalized.gliderTracks ??= { type: 'anchor.headless.trajectory', tracks: normalized.gliderTracksCsv.rows, source: 'csv' };
@@ -141,6 +145,8 @@ export function buildHeadlessBundleFromFiles(bundleFiles) {
     motionTrajectory: normalized.motionTrajectory ?? normalized.episode?.motionTrajectory ?? null,
     controlTrace: normalizeControlTracePayload(normalized.controlTrace ?? normalized.episode?.controlTrace ?? normalized.episode?.motionTrajectory?.controlCommands),
     motionDiagnostics: normalized.motionDiagnostics ?? normalized.episode?.motionDiagnostics ?? normalized.episode?.motionTrajectory?.motionDiagnostics ?? null,
+    bathymetrySummary: normalized.bathymetrySummary ?? normalized.episode?.bathymetrySummary ?? normalized.visibleFields?.bathymetrySummary ?? null,
+    missionGeometrySummary: normalized.missionGeometrySummary ?? normalized.episode?.missionGeometrySummary ?? null,
     episode: normalized.episode ?? null,
     files: Object.keys(normalized.fileMap ?? {}).sort(),
     warnings: [...(normalized.warnings ?? []), ...fileValidation.warnings],
@@ -166,6 +172,8 @@ export function headlessBundleLoadSummary(bundle) {
     hasScienceDiagnostics: Boolean(bundle?.scienceDiagnostics),
     hasWaterColumnSummary: Boolean(bundle?.waterColumnSummary),
     hasDepthLayerPriority: Boolean(bundle?.depthLayerPriority ?? bundle?.depthLayerPrioritySummary),
+    hasBathymetrySummary: Boolean(bundle?.bathymetrySummary),
+    hasMissionGeometrySummary: Boolean(bundle?.missionGeometrySummary),
     roundtripStatus: bundle?.roundtripReport?.summary?.status ?? null,
     warnings: bundle?.warnings ?? [],
     failures: bundle?.failures ?? []
@@ -217,6 +225,8 @@ function inferLogicalType(fileName, payload) {
   if (type === 'anchor.motion.trajectory') return 'motionTrajectory';
   if (type === 'anchor.motion.control-trace') return 'controlTrace';
   if (type === 'anchor.motion.diagnostics') return 'motionDiagnostics';
+  if (type === 'anchor.headless.bathymetry-summary') return 'bathymetrySummary';
+  if (type === 'anchor.headless.mission-geometry-summary' || type === 'anchor.science.ocean-world-geometry-summary') return 'missionGeometrySummary';
   if (type === 'anchor.headless.manifest') return 'manifest';
   if (type === 'anchor.headless.mission-config') return 'missionConfig';
   if (type === 'anchor.headless.score-report') return 'scoreReport';

@@ -959,6 +959,90 @@ export class MissionConsole {
       menu: handlers.menu
     });
   }
+  renderBathymetryWorldViewControls(state = {}, handlers = {}) {
+    if (!this.root) return;
+    const camera = state.camera ?? {};
+    const visibility = state.layerVisibility ?? {};
+    const viewModes = ['topDown', 'obliqueBathymetry', 'layerStack', 'surfaceAndBottom', 'missionProfile', 'replayView'];
+    const toggles = [
+      ['bathymetry', 'Toggle Bathymetry'],
+      ['waterSurface', 'Toggle Water Surface'],
+      ['surface', 'Toggle Surface Layer'],
+      ['thermocline', 'Toggle Thermocline Layer'],
+      ['deep', 'Toggle Deep Layer'],
+      ['plannedPath', 'Toggle Planned Path'],
+      ['realizedTrajectory', 'Toggle Realized Trajectory'],
+      ['samplingPoints', 'Toggle Sampling Points']
+    ];
+    this.root.innerHTML = `
+      <section class="console-header">
+        <div class="console-kicker">Bathymetric World View</div>
+        <h1>${escapeHtml(state.title ?? 'Bathymetric World View')}</h1>
+        <p>Bathymetric World View renders the existing 2.5D mission state as a layered ocean view.</p>
+      </section>
+      <section class="console-status">
+        <span>${escapeHtml(state.status ?? 'Viewer ready')}</span>
+        <strong>${escapeHtml(state.viewMode ?? 'obliqueBathymetry')}</strong>
+        <small>Surface waypoints are route intent. Sampling points are where observations are collected.</small>
+      </section>
+      <section class="console-section">
+        <h2>What This Shows</h2>
+        <div class="hud-muted">2.5D means the mission remains waypoint/dive-profile based, while the view shows simplified depth layers under the tactical map.</div>
+        <div class="hud-muted">Bathymetry is environmental geometry. It does not replace the water-column state model.</div>
+        <div class="hud-muted">This viewer does not perform full 3D route planning.</div>
+      </section>
+      <section class="console-section">
+        <h2>View Mode</h2>
+        <label class="compact-field">
+          View Mode
+          <select id="bathymetry-view-mode">
+            ${viewModes.map((mode) => `<option value="${escapeAttr(mode)}" ${state.viewMode === mode ? 'selected' : ''}>${escapeHtml(bathymetryViewModeLabel(mode))}</option>`).join('')}
+          </select>
+        </label>
+      </section>
+      <section class="console-section">
+        <h2>Camera</h2>
+        ${bathymetryRangeInputHtml('yaw', 'Yaw', camera.yaw ?? -34, -90, 90, 1)}
+        ${bathymetryRangeInputHtml('pitch', 'Pitch', camera.pitch ?? 48, 8, 78, 1)}
+        ${bathymetryRangeInputHtml('zoom', 'Zoom', camera.zoom ?? 20, 8, 42, 1)}
+        ${bathymetryRangeInputHtml('verticalExaggeration', 'Vertical Exaggeration', camera.verticalExaggeration ?? 1.5, 0.5, 5, 0.1)}
+        <button data-action="bathymetry-reset-camera" class="console-button secondary">Reset Camera</button>
+      </section>
+      <section class="console-section">
+        <h2>Layers</h2>
+        ${toggles.map(([key, label]) => bathymetryToggleHtml(key, label, visibility[key] !== false)).join('')}
+      </section>
+      <section class="console-section">
+        <h2>Summary</h2>
+        <div class="cell-inspector-metrics">
+          <div><span>Surface Waypoints</span><strong>${escapeHtml(state.summary?.surfaceWaypointCount ?? 0)}</strong></div>
+          <div><span>Sampling Points</span><strong>${escapeHtml(state.summary?.samplingPointCount ?? 0)}</strong></div>
+          <div><span>Planned Points</span><strong>${escapeHtml(state.summary?.plannedPathPointCount ?? 0)}</strong></div>
+          <div><span>Realized Points</span><strong>${escapeHtml(state.summary?.realizedTrajectoryPointCount ?? 0)}</strong></div>
+        </div>
+      </section>
+      <section class="console-section">
+        <h2>Boundary</h2>
+        <div class="hud-muted">ENV-R1 does not add full 3D route planning, a new planner, production hydrodynamics, or MARL/RL.</div>
+        <div class="hud-muted">Terrain-flow accumulation is not ocean current. Ocean current remains F(x,y,z,t).</div>
+      </section>
+      <section class="console-footer">
+        <button data-action="menu" class="console-button secondary">Main Menu</button>
+      </section>
+    `;
+    this.app.applyConsoleAccordions?.('bathymetryWorldView');
+    this.root.querySelector('#bathymetry-view-mode')?.addEventListener('change', (event) => handlers.viewMode?.(event.target.value));
+    this.root.querySelectorAll('[data-bathymetry-camera]').forEach((input) => {
+      input.addEventListener('input', (event) => handlers[event.currentTarget.dataset.bathymetryCamera]?.(event.target.value));
+    });
+    this.root.querySelectorAll('[data-bathymetry-toggle]').forEach((input) => {
+      input.addEventListener('change', (event) => handlers.toggle?.(event.currentTarget.dataset.bathymetryToggle, event.target.checked));
+    });
+    this.bind({
+      'bathymetry-reset-camera': handlers.resetCamera,
+      menu: handlers.menu
+    });
+  }
   renderMotionPlanningDemoControls(state = {}, handlers = {}) {
     if (!this.root) return;
     const motionModels = ['kinematicVectorField', 'depthLayerKinematic', 'currentShearKinematic', 'bathymetryAwareKinematic', 'fluidCoupledPreview'];
@@ -1482,6 +1566,37 @@ function benchmarkModeP1Text(mode) {
     adaptiveBenchmark: 'Mission manager recommends objectives from observations, uncertainty, forecast error, hidden-event suspicion, staleness, and mission state; player or solver chooses the route.',
     fullAutonomyBenchmark: 'Solver/agent objective and route authority are contract-defined placeholders; execution later.'
   }[mode] ?? 'Benchmark route-execution contract overview.';
+}
+
+function bathymetryRangeInputHtml(key, label, value, min, max, step) {
+  const number = Number.isFinite(Number(value)) ? Number(value) : Number(min);
+  return `
+    <label class="compact-field">
+      ${escapeHtml(label)}
+      <input data-bathymetry-camera="${escapeAttr(key)}" type="range" min="${escapeAttr(min)}" max="${escapeAttr(max)}" step="${escapeAttr(step)}" value="${escapeAttr(number)}" />
+      <span class="hud-muted">${escapeHtml(Number(number).toFixed(key === 'verticalExaggeration' ? 1 : 0))}</span>
+    </label>
+  `;
+}
+
+function bathymetryToggleHtml(key, label, checked) {
+  return `
+    <label class="compact-field compact-check">
+      <input data-bathymetry-toggle="${escapeAttr(key)}" type="checkbox" ${checked ? 'checked' : ''} />
+      ${escapeHtml(label)}
+    </label>
+  `;
+}
+
+function bathymetryViewModeLabel(id) {
+  return ({
+    topDown: 'Top Down',
+    obliqueBathymetry: 'Oblique Bathymetry',
+    layerStack: 'Layer Stack',
+    surfaceAndBottom: 'Surface and Bottom',
+    missionProfile: 'Mission Profile',
+    replayView: 'Replay View'
+  })[id] ?? id;
 }
 
 function motionNumberInputHtml(key, label, value, min, max, step) {

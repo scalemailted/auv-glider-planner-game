@@ -386,3 +386,7 @@ Preserved the boundary: P11 is top-down 2.5D sampling context. It does not add f
 ## MOTION-R1 - Glider Motion Dynamics Layer
 
 Added a portable deterministic glider motion schema, environment sampler, dynamics model, plan-to-control adapter, trajectory simulator, diagnostics, optional Node/OceanBox-JS motion-aware execution, public-safe motion bundle artifacts, Headless Bundle Viewer motion summaries, and a Simulation Lab Motion Planning Demo. This is an execution-model layer, not a new benchmark authority mode, not a route planner, not WebGPU, not a Python simulator, not a scoring redesign, and not MARL/RL.
+
+### ENV-R1 - Bathymetric World View
+- Added synthetic bathymetry schema, field model, mesh/projection model, ocean-world geometry adapter, dependency-free Phaser pseudo-3D viewer, and public-safe headless bathymetry/mission geometry summaries.
+- Boundary: no full 3D route planning, no hydrodynamic solver, no terrain-flow-as-current claim, no WebGPU-Ocean, no Python simulator, no MARL/RL, and no scoring changes.

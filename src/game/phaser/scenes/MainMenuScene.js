@@ -39,6 +39,8 @@ const SIMULATION_LAB_ACTIONS = [
   'Uncertainty / Forecast Demo',
   'Sampling Priority Demo',
   'Flow-Coupled Sampling Demo',
+  'Motion Planning Demo',
+  'Bathymetric World View',
   'Renderer Architecture Preview',
   'Planner Benchmark',
   'Adaptive Benchmark',
@@ -274,6 +276,7 @@ export class MainMenuScene extends PhaserScene {
           hubActionHtml('sampling-priority-demo', 'Sampling Priority Demo', 'Turn belief, uncertainty, boundaries, hazards, and hidden-event suspicion into A_global.'),
           hubActionHtml('flow-coupled-sampling-demo', 'Flow-Coupled Sampling Demo', 'Evaluate Q_glider action value under currents, reachability, energy, and redundancy.'),
           hubActionHtml('motion-planning-demo', 'Motion Planning Demo', 'Compare planned waypoint intent with realized glider motion under currents and control limits.'),
+          hubActionHtml('bathymetry-world-view', 'Bathymetric World View', 'Render 2.5D water-column missions as synthetic bathymetry, transparent depth layers, route intent, and sampling points.'),
           hubActionHtml('renderer-architecture-preview', 'Renderer Architecture Preview', 'Inspect Phaser shell plus future 3D renderer boundary and fallback capabilities.')
         ])}
         ${hubGroupHtml('Benchmark Modes', [
@@ -331,6 +334,7 @@ export class MainMenuScene extends PhaserScene {
       'sampling-priority-demo': () => scene.start('SamplingPriorityDemoScene'),
       'flow-coupled-sampling-demo': () => scene.start('FlowCoupledSamplingDemoScene'),
       'motion-planning-demo': () => scene.start('MotionPlanningDemoScene'),
+      'bathymetry-world-view': () => scene.start('BathymetryWorldViewScene'),
       'renderer-architecture-preview': () => scene.start('RendererArchitecturePreviewScene'),
       'benchmark-planner': () => scene.start('BenchmarkModeOverviewScene', { benchmarkMode: 'plannerBenchmark' }),
       'benchmark-adaptive': () => scene.start('BenchmarkModeOverviewScene', { benchmarkMode: 'adaptiveBenchmark' }),

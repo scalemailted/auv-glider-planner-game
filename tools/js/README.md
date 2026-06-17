@@ -135,3 +135,4 @@ node tools/js/smoke_renderer_architecture_preview_scene.mjs
 ```
 
 These checks keep WebGPU as progressive enhancement and confirm renderer view models do not own simulation, scoring, planning, or hidden truth.
+ENV-R1: `tools/js/headless_oceanbox.mjs` supports `--bathymetry`, `--no-bathymetry`, `--bathymetry-view`, and `--vertical-exaggeration` for public-safe bathymetry summaries. This does not add a planner, full 3D route planning, or a hydrodynamic solver.

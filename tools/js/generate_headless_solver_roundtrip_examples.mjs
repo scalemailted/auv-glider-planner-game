@@ -87,6 +87,8 @@ const report = {
       'glider_tracks.csv',
       'score_report.json',
       'science_diagnostics.json',
+      'bathymetry_summary.json',
+      'mission_geometry_summary.json',
       'replay.json',
       'episode.json',
       'roundtrip_report.json'

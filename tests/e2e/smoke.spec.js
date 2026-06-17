@@ -402,6 +402,75 @@ test('Motion Planning Demo opens from Simulation Lab and preserves benchmark/hea
   await expect(page.locator('#mission-console')).toContainText('Adaptive Benchmark');
 });
 
+test('Bathymetric World View opens from Simulation Lab and preserves adjacent routes', async ({ page }) => {
+  await page.goto('/');
+  await expect(page.locator('#main-menu-hub')).toBeVisible();
+  await openMainMenuHubSection(page, 'simulation');
+  const simulationHub = page.locator('#main-menu-hub[data-hub-view="simulation"]');
+  await expect(simulationHub).toContainText('Bathymetric World View');
+
+  await simulationHub.locator('[data-action="bathymetry-world-view"]').click();
+  await expect.poll(() => page.evaluate(() => window.anchorGame.phaser.scene.getScene('BathymetryWorldViewScene').sys.isActive())).toBe(true);
+  await expect(page.locator('#mission-console')).toContainText('Bathymetric World View');
+  await expect(page.locator('#mission-console')).toContainText('2.5D mission state');
+  await expect(page.locator('#mission-console')).toContainText('Bathymetry is environmental geometry');
+  await expect(page.locator('#mission-console')).toContainText('Surface waypoints are route intent');
+  await expect(page.locator('#mission-console')).toContainText('Sampling points are where observations are collected');
+  await expect(page.locator('#mission-console')).toContainText('Terrain-flow accumulation is not ocean current');
+  await expect(page.locator('#bathymetry-view-mode')).toBeVisible();
+  await expect(page.locator('#mission-console [data-bathymetry-camera="verticalExaggeration"]')).toBeVisible();
+  await expect(page.locator('#mission-console [data-bathymetry-toggle="waterSurface"]')).toBeVisible();
+  await expect(page.locator('#mission-console [data-bathymetry-toggle="surface"]')).toBeVisible();
+  await expect(page.locator('#mission-console [data-bathymetry-toggle="thermocline"]')).toBeVisible();
+  await expect(page.locator('#mission-console [data-bathymetry-toggle="deep"]')).toBeVisible();
+  await expect(page.locator('#mission-console [data-bathymetry-toggle="samplingPoints"]')).toBeVisible();
+  await expect(page.locator('#mission-console')).toContainText('Reset Camera');
+  await expect.poll(() => page.evaluate(() => window.ANCHOR_BATHYMETRY_VIEW_DEBUG?.active)).toBe(true);
+  await expect.poll(() => page.evaluate(() => window.ANCHOR_BATHYMETRY_VIEW_DEBUG?.rendererBackend)).toBe('phaserGraphicsPseudo3D');
+  await expect.poll(() => page.evaluate(() => window.ANCHOR_BATHYMETRY_VIEW_DEBUG?.usesThree)).toBe(false);
+  await expect.poll(() => page.evaluate(() => window.ANCHOR_BATHYMETRY_VIEW_DEBUG?.usesPseudo3DProjection)).toBe(true);
+  await expect.poll(() => page.evaluate(() => window.ANCHOR_BATHYMETRY_VIEW_DEBUG?.usesFull3DPlanning)).toBe(false);
+  await expect.poll(() => page.evaluate(() => window.ANCHOR_BATHYMETRY_VIEW_DEBUG?.usesHydrodynamicSolver)).toBe(false);
+  await expect.poll(() => page.evaluate(() => window.ANCHOR_BATHYMETRY_VIEW_DEBUG?.usesTerrainFlowAsOceanCurrent)).toBe(false);
+  await expect.poll(() => page.evaluate(() => window.ANCHOR_BATHYMETRY_VIEW_DEBUG?.usesWebGPUFluid)).toBe(false);
+  await expect.poll(() => page.evaluate(() => window.ANCHOR_BATHYMETRY_VIEW_DEBUG?.usesMARL)).toBe(false);
+  await expect.poll(() => page.evaluate(() => window.ANCHOR_BATHYMETRY_VIEW_DEBUG?.ownsSimulationState)).toBe(false);
+  await expect.poll(() => page.evaluate(() => window.ANCHOR_BATHYMETRY_VIEW_DEBUG?.ownsScoring)).toBe(false);
+  await expect.poll(() => page.evaluate(() => window.ANCHOR_BATHYMETRY_VIEW_DEBUG?.ownsPlanning)).toBe(false);
+  await expect.poll(() => page.evaluate(() => window.ANCHOR_BATHYMETRY_VIEW_DEBUG?.surfaceWaypointCount > 0)).toBe(true);
+  await expect.poll(() => page.evaluate(() => window.ANCHOR_BATHYMETRY_VIEW_DEBUG?.samplingPointCount > 0)).toBe(true);
+
+  await page.locator('#mission-console [data-bathymetry-toggle="waterSurface"]').uncheck();
+  await expect.poll(() => page.evaluate(() => window.ANCHOR_BATHYMETRY_VIEW_DEBUG?.layerVisibility?.waterSurface)).toBe(false);
+  await page.locator('#mission-console [data-action="bathymetry-reset-camera"]').click();
+  await expect.poll(() => page.evaluate(() => window.ANCHOR_BATHYMETRY_VIEW_DEBUG?.layerVisibility?.waterSurface)).toBe(true);
+
+  await page.locator('#mission-console [data-action="menu"]').click();
+  await openMainMenuHubSection(page, 'simulation');
+  await page.locator('#main-menu-hub [data-action="headless-bundle-viewer"]').click();
+  await expect.poll(() => page.evaluate(() => window.anchorGame.phaser.scene.getScene('HeadlessBundleViewerScene').sys.isActive())).toBe(true);
+  await page.locator('#mission-console [data-action="load-example-roundtrip"]').click();
+  await expect(page.locator('#mission-console')).toContainText('Roundtrip Summary');
+  const hasBathymetrySummary = await page.evaluate(() => window.ANCHOR_HEADLESS_BUNDLE_DEBUG?.hasBathymetrySummary === true);
+  if (hasBathymetrySummary) {
+    await expect(page.locator('#mission-console')).toContainText('Bathymetric World');
+    await expect(page.locator('#mission-console')).toContainText('Mission Geometry');
+  }
+  const hasMotionTrajectory = await page.evaluate(() => window.ANCHOR_HEADLESS_BUNDLE_DEBUG?.hasMotionTrajectory === true);
+  if (hasMotionTrajectory) {
+    await expect(page.locator('#mission-console')).toContainText('Motion Dynamics');
+  }
+
+  await page.locator('#mission-console [data-action="menu"]').click();
+  await launchFromMainMenuHub(page, 'simulation', 'benchmark-planner');
+  await expect.poll(() => page.evaluate(() => window.ANCHOR_BENCHMARK_MODE_DEBUG?.benchmarkMode)).toBe('plannerBenchmark');
+  await page.locator('#mission-console [data-action="menu"]').click();
+  await launchFromMainMenuHub(page, 'simulation', 'benchmark-adaptive');
+  await expect.poll(() => page.evaluate(() => window.ANCHOR_BENCHMARK_MODE_DEBUG?.benchmarkMode)).toBe('adaptiveBenchmark');
+  await page.locator('#mission-console [data-action="menu"]').click();
+  await launchFromMainMenuHub(page, 'simulation', 'renderer-architecture-preview');
+  await expect.poll(() => page.evaluate(() => window.anchorGame.phaser.scene.getScene('RendererArchitecturePreviewScene').sys.isActive())).toBe(true);
+});
 test('Renderer Architecture Preview opens from Simulation Lab', async ({ page }) => {
   await page.goto('/');
   await expect(page.locator('#main-menu-hub')).toBeVisible();

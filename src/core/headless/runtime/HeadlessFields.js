@@ -3,6 +3,7 @@ import { createHeadlessFieldDescriptor } from '../HeadlessFieldSchema.js';
 import { clamp01, createHeadlessGrid, createScalarField3d, field3dStats, normalizeField3d, sampleNearest3d } from './HeadlessGrid.js';
 import { createDefaultHeadlessRuntimeConfig } from './HeadlessRuntimeConfig.js';
 import { computeHeadlessSamplingPriority } from './HeadlessPriority.js';
+import { bathymetryFeatureSummary, bathymetryFieldStats, createSyntheticBathymetryField } from '../../science/BathymetryFieldModel.js';
 
 export function createHeadlessFieldPack(configInput = {}) {
   const config = configInput?.type === 'anchor.headless.runtime-config' ? configInput : createDefaultHeadlessRuntimeConfig(configInput);
@@ -22,6 +23,10 @@ export function createCoastalBloomFrontFieldPack(configInput = {}) {
   const staleness = createStalenessField(config);
   const boundaryStrength = createBoundaryStrengthField(config, hiddenTruth);
   const flow = createFlowFields(config);
+  const bathymetry = config.bathymetryConfig ? createSyntheticBathymetryField({
+    ...config.bathymetryConfig,
+    seed: String(config.seed ?? 'demo-001') + ':bathymetry'
+  }) : null;
   const fields = {
     T_hiddenTruth: hiddenTruth,
     E_forecast: forecast,
@@ -42,6 +47,7 @@ export function createCoastalBloomFrontFieldPack(configInput = {}) {
     seed: config.seed ?? 'demo-001',
     grid,
     waterColumnConfig: config.waterColumnConfig ?? null,
+    bathymetrySummary: bathymetry ? buildPublicBathymetrySummary(bathymetry, config) : null,
     fieldOrder: ['T_hiddenTruth', 'E_forecast', 'mu_belief', 'U_uncertainty', 'P_unknown', 'A_global', 'F_u', 'F_v', 'hazard', 'constraintMask', 'staleness', 'boundaryStrength'],
     fields,
     fieldVisibility: {
@@ -56,7 +62,8 @@ export function createCoastalBloomFrontFieldPack(configInput = {}) {
       hazard: 'publicScenario',
       constraintMask: 'publicScenario',
       staleness: 'beliefOnly',
-      boundaryStrength: 'publicScenario'
+      boundaryStrength: 'publicScenario',
+      bathymetrySummary: 'publicScenario'
     },
     fieldDescriptors: [],
     diagnostics: {},
@@ -248,10 +255,48 @@ export function headlessFieldPackSummary(fieldPack) {
     allFinite: Object.values(stats).every((entry) => entry.invalidCount === 0 && entry.finiteCount > 0),
     stats,
     calibratedOceanForecast: false,
+    bathymetrySummary: fieldPack?.bathymetrySummary ?? null,
     note: 'Synthetic deterministic field pack; not a calibrated ocean forecast.'
   };
 }
 
+function buildPublicBathymetrySummary(bathymetry, config = {}) {
+  const stats = bathymetryFieldStats(bathymetry);
+  const features = bathymetryFeatureSummary(bathymetry);
+  return {
+    type: 'anchor.headless.bathymetry-summary',
+    version: 'headless-bathymetry-summary-env-r1',
+    visibilityTier: 'publicScenario',
+    publicSafe: true,
+    environmentalGeometry: true,
+    width: bathymetry.width,
+    height: bathymetry.height,
+    depthRange: { minDepthMeters: stats.minDepthMeters, maxDepthMeters: stats.maxDepthMeters },
+    minDepthMeters: stats.minDepthMeters,
+    maxDepthMeters: stats.maxDepthMeters,
+    meanDepthMeters: stats.meanDepthMeters,
+    landWaterMaskSummary: features.landWaterMaskSummary,
+    shelfSummary: features.shelfSummary,
+    canyonSummary: features.canyonSummary,
+    deepBasinSummary: features.deepBasinSummary,
+    featureIds: features.featureIds,
+    bathymetryViewMode: config.bathymetryViewMode ?? config.bathymetryConfig?.defaultViewMode ?? 'obliqueBathymetry',
+    verticalExaggeration: config.bathymetryConfig?.verticalExaggeration ?? 1.5,
+    hiddenTruthIncluded: false,
+    usesFull3DPlanning: false,
+    usesHydrodynamicSolver: false,
+    usesTerrainFlowAsOceanCurrent: false,
+    usesPythonSimulator: false,
+    usesMARL: false,
+    notA: [
+      'not full 3D route planning',
+      'not calibrated bathymetric survey data',
+      'not hydrodynamic current solver',
+      'not terrain-flow ocean current',
+      'not MARL/RL'
+    ]
+  };
+}
 function createFlowFields(configInput = {}) {
   const config = configInput?.type === 'anchor.headless.runtime-config' ? configInput : createDefaultHeadlessRuntimeConfig(configInput);
   const grid = createHeadlessGrid(config.grid);

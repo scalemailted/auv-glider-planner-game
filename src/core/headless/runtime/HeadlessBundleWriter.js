@@ -16,6 +16,8 @@ export function createHeadlessBundleManifest(episode, options = {}) {
   const hasDepthLayerPriority = Boolean(episode?.depthLayerPriority);
   const hasMotionTrajectory = Boolean(episode?.motionTrajectory);
   const hasMotionDiagnostics = Boolean(episode?.motionDiagnostics ?? episode?.motionTrajectory?.motionDiagnostics);
+  const hasBathymetrySummary = Boolean(episode?.bathymetrySummary ?? episode?.fieldPackBefore?.bathymetrySummary ?? episode?.fieldPackAfter?.bathymetrySummary);
+  const hasMissionGeometrySummary = Boolean(episode?.missionGeometrySummary);
   const combinedBundleType = roundtripReport ? HEADLESS_SOLVER_ROUNDTRIP_BUNDLE_TYPE : 'anchor.headless.bundle';
   const files = [
     fileEntry('manifest.json', 'manifest', 'anchor.headless.manifest', 'publicScenario', 'Bundle manifest.'),
@@ -37,6 +39,12 @@ export function createHeadlessBundleManifest(episode, options = {}) {
   }
   if (hasDepthLayerPriority) {
     files.splice(9, 0, fileEntry('depth_layer_priority.json', 'depthLayerPriority', 'anchor.headless.depth-layer-priority', 'publicScenario', 'P11 public-safe depth-layer A_global priority and top-down collapse.'));
+  }
+  if (hasBathymetrySummary) {
+    files.push(fileEntry('bathymetry_summary.json', 'bathymetrySummary', 'anchor.headless.bathymetry-summary', 'publicScenario', 'ENV-R1 public-safe environmental bathymetry summary.'));
+  }
+  if (hasMissionGeometrySummary) {
+    files.push(fileEntry('mission_geometry_summary.json', 'missionGeometrySummary', 'anchor.headless.mission-geometry-summary', 'publicScenario', 'ENV-R1 public-safe route/sample/depth-layer geometry counts.'));
   }
   if (hasMotionTrajectory) {
     files.push(fileEntry('motion_trajectory.json', 'motionTrajectory', 'anchor.motion.trajectory', 'publicScenario', 'MOTION-R1 planned-vs-realized motion trajectory.'));
@@ -61,6 +69,8 @@ export function createHeadlessBundleManifest(episode, options = {}) {
   if (hasDepthLayerPriority) jsonFiles.push('depth_layer_priority.json');
   if (hasMotionTrajectory) jsonFiles.push('motion_trajectory.json', 'control_trace.json');
   if (hasMotionDiagnostics) jsonFiles.push('motion_diagnostics.json');
+  if (hasBathymetrySummary) jsonFiles.push('bathymetry_summary.json');
+  if (hasMissionGeometrySummary) jsonFiles.push('mission_geometry_summary.json');
   if (combinedJson) jsonFiles.push('bundle.json');
   if (options.roundtripReport || episode?.roundtripReport) jsonFiles.push('roundtrip_report.json');
 
@@ -112,6 +122,8 @@ export function headlessBundleFiles(episode, options = {}) {
     'score_report.json': stableJson(episode.scoreReport),
     ...(episode.scienceDiagnostics ? { 'science_diagnostics.json': stableJson(episode.scienceDiagnostics) } : {}),
     ...(episode.waterColumnSummary ? { 'water_column_summary.json': stableJson(episode.waterColumnSummary) } : {}),
+    ...(episode.bathymetrySummary || episode.fieldPackBefore?.bathymetrySummary || episode.fieldPackAfter?.bathymetrySummary ? { 'bathymetry_summary.json': stableJson(episode.bathymetrySummary ?? episode.fieldPackBefore?.bathymetrySummary ?? episode.fieldPackAfter?.bathymetrySummary) } : {}),
+    ...(episode.missionGeometrySummary ? { 'mission_geometry_summary.json': stableJson(episode.missionGeometrySummary) } : {}),
     ...(episode.depthLayerPriority ? { 'depth_layer_priority.json': stableJson(episode.depthLayerPriority) } : {}),
     'replay.json': stableJson(episode.replay),
     'episode.json': stableJson(stripBundleEpisode(episode, includeHidden))
@@ -146,6 +158,8 @@ export function createHeadlessCombinedBundle(episode, options = {}) {
     scoreReport: episode.scoreReport,
     scienceDiagnostics: episode.scienceDiagnostics ?? null,
     waterColumnSummary: episode.waterColumnSummary ?? null,
+    bathymetrySummary: episode.bathymetrySummary ?? episode.fieldPackBefore?.bathymetrySummary ?? episode.fieldPackAfter?.bathymetrySummary ?? null,
+    missionGeometrySummary: episode.missionGeometrySummary ?? null,
     depthLayerPrioritySummary: episode.depthLayerPriority?.summary ?? episode.depthLayerPrioritySummary ?? null,
     replay: episode.replay,
     roundtripReport,
@@ -191,6 +205,8 @@ export function headlessBundleSummary(outputDir) {
     finalScoreFile: files.includes('score_report.json'),
     scienceDiagnostics: files.includes('science_diagnostics.json'),
     waterColumnSummary: files.includes('water_column_summary.json'),
+    bathymetrySummary: files.includes('bathymetry_summary.json'),
+    missionGeometrySummary: files.includes('mission_geometry_summary.json'),
     depthLayerPriority: files.includes('depth_layer_priority.json'),
     motionTrajectory: files.includes('motion_trajectory.json'),
     motionDiagnostics: files.includes('motion_diagnostics.json'),

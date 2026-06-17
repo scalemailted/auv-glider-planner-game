@@ -50,3 +50,5 @@ Recommended dive profile is context for the next leg; it does not generate a rou
 ## MOTION-R1 Relationship
 
 MOTION-R1 uses the P11 water-column layer ids and dive profiles as execution context for deterministic glider motion. Dive profile affects desired depth layer and observation depth along the realized trajectory. It does not add full 3D planning, calibrated vertical ocean physics, or a route planner; the player or solver still chooses the route intent.
+
+ENV-R1 Bathymetric World View visualizes the 2.5D water-column model with water surface, depth-layer planes, bathymetric bottom, surface waypoints, sampling points, and dive-profile paths. Bathymetry does not replace water-column state.

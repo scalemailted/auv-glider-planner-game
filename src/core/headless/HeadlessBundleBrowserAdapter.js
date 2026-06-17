@@ -1,5 +1,5 @@
 import { validateHeadlessBundle } from './HeadlessBundleValidation.js';
-import { buildHeadlessBundleViewModel, headlessBundleDepthLayerPrioritySummary, headlessBundleMotionSummary, headlessBundleObservationSummary, headlessBundleReplaySummary, headlessBundleRoundtripSummary, headlessBundleScienceDiagnosisSummary, headlessBundleScoreSummary, headlessBundleWaterColumnSummary, headlessBundleTrackSummary, headlessBundleVisibilitySummary } from './HeadlessBundleViewModel.js';
+import { buildHeadlessBundleViewModel, headlessBundleBathymetrySummary, headlessBundleDepthLayerPrioritySummary, headlessBundleMissionGeometrySummary, headlessBundleMotionSummary, headlessBundleObservationSummary, headlessBundleReplaySummary, headlessBundleRoundtripSummary, headlessBundleScienceDiagnosisSummary, headlessBundleScoreSummary, headlessBundleWaterColumnSummary, headlessBundleTrackSummary, headlessBundleVisibilitySummary } from './HeadlessBundleViewModel.js';
 import { BROWSER_HEADLESS_ROUNDTRIP_SUMMARY_TYPE, HEADLESS_SOLVER_ROUNDTRIP_REPORT_TYPE } from './HeadlessRoundtripTypes.js';
 
 export const HEADLESS_BUNDLE_BROWSER_ADAPTER_VERSION = 'headless-bundle-browser-adapter-h2';
@@ -23,6 +23,8 @@ export function buildBrowserHeadlessBundleSummaryArtifact(bundle = {}) {
     scoreSummary: buildBrowserHeadlessScoreComparisonDescriptor(bundle),
     roundtripSummary: headlessBundleRoundtripSummary(bundle),
     waterColumnSummary: headlessBundleWaterColumnSummary(bundle),
+    bathymetrySummary: headlessBundleBathymetrySummary(bundle),
+    missionGeometrySummary: headlessBundleMissionGeometrySummary(bundle),
     depthLayerPrioritySummary: headlessBundleDepthLayerPrioritySummary(bundle),
     scienceDiagnosisSummary: headlessBundleScienceDiagnosisSummary(bundle),
     replaySummary: headlessBundleReplaySummary(bundle),
@@ -63,6 +65,8 @@ export function buildBrowserHeadlessRoundtripSummaryArtifact(bundle = {}) {
     usesWebGPUFluid: roundtripSummary.usesWebGPUFluid === true,
     motionSummary: headlessBundleMotionSummary(bundle),
     waterColumnSummary: headlessBundleWaterColumnSummary(bundle),
+    bathymetrySummary: headlessBundleBathymetrySummary(bundle),
+    missionGeometrySummary: headlessBundleMissionGeometrySummary(bundle),
     depthLayerPrioritySummary: headlessBundleDepthLayerPrioritySummary(bundle),
     scienceDiagnosisSummary: headlessBundleScienceDiagnosisSummary(bundle),
     validationStatus: validation.status,
@@ -100,6 +104,8 @@ export function buildBrowserHeadlessBundleDebugObject(bundle = {}) {
   const waterColumn = viewModel.waterColumnSummary ?? headlessBundleWaterColumnSummary(bundle);
   const depthPriority = viewModel.depthLayerPrioritySummary ?? headlessBundleDepthLayerPrioritySummary(bundle);
   const motion = viewModel.motionSummary ?? headlessBundleMotionSummary(bundle);
+  const bathymetry = viewModel.bathymetrySummary ?? headlessBundleBathymetrySummary(bundle);
+  const missionGeometry = viewModel.missionGeometrySummary ?? headlessBundleMissionGeometrySummary(bundle);
   return {
     version: HEADLESS_BUNDLE_BROWSER_ADAPTER_VERSION,
     bundleLoaded: Boolean(bundle?.manifest || bundle?.visibleFields),
@@ -150,7 +156,18 @@ export function buildBrowserHeadlessBundleDebugObject(bundle = {}) {
     verticalCoverage: waterColumn.verticalCoverage ?? null,
     bestDepthLayerCounts: depthPriority.bestDepthLayerCounts ?? waterColumn.bestDepthLayerCounts ?? {},
     waterColumnPublicSafe: waterColumn.publicSafe !== false,
-    usesFull3DPlanning: waterColumn.usesFull3DPlanning === true || depthPriority.usesFull3DPlanning === true,
+    hasBathymetrySummary: bathymetry.present === true,
+    bathymetryDepthRange: bathymetry.depthRange ?? null,
+    bathymetryFeatureIds: bathymetry.featureIds ?? [],
+    surfaceWaypointCount: missionGeometry.surfaceWaypointCount ?? 0,
+    samplingPointCount: missionGeometry.samplingPointCount ?? 0,
+    plannedPathPointCount: missionGeometry.plannedPathPointCount ?? 0,
+    realizedTrajectoryPointCount: missionGeometry.realizedTrajectoryPointCount ?? 0,
+    hasDiveProfilePath: missionGeometry.hasDiveProfilePath === true,
+    bathymetryViewMode: bathymetry.bathymetryViewMode ?? null,
+    usesFull3DPlanning: waterColumn.usesFull3DPlanning === true || depthPriority.usesFull3DPlanning === true || bathymetry.usesFull3DPlanning === true || missionGeometry.usesFull3DPlanning === true,
+    usesHydrodynamicSolver: bathymetry.usesHydrodynamicSolver === true || missionGeometry.usesHydrodynamicSolver === true,
+    usesTerrainFlowAsOceanCurrent: bathymetry.usesTerrainFlowAsOceanCurrent === true || missionGeometry.usesTerrainFlowAsOceanCurrent === true,
     usesProductionDataAssimilation: science.usesProductionDataAssimilation === true,
     browserSummaryExportAvailable: true,
     usesGeneratedPlan: roundtrip.usesGeneratedPlan === true,

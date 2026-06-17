@@ -43,7 +43,10 @@ function runSimulate(args) {
     controlStepSeconds: args.controlStepSeconds,
     gliderSpeed: args.gliderSpeed,
     headingRateLimitDegreesPerSecond: args.headingRateLimitDegreesPerSecond,
-    driftGain: args.driftGain
+    driftGain: args.driftGain,
+    bathymetry: args.bathymetry,
+    bathymetryViewMode: args.bathymetryViewMode,
+    verticalExaggeration: args.verticalExaggeration
   });
   const episode = runHeadlessMission(config);
   let bundleSummary = null;
@@ -129,7 +132,10 @@ function runRoundtrip(args) {
     controlStepSeconds: args.controlStepSeconds,
     gliderSpeed: args.gliderSpeed,
     headingRateLimitDegreesPerSecond: args.headingRateLimitDegreesPerSecond,
-    driftGain: args.driftGain
+    driftGain: args.driftGain,
+    bathymetry: args.bathymetry,
+    bathymetryViewMode: args.bathymetryViewMode,
+    verticalExaggeration: args.verticalExaggeration
   });
   fs.mkdirSync(outputDir, { recursive: true });
   const bundleSummary = writeHeadlessBundle(roundtrip.episode, outputDir, {
@@ -197,6 +203,9 @@ function parseArgs(argv) {
     createdAt: null,
     motionAware: false,
     motionModelId: null,
+    bathymetry: true,
+    bathymetryViewMode: 'obliqueBathymetry',
+    verticalExaggeration: 1.5,
     controlStepSeconds: null,
     gliderSpeed: null,
     headingRateLimitDegreesPerSecond: null,
@@ -213,6 +222,10 @@ function parseArgs(argv) {
     else if (arg === '--dive-profile') parsed.diveProfileId = argv[++index];
     else if (arg === '--motion-aware') parsed.motionAware = true;
     else if (arg === '--motion-model') parsed.motionModelId = argv[++index];
+    else if (arg === '--bathymetry') parsed.bathymetry = true;
+    else if (arg === '--no-bathymetry') parsed.bathymetry = false;
+    else if (arg === '--bathymetry-view') parsed.bathymetryViewMode = argv[++index];
+    else if (arg === '--vertical-exaggeration') parsed.verticalExaggeration = Number(argv[++index]);
     else if (arg === '--control-step') parsed.controlStepSeconds = Number(argv[++index]);
     else if (arg === '--glider-speed') parsed.gliderSpeed = Number(argv[++index]);
     else if (arg === '--heading-rate-limit') parsed.headingRateLimitDegreesPerSecond = Number(argv[++index]);
@@ -264,8 +277,8 @@ function readJson(filePath) {
 
 function printUsage() {
   console.log(`Usage:
-  node tools/js/headless_oceanbox.mjs simulate --seed demo-001 --out tmp/oceanbox-js-demo [--width 32] [--height 24] [--scenario coastalBloomFront] [--depth-layers surface,thermocline,deep] [--dive-profile sawtoothProfile] [--water-column-summary] [--motion-aware] [--motion-model depthLayerKinematic] [--control-step 60] [--glider-speed 1] [--heading-rate-limit 8] [--drift-gain 1] [--no-hidden-export] [--combined-json] [--summary-only]
+  node tools/js/headless_oceanbox.mjs simulate --seed demo-001 --out tmp/oceanbox-js-demo [--width 32] [--height 24] [--scenario coastalBloomFront] [--depth-layers surface,thermocline,deep] [--dive-profile sawtoothProfile] [--water-column-summary] [--bathymetry] [--bathymetry-view obliqueBathymetry] [--vertical-exaggeration 1.5] [--motion-aware] [--motion-model depthLayerKinematic] [--control-step 60] [--glider-speed 1] [--heading-rate-limit 8] [--drift-gain 1] [--no-hidden-export] [--combined-json] [--summary-only]
   node tools/js/headless_oceanbox.mjs validate-solver-packet --solver-packet docs/examples/headless_solver_packet.example.json [--oracle]
   node tools/js/headless_oceanbox.mjs validate-plan --solver-packet docs/examples/headless_solver_packet.example.json --plan docs/examples/headless_solver_plan.example.json [--agent-id glider_01]
-  node tools/js/headless_oceanbox.mjs roundtrip --solver-packet docs/examples/headless_solver_packet.example.json --plan docs/examples/headless_solver_plan.example.json --out runs/h3-roundtrip --depth-layers surface,thermocline,deep --dive-profile sawtoothProfile --motion-aware --motion-model depthLayerKinematic --combined-json --no-hidden-export`);
+  node tools/js/headless_oceanbox.mjs roundtrip --solver-packet docs/examples/headless_solver_packet.example.json --plan docs/examples/headless_solver_plan.example.json --out runs/h3-roundtrip --depth-layers surface,thermocline,deep --dive-profile sawtoothProfile --bathymetry --bathymetry-view obliqueBathymetry --vertical-exaggeration 1.5 --motion-aware --motion-model depthLayerKinematic --combined-json --no-hidden-export`);
 }

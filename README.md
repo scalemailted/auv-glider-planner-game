@@ -909,3 +909,5 @@ P11 adds shared depth-layer metadata and summaries for the Node/OceanBox-JS head
 ## MOTION-R1 Glider Motion Dynamics
 
 MOTION-R1 adds a portable deterministic motion-dynamics layer and a Simulation Lab `Motion Planning Demo`. Motion planning is an execution model, not a fourth top-level authority mode: Planner Benchmark, Adaptive Benchmark, and Full Autonomy Benchmark remain the authority modes. The player or solver still chooses/imports waypoint intent; motion dynamics converts that intent to controls, simulates realized trajectory under currents/depth/control limits, and reports drift, track error, energy, and sampled observations. Node/OceanBox-JS remains the canonical non-browser runtime. WebGPU fluid coupling is documented as future/optional only; no Python simulator, new route planner, scoring redesign, or MARL/RL is added. See [Motion Planning Dynamics Layer](docs/motion_planning_dynamics_layer.md) and [WebGPU Fluid Motion Feasibility](docs/webgpu_fluid_motion_feasibility.md).
+
+- [Bathymetric World View](docs/bathymetric_world_view.md) documents ENV-R1 synthetic bathymetry visualization over the 2.5D water-column model.

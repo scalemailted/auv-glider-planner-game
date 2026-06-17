@@ -118,3 +118,5 @@ P10 adds adaptive science-diagnosis context, mission-manager rationale, next-leg
 ## MOTION-R1 Artifact Analysis
 
 Python/Colab workflows may inspect MOTION-R1 JSON artifacts such as `motionTrajectory`, `controlTrace`, and `motionDiagnostics` from Node/OceanBox-JS bundles. Python remains an artifact-analysis or Node-calling workflow; no Python simulator is added. The JavaScript runtime remains canonical for deterministic motion replay.
+
+ENV-R1: Python/Colab workflows may analyze `bathymetrySummary` and `missionGeometrySummary` artifacts exported by Node/OceanBox-JS. Python remains an artifact-analysis or wrapper workflow, not the simulator.

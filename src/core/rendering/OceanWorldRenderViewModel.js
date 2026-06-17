@@ -11,6 +11,8 @@ export function buildOceanWorldRenderViewModel({
   tracks,
   plan,
   scienceDiagnostics,
+  oceanWorldGeometry,
+  layerVisibility,
   options = {}
 } = {}) {
   const depthLayerIds = depthLayersFrom(waterColumnSummary, missionConfig);
@@ -31,7 +33,8 @@ export function buildOceanWorldRenderViewModel({
       width: finiteNumber(grid.width, finiteNumber(options.width, 0)),
       height: finiteNumber(grid.height, finiteNumber(options.height, 0))
     },
-    bathymetrySummary: compactBathymetrySummary(bathymetrySummary),
+    bathymetrySummary: compactBathymetrySummary(bathymetrySummary ?? oceanWorldGeometry?.bathymetrySummary),
+    bathymetryMeshSummary: clonePlain(oceanWorldGeometry?.bathymetryMeshSummary ?? options.bathymetryMeshSummary ?? {}),
     waterSurface: {
       z: 0,
       label: 'Water Surface',
@@ -43,23 +46,36 @@ export function buildOceanWorldRenderViewModel({
       ...waterColumnLayerMetadata(id),
       rendererHint: 'future semi-transparent depth slice'
     })),
-    surfaceWaypoints: compactWaypoints(plannedWaypoints.filter((point) => !point.depthLayerId || point.depthLayerId === 'surface')),
-    plannedPath: compactWaypoints(plannedWaypoints),
-    realizedTrajectory: compactTrack(realizedTrack),
-    samplingPoints: compactObservations(sampled),
-    diveProfilePath: compactDiveProfilePath(realizedTrack, plannedWaypoints),
-    flowOverlaySummary: compactFlowOverlaySummary(realizedTrack, options.flowOverlaySummary),
+    depthLayerPlanes: clonePlain(oceanWorldGeometry?.depthLayerPlanes ?? options.depthLayerPlanes ?? []),
+    surfaceWaypoints: clonePlain(oceanWorldGeometry?.surfaceWaypoints) ?? compactWaypoints(plannedWaypoints.filter((point) => !point.depthLayerId || point.depthLayerId === 'surface')),
+    plannedPath: clonePlain(oceanWorldGeometry?.plannedPath) ?? compactWaypoints(plannedWaypoints),
+    realizedTrajectory: clonePlain(oceanWorldGeometry?.realizedTrajectory) ?? compactTrack(realizedTrack),
+    samplingPoints: clonePlain(oceanWorldGeometry?.samplingPoints) ?? compactObservations(sampled),
+    diveProfilePath: clonePlain(oceanWorldGeometry?.diveProfilePath) ?? compactDiveProfilePath(realizedTrack, plannedWaypoints),
+    flowOverlaySummary: compactFlowOverlaySummary(realizedTrack, oceanWorldGeometry?.flowOverlaySummary ?? options.flowOverlaySummary),
     waterColumnSummary: compactWaterColumnSummary(waterColumnSummary),
     scienceDiagnosticsSummary: compactScienceDiagnostics(scienceDiagnostics),
+    missionGeometrySummary: clonePlain(oceanWorldGeometry?.summary ?? options.missionGeometrySummary ?? {}),
+    layerVisibility: clonePlain(layerVisibility ?? options.layerVisibility ?? defaultLayerVisibility(depthLayerIds)),
+    rendererHints: {
+      rendererBackend: options.rendererBackend ?? 'phaserGraphicsPseudo3D',
+      usesThree: false,
+      usesPseudo3DProjection: true,
+      bathymetryIsEnvironmentalGeometry: true,
+      waterColumnStateModelPreserved: true
+    },
     warnings,
     boundaryFlags: {
       ownsSimulationState: false,
       ownsScoring: false,
       ownsPlanning: false,
+      usesFull3DPlanning: false,
+      usesHydrodynamicSolver: false,
+      usesTerrainFlowAsOceanCurrent: false,
       usesWebGPUFluid: false,
       usesMARL: false
     },
-    notA: ['not simulation authority', 'not scoring authority', 'not planner', 'not WebGPU fluid simulation', 'not MARL/RL']
+    notA: ['not simulation authority', 'not scoring authority', 'not planner', 'not full 3D route planning', 'not hydrodynamic current solver', 'not terrain-flow ocean current', 'not WebGPU fluid simulation', 'not MARL/RL']
   };
 }
 
@@ -72,14 +88,31 @@ export function oceanWorldRenderViewModelSummary(viewModel = {}) {
     realizedTrajectoryPointCount: viewModel.realizedTrajectory?.length ?? 0,
     samplingPointCount: viewModel.samplingPoints?.length ?? 0,
     hasBathymetrySummary: Boolean(viewModel.bathymetrySummary?.present),
+    hasBathymetryMeshSummary: Boolean(viewModel.bathymetryMeshSummary?.bottomPointCount ?? viewModel.bathymetryMeshSummary?.bottomSurface),
+    depthLayerPlaneCount: viewModel.depthLayerPlanes?.length ?? 0,
     hasWaterColumnSummary: Boolean(viewModel.waterColumnSummary?.present),
     verticalCoverage: viewModel.waterColumnSummary?.verticalCoverage ?? null,
     ownsSimulationState: viewModel.boundaryFlags?.ownsSimulationState === true ? true : false,
     ownsScoring: viewModel.boundaryFlags?.ownsScoring === true ? true : false,
     ownsPlanning: viewModel.boundaryFlags?.ownsPlanning === true ? true : false,
+    usesFull3DPlanning: viewModel.boundaryFlags?.usesFull3DPlanning === true ? true : false,
+    usesHydrodynamicSolver: viewModel.boundaryFlags?.usesHydrodynamicSolver === true ? true : false,
+    usesTerrainFlowAsOceanCurrent: viewModel.boundaryFlags?.usesTerrainFlowAsOceanCurrent === true ? true : false,
     usesWebGPUFluid: viewModel.boundaryFlags?.usesWebGPUFluid === true ? true : false,
     usesMARL: viewModel.boundaryFlags?.usesMARL === true ? true : false,
     warningCount: viewModel.warnings?.length ?? 0
+  };
+}
+
+function defaultLayerVisibility(depthLayerIds = []) {
+  return {
+    bathymetry: true,
+    waterSurface: true,
+    ...Object.fromEntries((Array.isArray(depthLayerIds) ? depthLayerIds : []).map((id) => [id, true])),
+    plannedPath: true,
+    realizedTrajectory: true,
+    samplingPoints: true,
+    diveProfilePath: true
   };
 }
 

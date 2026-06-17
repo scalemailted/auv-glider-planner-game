@@ -33,7 +33,13 @@ export function buildHeadlessRoundtripBrowserSummary(bundleOrReport = {}) {
     usesMARL: report.runtime?.usesMARL === true,
     usesMotionDynamics: report.runtime?.usesMotionDynamics === true,
     usesWebGPUFluid: report.runtime?.usesWebGPUFluid === true,
-    motionSummary: report.motionSummary ?? null,
+    usesFull3DPlanning: report.runtime?.usesFull3DPlanning === true,
+    usesHydrodynamicSolver: report.runtime?.usesHydrodynamicSolver === true,
+    usesTerrainFlowAsOceanCurrent: report.runtime?.usesTerrainFlowAsOceanCurrent === true,
+    motionSummary: report.motionSummary ?? report.episode?.motionSummary ?? null,
+    waterColumnSummary: report.waterColumnSummary ?? report.episode?.waterColumnSummary ?? null,
+    bathymetrySummary: report.bathymetrySummary ?? report.episode?.bathymetrySummary ?? null,
+    missionGeometrySummary: report.missionGeometrySummary ?? report.episode?.missionGeometrySummary ?? null,
     notA: ['not browser official score', 'not Python simulator', 'not route planner', 'not MARL/RL']
   };
 }
@@ -48,6 +54,9 @@ export function validateHeadlessRoundtripExport(report = {}) {
   if (report?.runtime?.usesNewPlanner === true) errors.push('Roundtrip report must not claim a new planner.');
   if (report?.runtime?.usesMARL === true) errors.push('Roundtrip report must not claim MARL/RL.');
   if (report?.runtime?.usesWebGPUFluid === true) errors.push('Roundtrip report must not claim WebGPU fluid integration.');
+  if (report?.runtime?.usesFull3DPlanning === true) errors.push('Roundtrip report must not claim full 3D planning.');
+  if (report?.runtime?.usesHydrodynamicSolver === true) errors.push('Roundtrip report must not claim a hydrodynamic solver.');
+  if (report?.runtime?.usesTerrainFlowAsOceanCurrent === true) errors.push('Roundtrip report must not treat terrain-flow accumulation as ocean current.');
   if (report?.summary?.hiddenTruthExported === true && report?.visibilityValidation?.oracleMode !== true) warnings.push('Hidden truth exported outside explicit oracle mode.');
   return { ok: errors.length === 0, status: errors.length ? 'FAIL' : warnings.length ? 'WARN' : 'PASS', errors, warnings };
 }

@@ -139,3 +139,5 @@ P11 adds `water_column_summary.json`, `depth_layer_priority.json`, `waterColumnS
 ## MOTION-R1 Optional Motion-Aware Execution
 
 Node/OceanBox-JS can optionally run motion-aware execution by enabling `motionAware` or CLI `--motion-aware`. The runtime keeps the submitted waypoint plan as route authority, adapts it to control commands, simulates realized glider motion, and emits `motionTrajectory`, `controlTrace`, `plannedVsRealized`, and `motionDiagnostics`. Public bundles can include `motion_trajectory.json`, `control_trace.json`, and `motion_diagnostics.json`. This remains deterministic educational execution, not a new planner, not WebGPU, not browser official scoring, and not a Python simulator.
+
+ENV-R1 adds public-safe `bathymetrySummary` and `missionGeometrySummary` bundle metadata to Node/OceanBox-JS outputs. Node/OceanBox-JS remains the canonical non-browser runtime; no Python simulator is added.

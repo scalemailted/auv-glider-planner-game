@@ -157,3 +157,5 @@ P11 bundles may include `water_column_summary.json` and `depth_layer_priority.js
 ## MOTION-R1 Motion Dynamics Section
 
 Bundles may include `motion_trajectory.json`, `control_trace.json`, `motion_diagnostics.json`, or combined-bundle `motionTrajectory`, `controlTrace`, and `motionDiagnostics`. The Headless Bundle Viewer shows a Motion Dynamics section with motion model, planned/realized distance, mean/max track error, drift, current assist/opposition, cross-current, energy used, sampled point count, arrival status, and warnings. Public motion trajectory exports redact hidden-truth field identifiers and truth values.
+
+ENV-R1 bundle loading recognizes `bathymetrySummary`, `bathymetry_summary.json`, `missionGeometrySummary`, and `mission_geometry_summary.json` as public-safe environmental/geometry summaries.

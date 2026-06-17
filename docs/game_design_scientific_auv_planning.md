@@ -378,7 +378,7 @@ Each concept should become playable soon after it is taught. For example, a Lear
 ### Near-Term
 
 - Motion dynamics hardening and motion-aware execution parity.
-- Bathymetric 3D/environment view through a pluggable renderer layer.
+- Bathymetric/environment view hardening through the pluggable renderer boundary.
 - Headless replay alignment with browser replay/debrief.
 - Blind Discovery / Hidden-State Mode.
 - Production mission scoring synthesis.
@@ -406,3 +406,4 @@ ANCHOR should remain honest about what it is not:
 - not replacing browser official scoring with headless score
 
 Future work may connect to higher-fidelity models, 3D renderers, or autonomy research, but those additions must preserve visibility boundaries, scoring authority, static-host compatibility where practical, and the core player-facing mission loop.
+ENV-R1 Bathymetric World View is the canonical visual bridge from top-down route intent to water-column science context: bathymetry is environmental geometry, not a replacement for 2.5D state or a terrain-flow ocean-current model.

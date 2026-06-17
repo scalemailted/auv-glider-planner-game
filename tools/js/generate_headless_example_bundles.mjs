@@ -50,7 +50,11 @@ console.log(JSON.stringify({
     finalScore: publicBundle.scoreReport?.finalScore ?? null,
     sciencePrimaryDiagnosis: publicBundle.scienceDiagnostics?.primaryDiagnosis ?? null,
     waterColumnLayers: publicBundle.waterColumnSummary?.waterColumnConfig?.depthLayerIds ?? [],
-    diveProfileId: publicBundle.waterColumnSummary?.diveProfile?.profileId ?? null
+    diveProfileId: publicBundle.waterColumnSummary?.diveProfile?.profileId ?? null,
+    bathymetryFeatures: publicBundle.bathymetrySummary?.featureIds ?? [],
+    bathymetryViewMode: publicBundle.bathymetrySummary?.bathymetryViewMode ?? null,
+    surfaceWaypointCount: publicBundle.missionGeometrySummary?.surfaceWaypointCount ?? 0,
+    samplingPointCount: publicBundle.missionGeometrySummary?.samplingPointCount ?? 0
   }
 }, null, 2));
 
@@ -89,6 +93,10 @@ function assertBundleBase(bundle, label) {
   if (bundle.waterColumnSummary?.type !== 'anchor.headless.water-column-summary') throw new Error(label + ' fixture must include P11 water-column summary.');
   if (bundle.waterColumnSummary?.usesFull3DPlanning) throw new Error(label + ' fixture must not claim full 3D planning.');
   if (bundle.depthLayerPrioritySummary?.type !== 'anchor.headless.depth-layer-priority-summary') throw new Error(label + ' fixture must include P11 depth-layer priority summary.');
+  if (bundle.bathymetrySummary?.type !== 'anchor.headless.bathymetry-summary') throw new Error(label + ' fixture must include ENV-R1 bathymetry summary.');
+  if (bundle.missionGeometrySummary?.type !== 'anchor.science.ocean-world-geometry-summary') throw new Error(label + ' fixture must include ENV-R1 mission geometry summary.');
+  if (bundle.bathymetrySummary?.usesHydrodynamicSolver) throw new Error(label + ' fixture must not claim a hydrodynamic solver.');
+  if (bundle.bathymetrySummary?.usesTerrainFlowAsOceanCurrent) throw new Error(label + ' fixture must not treat terrain-flow accumulation as ocean current.');
 }
 
 function visibleFieldIds(bundle) {

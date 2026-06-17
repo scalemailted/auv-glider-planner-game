@@ -194,6 +194,32 @@ export function validateHeadlessMotionArtifacts(trajectory = null, diagnostics =
   }
   return result(checks, warnings, failures, failures.length ? 'high' : warnings.length ? 'medium' : 'low');
 }
+export function validateHeadlessBathymetrySummary(summary = null, missionGeometry = null) {
+  const checks = [];
+  const warnings = [];
+  const failures = [];
+  if (!summary && !missionGeometry) {
+    checks.push({ id: 'bathymetry-summary-optional', ok: true, detail: 'not present' });
+    return result(checks, warnings, failures, 'low');
+  }
+  if (summary) {
+    checks.push({ id: 'bathymetry-summary-present', ok: typeof summary === 'object' });
+    if (summary?.type !== 'anchor.headless.bathymetry-summary') failures.push(`Bathymetry summary type should be anchor.headless.bathymetry-summary, got ${summary?.type ?? 'missing'}.`);
+    if (summary?.publicSafe === false || summary?.hiddenTruthIncluded === true) failures.push('Bathymetry summary must be public-safe and must not include hidden truth.');
+    if (summary?.usesFull3DPlanning === true) failures.push('Bathymetry summary must not claim full 3D route planning.');
+    if (summary?.usesHydrodynamicSolver === true) failures.push('Bathymetry summary must not claim a hydrodynamic solver.');
+    if (summary?.usesTerrainFlowAsOceanCurrent === true) failures.push('Bathymetry summary must not claim terrain-flow accumulation is ocean current.');
+    if (summary?.usesPythonSimulator === true) failures.push('Bathymetry summary must not claim a Python simulator.');
+    if (summary?.usesMARL === true) failures.push('Bathymetry summary must not claim MARL/RL.');
+  }
+  if (missionGeometry) {
+    checks.push({ id: 'mission-geometry-summary-present', ok: typeof missionGeometry === 'object' });
+    if (missionGeometry?.usesFull3DPlanning === true) failures.push('Mission geometry summary must not claim full 3D route planning.');
+    if (missionGeometry?.ownsPlanning === true || missionGeometry?.generatedRoute === true) failures.push('Mission geometry summary must not generate or own routes.');
+    if (missionGeometry?.usesHydrodynamicSolver === true || missionGeometry?.usesTerrainFlowAsOceanCurrent === true) failures.push('Mission geometry summary must preserve bathymetry/current boundaries.');
+  }
+  return result(checks, warnings, failures, failures.length ? 'high' : warnings.length ? 'medium' : 'low');
+}
 export function validateHeadlessReplay(replay = null) {
   const checks = [];
   const warnings = [];
@@ -218,6 +244,7 @@ export function validateHeadlessBundle(bundle = {}) {
     waterColumnSummary: validateHeadlessWaterColumnSummary(bundle.waterColumnSummary ?? bundle.episode?.waterColumnSummary),
     depthLayerPriority: validateHeadlessDepthLayerPriority(bundle.depthLayerPriority, bundle.depthLayerPrioritySummary ?? bundle.episode?.depthLayerPrioritySummary),
     motionArtifacts: validateHeadlessMotionArtifacts(bundle.motionTrajectory ?? bundle.episode?.motionTrajectory, bundle.motionDiagnostics ?? bundle.episode?.motionDiagnostics ?? bundle.episode?.motionTrajectory?.motionDiagnostics),
+    bathymetrySummary: validateHeadlessBathymetrySummary(bundle.bathymetrySummary ?? bundle.episode?.bathymetrySummary, bundle.missionGeometrySummary ?? bundle.episode?.missionGeometrySummary),
     replay: validateHeadlessReplay(bundle.replay)
   };
   const checks = Object.entries(validations).flatMap(([scope, validation]) => validation.checks.map((check) => ({ ...check, scope })));
@@ -241,8 +268,10 @@ export function validateHeadlessBundle(bundle = {}) {
       finalScore: bundle.scoreReport?.finalScore ?? bundle.scoreReport?.final_score ?? null,
       hasScienceDiagnostics: Boolean(bundle.scienceDiagnostics ?? bundle.episode?.scienceDiagnostics),
       hasWaterColumnSummary: Boolean(bundle.waterColumnSummary ?? bundle.episode?.waterColumnSummary),
-      hasDepthLayerPriority: Boolean(bundle.depthLayerPriority ?? bundle.depthLayerPrioritySummary ?? bundle.episode?.depthLayerPrioritySummary)
-      ,hasMotionTrajectory: Boolean(bundle.motionTrajectory ?? bundle.episode?.motionTrajectory),
+      hasDepthLayerPriority: Boolean(bundle.depthLayerPriority ?? bundle.depthLayerPrioritySummary ?? bundle.episode?.depthLayerPrioritySummary),
+      hasBathymetrySummary: Boolean(bundle.bathymetrySummary ?? bundle.episode?.bathymetrySummary),
+      hasMissionGeometrySummary: Boolean(bundle.missionGeometrySummary ?? bundle.episode?.missionGeometrySummary),
+      hasMotionTrajectory: Boolean(bundle.motionTrajectory ?? bundle.episode?.motionTrajectory),
       hasMotionDiagnostics: Boolean(bundle.motionDiagnostics ?? bundle.episode?.motionDiagnostics ?? bundle.episode?.motionTrajectory?.motionDiagnostics)
     }
   };

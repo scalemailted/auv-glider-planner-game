@@ -68,3 +68,5 @@ Roundtrip reports include `waterColumnSummary`; combined roundtrip bundles inclu
 ## MOTION-R1 Motion-Aware Roundtrip
 
 Solver-packet roundtrips can opt into motion-aware execution. Old plans remain valid; plans may additionally provide `desiredSpeedThroughWater`, `diveProfileId`, `sampleIntervalSeconds`, `surfaceAtEnd`, or `motionIntent`. Reports may include `motionSummary`, `plannedVsRealized`, `motionDiagnostics`, and `motionModelId`. The roundtrip still executes a submitted plan through Node/OceanBox-JS; it does not add a route planner, WebGPU fluid runtime, Python simulator, official browser scoring, or MARL/RL.
+
+ENV-R1 roundtrip bundles may include public-safe `bathymetrySummary` and `missionGeometrySummary`; they do not expose hidden truth arrays and do not change browser official scoring.

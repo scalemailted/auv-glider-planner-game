@@ -16,6 +16,8 @@ export function headlessBundleViewerPanelHtml(viewModel = {}) {
     ${headlessBundleObservationsHtml(viewModel)}
     ${headlessBundleTracksHtml(viewModel)}
     ${headlessBundleMotionDynamicsHtml(viewModel)}
+    ${headlessBundleBathymetricWorldHtml(viewModel)}
+    ${headlessBundleMissionGeometryHtml(viewModel)}
     ${headlessBundleScoreHtml(viewModel)}
     ${headlessBundleRoundtripHtml(viewModel)}
     ${headlessBundleWaterColumnHtml(viewModel)}
@@ -134,6 +136,49 @@ export function headlessBundleMotionDynamicsHtml(viewModel = {}) {
       <div class="hud-muted">Motion dynamics compares the commanded route with the realized trajectory under currents and control limits.</div>
       <div class="hud-muted">This is motion-aware execution, not a new route planner.</div>
       <div class="hud-muted">Headless motion score remains educational and does not replace browser official scoring.</div>
+    </section>
+  `;
+}
+export function headlessBundleBathymetricWorldHtml(viewModel = {}) {
+  const summary = viewModel.bathymetrySummary ?? {};
+  if (!summary.present) return '';
+  const depthRange = summary.depthRange ?? {};
+  return `
+    <section class="console-section" data-headless-bathymetric-world>
+      <h2>Bathymetric World</h2>
+      <div class="cell-inspector-metrics">
+        ${metricHtml('Depth Range', `${formatNumber(depthRange.minDepthMeters)} - ${formatNumber(depthRange.maxDepthMeters)} m`)}
+        ${metricHtml('Features', (summary.featureIds ?? []).join(', ') || 'N/A')}
+        ${metricHtml('Land Cells', summary.landWaterMaskSummary?.landCellCount ?? 'N/A')}
+        ${metricHtml('Water Cells', summary.landWaterMaskSummary?.waterCellCount ?? 'N/A')}
+        ${metricHtml('View', summary.bathymetryViewMode ?? 'obliqueBathymetry')}
+        ${metricHtml('Vertical Exaggeration', formatNumber(summary.verticalExaggeration))}
+        ${metricHtml('Public Safe', summary.publicSafe ? 'yes' : 'no')}
+      </div>
+      <div class="hud-muted">Bathymetry is environmental geometry. It does not replace the 2.5D water-column model.</div>
+      <div class="hud-muted">Terrain-flow accumulation is not ocean current. Ocean current remains F(x,y,z,t).</div>
+      <div class="hud-muted">ENV-R1 does not add full 3D route planning or calibrated ocean physics.</div>
+    </section>
+  `;
+}
+
+export function headlessBundleMissionGeometryHtml(viewModel = {}) {
+  const summary = viewModel.missionGeometrySummary ?? {};
+  if (!summary.present) return '';
+  return `
+    <section class="console-section" data-headless-mission-geometry>
+      <h2>Mission Geometry</h2>
+      <div class="cell-inspector-metrics">
+        ${metricHtml('Surface Waypoints', summary.surfaceWaypointCount ?? 0)}
+        ${metricHtml('Planned Path', summary.plannedPathPointCount ?? 0)}
+        ${metricHtml('Realized Trajectory', summary.realizedTrajectoryPointCount ?? 0)}
+        ${metricHtml('Sampling Points', summary.samplingPointCount ?? 0)}
+        ${metricHtml('Dive Profile Path', summary.diveProfilePathCount ?? 0)}
+        ${metricHtml('Sampled Layers', (summary.sampledDepthLayers ?? []).join(', ') || 'N/A')}
+        ${metricHtml('Motion Trace', summary.realizedTrajectoryPointCount > 0 ? 'available' : 'not present')}
+      </div>
+      <div class="hud-muted">Surface waypoints are route intent. Sampling points are where observations are collected.</div>
+      <div class="hud-muted">Mission geometry is a public-safe view adapter; it does not generate or optimize routes.</div>
     </section>
   `;
 }

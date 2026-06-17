@@ -102,6 +102,10 @@ import { headlessBundleFiles } from '../../src/core/headless/runtime/HeadlessBun
 import { analyzeScienceEvidence, buildScienceDiagnosticsArtifact } from '../../src/core/science/ScienceDiscoveryLifecycle.js';
 import { runScienceDiscoveryFixture } from '../../src/core/science/ScienceDiscoveryFixtures.js';
 import { normalizeScienceDiagnosisId } from '../../src/core/science/ScienceDiagnosisTypes.js';
+import { createBathymetryConfig, validateBathymetryConfig } from '../../src/core/science/BathymetrySchema.js';
+import { createSyntheticBathymetryField, validateBathymetryField } from '../../src/core/science/BathymetryFieldModel.js';
+import { createBathymetryMesh, validateBathymetryMesh } from '../../src/core/science/BathymetryMeshModel.js';
+import { buildOceanWorldGeometry, validateOceanWorldGeometry } from '../../src/core/science/OceanWorldGeometryAdapter.js';
 import { HEADLESS_SOLVER_ROUNDTRIP_REPORT_TYPE, HEADLESS_SOLVER_ROUNDTRIP_BUNDLE_TYPE } from '../../src/core/headless/HeadlessRoundtripTypes.js';
 import { createGliderMotionConfig, validateGliderMotionConfig } from '../../src/core/motion/GliderMotionSchema.js';
 import { trajectoryMotionSummary, validateMotionTrajectory } from '../../src/core/motion/GliderTrajectorySimulator.js';
@@ -115,6 +119,7 @@ import { RoiGeneratorDemoScene } from '../../src/game/phaser/scenes/RoiGenerator
 import { CoupledFieldsDemoScene } from '../../src/game/phaser/scenes/CoupledFieldsDemoScene.js';
 import { MotionPlanningDemoScene } from '../../src/game/phaser/scenes/MotionPlanningDemoScene.js';
 import { RendererArchitecturePreviewScene } from '../../src/game/phaser/scenes/RendererArchitecturePreviewScene.js';
+import { BathymetryWorldViewScene } from '../../src/game/phaser/scenes/BathymetryWorldViewScene.js';
 
 function assertFiniteNumber(value, label) {
   assert.equal(Number.isFinite(Number(value)), true, `${label} should be finite`);
@@ -598,6 +603,37 @@ assert.equal(gfxOceanSummary.ownsScoring, false, 'GFX-ARCH-R1 ocean view model d
 assert.equal(gfxOceanSummary.ownsPlanning, false, 'GFX-ARCH-R1 ocean view model does not own planning');
 assert.equal(gfxOceanSummary.usesWebGPUFluid, false, 'GFX-ARCH-R1 ocean view model excludes WebGPU fluid');
 assert.equal(JSON.stringify(gfxOceanViewModel).includes('T_hiddenTruth'), false, 'GFX-ARCH-R1 ocean view model omits hidden truth identifiers');
+const envBathymetryConfig = createBathymetryConfig({ width: 12, height: 8, defaultViewMode: 'obliqueBathymetry' });
+assert.equal(validateBathymetryConfig(envBathymetryConfig).status, 'PASS', 'ENV-R1 bathymetry config validates');
+const envBathymetry = createSyntheticBathymetryField({ ...envBathymetryConfig, seed: 'model-stack-env-r1' });
+assert.equal(validateBathymetryField(envBathymetry).valid, true, 'ENV-R1 synthetic bathymetry validates');
+const envMesh = createBathymetryMesh({ bathymetry: envBathymetry, waterColumnConfig: { depthLayerIds: ['surface', 'thermocline', 'deep'] } });
+assert.equal(validateBathymetryMesh(envMesh).valid, true, 'ENV-R1 bathymetry mesh validates');
+const envGeometry = buildOceanWorldGeometry({
+  missionConfig: { world: { width: 12, height: 8, waterColumnConfig: { depthLayerIds: ['surface', 'thermocline', 'deep'] }, bathymetryConfig: envBathymetryConfig } },
+  bathymetry: envBathymetry,
+  waterColumnConfig: { depthLayerIds: ['surface', 'thermocline', 'deep'] },
+  observations: [{ observationId: 'env-obs-1', x: 4, y: 4, depthLayerId: 'thermocline', depthMeters: 35, observedValue: 0.6 }],
+  tracks: [{ x: 1, y: 6, depthLayerId: 'surface', depthMeters: 0 }, { x: 4, y: 4, depthLayerId: 'thermocline', depthMeters: 35 }],
+  plan: { waypoints: [{ x: 1, y: 6 }, { x: 4, y: 4, depthLayerId: 'thermocline' }] }
+});
+assert.equal(validateOceanWorldGeometry(envGeometry).valid, true, 'ENV-R1 ocean world geometry validates');
+const envOceanViewModel = buildOceanWorldRenderViewModel({
+  missionConfig: { world: { grid: { width: 12, height: 8 } }, waterColumnConfig: { depthLayerIds: ['surface', 'thermocline', 'deep'] } },
+  oceanWorldGeometry: envGeometry,
+  bathymetrySummary: envGeometry.bathymetrySummary,
+  waterColumnSummary: { waterColumnConfig: { depthLayerIds: ['surface', 'thermocline', 'deep'] }, publicSafe: true }
+});
+const envOceanSummary = oceanWorldRenderViewModelSummary(envOceanViewModel);
+assert.equal(envOceanSummary.usesFull3DPlanning, false, 'ENV-R1 render view model excludes full 3D planning');
+assert.equal(envOceanSummary.usesHydrodynamicSolver, false, 'ENV-R1 render view model excludes hydrodynamic solver');
+assert.equal(envOceanSummary.usesTerrainFlowAsOceanCurrent, false, 'ENV-R1 render view model preserves current boundary');
+assert.ok(envOceanViewModel.depthLayerPlanes.length >= 3, 'ENV-R1 render view model exposes depth-layer planes');
+const envScene = new BathymetryWorldViewScene();
+assert.equal(envScene.scene?.key ?? 'BathymetryWorldViewScene', 'BathymetryWorldViewScene', 'ENV-R1 BathymetryWorldViewScene imports');
+const envSceneSource = fs.readFileSync('src/game/phaser/scenes/BathymetryWorldViewScene.js', 'utf8');
+assert.ok(envSceneSource.includes('ANCHOR_BATHYMETRY_VIEW_DEBUG'), 'ENV-R1 debug object exists');
+assert.ok(envSceneSource.includes('usesHydrodynamicSolver: false'), 'ENV-R1 debug object preserves hydrodynamic boundary');
 const gfxPanelHtml = rendererHostPanelHtml({
   capabilities: gfxCapsSummary,
   hostSummary: rendererHostSummary(gfxHostConfig),
@@ -623,6 +659,8 @@ assert.equal(h1Episode.scienceDiagnostics?.type, 'anchor.headless.science-diagno
 assert.equal(h1Files['science_diagnostics.json'].includes('T_hiddenTruth'), false, 'P9 science diagnostics export omits hidden truth field IDs');
 assert.ok(h1Files['water_column_summary.json'], 'P11 bundle includes water_column_summary.json');
 assert.ok(h1Files['depth_layer_priority.json'], 'P11 bundle includes depth_layer_priority.json');
+assert.ok(h1Files['bathymetry_summary.json'], 'ENV-R1 bundle includes bathymetry_summary.json');
+assert.ok(h1Files['mission_geometry_summary.json'], 'ENV-R1 bundle includes mission_geometry_summary.json');
 const h1RuntimeSourceFiles = [
   'src/core/headless/runtime/HeadlessRuntimeConfig.js',
   'src/core/headless/runtime/HeadlessGrid.js',
@@ -635,6 +673,10 @@ const h1RuntimeSourceFiles = [
   'src/core/headless/runtime/HeadlessScoring.js',
   'src/core/headless/runtime/HeadlessMissionRunner.js',
   'src/core/headless/runtime/HeadlessBundleWriter.js',
+  'src/core/science/BathymetrySchema.js',
+  'src/core/science/BathymetryFieldModel.js',
+  'src/core/science/BathymetryMeshModel.js',
+  'src/core/science/OceanWorldGeometryAdapter.js',
   'src/core/motion/GliderMotionSchema.js',
   'src/core/motion/MotionEnvironmentSampler.js',
   'src/core/motion/GliderDynamicsModel.js',
@@ -993,12 +1035,15 @@ const claimFiles = [
   'src/game/phaser/scenes/CoupledFieldsDemoScene.js',
   'src/game/phaser/scenes/FlowFieldDemoScene.js',
   'src/game/phaser/scenes/MotionPlanningDemoScene.js',
+  'src/game/phaser/scenes/BathymetryWorldViewScene.js',
+  'src/game/phaser/renderers/BathymetryWorldRenderer.js',
   'src/core/rendering/RendererCapabilityModel.js',
   'src/core/rendering/RendererHostContract.js',
   'src/core/rendering/OceanWorldRenderViewModel.js',
   'src/ui/rendering/RendererHostPanel.js',
   'src/game/phaser/scenes/RendererArchitecturePreviewScene.js',
-  'docs/renderer_architecture_and_webgpu_strategy.md'
+  'docs/renderer_architecture_and_webgpu_strategy.md',
+  'docs/bathymetric_world_view.md'
 ];
 const riskyClaimPattern = /((calibrated|validated|operational|HYCOM-quality|HYCOM|ROMS|Delft3D)[^\n.]{0,80}\b(forecast|model|data|output)\b)|(\b(forecast|model|data|output)\b[^\n.]{0,80}(calibrated|validated|operational|HYCOM-quality|HYCOM|ROMS|Delft3D))|real HYCOM data|actual HYCOM data/i;
 const boundaryPattern = /\bnot\b|\bno\b|notA|not-a|boundar|synthetic|inspired|teaching|scaffold|optional|claim level/i;

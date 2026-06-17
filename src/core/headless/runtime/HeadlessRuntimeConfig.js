@@ -3,6 +3,7 @@ import { createHeadlessMissionConfig as createH0HeadlessMissionConfig, validateH
 import { createHeadlessGrid } from './HeadlessGrid.js';
 import { createDiveProfileSequence, normalizeDiveProfile } from '../../science/DiveProfileModel.js';
 import { normalizeWaterColumnConfig, validateWaterColumnConfig, waterColumnConfigSummary } from '../../science/WaterColumnSchema.js';
+import { bathymetryConfigSummary, createBathymetryConfig, normalizeBathymetryViewMode, validateBathymetryConfig } from '../../science/BathymetrySchema.js';
 import { createGliderMotionConfig, gliderMotionConfigSummary, validateGliderMotionConfig } from '../../motion/GliderMotionSchema.js';
 
 export const HEADLESS_RUNTIME_CONFIG_VERSION = 'headless-node-runtime-h1';
@@ -35,7 +36,15 @@ export function createDefaultHeadlessRuntimeConfig(options = {}) {
     height: options.height ?? options.grid?.height ?? 24,
     depthLayers: waterColumnConfig.depthLayerIds
   });
-  const missionConfig = createDefaultHeadlessMissionConfig({ ...options, scenarioId, seed, grid, waterColumnConfig });
+  const bathymetryViewMode = normalizeBathymetryViewMode(options.bathymetryView ?? options.bathymetryViewMode ?? 'obliqueBathymetry');
+  const bathymetryConfig = options.bathymetry === false ? null : createBathymetryConfig({
+    ...(options.bathymetryConfig ?? {}),
+    width: grid.width,
+    height: grid.height,
+    defaultViewMode: bathymetryViewMode,
+    verticalExaggeration: options.verticalExaggeration ?? options.bathymetryConfig?.verticalExaggeration ?? 1.5
+  });
+  const missionConfig = createDefaultHeadlessMissionConfig({ ...options, scenarioId, seed, grid, waterColumnConfig, bathymetryConfig });
   const plan = options.plan ?? createDefaultHeadlessGliderPlan({ ...options, grid, waterColumnConfig, gliderId: missionConfig.gliders[0]?.id ?? 'glider-1' });
   const motionConfig = createGliderMotionConfig({
     ...(options.motionConfig ?? {}),
@@ -51,6 +60,7 @@ export function createDefaultHeadlessRuntimeConfig(options = {}) {
   });
   missionConfig.world ??= {};
   missionConfig.world.motionConfig = motionConfig;
+  if (bathymetryConfig) missionConfig.world.bathymetryConfig = bathymetryConfig;
   return {
     type: 'anchor.headless.runtime-config',
     version: HEADLESS_RUNTIME_CONFIG_VERSION,
@@ -60,6 +70,8 @@ export function createDefaultHeadlessRuntimeConfig(options = {}) {
     seed,
     grid,
     waterColumnConfig,
+    bathymetryConfig,
+    bathymetryViewMode,
     fields: HEADLESS_RUNTIME_FIELD_IDS.slice(),
     missionConfig,
     plan,
@@ -85,13 +97,16 @@ export function createDefaultHeadlessRuntimeConfig(options = {}) {
       implementsPythonSimulator: false,
       implementsFull3DPlanning: false,
       usesMotionDynamics: motionConfig.enabled === true || motionConfig.motionAware === true,
-      usesWebGPUFluid: false
+      usesWebGPUFluid: false,
+      usesHydrodynamicSolver: false,
+      usesTerrainFlowAsOceanCurrent: false
     },
     notes: [
       'H1 is a deterministic educational headless runtime scaffold, not a calibrated ocean model.',
       'P11 adds 2.5D depth-layer sampling metadata; it does not add full 3D planning.',
       'Waypoint plans are executed as supplied; H1 does not optimize or generate routes.',
-      'MOTION-R1 motion-aware execution is optional and deterministic; it does not add a route planner or WebGPU.'
+      'MOTION-R1 motion-aware execution is optional and deterministic; it does not add a route planner or WebGPU.',
+      'ENV-R1 bathymetry is public-safe environmental geometry; it is not terrain-flow ocean current or full 3D route planning.'
     ]
   };
 }
@@ -104,6 +119,13 @@ export function createDefaultHeadlessMissionConfig(options = {}) {
     diveProfileId: options.diveProfileId ?? options.diveProfile ?? options.profileId
   });
   const diveProfile = normalizeDiveProfile(options.diveProfile ?? options.diveProfileId ?? waterColumnConfig.diveProfileId, waterColumnConfig);
+  const bathymetryConfig = options.bathymetryConfig === null ? null : createBathymetryConfig({
+    ...(options.bathymetryConfig ?? {}),
+    width: grid.width,
+    height: grid.height,
+    defaultViewMode: options.bathymetryViewMode ?? options.bathymetryView,
+    verticalExaggeration: options.verticalExaggeration ?? options.bathymetryConfig?.verticalExaggeration ?? 1.5
+  });
   const seed = String(options.seed ?? 'demo-001');
   return createH0HeadlessMissionConfig({
     missionId: options.missionId ?? 'coastal-bloom-front-headless-mission',
@@ -116,6 +138,7 @@ export function createDefaultHeadlessMissionConfig(options = {}) {
       depthLayers: grid.depthLayers,
       depthLayerModel: 'top-down-2p5d',
       waterColumnConfig,
+      bathymetryConfig,
       motionConfig: options.motionConfig ?? null,
       timeStepSeconds: 60,
       durationSeconds: 3600,
@@ -220,6 +243,11 @@ export function validateHeadlessRuntimeConfig(config = {}) {
   if (!missionValidation.valid) errors.push(...missionValidation.errors.map((entry) => `missionConfig: ${entry}`));
   const waterColumnValidation = validateWaterColumnConfig(config?.waterColumnConfig ?? config?.missionConfig?.world?.waterColumnConfig ?? {});
   if (!waterColumnValidation.valid) errors.push(...waterColumnValidation.errors.map((entry) => `waterColumnConfig: ${entry}`));
+  if (config?.bathymetryConfig) {
+    const bathymetryValidation = validateBathymetryConfig(config.bathymetryConfig);
+    if (!bathymetryValidation.valid) errors.push(...bathymetryValidation.errors.map((entry) => 'bathymetryConfig: ' + entry));
+    warnings.push(...bathymetryValidation.warnings.map((entry) => 'bathymetryConfig: ' + entry));
+  }
   const motionValidation = validateGliderMotionConfig(config?.motionConfig ?? createGliderMotionConfig());
   if (!motionValidation.valid) errors.push(...motionValidation.errors.map((entry) => `motionConfig: ${entry}`));
   warnings.push(...motionValidation.warnings.map((entry) => `motionConfig: ${entry}`));
@@ -242,6 +270,7 @@ export function headlessRuntimeConfigSummary(configInput = {}) {
     height: config.grid.height,
     depthLayers: config.grid.depthLayers.slice(),
     waterColumn: waterColumnConfigSummary(config.waterColumnConfig),
+    bathymetry: config.bathymetryConfig ? bathymetryConfigSummary(config.bathymetryConfig) : null,
     diveProfileId: config.waterColumnConfig?.diveProfileId ?? config.missionConfig?.gliders?.[0]?.diveProfileId ?? null,
     motion: gliderMotionConfigSummary(config.motionConfig),
     motionAware: config.motionAware === true,

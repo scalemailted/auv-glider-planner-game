@@ -71,3 +71,4 @@ node tools/js/smoke_ocean_world_render_view_model.mjs
 node tools/js/smoke_renderer_architecture_preview_scene.mjs
 node tools/js/smoke_model_stack_integration.mjs
 ```
+ENV-R1 Bathymetric World View uses the renderer boundary with a dependency-free Phaser pseudo-3D renderer because Three.js is not installed; no WebGPU-Ocean or WebGPU fluid dependency is integrated.

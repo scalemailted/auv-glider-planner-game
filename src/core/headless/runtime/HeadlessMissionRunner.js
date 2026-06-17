@@ -8,6 +8,8 @@ import { computeHeadlessScoreReport } from './HeadlessScoring.js';
 import { analyzeScienceEvidence, buildScienceDiagnosticsArtifact, scienceDiscoverySummary } from '../../science/ScienceDiscoveryLifecycle.js';
 import { computeWaterColumnPriority } from '../../science/WaterColumnPriorityModel.js';
 import { buildWaterColumnSummary } from '../../science/WaterColumnObservationModel.js';
+import { createSyntheticBathymetryField } from '../../science/BathymetryFieldModel.js';
+import { buildOceanWorldGeometry } from '../../science/OceanWorldGeometryAdapter.js';
 import { simulateGliderMotionTrajectory, trajectoryMotionSummary } from '../../motion/GliderTrajectorySimulator.js';
 
 export const HEADLESS_MISSION_RUNNER_VERSION = 'headless-mission-runner-h1';
@@ -31,6 +33,10 @@ export function simulateHeadlessEpisode(configInput = {}, planInput = null) {
   }
   const plan = planInput ?? config.plan;
   const fieldPackBefore = createHeadlessFieldPack(config);
+  const bathymetry = config.bathymetryConfig ? createSyntheticBathymetryField({
+    ...config.bathymetryConfig,
+    seed: String(config.seed ?? 'demo-001') + ':bathymetry'
+  }) : null;
   fieldPackBefore.fields.A_global = computeHeadlessSamplingPriority(fieldPackBefore, config);
   const depthLayerPriorityBefore = computeWaterColumnPriority(fieldPackBefore, config.waterColumnConfig ?? config);
   fieldPackBefore.diagnostics.depthLayerPriority = depthLayerPriorityBefore.summary;
@@ -52,6 +58,7 @@ export function simulateHeadlessEpisode(configInput = {}, planInput = null) {
         plan,
         fieldPack: fieldPackBefore,
         waterColumnConfig: config.waterColumnConfig,
+        bathymetry,
         glider,
         motionConfig: config.motionConfig,
         options: {
@@ -84,6 +91,17 @@ export function simulateHeadlessEpisode(configInput = {}, planInput = null) {
     tracks: executionTracks,
     diveProfile: glider?.diveProfile ?? plan.diveProfileId,
     depthLayerPriority
+  });
+  const missionGeometry = buildOceanWorldGeometry({
+    missionConfig,
+    fieldPack: fieldPackAfter,
+    bathymetry,
+    waterColumnConfig: config.waterColumnConfig,
+    observations: executionObservations,
+    tracks: executionTracks,
+    motionTrajectory,
+    plan,
+    options: { waterColumnSummary }
   });
   const scoreReport = computeHeadlessScoreReport({
     fieldPackBefore,
@@ -149,6 +167,8 @@ export function simulateHeadlessEpisode(configInput = {}, planInput = null) {
     observations: executionObservations,
     tracks: executionTracks,
     waterColumnSummary,
+    bathymetrySummary: fieldPackBefore.bathymetrySummary ?? fieldPackAfter.bathymetrySummary ?? null,
+    missionGeometrySummary: missionGeometry.summary,
     depthLayerPriority,
     depthLayerPrioritySummary: depthLayerPriority.summary,
     motionTrajectory,
@@ -175,6 +195,10 @@ export function simulateHeadlessEpisode(configInput = {}, planInput = null) {
       usesProvidedWaypoints: true,
       usesMotionDynamics: Boolean(motionTrajectory),
       usesWebGPUFluid: false,
+      usesHydrodynamicSolver: false,
+      usesTerrainFlowAsOceanCurrent: false,
+      bathymetrySummary: fieldPackBefore.bathymetrySummary ?? fieldPackAfter.bathymetrySummary ?? null,
+      missionGeometrySummary: missionGeometry.summary,
       motionSummary: motionTrajectory ? trajectoryMotionSummary(motionTrajectory) : null,
       waterColumnSummary,
       depthLayerPrioritySummary: depthLayerPriority.summary,

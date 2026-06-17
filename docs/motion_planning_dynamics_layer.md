@@ -30,3 +30,5 @@ Simulation Lab now includes Motion Planning Demo. It shows a fixed waypoint rout
 ## Boundaries
 
 MOTION-R1 does not implement WebGPU, WebGPU-Ocean, full 3D vehicle dynamics, production hydrodynamics, calibrated ocean physics, A*/Dijkstra/RRT/MPC/RL/MARL, Python simulation, backend services, or benchmark scoring authority. WebGPU fluid coupling is a future optional provider that must plug into the environment-sampler interface without replacing deterministic Node/headless replay.
+
+ENV-R1 Bathymetric World View can display MOTION-R1 planned-vs-realized trajectory summaries; motion dynamics remain execution diagnostics, not a route planner.

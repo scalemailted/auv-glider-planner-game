@@ -38,7 +38,10 @@ export function buildHeadlessSolverPacketRoundtrip(packet, plan, options = {}) {
     gliderSpeed: options.gliderSpeed,
     headingRateLimitDegreesPerSecond: options.headingRateLimitDegreesPerSecond ?? options.headingRateLimit,
     driftGain: options.driftGain,
-    sampleIntervalSeconds: options.sampleIntervalSeconds
+    sampleIntervalSeconds: options.sampleIntervalSeconds,
+    bathymetry: options.bathymetry,
+    bathymetryViewMode: options.bathymetryViewMode ?? options.bathymetryView,
+    verticalExaggeration: options.verticalExaggeration
   });
   const episode = runHeadlessMissionWithPlan(runtimeConfig, runtimePlan);
   const report = buildHeadlessRoundtripReport({
@@ -221,7 +224,10 @@ export function buildRoundtripRuntimeConfig(context, world, runtimePlan, options
     controlStepSeconds: options.controlStepSeconds,
     headingRateLimitDegreesPerSecond: options.headingRateLimitDegreesPerSecond,
     driftGain: options.driftGain,
-    sampleIntervalSeconds: options.sampleIntervalSeconds ?? runtimePlan.sampleIntervalSeconds ?? null
+    sampleIntervalSeconds: options.sampleIntervalSeconds,
+    bathymetry: options.bathymetry,
+    bathymetryViewMode: options.bathymetryViewMode ?? options.bathymetryView,
+    verticalExaggeration: options.verticalExaggeration
   });
 }
 
@@ -231,6 +237,8 @@ export function buildHeadlessRoundtripReport({ context, world, packet, plan, sel
   const scoreSummary = headlessScoreReportSummary(episode.scoreReport);
   const scienceDiagnosticsSummary = scienceDiscoverySummary(episode.scienceDiagnostics ?? episode.scienceDiscovery ?? {});
   const waterColumnSummary = episode.waterColumnSummary ?? null;
+  const bathymetrySummary = episode.bathymetrySummary ?? null;
+  const missionGeometrySummary = episode.missionGeometrySummary ?? null;
   const motionSummary = episode.motionTrajectory ? trajectoryMotionSummary(episode.motionTrajectory) : null;
   return {
     schemaVersion: '1.0',
@@ -276,6 +284,9 @@ export function buildHeadlessRoundtripReport({ context, world, packet, plan, sel
       usesMARL: false,
       usesMotionDynamics: Boolean(motionSummary),
       usesWebGPUFluid: false,
+      usesFull3DPlanning: false,
+      usesHydrodynamicSolver: false,
+      usesTerrainFlowAsOceanCurrent: false,
       motionModelId: motionSummary?.motionModelId ?? runtimeConfig.motionConfig?.motionModelId ?? null,
       usesPacketVisibleFieldsForPlanningValidation: true,
       usesSyntheticRuntimeFieldsForExecution: true
@@ -287,12 +298,16 @@ export function buildHeadlessRoundtripReport({ context, world, packet, plan, sel
       trackPointCount: episode.tracks?.length ?? 0,
       scoreSummary,
       waterColumnSummary,
+      bathymetrySummary,
+      missionGeometrySummary,
       motionSummary,
       plannedVsRealized: episode.plannedVsRealized ?? episode.motionTrajectory?.plannedVsRealized ?? null,
       motionDiagnostics: episode.motionDiagnostics ?? episode.motionTrajectory?.motionDiagnostics ?? null
     },
     scienceDiagnosticsSummary,
     waterColumnSummary,
+    bathymetrySummary,
+    missionGeometrySummary,
     motionSummary,
     plannedVsRealized: episode.plannedVsRealized ?? episode.motionTrajectory?.plannedVsRealized ?? null,
     motionDiagnostics: episode.motionDiagnostics ?? episode.motionTrajectory?.motionDiagnostics ?? null,
@@ -319,6 +334,9 @@ export function buildHeadlessRoundtripReport({ context, world, packet, plan, sel
       sciencePrimaryDiagnosis: scienceDiagnosticsSummary.primaryDiagnosis ?? null,
       waterColumnVerticalCoverage: waterColumnSummary?.verticalCoverage ?? null,
       diveProfileId: waterColumnSummary?.diveProfile?.profileId ?? runtimePlan.diveProfileId ?? null,
+      hasBathymetrySummary: Boolean(bathymetrySummary),
+      hasMissionGeometrySummary: Boolean(missionGeometrySummary),
+      bathymetryViewMode: bathymetrySummary?.bathymetryViewMode ?? runtimeConfig?.bathymetryViewMode ?? null,
       motionModelId: motionSummary?.motionModelId ?? null,
       usesMotionDynamics: Boolean(motionSummary)
     },
@@ -328,6 +346,7 @@ export function buildHeadlessRoundtripReport({ context, world, packet, plan, sel
       'Headless score is educational and not official browser scoring.',
       'P9 science diagnostics distinguish forecast correction from hidden-event hypotheses using transparent educational heuristics.',
       'P11 water-column context is 2.5D depth-layer sampling, not full 3D planning or a new planner.',
+      'ENV-R1 bathymetry is environmental geometry and view metadata; it does not replace water-column state or add hydrodynamic solving.',
       'MOTION-R1 motion dynamics compares submitted route intent with realized trajectory; it does not generate a route or use WebGPU.',
       'H3/P9/P11 does not add a Python simulator, new route planner, calibrated ocean forecast, backend service, production data assimilation, or MARL/RL.'
     ]

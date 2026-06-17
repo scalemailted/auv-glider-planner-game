@@ -154,6 +154,26 @@
         "description": "Complete H1 headless episode artifact."
       },
       {
+        "path": "bathymetry_summary.json",
+        "role": "fieldPack",
+        "mediaType": "application/json",
+        "schemaType": "anchor.headless.bundle",
+        "visibilityTier": "publicScenario",
+        "shape": null,
+        "dtype": null,
+        "description": "ENV-R1 public-safe environmental bathymetry summary."
+      },
+      {
+        "path": "mission_geometry_summary.json",
+        "role": "fieldPack",
+        "mediaType": "application/json",
+        "schemaType": "anchor.headless.bundle",
+        "visibilityTier": "publicScenario",
+        "shape": null,
+        "dtype": null,
+        "description": "ENV-R1 public-safe route/sample/depth-layer geometry counts."
+      },
+      {
         "path": "bundle.json",
         "role": "fieldPack",
         "mediaType": "application/json",
@@ -212,6 +232,8 @@
       "science_diagnostics.json",
       "water_column_summary.json",
       "depth_layer_priority.json",
+      "bathymetry_summary.json",
+      "mission_geometry_summary.json",
       "bundle.json"
     ],
     "schemas": [],
@@ -651,7 +673,122 @@
           "source": null,
           "notes": []
         }
-      ]
+      ],
+      "motionConfig": {
+        "type": "anchor.motion.config",
+        "version": "glider-motion-schema-motion-r1",
+        "enabled": false,
+        "motionAware": false,
+        "motionModelId": "depthLayerKinematic",
+        "controlMode": "waypointTracking",
+        "controlStepSeconds": 60,
+        "sampleIntervalSeconds": 60,
+        "gliderSpeed": 1,
+        "maxTurnRateRadiansPerSecond": 0.13962634015954636,
+        "maxVerticalSpeedMetersPerSecond": 0.08,
+        "driftGain": 1,
+        "energyBudget": 120,
+        "boundaryMode": "clamp",
+        "controlLimits": {
+          "headingRateLimitDegreesPerSecond": 8,
+          "maxPitchRadians": 0.22,
+          "maxSpeedThroughWater": 1.6
+        },
+        "energyModel": {
+          "basePerSecond": 0.004,
+          "distanceScale": 0.18,
+          "oppositionScale": 1.8,
+          "crossCurrentScale": 0.35,
+          "turnScale": 0.08,
+          "depthChangeScale": 0.05,
+          "samplingScale": 0.015,
+          "surfacingScale": 0.5
+        },
+        "publicSafe": true,
+        "deterministic": true,
+        "syntheticTeachingModel": true,
+        "webgpuFluidFutureContractOnly": false,
+        "usesWebGPUFluid": false,
+        "usesNewPlanner": false,
+        "usesMARL": false,
+        "notA": [
+          "not route planning",
+          "not full 3D vehicle dynamics",
+          "not production controller",
+          "not hydrodynamic solver",
+          "not WebGPU",
+          "not MARL/RL"
+        ]
+      },
+      "bathymetryConfig": {
+        "type": "anchor.science.bathymetry-config",
+        "version": "bathymetry-schema-env-r1",
+        "width": 12,
+        "height": 8,
+        "depthUnit": "meters",
+        "minDepthMeters": 0,
+        "maxDepthMeters": 180,
+        "seaLevelMeters": 0,
+        "verticalExaggeration": 1.5,
+        "features": [
+          {
+            "id": "continentalShelf",
+            "label": "Continental Shelf",
+            "enabled": true,
+            "synthetic": true,
+            "calibratedSurveyData": false
+          },
+          {
+            "id": "shelfBreak",
+            "label": "Shelf Break",
+            "enabled": true,
+            "synthetic": true,
+            "calibratedSurveyData": false
+          },
+          {
+            "id": "submarineCanyon",
+            "label": "Submarine Canyon",
+            "enabled": true,
+            "synthetic": true,
+            "calibratedSurveyData": false
+          },
+          {
+            "id": "abyssalPlain",
+            "label": "Abyssal Plain",
+            "enabled": true,
+            "synthetic": true,
+            "calibratedSurveyData": false
+          },
+          {
+            "id": "riverMouth",
+            "label": "River Mouth",
+            "enabled": true,
+            "synthetic": true,
+            "calibratedSurveyData": false
+          }
+        ],
+        "coastlineMode": "left-coast-shelf",
+        "layerIds": [
+          "landSeaMask",
+          "bathymetricBottom",
+          "waterSurface",
+          "surface",
+          "thermocline",
+          "deep"
+        ],
+        "defaultViewMode": "obliqueBathymetry",
+        "notes": [
+          "Synthetic public-safe bathymetry for environmental context and teaching."
+        ],
+        "notA": [
+          "not full 3D route planning",
+          "not calibrated bathymetric survey data",
+          "not hydrodynamic current solver",
+          "not production navigation chart",
+          "not terrain-flow ocean current",
+          "not MARL/RL"
+        ]
+      }
     },
     "gliders": [
       {
@@ -5129,6 +5266,9 @@
       "constraintMask": 0
     }
   ],
+  "motionTrajectory": null,
+  "controlTrace": [],
+  "motionDiagnostics": null,
   "scoreReport": {
     "type": "anchor.headless.score-report",
     "version": "headless-scoring-h1",
@@ -5527,6 +5667,97 @@
       "P11 does not add full 3D planning, new route planning, production data assimilation, or MARL/RL."
     ]
   },
+  "bathymetrySummary": {
+    "type": "anchor.headless.bathymetry-summary",
+    "version": "headless-bathymetry-summary-env-r1",
+    "visibilityTier": "publicScenario",
+    "publicSafe": true,
+    "environmentalGeometry": true,
+    "width": 12,
+    "height": 8,
+    "depthRange": {
+      "minDepthMeters": 53.399175,
+      "maxDepthMeters": 180
+    },
+    "minDepthMeters": 53.399175,
+    "maxDepthMeters": 180,
+    "meanDepthMeters": 140.001762,
+    "landWaterMaskSummary": {
+      "landCellCount": 12,
+      "waterCellCount": 84
+    },
+    "shelfSummary": {
+      "shallowCellCount": 12
+    },
+    "canyonSummary": {
+      "steepCellCount": 44
+    },
+    "deepBasinSummary": {
+      "deepCellCount": 56
+    },
+    "featureIds": [
+      "continentalShelf",
+      "shelfBreak",
+      "submarineCanyon",
+      "abyssalPlain",
+      "riverMouth"
+    ],
+    "bathymetryViewMode": "obliqueBathymetry",
+    "verticalExaggeration": 1.5,
+    "hiddenTruthIncluded": false,
+    "usesFull3DPlanning": false,
+    "usesHydrodynamicSolver": false,
+    "usesTerrainFlowAsOceanCurrent": false,
+    "usesPythonSimulator": false,
+    "usesMARL": false,
+    "notA": [
+      "not full 3D route planning",
+      "not calibrated bathymetric survey data",
+      "not hydrodynamic current solver",
+      "not terrain-flow ocean current",
+      "not MARL/RL"
+    ]
+  },
+  "missionGeometrySummary": {
+    "type": "anchor.science.ocean-world-geometry-summary",
+    "version": "ocean-world-geometry-adapter-env-r1",
+    "hasBathymetrySummary": true,
+    "bathymetryDepthRange": {
+      "minDepthMeters": 53.399175,
+      "maxDepthMeters": 180
+    },
+    "bathymetryFeatureIds": [
+      "continentalShelf",
+      "shelfBreak",
+      "submarineCanyon",
+      "abyssalPlain",
+      "riverMouth"
+    ],
+    "waterSurface": true,
+    "bottomSurface": true,
+    "depthLayerPlaneCount": 3,
+    "surfaceWaypointCount": 6,
+    "samplingPointCount": 11,
+    "plannedPathPointCount": 6,
+    "realizedTrajectoryPointCount": 11,
+    "diveProfilePathCount": 11,
+    "hasDiveProfilePath": true,
+    "sampledDepthLayers": [
+      "surface",
+      "thermocline",
+      "deep"
+    ],
+    "publicSafe": true,
+    "generatedRoute": false,
+    "ownsSimulationState": false,
+    "ownsScoring": false,
+    "ownsPlanning": false,
+    "usesFull3DPlanning": false,
+    "usesHydrodynamicSolver": false,
+    "usesTerrainFlowAsOceanCurrent": false,
+    "usesWebGPUFluid": false,
+    "usesMARL": false
+  },
   "depthLayerPrioritySummary": {
     "type": "anchor.headless.depth-layer-priority-summary",
     "version": "water-column-priority-model-p11",
@@ -5723,7 +5954,8 @@
       "obs-glider-1-00519",
       "obs-glider-1-00572",
       "obs-glider-1-00626"
-    ]
+    ],
+    "motionTrajectoryId": null
   },
   "roundtripReport": null,
   "episode": {
@@ -6159,7 +6391,122 @@
             "source": null,
             "notes": []
           }
-        ]
+        ],
+        "motionConfig": {
+          "type": "anchor.motion.config",
+          "version": "glider-motion-schema-motion-r1",
+          "enabled": false,
+          "motionAware": false,
+          "motionModelId": "depthLayerKinematic",
+          "controlMode": "waypointTracking",
+          "controlStepSeconds": 60,
+          "sampleIntervalSeconds": 60,
+          "gliderSpeed": 1,
+          "maxTurnRateRadiansPerSecond": 0.13962634015954636,
+          "maxVerticalSpeedMetersPerSecond": 0.08,
+          "driftGain": 1,
+          "energyBudget": 120,
+          "boundaryMode": "clamp",
+          "controlLimits": {
+            "headingRateLimitDegreesPerSecond": 8,
+            "maxPitchRadians": 0.22,
+            "maxSpeedThroughWater": 1.6
+          },
+          "energyModel": {
+            "basePerSecond": 0.004,
+            "distanceScale": 0.18,
+            "oppositionScale": 1.8,
+            "crossCurrentScale": 0.35,
+            "turnScale": 0.08,
+            "depthChangeScale": 0.05,
+            "samplingScale": 0.015,
+            "surfacingScale": 0.5
+          },
+          "publicSafe": true,
+          "deterministic": true,
+          "syntheticTeachingModel": true,
+          "webgpuFluidFutureContractOnly": false,
+          "usesWebGPUFluid": false,
+          "usesNewPlanner": false,
+          "usesMARL": false,
+          "notA": [
+            "not route planning",
+            "not full 3D vehicle dynamics",
+            "not production controller",
+            "not hydrodynamic solver",
+            "not WebGPU",
+            "not MARL/RL"
+          ]
+        },
+        "bathymetryConfig": {
+          "type": "anchor.science.bathymetry-config",
+          "version": "bathymetry-schema-env-r1",
+          "width": 12,
+          "height": 8,
+          "depthUnit": "meters",
+          "minDepthMeters": 0,
+          "maxDepthMeters": 180,
+          "seaLevelMeters": 0,
+          "verticalExaggeration": 1.5,
+          "features": [
+            {
+              "id": "continentalShelf",
+              "label": "Continental Shelf",
+              "enabled": true,
+              "synthetic": true,
+              "calibratedSurveyData": false
+            },
+            {
+              "id": "shelfBreak",
+              "label": "Shelf Break",
+              "enabled": true,
+              "synthetic": true,
+              "calibratedSurveyData": false
+            },
+            {
+              "id": "submarineCanyon",
+              "label": "Submarine Canyon",
+              "enabled": true,
+              "synthetic": true,
+              "calibratedSurveyData": false
+            },
+            {
+              "id": "abyssalPlain",
+              "label": "Abyssal Plain",
+              "enabled": true,
+              "synthetic": true,
+              "calibratedSurveyData": false
+            },
+            {
+              "id": "riverMouth",
+              "label": "River Mouth",
+              "enabled": true,
+              "synthetic": true,
+              "calibratedSurveyData": false
+            }
+          ],
+          "coastlineMode": "left-coast-shelf",
+          "layerIds": [
+            "landSeaMask",
+            "bathymetricBottom",
+            "waterSurface",
+            "surface",
+            "thermocline",
+            "deep"
+          ],
+          "defaultViewMode": "obliqueBathymetry",
+          "notes": [
+            "Synthetic public-safe bathymetry for environmental context and teaching."
+          ],
+          "notA": [
+            "not full 3D route planning",
+            "not calibrated bathymetric survey data",
+            "not hydrodynamic current solver",
+            "not production navigation chart",
+            "not terrain-flow ocean current",
+            "not MARL/RL"
+          ]
+        }
       },
       "gliders": [
         {
@@ -6356,6 +6703,57 @@
           "not full 3D route planning",
           "not calibrated vertical ocean model",
           "not production vehicle controller",
+          "not MARL/RL"
+        ]
+      },
+      "bathymetrySummary": {
+        "type": "anchor.headless.bathymetry-summary",
+        "version": "headless-bathymetry-summary-env-r1",
+        "visibilityTier": "publicScenario",
+        "publicSafe": true,
+        "environmentalGeometry": true,
+        "width": 12,
+        "height": 8,
+        "depthRange": {
+          "minDepthMeters": 53.399175,
+          "maxDepthMeters": 180
+        },
+        "minDepthMeters": 53.399175,
+        "maxDepthMeters": 180,
+        "meanDepthMeters": 140.001762,
+        "landWaterMaskSummary": {
+          "landCellCount": 12,
+          "waterCellCount": 84
+        },
+        "shelfSummary": {
+          "shallowCellCount": 12
+        },
+        "canyonSummary": {
+          "steepCellCount": 44
+        },
+        "deepBasinSummary": {
+          "deepCellCount": 56
+        },
+        "featureIds": [
+          "continentalShelf",
+          "shelfBreak",
+          "submarineCanyon",
+          "abyssalPlain",
+          "riverMouth"
+        ],
+        "bathymetryViewMode": "obliqueBathymetry",
+        "verticalExaggeration": 1.5,
+        "hiddenTruthIncluded": false,
+        "usesFull3DPlanning": false,
+        "usesHydrodynamicSolver": false,
+        "usesTerrainFlowAsOceanCurrent": false,
+        "usesPythonSimulator": false,
+        "usesMARL": false,
+        "notA": [
+          "not full 3D route planning",
+          "not calibrated bathymetric survey data",
+          "not hydrodynamic current solver",
+          "not terrain-flow ocean current",
           "not MARL/RL"
         ]
       },
@@ -10515,7 +10913,8 @@
         "hazard": "publicScenario",
         "constraintMask": "publicScenario",
         "staleness": "beliefOnly",
-        "boundaryStrength": "publicScenario"
+        "boundaryStrength": "publicScenario",
+        "bathymetrySummary": "publicScenario"
       },
       "fieldDescriptors": [
         {
@@ -11138,6 +11537,57 @@
           "not full 3D route planning",
           "not calibrated vertical ocean model",
           "not production vehicle controller",
+          "not MARL/RL"
+        ]
+      },
+      "bathymetrySummary": {
+        "type": "anchor.headless.bathymetry-summary",
+        "version": "headless-bathymetry-summary-env-r1",
+        "visibilityTier": "publicScenario",
+        "publicSafe": true,
+        "environmentalGeometry": true,
+        "width": 12,
+        "height": 8,
+        "depthRange": {
+          "minDepthMeters": 53.399175,
+          "maxDepthMeters": 180
+        },
+        "minDepthMeters": 53.399175,
+        "maxDepthMeters": 180,
+        "meanDepthMeters": 140.001762,
+        "landWaterMaskSummary": {
+          "landCellCount": 12,
+          "waterCellCount": 84
+        },
+        "shelfSummary": {
+          "shallowCellCount": 12
+        },
+        "canyonSummary": {
+          "steepCellCount": 44
+        },
+        "deepBasinSummary": {
+          "deepCellCount": 56
+        },
+        "featureIds": [
+          "continentalShelf",
+          "shelfBreak",
+          "submarineCanyon",
+          "abyssalPlain",
+          "riverMouth"
+        ],
+        "bathymetryViewMode": "obliqueBathymetry",
+        "verticalExaggeration": 1.5,
+        "hiddenTruthIncluded": false,
+        "usesFull3DPlanning": false,
+        "usesHydrodynamicSolver": false,
+        "usesTerrainFlowAsOceanCurrent": false,
+        "usesPythonSimulator": false,
+        "usesMARL": false,
+        "notA": [
+          "not full 3D route planning",
+          "not calibrated bathymetric survey data",
+          "not hydrodynamic current solver",
+          "not terrain-flow ocean current",
           "not MARL/RL"
         ]
       },
@@ -15297,7 +15747,8 @@
         "hazard": "publicScenario",
         "constraintMask": "publicScenario",
         "staleness": "beliefOnly",
-        "boundaryStrength": "publicScenario"
+        "boundaryStrength": "publicScenario",
+        "bathymetrySummary": "publicScenario"
       },
       "fieldDescriptors": [
         {
@@ -16478,6 +16929,97 @@
         "P11 does not add full 3D planning, new route planning, production data assimilation, or MARL/RL."
       ]
     },
+    "bathymetrySummary": {
+      "type": "anchor.headless.bathymetry-summary",
+      "version": "headless-bathymetry-summary-env-r1",
+      "visibilityTier": "publicScenario",
+      "publicSafe": true,
+      "environmentalGeometry": true,
+      "width": 12,
+      "height": 8,
+      "depthRange": {
+        "minDepthMeters": 53.399175,
+        "maxDepthMeters": 180
+      },
+      "minDepthMeters": 53.399175,
+      "maxDepthMeters": 180,
+      "meanDepthMeters": 140.001762,
+      "landWaterMaskSummary": {
+        "landCellCount": 12,
+        "waterCellCount": 84
+      },
+      "shelfSummary": {
+        "shallowCellCount": 12
+      },
+      "canyonSummary": {
+        "steepCellCount": 44
+      },
+      "deepBasinSummary": {
+        "deepCellCount": 56
+      },
+      "featureIds": [
+        "continentalShelf",
+        "shelfBreak",
+        "submarineCanyon",
+        "abyssalPlain",
+        "riverMouth"
+      ],
+      "bathymetryViewMode": "obliqueBathymetry",
+      "verticalExaggeration": 1.5,
+      "hiddenTruthIncluded": false,
+      "usesFull3DPlanning": false,
+      "usesHydrodynamicSolver": false,
+      "usesTerrainFlowAsOceanCurrent": false,
+      "usesPythonSimulator": false,
+      "usesMARL": false,
+      "notA": [
+        "not full 3D route planning",
+        "not calibrated bathymetric survey data",
+        "not hydrodynamic current solver",
+        "not terrain-flow ocean current",
+        "not MARL/RL"
+      ]
+    },
+    "missionGeometrySummary": {
+      "type": "anchor.science.ocean-world-geometry-summary",
+      "version": "ocean-world-geometry-adapter-env-r1",
+      "hasBathymetrySummary": true,
+      "bathymetryDepthRange": {
+        "minDepthMeters": 53.399175,
+        "maxDepthMeters": 180
+      },
+      "bathymetryFeatureIds": [
+        "continentalShelf",
+        "shelfBreak",
+        "submarineCanyon",
+        "abyssalPlain",
+        "riverMouth"
+      ],
+      "waterSurface": true,
+      "bottomSurface": true,
+      "depthLayerPlaneCount": 3,
+      "surfaceWaypointCount": 6,
+      "samplingPointCount": 11,
+      "plannedPathPointCount": 6,
+      "realizedTrajectoryPointCount": 11,
+      "diveProfilePathCount": 11,
+      "hasDiveProfilePath": true,
+      "sampledDepthLayers": [
+        "surface",
+        "thermocline",
+        "deep"
+      ],
+      "publicSafe": true,
+      "generatedRoute": false,
+      "ownsSimulationState": false,
+      "ownsScoring": false,
+      "ownsPlanning": false,
+      "usesFull3DPlanning": false,
+      "usesHydrodynamicSolver": false,
+      "usesTerrainFlowAsOceanCurrent": false,
+      "usesWebGPUFluid": false,
+      "usesMARL": false
+    },
     "depthLayerPriority": {
       "type": "anchor.headless.depth-layer-priority",
       "version": "water-column-priority-model-p11",
@@ -17255,6 +17797,10 @@
       "usesMARL": false,
       "note": "A_global_depth is science priority by depth layer; top-down collapse does not include route travel cost or path optimization."
     },
+    "motionTrajectory": null,
+    "controlTrace": [],
+    "plannedVsRealized": null,
+    "motionDiagnostics": null,
     "actions": [
       {
         "id": "action-wp-1",
@@ -17363,7 +17909,7 @@
     "surfacingEvents": [
       {
         "id": "surface-final",
-        "timeSeconds": 625.8697132834069,
+        "timeSeconds": 625.87,
         "gliderId": "glider-1",
         "reason": "mission-complete-summary-export"
       }
@@ -17936,7 +18482,8 @@
         "obs-glider-1-00519",
         "obs-glider-1-00572",
         "obs-glider-1-00626"
-      ]
+      ],
+      "motionTrajectoryId": null
     },
     "diagnostics": {
       "runtimeVersion": "headless-mission-runner-h1",
@@ -17949,6 +18496,102 @@
       "deterministic": true,
       "routeGenerated": false,
       "usesProvidedWaypoints": true,
+      "usesMotionDynamics": false,
+      "usesWebGPUFluid": false,
+      "usesHydrodynamicSolver": false,
+      "usesTerrainFlowAsOceanCurrent": false,
+      "bathymetrySummary": {
+        "type": "anchor.headless.bathymetry-summary",
+        "version": "headless-bathymetry-summary-env-r1",
+        "visibilityTier": "publicScenario",
+        "publicSafe": true,
+        "environmentalGeometry": true,
+        "width": 12,
+        "height": 8,
+        "depthRange": {
+          "minDepthMeters": 53.399175,
+          "maxDepthMeters": 180
+        },
+        "minDepthMeters": 53.399175,
+        "maxDepthMeters": 180,
+        "meanDepthMeters": 140.001762,
+        "landWaterMaskSummary": {
+          "landCellCount": 12,
+          "waterCellCount": 84
+        },
+        "shelfSummary": {
+          "shallowCellCount": 12
+        },
+        "canyonSummary": {
+          "steepCellCount": 44
+        },
+        "deepBasinSummary": {
+          "deepCellCount": 56
+        },
+        "featureIds": [
+          "continentalShelf",
+          "shelfBreak",
+          "submarineCanyon",
+          "abyssalPlain",
+          "riverMouth"
+        ],
+        "bathymetryViewMode": "obliqueBathymetry",
+        "verticalExaggeration": 1.5,
+        "hiddenTruthIncluded": false,
+        "usesFull3DPlanning": false,
+        "usesHydrodynamicSolver": false,
+        "usesTerrainFlowAsOceanCurrent": false,
+        "usesPythonSimulator": false,
+        "usesMARL": false,
+        "notA": [
+          "not full 3D route planning",
+          "not calibrated bathymetric survey data",
+          "not hydrodynamic current solver",
+          "not terrain-flow ocean current",
+          "not MARL/RL"
+        ]
+      },
+      "missionGeometrySummary": {
+        "type": "anchor.science.ocean-world-geometry-summary",
+        "version": "ocean-world-geometry-adapter-env-r1",
+        "hasBathymetrySummary": true,
+        "bathymetryDepthRange": {
+          "minDepthMeters": 53.399175,
+          "maxDepthMeters": 180
+        },
+        "bathymetryFeatureIds": [
+          "continentalShelf",
+          "shelfBreak",
+          "submarineCanyon",
+          "abyssalPlain",
+          "riverMouth"
+        ],
+        "waterSurface": true,
+        "bottomSurface": true,
+        "depthLayerPlaneCount": 3,
+        "surfaceWaypointCount": 6,
+        "samplingPointCount": 11,
+        "plannedPathPointCount": 6,
+        "realizedTrajectoryPointCount": 11,
+        "diveProfilePathCount": 11,
+        "hasDiveProfilePath": true,
+        "sampledDepthLayers": [
+          "surface",
+          "thermocline",
+          "deep"
+        ],
+        "publicSafe": true,
+        "generatedRoute": false,
+        "ownsSimulationState": false,
+        "ownsScoring": false,
+        "ownsPlanning": false,
+        "usesFull3DPlanning": false,
+        "usesHydrodynamicSolver": false,
+        "usesTerrainFlowAsOceanCurrent": false,
+        "usesWebGPUFluid": false,
+        "usesMARL": false
+      },
+      "motionSummary": null,
       "waterColumnSummary": {
         "type": "anchor.headless.water-column-summary",
         "version": "water-column-observation-model-p11",
@@ -18750,7 +19393,7 @@
       "surfacingEvents": [
         {
           "id": "surface-final",
-          "timeSeconds": 625.8697132834069,
+          "timeSeconds": 625.87,
           "gliderId": "glider-1",
           "reason": "mission-complete-summary-export"
         }
@@ -18767,6 +19410,102 @@
         "deterministic": true,
         "routeGenerated": false,
         "usesProvidedWaypoints": true,
+        "usesMotionDynamics": false,
+        "usesWebGPUFluid": false,
+        "usesHydrodynamicSolver": false,
+        "usesTerrainFlowAsOceanCurrent": false,
+        "bathymetrySummary": {
+          "type": "anchor.headless.bathymetry-summary",
+          "version": "headless-bathymetry-summary-env-r1",
+          "visibilityTier": "publicScenario",
+          "publicSafe": true,
+          "environmentalGeometry": true,
+          "width": 12,
+          "height": 8,
+          "depthRange": {
+            "minDepthMeters": 53.399175,
+            "maxDepthMeters": 180
+          },
+          "minDepthMeters": 53.399175,
+          "maxDepthMeters": 180,
+          "meanDepthMeters": 140.001762,
+          "landWaterMaskSummary": {
+            "landCellCount": 12,
+            "waterCellCount": 84
+          },
+          "shelfSummary": {
+            "shallowCellCount": 12
+          },
+          "canyonSummary": {
+            "steepCellCount": 44
+          },
+          "deepBasinSummary": {
+            "deepCellCount": 56
+          },
+          "featureIds": [
+            "continentalShelf",
+            "shelfBreak",
+            "submarineCanyon",
+            "abyssalPlain",
+            "riverMouth"
+          ],
+          "bathymetryViewMode": "obliqueBathymetry",
+          "verticalExaggeration": 1.5,
+          "hiddenTruthIncluded": false,
+          "usesFull3DPlanning": false,
+          "usesHydrodynamicSolver": false,
+          "usesTerrainFlowAsOceanCurrent": false,
+          "usesPythonSimulator": false,
+          "usesMARL": false,
+          "notA": [
+            "not full 3D route planning",
+            "not calibrated bathymetric survey data",
+            "not hydrodynamic current solver",
+            "not terrain-flow ocean current",
+            "not MARL/RL"
+          ]
+        },
+        "missionGeometrySummary": {
+          "type": "anchor.science.ocean-world-geometry-summary",
+          "version": "ocean-world-geometry-adapter-env-r1",
+          "hasBathymetrySummary": true,
+          "bathymetryDepthRange": {
+            "minDepthMeters": 53.399175,
+            "maxDepthMeters": 180
+          },
+          "bathymetryFeatureIds": [
+            "continentalShelf",
+            "shelfBreak",
+            "submarineCanyon",
+            "abyssalPlain",
+            "riverMouth"
+          ],
+          "waterSurface": true,
+          "bottomSurface": true,
+          "depthLayerPlaneCount": 3,
+          "surfaceWaypointCount": 6,
+          "samplingPointCount": 11,
+          "plannedPathPointCount": 6,
+          "realizedTrajectoryPointCount": 11,
+          "diveProfilePathCount": 11,
+          "hasDiveProfilePath": true,
+          "sampledDepthLayers": [
+            "surface",
+            "thermocline",
+            "deep"
+          ],
+          "publicSafe": true,
+          "generatedRoute": false,
+          "ownsSimulationState": false,
+          "ownsScoring": false,
+          "ownsPlanning": false,
+          "usesFull3DPlanning": false,
+          "usesHydrodynamicSolver": false,
+          "usesTerrainFlowAsOceanCurrent": false,
+          "usesWebGPUFluid": false,
+          "usesMARL": false
+        },
+        "motionSummary": null,
         "waterColumnSummary": {
           "type": "anchor.headless.water-column-summary",
           "version": "water-column-observation-model-p11",

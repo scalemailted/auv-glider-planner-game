@@ -19,6 +19,8 @@ export function buildHeadlessBundleViewModel(bundle = {}) {
     scoreSummary: headlessBundleScoreSummary(bundle),
     roundtripSummary: headlessBundleRoundtripSummary(bundle),
     waterColumnSummary: headlessBundleWaterColumnSummary(bundle),
+    bathymetrySummary: headlessBundleBathymetrySummary(bundle),
+    missionGeometrySummary: headlessBundleMissionGeometrySummary(bundle),
     depthLayerPrioritySummary: headlessBundleDepthLayerPrioritySummary(bundle),
     scienceDiagnosisSummary: headlessBundleScienceDiagnosisSummary(bundle),
     replaySummary: headlessBundleReplaySummary(bundle),
@@ -268,6 +270,89 @@ export function headlessBundleScienceDiagnosisSummary(bundle = {}) {
     notA: diagnostics.notA ?? []
   };
 }
+export function headlessBundleBathymetrySummary(bundle = {}) {
+  const summary = bundle.bathymetrySummary ?? bundle.episode?.bathymetrySummary ?? bundle.visibleFields?.bathymetrySummary ?? null;
+  if (!summary) {
+    return {
+      present: false,
+      hasBathymetrySummary: false,
+      depthRange: null,
+      featureIds: [],
+      landWaterMaskSummary: null,
+      verticalExaggeration: null,
+      publicSafe: true,
+      usesFull3DPlanning: false,
+      usesHydrodynamicSolver: false,
+      usesTerrainFlowAsOceanCurrent: false,
+      usesPythonSimulator: false,
+      usesMARL: false
+    };
+  }
+  return {
+    present: true,
+    hasBathymetrySummary: true,
+    type: summary.type ?? null,
+    depthRange: summary.depthRange ?? { minDepthMeters: summary.minDepthMeters ?? null, maxDepthMeters: summary.maxDepthMeters ?? null },
+    minDepthMeters: summary.minDepthMeters ?? summary.depthRange?.minDepthMeters ?? null,
+    maxDepthMeters: summary.maxDepthMeters ?? summary.depthRange?.maxDepthMeters ?? null,
+    meanDepthMeters: summary.meanDepthMeters ?? null,
+    featureIds: summary.featureIds ?? [],
+    landWaterMaskSummary: summary.landWaterMaskSummary ?? null,
+    shelfSummary: summary.shelfSummary ?? null,
+    canyonSummary: summary.canyonSummary ?? null,
+    deepBasinSummary: summary.deepBasinSummary ?? null,
+    bathymetryViewMode: summary.bathymetryViewMode ?? 'obliqueBathymetry',
+    verticalExaggeration: summary.verticalExaggeration ?? null,
+    publicSafe: summary.publicSafe !== false && summary.hiddenTruthIncluded !== true,
+    usesFull3DPlanning: summary.usesFull3DPlanning === true,
+    usesHydrodynamicSolver: summary.usesHydrodynamicSolver === true,
+    usesTerrainFlowAsOceanCurrent: summary.usesTerrainFlowAsOceanCurrent === true,
+    usesPythonSimulator: summary.usesPythonSimulator === true,
+    usesMARL: summary.usesMARL === true
+  };
+}
+
+export function headlessBundleMissionGeometrySummary(bundle = {}) {
+  const summary = bundle.missionGeometrySummary ?? bundle.episode?.missionGeometrySummary ?? null;
+  if (!summary) {
+    return {
+      present: false,
+      surfaceWaypointCount: 0,
+      plannedPathPointCount: 0,
+      realizedTrajectoryPointCount: 0,
+      samplingPointCount: 0,
+      diveProfilePathCount: 0,
+      hasDiveProfilePath: false,
+      sampledDepthLayers: [],
+      usesFull3DPlanning: false,
+      ownsPlanning: false,
+      generatedRoute: false
+    };
+  }
+  return {
+    present: true,
+    type: summary.type ?? null,
+    bathymetryDepthRange: summary.bathymetryDepthRange ?? null,
+    bathymetryFeatureIds: summary.bathymetryFeatureIds ?? [],
+    waterSurface: summary.waterSurface === true,
+    bottomSurface: summary.bottomSurface === true,
+    depthLayerPlaneCount: summary.depthLayerPlaneCount ?? 0,
+    surfaceWaypointCount: summary.surfaceWaypointCount ?? 0,
+    plannedPathPointCount: summary.plannedPathPointCount ?? 0,
+    realizedTrajectoryPointCount: summary.realizedTrajectoryPointCount ?? 0,
+    samplingPointCount: summary.samplingPointCount ?? 0,
+    diveProfilePathCount: summary.diveProfilePathCount ?? 0,
+    hasDiveProfilePath: summary.hasDiveProfilePath === true,
+    sampledDepthLayers: summary.sampledDepthLayers ?? [],
+    publicSafe: summary.publicSafe !== false,
+    usesFull3DPlanning: summary.usesFull3DPlanning === true,
+    usesHydrodynamicSolver: summary.usesHydrodynamicSolver === true,
+    usesTerrainFlowAsOceanCurrent: summary.usesTerrainFlowAsOceanCurrent === true,
+    ownsPlanning: summary.ownsPlanning === true,
+    generatedRoute: summary.generatedRoute === true,
+    usesMARL: summary.usesMARL === true
+  };
+}
 export function headlessBundleReplaySummary(bundle = {}) {
   const replay = bundle.replay ?? {};
   return {
@@ -304,6 +389,10 @@ export function headlessBundleViewModelSummary(viewModel = {}) {
     finalScore: viewModel.scoreSummary?.finalScore ?? null,
     roundtripStatus: viewModel.roundtripSummary?.status ?? null,
     waterColumnVerticalCoverage: viewModel.waterColumnSummary?.verticalCoverage ?? null,
+    hasBathymetrySummary: viewModel.bathymetrySummary?.present === true,
+    bathymetryDepthRange: viewModel.bathymetrySummary?.depthRange ?? null,
+    surfaceWaypointCount: viewModel.missionGeometrySummary?.surfaceWaypointCount ?? 0,
+    samplingPointCount: viewModel.missionGeometrySummary?.samplingPointCount ?? 0,
     diveProfileId: viewModel.waterColumnSummary?.diveProfileId ?? null,
     sciencePrimaryDiagnosis: viewModel.scienceDiagnosisSummary?.primaryDiagnosis ?? null,
     hasMotionTrajectory: viewModel.motionSummary?.present === true,
