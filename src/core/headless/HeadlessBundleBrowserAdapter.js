@@ -1,5 +1,5 @@
 import { validateHeadlessBundle } from './HeadlessBundleValidation.js';
-import { buildHeadlessBundleViewModel, headlessBundleDepthLayerPrioritySummary, headlessBundleObservationSummary, headlessBundleReplaySummary, headlessBundleRoundtripSummary, headlessBundleScienceDiagnosisSummary, headlessBundleScoreSummary, headlessBundleWaterColumnSummary, headlessBundleTrackSummary, headlessBundleVisibilitySummary } from './HeadlessBundleViewModel.js';
+import { buildHeadlessBundleViewModel, headlessBundleDepthLayerPrioritySummary, headlessBundleMotionSummary, headlessBundleObservationSummary, headlessBundleReplaySummary, headlessBundleRoundtripSummary, headlessBundleScienceDiagnosisSummary, headlessBundleScoreSummary, headlessBundleWaterColumnSummary, headlessBundleTrackSummary, headlessBundleVisibilitySummary } from './HeadlessBundleViewModel.js';
 import { BROWSER_HEADLESS_ROUNDTRIP_SUMMARY_TYPE, HEADLESS_SOLVER_ROUNDTRIP_REPORT_TYPE } from './HeadlessRoundtripTypes.js';
 
 export const HEADLESS_BUNDLE_BROWSER_ADAPTER_VERSION = 'headless-bundle-browser-adapter-h2';
@@ -19,6 +19,7 @@ export function buildBrowserHeadlessBundleSummaryArtifact(bundle = {}) {
     fieldSummary: viewModel.fieldCards.map(({ id, visibilityTier, hidden, shape, finiteSummary }) => ({ id, visibilityTier, hidden, shape, finiteSummary })),
     observationSummary: headlessBundleObservationSummary(bundle),
     trackSummary: headlessBundleTrackSummary(bundle),
+    motionSummary: headlessBundleMotionSummary(bundle),
     scoreSummary: buildBrowserHeadlessScoreComparisonDescriptor(bundle),
     roundtripSummary: headlessBundleRoundtripSummary(bundle),
     waterColumnSummary: headlessBundleWaterColumnSummary(bundle),
@@ -58,6 +59,9 @@ export function buildBrowserHeadlessRoundtripSummaryArtifact(bundle = {}) {
     usesNodeHeadlessRuntime: roundtripSummary.usesNodeHeadlessRuntime,
     usesBrowserOfficialScoring: roundtripSummary.usesBrowserOfficialScoring,
     usesMARL: roundtripSummary.usesMARL,
+    usesMotionDynamics: roundtripSummary.usesMotionDynamics === true,
+    usesWebGPUFluid: roundtripSummary.usesWebGPUFluid === true,
+    motionSummary: headlessBundleMotionSummary(bundle),
     waterColumnSummary: headlessBundleWaterColumnSummary(bundle),
     depthLayerPrioritySummary: headlessBundleDepthLayerPrioritySummary(bundle),
     scienceDiagnosisSummary: headlessBundleScienceDiagnosisSummary(bundle),
@@ -95,6 +99,7 @@ export function buildBrowserHeadlessBundleDebugObject(bundle = {}) {
   const science = viewModel.scienceDiagnosisSummary ?? headlessBundleScienceDiagnosisSummary(bundle);
   const waterColumn = viewModel.waterColumnSummary ?? headlessBundleWaterColumnSummary(bundle);
   const depthPriority = viewModel.depthLayerPrioritySummary ?? headlessBundleDepthLayerPrioritySummary(bundle);
+  const motion = viewModel.motionSummary ?? headlessBundleMotionSummary(bundle);
   return {
     version: HEADLESS_BUNDLE_BROWSER_ADAPTER_VERSION,
     bundleLoaded: Boolean(bundle?.manifest || bundle?.visibleFields),
@@ -120,6 +125,16 @@ export function buildBrowserHeadlessBundleDebugObject(bundle = {}) {
     roundtripExecutionStatus: roundtrip.executionStatus ?? null,
     roundtripVisibilityRisk: roundtrip.visibilityRisk ?? null,
     roundtripSummaryExportAvailable: Boolean(bundle.roundtripReport),
+    hasMotionTrajectory: motion.present === true,
+    motionModelId: motion.motionModelId ?? null,
+    plannedDistance: motion.plannedDistance ?? 0,
+    realizedDistance: motion.realizedDistance ?? 0,
+    meanTrackError: motion.meanTrackError ?? 0,
+    maxTrackError: motion.maxTrackError ?? 0,
+    driftDistance: motion.driftDistance ?? 0,
+    energyUsed: motion.energyUsed ?? 0,
+    usesMotionDynamics: motion.present === true,
+    usesWebGPUFluid: false,
     hasScienceDiagnostics: science.present === true,
     sciencePrimaryDiagnosis: science.primaryDiagnosis ?? null,
     scienceForecastCorrectionStatus: science.forecastCorrectionStatus ?? null,
@@ -146,4 +161,3 @@ export function buildBrowserHeadlessBundleDebugObject(bundle = {}) {
     usesMARL: false
   };
 }
-

@@ -372,3 +372,7 @@ P10 adds adaptive science-diagnosis context, mission-manager rationale, next-leg
 Added shared water-column schema, field, dive-profile, observation, and priority modules under `src/core/science/`. Integrated public-safe water-column summaries and depth-layer priority into Node/OceanBox-JS runtime episodes, bundles, solver roundtrips, Headless Bundle Viewer, Adaptive Benchmark handoff context, fixtures, and smoke tests.
 
 Preserved the boundary: P11 is top-down 2.5D sampling context. It does not add full 3D planning, a new planner, scoring redesign, production data assimilation, calibrated vertical ocean modeling, a Python simulator, backend services, or MARL/RL.
+
+## MOTION-R1 - Glider Motion Dynamics Layer
+
+Added a portable deterministic glider motion schema, environment sampler, dynamics model, plan-to-control adapter, trajectory simulator, diagnostics, optional Node/OceanBox-JS motion-aware execution, public-safe motion bundle artifacts, Headless Bundle Viewer motion summaries, and a Simulation Lab Motion Planning Demo. This is an execution-model layer, not a new benchmark authority mode, not a route planner, not WebGPU, not a Python simulator, not a scoring redesign, and not MARL/RL.

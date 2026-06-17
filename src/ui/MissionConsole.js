@@ -1,4 +1,4 @@
-﻿import { CAMPAIGN_LEVELS } from '../core/campaign/CampaignLevels.js';
+import { CAMPAIGN_LEVELS } from '../core/campaign/CampaignLevels.js';
 import { shortInstanceId } from '../core/identity/GameInstanceId.js';
 import { formatMetric } from '../core/evaluation/PlanComparison.js';
 import { FLOW_DEMO_BOUNDARY_MODES, FLOW_DEMO_CYCLE_DURATIONS, FLOW_DEMO_DYNAMIC_COMPLEXITY_LEVELS, FLOW_DEMO_EVOLUTION_BEHAVIORS, FLOW_DEMO_EVOLUTION_PATTERNS, FLOW_DEMO_EVOLUTION_SPEEDS, FLOW_DEMO_FIELD_MODES, FLOW_DEMO_LAYER_INFLUENCES, FLOW_DEMO_MAGNITUDE_SCALES, FLOW_DEMO_PARTICLE_SPEEDS, FLOW_DEMO_PRESET_CHOICES, FLOW_DEMO_SPATIAL_MOTIONS, FLOW_DEMO_SPATIAL_MOTION_SPEEDS, FLOW_DEMO_TERRAIN_MODES, FLOW_DEMO_VARIATION_LEVELS, normalizeAdditiveLayers } from '../core/demo/FlowFieldDemo.js';
@@ -958,7 +958,95 @@ export class MissionConsole {
       'export-demo-json': handlers.exportDemoJson,
       menu: handlers.menu
     });
-  }  renderLeaderboardControls(state = {}, handlers = {}) {
+  }
+  renderMotionPlanningDemoControls(state = {}, handlers = {}) {
+    if (!this.root) return;
+    const motionModels = ['kinematicVectorField', 'depthLayerKinematic', 'currentShearKinematic', 'bathymetryAwareKinematic', 'fluidCoupledPreview'];
+    const diveProfiles = ['surfaceOnly', 'sawtoothProfile', 'thermoclineDive', 'deepDive', 'fullProfile'];
+    const summary = state.summary ?? {};
+    this.root.innerHTML = `
+      <section class="console-header">
+        <div class="console-kicker">Motion Planning Demo</div>
+        <h1>${escapeHtml(state.title ?? 'Motion Planning Demo')}</h1>
+        <p>Path planning chooses waypoints. Motion planning evaluates how the glider actually moves through currents and control limits.</p>
+      </section>
+      <section class="console-status">
+        <span>${escapeHtml(state.status ?? 'Motion trace ready')}</span>
+        <strong>${escapeHtml(state.motionModelId ?? 'depthLayerKinematic')}</strong>
+        <small>Motion dynamics does not generate a route.</small>
+      </section>
+      <section class="console-section">
+        <h2>Motion Model</h2>
+        <label class="compact-field">
+          Motion Model
+          <select id="motion-demo-model">
+            ${motionModels.map((id) => `<option value="${escapeAttr(id)}" ${state.motionModelId === id ? 'selected' : ''}>${escapeHtml(motionModelLabel(id))}</option>`).join('')}
+          </select>
+        </label>
+        <label class="compact-field">
+          Dive Profile
+          <select id="motion-demo-dive-profile">
+            ${diveProfiles.map((id) => `<option value="${escapeAttr(id)}" ${state.diveProfileId === id ? 'selected' : ''}>${escapeHtml(motionModelLabel(id))}</option>`).join('')}
+          </select>
+        </label>
+        <div class="hud-muted">WebGPU fluid coupling is future/optional and not used in this demo.</div>
+      </section>
+      <section class="console-section">
+        <h2>Environment / Control</h2>
+        ${motionNumberInputHtml('current-strength', 'Current Strength', state.currentStrength, 0, 3, 0.1)}
+        ${motionNumberInputHtml('cross-current-strength', 'Cross-Current Strength', state.crossCurrentStrength, 0, 3, 0.1)}
+        ${motionNumberInputHtml('glider-speed', 'Glider Speed', state.gliderSpeed, 0.25, 3, 0.05)}
+        ${motionNumberInputHtml('heading-rate-limit', 'Heading Rate Limit', state.headingRateLimit, 1, 45, 1)}
+        ${motionNumberInputHtml('drift-gain', 'Drift Gain', state.driftGain, 0, 3, 0.1)}
+      </section>
+      <section class="console-section">
+        <h2>Planned vs Realized</h2>
+        <div class="cell-inspector-metrics">
+          <div><span>Planned Distance</span><strong>${escapeHtml(formatDemoStat(summary.plannedDistance))}</strong></div>
+          <div><span>Realized Distance</span><strong>${escapeHtml(formatDemoStat(summary.realizedDistance))}</strong></div>
+          <div><span>Mean Track Error</span><strong>${escapeHtml(formatDemoStat(summary.meanTrackError))}</strong></div>
+          <div><span>Max Track Error</span><strong>${escapeHtml(formatDemoStat(summary.maxTrackError))}</strong></div>
+          <div><span>Drift Distance</span><strong>${escapeHtml(formatDemoStat(summary.driftDistance))}</strong></div>
+          <div><span>Energy Used</span><strong>${escapeHtml(formatDemoStat(summary.energyUsed))}</strong></div>
+          <div><span>Sampled Points</span><strong>${escapeHtml(summary.sampledPointCount ?? 0)}</strong></div>
+        </div>
+        <div class="hud-muted">Sampling happens along the realized trajectory, not the dashed planned line.</div>
+      </section>
+      <section class="console-section">
+        <h2>Controls</h2>
+        <div class="console-button-row">
+          <button data-action="motion-run" class="console-button">Run</button>
+          <button data-action="motion-pause" class="console-button secondary">Pause</button>
+          <button data-action="motion-reset" class="console-button secondary">Reset</button>
+        </div>
+        <button data-action="motion-export-json" class="console-button secondary">Export Motion JSON</button>
+      </section>
+      <section class="console-section">
+        <h2>Boundary</h2>
+        <div class="hud-muted">Motion dynamics does not generate a route.</div>
+        <div class="hud-muted">This is not WebGPU, not a production hydrodynamic solver, not browser official scoring, and not MARL/RL.</div>
+      </section>
+      <section class="console-footer">
+        <button data-action="menu" class="console-button secondary">Main Menu</button>
+      </section>
+    `;
+    this.root.querySelector('#motion-demo-model')?.addEventListener('change', (event) => handlers.motionModelId?.(event.target.value));
+    this.root.querySelector('#motion-demo-dive-profile')?.addEventListener('change', (event) => handlers.diveProfileId?.(event.target.value));
+    this.root.querySelector('[data-motion-input="current-strength"]')?.addEventListener('input', (event) => handlers.currentStrength?.(event.target.value));
+    this.root.querySelector('[data-motion-input="cross-current-strength"]')?.addEventListener('input', (event) => handlers.crossCurrentStrength?.(event.target.value));
+    this.root.querySelector('[data-motion-input="glider-speed"]')?.addEventListener('input', (event) => handlers.gliderSpeed?.(event.target.value));
+    this.root.querySelector('[data-motion-input="heading-rate-limit"]')?.addEventListener('input', (event) => handlers.headingRateLimit?.(event.target.value));
+    this.root.querySelector('[data-motion-input="drift-gain"]')?.addEventListener('input', (event) => handlers.driftGain?.(event.target.value));
+    this.bind({
+      'motion-run': handlers.run,
+      'motion-pause': handlers.pause,
+      'motion-reset': handlers.reset,
+      'motion-export-json': handlers.exportMotionJson,
+      menu: handlers.menu
+    });
+  }
+
+  renderLeaderboardControls(state = {}, handlers = {}) {
     if (!this.root) return;
     const filters = [
       ['challenge', 'Challenge'],
@@ -1396,6 +1484,19 @@ function benchmarkModeP1Text(mode) {
   }[mode] ?? 'Benchmark route-execution contract overview.';
 }
 
+function motionNumberInputHtml(key, label, value, min, max, step) {
+  const number = Number.isFinite(Number(value)) ? Number(value) : Number(min);
+  return `
+    <label class="compact-field">
+      ${escapeHtml(label)}
+      <input data-motion-input="${escapeAttr(key)}" type="range" min="${escapeAttr(min)}" max="${escapeAttr(max)}" step="${escapeAttr(step)}" value="${escapeAttr(number)}" />
+    </label>
+  `;
+}
+
+function motionModelLabel(id) {
+  return String(id ?? '').replace(/([a-z])([A-Z])/g, '$1 $2').replace(/^./, (letter) => letter.toUpperCase());
+}
 function flowModeLabel(mode) {
   return {
     static: 'Static',
@@ -1771,4 +1872,3 @@ function escapeHtml(value) {
 function escapeAttr(value) {
   return escapeHtml(value).replace(/`/g, '&#096;');
 }
-

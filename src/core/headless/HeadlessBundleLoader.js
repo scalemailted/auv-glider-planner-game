@@ -3,7 +3,7 @@ import { HEADLESS_SOLVER_ROUNDTRIP_BUNDLE_TYPE, isHeadlessRoundtripReportType } 
 
 export const HEADLESS_BUNDLE_LOADER_VERSION = 'headless-bundle-loader-h2';
 export const HEADLESS_BUNDLE_REQUIRED_FILES = Object.freeze(['manifest.json', 'mission_config.json', 'visible_fields.json', 'score_report.json']);
-export const HEADLESS_BUNDLE_OPTIONAL_FILES = Object.freeze(['hidden_fields.json', 'observations.json', 'observations.csv', 'glider_tracks.json', 'glider_tracks.csv', 'replay.json', 'episode.json', 'bundle.json', 'roundtrip_report.json', 'science_diagnostics.json', 'water_column_summary.json', 'depth_layer_priority.json']);
+export const HEADLESS_BUNDLE_OPTIONAL_FILES = Object.freeze(['hidden_fields.json', 'observations.json', 'observations.csv', 'glider_tracks.json', 'glider_tracks.csv', 'replay.json', 'episode.json', 'bundle.json', 'roundtrip_report.json', 'science_diagnostics.json', 'water_column_summary.json', 'depth_layer_priority.json', 'motion_trajectory.json', 'control_trace.json', 'motion_diagnostics.json']);
 
 const LOGICAL_FILE_ALIASES = Object.freeze({
   'manifest.json': 'manifest',
@@ -21,7 +21,10 @@ const LOGICAL_FILE_ALIASES = Object.freeze({
   'roundtrip_report.json': 'roundtripReport',
   'science_diagnostics.json': 'scienceDiagnostics',
   'water_column_summary.json': 'waterColumnSummary',
-  'depth_layer_priority.json': 'depthLayerPriority'
+  'depth_layer_priority.json': 'depthLayerPriority',
+  'motion_trajectory.json': 'motionTrajectory',
+  'control_trace.json': 'controlTrace',
+  'motion_diagnostics.json': 'motionDiagnostics'
 });
 
 export function classifyHeadlessBundleFile(fileName, payload = null) {
@@ -89,6 +92,9 @@ export function normalizeHeadlessBundleFiles(files = []) {
     normalized.waterColumnSummary ??= combined.waterColumnSummary ?? combined.episode?.waterColumnSummary;
     normalized.depthLayerPriority ??= combined.depthLayerPriority ?? combined.episode?.depthLayerPriority;
     normalized.depthLayerPrioritySummary ??= combined.depthLayerPrioritySummary ?? combined.episode?.depthLayerPrioritySummary;
+    normalized.motionTrajectory ??= combined.motionTrajectory ?? combined.episode?.motionTrajectory;
+    normalized.controlTrace ??= combined.controlTrace ?? combined.episode?.controlTrace ?? combined.episode?.motionTrajectory?.controlCommands;
+    normalized.motionDiagnostics ??= combined.motionDiagnostics ?? combined.episode?.motionDiagnostics ?? combined.episode?.motionTrajectory?.motionDiagnostics;
   }
   if (normalized.observationsCsv?.rows?.length) normalized.observations ??= { type: 'anchor.headless.observations', observations: normalized.observationsCsv.rows, source: 'csv' };
   if (normalized.gliderTracksCsv?.rows?.length) normalized.gliderTracks ??= { type: 'anchor.headless.trajectory', tracks: normalized.gliderTracksCsv.rows, source: 'csv' };
@@ -132,6 +138,9 @@ export function buildHeadlessBundleFromFiles(bundleFiles) {
     waterColumnSummary: normalized.waterColumnSummary ?? normalized.episode?.waterColumnSummary ?? null,
     depthLayerPriority: normalized.depthLayerPriority ?? normalized.episode?.depthLayerPriority ?? null,
     depthLayerPrioritySummary: normalized.depthLayerPrioritySummary ?? normalized.depthLayerPriority?.summary ?? normalized.episode?.depthLayerPrioritySummary ?? null,
+    motionTrajectory: normalized.motionTrajectory ?? normalized.episode?.motionTrajectory ?? null,
+    controlTrace: normalizeControlTracePayload(normalized.controlTrace ?? normalized.episode?.controlTrace ?? normalized.episode?.motionTrajectory?.controlCommands),
+    motionDiagnostics: normalized.motionDiagnostics ?? normalized.episode?.motionDiagnostics ?? normalized.episode?.motionTrajectory?.motionDiagnostics ?? null,
     episode: normalized.episode ?? null,
     files: Object.keys(normalized.fileMap ?? {}).sort(),
     warnings: [...(normalized.warnings ?? []), ...fileValidation.warnings],
@@ -179,6 +188,13 @@ function normalizeObservationsPayload(payload) {
   return [];
 }
 
+function normalizeControlTracePayload(payload) {
+  if (Array.isArray(payload)) return payload;
+  if (Array.isArray(payload?.controls)) return payload.controls;
+  if (Array.isArray(payload?.controlCommands)) return payload.controlCommands;
+  return [];
+}
+
 function normalizeTracksPayload(payload) {
   if (Array.isArray(payload)) return payload;
   if (Array.isArray(payload?.tracks)) return payload.tracks;
@@ -198,6 +214,9 @@ function inferLogicalType(fileName, payload) {
   if (type === 'anchor.headless.science-diagnostics') return 'scienceDiagnostics';
   if (type === 'anchor.headless.water-column-summary') return 'waterColumnSummary';
   if (type === 'anchor.headless.depth-layer-priority') return 'depthLayerPriority';
+  if (type === 'anchor.motion.trajectory') return 'motionTrajectory';
+  if (type === 'anchor.motion.control-trace') return 'controlTrace';
+  if (type === 'anchor.motion.diagnostics') return 'motionDiagnostics';
   if (type === 'anchor.headless.manifest') return 'manifest';
   if (type === 'anchor.headless.mission-config') return 'missionConfig';
   if (type === 'anchor.headless.score-report') return 'scoreReport';
@@ -208,4 +227,3 @@ function inferLogicalType(fileName, payload) {
 function basename(fileName) {
   return String(fileName ?? '').split(/[\\/]/).pop();
 }
-

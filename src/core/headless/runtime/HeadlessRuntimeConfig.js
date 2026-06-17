@@ -3,6 +3,7 @@ import { createHeadlessMissionConfig as createH0HeadlessMissionConfig, validateH
 import { createHeadlessGrid } from './HeadlessGrid.js';
 import { createDiveProfileSequence, normalizeDiveProfile } from '../../science/DiveProfileModel.js';
 import { normalizeWaterColumnConfig, validateWaterColumnConfig, waterColumnConfigSummary } from '../../science/WaterColumnSchema.js';
+import { createGliderMotionConfig, gliderMotionConfigSummary, validateGliderMotionConfig } from '../../motion/GliderMotionSchema.js';
 
 export const HEADLESS_RUNTIME_CONFIG_VERSION = 'headless-node-runtime-h1';
 
@@ -36,6 +37,20 @@ export function createDefaultHeadlessRuntimeConfig(options = {}) {
   });
   const missionConfig = createDefaultHeadlessMissionConfig({ ...options, scenarioId, seed, grid, waterColumnConfig });
   const plan = options.plan ?? createDefaultHeadlessGliderPlan({ ...options, grid, waterColumnConfig, gliderId: missionConfig.gliders[0]?.id ?? 'glider-1' });
+  const motionConfig = createGliderMotionConfig({
+    ...(options.motionConfig ?? {}),
+    enabled: Boolean(options.motionAware ?? options.motionConfig?.enabled ?? options.motionConfig?.motionAware ?? false),
+    motionAware: Boolean(options.motionAware ?? options.motionConfig?.motionAware ?? options.motionConfig?.enabled ?? false),
+    motionModelId: options.motionModelId ?? options.motionModel ?? options.motionConfig?.motionModelId,
+    controlStepSeconds: options.controlStepSeconds ?? options.controlStep ?? options.motionConfig?.controlStepSeconds,
+    gliderSpeed: options.gliderSpeed ?? missionConfig.gliders[0]?.speed ?? options.motionConfig?.gliderSpeed,
+    headingRateLimitDegreesPerSecond: options.headingRateLimitDegreesPerSecond ?? options.headingRateLimit ?? options.motionConfig?.controlLimits?.headingRateLimitDegreesPerSecond,
+    driftGain: options.driftGain ?? options.motionConfig?.driftGain,
+    energyBudget: options.energyBudget ?? missionConfig.gliders[0]?.energyBudget ?? options.motionConfig?.energyBudget,
+    sampleIntervalSeconds: options.sampleIntervalSeconds ?? options.motionConfig?.sampleIntervalSeconds
+  });
+  missionConfig.world ??= {};
+  missionConfig.world.motionConfig = motionConfig;
   return {
     type: 'anchor.headless.runtime-config',
     version: HEADLESS_RUNTIME_CONFIG_VERSION,
@@ -48,6 +63,8 @@ export function createDefaultHeadlessRuntimeConfig(options = {}) {
     fields: HEADLESS_RUNTIME_FIELD_IDS.slice(),
     missionConfig,
     plan,
+    motionAware: motionConfig.enabled === true || motionConfig.motionAware === true,
+    motionConfig,
     sensorNoise: finiteNumber(options.sensorNoise, 0.03),
     stepDistance: finiteNumber(options.stepDistance, 1.25),
     priorityWeights: {
@@ -66,12 +83,15 @@ export function createDefaultHeadlessRuntimeConfig(options = {}) {
       implementsNewPlanner: false,
       implementsMARL: false,
       implementsPythonSimulator: false,
-      implementsFull3DPlanning: false
+      implementsFull3DPlanning: false,
+      usesMotionDynamics: motionConfig.enabled === true || motionConfig.motionAware === true,
+      usesWebGPUFluid: false
     },
     notes: [
       'H1 is a deterministic educational headless runtime scaffold, not a calibrated ocean model.',
       'P11 adds 2.5D depth-layer sampling metadata; it does not add full 3D planning.',
-      'Waypoint plans are executed as supplied; H1 does not optimize or generate routes.'
+      'Waypoint plans are executed as supplied; H1 does not optimize or generate routes.',
+      'MOTION-R1 motion-aware execution is optional and deterministic; it does not add a route planner or WebGPU.'
     ]
   };
 }
@@ -96,6 +116,7 @@ export function createDefaultHeadlessMissionConfig(options = {}) {
       depthLayers: grid.depthLayers,
       depthLayerModel: 'top-down-2p5d',
       waterColumnConfig,
+      motionConfig: options.motionConfig ?? null,
       timeStepSeconds: 60,
       durationSeconds: 3600,
       coordinateFrame: grid.coordinateFrame,
@@ -199,10 +220,14 @@ export function validateHeadlessRuntimeConfig(config = {}) {
   if (!missionValidation.valid) errors.push(...missionValidation.errors.map((entry) => `missionConfig: ${entry}`));
   const waterColumnValidation = validateWaterColumnConfig(config?.waterColumnConfig ?? config?.missionConfig?.world?.waterColumnConfig ?? {});
   if (!waterColumnValidation.valid) errors.push(...waterColumnValidation.errors.map((entry) => `waterColumnConfig: ${entry}`));
+  const motionValidation = validateGliderMotionConfig(config?.motionConfig ?? createGliderMotionConfig());
+  if (!motionValidation.valid) errors.push(...motionValidation.errors.map((entry) => `motionConfig: ${entry}`));
+  warnings.push(...motionValidation.warnings.map((entry) => `motionConfig: ${entry}`));
   if (config?.boundary?.implementsPythonSimulator) warnings.push('H1 must not claim a Python simulator package.');
   if (config?.boundary?.implementsNewPlanner) warnings.push('H1 must not claim a new planner.');
   if (config?.boundary?.implementsMARL) warnings.push('H1 must not claim MARL/RL.');
   if (config?.boundary?.implementsFull3DPlanning) warnings.push('P11 must not claim full 3D route planning.');
+  if (config?.boundary?.usesWebGPUFluid) warnings.push('MOTION-R1 must not claim WebGPU fluid integration.');
   return { valid: errors.length === 0, status: errors.length ? 'FAIL' : warnings.length ? 'WARN' : 'PASS', errors, warnings };
 }
 
@@ -218,6 +243,8 @@ export function headlessRuntimeConfigSummary(configInput = {}) {
     depthLayers: config.grid.depthLayers.slice(),
     waterColumn: waterColumnConfigSummary(config.waterColumnConfig),
     diveProfileId: config.waterColumnConfig?.diveProfileId ?? config.missionConfig?.gliders?.[0]?.diveProfileId ?? null,
+    motion: gliderMotionConfigSummary(config.motionConfig),
+    motionAware: config.motionAware === true,
     fieldCount: config.fields.length,
     waypointCount: config.plan.waypoints.length,
     gliderCount: config.missionConfig.gliders.length,

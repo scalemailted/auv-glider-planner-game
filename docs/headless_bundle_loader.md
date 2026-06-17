@@ -153,3 +153,7 @@ P10 adds adaptive science-diagnosis context, mission-manager rationale, next-leg
 P11 bundles may include `water_column_summary.json` and `depth_layer_priority.json`, and combined bundles may embed `waterColumnSummary` and `depthLayerPrioritySummary`. The Headless Bundle Viewer displays Water Column and Depth-Layer Priority sections and exposes debug keys such as `hasWaterColumnSummary`, `waterColumnLayerIds`, `diveProfileId`, `observationCountsByDepth`, `verticalCoverage`, and `bestDepthLayerCounts`.
 
 2.5D means the tactical map remains top-down, while each cell can contain simplified depth layers. Dive profile controls which layer the glider samples along the route. Recommended dive profile is context for the next leg; it does not generate a route. P11 does not add full 3D planning, new route planning, production data assimilation, or MARL/RL.
+
+## MOTION-R1 Motion Dynamics Section
+
+Bundles may include `motion_trajectory.json`, `control_trace.json`, `motion_diagnostics.json`, or combined-bundle `motionTrajectory`, `controlTrace`, and `motionDiagnostics`. The Headless Bundle Viewer shows a Motion Dynamics section with motion model, planned/realized distance, mean/max track error, drift, current assist/opposition, cross-current, energy used, sampled point count, arrival status, and warnings. Public motion trajectory exports redact hidden-truth field identifiers and truth values.

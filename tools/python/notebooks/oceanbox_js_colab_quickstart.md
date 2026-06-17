@@ -126,3 +126,7 @@ Colab/Python analyzes the bundle/report or calls Node. It does not reimplement s
 Science diagnosis informs the mission-manager objective recommendation. It does not generate a route. Forecast correction means the expected field existed but was wrong. Hidden event hypothesis means observations may indicate a phenomenon not represented in the forecast. The player or solver still plans the route.
 
 P10 adds adaptive science-diagnosis context, mission-manager rationale, next-leg handoff metadata, objective-history display fields, and public-safe headless/browser summaries. It does not implement a new planner, scoring redesign, production data assimilation, GP/GMRF production inference, calibrated ocean forecast, Python simulator, or MARL/RL. Node/OceanBox-JS remains the canonical non-browser runtime; Python/Colab analyze artifacts or call Node.
+
+## MOTION-R1 Motion Artifacts
+
+When a bundle includes MOTION-R1 fields, Colab can read `bundle["motionTrajectory"]`, `bundle["controlTrace"]`, and `bundle["motionDiagnostics"]` with standard-library JSON. Treat these as exported Node/OceanBox-JS artifacts for analysis. Do not reimplement the simulator in Python; call Node/OceanBox-JS when deterministic reruns are needed.

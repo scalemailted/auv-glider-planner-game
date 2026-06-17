@@ -7,6 +7,7 @@ import { headlessScoreReportSummary } from './runtime/HeadlessScoring.js';
 import { roundtripReportTypeMetadata } from './HeadlessRoundtripTypes.js';
 import { scienceDiscoverySummary } from '../science/ScienceDiscoveryLifecycle.js';
 import { normalizeWaterColumnConfig, normalizeWaterColumnProfileId, WATER_COLUMN_PROFILE_IDS } from '../science/WaterColumnSchema.js';
+import { trajectoryMotionSummary } from '../motion/GliderTrajectorySimulator.js';
 
 export const HEADLESS_ROUNDTRIP_VERSION = 'headless-solver-packet-roundtrip-h3';
 
@@ -28,7 +29,17 @@ export function buildHeadlessSolverPacketRoundtrip(packet, plan, options = {}) {
   }
 
   const runtimePlan = adaptAnchorPlanToHeadlessRuntimePlan(plan, selectedAgentPlan, world, { agentId: options.agentId });
-  const runtimeConfig = buildRoundtripRuntimeConfig(context, world, runtimePlan, { seed: options.seed });
+  const runtimeConfig = buildRoundtripRuntimeConfig(context, world, runtimePlan, {
+    seed: options.seed,
+    motionAware: options.motionAware,
+    motionConfig: options.motionConfig,
+    motionModelId: options.motionModelId ?? options.motionModel,
+    controlStepSeconds: options.controlStepSeconds ?? options.controlStep,
+    gliderSpeed: options.gliderSpeed,
+    headingRateLimitDegreesPerSecond: options.headingRateLimitDegreesPerSecond ?? options.headingRateLimit,
+    driftGain: options.driftGain,
+    sampleIntervalSeconds: options.sampleIntervalSeconds
+  });
   const episode = runHeadlessMissionWithPlan(runtimeConfig, runtimePlan);
   const report = buildHeadlessRoundtripReport({
     context,
@@ -170,6 +181,10 @@ export function adaptAnchorPlanToHeadlessRuntimePlan(plan, selectedAgentPlan, wo
     generatesRoute: false,
     diveProfileId,
     waypoints,
+    desiredSpeedThroughWater: finiteOrNull(selectedAgentPlan.desiredSpeedThroughWater ?? plan?.desiredSpeedThroughWater),
+    sampleIntervalSeconds: finiteOrNull(selectedAgentPlan.sampleIntervalSeconds ?? plan?.sampleIntervalSeconds),
+    surfaceAtEnd: Boolean(selectedAgentPlan.surfaceAtEnd ?? plan?.surfaceAtEnd ?? false),
+    motionIntent: selectedAgentPlan.motionIntent ?? plan?.motionIntent ?? null,
     notes: [
       'H3 adapts a submitted anchor.plan into the existing Node headless waypoint-plan shape.',
       'This is plan execution compatibility, not a new route planner.'
@@ -177,7 +192,8 @@ export function adaptAnchorPlanToHeadlessRuntimePlan(plan, selectedAgentPlan, wo
   };
 }
 
-export function buildRoundtripRuntimeConfig(context, world, runtimePlan, { seed = null } = {}) {
+export function buildRoundtripRuntimeConfig(context, world, runtimePlan, options = {}) {
+  const { seed = null } = options;
   const agent = (world?.agents ?? []).find((candidate) => String(candidate.id ?? candidate.agentId) === String(runtimePlan.gliderId)) ?? {};
   const resolvedSeed = String(seed ?? context?.packet?.stochasticConfig?.seed ?? context?.packet?.seed ?? context?.replaySeedAnchor ?? context?.packet?.packetId ?? 'h3-roundtrip');
   const packetWaterColumnConfig = context?.packet?.waterColumnConfig ?? context?.packet?.planningData?.waterColumnConfig ?? context?.level?.world?.waterColumnConfig ?? null;
@@ -194,11 +210,18 @@ export function buildRoundtripRuntimeConfig(context, world, runtimePlan, { seed 
     width: Math.max(2, Number(world?.width ?? 12) || 12),
     height: Math.max(2, Number(world?.height ?? 8) || 8),
     gliderId: runtimePlan.gliderId,
-    gliderSpeed: Number(agent.maxSpeed ?? agent.speed ?? 1) || 1,
+    gliderSpeed: Number(options.gliderSpeed ?? runtimePlan.desiredSpeedThroughWater ?? agent.maxSpeed ?? agent.speed ?? 1) || 1,
     energyBudget: Number(agent.battery ?? agent.energyBudget ?? agent.maxBattery ?? 120) || 120,
     missionId: context?.mission?.missionId ?? 'solver-packet-roundtrip-headless-mission',
     informationAccessTier: context?.oracle ? 'oracle' : 'forecastOnly',
-    plan: runtimePlan
+    plan: runtimePlan,
+    motionAware: Boolean(options.motionAware ?? options.motionConfig?.enabled ?? options.motionConfig?.motionAware ?? context?.packet?.motionConfig?.enabled ?? context?.packet?.planningData?.motionConfig?.enabled ?? false),
+    motionConfig: options.motionConfig ?? context?.packet?.motionConfig ?? context?.packet?.planningData?.motionConfig ?? null,
+    motionModelId: options.motionModelId ?? context?.packet?.motionConfig?.motionModelId ?? context?.packet?.planningData?.motionConfig?.motionModelId ?? null,
+    controlStepSeconds: options.controlStepSeconds,
+    headingRateLimitDegreesPerSecond: options.headingRateLimitDegreesPerSecond,
+    driftGain: options.driftGain,
+    sampleIntervalSeconds: options.sampleIntervalSeconds ?? runtimePlan.sampleIntervalSeconds ?? null
   });
 }
 
@@ -208,6 +231,7 @@ export function buildHeadlessRoundtripReport({ context, world, packet, plan, sel
   const scoreSummary = headlessScoreReportSummary(episode.scoreReport);
   const scienceDiagnosticsSummary = scienceDiscoverySummary(episode.scienceDiagnostics ?? episode.scienceDiscovery ?? {});
   const waterColumnSummary = episode.waterColumnSummary ?? null;
+  const motionSummary = episode.motionTrajectory ? trajectoryMotionSummary(episode.motionTrajectory) : null;
   return {
     schemaVersion: '1.0',
     ...roundtripReportTypeMetadata(),
@@ -239,7 +263,10 @@ export function buildHeadlessRoundtripReport({ context, world, packet, plan, sel
         waypointCount: runtimePlan.waypoints.length,
         routeAuthority: runtimePlan.routeAuthority,
         generatesRoute: runtimePlan.generatesRoute,
-        diveProfileId: runtimePlan.diveProfileId ?? null
+        diveProfileId: runtimePlan.diveProfileId ?? null,
+        desiredSpeedThroughWater: runtimePlan.desiredSpeedThroughWater ?? null,
+        sampleIntervalSeconds: runtimePlan.sampleIntervalSeconds ?? null,
+        surfaceAtEnd: runtimePlan.surfaceAtEnd === true
       },
       usesNodeHeadlessRuntime: true,
       usesProvidedPlan: true,
@@ -247,6 +274,9 @@ export function buildHeadlessRoundtripReport({ context, world, packet, plan, sel
       usesBrowserOfficialScoring: false,
       usesPythonSimulator: false,
       usesMARL: false,
+      usesMotionDynamics: Boolean(motionSummary),
+      usesWebGPUFluid: false,
+      motionModelId: motionSummary?.motionModelId ?? runtimeConfig.motionConfig?.motionModelId ?? null,
       usesPacketVisibleFieldsForPlanningValidation: true,
       usesSyntheticRuntimeFieldsForExecution: true
     },
@@ -256,10 +286,16 @@ export function buildHeadlessRoundtripReport({ context, world, packet, plan, sel
       observationCount: episode.observations?.length ?? 0,
       trackPointCount: episode.tracks?.length ?? 0,
       scoreSummary,
-      waterColumnSummary
+      waterColumnSummary,
+      motionSummary,
+      plannedVsRealized: episode.plannedVsRealized ?? episode.motionTrajectory?.plannedVsRealized ?? null,
+      motionDiagnostics: episode.motionDiagnostics ?? episode.motionTrajectory?.motionDiagnostics ?? null
     },
     scienceDiagnosticsSummary,
     waterColumnSummary,
+    motionSummary,
+    plannedVsRealized: episode.plannedVsRealized ?? episode.motionTrajectory?.plannedVsRealized ?? null,
+    motionDiagnostics: episode.motionDiagnostics ?? episode.motionTrajectory?.motionDiagnostics ?? null,
     output: {
       outputDir,
       combinedBundlePath: outputDir ? `${outputDir.replace(/\\/g, '/')}/bundle.json` : null,
@@ -282,7 +318,9 @@ export function buildHeadlessRoundtripReport({ context, world, packet, plan, sel
       browserOfficialScoring: false,
       sciencePrimaryDiagnosis: scienceDiagnosticsSummary.primaryDiagnosis ?? null,
       waterColumnVerticalCoverage: waterColumnSummary?.verticalCoverage ?? null,
-      diveProfileId: waterColumnSummary?.diveProfile?.profileId ?? runtimePlan.diveProfileId ?? null
+      diveProfileId: waterColumnSummary?.diveProfile?.profileId ?? runtimePlan.diveProfileId ?? null,
+      motionModelId: motionSummary?.motionModelId ?? null,
+      usesMotionDynamics: Boolean(motionSummary)
     },
     boundary: [
       'Node/OceanBox-JS validates and executes a submitted plan through the H1 headless runtime.',
@@ -290,6 +328,7 @@ export function buildHeadlessRoundtripReport({ context, world, packet, plan, sel
       'Headless score is educational and not official browser scoring.',
       'P9 science diagnostics distinguish forecast correction from hidden-event hypotheses using transparent educational heuristics.',
       'P11 water-column context is 2.5D depth-layer sampling, not full 3D planning or a new planner.',
+      'MOTION-R1 motion dynamics compares submitted route intent with realized trajectory; it does not generate a route or use WebGPU.',
       'H3/P9/P11 does not add a Python simulator, new route planner, calibrated ocean forecast, backend service, production data assimilation, or MARL/RL.'
     ]
   };
@@ -364,4 +403,3 @@ function finiteOrNull(value) {
 function round(value) {
   return Number(Number(value ?? 0).toFixed(6));
 }
-

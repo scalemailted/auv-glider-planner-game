@@ -31,6 +31,9 @@ export function buildHeadlessRoundtripBrowserSummary(bundleOrReport = {}) {
     usesPythonSimulator: report.runtime?.usesPythonSimulator === true,
     usesNewPlanner: report.runtime?.usesNewPlanner === true,
     usesMARL: report.runtime?.usesMARL === true,
+    usesMotionDynamics: report.runtime?.usesMotionDynamics === true,
+    usesWebGPUFluid: report.runtime?.usesWebGPUFluid === true,
+    motionSummary: report.motionSummary ?? null,
     notA: ['not browser official score', 'not Python simulator', 'not route planner', 'not MARL/RL']
   };
 }
@@ -44,6 +47,7 @@ export function validateHeadlessRoundtripExport(report = {}) {
   if (report?.runtime?.usesBrowserOfficialScoring === true) errors.push('Roundtrip report must not claim official browser scoring.');
   if (report?.runtime?.usesNewPlanner === true) errors.push('Roundtrip report must not claim a new planner.');
   if (report?.runtime?.usesMARL === true) errors.push('Roundtrip report must not claim MARL/RL.');
+  if (report?.runtime?.usesWebGPUFluid === true) errors.push('Roundtrip report must not claim WebGPU fluid integration.');
   if (report?.summary?.hiddenTruthExported === true && report?.visibilityValidation?.oracleMode !== true) warnings.push('Hidden truth exported outside explicit oracle mode.');
   return { ok: errors.length === 0, status: errors.length ? 'FAIL' : warnings.length ? 'WARN' : 'PASS', errors, warnings };
 }

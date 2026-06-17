@@ -15,6 +15,7 @@ import { CoupledFieldsDemoScene } from './scenes/CoupledFieldsDemoScene.js';
 import { UncertaintyForecastDemoScene } from './scenes/UncertaintyForecastDemoScene.js';
 import { SamplingPriorityDemoScene } from './scenes/SamplingPriorityDemoScene.js';
 import { FlowCoupledSamplingDemoScene } from './scenes/FlowCoupledSamplingDemoScene.js';
+import { MotionPlanningDemoScene } from './scenes/MotionPlanningDemoScene.js';
 import { BenchmarkModeOverviewScene } from './scenes/BenchmarkModeOverviewScene.js';
 import { HeadlessBundleViewerScene } from './scenes/HeadlessBundleViewerScene.js';
 import { LoadLevelByIdScene } from './scenes/LoadLevelByIdScene.js';
@@ -64,6 +65,7 @@ export class PhaserGameApp {
         UncertaintyForecastDemoScene,
         SamplingPriorityDemoScene,
         FlowCoupledSamplingDemoScene,
+        MotionPlanningDemoScene,
         BenchmarkModeOverviewScene,
         HeadlessBundleViewerScene,
         LoadLevelJsonScene,
@@ -254,6 +256,7 @@ function sceneKey(name) {
     uncertaintyForecastDemo: 'UncertaintyForecastDemoScene',
     samplingPriorityDemo: 'SamplingPriorityDemoScene',
     flowCoupledSamplingDemo: 'FlowCoupledSamplingDemoScene',
+    motionPlanningDemo: 'MotionPlanningDemoScene',
     benchmarkModeOverview: 'BenchmarkModeOverviewScene',
     headlessBundleViewer: 'HeadlessBundleViewerScene'
   };

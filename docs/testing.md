@@ -499,3 +499,7 @@ node tools/js/smoke_headless_water_column_viewer_panel.mjs
 node tools/js/audit_water_column_public_safety.mjs
 node tools/js/audit_water_column_no_3d_planning_claims.mjs
 ```
+
+## MOTION-R1 Motion Dynamics Checks
+
+For MOTION-R1, run the focused motion smokes: `smoke_glider_motion_schema`, `smoke_motion_environment_sampler`, `smoke_glider_dynamics_model`, `smoke_plan_control_adapter`, `smoke_glider_trajectory_simulator`, `smoke_motion_diagnostics`, `smoke_headless_motion_runtime`, `smoke_headless_roundtrip_motion`, `smoke_headless_motion_viewer_panel`, `smoke_motion_planning_demo_scene`, and `audit_motion_planning_boundaries`. The focused Playwright grep should open Simulation Lab, launch Motion Planning Demo, verify path-planning vs motion-planning copy, inspect `ANCHOR_MOTION_PLANNING_DEMO_DEBUG`, then confirm Headless Bundle Viewer, Planner Benchmark, and Adaptive Benchmark still open.

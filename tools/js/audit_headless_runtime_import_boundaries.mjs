@@ -23,6 +23,12 @@ files.push(
   'src/core/science/DiveProfileModel.js',
   'src/core/science/WaterColumnObservationModel.js',
   'src/core/science/WaterColumnPriorityModel.js',
+  'src/core/motion/GliderMotionSchema.js',
+  'src/core/motion/MotionEnvironmentSampler.js',
+  'src/core/motion/GliderDynamicsModel.js',
+  'src/core/motion/PlanControlAdapter.js',
+  'src/core/motion/MotionDiagnostics.js',
+  'src/core/motion/GliderTrajectorySimulator.js',
   'tools/js/headless_oceanbox.mjs'
 );
 
@@ -53,4 +59,3 @@ for (const file of files) {
 
 assert.deepEqual(violations, [], `Headless runtime import boundary violations:\n${violations.join('\n')}`);
 console.log('Headless runtime import boundary audit passed');
-

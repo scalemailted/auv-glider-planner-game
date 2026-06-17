@@ -271,7 +271,8 @@ export class MainMenuScene extends PhaserScene {
           hubActionHtml('coupled-fields', 'Coupled Fields Demo', 'Inspect known process, flow, constraints, and oracle objective.'),
           hubActionHtml('uncertainty-forecast-demo', 'Uncertainty / Forecast Demo', 'Compare truth, forecast, belief, uncertainty, and observations.'),
           hubActionHtml('sampling-priority-demo', 'Sampling Priority Demo', 'Turn belief, uncertainty, boundaries, hazards, and hidden-event suspicion into A_global.'),
-          hubActionHtml('flow-coupled-sampling-demo', 'Flow-Coupled Sampling Demo', 'Evaluate Q_glider action value under currents, reachability, energy, and redundancy.')
+          hubActionHtml('flow-coupled-sampling-demo', 'Flow-Coupled Sampling Demo', 'Evaluate Q_glider action value under currents, reachability, energy, and redundancy.'),
+          hubActionHtml('motion-planning-demo', 'Motion Planning Demo', 'Compare planned waypoint intent with realized glider motion under currents and control limits.')
         ])}
         ${hubGroupHtml('Benchmark Modes', [
           hubActionHtml('benchmark-planner', 'Planner Benchmark', 'Objective fixed; player or solver chooses the route.', 'primary'),
@@ -327,6 +328,7 @@ export class MainMenuScene extends PhaserScene {
       'uncertainty-forecast-demo': () => scene.start('UncertaintyForecastDemoScene'),
       'sampling-priority-demo': () => scene.start('SamplingPriorityDemoScene'),
       'flow-coupled-sampling-demo': () => scene.start('FlowCoupledSamplingDemoScene'),
+      'motion-planning-demo': () => scene.start('MotionPlanningDemoScene'),
       'benchmark-planner': () => scene.start('BenchmarkModeOverviewScene', { benchmarkMode: 'plannerBenchmark' }),
       'benchmark-adaptive': () => scene.start('BenchmarkModeOverviewScene', { benchmarkMode: 'adaptiveBenchmark' }),
       'benchmark-full-autonomy': () => scene.start('BenchmarkModeOverviewScene', { benchmarkMode: 'fullAutonomyBenchmark' }),
@@ -884,4 +886,3 @@ function formatScore(value) {
   const number = Number(value);
   return Number.isFinite(number) ? number.toFixed(1) : 'N/A';
 }
-

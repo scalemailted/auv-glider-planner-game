@@ -11,7 +11,9 @@ export function classifySolverPacketArtifact(packet = {}) {
     packetId: packet?.packetId ?? null,
     missionId: packet?.missionId ?? packet?.mission?.missionId ?? null,
     visibility: packet?.visibility ?? {},
-    expectedPlanFormat: packet?.expectedPlanFormat ?? null
+    expectedPlanFormat: packet?.expectedPlanFormat ?? null,
+    motionConfigPresent: Boolean(packet?.motionConfig ?? packet?.planningData?.motionConfig),
+    allowedControlModes: packet?.allowedControlModes ?? packet?.planningData?.allowedControlModes ?? []
   };
 }
 
@@ -48,6 +50,9 @@ export function solverPacketHeadlessCompatibilitySummary(packet, options = {}) {
     waterColumnConfigPresent: Boolean(context.waterColumnConfig),
     depthLayers: context.waterColumnConfig?.depthLayerIds ?? [],
     diveProfileId: context.waterColumnConfig?.diveProfileId ?? null,
+    motionConfigPresent: Boolean(context.packet?.motionConfig ?? context.packet?.planningData?.motionConfig),
+    motionModelId: context.packet?.motionConfig?.motionModelId ?? context.packet?.planningData?.motionConfig?.motionModelId ?? null,
+    allowedControlModes: context.packet?.allowedControlModes ?? context.packet?.planningData?.allowedControlModes ?? [],
     agentCount: world.agents.length,
     visibilityStatus: visibility.status,
     hiddenTruthIncluded: visibility.hiddenTruthIncluded,

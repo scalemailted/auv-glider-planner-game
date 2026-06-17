@@ -166,6 +166,34 @@ export function validateHeadlessDepthLayerPriority(priority = null, summary = nu
   if (payload?.usesFull3DPlanning === true) failures.push('Depth-layer priority must not claim full 3D planning.');
   return result(checks, warnings, failures, failures.length ? 'high' : warnings.length ? 'medium' : 'low');
 }
+export function validateHeadlessMotionArtifacts(trajectory = null, diagnostics = null) {
+  const checks = [];
+  const warnings = [];
+  const failures = [];
+  if (!trajectory && !diagnostics) {
+    checks.push({ id: 'motion-artifacts-optional', ok: true, detail: 'not present' });
+    return result(checks, warnings, failures, 'low');
+  }
+  if (trajectory) {
+    checks.push({ id: 'motion-trajectory-present', ok: typeof trajectory === 'object' });
+    if (trajectory?.type !== 'anchor.motion.trajectory') failures.push(`Motion trajectory type should be anchor.motion.trajectory, got ${trajectory?.type ?? 'missing'}.`);
+    if (!Array.isArray(trajectory?.realizedTrack)) failures.push('Motion trajectory must include realizedTrack[].');
+    if (!Array.isArray(trajectory?.controlCommands)) warnings.push('Motion trajectory should include controlCommands[].');
+    if (trajectory?.generatedRoute === true) failures.push('Motion trajectory must not claim it generated a route.');
+    if (trajectory?.usesNewPlanner === true) failures.push('Motion trajectory must not claim a new planner.');
+    if (trajectory?.usesWebGPUFluid === true) failures.push('Motion trajectory must not claim WebGPU fluid integration.');
+    if (trajectory?.usesMARL === true) failures.push('Motion trajectory must not claim MARL/RL.');
+    if (JSON.stringify(trajectory).includes('T_hiddenTruth')) failures.push('Public motion trajectory must not include hidden truth field identifiers.');
+  }
+  if (diagnostics) {
+    checks.push({ id: 'motion-diagnostics-present', ok: typeof diagnostics === 'object' });
+    if (diagnostics?.type && diagnostics.type !== 'anchor.motion.diagnostics') failures.push(`Motion diagnostics type should be anchor.motion.diagnostics, got ${diagnostics.type}.`);
+    if (diagnostics?.usesNewPlanner === true) failures.push('Motion diagnostics must not claim a new planner.');
+    if (diagnostics?.usesWebGPUFluid === true) failures.push('Motion diagnostics must not claim WebGPU fluid integration.');
+    if (diagnostics?.usesMARL === true) failures.push('Motion diagnostics must not claim MARL/RL.');
+  }
+  return result(checks, warnings, failures, failures.length ? 'high' : warnings.length ? 'medium' : 'low');
+}
 export function validateHeadlessReplay(replay = null) {
   const checks = [];
   const warnings = [];
@@ -189,6 +217,7 @@ export function validateHeadlessBundle(bundle = {}) {
     roundtripReport: validateHeadlessRoundtripReport(bundle.roundtripReport),
     waterColumnSummary: validateHeadlessWaterColumnSummary(bundle.waterColumnSummary ?? bundle.episode?.waterColumnSummary),
     depthLayerPriority: validateHeadlessDepthLayerPriority(bundle.depthLayerPriority, bundle.depthLayerPrioritySummary ?? bundle.episode?.depthLayerPrioritySummary),
+    motionArtifacts: validateHeadlessMotionArtifacts(bundle.motionTrajectory ?? bundle.episode?.motionTrajectory, bundle.motionDiagnostics ?? bundle.episode?.motionDiagnostics ?? bundle.episode?.motionTrajectory?.motionDiagnostics),
     replay: validateHeadlessReplay(bundle.replay)
   };
   const checks = Object.entries(validations).flatMap(([scope, validation]) => validation.checks.map((check) => ({ ...check, scope })));
@@ -213,6 +242,8 @@ export function validateHeadlessBundle(bundle = {}) {
       hasScienceDiagnostics: Boolean(bundle.scienceDiagnostics ?? bundle.episode?.scienceDiagnostics),
       hasWaterColumnSummary: Boolean(bundle.waterColumnSummary ?? bundle.episode?.waterColumnSummary),
       hasDepthLayerPriority: Boolean(bundle.depthLayerPriority ?? bundle.depthLayerPrioritySummary ?? bundle.episode?.depthLayerPrioritySummary)
+      ,hasMotionTrajectory: Boolean(bundle.motionTrajectory ?? bundle.episode?.motionTrajectory),
+      hasMotionDiagnostics: Boolean(bundle.motionDiagnostics ?? bundle.episode?.motionDiagnostics ?? bundle.episode?.motionTrajectory?.motionDiagnostics)
     }
   };
 }
@@ -243,4 +274,3 @@ function oracleVisible(payload = {}, fieldId) {
   const tier = payload?.fieldVisibility?.[fieldId] ?? payload?.visibilityTier;
   return ['oracle', 'debugAll', 'hiddenTruth'].includes(tier);
 }
-

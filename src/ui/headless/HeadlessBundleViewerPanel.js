@@ -15,6 +15,7 @@ export function headlessBundleViewerPanelHtml(viewModel = {}) {
     ${headlessBundleFieldsHtml(viewModel)}
     ${headlessBundleObservationsHtml(viewModel)}
     ${headlessBundleTracksHtml(viewModel)}
+    ${headlessBundleMotionDynamicsHtml(viewModel)}
     ${headlessBundleScoreHtml(viewModel)}
     ${headlessBundleRoundtripHtml(viewModel)}
     ${headlessBundleWaterColumnHtml(viewModel)}
@@ -110,6 +111,32 @@ export function headlessBundleTracksHtml(viewModel = {}) {
   `;
 }
 
+export function headlessBundleMotionDynamicsHtml(viewModel = {}) {
+  const summary = viewModel.motionSummary ?? {};
+  if (!summary.present) return '';
+  return `
+    <section class="console-section" data-headless-motion-dynamics>
+      <h2>Motion Dynamics</h2>
+      <div class="cell-inspector-metrics">
+        ${metricHtml('Model', summary.motionModelId)}
+        ${metricHtml('Planned Distance', formatNumber(summary.plannedDistance))}
+        ${metricHtml('Realized Distance', formatNumber(summary.realizedDistance))}
+        ${metricHtml('Mean Track Error', formatNumber(summary.meanTrackError))}
+        ${metricHtml('Max Track Error', formatNumber(summary.maxTrackError))}
+        ${metricHtml('Drift Distance', formatNumber(summary.driftDistance))}
+        ${metricHtml('Current Assist', formatNumber(summary.currentAssistMean))}
+        ${metricHtml('Current Opposition', formatNumber(summary.currentOppositionMean))}
+        ${metricHtml('Cross-Current', formatNumber(summary.crossCurrentMean))}
+        ${metricHtml('Energy Used', formatNumber(summary.energyUsed))}
+        ${metricHtml('Samples', summary.sampledPointCount ?? 0)}
+        ${metricHtml('Arrival', summary.arrivalStatus ?? 'unknown')}
+      </div>
+      <div class="hud-muted">Motion dynamics compares the commanded route with the realized trajectory under currents and control limits.</div>
+      <div class="hud-muted">This is motion-aware execution, not a new route planner.</div>
+      <div class="hud-muted">Headless motion score remains educational and does not replace browser official scoring.</div>
+    </section>
+  `;
+}
 export function headlessBundleScoreHtml(viewModel = {}) {
   const summary = viewModel.scoreSummary ?? {};
   return `

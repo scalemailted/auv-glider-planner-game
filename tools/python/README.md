@@ -114,3 +114,7 @@ After Node writes `runs/h3-roundtrip/bundle.json` and `roundtrip_report.json`, o
 Science diagnosis informs the mission-manager objective recommendation. It does not generate a route. Forecast correction means the expected field existed but was wrong. Hidden event hypothesis means observations may indicate a phenomenon not represented in the forecast. The player or solver still plans the route.
 
 P10 adds adaptive science-diagnosis context, mission-manager rationale, next-leg handoff metadata, objective-history display fields, and public-safe headless/browser summaries. It does not implement a new planner, scoring redesign, production data assimilation, GP/GMRF production inference, calibrated ocean forecast, Python simulator, or MARL/RL. Node/OceanBox-JS remains the canonical non-browser runtime; Python/Colab analyze artifacts or call Node.
+
+## MOTION-R1 Artifact Analysis
+
+Python/Colab workflows may inspect MOTION-R1 JSON artifacts such as `motionTrajectory`, `controlTrace`, and `motionDiagnostics` from Node/OceanBox-JS bundles. Python remains an artifact-analysis or Node-calling workflow; no Python simulator is added. The JavaScript runtime remains canonical for deterministic motion replay.

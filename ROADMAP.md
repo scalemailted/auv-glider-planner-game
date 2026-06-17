@@ -282,3 +282,7 @@ Current boundaries:
 - `ROADMAP.md` is the strategic direction.
 - Individual feature docs explain implemented details and boundaries.
 - Future roadmap items should be checked against smoke tests, current docs, and export contracts before being treated as implemented.
+
+## MOTION-R1 Execution Model Checkpoint
+
+MOTION-R1 is implemented as a core execution-model layer plus a Simulation Lab sandbox, not as a fourth authority mode. Planner Benchmark, Adaptive Benchmark, and Full Autonomy Benchmark remain the authority modes. The motion layer represents planned waypoints, control commands, deterministic glider state updates, realized trajectories, sampled observations, motion diagnostics, and public-safe bundle summaries. Future ENV/GFX work may improve bathymetry/depth visualization or explore WebGPU fluid coupling, but Node/OceanBox-JS remains canonical for deterministic replay and artifact generation.

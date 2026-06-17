@@ -353,6 +353,54 @@ test('Benchmark modes overview opens from Simulation Lab', async ({ page }) => {
   await expect.poll(() => page.evaluate(() => window.anchorGame.phaser.scene.getScene('FlowCoupledSamplingDemoScene').sys.isActive())).toBe(true);
   await expect(page.locator('#mission-console')).toContainText('Flow-Coupled Sampling Demo');
 });
+test('Motion Planning Demo opens from Simulation Lab and preserves benchmark/headless routes', async ({ page }) => {
+  await page.goto('/');
+  await expect(page.locator('#main-menu-hub')).toBeVisible();
+  await openMainMenuHubSection(page, 'simulation');
+  const simulationHub = page.locator('#main-menu-hub[data-hub-view="simulation"]');
+  await expect(simulationHub).toContainText('Motion Planning Demo');
+
+  await simulationHub.locator('[data-action="motion-planning-demo"]').click();
+  await expect.poll(() => page.evaluate(() => window.anchorGame.phaser.scene.getScene('MotionPlanningDemoScene').sys.isActive())).toBe(true);
+  await expect(page.locator('#mission-console')).toContainText('Motion Planning Demo');
+  await expect(page.locator('#mission-console')).toContainText('Path planning');
+  await expect(page.locator('#mission-console')).toContainText('Motion planning');
+  await expect(page.locator('#mission-console')).toContainText('realized trajectory');
+  await expect(page.locator('#mission-console')).toContainText('currents');
+  await expect(page.locator('#mission-console')).toContainText('Glider Speed');
+  await expect(page.locator('#mission-console')).toContainText('Drift Gain');
+  await expect(page.locator('#mission-console')).toContainText('Dive Profile');
+  await expect(page.locator('#mission-console')).toContainText('Motion dynamics does not generate a route');
+  await expect(page.locator('#mission-console')).toContainText('WebGPU fluid coupling is future/optional');
+  await expect.poll(() => page.evaluate(() => window.ANCHOR_MOTION_PLANNING_DEMO_DEBUG?.usesMotionDynamics)).toBe(true);
+  await expect.poll(() => page.evaluate(() => window.ANCHOR_MOTION_PLANNING_DEMO_DEBUG?.usesNewPlanner)).toBe(false);
+  await expect.poll(() => page.evaluate(() => window.ANCHOR_MOTION_PLANNING_DEMO_DEBUG?.usesWebGPUFluid)).toBe(false);
+  await expect.poll(() => page.evaluate(() => window.ANCHOR_MOTION_PLANNING_DEMO_DEBUG?.usesMARL)).toBe(false);
+  await expect.poll(() => page.evaluate(() => window.ANCHOR_MOTION_PLANNING_DEMO_DEBUG?.changesScoring)).toBe(false);
+
+  await page.locator('#mission-console [data-action="menu"]').click();
+  await openMainMenuHubSection(page, 'simulation');
+  await expect(page.locator('#main-menu-hub[data-hub-view="simulation"]')).toContainText('Headless Bundle Viewer');
+  await page.locator('#main-menu-hub [data-action="headless-bundle-viewer"]').click();
+  await expect.poll(() => page.evaluate(() => window.anchorGame.phaser.scene.getScene('HeadlessBundleViewerScene').sys.isActive())).toBe(true);
+  await expect(page.locator('#mission-console')).toContainText('Headless Bundle Viewer');
+  await expect(page.locator('#mission-console [data-action="load-example-roundtrip"]')).toBeVisible();
+  await page.locator('#mission-console [data-action="load-example-roundtrip"]').click();
+  await expect(page.locator('#mission-console')).toContainText('Roundtrip Summary');
+  const hasMotionTrajectory = await page.evaluate(() => window.ANCHOR_HEADLESS_BUNDLE_DEBUG?.hasMotionTrajectory === true);
+  if (hasMotionTrajectory) {
+    await expect(page.locator('#mission-console')).toContainText('Motion Dynamics');
+  }
+
+  await page.locator('#mission-console [data-action="menu"]').click();
+  await launchFromMainMenuHub(page, 'simulation', 'benchmark-planner');
+  await expect.poll(() => page.evaluate(() => window.ANCHOR_BENCHMARK_MODE_DEBUG?.benchmarkMode)).toBe('plannerBenchmark');
+  await expect(page.locator('#mission-console')).toContainText('Planner Benchmark');
+  await page.locator('#mission-console [data-action="menu"]').click();
+  await launchFromMainMenuHub(page, 'simulation', 'benchmark-adaptive');
+  await expect.poll(() => page.evaluate(() => window.ANCHOR_BENCHMARK_MODE_DEBUG?.benchmarkMode)).toBe('adaptiveBenchmark');
+  await expect(page.locator('#mission-console')).toContainText('Adaptive Benchmark');
+});
 
 test('Headless Bundle Viewer opens from Simulation Lab and exports browser summary', async ({ page }) => {
   await page.goto('/');
@@ -3130,5 +3178,3 @@ async function cellCenter(page, x, y) {
     };
   }, { x, y });
 }
-
-

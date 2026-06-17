@@ -64,3 +64,7 @@ P10 adds adaptive science-diagnosis context, mission-manager rationale, next-leg
 Solver packets may include `waterColumnConfig`, and submitted plans may include optional `diveProfileId` at the plan, agent-plan, or waypoint level. Older plans without depth metadata remain valid and normalize to the default 2.5D profile.
 
 Roundtrip reports include `waterColumnSummary`; combined roundtrip bundles include `waterColumnSummary` and `depthLayerPrioritySummary`. Public roundtrips still omit hidden fields and keep hidden truth out of solver-visible artifacts. P11 adds depth-layer sampling context only; it does not add full 3D planning, a new planner, production data assimilation, Python simulation, calibrated vertical ocean modeling, or MARL/RL.
+
+## MOTION-R1 Motion-Aware Roundtrip
+
+Solver-packet roundtrips can opt into motion-aware execution. Old plans remain valid; plans may additionally provide `desiredSpeedThroughWater`, `diveProfileId`, `sampleIntervalSeconds`, `surfaceAtEnd`, or `motionIntent`. Reports may include `motionSummary`, `plannedVsRealized`, `motionDiagnostics`, and `motionModelId`. The roundtrip still executes a submitted plan through Node/OceanBox-JS; it does not add a route planner, WebGPU fluid runtime, Python simulator, official browser scoring, or MARL/RL.

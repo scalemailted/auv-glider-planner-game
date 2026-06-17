@@ -14,6 +14,8 @@ export function createHeadlessBundleManifest(episode, options = {}) {
   const hasScienceDiagnostics = Boolean(episode?.scienceDiagnostics);
   const hasWaterColumnSummary = Boolean(episode?.waterColumnSummary);
   const hasDepthLayerPriority = Boolean(episode?.depthLayerPriority);
+  const hasMotionTrajectory = Boolean(episode?.motionTrajectory);
+  const hasMotionDiagnostics = Boolean(episode?.motionDiagnostics ?? episode?.motionTrajectory?.motionDiagnostics);
   const combinedBundleType = roundtripReport ? HEADLESS_SOLVER_ROUNDTRIP_BUNDLE_TYPE : 'anchor.headless.bundle';
   const files = [
     fileEntry('manifest.json', 'manifest', 'anchor.headless.manifest', 'publicScenario', 'Bundle manifest.'),
@@ -36,6 +38,13 @@ export function createHeadlessBundleManifest(episode, options = {}) {
   if (hasDepthLayerPriority) {
     files.splice(9, 0, fileEntry('depth_layer_priority.json', 'depthLayerPriority', 'anchor.headless.depth-layer-priority', 'publicScenario', 'P11 public-safe depth-layer A_global priority and top-down collapse.'));
   }
+  if (hasMotionTrajectory) {
+    files.push(fileEntry('motion_trajectory.json', 'motionTrajectory', 'anchor.motion.trajectory', 'publicScenario', 'MOTION-R1 planned-vs-realized motion trajectory.'));
+    files.push(fileEntry('control_trace.json', 'controlTrace', 'anchor.motion.control-trace', 'publicScenario', 'MOTION-R1 controls adapted from provided waypoint intent; not a generated route.'));
+  }
+  if (hasMotionDiagnostics) {
+    files.push(fileEntry('motion_diagnostics.json', 'motionDiagnostics', 'anchor.motion.diagnostics', 'publicScenario', 'MOTION-R1 motion diagnostics and planned-vs-realized summary.'));
+  }
   if (includeHidden) {
     files.splice(3, 0, fileEntry('hidden_fields.json', 'hiddenFields', 'anchor.headless.field-pack', 'hiddenTruth', 'Hidden truth and oracle-only fields for instructor/debug use.'));
   }
@@ -50,6 +59,8 @@ export function createHeadlessBundleManifest(episode, options = {}) {
   if (hasScienceDiagnostics) jsonFiles.push('science_diagnostics.json');
   if (hasWaterColumnSummary) jsonFiles.push('water_column_summary.json');
   if (hasDepthLayerPriority) jsonFiles.push('depth_layer_priority.json');
+  if (hasMotionTrajectory) jsonFiles.push('motion_trajectory.json', 'control_trace.json');
+  if (hasMotionDiagnostics) jsonFiles.push('motion_diagnostics.json');
   if (combinedJson) jsonFiles.push('bundle.json');
   if (options.roundtripReport || episode?.roundtripReport) jsonFiles.push('roundtrip_report.json');
 
@@ -95,6 +106,9 @@ export function headlessBundleFiles(episode, options = {}) {
     'observations.csv': observationsCsv(episode.observations ?? []),
     'glider_tracks.json': stableJson({ type: 'anchor.headless.trajectory', version: 'headless-runtime-tracks-h1', tracks: episode.tracks ?? [] }),
     'glider_tracks.csv': tracksCsv(episode.tracks ?? []),
+    ...(episode.motionTrajectory ? { 'motion_trajectory.json': stableJson(publicMotionTrajectory(episode.motionTrajectory)) } : {}),
+    ...(episode.motionTrajectory ? { 'control_trace.json': stableJson({ type: 'anchor.motion.control-trace', version: episode.motionTrajectory.version, planId: episode.motionTrajectory.planId, gliderId: episode.motionTrajectory.gliderId, controls: episode.controlTrace ?? episode.motionTrajectory.controlCommands ?? [], generatedRoute: false, usesNewPlanner: false }) } : {}),
+    ...(episode.motionDiagnostics || episode.motionTrajectory?.motionDiagnostics ? { 'motion_diagnostics.json': stableJson(episode.motionDiagnostics ?? episode.motionTrajectory.motionDiagnostics) } : {}),
     'score_report.json': stableJson(episode.scoreReport),
     ...(episode.scienceDiagnostics ? { 'science_diagnostics.json': stableJson(episode.scienceDiagnostics) } : {}),
     ...(episode.waterColumnSummary ? { 'water_column_summary.json': stableJson(episode.waterColumnSummary) } : {}),
@@ -126,6 +140,9 @@ export function createHeadlessCombinedBundle(episode, options = {}) {
     visibleFields: buildFieldPackFile(episode.fieldPackAfter ?? episode.fieldPackBefore, VISIBLE_FIELD_IDS, 'publicScenario'),
     observations: episode.observations ?? [],
     gliderTracks: episode.tracks ?? [],
+    motionTrajectory: episode.motionTrajectory ? publicMotionTrajectory(episode.motionTrajectory) : null,
+    controlTrace: episode.controlTrace ?? episode.motionTrajectory?.controlCommands ?? [],
+    motionDiagnostics: episode.motionDiagnostics ?? episode.motionTrajectory?.motionDiagnostics ?? null,
     scoreReport: episode.scoreReport,
     scienceDiagnostics: episode.scienceDiagnostics ?? null,
     waterColumnSummary: episode.waterColumnSummary ?? null,
@@ -175,6 +192,8 @@ export function headlessBundleSummary(outputDir) {
     scienceDiagnostics: files.includes('science_diagnostics.json'),
     waterColumnSummary: files.includes('water_column_summary.json'),
     depthLayerPriority: files.includes('depth_layer_priority.json'),
+    motionTrajectory: files.includes('motion_trajectory.json'),
+    motionDiagnostics: files.includes('motion_diagnostics.json'),
     observationCsv: files.includes('observations.csv'),
     trackCsv: files.includes('glider_tracks.csv'),
     manifestNotes: manifest?.notes ?? []
@@ -205,11 +224,28 @@ function buildFieldPackFile(fieldPack, fieldIds, visibilityTier) {
   };
 }
 
+function publicMotionTrajectory(trajectory) {
+  const copy = JSON.parse(JSON.stringify(trajectory ?? null));
+  if (!copy || typeof copy !== 'object') return copy;
+  copy.sampledObservations = Array.isArray(copy.sampledObservations)
+    ? copy.sampledObservations.map(publicObservation)
+    : [];
+  return copy;
+}
+
+function publicObservation(observation) {
+  const copy = { ...(observation ?? {}) };
+  if (copy.fieldId === 'T_hiddenTruth') copy.fieldId = 'observedScalar';
+  delete copy.truthValue;
+  copy.visibilityTier = 'publicScenario';
+  return copy;
+}
 function stripBundleEpisode(episode, includeHidden) {
   const copy = JSON.parse(JSON.stringify(episode));
   if (!includeHidden) {
     stripHiddenTruthFromFieldPack(copy.fieldPackBefore);
     stripHiddenTruthFromFieldPack(copy.fieldPackAfter);
+    if (copy.motionTrajectory) copy.motionTrajectory = publicMotionTrajectory(copy.motionTrajectory);
   }
   return copy;
 }

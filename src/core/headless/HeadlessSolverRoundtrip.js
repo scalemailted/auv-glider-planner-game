@@ -20,6 +20,9 @@ export function headlessRoundtripSummary(roundtrip = {}) {
     finalScore: report.summary?.finalScore ?? null,
     usesNewPlanner: report.runtime?.usesNewPlanner === true,
     usesPythonSimulator: report.runtime?.usesPythonSimulator === true,
-    usesMARL: report.runtime?.usesMARL === true
+    usesMARL: report.runtime?.usesMARL === true,
+    usesMotionDynamics: report.runtime?.usesMotionDynamics === true,
+    usesWebGPUFluid: report.runtime?.usesWebGPUFluid === true,
+    motionModelId: report.runtime?.motionModelId ?? report.motionSummary?.motionModelId ?? null
   };
 }

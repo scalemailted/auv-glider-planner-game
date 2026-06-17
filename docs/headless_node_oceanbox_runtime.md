@@ -135,3 +135,7 @@ node tools/js/headless_oceanbox.mjs roundtrip --solver-packet docs/examples/head
 ```
 
 P11 adds `water_column_summary.json`, `depth_layer_priority.json`, `waterColumnSummary`, and `depthLayerPrioritySummary`. It does not add full 3D planning, a new planner, production vehicle control, calibrated vertical ocean modeling, Python simulation, or MARL/RL. See `docs/water_column_2p5d_sampling_model.md`.
+
+## MOTION-R1 Optional Motion-Aware Execution
+
+Node/OceanBox-JS can optionally run motion-aware execution by enabling `motionAware` or CLI `--motion-aware`. The runtime keeps the submitted waypoint plan as route authority, adapts it to control commands, simulates realized glider motion, and emits `motionTrajectory`, `controlTrace`, `plannedVsRealized`, and `motionDiagnostics`. Public bundles can include `motion_trajectory.json`, `control_trace.json`, and `motion_diagnostics.json`. This remains deterministic educational execution, not a new planner, not WebGPU, not browser official scoring, and not a Python simulator.

@@ -118,3 +118,7 @@ node tools/js/smoke_headless_roundtrip_water_column.mjs
 node tools/js/smoke_headless_water_column_viewer_panel.mjs
 node tools/js/audit_water_column_public_safety.mjs
 ```
+
+## MOTION-R1 Motion Runtime Flags
+
+`tools/js/headless_oceanbox.mjs simulate` and `roundtrip` accept optional motion flags: `--motion-aware`, `--motion-model`, `--control-step`, `--glider-speed`, `--heading-rate-limit`, and `--drift-gain`. When enabled, Node/OceanBox-JS emits public-safe motion trajectory/control/diagnostic artifacts. This is deterministic JS execution, not WebGPU, not a new planner, not official browser scoring, and not MARL/RL.

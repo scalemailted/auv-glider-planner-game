@@ -37,7 +37,13 @@ function runSimulate(args) {
     height: args.height,
     scenario: args.scenario ?? 'coastalBloomFront',
     depthLayers: args.depthLayers,
-    diveProfileId: args.diveProfileId
+    diveProfileId: args.diveProfileId,
+    motionAware: args.motionAware,
+    motionModelId: args.motionModelId,
+    controlStepSeconds: args.controlStepSeconds,
+    gliderSpeed: args.gliderSpeed,
+    headingRateLimitDegreesPerSecond: args.headingRateLimitDegreesPerSecond,
+    driftGain: args.driftGain
   });
   const episode = runHeadlessMission(config);
   let bundleSummary = null;
@@ -56,6 +62,7 @@ function runSimulate(args) {
     trackPointCount: episode.tracks.length,
     score: headlessScoreReportSummary(episode.scoreReport),
     waterColumnSummary: args.waterColumnSummary ? episode.waterColumnSummary : undefined,
+    motionSummary: episode.motionTrajectory ? episode.diagnostics?.motionSummary : undefined,
     bundle: bundleSummary,
     combinedBundle: bundleSummary?.combinedBundle === true,
     boundary: 'Node headless runtime over portable ANCHOR core logic. Browser ANCHOR remains the official visual referee and browser scoring UI.'
@@ -116,7 +123,13 @@ function runRoundtrip(args) {
     includeHiddenTruth,
     createdAt: args.createdAt,
     allowInvalidPlan: args.allowInvalidPlan,
-    allowVisibilityFailures: args.allowVisibilityFailures
+    allowVisibilityFailures: args.allowVisibilityFailures,
+    motionAware: args.motionAware,
+    motionModelId: args.motionModelId,
+    controlStepSeconds: args.controlStepSeconds,
+    gliderSpeed: args.gliderSpeed,
+    headingRateLimitDegreesPerSecond: args.headingRateLimitDegreesPerSecond,
+    driftGain: args.driftGain
   });
   fs.mkdirSync(outputDir, { recursive: true });
   const bundleSummary = writeHeadlessBundle(roundtrip.episode, outputDir, {
@@ -181,7 +194,13 @@ function parseArgs(argv) {
     agentId: null,
     seed: null,
     out: null,
-    createdAt: null
+    createdAt: null,
+    motionAware: false,
+    motionModelId: null,
+    controlStepSeconds: null,
+    gliderSpeed: null,
+    headingRateLimitDegreesPerSecond: null,
+    driftGain: null
   };
   for (let index = 1; index < argv.length; index += 1) {
     const arg = argv[index];
@@ -192,6 +211,12 @@ function parseArgs(argv) {
     else if (arg === '--scenario') parsed.scenario = argv[++index];
     else if (arg === '--depth-layers') parsed.depthLayers = parseList(argv[++index]);
     else if (arg === '--dive-profile') parsed.diveProfileId = argv[++index];
+    else if (arg === '--motion-aware') parsed.motionAware = true;
+    else if (arg === '--motion-model') parsed.motionModelId = argv[++index];
+    else if (arg === '--control-step') parsed.controlStepSeconds = Number(argv[++index]);
+    else if (arg === '--glider-speed') parsed.gliderSpeed = Number(argv[++index]);
+    else if (arg === '--heading-rate-limit') parsed.headingRateLimitDegreesPerSecond = Number(argv[++index]);
+    else if (arg === '--drift-gain') parsed.driftGain = Number(argv[++index]);
     else if (arg === '--water-column-summary') parsed.waterColumnSummary = true;
     else if (arg === '--no-water-column-summary') parsed.waterColumnSummary = false;
     else if (arg === '--solver-packet' || arg === '--packet') parsed.solverPacket = argv[++index];
@@ -239,8 +264,8 @@ function readJson(filePath) {
 
 function printUsage() {
   console.log(`Usage:
-  node tools/js/headless_oceanbox.mjs simulate --seed demo-001 --out tmp/oceanbox-js-demo [--width 32] [--height 24] [--scenario coastalBloomFront] [--depth-layers surface,thermocline,deep] [--dive-profile sawtoothProfile] [--water-column-summary] [--no-hidden-export] [--combined-json] [--summary-only]
+  node tools/js/headless_oceanbox.mjs simulate --seed demo-001 --out tmp/oceanbox-js-demo [--width 32] [--height 24] [--scenario coastalBloomFront] [--depth-layers surface,thermocline,deep] [--dive-profile sawtoothProfile] [--water-column-summary] [--motion-aware] [--motion-model depthLayerKinematic] [--control-step 60] [--glider-speed 1] [--heading-rate-limit 8] [--drift-gain 1] [--no-hidden-export] [--combined-json] [--summary-only]
   node tools/js/headless_oceanbox.mjs validate-solver-packet --solver-packet docs/examples/headless_solver_packet.example.json [--oracle]
   node tools/js/headless_oceanbox.mjs validate-plan --solver-packet docs/examples/headless_solver_packet.example.json --plan docs/examples/headless_solver_plan.example.json [--agent-id glider_01]
-  node tools/js/headless_oceanbox.mjs roundtrip --solver-packet docs/examples/headless_solver_packet.example.json --plan docs/examples/headless_solver_plan.example.json --out runs/h3-roundtrip --depth-layers surface,thermocline,deep --dive-profile sawtoothProfile --combined-json --no-hidden-export`);
+  node tools/js/headless_oceanbox.mjs roundtrip --solver-packet docs/examples/headless_solver_packet.example.json --plan docs/examples/headless_solver_plan.example.json --out runs/h3-roundtrip --depth-layers surface,thermocline,deep --dive-profile sawtoothProfile --motion-aware --motion-model depthLayerKinematic --combined-json --no-hidden-export`);
 }

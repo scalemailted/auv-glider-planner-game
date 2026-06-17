@@ -13,7 +13,10 @@ export function classifyPlanArtifact(plan = {}) {
     executionMode: plan?.executionMode ?? null,
     agentPlanCount: Array.isArray(plan?.agentPlans) ? plan.agentPlans.length : 0,
     waypointCount: (plan?.agentPlans ?? []).reduce((sum, agentPlan) => sum + (agentPlan.waypoints?.length ?? 0), 0),
-    diveProfileIds: [...new Set((plan?.agentPlans ?? []).flatMap((agentPlan) => [agentPlan.diveProfileId, ...(agentPlan.waypoints ?? []).map((waypoint) => waypoint.diveProfileId)].filter(Boolean)))]
+    diveProfileIds: [...new Set((plan?.agentPlans ?? []).flatMap((agentPlan) => [agentPlan.diveProfileId, ...(agentPlan.waypoints ?? []).map((waypoint) => waypoint.diveProfileId)].filter(Boolean)))],
+    motionIntentPresent: Boolean(plan?.motionIntent ?? plan?.desiredSpeedThroughWater ?? plan?.sampleIntervalSeconds ?? (plan?.agentPlans ?? []).some((agentPlan) => agentPlan.motionIntent ?? agentPlan.desiredSpeedThroughWater ?? agentPlan.sampleIntervalSeconds)),
+    desiredSpeedThroughWater: plan?.desiredSpeedThroughWater ?? null,
+    sampleIntervalSeconds: plan?.sampleIntervalSeconds ?? null
   };
 }
 

@@ -103,10 +103,13 @@ import { analyzeScienceEvidence, buildScienceDiagnosticsArtifact } from '../../s
 import { runScienceDiscoveryFixture } from '../../src/core/science/ScienceDiscoveryFixtures.js';
 import { normalizeScienceDiagnosisId } from '../../src/core/science/ScienceDiagnosisTypes.js';
 import { HEADLESS_SOLVER_ROUNDTRIP_REPORT_TYPE, HEADLESS_SOLVER_ROUNDTRIP_BUNDLE_TYPE } from '../../src/core/headless/HeadlessRoundtripTypes.js';
+import { createGliderMotionConfig, validateGliderMotionConfig } from '../../src/core/motion/GliderMotionSchema.js';
+import { trajectoryMotionSummary, validateMotionTrajectory } from '../../src/core/motion/GliderTrajectorySimulator.js';
 import '../../src/labs/widgets/SamplingActionValueWidgets.js';
 import { FlowFieldDemoScene } from '../../src/game/phaser/scenes/FlowFieldDemoScene.js';
 import { RoiGeneratorDemoScene } from '../../src/game/phaser/scenes/RoiGeneratorDemoScene.js';
 import { CoupledFieldsDemoScene } from '../../src/game/phaser/scenes/CoupledFieldsDemoScene.js';
+import { MotionPlanningDemoScene } from '../../src/game/phaser/scenes/MotionPlanningDemoScene.js';
 
 function assertFiniteNumber(value, label) {
   assert.equal(Number.isFinite(Number(value)), true, `${label} should be finite`);
@@ -501,6 +504,43 @@ assert.equal(h1Episode.diagnostics.calibratedOceanForecast, false, 'H1 does not 
 assert.equal(h1Episode.waterColumnSummary?.type, 'anchor.headless.water-column-summary', 'P11 water-column summary attaches to headless episodes');
 assert.equal(h1Episode.depthLayerPrioritySummary?.type, 'anchor.headless.depth-layer-priority-summary', 'P11 depth-layer priority summary attaches to headless episodes');
 assert.equal(h1Episode.waterColumnSummary?.usesFull3DPlanning, false, 'P11 does not claim full 3D planning');
+const motionR1Config = createGliderMotionConfig({ enabled: true, motionAware: true, motionModelId: 'depthLayerKinematic', gliderSpeed: 1, controlStepSeconds: 45 });
+assert.equal(validateGliderMotionConfig(motionR1Config).status, 'PASS', 'MOTION-R1 glider motion config validates');
+assert.equal(motionR1Config.usesWebGPUFluid, false, 'MOTION-R1 config does not claim WebGPU fluid execution');
+assert.equal(motionR1Config.usesNewPlanner, false, 'MOTION-R1 config does not claim a route planner');
+const motionR1Episode = runHeadlessMission(createDefaultHeadlessRuntimeConfig({
+  seed: 'model-stack-motion-r1-smoke',
+  width: 12,
+  height: 8,
+  motionAware: true,
+  motionModelId: 'depthLayerKinematic',
+  gliderSpeed: 1,
+  controlStepSeconds: 45,
+  driftGain: 1
+}));
+assert.equal(motionR1Episode.diagnostics.usesMotionDynamics, true, 'MOTION-R1 headless runtime can run motion-aware execution');
+assert.equal(motionR1Episode.diagnostics.usesWebGPUFluid, false, 'MOTION-R1 headless runtime does not claim WebGPU');
+assert.equal(validateMotionTrajectory(motionR1Episode.motionTrajectory).status, 'PASS', 'MOTION-R1 trajectory validates');
+const motionR1Summary = trajectoryMotionSummary(motionR1Episode.motionTrajectory);
+assert.equal(motionR1Summary.present, true, 'MOTION-R1 trajectory summary is present');
+assertFiniteNumber(motionR1Summary.meanTrackError, 'MOTION-R1 mean track error');
+const motionR1Files = headlessBundleFiles(motionR1Episode, { includeHiddenTruth: false, combinedJson: true });
+assert.ok(motionR1Files['motion_trajectory.json'], 'MOTION-R1 bundle includes motion_trajectory.json');
+assert.ok(motionR1Files['motion_diagnostics.json'], 'MOTION-R1 bundle includes motion_diagnostics.json');
+const motionR1Bundle = buildHeadlessBundleFromFiles([{ fileName: 'bundle.json', text: motionR1Files['bundle.json'] }]);
+assert.equal(motionR1Bundle.motionTrajectory?.type, 'anchor.motion.trajectory', 'MOTION-R1 bundle loader preserves motion trajectory');
+const motionR1ViewModel = buildHeadlessBundleViewModel(motionR1Bundle);
+assert.equal(motionR1ViewModel.motionSummary.usesMotionDynamics, true, 'MOTION-R1 viewer model exposes motion dynamics');
+assert.equal(motionR1ViewModel.motionSummary.usesWebGPUFluid, false, 'MOTION-R1 viewer model keeps WebGPU boundary');
+const motionR1PanelHtml = headlessBundleViewerPanelHtml(motionR1ViewModel);
+assert.ok(motionR1PanelHtml.includes('Motion Dynamics'), 'MOTION-R1 viewer panel renders motion section');
+assert.ok(motionR1PanelHtml.includes('not a new route planner'), 'MOTION-R1 viewer panel states planner boundary');
+const motionR1Scene = new MotionPlanningDemoScene();
+motionR1Scene.init({ motionModelId: 'depthLayerKinematic', currentStrength: 1, crossCurrentStrength: 1, gliderSpeed: 1 });
+assert.equal(globalThis.ANCHOR_MOTION_PLANNING_DEMO_DEBUG?.usesMotionDynamics, true, 'MOTION-R1 demo debug marks motion dynamics');
+assert.equal(globalThis.ANCHOR_MOTION_PLANNING_DEMO_DEBUG?.usesWebGPUFluid, false, 'MOTION-R1 demo debug keeps WebGPU boundary');
+assert.equal(globalThis.ANCHOR_MOTION_PLANNING_DEMO_DEBUG?.notTopLevelMode, true, 'MOTION-R1 demo debug marks Simulation Lab sandbox placement');
+
 const h1Files = headlessBundleFiles(h1Episode, { includeHiddenTruth: false });
 assert.equal(Object.hasOwn(h1Files, 'hidden_fields.json'), false, 'H1 can omit hidden truth bundle file');
 assert.equal(h1Files['visible_fields.json'].includes('T_hiddenTruth'), false, 'H1 visible fields omit hidden truth');
@@ -520,6 +560,12 @@ const h1RuntimeSourceFiles = [
   'src/core/headless/runtime/HeadlessScoring.js',
   'src/core/headless/runtime/HeadlessMissionRunner.js',
   'src/core/headless/runtime/HeadlessBundleWriter.js',
+  'src/core/motion/GliderMotionSchema.js',
+  'src/core/motion/MotionEnvironmentSampler.js',
+  'src/core/motion/GliderDynamicsModel.js',
+  'src/core/motion/PlanControlAdapter.js',
+  'src/core/motion/MotionDiagnostics.js',
+  'src/core/motion/GliderTrajectorySimulator.js',
   'tools/js/headless_oceanbox.mjs'
 ];
 const h1RuntimeSource = h1RuntimeSourceFiles.map((file) => fs.readFileSync(file, 'utf8')).join('\n');
@@ -858,7 +904,8 @@ const claimFiles = [
   'src/game/phaser/scenes/DebriefScene.js',
   'src/core/demo/sampling/SpatiotemporalProcessExamples.js',
   'src/game/phaser/scenes/CoupledFieldsDemoScene.js',
-  'src/game/phaser/scenes/FlowFieldDemoScene.js'
+  'src/game/phaser/scenes/FlowFieldDemoScene.js',
+  'src/game/phaser/scenes/MotionPlanningDemoScene.js'
 ];
 const riskyClaimPattern = /((calibrated|validated|operational|HYCOM-quality|HYCOM|ROMS|Delft3D)[^\n.]{0,80}\b(forecast|model|data|output)\b)|(\b(forecast|model|data|output)\b[^\n.]{0,80}(calibrated|validated|operational|HYCOM-quality|HYCOM|ROMS|Delft3D))|real HYCOM data|actual HYCOM data/i;
 const boundaryPattern = /\bnot\b|\bno\b|notA|not-a|boundar|synthetic|inspired|teaching|scaffold|optional|claim level/i;
@@ -885,5 +932,3 @@ assert.ok(coupledSceneSource.includes('What Colors Mean'), 'Coupled right panel 
 assert.ok(coupledSceneSource.includes('uses uncertainty'), 'Coupled right panel states uncertainty boundary');
 
 console.log('Model stack integration smoke passed');
-
-
