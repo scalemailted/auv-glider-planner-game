@@ -8,6 +8,8 @@ python -m http.server 8000
 
 Playwright is optional and intended for development smoke testing.
 
+For product-design consistency checks, use `docs/game_design_scientific_auv_planning.md` as the canonical source for the scientific mission loop, objective archetypes, visibility modes, scoring/regret direction, 2.5D gameplay, motion/path-planning boundary, and future production gameplay targets. Run `node tools/js/smoke_game_design_doc.mjs` after design-doc edits.
+
 Run `node tools/js/smoke_main_menu_hub_contract.mjs` after landing-shell edits to confirm the Main Menu hub, compact idle console, right-panel suppression, debug object, and no-behavior-change guardrails.
 
 Greedy Planner is useful for planner smoke checks because it should return promptly, preserve non-selected glider routes, and validate before simulation. See `docs/greedy_planner.md` for the expected selected-glider baseline behavior.

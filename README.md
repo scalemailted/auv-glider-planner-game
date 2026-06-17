@@ -2,7 +2,7 @@
 
 **ANCHOR** is a browser-based serious game and simulation sandbox for multi-agent underwater glider mission planning. Players plan waypoint missions, simulate glider behavior under dynamic currents, sample fields, hazards, terrain, energy limits, and forecast uncertainty, then review scores and export data for external solvers.
 
-The project is also an **AUV Glider Planner Game** for teaching long-horizon planning, energy tradeoffs, waypoint sequencing, forecast uncertainty, solver comparison, and dataset generation. Challenge Mode presents playable planning puzzles with mission-mode objectives, stars, route grades, risk warnings, and leaderboard comparison. Simulation Lab exposes the same mission engine as a reproducible experiment environment for deterministic/stochastic setup, current/sample-field configuration, replay seeds, solver packets, JSON import/export, and planner comparisons.
+The project is also an **AUV Glider Planner Game** for teaching long-horizon planning, energy tradeoffs, waypoint sequencing, forecast uncertainty, solver comparison, and dataset generation. The canonical game-design source of truth is [Scientific AUV Planning Game Design](docs/game_design_scientific_auv_planning.md), which captures the player-facing mission loop, objective archetypes, visibility modes, 2.5D sampling model, scoring/regret direction, and future production gameplay targets. Challenge Mode presents playable planning puzzles with mission-mode objectives, stars, route grades, risk warnings, and leaderboard comparison. Simulation Lab exposes the same mission engine as a reproducible experiment environment for deterministic/stochastic setup, current/sample-field configuration, replay seeds, solver packets, JSON import/export, and planner comparisons.
 
 ANCHOR separates current flow, event likelihood, realized sample value, and uncertainty into distinct field concepts. Current flow describes how hard it is to move, event likelihood describes where sample-value events tend to originate, sample value describes where and when sampling has reward, and uncertainty describes what the planner does not know. Both experiences use the same terrain, current fields, sample fields, hazards, glider physics, scoring, route validation, planner APIs, and export/replay system.
 
@@ -109,6 +109,7 @@ Quick loop:
 ## Documentation Index
 
 - [Game design](docs/game_design.md)
+- [Scientific AUV Planning Game Design](docs/game_design_scientific_auv_planning.md)
 - [Flow Fields Demo](docs/flow_fields_demo.md)
 - [Deterministic Spatiotemporal Process Lab](docs/sampling_process_lab.md)
 - [Learning Labs](labs/index.html)

@@ -4,6 +4,8 @@ This roadmap tracks likely next development directions for **ANCHOR: Glider Comm
 
 For the current development-state log, see [docs/development_versions.md](docs/development_versions.md). Individual feature docs and smoke tests are the source of truth for what is implemented.
 
+For the canonical game-design spec, see [docs/game_design_scientific_auv_planning.md](docs/game_design_scientific_auv_planning.md). It captures the mission loop, objective archetypes, visibility modes, scoring model, 2.5D model, and future production gameplay targets.
+
 ## 1. Product Vision
 
 ANCHOR is evolving into a scientifically grounded AUV/glider adaptive-sampling serious game and benchmark tool. It combines a browser-based game/referee, learning labs, simulation sandboxes, benchmark modes, a portable JavaScript scientific core, and a reproducible Node/OceanBox-JS headless workflow.

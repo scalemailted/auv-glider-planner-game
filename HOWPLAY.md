@@ -1,6 +1,6 @@
 # How To Play ANCHOR: Glider Command
 
-This guide explains how to play the game, what the screens mean, how scoring works, and how to use exports and solvers.
+This guide explains how to play the game, what the screens mean, how scoring works, and how to use exports and solvers. The canonical product design target is [Scientific AUV Planning Game Design](docs/game_design_scientific_auv_planning.md), which explains the mission loop, visibility modes, objective archetypes, 2.5D sampling, adaptive replanning, multi-glider cooperation, and scoring/regret direction.
 
 ## Goal
 

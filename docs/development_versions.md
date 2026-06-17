@@ -38,6 +38,10 @@ Challenge Mode also persists `missionMode`. Mission modes are player-facing obje
 
 ## Version / Milestone Log
 
+### DOCS-GDD-R1 - Canonical Scientific AUV Planning Game Design
+
+- Added `docs/game_design_scientific_auv_planning.md` as the canonical game-design source of truth for the mission loop, objective archetypes, visibility modes, sampling strategies, 2.5D water-column gameplay, motion/path-planning boundary, multi-glider gameplay, scoring/regret direction, and architecture mapping.
+- Preserved implementation boundaries: Blind Discovery, production scoring synthesis, full autonomy, WebGPU fluid coupling, and MARL/RL remain future or near-term work as labeled; Python/Colab workflows are wrappers or artifact analysis, not the simulator.
 ### GFX-ARCH-R1 - Renderer Boundary and WebGPU Feasibility Scaffold
 
 - Added pure renderer capability, renderer host, and public-safe ocean-world render view-model contracts under `src/core/rendering/`.

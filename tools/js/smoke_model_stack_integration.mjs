@@ -893,6 +893,17 @@ assert.ok(missionConsoleSource.includes('Choose Challenge Mode, Simulation Lab, 
 assert.ok(mainMenuSource.includes('RoiGeneratorDemoScene'), 'Main Menu hub binds Process Lab to RoiGeneratorDemoScene');
 assert.ok(mainMenuSource.includes('HeadlessBundleViewerScene'), 'Main Menu hub binds H2 viewer to HeadlessBundleViewerScene');
 
+
+// DOCS-GDD-R1 canonical game design source of truth.
+const gddPath = 'docs/game_design_scientific_auv_planning.md';
+assert.equal(fs.existsSync(gddPath), true, 'DOCS-GDD-R1 canonical game design document exists');
+const gddSource = fs.readFileSync(gddPath, 'utf8');
+assert.ok(gddSource.includes('Blind Discovery / Hidden-State Mode'), 'DOCS-GDD-R1 covers Blind Discovery visibility mode');
+assert.ok(gddSource.includes('Motion Planning vs Path Planning'), 'DOCS-GDD-R1 covers motion/path-planning boundary');
+assert.ok(gddSource.includes('2.5D Water-Column Model'), 'DOCS-GDD-R1 covers 2.5D water-column gameplay');
+assert.ok(gddSource.includes('not a Python simulator'), 'DOCS-GDD-R1 preserves Python simulator boundary');
+assert.ok(gddSource.includes('not MARL/RL training'), 'DOCS-GDD-R1 preserves MARL/RL boundary');
+assert.ok(gddSource.toLowerCase().includes('best path is not the shortest path'), 'DOCS-GDD-R1 preserves core gameplay lesson');
 // Claim-boundary guard: calibrated forecast claims must be explicitly negated/bounded.
 const claimFiles = [
   'README.md',
@@ -903,6 +914,7 @@ const claimFiles = [
   'docs/export_formats.md',
   'docs/testing.md',
   'docs/development_versions.md',
+  'docs/game_design_scientific_auv_planning.md',
   'docs/uncertainty_forecast_demo.md',
   'docs/sampling_priority_demo.md',
   'docs/flow_coupled_sampling_demo.md',
