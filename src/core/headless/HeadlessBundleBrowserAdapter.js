@@ -1,4 +1,4 @@
-﻿import { validateHeadlessBundle } from './HeadlessBundleValidation.js';
+import { validateHeadlessBundle } from './HeadlessBundleValidation.js';
 import { buildHeadlessBundleViewModel, headlessBundleObservationSummary, headlessBundleReplaySummary, headlessBundleRoundtripSummary, headlessBundleScienceDiagnosisSummary, headlessBundleScoreSummary, headlessBundleTrackSummary, headlessBundleVisibilitySummary } from './HeadlessBundleViewModel.js';
 import { BROWSER_HEADLESS_ROUNDTRIP_SUMMARY_TYPE, HEADLESS_SOLVER_ROUNDTRIP_REPORT_TYPE } from './HeadlessRoundtripTypes.js';
 
@@ -120,6 +120,7 @@ export function buildBrowserHeadlessBundleDebugObject(bundle = {}) {
     scienceHiddenEventStatus: science.hiddenEventStatus ?? null,
     scienceRecommendedObjective: science.recommendedObjectiveId ?? null,
     scienceDiagnosticsPublicSafe: science.publicSafe !== false && science.hiddenTruthIncluded !== true,
+    scienceDiagnosisIsPlannerAuthority: false,
     usesProductionDataAssimilation: science.usesProductionDataAssimilation === true,
     browserSummaryExportAvailable: true,
     usesGeneratedPlan: roundtrip.usesGeneratedPlan === true,

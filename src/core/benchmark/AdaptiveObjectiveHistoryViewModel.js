@@ -25,6 +25,8 @@ export function buildAdaptiveObjectiveHistoryViewModel({ session, activeLegIndex
     },
     objectiveTimeline: timeline,
     transitionCards: timeline.map(transitionCard),
+    whyObjectiveChangedCard: whyObjectiveChangedCard(timeline),
+    scienceDiagnosisCards: normalized.scienceDiagnosisHistory.map(scienceDiagnosisCard),
     evidenceCards: normalized.evidenceHistory.map(evidenceCard),
     diagnosisCards: normalized.diagnosisHistory.map(diagnosisCard),
     metricCards: objectiveHistoryMetricCards(normalized),
@@ -75,8 +77,14 @@ export function objectiveTransitionTimeline(sessionInput = {}) {
       toObjectiveId: toObjective.id,
       toObjectiveLabel: toObjective.label,
       diagnosisId: entry.diagnosisId ?? null,
-      confidence: entry.confidence ?? null,
-      rationale: entry.rationale ?? 'Adaptive objective transition.',
+      primaryScienceDiagnosis: entry.primaryScienceDiagnosis ?? entry.scienceDiagnosisContext?.primaryScienceDiagnosis ?? null,
+      forecastCorrectionStatus: entry.forecastCorrectionStatus ?? entry.scienceDiagnosisContext?.forecastCorrectionStatus ?? null,
+      hiddenEventStatus: entry.hiddenEventStatus ?? entry.scienceDiagnosisContext?.hiddenEventStatus ?? null,
+      recommendedObjectiveId: entry.recommendedObjectiveId ?? toObjective.id,
+      confidence: entry.confidence ?? entry.scienceDiagnosisContext?.confidence ?? null,
+      rationale: entry.rationale ?? entry.missionManagerRationale?.objectiveReason ?? 'Adaptive objective transition.',
+      scienceDiagnosisContext: entry.scienceDiagnosisContext ?? null,
+      missionManagerRationale: entry.missionManagerRationale ?? null,
       status: entry.status ?? 'objective'
     };
   });
@@ -93,15 +101,50 @@ export function objectiveHistoryMetricCards(sessionInput = {}) {
 }
 
 function transitionCard(entry) {
+  const science = entry.primaryScienceDiagnosis ? `Science diagnosis: ${entry.primaryScienceDiagnosis}. ` : 'No science-diagnosis context was stored for this leg. ';
+  const forecast = entry.forecastCorrectionStatus ? `Forecast: ${entry.forecastCorrectionStatus}. ` : '';
+  const hidden = entry.hiddenEventStatus ? `Hidden event: ${entry.hiddenEventStatus}. ` : '';
   return {
     title: `Leg ${entry.legIndex}: ${entry.toObjectiveLabel}`,
     value: entry.fromObjectiveLabel ? `${entry.fromObjectiveLabel} -> ${entry.toObjectiveLabel}` : entry.toObjectiveLabel,
-    detail: entry.rationale,
+    detail: `${science}${forecast}${hidden}${entry.rationale}`,
     status: entry.status,
-    confidence: entry.confidence
+    confidence: entry.confidence,
+    primaryScienceDiagnosis: entry.primaryScienceDiagnosis,
+    forecastCorrectionStatus: entry.forecastCorrectionStatus,
+    hiddenEventStatus: entry.hiddenEventStatus,
+    recommendedObjectiveId: entry.recommendedObjectiveId
   };
 }
 
+function whyObjectiveChangedCard(timeline = []) {
+  const latest = [...timeline].reverse().find((entry) => entry.status !== 'initialized') ?? timeline.at(-1) ?? null;
+  if (!latest) {
+    return {
+      title: 'Why did the objective change?',
+      detail: 'No objective change has been recorded yet.',
+      boundary: 'Objective history records mission-manager decisions. These decisions choose objectives, not routes.'
+    };
+  }
+  return {
+    title: 'Why did the objective change?',
+    detail: latest.primaryScienceDiagnosis
+      ? `${latest.primaryScienceDiagnosis} informed the mission-manager recommendation to ${latest.toObjectiveLabel}. ${latest.rationale}`
+      : `No science-diagnosis context was stored for this leg. ${latest.rationale}`,
+    routeAuthority: 'playerOrSolver',
+    boundary: 'Objective history records mission-manager decisions. These decisions choose objectives, not routes. Route planning remains with the player or solver.'
+  };
+}
+
+function scienceDiagnosisCard(entry = {}) {
+  const context = entry.scienceDiagnosisContext ?? entry;
+  return {
+    title: `Leg ${entry.legIndex ?? context.legIndex ?? 0} Science Diagnosis`,
+    value: context.primaryScienceDiagnosisLabel ?? context.primaryScienceDiagnosis ?? 'No science-diagnosis context was stored for this leg.',
+    detail: `Forecast ${context.forecastCorrectionStatus ?? 'n/a'} | Hidden event ${context.hiddenEventStatus ?? 'n/a'}`,
+    confidence: context.confidence ?? entry.confidence ?? null
+  };
+}
 function evidenceCard(entry = {}) {
   const evidence = entry.evidence ?? entry;
   return {
@@ -134,7 +177,9 @@ function decisionCard(decision = {}) {
   return {
     title: `Leg ${decision.legIndex ?? 0} Surfacing Decision`,
     value: decision.recommendedObjective?.label ?? decision.objectiveTransition?.toObjectiveId ?? 'Objective unchanged',
-    detail: decision.diagnosis?.primaryDiagnosisLabel ?? decision.diagnosis?.primaryDiagnosis ?? 'Diagnosis unavailable',
+    detail: decision.scienceDiagnosisContext?.primaryScienceDiagnosis
+      ? `${decision.scienceDiagnosisContext.primaryScienceDiagnosis}: ${decision.missionManagerRationale?.objectiveReason ?? decision.diagnosis?.rationale ?? 'Mission-manager recommendation.'}`
+      : decision.diagnosis?.primaryDiagnosisLabel ?? decision.diagnosis?.primaryDiagnosis ?? 'Diagnosis unavailable',
     confidence: decision.diagnosis?.confidence ?? null
   };
 }

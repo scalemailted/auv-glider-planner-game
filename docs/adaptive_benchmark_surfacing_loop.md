@@ -43,3 +43,9 @@ Planner Benchmark remains the fixed-objective route comparison mode. Full Autono
 ## P8 Multi-Leg Session Update
 
 P8 keeps the P7 surfacing review and adds persistent adaptive episode sessions. A session stores compact leg records, surfacing decisions, next-leg handoffs, and objective history so the user can manually continue to the next leg. P8 does not generate routes, redesign scoring, or implement MARL/RL.
+
+## P10 Adaptive Science-Diagnosis Handoff
+
+Science diagnosis informs the mission-manager objective recommendation. It does not generate a route. Forecast correction means the expected field existed but was wrong. Hidden event hypothesis means observations may indicate a phenomenon not represented in the forecast. The player or solver still plans the route.
+
+P10 adds adaptive science-diagnosis context, mission-manager rationale, next-leg handoff metadata, objective-history display fields, and public-safe headless/browser summaries. It does not implement a new planner, scoring redesign, production data assimilation, GP/GMRF production inference, calibrated ocean forecast, Python simulator, or MARL/RL. Node/OceanBox-JS remains the canonical non-browser runtime; Python/Colab analyze artifacts or call Node.

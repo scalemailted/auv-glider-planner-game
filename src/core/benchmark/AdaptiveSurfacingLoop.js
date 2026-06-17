@@ -1,10 +1,13 @@
-﻿import { computeAdaptiveDiagnosis } from './AdaptiveDiagnosisModel.js';
+import { computeAdaptiveDiagnosis } from './AdaptiveDiagnosisModel.js';
 import { selectNextAdaptiveObjective } from './AdaptiveObjectivePolicy.js';
 import { applyAdaptiveEvidenceSnapshot, applyAdaptiveObjectiveTransition, createAdaptiveMissionManagerState } from './AdaptiveMissionManagerState.js';
 import { createAdaptiveMissionManagerConfig } from './AdaptiveMissionManagerContract.js';
 import { createAdaptiveSurfacingEvent } from './AdaptiveSurfacingEvent.js';
 import { initializeAdaptiveBenchmarkEpisode } from './AdaptiveBenchmarkRuntime.js';
 import { missionObjectiveById } from './MissionObjectiveTaxonomy.js';
+import { createAdaptiveScienceDiagnosisContext } from './AdaptiveScienceDiagnosisHandoff.js';
+import { createAdaptiveMissionManagerRationale } from './AdaptiveMissionManagerRationale.js';
+import { buildAdaptiveScienceDiagnosisViewModel } from './AdaptiveScienceDiagnosisViewModel.js';
 
 export const ADAPTIVE_SURFACING_LOOP_VERSION = 'adaptive-surfacing-loop-p7';
 
@@ -55,10 +58,58 @@ export function runAdaptiveSurfacingDecision({ runtimeContext, evidence, surfaci
   });
   const transition = objectiveSelection.transitionRecord;
   const after = applyAdaptiveObjectiveTransition(withEvidence, transition);
+  const scienceDiscovery = enrichedEvidence.scienceDiscovery ?? diagnosis.scienceDiscovery ?? null;
+  const previousObjective = missionObjectiveById(transition.fromObjectiveId);
+  const recommendedObjective = missionObjectiveById(transition.toObjectiveId);
+  const scienceDiagnosisContext = scienceDiscovery || diagnosis.primaryScienceDiagnosis
+    ? createAdaptiveScienceDiagnosisContext({
+        episodeId: input.runtimeContext.episodeId,
+        legIndex: input.runtimeContext.activeLegIndex,
+        time: enrichedEvidence.time,
+        evidence: enrichedEvidence,
+        diagnosis,
+        transition,
+        scienceDiscovery,
+        recommendedObjectiveId: recommendedObjective.id,
+        recommendedObjectiveLabel: recommendedObjective.label,
+        recommendationRationale: transition.rationale ?? diagnosis.rationale
+      })
+    : null;
+  const missionManagerRationale = createAdaptiveMissionManagerRationale({
+    episodeId: input.runtimeContext.episodeId,
+    legIndex: input.runtimeContext.activeLegIndex,
+    policyId: config.policyId,
+    evidence: enrichedEvidence,
+    diagnosis,
+    scienceDiagnosisContext,
+    currentObjective: previousObjective,
+    recommendedObjective,
+    transition,
+    managerConfig: config
+  });
+  const scienceDiagnosisViewModel = buildAdaptiveScienceDiagnosisViewModel({
+    surfacingDecision: {
+      episodeId: input.runtimeContext.episodeId,
+      legIndex: input.runtimeContext.activeLegIndex,
+      time: enrichedEvidence.time,
+      evidence: enrichedEvidence,
+      diagnosis,
+      objectiveTransition: transition,
+      previousObjective,
+      recommendedObjective,
+      scienceDiscovery,
+      scienceDiagnosisContext,
+      missionManagerRationale
+    },
+    scienceDiagnosisContext,
+    missionManagerRationale,
+    managerState: after
+  });
   const warnings = mergeUnique([
     ...(Array.isArray(enrichedEvidence.diagnostics?.warnings) ? enrichedEvidence.diagnostics.warnings : []),
     ...(Array.isArray(diagnosis.warnings) ? diagnosis.warnings : []),
-    ...(Array.isArray(enrichedEvidence.scienceDiscovery?.warnings) ? enrichedEvidence.scienceDiscovery.warnings : [])
+    ...(Array.isArray(enrichedEvidence.scienceDiscovery?.warnings) ? enrichedEvidence.scienceDiscovery.warnings : []),
+    ...(scienceDiagnosisContext ? [] : ['Science diagnosis was unavailable; mission manager used adaptive evidence summary only.'])
   ]);
   return {
     type: 'anchor.benchmark.adaptive-surfacing-decision',
@@ -69,18 +120,27 @@ export function runAdaptiveSurfacingDecision({ runtimeContext, evidence, surfaci
     legIndex: input.runtimeContext.activeLegIndex,
     surfacingEvent: cloneJson(input.surfacingEvent),
     evidence: enrichedEvidence,
-    scienceDiscovery: enrichedEvidence.scienceDiscovery ?? diagnosis.scienceDiscovery ?? null,
+    scienceDiscovery,
+    scienceDiagnosisContext,
+    missionManagerRationale,
+    scienceDiagnosisViewModel,
     diagnosis,
     objectiveTransition: transition,
-    previousObjective: missionObjectiveById(transition.fromObjectiveId),
-    recommendedObjective: missionObjectiveById(transition.toObjectiveId),
+    previousObjective,
+    recommendedObjective,
     managerStateBefore: before,
     managerStateAfter: after,
     routeAuthority: 'playerOrSolver',
     objectiveAuthority: 'missionManager',
+    diagnosisIsPlannerAuthority: false,
+    generatedRoute: false,
+    usesNewPlanner: false,
+    usesMissionScoringRedesign: false,
+    usesProductionDataAssimilation: false,
+    usesMARL: false,
     rationale: diagnosis.rationale ?? transition.rationale ?? 'Adaptive surfacing decision selected by transparent rule policy.',
     warnings,
-    notA: ['not full autonomy', 'not route planning', 'not production data assimilation', 'not MARL/RL']
+    notA: ['not full autonomy', 'not route planning', 'not waypoint generation', 'not production data assimilation', 'not MARL/RL']
   };
 }
 
@@ -99,11 +159,15 @@ export function adaptiveSurfacingDecisionSummary(decision = {}) {
     legIndex: decision.legIndex,
     primaryDiagnosis: decision.diagnosis?.primaryDiagnosis ?? null,
     primaryScienceDiagnosis: decision.diagnosis?.primaryScienceDiagnosis ?? decision.scienceDiscovery?.primaryDiagnosis ?? null,
+    forecastCorrectionStatus: decision.scienceDiagnosisContext?.forecastCorrectionStatus ?? null,
+    hiddenEventStatus: decision.scienceDiagnosisContext?.hiddenEventStatus ?? null,
     confidence: decision.diagnosis?.confidence ?? 0,
     fromObjectiveId: decision.objectiveTransition?.fromObjectiveId ?? decision.previousObjective?.id ?? null,
     recommendedObjectiveId: decision.objectiveTransition?.toObjectiveId ?? decision.recommendedObjective?.id ?? null,
     routeAuthority: decision.routeAuthority,
     objectiveAuthority: decision.objectiveAuthority,
+    diagnosisIsPlannerAuthority: decision.diagnosisIsPlannerAuthority === true,
+    generatedRoute: decision.generatedRoute === true,
     warningCount: Array.isArray(decision.warnings) ? decision.warnings.length : 0
   };
 }
@@ -117,6 +181,11 @@ export function validateAdaptiveSurfacingDecision(decision = {}) {
   if (!decision?.episodeId) errors.push('episodeId is required.');
   if (decision?.objectiveAuthority !== 'missionManager') errors.push('objectiveAuthority must be missionManager.');
   if (decision?.routeAuthority !== 'playerOrSolver') errors.push('routeAuthority must be playerOrSolver.');
+  if (decision?.diagnosisIsPlannerAuthority !== false) errors.push('diagnosisIsPlannerAuthority must be false.');
+  if (decision?.generatedRoute !== false) errors.push('generatedRoute must be false.');
+  if (decision?.usesNewPlanner !== false) errors.push('usesNewPlanner must be false.');
+  if (decision?.usesMissionScoringRedesign !== false) errors.push('usesMissionScoringRedesign must be false.');
+  if (decision?.usesMARL !== false) errors.push('usesMARL must be false.');
   if (!decision?.evidence) errors.push('evidence is required.');
   if (!decision?.diagnosis) errors.push('diagnosis is required.');
   if (!decision?.objectiveTransition) errors.push('objectiveTransition is required.');

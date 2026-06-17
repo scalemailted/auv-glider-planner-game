@@ -14,6 +14,8 @@ export function createAdaptiveEpisodeTrace(options = {}) {
     surfacingDecisions: normalizeArray(options.surfacingDecisions),
     objectiveHistory: normalizeArray(options.objectiveHistory ?? options.runtimeContext?.adaptiveManagerState?.objectiveHistory),
     evidenceHistory: normalizeArray(options.evidenceHistory),
+    scienceDiagnosisHistory: normalizeArray(options.scienceDiagnosisHistory),
+    missionManagerRationaleHistory: normalizeArray(options.missionManagerRationaleHistory),
     diagnostics: cloneJson(options.diagnostics ?? {}),
     exports: normalizeArray(options.exports),
     notes: normalizeStringList(options.notes)
@@ -29,9 +31,12 @@ export function appendAdaptiveSurfacingDecision(traceInput = {}, decision = {}) 
     surfacingDecisions: [...trace.surfacingDecisions, normalizedDecision],
     objectiveHistory: appendObjectiveHistory(trace.objectiveHistory, transition, normalizedDecision),
     evidenceHistory: normalizedDecision.evidence ? [...trace.evidenceHistory, cloneJson(normalizedDecision.evidence)] : trace.evidenceHistory,
+    scienceDiagnosisHistory: normalizedDecision.scienceDiagnosisContext ? [...trace.scienceDiagnosisHistory, cloneJson(normalizedDecision.scienceDiagnosisContext)] : trace.scienceDiagnosisHistory,
+    missionManagerRationaleHistory: normalizedDecision.missionManagerRationale ? [...trace.missionManagerRationaleHistory, cloneJson(normalizedDecision.missionManagerRationale)] : trace.missionManagerRationaleHistory,
     diagnostics: {
       ...(trace.diagnostics ?? {}),
       lastPrimaryDiagnosis: normalizedDecision.diagnosis?.primaryDiagnosis ?? trace.diagnostics?.lastPrimaryDiagnosis ?? null,
+      lastPrimaryScienceDiagnosis: normalizedDecision.scienceDiagnosisContext?.primaryScienceDiagnosis ?? normalizedDecision.diagnosis?.primaryScienceDiagnosis ?? trace.diagnostics?.lastPrimaryScienceDiagnosis ?? null,
       lastRecommendedObjectiveId: transition.toObjectiveId ?? normalizedDecision.recommendedObjective?.id ?? null
     }
   };
@@ -64,6 +69,8 @@ export function adaptiveEpisodeTraceSummary(traceInput = {}) {
     surfacingDecisionCount: trace.surfacingDecisions.length,
     objectiveHistoryCount: trace.objectiveHistory.length,
     evidenceHistoryCount: trace.evidenceHistory.length,
+    scienceDiagnosisHistoryCount: trace.scienceDiagnosisHistory.length,
+    missionManagerRationaleHistoryCount: trace.missionManagerRationaleHistory.length,
     objectiveAuthority: trace.objectiveAuthority,
     routeAuthority: trace.routeAuthority
   };
@@ -92,7 +99,14 @@ function appendObjectiveHistory(history, transition = {}, decision = {}) {
     fromObjectiveId: transition.fromObjectiveId ?? null,
     transitionId: transition.transitionId ?? 'keepCurrentObjective',
     authority: 'missionManager',
-    rationale: transition.rationale ?? decision.rationale ?? 'Adaptive surfacing decision.'
+    rationale: transition.rationale ?? decision.rationale ?? 'Adaptive surfacing decision.',
+    primaryScienceDiagnosis: decision.scienceDiagnosisContext?.primaryScienceDiagnosis ?? decision.diagnosis?.primaryScienceDiagnosis ?? null,
+    forecastCorrectionStatus: decision.scienceDiagnosisContext?.forecastCorrectionStatus ?? null,
+    hiddenEventStatus: decision.scienceDiagnosisContext?.hiddenEventStatus ?? null,
+    recommendedObjectiveId: transition.toObjectiveId ?? null,
+    confidence: decision.scienceDiagnosisContext?.confidence ?? decision.diagnosis?.confidence ?? null,
+    scienceDiagnosisContext: cloneJson(decision.scienceDiagnosisContext ?? null),
+    missionManagerRationale: cloneJson(decision.missionManagerRationale ?? null)
   }];
 }
 

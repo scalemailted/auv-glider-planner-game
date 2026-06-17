@@ -45,6 +45,17 @@ import {
   createAdaptiveNextLegConfig
 } from './AdaptiveNextLegHandoff.js';
 import {
+  ADAPTIVE_SCIENCE_DIAGNOSIS_HANDOFF_VERSION,
+  adaptiveScienceDiagnosisHandoffSummary,
+  createAdaptiveScienceDiagnosisContext,
+  createAdaptiveScienceDiagnosisHandoffRecord
+} from './AdaptiveScienceDiagnosisHandoff.js';
+import {
+  ADAPTIVE_MISSION_MANAGER_RATIONALE_VERSION,
+  adaptiveMissionManagerRationaleSummary,
+  createAdaptiveMissionManagerRationale
+} from './AdaptiveMissionManagerRationale.js';
+import {
   ADAPTIVE_EPISODE_TRACE_VERSION,
   adaptiveEpisodeTraceSummary,
   createAdaptiveEpisodeTrace
@@ -87,7 +98,11 @@ export const BENCHMARK_ADAPTIVE_EPISODE_SESSION_EXPORT_TYPE = 'anchor.benchmark.
 export const BENCHMARK_ADAPTIVE_OBJECTIVE_HISTORY_EXPORT_TYPE = 'anchor.benchmark.adaptive-objective-history';
 export const BENCHMARK_ADAPTIVE_LEG_RECORD_EXPORT_TYPE = 'anchor.benchmark.adaptive-leg-record';
 export const BENCHMARK_ADAPTIVE_SESSION_SUMMARY_EXPORT_TYPE = 'anchor.benchmark.adaptive-session-summary';
+export const BENCHMARK_ADAPTIVE_SCIENCE_DIAGNOSIS_CONTEXT_EXPORT_TYPE = 'anchor.benchmark.adaptive-science-diagnosis-context';
+export const BENCHMARK_ADAPTIVE_SCIENCE_DIAGNOSIS_HANDOFF_EXPORT_TYPE = 'anchor.benchmark.adaptive-science-diagnosis-handoff';
+export const BENCHMARK_ADAPTIVE_MISSION_MANAGER_RATIONALE_EXPORT_TYPE = 'anchor.benchmark.adaptive-mission-manager-rationale';
 export const BENCHMARK_ADAPTIVE_P8_EXPORT_VERSION = 'benchmark-adaptive-export-p8';
+export const BENCHMARK_ADAPTIVE_P10_EXPORT_VERSION = 'benchmark-adaptive-export-p10';
 
 export function buildBenchmarkModeConfigExport(options = {}) {
   const benchmarkModeConfig = createBenchmarkModeConfig(options);
@@ -342,6 +357,68 @@ export function buildAdaptiveLaunchConfigExport(configOrOptions = {}, options = 
     usesMARL: false
   };
 }
+
+export function buildAdaptiveScienceDiagnosisContextExport(contextOrOptions = {}, options = {}) {
+  const context = contextOrOptions?.type === BENCHMARK_ADAPTIVE_SCIENCE_DIAGNOSIS_CONTEXT_EXPORT_TYPE
+    ? contextOrOptions
+    : createAdaptiveScienceDiagnosisContext(contextOrOptions);
+  return {
+    ...cloneJson(context),
+    type: BENCHMARK_ADAPTIVE_SCIENCE_DIAGNOSIS_CONTEXT_EXPORT_TYPE,
+    exportVersion: BENCHMARK_ADAPTIVE_P10_EXPORT_VERSION,
+    adaptiveScienceDiagnosisHandoffVersion: ADAPTIVE_SCIENCE_DIAGNOSIS_HANDOFF_VERSION,
+    createdAt: options.createdAt ?? new Date().toISOString(),
+    summary: adaptiveScienceDiagnosisHandoffSummary(context),
+    boundaryFlags: adaptiveBoundaryFlags(),
+    diagnosisIsPlannerAuthority: false,
+    generatedRoute: false,
+    generatesWaypoints: false,
+    usesNewPlanner: false,
+    usesMissionScoringRedesign: false,
+    usesMARL: false
+  };
+}
+
+export function buildAdaptiveScienceDiagnosisHandoffExport(recordOrOptions = {}, options = {}) {
+  const record = recordOrOptions?.type === BENCHMARK_ADAPTIVE_SCIENCE_DIAGNOSIS_HANDOFF_EXPORT_TYPE
+    ? recordOrOptions
+    : createAdaptiveScienceDiagnosisHandoffRecord(recordOrOptions);
+  return {
+    ...cloneJson(record),
+    type: BENCHMARK_ADAPTIVE_SCIENCE_DIAGNOSIS_HANDOFF_EXPORT_TYPE,
+    exportVersion: BENCHMARK_ADAPTIVE_P10_EXPORT_VERSION,
+    adaptiveScienceDiagnosisHandoffVersion: ADAPTIVE_SCIENCE_DIAGNOSIS_HANDOFF_VERSION,
+    createdAt: options.createdAt ?? new Date().toISOString(),
+    summary: adaptiveScienceDiagnosisHandoffSummary(record),
+    boundaryFlags: adaptiveBoundaryFlags(),
+    diagnosisIsPlannerAuthority: false,
+    generatedRoute: false,
+    generatesWaypoints: false,
+    usesNewPlanner: false,
+    usesMissionScoringRedesign: false,
+    usesMARL: false
+  };
+}
+
+export function buildAdaptiveMissionManagerRationaleExport(rationaleOrOptions = {}, options = {}) {
+  const rationale = rationaleOrOptions?.type === BENCHMARK_ADAPTIVE_MISSION_MANAGER_RATIONALE_EXPORT_TYPE
+    ? rationaleOrOptions
+    : createAdaptiveMissionManagerRationale(rationaleOrOptions);
+  return {
+    ...cloneJson(rationale),
+    type: BENCHMARK_ADAPTIVE_MISSION_MANAGER_RATIONALE_EXPORT_TYPE,
+    exportVersion: BENCHMARK_ADAPTIVE_P10_EXPORT_VERSION,
+    adaptiveMissionManagerRationaleVersion: ADAPTIVE_MISSION_MANAGER_RATIONALE_VERSION,
+    createdAt: options.createdAt ?? new Date().toISOString(),
+    summary: adaptiveMissionManagerRationaleSummary(rationale),
+    boundaryFlags: adaptiveBoundaryFlags(),
+    diagnosisIsPlannerAuthority: false,
+    generatedRoute: false,
+    usesNewPlanner: false,
+    usesMissionScoringRedesign: false,
+    usesMARL: false
+  };
+}
 export function buildAdaptiveEpisodeSessionExport(sessionOrOptions = {}, options = {}) {
   const session = sessionOrOptions?.type === BENCHMARK_ADAPTIVE_EPISODE_SESSION_EXPORT_TYPE
     ? createAdaptiveEpisodeSession(sessionOrOptions.session ?? sessionOrOptions)
@@ -457,6 +534,9 @@ function adaptiveBoundaryFlags() {
     usesMissionScoring: false,
     usesMARL: false,
     usesProductionDataAssimilation: false,
+    diagnosisIsPlannerAuthority: false,
+    generatedRoute: false,
+    generatesWaypoints: false,
     adaptiveExecutionPreviewAvailable: true,
     adaptiveMultiLegSessionAvailable: true,
     adaptiveExecutionImplemented: false

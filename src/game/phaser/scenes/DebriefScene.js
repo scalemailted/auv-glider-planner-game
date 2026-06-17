@@ -571,6 +571,8 @@ export class DebriefScene extends PhaserScene {
       evidence,
       surfacingEvent,
       diagnosis: decision.diagnosis,
+      scienceDiagnosisContext: decision.scienceDiagnosisContext,
+      missionManagerRationale: decision.missionManagerRationale,
       objectiveTransition: decision.objectiveTransition,
       nextLegHandoff,
       status: 'nextObjectiveRecommended',
@@ -778,7 +780,10 @@ export class DebriefScene extends PhaserScene {
       'anchor.benchmark.adaptive-episode-session',
       'anchor.benchmark.adaptive-objective-history',
       'anchor.benchmark.adaptive-leg-record',
-      'anchor.benchmark.adaptive-session-summary'
+      'anchor.benchmark.adaptive-session-summary',
+      'anchor.benchmark.adaptive-science-diagnosis-context',
+      'anchor.benchmark.adaptive-science-diagnosis-handoff',
+      'anchor.benchmark.adaptive-mission-manager-rationale'
     ];
     const sessionSummary = session ? adaptiveEpisodeSessionSummary(session) : null;
     globalThis.ANCHOR_ADAPTIVE_EXECUTION_DEBUG = decision ? {
@@ -790,10 +795,17 @@ export class DebriefScene extends PhaserScene {
       currentObjectiveId: decision.previousObjective?.id ?? decision.objectiveTransition?.fromObjectiveId,
       recommendedObjectiveId: decision.recommendedObjective?.id ?? decision.objectiveTransition?.toObjectiveId,
       primaryDiagnosis: decision.diagnosis?.primaryDiagnosis,
+      primaryScienceDiagnosis: decision.scienceDiagnosisContext?.primaryScienceDiagnosis ?? decision.diagnosis?.primaryScienceDiagnosis ?? null,
+      scienceForecastCorrectionStatus: decision.scienceDiagnosisContext?.forecastCorrectionStatus ?? null,
+      scienceHiddenEventStatus: decision.scienceDiagnosisContext?.hiddenEventStatus ?? null,
+      scienceRecommendedObjective: decision.scienceDiagnosisContext?.recommendedObjectiveId ?? null,
+      scienceDiagnosisIsPlannerAuthority: false,
       confidence: decision.diagnosis?.confidence,
       evidence: decision.evidence,
       surfacingEvent: decision.surfacingEvent,
       objectiveTransition: decision.objectiveTransition,
+      scienceDiagnosisContext: decision.scienceDiagnosisContext,
+      missionManagerRationale: decision.missionManagerRationale,
       managerStateBefore: decision.managerStateBefore,
       managerStateAfter: decision.managerStateAfter,
       nextLegHandoff,
@@ -817,7 +829,9 @@ export class DebriefScene extends PhaserScene {
       hasPartialEvidenceWarning: Boolean(decision.evidence?.diagnostics?.partialEvidence || decision.warnings?.length),
       usesExistingSimulation: true,
       usesNewPlanner: false,
+      generatedRoute: false,
       usesMissionScoringRedesign: false,
+      usesProductionDataAssimilation: false,
       usesMARL: false
     } : { available: false, benchmarkMode: context?.benchmarkMode ?? null };
     globalThis.ANCHOR_ADAPTIVE_SESSION_DEBUG = session ? {
@@ -832,7 +846,9 @@ export class DebriefScene extends PhaserScene {
       currentLegRecord: legRecord,
       continueLegPayload,
       usesNewPlanner: false,
+      generatedRoute: false,
       usesMissionScoringRedesign: false,
+      usesProductionDataAssimilation: false,
       usesMARL: false
     } : { available: false };
   }
@@ -1111,7 +1127,9 @@ export class DebriefScene extends PhaserScene {
       usesExistingSimulation: true,
       usesExistingDebrief: true,
       usesNewPlanner: false,
+      generatedRoute: false,
       usesMissionScoringRedesign: false,
+      usesProductionDataAssimilation: false,
       usesMARL: false
     };
   }

@@ -1,4 +1,4 @@
-﻿import { normalizeHeadlessArtifactType, normalizeHeadlessVisibilityTier } from './HeadlessSchemaContract.js';
+import { normalizeHeadlessArtifactType, normalizeHeadlessVisibilityTier } from './HeadlessSchemaContract.js';
 
 export const HEADLESS_BUNDLE_MANIFEST_VERSION = 'headless-bundle-manifest-h0';
 
@@ -19,6 +19,8 @@ export const HEADLESS_BUNDLE_FILE_ROLES = Object.freeze([
   'benchmarkRecords',
   'scoreReport',
   'scienceDiagnostics',
+  'adaptiveScienceDiagnosisContext',
+  'adaptiveMissionManagerRationale',
   'replay',
   'notebookConfig'
 ]);

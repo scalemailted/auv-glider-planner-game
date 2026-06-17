@@ -1,83 +1,90 @@
-﻿export function adaptiveSurfacingPanelHtml(viewModelOrDecision = {}) {
+import { buildAdaptiveScienceDiagnosisViewModel } from '../../core/benchmark/AdaptiveScienceDiagnosisViewModel.js';
+
+export function adaptiveSurfacingPanelHtml(viewModelOrDecision = {}) {
   const decision = viewModelOrDecision.decision ?? viewModelOrDecision;
   const handoff = viewModelOrDecision.nextLegHandoff ?? viewModelOrDecision.handoff ?? null;
-  const partial = Boolean(decision?.evidence?.diagnostics?.partialEvidence || decision?.warnings?.length);
+  const scienceViewModel = viewModelOrDecision.scienceDiagnosisViewModel
+    ?? decision.scienceDiagnosisViewModel
+    ?? buildAdaptiveScienceDiagnosisViewModel({ surfacingDecision: decision, scienceDiagnosisContext: decision.scienceDiagnosisContext, missionManagerRationale: decision.missionManagerRationale });
+  const partial = Boolean(scienceViewModel.evidenceQualityCard?.partialEvidence || decision?.evidence?.diagnostics?.partialEvidence || decision?.warnings?.length);
   return `
     <article class="debrief-panel adaptive-surfacing-panel" data-adaptive-surfacing-panel>
       <h2>Adaptive Benchmark Surfacing Review</h2>
       <p>Adaptive Benchmark updates the objective at surfacing/debrief time. The player or solver still plans the route for the next leg.</p>
-      <p>The mission manager recommends the next objective. The player or solver still chooses the route.</p>
-      <p>P7 does not add a new route planner, scoring redesign, or MARL/RL.</p>
+      <p>Science diagnosis informs the mission-manager recommendation. It does not generate a route.</p>
+      <p>P10 does not add a new planner, scoring redesign, production data assimilation, or MARL/RL.</p>
       ${partial ? '<p>Evidence is partial because the current result does not contain all uncertainty or observation fields.</p>' : ''}
-      ${adaptiveEvidenceSnapshotHtml(decision)}
-      ${adaptiveScienceDiscoveryHtml(decision)}
+      ${adaptiveEvidenceSnapshotHtml(decision, scienceViewModel)}
+      ${adaptiveScienceDiscoveryHtml(decision, scienceViewModel)}
       ${adaptiveDiagnosisHtml(decision)}
-      ${adaptiveObjectiveTransitionHtml(decision)}
+      ${adaptiveObjectiveTransitionHtml(decision, scienceViewModel)}
       ${handoff ? adaptiveNextLegHandoffHtml(handoff) : '<p><strong>Plan Next Leg</strong>: Next-leg config will be available after the surfacing decision is built.</p>'}
+      ${adaptiveHandoffBoundaryHtml(scienceViewModel)}
       ${adaptiveSurfacingExportPanelHtml(decision)}
     </article>
   `;
 }
 
-export function adaptiveEvidenceSnapshotHtml(decision = {}) {
+export function adaptiveEvidenceSnapshotHtml(decision = {}, scienceViewModel = null) {
   const evidence = decision.evidence ?? {};
-  const warnings = Array.isArray(decision.warnings) ? decision.warnings : [];
+  const card = scienceViewModel?.evidenceQualityCard ?? {};
+  const warnings = [...(Array.isArray(decision.warnings) ? decision.warnings : []), ...(Array.isArray(card.warnings) ? card.warnings : [])];
   return `
     <section data-adaptive-evidence-summary>
       <h3>Evidence Summary</h3>
       <div class="cell-inspector-metrics">
         <div><span>Current Objective</span><strong>${escapeHtml(decision.previousObjective?.label ?? evidence.activeObjectiveId ?? 'Unknown')}</strong></div>
-        <div><span>Uploaded Samples</span><strong>${escapeHtml(evidence.observationCount ?? 0)}</strong></div>
+        <div><span>Uploaded Samples</span><strong>${escapeHtml(evidence.observationCount ?? card.observationCount ?? 0)}</strong></div>
         <div><span>Recent Observations</span><strong>${escapeHtml(evidence.recentObservationCount ?? 0)}</strong></div>
-        <div><span>Mean Uncertainty</span><strong>${escapeHtml(formatScore(evidence.meanUncertainty))}</strong></div>
-        <div><span>Forecast Error</span><strong>${escapeHtml(formatScore(evidence.forecastErrorScore))}</strong></div>
-        <div><span>Hidden Event</span><strong>${escapeHtml(formatScore(evidence.hiddenEventConfidence))}</strong></div>
+        <div><span>Surprise</span><strong>${escapeHtml(card.surpriseLevel ?? formatScore(evidence.meanSurprise))}</strong></div>
+        <div><span>Coherence</span><strong>${escapeHtml(card.coherenceLevel ?? 'n/a')}</strong></div>
+        <div><span>Confidence</span><strong>${escapeHtml(formatPercent(card.confidence ?? decision.diagnosis?.confidence))}</strong></div>
       </div>
-      <p>Imported or current observations may be incomplete; the manager reports partial-evidence warnings when needed.</p>
-      ${warnings.length ? `<p class="warning">${escapeHtml(warnings.join(' '))}</p>` : ''}
+      <p>Observed evidence is summarized for mission-manager objective recommendation, not route generation.</p>
+      ${warnings.length ? `<p class="warning">${escapeHtml(uniqueStrings(warnings).join(' '))}</p>` : ''}
     </section>
   `;
 }
 
-export function adaptiveScienceDiscoveryHtml(decision = {}) {
+export function adaptiveScienceDiscoveryHtml(decision = {}, scienceViewModel = null) {
   const science = decision.scienceDiscovery ?? decision.diagnosis?.scienceDiscovery ?? decision.evidence?.scienceDiscovery ?? null;
-  const diagnosis = decision.diagnosis ?? {};
-  const forecast = decision.evidence?.forecastCorrectionSummary ?? diagnosis.forecastCorrectionSummary ?? science?.forecastCorrection ?? null;
-  const hidden = decision.evidence?.hiddenEventHypothesisSummary ?? diagnosis.hiddenEventHypothesisSummary ?? science?.hiddenEventHypothesis ?? null;
-  if (!science && !forecast && !hidden && !diagnosis.primaryScienceDiagnosis) {
+  const forecastCard = scienceViewModel?.forecastUpdateCard ?? {};
+  const discoveryCard = scienceViewModel?.discoveryUpdateCard ?? {};
+  if (!science && !decision.scienceDiagnosisContext && !decision.diagnosis?.primaryScienceDiagnosis) {
     return `
       <section data-adaptive-science-discovery>
-        <h3>Science Discovery</h3>
-        <p>Science discovery diagnostics were not available for this leg.</p>
+        <h3>Science Diagnosis</h3>
+        <p>Science discovery diagnostics were not available for this leg. The mission manager used the available adaptive evidence summary.</p>
+        <h4>Forecast Update</h4>
         <p>Forecast correction means the expected field existed but was wrong.</p>
+        <h4>Discovery Update</h4>
         <p>Hidden event hypothesis means observations may indicate a phenomenon not represented in the forecast.</p>
-        <p>P9 uses transparent educational heuristics, not production data assimilation.</p>
+        <p>P10 uses transparent educational heuristics, not production data assimilation.</p>
       </section>
     `;
   }
   return `
     <section data-adaptive-science-discovery>
-      <h3>Science Discovery</h3>
+      <h3>Science Diagnosis</h3>
       <div class="cell-inspector-metrics">
-        <div><span>Science Diagnosis</span><strong>${escapeHtml(diagnosis.primaryScienceDiagnosisLabel ?? science?.primaryDiagnosisLabel ?? diagnosis.primaryScienceDiagnosis ?? science?.primaryDiagnosis ?? 'Unknown')}</strong></div>
-        <div><span>Confidence</span><strong>${escapeHtml(formatPercent(science?.confidence ?? diagnosis.confidence))}</strong></div>
-        <div><span>Recommended Objective</span><strong>${escapeHtml(science?.recommendedObjectiveId ?? diagnosis.recommendedObjectiveId ?? 'Unknown')}</strong></div>
+        <div><span>Science Diagnosis</span><strong>${escapeHtml(decision.scienceDiagnosisContext?.primaryScienceDiagnosisLabel ?? decision.diagnosis?.primaryScienceDiagnosisLabel ?? science?.primaryDiagnosisLabel ?? decision.scienceDiagnosisContext?.primaryScienceDiagnosis ?? science?.primaryDiagnosis ?? 'Unknown')}</strong></div>
+        <div><span>Confidence</span><strong>${escapeHtml(formatPercent(decision.scienceDiagnosisContext?.confidence ?? science?.confidence ?? decision.diagnosis?.confidence))}</strong></div>
+        <div><span>Recommended Objective</span><strong>${escapeHtml(decision.scienceDiagnosisContext?.recommendedObjectiveLabel ?? science?.recommendedObjectiveId ?? decision.diagnosis?.recommendedObjectiveId ?? 'Unknown')}</strong></div>
       </div>
       <h4>Forecast Update</h4>
       <div class="cell-inspector-metrics">
-        <div><span>Status</span><strong>${escapeHtml(forecast?.status ?? 'not available')}</strong></div>
-        <div><span>Diagnosis</span><strong>${escapeHtml(forecast?.diagnosisId ?? 'n/a')}</strong></div>
-        <div><span>Correction</span><strong>${escapeHtml(forecast?.correctionKind ?? forecast?.correction?.kind ?? 'n/a')}</strong></div>
+        <div><span>Status</span><strong>${escapeHtml(forecastCard.status ?? 'not available')}</strong></div>
+        <div><span>Correction Kind</span><strong>${escapeHtml(forecastCard.correctionKind ?? 'n/a')}</strong></div>
+        <div><span>Confidence</span><strong>${escapeHtml(formatPercent(forecastCard.confidence))}</strong></div>
       </div>
-      <p>Forecast correction means the expected field existed but was wrong.</p>
+      <p>${escapeHtml(forecastCard.rationale ?? 'Forecast correction means the expected field existed but was wrong.')}</p>
       <h4>Discovery Update</h4>
       <div class="cell-inspector-metrics">
-        <div><span>Status</span><strong>${escapeHtml(hidden?.status ?? 'not available')}</strong></div>
-        <div><span>Diagnosis</span><strong>${escapeHtml(hidden?.diagnosisId ?? 'n/a')}</strong></div>
-        <div><span>Event Family</span><strong>${escapeHtml(hidden?.eventFamily ?? 'unknown')}</strong></div>
+        <div><span>Status</span><strong>${escapeHtml(discoveryCard.status ?? 'not available')}</strong></div>
+        <div><span>Event Family</span><strong>${escapeHtml(discoveryCard.eventFamily ?? 'unknown')}</strong></div>
+        <div><span>Follow-up</span><strong>${escapeHtml(discoveryCard.recommendedFollowup ?? 'collect more evidence')}</strong></div>
       </div>
-      <p>Hidden event hypothesis means observations may indicate a phenomenon not represented in the forecast.</p>
-      <p>P9 uses transparent educational heuristics, not production data assimilation.</p>
+      <p>${escapeHtml(discoveryCard.rationale ?? 'Hidden event hypothesis means observations may indicate a phenomenon not represented in the forecast.')}</p>
     </section>
   `;
 }
@@ -95,13 +102,19 @@ export function adaptiveDiagnosisHtml(decision = {}) {
   `;
 }
 
-export function adaptiveObjectiveTransitionHtml(decision = {}) {
+export function adaptiveObjectiveTransitionHtml(decision = {}, scienceViewModel = null) {
   const transition = decision.objectiveTransition ?? {};
+  const recommendation = scienceViewModel?.recommendationCard ?? {};
+  const rationale = scienceViewModel?.missionManagerRationaleCard ?? {};
+  const alternatives = Array.isArray(rationale.alternativeObjectives) ? rationale.alternativeObjectives : [];
   return `
     <section data-adaptive-objective-transition>
-      <h3>Recommended Next Objective</h3>
-      <p>${escapeHtml(transition.transitionId ?? 'keepCurrentObjective')}: ${escapeHtml(decision.previousObjective?.label ?? transition.fromObjectiveId ?? 'Unknown')} -> ${escapeHtml(decision.recommendedObjective?.label ?? transition.toObjectiveId ?? 'Unknown')}</p>
-      <p>Objective transition record: ${escapeHtml(transition.type ?? 'anchor.benchmark.adaptive-objective-transition')}.</p>
+      <h3>Mission Manager Recommendation</h3>
+      <p>Recommended Next Objective: ${escapeHtml(decision.recommendedObjective?.label ?? recommendation.recommendedObjective?.label ?? transition.toObjectiveId ?? 'Unknown')}</p>
+      <p>${escapeHtml(transition.transitionId ?? recommendation.transitionId ?? 'keepCurrentObjective')}: ${escapeHtml(decision.previousObjective?.label ?? recommendation.currentObjective?.label ?? transition.fromObjectiveId ?? 'Unknown')} -&gt; ${escapeHtml(decision.recommendedObjective?.label ?? recommendation.recommendedObjective?.label ?? transition.toObjectiveId ?? 'Unknown')}</p>
+      <p>${escapeHtml(recommendation.reason ?? rationale.explanation ?? transition.rationale ?? 'The mission manager selected the next objective using transparent evidence rules.')}</p>
+      <p>Route planning authority: ${escapeHtml(recommendation.routeStillPlannedBy ?? 'playerOrSolver')}.</p>
+      ${alternatives.length ? `<p>Alternative objectives: ${escapeHtml(alternatives.map((entry) => `${entry.label}: ${entry.reasonAgainst}`).join(' | '))}</p>` : ''}
     </section>
   `;
 }
@@ -113,6 +126,20 @@ export function adaptiveNextLegHandoffHtml(handoff = {}) {
       <p>Recommended objective: <strong>${escapeHtml(handoff.recommendedObjectiveLabel ?? handoff.recommendedObjectiveId ?? 'Unknown')}</strong>.</p>
       <p>The mission manager recommends the next objective. The player or solver must still plan the route.</p>
       <p>No automatic waypoints are generated by this handoff.</p>
+    </section>
+  `;
+}
+
+export function adaptiveHandoffBoundaryHtml(scienceViewModel = {}) {
+  return `
+    <section data-adaptive-handoff-boundary>
+      <h3>Handoff Boundary</h3>
+      <p>Science diagnosis informs the mission-manager recommendation. It does not generate a route.</p>
+      <p>The player or solver still plans the next leg.</p>
+      <p>P10 does not add a new planner, scoring redesign, production data assimilation, or MARL/RL.</p>
+      <p>Forecast correction means the expected field existed but was wrong.</p>
+      <p>Hidden event hypothesis means observations may indicate a phenomenon not represented in the forecast.</p>
+      ${Array.isArray(scienceViewModel.notImplemented) && scienceViewModel.notImplemented.length ? `<p>Not implemented: ${escapeHtml(scienceViewModel.notImplemented.join(', '))}</p>` : ''}
     </section>
   `;
 }
@@ -140,6 +167,10 @@ function formatScore(value) {
 function formatPercent(value) {
   const number = Number(value);
   return Number.isFinite(number) ? `${Math.round(number * 100)}%` : 'n/a';
+}
+
+function uniqueStrings(values) {
+  return [...new Set((Array.isArray(values) ? values : []).map((value) => String(value ?? '').trim()).filter(Boolean))];
 }
 
 function escapeHtml(value) {

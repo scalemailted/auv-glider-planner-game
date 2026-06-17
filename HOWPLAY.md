@@ -1069,3 +1069,9 @@ Open Simulation Lab / Headless Bundle Viewer and load `runs/h3-roundtrip/bundle.
 ## P9 Hidden Event Hypothesis / Forecast Correction
 
 Headless bundles and Adaptive Benchmark surfacing reviews may show a Science Diagnosis section. Forecast correction means the expected field existed but was wrong. Hidden event hypothesis means observations may indicate a phenomenon not represented in the forecast. These diagnostics are transparent educational heuristics, not production data assimilation or calibrated ocean forecasting, and they do not change scoring or generate routes.
+
+## P10 Adaptive Science-Diagnosis Handoff
+
+Science diagnosis informs the mission-manager objective recommendation. It does not generate a route. Forecast correction means the expected field existed but was wrong. Hidden event hypothesis means observations may indicate a phenomenon not represented in the forecast. The player or solver still plans the route.
+
+P10 adds adaptive science-diagnosis context, mission-manager rationale, next-leg handoff metadata, objective-history display fields, and public-safe headless/browser summaries. It does not implement a new planner, scoring redesign, production data assimilation, GP/GMRF production inference, calibrated ocean forecast, Python simulator, or MARL/RL. Node/OceanBox-JS remains the canonical non-browser runtime; Python/Colab analyze artifacts or call Node.

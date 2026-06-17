@@ -1,4 +1,4 @@
-﻿import { createAdaptiveMissionManagerConfig } from './AdaptiveMissionManagerContract.js';
+import { createAdaptiveMissionManagerConfig } from './AdaptiveMissionManagerContract.js';
 import { createAdaptiveEvidenceSnapshot, computeAdaptiveDiagnosis } from './AdaptiveDiagnosisModel.js';
 import { selectNextAdaptiveObjective } from './AdaptiveObjectivePolicy.js';
 import { applyAdaptiveEvidenceSnapshot, applyAdaptiveObjectiveTransition, createAdaptiveMissionManagerState } from './AdaptiveMissionManagerState.js';
@@ -10,6 +10,7 @@ export const ADAPTIVE_MANAGER_FIXTURE_IDS = [
   'possibleHiddenPlume',
   'hiddenBloomLayer',
   'noisyFalseAlarm',
+  'mixedForecastErrorAndHiddenEvent',
   'staleMonitoringRevisit',
   'boundaryAmbiguity',
   'sourceLocalization',
@@ -91,6 +92,19 @@ const FIXTURES = {
     noiseFalseAlarmRisk: 0.9,
     activeObjectiveId: 'reconnaissanceSurvey'
   }),
+  mixedForecastErrorAndHiddenEvent: fixture('mixedForecastErrorAndHiddenEvent', 'Mixed Forecast Error and Hidden Event', 'Synthetic evidence supports both forecast correction and hidden-event follow-up; validate forecast with a hidden-event caveat.', 'validateForecast', {
+    observationCount: 14,
+    recentObservationCount: 6,
+    meanUncertainty: 0.4,
+    maxUncertainty: 0.66,
+    meanSurprise: 0.7,
+    maxSurprise: 0.84,
+    forecastErrorScore: 0.74,
+    hiddenEventConfidence: 0.62,
+    noiseFalseAlarmRisk: 0.11,
+    boundaryAmbiguityScore: 0.34,
+    activeObjectiveId: 'validateForecast'
+  }),
   staleMonitoringRevisit: fixture('staleMonitoringRevisit', 'Stale Monitoring Revisit', 'Synthetic high-value monitoring cells have become stale, so revisit them.', 'revisitStaleRegion', {
     observationCount: 9,
     recentObservationCount: 3,
@@ -151,7 +165,8 @@ export function adaptiveManagerFixtureOptions() {
     id,
     label: FIXTURES[id].label,
     expectedObjectiveId: FIXTURES[id].expectedObjectiveId,
-    teachingNote: FIXTURES[id].teachingNote
+    teachingNote: FIXTURES[id].teachingNote,
+    scienceDiagnosis: scienceFixtureMetadata(id)
   }));
 }
 
@@ -187,6 +202,7 @@ export function createAdaptiveManagerFixture(id = 'shiftedFrontForecastError', o
     evidence,
     expectedObjectiveId: definition.expectedObjectiveId,
     teachingNote: definition.teachingNote,
+    scienceDiagnosis: scienceFixtureMetadata(fixtureId),
     synthetic: true,
     notA: [
       'not production autonomy',
@@ -255,6 +271,26 @@ function fixture(id, label, teachingNote, expectedObjectiveId, evidence) {
   };
 }
 
+
+function scienceFixtureMetadata(id) {
+  const metadata = {
+    shiftedFrontForecastError: ['forecastCorrection', 'forecastDisplacement', 'validateForecast'],
+    possibleHiddenPlume: ['hiddenEventHypothesis', 'possibleHiddenEvent', 'confirmHiddenEvent'],
+    hiddenBloomLayer: ['hiddenEventHypothesis', 'likelyHiddenEvent', 'confirmHiddenEvent'],
+    noisyFalseAlarm: ['sensorNoise', 'likelySensorNoise', 'pauseForMoreEvidence'],
+    mixedForecastErrorAndHiddenEvent: ['mixed', 'mixedForecastErrorAndHiddenEvent', 'validateForecast']
+  }[id] ?? ['adaptiveEvidence', null, null];
+  return {
+    class: metadata[0],
+    primaryScienceDiagnosis: metadata[1],
+    recommendedObjectiveId: metadata[2],
+    routeAuthority: 'playerOrSolver',
+    usesProductionDataAssimilation: false,
+    usesNewPlanner: false,
+    usesMARL: false,
+    note: 'Science diagnosis informs the mission-manager recommendation. It does not generate a route.'
+  };
+}
 function normalizeFixtureId(id) {
   const value = String(id ?? '').trim();
   const aliases = {
@@ -265,6 +301,8 @@ function normalizeFixtureId(id) {
     hiddenPlume: 'possibleHiddenPlume',
     bloom: 'hiddenBloomLayer',
     noisy: 'noisyFalseAlarm',
+    mixed: 'mixedForecastErrorAndHiddenEvent',
+    mixedForecast: 'mixedForecastErrorAndHiddenEvent',
     stale: 'staleMonitoringRevisit',
     boundary: 'boundaryAmbiguity',
     source: 'sourceLocalization',

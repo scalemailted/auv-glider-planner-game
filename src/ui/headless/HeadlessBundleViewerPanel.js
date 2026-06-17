@@ -1,4 +1,4 @@
-﻿export function headlessBundleViewerPanelHtml(viewModel = {}) {
+export function headlessBundleViewerPanelHtml(viewModel = {}) {
   return `
     <section class="console-header headless-bundle-viewer-panel">
       <div class="console-kicker">Headless Bundle Viewer</div>
@@ -198,7 +198,9 @@ export function headlessBundleScienceDiagnosisHtml(viewModel = {}) {
       ` : '<div class="hud-muted">Science discovery diagnostics were not available for this bundle.</div>'}
       <div class="hud-muted">Forecast correction means the expected field existed but was wrong.</div>
       <div class="hud-muted">Hidden event hypothesis means observations may indicate a phenomenon not represented in the forecast.</div>
-      <div class="hud-muted">P9 uses transparent educational heuristics, not production data assimilation.</div>
+      <div class="hud-muted">Science diagnosis informs mission or artifact review only; it is not planner authority and does not generate a route.</div>
+      <div class="hud-muted">Headless science diagnostics are not browser official scoring.</div>
+      <div class="hud-muted">P10 uses transparent educational heuristics, not production data assimilation.</div>
     </section>
   `;
 }

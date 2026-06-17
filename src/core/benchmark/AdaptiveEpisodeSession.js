@@ -47,6 +47,8 @@ export function createAdaptiveEpisodeSession(options = {}) {
     objectiveHistory: normalizeObjectiveHistory(options.objectiveHistory ?? managerState.objectiveHistory, objective, options.currentLegIndex ?? runtime.activeLegIndex ?? 0),
     evidenceHistory: normalizeArray(options.evidenceHistory),
     diagnosisHistory: normalizeArray(options.diagnosisHistory),
+    scienceDiagnosisHistory: normalizeArray(options.scienceDiagnosisHistory),
+    missionManagerRationaleHistory: normalizeArray(options.missionManagerRationaleHistory),
     createdAt,
     updatedAt: options.updatedAt ?? createdAt,
     warnings: normalizeStringList(options.warnings),
@@ -66,6 +68,8 @@ export function addAdaptiveLegToSession(session, legRecord) {
     status: statusFromLeg(record),
     evidenceHistory: appendEvidence(base.evidenceHistory, record.evidence, record.legIndex),
     diagnosisHistory: appendDiagnosis(base.diagnosisHistory, record.diagnosis, record.legIndex),
+    scienceDiagnosisHistory: appendScienceContext(base.scienceDiagnosisHistory, record.scienceDiagnosisContext, record.legIndex),
+    missionManagerRationaleHistory: appendRationale(base.missionManagerRationaleHistory, record.missionManagerRationale, record.legIndex),
     objectiveHistory: appendObjectiveHistoryFromLeg(base.objectiveHistory, record),
     updatedAt: new Date().toISOString()
   });
@@ -84,15 +88,23 @@ export function addAdaptiveSurfacingDecisionToSession(session, decision) {
     status: transition?.toObjectiveId ? 'nextLegReady' : 'surfacingReview',
     evidenceHistory: appendEvidence(base.evidenceHistory, normalized.evidence, legIndex),
     diagnosisHistory: appendDiagnosis(base.diagnosisHistory, normalized.diagnosis, legIndex),
+    scienceDiagnosisHistory: appendScienceContext(base.scienceDiagnosisHistory, normalized.scienceDiagnosisContext, legIndex),
+    missionManagerRationaleHistory: appendRationale(base.missionManagerRationaleHistory, normalized.missionManagerRationale, legIndex),
     objectiveHistory: appendObjectiveHistory(base.objectiveHistory, {
       legIndex,
       time: normalized.time ?? transition.time ?? 0,
       fromObjectiveId: transition.fromObjectiveId ?? normalized.previousObjective?.id ?? base.currentObjectiveId,
       toObjectiveId: transition.toObjectiveId ?? normalized.recommendedObjective?.id ?? base.currentObjectiveId,
       diagnosisId: normalized.diagnosis?.primaryDiagnosis ?? null,
-      confidence: normalized.diagnosis?.confidence ?? null,
-      rationale: transition.rationale ?? normalized.rationale ?? 'Adaptive surfacing decision.',
-      status: transition.transitionId ?? 'surfacingDecision'
+      primaryScienceDiagnosis: normalized.scienceDiagnosisContext?.primaryScienceDiagnosis ?? normalized.diagnosis?.primaryScienceDiagnosis ?? null,
+      forecastCorrectionStatus: normalized.scienceDiagnosisContext?.forecastCorrectionStatus ?? null,
+      hiddenEventStatus: normalized.scienceDiagnosisContext?.hiddenEventStatus ?? null,
+      recommendedObjectiveId: transition.toObjectiveId ?? normalized.recommendedObjective?.id ?? base.currentObjectiveId,
+      confidence: normalized.scienceDiagnosisContext?.confidence ?? normalized.diagnosis?.confidence ?? null,
+      rationale: normalized.missionManagerRationale?.objectiveReason ?? transition.rationale ?? normalized.rationale ?? 'Adaptive surfacing decision.',
+      status: transition.transitionId ?? 'surfacingDecision',
+      scienceDiagnosisContext: normalized.scienceDiagnosisContext ?? null,
+      missionManagerRationale: normalized.missionManagerRationale ?? null
     }),
     updatedAt: new Date().toISOString()
   });
@@ -107,6 +119,8 @@ export function addAdaptiveNextLegHandoffToSession(session, handoff) {
   return synchronizeSession({
     ...base,
     nextLegHandoffs: upsertByKey(base.nextLegHandoffs, { ...normalized, legIndex }, handoffKey, chooseMoreCompleteObject),
+    scienceDiagnosisHistory: appendScienceContext(base.scienceDiagnosisHistory, normalized.scienceDiagnosisContext, legIndex),
+    missionManagerRationaleHistory: appendRationale(base.missionManagerRationaleHistory, normalized.missionManagerRationale, legIndex),
     currentLegIndex: Math.max(base.currentLegIndex, legIndex),
     currentObjectiveId: objective.id,
     currentObjectiveLabel: objective.label,
@@ -117,9 +131,15 @@ export function addAdaptiveNextLegHandoffToSession(session, handoff) {
       fromObjectiveId: normalized.transition?.fromObjectiveId ?? base.currentObjectiveId,
       toObjectiveId: objective.id,
       diagnosisId: normalized.evidenceSummary?.primaryDiagnosis ?? null,
-      confidence: null,
-      rationale: normalized.transition?.rationale ?? 'Next-leg handoff accepted for planning.',
-      status: 'nextLegReady'
+      primaryScienceDiagnosis: normalized.scienceDiagnosisContext?.primaryScienceDiagnosis ?? normalized.carryForwardEvidenceSummary?.primaryScienceDiagnosis ?? null,
+      forecastCorrectionStatus: normalized.scienceDiagnosisContext?.forecastCorrectionStatus ?? null,
+      hiddenEventStatus: normalized.scienceDiagnosisContext?.hiddenEventStatus ?? null,
+      recommendedObjectiveId: objective.id,
+      confidence: normalized.scienceDiagnosisContext?.confidence ?? null,
+      rationale: normalized.missionManagerRationale?.objectiveReason ?? normalized.transition?.rationale ?? 'Next-leg handoff accepted for planning.',
+      status: 'nextLegReady',
+      scienceDiagnosisContext: normalized.scienceDiagnosisContext ?? null,
+      missionManagerRationale: normalized.missionManagerRationale ?? null
     }),
     updatedAt: new Date().toISOString()
   });
@@ -166,6 +186,8 @@ export function adaptiveEpisodeSessionSummary(sessionInput = {}) {
     objectiveHistoryCount: session.objectiveHistory.length,
     evidenceHistoryCount: session.evidenceHistory.length,
     diagnosisHistoryCount: session.diagnosisHistory.length,
+    scienceDiagnosisHistoryCount: session.scienceDiagnosisHistory.length,
+    missionManagerRationaleHistoryCount: session.missionManagerRationaleHistory.length,
     objectiveAuthority: session.objectiveAuthority,
     routeAuthority: session.routeAuthority,
     updatedAt: session.updatedAt,
@@ -219,6 +241,8 @@ function synchronizeSession(session) {
     objectiveHistory: normalizeObjectiveHistory(session.objectiveHistory, objective, currentLegIndex),
     evidenceHistory: normalizeArray(session.evidenceHistory),
     diagnosisHistory: normalizeArray(session.diagnosisHistory),
+    scienceDiagnosisHistory: normalizeArray(session.scienceDiagnosisHistory),
+    missionManagerRationaleHistory: normalizeArray(session.missionManagerRationaleHistory),
     warnings: uniqueStrings(session.warnings),
     notes: normalizeStringList(session.notes)
   };
@@ -235,9 +259,15 @@ function normalizeObjectiveHistory(history, objective, legIndex = 0) {
     fromObjectiveId: stringOrNull(entry.fromObjectiveId),
     toObjectiveId: normalizeMissionObjectiveId(entry.toObjectiveId ?? entry.objectiveId ?? objective.id),
     diagnosisId: stringOrNull(entry.diagnosisId),
+    primaryScienceDiagnosis: stringOrNull(entry.primaryScienceDiagnosis),
+    forecastCorrectionStatus: stringOrNull(entry.forecastCorrectionStatus),
+    hiddenEventStatus: stringOrNull(entry.hiddenEventStatus),
+    recommendedObjectiveId: stringOrNull(entry.recommendedObjectiveId ?? entry.toObjectiveId ?? entry.objectiveId),
     confidence: finiteOrNull(entry.confidence),
     rationale: stringOrNull(entry.rationale) ?? 'Adaptive objective history entry.',
     status: stringOrNull(entry.status ?? entry.transitionId) ?? 'objective',
+    scienceDiagnosisContext: compactObject(entry.scienceDiagnosisContext ?? null),
+    missionManagerRationale: compactObject(entry.missionManagerRationale ?? null),
     createdAt: entry.createdAt ?? entry.timeStamp ?? null
   }));
   if (!normalized.length) {
@@ -264,9 +294,15 @@ function appendObjectiveHistoryFromLeg(history, leg) {
     fromObjectiveId: leg.objectiveTransition?.fromObjectiveId ?? leg.objectiveId,
     toObjectiveId: leg.objectiveTransition?.toObjectiveId ?? leg.nextLegHandoff?.recommendedObjectiveId,
     diagnosisId: leg.diagnosis?.primaryDiagnosis ?? null,
-    confidence: leg.diagnosis?.confidence ?? null,
-    rationale: leg.objectiveTransition?.rationale ?? 'Adaptive leg objective transition.',
-    status: leg.status
+    primaryScienceDiagnosis: leg.scienceDiagnosisContext?.primaryScienceDiagnosis ?? leg.diagnosis?.primaryScienceDiagnosis ?? null,
+    forecastCorrectionStatus: leg.scienceDiagnosisContext?.forecastCorrectionStatus ?? null,
+    hiddenEventStatus: leg.scienceDiagnosisContext?.hiddenEventStatus ?? null,
+    recommendedObjectiveId: leg.objectiveTransition?.toObjectiveId ?? leg.nextLegHandoff?.recommendedObjectiveId ?? null,
+    confidence: leg.scienceDiagnosisContext?.confidence ?? leg.diagnosis?.confidence ?? null,
+    rationale: leg.missionManagerRationale?.objectiveReason ?? leg.objectiveTransition?.rationale ?? 'Adaptive leg objective transition.',
+    status: leg.status,
+    scienceDiagnosisContext: leg.scienceDiagnosisContext ?? null,
+    missionManagerRationale: leg.missionManagerRationale ?? null
   });
 }
 
@@ -278,9 +314,15 @@ function appendObjectiveHistory(history, entry) {
     fromObjectiveId: stringOrNull(entry.fromObjectiveId),
     toObjectiveId: objectiveId,
     diagnosisId: stringOrNull(entry.diagnosisId),
+    primaryScienceDiagnosis: stringOrNull(entry.primaryScienceDiagnosis),
+    forecastCorrectionStatus: stringOrNull(entry.forecastCorrectionStatus),
+    hiddenEventStatus: stringOrNull(entry.hiddenEventStatus),
+    recommendedObjectiveId: stringOrNull(entry.recommendedObjectiveId ?? objectiveId),
     confidence: finiteOrNull(entry.confidence),
     rationale: stringOrNull(entry.rationale) ?? 'Adaptive objective history entry.',
     status: stringOrNull(entry.status) ?? 'objective',
+    scienceDiagnosisContext: compactObject(entry.scienceDiagnosisContext ?? null),
+    missionManagerRationale: compactObject(entry.missionManagerRationale ?? null),
     createdAt: entry.createdAt ?? new Date().toISOString()
   };
   const key = `${normalized.legIndex}:${normalized.fromObjectiveId ?? 'none'}:${normalized.toObjectiveId}:${normalized.status}`;
@@ -298,6 +340,16 @@ function appendDiagnosis(history, diagnosis, legIndex) {
   return upsertByKey(history, { legIndex, diagnosis: compactObject(diagnosis), diagnosisId: diagnosis.primaryDiagnosis ?? diagnosis.id ?? null, confidence: diagnosis.confidence ?? null }, (entry) => `diagnosis:${entry.legIndex}:${entry.diagnosisId ?? 'unknown'}`, chooseMoreCompleteObject);
 }
 
+
+function appendScienceContext(history, context, legIndex) {
+  if (!context) return history;
+  return upsertByKey(history, { legIndex, scienceDiagnosisContext: compactObject(context), primaryScienceDiagnosis: context.primaryScienceDiagnosis ?? null, confidence: context.confidence ?? null }, (entry) => `science:${entry.legIndex}`, chooseMoreCompleteObject);
+}
+
+function appendRationale(history, rationale, legIndex) {
+  if (!rationale) return history;
+  return upsertByKey(history, { legIndex, missionManagerRationale: compactObject(rationale), recommendedObjectiveId: rationale.recommendedObjectiveId ?? null, confidence: rationale.confidence ?? null }, (entry) => `rationale:${entry.legIndex}`, chooseMoreCompleteObject);
+}
 function upsertByKey(values, next, keyFn, choose = chooseMoreCompleteObject) {
   const map = new Map();
   for (const value of Array.isArray(values) ? values : []) map.set(keyFn(value), cloneJson(value));

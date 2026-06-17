@@ -44,6 +44,8 @@ export function createAdaptiveLegRecord(options = {}) {
     evidence: compactObject(options.evidence ?? null),
     surfacingEvent: compactObject(options.surfacingEvent ?? null),
     diagnosis: compactObject(options.diagnosis ?? null),
+    scienceDiagnosisContext: compactObject(options.scienceDiagnosisContext ?? options.nextLegHandoff?.scienceDiagnosisContext ?? null),
+    missionManagerRationale: compactObject(options.missionManagerRationale ?? options.nextLegHandoff?.missionManagerRationale ?? null),
     objectiveTransition: compactObject(options.objectiveTransition ?? null),
     nextLegHandoff: compactObject(options.nextLegHandoff ?? null),
     status: normalizeLegStatus(options.status ?? inferLegStatus(options)),
@@ -81,6 +83,7 @@ export function validateAdaptiveLegRecord(record = {}) {
   if (record?.objectiveAuthority !== 'missionManager') errors.push('objectiveAuthority must be missionManager.');
   if (record?.routeAuthority !== 'playerOrSolver') errors.push('routeAuthority must be playerOrSolver.');
   if (!LEG_STATUS_VALUES.has(record?.status)) warnings.push(`Unknown adaptive leg status: ${record?.status ?? 'missing'}.`);
+  if (record?.nextLegHandoff?.generatedRoute === true || record?.nextLegHandoff?.generatesWaypoints === true) errors.push('Next-leg handoff must not claim generated routes or waypoints.');
   if (record?.nextLegHandoff?.waypoints || record?.nextLegHandoff?.route || record?.nextLegHandoff?.agentPlans) warnings.push('Next-leg handoff should not include generated routes or waypoints.');
   return { status: errors.length ? 'FAIL' : warnings.length ? 'WARN' : 'PASS', valid: errors.length === 0, errors, warnings };
 }
@@ -103,6 +106,10 @@ export function adaptiveLegRecordSummary(recordInput = {}) {
     hasRouteExecutionRecord: Boolean(record.routeExecutionRecord),
     hasEvidence: Boolean(record.evidence),
     hasSurfacingDecision: Boolean(record.diagnosis || record.objectiveTransition),
+    hasScienceDiagnosisContext: Boolean(record.scienceDiagnosisContext),
+    primaryScienceDiagnosis: record.scienceDiagnosisContext?.primaryScienceDiagnosis ?? record.diagnosis?.primaryScienceDiagnosis ?? null,
+    forecastCorrectionStatus: record.scienceDiagnosisContext?.forecastCorrectionStatus ?? null,
+    hiddenEventStatus: record.scienceDiagnosisContext?.hiddenEventStatus ?? null,
     recommendedObjectiveId: record.nextLegHandoff?.recommendedObjectiveId ?? record.objectiveTransition?.toObjectiveId ?? null,
     metrics: cloneJson(record.metrics),
     valid: validation.valid,

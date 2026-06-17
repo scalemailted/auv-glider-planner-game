@@ -53,3 +53,9 @@ The public examples omit hidden field export, keep `T_hiddenTruth` out of solver
 ## P9 Science Diagnostics
 
 Roundtrip reports may include `scienceDiagnosticsSummary`, and roundtrip bundles may include `scienceDiagnostics` / `science_diagnostics.json`. These summaries distinguish forecast correction from hidden-event hypotheses for browser and Colab inspection. They are public-safe, omit `T_hiddenTruth`, and do not change the submitted-plan execution or score.
+
+## P10 Adaptive Science-Diagnosis Handoff
+
+Science diagnosis informs the mission-manager objective recommendation. It does not generate a route. Forecast correction means the expected field existed but was wrong. Hidden event hypothesis means observations may indicate a phenomenon not represented in the forecast. The player or solver still plans the route.
+
+P10 adds adaptive science-diagnosis context, mission-manager rationale, next-leg handoff metadata, objective-history display fields, and public-safe headless/browser summaries. It does not implement a new planner, scoring redesign, production data assimilation, GP/GMRF production inference, calibrated ocean forecast, Python simulator, or MARL/RL. Node/OceanBox-JS remains the canonical non-browser runtime; Python/Colab analyze artifacts or call Node.

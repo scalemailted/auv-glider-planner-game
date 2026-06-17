@@ -282,3 +282,9 @@ The report can be written as `roundtrip_report.json` next to a headless bundle a
 P9 headless bundles may include `science_diagnostics.json` and combined bundles may embed `scienceDiagnostics`. The record type is `anchor.headless.science-diagnostics`. It contains compact public-safe summaries for observation surprise, evidence coherence, forecast-correction state, hidden-event hypothesis state, primary diagnosis, confidence, and recommended next objective.
 
 The artifact distinguishes forecast correction from hidden-event hypotheses. It must not include `T_hiddenTruth` or hidden field arrays. It is not production data assimilation, not a calibrated ocean forecast, not a planner, not a scoring redesign, and not MARL/RL.
+
+## P10 Adaptive Science-Diagnosis Handoff
+
+Science diagnosis informs the mission-manager objective recommendation. It does not generate a route. Forecast correction means the expected field existed but was wrong. Hidden event hypothesis means observations may indicate a phenomenon not represented in the forecast. The player or solver still plans the route.
+
+P10 adds adaptive science-diagnosis context, mission-manager rationale, next-leg handoff metadata, objective-history display fields, and public-safe headless/browser summaries. It does not implement a new planner, scoring redesign, production data assimilation, GP/GMRF production inference, calibrated ocean forecast, Python simulator, or MARL/RL. Node/OceanBox-JS remains the canonical non-browser runtime; Python/Colab analyze artifacts or call Node.

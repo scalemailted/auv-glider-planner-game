@@ -354,3 +354,9 @@ H0 introduces headless schema contracts, canonical field descriptors, mission/ep
 - Added pure JS science diagnosis modules under `src/core/science/` for observation surprise, evidence coherence, forecast-correction state, hidden-event hypothesis state, and science discovery lifecycle fixtures.
 - Integrated compact public-safe `anchor.headless.science-diagnostics` into Adaptive Benchmark surfacing review, Node/OceanBox-JS episodes, headless bundles, solver-roundtrip reports, Headless Bundle Viewer, browser summaries, and checked-in examples.
 - Preserved the boundary: P9 does not add production data assimilation, calibrated ocean forecasting, a new planner, scoring changes, a Python simulator, backend services, or MARL/RL.
+
+## P10 Adaptive Science-Diagnosis Handoff
+
+Science diagnosis informs the mission-manager objective recommendation. It does not generate a route. Forecast correction means the expected field existed but was wrong. Hidden event hypothesis means observations may indicate a phenomenon not represented in the forecast. The player or solver still plans the route.
+
+P10 adds adaptive science-diagnosis context, mission-manager rationale, next-leg handoff metadata, objective-history display fields, and public-safe headless/browser summaries. It does not implement a new planner, scoring redesign, production data assimilation, GP/GMRF production inference, calibrated ocean forecast, Python simulator, or MARL/RL. Node/OceanBox-JS remains the canonical non-browser runtime; Python/Colab analyze artifacts or call Node.

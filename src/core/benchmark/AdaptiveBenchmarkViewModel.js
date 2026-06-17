@@ -18,6 +18,7 @@ export function buildAdaptiveBenchmarkViewModel({
   const currentObjective = objectiveCard(currentObjectiveId);
   const recommendedObjective = objectiveCard(recommendedObjectiveId);
   const scores = diagnosis.scores ?? {};
+  const scienceDiagnosis = normalizeScienceDiagnosisPreview(fixture.scienceDiagnosis, diagnosis, recommendedObjectiveId);
   return {
     version: ADAPTIVE_BENCHMARK_VIEW_MODEL_VERSION,
     benchmarkMode: 'adaptiveBenchmark',
@@ -29,6 +30,7 @@ export function buildAdaptiveBenchmarkViewModel({
     policyLabel: managerConfig.policyLabel ?? 'Transparent Rule Manager',
     currentObjective,
     recommendedObjective,
+    scienceDiagnosis,
     diagnosis: {
       id: diagnosisId,
       label: diagnosis.primaryDiagnosisLabel ?? diagnosisDefinition.label,
@@ -62,7 +64,8 @@ export function buildAdaptiveBenchmarkViewModel({
       'adaptive exports',
       'adaptive setup metadata',
       'surfacing decision in debrief',
-      'next-leg handoff config'
+      'next-leg handoff config',
+      'science-diagnosis preview labels'
     ],
     notImplemented: [
       'automatic route generation',
@@ -72,7 +75,8 @@ export function buildAdaptiveBenchmarkViewModel({
       'scoring redesign',
       'full autonomy',
       'MARL/RL',
-      'production data assimilation'
+      'production data assimilation',
+      'GP/GMRF production inference'
     ],
     boundaryFlags: {
       objectiveAuthority: 'missionManager',
@@ -80,7 +84,11 @@ export function buildAdaptiveBenchmarkViewModel({
       usesRoutePlanning: false,
       usesMissionScoring: false,
       usesMARL: false,
-      usesProductionDataAssimilation: false
+      usesProductionDataAssimilation: false,
+      diagnosisIsPlannerAuthority: false,
+      usesNewPlanner: false,
+      generatesWaypoints: false,
+      changesScoring: false
     }
   };
 }
@@ -93,6 +101,8 @@ export function adaptiveBenchmarkViewModelSummary(viewModel = {}) {
     currentObjectiveId: viewModel.currentObjective?.id,
     recommendedObjectiveId: viewModel.recommendedObjective?.id,
     diagnosisId: viewModel.diagnosis?.id,
+    primaryScienceDiagnosis: viewModel.scienceDiagnosis?.primaryScienceDiagnosis ?? null,
+    scienceDiagnosisClass: viewModel.scienceDiagnosis?.class ?? null,
     confidence: viewModel.diagnosis?.confidence,
     transitionId: viewModel.objectiveTransition?.transitionId,
     objectiveAuthority: viewModel.boundaryFlags?.objectiveAuthority ?? 'missionManager',
@@ -103,6 +113,19 @@ export function adaptiveBenchmarkViewModelSummary(viewModel = {}) {
   };
 }
 
+function normalizeScienceDiagnosisPreview(scienceDiagnosis = null, diagnosis = {}, recommendedObjectiveId = null) {
+  const source = scienceDiagnosis ?? {};
+  return {
+    class: source.class ?? diagnosis.scienceDiagnosisClass ?? 'adaptiveEvidence',
+    primaryScienceDiagnosis: source.primaryScienceDiagnosis ?? diagnosis.primaryScienceDiagnosis ?? null,
+    recommendedObjectiveId: source.recommendedObjectiveId ?? diagnosis.recommendedObjectiveId ?? recommendedObjectiveId ?? null,
+    routeAuthority: 'playerOrSolver',
+    usesProductionDataAssimilation: false,
+    usesNewPlanner: false,
+    usesMARL: false,
+    note: source.note ?? 'Science diagnosis informs the mission-manager recommendation. It does not generate a route.'
+  };
+}
 function objectiveCard(id) {
   const objective = missionObjectiveById(id);
   return {

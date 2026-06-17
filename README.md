@@ -891,3 +891,9 @@ The older `tools/js/headless_roundtrip.mjs` wrapper still works. The canonical r
 ### P9 Hidden Event Hypothesis / Forecast Correction
 
 P9 adds compact science diagnostics to Adaptive Benchmark and Node/OceanBox-JS headless bundles. The new `anchor.headless.science-diagnostics` artifact distinguishes forecast correction from hidden-event hypotheses using transparent educational heuristics. It is public-safe, does not embed `T_hiddenTruth`, and does not add production data assimilation, a calibrated ocean forecast, a planner, scoring changes, or MARL/RL. See [Hidden Event Hypothesis / Forecast-Correction Lifecycle](docs/hidden_event_forecast_correction_lifecycle.md).
+
+## P10 Adaptive Science-Diagnosis Handoff
+
+Science diagnosis informs the mission-manager objective recommendation. It does not generate a route. Forecast correction means the expected field existed but was wrong. Hidden event hypothesis means observations may indicate a phenomenon not represented in the forecast. The player or solver still plans the route.
+
+P10 adds adaptive science-diagnosis context, mission-manager rationale, next-leg handoff metadata, objective-history display fields, and public-safe headless/browser summaries. It does not implement a new planner, scoring redesign, production data assimilation, GP/GMRF production inference, calibrated ocean forecast, Python simulator, or MARL/RL. Node/OceanBox-JS remains the canonical non-browser runtime; Python/Colab analyze artifacts or call Node.

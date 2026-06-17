@@ -7,11 +7,14 @@ export function adaptiveBenchmarkPanelHtml(viewModel = {}) {
         <div><span>Current Objective</span><strong>${escapeHtml(viewModel.currentObjective?.label ?? 'Unknown')}</strong></div>
         <div><span>Diagnosis</span><strong>${escapeHtml(viewModel.diagnosis?.label ?? 'Unknown')}</strong></div>
         <div><span>Recommended Objective</span><strong>${escapeHtml(viewModel.recommendedObjective?.label ?? 'Unknown')}</strong></div>
+        <div><span>Science Type</span><strong>${escapeHtml(viewModel.scienceDiagnosis?.class ?? 'adaptiveEvidence')}</strong></div>
+        <div><span>Science Diagnosis</span><strong>${escapeHtml(viewModel.scienceDiagnosis?.primaryScienceDiagnosis ?? 'n/a')}</strong></div>
         <div><span>Confidence</span><strong>${escapeHtml(formatPercent(viewModel.diagnosis?.confidence))}</strong></div>
         <div><span>Objective Authority</span><strong>${escapeHtml(viewModel.boundaryFlags?.objectiveAuthority ?? 'missionManager')}</strong></div>
         <div><span>Route Authority</span><strong>${escapeHtml(viewModel.boundaryFlags?.routeAuthority ?? 'playerOrSolver')}</strong></div>
       </div>
       ${adaptiveObjectiveTransitionHtml(viewModel)}
+      ${adaptiveSciencePreviewHtml(viewModel)}
       ${adaptiveDiagnosisCardsHtml(viewModel)}
       ${adaptiveEvidenceSummaryHtml(viewModel)}
       <section class="mini-panel">
@@ -28,6 +31,19 @@ export function adaptiveBenchmarkPanelHtml(viewModel = {}) {
   `;
 }
 
+export function adaptiveSciencePreviewHtml(viewModel = {}) {
+  const science = viewModel.scienceDiagnosis ?? {};
+  return `
+    <section class="mini-panel" data-adaptive-science-preview>
+      <h3>Science Diagnosis Preview</h3>
+      <div class="hud-muted"><strong>${escapeHtml(science.class ?? 'adaptiveEvidence')}</strong>: ${escapeHtml(science.primaryScienceDiagnosis ?? 'No science-diagnosis context stored for this fixture.')}</div>
+      <div class="hud-muted">Recommended objective: ${escapeHtml(science.recommendedObjectiveId ?? viewModel.recommendedObjective?.id ?? 'unknown')}</div>
+      <div class="hud-muted">Science diagnosis informs the mission-manager recommendation. It does not generate a route.</div>
+      <div class="hud-muted">The player or solver still plans the next route.</div>
+      <div class="hud-muted">No production inference, new route planner, scoring redesign, or MARL/RL is implemented here.</div>
+    </section>
+  `;
+}
 export function adaptiveDiagnosisCardsHtml(viewModel = {}) {
   const scores = Array.isArray(viewModel.scoreCards) ? viewModel.scoreCards : [];
   return `
@@ -77,6 +93,8 @@ export function adaptiveBenchmarkBoundaryHtml(viewModel = {}) {
       <ul>${notImplemented.map((item) => `<li>${escapeHtml(item)}</li>`).join('')}</ul>
       <div class="hud-muted">P7 connects one executed leg to surfacing review and next-objective handoff without automatic route generation.</div>
       <div class="hud-muted">P8 persists adaptive leg records, surfacing decisions, and objective history for manual continuation. It does not add automatic route generation, scoring redesign, or MARL/RL.</div>
+      <div class="hud-muted">Science diagnosis informs the mission-manager recommendation. It does not generate a route.</div>
+      <div class="hud-muted">P10 does not add production data assimilation, GP/GMRF production inference, a new planner, or MARL/RL.</div>
     </section>
   `;
 }

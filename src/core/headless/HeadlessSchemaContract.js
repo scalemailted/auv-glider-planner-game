@@ -1,4 +1,4 @@
-﻿export const HEADLESS_SCHEMA_CONTRACT_VERSION = 'headless-schema-contract-h0';
+export const HEADLESS_SCHEMA_CONTRACT_VERSION = 'headless-schema-contract-h0';
 
 export const HEADLESS_ARTIFACT_TYPES = Object.freeze([
   'anchor.headless.bundle',
@@ -16,6 +16,9 @@ export const HEADLESS_ARTIFACT_TYPES = Object.freeze([
   'anchor.headless.roundtrip-report',
   'anchor.headless.solver-roundtrip-bundle',
   'anchor.headless.science-diagnostics',
+  'anchor.benchmark.adaptive-science-diagnosis-context',
+  'anchor.benchmark.adaptive-science-diagnosis-handoff',
+  'anchor.benchmark.adaptive-mission-manager-rationale',
   'anchor.science.forecast-correction',
   'anchor.science.hidden-event-hypothesis',
   'anchor.science.discovery-update',
@@ -104,6 +107,9 @@ const ARTIFACT_ALIASES = new Map([
   ['legacyRoundtripReport', 'anchor.headless.roundtrip-report'],
   ['solverRoundtripBundle', 'anchor.headless.solver-roundtrip-bundle'],
   ['scienceDiagnostics', 'anchor.headless.science-diagnostics'],
+  ['adaptiveScienceDiagnosisContext', 'anchor.benchmark.adaptive-science-diagnosis-context'],
+  ['adaptiveScienceDiagnosisHandoff', 'anchor.benchmark.adaptive-science-diagnosis-handoff'],
+  ['adaptiveMissionManagerRationale', 'anchor.benchmark.adaptive-mission-manager-rationale'],
   ['forecastCorrection', 'anchor.science.forecast-correction'],
   ['hiddenEventHypothesis', 'anchor.science.hidden-event-hypothesis'],
   ['scienceDiscoveryUpdate', 'anchor.science.discovery-update'],

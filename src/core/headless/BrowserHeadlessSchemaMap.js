@@ -1,4 +1,4 @@
-﻿import { normalizeHeadlessFieldId } from './HeadlessSchemaContract.js';
+import { normalizeHeadlessFieldId } from './HeadlessSchemaContract.js';
 
 export const BROWSER_HEADLESS_SCHEMA_MAP_VERSION = 'browser-headless-schema-map-h0';
 
@@ -35,6 +35,9 @@ const BROWSER_HEADLESS_MAP = Object.freeze([
   entry('anchor.benchmark.adaptive-objective-history', 'anchor.headless.benchmark-episode', 'ready', true, 'beliefOnly', [], 'Map to objective timeline and diagnostics.'),
   entry('anchor.benchmark.adaptive-leg-record', 'anchor.headless.benchmark-episode', 'ready', true, 'beliefOnly', [], 'Map each leg as episode segment.'),
   entry('anchor.benchmark.adaptive-session-summary', 'anchor.headless.score-report', 'ready', true, 'beliefOnly', [], 'Map summary to score/diagnostic report.'),
+  entry('anchor.benchmark.adaptive-science-diagnosis-context', 'anchor.headless.science-diagnostics', 'ready', true, 'beliefOnly', [], 'P10 adaptive science context is public-safe mission-manager evidence metadata, not route planning.'),
+  entry('anchor.benchmark.adaptive-science-diagnosis-handoff', 'anchor.headless.science-diagnostics', 'ready', true, 'beliefOnly', [], 'P10 next-leg handoff context carries diagnosis evidence but no waypoints.'),
+  entry('anchor.benchmark.adaptive-mission-manager-rationale', 'anchor.headless.benchmark-episode', 'ready', true, 'beliefOnly', [], 'P10 rationale explains objective recommendations while route planning remains player/solver authority.'),
 
   entry('anchor.plan', 'anchor.headless.trajectory', 'partial', true, 'publicScenario', ['plan may omit observations/results'], 'Pair with result or route execution for complete episode records.'),
   entry('anchor.plan-segment', 'anchor.headless.trajectory', 'partial', false, 'publicScenario', ['segment is partial future route update'], 'Represent as action segment with anchor time.'),
@@ -151,7 +154,10 @@ export function requiredP8Types() {
     'anchor.benchmark.adaptive-episode-session',
     'anchor.benchmark.adaptive-objective-history',
     'anchor.benchmark.adaptive-leg-record',
-    'anchor.benchmark.adaptive-session-summary'
+    'anchor.benchmark.adaptive-session-summary',
+    'anchor.benchmark.adaptive-science-diagnosis-context',
+    'anchor.benchmark.adaptive-science-diagnosis-handoff',
+    'anchor.benchmark.adaptive-mission-manager-rationale'
   ];
 }
 

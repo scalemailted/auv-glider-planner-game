@@ -114,3 +114,9 @@ Public output writes `bundle.json` plus `roundtrip_report.json` without `hidden_
 Headless episodes now include compact public-safe science diagnostics. Bundle output may include `science_diagnostics.json` plus `scienceDiagnostics` inside `bundle.json`. The diagnostics summarize observation surprise, evidence coherence, forecast-correction state, and hidden-event hypothesis state without embedding hidden truth arrays.
 
 This is an educational heuristic layer only. It does not perform production data assimilation, calibrated forecasting, route planning, scoring changes, or MARL/RL.
+
+## P10 Adaptive Science-Diagnosis Handoff
+
+Science diagnosis informs the mission-manager objective recommendation. It does not generate a route. Forecast correction means the expected field existed but was wrong. Hidden event hypothesis means observations may indicate a phenomenon not represented in the forecast. The player or solver still plans the route.
+
+P10 adds adaptive science-diagnosis context, mission-manager rationale, next-leg handoff metadata, objective-history display fields, and public-safe headless/browser summaries. It does not implement a new planner, scoring redesign, production data assimilation, GP/GMRF production inference, calibrated ocean forecast, Python simulator, or MARL/RL. Node/OceanBox-JS remains the canonical non-browser runtime; Python/Colab analyze artifacts or call Node.

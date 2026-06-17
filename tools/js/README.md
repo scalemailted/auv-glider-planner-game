@@ -93,3 +93,9 @@ Regenerate the checked-in H3.1 roundtrip examples with `node tools/js/generate_h
 ## P9 Science Diagnostics
 
 Headless simulation and roundtrip commands may write `science_diagnostics.json` and embed `scienceDiagnostics` in `bundle.json`. Browser summaries expose this as a Science Diagnosis section. The diagnostics are educational heuristics only: no production data assimilation, calibrated ocean forecast, new planner, official browser scoring, Python simulator, or MARL/RL is added.
+
+## P10 Adaptive Science-Diagnosis Handoff
+
+Science diagnosis informs the mission-manager objective recommendation. It does not generate a route. Forecast correction means the expected field existed but was wrong. Hidden event hypothesis means observations may indicate a phenomenon not represented in the forecast. The player or solver still plans the route.
+
+P10 adds adaptive science-diagnosis context, mission-manager rationale, next-leg handoff metadata, objective-history display fields, and public-safe headless/browser summaries. It does not implement a new planner, scoring redesign, production data assimilation, GP/GMRF production inference, calibrated ocean forecast, Python simulator, or MARL/RL. Node/OceanBox-JS remains the canonical non-browser runtime; Python/Colab analyze artifacts or call Node.

@@ -108,3 +108,9 @@ Colab/Python can load `docs/examples/headless_oceanbox_js_public_bundle.example.
 ## H3.1 Roundtrip Artifact Analysis
 
 After Node writes `runs/h3-roundtrip/bundle.json` and `roundtrip_report.json`, or when using the checked-in `docs/examples/headless_solver_roundtrip_bundle.example.json` and `docs/examples/headless_solver_roundtrip_report.example.json`, Python/Colab can read both with standard-library `json` for analysis. The report states whether packet visibility and plan validation passed, which plan/agent was executed, whether hidden truth was exported, and that headless scoring is not official browser scoring. Python remains an artifact-analysis or Node-calling workflow, not a simulator implementation.
+
+## P10 Adaptive Science-Diagnosis Handoff
+
+Science diagnosis informs the mission-manager objective recommendation. It does not generate a route. Forecast correction means the expected field existed but was wrong. Hidden event hypothesis means observations may indicate a phenomenon not represented in the forecast. The player or solver still plans the route.
+
+P10 adds adaptive science-diagnosis context, mission-manager rationale, next-leg handoff metadata, objective-history display fields, and public-safe headless/browser summaries. It does not implement a new planner, scoring redesign, production data assimilation, GP/GMRF production inference, calibrated ocean forecast, Python simulator, or MARL/RL. Node/OceanBox-JS remains the canonical non-browser runtime; Python/Colab analyze artifacts or call Node.

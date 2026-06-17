@@ -1,4 +1,6 @@
 import { missionObjectiveById } from './MissionObjectiveTaxonomy.js';
+import { adaptiveScienceDiagnosisHandoffSummary, scienceDiagnosisContextFromSurfacingDecision } from './AdaptiveScienceDiagnosisHandoff.js';
+import { adaptiveMissionManagerRationaleSummary } from './AdaptiveMissionManagerRationale.js';
 
 export const ADAPTIVE_NEXT_LEG_HANDOFF_VERSION = 'adaptive-next-leg-handoff-p7';
 
@@ -6,6 +8,8 @@ export function createAdaptiveNextLegConfig({ runtimeContext = {}, surfacingDeci
   const transition = surfacingDecision.objectiveTransition ?? options.transition ?? null;
   const recommendedObjectiveId = transition?.toObjectiveId ?? surfacingDecision.recommendedObjective?.id ?? options.recommendedObjectiveId ?? null;
   const objective = missionObjectiveById(recommendedObjectiveId ?? 'reconnaissanceSurvey');
+  const scienceDiagnosisContext = cloneJson(options.scienceDiagnosisContext ?? surfacingDecision.scienceDiagnosisContext ?? scienceDiagnosisContextFromSurfacingDecision(surfacingDecision));
+  const missionManagerRationale = cloneJson(options.missionManagerRationale ?? surfacingDecision.missionManagerRationale ?? null);
   return {
     type: 'anchor.benchmark.adaptive-next-leg-config',
     version: ADAPTIVE_NEXT_LEG_HANDOFF_VERSION,
@@ -22,11 +26,19 @@ export function createAdaptiveNextLegConfig({ runtimeContext = {}, surfacingDeci
     managerState: cloneJson(surfacingDecision.managerStateAfter ?? runtimeContext.adaptiveManagerState ?? options.managerState ?? null),
     objectiveHistory: cloneJson(surfacingDecision.managerStateAfter?.objectiveHistory ?? runtimeContext.adaptiveManagerState?.objectiveHistory ?? []),
     evidenceSummary: summarizeEvidence(surfacingDecision.evidence),
+    scienceDiagnosisContext,
+    missionManagerRationale,
+    carryForwardEvidenceSummary: summarizeCarryForwardEvidence(surfacingDecision.evidence, scienceDiagnosisContext, missionManagerRationale),
     transition: cloneJson(transition),
     previousResultId: previousResult?.resultId ?? previousResult?.id ?? null,
+    diagnosisIsPlannerAuthority: false,
+    generatedRoute: false,
+    generatesWaypoints: false,
+    controlsRoutePlanning: false,
     notes: [
       'The mission manager recommends the next objective. The player or solver must still plan the route.',
-      'P7 does not generate waypoints or an automatic route.',
+      'Science diagnosis informs the mission-manager recommendation. It does not generate a route.',
+      'P10 next-leg handoff carries evidence context but does not generate waypoints or an automatic route.',
       ...(Array.isArray(options.notes) ? options.notes : [])
     ]
   };
@@ -42,6 +54,11 @@ export function attachAdaptiveNextLegMetadata(target, handoff) {
     episodeId: handoff?.episodeId ?? clone.meta.benchmarkMetadata?.episodeId ?? null,
     objectiveAuthority: 'missionManager',
     routeAuthority: 'playerOrSolver',
+    scienceDiagnosisContext: cloneJson(handoff?.scienceDiagnosisContext ?? null),
+    missionManagerRationale: cloneJson(handoff?.missionManagerRationale ?? null),
+    diagnosisIsPlannerAuthority: false,
+    generatedRoute: false,
+    generatesWaypoints: false,
     informationAccessTier: handoff?.informationAccessTier ?? clone.meta.benchmarkMetadata?.informationAccessTier ?? 'beliefOnly',
     worldModelTier: handoff?.worldModelTier ?? clone.meta.benchmarkMetadata?.worldModelTier ?? 'stochasticBelief',
     fairnessLabel: handoff?.fairnessLabel ?? clone.meta.benchmarkMetadata?.fairnessLabel ?? 'Belief-only'
@@ -59,7 +76,11 @@ export function validateAdaptiveNextLegConfig(config = {}) {
   if (!config?.recommendedObjectiveId) errors.push('recommendedObjectiveId is required.');
   if (config?.objectiveAuthority !== 'missionManager') errors.push('objectiveAuthority must be missionManager.');
   if (config?.routeAuthority !== 'playerOrSolver') errors.push('routeAuthority must be playerOrSolver.');
+  if (config?.generatedRoute === true) errors.push('generatedRoute must be false.');
+  if (config?.generatesWaypoints === true) errors.push('generatesWaypoints must be false.');
+  if (config?.diagnosisIsPlannerAuthority === true) errors.push('diagnosisIsPlannerAuthority must be false.');
   if (!config?.transition) errors.push('transition is required.');
+  if (!('scienceDiagnosisContext' in (config ?? {})) || config?.scienceDiagnosisContext == null) warnings.push('scienceDiagnosisContext is missing; older next-leg records may omit P10 metadata.');
   if (config?.waypoints || config?.route || config?.agentPlans) warnings.push('Next-leg handoff should not contain generated route waypoints.');
   return { status: errors.length ? 'FAIL' : warnings.length ? 'WARN' : 'PASS', valid: errors.length === 0, errors, warnings };
 }
@@ -74,11 +95,29 @@ export function adaptiveNextLegSummary(config = {}) {
     objectiveAuthority: config.objectiveAuthority,
     routeAuthority: config.routeAuthority,
     hasManagerState: Boolean(config.managerState),
-    hasGeneratedRoute: Boolean(config.waypoints || config.route || config.agentPlans),
+    hasScienceDiagnosisContext: Boolean(config.scienceDiagnosisContext),
+    scienceDiagnosis: config.scienceDiagnosisContext ? adaptiveScienceDiagnosisHandoffSummary(config.scienceDiagnosisContext) : null,
+    missionManagerRationale: config.missionManagerRationale ? adaptiveMissionManagerRationaleSummary(config.missionManagerRationale) : null,
+    hasGeneratedRoute: Boolean(config.generatedRoute || config.generatesWaypoints || config.waypoints || config.route || config.agentPlans),
     summary: 'The mission manager recommends the next objective; route planning remains manual or solver-driven.'
   };
 }
 
+
+function summarizeCarryForwardEvidence(evidence = {}, scienceDiagnosisContext = null, missionManagerRationale = null) {
+  return {
+    observationCount: Number(evidence?.observationCount ?? 0),
+    recentObservationCount: Number(evidence?.recentObservationCount ?? 0),
+    primaryDiagnosis: evidence?.diagnostics?.primaryDiagnosis ?? missionManagerRationale?.evidenceSummary?.primaryDiagnosis ?? null,
+    primaryScienceDiagnosis: scienceDiagnosisContext?.primaryScienceDiagnosis ?? missionManagerRationale?.evidenceSummary?.primaryScienceDiagnosis ?? null,
+    forecastCorrectionStatus: scienceDiagnosisContext?.forecastCorrectionStatus ?? null,
+    hiddenEventStatus: scienceDiagnosisContext?.hiddenEventStatus ?? null,
+    recommendedObjectiveId: scienceDiagnosisContext?.recommendedObjectiveId ?? missionManagerRationale?.recommendedObjectiveId ?? null,
+    confidence: scienceDiagnosisContext?.confidence ?? missionManagerRationale?.confidence ?? null,
+    routeAuthority: 'playerOrSolver',
+    generatesWaypoints: false
+  };
+}
 function summarizeEvidence(evidence = {}) {
   return {
     observationCount: Number(evidence?.observationCount ?? 0),

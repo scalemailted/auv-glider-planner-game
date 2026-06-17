@@ -5,6 +5,8 @@ export function adaptiveEpisodeSessionPanelHtml(viewModel = {}) {
       <p>Adaptive Episode Session stores the sequence of legs, surfacing decisions, and objective changes.</p>
       <p>Adaptive Benchmark stores objective changes across surfacing events. The mission manager recommends objectives; the player or solver still plans each route.</p>
       <p>P8 does not generate routes automatically and does not redesign scoring.</p>
+      <p>Objective history records mission-manager decisions. These decisions choose objectives, not routes.</p>
+      <p>Route planning remains with the player or solver.</p>
       <div class="cell-inspector-metrics">
         <div><span>Episode ID</span><strong>${escapeHtml(viewModel.episodeId ?? 'unknown')}</strong></div>
         <div><span>Policy</span><strong>${escapeHtml(viewModel.policyId ?? 'unknown')}</strong></div>
@@ -34,11 +36,15 @@ export function adaptiveObjectiveTimelineHtml(viewModel = {}) {
               <strong>Leg ${escapeHtml(entry.legIndex)}:</strong>
               ${escapeHtml(entry.fromObjectiveLabel ?? entry.fromObjectiveId ?? 'Start')} -&gt; ${escapeHtml(entry.toObjectiveLabel ?? entry.toObjectiveId ?? 'Objective')}
               ${entry.confidence == null ? '' : ` | confidence ${escapeHtml(formatPercent(entry.confidence))}`}
+              <br />${escapeHtml(entry.primaryScienceDiagnosis ? `science ${entry.primaryScienceDiagnosis}` : 'No science-diagnosis context was stored for this leg.')}
+              ${entry.forecastCorrectionStatus ? ` | forecast ${escapeHtml(entry.forecastCorrectionStatus)}` : ''}
+              ${entry.hiddenEventStatus ? ` | hidden ${escapeHtml(entry.hiddenEventStatus)}` : ''}
               <br />${escapeHtml(entry.rationale ?? entry.status ?? '')}
             </div>
           `).join('')}
         </div>
       ` : '<div class="hud-muted">No objective history is stored yet.</div>'}
+      ${whyObjectiveChangedHtml(viewModel.whyObjectiveChangedCard)}
     </section>
   `;
 }
@@ -105,7 +111,8 @@ export function adaptiveSessionBoundaryHtml(viewModel = {}) {
   return `
     <section data-adaptive-session-boundary>
       <h3>Boundary</h3>
-      <p>P8 does not add a new planner, scoring redesign, full autonomy, or MARL/RL.</p>
+      <p>P8/P10 do not add a new planner, scoring redesign, full autonomy, production data assimilation, or MARL/RL.</p>
+      <p>Science diagnosis informs the mission-manager recommendation. It does not generate a route.</p>
       <ul>${notImplemented.map((item) => `<li>${escapeHtml(item)}</li>`).join('')}</ul>
     </section>
   `;
@@ -114,19 +121,30 @@ export function adaptiveSessionBoundaryHtml(viewModel = {}) {
 function adaptiveEvidenceDiagnosisHtml(viewModel = {}) {
   const evidenceCards = Array.isArray(viewModel.evidenceCards) ? viewModel.evidenceCards : [];
   const diagnosisCards = Array.isArray(viewModel.diagnosisCards) ? viewModel.diagnosisCards : [];
+  const scienceCards = Array.isArray(viewModel.scienceDiagnosisCards) ? viewModel.scienceDiagnosisCards : [];
   return `
     <section data-adaptive-evidence-diagnosis-history>
       <h3>Evidence / Diagnosis History</h3>
-      ${evidenceCards.length || diagnosisCards.length ? `
+      ${evidenceCards.length || diagnosisCards.length || scienceCards.length ? `
         <div class="panel-stack">
           ${evidenceCards.slice(-4).map((card) => `<div class="hud-muted"><strong>${escapeHtml(card.title)}</strong>: ${escapeHtml(card.value)}<br />${escapeHtml(card.detail)}</div>`).join('')}
           ${diagnosisCards.slice(-4).map((card) => `<div class="hud-muted"><strong>${escapeHtml(card.title)}</strong>: ${escapeHtml(card.value)}<br />${escapeHtml(card.detail)}</div>`).join('')}
+          ${scienceCards.slice(-4).map((card) => `<div class="hud-muted"><strong>${escapeHtml(card.title)}</strong>: ${escapeHtml(card.value)}<br />${escapeHtml(card.detail)}${card.confidence == null ? '' : ` | ${escapeHtml(formatPercent(card.confidence))}`}</div>`).join('')}
         </div>
       ` : '<div class="hud-muted">Some leg records are partial because the current result does not include all future adaptive fields.</div>'}
     </section>
   `;
 }
 
+function whyObjectiveChangedHtml(card = {}) {
+  return `
+    <div class="hud-muted" data-adaptive-why-objective-changed>
+      <strong>${escapeHtml(card.title ?? 'Why did the objective change?')}</strong><br />
+      ${escapeHtml(card.detail ?? 'No objective change has been recorded yet.')}<br />
+      ${escapeHtml(card.boundary ?? 'Objective history records mission-manager decisions. These decisions choose objectives, not routes. Route planning remains with the player or solver.')}
+    </div>
+  `;
+}
 function warningsHtml(warnings = []) {
   if (!Array.isArray(warnings) || !warnings.length) return '';
   return `<p class="warning">${escapeHtml(warnings.join(' '))}</p>`;

@@ -62,3 +62,9 @@ P6 and P7 adaptive exports remain supported.
 P8 does not add a new planner. It does not redesign scoring. It does not automatically run full multi-leg missions. It does not generate routes or waypoints. It does not implement full autonomy, MARL/RL, solver training, or production data assimilation.
 
 Planner Benchmark remains fixed-objective attempt comparison. Adaptive Benchmark uses a mission manager to update objectives at surfacing events while the player or solver still chooses each route. Full Autonomy remains future and contract-only.
+
+## P10 Adaptive Science-Diagnosis Handoff
+
+Science diagnosis informs the mission-manager objective recommendation. It does not generate a route. Forecast correction means the expected field existed but was wrong. Hidden event hypothesis means observations may indicate a phenomenon not represented in the forecast. The player or solver still plans the route.
+
+P10 adds adaptive science-diagnosis context, mission-manager rationale, next-leg handoff metadata, objective-history display fields, and public-safe headless/browser summaries. It does not implement a new planner, scoring redesign, production data assimilation, GP/GMRF production inference, calibrated ocean forecast, Python simulator, or MARL/RL. Node/OceanBox-JS remains the canonical non-browser runtime; Python/Colab analyze artifacts or call Node.

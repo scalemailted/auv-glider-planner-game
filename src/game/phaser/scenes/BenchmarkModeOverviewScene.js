@@ -406,10 +406,18 @@ export class BenchmarkModeOverviewScene extends PhaserScene {
         episodeSession: 'anchor.benchmark.adaptive-episode-session',
         objectiveHistory: 'anchor.benchmark.adaptive-objective-history',
         legRecord: 'anchor.benchmark.adaptive-leg-record',
-        sessionSummary: 'anchor.benchmark.adaptive-session-summary'
+        sessionSummary: 'anchor.benchmark.adaptive-session-summary',
+        scienceDiagnosisContext: 'anchor.benchmark.adaptive-science-diagnosis-context',
+        scienceDiagnosisHandoff: 'anchor.benchmark.adaptive-science-diagnosis-handoff',
+        missionManagerRationale: 'anchor.benchmark.adaptive-mission-manager-rationale'
       },
+      scienceDiagnosis: adaptivePreview.viewModel?.scienceDiagnosis ?? adaptivePreview.scienceDiagnosis ?? null,
+      scienceDiagnosisIsPlannerAuthority: false,
       usesRoutePlanning: false,
+      usesNewPlanner: false,
+      generatesWaypoints: false,
       usesMissionScoring: false,
+      usesProductionDataAssimilation: false,
       usesMARL: false
     } : {
       available: false,

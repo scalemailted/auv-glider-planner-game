@@ -1,4 +1,4 @@
-﻿import { validateHeadlessBundle } from './HeadlessBundleValidation.js';
+import { validateHeadlessBundle } from './HeadlessBundleValidation.js';
 import { HEADLESS_SOLVER_ROUNDTRIP_REPORT_TYPE, isHeadlessRoundtripReportType } from './HeadlessRoundtripTypes.js';
 
 export const HEADLESS_BUNDLE_VIEW_MODEL_VERSION = 'headless-bundle-view-model-h2';
@@ -120,6 +120,8 @@ export function headlessBundleScienceDiagnosisSummary(bundle = {}) {
       hiddenEventStatus: null,
       recommendedObjectiveId: null,
       publicSafe: true,
+      scienceDiagnosisIsPlannerAuthority: false,
+      notBrowserOfficialScoring: true,
       usesProductionDataAssimilation: false,
       usesCalibratedOceanForecast: false,
       usesMARL: false
@@ -141,6 +143,8 @@ export function headlessBundleScienceDiagnosisSummary(bundle = {}) {
     coherenceSummary: diagnostics.coherenceSummary ?? summary.coherence ?? null,
     publicSafe: diagnostics.publicSafe !== false,
     hiddenTruthIncluded: diagnostics.hiddenTruthIncluded === true,
+    scienceDiagnosisIsPlannerAuthority: false,
+    notBrowserOfficialScoring: true,
     usesProductionDataAssimilation: diagnostics.usesProductionDataAssimilation === true,
     usesCalibratedOceanForecast: diagnostics.usesCalibratedOceanForecast === true,
     usesMARL: diagnostics.usesMARL === true,

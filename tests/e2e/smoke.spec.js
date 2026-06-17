@@ -1,4 +1,4 @@
-﻿import { expect, test } from '@playwright/test';
+import { expect, test } from '@playwright/test';
 import fs from 'node:fs/promises';
 import { startStaticServer } from './static-server.mjs';
 
@@ -320,6 +320,12 @@ test('Benchmark modes overview opens from Simulation Lab', async ({ page }) => {
   await page.locator('#adaptive-benchmark-fixture').selectOption('possibleHiddenPlume');
   await expect(page.locator('#mission-console')).toContainText('Possible Hidden Event');
   await expect(page.locator('#mission-console')).toContainText('Confirm Hidden Event');
+  await expect(page.locator('#mission-console')).toContainText('Science Diagnosis Preview');
+  await expect(page.locator('#mission-console')).toContainText('Science diagnosis informs the mission-manager recommendation. It does not generate a route.');
+  await expect(page.locator('#mission-console')).toContainText('The player or solver still plans the next route.');
+  await expect.poll(() => page.evaluate(() => window.ANCHOR_ADAPTIVE_BENCHMARK_DEBUG?.scienceDiagnosisIsPlannerAuthority)).toBe(false);
+  await expect.poll(() => page.evaluate(() => window.ANCHOR_ADAPTIVE_BENCHMARK_DEBUG?.usesNewPlanner)).toBe(false);
+  await expect.poll(() => page.evaluate(() => window.ANCHOR_ADAPTIVE_BENCHMARK_DEBUG?.usesProductionDataAssimilation)).toBe(false);
   await page.locator('#adaptive-benchmark-fixture').selectOption('staleMonitoringRevisit');
   await expect(page.locator('#mission-console')).toContainText('Stale Region Needs Revisit');
   await expect(page.locator('#mission-console')).toContainText('Revisit Stale Region');
@@ -407,6 +413,7 @@ test('Headless Bundle Viewer opens from Simulation Lab and exports browser summa
   await expect.poll(() => page.evaluate(() => window.ANCHOR_HEADLESS_BUNDLE_DEBUG?.browserSummaryExportAvailable)).toBe(true);
   await expect.poll(() => page.evaluate(() => window.ANCHOR_HEADLESS_BUNDLE_DEBUG?.hasScienceDiagnostics)).toBe(true);
   await expect.poll(() => page.evaluate(() => window.ANCHOR_HEADLESS_BUNDLE_DEBUG?.scienceDiagnosticsPublicSafe)).toBe(true);
+  await expect.poll(() => page.evaluate(() => window.ANCHOR_HEADLESS_BUNDLE_DEBUG?.scienceDiagnosisIsPlannerAuthority)).toBe(false);
   await expect.poll(() => page.evaluate(() => window.ANCHOR_HEADLESS_BUNDLE_DEBUG?.usesProductionDataAssimilation)).toBe(false);
 
   const [download] = await Promise.all([
@@ -440,6 +447,7 @@ test('Headless Bundle Viewer opens from Simulation Lab and exports browser summa
   await expect.poll(() => page.evaluate(() => window.ANCHOR_HEADLESS_BUNDLE_DEBUG?.usesGeneratedPlan)).toBe(false);
   await expect.poll(() => page.evaluate(() => window.ANCHOR_HEADLESS_BUNDLE_DEBUG?.hasScienceDiagnostics)).toBe(true);
   await expect.poll(() => page.evaluate(() => window.ANCHOR_HEADLESS_BUNDLE_DEBUG?.scienceDiagnosticsPublicSafe)).toBe(true);
+  await expect.poll(() => page.evaluate(() => window.ANCHOR_HEADLESS_BUNDLE_DEBUG?.scienceDiagnosisIsPlannerAuthority)).toBe(false);
 
   const [roundtripDownload] = await Promise.all([
     page.waitForEvent('download'),
@@ -731,6 +739,10 @@ test('Adaptive Benchmark synthetic debrief shows surfacing review and exports P8
   await expect.poll(() => page.evaluate(() => window.anchorGame.phaser.scene.getScene('DebriefScene').sys.isActive())).toBe(true);
   await expect(page.locator('#debrief-root')).toContainText('Adaptive Benchmark Surfacing Review');
   await expect(page.locator('#debrief-root')).toContainText('Evidence Summary');
+  await expect(page.locator('#debrief-root')).toContainText('Forecast Update');
+  await expect(page.locator('#debrief-root')).toContainText('Discovery Update');
+  await expect(page.locator('#debrief-root')).toContainText('Mission Manager Recommendation');
+  await expect(page.locator('#debrief-root')).toContainText('Handoff Boundary');
   await expect(page.locator('#debrief-root')).toContainText('Diagnosis');
   await expect(page.locator('#debrief-root')).toContainText('Recommended Next Objective');
   await expect(page.locator('#debrief-root')).toContainText('Plan Next Leg');
@@ -739,13 +751,17 @@ test('Adaptive Benchmark synthetic debrief shows surfacing review and exports P8
   await expect(page.locator('#debrief-root')).toContainText('Continue to Next Leg');
   await expect(page.locator('#debrief-root')).toContainText('Save Adaptive Session');
   await expect(page.locator('#debrief-root')).toContainText('does not generate waypoints or routes');
+  await expect(page.locator('#debrief-root')).toContainText('Science diagnosis informs the mission-manager recommendation. It does not generate a route.');
+  await expect(page.locator('#debrief-root')).toContainText('The player or solver still plans the next leg.');
   await expect(page.locator('#debrief-root')).toContainText('new route planner');
   await expect(page.locator('#debrief-root')).toContainText('MARL/RL');
   await expect.poll(() => page.evaluate(() => window.ANCHOR_ADAPTIVE_EXECUTION_DEBUG?.benchmarkMode)).toBe('adaptiveBenchmark');
   await expect.poll(() => page.evaluate(() => window.ANCHOR_ADAPTIVE_EXECUTION_DEBUG?.hasAdaptiveEpisodeSession)).toBe(true);
   await expect.poll(() => page.evaluate(() => window.ANCHOR_ADAPTIVE_EXECUTION_DEBUG?.adaptiveSessionLegCount >= 1)).toBe(true);
   await expect.poll(() => page.evaluate(() => window.ANCHOR_ADAPTIVE_EXECUTION_DEBUG?.adaptiveNextLegAvailable)).toBe(true);
+  await expect.poll(() => page.evaluate(() => window.ANCHOR_ADAPTIVE_EXECUTION_DEBUG?.scienceDiagnosisIsPlannerAuthority)).toBe(false);
   await expect.poll(() => page.evaluate(() => window.ANCHOR_ADAPTIVE_EXECUTION_DEBUG?.usesNewPlanner)).toBe(false);
+  await expect.poll(() => page.evaluate(() => window.ANCHOR_ADAPTIVE_EXECUTION_DEBUG?.usesMissionScoringRedesign)).toBe(false);
   await expect.poll(() => page.evaluate(() => window.ANCHOR_ADAPTIVE_EXECUTION_DEBUG?.usesMARL)).toBe(false);
   await expect.poll(() => page.evaluate(() => window.ANCHOR_ADAPTIVE_SESSION_DEBUG?.usesMissionScoringRedesign)).toBe(false);
 

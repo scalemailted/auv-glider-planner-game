@@ -140,3 +140,9 @@ node tools/js/headless_roundtrip.mjs docs/examples/headless_solver_packet.exampl
 ## P9 Science Diagnostics
 
 P9 bundles may include `science_diagnostics.json` and combined bundles may embed `scienceDiagnostics`. The Headless Bundle Viewer displays this as Science Diagnosis with Forecast Update and Discovery Update summaries. The artifact is public-safe and must not contain `T_hiddenTruth`; it does not add production data assimilation, calibrated ocean forecasting, route planning, official browser scoring, or MARL/RL.
+
+## P10 Adaptive Science-Diagnosis Handoff
+
+Science diagnosis informs the mission-manager objective recommendation. It does not generate a route. Forecast correction means the expected field existed but was wrong. Hidden event hypothesis means observations may indicate a phenomenon not represented in the forecast. The player or solver still plans the route.
+
+P10 adds adaptive science-diagnosis context, mission-manager rationale, next-leg handoff metadata, objective-history display fields, and public-safe headless/browser summaries. It does not implement a new planner, scoring redesign, production data assimilation, GP/GMRF production inference, calibrated ocean forecast, Python simulator, or MARL/RL. Node/OceanBox-JS remains the canonical non-browser runtime; Python/Colab analyze artifacts or call Node.
