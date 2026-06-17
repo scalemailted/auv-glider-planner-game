@@ -48,13 +48,14 @@ class Solver():
             for x in range(len(self.roi[y])):
                 if self.terrain[y][x] != 1 and self.hazards[y][x] != 1 and used.count((x,y)) == 0 and (x,y) != cell:
                     scored, distance = self.rate_cell((x,y), cell)
-                    Thistime = time
-                    Thistime += distance
-                    distance += Olddistance
-                    print(distance)
-                    if Thistime < 12:
-                        # print(Thistime)
-                        potential.append([(x,y), scored, Thistime, distance])
+                    if distance != -1 and scored != -1:
+                        Thistime = time
+                        Thistime += distance
+                        distance += Olddistance
+                        print(distance)
+                        if Thistime < 12:
+                            # print(Thistime)
+                            potential.append([(x,y), scored, Thistime, distance])
         
         potential.sort(reverse=True, key=lambda item: item[1])
         final = potential[:(num + 1)]            
@@ -72,7 +73,10 @@ class Solver():
         score = 0
         distance = self.find_dist(ratedCell[0] - startCell[0], ratedCell[1] - startCell[1])
         for cellX, cellY in self.bresenham_line(startCell[0], startCell[1], ratedCell[0], ratedCell[1]):
-            score += self.roi[cellY][cellX]
+            if cellX != -1:
+                score += self.roi[cellY][cellX]
+            else:
+                return -1, -1
         return score/distance, distance
     def find_dist(self, x, y):
         return max(0.0, math.hypot(x, y))
@@ -84,7 +88,10 @@ class Solver():
         sy = 1 if y0 < y1 else -1
         err = dx + dy
         while True:
-            yield x0, y0
+            if self.terrain[y0][x0] != 1:
+                yield x0, y0
+            else: 
+                yield -1, -1
             if x0 == x1 and y0 == y1:
                 break
             e2 = 2 * err
@@ -100,40 +107,3 @@ world=world.build_headless_world(file)
 solved = Solver(world)
 
 solved.find_best_path()
-
-
-
-
-
-
-    # def test_canidate(self, canidate, prev):
-    #     value = 0
-    #     distance = 0
-    #     energyUse = 0
-    #     speed = 1
-    #     for x, y in self.bresenham_line(canidate[0], canidate[1], prev[0], prev[1]):
-    #         value += self.roi[y][x]
-    #         dx = x - prev[0]
-    #         dy = y - prev[1]
-    #         distance += self.find_dist(dx, dy)
-    #     return value/distance
-    # def make_canidates_for_deployment(self):
-    #     for cellIndex, cell in enumerate(self.deploymentCells):
-    #         self.find_canidates(5, cell, cellIndex)            
-    # def find_best_path(self):
-    #     for cell in self.deploymentCells:
-    #         pass
-
-    # def find_canidates(self, num, cell, pathIndex):
-    #     used = [cell]
-        
-    # def prepare_path(self, pathIndex, new):
-    #     path = self.path
-    #     for num in len(pathIndex):
-    #         path[pathIndex[num]] = path            
-
-    # def rate_canidates(self, canidates):
-    #     for index, canidate in enumerate(canidates):
-    #         prev = canidates[index - 1]
-    #         self.testCanidate(canidate, prev)
-            
