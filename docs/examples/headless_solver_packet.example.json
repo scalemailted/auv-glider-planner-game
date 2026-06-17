@@ -405,8 +405,36 @@
           }
         ]
       }
+    },
+    "waterColumnConfig": {
+      "type": "anchor.science.water-column-config",
+      "depthLayerIds": [
+        "surface",
+        "thermocline",
+        "deep"
+      ],
+      "defaultLayerIds": [
+        "surface",
+        "thermocline",
+        "deep"
+      ],
+      "diveProfileId": "sawtoothProfile"
     }
   },
   "expectedPlanFormat": "anchor.plan",
-  "challengeId": "H3-1-ROUNDTRIP-EXAMPLE"
+  "challengeId": "H3-1-ROUNDTRIP-EXAMPLE",
+  "waterColumnConfig": {
+    "type": "anchor.science.water-column-config",
+    "depthLayerIds": [
+      "surface",
+      "thermocline",
+      "deep"
+    ],
+    "defaultLayerIds": [
+      "surface",
+      "thermocline",
+      "deep"
+    ],
+    "diveProfileId": "sawtoothProfile"
+  }
 }

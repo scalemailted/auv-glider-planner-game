@@ -1,5 +1,5 @@
 import { validateHeadlessBundle } from './HeadlessBundleValidation.js';
-import { buildHeadlessBundleViewModel, headlessBundleObservationSummary, headlessBundleReplaySummary, headlessBundleRoundtripSummary, headlessBundleScienceDiagnosisSummary, headlessBundleScoreSummary, headlessBundleTrackSummary, headlessBundleVisibilitySummary } from './HeadlessBundleViewModel.js';
+import { buildHeadlessBundleViewModel, headlessBundleDepthLayerPrioritySummary, headlessBundleObservationSummary, headlessBundleReplaySummary, headlessBundleRoundtripSummary, headlessBundleScienceDiagnosisSummary, headlessBundleScoreSummary, headlessBundleWaterColumnSummary, headlessBundleTrackSummary, headlessBundleVisibilitySummary } from './HeadlessBundleViewModel.js';
 import { BROWSER_HEADLESS_ROUNDTRIP_SUMMARY_TYPE, HEADLESS_SOLVER_ROUNDTRIP_REPORT_TYPE } from './HeadlessRoundtripTypes.js';
 
 export const HEADLESS_BUNDLE_BROWSER_ADAPTER_VERSION = 'headless-bundle-browser-adapter-h2';
@@ -21,6 +21,8 @@ export function buildBrowserHeadlessBundleSummaryArtifact(bundle = {}) {
     trackSummary: headlessBundleTrackSummary(bundle),
     scoreSummary: buildBrowserHeadlessScoreComparisonDescriptor(bundle),
     roundtripSummary: headlessBundleRoundtripSummary(bundle),
+    waterColumnSummary: headlessBundleWaterColumnSummary(bundle),
+    depthLayerPrioritySummary: headlessBundleDepthLayerPrioritySummary(bundle),
     scienceDiagnosisSummary: headlessBundleScienceDiagnosisSummary(bundle),
     replaySummary: headlessBundleReplaySummary(bundle),
     validation,
@@ -56,6 +58,8 @@ export function buildBrowserHeadlessRoundtripSummaryArtifact(bundle = {}) {
     usesNodeHeadlessRuntime: roundtripSummary.usesNodeHeadlessRuntime,
     usesBrowserOfficialScoring: roundtripSummary.usesBrowserOfficialScoring,
     usesMARL: roundtripSummary.usesMARL,
+    waterColumnSummary: headlessBundleWaterColumnSummary(bundle),
+    depthLayerPrioritySummary: headlessBundleDepthLayerPrioritySummary(bundle),
     scienceDiagnosisSummary: headlessBundleScienceDiagnosisSummary(bundle),
     validationStatus: validation.status,
     bundleVisibilityRisk: validation.visibilityRisk,
@@ -89,6 +93,8 @@ export function buildBrowserHeadlessBundleDebugObject(bundle = {}) {
   const viewModel = buildHeadlessBundleViewModel(bundle);
   const roundtrip = viewModel.roundtripSummary ?? {};
   const science = viewModel.scienceDiagnosisSummary ?? headlessBundleScienceDiagnosisSummary(bundle);
+  const waterColumn = viewModel.waterColumnSummary ?? headlessBundleWaterColumnSummary(bundle);
+  const depthPriority = viewModel.depthLayerPrioritySummary ?? headlessBundleDepthLayerPrioritySummary(bundle);
   return {
     version: HEADLESS_BUNDLE_BROWSER_ADAPTER_VERSION,
     bundleLoaded: Boolean(bundle?.manifest || bundle?.visibleFields),
@@ -121,6 +127,15 @@ export function buildBrowserHeadlessBundleDebugObject(bundle = {}) {
     scienceRecommendedObjective: science.recommendedObjectiveId ?? null,
     scienceDiagnosticsPublicSafe: science.publicSafe !== false && science.hiddenTruthIncluded !== true,
     scienceDiagnosisIsPlannerAuthority: false,
+    hasWaterColumnSummary: waterColumn.present === true,
+    waterColumnLayerIds: waterColumn.waterColumnLayerIds ?? [],
+    waterColumnDefaultLayers: waterColumn.waterColumnDefaultLayers ?? [],
+    diveProfileId: waterColumn.diveProfileId ?? null,
+    observationCountsByDepth: waterColumn.observationCountsByDepth ?? {},
+    verticalCoverage: waterColumn.verticalCoverage ?? null,
+    bestDepthLayerCounts: depthPriority.bestDepthLayerCounts ?? waterColumn.bestDepthLayerCounts ?? {},
+    waterColumnPublicSafe: waterColumn.publicSafe !== false,
+    usesFull3DPlanning: waterColumn.usesFull3DPlanning === true || depthPriority.usesFull3DPlanning === true,
     usesProductionDataAssimilation: science.usesProductionDataAssimilation === true,
     browserSummaryExportAvailable: true,
     usesGeneratedPlan: roundtrip.usesGeneratedPlan === true,

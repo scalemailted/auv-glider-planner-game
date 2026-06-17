@@ -62,6 +62,7 @@ export function buildAdaptiveScienceDiagnosisViewModel({
     forecastUpdateCard: forecastUpdateCard(context, resolvedDiagnosis),
     discoveryUpdateCard: discoveryUpdateCard(context, resolvedDiagnosis),
     evidenceQualityCard: evidenceQualityCard(resolvedEvidence, context),
+    waterColumnEvidenceCard: waterColumnEvidenceCard(resolvedEvidence, context, rationale),
     recommendationCard: recommendationCard(decision, resolvedTransition, context, rationale),
     missionManagerRationaleCard: missionManagerRationaleCard(rationale),
     nextLegCarryForwardCard: nextLegCarryForwardCard(decision, context, rationale, managerState),
@@ -70,6 +71,7 @@ export function buildAdaptiveScienceDiagnosisViewModel({
     notImplemented: [
       'new route planner',
       'waypoint generation',
+      'full 3D planning',
       'scoring redesign',
       'production data assimilation',
       'GP/GMRF production inference',
@@ -78,6 +80,7 @@ export function buildAdaptiveScienceDiagnosisViewModel({
     boundaryFlags: {
       diagnosisIsPlannerAuthority: false,
       usesNewPlanner: false,
+      usesFull3DPlanning: false,
       generatesWaypoints: false,
       changesScoring: false,
       usesProductionDataAssimilation: false,
@@ -99,10 +102,13 @@ export function adaptiveScienceDiagnosisViewModelSummary(viewModel = {}) {
     forecastCorrectionStatus: viewModel.forecastUpdateCard?.status ?? null,
     hiddenEventStatus: viewModel.discoveryUpdateCard?.status ?? null,
     recommendedObjectiveId: viewModel.recommendationCard?.recommendedObjective?.id ?? null,
+    recommendedDiveProfileId: viewModel.recommendationCard?.recommendedDiveProfileId ?? viewModel.nextLegCarryForwardCard?.recommendedDiveProfileId ?? null,
+    waterColumnVerticalCoverage: viewModel.waterColumnEvidenceCard?.verticalCoverage ?? null,
     confidence: viewModel.recommendationCard?.confidence ?? viewModel.evidenceQualityCard?.confidence ?? null,
     warningCount: Array.isArray(viewModel.warnings) ? viewModel.warnings.length : 0,
     diagnosisIsPlannerAuthority: viewModel.boundaryFlags?.diagnosisIsPlannerAuthority === true,
     usesNewPlanner: viewModel.boundaryFlags?.usesNewPlanner === true,
+    usesFull3DPlanning: viewModel.boundaryFlags?.usesFull3DPlanning === true,
     generatesWaypoints: viewModel.boundaryFlags?.generatesWaypoints === true,
     changesScoring: viewModel.boundaryFlags?.changesScoring === true,
     usesProductionDataAssimilation: viewModel.boundaryFlags?.usesProductionDataAssimilation === true,
@@ -148,6 +154,26 @@ function evidenceQualityCard(evidence = {}, context = null) {
   };
 }
 
+function waterColumnEvidenceCard(evidence = {}, context = null, rationale = {}) {
+  const summary = evidence.waterColumnSummary ?? context?.waterColumnEvidence ?? {};
+  return {
+    present: Boolean(summary?.verticalCoverage || summary?.observationCountsByDepth || context?.recommendedDiveProfileId || rationale?.recommendedDiveProfileId),
+    verticalCoverage: summary?.verticalCoverage ?? null,
+    observationCountsByDepth: summary?.observationCountsByDepth ?? {},
+    recommendedDiveProfileId: context?.recommendedDiveProfileId ?? rationale?.recommendedDiveProfileId ?? evidence.recommendedDiveProfileId ?? null,
+    routeAuthority: 'playerOrSolver',
+    generatesWaypoints: false,
+    controlsRoutePlanning: false,
+    usesFull3DPlanning: false,
+    copy: [
+      '2.5D means the tactical map remains top-down, while each cell can contain simplified depth layers.',
+      'Dive profile controls which layer the glider samples along the route.',
+      'Recommended dive profile is context for the next leg; it does not generate a route.',
+      'P11 does not add full 3D planning, new route planning, production data assimilation, or MARL/RL.'
+    ]
+  };
+}
+
 function recommendationCard(decision = {}, transition = {}, context = null, rationale = {}) {
   const current = missionObjectiveById(transition.fromObjectiveId ?? decision.previousObjective?.id ?? rationale.currentObjectiveId ?? 'reconnaissanceSurvey');
   const recommended = missionObjectiveById(transition.toObjectiveId ?? decision.recommendedObjective?.id ?? context?.recommendedObjectiveId ?? rationale.recommendedObjectiveId ?? current.id);
@@ -157,6 +183,7 @@ function recommendationCard(decision = {}, transition = {}, context = null, rati
     transitionId: transition.transitionId ?? rationale.transitionId ?? 'keepCurrentObjective',
     reason: rationale.objectiveReason ?? context?.recommendationRationale ?? transition.rationale ?? decision.rationale ?? 'Mission manager selected the objective using adaptive evidence.',
     confidence: finiteOrNull(rationale.confidence ?? context?.confidence ?? transition.confidence),
+    recommendedDiveProfileId: context?.recommendedDiveProfileId ?? rationale.recommendedDiveProfileId ?? decision.recommendedDiveProfileId ?? null,
     routeStillPlannedBy: 'playerOrSolver'
   };
 }
@@ -177,11 +204,12 @@ function nextLegCarryForwardCard(decision = {}, context = null, rationale = {}, 
   return {
     recommendedObjectiveId: context?.recommendedObjectiveId ?? rationale.recommendedObjectiveId ?? decision.objectiveTransition?.toObjectiveId ?? managerState?.currentObjectiveId ?? null,
     recommendedObjectiveLabel: context?.recommendedObjectiveLabel ?? missionObjectiveById(context?.recommendedObjectiveId ?? rationale.recommendedObjectiveId ?? decision.objectiveTransition?.toObjectiveId).label,
+    recommendedDiveProfileId: context?.recommendedDiveProfileId ?? rationale.recommendedDiveProfileId ?? decision.recommendedDiveProfileId ?? null,
     carriesScienceContext: Boolean(context),
     carriesRationale: Boolean(rationale),
     routeAuthority: 'playerOrSolver',
     generatesWaypoints: false,
-    message: 'Recommended objective is carried forward; no waypoints are generated and route planning remains with the player or solver.'
+    message: 'Recommended objective and optional dive-profile context are carried forward; no waypoints are generated and route planning remains with the player or solver.'
   };
 }
 

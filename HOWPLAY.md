@@ -1075,3 +1075,7 @@ Headless bundles and Adaptive Benchmark surfacing reviews may show a Science Dia
 Science diagnosis informs the mission-manager objective recommendation. It does not generate a route. Forecast correction means the expected field existed but was wrong. Hidden event hypothesis means observations may indicate a phenomenon not represented in the forecast. The player or solver still plans the route.
 
 P10 adds adaptive science-diagnosis context, mission-manager rationale, next-leg handoff metadata, objective-history display fields, and public-safe headless/browser summaries. It does not implement a new planner, scoring redesign, production data assimilation, GP/GMRF production inference, calibrated ocean forecast, Python simulator, or MARL/RL. Node/OceanBox-JS remains the canonical non-browser runtime; Python/Colab analyze artifacts or call Node.
+
+## P11 2.5D Water-Column Sampling
+
+Headless bundles, solver roundtrips, and Adaptive Benchmark surfacing reviews can now carry water-column summaries. 2.5D means the tactical map remains top-down, while each cell can contain simplified depth layers. Dive profile controls which layer the glider samples along the route. Recommended dive profile is context for the next leg; it does not generate a route. P11 does not add full 3D planning, new route planning, production data assimilation, or MARL/RL. See [2.5D Water-Column Sampling Model](docs/water_column_2p5d_sampling_model.md).

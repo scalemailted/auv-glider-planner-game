@@ -1,4 +1,4 @@
-﻿export const SCIENCE_DIAGNOSIS_TYPES_VERSION = 'science-diagnosis-types-p9';
+export const SCIENCE_DIAGNOSIS_TYPES_VERSION = 'science-diagnosis-types-p9';
 
 export const SCIENCE_RECORD_TYPES = Object.freeze([
   'anchor.science.forecast-correction',
@@ -23,7 +23,12 @@ export const HIDDEN_EVENT_HYPOTHESIS_IDS = Object.freeze([
   'likelyHiddenEvent',
   'hiddenEventConfirmed',
   'likelySensorNoise',
-  'mixedForecastErrorAndHiddenEvent'
+  'mixedForecastErrorAndHiddenEvent',
+  'hiddenBloomLayer',
+  'thermoclineLayerEvent',
+  'deepPlumeHypothesis',
+  'surfaceOnlyMissedSubsurfaceFeature',
+  'insufficientVerticalCoverage'
 ]);
 
 export const SCIENCE_DIAGNOSIS_IDS = Object.freeze([
@@ -43,7 +48,12 @@ export const SCIENCE_DIAGNOSIS_LABELS = Object.freeze({
   likelyHiddenEvent: 'Likely Hidden Event',
   hiddenEventConfirmed: 'Hidden Event Confirmed',
   likelySensorNoise: 'Likely Sensor Noise',
-  mixedForecastErrorAndHiddenEvent: 'Mixed Forecast Error And Hidden Event'
+  mixedForecastErrorAndHiddenEvent: 'Mixed Forecast Error And Hidden Event',
+  hiddenBloomLayer: 'Hidden Bloom Layer',
+  thermoclineLayerEvent: 'Thermocline Layer Event',
+  deepPlumeHypothesis: 'Deep Plume Hypothesis',
+  surfaceOnlyMissedSubsurfaceFeature: 'Surface-Only Missed Subsurface Feature',
+  insufficientVerticalCoverage: 'Insufficient Vertical Coverage'
 });
 
 const DIAGNOSIS_ALIASES = Object.freeze({
@@ -64,7 +74,12 @@ const DIAGNOSIS_ALIASES = Object.freeze({
   likelyNoiseOrFalseAlarm: 'likelySensorNoise',
   falseAlarm: 'likelySensorNoise',
   noise: 'likelySensorNoise',
-  mixed: 'mixedForecastErrorAndHiddenEvent'
+  mixed: 'mixedForecastErrorAndHiddenEvent',
+  hiddenSubsurfaceBloom: 'hiddenBloomLayer',
+  thermoclineEvent: 'thermoclineLayerEvent',
+  deepPlume: 'deepPlumeHypothesis',
+  surfaceMissedSubsurface: 'surfaceOnlyMissedSubsurfaceFeature',
+  verticalCoverageSparse: 'insufficientVerticalCoverage'
 });
 
 export function normalizeScienceDiagnosisId(id, fallback = 'insufficientEvidence') {
@@ -91,6 +106,8 @@ export function classifyScienceDiagnosis(id) {
   if (normalized === 'agreesWithForecast') return 'forecastAgreement';
   if (normalized === 'insufficientEvidence') return 'insufficientEvidence';
   if (normalized === 'likelySensorNoise') return 'sensorNoise';
+  if (['hiddenBloomLayer', 'thermoclineLayerEvent', 'deepPlumeHypothesis', 'surfaceOnlyMissedSubsurfaceFeature'].includes(normalized)) return 'hiddenEventHypothesis';
+  if (normalized === 'insufficientVerticalCoverage') return 'insufficientEvidence';
   if (normalized === 'mixedForecastErrorAndHiddenEvent') return 'mixed';
   if (FORECAST_CORRECTION_DIAGNOSIS_IDS.includes(normalized)) return 'forecastCorrection';
   if (HIDDEN_EVENT_HYPOTHESIS_IDS.includes(normalized)) return 'hiddenEventHypothesis';
@@ -102,10 +119,10 @@ export function recommendedObjectiveForScienceDiagnosis(id, context = {}) {
   if (normalized === 'agreesWithForecast') return context.currentObjectiveId ?? 'reconnaissanceSurvey';
   if (['forecastDisplacement', 'forecastIntensityError', 'forecastTimingError', 'forecastDepthMismatch'].includes(normalized)) return 'validateForecast';
   if (normalized === 'boundaryShift') return 'mapBoundary';
-  if (normalized === 'possibleHiddenEvent' || normalized === 'likelyHiddenEvent') return 'confirmHiddenEvent';
+  if (normalized === 'possibleHiddenEvent' || normalized === 'likelyHiddenEvent' || normalized === 'hiddenBloomLayer' || normalized === 'thermoclineLayerEvent' || normalized === 'deepPlumeHypothesis' || normalized === 'surfaceOnlyMissedSubsurfaceFeature') return 'confirmHiddenEvent';
   if (normalized === 'hiddenEventConfirmed') return sourceLikeEventFamily(context.eventFamily) ? 'localizeSource' : 'mapBoundary';
   if (normalized === 'mixedForecastErrorAndHiddenEvent') return 'confirmHiddenEvent';
-  if (normalized === 'likelySensorNoise' || normalized === 'insufficientEvidence') return context.currentObjectiveId ?? 'reconnaissanceSurvey';
+  if (normalized === 'likelySensorNoise' || normalized === 'insufficientEvidence' || normalized === 'insufficientVerticalCoverage') return context.currentObjectiveId ?? 'reconnaissanceSurvey';
   return context.currentObjectiveId ?? 'reconnaissanceSurvey';
 }
 

@@ -1,4 +1,4 @@
-﻿import { validatePlanForExecution } from '../planning/PlanExecutionValidator.js';
+import { validatePlanForExecution } from '../planning/PlanExecutionValidator.js';
 import { readHeadlessSolverPacket, summarizeHeadlessPacket } from './SolverPacketReader.js';
 import { buildHeadlessPlanningWorld } from './HeadlessPlanningWorld.js';
 import { createDefaultHeadlessRuntimeConfig, headlessRuntimeConfigSummary } from './runtime/HeadlessRuntimeConfig.js';
@@ -6,6 +6,7 @@ import { runHeadlessMissionWithPlan } from './runtime/HeadlessMissionRunner.js';
 import { headlessScoreReportSummary } from './runtime/HeadlessScoring.js';
 import { roundtripReportTypeMetadata } from './HeadlessRoundtripTypes.js';
 import { scienceDiscoverySummary } from '../science/ScienceDiscoveryLifecycle.js';
+import { normalizeWaterColumnConfig, normalizeWaterColumnProfileId, WATER_COLUMN_PROFILE_IDS } from '../science/WaterColumnSchema.js';
 
 export const HEADLESS_ROUNDTRIP_VERSION = 'headless-solver-packet-roundtrip-h3';
 
@@ -95,10 +96,13 @@ export function validateRoundtripPlanStructure(plan, selectedAgentPlan, world) {
   if (selectedAgentPlan && (!Array.isArray(selectedAgentPlan.waypoints) || !selectedAgentPlan.waypoints.length)) {
     errors.push(`Plan agent ${selectedAgentPlan.agentId ?? 'unknown'} has no waypoints.`);
   }
+  const requestedProfileId = selectedAgentPlan?.diveProfileId ?? plan?.diveProfileId ?? null;
+  if (requestedProfileId && !WATER_COLUMN_PROFILE_IDS.includes(normalizeWaterColumnProfileId(requestedProfileId))) warnings.push(`Unknown diveProfileId ${requestedProfileId}; runtime will normalize to a supported profile.`);
   for (const [index, waypoint] of (selectedAgentPlan?.waypoints ?? []).entries()) {
     const label = `${selectedAgentPlan.agentId ?? 'agent'} waypoint ${index + 1}`;
     const x = Number(waypoint.x);
     const y = Number(waypoint.y);
+    if (waypoint.diveProfileId && !WATER_COLUMN_PROFILE_IDS.includes(normalizeWaterColumnProfileId(waypoint.diveProfileId))) warnings.push(`${label} uses unknown diveProfileId ${waypoint.diveProfileId}; runtime will normalize it.`);
     if (!Number.isFinite(x) || !Number.isFinite(y)) errors.push(`${label} needs finite x/y.`);
     if (Number.isFinite(x) && Number.isFinite(y) && (x < 0 || y < 0 || x >= world.width || y >= world.height)) errors.push(`${label} is outside the solver packet grid.`);
     const t = Number(waypoint.estimatedArrivalTime ?? waypoint.t ?? waypoint.timeSeconds);
@@ -124,6 +128,7 @@ export function adaptAnchorPlanToHeadlessRuntimePlan(plan, selectedAgentPlan, wo
   if (!selectedAgentPlan) throw new Error('Cannot adapt missing agent plan.');
   const resolvedAgentId = String(agentId ?? selectedAgentPlan.agentId ?? world?.agents?.[0]?.id ?? 'glider-1');
   const selectedStart = selectedAgentPlan.selectedStart ?? deploymentStartForAgent(world, resolvedAgentId) ?? missionStartForAgent(world, resolvedAgentId);
+  const diveProfileId = normalizeWaterColumnProfileId(selectedAgentPlan.diveProfileId ?? plan?.diveProfileId ?? world?.context?.packet?.waterColumnConfig?.diveProfileId ?? world?.context?.packet?.planningData?.waterColumnConfig?.diveProfileId ?? 'sawtoothProfile');
   const waypoints = [];
   if (isFinitePoint(selectedStart)) {
     waypoints.push({
@@ -133,6 +138,8 @@ export function adaptAnchorPlanToHeadlessRuntimePlan(plan, selectedAgentPlan, wo
       zIndex: 0,
       z: 0,
       depthLayer: 'surface',
+      depthLayerId: 'surface',
+      diveProfileId,
       source: 'selectedStart'
     });
   }
@@ -144,7 +151,9 @@ export function adaptAnchorPlanToHeadlessRuntimePlan(plan, selectedAgentPlan, wo
       y: round(Number(waypoint.y)),
       zIndex,
       z: zIndex,
-      depthLayer: waypoint.depthLayer ?? null,
+      depthLayer: waypoint.depthLayer ?? waypoint.depthLayerId ?? null,
+      depthLayerId: waypoint.depthLayerId ?? waypoint.depthLayer ?? null,
+      diveProfileId: normalizeWaterColumnProfileId(waypoint.diveProfileId ?? diveProfileId),
       estimatedArrivalTime: finiteOrNull(waypoint.estimatedArrivalTime ?? waypoint.t ?? waypoint.timeSeconds),
       kind: waypoint.kind ?? waypoint.action ?? 'navigation',
       source: 'anchor.plan'
@@ -159,6 +168,7 @@ export function adaptAnchorPlanToHeadlessRuntimePlan(plan, selectedAgentPlan, wo
     gliderId: resolvedAgentId,
     routeAuthority: 'submittedAnchorPlan',
     generatesRoute: false,
+    diveProfileId,
     waypoints,
     notes: [
       'H3 adapts a submitted anchor.plan into the existing Node headless waypoint-plan shape.',
@@ -170,7 +180,15 @@ export function adaptAnchorPlanToHeadlessRuntimePlan(plan, selectedAgentPlan, wo
 export function buildRoundtripRuntimeConfig(context, world, runtimePlan, { seed = null } = {}) {
   const agent = (world?.agents ?? []).find((candidate) => String(candidate.id ?? candidate.agentId) === String(runtimePlan.gliderId)) ?? {};
   const resolvedSeed = String(seed ?? context?.packet?.stochasticConfig?.seed ?? context?.packet?.seed ?? context?.replaySeedAnchor ?? context?.packet?.packetId ?? 'h3-roundtrip');
+  const packetWaterColumnConfig = context?.packet?.waterColumnConfig ?? context?.packet?.planningData?.waterColumnConfig ?? context?.level?.world?.waterColumnConfig ?? null;
+  const waterColumnConfig = normalizeWaterColumnConfig(packetWaterColumnConfig ?? {
+    depthLayerIds: context?.packet?.depthLayers ?? context?.level?.world?.depthLayers ?? context?.level?.world?.grid?.depthLayers,
+    diveProfileId: runtimePlan.diveProfileId
+  });
   return createDefaultHeadlessRuntimeConfig({
+    waterColumnConfig,
+    depthLayers: waterColumnConfig.depthLayerIds,
+    diveProfileId: runtimePlan.diveProfileId ?? waterColumnConfig.diveProfileId,
     scenario: context?.packet?.scenarioId ?? context?.level?.levelId ?? 'solverPacketRoundtrip',
     seed: resolvedSeed,
     width: Math.max(2, Number(world?.width ?? 12) || 12),
@@ -189,6 +207,7 @@ export function buildHeadlessRoundtripReport({ context, world, packet, plan, sel
   const includeHiddenTruth = options.includeHiddenTruth === true;
   const scoreSummary = headlessScoreReportSummary(episode.scoreReport);
   const scienceDiagnosticsSummary = scienceDiscoverySummary(episode.scienceDiagnostics ?? episode.scienceDiscovery ?? {});
+  const waterColumnSummary = episode.waterColumnSummary ?? null;
   return {
     schemaVersion: '1.0',
     ...roundtripReportTypeMetadata(),
@@ -219,7 +238,8 @@ export function buildHeadlessRoundtripReport({ context, world, packet, plan, sel
         gliderId: runtimePlan.gliderId,
         waypointCount: runtimePlan.waypoints.length,
         routeAuthority: runtimePlan.routeAuthority,
-        generatesRoute: runtimePlan.generatesRoute
+        generatesRoute: runtimePlan.generatesRoute,
+        diveProfileId: runtimePlan.diveProfileId ?? null
       },
       usesNodeHeadlessRuntime: true,
       usesProvidedPlan: true,
@@ -235,9 +255,11 @@ export function buildHeadlessRoundtripReport({ context, world, packet, plan, sel
       seed: episode.seed,
       observationCount: episode.observations?.length ?? 0,
       trackPointCount: episode.tracks?.length ?? 0,
-      scoreSummary
+      scoreSummary,
+      waterColumnSummary
     },
     scienceDiagnosticsSummary,
+    waterColumnSummary,
     output: {
       outputDir,
       combinedBundlePath: outputDir ? `${outputDir.replace(/\\/g, '/')}/bundle.json` : null,
@@ -258,14 +280,17 @@ export function buildHeadlessRoundtripReport({ context, world, packet, plan, sel
       trackPointCount: episode.tracks?.length ?? 0,
       hiddenTruthExported: includeHiddenTruth,
       browserOfficialScoring: false,
-      sciencePrimaryDiagnosis: scienceDiagnosticsSummary.primaryDiagnosis ?? null
+      sciencePrimaryDiagnosis: scienceDiagnosticsSummary.primaryDiagnosis ?? null,
+      waterColumnVerticalCoverage: waterColumnSummary?.verticalCoverage ?? null,
+      diveProfileId: waterColumnSummary?.diveProfile?.profileId ?? runtimePlan.diveProfileId ?? null
     },
     boundary: [
       'Node/OceanBox-JS validates and executes a submitted plan through the H1 headless runtime.',
       'Browser ANCHOR remains the official visual referee and scoring UI.',
       'Headless score is educational and not official browser scoring.',
       'P9 science diagnostics distinguish forecast correction from hidden-event hypotheses using transparent educational heuristics.',
-      'H3/P9 does not add a Python simulator, new route planner, calibrated ocean forecast, backend service, production data assimilation, or MARL/RL.'
+      'P11 water-column context is 2.5D depth-layer sampling, not full 3D planning or a new planner.',
+      'H3/P9/P11 does not add a Python simulator, new route planner, calibrated ocean forecast, backend service, production data assimilation, or MARL/RL.'
     ]
   };
 }

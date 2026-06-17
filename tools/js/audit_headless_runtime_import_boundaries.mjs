@@ -1,4 +1,4 @@
-﻿import assert from 'node:assert/strict';
+import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
 
@@ -18,6 +18,11 @@ files.push(
   'src/core/headless/HeadlessPlanAdapter.js',
   'src/core/headless/HeadlessSolverRoundtrip.js',
   'src/core/headless/HeadlessRoundtripExport.js',
+  'src/core/science/WaterColumnSchema.js',
+  'src/core/science/WaterColumnFieldModel.js',
+  'src/core/science/DiveProfileModel.js',
+  'src/core/science/WaterColumnObservationModel.js',
+  'src/core/science/WaterColumnPriorityModel.js',
   'tools/js/headless_oceanbox.mjs'
 );
 

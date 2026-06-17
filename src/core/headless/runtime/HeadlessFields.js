@@ -1,4 +1,4 @@
-﻿import { createSeededRng, seededUnit } from '../../random/SeededRng.js';
+import { createSeededRng, seededUnit } from '../../random/SeededRng.js';
 import { createHeadlessFieldDescriptor } from '../HeadlessFieldSchema.js';
 import { clamp01, createHeadlessGrid, createScalarField3d, field3dStats, normalizeField3d, sampleNearest3d } from './HeadlessGrid.js';
 import { createDefaultHeadlessRuntimeConfig } from './HeadlessRuntimeConfig.js';
@@ -41,6 +41,7 @@ export function createCoastalBloomFrontFieldPack(configInput = {}) {
     scenario: config.scenario ?? 'coastalBloomFront',
     seed: config.seed ?? 'demo-001',
     grid,
+    waterColumnConfig: config.waterColumnConfig ?? null,
     fieldOrder: ['T_hiddenTruth', 'E_forecast', 'mu_belief', 'U_uncertainty', 'P_unknown', 'A_global', 'F_u', 'F_v', 'hazard', 'constraintMask', 'staleness', 'boundaryStrength'],
     fields,
     fieldVisibility: {
@@ -242,6 +243,7 @@ export function headlessFieldPackSummary(fieldPack) {
     width: fieldPack?.grid?.width,
     height: fieldPack?.grid?.height,
     depthLayers: fieldPack?.grid?.depthLayers ?? [],
+    waterColumnConfig: fieldPack?.waterColumnConfig ?? null,
     fieldIds: Object.keys(fields),
     allFinite: Object.values(stats).every((entry) => entry.invalidCount === 0 && entry.finiteCount > 0),
     stats,

@@ -42,6 +42,8 @@ export function createHeadlessWorldConfig(options = {}) {
     width,
     height,
     depthLayers: normalizeStringList(options.depthLayers ?? ['surface']),
+    depthLayerModel: options.depthLayerModel ?? null,
+    waterColumnConfig: cloneJson(options.waterColumnConfig ?? null),
     dx: finiteNumber(options.dx, 1),
     dy: finiteNumber(options.dy, 1),
     dz: finiteNumber(options.dz, 1),
@@ -63,6 +65,7 @@ export function createHeadlessGliderConfig(options = {}) {
     energyBudget: finiteNumber(options.energyBudget ?? options.battery ?? options.maxBattery, 100),
     sensorSuite: normalizeStringList(options.sensorSuite ?? options.sensors ?? ['science-sampler']),
     diveProfile: cloneJson(options.diveProfile ?? { mode: 'surface-2d' }),
+    diveProfileId: options.diveProfileId ?? options.diveProfile?.id ?? options.diveProfile?.profileId ?? null,
     communicationPolicy: cloneJson(options.communicationPolicy ?? { surfacingRequired: false }),
     constraints: cloneJson(options.constraints ?? {})
   });

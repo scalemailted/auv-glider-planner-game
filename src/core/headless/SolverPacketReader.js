@@ -18,6 +18,7 @@ export function readHeadlessSolverPacket(packet, { oracle = false } = {}) {
     replaySeedAnchor: packet.replaySeedAnchor ?? packet.level?.meta?.replaySeedAnchor ?? packet.instanceId ?? null,
     generationVersion: packet.generationVersion ?? packet.level?.meta?.generationVersion ?? null,
     planningData: packet.planningData ?? {},
+    waterColumnConfig: packet.waterColumnConfig ?? packet.planningData?.waterColumnConfig ?? packet.level?.world?.waterColumnConfig ?? null,
     visibleFields: packet.planningData?.visibleFields ?? {},
     oracle
   };
@@ -41,6 +42,9 @@ export function summarizeHeadlessPacket(context) {
     agents: mission.agents?.length ?? 0,
     visiblePlanningSource: context?.packet?.visiblePlanningSource ?? null,
     forecastAvailable: Boolean(context?.planningData?.forecastAvailable),
+    waterColumnConfigPresent: Boolean(context?.waterColumnConfig),
+    depthLayers: context?.waterColumnConfig?.depthLayerIds ?? context?.level?.world?.depthLayers ?? context?.level?.world?.grid?.depthLayers ?? [],
+    diveProfileId: context?.waterColumnConfig?.diveProfileId ?? null,
     oracleMode: Boolean(context?.oracle)
   };
 }

@@ -1,4 +1,4 @@
-﻿import fs from 'node:fs';
+import fs from 'node:fs';
 import path from 'node:path';
 
 import { createDefaultHeadlessRuntimeConfig } from '../../src/core/headless/runtime/HeadlessRuntimeConfig.js';
@@ -13,7 +13,9 @@ const CONFIG = Object.freeze({
   scenario: 'coastalBloomFront',
   seed: 'h2-example-001',
   width: 12,
-  height: 8
+  height: 8,
+  depthLayers: ['surface', 'thermocline', 'deep'],
+  diveProfileId: 'sawtoothProfile'
 });
 
 const episode = runHeadlessMission(createDefaultHeadlessRuntimeConfig(CONFIG));
@@ -46,7 +48,9 @@ console.log(JSON.stringify({
     observations: publicBundle.observations?.length ?? 0,
     gliderTracks: publicBundle.gliderTracks?.length ?? 0,
     finalScore: publicBundle.scoreReport?.finalScore ?? null,
-    sciencePrimaryDiagnosis: publicBundle.scienceDiagnostics?.primaryDiagnosis ?? null
+    sciencePrimaryDiagnosis: publicBundle.scienceDiagnostics?.primaryDiagnosis ?? null,
+    waterColumnLayers: publicBundle.waterColumnSummary?.waterColumnConfig?.depthLayerIds ?? [],
+    diveProfileId: publicBundle.waterColumnSummary?.diveProfile?.profileId ?? null
   }
 }, null, 2));
 
@@ -82,6 +86,9 @@ function assertBundleBase(bundle, label) {
   if (!bundle?.replay) throw new Error(`${label} fixture must include replay.`);
   if (bundle?.scienceDiagnostics?.type !== 'anchor.headless.science-diagnostics') throw new Error(label + ' fixture must include P9 science diagnostics.');
   if (JSON.stringify(bundle.scienceDiagnostics).includes('T_hiddenTruth')) throw new Error(label + ' fixture science diagnostics leak T_hiddenTruth.');
+  if (bundle.waterColumnSummary?.type !== 'anchor.headless.water-column-summary') throw new Error(label + ' fixture must include P11 water-column summary.');
+  if (bundle.waterColumnSummary?.usesFull3DPlanning) throw new Error(label + ' fixture must not claim full 3D planning.');
+  if (bundle.depthLayerPrioritySummary?.type !== 'anchor.headless.depth-layer-priority-summary') throw new Error(label + ' fixture must include P11 depth-layer priority summary.');
 }
 
 function visibleFieldIds(bundle) {

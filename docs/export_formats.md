@@ -283,6 +283,17 @@ P9 headless bundles may include `science_diagnostics.json` and combined bundles 
 
 The artifact distinguishes forecast correction from hidden-event hypotheses. It must not include `T_hiddenTruth` or hidden field arrays. It is not production data assimilation, not a calibrated ocean forecast, not a planner, not a scoring redesign, and not MARL/RL.
 
+## P11 Water-Column / Depth-Layer Artifacts
+
+P11 adds public-safe 2.5D water-column artifacts for headless bundles and solver roundtrips:
+
+- `water_column_summary.json` with `type: "anchor.headless.water-column-summary"`
+- `depth_layer_priority.json` with `type: "anchor.headless.depth-layer-priority"`
+- combined-bundle fields `waterColumnSummary` and `depthLayerPrioritySummary`
+- observation/track fields `depthLayerId`, `depthMeters`, and `diveProfileId`
+
+Depth-layer priority summarizes `A_global_depth[layer][row][col]` and a top-down collapse. It excludes route travel cost and path optimization. P11 is synthetic top-down 2.5D sampling context, not full 3D planning, a calibrated vertical ocean model, production data assimilation, a new planner, Python simulation, or MARL/RL.
+
 ## P10 Adaptive Science-Diagnosis Handoff
 
 Science diagnosis informs the mission-manager objective recommendation. It does not generate a route. Forecast correction means the expected field existed but was wrong. Hidden event hypothesis means observations may indicate a phenomenon not represented in the forecast. The player or solver still plans the route.

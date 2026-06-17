@@ -12,7 +12,8 @@ export function classifyPlanArtifact(plan = {}) {
     planId: plan?.planId ?? plan?.id ?? plan?.meta?.planId ?? null,
     executionMode: plan?.executionMode ?? null,
     agentPlanCount: Array.isArray(plan?.agentPlans) ? plan.agentPlans.length : 0,
-    waypointCount: (plan?.agentPlans ?? []).reduce((sum, agentPlan) => sum + (agentPlan.waypoints?.length ?? 0), 0)
+    waypointCount: (plan?.agentPlans ?? []).reduce((sum, agentPlan) => sum + (agentPlan.waypoints?.length ?? 0), 0),
+    diveProfileIds: [...new Set((plan?.agentPlans ?? []).flatMap((agentPlan) => [agentPlan.diveProfileId, ...(agentPlan.waypoints ?? []).map((waypoint) => waypoint.diveProfileId)].filter(Boolean)))]
   };
 }
 
@@ -51,6 +52,7 @@ export function planHeadlessCompatibilitySummary(plan, packetOrWorld, options = 
     ...classification,
     validationStatus: validation.status,
     selectedAgentId: validation.selectedAgentId,
+    diveProfileIds: classification.diveProfileIds ?? [],
     singleGliderRuntimeLimitation: true,
     usesGeneratedPlan: false,
     usesNewPlanner: false

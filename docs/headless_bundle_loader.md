@@ -33,6 +33,8 @@ It also accepts separate files:
 - `observations.json` or `observations.csv`
 - `glider_tracks.json` or `glider_tracks.csv`
 - `score_report.json`
+- optional `water_column_summary.json`
+- optional `depth_layer_priority.json`
 - optional `replay.json`
 - optional `episode.json`
 
@@ -146,3 +148,8 @@ P9 bundles may include `science_diagnostics.json` and combined bundles may embed
 Science diagnosis informs the mission-manager objective recommendation. It does not generate a route. Forecast correction means the expected field existed but was wrong. Hidden event hypothesis means observations may indicate a phenomenon not represented in the forecast. The player or solver still plans the route.
 
 P10 adds adaptive science-diagnosis context, mission-manager rationale, next-leg handoff metadata, objective-history display fields, and public-safe headless/browser summaries. It does not implement a new planner, scoring redesign, production data assimilation, GP/GMRF production inference, calibrated ocean forecast, Python simulator, or MARL/RL. Node/OceanBox-JS remains the canonical non-browser runtime; Python/Colab analyze artifacts or call Node.
+## P11 Water-Column Sections
+
+P11 bundles may include `water_column_summary.json` and `depth_layer_priority.json`, and combined bundles may embed `waterColumnSummary` and `depthLayerPrioritySummary`. The Headless Bundle Viewer displays Water Column and Depth-Layer Priority sections and exposes debug keys such as `hasWaterColumnSummary`, `waterColumnLayerIds`, `diveProfileId`, `observationCountsByDepth`, `verticalCoverage`, and `bestDepthLayerCounts`.
+
+2.5D means the tactical map remains top-down, while each cell can contain simplified depth layers. Dive profile controls which layer the glider samples along the route. Recommended dive profile is context for the next leg; it does not generate a route. P11 does not add full 3D planning, new route planning, production data assimilation, or MARL/RL.

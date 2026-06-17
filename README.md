@@ -124,6 +124,7 @@ Quick loop:
 - [Planner Benchmark Execution](docs/planner_benchmark_execution.md)
 - [Planner Benchmark Route Overlay](docs/planner_benchmark_route_overlay.md)
 - [Adaptive Benchmark Mission Manager](docs/adaptive_benchmark_mission_manager.md)
+- [2.5D Water-Column Sampling Model](docs/water_column_2p5d_sampling_model.md)
 - [Solver workflow](docs/solver_workflow.md)
 - [Export formats](docs/export_formats.md)
 - [Plan format](docs/plan_format.md)
@@ -897,3 +898,7 @@ P9 adds compact science diagnostics to Adaptive Benchmark and Node/OceanBox-JS h
 Science diagnosis informs the mission-manager objective recommendation. It does not generate a route. Forecast correction means the expected field existed but was wrong. Hidden event hypothesis means observations may indicate a phenomenon not represented in the forecast. The player or solver still plans the route.
 
 P10 adds adaptive science-diagnosis context, mission-manager rationale, next-leg handoff metadata, objective-history display fields, and public-safe headless/browser summaries. It does not implement a new planner, scoring redesign, production data assimilation, GP/GMRF production inference, calibrated ocean forecast, Python simulator, or MARL/RL. Node/OceanBox-JS remains the canonical non-browser runtime; Python/Colab analyze artifacts or call Node.
+
+## P11 2.5D Water-Column Sampling
+
+P11 adds shared depth-layer metadata and summaries for the Node/OceanBox-JS headless runtime, solver roundtrips, Headless Bundle Viewer, and Adaptive Benchmark handoff context. Bundles can include `water_column_summary.json`, `depth_layer_priority.json`, combined-bundle `waterColumnSummary`, and `depthLayerPrioritySummary`. Observations and tracks carry `depthLayerId`, `depthMeters`, and `diveProfileId`. This remains top-down 2.5D sampling context: it does not add full 3D route planning, a new planner, calibrated vertical ocean modeling, production data assimilation, Python simulation, or MARL/RL. See [2.5D Water-Column Sampling Model](docs/water_column_2p5d_sampling_model.md).

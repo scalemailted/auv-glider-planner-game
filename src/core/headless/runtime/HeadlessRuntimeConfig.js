@@ -1,6 +1,8 @@
-﻿import { HEADLESS_CANONICAL_FIELDS } from '../HeadlessFieldSchema.js';
+import { HEADLESS_CANONICAL_FIELDS } from '../HeadlessFieldSchema.js';
 import { createHeadlessMissionConfig as createH0HeadlessMissionConfig, validateHeadlessMissionConfig } from '../HeadlessMissionSchema.js';
 import { createHeadlessGrid } from './HeadlessGrid.js';
+import { createDiveProfileSequence, normalizeDiveProfile } from '../../science/DiveProfileModel.js';
+import { normalizeWaterColumnConfig, validateWaterColumnConfig, waterColumnConfigSummary } from '../../science/WaterColumnSchema.js';
 
 export const HEADLESS_RUNTIME_CONFIG_VERSION = 'headless-node-runtime-h1';
 
@@ -22,13 +24,18 @@ export const HEADLESS_RUNTIME_FIELD_IDS = Object.freeze([
 export function createDefaultHeadlessRuntimeConfig(options = {}) {
   const scenarioId = normalizeScenarioId(options.scenario ?? options.scenarioId ?? 'coastalBloomFront');
   const seed = String(options.seed ?? 'demo-001');
+  const waterColumnConfig = normalizeWaterColumnConfig(options.waterColumnConfig ?? {
+    ...options,
+    depthLayerIds: options.depthLayers ?? options.grid?.depthLayers,
+    diveProfileId: options.diveProfileId ?? options.diveProfile ?? options.profileId
+  });
   const grid = createHeadlessGrid({
     width: options.width ?? options.grid?.width ?? 32,
     height: options.height ?? options.grid?.height ?? 24,
-    depthLayers: options.depthLayers ?? options.grid?.depthLayers ?? ['surface', 'thermocline', 'deep']
+    depthLayers: waterColumnConfig.depthLayerIds
   });
-  const missionConfig = createDefaultHeadlessMissionConfig({ ...options, scenarioId, seed, grid });
-  const plan = options.plan ?? createDefaultHeadlessGliderPlan({ ...options, grid, gliderId: missionConfig.gliders[0]?.id ?? 'glider-1' });
+  const missionConfig = createDefaultHeadlessMissionConfig({ ...options, scenarioId, seed, grid, waterColumnConfig });
+  const plan = options.plan ?? createDefaultHeadlessGliderPlan({ ...options, grid, waterColumnConfig, gliderId: missionConfig.gliders[0]?.id ?? 'glider-1' });
   return {
     type: 'anchor.headless.runtime-config',
     version: HEADLESS_RUNTIME_CONFIG_VERSION,
@@ -37,6 +44,7 @@ export function createDefaultHeadlessRuntimeConfig(options = {}) {
     scenarioId,
     seed,
     grid,
+    waterColumnConfig,
     fields: HEADLESS_RUNTIME_FIELD_IDS.slice(),
     missionConfig,
     plan,
@@ -57,10 +65,12 @@ export function createDefaultHeadlessRuntimeConfig(options = {}) {
       productionController: false,
       implementsNewPlanner: false,
       implementsMARL: false,
-      implementsPythonSimulator: false
+      implementsPythonSimulator: false,
+      implementsFull3DPlanning: false
     },
     notes: [
       'H1 is a deterministic educational headless runtime scaffold, not a calibrated ocean model.',
+      'P11 adds 2.5D depth-layer sampling metadata; it does not add full 3D planning.',
       'Waypoint plans are executed as supplied; H1 does not optimize or generate routes.'
     ]
   };
@@ -68,6 +78,12 @@ export function createDefaultHeadlessRuntimeConfig(options = {}) {
 
 export function createDefaultHeadlessMissionConfig(options = {}) {
   const grid = createHeadlessGrid(options.grid ?? options);
+  const waterColumnConfig = normalizeWaterColumnConfig(options.waterColumnConfig ?? {
+    ...options,
+    depthLayerIds: grid.depthLayers,
+    diveProfileId: options.diveProfileId ?? options.diveProfile ?? options.profileId
+  });
+  const diveProfile = normalizeDiveProfile(options.diveProfile ?? options.diveProfileId ?? waterColumnConfig.diveProfileId, waterColumnConfig);
   const seed = String(options.seed ?? 'demo-001');
   return createH0HeadlessMissionConfig({
     missionId: options.missionId ?? 'coastal-bloom-front-headless-mission',
@@ -78,6 +94,8 @@ export function createDefaultHeadlessMissionConfig(options = {}) {
       width: grid.width,
       height: grid.height,
       depthLayers: grid.depthLayers,
+      depthLayerModel: 'top-down-2p5d',
+      waterColumnConfig,
       timeStepSeconds: 60,
       durationSeconds: 3600,
       coordinateFrame: grid.coordinateFrame,
@@ -95,7 +113,8 @@ export function createDefaultHeadlessMissionConfig(options = {}) {
       speed: finiteNumber(options.gliderSpeed, 1),
       energyBudget: finiteNumber(options.energyBudget, 120),
       sensorSuite: ['temperature-fluorescence-sampler'],
-      diveProfile: { mode: 'sawtooth', minZ: 0, maxZ: grid.depthCount - 1, cycleLength: 0.5 },
+      diveProfile,
+      diveProfileId: diveProfile.id,
       communicationPolicy: { surfacingRequired: false }
     }],
     objectives: [{
@@ -123,6 +142,12 @@ export function createDefaultHeadlessMissionConfig(options = {}) {
 
 export function createDefaultHeadlessGliderPlan(options = {}) {
   const grid = createHeadlessGrid(options.grid ?? options);
+  const waterColumnConfig = normalizeWaterColumnConfig(options.waterColumnConfig ?? {
+    ...options,
+    depthLayerIds: grid.depthLayers,
+    diveProfileId: options.diveProfileId ?? options.diveProfile ?? options.profileId
+  });
+  const diveProfile = normalizeDiveProfile(options.diveProfile ?? options.diveProfileId ?? waterColumnConfig.diveProfileId, waterColumnConfig);
   const maxX = grid.width - 1;
   const maxY = grid.height - 1;
   const gliderId = options.gliderId ?? 'glider-1';
@@ -134,19 +159,26 @@ export function createDefaultHeadlessGliderPlan(options = {}) {
     [0.78, 0.32, 1],
     [0.92, 0.19, 0]
   ];
+  const profileSequence = createDiveProfileSequence(diveProfile, waterColumnConfig, { sampleCount: waypointFractions.length });
   return {
     type: 'anchor.headless.waypoint-plan',
     planId: options.planId ?? 'fixed-front-crossing-plan',
     gliderId,
+    diveProfileId: diveProfile.id,
     routeAuthority: 'fixedDefaultWaypoints',
     generatesRoute: false,
-    waypoints: waypointFractions.map(([fx, fy, z], index) => createWaypoint({
-      x: fx * maxX,
-      y: fy * maxY,
-      zIndex: Math.min(grid.depthCount - 1, z),
-      depthLayer: grid.depthLayers[Math.min(grid.depthCount - 1, z)],
-      index
-    }))
+    waypoints: waypointFractions.map(([fx, fy, fallbackZ], index) => {
+      const profilePoint = profileSequence[index] ?? {};
+      const z = Number.isFinite(Number(profilePoint.zIndex)) ? profilePoint.zIndex : fallbackZ;
+      return createWaypoint({
+        x: fx * maxX,
+        y: fy * maxY,
+        zIndex: Math.min(grid.depthCount - 1, z),
+        depthLayer: grid.depthLayers[Math.min(grid.depthCount - 1, z)],
+        diveProfileId: diveProfile.id,
+        index
+      });
+    })
   };
 }
 
@@ -165,9 +197,12 @@ export function validateHeadlessRuntimeConfig(config = {}) {
   if (config?.plan?.generatesRoute !== false) warnings.push('H1 plans should be provided waypoints, not generated routes.');
   const missionValidation = validateHeadlessMissionConfig(config?.missionConfig ?? {});
   if (!missionValidation.valid) errors.push(...missionValidation.errors.map((entry) => `missionConfig: ${entry}`));
+  const waterColumnValidation = validateWaterColumnConfig(config?.waterColumnConfig ?? config?.missionConfig?.world?.waterColumnConfig ?? {});
+  if (!waterColumnValidation.valid) errors.push(...waterColumnValidation.errors.map((entry) => `waterColumnConfig: ${entry}`));
   if (config?.boundary?.implementsPythonSimulator) warnings.push('H1 must not claim a Python simulator package.');
   if (config?.boundary?.implementsNewPlanner) warnings.push('H1 must not claim a new planner.');
   if (config?.boundary?.implementsMARL) warnings.push('H1 must not claim MARL/RL.');
+  if (config?.boundary?.implementsFull3DPlanning) warnings.push('P11 must not claim full 3D route planning.');
   return { valid: errors.length === 0, status: errors.length ? 'FAIL' : warnings.length ? 'WARN' : 'PASS', errors, warnings };
 }
 
@@ -181,6 +216,8 @@ export function headlessRuntimeConfigSummary(configInput = {}) {
     width: config.grid.width,
     height: config.grid.height,
     depthLayers: config.grid.depthLayers.slice(),
+    waterColumn: waterColumnConfigSummary(config.waterColumnConfig),
+    diveProfileId: config.waterColumnConfig?.diveProfileId ?? config.missionConfig?.gliders?.[0]?.diveProfileId ?? null,
     fieldCount: config.fields.length,
     waypointCount: config.plan.waypoints.length,
     gliderCount: config.missionConfig.gliders.length,
@@ -190,14 +227,16 @@ export function headlessRuntimeConfigSummary(configInput = {}) {
   };
 }
 
-function createWaypoint({ x, y, zIndex, depthLayer, index }) {
+function createWaypoint({ x, y, zIndex, depthLayer, diveProfileId, index }) {
   return {
     waypointId: `wp-${index + 1}`,
     x: Number(x.toFixed(3)),
     y: Number(y.toFixed(3)),
     zIndex,
     z: zIndex,
-    depthLayer
+    depthLayer,
+    depthLayerId: depthLayer,
+    diveProfileId
   };
 }
 

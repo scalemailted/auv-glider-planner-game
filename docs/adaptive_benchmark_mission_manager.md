@@ -93,3 +93,9 @@ P7 extends the mission-manager preview into an executable one-leg surfacing loop
 ## P8 Session Persistence
 
 The adaptive mission manager can now be reviewed across a saved episode session. Objective changes, surfacing decisions, and compact leg records persist across manual continuation. The mission manager recommends objectives; the player or solver still plans routes.
+
+## P11 Dive-Profile Context
+
+Adaptive Benchmark science handoffs may carry `recommendedDiveProfileId` when water-column evidence suggests sparse vertical coverage or a subsurface feature. This is advisory context for the next leg. Route authority remains `playerOrSolver`, and the handoff still records `generatesWaypoints: false` and `controlsRoutePlanning: false`.
+
+P11 does not add full 3D planning, new route planning, production data assimilation, calibrated vertical ocean modeling, or MARL/RL.

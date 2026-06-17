@@ -15,6 +15,7 @@ const REQUIRED_NOT_A = [
   'not waypoint generation',
   'not production data assimilation',
   'not official scoring',
+  'not full 3D planning',
   'not MARL/RL'
 ];
 const HIDDEN_KEYS = new Set(['T_hiddenTruth', 'hiddenTruth', 'truth', 'truthField', 'truthFields', 'eventIntensity', 'trueRoi']);
@@ -74,6 +75,8 @@ export function createAdaptiveScienceDiagnosisContext(options = {}) {
     recommendedObjectiveId: objective?.id ?? objectiveId,
     recommendedObjectiveLabel: options.recommendedObjectiveLabel ?? objective?.label ?? null,
     recommendationRationale: cleanText(options.recommendationRationale ?? diagnosis.rationale ?? options.transition?.rationale ?? 'Science diagnosis informs the mission-manager objective recommendation.'),
+    waterColumnEvidence: clonePublic(options.waterColumnEvidence ?? options.evidence?.waterColumnSummary ?? discovery?.waterColumnSummary ?? null),
+    recommendedDiveProfileId: cleanText(options.recommendedDiveProfileId ?? diagnosis.recommendedDiveProfileId ?? options.evidence?.recommendedDiveProfileId ?? discovery?.recommendedDiveProfileId ?? null),
     informsMissionManager: true,
     controlsRoutePlanning: false,
     generatesWaypoints: false,
@@ -97,6 +100,7 @@ export function createAdaptiveScienceDiagnosisHandoffRecord(options = {}) {
     scienceDiagnosisContext: context,
     recommendedObjectiveId: context.recommendedObjectiveId,
     recommendedObjectiveLabel: context.recommendedObjectiveLabel,
+    recommendedDiveProfileId: context.recommendedDiveProfileId ?? null,
     routeAuthority: 'playerOrSolver',
     objectiveAuthority: 'missionManager',
     diagnosisIsPlannerAuthority: false,
@@ -160,6 +164,7 @@ export function adaptiveScienceDiagnosisHandoffSummary(contextOrRecord = {}) {
     forecastCorrectionStatus: context.forecastCorrectionStatus ?? null,
     hiddenEventStatus: context.hiddenEventStatus ?? null,
     recommendedObjectiveId: context.recommendedObjectiveId ?? contextOrRecord?.recommendedObjectiveId ?? null,
+    recommendedDiveProfileId: context.recommendedDiveProfileId ?? contextOrRecord?.recommendedDiveProfileId ?? null,
     confidence: finiteOrNull(context.confidence),
     informsMissionManager: context.informsMissionManager === true,
     controlsRoutePlanning: context.controlsRoutePlanning === true,
@@ -181,7 +186,8 @@ export function scienceDiagnosisContextFromSurfacingDecision(decision = {}) {
     transition: decision.objectiveTransition,
     scienceDiscovery,
     recommendedObjectiveId: decision.recommendedObjective?.id ?? decision.objectiveTransition?.toObjectiveId,
-    recommendedObjectiveLabel: decision.recommendedObjective?.label
+    recommendedObjectiveLabel: decision.recommendedObjective?.label,
+    recommendedDiveProfileId: decision.recommendedDiveProfileId ?? decision.evidence?.recommendedDiveProfileId ?? decision.diagnosis?.recommendedDiveProfileId
   });
 }
 
@@ -193,7 +199,8 @@ export function scienceDiagnosisContextFromDiscoveryUpdate(update = {}) {
     scienceDiscovery: update,
     primaryScienceDiagnosis: update.primaryDiagnosis,
     recommendedObjectiveId: update.recommendedObjectiveId,
-    confidence: update.confidence
+    confidence: update.confidence,
+    recommendedDiveProfileId: update.recommendedDiveProfileId
   });
 }
 

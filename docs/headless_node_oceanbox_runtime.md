@@ -41,6 +41,7 @@ Useful options:
 node tools/js/headless_oceanbox.mjs simulate --seed demo-001 --out tmp/oceanbox-js-public --no-hidden-export
 node tools/js/headless_oceanbox.mjs simulate --seed demo-001 --summary-only
 node tools/js/headless_oceanbox.mjs simulate --seed demo-001 --width 32 --height 24 --scenario coastal_bloom_front
+node tools/js/headless_oceanbox.mjs simulate --seed demo-001 --depth-layers surface,thermocline,deep --dive-profile sawtoothProfile --water-column-summary
 ```
 
 ## Bundle Files
@@ -56,6 +57,8 @@ Default output includes:
 - `glider_tracks.json`
 - `glider_tracks.csv`
 - `score_report.json`
+- `water_column_summary.json` when P11 water-column summaries are available
+- `depth_layer_priority.json` when P11 depth-layer priority is available
 - `replay.json`
 - `episode.json`
 
@@ -120,3 +123,15 @@ This is an educational heuristic layer only. It does not perform production data
 Science diagnosis informs the mission-manager objective recommendation. It does not generate a route. Forecast correction means the expected field existed but was wrong. Hidden event hypothesis means observations may indicate a phenomenon not represented in the forecast. The player or solver still plans the route.
 
 P10 adds adaptive science-diagnosis context, mission-manager rationale, next-leg handoff metadata, objective-history display fields, and public-safe headless/browser summaries. It does not implement a new planner, scoring redesign, production data assimilation, GP/GMRF production inference, calibrated ocean forecast, Python simulator, or MARL/RL. Node/OceanBox-JS remains the canonical non-browser runtime; Python/Colab analyze artifacts or call Node.
+## P11 2.5D Water-Column Sampling
+
+P11 formalizes the existing depth-aware `field[z][row][col]` runtime data as a top-down 2.5D water-column sampling model. Default headless runs use `surface`, `thermocline`, and `deep` layers plus `sawtoothProfile`. Observations and tracks include `depthLayerId`, `depthMeters`, and `diveProfileId`.
+
+The CLI supports:
+
+```bash
+node tools/js/headless_oceanbox.mjs simulate --depth-layers surface,thermocline,deep --dive-profile sawtoothProfile --water-column-summary
+node tools/js/headless_oceanbox.mjs roundtrip --solver-packet docs/examples/headless_solver_packet.example.json --plan docs/examples/headless_solver_plan.example.json --out runs/h3-roundtrip --depth-layers surface,thermocline,deep --dive-profile sawtoothProfile --combined-json --no-hidden-export
+```
+
+P11 adds `water_column_summary.json`, `depth_layer_priority.json`, `waterColumnSummary`, and `depthLayerPrioritySummary`. It does not add full 3D planning, a new planner, production vehicle control, calibrated vertical ocean modeling, Python simulation, or MARL/RL. See `docs/water_column_2p5d_sampling_model.md`.

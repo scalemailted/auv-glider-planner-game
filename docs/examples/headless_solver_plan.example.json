@@ -84,7 +84,9 @@
           "action": "sample",
           "note": "sample static plan expectedValue=0.5"
         }
-      ]
+      ],
+      "diveProfileId": "sawtoothProfile"
     }
-  ]
+  ],
+  "diveProfileId": "sawtoothProfile"
 }

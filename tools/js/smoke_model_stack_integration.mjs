@@ -1,4 +1,4 @@
-﻿import assert from 'node:assert/strict';
+import assert from 'node:assert/strict';
 import fs from 'node:fs';
 
 import {
@@ -498,11 +498,16 @@ assert.equal(h1Episode.type, 'anchor.headless.episode', 'H1 mission runner retur
 assert.equal(h1Episode.diagnostics.implementsNewPlanner, false, 'H1 does not claim a new planner');
 assert.equal(h1Episode.diagnostics.implementsMARL, false, 'H1 does not claim MARL/RL');
 assert.equal(h1Episode.diagnostics.calibratedOceanForecast, false, 'H1 does not claim calibrated ocean forecasting');
+assert.equal(h1Episode.waterColumnSummary?.type, 'anchor.headless.water-column-summary', 'P11 water-column summary attaches to headless episodes');
+assert.equal(h1Episode.depthLayerPrioritySummary?.type, 'anchor.headless.depth-layer-priority-summary', 'P11 depth-layer priority summary attaches to headless episodes');
+assert.equal(h1Episode.waterColumnSummary?.usesFull3DPlanning, false, 'P11 does not claim full 3D planning');
 const h1Files = headlessBundleFiles(h1Episode, { includeHiddenTruth: false });
 assert.equal(Object.hasOwn(h1Files, 'hidden_fields.json'), false, 'H1 can omit hidden truth bundle file');
 assert.equal(h1Files['visible_fields.json'].includes('T_hiddenTruth'), false, 'H1 visible fields omit hidden truth');
 assert.equal(h1Episode.scienceDiagnostics?.type, 'anchor.headless.science-diagnostics', 'P9 science diagnostics attach to H1 headless episodes');
 assert.equal(h1Files['science_diagnostics.json'].includes('T_hiddenTruth'), false, 'P9 science diagnostics export omits hidden truth field IDs');
+assert.ok(h1Files['water_column_summary.json'], 'P11 bundle includes water_column_summary.json');
+assert.ok(h1Files['depth_layer_priority.json'], 'P11 bundle includes depth_layer_priority.json');
 const h1RuntimeSourceFiles = [
   'src/core/headless/runtime/HeadlessRuntimeConfig.js',
   'src/core/headless/runtime/HeadlessGrid.js',
@@ -535,8 +540,13 @@ assert.equal(h2BrowserArtifact.scoreSummary.headlessScoreIsOfficialBrowserScore,
 const h2Debug = buildBrowserHeadlessBundleDebugObject(h2Bundle);
 assert.equal(h2Debug.usesPythonSimulator, false, 'H2 debug object excludes Python simulator');
 assert.equal(h2Debug.usesNodeHeadlessRuntime, true, 'H2 debug object marks Node headless runtime');
+assert.equal(h2Debug.hasWaterColumnSummary, true, 'P11 debug object exposes water-column summary');
+assert.deepEqual(h2Debug.waterColumnLayerIds, ['surface', 'thermocline', 'deep'], 'P11 debug object exposes default depth layers');
+assert.equal(h2Debug.usesFull3DPlanning, false, 'P11 debug object excludes full 3D planning');
 const h2PanelHtml = headlessBundleViewerPanelHtml(h2ViewModel);
 assert.ok(h2PanelHtml.includes('Headless Bundle Viewer'), 'H2 viewer panel renders title');
+assert.ok(h2PanelHtml.includes('Water Column'), 'P11 viewer panel renders water-column section');
+assert.ok(h2PanelHtml.includes('Depth-Layer Priority'), 'P11 viewer panel renders depth-layer priority section');
 assert.ok(h2PanelHtml.includes('Browser ANCHOR remains the official visual referee'), 'H2 viewer panel states browser referee boundary');
 assert.equal(typeof HeadlessBundleViewerScene, 'function', 'H2 viewer scene imports');
 const h31RoundtripBundlePayload = JSON.parse(fs.readFileSync('docs/examples/headless_solver_roundtrip_bundle.example.json', 'utf8'));
@@ -547,6 +557,8 @@ const h31RoundtripSummary = buildBrowserHeadlessRoundtripSummaryArtifact(h31Roun
 assert.equal(h31RoundtripSummary.type, 'anchor.browser.headless-roundtrip-summary', 'H3.1 browser roundtrip summary type');
 assert.equal(h31RoundtripSummary.usesPythonSimulator, false, 'H3.1 browser roundtrip summary excludes Python simulator');
 assert.equal(h31RoundtripSummary.usesNewPlanner, false, 'H3.1 browser roundtrip summary excludes new planner');
+assert.equal(h31RoundtripSummary.waterColumnSummary?.present, true, 'P11 roundtrip browser summary exposes water-column context');
+assert.equal(h31RoundtripSummary.waterColumnSummary?.usesFull3DPlanning, false, 'P11 roundtrip summary excludes full 3D planning');
 assert.equal(JSON.stringify(h31RoundtripSummary).includes('T_hiddenTruth'), false, 'H3.1 browser roundtrip summary omits hidden truth ids');
 const p8FakeStorage = (() => { const data = new Map(); return { get length() { return data.size; }, key(index) { return [...data.keys()][index] ?? null; }, getItem(key) { return data.has(key) ? data.get(key) : null; }, setItem(key, value) { data.set(key, String(value)); }, removeItem(key) { data.delete(key); } }; })();
 assert.equal(saveAdaptiveEpisodeSession(p8Session, p8FakeStorage).ok, true, 'P8 adaptive session persistence saves');

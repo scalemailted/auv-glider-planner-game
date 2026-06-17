@@ -99,3 +99,22 @@ Headless simulation and roundtrip commands may write `science_diagnostics.json` 
 Science diagnosis informs the mission-manager objective recommendation. It does not generate a route. Forecast correction means the expected field existed but was wrong. Hidden event hypothesis means observations may indicate a phenomenon not represented in the forecast. The player or solver still plans the route.
 
 P10 adds adaptive science-diagnosis context, mission-manager rationale, next-leg handoff metadata, objective-history display fields, and public-safe headless/browser summaries. It does not implement a new planner, scoring redesign, production data assimilation, GP/GMRF production inference, calibrated ocean forecast, Python simulator, or MARL/RL. Node/OceanBox-JS remains the canonical non-browser runtime; Python/Colab analyze artifacts or call Node.
+## P11 Water-Column Sampling
+
+The Node/OceanBox-JS runtime and solver roundtrip path support 2.5D water-column metadata:
+
+```bash
+node tools/js/headless_oceanbox.mjs simulate --depth-layers surface,thermocline,deep --dive-profile sawtoothProfile --water-column-summary --combined-json --no-hidden-export
+node tools/js/headless_oceanbox.mjs roundtrip --solver-packet docs/examples/headless_solver_packet.example.json --plan docs/examples/headless_solver_plan.example.json --out runs/h3-roundtrip --depth-layers surface,thermocline,deep --dive-profile sawtoothProfile --combined-json --no-hidden-export
+```
+
+P11 writes `water_column_summary.json`, `depth_layer_priority.json`, combined `waterColumnSummary`, and combined `depthLayerPrioritySummary` when available. It is top-down 2.5D sampling context only: no full 3D planning, new planner, calibrated vertical ocean model, Python simulator, production data assimilation, or MARL/RL.
+
+Useful checks:
+
+```bash
+node tools/js/smoke_headless_water_column_runtime.mjs
+node tools/js/smoke_headless_roundtrip_water_column.mjs
+node tools/js/smoke_headless_water_column_viewer_panel.mjs
+node tools/js/audit_water_column_public_safety.mjs
+```

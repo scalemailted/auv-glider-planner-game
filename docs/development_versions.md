@@ -360,3 +360,8 @@ H0 introduces headless schema contracts, canonical field descriptors, mission/ep
 Science diagnosis informs the mission-manager objective recommendation. It does not generate a route. Forecast correction means the expected field existed but was wrong. Hidden event hypothesis means observations may indicate a phenomenon not represented in the forecast. The player or solver still plans the route.
 
 P10 adds adaptive science-diagnosis context, mission-manager rationale, next-leg handoff metadata, objective-history display fields, and public-safe headless/browser summaries. It does not implement a new planner, scoring redesign, production data assimilation, GP/GMRF production inference, calibrated ocean forecast, Python simulator, or MARL/RL. Node/OceanBox-JS remains the canonical non-browser runtime; Python/Colab analyze artifacts or call Node.
+## P11 2.5D Water-Column Sampling
+
+Added shared water-column schema, field, dive-profile, observation, and priority modules under `src/core/science/`. Integrated public-safe water-column summaries and depth-layer priority into Node/OceanBox-JS runtime episodes, bundles, solver roundtrips, Headless Bundle Viewer, Adaptive Benchmark handoff context, fixtures, and smoke tests.
+
+Preserved the boundary: P11 is top-down 2.5D sampling context. It does not add full 3D planning, a new planner, scoring redesign, production data assimilation, calibrated vertical ocean modeling, a Python simulator, backend services, or MARL/RL.

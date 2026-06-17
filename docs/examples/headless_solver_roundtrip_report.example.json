@@ -28,6 +28,13 @@
     "agents": 1,
     "visiblePlanningSource": "forecast",
     "forecastAvailable": true,
+    "waterColumnConfigPresent": true,
+    "depthLayers": [
+      "surface",
+      "thermocline",
+      "deep"
+    ],
+    "diveProfileId": "sawtoothProfile",
     "oracleMode": false
   },
   "visibilityValidation": {
@@ -65,6 +72,38 @@
         "thermocline",
         "deep"
       ],
+      "waterColumn": {
+        "type": "anchor.headless.water-column-config-summary",
+        "version": "water-column-schema-p11",
+        "enabled": true,
+        "depthLayerIds": [
+          "surface",
+          "thermocline",
+          "deep"
+        ],
+        "defaultLayerIds": [
+          "surface",
+          "thermocline",
+          "deep"
+        ],
+        "diveProfileId": "sawtoothProfile",
+        "layerCount": 3,
+        "publicSafe": true,
+        "valid": true,
+        "usesFull3DPlanning": false,
+        "usesNewPlanner": false,
+        "usesPythonSimulator": false,
+        "usesMARL": false,
+        "calibratedVerticalOceanModel": false,
+        "boundary": "2.5D means the tactical map remains top-down, while each cell can contain simplified depth layers.",
+        "notA": [
+          "not full 3D route planning",
+          "not calibrated vertical ocean model",
+          "not production vehicle controller",
+          "not MARL/RL"
+        ]
+      },
+      "diveProfileId": "sawtoothProfile",
       "fieldCount": 12,
       "waypointCount": 5,
       "gliderCount": 1,
@@ -78,7 +117,8 @@
       "gliderId": "glider_01",
       "waypointCount": 5,
       "routeAuthority": "submittedAnchorPlan",
-      "generatesRoute": false
+      "generatesRoute": false,
+      "diveProfileId": "sawtoothProfile"
     },
     "usesNodeHeadlessRuntime": true,
     "usesProvidedPlan": true,
@@ -101,6 +141,165 @@
       "energyUsed": 8.212365,
       "hazardExposures": 0,
       "notBrowserOfficialScoring": true
+    },
+    "waterColumnSummary": {
+      "type": "anchor.headless.water-column-summary",
+      "version": "water-column-observation-model-p11",
+      "schemaVersion": "water-column-schema-p11",
+      "waterColumnConfig": {
+        "type": "anchor.headless.water-column-config-summary",
+        "version": "water-column-schema-p11",
+        "enabled": true,
+        "depthLayerIds": [
+          "surface",
+          "thermocline",
+          "deep"
+        ],
+        "defaultLayerIds": [
+          "surface",
+          "thermocline",
+          "deep"
+        ],
+        "diveProfileId": "sawtoothProfile",
+        "layerCount": 3,
+        "publicSafe": true,
+        "valid": true,
+        "usesFull3DPlanning": false,
+        "usesNewPlanner": false,
+        "usesPythonSimulator": false,
+        "usesMARL": false,
+        "calibratedVerticalOceanModel": false,
+        "boundary": "2.5D means the tactical map remains top-down, while each cell can contain simplified depth layers.",
+        "notA": [
+          "not full 3D route planning",
+          "not calibrated vertical ocean model",
+          "not production vehicle controller",
+          "not MARL/RL"
+        ]
+      },
+      "diveProfile": {
+        "type": "anchor.headless.water-column-profile-summary",
+        "version": "dive-profile-model-p11",
+        "schemaVersion": "water-column-schema-p11",
+        "profileId": "sawtoothProfile",
+        "label": "Sawtooth Profile",
+        "sequence": [
+          "surface",
+          "thermocline",
+          "deep",
+          "thermocline",
+          "surface"
+        ],
+        "coverage": {
+          "type": "anchor.science.water-column-profile-coverage",
+          "profileId": "sawtoothProfile",
+          "countsByDepth": {
+            "surface": 4,
+            "thermocline": 4,
+            "deep": 2
+          },
+          "coveredLayerCount": 3,
+          "totalLayerCount": 3,
+          "coverageFraction": 1,
+          "verticalCoverage": "broad"
+        },
+        "energy": {
+          "profileId": "sawtoothProfile",
+          "transitionCount": 4,
+          "relativeEnergy": 1.32,
+          "educationalEstimate": true,
+          "note": "Relative profile energy is a teaching proxy, not a calibrated glider dynamics model."
+        },
+        "assignsDepthLayer": true,
+        "generatesWaypoints": false,
+        "controlsRoutePlanning": false,
+        "usesFull3DPlanning": false,
+        "valid": true,
+        "warnings": []
+      },
+      "observationSummary": {
+        "type": "anchor.headless.water-column-observation-summary",
+        "version": "water-column-observation-model-p11",
+        "count": 9,
+        "observationCountsByDepth": {
+          "surface": 9,
+          "thermocline": 0,
+          "deep": 0
+        },
+        "meanSurpriseByDepth": {
+          "surface": 0.461132,
+          "thermocline": null,
+          "deep": null
+        },
+        "coveredDepthLayerIds": [
+          "surface"
+        ],
+        "verticalCoverage": "surface-limited",
+        "coverageFraction": 0.333333,
+        "publicSafe": true,
+        "hiddenTruthIncluded": false
+      },
+      "observationCountsByDepth": {
+        "surface": 9,
+        "thermocline": 0,
+        "deep": 0
+      },
+      "trackCountsByDepth": {
+        "surface": 9,
+        "thermocline": 0,
+        "deep": 0
+      },
+      "verticalCoverage": "surface-limited",
+      "depthLayerPrioritySummary": {
+        "type": "anchor.headless.depth-layer-priority-summary",
+        "version": "water-column-priority-model-p11",
+        "schemaVersion": "water-column-schema-p11",
+        "depthLayerIds": [
+          "surface",
+          "thermocline",
+          "deep"
+        ],
+        "collapseMethod": "accessibleMax",
+        "bestDepthLayerCounts": {
+          "surface": 11,
+          "thermocline": 6,
+          "deep": 8
+        },
+        "topDownStats": {
+          "count": 25,
+          "finiteCount": 25,
+          "invalidCount": 0,
+          "min": 0,
+          "max": 1,
+          "mean": 0.6555116404709768
+        },
+        "excludesRouteTravelCost": true,
+        "publicSafe": true,
+        "usesFull3DPlanning": false,
+        "usesNewPlanner": false,
+        "usesPythonSimulator": false,
+        "usesMARL": false,
+        "note": "A_global_depth is science priority by depth layer; top-down collapse does not include route travel cost or path optimization."
+      },
+      "bestDepthLayerCounts": {
+        "surface": 11,
+        "thermocline": 6,
+        "deep": 8
+      },
+      "publicSafe": true,
+      "hiddenTruthIncluded": false,
+      "syntheticTeachingModel": true,
+      "calibratedVerticalOceanModel": false,
+      "usesFull3DPlanning": false,
+      "usesNewPlanner": false,
+      "usesPythonSimulator": false,
+      "usesMARL": false,
+      "boundary": [
+        "2.5D means the tactical map remains top-down, while each cell can contain simplified depth layers.",
+        "Dive profile controls which layer the glider samples along the route.",
+        "Recommended dive profile is context for the next leg; it does not generate a route.",
+        "P11 does not add full 3D planning, new route planning, production data assimilation, or MARL/RL."
+      ]
     }
   },
   "scienceDiagnosticsSummary": {
@@ -148,6 +347,165 @@
     "usesCalibratedOceanForecast": false,
     "usesMARL": false
   },
+  "waterColumnSummary": {
+    "type": "anchor.headless.water-column-summary",
+    "version": "water-column-observation-model-p11",
+    "schemaVersion": "water-column-schema-p11",
+    "waterColumnConfig": {
+      "type": "anchor.headless.water-column-config-summary",
+      "version": "water-column-schema-p11",
+      "enabled": true,
+      "depthLayerIds": [
+        "surface",
+        "thermocline",
+        "deep"
+      ],
+      "defaultLayerIds": [
+        "surface",
+        "thermocline",
+        "deep"
+      ],
+      "diveProfileId": "sawtoothProfile",
+      "layerCount": 3,
+      "publicSafe": true,
+      "valid": true,
+      "usesFull3DPlanning": false,
+      "usesNewPlanner": false,
+      "usesPythonSimulator": false,
+      "usesMARL": false,
+      "calibratedVerticalOceanModel": false,
+      "boundary": "2.5D means the tactical map remains top-down, while each cell can contain simplified depth layers.",
+      "notA": [
+        "not full 3D route planning",
+        "not calibrated vertical ocean model",
+        "not production vehicle controller",
+        "not MARL/RL"
+      ]
+    },
+    "diveProfile": {
+      "type": "anchor.headless.water-column-profile-summary",
+      "version": "dive-profile-model-p11",
+      "schemaVersion": "water-column-schema-p11",
+      "profileId": "sawtoothProfile",
+      "label": "Sawtooth Profile",
+      "sequence": [
+        "surface",
+        "thermocline",
+        "deep",
+        "thermocline",
+        "surface"
+      ],
+      "coverage": {
+        "type": "anchor.science.water-column-profile-coverage",
+        "profileId": "sawtoothProfile",
+        "countsByDepth": {
+          "surface": 4,
+          "thermocline": 4,
+          "deep": 2
+        },
+        "coveredLayerCount": 3,
+        "totalLayerCount": 3,
+        "coverageFraction": 1,
+        "verticalCoverage": "broad"
+      },
+      "energy": {
+        "profileId": "sawtoothProfile",
+        "transitionCount": 4,
+        "relativeEnergy": 1.32,
+        "educationalEstimate": true,
+        "note": "Relative profile energy is a teaching proxy, not a calibrated glider dynamics model."
+      },
+      "assignsDepthLayer": true,
+      "generatesWaypoints": false,
+      "controlsRoutePlanning": false,
+      "usesFull3DPlanning": false,
+      "valid": true,
+      "warnings": []
+    },
+    "observationSummary": {
+      "type": "anchor.headless.water-column-observation-summary",
+      "version": "water-column-observation-model-p11",
+      "count": 9,
+      "observationCountsByDepth": {
+        "surface": 9,
+        "thermocline": 0,
+        "deep": 0
+      },
+      "meanSurpriseByDepth": {
+        "surface": 0.461132,
+        "thermocline": null,
+        "deep": null
+      },
+      "coveredDepthLayerIds": [
+        "surface"
+      ],
+      "verticalCoverage": "surface-limited",
+      "coverageFraction": 0.333333,
+      "publicSafe": true,
+      "hiddenTruthIncluded": false
+    },
+    "observationCountsByDepth": {
+      "surface": 9,
+      "thermocline": 0,
+      "deep": 0
+    },
+    "trackCountsByDepth": {
+      "surface": 9,
+      "thermocline": 0,
+      "deep": 0
+    },
+    "verticalCoverage": "surface-limited",
+    "depthLayerPrioritySummary": {
+      "type": "anchor.headless.depth-layer-priority-summary",
+      "version": "water-column-priority-model-p11",
+      "schemaVersion": "water-column-schema-p11",
+      "depthLayerIds": [
+        "surface",
+        "thermocline",
+        "deep"
+      ],
+      "collapseMethod": "accessibleMax",
+      "bestDepthLayerCounts": {
+        "surface": 11,
+        "thermocline": 6,
+        "deep": 8
+      },
+      "topDownStats": {
+        "count": 25,
+        "finiteCount": 25,
+        "invalidCount": 0,
+        "min": 0,
+        "max": 1,
+        "mean": 0.6555116404709768
+      },
+      "excludesRouteTravelCost": true,
+      "publicSafe": true,
+      "usesFull3DPlanning": false,
+      "usesNewPlanner": false,
+      "usesPythonSimulator": false,
+      "usesMARL": false,
+      "note": "A_global_depth is science priority by depth layer; top-down collapse does not include route travel cost or path optimization."
+    },
+    "bestDepthLayerCounts": {
+      "surface": 11,
+      "thermocline": 6,
+      "deep": 8
+    },
+    "publicSafe": true,
+    "hiddenTruthIncluded": false,
+    "syntheticTeachingModel": true,
+    "calibratedVerticalOceanModel": false,
+    "usesFull3DPlanning": false,
+    "usesNewPlanner": false,
+    "usesPythonSimulator": false,
+    "usesMARL": false,
+    "boundary": [
+      "2.5D means the tactical map remains top-down, while each cell can contain simplified depth layers.",
+      "Dive profile controls which layer the glider samples along the route.",
+      "Recommended dive profile is context for the next leg; it does not generate a route.",
+      "P11 does not add full 3D planning, new route planning, production data assimilation, or MARL/RL."
+    ]
+  },
   "output": {
     "outputDir": "docs/examples",
     "combinedBundlePath": "docs\\examples\\headless_solver_roundtrip_bundle.example.json",
@@ -183,13 +541,16 @@
     "trackPointCount": 9,
     "hiddenTruthExported": false,
     "browserOfficialScoring": false,
-    "sciencePrimaryDiagnosis": "agreesWithForecast"
+    "sciencePrimaryDiagnosis": "agreesWithForecast",
+    "waterColumnVerticalCoverage": "surface-limited",
+    "diveProfileId": "sawtoothProfile"
   },
   "boundary": [
     "Node/OceanBox-JS validates and executes a submitted plan through the H1 headless runtime.",
     "Browser ANCHOR remains the official visual referee and scoring UI.",
     "Headless score is educational and not official browser scoring.",
     "P9 science diagnostics distinguish forecast correction from hidden-event hypotheses using transparent educational heuristics.",
-    "H3/P9 does not add a Python simulator, new route planner, calibrated ocean forecast, backend service, production data assimilation, or MARL/RL."
+    "P11 water-column context is 2.5D depth-layer sampling, not full 3D planning or a new planner.",
+    "H3/P9/P11 does not add a Python simulator, new route planner, calibrated ocean forecast, backend service, production data assimilation, or MARL/RL."
   ]
 }

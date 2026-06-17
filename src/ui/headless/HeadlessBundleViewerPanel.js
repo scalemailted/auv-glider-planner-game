@@ -17,6 +17,8 @@ export function headlessBundleViewerPanelHtml(viewModel = {}) {
     ${headlessBundleTracksHtml(viewModel)}
     ${headlessBundleScoreHtml(viewModel)}
     ${headlessBundleRoundtripHtml(viewModel)}
+    ${headlessBundleWaterColumnHtml(viewModel)}
+    ${headlessBundleDepthLayerPriorityHtml(viewModel)}
     ${headlessBundleScienceDiagnosisHtml(viewModel)}
     ${headlessBundleReplayHtml(viewModel)}
     ${warningsHtml(viewModel)}
@@ -167,6 +169,55 @@ export function headlessBundleRoundtripHtml(viewModel = {}) {
         ${metricHtml('Official Browser Score', summary.usesBrowserOfficialScoring ? 'yes' : 'no')}
       </div>
       <div class="hud-muted">Solver packet to submitted plan to Node/OceanBox-JS headless bundle roundtrip. Browser scoring remains authoritative.</div>
+    </section>
+  `;
+}
+
+export function headlessBundleWaterColumnHtml(viewModel = {}) {
+  const summary = viewModel.waterColumnSummary ?? {};
+  const counts = summary.observationCountsByDepth ?? {};
+  return `
+    <section class="console-section" data-headless-water-column>
+      <h2>Water Column</h2>
+      ${summary.present ? `
+        <div class="cell-inspector-metrics">
+          ${metricHtml('Layers', (summary.waterColumnLayerIds ?? []).join(', ') || 'N/A')}
+          ${metricHtml('Default Layers', (summary.waterColumnDefaultLayers ?? []).join(', ') || 'N/A')}
+          ${metricHtml('Dive Profile', summary.diveProfileId)}
+          ${metricHtml('Coverage', summary.verticalCoverage)}
+        </div>
+        <h3>Observation Counts By Depth</h3>
+        <div class="cell-inspector-metrics">
+          ${Object.entries(counts).map(([id, count]) => metricHtml(id, count)).join('')}
+        </div>
+      ` : '<div class="hud-muted">Water-column summary was not available for this bundle.</div>'}
+      <div class="hud-muted">2.5D means the tactical map remains top-down, while each cell can contain simplified depth layers.</div>
+      <div class="hud-muted">Dive profile controls which layer the glider samples along the route.</div>
+      <div class="hud-muted">Recommended dive profile is context for the next leg; it does not generate a route.</div>
+      <div class="hud-muted">P11 does not add full 3D planning, new route planning, production data assimilation, or MARL/RL.</div>
+    </section>
+  `;
+}
+
+export function headlessBundleDepthLayerPriorityHtml(viewModel = {}) {
+  const summary = viewModel.depthLayerPrioritySummary ?? {};
+  const counts = summary.bestDepthLayerCounts ?? {};
+  return `
+    <section class="console-section" data-headless-depth-priority>
+      <h2>Depth-Layer Priority</h2>
+      ${summary.present ? `
+        <div class="cell-inspector-metrics">
+          ${metricHtml('Layers', (summary.depthLayerIds ?? []).join(', ') || 'N/A')}
+          ${metricHtml('Excludes Route Cost', summary.excludesRouteTravelCost ? 'yes' : 'no')}
+          ${metricHtml('Public Safe', summary.publicSafe ? 'yes' : 'no')}
+          ${metricHtml('Full 3D Planning', summary.usesFull3DPlanning ? 'yes' : 'no')}
+        </div>
+        <h3>Best Depth Layer Counts</h3>
+        <div class="cell-inspector-metrics">
+          ${Object.entries(counts).map(([id, count]) => metricHtml(id, count)).join('')}
+        </div>
+      ` : '<div class="hud-muted">Depth-layer priority summary was not available for this bundle.</div>'}
+      <div class="hud-muted">A_global depth-layer priority is science priority only; it does not include route travel cost or path optimization.</div>
     </section>
   `;
 }

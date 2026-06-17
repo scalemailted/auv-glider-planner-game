@@ -94,6 +94,26 @@
         "description": "Compact P9 public-safe forecast-correction and hidden-event hypothesis diagnostics."
       },
       {
+        "path": "water_column_summary.json",
+        "role": "fieldPack",
+        "mediaType": "application/json",
+        "schemaType": "anchor.headless.bundle",
+        "visibilityTier": "publicScenario",
+        "shape": null,
+        "dtype": null,
+        "description": "P11 public-safe 2.5D depth-layer sampling summary."
+      },
+      {
+        "path": "depth_layer_priority.json",
+        "role": "fieldPack",
+        "mediaType": "application/json",
+        "schemaType": "anchor.headless.bundle",
+        "visibilityTier": "publicScenario",
+        "shape": null,
+        "dtype": null,
+        "description": "P11 public-safe depth-layer A_global priority and top-down collapse."
+      },
+      {
         "path": "score_report.json",
         "role": "scoreReport",
         "mediaType": "application/json",
@@ -183,6 +203,8 @@
       "replay.json",
       "episode.json",
       "science_diagnostics.json",
+      "water_column_summary.json",
+      "depth_layer_priority.json",
       "bundle.json",
       "roundtrip_report.json"
     ],
@@ -213,6 +235,76 @@
         "thermocline",
         "deep"
       ],
+      "depthLayerModel": "top-down-2p5d",
+      "waterColumnConfig": {
+        "type": "anchor.science.water-column-config",
+        "version": "water-column-schema-p11",
+        "enabled": true,
+        "model": "top-down-2p5d-depth-layer-sampling",
+        "depthLayerIds": [
+          "surface",
+          "thermocline",
+          "deep"
+        ],
+        "defaultLayerIds": [
+          "surface",
+          "thermocline",
+          "deep"
+        ],
+        "diveProfileId": "sawtoothProfile",
+        "layerMetadata": {
+          "surface": {
+            "id": "surface",
+            "label": "Surface",
+            "nominalDepthMeters": 0,
+            "thicknessMeters": 5,
+            "synthetic": true,
+            "calibrated": false
+          },
+          "thermocline": {
+            "id": "thermocline",
+            "label": "Thermocline",
+            "nominalDepthMeters": 35,
+            "thicknessMeters": 35,
+            "synthetic": true,
+            "calibrated": false
+          },
+          "deep": {
+            "id": "deep",
+            "label": "Deep",
+            "nominalDepthMeters": 150,
+            "thicknessMeters": 100,
+            "synthetic": true,
+            "calibrated": false
+          }
+        },
+        "observationTypes": [
+          "depthLayerSample",
+          "profileSample",
+          "integratedWaterColumnSample"
+        ],
+        "summaryIds": [
+          "observationCountsByDepth",
+          "verticalCoverage",
+          "bestDepthLayerCounts",
+          "depthLayerPriority",
+          "diveProfileCoverage"
+        ],
+        "publicSafe": true,
+        "usesFull3DPlanning": false,
+        "usesNewPlanner": false,
+        "usesPythonSimulator": false,
+        "usesMARL": false,
+        "syntheticTeachingModel": true,
+        "calibratedVerticalOceanModel": false,
+        "boundary": "2.5D means the tactical map remains top-down, while each cell can contain simplified depth layers.",
+        "notA": [
+          "not full 3D route planning",
+          "not calibrated vertical ocean model",
+          "not production vehicle controller",
+          "not MARL/RL"
+        ]
+      },
       "dx": 1,
       "dy": 1,
       "dz": 1,
@@ -571,11 +663,39 @@
           "temperature-fluorescence-sampler"
         ],
         "diveProfile": {
-          "mode": "sawtooth",
-          "minZ": 0,
-          "maxZ": 2,
-          "cycleLength": 0.5
+          "type": "anchor.science.water-column-profile",
+          "version": "dive-profile-model-p11",
+          "id": "sawtoothProfile",
+          "profileId": "sawtoothProfile",
+          "label": "Sawtooth Profile",
+          "depthLayerIds": [
+            "surface",
+            "thermocline",
+            "deep"
+          ],
+          "sequence": [
+            "surface",
+            "thermocline",
+            "deep",
+            "thermocline",
+            "surface"
+          ],
+          "samplesPerCycle": 5,
+          "verticalResolution": "layer-index",
+          "assignsDepthLayer": true,
+          "routeAuthority": "providedWaypointsOnly",
+          "generatesWaypoints": false,
+          "controlsRoutePlanning": false,
+          "usesFull3DPlanning": false,
+          "syntheticTeachingModel": true,
+          "notA": [
+            "not full 3D route planning",
+            "not calibrated glider pitch control",
+            "not production vehicle controller",
+            "not MARL/RL"
+          ]
         },
+        "diveProfileId": "sawtoothProfile",
         "communicationPolicy": {
           "surfacingRequired": false
         },
@@ -1933,6 +2053,75 @@
       "syntheticTeachingScenario": true,
       "note": "Node headless runtime over portable ANCHOR core logic. Browser ANCHOR remains the official visual referee and scoring UI."
     },
+    "waterColumnConfig": {
+      "type": "anchor.science.water-column-config",
+      "version": "water-column-schema-p11",
+      "enabled": true,
+      "model": "top-down-2p5d-depth-layer-sampling",
+      "depthLayerIds": [
+        "surface",
+        "thermocline",
+        "deep"
+      ],
+      "defaultLayerIds": [
+        "surface",
+        "thermocline",
+        "deep"
+      ],
+      "diveProfileId": "sawtoothProfile",
+      "layerMetadata": {
+        "surface": {
+          "id": "surface",
+          "label": "Surface",
+          "nominalDepthMeters": 0,
+          "thicknessMeters": 5,
+          "synthetic": true,
+          "calibrated": false
+        },
+        "thermocline": {
+          "id": "thermocline",
+          "label": "Thermocline",
+          "nominalDepthMeters": 35,
+          "thicknessMeters": 35,
+          "synthetic": true,
+          "calibrated": false
+        },
+        "deep": {
+          "id": "deep",
+          "label": "Deep",
+          "nominalDepthMeters": 150,
+          "thicknessMeters": 100,
+          "synthetic": true,
+          "calibrated": false
+        }
+      },
+      "observationTypes": [
+        "depthLayerSample",
+        "profileSample",
+        "integratedWaterColumnSample"
+      ],
+      "summaryIds": [
+        "observationCountsByDepth",
+        "verticalCoverage",
+        "bestDepthLayerCounts",
+        "depthLayerPriority",
+        "diveProfileCoverage"
+      ],
+      "publicSafe": true,
+      "usesFull3DPlanning": false,
+      "usesNewPlanner": false,
+      "usesPythonSimulator": false,
+      "usesMARL": false,
+      "syntheticTeachingModel": true,
+      "calibratedVerticalOceanModel": false,
+      "boundary": "2.5D means the tactical map remains top-down, while each cell can contain simplified depth layers.",
+      "notA": [
+        "not full 3D route planning",
+        "not calibrated vertical ocean model",
+        "not production vehicle controller",
+        "not MARL/RL"
+      ]
+    },
     "notes": [
       "Synthetic deterministic coastal front and bloom field for educational headless testing.",
       "Not calibrated HYCOM, ROMS, Delft3D, or operational ocean forecast output."
@@ -1948,6 +2137,9 @@
       "y": 0,
       "zIndex": 0,
       "depthLayer": "surface",
+      "depthLayerId": "surface",
+      "depthMeters": 0,
+      "diveProfileId": "sawtoothProfile",
       "fieldId": "T_hiddenTruth",
       "truthValue": 0.16856373669780397,
       "forecastValue": 0.17364147734404478,
@@ -1969,6 +2161,9 @@
       "y": 0.6666666666666666,
       "zIndex": 0,
       "depthLayer": "surface",
+      "depthLayerId": "surface",
+      "depthMeters": 0,
+      "diveProfileId": "sawtoothProfile",
       "fieldId": "T_hiddenTruth",
       "truthValue": 0.1702286671080281,
       "forecastValue": 0.17184409362720135,
@@ -1990,6 +2185,9 @@
       "y": 1.3333333333333333,
       "zIndex": 0,
       "depthLayer": "surface",
+      "depthLayerId": "surface",
+      "depthMeters": 0,
+      "diveProfileId": "sawtoothProfile",
       "fieldId": "T_hiddenTruth",
       "truthValue": 0.1702286671080281,
       "forecastValue": 0.17184409362720135,
@@ -2011,6 +2209,9 @@
       "y": 2,
       "zIndex": 0,
       "depthLayer": "surface",
+      "depthLayerId": "surface",
+      "depthMeters": 0,
+      "diveProfileId": "sawtoothProfile",
       "fieldId": "T_hiddenTruth",
       "truthValue": 0.5070905516371156,
       "forecastValue": 0.28003106677708633,
@@ -2032,6 +2233,9 @@
       "y": 2.5,
       "zIndex": 0,
       "depthLayer": "surface",
+      "depthLayerId": "surface",
+      "depthMeters": 0,
+      "diveProfileId": "sawtoothProfile",
       "fieldId": "T_hiddenTruth",
       "truthValue": 0.5501757384884511,
       "forecastValue": 0.3649439714656789,
@@ -2053,6 +2257,9 @@
       "y": 3,
       "zIndex": 0,
       "depthLayer": "surface",
+      "depthLayerId": "surface",
+      "depthMeters": 0,
+      "diveProfileId": "sawtoothProfile",
       "fieldId": "T_hiddenTruth",
       "truthValue": 0.5501757384884511,
       "forecastValue": 0.3649439714656789,
@@ -2074,6 +2281,9 @@
       "y": 2,
       "zIndex": 0,
       "depthLayer": "surface",
+      "depthLayerId": "surface",
+      "depthMeters": 0,
+      "diveProfileId": "sawtoothProfile",
       "fieldId": "T_hiddenTruth",
       "truthValue": 0.5428352087502557,
       "forecastValue": 0.4535787974996399,
@@ -2095,6 +2305,9 @@
       "y": 1.5,
       "zIndex": 0,
       "depthLayer": "surface",
+      "depthLayerId": "surface",
+      "depthMeters": 0,
+      "diveProfileId": "sawtoothProfile",
       "fieldId": "T_hiddenTruth",
       "truthValue": 0.5428352087502557,
       "forecastValue": 0.4535787974996399,
@@ -2116,6 +2329,9 @@
       "y": 1,
       "zIndex": 0,
       "depthLayer": "surface",
+      "depthLayerId": "surface",
+      "depthMeters": 0,
+      "diveProfileId": "sawtoothProfile",
       "fieldId": "T_hiddenTruth",
       "truthValue": 0.31866757882743607,
       "forecastValue": 0.24618017200248027,
@@ -2137,6 +2353,8 @@
       "y": 0,
       "zIndex": 0,
       "depthLayer": "surface",
+      "depthLayerId": "surface",
+      "diveProfileId": "sawtoothProfile",
       "flowU": 0.08,
       "flowV": 0.06,
       "currentAssist": 0.08,
@@ -2152,6 +2370,8 @@
       "y": 0.667,
       "zIndex": 0,
       "depthLayer": "surface",
+      "depthLayerId": "surface",
+      "diveProfileId": "sawtoothProfile",
       "flowU": 0.11182,
       "flowV": 0.025,
       "currentAssist": 0.096746,
@@ -2167,6 +2387,8 @@
       "y": 1.333,
       "zIndex": 0,
       "depthLayer": "surface",
+      "depthLayerId": "surface",
+      "diveProfileId": "sawtoothProfile",
       "flowU": 0.11182,
       "flowV": 0.025,
       "currentAssist": 0.096746,
@@ -2182,6 +2404,8 @@
       "y": 2,
       "zIndex": 0,
       "depthLayer": "surface",
+      "depthLayerId": "surface",
+      "diveProfileId": "sawtoothProfile",
       "flowU": 0.035,
       "flowV": -0.01,
       "currentAssist": 0.017678,
@@ -2197,6 +2421,8 @@
       "y": 2.5,
       "zIndex": 0,
       "depthLayer": "surface",
+      "depthLayerId": "surface",
+      "diveProfileId": "sawtoothProfile",
       "flowU": 0.11182,
       "flowV": 0.025,
       "currentAssist": 0.096746,
@@ -2212,6 +2438,8 @@
       "y": 3,
       "zIndex": 0,
       "depthLayer": "surface",
+      "depthLayerId": "surface",
+      "diveProfileId": "sawtoothProfile",
       "flowU": 0.11182,
       "flowV": 0.025,
       "currentAssist": 0.096746,
@@ -2227,6 +2455,8 @@
       "y": 2,
       "zIndex": 0,
       "depthLayer": "surface",
+      "depthLayerId": "surface",
+      "diveProfileId": "sawtoothProfile",
       "flowU": 0.04818,
       "flowV": 0.025,
       "currentAssist": -0.025,
@@ -2242,6 +2472,8 @@
       "y": 1.5,
       "zIndex": 0,
       "depthLayer": "surface",
+      "depthLayerId": "surface",
+      "diveProfileId": "sawtoothProfile",
       "flowU": 0.04818,
       "flowV": 0.025,
       "currentAssist": -0.051746,
@@ -2257,6 +2489,8 @@
       "y": 1,
       "zIndex": 0,
       "depthLayer": "surface",
+      "depthLayerId": "surface",
+      "diveProfileId": "sawtoothProfile",
       "flowU": 0.08,
       "flowV": -0.01,
       "currentAssist": -0.049497,
@@ -2282,6 +2516,22 @@
       "distanceTraveled": 6.656854,
       "hazardPenalty": 6,
       "duplicateSamplePenalty": 2.25
+    },
+    "waterColumn": {
+      "profileId": "sawtoothProfile",
+      "verticalCoverage": "surface-limited",
+      "observationCountsByDepth": {
+        "surface": 9,
+        "thermocline": 0,
+        "deep": 0
+      },
+      "bestDepthLayerCounts": {
+        "surface": 11,
+        "thermocline": 6,
+        "deep": 8
+      },
+      "scoreNeutral": true,
+      "note": "P11 water-column context is reported for analysis and does not rewrite the headless score formula."
     },
     "counts": {
       "observationCount": 9,
@@ -2487,11 +2737,202 @@
       "not a new planner"
     ]
   },
+  "waterColumnSummary": {
+    "type": "anchor.headless.water-column-summary",
+    "version": "water-column-observation-model-p11",
+    "schemaVersion": "water-column-schema-p11",
+    "waterColumnConfig": {
+      "type": "anchor.headless.water-column-config-summary",
+      "version": "water-column-schema-p11",
+      "enabled": true,
+      "depthLayerIds": [
+        "surface",
+        "thermocline",
+        "deep"
+      ],
+      "defaultLayerIds": [
+        "surface",
+        "thermocline",
+        "deep"
+      ],
+      "diveProfileId": "sawtoothProfile",
+      "layerCount": 3,
+      "publicSafe": true,
+      "valid": true,
+      "usesFull3DPlanning": false,
+      "usesNewPlanner": false,
+      "usesPythonSimulator": false,
+      "usesMARL": false,
+      "calibratedVerticalOceanModel": false,
+      "boundary": "2.5D means the tactical map remains top-down, while each cell can contain simplified depth layers.",
+      "notA": [
+        "not full 3D route planning",
+        "not calibrated vertical ocean model",
+        "not production vehicle controller",
+        "not MARL/RL"
+      ]
+    },
+    "diveProfile": {
+      "type": "anchor.headless.water-column-profile-summary",
+      "version": "dive-profile-model-p11",
+      "schemaVersion": "water-column-schema-p11",
+      "profileId": "sawtoothProfile",
+      "label": "Sawtooth Profile",
+      "sequence": [
+        "surface",
+        "thermocline",
+        "deep",
+        "thermocline",
+        "surface"
+      ],
+      "coverage": {
+        "type": "anchor.science.water-column-profile-coverage",
+        "profileId": "sawtoothProfile",
+        "countsByDepth": {
+          "surface": 4,
+          "thermocline": 4,
+          "deep": 2
+        },
+        "coveredLayerCount": 3,
+        "totalLayerCount": 3,
+        "coverageFraction": 1,
+        "verticalCoverage": "broad"
+      },
+      "energy": {
+        "profileId": "sawtoothProfile",
+        "transitionCount": 4,
+        "relativeEnergy": 1.32,
+        "educationalEstimate": true,
+        "note": "Relative profile energy is a teaching proxy, not a calibrated glider dynamics model."
+      },
+      "assignsDepthLayer": true,
+      "generatesWaypoints": false,
+      "controlsRoutePlanning": false,
+      "usesFull3DPlanning": false,
+      "valid": true,
+      "warnings": []
+    },
+    "observationSummary": {
+      "type": "anchor.headless.water-column-observation-summary",
+      "version": "water-column-observation-model-p11",
+      "count": 9,
+      "observationCountsByDepth": {
+        "surface": 9,
+        "thermocline": 0,
+        "deep": 0
+      },
+      "meanSurpriseByDepth": {
+        "surface": 0.461132,
+        "thermocline": null,
+        "deep": null
+      },
+      "coveredDepthLayerIds": [
+        "surface"
+      ],
+      "verticalCoverage": "surface-limited",
+      "coverageFraction": 0.333333,
+      "publicSafe": true,
+      "hiddenTruthIncluded": false
+    },
+    "observationCountsByDepth": {
+      "surface": 9,
+      "thermocline": 0,
+      "deep": 0
+    },
+    "trackCountsByDepth": {
+      "surface": 9,
+      "thermocline": 0,
+      "deep": 0
+    },
+    "verticalCoverage": "surface-limited",
+    "depthLayerPrioritySummary": {
+      "type": "anchor.headless.depth-layer-priority-summary",
+      "version": "water-column-priority-model-p11",
+      "schemaVersion": "water-column-schema-p11",
+      "depthLayerIds": [
+        "surface",
+        "thermocline",
+        "deep"
+      ],
+      "collapseMethod": "accessibleMax",
+      "bestDepthLayerCounts": {
+        "surface": 11,
+        "thermocline": 6,
+        "deep": 8
+      },
+      "topDownStats": {
+        "count": 25,
+        "finiteCount": 25,
+        "invalidCount": 0,
+        "min": 0,
+        "max": 1,
+        "mean": 0.6555116404709768
+      },
+      "excludesRouteTravelCost": true,
+      "publicSafe": true,
+      "usesFull3DPlanning": false,
+      "usesNewPlanner": false,
+      "usesPythonSimulator": false,
+      "usesMARL": false,
+      "note": "A_global_depth is science priority by depth layer; top-down collapse does not include route travel cost or path optimization."
+    },
+    "bestDepthLayerCounts": {
+      "surface": 11,
+      "thermocline": 6,
+      "deep": 8
+    },
+    "publicSafe": true,
+    "hiddenTruthIncluded": false,
+    "syntheticTeachingModel": true,
+    "calibratedVerticalOceanModel": false,
+    "usesFull3DPlanning": false,
+    "usesNewPlanner": false,
+    "usesPythonSimulator": false,
+    "usesMARL": false,
+    "boundary": [
+      "2.5D means the tactical map remains top-down, while each cell can contain simplified depth layers.",
+      "Dive profile controls which layer the glider samples along the route.",
+      "Recommended dive profile is context for the next leg; it does not generate a route.",
+      "P11 does not add full 3D planning, new route planning, production data assimilation, or MARL/RL."
+    ]
+  },
+  "depthLayerPrioritySummary": {
+    "type": "anchor.headless.depth-layer-priority-summary",
+    "version": "water-column-priority-model-p11",
+    "schemaVersion": "water-column-schema-p11",
+    "depthLayerIds": [
+      "surface",
+      "thermocline",
+      "deep"
+    ],
+    "collapseMethod": "accessibleMax",
+    "bestDepthLayerCounts": {
+      "surface": 11,
+      "thermocline": 6,
+      "deep": 8
+    },
+    "topDownStats": {
+      "count": 25,
+      "finiteCount": 25,
+      "invalidCount": 0,
+      "min": 0,
+      "max": 1,
+      "mean": 0.6555116404709768
+    },
+    "excludesRouteTravelCost": true,
+    "publicSafe": true,
+    "usesFull3DPlanning": false,
+    "usesNewPlanner": false,
+    "usesPythonSimulator": false,
+    "usesMARL": false,
+    "note": "A_global_depth is science priority by depth layer; top-down collapse does not include route travel cost or path optimization."
+  },
   "replay": {
     "type": "anchor.headless.replay",
     "version": "headless-mission-runner-h1",
     "seed": "h3.1-roundtrip-example-001",
     "gliderId": "glider_01",
+    "diveProfileId": "sawtoothProfile",
     "trackPointCount": 9,
     "observationCount": 9,
     "route": [
@@ -2501,6 +2942,9 @@
         "y": 0,
         "zIndex": 0,
         "depthLayer": "surface",
+        "depthLayerId": "surface",
+        "diveProfileId": "sawtoothProfile",
+        "hasExplicitDepth": true,
         "routeProgress": 0,
         "segmentIndex": 0,
         "distanceFromStart": 0
@@ -2510,6 +2954,10 @@
         "x": 0.6666666666666666,
         "y": 0.6666666666666666,
         "zIndex": 0,
+        "depthLayer": "surface",
+        "depthLayerId": "surface",
+        "diveProfileId": "sawtoothProfile",
+        "hasExplicitDepth": true,
         "segmentIndex": 0,
         "routeProgress": 0.14162981586294418,
         "distanceFromStart": 0.9428090415820634
@@ -2519,6 +2967,10 @@
         "x": 1.3333333333333333,
         "y": 1.3333333333333333,
         "zIndex": 0,
+        "depthLayer": "surface",
+        "depthLayerId": "surface",
+        "diveProfileId": "sawtoothProfile",
+        "hasExplicitDepth": true,
         "segmentIndex": 0,
         "routeProgress": 0.28325963172588836,
         "distanceFromStart": 1.8856180831641267
@@ -2528,6 +2980,10 @@
         "x": 2,
         "y": 2,
         "zIndex": 0,
+        "depthLayer": "surface",
+        "depthLayerId": "surface",
+        "diveProfileId": "sawtoothProfile",
+        "hasExplicitDepth": true,
         "segmentIndex": 0,
         "routeProgress": 0.42488944758883257,
         "distanceFromStart": 2.8284271247461903
@@ -2537,6 +2993,10 @@
         "x": 2.5,
         "y": 2.5,
         "zIndex": 0,
+        "depthLayer": null,
+        "depthLayerId": null,
+        "diveProfileId": "sawtoothProfile",
+        "hasExplicitDepth": true,
         "segmentIndex": 1,
         "routeProgress": 0.5311118094860408,
         "distanceFromStart": 3.5355339059327378
@@ -2546,6 +3006,10 @@
         "x": 3,
         "y": 3,
         "zIndex": 0,
+        "depthLayer": null,
+        "depthLayerId": null,
+        "diveProfileId": "sawtoothProfile",
+        "hasExplicitDepth": true,
         "segmentIndex": 1,
         "routeProgress": 0.6373341713832489,
         "distanceFromStart": 4.242640687119286
@@ -2555,6 +3019,10 @@
         "x": 3,
         "y": 2,
         "zIndex": 0,
+        "depthLayer": null,
+        "depthLayerId": null,
+        "diveProfileId": "sawtoothProfile",
+        "hasExplicitDepth": true,
         "segmentIndex": 2,
         "routeProgress": 0.7875552762055837,
         "distanceFromStart": 5.242640687119286
@@ -2564,6 +3032,10 @@
         "x": 2.5,
         "y": 1.5,
         "zIndex": 0,
+        "depthLayer": null,
+        "depthLayerId": null,
+        "diveProfileId": "sawtoothProfile",
+        "hasExplicitDepth": true,
         "segmentIndex": 3,
         "routeProgress": 0.893777638102792,
         "distanceFromStart": 5.949747468305834
@@ -2573,6 +3045,10 @@
         "x": 2,
         "y": 1,
         "zIndex": 0,
+        "depthLayer": null,
+        "depthLayerId": null,
+        "diveProfileId": "sawtoothProfile",
+        "hasExplicitDepth": true,
         "segmentIndex": 3,
         "routeProgress": 1,
         "distanceFromStart": 6.656854249492381
@@ -2620,6 +3096,13 @@
       "agents": 1,
       "visiblePlanningSource": "forecast",
       "forecastAvailable": true,
+      "waterColumnConfigPresent": true,
+      "depthLayers": [
+        "surface",
+        "thermocline",
+        "deep"
+      ],
+      "diveProfileId": "sawtoothProfile",
       "oracleMode": false
     },
     "visibilityValidation": {
@@ -2657,6 +3140,38 @@
           "thermocline",
           "deep"
         ],
+        "waterColumn": {
+          "type": "anchor.headless.water-column-config-summary",
+          "version": "water-column-schema-p11",
+          "enabled": true,
+          "depthLayerIds": [
+            "surface",
+            "thermocline",
+            "deep"
+          ],
+          "defaultLayerIds": [
+            "surface",
+            "thermocline",
+            "deep"
+          ],
+          "diveProfileId": "sawtoothProfile",
+          "layerCount": 3,
+          "publicSafe": true,
+          "valid": true,
+          "usesFull3DPlanning": false,
+          "usesNewPlanner": false,
+          "usesPythonSimulator": false,
+          "usesMARL": false,
+          "calibratedVerticalOceanModel": false,
+          "boundary": "2.5D means the tactical map remains top-down, while each cell can contain simplified depth layers.",
+          "notA": [
+            "not full 3D route planning",
+            "not calibrated vertical ocean model",
+            "not production vehicle controller",
+            "not MARL/RL"
+          ]
+        },
+        "diveProfileId": "sawtoothProfile",
         "fieldCount": 12,
         "waypointCount": 5,
         "gliderCount": 1,
@@ -2670,7 +3185,8 @@
         "gliderId": "glider_01",
         "waypointCount": 5,
         "routeAuthority": "submittedAnchorPlan",
-        "generatesRoute": false
+        "generatesRoute": false,
+        "diveProfileId": "sawtoothProfile"
       },
       "usesNodeHeadlessRuntime": true,
       "usesProvidedPlan": true,
@@ -2693,6 +3209,165 @@
         "energyUsed": 8.212365,
         "hazardExposures": 0,
         "notBrowserOfficialScoring": true
+      },
+      "waterColumnSummary": {
+        "type": "anchor.headless.water-column-summary",
+        "version": "water-column-observation-model-p11",
+        "schemaVersion": "water-column-schema-p11",
+        "waterColumnConfig": {
+          "type": "anchor.headless.water-column-config-summary",
+          "version": "water-column-schema-p11",
+          "enabled": true,
+          "depthLayerIds": [
+            "surface",
+            "thermocline",
+            "deep"
+          ],
+          "defaultLayerIds": [
+            "surface",
+            "thermocline",
+            "deep"
+          ],
+          "diveProfileId": "sawtoothProfile",
+          "layerCount": 3,
+          "publicSafe": true,
+          "valid": true,
+          "usesFull3DPlanning": false,
+          "usesNewPlanner": false,
+          "usesPythonSimulator": false,
+          "usesMARL": false,
+          "calibratedVerticalOceanModel": false,
+          "boundary": "2.5D means the tactical map remains top-down, while each cell can contain simplified depth layers.",
+          "notA": [
+            "not full 3D route planning",
+            "not calibrated vertical ocean model",
+            "not production vehicle controller",
+            "not MARL/RL"
+          ]
+        },
+        "diveProfile": {
+          "type": "anchor.headless.water-column-profile-summary",
+          "version": "dive-profile-model-p11",
+          "schemaVersion": "water-column-schema-p11",
+          "profileId": "sawtoothProfile",
+          "label": "Sawtooth Profile",
+          "sequence": [
+            "surface",
+            "thermocline",
+            "deep",
+            "thermocline",
+            "surface"
+          ],
+          "coverage": {
+            "type": "anchor.science.water-column-profile-coverage",
+            "profileId": "sawtoothProfile",
+            "countsByDepth": {
+              "surface": 4,
+              "thermocline": 4,
+              "deep": 2
+            },
+            "coveredLayerCount": 3,
+            "totalLayerCount": 3,
+            "coverageFraction": 1,
+            "verticalCoverage": "broad"
+          },
+          "energy": {
+            "profileId": "sawtoothProfile",
+            "transitionCount": 4,
+            "relativeEnergy": 1.32,
+            "educationalEstimate": true,
+            "note": "Relative profile energy is a teaching proxy, not a calibrated glider dynamics model."
+          },
+          "assignsDepthLayer": true,
+          "generatesWaypoints": false,
+          "controlsRoutePlanning": false,
+          "usesFull3DPlanning": false,
+          "valid": true,
+          "warnings": []
+        },
+        "observationSummary": {
+          "type": "anchor.headless.water-column-observation-summary",
+          "version": "water-column-observation-model-p11",
+          "count": 9,
+          "observationCountsByDepth": {
+            "surface": 9,
+            "thermocline": 0,
+            "deep": 0
+          },
+          "meanSurpriseByDepth": {
+            "surface": 0.461132,
+            "thermocline": null,
+            "deep": null
+          },
+          "coveredDepthLayerIds": [
+            "surface"
+          ],
+          "verticalCoverage": "surface-limited",
+          "coverageFraction": 0.333333,
+          "publicSafe": true,
+          "hiddenTruthIncluded": false
+        },
+        "observationCountsByDepth": {
+          "surface": 9,
+          "thermocline": 0,
+          "deep": 0
+        },
+        "trackCountsByDepth": {
+          "surface": 9,
+          "thermocline": 0,
+          "deep": 0
+        },
+        "verticalCoverage": "surface-limited",
+        "depthLayerPrioritySummary": {
+          "type": "anchor.headless.depth-layer-priority-summary",
+          "version": "water-column-priority-model-p11",
+          "schemaVersion": "water-column-schema-p11",
+          "depthLayerIds": [
+            "surface",
+            "thermocline",
+            "deep"
+          ],
+          "collapseMethod": "accessibleMax",
+          "bestDepthLayerCounts": {
+            "surface": 11,
+            "thermocline": 6,
+            "deep": 8
+          },
+          "topDownStats": {
+            "count": 25,
+            "finiteCount": 25,
+            "invalidCount": 0,
+            "min": 0,
+            "max": 1,
+            "mean": 0.6555116404709768
+          },
+          "excludesRouteTravelCost": true,
+          "publicSafe": true,
+          "usesFull3DPlanning": false,
+          "usesNewPlanner": false,
+          "usesPythonSimulator": false,
+          "usesMARL": false,
+          "note": "A_global_depth is science priority by depth layer; top-down collapse does not include route travel cost or path optimization."
+        },
+        "bestDepthLayerCounts": {
+          "surface": 11,
+          "thermocline": 6,
+          "deep": 8
+        },
+        "publicSafe": true,
+        "hiddenTruthIncluded": false,
+        "syntheticTeachingModel": true,
+        "calibratedVerticalOceanModel": false,
+        "usesFull3DPlanning": false,
+        "usesNewPlanner": false,
+        "usesPythonSimulator": false,
+        "usesMARL": false,
+        "boundary": [
+          "2.5D means the tactical map remains top-down, while each cell can contain simplified depth layers.",
+          "Dive profile controls which layer the glider samples along the route.",
+          "Recommended dive profile is context for the next leg; it does not generate a route.",
+          "P11 does not add full 3D planning, new route planning, production data assimilation, or MARL/RL."
+        ]
       }
     },
     "scienceDiagnosticsSummary": {
@@ -2740,6 +3415,165 @@
       "usesCalibratedOceanForecast": false,
       "usesMARL": false
     },
+    "waterColumnSummary": {
+      "type": "anchor.headless.water-column-summary",
+      "version": "water-column-observation-model-p11",
+      "schemaVersion": "water-column-schema-p11",
+      "waterColumnConfig": {
+        "type": "anchor.headless.water-column-config-summary",
+        "version": "water-column-schema-p11",
+        "enabled": true,
+        "depthLayerIds": [
+          "surface",
+          "thermocline",
+          "deep"
+        ],
+        "defaultLayerIds": [
+          "surface",
+          "thermocline",
+          "deep"
+        ],
+        "diveProfileId": "sawtoothProfile",
+        "layerCount": 3,
+        "publicSafe": true,
+        "valid": true,
+        "usesFull3DPlanning": false,
+        "usesNewPlanner": false,
+        "usesPythonSimulator": false,
+        "usesMARL": false,
+        "calibratedVerticalOceanModel": false,
+        "boundary": "2.5D means the tactical map remains top-down, while each cell can contain simplified depth layers.",
+        "notA": [
+          "not full 3D route planning",
+          "not calibrated vertical ocean model",
+          "not production vehicle controller",
+          "not MARL/RL"
+        ]
+      },
+      "diveProfile": {
+        "type": "anchor.headless.water-column-profile-summary",
+        "version": "dive-profile-model-p11",
+        "schemaVersion": "water-column-schema-p11",
+        "profileId": "sawtoothProfile",
+        "label": "Sawtooth Profile",
+        "sequence": [
+          "surface",
+          "thermocline",
+          "deep",
+          "thermocline",
+          "surface"
+        ],
+        "coverage": {
+          "type": "anchor.science.water-column-profile-coverage",
+          "profileId": "sawtoothProfile",
+          "countsByDepth": {
+            "surface": 4,
+            "thermocline": 4,
+            "deep": 2
+          },
+          "coveredLayerCount": 3,
+          "totalLayerCount": 3,
+          "coverageFraction": 1,
+          "verticalCoverage": "broad"
+        },
+        "energy": {
+          "profileId": "sawtoothProfile",
+          "transitionCount": 4,
+          "relativeEnergy": 1.32,
+          "educationalEstimate": true,
+          "note": "Relative profile energy is a teaching proxy, not a calibrated glider dynamics model."
+        },
+        "assignsDepthLayer": true,
+        "generatesWaypoints": false,
+        "controlsRoutePlanning": false,
+        "usesFull3DPlanning": false,
+        "valid": true,
+        "warnings": []
+      },
+      "observationSummary": {
+        "type": "anchor.headless.water-column-observation-summary",
+        "version": "water-column-observation-model-p11",
+        "count": 9,
+        "observationCountsByDepth": {
+          "surface": 9,
+          "thermocline": 0,
+          "deep": 0
+        },
+        "meanSurpriseByDepth": {
+          "surface": 0.461132,
+          "thermocline": null,
+          "deep": null
+        },
+        "coveredDepthLayerIds": [
+          "surface"
+        ],
+        "verticalCoverage": "surface-limited",
+        "coverageFraction": 0.333333,
+        "publicSafe": true,
+        "hiddenTruthIncluded": false
+      },
+      "observationCountsByDepth": {
+        "surface": 9,
+        "thermocline": 0,
+        "deep": 0
+      },
+      "trackCountsByDepth": {
+        "surface": 9,
+        "thermocline": 0,
+        "deep": 0
+      },
+      "verticalCoverage": "surface-limited",
+      "depthLayerPrioritySummary": {
+        "type": "anchor.headless.depth-layer-priority-summary",
+        "version": "water-column-priority-model-p11",
+        "schemaVersion": "water-column-schema-p11",
+        "depthLayerIds": [
+          "surface",
+          "thermocline",
+          "deep"
+        ],
+        "collapseMethod": "accessibleMax",
+        "bestDepthLayerCounts": {
+          "surface": 11,
+          "thermocline": 6,
+          "deep": 8
+        },
+        "topDownStats": {
+          "count": 25,
+          "finiteCount": 25,
+          "invalidCount": 0,
+          "min": 0,
+          "max": 1,
+          "mean": 0.6555116404709768
+        },
+        "excludesRouteTravelCost": true,
+        "publicSafe": true,
+        "usesFull3DPlanning": false,
+        "usesNewPlanner": false,
+        "usesPythonSimulator": false,
+        "usesMARL": false,
+        "note": "A_global_depth is science priority by depth layer; top-down collapse does not include route travel cost or path optimization."
+      },
+      "bestDepthLayerCounts": {
+        "surface": 11,
+        "thermocline": 6,
+        "deep": 8
+      },
+      "publicSafe": true,
+      "hiddenTruthIncluded": false,
+      "syntheticTeachingModel": true,
+      "calibratedVerticalOceanModel": false,
+      "usesFull3DPlanning": false,
+      "usesNewPlanner": false,
+      "usesPythonSimulator": false,
+      "usesMARL": false,
+      "boundary": [
+        "2.5D means the tactical map remains top-down, while each cell can contain simplified depth layers.",
+        "Dive profile controls which layer the glider samples along the route.",
+        "Recommended dive profile is context for the next leg; it does not generate a route.",
+        "P11 does not add full 3D planning, new route planning, production data assimilation, or MARL/RL."
+      ]
+    },
     "output": {
       "outputDir": "docs/examples",
       "combinedBundlePath": "docs\\examples\\headless_solver_roundtrip_bundle.example.json",
@@ -2775,14 +3609,17 @@
       "trackPointCount": 9,
       "hiddenTruthExported": false,
       "browserOfficialScoring": false,
-      "sciencePrimaryDiagnosis": "agreesWithForecast"
+      "sciencePrimaryDiagnosis": "agreesWithForecast",
+      "waterColumnVerticalCoverage": "surface-limited",
+      "diveProfileId": "sawtoothProfile"
     },
     "boundary": [
       "Node/OceanBox-JS validates and executes a submitted plan through the H1 headless runtime.",
       "Browser ANCHOR remains the official visual referee and scoring UI.",
       "Headless score is educational and not official browser scoring.",
       "P9 science diagnostics distinguish forecast correction from hidden-event hypotheses using transparent educational heuristics.",
-      "H3/P9 does not add a Python simulator, new route planner, calibrated ocean forecast, backend service, production data assimilation, or MARL/RL."
+      "P11 water-column context is 2.5D depth-layer sampling, not full 3D planning or a new planner.",
+      "H3/P9/P11 does not add a Python simulator, new route planner, calibrated ocean forecast, backend service, production data assimilation, or MARL/RL."
     ]
   },
   "episode": {
@@ -2808,6 +3645,76 @@
           "thermocline",
           "deep"
         ],
+        "depthLayerModel": "top-down-2p5d",
+        "waterColumnConfig": {
+          "type": "anchor.science.water-column-config",
+          "version": "water-column-schema-p11",
+          "enabled": true,
+          "model": "top-down-2p5d-depth-layer-sampling",
+          "depthLayerIds": [
+            "surface",
+            "thermocline",
+            "deep"
+          ],
+          "defaultLayerIds": [
+            "surface",
+            "thermocline",
+            "deep"
+          ],
+          "diveProfileId": "sawtoothProfile",
+          "layerMetadata": {
+            "surface": {
+              "id": "surface",
+              "label": "Surface",
+              "nominalDepthMeters": 0,
+              "thicknessMeters": 5,
+              "synthetic": true,
+              "calibrated": false
+            },
+            "thermocline": {
+              "id": "thermocline",
+              "label": "Thermocline",
+              "nominalDepthMeters": 35,
+              "thicknessMeters": 35,
+              "synthetic": true,
+              "calibrated": false
+            },
+            "deep": {
+              "id": "deep",
+              "label": "Deep",
+              "nominalDepthMeters": 150,
+              "thicknessMeters": 100,
+              "synthetic": true,
+              "calibrated": false
+            }
+          },
+          "observationTypes": [
+            "depthLayerSample",
+            "profileSample",
+            "integratedWaterColumnSample"
+          ],
+          "summaryIds": [
+            "observationCountsByDepth",
+            "verticalCoverage",
+            "bestDepthLayerCounts",
+            "depthLayerPriority",
+            "diveProfileCoverage"
+          ],
+          "publicSafe": true,
+          "usesFull3DPlanning": false,
+          "usesNewPlanner": false,
+          "usesPythonSimulator": false,
+          "usesMARL": false,
+          "syntheticTeachingModel": true,
+          "calibratedVerticalOceanModel": false,
+          "boundary": "2.5D means the tactical map remains top-down, while each cell can contain simplified depth layers.",
+          "notA": [
+            "not full 3D route planning",
+            "not calibrated vertical ocean model",
+            "not production vehicle controller",
+            "not MARL/RL"
+          ]
+        },
         "dx": 1,
         "dy": 1,
         "dz": 1,
@@ -3166,11 +4073,39 @@
             "temperature-fluorescence-sampler"
           ],
           "diveProfile": {
-            "mode": "sawtooth",
-            "minZ": 0,
-            "maxZ": 2,
-            "cycleLength": 0.5
+            "type": "anchor.science.water-column-profile",
+            "version": "dive-profile-model-p11",
+            "id": "sawtoothProfile",
+            "profileId": "sawtoothProfile",
+            "label": "Sawtooth Profile",
+            "depthLayerIds": [
+              "surface",
+              "thermocline",
+              "deep"
+            ],
+            "sequence": [
+              "surface",
+              "thermocline",
+              "deep",
+              "thermocline",
+              "surface"
+            ],
+            "samplesPerCycle": 5,
+            "verticalResolution": "layer-index",
+            "assignsDepthLayer": true,
+            "routeAuthority": "providedWaypointsOnly",
+            "generatesWaypoints": false,
+            "controlsRoutePlanning": false,
+            "usesFull3DPlanning": false,
+            "syntheticTeachingModel": true,
+            "notA": [
+              "not full 3D route planning",
+              "not calibrated glider pitch control",
+              "not production vehicle controller",
+              "not MARL/RL"
+            ]
           },
+          "diveProfileId": "sawtoothProfile",
           "communicationPolicy": {
             "surfacingRequired": false
           },
@@ -3250,6 +4185,75 @@
           5
         ],
         "coordinateFrame": "grid-cell-center-top-left"
+      },
+      "waterColumnConfig": {
+        "type": "anchor.science.water-column-config",
+        "version": "water-column-schema-p11",
+        "enabled": true,
+        "model": "top-down-2p5d-depth-layer-sampling",
+        "depthLayerIds": [
+          "surface",
+          "thermocline",
+          "deep"
+        ],
+        "defaultLayerIds": [
+          "surface",
+          "thermocline",
+          "deep"
+        ],
+        "diveProfileId": "sawtoothProfile",
+        "layerMetadata": {
+          "surface": {
+            "id": "surface",
+            "label": "Surface",
+            "nominalDepthMeters": 0,
+            "thicknessMeters": 5,
+            "synthetic": true,
+            "calibrated": false
+          },
+          "thermocline": {
+            "id": "thermocline",
+            "label": "Thermocline",
+            "nominalDepthMeters": 35,
+            "thicknessMeters": 35,
+            "synthetic": true,
+            "calibrated": false
+          },
+          "deep": {
+            "id": "deep",
+            "label": "Deep",
+            "nominalDepthMeters": 150,
+            "thicknessMeters": 100,
+            "synthetic": true,
+            "calibrated": false
+          }
+        },
+        "observationTypes": [
+          "depthLayerSample",
+          "profileSample",
+          "integratedWaterColumnSample"
+        ],
+        "summaryIds": [
+          "observationCountsByDepth",
+          "verticalCoverage",
+          "bestDepthLayerCounts",
+          "depthLayerPriority",
+          "diveProfileCoverage"
+        ],
+        "publicSafe": true,
+        "usesFull3DPlanning": false,
+        "usesNewPlanner": false,
+        "usesPythonSimulator": false,
+        "usesMARL": false,
+        "syntheticTeachingModel": true,
+        "calibratedVerticalOceanModel": false,
+        "boundary": "2.5D means the tactical map remains top-down, while each cell can contain simplified depth layers.",
+        "notA": [
+          "not full 3D route planning",
+          "not calibrated vertical ocean model",
+          "not production vehicle controller",
+          "not MARL/RL"
+        ]
       },
       "fieldOrder": [
         "T_hiddenTruth",
@@ -5013,6 +6017,37 @@
           "count": 75,
           "finiteCount": 75,
           "invalidCount": 0
+        },
+        "depthLayerPriority": {
+          "type": "anchor.headless.depth-layer-priority-summary",
+          "version": "water-column-priority-model-p11",
+          "schemaVersion": "water-column-schema-p11",
+          "depthLayerIds": [
+            "surface",
+            "thermocline",
+            "deep"
+          ],
+          "collapseMethod": "accessibleMax",
+          "bestDepthLayerCounts": {
+            "surface": 19,
+            "thermocline": 3,
+            "deep": 3
+          },
+          "topDownStats": {
+            "count": 25,
+            "finiteCount": 25,
+            "invalidCount": 0,
+            "min": 0,
+            "max": 1,
+            "mean": 0.6475094189211871
+          },
+          "excludesRouteTravelCost": true,
+          "publicSafe": true,
+          "usesFull3DPlanning": false,
+          "usesNewPlanner": false,
+          "usesPythonSimulator": false,
+          "usesMARL": false,
+          "note": "A_global_depth is science priority by depth layer; top-down collapse does not include route travel cost or path optimization."
         }
       },
       "boundary": {
@@ -5046,6 +6081,75 @@
           5
         ],
         "coordinateFrame": "grid-cell-center-top-left"
+      },
+      "waterColumnConfig": {
+        "type": "anchor.science.water-column-config",
+        "version": "water-column-schema-p11",
+        "enabled": true,
+        "model": "top-down-2p5d-depth-layer-sampling",
+        "depthLayerIds": [
+          "surface",
+          "thermocline",
+          "deep"
+        ],
+        "defaultLayerIds": [
+          "surface",
+          "thermocline",
+          "deep"
+        ],
+        "diveProfileId": "sawtoothProfile",
+        "layerMetadata": {
+          "surface": {
+            "id": "surface",
+            "label": "Surface",
+            "nominalDepthMeters": 0,
+            "thicknessMeters": 5,
+            "synthetic": true,
+            "calibrated": false
+          },
+          "thermocline": {
+            "id": "thermocline",
+            "label": "Thermocline",
+            "nominalDepthMeters": 35,
+            "thicknessMeters": 35,
+            "synthetic": true,
+            "calibrated": false
+          },
+          "deep": {
+            "id": "deep",
+            "label": "Deep",
+            "nominalDepthMeters": 150,
+            "thicknessMeters": 100,
+            "synthetic": true,
+            "calibrated": false
+          }
+        },
+        "observationTypes": [
+          "depthLayerSample",
+          "profileSample",
+          "integratedWaterColumnSample"
+        ],
+        "summaryIds": [
+          "observationCountsByDepth",
+          "verticalCoverage",
+          "bestDepthLayerCounts",
+          "depthLayerPriority",
+          "diveProfileCoverage"
+        ],
+        "publicSafe": true,
+        "usesFull3DPlanning": false,
+        "usesNewPlanner": false,
+        "usesPythonSimulator": false,
+        "usesMARL": false,
+        "syntheticTeachingModel": true,
+        "calibratedVerticalOceanModel": false,
+        "boundary": "2.5D means the tactical map remains top-down, while each cell can contain simplified depth layers.",
+        "notA": [
+          "not full 3D route planning",
+          "not calibrated vertical ocean model",
+          "not production vehicle controller",
+          "not MARL/RL"
+        ]
       },
       "fieldOrder": [
         "T_hiddenTruth",
@@ -6810,6 +7914,37 @@
           "finiteCount": 75,
           "invalidCount": 0
         },
+        "depthLayerPriority": {
+          "type": "anchor.headless.depth-layer-priority-summary",
+          "version": "water-column-priority-model-p11",
+          "schemaVersion": "water-column-schema-p11",
+          "depthLayerIds": [
+            "surface",
+            "thermocline",
+            "deep"
+          ],
+          "collapseMethod": "accessibleMax",
+          "bestDepthLayerCounts": {
+            "surface": 11,
+            "thermocline": 6,
+            "deep": 8
+          },
+          "topDownStats": {
+            "count": 25,
+            "finiteCount": 25,
+            "invalidCount": 0,
+            "min": 0,
+            "max": 1,
+            "mean": 0.6555116404709768
+          },
+          "excludesRouteTravelCost": true,
+          "publicSafe": true,
+          "usesFull3DPlanning": false,
+          "usesNewPlanner": false,
+          "usesPythonSimulator": false,
+          "usesMARL": false,
+          "note": "A_global_depth is science priority by depth layer; top-down collapse does not include route travel cost or path optimization."
+        },
         "beliefUpdate": {
           "type": "anchor.headless.belief-update-summary",
           "observationCount": 9,
@@ -6861,6 +7996,9 @@
         "y": 0,
         "zIndex": 0,
         "depthLayer": "surface",
+        "depthLayerId": "surface",
+        "depthMeters": 0,
+        "diveProfileId": "sawtoothProfile",
         "fieldId": "T_hiddenTruth",
         "truthValue": 0.16856373669780397,
         "forecastValue": 0.17364147734404478,
@@ -6882,6 +8020,9 @@
         "y": 0.6666666666666666,
         "zIndex": 0,
         "depthLayer": "surface",
+        "depthLayerId": "surface",
+        "depthMeters": 0,
+        "diveProfileId": "sawtoothProfile",
         "fieldId": "T_hiddenTruth",
         "truthValue": 0.1702286671080281,
         "forecastValue": 0.17184409362720135,
@@ -6903,6 +8044,9 @@
         "y": 1.3333333333333333,
         "zIndex": 0,
         "depthLayer": "surface",
+        "depthLayerId": "surface",
+        "depthMeters": 0,
+        "diveProfileId": "sawtoothProfile",
         "fieldId": "T_hiddenTruth",
         "truthValue": 0.1702286671080281,
         "forecastValue": 0.17184409362720135,
@@ -6924,6 +8068,9 @@
         "y": 2,
         "zIndex": 0,
         "depthLayer": "surface",
+        "depthLayerId": "surface",
+        "depthMeters": 0,
+        "diveProfileId": "sawtoothProfile",
         "fieldId": "T_hiddenTruth",
         "truthValue": 0.5070905516371156,
         "forecastValue": 0.28003106677708633,
@@ -6945,6 +8092,9 @@
         "y": 2.5,
         "zIndex": 0,
         "depthLayer": "surface",
+        "depthLayerId": "surface",
+        "depthMeters": 0,
+        "diveProfileId": "sawtoothProfile",
         "fieldId": "T_hiddenTruth",
         "truthValue": 0.5501757384884511,
         "forecastValue": 0.3649439714656789,
@@ -6966,6 +8116,9 @@
         "y": 3,
         "zIndex": 0,
         "depthLayer": "surface",
+        "depthLayerId": "surface",
+        "depthMeters": 0,
+        "diveProfileId": "sawtoothProfile",
         "fieldId": "T_hiddenTruth",
         "truthValue": 0.5501757384884511,
         "forecastValue": 0.3649439714656789,
@@ -6987,6 +8140,9 @@
         "y": 2,
         "zIndex": 0,
         "depthLayer": "surface",
+        "depthLayerId": "surface",
+        "depthMeters": 0,
+        "diveProfileId": "sawtoothProfile",
         "fieldId": "T_hiddenTruth",
         "truthValue": 0.5428352087502557,
         "forecastValue": 0.4535787974996399,
@@ -7008,6 +8164,9 @@
         "y": 1.5,
         "zIndex": 0,
         "depthLayer": "surface",
+        "depthLayerId": "surface",
+        "depthMeters": 0,
+        "diveProfileId": "sawtoothProfile",
         "fieldId": "T_hiddenTruth",
         "truthValue": 0.5428352087502557,
         "forecastValue": 0.4535787974996399,
@@ -7029,6 +8188,9 @@
         "y": 1,
         "zIndex": 0,
         "depthLayer": "surface",
+        "depthLayerId": "surface",
+        "depthMeters": 0,
+        "diveProfileId": "sawtoothProfile",
         "fieldId": "T_hiddenTruth",
         "truthValue": 0.31866757882743607,
         "forecastValue": 0.24618017200248027,
@@ -7050,6 +8212,8 @@
         "y": 0,
         "zIndex": 0,
         "depthLayer": "surface",
+        "depthLayerId": "surface",
+        "diveProfileId": "sawtoothProfile",
         "flowU": 0.08,
         "flowV": 0.06,
         "currentAssist": 0.08,
@@ -7065,6 +8229,8 @@
         "y": 0.667,
         "zIndex": 0,
         "depthLayer": "surface",
+        "depthLayerId": "surface",
+        "diveProfileId": "sawtoothProfile",
         "flowU": 0.11182,
         "flowV": 0.025,
         "currentAssist": 0.096746,
@@ -7080,6 +8246,8 @@
         "y": 1.333,
         "zIndex": 0,
         "depthLayer": "surface",
+        "depthLayerId": "surface",
+        "diveProfileId": "sawtoothProfile",
         "flowU": 0.11182,
         "flowV": 0.025,
         "currentAssist": 0.096746,
@@ -7095,6 +8263,8 @@
         "y": 2,
         "zIndex": 0,
         "depthLayer": "surface",
+        "depthLayerId": "surface",
+        "diveProfileId": "sawtoothProfile",
         "flowU": 0.035,
         "flowV": -0.01,
         "currentAssist": 0.017678,
@@ -7110,6 +8280,8 @@
         "y": 2.5,
         "zIndex": 0,
         "depthLayer": "surface",
+        "depthLayerId": "surface",
+        "diveProfileId": "sawtoothProfile",
         "flowU": 0.11182,
         "flowV": 0.025,
         "currentAssist": 0.096746,
@@ -7125,6 +8297,8 @@
         "y": 3,
         "zIndex": 0,
         "depthLayer": "surface",
+        "depthLayerId": "surface",
+        "diveProfileId": "sawtoothProfile",
         "flowU": 0.11182,
         "flowV": 0.025,
         "currentAssist": 0.096746,
@@ -7140,6 +8314,8 @@
         "y": 2,
         "zIndex": 0,
         "depthLayer": "surface",
+        "depthLayerId": "surface",
+        "diveProfileId": "sawtoothProfile",
         "flowU": 0.04818,
         "flowV": 0.025,
         "currentAssist": -0.025,
@@ -7155,6 +8331,8 @@
         "y": 1.5,
         "zIndex": 0,
         "depthLayer": "surface",
+        "depthLayerId": "surface",
+        "diveProfileId": "sawtoothProfile",
         "flowU": 0.04818,
         "flowV": 0.025,
         "currentAssist": -0.051746,
@@ -7170,6 +8348,8 @@
         "y": 1,
         "zIndex": 0,
         "depthLayer": "surface",
+        "depthLayerId": "surface",
+        "diveProfileId": "sawtoothProfile",
         "flowU": 0.08,
         "flowV": -0.01,
         "currentAssist": -0.049497,
@@ -7179,6 +8359,557 @@
         "constraintMask": 0
       }
     ],
+    "waterColumnSummary": {
+      "type": "anchor.headless.water-column-summary",
+      "version": "water-column-observation-model-p11",
+      "schemaVersion": "water-column-schema-p11",
+      "waterColumnConfig": {
+        "type": "anchor.headless.water-column-config-summary",
+        "version": "water-column-schema-p11",
+        "enabled": true,
+        "depthLayerIds": [
+          "surface",
+          "thermocline",
+          "deep"
+        ],
+        "defaultLayerIds": [
+          "surface",
+          "thermocline",
+          "deep"
+        ],
+        "diveProfileId": "sawtoothProfile",
+        "layerCount": 3,
+        "publicSafe": true,
+        "valid": true,
+        "usesFull3DPlanning": false,
+        "usesNewPlanner": false,
+        "usesPythonSimulator": false,
+        "usesMARL": false,
+        "calibratedVerticalOceanModel": false,
+        "boundary": "2.5D means the tactical map remains top-down, while each cell can contain simplified depth layers.",
+        "notA": [
+          "not full 3D route planning",
+          "not calibrated vertical ocean model",
+          "not production vehicle controller",
+          "not MARL/RL"
+        ]
+      },
+      "diveProfile": {
+        "type": "anchor.headless.water-column-profile-summary",
+        "version": "dive-profile-model-p11",
+        "schemaVersion": "water-column-schema-p11",
+        "profileId": "sawtoothProfile",
+        "label": "Sawtooth Profile",
+        "sequence": [
+          "surface",
+          "thermocline",
+          "deep",
+          "thermocline",
+          "surface"
+        ],
+        "coverage": {
+          "type": "anchor.science.water-column-profile-coverage",
+          "profileId": "sawtoothProfile",
+          "countsByDepth": {
+            "surface": 4,
+            "thermocline": 4,
+            "deep": 2
+          },
+          "coveredLayerCount": 3,
+          "totalLayerCount": 3,
+          "coverageFraction": 1,
+          "verticalCoverage": "broad"
+        },
+        "energy": {
+          "profileId": "sawtoothProfile",
+          "transitionCount": 4,
+          "relativeEnergy": 1.32,
+          "educationalEstimate": true,
+          "note": "Relative profile energy is a teaching proxy, not a calibrated glider dynamics model."
+        },
+        "assignsDepthLayer": true,
+        "generatesWaypoints": false,
+        "controlsRoutePlanning": false,
+        "usesFull3DPlanning": false,
+        "valid": true,
+        "warnings": []
+      },
+      "observationSummary": {
+        "type": "anchor.headless.water-column-observation-summary",
+        "version": "water-column-observation-model-p11",
+        "count": 9,
+        "observationCountsByDepth": {
+          "surface": 9,
+          "thermocline": 0,
+          "deep": 0
+        },
+        "meanSurpriseByDepth": {
+          "surface": 0.461132,
+          "thermocline": null,
+          "deep": null
+        },
+        "coveredDepthLayerIds": [
+          "surface"
+        ],
+        "verticalCoverage": "surface-limited",
+        "coverageFraction": 0.333333,
+        "publicSafe": true,
+        "hiddenTruthIncluded": false
+      },
+      "observationCountsByDepth": {
+        "surface": 9,
+        "thermocline": 0,
+        "deep": 0
+      },
+      "trackCountsByDepth": {
+        "surface": 9,
+        "thermocline": 0,
+        "deep": 0
+      },
+      "verticalCoverage": "surface-limited",
+      "depthLayerPrioritySummary": {
+        "type": "anchor.headless.depth-layer-priority-summary",
+        "version": "water-column-priority-model-p11",
+        "schemaVersion": "water-column-schema-p11",
+        "depthLayerIds": [
+          "surface",
+          "thermocline",
+          "deep"
+        ],
+        "collapseMethod": "accessibleMax",
+        "bestDepthLayerCounts": {
+          "surface": 11,
+          "thermocline": 6,
+          "deep": 8
+        },
+        "topDownStats": {
+          "count": 25,
+          "finiteCount": 25,
+          "invalidCount": 0,
+          "min": 0,
+          "max": 1,
+          "mean": 0.6555116404709768
+        },
+        "excludesRouteTravelCost": true,
+        "publicSafe": true,
+        "usesFull3DPlanning": false,
+        "usesNewPlanner": false,
+        "usesPythonSimulator": false,
+        "usesMARL": false,
+        "note": "A_global_depth is science priority by depth layer; top-down collapse does not include route travel cost or path optimization."
+      },
+      "bestDepthLayerCounts": {
+        "surface": 11,
+        "thermocline": 6,
+        "deep": 8
+      },
+      "publicSafe": true,
+      "hiddenTruthIncluded": false,
+      "syntheticTeachingModel": true,
+      "calibratedVerticalOceanModel": false,
+      "usesFull3DPlanning": false,
+      "usesNewPlanner": false,
+      "usesPythonSimulator": false,
+      "usesMARL": false,
+      "boundary": [
+        "2.5D means the tactical map remains top-down, while each cell can contain simplified depth layers.",
+        "Dive profile controls which layer the glider samples along the route.",
+        "Recommended dive profile is context for the next leg; it does not generate a route.",
+        "P11 does not add full 3D planning, new route planning, production data assimilation, or MARL/RL."
+      ]
+    },
+    "depthLayerPriority": {
+      "type": "anchor.headless.depth-layer-priority",
+      "version": "water-column-priority-model-p11",
+      "schemaVersion": "water-column-schema-p11",
+      "waterColumnConfig": {
+        "type": "anchor.headless.water-column-config-summary",
+        "version": "water-column-schema-p11",
+        "enabled": true,
+        "depthLayerIds": [
+          "surface",
+          "thermocline",
+          "deep"
+        ],
+        "defaultLayerIds": [
+          "surface",
+          "thermocline",
+          "deep"
+        ],
+        "diveProfileId": "sawtoothProfile",
+        "layerCount": 3,
+        "publicSafe": true,
+        "valid": true,
+        "usesFull3DPlanning": false,
+        "usesNewPlanner": false,
+        "usesPythonSimulator": false,
+        "usesMARL": false,
+        "calibratedVerticalOceanModel": false,
+        "boundary": "2.5D means the tactical map remains top-down, while each cell can contain simplified depth layers.",
+        "notA": [
+          "not full 3D route planning",
+          "not calibrated vertical ocean model",
+          "not production vehicle controller",
+          "not MARL/RL"
+        ]
+      },
+      "fieldId": "A_global",
+      "depthLayerIds": [
+        "surface",
+        "thermocline",
+        "deep"
+      ],
+      "A_global_depth": [
+        [
+          [
+            0,
+            0.8742170862423094,
+            0.9245590246622059,
+            0.8542156987247639,
+            0.8473321560889361
+          ],
+          [
+            0,
+            0.9445290073025696,
+            0.9333094399616926,
+            0.8878320527693405,
+            0.8388387904625676
+          ],
+          [
+            0,
+            0.9938947526532005,
+            0.8898400545933884,
+            0.7688409701679376,
+            0.8436661779103648
+          ],
+          [
+            0,
+            0.9477354082896592,
+            0.8576473915951572,
+            0.7911155959700417,
+            0.8557326017497462
+          ],
+          [
+            0,
+            0,
+            0,
+            0.8813882059840448,
+            0.8773447585441959
+          ]
+        ],
+        [
+          [
+            0,
+            0.8521305365208078,
+            0.9323862297369403,
+            0.8796613199076276,
+            0.8653195281578909
+          ],
+          [
+            0,
+            0.9361573124645806,
+            0.9456081995942772,
+            0.9022748682686876,
+            0.8586687333253872
+          ],
+          [
+            0,
+            0.9796343203862847,
+            0.8970576416402599,
+            0.7819440473303946,
+            0.8695375988091141
+          ],
+          [
+            0,
+            0.9600813690675206,
+            0.8861515403377588,
+            0.8264670495573033,
+            0.8708256941244684
+          ],
+          [
+            0,
+            0,
+            0,
+            0.9056216040334081,
+            0.8767419165642127
+          ]
+        ],
+        [
+          [
+            0,
+            0.8505406387328844,
+            0.9824741754988184,
+            0.8958885140488226,
+            0.8557611504053825
+          ],
+          [
+            0,
+            0.912942140923465,
+            1,
+            0.97950786117234,
+            0.8888609209449599
+          ],
+          [
+            0,
+            0.9689939887085836,
+            0.9094552272883439,
+            0.835459206177158,
+            0.8916927166233498
+          ],
+          [
+            0,
+            0.9264912440992791,
+            0.8855740377557374,
+            0.8077702630663162,
+            0.8707934448713812
+          ],
+          [
+            0,
+            0,
+            0,
+            0.8727433245287768,
+            0.8546534828976513
+          ]
+        ]
+      ],
+      "A_global_topdown": [
+        [
+          0,
+          0.8742170862423094,
+          0.9824741754988184,
+          0.8958885140488226,
+          0.8653195281578909
+        ],
+        [
+          0,
+          0.9445290073025696,
+          1,
+          0.97950786117234,
+          0.8888609209449599
+        ],
+        [
+          0,
+          0.9938947526532005,
+          0.9094552272883439,
+          0.835459206177158,
+          0.8916927166233498
+        ],
+        [
+          0,
+          0.9600813690675206,
+          0.8861515403377588,
+          0.8264670495573033,
+          0.8708256941244684
+        ],
+        [
+          0,
+          0,
+          0,
+          0.9056216040334081,
+          0.8773447585441959
+        ]
+      ],
+      "bestDepthLayerByCell": [
+        [
+          "surface",
+          "surface",
+          "deep",
+          "deep",
+          "thermocline"
+        ],
+        [
+          "surface",
+          "surface",
+          "deep",
+          "deep",
+          "deep"
+        ],
+        [
+          "surface",
+          "surface",
+          "deep",
+          "deep",
+          "deep"
+        ],
+        [
+          "surface",
+          "thermocline",
+          "thermocline",
+          "thermocline",
+          "thermocline"
+        ],
+        [
+          "surface",
+          "surface",
+          "surface",
+          "thermocline",
+          "surface"
+        ]
+      ],
+      "bestDepthLayerCounts": {
+        "surface": 11,
+        "thermocline": 6,
+        "deep": 8
+      },
+      "diagnostics": {
+        "type": "anchor.headless.depth-layer-diagnostics",
+        "version": "water-column-field-model-p11",
+        "schemaVersion": "water-column-schema-p11",
+        "fieldId": "A_global",
+        "depthLayerIds": [
+          "surface",
+          "thermocline",
+          "deep"
+        ],
+        "layerMetadata": {
+          "surface": {
+            "id": "surface",
+            "label": "Surface",
+            "nominalDepthMeters": 0,
+            "thicknessMeters": 5,
+            "synthetic": true,
+            "calibrated": false
+          },
+          "thermocline": {
+            "id": "thermocline",
+            "label": "Thermocline",
+            "nominalDepthMeters": 35,
+            "thicknessMeters": 35,
+            "synthetic": true,
+            "calibrated": false
+          },
+          "deep": {
+            "id": "deep",
+            "label": "Deep",
+            "nominalDepthMeters": 150,
+            "thicknessMeters": 100,
+            "synthetic": true,
+            "calibrated": false
+          }
+        },
+        "shape": [
+          3,
+          5,
+          5
+        ],
+        "stats": {
+          "min": 0,
+          "max": 1,
+          "mean": 0.6403721469498972,
+          "count": 75,
+          "finiteCount": 75,
+          "invalidCount": 0,
+          "shape": [
+            3,
+            5,
+            5
+          ],
+          "byLayer": {
+            "surface": {
+              "min": 0,
+              "max": 0.9938947526532005,
+              "mean": 0.6324815669468848,
+              "count": 25,
+              "finiteCount": 25,
+              "invalidCount": 0
+            },
+            "thermocline": {
+              "min": 0,
+              "max": 0.9796343203862847,
+              "mean": 0.6410507803930768,
+              "count": 25,
+              "finiteCount": 25,
+              "invalidCount": 0
+            },
+            "deep": {
+              "min": 0,
+              "max": 1,
+              "mean": 0.6475840935097301,
+              "count": 25,
+              "finiteCount": 25,
+              "invalidCount": 0
+            }
+          }
+        },
+        "bestDepthLayerCounts": {
+          "surface": 11,
+          "thermocline": 6,
+          "deep": 8
+        },
+        "publicSafe": true,
+        "syntheticTeachingModel": true,
+        "calibratedVerticalOceanModel": false,
+        "usesFull3DPlanning": false,
+        "note": "Depth-layer diagnostics summarize field[z][row][col] data for a top-down 2.5D teaching model."
+      },
+      "summary": {
+        "type": "anchor.headless.depth-layer-priority-summary",
+        "version": "water-column-priority-model-p11",
+        "schemaVersion": "water-column-schema-p11",
+        "depthLayerIds": [
+          "surface",
+          "thermocline",
+          "deep"
+        ],
+        "collapseMethod": "accessibleMax",
+        "bestDepthLayerCounts": {
+          "surface": 11,
+          "thermocline": 6,
+          "deep": 8
+        },
+        "topDownStats": {
+          "count": 25,
+          "finiteCount": 25,
+          "invalidCount": 0,
+          "min": 0,
+          "max": 1,
+          "mean": 0.6555116404709768
+        },
+        "excludesRouteTravelCost": true,
+        "publicSafe": true,
+        "usesFull3DPlanning": false,
+        "usesNewPlanner": false,
+        "usesPythonSimulator": false,
+        "usesMARL": false,
+        "note": "A_global_depth is science priority by depth layer; top-down collapse does not include route travel cost or path optimization."
+      },
+      "publicSafe": true,
+      "hiddenTruthIncluded": false,
+      "excludesRouteTravelCost": true,
+      "syntheticTeachingModel": true,
+      "calibratedVerticalOceanModel": false
+    },
+    "depthLayerPrioritySummary": {
+      "type": "anchor.headless.depth-layer-priority-summary",
+      "version": "water-column-priority-model-p11",
+      "schemaVersion": "water-column-schema-p11",
+      "depthLayerIds": [
+        "surface",
+        "thermocline",
+        "deep"
+      ],
+      "collapseMethod": "accessibleMax",
+      "bestDepthLayerCounts": {
+        "surface": 11,
+        "thermocline": 6,
+        "deep": 8
+      },
+      "topDownStats": {
+        "count": 25,
+        "finiteCount": 25,
+        "invalidCount": 0,
+        "min": 0,
+        "max": 1,
+        "mean": 0.6555116404709768
+      },
+      "excludesRouteTravelCost": true,
+      "publicSafe": true,
+      "usesFull3DPlanning": false,
+      "usesNewPlanner": false,
+      "usesPythonSimulator": false,
+      "usesMARL": false,
+      "note": "A_global_depth is science priority by depth layer; top-down collapse does not include route travel cost or path optimization."
+    },
     "actions": [
       {
         "id": "action-wp-1",
@@ -7187,8 +8918,10 @@
         "target": {
           "x": 0,
           "y": 0,
-          "z": 0
+          "z": 0,
+          "depthLayerId": "surface"
         },
+        "diveProfileId": "sawtoothProfile",
         "policyId": "fixedDefaultWaypoints",
         "note": "H1 executes provided waypoints and does not optimize routes."
       },
@@ -7199,8 +8932,10 @@
         "target": {
           "x": 2,
           "y": 2,
-          "z": 0
+          "z": 0,
+          "depthLayerId": null
         },
+        "diveProfileId": "sawtoothProfile",
         "policyId": "fixedDefaultWaypoints",
         "note": "H1 executes provided waypoints and does not optimize routes."
       },
@@ -7211,8 +8946,10 @@
         "target": {
           "x": 3,
           "y": 3,
-          "z": 0
+          "z": 0,
+          "depthLayerId": null
         },
+        "diveProfileId": "sawtoothProfile",
         "policyId": "fixedDefaultWaypoints",
         "note": "H1 executes provided waypoints and does not optimize routes."
       },
@@ -7223,8 +8960,10 @@
         "target": {
           "x": 3,
           "y": 2,
-          "z": 0
+          "z": 0,
+          "depthLayerId": null
         },
+        "diveProfileId": "sawtoothProfile",
         "policyId": "fixedDefaultWaypoints",
         "note": "H1 executes provided waypoints and does not optimize routes."
       },
@@ -7235,8 +8974,10 @@
         "target": {
           "x": 2,
           "y": 1,
-          "z": 0
+          "z": 0,
+          "depthLayerId": null
         },
+        "diveProfileId": "sawtoothProfile",
         "policyId": "fixedDefaultWaypoints",
         "note": "H1 executes provided waypoints and does not optimize routes."
       }
@@ -7284,6 +9025,22 @@
         "distanceTraveled": 6.656854,
         "hazardPenalty": 6,
         "duplicateSamplePenalty": 2.25
+      },
+      "waterColumn": {
+        "profileId": "sawtoothProfile",
+        "verticalCoverage": "surface-limited",
+        "observationCountsByDepth": {
+          "surface": 9,
+          "thermocline": 0,
+          "deep": 0
+        },
+        "bestDepthLayerCounts": {
+          "surface": 11,
+          "thermocline": 6,
+          "deep": 8
+        },
+        "scoreNeutral": true,
+        "note": "P11 water-column context is reported for analysis and does not rewrite the headless score formula."
       },
       "counts": {
         "observationCount": 9,
@@ -7660,6 +9417,7 @@
       "version": "headless-mission-runner-h1",
       "seed": "h3.1-roundtrip-example-001",
       "gliderId": "glider_01",
+      "diveProfileId": "sawtoothProfile",
       "trackPointCount": 9,
       "observationCount": 9,
       "route": [
@@ -7669,6 +9427,9 @@
           "y": 0,
           "zIndex": 0,
           "depthLayer": "surface",
+          "depthLayerId": "surface",
+          "diveProfileId": "sawtoothProfile",
+          "hasExplicitDepth": true,
           "routeProgress": 0,
           "segmentIndex": 0,
           "distanceFromStart": 0
@@ -7678,6 +9439,10 @@
           "x": 0.6666666666666666,
           "y": 0.6666666666666666,
           "zIndex": 0,
+          "depthLayer": "surface",
+          "depthLayerId": "surface",
+          "diveProfileId": "sawtoothProfile",
+          "hasExplicitDepth": true,
           "segmentIndex": 0,
           "routeProgress": 0.14162981586294418,
           "distanceFromStart": 0.9428090415820634
@@ -7687,6 +9452,10 @@
           "x": 1.3333333333333333,
           "y": 1.3333333333333333,
           "zIndex": 0,
+          "depthLayer": "surface",
+          "depthLayerId": "surface",
+          "diveProfileId": "sawtoothProfile",
+          "hasExplicitDepth": true,
           "segmentIndex": 0,
           "routeProgress": 0.28325963172588836,
           "distanceFromStart": 1.8856180831641267
@@ -7696,6 +9465,10 @@
           "x": 2,
           "y": 2,
           "zIndex": 0,
+          "depthLayer": "surface",
+          "depthLayerId": "surface",
+          "diveProfileId": "sawtoothProfile",
+          "hasExplicitDepth": true,
           "segmentIndex": 0,
           "routeProgress": 0.42488944758883257,
           "distanceFromStart": 2.8284271247461903
@@ -7705,6 +9478,10 @@
           "x": 2.5,
           "y": 2.5,
           "zIndex": 0,
+          "depthLayer": null,
+          "depthLayerId": null,
+          "diveProfileId": "sawtoothProfile",
+          "hasExplicitDepth": true,
           "segmentIndex": 1,
           "routeProgress": 0.5311118094860408,
           "distanceFromStart": 3.5355339059327378
@@ -7714,6 +9491,10 @@
           "x": 3,
           "y": 3,
           "zIndex": 0,
+          "depthLayer": null,
+          "depthLayerId": null,
+          "diveProfileId": "sawtoothProfile",
+          "hasExplicitDepth": true,
           "segmentIndex": 1,
           "routeProgress": 0.6373341713832489,
           "distanceFromStart": 4.242640687119286
@@ -7723,6 +9504,10 @@
           "x": 3,
           "y": 2,
           "zIndex": 0,
+          "depthLayer": null,
+          "depthLayerId": null,
+          "diveProfileId": "sawtoothProfile",
+          "hasExplicitDepth": true,
           "segmentIndex": 2,
           "routeProgress": 0.7875552762055837,
           "distanceFromStart": 5.242640687119286
@@ -7732,6 +9517,10 @@
           "x": 2.5,
           "y": 1.5,
           "zIndex": 0,
+          "depthLayer": null,
+          "depthLayerId": null,
+          "diveProfileId": "sawtoothProfile",
+          "hasExplicitDepth": true,
           "segmentIndex": 3,
           "routeProgress": 0.893777638102792,
           "distanceFromStart": 5.949747468305834
@@ -7741,6 +9530,10 @@
           "x": 2,
           "y": 1,
           "zIndex": 0,
+          "depthLayer": null,
+          "depthLayerId": null,
+          "diveProfileId": "sawtoothProfile",
+          "hasExplicitDepth": true,
           "segmentIndex": 3,
           "routeProgress": 1,
           "distanceFromStart": 6.656854249492381
@@ -7769,6 +9562,196 @@
       "deterministic": true,
       "routeGenerated": false,
       "usesProvidedWaypoints": true,
+      "waterColumnSummary": {
+        "type": "anchor.headless.water-column-summary",
+        "version": "water-column-observation-model-p11",
+        "schemaVersion": "water-column-schema-p11",
+        "waterColumnConfig": {
+          "type": "anchor.headless.water-column-config-summary",
+          "version": "water-column-schema-p11",
+          "enabled": true,
+          "depthLayerIds": [
+            "surface",
+            "thermocline",
+            "deep"
+          ],
+          "defaultLayerIds": [
+            "surface",
+            "thermocline",
+            "deep"
+          ],
+          "diveProfileId": "sawtoothProfile",
+          "layerCount": 3,
+          "publicSafe": true,
+          "valid": true,
+          "usesFull3DPlanning": false,
+          "usesNewPlanner": false,
+          "usesPythonSimulator": false,
+          "usesMARL": false,
+          "calibratedVerticalOceanModel": false,
+          "boundary": "2.5D means the tactical map remains top-down, while each cell can contain simplified depth layers.",
+          "notA": [
+            "not full 3D route planning",
+            "not calibrated vertical ocean model",
+            "not production vehicle controller",
+            "not MARL/RL"
+          ]
+        },
+        "diveProfile": {
+          "type": "anchor.headless.water-column-profile-summary",
+          "version": "dive-profile-model-p11",
+          "schemaVersion": "water-column-schema-p11",
+          "profileId": "sawtoothProfile",
+          "label": "Sawtooth Profile",
+          "sequence": [
+            "surface",
+            "thermocline",
+            "deep",
+            "thermocline",
+            "surface"
+          ],
+          "coverage": {
+            "type": "anchor.science.water-column-profile-coverage",
+            "profileId": "sawtoothProfile",
+            "countsByDepth": {
+              "surface": 4,
+              "thermocline": 4,
+              "deep": 2
+            },
+            "coveredLayerCount": 3,
+            "totalLayerCount": 3,
+            "coverageFraction": 1,
+            "verticalCoverage": "broad"
+          },
+          "energy": {
+            "profileId": "sawtoothProfile",
+            "transitionCount": 4,
+            "relativeEnergy": 1.32,
+            "educationalEstimate": true,
+            "note": "Relative profile energy is a teaching proxy, not a calibrated glider dynamics model."
+          },
+          "assignsDepthLayer": true,
+          "generatesWaypoints": false,
+          "controlsRoutePlanning": false,
+          "usesFull3DPlanning": false,
+          "valid": true,
+          "warnings": []
+        },
+        "observationSummary": {
+          "type": "anchor.headless.water-column-observation-summary",
+          "version": "water-column-observation-model-p11",
+          "count": 9,
+          "observationCountsByDepth": {
+            "surface": 9,
+            "thermocline": 0,
+            "deep": 0
+          },
+          "meanSurpriseByDepth": {
+            "surface": 0.461132,
+            "thermocline": null,
+            "deep": null
+          },
+          "coveredDepthLayerIds": [
+            "surface"
+          ],
+          "verticalCoverage": "surface-limited",
+          "coverageFraction": 0.333333,
+          "publicSafe": true,
+          "hiddenTruthIncluded": false
+        },
+        "observationCountsByDepth": {
+          "surface": 9,
+          "thermocline": 0,
+          "deep": 0
+        },
+        "trackCountsByDepth": {
+          "surface": 9,
+          "thermocline": 0,
+          "deep": 0
+        },
+        "verticalCoverage": "surface-limited",
+        "depthLayerPrioritySummary": {
+          "type": "anchor.headless.depth-layer-priority-summary",
+          "version": "water-column-priority-model-p11",
+          "schemaVersion": "water-column-schema-p11",
+          "depthLayerIds": [
+            "surface",
+            "thermocline",
+            "deep"
+          ],
+          "collapseMethod": "accessibleMax",
+          "bestDepthLayerCounts": {
+            "surface": 11,
+            "thermocline": 6,
+            "deep": 8
+          },
+          "topDownStats": {
+            "count": 25,
+            "finiteCount": 25,
+            "invalidCount": 0,
+            "min": 0,
+            "max": 1,
+            "mean": 0.6555116404709768
+          },
+          "excludesRouteTravelCost": true,
+          "publicSafe": true,
+          "usesFull3DPlanning": false,
+          "usesNewPlanner": false,
+          "usesPythonSimulator": false,
+          "usesMARL": false,
+          "note": "A_global_depth is science priority by depth layer; top-down collapse does not include route travel cost or path optimization."
+        },
+        "bestDepthLayerCounts": {
+          "surface": 11,
+          "thermocline": 6,
+          "deep": 8
+        },
+        "publicSafe": true,
+        "hiddenTruthIncluded": false,
+        "syntheticTeachingModel": true,
+        "calibratedVerticalOceanModel": false,
+        "usesFull3DPlanning": false,
+        "usesNewPlanner": false,
+        "usesPythonSimulator": false,
+        "usesMARL": false,
+        "boundary": [
+          "2.5D means the tactical map remains top-down, while each cell can contain simplified depth layers.",
+          "Dive profile controls which layer the glider samples along the route.",
+          "Recommended dive profile is context for the next leg; it does not generate a route.",
+          "P11 does not add full 3D planning, new route planning, production data assimilation, or MARL/RL."
+        ]
+      },
+      "depthLayerPrioritySummary": {
+        "type": "anchor.headless.depth-layer-priority-summary",
+        "version": "water-column-priority-model-p11",
+        "schemaVersion": "water-column-schema-p11",
+        "depthLayerIds": [
+          "surface",
+          "thermocline",
+          "deep"
+        ],
+        "collapseMethod": "accessibleMax",
+        "bestDepthLayerCounts": {
+          "surface": 11,
+          "thermocline": 6,
+          "deep": 8
+        },
+        "topDownStats": {
+          "count": 25,
+          "finiteCount": 25,
+          "invalidCount": 0,
+          "min": 0,
+          "max": 1,
+          "mean": 0.6555116404709768
+        },
+        "excludesRouteTravelCost": true,
+        "publicSafe": true,
+        "usesFull3DPlanning": false,
+        "usesNewPlanner": false,
+        "usesPythonSimulator": false,
+        "usesMARL": false,
+        "note": "A_global_depth is science priority by depth layer; top-down collapse does not include route travel cost or path optimization."
+      },
       "scienceDiscoverySummary": {
         "type": "anchor.science.discovery-summary",
         "version": "science-discovery-lifecycle-p9",
@@ -7815,6 +9798,8 @@
         "usesMARL": false
       },
       "calibratedOceanForecast": false,
+      "calibratedVerticalOceanModel": false,
+      "implementsFull3DPlanning": false,
       "implementsNewPlanner": false,
       "implementsMARL": false,
       "canonicalRuntime": "Node headless runtime over portable ANCHOR core logic. Browser ANCHOR remains the official visual referee and scoring UI.",
@@ -7826,7 +9811,9 @@
         "trackPointCount": 9,
         "hiddenTruthExported": false,
         "browserOfficialScoring": false,
-        "sciencePrimaryDiagnosis": "agreesWithForecast"
+        "sciencePrimaryDiagnosis": "agreesWithForecast",
+        "waterColumnVerticalCoverage": "surface-limited",
+        "diveProfileId": "sawtoothProfile"
       },
       "h3RoundtripVersion": "headless-solver-packet-roundtrip-h3"
     },
@@ -7864,6 +9851,9 @@
             "y": 0,
             "zIndex": 0,
             "depthLayer": "surface",
+            "depthLayerId": "surface",
+            "depthMeters": 0,
+            "diveProfileId": "sawtoothProfile",
             "fieldId": "T_hiddenTruth",
             "truthValue": 0.16856373669780397,
             "forecastValue": 0.17364147734404478,
@@ -7900,6 +9890,9 @@
             "y": 0.6666666666666666,
             "zIndex": 0,
             "depthLayer": "surface",
+            "depthLayerId": "surface",
+            "depthMeters": 0,
+            "diveProfileId": "sawtoothProfile",
             "fieldId": "T_hiddenTruth",
             "truthValue": 0.1702286671080281,
             "forecastValue": 0.17184409362720135,
@@ -7936,6 +9929,9 @@
             "y": 1.3333333333333333,
             "zIndex": 0,
             "depthLayer": "surface",
+            "depthLayerId": "surface",
+            "depthMeters": 0,
+            "diveProfileId": "sawtoothProfile",
             "fieldId": "T_hiddenTruth",
             "truthValue": 0.1702286671080281,
             "forecastValue": 0.17184409362720135,
@@ -7972,6 +9968,9 @@
             "y": 2,
             "zIndex": 0,
             "depthLayer": "surface",
+            "depthLayerId": "surface",
+            "depthMeters": 0,
+            "diveProfileId": "sawtoothProfile",
             "fieldId": "T_hiddenTruth",
             "truthValue": 0.5070905516371156,
             "forecastValue": 0.28003106677708633,
@@ -8008,6 +10007,9 @@
             "y": 2.5,
             "zIndex": 0,
             "depthLayer": "surface",
+            "depthLayerId": "surface",
+            "depthMeters": 0,
+            "diveProfileId": "sawtoothProfile",
             "fieldId": "T_hiddenTruth",
             "truthValue": 0.5501757384884511,
             "forecastValue": 0.3649439714656789,
@@ -8044,6 +10046,9 @@
             "y": 3,
             "zIndex": 0,
             "depthLayer": "surface",
+            "depthLayerId": "surface",
+            "depthMeters": 0,
+            "diveProfileId": "sawtoothProfile",
             "fieldId": "T_hiddenTruth",
             "truthValue": 0.5501757384884511,
             "forecastValue": 0.3649439714656789,
@@ -8080,6 +10085,9 @@
             "y": 2,
             "zIndex": 0,
             "depthLayer": "surface",
+            "depthLayerId": "surface",
+            "depthMeters": 0,
+            "diveProfileId": "sawtoothProfile",
             "fieldId": "T_hiddenTruth",
             "truthValue": 0.5428352087502557,
             "forecastValue": 0.4535787974996399,
@@ -8116,6 +10124,9 @@
             "y": 1.5,
             "zIndex": 0,
             "depthLayer": "surface",
+            "depthLayerId": "surface",
+            "depthMeters": 0,
+            "diveProfileId": "sawtoothProfile",
             "fieldId": "T_hiddenTruth",
             "truthValue": 0.5428352087502557,
             "forecastValue": 0.4535787974996399,
@@ -8152,6 +10163,9 @@
             "y": 1,
             "zIndex": 0,
             "depthLayer": "surface",
+            "depthLayerId": "surface",
+            "depthMeters": 0,
+            "diveProfileId": "sawtoothProfile",
             "fieldId": "T_hiddenTruth",
             "truthValue": 0.31866757882743607,
             "forecastValue": 0.24618017200248027,
@@ -8284,6 +10298,196 @@
         "deterministic": true,
         "routeGenerated": false,
         "usesProvidedWaypoints": true,
+        "waterColumnSummary": {
+          "type": "anchor.headless.water-column-summary",
+          "version": "water-column-observation-model-p11",
+          "schemaVersion": "water-column-schema-p11",
+          "waterColumnConfig": {
+            "type": "anchor.headless.water-column-config-summary",
+            "version": "water-column-schema-p11",
+            "enabled": true,
+            "depthLayerIds": [
+              "surface",
+              "thermocline",
+              "deep"
+            ],
+            "defaultLayerIds": [
+              "surface",
+              "thermocline",
+              "deep"
+            ],
+            "diveProfileId": "sawtoothProfile",
+            "layerCount": 3,
+            "publicSafe": true,
+            "valid": true,
+            "usesFull3DPlanning": false,
+            "usesNewPlanner": false,
+            "usesPythonSimulator": false,
+            "usesMARL": false,
+            "calibratedVerticalOceanModel": false,
+            "boundary": "2.5D means the tactical map remains top-down, while each cell can contain simplified depth layers.",
+            "notA": [
+              "not full 3D route planning",
+              "not calibrated vertical ocean model",
+              "not production vehicle controller",
+              "not MARL/RL"
+            ]
+          },
+          "diveProfile": {
+            "type": "anchor.headless.water-column-profile-summary",
+            "version": "dive-profile-model-p11",
+            "schemaVersion": "water-column-schema-p11",
+            "profileId": "sawtoothProfile",
+            "label": "Sawtooth Profile",
+            "sequence": [
+              "surface",
+              "thermocline",
+              "deep",
+              "thermocline",
+              "surface"
+            ],
+            "coverage": {
+              "type": "anchor.science.water-column-profile-coverage",
+              "profileId": "sawtoothProfile",
+              "countsByDepth": {
+                "surface": 4,
+                "thermocline": 4,
+                "deep": 2
+              },
+              "coveredLayerCount": 3,
+              "totalLayerCount": 3,
+              "coverageFraction": 1,
+              "verticalCoverage": "broad"
+            },
+            "energy": {
+              "profileId": "sawtoothProfile",
+              "transitionCount": 4,
+              "relativeEnergy": 1.32,
+              "educationalEstimate": true,
+              "note": "Relative profile energy is a teaching proxy, not a calibrated glider dynamics model."
+            },
+            "assignsDepthLayer": true,
+            "generatesWaypoints": false,
+            "controlsRoutePlanning": false,
+            "usesFull3DPlanning": false,
+            "valid": true,
+            "warnings": []
+          },
+          "observationSummary": {
+            "type": "anchor.headless.water-column-observation-summary",
+            "version": "water-column-observation-model-p11",
+            "count": 9,
+            "observationCountsByDepth": {
+              "surface": 9,
+              "thermocline": 0,
+              "deep": 0
+            },
+            "meanSurpriseByDepth": {
+              "surface": 0.461132,
+              "thermocline": null,
+              "deep": null
+            },
+            "coveredDepthLayerIds": [
+              "surface"
+            ],
+            "verticalCoverage": "surface-limited",
+            "coverageFraction": 0.333333,
+            "publicSafe": true,
+            "hiddenTruthIncluded": false
+          },
+          "observationCountsByDepth": {
+            "surface": 9,
+            "thermocline": 0,
+            "deep": 0
+          },
+          "trackCountsByDepth": {
+            "surface": 9,
+            "thermocline": 0,
+            "deep": 0
+          },
+          "verticalCoverage": "surface-limited",
+          "depthLayerPrioritySummary": {
+            "type": "anchor.headless.depth-layer-priority-summary",
+            "version": "water-column-priority-model-p11",
+            "schemaVersion": "water-column-schema-p11",
+            "depthLayerIds": [
+              "surface",
+              "thermocline",
+              "deep"
+            ],
+            "collapseMethod": "accessibleMax",
+            "bestDepthLayerCounts": {
+              "surface": 11,
+              "thermocline": 6,
+              "deep": 8
+            },
+            "topDownStats": {
+              "count": 25,
+              "finiteCount": 25,
+              "invalidCount": 0,
+              "min": 0,
+              "max": 1,
+              "mean": 0.6555116404709768
+            },
+            "excludesRouteTravelCost": true,
+            "publicSafe": true,
+            "usesFull3DPlanning": false,
+            "usesNewPlanner": false,
+            "usesPythonSimulator": false,
+            "usesMARL": false,
+            "note": "A_global_depth is science priority by depth layer; top-down collapse does not include route travel cost or path optimization."
+          },
+          "bestDepthLayerCounts": {
+            "surface": 11,
+            "thermocline": 6,
+            "deep": 8
+          },
+          "publicSafe": true,
+          "hiddenTruthIncluded": false,
+          "syntheticTeachingModel": true,
+          "calibratedVerticalOceanModel": false,
+          "usesFull3DPlanning": false,
+          "usesNewPlanner": false,
+          "usesPythonSimulator": false,
+          "usesMARL": false,
+          "boundary": [
+            "2.5D means the tactical map remains top-down, while each cell can contain simplified depth layers.",
+            "Dive profile controls which layer the glider samples along the route.",
+            "Recommended dive profile is context for the next leg; it does not generate a route.",
+            "P11 does not add full 3D planning, new route planning, production data assimilation, or MARL/RL."
+          ]
+        },
+        "depthLayerPrioritySummary": {
+          "type": "anchor.headless.depth-layer-priority-summary",
+          "version": "water-column-priority-model-p11",
+          "schemaVersion": "water-column-schema-p11",
+          "depthLayerIds": [
+            "surface",
+            "thermocline",
+            "deep"
+          ],
+          "collapseMethod": "accessibleMax",
+          "bestDepthLayerCounts": {
+            "surface": 11,
+            "thermocline": 6,
+            "deep": 8
+          },
+          "topDownStats": {
+            "count": 25,
+            "finiteCount": 25,
+            "invalidCount": 0,
+            "min": 0,
+            "max": 1,
+            "mean": 0.6555116404709768
+          },
+          "excludesRouteTravelCost": true,
+          "publicSafe": true,
+          "usesFull3DPlanning": false,
+          "usesNewPlanner": false,
+          "usesPythonSimulator": false,
+          "usesMARL": false,
+          "note": "A_global_depth is science priority by depth layer; top-down collapse does not include route travel cost or path optimization."
+        },
         "scienceDiscoverySummary": {
           "type": "anchor.science.discovery-summary",
           "version": "science-discovery-lifecycle-p9",
@@ -8330,6 +10534,8 @@
           "usesMARL": false
         },
         "calibratedOceanForecast": false,
+        "calibratedVerticalOceanModel": false,
+        "implementsFull3DPlanning": false,
         "implementsNewPlanner": false,
         "implementsMARL": false,
         "canonicalRuntime": "Node headless runtime over portable ANCHOR core logic. Browser ANCHOR remains the official visual referee and scoring UI."
@@ -8369,6 +10575,13 @@
         "agents": 1,
         "visiblePlanningSource": "forecast",
         "forecastAvailable": true,
+        "waterColumnConfigPresent": true,
+        "depthLayers": [
+          "surface",
+          "thermocline",
+          "deep"
+        ],
+        "diveProfileId": "sawtoothProfile",
         "oracleMode": false
       },
       "visibilityValidation": {
@@ -8406,6 +10619,38 @@
             "thermocline",
             "deep"
           ],
+          "waterColumn": {
+            "type": "anchor.headless.water-column-config-summary",
+            "version": "water-column-schema-p11",
+            "enabled": true,
+            "depthLayerIds": [
+              "surface",
+              "thermocline",
+              "deep"
+            ],
+            "defaultLayerIds": [
+              "surface",
+              "thermocline",
+              "deep"
+            ],
+            "diveProfileId": "sawtoothProfile",
+            "layerCount": 3,
+            "publicSafe": true,
+            "valid": true,
+            "usesFull3DPlanning": false,
+            "usesNewPlanner": false,
+            "usesPythonSimulator": false,
+            "usesMARL": false,
+            "calibratedVerticalOceanModel": false,
+            "boundary": "2.5D means the tactical map remains top-down, while each cell can contain simplified depth layers.",
+            "notA": [
+              "not full 3D route planning",
+              "not calibrated vertical ocean model",
+              "not production vehicle controller",
+              "not MARL/RL"
+            ]
+          },
+          "diveProfileId": "sawtoothProfile",
           "fieldCount": 12,
           "waypointCount": 5,
           "gliderCount": 1,
@@ -8419,7 +10664,8 @@
           "gliderId": "glider_01",
           "waypointCount": 5,
           "routeAuthority": "submittedAnchorPlan",
-          "generatesRoute": false
+          "generatesRoute": false,
+          "diveProfileId": "sawtoothProfile"
         },
         "usesNodeHeadlessRuntime": true,
         "usesProvidedPlan": true,
@@ -8442,6 +10688,165 @@
           "energyUsed": 8.212365,
           "hazardExposures": 0,
           "notBrowserOfficialScoring": true
+        },
+        "waterColumnSummary": {
+          "type": "anchor.headless.water-column-summary",
+          "version": "water-column-observation-model-p11",
+          "schemaVersion": "water-column-schema-p11",
+          "waterColumnConfig": {
+            "type": "anchor.headless.water-column-config-summary",
+            "version": "water-column-schema-p11",
+            "enabled": true,
+            "depthLayerIds": [
+              "surface",
+              "thermocline",
+              "deep"
+            ],
+            "defaultLayerIds": [
+              "surface",
+              "thermocline",
+              "deep"
+            ],
+            "diveProfileId": "sawtoothProfile",
+            "layerCount": 3,
+            "publicSafe": true,
+            "valid": true,
+            "usesFull3DPlanning": false,
+            "usesNewPlanner": false,
+            "usesPythonSimulator": false,
+            "usesMARL": false,
+            "calibratedVerticalOceanModel": false,
+            "boundary": "2.5D means the tactical map remains top-down, while each cell can contain simplified depth layers.",
+            "notA": [
+              "not full 3D route planning",
+              "not calibrated vertical ocean model",
+              "not production vehicle controller",
+              "not MARL/RL"
+            ]
+          },
+          "diveProfile": {
+            "type": "anchor.headless.water-column-profile-summary",
+            "version": "dive-profile-model-p11",
+            "schemaVersion": "water-column-schema-p11",
+            "profileId": "sawtoothProfile",
+            "label": "Sawtooth Profile",
+            "sequence": [
+              "surface",
+              "thermocline",
+              "deep",
+              "thermocline",
+              "surface"
+            ],
+            "coverage": {
+              "type": "anchor.science.water-column-profile-coverage",
+              "profileId": "sawtoothProfile",
+              "countsByDepth": {
+                "surface": 4,
+                "thermocline": 4,
+                "deep": 2
+              },
+              "coveredLayerCount": 3,
+              "totalLayerCount": 3,
+              "coverageFraction": 1,
+              "verticalCoverage": "broad"
+            },
+            "energy": {
+              "profileId": "sawtoothProfile",
+              "transitionCount": 4,
+              "relativeEnergy": 1.32,
+              "educationalEstimate": true,
+              "note": "Relative profile energy is a teaching proxy, not a calibrated glider dynamics model."
+            },
+            "assignsDepthLayer": true,
+            "generatesWaypoints": false,
+            "controlsRoutePlanning": false,
+            "usesFull3DPlanning": false,
+            "valid": true,
+            "warnings": []
+          },
+          "observationSummary": {
+            "type": "anchor.headless.water-column-observation-summary",
+            "version": "water-column-observation-model-p11",
+            "count": 9,
+            "observationCountsByDepth": {
+              "surface": 9,
+              "thermocline": 0,
+              "deep": 0
+            },
+            "meanSurpriseByDepth": {
+              "surface": 0.461132,
+              "thermocline": null,
+              "deep": null
+            },
+            "coveredDepthLayerIds": [
+              "surface"
+            ],
+            "verticalCoverage": "surface-limited",
+            "coverageFraction": 0.333333,
+            "publicSafe": true,
+            "hiddenTruthIncluded": false
+          },
+          "observationCountsByDepth": {
+            "surface": 9,
+            "thermocline": 0,
+            "deep": 0
+          },
+          "trackCountsByDepth": {
+            "surface": 9,
+            "thermocline": 0,
+            "deep": 0
+          },
+          "verticalCoverage": "surface-limited",
+          "depthLayerPrioritySummary": {
+            "type": "anchor.headless.depth-layer-priority-summary",
+            "version": "water-column-priority-model-p11",
+            "schemaVersion": "water-column-schema-p11",
+            "depthLayerIds": [
+              "surface",
+              "thermocline",
+              "deep"
+            ],
+            "collapseMethod": "accessibleMax",
+            "bestDepthLayerCounts": {
+              "surface": 11,
+              "thermocline": 6,
+              "deep": 8
+            },
+            "topDownStats": {
+              "count": 25,
+              "finiteCount": 25,
+              "invalidCount": 0,
+              "min": 0,
+              "max": 1,
+              "mean": 0.6555116404709768
+            },
+            "excludesRouteTravelCost": true,
+            "publicSafe": true,
+            "usesFull3DPlanning": false,
+            "usesNewPlanner": false,
+            "usesPythonSimulator": false,
+            "usesMARL": false,
+            "note": "A_global_depth is science priority by depth layer; top-down collapse does not include route travel cost or path optimization."
+          },
+          "bestDepthLayerCounts": {
+            "surface": 11,
+            "thermocline": 6,
+            "deep": 8
+          },
+          "publicSafe": true,
+          "hiddenTruthIncluded": false,
+          "syntheticTeachingModel": true,
+          "calibratedVerticalOceanModel": false,
+          "usesFull3DPlanning": false,
+          "usesNewPlanner": false,
+          "usesPythonSimulator": false,
+          "usesMARL": false,
+          "boundary": [
+            "2.5D means the tactical map remains top-down, while each cell can contain simplified depth layers.",
+            "Dive profile controls which layer the glider samples along the route.",
+            "Recommended dive profile is context for the next leg; it does not generate a route.",
+            "P11 does not add full 3D planning, new route planning, production data assimilation, or MARL/RL."
+          ]
         }
       },
       "scienceDiagnosticsSummary": {
@@ -8489,6 +10894,165 @@
         "usesCalibratedOceanForecast": false,
         "usesMARL": false
       },
+      "waterColumnSummary": {
+        "type": "anchor.headless.water-column-summary",
+        "version": "water-column-observation-model-p11",
+        "schemaVersion": "water-column-schema-p11",
+        "waterColumnConfig": {
+          "type": "anchor.headless.water-column-config-summary",
+          "version": "water-column-schema-p11",
+          "enabled": true,
+          "depthLayerIds": [
+            "surface",
+            "thermocline",
+            "deep"
+          ],
+          "defaultLayerIds": [
+            "surface",
+            "thermocline",
+            "deep"
+          ],
+          "diveProfileId": "sawtoothProfile",
+          "layerCount": 3,
+          "publicSafe": true,
+          "valid": true,
+          "usesFull3DPlanning": false,
+          "usesNewPlanner": false,
+          "usesPythonSimulator": false,
+          "usesMARL": false,
+          "calibratedVerticalOceanModel": false,
+          "boundary": "2.5D means the tactical map remains top-down, while each cell can contain simplified depth layers.",
+          "notA": [
+            "not full 3D route planning",
+            "not calibrated vertical ocean model",
+            "not production vehicle controller",
+            "not MARL/RL"
+          ]
+        },
+        "diveProfile": {
+          "type": "anchor.headless.water-column-profile-summary",
+          "version": "dive-profile-model-p11",
+          "schemaVersion": "water-column-schema-p11",
+          "profileId": "sawtoothProfile",
+          "label": "Sawtooth Profile",
+          "sequence": [
+            "surface",
+            "thermocline",
+            "deep",
+            "thermocline",
+            "surface"
+          ],
+          "coverage": {
+            "type": "anchor.science.water-column-profile-coverage",
+            "profileId": "sawtoothProfile",
+            "countsByDepth": {
+              "surface": 4,
+              "thermocline": 4,
+              "deep": 2
+            },
+            "coveredLayerCount": 3,
+            "totalLayerCount": 3,
+            "coverageFraction": 1,
+            "verticalCoverage": "broad"
+          },
+          "energy": {
+            "profileId": "sawtoothProfile",
+            "transitionCount": 4,
+            "relativeEnergy": 1.32,
+            "educationalEstimate": true,
+            "note": "Relative profile energy is a teaching proxy, not a calibrated glider dynamics model."
+          },
+          "assignsDepthLayer": true,
+          "generatesWaypoints": false,
+          "controlsRoutePlanning": false,
+          "usesFull3DPlanning": false,
+          "valid": true,
+          "warnings": []
+        },
+        "observationSummary": {
+          "type": "anchor.headless.water-column-observation-summary",
+          "version": "water-column-observation-model-p11",
+          "count": 9,
+          "observationCountsByDepth": {
+            "surface": 9,
+            "thermocline": 0,
+            "deep": 0
+          },
+          "meanSurpriseByDepth": {
+            "surface": 0.461132,
+            "thermocline": null,
+            "deep": null
+          },
+          "coveredDepthLayerIds": [
+            "surface"
+          ],
+          "verticalCoverage": "surface-limited",
+          "coverageFraction": 0.333333,
+          "publicSafe": true,
+          "hiddenTruthIncluded": false
+        },
+        "observationCountsByDepth": {
+          "surface": 9,
+          "thermocline": 0,
+          "deep": 0
+        },
+        "trackCountsByDepth": {
+          "surface": 9,
+          "thermocline": 0,
+          "deep": 0
+        },
+        "verticalCoverage": "surface-limited",
+        "depthLayerPrioritySummary": {
+          "type": "anchor.headless.depth-layer-priority-summary",
+          "version": "water-column-priority-model-p11",
+          "schemaVersion": "water-column-schema-p11",
+          "depthLayerIds": [
+            "surface",
+            "thermocline",
+            "deep"
+          ],
+          "collapseMethod": "accessibleMax",
+          "bestDepthLayerCounts": {
+            "surface": 11,
+            "thermocline": 6,
+            "deep": 8
+          },
+          "topDownStats": {
+            "count": 25,
+            "finiteCount": 25,
+            "invalidCount": 0,
+            "min": 0,
+            "max": 1,
+            "mean": 0.6555116404709768
+          },
+          "excludesRouteTravelCost": true,
+          "publicSafe": true,
+          "usesFull3DPlanning": false,
+          "usesNewPlanner": false,
+          "usesPythonSimulator": false,
+          "usesMARL": false,
+          "note": "A_global_depth is science priority by depth layer; top-down collapse does not include route travel cost or path optimization."
+        },
+        "bestDepthLayerCounts": {
+          "surface": 11,
+          "thermocline": 6,
+          "deep": 8
+        },
+        "publicSafe": true,
+        "hiddenTruthIncluded": false,
+        "syntheticTeachingModel": true,
+        "calibratedVerticalOceanModel": false,
+        "usesFull3DPlanning": false,
+        "usesNewPlanner": false,
+        "usesPythonSimulator": false,
+        "usesMARL": false,
+        "boundary": [
+          "2.5D means the tactical map remains top-down, while each cell can contain simplified depth layers.",
+          "Dive profile controls which layer the glider samples along the route.",
+          "Recommended dive profile is context for the next leg; it does not generate a route.",
+          "P11 does not add full 3D planning, new route planning, production data assimilation, or MARL/RL."
+        ]
+      },
       "output": {
         "outputDir": "docs/examples",
         "combinedBundlePath": "docs\\examples\\headless_solver_roundtrip_bundle.example.json",
@@ -8524,14 +11088,17 @@
         "trackPointCount": 9,
         "hiddenTruthExported": false,
         "browserOfficialScoring": false,
-        "sciencePrimaryDiagnosis": "agreesWithForecast"
+        "sciencePrimaryDiagnosis": "agreesWithForecast",
+        "waterColumnVerticalCoverage": "surface-limited",
+        "diveProfileId": "sawtoothProfile"
       },
       "boundary": [
         "Node/OceanBox-JS validates and executes a submitted plan through the H1 headless runtime.",
         "Browser ANCHOR remains the official visual referee and scoring UI.",
         "Headless score is educational and not official browser scoring.",
         "P9 science diagnostics distinguish forecast correction from hidden-event hypotheses using transparent educational heuristics.",
-        "H3/P9 does not add a Python simulator, new route planner, calibrated ocean forecast, backend service, production data assimilation, or MARL/RL."
+        "P11 water-column context is 2.5D depth-layer sampling, not full 3D planning or a new planner.",
+        "H3/P9/P11 does not add a Python simulator, new route planner, calibrated ocean forecast, backend service, production data assimilation, or MARL/RL."
       ]
     }
   },

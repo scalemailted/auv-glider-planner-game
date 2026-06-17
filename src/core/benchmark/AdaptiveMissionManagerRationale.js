@@ -14,6 +14,7 @@ const NOT_A = [
   'not waypoint generation',
   'not production data assimilation',
   'not official scoring',
+  'not full 3D planning',
   'not MARL/RL'
 ];
 
@@ -44,6 +45,7 @@ export function createAdaptiveMissionManagerRationale(options = {}) {
     policyId: String(options.policyId ?? options.managerConfig?.policyId ?? 'transparentRuleManager'),
     currentObjectiveId,
     recommendedObjectiveId,
+    recommendedDiveProfileId: cleanText(options.recommendedDiveProfileId ?? options.diagnosis?.recommendedDiveProfileId ?? scienceDiagnosisContext?.recommendedDiveProfileId ?? null),
     transitionId: String(options.transitionId ?? options.transition?.transitionId ?? options.diagnosis?.recommendedTransitionId ?? 'keepCurrentObjective'),
     objectiveAuthority: 'missionManager',
     routeAuthority: 'playerOrSolver',
@@ -120,6 +122,7 @@ export function adaptiveMissionManagerRationaleSummary(record = {}) {
     policyId: record.policyId ?? null,
     currentObjectiveId: record.currentObjectiveId ?? null,
     recommendedObjectiveId: record.recommendedObjectiveId ?? null,
+    recommendedDiveProfileId: record.recommendedDiveProfileId ?? null,
     transitionId: record.transitionId ?? null,
     confidence: finiteOrNull(record.confidence),
     science: record.scienceDiagnosisContext ? adaptiveScienceDiagnosisHandoffSummary(record.scienceDiagnosisContext) : null,
@@ -140,7 +143,9 @@ function summarizeEvidence(evidence = {}, diagnosis = {}, scienceDiagnosisContex
     primaryScienceDiagnosis: scienceDiagnosisContext?.primaryScienceDiagnosis ?? diagnosis?.primaryScienceDiagnosis ?? null,
     confidence: finiteOrNull(diagnosis?.confidence ?? scienceDiagnosisContext?.confidence),
     partialEvidence: evidence?.diagnostics?.partialEvidence === true,
-    fieldsAvailable: Array.isArray(evidence?.fieldsAvailable) ? [...evidence.fieldsAvailable] : []
+    fieldsAvailable: Array.isArray(evidence?.fieldsAvailable) ? [...evidence.fieldsAvailable] : [],
+    waterColumnVerticalCoverage: evidence?.waterColumnSummary?.verticalCoverage ?? scienceDiagnosisContext?.waterColumnEvidence?.verticalCoverage ?? null,
+    recommendedDiveProfileId: evidence?.recommendedDiveProfileId ?? scienceDiagnosisContext?.recommendedDiveProfileId ?? null
   });
 }
 

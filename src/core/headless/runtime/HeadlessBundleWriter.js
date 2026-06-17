@@ -1,4 +1,4 @@
-﻿import fs from 'node:fs';
+import fs from 'node:fs';
 import path from 'node:path';
 
 import { createHeadlessBundleManifest as createH0HeadlessBundleManifest } from '../HeadlessBundleManifest.js';
@@ -12,6 +12,8 @@ export function createHeadlessBundleManifest(episode, options = {}) {
   const combinedJson = options.combinedJson === true;
   const roundtripReport = options.roundtripReport ?? episode?.roundtripReport ?? null;
   const hasScienceDiagnostics = Boolean(episode?.scienceDiagnostics);
+  const hasWaterColumnSummary = Boolean(episode?.waterColumnSummary);
+  const hasDepthLayerPriority = Boolean(episode?.depthLayerPriority);
   const combinedBundleType = roundtripReport ? HEADLESS_SOLVER_ROUNDTRIP_BUNDLE_TYPE : 'anchor.headless.bundle';
   const files = [
     fileEntry('manifest.json', 'manifest', 'anchor.headless.manifest', 'publicScenario', 'Bundle manifest.'),
@@ -28,6 +30,12 @@ export function createHeadlessBundleManifest(episode, options = {}) {
   if (hasScienceDiagnostics) {
     files.splice(7, 0, fileEntry('science_diagnostics.json', 'scienceDiagnostics', 'anchor.headless.science-diagnostics', 'publicScenario', 'Compact P9 public-safe forecast-correction and hidden-event hypothesis diagnostics.'));
   }
+  if (hasWaterColumnSummary) {
+    files.splice(8, 0, fileEntry('water_column_summary.json', 'waterColumnSummary', 'anchor.headless.water-column-summary', 'publicScenario', 'P11 public-safe 2.5D depth-layer sampling summary.'));
+  }
+  if (hasDepthLayerPriority) {
+    files.splice(9, 0, fileEntry('depth_layer_priority.json', 'depthLayerPriority', 'anchor.headless.depth-layer-priority', 'publicScenario', 'P11 public-safe depth-layer A_global priority and top-down collapse.'));
+  }
   if (includeHidden) {
     files.splice(3, 0, fileEntry('hidden_fields.json', 'hiddenFields', 'anchor.headless.field-pack', 'hiddenTruth', 'Hidden truth and oracle-only fields for instructor/debug use.'));
   }
@@ -40,6 +48,8 @@ export function createHeadlessBundleManifest(episode, options = {}) {
 
   const jsonFiles = ['mission_config.json', 'score_report.json', 'replay.json', 'episode.json'];
   if (hasScienceDiagnostics) jsonFiles.push('science_diagnostics.json');
+  if (hasWaterColumnSummary) jsonFiles.push('water_column_summary.json');
+  if (hasDepthLayerPriority) jsonFiles.push('depth_layer_priority.json');
   if (combinedJson) jsonFiles.push('bundle.json');
   if (options.roundtripReport || episode?.roundtripReport) jsonFiles.push('roundtrip_report.json');
 
@@ -87,6 +97,8 @@ export function headlessBundleFiles(episode, options = {}) {
     'glider_tracks.csv': tracksCsv(episode.tracks ?? []),
     'score_report.json': stableJson(episode.scoreReport),
     ...(episode.scienceDiagnostics ? { 'science_diagnostics.json': stableJson(episode.scienceDiagnostics) } : {}),
+    ...(episode.waterColumnSummary ? { 'water_column_summary.json': stableJson(episode.waterColumnSummary) } : {}),
+    ...(episode.depthLayerPriority ? { 'depth_layer_priority.json': stableJson(episode.depthLayerPriority) } : {}),
     'replay.json': stableJson(episode.replay),
     'episode.json': stableJson(stripBundleEpisode(episode, includeHidden))
   };
@@ -116,6 +128,8 @@ export function createHeadlessCombinedBundle(episode, options = {}) {
     gliderTracks: episode.tracks ?? [],
     scoreReport: episode.scoreReport,
     scienceDiagnostics: episode.scienceDiagnostics ?? null,
+    waterColumnSummary: episode.waterColumnSummary ?? null,
+    depthLayerPrioritySummary: episode.depthLayerPriority?.summary ?? episode.depthLayerPrioritySummary ?? null,
     replay: episode.replay,
     roundtripReport,
     episode: stripBundleEpisode(episode, includeHidden),
@@ -159,6 +173,8 @@ export function headlessBundleSummary(outputDir) {
     combinedBundle: files.includes('bundle.json'),
     finalScoreFile: files.includes('score_report.json'),
     scienceDiagnostics: files.includes('science_diagnostics.json'),
+    waterColumnSummary: files.includes('water_column_summary.json'),
+    depthLayerPriority: files.includes('depth_layer_priority.json'),
     observationCsv: files.includes('observations.csv'),
     trackCsv: files.includes('glider_tracks.csv'),
     manifestNotes: manifest?.notes ?? []
@@ -184,6 +200,7 @@ function buildFieldPackFile(fieldPack, fieldIds, visibilityTier) {
     fields,
     fieldVisibility: visibility,
     boundary: fieldPack?.boundary ?? null,
+    waterColumnConfig: fieldPack?.waterColumnConfig ?? fieldPack?.grid?.waterColumnConfig ?? null,
     notes: fieldPack?.notes ?? []
   };
 }
@@ -209,12 +226,12 @@ function fileEntry(pathValue, role, schemaType, visibilityTier, description) {
 }
 
 function observationsCsv(observations) {
-  const columns = ['observationId', 'timeSeconds', 'gliderId', 'x', 'y', 'zIndex', 'depthLayer', 'truthValue', 'forecastValue', 'beliefValue', 'observedValue', 'sensorNoise', 'innovation', 'surprise'];
+  const columns = ['observationId', 'timeSeconds', 'gliderId', 'x', 'y', 'zIndex', 'depthLayer', 'depthLayerId', 'depthMeters', 'diveProfileId', 'truthValue', 'forecastValue', 'beliefValue', 'observedValue', 'sensorNoise', 'innovation', 'surprise'];
   return toCsv(columns, observations);
 }
 
 function tracksCsv(tracks) {
-  const columns = ['timeSeconds', 'gliderId', 'x', 'y', 'zIndex', 'depthLayer', 'flowU', 'flowV', 'currentAssist', 'crossCurrent', 'energyUsedIncrement', 'hazard', 'constraintMask'];
+  const columns = ['timeSeconds', 'gliderId', 'x', 'y', 'zIndex', 'depthLayer', 'depthLayerId', 'diveProfileId', 'flowU', 'flowV', 'currentAssist', 'crossCurrent', 'energyUsedIncrement', 'hazard', 'constraintMask'];
   return toCsv(columns, tracks);
 }
 

@@ -1,6 +1,6 @@
-﻿import { field3dStats, sampleNearest3d } from './HeadlessGrid.js';
+import { field3dStats, sampleNearest3d } from './HeadlessGrid.js';
 
-export function computeHeadlessScoreReport({ fieldPackBefore, fieldPackAfter, observations = [], tracks = [], missionConfig = {} } = {}) {
+export function computeHeadlessScoreReport({ fieldPackBefore, fieldPackAfter, observations = [], tracks = [], missionConfig = {}, waterColumnSummary = null } = {}) {
   const uniqueCells = new Set();
   let duplicateSamples = 0;
   let scienceValueCollected = 0;
@@ -53,6 +53,7 @@ export function computeHeadlessScoreReport({ fieldPackBefore, fieldPackAfter, ob
       hazardPenalty: round(hazardPenalty),
       duplicateSamplePenalty: round(duplicateSamplePenalty)
     },
+    waterColumn: waterColumnScoreContext(waterColumnSummary),
     counts: {
       observationCount: observations.length,
       trackPointCount: tracks.length,
@@ -74,6 +75,18 @@ export function headlessScoreReportSummary(report = {}) {
     energyUsed: report.components?.energyUsed ?? 0,
     hazardExposures: report.counts?.hazardExposures ?? 0,
     notBrowserOfficialScoring: report.notBrowserOfficialScoring === true
+  };
+}
+
+function waterColumnScoreContext(summary = null) {
+  if (!summary) return null;
+  return {
+    profileId: summary.diveProfile?.profileId ?? null,
+    verticalCoverage: summary.verticalCoverage ?? null,
+    observationCountsByDepth: summary.observationCountsByDepth ?? {},
+    bestDepthLayerCounts: summary.bestDepthLayerCounts ?? {},
+    scoreNeutral: true,
+    note: 'P11 water-column context is reported for analysis and does not rewrite the headless score formula.'
   };
 }
 

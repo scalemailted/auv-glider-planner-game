@@ -82,3 +82,7 @@ Checked-in public examples live at `docs/examples/headless_solver_packet.example
 P9 adds an optional public bundle role `scienceDiagnostics` stored as `science_diagnostics.json` with type `anchor.headless.science-diagnostics`. Combined bundles embed the same object as `scienceDiagnostics`, and roundtrip reports may include `scienceDiagnosticsSummary`.
 
 The artifact summarizes forecast-correction state and hidden-event hypothesis state without embedding `T_hiddenTruth` or hidden field arrays. It is for browser/Colab inspection only and does not claim production data assimilation, calibrated ocean forecasting, a new planner, official browser scoring, or MARL/RL.
+
+## P11 Manifest Roles
+
+P11 bundles may list `waterColumnSummary` with schema type `anchor.headless.water-column-summary`, `depthLayerPriority` with schema type `anchor.headless.depth-layer-priority`, and `depthLayerDiagnostics` where diagnostics are exported. These roles are public-scenario inspection artifacts and must not include hidden truth arrays.

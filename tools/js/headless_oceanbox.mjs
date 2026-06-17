@@ -35,7 +35,9 @@ function runSimulate(args) {
     seed: args.seed ?? 'demo-001',
     width: args.width,
     height: args.height,
-    scenario: args.scenario ?? 'coastalBloomFront'
+    scenario: args.scenario ?? 'coastalBloomFront',
+    depthLayers: args.depthLayers,
+    diveProfileId: args.diveProfileId
   });
   const episode = runHeadlessMission(config);
   let bundleSummary = null;
@@ -53,6 +55,7 @@ function runSimulate(args) {
     observationCount: episode.observations.length,
     trackPointCount: episode.tracks.length,
     score: headlessScoreReportSummary(episode.scoreReport),
+    waterColumnSummary: args.waterColumnSummary ? episode.waterColumnSummary : undefined,
     bundle: bundleSummary,
     combinedBundle: bundleSummary?.combinedBundle === true,
     boundary: 'Node headless runtime over portable ANCHOR core logic. Browser ANCHOR remains the official visual referee and browser scoring UI.'
@@ -103,6 +106,7 @@ function runRoundtrip(args) {
   if (!packetPath || !planPath || !outputDir) throw new Error('roundtrip requires --solver-packet <path> --plan <path> --out <dir>.');
   const packet = readJson(packetPath);
   const plan = readJson(planPath);
+  applyWaterColumnCliOptions(packet, plan, args);
   const includeHiddenTruth = args.includeHiddenTruth === true && args.noHiddenExport !== true;
   const roundtrip = buildHeadlessSolverPacketRoundtrip(packet, plan, {
     oracle: args.oracle,
@@ -171,6 +175,9 @@ function parseArgs(argv) {
     allowInvalidPlan: false,
     allowVisibilityFailures: false,
     summaryOnly: false,
+    waterColumnSummary: true,
+    depthLayers: null,
+    diveProfileId: null,
     agentId: null,
     seed: null,
     out: null,
@@ -183,6 +190,10 @@ function parseArgs(argv) {
     else if (arg === '--width') parsed.width = Number(argv[++index]);
     else if (arg === '--height') parsed.height = Number(argv[++index]);
     else if (arg === '--scenario') parsed.scenario = argv[++index];
+    else if (arg === '--depth-layers') parsed.depthLayers = parseList(argv[++index]);
+    else if (arg === '--dive-profile') parsed.diveProfileId = argv[++index];
+    else if (arg === '--water-column-summary') parsed.waterColumnSummary = true;
+    else if (arg === '--no-water-column-summary') parsed.waterColumnSummary = false;
     else if (arg === '--solver-packet' || arg === '--packet') parsed.solverPacket = argv[++index];
     else if (arg === '--plan') parsed.plan = argv[++index];
     else if (arg === '--agent-id') parsed.agentId = argv[++index];
@@ -202,14 +213,34 @@ function parseArgs(argv) {
   return parsed;
 }
 
+function applyWaterColumnCliOptions(packet, plan, args) {
+  if (args.depthLayers?.length || args.diveProfileId) {
+    const config = {
+      ...(packet.waterColumnConfig ?? packet.planningData?.waterColumnConfig ?? {}),
+      ...(args.depthLayers?.length ? { depthLayerIds: args.depthLayers } : {}),
+      ...(args.diveProfileId ? { diveProfileId: args.diveProfileId } : {})
+    };
+    packet.waterColumnConfig = config;
+    packet.planningData = { ...(packet.planningData ?? {}), waterColumnConfig: config };
+  }
+  if (args.diveProfileId) {
+    plan.diveProfileId = args.diveProfileId;
+    for (const agentPlan of plan.agentPlans ?? []) agentPlan.diveProfileId ??= args.diveProfileId;
+  }
+}
+
+function parseList(value) {
+  return String(value ?? '').split(',').map((entry) => entry.trim()).filter(Boolean);
+}
+
 function readJson(filePath) {
   return JSON.parse(fs.readFileSync(filePath, 'utf8'));
 }
 
 function printUsage() {
   console.log(`Usage:
-  node tools/js/headless_oceanbox.mjs simulate --seed demo-001 --out tmp/oceanbox-js-demo [--width 32] [--height 24] [--scenario coastalBloomFront] [--no-hidden-export] [--combined-json] [--summary-only]
+  node tools/js/headless_oceanbox.mjs simulate --seed demo-001 --out tmp/oceanbox-js-demo [--width 32] [--height 24] [--scenario coastalBloomFront] [--depth-layers surface,thermocline,deep] [--dive-profile sawtoothProfile] [--water-column-summary] [--no-hidden-export] [--combined-json] [--summary-only]
   node tools/js/headless_oceanbox.mjs validate-solver-packet --solver-packet docs/examples/headless_solver_packet.example.json [--oracle]
   node tools/js/headless_oceanbox.mjs validate-plan --solver-packet docs/examples/headless_solver_packet.example.json --plan docs/examples/headless_solver_plan.example.json [--agent-id glider_01]
-  node tools/js/headless_oceanbox.mjs roundtrip --solver-packet docs/examples/headless_solver_packet.example.json --plan docs/examples/headless_solver_plan.example.json --out runs/h3-roundtrip --combined-json --no-hidden-export`);
+  node tools/js/headless_oceanbox.mjs roundtrip --solver-packet docs/examples/headless_solver_packet.example.json --plan docs/examples/headless_solver_plan.example.json --out runs/h3-roundtrip --depth-layers surface,thermocline,deep --dive-profile sawtoothProfile --combined-json --no-hidden-export`);
 }

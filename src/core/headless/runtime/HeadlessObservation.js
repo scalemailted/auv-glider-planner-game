@@ -1,5 +1,6 @@
-﻿import { seededUnit } from '../../random/SeededRng.js';
+import { seededUnit } from '../../random/SeededRng.js';
 import { clamp01, sampleNearest3d } from './HeadlessGrid.js';
+import { waterColumnLayerMetadata } from '../../science/WaterColumnSchema.js';
 
 export function createHeadlessObservation(options = {}) {
   const truthValue = finiteNumber(options.truthValue, 0);
@@ -10,6 +11,8 @@ export function createHeadlessObservation(options = {}) {
   const innovation = finiteNumber(options.innovation ?? rawObservedValue - forecastValue, 0);
   const uncertaintyValue = finiteNumber(options.uncertaintyValue, 0);
   const surprise = finiteNumber(options.surprise ?? Math.abs(innovation) / Math.sqrt(uncertaintyValue ** 2 + sensorNoise ** 2), 0);
+  const depthLayerId = options.depthLayerId ?? options.depthLayer ?? 'surface';
+  const depthMeters = finiteNumber(options.depthMeters ?? waterColumnLayerMetadata(depthLayerId).nominalDepthMeters, null);
   return {
     observationId: options.observationId ?? `obs-${String(options.gliderId ?? 'glider-1')}-${Math.round(finiteNumber(options.timeSeconds, 0) * 1000)}`,
     type: 'fieldSample',
@@ -18,7 +21,10 @@ export function createHeadlessObservation(options = {}) {
     x: finiteNumber(options.x, 0),
     y: finiteNumber(options.y, 0),
     zIndex: Math.max(0, Math.round(finiteNumber(options.zIndex, 0))),
-    depthLayer: options.depthLayer ?? 'surface',
+    depthLayer: depthLayerId,
+    depthLayerId,
+    depthMeters,
+    diveProfileId: options.diveProfileId ?? null,
     fieldId: 'T_hiddenTruth',
     truthValue,
     forecastValue,
@@ -41,7 +47,8 @@ export function sampleHeadlessObservation({
   gliderId = 'glider-1',
   timeSeconds = 0,
   sensorNoise = 0.03,
-  seed = 'demo-001'
+  seed = 'demo-001',
+  diveProfileId = null
 } = {}) {
   const fields = fieldPack?.fields ?? {};
   const depthLayer = fieldPack?.grid?.depthLayers?.[Math.max(0, Math.round(zIndex))] ?? 'surface';
@@ -60,6 +67,9 @@ export function sampleHeadlessObservation({
     y,
     zIndex,
     depthLayer,
+    depthLayerId: depthLayer,
+    depthMeters: waterColumnLayerMetadata(depthLayer).nominalDepthMeters,
+    diveProfileId,
     truthValue,
     forecastValue,
     beliefValue,

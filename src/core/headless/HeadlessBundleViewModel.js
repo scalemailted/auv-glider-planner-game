@@ -16,6 +16,8 @@ export function buildHeadlessBundleViewModel(bundle = {}) {
     trackSummary: headlessBundleTrackSummary(bundle),
     scoreSummary: headlessBundleScoreSummary(bundle),
     roundtripSummary: headlessBundleRoundtripSummary(bundle),
+    waterColumnSummary: headlessBundleWaterColumnSummary(bundle),
+    depthLayerPrioritySummary: headlessBundleDepthLayerPrioritySummary(bundle),
     scienceDiagnosisSummary: headlessBundleScienceDiagnosisSummary(bundle),
     replaySummary: headlessBundleReplaySummary(bundle),
     visibilitySummary: headlessBundleVisibilitySummary(bundle, validation),
@@ -110,6 +112,66 @@ export function headlessBundleRoundtripSummary(bundle = {}) {
 }
 
 
+export function headlessBundleWaterColumnSummary(bundle = {}) {
+  const summary = bundle.waterColumnSummary ?? bundle.episode?.waterColumnSummary ?? bundle.roundtripReport?.waterColumnSummary ?? bundle.roundtripReport?.episode?.waterColumnSummary ?? null;
+  if (!summary) {
+    return {
+      present: false,
+      hasWaterColumnSummary: false,
+      waterColumnLayerIds: bundle.missionConfig?.world?.depthLayers ?? [],
+      waterColumnDefaultLayers: [],
+      diveProfileId: bundle.missionConfig?.gliders?.[0]?.diveProfileId ?? bundle.replay?.diveProfileId ?? null,
+      observationCountsByDepth: {},
+      verticalCoverage: null,
+      publicSafe: true,
+      usesFull3DPlanning: false,
+      usesNewPlanner: false,
+      usesPythonSimulator: false,
+      usesMARL: false
+    };
+  }
+  const config = summary.waterColumnConfig ?? {};
+  return {
+    present: true,
+    hasWaterColumnSummary: true,
+    type: summary.type ?? null,
+    waterColumnLayerIds: config.depthLayerIds ?? summary.depthLayerIds ?? bundle.missionConfig?.world?.depthLayers ?? [],
+    waterColumnDefaultLayers: config.defaultLayerIds ?? [],
+    diveProfileId: summary.diveProfile?.profileId ?? config.diveProfileId ?? bundle.replay?.diveProfileId ?? null,
+    observationCountsByDepth: summary.observationCountsByDepth ?? summary.observationSummary?.observationCountsByDepth ?? {},
+    trackCountsByDepth: summary.trackCountsByDepth ?? {},
+    verticalCoverage: summary.verticalCoverage ?? summary.observationSummary?.verticalCoverage ?? null,
+    bestDepthLayerCounts: summary.bestDepthLayerCounts ?? summary.depthLayerPrioritySummary?.bestDepthLayerCounts ?? {},
+    publicSafe: summary.publicSafe !== false && summary.hiddenTruthIncluded !== true,
+    waterColumnPublicSafe: summary.publicSafe !== false && summary.hiddenTruthIncluded !== true,
+    usesFull3DPlanning: summary.usesFull3DPlanning === true,
+    usesNewPlanner: summary.usesNewPlanner === true,
+    usesPythonSimulator: summary.usesPythonSimulator === true,
+    usesMARL: summary.usesMARL === true,
+    boundary: summary.boundary ?? []
+  };
+}
+
+export function headlessBundleDepthLayerPrioritySummary(bundle = {}) {
+  const summary = bundle.depthLayerPrioritySummary ?? bundle.depthLayerPriority?.summary ?? bundle.waterColumnSummary?.depthLayerPrioritySummary ?? bundle.episode?.depthLayerPrioritySummary ?? null;
+  if (!summary) {
+    return { present: false, bestDepthLayerCounts: {}, excludesRouteTravelCost: true, usesFull3DPlanning: false, usesNewPlanner: false };
+  }
+  return {
+    present: true,
+    type: summary.type ?? null,
+    depthLayerIds: summary.depthLayerIds ?? [],
+    bestDepthLayerCounts: summary.bestDepthLayerCounts ?? {},
+    topDownStats: summary.topDownStats ?? {},
+    excludesRouteTravelCost: summary.excludesRouteTravelCost !== false,
+    publicSafe: summary.publicSafe !== false,
+    usesFull3DPlanning: summary.usesFull3DPlanning === true,
+    usesNewPlanner: summary.usesNewPlanner === true,
+    usesPythonSimulator: summary.usesPythonSimulator === true,
+    usesMARL: summary.usesMARL === true
+  };
+}
+
 export function headlessBundleScienceDiagnosisSummary(bundle = {}) {
   const diagnostics = bundle.scienceDiagnostics ?? bundle.episode?.scienceDiagnostics ?? bundle.roundtripReport?.scienceDiagnosticsSummary ?? null;
   if (!diagnostics) {
@@ -186,6 +248,8 @@ export function headlessBundleViewModelSummary(viewModel = {}) {
     trackPointCount: viewModel.trackSummary?.count ?? 0,
     finalScore: viewModel.scoreSummary?.finalScore ?? null,
     roundtripStatus: viewModel.roundtripSummary?.status ?? null,
+    waterColumnVerticalCoverage: viewModel.waterColumnSummary?.verticalCoverage ?? null,
+    diveProfileId: viewModel.waterColumnSummary?.diveProfileId ?? null,
     sciencePrimaryDiagnosis: viewModel.scienceDiagnosisSummary?.primaryDiagnosis ?? null,
     visibilityRisk: viewModel.visibilitySummary?.visibilityRisk ?? 'unknown'
   };

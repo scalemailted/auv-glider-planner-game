@@ -480,3 +480,20 @@ The checks verify that forecast correction and hidden-event hypotheses are disti
 Science diagnosis informs the mission-manager objective recommendation. It does not generate a route. Forecast correction means the expected field existed but was wrong. Hidden event hypothesis means observations may indicate a phenomenon not represented in the forecast. The player or solver still plans the route.
 
 P10 adds adaptive science-diagnosis context, mission-manager rationale, next-leg handoff metadata, objective-history display fields, and public-safe headless/browser summaries. It does not implement a new planner, scoring redesign, production data assimilation, GP/GMRF production inference, calibrated ocean forecast, Python simulator, or MARL/RL. Node/OceanBox-JS remains the canonical non-browser runtime; Python/Colab analyze artifacts or call Node.
+## P11 Water-Column Checks
+
+Run these after water-column or headless bundle changes:
+
+```bash
+node tools/js/smoke_water_column_schema.mjs
+node tools/js/smoke_water_column_field_model.mjs
+node tools/js/smoke_dive_profile_model.mjs
+node tools/js/smoke_water_column_observation_model.mjs
+node tools/js/smoke_water_column_priority_model.mjs
+node tools/js/smoke_headless_water_column_runtime.mjs
+node tools/js/smoke_headless_roundtrip_water_column.mjs
+node tools/js/smoke_adaptive_water_column_integration.mjs
+node tools/js/smoke_headless_water_column_viewer_panel.mjs
+node tools/js/audit_water_column_public_safety.mjs
+node tools/js/audit_water_column_no_3d_planning_claims.mjs
+```

@@ -49,3 +49,14 @@ Public summaries must not include hidden truth payloads such as `T_hiddenTruth`.
 P10 does not add a new planner, waypoint generation, scoring redesign, production data assimilation, calibrated ocean forecasting, GP/GMRF production inference, MARL/RL, a Python simulator, or backend services.
 
 Node/OceanBox-JS remains the canonical non-browser runtime. Python/Colab workflows analyze artifacts or call Node; they do not reimplement simulation.
+## P11 Water-Column Context
+
+Adaptive science-diagnosis context and next-leg handoff records may carry `recommendedDiveProfileId` and compact water-column evidence such as vertical coverage and observation counts by depth. This is context for the mission manager and the next planning leg only.
+
+Required boundary language remains:
+
+- `routeAuthority: "playerOrSolver"`
+- `generatesWaypoints: false`
+- `controlsRoutePlanning: false`
+
+Recommended dive profile is context for the next leg; it does not generate a route. P11 does not add full 3D planning, new route planning, production data assimilation, calibrated vertical ocean modeling, or MARL/RL.

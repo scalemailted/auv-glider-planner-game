@@ -1,4 +1,4 @@
-﻿import { validateHeadlessBundleManifest as validateH0Manifest } from './HeadlessBundleManifest.js';
+import { validateHeadlessBundleManifest as validateH0Manifest } from './HeadlessBundleManifest.js';
 import { manifestDisablesHiddenExport } from './HeadlessBundleLoader.js';
 import { HEADLESS_SOLVER_ROUNDTRIP_REPORT_TYPE, isHeadlessRoundtripReportType } from './HeadlessRoundtripTypes.js';
 
@@ -131,6 +131,41 @@ export function validateHeadlessRoundtripReport(report = null) {
   if (report?.summary?.hiddenTruthExported === true && report?.visibilityValidation?.oracleMode !== true) warnings.push('Roundtrip exported hidden truth outside explicit oracle/debug validation.');
   return result(checks, warnings, failures, failures.length ? 'high' : warnings.length ? 'medium' : 'low');
 }
+
+export function validateHeadlessWaterColumnSummary(summary = null) {
+  const checks = [];
+  const warnings = [];
+  const failures = [];
+  if (!summary) {
+    checks.push({ id: 'water-column-summary-optional', ok: true, detail: 'not present' });
+    return result(checks, warnings, failures, 'low');
+  }
+  checks.push({ id: 'water-column-summary-present', ok: typeof summary === 'object' });
+  if (summary?.type !== 'anchor.headless.water-column-summary') failures.push(`Water-column summary type should be anchor.headless.water-column-summary, got ${summary?.type ?? 'missing'}.`);
+  if (summary?.publicSafe === false || summary?.hiddenTruthIncluded === true) failures.push('Water-column summary must be public-safe and must not include hidden truth.');
+  if (summary?.usesFull3DPlanning === true) failures.push('Water-column summary must not claim full 3D planning.');
+  if (summary?.usesNewPlanner === true) failures.push('Water-column summary must not claim a new planner.');
+  if (summary?.usesPythonSimulator === true) failures.push('Water-column summary must not claim a Python simulator.');
+  if (summary?.usesMARL === true) failures.push('Water-column summary must not claim MARL/RL.');
+  return result(checks, warnings, failures, failures.length ? 'high' : 'low');
+}
+
+export function validateHeadlessDepthLayerPriority(priority = null, summary = null) {
+  const checks = [];
+  const warnings = [];
+  const failures = [];
+  const payload = priority ?? summary;
+  if (!payload) {
+    checks.push({ id: 'depth-layer-priority-optional', ok: true, detail: 'not present' });
+    return result(checks, warnings, failures, 'low');
+  }
+  checks.push({ id: 'depth-layer-priority-present', ok: typeof payload === 'object' });
+  if (payload?.type && !['anchor.headless.depth-layer-priority', 'anchor.headless.depth-layer-priority-summary'].includes(payload.type)) failures.push(`Depth-layer priority type is not recognized: ${payload.type}.`);
+  if (payload?.hiddenTruthIncluded === true) failures.push('Depth-layer priority must not include hidden truth.');
+  if (payload?.excludesRouteTravelCost === false) failures.push('Depth-layer priority must exclude route travel cost.');
+  if (payload?.usesFull3DPlanning === true) failures.push('Depth-layer priority must not claim full 3D planning.');
+  return result(checks, warnings, failures, failures.length ? 'high' : warnings.length ? 'medium' : 'low');
+}
 export function validateHeadlessReplay(replay = null) {
   const checks = [];
   const warnings = [];
@@ -152,6 +187,8 @@ export function validateHeadlessBundle(bundle = {}) {
     tracks: validateHeadlessTracks(bundle.gliderTracks),
     scoreReport: validateHeadlessScoreReport(bundle.scoreReport),
     roundtripReport: validateHeadlessRoundtripReport(bundle.roundtripReport),
+    waterColumnSummary: validateHeadlessWaterColumnSummary(bundle.waterColumnSummary ?? bundle.episode?.waterColumnSummary),
+    depthLayerPriority: validateHeadlessDepthLayerPriority(bundle.depthLayerPriority, bundle.depthLayerPrioritySummary ?? bundle.episode?.depthLayerPrioritySummary),
     replay: validateHeadlessReplay(bundle.replay)
   };
   const checks = Object.entries(validations).flatMap(([scope, validation]) => validation.checks.map((check) => ({ ...check, scope })));
@@ -173,7 +210,9 @@ export function validateHeadlessBundle(bundle = {}) {
       observationCount: bundle.observations?.length ?? 0,
       trackPointCount: bundle.gliderTracks?.length ?? 0,
       finalScore: bundle.scoreReport?.finalScore ?? bundle.scoreReport?.final_score ?? null,
-      hasScienceDiagnostics: Boolean(bundle.scienceDiagnostics ?? bundle.episode?.scienceDiagnostics)
+      hasScienceDiagnostics: Boolean(bundle.scienceDiagnostics ?? bundle.episode?.scienceDiagnostics),
+      hasWaterColumnSummary: Boolean(bundle.waterColumnSummary ?? bundle.episode?.waterColumnSummary),
+      hasDepthLayerPriority: Boolean(bundle.depthLayerPriority ?? bundle.depthLayerPrioritySummary ?? bundle.episode?.depthLayerPrioritySummary)
     }
   };
 }

@@ -25,7 +25,7 @@ node tools/js/headless_oceanbox.mjs validate-plan --solver-packet docs/examples/
 Run the public roundtrip:
 
 ```bash
-node tools/js/headless_oceanbox.mjs roundtrip --solver-packet docs/examples/headless_solver_packet.example.json --plan docs/examples/headless_solver_plan.example.json --out runs/h3-roundtrip --combined-json --no-hidden-export
+node tools/js/headless_oceanbox.mjs roundtrip --solver-packet docs/examples/headless_solver_packet.example.json --plan docs/examples/headless_solver_plan.example.json --out runs/h3-roundtrip --depth-layers surface,thermocline,deep --dive-profile sawtoothProfile --combined-json --no-hidden-export
 ```
 
 The older wrapper remains valid:
@@ -59,3 +59,8 @@ Roundtrip reports may include `scienceDiagnosticsSummary`, and roundtrip bundles
 Science diagnosis informs the mission-manager objective recommendation. It does not generate a route. Forecast correction means the expected field existed but was wrong. Hidden event hypothesis means observations may indicate a phenomenon not represented in the forecast. The player or solver still plans the route.
 
 P10 adds adaptive science-diagnosis context, mission-manager rationale, next-leg handoff metadata, objective-history display fields, and public-safe headless/browser summaries. It does not implement a new planner, scoring redesign, production data assimilation, GP/GMRF production inference, calibrated ocean forecast, Python simulator, or MARL/RL. Node/OceanBox-JS remains the canonical non-browser runtime; Python/Colab analyze artifacts or call Node.
+## P11 Water-Column Roundtrip
+
+Solver packets may include `waterColumnConfig`, and submitted plans may include optional `diveProfileId` at the plan, agent-plan, or waypoint level. Older plans without depth metadata remain valid and normalize to the default 2.5D profile.
+
+Roundtrip reports include `waterColumnSummary`; combined roundtrip bundles include `waterColumnSummary` and `depthLayerPrioritySummary`. Public roundtrips still omit hidden fields and keep hidden truth out of solver-visible artifacts. P11 adds depth-layer sampling context only; it does not add full 3D planning, a new planner, production data assimilation, Python simulation, calibrated vertical ocean modeling, or MARL/RL.

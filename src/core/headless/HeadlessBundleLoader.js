@@ -1,9 +1,9 @@
-﻿import { parseSimpleCsv, normalizeObservationCsvRows, normalizeTrackCsvRows } from './HeadlessCsv.js';
+import { parseSimpleCsv, normalizeObservationCsvRows, normalizeTrackCsvRows } from './HeadlessCsv.js';
 import { HEADLESS_SOLVER_ROUNDTRIP_BUNDLE_TYPE, isHeadlessRoundtripReportType } from './HeadlessRoundtripTypes.js';
 
 export const HEADLESS_BUNDLE_LOADER_VERSION = 'headless-bundle-loader-h2';
 export const HEADLESS_BUNDLE_REQUIRED_FILES = Object.freeze(['manifest.json', 'mission_config.json', 'visible_fields.json', 'score_report.json']);
-export const HEADLESS_BUNDLE_OPTIONAL_FILES = Object.freeze(['hidden_fields.json', 'observations.json', 'observations.csv', 'glider_tracks.json', 'glider_tracks.csv', 'replay.json', 'episode.json', 'bundle.json', 'roundtrip_report.json', 'science_diagnostics.json']);
+export const HEADLESS_BUNDLE_OPTIONAL_FILES = Object.freeze(['hidden_fields.json', 'observations.json', 'observations.csv', 'glider_tracks.json', 'glider_tracks.csv', 'replay.json', 'episode.json', 'bundle.json', 'roundtrip_report.json', 'science_diagnostics.json', 'water_column_summary.json', 'depth_layer_priority.json']);
 
 const LOGICAL_FILE_ALIASES = Object.freeze({
   'manifest.json': 'manifest',
@@ -19,7 +19,9 @@ const LOGICAL_FILE_ALIASES = Object.freeze({
   'episode.json': 'episode',
   'bundle.json': 'combinedBundle',
   'roundtrip_report.json': 'roundtripReport',
-  'science_diagnostics.json': 'scienceDiagnostics'
+  'science_diagnostics.json': 'scienceDiagnostics',
+  'water_column_summary.json': 'waterColumnSummary',
+  'depth_layer_priority.json': 'depthLayerPriority'
 });
 
 export function classifyHeadlessBundleFile(fileName, payload = null) {
@@ -84,6 +86,9 @@ export function normalizeHeadlessBundleFiles(files = []) {
     normalized.episode ??= combined.episode;
     normalized.roundtripReport ??= combined.roundtripReport;
     normalized.scienceDiagnostics ??= combined.scienceDiagnostics ?? combined.episode?.scienceDiagnostics;
+    normalized.waterColumnSummary ??= combined.waterColumnSummary ?? combined.episode?.waterColumnSummary;
+    normalized.depthLayerPriority ??= combined.depthLayerPriority ?? combined.episode?.depthLayerPriority;
+    normalized.depthLayerPrioritySummary ??= combined.depthLayerPrioritySummary ?? combined.episode?.depthLayerPrioritySummary;
   }
   if (normalized.observationsCsv?.rows?.length) normalized.observations ??= { type: 'anchor.headless.observations', observations: normalized.observationsCsv.rows, source: 'csv' };
   if (normalized.gliderTracksCsv?.rows?.length) normalized.gliderTracks ??= { type: 'anchor.headless.trajectory', tracks: normalized.gliderTracksCsv.rows, source: 'csv' };
@@ -124,6 +129,9 @@ export function buildHeadlessBundleFromFiles(bundleFiles) {
     replay: normalized.replay ?? null,
     roundtripReport: normalized.roundtripReport ?? null,
     scienceDiagnostics: normalized.scienceDiagnostics ?? normalized.episode?.scienceDiagnostics ?? null,
+    waterColumnSummary: normalized.waterColumnSummary ?? normalized.episode?.waterColumnSummary ?? null,
+    depthLayerPriority: normalized.depthLayerPriority ?? normalized.episode?.depthLayerPriority ?? null,
+    depthLayerPrioritySummary: normalized.depthLayerPrioritySummary ?? normalized.depthLayerPriority?.summary ?? normalized.episode?.depthLayerPrioritySummary ?? null,
     episode: normalized.episode ?? null,
     files: Object.keys(normalized.fileMap ?? {}).sort(),
     warnings: [...(normalized.warnings ?? []), ...fileValidation.warnings],
@@ -147,6 +155,8 @@ export function headlessBundleLoadSummary(bundle) {
     finalScore: bundle?.scoreReport?.finalScore ?? bundle?.scoreReport?.final_score ?? null,
     hasRoundtripReport: Boolean(bundle?.roundtripReport),
     hasScienceDiagnostics: Boolean(bundle?.scienceDiagnostics),
+    hasWaterColumnSummary: Boolean(bundle?.waterColumnSummary),
+    hasDepthLayerPriority: Boolean(bundle?.depthLayerPriority ?? bundle?.depthLayerPrioritySummary),
     roundtripStatus: bundle?.roundtripReport?.summary?.status ?? null,
     warnings: bundle?.warnings ?? [],
     failures: bundle?.failures ?? []
@@ -186,6 +196,8 @@ function inferLogicalType(fileName, payload) {
   if (type === 'anchor.headless.bundle' || type === HEADLESS_SOLVER_ROUNDTRIP_BUNDLE_TYPE) return 'combinedBundle';
   if (isHeadlessRoundtripReportType(type)) return 'roundtripReport';
   if (type === 'anchor.headless.science-diagnostics') return 'scienceDiagnostics';
+  if (type === 'anchor.headless.water-column-summary') return 'waterColumnSummary';
+  if (type === 'anchor.headless.depth-layer-priority') return 'depthLayerPriority';
   if (type === 'anchor.headless.manifest') return 'manifest';
   if (type === 'anchor.headless.mission-config') return 'missionConfig';
   if (type === 'anchor.headless.score-report') return 'scoreReport';

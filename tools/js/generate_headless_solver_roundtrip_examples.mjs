@@ -1,4 +1,4 @@
-﻿#!/usr/bin/env node
+#!/usr/bin/env node
 import fs from 'node:fs';
 import path from 'node:path';
 
@@ -29,13 +29,22 @@ packet.visibility = {
   publicChallenge: true
 };
 packet.truthVisibility = 'hidden';
+packet.waterColumnConfig = {
+  type: 'anchor.science.water-column-config',
+  depthLayerIds: ['surface', 'thermocline', 'deep'],
+  defaultLayerIds: ['surface', 'thermocline', 'deep'],
+  diveProfileId: 'sawtoothProfile'
+};
 packet.planningData = {
   ...(packet.planningData ?? {}),
   hiddenTruthIncluded: false,
-  forecastAvailable: true
+  forecastAvailable: true,
+  waterColumnConfig: packet.waterColumnConfig
 };
 
 plan.planId = 'h3-1-solver-roundtrip-plan-example';
+plan.diveProfileId = 'sawtoothProfile';
+for (const agentPlan of plan.agentPlans ?? []) agentPlan.diveProfileId = 'sawtoothProfile';
 plan.instanceId = packet.instanceId;
 plan.challengeId = packet.challengeId;
 plan.meta = {
@@ -123,6 +132,9 @@ function assertPublicFixture(packet, plan, report, bundle) {
   if (report.summary?.hiddenTruthExported !== false) throw new Error('Public roundtrip report must mark hiddenTruthExported=false.');
   if (report.hiddenTruthLeakCheck?.solverVisibleHiddenTruthIncluded !== false) throw new Error('Public roundtrip report detected solver-visible hidden truth.');
   if (bundle.scienceDiagnostics?.type !== 'anchor.headless.science-diagnostics') throw new Error('Public roundtrip bundle must include P9 science diagnostics.');
+  if (bundle.waterColumnSummary?.type !== 'anchor.headless.water-column-summary') throw new Error('Public roundtrip bundle must include P11 water-column summary.');
+  if (bundle.depthLayerPrioritySummary?.type !== 'anchor.headless.depth-layer-priority-summary') throw new Error('Public roundtrip bundle must include P11 depth-layer priority summary.');
+  if (report.waterColumnSummary?.type !== 'anchor.headless.water-column-summary') throw new Error('Public roundtrip report must include P11 water-column summary.');
   if (report.scienceDiagnosticsSummary?.present !== true) throw new Error('Public roundtrip report must include P9 science diagnostics summary.');
   if (JSON.stringify(bundle.scienceDiagnostics).includes('T_hiddenTruth')) throw new Error('Public roundtrip science diagnostics leak T_hiddenTruth.');
 }

@@ -1,4 +1,4 @@
-﻿import { createHeadlessEpisode } from '../HeadlessEpisodeSchema.js';
+import { createHeadlessEpisode } from '../HeadlessEpisodeSchema.js';
 import { updateHeadlessBeliefFromObservations } from './HeadlessBeliefUpdate.js';
 import { createHeadlessFieldPack } from './HeadlessFields.js';
 import { simulateHeadlessGliderRoute } from './HeadlessGlider.js';
@@ -6,6 +6,8 @@ import { computeHeadlessSamplingPriority, computeHeadlessPriorityComponents, hea
 import { createDefaultHeadlessRuntimeConfig, validateHeadlessRuntimeConfig } from './HeadlessRuntimeConfig.js';
 import { computeHeadlessScoreReport } from './HeadlessScoring.js';
 import { analyzeScienceEvidence, buildScienceDiagnosticsArtifact, scienceDiscoverySummary } from '../../science/ScienceDiscoveryLifecycle.js';
+import { computeWaterColumnPriority } from '../../science/WaterColumnPriorityModel.js';
+import { buildWaterColumnSummary } from '../../science/WaterColumnObservationModel.js';
 
 export const HEADLESS_MISSION_RUNNER_VERSION = 'headless-mission-runner-h1';
 
@@ -29,6 +31,8 @@ export function simulateHeadlessEpisode(configInput = {}, planInput = null) {
   const plan = planInput ?? config.plan;
   const fieldPackBefore = createHeadlessFieldPack(config);
   fieldPackBefore.fields.A_global = computeHeadlessSamplingPriority(fieldPackBefore, config);
+  const depthLayerPriorityBefore = computeWaterColumnPriority(fieldPackBefore, config.waterColumnConfig ?? config);
+  fieldPackBefore.diagnostics.depthLayerPriority = depthLayerPriorityBefore.summary;
   const missionConfig = {
     ...config.missionConfig,
     sensorNoise: config.sensorNoise,
@@ -54,12 +58,22 @@ export function simulateHeadlessEpisode(configInput = {}, planInput = null) {
     fieldPackAfter.fields.A_global,
     computeHeadlessPriorityComponents(fieldPackAfter, config)
   );
+  const depthLayerPriority = computeWaterColumnPriority(fieldPackAfter, config.waterColumnConfig ?? config);
+  fieldPackAfter.diagnostics.depthLayerPriority = depthLayerPriority.summary;
+  const waterColumnSummary = buildWaterColumnSummary({
+    config: config.waterColumnConfig ?? config,
+    observations: routeResult.observations,
+    tracks: routeResult.tracks,
+    diveProfile: glider?.diveProfile ?? plan.diveProfileId,
+    depthLayerPriority
+  });
   const scoreReport = computeHeadlessScoreReport({
     fieldPackBefore,
     fieldPackAfter,
     observations: routeResult.observations,
     tracks: routeResult.tracks,
-    missionConfig
+    missionConfig,
+    waterColumnSummary
   });
   const episodeId = `h1-node-headless-${config.scenario}-${config.seed}`;
   const scienceDiscovery = analyzeScienceEvidence({
@@ -81,7 +95,8 @@ export function simulateHeadlessEpisode(configInput = {}, planInput = null) {
     id: `action-wp-${index + 1}`,
     type: 'waypointTarget',
     gliderId: plan.gliderId,
-    target: { x: waypoint.x, y: waypoint.y, z: waypoint.zIndex ?? waypoint.z ?? 0 },
+    target: { x: waypoint.x, y: waypoint.y, z: waypoint.zIndex ?? waypoint.z ?? 0, depthLayerId: waypoint.depthLayerId ?? waypoint.depthLayer ?? null },
+    diveProfileId: waypoint.diveProfileId ?? plan.diveProfileId ?? waterColumnSummary.diveProfile?.profileId ?? null,
     policyId: 'fixedDefaultWaypoints',
     note: 'H1 executes provided waypoints and does not optimize routes.'
   }));
@@ -97,6 +112,7 @@ export function simulateHeadlessEpisode(configInput = {}, planInput = null) {
     version: HEADLESS_MISSION_RUNNER_VERSION,
     seed: config.seed,
     gliderId: plan.gliderId,
+    diveProfileId: waterColumnSummary.diveProfile?.profileId ?? plan.diveProfileId ?? null,
     trackPointCount: routeResult.tracks.length,
     observationCount: routeResult.observations.length,
     route: routeResult.route,
@@ -113,6 +129,9 @@ export function simulateHeadlessEpisode(configInput = {}, planInput = null) {
     fieldPackAfter,
     observations: routeResult.observations,
     tracks: routeResult.tracks,
+    waterColumnSummary,
+    depthLayerPriority,
+    depthLayerPrioritySummary: depthLayerPriority.summary,
     actions,
     rewards,
     surfacingEvents: [{
@@ -131,8 +150,12 @@ export function simulateHeadlessEpisode(configInput = {}, planInput = null) {
       deterministic: true,
       routeGenerated: false,
       usesProvidedWaypoints: true,
+      waterColumnSummary,
+      depthLayerPrioritySummary: depthLayerPriority.summary,
       scienceDiscoverySummary: scienceDiscoverySummary(scienceDiagnostics),
       calibratedOceanForecast: false,
+      calibratedVerticalOceanModel: false,
+      implementsFull3DPlanning: false,
       implementsNewPlanner: false,
       implementsMARL: false,
       canonicalRuntime: 'Node headless runtime over portable ANCHOR core logic. Browser ANCHOR remains the official visual referee and scoring UI.'
@@ -146,7 +169,7 @@ export function simulateHeadlessEpisode(configInput = {}, planInput = null) {
       observationId: observation.observationId,
       timeSeconds: observation.timeSeconds,
       gliderId: observation.gliderId,
-      position: { x: observation.x, y: observation.y, z: observation.zIndex },
+      position: { x: observation.x, y: observation.y, z: observation.zIndex, depthLayerId: observation.depthLayerId ?? observation.depthLayer },
       fieldId: 'T_hiddenTruth',
       value: observation.observedValue,
       payload: observation
@@ -159,6 +182,3 @@ export function simulateHeadlessEpisode(configInput = {}, planInput = null) {
   });
   return episode;
 }
-
-
-
