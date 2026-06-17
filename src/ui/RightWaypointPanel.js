@@ -1,4 +1,4 @@
-import { formatMissionTime, getTimeConfig } from '../core/time/MissionTime.js';
+﻿import { formatMissionTime, getTimeConfig } from '../core/time/MissionTime.js';
 import { getDeploymentZoneForAgent, getDeploymentZonesForAgent, getSelectedStart, requiresDeploymentSelection } from '../core/deployment/DeploymentZones.js';
 import { labelReason } from '../core/planning/StopReasonSummarizer.js';
 import { formatDiagnosticForUi } from '../core/planning/RouteDiagnostic.js';
@@ -16,8 +16,19 @@ export class RightWaypointPanel {
     this.handlers = handlers;
   }
 
-  renderIdle() {
+  renderIdle({ mainMenu = false } = {}) {
     if (!this.root) return;
+    if (mainMenu) {
+      this.root.innerHTML = `
+        <section class="waypoint-shell waypoint-shell-compact" data-main-menu-right-panel>
+          <div class="console-kicker">About ANCHOR</div>
+          <h2>Product Hub</h2>
+          <p class="hud-muted">Challenge Mode, Simulation Lab, and Learning Labs are selected from the main viewport.</p>
+          <p class="hud-muted">Mission waypoints appear here after a playable route is loaded.</p>
+        </section>
+      `;
+      return;
+    }
     this.root.innerHTML = `
       <section class="waypoint-shell">
         <div class="console-kicker">Mission Waypoints</div>
@@ -160,8 +171,8 @@ function waypointRows(state, waypoints, agentId, engine, result, routeQuality) {
               <span>
                 <strong>W${index + 1} &middot; ${escapeHtml(semanticLabel)}</strong>
                 ${waypointKind === 'surface' ? '<small class="marker-estimate">GPS correction, communication/update, replanning point.</small>' : ''}
-                <strong>W${Number(waypoint.window ?? 0)} · ${escapeHtml(formatMissionTime(state.level, waypoint.t ?? 0))}</strong>
-                <small>(${Number(waypoint.x)}, ${Number(waypoint.y)}) · ${escapeHtml(waypoint.action ?? 'sample')}</small>
+                <strong>W${Number(waypoint.window ?? 0)} Â· ${escapeHtml(formatMissionTime(state.level, waypoint.t ?? 0))}</strong>
+                <small>(${Number(waypoint.x)}, ${Number(waypoint.y)}) Â· ${escapeHtml(waypoint.action ?? 'sample')}</small>
                 ${segmentGradeLine(grade)}
                 ${terminalCarryThrough ? '<small class="marker-warning">Terminal carry-through: simulation will travel toward this waypoint until mission time expires.</small>' : ''}
                 ${waypoint.validity?.routeAudit ? `<small class="marker-warning">${escapeHtml(formatDiagnosticForUi(waypoint.validity.routeAudit.diagnostic) ?? waypoint.validity.routeAudit.message)}</small>` : ''}
@@ -192,8 +203,8 @@ function markerRows(state, markers, agentId) {
             <span class="waypoint-num">M${index + 1}</span>
             <span>
               ${marker.linkedTargetId ? '<strong>Sampling Target</strong>' : ''}
-              <strong>W${Number(marker.window ?? 0)} Â· ${escapeHtml(formatMissionTime(state.level, marker.t ?? 0))}</strong>
-              <small>(${Number(marker.x)}, ${Number(marker.y)}) Â· ${escapeHtml(marker.label ?? 'Planning Marker')}${marker.linkedTargetId ? ` Â· ${escapeHtml(marker.linkedTargetId)}` : ''}</small>
+              <strong>W${Number(marker.window ?? 0)} Ã‚Â· ${escapeHtml(formatMissionTime(state.level, marker.t ?? 0))}</strong>
+              <small>(${Number(marker.x)}, ${Number(marker.y)}) Ã‚Â· ${escapeHtml(marker.label ?? 'Planning Marker')}${marker.linkedTargetId ? ` Ã‚Â· ${escapeHtml(marker.linkedTargetId)}` : ''}</small>
               ${markerEstimateDetails(reach)}
             </span>
             <em>${escapeHtml(statusLabelText(reach.status))}</em>
@@ -213,7 +224,7 @@ function markerRows(state, markers, agentId) {
 function segmentGradeLine(grade) {
   if (!grade) return '';
   const role = (grade.roleLabels ?? []).join(' + ') || 'transit';
-  return `<small class="marker-estimate">Segment grade ${escapeHtml(grade.grade)} (${escapeHtml(grade.numericScore)}) · ${escapeHtml(role)} · immediate +${escapeHtml(formatNumber(grade.components?.immediateSampleReward))} · setup +${escapeHtml(formatNumber(grade.components?.futureSetupValue))} · risk -${escapeHtml(formatNumber(Number(grade.components?.hazardPenalty ?? 0) + Number(grade.components?.shorelineRiskPenalty ?? 0)))}</small>`;
+  return `<small class="marker-estimate">Segment grade ${escapeHtml(grade.grade)} (${escapeHtml(grade.numericScore)}) Â· ${escapeHtml(role)} Â· immediate +${escapeHtml(formatNumber(grade.components?.immediateSampleReward))} Â· setup +${escapeHtml(formatNumber(grade.components?.futureSetupValue))} Â· risk -${escapeHtml(formatNumber(Number(grade.components?.hazardPenalty ?? 0) + Number(grade.components?.shorelineRiskPenalty ?? 0)))}</small>`;
 }
 
 function markerEstimateDetails(reach = {}) {
@@ -308,3 +319,4 @@ function escapeHtml(value) {
 function escapeAttr(value) {
   return escapeHtml(value).replace(/`/g, '&#096;');
 }
+

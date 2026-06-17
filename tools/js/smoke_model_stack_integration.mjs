@@ -731,6 +731,18 @@ const p1BenchmarkContractSource = [
   'src/game/phaser/scenes/BenchmarkModeOverviewScene.js'
 ].map((file) => fs.readFileSync(file, 'utf8')).join('\n');
 assert.equal(/implements? (a )?new route planner/i.test(p1BenchmarkContractSource), false, 'P1 does not claim a new route planner');
+// UI-R1 product hub shell guard.
+const mainMenuSource = fs.readFileSync('src/game/phaser/scenes/MainMenuScene.js', 'utf8');
+const phaserGameSource = fs.readFileSync('src/game/phaser/PhaserGame.js', 'utf8');
+assert.ok(phaserGameSource.includes('MainMenuScene'), 'UI-R1 MainMenuScene is registered');
+assert.ok(mainMenuSource.includes('ANCHOR_MAIN_MENU_DEBUG'), 'UI-R1 hub debug object exists');
+assert.ok(mainMenuSource.includes('Challenge Mode'), 'UI-R1 hub includes Challenge Mode');
+assert.ok(mainMenuSource.includes('Simulation Lab'), 'UI-R1 hub includes Simulation Lab');
+assert.ok(mainMenuSource.includes('Learning Labs'), 'UI-R1 hub includes Learning Labs');
+assert.ok(mainMenuSource.includes('changesSimulationBehavior: false'), 'UI-R1 does not change simulation behavior');
+assert.ok(mainMenuSource.includes('changesScoring: false'), 'UI-R1 does not change scoring');
+assert.ok(mainMenuSource.includes('usesNewPlanner: false'), 'UI-R1 does not add a planner');
+assert.ok(mainMenuSource.includes('usesMARL: false'), 'UI-R1 excludes MARL');
 // Learning Lab bridge and Mission Console menu guards.
 const learningLabSource = fs.readFileSync('labs/sampling-priority-to-glider-action-value.html', 'utf8');
 assert.ok(learningLabSource.includes('A_global'), 'Learning Lab contains A_global');
@@ -738,22 +750,27 @@ assert.ok(learningLabSource.includes('Q_glider'), 'Learning Lab contains Q_glide
 assert.ok(learningLabSource.includes('Event intensity is not sampling priority'), 'Learning Lab states event-intensity boundary');
 assert.ok(learningLabSource.includes('Action value is not route planning'), 'Learning Lab states route-planning boundary');
 const missionConsoleSource = fs.readFileSync('src/ui/MissionConsole.js', 'utf8');
+const benchmarkOverviewSource = fs.readFileSync('src/game/phaser/scenes/BenchmarkModeOverviewScene.js', 'utf8');
+const benchmarkContractSource = fs.readFileSync('src/core/benchmark/BenchmarkModeContract.js', 'utf8');
 const missionConsoleChecks = [
   ['Flow Fields Demo', ['Flow Fields Demo']],
   ['Coupled Fields Demo', ['Coupled Fields Demo']],
   ['Uncertainty / Forecast Demo', ['Uncertainty / Forecast Demo']],
   ['Sampling Priority Demo', ['Sampling Priority Demo']],
   ['Flow-Coupled Sampling Demo', ['Flow-Coupled Sampling Demo']],
-  ['Planner Benchmark', ['Planner Benchmark']],
-  ['Adaptive Benchmark', ['Adaptive Benchmark']],
-  ['Full Autonomy Benchmark', ['Full Autonomy Benchmark']],
   ['Process Lab / Sampling Process Lab', ['Process Lab', 'Sampling Process Lab', 'Spatiotemporal Sampling Process Lab', 'SAMPLING_PROCESS_LAB_MENU_LABEL']]
 ];
 missionConsoleChecks.forEach(([name, labels]) => {
-  assert.ok(labels.some((label) => missionConsoleSource.includes(label)), `Mission Console contains ${name}`);
+  assert.ok(labels.some((label) => missionConsoleSource.includes(label)), `Mission Console contains active-scene controls for ${name}`);
 });
-assert.ok(missionConsoleSource.includes('RoiGeneratorDemoScene'), 'Mission Console binds Process Lab to RoiGeneratorDemoScene');
-assert.ok(missionConsoleSource.includes('HeadlessBundleViewerScene'), 'Mission Console binds H2 viewer to HeadlessBundleViewerScene');
+['Planner Benchmark', 'Adaptive Benchmark', 'Full Autonomy Benchmark'].forEach((label) => {
+  assert.ok(mainMenuSource.includes(label), `Main Menu hub contains ${label}`);
+  assert.ok(benchmarkContractSource.includes(label), `Benchmark mode contract contains ${label}`);
+});
+assert.ok(benchmarkOverviewSource.includes('createBenchmarkModeConfig'), 'Benchmark overview uses benchmark mode config');
+assert.ok(missionConsoleSource.includes('Choose Challenge Mode, Simulation Lab, or Learning Labs from the main viewport.'), 'Mission Console idle state is compact under UI-R1');
+assert.ok(mainMenuSource.includes('RoiGeneratorDemoScene'), 'Main Menu hub binds Process Lab to RoiGeneratorDemoScene');
+assert.ok(mainMenuSource.includes('HeadlessBundleViewerScene'), 'Main Menu hub binds H2 viewer to HeadlessBundleViewerScene');
 
 // Claim-boundary guard: calibrated forecast claims must be explicitly negated/bounded.
 const claimFiles = [
@@ -868,4 +885,5 @@ assert.ok(coupledSceneSource.includes('What Colors Mean'), 'Coupled right panel 
 assert.ok(coupledSceneSource.includes('uses uncertainty'), 'Coupled right panel states uncertainty boundary');
 
 console.log('Model stack integration smoke passed');
+
 

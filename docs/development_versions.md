@@ -38,6 +38,13 @@ Challenge Mode also persists `missionMode`. Mission modes are player-facing obje
 
 ## Version / Milestone Log
 
+### UI-R1 - Full-Viewport Main Menu / Product Hub
+
+- Replaced the idle sidebar-first landing surface with a full-viewport Main Menu / Product Hub for Challenge Mode, Simulation Lab, and Learning Labs.
+- Kept the Mission Console compact on the hub and suppressed the right waypoint panel until a mission or active scene needs contextual controls.
+- Preserved simulation behavior, scoring, benchmark records, schemas, planners, science models, and MARL/RL boundaries; this phase is navigation and shell UX only.
+- Added `ANCHOR_MAIN_MENU_DEBUG` and `tools/js/smoke_main_menu_hub_contract.mjs` for landing-shell contract checks.
+
 ### P1 - Planner / Mission Evaluation Route-Execution Contract
 
 - Added pure benchmark episode, route-execution, metadata, result-adapter, and attempt-registry contracts.

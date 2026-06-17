@@ -1,4 +1,4 @@
-import { CAMPAIGN_LEVELS } from '../core/campaign/CampaignLevels.js';
+﻿import { CAMPAIGN_LEVELS } from '../core/campaign/CampaignLevels.js';
 import { shortInstanceId } from '../core/identity/GameInstanceId.js';
 import { formatMetric } from '../core/evaluation/PlanComparison.js';
 import { FLOW_DEMO_BOUNDARY_MODES, FLOW_DEMO_CYCLE_DURATIONS, FLOW_DEMO_DYNAMIC_COMPLEXITY_LEVELS, FLOW_DEMO_EVOLUTION_BEHAVIORS, FLOW_DEMO_EVOLUTION_PATTERNS, FLOW_DEMO_EVOLUTION_SPEEDS, FLOW_DEMO_FIELD_MODES, FLOW_DEMO_LAYER_INFLUENCES, FLOW_DEMO_MAGNITUDE_SCALES, FLOW_DEMO_PARTICLE_SPEEDS, FLOW_DEMO_PRESET_CHOICES, FLOW_DEMO_SPATIAL_MOTIONS, FLOW_DEMO_SPATIAL_MOTION_SPEEDS, FLOW_DEMO_TERRAIN_MODES, FLOW_DEMO_VARIATION_LEVELS, normalizeAdditiveLayers } from '../core/demo/FlowFieldDemo.js';
@@ -22,108 +22,31 @@ export class MissionConsole {
     this.root = root;
   }
 
-  renderIdle({ status = 'No mission loaded', mode = 'Idle' } = {}) {
+  renderIdle({ status = 'Main Menu', mode = 'Main Menu' } = {}) {
     if (!this.root) return;
     this.root.innerHTML = `
-      <section class="console-header">
+      <section class="console-header main-menu-console-header">
         <div class="console-kicker">Mission Console</div>
         <h1>ANCHOR: Glider Command</h1>
-        <p>AUV Glider Planner Game</p>
+        <p>Scientific AUV/glider adaptive-sampling game and benchmark tool.</p>
       </section>
-      <section class="console-section" data-accordion-key="challenge-mode">
-        <h2>Challenge Mode</h2>
-        <div class="hud-muted">Play mission objectives, learn strategies, compare routes, and chase high scores.</div>
-        ${menuGroupHtml('Play', [
-          menuActionHtml('play-challenge', 'Mission Modes', 'Pick a tactical objective and generate a playable challenge.', 'primary'),
-          menuActionHtml('play-custom-challenge', 'Play Custom Challenge', 'Import a shared or editor-authored challenge package.'),
-          menuActionHtml('random-challenge', 'Quick Random Challenge', 'Generate a fresh perfect-knowledge challenge immediately.')
-        ])}
-        ${menuGroupHtml('Learn', [
-          menuActionHtml('tutorial', 'Tutorials', 'Learn deployment, currents, planning, stochastic forecasts, and import/export.')
-        ])}
-        ${menuGroupHtml('Compete', [
-          menuActionHtml('greedy-race', 'Greedy Planner Race', 'Race a generated forecast challenge against the baseline planner.'),
-          menuActionHtml('leaderboard', 'Challenge Leaderboard', 'Review local high-score attempts and saved best paths.')
-        ])}
-      </section>
-      <section class="console-section" data-accordion-key="simulation-lab">
-        <h2>Simulation Lab</h2>
-        <div class="hud-muted">Build, inspect, import, export, and benchmark reproducible glider-planning scenarios.</div>
-        ${menuGroupHtml('Experiments', [
-          menuActionHtml('deterministic', 'Deterministic Experiment', 'Configure a perfect-knowledge reproducible scenario.'),
-          menuActionHtml('stochastic', 'Stochastic Experiment', 'Configure forecast, ensemble, hidden-truth, and uncertainty settings.')
-        ])}
-        ${menuGroupHtml('Benchmark Modes', [
-          menuActionHtml('benchmark-planner', 'Planner Benchmark', 'Objective is fixed/given; player or solver chooses the route path.', 'primary'),
-          menuActionHtml('benchmark-adaptive', 'Adaptive Benchmark', 'Transparent mission manager updates objectives after observations or belief.'),
-          menuActionHtml('benchmark-full-autonomy', 'Full Autonomy Benchmark', 'Future solver/agent mode: objective and route authority both belong to the agent.')
-        ])}
-        ${menuGroupHtml('Demos', [
-          menuActionHtml('flow-fields', 'Flow Fields Demo', 'Explore current vectors F(x,y,t).'),
-          menuActionHtml('roi-demo', SAMPLING_PROCESS_LAB_MENU_LABEL, 'Explore deterministic or seeded sampling processes S(x,y,t).'),
-          menuActionHtml('coupled-fields', 'Coupled Fields Demo', 'Explore how currents move, shape, or complicate sample value.'),
-          menuActionHtml('uncertainty-forecast-demo', 'Uncertainty / Forecast Demo', 'Explore forecast, truth, uncertainty, information gain, and sampling updates.'),
-          menuActionHtml('sampling-priority-demo', 'Sampling Priority Demo', 'Explore how belief, uncertainty, boundaries, hidden-event suspicion, staleness, hazards, and redundancy become candidate sample locations.'),
-          menuActionHtml('flow-coupled-sampling-demo', 'Flow-Coupled Sampling Demo', 'Evaluate which high-priority sample targets are actually good for a glider after currents, reachability, energy, timing, hazards, and redundancy.')
-        ])}
-        ${menuGroupHtml('Editor & Import Tools', [
-          menuActionHtml('editor', 'Mission Editor', 'Build and export custom scenario/challenge packages.'),
-          menuActionHtml('load-json', 'Import / Export Tools', 'Load challenge, level, result, oracle, and custom JSON packages.'),
-          menuActionHtml('headless-bundle-viewer', 'Headless Bundle Viewer', 'Import and inspect Node/OceanBox-JS headless mission bundles, observations, tracks, and score reports.')
-        ])}
-        ${menuGroupHtml('Benchmarks', [
-          menuActionHtml('dataset', 'External Solver Evaluation', 'Export datasets and packets for solver or ML workflows.', 'secondary'),
-          menuActionHtml('leaderboard', 'Benchmark Leaderboard', 'Compare Simulation Lab benchmark attempts and solver runs.', 'secondary')
-        ])}
-      </section>
-      <section class="console-section" data-accordion-key="learning-labs">
-        <h2>Learning Labs</h2>
-        <div class="hud-muted">Guided interactive explanations for the models used by the simulator.</div>
-        ${menuGroupHtml('Concept Pages', [
-          menuLinkHtml('labs/index.html', 'Learning Labs Index', 'ANCHOR Learning Labs course roadmap and syllabus.', 'primary'),
-          menuLinkHtml('labs/scientific-computational-modeling.html', 'Scientific Computational Modeling', 'Learn what scientific computational models are and how rules, equations, observations, and validation fit together.', 'primary'),
-          menuLinkHtml('labs/ca-for-ocean-relevant-processes.html', 'CA for Ocean-Relevant Processes', 'Learn how CA/grid-process models can honestly represent ocean-relevant event layers and where their limits are.', 'primary'),
-          menuLinkHtml('labs/deterministic-spatiotemporal-processes.html', 'Deterministic Spatiotemporal Processes', 'Learn how local update rules create evolving fields and sampling opportunities.', 'primary'),
-          menuLinkHtml('labs/deterministic-dynamic-flow-fields.html', 'Deterministic Dynamic Flow Fields', 'Learn how vector current fields describe direction, magnitude, particles, and deterministic flow evolution.', 'primary'),
-          menuLinkHtml('labs/oracle-deterministic-coupled-sampling-space.html', 'Oracle / Deterministic Coupled Sampling Space', 'Learn how known process, flow, constraints, and mission context form a true sampling objective.', 'primary'),
-          menuLinkHtml('labs/stochastic-uncertainty.html', 'Stochastic / Uncertainty', 'Learn how hidden truth, forecasts, noisy observations, and belief updates shape sampling decisions.', 'primary'),
-          menuLinkHtml('labs/stochastic-coupled-sampling-space.html', 'Stochastic Coupled Sampling Space', 'Learn how belief, uncertainty, hidden events, flow, and constraints create acquisition value.', 'primary'),
-          menuLinkHtml('labs/sampling-priority-to-glider-action-value.html', 'Sampling Priority to Glider Action Value', 'Learn why A_global science priority differs from Q_glider action value before route planning.', 'primary'),
-          menuLinkHtml('labs/planner-mission-evaluation.html', 'Planner / Mission Evaluation', 'Learn how waypoint routes trade reward, cost, risk, uncertainty, flow, and debrief metrics.', 'primary')
-        ])}
-        ${menuGroupHtml('Roadmap', [
-          menuStaticHtml('Advanced Planning Topics', 'Coming later: receding-horizon search, solver benchmarking, and classroom datasets.')
-        ])}
-      </section>
-      <section class="console-status">
+      <section class="console-status" data-main-menu-console-status>
         <span>${escapeHtml(mode)}</span>
         <strong>${escapeHtml(status)}</strong>
-        <small>Choose a mode to load the simulator viewport.</small>
+        <small>Choose Challenge Mode, Simulation Lab, or Learning Labs from the main viewport.</small>
+      </section>
+      <section class="console-section compact-main-menu-console">
+        <h2>Context</h2>
+        <div class="hud-muted">The full product hub now lives in the simulator viewport. This panel becomes contextual controls after a mode is selected.</div>
+        <div class="panel-stack">
+          <button data-action="main-menu" class="console-button secondary">Return to Main Menu</button>
+          <button data-action="load-json" class="console-button secondary">Import JSON</button>
+        </div>
       </section>
     `;
-    this.app.applyConsoleAccordions?.('idle');
     this.bind({
-      'flow-fields': () => this.app.phaser.scene.start('FlowFieldDemoScene'),
-      'roi-demo': () => this.app.phaser.scene.start('RoiGeneratorDemoScene'),
-      'coupled-fields': () => this.app.phaser.scene.start('CoupledFieldsDemoScene'),
-      'uncertainty-forecast-demo': () => this.app.phaser.scene.start('UncertaintyForecastDemoScene'),
-      'sampling-priority-demo': () => this.app.phaser.scene.start('SamplingPriorityDemoScene'),
-      'flow-coupled-sampling-demo': () => this.app.phaser.scene.start('FlowCoupledSamplingDemoScene'),
-      'benchmark-planner': () => this.app.phaser.scene.start('BenchmarkModeOverviewScene', { benchmarkMode: 'plannerBenchmark' }),
-      'benchmark-adaptive': () => this.app.phaser.scene.start('BenchmarkModeOverviewScene', { benchmarkMode: 'adaptiveBenchmark' }),
-      'benchmark-full-autonomy': () => this.app.phaser.scene.start('BenchmarkModeOverviewScene', { benchmarkMode: 'fullAutonomyBenchmark' }),
-      tutorial: () => this.mainMenuScene()?.openTutorialBrowser?.(),
-      'play-challenge': () => this.mainMenuScene()?.openChallengeSetup?.('perfectKnowledge', EXPERIENCE_MODES.challenge),
-      'play-custom-challenge': () => this.app.phaser.scene.start('LoadLevelJsonScene', { preferredExperienceMode: EXPERIENCE_MODES.challenge }),
-      'random-challenge': () => this.mainMenuScene()?.startRandomChallenge?.('perfectKnowledge', EXPERIENCE_MODES.challenge),
-      'greedy-race': () => this.mainMenuScene()?.startRandomChallenge?.('forecast', EXPERIENCE_MODES.challenge, { greedyRace: true }),
-      deterministic: () => this.mainMenuScene()?.openChallengeSetup?.('perfectKnowledge', EXPERIENCE_MODES.simulationLab),
-      stochastic: () => this.mainMenuScene()?.openChallengeSetup?.('forecast', EXPERIENCE_MODES.simulationLab),
-      editor: () => this.app.phaser.scene.start('EnvironmentEditorScene'),
-      'load-json': () => this.app.phaser.scene.start('LoadLevelJsonScene'),
-      'headless-bundle-viewer': () => this.app.phaser.scene.start('HeadlessBundleViewerScene'),
-      dataset: () => this.app.phaser.scene.start('DatasetExportScene'),
-      leaderboard: () => this.mainMenuScene()?.openLeaderboard?.()
+      'main-menu': () => this.app.phaser?.scene?.start('MainMenuScene'),
+      'load-json': () => this.app.phaser?.scene?.start('LoadLevelJsonScene')
     });
   }
 
@@ -1848,3 +1771,4 @@ function escapeHtml(value) {
 function escapeAttr(value) {
   return escapeHtml(value).replace(/`/g, '&#096;');
 }
+

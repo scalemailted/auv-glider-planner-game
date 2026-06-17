@@ -51,11 +51,11 @@ Both modes use the same terrain, current fields, hazards, glider physics, scorin
 
 ### Main Menu
 
-The Main Menu is the starting screen. It is organized around three expandable areas:
+The Main Menu is the starting screen. It is now a full-viewport product hub with three primary cards:
 
-- `Challenge Mode`: `Play` for Mission Modes/custom challenges, `Learn` for Tutorials, and `Compete` for Greedy Planner Race plus Challenge Leaderboard.
-- `Simulation Lab`: `Experiments`, `Benchmark Modes`, `Demos`, `Editor & Import Tools`, and `Benchmarks`.
-- `Learning Labs`: static concept pages that explain the math and modeling ideas behind the field demos.
+- `Challenge Mode`: guided challenges, quick random challenges, custom challenge import, Greedy Planner Race, Tutorials, and Challenge Leaderboard.
+- `Simulation Lab`: scientific sandboxes, benchmark modes, headless bundle viewer, external solver workflows, Mission Editor, and import/export tools.
+- `Learning Labs`: explanatory articles plus companion sandbox launch points that teach the science step by step.
 
 Simulation Lab Benchmark Modes exposes Planner Benchmark, Adaptive Benchmark, and Full Autonomy Benchmark. Planner Benchmark uses the existing planning workspace, simulator, and Debrief for fixed-objective route attempts. Adaptive Benchmark now previews a transparent mission manager that recommends objectives after observations or belief diagnostics; the player or solver still chooses the route. Full Autonomy remains contract-only. These modes do not implement a new planner, scoring redesign, or MARL/RL. See [Benchmark Modes](docs/benchmark_modes.md), [Benchmark Route Execution Contract](docs/benchmark_route_execution_contract.md), and [Adaptive Benchmark Mission Manager](docs/adaptive_benchmark_mission_manager.md).
 
@@ -69,7 +69,7 @@ Keep the field questions separate: `F(x,y,t)` asks how water moves, `C_k(t)` ask
 
 Process Lab guided contexts connect known process families to editable deterministic recipes. Their initial fields come from explicit fixtures, and Behavior QA reports whether the fixture produces the expected short-run behavior. The Initial Condition controls let you use the curated seed, edit generation 0 directly on the canvas with a model-aware brush, or generate a deterministic random seed; canvas edits pause playback, reset the generation counter, and are preserved in demo JSON exports. Foundational CA Models include Conway, Forest Fire, SIR, Greenberg-Hastings, Sandpile, Wa-Tor, Traffic CA, and Wireworld. Ocean-Relevant Process Analogs are simplified event/process layers for environmental sampling intuition and require later flow, uncertainty, depth, and mission coupling for realism. Observable Process Patterns remain bridge metadata, not a primary selector. The CA taxonomy framing describes mechanism families; it does not make the demo an exact simulator for any named model.
 
-For first-time play, expand `Challenge Mode` and choose `Tutorials`.
+For first-time play, click `Challenge Mode` in the hub and choose `Tutorials`.
 
 `Play Challenge` opens the Challenge Mode mission navigator and selected briefing. Pick a Mission Mode in the left console, read its briefing, then generate a fresh perfect-knowledge mission where planning shows true terrain, hazards, ROI, and currents.
 

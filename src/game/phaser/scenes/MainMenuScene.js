@@ -22,6 +22,39 @@ import {
 } from '../../../core/storage/LeaderboardStore.js';
 
 const PhaserScene = globalThis.Phaser?.Scene ?? class {};
+const MAIN_MENU_VERSION = 'main-menu-hub-ui-r1';
+
+const PRIMARY_CARDS = ['Challenge Mode', 'Simulation Lab', 'Learning Labs'];
+const CHALLENGE_ACTIONS = [
+  'Start Guided Challenge',
+  'Quick Random Challenge',
+  'Play Custom Challenge / Import Challenge JSON',
+  'Greedy Planner Race',
+  'Challenge Leaderboard'
+];
+const SIMULATION_LAB_ACTIONS = [
+  'Sampling Process Lab',
+  'Flow Fields Demo',
+  'Coupled Fields Demo',
+  'Uncertainty / Forecast Demo',
+  'Sampling Priority Demo',
+  'Flow-Coupled Sampling Demo',
+  'Planner Benchmark',
+  'Adaptive Benchmark',
+  'Full Autonomy Benchmark',
+  'Headless Bundle Viewer',
+  'External Solver Evaluation',
+  'Import / Export Tools'
+];
+const LEARNING_LAB_ACTIONS = [
+  'Learning Labs Index',
+  'Scientific Computational Modeling',
+  'CA for Ocean Processes',
+  'Sampling Priority to Glider Action Value',
+  'Benchmark Modes',
+  'Forecast Correction and Hidden Discovery',
+  'Headless / Colab Workflow'
+];
 
 export class MainMenuScene extends PhaserScene {
   constructor() {
@@ -30,24 +63,32 @@ export class MainMenuScene extends PhaserScene {
   }
 
   create() {
-    this.app = this.sys.game.anchorApp;
+    this.app = this.sys.game.anchorApp ?? globalThis.__anchorPhaserApp;
+    if (this.app && !this.sys.game.anchorApp) this.sys.game.anchorApp = this.app;
+    if (!this.app) return;
     this.destroyLeaderboardView();
     this.destroyTutorialBrowser();
-    this.app.state.mode = 'menu';
+    this.app.state.mode = 'mainMenu';
     this.app.clearPanels();
-    this.app.console?.renderIdle({ mode: 'Idle', status: 'No mission loaded' });
-    this.app.waypointPanel?.renderIdle();
+    this.app.console?.renderIdle({ mode: 'Main Menu', status: 'Main Menu' });
+    this.app.waypointPanel?.renderIdle({ mainMenu: true });
     this.app.agentPerformanceHud?.setHandlers({});
-    this.app.summaryHud?.renderIdle();
-    this.app.agentPerformanceHud?.renderIdle();
     this.app.setSceneLabel('Main Menu');
     this.app.elements.shell?.classList.remove('planning-workspace');
+    this.setMainMenuShellState(true);
+    this.activeHubView = 'home';
     this.buttons = [];
+    this.updateDebugObject(true);
     this.drawIdleViewport();
+    this.mountProductHub('home');
   }
 
   shutdown() {
     this.clearObjects();
+    this.unmountProductHub();
+    this.setMainMenuShellState(false);
+    this.app?.resizeToViewport?.('main-menu-hub-exit');
+    this.updateDebugObject(false);
     this.destroyLeaderboardView();
     this.destroyTutorialBrowser();
   }
@@ -63,7 +104,6 @@ export class MainMenuScene extends PhaserScene {
     const height = Math.max(1, Number(this.scale?.height ?? this.sys?.game?.scale?.height ?? 820));
     const safeX = Math.max(28, Math.min(76, width * 0.08));
     const safeY = Math.max(28, Math.min(70, height * 0.1));
-    const contentWidth = Math.max(260, width - safeX * 2);
     const centerX = width / 2;
     const centerY = height / 2;
     const graphics = this.add.graphics();
@@ -80,7 +120,6 @@ export class MainMenuScene extends PhaserScene {
     graphics.fillCircle(width * 0.76, height * 0.24, Math.min(width, height) * 0.24);
     graphics.fillStyle(0x63e6be, 0.06);
     graphics.fillCircle(width * 0.68, height * 0.72, Math.min(width, height) * 0.32);
-
     for (let x = safeX; x < width - safeX; x += 80) {
       graphics.lineStyle(1, 0x54c7ec, 0.08);
       graphics.lineBetween(x, safeY, x, height - safeY);
@@ -100,36 +139,6 @@ export class MainMenuScene extends PhaserScene {
     graphics.lineStyle(2, 0xbef6ff, 0.58);
     graphics.strokeTriangle(centerX - 20, centerY - 22, centerX + 34, centerY + 88, centerX, centerY + 58);
     this.objects.push(graphics);
-
-    const titleY = Math.max(safeY, centerY - Math.min(210, height * 0.3));
-    this.addIdleText(centerX, titleY, 'Simulator Viewport', {
-      fontFamily: 'system-ui',
-      fontSize: `${Math.max(22, Math.min(34, width * 0.045))}px`,
-      fontStyle: '700',
-      color: '#eef6ff',
-      align: 'center'
-    }, contentWidth);
-    this.addIdleText(centerX, titleY + Math.max(42, height * 0.07), 'Awaiting Mission Launch', {
-      fontFamily: 'system-ui',
-      fontSize: `${Math.max(28, Math.min(52, width * 0.062))}px`,
-      fontStyle: '700',
-      color: '#63e6be',
-      align: 'center'
-    }, contentWidth);
-    this.addIdleText(centerX, titleY + Math.max(104, height * 0.15), 'Choose a mode from the Mission Console to load the map, editor, or dataset tools.', {
-      fontFamily: 'system-ui',
-      fontSize: '17px',
-      color: '#9cb4d8',
-      align: 'center',
-      wordWrap: { width: Math.min(560, contentWidth) }
-    }, Math.min(560, contentWidth));
-    this.addIdleText(centerX, height - Math.max(44, safeY * 0.85), 'Phaser viewport: map, currents, gliders, waypoints, drift cones, and simulation playback', {
-      fontFamily: 'system-ui',
-      fontSize: '13px',
-      color: '#7898bd',
-      align: 'center',
-      wordWrap: { width: contentWidth }
-    }, contentWidth);
   }
 
   addIdleText(x, y, value, style, width) {
@@ -147,7 +156,218 @@ export class MainMenuScene extends PhaserScene {
   }
 
   renderMainMenu() {
-    this.app.console?.renderIdle({ mode: 'Idle', status: 'No mission loaded' });
+    this.scene.start('MainMenuScene');
+  }
+
+  setMainMenuShellState(active) {
+    const body = globalThis.document?.body;
+    body?.classList.toggle('main-menu-shell', Boolean(active));
+    body?.classList.toggle('hub-mode', Boolean(active));
+    body?.classList.toggle('no-mission-hub', Boolean(active));
+    this.app?.elements?.shell?.classList.toggle('hub-mode', Boolean(active));
+  }
+
+  mountProductHub(view = 'home') {
+    const root = this.app?.elements?.overlay?.modalRoot;
+    if (!root) return;
+    this.activeHubView = view;
+    root.innerHTML = this.productHubHtml(view);
+    root.classList.add('main-menu-hub-host');
+    root.onclick = (event) => {
+      const actionButton = event.target?.closest?.('[data-action]');
+      if (actionButton && root.contains(actionButton)) {
+        event.preventDefault();
+        this.handleHubAction(actionButton.dataset.action);
+        return;
+      }
+      const viewButton = event.target?.closest?.('[data-hub-view]');
+      if (viewButton && root.contains(viewButton) && viewButton.id !== 'main-menu-hub') {
+        event.preventDefault();
+        this.mountProductHub(viewButton.dataset.hubView);
+      }
+    };
+    this.updateDebugObject(true);
+  }
+
+  unmountProductHub() {
+    const root = this.app?.elements?.overlay?.modalRoot;
+    if (!root) return;
+    root.classList.remove('main-menu-hub-host');
+    root.onclick = null;
+    root.innerHTML = '';
+  }
+
+  leaveMainMenuHub() {
+    this.unmountProductHub();
+    this.setMainMenuShellState(false);
+    this.app?.resizeToViewport?.('main-menu-hub-exit');
+    this.updateDebugObject(false);
+  }
+
+  productHubHtml(view) {
+    return `
+      <section id="main-menu-hub" class="main-menu-hub" data-hub-view="${escapeAttr(view)}">
+        <header class="main-menu-hero">
+          <div>
+            <p class="main-menu-kicker">ANCHOR mission systems</p>
+            <h1>ANCHOR: Glider Command</h1>
+            <p class="main-menu-subtitle">Scientific AUV Glider Adaptive-Sampling Game</p>
+          </div>
+          <p class="main-menu-runtime-note">Browser ANCHOR is the visual game/referee. Node/OceanBox-JS is the canonical headless runtime.</p>
+        </header>
+        ${view === 'home' ? this.productHubHomeHtml() : ''}
+        ${view === 'challenge' ? this.challengeHubHtml() : ''}
+        ${view === 'simulation' ? this.simulationLabHubHtml() : ''}
+        ${view === 'learning' ? this.learningLabsHubHtml() : ''}
+      </section>
+    `;
+  }
+
+  productHubHomeHtml() {
+    return `
+      <div class="main-menu-primary-grid" aria-label="Primary ANCHOR paths">
+        ${hubCardHtml({ view: 'challenge', title: 'Challenge Mode', eyebrow: 'Play missions', body: 'Learn objectives, chase scores, compare routes, and race the greedy baseline.' })}
+        ${hubCardHtml({ view: 'simulation', title: 'Simulation Lab', eyebrow: 'Inspect systems', body: 'Open scientific sandboxes, benchmark modes, headless bundles, and solver workflows.' })}
+        ${hubCardHtml({ view: 'learning', title: 'Learning Labs', eyebrow: 'Read + experiment', body: 'Use interactive articles and companion sandboxes to learn the science step by step.' })}
+      </div>
+      <div class="main-menu-secondary-row" aria-label="Secondary tools">
+        <button type="button" data-action="load-json">Import JSON</button>
+        <button type="button" data-action="headless-bundle-viewer">Headless Bundle Viewer</button>
+        <button type="button" data-action="dataset">External Solver Workflow</button>
+        <button type="button" data-action="open-about">Development / About</button>
+      </div>
+    `;
+  }
+
+  challengeHubHtml() {
+    return `
+      ${hubBackHtml()}
+      <div class="hub-submenu-header">
+        <p class="main-menu-kicker">Challenge Mode</p>
+        <h2>Play missions, learn objectives, chase scores, compare routes.</h2>
+      </div>
+      <div class="hub-action-grid">
+        ${hubActionHtml('play-challenge', 'Start Guided Challenge', 'Pick a tactical mission objective and configure a playable challenge.', 'primary')}
+        ${hubActionHtml('random-challenge', 'Quick Random Challenge', 'Generate a fresh perfect-knowledge challenge immediately.')}
+        ${hubActionHtml('play-custom-challenge', 'Play Custom Challenge / Import Challenge JSON', 'Load a shared or editor-authored challenge package.')}
+        ${hubActionHtml('greedy-race', 'Greedy Planner Race', 'Race a generated forecast challenge against the baseline planner.')}
+        ${hubActionHtml('tutorial', 'Tutorials', 'Learn deployment, currents, planning, uncertainty, and import/export.')}
+        ${hubActionHtml('leaderboard', 'Challenge Leaderboard', 'Review local high-score attempts and saved best paths.')}
+      </div>
+    `;
+  }
+
+  simulationLabHubHtml() {
+    return `
+      ${hubBackHtml()}
+      <div class="hub-submenu-header">
+        <p class="main-menu-kicker">Simulation Lab</p>
+        <h2>Inspect scientific sandboxes, benchmark modes, headless bundles, and solver workflows.</h2>
+      </div>
+      <div class="hub-group-grid">
+        ${hubGroupHtml('Scientific Sandboxes', [
+          hubActionHtml('roi-demo', 'Sampling Process Lab', 'Explore deterministic or seeded sampling processes S(x,y,t).'),
+          hubActionHtml('flow-fields', 'Flow Fields Demo', 'Explore current vectors F(x,y,t).'),
+          hubActionHtml('coupled-fields', 'Coupled Fields Demo', 'Inspect known process, flow, constraints, and oracle objective.'),
+          hubActionHtml('uncertainty-forecast-demo', 'Uncertainty / Forecast Demo', 'Compare truth, forecast, belief, uncertainty, and observations.'),
+          hubActionHtml('sampling-priority-demo', 'Sampling Priority Demo', 'Turn belief, uncertainty, boundaries, hazards, and hidden-event suspicion into A_global.'),
+          hubActionHtml('flow-coupled-sampling-demo', 'Flow-Coupled Sampling Demo', 'Evaluate Q_glider action value under currents, reachability, energy, and redundancy.')
+        ])}
+        ${hubGroupHtml('Benchmark Modes', [
+          hubActionHtml('benchmark-planner', 'Planner Benchmark', 'Objective fixed; player or solver chooses the route.', 'primary'),
+          hubActionHtml('benchmark-adaptive', 'Adaptive Benchmark', 'Mission manager recommends objectives after observations; player or solver still routes.'),
+          hubActionHtml('benchmark-full-autonomy', 'Full Autonomy Benchmark', 'Contract-only future mode where solver/agent chooses objective and route.'),
+          hubActionHtml('benchmark-overview', 'Benchmark Overview', 'Open the benchmark mode overview.')
+        ])}
+        ${hubGroupHtml('Headless / Solver Tools', [
+          hubActionHtml('headless-bundle-viewer', 'Headless Bundle Viewer', 'Inspect Node/OceanBox-JS bundle artifacts.'),
+          hubActionHtml('dataset', 'External Solver Evaluation', 'Export datasets and solver packets.'),
+          hubActionHtml('load-json', 'Import / Export Tools', 'Load challenge, level, result, oracle, and custom JSON packages.'),
+          hubActionHtml('editor', 'Mission Editor', 'Build and export custom scenario/challenge packages.')
+        ])}
+      </div>
+    `;
+  }
+
+  learningLabsHubHtml() {
+    return `
+      ${hubBackHtml()}
+      <div class="hub-submenu-header">
+        <p class="main-menu-kicker">Learning Labs</p>
+        <h2>Interactive articles + companion sandboxes.</h2>
+      </div>
+      <div class="hub-group-grid">
+        ${hubGroupHtml('Learning Path', [
+          hubLinkHtml('labs/index.html', 'Learning Labs Index', 'ANCHOR course roadmap and syllabus.'),
+          hubLinkHtml('labs/scientific-computational-modeling.html', 'Scientific Computational Modeling', 'Rules, equations, observations, and validation.'),
+          hubLinkHtml('labs/ca-for-ocean-relevant-processes.html', 'Cellular Automata / Grid Processes', 'CA and grid-process models as honest teaching analogs.'),
+          hubLinkHtml('labs/deterministic-spatiotemporal-processes.html', 'CA for Ocean Processes', 'Local rules, emergence, and observable process patterns.'),
+          hubLinkHtml('labs/sampling-priority-to-glider-action-value.html', 'Sampling Priority to Glider Action Value', 'Why A_global differs from Q_glider.'),
+          hubLinkHtml('labs/planner-mission-evaluation.html', 'Benchmark Modes', 'Route evaluation, fairness labels, and debrief scorecards.')
+        ])}
+        ${hubGroupHtml('Companion Sandboxes', [
+          hubActionHtml('roi-demo', 'Open Sampling Process Lab', 'Launch the process sandbox.'),
+          hubActionHtml('flow-fields', 'Open Flow Fields Demo', 'Launch the flow sandbox.'),
+          hubActionHtml('uncertainty-forecast-demo', 'Forecast Correction and Hidden Discovery', 'Launch the uncertainty/forecast sandbox.'),
+          hubActionHtml('headless-bundle-viewer', 'Headless / Colab Workflow', 'Inspect headless bundle examples.')
+        ])}
+        ${hubGroupHtml('Roadmap Topics', [
+          hubStaticHtml('2.5D Water-Column Sampling', 'Depth-layer sampling is documented as a current/future learning path topic when P11 material is present.')
+        ])}
+      </div>
+    `;
+  }
+
+  handleHubAction(action) {
+    const scene = this.app?.phaser?.scene;
+    const actions = {
+      'flow-fields': () => scene.start('FlowFieldDemoScene'),
+      'roi-demo': () => scene.start('RoiGeneratorDemoScene'),
+      'coupled-fields': () => scene.start('CoupledFieldsDemoScene'),
+      'uncertainty-forecast-demo': () => scene.start('UncertaintyForecastDemoScene'),
+      'sampling-priority-demo': () => scene.start('SamplingPriorityDemoScene'),
+      'flow-coupled-sampling-demo': () => scene.start('FlowCoupledSamplingDemoScene'),
+      'benchmark-planner': () => scene.start('BenchmarkModeOverviewScene', { benchmarkMode: 'plannerBenchmark' }),
+      'benchmark-adaptive': () => scene.start('BenchmarkModeOverviewScene', { benchmarkMode: 'adaptiveBenchmark' }),
+      'benchmark-full-autonomy': () => scene.start('BenchmarkModeOverviewScene', { benchmarkMode: 'fullAutonomyBenchmark' }),
+      'benchmark-overview': () => scene.start('BenchmarkModeOverviewScene'),
+      tutorial: () => this.openTutorialBrowser(),
+      'play-challenge': () => this.openChallengeSetup('perfectKnowledge', EXPERIENCE_MODES.challenge),
+      'play-custom-challenge': () => scene.start('LoadLevelJsonScene', { preferredExperienceMode: EXPERIENCE_MODES.challenge }),
+      'random-challenge': () => this.startRandomChallenge('perfectKnowledge', EXPERIENCE_MODES.challenge),
+      'greedy-race': () => this.startRandomChallenge('forecast', EXPERIENCE_MODES.challenge, { greedyRace: true }),
+      deterministic: () => this.openChallengeSetup('perfectKnowledge', EXPERIENCE_MODES.simulationLab),
+      stochastic: () => this.openChallengeSetup('forecast', EXPERIENCE_MODES.simulationLab),
+      editor: () => scene.start('EnvironmentEditorScene'),
+      'load-json': () => scene.start('LoadLevelJsonScene'),
+      'headless-bundle-viewer': () => scene.start('HeadlessBundleViewerScene'),
+      dataset: () => scene.start('DatasetExportScene'),
+      leaderboard: () => this.openLeaderboard(),
+      'open-about': () => this.mountProductHub('learning')
+    };
+    const handler = actions[action];
+    if (handler) {
+      if (action !== 'open-about') this.leaveMainMenuHub();
+      handler();
+    }
+  }
+
+  updateDebugObject(active = true) {
+    globalThis.ANCHOR_MAIN_MENU_DEBUG = {
+      version: MAIN_MENU_VERSION,
+      active: Boolean(active),
+      activeHubView: this.activeHubView ?? 'home',
+      primaryCards: [...PRIMARY_CARDS],
+      challengeActions: [...CHALLENGE_ACTIONS],
+      simulationLabActions: [...SIMULATION_LAB_ACTIONS],
+      learningLabActions: [...LEARNING_LAB_ACTIONS],
+      sidePanelsSuppressed: Boolean(globalThis.document?.body?.classList.contains('main-menu-shell')),
+      usesFullViewportHub: true,
+      changesSimulationBehavior: false,
+      changesScoring: false,
+      usesNewPlanner: false,
+      usesMARL: false
+    };
   }
 
   openLeaderboard() {
@@ -487,7 +707,8 @@ export class MainMenuScene extends PhaserScene {
   }
 
   async startCampaignLevel(id, forcedMode = null) {
-    this.app ??= this.sys.game.anchorApp;
+    this.app ??= this.sys.game.anchorApp ?? globalThis.__anchorPhaserApp;
+    this.leaveMainMenuHub();
     const entry = CAMPAIGN_LEVELS.find((candidate) => candidate.id === id) ?? CAMPAIGN_LEVELS[0];
     const level = ensureLevelIdentity(await loadCampaignLevel(entry));
     const mission = applyTutorialMissionConfig(await loadJSON('missions/tutorial_sampling.json'), entry.id);
@@ -503,7 +724,8 @@ export class MainMenuScene extends PhaserScene {
   }
 
   openChallengeSetup(mode, experienceMode = EXPERIENCE_MODES.simulationLab) {
-    this.app ??= this.sys.game.anchorApp;
+    this.app ??= this.sys.game.anchorApp ?? globalThis.__anchorPhaserApp;
+    this.leaveMainMenuHub();
     const stochastic = mode === 'forecast';
     const normalizedExperience = normalizeExperienceMode(experienceMode);
     this.app.state.experienceMode = normalizedExperience;
@@ -531,7 +753,8 @@ export class MainMenuScene extends PhaserScene {
   }
 
   startRandomChallenge(mode, experienceMode = EXPERIENCE_MODES.challenge, options = {}) {
-    this.app ??= this.sys.game.anchorApp;
+    this.app ??= this.sys.game.anchorApp ?? globalThis.__anchorPhaserApp;
+    this.leaveMainMenuHub();
     const stochastic = mode === 'forecast';
     const normalizedExperience = normalizeExperienceMode(experienceMode);
     const { level, mission } = generateScenarioFromConfig(createDefaultScenarioConfig(mode));
@@ -562,6 +785,69 @@ export class MainMenuScene extends PhaserScene {
     this.buttons?.forEach((button) => button.destroy());
     this.buttons = [];
   }
+}
+function escapeHtml(value) {
+  return String(value ?? '').replace(/[&<>"']/g, (char) => ({
+    '&': '&amp;',
+    '<': '&lt;',
+    '>': '&gt;',
+    '"': '&quot;',
+    "'": '&#039;'
+  }[char]));
+}
+
+function escapeAttr(value) {
+  return escapeHtml(value).replace(/`/g, '&#096;');
+}
+function hubCardHtml({ view, title, eyebrow, body }) {
+  return `
+    <button type="button" class="main-menu-card" data-hub-view="${escapeAttr(view)}">
+      <span>${escapeHtml(eyebrow)}</span>
+      <strong>${escapeHtml(title)}</strong>
+      <small>${escapeHtml(body)}</small>
+    </button>
+  `;
+}
+
+function hubActionHtml(action, title, description, tone = '') {
+  const classes = ['hub-action-card', tone].filter(Boolean).join(' ');
+  return `
+    <button type="button" class="${escapeAttr(classes)}" data-action="${escapeAttr(action)}">
+      <strong>${escapeHtml(title)}</strong>
+      <small>${escapeHtml(description)}</small>
+    </button>
+  `;
+}
+
+function hubLinkHtml(href, title, description) {
+  return `
+    <a class="hub-action-card" href="${escapeAttr(href)}" target="_blank" rel="noopener noreferrer">
+      <strong>${escapeHtml(title)}</strong>
+      <small>${escapeHtml(description)}</small>
+    </a>
+  `;
+}
+
+function hubStaticHtml(title, description) {
+  return `
+    <div class="hub-action-card disabled" aria-disabled="true">
+      <strong>${escapeHtml(title)}</strong>
+      <small>${escapeHtml(description)}</small>
+    </div>
+  `;
+}
+
+function hubGroupHtml(title, items = []) {
+  return `
+    <section class="hub-menu-group">
+      <h3>${escapeHtml(title)}</h3>
+      <div class="hub-menu-items">${items.join('')}</div>
+    </section>
+  `;
+}
+
+function hubBackHtml() {
+  return '<button type="button" class="hub-back-button" data-hub-view="home">Back to Product Hub</button>';
 }
 
 function cloneJson(value) {
@@ -598,3 +884,4 @@ function formatScore(value) {
   const number = Number(value);
   return Number.isFinite(number) ? number.toFixed(1) : 'N/A';
 }
+

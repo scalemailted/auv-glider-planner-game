@@ -18,59 +18,42 @@ test('learning labs static page is linked from the main menu', async ({ page }) 
   const pageErrors = [];
   page.on('pageerror', (error) => pageErrors.push(error.message));
   await page.goto('/');
-
-  await expect(page.locator('#mission-console')).toContainText('Learning Labs');
-  await page.locator('#mission-console [data-accordion-key="learning-labs"] .accordion-header').click();
-  const indexLink = page.locator('#mission-console a[href="labs/index.html"]');
+  await expect(page.locator('#main-menu-hub')).toBeVisible();
+  await expect(page.locator('#main-menu-hub')).toContainText('Learning Labs');
+  await openMainMenuHubSection(page, 'learning');
+  const learningHub = page.locator('#main-menu-hub[data-hub-view="learning"]');
+  const indexLink = learningHub.locator('a[href="labs/index.html"]');
   await expect(indexLink).toBeVisible();
   await expect(indexLink).toHaveText(/Learning Labs Index/);
   await expect(indexLink).toHaveAttribute('target', '_blank');
   await expect(indexLink).toHaveAttribute('rel', /noopener/);
-  const scientificLabLink = page.locator('#mission-console a[href="labs/scientific-computational-modeling.html"]');
+  const scientificLabLink = learningHub.locator('a[href="labs/scientific-computational-modeling.html"]');
   await expect(scientificLabLink).toBeVisible();
   await expect(scientificLabLink).toHaveText(/Scientific Computational Modeling/);
   await expect(scientificLabLink).toHaveAttribute('target', '_blank');
   await expect(scientificLabLink).toHaveAttribute('rel', /noopener/);
-  const oceanCaLabLink = page.locator('#mission-console a[href="labs/ca-for-ocean-relevant-processes.html"]');
+  const oceanCaLabLink = learningHub.locator('a[href="labs/ca-for-ocean-relevant-processes.html"]');
   await expect(oceanCaLabLink).toBeVisible();
-  await expect(oceanCaLabLink).toHaveText(/CA for Ocean-Relevant Processes/);
+  await expect(oceanCaLabLink).toHaveText(/Cellular Automata \/ Grid Processes/);
   await expect(oceanCaLabLink).toHaveAttribute('target', '_blank');
   await expect(oceanCaLabLink).toHaveAttribute('rel', /noopener/);
-  const labLink = page.locator('#mission-console a[href="labs/deterministic-spatiotemporal-processes.html"]');
+  const labLink = learningHub.locator('a[href="labs/deterministic-spatiotemporal-processes.html"]');
   await expect(labLink).toBeVisible();
-  await expect(labLink).toHaveText(/Deterministic Spatiotemporal Processes/);
+  await expect(labLink).toHaveText(/CA for Ocean Processes/);
   await expect(labLink).toHaveAttribute('target', '_blank');
   await expect(labLink).toHaveAttribute('rel', /noopener/);
-  const flowLabLink = page.locator('#mission-console a[href="labs/deterministic-dynamic-flow-fields.html"]');
-  await expect(flowLabLink).toBeVisible();
-  await expect(flowLabLink).toHaveText(/Deterministic Dynamic Flow Fields/);
-  await expect(flowLabLink).toHaveAttribute('target', '_blank');
-  await expect(flowLabLink).toHaveAttribute('rel', /noopener/);
-  const coupledLabLink = page.locator('#mission-console a[href="labs/oracle-deterministic-coupled-sampling-space.html"]');
-  await expect(coupledLabLink).toBeVisible();
-  await expect(coupledLabLink).toHaveText(/Oracle \/ Deterministic Coupled Sampling Space/);
-  await expect(coupledLabLink).toHaveAttribute('target', '_blank');
-  await expect(coupledLabLink).toHaveAttribute('rel', /noopener/);
-  const uncertaintyLabLink = page.locator('#mission-console a[href="labs/stochastic-uncertainty.html"]');
-  await expect(uncertaintyLabLink).toBeVisible();
-  await expect(uncertaintyLabLink).toHaveText(/Stochastic \/ Uncertainty/);
-  await expect(uncertaintyLabLink).toHaveAttribute('target', '_blank');
-  await expect(uncertaintyLabLink).toHaveAttribute('rel', /noopener/);
-  const stochasticCoupledLabLink = page.locator('#mission-console a[href="labs/stochastic-coupled-sampling-space.html"]');
-  await expect(stochasticCoupledLabLink).toBeVisible();
-  await expect(stochasticCoupledLabLink).toHaveText(/Stochastic Coupled Sampling Space/);
-  await expect(stochasticCoupledLabLink).toHaveAttribute('target', '_blank');
-  await expect(stochasticCoupledLabLink).toHaveAttribute('rel', /noopener/);
-  const samplingActionLabLink = page.locator('#mission-console a[href="labs/sampling-priority-to-glider-action-value.html"]');
+  const samplingActionLabLink = learningHub.locator('a[href="labs/sampling-priority-to-glider-action-value.html"]');
   await expect(samplingActionLabLink).toBeVisible();
   await expect(samplingActionLabLink).toHaveText(/Sampling Priority to Glider Action Value/);
   await expect(samplingActionLabLink).toHaveAttribute('target', '_blank');
   await expect(samplingActionLabLink).toHaveAttribute('rel', /noopener/);
-  const plannerLabLink = page.locator('#mission-console a[href="labs/planner-mission-evaluation.html"]');
+  const plannerLabLink = learningHub.locator('a[href="labs/planner-mission-evaluation.html"]');
   await expect(plannerLabLink).toBeVisible();
-  await expect(plannerLabLink).toHaveText(/Planner \/ Mission Evaluation/);
+  await expect(plannerLabLink).toHaveText(/Benchmark Modes/);
   await expect(plannerLabLink).toHaveAttribute('target', '_blank');
   await expect(plannerLabLink).toHaveAttribute('rel', /noopener/);
+  await expect(learningHub).toContainText('Forecast Correction and Hidden Discovery');
+  await expect(learningHub).toContainText('Headless / Colab Workflow');
 
   await page.goto('/labs/index.html');
   await expect(page).toHaveTitle(/ANCHOR Learning Labs/);
@@ -261,11 +244,10 @@ test('learning labs static page is linked from the main menu', async ({ page }) 
 
 test('Benchmark modes overview opens from Simulation Lab', async ({ page }) => {
   await page.goto('/');
-  await expect(page.locator('#mission-console')).toContainText('Simulation Lab');
-  await expandMissionConsoleSection(page, 'Simulation Lab');
-  await expect(page.locator('#mission-console [data-accordion-key="simulation-lab"]')).toContainText('Benchmark Modes');
+  await openMainMenuHubSection(page, 'simulation');
+  await expect(page.locator('#main-menu-hub[data-hub-view="simulation"]')).toContainText('Benchmark Modes');
 
-  await page.locator('#mission-console [data-action="benchmark-planner"]').click();
+  await page.locator('#main-menu-hub [data-action="benchmark-planner"]').click();
   await expect.poll(() => page.evaluate(() => window.anchorGame.phaser.scene.getScene('BenchmarkModeOverviewScene').sys.isActive())).toBe(true);
   await expect(page.locator('#mission-console')).toContainText('Planner Benchmark');
   await expect(page.locator('#mission-console')).toContainText('Objective is fixed / given');
@@ -296,9 +278,7 @@ test('Benchmark modes overview opens from Simulation Lab', async ({ page }) => {
 
   await page.goto('/');
   await expect.poll(() => page.evaluate(() => window.anchorGame?.phaser?.scene.getScene('MainMenuScene')?.sys.isActive() ?? false)).toBe(true);
-  await expect(page.locator('#mission-console')).toContainText('Simulation Lab');
-  await expandMissionConsoleSection(page, 'Simulation Lab');
-  await page.locator('#mission-console [data-action="benchmark-adaptive"]').click();
+  await launchFromMainMenuHub(page, 'simulation', 'benchmark-adaptive');
   await expect.poll(() => page.evaluate(() => window.ANCHOR_BENCHMARK_MODE_DEBUG?.benchmarkMode)).toBe('adaptiveBenchmark');
   await expect(page.locator('#mission-console')).toContainText('Adaptive Benchmark');
   await expect(page.locator('#mission-console')).toContainText('Mission Manager');
@@ -359,9 +339,7 @@ test('Benchmark modes overview opens from Simulation Lab', async ({ page }) => {
 
   await page.goto('/');
   await expect.poll(() => page.evaluate(() => window.anchorGame?.phaser?.scene.getScene('MainMenuScene')?.sys.isActive() ?? false)).toBe(true);
-  await expect(page.locator('#mission-console')).toContainText('Simulation Lab');
-  await expandMissionConsoleSection(page, 'Simulation Lab');
-  await page.locator('#mission-console [data-action="benchmark-full-autonomy"]').click();
+  await launchFromMainMenuHub(page, 'simulation', 'benchmark-full-autonomy');
   await expect.poll(() => page.evaluate(() => window.ANCHOR_BENCHMARK_MODE_DEBUG?.benchmarkMode)).toBe('fullAutonomyBenchmark');
   await expect(page.locator('#mission-console')).toContainText('Full Autonomy Benchmark');
   await expect(page.locator('#mission-console')).toContainText('Solver/agent chooses objective and route');
@@ -371,19 +349,17 @@ test('Benchmark modes overview opens from Simulation Lab', async ({ page }) => {
   await expect.poll(() => page.evaluate(() => window.anchorGame.phaser.scene.getScene('SamplingPriorityDemoScene').sys.isActive())).toBe(true);
   await expect(page.locator('#mission-console')).toContainText('Sampling Priority Demo');
   await page.locator('#mission-console [data-action="menu"]').click();
-  await expandMissionConsoleSection(page, 'Simulation Lab');
-  await page.locator('#mission-console [data-action="flow-coupled-sampling-demo"]').click();
+  await launchFromMainMenuHub(page, 'simulation', 'flow-coupled-sampling-demo');
   await expect.poll(() => page.evaluate(() => window.anchorGame.phaser.scene.getScene('FlowCoupledSamplingDemoScene').sys.isActive())).toBe(true);
   await expect(page.locator('#mission-console')).toContainText('Flow-Coupled Sampling Demo');
 });
 
 test('Headless Bundle Viewer opens from Simulation Lab and exports browser summary', async ({ page }) => {
   await page.goto('/');
-  await expect(page.locator('#mission-console')).toContainText('Simulation Lab');
-  await expandMissionConsoleSection(page, 'Simulation Lab');
-  await expect(page.locator('#mission-console [data-accordion-key="simulation-lab"]')).toContainText('Headless Bundle Viewer');
+  await openMainMenuHubSection(page, 'simulation');
+  await expect(page.locator('#main-menu-hub[data-hub-view="simulation"]')).toContainText('Headless Bundle Viewer');
 
-  await page.locator('#mission-console [data-action="headless-bundle-viewer"]').click();
+  await page.locator('#main-menu-hub [data-action="headless-bundle-viewer"]').click();
   await expect.poll(() => page.evaluate(() => window.anchorGame.phaser.scene.getScene('HeadlessBundleViewerScene').sys.isActive())).toBe(true);
   await expect(page.locator('#mission-console')).toContainText('Headless Bundle Viewer');
   await expect(page.locator('#mission-console')).toContainText('No bundle has been loaded');
@@ -465,9 +441,9 @@ test('Headless Bundle Viewer opens from Simulation Lab and exports browser summa
   expect(JSON.stringify(roundtripSummaryJson)).not.toContain('T_hiddenTruth');
 
   await page.locator('#mission-console [data-action="menu"]').click();
-  await expandMissionConsoleSection(page, 'Simulation Lab');
-  await expect(page.locator('#mission-console [data-accordion-key="simulation-lab"]')).toContainText('Planner Benchmark');
-  await expect(page.locator('#mission-console [data-accordion-key="simulation-lab"]')).toContainText('Adaptive Benchmark');
+  await openMainMenuHubSection(page, 'simulation');
+  await expect(page.locator('#main-menu-hub[data-hub-view="simulation"]')).toContainText('Planner Benchmark');
+  await expect(page.locator('#main-menu-hub[data-hub-view="simulation"]')).toContainText('Adaptive Benchmark');
 });
 test('Planner Benchmark debrief exports benchmark records from synthetic result', async ({ page }) => {
   await page.goto('/');
@@ -820,49 +796,33 @@ test('Adaptive Benchmark synthetic debrief shows surfacing review and exports P8
 });
 test('campaign planning smoke flow reaches debrief', async ({ page }) => {
   await page.goto('/');
-
   await expect(page).toHaveTitle(/ANCHOR: Glider Command/);
   await expect.poll(() => page.evaluate(() => window.anchorGame?.phaser?.scene.getScene('MainMenuScene')?.sys.isActive() ?? false)).toBe(true);
   await expect(page.locator('#top-nav')).toHaveCount(0);
   await expect(page.locator('#left-panel')).toHaveCount(0);
   await expect(page.locator('#right-panel')).toHaveCount(0);
   await expect(page.locator('#context-panel')).toBeEmpty();
-  await expect(page.locator('#mission-console')).toContainText('ANCHOR: Glider Command');
-  await expect(page.locator('#mission-console button.console-button')).toHaveCount(22);
-  await expect(page.locator('#mission-console .accordion-header')).toHaveCount(3);
-  await expect(page.locator('#mission-console > .console-section')).toHaveCount(3);
-  await expect(page.locator('#mission-console')).toContainText('Challenge Mode');
-  await expect(page.locator('#mission-console')).toContainText('Simulation Lab');
-  await expect(page.locator('#mission-console')).toContainText('Learning Labs');
-  await expect(page.locator('#mission-console .accordion-title')).toHaveText(['Challenge Mode', 'Simulation Lab', 'Learning Labs']);
-  await expect(page.locator('#mission-console [data-accordion-key="challenge-mode"] [data-menu-group] h3')).toHaveText(['Play', 'Learn', 'Compete']);
-  await expect(page.locator('#mission-console [data-accordion-key="challenge-mode"]')).toContainText('Mission Modes');
-  await expect(page.locator('#mission-console [data-accordion-key="challenge-mode"]')).toContainText('Tutorials');
-  await expect(page.locator('#mission-console')).toContainText('Play Custom Challenge');
-  await expect(page.locator('#mission-console [data-accordion-key="challenge-mode"]')).toContainText('Challenge Leaderboard');
-  await expect(page.locator('#mission-console [data-accordion-key="simulation-lab"]')).toContainText('Deterministic Experiment');
-  await expect(page.locator('#mission-console [data-accordion-key="simulation-lab"]')).toContainText('Mission Editor');
-  await expect(page.locator('#mission-console [data-accordion-key="simulation-lab"]')).toContainText('Import / Export Tools');
-  await expect(page.locator('#mission-console [data-accordion-key="simulation-lab"]')).toContainText('Headless Bundle Viewer');
-  await expect(page.locator('#mission-console [data-accordion-key="simulation-lab"]')).toContainText('Benchmark Leaderboard');
-  await expect(page.locator('#mission-console [data-accordion-key="simulation-lab"]')).toContainText('Planner Benchmark');
-  await expect(page.locator('#mission-console [data-accordion-key="simulation-lab"]')).toContainText('Adaptive Benchmark');
-  await expect(page.locator('#mission-console [data-accordion-key="simulation-lab"]')).toContainText('Full Autonomy Benchmark');
-  await expandMissionConsoleSection(page, 'Simulation Lab');
-  await expect(page.locator('#mission-console [data-accordion-key="simulation-lab"] [data-menu-group] h3')).toHaveText(['Experiments', 'Benchmark Modes', 'Demos', 'Editor & Import Tools', 'Benchmarks']);
-  await expect(page.locator('#mission-console [data-accordion-key="simulation-lab"]')).toContainText('Flow Fields Demo');
-  await expect(page.locator('#mission-console [data-accordion-key="simulation-lab"]')).toContainText('Process Lab');
-  await expect(page.locator('#mission-console [data-accordion-key="simulation-lab"]')).toContainText('Coupled Fields Demo');
-  await expect(page.locator('#mission-console [data-accordion-key="simulation-lab"]')).toContainText('Uncertainty / Forecast Demo');
-  await expect(page.locator('#mission-console [data-accordion-key="simulation-lab"]')).toContainText('Sampling Priority Demo');
-  await page.locator('#mission-console [data-accordion-key="learning-labs"] .accordion-header').click();
-  await expect(page.locator('#mission-console [data-accordion-key="learning-labs"] [data-menu-group] h3')).toHaveText(['Concept Pages', 'Roadmap']);
-  await expect(page.locator('#mission-console [data-accordion-key="learning-labs"]')).toContainText('Learning Labs Index');
-  await expect(page.locator('#mission-console [data-accordion-key="learning-labs"]')).toContainText('Deterministic Spatiotemporal Processes');
-  await expect(page.locator('#mission-console')).not.toContainText('Static Flow Field Demo');
-  await expect(page.locator('#mission-console')).not.toContainText('Temporal Flow Field Demo');
-  await expect(page.locator('#mission-console .console-status')).toContainText('No mission loaded');
+
+  const hub = page.locator('#main-menu-hub');
+  await expect(hub).toBeVisible();
+  await expect(hub).toContainText('ANCHOR: Glider Command');
+  await expect(hub).toContainText('Scientific AUV Glider Adaptive-Sampling Game');
+  await expect(hub.locator('[data-hub-view="challenge"]')).toContainText('Challenge Mode');
+  await expect(hub.locator('[data-hub-view="simulation"]')).toContainText('Simulation Lab');
+  await expect(hub.locator('[data-hub-view="learning"]')).toContainText('Learning Labs');
+  await expect(page.locator('#mission-console')).toContainText('Mission Console');
+  await expect(page.locator('#mission-console')).toContainText('Choose Challenge Mode, Simulation Lab, or Learning Labs from the main viewport.');
+  await expect(page.locator('#mission-console .accordion-header')).toHaveCount(0);
+  await expect(page.locator('#mission-console [data-accordion-key]')).toHaveCount(0);
+  await expect(page.locator('#mission-console .console-status')).toContainText('Main Menu');
+  await expect(page.locator('#waypoint-timeline')).toBeHidden();
   await expect(page.locator('canvas')).toBeVisible();
+  await expect.poll(() => page.evaluate(() => window.ANCHOR_MAIN_MENU_DEBUG?.usesFullViewportHub)).toBe(true);
+  await expect.poll(() => page.evaluate(() => window.ANCHOR_MAIN_MENU_DEBUG?.changesSimulationBehavior)).toBe(false);
+  await expect.poll(() => page.evaluate(() => window.ANCHOR_MAIN_MENU_DEBUG?.changesScoring)).toBe(false);
+  await expect.poll(() => page.evaluate(() => window.ANCHOR_MAIN_MENU_DEBUG?.usesNewPlanner)).toBe(false);
+  await expect.poll(() => page.evaluate(() => window.ANCHOR_MAIN_MENU_DEBUG?.usesMARL)).toBe(false);
+
   await expect(page.evaluate(() => {
     const scene = window.anchorGame.phaser.scene.getScene('MainMenuScene');
     const width = Number(scene.scale.width);
@@ -880,17 +840,19 @@ test('campaign planning smoke flow reaches debrief', async ({ page }) => {
       })
     };
   })).resolves.toMatchObject({
-    awaitingVisible: true,
+    awaitingVisible: false,
     allTextInsideCenterCanvas: true
   });
   await expect(page.evaluate(() => {
     const left = document.getElementById('mission-console').getBoundingClientRect();
     const center = document.getElementById('game-root').getBoundingClientRect();
     const right = document.getElementById('waypoint-timeline').getBoundingClientRect();
+    const rightStyle = window.getComputedStyle(document.getElementById('waypoint-timeline'));
     const canvas = document.querySelector('#game-root canvas').getBoundingClientRect();
     return {
+      shellActive: document.body.classList.contains('main-menu-shell'),
       centerAfterLeft: center.left >= left.right - 1,
-      centerBeforeRight: center.right <= right.left + 1,
+      rightHidden: rightStyle.display === 'none' || right.width <= 1,
       canvasInsideCenter: canvas.left >= center.left - 1
         && canvas.right <= center.right + 1
         && canvas.top >= center.top - 1
@@ -901,8 +863,9 @@ test('campaign planning smoke flow reaches debrief', async ({ page }) => {
       noHorizontalOverflow: document.documentElement.scrollWidth <= window.innerWidth + 1
     };
   })).resolves.toEqual({
+    shellActive: true,
     centerAfterLeft: true,
-    centerBeforeRight: true,
+    rightHidden: true,
     canvasInsideCenter: true,
     canvasStartsAtTop: true,
     canvasFillsCenter: true,
@@ -910,7 +873,16 @@ test('campaign planning smoke flow reaches debrief', async ({ page }) => {
   });
   await expect(page.evaluate(() => window.anchorGame.phaser.scene.getScene('MainMenuScene').buttons?.length ?? 0)).resolves.toBe(0);
 
-  await page.locator('#mission-console [data-action="flow-fields"]').click();
+  await openMainMenuHubSection(page, 'simulation');
+  const simulationHub = page.locator('#main-menu-hub[data-hub-view="simulation"]');
+  await expect(simulationHub).toContainText('Sampling Process Lab');
+  await expect(simulationHub).toContainText('Flow Fields Demo');
+  await expect(simulationHub).toContainText('Coupled Fields Demo');
+  await expect(simulationHub).toContainText('Uncertainty / Forecast Demo');
+  await expect(simulationHub).toContainText('Planner Benchmark');
+  await expect(simulationHub).toContainText('Adaptive Benchmark');
+  await expect(simulationHub).toContainText('Headless Bundle Viewer');
+  await page.locator('#main-menu-hub [data-action="flow-fields"]').click();
   await expect.poll(() => page.evaluate(() => window.anchorGame.phaser.scene.getScene('FlowFieldDemoScene').sys.isActive())).toBe(true);
   await expect(page.evaluate(() => window.anchorGame.phaser.scene.getScene('FlowFieldDemoScene').fieldMode)).resolves.toBe('dynamic');
   await expect(page.evaluate(() => window.anchorGame.phaser.scene.getScene('FlowFieldDemoScene').preset)).resolves.toBe('topologyAwareComposite');
@@ -1161,7 +1133,21 @@ test('campaign planning smoke flow reaches debrief', async ({ page }) => {
   await expect.poll(() => page.evaluate(() => window.anchorGame.phaser.scene.getScene('MainMenuScene').sys.isActive())).toBe(true);
   await expect(page.locator('#bottom-timeline')).toBeEmpty();
 
-  await page.locator('#mission-console [data-action="roi-demo"]').click();
+  await openMainMenuHubSection(page, 'challenge');
+  const challengeHub = page.locator('#main-menu-hub[data-hub-view="challenge"]');
+  await expect(challengeHub).toContainText('Start Guided Challenge');
+  await expect(challengeHub).toContainText('Quick Random Challenge');
+  await expect(challengeHub).toContainText('Play Custom Challenge / Import Challenge JSON');
+  await expect(challengeHub).toContainText('Challenge Leaderboard');
+  await page.locator('#main-menu-hub [data-hub-view="home"]').click();
+  await expect(page.locator('#main-menu-hub[data-hub-view="home"]')).toBeVisible();
+  await openMainMenuHubSection(page, 'learning');
+  const learningHub = page.locator('#main-menu-hub[data-hub-view="learning"]');
+  await expect(learningHub.locator('a[href="labs/index.html"]')).toBeVisible();
+  await expect(learningHub).toContainText('Interactive articles + companion sandboxes.');
+  await page.locator('#main-menu-hub [data-hub-view="home"]').click();
+  await expect(page.locator('#main-menu-hub[data-hub-view="home"]')).toBeVisible();
+  await launchFromMainMenuHub(page, 'simulation', 'roi-demo');
   await expect.poll(() => page.evaluate(() => window.anchorGame.phaser.scene.getScene('RoiGeneratorDemoScene').sys.isActive())).toBe(true);
   await expect(page.locator('#mission-console')).toContainText('Deterministic Spatiotemporal Process Lab');
   await expect(page.evaluate(() => window.anchorGame.phaser.scene.getScene('RoiGeneratorDemoScene').buttons?.length ?? 0)).resolves.toBe(0);
@@ -2127,7 +2113,7 @@ test('campaign planning smoke flow reaches debrief', async ({ page }) => {
   await page.locator('#mission-console [data-action="menu"]').click();
   await expect.poll(() => page.evaluate(() => window.anchorGame.phaser.scene.getScene('MainMenuScene').sys.isActive())).toBe(true);
 
-  await page.locator('#mission-console [data-action="coupled-fields"]').click();
+  await launchFromMainMenuHub(page, 'simulation', 'coupled-fields');
   await expect.poll(() => page.evaluate(() => window.anchorGame.phaser.scene.getScene('CoupledFieldsDemoScene').sys.isActive())).toBe(true);
   await expect(page.locator('#mission-console')).toContainText('Coupled Fields Demo');
   await expect(page.locator('#mission-console')).toContainText('Display Layers');
@@ -2197,7 +2183,7 @@ test('campaign planning smoke flow reaches debrief', async ({ page }) => {
   await page.locator('#mission-console [data-action="menu"]').click();
   await expect.poll(() => page.evaluate(() => window.anchorGame.phaser.scene.getScene('MainMenuScene').sys.isActive())).toBe(true);
 
-  await page.locator('#mission-console [data-action="uncertainty-forecast-demo"]').click();
+  await launchFromMainMenuHub(page, 'simulation', 'uncertainty-forecast-demo');
   await expect.poll(() => page.evaluate(() => window.anchorGame.phaser.scene.getScene('UncertaintyForecastDemoScene').sys.isActive())).toBe(true);
   await expect(page.locator('#mission-console')).toContainText('Uncertainty / Forecast Demo');
   await expect(page.locator('#bottom-timeline .uncertainty-demo-transport')).toBeVisible();
@@ -2259,7 +2245,7 @@ test('campaign planning smoke flow reaches debrief', async ({ page }) => {
   await expect.poll(() => page.evaluate(() => window.anchorGame.phaser.scene.getScene('UncertaintyForecastDemoScene').observations.length)).toBe(0);
   await page.locator('#mission-console [data-action="menu"]').click();
   await expect.poll(() => page.evaluate(() => window.anchorGame.phaser.scene.getScene('MainMenuScene').sys.isActive())).toBe(true);
-  await page.locator('#mission-console [data-action="sampling-priority-demo"]').click();
+  await launchFromMainMenuHub(page, 'simulation', 'sampling-priority-demo');
   await expect.poll(() => page.evaluate(() => window.anchorGame.phaser.scene.getScene('SamplingPriorityDemoScene').sys.isActive())).toBe(true);
   await expect(page.locator('#mission-console')).toContainText('Sampling Priority Demo');
   await expect(page.locator('#sampling-priority-scenario')).toBeVisible();
@@ -2299,7 +2285,7 @@ test('campaign planning smoke flow reaches debrief', async ({ page }) => {
 
   await page.locator('#mission-console [data-action="menu"]').click();
   await expect.poll(() => page.evaluate(() => window.anchorGame.phaser.scene.getScene('MainMenuScene').sys.isActive())).toBe(true);
-  await page.locator('#mission-console [data-action="flow-coupled-sampling-demo"]').click();
+  await launchFromMainMenuHub(page, 'simulation', 'flow-coupled-sampling-demo');
   await expect.poll(() => page.evaluate(() => window.anchorGame.phaser.scene.getScene('FlowCoupledSamplingDemoScene').sys.isActive())).toBe(true);
   await expect(page.locator('#mission-console')).toContainText('Flow-Coupled Sampling Demo');
   await expect(page.locator('#flow-coupled-sampling-scenario')).toBeVisible();
@@ -3026,6 +3012,17 @@ async function expectSamplingSectionsCollapsed(page, titles) {
   }, titles)).toBe(true);
 }
 
+async function openMainMenuHubSection(page, view) {
+  await expect.poll(() => page.evaluate(() => window.anchorGame?.phaser?.scene.getScene('MainMenuScene')?.sys.isActive() ?? false)).toBe(true);
+  await expect(page.locator('#main-menu-hub')).toBeVisible();
+  await page.locator(`#main-menu-hub [data-hub-view="${view}"]`).first().click();
+  await expect(page.locator(`#main-menu-hub[data-hub-view="${view}"]`)).toBeVisible();
+}
+
+async function launchFromMainMenuHub(page, view, action) {
+  await openMainMenuHubSection(page, view);
+  await page.locator(`#main-menu-hub [data-action="${action}"]`).first().click();
+}
 async function expandMissionConsoleSection(page, title) {
   await expect(page.locator('#mission-console .accordion-header').filter({ hasText: title }).first()).toBeVisible();
   await page.evaluate((sectionTitle) => {

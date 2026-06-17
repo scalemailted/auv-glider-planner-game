@@ -36,16 +36,16 @@ const app = createPhaserGame({
 });
 
 window.anchorGame = app;
-app.start();
 app.console = new MissionConsole(app, document.getElementById('mission-console'));
-app.console.renderIdle();
 app.waypointPanel = new RightWaypointPanel(app, document.getElementById('waypoint-timeline'));
-app.waypointPanel.renderIdle();
 app.summaryHud = new MissionSummaryHud(app, document.getElementById('mission-summary-hud'));
-app.summaryHud.renderIdle();
 app.agentPerformanceHud = new AgentPerformanceHud(app, document.getElementById('agent-performance-hud'));
-app.agentPerformanceHud.renderIdle();
 app.mapHoverTooltip = new MapHoverTooltip(app);
+app.start();
+if (!app.phaser) {
+  app.console.renderIdle({ mode: 'Main Menu', status: 'Main Menu' });
+  app.waypointPanel.renderIdle({ mainMenu: true });
+}
 
 function createHiddenLegacyPanels() {
   const root = document.createElement('div');
@@ -67,3 +67,4 @@ function createHiddenLegacyPanels() {
 function toCamelId(id) {
   return id.replace(/-([a-z])/g, (_, letter) => letter.toUpperCase());
 }
+
