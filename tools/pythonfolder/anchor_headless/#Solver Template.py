@@ -15,7 +15,7 @@ class Solver():
         self.deploymentCells = world["deploymentAgents"][0]["allowedCells"]
         self.scoring = world["scoring"]
         self.terrain = world["terrain"]
-        self.timeLimit = 12
+        self.timeLimit = 15
         self.paths = []
         self.depth = 1
     def find_best_path(self):
@@ -31,6 +31,8 @@ class Solver():
             self.make_canidates(path[0][-1], path[0], scans, path[1], i, path[2], path[3])
         # self.paths = self.paths[pathLength:]
         # print(self.paths)
+        self.paths.sort(key= lambda item: item[1]*item[-1])
+        print(self.paths[-1])
 
 
     def is_point(self, pathSegment, iteration):
@@ -42,28 +44,30 @@ class Solver():
             self.make_canidates(tupDeploymentCell, (tupDeploymentCell), 5)
 
     def make_canidates(self, cell, cells, num, value=0, destroyIndex=None, time=0, Olddistance=0):
+        # print("1")
         used = cells
         potential = []
         for y in range(len(self.roi)):
             for x in range(len(self.roi[y])):
-                if self.terrain[y][x] != 1 and self.hazards[y][x] != 1 and used.count((x,y)) == 0 and (x,y) != cell:
+                # 
+                if self.terrain[y][x] != 1 and self.hazards[y][x] != 1 and used.count((x,y)) == 0 and (x,y) != cell and ([cell["x"] for cell in self.deploymentCells].count(x) <= 1 and [cell["y"] for cell in self.deploymentCells].count(y) <= 1):
                     scored, distance = self.rate_cell((x,y), cell)
                     if distance != -1 and scored != -1:
                         Thistime = time
                         Thistime += distance
                         distance += Olddistance
-                        print(distance)
-                        if Thistime < 12:
+                        # print(distance)
+                        if Thistime < 15:
                             # print(Thistime)
                             potential.append([(x,y), scored, Thistime, distance])
-        
         potential.sort(reverse=True, key=lambda item: item[1])
         final = potential[:(num + 1)]            
         for item in final:
             temp = item[0]
             item[1] = (item[1] + value) / (len(cells) - 1)
             item[0] = []
-            item[0].append(cells)
+            for cell in cells:
+                item[0].append(cell)
             item[0].append(temp)
             self.paths.append(item)
         if destroyIndex != None:
