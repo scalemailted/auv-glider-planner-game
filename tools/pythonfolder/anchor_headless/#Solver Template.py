@@ -28,15 +28,17 @@ class Solver():
         for i, path in enumerate(self.paths):
             # print(self.paths[-1])
             scans = 0 if path[1] < 0.2 else 1 if path[1] < 0.4 else 2 if path[1] < 0.6 else 3 if path[1] < 0.9 else 4 if path[1] < 1 else 5
+            if not isinstance(path[0][0], tuple):
+                print(path[0])
+                temp1 = path[0].pop(0)
+                temp2 = path[0].pop(0)
+                path[0].insert(0, (temp1, temp2))
+                print(path[0])
             self.make_canidates(path[0][-1], path[0], scans, path[1], i, path[2], path[3])
         # self.paths = self.paths[pathLength:]
         # print(self.paths)
-        self.paths.sort(key= lambda item: item[1]*item[-1])
+        self.paths.sort(key= lambda item: item[1]*item[3])
         print(self.paths[-1])
-
-
-    def is_point(self, pathSegment, iteration):
-        return not isinstance(pathSegment[iteration][-1], tuple)
 
     def deployment_canidates(self):
         for deploymentCell in self.deploymentCells:
@@ -45,13 +47,19 @@ class Solver():
 
     def make_canidates(self, cell, cells, num, value=0, destroyIndex=None, time=0, Olddistance=0):
         # print("1")
+        traversedCells = []
         used = cells
         potential = []
+        # print(cells)
+        if isinstance(cells, list):
+            # print(cells)
+            for index, (x,y) in enumerate(cells):
+                traversedCells.append((x,y))
+                pass
         for y in range(len(self.roi)):
             for x in range(len(self.roi[y])):
-                # 
                 if self.terrain[y][x] != 1 and self.hazards[y][x] != 1 and used.count((x,y)) == 0 and (x,y) != cell and ([cell["x"] for cell in self.deploymentCells].count(x) <= 1 and [cell["y"] for cell in self.deploymentCells].count(y) <= 1):
-                    scored, distance = self.rate_cell((x,y), cell)
+                    scored, distance = self.rate_cell((x,y), cell, traversedCells)
                     if distance != -1 and scored != -1:
                         Thistime = time
                         Thistime += distance
@@ -73,12 +81,13 @@ class Solver():
         if destroyIndex != None:
             self.paths.pop(destroyIndex)
 
-    def rate_cell(self, ratedCell, startCell):
+    def rate_cell(self, ratedCell, startCell, traversedCells):
         score = 0
         distance = self.find_dist(ratedCell[0] - startCell[0], ratedCell[1] - startCell[1])
         for cellX, cellY in self.bresenham_line(startCell[0], startCell[1], ratedCell[0], ratedCell[1]):
             if cellX != -1:
-                score += self.roi[cellY][cellX]
+                if traversedCells.count((cellX, cellY)) != 0:
+                    score += self.roi[cellY][cellX]
             else:
                 return -1, -1
         return score/distance, distance
