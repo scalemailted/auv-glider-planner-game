@@ -138,6 +138,15 @@ P11 adds `water_column_summary.json`, `depth_layer_priority.json`, `waterColumnS
 
 ## MOTION-R1 Optional Motion-Aware Execution
 
-Node/OceanBox-JS can optionally run motion-aware execution by enabling `motionAware` or CLI `--motion-aware`. The runtime keeps the submitted waypoint plan as route authority, adapts it to control commands, simulates realized glider motion, and emits `motionTrajectory`, `controlTrace`, `plannedVsRealized`, and `motionDiagnostics`. Public bundles can include `motion_trajectory.json`, `control_trace.json`, and `motion_diagnostics.json`. This remains deterministic educational execution, not a new planner, not WebGPU, not browser official scoring, and not a Python simulator.
+Node/OceanBox-JS can optionally run motion-aware execution by enabling `motionAware` or CLI `--motion-aware`. The runtime keeps the submitted waypoint plan as route authority, adapts it to control commands, simulates realized glider motion, and emits `motionTrajectory`, `controlTrace`, `plannedVsRealized`, and `motionDiagnostics`. Public bundles can include `motion_trajectory.json`, `control_trace.json`, `motion_diagnostics.json`, and `mission_feasibility_report.json`. This remains deterministic educational execution and reporting, not a new planner, not WebGPU, not browser official scoring, and not a Python simulator.
 
 ENV-R1 adds public-safe `bathymetrySummary` and `missionGeometrySummary` bundle metadata to Node/OceanBox-JS outputs. Node/OceanBox-JS remains the canonical non-browser runtime; no Python simulator is added.
+
+## SIM-R1 Mission Feasibility Target
+
+Node/OceanBox-JS now emits a MOTION-R1 mission-feasibility report skeleton when motion-aware execution is enabled. It reports mission duration, distance traveled, battery/energy, planned vs realized trajectory, waypoint validation, and clearance/constraint warnings without making headless score official browser scoring. SIM-R1 now adds optional cost graph / adjacency matrix artifacts; fuller scenario comparison remains future work. See docs/mission_feasibility_simulator_requirements.md.
+## SCORE-R1 Shadow Mission Outcome Scoring
+
+SCORE-R1 is shadow benchmark scoring. It does not replace official browser scoring, Challenge Mode scoring, leaderboard ranking, or existing debrief totals. Profiles are objective-aware and versioned; missing data is explicit; regret requires a compatible reference, and best-known attempt does not mean optimal. The Node/OceanBox-JS runtime remains the canonical headless runtime. Python/Colab analyzes exported artifacts or invokes Node; no Python simulator, planner, optimizer, MARL/RL, operational certification, SeaExplorer validation, or calibrated ocean forecast is added.
+
+See [Mission Scoring and Regret](mission_scoring_and_regret.md) for the SCORE-R1 artifact contract and boundaries.

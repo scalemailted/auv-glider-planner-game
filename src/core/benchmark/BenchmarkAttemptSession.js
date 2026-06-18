@@ -60,6 +60,9 @@ export function addResultToBenchmarkAttemptSession(session, resultContext = {}) 
     runRecord,
     routeGeometry: resultContext.routeGeometry ?? resultContext.routeOverlay?.geometry ?? null,
     metrics: createRouteExecutionMetrics(resultContext.metrics ?? routeExecutionRecord?.metrics ?? result?.summary ?? {}),
+    missionOutcomeReport: resultContext.missionOutcomeReport ?? result?.missionOutcomeReport ?? null,
+    missionScore: resultContext.missionScore ?? result?.missionScore ?? null,
+    regretReport: resultContext.regretReport ?? result?.regretReport ?? null,
     notes: resultContext.notes
   });
   const attempts = replaceMatchingAttempt(base.attempts, attempt);

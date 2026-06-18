@@ -1,5 +1,5 @@
 import { validateHeadlessBundle } from './HeadlessBundleValidation.js';
-import { buildHeadlessBundleViewModel, headlessBundleBathymetrySummary, headlessBundleDepthLayerPrioritySummary, headlessBundleMissionGeometrySummary, headlessBundleMotionSummary, headlessBundleObservationSummary, headlessBundleReplaySummary, headlessBundleRoundtripSummary, headlessBundleScienceDiagnosisSummary, headlessBundleScoreSummary, headlessBundleWaterColumnSummary, headlessBundleTrackSummary, headlessBundleVisibilitySummary } from './HeadlessBundleViewModel.js';
+import { buildHeadlessBundleViewModel, headlessBundleBathymetrySummary, headlessBundleDepthLayerPrioritySummary, headlessBundleMissionGeometrySummary, headlessBundleMotionSummary, headlessBundleMotionCostGraphSummary, headlessBundleMissionFeasibilitySummary, headlessBundleMissionOutcomeSummary, headlessBundleObservationSummary, headlessBundleReplaySummary, headlessBundleRoundtripSummary, headlessBundleScienceDiagnosisSummary, headlessBundleScoreSummary, headlessBundleWaterColumnSummary, headlessBundleTrackSummary, headlessBundleVisibilitySummary } from './HeadlessBundleViewModel.js';
 import { BROWSER_HEADLESS_ROUNDTRIP_SUMMARY_TYPE, HEADLESS_SOLVER_ROUNDTRIP_REPORT_TYPE } from './HeadlessRoundtripTypes.js';
 
 export const HEADLESS_BUNDLE_BROWSER_ADAPTER_VERSION = 'headless-bundle-browser-adapter-h2';
@@ -20,6 +20,9 @@ export function buildBrowserHeadlessBundleSummaryArtifact(bundle = {}) {
     observationSummary: headlessBundleObservationSummary(bundle),
     trackSummary: headlessBundleTrackSummary(bundle),
     motionSummary: headlessBundleMotionSummary(bundle),
+    missionFeasibilitySummary: headlessBundleMissionFeasibilitySummary(bundle),
+    motionCostGraphSummary: headlessBundleMotionCostGraphSummary(bundle),
+    missionOutcomeSummary: headlessBundleMissionOutcomeSummary(bundle),
     scoreSummary: buildBrowserHeadlessScoreComparisonDescriptor(bundle),
     roundtripSummary: headlessBundleRoundtripSummary(bundle),
     waterColumnSummary: headlessBundleWaterColumnSummary(bundle),
@@ -64,6 +67,9 @@ export function buildBrowserHeadlessRoundtripSummaryArtifact(bundle = {}) {
     usesMotionDynamics: roundtripSummary.usesMotionDynamics === true,
     usesWebGPUFluid: roundtripSummary.usesWebGPUFluid === true,
     motionSummary: headlessBundleMotionSummary(bundle),
+    missionFeasibilitySummary: headlessBundleMissionFeasibilitySummary(bundle),
+    motionCostGraphSummary: headlessBundleMotionCostGraphSummary(bundle),
+    missionOutcomeSummary: headlessBundleMissionOutcomeSummary(bundle),
     waterColumnSummary: headlessBundleWaterColumnSummary(bundle),
     bathymetrySummary: headlessBundleBathymetrySummary(bundle),
     missionGeometrySummary: headlessBundleMissionGeometrySummary(bundle),
@@ -104,6 +110,9 @@ export function buildBrowserHeadlessBundleDebugObject(bundle = {}) {
   const waterColumn = viewModel.waterColumnSummary ?? headlessBundleWaterColumnSummary(bundle);
   const depthPriority = viewModel.depthLayerPrioritySummary ?? headlessBundleDepthLayerPrioritySummary(bundle);
   const motion = viewModel.motionSummary ?? headlessBundleMotionSummary(bundle);
+  const feasibility = viewModel.missionFeasibilitySummary ?? headlessBundleMissionFeasibilitySummary(bundle);
+  const motionCostGraph = viewModel.motionCostGraphSummary ?? headlessBundleMotionCostGraphSummary(bundle);
+  const missionOutcome = viewModel.missionOutcomeSummary ?? headlessBundleMissionOutcomeSummary(bundle);
   const bathymetry = viewModel.bathymetrySummary ?? headlessBundleBathymetrySummary(bundle);
   const missionGeometry = viewModel.missionGeometrySummary ?? headlessBundleMissionGeometrySummary(bundle);
   return {
@@ -132,6 +141,7 @@ export function buildBrowserHeadlessBundleDebugObject(bundle = {}) {
     roundtripVisibilityRisk: roundtrip.visibilityRisk ?? null,
     roundtripSummaryExportAvailable: Boolean(bundle.roundtripReport),
     hasMotionTrajectory: motion.present === true,
+    hasMotionDiagnostics: Boolean(bundle.motionDiagnostics ?? bundle.episode?.motionDiagnostics ?? bundle.episode?.motionTrajectory?.motionDiagnostics),
     motionModelId: motion.motionModelId ?? null,
     plannedDistance: motion.plannedDistance ?? 0,
     realizedDistance: motion.realizedDistance ?? 0,
@@ -140,7 +150,40 @@ export function buildBrowserHeadlessBundleDebugObject(bundle = {}) {
     driftDistance: motion.driftDistance ?? 0,
     energyUsed: motion.energyUsed ?? 0,
     usesMotionDynamics: motion.present === true,
+    hasMissionFeasibilityReport: feasibility.present === true,
+    hasMotionCostGraph: motionCostGraph.present === true,
+    hasMotionCostMatrix: motionCostGraph.hasMotionCostMatrix === true,
+    motionCostGraphNodeCount: motionCostGraph.nodeCount ?? 0,
+    motionCostGraphEdgeCount: motionCostGraph.edgeCount ?? 0,
+    motionCostGraphMetricId: motionCostGraph.metricId ?? null,
+    motionCostMatrixFormat: motionCostGraph.matrixFormat ?? null,
+    motionCostGraphPublicSafe: motionCostGraph.publicSafe !== false && motionCostGraph.hiddenTruthIncluded !== true,
+    motionCostGraphUsesRouteOptimizer: motionCostGraph.usesRouteOptimizer === true,
+    hasMissionOutcomeReport: missionOutcome.present === true,
+    hasMissionScore: missionOutcome.hasMissionScore === true,
+    hasRegretReport: missionOutcome.hasRegretReport === true,
+    missionScoreProfileId: missionOutcome.scoreProfileId ?? null,
+    missionScoreProfileVersion: missionOutcome.scoreProfileVersion ?? null,
+    missionCompositeScore: missionOutcome.compositeScore ?? null,
+    missionScienceScore: missionOutcome.scienceScore ?? null,
+    missionFeasibilityScore: missionOutcome.feasibilityScore ?? null,
+    missionEfficiencyScore: missionOutcome.efficiencyScore ?? null,
+    missionSafetyScore: missionOutcome.safetyScore ?? null,
+    missionScoreCoverageFraction: missionOutcome.coverageFraction ?? 0,
+    missionRegretReferenceType: missionOutcome.regretReferenceType ?? null,
+    missionTotalRegret: missionOutcome.totalRegret ?? null,
+    usesMissionOutcomeScoring: missionOutcome.usesMissionOutcomeScoring === true,
+    changesOfficialBrowserScoring: false,
+    usesRouteOptimizer: false,
+    feasibilityStatus: feasibility.feasibilityStatus ?? null,
+    missionDurationSeconds: feasibility.missionDurationSeconds ?? 0,
+    energyRemaining: feasibility.energyRemaining ?? null,
+    batteryFraction: feasibility.batteryFraction ?? motion.batteryFraction ?? null,
+    waypointValidationStatus: feasibility.waypointArrivalStatus ?? null,
+    bottomClearanceWarnings: feasibility.bottomClearanceWarnings ?? 0,
+    constraintViolations: feasibility.constraintViolations ?? 0,
     usesWebGPUFluid: false,
+    usesSeaExplorerValidatedModel: false,
     hasScienceDiagnostics: science.present === true,
     sciencePrimaryDiagnosis: science.primaryDiagnosis ?? null,
     scienceForecastCorrectionStatus: science.forecastCorrectionStatus ?? null,
@@ -178,3 +221,5 @@ export function buildBrowserHeadlessBundleDebugObject(bundle = {}) {
     usesMARL: false
   };
 }
+
+

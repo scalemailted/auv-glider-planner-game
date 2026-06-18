@@ -93,6 +93,9 @@ import { validateHeadlessBundle } from '../../src/core/headless/HeadlessBundleVa
 import { buildHeadlessBundleViewModel } from '../../src/core/headless/HeadlessBundleViewModel.js';
 import { buildBrowserHeadlessBundleDebugObject, buildBrowserHeadlessBundleSummaryArtifact, buildBrowserHeadlessRoundtripSummaryArtifact } from '../../src/core/headless/HeadlessBundleBrowserAdapter.js';
 import { headlessBundleViewerPanelHtml } from '../../src/ui/headless/HeadlessBundleViewerPanel.js';
+import { validateMissionOutcomeReport } from '../../src/core/scoring/MissionOutcomeReport.js';
+import { buildMissionScorecardViewModel } from '../../src/core/scoring/MissionScorecardViewModel.js';
+import { missionScorecardPanelHtml } from '../../src/ui/scoring/MissionScorecardPanel.js';
 import { createDefaultHeadlessRuntimeConfig, validateHeadlessRuntimeConfig } from '../../src/core/headless/runtime/HeadlessRuntimeConfig.js';
 import { createHeadlessGrid, field3dStats as headlessField3dStats } from '../../src/core/headless/runtime/HeadlessGrid.js';
 import { createHeadlessFieldPack } from '../../src/core/headless/runtime/HeadlessFields.js';
@@ -109,6 +112,9 @@ import { buildOceanWorldGeometry, validateOceanWorldGeometry } from '../../src/c
 import { HEADLESS_SOLVER_ROUNDTRIP_REPORT_TYPE, HEADLESS_SOLVER_ROUNDTRIP_BUNDLE_TYPE } from '../../src/core/headless/HeadlessRoundtripTypes.js';
 import { createGliderMotionConfig, validateGliderMotionConfig } from '../../src/core/motion/GliderMotionSchema.js';
 import { trajectoryMotionSummary, validateMotionTrajectory } from '../../src/core/motion/GliderTrajectorySimulator.js';
+import { validateMissionFeasibilityReport } from '../../src/core/motion/MissionFeasibilityReport.js';
+import { validateMotionCostGraph } from '../../src/core/motion/MotionCostGraphBuilder.js';
+import { validateMotionCostMatrix } from '../../src/core/motion/MotionCostMatrixExporter.js';
 import { detectRendererCapabilities, rendererCapabilitySummary } from '../../src/core/rendering/RendererCapabilityModel.js';
 import { createRendererHostConfig, createRendererSceneDescriptor, rendererHostSummary, validateRendererHostConfig } from '../../src/core/rendering/RendererHostContract.js';
 import { buildOceanWorldRenderViewModel, oceanWorldRenderViewModelSummary } from '../../src/core/rendering/OceanWorldRenderViewModel.js';
@@ -533,20 +539,50 @@ const motionR1Episode = runHeadlessMission(createDefaultHeadlessRuntimeConfig({
 assert.equal(motionR1Episode.diagnostics.usesMotionDynamics, true, 'MOTION-R1 headless runtime can run motion-aware execution');
 assert.equal(motionR1Episode.diagnostics.usesWebGPUFluid, false, 'MOTION-R1 headless runtime does not claim WebGPU');
 assert.equal(validateMotionTrajectory(motionR1Episode.motionTrajectory).status, 'PASS', 'MOTION-R1 trajectory validates');
+assert.equal(validateMissionFeasibilityReport(motionR1Episode.missionFeasibilityReport).status, 'PASS', 'MOTION-R1 mission feasibility report validates');
+assert.equal(motionR1Episode.missionFeasibilityReport?.usesNewPlanner, false, 'MOTION-R1 mission feasibility report does not claim a planner');
 const motionR1Summary = trajectoryMotionSummary(motionR1Episode.motionTrajectory);
 assert.equal(motionR1Summary.present, true, 'MOTION-R1 trajectory summary is present');
 assertFiniteNumber(motionR1Summary.meanTrackError, 'MOTION-R1 mean track error');
 const motionR1Files = headlessBundleFiles(motionR1Episode, { includeHiddenTruth: false, combinedJson: true });
 assert.ok(motionR1Files['motion_trajectory.json'], 'MOTION-R1 bundle includes motion_trajectory.json');
 assert.ok(motionR1Files['motion_diagnostics.json'], 'MOTION-R1 bundle includes motion_diagnostics.json');
+assert.ok(motionR1Files['mission_feasibility_report.json'], 'MOTION-R1 bundle includes mission_feasibility_report.json');
 const motionR1Bundle = buildHeadlessBundleFromFiles([{ fileName: 'bundle.json', text: motionR1Files['bundle.json'] }]);
 assert.equal(motionR1Bundle.motionTrajectory?.type, 'anchor.motion.trajectory', 'MOTION-R1 bundle loader preserves motion trajectory');
 const motionR1ViewModel = buildHeadlessBundleViewModel(motionR1Bundle);
 assert.equal(motionR1ViewModel.motionSummary.usesMotionDynamics, true, 'MOTION-R1 viewer model exposes motion dynamics');
 assert.equal(motionR1ViewModel.motionSummary.usesWebGPUFluid, false, 'MOTION-R1 viewer model keeps WebGPU boundary');
+assert.equal(motionR1ViewModel.missionFeasibilitySummary.present, true, 'MOTION-R1 viewer model exposes mission feasibility report');
 const motionR1PanelHtml = headlessBundleViewerPanelHtml(motionR1ViewModel);
 assert.ok(motionR1PanelHtml.includes('Motion Dynamics'), 'MOTION-R1 viewer panel renders motion section');
+assert.ok(motionR1PanelHtml.includes('Mission Feasibility'), 'MOTION-R1 viewer panel renders mission feasibility section');
 assert.ok(motionR1PanelHtml.includes('not a new route planner'), 'MOTION-R1 viewer panel states planner boundary');
+const simR1Episode = runHeadlessMission(createDefaultHeadlessRuntimeConfig({
+  seed: 'model-stack-sim-r1-smoke',
+  width: 12,
+  height: 8,
+  costGraphEnabled: true,
+  costGraphGridStep: 4,
+  costGraphMaxNodes: 24,
+  costMatrixFormat: 'sparse'
+}));
+assert.equal(simR1Episode.diagnostics.usesMotionCostGraph, true, 'SIM-R1 headless runtime can emit a motion cost graph');
+assert.equal(validateMotionCostGraph(simR1Episode.motionCostGraph).status, 'PASS', 'SIM-R1 motion cost graph validates');
+assert.equal(validateMotionCostMatrix(simR1Episode.motionCostMatrix).status, 'PASS', 'SIM-R1 motion cost matrix validates');
+assert.ok(simR1Episode.motionCostGraphSummary.edgeCount > 0, 'SIM-R1 graph has directed edges');
+assert.ok(simR1Episode.motionCostMatrixSummary.finiteCostCount > 0, 'SIM-R1 matrix has finite costs');
+assert.equal(simR1Episode.motionCostGraphSummary.usesRouteOptimizer, false, 'SIM-R1 graph does not claim route optimization');
+const simR1Files = headlessBundleFiles(simR1Episode, { includeHiddenTruth: false, combinedJson: true });
+assert.ok(simR1Files['motion_cost_graph.json'], 'SIM-R1 bundle includes motion_cost_graph.json');
+assert.ok(simR1Files['motion_cost_matrix.json'], 'SIM-R1 bundle includes motion_cost_matrix.json');
+assert.equal(simR1Files['bundle.json'].includes('T_hiddenTruth'), false, 'SIM-R1 public bundle omits hidden truth');
+const simR1Bundle = buildHeadlessBundleFromFiles([{ fileName: 'bundle.json', text: simR1Files['bundle.json'] }]);
+const simR1ViewModel = buildHeadlessBundleViewModel(simR1Bundle);
+assert.equal(simR1ViewModel.motionCostGraphSummary.present, true, 'SIM-R1 viewer model exposes motion cost graph');
+const simR1PanelHtml = headlessBundleViewerPanelHtml(simR1ViewModel);
+assert.ok(simR1PanelHtml.includes('Motion Cost Graph'), 'SIM-R1 viewer panel renders motion cost graph section');
+assert.ok(simR1PanelHtml.includes('do not choose a route'), 'SIM-R1 viewer panel states no route-choice boundary');
 const motionR1Scene = new MotionPlanningDemoScene();
 motionR1Scene.init({ motionModelId: 'depthLayerKinematic', currentStrength: 1, crossCurrentStrength: 1, gliderSpeed: 1 });
 assert.equal(globalThis.ANCHOR_MOTION_PLANNING_DEMO_DEBUG?.usesMotionDynamics, true, 'MOTION-R1 demo debug marks motion dynamics');
@@ -705,6 +741,14 @@ const h1RuntimeSourceFiles = [
   'src/core/motion/PlanControlAdapter.js',
   'src/core/motion/MotionDiagnostics.js',
   'src/core/motion/GliderTrajectorySimulator.js',
+  'src/core/motion/MissionFeasibilityReport.js',
+  'src/core/motion/MotionCostGraphSchema.js',
+  'src/core/motion/MotionCostGraphNodes.js',
+  'src/core/motion/MotionCostGraphNeighbors.js',
+  'src/core/motion/MotionEdgeCostEstimator.js',
+  'src/core/motion/MotionCostGraphBuilder.js',
+  'src/core/motion/MotionCostMatrixExporter.js',
+  'src/core/motion/MotionCostGraphPublicSafety.js',
   'tools/js/headless_oceanbox.mjs'
 ];
 const h1RuntimeSource = h1RuntimeSourceFiles.map((file) => fs.readFileSync(file, 'utf8')).join('\n');
@@ -745,6 +789,25 @@ assert.equal(h31RoundtripSummary.usesNewPlanner, false, 'H3.1 browser roundtrip 
 assert.equal(h31RoundtripSummary.waterColumnSummary?.present, true, 'P11 roundtrip browser summary exposes water-column context');
 assert.equal(h31RoundtripSummary.waterColumnSummary?.usesFull3DPlanning, false, 'P11 roundtrip summary excludes full 3D planning');
 assert.equal(JSON.stringify(h31RoundtripSummary).includes('T_hiddenTruth'), false, 'H3.1 browser roundtrip summary omits hidden truth ids');
+const scoreR1BundlePayload = JSON.parse(fs.readFileSync('docs/examples/headless_mission_score_bundle.example.json', 'utf8'));
+const scoreR1Bundle = buildHeadlessBundleFromFiles([{ fileName: 'bundle.json', payload: scoreR1BundlePayload }]);
+assert.deepEqual(scoreR1Bundle.failures, [], 'SCORE-R1 mission score fixture loads without failures');
+assert.equal(validateMissionOutcomeReport(scoreR1Bundle.missionOutcomeReport).valid, true, 'SCORE-R1 mission outcome report validates');
+const scoreR1ViewModel = buildHeadlessBundleViewModel(scoreR1Bundle);
+assert.equal(scoreR1ViewModel.missionScorecard?.present, true, 'SCORE-R1 bundle view-model exposes scorecard');
+const scoreR1PanelHtml = headlessBundleViewerPanelHtml(scoreR1ViewModel);
+assert.ok(scoreR1PanelHtml.includes('Mission Outcome Scorecard'), 'SCORE-R1 viewer panel renders scorecard');
+assert.ok(scoreR1PanelHtml.includes('This is a shadow benchmark evaluation, not the current official browser score.'), 'SCORE-R1 viewer keeps official-score boundary');
+const scoreR1DebriefHtml = missionScorecardPanelHtml(buildMissionScorecardViewModel({ missionOutcomeReport: scoreR1Bundle.missionOutcomeReport, regretReport: scoreR1Bundle.regretReport }));
+assert.ok(scoreR1DebriefHtml.includes('Composite Outcome Score'), 'SCORE-R1 debrief scorecard renders composite score');
+const scoreR1Debug = buildBrowserHeadlessBundleDebugObject(scoreR1Bundle);
+assert.equal(scoreR1Debug.hasMissionOutcomeReport, true, 'SCORE-R1 debug object marks mission outcome report');
+assert.equal(scoreR1Debug.usesMissionOutcomeScoring, true, 'SCORE-R1 debug object marks shadow scoring');
+assert.equal(scoreR1Debug.changesOfficialBrowserScoring, false, 'SCORE-R1 debug object preserves official scoring boundary');
+assert.equal(scoreR1Debug.usesNewPlanner, false, 'SCORE-R1 debug object excludes new planner');
+assert.equal(scoreR1Debug.usesRouteOptimizer, false, 'SCORE-R1 debug object excludes route optimizer');
+assert.equal(scoreR1Debug.usesMARL, false, 'SCORE-R1 debug object excludes MARL');
+assert.equal(exportTypeHeadlessCompatibility('anchor.benchmark.mission-outcome-report').compatibility, 'ready', 'SCORE-R1 mission outcome report maps to headless schema');
 const p8FakeStorage = (() => { const data = new Map(); return { get length() { return data.size; }, key(index) { return [...data.keys()][index] ?? null; }, getItem(key) { return data.has(key) ? data.get(key) : null; }, setItem(key, value) { data.set(key, String(value)); }, removeItem(key) { data.delete(key); } }; })();
 assert.equal(saveAdaptiveEpisodeSession(p8Session, p8FakeStorage).ok, true, 'P8 adaptive session persistence saves');
 assert.equal(loadAdaptiveEpisodeSession(p8Session.episodeId, p8FakeStorage).ok, true, 'P8 adaptive session persistence loads');
@@ -968,6 +1031,21 @@ assert.ok(gddSource.includes('2.5D Water-Column Model'), 'DOCS-GDD-R1 covers 2.5
 assert.ok(gddSource.includes('not a Python simulator'), 'DOCS-GDD-R1 preserves Python simulator boundary');
 assert.ok(gddSource.includes('not MARL/RL training'), 'DOCS-GDD-R1 preserves MARL/RL boundary');
 assert.ok(gddSource.toLowerCase().includes('best path is not the shortest path'), 'DOCS-GDD-R1 preserves core gameplay lesson');
+// DOCS-SIM-R1 mission feasibility target spec.
+const missionFeasibilityPath = 'docs/mission_feasibility_simulator_requirements.md';
+assert.equal(fs.existsSync(missionFeasibilityPath), true, 'DOCS-SIM-R1 mission feasibility requirements document exists');
+const missionFeasibilitySource = fs.readFileSync(missionFeasibilityPath, 'utf8');
+assert.ok(missionFeasibilitySource.includes('4D current'), 'DOCS-SIM-R1 covers 4D current target');
+assert.ok(missionFeasibilitySource.includes('cost graph'), 'DOCS-SIM-R1 covers cost graph target');
+assert.ok(missionFeasibilitySource.includes('adjacency matrix'), 'DOCS-SIM-R1 covers adjacency matrix target');
+const motionCostGraphDocPath = 'docs/motion_cost_graph_and_adjacency_matrix.md';
+assert.equal(fs.existsSync(motionCostGraphDocPath), true, 'SIM-R1 motion cost graph documentation exists');
+const motionCostGraphDoc = fs.readFileSync(motionCostGraphDocPath, 'utf8');
+assert.ok(motionCostGraphDoc.includes('anchor.benchmark.feasibility-cost-graph'), 'SIM-R1 docs cover graph artifact type');
+assert.ok(motionCostGraphDoc.includes('anchor.headless.motion-cost-matrix'), 'SIM-R1 docs cover matrix artifact type');
+assert.ok(motionCostGraphDoc.includes('does not choose a route'), 'SIM-R1 docs state no-route-choice boundary');
+assert.ok(missionFeasibilitySource.includes('not a Python simulator'), 'DOCS-SIM-R1 preserves Python simulator boundary');
+assert.ok(missionFeasibilitySource.includes('not MARL/RL'), 'DOCS-SIM-R1 preserves MARL/RL boundary');
 // Claim-boundary guard: calibrated forecast claims must be explicitly negated/bounded.
 const claimFiles = [
   'README.md',
@@ -979,6 +1057,8 @@ const claimFiles = [
   'docs/testing.md',
   'docs/development_versions.md',
   'docs/game_design_scientific_auv_planning.md',
+  'docs/mission_feasibility_simulator_requirements.md',
+  'docs/motion_cost_graph_and_adjacency_matrix.md',
   'docs/uncertainty_forecast_demo.md',
   'docs/sampling_priority_demo.md',
   'docs/flow_coupled_sampling_demo.md',
@@ -1092,3 +1172,4 @@ assert.ok(coupledSceneSource.includes('What Colors Mean'), 'Coupled right panel 
 assert.ok(coupledSceneSource.includes('uses uncertainty'), 'Coupled right panel states uncertainty boundary');
 
 console.log('Model stack integration smoke passed');
+

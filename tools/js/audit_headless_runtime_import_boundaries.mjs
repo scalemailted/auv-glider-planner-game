@@ -33,6 +33,24 @@ files.push(
   'src/core/motion/PlanControlAdapter.js',
   'src/core/motion/MotionDiagnostics.js',
   'src/core/motion/GliderTrajectorySimulator.js',
+  'src/core/motion/MissionFeasibilityReport.js',
+  'src/core/motion/MotionCostGraphSchema.js',
+  'src/core/motion/MotionCostGraphNodes.js',
+  'src/core/motion/MotionCostGraphNeighbors.js',
+  'src/core/motion/MotionEdgeCostEstimator.js',
+  'src/core/motion/MotionCostGraphBuilder.js',
+  'src/core/motion/MotionCostMatrixExporter.js',
+  'src/core/motion/MotionCostGraphPublicSafety.js',
+  'src/core/scoring/MissionScoringSchema.js',
+  'src/core/scoring/MissionScoreComponents.js',
+  'src/core/scoring/MissionScoreProfiles.js',
+  'src/core/scoring/MissionOutcomeMetricAdapter.js',
+  'src/core/scoring/MissionScoreNormalizer.js',
+  'src/core/scoring/MissionScoreAggregator.js',
+  'src/core/scoring/MissionRegretModel.js',
+  'src/core/scoring/MissionOutcomeReport.js',
+  'src/core/scoring/MissionScorePublicSafety.js',
+  'src/core/scoring/MissionScorecardViewModel.js',
   'tools/js/headless_oceanbox.mjs'
 );
 
@@ -63,3 +81,4 @@ for (const file of files) {
 
 assert.deepEqual(violations, [], `Headless runtime import boundary violations:\n${violations.join('\n')}`);
 console.log('Headless runtime import boundary audit passed');
+

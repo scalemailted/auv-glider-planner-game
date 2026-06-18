@@ -5,6 +5,8 @@ import { createDiveProfileSequence, normalizeDiveProfile } from '../../science/D
 import { normalizeWaterColumnConfig, validateWaterColumnConfig, waterColumnConfigSummary } from '../../science/WaterColumnSchema.js';
 import { bathymetryConfigSummary, createBathymetryConfig, normalizeBathymetryViewMode, validateBathymetryConfig } from '../../science/BathymetrySchema.js';
 import { createGliderMotionConfig, gliderMotionConfigSummary, validateGliderMotionConfig } from '../../motion/GliderMotionSchema.js';
+import { createMotionCostGraphConfig, motionCostGraphConfigSummary, validateMotionCostGraphConfig } from '../../motion/MotionCostGraphSchema.js';
+import { createMissionScoreConfig, missionScoreConfigSummary, validateMissionScoreConfig } from '../../scoring/MissionScoringSchema.js';
 
 export const HEADLESS_RUNTIME_CONFIG_VERSION = 'headless-node-runtime-h1';
 
@@ -58,6 +60,31 @@ export function createDefaultHeadlessRuntimeConfig(options = {}) {
     energyBudget: options.energyBudget ?? missionConfig.gliders[0]?.energyBudget ?? options.motionConfig?.energyBudget,
     sampleIntervalSeconds: options.sampleIntervalSeconds ?? options.motionConfig?.sampleIntervalSeconds
   });
+  const costGraphEnabled = Boolean(options.costGraphEnabled ?? options.costGraph ?? options.costGraphConfig?.enabled ?? false);
+  const costGraphConfig = createMotionCostGraphConfig({
+    ...(options.costGraphConfig ?? {}),
+    metricId: options.costGraphMetric ?? options.costMetric ?? options.metricId ?? options.costGraphConfig?.metricId,
+    nodeSourceId: options.costGraphNodeSource ?? options.nodeSourceId ?? options.costGraphConfig?.nodeSourceId,
+    neighborMode: options.costGraphNeighborMode ?? options.neighborMode ?? options.costGraphConfig?.neighborMode,
+    gridStep: options.costGraphGridStep ?? options.gridStep ?? options.costGraphConfig?.gridStep,
+    maxNodes: options.costGraphMaxNodes ?? options.maxNodes ?? options.costGraphConfig?.maxNodes,
+    neighborRadius: options.costGraphRadius ?? options.neighborRadius ?? options.costGraphConfig?.neighborRadius,
+    departureTimesSeconds: options.costGraphDepartureTimesSeconds ?? options.departureTimesSeconds ?? options.costGraphConfig?.departureTimesSeconds,
+    matrixFormat: options.costMatrixFormat ?? options.matrixFormat ?? options.costGraphConfig?.matrixFormat,
+    cellSizeMeters: options.cellSizeMeters ?? options.costGraphConfig?.cellSizeMeters,
+    motionModelId: options.motionModelId ?? options.motionModel ?? options.costGraphConfig?.motionModelId ?? motionConfig.motionModelId,
+    diveProfileId: options.diveProfileId ?? options.diveProfile ?? options.costGraphConfig?.diveProfileId ?? waterColumnConfig.diveProfileId
+  });
+  const missionScoreEnabled = Boolean(options.missionScoreEnabled ?? options.missionScore ?? options.scoreConfig?.enabled ?? false);
+  const missionObjectiveId = missionConfig.objectives?.[0]?.objectiveId ?? missionConfig.objectives?.[0]?.id ?? options.objectiveId ?? 'reconnaissanceSurvey';
+  const missionScoreConfig = createMissionScoreConfig({
+    ...(options.scoreConfig ?? {}),
+    profileId: options.scoreProfileId ?? options.scoreProfile ?? options.scoreConfig?.profileId,
+    objectiveId: missionObjectiveId,
+    visibilityTier: options.visibilityTier ?? missionConfig.informationAccessTier ?? 'publicScenario',
+    allowRefereeOnlyPostMissionMetrics: options.scoreAllowRefereeMetrics === true || options.scoreConfig?.allowRefereeOnlyPostMissionMetrics === true,
+    regretReference: options.regretReference ?? options.scoreConfig?.regretReference
+  });
   missionConfig.world ??= {};
   missionConfig.world.motionConfig = motionConfig;
   if (bathymetryConfig) missionConfig.world.bathymetryConfig = bathymetryConfig;
@@ -77,6 +104,10 @@ export function createDefaultHeadlessRuntimeConfig(options = {}) {
     plan,
     motionAware: motionConfig.enabled === true || motionConfig.motionAware === true,
     motionConfig,
+    costGraphEnabled,
+    costGraphConfig,
+    missionScoreEnabled,
+    missionScoreConfig,
     sensorNoise: finiteNumber(options.sensorNoise, 0.03),
     stepDistance: finiteNumber(options.stepDistance, 1.25),
     priorityWeights: {
@@ -97,6 +128,8 @@ export function createDefaultHeadlessRuntimeConfig(options = {}) {
       implementsPythonSimulator: false,
       implementsFull3DPlanning: false,
       usesMotionDynamics: motionConfig.enabled === true || motionConfig.motionAware === true,
+      usesMotionCostGraph: costGraphEnabled,
+      usesMissionOutcomeScoring: missionScoreEnabled,
       usesWebGPUFluid: false,
       usesHydrodynamicSolver: false,
       usesTerrainFlowAsOceanCurrent: false
@@ -106,6 +139,8 @@ export function createDefaultHeadlessRuntimeConfig(options = {}) {
       'P11 adds 2.5D depth-layer sampling metadata; it does not add full 3D planning.',
       'Waypoint plans are executed as supplied; H1 does not optimize or generate routes.',
       'MOTION-R1 motion-aware execution is optional and deterministic; it does not add a route planner or WebGPU.',
+      'SIM-R1 motion cost graphs are optional benchmark artifacts and adjacency matrices; they do not generate or optimize routes.',
+      'SCORE-R1 mission outcome scoring is optional shadow benchmark scoring and does not replace official browser scoring.',
       'ENV-R1 bathymetry is public-safe environmental geometry; it is not terrain-flow ocean current or full 3D route planning.'
     ]
   };
@@ -256,6 +291,17 @@ export function validateHeadlessRuntimeConfig(config = {}) {
   if (config?.boundary?.implementsMARL) warnings.push('H1 must not claim MARL/RL.');
   if (config?.boundary?.implementsFull3DPlanning) warnings.push('P11 must not claim full 3D route planning.');
   if (config?.boundary?.usesWebGPUFluid) warnings.push('MOTION-R1 must not claim WebGPU fluid integration.');
+  if (config?.costGraphEnabled === true) {
+    const costGraphValidation = validateMotionCostGraphConfig(config?.costGraphConfig ?? {});
+    if (!costGraphValidation.valid) errors.push(...costGraphValidation.errors.map((entry) => 'costGraphConfig: ' + entry));
+    warnings.push(...costGraphValidation.warnings.map((entry) => 'costGraphConfig: ' + entry));
+  }
+  if (config?.missionScoreEnabled === true) {
+    const scoreValidation = validateMissionScoreConfig(config?.missionScoreConfig ?? {});
+    if (!scoreValidation.valid) errors.push(...scoreValidation.errors.map((entry) => 'missionScoreConfig: ' + entry));
+    warnings.push(...scoreValidation.warnings.map((entry) => 'missionScoreConfig: ' + entry));
+    if (config?.missionScoreConfig?.changesOfficialBrowserScoring !== false) errors.push('missionScoreConfig: changesOfficialBrowserScoring must be false.');
+  }
   return { valid: errors.length === 0, status: errors.length ? 'FAIL' : warnings.length ? 'WARN' : 'PASS', errors, warnings };
 }
 
@@ -274,6 +320,10 @@ export function headlessRuntimeConfigSummary(configInput = {}) {
     diveProfileId: config.waterColumnConfig?.diveProfileId ?? config.missionConfig?.gliders?.[0]?.diveProfileId ?? null,
     motion: gliderMotionConfigSummary(config.motionConfig),
     motionAware: config.motionAware === true,
+    costGraphEnabled: config.costGraphEnabled === true,
+    motionCostGraph: config.costGraphEnabled === true ? motionCostGraphConfigSummary(config.costGraphConfig) : null,
+    missionScoreEnabled: config.missionScoreEnabled === true,
+    missionOutcomeScoring: config.missionScoreEnabled === true ? missionScoreConfigSummary(config.missionScoreConfig) : null,
     fieldCount: config.fields.length,
     waypointCount: config.plan.waypoints.length,
     gliderCount: config.missionConfig.gliders.length,
@@ -306,3 +356,6 @@ function finiteNumber(value, fallback) {
   const number = Number(value);
   return Number.isFinite(number) ? number : fallback;
 }
+
+
+

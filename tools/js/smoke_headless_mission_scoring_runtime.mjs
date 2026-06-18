@@ -1,0 +1,20 @@
+import assert from 'node:assert/strict';
+import { runHeadlessMission } from '../../src/core/headless/runtime/HeadlessMissionRunner.js';
+import { createHeadlessCombinedBundle, headlessBundleFiles } from '../../src/core/headless/runtime/HeadlessBundleWriter.js';
+
+const base = runHeadlessMission({ seed: 'score-r1-runtime-base', width: 12, height: 10, bathymetry: false });
+assert.equal(base.missionOutcomeReport, null, 'score disabled by default');
+const scored = runHeadlessMission({ seed: 'score-r1-runtime-scored', width: 12, height: 10, bathymetry: false, motionAware: true, costGraphEnabled: true, missionScoreEnabled: true, scoreProfile: 'balancedMission' });
+assert.ok(scored.missionOutcomeReport, 'score-enabled run emits report');
+assert.ok(scored.missionScore, 'score-enabled run emits score');
+assert.ok(scored.waterColumnSummary, 'water-column summary remains present');
+assert.ok(scored.motionTrajectory, 'motion output remains present');
+assert.ok(scored.missionFeasibilityReport, 'feasibility output remains present');
+assert.equal(scored.missionOutcomeReport.changesOfficialBrowserScoring, false, 'official scoring unchanged');
+const files = headlessBundleFiles(scored, { includeHiddenTruth: false, combinedJson: true });
+assert.ok(files['mission_outcome_report.json'], 'report file emitted');
+assert.ok(files['mission_score.json'], 'score file emitted');
+assert.ok(files['mission_outcome_metrics.json'], 'metrics file emitted');
+assert.equal(Object.keys(files).includes('hidden_fields.json'), false, 'public bundle omits hidden fields file');
+assert.equal(JSON.stringify(createHeadlessCombinedBundle(scored, { includeHiddenTruth: false })).includes('T_hiddenTruth'), false, 'public combined bundle has no T_hiddenTruth');
+console.log('Headless mission scoring runtime smoke passed');

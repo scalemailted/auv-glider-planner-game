@@ -8,6 +8,7 @@ import { roundtripReportTypeMetadata } from './HeadlessRoundtripTypes.js';
 import { scienceDiscoverySummary } from '../science/ScienceDiscoveryLifecycle.js';
 import { normalizeWaterColumnConfig, normalizeWaterColumnProfileId, WATER_COLUMN_PROFILE_IDS } from '../science/WaterColumnSchema.js';
 import { trajectoryMotionSummary } from '../motion/GliderTrajectorySimulator.js';
+import { missionFeasibilityReportSummary } from '../motion/MissionFeasibilityReport.js';
 
 export const HEADLESS_ROUNDTRIP_VERSION = 'headless-solver-packet-roundtrip-h3';
 
@@ -41,7 +42,21 @@ export function buildHeadlessSolverPacketRoundtrip(packet, plan, options = {}) {
     sampleIntervalSeconds: options.sampleIntervalSeconds,
     bathymetry: options.bathymetry,
     bathymetryViewMode: options.bathymetryViewMode ?? options.bathymetryView,
-    verticalExaggeration: options.verticalExaggeration
+    verticalExaggeration: options.verticalExaggeration,
+    costGraphEnabled: options.costGraphEnabled ?? options.costGraph,
+    costGraphConfig: options.costGraphConfig,
+    costGraphMetric: options.costGraphMetric,
+    costGraphNodeSource: options.costGraphNodeSource,
+    costGraphNeighborMode: options.costGraphNeighborMode,
+    costGraphGridStep: options.costGraphGridStep,
+    costGraphMaxNodes: options.costGraphMaxNodes,
+    costGraphRadius: options.costGraphRadius,
+    costGraphDepartureTimesSeconds: options.costGraphDepartureTimesSeconds,
+    costMatrixFormat: options.costMatrixFormat,
+    missionScoreEnabled: options.missionScoreEnabled ?? options.missionScore,
+    scoreProfile: options.scoreProfile ?? options.scoreProfileId,
+    regretReference: options.regretReference,
+    scoreAllowRefereeMetrics: options.scoreAllowRefereeMetrics
   });
   const episode = runHeadlessMissionWithPlan(runtimeConfig, runtimePlan);
   const report = buildHeadlessRoundtripReport({
@@ -227,7 +242,21 @@ export function buildRoundtripRuntimeConfig(context, world, runtimePlan, options
     sampleIntervalSeconds: options.sampleIntervalSeconds,
     bathymetry: options.bathymetry,
     bathymetryViewMode: options.bathymetryViewMode ?? options.bathymetryView,
-    verticalExaggeration: options.verticalExaggeration
+    verticalExaggeration: options.verticalExaggeration,
+    costGraphEnabled: options.costGraphEnabled ?? options.costGraph,
+    costGraphConfig: options.costGraphConfig,
+    costGraphMetric: options.costGraphMetric,
+    costGraphNodeSource: options.costGraphNodeSource,
+    costGraphNeighborMode: options.costGraphNeighborMode,
+    costGraphGridStep: options.costGraphGridStep,
+    costGraphMaxNodes: options.costGraphMaxNodes,
+    costGraphRadius: options.costGraphRadius,
+    costGraphDepartureTimesSeconds: options.costGraphDepartureTimesSeconds,
+    costMatrixFormat: options.costMatrixFormat,
+    missionScoreEnabled: options.missionScoreEnabled ?? options.missionScore,
+    scoreProfile: options.scoreProfile ?? options.scoreProfileId,
+    regretReference: options.regretReference,
+    scoreAllowRefereeMetrics: options.scoreAllowRefereeMetrics
   });
 }
 
@@ -240,6 +269,13 @@ export function buildHeadlessRoundtripReport({ context, world, packet, plan, sel
   const bathymetrySummary = episode.bathymetrySummary ?? null;
   const missionGeometrySummary = episode.missionGeometrySummary ?? null;
   const motionSummary = episode.motionTrajectory ? trajectoryMotionSummary(episode.motionTrajectory) : null;
+  const missionFeasibilityReport = episode.missionFeasibilityReport ?? null;
+  const missionFeasibilitySummary = missionFeasibilityReport ? missionFeasibilityReportSummary(missionFeasibilityReport) : episode.missionFeasibilitySummary ?? episode.diagnostics?.missionFeasibilitySummary ?? null;
+  const motionCostGraphSummary = episode.motionCostGraphSummary ?? episode.diagnostics?.motionCostGraphSummary ?? null;
+  const motionCostMatrixSummary = episode.motionCostMatrixSummary ?? episode.diagnostics?.motionCostMatrixSummary ?? null;
+  const missionOutcomeSummary = episode.diagnostics?.missionOutcomeSummary ?? (episode.missionOutcomeReport ? { compositeScore: episode.missionOutcomeReport.compositeScore, coverageFraction: episode.missionOutcomeReport.coverageFraction } : null);
+  const missionScoreSummary = episode.diagnostics?.missionScoreSummary ?? null;
+  const regretSummary = episode.diagnostics?.regretSummary ?? null;
   return {
     schemaVersion: '1.0',
     ...roundtripReportTypeMetadata(),
@@ -283,10 +319,29 @@ export function buildHeadlessRoundtripReport({ context, world, packet, plan, sel
       usesPythonSimulator: false,
       usesMARL: false,
       usesMotionDynamics: Boolean(motionSummary),
+      hasMissionFeasibilityReport: Boolean(missionFeasibilityReport),
+      hasMotionCostGraph: Boolean(motionCostGraphSummary),
+      usesMotionCostGraph: Boolean(motionCostGraphSummary),
+      usesMissionOutcomeScoring: Boolean(missionOutcomeSummary ?? episode.missionOutcomeReport ?? episode.missionScore),
+      motionCostMetricId: motionCostGraphSummary?.metricId ?? null,
+      motionCostNodeCount: motionCostGraphSummary?.nodeCount ?? 0,
+      motionCostEdgeCount: motionCostGraphSummary?.edgeCount ?? 0,
+      scoreProfileId: missionOutcomeSummary?.scoreProfileId ?? episode.missionOutcomeReport?.scoreProfile?.profileId ?? null,
+      scoreProfileVersion: missionOutcomeSummary?.scoreProfileVersion ?? episode.missionOutcomeReport?.scoreProfile?.profileVersion ?? null,
+      compositeScore: missionOutcomeSummary?.compositeScore ?? null,
+      scienceScore: missionOutcomeSummary?.scienceScore ?? null,
+      feasibilityScore: missionOutcomeSummary?.feasibilityScore ?? null,
+      efficiencyScore: missionOutcomeSummary?.efficiencyScore ?? null,
+      safetyScore: missionOutcomeSummary?.safetyScore ?? null,
+      coverageFraction: missionOutcomeSummary?.coverageFraction ?? null,
+      regretSummary,
       usesWebGPUFluid: false,
       usesFull3DPlanning: false,
       usesHydrodynamicSolver: false,
       usesTerrainFlowAsOceanCurrent: false,
+      changesOfficialBrowserScoring: false,
+      usesRouteOptimizer: false,
+      usesSeaExplorerValidatedModel: false,
       motionModelId: motionSummary?.motionModelId ?? runtimeConfig.motionConfig?.motionModelId ?? null,
       usesPacketVisibleFieldsForPlanningValidation: true,
       usesSyntheticRuntimeFieldsForExecution: true
@@ -301,6 +356,7 @@ export function buildHeadlessRoundtripReport({ context, world, packet, plan, sel
       bathymetrySummary,
       missionGeometrySummary,
       motionSummary,
+      missionFeasibilitySummary,
       plannedVsRealized: episode.plannedVsRealized ?? episode.motionTrajectory?.plannedVsRealized ?? null,
       motionDiagnostics: episode.motionDiagnostics ?? episode.motionTrajectory?.motionDiagnostics ?? null
     },
@@ -309,8 +365,18 @@ export function buildHeadlessRoundtripReport({ context, world, packet, plan, sel
     bathymetrySummary,
     missionGeometrySummary,
     motionSummary,
+    missionFeasibilityReport,
+    missionFeasibilitySummary,
     plannedVsRealized: episode.plannedVsRealized ?? episode.motionTrajectory?.plannedVsRealized ?? null,
     motionDiagnostics: episode.motionDiagnostics ?? episode.motionTrajectory?.motionDiagnostics ?? null,
+    motionCostGraphSummary,
+    motionCostMatrixSummary,
+    missionOutcomeSummary,
+    missionScoreSummary,
+    regretSummary,
+    missionOutcomeReport: episode.missionOutcomeReport ?? null,
+    missionScore: episode.missionScore ?? null,
+    regretReport: episode.regretReport ?? null,
     output: {
       outputDir,
       combinedBundlePath: outputDir ? `${outputDir.replace(/\\/g, '/')}/bundle.json` : null,
@@ -338,7 +404,23 @@ export function buildHeadlessRoundtripReport({ context, world, packet, plan, sel
       hasMissionGeometrySummary: Boolean(missionGeometrySummary),
       bathymetryViewMode: bathymetrySummary?.bathymetryViewMode ?? runtimeConfig?.bathymetryViewMode ?? null,
       motionModelId: motionSummary?.motionModelId ?? null,
-      usesMotionDynamics: Boolean(motionSummary)
+      usesMotionDynamics: Boolean(motionSummary),
+      hasMissionFeasibilityReport: Boolean(missionFeasibilityReport),
+      hasMotionCostGraph: Boolean(motionCostGraphSummary),
+      usesMotionCostGraph: Boolean(motionCostGraphSummary),
+      usesMissionOutcomeScoring: Boolean(missionOutcomeSummary ?? episode.missionOutcomeReport ?? episode.missionScore),
+      motionCostMetricId: motionCostGraphSummary?.metricId ?? null,
+      motionCostNodeCount: motionCostGraphSummary?.nodeCount ?? 0,
+      motionCostEdgeCount: motionCostGraphSummary?.edgeCount ?? 0,
+      scoreProfileId: missionOutcomeSummary?.scoreProfileId ?? episode.missionOutcomeReport?.scoreProfile?.profileId ?? null,
+      scoreProfileVersion: missionOutcomeSummary?.scoreProfileVersion ?? episode.missionOutcomeReport?.scoreProfile?.profileVersion ?? null,
+      compositeScore: missionOutcomeSummary?.compositeScore ?? null,
+      scienceScore: missionOutcomeSummary?.scienceScore ?? null,
+      feasibilityScore: missionOutcomeSummary?.feasibilityScore ?? null,
+      efficiencyScore: missionOutcomeSummary?.efficiencyScore ?? null,
+      safetyScore: missionOutcomeSummary?.safetyScore ?? null,
+      coverageFraction: missionOutcomeSummary?.coverageFraction ?? null,
+      regretSummary
     },
     boundary: [
       'Node/OceanBox-JS validates and executes a submitted plan through the H1 headless runtime.',
@@ -348,6 +430,7 @@ export function buildHeadlessRoundtripReport({ context, world, packet, plan, sel
       'P11 water-column context is 2.5D depth-layer sampling, not full 3D planning or a new planner.',
       'ENV-R1 bathymetry is environmental geometry and view metadata; it does not replace water-column state or add hydrodynamic solving.',
       'MOTION-R1 motion dynamics compares submitted route intent with realized trajectory; it does not generate a route or use WebGPU.',
+      'SIM-R1 cost graph and adjacency matrix artifacts inspect motion costs; they do not choose or optimize routes.',
       'H3/P9/P11 does not add a Python simulator, new route planner, calibrated ocean forecast, backend service, production data assimilation, or MARL/RL.'
     ]
   };
@@ -422,3 +505,5 @@ function finiteOrNull(value) {
 function round(value) {
   return Number(Number(value ?? 0).toFixed(6));
 }
+
+

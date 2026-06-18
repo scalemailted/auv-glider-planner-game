@@ -3,7 +3,7 @@ import { HEADLESS_SOLVER_ROUNDTRIP_BUNDLE_TYPE, isHeadlessRoundtripReportType } 
 
 export const HEADLESS_BUNDLE_LOADER_VERSION = 'headless-bundle-loader-h2';
 export const HEADLESS_BUNDLE_REQUIRED_FILES = Object.freeze(['manifest.json', 'mission_config.json', 'visible_fields.json', 'score_report.json']);
-export const HEADLESS_BUNDLE_OPTIONAL_FILES = Object.freeze(['hidden_fields.json', 'observations.json', 'observations.csv', 'glider_tracks.json', 'glider_tracks.csv', 'replay.json', 'episode.json', 'bundle.json', 'roundtrip_report.json', 'science_diagnostics.json', 'water_column_summary.json', 'depth_layer_priority.json', 'motion_trajectory.json', 'control_trace.json', 'motion_diagnostics.json', 'bathymetry_summary.json', 'mission_geometry_summary.json']);
+export const HEADLESS_BUNDLE_OPTIONAL_FILES = Object.freeze(['hidden_fields.json', 'observations.json', 'observations.csv', 'glider_tracks.json', 'glider_tracks.csv', 'replay.json', 'episode.json', 'bundle.json', 'roundtrip_report.json', 'science_diagnostics.json', 'water_column_summary.json', 'depth_layer_priority.json', 'motion_trajectory.json', 'control_trace.json', 'motion_diagnostics.json', 'mission_feasibility_report.json', 'motion_cost_graph.json', 'motion_cost_matrix.json', 'score_profile.json', 'mission_outcome_metrics.json', 'mission_score.json', 'mission_outcome_report.json', 'regret_report.json', 'bathymetry_summary.json', 'mission_geometry_summary.json']);
 
 const LOGICAL_FILE_ALIASES = Object.freeze({
   'manifest.json': 'manifest',
@@ -25,6 +25,14 @@ const LOGICAL_FILE_ALIASES = Object.freeze({
   'motion_trajectory.json': 'motionTrajectory',
   'control_trace.json': 'controlTrace',
   'motion_diagnostics.json': 'motionDiagnostics',
+  'mission_feasibility_report.json': 'missionFeasibilityReport',
+  'motion_cost_graph.json': 'motionCostGraph',
+  'motion_cost_matrix.json': 'motionCostMatrix',
+  'score_profile.json': 'scoreProfileSummary',
+  'mission_outcome_metrics.json': 'missionOutcomeMetrics',
+  'mission_score.json': 'missionScore',
+  'mission_outcome_report.json': 'missionOutcomeReport',
+  'regret_report.json': 'regretReport',
   'bathymetry_summary.json': 'bathymetrySummary',
   'mission_geometry_summary.json': 'missionGeometrySummary'
 });
@@ -97,6 +105,17 @@ export function normalizeHeadlessBundleFiles(files = []) {
     normalized.motionTrajectory ??= combined.motionTrajectory ?? combined.episode?.motionTrajectory;
     normalized.controlTrace ??= combined.controlTrace ?? combined.episode?.controlTrace ?? combined.episode?.motionTrajectory?.controlCommands;
     normalized.motionDiagnostics ??= combined.motionDiagnostics ?? combined.episode?.motionDiagnostics ?? combined.episode?.motionTrajectory?.motionDiagnostics;
+    normalized.missionFeasibilityReport ??= combined.missionFeasibilityReport ?? combined.episode?.missionFeasibilityReport;
+    normalized.missionFeasibilitySummary ??= combined.missionFeasibilitySummary ?? combined.episode?.missionFeasibilitySummary ?? combined.episode?.diagnostics?.missionFeasibilitySummary;
+    normalized.motionCostGraph ??= combined.motionCostGraph ?? combined.episode?.motionCostGraph;
+    normalized.motionCostMatrix ??= combined.motionCostMatrix ?? combined.episode?.motionCostMatrix;
+    normalized.motionCostGraphSummary ??= combined.motionCostGraphSummary ?? combined.episode?.motionCostGraphSummary ?? combined.episode?.diagnostics?.motionCostGraphSummary;
+    normalized.motionCostMatrixSummary ??= combined.motionCostMatrixSummary ?? combined.episode?.motionCostMatrixSummary ?? combined.episode?.diagnostics?.motionCostMatrixSummary;
+    normalized.scoreProfileSummary ??= combined.scoreProfileSummary ?? combined.scoreProfile ?? combined.episode?.scoreProfileSummary;
+    normalized.missionOutcomeMetrics ??= combined.missionOutcomeMetrics ?? combined.episode?.missionOutcomeMetrics;
+    normalized.missionScore ??= combined.missionScore ?? combined.episode?.missionScore;
+    normalized.missionOutcomeReport ??= combined.missionOutcomeReport ?? combined.episode?.missionOutcomeReport ?? combined.roundtripReport?.missionOutcomeReport;
+    normalized.regretReport ??= combined.regretReport ?? combined.episode?.regretReport ?? combined.roundtripReport?.regretReport;
     normalized.bathymetrySummary ??= combined.bathymetrySummary ?? combined.episode?.bathymetrySummary ?? combined.visibleFields?.bathymetrySummary;
     normalized.missionGeometrySummary ??= combined.missionGeometrySummary ?? combined.episode?.missionGeometrySummary;
   }
@@ -145,6 +164,17 @@ export function buildHeadlessBundleFromFiles(bundleFiles) {
     motionTrajectory: normalized.motionTrajectory ?? normalized.episode?.motionTrajectory ?? null,
     controlTrace: normalizeControlTracePayload(normalized.controlTrace ?? normalized.episode?.controlTrace ?? normalized.episode?.motionTrajectory?.controlCommands),
     motionDiagnostics: normalized.motionDiagnostics ?? normalized.episode?.motionDiagnostics ?? normalized.episode?.motionTrajectory?.motionDiagnostics ?? null,
+    missionFeasibilityReport: normalized.missionFeasibilityReport ?? normalized.episode?.missionFeasibilityReport ?? null,
+    missionFeasibilitySummary: normalized.missionFeasibilitySummary ?? normalized.episode?.missionFeasibilitySummary ?? normalized.episode?.diagnostics?.missionFeasibilitySummary ?? null,
+    motionCostGraph: normalized.motionCostGraph ?? normalized.episode?.motionCostGraph ?? null,
+    motionCostMatrix: normalized.motionCostMatrix ?? normalized.episode?.motionCostMatrix ?? null,
+    motionCostGraphSummary: normalized.motionCostGraphSummary ?? normalized.motionCostGraph?.summary ?? normalized.episode?.motionCostGraphSummary ?? normalized.episode?.diagnostics?.motionCostGraphSummary ?? null,
+    motionCostMatrixSummary: normalized.motionCostMatrixSummary ?? normalized.motionCostMatrix?.summary ?? normalized.episode?.motionCostMatrixSummary ?? normalized.episode?.diagnostics?.motionCostMatrixSummary ?? null,
+    scoreProfileSummary: normalized.scoreProfileSummary ?? normalized.episode?.scoreProfileSummary ?? null,
+    missionOutcomeMetrics: normalized.missionOutcomeMetrics ?? normalized.episode?.missionOutcomeMetrics ?? null,
+    missionScore: normalized.missionScore ?? normalized.episode?.missionScore ?? null,
+    missionOutcomeReport: normalized.missionOutcomeReport ?? normalized.episode?.missionOutcomeReport ?? normalized.roundtripReport?.missionOutcomeReport ?? null,
+    regretReport: normalized.regretReport ?? normalized.episode?.regretReport ?? normalized.roundtripReport?.regretReport ?? null,
     bathymetrySummary: normalized.bathymetrySummary ?? normalized.episode?.bathymetrySummary ?? normalized.visibleFields?.bathymetrySummary ?? null,
     missionGeometrySummary: normalized.missionGeometrySummary ?? normalized.episode?.missionGeometrySummary ?? null,
     episode: normalized.episode ?? null,
@@ -174,6 +204,13 @@ export function headlessBundleLoadSummary(bundle) {
     hasDepthLayerPriority: Boolean(bundle?.depthLayerPriority ?? bundle?.depthLayerPrioritySummary),
     hasBathymetrySummary: Boolean(bundle?.bathymetrySummary),
     hasMissionGeometrySummary: Boolean(bundle?.missionGeometrySummary),
+    hasMotionTrajectory: Boolean(bundle?.motionTrajectory),
+    hasMissionFeasibilityReport: Boolean(bundle?.missionFeasibilityReport),
+    hasMotionCostGraph: Boolean(bundle?.motionCostGraph ?? bundle?.motionCostGraphSummary),
+    hasMotionCostMatrix: Boolean(bundle?.motionCostMatrix ?? bundle?.motionCostMatrixSummary),
+    hasMissionOutcomeReport: Boolean(bundle?.missionOutcomeReport),
+    hasMissionScore: Boolean(bundle?.missionScore),
+    hasRegretReport: Boolean(bundle?.regretReport),
     roundtripStatus: bundle?.roundtripReport?.summary?.status ?? null,
     warnings: bundle?.warnings ?? [],
     failures: bundle?.failures ?? []
@@ -225,6 +262,14 @@ function inferLogicalType(fileName, payload) {
   if (type === 'anchor.motion.trajectory') return 'motionTrajectory';
   if (type === 'anchor.motion.control-trace') return 'controlTrace';
   if (type === 'anchor.motion.diagnostics') return 'motionDiagnostics';
+  if (type === 'anchor.benchmark.mission-feasibility-report') return 'missionFeasibilityReport';
+  if (type === 'anchor.benchmark.feasibility-cost-graph') return 'motionCostGraph';
+  if (type === 'anchor.headless.motion-cost-matrix') return 'motionCostMatrix';
+  if (type === 'anchor.benchmark.score-profile') return 'scoreProfileSummary';
+  if (type === 'anchor.benchmark.mission-outcome-metrics') return 'missionOutcomeMetrics';
+  if (type === 'anchor.benchmark.mission-score') return 'missionScore';
+  if (type === 'anchor.benchmark.mission-outcome-report') return 'missionOutcomeReport';
+  if (type === 'anchor.benchmark.regret-report') return 'regretReport';
   if (type === 'anchor.headless.bathymetry-summary') return 'bathymetrySummary';
   if (type === 'anchor.headless.mission-geometry-summary' || type === 'anchor.science.ocean-world-geometry-summary') return 'missionGeometrySummary';
   if (type === 'anchor.headless.manifest') return 'manifest';
@@ -237,3 +282,5 @@ function inferLogicalType(fileName, payload) {
 function basename(fileName) {
   return String(fileName ?? '').split(/[\\/]/).pop();
 }
+
+

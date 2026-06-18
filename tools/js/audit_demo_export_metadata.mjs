@@ -44,6 +44,16 @@ const audits = [
     requiredWhenPresent: ['flowCoupledSamplingModel', 'gliderActionContext', 'candidateTargets', 'actionValueDiagnostics']
   },
   {
+    name: 'SIM-R1 Motion Cost Graph',
+    files: ['src/core/motion/MotionCostGraphBuilder.js', 'src/core/motion/MotionCostMatrixExporter.js', 'src/core/headless/runtime/HeadlessBundleWriter.js', 'src/ui/headless/HeadlessBundleViewerPanel.js'],
+    requiredWhenPresent: ['anchor.benchmark.feasibility-cost-graph', 'anchor.headless.motion-cost-matrix', 'motionCostGraphSummary', 'motionCostMatrixSummary', 'usesRouteOptimizer']
+  },
+  {
+    name: 'SCORE-R1 Mission Outcome Scoring',
+    files: ['src/core/scoring/MissionOutcomeReport.js', 'src/core/headless/runtime/HeadlessBundleWriter.js', 'src/ui/headless/HeadlessBundleViewerPanel.js', 'src/ui/scoring/MissionScorecardPanel.js', 'src/game/phaser/scenes/DebriefScene.js'],
+    requiredWhenPresent: ['anchor.benchmark.mission-outcome-report', 'anchor.benchmark.mission-score', 'anchor.benchmark.regret-report', 'Mission Outcome Scorecard', 'changesOfficialBrowserScoring', 'not official browser scoring']
+  },
+  {
     name: 'Benchmark Mode Config',
     files: ['src/core/benchmark/BenchmarkModeExporter.js', 'src/game/phaser/scenes/BenchmarkModeOverviewScene.js'],
     requiredWhenPresent: ['anchor.benchmark.mode-config', 'anchor.benchmark.episode-config', 'anchor.benchmark.run-record', 'anchor.benchmark.route-execution', 'anchor.benchmark.attempt-set', 'benchmarkModeConfig', 'objectiveTaxonomyVersion', 'runRecordVersion', 'usesMARL']
@@ -104,3 +114,5 @@ async function exists(file) {
 async function read(file) {
   return fs.readFile(path.join(ROOT, file), 'utf8');
 }
+
+

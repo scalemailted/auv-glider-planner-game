@@ -52,6 +52,8 @@ export class HeadlessBundleViewerScene extends PhaserScene {
         <div class="panel-stack">
           <button class="console-button primary" data-action="load-example-bundle">Load Example Bundle</button>
           <button class="console-button secondary" data-action="load-example-roundtrip">Load Example Roundtrip</button>
+          <button class="console-button secondary" data-action="load-example-cost-graph">Load Example Cost Graph</button>
+          <button class="console-button secondary" data-action="load-example-mission-score">Load Example Mission Score</button>
           <label class="console-button secondary" for="headless-bundle-file-input">Choose Combined or Multiple Bundle Files</label>
           <input id="headless-bundle-file-input" data-headless-bundle-files type="file" multiple accept=".json,.csv,application/json,text/csv" hidden />
           <button class="console-button secondary" data-action="menu">Main Menu</button>
@@ -70,6 +72,8 @@ export class HeadlessBundleViewerScene extends PhaserScene {
     const root = this.app.elements?.consoleRoot ?? globalThis.document;
     root?.querySelector?.('[data-action="load-example-bundle"]')?.addEventListener('click', () => this.loadExampleBundle());
     root?.querySelector?.('[data-action="load-example-roundtrip"]')?.addEventListener('click', () => this.loadExampleRoundtrip());
+    root?.querySelector?.('[data-action="load-example-cost-graph"]')?.addEventListener('click', () => this.loadExampleCostGraph());
+    root?.querySelector?.('[data-action="load-example-mission-score"]')?.addEventListener('click', () => this.loadExampleMissionScore());
     root?.querySelector?.('[data-action="export-browser-summary"]')?.addEventListener('click', () => this.exportBrowserSummary());
     root?.querySelector?.('[data-action="export-browser-roundtrip-summary"]')?.addEventListener('click', () => this.exportBrowserRoundtripSummary());
     root?.querySelector?.('[data-action="menu"]')?.addEventListener('click', () => this.scene.start('MainMenuScene'));
@@ -119,6 +123,37 @@ export class HeadlessBundleViewerScene extends PhaserScene {
     } catch (error) {
       this.lastError = error?.message ?? String(error);
       this.statusMessage = 'Example roundtrip load failed.';
+      this.renderPanel();
+      this.refreshDebugObject();
+    }
+  }
+
+  async loadExampleCostGraph() {
+    const fileName = 'docs/examples/headless_motion_cost_graph_bundle.example.json';
+    try {
+      const response = await fetch(fileName, { cache: 'no-store' });
+      if (!response.ok) throw new Error(`Unable to load ${fileName}: HTTP ${response.status}`);
+      const payload = await response.json();
+      const bundle = buildHeadlessBundleFromFiles([{ fileName: 'bundle.json', payload }]);
+      this.setBundle(bundle, `Loaded checked-in motion cost graph example from ${fileName}.`);
+    } catch (error) {
+      this.lastError = error?.message ?? String(error);
+      this.statusMessage = 'Example cost graph load failed.';
+      this.renderPanel();
+      this.refreshDebugObject();
+    }
+  }
+  async loadExampleMissionScore() {
+    const fileName = 'docs/examples/headless_mission_score_bundle.example.json';
+    try {
+      const response = await fetch(fileName, { cache: 'no-store' });
+      if (!response.ok) throw new Error(`Unable to load ${fileName}: HTTP ${response.status}`);
+      const payload = await response.json();
+      const bundle = buildHeadlessBundleFromFiles([{ fileName: 'bundle.json', payload }]);
+      this.setBundle(bundle, `Loaded checked-in SCORE-R1 mission score example from ${fileName}.`);
+    } catch (error) {
+      this.lastError = error?.message ?? String(error);
+      this.statusMessage = 'Example mission score load failed.';
       this.renderPanel();
       this.refreshDebugObject();
     }
@@ -186,6 +221,30 @@ export class HeadlessBundleViewerScene extends PhaserScene {
       realizedTrajectoryPointCount: 0,
       hasDiveProfilePath: false,
       bathymetryViewMode: null,
+      hasMissionOutcomeReport: false,
+      hasMissionScore: false,
+      hasRegretReport: false,
+      missionScoreProfileId: null,
+      missionScoreProfileVersion: null,
+      missionCompositeScore: null,
+      missionScienceScore: null,
+      missionFeasibilityScore: null,
+      missionEfficiencyScore: null,
+      missionSafetyScore: null,
+      missionScoreCoverageFraction: 0,
+      missionRegretReferenceType: null,
+      missionTotalRegret: null,
+      usesMissionOutcomeScoring: false,
+      changesOfficialBrowserScoring: false,
+      usesRouteOptimizer: false,
+      hasMotionCostGraph: false,
+      hasMotionCostMatrix: false,
+      motionCostGraphNodeCount: 0,
+      motionCostGraphEdgeCount: 0,
+      motionCostGraphMetricId: null,
+      motionCostMatrixFormat: null,
+      motionCostGraphPublicSafe: true,
+      motionCostGraphUsesRouteOptimizer: false,
       usesFull3DPlanning: false,
       usesProductionDataAssimilation: false,
       usesHydrodynamicSolver: false,
@@ -235,7 +294,7 @@ function emptyStateHtml() {
   return `
     <section class="console-section">
       <h2>Empty State</h2>
-      <div class="hud-muted">No bundle has been loaded. Use Load Example Bundle or choose bundle.json / separate bundle files.</div>
+      <div class="hud-muted">No bundle has been loaded. Use Load Example Bundle, Load Example Cost Graph, or choose bundle.json / separate bundle files.</div>
     </section>
     <section class="console-section">
       <h2>Boundary</h2>
@@ -254,5 +313,8 @@ function escapeHtml(value) {
     "'": '&#039;'
   }[char]));
 }
+
+
+
 
 

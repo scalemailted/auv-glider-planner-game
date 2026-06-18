@@ -1,0 +1,2582 @@
+{
+  "type": "anchor.headless.bundle",
+  "version": "score-r1-compact-public-bundle",
+  "manifest": {
+    "type": "anchor.headless.manifest",
+    "version": "headless-bundle-manifest-h0",
+    "bundleType": "score-r1-mission-score-fixture",
+    "createdAt": "2026-06-18T00:00:00.000Z",
+    "scenarioId": "coastalBloomFront-score-r1-fixture",
+    "missionId": "coastal-bloom-front-headless-mission",
+    "episodeId": "h1-node-headless-coastalBloomFront-score-r1-fixture-001",
+    "seed": "score-r1-fixture-001",
+    "runtimeTarget": "browser",
+    "visibilityTier": "publicScenario",
+    "files": [
+      {
+        "path": "manifest.json",
+        "role": "manifest",
+        "mediaType": "application/json",
+        "schemaType": "anchor.headless.manifest",
+        "visibilityTier": "publicScenario"
+      },
+      {
+        "path": "mission_config.json",
+        "role": "missionConfig",
+        "mediaType": "application/json",
+        "schemaType": "anchor.headless.mission-config",
+        "visibilityTier": "publicScenario"
+      },
+      {
+        "path": "visible_fields.json",
+        "role": "visibleFields",
+        "mediaType": "application/json",
+        "schemaType": "anchor.headless.field-pack",
+        "visibilityTier": "publicScenario"
+      },
+      {
+        "path": "observations.json",
+        "role": "observations",
+        "mediaType": "application/json",
+        "schemaType": "anchor.headless.observations",
+        "visibilityTier": "publicScenario"
+      },
+      {
+        "path": "glider_tracks.json",
+        "role": "gliderTracks",
+        "mediaType": "application/json",
+        "schemaType": "anchor.headless.trajectory",
+        "visibilityTier": "publicScenario"
+      },
+      {
+        "path": "score_report.json",
+        "role": "scoreReport",
+        "mediaType": "application/json",
+        "schemaType": "anchor.headless.score-report",
+        "visibilityTier": "publicScenario"
+      },
+      {
+        "path": "score_profile.json",
+        "role": "scoreProfile",
+        "mediaType": "application/json",
+        "schemaType": "anchor.benchmark.score-profile",
+        "visibilityTier": "publicScenario"
+      },
+      {
+        "path": "mission_score.json",
+        "role": "missionScore",
+        "mediaType": "application/json",
+        "schemaType": "anchor.benchmark.mission-score",
+        "visibilityTier": "publicScenario"
+      },
+      {
+        "path": "mission_outcome_report.json",
+        "role": "missionOutcomeReport",
+        "mediaType": "application/json",
+        "schemaType": "anchor.benchmark.mission-outcome-report",
+        "visibilityTier": "publicScenario"
+      },
+      {
+        "path": "regret_report.json",
+        "role": "regretReport",
+        "mediaType": "application/json",
+        "schemaType": "anchor.benchmark.regret-report",
+        "visibilityTier": "publicScenario"
+      }
+    ],
+    "notes": [
+      "SCORE-R1 compact public-safe fixture for browser scorecard viewing.",
+      "Hidden truth export disabled; hidden_fields.json omitted.",
+      "Shadow benchmark scoring only; this does not replace official browser scoring.",
+      "Configured baseline regret is educational and not a proof of optimality."
+    ]
+  },
+  "missionConfig": {
+    "type": "anchor.headless.mission-config",
+    "version": "headless-mission-schema-h0",
+    "missionId": "coastal-bloom-front-headless-mission",
+    "scenarioId": "coastalBloomFront",
+    "seed": "score-r1-fixture-001",
+    "benchmarkMode": null,
+    "informationAccessTier": "forecastOnly",
+    "fairnessLabel": null,
+    "world": {
+      "width": 32,
+      "height": 24,
+      "depthLayers": [
+        "surface",
+        "thermocline",
+        "deep"
+      ],
+      "depthLayerModel": "top-down-2p5d",
+      "waterColumnConfig": {
+        "type": "anchor.science.water-column-config",
+        "version": "water-column-schema-p11",
+        "enabled": true,
+        "model": "top-down-2p5d-depth-layer-sampling",
+        "depthLayerIds": [
+          "surface",
+          "thermocline",
+          "deep"
+        ],
+        "defaultLayerIds": [
+          "surface",
+          "thermocline",
+          "deep"
+        ],
+        "diveProfileId": "sawtoothProfile",
+        "layerMetadata": {
+          "surface": {
+            "id": "surface",
+            "label": "Surface",
+            "nominalDepthMeters": 0,
+            "thicknessMeters": 5,
+            "synthetic": true,
+            "calibrated": false
+          },
+          "thermocline": {
+            "id": "thermocline",
+            "label": "Thermocline",
+            "nominalDepthMeters": 35,
+            "thicknessMeters": 35,
+            "synthetic": true,
+            "calibrated": false
+          },
+          "deep": {
+            "id": "deep",
+            "label": "Deep",
+            "nominalDepthMeters": 150,
+            "thicknessMeters": 100,
+            "synthetic": true,
+            "calibrated": false
+          }
+        },
+        "observationTypes": [
+          "depthLayerSample",
+          "profileSample",
+          "integratedWaterColumnSample"
+        ],
+        "summaryIds": [
+          "observationCountsByDepth",
+          "verticalCoverage",
+          "bestDepthLayerCounts",
+          "depthLayerPriority",
+          "diveProfileCoverage"
+        ],
+        "publicSafe": true,
+        "usesFull3DPlanning": false,
+        "usesNewPlanner": false,
+        "usesPythonSimulator": false,
+        "usesMARL": false,
+        "syntheticTeachingModel": true,
+        "calibratedVerticalOceanModel": false,
+        "boundary": "2.5D means the tactical map remains top-down, while each cell can contain simplified depth layers.",
+        "notA": [
+          "not full 3D route planning",
+          "not calibrated vertical ocean model",
+          "not production vehicle controller",
+          "not MARL/RL"
+        ]
+      },
+      "dx": 1,
+      "dy": 1,
+      "dz": 1,
+      "timeStepSeconds": 60,
+      "durationSeconds": 3600,
+      "coordinateFrame": "grid-cell-center-top-left",
+      "masks": {},
+      "fieldDescriptors": [
+        {
+          "type": "anchor.headless.field-descriptor",
+          "version": "headless-field-schema-h0",
+          "id": "E_forecast",
+          "canonicalId": "E_forecast",
+          "label": "E Forecast",
+          "description": "expected / forecast state",
+          "visibilityTier": "forecastOnly",
+          "dimensions": [
+            "x",
+            "y",
+            "z",
+            "time"
+          ],
+          "depthLayers": [
+            "surface",
+            "thermocline",
+            "deep"
+          ],
+          "shape": null,
+          "dtype": "float32",
+          "units": null,
+          "temporal": true,
+          "supports2d": true,
+          "supports25d": true,
+          "aliasOf": null,
+          "source": null,
+          "notes": []
+        },
+        {
+          "type": "anchor.headless.field-descriptor",
+          "version": "headless-field-schema-h0",
+          "id": "mu_belief",
+          "canonicalId": "mu_belief",
+          "label": "Mu Belief",
+          "description": "belief mean / posterior-like estimate",
+          "visibilityTier": "beliefOnly",
+          "dimensions": [
+            "x",
+            "y",
+            "z",
+            "time"
+          ],
+          "depthLayers": [
+            "surface",
+            "thermocline",
+            "deep"
+          ],
+          "shape": null,
+          "dtype": "float32",
+          "units": null,
+          "temporal": true,
+          "supports2d": true,
+          "supports25d": true,
+          "aliasOf": null,
+          "source": null,
+          "notes": []
+        },
+        {
+          "type": "anchor.headless.field-descriptor",
+          "version": "headless-field-schema-h0",
+          "id": "U_uncertainty",
+          "canonicalId": "U_uncertainty",
+          "label": "U Uncertainty",
+          "description": "expected-state uncertainty",
+          "visibilityTier": "beliefOnly",
+          "dimensions": [
+            "x",
+            "y",
+            "z",
+            "time"
+          ],
+          "depthLayers": [
+            "surface",
+            "thermocline",
+            "deep"
+          ],
+          "shape": null,
+          "dtype": "float32",
+          "units": null,
+          "temporal": true,
+          "supports2d": true,
+          "supports25d": true,
+          "aliasOf": null,
+          "source": null,
+          "notes": []
+        },
+        {
+          "type": "anchor.headless.field-descriptor",
+          "version": "headless-field-schema-h0",
+          "id": "P_unknown",
+          "canonicalId": "P_unknown",
+          "label": "P Unknown",
+          "description": "hidden-event probability",
+          "visibilityTier": "beliefOnly",
+          "dimensions": [
+            "x",
+            "y",
+            "z",
+            "time"
+          ],
+          "depthLayers": [
+            "surface",
+            "thermocline",
+            "deep"
+          ],
+          "shape": null,
+          "dtype": "float32",
+          "units": null,
+          "temporal": true,
+          "supports2d": true,
+          "supports25d": true,
+          "aliasOf": null,
+          "source": null,
+          "notes": []
+        },
+        {
+          "type": "anchor.headless.field-descriptor",
+          "version": "headless-field-schema-h0",
+          "id": "A_global",
+          "canonicalId": "A_global",
+          "label": "A Global",
+          "description": "global sampling priority",
+          "visibilityTier": "publicScenario",
+          "dimensions": [
+            "x",
+            "y",
+            "time"
+          ],
+          "depthLayers": [],
+          "shape": null,
+          "dtype": "float32",
+          "units": null,
+          "temporal": true,
+          "supports2d": true,
+          "supports25d": false,
+          "aliasOf": null,
+          "source": null,
+          "notes": []
+        },
+        {
+          "type": "anchor.headless.field-descriptor",
+          "version": "headless-field-schema-h0",
+          "id": "F_u",
+          "canonicalId": "F_u",
+          "label": "F U",
+          "description": "flow x / east component",
+          "visibilityTier": "forecastOnly",
+          "dimensions": [
+            "x",
+            "y",
+            "z",
+            "time"
+          ],
+          "depthLayers": [
+            "surface",
+            "thermocline",
+            "deep"
+          ],
+          "shape": null,
+          "dtype": "float32",
+          "units": null,
+          "temporal": true,
+          "supports2d": true,
+          "supports25d": true,
+          "aliasOf": null,
+          "source": null,
+          "notes": []
+        },
+        {
+          "type": "anchor.headless.field-descriptor",
+          "version": "headless-field-schema-h0",
+          "id": "F_v",
+          "canonicalId": "F_v",
+          "label": "F V",
+          "description": "flow y / north component",
+          "visibilityTier": "forecastOnly",
+          "dimensions": [
+            "x",
+            "y",
+            "z",
+            "time"
+          ],
+          "depthLayers": [
+            "surface",
+            "thermocline",
+            "deep"
+          ],
+          "shape": null,
+          "dtype": "float32",
+          "units": null,
+          "temporal": true,
+          "supports2d": true,
+          "supports25d": true,
+          "aliasOf": null,
+          "source": null,
+          "notes": []
+        },
+        {
+          "type": "anchor.headless.field-descriptor",
+          "version": "headless-field-schema-h0",
+          "id": "constraintMask",
+          "canonicalId": "constraintMask",
+          "label": "Constraint Mask",
+          "description": "land / inaccessible / hard constraints",
+          "visibilityTier": "publicScenario",
+          "dimensions": [
+            "x",
+            "y",
+            "z"
+          ],
+          "depthLayers": [
+            "surface",
+            "thermocline",
+            "deep"
+          ],
+          "shape": null,
+          "dtype": "float32",
+          "units": null,
+          "temporal": false,
+          "supports2d": true,
+          "supports25d": true,
+          "aliasOf": null,
+          "source": null,
+          "notes": []
+        },
+        {
+          "type": "anchor.headless.field-descriptor",
+          "version": "headless-field-schema-h0",
+          "id": "hazard",
+          "canonicalId": "hazard",
+          "label": "Hazard",
+          "description": "hazard / risk field",
+          "visibilityTier": "publicScenario",
+          "dimensions": [
+            "x",
+            "y",
+            "z",
+            "time"
+          ],
+          "depthLayers": [
+            "surface",
+            "thermocline",
+            "deep"
+          ],
+          "shape": null,
+          "dtype": "float32",
+          "units": null,
+          "temporal": true,
+          "supports2d": true,
+          "supports25d": true,
+          "aliasOf": null,
+          "source": null,
+          "notes": []
+        },
+        {
+          "type": "anchor.headless.field-descriptor",
+          "version": "headless-field-schema-h0",
+          "id": "staleness",
+          "canonicalId": "staleness",
+          "label": "Staleness",
+          "description": "time since last useful sample",
+          "visibilityTier": "beliefOnly",
+          "dimensions": [
+            "x",
+            "y",
+            "time"
+          ],
+          "depthLayers": [],
+          "shape": null,
+          "dtype": "float32",
+          "units": null,
+          "temporal": true,
+          "supports2d": true,
+          "supports25d": false,
+          "aliasOf": null,
+          "source": null,
+          "notes": []
+        },
+        {
+          "type": "anchor.headless.field-descriptor",
+          "version": "headless-field-schema-h0",
+          "id": "boundaryStrength",
+          "canonicalId": "boundaryStrength",
+          "label": "Boundary Strength",
+          "description": "boundary / front / gradient strength",
+          "visibilityTier": "publicScenario",
+          "dimensions": [
+            "x",
+            "y",
+            "time"
+          ],
+          "depthLayers": [],
+          "shape": null,
+          "dtype": "float32",
+          "units": null,
+          "temporal": true,
+          "supports2d": true,
+          "supports25d": false,
+          "aliasOf": null,
+          "source": null,
+          "notes": []
+        }
+      ],
+      "motionConfig": {
+        "type": "anchor.motion.config",
+        "version": "glider-motion-schema-motion-r1",
+        "enabled": true,
+        "motionAware": true,
+        "motionModelId": "depthLayerKinematic",
+        "controlMode": "waypointTracking",
+        "controlStepSeconds": 60,
+        "sampleIntervalSeconds": 60,
+        "gliderSpeed": 0.01,
+        "maxTurnRateRadiansPerSecond": 0.13962634015954636,
+        "maxVerticalSpeedMetersPerSecond": 0.08,
+        "driftGain": 1,
+        "energyBudget": 120,
+        "boundaryMode": "clamp",
+        "controlLimits": {
+          "headingRateLimitDegreesPerSecond": 8,
+          "maxPitchRadians": 0.22,
+          "maxSpeedThroughWater": 1
+        },
+        "energyModel": {
+          "basePerSecond": 0.004,
+          "distanceScale": 0.18,
+          "oppositionScale": 1.8,
+          "crossCurrentScale": 0.35,
+          "turnScale": 0.08,
+          "depthChangeScale": 0.05,
+          "samplingScale": 0.015,
+          "surfacingScale": 0.5
+        },
+        "publicSafe": true,
+        "deterministic": true,
+        "syntheticTeachingModel": true,
+        "webgpuFluidFutureContractOnly": false,
+        "usesWebGPUFluid": false,
+        "usesNewPlanner": false,
+        "usesMARL": false,
+        "notA": [
+          "not route planning",
+          "not full 3D vehicle dynamics",
+          "not production controller",
+          "not hydrodynamic solver",
+          "not WebGPU",
+          "not MARL/RL"
+        ]
+      },
+      "bathymetryConfig": {
+        "type": "anchor.science.bathymetry-config",
+        "version": "bathymetry-schema-env-r1",
+        "width": 32,
+        "height": 24,
+        "depthUnit": "meters",
+        "minDepthMeters": 0,
+        "maxDepthMeters": 180,
+        "seaLevelMeters": 0,
+        "verticalExaggeration": 1.5,
+        "features": [
+          {
+            "id": "continentalShelf",
+            "label": "Continental Shelf",
+            "enabled": true,
+            "synthetic": true,
+            "calibratedSurveyData": false
+          },
+          {
+            "id": "shelfBreak",
+            "label": "Shelf Break",
+            "enabled": true,
+            "synthetic": true,
+            "calibratedSurveyData": false
+          },
+          {
+            "id": "submarineCanyon",
+            "label": "Submarine Canyon",
+            "enabled": true,
+            "synthetic": true,
+            "calibratedSurveyData": false
+          },
+          {
+            "id": "abyssalPlain",
+            "label": "Abyssal Plain",
+            "enabled": true,
+            "synthetic": true,
+            "calibratedSurveyData": false
+          },
+          {
+            "id": "riverMouth",
+            "label": "River Mouth",
+            "enabled": true,
+            "synthetic": true,
+            "calibratedSurveyData": false
+          }
+        ],
+        "coastlineMode": "left-coast-shelf",
+        "layerIds": [
+          "landSeaMask",
+          "bathymetricBottom",
+          "waterSurface",
+          "surface",
+          "thermocline",
+          "deep"
+        ],
+        "defaultViewMode": "obliqueBathymetry",
+        "notes": [
+          "Synthetic public-safe bathymetry for environmental context and teaching."
+        ],
+        "notA": [
+          "not full 3D route planning",
+          "not calibrated bathymetric survey data",
+          "not hydrodynamic current solver",
+          "not production navigation chart",
+          "not terrain-flow ocean current",
+          "not MARL/RL"
+        ]
+      }
+    },
+    "gliders": [
+      {
+        "id": "glider-1",
+        "label": "Survey Glider 1",
+        "start": {
+          "x": 2,
+          "y": 20,
+          "z": 0,
+          "timeSeconds": null
+        },
+        "speed": 0,
+        "energyBudget": 120,
+        "sensorSuite": [
+          "temperature-fluorescence-sampler"
+        ],
+        "diveProfile": {
+          "type": "anchor.science.water-column-profile",
+          "version": "dive-profile-model-p11",
+          "id": "sawtoothProfile",
+          "profileId": "sawtoothProfile",
+          "label": "Sawtooth Profile",
+          "depthLayerIds": [
+            "surface",
+            "thermocline",
+            "deep"
+          ],
+          "sequence": [
+            "surface",
+            "thermocline",
+            "deep",
+            "thermocline",
+            "surface"
+          ],
+          "samplesPerCycle": 5,
+          "verticalResolution": "layer-index",
+          "assignsDepthLayer": true,
+          "routeAuthority": "providedWaypointsOnly",
+          "generatesWaypoints": false,
+          "controlsRoutePlanning": false,
+          "usesFull3DPlanning": false,
+          "syntheticTeachingModel": true,
+          "notA": [
+            "not full 3D route planning",
+            "not calibrated glider pitch control",
+            "not production vehicle controller",
+            "not MARL/RL"
+          ]
+        },
+        "diveProfileId": "sawtoothProfile",
+        "communicationPolicy": {
+          "surfacingRequired": false
+        },
+        "constraints": {}
+      }
+    ],
+    "objectives": [
+      {
+        "id": "reconnaissanceSurvey",
+        "label": "Sample front and bloom boundary",
+        "type": "reconnaissanceSurvey",
+        "description": "Broadly inspect the operating area before committing to a narrower objective.",
+        "authority": "missionManagerOrFixedBenchmark",
+        "targetFields": [
+          "mu_belief",
+          "U_uncertainty",
+          "P_unknown",
+          "boundaryStrength"
+        ],
+        "successCriteria": {},
+        "notes": []
+      }
+    ],
+    "allowedFields": [],
+    "visibleFields": [
+      "E_forecast",
+      "mu_belief",
+      "U_uncertainty",
+      "P_unknown",
+      "A_global",
+      "F_u",
+      "F_v",
+      "hazard",
+      "constraintMask",
+      "staleness",
+      "boundaryStrength"
+    ],
+    "planningRules": {
+      "routeAuthority": "providedWaypointsOnly",
+      "h1DoesNotOptimizeRoutes": true,
+      "stepDistance": 1.25
+    },
+    "scoringRules": {
+      "educationalHeadlessScoring": true,
+      "browserOfficialScoring": false
+    },
+    "exportPolicy": {
+      "includeHiddenTruth": true,
+      "separateVisibleAndHiddenFields": true
+    },
+    "notes": [
+      "Node headless runtime over portable ANCHOR core logic. Browser ANCHOR remains the official visual referee and scoring UI."
+    ],
+    "sensorNoise": 0.03,
+    "hiddenTruthIncluded": false,
+    "publicSafe": true
+  },
+  "visibleFields": {
+    "type": "anchor.headless.field-pack",
+    "version": "score-r1-compact-public-fields",
+    "scenarioId": "coastalBloomFront-score-r1-fixture",
+    "visibilityTier": "publicScenario",
+    "fieldSummaries": [
+      {
+        "fieldId": "E_forecast",
+        "label": "Forecast scalar field",
+        "hiddenTruthIncluded": false
+      },
+      {
+        "fieldId": "A_global",
+        "label": "Sampling priority field",
+        "hiddenTruthIncluded": false
+      },
+      {
+        "fieldId": "F_u/F_v",
+        "label": "Synthetic current vectors",
+        "hiddenTruthIncluded": false
+      }
+    ],
+    "hiddenTruthIncluded": false,
+    "publicSafe": true,
+    "changesOfficialBrowserScoring": false,
+    "notA": [
+      "not hidden truth",
+      "not official browser scoring",
+      "not calibrated ocean forecast"
+    ]
+  },
+  "observations": {
+    "type": "anchor.headless.observations",
+    "version": "headless-runtime-observations-h1",
+    "observations": [
+      {
+        "observationId": "obs-glider-1-00060",
+        "type": "fieldSample",
+        "timeSeconds": 60,
+        "gliderId": "glider-1",
+        "x": 2.0563933562503633,
+        "y": 20.047462574998548,
+        "zIndex": 1,
+        "depthLayer": "thermocline",
+        "depthLayerId": "thermocline",
+        "depthMeters": 35,
+        "diveProfileId": "sawtoothProfile",
+        "fieldId": "observedScalar",
+        "forecastValue": 0.1533021841199529,
+        "beliefValue": 0.1533021841199529,
+        "uncertaintyValue": 0.21001880224999592,
+        "rawObservedValue": 0.13685302799090956,
+        "observedValue": 0.13685302799090956,
+        "sensorNoise": 0.03,
+        "innovation": -0.016449156129043324,
+        "surprise": 0.0775352623770566,
+        "visibilityTier": "publicScenario"
+      },
+      {
+        "observationId": "obs-glider-1-00120",
+        "type": "fieldSample",
+        "timeSeconds": 120,
+        "gliderId": "glider-1",
+        "x": 2.1180990315843413,
+        "y": 20.098291878444968,
+        "zIndex": 1,
+        "depthLayer": "thermocline",
+        "depthLayerId": "thermocline",
+        "depthMeters": 35,
+        "diveProfileId": "sawtoothProfile",
+        "fieldId": "observedScalar",
+        "forecastValue": 0.1533021841199529,
+        "beliefValue": 0.1533021841199529,
+        "uncertaintyValue": 0.21001880224999592,
+        "rawObservedValue": 0.15565522157768857,
+        "observedValue": 0.15565522157768857,
+        "sensorNoise": 0.03,
+        "innovation": 0.002353037457735685,
+        "surprise": 0.011091351753081657,
+        "visibilityTier": "publicScenario"
+      },
+      {
+        "observationId": "obs-glider-1-00180",
+        "type": "fieldSample",
+        "timeSeconds": 180,
+        "gliderId": "glider-1",
+        "x": 2.1797326604892824,
+        "y": 20.149034186028498,
+        "zIndex": 1,
+        "depthLayer": "thermocline",
+        "depthLayerId": "thermocline",
+        "depthMeters": 35,
+        "diveProfileId": "sawtoothProfile",
+        "fieldId": "observedScalar",
+        "forecastValue": 0.1533021841199529,
+        "beliefValue": 0.1533021841199529,
+        "uncertaintyValue": 0.21001880224999592,
+        "rawObservedValue": 0.1626824483624937,
+        "observedValue": 0.1626824483624937,
+        "sensorNoise": 0.03,
+        "innovation": 0.00938026424254082,
+        "surprise": 0.04421511009475865,
+        "visibilityTier": "publicScenario"
+      },
+      {
+        "observationId": "obs-glider-1-00240",
+        "type": "fieldSample",
+        "timeSeconds": 240,
+        "gliderId": "glider-1",
+        "x": 2.2412930599040273,
+        "y": 20.199690077921915,
+        "zIndex": 1,
+        "depthLayer": "thermocline",
+        "depthLayerId": "thermocline",
+        "depthMeters": 35,
+        "diveProfileId": "sawtoothProfile",
+        "fieldId": "observedScalar",
+        "forecastValue": 0.1533021841199529,
+        "beliefValue": 0.1533021841199529,
+        "uncertaintyValue": 0.21001880224999592,
+        "rawObservedValue": 0.16470029896673116,
+        "observedValue": 0.16470029896673116,
+        "sensorNoise": 0.03,
+        "innovation": 0.011398114846778273,
+        "surprise": 0.053726514498113435,
+        "visibilityTier": "publicScenario"
+      },
+      {
+        "observationId": "obs-glider-1-00300",
+        "type": "fieldSample",
+        "timeSeconds": 300,
+        "gliderId": "glider-1",
+        "x": 2.3027790662244807,
+        "y": 20.250260173087476,
+        "zIndex": 1,
+        "depthLayer": "thermocline",
+        "depthLayerId": "thermocline",
+        "depthMeters": 35,
+        "diveProfileId": "sawtoothProfile",
+        "fieldId": "observedScalar",
+        "forecastValue": 0.1533021841199529,
+        "beliefValue": 0.1533021841199529,
+        "uncertaintyValue": 0.21001880224999592,
+        "rawObservedValue": 0.20949356012590328,
+        "observedValue": 0.20949356012590328,
+        "sensorNoise": 0.03,
+        "innovation": 0.056191376005950394,
+        "surprise": 0.26486544645634635,
+        "visibilityTier": "publicScenario"
+      },
+      {
+        "observationId": "obs-glider-1-00360",
+        "type": "fieldSample",
+        "timeSeconds": 360,
+        "gliderId": "glider-1",
+        "x": 2.3641895368112453,
+        "y": 20.300745128877026,
+        "zIndex": 1,
+        "depthLayer": "thermocline",
+        "depthLayerId": "thermocline",
+        "depthMeters": 35,
+        "diveProfileId": "sawtoothProfile",
+        "fieldId": "observedScalar",
+        "forecastValue": 0.1533021841199529,
+        "beliefValue": 0.1533021841199529,
+        "uncertaintyValue": 0.21001880224999592,
+        "rawObservedValue": 0.18213013504163156,
+        "observedValue": 0.18213013504163156,
+        "sensorNoise": 0.03,
+        "innovation": 0.02882795092167867,
+        "surprise": 0.1358843408725833,
+        "visibilityTier": "publicScenario"
+      },
+      {
+        "observationId": "obs-glider-1-00420",
+        "type": "fieldSample",
+        "timeSeconds": 420,
+        "gliderId": "glider-1",
+        "x": 2.4255233514749697,
+        "y": 20.35114564055075,
+        "zIndex": 1,
+        "depthLayer": "thermocline",
+        "depthLayerId": "thermocline",
+        "depthMeters": 35,
+        "diveProfileId": "sawtoothProfile",
+        "fieldId": "observedScalar",
+        "forecastValue": 0.1533021841199529,
+        "beliefValue": 0.1533021841199529,
+        "uncertaintyValue": 0.21001880224999592,
+        "rawObservedValue": 0.17569210072827443,
+        "observedValue": 0.17569210072827443,
+        "sensorNoise": 0.03,
+        "innovation": 0.022389916608321542,
+        "surprise": 0.10553781879189893,
+        "visibilityTier": "publicScenario"
+      },
+      {
+        "observationId": "obs-glider-1-00480",
+        "type": "fieldSample",
+        "timeSeconds": 480,
+        "gliderId": "glider-1",
+        "x": 2.486779413934316,
+        "y": 20.40146244071515,
+        "zIndex": 1,
+        "depthLayer": "thermocline",
+        "depthLayerId": "thermocline",
+        "depthMeters": 35,
+        "diveProfileId": "sawtoothProfile",
+        "fieldId": "observedScalar",
+        "forecastValue": 0.1533021841199529,
+        "beliefValue": 0.1533021841199529,
+        "uncertaintyValue": 0.21001880224999592,
+        "rawObservedValue": 0.14409238875799987,
+        "observedValue": 0.14409238875799987,
+        "sensorNoise": 0.03,
+        "innovation": -0.009209795361953016,
+        "surprise": 0.04341158258977246,
+        "visibilityTier": "publicScenario"
+      }
+    ]
+  },
+  "gliderTracks": {
+    "type": "anchor.headless.trajectory",
+    "version": "headless-runtime-tracks-h1",
+    "tracks": [
+      {
+        "type": "anchor.motion.track-point",
+        "version": "glider-dynamics-model-motion-r1",
+        "timeSeconds": 60,
+        "gliderId": "glider-1",
+        "x": 2.056393,
+        "y": 20.047463,
+        "z": 0,
+        "zIndex": 1,
+        "depthLayerId": "surface",
+        "depthMeters": 0,
+        "headingRadians": -1.325818,
+        "speedThroughWater": 0.01,
+        "realizedVelocityX": 0.00094,
+        "realizedVelocityY": 0.000791,
+        "flowU": 0.053968,
+        "flowV": 0.057164,
+        "currentAssist": -0.042368,
+        "crossCurrent": 0.066221,
+        "energyUsedIncrement": 0.367707,
+        "energyRemaining": 119.632293,
+        "hazard": 0.02,
+        "constraintMask": 1,
+        "bottomClearanceMeters": null,
+        "controlMode": "waypointTracking",
+        "commandId": "fixed-front-crossing-plan-segment-1",
+        "sampleEnabled": true,
+        "warnings": [
+          "Bathymetry not provided; bottom clearance is unavailable.",
+          "Depth or constraint sample is not accessible.",
+          "Constraint mask sampled at realized state."
+        ],
+        "depthLayer": "surface",
+        "diveProfileId": "sawtoothProfile",
+        "targetWaypointId": "wp-1",
+        "trackError": 0.073708
+      },
+      {
+        "type": "anchor.motion.track-point",
+        "version": "glider-dynamics-model-motion-r1",
+        "timeSeconds": 120,
+        "gliderId": "glider-1",
+        "x": 2.118099,
+        "y": 20.098292,
+        "z": 0,
+        "zIndex": 1,
+        "depthLayerId": "thermocline",
+        "depthMeters": 4.8,
+        "headingRadians": -0.686029,
+        "speedThroughWater": 0.01,
+        "realizedVelocityX": 0.001028,
+        "realizedVelocityY": 0.000847,
+        "flowU": 0.053968,
+        "flowV": 0.057164,
+        "currentAssist": 0.005547,
+        "crossCurrent": 0.078419,
+        "energyUsedIncrement": 0.437513,
+        "energyRemaining": 119.19478,
+        "hazard": 0.02,
+        "constraintMask": 1,
+        "bottomClearanceMeters": null,
+        "controlMode": "waypointTracking",
+        "commandId": "fixed-front-crossing-plan-segment-2",
+        "sampleEnabled": true,
+        "warnings": [
+          "Bathymetry not provided; bottom clearance is unavailable.",
+          "Depth or constraint sample is not accessible.",
+          "Constraint mask sampled at realized state.",
+          "Bathymetry not provided; bottom clearance is unavailable.",
+          "Depth or constraint sample is not accessible.",
+          "Constraint mask sampled at realized state."
+        ],
+        "depthLayer": "thermocline",
+        "diveProfileId": "sawtoothProfile",
+        "targetWaypointId": "wp-2",
+        "trackError": 0.78002
+      },
+      {
+        "type": "anchor.motion.track-point",
+        "version": "glider-dynamics-model-motion-r1",
+        "timeSeconds": 180,
+        "gliderId": "glider-1",
+        "x": 2.179733,
+        "y": 20.149034,
+        "z": 0,
+        "zIndex": 1,
+        "depthLayerId": "thermocline",
+        "depthMeters": 9.6,
+        "headingRadians": -0.697325,
+        "speedThroughWater": 0.01,
+        "realizedVelocityX": 0.001027,
+        "realizedVelocityY": 0.000846,
+        "flowU": 0.053968,
+        "flowV": 0.057164,
+        "currentAssist": 0.004661,
+        "crossCurrent": 0.078476,
+        "energyUsedIncrement": 0.31282,
+        "energyRemaining": 118.88196,
+        "hazard": 0.02,
+        "constraintMask": 1,
+        "bottomClearanceMeters": null,
+        "controlMode": "waypointTracking",
+        "commandId": "fixed-front-crossing-plan-segment-2",
+        "sampleEnabled": true,
+        "warnings": [
+          "Bathymetry not provided; bottom clearance is unavailable.",
+          "Depth or constraint sample is not accessible.",
+          "Constraint mask sampled at realized state.",
+          "Bathymetry not provided; bottom clearance is unavailable.",
+          "Depth or constraint sample is not accessible.",
+          "Constraint mask sampled at realized state.",
+          "Bathymetry not provided; bottom clearance is unavailable.",
+          "Depth or constraint sample is not accessible.",
+          "Constraint mask sampled at realized state."
+        ],
+        "depthLayer": "thermocline",
+        "diveProfileId": "sawtoothProfile",
+        "targetWaypointId": "wp-2",
+        "trackError": 0.829091
+      },
+      {
+        "type": "anchor.motion.track-point",
+        "version": "glider-dynamics-model-motion-r1",
+        "timeSeconds": 240,
+        "gliderId": "glider-1",
+        "x": 2.241293,
+        "y": 20.19969,
+        "z": 0,
+        "zIndex": 1,
+        "depthLayerId": "thermocline",
+        "depthMeters": 14.4,
+        "headingRadians": -0.708652,
+        "speedThroughWater": 0.01,
+        "realizedVelocityX": 0.001026,
+        "realizedVelocityY": 0.000844,
+        "flowU": 0.053968,
+        "flowV": 0.057164,
+        "currentAssist": 0.003772,
+        "crossCurrent": 0.078524,
+        "energyUsedIncrement": 0.310423,
+        "energyRemaining": 118.571537,
+        "hazard": 0.02,
+        "constraintMask": 1,
+        "bottomClearanceMeters": null,
+        "controlMode": "waypointTracking",
+        "commandId": "fixed-front-crossing-plan-segment-2",
+        "sampleEnabled": true,
+        "warnings": [
+          "Bathymetry not provided; bottom clearance is unavailable.",
+          "Depth or constraint sample is not accessible.",
+          "Constraint mask sampled at realized state.",
+          "Bathymetry not provided; bottom clearance is unavailable.",
+          "Depth or constraint sample is not accessible.",
+          "Constraint mask sampled at realized state.",
+          "Bathymetry not provided; bottom clearance is unavailable.",
+          "Depth or constraint sample is not accessible.",
+          "Constraint mask sampled at realized state.",
+          "Bathymetry not provided; bottom clearance is unavailable.",
+          "Depth or constraint sample is not accessible.",
+          "Constraint mask sampled at realized state."
+        ],
+        "depthLayer": "thermocline",
+        "diveProfileId": "sawtoothProfile",
+        "targetWaypointId": "wp-2",
+        "trackError": 0.882574
+      },
+      {
+        "type": "anchor.motion.track-point",
+        "version": "glider-dynamics-model-motion-r1",
+        "timeSeconds": 300,
+        "gliderId": "glider-1",
+        "x": 2.302779,
+        "y": 20.25026,
+        "z": 0,
+        "zIndex": 1,
+        "depthLayerId": "thermocline",
+        "depthMeters": 19.2,
+        "headingRadians": -0.720008,
+        "speedThroughWater": 0.01,
+        "realizedVelocityX": 0.001025,
+        "realizedVelocityY": 0.000843,
+        "flowU": 0.053968,
+        "flowV": 0.057164,
+        "currentAssist": 0.00288,
+        "crossCurrent": 0.078562,
+        "energyUsedIncrement": 0.308022,
+        "energyRemaining": 118.263515,
+        "hazard": 0.02,
+        "constraintMask": 1,
+        "bottomClearanceMeters": null,
+        "controlMode": "waypointTracking",
+        "commandId": "fixed-front-crossing-plan-segment-2",
+        "sampleEnabled": true,
+        "warnings": [
+          "Bathymetry not provided; bottom clearance is unavailable.",
+          "Depth or constraint sample is not accessible.",
+          "Constraint mask sampled at realized state.",
+          "Bathymetry not provided; bottom clearance is unavailable.",
+          "Depth or constraint sample is not accessible.",
+          "Constraint mask sampled at realized state.",
+          "Bathymetry not provided; bottom clearance is unavailable.",
+          "Depth or constraint sample is not accessible.",
+          "Constraint mask sampled at realized state.",
+          "Bathymetry not provided; bottom clearance is unavailable.",
+          "Depth or constraint sample is not accessible.",
+          "Constraint mask sampled at realized state.",
+          "Bathymetry not provided; bottom clearance is unavailable.",
+          "Depth or constraint sample is not accessible.",
+          "Constraint mask sampled at realized state."
+        ],
+        "depthLayer": "thermocline",
+        "diveProfileId": "sawtoothProfile",
+        "targetWaypointId": "wp-2",
+        "trackError": 0.939688
+      },
+      {
+        "type": "anchor.motion.track-point",
+        "version": "glider-dynamics-model-motion-r1",
+        "timeSeconds": 360,
+        "gliderId": "glider-1",
+        "x": 2.36419,
+        "y": 20.300745,
+        "z": 0,
+        "zIndex": 1,
+        "depthLayerId": "thermocline",
+        "depthMeters": 24,
+        "headingRadians": -0.73139,
+        "speedThroughWater": 0.01,
+        "realizedVelocityX": 0.001024,
+        "realizedVelocityY": 0.000841,
+        "flowU": 0.053968,
+        "flowV": 0.057164,
+        "currentAssist": 0.001985,
+        "crossCurrent": 0.07859,
+        "energyUsedIncrement": 0.305617,
+        "energyRemaining": 117.957898,
+        "hazard": 0.02,
+        "constraintMask": 1,
+        "bottomClearanceMeters": null,
+        "controlMode": "waypointTracking",
+        "commandId": "fixed-front-crossing-plan-segment-2",
+        "sampleEnabled": true,
+        "warnings": [
+          "Bathymetry not provided; bottom clearance is unavailable.",
+          "Depth or constraint sample is not accessible.",
+          "Constraint mask sampled at realized state.",
+          "Bathymetry not provided; bottom clearance is unavailable.",
+          "Depth or constraint sample is not accessible.",
+          "Constraint mask sampled at realized state.",
+          "Bathymetry not provided; bottom clearance is unavailable.",
+          "Depth or constraint sample is not accessible.",
+          "Constraint mask sampled at realized state.",
+          "Bathymetry not provided; bottom clearance is unavailable.",
+          "Depth or constraint sample is not accessible.",
+          "Constraint mask sampled at realized state.",
+          "Bathymetry not provided; bottom clearance is unavailable.",
+          "Depth or constraint sample is not accessible.",
+          "Constraint mask sampled at realized state.",
+          "Bathymetry not provided; bottom clearance is unavailable.",
+          "Depth or constraint sample is not accessible.",
+          "Constraint mask sampled at realized state."
+        ],
+        "depthLayer": "thermocline",
+        "diveProfileId": "sawtoothProfile",
+        "targetWaypointId": "wp-2",
+        "trackError": 0.999785
+      },
+      {
+        "type": "anchor.motion.track-point",
+        "version": "glider-dynamics-model-motion-r1",
+        "timeSeconds": 420,
+        "gliderId": "glider-1",
+        "x": 2.425523,
+        "y": 20.351146,
+        "z": 0,
+        "zIndex": 1,
+        "depthLayerId": "thermocline",
+        "depthMeters": 28.8,
+        "headingRadians": -0.742794,
+        "speedThroughWater": 0.01,
+        "realizedVelocityX": 0.001022,
+        "realizedVelocityY": 0.00084,
+        "flowU": 0.053968,
+        "flowV": 0.057164,
+        "currentAssist": 0.001089,
+        "crossCurrent": 0.078607,
+        "energyUsedIncrement": 0.303208,
+        "energyRemaining": 117.65469,
+        "hazard": 0.02,
+        "constraintMask": 1,
+        "bottomClearanceMeters": null,
+        "controlMode": "waypointTracking",
+        "commandId": "fixed-front-crossing-plan-segment-2",
+        "sampleEnabled": true,
+        "warnings": [
+          "Bathymetry not provided; bottom clearance is unavailable.",
+          "Depth or constraint sample is not accessible.",
+          "Constraint mask sampled at realized state.",
+          "Bathymetry not provided; bottom clearance is unavailable.",
+          "Depth or constraint sample is not accessible.",
+          "Constraint mask sampled at realized state.",
+          "Bathymetry not provided; bottom clearance is unavailable.",
+          "Depth or constraint sample is not accessible.",
+          "Constraint mask sampled at realized state.",
+          "Bathymetry not provided; bottom clearance is unavailable.",
+          "Depth or constraint sample is not accessible.",
+          "Constraint mask sampled at realized state.",
+          "Bathymetry not provided; bottom clearance is unavailable.",
+          "Depth or constraint sample is not accessible.",
+          "Constraint mask sampled at realized state.",
+          "Bathymetry not provided; bottom clearance is unavailable.",
+          "Depth or constraint sample is not accessible.",
+          "Constraint mask sampled at realized state.",
+          "Bathymetry not provided; bottom clearance is unavailable.",
+          "Depth or constraint sample is not accessible.",
+          "Constraint mask sampled at realized state."
+        ],
+        "depthLayer": "thermocline",
+        "diveProfileId": "sawtoothProfile",
+        "targetWaypointId": "wp-2",
+        "trackError": 1.062334
+      },
+      {
+        "type": "anchor.motion.track-point",
+        "version": "glider-dynamics-model-motion-r1",
+        "timeSeconds": 480,
+        "gliderId": "glider-1",
+        "x": 2.486779,
+        "y": 20.401462,
+        "z": 0,
+        "zIndex": 1,
+        "depthLayerId": "thermocline",
+        "depthMeters": 33.6,
+        "headingRadians": -0.754219,
+        "speedThroughWater": 0.01,
+        "realizedVelocityX": 0.001021,
+        "realizedVelocityY": 0.000839,
+        "flowU": 0.053968,
+        "flowV": 0.057164,
+        "currentAssist": 0.000191,
+        "crossCurrent": 0.078614,
+        "energyUsedIncrement": 0.300796,
+        "energyRemaining": 117.353894,
+        "hazard": 0.02,
+        "constraintMask": 1,
+        "bottomClearanceMeters": null,
+        "controlMode": "waypointTracking",
+        "commandId": "fixed-front-crossing-plan-segment-2",
+        "sampleEnabled": true,
+        "warnings": [
+          "Bathymetry not provided; bottom clearance is unavailable.",
+          "Depth or constraint sample is not accessible.",
+          "Constraint mask sampled at realized state.",
+          "Bathymetry not provided; bottom clearance is unavailable.",
+          "Depth or constraint sample is not accessible.",
+          "Constraint mask sampled at realized state.",
+          "Bathymetry not provided; bottom clearance is unavailable.",
+          "Depth or constraint sample is not accessible.",
+          "Constraint mask sampled at realized state.",
+          "Bathymetry not provided; bottom clearance is unavailable.",
+          "Depth or constraint sample is not accessible.",
+          "Constraint mask sampled at realized state.",
+          "Bathymetry not provided; bottom clearance is unavailable.",
+          "Depth or constraint sample is not accessible.",
+          "Constraint mask sampled at realized state.",
+          "Bathymetry not provided; bottom clearance is unavailable.",
+          "Depth or constraint sample is not accessible.",
+          "Constraint mask sampled at realized state.",
+          "Bathymetry not provided; bottom clearance is unavailable.",
+          "Depth or constraint sample is not accessible.",
+          "Constraint mask sampled at realized state.",
+          "Bathymetry not provided; bottom clearance is unavailable.",
+          "Depth or constraint sample is not accessible.",
+          "Constraint mask sampled at realized state."
+        ],
+        "depthLayer": "thermocline",
+        "diveProfileId": "sawtoothProfile",
+        "targetWaypointId": "wp-2",
+        "trackError": 1.126903
+      }
+    ]
+  },
+  "scoreReport": {
+    "type": "anchor.headless.score-report",
+    "version": "headless-scoring-h1",
+    "missionId": "coastal-bloom-front-headless-mission",
+    "educationalHeadlessScoring": true,
+    "notBrowserOfficialScoring": true,
+    "components": {
+      "scienceValueCollected": 10.352638,
+      "uncertaintyReduction": 0.00936,
+      "forecastErrorDetection": 1.569311,
+      "hiddenEventEvidence": 0,
+      "boundarySamplingBonus": 10.623017,
+      "energyUsed": 19.468432,
+      "distanceTraveled": 5.554756,
+      "hazardPenalty": 132,
+      "duplicateSamplePenalty": 39.75
+    },
+    "waterColumn": {
+      "profileId": "sawtoothProfile",
+      "verticalCoverage": "surface-limited",
+      "observationCountsByDepth": {
+        "surface": 0,
+        "thermocline": 61,
+        "deep": 0
+      },
+      "bestDepthLayerCounts": {
+        "surface": 556,
+        "thermocline": 118,
+        "deep": 94
+      },
+      "scoreNeutral": true,
+      "note": "P11 water-column context is reported for analysis and does not rewrite the headless score formula."
+    },
+    "counts": {
+      "observationCount": 61,
+      "trackPointCount": 61,
+      "uniqueSampleCells": 8,
+      "duplicateSamples": 53,
+      "hazardExposures": 0,
+      "maskViolations": 22
+    },
+    "finalScore": -102.988359,
+    "boundary": "Educational Node headless score only. Browser ANCHOR remains the official visual referee and scoring UI."
+  },
+  "scoreProfileSummary": {
+    "type": "anchor.benchmark.score-profile",
+    "version": "mission-score-profiles-score-r1",
+    "id": "balancedMission",
+    "profileId": "balancedMission",
+    "profileVersion": "mission-score-profiles-score-r1",
+    "label": "Balanced Mission",
+    "objectiveIds": [
+      "reconnaissanceSurvey"
+    ],
+    "componentCount": 17,
+    "requiredComponents": [
+      "scienceValueCollected",
+      "missionCompletion",
+      "motionFeasibility"
+    ],
+    "minimumCoverageFraction": 0.45,
+    "refereeOnlyComponents": [],
+    "changesOfficialBrowserScoring": false,
+    "valid": true,
+    "warnings": [],
+    "notA": [
+      "not official browser scoring",
+      "not route planning",
+      "not route optimization",
+      "not operational certification",
+      "not SeaExplorer-validated",
+      "not MARL/RL",
+      "not one opaque universal profile"
+    ]
+  },
+  "missionScore": {
+    "type": "anchor.benchmark.mission-score",
+    "version": "mission-score-aggregator-score-r1",
+    "scoreConfig": {
+      "type": "anchor.benchmark.score-config",
+      "version": "mission-scoring-schema-score-r1",
+      "profileId": "balancedMission",
+      "profileVersion": "mission-score-profiles-score-r1",
+      "objectiveId": "reconnaissanceSurvey",
+      "scoreScale": 100,
+      "minimumCoverageFraction": 0.45,
+      "missingMetricPolicy": "explicitUnavailableNoCredit",
+      "visibilityTier": "forecastOnly",
+      "allowRefereeOnlyPostMissionMetrics": false,
+      "regretReference": "none",
+      "changesOfficialBrowserScoring": false,
+      "notA": [
+        "not official browser scoring",
+        "not route planning",
+        "not route optimization",
+        "not operational certification",
+        "not SeaExplorer-validated",
+        "not MARL/RL"
+      ]
+    },
+    "profile": {
+      "id": "balancedMission",
+      "version": "mission-score-profiles-score-r1",
+      "label": "Balanced Mission"
+    },
+    "status": "complete",
+    "compositeScore": 40.752959,
+    "groupScores": [
+      {
+        "groupId": "science",
+        "score": 29.486128,
+        "coverageFraction": 1,
+        "availableWeight": 4.6,
+        "configuredWeight": 4.6,
+        "componentScores": [
+          {
+            "componentId": "scienceValueCollected",
+            "groupId": "science",
+            "weight": 1,
+            "rawValue": 10.352638,
+            "normalizedValue": 0.414106,
+            "available": true,
+            "contribution": 0.414106,
+            "warnings": []
+          },
+          {
+            "componentId": "uncertaintyReduction",
+            "groupId": "science",
+            "weight": 1,
+            "rawValue": 0.00936,
+            "normalizedValue": 0.026743,
+            "available": true,
+            "contribution": 0.026743,
+            "warnings": []
+          },
+          {
+            "componentId": "forecastValidation",
+            "groupId": "science",
+            "weight": 0.6,
+            "rawValue": 1.569311,
+            "normalizedValue": 0.196164,
+            "available": true,
+            "contribution": 0.117698,
+            "warnings": []
+          },
+          {
+            "componentId": "boundaryMapping",
+            "groupId": "science",
+            "weight": 0.5,
+            "rawValue": 10.623017,
+            "normalizedValue": 1,
+            "available": true,
+            "contribution": 0.5,
+            "warnings": []
+          },
+          {
+            "componentId": "verticalCoverage",
+            "groupId": "science",
+            "weight": 0.5,
+            "rawValue": 0.333333,
+            "normalizedValue": 0.333333,
+            "available": true,
+            "contribution": 0.166666,
+            "warnings": []
+          },
+          {
+            "componentId": "observationDiversity",
+            "groupId": "science",
+            "weight": 0.5,
+            "rawValue": 0.131148,
+            "normalizedValue": 0.131148,
+            "available": true,
+            "contribution": 0.065574,
+            "warnings": []
+          },
+          {
+            "componentId": "samplingRedundancy",
+            "groupId": "science",
+            "weight": 0.5,
+            "rawValue": 0.868852,
+            "normalizedValue": 0.131148,
+            "available": true,
+            "contribution": 0.065574,
+            "warnings": []
+          }
+        ],
+        "status": "complete"
+      },
+      {
+        "groupId": "feasibility",
+        "score": 43.571425,
+        "coverageFraction": 1,
+        "availableWeight": 2,
+        "configuredWeight": 2,
+        "componentScores": [
+          {
+            "componentId": "missionCompletion",
+            "groupId": "feasibility",
+            "weight": 0.8,
+            "rawValue": true,
+            "normalizedValue": 1,
+            "available": true,
+            "contribution": 0.8,
+            "warnings": []
+          },
+          {
+            "componentId": "waypointCompletion",
+            "groupId": "feasibility",
+            "weight": 0.5,
+            "rawValue": 0.142857,
+            "normalizedValue": 0.142857,
+            "available": true,
+            "contribution": 0.071429,
+            "warnings": []
+          },
+          {
+            "componentId": "motionFeasibility",
+            "groupId": "feasibility",
+            "weight": 0.7,
+            "rawValue": false,
+            "normalizedValue": 0,
+            "available": true,
+            "contribution": 0,
+            "warnings": []
+          }
+        ],
+        "status": "complete"
+      },
+      {
+        "groupId": "efficiency",
+        "score": 44.091589,
+        "coverageFraction": 1,
+        "availableWeight": 0.95,
+        "configuredWeight": 0.95,
+        "componentScores": [
+          {
+            "componentId": "energyEfficiency",
+            "groupId": "efficiency",
+            "weight": 0.4,
+            "rawValue": 0.531765,
+            "normalizedValue": 0.106353,
+            "available": true,
+            "contribution": 0.042541,
+            "warnings": []
+          },
+          {
+            "componentId": "energyRemaining",
+            "groupId": "efficiency",
+            "weight": 0.3,
+            "rawValue": 0.837763,
+            "normalizedValue": 0.837763,
+            "available": true,
+            "contribution": 0.251329,
+            "warnings": []
+          },
+          {
+            "componentId": "missionDuration",
+            "groupId": "efficiency",
+            "weight": 0.25,
+            "rawValue": 3600,
+            "normalizedValue": 0.5,
+            "available": true,
+            "contribution": 0.125,
+            "warnings": []
+          }
+        ],
+        "status": "complete"
+      },
+      {
+        "groupId": "safety",
+        "score": 61.111111,
+        "coverageFraction": 1,
+        "availableWeight": 1.8,
+        "configuredWeight": 1.8,
+        "componentScores": [
+          {
+            "componentId": "hazardExposure",
+            "groupId": "safety",
+            "weight": 0.7,
+            "rawValue": 0,
+            "normalizedValue": 1,
+            "available": true,
+            "contribution": 0.7,
+            "warnings": []
+          },
+          {
+            "componentId": "constraintViolations",
+            "groupId": "safety",
+            "weight": 0.7,
+            "rawValue": 22,
+            "normalizedValue": 0,
+            "available": true,
+            "contribution": 0,
+            "warnings": []
+          },
+          {
+            "componentId": "bottomClearanceWarnings",
+            "groupId": "safety",
+            "weight": 0.4,
+            "rawValue": 0,
+            "normalizedValue": 1,
+            "available": true,
+            "contribution": 0.4,
+            "warnings": []
+          }
+        ],
+        "status": "complete"
+      },
+      {
+        "groupId": "missionManagement",
+        "score": 62,
+        "coverageFraction": 1,
+        "availableWeight": 0.3,
+        "configuredWeight": 0.3,
+        "componentScores": [
+          {
+            "componentId": "evidenceFollowupQuality",
+            "groupId": "missionManagement",
+            "weight": 0.3,
+            "rawValue": 0.62,
+            "normalizedValue": 0.62,
+            "available": true,
+            "contribution": 0.186,
+            "warnings": []
+          }
+        ],
+        "status": "complete"
+      }
+    ],
+    "componentScores": [
+      {
+        "componentId": "scienceValueCollected",
+        "groupId": "science",
+        "weight": 1,
+        "rawValue": 10.352638,
+        "normalizedValue": 0.414106,
+        "available": true,
+        "contribution": 0.414106,
+        "dataSource": "publicObservation",
+        "refereeOnlyDerived": false,
+        "warnings": []
+      },
+      {
+        "componentId": "uncertaintyReduction",
+        "groupId": "science",
+        "weight": 1,
+        "rawValue": 0.00936,
+        "normalizedValue": 0.026743,
+        "available": true,
+        "contribution": 0.026743,
+        "dataSource": "publicBelief",
+        "refereeOnlyDerived": false,
+        "warnings": []
+      },
+      {
+        "componentId": "forecastValidation",
+        "groupId": "science",
+        "weight": 0.6,
+        "rawValue": 1.569311,
+        "normalizedValue": 0.196164,
+        "available": true,
+        "contribution": 0.117698,
+        "dataSource": "publicForecast",
+        "refereeOnlyDerived": false,
+        "warnings": []
+      },
+      {
+        "componentId": "boundaryMapping",
+        "groupId": "science",
+        "weight": 0.5,
+        "rawValue": 10.623017,
+        "normalizedValue": 1,
+        "available": true,
+        "contribution": 0.5,
+        "dataSource": "publicObservation",
+        "refereeOnlyDerived": false,
+        "warnings": []
+      },
+      {
+        "componentId": "verticalCoverage",
+        "groupId": "science",
+        "weight": 0.5,
+        "rawValue": 0.333333,
+        "normalizedValue": 0.333333,
+        "available": true,
+        "contribution": 0.166666,
+        "dataSource": "publicObservation",
+        "refereeOnlyDerived": false,
+        "warnings": []
+      },
+      {
+        "componentId": "observationDiversity",
+        "groupId": "science",
+        "weight": 0.5,
+        "rawValue": 0.131148,
+        "normalizedValue": 0.131148,
+        "available": true,
+        "contribution": 0.065574,
+        "dataSource": "publicObservation",
+        "refereeOnlyDerived": false,
+        "warnings": []
+      },
+      {
+        "componentId": "samplingRedundancy",
+        "groupId": "science",
+        "weight": 0.5,
+        "rawValue": 0.868852,
+        "normalizedValue": 0.131148,
+        "available": true,
+        "contribution": 0.065574,
+        "dataSource": "publicObservation",
+        "refereeOnlyDerived": false,
+        "warnings": []
+      },
+      {
+        "componentId": "missionCompletion",
+        "groupId": "feasibility",
+        "weight": 0.8,
+        "rawValue": true,
+        "normalizedValue": 1,
+        "available": true,
+        "contribution": 0.8,
+        "dataSource": "publicMissionRecord",
+        "refereeOnlyDerived": false,
+        "warnings": []
+      },
+      {
+        "componentId": "waypointCompletion",
+        "groupId": "feasibility",
+        "weight": 0.5,
+        "rawValue": 0.142857,
+        "normalizedValue": 0.142857,
+        "available": true,
+        "contribution": 0.071429,
+        "dataSource": "publicMissionRecord",
+        "refereeOnlyDerived": false,
+        "warnings": []
+      },
+      {
+        "componentId": "motionFeasibility",
+        "groupId": "feasibility",
+        "weight": 0.7,
+        "rawValue": false,
+        "normalizedValue": 0,
+        "available": true,
+        "contribution": 0,
+        "dataSource": "publicMissionRecord",
+        "refereeOnlyDerived": false,
+        "warnings": []
+      },
+      {
+        "componentId": "energyEfficiency",
+        "groupId": "efficiency",
+        "weight": 0.4,
+        "rawValue": 0.531765,
+        "normalizedValue": 0.106353,
+        "available": true,
+        "contribution": 0.042541,
+        "dataSource": "publicMissionRecord",
+        "refereeOnlyDerived": false,
+        "warnings": []
+      },
+      {
+        "componentId": "energyRemaining",
+        "groupId": "efficiency",
+        "weight": 0.3,
+        "rawValue": 0.837763,
+        "normalizedValue": 0.837763,
+        "available": true,
+        "contribution": 0.251329,
+        "dataSource": "publicMissionRecord",
+        "refereeOnlyDerived": false,
+        "warnings": []
+      },
+      {
+        "componentId": "missionDuration",
+        "groupId": "efficiency",
+        "weight": 0.25,
+        "rawValue": 3600,
+        "normalizedValue": 0.5,
+        "available": true,
+        "contribution": 0.125,
+        "dataSource": "publicMissionRecord",
+        "refereeOnlyDerived": false,
+        "warnings": []
+      },
+      {
+        "componentId": "hazardExposure",
+        "groupId": "safety",
+        "weight": 0.7,
+        "rawValue": 0,
+        "normalizedValue": 1,
+        "available": true,
+        "contribution": 0.7,
+        "dataSource": "publicMissionRecord",
+        "refereeOnlyDerived": false,
+        "warnings": []
+      },
+      {
+        "componentId": "constraintViolations",
+        "groupId": "safety",
+        "weight": 0.7,
+        "rawValue": 22,
+        "normalizedValue": 0,
+        "available": true,
+        "contribution": 0,
+        "dataSource": "publicMissionRecord",
+        "refereeOnlyDerived": false,
+        "warnings": []
+      },
+      {
+        "componentId": "bottomClearanceWarnings",
+        "groupId": "safety",
+        "weight": 0.4,
+        "rawValue": 0,
+        "normalizedValue": 1,
+        "available": true,
+        "contribution": 0.4,
+        "dataSource": "publicMissionRecord",
+        "refereeOnlyDerived": false,
+        "warnings": []
+      },
+      {
+        "componentId": "evidenceFollowupQuality",
+        "groupId": "missionManagement",
+        "weight": 0.3,
+        "rawValue": 0.62,
+        "normalizedValue": 0.62,
+        "available": true,
+        "contribution": 0.186,
+        "dataSource": "publicObservation",
+        "refereeOnlyDerived": false,
+        "warnings": []
+      }
+    ],
+    "coverageFraction": 1,
+    "availableWeight": 9.65,
+    "configuredWeight": 9.65,
+    "missingRequiredComponents": [],
+    "warnings": [],
+    "changesOfficialBrowserScoring": false,
+    "notA": [
+      "not official browser scoring",
+      "not route planner",
+      "not policy evaluation for RL",
+      "not operational certification"
+    ]
+  },
+  "missionOutcomeReport": {
+    "type": "anchor.benchmark.mission-outcome-report",
+    "version": "mission-outcome-report-score-r1",
+    "missionId": "coastal-bloom-front-headless-mission",
+    "episodeId": "h1-node-headless-coastalBloomFront-score-r1-fixture-001",
+    "attemptId": "fixed-front-crossing-plan",
+    "objectiveId": "reconnaissanceSurvey",
+    "visibilityTier": "forecastOnly",
+    "scoreProfile": {
+      "profileId": "balancedMission",
+      "profileVersion": "mission-score-profiles-score-r1",
+      "label": "Balanced Mission"
+    },
+    "scoreStatus": "complete",
+    "compositeScore": 40.752959,
+    "scienceScore": 29.486128,
+    "feasibilityScore": 43.571425,
+    "efficiencyScore": 44.091589,
+    "safetyScore": 61.111111,
+    "missionManagementScore": 62,
+    "fleetCoordinationScore": null,
+    "groupScores": [
+      {
+        "groupId": "science",
+        "score": 29.486128,
+        "coverageFraction": 1,
+        "availableWeight": 4.6,
+        "configuredWeight": 4.6,
+        "componentScores": [
+          {
+            "componentId": "scienceValueCollected",
+            "groupId": "science",
+            "weight": 1,
+            "rawValue": 10.352638,
+            "normalizedValue": 0.414106,
+            "available": true,
+            "contribution": 0.414106,
+            "warnings": []
+          },
+          {
+            "componentId": "uncertaintyReduction",
+            "groupId": "science",
+            "weight": 1,
+            "rawValue": 0.00936,
+            "normalizedValue": 0.026743,
+            "available": true,
+            "contribution": 0.026743,
+            "warnings": []
+          },
+          {
+            "componentId": "forecastValidation",
+            "groupId": "science",
+            "weight": 0.6,
+            "rawValue": 1.569311,
+            "normalizedValue": 0.196164,
+            "available": true,
+            "contribution": 0.117698,
+            "warnings": []
+          },
+          {
+            "componentId": "boundaryMapping",
+            "groupId": "science",
+            "weight": 0.5,
+            "rawValue": 10.623017,
+            "normalizedValue": 1,
+            "available": true,
+            "contribution": 0.5,
+            "warnings": []
+          },
+          {
+            "componentId": "verticalCoverage",
+            "groupId": "science",
+            "weight": 0.5,
+            "rawValue": 0.333333,
+            "normalizedValue": 0.333333,
+            "available": true,
+            "contribution": 0.166666,
+            "warnings": []
+          },
+          {
+            "componentId": "observationDiversity",
+            "groupId": "science",
+            "weight": 0.5,
+            "rawValue": 0.131148,
+            "normalizedValue": 0.131148,
+            "available": true,
+            "contribution": 0.065574,
+            "warnings": []
+          },
+          {
+            "componentId": "samplingRedundancy",
+            "groupId": "science",
+            "weight": 0.5,
+            "rawValue": 0.868852,
+            "normalizedValue": 0.131148,
+            "available": true,
+            "contribution": 0.065574,
+            "warnings": []
+          }
+        ],
+        "status": "complete"
+      },
+      {
+        "groupId": "feasibility",
+        "score": 43.571425,
+        "coverageFraction": 1,
+        "availableWeight": 2,
+        "configuredWeight": 2,
+        "componentScores": [
+          {
+            "componentId": "missionCompletion",
+            "groupId": "feasibility",
+            "weight": 0.8,
+            "rawValue": true,
+            "normalizedValue": 1,
+            "available": true,
+            "contribution": 0.8,
+            "warnings": []
+          },
+          {
+            "componentId": "waypointCompletion",
+            "groupId": "feasibility",
+            "weight": 0.5,
+            "rawValue": 0.142857,
+            "normalizedValue": 0.142857,
+            "available": true,
+            "contribution": 0.071429,
+            "warnings": []
+          },
+          {
+            "componentId": "motionFeasibility",
+            "groupId": "feasibility",
+            "weight": 0.7,
+            "rawValue": false,
+            "normalizedValue": 0,
+            "available": true,
+            "contribution": 0,
+            "warnings": []
+          }
+        ],
+        "status": "complete"
+      },
+      {
+        "groupId": "efficiency",
+        "score": 44.091589,
+        "coverageFraction": 1,
+        "availableWeight": 0.95,
+        "configuredWeight": 0.95,
+        "componentScores": [
+          {
+            "componentId": "energyEfficiency",
+            "groupId": "efficiency",
+            "weight": 0.4,
+            "rawValue": 0.531765,
+            "normalizedValue": 0.106353,
+            "available": true,
+            "contribution": 0.042541,
+            "warnings": []
+          },
+          {
+            "componentId": "energyRemaining",
+            "groupId": "efficiency",
+            "weight": 0.3,
+            "rawValue": 0.837763,
+            "normalizedValue": 0.837763,
+            "available": true,
+            "contribution": 0.251329,
+            "warnings": []
+          },
+          {
+            "componentId": "missionDuration",
+            "groupId": "efficiency",
+            "weight": 0.25,
+            "rawValue": 3600,
+            "normalizedValue": 0.5,
+            "available": true,
+            "contribution": 0.125,
+            "warnings": []
+          }
+        ],
+        "status": "complete"
+      },
+      {
+        "groupId": "safety",
+        "score": 61.111111,
+        "coverageFraction": 1,
+        "availableWeight": 1.8,
+        "configuredWeight": 1.8,
+        "componentScores": [
+          {
+            "componentId": "hazardExposure",
+            "groupId": "safety",
+            "weight": 0.7,
+            "rawValue": 0,
+            "normalizedValue": 1,
+            "available": true,
+            "contribution": 0.7,
+            "warnings": []
+          },
+          {
+            "componentId": "constraintViolations",
+            "groupId": "safety",
+            "weight": 0.7,
+            "rawValue": 22,
+            "normalizedValue": 0,
+            "available": true,
+            "contribution": 0,
+            "warnings": []
+          },
+          {
+            "componentId": "bottomClearanceWarnings",
+            "groupId": "safety",
+            "weight": 0.4,
+            "rawValue": 0,
+            "normalizedValue": 1,
+            "available": true,
+            "contribution": 0.4,
+            "warnings": []
+          }
+        ],
+        "status": "complete"
+      },
+      {
+        "groupId": "missionManagement",
+        "score": 62,
+        "coverageFraction": 1,
+        "availableWeight": 0.3,
+        "configuredWeight": 0.3,
+        "componentScores": [
+          {
+            "componentId": "evidenceFollowupQuality",
+            "groupId": "missionManagement",
+            "weight": 0.3,
+            "rawValue": 0.62,
+            "normalizedValue": 0.62,
+            "available": true,
+            "contribution": 0.186,
+            "warnings": []
+          }
+        ],
+        "status": "complete"
+      }
+    ],
+    "componentScores": [
+      {
+        "componentId": "scienceValueCollected",
+        "groupId": "science",
+        "weight": 1,
+        "rawValue": 10.352638,
+        "normalizedValue": 0.414106,
+        "available": true,
+        "contribution": 0.414106,
+        "dataSource": "publicObservation",
+        "refereeOnlyDerived": false,
+        "warnings": []
+      },
+      {
+        "componentId": "uncertaintyReduction",
+        "groupId": "science",
+        "weight": 1,
+        "rawValue": 0.00936,
+        "normalizedValue": 0.026743,
+        "available": true,
+        "contribution": 0.026743,
+        "dataSource": "publicBelief",
+        "refereeOnlyDerived": false,
+        "warnings": []
+      },
+      {
+        "componentId": "forecastValidation",
+        "groupId": "science",
+        "weight": 0.6,
+        "rawValue": 1.569311,
+        "normalizedValue": 0.196164,
+        "available": true,
+        "contribution": 0.117698,
+        "dataSource": "publicForecast",
+        "refereeOnlyDerived": false,
+        "warnings": []
+      },
+      {
+        "componentId": "boundaryMapping",
+        "groupId": "science",
+        "weight": 0.5,
+        "rawValue": 10.623017,
+        "normalizedValue": 1,
+        "available": true,
+        "contribution": 0.5,
+        "dataSource": "publicObservation",
+        "refereeOnlyDerived": false,
+        "warnings": []
+      },
+      {
+        "componentId": "verticalCoverage",
+        "groupId": "science",
+        "weight": 0.5,
+        "rawValue": 0.333333,
+        "normalizedValue": 0.333333,
+        "available": true,
+        "contribution": 0.166666,
+        "dataSource": "publicObservation",
+        "refereeOnlyDerived": false,
+        "warnings": []
+      },
+      {
+        "componentId": "observationDiversity",
+        "groupId": "science",
+        "weight": 0.5,
+        "rawValue": 0.131148,
+        "normalizedValue": 0.131148,
+        "available": true,
+        "contribution": 0.065574,
+        "dataSource": "publicObservation",
+        "refereeOnlyDerived": false,
+        "warnings": []
+      },
+      {
+        "componentId": "samplingRedundancy",
+        "groupId": "science",
+        "weight": 0.5,
+        "rawValue": 0.868852,
+        "normalizedValue": 0.131148,
+        "available": true,
+        "contribution": 0.065574,
+        "dataSource": "publicObservation",
+        "refereeOnlyDerived": false,
+        "warnings": []
+      },
+      {
+        "componentId": "missionCompletion",
+        "groupId": "feasibility",
+        "weight": 0.8,
+        "rawValue": true,
+        "normalizedValue": 1,
+        "available": true,
+        "contribution": 0.8,
+        "dataSource": "publicMissionRecord",
+        "refereeOnlyDerived": false,
+        "warnings": []
+      },
+      {
+        "componentId": "waypointCompletion",
+        "groupId": "feasibility",
+        "weight": 0.5,
+        "rawValue": 0.142857,
+        "normalizedValue": 0.142857,
+        "available": true,
+        "contribution": 0.071429,
+        "dataSource": "publicMissionRecord",
+        "refereeOnlyDerived": false,
+        "warnings": []
+      },
+      {
+        "componentId": "motionFeasibility",
+        "groupId": "feasibility",
+        "weight": 0.7,
+        "rawValue": false,
+        "normalizedValue": 0,
+        "available": true,
+        "contribution": 0,
+        "dataSource": "publicMissionRecord",
+        "refereeOnlyDerived": false,
+        "warnings": []
+      },
+      {
+        "componentId": "energyEfficiency",
+        "groupId": "efficiency",
+        "weight": 0.4,
+        "rawValue": 0.531765,
+        "normalizedValue": 0.106353,
+        "available": true,
+        "contribution": 0.042541,
+        "dataSource": "publicMissionRecord",
+        "refereeOnlyDerived": false,
+        "warnings": []
+      },
+      {
+        "componentId": "energyRemaining",
+        "groupId": "efficiency",
+        "weight": 0.3,
+        "rawValue": 0.837763,
+        "normalizedValue": 0.837763,
+        "available": true,
+        "contribution": 0.251329,
+        "dataSource": "publicMissionRecord",
+        "refereeOnlyDerived": false,
+        "warnings": []
+      },
+      {
+        "componentId": "missionDuration",
+        "groupId": "efficiency",
+        "weight": 0.25,
+        "rawValue": 3600,
+        "normalizedValue": 0.5,
+        "available": true,
+        "contribution": 0.125,
+        "dataSource": "publicMissionRecord",
+        "refereeOnlyDerived": false,
+        "warnings": []
+      },
+      {
+        "componentId": "hazardExposure",
+        "groupId": "safety",
+        "weight": 0.7,
+        "rawValue": 0,
+        "normalizedValue": 1,
+        "available": true,
+        "contribution": 0.7,
+        "dataSource": "publicMissionRecord",
+        "refereeOnlyDerived": false,
+        "warnings": []
+      },
+      {
+        "componentId": "constraintViolations",
+        "groupId": "safety",
+        "weight": 0.7,
+        "rawValue": 22,
+        "normalizedValue": 0,
+        "available": true,
+        "contribution": 0,
+        "dataSource": "publicMissionRecord",
+        "refereeOnlyDerived": false,
+        "warnings": []
+      },
+      {
+        "componentId": "bottomClearanceWarnings",
+        "groupId": "safety",
+        "weight": 0.4,
+        "rawValue": 0,
+        "normalizedValue": 1,
+        "available": true,
+        "contribution": 0.4,
+        "dataSource": "publicMissionRecord",
+        "refereeOnlyDerived": false,
+        "warnings": []
+      },
+      {
+        "componentId": "evidenceFollowupQuality",
+        "groupId": "missionManagement",
+        "weight": 0.3,
+        "rawValue": 0.62,
+        "normalizedValue": 0.62,
+        "available": true,
+        "contribution": 0.186,
+        "dataSource": "publicObservation",
+        "refereeOnlyDerived": false,
+        "warnings": []
+      }
+    ],
+    "coverageFraction": 1,
+    "missingMetrics": [
+      "hiddenEventConfirmation",
+      "sourceLocalization",
+      "featureTracking",
+      "stalenessRevisit",
+      "controlEffort",
+      "objectiveTransitionQuality",
+      "surfacingDecisionQuality",
+      "cooperativeCoverage",
+      "fleetRedundancy",
+      "contributionBalance",
+      "communicationCoordination"
+    ],
+    "regretSummary": {
+      "type": "anchor.benchmark.regret-report-summary",
+      "version": "mission-regret-model-score-r1",
+      "present": true,
+      "referenceType": "configuredBaseline",
+      "referenceAttemptId": "configured-baseline-educational",
+      "achievedScore": 40.752959,
+      "referenceScore": 53.252959,
+      "totalRegret": 12.5,
+      "compatibilityStatus": "compatibleReference",
+      "bestKnownIsNotOptimalProof": false,
+      "publicSafe": true
+    },
+    "fairnessSummary": {
+      "profileId": "balancedMission",
+      "profileVersion": "mission-score-profiles-score-r1",
+      "visibilityTier": "forecastOnly",
+      "compatibleComparisonRequired": true,
+      "bestKnownAttemptIsNotOptimalProof": true,
+      "changesOfficialBrowserScoring": false
+    },
+    "explanations": {
+      "strongestOutcome": "boundaryMapping contributed the strongest available normalized component (1.00).",
+      "largestWeakness": "motionFeasibility is the largest available opportunity or missing component.",
+      "insufficientDataCaveat": "Data coverage met the selected profile threshold.",
+      "regretReferenceExplanation": "Regret compares against a configured educational baseline; it is not a proof of optimality.",
+      "missionObjectiveInterpretation": "Scores are interpreted using objective reconnaissanceSurvey and profile balancedMission."
+    },
+    "scoreSummary": {
+      "type": "anchor.benchmark.mission-score-summary",
+      "version": "mission-score-aggregator-score-r1",
+      "status": "complete",
+      "compositeScore": 40.752959,
+      "coverageFraction": 1,
+      "availableWeight": 9.65,
+      "configuredWeight": 9.65,
+      "scienceScore": 29.486128,
+      "feasibilityScore": 43.571425,
+      "efficiencyScore": 44.091589,
+      "safetyScore": 61.111111,
+      "missionManagementScore": 62,
+      "fleetCoordinationScore": null,
+      "changesOfficialBrowserScoring": false
+    },
+    "sourceArtifacts": {
+      "result": {
+        "present": true,
+        "type": null,
+        "version": null
+      },
+      "benchmarkRunRecord": {
+        "present": false,
+        "type": null,
+        "version": null
+      },
+      "routeExecution": {
+        "present": false,
+        "type": null,
+        "version": null
+      },
+      "motionTrajectory": {
+        "present": true,
+        "type": "anchor.motion.trajectory",
+        "version": "glider-trajectory-simulator-motion-r1"
+      },
+      "motionDiagnostics": {
+        "present": true,
+        "type": "anchor.motion.diagnostics",
+        "version": "motion-diagnostics-motion-r1"
+      },
+      "missionFeasibilityReport": {
+        "present": true,
+        "type": "anchor.benchmark.mission-feasibility-report",
+        "version": "mission-feasibility-report-motion-r1"
+      },
+      "waterColumnSummary": {
+        "present": true,
+        "type": "anchor.headless.water-column-summary",
+        "version": "water-column-observation-model-p11"
+      },
+      "scienceDiagnostics": {
+        "present": true,
+        "type": "anchor.headless.science-diagnostics",
+        "version": "science-discovery-lifecycle-p9"
+      },
+      "adaptiveSession": {
+        "present": false,
+        "type": null,
+        "version": null
+      },
+      "observations": {
+        "present": true,
+        "count": 61
+      },
+      "motionCostGraphSummary": {
+        "present": true,
+        "type": "anchor.benchmark.feasibility-cost-graph-summary"
+      },
+      "motionCostMatrixSummary": {
+        "present": true,
+        "type": "anchor.headless.motion-cost-matrix-summary"
+      }
+    },
+    "warnings": [
+      "11 SCORE-R1 metrics are unavailable and earn no credit."
+    ],
+    "publicSafe": true,
+    "changesOfficialBrowserScoring": false,
+    "notA": [
+      "not official browser scoring",
+      "not route planning",
+      "not route optimization",
+      "not operational certification",
+      "not SeaExplorer-validated",
+      "not MARL/RL"
+    ],
+    "hiddenTruthIncluded": false
+  },
+  "regretReport": {
+    "type": "anchor.benchmark.regret-report",
+    "version": "mission-regret-model-score-r1",
+    "missionId": "coastal-bloom-front-headless-mission",
+    "episodeId": "h1-node-headless-coastalBloomFront-score-r1-fixture-001",
+    "attemptId": "fixed-front-crossing-plan",
+    "profileId": "balancedMission",
+    "profileVersion": "mission-score-profiles-score-r1",
+    "referenceType": "configuredBaseline",
+    "referenceAttemptId": "configured-baseline-educational",
+    "achievedScore": 40.752959,
+    "referenceScore": 53.252959,
+    "totalRegret": 12.5,
+    "groupRegret": [
+      {
+        "groupId": "science",
+        "regret": 8
+      },
+      {
+        "groupId": "feasibility",
+        "regret": 8
+      },
+      {
+        "groupId": "efficiency",
+        "regret": 8
+      },
+      {
+        "groupId": "safety",
+        "regret": 8
+      },
+      {
+        "groupId": "missionManagement",
+        "regret": 8
+      }
+    ],
+    "componentRegret": [
+      {
+        "componentId": "scienceValueCollected",
+        "regret": 0.08
+      },
+      {
+        "componentId": "uncertaintyReduction",
+        "regret": 0.08
+      },
+      {
+        "componentId": "forecastValidation",
+        "regret": 0.08
+      },
+      {
+        "componentId": "boundaryMapping",
+        "regret": 0
+      },
+      {
+        "componentId": "verticalCoverage",
+        "regret": 0.08
+      },
+      {
+        "componentId": "observationDiversity",
+        "regret": 0.08
+      },
+      {
+        "componentId": "samplingRedundancy",
+        "regret": 0.08
+      },
+      {
+        "componentId": "missionCompletion",
+        "regret": 0
+      },
+      {
+        "componentId": "waypointCompletion",
+        "regret": 0.08
+      },
+      {
+        "componentId": "motionFeasibility",
+        "regret": 0.08
+      },
+      {
+        "componentId": "energyEfficiency",
+        "regret": 0.08
+      },
+      {
+        "componentId": "energyRemaining",
+        "regret": 0.08
+      },
+      {
+        "componentId": "missionDuration",
+        "regret": 0.08
+      },
+      {
+        "componentId": "hazardExposure",
+        "regret": 0
+      },
+      {
+        "componentId": "constraintViolations",
+        "regret": 0.08
+      },
+      {
+        "componentId": "bottomClearanceWarnings",
+        "regret": 0
+      },
+      {
+        "componentId": "evidenceFollowupQuality",
+        "regret": 0.08
+      }
+    ],
+    "compatibilityStatus": "compatibleReference",
+    "fairnessSummary": {
+      "comparedCompatibleAttempts": true,
+      "bestKnownIsNotOptimalProof": false,
+      "oracleReference": false
+    },
+    "warnings": [],
+    "publicSafe": true,
+    "notA": [
+      "not proof of optimality",
+      "not route optimization",
+      "not official score",
+      "not MARL/RL"
+    ]
+  },
+  "summary": {
+    "hasMissionOutcomeReport": true,
+    "hasMissionScore": true,
+    "hasRegretReport": true,
+    "usesMissionOutcomeScoring": true,
+    "changesOfficialBrowserScoring": false,
+    "hiddenTruthExported": false,
+    "usesNewPlanner": false,
+    "usesRouteOptimizer": false,
+    "usesMARL": false
+  }
+}

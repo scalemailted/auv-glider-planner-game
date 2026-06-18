@@ -224,13 +224,14 @@ Active/near-term work should stabilize the current scientific game and headless 
 1. GFX-R2 - Three.js Bathymetric World Renderer: stabilize the active Three.js/WebGL bathymetry view while keeping Phaser as shell and portable JS as authority.
 2. P11 - 2.5D Water-Column Sampling and Depth-Layer Mission Model: harden browser/headless parity, teaching copy, and fixture coverage around the new water-column foundation.
 3. H4 - Headless Replay / Browser Replay Alignment: make headless episode replay inspectable in Browser ANCHOR with clearer route, observation, score, and diagnosis alignment.
-4. P12 - Multi-Glider Cooperative Sampling and Redundancy-Aware Assignment: extend objectives and diagnostics for multiple vehicles while avoiding duplicate samples and redundant coverage.
-5. Learning Lab for Benchmark Modes + Headless Workflow + Hidden Discovery: teach Planner, Adaptive, Full Autonomy, solver-packet roundtrip, forecast correction, hidden-event hypothesis, and 2.5D sampling.
-6. Blind Discovery / Hidden-State Mode implementation: hide ocean fields until sampled and build gameplay around sparse observations and belief construction.
-7. Production mission scoring synthesis: align science value, uncertainty, discovery, energy, hazards, redundancy, and regret without replacing official browser scoring with headless scoring.
-8. Scenario packs and classroom assignment packs: provide reproducible missions for teaching and benchmark comparisons.
-9. Replay/debrief polish: improve comparisons, route explanation, depth-layer summaries, and regret narratives.
-10. Manual QA and performance pass: keep the static browser app responsive and testable as fields and artifacts grow.
+4. SCORE-R1 - Mission Scoring Synthesis: align browser debrief scoring with science value, uncertainty, discovery, energy, hazards, redundancy, and regret while keeping browser scoring authoritative and headless score educational.
+5. P12 - Multi-Glider Cooperative Sampling and Redundancy-Aware Assignment: extend objectives and diagnostics for multiple vehicles while avoiding duplicate samples and redundant coverage.
+6. Learning Lab for Benchmark Modes + Headless Workflow + Hidden Discovery: teach Planner, Adaptive, Full Autonomy, solver-packet roundtrip, forecast correction, hidden-event hypothesis, and 2.5D sampling.
+7. Blind Discovery / Hidden-State Mode implementation: hide ocean fields until sampled and build gameplay around sparse observations and belief construction.
+8. Production mission scoring synthesis: align science value, uncertainty, discovery, energy, hazards, redundancy, and regret without replacing official browser scoring with headless scoring.
+9. Scenario packs and classroom assignment packs: provide reproducible missions for teaching and benchmark comparisons.
+10. Replay/debrief polish: improve comparisons, route explanation, depth-layer summaries, and regret narratives.
+11. Manual QA and performance pass: keep the static browser app responsive and testable as fields and artifacts grow.
 
 ## 12. Medium-Term Priorities
 
@@ -292,9 +293,18 @@ Current boundaries:
 
 MOTION-R1 is implemented as a core execution-model layer plus a Simulation Lab sandbox, not as a fourth authority mode. Planner Benchmark, Adaptive Benchmark, and Full Autonomy Benchmark remain the authority modes. The motion layer represents planned waypoints, control commands, deterministic glider state updates, realized trajectories, sampled observations, motion diagnostics, and public-safe bundle summaries. Future ENV/GFX work may improve bathymetry/depth visualization or explore WebGPU fluid coupling, but Node/OceanBox-JS remains canonical for deterministic replay and artifact generation.
 
+## SIM-R1 Motion Cost Graph Checkpoint
+
+SIM-R1 now adds optional Node/OceanBox-JS motion cost graph and adjacency matrix artifacts for benchmark inspection. It evaluates directed/asymmetric motion edge costs from public-safe currents, constraints, hazards, depth/bathymetry context, science-priority context, and motion configuration. It exports `anchor.benchmark.feasibility-cost-graph` and `anchor.headless.motion-cost-matrix` when `--cost-graph` is enabled. Scenario-comparison reports remain future work. SIM-R1 does not choose or optimize routes, change browser scoring, add Python simulation, claim operational validation, or add MARL/RL. See [Motion Cost Graph and Adjacency Matrix](docs/motion_cost_graph_and_adjacency_matrix.md).
+
 ## GFX-ARCH-R1 Renderer Boundary Checkpoint
 
 GFX-ARCH-R1 keeps Phaser as the app/game shell and adds pure renderer boundary contracts for capability detection, renderer host descriptors, and public-safe ocean-world render view models. Renderer Architecture Preview appears under Simulation Lab as an inspection scaffold, not a final 3D scene.
 
 ENV-R1 established the bathymetric world view and toggleable depth-layer concept. GFX-R2 upgrades that view to a dedicated Three.js/WebGL renderer that consumes public-safe view models while Phaser remains the app shell. WebGPU-Ocean-style fluid work remains a future sandbox/reference, not the canonical mission engine. The renderer layer must not own simulation state, browser scoring, planning, headless runtime behavior, hidden truth, Python simulation, or MARL/RL.
 GFX-R2 Bathymetric World View adds higher-quality synthetic bathymetry visualization over the 2.5D model; it does not add full 3D route planning, WebGPU-Ocean, a Python simulator, or MARL/RL.
+## SCORE-R1 Shadow Mission Outcome Scoring
+
+SCORE-R1 is shadow benchmark scoring. It does not replace official browser scoring, Challenge Mode scoring, leaderboard ranking, or existing debrief totals. Profiles are objective-aware and versioned; missing data is explicit; regret requires a compatible reference, and best-known attempt does not mean optimal. The Node/OceanBox-JS runtime remains the canonical headless runtime. Python/Colab analyzes exported artifacts or invokes Node; no Python simulator, planner, optimizer, MARL/RL, operational certification, SeaExplorer validation, or calibrated ocean forecast is added.
+
+See [Mission Scoring and Regret](docs/mission_scoring_and_regret.md) for the SCORE-R1 artifact contract and boundaries.

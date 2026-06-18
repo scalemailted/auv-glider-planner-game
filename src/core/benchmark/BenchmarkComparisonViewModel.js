@@ -17,7 +17,13 @@ const METRIC_DEFINITIONS = [
   { id: 'routeLength', label: 'Route Length', direction: 'lowerIsBetter', description: 'Existing route-length metric, when recorded.', unit: 'cells', missingLabel: 'No route length' },
   { id: 'averageCurrentAssist', label: 'Avg Current Assist', direction: 'higherIsBetter', description: 'Average current assistance from route-quality diagnostics.', unit: 'model', missingLabel: 'No assist value' },
   { id: 'averageCrossCurrent', label: 'Avg Cross Current', direction: 'lowerIsBetter', description: 'Average cross-current exposure from route-quality diagnostics.', unit: 'model', missingLabel: 'No cross-current value' },
-  { id: 'objectiveCompletion', label: 'Objective Completion', direction: 'higherIsBetter', description: 'Existing objective completion fraction, when recorded.', unit: 'ratio', missingLabel: 'No completion value' }
+  { id: 'objectiveCompletion', label: 'Objective Completion', direction: 'higherIsBetter', description: 'Existing objective completion fraction, when recorded.', unit: 'ratio', missingLabel: 'No completion value' },
+  { id: 'missionCompositeScore', label: 'Shadow Outcome', direction: 'higherIsBetter', description: 'SCORE-R1 composite mission-outcome score when a compatible report is present.', unit: 'pts', missingLabel: 'No shadow score' },
+  { id: 'missionScienceScore', label: 'Shadow Science', direction: 'higherIsBetter', description: 'SCORE-R1 science group score when present.', unit: 'pts', missingLabel: 'No science score' },
+  { id: 'missionFeasibilityScore', label: 'Shadow Feasibility', direction: 'higherIsBetter', description: 'SCORE-R1 feasibility group score when present.', unit: 'pts', missingLabel: 'No feasibility score' },
+  { id: 'missionEfficiencyScore', label: 'Shadow Efficiency', direction: 'higherIsBetter', description: 'SCORE-R1 efficiency group score when present.', unit: 'pts', missingLabel: 'No efficiency score' },
+  { id: 'missionSafetyScore', label: 'Shadow Safety', direction: 'higherIsBetter', description: 'SCORE-R1 safety group score when present.', unit: 'pts', missingLabel: 'No safety score' },
+  { id: 'missionScoreCoverage', label: 'Shadow Coverage', direction: 'higherIsBetter', description: 'SCORE-R1 data coverage fraction when present.', unit: 'ratio', missingLabel: 'No coverage' }
 ];
 
 const METRIC_BY_ID = Object.fromEntries(METRIC_DEFINITIONS.map((definition) => [definition.id, definition]));
@@ -63,6 +69,8 @@ export function buildBenchmarkComparisonViewModel({
   const mostEfficientAttempt = chooseMostEfficientAttempt(attempts);
   const fairnessLabels = unique(attempts.map((attempt) => attempt.fairnessLabel).filter(Boolean));
   const warnings = [];
+  const scoreProfileKeys = unique(attempts.map((attempt) => attempt.missionOutcome?.profileKey).filter(Boolean));
+  if (scoreProfileKeys.length > 1) warnings.push('SCORE-R1 shadow scores use mismatched profiles or versions; do not rank them as fair peers.');
   if (!attempts.length) warnings.push('No benchmark attempts are available yet.');
   if (attempts.some((attempt) => Object.values(attempt.metrics ?? {}).every((value) => value == null))) {
     warnings.push('At least one attempt has no comparable metrics yet.');
@@ -81,6 +89,7 @@ export function buildBenchmarkComparisonViewModel({
     lowestEnergyAttempt,
     safestAttempt,
     mostEfficientAttempt,
+    missionOutcomeComparison: buildMissionOutcomeComparison(attempts, scoreProfileKeys),
     warnings,
     explanation: 'Comparison metrics are normalized from existing results. P3 does not add a new planner or redesign scoring.'
   };
@@ -199,14 +208,61 @@ function normalizeAttempt(attempt = {}, index = 0) {
     planId: attempt.planId ?? routeRecord?.planId ?? null,
     resultId: attempt.resultId ?? routeRecord?.resultId ?? null,
     status: attempt.status ?? routeRecord?.validation?.status ?? 'notStarted',
-    metrics: normalizeMetrics(attempt.metrics ?? routeRecord?.metrics ?? runRecord?.diagnostics?.routeExecutionSummary ?? {}),
+    missionOutcome: normalizeMissionOutcomeForAttempt(attempt, routeRecord, runRecord),
+    metrics: normalizeMetrics(attempt.metrics ?? routeRecord?.metrics ?? runRecord?.diagnostics?.routeExecutionSummary ?? {}, normalizeMissionOutcomeForAttempt(attempt, routeRecord, runRecord)),
     routeExecutionRecord: routeRecord,
     runRecord
   };
 }
 
-function normalizeMetrics(metrics = {}) {
-  return Object.fromEntries(METRIC_DEFINITIONS.map((definition) => [definition.id, finiteOrNull(metrics?.[definition.id])]));
+function normalizeMetrics(metrics = {}, missionOutcome = null) {
+  const merged = {
+    ...(metrics ?? {}),
+    missionCompositeScore: missionOutcome?.compositeScore ?? metrics?.missionCompositeScore,
+    missionScienceScore: missionOutcome?.scienceScore ?? metrics?.missionScienceScore,
+    missionFeasibilityScore: missionOutcome?.feasibilityScore ?? metrics?.missionFeasibilityScore,
+    missionEfficiencyScore: missionOutcome?.efficiencyScore ?? metrics?.missionEfficiencyScore,
+    missionSafetyScore: missionOutcome?.safetyScore ?? metrics?.missionSafetyScore,
+    missionScoreCoverage: missionOutcome?.coverageFraction ?? metrics?.missionScoreCoverage
+  };
+  return Object.fromEntries(METRIC_DEFINITIONS.map((definition) => [definition.id, finiteOrNull(merged?.[definition.id])]));
+}
+
+function normalizeMissionOutcomeForAttempt(attempt = {}, routeRecord = null, runRecord = null) {
+  const report = attempt.missionOutcomeReport ?? attempt.missionOutcome?.report ?? routeRecord?.missionOutcomeReport ?? runRecord?.missionOutcomeReport ?? attempt.result?.missionOutcomeReport ?? null;
+  const score = attempt.missionScore ?? attempt.missionOutcome?.score ?? routeRecord?.missionScore ?? runRecord?.missionScore ?? attempt.result?.missionScore ?? null;
+  const profileId = report?.scoreProfile?.profileId ?? score?.profile?.profileId ?? score?.scoreConfig?.profileId ?? null;
+  const profileVersion = report?.scoreProfile?.profileVersion ?? score?.profile?.profileVersion ?? score?.scoreConfig?.profileVersion ?? null;
+  if (!report && !score) return null;
+  return {
+    report,
+    score,
+    profileId,
+    profileVersion,
+    profileKey: profileId ? `${profileId}@${profileVersion ?? 'unknown'}` : null,
+    compositeScore: finiteOrNull(report?.compositeScore ?? score?.compositeScore),
+    scienceScore: finiteOrNull(report?.scienceScore ?? groupScore(score, 'science')),
+    feasibilityScore: finiteOrNull(report?.feasibilityScore ?? groupScore(score, 'feasibility')),
+    efficiencyScore: finiteOrNull(report?.efficiencyScore ?? groupScore(score, 'efficiency')),
+    safetyScore: finiteOrNull(report?.safetyScore ?? groupScore(score, 'safety')),
+    coverageFraction: finiteOrNull(report?.coverageFraction ?? score?.coverageFraction),
+    changesOfficialBrowserScoring: false
+  };
+}
+
+function buildMissionOutcomeComparison(attempts = [], profileKeys = []) {
+  const withScores = attempts.filter((attempt) => attempt.missionOutcome?.compositeScore != null);
+  return {
+    available: withScores.length > 0,
+    compatible: profileKeys.length <= 1,
+    profileKeys,
+    attemptsWithScores: withScores.length,
+    boundary: 'SCORE-R1 shadow scores are an additional comparison dimension and do not replace existing benchmark ranks.'
+  };
+}
+
+function groupScore(score = {}, groupId) {
+  return (score?.groupScores ?? []).find((group) => group.groupId === groupId)?.score ?? null;
 }
 
 function buildMetricCard(definition, attempts, ranking = []) {

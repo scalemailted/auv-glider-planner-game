@@ -19,9 +19,9 @@ The diagnostics are educational execution diagnostics. They do not redesign Chal
 
 ## Headless And Bundle Support
 
-Node/OceanBox-JS remains the canonical non-browser runtime. Motion-aware headless execution is optional via runtime config or CLI flags. When enabled, episodes and public bundles can include `motion_trajectory.json`, `control_trace.json`, `motion_diagnostics.json`, plus combined-bundle `motionTrajectory`, `controlTrace`, and `motionDiagnostics` fields. Public motion trajectory exports redact hidden-truth field identifiers and truth values.
+Node/OceanBox-JS remains the canonical non-browser runtime. Motion-aware headless execution is optional via runtime config or CLI flags. When enabled, episodes and public bundles can include `motion_trajectory.json`, `control_trace.json`, `motion_diagnostics.json`, `mission_feasibility_report.json`, plus combined-bundle `motionTrajectory`, `controlTrace`, `motionDiagnostics`, and `missionFeasibilityReport` fields. Public motion trajectory and feasibility exports redact hidden-truth field identifiers and truth values.
 
-Solver-packet roundtrips can accept old plans or plans with optional motion intent such as `desiredSpeedThroughWater`, `diveProfileId`, `sampleIntervalSeconds`, and `surfaceAtEnd`. Roundtrip reports may include `motionSummary`, `plannedVsRealized`, `motionDiagnostics`, and `motionModelId` while preserving `usesNewPlanner: false`, `usesWebGPUFluid: false`, and `usesMARL: false`.
+Solver-packet roundtrips can accept old plans or plans with optional motion intent such as `desiredSpeedThroughWater`, `diveProfileId`, `sampleIntervalSeconds`, and `surfaceAtEnd`. Roundtrip reports may include `motionSummary`, `missionFeasibilitySummary`, `plannedVsRealized`, `motionDiagnostics`, and `motionModelId` while preserving `usesNewPlanner: false`, `usesWebGPUFluid: false`, and `usesMARL: false`.
 
 ## Motion Planning Demo
 
@@ -32,3 +32,8 @@ Simulation Lab now includes Motion Planning Demo. It shows a fixed waypoint rout
 MOTION-R1 does not implement WebGPU, WebGPU-Ocean, full 3D vehicle dynamics, production hydrodynamics, calibrated ocean physics, A*/Dijkstra/RRT/MPC/RL/MARL, Python simulation, backend services, or benchmark scoring authority. WebGPU fluid coupling is a future optional provider that must plug into the environment-sampler interface without replacing deterministic Node/headless replay.
 
 ENV-R1 Bathymetric World View can display MOTION-R1 planned-vs-realized trajectory summaries; motion dynamics remain execution diagnostics, not a route planner.
+## SCORE-R1 Shadow Mission Outcome Scoring
+
+SCORE-R1 is shadow benchmark scoring. It does not replace official browser scoring, Challenge Mode scoring, leaderboard ranking, or existing debrief totals. Profiles are objective-aware and versioned; missing data is explicit; regret requires a compatible reference, and best-known attempt does not mean optimal. The Node/OceanBox-JS runtime remains the canonical headless runtime. Python/Colab analyzes exported artifacts or invokes Node; no Python simulator, planner, optimizer, MARL/RL, operational certification, SeaExplorer validation, or calibrated ocean forecast is added.
+
+See [Mission Scoring and Regret](mission_scoring_and_regret.md) for the SCORE-R1 artifact contract and boundaries.

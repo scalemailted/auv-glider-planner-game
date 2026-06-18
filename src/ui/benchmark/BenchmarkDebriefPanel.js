@@ -18,7 +18,8 @@ export function benchmarkDebriefPanelHtml(viewModel = {}) {
         ${benchmarkMetricCardHtml({ label: 'Attempts', value: viewModel.attemptCount ?? 0 })}
         ${benchmarkMetricCardHtml({ label: 'Fairness', value: benchmarkFairnessBadgeHtml(viewModel.fairnessLabel ?? 'No fairness label'), htmlValue: true })}
       </div>
-      <div class="hud-muted">uses existing simulator/debrief | no new planner | no scoring redesign | no MARL/RL</div>
+      <div class="hud-muted">uses existing simulator/debrief | no new planner | SCORE-R1 shadow score does not replace official scoring | no MARL/RL</div>
+      ${benchmarkMissionOutcomeComparisonHtml(viewModel)}
       ${benchmarkAttemptComparisonHtml(viewModel)}
       ${routeReview ? benchmarkRouteReviewHtml(routeReview) : ''}
       ${routeOverlay ? benchmarkRouteOverlayPanelHtml(routeOverlay) : ''}
@@ -66,6 +67,38 @@ export function benchmarkAttemptComparisonHtml(viewModel = {}) {
         </div>
       ` : '<p class="hud-muted">No benchmark attempts are available yet.</p>'}
       ${warningsHtml(viewModel.warnings)}
+    </section>
+  `;
+}
+
+export function benchmarkMissionOutcomeComparisonHtml(viewModel = {}) {
+  const attempts = (Array.isArray(viewModel.attempts) ? viewModel.attempts : []).filter((attempt) => attempt.missionOutcome);
+  if (!attempts.length) return '';
+  const comparison = viewModel.missionOutcomeComparison ?? {};
+  return `
+    <section class="benchmark-debrief-subsection" data-benchmark-mission-outcome-comparison>
+      <h3>SCORE-R1 Shadow Outcome</h3>
+      <p>This is an additional objective-aware benchmark dimension. It does not replace existing benchmark ranking or official browser scoring.</p>
+      ${comparison.compatible === false ? '<div class="hud-muted warning">Profiles or versions differ; these shadow scores are not fair peers.</div>' : ''}
+      <div class="debrief-table-wrap">
+        <table class="debrief-table">
+          <thead><tr><th>Attempt</th><th>Profile</th><th>Composite</th><th>Science</th><th>Feasibility</th><th>Efficiency</th><th>Safety</th><th>Coverage</th></tr></thead>
+          <tbody>
+            ${attempts.map((attempt) => `
+              <tr>
+                <td>${escapeHtml(attempt.routeSourceLabel ?? attempt.attemptSourceLabel ?? 'Benchmark Attempt')}</td>
+                <td>${escapeHtml(attempt.missionOutcome?.profileKey ?? 'unknown')}</td>
+                <td>${escapeHtml(formatValue(attempt.missionOutcome?.compositeScore))}</td>
+                <td>${escapeHtml(formatValue(attempt.missionOutcome?.scienceScore))}</td>
+                <td>${escapeHtml(formatValue(attempt.missionOutcome?.feasibilityScore))}</td>
+                <td>${escapeHtml(formatValue(attempt.missionOutcome?.efficiencyScore))}</td>
+                <td>${escapeHtml(formatValue(attempt.missionOutcome?.safetyScore))}</td>
+                <td>${escapeHtml(formatPercent(attempt.missionOutcome?.coverageFraction))}</td>
+              </tr>
+            `).join('')}
+          </tbody>
+        </table>
+      </div>
     </section>
   `;
 }
@@ -154,6 +187,11 @@ function formatValue(value) {
   const number = Number(value);
   if (!Number.isFinite(number)) return 'N/A';
   return Math.abs(number) >= 100 ? String(Math.round(number)) : String(Math.round(number * 1000) / 1000);
+}
+
+function formatPercent(value) {
+  const number = Number(value);
+  return Number.isFinite(number) ? `${Math.round(number * 100)}%` : 'N/A';
 }
 
 function studentFairnessLabel(label) {

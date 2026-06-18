@@ -80,6 +80,8 @@ import {
   buildBenchmarkRouteOverlayViewModel
 } from '../../../core/benchmark/BenchmarkRouteOverlayViewModel.js';
 import { benchmarkDebriefPanelHtml } from '../../../ui/benchmark/BenchmarkDebriefPanel.js';
+import { buildMissionScorecardViewModel } from '../../../core/scoring/MissionScorecardViewModel.js';
+import { missionScorecardPanelHtml } from '../../../ui/scoring/MissionScorecardPanel.js';
 import { adaptiveSurfacingPanelHtml as adaptiveSurfacingPanelMarkup } from '../../../ui/benchmark/AdaptiveSurfacingPanel.js';
 import { adaptiveEpisodeSessionPanelHtml as adaptiveEpisodeSessionPanelMarkup } from '../../../ui/benchmark/AdaptiveEpisodeSessionPanel.js';
 import {
@@ -229,6 +231,7 @@ export class DebriefScene extends PhaserScene {
           ${this.missionOptionsPanelHtml(result)}
           ${this.tutorialPanelHtml(result)}
           ${this.importedPlanPanelHtml(result)}
+          ${this.missionOutcomeScorecardHtml(result)}
           ${this.benchmarkPanelHtml(result)}
           ${this.adaptiveSurfacingPanelHtml(result)}
           ${this.adaptiveSessionPanelHtml(result)}
@@ -1022,6 +1025,14 @@ export class DebriefScene extends PhaserScene {
       ...this.buildBenchmarkExportContext(result, context),
       selectedOverlayLayer: this.app.state.benchmarkRouteOverlayLayer ?? 'routeStatus'
     });
+  }
+  missionOutcomeScorecardHtml(result) {
+    const report = result?.missionOutcomeReport ?? result?.scoreArtifacts?.missionOutcomeReport ?? null;
+    if (!report) return '';
+    return missionScorecardPanelHtml(buildMissionScorecardViewModel({
+      missionOutcomeReport: report,
+      regretReport: result?.regretReport ?? result?.scoreArtifacts?.regretReport ?? null
+    }));
   }
   benchmarkPanelHtml(result) {
     const context = this.benchmarkAttemptContext(result);

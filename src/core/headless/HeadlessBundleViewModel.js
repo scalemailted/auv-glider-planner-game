@@ -1,6 +1,12 @@
 import { validateHeadlessBundle } from './HeadlessBundleValidation.js';
 import { HEADLESS_SOLVER_ROUNDTRIP_REPORT_TYPE, isHeadlessRoundtripReportType } from './HeadlessRoundtripTypes.js';
 import { trajectoryMotionSummary } from '../motion/GliderTrajectorySimulator.js';
+import { missionFeasibilityReportSummary } from '../motion/MissionFeasibilityReport.js';
+import { motionCostGraphSummary as summarizeMotionCostGraph } from '../motion/MotionCostGraphBuilder.js';
+import { motionCostMatrixSummary as summarizeMotionCostMatrix } from '../motion/MotionCostMatrixExporter.js';
+import { missionOutcomeReportSummary } from '../scoring/MissionOutcomeReport.js';
+import { missionRegretReportSummary } from '../scoring/MissionRegretModel.js';
+import { buildMissionScorecardViewModel } from '../scoring/MissionScorecardViewModel.js';
 
 export const HEADLESS_BUNDLE_VIEW_MODEL_VERSION = 'headless-bundle-view-model-h2';
 
@@ -16,6 +22,10 @@ export function buildHeadlessBundleViewModel(bundle = {}) {
     observationSummary: headlessBundleObservationSummary(bundle),
     trackSummary: headlessBundleTrackSummary(bundle),
     motionSummary: headlessBundleMotionSummary(bundle),
+    missionFeasibilitySummary: headlessBundleMissionFeasibilitySummary(bundle),
+    motionCostGraphSummary: headlessBundleMotionCostGraphSummary(bundle),
+    missionOutcomeSummary: headlessBundleMissionOutcomeSummary(bundle),
+    missionScorecard: headlessBundleMissionScorecardViewModel(bundle),
     scoreSummary: headlessBundleScoreSummary(bundle),
     roundtripSummary: headlessBundleRoundtripSummary(bundle),
     waterColumnSummary: headlessBundleWaterColumnSummary(bundle),
@@ -115,6 +125,197 @@ export function headlessBundleMotionSummary(bundle = {}) {
     usesMARL: false
   };
 }
+export function headlessBundleMissionFeasibilitySummary(bundle = {}) {
+  const report = bundle.missionFeasibilityReport
+    ?? bundle.episode?.missionFeasibilityReport
+    ?? bundle.roundtripReport?.missionFeasibilityReport
+    ?? null;
+  const summary = bundle.missionFeasibilitySummary
+    ?? bundle.episode?.missionFeasibilitySummary
+    ?? bundle.episode?.diagnostics?.missionFeasibilitySummary
+    ?? bundle.roundtripReport?.missionFeasibilitySummary
+    ?? bundle.roundtripReport?.episode?.missionFeasibilitySummary
+    ?? null;
+  if (!report && !summary) {
+    return {
+      present: false,
+      hasMissionFeasibilityReport: false,
+      feasibilityStatus: 'not-present',
+      missionDurationSeconds: 0,
+      energyRemaining: null,
+      batteryFraction: null,
+      waypointArrivalStatus: 'not-present',
+      bottomClearanceWarnings: 0,
+      constraintViolations: 0,
+      usesMotionDynamics: false,
+      usesNewPlanner: false,
+      usesWebGPUFluid: false,
+      usesSeaExplorerValidatedModel: false,
+      usesMARL: false,
+      browserOfficialScoring: false
+    };
+  }
+  const normalized = report ? missionFeasibilityReportSummary(report) : summary;
+  return {
+    present: true,
+    hasMissionFeasibilityReport: Boolean(report),
+    feasibilityStatus: normalized.feasibilityStatus ?? 'unknown',
+    missionDurationSeconds: normalized.missionDurationSeconds ?? 0,
+    plannedDistance: normalized.plannedDistance ?? 0,
+    realizedDistance: normalized.realizedDistance ?? 0,
+    energyUsed: normalized.energyUsed ?? 0,
+    energyRemaining: normalized.energyRemaining ?? null,
+    batteryFraction: normalized.batteryFraction ?? null,
+    meanTrackError: normalized.meanTrackError ?? 0,
+    maxTrackError: normalized.maxTrackError ?? 0,
+    driftDistance: normalized.driftDistance ?? 0,
+    waypointArrivalStatus: normalized.waypointArrivalStatus ?? 'unknown',
+    missedWaypointCount: normalized.missedWaypointCount ?? 0,
+    bottomClearanceWarnings: normalized.bottomClearanceWarnings ?? 0,
+    constraintViolations: normalized.constraintViolations ?? 0,
+    sampleCoverageCount: normalized.sampleCoverageCount ?? 0,
+    usesMotionDynamics: normalized.usesMotionDynamics === true,
+    usesNewPlanner: normalized.usesNewPlanner === true,
+    usesWebGPUFluid: normalized.usesWebGPUFluid === true,
+    usesSeaExplorerValidatedModel: normalized.usesSeaExplorerValidatedModel === true,
+    usesMARL: normalized.usesMARL === true,
+    browserOfficialScoring: normalized.browserOfficialScoring === true
+  };
+}
+
+export function headlessBundleMotionCostGraphSummary(bundle = {}) {
+  const graph = bundle.motionCostGraph ?? bundle.episode?.motionCostGraph ?? bundle.roundtripReport?.motionCostGraph ?? null;
+  const matrix = bundle.motionCostMatrix ?? bundle.episode?.motionCostMatrix ?? bundle.roundtripReport?.motionCostMatrix ?? null;
+  const graphSummary = bundle.motionCostGraphSummary
+    ?? bundle.episode?.motionCostGraphSummary
+    ?? bundle.episode?.diagnostics?.motionCostGraphSummary
+    ?? bundle.roundtripReport?.motionCostGraphSummary
+    ?? graph?.summary
+    ?? null;
+  const matrixSummary = bundle.motionCostMatrixSummary
+    ?? bundle.episode?.motionCostMatrixSummary
+    ?? bundle.episode?.diagnostics?.motionCostMatrixSummary
+    ?? bundle.roundtripReport?.motionCostMatrixSummary
+    ?? matrix?.summary
+    ?? null;
+  if (!graph && !matrix && !graphSummary && !matrixSummary) {
+    return {
+      present: false,
+      hasMotionCostGraph: false,
+      hasMotionCostMatrix: false,
+      nodeCount: 0,
+      edgeCount: 0,
+      feasibleEdgeCount: 0,
+      matrixFormat: null,
+      meanWeightedCost: 0,
+      usesNewPlanner: false,
+      usesRouteOptimizer: false,
+      usesMARL: false,
+      browserOfficialScoring: false
+    };
+  }
+  const normalizedGraph = graph ? summarizeMotionCostGraph(graph) : graphSummary ?? {};
+  const normalizedMatrix = matrix ? summarizeMotionCostMatrix(matrix) : matrixSummary ?? {};
+  return {
+    present: true,
+    hasMotionCostGraph: Boolean(graph ?? graphSummary),
+    hasMotionCostMatrix: Boolean(matrix ?? matrixSummary),
+    graphId: normalizedGraph.graphId ?? normalizedMatrix.graphId ?? null,
+    metricId: normalizedGraph.metricId ?? normalizedMatrix.metricId ?? null,
+    nodeSourceId: normalizedGraph.nodeSourceId ?? null,
+    neighborMode: normalizedGraph.neighborMode ?? null,
+    directed: normalizedGraph.directed !== false,
+    nodeCount: normalizedGraph.nodeCount ?? normalizedMatrix.nodeCount ?? 0,
+    edgeCount: normalizedGraph.edgeCount ?? normalizedMatrix.edgeCount ?? 0,
+    feasibleEdgeCount: normalizedGraph.feasibleEdgeCount ?? normalizedMatrix.edgeCount ?? 0,
+    blockedEdgeCount: normalizedGraph.blockedEdgeCount ?? 0,
+    matrixFormat: normalizedMatrix.matrixFormat ?? normalizedGraph.matrixFormat ?? null,
+    finiteCostCount: normalizedMatrix.finiteCostCount ?? 0,
+    meanWeightedCost: normalizedGraph.meanWeightedCost ?? normalizedMatrix.meanCost ?? 0,
+    meanEnergyCost: normalizedGraph.meanEnergyCost ?? 0,
+    meanDurationSeconds: normalizedGraph.meanDurationSeconds ?? 0,
+    meanCurrentAssist: normalizedGraph.meanCurrentAssist ?? 0,
+    meanCurrentOpposition: normalizedGraph.meanCurrentOpposition ?? 0,
+    meanCrossCurrent: normalizedGraph.meanCrossCurrent ?? 0,
+    publicSafe: normalizedGraph.publicSafe !== false && normalizedMatrix.publicSafe !== false,
+    hiddenTruthIncluded: normalizedGraph.hiddenTruthIncluded === true || normalizedMatrix.hiddenTruthIncluded === true,
+    generatedRoute: false,
+    usesNewPlanner: false,
+    usesRouteOptimizer: false,
+    usesMARL: false,
+    browserOfficialScoring: false
+  };
+}
+export function headlessBundleMissionOutcomeSummary(bundle = {}) {
+  const report = bundle.missionOutcomeReport ?? bundle.episode?.missionOutcomeReport ?? bundle.roundtripReport?.missionOutcomeReport ?? null;
+  const missionScore = bundle.missionScore ?? bundle.episode?.missionScore ?? null;
+  const scoreProfile = bundle.scoreProfileSummary ?? bundle.episode?.scoreProfileSummary ?? report?.scoreProfile ?? null;
+  const regretReport = bundle.regretReport ?? bundle.episode?.regretReport ?? bundle.roundtripReport?.regretReport ?? null;
+  if (!report && !missionScore) {
+    return {
+      present: false,
+      hasMissionOutcomeReport: false,
+      hasMissionScore: false,
+      hasRegretReport: false,
+      scoreProfileId: null,
+      scoreProfileVersion: null,
+      compositeScore: null,
+      scienceScore: null,
+      feasibilityScore: null,
+      efficiencyScore: null,
+      safetyScore: null,
+      coverageFraction: 0,
+      missingMetricCount: 0,
+      usesMissionOutcomeScoring: false,
+      changesOfficialBrowserScoring: false,
+      usesNewPlanner: false,
+      usesRouteOptimizer: false,
+      usesMARL: false
+    };
+  }
+  const summary = report ? missionOutcomeReportSummary(report) : {};
+  const regretSummary = regretReport ? missionRegretReportSummary(regretReport) : report?.regretSummary ?? null;
+  return {
+    present: true,
+    hasMissionOutcomeReport: Boolean(report),
+    hasMissionScore: Boolean(missionScore),
+    hasRegretReport: Boolean(regretReport ?? report?.regretSummary),
+    scoreProfileId: summary.scoreProfileId ?? scoreProfile?.profileId ?? scoreProfile?.id ?? null,
+    scoreProfileVersion: summary.scoreProfileVersion ?? scoreProfile?.profileVersion ?? scoreProfile?.version ?? null,
+    scoreStatus: summary.scoreStatus ?? missionScore?.status ?? null,
+    compositeScore: summary.compositeScore ?? missionScore?.compositeScore ?? null,
+    scienceScore: summary.scienceScore ?? groupScore(missionScore, 'science'),
+    feasibilityScore: summary.feasibilityScore ?? groupScore(missionScore, 'feasibility'),
+    efficiencyScore: summary.efficiencyScore ?? groupScore(missionScore, 'efficiency'),
+    safetyScore: summary.safetyScore ?? groupScore(missionScore, 'safety'),
+    coverageFraction: summary.coverageFraction ?? missionScore?.coverageFraction ?? 0,
+    missingMetricCount: summary.missingMetricCount ?? report?.missingMetrics?.length ?? 0,
+    strongestOutcome: summary.strongestOutcome ?? report?.explanations?.strongestOutcome ?? null,
+    largestOpportunity: summary.largestOpportunity ?? report?.explanations?.largestWeakness ?? null,
+    regretSummary,
+    regretReferenceType: regretSummary?.referenceType ?? null,
+    totalRegret: regretSummary?.totalRegret ?? null,
+    compatibilityStatus: regretSummary?.compatibilityStatus ?? 'noReference',
+    usesMissionOutcomeScoring: true,
+    changesOfficialBrowserScoring: false,
+    usesNewPlanner: false,
+    usesRouteOptimizer: false,
+    usesMARL: false
+  };
+}
+
+export function headlessBundleMissionScorecardViewModel(bundle = {}) {
+  const report = bundle.missionOutcomeReport ?? bundle.episode?.missionOutcomeReport ?? bundle.roundtripReport?.missionOutcomeReport ?? null;
+  return buildMissionScorecardViewModel({
+    missionOutcomeReport: report,
+    regretReport: bundle.regretReport ?? bundle.episode?.regretReport ?? bundle.roundtripReport?.regretReport ?? null,
+    scoreProfile: bundle.scoreProfileSummary ?? bundle.episode?.scoreProfileSummary ?? null
+  });
+}
+
+function groupScore(missionScore = {}, groupId) {
+  return (missionScore?.groupScores ?? []).find((group) => group.groupId === groupId)?.score ?? null;
+}
 export function headlessBundleScoreSummary(bundle = {}) {
   const report = bundle.scoreReport ?? {};
   return {
@@ -161,6 +362,10 @@ export function headlessBundleRoundtripSummary(bundle = {}) {
     usesMotionDynamics: report.runtime?.usesMotionDynamics === true || Boolean(report.motionSummary),
     usesWebGPUFluid: report.runtime?.usesWebGPUFluid === true,
     motionSummary: report.motionSummary ?? report.episode?.motionSummary ?? null,
+    missionFeasibilitySummary: report.missionFeasibilitySummary ?? report.episode?.missionFeasibilitySummary ?? null,
+    hasMissionFeasibilityReport: report.summary?.hasMissionFeasibilityReport === true || Boolean(report.missionFeasibilityReport ?? report.missionFeasibilitySummary),
+    hasMotionCostGraph: report.summary?.hasMotionCostGraph === true || Boolean(report.motionCostGraphSummary ?? report.episode?.motionCostGraphSummary),
+    motionCostGraphSummary: report.motionCostGraphSummary ?? report.episode?.motionCostGraphSummary ?? null,
     motionModelId: report.motionSummary?.motionModelId ?? report.runtime?.config?.motion?.motionModelId ?? null,
     usesGeneratedPlan: report.runtime?.usesGeneratedPlan === true || report.runtime?.adaptedPlan?.generatesRoute === true,
     adaptedPlan: report.runtime?.adaptedPlan ?? null,
@@ -396,6 +601,11 @@ export function headlessBundleViewModelSummary(viewModel = {}) {
     diveProfileId: viewModel.waterColumnSummary?.diveProfileId ?? null,
     sciencePrimaryDiagnosis: viewModel.scienceDiagnosisSummary?.primaryDiagnosis ?? null,
     hasMotionTrajectory: viewModel.motionSummary?.present === true,
+    hasMissionFeasibilityReport: viewModel.missionFeasibilitySummary?.present === true,
+    hasMotionCostGraph: viewModel.motionCostGraphSummary?.present === true,
+    hasMissionOutcomeReport: viewModel.missionOutcomeSummary?.present === true,
+    motionCostGraphNodeCount: viewModel.motionCostGraphSummary?.nodeCount ?? 0,
+    motionCostGraphEdgeCount: viewModel.motionCostGraphSummary?.edgeCount ?? 0,
     motionModelId: viewModel.motionSummary?.motionModelId ?? null,
     meanTrackError: viewModel.motionSummary?.meanTrackError ?? null,
     visibilityRisk: viewModel.visibilitySummary?.visibilityRisk ?? 'unknown'
@@ -457,3 +667,5 @@ function sum(values) { return values.map(Number).filter(Number.isFinite).reduce(
 function mean(values) { const finite = values.map(Number).filter(Number.isFinite); return finite.length ? sum(finite) / finite.length : null; }
 function min(values) { const finite = values.map(Number).filter(Number.isFinite); return finite.length ? Math.min(...finite) : null; }
 function max(values) { const finite = values.map(Number).filter(Number.isFinite); return finite.length ? Math.max(...finite) : null; }
+
+

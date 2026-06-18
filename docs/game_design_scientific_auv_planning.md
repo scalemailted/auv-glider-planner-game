@@ -274,8 +274,23 @@ Glider constraints should shape every mission decision:
 - sampling rate
 
 A glider is not a point agent on a graph. It is an endurance vehicle whose path, samples, updates, and errors depend on ocean context.
+## 15. Mission Feasibility and Benchmark Credibility
 
-## 15. Multi-Glider Gameplay
+Mission feasibility is part of the game challenge, not just an engineering afterthought. A route can be scientifically valuable on the map and still fail as a mission if the glider cannot execute it under current drift, battery/energy limits, flight profile, payload duty cycle, bathymetry/depth constraints, surfacing windows, or communication requirements.
+
+The player-facing distinction should remain clear:
+
+- planned route: what the player or solver commanded
+- realized trajectory: what the glider actually did under currents and control limits
+- sampled path: where observations were actually collected
+
+Current drift and energy tradeoffs should be visible in debrief metrics. Dive/flight profile choices should affect sampled depth, vertical coverage, depth mismatch, travel feasibility, and energy cost. Payload/sensor duty cycle should eventually separate navigation energy from measurement energy. Mission duration, battery fraction, distance traveled, missed waypoints, track error, bottom-clearance warnings, and surfacing events should become first-class debrief and benchmark fields.
+
+Cost-matrix exports matter because external solvers should not compare routes using raw grid distance alone. SIM-R1 now exposes optional cost graph / adjacency matrix artifacts with simulator-derived time, distance, energy, current assist/opposition, cross-current risk, bathymetry risk, expected track error, depth profile, visibility tier, and warnings. That lets manual routes, greedy baselines, and external solvers compare motion-feasibility-aware plans under the same declared assumptions without having ANCHOR choose or optimize a route.
+
+This target is documented in [Mission Feasibility Simulator and Scientific Benchmark Requirements](mission_feasibility_simulator_requirements.md). It does not make ANCHOR a certified operational glider simulator, calibrated HYCOM/ROMS/CFD ocean forecast, SeaExplorer-specific validated simulator, Python simulator, or MARL/RL training implementation.
+
+## 16. Multi-Glider Gameplay
 
 The fleet should not all go to the highest-value cell. Good multi-glider behavior includes:
 
@@ -296,7 +311,7 @@ Useful roles:
 
 The debrief should explain redundant sampling and missed coordination opportunities in player-facing terms.
 
-## 16. Scoring Design
+## 17. Scoring Design
 
 A production scoring synthesis should reward scientific progress under the declared visibility and authority mode:
 
@@ -321,7 +336,7 @@ score =
 
 Regret measures what better sampling opportunities were missed under the same visibility and constraints. Regret should be fair: a player in Forecast-Guided Mode should not be punished as if they saw hidden truth. A Blind Discovery player should be judged on how well they explored, updated belief, and acted on available evidence.
 
-## 17. Game Modes / Campaign Structure
+## 18. Game Modes / Campaign Structure
 
 A campaign can progress from readable foundations to adaptive science missions:
 
@@ -340,7 +355,7 @@ A campaign can progress from readable foundations to adaptive science missions:
 
 Each step should introduce one new reason why the shortest path or highest-looking cell is not automatically best.
 
-## 18. Learning Design
+## 19. Learning Design
 
 Learning Labs should connect:
 
@@ -350,7 +365,7 @@ concept -> interactive widget -> sandbox -> mission challenge -> debrief reflect
 
 Each concept should become playable soon after it is taught. For example, a Learning Lab explains `A_global`; the Sampling Priority Demo lets the student inspect it; Flow-Coupled Sampling explains `Q_glider`; a mission challenge then asks the player to choose a route that trades science value against vehicle cost.
 
-## 19. Technical Architecture Mapping
+## 20. Technical Architecture Mapping
 
 - Browser ANCHOR: visual game, planning workspace, simulation UI, official browser scoring/debrief, challenge/tutorial flow, benchmark UI, Headless Bundle Viewer.
 - Portable JS core: shared contracts, deterministic model utilities, benchmark records, science diagnosis, water-column logic, solver-packet adapters, validation, and renderer-independent view models.
@@ -362,7 +377,7 @@ Each concept should become playable soon after it is taught. For example, a Lear
 - Learning Labs: concept-first explanations and lightweight widgets.
 - Simulation Labs: inspectable model sandboxes for fields, uncertainty, priority, action value, benchmarks, headless artifacts, motion, and renderer architecture.
 
-## 20. Current Implementation Status
+## 21. Current Implementation Status
 
 ### Implemented Foundation
 
@@ -392,7 +407,7 @@ Each concept should become playable soon after it is taught. For example, a Lear
 - MARL/RL wrappers around stable observation/action/reward schemas.
 - External model ingestion with explicit source/claim labels.
 
-## 21. Non-Goals
+## 22. Non-Goals
 
 ANCHOR should remain honest about what it is not:
 
@@ -407,3 +422,8 @@ ANCHOR should remain honest about what it is not:
 
 Future work may connect to higher-fidelity models, 3D renderers, or autonomy research, but those additions must preserve visibility boundaries, scoring authority, static-host compatibility where practical, and the core player-facing mission loop.
 ENV-R1 Bathymetric World View is the canonical visual bridge from top-down route intent to water-column science context: bathymetry is environmental geometry, not a replacement for 2.5D state or a terrain-flow ocean-current model.
+## SCORE-R1 Shadow Mission Outcome Scoring
+
+SCORE-R1 is shadow benchmark scoring. It does not replace official browser scoring, Challenge Mode scoring, leaderboard ranking, or existing debrief totals. Profiles are objective-aware and versioned; missing data is explicit; regret requires a compatible reference, and best-known attempt does not mean optimal. The Node/OceanBox-JS runtime remains the canonical headless runtime. Python/Colab analyzes exported artifacts or invokes Node; no Python simulator, planner, optimizer, MARL/RL, operational certification, SeaExplorer validation, or calibrated ocean forecast is added.
+
+See [Mission Scoring and Regret](mission_scoring_and_regret.md) for the SCORE-R1 artifact contract and boundaries.

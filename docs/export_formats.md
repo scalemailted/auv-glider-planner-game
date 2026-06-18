@@ -300,3 +300,20 @@ Science diagnosis informs the mission-manager objective recommendation. It does 
 
 P10 adds adaptive science-diagnosis context, mission-manager rationale, next-leg handoff metadata, objective-history display fields, and public-safe headless/browser summaries. It does not implement a new planner, scoring redesign, production data assimilation, GP/GMRF production inference, calibrated ocean forecast, Python simulator, or MARL/RL. Node/OceanBox-JS remains the canonical non-browser runtime; Python/Colab analyze artifacts or call Node.
 ENV-R1 headless exports may include `bathymetry_summary.json` and `mission_geometry_summary.json`. These are public-safe summaries of environmental geometry and route/sample counts, not calibrated bathymetric survey data or full 3D routes.
+
+## SIM-R1 Motion Cost Graph Exports
+
+When the Node/OceanBox-JS runtime is run with `--cost-graph`, bundles can include:
+
+- `anchor.benchmark.feasibility-cost-graph`
+- `anchor.headless.motion-cost-matrix`
+- `motion_cost_graph.json`
+- `motion_cost_matrix.json`
+- combined-bundle `motionCostGraph`, `motionCostMatrix`, `motionCostGraphSummary`, and `motionCostMatrixSummary`
+
+These records report directed/asymmetric edge costs over public-safe current, hazard, constraint, bathymetry/depth, science-priority, and motion configuration context. Scenario comparison reports remain future work. Cost graph artifacts are benchmark inspection records, not operational validation, route optimization, SeaExplorer-specific fidelity, Python simulation, calibrated forecasting, or official browser scoring replacement. See [Motion Cost Graph and Adjacency Matrix](motion_cost_graph_and_adjacency_matrix.md).
+## SCORE-R1 Shadow Mission Outcome Scoring
+
+SCORE-R1 is shadow benchmark scoring. It does not replace official browser scoring, Challenge Mode scoring, leaderboard ranking, or existing debrief totals. Profiles are objective-aware and versioned; missing data is explicit; regret requires a compatible reference, and best-known attempt does not mean optimal. The Node/OceanBox-JS runtime remains the canonical headless runtime. Python/Colab analyzes exported artifacts or invokes Node; no Python simulator, planner, optimizer, MARL/RL, operational certification, SeaExplorer validation, or calibrated ocean forecast is added.
+
+See [Mission Scoring and Regret](mission_scoring_and_regret.md) for the SCORE-R1 artifact contract and boundaries.

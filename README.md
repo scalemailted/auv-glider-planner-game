@@ -4,6 +4,8 @@
 
 The project is also an **AUV Glider Planner Game** for teaching long-horizon planning, energy tradeoffs, waypoint sequencing, forecast uncertainty, solver comparison, and dataset generation. The canonical game-design source of truth is [Scientific AUV Planning Game Design](docs/game_design_scientific_auv_planning.md), which captures the player-facing mission loop, objective archetypes, visibility modes, 2.5D sampling model, scoring/regret direction, and future production gameplay targets. Challenge Mode presents playable planning puzzles with mission-mode objectives, stars, route grades, risk warnings, and leaderboard comparison. Simulation Lab exposes the same mission engine as a reproducible experiment environment for deterministic/stochastic setup, current/sample-field configuration, replay seeds, solver packets, JSON import/export, and planner comparisons.
 
+The benchmark target now explicitly includes mission feasibility: planned vs realized trajectory, mission duration, distance traveled, battery/energy, bathymetry/depth constraints, payload/sensor cost, surfacing/communication events, and optional Node/OceanBox-JS motion cost graph / adjacency matrix exports. See [Mission Feasibility Simulator and Scientific Benchmark Requirements](docs/mission_feasibility_simulator_requirements.md).
+
 ANCHOR separates current flow, event likelihood, realized sample value, and uncertainty into distinct field concepts. Current flow describes how hard it is to move, event likelihood describes where sample-value events tend to originate, sample value describes where and when sampling has reward, and uncertainty describes what the planner does not know. Both experiences use the same terrain, current fields, sample fields, hazards, glider physics, scoring, route validation, planner APIs, and export/replay system.
 
 ## Current Status
@@ -126,6 +128,7 @@ Quick loop:
 - [Planner Benchmark Route Overlay](docs/planner_benchmark_route_overlay.md)
 - [Adaptive Benchmark Mission Manager](docs/adaptive_benchmark_mission_manager.md)
 - [2.5D Water-Column Sampling Model](docs/water_column_2p5d_sampling_model.md)
+- [Mission Feasibility Simulator and Scientific Benchmark Requirements](docs/mission_feasibility_simulator_requirements.md)
 - [Renderer Architecture and WebGPU Strategy](docs/renderer_architecture_and_webgpu_strategy.md)
 - [Solver workflow](docs/solver_workflow.md)
 - [Export formats](docs/export_formats.md)
@@ -908,6 +911,16 @@ P11 adds shared depth-layer metadata and summaries for the Node/OceanBox-JS head
 
 ## MOTION-R1 Glider Motion Dynamics
 
-MOTION-R1 adds a portable deterministic motion-dynamics layer and a Simulation Lab `Motion Planning Demo`. Motion planning is an execution model, not a fourth top-level authority mode: Planner Benchmark, Adaptive Benchmark, and Full Autonomy Benchmark remain the authority modes. The player or solver still chooses/imports waypoint intent; motion dynamics converts that intent to controls, simulates realized trajectory under currents/depth/control limits, and reports drift, track error, energy, and sampled observations. Node/OceanBox-JS remains the canonical non-browser runtime. WebGPU fluid coupling is documented as future/optional only; no Python simulator, new route planner, scoring redesign, or MARL/RL is added. See [Motion Planning Dynamics Layer](docs/motion_planning_dynamics_layer.md) and [WebGPU Fluid Motion Feasibility](docs/webgpu_fluid_motion_feasibility.md).
+MOTION-R1 adds a portable deterministic motion-dynamics layer and a Simulation Lab `Motion Planning Demo`. Motion planning is an execution model, not a fourth top-level authority mode: Planner Benchmark, Adaptive Benchmark, and Full Autonomy Benchmark remain the authority modes. The player or solver still chooses/imports waypoint intent; motion dynamics converts that intent to controls, simulates realized trajectory under currents/depth/control limits, and reports drift, track error, energy, sampled observations, and a mission-feasibility report skeleton. Node/OceanBox-JS remains the canonical non-browser runtime. WebGPU fluid coupling is documented as future/optional only; no Python simulator, new route planner, scoring redesign, or MARL/RL is added. See [Motion Planning Dynamics Layer](docs/motion_planning_dynamics_layer.md) and [WebGPU Fluid Motion Feasibility](docs/webgpu_fluid_motion_feasibility.md).
 
 - [Bathymetric World View](docs/bathymetric_world_view.md) documents the GFX-R2 Three.js/WebGL bathymetry renderer over the existing 2.5D water-column model.
+
+
+## SIM-R1 Motion Cost Graph
+
+SIM-R1 adds optional Node/OceanBox-JS motion cost graph and adjacency matrix artifacts for benchmark inspection. Run `node tools/js/headless_oceanbox.mjs simulate --cost-graph --combined-json --no-hidden-export --out runs/sim-r1-demo` to emit `motion_cost_graph.json`, `motion_cost_matrix.json`, and combined-bundle summaries. These artifacts inspect directed/asymmetric motion costs; they do not choose a route, optimize waypoints, change browser scoring, add a Python simulator, or add MARL/RL. See [Motion Cost Graph and Adjacency Matrix](docs/motion_cost_graph_and_adjacency_matrix.md).
+## SCORE-R1 Shadow Mission Outcome Scoring
+
+SCORE-R1 is shadow benchmark scoring. It does not replace official browser scoring, Challenge Mode scoring, leaderboard ranking, or existing debrief totals. Profiles are objective-aware and versioned; missing data is explicit; regret requires a compatible reference, and best-known attempt does not mean optimal. The Node/OceanBox-JS runtime remains the canonical headless runtime. Python/Colab analyzes exported artifacts or invokes Node; no Python simulator, planner, optimizer, MARL/RL, operational certification, SeaExplorer validation, or calibrated ocean forecast is added.
+
+See [Mission Scoring and Regret](docs/mission_scoring_and_regret.md) for the SCORE-R1 artifact contract and boundaries.

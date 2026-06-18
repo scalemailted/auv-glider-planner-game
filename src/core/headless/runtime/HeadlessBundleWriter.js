@@ -16,6 +16,14 @@ export function createHeadlessBundleManifest(episode, options = {}) {
   const hasDepthLayerPriority = Boolean(episode?.depthLayerPriority);
   const hasMotionTrajectory = Boolean(episode?.motionTrajectory);
   const hasMotionDiagnostics = Boolean(episode?.motionDiagnostics ?? episode?.motionTrajectory?.motionDiagnostics);
+  const hasMissionFeasibilityReport = Boolean(episode?.missionFeasibilityReport);
+  const hasMotionCostGraph = Boolean(episode?.motionCostGraph);
+  const hasMotionCostMatrix = Boolean(episode?.motionCostMatrix);
+  const hasMissionOutcomeReport = Boolean(episode?.missionOutcomeReport);
+  const hasMissionScore = Boolean(episode?.missionScore);
+  const hasMissionOutcomeMetrics = Boolean(episode?.missionOutcomeMetrics);
+  const hasScoreProfile = Boolean(episode?.scoreProfileSummary);
+  const hasRegretReport = Boolean(episode?.regretReport);
   const hasBathymetrySummary = Boolean(episode?.bathymetrySummary ?? episode?.fieldPackBefore?.bathymetrySummary ?? episode?.fieldPackAfter?.bathymetrySummary);
   const hasMissionGeometrySummary = Boolean(episode?.missionGeometrySummary);
   const combinedBundleType = roundtripReport ? HEADLESS_SOLVER_ROUNDTRIP_BUNDLE_TYPE : 'anchor.headless.bundle';
@@ -53,6 +61,20 @@ export function createHeadlessBundleManifest(episode, options = {}) {
   if (hasMotionDiagnostics) {
     files.push(fileEntry('motion_diagnostics.json', 'motionDiagnostics', 'anchor.motion.diagnostics', 'publicScenario', 'MOTION-R1 motion diagnostics and planned-vs-realized summary.'));
   }
+  if (hasMissionFeasibilityReport) {
+    files.push(fileEntry('mission_feasibility_report.json', 'missionFeasibilityReport', 'anchor.benchmark.mission-feasibility-report', 'publicScenario', 'MOTION-R1 educational mission feasibility diagnostics; not official browser scoring.'));
+  }
+  if (hasMotionCostGraph) {
+    files.push(fileEntry('motion_cost_graph.json', 'motionCostGraph', 'anchor.benchmark.feasibility-cost-graph', 'publicScenario', 'SIM-R1 public-safe directed motion cost graph; not a route planner or official scoring.'));
+  }
+  if (hasMotionCostMatrix) {
+    files.push(fileEntry('motion_cost_matrix.json', 'motionCostMatrix', 'anchor.headless.motion-cost-matrix', 'publicScenario', 'SIM-R1 adjacency/cost matrix derived from the motion cost graph.'));
+  }
+  if (hasScoreProfile) files.push(fileEntry('score_profile.json', 'scoreProfile', 'anchor.benchmark.score-profile', 'publicScenario', 'SCORE-R1 objective-aware score profile summary.'));
+  if (hasMissionOutcomeMetrics) files.push(fileEntry('mission_outcome_metrics.json', 'missionOutcomeMetrics', 'anchor.benchmark.mission-outcome-metrics', 'publicScenario', 'SCORE-R1 normalized source metrics for shadow benchmark scoring.'));
+  if (hasMissionScore) files.push(fileEntry('mission_score.json', 'missionScore', 'anchor.benchmark.mission-score', 'publicScenario', 'SCORE-R1 shadow benchmark mission score.'));
+  if (hasMissionOutcomeReport) files.push(fileEntry('mission_outcome_report.json', 'missionOutcomeReport', 'anchor.benchmark.mission-outcome-report', 'publicScenario', 'SCORE-R1 mission outcome scorecard report.'));
+  if (hasRegretReport) files.push(fileEntry('regret_report.json', 'regretReport', 'anchor.benchmark.regret-report', 'publicScenario', 'SCORE-R1 compatible-reference regret report.'));
   if (includeHidden) {
     files.splice(3, 0, fileEntry('hidden_fields.json', 'hiddenFields', 'anchor.headless.field-pack', 'hiddenTruth', 'Hidden truth and oracle-only fields for instructor/debug use.'));
   }
@@ -69,6 +91,14 @@ export function createHeadlessBundleManifest(episode, options = {}) {
   if (hasDepthLayerPriority) jsonFiles.push('depth_layer_priority.json');
   if (hasMotionTrajectory) jsonFiles.push('motion_trajectory.json', 'control_trace.json');
   if (hasMotionDiagnostics) jsonFiles.push('motion_diagnostics.json');
+  if (hasMissionFeasibilityReport) jsonFiles.push('mission_feasibility_report.json');
+  if (hasMotionCostGraph) jsonFiles.push('motion_cost_graph.json');
+  if (hasMotionCostMatrix) jsonFiles.push('motion_cost_matrix.json');
+  if (hasScoreProfile) jsonFiles.push('score_profile.json');
+  if (hasMissionOutcomeMetrics) jsonFiles.push('mission_outcome_metrics.json');
+  if (hasMissionScore) jsonFiles.push('mission_score.json');
+  if (hasMissionOutcomeReport) jsonFiles.push('mission_outcome_report.json');
+  if (hasRegretReport) jsonFiles.push('regret_report.json');
   if (hasBathymetrySummary) jsonFiles.push('bathymetry_summary.json');
   if (hasMissionGeometrySummary) jsonFiles.push('mission_geometry_summary.json');
   if (combinedJson) jsonFiles.push('bundle.json');
@@ -108,17 +138,26 @@ export function headlessBundleFiles(episode, options = {}) {
   const combinedJson = options.combinedJson === true;
   const roundtripReport = options.roundtripReport ?? episode?.roundtripReport ?? null;
   const manifest = createHeadlessBundleManifest(episode, { includeHiddenTruth: includeHidden, combinedJson, createdAt: options.createdAt, roundtripReport });
+  const publicObservations = includeHidden ? (episode.observations ?? []) : (episode.observations ?? []).map(publicObservation);
   const files = {
     'manifest.json': stableJson(manifest),
-    'mission_config.json': stableJson(episode.missionConfig),
+    'mission_config.json': stableJson(includeHidden ? episode.missionConfig : publicMissionConfig(episode.missionConfig)),
     'visible_fields.json': stableJson(buildFieldPackFile(episode.fieldPackAfter ?? episode.fieldPackBefore, VISIBLE_FIELD_IDS, 'publicScenario')),
-    'observations.json': stableJson({ type: 'anchor.headless.observations', version: 'headless-runtime-observations-h1', observations: episode.observations ?? [] }),
-    'observations.csv': observationsCsv(episode.observations ?? []),
+    'observations.json': stableJson({ type: 'anchor.headless.observations', version: 'headless-runtime-observations-h1', observations: publicObservations }),
+    'observations.csv': observationsCsv(publicObservations),
     'glider_tracks.json': stableJson({ type: 'anchor.headless.trajectory', version: 'headless-runtime-tracks-h1', tracks: episode.tracks ?? [] }),
     'glider_tracks.csv': tracksCsv(episode.tracks ?? []),
     ...(episode.motionTrajectory ? { 'motion_trajectory.json': stableJson(publicMotionTrajectory(episode.motionTrajectory)) } : {}),
     ...(episode.motionTrajectory ? { 'control_trace.json': stableJson({ type: 'anchor.motion.control-trace', version: episode.motionTrajectory.version, planId: episode.motionTrajectory.planId, gliderId: episode.motionTrajectory.gliderId, controls: episode.controlTrace ?? episode.motionTrajectory.controlCommands ?? [], generatedRoute: false, usesNewPlanner: false }) } : {}),
     ...(episode.motionDiagnostics || episode.motionTrajectory?.motionDiagnostics ? { 'motion_diagnostics.json': stableJson(episode.motionDiagnostics ?? episode.motionTrajectory.motionDiagnostics) } : {}),
+    ...(episode.missionFeasibilityReport ? { 'mission_feasibility_report.json': stableJson(episode.missionFeasibilityReport) } : {}),
+    ...(episode.motionCostGraph ? { 'motion_cost_graph.json': stableJson(episode.motionCostGraph) } : {}),
+    ...(episode.motionCostMatrix ? { 'motion_cost_matrix.json': stableJson(episode.motionCostMatrix) } : {}),
+    ...(episode.scoreProfileSummary ? { 'score_profile.json': stableJson(episode.scoreProfileSummary) } : {}),
+    ...(episode.missionOutcomeMetrics ? { 'mission_outcome_metrics.json': stableJson(episode.missionOutcomeMetrics) } : {}),
+    ...(episode.missionScore ? { 'mission_score.json': stableJson(episode.missionScore) } : {}),
+    ...(episode.missionOutcomeReport ? { 'mission_outcome_report.json': stableJson(episode.missionOutcomeReport) } : {}),
+    ...(episode.regretReport ? { 'regret_report.json': stableJson(episode.regretReport) } : {}),
     'score_report.json': stableJson(episode.scoreReport),
     ...(episode.scienceDiagnostics ? { 'science_diagnostics.json': stableJson(episode.scienceDiagnostics) } : {}),
     ...(episode.waterColumnSummary ? { 'water_column_summary.json': stableJson(episode.waterColumnSummary) } : {}),
@@ -144,17 +183,29 @@ export function createHeadlessCombinedBundle(episode, options = {}) {
   const includeHidden = options.includeHiddenTruth !== false;
   const roundtripReport = options.roundtripReport ?? episode.roundtripReport ?? null;
   const manifest = createHeadlessBundleManifest(episode, { includeHiddenTruth: includeHidden, combinedJson: true, createdAt: options.createdAt, roundtripReport });
+  const publicObservations = includeHidden ? (episode.observations ?? []) : (episode.observations ?? []).map(publicObservation);
   const bundle = {
     type: roundtripReport ? HEADLESS_SOLVER_ROUNDTRIP_BUNDLE_TYPE : 'anchor.headless.bundle',
     version: roundtripReport ? 'headless-solver-roundtrip-bundle-h3.1' : 'headless-combined-bundle-h2',
     manifest,
-    missionConfig: episode.missionConfig,
+    missionConfig: includeHidden ? episode.missionConfig : publicMissionConfig(episode.missionConfig),
     visibleFields: buildFieldPackFile(episode.fieldPackAfter ?? episode.fieldPackBefore, VISIBLE_FIELD_IDS, 'publicScenario'),
-    observations: episode.observations ?? [],
+    observations: publicObservations,
     gliderTracks: episode.tracks ?? [],
     motionTrajectory: episode.motionTrajectory ? publicMotionTrajectory(episode.motionTrajectory) : null,
     controlTrace: episode.controlTrace ?? episode.motionTrajectory?.controlCommands ?? [],
     motionDiagnostics: episode.motionDiagnostics ?? episode.motionTrajectory?.motionDiagnostics ?? null,
+    missionFeasibilityReport: episode.missionFeasibilityReport ?? null,
+    missionFeasibilitySummary: episode.missionFeasibilitySummary ?? episode.diagnostics?.missionFeasibilitySummary ?? null,
+    motionCostGraph: episode.motionCostGraph ?? null,
+    motionCostMatrix: episode.motionCostMatrix ?? null,
+    motionCostGraphSummary: episode.motionCostGraphSummary ?? episode.diagnostics?.motionCostGraphSummary ?? null,
+    motionCostMatrixSummary: episode.motionCostMatrixSummary ?? episode.diagnostics?.motionCostMatrixSummary ?? null,
+    scoreProfileSummary: episode.scoreProfileSummary ?? null,
+    missionOutcomeMetrics: episode.missionOutcomeMetrics ?? null,
+    missionScore: episode.missionScore ?? null,
+    missionOutcomeReport: episode.missionOutcomeReport ?? null,
+    regretReport: episode.regretReport ?? null,
     scoreReport: episode.scoreReport,
     scienceDiagnostics: episode.scienceDiagnostics ?? null,
     waterColumnSummary: episode.waterColumnSummary ?? null,
@@ -210,6 +261,14 @@ export function headlessBundleSummary(outputDir) {
     depthLayerPriority: files.includes('depth_layer_priority.json'),
     motionTrajectory: files.includes('motion_trajectory.json'),
     motionDiagnostics: files.includes('motion_diagnostics.json'),
+    missionFeasibilityReport: files.includes('mission_feasibility_report.json'),
+    motionCostGraph: files.includes('motion_cost_graph.json'),
+    motionCostMatrix: files.includes('motion_cost_matrix.json'),
+    scoreProfile: files.includes('score_profile.json'),
+    missionOutcomeMetrics: files.includes('mission_outcome_metrics.json'),
+    missionScore: files.includes('mission_score.json'),
+    missionOutcomeReport: files.includes('mission_outcome_report.json'),
+    regretReport: files.includes('regret_report.json'),
     observationCsv: files.includes('observations.csv'),
     trackCsv: files.includes('glider_tracks.csv'),
     manifestNotes: manifest?.notes ?? []
@@ -240,6 +299,20 @@ function buildFieldPackFile(fieldPack, fieldIds, visibilityTier) {
   };
 }
 
+function publicMissionConfig(missionConfig) {
+  const copy = JSON.parse(JSON.stringify(missionConfig ?? null));
+  if (!copy || typeof copy !== 'object') return copy;
+  if (Array.isArray(copy.hiddenFields)) copy.hiddenFields = copy.hiddenFields.filter((id) => id !== 'T_hiddenTruth');
+  if (copy.world && typeof copy.world === 'object') {
+    if (Array.isArray(copy.world.fieldDescriptors)) {
+      copy.world.fieldDescriptors = copy.world.fieldDescriptors.filter((descriptor) => descriptor?.id !== 'T_hiddenTruth' && descriptor?.canonicalId !== 'T_hiddenTruth');
+    }
+    if (Array.isArray(copy.world.fieldIds)) copy.world.fieldIds = copy.world.fieldIds.filter((id) => id !== 'T_hiddenTruth');
+    if (Array.isArray(copy.world.fieldOrder)) copy.world.fieldOrder = copy.world.fieldOrder.filter((id) => id !== 'T_hiddenTruth');
+    if (copy.world.fieldVisibility && typeof copy.world.fieldVisibility === 'object') delete copy.world.fieldVisibility.T_hiddenTruth;
+  }
+  return copy;
+}
 function publicMotionTrajectory(trajectory) {
   const copy = JSON.parse(JSON.stringify(trajectory ?? null));
   if (!copy || typeof copy !== 'object') return copy;
@@ -250,17 +323,35 @@ function publicMotionTrajectory(trajectory) {
 }
 
 function publicObservation(observation) {
-  const copy = { ...(observation ?? {}) };
-  if (copy.fieldId === 'T_hiddenTruth') copy.fieldId = 'observedScalar';
-  delete copy.truthValue;
+  const copy = JSON.parse(JSON.stringify(observation ?? {}));
+  redactObservationPayload(copy);
   copy.visibilityTier = 'publicScenario';
   return copy;
+}
+
+function redactObservationPayload(value) {
+  if (!value || typeof value !== 'object') return;
+  if (Array.isArray(value)) {
+    for (const entry of value) redactObservationPayload(entry);
+    return;
+  }
+  if (value.fieldId === 'T_hiddenTruth') value.fieldId = 'observedScalar';
+  if (value.sourceFieldId === 'T_hiddenTruth') value.sourceFieldId = 'observedScalar';
+  if (value.visibilityTier === 'hiddenTruth') value.visibilityTier = 'publicScenario';
+  delete value.truthValue;
+  delete value.hiddenTruth;
+  for (const child of Object.values(value)) {
+    if (child && typeof child === 'object') redactObservationPayload(child);
+  }
 }
 function stripBundleEpisode(episode, includeHidden) {
   const copy = JSON.parse(JSON.stringify(episode));
   if (!includeHidden) {
     stripHiddenTruthFromFieldPack(copy.fieldPackBefore);
     stripHiddenTruthFromFieldPack(copy.fieldPackAfter);
+    copy.missionConfig = publicMissionConfig(copy.missionConfig);
+    if (Array.isArray(copy.observations)) copy.observations = copy.observations.map(publicObservation);
+    if (Array.isArray(copy.schemaEpisode?.observations)) copy.schemaEpisode.observations = copy.schemaEpisode.observations.map(publicObservation);
     if (copy.motionTrajectory) copy.motionTrajectory = publicMotionTrajectory(copy.motionTrajectory);
   }
   return copy;
@@ -270,7 +361,10 @@ function stripHiddenTruthFromFieldPack(fieldPack) {
   if (!fieldPack) return;
   delete fieldPack.fields?.T_hiddenTruth;
   delete fieldPack.fieldVisibility?.T_hiddenTruth;
+  delete fieldPack.diagnostics?.T_hiddenTruth;
   if (Array.isArray(fieldPack.fieldIds)) fieldPack.fieldIds = fieldPack.fieldIds.filter((id) => id !== 'T_hiddenTruth');
+  if (Array.isArray(fieldPack.fieldOrder)) fieldPack.fieldOrder = fieldPack.fieldOrder.filter((id) => id !== 'T_hiddenTruth');
+  if (Array.isArray(fieldPack.fieldDescriptors)) fieldPack.fieldDescriptors = fieldPack.fieldDescriptors.filter((descriptor) => descriptor?.id !== 'T_hiddenTruth' && descriptor?.canonicalId !== 'T_hiddenTruth');
 }
 
 function fileEntry(pathValue, role, schemaType, visibilityTier, description) {
@@ -302,3 +396,7 @@ function csvValue(value) {
 function stableJson(value) {
   return `${JSON.stringify(value, null, 2)}\n`;
 }
+
+
+
+

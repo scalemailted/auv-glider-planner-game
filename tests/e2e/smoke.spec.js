@@ -612,6 +612,39 @@ test('Headless Bundle Viewer opens from Simulation Lab and exports browser summa
   expect(roundtripSummaryJson.scienceDiagnosisSummary.usesProductionDataAssimilation).toBe(false);
   expect(JSON.stringify(roundtripSummaryJson)).not.toContain('T_hiddenTruth');
 
+  await expect(page.locator('#mission-console [data-action="load-example-cost-graph"]')).toBeVisible();
+  await page.locator('#mission-console [data-action="load-example-cost-graph"]').click();
+  await expect(page.locator('#mission-console')).toContainText('Motion Cost Graph');
+  await expect(page.locator('#mission-console [data-headless-motion-cost-graph]')).toContainText('Feasible Edges');
+  await expect.poll(() => page.evaluate(() => window.ANCHOR_HEADLESS_BUNDLE_DEBUG?.hasMotionCostGraph)).toBe(true);
+  await expect.poll(() => page.evaluate(() => window.ANCHOR_HEADLESS_BUNDLE_DEBUG?.hasMotionCostMatrix)).toBe(true);
+  await expect.poll(() => page.evaluate(() => window.ANCHOR_HEADLESS_BUNDLE_DEBUG?.motionCostGraphNodeCount > 0)).toBe(true);
+  await expect.poll(() => page.evaluate(() => window.ANCHOR_HEADLESS_BUNDLE_DEBUG?.motionCostGraphEdgeCount > 0)).toBe(true);
+  await expect.poll(() => page.evaluate(() => window.ANCHOR_HEADLESS_BUNDLE_DEBUG?.motionCostGraphPublicSafe)).toBe(true);
+  await expect.poll(() => page.evaluate(() => window.ANCHOR_HEADLESS_BUNDLE_DEBUG?.motionCostGraphUsesRouteOptimizer)).toBe(false);
+
+  await expect(page.locator('#mission-console [data-action="load-example-mission-score"]')).toBeVisible();
+  await page.locator('#mission-console [data-action="load-example-mission-score"]').click();
+  await expect(page.locator('#mission-console')).toContainText('Mission Outcome Scorecard');
+  await expect(page.locator('#mission-console')).toContainText('Composite Outcome Score');
+  await expect(page.locator('#mission-console')).toContainText('Science');
+  await expect(page.locator('#mission-console')).toContainText('Feasibility');
+  await expect(page.locator('#mission-console')).toContainText('Efficiency');
+  await expect(page.locator('#mission-console')).toContainText('Safety');
+  await expect(page.locator('#mission-console')).toContainText('Score Profile');
+  await expect(page.locator('#mission-console')).toContainText('Data Coverage');
+  await expect(page.locator('#mission-console')).toContainText('This is the SCORE-R1 shadow benchmark score. It does not replace the current official browser score.');
+  await expect(page.locator('#mission-console')).toContainText('Regret does not imply mathematical optimality unless an explicit proven bound exists.');
+  await expect.poll(() => page.evaluate(() => window.ANCHOR_HEADLESS_BUNDLE_DEBUG?.hasMissionOutcomeReport)).toBe(true);
+  await expect.poll(() => page.evaluate(() => window.ANCHOR_HEADLESS_BUNDLE_DEBUG?.hasMissionScore)).toBe(true);
+  await expect.poll(() => page.evaluate(() => window.ANCHOR_HEADLESS_BUNDLE_DEBUG?.hasRegretReport)).toBe(true);
+  await expect.poll(() => page.evaluate(() => window.ANCHOR_HEADLESS_BUNDLE_DEBUG?.usesMissionOutcomeScoring)).toBe(true);
+  await expect.poll(() => page.evaluate(() => window.ANCHOR_HEADLESS_BUNDLE_DEBUG?.changesOfficialBrowserScoring)).toBe(false);
+  await expect.poll(() => page.evaluate(() => window.ANCHOR_HEADLESS_BUNDLE_DEBUG?.usesNewPlanner)).toBe(false);
+  await expect.poll(() => page.evaluate(() => window.ANCHOR_HEADLESS_BUNDLE_DEBUG?.usesRouteOptimizer)).toBe(false);
+  await expect.poll(() => page.evaluate(() => window.ANCHOR_HEADLESS_BUNDLE_DEBUG?.usesMARL)).toBe(false);
+  await expect.poll(() => page.evaluate(() => Number.isFinite(window.ANCHOR_HEADLESS_BUNDLE_DEBUG?.missionCompositeScore))).toBe(true);
+
   await page.locator('#mission-console [data-action="menu"]').click();
   await openMainMenuHubSection(page, 'simulation');
   await expect(page.locator('#main-menu-hub[data-hub-view="simulation"]')).toContainText('Planner Benchmark');
@@ -3284,3 +3317,4 @@ async function cellCenter(page, x, y) {
     };
   }, { x, y });
 }
+

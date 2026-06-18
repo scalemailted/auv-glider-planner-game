@@ -385,7 +385,7 @@ Preserved the boundary: P11 is top-down 2.5D sampling context. It does not add f
 
 ## MOTION-R1 - Glider Motion Dynamics Layer
 
-Added a portable deterministic glider motion schema, environment sampler, dynamics model, plan-to-control adapter, trajectory simulator, diagnostics, optional Node/OceanBox-JS motion-aware execution, public-safe motion bundle artifacts, Headless Bundle Viewer motion summaries, and a Simulation Lab Motion Planning Demo. This is an execution-model layer, not a new benchmark authority mode, not a route planner, not WebGPU, not a Python simulator, not a scoring redesign, and not MARL/RL.
+Added a portable deterministic glider motion schema, environment sampler, dynamics model, plan-to-control adapter, trajectory simulator, diagnostics, optional Node/OceanBox-JS motion-aware execution, public-safe motion bundle artifacts, a mission-feasibility report skeleton, Headless Bundle Viewer motion/feasibility summaries, and a Simulation Lab Motion Planning Demo. This is an execution-model layer, not a new benchmark authority mode, not a route planner, not WebGPU, not a Python simulator, not a scoring redesign, and not MARL/RL.
 
 ### ENV-R1 - Bathymetric World View
 - Added synthetic bathymetry schema, field model, mesh/projection model, ocean-world geometry adapter, initial Phaser-hosted viewer, and public-safe headless bathymetry/mission geometry summaries.
@@ -394,3 +394,16 @@ Added a portable deterministic glider motion schema, environment sampler, dynami
 ### GFX-R2 - Three.js Bathymetric World Renderer
 - Added a dedicated Three.js/WebGL renderer hosted inside the Phaser shell, a public-safe bathymetry render view model, higher-quality synthetic terrain scenarios, terrain/coast/hazard/route/layer/flow visualization controls, and focused renderer boundary smoke tests.
 - Boundary: Three.js renders view-model geometry only. It does not own simulation, scoring, planning, headless runtime behavior, hidden truth, WebGPU fluid simulation, Enable3D physics, Python simulation, or MARL/RL.
+
+### DOCS-SIM-R1 - Mission Feasibility Simulator Requirements
+- Added a documentation-only target spec for scientific mission-feasibility benchmarking: 4D currents, bathymetry/depth constraints, dive/flight profiles, planned vs realized trajectory, mission duration, distance traveled, battery/energy, payload/sensor cost, surfacing/communication, cost graph / adjacency matrix exports, scenario comparison, and validation tiers.
+- Boundary: this phase does not implement simulator behavior, scoring, schemas, route planners, Python simulation, operational validation, SeaExplorer-specific fidelity, calibrated ocean forecasting, production data assimilation, or MARL/RL.
+### SIM-R1 - Motion Cost Graph / Adjacency Matrix Benchmark Layer
+- Added pure JavaScript motion cost graph schema, node generation, neighbor generation, edge-cost estimation, graph builder, matrix exporter, and public-safety validation modules.
+- Added optional Node/OceanBox-JS `--cost-graph` runtime/roundtrip support that emits `motion_cost_graph.json`, `motion_cost_matrix.json`, combined-bundle summaries, browser viewer summaries, and focused smoke tests.
+- Preserves boundaries: not a route planner, not route optimization, not browser official scoring, not a Python simulator, not WebGPU fluid simulation, and not MARL/RL.
+## SCORE-R1 Shadow Mission Outcome Scoring
+
+SCORE-R1 is shadow benchmark scoring. It does not replace official browser scoring, Challenge Mode scoring, leaderboard ranking, or existing debrief totals. Profiles are objective-aware and versioned; missing data is explicit; regret requires a compatible reference, and best-known attempt does not mean optimal. The Node/OceanBox-JS runtime remains the canonical headless runtime. Python/Colab analyzes exported artifacts or invokes Node; no Python simulator, planner, optimizer, MARL/RL, operational certification, SeaExplorer validation, or calibrated ocean forecast is added.
+
+See [Mission Scoring and Regret](mission_scoring_and_regret.md) for the SCORE-R1 artifact contract and boundaries.

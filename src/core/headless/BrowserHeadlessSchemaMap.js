@@ -19,6 +19,15 @@ const BROWSER_HEADLESS_MAP = Object.freeze([
   entry('anchor.benchmark.route-execution', 'anchor.headless.trajectory', 'ready', true, 'publicScenario', [], 'Map route geometry, actions, and observations into episode records.'),
   entry('anchor.benchmark.attempt-set', 'anchor.headless.benchmark-episode', 'ready', true, 'publicScenario', [], 'Map attempts as replay/comparison bundle records.'),
   entry('anchor.benchmark.comparison', 'anchor.headless.score-report', 'ready', true, 'publicScenario', [], 'Map comparison rankings into score report table.'),
+  entry('anchor.benchmark.score-config', 'anchor.benchmark.score-config', 'ready', true, 'publicScenario', [], 'SCORE-R1 shadow benchmark score configuration; not official browser scoring.'),
+  entry('anchor.benchmark.score-profile', 'anchor.benchmark.score-profile', 'ready', true, 'publicScenario', [], 'SCORE-R1 objective-aware score profile metadata.'),
+  entry('anchor.benchmark.mission-outcome-metrics', 'anchor.benchmark.mission-outcome-metrics', 'ready', true, 'publicScenario', [], 'SCORE-R1 normalized metric record with missing-data provenance.'),
+  entry('anchor.benchmark.mission-score', 'anchor.benchmark.mission-score', 'ready', true, 'publicScenario', [], 'SCORE-R1 shadow benchmark mission score; not leaderboard replacement.'),
+  entry('anchor.benchmark.mission-outcome-report', 'anchor.benchmark.mission-outcome-report', 'ready', true, 'publicScenario', [], 'SCORE-R1 public-safe scorecard report.'),
+  entry('anchor.benchmark.regret-report', 'anchor.benchmark.regret-report', 'ready', true, 'publicScenario', [], 'SCORE-R1 regret report using only compatible or explicitly labelled references.'),
+  entry('anchor.benchmark.mission-feasibility-report', 'anchor.benchmark.mission-feasibility-report', 'ready', true, 'publicScenario', [], 'Map MOTION-R1 feasibility diagnostics into public headless/browser bundle summaries.'),
+  entry('anchor.benchmark.feasibility-cost-graph', 'anchor.benchmark.feasibility-cost-graph', 'ready', true, 'publicScenario', [], 'SIM-R1 directed motion cost graph for benchmark inspection; not route planning or official scoring.'),
+  entry('anchor.headless.motion-cost-matrix', 'anchor.headless.motion-cost-matrix', 'ready', true, 'publicScenario', [], 'SIM-R1 adjacency/cost matrix derived from motion cost graph artifacts.'),
   entry('anchor.benchmark.route-overlay', 'anchor.headless.replay', 'partial', false, 'browserOnly', ['visual overlay state is browser-oriented'], 'Keep route geometry portable, treat visual layer state as optional.'),
   entry('anchor.benchmark.attempt-session', 'anchor.headless.benchmark-episode', 'ready', true, 'publicScenario', [], 'Map compact persisted attempts into bundle benchmark records.'),
 
@@ -170,7 +179,10 @@ export function requiredBenchmarkTypes() {
     'anchor.benchmark.attempt-set',
     'anchor.benchmark.comparison',
     'anchor.benchmark.route-overlay',
-    'anchor.benchmark.attempt-session'
+    'anchor.benchmark.attempt-session',
+    'anchor.benchmark.mission-feasibility-report',
+    'anchor.benchmark.feasibility-cost-graph',
+    'anchor.headless.motion-cost-matrix'
   ];
 }
 
@@ -207,3 +219,4 @@ function notesForCompatibility(compatibility, visibilityRisk) {
 function countBy(entries, key) {
   return entries.reduce((acc, entry) => ({ ...acc, [entry[key]]: (acc[entry[key]] ?? 0) + 1 }), {});
 }
+

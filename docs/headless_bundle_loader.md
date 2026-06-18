@@ -156,6 +156,15 @@ P11 bundles may include `water_column_summary.json` and `depth_layer_priority.js
 
 ## MOTION-R1 Motion Dynamics Section
 
-Bundles may include `motion_trajectory.json`, `control_trace.json`, `motion_diagnostics.json`, or combined-bundle `motionTrajectory`, `controlTrace`, and `motionDiagnostics`. The Headless Bundle Viewer shows a Motion Dynamics section with motion model, planned/realized distance, mean/max track error, drift, current assist/opposition, cross-current, energy used, sampled point count, arrival status, and warnings. Public motion trajectory exports redact hidden-truth field identifiers and truth values.
+Bundles may include `motion_trajectory.json`, `control_trace.json`, `motion_diagnostics.json`, `mission_feasibility_report.json`, or combined-bundle `motionTrajectory`, `controlTrace`, `motionDiagnostics`, and `missionFeasibilityReport`. The Headless Bundle Viewer shows Motion Dynamics and Mission Feasibility sections with motion model, planned/realized distance, mean/max track error, drift, current assist/opposition, cross-current, energy used, sampled point count, arrival status, duration, energy remaining, waypoint validation, clearance warnings, and constraint violations. Public motion and feasibility exports redact hidden-truth field identifiers and truth values.
 
 ENV-R1 bundle loading recognizes `bathymetrySummary`, `bathymetry_summary.json`, `missionGeometrySummary`, and `mission_geometry_summary.json` as public-safe environmental/geometry summaries.
+
+## SIM-R1 Feasibility Bundle Target
+
+Headless bundles may now include the MOTION-R1 `anchor.benchmark.mission-feasibility-report` skeleton. SIM-R1 bundles can include `anchor.benchmark.feasibility-cost-graph` and `anchor.headless.motion-cost-matrix` artifacts when `--cost-graph` is enabled. Scenario-comparison reports remain future work. The Headless Bundle Viewer should treat these as benchmark inspection artifacts, not official browser scoring. Public bundles must continue to hide hidden truth unless oracle/debug visibility is explicit. See docs/mission_feasibility_simulator_requirements.md.
+## SCORE-R1 Shadow Mission Outcome Scoring
+
+SCORE-R1 is shadow benchmark scoring. It does not replace official browser scoring, Challenge Mode scoring, leaderboard ranking, or existing debrief totals. Profiles are objective-aware and versioned; missing data is explicit; regret requires a compatible reference, and best-known attempt does not mean optimal. The Node/OceanBox-JS runtime remains the canonical headless runtime. Python/Colab analyzes exported artifacts or invokes Node; no Python simulator, planner, optimizer, MARL/RL, operational certification, SeaExplorer validation, or calibrated ocean forecast is added.
+
+See [Mission Scoring and Regret](mission_scoring_and_regret.md) for the SCORE-R1 artifact contract and boundaries.

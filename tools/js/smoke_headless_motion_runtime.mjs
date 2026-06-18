@@ -24,6 +24,7 @@ assert.equal(summary.motion.usesWebGPUFluid, false, 'runtime summary does not cl
 
 const episode = runHeadlessMission(config);
 assert.equal(Boolean(episode.motionTrajectory), true, 'episode includes motion trajectory');
+assert.equal(Boolean(episode.missionFeasibilityReport), true, 'episode includes mission feasibility report');
 assert.equal(episode.diagnostics.usesMotionDynamics, true, 'episode diagnostics mark motion dynamics');
 assert.equal(episode.diagnostics.usesWebGPUFluid, false, 'episode diagnostics do not claim WebGPU');
 assert.equal(episode.motionTrajectory.generatedRoute, false, 'motion trajectory executes submitted/runtime route only');
@@ -37,12 +38,15 @@ const validation = validateHeadlessBundle(bundle);
 assert.equal(validation.status, 'PASS', `bundle validates: ${validation.failures.join('; ')}`);
 assert.equal(Boolean(bundle.motionTrajectory), true, 'loader preserves motion trajectory');
 assert.equal(Boolean(bundle.motionDiagnostics), true, 'loader preserves motion diagnostics');
+assert.equal(Boolean(bundle.missionFeasibilityReport), true, 'loader preserves mission feasibility report');
 assert.equal(Boolean(bundle.waterColumnSummary), true, 'waterColumnSummary still present');
 assert.equal(bundle.motionDiagnostics.usesWebGPUFluid, false, 'motion diagnostics do not claim WebGPU');
 assert.equal(bundle.motionDiagnostics.usesMARL, false, 'motion diagnostics do not claim MARL/RL');
 assert.equal(JSON.stringify(bundle.visibleFields).includes('T_hiddenTruth'), false, 'public visible fields omit hidden truth');
 assert.equal(JSON.stringify(bundle.motionTrajectory).includes('T_hiddenTruth'), false, 'public motion trajectory omits hidden truth field ids');
 assert.equal(JSON.stringify(bundle.motionTrajectory).includes('truthValue'), false, 'public motion trajectory omits truth values');
+assert.equal(JSON.stringify(bundle.missionFeasibilityReport).includes('T_hiddenTruth'), false, 'public mission feasibility report omits hidden truth field ids');
+assert.equal(bundle.missionFeasibilityReport.usesNewPlanner, false, 'mission feasibility report does not claim a planner');
 
 console.log('Headless motion runtime smoke passed', {
   observations: episode.observations.length,

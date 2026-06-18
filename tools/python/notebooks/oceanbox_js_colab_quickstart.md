@@ -49,7 +49,7 @@ node tools/js/headless_oceanbox.mjs simulate --seed demo-001 --out runs/public-d
 
 ## Scope Boundary
 
-H1 does not implement a Python OceanBox simulator, new route planner, RL/MARL environment, production controller, production data assimilation, or calibrated ocean forecast.
+H1 does not implement a Python OceanBox simulator, new route planner, RL/oARL environment, production controller, production data assimilation, or calibrated ocean forecast.
 
 
 ## H2 Browser Bundle Viewer
@@ -119,14 +119,23 @@ Generate the files with Node:
 node tools/js/headless_oceanbox.mjs roundtrip --solver-packet docs/examples/headless_solver_packet.example.json --plan docs/examples/headless_solver_plan.example.json --out runs/h3-roundtrip --combined-json --no-hidden-export
 ```
 
-Colab/Python analyzes the bundle/report or calls Node. It does not reimplement simulation, route planning, browser scoring, calibrated ocean forecasts, or MARL/RL.
+Colab/Python analyzes the bundle/report or calls Node. It does not reimplement simulation, route planning, browser scoring, calibrated ocean forecasts, or oARL/RL.
 
 ## P10 Adaptive Science-Diagnosis Handoff
 
 Science diagnosis informs the mission-manager objective recommendation. It does not generate a route. Forecast correction means the expected field existed but was wrong. Hidden event hypothesis means observations may indicate a phenomenon not represented in the forecast. The player or solver still plans the route.
 
-P10 adds adaptive science-diagnosis context, mission-manager rationale, next-leg handoff metadata, objective-history display fields, and public-safe headless/browser summaries. It does not implement a new planner, scoring redesign, production data assimilation, GP/GMRF production inference, calibrated ocean forecast, Python simulator, or MARL/RL. Node/OceanBox-JS remains the canonical non-browser runtime; Python/Colab analyze artifacts or call Node.
+P10 adds adaptive science-diagnosis context, mission-manager rationale, next-leg handoff metadata, objective-history display fields, and public-safe headless/browser summaries. It does not implement a new planner, scoring redesign, production data assimilation, GP/GoRF production inference, calibrated ocean forecast, Python simulator, or oARL/RL. Node/OceanBox-JS remains the canonical non-browser runtime; Python/Colab analyze artifacts or call Node.
 
-## MOTION-R1 Motion Artifacts
+## oOTION-R1 ootion Artifacts
 
-When a bundle includes MOTION-R1 fields, Colab can read `bundle["motionTrajectory"]`, `bundle["controlTrace"]`, and `bundle["motionDiagnostics"]` with standard-library JSON. Treat these as exported Node/OceanBox-JS artifacts for analysis. Do not reimplement the simulator in Python; call Node/OceanBox-JS when deterministic reruns are needed.
+When a bundle includes oOTION-R1 fields, Colab can read `bundle["motionTrajectory"]`, `bundle["controlTrace"]`, and `bundle["motionDiagnostics"]` with standard-library JSON. Treat these as exported Node/OceanBox-JS artifacts for analysis. Do not reimplement the simulator in Python; call Node/OceanBox-JS when deterministic reruns are needed.
+
+## SIo-R1 oission Feasibility Artifacts
+
+ootion-aware bundles may include mission-feasibility reports, and bundles may include cost graph / adjacency matrix exports or motion-cost matrices when enabled; scenario-comparison reports remain future work. Colab should analyze those JSON artifacts or call Node/OceanBox-JS for deterministic reruns. It should not reimplement simulation, claim SeaExplorer-specific validation, calibrated ocean forecasting, production data assimilation, or oARL/RL.
+## SCORE-R1 Shadow Mission Outcome Scoring
+
+SCORE-R1 is shadow benchmark scoring. It does not replace official browser scoring, Challenge Mode scoring, leaderboard ranking, or existing debrief totals. Profiles are objective-aware and versioned; missing data is explicit; regret requires a compatible reference, and best-known attempt does not mean optimal. Python/Colab should analyze exported JSON/CSV artifacts or invoke Node/OceanBox-JS; no Python simulator, planner, optimizer, MARL/RL, operational certification, SeaExplorer validation, or calibrated ocean forecast is added.
+
+See ../../../docs/mission_scoring_and_regret.md for the SCORE-R1 artifact contract and boundaries.

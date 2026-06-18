@@ -1,0 +1,120 @@
+{
+  "type": "anchor.benchmark.regret-report",
+  "version": "mission-regret-model-score-r1",
+  "missionId": "coastal-bloom-front-headless-mission",
+  "episodeId": "h1-node-headless-coastalBloomFront-score-r1-fixture-001",
+  "attemptId": "fixed-front-crossing-plan",
+  "profileId": "balancedMission",
+  "profileVersion": "mission-score-profiles-score-r1",
+  "referenceType": "configuredBaseline",
+  "referenceAttemptId": "configured-baseline-educational",
+  "achievedScore": 40.752959,
+  "referenceScore": 53.252959,
+  "totalRegret": 12.5,
+  "groupRegret": [
+    {
+      "groupId": "science",
+      "regret": 8
+    },
+    {
+      "groupId": "feasibility",
+      "regret": 8
+    },
+    {
+      "groupId": "efficiency",
+      "regret": 8
+    },
+    {
+      "groupId": "safety",
+      "regret": 8
+    },
+    {
+      "groupId": "missionManagement",
+      "regret": 8
+    }
+  ],
+  "componentRegret": [
+    {
+      "componentId": "scienceValueCollected",
+      "regret": 0.08
+    },
+    {
+      "componentId": "uncertaintyReduction",
+      "regret": 0.08
+    },
+    {
+      "componentId": "forecastValidation",
+      "regret": 0.08
+    },
+    {
+      "componentId": "boundaryMapping",
+      "regret": 0
+    },
+    {
+      "componentId": "verticalCoverage",
+      "regret": 0.08
+    },
+    {
+      "componentId": "observationDiversity",
+      "regret": 0.08
+    },
+    {
+      "componentId": "samplingRedundancy",
+      "regret": 0.08
+    },
+    {
+      "componentId": "missionCompletion",
+      "regret": 0
+    },
+    {
+      "componentId": "waypointCompletion",
+      "regret": 0.08
+    },
+    {
+      "componentId": "motionFeasibility",
+      "regret": 0.08
+    },
+    {
+      "componentId": "energyEfficiency",
+      "regret": 0.08
+    },
+    {
+      "componentId": "energyRemaining",
+      "regret": 0.08
+    },
+    {
+      "componentId": "missionDuration",
+      "regret": 0.08
+    },
+    {
+      "componentId": "hazardExposure",
+      "regret": 0
+    },
+    {
+      "componentId": "constraintViolations",
+      "regret": 0.08
+    },
+    {
+      "componentId": "bottomClearanceWarnings",
+      "regret": 0
+    },
+    {
+      "componentId": "evidenceFollowupQuality",
+      "regret": 0.08
+    }
+  ],
+  "compatibilityStatus": "compatibleReference",
+  "fairnessSummary": {
+    "comparedCompatibleAttempts": true,
+    "bestKnownIsNotOptimalProof": false,
+    "oracleReference": false
+  },
+  "warnings": [],
+  "publicSafe": true,
+  "notA": [
+    "not proof of optimality",
+    "not route optimization",
+    "not official score",
+    "not MARL/RL"
+  ]
+}

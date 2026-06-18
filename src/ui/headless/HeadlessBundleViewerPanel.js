@@ -1,3 +1,4 @@
+import { missionScorecardPanelHtml } from '../scoring/MissionScorecardPanel.js';
 export function headlessBundleViewerPanelHtml(viewModel = {}) {
   return `
     <section class="console-header headless-bundle-viewer-panel">
@@ -16,6 +17,9 @@ export function headlessBundleViewerPanelHtml(viewModel = {}) {
     ${headlessBundleObservationsHtml(viewModel)}
     ${headlessBundleTracksHtml(viewModel)}
     ${headlessBundleMotionDynamicsHtml(viewModel)}
+    ${headlessBundleMissionFeasibilityHtml(viewModel)}
+    ${headlessBundleMotionCostGraphHtml(viewModel)}
+    ${missionScorecardPanelHtml(viewModel.missionScorecard)}
     ${headlessBundleBathymetricWorldHtml(viewModel)}
     ${headlessBundleMissionGeometryHtml(viewModel)}
     ${headlessBundleScoreHtml(viewModel)}
@@ -135,7 +139,56 @@ export function headlessBundleMotionDynamicsHtml(viewModel = {}) {
       </div>
       <div class="hud-muted">Motion dynamics compares the commanded route with the realized trajectory under currents and control limits.</div>
       <div class="hud-muted">This is motion-aware execution, not a new route planner.</div>
-      <div class="hud-muted">Headless motion score remains educational and does not replace browser official scoring.</div>
+      <div class="hud-muted">Headless motion and feasibility metrics are educational benchmark diagnostics. They do not replace browser official scoring.</div>
+    </section>
+  `;
+}
+export function headlessBundleMissionFeasibilityHtml(viewModel = {}) {
+  const summary = viewModel.missionFeasibilitySummary ?? {};
+  if (!summary.present) return '';
+  return `
+    <section class="console-section" data-headless-mission-feasibility>
+      <h2>Mission Feasibility</h2>
+      <div class="cell-inspector-metrics">
+        ${metricHtml('Status', summary.feasibilityStatus ?? 'unknown')}
+        ${metricHtml('Mission Duration', formatNumber(summary.missionDurationSeconds))}
+        ${metricHtml('Energy Remaining', formatNumber(summary.energyRemaining))}
+        ${metricHtml('Battery Fraction', formatNumber(summary.batteryFraction))}
+        ${metricHtml('Waypoint Validation', summary.waypointArrivalStatus ?? 'unknown')}
+        ${metricHtml('Bottom-Clearance Warnings', summary.bottomClearanceWarnings ?? 0)}
+        ${metricHtml('Constraint Violations', summary.constraintViolations ?? 0)}
+        ${metricHtml('Samples', summary.sampleCoverageCount ?? 0)}
+      </div>
+      <div class="hud-muted">Mission feasibility summarizes whether the submitted waypoint intent was plausibly executable under the motion-aware run.</div>
+      <div class="hud-muted">Headless motion and feasibility metrics are educational benchmark diagnostics. They do not replace browser official scoring.</div>
+      <div class="hud-muted">This report is not operational certification, not SeaExplorer-specific validation, and not a new route planner.</div>
+    </section>
+  `;
+}
+
+export function headlessBundleMotionCostGraphHtml(viewModel = {}) {
+  const summary = viewModel.motionCostGraphSummary ?? {};
+  if (!summary.present) return '';
+  return `
+    <section class="console-section" data-headless-motion-cost-graph>
+      <h2>Motion Cost Graph</h2>
+      <div class="cell-inspector-metrics">
+        ${metricHtml('Metric', summary.metricId ?? 'unknown')}
+        ${metricHtml('Node Source', summary.nodeSourceId ?? 'unknown')}
+        ${metricHtml('Neighbor Mode', summary.neighborMode ?? 'unknown')}
+        ${metricHtml('Nodes', summary.nodeCount ?? 0)}
+        ${metricHtml('Edges', summary.edgeCount ?? 0)}
+        ${metricHtml('Feasible Edges', summary.feasibleEdgeCount ?? 0)}
+        ${metricHtml('Matrix', summary.matrixFormat ?? 'N/A')}
+        ${metricHtml('Mean Cost', formatNumber(summary.meanWeightedCost))}
+        ${metricHtml('Mean Energy', formatNumber(summary.meanEnergyCost))}
+        ${metricHtml('Current Opposition', formatNumber(summary.meanCurrentOpposition))}
+        ${metricHtml('Cross-Current', formatNumber(summary.meanCrossCurrent))}
+        ${metricHtml('Public Safe', summary.publicSafe ? 'yes' : 'no')}
+      </div>
+      <div class="hud-muted">SIM-R1 cost graphs are benchmark artifacts for inspecting directed/asymmetric motion feasibility costs.</div>
+      <div class="hud-muted">They export an adjacency matrix but do not choose a route, optimize a path, change browser scoring, or add MARL/RL.</div>
+      <div class="hud-muted">Public cost graph artifacts must not include hidden truth fields.</div>
     </section>
   `;
 }
@@ -388,3 +441,5 @@ function escapeHtml(value) {
     "'": '&#039;'
   }[char]));
 }
+
+

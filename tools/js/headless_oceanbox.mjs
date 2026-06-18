@@ -46,7 +46,20 @@ function runSimulate(args) {
     driftGain: args.driftGain,
     bathymetry: args.bathymetry,
     bathymetryViewMode: args.bathymetryViewMode,
-    verticalExaggeration: args.verticalExaggeration
+    verticalExaggeration: args.verticalExaggeration,
+    costGraphEnabled: args.costGraph,
+    costGraphMetric: args.costGraphMetric,
+    costGraphNodeSource: args.costGraphNodeSource,
+    costGraphNeighborMode: args.costGraphNeighborMode,
+    costGraphGridStep: args.costGraphGridStep,
+    costGraphMaxNodes: args.costGraphMaxNodes,
+    costGraphRadius: args.costGraphRadius,
+    costGraphDepartureTimesSeconds: args.costGraphDepartureTimesSeconds,
+    costMatrixFormat: args.costMatrixFormat,
+    missionScoreEnabled: args.missionScore,
+    scoreProfile: args.scoreProfile,
+    regretReference: args.regretReference,
+    scoreAllowRefereeMetrics: args.scoreAllowRefereeMetrics
   });
   const episode = runHeadlessMission(config);
   let bundleSummary = null;
@@ -66,6 +79,11 @@ function runSimulate(args) {
     score: headlessScoreReportSummary(episode.scoreReport),
     waterColumnSummary: args.waterColumnSummary ? episode.waterColumnSummary : undefined,
     motionSummary: episode.motionTrajectory ? episode.diagnostics?.motionSummary : undefined,
+    missionFeasibilitySummary: episode.missionFeasibilitySummary ?? episode.diagnostics?.missionFeasibilitySummary ?? undefined,
+    motionCostGraphSummary: episode.motionCostGraphSummary ?? episode.diagnostics?.motionCostGraphSummary ?? undefined,
+    motionCostMatrixSummary: episode.motionCostMatrixSummary ?? episode.diagnostics?.motionCostMatrixSummary ?? undefined,
+    missionOutcomeSummary: episode.diagnostics?.missionOutcomeSummary ?? undefined,
+    missionScoreSummary: episode.diagnostics?.missionScoreSummary ?? undefined,
     bundle: bundleSummary,
     combinedBundle: bundleSummary?.combinedBundle === true,
     boundary: 'Node headless runtime over portable ANCHOR core logic. Browser ANCHOR remains the official visual referee and browser scoring UI.'
@@ -135,7 +153,20 @@ function runRoundtrip(args) {
     driftGain: args.driftGain,
     bathymetry: args.bathymetry,
     bathymetryViewMode: args.bathymetryViewMode,
-    verticalExaggeration: args.verticalExaggeration
+    verticalExaggeration: args.verticalExaggeration,
+    costGraphEnabled: args.costGraph,
+    costGraphMetric: args.costGraphMetric,
+    costGraphNodeSource: args.costGraphNodeSource,
+    costGraphNeighborMode: args.costGraphNeighborMode,
+    costGraphGridStep: args.costGraphGridStep,
+    costGraphMaxNodes: args.costGraphMaxNodes,
+    costGraphRadius: args.costGraphRadius,
+    costGraphDepartureTimesSeconds: args.costGraphDepartureTimesSeconds,
+    costMatrixFormat: args.costMatrixFormat,
+    missionScoreEnabled: args.missionScore,
+    scoreProfile: args.scoreProfile,
+    regretReference: args.regretReference,
+    scoreAllowRefereeMetrics: args.scoreAllowRefereeMetrics
   });
   fs.mkdirSync(outputDir, { recursive: true });
   const bundleSummary = writeHeadlessBundle(roundtrip.episode, outputDir, {
@@ -176,6 +207,11 @@ function runRoundtrip(args) {
     finalScore: report.summary.finalScore,
     observationCount: report.summary.observationCount,
     trackPointCount: report.summary.trackPointCount,
+    motionSummary: report.motionSummary ?? null,
+    missionFeasibilitySummary: report.missionFeasibilitySummary ?? null,
+    motionCostGraphSummary: report.motionCostGraphSummary ?? null,
+    motionCostMatrixSummary: report.motionCostMatrixSummary ?? null,
+    missionOutcomeSummary: report.missionOutcomeSummary ?? null,
     hiddenTruthExported: report.output.hiddenTruthExported,
     outputDir,
     files: report.output.files,
@@ -209,7 +245,20 @@ function parseArgs(argv) {
     controlStepSeconds: null,
     gliderSpeed: null,
     headingRateLimitDegreesPerSecond: null,
-    driftGain: null
+    driftGain: null,
+    costGraph: false,
+    costGraphMetric: null,
+    costGraphNodeSource: null,
+    costGraphNeighborMode: null,
+    costGraphGridStep: null,
+    costGraphMaxNodes: null,
+    costGraphRadius: null,
+    costGraphDepartureTimesSeconds: null,
+    costMatrixFormat: null,
+    missionScore: false,
+    scoreProfile: null,
+    regretReference: 'none',
+    scoreAllowRefereeMetrics: false
   };
   for (let index = 1; index < argv.length; index += 1) {
     const arg = argv[index];
@@ -230,6 +279,20 @@ function parseArgs(argv) {
     else if (arg === '--glider-speed') parsed.gliderSpeed = Number(argv[++index]);
     else if (arg === '--heading-rate-limit') parsed.headingRateLimitDegreesPerSecond = Number(argv[++index]);
     else if (arg === '--drift-gain') parsed.driftGain = Number(argv[++index]);
+    else if (arg === '--cost-graph') parsed.costGraph = true;
+    else if (arg === '--no-cost-graph') parsed.costGraph = false;
+    else if (arg === '--cost-graph-metric') parsed.costGraphMetric = argv[++index];
+    else if (arg === '--cost-graph-node-source') parsed.costGraphNodeSource = argv[++index];
+    else if (arg === '--cost-graph-neighbor-mode') parsed.costGraphNeighborMode = argv[++index];
+    else if (arg === '--cost-graph-grid-step') parsed.costGraphGridStep = Number(argv[++index]);
+    else if (arg === '--cost-graph-max-nodes') parsed.costGraphMaxNodes = Number(argv[++index]);
+    else if (arg === '--cost-graph-radius') parsed.costGraphRadius = Number(argv[++index]);
+    else if (arg === '--cost-graph-departure-times') parsed.costGraphDepartureTimesSeconds = parseNumericList(argv[++index]);
+    else if (arg === '--cost-matrix-format') parsed.costMatrixFormat = argv[++index];
+    else if (arg === '--mission-score') parsed.missionScore = true;
+    else if (arg === '--score-profile') parsed.scoreProfile = argv[++index];
+    else if (arg === '--regret-reference') parsed.regretReference = argv[++index];
+    else if (arg === '--score-allow-referee-metrics') parsed.scoreAllowRefereeMetrics = true;
     else if (arg === '--water-column-summary') parsed.waterColumnSummary = true;
     else if (arg === '--no-water-column-summary') parsed.waterColumnSummary = false;
     else if (arg === '--solver-packet' || arg === '--packet') parsed.solverPacket = argv[++index];
@@ -267,6 +330,10 @@ function applyWaterColumnCliOptions(packet, plan, args) {
   }
 }
 
+
+function parseNumericList(value) {
+  return String(value ?? '').split(',').map((entry) => Number(entry.trim())).filter(Number.isFinite);
+}
 function parseList(value) {
   return String(value ?? '').split(',').map((entry) => entry.trim()).filter(Boolean);
 }
@@ -277,8 +344,9 @@ function readJson(filePath) {
 
 function printUsage() {
   console.log(`Usage:
-  node tools/js/headless_oceanbox.mjs simulate --seed demo-001 --out tmp/oceanbox-js-demo [--width 32] [--height 24] [--scenario coastalBloomFront] [--depth-layers surface,thermocline,deep] [--dive-profile sawtoothProfile] [--water-column-summary] [--bathymetry] [--bathymetry-view obliqueBathymetry] [--vertical-exaggeration 1.5] [--motion-aware] [--motion-model depthLayerKinematic] [--control-step 60] [--glider-speed 1] [--heading-rate-limit 8] [--drift-gain 1] [--no-hidden-export] [--combined-json] [--summary-only]
+  node tools/js/headless_oceanbox.mjs simulate --seed demo-001 --out tmp/oceanbox-js-demo [--width 32] [--height 24] [--scenario coastalBloomFront] [--depth-layers surface,thermocline,deep] [--dive-profile sawtoothProfile] [--water-column-summary] [--bathymetry] [--bathymetry-view obliqueBathymetry] [--vertical-exaggeration 1.5] [--motion-aware] [--motion-model depthLayerKinematic] [--control-step 60] [--glider-speed 1] [--heading-rate-limit 8] [--drift-gain 1] [--cost-graph] [--cost-graph-metric energy] [--cost-graph-node-source regularGrid] [--cost-matrix-format sparse] [--mission-score] [--score-profile balancedMission] [--regret-reference none] [--no-hidden-export] [--combined-json] [--summary-only]
   node tools/js/headless_oceanbox.mjs validate-solver-packet --solver-packet docs/examples/headless_solver_packet.example.json [--oracle]
   node tools/js/headless_oceanbox.mjs validate-plan --solver-packet docs/examples/headless_solver_packet.example.json --plan docs/examples/headless_solver_plan.example.json [--agent-id glider_01]
-  node tools/js/headless_oceanbox.mjs roundtrip --solver-packet docs/examples/headless_solver_packet.example.json --plan docs/examples/headless_solver_plan.example.json --out runs/h3-roundtrip --depth-layers surface,thermocline,deep --dive-profile sawtoothProfile --bathymetry --bathymetry-view obliqueBathymetry --vertical-exaggeration 1.5 --motion-aware --motion-model depthLayerKinematic --combined-json --no-hidden-export`);
+  node tools/js/headless_oceanbox.mjs roundtrip --solver-packet docs/examples/headless_solver_packet.example.json --plan docs/examples/headless_solver_plan.example.json --out runs/h3-roundtrip --depth-layers surface,thermocline,deep --dive-profile sawtoothProfile --bathymetry --bathymetry-view obliqueBathymetry --vertical-exaggeration 1.5 --motion-aware --motion-model depthLayerKinematic --cost-graph --cost-graph-node-source samplingPriorityCandidates --cost-matrix-format sparse --mission-score --score-profile balancedMission --regret-reference none --combined-json --no-hidden-export`);
 }
+

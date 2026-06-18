@@ -1,0 +1,473 @@
+{
+  "type": "anchor.benchmark.mission-score",
+  "version": "mission-score-aggregator-score-r1",
+  "scoreConfig": {
+    "type": "anchor.benchmark.score-config",
+    "version": "mission-scoring-schema-score-r1",
+    "profileId": "balancedMission",
+    "profileVersion": "mission-score-profiles-score-r1",
+    "objectiveId": "reconnaissanceSurvey",
+    "scoreScale": 100,
+    "minimumCoverageFraction": 0.45,
+    "missingMetricPolicy": "explicitUnavailableNoCredit",
+    "visibilityTier": "forecastOnly",
+    "allowRefereeOnlyPostMissionMetrics": false,
+    "regretReference": "none",
+    "changesOfficialBrowserScoring": false,
+    "notA": [
+      "not official browser scoring",
+      "not route planning",
+      "not route optimization",
+      "not operational certification",
+      "not SeaExplorer-validated",
+      "not MARL/RL"
+    ]
+  },
+  "profile": {
+    "id": "balancedMission",
+    "version": "mission-score-profiles-score-r1",
+    "label": "Balanced Mission"
+  },
+  "status": "complete",
+  "compositeScore": 40.752959,
+  "groupScores": [
+    {
+      "groupId": "science",
+      "score": 29.486128,
+      "coverageFraction": 1,
+      "availableWeight": 4.6,
+      "configuredWeight": 4.6,
+      "componentScores": [
+        {
+          "componentId": "scienceValueCollected",
+          "groupId": "science",
+          "weight": 1,
+          "rawValue": 10.352638,
+          "normalizedValue": 0.414106,
+          "available": true,
+          "contribution": 0.414106,
+          "warnings": []
+        },
+        {
+          "componentId": "uncertaintyReduction",
+          "groupId": "science",
+          "weight": 1,
+          "rawValue": 0.00936,
+          "normalizedValue": 0.026743,
+          "available": true,
+          "contribution": 0.026743,
+          "warnings": []
+        },
+        {
+          "componentId": "forecastValidation",
+          "groupId": "science",
+          "weight": 0.6,
+          "rawValue": 1.569311,
+          "normalizedValue": 0.196164,
+          "available": true,
+          "contribution": 0.117698,
+          "warnings": []
+        },
+        {
+          "componentId": "boundaryMapping",
+          "groupId": "science",
+          "weight": 0.5,
+          "rawValue": 10.623017,
+          "normalizedValue": 1,
+          "available": true,
+          "contribution": 0.5,
+          "warnings": []
+        },
+        {
+          "componentId": "verticalCoverage",
+          "groupId": "science",
+          "weight": 0.5,
+          "rawValue": 0.333333,
+          "normalizedValue": 0.333333,
+          "available": true,
+          "contribution": 0.166666,
+          "warnings": []
+        },
+        {
+          "componentId": "observationDiversity",
+          "groupId": "science",
+          "weight": 0.5,
+          "rawValue": 0.131148,
+          "normalizedValue": 0.131148,
+          "available": true,
+          "contribution": 0.065574,
+          "warnings": []
+        },
+        {
+          "componentId": "samplingRedundancy",
+          "groupId": "science",
+          "weight": 0.5,
+          "rawValue": 0.868852,
+          "normalizedValue": 0.131148,
+          "available": true,
+          "contribution": 0.065574,
+          "warnings": []
+        }
+      ],
+      "status": "complete"
+    },
+    {
+      "groupId": "feasibility",
+      "score": 43.571425,
+      "coverageFraction": 1,
+      "availableWeight": 2,
+      "configuredWeight": 2,
+      "componentScores": [
+        {
+          "componentId": "missionCompletion",
+          "groupId": "feasibility",
+          "weight": 0.8,
+          "rawValue": true,
+          "normalizedValue": 1,
+          "available": true,
+          "contribution": 0.8,
+          "warnings": []
+        },
+        {
+          "componentId": "waypointCompletion",
+          "groupId": "feasibility",
+          "weight": 0.5,
+          "rawValue": 0.142857,
+          "normalizedValue": 0.142857,
+          "available": true,
+          "contribution": 0.071429,
+          "warnings": []
+        },
+        {
+          "componentId": "motionFeasibility",
+          "groupId": "feasibility",
+          "weight": 0.7,
+          "rawValue": false,
+          "normalizedValue": 0,
+          "available": true,
+          "contribution": 0,
+          "warnings": []
+        }
+      ],
+      "status": "complete"
+    },
+    {
+      "groupId": "efficiency",
+      "score": 44.091589,
+      "coverageFraction": 1,
+      "availableWeight": 0.95,
+      "configuredWeight": 0.95,
+      "componentScores": [
+        {
+          "componentId": "energyEfficiency",
+          "groupId": "efficiency",
+          "weight": 0.4,
+          "rawValue": 0.531765,
+          "normalizedValue": 0.106353,
+          "available": true,
+          "contribution": 0.042541,
+          "warnings": []
+        },
+        {
+          "componentId": "energyRemaining",
+          "groupId": "efficiency",
+          "weight": 0.3,
+          "rawValue": 0.837763,
+          "normalizedValue": 0.837763,
+          "available": true,
+          "contribution": 0.251329,
+          "warnings": []
+        },
+        {
+          "componentId": "missionDuration",
+          "groupId": "efficiency",
+          "weight": 0.25,
+          "rawValue": 3600,
+          "normalizedValue": 0.5,
+          "available": true,
+          "contribution": 0.125,
+          "warnings": []
+        }
+      ],
+      "status": "complete"
+    },
+    {
+      "groupId": "safety",
+      "score": 61.111111,
+      "coverageFraction": 1,
+      "availableWeight": 1.8,
+      "configuredWeight": 1.8,
+      "componentScores": [
+        {
+          "componentId": "hazardExposure",
+          "groupId": "safety",
+          "weight": 0.7,
+          "rawValue": 0,
+          "normalizedValue": 1,
+          "available": true,
+          "contribution": 0.7,
+          "warnings": []
+        },
+        {
+          "componentId": "constraintViolations",
+          "groupId": "safety",
+          "weight": 0.7,
+          "rawValue": 22,
+          "normalizedValue": 0,
+          "available": true,
+          "contribution": 0,
+          "warnings": []
+        },
+        {
+          "componentId": "bottomClearanceWarnings",
+          "groupId": "safety",
+          "weight": 0.4,
+          "rawValue": 0,
+          "normalizedValue": 1,
+          "available": true,
+          "contribution": 0.4,
+          "warnings": []
+        }
+      ],
+      "status": "complete"
+    },
+    {
+      "groupId": "missionManagement",
+      "score": 62,
+      "coverageFraction": 1,
+      "availableWeight": 0.3,
+      "configuredWeight": 0.3,
+      "componentScores": [
+        {
+          "componentId": "evidenceFollowupQuality",
+          "groupId": "missionManagement",
+          "weight": 0.3,
+          "rawValue": 0.62,
+          "normalizedValue": 0.62,
+          "available": true,
+          "contribution": 0.186,
+          "warnings": []
+        }
+      ],
+      "status": "complete"
+    }
+  ],
+  "componentScores": [
+    {
+      "componentId": "scienceValueCollected",
+      "groupId": "science",
+      "weight": 1,
+      "rawValue": 10.352638,
+      "normalizedValue": 0.414106,
+      "available": true,
+      "contribution": 0.414106,
+      "dataSource": "publicObservation",
+      "refereeOnlyDerived": false,
+      "warnings": []
+    },
+    {
+      "componentId": "uncertaintyReduction",
+      "groupId": "science",
+      "weight": 1,
+      "rawValue": 0.00936,
+      "normalizedValue": 0.026743,
+      "available": true,
+      "contribution": 0.026743,
+      "dataSource": "publicBelief",
+      "refereeOnlyDerived": false,
+      "warnings": []
+    },
+    {
+      "componentId": "forecastValidation",
+      "groupId": "science",
+      "weight": 0.6,
+      "rawValue": 1.569311,
+      "normalizedValue": 0.196164,
+      "available": true,
+      "contribution": 0.117698,
+      "dataSource": "publicForecast",
+      "refereeOnlyDerived": false,
+      "warnings": []
+    },
+    {
+      "componentId": "boundaryMapping",
+      "groupId": "science",
+      "weight": 0.5,
+      "rawValue": 10.623017,
+      "normalizedValue": 1,
+      "available": true,
+      "contribution": 0.5,
+      "dataSource": "publicObservation",
+      "refereeOnlyDerived": false,
+      "warnings": []
+    },
+    {
+      "componentId": "verticalCoverage",
+      "groupId": "science",
+      "weight": 0.5,
+      "rawValue": 0.333333,
+      "normalizedValue": 0.333333,
+      "available": true,
+      "contribution": 0.166666,
+      "dataSource": "publicObservation",
+      "refereeOnlyDerived": false,
+      "warnings": []
+    },
+    {
+      "componentId": "observationDiversity",
+      "groupId": "science",
+      "weight": 0.5,
+      "rawValue": 0.131148,
+      "normalizedValue": 0.131148,
+      "available": true,
+      "contribution": 0.065574,
+      "dataSource": "publicObservation",
+      "refereeOnlyDerived": false,
+      "warnings": []
+    },
+    {
+      "componentId": "samplingRedundancy",
+      "groupId": "science",
+      "weight": 0.5,
+      "rawValue": 0.868852,
+      "normalizedValue": 0.131148,
+      "available": true,
+      "contribution": 0.065574,
+      "dataSource": "publicObservation",
+      "refereeOnlyDerived": false,
+      "warnings": []
+    },
+    {
+      "componentId": "missionCompletion",
+      "groupId": "feasibility",
+      "weight": 0.8,
+      "rawValue": true,
+      "normalizedValue": 1,
+      "available": true,
+      "contribution": 0.8,
+      "dataSource": "publicMissionRecord",
+      "refereeOnlyDerived": false,
+      "warnings": []
+    },
+    {
+      "componentId": "waypointCompletion",
+      "groupId": "feasibility",
+      "weight": 0.5,
+      "rawValue": 0.142857,
+      "normalizedValue": 0.142857,
+      "available": true,
+      "contribution": 0.071429,
+      "dataSource": "publicMissionRecord",
+      "refereeOnlyDerived": false,
+      "warnings": []
+    },
+    {
+      "componentId": "motionFeasibility",
+      "groupId": "feasibility",
+      "weight": 0.7,
+      "rawValue": false,
+      "normalizedValue": 0,
+      "available": true,
+      "contribution": 0,
+      "dataSource": "publicMissionRecord",
+      "refereeOnlyDerived": false,
+      "warnings": []
+    },
+    {
+      "componentId": "energyEfficiency",
+      "groupId": "efficiency",
+      "weight": 0.4,
+      "rawValue": 0.531765,
+      "normalizedValue": 0.106353,
+      "available": true,
+      "contribution": 0.042541,
+      "dataSource": "publicMissionRecord",
+      "refereeOnlyDerived": false,
+      "warnings": []
+    },
+    {
+      "componentId": "energyRemaining",
+      "groupId": "efficiency",
+      "weight": 0.3,
+      "rawValue": 0.837763,
+      "normalizedValue": 0.837763,
+      "available": true,
+      "contribution": 0.251329,
+      "dataSource": "publicMissionRecord",
+      "refereeOnlyDerived": false,
+      "warnings": []
+    },
+    {
+      "componentId": "missionDuration",
+      "groupId": "efficiency",
+      "weight": 0.25,
+      "rawValue": 3600,
+      "normalizedValue": 0.5,
+      "available": true,
+      "contribution": 0.125,
+      "dataSource": "publicMissionRecord",
+      "refereeOnlyDerived": false,
+      "warnings": []
+    },
+    {
+      "componentId": "hazardExposure",
+      "groupId": "safety",
+      "weight": 0.7,
+      "rawValue": 0,
+      "normalizedValue": 1,
+      "available": true,
+      "contribution": 0.7,
+      "dataSource": "publicMissionRecord",
+      "refereeOnlyDerived": false,
+      "warnings": []
+    },
+    {
+      "componentId": "constraintViolations",
+      "groupId": "safety",
+      "weight": 0.7,
+      "rawValue": 22,
+      "normalizedValue": 0,
+      "available": true,
+      "contribution": 0,
+      "dataSource": "publicMissionRecord",
+      "refereeOnlyDerived": false,
+      "warnings": []
+    },
+    {
+      "componentId": "bottomClearanceWarnings",
+      "groupId": "safety",
+      "weight": 0.4,
+      "rawValue": 0,
+      "normalizedValue": 1,
+      "available": true,
+      "contribution": 0.4,
+      "dataSource": "publicMissionRecord",
+      "refereeOnlyDerived": false,
+      "warnings": []
+    },
+    {
+      "componentId": "evidenceFollowupQuality",
+      "groupId": "missionManagement",
+      "weight": 0.3,
+      "rawValue": 0.62,
+      "normalizedValue": 0.62,
+      "available": true,
+      "contribution": 0.186,
+      "dataSource": "publicObservation",
+      "refereeOnlyDerived": false,
+      "warnings": []
+    }
+  ],
+  "coverageFraction": 1,
+  "availableWeight": 9.65,
+  "configuredWeight": 9.65,
+  "missingRequiredComponents": [],
+  "warnings": [],
+  "changesOfficialBrowserScoring": false,
+  "notA": [
+    "not official browser scoring",
+    "not route planner",
+    "not policy evaluation for RL",
+    "not operational certification"
+  ]
+}

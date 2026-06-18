@@ -1,6 +1,11 @@
 import { validateHeadlessBundleManifest as validateH0Manifest } from './HeadlessBundleManifest.js';
 import { manifestDisablesHiddenExport } from './HeadlessBundleLoader.js';
 import { HEADLESS_SOLVER_ROUNDTRIP_REPORT_TYPE, isHeadlessRoundtripReportType } from './HeadlessRoundtripTypes.js';
+import { validateMotionCostGraph } from '../motion/MotionCostGraphBuilder.js';
+import { validateMotionCostMatrix } from '../motion/MotionCostMatrixExporter.js';
+import { validateMissionOutcomeReport } from '../scoring/MissionOutcomeReport.js';
+import { validateMissionRegretReport } from '../scoring/MissionRegretModel.js';
+import { auditMissionScorePublicSafety } from '../scoring/MissionScorePublicSafety.js';
 
 export const HEADLESS_BUNDLE_VALIDATION_VERSION = 'headless-bundle-validation-h2';
 
@@ -166,6 +171,52 @@ export function validateHeadlessDepthLayerPriority(priority = null, summary = nu
   if (payload?.usesFull3DPlanning === true) failures.push('Depth-layer priority must not claim full 3D planning.');
   return result(checks, warnings, failures, failures.length ? 'high' : warnings.length ? 'medium' : 'low');
 }
+export function validateHeadlessMissionFeasibilityReport(report = null) {
+  const checks = [];
+  const warnings = [];
+  const failures = [];
+  if (!report) {
+    checks.push({ id: 'mission-feasibility-report-optional', ok: true, detail: 'not present' });
+    return result(checks, warnings, failures, 'low');
+  }
+  checks.push({ id: 'mission-feasibility-report-present', ok: typeof report === 'object' });
+  if (report?.type !== 'anchor.benchmark.mission-feasibility-report') failures.push(`Mission feasibility report type should be anchor.benchmark.mission-feasibility-report, got ${report?.type ?? 'missing'}.`);
+  for (const field of ['missionDurationSeconds', 'plannedDistance', 'realizedDistance', 'energyUsed', 'meanTrackError', 'maxTrackError']) {
+    if (!Number.isFinite(Number(report?.[field]))) failures.push(`Mission feasibility report ${field} must be finite.`);
+  }
+  if (report?.usesNewPlanner === true) failures.push('Mission feasibility report must not claim a new planner.');
+  if (report?.usesWebGPUFluid === true) failures.push('Mission feasibility report must not claim WebGPU fluid integration.');
+  if (report?.usesSeaExplorerValidatedModel === true) failures.push('Mission feasibility report must not claim SeaExplorer-specific validation.');
+  if (report?.usesOperationalCertification === true) failures.push('Mission feasibility report must not claim operational certification.');
+  if (report?.usesPythonSimulator === true) failures.push('Mission feasibility report must not claim a Python simulator.');
+  if (report?.usesMARL === true) failures.push('Mission feasibility report must not claim MARL/RL.');
+  if (report?.browserOfficialScoring === true) failures.push('Mission feasibility report must not claim official browser scoring.');
+  if (JSON.stringify(report).includes('T_hiddenTruth')) failures.push('Public mission feasibility report must not include hidden truth field identifiers.');
+  return result(checks, warnings, failures, failures.length ? 'high' : warnings.length ? 'medium' : 'low');
+}
+
+export function validateHeadlessMotionCostArtifacts(graph = null, matrix = null) {
+  const checks = [];
+  const warnings = [];
+  const failures = [];
+  if (!graph && !matrix) {
+    checks.push({ id: 'motion-cost-artifacts-optional', ok: true, detail: 'not present' });
+    return result(checks, warnings, failures, 'low');
+  }
+  if (graph) {
+    checks.push({ id: 'motion-cost-graph-present', ok: typeof graph === 'object' });
+    const validation = validateMotionCostGraph(graph);
+    failures.push(...validation.errors.map((entry) => `motionCostGraph: ${entry}`));
+    warnings.push(...validation.warnings.map((entry) => `motionCostGraph: ${entry}`));
+  }
+  if (matrix) {
+    checks.push({ id: 'motion-cost-matrix-present', ok: typeof matrix === 'object' });
+    const validation = validateMotionCostMatrix(matrix);
+    failures.push(...validation.errors.map((entry) => `motionCostMatrix: ${entry}`));
+    warnings.push(...validation.warnings.map((entry) => `motionCostMatrix: ${entry}`));
+  }
+  return result(checks, warnings, failures, failures.length ? 'high' : warnings.length ? 'medium' : 'low');
+}
 export function validateHeadlessMotionArtifacts(trajectory = null, diagnostics = null) {
   const checks = [];
   const warnings = [];
@@ -232,6 +283,34 @@ export function validateHeadlessReplay(replay = null) {
   return result(checks, warnings, failures);
 }
 
+export function validateHeadlessMissionOutcomeArtifacts(report = null, missionScore = null, regretReport = null) {
+  const checks = [];
+  const warnings = [];
+  const failures = [];
+  if (!report && !missionScore && !regretReport) {
+    checks.push({ id: 'mission-outcome-optional', ok: true, detail: 'not present' });
+    return result(checks, warnings, failures, 'low');
+  }
+  checks.push({ id: 'mission-outcome-present', ok: Boolean(report), detail: report?.type ?? 'missing' });
+  if (report) {
+    const validation = validateMissionOutcomeReport(report);
+    failures.push(...validation.errors.map((entry) => `missionOutcomeReport: ${entry}`));
+    warnings.push(...validation.warnings.map((entry) => `missionOutcomeReport: ${entry}`));
+    const safety = auditMissionScorePublicSafety(report);
+    failures.push(...safety.failures.map((entry) => `missionOutcomeReport: ${entry}`));
+    warnings.push(...safety.warnings.map((entry) => `missionOutcomeReport: ${entry}`));
+  }
+  if (missionScore?.changesOfficialBrowserScoring !== false) failures.push('Mission score must mark changesOfficialBrowserScoring=false.');
+  if (regretReport) {
+    const regretValidation = validateMissionRegretReport(regretReport);
+    failures.push(...regretValidation.errors.map((entry) => `regretReport: ${entry}`));
+    warnings.push(...regretValidation.warnings.map((entry) => `regretReport: ${entry}`));
+    const safety = auditMissionScorePublicSafety(regretReport);
+    failures.push(...safety.failures.map((entry) => `regretReport: ${entry}`));
+    warnings.push(...safety.warnings.map((entry) => `regretReport: ${entry}`));
+  }
+  return result(checks, warnings, failures, failures.length ? 'high' : warnings.length ? 'medium' : 'low');
+}
 export function validateHeadlessBundle(bundle = {}) {
   const validations = {
     manifest: validateHeadlessBundleManifest(bundle.manifest),
@@ -244,6 +323,9 @@ export function validateHeadlessBundle(bundle = {}) {
     waterColumnSummary: validateHeadlessWaterColumnSummary(bundle.waterColumnSummary ?? bundle.episode?.waterColumnSummary),
     depthLayerPriority: validateHeadlessDepthLayerPriority(bundle.depthLayerPriority, bundle.depthLayerPrioritySummary ?? bundle.episode?.depthLayerPrioritySummary),
     motionArtifacts: validateHeadlessMotionArtifacts(bundle.motionTrajectory ?? bundle.episode?.motionTrajectory, bundle.motionDiagnostics ?? bundle.episode?.motionDiagnostics ?? bundle.episode?.motionTrajectory?.motionDiagnostics),
+    missionFeasibilityReport: validateHeadlessMissionFeasibilityReport(bundle.missionFeasibilityReport ?? bundle.episode?.missionFeasibilityReport),
+    motionCostArtifacts: validateHeadlessMotionCostArtifacts(bundle.motionCostGraph ?? bundle.episode?.motionCostGraph, bundle.motionCostMatrix ?? bundle.episode?.motionCostMatrix),
+    missionOutcomeArtifacts: validateHeadlessMissionOutcomeArtifacts(bundle.missionOutcomeReport ?? bundle.episode?.missionOutcomeReport, bundle.missionScore ?? bundle.episode?.missionScore, bundle.regretReport ?? bundle.episode?.regretReport),
     bathymetrySummary: validateHeadlessBathymetrySummary(bundle.bathymetrySummary ?? bundle.episode?.bathymetrySummary, bundle.missionGeometrySummary ?? bundle.episode?.missionGeometrySummary),
     replay: validateHeadlessReplay(bundle.replay)
   };
@@ -272,7 +354,13 @@ export function validateHeadlessBundle(bundle = {}) {
       hasBathymetrySummary: Boolean(bundle.bathymetrySummary ?? bundle.episode?.bathymetrySummary),
       hasMissionGeometrySummary: Boolean(bundle.missionGeometrySummary ?? bundle.episode?.missionGeometrySummary),
       hasMotionTrajectory: Boolean(bundle.motionTrajectory ?? bundle.episode?.motionTrajectory),
-      hasMotionDiagnostics: Boolean(bundle.motionDiagnostics ?? bundle.episode?.motionDiagnostics ?? bundle.episode?.motionTrajectory?.motionDiagnostics)
+      hasMotionDiagnostics: Boolean(bundle.motionDiagnostics ?? bundle.episode?.motionDiagnostics ?? bundle.episode?.motionTrajectory?.motionDiagnostics),
+      hasMissionFeasibilityReport: Boolean(bundle.missionFeasibilityReport ?? bundle.episode?.missionFeasibilityReport),
+      hasMotionCostGraph: Boolean(bundle.motionCostGraph ?? bundle.motionCostGraphSummary ?? bundle.episode?.motionCostGraph),
+      hasMotionCostMatrix: Boolean(bundle.motionCostMatrix ?? bundle.motionCostMatrixSummary ?? bundle.episode?.motionCostMatrix),
+      hasMissionOutcomeReport: Boolean(bundle.missionOutcomeReport ?? bundle.episode?.missionOutcomeReport),
+      hasMissionScore: Boolean(bundle.missionScore ?? bundle.episode?.missionScore),
+      hasRegretReport: Boolean(bundle.regretReport ?? bundle.episode?.regretReport)
     }
   };
 }
@@ -303,3 +391,5 @@ function oracleVisible(payload = {}, fieldId) {
   const tier = payload?.fieldVisibility?.[fieldId] ?? payload?.visibilityTier;
   return ['oracle', 'debugAll', 'hiddenTruth'].includes(tier);
 }
+
+

@@ -34,6 +34,8 @@ assert.equal(roundtrip.runtimePlan.generatesRoute, false, 'runtime plan remains 
 assert.equal(Boolean(roundtrip.episode.motionTrajectory), true, 'roundtrip episode includes motion trajectory');
 assert.equal(roundtrip.episode.motionTrajectory.usesWebGPUFluid, false, 'trajectory does not claim WebGPU');
 assert.equal(roundtrip.report.motionSummary.present, true, 'report includes motion summary');
+assert.equal(Boolean(roundtrip.report.missionFeasibilitySummary), true, 'report includes mission feasibility summary');
+assert.equal(roundtrip.report.summary.hasMissionFeasibilityReport, true, 'report summary marks mission feasibility report');
 assert.equal(Number.isFinite(roundtrip.report.motionSummary.meanTrackError), true, 'motion summary mean track error finite');
 
 roundtrip.episode.roundtripReport = roundtrip.report;
@@ -43,6 +45,7 @@ const artifact = buildBrowserHeadlessRoundtripSummaryArtifact(bundle);
 assert.equal(artifact.usesMotionDynamics, true, 'browser summary marks motion dynamics');
 assert.equal(artifact.usesWebGPUFluid, false, 'browser summary does not claim WebGPU');
 assert.equal(artifact.motionSummary.present, true, 'browser summary includes motion summary');
+assert.equal(artifact.missionFeasibilitySummary.present, true, 'browser summary includes mission feasibility summary');
 assert.equal(JSON.stringify(artifact).includes('T_hiddenTruth'), false, 'browser summary omits hidden truth');
 
 console.log('Headless motion roundtrip smoke passed', {

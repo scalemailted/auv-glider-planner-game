@@ -99,6 +99,7 @@ Headless simulation and roundtrip commands may write `science_diagnostics.json` 
 Science diagnosis informs the mission-manager objective recommendation. It does not generate a route. Forecast correction means the expected field existed but was wrong. Hidden event hypothesis means observations may indicate a phenomenon not represented in the forecast. The player or solver still plans the route.
 
 P10 adds adaptive science-diagnosis context, mission-manager rationale, next-leg handoff metadata, objective-history display fields, and public-safe headless/browser summaries. It does not implement a new planner, scoring redesign, production data assimilation, GP/GMRF production inference, calibrated ocean forecast, Python simulator, or MARL/RL. Node/OceanBox-JS remains the canonical non-browser runtime; Python/Colab analyze artifacts or call Node.
+
 ## P11 Water-Column Sampling
 
 The Node/OceanBox-JS runtime and solver roundtrip path support 2.5D water-column metadata:
@@ -141,4 +142,20 @@ node tools/js/audit_bathymetry_renderer_boundaries.mjs
 ```
 
 These checks keep WebGPU as progressive enhancement and confirm renderer view models do not own simulation, scoring, planning, or hidden truth. GFX-R2 uses Three.js/WebGL directly and does not use Enable3D.
+
 ENV-R1/GFX-R2: `tools/js/headless_oceanbox.mjs` supports `--bathymetry`, `--no-bathymetry`, `--bathymetry-view`, and `--vertical-exaggeration` for public-safe bathymetry summaries. This does not add a planner, full 3D route planning, or a hydrodynamic solver.
+
+## SIM-R1 Mission Feasibility Target
+
+Node/OceanBox-JS supports the MOTION-R1 mission-feasibility report skeleton when motion-aware execution is enabled. SIM-R1 adds optional simulator-derived cost graph / adjacency matrix exports for solver benchmarking; scenario-comparison reports remain future work. The target metrics include mission duration, distance traveled, battery/energy, payload/sensor cost, planned vs realized trajectory, waypoint validation, bathymetry/depth warnings, and surfacing/communication events. This is a requirements target, not a Python simulator, not official browser scoring, and not MARL/RL. See `docs/mission_feasibility_simulator_requirements.md`.
+
+## SIM-R1 Motion Cost Graph CLI
+
+`tools/js/headless_oceanbox.mjs simulate` and `roundtrip` accept optional cost-graph flags: `--cost-graph`, `--no-cost-graph`, `--cost-graph-metric`, `--cost-graph-node-source`, `--cost-graph-neighbor-mode`, `--cost-graph-grid-step`, `--cost-graph-max-nodes`, `--cost-graph-radius`, `--cost-graph-departure-times`, and `--cost-matrix-format`.
+
+When enabled, Node/OceanBox-JS emits public-safe `motion_cost_graph.json`, `motion_cost_matrix.json`, and bundle summaries. These artifacts inspect directed/asymmetric motion costs and adjacency; they do not choose a route, optimize waypoints, replace browser scoring, add a Python simulator, or implement MARL/RL.
+## SCORE-R1 Shadow Mission Outcome Scoring
+
+SCORE-R1 is shadow benchmark scoring. It does not replace official browser scoring, Challenge Mode scoring, leaderboard ranking, or existing debrief totals. Profiles are objective-aware and versioned; missing data is explicit; regret requires a compatible reference, and best-known attempt does not mean optimal. The Node/OceanBox-JS runtime remains the canonical headless runtime. Python/Colab analyzes exported artifacts or invokes Node; no Python simulator, planner, optimizer, MARL/RL, operational certification, SeaExplorer validation, or calibrated ocean forecast is added.
+
+See ../../docs/mission_scoring_and_regret.md for the SCORE-R1 artifact contract and boundaries.

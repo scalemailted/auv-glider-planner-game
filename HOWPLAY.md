@@ -15,6 +15,8 @@ A good plan should:
 - complete waypoints in a sensible order
 - handle forecast uncertainty when truth is hidden
 
+Later missions should also teach mission feasibility: a scientifically valuable route can still fail if currents, energy, dive profile, payload/sensor duty cycle, surfacing windows, bathymetry, or communication constraints make it impractical. See [Mission Feasibility Simulator and Scientific Benchmark Requirements](docs/mission_feasibility_simulator_requirements.md).
+
 You do not steer the glider in real time. You create a plan, run the simulation, then evaluate the result.
 
 If a plan cannot run safely, the game blocks execution or records a safe aborted result instead of freezing. Invalid deployment starts are rejected before simulation, and unreachable or blocked waypoints can be marked missed during playback. If the simulation watchdog stops playback, use `Export Debug Result` from the Simulation Console; the exported JSON includes the watchdog reason, active waypoint, glider state, surfacing wait state, and render object count.
@@ -1085,3 +1087,13 @@ Headless bundles, solver roundtrips, and Adaptive Benchmark surfacing reviews ca
 Open `Simulation Lab` and choose `Motion Planning Demo` to compare a dashed planned route with the realized glider trajectory under currents, dive profile, speed, heading-rate limit, drift gain, and energy constraints. Path planning chooses waypoints; motion planning evaluates execution. Motion dynamics does not generate routes, does not change Challenge Mode scoring, and does not add WebGPU, a Python simulator, or MARL/RL.
 
 Simulation Lab also includes 3D Bathymetric World View: a Three.js/WebGL synthetic ocean visualization that separates surface waypoints, subsurface sampling points, water surface, depth layers, currents, coastlines, bottom hazards, and bathymetry. It is not full 3D route planning.
+
+
+## Motion Cost Graph Bundle Artifacts
+
+For headless benchmark inspection, run the Node/OceanBox-JS CLI with `--cost-graph` to export `motion_cost_graph.json` and `motion_cost_matrix.json`. Load the resulting `bundle.json` in the Headless Bundle Viewer to inspect the Motion Cost Graph section. This does not choose a route, optimize a path, or change browser scoring.
+## SCORE-R1 Shadow Mission Outcome Scoring
+
+SCORE-R1 is shadow benchmark scoring. It does not replace official browser scoring, Challenge Mode scoring, leaderboard ranking, or existing debrief totals. Profiles are objective-aware and versioned; missing data is explicit; regret requires a compatible reference, and best-known attempt does not mean optimal. The Node/OceanBox-JS runtime remains the canonical headless runtime. Python/Colab analyzes exported artifacts or invokes Node; no Python simulator, planner, optimizer, MARL/RL, operational certification, SeaExplorer validation, or calibrated ocean forecast is added.
+
+See [Mission Scoring and Regret](docs/mission_scoring_and_regret.md) for the SCORE-R1 artifact contract and boundaries.

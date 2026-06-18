@@ -11,6 +11,16 @@ import { buildWaterColumnSummary } from '../../science/WaterColumnObservationMod
 import { createSyntheticBathymetryField } from '../../science/BathymetryFieldModel.js';
 import { buildOceanWorldGeometry } from '../../science/OceanWorldGeometryAdapter.js';
 import { simulateGliderMotionTrajectory, trajectoryMotionSummary } from '../../motion/GliderTrajectorySimulator.js';
+import { buildMissionFeasibilityReport, missionFeasibilityReportSummary } from '../../motion/MissionFeasibilityReport.js';
+import { buildMotionCostGraph } from '../../motion/MotionCostGraphBuilder.js';
+import { buildMotionCostMatrix } from '../../motion/MotionCostMatrixExporter.js';
+import { missionScoreProfileById, missionScoreProfileForObjective, missionScoreProfileSummary } from '../../scoring/MissionScoreProfiles.js';
+import { extractMissionOutcomeMetrics } from '../../scoring/MissionOutcomeMetricAdapter.js';
+import { normalizeMissionOutcomeMetrics } from '../../scoring/MissionScoreNormalizer.js';
+import { aggregateMissionOutcomeScore, missionScoreAggregationSummary } from '../../scoring/MissionScoreAggregator.js';
+import { buildMissionRegretReport } from '../../scoring/MissionRegretModel.js';
+import { buildMissionOutcomeReport, missionOutcomeReportSummary } from '../../scoring/MissionOutcomeReport.js';
+import { sanitizeMissionOutcomeReportForPublicExport, sanitizeMissionRegretReportForPublicExport } from '../../scoring/MissionScorePublicSafety.js';
 
 export const HEADLESS_MISSION_RUNNER_VERSION = 'headless-mission-runner-h1';
 
@@ -111,6 +121,34 @@ export function simulateHeadlessEpisode(configInput = {}, planInput = null) {
     missionConfig,
     waterColumnSummary
   });
+  const missionFeasibilityReport = motionTrajectory ? buildMissionFeasibilityReport({
+    motionTrajectory,
+    plan,
+    motionConfig: config.motionConfig,
+    environmentSummary: motionTrajectory.motionDiagnostics?.environmentSummary ?? null,
+    scienceSummary: {
+      finalScore: scoreReport.finalScore,
+      observationCount: scoreReport.counts?.observationCount ?? executionObservations.length,
+      waterColumnVerticalCoverage: waterColumnSummary?.verticalCoverage ?? null
+    },
+    options: {
+      missionId: missionConfig.missionId,
+      gliderId: plan.gliderId,
+      surfaceAtEnd: plan.surfaceAtEnd === true
+    }
+  }) : null;
+  const motionCostArtifacts = buildOptionalMotionCostArtifacts({
+    config,
+    fieldPack: fieldPackAfter,
+    waterColumnConfig: config.waterColumnConfig,
+    bathymetry,
+    plan,
+    motionConfig: config.motionConfig
+  });
+  const motionCostGraph = motionCostArtifacts.graph;
+  const motionCostMatrix = motionCostArtifacts.matrix;
+  const motionCostGraphSummary = motionCostArtifacts.graphSummary;
+  const motionCostMatrixSummary = motionCostArtifacts.matrixSummary;
   const episodeId = `h1-node-headless-${config.scenario}-${config.seed}`;
   const scienceDiscovery = analyzeScienceEvidence({
     observations: executionObservations,
@@ -126,6 +164,22 @@ export function simulateHeadlessEpisode(configInput = {}, planInput = null) {
     episodeId,
     createdAt: config.createdAt ?? null,
     source: 'nodeHeadlessRuntime'
+  });
+  const missionScoreArtifacts = buildOptionalMissionScoreArtifacts({
+    config,
+    missionConfig,
+    plan,
+    scoreReport,
+    observations: executionObservations,
+    tracks: executionTracks,
+    motionTrajectory,
+    motionDiagnostics: motionTrajectory?.motionDiagnostics ?? null,
+    missionFeasibilityReport,
+    waterColumnSummary,
+    scienceDiagnostics,
+    motionCostGraphSummary,
+    motionCostMatrixSummary,
+    episodeId
   });
   const actions = plan.waypoints.map((waypoint, index) => ({
     id: `action-wp-${index + 1}`,
@@ -175,6 +229,17 @@ export function simulateHeadlessEpisode(configInput = {}, planInput = null) {
     controlTrace: motionTrajectory?.controlCommands ?? [],
     plannedVsRealized: motionTrajectory?.plannedVsRealized ?? null,
     motionDiagnostics: motionTrajectory?.motionDiagnostics ?? null,
+    missionFeasibilityReport,
+    missionFeasibilitySummary: missionFeasibilityReport ? missionFeasibilityReportSummary(missionFeasibilityReport) : null,
+    motionCostGraph,
+    motionCostMatrix,
+    motionCostGraphSummary,
+    motionCostMatrixSummary,
+    scoreProfileSummary: missionScoreArtifacts.scoreProfileSummary,
+    missionOutcomeMetrics: missionScoreArtifacts.metrics,
+    missionScore: missionScoreArtifacts.missionScore,
+    missionOutcomeReport: missionScoreArtifacts.report,
+    regretReport: missionScoreArtifacts.regretReport,
     actions,
     rewards,
     surfacingEvents: [{
@@ -194,12 +259,21 @@ export function simulateHeadlessEpisode(configInput = {}, planInput = null) {
       routeGenerated: false,
       usesProvidedWaypoints: true,
       usesMotionDynamics: Boolean(motionTrajectory),
+      usesMotionCostGraph: Boolean(motionCostGraph),
+      usesMissionOutcomeScoring: Boolean(missionScoreArtifacts.report),
       usesWebGPUFluid: false,
       usesHydrodynamicSolver: false,
       usesTerrainFlowAsOceanCurrent: false,
       bathymetrySummary: fieldPackBefore.bathymetrySummary ?? fieldPackAfter.bathymetrySummary ?? null,
       missionGeometrySummary: missionGeometry.summary,
       motionSummary: motionTrajectory ? trajectoryMotionSummary(motionTrajectory) : null,
+      missionFeasibilitySummary: missionFeasibilityReport ? missionFeasibilityReportSummary(missionFeasibilityReport) : null,
+      motionCostGraphSummary,
+      motionCostMatrixSummary,
+      motionCostGraphWarnings: motionCostArtifacts.warnings,
+      missionOutcomeSummary: missionScoreArtifacts.summary,
+      missionScoreSummary: missionScoreArtifacts.missionScoreSummary,
+      regretSummary: missionScoreArtifacts.regretSummary,
       waterColumnSummary,
       depthLayerPrioritySummary: depthLayerPriority.summary,
       scienceDiscoverySummary: scienceDiscoverySummary(scienceDiagnostics),
@@ -231,4 +305,145 @@ export function simulateHeadlessEpisode(configInput = {}, planInput = null) {
     notes: [episode.diagnostics.canonicalRuntime]
   });
   return episode;
+}
+function buildOptionalMotionCostArtifacts({ config, fieldPack, waterColumnConfig, bathymetry, plan, motionConfig } = {}) {
+  if (config?.costGraphEnabled !== true) return { graph: null, matrix: null, graphSummary: null, matrixSummary: null, warnings: [] };
+  try {
+    const graph = buildMotionCostGraph({
+      config: config.costGraphConfig,
+      fieldPack,
+      waterColumnConfig,
+      bathymetry,
+      plan,
+      motionConfig
+    });
+    const matrix = buildMotionCostMatrix(graph, { matrixFormat: config.costGraphConfig?.matrixFormat });
+    return {
+      graph,
+      matrix,
+      graphSummary: graph.summary ?? null,
+      matrixSummary: matrix.summary ?? null,
+      warnings: [...(graph.warnings ?? [])]
+    };
+  } catch (error) {
+    return {
+      graph: null,
+      matrix: null,
+      graphSummary: null,
+      matrixSummary: null,
+      warnings: [`SIM-R1 cost graph generation failed: ${error?.message ?? String(error)}`]
+    };
+  }
+}
+
+
+
+
+function buildOptionalMissionScoreArtifacts({
+  config,
+  missionConfig,
+  plan,
+  scoreReport,
+  observations,
+  tracks,
+  motionTrajectory,
+  motionDiagnostics,
+  missionFeasibilityReport,
+  waterColumnSummary,
+  scienceDiagnostics,
+  motionCostGraphSummary,
+  motionCostMatrixSummary,
+  episodeId
+} = {}) {
+  if (config?.missionScoreEnabled !== true) {
+    return { metrics: null, normalizedMetrics: null, missionScore: null, report: null, regretReport: null, scoreProfileSummary: null, summary: null, missionScoreSummary: null, regretSummary: null, warnings: [] };
+  }
+  try {
+    const objectiveId = config.missionScoreConfig?.objectiveId ?? missionConfig?.objectives?.[0]?.objectiveId ?? missionConfig?.objectives?.[0]?.id ?? 'reconnaissanceSurvey';
+    const profile = config.missionScoreConfig?.profileId
+      ? missionScoreProfileById(config.missionScoreConfig.profileId)
+      : missionScoreProfileForObjective(objectiveId);
+    const scoreConfig = {
+      ...config.missionScoreConfig,
+      profileId: profile.id,
+      profileVersion: profile.version,
+      objectiveId,
+      minimumCoverageFraction: config.missionScoreConfig?.minimumCoverageFraction ?? profile.minimumCoverageFraction,
+      changesOfficialBrowserScoring: false
+    };
+    const metrics = extractMissionOutcomeMetrics({
+      result: { scoreReport, summary: { status: 'complete' } },
+      motionTrajectory,
+      motionDiagnostics,
+      missionFeasibilityReport,
+      waterColumnSummary,
+      scienceDiagnostics,
+      observations,
+      objective: { id: objectiveId },
+      options: {
+        missionId: missionConfig?.missionId ?? null,
+        episodeId,
+        attemptId: plan?.planId ?? plan?.id ?? null,
+        objectiveId,
+        visibilityTier: scoreConfig.visibilityTier,
+        scoreReport
+      }
+    });
+    metrics.sourceArtifacts.motionCostGraphSummary = { present: Boolean(motionCostGraphSummary), type: motionCostGraphSummary?.type ?? null };
+    metrics.sourceArtifacts.motionCostMatrixSummary = { present: Boolean(motionCostMatrixSummary), type: motionCostMatrixSummary?.type ?? null };
+    const normalizedMetrics = normalizeMissionOutcomeMetrics(metrics, profile);
+    const missionScore = aggregateMissionOutcomeScore({ normalizedMetrics, profile, scoreConfig });
+    let regretReport = null;
+    if (scoreConfig.regretReference && scoreConfig.regretReference !== 'none') {
+      const candidate = buildMissionRegretReport({
+        achievedScore: missionScore,
+        compatibleAttempts: config.missionScoreConfig?.compatibleAttempts ?? [],
+        configuredBaseline: config.missionScoreConfig?.configuredBaseline ?? null,
+        oracleAttempt: config.missionScoreConfig?.oracleAttempt ?? null,
+        profile,
+        scoreConfig,
+        options: {
+          referenceType: scoreConfig.regretReference,
+          missionId: metrics.missionId,
+          episodeId,
+          attemptId: metrics.attemptId,
+          targetAttempt: { missionScore, scoreConfig, profile, episodeId, objectiveId, visibilityTier: scoreConfig.visibilityTier }
+        }
+      });
+      regretReport = candidate.totalRegret === null ? null : sanitizeMissionRegretReportForPublicExport(candidate);
+    }
+    const report = sanitizeMissionOutcomeReportForPublicExport(buildMissionOutcomeReport({
+      scoreConfig,
+      profile,
+      metrics,
+      normalizedMetrics,
+      missionScore,
+      regretReport,
+      sourceArtifacts: metrics.sourceArtifacts,
+      options: { missionId: metrics.missionId, episodeId, attemptId: metrics.attemptId, objectiveId }
+    }));
+    return {
+      metrics,
+      normalizedMetrics,
+      missionScore,
+      report,
+      regretReport,
+      scoreProfileSummary: missionScoreProfileSummary(profile),
+      summary: missionOutcomeReportSummary(report),
+      missionScoreSummary: missionScoreAggregationSummary(missionScore),
+      regretSummary: regretReport ? regretReportSummarySafe(regretReport) : null,
+      warnings: [...(metrics.warnings ?? []), ...(missionScore.warnings ?? [])]
+    };
+  } catch (error) {
+    return { metrics: null, normalizedMetrics: null, missionScore: null, report: null, regretReport: null, scoreProfileSummary: null, summary: null, missionScoreSummary: null, regretSummary: null, warnings: [`SCORE-R1 mission outcome scoring failed: ${error?.message ?? String(error)}`] };
+  }
+}
+
+function regretReportSummarySafe(report) {
+  return {
+    referenceType: report?.referenceType ?? 'none',
+    totalRegret: report?.totalRegret ?? null,
+    compatibilityStatus: report?.compatibilityStatus ?? 'unknown',
+    publicSafe: report?.publicSafe !== false
+  };
 }

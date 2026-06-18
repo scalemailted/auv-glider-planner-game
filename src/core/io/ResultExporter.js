@@ -204,6 +204,11 @@ export function buildResultExport({ level, mission, plan, result, label = 'Manua
     }),
     stochastic: cloneJson(result?.stochastic ?? result?.stochasticRun ?? null),
     forecastConfidence: cloneJson(result?.ensembleMetrics ?? result?.forecastScore ?? null),
+    missionOutcomeMetrics: cloneJson(result?.missionOutcomeMetrics ?? result?.scoreArtifacts?.missionOutcomeMetrics ?? null),
+    missionScore: cloneJson(result?.missionScore ?? result?.scoreArtifacts?.missionScore ?? null),
+    missionOutcomeReport: cloneJson(result?.missionOutcomeReport ?? result?.scoreArtifacts?.missionOutcomeReport ?? null),
+    regretReport: cloneJson(result?.regretReport ?? result?.scoreArtifacts?.regretReport ?? null),
+    scoreProfileSummary: cloneJson(result?.scoreProfileSummary ?? result?.scoreArtifacts?.scoreProfileSummary ?? null),
     debriefMetrics: cloneJson({
       comparison: result?.comparison ?? null,
       rating: result?.rating ?? null,
@@ -212,7 +217,9 @@ export function buildResultExport({ level, mission, plan, result, label = 'Manua
       drift: result?.drift ?? null,
       endCondition: result?.endCondition ?? result?.summary?.endCondition ?? null,
       sampling: result?.sampling ?? null,
-      priorityTargets: result?.priorityTargets ?? result?.summary?.priorityTargets ?? null
+      priorityTargets: result?.priorityTargets ?? result?.summary?.priorityTargets ?? null,
+      missionOutcomeReport: result?.missionOutcomeReport ?? result?.scoreArtifacts?.missionOutcomeReport ?? null,
+      missionScore: result?.missionScore ?? result?.scoreArtifacts?.missionScore ?? null
     }),
     debugTrace: cloneJson(result?.debugTrace ?? result?.simulationTrace ?? null),
     rawResult: cloneJson(result ?? null)

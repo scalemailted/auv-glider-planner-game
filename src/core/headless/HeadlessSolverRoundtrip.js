@@ -22,6 +22,13 @@ export function headlessRoundtripSummary(roundtrip = {}) {
     usesPythonSimulator: report.runtime?.usesPythonSimulator === true,
     usesMARL: report.runtime?.usesMARL === true,
     usesMotionDynamics: report.runtime?.usesMotionDynamics === true,
+    usesMissionOutcomeScoring: report.runtime?.usesMissionOutcomeScoring === true || Boolean(report.missionOutcomeReport ?? report.missionScore),
+    changesOfficialBrowserScoring: false,
+    scoreProfileId: report.summary?.scoreProfileId ?? report.runtime?.scoreProfileId ?? null,
+    scoreProfileVersion: report.summary?.scoreProfileVersion ?? report.runtime?.scoreProfileVersion ?? null,
+    compositeScore: report.summary?.compositeScore ?? report.runtime?.compositeScore ?? null,
+    coverageFraction: report.summary?.coverageFraction ?? report.runtime?.coverageFraction ?? null,
+    regretSummary: report.regretSummary ?? report.summary?.regretSummary ?? null,
     usesWebGPUFluid: report.runtime?.usesWebGPUFluid === true,
     motionModelId: report.runtime?.motionModelId ?? report.motionSummary?.motionModelId ?? null
   };
