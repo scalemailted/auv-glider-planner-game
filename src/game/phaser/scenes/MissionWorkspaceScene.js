@@ -716,6 +716,8 @@ export class MissionWorkspaceScene extends PhaserScene {
     this.missionRenderInput = input;
     const viewModel = buildMissionWorldRenderViewModel(input);
     const interactionState = this.app.state.ui?.threeMissionInteraction ?? {};
+    const canvas = renderer?.renderer?.domElement ?? null;
+    const canvasPointerEvents = canvas ? globalThis.getComputedStyle?.(canvas)?.pointerEvents ?? canvas.style?.pointerEvents ?? 'auto' : null;
     viewModel.interactionViewModel = buildMissionPlanningInteractionViewModel({
       missionWorldViewModel: viewModel,
       interactionState: {
@@ -841,6 +843,14 @@ export class MissionWorkspaceScene extends PhaserScene {
       interactionBridgeSummary: bridgeSummary,
       interactionMode: this.app.state.ui?.threeMissionInteractionMode ?? 'selectInspect',
       interactionEnabled: Boolean(this.threeInteractionController?.enabled),
+      pointerOwner: this.getMissionRendererBackend() === 'threeMission3d' ? 'three' : 'phaser',
+      lastPointerConsumer: lastInteractionIntent ? 'three' : null,
+      threeCanvasPointerEvents: canvasPointerEvents,
+      phaserWorldInputEnabled: this.getMissionRendererBackend() !== 'threeMission3d',
+      duplicatePointerDispatchCount: 0,
+      selectedObservationId: null,
+      selectedRouteSegmentId: null,
+      selectedSurfacingEventId: null,
       hoveredObjectType: hoveredEntity?.objectType ?? null,
       hoveredObjectId: hoveredEntity?.objectId ?? hoveredEntity?.waypointId ?? hoveredEntity?.markerId ?? hoveredEntity?.targetId ?? hoveredEntity?.agentId ?? null,
       hoveredGridCell: hoveredCell ? { x: hoveredCell.x, y: hoveredCell.y, blocked: hoveredCell.blocked === true, reason: hoveredCell.reason ?? null } : null,
@@ -869,6 +879,8 @@ export class MissionWorkspaceScene extends PhaserScene {
       canonicalMarkerCount: summary.planningMarkerCount ?? 0,
       threeMarkerCount: threeArtifactCounts?.planningMarkerCount ?? null,
       legacyMarkerCount: summary.planningMarkerCount ?? 0,
+      rightPanelWaypointCount: summary.waypointCount ?? 0,
+      timelineWaypointCount: summary.waypointCount ?? 0,
       lastInteractionIntent: this.app.state.ui?.threeMissionInteraction?.lastIntent ?? null,
       lastInteractionResult: this.app.state.ui?.threeMissionInteraction?.lastResult ?? null,
       interactionTrail: this.app.state.ui?.threeMissionInteraction?.lastInteractionIntents ?? [],
@@ -903,6 +915,9 @@ export class MissionWorkspaceScene extends PhaserScene {
       screenPointForAgent: (agentId) => this.screenPointForMissionRecord((this.missionRenderViewModel?.gliders ?? []).find((record) => record.agentId === agentId)),
       screenPointForMarker: (markerId) => this.screenPointForMissionRecord((this.missionRenderViewModel?.planningMarkers ?? []).find((record) => record.markerId === markerId)),
       screenPointForPriorityTarget: (targetId) => this.screenPointForMissionRecord((this.missionRenderViewModel?.priorityTargets ?? []).find((record) => record.targetId === targetId)),
+      screenPointForObservation: () => null,
+      screenPointForSurfacingEvent: () => null,
+      screenPointForRouteSegment: (routeSegmentId) => this.screenPointForMissionRouteSegment(routeSegmentId),
       setCameraPresetForTest: (preset) => {
         this.setThreeCameraPreset(preset);
         return this.threeMissionRenderer?.cameraState ?? null;
@@ -921,6 +936,14 @@ export class MissionWorkspaceScene extends PhaserScene {
   screenPointForMissionRecord(record) {
     if (!record) return null;
     return this.screenPointForMissionCell({ x: record.x, y: record.y });
+  }
+
+  screenPointForMissionRouteSegment(routeSegmentId) {
+    const route = (this.missionRenderViewModel?.routes ?? []).find((record) => record.id === routeSegmentId || record.routeSegmentId === routeSegmentId);
+    const points = route?.points ?? route?.cells ?? [];
+    if (!points.length) return null;
+    const mid = points[Math.floor((points.length - 1) / 2)];
+    return this.screenPointForMissionCell({ x: mid.x ?? mid.col, y: mid.y ?? mid.row });
   }
 
   projectThreeWorldPoint(point) {

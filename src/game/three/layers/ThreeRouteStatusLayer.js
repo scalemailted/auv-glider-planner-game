@@ -1,4 +1,4 @@
-﻿import * as THREE from 'three';
+import * as THREE from 'three';
 import { clearGroup, disposeObject, positionForRecord } from './ThreeMissionLayerUtils.js';
 
 export function updateThreeRouteStatusLayer(group, viewModel = {}) {
@@ -22,7 +22,7 @@ export function updateThreeRouteStatusLayer(group, viewModel = {}) {
     }
     marker.position.copy(positionForRecord(transform, event, 0.46));
     marker.material.color.setHex(colorForEvent(event));
-    marker.userData = { id, event, missionObjectType: 'routeStatus', sourceVisibility: 'publicResult' };
+    marker.userData = { id, event, missionObjectType: 'routeFailure', missionObjectId: id, routeFailureId: id, agentId: event.agentId ?? null, gridCell: { x: event.x, y: event.y }, sourceVisibility: 'publicResult' };
   }
   for (const [id, object] of existing.entries()) {
     if (!seen.has(id)) {

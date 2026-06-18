@@ -29,9 +29,14 @@ node tools/js/audit_three_first_production_path.mjs
 node tools/js/audit_phaser_deprecation.mjs
 node tools/js/audit_three_simulation_boundaries.mjs
 node tools/js/smoke_three_simulation_object_stability.mjs
+node tools/js/audit_current_runtime_baseline.mjs
+node tools/js/audit_three_pointer_ownership.mjs
+node tools/js/smoke_three_interaction_surface.mjs
+node tools/js/smoke_three_simulation_selection.mjs
+node tools/js/audit_three_interaction_boundaries.mjs
 ```
 
-These checks verify default Three.js backends, query-gated legacy Phaser fallback, renderer boundary flags, and the current inventory of remaining Phaser scene dependencies. The legacy tactical renderer is diagnostic only and should not be used for new mission features.
+These checks verify the restored `src/game/main.js` + Phaser lifecycle baseline, default Three.js backends, query-gated legacy Phaser fallback, renderer boundary flags, pointer ownership, and the current inventory of remaining Phaser scene dependencies. The reverted DOM router and `AnchorBrowserRuntime` are not active. The legacy tactical renderer is diagnostic only and should not be used for new mission features.
 
 For product-design consistency checks, use `docs/game_design_scientific_auv_planning.md` as the canonical source for the scientific mission loop, objective archetypes, visibility modes, scoring/regret direction, 2.5O gameplay, motion/path-planning boundary, and future production gameplay targets. Run `node tools/js/smoke_game_design_doc.mjs` after design-doc edits.
 

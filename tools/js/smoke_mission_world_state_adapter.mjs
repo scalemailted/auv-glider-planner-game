@@ -1,4 +1,4 @@
-﻿import assert from 'node:assert/strict';
+import assert from 'node:assert/strict';
 import { createMissionWorldFixture, deepClone } from './mission_world_fixture.mjs';
 import { missionWorldRenderInputFromWorkspace, missionWorldRenderInputFromSimulation, missionWorldRenderInputFromReplay, missionWorldRenderInputSummary } from '../../src/core/rendering/MissionWorldStateAdapter.js';
 
@@ -14,7 +14,7 @@ assert.equal(summary.waypointCount, 3);
 assert.equal(summary.planningMarkerCount, 1);
 assert.ok(summary.currentVectorCount > 0);
 assert.equal(summary.hiddenTruthExcluded, true);
-const simulation = missionWorldRenderInputFromSimulation({ app: { state: fixture.state }, engine: { time: 90 } });
+const simulation = missionWorldRenderInputFromSimulation({ app: { state: fixture.state }, engine: { running: true, t: 90 } });
 assert.equal(simulation.options.phase, 'simulation');
 assert.equal(simulation.simulationState.running, true);
 const replay = missionWorldRenderInputFromReplay({ publicState: { level: fixture.level, mission: fixture.mission, plan: fixture.plan, selectedAgentId: 'glider-bravo', timeSeconds: 120 } });

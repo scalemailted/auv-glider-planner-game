@@ -14,6 +14,18 @@ export const THREE_MISSION_HIT_PRIORITY = Object.freeze([
   'none'
 ]);
 
+export const THREE_MISSION_SIMULATION_HIT_PRIORITY = Object.freeze([
+  'glider',
+  'observation',
+  'surfacingEvent',
+  'routeFailure',
+  'realizedTrajectory',
+  'routeSegment',
+  'gridCell',
+  'terrain',
+  'none'
+]);
+
 export function createThreeMissionHitTestContext(options = {}) {
   const renderer = options.renderer ?? {};
   return {
@@ -26,7 +38,7 @@ export function createThreeMissionHitTestContext(options = {}) {
     viewModel: options.viewModel ?? renderer.viewModel ?? null,
     raycaster: options.raycaster ?? new THREE.Raycaster(),
     interactionSurface: options.interactionSurface ?? renderer.interactionSurface ?? null,
-    priority: [...THREE_MISSION_HIT_PRIORITY]
+    priority: hitPriorityForPhase(options.viewModel ?? renderer.viewModel ?? null)
   };
 }
 
@@ -77,15 +89,9 @@ export function hitTestMissionGrid(context, raycaster, options = {}) {
 }
 
 export function hitTestMissionEntities(context, raycaster, options = {}) {
-  const tests = [
-    ['waypoint', context.renderer?.groups?.waypointGroup],
-    ['planningMarker', context.renderer?.groups?.markerGroup],
-    ['glider', context.renderer?.groups?.gliderGroup],
-    ['priorityTarget', context.renderer?.groups?.priorityTargetGroup],
-    ['dropZone', context.renderer?.groups?.dropZoneGroup]
-  ];
+  const tests = interactionTestsForPhase(context.viewModel?.phase ?? context.viewModel?.type);
   for (const [category, group] of tests) {
-    const hit = hitTestGroup(category, group, raycaster, context, options);
+    const hit = hitTestGroup(category, groupFromCategory(context, group), raycaster, context, options);
     if (hit.category !== 'none') return hit;
   }
   return noneHit('noEntityHit');
@@ -114,6 +120,10 @@ export function threeMissionHitTestSummary(hit = {}) {
     waypointId: hit.waypointId ?? null,
     markerId: hit.markerId ?? null,
     targetId: hit.targetId ?? null,
+    observationId: hit.observationId ?? null,
+    surfacingEventId: hit.surfacingEventId ?? null,
+    routeSegmentId: hit.routeSegmentId ?? null,
+    routeFailureId: hit.routeFailureId ?? null,
     gridCell: hit.gridCell ? { ...hit.gridCell } : null,
     blocked: hit.blocked === true,
     hazard: hit.hazard === true,
@@ -134,13 +144,17 @@ function hitTestGroup(category, group, raycaster, context, options = {}) {
   return {
     type: 'anchor.renderer.three-mission-hit',
     version: THREE_MISSION_HIT_TEST_VERSION,
-    category: objectType === 'planningMarker' ? 'planningMarker' : category,
+    category: normalizeHitCategory(objectType, category),
     objectType,
-    objectId: data.missionObjectId ?? data.id ?? data.waypointId ?? data.markerId ?? data.targetId ?? data.agentId ?? first.object?.name ?? null,
+    objectId: data.missionObjectId ?? data.id ?? data.waypointId ?? data.markerId ?? data.targetId ?? data.observationId ?? data.surfacingEventId ?? data.routeSegmentId ?? data.routeFailureId ?? data.agentId ?? first.object?.name ?? null,
     agentId: data.agentId ?? null,
     waypointId: data.waypointId ?? null,
     markerId: data.markerId ?? null,
     targetId: data.targetId ?? null,
+    observationId: data.observationId ?? null,
+    surfacingEventId: data.surfacingEventId ?? null,
+    routeSegmentId: data.routeSegmentId ?? null,
+    routeFailureId: data.routeFailureId ?? null,
     zoneId: data.zoneId ?? null,
     gridCell,
     worldPoint: worldPoint ? pointToPlain(worldPoint) : null,
@@ -159,6 +173,8 @@ function configureRaycaster(raycaster, context, pointer) {
     ((clientX - rect.left) / Math.max(1, rect.width)) * 2 - 1,
     -(((clientY - rect.top) / Math.max(1, rect.height)) * 2 - 1)
   );
+  raycaster.params.Line ??= {};
+  raycaster.params.Line.threshold = Number(context.viewModel?.coordinateSystem?.cellSize ?? 1) * 0.24;
   raycaster.setFromCamera(ndc, context.camera);
   return raycaster;
 }
@@ -167,7 +183,7 @@ function missionUserData(object, expectedType = null) {
   let current = object;
   while (current) {
     const data = current.userData ?? {};
-    if (data.missionObjectType || data.waypointId || data.markerId || data.targetId || data.agentId || data.zoneId) {
+    if (data.missionObjectType || data.waypointId || data.markerId || data.targetId || data.observationId || data.surfacingEventId || data.routeSegmentId || data.routeFailureId || data.agentId || data.zoneId) {
       if (!expectedType || matchesExpected(data, expectedType)) return data;
     }
     current = current.parent;
@@ -181,7 +197,48 @@ function matchesExpected(data, expectedType) {
   if (expectedType === 'glider') return Boolean(data.agentId || data.missionObjectType === 'glider');
   if (expectedType === 'priorityTarget') return Boolean(data.targetId || data.missionObjectType === 'priorityTarget');
   if (expectedType === 'dropZone') return Boolean(data.zoneId || data.missionObjectType === 'dropZone' || data.missionObjectType === 'selectedStart');
+  if (expectedType === 'observation') return Boolean(data.observationId || data.missionObjectType === 'observation');
+  if (expectedType === 'surfacingEvent') return Boolean(data.surfacingEventId || data.missionObjectType === 'surfacingEvent');
+  if (expectedType === 'routeFailure') return Boolean(data.routeFailureId || data.missionObjectType === 'routeFailure' || data.missionObjectType === 'routeStatus');
+  if (expectedType === 'realizedTrajectory') return Boolean(data.routeSegmentId || data.missionObjectType === 'realizedTrajectory');
+  if (expectedType === 'routeSegment') return Boolean(data.routeSegmentId || data.missionObjectType === 'routeSegment');
   return true;
+}
+
+function interactionTestsForPhase(phase) {
+  if (phase === 'simulation' || phase === 'anchor.rendering.simulation-world') {
+    return [
+      ['glider', 'gliderGroup'],
+      ['observation', 'observationGroup'],
+      ['surfacingEvent', 'surfacingEventGroup'],
+      ['routeFailure', 'routeStatusGroup'],
+      ['realizedTrajectory', 'realizedTrajectoryGroup'],
+      ['routeSegment', 'routeGroup']
+    ];
+  }
+  return [
+    ['waypoint', 'waypointGroup'],
+    ['planningMarker', 'markerGroup'],
+    ['glider', 'gliderGroup'],
+    ['priorityTarget', 'priorityTargetGroup'],
+    ['dropZone', 'dropZoneGroup']
+  ];
+}
+
+function groupFromCategory(context, groupKey) {
+  return context.renderer?.groups?.[groupKey] ?? null;
+}
+
+function normalizeHitCategory(objectType, fallback) {
+  if (objectType === 'planningMarker') return 'planningMarker';
+  if (objectType === 'routeStatus') return 'routeFailure';
+  return objectType ?? fallback;
+}
+
+function hitPriorityForPhase(viewModel) {
+  return viewModel?.phase === 'simulation' || viewModel?.type === 'anchor.rendering.simulation-world'
+    ? [...THREE_MISSION_SIMULATION_HIT_PRIORITY]
+    : [...THREE_MISSION_HIT_PRIORITY];
 }
 
 function pointToGridCell(context, point) {

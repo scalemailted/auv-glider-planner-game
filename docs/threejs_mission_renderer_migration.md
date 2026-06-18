@@ -4,6 +4,8 @@ GFX-R3A connected a Three.js mission-world renderer to the live Mission Planning
 
 Renderer switching and Three.js interactions must not mutate plans except through canonical workspace commands, change simulation state, change scoring, change replay semantics, expose hidden truth, or create solver data. Waypoint placement remains 2.5D: the pointer selects a horizontal grid cell, while depth, action, and dive-profile semantics come from existing planning controls.
 
+THREE-R1 starts from the restored baseline after the MIG-R2/MIG-R2.2 DOM-routing experiment was reverted. The active entry remains src/game/main.js; Phaser owns lifecycle/scenes, while Three.js owns the normal mission-world renderer and pointer surface. No work should build on AnchorBrowserRuntime, hash routing, or src/app/main.js as production entry.
+
 ## Parity Inventory
 
 | Artifact | Canonical source of truth | Legacy Phaser owner | Three.js target layer | Planning status | Simulation status | Replay status | Interaction status | Deferred behavior |

@@ -271,7 +271,7 @@ The right Waypoint Timeline shows compact segment grades beside each waypoint. T
 
 If the simulator detects an invalid or unreachable plan, it stops with a warning and recovery choices instead of freezing. Move or delete the problem waypoint, replan from the current actual position, or end to Debrief. Exported results include the stop reason and recovery decision for debugging.
 
-During Simulation, Start, Prev, Next, End, Play/Pause, Step, and Finish live in the bottom timeline panel instead of inside the map viewport. The Phaser map stays focused on terrain, currents, hazards, planned path, actual path, and glider playback.
+During Simulation, Start, Prev, Next, End, Play/Pause, Step, and Finish live in the bottom timeline panel instead of inside the map viewport. The Three.js mission world stays focused on terrain, currents, hazards, planned path, actual path, glider playback, observations, surfacing events, and route/failure inspection; the portable simulation engine owns time, motion, observations, and scoring.
 
 ## Tutorial Sequence
 

@@ -1,4 +1,4 @@
-﻿import * as THREE from 'three';
+import * as THREE from 'three';
 import { clearGroup, disposeObject, positionForRecord } from './ThreeMissionLayerUtils.js';
 
 export function updateThreeObservationLayer(group, viewModel = {}) {
@@ -21,7 +21,7 @@ export function updateThreeObservationLayer(group, viewModel = {}) {
     }
     marker.position.copy(positionForRecord(transform, observation, 0.38));
     marker.material.color.setHex(colorForStatus(observation.status));
-    marker.userData = { id, observation, missionObjectType: 'observation', sourceVisibility: observation.sourceVisibility ?? 'publicResult' };
+    marker.userData = { id, observation, missionObjectType: 'observation', missionObjectId: id, observationId: id, agentId: observation.agentId ?? null, gridCell: { x: observation.x, y: observation.y }, sourceVisibility: observation.sourceVisibility ?? 'publicResult' };
   }
   for (const [id, object] of existing.entries()) {
     if (!seen.has(id)) {

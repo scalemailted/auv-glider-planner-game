@@ -1,4 +1,4 @@
-﻿import * as THREE from 'three';
+import * as THREE from 'three';
 import { clearGroup, disposeObject, positionForRecord } from './ThreeMissionLayerUtils.js';
 
 export function updateThreeSurfacingEventLayer(group, viewModel = {}) {
@@ -21,7 +21,7 @@ export function updateThreeSurfacingEventLayer(group, viewModel = {}) {
       existing.set(id, marker);
     }
     marker.position.copy(positionForRecord(transform, event, 0.5));
-    marker.userData = { id, event, missionObjectType: 'surfacingEvent', sourceVisibility: event.sourceVisibility ?? 'publicResult' };
+    marker.userData = { id, event, missionObjectType: 'surfacingEvent', missionObjectId: id, surfacingEventId: id, agentId: event.agentId ?? null, gridCell: { x: event.x, y: event.y }, sourceVisibility: event.sourceVisibility ?? 'publicResult' };
   }
   for (const [id, object] of existing.entries()) {
     if (!seen.has(id)) {

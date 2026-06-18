@@ -1,3 +1,4 @@
+import * as THREE from 'three';
 import { SimulationEngine } from '../../../core/sim/SimulationEngine.js';
 import { createSimulationWatchdog } from '../../../core/sim/SimulationWatchdog.js';
 import { downloadJSON, readJSONFile } from '../../../core/io/ImportExport.js';
@@ -44,8 +45,17 @@ import {
 import { deriveAdaptiveBenchmarkContextFromState } from '../../../core/benchmark/AdaptiveBenchmarkRuntime.js';
 import { attemptSourceFromRouteSourceLabel } from '../../../core/benchmark/BenchmarkAttemptSourceMapping.js';
 import { buildSimulationWorldRenderViewModel, validateSimulationWorldRenderViewModel, simulationWorldRenderViewModelSummary } from '../../../core/rendering/SimulationWorldRenderViewModel.js';
+import { gridCellToWorld } from '../../../core/rendering/MissionWorldCoordinates.js';
+import { createMissionWorldInteractionResult } from '../../../core/rendering/MissionWorldInteractionResult.js';
 import { simulationWorldRenderInputFromScene, simulationWorldRenderInputSummary } from '../../../core/rendering/SimulationWorldStateAdapter.js';
 import { createThreeMissionWorldRenderer, updateThreeMissionWorldRenderer, resizeThreeMissionWorldRenderer, setThreeMissionWorldCamera, setThreeMissionLayerVisibility, threeMissionWorldRendererSummary, disposeThreeMissionWorldRenderer } from '../../three/ThreeMissionWorldRenderer.js';
+import {
+  createThreeMissionInteractionController,
+  updateThreeMissionInteractionContext,
+  setThreeMissionInteractionEnabled,
+  disposeThreeMissionInteractionController,
+  threeMissionInteractionControllerSummary
+} from '../../three/ThreeMissionInteractionController.js';
 import { legacyPhaserMissionRendererEnabled, preferredMissionRendererBackend, publishMigrationDebug } from '../../../core/runtime/MigrationRuntimeConfig.js';
 
 const PhaserScene = globalThis.Phaser?.Scene ?? class {};
@@ -57,6 +67,9 @@ export class SimulationScene extends PhaserScene {
     this.threeSimulationRenderer = null;
     this.simulationRenderInput = null;
     this.simulationRenderViewModel = null;
+    this.threeSimulationInteractionController = null;
+    this.lastThreeSimulationIntent = null;
+    this.lastThreeSimulationResult = null;
   }
 
   create() {
@@ -682,6 +695,7 @@ export class SimulationScene extends PhaserScene {
         layerVisibility: this.threeSimulationLayerVisibilityPatch()
       });
     }
+    this.ensureThreeSimulationInteractionController();
     resizeThreeMissionWorldRenderer(this.threeSimulationRenderer, container.clientWidth, container.clientHeight);
     return this.threeSimulationRenderer;
   }
@@ -691,12 +705,29 @@ export class SimulationScene extends PhaserScene {
   }
 
   disposeThreeSimulationRenderer() {
+    disposeThreeMissionInteractionController(this.threeSimulationInteractionController);
+    this.threeSimulationInteractionController = null;
     disposeThreeMissionWorldRenderer(this.threeSimulationRenderer);
     this.threeSimulationRenderer = null;
     this.threeSimulationContainer?.remove?.();
     this.threeSimulationContainer = null;
   }
 
+  ensureThreeSimulationInteractionController() {
+    if (!this.threeSimulationRenderer?.renderer?.domElement) return null;
+    if (!this.threeSimulationInteractionController || this.threeSimulationInteractionController.disposed) {
+      this.threeSimulationInteractionController = createThreeMissionInteractionController({
+        renderer: this.threeSimulationRenderer,
+        camera: this.threeSimulationRenderer.camera,
+        domElement: this.threeSimulationRenderer.renderer.domElement,
+        getViewModel: () => this.simulationRenderViewModel,
+        emitIntent: (intent) => this.handleThreeSimulationIntent(intent),
+        options: { interactionMode: 'selectInspect', allowEditing: false }
+      });
+    }
+    setThreeMissionInteractionEnabled(this.threeSimulationInteractionController, this.getSimulationRendererBackend() === 'threeMission3d');
+    return this.threeSimulationInteractionController;
+  }
   buildSimulationWorldViewModelForScene(renderTime = null) {
     const input = simulationWorldRenderInputFromScene(this, {
       activeTimeSeconds: renderTime ?? this.engine?.t ?? 0,
@@ -715,6 +746,7 @@ export class SimulationScene extends PhaserScene {
   refreshThreeSimulationRenderer(renderTime = null) {
     const renderer = this.ensureThreeSimulationRenderer();
     const viewModel = this.buildSimulationWorldViewModelForScene(renderTime);
+    updateThreeMissionInteractionContext(this.ensureThreeSimulationInteractionController(), viewModel);
     if (!renderer) {
       this.updateSimulationRenderDebug({ activeBackend: 'threeMission3d', threeMounted: false, viewModel, parityWarnings: ['Three simulation renderer could not mount DOM container.'] });
       return;
@@ -750,13 +782,233 @@ export class SimulationScene extends PhaserScene {
       priorityTargets: layers.priorityTargets !== false,
       selection: layers.selection !== false,
       guidance: false,
-      interaction: false
+      interaction: true
     };
   }
 
+  handleThreeSimulationIntent(intent) {
+    this.lastThreeSimulationIntent = intent;
+    const result = this.routeThreeSimulationIntent(intent);
+    this.lastThreeSimulationResult = result;
+    this.app.state.ui ??= {};
+    const state = this.app.state.ui.threeSimulationInteraction ??= {};
+    state.lastIntent = summarizeSimulationIntent(intent);
+    state.lastResult = summarizeSimulationResult(result);
+    state.lastInteractionIntents = [...(state.lastInteractionIntents ?? []), state.lastIntent].slice(-12);
+    if (result.status === 'rejected' || result.status === 'invalid') this.app.toast?.(result.userMessage || 'That simulation object is not selectable.', 'warning');
+    if (result.accepted) this.refreshThreeSimulationRenderer(this.engine?.t ?? null);
+    else this.updateSimulationRenderDebug({ activeBackend: this.getSimulationRendererBackend(), threeMounted: Boolean(this.threeSimulationRenderer), viewModel: this.simulationRenderViewModel, renderer: this.threeSimulationRenderer });
+    return result;
+  }
+
+  routeThreeSimulationIntent(intent) {
+    switch (intent?.intentId) {
+      case 'selectAgent':
+        return this.selectSimulationAgentFromThree(intent.agentId ?? intent.metadata?.objectId, intent);
+      case 'selectObservation':
+        return this.selectSimulationObservationFromThree(intent.observationId ?? intent.metadata?.objectId, intent);
+      case 'selectSurfacingEvent':
+        return this.selectSimulationSurfacingEventFromThree(intent.surfacingEventId ?? intent.metadata?.objectId, intent);
+      case 'selectRouteSegment':
+        return this.selectSimulationRouteSegmentFromThree(intent.routeSegmentId ?? intent.metadata?.objectId, intent);
+      case 'selectRouteFailure':
+        return this.selectSimulationRouteFailureFromThree(intent.routeFailureId ?? intent.metadata?.objectId, intent);
+      case 'clearHover':
+      case 'cancelInteraction':
+        return this.clearThreeSimulationInspection(intent);
+      case 'hoverCell':
+      case 'cameraChanged':
+        return this.simulationInteractionResult(intent, 'noChange', { userMessage: '' });
+      default:
+        return this.simulationInteractionResult(intent, 'noChange', { userMessage: 'Simulation renderer received a non-editing intent.' });
+    }
+  }
+
+  simulationInteractionResult(intent, status, patch = {}) {
+    return createMissionWorldInteractionResult({
+      intentId: intent?.intentId ?? null,
+      status,
+      changedCanonicalState: patch.changedCanonicalState === true,
+      selectedAgentId: patch.selectedAgentId ?? this.app.state.selectedAgentId ?? null,
+      selectedObservationId: patch.selectedObservationId ?? null,
+      selectedSurfacingEventId: patch.selectedSurfacingEventId ?? null,
+      selectedRouteSegmentId: patch.selectedRouteSegmentId ?? null,
+      selectedRouteFailureId: patch.selectedRouteFailureId ?? null,
+      warnings: patch.warnings ?? [],
+      userMessage: patch.userMessage ?? '',
+      boundaryFlags: {
+        ownsPlanning: false,
+        ownsSimulation: false,
+        ownsScoring: false,
+        changesOfficialBrowserScoring: false,
+        usesNewPlanner: false,
+        usesRouteOptimizer: false
+      }
+    });
+  }
+
+  selectSimulationAgentFromThree(agentId, intent) {
+    const id = agentId ?? this.simulationRenderViewModel?.gliders?.[0]?.agentId ?? null;
+    const record = this.findSimulationRecord('glider', id);
+    if (!record?.agentId) return this.simulationInteractionResult(intent, 'rejected', { userMessage: 'No live glider was found at that point.' });
+    this.app.state.selectedAgentId = record.agentId;
+    return this.recordThreeSimulationInspection(intent, 'glider', record, `Selected ${record.agentId}.`, {
+      selectedAgentId: record.agentId,
+      changedCanonicalState: true
+    });
+  }
+
+  selectSimulationObservationFromThree(observationId, intent) {
+    const record = this.findSimulationRecord('observation', observationId);
+    if (!record?.id) return this.simulationInteractionResult(intent, 'rejected', { userMessage: 'No public observation was found at that point.' });
+    return this.recordThreeSimulationInspection(intent, 'observation', record, `Observation at ${formatMissionTime(this.app.state.level, record.timeSeconds ?? 0)}.`, {
+      selectedObservationId: record.id,
+      changedCanonicalState: true
+    });
+  }
+
+  selectSimulationSurfacingEventFromThree(surfacingEventId, intent) {
+    const record = this.findSimulationRecord('surfacingEvent', surfacingEventId);
+    if (!record?.id) return this.simulationInteractionResult(intent, 'rejected', { userMessage: 'No surfacing or communication event was found at that point.' });
+    return this.recordThreeSimulationInspection(intent, 'surfacingEvent', record, `Surfacing event at ${formatMissionTime(this.app.state.level, record.timeSeconds ?? 0)}.`, {
+      selectedSurfacingEventId: record.id,
+      changedCanonicalState: true
+    });
+  }
+
+  selectSimulationRouteSegmentFromThree(routeSegmentId, intent) {
+    const record = this.findSimulationRecord('routeSegment', routeSegmentId);
+    if (!record?.id) return this.simulationInteractionResult(intent, 'rejected', { userMessage: 'No planned or realized route segment was found at that point.' });
+    const label = record.status === 'realized' || record.sampled ? 'Realized route' : 'Planned route';
+    return this.recordThreeSimulationInspection(intent, 'routeSegment', record, `${label} inspected.`, {
+      selectedRouteSegmentId: record.id,
+      changedCanonicalState: true
+    });
+  }
+
+  selectSimulationRouteFailureFromThree(routeFailureId, intent) {
+    const record = this.findSimulationRecord('routeFailure', routeFailureId);
+    if (!record?.id) return this.simulationInteractionResult(intent, 'rejected', { userMessage: 'No route failure was found at that point.' });
+    return this.recordThreeSimulationInspection(intent, 'routeFailure', record, `Route failure inspected: ${routeFailureTitle(record.type ?? record.status ?? 'routeFailure')}.`, {
+      selectedRouteFailureId: record.id,
+      changedCanonicalState: true
+    });
+  }
+
+  recordThreeSimulationInspection(intent, objectType, record, message, patch = {}) {
+    this.recordSelectedSimulationObject(objectType, record?.id ?? record?.agentId ?? patch.selectedAgentId ?? null, record);
+    this.updateSimulationSelectionPanels();
+    return this.simulationInteractionResult(intent, 'accepted', { ...patch, userMessage: message });
+  }
+
+  recordSelectedSimulationObject(objectType, objectId, record = {}) {
+    this.app.state.ui ??= {};
+    const state = this.app.state.ui.threeSimulationInteraction ??= {};
+    state.selectedObjectType = objectType ?? null;
+    state.selectedObjectId = objectId ?? null;
+    state.selectedSummary = publicSimulationRecordSummary(objectType, record);
+    state.selectedObservationId = objectType === 'observation' ? objectId : null;
+    state.selectedSurfacingEventId = objectType === 'surfacingEvent' ? objectId : null;
+    state.selectedRouteSegmentId = objectType === 'routeSegment' ? objectId : null;
+    state.selectedRouteFailureId = objectType === 'routeFailure' ? objectId : null;
+    state.selectedAgentId = objectType === 'glider' ? objectId : this.app.state.selectedAgentId ?? null;
+    return state;
+  }
+
+  clearThreeSimulationInspection(intent) {
+    this.app.state.ui ??= {};
+    this.app.state.ui.threeSimulationInteraction = {
+      ...(this.app.state.ui.threeSimulationInteraction ?? {}),
+      selectedObjectType: null,
+      selectedObjectId: null,
+      selectedSummary: null,
+      selectedObservationId: null,
+      selectedSurfacingEventId: null,
+      selectedRouteSegmentId: null,
+      selectedRouteFailureId: null
+    };
+    return this.simulationInteractionResult(intent, 'cancelled', { changedCanonicalState: true, userMessage: 'Simulation inspection cleared.' });
+  }
+
+  findSimulationRecord(kind, id) {
+    const viewModel = this.simulationRenderViewModel ?? this.buildSimulationWorldViewModelForScene(this.engine?.t ?? null);
+    const matchesId = (record) => !id || record?.id === id || record?.agentId === id || record?.routeSegmentId === id;
+    if (kind === 'glider') return (viewModel.gliders ?? []).find((record) => record.agentId === id) ?? null;
+    if (kind === 'observation') return (viewModel.observations ?? []).find(matchesId) ?? null;
+    if (kind === 'surfacingEvent') return [...(viewModel.surfacingEvents ?? []), ...(viewModel.communicationEvents ?? [])].find(matchesId) ?? null;
+    if (kind === 'routeFailure') return [...(viewModel.routeFailures ?? []), ...(viewModel.missedWaypoints ?? [])].find(matchesId) ?? null;
+    if (kind === 'routeSegment') return [...(viewModel.realizedTrajectories ?? []), ...(viewModel.sampledTrajectories ?? []), ...(viewModel.routes ?? [])].find(matchesId) ?? null;
+    return null;
+  }
+
+  updateSimulationSelectionPanels() {
+    this.app.waypointPanel?.refresh?.(this.app.state, { engine: this.engine });
+    this.app.summaryHud?.refresh?.(this.app.state, { engine: this.engine });
+    this.app.agentPerformanceHud?.refresh?.(this.app.state, { engine: this.engine });
+    this.refreshControls?.();
+    this.renderSimulationTimeline?.();
+  }
+
+  installSimulationRenderTestApi() {
+    globalThis.ANCHOR_MISSION_RENDER_TEST_API = {
+      version: 'three-r1-simulation',
+      rendererBackend: this.getSimulationRendererBackend(),
+      hasThreeRenderer: Boolean(this.threeSimulationRenderer),
+      screenPointForGridCell: (x, y) => this.screenPointForSimulationCell({ x, y }),
+      screenPointForWaypoint: () => null,
+      screenPointForAgent: (agentId = null) => this.screenPointForSimulationRecord(this.findSimulationRecord('glider', agentId ?? this.app.state.selectedAgentId ?? this.simulationRenderViewModel?.gliders?.[0]?.agentId)),
+      screenPointForMarker: () => null,
+      screenPointForPriorityTarget: () => null,
+      screenPointForObservation: (observationId = null) => this.screenPointForSimulationRecord(this.findSimulationRecord('observation', observationId)),
+      screenPointForSurfacingEvent: (surfacingEventId = null) => this.screenPointForSimulationRecord(this.findSimulationRecord('surfacingEvent', surfacingEventId)),
+      screenPointForRouteSegment: (routeSegmentId = null) => this.screenPointForSimulationRecord(this.findSimulationRecord('routeSegment', routeSegmentId)),
+      screenPointForRouteFailure: (routeFailureId = null) => this.screenPointForSimulationRecord(this.findSimulationRecord('routeFailure', routeFailureId)),
+      setCameraPresetForTest: (preset) => {
+        this.setThreeSimulationCameraPreset(preset);
+        return this.threeSimulationRenderer?.cameraState ?? null;
+      },
+      interactionControllerSummary: () => threeMissionInteractionControllerSummary(this.threeSimulationInteractionController ?? {}),
+      renderDebug: () => globalThis.ANCHOR_SIMULATION_RENDER_DEBUG ?? null
+    };
+  }
+
+  screenPointForSimulationCell(cell) {
+    if (!this.threeSimulationRenderer || !this.simulationRenderViewModel?.coordinateSystem || !cell) return null;
+    const world = gridCellToWorld(this.simulationRenderViewModel.coordinateSystem, cell.x, cell.y, 0);
+    return this.projectSimulationThreeWorldPoint({ x: world.x, y: Number(world.y ?? 0) + 0.68, z: world.z });
+  }
+
+  screenPointForSimulationRecord(record) {
+    if (!record) return null;
+    const points = record.points ?? [];
+    if (points.length) {
+      const mid = points[Math.floor((points.length - 1) / 2)];
+      return this.screenPointForSimulationCell({ x: mid.x ?? mid.col, y: mid.y ?? mid.row });
+    }
+    return this.screenPointForSimulationCell({ x: record.x ?? record.col, y: record.y ?? record.row });
+  }
+
+  projectSimulationThreeWorldPoint(point) {
+    const renderer = this.threeSimulationRenderer;
+    const rect = renderer?.renderer?.domElement?.getBoundingClientRect?.();
+    if (!renderer?.camera || !rect) return null;
+    const vector = new THREE.Vector3(Number(point.x), Number(point.y), Number(point.z));
+    vector.project(renderer.camera);
+    return {
+      x: rect.left + ((vector.x + 1) / 2) * rect.width,
+      y: rect.top + ((1 - vector.y) / 2) * rect.height,
+      ndcX: vector.x,
+      ndcY: vector.y,
+      visible: vector.z >= -1 && vector.z <= 1
+    };
+  }
   updateSimulationRenderDebug({ activeBackend, threeMounted, viewModel, renderer = null, parityWarnings = [] } = {}) {
     const summary = simulationWorldRenderViewModelSummary(viewModel ?? {});
     const rendererSummary = renderer ? threeMissionWorldRendererSummary(renderer) : null;
+    const controllerSummary = this.threeSimulationInteractionController ? threeMissionInteractionControllerSummary(this.threeSimulationInteractionController) : null;
+    const interactionState = this.app.state.ui?.threeSimulationInteraction ?? {};
+    const canvas = renderer?.renderer?.domElement ?? null;
+    const canvasPointerEvents = canvas ? globalThis.getComputedStyle?.(canvas)?.pointerEvents ?? canvas.style?.pointerEvents ?? 'auto' : null;
     const status = viewModel?.simulationStatus ?? {};
     const progress = viewModel?.missionProgress ?? {};
     globalThis.ANCHOR_SIMULATION_RENDER_DEBUG = {
@@ -771,6 +1023,12 @@ export class SimulationScene extends PhaserScene {
       renderedScalarFieldTimeSeconds: viewModel?.scalarFieldLayer?.timeSeconds ?? null,
       renderedCurrentFieldTimeSeconds: viewModel?.vectorFieldLayer?.timeSeconds ?? null,
       selectedAgentId: this.app.state.selectedAgentId ?? null,
+      selectedObservationId: interactionState.selectedObservationId ?? null,
+      selectedRouteSegmentId: interactionState.selectedRouteSegmentId ?? null,
+      selectedSurfacingEventId: interactionState.selectedSurfacingEventId ?? null,
+      selectedRouteFailureId: interactionState.selectedRouteFailureId ?? null,
+      selectedInspectionType: interactionState.selectedObjectType ?? null,
+      selectedInspectionSummary: interactionState.selectedSummary ?? null,
       agentCount: this.engine?.agents?.length ?? 0,
       activeAgentCount: progress.activeAgentCount ?? 0,
       completedAgentCount: progress.completedAgentCount ?? 0,
@@ -790,7 +1048,18 @@ export class SimulationScene extends PhaserScene {
       objectGrowthWarnings: rendererSummary?.objectGrowthWarnings ?? [],
       inputSummary: simulationWorldRenderInputSummary(this.simulationRenderInput ?? {}),
       rendererSummary,
+      interactionControllerSummary: controllerSummary,
       parityWarnings,
+      pointerOwner: this.getSimulationRendererBackend() === 'threeMission3d' ? 'three' : 'phaser',
+      lastPointerConsumer: this.lastThreeSimulationIntent ? 'three' : null,
+      threeCanvasPointerEvents: canvasPointerEvents,
+      phaserWorldInputEnabled: this.getSimulationRendererBackend() !== 'threeMission3d',
+      duplicatePointerDispatchCount: 0,
+      lastIntentId: this.lastThreeSimulationIntent?.intentId ?? null,
+      lastIntentStatus: this.lastThreeSimulationResult?.status ?? null,
+      lastIntentChangedCanonicalState: this.lastThreeSimulationResult?.changedCanonicalState === true,
+      lastIntentWarning: this.lastThreeSimulationResult?.warnings?.[0] ?? this.lastThreeSimulationResult?.userMessage ?? null,
+      ownsPlanning: false,
       ownsSimulationState: false,
       advancesSimulationClock: false,
       computesVehicleMotion: false,
@@ -804,6 +1073,17 @@ export class SimulationScene extends PhaserScene {
       usesRouteOptimizer: false,
       usesMARL: false
     };
+    globalThis.ANCHOR_MISSION_RENDER_DEBUG = {
+      ...globalThis.ANCHOR_SIMULATION_RENDER_DEBUG,
+      version: 'three-r1-simulation',
+      mode: 'simulation',
+      ownsPlanning: false,
+      ownsSimulationState: false,
+      ownsScoring: false,
+      changesOfficialBrowserScoring: false,
+      exposesHiddenTruth: false
+    };
+    this.installSimulationRenderTestApi();
     this.refreshMigrationDebug();
   }
   syncSimulationTimeToState(time = null) {
@@ -1803,6 +2083,59 @@ function getRenderObjectCount(scene) {
   return scene?.children?.list?.length ?? scene?.children?.length ?? 0;
 }
 
+function summarizeSimulationIntent(intent = {}) {
+  return {
+    intentId: intent.intentId ?? null,
+    interactionMode: intent.interactionMode ?? null,
+    agentId: intent.agentId ?? null,
+    observationId: intent.observationId ?? null,
+    surfacingEventId: intent.surfacingEventId ?? null,
+    routeSegmentId: intent.routeSegmentId ?? null,
+    routeFailureId: intent.routeFailureId ?? null,
+    objectType: intent.metadata?.objectType ?? null,
+    objectId: intent.metadata?.objectId ?? null,
+    gridCell: intent.gridCell ? { x: intent.gridCell.x, y: intent.gridCell.y } : null,
+    sequence: intent.sequence ?? null
+  };
+}
+
+function summarizeSimulationResult(result = {}) {
+  return {
+    status: result.status ?? null,
+    accepted: result.accepted === true,
+    changedCanonicalState: result.changedCanonicalState === true,
+    selectedAgentId: result.selectedAgentId ?? null,
+    selectedObservationId: result.selectedObservationId ?? null,
+    selectedSurfacingEventId: result.selectedSurfacingEventId ?? null,
+    selectedRouteSegmentId: result.selectedRouteSegmentId ?? null,
+    selectedRouteFailureId: result.selectedRouteFailureId ?? null,
+    userMessage: result.userMessage ?? ''
+  };
+}
+
+function publicSimulationRecordSummary(objectType, record = {}) {
+  if (!record || typeof record !== 'object') return null;
+  const points = Array.isArray(record.points) ? record.points : null;
+  return {
+    objectType,
+    id: record.id ?? null,
+    agentId: record.agentId ?? null,
+    type: record.type ?? record.status ?? objectType,
+    status: record.status ?? null,
+    x: finiteMetric(record.x ?? points?.[0]?.x),
+    y: finiteMetric(record.y ?? points?.[0]?.y),
+    depthMeters: finiteMetric(record.depthMeters ?? points?.[0]?.depthMeters),
+    timeSeconds: finiteMetric(record.timeSeconds ?? record.t ?? points?.[0]?.timeSeconds),
+    pointCount: points?.length ?? null,
+    value: record.value ?? null,
+    sourceVisibility: record.sourceVisibility ?? 'publicResult'
+  };
+}
+
+function finiteMetric(value) {
+  const numeric = Number(value);
+  return Number.isFinite(numeric) ? numeric : null;
+}
 function escapeHtml(value) {
   return String(value ?? '').replace(/[&<>"']/g, (char) => ({
     '&': '&amp;',

@@ -1,4 +1,4 @@
-﻿import { clearGroup, disposeObject, agentColor, makeLine, positionForRecord } from './ThreeMissionLayerUtils.js';
+import { clearGroup, disposeObject, agentColor, makeLine, positionForRecord } from './ThreeMissionLayerUtils.js';
 
 export function updateThreeRealizedTrajectoryLayer(group, viewModel = {}) {
   if (!group) return group;
@@ -21,7 +21,7 @@ export function updateThreeRealizedTrajectoryLayer(group, viewModel = {}) {
       line.geometry?.dispose?.();
       line.geometry = makeLine(points, { color: trajectory.sampled ? 0xffffff : agentColor(trajectory.agentId, index), opacity: trajectory.sampled ? 0.96 : 0.84 }).geometry;
     }
-    line.userData = { id, agentId: trajectory.agentId, pointCount: points.length, sampled: trajectory.sampled === true, status: trajectory.status ?? 'realized' };
+    line.userData = { id, missionObjectType: 'realizedTrajectory', missionObjectId: id, routeSegmentId: id, agentId: trajectory.agentId, pointCount: points.length, sampled: trajectory.sampled === true, status: trajectory.status ?? 'realized' };
   }
   for (const [id, object] of existing.entries()) {
     if (!seen.has(id)) {

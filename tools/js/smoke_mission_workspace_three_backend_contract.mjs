@@ -1,11 +1,12 @@
-﻿import assert from 'node:assert/strict';
+import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import { MissionWorkspaceScene } from '../../src/game/phaser/scenes/MissionWorkspaceScene.js';
 
 const source = fs.readFileSync('src/game/phaser/scenes/MissionWorkspaceScene.js', 'utf8');
-assert.ok(source.includes('legacyPhaser2d'), 'legacy backend must exist');
+assert.ok(source.includes('legacyPhaser2d'), 'legacy backend must exist as diagnostic fallback');
 assert.ok(source.includes('threeMission3d'), 'Three backend must exist');
-assert.ok(source.includes("rendererBackend ??= 'legacyPhaser2d'"), 'legacy should remain default');
+assert.ok(source.includes('preferredMissionRendererBackend'), 'production backend should be selected through the migration runtime config');
+assert.ok(source.includes("threeMission3d'"), 'Three should remain the normal production mission backend');
 assert.ok(source.includes('createThreeMissionWorldRenderer'), 'scene should mount Three mission renderer');
 assert.ok(source.includes('buildMissionWorldRenderViewModel'), 'scene should build shared view model');
 assert.ok(source.includes('ANCHOR_MISSION_RENDER_DEBUG'), 'debug object should exist');
@@ -14,7 +15,6 @@ assert.equal(typeof MissionWorkspaceScene.prototype.refreshThreeMissionRenderer,
 assert.equal(typeof MissionWorkspaceScene.prototype.updateMissionRenderDebug, 'function');
 assert.equal(/score|scoring/i.test(source.match(/createThreeMissionWorldRenderer[\s\S]{0,200}/)?.[0] ?? ''), false, 'renderer mount should not alter scoring');
 const overlay = fs.readFileSync('src/ui/HtmlMissionWorkspaceOverlay.js', 'utf8');
-assert.ok(overlay.includes('Three.js is rendering the same live mission state as the tactical view.'));
-assert.ok(overlay.includes('Changing renderer does not change the plan, simulation, score, or visibility permissions.'));
-assert.ok(overlay.includes('data-action="renderer-three"'));
+assert.ok(overlay.includes('Three.js is the production mission environment.'));
+assert.ok(overlay.includes('portable JavaScript core owns planning validity, simulation, scoring, and visibility permissions.'));
 console.log('Mission workspace Three backend contract smoke passed');

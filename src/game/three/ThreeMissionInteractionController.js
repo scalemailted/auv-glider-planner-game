@@ -17,6 +17,7 @@ export function createThreeMissionInteractionController({ renderer, camera, domE
     emitIntent: emitIntent ?? (() => null),
     interactionMode: normalizeMissionWorldInteractionMode(options.interactionMode ?? 'selectInspect'),
     enabled: options.enabled !== false,
+    allowEditing: options.allowEditing !== false,
     clickThresholdCssPx: Number(options.clickThresholdCssPx ?? THREE_MISSION_CLICK_THRESHOLD_CSS_PX),
     hoverFrame: null,
     pendingHoverEvent: null,
@@ -84,6 +85,7 @@ export function threeMissionInteractionControllerSummary(controller = {}) {
     version: THREE_MISSION_INTERACTION_CONTROLLER_VERSION,
     interactionMode: controller.interactionMode ?? null,
     enabled: controller.enabled === true,
+    allowEditing: controller.allowEditing !== false,
     clickThresholdCssPx: controller.clickThresholdCssPx ?? THREE_MISSION_CLICK_THRESHOLD_CSS_PX,
     hoverThrottledByAnimationFrame: true,
     pointerCaptured: controller.pointerCaptured === true,
@@ -125,7 +127,7 @@ function onPointerDown(controller, event) {
     moved: false,
     hit,
     cameraGesture,
-    waypointDragCandidate: !cameraGesture && isPrimaryButton(event) && isEditMode(controller) && hit.category === 'waypoint' && hit.waypointId
+    waypointDragCandidate: controller.allowEditing !== false && !cameraGesture && isPrimaryButton(event) && isEditMode(controller) && hit.category === 'waypoint' && hit.waypointId
   };
   setPointerCapture(controller, event.pointerId);
   if (cameraGesture) controller.cameraGestureActive = true;
@@ -219,7 +221,7 @@ function onKeyDown(controller, event) {
     cancelThreeMissionInteraction(controller);
     return;
   }
-  if (event.key === 'Delete' || event.key === 'Backspace') {
+  if (controller.allowEditing !== false && (event.key === 'Delete' || event.key === 'Backspace')) {
     const viewModel = controller.viewModel ?? controller.getViewModel?.() ?? null;
     const selectedWaypoint = (viewModel?.waypoints ?? []).find((waypoint) => waypoint.selected);
     const selectedMarker = selectedWaypoint ? null : selectedMarkerFromViewModel(viewModel);
@@ -251,6 +253,10 @@ function handleClick(controller, hit, event) {
   else if (hit.category === 'planningMarker') emit(controller, 'deletePlanningMarker', { markerId: hit.markerId, gridCell, metadata: { objectType: 'planningMarker', objectId: hit.markerId, selectOnly: true } });
   else if (hit.category === 'glider') emit(controller, 'selectAgent', { agentId: hit.agentId, gridCell, metadata: { objectType: 'glider', objectId: hit.agentId } });
   else if (hit.category === 'priorityTarget') emit(controller, 'selectPriorityTarget', { targetId: hit.targetId, gridCell, metadata: { objectType: 'priorityTarget', objectId: hit.targetId } });
+  else if (hit.category === 'observation') emit(controller, 'selectObservation', { observationId: hit.observationId ?? hit.objectId, agentId: hit.agentId, gridCell, metadata: { objectType: 'observation', objectId: hit.observationId ?? hit.objectId } });
+  else if (hit.category === 'surfacingEvent') emit(controller, 'selectSurfacingEvent', { surfacingEventId: hit.surfacingEventId ?? hit.objectId, agentId: hit.agentId, gridCell, metadata: { objectType: 'surfacingEvent', objectId: hit.surfacingEventId ?? hit.objectId } });
+  else if (hit.category === 'routeFailure') emit(controller, 'selectRouteFailure', { routeFailureId: hit.routeFailureId ?? hit.objectId, agentId: hit.agentId, gridCell, metadata: { objectType: 'routeFailure', objectId: hit.routeFailureId ?? hit.objectId } });
+  else if (hit.category === 'realizedTrajectory' || hit.category === 'routeSegment') emit(controller, 'selectRouteSegment', { routeSegmentId: hit.routeSegmentId ?? hit.objectId, agentId: hit.agentId, gridCell, metadata: { objectType: hit.category, objectId: hit.routeSegmentId ?? hit.objectId } });
   else emit(controller, 'hoverCell', { gridCell, worldPoint: hit.worldPoint, metadata: { objectType: hit.objectType, objectId: hit.objectId, hitCategory: hit.category } });
 }
 

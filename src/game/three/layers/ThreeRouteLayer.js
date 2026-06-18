@@ -1,4 +1,4 @@
-﻿import { clearGroup, agentColor, makeLine, positionForRecord } from './ThreeMissionLayerUtils.js';
+import { clearGroup, agentColor, makeLine, positionForRecord } from './ThreeMissionLayerUtils.js';
 
 export function updateThreeRouteLayer(group, viewModel = {}) {
   clearGroup(group);
@@ -8,7 +8,7 @@ export function updateThreeRouteLayer(group, viewModel = {}) {
     const points = route.points.map((point) => positionForRecord(transform, point, 0.16));
     const line = makeLine(points, { color: agentColor(route.agentId), opacity: 0.92 });
     line.name = route.id;
-    line.userData = { id: route.id, agentId: route.agentId, pointCount: route.points.length, status: route.status };
+    line.userData = { id: route.id, missionObjectType: 'routeSegment', missionObjectId: route.id, routeSegmentId: route.id, agentId: route.agentId, pointCount: route.points.length, status: route.status };
     group.add(line);
   }
   return group;

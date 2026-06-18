@@ -38,6 +38,12 @@ Challenge Mode also persists `missionMode`. Mission modes are player-facing obje
 
 ## Version / Milestone Log
 
+### THREE-R1 - Reverted-Baseline Alignment and Three.js Interaction Ownership
+
+- Confirmed the restored production baseline: `index.html` boots `src/game/main.js`, Phaser owns scene lifecycle, Three.js is the production mission-world renderer, and vendored Three.js files remain checked in for static hosting.
+- Documented that the MIG-R2/MIG-R2.2 DOM router and `AnchorBrowserRuntime` path were reverted and are not the active architecture.
+- Hardened Three mission-world pointer ownership, shared interaction-plane checks, stable object identity, planning debug fields, and non-editable live simulation selection/inspection through canonical scene state.
+- Preserved the boundary: Three.js does not own planning arrays, simulation time, vehicle motion, observation generation, scoring, replay semantics, route optimization, hidden truth, Python simulation, WebGPU fluid simulation, RL, or MARL.
 ### MIG-R1 - Three.js-First Mission Runtime
 
 - Made Three.js the default production mission environment for planning and live simulation rendering.

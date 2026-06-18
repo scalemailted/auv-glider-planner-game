@@ -221,9 +221,9 @@ Boundaries:
 
 Active/near-term work should stabilize the current Three.js-first mission architecture before adding large new systems.
 
-1. MIG-R2 - Extract Mission Lifecycle and Routing from Phaser: move mission flow/state orchestration behind portable controllers while preserving current UI behavior and legacy diagnostic fallback.
-2. GFX-R3D - Replay / Debrief Parity: make Three.js replay/debrief inspection match existing browser/headless replay artifacts without taking over replay authority.
-3. Legacy Phaser retirement readiness: keep `?legacyPhaser=1` diagnostic coverage while reducing production dependencies on Phaser map drawing and pointer code.
+1. THREE-R2 - Three.js Replay, Debrief Route Review, and Editor Interaction Parity: extend the proven Three mission surface to replay/debrief/editor inspection without taking over replay, scoring, or editor rules.
+2. Lifecycle extraction readiness: extract mission lifecycle only behind the restored Phaser scene shell, preserving visible product flow and avoiding the reverted DOM router/hash-route approach.
+3. Legacy Phaser retirement readiness: keep `?legacyPhaser=1` diagnostic coverage while reducing production dependencies on Phaser map drawing and pointer code incrementally.
 4. Blind Discovery / Hidden-State Mode implementation: hide ocean fields until sampled and build gameplay around sparse observations and belief construction.
 5. Production mission scoring synthesis: align science value, uncertainty, discovery, energy, hazards, redundancy, and regret without replacing official browser scoring with headless scoring.
 6. Learning Lab for Benchmark Modes + Headless Workflow + Hidden Discovery: teach Planner, Adaptive, Full Autonomy, solver-packet roundtrip, forecast correction, hidden-event hypothesis, and 2.5D sampling.

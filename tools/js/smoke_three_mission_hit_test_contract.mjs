@@ -3,14 +3,18 @@ import fs from 'node:fs';
 
 import {
   THREE_MISSION_HIT_PRIORITY,
+  THREE_MISSION_SIMULATION_HIT_PRIORITY,
   createThreeMissionHitTestContext,
   threeMissionHitTestSummary
 } from '../../src/game/three/ThreeMissionHitTest.js';
 
 assert.deepEqual(THREE_MISSION_HIT_PRIORITY, ['waypoint', 'planningMarker', 'glider', 'priorityTarget', 'dropZone', 'gridCell', 'terrain', 'none']);
-const context = createThreeMissionHitTestContext({ renderer: { viewModel: { missionId: 'test' } } });
-assert.deepEqual(context.priority, THREE_MISSION_HIT_PRIORITY);
-assert.equal(context.version, 'three-mission-hit-test-gfx-r3b');
+assert.deepEqual(THREE_MISSION_SIMULATION_HIT_PRIORITY, ['glider', 'observation', 'surfacingEvent', 'routeFailure', 'realizedTrajectory', 'routeSegment', 'gridCell', 'terrain', 'none']);
+const planningContext = createThreeMissionHitTestContext({ renderer: { viewModel: { missionId: 'test', phase: 'planning' } } });
+assert.deepEqual(planningContext.priority, THREE_MISSION_HIT_PRIORITY);
+const simulationContext = createThreeMissionHitTestContext({ renderer: { viewModel: { missionId: 'test', phase: 'simulation' } } });
+assert.deepEqual(simulationContext.priority, THREE_MISSION_SIMULATION_HIT_PRIORITY);
+assert.equal(planningContext.version, 'three-mission-hit-test-gfx-r3b');
 const summary = threeMissionHitTestSummary({ category: 'gridCell', objectType: 'gridCell', gridCell: { x: 1, y: 2 } });
 assert.equal(summary.usesSharedMissionCoordinates, true);
 
