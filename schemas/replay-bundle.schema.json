@@ -1,0 +1,27 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "schemaVersion": "1.0",
+  "type": "object",
+  "describes": "anchor.headless.bundle replay fields",
+  "currentReplayVersion": "replay-r1.0",
+  "additionalProperties": true,
+  "properties": {
+    "type": { "enum": ["anchor.headless.bundle", "anchor.headless.solver-roundtrip-bundle"] },
+    "replayManifest": { "$ref": "./replay-manifest.schema.json" },
+    "replayEvents": { "$ref": "./replay-events.schema.json" },
+    "replayCheckpoints": { "$ref": "./replay-checkpoints.schema.json" },
+    "replayAlignmentReport": { "$ref": "./replay-alignment-report.schema.json" },
+    "replayContract": {
+      "type": "object",
+      "additionalProperties": true,
+      "properties": {
+        "type": { "const": "anchor.headless.replay-contract" },
+        "manifest": { "$ref": "./replay-manifest.schema.json" },
+        "events": { "$ref": "./replay-events.schema.json" },
+        "checkpoints": { "$ref": "./replay-checkpoints.schema.json" },
+        "alignmentReport": { "$ref": "./replay-alignment-report.schema.json" }
+      }
+    }
+  },
+  "notes": "When combined bundle replay artifacts and separately loaded replay files are both present, H4.1 validation fails on mismatch instead of silently preferring either representation."
+}

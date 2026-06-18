@@ -6,6 +6,9 @@ import { validateHeadlessPlanAgainstMission } from '../../src/core/headless/Head
 import { buildHeadlessBundleFromFiles } from '../../src/core/headless/HeadlessBundleLoader.js';
 import { buildReplayArtifactsFromBundle } from '../../src/core/replay/ReplayContractBuilder.js';
 import { verifyReplayBundle } from '../../src/core/replay/ReplayVerifier.js';
+import { verifyReplayIntegrity, replayIntegritySummary } from '../../src/core/replay/ReplayIntegrityVerifier.js';
+import { normalizeReplayArtifacts } from '../../src/core/replay/ReplaySchema.js';
+import { createReplayPlaybackState, jumpReplayPlaybackToCheckpoint, replayPlaybackSummary, stepReplayPlayback } from '../../src/core/replay/ReplayPlayback.js';
 import { buildHeadlessSolverPacketRoundtrip } from '../../src/core/headless/HeadlessRoundtrip.js';
 import { validateSolverPacketForHeadless, solverPacketHeadlessCompatibilitySummary } from '../../src/core/headless/HeadlessSolverPacketAdapter.js';
 import { runHeadlessMission } from '../../src/core/headless/runtime/HeadlessMissionRunner.js';
@@ -237,21 +240,33 @@ function runReplay(args) {
   const outputDir = args.out ?? args.positionals[1] ?? 'tmp/headless-replay';
   if (!bundlePath) throw new Error('replay requires --bundle <path> --out <dir>.');
   const bundle = readHeadlessBundlePath(bundlePath);
-  const replayArtifacts = buildReplayArtifactsFromBundle(bundle, {
-    checkpointEvery: args.checkpointEvery,
-    publicPlayback: args.publicPlayback !== false,
-    refereeReplay: args.refereeReplay,
-    authoritativeReplay: args.refereeReplay,
-    useDemoObjectiveSequence: args.demoObjectives
-  });
+  const existing = normalizeReplayArtifacts(bundle);
+  const replayArtifacts = existing.present
+    ? { manifest: existing.manifest, events: existing.events, checkpoints: existing.checkpoints, alignmentReport: existing.alignmentReport, contract: { type: 'anchor.headless.replay-contract', version: existing.manifest?.version ?? existing.manifest?.schemaVersion ?? 'replay-r1.0', manifest: existing.manifest, events: existing.events, checkpoints: existing.checkpoints, alignmentReport: existing.alignmentReport } }
+    : buildReplayArtifactsFromBundle(bundle, {
+      checkpointEvery: args.checkpointEvery,
+      publicPlayback: args.publicPlayback !== false,
+      refereeReplay: args.refereeReplay,
+      authoritativeReplay: args.refereeReplay,
+      useDemoObjectiveSequence: args.demoObjectives
+    });
+  let playback = createReplayPlaybackState({ replayManifest: replayArtifacts.manifest, replayEvents: replayArtifacts.events, replayCheckpoints: replayArtifacts.checkpoints, replayAlignmentReport: replayArtifacts.alignmentReport });
+  if (args.checkpoint) playback = jumpReplayPlaybackToCheckpoint(playback, { replayManifest: replayArtifacts.manifest, replayEvents: replayArtifacts.events, replayCheckpoints: replayArtifacts.checkpoints }, args.checkpoint);
+  if (args.untilEvent) {
+    const events = replayArtifacts.events?.events ?? [];
+    const targetIndex = events.findIndex((event) => event.eventId === args.untilEvent || String(event.sequence) === String(args.untilEvent));
+    if (targetIndex >= 0) while ((playback.eventIndex ?? -1) < targetIndex) playback = stepReplayPlayback(playback, { replayManifest: replayArtifacts.manifest, replayEvents: replayArtifacts.events, replayCheckpoints: replayArtifacts.checkpoints }, 1);
+  }
+  const verification = args.verify ? verifyReplayIntegrity({ manifest: replayArtifacts.manifest, events: replayArtifacts.events, checkpoints: replayArtifacts.checkpoints, alignmentReport: replayArtifacts.alignmentReport, options: { strict: args.strict } }) : null;
   fs.mkdirSync(outputDir, { recursive: true });
   writeJson(path.join(outputDir, 'replay_manifest.json'), replayArtifacts.manifest);
   writeJson(path.join(outputDir, 'replay_events.json'), replayArtifacts.events);
   writeJson(path.join(outputDir, 'replay_checkpoints.json'), replayArtifacts.checkpoints);
-  writeJson(path.join(outputDir, 'replay_alignment_report.json'), replayArtifacts.alignmentReport);
+  writeJson(path.join(outputDir, 'replay_alignment_report.json'), verification ?? replayArtifacts.alignmentReport);
   writeJson(path.join(outputDir, 'replay_contract.json'), replayArtifacts.contract);
+  const playbackSummary = replayPlaybackSummary(playback, { replayManifest: replayArtifacts.manifest, replayEvents: replayArtifacts.events, replayCheckpoints: replayArtifacts.checkpoints });
   console.log(JSON.stringify({
-    ok: true,
+    ok: !verification || verification.status !== 'FAIL',
     command: 'replay',
     bundlePath,
     outputDir,
@@ -259,44 +274,59 @@ function runReplay(args) {
     replayFidelity: replayArtifacts.manifest.replayFidelity,
     eventCount: replayArtifacts.events.events.length,
     checkpointCount: replayArtifacts.checkpoints.checkpoints.length,
-    terminalDigest: replayArtifacts.checkpoints.summary.terminalDigest,
+    agentIds: playbackSummary.agentIds ?? [],
+    agentCount: playbackSummary.agentCount ?? 0,
+    currentEventId: playbackSummary.currentEventId ?? null,
+    currentCheckpointId: playbackSummary.currentCheckpointId ?? null,
+    verification: verification ? replayIntegritySummary(verification) : null,
+    terminalDigest: replayArtifacts.checkpoints.summary?.terminalDigest ?? replayArtifacts.checkpoints.checkpoints?.at(-1)?.digest?.value ?? null,
     hiddenTruthIncluded: replayArtifacts.manifest.hiddenTruthIncluded === true,
     changesOfficialBrowserScoring: false,
     files: ['replay_manifest.json', 'replay_events.json', 'replay_checkpoints.json', 'replay_alignment_report.json', 'replay_contract.json'],
-    boundary: 'REPLAY-R1 public playback writes public event/checkpoint artifacts. It does not resimulate hidden truth or change browser scoring.'
+    boundary: 'Replay emits playback summaries over recorded public event/checkpoint artifacts. It does not rerun motion physics, resimulate hidden truth, or change browser scoring.'
   }, null, 2));
+  if (verification?.status === 'FAIL' || (args.strict && verification?.status === 'WARN')) process.exitCode = 1;
 }
 
 function runVerifyReplay(args) {
   const bundlePath = args.bundle ?? args.positionals[0];
   const reportPath = args.report ?? args.positionals[1] ?? 'tmp/replay_alignment_report.json';
   if (!bundlePath) throw new Error('verify-replay requires --bundle <path> --report <path>.');
+  if (args.noPublicSafetyCheck) console.warn('WARNING: --no-public-safety-check is for debug/testing only and must not be used for normal public release artifacts.');
   const bundle = readHeadlessBundlePath(bundlePath);
-  const report = verifyReplayBundle(bundle, {
+  const report = verifyReplayIntegrity(bundle, {
     strict: args.strict,
-    checkpointEvery: args.checkpointEvery,
-    allowCompatibleVersion: args.allowCompatibleVersion,
-    publicPlayback: args.publicPlayback !== false,
-    refereeReplay: args.refereeReplay,
-    useDemoObjectiveSequence: args.demoObjectives
+    allowWarnings: args.allowWarnings !== false,
+    expectedReplayMode: args.expectedMode,
+    verifyDigests: args.noDigestCheck !== true,
+    verifyPublicSafety: args.noPublicSafetyCheck !== true,
+    verifyAlignmentReport: true,
+    checkpointEvery: args.checkpointEvery
   });
   fs.mkdirSync(path.dirname(reportPath), { recursive: true });
   writeJson(reportPath, report);
+  const summary = replayIntegritySummary(report);
   console.log(JSON.stringify({
-    ok: report.status !== 'FAIL',
+    ok: report.status !== 'FAIL' && !(args.strict && report.status === 'WARN'),
     command: 'verify-replay',
     bundlePath,
     reportPath,
     status: report.status,
-    compatibilityStatus: report.compatibilityStatus,
+    schemaVersion: report.schemaVersion,
+    compatibilityStatus: report.compatibilitySummary?.compatibility ?? null,
     replayMode: report.replayMode,
+    eventCount: report.eventCount,
+    checkpointCount: report.checkpointCount,
+    digestChecks: report.digestSummary,
+    warningCount: report.warningCount,
+    failureCount: report.failureCount,
+    failureCodes: report.failureCodes ?? [],
     firstDivergence: report.firstDivergence,
-    warningCount: report.summary.warningCount,
-    failureCount: report.summary.failureCount,
     changesOfficialBrowserScoring: false,
-    boundary: report.boundary
+    boundary: report.boundary,
+    summary
   }, null, 2));
-  if (report.status === 'FAIL') process.exitCode = 1;
+  if (report.status === 'FAIL' || (args.strict && report.status === 'WARN')) process.exitCode = 1;
 }
 
 function readHeadlessBundlePath(bundlePath) {
@@ -331,6 +361,13 @@ function parseArgs(argv) {
     report: null,
     strict: false,
     allowCompatibleVersion: false,
+    allowWarnings: true,
+    expectedMode: null,
+    noDigestCheck: false,
+    noPublicSafetyCheck: false,
+    verify: false,
+    checkpoint: null,
+    untilEvent: null,
     publicPlayback: true,
     refereeReplay: false,
     checkpointEvery: null,
@@ -373,6 +410,14 @@ function parseArgs(argv) {
     else if (arg === '--report') parsed.report = argv[++index];
     else if (arg === '--strict') parsed.strict = true;
     else if (arg === '--allow-compatible-version') parsed.allowCompatibleVersion = true;
+    else if (arg === '--allow-warnings') parsed.allowWarnings = true;
+    else if (arg === '--no-allow-warnings') parsed.allowWarnings = false;
+    else if (arg === '--expected-mode') parsed.expectedMode = argv[++index];
+    else if (arg === '--no-digest-check') parsed.noDigestCheck = true;
+    else if (arg === '--no-public-safety-check') parsed.noPublicSafetyCheck = true;
+    else if (arg === '--verify') parsed.verify = true;
+    else if (arg === '--checkpoint') parsed.checkpoint = argv[++index];
+    else if (arg === '--until-event') parsed.untilEvent = argv[++index];
     else if (arg === '--checkpoint-every') parsed.checkpointEvery = Number(argv[++index]);
     else if (arg === '--public-playback') parsed.publicPlayback = true;
     else if (arg === '--no-public-playback') parsed.publicPlayback = false;
@@ -462,9 +507,10 @@ function printUsage() {
   node tools/js/headless_oceanbox.mjs validate-solver-packet --solver-packet docs/examples/headless_solver_packet.example.json [--oracle]
   node tools/js/headless_oceanbox.mjs validate-plan --solver-packet docs/examples/headless_solver_packet.example.json --plan docs/examples/headless_solver_plan.example.json [--agent-id glider_01]
   node tools/js/headless_oceanbox.mjs roundtrip --solver-packet docs/examples/headless_solver_packet.example.json --plan docs/examples/headless_solver_plan.example.json --out runs/h3-roundtrip --depth-layers surface,thermocline,deep --dive-profile sawtoothProfile --bathymetry --bathymetry-view obliqueBathymetry --vertical-exaggeration 1.5 --motion-aware --motion-model depthLayerKinematic --cost-graph --cost-graph-node-source samplingPriorityCandidates --cost-matrix-format sparse --mission-score --score-profile balancedMission --regret-reference none --combined-json --no-hidden-export [--checkpoint-every 10] [--demo-objectives]
-  node tools/js/headless_oceanbox.mjs replay --bundle runs/h3-roundtrip/bundle.json --out runs/h4-replay [--checkpoint-every 10] [--public-playback]
-  node tools/js/headless_oceanbox.mjs verify-replay --bundle runs/h3-roundtrip/bundle.json --report runs/h4-replay/replay_alignment_report.json [--strict] [--allow-compatible-version]`);
+  node tools/js/headless_oceanbox.mjs replay --bundle runs/h3-roundtrip/bundle.json --out runs/h4-replay [--verify] [--checkpoint <id>] [--until-event <id>] [--checkpoint-every 10] [--public-playback]
+  node tools/js/headless_oceanbox.mjs verify-replay --bundle runs/h3-roundtrip/bundle.json --report runs/h4-replay/replay_alignment_report.json [--strict] [--allow-warnings] [--expected-mode publicObservationPlayback] [--no-digest-check] [--no-public-safety-check]`);
 }
+
 
 
 

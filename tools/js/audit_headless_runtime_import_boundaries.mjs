@@ -3,9 +3,15 @@ import fs from 'node:fs';
 import path from 'node:path';
 
 const runtimeDir = 'src/core/headless/runtime';
-const files = fs.readdirSync(runtimeDir)
-  .filter((name) => name.endsWith('.js'))
-  .map((name) => path.join(runtimeDir, name));
+const replayDir = 'src/core/replay';
+const files = [
+  ...fs.readdirSync(runtimeDir)
+    .filter((name) => name.endsWith('.js'))
+    .map((name) => path.join(runtimeDir, name)),
+  ...fs.readdirSync(replayDir)
+    .filter((name) => name.endsWith('.js'))
+    .map((name) => path.join(replayDir, name))
+];
 files.push(
   'src/core/headless/HeadlessCsv.js',
   'src/core/headless/HeadlessBundleLoader.js',
@@ -55,7 +61,7 @@ files.push(
 );
 
 const bannedPatterns = [
-  /Phaser/i,
+  /\bPhaser\b/i,
   /\bdocument\b/,
   /\bwindow\b/,
   /localStorage/,

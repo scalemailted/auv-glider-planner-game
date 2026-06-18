@@ -1,4 +1,4 @@
-import { parseSimpleCsv, normalizeObservationCsvRows, normalizeTrackCsvRows } from './HeadlessCsv.js';
+﻿import { parseSimpleCsv, normalizeObservationCsvRows, normalizeTrackCsvRows } from './HeadlessCsv.js';
 import { HEADLESS_SOLVER_ROUNDTRIP_BUNDLE_TYPE, isHeadlessRoundtripReportType } from './HeadlessRoundtripTypes.js';
 
 export const HEADLESS_BUNDLE_LOADER_VERSION = 'headless-bundle-loader-h2';
@@ -55,6 +55,7 @@ export function classifyHeadlessBundleFile(fileName, payload = null) {
 export function parseHeadlessBundleFile(fileName, textOrJson) {
   const classification = classifyHeadlessBundleFile(fileName, textOrJson);
   const warnings = [];
+  const failures = [];
   let payload = textOrJson;
   if (classification.mediaType === 'application/json' && typeof textOrJson === 'string') {
     try { payload = JSON.parse(textOrJson); } catch (error) { throw new Error(`${classification.fileName} is not valid JSON: ${error.message}`); }
@@ -77,6 +78,7 @@ export function normalizeHeadlessBundleFiles(files = []) {
   const normalized = {};
   const fileMap = {};
   const warnings = [];
+  const failures = [];
   for (const entry of entries) {
     const fileName = entry.fileName ?? entry.name ?? entry.path;
     const source = entry.text ?? entry.payload ?? entry.json ?? entry.content;
@@ -92,6 +94,17 @@ export function normalizeHeadlessBundleFiles(files = []) {
   }
   if (isHeadlessCombinedBundlePayload(normalized.combinedBundle)) {
     const combined = normalized.combinedBundle;
+    const replayPairs = [
+      ['replayManifest', combined.replayManifest ?? combined.replayContract?.manifest ?? combined.replay?.manifest],
+      ['replayEvents', combined.replayEvents ?? combined.replayContract?.events ?? combined.replay?.events],
+      ['replayCheckpoints', combined.replayCheckpoints ?? combined.replayContract?.checkpoints ?? combined.replay?.checkpoints],
+      ['replayAlignmentReport', combined.replayAlignmentReport ?? combined.replayContract?.alignmentReport ?? combined.replay?.alignmentReport]
+    ];
+    for (const [logicalType, combinedValue] of replayPairs) {
+      if (normalized[logicalType] && combinedValue && stableStringify(normalized[logicalType]) !== stableStringify(combinedValue)) {
+        failures.push(`REPLAY_COMBINED_SEPARATE_MISMATCH: ${logicalType} differs between bundle.json and separately loaded replay file.`);
+      }
+    }
     normalized.manifest ??= combined.manifest;
     normalized.missionConfig ??= combined.missionConfig;
     normalized.visibleFields ??= combined.visibleFields;
@@ -129,13 +142,13 @@ export function normalizeHeadlessBundleFiles(files = []) {
   }
   if (normalized.observationsCsv?.rows?.length) normalized.observations ??= { type: 'anchor.headless.observations', observations: normalized.observationsCsv.rows, source: 'csv' };
   if (normalized.gliderTracksCsv?.rows?.length) normalized.gliderTracks ??= { type: 'anchor.headless.trajectory', tracks: normalized.gliderTracksCsv.rows, source: 'csv' };
-  return { ...normalized, fileMap, warnings };
+  return { ...normalized, fileMap, warnings, failures };
 }
 
 export function validateHeadlessBundleFiles(bundleFiles) {
   const normalized = bundleFiles?.fileMap ? bundleFiles : normalizeHeadlessBundleFiles(bundleFiles);
   const warnings = [...(normalized.warnings ?? [])];
-  const failures = [];
+  const failures = [...(normalized.failures ?? [])];
   for (const file of HEADLESS_BUNDLE_REQUIRED_FILES) {
     const logical = LOGICAL_FILE_ALIASES[file];
     if (!normalized[logical]) failures.push(`Missing required bundle file ${file}.`);
@@ -303,9 +316,17 @@ function inferLogicalType(fileName, payload) {
   return null;
 }
 
+function stableStringify(value) {
+  if (value === undefined) return 'undefined';
+  if (value === null || typeof value !== 'object') return JSON.stringify(value);
+  if (Array.isArray(value)) return `[${value.map(stableStringify).join(',')}]`;
+  return `{${Object.keys(value).sort().map((key) => `${JSON.stringify(key)}:${stableStringify(value[key])}`).join(',')}}`;
+}
+
 function basename(fileName) {
   return String(fileName ?? '').split(/[\\/]/).pop();
 }
+
 
 
 

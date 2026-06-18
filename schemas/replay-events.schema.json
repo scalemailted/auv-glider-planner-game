@@ -1,0 +1,39 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "schemaVersion": "1.0",
+  "type": "object",
+  "describes": "anchor.headless.replay-events",
+  "currentReplayVersion": "replay-r1.0",
+  "additionalProperties": true,
+  "required": ["type", "schemaVersion", "replayVersion", "contract", "replayId", "eventOrderingPolicy", "events"],
+  "properties": {
+    "type": { "const": "anchor.headless.replay-events" },
+    "schemaVersion": { "type": "string" },
+    "version": { "type": "string", "description": "REPLAY-R1 alias accepted for backward compatibility." },
+    "replayVersion": { "type": "string", "enum": ["replay-r1.0"] },
+    "contract": { "const": "REPLAY-R1" },
+    "events": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": true,
+        "required": ["eventId", "tick", "timeSeconds", "phase", "eventType", "sequence", "payload", "publicSafe", "visibilityTier", "schemaVersion"],
+        "properties": {
+          "eventId": { "type": "string" },
+          "tick": { "type": "integer", "minimum": 0 },
+          "timeSeconds": { "type": "number", "minimum": 0 },
+          "phase": { "type": "string" },
+          "eventType": { "type": "string" },
+          "sequence": { "type": "integer", "minimum": 0 },
+          "agentId": { "type": ["string", "null"], "description": "Null means Mission / Global and sorts before agent IDs." },
+          "payload": { "type": "object", "additionalProperties": true },
+          "publicSafe": { "const": true },
+          "visibilityTier": { "enum": ["publicScenario", "forecastVisible", "solverVisible"] },
+          "schemaVersion": { "type": "string" }
+        }
+      }
+    },
+    "supportedEventCategories": { "default": ["initialization", "control", "motion", "observation", "sample", "surface", "communication", "objectiveTransition", "scienceDiagnosis", "scoreUpdate", "terminal"] }
+  },
+  "notes": "Canonical ordering is tick, timeSeconds, phase/type rank, normalized agentId with global first, explicit sequence, then eventId fallback."
+}

@@ -556,3 +556,21 @@ node tools/js/audit_replay_boundaries.mjs
 ```
 
 These checks exercise public replay artifacts, loader/viewer compatibility, CLI replay/verify, tampered checkpoint divergence, and public hidden-truth boundaries.
+
+H4.1 replay hardening adds focused smoke coverage:
+
+```bash
+node tools/js/smoke_replay_json_schemas.mjs
+node tools/js/smoke_replay_schema_validation.mjs
+node tools/js/smoke_replay_integrity_verifier.mjs
+node tools/js/smoke_replay_tamper_detection.mjs
+node tools/js/smoke_replay_multi_agent_contract.mjs
+node tools/js/smoke_replay_combined_separate_alignment.mjs
+node tools/js/smoke_replay_cli_verify.mjs
+node tools/js/smoke_replay_viewer_panel.mjs
+node tools/js/smoke_replay_browser_summary_export.mjs
+node tools/js/audit_replay_public_safety.mjs
+node tools/js/audit_replay_authority_boundaries.mjs
+```
+
+These checks verify schemas, compatibility warnings, stable issue codes, tamper detection, CLI nonzero failure behavior, multi-agent public playback state, compact browser summary export, public-safety boundaries, and the absence of authoritative hidden-state resimulation claims.

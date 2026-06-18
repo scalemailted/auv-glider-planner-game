@@ -1,4 +1,4 @@
-export const REPLAY_R1_CONTRACT_ID = 'REPLAY-R1';
+﻿export const REPLAY_R1_CONTRACT_ID = 'REPLAY-R1';
 export const REPLAY_R1_SCHEMA_VERSION = 'replay-r1.0';
 
 export const REPLAY_ARTIFACT_TYPES = Object.freeze({
@@ -13,6 +13,8 @@ export const REPLAY_ARTIFACT_TYPES = Object.freeze({
 
 export const REPLAY_MODES = Object.freeze({
   authoritativeSimulationReplay: 'authoritativeSimulationReplay',
+  authoritativeResimulationReserved: 'authoritativeResimulationReserved',
+  protectedRefereeReplayReserved: 'protectedRefereeReplayReserved',
   publicObservationPlayback: 'publicObservationPlayback',
   refereeInternalReplay: 'refereeInternalReplay'
 });
@@ -42,8 +44,9 @@ export const REPLAY_NUMERIC_POLICY = Object.freeze({
 
 export const REPLAY_ORDERING_POLICY = Object.freeze({
   id: 'replay-r1-canonical-event-order',
-  sortKeys: ['tick', 'phaseRank', 'agentId', 'sequence'],
-  note: 'Events are ordered by simulation tick/time, replay phase/type rank, vehicle/agent id, then explicit monotonic sequence number.'
+  sortKeys: ['tick', 'timeSeconds', 'phaseRank', 'agentId', 'sequence', 'eventId'],
+  globalAgentSortValue: '',
+  note: 'Events are ordered by simulation tick/time, replay phase/type rank, mission-global event id (empty agent) before vehicle/agent id, explicit monotonic sequence number, then stable event id fallback.'
 });
 
 const SUPPORTED_REPLAY_VERSIONS = new Set([REPLAY_R1_SCHEMA_VERSION]);
@@ -267,4 +270,6 @@ function replayValidationResult(checks, warnings, failures, artifacts) {
 function emptyReplayArtifacts() {
   return { present: false, manifest: null, events: null, checkpoints: null, alignmentReport: null, legacyReplay: null };
 }
+
+
 

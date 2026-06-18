@@ -1,0 +1,41 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "schemaVersion": "1.0",
+  "type": "object",
+  "describes": "anchor.headless.replay-checkpoints",
+  "currentReplayVersion": "replay-r1.0",
+  "additionalProperties": true,
+  "required": ["type", "schemaVersion", "replayVersion", "contract", "replayId", "digestAlgorithm", "numericPolicy", "checkpoints"],
+  "properties": {
+    "type": { "const": "anchor.headless.replay-checkpoints" },
+    "schemaVersion": { "type": "string" },
+    "version": { "type": "string", "description": "REPLAY-R1 alias accepted for backward compatibility." },
+    "replayVersion": { "type": "string", "enum": ["replay-r1.0"] },
+    "contract": { "const": "REPLAY-R1" },
+    "checkpoints": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": true,
+        "required": ["checkpointId", "tick", "timeSeconds", "reason", "eventCursor", "publicState", "agentStates", "objectiveState", "digest", "digestAlgorithmId", "digestVersion", "quantization", "publicSafe"],
+        "properties": {
+          "checkpointId": { "type": "string" },
+          "tick": { "type": "integer", "minimum": 0 },
+          "timeSeconds": { "type": "number", "minimum": 0 },
+          "reason": { "enum": ["initial", "periodic", "surfacing", "objectiveTransition", "terminal"] },
+          "reasons": { "type": "array", "items": { "type": "string" } },
+          "eventCursor": { "type": "integer", "minimum": 0, "description": "Count of replay events consumed through this checkpoint tick." },
+          "publicState": { "type": "object", "additionalProperties": true },
+          "agentStates": { "type": "object", "additionalProperties": true },
+          "objectiveState": { "type": "object", "additionalProperties": true },
+          "digest": { "type": "object", "additionalProperties": true, "required": ["value"] },
+          "digestAlgorithmId": { "type": "string" },
+          "digestVersion": { "type": "string" },
+          "quantization": { "type": ["string", "null"] },
+          "publicSafe": { "const": true }
+        }
+      }
+    }
+  },
+  "notes": "Replay digests are deterministic integrity checks over public replay state unless a cryptographic algorithm is explicitly used."
+}

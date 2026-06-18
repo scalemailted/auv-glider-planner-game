@@ -927,3 +927,7 @@ See [Mission Scoring and Regret](docs/mission_scoring_and_regret.md) for the SCO
 ### H4 / REPLAY-R1 Headless Replay Alignment
 
 Headless bundles can now include REPLAY-R1 artifacts: `replay_manifest.json`, `replay_events.json`, `replay_checkpoints.json`, and `replay_alignment_report.json`. Combined `bundle.json` embeds the same contract for browser/Colab round trips. Public bundles are labelled `publicObservationPlayback`; they replay recorded public observations/checkpoints and do not resimulate hidden truth. See [docs/headless_replay_alignment.md](docs/headless_replay_alignment.md).
+
+### H4.1 / Replay Schema, Integrity, And Multi-Agent Contract Hardening
+
+Replay artifacts now have formal schema documents under `schemas/`, structured runtime validation, deterministic integrity issue codes, compact clean/tampered fixtures, and a contract-only two-agent replay fixture. The Headless Bundle Viewer can load public, tampered, and multi-agent replay examples, show integrity failures without crashing, and export `anchor.browser.headless-replay-summary`. Public replay remains recorded public-state playback only: it does not reconstruct hidden truth, rerun physics, change official browser scoring, add a planner, add a Python simulator, or add RL/MARL. See [Replay Artifact Schemas](docs/replay_artifact_schemas.md).

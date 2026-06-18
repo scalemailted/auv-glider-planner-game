@@ -139,3 +139,7 @@ ootion-aware bundles may include mission-feasibility reports, and bundles may in
 SCORE-R1 is shadow benchmark scoring. It does not replace official browser scoring, Challenge Mode scoring, leaderboard ranking, or existing debrief totals. Profiles are objective-aware and versioned; missing data is explicit; regret requires a compatible reference, and best-known attempt does not mean optimal. Python/Colab should analyze exported JSON/CSV artifacts or invoke Node/OceanBox-JS; no Python simulator, planner, optimizer, MARL/RL, operational certification, SeaExplorer validation, or calibrated ocean forecast is added.
 
 See ../../../docs/mission_scoring_and_regret.md for the SCORE-R1 artifact contract and boundaries.
+
+### Replay Summary Artifacts
+
+H4.1 browser replay summaries are compact JSON artifacts with replay identity, integrity status, failure codes, agent IDs, and cursor metadata. They intentionally exclude full event arrays and hidden truth, so Colab analysis should treat them as public replay inspection summaries rather than simulator inputs.

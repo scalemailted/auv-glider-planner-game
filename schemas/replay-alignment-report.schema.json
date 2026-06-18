@@ -1,0 +1,42 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "schemaVersion": "1.0",
+  "type": "object",
+  "describes": "anchor.headless.replay-alignment-report",
+  "currentReplayVersion": "replay-r1.0",
+  "additionalProperties": true,
+  "required": ["type", "schemaVersion", "replayVersion", "status", "replayMode", "checkedArtifactTypes", "eventCount", "checkpointCount", "passedChecks", "warningCount", "failureCount", "issues", "digestSummary", "orderingSummary", "publicSafetySummary", "compatibilitySummary"],
+  "properties": {
+    "type": { "const": "anchor.headless.replay-alignment-report" },
+    "schemaVersion": { "type": "string" },
+    "version": { "type": "string", "description": "REPLAY-R1 alias accepted for backward compatibility." },
+    "replayVersion": { "type": "string", "enum": ["replay-r1.0"] },
+    "status": { "enum": ["PASS", "WARN", "FAIL"] },
+    "replayMode": { "type": ["string", "null"] },
+    "issues": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": true,
+        "required": ["code", "severity", "artifact", "path", "message"],
+        "properties": {
+          "code": { "type": "string" },
+          "severity": { "enum": ["warning", "error"] },
+          "artifact": { "type": "string" },
+          "path": { "type": "string" },
+          "tick": { "type": ["integer", "null"] },
+          "eventId": { "type": ["string", "null"] },
+          "checkpointId": { "type": ["string", "null"] },
+          "message": { "type": "string" },
+          "expected": {},
+          "actual": {}
+        }
+      }
+    },
+    "digestSummary": { "type": "object", "additionalProperties": true },
+    "orderingSummary": { "type": "object", "additionalProperties": true },
+    "publicSafetySummary": { "type": "object", "additionalProperties": true },
+    "compatibilitySummary": { "type": "object", "additionalProperties": true },
+    "changesOfficialBrowserScoring": { "const": false }
+  }
+}

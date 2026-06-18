@@ -1,4 +1,4 @@
-import {
+﻿import {
   REPLAY_ARTIFACT_TYPES,
   REPLAY_MODES,
   REPLAY_NUMERIC_POLICY,
@@ -80,6 +80,8 @@ export function buildReplayArtifactsFromSource(source = {}, options = {}) {
   const manifest = {
     type: REPLAY_ARTIFACT_TYPES.manifest,
     version: REPLAY_R1_SCHEMA_VERSION,
+    schemaVersion: REPLAY_R1_SCHEMA_VERSION,
+    replayVersion: REPLAY_R1_SCHEMA_VERSION,
     contract: REPLAY_R1_CONTRACT_ID,
     replayId,
     replayMode,
@@ -91,6 +93,7 @@ export function buildReplayArtifactsFromSource(source = {}, options = {}) {
     missionSchemaVersion: missionConfig.version ?? null,
     episodeId: episode.episodeId ?? manifestSource.episodeId ?? null,
     seed,
+    seedSubstreams: deterministicSubstreams(seed),
     deterministicSubstreams: deterministicSubstreams(seed),
     timingModel: {
       type: 'fixedStep',
@@ -99,12 +102,16 @@ export function buildReplayArtifactsFromSource(source = {}, options = {}) {
       maxTimeSeconds,
       wallClockAffectsSimulation: false
     },
+    timestepSeconds: dt,
+    initialPublicState: initialState,
     initialState,
     agentIds,
     featureFlags,
     eventOrderingPolicy: REPLAY_ORDERING_POLICY,
+    checkpointPolicy: { id: 'replay-h4.1-public-checkpoints', requiredReasons: ['initial', 'terminal'], eventCursorSemantics: 'count of events consumed through checkpoint tick' },
     numericPolicy: REPLAY_NUMERIC_POLICY,
-    terminationReason: surfacingEvents.at(-1)?.reason ?? episode.terminationReason ?? 'mission-complete-summary-export',
+    publicBoundary: 'publicObservationPlayback records public state only; it does not include hidden truth or authoritative resimulation state.',
+    terminalReason: surfacingEvents.at(-1)?.reason ?? episode.terminationReason ?? 'mission-complete-summary-export',
     bundleSchemaVersion: bundle.version ?? manifestSource.version ?? 'headless-combined-bundle-h2-compatible',
     scoringSchemaVersion: scoreSnapshot.schemaVersion,
     changesOfficialBrowserScoring: false,
@@ -119,6 +126,8 @@ export function buildReplayArtifactsFromSource(source = {}, options = {}) {
   const replayEvents = {
     type: REPLAY_ARTIFACT_TYPES.events,
     version: REPLAY_R1_SCHEMA_VERSION,
+    schemaVersion: REPLAY_R1_SCHEMA_VERSION,
+    replayVersion: REPLAY_R1_SCHEMA_VERSION,
     contract: REPLAY_R1_CONTRACT_ID,
     replayId,
     eventOrderingPolicy: REPLAY_ORDERING_POLICY,
@@ -136,6 +145,8 @@ export function buildReplayArtifactsFromSource(source = {}, options = {}) {
   const replayCheckpoints = {
     type: REPLAY_ARTIFACT_TYPES.checkpoints,
     version: REPLAY_R1_SCHEMA_VERSION,
+    schemaVersion: REPLAY_R1_SCHEMA_VERSION,
+    replayVersion: REPLAY_R1_SCHEMA_VERSION,
     contract: REPLAY_R1_CONTRACT_ID,
     replayId,
     digestAlgorithm: REPLAY_DIGEST_ALGORITHM,
@@ -174,15 +185,25 @@ export function buildReplayCheckpoints({ replayId, events, initialState, termina
       scoreSnapshot,
       missionOutcomeStatus
     });
+    const reasons = [...(reasonsByTick.get(tick) ?? [])].sort();
     return {
       type: REPLAY_ARTIFACT_TYPES.checkpoint,
       version: REPLAY_R1_SCHEMA_VERSION,
+      schemaVersion: REPLAY_R1_SCHEMA_VERSION,
       checkpointId: `${replayId}-checkpoint-${String(index).padStart(3, '0')}`,
       tick,
       timeSeconds: tick * dt,
-      reasons: [...(reasonsByTick.get(tick) ?? [])].sort(),
+      reason: reasons[0] ?? 'periodic',
+      reasons,
+      eventCursor: events.filter((event) => Number(event.tick) <= tick).length,
       publicState,
-      digest: publicReplayStateDigest(publicState, numericPolicy)
+      agentStates: publicState.agentStates ?? publicState.vehicles ?? {},
+      objectiveState: { activeObjectives: publicState.activeObjectives ?? [] },
+      digest: publicReplayStateDigest(publicState, numericPolicy),
+      digestAlgorithmId: REPLAY_DIGEST_ALGORITHM,
+      digestVersion: 'replay-digest-v1',
+      quantization: numericPolicy.id ?? null,
+      publicSafe: true
     };
   });
 }
@@ -192,6 +213,12 @@ export function publicReplayStateAtTick(events = [], tick = 0, options = {}) {
   const state = JSON.parse(JSON.stringify(options.initialState ?? { vehicles: {}, activeObjectives: [], observationSummary: { count: 0 } }));
   state.tick = tick;
   state.timeSeconds = tick * dt;
+  state.agentStates ??= state.vehicles ?? {};
+  state.vehicles ??= state.agentStates ?? {};
+  state.globalState ??= { missionStatus: state.completed ? 'completed' : 'active' };
+  state.agentStates ??= state.vehicles ?? {};
+  state.vehicles ??= state.agentStates ?? {};
+  state.globalState ??= { missionStatus: state.completed ? 'completed' : 'active' };
   state.observationSummary ??= { count: 0, byAgent: {}, lastObservationId: null, meanObservedValue: null };
   state.surfacingCount ??= 0;
   state.objectiveTransitionCount ??= 0;
@@ -216,6 +243,7 @@ export function publicReplayStateAtTick(events = [], tick = 0, options = {}) {
         status: payload.status ?? 'underway',
         lastUpdateTick: event.tick
       });
+      state.agentStates = { ...(state.agentStates ?? {}), [event.agentId]: state.vehicles[event.agentId] };
     } else if (event.phase === 'objective') {
       state.activeObjectives = [compactObject({ objectiveId: payload.objectiveId ?? null, label: payload.label ?? payload.objectiveLabel ?? null, surfacingIndex: payload.surfacingIndex ?? null })];
       state.objectiveTransitionCount = (state.objectiveTransitionCount ?? 0) + 1;
@@ -337,6 +365,7 @@ function replayEvent({ replayId, rawIndex, tick, timeSeconds, phase, eventType, 
   return compactObject({
     type: REPLAY_ARTIFACT_TYPES.event,
     version: REPLAY_R1_SCHEMA_VERSION,
+    schemaVersion: REPLAY_R1_SCHEMA_VERSION,
     replayId,
     rawSequence: rawIndex,
     sequence: rawIndex,
@@ -346,6 +375,7 @@ function replayEvent({ replayId, rawIndex, tick, timeSeconds, phase, eventType, 
     eventType,
     agentId,
     visibilityTier: 'publicScenario',
+    publicSafe: true,
     payload: sanitizePublicObject(payload)
   });
 }
@@ -371,6 +401,8 @@ function buildInitialPublicState({ missionConfig, tracks, observations, agentIds
     timeSeconds: 0,
     dtSeconds: dt,
     vehicles,
+    agentStates: vehicles,
+    globalState: { missionStatus: 'active' },
     activeObjectives: [],
     observationSummary: { count: observations.filter((row) => finiteNumber(row.timeSeconds, 0) <= 0).length, byAgent: {}, lastObservationId: null, meanObservedValue: null },
     surfacingCount: 0,
@@ -487,9 +519,11 @@ function buildInitialReplayAlignmentReport({ manifest, replayEvents, replayCheck
   return {
     type: REPLAY_ARTIFACT_TYPES.alignmentReport,
     version: REPLAY_R1_SCHEMA_VERSION,
+    schemaVersion: REPLAY_R1_SCHEMA_VERSION,
+    replayVersion: REPLAY_R1_SCHEMA_VERSION,
     contract: REPLAY_R1_CONTRACT_ID,
     replayId: manifest.replayId,
-    compatibilityStatus: 'PASS',
+    compatibilityStatus: 'current',
     status: 'PASS',
     replayMode: manifest.replayMode,
     firstDivergence: null,
@@ -499,7 +533,19 @@ function buildInitialReplayAlignmentReport({ manifest, replayEvents, replayCheck
       { id: 'generated-checkpoint-digests', ok: true, detail: replayCheckpoints.checkpoints.length },
       { id: 'score-shadow-only', ok: scoreSnapshot.publicScore.changesOfficialBrowserScoring === false }
     ],
+    checkedArtifactTypes: ['replayManifest', 'replayEvents', 'replayCheckpoints'],
+    eventCount: replayEvents.events.length,
+    checkpointCount: replayCheckpoints.checkpoints.length,
+    passedChecks: ['generated-events-canonical', 'generated-checkpoint-digests', 'score-shadow-only'],
+    warningCount: 0,
+    failureCount: 0,
+    issues: [],
+    digestSummary: { checked: replayCheckpoints.checkpoints.length, passed: replayCheckpoints.checkpoints.length, failed: 0, algorithm: REPLAY_DIGEST_ALGORITHM },
+    orderingSummary: { checked: 1, passed: true, policy: replayEvents.eventOrderingPolicy?.id ?? 'replay-r1-canonical-event-order' },
+    publicSafetySummary: { checked: 1, passed: true, hiddenTruthLeak: false },
+    compatibilitySummary: { status: 'PASS', compatibility: 'current', schemaVersion: REPLAY_R1_SCHEMA_VERSION, replayMode: manifest.replayMode },
     summary: {
+      status: 'PASS',
       eventCount: replayEvents.events.length,
       checkpointCount: replayCheckpoints.checkpoints.length,
       terminalDigest: replayCheckpoints.summary.terminalDigest,
@@ -606,3 +652,6 @@ function compactObject(value) {
   }
   return result;
 }
+
+
+

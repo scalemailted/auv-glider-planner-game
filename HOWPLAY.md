@@ -1097,3 +1097,7 @@ For headless benchmark inspection, run the Node/OceanBox-JS CLI with `--cost-gra
 SCORE-R1 is shadow benchmark scoring. It does not replace official browser scoring, Challenge Mode scoring, leaderboard ranking, or existing debrief totals. Profiles are objective-aware and versioned; missing data is explicit; regret requires a compatible reference, and best-known attempt does not mean optimal. The Node/OceanBox-JS runtime remains the canonical headless runtime. Python/Colab analyzes exported artifacts or invokes Node; no Python simulator, planner, optimizer, MARL/RL, operational certification, SeaExplorer validation, or calibrated ocean forecast is added.
 
 See [Mission Scoring and Regret](docs/mission_scoring_and_regret.md) for the SCORE-R1 artifact contract and boundaries.
+
+### Replay Integrity Fixtures
+
+The Headless Bundle Viewer includes Load Example Replay, Load Tampered Replay, and Load Multi-Agent Replay actions. Tampered fixtures are intentionally invalid and show: "This replay failed integrity verification. Playback results should not be treated as trustworthy." Multi-agent replay is contract-only playback for public recorded state; it is not fleet planning or MARL.

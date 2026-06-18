@@ -1,0 +1,30 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "schemaVersion": "1.0",
+  "type": "object",
+  "describes": "anchor.headless.replay-manifest",
+  "currentReplayVersion": "replay-r1.0",
+  "oldestSupportedReplayVersion": "replay-r1.0",
+  "additionalProperties": true,
+  "required": ["type", "schemaVersion", "replayVersion", "missionId", "scenarioId", "episodeId", "seed", "seedSubstreams", "timingModel", "timestepSeconds", "initialPublicState", "featureFlags", "replayMode", "publicBoundary", "eventOrderingPolicy", "checkpointPolicy", "terminalReason", "bundleSchemaVersion", "scoringSchemaVersion"],
+  "properties": {
+    "type": { "const": "anchor.headless.replay-manifest" },
+    "schemaVersion": { "type": "string" },
+    "version": { "type": "string", "description": "REPLAY-R1 alias accepted for backward compatibility." },
+    "replayVersion": { "type": "string", "enum": ["replay-r1.0"] },
+    "contract": { "const": "REPLAY-R1" },
+    "replayMode": { "enum": ["publicObservationPlayback", "protectedRefereeReplayReserved", "authoritativeResimulationReserved", "refereeInternalReplay", "authoritativeSimulationReplay"] },
+    "publicObservationPlaybackImplemented": { "const": true },
+    "reservedReplayModesImplemented": { "const": false },
+    "timingModel": { "type": "object", "additionalProperties": true, "required": ["type", "dtSeconds"] },
+    "timestepSeconds": { "type": "number", "exclusiveMinimum": 0 },
+    "initialPublicState": { "type": "object", "additionalProperties": true },
+    "featureFlags": { "type": "object", "additionalProperties": true },
+    "eventOrderingPolicy": { "type": "object", "additionalProperties": true },
+    "checkpointPolicy": { "type": "object", "additionalProperties": true },
+    "publicBoundary": { "type": "string" },
+    "changesOfficialBrowserScoring": { "const": false },
+    "hiddenTruthIncluded": { "const": false }
+  },
+  "notes": "Reserved replay modes are documented but not implemented for public playback. Older REPLAY-R1 artifacts may use version, deterministicSubstreams, initialState, and terminationReason aliases."
+}

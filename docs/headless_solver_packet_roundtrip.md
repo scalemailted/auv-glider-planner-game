@@ -85,3 +85,7 @@ Roundtrip commands accept the same `--cost-graph` and `--cost-matrix-format` opt
 SCORE-R1 is shadow benchmark scoring. It does not replace official browser scoring, Challenge Mode scoring, leaderboard ranking, or existing debrief totals. Profiles are objective-aware and versioned; missing data is explicit; regret requires a compatible reference, and best-known attempt does not mean optimal. The Node/OceanBox-JS runtime remains the canonical headless runtime. Python/Colab analyzes exported artifacts or invokes Node; no Python simulator, planner, optimizer, MARL/RL, operational certification, SeaExplorer validation, or calibrated ocean forecast is added.
 
 See [Mission Scoring and Regret](mission_scoring_and_regret.md) for the SCORE-R1 artifact contract and boundaries.
+
+## H4.1 Replay Roundtrip Verification
+
+Roundtrip bundles can be verified with `node tools/js/headless_oceanbox.mjs verify-replay --bundle <bundle.json> --report <report.json>`. H4.1 verification emits stable issue codes and remains public-state playback only; it does not add a solver, planner, Python simulator, or authoritative hidden-truth resimulation.

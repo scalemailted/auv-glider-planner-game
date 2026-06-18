@@ -1,4 +1,4 @@
-export const REPLAY_EVENT_PHASE_ORDER = Object.freeze([
+﻿export const REPLAY_EVENT_PHASE_ORDER = Object.freeze([
   'initial',
   'command',
   'diveProfile',
@@ -27,7 +27,8 @@ export function canonicalReplayEventSortKey(event = {}) {
     phaseRank: replayPhaseRank(event.phase),
     eventType: String(event.eventType ?? ''),
     agentId: String(event.agentId ?? ''),
-    sequence: finiteInteger(event.sequence, Number.MAX_SAFE_INTEGER)
+    sequence: finiteInteger(event.sequence, Number.MAX_SAFE_INTEGER),
+    eventId: String(event.eventId ?? '')
   };
 }
 
@@ -37,9 +38,9 @@ export function canonicalReplayEventCompare(a = {}, b = {}) {
   return compareNumber(ak.tick, bk.tick)
     || compareNumber(ak.timeSeconds, bk.timeSeconds)
     || compareNumber(ak.phaseRank, bk.phaseRank)
-    || compareString(ak.eventType, bk.eventType)
     || compareString(ak.agentId, bk.agentId)
-    || compareNumber(ak.sequence, bk.sequence);
+    || compareNumber(ak.sequence, bk.sequence)
+    || compareString(ak.eventId, bk.eventId);
 }
 
 export function sortReplayEvents(events = []) {
@@ -91,3 +92,5 @@ function finiteNumber(value, fallback) {
   const number = Number(value);
   return Number.isFinite(number) ? number : fallback;
 }
+
+

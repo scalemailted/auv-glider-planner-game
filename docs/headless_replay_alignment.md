@@ -76,3 +76,7 @@ The example preserves this objective sequence:
 The Headless Bundle Viewer loads REPLAY-R1 artifacts from combined or separate bundle files. It shows replay mode/fidelity/status, event/checkpoint counts, terminal digest, objective transitions, and controls for play/pause, event step, start checkpoint, next checkpoint, and terminal checkpoint.
 
 The viewer labels public bundles as public observation playback. It does not claim authoritative hidden-truth resimulation for sanitized bundles.
+
+## H4.1 Schema And Integrity Hardening
+
+H4.1 adds formal replay schema files, runtime schema validation, explicit compatibility policy, structured integrity issue codes, compact tampered fixtures, and a contract-only multi-agent replay fixture. `verify-replay` exits nonzero on `FAIL`; `--strict` also exits nonzero on `WARN`. Public verification checks recorded public artifacts only and does not perform hidden-state resimulation or physics replay. See `docs/replay_artifact_schemas.md`.

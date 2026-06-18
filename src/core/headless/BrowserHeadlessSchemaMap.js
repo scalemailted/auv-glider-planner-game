@@ -68,6 +68,7 @@ const BROWSER_HEADLESS_MAP = Object.freeze([
   entry('anchor.science.discovery-update', 'anchor.headless.science-diagnostics', 'ready', true, 'publicScenario', [], 'P9 science discovery update embedded in science diagnostics.'),
   entry('anchor.science.discovery-state', 'anchor.headless.science-diagnostics', 'ready', true, 'publicScenario', [], 'P9 science discovery state embedded in science diagnostics.'),
   entry('anchor.browser.headless-roundtrip-summary', 'anchor.headless.solver-roundtrip-report', 'ready', true, 'publicScenario', [], 'Browser summary artifact for H3.1 roundtrip inspection.'),
+  entry('anchor.browser.headless-replay-summary', 'anchor.headless.replay-alignment-report', 'ready', true, 'publicScenario', [], 'Compact H4.1 browser replay summary with integrity status, cursor, agent ids, and boundary flags.'),
   entry('anchor.challenge', 'anchor.headless.mission-config', 'partial', true, 'publicScenario', ['challenge includes browser replay/scoring metadata'], 'Extract world, gliders, visible fields, and rules.'),
   entry('anchor.oracleDataset', 'anchor.headless.bundle', 'partial', false, 'hiddenTruth', ['contains hidden truth and training labels'], 'Require explicit oracle/debug visibility in H1 bundle export.'),
   entry('anchor.flow-field', 'anchor.headless.field-pack', 'partial', false, 'forecastOnly', ['import format not demo export'], 'Convert frame currents into F_u/F_v descriptors.'),

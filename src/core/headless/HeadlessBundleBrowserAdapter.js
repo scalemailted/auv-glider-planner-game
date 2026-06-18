@@ -1,4 +1,4 @@
-import { validateHeadlessBundle } from './HeadlessBundleValidation.js';
+﻿import { validateHeadlessBundle } from './HeadlessBundleValidation.js';
 import { buildHeadlessBundleViewModel, headlessBundleBathymetrySummary, headlessBundleDepthLayerPrioritySummary, headlessBundleMissionGeometrySummary, headlessBundleMotionSummary, headlessBundleMotionCostGraphSummary, headlessBundleMissionFeasibilitySummary, headlessBundleMissionOutcomeSummary, headlessBundleObservationSummary, headlessBundleReplaySummary, headlessBundleRoundtripSummary, headlessBundleScienceDiagnosisSummary, headlessBundleScoreSummary, headlessBundleWaterColumnSummary, headlessBundleTrackSummary, headlessBundleVisibilitySummary } from './HeadlessBundleViewModel.js';
 import { BROWSER_HEADLESS_ROUNDTRIP_SUMMARY_TYPE, HEADLESS_SOLVER_ROUNDTRIP_REPORT_TYPE } from './HeadlessRoundtripTypes.js';
 
@@ -83,7 +83,48 @@ export function buildBrowserHeadlessRoundtripSummaryArtifact(bundle = {}) {
   };
 }
 export function buildBrowserHeadlessReplayDescriptor(bundle = {}) {
-  return { type: 'anchor.browser.headless-replay-descriptor', ...headlessBundleReplaySummary(bundle), officialBrowserReplay: false };
+  return buildBrowserHeadlessReplaySummaryArtifact(bundle);
+}
+
+export function buildBrowserHeadlessReplaySummaryArtifact(bundle = {}, playback = null) {
+  const replay = headlessBundleReplaySummary(bundle);
+  const summary = {
+    type: 'anchor.browser.headless-replay-summary',
+    version: HEADLESS_BUNDLE_BROWSER_ADAPTER_VERSION,
+    replayId: bundle.replayManifest?.replayId ?? null,
+    missionId: bundle.replayManifest?.missionId ?? bundle.manifest?.missionId ?? null,
+    scenarioId: bundle.replayManifest?.scenarioId ?? bundle.manifest?.scenarioId ?? null,
+    episodeId: bundle.replayManifest?.episodeId ?? bundle.manifest?.episodeId ?? null,
+    seed: replay.seed ?? null,
+    replayMode: replay.replayMode ?? null,
+    replayVersion: replay.replayVersion ?? replay.version ?? null,
+    replaySchemaVersion: replay.schemaVersion ?? replay.version ?? null,
+    schemaVersion: replay.schemaVersion ?? null,
+    replayVersion: replay.replayVersion ?? replay.version ?? null,
+    eventCount: replay.eventCount ?? 0,
+    checkpointCount: replay.checkpointCount ?? 0,
+    agentIds: replay.agentIds ?? [],
+    integrityStatus: replay.integrityStatus ?? null,
+    warningCodes: replay.warningCodes ?? [],
+    failureCodes: replay.failureCodes ?? [],
+    currentPlaybackCursor: playback ? { eventIndex: playback.currentEventIndex ?? playback.eventIndex ?? -1, checkpointIndex: playback.currentCheckpointIndex ?? playback.checkpointIndex ?? -1, currentEventId: playback.currentEventId ?? null, currentCheckpointId: playback.currentCheckpointId ?? null } : null,
+    selectedAgentId: playback?.selectedAgentId ?? null,
+    objectiveTransitionCount: replay.objectiveTransitionCount ?? 0,
+    surfacingEventCount: replay.surfacingCount ?? 0,
+    terminalReason: replay.terminalReason ?? null,
+    publicSafetyPassed: replay.publicSafetyPassed === true,
+    officialBrowserReplay: false,
+    usesAuthoritativeHiddenStateReplay: false,
+    usesHiddenTruthResimulation: false,
+    changesOfficialBrowserScoring: false,
+    usesNewPlanner: false,
+    usesRouteOptimizer: false,
+    usesRL: false,
+    usesMARL: false,
+    usesPythonSimulator: false,
+    boundary: 'Compact browser replay summary. It excludes full event arrays and hidden truth.'
+  };
+  return summary;
 }
 
 export function buildBrowserHeadlessObservationTable(bundle = {}) {
@@ -143,20 +184,45 @@ export function buildBrowserHeadlessBundleDebugObject(bundle = {}) {
     roundtripExecutionStatus: roundtrip.executionStatus ?? null,
     roundtripVisibilityRisk: roundtrip.visibilityRisk ?? null,
     roundtripSummaryExportAvailable: Boolean(bundle.roundtripReport),
+    hasReplayManifest: Boolean(bundle.replayManifest),
+    hasReplayEvents: Boolean(bundle.replayEvents),
+    hasReplayCheckpoints: Boolean(bundle.replayCheckpoints),
+    hasReplayAlignmentReport: Boolean(bundle.replayAlignmentReport),
     replayLoaded: replay.present === true,
     replayMode: replay.replayMode ?? null,
+    replayVersion: replay.replayVersion ?? replay.version ?? null,
+    replaySchemaVersion: replay.schemaVersion ?? replay.version ?? null,
     replayFidelity: replay.replayFidelity ?? null,
     replayCompatibilityStatus: replay.compatibilityStatus ?? null,
     replayAlignmentStatus: replay.alignmentStatus ?? null,
+    replayIntegrityStatus: replay.integrityStatus ?? null,
+    replayWarningCount: replay.warningCount ?? 0,
+    replayFailureCount: replay.failureCount ?? 0,
+    replayFailureCodes: replay.failureCodes ?? [],
     replayEventCount: replay.eventCount ?? 0,
     replayCheckpointCount: replay.checkpointCount ?? 0,
     replayCurrentTick: replayPlayback?.currentTick ?? null,
+    replayCurrentEventIndex: replayPlayback?.currentEventIndex ?? -1,
+    replayCurrentEventId: replayPlayback?.currentEventId ?? null,
+    replayCurrentCheckpointId: replayPlayback?.currentCheckpointId ?? null,
     replayTerminalDigest: replay.terminalDigest ?? null,
     replayObjectiveTransitionCount: replay.objectiveTransitionCount ?? 0,
     replaySurfacingCount: replay.surfacingCount ?? 0,
     replayHiddenTruthIncluded: replay.hiddenTruthIncluded === true,
     replayPublicSafe: replay.publicSafe !== false,
+    replayDigestChecksPassed: replay.digestChecksPassed === true,
+    replayOrderingChecksPassed: replay.orderingChecksPassed === true,
+    replayPublicSafetyPassed: replay.publicSafetyPassed !== false,
+    replayAgentCount: replay.agentCount ?? 0,
+    replayAgentIds: replay.agentIds ?? [],
+    replaySelectedAgentId: replayPlayback?.selectedAgentId ?? null,
+    replayCurrentEventAgentId: replayPlayback?.currentEventAgentId ?? null,
+    replayIsIntentionallyInvalidFixture: replay.intentionallyInvalid === true,
     replayChangesOfficialBrowserScoring: false,
+    usesAuthoritativeHiddenStateReplay: false,
+    usesHiddenTruthResimulation: false,
+    usesRouteOptimizer: false,
+    usesRL: false,
     hasMotionTrajectory: motion.present === true,
     hasMotionDiagnostics: Boolean(bundle.motionDiagnostics ?? bundle.episode?.motionDiagnostics ?? bundle.episode?.motionTrajectory?.motionDiagnostics),
     motionModelId: motion.motionModelId ?? null,
@@ -238,6 +304,7 @@ export function buildBrowserHeadlessBundleDebugObject(bundle = {}) {
     usesMARL: false
   };
 }
+
 
 
 

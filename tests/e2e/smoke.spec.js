@@ -614,11 +614,12 @@ test('Headless Bundle Viewer opens from Simulation Lab and exports browser summa
 
   await expect(page.locator('#mission-console [data-action="load-example-replay"]')).toBeVisible();
   await page.locator('#mission-console [data-action="load-example-replay"]').click();
+  await expect(page.locator('#mission-console [data-headless-replay-panel]')).toContainText('Replay Integrity');
   await expect(page.locator('#mission-console [data-headless-replay-panel]')).toContainText('publicObservationPlayback');
   await expect(page.locator('#mission-console [data-headless-replay-panel]')).toContainText('Step Event');
   await expect(page.locator('#mission-console [data-headless-replay-panel]')).toContainText('Objective Transitions');
-  await expect(page.locator('#mission-console [data-headless-replay-panel]')).toContainText('Dive 1: reconnaissance');
   await expect.poll(() => page.evaluate(() => window.ANCHOR_HEADLESS_BUNDLE_DEBUG?.replayLoaded)).toBe(true);
+  await expect.poll(() => page.evaluate(() => window.ANCHOR_HEADLESS_BUNDLE_DEBUG?.replayIntegrityStatus)).toBe('PASS');
   await expect.poll(() => page.evaluate(() => window.ANCHOR_HEADLESS_BUNDLE_DEBUG?.replayMode)).toBe('publicObservationPlayback');
   await expect.poll(() => page.evaluate(() => window.ANCHOR_HEADLESS_BUNDLE_DEBUG?.replayCheckpointCount > 0)).toBe(true);
   await expect.poll(() => page.evaluate(() => window.ANCHOR_HEADLESS_BUNDLE_DEBUG?.replayEventCount > 0)).toBe(true);
@@ -626,12 +627,41 @@ test('Headless Bundle Viewer opens from Simulation Lab and exports browser summa
   await expect.poll(() => page.evaluate(() => window.ANCHOR_HEADLESS_BUNDLE_DEBUG?.replayPublicSafe)).toBe(true);
   await expect.poll(() => page.evaluate(() => window.ANCHOR_HEADLESS_BUNDLE_DEBUG?.replayChangesOfficialBrowserScoring)).toBe(false);
   const replayStartTick = await page.evaluate(() => window.ANCHOR_HEADLESS_BUNDLE_DEBUG?.replayCurrentTick ?? 0);
+  const replayStartEventId = await page.evaluate(() => window.ANCHOR_HEADLESS_BUNDLE_DEBUG?.replayCurrentEventId ?? null);
   await page.locator('#mission-console [data-action="replay-step"]').click();
   await expect.poll(() => page.evaluate(() => window.ANCHOR_HEADLESS_BUNDLE_DEBUG?.replayCurrentEventIndex >= 1)).toBe(true);
+  await expect.poll(() => page.evaluate((startEventId) => window.ANCHOR_HEADLESS_BUNDLE_DEBUG?.replayCurrentEventId !== startEventId, replayStartEventId)).toBe(true);
   await page.locator('#mission-console [data-action="replay-jump-terminal"]').click();
   await expect.poll(() => page.evaluate(() => window.ANCHOR_HEADLESS_BUNDLE_DEBUG?.replayCurrentTick > 0)).toBe(true);
+  await expect.poll(() => page.evaluate(() => Boolean(window.ANCHOR_HEADLESS_BUNDLE_DEBUG?.replayCurrentCheckpointId))).toBe(true);
   await expect.poll(() => page.evaluate(() => window.ANCHOR_HEADLESS_BUNDLE_DEBUG?.replayCurrentTick >= window.ANCHOR_HEADLESS_BUNDLE_DEBUG?.replayPlayback?.currentTick)).toBe(true);
   expect(await page.evaluate(() => window.ANCHOR_HEADLESS_BUNDLE_DEBUG?.replayCurrentTick)).toBeGreaterThanOrEqual(replayStartTick);
+
+  await expect(page.locator('#mission-console [data-action="load-tampered-replay"]')).toBeVisible();
+  await page.locator('#mission-console [data-action="load-tampered-replay"]').click();
+  await expect(page.locator('#mission-console [data-headless-replay-panel]')).toContainText('This replay failed integrity verification. Playback results should not be treated as trustworthy.');
+  await expect(page.locator('#mission-console [data-headless-replay-panel]')).toContainText('REPLAY_CHECKPOINT_DIGEST_MISMATCH');
+  await expect.poll(() => page.evaluate(() => window.ANCHOR_HEADLESS_BUNDLE_DEBUG?.replayIntegrityStatus)).toBe('FAIL');
+  await expect.poll(() => page.evaluate(() => window.ANCHOR_HEADLESS_BUNDLE_DEBUG?.replayFailureCodes.includes('REPLAY_CHECKPOINT_DIGEST_MISMATCH'))).toBe(true);
+  await expect.poll(() => page.evaluate(() => window.ANCHOR_HEADLESS_BUNDLE_DEBUG?.usesAuthoritativeHiddenStateReplay)).toBe(false);
+  await expect.poll(() => page.evaluate(() => window.ANCHOR_HEADLESS_BUNDLE_DEBUG?.usesHiddenTruthResimulation)).toBe(false);
+  await expect.poll(() => page.evaluate(() => window.ANCHOR_HEADLESS_BUNDLE_DEBUG?.changesOfficialBrowserScoring)).toBe(false);
+  await expect.poll(() => page.evaluate(() => window.ANCHOR_HEADLESS_BUNDLE_DEBUG?.usesNewPlanner)).toBe(false);
+  await expect.poll(() => page.evaluate(() => window.ANCHOR_HEADLESS_BUNDLE_DEBUG?.usesRouteOptimizer)).toBe(false);
+  await expect.poll(() => page.evaluate(() => window.ANCHOR_HEADLESS_BUNDLE_DEBUG?.usesRL)).toBe(false);
+  await expect.poll(() => page.evaluate(() => window.ANCHOR_HEADLESS_BUNDLE_DEBUG?.usesMARL)).toBe(false);
+
+  await expect(page.locator('#mission-console [data-action="load-multi-agent-replay"]')).toBeVisible();
+  await page.locator('#mission-console [data-action="load-multi-agent-replay"]').click();
+  await expect(page.locator('#mission-console [data-headless-replay-panel]')).toContainText('Agent Count');
+  await expect(page.locator('#mission-console [data-headless-replay-panel]')).toContainText('glider-alpha');
+  await expect(page.locator('#mission-console [data-headless-replay-panel]')).toContainText('glider-bravo');
+  await expect(page.locator('#mission-console [data-headless-replay-panel]')).toContainText('Mission / Global');
+  await expect.poll(() => page.evaluate(() => window.ANCHOR_HEADLESS_BUNDLE_DEBUG?.replayAgentCount)).toBe(2);
+  await page.locator('#mission-console [data-replay-agent-filter="glider-alpha"]').click();
+  await expect.poll(() => page.evaluate(() => window.ANCHOR_HEADLESS_BUNDLE_DEBUG?.replaySelectedAgentId)).toBe('glider-alpha');
+  await page.locator('#mission-console [data-action="replay-step"]').click();
+  await expect.poll(() => page.evaluate(() => window.ANCHOR_HEADLESS_BUNDLE_DEBUG?.replayCurrentEventAgentId)).toBe('glider-alpha');
 
   await expect(page.locator('#mission-console [data-action="load-example-cost-graph"]')).toBeVisible();
   await page.locator('#mission-console [data-action="load-example-cost-graph"]').click();

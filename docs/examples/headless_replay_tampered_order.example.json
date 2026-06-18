@@ -1,0 +1,3228 @@
+{
+  "type": "anchor.headless.bundle",
+  "version": "headless-combined-bundle-h2",
+  "manifest": {
+    "type": "anchor.headless.manifest",
+    "version": "headless-bundle-manifest-h0",
+    "bundleType": "h4.1-replay-fixture",
+    "createdAt": "2026-06-18T00:00:00.000Z",
+    "scenarioId": "h4-1-public-replay-fixture",
+    "missionId": "h4-1-replay-contract-mission",
+    "episodeId": "h4-1-multi-agent-replay-episode",
+    "seed": "h4-1-multi-agent-replay-seed",
+    "runtimeTarget": "nodeHeadless",
+    "visibilityTier": "publicScenario",
+    "files": [
+      {
+        "path": "manifest.json",
+        "role": "manifest",
+        "mediaType": "application/json",
+        "schemaType": "anchor.headless.bundle-artifact",
+        "visibilityTier": "publicScenario"
+      },
+      {
+        "path": "missionConfig.json",
+        "role": "missionConfig",
+        "mediaType": "application/json",
+        "schemaType": "anchor.headless.bundle-artifact",
+        "visibilityTier": "publicScenario"
+      },
+      {
+        "path": "visibleFields.json",
+        "role": "visibleFields",
+        "mediaType": "application/json",
+        "schemaType": "anchor.headless.bundle-artifact",
+        "visibilityTier": "publicScenario"
+      },
+      {
+        "path": "observations.json",
+        "role": "observations",
+        "mediaType": "application/json",
+        "schemaType": "anchor.headless.bundle-artifact",
+        "visibilityTier": "publicScenario"
+      },
+      {
+        "path": "gliderTracks.json",
+        "role": "gliderTracks",
+        "mediaType": "application/json",
+        "schemaType": "anchor.headless.bundle-artifact",
+        "visibilityTier": "publicScenario"
+      },
+      {
+        "path": "scoreReport.json",
+        "role": "scoreReport",
+        "mediaType": "application/json",
+        "schemaType": "anchor.headless.bundle-artifact",
+        "visibilityTier": "publicScenario"
+      },
+      {
+        "path": "replayManifest.json",
+        "role": "replayManifest",
+        "mediaType": "application/json",
+        "schemaType": "anchor.headless.replay-manifest",
+        "visibilityTier": "publicScenario"
+      },
+      {
+        "path": "replayEvents.json",
+        "role": "replayEvents",
+        "mediaType": "application/json",
+        "schemaType": "anchor.headless.replay-events",
+        "visibilityTier": "publicScenario"
+      },
+      {
+        "path": "replayCheckpoints.json",
+        "role": "replayCheckpoints",
+        "mediaType": "application/json",
+        "schemaType": "anchor.headless.replay-checkpoints",
+        "visibilityTier": "publicScenario"
+      },
+      {
+        "path": "replayAlignmentReport.json",
+        "role": "replayAlignmentReport",
+        "mediaType": "application/json",
+        "schemaType": "anchor.headless.replay-alignment-report",
+        "visibilityTier": "publicScenario"
+      }
+    ],
+    "notes": [
+      "Replay fixture declares 2 public agent(s). Hidden truth export disabled; hidden_fields.json omitted."
+    ]
+  },
+  "missionConfig": {
+    "type": "anchor.headless.mission-config",
+    "version": "h4.1-fixture",
+    "missionId": "h4-1-replay-contract-mission",
+    "scenarioId": "h4-1-public-replay-fixture",
+    "seed": "h4-1-multi-agent-replay-seed",
+    "world": {
+      "width": 8,
+      "height": 6,
+      "timeStepSeconds": 60
+    },
+    "gliders": [
+      {
+        "id": "glider-alpha",
+        "start": {
+          "x": 0,
+          "y": 0,
+          "z": 0
+        }
+      },
+      {
+        "id": "glider-bravo",
+        "start": {
+          "x": 2,
+          "y": 0,
+          "z": 0
+        }
+      }
+    ]
+  },
+  "visibleFields": {
+    "type": "anchor.headless.field-pack",
+    "version": "h4.1-fixture",
+    "fieldIds": [
+      "E_forecast"
+    ],
+    "fields": {
+      "E_forecast": [
+        [
+          [
+            0.1,
+            0.2
+          ],
+          [
+            0.3,
+            0.4
+          ]
+        ]
+      ]
+    },
+    "fieldVisibility": {
+      "E_forecast": "publicScenario"
+    }
+  },
+  "observations": [
+    {
+      "observationId": "obs-glider-alpha",
+      "timeSeconds": 180,
+      "gliderId": "glider-alpha",
+      "x": 1,
+      "y": 1,
+      "observedValue": 0.42,
+      "surprise": 0.1
+    },
+    {
+      "observationId": "obs-glider-bravo",
+      "timeSeconds": 180,
+      "gliderId": "glider-bravo",
+      "x": 3,
+      "y": 1,
+      "observedValue": 0.47,
+      "surprise": 0.1
+    }
+  ],
+  "gliderTracks": [
+    {
+      "timeSeconds": 120,
+      "gliderId": "glider-alpha",
+      "x": 1,
+      "y": 1,
+      "zIndex": 0,
+      "energyUsedIncrement": 0.2
+    },
+    {
+      "timeSeconds": 120,
+      "gliderId": "glider-bravo",
+      "x": 3,
+      "y": 1,
+      "zIndex": 0,
+      "energyUsedIncrement": 0.2
+    }
+  ],
+  "scoreReport": {
+    "type": "anchor.headless.score-report",
+    "version": "h4.1-fixture",
+    "finalScore": 77,
+    "notBrowserOfficialScoring": true
+  },
+  "replayManifest": {
+    "type": "anchor.headless.replay-manifest",
+    "version": "replay-r1.0",
+    "schemaVersion": "replay-r1.0",
+    "replayVersion": "replay-r1.0",
+    "contract": "REPLAY-R1",
+    "replayId": "h4-1-multi-agent-replay",
+    "replayMode": "publicObservationPlayback",
+    "replayFidelity": "publicObservationPlaybackWithCheckpointDigests",
+    "compatibilityStatus": "current",
+    "missionId": "h4-1-replay-contract-mission",
+    "scenarioId": "h4-1-public-replay-fixture",
+    "episodeId": "h4-1-multi-agent-replay-episode",
+    "seed": "h4-1-multi-agent-replay-seed",
+    "seedSubstreams": {
+      "rootSeed": "h4-1-multi-agent-replay-seed",
+      "replayUsesMathRandom": false
+    },
+    "deterministicSubstreams": {
+      "rootSeed": "h4-1-multi-agent-replay-seed",
+      "replayUsesMathRandom": false
+    },
+    "timingModel": {
+      "type": "fixedStep",
+      "dtSeconds": 60,
+      "terminalTick": 7,
+      "maxTimeSeconds": 420,
+      "wallClockAffectsSimulation": false
+    },
+    "timestepSeconds": 60,
+    "initialPublicState": {
+      "tick": 0,
+      "timeSeconds": 0,
+      "globalState": {
+        "missionStatus": "active"
+      },
+      "agentStates": {
+        "glider-alpha": {
+          "x": 0,
+          "y": 0,
+          "zIndex": 0,
+          "depthLayerId": "surface",
+          "battery": 1,
+          "energyUsed": 0,
+          "status": "initial",
+          "lastUpdateTick": 0
+        },
+        "glider-bravo": {
+          "x": 2,
+          "y": 0,
+          "zIndex": 0,
+          "depthLayerId": "surface",
+          "battery": 1,
+          "energyUsed": 0,
+          "status": "initial",
+          "lastUpdateTick": 0
+        }
+      },
+      "vehicles": {
+        "glider-alpha": {
+          "x": 0,
+          "y": 0,
+          "zIndex": 0,
+          "depthLayerId": "surface",
+          "battery": 1,
+          "energyUsed": 0,
+          "status": "initial",
+          "lastUpdateTick": 0
+        },
+        "glider-bravo": {
+          "x": 2,
+          "y": 0,
+          "zIndex": 0,
+          "depthLayerId": "surface",
+          "battery": 1,
+          "energyUsed": 0,
+          "status": "initial",
+          "lastUpdateTick": 0
+        }
+      },
+      "activeObjectives": [
+        {
+          "objectiveId": "survey-start",
+          "label": "Survey Start"
+        }
+      ],
+      "observationSummary": {
+        "count": 0,
+        "byAgent": {},
+        "lastObservationId": null,
+        "meanObservedValue": null
+      },
+      "surfacingCount": 0,
+      "objectiveTransitionCount": 0,
+      "score": null,
+      "missionOutcomeStatus": "running",
+      "completed": false
+    },
+    "initialState": {
+      "tick": 0,
+      "timeSeconds": 0,
+      "globalState": {
+        "missionStatus": "active"
+      },
+      "agentStates": {
+        "glider-alpha": {
+          "x": 0,
+          "y": 0,
+          "zIndex": 0,
+          "depthLayerId": "surface",
+          "battery": 1,
+          "energyUsed": 0,
+          "status": "initial",
+          "lastUpdateTick": 0
+        },
+        "glider-bravo": {
+          "x": 2,
+          "y": 0,
+          "zIndex": 0,
+          "depthLayerId": "surface",
+          "battery": 1,
+          "energyUsed": 0,
+          "status": "initial",
+          "lastUpdateTick": 0
+        }
+      },
+      "vehicles": {
+        "glider-alpha": {
+          "x": 0,
+          "y": 0,
+          "zIndex": 0,
+          "depthLayerId": "surface",
+          "battery": 1,
+          "energyUsed": 0,
+          "status": "initial",
+          "lastUpdateTick": 0
+        },
+        "glider-bravo": {
+          "x": 2,
+          "y": 0,
+          "zIndex": 0,
+          "depthLayerId": "surface",
+          "battery": 1,
+          "energyUsed": 0,
+          "status": "initial",
+          "lastUpdateTick": 0
+        }
+      },
+      "activeObjectives": [
+        {
+          "objectiveId": "survey-start",
+          "label": "Survey Start"
+        }
+      ],
+      "observationSummary": {
+        "count": 0,
+        "byAgent": {},
+        "lastObservationId": null,
+        "meanObservedValue": null
+      },
+      "surfacingCount": 0,
+      "objectiveTransitionCount": 0,
+      "score": null,
+      "missionOutcomeStatus": "running",
+      "completed": false
+    },
+    "agentIds": [
+      "glider-alpha",
+      "glider-bravo"
+    ],
+    "featureFlags": {
+      "multiAgentReplayContractOnly": true,
+      "officialBrowserScoringChanged": false,
+      "usesNewPlanner": false,
+      "usesRouteOptimizer": false,
+      "usesPythonSimulator": false,
+      "usesMARL": false
+    },
+    "replayModeImplemented": "publicObservationPlayback",
+    "publicObservationPlaybackImplemented": true,
+    "reservedReplayModesImplemented": false,
+    "eventOrderingPolicy": {
+      "id": "replay-r1-canonical-event-order",
+      "sortKeys": [
+        "tick",
+        "timeSeconds",
+        "phaseRank",
+        "agentId",
+        "sequence",
+        "eventId"
+      ],
+      "globalAgentSortValue": "",
+      "note": "Events are ordered by simulation tick/time, replay phase/type rank, mission-global event id (empty agent) before vehicle/agent id, explicit monotonic sequence number, then stable event id fallback."
+    },
+    "checkpointPolicy": {
+      "id": "replay-h4.1-public-checkpoints",
+      "requiredReasons": [
+        "initial",
+        "terminal"
+      ],
+      "eventCursorSemantics": "count of events consumed through checkpoint tick"
+    },
+    "numericPolicy": {
+      "id": "replay-r1-public-state-quantized-1e-6",
+      "defaultDecimalPlaces": 6,
+      "defaultEpsilon": 0.000001,
+      "fieldPolicies": {
+        "tick": {
+          "exact": true
+        },
+        "sequence": {
+          "exact": true
+        },
+        "timeSeconds": {
+          "decimalPlaces": 6,
+          "epsilon": 0.000001
+        },
+        "x": {
+          "decimalPlaces": 6,
+          "epsilon": 0.000001
+        },
+        "y": {
+          "decimalPlaces": 6,
+          "epsilon": 0.000001
+        },
+        "z": {
+          "decimalPlaces": 6,
+          "epsilon": 0.000001
+        },
+        "zIndex": {
+          "exact": true
+        },
+        "headingDegrees": {
+          "decimalPlaces": 6,
+          "epsilon": 0.000001
+        },
+        "depthMeters": {
+          "decimalPlaces": 6,
+          "epsilon": 0.000001
+        },
+        "battery": {
+          "decimalPlaces": 6,
+          "epsilon": 0.000001
+        },
+        "energyUsed": {
+          "decimalPlaces": 6,
+          "epsilon": 0.000001
+        },
+        "score": {
+          "decimalPlaces": 6,
+          "epsilon": 0.000001
+        },
+        "observedValue": {
+          "decimalPlaces": 6,
+          "epsilon": 0.000001
+        },
+        "surprise": {
+          "decimalPlaces": 6,
+          "epsilon": 0.000001
+        }
+      },
+      "note": "REPLAY-R1 compares exact identifiers and quantizes public numeric state per field; it does not use an unexplained global close-enough rule."
+    },
+    "publicBoundary": "Public replay artifacts contain recorded public state only and do not reconstruct hidden truth.",
+    "terminalReason": "fixture-complete",
+    "terminationReason": "fixture-complete",
+    "bundleSchemaVersion": "headless-combined-bundle-h2",
+    "scoringSchemaVersion": "score-r1-shadow-fixture",
+    "changesOfficialBrowserScoring": false,
+    "replayAuthoritativeForBrowserScoring": false,
+    "publicSafe": true,
+    "hiddenTruthIncluded": false,
+    "requiresHiddenTruth": false,
+    "visibilityTier": "publicScenario",
+    "multiAgentReplayContractOnly": true,
+    "notA": [
+      "not authoritative hidden-state resimulation",
+      "not route planning",
+      "not route optimization",
+      "not Python simulator",
+      "not RL/MARL",
+      "not official browser scoring"
+    ]
+  },
+  "replayEvents": {
+    "type": "anchor.headless.replay-events",
+    "version": "replay-r1.0",
+    "schemaVersion": "replay-r1.0",
+    "replayVersion": "replay-r1.0",
+    "contract": "REPLAY-R1",
+    "replayId": "h4-1-multi-agent-replay",
+    "eventOrderingPolicy": {
+      "id": "replay-r1-canonical-event-order",
+      "sortKeys": [
+        "tick",
+        "timeSeconds",
+        "phaseRank",
+        "agentId",
+        "sequence",
+        "eventId"
+      ],
+      "globalAgentSortValue": "",
+      "note": "Events are ordered by simulation tick/time, replay phase/type rank, mission-global event id (empty agent) before vehicle/agent id, explicit monotonic sequence number, then stable event id fallback."
+    },
+    "events": [
+      {
+        "type": "anchor.headless.replay-event",
+        "version": "replay-r1.0",
+        "schemaVersion": "replay-r1.0",
+        "replayId": "h4-1-multi-agent-replay",
+        "rawSequence": 1,
+        "sequence": 0,
+        "tick": 0,
+        "timeSeconds": 0,
+        "phase": "initial",
+        "eventType": "replay.initialState",
+        "agentId": null,
+        "visibilityTier": "publicScenario",
+        "publicSafe": true,
+        "payload": {
+          "tick": 0,
+          "timeSeconds": 0,
+          "globalState": {
+            "missionStatus": "active"
+          },
+          "agentStates": {
+            "glider-alpha": {
+              "x": 0,
+              "y": 0,
+              "zIndex": 0,
+              "depthLayerId": "surface",
+              "battery": 1,
+              "energyUsed": 0,
+              "status": "initial",
+              "lastUpdateTick": 0
+            },
+            "glider-bravo": {
+              "x": 2,
+              "y": 0,
+              "zIndex": 0,
+              "depthLayerId": "surface",
+              "battery": 1,
+              "energyUsed": 0,
+              "status": "initial",
+              "lastUpdateTick": 0
+            }
+          },
+          "vehicles": {
+            "glider-alpha": {
+              "x": 0,
+              "y": 0,
+              "zIndex": 0,
+              "depthLayerId": "surface",
+              "battery": 1,
+              "energyUsed": 0,
+              "status": "initial",
+              "lastUpdateTick": 0
+            },
+            "glider-bravo": {
+              "x": 2,
+              "y": 0,
+              "zIndex": 0,
+              "depthLayerId": "surface",
+              "battery": 1,
+              "energyUsed": 0,
+              "status": "initial",
+              "lastUpdateTick": 0
+            }
+          },
+          "activeObjectives": [
+            {
+              "objectiveId": "survey-start",
+              "label": "Survey Start"
+            }
+          ],
+          "observationSummary": {
+            "count": 0,
+            "byAgent": {},
+            "lastObservationId": null,
+            "meanObservedValue": null
+          },
+          "surfacingCount": 0,
+          "objectiveTransitionCount": 0,
+          "score": null,
+          "missionOutcomeStatus": "running",
+          "completed": false
+        },
+        "canonicalIndex": 0,
+        "eventId": "h4-1-multi-agent-replay-event-00000"
+      },
+      {
+        "type": "anchor.headless.replay-event",
+        "version": "replay-r1.0",
+        "schemaVersion": "replay-r1.0",
+        "replayId": "h4-1-multi-agent-replay",
+        "rawSequence": 3,
+        "sequence": 2,
+        "tick": 1,
+        "timeSeconds": 60,
+        "phase": "command",
+        "eventType": "control.target",
+        "agentId": "glider-bravo",
+        "visibilityTier": "publicScenario",
+        "publicSafe": true,
+        "payload": {
+          "target": {
+            "x": 4,
+            "y": 1
+          },
+          "note": "fixture command"
+        },
+        "canonicalIndex": 2,
+        "eventId": "h4-1-multi-agent-replay-event-00002"
+      },
+      {
+        "type": "anchor.headless.replay-event",
+        "version": "replay-r1.0",
+        "schemaVersion": "replay-r1.0",
+        "replayId": "h4-1-multi-agent-replay",
+        "rawSequence": 2,
+        "sequence": 1,
+        "tick": 1,
+        "timeSeconds": 60,
+        "phase": "command",
+        "eventType": "control.target",
+        "agentId": "glider-alpha",
+        "visibilityTier": "publicScenario",
+        "publicSafe": true,
+        "payload": {
+          "target": {
+            "x": 2,
+            "y": 1
+          },
+          "note": "fixture command"
+        },
+        "canonicalIndex": 1,
+        "eventId": "h4-1-multi-agent-replay-event-00001"
+      },
+      {
+        "type": "anchor.headless.replay-event",
+        "version": "replay-r1.0",
+        "schemaVersion": "replay-r1.0",
+        "replayId": "h4-1-multi-agent-replay",
+        "rawSequence": 4,
+        "sequence": 3,
+        "tick": 2,
+        "timeSeconds": 120,
+        "phase": "vehicleState",
+        "eventType": "vehicle.publicState",
+        "agentId": "glider-alpha",
+        "visibilityTier": "publicScenario",
+        "publicSafe": true,
+        "payload": {
+          "x": 1,
+          "y": 1,
+          "zIndex": 0,
+          "depthLayerId": "surface",
+          "battery": 0.98,
+          "energyUsed": 0.2,
+          "status": "underway"
+        },
+        "canonicalIndex": 3,
+        "eventId": "h4-1-multi-agent-replay-event-00003"
+      },
+      {
+        "type": "anchor.headless.replay-event",
+        "version": "replay-r1.0",
+        "schemaVersion": "replay-r1.0",
+        "replayId": "h4-1-multi-agent-replay",
+        "rawSequence": 5,
+        "sequence": 4,
+        "tick": 2,
+        "timeSeconds": 120,
+        "phase": "vehicleState",
+        "eventType": "vehicle.publicState",
+        "agentId": "glider-bravo",
+        "visibilityTier": "publicScenario",
+        "publicSafe": true,
+        "payload": {
+          "x": 3,
+          "y": 1,
+          "zIndex": 0,
+          "depthLayerId": "surface",
+          "battery": 0.98,
+          "energyUsed": 0.2,
+          "status": "underway"
+        },
+        "canonicalIndex": 4,
+        "eventId": "h4-1-multi-agent-replay-event-00004"
+      },
+      {
+        "type": "anchor.headless.replay-event",
+        "version": "replay-r1.0",
+        "schemaVersion": "replay-r1.0",
+        "replayId": "h4-1-multi-agent-replay",
+        "rawSequence": 6,
+        "sequence": 5,
+        "tick": 3,
+        "timeSeconds": 180,
+        "phase": "observation",
+        "eventType": "publicObservation.sample",
+        "agentId": "glider-alpha",
+        "visibilityTier": "publicScenario",
+        "publicSafe": true,
+        "payload": {
+          "observationId": "obs-glider-alpha",
+          "x": 1,
+          "y": 1,
+          "observedValue": 0.42,
+          "surprise": 0.1
+        },
+        "canonicalIndex": 5,
+        "eventId": "h4-1-multi-agent-replay-event-00005"
+      },
+      {
+        "type": "anchor.headless.replay-event",
+        "version": "replay-r1.0",
+        "schemaVersion": "replay-r1.0",
+        "replayId": "h4-1-multi-agent-replay",
+        "rawSequence": 7,
+        "sequence": 6,
+        "tick": 3,
+        "timeSeconds": 180,
+        "phase": "observation",
+        "eventType": "publicObservation.sample",
+        "agentId": "glider-bravo",
+        "visibilityTier": "publicScenario",
+        "publicSafe": true,
+        "payload": {
+          "observationId": "obs-glider-bravo",
+          "x": 3,
+          "y": 1,
+          "observedValue": 0.47,
+          "surprise": 0.1
+        },
+        "canonicalIndex": 6,
+        "eventId": "h4-1-multi-agent-replay-event-00006"
+      },
+      {
+        "type": "anchor.headless.replay-event",
+        "version": "replay-r1.0",
+        "schemaVersion": "replay-r1.0",
+        "replayId": "h4-1-multi-agent-replay",
+        "rawSequence": 8,
+        "sequence": 7,
+        "tick": 4,
+        "timeSeconds": 240,
+        "phase": "surfacing",
+        "eventType": "vehicle.surfacing",
+        "agentId": "glider-alpha",
+        "visibilityTier": "publicScenario",
+        "publicSafe": true,
+        "payload": {
+          "surfacingId": "surface-alpha",
+          "reason": "scheduled-uplink"
+        },
+        "canonicalIndex": 7,
+        "eventId": "h4-1-multi-agent-replay-event-00007"
+      },
+      {
+        "type": "anchor.headless.replay-event",
+        "version": "replay-r1.0",
+        "schemaVersion": "replay-r1.0",
+        "replayId": "h4-1-multi-agent-replay",
+        "rawSequence": 9,
+        "sequence": 8,
+        "tick": 5,
+        "timeSeconds": 300,
+        "phase": "objective",
+        "eventType": "objective.transition",
+        "agentId": null,
+        "visibilityTier": "publicScenario",
+        "publicSafe": true,
+        "payload": {
+          "objectiveId": "front-check",
+          "label": "Front Check",
+          "source": "mission-manager-fixture"
+        },
+        "canonicalIndex": 8,
+        "eventId": "h4-1-multi-agent-replay-event-00008"
+      },
+      {
+        "type": "anchor.headless.replay-event",
+        "version": "replay-r1.0",
+        "schemaVersion": "replay-r1.0",
+        "replayId": "h4-1-multi-agent-replay",
+        "rawSequence": 10,
+        "sequence": 9,
+        "tick": 6,
+        "timeSeconds": 360,
+        "phase": "score",
+        "eventType": "score.publicSummary",
+        "agentId": null,
+        "visibilityTier": "publicScenario",
+        "publicSafe": true,
+        "payload": {
+          "score": {
+            "finalScore": 77,
+            "changesOfficialBrowserScoring": false,
+            "notBrowserOfficialScoring": true
+          },
+          "missionOutcomeStatus": "complete"
+        },
+        "canonicalIndex": 9,
+        "eventId": "h4-1-multi-agent-replay-event-00009"
+      },
+      {
+        "type": "anchor.headless.replay-event",
+        "version": "replay-r1.0",
+        "schemaVersion": "replay-r1.0",
+        "replayId": "h4-1-multi-agent-replay",
+        "rawSequence": 11,
+        "sequence": 10,
+        "tick": 7,
+        "timeSeconds": 420,
+        "phase": "terminal",
+        "eventType": "mission.terminal",
+        "agentId": null,
+        "visibilityTier": "publicScenario",
+        "publicSafe": true,
+        "payload": {
+          "reason": "fixture-complete"
+        },
+        "canonicalIndex": 10,
+        "eventId": "h4-1-multi-agent-replay-event-00010"
+      }
+    ],
+    "summary": {
+      "eventCount": 11,
+      "terminalTick": 7
+    }
+  },
+  "replayCheckpoints": {
+    "type": "anchor.headless.replay-checkpoints",
+    "version": "replay-r1.0",
+    "schemaVersion": "replay-r1.0",
+    "replayVersion": "replay-r1.0",
+    "contract": "REPLAY-R1",
+    "replayId": "h4-1-multi-agent-replay",
+    "digestAlgorithm": "stable-json-fnv1a32-public-state-v1",
+    "numericPolicy": {
+      "id": "replay-r1-public-state-quantized-1e-6",
+      "defaultDecimalPlaces": 6,
+      "defaultEpsilon": 0.000001,
+      "fieldPolicies": {
+        "tick": {
+          "exact": true
+        },
+        "sequence": {
+          "exact": true
+        },
+        "timeSeconds": {
+          "decimalPlaces": 6,
+          "epsilon": 0.000001
+        },
+        "x": {
+          "decimalPlaces": 6,
+          "epsilon": 0.000001
+        },
+        "y": {
+          "decimalPlaces": 6,
+          "epsilon": 0.000001
+        },
+        "z": {
+          "decimalPlaces": 6,
+          "epsilon": 0.000001
+        },
+        "zIndex": {
+          "exact": true
+        },
+        "headingDegrees": {
+          "decimalPlaces": 6,
+          "epsilon": 0.000001
+        },
+        "depthMeters": {
+          "decimalPlaces": 6,
+          "epsilon": 0.000001
+        },
+        "battery": {
+          "decimalPlaces": 6,
+          "epsilon": 0.000001
+        },
+        "energyUsed": {
+          "decimalPlaces": 6,
+          "epsilon": 0.000001
+        },
+        "score": {
+          "decimalPlaces": 6,
+          "epsilon": 0.000001
+        },
+        "observedValue": {
+          "decimalPlaces": 6,
+          "epsilon": 0.000001
+        },
+        "surprise": {
+          "decimalPlaces": 6,
+          "epsilon": 0.000001
+        }
+      },
+      "note": "REPLAY-R1 compares exact identifiers and quantizes public numeric state per field; it does not use an unexplained global close-enough rule."
+    },
+    "checkpoints": [
+      {
+        "type": "anchor.headless.replay-checkpoint",
+        "version": "replay-r1.0",
+        "schemaVersion": "replay-r1.0",
+        "checkpointId": "h4-1-multi-agent-replay-checkpoint-000",
+        "tick": 0,
+        "timeSeconds": 0,
+        "reason": "initial",
+        "reasons": [
+          "initial"
+        ],
+        "eventCursor": 1,
+        "publicState": {
+          "tick": 0,
+          "timeSeconds": 0,
+          "globalState": {
+            "missionStatus": "active"
+          },
+          "agentStates": {
+            "glider-alpha": {
+              "x": 0,
+              "y": 0,
+              "zIndex": 0,
+              "depthLayerId": "surface",
+              "battery": 1,
+              "energyUsed": 0,
+              "status": "initial",
+              "lastUpdateTick": 0
+            },
+            "glider-bravo": {
+              "x": 2,
+              "y": 0,
+              "zIndex": 0,
+              "depthLayerId": "surface",
+              "battery": 1,
+              "energyUsed": 0,
+              "status": "initial",
+              "lastUpdateTick": 0
+            }
+          },
+          "vehicles": {
+            "glider-alpha": {
+              "x": 0,
+              "y": 0,
+              "zIndex": 0,
+              "depthLayerId": "surface",
+              "battery": 1,
+              "energyUsed": 0,
+              "status": "initial",
+              "lastUpdateTick": 0
+            },
+            "glider-bravo": {
+              "x": 2,
+              "y": 0,
+              "zIndex": 0,
+              "depthLayerId": "surface",
+              "battery": 1,
+              "energyUsed": 0,
+              "status": "initial",
+              "lastUpdateTick": 0
+            }
+          },
+          "activeObjectives": [
+            {
+              "objectiveId": "survey-start",
+              "label": "Survey Start"
+            }
+          ],
+          "observationSummary": {
+            "count": 0,
+            "byAgent": {},
+            "lastObservationId": null,
+            "meanObservedValue": null
+          },
+          "surfacingCount": 0,
+          "objectiveTransitionCount": 0,
+          "score": null,
+          "missionOutcomeStatus": "running",
+          "completed": false
+        },
+        "agentStates": {
+          "glider-alpha": {
+            "x": 0,
+            "y": 0,
+            "zIndex": 0,
+            "depthLayerId": "surface",
+            "battery": 1,
+            "energyUsed": 0,
+            "status": "initial",
+            "lastUpdateTick": 0
+          },
+          "glider-bravo": {
+            "x": 2,
+            "y": 0,
+            "zIndex": 0,
+            "depthLayerId": "surface",
+            "battery": 1,
+            "energyUsed": 0,
+            "status": "initial",
+            "lastUpdateTick": 0
+          }
+        },
+        "objectiveState": {
+          "activeObjectives": [
+            {
+              "objectiveId": "survey-start",
+              "label": "Survey Start"
+            }
+          ]
+        },
+        "digest": {
+          "algorithm": "stable-json-fnv1a32-public-state-v1",
+          "value": "fnv1a32:48a1e807",
+          "canonicalByteLength": 899,
+          "numericPolicyId": "replay-r1-public-state-quantized-1e-6"
+        },
+        "digestAlgorithmId": "stable-json-fnv1a32-public-state-v1",
+        "digestVersion": "replay-digest-v1",
+        "quantization": "replay-r1-public-state-quantized-1e-6",
+        "publicSafe": true
+      },
+      {
+        "type": "anchor.headless.replay-checkpoint",
+        "version": "replay-r1.0",
+        "schemaVersion": "replay-r1.0",
+        "checkpointId": "h4-1-multi-agent-replay-checkpoint-001",
+        "tick": 2,
+        "timeSeconds": 120,
+        "reason": "periodic",
+        "reasons": [
+          "periodic"
+        ],
+        "eventCursor": 5,
+        "publicState": {
+          "tick": 2,
+          "timeSeconds": 120,
+          "globalState": {
+            "missionStatus": "active"
+          },
+          "agentStates": {
+            "glider-alpha": {
+              "x": 1,
+              "y": 1,
+              "zIndex": 0,
+              "depthLayerId": "surface",
+              "battery": 0.98,
+              "energyUsed": 0.2,
+              "status": "underway",
+              "lastUpdateTick": 2
+            },
+            "glider-bravo": {
+              "x": 3,
+              "y": 1,
+              "zIndex": 0,
+              "depthLayerId": "surface",
+              "battery": 0.98,
+              "energyUsed": 0.2,
+              "status": "underway",
+              "lastUpdateTick": 2
+            }
+          },
+          "vehicles": {
+            "glider-alpha": {
+              "x": 1,
+              "y": 1,
+              "zIndex": 0,
+              "depthLayerId": "surface",
+              "battery": 0.98,
+              "energyUsed": 0.2,
+              "status": "underway",
+              "lastUpdateTick": 2
+            },
+            "glider-bravo": {
+              "x": 3,
+              "y": 1,
+              "zIndex": 0,
+              "depthLayerId": "surface",
+              "battery": 0.98,
+              "energyUsed": 0.2,
+              "status": "underway",
+              "lastUpdateTick": 2
+            }
+          },
+          "activeObjectives": [
+            {
+              "objectiveId": "survey-start",
+              "label": "Survey Start"
+            }
+          ],
+          "observationSummary": {
+            "count": 0,
+            "byAgent": {},
+            "lastObservationId": null,
+            "meanObservedValue": null
+          },
+          "surfacingCount": 0,
+          "objectiveTransitionCount": 0,
+          "score": null,
+          "missionOutcomeStatus": "running",
+          "completed": false
+        },
+        "agentStates": {
+          "glider-alpha": {
+            "x": 1,
+            "y": 1,
+            "zIndex": 0,
+            "depthLayerId": "surface",
+            "battery": 0.98,
+            "energyUsed": 0.2,
+            "status": "underway",
+            "lastUpdateTick": 2
+          },
+          "glider-bravo": {
+            "x": 3,
+            "y": 1,
+            "zIndex": 0,
+            "depthLayerId": "surface",
+            "battery": 0.98,
+            "energyUsed": 0.2,
+            "status": "underway",
+            "lastUpdateTick": 2
+          }
+        },
+        "objectiveState": {
+          "activeObjectives": [
+            {
+              "objectiveId": "survey-start",
+              "label": "Survey Start"
+            }
+          ]
+        },
+        "digest": {
+          "algorithm": "stable-json-fnv1a32-public-state-v1",
+          "value": "fnv1a32:b5aca3f0",
+          "canonicalByteLength": 925,
+          "numericPolicyId": "replay-r1-public-state-quantized-1e-6"
+        },
+        "digestAlgorithmId": "stable-json-fnv1a32-public-state-v1",
+        "digestVersion": "replay-digest-v1",
+        "quantization": "replay-r1-public-state-quantized-1e-6",
+        "publicSafe": true
+      },
+      {
+        "type": "anchor.headless.replay-checkpoint",
+        "version": "replay-r1.0",
+        "schemaVersion": "replay-r1.0",
+        "checkpointId": "h4-1-multi-agent-replay-checkpoint-002",
+        "tick": 4,
+        "timeSeconds": 240,
+        "reason": "surfacing",
+        "reasons": [
+          "surfacing",
+          "periodic"
+        ],
+        "eventCursor": 8,
+        "publicState": {
+          "tick": 4,
+          "timeSeconds": 240,
+          "globalState": {
+            "missionStatus": "active"
+          },
+          "agentStates": {
+            "glider-alpha": {
+              "x": 1,
+              "y": 1,
+              "zIndex": 0,
+              "depthLayerId": "surface",
+              "battery": 0.98,
+              "energyUsed": 0.2,
+              "status": "underway",
+              "lastUpdateTick": 2
+            },
+            "glider-bravo": {
+              "x": 3,
+              "y": 1,
+              "zIndex": 0,
+              "depthLayerId": "surface",
+              "battery": 0.98,
+              "energyUsed": 0.2,
+              "status": "underway",
+              "lastUpdateTick": 2
+            }
+          },
+          "vehicles": {
+            "glider-alpha": {
+              "x": 1,
+              "y": 1,
+              "zIndex": 0,
+              "depthLayerId": "surface",
+              "battery": 0.98,
+              "energyUsed": 0.2,
+              "status": "underway",
+              "lastUpdateTick": 2
+            },
+            "glider-bravo": {
+              "x": 3,
+              "y": 1,
+              "zIndex": 0,
+              "depthLayerId": "surface",
+              "battery": 0.98,
+              "energyUsed": 0.2,
+              "status": "underway",
+              "lastUpdateTick": 2
+            }
+          },
+          "activeObjectives": [
+            {
+              "objectiveId": "survey-start",
+              "label": "Survey Start"
+            }
+          ],
+          "observationSummary": {
+            "count": 2,
+            "byAgent": {
+              "glider-alpha": 1,
+              "glider-bravo": 1
+            },
+            "lastObservationId": "obs-glider-bravo",
+            "meanObservedValue": 0.44499999999999995
+          },
+          "surfacingCount": 1,
+          "objectiveTransitionCount": 0,
+          "score": null,
+          "missionOutcomeStatus": "running",
+          "completed": false,
+          "lastSurfacing": {
+            "tick": 4,
+            "timeSeconds": 240,
+            "agentId": "glider-alpha",
+            "reason": "scheduled-uplink"
+          }
+        },
+        "agentStates": {
+          "glider-alpha": {
+            "x": 1,
+            "y": 1,
+            "zIndex": 0,
+            "depthLayerId": "surface",
+            "battery": 0.98,
+            "energyUsed": 0.2,
+            "status": "underway",
+            "lastUpdateTick": 2
+          },
+          "glider-bravo": {
+            "x": 3,
+            "y": 1,
+            "zIndex": 0,
+            "depthLayerId": "surface",
+            "battery": 0.98,
+            "energyUsed": 0.2,
+            "status": "underway",
+            "lastUpdateTick": 2
+          }
+        },
+        "objectiveState": {
+          "activeObjectives": [
+            {
+              "objectiveId": "survey-start",
+              "label": "Survey Start"
+            }
+          ]
+        },
+        "digest": {
+          "algorithm": "stable-json-fnv1a32-public-state-v1",
+          "value": "fnv1a32:a9e1168e",
+          "canonicalByteLength": 1071,
+          "numericPolicyId": "replay-r1-public-state-quantized-1e-6"
+        },
+        "digestAlgorithmId": "stable-json-fnv1a32-public-state-v1",
+        "digestVersion": "replay-digest-v1",
+        "quantization": "replay-r1-public-state-quantized-1e-6",
+        "publicSafe": true
+      },
+      {
+        "type": "anchor.headless.replay-checkpoint",
+        "version": "replay-r1.0",
+        "schemaVersion": "replay-r1.0",
+        "checkpointId": "h4-1-multi-agent-replay-checkpoint-003",
+        "tick": 5,
+        "timeSeconds": 300,
+        "reason": "objectiveTransition",
+        "reasons": [
+          "objectiveTransition",
+          "periodic"
+        ],
+        "eventCursor": 9,
+        "publicState": {
+          "tick": 5,
+          "timeSeconds": 300,
+          "globalState": {
+            "missionStatus": "active"
+          },
+          "agentStates": {
+            "glider-alpha": {
+              "x": 1,
+              "y": 1,
+              "zIndex": 0,
+              "depthLayerId": "surface",
+              "battery": 0.98,
+              "energyUsed": 0.2,
+              "status": "underway",
+              "lastUpdateTick": 2
+            },
+            "glider-bravo": {
+              "x": 3,
+              "y": 1,
+              "zIndex": 0,
+              "depthLayerId": "surface",
+              "battery": 0.98,
+              "energyUsed": 0.2,
+              "status": "underway",
+              "lastUpdateTick": 2
+            }
+          },
+          "vehicles": {
+            "glider-alpha": {
+              "x": 1,
+              "y": 1,
+              "zIndex": 0,
+              "depthLayerId": "surface",
+              "battery": 0.98,
+              "energyUsed": 0.2,
+              "status": "underway",
+              "lastUpdateTick": 2
+            },
+            "glider-bravo": {
+              "x": 3,
+              "y": 1,
+              "zIndex": 0,
+              "depthLayerId": "surface",
+              "battery": 0.98,
+              "energyUsed": 0.2,
+              "status": "underway",
+              "lastUpdateTick": 2
+            }
+          },
+          "activeObjectives": [
+            {
+              "objectiveId": "front-check",
+              "label": "Front Check"
+            }
+          ],
+          "observationSummary": {
+            "count": 2,
+            "byAgent": {
+              "glider-alpha": 1,
+              "glider-bravo": 1
+            },
+            "lastObservationId": "obs-glider-bravo",
+            "meanObservedValue": 0.44499999999999995
+          },
+          "surfacingCount": 1,
+          "objectiveTransitionCount": 1,
+          "score": null,
+          "missionOutcomeStatus": "running",
+          "completed": false,
+          "lastSurfacing": {
+            "tick": 4,
+            "timeSeconds": 240,
+            "agentId": "glider-alpha",
+            "reason": "scheduled-uplink"
+          }
+        },
+        "agentStates": {
+          "glider-alpha": {
+            "x": 1,
+            "y": 1,
+            "zIndex": 0,
+            "depthLayerId": "surface",
+            "battery": 0.98,
+            "energyUsed": 0.2,
+            "status": "underway",
+            "lastUpdateTick": 2
+          },
+          "glider-bravo": {
+            "x": 3,
+            "y": 1,
+            "zIndex": 0,
+            "depthLayerId": "surface",
+            "battery": 0.98,
+            "energyUsed": 0.2,
+            "status": "underway",
+            "lastUpdateTick": 2
+          }
+        },
+        "objectiveState": {
+          "activeObjectives": [
+            {
+              "objectiveId": "front-check",
+              "label": "Front Check"
+            }
+          ]
+        },
+        "digest": {
+          "algorithm": "stable-json-fnv1a32-public-state-v1",
+          "value": "fnv1a32:649f746f",
+          "canonicalByteLength": 1069,
+          "numericPolicyId": "replay-r1-public-state-quantized-1e-6"
+        },
+        "digestAlgorithmId": "stable-json-fnv1a32-public-state-v1",
+        "digestVersion": "replay-digest-v1",
+        "quantization": "replay-r1-public-state-quantized-1e-6",
+        "publicSafe": true
+      },
+      {
+        "type": "anchor.headless.replay-checkpoint",
+        "version": "replay-r1.0",
+        "schemaVersion": "replay-r1.0",
+        "checkpointId": "h4-1-multi-agent-replay-checkpoint-004",
+        "tick": 7,
+        "timeSeconds": 420,
+        "reason": "terminal",
+        "reasons": [
+          "terminal"
+        ],
+        "eventCursor": 11,
+        "publicState": {
+          "tick": 7,
+          "timeSeconds": 420,
+          "globalState": {
+            "missionStatus": "complete"
+          },
+          "agentStates": {
+            "glider-alpha": {
+              "x": 1,
+              "y": 1,
+              "zIndex": 0,
+              "depthLayerId": "surface",
+              "battery": 0.98,
+              "energyUsed": 0.2,
+              "status": "underway",
+              "lastUpdateTick": 2
+            },
+            "glider-bravo": {
+              "x": 3,
+              "y": 1,
+              "zIndex": 0,
+              "depthLayerId": "surface",
+              "battery": 0.98,
+              "energyUsed": 0.2,
+              "status": "underway",
+              "lastUpdateTick": 2
+            }
+          },
+          "vehicles": {
+            "glider-alpha": {
+              "x": 1,
+              "y": 1,
+              "zIndex": 0,
+              "depthLayerId": "surface",
+              "battery": 0.98,
+              "energyUsed": 0.2,
+              "status": "underway",
+              "lastUpdateTick": 2
+            },
+            "glider-bravo": {
+              "x": 3,
+              "y": 1,
+              "zIndex": 0,
+              "depthLayerId": "surface",
+              "battery": 0.98,
+              "energyUsed": 0.2,
+              "status": "underway",
+              "lastUpdateTick": 2
+            }
+          },
+          "activeObjectives": [
+            {
+              "objectiveId": "front-check",
+              "label": "Front Check"
+            }
+          ],
+          "observationSummary": {
+            "count": 2,
+            "byAgent": {
+              "glider-alpha": 1,
+              "glider-bravo": 1
+            },
+            "lastObservationId": "obs-glider-bravo",
+            "meanObservedValue": 0.44499999999999995
+          },
+          "surfacingCount": 1,
+          "objectiveTransitionCount": 1,
+          "score": {
+            "finalScore": 77,
+            "changesOfficialBrowserScoring": false,
+            "notBrowserOfficialScoring": true
+          },
+          "missionOutcomeStatus": "complete",
+          "completed": true,
+          "lastSurfacing": {
+            "tick": 4,
+            "timeSeconds": 240,
+            "agentId": "glider-alpha",
+            "reason": "scheduled-uplink"
+          },
+          "terminationReason": "fixture-complete"
+        },
+        "agentStates": {
+          "glider-alpha": {
+            "x": 1,
+            "y": 1,
+            "zIndex": 0,
+            "depthLayerId": "surface",
+            "battery": 0.98,
+            "energyUsed": 0.2,
+            "status": "underway",
+            "lastUpdateTick": 2
+          },
+          "glider-bravo": {
+            "x": 3,
+            "y": 1,
+            "zIndex": 0,
+            "depthLayerId": "surface",
+            "battery": 0.98,
+            "energyUsed": 0.2,
+            "status": "underway",
+            "lastUpdateTick": 2
+          }
+        },
+        "objectiveState": {
+          "activeObjectives": [
+            {
+              "objectiveId": "front-check",
+              "label": "Front Check"
+            }
+          ]
+        },
+        "digest": {
+          "algorithm": "stable-json-fnv1a32-public-state-v1",
+          "value": "fnv1a32:26cae45d",
+          "canonicalByteLength": 1194,
+          "numericPolicyId": "replay-r1-public-state-quantized-1e-6"
+        },
+        "digestAlgorithmId": "stable-json-fnv1a32-public-state-v1",
+        "digestVersion": "replay-digest-v1",
+        "quantization": "replay-r1-public-state-quantized-1e-6",
+        "publicSafe": true
+      }
+    ],
+    "summary": {
+      "checkpointCount": 5,
+      "initialDigest": "fnv1a32:48a1e807",
+      "terminalDigest": "fnv1a32:26cae45d",
+      "terminalTick": 7
+    }
+  },
+  "replayAlignmentReport": {
+    "type": "anchor.headless.replay-alignment-report",
+    "version": "replay-r1.0",
+    "schemaVersion": "replay-r1.0",
+    "replayVersion": "replay-r1.0",
+    "verifierVersion": "replay-integrity-verifier-h4.1",
+    "contract": "REPLAY-R1",
+    "replayId": "h4-1-multi-agent-replay",
+    "status": "PASS",
+    "replayMode": "publicObservationPlayback",
+    "checkedArtifactTypes": [
+      "replayManifest",
+      "replayEvents",
+      "replayCheckpoints"
+    ],
+    "eventCount": 11,
+    "checkpointCount": 5,
+    "agentCount": 2,
+    "agentIds": [
+      "glider-alpha",
+      "glider-bravo"
+    ],
+    "passedChecks": [
+      "replay-event-ids-unique",
+      "replay-order-canonical",
+      "replay-timeline",
+      "replay-lifecycle-terminal-event",
+      "replay-checkpoint-references",
+      "replay-agent-references",
+      "replay-digest-h4-1-multi-agent-replay-checkpoint-000",
+      "replay-digest-h4-1-multi-agent-replay-checkpoint-001",
+      "replay-digest-h4-1-multi-agent-replay-checkpoint-002",
+      "replay-digest-h4-1-multi-agent-replay-checkpoint-003",
+      "replay-digest-h4-1-multi-agent-replay-checkpoint-004",
+      "replay-public-safety-hidden-truth"
+    ],
+    "warningCount": 0,
+    "failureCount": 0,
+    "issues": [],
+    "failureCodes": [],
+    "warningCodes": [],
+    "checks": [
+      {
+        "id": "replay-event-ids-unique",
+        "ok": true,
+        "detail": 11
+      },
+      {
+        "id": "replay-order-canonical",
+        "ok": true,
+        "detail": 11
+      },
+      {
+        "id": "replay-timeline",
+        "ok": true,
+        "detail": "11 events / 5 checkpoints"
+      },
+      {
+        "id": "replay-lifecycle-terminal-event",
+        "ok": true,
+        "detail": 1
+      },
+      {
+        "id": "replay-checkpoint-references",
+        "ok": true,
+        "detail": 5
+      },
+      {
+        "id": "replay-agent-references",
+        "ok": true,
+        "detail": 2
+      },
+      {
+        "id": "replay-digest-h4-1-multi-agent-replay-checkpoint-000",
+        "ok": true,
+        "detail": "fnv1a32:48a1e807"
+      },
+      {
+        "id": "replay-digest-h4-1-multi-agent-replay-checkpoint-001",
+        "ok": true,
+        "detail": "fnv1a32:b5aca3f0"
+      },
+      {
+        "id": "replay-digest-h4-1-multi-agent-replay-checkpoint-002",
+        "ok": true,
+        "detail": "fnv1a32:a9e1168e"
+      },
+      {
+        "id": "replay-digest-h4-1-multi-agent-replay-checkpoint-003",
+        "ok": true,
+        "detail": "fnv1a32:649f746f"
+      },
+      {
+        "id": "replay-digest-h4-1-multi-agent-replay-checkpoint-004",
+        "ok": true,
+        "detail": "fnv1a32:26cae45d"
+      },
+      {
+        "id": "replay-public-safety-hidden-truth",
+        "ok": true,
+        "detail": "public-safe"
+      }
+    ],
+    "warnings": [],
+    "failures": [],
+    "digestSummary": {
+      "enabled": true,
+      "checked": 5,
+      "passed": 5,
+      "failed": 0,
+      "algorithm": "stable-json-fnv1a32-public-state-v1"
+    },
+    "orderingSummary": {
+      "enabled": true,
+      "checked": 1,
+      "passed": true,
+      "policy": "replay-r1-canonical-event-order",
+      "globalAgentSortValue": ""
+    },
+    "publicSafetySummary": {
+      "enabled": true,
+      "checked": 1,
+      "passed": true,
+      "hiddenTruthLeak": false
+    },
+    "compatibilitySummary": {
+      "status": "PASS",
+      "compatibility": "current",
+      "schemaVersion": "replay-r1.0",
+      "replayMode": "publicObservationPlayback",
+      "currentSchemaVersion": "replay-r1.0",
+      "publicPlaybackImplemented": true,
+      "reservedReplayMode": false,
+      "warningCount": 0,
+      "errorCount": 0
+    },
+    "summary": {
+      "status": "PASS",
+      "eventCount": 11,
+      "checkpointCount": 5,
+      "agentCount": 2,
+      "warningCount": 0,
+      "failureCount": 0,
+      "failureCodes": [],
+      "digestChecksPassed": true,
+      "orderingChecksPassed": true,
+      "publicSafetyPassed": true,
+      "strict": false,
+      "changesOfficialBrowserScoring": false
+    },
+    "firstDivergence": null,
+    "mismatchClass": null,
+    "boundary": "Replay integrity verification checks recorded public replay artifacts, ordering, checkpoints, digests, and public-safety markers. It does not reconstruct hidden truth, rerun physics, or change official browser scoring.",
+    "changesOfficialBrowserScoring": false,
+    "usesAuthoritativeHiddenStateReplay": false,
+    "usesHiddenTruthResimulation": false,
+    "usesNewPlanner": false,
+    "usesRouteOptimizer": false,
+    "usesRL": false,
+    "usesMARL": false,
+    "usesPythonSimulator": false
+  },
+  "replayContract": {
+    "type": "anchor.headless.replay-contract",
+    "version": "replay-r1.0",
+    "manifest": {
+      "type": "anchor.headless.replay-manifest",
+      "version": "replay-r1.0",
+      "schemaVersion": "replay-r1.0",
+      "replayVersion": "replay-r1.0",
+      "contract": "REPLAY-R1",
+      "replayId": "h4-1-multi-agent-replay",
+      "replayMode": "publicObservationPlayback",
+      "replayFidelity": "publicObservationPlaybackWithCheckpointDigests",
+      "compatibilityStatus": "current",
+      "missionId": "h4-1-replay-contract-mission",
+      "scenarioId": "h4-1-public-replay-fixture",
+      "episodeId": "h4-1-multi-agent-replay-episode",
+      "seed": "h4-1-multi-agent-replay-seed",
+      "seedSubstreams": {
+        "rootSeed": "h4-1-multi-agent-replay-seed",
+        "replayUsesMathRandom": false
+      },
+      "deterministicSubstreams": {
+        "rootSeed": "h4-1-multi-agent-replay-seed",
+        "replayUsesMathRandom": false
+      },
+      "timingModel": {
+        "type": "fixedStep",
+        "dtSeconds": 60,
+        "terminalTick": 7,
+        "maxTimeSeconds": 420,
+        "wallClockAffectsSimulation": false
+      },
+      "timestepSeconds": 60,
+      "initialPublicState": {
+        "tick": 0,
+        "timeSeconds": 0,
+        "globalState": {
+          "missionStatus": "active"
+        },
+        "agentStates": {
+          "glider-alpha": {
+            "x": 0,
+            "y": 0,
+            "zIndex": 0,
+            "depthLayerId": "surface",
+            "battery": 1,
+            "energyUsed": 0,
+            "status": "initial",
+            "lastUpdateTick": 0
+          },
+          "glider-bravo": {
+            "x": 2,
+            "y": 0,
+            "zIndex": 0,
+            "depthLayerId": "surface",
+            "battery": 1,
+            "energyUsed": 0,
+            "status": "initial",
+            "lastUpdateTick": 0
+          }
+        },
+        "vehicles": {
+          "glider-alpha": {
+            "x": 0,
+            "y": 0,
+            "zIndex": 0,
+            "depthLayerId": "surface",
+            "battery": 1,
+            "energyUsed": 0,
+            "status": "initial",
+            "lastUpdateTick": 0
+          },
+          "glider-bravo": {
+            "x": 2,
+            "y": 0,
+            "zIndex": 0,
+            "depthLayerId": "surface",
+            "battery": 1,
+            "energyUsed": 0,
+            "status": "initial",
+            "lastUpdateTick": 0
+          }
+        },
+        "activeObjectives": [
+          {
+            "objectiveId": "survey-start",
+            "label": "Survey Start"
+          }
+        ],
+        "observationSummary": {
+          "count": 0,
+          "byAgent": {},
+          "lastObservationId": null,
+          "meanObservedValue": null
+        },
+        "surfacingCount": 0,
+        "objectiveTransitionCount": 0,
+        "score": null,
+        "missionOutcomeStatus": "running",
+        "completed": false
+      },
+      "initialState": {
+        "tick": 0,
+        "timeSeconds": 0,
+        "globalState": {
+          "missionStatus": "active"
+        },
+        "agentStates": {
+          "glider-alpha": {
+            "x": 0,
+            "y": 0,
+            "zIndex": 0,
+            "depthLayerId": "surface",
+            "battery": 1,
+            "energyUsed": 0,
+            "status": "initial",
+            "lastUpdateTick": 0
+          },
+          "glider-bravo": {
+            "x": 2,
+            "y": 0,
+            "zIndex": 0,
+            "depthLayerId": "surface",
+            "battery": 1,
+            "energyUsed": 0,
+            "status": "initial",
+            "lastUpdateTick": 0
+          }
+        },
+        "vehicles": {
+          "glider-alpha": {
+            "x": 0,
+            "y": 0,
+            "zIndex": 0,
+            "depthLayerId": "surface",
+            "battery": 1,
+            "energyUsed": 0,
+            "status": "initial",
+            "lastUpdateTick": 0
+          },
+          "glider-bravo": {
+            "x": 2,
+            "y": 0,
+            "zIndex": 0,
+            "depthLayerId": "surface",
+            "battery": 1,
+            "energyUsed": 0,
+            "status": "initial",
+            "lastUpdateTick": 0
+          }
+        },
+        "activeObjectives": [
+          {
+            "objectiveId": "survey-start",
+            "label": "Survey Start"
+          }
+        ],
+        "observationSummary": {
+          "count": 0,
+          "byAgent": {},
+          "lastObservationId": null,
+          "meanObservedValue": null
+        },
+        "surfacingCount": 0,
+        "objectiveTransitionCount": 0,
+        "score": null,
+        "missionOutcomeStatus": "running",
+        "completed": false
+      },
+      "agentIds": [
+        "glider-alpha",
+        "glider-bravo"
+      ],
+      "featureFlags": {
+        "multiAgentReplayContractOnly": true,
+        "officialBrowserScoringChanged": false,
+        "usesNewPlanner": false,
+        "usesRouteOptimizer": false,
+        "usesPythonSimulator": false,
+        "usesMARL": false
+      },
+      "replayModeImplemented": "publicObservationPlayback",
+      "publicObservationPlaybackImplemented": true,
+      "reservedReplayModesImplemented": false,
+      "eventOrderingPolicy": {
+        "id": "replay-r1-canonical-event-order",
+        "sortKeys": [
+          "tick",
+          "timeSeconds",
+          "phaseRank",
+          "agentId",
+          "sequence",
+          "eventId"
+        ],
+        "globalAgentSortValue": "",
+        "note": "Events are ordered by simulation tick/time, replay phase/type rank, mission-global event id (empty agent) before vehicle/agent id, explicit monotonic sequence number, then stable event id fallback."
+      },
+      "checkpointPolicy": {
+        "id": "replay-h4.1-public-checkpoints",
+        "requiredReasons": [
+          "initial",
+          "terminal"
+        ],
+        "eventCursorSemantics": "count of events consumed through checkpoint tick"
+      },
+      "numericPolicy": {
+        "id": "replay-r1-public-state-quantized-1e-6",
+        "defaultDecimalPlaces": 6,
+        "defaultEpsilon": 0.000001,
+        "fieldPolicies": {
+          "tick": {
+            "exact": true
+          },
+          "sequence": {
+            "exact": true
+          },
+          "timeSeconds": {
+            "decimalPlaces": 6,
+            "epsilon": 0.000001
+          },
+          "x": {
+            "decimalPlaces": 6,
+            "epsilon": 0.000001
+          },
+          "y": {
+            "decimalPlaces": 6,
+            "epsilon": 0.000001
+          },
+          "z": {
+            "decimalPlaces": 6,
+            "epsilon": 0.000001
+          },
+          "zIndex": {
+            "exact": true
+          },
+          "headingDegrees": {
+            "decimalPlaces": 6,
+            "epsilon": 0.000001
+          },
+          "depthMeters": {
+            "decimalPlaces": 6,
+            "epsilon": 0.000001
+          },
+          "battery": {
+            "decimalPlaces": 6,
+            "epsilon": 0.000001
+          },
+          "energyUsed": {
+            "decimalPlaces": 6,
+            "epsilon": 0.000001
+          },
+          "score": {
+            "decimalPlaces": 6,
+            "epsilon": 0.000001
+          },
+          "observedValue": {
+            "decimalPlaces": 6,
+            "epsilon": 0.000001
+          },
+          "surprise": {
+            "decimalPlaces": 6,
+            "epsilon": 0.000001
+          }
+        },
+        "note": "REPLAY-R1 compares exact identifiers and quantizes public numeric state per field; it does not use an unexplained global close-enough rule."
+      },
+      "publicBoundary": "Public replay artifacts contain recorded public state only and do not reconstruct hidden truth.",
+      "terminalReason": "fixture-complete",
+      "terminationReason": "fixture-complete",
+      "bundleSchemaVersion": "headless-combined-bundle-h2",
+      "scoringSchemaVersion": "score-r1-shadow-fixture",
+      "changesOfficialBrowserScoring": false,
+      "replayAuthoritativeForBrowserScoring": false,
+      "publicSafe": true,
+      "hiddenTruthIncluded": false,
+      "requiresHiddenTruth": false,
+      "visibilityTier": "publicScenario",
+      "multiAgentReplayContractOnly": true,
+      "notA": [
+        "not authoritative hidden-state resimulation",
+        "not route planning",
+        "not route optimization",
+        "not Python simulator",
+        "not RL/MARL",
+        "not official browser scoring"
+      ]
+    },
+    "events": {
+      "type": "anchor.headless.replay-events",
+      "version": "replay-r1.0",
+      "schemaVersion": "replay-r1.0",
+      "replayVersion": "replay-r1.0",
+      "contract": "REPLAY-R1",
+      "replayId": "h4-1-multi-agent-replay",
+      "eventOrderingPolicy": {
+        "id": "replay-r1-canonical-event-order",
+        "sortKeys": [
+          "tick",
+          "timeSeconds",
+          "phaseRank",
+          "agentId",
+          "sequence",
+          "eventId"
+        ],
+        "globalAgentSortValue": "",
+        "note": "Events are ordered by simulation tick/time, replay phase/type rank, mission-global event id (empty agent) before vehicle/agent id, explicit monotonic sequence number, then stable event id fallback."
+      },
+      "events": [
+        {
+          "type": "anchor.headless.replay-event",
+          "version": "replay-r1.0",
+          "schemaVersion": "replay-r1.0",
+          "replayId": "h4-1-multi-agent-replay",
+          "rawSequence": 1,
+          "sequence": 0,
+          "tick": 0,
+          "timeSeconds": 0,
+          "phase": "initial",
+          "eventType": "replay.initialState",
+          "agentId": null,
+          "visibilityTier": "publicScenario",
+          "publicSafe": true,
+          "payload": {
+            "tick": 0,
+            "timeSeconds": 0,
+            "globalState": {
+              "missionStatus": "active"
+            },
+            "agentStates": {
+              "glider-alpha": {
+                "x": 0,
+                "y": 0,
+                "zIndex": 0,
+                "depthLayerId": "surface",
+                "battery": 1,
+                "energyUsed": 0,
+                "status": "initial",
+                "lastUpdateTick": 0
+              },
+              "glider-bravo": {
+                "x": 2,
+                "y": 0,
+                "zIndex": 0,
+                "depthLayerId": "surface",
+                "battery": 1,
+                "energyUsed": 0,
+                "status": "initial",
+                "lastUpdateTick": 0
+              }
+            },
+            "vehicles": {
+              "glider-alpha": {
+                "x": 0,
+                "y": 0,
+                "zIndex": 0,
+                "depthLayerId": "surface",
+                "battery": 1,
+                "energyUsed": 0,
+                "status": "initial",
+                "lastUpdateTick": 0
+              },
+              "glider-bravo": {
+                "x": 2,
+                "y": 0,
+                "zIndex": 0,
+                "depthLayerId": "surface",
+                "battery": 1,
+                "energyUsed": 0,
+                "status": "initial",
+                "lastUpdateTick": 0
+              }
+            },
+            "activeObjectives": [
+              {
+                "objectiveId": "survey-start",
+                "label": "Survey Start"
+              }
+            ],
+            "observationSummary": {
+              "count": 0,
+              "byAgent": {},
+              "lastObservationId": null,
+              "meanObservedValue": null
+            },
+            "surfacingCount": 0,
+            "objectiveTransitionCount": 0,
+            "score": null,
+            "missionOutcomeStatus": "running",
+            "completed": false
+          },
+          "canonicalIndex": 0,
+          "eventId": "h4-1-multi-agent-replay-event-00000"
+        },
+        {
+          "type": "anchor.headless.replay-event",
+          "version": "replay-r1.0",
+          "schemaVersion": "replay-r1.0",
+          "replayId": "h4-1-multi-agent-replay",
+          "rawSequence": 3,
+          "sequence": 2,
+          "tick": 1,
+          "timeSeconds": 60,
+          "phase": "command",
+          "eventType": "control.target",
+          "agentId": "glider-bravo",
+          "visibilityTier": "publicScenario",
+          "publicSafe": true,
+          "payload": {
+            "target": {
+              "x": 4,
+              "y": 1
+            },
+            "note": "fixture command"
+          },
+          "canonicalIndex": 2,
+          "eventId": "h4-1-multi-agent-replay-event-00002"
+        },
+        {
+          "type": "anchor.headless.replay-event",
+          "version": "replay-r1.0",
+          "schemaVersion": "replay-r1.0",
+          "replayId": "h4-1-multi-agent-replay",
+          "rawSequence": 2,
+          "sequence": 1,
+          "tick": 1,
+          "timeSeconds": 60,
+          "phase": "command",
+          "eventType": "control.target",
+          "agentId": "glider-alpha",
+          "visibilityTier": "publicScenario",
+          "publicSafe": true,
+          "payload": {
+            "target": {
+              "x": 2,
+              "y": 1
+            },
+            "note": "fixture command"
+          },
+          "canonicalIndex": 1,
+          "eventId": "h4-1-multi-agent-replay-event-00001"
+        },
+        {
+          "type": "anchor.headless.replay-event",
+          "version": "replay-r1.0",
+          "schemaVersion": "replay-r1.0",
+          "replayId": "h4-1-multi-agent-replay",
+          "rawSequence": 4,
+          "sequence": 3,
+          "tick": 2,
+          "timeSeconds": 120,
+          "phase": "vehicleState",
+          "eventType": "vehicle.publicState",
+          "agentId": "glider-alpha",
+          "visibilityTier": "publicScenario",
+          "publicSafe": true,
+          "payload": {
+            "x": 1,
+            "y": 1,
+            "zIndex": 0,
+            "depthLayerId": "surface",
+            "battery": 0.98,
+            "energyUsed": 0.2,
+            "status": "underway"
+          },
+          "canonicalIndex": 3,
+          "eventId": "h4-1-multi-agent-replay-event-00003"
+        },
+        {
+          "type": "anchor.headless.replay-event",
+          "version": "replay-r1.0",
+          "schemaVersion": "replay-r1.0",
+          "replayId": "h4-1-multi-agent-replay",
+          "rawSequence": 5,
+          "sequence": 4,
+          "tick": 2,
+          "timeSeconds": 120,
+          "phase": "vehicleState",
+          "eventType": "vehicle.publicState",
+          "agentId": "glider-bravo",
+          "visibilityTier": "publicScenario",
+          "publicSafe": true,
+          "payload": {
+            "x": 3,
+            "y": 1,
+            "zIndex": 0,
+            "depthLayerId": "surface",
+            "battery": 0.98,
+            "energyUsed": 0.2,
+            "status": "underway"
+          },
+          "canonicalIndex": 4,
+          "eventId": "h4-1-multi-agent-replay-event-00004"
+        },
+        {
+          "type": "anchor.headless.replay-event",
+          "version": "replay-r1.0",
+          "schemaVersion": "replay-r1.0",
+          "replayId": "h4-1-multi-agent-replay",
+          "rawSequence": 6,
+          "sequence": 5,
+          "tick": 3,
+          "timeSeconds": 180,
+          "phase": "observation",
+          "eventType": "publicObservation.sample",
+          "agentId": "glider-alpha",
+          "visibilityTier": "publicScenario",
+          "publicSafe": true,
+          "payload": {
+            "observationId": "obs-glider-alpha",
+            "x": 1,
+            "y": 1,
+            "observedValue": 0.42,
+            "surprise": 0.1
+          },
+          "canonicalIndex": 5,
+          "eventId": "h4-1-multi-agent-replay-event-00005"
+        },
+        {
+          "type": "anchor.headless.replay-event",
+          "version": "replay-r1.0",
+          "schemaVersion": "replay-r1.0",
+          "replayId": "h4-1-multi-agent-replay",
+          "rawSequence": 7,
+          "sequence": 6,
+          "tick": 3,
+          "timeSeconds": 180,
+          "phase": "observation",
+          "eventType": "publicObservation.sample",
+          "agentId": "glider-bravo",
+          "visibilityTier": "publicScenario",
+          "publicSafe": true,
+          "payload": {
+            "observationId": "obs-glider-bravo",
+            "x": 3,
+            "y": 1,
+            "observedValue": 0.47,
+            "surprise": 0.1
+          },
+          "canonicalIndex": 6,
+          "eventId": "h4-1-multi-agent-replay-event-00006"
+        },
+        {
+          "type": "anchor.headless.replay-event",
+          "version": "replay-r1.0",
+          "schemaVersion": "replay-r1.0",
+          "replayId": "h4-1-multi-agent-replay",
+          "rawSequence": 8,
+          "sequence": 7,
+          "tick": 4,
+          "timeSeconds": 240,
+          "phase": "surfacing",
+          "eventType": "vehicle.surfacing",
+          "agentId": "glider-alpha",
+          "visibilityTier": "publicScenario",
+          "publicSafe": true,
+          "payload": {
+            "surfacingId": "surface-alpha",
+            "reason": "scheduled-uplink"
+          },
+          "canonicalIndex": 7,
+          "eventId": "h4-1-multi-agent-replay-event-00007"
+        },
+        {
+          "type": "anchor.headless.replay-event",
+          "version": "replay-r1.0",
+          "schemaVersion": "replay-r1.0",
+          "replayId": "h4-1-multi-agent-replay",
+          "rawSequence": 9,
+          "sequence": 8,
+          "tick": 5,
+          "timeSeconds": 300,
+          "phase": "objective",
+          "eventType": "objective.transition",
+          "agentId": null,
+          "visibilityTier": "publicScenario",
+          "publicSafe": true,
+          "payload": {
+            "objectiveId": "front-check",
+            "label": "Front Check",
+            "source": "mission-manager-fixture"
+          },
+          "canonicalIndex": 8,
+          "eventId": "h4-1-multi-agent-replay-event-00008"
+        },
+        {
+          "type": "anchor.headless.replay-event",
+          "version": "replay-r1.0",
+          "schemaVersion": "replay-r1.0",
+          "replayId": "h4-1-multi-agent-replay",
+          "rawSequence": 10,
+          "sequence": 9,
+          "tick": 6,
+          "timeSeconds": 360,
+          "phase": "score",
+          "eventType": "score.publicSummary",
+          "agentId": null,
+          "visibilityTier": "publicScenario",
+          "publicSafe": true,
+          "payload": {
+            "score": {
+              "finalScore": 77,
+              "changesOfficialBrowserScoring": false,
+              "notBrowserOfficialScoring": true
+            },
+            "missionOutcomeStatus": "complete"
+          },
+          "canonicalIndex": 9,
+          "eventId": "h4-1-multi-agent-replay-event-00009"
+        },
+        {
+          "type": "anchor.headless.replay-event",
+          "version": "replay-r1.0",
+          "schemaVersion": "replay-r1.0",
+          "replayId": "h4-1-multi-agent-replay",
+          "rawSequence": 11,
+          "sequence": 10,
+          "tick": 7,
+          "timeSeconds": 420,
+          "phase": "terminal",
+          "eventType": "mission.terminal",
+          "agentId": null,
+          "visibilityTier": "publicScenario",
+          "publicSafe": true,
+          "payload": {
+            "reason": "fixture-complete"
+          },
+          "canonicalIndex": 10,
+          "eventId": "h4-1-multi-agent-replay-event-00010"
+        }
+      ],
+      "summary": {
+        "eventCount": 11,
+        "terminalTick": 7
+      }
+    },
+    "checkpoints": {
+      "type": "anchor.headless.replay-checkpoints",
+      "version": "replay-r1.0",
+      "schemaVersion": "replay-r1.0",
+      "replayVersion": "replay-r1.0",
+      "contract": "REPLAY-R1",
+      "replayId": "h4-1-multi-agent-replay",
+      "digestAlgorithm": "stable-json-fnv1a32-public-state-v1",
+      "numericPolicy": {
+        "id": "replay-r1-public-state-quantized-1e-6",
+        "defaultDecimalPlaces": 6,
+        "defaultEpsilon": 0.000001,
+        "fieldPolicies": {
+          "tick": {
+            "exact": true
+          },
+          "sequence": {
+            "exact": true
+          },
+          "timeSeconds": {
+            "decimalPlaces": 6,
+            "epsilon": 0.000001
+          },
+          "x": {
+            "decimalPlaces": 6,
+            "epsilon": 0.000001
+          },
+          "y": {
+            "decimalPlaces": 6,
+            "epsilon": 0.000001
+          },
+          "z": {
+            "decimalPlaces": 6,
+            "epsilon": 0.000001
+          },
+          "zIndex": {
+            "exact": true
+          },
+          "headingDegrees": {
+            "decimalPlaces": 6,
+            "epsilon": 0.000001
+          },
+          "depthMeters": {
+            "decimalPlaces": 6,
+            "epsilon": 0.000001
+          },
+          "battery": {
+            "decimalPlaces": 6,
+            "epsilon": 0.000001
+          },
+          "energyUsed": {
+            "decimalPlaces": 6,
+            "epsilon": 0.000001
+          },
+          "score": {
+            "decimalPlaces": 6,
+            "epsilon": 0.000001
+          },
+          "observedValue": {
+            "decimalPlaces": 6,
+            "epsilon": 0.000001
+          },
+          "surprise": {
+            "decimalPlaces": 6,
+            "epsilon": 0.000001
+          }
+        },
+        "note": "REPLAY-R1 compares exact identifiers and quantizes public numeric state per field; it does not use an unexplained global close-enough rule."
+      },
+      "checkpoints": [
+        {
+          "type": "anchor.headless.replay-checkpoint",
+          "version": "replay-r1.0",
+          "schemaVersion": "replay-r1.0",
+          "checkpointId": "h4-1-multi-agent-replay-checkpoint-000",
+          "tick": 0,
+          "timeSeconds": 0,
+          "reason": "initial",
+          "reasons": [
+            "initial"
+          ],
+          "eventCursor": 1,
+          "publicState": {
+            "tick": 0,
+            "timeSeconds": 0,
+            "globalState": {
+              "missionStatus": "active"
+            },
+            "agentStates": {
+              "glider-alpha": {
+                "x": 0,
+                "y": 0,
+                "zIndex": 0,
+                "depthLayerId": "surface",
+                "battery": 1,
+                "energyUsed": 0,
+                "status": "initial",
+                "lastUpdateTick": 0
+              },
+              "glider-bravo": {
+                "x": 2,
+                "y": 0,
+                "zIndex": 0,
+                "depthLayerId": "surface",
+                "battery": 1,
+                "energyUsed": 0,
+                "status": "initial",
+                "lastUpdateTick": 0
+              }
+            },
+            "vehicles": {
+              "glider-alpha": {
+                "x": 0,
+                "y": 0,
+                "zIndex": 0,
+                "depthLayerId": "surface",
+                "battery": 1,
+                "energyUsed": 0,
+                "status": "initial",
+                "lastUpdateTick": 0
+              },
+              "glider-bravo": {
+                "x": 2,
+                "y": 0,
+                "zIndex": 0,
+                "depthLayerId": "surface",
+                "battery": 1,
+                "energyUsed": 0,
+                "status": "initial",
+                "lastUpdateTick": 0
+              }
+            },
+            "activeObjectives": [
+              {
+                "objectiveId": "survey-start",
+                "label": "Survey Start"
+              }
+            ],
+            "observationSummary": {
+              "count": 0,
+              "byAgent": {},
+              "lastObservationId": null,
+              "meanObservedValue": null
+            },
+            "surfacingCount": 0,
+            "objectiveTransitionCount": 0,
+            "score": null,
+            "missionOutcomeStatus": "running",
+            "completed": false
+          },
+          "agentStates": {
+            "glider-alpha": {
+              "x": 0,
+              "y": 0,
+              "zIndex": 0,
+              "depthLayerId": "surface",
+              "battery": 1,
+              "energyUsed": 0,
+              "status": "initial",
+              "lastUpdateTick": 0
+            },
+            "glider-bravo": {
+              "x": 2,
+              "y": 0,
+              "zIndex": 0,
+              "depthLayerId": "surface",
+              "battery": 1,
+              "energyUsed": 0,
+              "status": "initial",
+              "lastUpdateTick": 0
+            }
+          },
+          "objectiveState": {
+            "activeObjectives": [
+              {
+                "objectiveId": "survey-start",
+                "label": "Survey Start"
+              }
+            ]
+          },
+          "digest": {
+            "algorithm": "stable-json-fnv1a32-public-state-v1",
+            "value": "fnv1a32:48a1e807",
+            "canonicalByteLength": 899,
+            "numericPolicyId": "replay-r1-public-state-quantized-1e-6"
+          },
+          "digestAlgorithmId": "stable-json-fnv1a32-public-state-v1",
+          "digestVersion": "replay-digest-v1",
+          "quantization": "replay-r1-public-state-quantized-1e-6",
+          "publicSafe": true
+        },
+        {
+          "type": "anchor.headless.replay-checkpoint",
+          "version": "replay-r1.0",
+          "schemaVersion": "replay-r1.0",
+          "checkpointId": "h4-1-multi-agent-replay-checkpoint-001",
+          "tick": 2,
+          "timeSeconds": 120,
+          "reason": "periodic",
+          "reasons": [
+            "periodic"
+          ],
+          "eventCursor": 5,
+          "publicState": {
+            "tick": 2,
+            "timeSeconds": 120,
+            "globalState": {
+              "missionStatus": "active"
+            },
+            "agentStates": {
+              "glider-alpha": {
+                "x": 1,
+                "y": 1,
+                "zIndex": 0,
+                "depthLayerId": "surface",
+                "battery": 0.98,
+                "energyUsed": 0.2,
+                "status": "underway",
+                "lastUpdateTick": 2
+              },
+              "glider-bravo": {
+                "x": 3,
+                "y": 1,
+                "zIndex": 0,
+                "depthLayerId": "surface",
+                "battery": 0.98,
+                "energyUsed": 0.2,
+                "status": "underway",
+                "lastUpdateTick": 2
+              }
+            },
+            "vehicles": {
+              "glider-alpha": {
+                "x": 1,
+                "y": 1,
+                "zIndex": 0,
+                "depthLayerId": "surface",
+                "battery": 0.98,
+                "energyUsed": 0.2,
+                "status": "underway",
+                "lastUpdateTick": 2
+              },
+              "glider-bravo": {
+                "x": 3,
+                "y": 1,
+                "zIndex": 0,
+                "depthLayerId": "surface",
+                "battery": 0.98,
+                "energyUsed": 0.2,
+                "status": "underway",
+                "lastUpdateTick": 2
+              }
+            },
+            "activeObjectives": [
+              {
+                "objectiveId": "survey-start",
+                "label": "Survey Start"
+              }
+            ],
+            "observationSummary": {
+              "count": 0,
+              "byAgent": {},
+              "lastObservationId": null,
+              "meanObservedValue": null
+            },
+            "surfacingCount": 0,
+            "objectiveTransitionCount": 0,
+            "score": null,
+            "missionOutcomeStatus": "running",
+            "completed": false
+          },
+          "agentStates": {
+            "glider-alpha": {
+              "x": 1,
+              "y": 1,
+              "zIndex": 0,
+              "depthLayerId": "surface",
+              "battery": 0.98,
+              "energyUsed": 0.2,
+              "status": "underway",
+              "lastUpdateTick": 2
+            },
+            "glider-bravo": {
+              "x": 3,
+              "y": 1,
+              "zIndex": 0,
+              "depthLayerId": "surface",
+              "battery": 0.98,
+              "energyUsed": 0.2,
+              "status": "underway",
+              "lastUpdateTick": 2
+            }
+          },
+          "objectiveState": {
+            "activeObjectives": [
+              {
+                "objectiveId": "survey-start",
+                "label": "Survey Start"
+              }
+            ]
+          },
+          "digest": {
+            "algorithm": "stable-json-fnv1a32-public-state-v1",
+            "value": "fnv1a32:b5aca3f0",
+            "canonicalByteLength": 925,
+            "numericPolicyId": "replay-r1-public-state-quantized-1e-6"
+          },
+          "digestAlgorithmId": "stable-json-fnv1a32-public-state-v1",
+          "digestVersion": "replay-digest-v1",
+          "quantization": "replay-r1-public-state-quantized-1e-6",
+          "publicSafe": true
+        },
+        {
+          "type": "anchor.headless.replay-checkpoint",
+          "version": "replay-r1.0",
+          "schemaVersion": "replay-r1.0",
+          "checkpointId": "h4-1-multi-agent-replay-checkpoint-002",
+          "tick": 4,
+          "timeSeconds": 240,
+          "reason": "surfacing",
+          "reasons": [
+            "surfacing",
+            "periodic"
+          ],
+          "eventCursor": 8,
+          "publicState": {
+            "tick": 4,
+            "timeSeconds": 240,
+            "globalState": {
+              "missionStatus": "active"
+            },
+            "agentStates": {
+              "glider-alpha": {
+                "x": 1,
+                "y": 1,
+                "zIndex": 0,
+                "depthLayerId": "surface",
+                "battery": 0.98,
+                "energyUsed": 0.2,
+                "status": "underway",
+                "lastUpdateTick": 2
+              },
+              "glider-bravo": {
+                "x": 3,
+                "y": 1,
+                "zIndex": 0,
+                "depthLayerId": "surface",
+                "battery": 0.98,
+                "energyUsed": 0.2,
+                "status": "underway",
+                "lastUpdateTick": 2
+              }
+            },
+            "vehicles": {
+              "glider-alpha": {
+                "x": 1,
+                "y": 1,
+                "zIndex": 0,
+                "depthLayerId": "surface",
+                "battery": 0.98,
+                "energyUsed": 0.2,
+                "status": "underway",
+                "lastUpdateTick": 2
+              },
+              "glider-bravo": {
+                "x": 3,
+                "y": 1,
+                "zIndex": 0,
+                "depthLayerId": "surface",
+                "battery": 0.98,
+                "energyUsed": 0.2,
+                "status": "underway",
+                "lastUpdateTick": 2
+              }
+            },
+            "activeObjectives": [
+              {
+                "objectiveId": "survey-start",
+                "label": "Survey Start"
+              }
+            ],
+            "observationSummary": {
+              "count": 2,
+              "byAgent": {
+                "glider-alpha": 1,
+                "glider-bravo": 1
+              },
+              "lastObservationId": "obs-glider-bravo",
+              "meanObservedValue": 0.44499999999999995
+            },
+            "surfacingCount": 1,
+            "objectiveTransitionCount": 0,
+            "score": null,
+            "missionOutcomeStatus": "running",
+            "completed": false,
+            "lastSurfacing": {
+              "tick": 4,
+              "timeSeconds": 240,
+              "agentId": "glider-alpha",
+              "reason": "scheduled-uplink"
+            }
+          },
+          "agentStates": {
+            "glider-alpha": {
+              "x": 1,
+              "y": 1,
+              "zIndex": 0,
+              "depthLayerId": "surface",
+              "battery": 0.98,
+              "energyUsed": 0.2,
+              "status": "underway",
+              "lastUpdateTick": 2
+            },
+            "glider-bravo": {
+              "x": 3,
+              "y": 1,
+              "zIndex": 0,
+              "depthLayerId": "surface",
+              "battery": 0.98,
+              "energyUsed": 0.2,
+              "status": "underway",
+              "lastUpdateTick": 2
+            }
+          },
+          "objectiveState": {
+            "activeObjectives": [
+              {
+                "objectiveId": "survey-start",
+                "label": "Survey Start"
+              }
+            ]
+          },
+          "digest": {
+            "algorithm": "stable-json-fnv1a32-public-state-v1",
+            "value": "fnv1a32:a9e1168e",
+            "canonicalByteLength": 1071,
+            "numericPolicyId": "replay-r1-public-state-quantized-1e-6"
+          },
+          "digestAlgorithmId": "stable-json-fnv1a32-public-state-v1",
+          "digestVersion": "replay-digest-v1",
+          "quantization": "replay-r1-public-state-quantized-1e-6",
+          "publicSafe": true
+        },
+        {
+          "type": "anchor.headless.replay-checkpoint",
+          "version": "replay-r1.0",
+          "schemaVersion": "replay-r1.0",
+          "checkpointId": "h4-1-multi-agent-replay-checkpoint-003",
+          "tick": 5,
+          "timeSeconds": 300,
+          "reason": "objectiveTransition",
+          "reasons": [
+            "objectiveTransition",
+            "periodic"
+          ],
+          "eventCursor": 9,
+          "publicState": {
+            "tick": 5,
+            "timeSeconds": 300,
+            "globalState": {
+              "missionStatus": "active"
+            },
+            "agentStates": {
+              "glider-alpha": {
+                "x": 1,
+                "y": 1,
+                "zIndex": 0,
+                "depthLayerId": "surface",
+                "battery": 0.98,
+                "energyUsed": 0.2,
+                "status": "underway",
+                "lastUpdateTick": 2
+              },
+              "glider-bravo": {
+                "x": 3,
+                "y": 1,
+                "zIndex": 0,
+                "depthLayerId": "surface",
+                "battery": 0.98,
+                "energyUsed": 0.2,
+                "status": "underway",
+                "lastUpdateTick": 2
+              }
+            },
+            "vehicles": {
+              "glider-alpha": {
+                "x": 1,
+                "y": 1,
+                "zIndex": 0,
+                "depthLayerId": "surface",
+                "battery": 0.98,
+                "energyUsed": 0.2,
+                "status": "underway",
+                "lastUpdateTick": 2
+              },
+              "glider-bravo": {
+                "x": 3,
+                "y": 1,
+                "zIndex": 0,
+                "depthLayerId": "surface",
+                "battery": 0.98,
+                "energyUsed": 0.2,
+                "status": "underway",
+                "lastUpdateTick": 2
+              }
+            },
+            "activeObjectives": [
+              {
+                "objectiveId": "front-check",
+                "label": "Front Check"
+              }
+            ],
+            "observationSummary": {
+              "count": 2,
+              "byAgent": {
+                "glider-alpha": 1,
+                "glider-bravo": 1
+              },
+              "lastObservationId": "obs-glider-bravo",
+              "meanObservedValue": 0.44499999999999995
+            },
+            "surfacingCount": 1,
+            "objectiveTransitionCount": 1,
+            "score": null,
+            "missionOutcomeStatus": "running",
+            "completed": false,
+            "lastSurfacing": {
+              "tick": 4,
+              "timeSeconds": 240,
+              "agentId": "glider-alpha",
+              "reason": "scheduled-uplink"
+            }
+          },
+          "agentStates": {
+            "glider-alpha": {
+              "x": 1,
+              "y": 1,
+              "zIndex": 0,
+              "depthLayerId": "surface",
+              "battery": 0.98,
+              "energyUsed": 0.2,
+              "status": "underway",
+              "lastUpdateTick": 2
+            },
+            "glider-bravo": {
+              "x": 3,
+              "y": 1,
+              "zIndex": 0,
+              "depthLayerId": "surface",
+              "battery": 0.98,
+              "energyUsed": 0.2,
+              "status": "underway",
+              "lastUpdateTick": 2
+            }
+          },
+          "objectiveState": {
+            "activeObjectives": [
+              {
+                "objectiveId": "front-check",
+                "label": "Front Check"
+              }
+            ]
+          },
+          "digest": {
+            "algorithm": "stable-json-fnv1a32-public-state-v1",
+            "value": "fnv1a32:649f746f",
+            "canonicalByteLength": 1069,
+            "numericPolicyId": "replay-r1-public-state-quantized-1e-6"
+          },
+          "digestAlgorithmId": "stable-json-fnv1a32-public-state-v1",
+          "digestVersion": "replay-digest-v1",
+          "quantization": "replay-r1-public-state-quantized-1e-6",
+          "publicSafe": true
+        },
+        {
+          "type": "anchor.headless.replay-checkpoint",
+          "version": "replay-r1.0",
+          "schemaVersion": "replay-r1.0",
+          "checkpointId": "h4-1-multi-agent-replay-checkpoint-004",
+          "tick": 7,
+          "timeSeconds": 420,
+          "reason": "terminal",
+          "reasons": [
+            "terminal"
+          ],
+          "eventCursor": 11,
+          "publicState": {
+            "tick": 7,
+            "timeSeconds": 420,
+            "globalState": {
+              "missionStatus": "complete"
+            },
+            "agentStates": {
+              "glider-alpha": {
+                "x": 1,
+                "y": 1,
+                "zIndex": 0,
+                "depthLayerId": "surface",
+                "battery": 0.98,
+                "energyUsed": 0.2,
+                "status": "underway",
+                "lastUpdateTick": 2
+              },
+              "glider-bravo": {
+                "x": 3,
+                "y": 1,
+                "zIndex": 0,
+                "depthLayerId": "surface",
+                "battery": 0.98,
+                "energyUsed": 0.2,
+                "status": "underway",
+                "lastUpdateTick": 2
+              }
+            },
+            "vehicles": {
+              "glider-alpha": {
+                "x": 1,
+                "y": 1,
+                "zIndex": 0,
+                "depthLayerId": "surface",
+                "battery": 0.98,
+                "energyUsed": 0.2,
+                "status": "underway",
+                "lastUpdateTick": 2
+              },
+              "glider-bravo": {
+                "x": 3,
+                "y": 1,
+                "zIndex": 0,
+                "depthLayerId": "surface",
+                "battery": 0.98,
+                "energyUsed": 0.2,
+                "status": "underway",
+                "lastUpdateTick": 2
+              }
+            },
+            "activeObjectives": [
+              {
+                "objectiveId": "front-check",
+                "label": "Front Check"
+              }
+            ],
+            "observationSummary": {
+              "count": 2,
+              "byAgent": {
+                "glider-alpha": 1,
+                "glider-bravo": 1
+              },
+              "lastObservationId": "obs-glider-bravo",
+              "meanObservedValue": 0.44499999999999995
+            },
+            "surfacingCount": 1,
+            "objectiveTransitionCount": 1,
+            "score": {
+              "finalScore": 77,
+              "changesOfficialBrowserScoring": false,
+              "notBrowserOfficialScoring": true
+            },
+            "missionOutcomeStatus": "complete",
+            "completed": true,
+            "lastSurfacing": {
+              "tick": 4,
+              "timeSeconds": 240,
+              "agentId": "glider-alpha",
+              "reason": "scheduled-uplink"
+            },
+            "terminationReason": "fixture-complete"
+          },
+          "agentStates": {
+            "glider-alpha": {
+              "x": 1,
+              "y": 1,
+              "zIndex": 0,
+              "depthLayerId": "surface",
+              "battery": 0.98,
+              "energyUsed": 0.2,
+              "status": "underway",
+              "lastUpdateTick": 2
+            },
+            "glider-bravo": {
+              "x": 3,
+              "y": 1,
+              "zIndex": 0,
+              "depthLayerId": "surface",
+              "battery": 0.98,
+              "energyUsed": 0.2,
+              "status": "underway",
+              "lastUpdateTick": 2
+            }
+          },
+          "objectiveState": {
+            "activeObjectives": [
+              {
+                "objectiveId": "front-check",
+                "label": "Front Check"
+              }
+            ]
+          },
+          "digest": {
+            "algorithm": "stable-json-fnv1a32-public-state-v1",
+            "value": "fnv1a32:26cae45d",
+            "canonicalByteLength": 1194,
+            "numericPolicyId": "replay-r1-public-state-quantized-1e-6"
+          },
+          "digestAlgorithmId": "stable-json-fnv1a32-public-state-v1",
+          "digestVersion": "replay-digest-v1",
+          "quantization": "replay-r1-public-state-quantized-1e-6",
+          "publicSafe": true
+        }
+      ],
+      "summary": {
+        "checkpointCount": 5,
+        "initialDigest": "fnv1a32:48a1e807",
+        "terminalDigest": "fnv1a32:26cae45d",
+        "terminalTick": 7
+      }
+    },
+    "alignmentReport": {
+      "type": "anchor.headless.replay-alignment-report",
+      "version": "replay-r1.0",
+      "schemaVersion": "replay-r1.0",
+      "replayVersion": "replay-r1.0",
+      "verifierVersion": "replay-integrity-verifier-h4.1",
+      "contract": "REPLAY-R1",
+      "replayId": "h4-1-multi-agent-replay",
+      "status": "PASS",
+      "replayMode": "publicObservationPlayback",
+      "checkedArtifactTypes": [
+        "replayManifest",
+        "replayEvents",
+        "replayCheckpoints"
+      ],
+      "eventCount": 11,
+      "checkpointCount": 5,
+      "agentCount": 2,
+      "agentIds": [
+        "glider-alpha",
+        "glider-bravo"
+      ],
+      "passedChecks": [
+        "replay-event-ids-unique",
+        "replay-order-canonical",
+        "replay-timeline",
+        "replay-lifecycle-terminal-event",
+        "replay-checkpoint-references",
+        "replay-agent-references",
+        "replay-digest-h4-1-multi-agent-replay-checkpoint-000",
+        "replay-digest-h4-1-multi-agent-replay-checkpoint-001",
+        "replay-digest-h4-1-multi-agent-replay-checkpoint-002",
+        "replay-digest-h4-1-multi-agent-replay-checkpoint-003",
+        "replay-digest-h4-1-multi-agent-replay-checkpoint-004",
+        "replay-public-safety-hidden-truth"
+      ],
+      "warningCount": 0,
+      "failureCount": 0,
+      "issues": [],
+      "failureCodes": [],
+      "warningCodes": [],
+      "checks": [
+        {
+          "id": "replay-event-ids-unique",
+          "ok": true,
+          "detail": 11
+        },
+        {
+          "id": "replay-order-canonical",
+          "ok": true,
+          "detail": 11
+        },
+        {
+          "id": "replay-timeline",
+          "ok": true,
+          "detail": "11 events / 5 checkpoints"
+        },
+        {
+          "id": "replay-lifecycle-terminal-event",
+          "ok": true,
+          "detail": 1
+        },
+        {
+          "id": "replay-checkpoint-references",
+          "ok": true,
+          "detail": 5
+        },
+        {
+          "id": "replay-agent-references",
+          "ok": true,
+          "detail": 2
+        },
+        {
+          "id": "replay-digest-h4-1-multi-agent-replay-checkpoint-000",
+          "ok": true,
+          "detail": "fnv1a32:48a1e807"
+        },
+        {
+          "id": "replay-digest-h4-1-multi-agent-replay-checkpoint-001",
+          "ok": true,
+          "detail": "fnv1a32:b5aca3f0"
+        },
+        {
+          "id": "replay-digest-h4-1-multi-agent-replay-checkpoint-002",
+          "ok": true,
+          "detail": "fnv1a32:a9e1168e"
+        },
+        {
+          "id": "replay-digest-h4-1-multi-agent-replay-checkpoint-003",
+          "ok": true,
+          "detail": "fnv1a32:649f746f"
+        },
+        {
+          "id": "replay-digest-h4-1-multi-agent-replay-checkpoint-004",
+          "ok": true,
+          "detail": "fnv1a32:26cae45d"
+        },
+        {
+          "id": "replay-public-safety-hidden-truth",
+          "ok": true,
+          "detail": "public-safe"
+        }
+      ],
+      "warnings": [],
+      "failures": [],
+      "digestSummary": {
+        "enabled": true,
+        "checked": 5,
+        "passed": 5,
+        "failed": 0,
+        "algorithm": "stable-json-fnv1a32-public-state-v1"
+      },
+      "orderingSummary": {
+        "enabled": true,
+        "checked": 1,
+        "passed": true,
+        "policy": "replay-r1-canonical-event-order",
+        "globalAgentSortValue": ""
+      },
+      "publicSafetySummary": {
+        "enabled": true,
+        "checked": 1,
+        "passed": true,
+        "hiddenTruthLeak": false
+      },
+      "compatibilitySummary": {
+        "status": "PASS",
+        "compatibility": "current",
+        "schemaVersion": "replay-r1.0",
+        "replayMode": "publicObservationPlayback",
+        "currentSchemaVersion": "replay-r1.0",
+        "publicPlaybackImplemented": true,
+        "reservedReplayMode": false,
+        "warningCount": 0,
+        "errorCount": 0
+      },
+      "summary": {
+        "status": "PASS",
+        "eventCount": 11,
+        "checkpointCount": 5,
+        "agentCount": 2,
+        "warningCount": 0,
+        "failureCount": 0,
+        "failureCodes": [],
+        "digestChecksPassed": true,
+        "orderingChecksPassed": true,
+        "publicSafetyPassed": true,
+        "strict": false,
+        "changesOfficialBrowserScoring": false
+      },
+      "firstDivergence": null,
+      "mismatchClass": null,
+      "boundary": "Replay integrity verification checks recorded public replay artifacts, ordering, checkpoints, digests, and public-safety markers. It does not reconstruct hidden truth, rerun physics, or change official browser scoring.",
+      "changesOfficialBrowserScoring": false,
+      "usesAuthoritativeHiddenStateReplay": false,
+      "usesHiddenTruthResimulation": false,
+      "usesNewPlanner": false,
+      "usesRouteOptimizer": false,
+      "usesRL": false,
+      "usesMARL": false,
+      "usesPythonSimulator": false
+    }
+  },
+  "fixtureMetadata": {
+    "intentionallyInvalid": true,
+    "multiAgentReplayContractOnly": true,
+    "expectedFailureCodes": [
+      "REPLAY_EVENT_ORDER_INVALID",
+      "REPLAY_ALIGNMENT_REPORT_MISMATCH"
+    ],
+    "label": "same-tick agent events reordered contrary to canonical order"
+  },
+  "notes": [
+    "H4.1 compact public replay fixture. No hidden truth. No planner, optimizer, Python simulator, or MARL/RL.",
+    "Intentionally invalid/test-only fixture: same-tick agent events reordered contrary to canonical order"
+  ]
+}

@@ -1,4 +1,4 @@
-import { validateHeadlessBundleManifest as validateH0Manifest } from './HeadlessBundleManifest.js';
+﻿import { validateHeadlessBundleManifest as validateH0Manifest } from './HeadlessBundleManifest.js';
 import { manifestDisablesHiddenExport } from './HeadlessBundleLoader.js';
 import { HEADLESS_SOLVER_ROUNDTRIP_REPORT_TYPE, isHeadlessRoundtripReportType } from './HeadlessRoundtripTypes.js';
 import { validateMotionCostGraph } from '../motion/MotionCostGraphBuilder.js';
@@ -7,6 +7,7 @@ import { validateMissionOutcomeReport } from '../scoring/MissionOutcomeReport.js
 import { validateMissionRegretReport } from '../scoring/MissionRegretModel.js';
 import { auditMissionScorePublicSafety } from '../scoring/MissionScorePublicSafety.js';
 import { validateReplayArtifacts } from '../replay/ReplaySchema.js';
+import { verifyReplayIntegrity } from '../replay/ReplayIntegrityVerifier.js';
 
 export const HEADLESS_BUNDLE_VALIDATION_VERSION = 'headless-bundle-validation-h2';
 
@@ -276,8 +277,27 @@ export function validateHeadlessReplay(source = null) {
   const replaySource = source?.replayManifest || source?.replayEvents || source?.replayCheckpoints || source?.replay
     ? source
     : { replay: source };
-  const validation = validateReplayArtifacts(replaySource, { allowLegacy: true });
-  return result(validation.checks, validation.warnings, validation.failures, validation.visibilityRisk);
+  const legacyValidation = validateReplayArtifacts(replaySource, { allowLegacy: true });
+  const hasReplayR1 = Boolean(replaySource?.replayManifest && replaySource?.replayEvents && replaySource?.replayCheckpoints);
+  if (!hasReplayR1) return result(legacyValidation.checks, legacyValidation.warnings, legacyValidation.failures, legacyValidation.visibilityRisk);
+  const integrity = verifyReplayIntegrity(replaySource, {
+    allowWarnings: true,
+    verifyDigests: true,
+    verifyPublicSafety: true,
+    verifyAlignmentReport: true
+  });
+  const checks = [...(legacyValidation.checks ?? []), ...(integrity.checks ?? [])];
+  const warnings = [...(legacyValidation.warnings ?? []), ...(integrity.issues ?? []).filter((entry) => entry.severity === 'warning').map((entry) => `${entry.code}: ${entry.message}`)];
+  const failures = [...(legacyValidation.failures ?? []), ...(integrity.issues ?? []).filter((entry) => entry.severity === 'error').map((entry) => `${entry.code}: ${entry.message}`)];
+  const validation = result(checks, warnings, failures, failures.length ? 'high' : legacyValidation.visibilityRisk);
+  return {
+    ...validation,
+    issues: integrity.issues ?? [],
+    integrityStatus: integrity.status,
+    failureCodes: integrity.failureCodes ?? [],
+    warningCodes: integrity.warningCodes ?? [],
+    integritySummary: integrity.summary ?? {}
+  };
 }
 
 export function validateHeadlessMissionOutcomeArtifacts(report = null, missionScore = null, regretReport = null) {
@@ -361,7 +381,10 @@ export function validateHeadlessBundle(bundle = {}) {
       hasReplayManifest: Boolean(bundle.replayManifest),
       hasReplayEvents: Boolean(bundle.replayEvents),
       hasReplayCheckpoints: Boolean(bundle.replayCheckpoints),
-      hasReplayAlignmentReport: Boolean(bundle.replayAlignmentReport)
+      hasReplayAlignmentReport: Boolean(bundle.replayAlignmentReport),
+      replayIntegrityStatus: validations.replay.integrityStatus ?? null,
+      replayFailureCodes: validations.replay.failureCodes ?? [],
+      replayWarningCodes: validations.replay.warningCodes ?? []
     }
   };
 }
@@ -392,6 +415,8 @@ function oracleVisible(payload = {}, fieldId) {
   const tier = payload?.fieldVisibility?.[fieldId] ?? payload?.visibilityTier;
   return ['oracle', 'debugAll', 'hiddenTruth'].includes(tier);
 }
+
+
 
 
 

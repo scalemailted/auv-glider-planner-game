@@ -1,4 +1,4 @@
-import { validateHeadlessBundle } from './HeadlessBundleValidation.js';
+﻿import { validateHeadlessBundle } from './HeadlessBundleValidation.js';
 import { HEADLESS_SOLVER_ROUNDTRIP_REPORT_TYPE, isHeadlessRoundtripReportType } from './HeadlessRoundtripTypes.js';
 import { trajectoryMotionSummary } from '../motion/GliderTrajectorySimulator.js';
 import { missionFeasibilityReportSummary } from '../motion/MissionFeasibilityReport.js';
@@ -9,6 +9,7 @@ import { missionRegretReportSummary } from '../scoring/MissionRegretModel.js';
 import { buildMissionScorecardViewModel } from '../scoring/MissionScorecardViewModel.js';
 import { createReplayPlaybackState, replayPlaybackSummary } from '../replay/ReplayPlayback.js';
 import { replayArtifactsSummary } from '../replay/ReplaySchema.js';
+import { verifyReplayIntegrity } from '../replay/ReplayIntegrityVerifier.js';
 
 export const HEADLESS_BUNDLE_VIEW_MODEL_VERSION = 'headless-bundle-view-model-h2';
 
@@ -565,19 +566,44 @@ export function headlessBundleReplaySummary(bundle = {}) {
   const summary = replayArtifactsSummary(bundle);
   const replay = bundle.replay ?? {};
   const alignment = bundle.replayAlignmentReport ?? {};
+  const integrity = summary.present ? verifyReplayIntegrity(bundle, { allowWarnings: true }) : null;
+  const events = bundle.replayEvents?.events ?? [];
+  const checkpoints = bundle.replayCheckpoints?.checkpoints ?? [];
+  const agentIds = integrity?.agentIds ?? [...new Set([
+    ...(bundle.replayManifest?.agentIds ?? []),
+    ...events.map((event) => event.agentId).filter(Boolean),
+    ...Object.keys(bundle.replayManifest?.initialPublicState?.agentStates ?? bundle.replayManifest?.initialState?.vehicles ?? {})
+  ])].sort();
   return {
     present: summary.present,
     legacyLimited: summary.legacyLimited,
     type: bundle.replayManifest?.type ?? replay.type ?? null,
     contract: summary.contract,
     version: summary.version,
+    schemaVersion: bundle.replayManifest?.schemaVersion ?? summary.version,
+    replayVersion: bundle.replayManifest?.replayVersion ?? summary.version,
     seed: summary.seed ?? replay.seed ?? bundle.manifest?.seed ?? null,
     replayMode: summary.replayMode,
     replayFidelity: summary.replayFidelity,
-    compatibilityStatus: alignment.compatibilityStatus ?? summary.compatibilityStatus,
+    compatibilityStatus: integrity?.compatibilitySummary?.compatibility ?? alignment.compatibilityStatus ?? summary.compatibilityStatus,
     alignmentStatus: alignment.status ?? null,
-    firstDivergence: alignment.firstDivergence ?? null,
+    integrityStatus: integrity?.status ?? alignment.status ?? null,
+    replayIntegrityStatus: integrity?.status ?? alignment.status ?? null,
+    warningCount: integrity?.warningCount ?? alignment.warningCount ?? alignment.summary?.warningCount ?? 0,
+    failureCount: integrity?.failureCount ?? alignment.failureCount ?? alignment.summary?.failureCount ?? 0,
+    failureCodes: integrity?.failureCodes ?? [],
+    warningCodes: integrity?.warningCodes ?? [],
+    issues: integrity?.issues ?? [],
+    digestChecksPassed: integrity?.summary?.digestChecksPassed === true,
+    orderingChecksPassed: integrity?.summary?.orderingChecksPassed === true,
+    publicSafetyPassed: integrity?.summary?.publicSafetyPassed !== false,
+    firstDivergence: integrity?.firstDivergence ?? alignment.firstDivergence ?? null,
     gliderId: replay.gliderId ?? bundle.replayManifest?.agentIds?.[0] ?? null,
+    agentCount: agentIds.length,
+    agentIds,
+    multiAgentReplayContractOnly: bundle.fixtureMetadata?.multiAgentReplayContractOnly === true || agentIds.length > 1,
+    intentionallyInvalid: bundle.fixtureMetadata?.intentionallyInvalid === true,
+    expectedFailureCodes: bundle.fixtureMetadata?.expectedFailureCodes ?? [],
     eventCount: summary.eventCount,
     checkpointCount: summary.checkpointCount,
     trackPointCount: replay.trackPointCount ?? replay.route?.length ?? bundle.gliderTracks?.length ?? null,
@@ -585,17 +611,20 @@ export function headlessBundleReplaySummary(bundle = {}) {
     surfacingCount: summary.surfacingCount,
     objectiveTransitionCount: summary.objectiveTransitionCount,
     terminalTick: summary.terminalTick,
+    terminalReason: bundle.replayManifest?.terminalReason ?? bundle.replayManifest?.terminationReason ?? null,
     terminalDigest: summary.terminalDigest,
-    publicSafe: summary.publicSafe,
+    publicSafe: summary.publicSafe && integrity?.publicSafetySummary?.passed !== false,
     hiddenTruthIncluded: summary.hiddenTruthIncluded,
     changesOfficialBrowserScoring: summary.changesOfficialBrowserScoring,
-    objectiveTransitions: (bundle.replayEvents?.events ?? []).filter((event) => event.phase === 'objective').map((event) => ({
+    objectiveTransitions: events.filter((event) => event.phase === 'objective').map((event) => ({
       sequence: event.sequence,
       tick: event.tick,
       objectiveId: event.payload?.objectiveId ?? null,
-      label: event.payload?.label ?? null
+      label: event.payload?.label ?? null,
+      agentId: event.agentId ?? null
     })),
-    warning: summary.warning
+    warning: summary.warning,
+    boundary: integrity?.boundary ?? 'Public replay playback inspects recorded public state only.'
   };
 }
 
@@ -632,6 +661,10 @@ export function headlessBundleViewModelSummary(viewModel = {}) {
     replayCheckpointCount: viewModel.replaySummary?.checkpointCount ?? 0,
     replayEventCount: viewModel.replaySummary?.eventCount ?? 0,
     replayTerminalDigest: viewModel.replaySummary?.terminalDigest ?? null,
+    replayIntegrityStatus: viewModel.replaySummary?.integrityStatus ?? null,
+    replayFailureCodes: viewModel.replaySummary?.failureCodes ?? [],
+    replayAgentCount: viewModel.replaySummary?.agentCount ?? 0,
+    replayAgentIds: viewModel.replaySummary?.agentIds ?? [],
     waterColumnVerticalCoverage: viewModel.waterColumnSummary?.verticalCoverage ?? null,
     hasBathymetrySummary: viewModel.bathymetrySummary?.present === true,
     bathymetryDepthRange: viewModel.bathymetrySummary?.depthRange ?? null,
@@ -706,6 +739,7 @@ function sum(values) { return values.map(Number).filter(Number.isFinite).reduce(
 function mean(values) { const finite = values.map(Number).filter(Number.isFinite); return finite.length ? sum(finite) / finite.length : null; }
 function min(values) { const finite = values.map(Number).filter(Number.isFinite); return finite.length ? Math.min(...finite) : null; }
 function max(values) { const finite = values.map(Number).filter(Number.isFinite); return finite.length ? Math.max(...finite) : null; }
+
 
 
 

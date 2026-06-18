@@ -91,7 +91,9 @@ import { buildHeadlessFieldPackDescriptorFromDemoArtifact, validateHeadlessAdapt
 import { buildHeadlessBundleFromFiles } from '../../src/core/headless/HeadlessBundleLoader.js';
 import { validateHeadlessBundle } from '../../src/core/headless/HeadlessBundleValidation.js';
 import { buildHeadlessBundleViewModel } from '../../src/core/headless/HeadlessBundleViewModel.js';
-import { buildBrowserHeadlessBundleDebugObject, buildBrowserHeadlessBundleSummaryArtifact, buildBrowserHeadlessRoundtripSummaryArtifact } from '../../src/core/headless/HeadlessBundleBrowserAdapter.js';
+import { buildBrowserHeadlessBundleDebugObject, buildBrowserHeadlessBundleSummaryArtifact, buildBrowserHeadlessReplaySummaryArtifact, buildBrowserHeadlessRoundtripSummaryArtifact } from '../../src/core/headless/HeadlessBundleBrowserAdapter.js';
+import { verifyReplayIntegrity } from '../../src/core/replay/ReplayIntegrityVerifier.js';
+import { createReplayPlaybackState, replayMultiAgentSummary } from '../../src/core/replay/ReplayPlayback.js';
 import { headlessBundleViewerPanelHtml } from '../../src/ui/headless/HeadlessBundleViewerPanel.js';
 import { validateMissionOutcomeReport } from '../../src/core/scoring/MissionOutcomeReport.js';
 import { buildMissionScorecardViewModel } from '../../src/core/scoring/MissionScorecardViewModel.js';
@@ -778,6 +780,15 @@ assert.ok(h2PanelHtml.includes('Water Column'), 'P11 viewer panel renders water-
 assert.ok(h2PanelHtml.includes('Depth-Layer Priority'), 'P11 viewer panel renders depth-layer priority section');
 assert.ok(h2PanelHtml.includes('Browser ANCHOR remains the official visual referee'), 'H2 viewer panel states browser referee boundary');
 assert.equal(typeof HeadlessBundleViewerScene, 'function', 'H2 viewer scene imports');
+const h41ReplayFixture = JSON.parse(fs.readFileSync('docs/examples/headless_replay_multi_agent.example.json', 'utf8'));
+const h41ReplayBundle = buildHeadlessBundleFromFiles([{ fileName: 'bundle.json', payload: h41ReplayFixture }]);
+const h41ReplayReport = verifyReplayIntegrity(h41ReplayBundle);
+assert.equal(h41ReplayReport.status, 'PASS', 'H4.1 replay integrity verifier passes multi-agent public fixture');
+const h41ReplayPlayback = createReplayPlaybackState(h41ReplayBundle);
+assert.equal(replayMultiAgentSummary(h41ReplayPlayback).agentCount, 2, 'H4.1 replay playback exposes two public agents');
+const h41ReplaySummary = buildBrowserHeadlessReplaySummaryArtifact(h41ReplayBundle);
+assert.equal(h41ReplaySummary.type, 'anchor.browser.headless-replay-summary', 'H4.1 browser replay summary export type is stable');
+assert.equal(h41ReplaySummary.usesHiddenTruthResimulation, false, 'H4.1 replay summary does not claim hidden-truth resimulation');
 const h31RoundtripBundlePayload = JSON.parse(fs.readFileSync('docs/examples/headless_solver_roundtrip_bundle.example.json', 'utf8'));
 const h31RoundtripBundle = buildHeadlessBundleFromFiles([{ fileName: 'bundle.json', payload: h31RoundtripBundlePayload }]);
 assert.equal(h31RoundtripBundle.type, HEADLESS_SOLVER_ROUNDTRIP_BUNDLE_TYPE, 'H3.1 roundtrip fixture bundle type loads');

@@ -322,3 +322,7 @@ See [Mission Scoring and Regret](mission_scoring_and_regret.md) for the SCORE-R1
 H4 headless bundles may include `replay_manifest.json`, `replay_events.json`, `replay_checkpoints.json`, and `replay_alignment_report.json`; combined bundles embed the same data as `replayManifest`, `replayEvents`, `replayCheckpoints`, `replayAlignmentReport`, and `replayContract`. Public/no-hidden bundles use `publicObservationPlayback` and must not include hidden truth, oracle state, or referee-only payloads. Legacy `replay.json` remains a lightweight compatibility field and should be labelled legacy/limited if REPLAY-R1 artifacts are absent.
 
 See `docs/headless_replay_alignment.md` for ordering, digest, CLI, and browser viewer details.
+
+## H4.1 Replay Schema And Integrity Artifacts
+
+Replay schema documents live under `schemas/replay-*.schema.json`. Browser summaries may include `type: "anchor.browser.headless-replay-summary"`, a compact public-safe summary containing replay identity, mode/version, event/checkpoint counts, agent IDs, integrity status, warning/failure codes, playback cursor, selected agent, surfacing/objective counts, terminal reason, public-safety result, and boundary flags. The compact summary intentionally excludes full event arrays and hidden truth.

@@ -169,3 +169,7 @@ node tools/js/headless_oceanbox.mjs verify-replay --bundle runs/h3-roundtrip/bun
 ```
 
 Use `--public-playback` for sanitized bundles. `--referee-replay` is only a mode label for explicitly protected/internal contexts and does not add hidden payloads to public exports.
+
+## H4.1 Replay Integrity CLI
+
+`headless_oceanbox.mjs verify-replay` validates replay schema, compatibility, event ordering, checkpoint references, deterministic digests, public-safety markers, and alignment reports. It exits `0` for PASS/WARN by default and nonzero for FAIL. `--strict` exits nonzero for WARN or FAIL. Useful options include `--expected-mode publicObservationPlayback`, `--allow-warnings`, `--no-digest-check`, and debug-only `--no-public-safety-check`. `replay --verify --checkpoint <id> --until-event <id>` emits playback summaries over recorded public events; it does not rerun physics.

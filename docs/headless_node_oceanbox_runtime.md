@@ -150,3 +150,7 @@ Node/OceanBox-JS now emits a MOTION-R1 mission-feasibility report skeleton when 
 SCORE-R1 is shadow benchmark scoring. It does not replace official browser scoring, Challenge Mode scoring, leaderboard ranking, or existing debrief totals. Profiles are objective-aware and versioned; missing data is explicit; regret requires a compatible reference, and best-known attempt does not mean optimal. The Node/OceanBox-JS runtime remains the canonical headless runtime. Python/Colab analyzes exported artifacts or invokes Node; no Python simulator, planner, optimizer, MARL/RL, operational certification, SeaExplorer validation, or calibrated ocean forecast is added.
 
 See [Mission Scoring and Regret](mission_scoring_and_regret.md) for the SCORE-R1 artifact contract and boundaries.
+
+## Replay Integrity Boundary
+
+Node/OceanBox-JS replay verification checks recorded public replay artifacts, deterministic ordering, checkpoint references, digests, and public-safety markers. It does not rerun hidden-state physics or make headless scoring official browser scoring. See `docs/replay_artifact_schemas.md` for H4.1 schema and issue-code details.

@@ -410,3 +410,7 @@ See [Mission Scoring and Regret](mission_scoring_and_regret.md) for the SCORE-R1
 ## H4 / REPLAY-R1
 
 Added a versioned headless replay alignment contract with `replay_manifest.json`, canonical `replay_events.json`, digest-bearing `replay_checkpoints.json`, and `replay_alignment_report.json`. The browser Headless Bundle Viewer consumes the same public replay state reducer as the headless tooling for play/pause, event stepping, and checkpoint jumps. Public bundles are labelled public observation playback; authoritative/referee replay remains a protected boundary and is not inferred from sanitized exports.
+
+## H4.1 / Replay Schema, Integrity, And Multi-Agent Contract Hardening
+
+Added formal replay schemas, runtime schema validation, compatibility policy, structured integrity verifier, compact clean/tampered replay fixtures, browser-visible integrity failures, compact replay summary export, and a contract-only two-agent replay fixture. Public playback remains `publicObservationPlayback`; protected/referee replay modes remain reserved and unimplemented for public artifacts.

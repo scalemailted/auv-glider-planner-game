@@ -1,4 +1,4 @@
-import { missionScorecardPanelHtml } from '../scoring/MissionScorecardPanel.js';
+﻿import { missionScorecardPanelHtml } from '../scoring/MissionScorecardPanel.js';
 export function headlessBundleViewerPanelHtml(viewModel = {}) {
   return `
     <section class="console-header headless-bundle-viewer-panel">
@@ -385,24 +385,43 @@ export function headlessBundleReplayHtml(viewModel = {}) {
   const summary = viewModel.replaySummary ?? {};
   const playback = viewModel.replayPlayback ?? {};
   const transitions = summary.objectiveTransitions ?? [];
+  const failureIssues = (summary.issues ?? []).filter((entry) => entry.severity === 'error').slice(0, 6);
+  const agentIds = summary.agentIds ?? playback.agentIds ?? [];
+  const playbackTrusted = summary.present && summary.integrityStatus !== 'FAIL';
   return `
     <section class="console-section" data-headless-replay-panel>
       <h2>Replay</h2>
+      <h3>Replay Integrity</h3>
+      <div class="cell-inspector-metrics">
+        ${metricHtml('Status', summary.integrityStatus ?? summary.alignmentStatus ?? 'N/A')}
+        ${metricHtml('Replay Mode', summary.replayMode ?? 'N/A')}
+        ${metricHtml('Replay Version', summary.replayVersion ?? summary.version ?? 'N/A')}
+        ${metricHtml('Manifest Schema', summary.schemaVersion ?? 'N/A')}
+        ${metricHtml('Event Count', summary.eventCount ?? 0)}
+        ${metricHtml('Checkpoint Count', summary.checkpointCount ?? 0)}
+        ${metricHtml('Agent Count', summary.agentCount ?? 0)}
+        ${metricHtml('Digest Checks', summary.digestChecksPassed ? 'pass' : summary.present ? 'fail' : 'N/A')}
+        ${metricHtml('Ordering Checks', summary.orderingChecksPassed ? 'pass' : summary.present ? 'fail' : 'N/A')}
+        ${metricHtml('Public-Safety Checks', summary.publicSafetyPassed ? 'pass' : summary.present ? 'fail' : 'N/A')}
+        ${metricHtml('Warnings', summary.warningCount ?? 0)}
+        ${metricHtml('Failures', summary.failureCount ?? 0)}
+      </div>
+      ${summary.integrityStatus === 'FAIL' ? '<div class="hud-muted"><strong>This replay failed integrity verification. Playback results should not be treated as trustworthy.</strong></div>' : ''}
+      ${summary.intentionallyInvalid ? '<div class="hud-muted">This checked-in replay fixture is intentionally invalid and test-only.</div>' : ''}
+      ${failureIssues.length ? failureIssues.map((entry) => `<div class="hud-muted"><strong>${escapeHtml(entry.code)}</strong> ${escapeHtml(entry.artifact ?? '')} ${escapeHtml(entry.eventId ?? entry.checkpointId ?? entry.path ?? '')} ${entry.expected !== undefined || entry.actual !== undefined ? `expected ${escapeHtml(JSON.stringify(entry.expected))} actual ${escapeHtml(JSON.stringify(entry.actual))}` : ''}</div>`).join('') : ''}
+      <h3>Playback</h3>
       <div class="cell-inspector-metrics">
         ${metricHtml('Present', summary.present ? 'yes' : summary.legacyLimited ? 'legacy only' : 'no')}
         ${metricHtml('Contract', summary.contract ?? 'N/A')}
-        ${metricHtml('Mode', summary.replayMode ?? 'N/A')}
-        ${metricHtml('Fidelity', summary.replayFidelity ?? 'N/A')}
         ${metricHtml('Compatibility', summary.compatibilityStatus ?? summary.alignmentStatus ?? 'N/A')}
-        ${metricHtml('Events', summary.eventCount ?? 0)}
-        ${metricHtml('Checkpoints', summary.checkpointCount ?? 0)}
-        ${metricHtml('Surfacing', summary.surfacingCount ?? 0)}
-        ${metricHtml('Objectives', summary.objectiveTransitionCount ?? 0)}
         ${metricHtml('Current Tick', playback.currentTick ?? 'N/A')}
+        ${metricHtml('Current Event', playback.currentEventId ?? 'N/A')}
+        ${metricHtml('Event Agent', playback.currentEventAgentId ?? 'Mission / Global')}
+        ${metricHtml('Current Checkpoint', playback.currentCheckpointId ?? 'N/A')}
         ${metricHtml('Terminal Digest', summary.terminalDigest ?? 'N/A')}
       </div>
       <div class="panel-stack">
-        <button class="console-button secondary" data-action="replay-toggle" ${summary.present ? '' : 'disabled'}>${playback.playing ? 'Pause Replay' : 'Play Replay'}</button>
+        <button class="console-button secondary" data-action="replay-toggle" ${playbackTrusted ? '' : 'disabled'}>${playback.playing ? 'Pause Replay' : 'Play Replay'}</button>
         <button class="console-button secondary" data-action="replay-step" ${summary.present ? '' : 'disabled'}>Step Event</button>
         <button class="console-button secondary" data-action="replay-jump-start" ${summary.present ? '' : 'disabled'}>Start Checkpoint</button>
         <button class="console-button secondary" data-action="replay-jump-next-checkpoint" ${summary.present ? '' : 'disabled'}>Next Checkpoint</button>
@@ -410,8 +429,12 @@ export function headlessBundleReplayHtml(viewModel = {}) {
       </div>
       ${playback.message ? `<div class="hud-muted">${escapeHtml(playback.message)}</div>` : ''}
       ${summary.firstDivergence ? `<div class="hud-muted"><strong>Divergence:</strong> ${escapeHtml(summary.firstDivergence.mismatchClass ?? 'mismatch')} at ${escapeHtml(summary.firstDivergence.path ?? 'unknown path')}</div>` : ''}
+      <h3>Agents</h3>
+      ${agentIds.length ? `<div class="panel-stack"><button class="console-button secondary" data-replay-agent-filter="all">All Agents</button>${agentIds.map((agentId) => `<button class="console-button secondary" data-replay-agent-filter="${escapeHtml(agentId)}">${escapeHtml(agentId)}</button>`).join('')}</div>` : '<div class="hud-muted">No per-agent replay state recorded.</div>'}
+      ${(playback.agents ?? []).length ? `<div class="cell-inspector-metrics">${playback.agents.map((agent) => metricHtml(agent.agentId, `${agent.status ?? 'unknown'} @ ${agent.x ?? 'N/A'}, ${agent.y ?? 'N/A'}`)).join('')}</div>` : ''}
       <h3>Objective Transitions</h3>
-      ${transitions.length ? transitions.map((entry) => `<div class="hud-muted">Tick ${escapeHtml(entry.tick)} | ${escapeHtml(entry.objectiveId ?? 'objective')} | ${escapeHtml(entry.label ?? '')}</div>`).join('') : '<div class="hud-muted">No objective transitions recorded.</div>'}
+      ${transitions.length ? transitions.map((entry) => `<div class="hud-muted">Tick ${escapeHtml(entry.tick)} | ${escapeHtml(entry.agentId ?? 'Mission / Global')} | ${escapeHtml(entry.objectiveId ?? 'objective')} | ${escapeHtml(entry.label ?? '')}</div>`).join('') : '<div class="hud-muted">No objective transitions recorded.</div>'}
+      <div class="hud-muted">Global mission events sort before agent events; agent events then sort by normalized agent ID, explicit sequence, and stable event ID.</div>
       <div class="hud-muted">Public sanitized bundles use public observation playback with checkpoint digest verification, not authoritative hidden-truth resimulation.</div>
       <div class="hud-muted">Replay controls consume the shared REPLAY-R1 event/checkpoint contract. Browser rendering timing does not determine simulation results.</div>
       <div class="hud-muted">Replay and SCORE-R1 artifacts remain inspection/shadow artifacts; official browser scoring is unchanged.</div>
@@ -427,8 +450,10 @@ export function headlessBundleExportPanelHtml(viewModel = {}) {
       <h2>Export</h2>
       <button class="console-button primary" data-action="export-browser-summary" ${disabled}>Export Browser Summary JSON</button>
       <button class="console-button secondary" data-action="export-browser-roundtrip-summary" ${roundtripDisabled}>Export Roundtrip Summary JSON</button>
+      <button class="console-button secondary" data-action="export-browser-replay-summary" ${viewModel?.replaySummary?.present ? '' : 'disabled'}>Export Replay Summary JSON</button>
       <div class="hud-muted">Exports anchor.browser.headless-bundle-summary for browser-side inspection and comparison only.</div>
       <div class="hud-muted">Roundtrip export writes anchor.browser.headless-roundtrip-summary when a solver-packet roundtrip report is loaded.</div>
+      <div class="hud-muted">Replay export writes compact anchor.browser.headless-replay-summary without full event arrays or hidden truth.</div>
     </section>
   `;
 }
@@ -464,6 +489,7 @@ function escapeHtml(value) {
     "'": '&#039;'
   }[char]));
 }
+
 
 
 
