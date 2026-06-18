@@ -26,7 +26,7 @@ Browser ANCHOR is the visual game and referee. Node/OceanBox-JS is the canonical
 
 ### Browser ANCHOR
 
-Browser ANCHOR is the visual game, referee, and debrief UI. Three.js is now the production mission environment for planning and live simulation rendering. Phaser remains a transitional scene shell, lab host, and query-gated diagnostic fallback (`?legacyPhaser=1`), not the target mission renderer for new feature development. Renderer view models consume public-safe state without owning simulation, scoring, planning, replay semantics, route optimization, or hidden truth. Browser ANCHOR owns the player-facing planning flow, simulation screens, tutorial/challenge routes, benchmark UI, adaptive surfacing review, and Headless Bundle Viewer. Browser scoring remains the official gameplay scoring surface.
+Browser ANCHOR is the visual game, referee, and debrief UI. Three.js is now the production mission environment for planning and live simulation rendering, with visible planning tools and camera-control parity in the Mission Workspace. Phaser remains a transitional scene shell, lab host, and query-gated diagnostic fallback (`?legacyPhaser=1`), not the target mission renderer for new feature development. Renderer view models consume public-safe state without owning simulation, scoring, planning, replay semantics, route optimization, or hidden truth. Browser ANCHOR owns the player-facing planning flow, simulation screens, tutorial/challenge routes, benchmark UI, adaptive surfacing review, and Headless Bundle Viewer. Browser scoring remains the official gameplay scoring surface.
 
 Product surfaces include:
 
@@ -218,6 +218,9 @@ Boundaries:
 - Public bundles must not expose hidden truth payloads.
 
 ## 11. Near-Term Priorities
+
+Current renderer stabilization priority after THREE-R1.1B is complete should be THREE-R1.2 — Bathymetric Terrain Surface + Operational Depth/Control Slabs. Terrain/slab work should build on the existing visible Planning Tools and camera controller without changing app routing or reintroducing the reverted DOM runtime.
+
 
 Active/near-term work should stabilize the current Three.js-first mission architecture before adding large new systems.
 

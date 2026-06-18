@@ -133,22 +133,21 @@ Read this screen before planning. `More Details` expands scoring notes and tutor
 
 Planning is where you create the waypoint plan. It is the main workspace: the left Mission Console shows mission controls, status, layer toggles, route/cost estimate, selected-glider performance, imports/exports, and Execute; the center Three.js Mission World shows the map, gliders, waypoints, global planning markers, currents, guidance cone, direct mission interaction, a top selected-glider planning HUD, and a bottom mission-time slider; the right Waypoint Timeline panel shows agent tabs and only the selected glider's executable waypoint sequence.
 
-Three.js is the default and production mission world for planning. It renders terrain, bathymetry, water/depth layers, currents, hazards, drop zones, gliders, waypoints, planning markers, route lines, and active Gold Star targets from the same canonical mission state used by the simulator. It supports hover/inspection, glider and waypoint selection, waypoint placement/editing/deletion, planning-marker placement/removal, and Gold Star inspection through canonical workspace commands. Waypoint placement remains 2.5D. A developer-only legacy Phaser tactical renderer can be enabled with `?legacyPhaser=1`; it is for diagnostics only and should not be used for new feature development.
+Three.js is the default and production mission world for planning. It renders terrain, bathymetry, water/depth layers, currents, hazards, drop zones, gliders, waypoints, planning markers, route lines, and active Gold Star targets from the same canonical mission state used by the simulator. It supports hover/inspection, glider and waypoint selection, explicit Deploy / Change Start, Add Waypoint, Select / Edit, Add Marker, and Navigate tools, waypoint placement/editing/deletion, planning-marker placement/removal, and Gold Star inspection through canonical workspace commands. Waypoint placement remains 2.5D. A developer-only legacy Phaser tactical renderer can be enabled with `?legacyPhaser=1`; it is for diagnostics only and should not be used for new feature development.
 
 Waypoint labels describe intent. `Navigation` means a commanded underwater target followed by dead reckoning. `Surface / GPS Update` means the glider surfaces, receives GPS, communicates, and may replan. `Sampling Target` means a science objective such as a Gold Star or marker; it is not a GPS-confirmed waypoint unless you add it to the route. `Terminal Carry-Through` means the final command intentionally extends past mission duration so the glider keeps moving until time expires.
 
-For large maps, use camera controls in Planning:
+For the Three.js Mission World, use the Mission Console `Planning Tools` section:
 
-- mouse wheel: zoom
-- right or middle drag: pan
-- Space + left drag: pan
-- `+` / `-`: zoom
-- WASD or arrow keys: pan
-- `F`: fit map
-- `R`: reset camera
-- on-screen `Zoom +`, `Zoom -`, `Fit`, and `Reset` buttons: quick camera controls
+- `Deploy / Change Start`: choose a highlighted drop-zone cell for the selected glider.
+- `Add Waypoint`: click successive valid cells to append executable route waypoints.
+- `Select / Edit`: inspect objects or drag an existing waypoint.
+- `Add Marker`: place non-executable planning markers.
+- `Navigate`: left drag orbits; right/middle/Shift-drag pans; wheel zooms.
 
-The camera moves only the map. The Mission Console, Waypoint Timeline, HUDs, modals, and bottom time slider stay fixed.
+The Mission Console `Camera Controls` section provides `Top Down`, `Oblique`, `Profile`, `Fleet`, `Focus Glider`, `Focus Route`, and `Reset Camera`. Manual camera movement is preserved across normal renderer refreshes; preset/reset buttons intentionally replace the manual camera pose.
+
+The camera moves only the mission world. The Mission Console, Waypoint Timeline, HUDs, modals, and bottom time slider stay fixed. See [Three.js Planning Tools and Camera Controls](docs/threejs_planning_tools_and_camera.md).
 
 The Phaser canvas fills the center viewport between the side panels. Scenario Setup, Mission Briefing, and Debrief use responsive center panels that stretch to the available center width, wrap cards as needed, and scroll vertically inside the center region. On narrow or portrait screens, the right waypoint panel hides and the console stacks above the center view so the simulator remains usable.
 

@@ -18,9 +18,14 @@ for (const file of threeFiles) {
 
 const intent = readFileSync('src/core/rendering/MissionWorldInteractionIntent.js', 'utf8');
 const result = readFileSync('src/core/rendering/MissionWorldInteractionResult.js', 'utf8');
+const toolState = readFileSync('src/core/rendering/MissionPlanningToolState.js', 'utf8');
+const cameraController = readFileSync('src/game/three/ThreeMissionCameraController.js', 'utf8');
 assert.match(intent, /ownsPlanning:\s*false/, 'intent contract must deny planning ownership.');
 assert.match(intent, /ownsSimulation:\s*false/, 'intent contract must deny simulation ownership.');
-assert.match(result, /changesOfficialBrowserScoring:\s*false/, 'result contract must deny scoring changes.');
+assert.match(result, /changesOfficialBrowserScoring:\s*false/, 'result contract must deny scoring changes.');assert.match(toolState, /ownsPlanning:\s*false/, 'planning tool state must deny planning ownership.');
+assert.match(toolState, /ownsSimulationState:\s*false/, 'planning tool state must deny simulation ownership.');
+assert.match(cameraController, /ownsScoring:\s*false/, 'camera controller summary must deny scoring ownership.');
+assert.doesNotMatch(cameraController, /addWaypoint\(|setSelectedStart\(|scoreMission|SimulationEngine/, 'camera controller must not mutate mission state.');
 
 const index = readFileSync('index.html', 'utf8');
 if (index.includes('src/app/main.js')) failures.push('index.html activates reverted DOM route entry.');

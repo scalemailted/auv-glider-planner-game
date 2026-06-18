@@ -124,8 +124,10 @@ import { buildBathymetryWorldRenderViewModel, bathymetryWorldRenderViewModelSumm
 import { createMissionWorldCoordinateTransform, gridCellToWorld, worldToGridCell } from '../../src/core/rendering/MissionWorldCoordinates.js';
 import { missionWorldRenderInputFromWorkspace } from '../../src/core/rendering/MissionWorldStateAdapter.js';
 import { buildMissionWorldRenderViewModel, missionWorldRenderViewModelSummary, validateMissionWorldRenderViewModel } from '../../src/core/rendering/MissionWorldRenderViewModel.js';
+import { createMissionPlanningToolState, missionPlanningToolStateSummary, setMissionPlanningTool, validateMissionPlanningToolState } from '../../src/core/rendering/MissionPlanningToolState.js';
 import { THREE_BATHYMETRY_RENDERER_VERSION, threeBathymetryRendererSummary } from '../../src/game/three/ThreeBathymetryRenderer.js';
 import { THREE_MISSION_WORLD_RENDERER_VERSION, threeMissionWorldRendererSummary } from '../../src/game/three/ThreeMissionWorldRenderer.js';
+import { THREE_MISSION_CAMERA_CONTROLLER_VERSION, createThreeMissionCameraController, threeMissionCameraControllerSummary } from '../../src/game/three/ThreeMissionCameraController.js';
 import { createMissionWorldFixture } from './mission_world_fixture.mjs';
 import { rendererHostPanelHtml } from '../../src/ui/rendering/RendererHostPanel.js';
 import '../../src/labs/widgets/SamplingActionValueWidgets.js';
@@ -693,7 +695,7 @@ assert.equal(gfxR2RendererSummary.renderer, 'three', 'GFX-R2 renderer summary ma
 assert.equal(gfxR2RendererSummary.usesFull3DPlanning, false, 'GFX-R2 renderer excludes full 3D planning');
 assert.equal(gfxR2RendererSummary.usesWebGPUFluid, false, 'GFX-R2 renderer excludes WebGPU fluid');
 assert.equal(gfxR2RendererSummary.usesEnable3D, false, 'GFX-R2 renderer excludes Enable3D');
-assert.equal(THREE_MISSION_WORLD_RENDERER_VERSION, 'three-mission-world-renderer-three-r1-1', 'GFX-R3B Three mission renderer version is stable');
+assert.equal(THREE_MISSION_WORLD_RENDERER_VERSION, 'three-mission-world-renderer-three-r1-1b', 'THREE-R1.1B Three mission renderer version is stable');
 const gfxR3aFixture = createMissionWorldFixture();
 const gfxR3aTransform = createMissionWorldCoordinateTransform({ grid: gfxR3aFixture.level.world.grid });
 const gfxR3aWorldPoint = gridCellToWorld(gfxR3aTransform, 3, 2, 50);
@@ -708,7 +710,14 @@ assert.ok(gfxR3aSummary.waypointCount >= 2, 'GFX-R3A view model includes waypoin
 assert.ok(gfxR3aSummary.currentVectorCount > 0, 'GFX-R3A view model includes current vectors');
 assert.equal(gfxR3aSummary.includesHiddenTruth, false, 'GFX-R3A fair view model excludes hidden truth');
 const gfxR3aRendererSummary = threeMissionWorldRendererSummary({ viewModel: gfxR3aViewModel, groups: {}, layerVisibility: {}, cameraState: {}, disposed: false, threeAvailable: true });
-assert.equal(gfxR3aRendererSummary.ownsPlanning, false, 'GFX-R3A renderer summary does not own planning');
+assert.equal(gfxR3aRendererSummary.ownsPlanning, false, 'GFX-R3A renderer summary does not own planning');assert.equal(typeof THREE_MISSION_CAMERA_CONTROLLER_VERSION, 'string', 'THREE-R1.1B camera controller imports');
+assert.ok(fs.readFileSync('src/game/three/ThreeMissionCameraController.js', 'utf8').includes('orbitBy'), 'THREE-R1.1B camera controller exposes orbit');
+assert.ok(fs.readFileSync('src/game/three/ThreeMissionCameraController.js', 'utf8').includes('panBy'), 'THREE-R1.1B camera controller exposes pan');
+assert.ok(fs.readFileSync('src/game/three/ThreeMissionCameraController.js', 'utf8').includes('zoomByDelta'), 'THREE-R1.1B camera controller exposes zoom');
+const threeR11bTool = setMissionPlanningTool(createMissionPlanningToolState({ selectedAgentId: 'glider-alpha' }), 'selectDeploymentCell', { selectedAgentId: 'glider-alpha' });
+const threeR11bToolValidation = validateMissionPlanningToolState(threeR11bTool);
+assert.equal(threeR11bToolValidation.valid, true, 'THREE-R1.1B planning tool state validates');
+assert.equal(missionPlanningToolStateSummary(threeR11bTool).ownsPlanning, false, 'THREE-R1.1B planning tool state excludes planning ownership');
 const envScene = new BathymetryWorldViewScene();
 assert.equal(envScene.scene?.key ?? 'BathymetryWorldViewScene', 'BathymetryWorldViewScene', 'ENV-R1 BathymetryWorldViewScene imports');
 const envSceneSource = fs.readFileSync('src/game/phaser/scenes/BathymetryWorldViewScene.js', 'utf8');

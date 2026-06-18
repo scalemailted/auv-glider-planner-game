@@ -38,6 +38,13 @@ Challenge Mode also persists `missionMode`. Mission modes are player-facing obje
 
 ## Version / Milestone Log
 
+### THREE-R1.1B - Planning Tool Activation and Camera Control Parity
+
+- Added renderer-neutral planning tool state for `Navigate`, `Select / Edit`, `Deploy / Change Start`, `Add Waypoint`, `Edit Waypoint`, and `Add Marker`.
+- Added visible Mission Console planning tool controls, a Three viewport active-tool overlay, right-panel `Deploy Glider` / `Change Start` labels, and shared activation between console and right panel.
+- Added a shared Three mission camera controller with orbit, pan, zoom, presets, reset, and selected-glider/route focus controls.
+- Preserved the boundary: Three remains a renderer/input surface; the portable mission core and Mission Workspace scene own validation, state mutation, simulation, and scoring.
+
 ### THREE-R1.1 - Mission Workspace Runtime Stabilization
 
 - Fixed the Three Mission Workspace startup crash caused by an out-of-scope renderer reference during render view-model construction.

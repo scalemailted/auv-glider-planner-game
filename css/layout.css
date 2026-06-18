@@ -1338,6 +1338,33 @@ body.main-menu-shell #center-column {
 .three-mission-world-canvas:active {
   cursor: grabbing;
 }
+.three-mission-tool-overlay {
+  position: absolute;
+  left: clamp(14px, 2vw, 28px);
+  top: clamp(14px, 2vw, 28px);
+  max-width: min(420px, calc(100% - 28px));
+  padding: .62rem .75rem;
+  border: 1px solid rgba(141, 220, 242, .28);
+  border-radius: 8px;
+  color: #eef6ff;
+  background: rgba(4, 13, 24, .68);
+  box-shadow: 0 16px 42px rgba(0, 0, 0, .28);
+  pointer-events: none;
+  z-index: 3;
+}
+
+.three-mission-tool-badge {
+  font-size: .84rem;
+  font-weight: 800;
+  letter-spacing: 0;
+}
+
+.three-mission-tool-instruction {
+  margin-top: .2rem;
+  color: #b5cbe5;
+  font-size: .78rem;
+  line-height: 1.32;
+}
 
 .three-bathymetry-overlay {
   position: absolute;

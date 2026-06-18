@@ -1,4 +1,4 @@
-﻿import { formatMissionTime, getTimeConfig } from '../core/time/MissionTime.js';
+import { formatMissionTime, getTimeConfig } from '../core/time/MissionTime.js';
 import { getDeploymentZoneForAgent, getDeploymentZonesForAgent, getSelectedStart, requiresDeploymentSelection } from '../core/deployment/DeploymentZones.js';
 import { labelReason } from '../core/planning/StopReasonSummarizer.js';
 import { formatDiagnosticForUi } from '../core/planning/RouteDiagnostic.js';
@@ -136,9 +136,10 @@ function deploymentSummary(state, agentId) {
   const canChange = agent.deployment?.mode === 'chooseFromZone' || agent.deployment?.mode === 'chooseFromZones';
   const fuel = Number(agent.fuel ?? agent.battery ?? 0);
   const speed = Number(agent.speed ?? agent.maxSpeed ?? 0);
+  const startAction = canChange ? ` <button data-change-start data-agent="${escapeAttr(agentId)}">${selectedStart ? 'Change Start' : 'Deploy Glider'}</button>` : '';
   return `
     <div class="waypoint-summary ${warning ? 'warning' : ''}">
-      <span>Start: ${selectedStart ? `(${selectedStart.x}, ${selectedStart.y})${canChange ? ` <button data-change-start data-agent="${escapeAttr(agentId)}">Change</button>` : ''}` : 'not selected'}</span>
+      <span>Start: ${selectedStart ? `(${selectedStart.x}, ${selectedStart.y})` : 'not selected'}${startAction}</span>
       <span>Drop zone: ${escapeHtml(zones.length > 1 ? `${zones.length} allowed` : agent.deployment?.zoneId ?? zone?.id ?? 'fixed')}</span>
       <span>Speed: ${Number.isFinite(speed) ? speed.toFixed(2) : 'N/A'} | Fuel: ${Number.isFinite(fuel) ? fuel.toFixed(0) : 'N/A'} | Radius: ${Number(agent.samplingRadius ?? 0.8).toFixed(2)}</span>
     </div>
@@ -171,8 +172,8 @@ function waypointRows(state, waypoints, agentId, engine, result, routeQuality) {
               <span>
                 <strong>W${index + 1} &middot; ${escapeHtml(semanticLabel)}</strong>
                 ${waypointKind === 'surface' ? '<small class="marker-estimate">GPS correction, communication/update, replanning point.</small>' : ''}
-                <strong>W${Number(waypoint.window ?? 0)} Â· ${escapeHtml(formatMissionTime(state.level, waypoint.t ?? 0))}</strong>
-                <small>(${Number(waypoint.x)}, ${Number(waypoint.y)}) Â· ${escapeHtml(waypoint.action ?? 'sample')}</small>
+                <strong>W${Number(waypoint.window ?? 0)} · ${escapeHtml(formatMissionTime(state.level, waypoint.t ?? 0))}</strong>
+                <small>(${Number(waypoint.x)}, ${Number(waypoint.y)}) · ${escapeHtml(waypoint.action ?? 'sample')}</small>
                 ${segmentGradeLine(grade)}
                 ${terminalCarryThrough ? '<small class="marker-warning">Terminal carry-through: simulation will travel toward this waypoint until mission time expires.</small>' : ''}
                 ${waypoint.validity?.routeAudit ? `<small class="marker-warning">${escapeHtml(formatDiagnosticForUi(waypoint.validity.routeAudit.diagnostic) ?? waypoint.validity.routeAudit.message)}</small>` : ''}
@@ -203,8 +204,8 @@ function markerRows(state, markers, agentId) {
             <span class="waypoint-num">M${index + 1}</span>
             <span>
               ${marker.linkedTargetId ? '<strong>Sampling Target</strong>' : ''}
-              <strong>W${Number(marker.window ?? 0)} Ã‚Â· ${escapeHtml(formatMissionTime(state.level, marker.t ?? 0))}</strong>
-              <small>(${Number(marker.x)}, ${Number(marker.y)}) Ã‚Â· ${escapeHtml(marker.label ?? 'Planning Marker')}${marker.linkedTargetId ? ` Ã‚Â· ${escapeHtml(marker.linkedTargetId)}` : ''}</small>
+              <strong>W${Number(marker.window ?? 0)} Â· ${escapeHtml(formatMissionTime(state.level, marker.t ?? 0))}</strong>
+              <small>(${Number(marker.x)}, ${Number(marker.y)}) Â· ${escapeHtml(marker.label ?? 'Planning Marker')}${marker.linkedTargetId ? ` Â· ${escapeHtml(marker.linkedTargetId)}` : ''}</small>
               ${markerEstimateDetails(reach)}
             </span>
             <em>${escapeHtml(statusLabelText(reach.status))}</em>
@@ -224,7 +225,7 @@ function markerRows(state, markers, agentId) {
 function segmentGradeLine(grade) {
   if (!grade) return '';
   const role = (grade.roleLabels ?? []).join(' + ') || 'transit';
-  return `<small class="marker-estimate">Segment grade ${escapeHtml(grade.grade)} (${escapeHtml(grade.numericScore)}) Â· ${escapeHtml(role)} Â· immediate +${escapeHtml(formatNumber(grade.components?.immediateSampleReward))} Â· setup +${escapeHtml(formatNumber(grade.components?.futureSetupValue))} Â· risk -${escapeHtml(formatNumber(Number(grade.components?.hazardPenalty ?? 0) + Number(grade.components?.shorelineRiskPenalty ?? 0)))}</small>`;
+  return `<small class="marker-estimate">Segment grade ${escapeHtml(grade.grade)} (${escapeHtml(grade.numericScore)}) · ${escapeHtml(role)} · immediate +${escapeHtml(formatNumber(grade.components?.immediateSampleReward))} · setup +${escapeHtml(formatNumber(grade.components?.futureSetupValue))} · risk -${escapeHtml(formatNumber(Number(grade.components?.hazardPenalty ?? 0) + Number(grade.components?.shorelineRiskPenalty ?? 0)))}</small>`;
 }
 
 function markerEstimateDetails(reach = {}) {

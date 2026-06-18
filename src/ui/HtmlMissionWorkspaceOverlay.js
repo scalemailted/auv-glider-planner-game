@@ -446,6 +446,7 @@ export class HtmlMissionWorkspaceOverlay {
       'renderer-legacy': () => this.handlers.setRendererBackend?.('legacyPhaser2d'),
       'renderer-three': () => this.handlers.setRendererBackend?.('threeMission3d'),
       'three-camera': (button) => this.handlers.setThreeCameraPreset?.(button.dataset.preset),
+      'mission-planning-tool': (button) => this.handlers.setMissionPlanningTool?.(button.dataset.tool),
       'three-layer': (button) => this.handlers.toggleThreeLayer?.(button.dataset.layer),
       'three-interaction-mode': (button) => this.handlers.setThreeInteractionMode?.(button.dataset.mode),
       'three-cancel-interaction': () => this.handlers.cancelThreeInteraction?.(),
@@ -719,6 +720,10 @@ function rendererBackendSection(state) {
   const layer = state.ui?.threeMissionLayers ?? {};
   const mode = state.ui?.threeMissionInteractionMode ?? 'selectInspect';
   const interaction = state.ui?.threeMissionInteraction ?? {};
+  const toolState = state.ui?.missionPlanningTool ?? interaction.planningToolState ?? {};
+  const activeToolId = toolState.activeToolId ?? planningToolForMode(mode);
+  const activeToolLabel = toolState.activeToolLabel ?? planningToolLabel(activeToolId);
+  const activeInstruction = toolState.instructions ?? interaction.userHint ?? 'Select a planning tool.';
   const layerButtons = [
     ['bathymetry', 'Bathymetry'],
     ['waterSurface', 'Water Surface'],
@@ -744,34 +749,67 @@ function rendererBackendSection(state) {
           </div>
         </div>` : '';
   const interactionControls = backend === 'threeMission3d' ? `
-        <h3 class="waypoint-section-title">Three Planning Tools</h3>
-        <div class="console-button-row">
-          ${interactionModeButton('navigate', 'Navigate', mode)}
-          ${interactionModeButton('selectInspect', 'Select/Edit', mode)}
-          ${interactionModeButton('placeWaypoint', 'Place Waypoint', mode)}
-          ${interactionModeButton('placeMarker', 'Place Marker', mode)}
+        <h3 class="waypoint-section-title">Planning Tools</h3>
+        <div class="console-button-row wrap" data-mission-planning-tools>
+          ${planningToolButton('navigate', 'Navigate', activeToolId)}
+          ${planningToolButton('selectInspect', 'Select / Edit', activeToolId)}
+          ${planningToolButton('selectDeploymentCell', 'Deploy / Change Start', activeToolId)}
+          ${planningToolButton('placeWaypoint', 'Add Waypoint', activeToolId)}
+          ${planningToolButton('placePlanningMarker', 'Add Marker', activeToolId)}
           <button class="console-button secondary" data-action="three-cancel-interaction">Cancel</button>
+        </div>
+        <div class="hud-card compact mission-planning-tool-status" data-active-planning-tool="${escapeAttr(activeToolId)}">
+          <div><strong>Active Tool:</strong> ${escapeHtml(activeToolLabel)}</div>
+          <div>${escapeHtml(activeInstruction)}</div>
         </div>
         <div class="hud-muted">Three pointer edits dispatch canonical workspace commands. Route timing, scoring, and simulation remain owned by the portable mission core.</div>
         ${threeInteractionStatusPanel(interaction)}
-        <h3 class="waypoint-section-title">Three Layers</h3><div class="console-button-row">${layerButtons}</div>`
+        <h3 class="waypoint-section-title">Three Layers</h3><div class="console-button-row wrap">${layerButtons}</div>`
     : '<div class="hud-muted">Legacy diagnostic view is active. Use Three.js for production planning.</div>';
   return `
       <section class="console-section" data-renderer-backend-control>
         <h2>Mission World</h2>
         <div class="hud-muted">Three.js is the production mission environment. The portable JavaScript core owns planning validity, simulation, scoring, and visibility permissions.</div>
         ${legacyControl}
-        <h3 class="waypoint-section-title">Camera Preset</h3>
-        <div class="console-button-row">
-          ${cameraButton('tacticalTopDown', 'Tactical Top Down', camera)}
-          ${cameraButton('obliqueMission', 'Oblique Mission', camera)}
-          ${cameraButton('waterColumnProfile', 'Water Column Profile', camera)}
+        <h3 class="waypoint-section-title">Camera Controls</h3>
+        <div class="console-button-row wrap">
+          ${cameraButton('tacticalTopDown', 'Top Down', camera)}
+          ${cameraButton('obliqueMission', 'Oblique', camera)}
+          ${cameraButton('waterColumnProfile', 'Profile', camera)}
+          ${cameraButton('fleetOverview', 'Fleet', camera)}
+          ${cameraButton('focusSelectedGlider', 'Focus Glider', camera)}
+          ${cameraButton('focusRoute', 'Focus Route', camera)}
+          ${cameraButton('resetCamera', 'Reset Camera', camera)}
         </div>
         ${interactionControls}
       </section>`;
 }
 function interactionModeButton(id, label, active) {
   return `<button class="console-button ${active === id ? 'primary' : 'secondary'}" data-action="three-interaction-mode" data-mode="${escapeAttr(id)}">${escapeHtml(label)}</button>`;
+}
+
+function planningToolButton(id, label, active) {
+  return `<button class="console-button ${active === id ? 'primary' : 'secondary'}" data-action="mission-planning-tool" data-tool="${escapeAttr(id)}">${escapeHtml(label)}</button>`;
+}
+
+function planningToolForMode(mode) {
+  if (mode === 'navigate') return 'navigate';
+  if (mode === 'selectDeployment') return 'selectDeploymentCell';
+  if (mode === 'placeWaypoint') return 'placeWaypoint';
+  if (mode === 'placeMarker') return 'placePlanningMarker';
+  if (mode === 'editWaypoint') return 'editWaypoint';
+  return 'selectInspect';
+}
+
+function planningToolLabel(id) {
+  return {
+    navigate: 'Navigate',
+    selectInspect: 'Select / Edit',
+    selectDeploymentCell: 'Deploy / Change Start',
+    placeWaypoint: 'Add Waypoint',
+    editWaypoint: 'Edit Waypoint',
+    placePlanningMarker: 'Add Marker'
+  }[id] ?? 'Select / Edit';
 }
 
 function threeInteractionStatusPanel(interaction = {}) {

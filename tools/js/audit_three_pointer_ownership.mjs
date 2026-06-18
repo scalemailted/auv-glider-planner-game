@@ -21,7 +21,11 @@ for (const field of ['pointerOwner', 'lastPointerConsumer', 'threeCanvasPointerE
   assert.ok(planning.includes(field), `planning debug missing ${field}`);
   assert.ok(simulation.includes(field), `simulation debug missing ${field}`);
 }
-assert.match(controller, /allowEditing:\s*options\.allowEditing !== false/, 'controller must support non-editable simulation mode.');
+assert.match(controller, /cameraGestureTypeForEvent/, 'controller must arbitrate camera gestures before edit intents.');
+assert.match(controller, /cameraController\?\.orbitBy/, 'controller must delegate orbit gestures to camera controller.');
+assert.match(controller, /cameraController\?\.panBy/, 'controller must delegate pan gestures to camera controller.');
+assert.match(planning, /activePlanningToolId/, 'planning debug must expose active planning tool.');
+assert.match(planning, /cameraOrbitChangeCount/, 'planning debug must expose camera controller change counts.');assert.match(controller, /allowEditing:\s*options\.allowEditing !== false/, 'controller must support non-editable simulation mode.');
 assert.match(simulation, /allowEditing:\s*false/, 'simulation controller must disable edit intents.');
 assert.match(simulation, /ANCHOR_MISSION_RENDER_DEBUG/, 'simulation must publish the shared mission render debug contract.');
 

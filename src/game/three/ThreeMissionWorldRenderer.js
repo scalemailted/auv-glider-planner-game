@@ -22,8 +22,15 @@ import {
 } from './layers/ThreePlanningInteractionLayer.js';
 import { clearGroup, makeBoxCell } from './layers/ThreeMissionLayerUtils.js';
 import { missionWorldRenderViewModelSummary } from '../../core/rendering/MissionWorldRenderViewModel.js';
+import {
+  createThreeMissionCameraController,
+  disposeThreeMissionCameraController,
+  setThreeMissionCameraPreset,
+  threeMissionCameraControllerSummary,
+  updateThreeMissionCameraBounds
+} from './ThreeMissionCameraController.js';
 
-export const THREE_MISSION_WORLD_RENDERER_VERSION = 'three-mission-world-renderer-three-r1-1';
+export const THREE_MISSION_WORLD_RENDERER_VERSION = 'three-mission-world-renderer-three-r1-1b';
 
 const GROUP_KEYS = [
   'bathymetryGroup',
@@ -99,6 +106,7 @@ export function createThreeMissionWorldRenderer(container, options = {}) {
     scalarLayer,
     planningInteractionLayer,
     interactionSurface,
+    cameraController: null,
     viewModel: null,
     rendererPixelRatio: pixelRatio,
     lastSize: { width, height, pixelRatio, resizeSequence: 0 },
@@ -118,7 +126,12 @@ export function createThreeMissionWorldRenderer(container, options = {}) {
     usesRouteOptimizer: false,
     usesMARL: false
   };
-  setThreeMissionWorldCamera(renderer, renderer.cameraState);
+  renderer.cameraController = createThreeMissionCameraController({
+    camera,
+    renderer,
+    presetId: renderer.cameraState.preset,
+    bounds: missionBoundsFromViewModel(options.viewModel ?? { grid: { width: 12, height: 12 }, coordinateSystem: { cellSize: 1 } })
+  });
   renderLoop(renderer);
   return renderer;
 }
@@ -151,7 +164,7 @@ export function updateThreeMissionWorldRenderer(renderer, viewModel = {}) {
   updateInteractionSurface(renderer, viewModel);
   updateThreePlanningInteractionLayer(renderer.planningInteractionLayer, viewModel.interactionViewModel, { transform: viewModel.coordinateSystem, viewModel });
   setThreeMissionLayerVisibility(renderer, renderer.layerVisibility);
-  fitCamera(renderer, viewModel);
+  syncCameraBounds(renderer, viewModel);
   renderer.renderer.render(renderer.scene, renderer.camera);
   return renderer;
 }
@@ -182,7 +195,13 @@ export function resizeThreeMissionWorldRenderer(renderer, width, height) {
 export function setThreeMissionWorldCamera(renderer, cameraPatch = {}) {
   if (!renderer) return renderer;
   renderer.cameraState = normalizeCameraPatch({ ...(renderer.cameraState ?? {}), ...(cameraPatch ?? {}) });
-  applyCamera(renderer);
+  if (renderer.cameraController) {
+    const bounds = renderer.viewModel ? missionBoundsFromViewModel(renderer.viewModel) : renderer.cameraController.bounds;
+    updateThreeMissionCameraBounds(renderer.cameraController, bounds);
+    setThreeMissionCameraPreset(renderer.cameraController, renderer.cameraState.preset, { bounds });
+  } else {
+    applyCamera(renderer);
+  }
   return renderer;
 }
 
@@ -248,6 +267,7 @@ export function threeMissionWorldRendererSummary(renderer = {}) {
     resizeSequence: renderer.lastSize?.resizeSequence ?? 0,
     layerVisibility: { ...(renderer.layerVisibility ?? {}) },
     camera: { ...(renderer.cameraState ?? {}) },
+    cameraController: threeMissionCameraControllerSummary(renderer.cameraController ?? {}),
     ownsSimulationState: false,
     ownsScoring: false,
     ownsPlanning: false,
@@ -267,6 +287,7 @@ export function disposeThreeMissionWorldRenderer(renderer) {
   if (renderer.animationFrame) globalThis.cancelAnimationFrame?.(renderer.animationFrame);
   disposeThreeScalarFieldLayer(renderer.scalarLayer);
   disposeThreePlanningInteractionLayer(renderer.planningInteractionLayer);
+  disposeThreeMissionCameraController(renderer.cameraController);
   clearThreeRealizedTrajectoryLayer(renderer.groups?.realizedTrajectoryGroup);
   clearThreeObservationLayer(renderer.groups?.observationGroup);
   clearThreeSurfacingEventLayer(renderer.groups?.surfacingEventGroup);
@@ -378,6 +399,14 @@ function updateObservationLayer(group, viewModel) {
   }
 }
 
+function syncCameraBounds(renderer, viewModel) {
+  if (renderer.cameraController) {
+    updateThreeMissionCameraBounds(renderer.cameraController, missionBoundsFromViewModel(viewModel));
+    return;
+  }
+  fitCamera(renderer, viewModel);
+}
+
 function fitCamera(renderer, viewModel) {
   if (renderer.cameraState?.manual) return;
   const width = Number(viewModel.grid?.width ?? 10);
@@ -400,7 +429,30 @@ function setCameraPose(renderer, pose) {
 }
 
 function normalizeCameraPatch(patch = {}) {
-  return { preset: patch.preset ?? patch.cameraPreset ?? 'obliqueMission', manual: patch.manual === true };
+  return {
+    preset: patch.preset ?? patch.cameraPreset ?? 'obliqueMission',
+    manual: patch.manual === true,
+    azimuthRadians: patch.azimuthRadians,
+    polarRadians: patch.polarRadians,
+    distance: patch.distance,
+    target: patch.target ?? null
+  };
+}
+
+function missionBoundsFromViewModel(viewModel = {}) {
+  const grid = viewModel.grid ?? {};
+  const transform = viewModel.coordinateSystem ?? {};
+  const cellSize = Number(transform.cellSize ?? 1);
+  const width = Math.max(1, Number(grid.width ?? transform.width ?? 12)) * cellSize;
+  const height = Math.max(1, Number(grid.height ?? transform.height ?? 12)) * cellSize;
+  return {
+    minX: -width / 2,
+    maxX: width / 2,
+    minZ: -height / 2,
+    maxZ: height / 2,
+    radius: Math.max(width, height, 8),
+    center: { x: 0, y: 0, z: 0 }
+  };
 }
 
 function defaultLayerVisibility(input = {}) {

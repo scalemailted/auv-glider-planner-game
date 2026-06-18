@@ -1430,3 +1430,18 @@
 .hud-card.compact[data-three-interaction-status] strong {
   color: var(--success);
 }
+
+.console-button-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: .45rem;
+  align-items: center;
+}
+
+.console-button-row.wrap {
+  align-items: stretch;
+}
+
+.mission-planning-tool-status {
+  margin-top: .55rem;
+}

@@ -1,7 +1,8 @@
 import { createMissionWorldInteractionIntent, normalizeMissionWorldInteractionMode } from '../../core/rendering/MissionWorldInteractionIntent.js';
 import { createThreeMissionHitTestContext, hitTestThreeMissionWorld } from './ThreeMissionHitTest.js';
+import { setThreeMissionCameraInteractionMode, threeMissionCameraControllerSummary } from './ThreeMissionCameraController.js';
 
-export const THREE_MISSION_INTERACTION_CONTROLLER_VERSION = 'three-mission-interaction-controller-three-r1-1';
+export const THREE_MISSION_INTERACTION_CONTROLLER_VERSION = 'three-mission-interaction-controller-three-r1-1b';
 export const THREE_MISSION_CLICK_THRESHOLD_CSS_PX = 5;
 
 export function createThreeMissionInteractionController({ renderer, camera, domElement, coordinates, getViewModel, emitIntent, options = {} } = {}) {
@@ -11,6 +12,7 @@ export function createThreeMissionInteractionController({ renderer, camera, domE
     version: THREE_MISSION_INTERACTION_CONTROLLER_VERSION,
     renderer,
     camera: camera ?? renderer?.camera ?? null,
+    cameraController: options.cameraController ?? renderer?.cameraController ?? null,
     domElement,
     coordinates,
     getViewModel: getViewModel ?? (() => renderer?.viewModel ?? null),
@@ -27,6 +29,8 @@ export function createThreeMissionInteractionController({ renderer, camera, domE
     dragState: null,
     pointerCaptured: false,
     cameraGestureActive: false,
+    cameraGestureType: null,
+    cameraPointerButton: null,
     disposed: false,
     lastHit: null,
     lastPointerDiagnostics: null,
@@ -48,6 +52,7 @@ export function createThreeMissionInteractionController({ renderer, camera, domE
 export function setThreeMissionInteractionMode(controller, mode) {
   if (!controller) return controller;
   controller.interactionMode = normalizeMissionWorldInteractionMode(mode);
+  setThreeMissionCameraInteractionMode(controller.cameraController, controller.interactionMode);
   cancelThreeMissionInteraction(controller, { keepHover: true });
   return controller;
 }
@@ -72,6 +77,9 @@ export function cancelThreeMissionInteraction(controller, options = {}) {
   controller.pointerDown = null;
   controller.dragState = null;
   controller.cameraGestureActive = false;
+  controller.cameraGestureType = null;
+  controller.cameraPointerButton = null;
+  controller.cameraController?.endGesture?.();
   if (!options.keepHover) {
     controller.lastHoverKey = null;
     emit(controller, 'clearHover', { metadata: { objectType: null } });
@@ -91,6 +99,9 @@ export function threeMissionInteractionControllerSummary(controller = {}) {
     hoverThrottledByAnimationFrame: true,
     pointerCaptured: controller.pointerCaptured === true,
     cameraGestureActive: controller.cameraGestureActive === true,
+    cameraGestureType: controller.cameraGestureType ?? null,
+    cameraPointerButton: controller.cameraPointerButton ?? null,
+    cameraController: threeMissionCameraControllerSummary(controller.cameraController ?? {}),
     waypointDragActive: controller.dragState?.active === true,
     dragWaypointId: controller.dragState?.waypointId ?? null,
     lastIntentId: controller.lastIntent?.intentId ?? null,
@@ -116,7 +127,8 @@ function onPointerDown(controller, event) {
   if (!controller.enabled || controller.disposed) return;
   const hit = hitTest(controller, event);
   controller.lastHit = hit;
-  const cameraGesture = isCameraGesture(controller, event);
+  const cameraGestureType = cameraGestureTypeForEvent(controller, event);
+  const cameraGesture = Boolean(cameraGestureType);
   controller.pointerDown = {
     pointerId: event.pointerId,
     pointerType: event.pointerType,
@@ -128,10 +140,16 @@ function onPointerDown(controller, event) {
     moved: false,
     hit,
     cameraGesture,
+    cameraGestureType,
     waypointDragCandidate: controller.allowEditing !== false && !cameraGesture && isPrimaryButton(event) && isEditMode(controller) && hit.category === 'waypoint' && hit.waypointId
   };
   setPointerCapture(controller, event.pointerId);
-  if (cameraGesture) controller.cameraGestureActive = true;
+  if (cameraGesture) {
+    controller.cameraGestureActive = true;
+    controller.cameraGestureType = cameraGestureType;
+    controller.cameraPointerButton = event.button;
+    controller.cameraController?.beginGesture?.(cameraGestureType, event.button);
+  }
 }
 
 function onPointerMove(controller, event) {
@@ -145,6 +163,8 @@ function onPointerMove(controller, event) {
   if (!moved) return;
   if (controller.pointerDown.cameraGesture) {
     controller.cameraGestureActive = true;
+    controller.cameraGestureType = controller.pointerDown.cameraGestureType;
+    controller.cameraPointerButton = event.button;
     applyCameraDrag(controller, event.clientX - controller.pointerDown.lastX, event.clientY - controller.pointerDown.lastY, event);
     controller.pointerDown.lastX = event.clientX;
     controller.pointerDown.lastY = event.clientY;
@@ -190,6 +210,9 @@ function onPointerUp(controller, event) {
   }
   if (pointerDown.cameraGesture || pointerDown.moved) {
     controller.cameraGestureActive = false;
+  controller.cameraGestureType = null;
+  controller.cameraPointerButton = null;
+  controller.cameraController?.endGesture?.();
     emit(controller, 'cameraChanged', { metadata: { objectType: 'camera', objectId: controller.renderer?.cameraState?.preset ?? 'manual' } });
     return;
   }
@@ -205,13 +228,16 @@ function onPointerCancel(controller, event) {
 function onWheel(controller, event) {
   if (!controller.enabled || controller.disposed) return;
   event.preventDefault?.();
-  const camera = controller.camera;
-  if (!camera) return;
-  const scale = event.deltaY > 0 ? 1.08 : 0.92;
-  camera.position.multiplyScalar(scale);
-  camera.updateProjectionMatrix?.();
-  if (controller.renderer) controller.renderer.cameraState = { ...(controller.renderer.cameraState ?? {}), manual: true, preset: 'manual' };
-  emit(controller, 'cameraChanged', { metadata: { objectType: 'camera', objectId: 'wheelZoom' } });
+  controller.cameraController?.beginGesture?.('zoom', event.button ?? null);
+  controller.cameraGestureActive = true;
+  controller.cameraGestureType = 'zoom';
+  controller.cameraPointerButton = event.button ?? null;
+  controller.cameraController?.zoomByDelta?.(event.deltaY);
+  controller.cameraController?.endGesture?.();
+  controller.cameraGestureActive = false;
+  emit(controller, 'cameraChanged', { metadata: { objectType: 'camera', objectId: 'wheelZoom', cameraGestureType: 'zoom' } });
+  controller.cameraGestureType = null;
+  controller.cameraPointerButton = null;
 }
 
 function onKeyDown(controller, event) {
@@ -312,9 +338,11 @@ function emit(controller, intentId, patch = {}) {
   return result;
 }
 
-function isCameraGesture(controller, event) {
-  if (controller.interactionMode === 'navigate') return true;
-  return event.button === 1 || event.button === 2 || event.altKey || event.metaKey || event.ctrlKey;
+function cameraGestureTypeForEvent(controller, event) {
+  if (event.button === 2 || event.button === 1 || event.shiftKey) return 'pan';
+  if (controller.interactionMode === 'navigate' && isPrimaryButton(event)) return 'orbit';
+  if (event.altKey || event.metaKey || event.ctrlKey) return 'orbit';
+  return null;
 }
 
 function isEditMode(controller) {
@@ -326,22 +354,9 @@ function isPrimaryButton(event) {
 }
 
 function applyCameraDrag(controller, dx, dy, event) {
-  const camera = controller.camera;
-  if (!camera) return;
-  if (event.button === 1 || event.button === 2 || event.altKey || event.ctrlKey) {
-    camera.position.x -= dx * 0.012;
-    camera.position.z += dy * 0.012;
-  } else {
-    const angle = -dx * 0.008;
-    const x = camera.position.x;
-    const z = camera.position.z;
-    camera.position.x = x * Math.cos(angle) - z * Math.sin(angle);
-    camera.position.z = x * Math.sin(angle) + z * Math.cos(angle);
-    camera.position.y = Math.max(0.8, camera.position.y + dy * 0.01);
-  }
-  camera.lookAt(0, 0, 0);
-  camera.updateProjectionMatrix?.();
-  if (controller.renderer) controller.renderer.cameraState = { ...(controller.renderer.cameraState ?? {}), manual: true, preset: 'manual' };
+  const gestureType = controller.pointerDown?.cameraGestureType ?? cameraGestureTypeForEvent(controller, event);
+  if (gestureType === 'pan') controller.cameraController?.panBy?.(dx, dy);
+  else controller.cameraController?.orbitBy?.(dx, dy);
 }
 
 function setPointerCapture(controller, pointerId) {
