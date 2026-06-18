@@ -123,6 +123,7 @@ export class HtmlMissionWorkspaceOverlay {
         <button class="console-button" data-action="export-leaderboard">Export Leaderboard</button>
         <div class="hud-muted">Lab JSON, oracle, and solver packet tools are available in Simulation Lab.</div>
       </section>`}
+      ${rendererBackendSection(state)}
       <section class="console-section">
         <h2>View Layers</h2>
         ${layerButton(state, 'showROI', 'ROI Heatmap')}
@@ -442,6 +443,10 @@ export class HtmlMissionWorkspaceOverlay {
       'layer-energy': () => this.handlers.toggleLayer('showEnergyPreview'),
       'layer-markers': () => this.handlers.toggleLayer('showPlanningMarkers'),
       'layer-stars': () => this.handlers.toggleLayer('showPriorityStars'),
+      'renderer-legacy': () => this.handlers.setRendererBackend?.('legacyPhaser2d'),
+      'renderer-three': () => this.handlers.setRendererBackend?.('threeMission3d'),
+      'three-camera': (button) => this.handlers.setThreeCameraPreset?.(button.dataset.preset),
+      'three-layer': (button) => this.handlers.toggleThreeLayer?.(button.dataset.layer),
       'show-best-path': () => this.handlers.showBestPath?.(),
       'hide-best-path': () => this.handlers.hideBestPath?.(),
       'rerun-best-path': () => this.handlers.rerunBestPath?.(),
@@ -705,6 +710,46 @@ function legend(kind, label) {
   return `<div class="legend-item"><span class="legend-swatch ${kind}"></span><span>${escapeHtml(label)}</span></div>`;
 }
 
+function rendererBackendSection(state) {
+  const backend = state.ui?.rendererBackend === 'threeMission3d' ? 'threeMission3d' : 'legacyPhaser2d';
+  const camera = state.ui?.threeMissionCameraPreset ?? 'obliqueMission';
+  const layer = state.ui?.threeMissionLayers ?? {};
+  const layerButtons = [
+    ['bathymetry', 'Bathymetry'],
+    ['waterSurface', 'Water Surface'],
+    ['depthLayers', 'Depth Layers'],
+    ['scalarField', 'Scalar Field'],
+    ['currentVectors', 'Current Vectors'],
+    ['hazards', 'Hazards'],
+    ['dropZones', 'Drop Zones'],
+    ['gliders', 'Gliders'],
+    ['waypoints', 'Waypoints'],
+    ['routes', 'Routes'],
+    ['planningMarkers', 'Planning Markers'],
+    ['priorityTargets', 'Gold Stars']
+  ].map(([id, labelText]) => `<button class="console-button secondary" data-action="three-layer" data-layer="${escapeAttr(id)}">${layer[id] === false ? 'Show' : 'Hide'} ${escapeHtml(labelText)}</button>`).join('');
+  return `
+      <section class="console-section" data-renderer-backend-control>
+        <h2>World View</h2>
+        <div class="console-button-row">
+          <button class="console-button ${backend === 'legacyPhaser2d' ? 'primary' : 'secondary'}" data-action="renderer-legacy">Legacy Tactical 2D</button>
+          <button class="console-button ${backend === 'threeMission3d' ? 'primary' : 'secondary'}" data-action="renderer-three">Three.js Bathymetric 3D</button>
+        </div>
+        <div class="hud-muted">Three.js is rendering the same live mission state as the tactical view.</div>
+        <div class="hud-muted">Changing renderer does not change the plan, simulation, score, or visibility permissions.</div>
+        <h3 class="waypoint-section-title">Camera Preset</h3>
+        <div class="console-button-row">
+          ${cameraButton('tacticalTopDown', 'Tactical Top Down', camera)}
+          ${cameraButton('obliqueMission', 'Oblique Mission', camera)}
+          ${cameraButton('waterColumnProfile', 'Water Column Profile', camera)}
+        </div>
+        ${backend === 'threeMission3d' ? `<h3 class="waypoint-section-title">Three Layers</h3><div class="console-button-row">${layerButtons}</div>` : '<div class="hud-muted">Three layer controls appear when the Three.js backend is active.</div>'}
+      </section>`;
+}
+
+function cameraButton(id, label, active) {
+  return `<button class="console-button ${active === id ? 'primary' : 'secondary'}" data-action="three-camera" data-preset="${escapeAttr(id)}">${escapeHtml(label)}</button>`;
+}
 function layerButton(state, key, label) {
   const action = {
     showROI: 'layer-roi',
@@ -1473,7 +1518,7 @@ function routeEstimate(state) {
   return {
     distance,
     energyText: hoverPreview
-      ? `${hoverPreview.valid ? `${hoverPreview.energy.toFixed(1)} · ETA ${Number(hoverPreview.eta ?? hoverPreview.estimatedTravelTime ?? 0).toFixed(1)} hr` : 'invalid'} (${hoverPreview.note})`
+      ? `${hoverPreview.valid ? `${hoverPreview.energy.toFixed(1)} Â· ETA ${Number(hoverPreview.eta ?? hoverPreview.estimatedTravelTime ?? 0).toFixed(1)} hr` : 'invalid'} (${hoverPreview.note})`
       : budget ? `${Math.round(energy)} / ${Math.round(budget)}` : `${Math.round(energy)}`
   };
 }

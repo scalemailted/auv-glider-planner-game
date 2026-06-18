@@ -2736,6 +2736,99 @@ test('campaign planning smoke flow reaches debrief', async ({ page }) => {
   await expect(page.locator('body')).not.toHaveClass(/debrief-fullscreen/);
 });
 
+test('Three Mission renderer preserves live Mission Planning state', async ({ page }) => {
+  await page.goto('/');
+  await expect.poll(() => page.evaluate(() => window.anchorGame?.phaser?.scene.getScene('MainMenuScene')?.sys.isActive() ?? false)).toBe(true);
+  await page.evaluate(() => window.anchorGame.phaser.scene.getScene('MainMenuScene').startCampaignLevel('tutorial_01_first_deployment'));
+  await expect.poll(() => page.evaluate(() => window.anchorGame.phaser.scene.getScene('MissionBriefingScene').sys.isActive())).toBe(true);
+  await startPlanningFromBriefing(page);
+  await expect(page.locator('#mission-console')).toContainText('World View');
+  await expect(page.locator('#mission-console')).toContainText('Three.js is rendering the same live mission state as the tactical view.');
+  await expect(page.locator('#mission-console')).toContainText('Changing renderer does not change the plan, simulation, score, or visibility permissions.');
+  await expect.poll(() => page.evaluate(() => window.ANCHOR_MISSION_RENDER_DEBUG?.activeBackend)).toBe('legacyPhaser2d');
+
+  await clickCell(page, 1, 1);
+  await expect(page.evaluate(() => window.anchorGame.state.mission?.agents?.[0]?.deployment?.selectedStart)).resolves.toEqual({ x: 1, y: 1 });
+  await clickCell(page, 5, 2);
+  await expectWaypointCount(page, 1);
+  await page.evaluate(() => window.anchorGame.phaser.scene.getScene('MissionWorkspaceScene').setPlanningTime(6));
+  await clickCell(page, 5, 3);
+  await expectWaypointCount(page, 2);
+  await expectMarkerHoverAndPlacement(page, 4, 4);
+  await page.evaluate(() => {
+    const state = window.anchorGame.state;
+    state.level.layers ??= {};
+    state.level.layers.priorityTargets = [{
+      id: 'e2e-public-gold-star',
+      label: 'E2E Public Gold Star',
+      value: 150,
+      radius: 0.75,
+      frames: [{ t: 0, x: 4, y: 4, active: true }, { t: 12, x: 4, y: 4, active: true }, { t: 18, active: false }]
+    }];
+    state.ui ??= {};
+    state.ui.showPriorityStars = true;
+    window.anchorGame.phaser.scene.getScene('MissionWorkspaceScene').setPlanningTime(6);
+  });
+  const beforeSwitch = await page.evaluate(() => ({
+    waypointCount: window.anchorGame.state.plan.agentPlans.reduce((sum, agentPlan) => sum + (agentPlan.waypoints?.length ?? 0), 0),
+    markerCount: window.anchorGame.state.plan.planningMarkers?.length ?? 0,
+    selectedStart: window.anchorGame.state.mission.agents[0].deployment?.selectedStart,
+    planningTime: window.anchorGame.state.planningTime,
+    mode: window.anchorGame.state.mode
+  }));
+  expect(beforeSwitch).toMatchObject({ waypointCount: 2, markerCount: 1, selectedStart: { x: 1, y: 1 }, planningTime: 6, mode: 'planning' });
+
+  await page.locator('#mission-console [data-action="renderer-three"]').click();
+  await expect(page.locator('.three-mission-world-host')).toBeVisible();
+  await expect(page.locator('.three-mission-world-canvas')).toBeVisible();
+  await expect.poll(() => page.evaluate(() => window.ANCHOR_MISSION_RENDER_DEBUG?.activeBackend)).toBe('threeMission3d');
+  await expect.poll(() => page.evaluate(() => window.ANCHOR_MISSION_RENDER_DEBUG?.threeMounted)).toBe(true);
+  await expect.poll(() => page.evaluate(() => window.ANCHOR_MISSION_RENDER_DEBUG?.waypointCount)).toBe(2);
+  await expect.poll(() => page.evaluate(() => window.ANCHOR_MISSION_RENDER_DEBUG?.planningMarkerCount)).toBe(1);
+  await expect.poll(() => page.evaluate(() => window.ANCHOR_MISSION_RENDER_DEBUG?.priorityTargetCount)).toBe(1);
+  const threeDebug = await page.evaluate(() => window.ANCHOR_MISSION_RENDER_DEBUG);
+  expect(threeDebug).toMatchObject({
+    activeBackend: 'threeMission3d',
+    threeMounted: true,
+    ownsSimulationState: false,
+    ownsPlanning: false,
+    ownsScoring: false,
+    ownsReplaySemantics: false,
+    changesMissionState: false,
+    changesOfficialBrowserScoring: false,
+    exposesHiddenTruth: false,
+    usesWebGPUFluid: false,
+    usesNewPlanner: false,
+    usesRouteOptimizer: false,
+    usesMARL: false
+  });
+  expect(threeDebug.artifactCountMismatches).toEqual([]);
+  expect(threeDebug.threeArtifactCounts.waypointCount).toBe(2);
+  expect(threeDebug.threeArtifactCounts.planningMarkerCount).toBe(1);
+  expect(threeDebug.threeArtifactCounts.priorityTargetCount).toBe(1);
+
+  await page.locator('#mission-console [data-action="three-camera"][data-preset="tacticalTopDown"]').click();
+  await expect(page.evaluate(() => window.anchorGame.state.ui.threeMissionCameraPreset)).resolves.toBe('tacticalTopDown');
+  await page.locator('#mission-console [data-action="three-layer"][data-layer="currentVectors"]').click();
+  await expect(page.evaluate(() => window.anchorGame.state.ui.threeMissionLayers.currentVectors)).resolves.toBe(false);
+  await page.evaluate(() => window.anchorGame.phaser.scene.getScene('MissionWorkspaceScene').setPlanningTime(12));
+  await expect.poll(() => page.evaluate(() => window.ANCHOR_MISSION_RENDER_DEBUG?.activeTimeSeconds)).toBe(12);
+  await expect.poll(() => page.evaluate(() => window.ANCHOR_MISSION_RENDER_DEBUG?.renderedCurrentTimeSeconds)).toBe(12);
+
+  await page.locator('#mission-console [data-action="renderer-legacy"]').click();
+  await expect.poll(() => page.evaluate(() => window.ANCHOR_MISSION_RENDER_DEBUG?.activeBackend)).toBe('legacyPhaser2d');
+  await expect(page.locator('.three-mission-world-host')).toBeHidden();
+  await expect(page.evaluate(() => ({
+    waypointCount: window.anchorGame.state.plan.agentPlans.reduce((sum, agentPlan) => sum + (agentPlan.waypoints?.length ?? 0), 0),
+    markerCount: window.anchorGame.state.plan.planningMarkers?.length ?? 0,
+    selectedStart: window.anchorGame.state.mission.agents[0].deployment?.selectedStart,
+    mode: window.anchorGame.state.mode
+  }))).resolves.toEqual({ waypointCount: 2, markerCount: 1, selectedStart: { x: 1, y: 1 }, mode: 'planning' });
+
+  await page.locator('#mission-console [data-action="renderer-three"]').click();
+  await expect.poll(() => page.evaluate(() => window.ANCHOR_MISSION_RENDER_DEBUG?.activeBackend)).toBe('threeMission3d');
+  await expect.poll(() => page.evaluate(() => window.ANCHOR_MISSION_RENDER_DEBUG?.waypointCount)).toBe(2);
+});
 test('scenario setup stays inside the center viewport', async ({ page }) => {
   await page.goto('/');
   await expect.poll(() => page.evaluate(() => window.anchorGame?.phaser?.scene.getScene('MainMenuScene')?.sys.isActive() ?? false)).toBe(true);

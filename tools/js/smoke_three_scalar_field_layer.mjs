@@ -1,0 +1,26 @@
+﻿import assert from 'node:assert/strict';
+import { createMissionWorldFixture } from './mission_world_fixture.mjs';
+import { missionWorldRenderInputFromWorkspace } from '../../src/core/rendering/MissionWorldStateAdapter.js';
+import { buildMissionWorldRenderViewModel } from '../../src/core/rendering/MissionWorldRenderViewModel.js';
+import { createThreeScalarFieldLayer, updateThreeScalarFieldLayer, setThreeScalarFieldVisibility, disposeThreeScalarFieldLayer } from '../../src/game/three/layers/ThreeScalarFieldLayer.js';
+
+const fixture = createMissionWorldFixture();
+const input = missionWorldRenderInputFromWorkspace({ app: { state: fixture.state } });
+const viewModel = buildMissionWorldRenderViewModel(input);
+const layer = createThreeScalarFieldLayer();
+updateThreeScalarFieldLayer(layer, viewModel.scalarFieldLayer, { transform: viewModel.coordinateSystem });
+assert.ok(layer.mesh, 'scalar field mesh should be created');
+assert.equal(layer.width, viewModel.scalarFieldLayer.width);
+assert.equal(layer.height, viewModel.scalarFieldLayer.height);
+assert.ok(Number.isFinite(viewModel.scalarFieldLayer.min));
+assert.ok(Number.isFinite(viewModel.scalarFieldLayer.max));
+const geometryId = layer.mesh.geometry.id;
+const next = { ...viewModel.scalarFieldLayer, timeSeconds: 120, values: viewModel.scalarFieldLayer.values.map((row) => row.map((value) => value == null ? null : Math.max(0, Math.min(1, Number(value) * 0.8)))) };
+updateThreeScalarFieldLayer(layer, next, { transform: viewModel.coordinateSystem });
+assert.equal(layer.mesh.geometry.id, geometryId, 'same dimensions should update texture without replacing geometry');
+setThreeScalarFieldVisibility(layer, false);
+assert.equal(layer.group.visible, false);
+disposeThreeScalarFieldLayer(layer);
+assert.equal(layer.group.children.length, 0);
+assert.equal(/hiddenTruth|T_hiddenTruth|trueRoi/i.test(JSON.stringify(next)), false);
+console.log('Three scalar field layer smoke passed');

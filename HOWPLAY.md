@@ -133,6 +133,8 @@ Read this screen before planning. `More Details` expands scoring notes and tutor
 
 Planning is where you create the waypoint plan. It is the main workspace: the left Mission Console shows mission controls, status, layer toggles, route/cost estimate, selected-glider performance, imports/exports, and Execute; the center Phaser Simulator Viewport shows the map, gliders, waypoints, global planning markers, currents, guidance cone, direct map interaction, a top selected-glider planning HUD, and a bottom mission-time slider; the right Waypoint Timeline panel shows agent tabs and only the selected glider's executable waypoint sequence.
 
+The Mission Console `World View` control can switch between the legacy tactical 2D view and `Three.js Bathymetric 3D`. The Three.js view renders the same live mission state: terrain, bathymetry, water/depth layers, currents, hazards, drop zones, gliders, waypoints, planning markers, route lines, and active Gold Star targets. Switching views does not change the plan, simulator, score, visibility permissions, or route validation. Direct map input still belongs to the tactical Phaser view in this phase; use the legacy view for precise waypoint editing if needed.
+
 Waypoint labels describe intent. `Navigation` means a commanded underwater target followed by dead reckoning. `Surface / GPS Update` means the glider surfaces, receives GPS, communicates, and may replan. `Sampling Target` means a science objective such as a Gold Star or marker; it is not a GPS-confirmed waypoint unless you add it to the route. `Terminal Carry-Through` means the final command intentionally extends past mission duration so the glider keeps moving until time expires.
 
 For large maps, use camera controls in Planning:
@@ -1086,7 +1088,7 @@ Headless bundles, solver roundtrips, and Adaptive Benchmark surfacing reviews ca
 
 Open `Simulation Lab` and choose `Motion Planning Demo` to compare a dashed planned route with the realized glider trajectory under currents, dive profile, speed, heading-rate limit, drift gain, and energy constraints. Path planning chooses waypoints; motion planning evaluates execution. Motion dynamics does not generate routes, does not change Challenge Mode scoring, and does not add WebGPU, a Python simulator, or MARL/RL.
 
-Simulation Lab also includes 3D Bathymetric World View: a Three.js/WebGL synthetic ocean visualization that separates surface waypoints, subsurface sampling points, water surface, depth layers, currents, coastlines, bottom hazards, and bathymetry. It is not full 3D route planning.
+Simulation Lab also includes 3D Bathymetric World View: a Three.js/WebGL synthetic ocean visualization that separates surface waypoints, subsurface sampling points, water surface, depth layers, currents, coastlines, bottom hazards, and bathymetry. The Mission Planning workspace also has a `Three.js Bathymetric 3D` renderer toggle for the live mission state. Neither view is full 3D route planning.
 
 
 ## Motion Cost Graph Bundle Artifacts

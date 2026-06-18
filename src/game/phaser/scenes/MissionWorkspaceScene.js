@@ -82,7 +82,21 @@ import { FileBridge } from '../ui/FileBridge.js';
 import { FocusManager } from '../ui/FocusManager.js';
 import { PhaserButton } from '../ui/Button.js';
 import { HtmlMissionWorkspaceOverlay } from '../../../ui/HtmlMissionWorkspaceOverlay.js';
+import { missionWorldRenderInputFromWorkspace, missionWorldRenderInputSummary } from '../../../core/rendering/MissionWorldStateAdapter.js';
 import {
+  buildMissionWorldRenderViewModel,
+  missionWorldRenderViewModelSummary,
+  validateMissionWorldRenderViewModel
+} from '../../../core/rendering/MissionWorldRenderViewModel.js';
+import {
+  createThreeMissionWorldRenderer,
+  updateThreeMissionWorldRenderer,
+  resizeThreeMissionWorldRenderer,
+  setThreeMissionWorldCamera,
+  setThreeMissionLayerVisibility,
+  threeMissionWorldRendererSummary,
+  disposeThreeMissionWorldRenderer
+} from '../../three/ThreeMissionWorldRenderer.js';import {
   getDeploymentZonesForAgent,
   getSelectedStart,
   normalizeDeploymentState,
@@ -109,6 +123,10 @@ export class MissionWorkspaceScene extends PhaserScene {
     this.gliderObjects = [];
     this.labelObjects = [];
     this.cameraObjects = [];
+    this.threeMissionContainer = null;
+    this.threeMissionRenderer = null;
+    this.missionRenderViewModel = null;
+    this.missionRenderInput = null;
   }
 
   create() {
@@ -117,6 +135,9 @@ export class MissionWorkspaceScene extends PhaserScene {
     this.app.state.mode = 'planning';
     this.app.elements.shell?.classList.add('planning-workspace');
     this.app.state.ui ??= {};
+    this.app.state.ui.rendererBackend ??= 'legacyPhaser2d';
+    this.app.state.ui.threeMissionCameraPreset ??= 'obliqueMission';
+    this.app.state.ui.threeMissionLayers ??= {};
     this.syncMissionOptionsFromMission();
     if (!String(this.app.state.currentScenario?.source ?? '').startsWith('leaderboard')) {
       this.app.state.ui.showBestPathOverlay = false;
@@ -199,6 +220,7 @@ export class MissionWorkspaceScene extends PhaserScene {
     this.cameraObjects = [];
     this.hud?.destroy();
     this.executeHotspot?.destroy();
+    this.disposeThreeMissionRenderer();
     this.modal?.destroy();
     this.fileBridge?.destroy();
   }
@@ -246,6 +268,9 @@ export class MissionWorkspaceScene extends PhaserScene {
       copyStochasticSeed: () => this.copyStochasticSeed(),
       setStochasticRoiMode: (mode) => this.setStochasticRoiMode(mode),
       setForecastMember: (memberId) => this.setForecastMember(memberId),
+      setRendererBackend: (backend) => this.setRendererBackend(backend),
+      setThreeCameraPreset: (preset) => this.setThreeCameraPreset(preset),
+      toggleThreeLayer: (layerId) => this.toggleThreeMissionLayer(layerId),
       rerunSamePlan: () => this.rerunSamePlan(),
       rerunWithNewSeed: () => this.rerunWithNewSeed(),
       toggleGuidance: () => this.toggleGuidance(),
@@ -440,6 +465,13 @@ export class MissionWorkspaceScene extends PhaserScene {
 
   refreshMap() {
     this.clearPlanningOverlayObjects();
+    if (this.getMissionRendererBackend() === 'threeMission3d') {
+      this.mapGraphics?.setVisible?.(false);
+      this.refreshThreeMissionRenderer();
+      return;
+    }
+    this.hideThreeMissionRenderer();
+    this.mapGraphics?.setVisible?.(true);
     const markerMode = this.app.state.ui.placementMode === 'marker';
     const guidanceSettings = {
       mode: markerMode ? 'marker' : 'planning',
@@ -488,8 +520,195 @@ export class MissionWorkspaceScene extends PhaserScene {
     this.addDeploymentSelectionLabels(layout);
     this.addWaypointLabels(layout);
     this.addGliderHitTargets(layout);
+    this.updateMissionRenderDebug({ activeBackend: 'legacyPhaser2d', threeMounted: false, viewModel: this.buildMissionWorldViewModelForScene(), parityWarnings: [] });
   }
 
+  getMissionRendererBackend() {
+    const backend = this.app.state.ui?.rendererBackend;
+    return backend === 'threeMission3d' ? 'threeMission3d' : 'legacyPhaser2d';
+  }
+
+  setRendererBackend(backend) {
+    this.app.state.ui ??= {};
+    const normalized = backend === 'threeMission3d' ? 'threeMission3d' : 'legacyPhaser2d';
+    if (this.app.state.ui.rendererBackend === normalized) return;
+    this.app.state.ui.rendererBackend = normalized;
+    this.refreshPanels();
+    this.refreshMap();
+  }
+
+  setThreeCameraPreset(preset) {
+    this.app.state.ui ??= {};
+    this.app.state.ui.threeMissionCameraPreset = ['tacticalTopDown', 'obliqueMission', 'waterColumnProfile'].includes(preset) ? preset : 'obliqueMission';
+    if (this.threeMissionRenderer) setThreeMissionWorldCamera(this.threeMissionRenderer, { preset: this.app.state.ui.threeMissionCameraPreset });
+    this.refreshPanels();
+    this.refreshMap();
+  }
+
+  toggleThreeMissionLayer(layerId) {
+    this.app.state.ui ??= {};
+    this.app.state.ui.threeMissionLayers ??= {};
+    this.app.state.ui.threeMissionLayers[layerId] = this.app.state.ui.threeMissionLayers[layerId] === false;
+    if (this.threeMissionRenderer) setThreeMissionLayerVisibility(this.threeMissionRenderer, this.threeLayerVisibilityPatch());
+    this.refreshPanels();
+    this.refreshMap();
+  }
+
+  ensureThreeMissionContainer() {
+    if (this.threeMissionContainer?.isConnected) return this.threeMissionContainer;
+    const host = this.app?.elements?.viewportShell ?? this.app?.elements?.gameContainer ?? globalThis.document?.getElementById?.('viewport-shell');
+    if (!host?.appendChild) return null;
+    const container = globalThis.document.createElement('div');
+    container.className = 'three-mission-world-host';
+    container.dataset.rendererBackend = 'threeMission3d';
+    container.setAttribute('aria-label', 'Three.js Bathymetric 3D mission renderer');
+    host.appendChild(container);
+    this.threeMissionContainer = container;
+    return container;
+  }
+
+  ensureThreeMissionRenderer() {
+    const container = this.ensureThreeMissionContainer();
+    if (!container) return null;
+    container.hidden = false;
+    if (!this.threeMissionRenderer) {
+      this.threeMissionRenderer = createThreeMissionWorldRenderer(container, {
+        camera: { preset: this.app.state.ui?.threeMissionCameraPreset ?? 'obliqueMission' },
+        layerVisibility: this.threeLayerVisibilityPatch()
+      });
+    }
+    resizeThreeMissionWorldRenderer(this.threeMissionRenderer, container.clientWidth, container.clientHeight);
+    return this.threeMissionRenderer;
+  }
+
+  hideThreeMissionRenderer() {
+    if (this.threeMissionContainer) this.threeMissionContainer.hidden = true;
+  }
+
+  disposeThreeMissionRenderer() {
+    disposeThreeMissionWorldRenderer(this.threeMissionRenderer);
+    this.threeMissionRenderer = null;
+    this.threeMissionContainer?.remove?.();
+    this.threeMissionContainer = null;
+  }
+
+  buildMissionWorldViewModelForScene() {
+    const input = missionWorldRenderInputFromWorkspace(this, {
+      visibilityTier: this.app.state.challengeMode === 'forecast' && this.app.state.ui?.revealTruth ? 'oracle' : 'fair',
+      displaySettings: {
+        rendererBackend: this.getMissionRendererBackend(),
+        cameraPreset: this.app.state.ui?.threeMissionCameraPreset ?? 'obliqueMission',
+        ...(this.threeLayerVisibilityPatch())
+      }
+    });
+    this.missionRenderInput = input;
+    const viewModel = buildMissionWorldRenderViewModel(input);
+    this.missionRenderViewModel = viewModel;
+    return viewModel;
+  }
+
+  refreshThreeMissionRenderer() {
+    const renderer = this.ensureThreeMissionRenderer();
+    if (!renderer) {
+      this.updateMissionRenderDebug({ activeBackend: 'threeMission3d', threeMounted: false, viewModel: this.buildMissionWorldViewModelForScene(), parityWarnings: ['Three mission renderer could not mount DOM container.'] });
+      return;
+    }
+    const viewModel = this.buildMissionWorldViewModelForScene();
+    setThreeMissionWorldCamera(renderer, { preset: this.app.state.ui?.threeMissionCameraPreset ?? 'obliqueMission' });
+    updateThreeMissionWorldRenderer(renderer, viewModel);
+    resizeThreeMissionWorldRenderer(renderer, this.threeMissionContainer?.clientWidth, this.threeMissionContainer?.clientHeight);
+    const validation = validateMissionWorldRenderViewModel(viewModel);
+    const parityWarnings = [...(validation.warnings ?? [])];
+    if (!validation.valid) parityWarnings.push(...validation.errors);
+    this.updateMissionRenderDebug({ activeBackend: 'threeMission3d', threeMounted: true, viewModel, renderer, parityWarnings });
+  }
+
+  threeLayerVisibilityPatch() {
+    const layers = this.app.state.ui?.threeMissionLayers ?? {};
+    return {
+      bathymetry: layers.bathymetry !== false,
+      waterSurface: layers.waterSurface !== false,
+      depthLayers: layers.depthLayers !== false,
+      scalarField: layers.scalarField !== false && this.app.state.ui?.showROI !== false,
+      currentVectors: layers.currentVectors !== false && this.app.state.ui?.showCurrents !== false,
+      hazards: layers.hazards !== false && this.app.state.ui?.showHazards !== false,
+      constraints: layers.constraints !== false && this.app.state.ui?.showTerrain !== false,
+      dropZones: layers.dropZones !== false,
+      gliders: layers.gliders !== false,
+      waypoints: layers.waypoints !== false,
+      routes: layers.routes !== false,
+      planningMarkers: layers.planningMarkers !== false && this.app.state.ui?.showPlanningMarkers !== false,
+      priorityTargets: layers.priorityTargets !== false && this.app.state.ui?.showPriorityStars !== false,
+      observations: layers.observations !== false,
+      selection: layers.selection !== false,
+      guidance: layers.guidance !== false && this.app.state.ui?.showGuidance !== false
+    };
+  }
+
+  updateMissionRenderDebug({ activeBackend, threeMounted, viewModel, renderer = null, parityWarnings = [] } = {}) {
+    const summary = missionWorldRenderViewModelSummary(viewModel ?? {});
+    const rendererSummary = renderer ? threeMissionWorldRendererSummary(renderer) : null;
+    const legacyArtifactCounts = { ...summary };
+    const threeArtifactCounts = rendererSummary ? {
+      gliderCount: rendererSummary.gliderObjectCount,
+      waypointCount: rendererSummary.waypointObjectCount,
+      routeCount: rendererSummary.routeObjectCount,
+      planningMarkerCount: rendererSummary.markerObjectCount,
+      priorityTargetCount: rendererSummary.priorityTargetObjectCount,
+      currentVectorCount: Math.floor(rendererSummary.currentVectorObjectCount / 2),
+      hazardCount: rendererSummary.hazardObjectCount,
+      dropZoneCount: rendererSummary.dropZoneObjectCount
+    } : null;
+    const mismatches = [];
+    if (threeArtifactCounts) {
+      for (const key of ['gliderCount', 'waypointCount', 'routeCount', 'planningMarkerCount', 'priorityTargetCount']) {
+        if (Number(threeArtifactCounts[key] ?? 0) !== Number(summary[key] ?? 0)) mismatches.push({ key, expected: summary[key] ?? 0, actual: threeArtifactCounts[key] ?? 0 });
+      }
+    }
+    globalThis.ANCHOR_MISSION_RENDER_DEBUG = {
+      version: 'gfx-r3a',
+      activeBackend: activeBackend ?? this.getMissionRendererBackend(),
+      threeMounted: threeMounted === true,
+      phase: viewModel?.phase ?? this.app.state.mode ?? 'planning',
+      missionId: viewModel?.missionId ?? this.app.state.mission?.missionId ?? null,
+      levelId: viewModel?.levelId ?? this.app.state.level?.levelId ?? null,
+      activeTimeSeconds: summary.activeTimeSeconds ?? this.app.state.planningTime ?? 0,
+      renderedFieldTimeSeconds: viewModel?.scalarFieldLayer?.timeSeconds ?? null,
+      renderedCurrentTimeSeconds: viewModel?.vectorFieldLayer?.timeSeconds ?? null,
+      activePriorityTargetCount: summary.priorityTargetCount ?? 0,
+      selectedAgentId: viewModel?.selectedAgentId ?? this.app.state.selectedAgentId ?? null,
+      selectedWaypointId: viewModel?.selectedWaypointId ?? null,
+      terrainCellCount: summary.terrainCellCount ?? 0,
+      scalarFieldCellCount: summary.scalarFieldCellCount ?? 0,
+      currentVectorCount: summary.currentVectorCount ?? 0,
+      hazardCount: summary.hazardCount ?? 0,
+      constraintCount: summary.constraintCount ?? 0,
+      dropZoneCount: summary.dropZoneCount ?? 0,
+      gliderCount: summary.gliderCount ?? 0,
+      waypointCount: summary.waypointCount ?? 0,
+      routeCount: summary.routeCount ?? 0,
+      planningMarkerCount: summary.planningMarkerCount ?? 0,
+      priorityTargetCount: summary.priorityTargetCount ?? 0,
+      viewModelWarnings: viewModel?.warnings ?? [],
+      parityWarnings,
+      inputSummary: missionWorldRenderInputSummary(this.missionRenderInput ?? {}),
+      rendererSummary,
+      legacyArtifactCounts,
+      threeArtifactCounts,
+      artifactCountMismatches: mismatches,
+      ownsSimulationState: false,
+      ownsPlanning: false,
+      ownsScoring: false,
+      ownsReplaySemantics: false,
+      changesMissionState: false,
+      changesOfficialBrowserScoring: false,
+      exposesHiddenTruth: viewModel?.boundaryFlags?.includesHiddenTruth === true,
+      usesWebGPUFluid: false,
+      usesNewPlanner: false,
+      usesRouteOptimizer: false,
+      usesMARL: false
+    };
+  }
   refreshBestPriorPath() {
     this.app.state.ui ??= {};
     this.app.state.ui.showBestPathOverlay ??= false;

@@ -1,0 +1,24 @@
+﻿import assert from 'node:assert/strict';
+import { createMissionWorldFixture, deepClone } from './mission_world_fixture.mjs';
+import { missionWorldRenderInputFromWorkspace, missionWorldRenderInputFromSimulation, missionWorldRenderInputFromReplay, missionWorldRenderInputSummary } from '../../src/core/rendering/MissionWorldStateAdapter.js';
+
+const fixture = createMissionWorldFixture();
+const before = deepClone(fixture.state);
+const workspace = missionWorldRenderInputFromWorkspace({ app: { state: fixture.state } });
+const summary = missionWorldRenderInputSummary(workspace);
+assert.equal(summary.phase, 'planning');
+assert.equal(summary.selectedAgentId, 'glider-alpha');
+assert.equal(summary.dropZoneCount, 2);
+assert.equal(summary.gliderCount, 2);
+assert.equal(summary.waypointCount, 3);
+assert.equal(summary.planningMarkerCount, 1);
+assert.ok(summary.currentVectorCount > 0);
+assert.equal(summary.hiddenTruthExcluded, true);
+const simulation = missionWorldRenderInputFromSimulation({ app: { state: fixture.state }, engine: { time: 90 } });
+assert.equal(simulation.options.phase, 'simulation');
+assert.equal(simulation.simulationState.running, true);
+const replay = missionWorldRenderInputFromReplay({ publicState: { level: fixture.level, mission: fixture.mission, plan: fixture.plan, selectedAgentId: 'glider-bravo', timeSeconds: 120 } });
+assert.equal(replay.phase, 'replay');
+assert.equal(replay.selectedAgentId, 'glider-bravo');
+assert.deepEqual(fixture.state, before, 'state adapter must not mutate scene/app state');
+console.log('Mission world state adapter smoke passed', summary);

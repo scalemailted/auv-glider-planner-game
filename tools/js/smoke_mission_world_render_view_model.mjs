@@ -1,0 +1,27 @@
+﻿import assert from 'node:assert/strict';
+import { createMissionWorldFixture, deepClone } from './mission_world_fixture.mjs';
+import { missionWorldRenderInputFromWorkspace } from '../../src/core/rendering/MissionWorldStateAdapter.js';
+import { buildMissionWorldRenderViewModel, missionWorldRenderViewModelSummary, validateMissionWorldRenderViewModel } from '../../src/core/rendering/MissionWorldRenderViewModel.js';
+
+const fixture = createMissionWorldFixture();
+const before = deepClone(fixture.state);
+const input = missionWorldRenderInputFromWorkspace({ app: { state: fixture.state } });
+const viewModel = buildMissionWorldRenderViewModel(input);
+const validation = validateMissionWorldRenderViewModel(viewModel);
+assert.equal(validation.valid, true, validation.errors.join('\n'));
+const summary = missionWorldRenderViewModelSummary(viewModel);
+assert.equal(viewModel.type, 'anchor.rendering.mission-world');
+assert.equal(summary.gliderCount, 2);
+assert.equal(summary.dropZoneCount, 2);
+assert.equal(summary.waypointCount, 3);
+assert.equal(summary.routeCount, 2);
+assert.equal(summary.planningMarkerCount, 1);
+assert.ok(summary.priorityTargetCount >= 1);
+assert.ok(summary.scalarFieldCellCount > 0);
+assert.ok(summary.currentVectorCount > 0);
+assert.equal(viewModel.selectedAgentId, 'glider-alpha');
+assert.equal(viewModel.activeTimeSeconds, 60);
+assert.equal(viewModel.boundaryFlags.includesHiddenTruth, false);
+assert.equal(viewModel.boundaryFlags.ownsPlanning, false);
+assert.deepEqual(fixture.state, before, 'view model build must not mutate input state');
+console.log('Mission world render view model smoke passed', summary);

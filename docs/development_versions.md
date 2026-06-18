@@ -391,6 +391,13 @@ Added a portable deterministic glider motion schema, environment sampler, dynami
 - Added synthetic bathymetry schema, field model, mesh/projection model, ocean-world geometry adapter, initial Phaser-hosted viewer, and public-safe headless bathymetry/mission geometry summaries.
 - Boundary: no full 3D route planning, no hydrodynamic solver, no terrain-flow-as-current claim, no WebGPU-Ocean, no Python simulator, no MARL/RL, and no scoring changes.
 
+### GFX-R3A - Live Three.js Mission Renderer Parity
+
+- Added a mission-world render view-model, coordinate transform, live workspace adapter, Three.js mission renderer, and entity/layer render modules for the active Mission Planning workspace.
+- Added a `World View` toggle that switches between the legacy Phaser tactical map and `Three.js Bathymetric 3D` while preserving the same plan, deployment selection, waypoints, planning markers, mission time, scoring state, and visibility permissions.
+- Added `ANCHOR_MISSION_RENDER_DEBUG` for backend, time, entity counts, Three object counts, mismatch warnings, and renderer boundary flags.
+- Added `docs/threejs_mission_renderer_migration.md`, smoke scripts, and focused E2E coverage for the renderer split.
+- Preserved the boundary: GFX-R3A does not add direct Three.js planning input, full 3D route planning, simulation/replay ownership, route optimization, browser scoring changes, hidden truth exposure, WebGPU fluid simulation, Python simulation, RL, or MARL.
 ### GFX-R2 - Three.js Bathymetric World Renderer
 - Added a dedicated Three.js/WebGL renderer hosted inside the Phaser shell, a public-safe bathymetry render view model, higher-quality synthetic terrain scenarios, terrain/coast/hazard/route/layer/flow visualization controls, and focused renderer boundary smoke tests.
 - Boundary: Three.js renders view-model geometry only. It does not own simulation, scoring, planning, headless runtime behavior, hidden truth, WebGPU fluid simulation, Enable3D physics, Python simulation, or MARL/RL.

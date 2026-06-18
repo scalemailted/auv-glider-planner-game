@@ -1,0 +1,20 @@
+﻿import assert from 'node:assert/strict';
+import { createMissionWorldCoordinateTransform, gridCellToWorld, missionPositionToWorld, missionWorldToNormalized, validateMissionWorldCoordinateTransform, worldToGridCell } from '../../src/core/rendering/MissionWorldCoordinates.js';
+
+const transform = createMissionWorldCoordinateTransform({ grid: { width: 8, height: 6 }, cellSize: 1, depthScale: 0.05, verticalExaggeration: 2 });
+assert.equal(validateMissionWorldCoordinateTransform(transform).valid, true);
+const world = gridCellToWorld(transform, 3, 2, 100);
+const cell = worldToGridCell(transform, world.x, world.y, world.z);
+assert.equal(cell.col, 3);
+assert.equal(cell.row, 2);
+assert.equal(Math.round(cell.depthMeters), 100);
+const row0 = gridCellToWorld(transform, 0, 0, 0);
+const row1 = gridCellToWorld(transform, 0, 1, 0);
+assert.ok(row0.z < row1.z, 'row 0 should be north/top with smaller z');
+assert.ok(gridCellToWorld(transform, 3, 2, 120).y < gridCellToWorld(transform, 3, 2, 10).y, 'positive depth should move down in world y');
+const waypoint = missionPositionToWorld(transform, { x: 3, y: 2, depthMeters: 100 });
+assert.deepEqual(waypoint, world);
+const normalized = missionWorldToNormalized(transform, world);
+assert.ok(normalized.x > 0 && normalized.x < 1);
+assert.ok(normalized.y > 0 && normalized.y < 1);
+console.log('Mission world coordinates smoke passed');

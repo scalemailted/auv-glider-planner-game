@@ -57,6 +57,11 @@ const audits = [
     name: 'Benchmark Mode Config',
     files: ['src/core/benchmark/BenchmarkModeExporter.js', 'src/game/phaser/scenes/BenchmarkModeOverviewScene.js'],
     requiredWhenPresent: ['anchor.benchmark.mode-config', 'anchor.benchmark.episode-config', 'anchor.benchmark.run-record', 'anchor.benchmark.route-execution', 'anchor.benchmark.attempt-set', 'benchmarkModeConfig', 'objectiveTaxonomyVersion', 'runRecordVersion', 'usesMARL']
+  },
+  {
+    name: 'GFX-R3A Mission Renderer',
+    files: ['src/core/rendering/MissionWorldRenderViewModel.js', 'src/core/rendering/MissionWorldStateAdapter.js', 'src/game/three/ThreeMissionWorldRenderer.js', 'src/game/phaser/scenes/MissionWorkspaceScene.js'],
+    requiredWhenPresent: ['anchor.rendering.mission-world', 'legacyPhaser2d', 'threeMission3d', 'ANCHOR_MISSION_RENDER_DEBUG', 'ownsSimulationState', 'ownsPlanning', 'ownsScoring', 'usesMARL']
   }
 ];
 
