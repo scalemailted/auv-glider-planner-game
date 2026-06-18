@@ -1,5 +1,5 @@
 import { existsSync, statSync } from 'node:fs';
-import { cp, mkdir, readdir, rm, stat, writeFile } from 'node:fs/promises';
+import { cp, mkdir, readdir, rm, stat, writeFile, readFile } from 'node:fs/promises';
 import path from 'node:path';
 import { spawnSync } from 'node:child_process';
 
@@ -20,6 +20,10 @@ const copyRoots = [
   'tutorials/import-demo'
 ];
 const excludeNames = new Set(['node_modules', '.git', '.github', 'tests', 'test-results', 'tmp', 'coverage', '.codex', '.agents', '_site']);
+
+runNode('tools/js/check_three_vendor.mjs');
+runNode('tools/js/audit_three_vendor_git_tracking.mjs');
+
 await rm(out, { recursive: true, force: true });
 await mkdir(out, { recursive: true });
 for (const entry of copyRoots) {
@@ -28,11 +32,13 @@ for (const entry of copyRoots) {
   await copyEntry(source, path.join(out, entry));
 }
 await writeFile(path.join(out, '.nojekyll'), '', 'utf8');
-for (const required of ['index.html', 'vendor/three/build/three.module.js', 'vendor/three/LICENSE', 'vendor/phaser.min.js']) {
+for (const required of ['index.html', 'vendor/three/build/three.module.js', 'vendor/three/build/three.core.js', 'vendor/three/LICENSE', 'vendor/phaser.min.js']) {
   if (!existsSync(path.join(out, required))) throw new Error(`_site missing required file: ${required}`);
 }
-const audit = spawnSync(process.execPath, ['tools/js/audit_github_pages_paths.mjs'], { cwd: root, stdio: 'inherit' });
-if (audit.status !== 0) process.exit(audit.status ?? 1);
+const siteIndex = await readFile(path.join(out, 'index.html'), 'utf8');
+if (!siteIndex.includes('"three": "./vendor/three/build/three.module.js"')) throw new Error('_site/index.html import map does not resolve three to vendor/three/build/three.module.js.');
+if (!siteIndex.includes('"three/addons/": "./vendor/three/examples/jsm/"')) throw new Error('_site/index.html import map does not preserve three/addons mapping.');
+runNode('tools/js/audit_github_pages_paths.mjs');
 const unresolved = await findUnresolvedRuntimeImports(out);
 if (unresolved.length) {
   console.error('Unresolved runtime imports in _site:');
@@ -97,4 +103,9 @@ async function walk(dir) {
     else out.push(full);
   }
   return out;
+}
+
+function runNode(script) {
+  const result = spawnSync(process.execPath, [script], { cwd: root, stdio: 'inherit', env: process.env });
+  if (result.status !== 0) process.exit(result.status ?? 1);
 }

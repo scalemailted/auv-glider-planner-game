@@ -30,10 +30,17 @@ jobs:
         run: npm.cmd ci
       - name: Verify vendored Three.js runtime
         run: npm.cmd run check:three-vendor
+      - name: Verify vendored Three.js Git tracking
+        run: npm.cmd run check:three-vendor-git
       - name: Run project checks
         run: npm.cmd run check
       - name: Build static Pages artifact
         run: npm.cmd run build:pages
+      - name: Assert Pages artifact contains Three runtime
+        shell: pwsh
+        run: |
+          if (!(Test-Path '_site/vendor/three/build/three.module.js')) { throw 'Missing _site/vendor/three/build/three.module.js' }
+          if (!(Test-Path '_site/vendor/three/build/three.core.js')) { throw 'Missing _site/vendor/three/build/three.core.js' }
       - name: Configure Pages
         uses: actions/configure-pages@v5
       - name: Upload Pages artifact

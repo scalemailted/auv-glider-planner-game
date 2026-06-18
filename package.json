@@ -5,11 +5,12 @@
   "type": "module",
   "scripts": {
     "serve": "python -m http.server 8000",
-    "check": "node tools/js/check_three_vendor.mjs && node tools/check-js.mjs",
+    "check": "node tools/js/check_three_vendor.mjs && node tools/js/audit_three_vendor_git_tracking.mjs && node tools/check-js.mjs",
     "test:e2e": "playwright test --reporter=line",
     "test:e2e:headed": "playwright test --headed --reporter=line",
     "vendor:three": "node tools/js/sync_three_vendor.mjs",
     "check:three-vendor": "node tools/js/check_three_vendor.mjs",
+    "check:three-vendor-git": "node tools/js/audit_three_vendor_git_tracking.mjs",
     "build:pages": "node tools/js/build_github_pages.mjs",
     "smoke:pages": "node tools/js/smoke_github_pages_static_host.mjs"
   },

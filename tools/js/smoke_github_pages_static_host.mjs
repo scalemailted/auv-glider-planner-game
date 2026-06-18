@@ -43,8 +43,13 @@ const externalThreeRequests = [];
 let vendorThreeRequestSeen = false;
 let lazyPhaserRequestSeen = false;
 let page = null;
+const assetChecks = [];
 
 try {
+  for (const assetPath of ['vendor/three/build/three.module.js', 'vendor/three/build/three.core.js']) {
+    assetChecks.push(await assertStaticJavaScriptAsset(`${baseUrl}${assetPath}`));
+  }
+
   page = await browser.newPage({ viewport: { width: 1280, height: 820 } });
   page.on('pageerror', (error) => pageErrors.push(error.message));
   page.on('console', (message) => {
@@ -127,7 +132,7 @@ try {
   assert.deepEqual(failedResponses, [], 'browser HTTP error responses');
   assert.deepEqual(pageErrors, [], 'browser page errors');
   assert.deepEqual(consoleErrors, [], 'browser console errors');
-  console.log('smoke_github_pages_static_host: ok', { baseUrl, deployment, bathymetry, missionBackend: mission.activeBackend });
+  console.log('smoke_github_pages_static_host: ok', { baseUrl, assetChecks, deployment, bathymetry, missionBackend: mission.activeBackend });
 } catch (error) {
   let bodyText = '';
   try {
@@ -145,7 +150,8 @@ try {
     failedResponses,
     pageErrors,
     consoleErrors,
-    bodyText
+    bodyText,
+    assetChecks
   });
   throw error;
 } finally {
@@ -194,3 +200,14 @@ function createPagesLikeServer(staticRoot) {
   return server;
 }
 
+
+async function assertStaticJavaScriptAsset(url) {
+  const response = await fetch(url);
+  const contentType = response.headers.get('content-type') ?? '';
+  const body = await response.text();
+  assert.equal(response.status, 200, `${url} should return HTTP 200`);
+  assert.match(contentType, /javascript|ecmascript|text\/plain|application\/octet-stream/i, `${url} should return JavaScript-like content type`);
+  assert.ok(body.length > 1000, `${url} should be nonempty`);
+  assert.equal(/^\s*</.test(body), false, `${url} should not return an HTML 404 document`);
+  return { url, status: response.status, contentType, bytes: body.length };
+}

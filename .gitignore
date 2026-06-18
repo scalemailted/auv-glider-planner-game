@@ -35,7 +35,12 @@ desktop.ini
 
 # Build/cache artifacts
 dist/
+# Keep generated application build directories ignored.
 build/
+
+# The curated Three.js browser runtime is intentionally version-controlled.
+!vendor/three/build/
+!vendor/three/build/**
 .cache/
 .parcel-cache/
 .eslintcache
