@@ -3,6 +3,7 @@ import path from 'node:path';
 
 import { createHeadlessBundleManifest as createH0HeadlessBundleManifest } from '../HeadlessBundleManifest.js';
 import { HEADLESS_SOLVER_ROUNDTRIP_BUNDLE_TYPE, HEADLESS_SOLVER_ROUNDTRIP_REPORT_TYPE } from '../HeadlessRoundtripTypes.js';
+import { buildReplayArtifactsFromEpisode } from '../../replay/ReplayContractBuilder.js';
 
 const VISIBLE_FIELD_IDS = Object.freeze(['E_forecast', 'mu_belief', 'U_uncertainty', 'P_unknown', 'A_global', 'F_u', 'F_v', 'hazard', 'constraintMask', 'staleness', 'boundaryStrength']);
 const HIDDEN_FIELD_IDS = Object.freeze(['T_hiddenTruth']);
@@ -25,6 +26,8 @@ export function createHeadlessBundleManifest(episode, options = {}) {
   const hasScoreProfile = Boolean(episode?.scoreProfileSummary);
   const hasRegretReport = Boolean(episode?.regretReport);
   const hasBathymetrySummary = Boolean(episode?.bathymetrySummary ?? episode?.fieldPackBefore?.bathymetrySummary ?? episode?.fieldPackAfter?.bathymetrySummary);
+  const replayArtifacts = buildReplayArtifactsFromEpisode(episode, replayOptions(options, includeHidden));
+  const hasReplayR1 = Boolean(replayArtifacts?.manifest && replayArtifacts?.events && replayArtifacts?.checkpoints);
   const hasMissionGeometrySummary = Boolean(episode?.missionGeometrySummary);
   const combinedBundleType = roundtripReport ? HEADLESS_SOLVER_ROUNDTRIP_BUNDLE_TYPE : 'anchor.headless.bundle';
   const files = [
@@ -36,7 +39,13 @@ export function createHeadlessBundleManifest(episode, options = {}) {
     fileEntry('glider_tracks.json', 'gliderTracks', 'anchor.headless.trajectory', 'publicScenario', 'Waypoint execution track points.'),
     fileEntry('glider_tracks.csv', 'gliderTracks', 'anchor.headless.trajectory', 'publicScenario', 'CSV glider track table.'),
     fileEntry('score_report.json', 'scoreReport', 'anchor.headless.score-report', 'publicScenario', 'Educational Node headless score report.'),
-    fileEntry('replay.json', 'replay', 'anchor.headless.replay', 'publicScenario', 'Lightweight replay path and observation references.'),
+    fileEntry('replay.json', 'replay', 'anchor.headless.replay', 'publicScenario', 'Legacy lightweight replay path and observation references.'),
+    ...(hasReplayR1 ? [
+      fileEntry('replay_manifest.json', 'replayManifest', 'anchor.headless.replay-manifest', 'publicScenario', 'REPLAY-R1 deterministic replay manifest and compatibility contract.'),
+      fileEntry('replay_events.json', 'replayEvents', 'anchor.headless.replay-events', 'publicScenario', 'REPLAY-R1 canonical ordered public command/event stream.'),
+      fileEntry('replay_checkpoints.json', 'replayCheckpoints', 'anchor.headless.replay-checkpoints', 'publicScenario', 'REPLAY-R1 public replay checkpoints and stable public-state digests.'),
+      fileEntry('replay_alignment_report.json', 'replayAlignmentReport', 'anchor.headless.replay-alignment-report', 'publicScenario', 'REPLAY-R1 replay alignment status and first-divergence report.')
+    ] : []),
     fileEntry('episode.json', 'benchmarkRecords', 'anchor.headless.benchmark-episode', 'publicScenario', 'Complete H1 headless episode artifact.')
   ];
   if (hasScienceDiagnostics) {
@@ -85,7 +94,7 @@ export function createHeadlessBundleManifest(episode, options = {}) {
     files.push(fileEntry('roundtrip_report.json', 'roundtripReport', HEADLESS_SOLVER_ROUNDTRIP_REPORT_TYPE, 'publicScenario', 'H3.1 solver-packet / plan / headless-bundle roundtrip report.'));
   }
 
-  const jsonFiles = ['mission_config.json', 'score_report.json', 'replay.json', 'episode.json'];
+  const jsonFiles = ['mission_config.json', 'score_report.json', 'replay.json', ...(hasReplayR1 ? ['replay_manifest.json', 'replay_events.json', 'replay_checkpoints.json', 'replay_alignment_report.json'] : []), 'episode.json'];
   if (hasScienceDiagnostics) jsonFiles.push('science_diagnostics.json');
   if (hasWaterColumnSummary) jsonFiles.push('water_column_summary.json');
   if (hasDepthLayerPriority) jsonFiles.push('depth_layer_priority.json');
@@ -139,6 +148,7 @@ export function headlessBundleFiles(episode, options = {}) {
   const roundtripReport = options.roundtripReport ?? episode?.roundtripReport ?? null;
   const manifest = createHeadlessBundleManifest(episode, { includeHiddenTruth: includeHidden, combinedJson, createdAt: options.createdAt, roundtripReport });
   const publicObservations = includeHidden ? (episode.observations ?? []) : (episode.observations ?? []).map(publicObservation);
+  const replayArtifacts = buildReplayArtifactsFromEpisode(episode, replayOptions(options, includeHidden));
   const files = {
     'manifest.json': stableJson(manifest),
     'mission_config.json': stableJson(includeHidden ? episode.missionConfig : publicMissionConfig(episode.missionConfig)),
@@ -165,6 +175,10 @@ export function headlessBundleFiles(episode, options = {}) {
     ...(episode.missionGeometrySummary ? { 'mission_geometry_summary.json': stableJson(episode.missionGeometrySummary) } : {}),
     ...(episode.depthLayerPriority ? { 'depth_layer_priority.json': stableJson(episode.depthLayerPriority) } : {}),
     'replay.json': stableJson(episode.replay),
+    'replay_manifest.json': stableJson(replayArtifacts.manifest),
+    'replay_events.json': stableJson(replayArtifacts.events),
+    'replay_checkpoints.json': stableJson(replayArtifacts.checkpoints),
+    'replay_alignment_report.json': stableJson(replayArtifacts.alignmentReport),
     'episode.json': stableJson(stripBundleEpisode(episode, includeHidden))
   };
   if (includeHidden) {
@@ -174,7 +188,7 @@ export function headlessBundleFiles(episode, options = {}) {
     files['roundtrip_report.json'] = stableJson(roundtripReport);
   }
   if (combinedJson) {
-    files['bundle.json'] = stableJson(createHeadlessCombinedBundle(episode, { includeHiddenTruth: includeHidden, createdAt: options.createdAt, roundtripReport }));
+    files['bundle.json'] = stableJson(createHeadlessCombinedBundle(episode, { includeHiddenTruth: includeHidden, createdAt: options.createdAt, roundtripReport, checkpointEvery: options.checkpointEvery ?? options.checkpointEveryTicks, publicPlayback: options.publicPlayback, refereeReplay: options.refereeReplay, authoritativeReplay: options.authoritativeReplay, objectiveSequence: options.objectiveSequence, useDemoObjectiveSequence: options.useDemoObjectiveSequence }));
   }
   return files;
 }
@@ -184,6 +198,7 @@ export function createHeadlessCombinedBundle(episode, options = {}) {
   const roundtripReport = options.roundtripReport ?? episode.roundtripReport ?? null;
   const manifest = createHeadlessBundleManifest(episode, { includeHiddenTruth: includeHidden, combinedJson: true, createdAt: options.createdAt, roundtripReport });
   const publicObservations = includeHidden ? (episode.observations ?? []) : (episode.observations ?? []).map(publicObservation);
+  const replayArtifacts = buildReplayArtifactsFromEpisode(episode, replayOptions(options, includeHidden));
   const bundle = {
     type: roundtripReport ? HEADLESS_SOLVER_ROUNDTRIP_BUNDLE_TYPE : 'anchor.headless.bundle',
     version: roundtripReport ? 'headless-solver-roundtrip-bundle-h3.1' : 'headless-combined-bundle-h2',
@@ -213,6 +228,11 @@ export function createHeadlessCombinedBundle(episode, options = {}) {
     missionGeometrySummary: episode.missionGeometrySummary ?? null,
     depthLayerPrioritySummary: episode.depthLayerPriority?.summary ?? episode.depthLayerPrioritySummary ?? null,
     replay: episode.replay,
+    replayManifest: replayArtifacts.manifest,
+    replayEvents: replayArtifacts.events,
+    replayCheckpoints: replayArtifacts.checkpoints,
+    replayAlignmentReport: replayArtifacts.alignmentReport,
+    replayContract: replayArtifacts.contract,
     roundtripReport,
     episode: stripBundleEpisode(episode, includeHidden),
     notes: [
@@ -253,6 +273,10 @@ export function headlessBundleSummary(outputDir) {
     hasManifest: Boolean(manifest),
     hiddenTruthExported: files.includes('hidden_fields.json'),
     combinedBundle: files.includes('bundle.json'),
+    replayManifest: files.includes('replay_manifest.json'),
+    replayEvents: files.includes('replay_events.json'),
+    replayCheckpoints: files.includes('replay_checkpoints.json'),
+    replayAlignmentReport: files.includes('replay_alignment_report.json'),
     finalScoreFile: files.includes('score_report.json'),
     scienceDiagnostics: files.includes('science_diagnostics.json'),
     waterColumnSummary: files.includes('water_column_summary.json'),
@@ -272,6 +296,19 @@ export function headlessBundleSummary(outputDir) {
     observationCsv: files.includes('observations.csv'),
     trackCsv: files.includes('glider_tracks.csv'),
     manifestNotes: manifest?.notes ?? []
+  };
+}
+
+function replayOptions(options = {}, includeHidden = false) {
+  return {
+    checkpointEvery: options.checkpointEvery ?? options.checkpointEveryTicks,
+    objectiveSequence: options.objectiveSequence,
+    useDemoObjectiveSequence: options.useDemoObjectiveSequence === true,
+    publicPlayback: options.publicPlayback !== false,
+    refereeReplay: includeHidden === true && options.refereeReplay === true,
+    authoritativeReplay: includeHidden === true && options.authoritativeReplay === true,
+    seed: options.seed,
+    timeStepSeconds: options.timeStepSeconds
   };
 }
 
@@ -396,7 +433,3 @@ function csvValue(value) {
 function stableJson(value) {
   return `${JSON.stringify(value, null, 2)}\n`;
 }
-
-
-
-

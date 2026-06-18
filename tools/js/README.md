@@ -159,3 +159,13 @@ When enabled, Node/OceanBox-JS emits public-safe `motion_cost_graph.json`, `moti
 SCORE-R1 is shadow benchmark scoring. It does not replace official browser scoring, Challenge Mode scoring, leaderboard ranking, or existing debrief totals. Profiles are objective-aware and versioned; missing data is explicit; regret requires a compatible reference, and best-known attempt does not mean optimal. The Node/OceanBox-JS runtime remains the canonical headless runtime. Python/Colab analyzes exported artifacts or invokes Node; no Python simulator, planner, optimizer, MARL/RL, operational certification, SeaExplorer validation, or calibrated ocean forecast is added.
 
 See ../../docs/mission_scoring_and_regret.md for the SCORE-R1 artifact contract and boundaries.
+## H4 / REPLAY-R1 CLI
+
+`headless_oceanbox.mjs` supports replay artifact generation and verification:
+
+```bash
+node tools/js/headless_oceanbox.mjs replay --bundle runs/h3-roundtrip/bundle.json --out runs/h4-replay --checkpoint-every 10
+node tools/js/headless_oceanbox.mjs verify-replay --bundle runs/h3-roundtrip/bundle.json --report runs/h4-replay/replay_alignment_report.json
+```
+
+Use `--public-playback` for sanitized bundles. `--referee-replay` is only a mode label for explicitly protected/internal contexts and does not add hidden payloads to public exports.

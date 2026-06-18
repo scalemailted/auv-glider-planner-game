@@ -3,6 +3,9 @@ import fs from 'node:fs';
 import path from 'node:path';
 
 import { validateHeadlessPlanAgainstMission } from '../../src/core/headless/HeadlessPlanAdapter.js';
+import { buildHeadlessBundleFromFiles } from '../../src/core/headless/HeadlessBundleLoader.js';
+import { buildReplayArtifactsFromBundle } from '../../src/core/replay/ReplayContractBuilder.js';
+import { verifyReplayBundle } from '../../src/core/replay/ReplayVerifier.js';
 import { buildHeadlessSolverPacketRoundtrip } from '../../src/core/headless/HeadlessRoundtrip.js';
 import { validateSolverPacketForHeadless, solverPacketHeadlessCompatibilitySummary } from '../../src/core/headless/HeadlessSolverPacketAdapter.js';
 import { runHeadlessMission } from '../../src/core/headless/runtime/HeadlessMissionRunner.js';
@@ -21,6 +24,8 @@ try {
   else if (args.command === 'validate-solver-packet') runValidateSolverPacket(args);
   else if (args.command === 'validate-plan') runValidatePlan(args);
   else if (args.command === 'roundtrip') runRoundtrip(args);
+  else if (args.command === 'replay') runReplay(args);
+  else if (args.command === 'verify-replay') runVerifyReplay(args);
   else {
     printUsage();
     process.exit(1);
@@ -65,7 +70,7 @@ function runSimulate(args) {
   let bundleSummary = null;
   if (!args.summaryOnly) {
     const outputDir = args.out ?? 'tmp/oceanbox-js-demo';
-    bundleSummary = writeHeadlessBundle(episode, outputDir, { includeHiddenTruth: !args.noHiddenExport, combinedJson: args.combinedJson });
+    bundleSummary = writeHeadlessBundle(episode, outputDir, { includeHiddenTruth: !args.noHiddenExport, combinedJson: args.combinedJson, checkpointEvery: args.checkpointEvery, publicPlayback: args.publicPlayback, refereeReplay: args.refereeReplay, useDemoObjectiveSequence: args.demoObjectives });
   }
   console.log(JSON.stringify({
     command: 'simulate',
@@ -173,7 +178,11 @@ function runRoundtrip(args) {
     includeHiddenTruth,
     combinedJson: args.combinedJson !== false,
     createdAt: args.createdAt,
-    roundtripReport: roundtrip.report
+    roundtripReport: roundtrip.report,
+    checkpointEvery: args.checkpointEvery,
+    publicPlayback: args.publicPlayback,
+    refereeReplay: args.refereeReplay,
+    useDemoObjectiveSequence: args.demoObjectives
   });
   const report = {
     ...roundtrip.report,
@@ -193,7 +202,11 @@ function runRoundtrip(args) {
       includeHiddenTruth,
       combinedJson: true,
       createdAt: args.createdAt,
-      roundtripReport: report
+      roundtripReport: report,
+      checkpointEvery: args.checkpointEvery,
+      publicPlayback: args.publicPlayback,
+      refereeReplay: args.refereeReplay,
+      useDemoObjectiveSequence: args.demoObjectives
     });
   }
   console.log(JSON.stringify({
@@ -219,6 +232,90 @@ function runRoundtrip(args) {
   }, null, 2));
 }
 
+function runReplay(args) {
+  const bundlePath = args.bundle ?? args.positionals[0];
+  const outputDir = args.out ?? args.positionals[1] ?? 'tmp/headless-replay';
+  if (!bundlePath) throw new Error('replay requires --bundle <path> --out <dir>.');
+  const bundle = readHeadlessBundlePath(bundlePath);
+  const replayArtifacts = buildReplayArtifactsFromBundle(bundle, {
+    checkpointEvery: args.checkpointEvery,
+    publicPlayback: args.publicPlayback !== false,
+    refereeReplay: args.refereeReplay,
+    authoritativeReplay: args.refereeReplay,
+    useDemoObjectiveSequence: args.demoObjectives
+  });
+  fs.mkdirSync(outputDir, { recursive: true });
+  writeJson(path.join(outputDir, 'replay_manifest.json'), replayArtifacts.manifest);
+  writeJson(path.join(outputDir, 'replay_events.json'), replayArtifacts.events);
+  writeJson(path.join(outputDir, 'replay_checkpoints.json'), replayArtifacts.checkpoints);
+  writeJson(path.join(outputDir, 'replay_alignment_report.json'), replayArtifacts.alignmentReport);
+  writeJson(path.join(outputDir, 'replay_contract.json'), replayArtifacts.contract);
+  console.log(JSON.stringify({
+    ok: true,
+    command: 'replay',
+    bundlePath,
+    outputDir,
+    replayMode: replayArtifacts.manifest.replayMode,
+    replayFidelity: replayArtifacts.manifest.replayFidelity,
+    eventCount: replayArtifacts.events.events.length,
+    checkpointCount: replayArtifacts.checkpoints.checkpoints.length,
+    terminalDigest: replayArtifacts.checkpoints.summary.terminalDigest,
+    hiddenTruthIncluded: replayArtifacts.manifest.hiddenTruthIncluded === true,
+    changesOfficialBrowserScoring: false,
+    files: ['replay_manifest.json', 'replay_events.json', 'replay_checkpoints.json', 'replay_alignment_report.json', 'replay_contract.json'],
+    boundary: 'REPLAY-R1 public playback writes public event/checkpoint artifacts. It does not resimulate hidden truth or change browser scoring.'
+  }, null, 2));
+}
+
+function runVerifyReplay(args) {
+  const bundlePath = args.bundle ?? args.positionals[0];
+  const reportPath = args.report ?? args.positionals[1] ?? 'tmp/replay_alignment_report.json';
+  if (!bundlePath) throw new Error('verify-replay requires --bundle <path> --report <path>.');
+  const bundle = readHeadlessBundlePath(bundlePath);
+  const report = verifyReplayBundle(bundle, {
+    strict: args.strict,
+    checkpointEvery: args.checkpointEvery,
+    allowCompatibleVersion: args.allowCompatibleVersion,
+    publicPlayback: args.publicPlayback !== false,
+    refereeReplay: args.refereeReplay,
+    useDemoObjectiveSequence: args.demoObjectives
+  });
+  fs.mkdirSync(path.dirname(reportPath), { recursive: true });
+  writeJson(reportPath, report);
+  console.log(JSON.stringify({
+    ok: report.status !== 'FAIL',
+    command: 'verify-replay',
+    bundlePath,
+    reportPath,
+    status: report.status,
+    compatibilityStatus: report.compatibilityStatus,
+    replayMode: report.replayMode,
+    firstDivergence: report.firstDivergence,
+    warningCount: report.summary.warningCount,
+    failureCount: report.summary.failureCount,
+    changesOfficialBrowserScoring: false,
+    boundary: report.boundary
+  }, null, 2));
+  if (report.status === 'FAIL') process.exitCode = 1;
+}
+
+function readHeadlessBundlePath(bundlePath) {
+  const stat = fs.statSync(bundlePath);
+  if (stat.isDirectory()) {
+    const entries = fs.readdirSync(bundlePath)
+      .filter((fileName) => /\.(json|csv)$/i.test(fileName))
+      .map((fileName) => ({ fileName, text: fs.readFileSync(path.join(bundlePath, fileName), 'utf8') }));
+    return buildHeadlessBundleFromFiles(entries);
+  }
+  const payload = readJson(bundlePath);
+  const fileName = path.basename(bundlePath) || 'bundle.json';
+  return buildHeadlessBundleFromFiles([{ fileName, payload }]);
+}
+
+function writeJson(filePath, payload) {
+  fs.writeFileSync(filePath, `${JSON.stringify(payload, null, 2)}\n`, 'utf8');
+}
+
 function parseArgs(argv) {
   const parsed = {
     command: argv[0] ?? null,
@@ -230,6 +327,14 @@ function parseArgs(argv) {
     allowInvalidPlan: false,
     allowVisibilityFailures: false,
     summaryOnly: false,
+    bundle: null,
+    report: null,
+    strict: false,
+    allowCompatibleVersion: false,
+    publicPlayback: true,
+    refereeReplay: false,
+    checkpointEvery: null,
+    demoObjectives: false,
     waterColumnSummary: true,
     depthLayers: null,
     diveProfileId: null,
@@ -264,6 +369,15 @@ function parseArgs(argv) {
     const arg = argv[index];
     if (arg === '--seed') parsed.seed = argv[++index];
     else if (arg === '--out') parsed.out = argv[++index];
+    else if (arg === '--bundle') parsed.bundle = argv[++index];
+    else if (arg === '--report') parsed.report = argv[++index];
+    else if (arg === '--strict') parsed.strict = true;
+    else if (arg === '--allow-compatible-version') parsed.allowCompatibleVersion = true;
+    else if (arg === '--checkpoint-every') parsed.checkpointEvery = Number(argv[++index]);
+    else if (arg === '--public-playback') parsed.publicPlayback = true;
+    else if (arg === '--no-public-playback') parsed.publicPlayback = false;
+    else if (arg === '--referee-replay') parsed.refereeReplay = true;
+    else if (arg === '--demo-objectives') parsed.demoObjectives = true;
     else if (arg === '--width') parsed.width = Number(argv[++index]);
     else if (arg === '--height') parsed.height = Number(argv[++index]);
     else if (arg === '--scenario') parsed.scenario = argv[++index];
@@ -347,6 +461,16 @@ function printUsage() {
   node tools/js/headless_oceanbox.mjs simulate --seed demo-001 --out tmp/oceanbox-js-demo [--width 32] [--height 24] [--scenario coastalBloomFront] [--depth-layers surface,thermocline,deep] [--dive-profile sawtoothProfile] [--water-column-summary] [--bathymetry] [--bathymetry-view obliqueBathymetry] [--vertical-exaggeration 1.5] [--motion-aware] [--motion-model depthLayerKinematic] [--control-step 60] [--glider-speed 1] [--heading-rate-limit 8] [--drift-gain 1] [--cost-graph] [--cost-graph-metric energy] [--cost-graph-node-source regularGrid] [--cost-matrix-format sparse] [--mission-score] [--score-profile balancedMission] [--regret-reference none] [--no-hidden-export] [--combined-json] [--summary-only]
   node tools/js/headless_oceanbox.mjs validate-solver-packet --solver-packet docs/examples/headless_solver_packet.example.json [--oracle]
   node tools/js/headless_oceanbox.mjs validate-plan --solver-packet docs/examples/headless_solver_packet.example.json --plan docs/examples/headless_solver_plan.example.json [--agent-id glider_01]
-  node tools/js/headless_oceanbox.mjs roundtrip --solver-packet docs/examples/headless_solver_packet.example.json --plan docs/examples/headless_solver_plan.example.json --out runs/h3-roundtrip --depth-layers surface,thermocline,deep --dive-profile sawtoothProfile --bathymetry --bathymetry-view obliqueBathymetry --vertical-exaggeration 1.5 --motion-aware --motion-model depthLayerKinematic --cost-graph --cost-graph-node-source samplingPriorityCandidates --cost-matrix-format sparse --mission-score --score-profile balancedMission --regret-reference none --combined-json --no-hidden-export`);
+  node tools/js/headless_oceanbox.mjs roundtrip --solver-packet docs/examples/headless_solver_packet.example.json --plan docs/examples/headless_solver_plan.example.json --out runs/h3-roundtrip --depth-layers surface,thermocline,deep --dive-profile sawtoothProfile --bathymetry --bathymetry-view obliqueBathymetry --vertical-exaggeration 1.5 --motion-aware --motion-model depthLayerKinematic --cost-graph --cost-graph-node-source samplingPriorityCandidates --cost-matrix-format sparse --mission-score --score-profile balancedMission --regret-reference none --combined-json --no-hidden-export [--checkpoint-every 10] [--demo-objectives]
+  node tools/js/headless_oceanbox.mjs replay --bundle runs/h3-roundtrip/bundle.json --out runs/h4-replay [--checkpoint-every 10] [--public-playback]
+  node tools/js/headless_oceanbox.mjs verify-replay --bundle runs/h3-roundtrip/bundle.json --report runs/h4-replay/replay_alignment_report.json [--strict] [--allow-compatible-version]`);
 }
+
+
+
+
+
+
+
+
 

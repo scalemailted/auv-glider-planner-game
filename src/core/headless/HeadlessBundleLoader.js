@@ -3,7 +3,7 @@ import { HEADLESS_SOLVER_ROUNDTRIP_BUNDLE_TYPE, isHeadlessRoundtripReportType } 
 
 export const HEADLESS_BUNDLE_LOADER_VERSION = 'headless-bundle-loader-h2';
 export const HEADLESS_BUNDLE_REQUIRED_FILES = Object.freeze(['manifest.json', 'mission_config.json', 'visible_fields.json', 'score_report.json']);
-export const HEADLESS_BUNDLE_OPTIONAL_FILES = Object.freeze(['hidden_fields.json', 'observations.json', 'observations.csv', 'glider_tracks.json', 'glider_tracks.csv', 'replay.json', 'episode.json', 'bundle.json', 'roundtrip_report.json', 'science_diagnostics.json', 'water_column_summary.json', 'depth_layer_priority.json', 'motion_trajectory.json', 'control_trace.json', 'motion_diagnostics.json', 'mission_feasibility_report.json', 'motion_cost_graph.json', 'motion_cost_matrix.json', 'score_profile.json', 'mission_outcome_metrics.json', 'mission_score.json', 'mission_outcome_report.json', 'regret_report.json', 'bathymetry_summary.json', 'mission_geometry_summary.json']);
+export const HEADLESS_BUNDLE_OPTIONAL_FILES = Object.freeze(['hidden_fields.json', 'observations.json', 'observations.csv', 'glider_tracks.json', 'glider_tracks.csv', 'replay.json', 'replay_manifest.json', 'replay_events.json', 'replay_checkpoints.json', 'replay_alignment_report.json', 'episode.json', 'bundle.json', 'roundtrip_report.json', 'science_diagnostics.json', 'water_column_summary.json', 'depth_layer_priority.json', 'motion_trajectory.json', 'control_trace.json', 'motion_diagnostics.json', 'mission_feasibility_report.json', 'motion_cost_graph.json', 'motion_cost_matrix.json', 'score_profile.json', 'mission_outcome_metrics.json', 'mission_score.json', 'mission_outcome_report.json', 'regret_report.json', 'bathymetry_summary.json', 'mission_geometry_summary.json']);
 
 const LOGICAL_FILE_ALIASES = Object.freeze({
   'manifest.json': 'manifest',
@@ -16,6 +16,10 @@ const LOGICAL_FILE_ALIASES = Object.freeze({
   'glider_tracks.csv': 'gliderTracksCsv',
   'score_report.json': 'scoreReport',
   'replay.json': 'replay',
+  'replay_manifest.json': 'replayManifest',
+  'replay_events.json': 'replayEvents',
+  'replay_checkpoints.json': 'replayCheckpoints',
+  'replay_alignment_report.json': 'replayAlignmentReport',
   'episode.json': 'episode',
   'bundle.json': 'combinedBundle',
   'roundtrip_report.json': 'roundtripReport',
@@ -96,6 +100,10 @@ export function normalizeHeadlessBundleFiles(files = []) {
     normalized.gliderTracks ??= combined.gliderTracks;
     normalized.scoreReport ??= combined.scoreReport;
     normalized.replay ??= combined.replay;
+    normalized.replayManifest ??= combined.replayManifest ?? combined.replayContract?.manifest ?? combined.replay?.manifest;
+    normalized.replayEvents ??= combined.replayEvents ?? combined.replayContract?.events ?? combined.replay?.events;
+    normalized.replayCheckpoints ??= combined.replayCheckpoints ?? combined.replayContract?.checkpoints ?? combined.replay?.checkpoints;
+    normalized.replayAlignmentReport ??= combined.replayAlignmentReport ?? combined.replayContract?.alignmentReport ?? combined.replay?.alignmentReport;
     normalized.episode ??= combined.episode;
     normalized.roundtripReport ??= combined.roundtripReport;
     normalized.scienceDiagnostics ??= combined.scienceDiagnostics ?? combined.episode?.scienceDiagnostics;
@@ -156,6 +164,10 @@ export function buildHeadlessBundleFromFiles(bundleFiles) {
     gliderTracks: normalizeTracksPayload(normalized.gliderTracks),
     scoreReport: normalized.scoreReport ?? null,
     replay: normalized.replay ?? null,
+    replayManifest: normalized.replayManifest ?? null,
+    replayEvents: normalized.replayEvents ?? null,
+    replayCheckpoints: normalized.replayCheckpoints ?? null,
+    replayAlignmentReport: normalized.replayAlignmentReport ?? null,
     roundtripReport: normalized.roundtripReport ?? null,
     scienceDiagnostics: normalized.scienceDiagnostics ?? normalized.episode?.scienceDiagnostics ?? null,
     waterColumnSummary: normalized.waterColumnSummary ?? normalized.episode?.waterColumnSummary ?? null,
@@ -199,6 +211,10 @@ export function headlessBundleLoadSummary(bundle) {
     trackPointCount: bundle?.gliderTracks?.length ?? 0,
     finalScore: bundle?.scoreReport?.finalScore ?? bundle?.scoreReport?.final_score ?? null,
     hasRoundtripReport: Boolean(bundle?.roundtripReport),
+    hasReplayManifest: Boolean(bundle?.replayManifest),
+    hasReplayEvents: Boolean(bundle?.replayEvents),
+    hasReplayCheckpoints: Boolean(bundle?.replayCheckpoints),
+    hasReplayAlignmentReport: Boolean(bundle?.replayAlignmentReport),
     hasScienceDiagnostics: Boolean(bundle?.scienceDiagnostics),
     hasWaterColumnSummary: Boolean(bundle?.waterColumnSummary),
     hasDepthLayerPriority: Boolean(bundle?.depthLayerPriority ?? bundle?.depthLayerPrioritySummary),
@@ -275,6 +291,14 @@ function inferLogicalType(fileName, payload) {
   if (type === 'anchor.headless.manifest') return 'manifest';
   if (type === 'anchor.headless.mission-config') return 'missionConfig';
   if (type === 'anchor.headless.score-report') return 'scoreReport';
+  if (type === 'anchor.headless.replay-manifest') return 'replayManifest';
+  if (type === 'anchor.headless.replay-events') return 'replayEvents';
+  if (type === 'anchor.headless.replay-checkpoints') return 'replayCheckpoints';
+  if (type === 'anchor.headless.replay-alignment-report') return 'replayAlignmentReport';
+  if (/replay.*manifest/i.test(fileName)) return 'replayManifest';
+  if (/replay.*events/i.test(fileName)) return 'replayEvents';
+  if (/replay.*checkpoints/i.test(fileName)) return 'replayCheckpoints';
+  if (/replay.*alignment/i.test(fileName)) return 'replayAlignmentReport';
   if (/manifest/i.test(fileName)) return 'manifest';
   return null;
 }
@@ -282,5 +306,11 @@ function inferLogicalType(fileName, payload) {
 function basename(fileName) {
   return String(fileName ?? '').split(/[\\/]/).pop();
 }
+
+
+
+
+
+
 
 

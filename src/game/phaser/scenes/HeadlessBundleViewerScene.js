@@ -7,6 +7,7 @@ import {
 } from '../../../core/headless/HeadlessBundleBrowserAdapter.js';
 import { downloadJSON } from '../../../core/io/ImportExport.js';
 import { headlessBundleViewerPanelHtml } from '../../../ui/headless/HeadlessBundleViewerPanel.js';
+import { createReplayPlaybackState, jumpReplayPlaybackToCheckpoint, replayPlaybackSummary, setReplayPlaybackPlaying, stepReplayPlayback as advanceReplayPlayback } from '../../../core/replay/ReplayPlayback.js';
 
 const PhaserScene = globalThis.Phaser?.Scene ?? class {};
 export class HeadlessBundleViewerScene extends PhaserScene {
@@ -17,6 +18,8 @@ export class HeadlessBundleViewerScene extends PhaserScene {
     this.viewModel = null;
     this.statusMessage = 'No bundle loaded yet.';
     this.lastError = null;
+    this.replayPlaybackState = null;
+    this.replayPlaybackTimer = null;
   }
 
   create() {
@@ -31,6 +34,7 @@ export class HeadlessBundleViewerScene extends PhaserScene {
   }
 
   shutdown() {
+    this.stopReplayTimer();
     this.destroyObjects();
   }
 
@@ -41,6 +45,13 @@ export class HeadlessBundleViewerScene extends PhaserScene {
 
   renderPanel() {
     this.viewModel = this.bundle ? buildHeadlessBundleViewModel(this.bundle) : null;
+    if (this.bundle && !this.replayPlaybackState) this.replayPlaybackState = createReplayPlaybackState(this.bundle);
+    if (this.bundle && this.viewModel) {
+      this.viewModel = {
+        ...this.viewModel,
+        replayPlayback: replayPlaybackSummary(this.replayPlaybackState, this.bundle)
+      };
+    }
     this.app.setPanel(`
       <section class="console-header">
         <div class="console-kicker">Headless Bundle Viewer</div>
@@ -54,6 +65,7 @@ export class HeadlessBundleViewerScene extends PhaserScene {
           <button class="console-button secondary" data-action="load-example-roundtrip">Load Example Roundtrip</button>
           <button class="console-button secondary" data-action="load-example-cost-graph">Load Example Cost Graph</button>
           <button class="console-button secondary" data-action="load-example-mission-score">Load Example Mission Score</button>
+          <button class="console-button secondary" data-action="load-example-replay">Load Example Replay</button>
           <label class="console-button secondary" for="headless-bundle-file-input">Choose Combined or Multiple Bundle Files</label>
           <input id="headless-bundle-file-input" data-headless-bundle-files type="file" multiple accept=".json,.csv,application/json,text/csv" hidden />
           <button class="console-button secondary" data-action="menu">Main Menu</button>
@@ -74,8 +86,14 @@ export class HeadlessBundleViewerScene extends PhaserScene {
     root?.querySelector?.('[data-action="load-example-roundtrip"]')?.addEventListener('click', () => this.loadExampleRoundtrip());
     root?.querySelector?.('[data-action="load-example-cost-graph"]')?.addEventListener('click', () => this.loadExampleCostGraph());
     root?.querySelector?.('[data-action="load-example-mission-score"]')?.addEventListener('click', () => this.loadExampleMissionScore());
+    root?.querySelector?.('[data-action="load-example-replay"]')?.addEventListener('click', () => this.loadExampleReplay());
     root?.querySelector?.('[data-action="export-browser-summary"]')?.addEventListener('click', () => this.exportBrowserSummary());
     root?.querySelector?.('[data-action="export-browser-roundtrip-summary"]')?.addEventListener('click', () => this.exportBrowserRoundtripSummary());
+    root?.querySelector?.('[data-action="replay-toggle"]')?.addEventListener('click', () => this.toggleReplayPlayback());
+    root?.querySelector?.('[data-action="replay-step"]')?.addEventListener('click', () => this.stepReplayPlayback());
+    root?.querySelector?.('[data-action="replay-jump-start"]')?.addEventListener('click', () => this.jumpReplayPlayback('start'));
+    root?.querySelector?.('[data-action="replay-jump-next-checkpoint"]')?.addEventListener('click', () => this.jumpReplayPlayback('next'));
+    root?.querySelector?.('[data-action="replay-jump-terminal"]')?.addEventListener('click', () => this.jumpReplayPlayback('terminal'));
     root?.querySelector?.('[data-action="menu"]')?.addEventListener('click', () => this.scene.start('MainMenuScene'));
     root?.querySelector?.('[data-headless-bundle-files]')?.addEventListener('change', (event) => this.loadSelectedFiles(event.target.files));
   }
@@ -158,8 +176,26 @@ export class HeadlessBundleViewerScene extends PhaserScene {
       this.refreshDebugObject();
     }
   }
+
+  async loadExampleReplay() {
+    const fileName = 'docs/examples/headless_replay_bundle.example.json';
+    try {
+      const response = await fetch(fileName, { cache: 'no-store' });
+      if (!response.ok) throw new Error(`Unable to load ${fileName}: HTTP ${response.status}`);
+      const payload = await response.json();
+      const bundle = buildHeadlessBundleFromFiles([{ fileName: 'bundle.json', payload }]);
+      this.setBundle(bundle, `Loaded checked-in REPLAY-R1 example from ${fileName}.`);
+    } catch (error) {
+      this.lastError = error?.message ?? String(error);
+      this.statusMessage = 'Example replay load failed.';
+      this.renderPanel();
+      this.refreshDebugObject();
+    }
+  }
   setBundle(bundle, statusMessage) {
+    this.stopReplayTimer();
     this.bundle = bundle;
+    this.replayPlaybackState = createReplayPlaybackState(bundle);
     this.statusMessage = statusMessage;
     this.lastError = null;
     this.renderPanel();
@@ -182,12 +218,65 @@ export class HeadlessBundleViewerScene extends PhaserScene {
     }
     downloadJSON('anchor_headless_roundtrip_browser_summary.json', buildBrowserHeadlessRoundtripSummaryArtifact(this.bundle));
   }
+
+  toggleReplayPlayback() {
+    if (!this.bundle) return;
+    this.replayPlaybackState ??= createReplayPlaybackState(this.bundle);
+    const nextPlaying = this.replayPlaybackState.playing !== true;
+    this.replayPlaybackState = setReplayPlaybackPlaying(this.replayPlaybackState, nextPlaying);
+    if (nextPlaying) this.startReplayTimer();
+    else this.stopReplayTimer();
+    this.refreshReplayPanel();
+  }
+
+  stepReplayPlayback() {
+    if (!this.bundle) return;
+    this.replayPlaybackState ??= createReplayPlaybackState(this.bundle);
+    this.replayPlaybackState = advanceReplayPlayback(this.replayPlaybackState, this.bundle, 1);
+    this.refreshReplayPanel();
+  }
+
+  jumpReplayPlayback(checkpointSelector) {
+    if (!this.bundle) return;
+    this.replayPlaybackState ??= createReplayPlaybackState(this.bundle);
+    this.replayPlaybackState = jumpReplayPlaybackToCheckpoint(this.replayPlaybackState, this.bundle, checkpointSelector);
+    this.refreshReplayPanel();
+  }
+
+  startReplayTimer() {
+    this.stopReplayTimer();
+    this.replayPlaybackTimer = globalThis.setInterval?.(() => {
+      if (!this.replayPlaybackState?.playing || !this.bundle) return;
+      const before = this.replayPlaybackState.eventIndex;
+      this.replayPlaybackState = advanceReplayPlayback(this.replayPlaybackState, this.bundle, 1);
+      if (this.replayPlaybackState.eventIndex === before) this.replayPlaybackState = setReplayPlaybackPlaying(this.replayPlaybackState, false);
+      this.refreshReplayPanel();
+      if (!this.replayPlaybackState.playing) this.stopReplayTimer();
+    }, 600) ?? null;
+  }
+
+  stopReplayTimer() {
+    if (this.replayPlaybackTimer) globalThis.clearInterval?.(this.replayPlaybackTimer);
+    this.replayPlaybackTimer = null;
+  }
+
+  refreshReplayPanel() {
+    this.renderPanel();
+    this.refreshDebugObject();
+    this.draw();
+  }
+
   refreshDebugObject() {
     globalThis.ANCHOR_HEADLESS_BUNDLE_DEBUG = this.bundle ? {
       ...buildBrowserHeadlessBundleDebugObject(this.bundle),
       statusMessage: this.statusMessage,
       lastError: this.lastError,
-      sourceFiles: this.bundle.files ?? []
+      sourceFiles: this.bundle.files ?? [],
+      replayPlayback: replayPlaybackSummary(this.replayPlaybackState, this.bundle),
+      replayPlaying: this.replayPlaybackState?.playing === true,
+      replayCurrentTick: this.replayPlaybackState?.currentTick ?? null,
+      replayCurrentEventIndex: this.replayPlaybackState?.eventIndex ?? -1,
+      replayCurrentCheckpointIndex: this.replayPlaybackState?.checkpointIndex ?? -1
     } : {
       version: 'headless-bundle-viewer-scene-h2',
       bundleLoaded: false,
@@ -197,6 +286,21 @@ export class HeadlessBundleViewerScene extends PhaserScene {
       browserSummaryExportAvailable: false,
       roundtripSummaryExportAvailable: false,
       roundtripLoaded: false,
+      replayLoaded: false,
+      replayMode: null,
+      replayFidelity: null,
+      replayCompatibilityStatus: null,
+      replayAlignmentStatus: null,
+      replayEventCount: 0,
+      replayCheckpointCount: 0,
+      replayCurrentTick: null,
+      replayCurrentEventIndex: -1,
+      replayCurrentCheckpointIndex: -1,
+      replayTerminalDigest: null,
+      replayPlaying: false,
+      replayHiddenTruthIncluded: false,
+      replayPublicSafe: true,
+      replayChangesOfficialBrowserScoring: false,
       hasScienceDiagnostics: false,
       sciencePrimaryDiagnosis: null,
       scienceForecastCorrectionStatus: null,
@@ -313,6 +417,18 @@ function escapeHtml(value) {
     "'": '&#039;'
   }[char]));
 }
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 

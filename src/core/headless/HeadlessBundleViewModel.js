@@ -7,6 +7,8 @@ import { motionCostMatrixSummary as summarizeMotionCostMatrix } from '../motion/
 import { missionOutcomeReportSummary } from '../scoring/MissionOutcomeReport.js';
 import { missionRegretReportSummary } from '../scoring/MissionRegretModel.js';
 import { buildMissionScorecardViewModel } from '../scoring/MissionScorecardViewModel.js';
+import { createReplayPlaybackState, replayPlaybackSummary } from '../replay/ReplayPlayback.js';
+import { replayArtifactsSummary } from '../replay/ReplaySchema.js';
 
 export const HEADLESS_BUNDLE_VIEW_MODEL_VERSION = 'headless-bundle-view-model-h2';
 
@@ -34,6 +36,7 @@ export function buildHeadlessBundleViewModel(bundle = {}) {
     depthLayerPrioritySummary: headlessBundleDepthLayerPrioritySummary(bundle),
     scienceDiagnosisSummary: headlessBundleScienceDiagnosisSummary(bundle),
     replaySummary: headlessBundleReplaySummary(bundle),
+    replayPlayback: headlessBundleReplayPlayback(bundle),
     visibilitySummary: headlessBundleVisibilitySummary(bundle, validation),
     validation,
     warnings: validation.warnings,
@@ -559,15 +562,46 @@ export function headlessBundleMissionGeometrySummary(bundle = {}) {
   };
 }
 export function headlessBundleReplaySummary(bundle = {}) {
+  const summary = replayArtifactsSummary(bundle);
   const replay = bundle.replay ?? {};
+  const alignment = bundle.replayAlignmentReport ?? {};
   return {
-    present: Boolean(bundle.replay),
-    type: replay.type ?? null,
-    seed: replay.seed ?? bundle.manifest?.seed ?? null,
-    gliderId: replay.gliderId ?? null,
-    trackPointCount: replay.trackPointCount ?? replay.route?.length ?? null,
-    observationCount: replay.observationCount ?? replay.observationIds?.length ?? null
+    present: summary.present,
+    legacyLimited: summary.legacyLimited,
+    type: bundle.replayManifest?.type ?? replay.type ?? null,
+    contract: summary.contract,
+    version: summary.version,
+    seed: summary.seed ?? replay.seed ?? bundle.manifest?.seed ?? null,
+    replayMode: summary.replayMode,
+    replayFidelity: summary.replayFidelity,
+    compatibilityStatus: alignment.compatibilityStatus ?? summary.compatibilityStatus,
+    alignmentStatus: alignment.status ?? null,
+    firstDivergence: alignment.firstDivergence ?? null,
+    gliderId: replay.gliderId ?? bundle.replayManifest?.agentIds?.[0] ?? null,
+    eventCount: summary.eventCount,
+    checkpointCount: summary.checkpointCount,
+    trackPointCount: replay.trackPointCount ?? replay.route?.length ?? bundle.gliderTracks?.length ?? null,
+    observationCount: replay.observationCount ?? replay.observationIds?.length ?? bundle.observations?.length ?? null,
+    surfacingCount: summary.surfacingCount,
+    objectiveTransitionCount: summary.objectiveTransitionCount,
+    terminalTick: summary.terminalTick,
+    terminalDigest: summary.terminalDigest,
+    publicSafe: summary.publicSafe,
+    hiddenTruthIncluded: summary.hiddenTruthIncluded,
+    changesOfficialBrowserScoring: summary.changesOfficialBrowserScoring,
+    objectiveTransitions: (bundle.replayEvents?.events ?? []).filter((event) => event.phase === 'objective').map((event) => ({
+      sequence: event.sequence,
+      tick: event.tick,
+      objectiveId: event.payload?.objectiveId ?? null,
+      label: event.payload?.label ?? null
+    })),
+    warning: summary.warning
   };
+}
+
+export function headlessBundleReplayPlayback(bundle = {}) {
+  const state = createReplayPlaybackState(bundle);
+  return replayPlaybackSummary(state, bundle);
 }
 
 export function headlessBundleVisibilitySummary(bundle = {}, validation = validateHeadlessBundle(bundle)) {
@@ -593,6 +627,11 @@ export function headlessBundleViewModelSummary(viewModel = {}) {
     trackPointCount: viewModel.trackSummary?.count ?? 0,
     finalScore: viewModel.scoreSummary?.finalScore ?? null,
     roundtripStatus: viewModel.roundtripSummary?.status ?? null,
+    replayMode: viewModel.replaySummary?.replayMode ?? null,
+    replayCompatibilityStatus: viewModel.replaySummary?.compatibilityStatus ?? null,
+    replayCheckpointCount: viewModel.replaySummary?.checkpointCount ?? 0,
+    replayEventCount: viewModel.replaySummary?.eventCount ?? 0,
+    replayTerminalDigest: viewModel.replaySummary?.terminalDigest ?? null,
     waterColumnVerticalCoverage: viewModel.waterColumnSummary?.verticalCoverage ?? null,
     hasBathymetrySummary: viewModel.bathymetrySummary?.present === true,
     bathymetryDepthRange: viewModel.bathymetrySummary?.depthRange ?? null,
@@ -667,5 +706,9 @@ function sum(values) { return values.map(Number).filter(Number.isFinite).reduce(
 function mean(values) { const finite = values.map(Number).filter(Number.isFinite); return finite.length ? sum(finite) / finite.length : null; }
 function min(values) { const finite = values.map(Number).filter(Number.isFinite); return finite.length ? Math.min(...finite) : null; }
 function max(values) { const finite = values.map(Number).filter(Number.isFinite); return finite.length ? Math.max(...finite) : null; }
+
+
+
+
 
 

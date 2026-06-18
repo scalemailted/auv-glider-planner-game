@@ -538,3 +538,21 @@ Future target smoke/audit names, not current commands unless implemented, are `s
 SCORE-R1 is shadow benchmark scoring. It does not replace official browser scoring, Challenge Mode scoring, leaderboard ranking, or existing debrief totals. Profiles are objective-aware and versioned; missing data is explicit; regret requires a compatible reference, and best-known attempt does not mean optimal. The Node/OceanBox-JS runtime remains the canonical headless runtime. Python/Colab analyzes exported artifacts or invokes Node; no Python simulator, planner, optimizer, MARL/RL, operational certification, SeaExplorer validation, or calibrated ocean forecast is added.
 
 See [Mission Scoring and Regret](mission_scoring_and_regret.md) for the SCORE-R1 artifact contract and boundaries.
+## REPLAY-R1 Smoke Tests
+
+Replay alignment has focused smoke coverage:
+
+```bash
+node tools/js/smoke_replay_schema.mjs
+node tools/js/smoke_replay_ordering.mjs
+node tools/js/smoke_replay_digest.mjs
+node tools/js/smoke_replay_contract_builder.mjs
+node tools/js/smoke_replay_verifier.mjs
+node tools/js/smoke_headless_replay_runtime.mjs
+node tools/js/smoke_headless_replay_bundle_loader.mjs
+node tools/js/smoke_headless_replay_viewer_panel.mjs
+node tools/js/smoke_headless_replay_cli.mjs
+node tools/js/audit_replay_boundaries.mjs
+```
+
+These checks exercise public replay artifacts, loader/viewer compatibility, CLI replay/verify, tampered checkpoint divergence, and public hidden-truth boundaries.

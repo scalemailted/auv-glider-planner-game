@@ -317,3 +317,8 @@ These records report directed/asymmetric edge costs over public-safe current, ha
 SCORE-R1 is shadow benchmark scoring. It does not replace official browser scoring, Challenge Mode scoring, leaderboard ranking, or existing debrief totals. Profiles are objective-aware and versioned; missing data is explicit; regret requires a compatible reference, and best-known attempt does not mean optimal. The Node/OceanBox-JS runtime remains the canonical headless runtime. Python/Colab analyzes exported artifacts or invokes Node; no Python simulator, planner, optimizer, MARL/RL, operational certification, SeaExplorer validation, or calibrated ocean forecast is added.
 
 See [Mission Scoring and Regret](mission_scoring_and_regret.md) for the SCORE-R1 artifact contract and boundaries.
+## REPLAY-R1 Headless Replay Artifacts
+
+H4 headless bundles may include `replay_manifest.json`, `replay_events.json`, `replay_checkpoints.json`, and `replay_alignment_report.json`; combined bundles embed the same data as `replayManifest`, `replayEvents`, `replayCheckpoints`, `replayAlignmentReport`, and `replayContract`. Public/no-hidden bundles use `publicObservationPlayback` and must not include hidden truth, oracle state, or referee-only payloads. Legacy `replay.json` remains a lightweight compatibility field and should be labelled legacy/limited if REPLAY-R1 artifacts are absent.
+
+See `docs/headless_replay_alignment.md` for ordering, digest, CLI, and browser viewer details.

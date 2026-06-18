@@ -31,6 +31,7 @@ export function buildBrowserHeadlessBundleSummaryArtifact(bundle = {}) {
     depthLayerPrioritySummary: headlessBundleDepthLayerPrioritySummary(bundle),
     scienceDiagnosisSummary: headlessBundleScienceDiagnosisSummary(bundle),
     replaySummary: headlessBundleReplaySummary(bundle),
+    replayPlayback: viewModel.replayPlayback ?? null,
     validation,
     notes: ['Browser-side summary artifact for inspecting a Node/OceanBox-JS headless bundle.'],
     notA: ['not browser official score', 'not calibrated ocean model', 'not production data assimilation', 'not Python simulator', 'not MARL/RL']
@@ -115,6 +116,8 @@ export function buildBrowserHeadlessBundleDebugObject(bundle = {}) {
   const missionOutcome = viewModel.missionOutcomeSummary ?? headlessBundleMissionOutcomeSummary(bundle);
   const bathymetry = viewModel.bathymetrySummary ?? headlessBundleBathymetrySummary(bundle);
   const missionGeometry = viewModel.missionGeometrySummary ?? headlessBundleMissionGeometrySummary(bundle);
+  const replay = viewModel.replaySummary ?? headlessBundleReplaySummary(bundle);
+  const replayPlayback = viewModel.replayPlayback ?? null;
   return {
     version: HEADLESS_BUNDLE_BROWSER_ADAPTER_VERSION,
     bundleLoaded: Boolean(bundle?.manifest || bundle?.visibleFields),
@@ -140,6 +143,20 @@ export function buildBrowserHeadlessBundleDebugObject(bundle = {}) {
     roundtripExecutionStatus: roundtrip.executionStatus ?? null,
     roundtripVisibilityRisk: roundtrip.visibilityRisk ?? null,
     roundtripSummaryExportAvailable: Boolean(bundle.roundtripReport),
+    replayLoaded: replay.present === true,
+    replayMode: replay.replayMode ?? null,
+    replayFidelity: replay.replayFidelity ?? null,
+    replayCompatibilityStatus: replay.compatibilityStatus ?? null,
+    replayAlignmentStatus: replay.alignmentStatus ?? null,
+    replayEventCount: replay.eventCount ?? 0,
+    replayCheckpointCount: replay.checkpointCount ?? 0,
+    replayCurrentTick: replayPlayback?.currentTick ?? null,
+    replayTerminalDigest: replay.terminalDigest ?? null,
+    replayObjectiveTransitionCount: replay.objectiveTransitionCount ?? 0,
+    replaySurfacingCount: replay.surfacingCount ?? 0,
+    replayHiddenTruthIncluded: replay.hiddenTruthIncluded === true,
+    replayPublicSafe: replay.publicSafe !== false,
+    replayChangesOfficialBrowserScoring: false,
     hasMotionTrajectory: motion.present === true,
     hasMotionDiagnostics: Boolean(bundle.motionDiagnostics ?? bundle.episode?.motionDiagnostics ?? bundle.episode?.motionTrajectory?.motionDiagnostics),
     motionModelId: motion.motionModelId ?? null,
@@ -221,5 +238,9 @@ export function buildBrowserHeadlessBundleDebugObject(bundle = {}) {
     usesMARL: false
   };
 }
+
+
+
+
 
 

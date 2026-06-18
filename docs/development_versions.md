@@ -407,3 +407,6 @@ Added a portable deterministic glider motion schema, environment sampler, dynami
 SCORE-R1 is shadow benchmark scoring. It does not replace official browser scoring, Challenge Mode scoring, leaderboard ranking, or existing debrief totals. Profiles are objective-aware and versioned; missing data is explicit; regret requires a compatible reference, and best-known attempt does not mean optimal. The Node/OceanBox-JS runtime remains the canonical headless runtime. Python/Colab analyzes exported artifacts or invokes Node; no Python simulator, planner, optimizer, MARL/RL, operational certification, SeaExplorer validation, or calibrated ocean forecast is added.
 
 See [Mission Scoring and Regret](mission_scoring_and_regret.md) for the SCORE-R1 artifact contract and boundaries.
+## H4 / REPLAY-R1
+
+Added a versioned headless replay alignment contract with `replay_manifest.json`, canonical `replay_events.json`, digest-bearing `replay_checkpoints.json`, and `replay_alignment_report.json`. The browser Headless Bundle Viewer consumes the same public replay state reducer as the headless tooling for play/pause, event stepping, and checkpoint jumps. Public bundles are labelled public observation playback; authoritative/referee replay remains a protected boundary and is not inferred from sanitized exports.

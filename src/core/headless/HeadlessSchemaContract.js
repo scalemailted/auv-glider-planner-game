@@ -11,6 +11,11 @@ export const HEADLESS_ARTIFACT_TYPES = Object.freeze([
   'anchor.headless.priority-state',
   'anchor.headless.benchmark-episode',
   'anchor.headless.replay',
+  'anchor.headless.replay-manifest',
+  'anchor.headless.replay-events',
+  'anchor.headless.replay-checkpoints',
+  'anchor.headless.replay-alignment-report',
+  'anchor.headless.replay-contract',
   'anchor.headless.score-report',
   'anchor.benchmark.score-config',
   'anchor.benchmark.score-profile',
@@ -267,6 +272,7 @@ function normalizeStringList(values = []) {
 function compactObject(value = {}) {
   return Object.fromEntries(Object.entries(value).filter(([_key, entry]) => entry !== undefined));
 }
+
 
 
 

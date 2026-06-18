@@ -28,6 +28,10 @@ export const HEADLESS_BUNDLE_FILE_ROLES = Object.freeze([
   'adaptiveScienceDiagnosisContext',
   'adaptiveMissionManagerRationale',
   'replay',
+  'replayManifest',
+  'replayEvents',
+  'replayCheckpoints',
+  'replayAlignmentReport',
   'notebookConfig'
 ]);
 
@@ -106,4 +110,5 @@ function normalizeArray(values = []) { return Array.isArray(values) ? values : v
 function normalizeStringList(values = []) { return normalizeArray(values).map((value) => String(value)).filter(Boolean); }
 function cloneJson(value) { if (value === undefined || value === null) return value ?? null; try { return JSON.parse(JSON.stringify(value)); } catch { return value; } }
 function compactObject(value = {}) { return Object.fromEntries(Object.entries(value).filter(([_key, entry]) => entry !== undefined)); }
+
 

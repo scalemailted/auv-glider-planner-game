@@ -924,3 +924,6 @@ SIM-R1 adds optional Node/OceanBox-JS motion cost graph and adjacency matrix art
 SCORE-R1 is shadow benchmark scoring. It does not replace official browser scoring, Challenge Mode scoring, leaderboard ranking, or existing debrief totals. Profiles are objective-aware and versioned; missing data is explicit; regret requires a compatible reference, and best-known attempt does not mean optimal. The Node/OceanBox-JS runtime remains the canonical headless runtime. Python/Colab analyzes exported artifacts or invokes Node; no Python simulator, planner, optimizer, MARL/RL, operational certification, SeaExplorer validation, or calibrated ocean forecast is added.
 
 See [Mission Scoring and Regret](docs/mission_scoring_and_regret.md) for the SCORE-R1 artifact contract and boundaries.
+### H4 / REPLAY-R1 Headless Replay Alignment
+
+Headless bundles can now include REPLAY-R1 artifacts: `replay_manifest.json`, `replay_events.json`, `replay_checkpoints.json`, and `replay_alignment_report.json`. Combined `bundle.json` embeds the same contract for browser/Colab round trips. Public bundles are labelled `publicObservationPlayback`; they replay recorded public observations/checkpoints and do not resimulate hidden truth. See [docs/headless_replay_alignment.md](docs/headless_replay_alignment.md).

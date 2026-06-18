@@ -1,0 +1,168 @@
+{
+  "type": "anchor.headless.replay-manifest",
+  "version": "replay-r1.0",
+  "contract": "REPLAY-R1",
+  "replayId": "replay-r1-coastal-bloom-front-headless-mission-h4-replay-fixture",
+  "replayMode": "publicObservationPlayback",
+  "replayFidelity": "publicObservationPlaybackWithCheckpointDigests",
+  "compatibilityStatus": "compatible-public-playback",
+  "missionId": "coastal-bloom-front-headless-mission",
+  "scenarioId": "coastalBloomFront",
+  "scenarioSchemaVersion": null,
+  "missionSchemaVersion": "headless-mission-schema-h0",
+  "episodeId": "h1-node-headless-coastalBloomFront-h4-replay-fixture",
+  "seed": "h4-replay-fixture",
+  "deterministicSubstreams": {
+    "rootSeed": "h4-replay-fixture",
+    "fieldSeed": "h4-replay-fixture:fields",
+    "bathymetrySeed": "h4-replay-fixture:bathymetry",
+    "observationNoiseSeed": "h4-replay-fixture:observations",
+    "motionSeed": "h4-replay-fixture:motion",
+    "replayUsesMathRandom": false
+  },
+  "timingModel": {
+    "type": "fixedStep",
+    "dtSeconds": 60,
+    "terminalTick": 60,
+    "maxTimeSeconds": 3600,
+    "wallClockAffectsSimulation": false
+  },
+  "initialState": {
+    "tick": 0,
+    "timeSeconds": 0,
+    "dtSeconds": 60,
+    "vehicles": {
+      "glider-1": {
+        "x": 1.428541,
+        "y": 8.842232,
+        "zIndex": 1,
+        "depthLayerId": "surface",
+        "headingDegrees": null,
+        "depthMeters": 0,
+        "battery": 1,
+        "status": "initial"
+      }
+    },
+    "activeObjectives": [],
+    "observationSummary": {
+      "count": 0,
+      "lastObservationId": null,
+      "meanObservedValue": null
+    },
+    "surfacingCount": 0,
+    "objectiveTransitionCount": 0,
+    "score": null,
+    "missionOutcomeStatus": null,
+    "completed": false
+  },
+  "agentIds": [
+    "glider-1"
+  ],
+  "featureFlags": {
+    "motionAware": true,
+    "costGraphEnabled": true,
+    "missionOutcomeScoring": true,
+    "waterColumn2p5D": true,
+    "bathymetrySummary": true,
+    "scienceDiagnostics": true,
+    "officialBrowserScoringChanged": false,
+    "usesNewPlanner": false,
+    "usesRouteOptimizer": false,
+    "usesPythonSimulator": false,
+    "usesMARL": false,
+    "usesCalibratedOceanForecast": false
+  },
+  "eventOrderingPolicy": {
+    "id": "replay-r1-canonical-event-order",
+    "sortKeys": [
+      "tick",
+      "phaseRank",
+      "agentId",
+      "sequence"
+    ],
+    "note": "Events are ordered by simulation tick/time, replay phase/type rank, vehicle/agent id, then explicit monotonic sequence number."
+  },
+  "numericPolicy": {
+    "id": "replay-r1-public-state-quantized-1e-6",
+    "defaultDecimalPlaces": 6,
+    "defaultEpsilon": 0.000001,
+    "fieldPolicies": {
+      "tick": {
+        "exact": true
+      },
+      "sequence": {
+        "exact": true
+      },
+      "timeSeconds": {
+        "decimalPlaces": 6,
+        "epsilon": 0.000001
+      },
+      "x": {
+        "decimalPlaces": 6,
+        "epsilon": 0.000001
+      },
+      "y": {
+        "decimalPlaces": 6,
+        "epsilon": 0.000001
+      },
+      "z": {
+        "decimalPlaces": 6,
+        "epsilon": 0.000001
+      },
+      "zIndex": {
+        "exact": true
+      },
+      "headingDegrees": {
+        "decimalPlaces": 6,
+        "epsilon": 0.000001
+      },
+      "depthMeters": {
+        "decimalPlaces": 6,
+        "epsilon": 0.000001
+      },
+      "battery": {
+        "decimalPlaces": 6,
+        "epsilon": 0.000001
+      },
+      "energyUsed": {
+        "decimalPlaces": 6,
+        "epsilon": 0.000001
+      },
+      "score": {
+        "decimalPlaces": 6,
+        "epsilon": 0.000001
+      },
+      "observedValue": {
+        "decimalPlaces": 6,
+        "epsilon": 0.000001
+      },
+      "surprise": {
+        "decimalPlaces": 6,
+        "epsilon": 0.000001
+      }
+    },
+    "note": "REPLAY-R1 compares exact identifiers and quantizes public numeric state per field; it does not use an unexplained global close-enough rule."
+  },
+  "terminationReason": "mission-complete-summary-export",
+  "bundleSchemaVersion": "headless-combined-bundle-h2-compatible",
+  "scoringSchemaVersion": "mission-outcome-report-score-r1",
+  "changesOfficialBrowserScoring": false,
+  "replayAuthoritativeForBrowserScoring": false,
+  "publicSafe": true,
+  "hiddenTruthIncluded": false,
+  "requiresHiddenTruth": false,
+  "visibilityTier": "publicScenario",
+  "artifactFiles": [
+    "replay_manifest.json",
+    "replay_events.json",
+    "replay_checkpoints.json",
+    "replay_alignment_report.json"
+  ],
+  "notA": [
+    "not a new planner",
+    "not route optimization",
+    "not MARL/RL",
+    "not calibrated ocean forecast",
+    "not official browser scoring"
+  ]
+}

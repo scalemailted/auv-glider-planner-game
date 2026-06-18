@@ -29,6 +29,11 @@ const BROWSER_HEADLESS_MAP = Object.freeze([
   entry('anchor.benchmark.feasibility-cost-graph', 'anchor.benchmark.feasibility-cost-graph', 'ready', true, 'publicScenario', [], 'SIM-R1 directed motion cost graph for benchmark inspection; not route planning or official scoring.'),
   entry('anchor.headless.motion-cost-matrix', 'anchor.headless.motion-cost-matrix', 'ready', true, 'publicScenario', [], 'SIM-R1 adjacency/cost matrix derived from motion cost graph artifacts.'),
   entry('anchor.benchmark.route-overlay', 'anchor.headless.replay', 'partial', false, 'browserOnly', ['visual overlay state is browser-oriented'], 'Keep route geometry portable, treat visual layer state as optional.'),
+  entry('anchor.headless.replay-manifest', 'anchor.headless.replay-manifest', 'ready', true, 'publicScenario', [], 'REPLAY-R1 versioned replay manifest with mode, seed, timing, feature flags, and public boundary metadata.'),
+  entry('anchor.headless.replay-events', 'anchor.headless.replay-events', 'ready', true, 'publicScenario', [], 'REPLAY-R1 canonical ordered event stream shared by headless and browser playback.'),
+  entry('anchor.headless.replay-checkpoints', 'anchor.headless.replay-checkpoints', 'ready', true, 'publicScenario', [], 'REPLAY-R1 public replay checkpoints with stable public-state digests.'),
+  entry('anchor.headless.replay-alignment-report', 'anchor.headless.replay-alignment-report', 'ready', true, 'publicScenario', [], 'REPLAY-R1 first-divergence replay verification report.'),
+  entry('anchor.headless.replay-contract', 'anchor.headless.replay-contract', 'ready', true, 'publicScenario', [], 'REPLAY-R1 combined replay contract wrapper for browser/headless tooling.'),
   entry('anchor.benchmark.attempt-session', 'anchor.headless.benchmark-episode', 'ready', true, 'publicScenario', [], 'Map compact persisted attempts into bundle benchmark records.'),
 
   entry('anchor.benchmark.adaptive-manager-config', 'anchor.headless.benchmark-episode', 'partial', true, 'beliefOnly', ['manager config is objective policy metadata only'], 'Attach to episode diagnostics and mission objective policy.'),
@@ -219,4 +224,5 @@ function notesForCompatibility(compatibility, visibilityRisk) {
 function countBy(entries, key) {
   return entries.reduce((acc, entry) => ({ ...acc, [entry[key]]: (acc[entry[key]] ?? 0) + 1 }), {});
 }
+
 

@@ -1,0 +1,1021 @@
+{
+  "type": "anchor.headless.replay-checkpoints",
+  "version": "replay-r1.0",
+  "contract": "REPLAY-R1",
+  "replayId": "replay-r1-coastal-bloom-front-headless-mission-h4-replay-fixture",
+  "digestAlgorithm": "stable-json-fnv1a32-public-state-v1",
+  "numericPolicy": {
+    "id": "replay-r1-public-state-quantized-1e-6",
+    "defaultDecimalPlaces": 6,
+    "defaultEpsilon": 0.000001,
+    "fieldPolicies": {
+      "tick": {
+        "exact": true
+      },
+      "sequence": {
+        "exact": true
+      },
+      "timeSeconds": {
+        "decimalPlaces": 6,
+        "epsilon": 0.000001
+      },
+      "x": {
+        "decimalPlaces": 6,
+        "epsilon": 0.000001
+      },
+      "y": {
+        "decimalPlaces": 6,
+        "epsilon": 0.000001
+      },
+      "z": {
+        "decimalPlaces": 6,
+        "epsilon": 0.000001
+      },
+      "zIndex": {
+        "exact": true
+      },
+      "headingDegrees": {
+        "decimalPlaces": 6,
+        "epsilon": 0.000001
+      },
+      "depthMeters": {
+        "decimalPlaces": 6,
+        "epsilon": 0.000001
+      },
+      "battery": {
+        "decimalPlaces": 6,
+        "epsilon": 0.000001
+      },
+      "energyUsed": {
+        "decimalPlaces": 6,
+        "epsilon": 0.000001
+      },
+      "score": {
+        "decimalPlaces": 6,
+        "epsilon": 0.000001
+      },
+      "observedValue": {
+        "decimalPlaces": 6,
+        "epsilon": 0.000001
+      },
+      "surprise": {
+        "decimalPlaces": 6,
+        "epsilon": 0.000001
+      }
+    },
+    "note": "REPLAY-R1 compares exact identifiers and quantizes public numeric state per field; it does not use an unexplained global close-enough rule."
+  },
+  "checkpoints": [
+    {
+      "type": "anchor.headless.replay-checkpoint",
+      "version": "replay-r1.0",
+      "checkpointId": "replay-r1-coastal-bloom-front-headless-mission-h4-replay-fixture-checkpoint-000",
+      "tick": 0,
+      "timeSeconds": 0,
+      "reasons": [
+        "initial",
+        "periodic"
+      ],
+      "publicState": {
+        "tick": 0,
+        "timeSeconds": 0,
+        "dtSeconds": 60,
+        "vehicles": {
+          "glider-1": {
+            "x": 1.428541,
+            "y": 8.842232,
+            "zIndex": 1,
+            "depthLayerId": "surface",
+            "headingDegrees": null,
+            "depthMeters": 0,
+            "battery": 1,
+            "status": "initial"
+          }
+        },
+        "activeObjectives": [],
+        "observationSummary": {
+          "count": 0,
+          "lastObservationId": null,
+          "meanObservedValue": null
+        },
+        "surfacingCount": 0,
+        "objectiveTransitionCount": 0,
+        "score": null,
+        "missionOutcomeStatus": null,
+        "completed": false
+      },
+      "digest": {
+        "algorithm": "stable-json-fnv1a32-public-state-v1",
+        "value": "fnv1a32:720b79d8",
+        "canonicalByteLength": 410,
+        "numericPolicyId": "replay-r1-public-state-quantized-1e-6"
+      }
+    },
+    {
+      "type": "anchor.headless.replay-checkpoint",
+      "version": "replay-r1.0",
+      "checkpointId": "replay-r1-coastal-bloom-front-headless-mission-h4-replay-fixture-checkpoint-001",
+      "tick": 4,
+      "timeSeconds": 240,
+      "reasons": [
+        "objectiveTransition"
+      ],
+      "publicState": {
+        "tick": 4,
+        "timeSeconds": 240,
+        "dtSeconds": 60,
+        "vehicles": {
+          "glider-1": {
+            "x": 4.082243,
+            "y": 7.378822,
+            "zIndex": 2,
+            "depthLayerId": "deep",
+            "headingDegrees": null,
+            "depthMeters": 14.4,
+            "battery": null,
+            "status": "underway",
+            "energyUsed": 0.53305,
+            "lastUpdateTick": 4
+          }
+        },
+        "activeObjectives": [
+          {
+            "objectiveId": "validateExpectedState",
+            "label": "Dive 2: validate expected state",
+            "surfacingIndex": 1
+          }
+        ],
+        "observationSummary": {
+          "count": 4,
+          "lastObservationId": "obs-glider-1-00240",
+          "meanObservedValue": 0.2327117140774187,
+          "byAgent": {
+            "glider-1": 4
+          }
+        },
+        "surfacingCount": 0,
+        "objectiveTransitionCount": 1,
+        "score": null,
+        "missionOutcomeStatus": null,
+        "completed": false
+      },
+      "digest": {
+        "algorithm": "stable-json-fnv1a32-public-state-v1",
+        "value": "fnv1a32:18f2046e",
+        "canonicalByteLength": 601,
+        "numericPolicyId": "replay-r1-public-state-quantized-1e-6"
+      }
+    },
+    {
+      "type": "anchor.headless.replay-checkpoint",
+      "version": "replay-r1.0",
+      "checkpointId": "replay-r1-coastal-bloom-front-headless-mission-h4-replay-fixture-checkpoint-002",
+      "tick": 5,
+      "timeSeconds": 300,
+      "reasons": [
+        "periodic"
+      ],
+      "publicState": {
+        "tick": 5,
+        "timeSeconds": 300,
+        "dtSeconds": 60,
+        "vehicles": {
+          "glider-1": {
+            "x": 4.972174,
+            "y": 6.880855,
+            "zIndex": 2,
+            "depthLayerId": "deep",
+            "headingDegrees": null,
+            "depthMeters": 19.2,
+            "battery": null,
+            "status": "underway",
+            "energyUsed": 0.52052,
+            "lastUpdateTick": 5
+          }
+        },
+        "activeObjectives": [
+          {
+            "objectiveId": "validateExpectedState",
+            "label": "Dive 2: validate expected state",
+            "surfacingIndex": 1
+          }
+        ],
+        "observationSummary": {
+          "count": 5,
+          "lastObservationId": "obs-glider-1-00300",
+          "meanObservedValue": 0.26712107750725356,
+          "byAgent": {
+            "glider-1": 5
+          }
+        },
+        "surfacingCount": 0,
+        "objectiveTransitionCount": 1,
+        "score": null,
+        "missionOutcomeStatus": null,
+        "completed": false
+      },
+      "digest": {
+        "algorithm": "stable-json-fnv1a32-public-state-v1",
+        "value": "fnv1a32:274aaa4f",
+        "canonicalByteLength": 601,
+        "numericPolicyId": "replay-r1-public-state-quantized-1e-6"
+      }
+    },
+    {
+      "type": "anchor.headless.replay-checkpoint",
+      "version": "replay-r1.0",
+      "checkpointId": "replay-r1-coastal-bloom-front-headless-mission-h4-replay-fixture-checkpoint-003",
+      "tick": 7,
+      "timeSeconds": 420,
+      "reasons": [
+        "objectiveTransition"
+      ],
+      "publicState": {
+        "tick": 7,
+        "timeSeconds": 420,
+        "dtSeconds": 60,
+        "vehicles": {
+          "glider-1": {
+            "x": 6.804051,
+            "y": 5.94643,
+            "zIndex": 1,
+            "depthLayerId": "deep",
+            "headingDegrees": null,
+            "depthMeters": 28.8,
+            "battery": null,
+            "status": "underway",
+            "energyUsed": 0.521923,
+            "lastUpdateTick": 7
+          }
+        },
+        "activeObjectives": [
+          {
+            "objectiveId": "frontTracking",
+            "label": "Dive 3: front tracking",
+            "surfacingIndex": 2
+          }
+        ],
+        "observationSummary": {
+          "count": 7,
+          "lastObservationId": "obs-glider-1-00420",
+          "meanObservedValue": 0.3206453237225655,
+          "byAgent": {
+            "glider-1": 7
+          }
+        },
+        "surfacingCount": 0,
+        "objectiveTransitionCount": 2,
+        "score": null,
+        "missionOutcomeStatus": null,
+        "completed": false
+      },
+      "digest": {
+        "algorithm": "stable-json-fnv1a32-public-state-v1",
+        "value": "fnv1a32:b46e3e9b",
+        "canonicalByteLength": 584,
+        "numericPolicyId": "replay-r1-public-state-quantized-1e-6"
+      }
+    },
+    {
+      "type": "anchor.headless.replay-checkpoint",
+      "version": "replay-r1.0",
+      "checkpointId": "replay-r1-coastal-bloom-front-headless-mission-h4-replay-fixture-checkpoint-004",
+      "tick": 10,
+      "timeSeconds": 600,
+      "reasons": [
+        "objectiveTransition",
+        "periodic"
+      ],
+      "publicState": {
+        "tick": 10,
+        "timeSeconds": 600,
+        "dtSeconds": 60,
+        "vehicles": {
+          "glider-1": {
+            "x": 9.622872,
+            "y": 4.640991,
+            "zIndex": 1,
+            "depthLayerId": "thermocline",
+            "headingDegrees": null,
+            "depthMeters": 35,
+            "battery": null,
+            "status": "underway",
+            "energyUsed": 0.451975,
+            "lastUpdateTick": 10
+          }
+        },
+        "activeObjectives": [
+          {
+            "objectiveId": "persistentMonitoring",
+            "label": "Dive 4: persistent monitoring",
+            "surfacingIndex": 3
+          }
+        ],
+        "observationSummary": {
+          "count": 10,
+          "lastObservationId": "obs-glider-1-00600",
+          "meanObservedValue": 0.35618499036777196,
+          "byAgent": {
+            "glider-1": 10
+          }
+        },
+        "surfacingCount": 0,
+        "objectiveTransitionCount": 3,
+        "score": null,
+        "missionOutcomeStatus": null,
+        "completed": false
+      },
+      "digest": {
+        "algorithm": "stable-json-fnv1a32-public-state-v1",
+        "value": "fnv1a32:7990fe79",
+        "canonicalByteLength": 608,
+        "numericPolicyId": "replay-r1-public-state-quantized-1e-6"
+      }
+    },
+    {
+      "type": "anchor.headless.replay-checkpoint",
+      "version": "replay-r1.0",
+      "checkpointId": "replay-r1-coastal-bloom-front-headless-mission-h4-replay-fixture-checkpoint-005",
+      "tick": 13,
+      "timeSeconds": 780,
+      "reasons": [
+        "objectiveTransition"
+      ],
+      "publicState": {
+        "tick": 13,
+        "timeSeconds": 780,
+        "dtSeconds": 60,
+        "vehicles": {
+          "glider-1": {
+            "x": 12.305956,
+            "y": 3.160104,
+            "zIndex": 0,
+            "depthLayerId": "surface",
+            "headingDegrees": null,
+            "depthMeters": 30.2,
+            "battery": null,
+            "status": "underway",
+            "energyUsed": 0.475343,
+            "lastUpdateTick": 13
+          }
+        },
+        "activeObjectives": [
+          {
+            "objectiveId": "returnRecovery",
+            "label": "Dive 5: return/recovery",
+            "surfacingIndex": 4
+          }
+        ],
+        "observationSummary": {
+          "count": 13,
+          "lastObservationId": "obs-glider-1-00780",
+          "meanObservedValue": 0.384837586044072,
+          "byAgent": {
+            "glider-1": 13
+          }
+        },
+        "surfacingCount": 0,
+        "objectiveTransitionCount": 4,
+        "score": null,
+        "missionOutcomeStatus": null,
+        "completed": false
+      },
+      "digest": {
+        "algorithm": "stable-json-fnv1a32-public-state-v1",
+        "value": "fnv1a32:8f53a3b0",
+        "canonicalByteLength": 595,
+        "numericPolicyId": "replay-r1-public-state-quantized-1e-6"
+      }
+    },
+    {
+      "type": "anchor.headless.replay-checkpoint",
+      "version": "replay-r1.0",
+      "checkpointId": "replay-r1-coastal-bloom-front-headless-mission-h4-replay-fixture-checkpoint-006",
+      "tick": 15,
+      "timeSeconds": 900,
+      "reasons": [
+        "objectiveTransition",
+        "periodic",
+        "surfacing"
+      ],
+      "publicState": {
+        "tick": 15,
+        "timeSeconds": 900,
+        "dtSeconds": 60,
+        "vehicles": {
+          "glider-1": {
+            "x": 13.970222,
+            "y": 2.029328,
+            "zIndex": 0,
+            "depthLayerId": "surface",
+            "headingDegrees": null,
+            "depthMeters": 20.6,
+            "battery": null,
+            "status": "underway",
+            "energyUsed": 0.473973,
+            "lastUpdateTick": 15
+          }
+        },
+        "activeObjectives": [
+          {
+            "objectiveId": "reconnaissance",
+            "label": "Dive 1: reconnaissance",
+            "surfacingIndex": 0
+          }
+        ],
+        "observationSummary": {
+          "count": 15,
+          "lastObservationId": "obs-glider-1-00900",
+          "meanObservedValue": 0.4114345025428271,
+          "byAgent": {
+            "glider-1": 15
+          }
+        },
+        "surfacingCount": 1,
+        "objectiveTransitionCount": 5,
+        "score": null,
+        "missionOutcomeStatus": null,
+        "completed": false,
+        "lastSurfacing": {
+          "tick": 15,
+          "timeSeconds": 900,
+          "agentId": "glider-1",
+          "reason": "mission-complete-summary-export"
+        }
+      },
+      "digest": {
+        "algorithm": "stable-json-fnv1a32-public-state-v1",
+        "value": "fnv1a32:b3a47bf8",
+        "canonicalByteLength": 704,
+        "numericPolicyId": "replay-r1-public-state-quantized-1e-6"
+      }
+    },
+    {
+      "type": "anchor.headless.replay-checkpoint",
+      "version": "replay-r1.0",
+      "checkpointId": "replay-r1-coastal-bloom-front-headless-mission-h4-replay-fixture-checkpoint-007",
+      "tick": 20,
+      "timeSeconds": 1200,
+      "reasons": [
+        "periodic"
+      ],
+      "publicState": {
+        "tick": 20,
+        "timeSeconds": 1200,
+        "dtSeconds": 60,
+        "vehicles": {
+          "glider-1": {
+            "x": 13.970222,
+            "y": 2.029328,
+            "zIndex": 0,
+            "depthLayerId": "surface",
+            "headingDegrees": null,
+            "depthMeters": 20.6,
+            "battery": null,
+            "status": "underway",
+            "energyUsed": 0.473973,
+            "lastUpdateTick": 15
+          }
+        },
+        "activeObjectives": [
+          {
+            "objectiveId": "reconnaissance",
+            "label": "Dive 1: reconnaissance",
+            "surfacingIndex": 0
+          }
+        ],
+        "observationSummary": {
+          "count": 15,
+          "lastObservationId": "obs-glider-1-00900",
+          "meanObservedValue": 0.4114345025428271,
+          "byAgent": {
+            "glider-1": 15
+          }
+        },
+        "surfacingCount": 1,
+        "objectiveTransitionCount": 5,
+        "score": null,
+        "missionOutcomeStatus": null,
+        "completed": false,
+        "lastSurfacing": {
+          "tick": 15,
+          "timeSeconds": 900,
+          "agentId": "glider-1",
+          "reason": "mission-complete-summary-export"
+        }
+      },
+      "digest": {
+        "algorithm": "stable-json-fnv1a32-public-state-v1",
+        "value": "fnv1a32:e40a3cbe",
+        "canonicalByteLength": 705,
+        "numericPolicyId": "replay-r1-public-state-quantized-1e-6"
+      }
+    },
+    {
+      "type": "anchor.headless.replay-checkpoint",
+      "version": "replay-r1.0",
+      "checkpointId": "replay-r1-coastal-bloom-front-headless-mission-h4-replay-fixture-checkpoint-008",
+      "tick": 25,
+      "timeSeconds": 1500,
+      "reasons": [
+        "periodic"
+      ],
+      "publicState": {
+        "tick": 25,
+        "timeSeconds": 1500,
+        "dtSeconds": 60,
+        "vehicles": {
+          "glider-1": {
+            "x": 13.970222,
+            "y": 2.029328,
+            "zIndex": 0,
+            "depthLayerId": "surface",
+            "headingDegrees": null,
+            "depthMeters": 20.6,
+            "battery": null,
+            "status": "underway",
+            "energyUsed": 0.473973,
+            "lastUpdateTick": 15
+          }
+        },
+        "activeObjectives": [
+          {
+            "objectiveId": "reconnaissance",
+            "label": "Dive 1: reconnaissance",
+            "surfacingIndex": 0
+          }
+        ],
+        "observationSummary": {
+          "count": 15,
+          "lastObservationId": "obs-glider-1-00900",
+          "meanObservedValue": 0.4114345025428271,
+          "byAgent": {
+            "glider-1": 15
+          }
+        },
+        "surfacingCount": 1,
+        "objectiveTransitionCount": 5,
+        "score": null,
+        "missionOutcomeStatus": null,
+        "completed": false,
+        "lastSurfacing": {
+          "tick": 15,
+          "timeSeconds": 900,
+          "agentId": "glider-1",
+          "reason": "mission-complete-summary-export"
+        }
+      },
+      "digest": {
+        "algorithm": "stable-json-fnv1a32-public-state-v1",
+        "value": "fnv1a32:e12bca46",
+        "canonicalByteLength": 705,
+        "numericPolicyId": "replay-r1-public-state-quantized-1e-6"
+      }
+    },
+    {
+      "type": "anchor.headless.replay-checkpoint",
+      "version": "replay-r1.0",
+      "checkpointId": "replay-r1-coastal-bloom-front-headless-mission-h4-replay-fixture-checkpoint-009",
+      "tick": 30,
+      "timeSeconds": 1800,
+      "reasons": [
+        "periodic"
+      ],
+      "publicState": {
+        "tick": 30,
+        "timeSeconds": 1800,
+        "dtSeconds": 60,
+        "vehicles": {
+          "glider-1": {
+            "x": 13.970222,
+            "y": 2.029328,
+            "zIndex": 0,
+            "depthLayerId": "surface",
+            "headingDegrees": null,
+            "depthMeters": 20.6,
+            "battery": null,
+            "status": "underway",
+            "energyUsed": 0.473973,
+            "lastUpdateTick": 15
+          }
+        },
+        "activeObjectives": [
+          {
+            "objectiveId": "reconnaissance",
+            "label": "Dive 1: reconnaissance",
+            "surfacingIndex": 0
+          }
+        ],
+        "observationSummary": {
+          "count": 15,
+          "lastObservationId": "obs-glider-1-00900",
+          "meanObservedValue": 0.4114345025428271,
+          "byAgent": {
+            "glider-1": 15
+          }
+        },
+        "surfacingCount": 1,
+        "objectiveTransitionCount": 5,
+        "score": null,
+        "missionOutcomeStatus": null,
+        "completed": false,
+        "lastSurfacing": {
+          "tick": 15,
+          "timeSeconds": 900,
+          "agentId": "glider-1",
+          "reason": "mission-complete-summary-export"
+        }
+      },
+      "digest": {
+        "algorithm": "stable-json-fnv1a32-public-state-v1",
+        "value": "fnv1a32:3f6aa2a7",
+        "canonicalByteLength": 705,
+        "numericPolicyId": "replay-r1-public-state-quantized-1e-6"
+      }
+    },
+    {
+      "type": "anchor.headless.replay-checkpoint",
+      "version": "replay-r1.0",
+      "checkpointId": "replay-r1-coastal-bloom-front-headless-mission-h4-replay-fixture-checkpoint-010",
+      "tick": 35,
+      "timeSeconds": 2100,
+      "reasons": [
+        "periodic"
+      ],
+      "publicState": {
+        "tick": 35,
+        "timeSeconds": 2100,
+        "dtSeconds": 60,
+        "vehicles": {
+          "glider-1": {
+            "x": 13.970222,
+            "y": 2.029328,
+            "zIndex": 0,
+            "depthLayerId": "surface",
+            "headingDegrees": null,
+            "depthMeters": 20.6,
+            "battery": null,
+            "status": "underway",
+            "energyUsed": 0.473973,
+            "lastUpdateTick": 15
+          }
+        },
+        "activeObjectives": [
+          {
+            "objectiveId": "reconnaissance",
+            "label": "Dive 1: reconnaissance",
+            "surfacingIndex": 0
+          }
+        ],
+        "observationSummary": {
+          "count": 15,
+          "lastObservationId": "obs-glider-1-00900",
+          "meanObservedValue": 0.4114345025428271,
+          "byAgent": {
+            "glider-1": 15
+          }
+        },
+        "surfacingCount": 1,
+        "objectiveTransitionCount": 5,
+        "score": null,
+        "missionOutcomeStatus": null,
+        "completed": false,
+        "lastSurfacing": {
+          "tick": 15,
+          "timeSeconds": 900,
+          "agentId": "glider-1",
+          "reason": "mission-complete-summary-export"
+        }
+      },
+      "digest": {
+        "algorithm": "stable-json-fnv1a32-public-state-v1",
+        "value": "fnv1a32:280bde86",
+        "canonicalByteLength": 705,
+        "numericPolicyId": "replay-r1-public-state-quantized-1e-6"
+      }
+    },
+    {
+      "type": "anchor.headless.replay-checkpoint",
+      "version": "replay-r1.0",
+      "checkpointId": "replay-r1-coastal-bloom-front-headless-mission-h4-replay-fixture-checkpoint-011",
+      "tick": 40,
+      "timeSeconds": 2400,
+      "reasons": [
+        "periodic"
+      ],
+      "publicState": {
+        "tick": 40,
+        "timeSeconds": 2400,
+        "dtSeconds": 60,
+        "vehicles": {
+          "glider-1": {
+            "x": 13.970222,
+            "y": 2.029328,
+            "zIndex": 0,
+            "depthLayerId": "surface",
+            "headingDegrees": null,
+            "depthMeters": 20.6,
+            "battery": null,
+            "status": "underway",
+            "energyUsed": 0.473973,
+            "lastUpdateTick": 15
+          }
+        },
+        "activeObjectives": [
+          {
+            "objectiveId": "reconnaissance",
+            "label": "Dive 1: reconnaissance",
+            "surfacingIndex": 0
+          }
+        ],
+        "observationSummary": {
+          "count": 15,
+          "lastObservationId": "obs-glider-1-00900",
+          "meanObservedValue": 0.4114345025428271,
+          "byAgent": {
+            "glider-1": 15
+          }
+        },
+        "surfacingCount": 1,
+        "objectiveTransitionCount": 5,
+        "score": null,
+        "missionOutcomeStatus": null,
+        "completed": false,
+        "lastSurfacing": {
+          "tick": 15,
+          "timeSeconds": 900,
+          "agentId": "glider-1",
+          "reason": "mission-complete-summary-export"
+        }
+      },
+      "digest": {
+        "algorithm": "stable-json-fnv1a32-public-state-v1",
+        "value": "fnv1a32:a5aec85d",
+        "canonicalByteLength": 705,
+        "numericPolicyId": "replay-r1-public-state-quantized-1e-6"
+      }
+    },
+    {
+      "type": "anchor.headless.replay-checkpoint",
+      "version": "replay-r1.0",
+      "checkpointId": "replay-r1-coastal-bloom-front-headless-mission-h4-replay-fixture-checkpoint-012",
+      "tick": 45,
+      "timeSeconds": 2700,
+      "reasons": [
+        "periodic"
+      ],
+      "publicState": {
+        "tick": 45,
+        "timeSeconds": 2700,
+        "dtSeconds": 60,
+        "vehicles": {
+          "glider-1": {
+            "x": 13.970222,
+            "y": 2.029328,
+            "zIndex": 0,
+            "depthLayerId": "surface",
+            "headingDegrees": null,
+            "depthMeters": 20.6,
+            "battery": null,
+            "status": "underway",
+            "energyUsed": 0.473973,
+            "lastUpdateTick": 15
+          }
+        },
+        "activeObjectives": [
+          {
+            "objectiveId": "reconnaissance",
+            "label": "Dive 1: reconnaissance",
+            "surfacingIndex": 0
+          }
+        ],
+        "observationSummary": {
+          "count": 15,
+          "lastObservationId": "obs-glider-1-00900",
+          "meanObservedValue": 0.4114345025428271,
+          "byAgent": {
+            "glider-1": 15
+          }
+        },
+        "surfacingCount": 1,
+        "objectiveTransitionCount": 5,
+        "score": null,
+        "missionOutcomeStatus": null,
+        "completed": false,
+        "lastSurfacing": {
+          "tick": 15,
+          "timeSeconds": 900,
+          "agentId": "glider-1",
+          "reason": "mission-complete-summary-export"
+        }
+      },
+      "digest": {
+        "algorithm": "stable-json-fnv1a32-public-state-v1",
+        "value": "fnv1a32:5c9ae029",
+        "canonicalByteLength": 705,
+        "numericPolicyId": "replay-r1-public-state-quantized-1e-6"
+      }
+    },
+    {
+      "type": "anchor.headless.replay-checkpoint",
+      "version": "replay-r1.0",
+      "checkpointId": "replay-r1-coastal-bloom-front-headless-mission-h4-replay-fixture-checkpoint-013",
+      "tick": 50,
+      "timeSeconds": 3000,
+      "reasons": [
+        "periodic"
+      ],
+      "publicState": {
+        "tick": 50,
+        "timeSeconds": 3000,
+        "dtSeconds": 60,
+        "vehicles": {
+          "glider-1": {
+            "x": 13.970222,
+            "y": 2.029328,
+            "zIndex": 0,
+            "depthLayerId": "surface",
+            "headingDegrees": null,
+            "depthMeters": 20.6,
+            "battery": null,
+            "status": "underway",
+            "energyUsed": 0.473973,
+            "lastUpdateTick": 15
+          }
+        },
+        "activeObjectives": [
+          {
+            "objectiveId": "reconnaissance",
+            "label": "Dive 1: reconnaissance",
+            "surfacingIndex": 0
+          }
+        ],
+        "observationSummary": {
+          "count": 15,
+          "lastObservationId": "obs-glider-1-00900",
+          "meanObservedValue": 0.4114345025428271,
+          "byAgent": {
+            "glider-1": 15
+          }
+        },
+        "surfacingCount": 1,
+        "objectiveTransitionCount": 5,
+        "score": null,
+        "missionOutcomeStatus": null,
+        "completed": false,
+        "lastSurfacing": {
+          "tick": 15,
+          "timeSeconds": 900,
+          "agentId": "glider-1",
+          "reason": "mission-complete-summary-export"
+        }
+      },
+      "digest": {
+        "algorithm": "stable-json-fnv1a32-public-state-v1",
+        "value": "fnv1a32:41bf02cf",
+        "canonicalByteLength": 705,
+        "numericPolicyId": "replay-r1-public-state-quantized-1e-6"
+      }
+    },
+    {
+      "type": "anchor.headless.replay-checkpoint",
+      "version": "replay-r1.0",
+      "checkpointId": "replay-r1-coastal-bloom-front-headless-mission-h4-replay-fixture-checkpoint-014",
+      "tick": 55,
+      "timeSeconds": 3300,
+      "reasons": [
+        "periodic"
+      ],
+      "publicState": {
+        "tick": 55,
+        "timeSeconds": 3300,
+        "dtSeconds": 60,
+        "vehicles": {
+          "glider-1": {
+            "x": 13.970222,
+            "y": 2.029328,
+            "zIndex": 0,
+            "depthLayerId": "surface",
+            "headingDegrees": null,
+            "depthMeters": 20.6,
+            "battery": null,
+            "status": "underway",
+            "energyUsed": 0.473973,
+            "lastUpdateTick": 15
+          }
+        },
+        "activeObjectives": [
+          {
+            "objectiveId": "reconnaissance",
+            "label": "Dive 1: reconnaissance",
+            "surfacingIndex": 0
+          }
+        ],
+        "observationSummary": {
+          "count": 15,
+          "lastObservationId": "obs-glider-1-00900",
+          "meanObservedValue": 0.4114345025428271,
+          "byAgent": {
+            "glider-1": 15
+          }
+        },
+        "surfacingCount": 1,
+        "objectiveTransitionCount": 5,
+        "score": null,
+        "missionOutcomeStatus": null,
+        "completed": false,
+        "lastSurfacing": {
+          "tick": 15,
+          "timeSeconds": 900,
+          "agentId": "glider-1",
+          "reason": "mission-complete-summary-export"
+        }
+      },
+      "digest": {
+        "algorithm": "stable-json-fnv1a32-public-state-v1",
+        "value": "fnv1a32:3802685f",
+        "canonicalByteLength": 705,
+        "numericPolicyId": "replay-r1-public-state-quantized-1e-6"
+      }
+    },
+    {
+      "type": "anchor.headless.replay-checkpoint",
+      "version": "replay-r1.0",
+      "checkpointId": "replay-r1-coastal-bloom-front-headless-mission-h4-replay-fixture-checkpoint-015",
+      "tick": 60,
+      "timeSeconds": 3600,
+      "reasons": [
+        "periodic",
+        "terminal"
+      ],
+      "publicState": {
+        "tick": 60,
+        "timeSeconds": 3600,
+        "dtSeconds": 60,
+        "vehicles": {
+          "glider-1": {
+            "x": 13.970222,
+            "y": 2.029328,
+            "zIndex": 0,
+            "depthLayerId": "surface",
+            "headingDegrees": null,
+            "depthMeters": 20.6,
+            "battery": null,
+            "status": "underway",
+            "energyUsed": 0.473973,
+            "lastUpdateTick": 15
+          }
+        },
+        "activeObjectives": [
+          {
+            "objectiveId": "reconnaissance",
+            "label": "Dive 1: reconnaissance",
+            "surfacingIndex": 0
+          }
+        ],
+        "observationSummary": {
+          "count": 15,
+          "lastObservationId": "obs-glider-1-00900",
+          "meanObservedValue": 0.4114345025428271,
+          "byAgent": {
+            "glider-1": 15
+          }
+        },
+        "surfacingCount": 1,
+        "objectiveTransitionCount": 5,
+        "score": {
+          "finalScore": 42.155209,
+          "compositeScore": 69.22812,
+          "scienceScore": 46.232935,
+          "feasibilityScore": 100,
+          "efficiencyScore": 59.768268,
+          "safetyScore": 100,
+          "coverageFraction": 1,
+          "changesOfficialBrowserScoring": false,
+          "notBrowserOfficialScoring": true
+        },
+        "missionOutcomeStatus": "complete",
+        "completed": true,
+        "lastSurfacing": {
+          "tick": 15,
+          "timeSeconds": 900,
+          "agentId": "glider-1",
+          "reason": "mission-complete-summary-export"
+        },
+        "terminationReason": "mission-complete-summary-export"
+      },
+      "digest": {
+        "algorithm": "stable-json-fnv1a32-public-state-v1",
+        "value": "fnv1a32:3c1d8844",
+        "canonicalByteLength": 996,
+        "numericPolicyId": "replay-r1-public-state-quantized-1e-6"
+      }
+    }
+  ],
+  "summary": {
+    "checkpointCount": 16,
+    "initialDigest": "fnv1a32:720b79d8",
+    "terminalDigest": "fnv1a32:3c1d8844",
+    "terminalTick": 60
+  }
+}

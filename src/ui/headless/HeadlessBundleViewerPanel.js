@@ -383,15 +383,38 @@ export function headlessBundleScienceDiagnosisHtml(viewModel = {}) {
 
 export function headlessBundleReplayHtml(viewModel = {}) {
   const summary = viewModel.replaySummary ?? {};
+  const playback = viewModel.replayPlayback ?? {};
+  const transitions = summary.objectiveTransitions ?? [];
   return `
-    <section class="console-section">
+    <section class="console-section" data-headless-replay-panel>
       <h2>Replay</h2>
       <div class="cell-inspector-metrics">
-        ${metricHtml('Present', summary.present ? 'yes' : 'no')}
-        ${metricHtml('Glider', summary.gliderId)}
-        ${metricHtml('Track Points', summary.trackPointCount)}
-        ${metricHtml('Observations', summary.observationCount)}
+        ${metricHtml('Present', summary.present ? 'yes' : summary.legacyLimited ? 'legacy only' : 'no')}
+        ${metricHtml('Contract', summary.contract ?? 'N/A')}
+        ${metricHtml('Mode', summary.replayMode ?? 'N/A')}
+        ${metricHtml('Fidelity', summary.replayFidelity ?? 'N/A')}
+        ${metricHtml('Compatibility', summary.compatibilityStatus ?? summary.alignmentStatus ?? 'N/A')}
+        ${metricHtml('Events', summary.eventCount ?? 0)}
+        ${metricHtml('Checkpoints', summary.checkpointCount ?? 0)}
+        ${metricHtml('Surfacing', summary.surfacingCount ?? 0)}
+        ${metricHtml('Objectives', summary.objectiveTransitionCount ?? 0)}
+        ${metricHtml('Current Tick', playback.currentTick ?? 'N/A')}
+        ${metricHtml('Terminal Digest', summary.terminalDigest ?? 'N/A')}
       </div>
+      <div class="panel-stack">
+        <button class="console-button secondary" data-action="replay-toggle" ${summary.present ? '' : 'disabled'}>${playback.playing ? 'Pause Replay' : 'Play Replay'}</button>
+        <button class="console-button secondary" data-action="replay-step" ${summary.present ? '' : 'disabled'}>Step Event</button>
+        <button class="console-button secondary" data-action="replay-jump-start" ${summary.present ? '' : 'disabled'}>Start Checkpoint</button>
+        <button class="console-button secondary" data-action="replay-jump-next-checkpoint" ${summary.present ? '' : 'disabled'}>Next Checkpoint</button>
+        <button class="console-button secondary" data-action="replay-jump-terminal" ${summary.present ? '' : 'disabled'}>Terminal Checkpoint</button>
+      </div>
+      ${playback.message ? `<div class="hud-muted">${escapeHtml(playback.message)}</div>` : ''}
+      ${summary.firstDivergence ? `<div class="hud-muted"><strong>Divergence:</strong> ${escapeHtml(summary.firstDivergence.mismatchClass ?? 'mismatch')} at ${escapeHtml(summary.firstDivergence.path ?? 'unknown path')}</div>` : ''}
+      <h3>Objective Transitions</h3>
+      ${transitions.length ? transitions.map((entry) => `<div class="hud-muted">Tick ${escapeHtml(entry.tick)} | ${escapeHtml(entry.objectiveId ?? 'objective')} | ${escapeHtml(entry.label ?? '')}</div>`).join('') : '<div class="hud-muted">No objective transitions recorded.</div>'}
+      <div class="hud-muted">Public sanitized bundles use public observation playback with checkpoint digest verification, not authoritative hidden-truth resimulation.</div>
+      <div class="hud-muted">Replay controls consume the shared REPLAY-R1 event/checkpoint contract. Browser rendering timing does not determine simulation results.</div>
+      <div class="hud-muted">Replay and SCORE-R1 artifacts remain inspection/shadow artifacts; official browser scoring is unchanged.</div>
     </section>
   `;
 }
@@ -441,5 +464,6 @@ function escapeHtml(value) {
     "'": '&#039;'
   }[char]));
 }
+
 
 

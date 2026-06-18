@@ -1,0 +1,36 @@
+{
+  "type": "anchor.headless.replay-alignment-report",
+  "version": "replay-r1.0",
+  "contract": "REPLAY-R1",
+  "replayId": "replay-r1-coastal-bloom-front-headless-mission-h4-replay-fixture",
+  "compatibilityStatus": "PASS",
+  "status": "PASS",
+  "replayMode": "publicObservationPlayback",
+  "firstDivergence": null,
+  "mismatchClass": null,
+  "checks": [
+    {
+      "id": "generated-events-canonical",
+      "ok": true,
+      "detail": 51
+    },
+    {
+      "id": "generated-checkpoint-digests",
+      "ok": true,
+      "detail": 16
+    },
+    {
+      "id": "score-shadow-only",
+      "ok": true
+    }
+  ],
+  "summary": {
+    "eventCount": 51,
+    "checkpointCount": 16,
+    "terminalDigest": "fnv1a32:3c1d8844",
+    "scoringSchemaVersion": "mission-outcome-report-score-r1",
+    "changesOfficialBrowserScoring": false
+  },
+  "scoringSchemaVersion": "mission-outcome-report-score-r1",
+  "boundary": "REPLAY-R1 public playback verifies public timeline/checkpoint digests. Browser scoring remains official; SCORE-R1 is shadow-only."
+}

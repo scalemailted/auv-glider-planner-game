@@ -6,6 +6,7 @@ import { validateMotionCostMatrix } from '../motion/MotionCostMatrixExporter.js'
 import { validateMissionOutcomeReport } from '../scoring/MissionOutcomeReport.js';
 import { validateMissionRegretReport } from '../scoring/MissionRegretModel.js';
 import { auditMissionScorePublicSafety } from '../scoring/MissionScorePublicSafety.js';
+import { validateReplayArtifacts } from '../replay/ReplaySchema.js';
 
 export const HEADLESS_BUNDLE_VALIDATION_VERSION = 'headless-bundle-validation-h2';
 
@@ -271,16 +272,12 @@ export function validateHeadlessBathymetrySummary(summary = null, missionGeometr
   }
   return result(checks, warnings, failures, failures.length ? 'high' : warnings.length ? 'medium' : 'low');
 }
-export function validateHeadlessReplay(replay = null) {
-  const checks = [];
-  const warnings = [];
-  const failures = [];
-  if (!replay) {
-    warnings.push('Replay metadata is missing.');
-    return result(checks, warnings, failures);
-  }
-  checks.push({ id: 'replay-present', ok: typeof replay === 'object' });
-  return result(checks, warnings, failures);
+export function validateHeadlessReplay(source = null) {
+  const replaySource = source?.replayManifest || source?.replayEvents || source?.replayCheckpoints || source?.replay
+    ? source
+    : { replay: source };
+  const validation = validateReplayArtifacts(replaySource, { allowLegacy: true });
+  return result(validation.checks, validation.warnings, validation.failures, validation.visibilityRisk);
 }
 
 export function validateHeadlessMissionOutcomeArtifacts(report = null, missionScore = null, regretReport = null) {
@@ -327,7 +324,7 @@ export function validateHeadlessBundle(bundle = {}) {
     motionCostArtifacts: validateHeadlessMotionCostArtifacts(bundle.motionCostGraph ?? bundle.episode?.motionCostGraph, bundle.motionCostMatrix ?? bundle.episode?.motionCostMatrix),
     missionOutcomeArtifacts: validateHeadlessMissionOutcomeArtifacts(bundle.missionOutcomeReport ?? bundle.episode?.missionOutcomeReport, bundle.missionScore ?? bundle.episode?.missionScore, bundle.regretReport ?? bundle.episode?.regretReport),
     bathymetrySummary: validateHeadlessBathymetrySummary(bundle.bathymetrySummary ?? bundle.episode?.bathymetrySummary, bundle.missionGeometrySummary ?? bundle.episode?.missionGeometrySummary),
-    replay: validateHeadlessReplay(bundle.replay)
+    replay: validateHeadlessReplay(bundle)
   };
   const checks = Object.entries(validations).flatMap(([scope, validation]) => validation.checks.map((check) => ({ ...check, scope })));
   const warnings = [...(bundle.warnings ?? []), ...Object.values(validations).flatMap((validation) => validation.warnings)];
@@ -360,7 +357,11 @@ export function validateHeadlessBundle(bundle = {}) {
       hasMotionCostMatrix: Boolean(bundle.motionCostMatrix ?? bundle.motionCostMatrixSummary ?? bundle.episode?.motionCostMatrix),
       hasMissionOutcomeReport: Boolean(bundle.missionOutcomeReport ?? bundle.episode?.missionOutcomeReport),
       hasMissionScore: Boolean(bundle.missionScore ?? bundle.episode?.missionScore),
-      hasRegretReport: Boolean(bundle.regretReport ?? bundle.episode?.regretReport)
+      hasRegretReport: Boolean(bundle.regretReport ?? bundle.episode?.regretReport),
+      hasReplayManifest: Boolean(bundle.replayManifest),
+      hasReplayEvents: Boolean(bundle.replayEvents),
+      hasReplayCheckpoints: Boolean(bundle.replayCheckpoints),
+      hasReplayAlignmentReport: Boolean(bundle.replayAlignmentReport)
     }
   };
 }
@@ -391,5 +392,9 @@ function oracleVisible(payload = {}, fieldId) {
   const tier = payload?.fieldVisibility?.[fieldId] ?? payload?.visibilityTier;
   return ['oracle', 'debugAll', 'hiddenTruth'].includes(tier);
 }
+
+
+
+
 
 
