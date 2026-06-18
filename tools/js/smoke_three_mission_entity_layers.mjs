@@ -41,3 +41,4 @@ assert.ok(groups.marker.children.every((child) => child.userData.executable === 
 for (const group of Object.values(groups)) clearGroup(group);
 assert.ok(Object.values(groups).every((group) => group.children.length === 0));
 console.log('Three mission entity layers smoke passed');
+

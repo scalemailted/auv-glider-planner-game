@@ -391,6 +391,13 @@ Added a portable deterministic glider motion schema, environment sampler, dynami
 - Added synthetic bathymetry schema, field model, mesh/projection model, ocean-world geometry adapter, initial Phaser-hosted viewer, and public-safe headless bathymetry/mission geometry summaries.
 - Boundary: no full 3D route planning, no hydrodynamic solver, no terrain-flow-as-current claim, no WebGPU-Ocean, no Python simulator, no MARL/RL, and no scoring changes.
 
+### GFX-R3B - Three.js Planning Interaction Parity
+
+- Added a pure interaction intent/result contract, Three.js mission hit testing, an interaction controller, a Mission Workspace bridge, and a planning-interaction overlay layer for the live Mission Planning renderer.
+- Three.js can now perform hover/inspection, glider and waypoint selection, 2.5D waypoint placement/editing/deletion, planning-marker placement/removal, and Gold Star inspection through canonical workspace commands.
+- Added debug/test API fields and focused smoke/E2E coverage for interaction boundaries and state preservation.
+- Preserved the boundary: GFX-R3B does not add a planner, route optimizer, simulation execution parity, replay/debrief parity, browser scoring changes, hidden truth exposure, WebGPU fluid simulation, Python simulation, RL, or MARL.
+
 ### GFX-R3A - Live Three.js Mission Renderer Parity
 
 - Added a mission-world render view-model, coordinate transform, live workspace adapter, Three.js mission renderer, and entity/layer render modules for the active Mission Planning workspace.

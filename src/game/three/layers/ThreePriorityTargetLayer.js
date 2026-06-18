@@ -19,8 +19,11 @@ export function updateThreePriorityTargetLayer(group, viewModel = {}) {
     );
     star.add(ring, core);
     star.position.copy(positionForRecord(transform, target, 0.34));
-    star.userData = { id: target.targetId, targetId: target.targetId, active: target.active, claimed: target.claimed, value: target.value };
+    star.userData = { missionObjectType: 'priorityTarget', missionObjectId: target.targetId, id: target.targetId, targetId: target.targetId, active: target.active, claimed: target.claimed, value: target.value, gridCell: { x: target.x, y: target.y } };
+    ring.userData = { ...star.userData };
+    core.userData = { ...star.userData };
     group.add(star);
   }
   return group;
 }
+

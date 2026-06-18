@@ -693,7 +693,7 @@ assert.equal(gfxR2RendererSummary.renderer, 'three', 'GFX-R2 renderer summary ma
 assert.equal(gfxR2RendererSummary.usesFull3DPlanning, false, 'GFX-R2 renderer excludes full 3D planning');
 assert.equal(gfxR2RendererSummary.usesWebGPUFluid, false, 'GFX-R2 renderer excludes WebGPU fluid');
 assert.equal(gfxR2RendererSummary.usesEnable3D, false, 'GFX-R2 renderer excludes Enable3D');
-assert.equal(THREE_MISSION_WORLD_RENDERER_VERSION, 'three-mission-world-renderer-gfx-r3a', 'GFX-R3A Three mission renderer version is stable');
+assert.equal(THREE_MISSION_WORLD_RENDERER_VERSION, 'three-mission-world-renderer-gfx-r3b', 'GFX-R3B Three mission renderer version is stable');
 const gfxR3aFixture = createMissionWorldFixture();
 const gfxR3aTransform = createMissionWorldCoordinateTransform({ grid: gfxR3aFixture.level.world.grid });
 const gfxR3aWorldPoint = gridCellToWorld(gfxR3aTransform, 3, 2, 50);
@@ -1203,5 +1203,22 @@ const coupledSceneSource = fs.readFileSync('src/game/phaser/scenes/CoupledFields
 assert.ok(coupledSceneSource.includes('What Colors Mean'), 'Coupled right panel explains colors');
 assert.ok(coupledSceneSource.includes('uses uncertainty'), 'Coupled right panel states uncertainty boundary');
 
+const r3bInteractionModules = await Promise.all([
+  import('../../src/core/rendering/MissionWorldInteractionIntent.js'),
+  import('../../src/core/rendering/MissionWorldInteractionResult.js'),
+  import('../../src/core/rendering/MissionPlanningInteractionViewModel.js'),
+  import('../../src/game/three/ThreeMissionHitTest.js'),
+  import('../../src/game/three/ThreeMissionInteractionController.js'),
+  import('../../src/game/three/layers/ThreePlanningInteractionLayer.js'),
+  import('../../src/game/phaser/interaction/MissionWorkspaceThreeInteractionBridge.js')
+]);
+assert.equal(typeof r3bInteractionModules[0].createMissionWorldInteractionIntent, 'function', 'R3B interaction intent contract imports');
+assert.equal(typeof r3bInteractionModules[1].createMissionWorldInteractionResult, 'function', 'R3B interaction result contract imports');
+assert.equal(typeof r3bInteractionModules[2].buildMissionPlanningInteractionViewModel, 'function', 'R3B interaction view model imports');
+assert.equal(typeof r3bInteractionModules[3].hitTestThreeMissionWorld, 'function', 'R3B Three hit testing imports');
+assert.equal(typeof r3bInteractionModules[4].createThreeMissionInteractionController, 'function', 'R3B Three controller imports');
+assert.equal(typeof r3bInteractionModules[5].updateThreePlanningInteractionLayer, 'function', 'R3B interaction layer imports');
+assert.equal(typeof r3bInteractionModules[6].handleMissionWorldInteractionIntent, 'function', 'R3B workspace bridge imports');
 console.log('Model stack integration smoke passed');
+
 

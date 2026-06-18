@@ -15,8 +15,9 @@ export function updateThreeGliderLayer(group, viewModel = {}) {
     mesh.position.copy(positionForRecord(transform, glider, 0.32));
     mesh.rotation.x = Math.PI / 2;
     mesh.rotation.z = -Number(glider.headingRadians ?? 0);
-    mesh.userData = { id: glider.agentId, agentId: glider.agentId, selected: glider.selected === true, status: glider.status };
+    mesh.userData = { missionObjectType: 'glider', missionObjectId: glider.agentId, id: glider.agentId, agentId: glider.agentId, selected: glider.selected === true, status: glider.status, gridCell: { x: glider.x, y: glider.y } };
     group.add(mesh);
   }
   return group;
 }
+

@@ -434,6 +434,7 @@ function normalizeMarker(marker, agentId, index, level = null) {
     window: normalizedWindow,
     type: marker.type ? String(marker.type) : 'futureTarget',
     label: marker.label ? String(marker.label) : 'Planning Marker',
+    executable: false,
     linkedTargetId: marker.linkedTargetId ? String(marker.linkedTargetId) : null,
     note: marker.note ? String(marker.note) : ''
   };

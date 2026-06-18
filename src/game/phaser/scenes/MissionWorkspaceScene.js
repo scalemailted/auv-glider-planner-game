@@ -1,3 +1,4 @@
+import * as THREE from '../../../../node_modules/three/build/three.module.js';
 import { downloadJSON, loadJSON, readJSONFile } from '../../../core/io/ImportExport.js';
 import { buildSolverPacket } from '../../../core/io/SolverPacketExporter.js';
 import { buildChallengeExport } from '../../../core/io/ChallengeExporter.js';
@@ -31,6 +32,7 @@ import {
   normalizePlan,
   removeMarker,
   removeWaypoint,
+  updateWaypoint,
   getAgentPlan
 } from '../../../core/planning/WaypointPlan.js';
 import {
@@ -96,7 +98,30 @@ import {
   setThreeMissionLayerVisibility,
   threeMissionWorldRendererSummary,
   disposeThreeMissionWorldRenderer
-} from '../../three/ThreeMissionWorldRenderer.js';import {
+} from '../../three/ThreeMissionWorldRenderer.js';
+import {
+  createThreeMissionInteractionController,
+  setThreeMissionInteractionMode,
+  setThreeMissionInteractionEnabled,
+  updateThreeMissionInteractionContext,
+  cancelThreeMissionInteraction,
+  threeMissionInteractionControllerSummary,
+  disposeThreeMissionInteractionController
+} from '../../three/ThreeMissionInteractionController.js';
+import {
+  createMissionWorkspaceThreeInteractionBridge,
+  handleMissionWorldInteractionIntent,
+  missionWorkspaceThreeInteractionBridgeSummary,
+  disposeMissionWorkspaceThreeInteractionBridge
+} from '../interaction/MissionWorkspaceThreeInteractionBridge.js';
+import {
+  buildMissionPlanningInteractionViewModel,
+  missionPlanningInteractionViewModelSummary
+} from '../../../core/rendering/MissionPlanningInteractionViewModel.js';
+import { createMissionWorldInteractionResult } from '../../../core/rendering/MissionWorldInteractionResult.js';
+import { normalizeMissionWorldInteractionMode } from '../../../core/rendering/MissionWorldInteractionIntent.js';
+import { gridCellToWorld } from '../../../core/rendering/MissionWorldCoordinates.js';
+import {
   getDeploymentZonesForAgent,
   getSelectedStart,
   normalizeDeploymentState,
@@ -125,6 +150,8 @@ export class MissionWorkspaceScene extends PhaserScene {
     this.cameraObjects = [];
     this.threeMissionContainer = null;
     this.threeMissionRenderer = null;
+    this.threeInteractionController = null;
+    this.threeInteractionBridge = null;
     this.missionRenderViewModel = null;
     this.missionRenderInput = null;
   }
@@ -138,6 +165,8 @@ export class MissionWorkspaceScene extends PhaserScene {
     this.app.state.ui.rendererBackend ??= 'legacyPhaser2d';
     this.app.state.ui.threeMissionCameraPreset ??= 'obliqueMission';
     this.app.state.ui.threeMissionLayers ??= {};
+    this.app.state.ui.threeMissionInteractionMode ??= 'selectInspect';
+    this.app.state.ui.threeMissionInteraction ??= { interactionMode: this.app.state.ui.threeMissionInteractionMode };
     this.syncMissionOptionsFromMission();
     if (!String(this.app.state.currentScenario?.source ?? '').startsWith('leaderboard')) {
       this.app.state.ui.showBestPathOverlay = false;
@@ -271,6 +300,8 @@ export class MissionWorkspaceScene extends PhaserScene {
       setRendererBackend: (backend) => this.setRendererBackend(backend),
       setThreeCameraPreset: (preset) => this.setThreeCameraPreset(preset),
       toggleThreeLayer: (layerId) => this.toggleThreeMissionLayer(layerId),
+      setThreeInteractionMode: (mode) => this.setThreeInteractionMode(mode),
+      cancelThreeInteraction: () => this.cancelThreeInteraction(),
       rerunSamePlan: () => this.rerunSamePlan(),
       rerunWithNewSeed: () => this.rerunWithNewSeed(),
       toggleGuidance: () => this.toggleGuidance(),
@@ -531,8 +562,17 @@ export class MissionWorkspaceScene extends PhaserScene {
   setRendererBackend(backend) {
     this.app.state.ui ??= {};
     const normalized = backend === 'threeMission3d' ? 'threeMission3d' : 'legacyPhaser2d';
-    if (this.app.state.ui.rendererBackend === normalized) return;
+    const previous = this.app.state.ui.rendererBackend ?? 'legacyPhaser2d';
+    if (previous === normalized) return;
     this.app.state.ui.rendererBackend = normalized;
+    if (previous === 'threeMission3d' && normalized !== 'threeMission3d') {
+      this.disableThreeInteractionSilently();
+      this.app.state.ui.hoverCell = null;
+      this.app.state.ui.threeMissionInteraction ??= {};
+      this.app.state.ui.threeMissionInteraction.dragPreview = null;
+      this.app.state.ui.threeMissionInteraction.routePreview = null;
+      this.app.state.ui.threeMissionInteraction.placementValidation = null;
+    }
     this.refreshPanels();
     this.refreshMap();
   }
@@ -545,9 +585,33 @@ export class MissionWorkspaceScene extends PhaserScene {
     this.refreshMap();
   }
 
+  setThreeInteractionMode(mode) {
+    this.app.state.ui ??= {};
+    const normalized = normalizeMissionWorldInteractionMode(mode);
+    this.app.state.ui.threeMissionInteractionMode = normalized;
+    this.app.state.ui.threeMissionInteraction ??= {};
+    this.app.state.ui.threeMissionInteraction.interactionMode = normalized;
+    setThreeMissionInteractionMode(this.threeInteractionController, normalized);
+    this.refreshPanels();
+    this.refreshMap();
+  }
+
+  cancelThreeInteraction() {
+    cancelThreeMissionInteraction(this.threeInteractionController);
+    this.app.state.ui ??= {};
+    this.app.state.ui.threeMissionInteraction ??= {};
+    this.app.state.ui.threeMissionInteraction.dragPreview = null;
+    this.app.state.ui.threeMissionInteraction.routePreview = null;
+    this.app.state.ui.threeMissionInteraction.placementValidation = null;
+    this.refreshPanels();
+    this.refreshMap();
+  }
+
   toggleThreeMissionLayer(layerId) {
     this.app.state.ui ??= {};
     this.app.state.ui.threeMissionLayers ??= {};
+    this.app.state.ui.threeMissionInteractionMode ??= 'selectInspect';
+    this.app.state.ui.threeMissionInteraction ??= { interactionMode: this.app.state.ui.threeMissionInteractionMode };
     this.app.state.ui.threeMissionLayers[layerId] = this.app.state.ui.threeMissionLayers[layerId] === false;
     if (this.threeMissionRenderer) setThreeMissionLayerVisibility(this.threeMissionRenderer, this.threeLayerVisibilityPatch());
     this.refreshPanels();
@@ -577,19 +641,55 @@ export class MissionWorkspaceScene extends PhaserScene {
         layerVisibility: this.threeLayerVisibilityPatch()
       });
     }
+    this.ensureThreeInteractionController();
     resizeThreeMissionWorldRenderer(this.threeMissionRenderer, container.clientWidth, container.clientHeight);
     return this.threeMissionRenderer;
   }
 
   hideThreeMissionRenderer() {
+    this.disableThreeInteractionSilently();
     if (this.threeMissionContainer) this.threeMissionContainer.hidden = true;
   }
 
+  disableThreeInteractionSilently() {
+    if (!this.threeInteractionController) return;
+    this.threeInteractionController.enabled = false;
+    this.threeInteractionController.pointerDown = null;
+    this.threeInteractionController.dragState = null;
+    this.threeInteractionController.cameraGestureActive = false;
+    this.threeInteractionController.pointerCaptured = false;
+  }
+
   disposeThreeMissionRenderer() {
+    disposeThreeMissionInteractionController(this.threeInteractionController);
+    disposeMissionWorkspaceThreeInteractionBridge(this.threeInteractionBridge);
+    this.threeInteractionController = null;
+    this.threeInteractionBridge = null;
     disposeThreeMissionWorldRenderer(this.threeMissionRenderer);
     this.threeMissionRenderer = null;
     this.threeMissionContainer?.remove?.();
     this.threeMissionContainer = null;
+  }
+
+  ensureThreeInteractionController() {
+    if (!this.threeMissionRenderer?.renderer?.domElement) return null;
+    if (!this.threeInteractionBridge || this.threeInteractionBridge.disposed) {
+      this.threeInteractionBridge = createMissionWorkspaceThreeInteractionBridge(this);
+    }
+    if (!this.threeInteractionController || this.threeInteractionController.disposed) {
+      this.threeInteractionController = createThreeMissionInteractionController({
+        renderer: this.threeMissionRenderer,
+        camera: this.threeMissionRenderer.camera,
+        domElement: this.threeMissionRenderer.renderer.domElement,
+        getViewModel: () => this.missionRenderViewModel,
+        emitIntent: (intent) => handleMissionWorldInteractionIntent(this.threeInteractionBridge, intent),
+        options: { interactionMode: this.app.state.ui?.threeMissionInteractionMode ?? 'selectInspect' }
+      });
+    }
+    setThreeMissionInteractionEnabled(this.threeInteractionController, this.getMissionRendererBackend() === 'threeMission3d');
+    const mode = this.app.state.ui?.threeMissionInteractionMode ?? 'selectInspect';
+    if (this.threeInteractionController.interactionMode !== mode) setThreeMissionInteractionMode(this.threeInteractionController, mode);
+    return this.threeInteractionController;
   }
 
   buildMissionWorldViewModelForScene() {
@@ -603,6 +703,18 @@ export class MissionWorkspaceScene extends PhaserScene {
     });
     this.missionRenderInput = input;
     const viewModel = buildMissionWorldRenderViewModel(input);
+    const interactionState = this.app.state.ui?.threeMissionInteraction ?? {};
+    viewModel.interactionViewModel = buildMissionPlanningInteractionViewModel({
+      missionWorldViewModel: viewModel,
+      interactionState: {
+        ...interactionState,
+        interactionMode: this.app.state.ui?.threeMissionInteractionMode ?? interactionState.interactionMode ?? 'selectInspect'
+      },
+      routePreview: interactionState.routePreview ?? null,
+      placementValidation: interactionState.placementValidation ?? null,
+      guidanceState: this.app.state.ui?.overlayDebug ?? null,
+      options: { interactionMode: this.app.state.ui?.threeMissionInteractionMode ?? 'selectInspect' }
+    });
     this.missionRenderViewModel = viewModel;
     return viewModel;
   }
@@ -614,6 +726,7 @@ export class MissionWorkspaceScene extends PhaserScene {
       return;
     }
     const viewModel = this.buildMissionWorldViewModelForScene();
+    updateThreeMissionInteractionContext(this.ensureThreeInteractionController(), viewModel);
     setThreeMissionWorldCamera(renderer, { preset: this.app.state.ui?.threeMissionCameraPreset ?? 'obliqueMission' });
     updateThreeMissionWorldRenderer(renderer, viewModel);
     resizeThreeMissionWorldRenderer(renderer, this.threeMissionContainer?.clientWidth, this.threeMissionContainer?.clientHeight);
@@ -641,13 +754,17 @@ export class MissionWorkspaceScene extends PhaserScene {
       priorityTargets: layers.priorityTargets !== false && this.app.state.ui?.showPriorityStars !== false,
       observations: layers.observations !== false,
       selection: layers.selection !== false,
-      guidance: layers.guidance !== false && this.app.state.ui?.showGuidance !== false
+      guidance: layers.guidance !== false && this.app.state.ui?.showGuidance !== false,
+      interaction: layers.interaction !== false
     };
   }
 
   updateMissionRenderDebug({ activeBackend, threeMounted, viewModel, renderer = null, parityWarnings = [] } = {}) {
     const summary = missionWorldRenderViewModelSummary(viewModel ?? {});
     const rendererSummary = renderer ? threeMissionWorldRendererSummary(renderer) : null;
+    const interactionSummary = viewModel?.interactionViewModel ? missionPlanningInteractionViewModelSummary(viewModel.interactionViewModel) : null;
+    const controllerSummary = this.threeInteractionController ? threeMissionInteractionControllerSummary(this.threeInteractionController) : null;
+    const bridgeSummary = this.threeInteractionBridge ? missionWorkspaceThreeInteractionBridgeSummary(this.threeInteractionBridge) : null;
     const legacyArtifactCounts = { ...summary };
     const threeArtifactCounts = rendererSummary ? {
       gliderCount: rendererSummary.gliderObjectCount,
@@ -665,8 +782,19 @@ export class MissionWorkspaceScene extends PhaserScene {
         if (Number(threeArtifactCounts[key] ?? 0) !== Number(summary[key] ?? 0)) mismatches.push({ key, expected: summary[key] ?? 0, actual: threeArtifactCounts[key] ?? 0 });
       }
     }
+    const interactionState = this.app.state.ui?.threeMissionInteraction ?? {};
+    const interactionVm = viewModel?.interactionViewModel ?? {};
+    const hoveredEntity = interactionVm.hoveredEntity ?? interactionState.hoveredEntity ?? null;
+    const hoveredCell = interactionVm.hoveredCell ?? interactionState.hoveredCell ?? null;
+    const placementValidation = interactionVm.placementValid !== undefined
+      ? { valid: interactionVm.placementValid, message: interactionVm.placementReason ?? null }
+      : interactionState.placementValidation ?? null;
+    const dragPreview = interactionVm.dragPreview ?? interactionState.dragPreview ?? null;
+    const routePreview = interactionVm.routePreview ?? interactionState.routePreview ?? null;
+    const lastInteractionIntent = interactionState.lastIntent ?? null;
+    const lastInteractionResult = interactionState.lastResult ?? null;
     globalThis.ANCHOR_MISSION_RENDER_DEBUG = {
-      version: 'gfx-r3a',
+      version: 'gfx-r3b',
       activeBackend: activeBackend ?? this.getMissionRendererBackend(),
       threeMounted: threeMounted === true,
       phase: viewModel?.phase ?? this.app.state.mode ?? 'planning',
@@ -678,6 +806,8 @@ export class MissionWorkspaceScene extends PhaserScene {
       activePriorityTargetCount: summary.priorityTargetCount ?? 0,
       selectedAgentId: viewModel?.selectedAgentId ?? this.app.state.selectedAgentId ?? null,
       selectedWaypointId: viewModel?.selectedWaypointId ?? null,
+      selectedMarkerId: viewModel?.selectedMarkerId ?? null,
+      selectedPriorityTargetId: viewModel?.selectedPriorityTargetId ?? null,
       terrainCellCount: summary.terrainCellCount ?? 0,
       scalarFieldCellCount: summary.scalarFieldCellCount ?? 0,
       currentVectorCount: summary.currentVectorCount ?? 0,
@@ -693,6 +823,42 @@ export class MissionWorkspaceScene extends PhaserScene {
       parityWarnings,
       inputSummary: missionWorldRenderInputSummary(this.missionRenderInput ?? {}),
       rendererSummary,
+      interactionSummary,
+      interactionControllerSummary: controllerSummary,
+      interactionBridgeSummary: bridgeSummary,
+      interactionMode: this.app.state.ui?.threeMissionInteractionMode ?? 'selectInspect',
+      interactionEnabled: Boolean(this.threeInteractionController?.enabled),
+      hoveredObjectType: hoveredEntity?.objectType ?? null,
+      hoveredObjectId: hoveredEntity?.objectId ?? hoveredEntity?.waypointId ?? hoveredEntity?.markerId ?? hoveredEntity?.targetId ?? hoveredEntity?.agentId ?? null,
+      hoveredGridCell: hoveredCell ? { x: hoveredCell.x, y: hoveredCell.y, blocked: hoveredCell.blocked === true, reason: hoveredCell.reason ?? null } : null,
+      placementPreviewActive: placementValidation != null,
+      placementPreviewValid: placementValidation?.valid ?? null,
+      placementPreviewReason: placementValidation?.message ?? placementValidation?.reason ?? null,
+      waypointDragActive: dragPreview?.active === true,
+      dragWaypointId: dragPreview?.waypointId ?? null,
+      dragPreviewCell: dragPreview?.gridCell ?? dragPreview?.to ?? null,
+      routePreviewActive: routePreview?.active === true,
+      routePreviewDistance: routePreview?.distance ?? routePreview?.distanceCells ?? null,
+      routePreviewEta: routePreview?.eta ?? routePreview?.etaSeconds ?? routePreview?.etaPreview ?? null,
+      routePreviewEnergy: routePreview?.energy ?? routePreview?.energyUsed ?? routePreview?.energyPreview ?? null,
+      guidanceVisible: Boolean(interactionVm.guidanceCone ?? viewModel?.guidance?.visible),
+      reachableRegionVisible: Boolean(interactionVm.reachableRegion ?? viewModel?.guidance?.reachableRegion),
+      pointerCaptured: this.threeInteractionController?.pointerCaptured === true,
+      cameraGestureActive: this.threeInteractionController?.cameraGestureActive === true,
+      lastIntentId: lastInteractionIntent?.intentId ?? null,
+      lastIntentStatus: lastInteractionResult?.status ?? null,
+      lastIntentChangedCanonicalState: lastInteractionResult?.changedCanonicalState === true,
+      lastIntentWarning: lastInteractionResult?.warnings?.[0] ?? lastInteractionResult?.userMessage ?? null,
+      lastInteractionIntents: interactionState.lastInteractionIntents ?? [],
+      canonicalWaypointCount: summary.waypointCount ?? 0,
+      threeWaypointCount: threeArtifactCounts?.waypointCount ?? null,
+      legacyWaypointCount: summary.waypointCount ?? 0,
+      canonicalMarkerCount: summary.planningMarkerCount ?? 0,
+      threeMarkerCount: threeArtifactCounts?.planningMarkerCount ?? null,
+      legacyMarkerCount: summary.planningMarkerCount ?? 0,
+      lastInteractionIntent: this.app.state.ui?.threeMissionInteraction?.lastIntent ?? null,
+      lastInteractionResult: this.app.state.ui?.threeMissionInteraction?.lastResult ?? null,
+      interactionTrail: this.app.state.ui?.threeMissionInteraction?.lastInteractionIntents ?? [],
       legacyArtifactCounts,
       threeArtifactCounts,
       artifactCountMismatches: mismatches,
@@ -708,7 +874,54 @@ export class MissionWorkspaceScene extends PhaserScene {
       usesRouteOptimizer: false,
       usesMARL: false
     };
+    this.installMissionRenderTestApi();
   }
+
+  installMissionRenderTestApi() {
+    globalThis.ANCHOR_MISSION_RENDER_TEST_API = {
+      version: 'gfx-r3b',
+      rendererBackend: this.getMissionRendererBackend(),
+      hasThreeRenderer: Boolean(this.threeMissionRenderer),
+      screenPointForGridCell: (x, y) => this.screenPointForMissionCell({ x, y }),
+      screenPointForWaypoint: (waypointId) => this.screenPointForMissionRecord((this.missionRenderViewModel?.waypoints ?? []).find((record) => record.waypointId === waypointId)),
+      screenPointForAgent: (agentId) => this.screenPointForMissionRecord((this.missionRenderViewModel?.gliders ?? []).find((record) => record.agentId === agentId)),
+      screenPointForMarker: (markerId) => this.screenPointForMissionRecord((this.missionRenderViewModel?.planningMarkers ?? []).find((record) => record.markerId === markerId)),
+      screenPointForPriorityTarget: (targetId) => this.screenPointForMissionRecord((this.missionRenderViewModel?.priorityTargets ?? []).find((record) => record.targetId === targetId)),
+      setCameraPresetForTest: (preset) => {
+        this.setThreeCameraPreset(preset);
+        return this.threeMissionRenderer?.cameraState ?? null;
+      },
+      interactionControllerSummary: () => threeMissionInteractionControllerSummary(this.threeInteractionController ?? {}),
+      renderDebug: () => globalThis.ANCHOR_MISSION_RENDER_DEBUG ?? null
+    };
+  }
+
+  screenPointForMissionCell(cell) {
+    if (!this.threeMissionRenderer || !this.missionRenderViewModel?.coordinateSystem || !cell) return null;
+    const world = gridCellToWorld(this.missionRenderViewModel.coordinateSystem, cell.x, cell.y, 0);
+    return this.projectThreeWorldPoint({ x: world.x, y: Number(world.y ?? 0) + 0.62, z: world.z });
+  }
+
+  screenPointForMissionRecord(record) {
+    if (!record) return null;
+    return this.screenPointForMissionCell({ x: record.x, y: record.y });
+  }
+
+  projectThreeWorldPoint(point) {
+    const renderer = this.threeMissionRenderer;
+    const rect = renderer?.renderer?.domElement?.getBoundingClientRect?.();
+    if (!renderer?.camera || !rect) return null;
+    const vector = new THREE.Vector3(Number(point.x), Number(point.y), Number(point.z));
+    vector.project(renderer.camera);
+    return {
+      x: rect.left + ((vector.x + 1) / 2) * rect.width,
+      y: rect.top + ((1 - vector.y) / 2) * rect.height,
+      ndcX: vector.x,
+      ndcY: vector.y,
+      visible: vector.z >= -1 && vector.z <= 1
+    };
+  }
+
   refreshBestPriorPath() {
     this.app.state.ui ??= {};
     this.app.state.ui.showBestPathOverlay ??= false;
@@ -1050,6 +1263,282 @@ export class MissionWorkspaceScene extends PhaserScene {
     this.refreshMap();
   }
 
+  threeInteractionResult(intent, status, patch = {}) {
+    return createMissionWorldInteractionResult({
+      intentId: intent?.intentId ?? null,
+      status,
+      selectedAgentId: this.app.state.selectedAgentId ?? null,
+      ...patch
+    });
+  }
+
+  handleThreeHoverIntent(intent) {
+    const cell = intent.gridCell ?? null;
+    this.app.state.ui ??= {};
+    this.app.state.ui.hoverCell = cell ? { x: cell.x, y: cell.y } : null;
+    this.app.state.ui.threeMissionInteraction ??= {};
+    this.app.state.ui.threeMissionInteraction.hoveredCell = cell ? { x: cell.x, y: cell.y, blocked: cell.blocked === true, reason: cell.reason ?? null } : null;
+    this.app.state.ui.threeMissionInteraction.hoveredEntity = intent.metadata?.objectType && intent.metadata.objectType !== 'gridCell'
+      ? { objectType: intent.metadata.objectType, objectId: intent.metadata.objectId ?? null, agentId: intent.agentId, waypointId: intent.waypointId, markerId: intent.markerId, targetId: intent.targetId, gridCell: cell }
+      : null;
+    this.app.state.ui.threeMissionInteraction.placementValidation = this.validateThreePlacementPreview(intent);
+    this.refreshPanels();
+    this.refreshMap();
+    return this.threeInteractionResult(intent, 'noChange', { userMessage: cell ? `Hover (${cell.x}, ${cell.y})` : 'Hover cleared.' });
+  }
+
+  clearThreeHoverIntent(intent) {
+    this.app.state.ui ??= {};
+    this.app.state.ui.hoverCell = null;
+    this.app.state.ui.threeMissionInteraction ??= {};
+    this.app.state.ui.threeMissionInteraction.hoveredCell = null;
+    this.app.state.ui.threeMissionInteraction.hoveredEntity = null;
+    this.app.state.ui.threeMissionInteraction.placementValidation = null;
+    this.refreshPanels();
+    this.refreshMap();
+    return this.threeInteractionResult(intent, 'noChange', { userMessage: 'Hover cleared.' });
+  }
+
+  selectGliderFromThree(agentId, intent) {
+    const agent = this.app.state.mission?.agents?.find((candidate) => candidate.id === agentId);
+    if (!agent) return this.threeInteractionResult(intent, 'rejected', { userMessage: 'No glider found for selection.', warnings: ['No glider found for selection.'] });
+    this.selectGlider(agentId);
+    return this.threeInteractionResult(intent, 'accepted', { selectedAgentId: agentId, userMessage: `Selected ${agent.label ?? agent.name ?? agent.id}.` });
+  }
+
+  selectWaypointById(waypointId, intent) {
+    const match = this.findWaypointById(waypointId);
+    if (!match) return this.threeInteractionResult(intent, 'rejected', { userMessage: 'No waypoint found for selection.', warnings: ['No waypoint found for selection.'] });
+    this.selectWaypoint(match.agentId, match.index);
+    return this.threeInteractionResult(intent, 'accepted', { selectedWaypointId: match.waypoint.id ?? waypointId, userMessage: 'Waypoint selected.' });
+  }
+
+  deleteWaypointById(waypointId, intent) {
+    const match = this.findWaypointById(waypointId) ?? this.findSelectedWaypoint();
+    if (!match) return this.threeInteractionResult(intent, 'rejected', { userMessage: 'No waypoint is selected for deletion.', warnings: ['No waypoint is selected for deletion.'] });
+    this.removeWaypointFromPanel(match.agentId, match.index);
+    return this.threeInteractionResult(intent, 'accepted', {
+      changedCanonicalState: true,
+      selectedWaypointId: match.waypoint.id ?? waypointId,
+      userMessage: 'Waypoint deleted.'
+    });
+  }
+
+  selectPriorityTargetFromThree(targetId, intent) {
+    const target = this.findPriorityTargetById(targetId);
+    if (!target) return this.threeInteractionResult(intent, 'rejected', { userMessage: 'No priority target found for inspection.', warnings: ['No priority target found for inspection.'] });
+    this.app.state.ui ??= {};
+    this.app.state.ui.selectedPriorityTargetId = target.id ?? target.targetId ?? targetId;
+    this.app.state.ui.selectedMarker = null;
+    this.app.state.ui.selectedWaypoint = null;
+    this.app.state.ui.threeMissionInteraction ??= {};
+    this.app.state.ui.threeMissionInteraction.selectedEntity = { objectType: 'priorityTarget', objectId: this.app.state.ui.selectedPriorityTargetId, targetId: this.app.state.ui.selectedPriorityTargetId, gridCell: intent.gridCell };
+    this.refreshPanels();
+    this.refreshMap();
+    return this.threeInteractionResult(intent, 'accepted', { selectedTargetId: this.app.state.ui.selectedPriorityTargetId, userMessage: `Gold Star inspected: ${target.label ?? target.id ?? targetId}.` });
+  }
+
+  placeWaypointFromThree(intent) {
+    const cell = intent.gridCell;
+    if (!cell) return this.threeInteractionResult(intent, 'rejected', { userMessage: 'Click inside the mission grid to place a waypoint.', warnings: ['Missing grid cell.'] });
+    if (requiresDeploymentSelection(this.app.state.mission, this.app.state.selectedAgentId)) {
+      const selected = this.trySelectDeploymentStart(cell);
+      if (selected) {
+        return this.threeInteractionResult(intent, 'accepted', {
+          changedCanonicalState: true,
+          committedGridCell: cell,
+          userMessage: `Deployment start selected at (${cell.x}, ${cell.y}).`
+        });
+      }
+    }
+    const result = this.addWaypointForSelected({ x: cell.x, y: cell.y, action: 'sample' });
+    if (!result?.ok) {
+      this.setThreePlacementValidation({ valid: false, message: result?.message ?? 'Waypoint placement rejected.', cell });
+      return this.threeInteractionResult(intent, 'rejected', { committedGridCell: cell, userMessage: result?.message ?? 'Waypoint placement rejected.', warnings: [result?.message ?? 'Waypoint placement rejected.'] });
+    }
+    this.setThreePlacementValidation({ valid: true, message: 'Waypoint placed.', cell });
+    return this.threeInteractionResult(intent, 'accepted', {
+      changedCanonicalState: true,
+      committedGridCell: cell,
+      selectedWaypointId: result.waypoint?.id ?? null,
+      userMessage: 'Waypoint placed.'
+    });
+  }
+
+  previewWaypointMoveFromThree(intent) {
+    const cell = intent.gridCell;
+    const match = this.findWaypointById(intent.waypointId);
+    const validation = this.validateThreeMoveCell(cell, match?.agentId, match?.index);
+    this.app.state.ui ??= {};
+    this.app.state.ui.threeMissionInteraction ??= {};
+    this.app.state.ui.threeMissionInteraction.dragPreview = {
+      active: true,
+      waypointId: intent.waypointId,
+      agentId: match?.agentId ?? intent.agentId ?? null,
+      from: match ? { x: match.waypoint.x, y: match.waypoint.y } : null,
+      to: cell ? { x: cell.x, y: cell.y } : null,
+      gridCell: cell ? { x: cell.x, y: cell.y } : null,
+      valid: validation.valid
+    };
+    this.app.state.ui.threeMissionInteraction.placementValidation = validation;
+    this.refreshMap();
+    return this.threeInteractionResult(intent, 'preview', { preview: this.app.state.ui.threeMissionInteraction.dragPreview, userMessage: validation.message ?? 'Waypoint move preview.' });
+  }
+
+  commitWaypointMoveFromThree(intent) {
+    const result = this.moveWaypointById(intent.waypointId, intent.gridCell);
+    this.app.state.ui.threeMissionInteraction ??= {};
+    this.app.state.ui.threeMissionInteraction.dragPreview = null;
+    this.app.state.ui.threeMissionInteraction.placementValidation = result.ok ? { valid: true, message: 'Waypoint moved.', cell: intent.gridCell } : { valid: false, message: result.message, cell: intent.gridCell };
+    if (!result.ok) return this.threeInteractionResult(intent, 'rejected', { userMessage: result.message, warnings: [result.message], committedGridCell: intent.gridCell });
+    return this.threeInteractionResult(intent, result.changed ? 'accepted' : 'noChange', {
+      changedCanonicalState: result.changed,
+      selectedWaypointId: result.waypoint?.id ?? intent.waypointId,
+      committedGridCell: intent.gridCell,
+      userMessage: result.changed ? 'Waypoint moved.' : 'Waypoint already at that cell.'
+    });
+  }
+
+  cancelWaypointMoveFromThree(intent) {
+    this.app.state.ui.threeMissionInteraction ??= {};
+    this.app.state.ui.threeMissionInteraction.dragPreview = null;
+    this.app.state.ui.threeMissionInteraction.placementValidation = null;
+    this.refreshMap();
+    return this.threeInteractionResult(intent, 'cancelled', { userMessage: 'Waypoint move cancelled.' });
+  }
+
+  placePlanningMarkerFromThree(intent) {
+    const cell = intent.gridCell;
+    if (!cell) return this.threeInteractionResult(intent, 'rejected', { userMessage: 'Click inside the mission grid to place a planning marker.', warnings: ['Missing grid cell.'] });
+    const result = this.addMarkerForSelected({ x: cell.x, y: cell.y });
+    if (!result?.ok) return this.threeInteractionResult(intent, 'rejected', { committedGridCell: cell, userMessage: result?.message ?? 'Planning marker placement rejected.', warnings: [result?.message ?? 'Planning marker placement rejected.'] });
+    return this.threeInteractionResult(intent, 'accepted', {
+      changedCanonicalState: true,
+      committedGridCell: cell,
+      selectedMarkerId: result.marker?.id ?? null,
+      userMessage: 'Planning marker added.'
+    });
+  }
+
+  deletePlanningMarkerFromThree(intent) {
+    if (intent.metadata?.selectOnly === true) return this.selectPlanningMarkerById(intent.markerId, intent);
+    const match = this.findMarkerById(intent.markerId) ?? this.findSelectedMarker();
+    if (!match) return this.threeInteractionResult(intent, 'rejected', { userMessage: 'No planning marker is selected for deletion.', warnings: ['No planning marker is selected for deletion.'] });
+    removeMarker(this.app.state.plan, match.marker.agentId ?? match.agentId ?? this.app.state.selectedAgentId, match.index);
+    this.app.state.ui.selectedMarker = null;
+    recomputePlanningMarkerReachability(this.app.state, match.marker.agentId ?? this.app.state.selectedAgentId);
+    this.markManualPlan();
+    this.refreshPanels();
+    this.refreshMap();
+    return this.threeInteractionResult(intent, 'accepted', { changedCanonicalState: true, selectedMarkerId: match.marker.id ?? intent.markerId, userMessage: 'Planning marker deleted.' });
+  }
+
+  selectPlanningMarkerById(markerId, intent) {
+    const match = this.findMarkerById(markerId);
+    if (!match) return this.threeInteractionResult(intent, 'rejected', { userMessage: 'No planning marker found for inspection.', warnings: ['No planning marker found for inspection.'] });
+    this.app.state.selectedAgentId = match.marker.agentId ?? this.app.state.selectedAgentId;
+    this.app.state.ui.selectedMarker = { index: match.index, markerId: match.marker.id ?? markerId };
+    this.app.state.ui.selectedWaypoint = null;
+    this.app.state.ui.threeMissionInteraction ??= {};
+    this.app.state.ui.threeMissionInteraction.selectedEntity = { objectType: 'planningMarker', objectId: match.marker.id ?? markerId, markerId: match.marker.id ?? markerId, agentId: match.marker.agentId ?? null, gridCell: { x: match.marker.x, y: match.marker.y } };
+    this.refreshPanels();
+    this.refreshMap();
+    return this.threeInteractionResult(intent, 'accepted', { selectedMarkerId: match.marker.id ?? markerId, userMessage: 'Planning marker selected.' });
+  }
+
+  handleThreeCameraChanged(intent) {
+    this.updateMissionRenderDebug({ activeBackend: 'threeMission3d', threeMounted: true, viewModel: this.missionRenderViewModel, renderer: this.threeMissionRenderer, parityWarnings: [] });
+    return this.threeInteractionResult(intent, 'noChange', { userMessage: 'Three camera adjusted.' });
+  }
+
+  cancelThreeInteractionFromIntent(intent) {
+    this.app.state.ui.threeMissionInteraction ??= {};
+    this.app.state.ui.threeMissionInteraction.dragPreview = null;
+    this.app.state.ui.threeMissionInteraction.routePreview = null;
+    this.app.state.ui.threeMissionInteraction.placementValidation = null;
+    this.refreshPanels();
+    this.refreshMap();
+    return this.threeInteractionResult(intent, 'cancelled', { userMessage: 'Three interaction cancelled.' });
+  }
+
+  moveWaypointById(waypointId, cell) {
+    const match = this.findWaypointById(waypointId);
+    if (!match) return { ok: false, message: 'Waypoint was not found.' };
+    const validation = this.validateThreeMoveCell(cell, match.agentId, match.index);
+    if (!validation.valid) return { ok: false, message: validation.message ?? 'Waypoint move rejected.' };
+    const targetX = Math.round(cell.x);
+    const targetY = Math.round(cell.y);
+    if (Math.round(match.waypoint.x) === targetX && Math.round(match.waypoint.y) === targetY) return { ok: true, changed: false, waypoint: match.waypoint };
+    const waypoint = updateWaypoint(this.app.state.plan, match.agentId, match.index, { x: targetX, y: targetY });
+    this.app.state.ui.selectedWaypoint = { agentId: match.agentId, index: match.index };
+    this.app.state.ui.selectedMarker = null;
+    this.afterPlanChanged(match.agentId, { selectedIndex: match.index });
+    this.markManualPlan();
+    this.refreshPanels();
+    this.refreshMap();
+    return { ok: true, changed: true, waypoint };
+  }
+
+  validateThreeMoveCell(cell) {
+    if (!cell) return { valid: false, allowed: false, message: 'Move inside the mission grid.' };
+    const validity = isValidWaypointCell(this.app.state.level, Math.round(cell.x), Math.round(cell.y));
+    if (!validity.valid && validity.block) return { valid: false, allowed: false, message: validity.message, reason: 'blockedTerrain', cell };
+    if (!isCellNavigable(this.app.state.level, this.app.state.mission, Math.round(cell.x), Math.round(cell.y))) return { valid: false, allowed: false, message: 'Waypoint must stay in navigable water.', reason: 'notNavigable', cell };
+    return { valid: true, allowed: true, message: validity.warning ? validity.message : 'Valid waypoint cell.', cell };
+  }
+
+  validateThreePlacementPreview(intent) {
+    const cell = intent.gridCell;
+    if (!cell) return null;
+    if (intent.interactionMode !== 'placeWaypoint' && intent.interactionMode !== 'editWaypoint') return null;
+    const validity = isValidWaypointCell(this.app.state.level, cell.x, cell.y);
+    if (!validity.valid && validity.block) return { valid: false, allowed: false, reason: 'blockedTerrain', message: validity.message, cell };
+    const disabledReason = getPlacementDisabledReason(this.app.state, this.app.state.selectedAgentId);
+    if (disabledReason) return { valid: false, allowed: false, reason: 'placementDisabled', message: disabledReason, cell };
+    return { valid: true, allowed: true, reason: validity.warning ? 'warning' : null, message: validity.warning ? validity.message : 'Valid placement cell.', cell };
+  }
+
+  setThreePlacementValidation(validation) {
+    this.app.state.ui ??= {};
+    this.app.state.ui.threeMissionInteraction ??= {};
+    this.app.state.ui.threeMissionInteraction.placementValidation = validation;
+  }
+
+  findWaypointById(waypointId) {
+    if (!waypointId) return null;
+    for (const agentPlan of this.app.state.plan?.agentPlans ?? []) {
+      const index = (agentPlan.waypoints ?? []).findIndex((waypoint) => waypoint.id === waypointId || waypoint.waypointId === waypointId);
+      if (index >= 0) return { agentId: agentPlan.agentId, index, waypoint: agentPlan.waypoints[index] };
+    }
+    return null;
+  }
+
+  findSelectedWaypoint() {
+    const selected = this.app.state.ui?.selectedWaypoint;
+    if (!selected) return null;
+    const waypoint = this.app.state.plan?.agentPlans?.find((plan) => plan.agentId === selected.agentId)?.waypoints?.[selected.index];
+    return waypoint ? { agentId: selected.agentId, index: selected.index, waypoint } : null;
+  }
+
+  findMarkerById(markerId) {
+    if (!markerId) return null;
+    const index = (this.app.state.plan?.planningMarkers ?? []).findIndex((marker) => marker.id === markerId || marker.markerId === markerId);
+    if (index < 0) return null;
+    const marker = this.app.state.plan.planningMarkers[index];
+    return { index, marker, agentId: marker.agentId ?? this.app.state.selectedAgentId };
+  }
+
+  findSelectedMarker() {
+    const index = Number(this.app.state.ui?.selectedMarker?.index);
+    if (!Number.isInteger(index)) return null;
+    const marker = this.app.state.plan?.planningMarkers?.[index];
+    return marker ? { index, marker, agentId: marker.agentId ?? this.app.state.selectedAgentId } : null;
+  }
+
+  findPriorityTargetById(targetId) {
+    const active = getActivePriorityTargets(this.app.state.level, this.app.state.planningTime ?? 0);
+    return active.find((target) => target.id === targetId || target.targetId === targetId) ?? null;
+  }
   promptStartChange(agentId) {
     this.app.state.selectedAgentId = agentId;
     this.app.state.ui.hoverCell = null;
@@ -1094,34 +1583,36 @@ export class MissionWorkspaceScene extends PhaserScene {
 
   addWaypointForSelected({ x, y, action }) {
     if (this.previousWaypointSelected) {
-        const agentPlan = getAgentPlan(this.app.state.plan, this.app.state.selectedAgentId);
-        const agentPlanLength = agentPlan.waypoints.length;
-        for (let i = this.app.state.ui.selectedWaypoint.index +1; i < agentPlan.waypoints.length; i=i) {
-           this.removeWaypointFromPanel(this.app.state.selectedAgentId, i);
-        }
-        this.previousWaypointSelected = false;
+      const agentPlan = getAgentPlan(this.app.state.plan, this.app.state.selectedAgentId);
+      for (let i = this.app.state.ui.selectedWaypoint.index + 1; i < agentPlan.waypoints.length; i = i) {
+        this.removeWaypointFromPanel(this.app.state.selectedAgentId, i);
       }
+      this.previousWaypointSelected = false;
+    }
     const targetX = Math.round(x);
     const targetY = Math.round(y);
     if (requiresDeploymentSelection(this.app.state.mission, this.app.state.selectedAgentId)) {
-      this.app.toast('Choose a deployment cell first.', 'warning');
-      return;
+      const message = 'Choose a deployment cell first.';
+      this.app.toast(message, 'warning');
+      return { ok: false, message };
     }
     const disabledReason = getPlacementDisabledReason(this.app.state, this.app.state.selectedAgentId);
     if (disabledReason) {
-      this.app.toast(`Placement disabled: ${disabledReason}. Delete, move, reorder, or clear waypoints to repair the plan.`, 'warning');
-      return;
+      const message = `Placement disabled: ${disabledReason}. Delete, move, reorder, or clear waypoints to repair the plan.`;
+      this.app.toast(message, 'warning');
+      return { ok: false, message };
     }
     const validity = isValidWaypointCell(this.app.state.level, targetX, targetY);
     if (!validity.valid && validity.block) {
       this.app.toast(validity.message, 'warning');
-      return;
+      return { ok: false, message: validity.message };
     }
     if (validity.warning) this.app.toast(validity.message, 'warning');
     const placement = canPlaceWaypoint(this.app.state, this.app.state.selectedAgentId, { x: targetX, y: targetY, action });
     if (!placement.allowed) {
-      this.app.toast(placement.message || 'Waypoint placement is not available for this route.', 'warning');
-      return;
+      const message = placement.message || 'Waypoint placement is not available for this route.';
+      this.app.toast(message, 'warning');
+      return { ok: false, message };
     }
     if (placement.estimate?.warnings?.length) {
       this.app.toast(placement.estimate.warnings[0], 'warning');
@@ -1143,16 +1634,21 @@ export class MissionWorkspaceScene extends PhaserScene {
     this.app.state.ui.selectedWaypoint = { agentId: this.app.state.selectedAgentId, index };
     this.app.state.ui.selectedMarker = null;
     this.afterPlanChanged(this.app.state.selectedAgentId, { selectedIndex: index });
+    let message = 'Waypoint placed.';
     if (waypoint?.warnings?.some((warning) => String(warning).toLowerCase().includes('blocked'))) {
-      this.app.toast('Route preview is blocked by land; planning anchor stayed at the previous reachable point.', 'warning');
+      message = 'Route preview is blocked by land; planning anchor stayed at the previous reachable point.';
+      this.app.toast(message, 'warning');
     } else if (waypoint?.warnings?.some((warning) => String(warning).toLowerCase().includes('surfacing'))) {
-      this.app.toast('Waypoint is likely beyond the next surfacing window.', 'warning');
+      message = 'Waypoint is likely beyond the next surfacing window.';
+      this.app.toast(message, 'warning');
     } else if (absorbedMarker) {
-      this.app.toast('Marker converted to waypoint.', 'success');
+      message = 'Marker converted to waypoint.';
+      this.app.toast(message, 'success');
     }
     this.markManualPlan();
     this.refreshPanels();
     this.refreshMap();
+    return { ok: true, waypoint, index, agentId: this.app.state.selectedAgentId, message };
   }
 
   debugCoordinateHover(pointer, cell) {
@@ -1197,27 +1693,31 @@ export class MissionWorkspaceScene extends PhaserScene {
 
   addMarkerForSelected({ x, y }) {
     const agentId = this.app.state.selectedAgentId ?? this.app.state.mission?.agents?.[0]?.id ?? null;
-    const validity = isValidWaypointCell(this.app.state.level, x, y);
+    const targetX = Math.round(x);
+    const targetY = Math.round(y);
+    const validity = isValidWaypointCell(this.app.state.level, targetX, targetY);
     if (!validity.valid && validity.block) {
-      this.app.toast(validity.message.replace('Waypoints', 'Markers'), 'warning');
-      return;
+      const message = validity.message.replace('Waypoints', 'Markers');
+      this.app.toast(message, 'warning');
+      return { ok: false, message };
     }
     if (validity.warning) this.app.toast('Marker placed inside a hazard cell.', 'warning');
-    const target = findPriorityTargetNearCell(this.app.state.level, this.app.state.planningTime, x, y);
+    const target = findPriorityTargetNearCell(this.app.state.level, this.app.state.planningTime, targetX, targetY);
     const inspection = inspectCellAtTime({
       level: this.app.state.level,
       mission: this.app.state.mission,
       state: this.app.state,
-      x,
-      y,
+      x: targetX,
+      y: targetY,
       t: this.app.state.planningTime
     });
-    addMarker(this.app.state.plan, agentId, {
-      x,
-      y,
+    const marker = addMarker(this.app.state.plan, agentId, {
+      x: targetX,
+      y: targetY,
       t: this.app.state.planningTime,
       window: this.app.state.selectedWindow,
       type: target ? 'priorityTargetMarker' : 'futureTarget',
+      executable: false,
       label: target?.label ?? (inspection?.roiValue > 0 ? 'Future sample' : 'Planning Marker'),
       linkedTargetId: target?.id ?? null,
       roiValueAtPlacement: inspection?.roiValue ?? null,
@@ -1225,12 +1725,14 @@ export class MissionWorkspaceScene extends PhaserScene {
     });
     recomputePlanningMarkerReachability(this.app.state, agentId);
     const markerIndex = (this.app.state.plan.planningMarkers?.length ?? 1) - 1;
-    this.app.state.ui.selectedMarker = { index: markerIndex };
+    this.app.state.ui.selectedMarker = { index: markerIndex, markerId: marker?.id ?? null };
     this.app.state.ui.selectedWaypoint = null;
     this.markManualPlan();
     this.refreshPanels();
     this.refreshMap();
-    this.app.toast(target ? `Marker linked to ${target.label ?? target.id}.` : 'Planning marker added.', 'success');
+    const message = target ? `Marker linked to ${target.label ?? target.id}.` : 'Planning marker added.';
+    this.app.toast(message, 'success');
+    return { ok: true, marker, index: markerIndex, agentId, message };
   }
 
   togglePlacementMode() {
@@ -2523,3 +3025,19 @@ function formatScore(value) {
   if (!Number.isFinite(number)) return 'N/A';
   return Math.abs(number) >= 100 ? number.toFixed(0) : number.toFixed(2);
 }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

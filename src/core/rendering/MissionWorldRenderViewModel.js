@@ -1,6 +1,6 @@
-import { createMissionWorldCoordinateTransform, depthForLayer } from './MissionWorldCoordinates.js';
+﻿import { createMissionWorldCoordinateTransform, depthForLayer } from './MissionWorldCoordinates.js';
 
-export const MISSION_WORLD_RENDER_VIEW_MODEL_VERSION = 'mission-world-render-view-model-gfx-r3a';
+export const MISSION_WORLD_RENDER_VIEW_MODEL_VERSION = 'mission-world-render-view-model-gfx-r3b';
 export const MISSION_WORLD_SCALAR_LAYER_IDS = Object.freeze(['sampleValue', 'remainingSampleValue', 'samplingPriority', 'forecast', 'belief', 'uncertainty', 'hazard', 'none']);
 
 export function buildMissionWorldRenderViewModel({
@@ -10,6 +10,8 @@ export function buildMissionWorldRenderViewModel({
   plan = null,
   selectedAgentId = null,
   selectedWaypointId = null,
+  selectedMarkerId = null,
+  selectedPriorityTargetId = null,
   selectedCell = null,
   planningMarkers = null,
   activeTimeSeconds = 0,
@@ -39,8 +41,8 @@ export function buildMissionWorldRenderViewModel({
   const gliders = normalizeGliders(options.gliders ?? mission?.agents, selectedAgentId);
   const waypoints = normalizeWaypoints(options.waypoints ?? plan?.agentPlans, selectedWaypointId);
   const routes = normalizeRoutes(options.routes ?? plan?.agentPlans);
-  const markers = normalizePlanningMarkers(planningMarkers ?? options.planningMarkers ?? plan?.planningMarkers);
-  const priorityTargets = normalizePriorityTargets(options.priorityTargets, activeTimeSeconds);
+  const markers = normalizePlanningMarkers(planningMarkers ?? options.planningMarkers ?? plan?.planningMarkers, selectedMarkerId);
+  const priorityTargets = normalizePriorityTargets(options.priorityTargets, activeTimeSeconds, selectedPriorityTargetId);
   const observations = normalizePoints(options.observations, 'observation');
   const surfacingEvents = normalizePoints(options.surfacingEvents, 'surfacingEvent');
   const warnings = [];
@@ -82,7 +84,7 @@ export function buildMissionWorldRenderViewModel({
     observations,
     surfacingEvents,
     guidance: normalizeGuidance(options.guidance),
-    selection: { selectedAgentId: selectedAgentId ?? null, selectedWaypointId: selectedWaypointId ?? null, selectedCell: selectedCell ?? null },
+    selection: { selectedAgentId: selectedAgentId ?? null, selectedWaypointId: selectedWaypointId ?? null, selectedMarkerId: selectedMarkerId ?? null, selectedPriorityTargetId: selectedPriorityTargetId ?? null, selectedCell: selectedCell ?? null },
     visibility: normalizeVisibility(displaySettings, visibilityTier),
     planningWindow: planningWindow ? { ...planningWindow } : null,
     fieldState: fieldState ? { ...fieldState } : null,
@@ -268,12 +270,18 @@ function normalizeRoutes(agentPlans = []) {
   return raw.map((agentPlan) => ({ id: `${agentPlan.agentId}-planned-route`, agentId: agentPlan.agentId, status: agentPlan.status ?? 'planned', points: (agentPlan.waypoints ?? []).map((waypoint, index) => ({ id: waypoint.id ?? `${agentPlan.agentId}-route-point-${index + 1}`, x: finiteNumber(waypoint.x), y: finiteNumber(waypoint.y), z: finiteNumber(waypoint.z, -finiteNumber(waypoint.depthMeters, depthForLayer(waypoint.depthLayerId))), depthLayerId: waypoint.depthLayerId ?? 'surface', index })) })).filter((route) => route.points.length > 0);
 }
 
-function normalizePlanningMarkers(markers = []) {
-  return (markers ?? []).map((marker, index) => ({ markerId: marker.markerId ?? marker.id ?? `planning-marker-${index + 1}`, x: finiteNumber(marker.x), y: finiteNumber(marker.y), z: finiteNumber(marker.z, -finiteNumber(marker.depthMeters, 0)), plannedTimeSeconds: finiteNumber(marker.t ?? marker.plannedTimeSeconds), label: marker.label ?? 'Planning Marker', visible: marker.visible !== false, executable: false, agentId: marker.agentId ?? null, status: marker.status ?? marker.timingStatus ?? 'annotation' }));
+function normalizePlanningMarkers(markers = [], selectedMarkerId = null) {
+  return (markers ?? []).map((marker, index) => {
+    const markerId = marker.markerId ?? marker.id ?? `planning-marker-${index + 1}`;
+    return { markerId, x: finiteNumber(marker.x), y: finiteNumber(marker.y), z: finiteNumber(marker.z, -finiteNumber(marker.depthMeters, 0)), plannedTimeSeconds: finiteNumber(marker.t ?? marker.plannedTimeSeconds), label: marker.label ?? 'Planning Marker', visible: marker.visible !== false, executable: false, agentId: marker.agentId ?? null, status: marker.status ?? marker.timingStatus ?? 'annotation', selected: markerId === selectedMarkerId || selectedMarkerId === `${marker.agentId ?? ''}:${index}` || selectedMarkerId === String(index) };
+  });
 }
 
-function normalizePriorityTargets(targets = [], activeTimeSeconds = 0) {
-  return (targets ?? []).map((target, index) => ({ targetId: target.targetId ?? target.id ?? `priority-target-${index + 1}`, x: finiteNumber(target.x ?? target.position?.x), y: finiteNumber(target.y ?? target.position?.y), z: finiteNumber(target.z, -finiteNumber(target.depthMeters, 0)), value: finiteNumber(target.value, 1), active: target.active !== false, claimed: Boolean(target.claimed ?? target.captured), expiresAtSeconds: finiteOrNull(target.expiresAtSeconds ?? target.endTime), objectiveId: target.objectiveId ?? null, visible: target.visible !== false, timeSeconds: finiteNumber(target.timeSeconds ?? activeTimeSeconds) }));
+function normalizePriorityTargets(targets = [], activeTimeSeconds = 0, selectedPriorityTargetId = null) {
+  return (targets ?? []).map((target, index) => {
+    const targetId = target.targetId ?? target.id ?? `priority-target-${index + 1}`;
+    return { targetId, x: finiteNumber(target.x ?? target.position?.x), y: finiteNumber(target.y ?? target.position?.y), z: finiteNumber(target.z, -finiteNumber(target.depthMeters, 0)), value: finiteNumber(target.value, 1), active: target.active !== false, claimed: Boolean(target.claimed ?? target.captured), expiresAtSeconds: finiteOrNull(target.expiresAtSeconds ?? target.endTime), objectiveId: target.objectiveId ?? null, visible: target.visible !== false, timeSeconds: finiteNumber(target.timeSeconds ?? activeTimeSeconds), selected: targetId === selectedPriorityTargetId };
+  });
 }
 
 function normalizePoints(points = [], kind = 'point') {
@@ -397,3 +405,8 @@ function clamp01(value) {
 function round(value, digits = 6) {
   return Number(Number(value).toFixed(digits));
 }
+
+
+
+
+

@@ -1,4 +1,4 @@
-import {
+﻿import {
   formatMissionTime,
   getMissionTimelineFrames,
   getNextTimelineFrameIndex,
@@ -447,6 +447,8 @@ export class HtmlMissionWorkspaceOverlay {
       'renderer-three': () => this.handlers.setRendererBackend?.('threeMission3d'),
       'three-camera': (button) => this.handlers.setThreeCameraPreset?.(button.dataset.preset),
       'three-layer': (button) => this.handlers.toggleThreeLayer?.(button.dataset.layer),
+      'three-interaction-mode': (button) => this.handlers.setThreeInteractionMode?.(button.dataset.mode),
+      'three-cancel-interaction': () => this.handlers.cancelThreeInteraction?.(),
       'show-best-path': () => this.handlers.showBestPath?.(),
       'hide-best-path': () => this.handlers.hideBestPath?.(),
       'rerun-best-path': () => this.handlers.rerunBestPath?.(),
@@ -714,6 +716,8 @@ function rendererBackendSection(state) {
   const backend = state.ui?.rendererBackend === 'threeMission3d' ? 'threeMission3d' : 'legacyPhaser2d';
   const camera = state.ui?.threeMissionCameraPreset ?? 'obliqueMission';
   const layer = state.ui?.threeMissionLayers ?? {};
+  const mode = state.ui?.threeMissionInteractionMode ?? 'selectInspect';
+  const interaction = state.ui?.threeMissionInteraction ?? {};
   const layerButtons = [
     ['bathymetry', 'Bathymetry'],
     ['waterSurface', 'Water Surface'],
@@ -726,8 +730,22 @@ function rendererBackendSection(state) {
     ['waypoints', 'Waypoints'],
     ['routes', 'Routes'],
     ['planningMarkers', 'Planning Markers'],
-    ['priorityTargets', 'Gold Stars']
+    ['priorityTargets', 'Gold Stars'],
+    ['interaction', 'Interaction Overlay']
   ].map(([id, labelText]) => `<button class="console-button secondary" data-action="three-layer" data-layer="${escapeAttr(id)}">${layer[id] === false ? 'Show' : 'Hide'} ${escapeHtml(labelText)}</button>`).join('');
+  const interactionControls = backend === 'threeMission3d' ? `
+        <h3 class="waypoint-section-title">Three Planning Tools</h3>
+        <div class="console-button-row">
+          ${interactionModeButton('navigate', 'Navigate', mode)}
+          ${interactionModeButton('selectInspect', 'Select/Edit', mode)}
+          ${interactionModeButton('placeWaypoint', 'Place Waypoint', mode)}
+          ${interactionModeButton('placeMarker', 'Place Marker', mode)}
+          <button class="console-button secondary" data-action="three-cancel-interaction">Cancel</button>
+        </div>
+        <div class="hud-muted">Three pointer edits dispatch canonical workspace commands. Route timing, scoring, and simulation remain owned by the mission workspace.</div>
+        ${threeInteractionStatusPanel(interaction)}
+        <h3 class="waypoint-section-title">Three Layers</h3><div class="console-button-row">${layerButtons}</div>`
+    : '<div class="hud-muted">Three planning controls appear when the Three.js backend is active.</div>';
   return `
       <section class="console-section" data-renderer-backend-control>
         <h2>World View</h2>
@@ -743,10 +761,31 @@ function rendererBackendSection(state) {
           ${cameraButton('obliqueMission', 'Oblique Mission', camera)}
           ${cameraButton('waterColumnProfile', 'Water Column Profile', camera)}
         </div>
-        ${backend === 'threeMission3d' ? `<h3 class="waypoint-section-title">Three Layers</h3><div class="console-button-row">${layerButtons}</div>` : '<div class="hud-muted">Three layer controls appear when the Three.js backend is active.</div>'}
+        ${interactionControls}
       </section>`;
 }
 
+function interactionModeButton(id, label, active) {
+  return `<button class="console-button ${active === id ? 'primary' : 'secondary'}" data-action="three-interaction-mode" data-mode="${escapeAttr(id)}">${escapeHtml(label)}</button>`;
+}
+
+function threeInteractionStatusPanel(interaction = {}) {
+  const hover = interaction.hoveredCell;
+  const entity = interaction.hoveredEntity ?? interaction.selectedEntity;
+  const validation = interaction.placementValidation;
+  const last = interaction.lastResult;
+  const hoverLabel = hover ? `Cell (${hover.x}, ${hover.y})${hover.blocked ? ' blocked' : ''}` : 'No cell hover';
+  const entityLabel = entity?.objectType ? `${entity.objectType}: ${entity.objectId ?? entity.agentId ?? entity.waypointId ?? entity.markerId ?? entity.targetId ?? 'selected'}` : 'No object selected';
+  const validationLabel = validation?.message ?? interaction.userHint ?? 'Select a Three planning tool.';
+  const resultLabel = last?.status ? `${last.status}${last.userMessage ? ` - ${last.userMessage}` : ''}` : 'No Three edit submitted yet.';
+  return `
+        <div class="hud-card compact" data-three-interaction-status>
+          <div><strong>Hover:</strong> ${escapeHtml(hoverLabel)}</div>
+          <div><strong>Object:</strong> ${escapeHtml(entityLabel)}</div>
+          <div><strong>Placement:</strong> ${escapeHtml(validationLabel)}</div>
+          <div><strong>Last:</strong> ${escapeHtml(resultLabel)}</div>
+        </div>`;
+}
 function cameraButton(id, label, active) {
   return `<button class="console-button ${active === id ? 'primary' : 'secondary'}" data-action="three-camera" data-preset="${escapeAttr(id)}">${escapeHtml(label)}</button>`;
 }
@@ -1518,7 +1557,7 @@ function routeEstimate(state) {
   return {
     distance,
     energyText: hoverPreview
-      ? `${hoverPreview.valid ? `${hoverPreview.energy.toFixed(1)} Â· ETA ${Number(hoverPreview.eta ?? hoverPreview.estimatedTravelTime ?? 0).toFixed(1)} hr` : 'invalid'} (${hoverPreview.note})`
+      ? `${hoverPreview.valid ? `${hoverPreview.energy.toFixed(1)} Ã‚Â· ETA ${Number(hoverPreview.eta ?? hoverPreview.estimatedTravelTime ?? 0).toFixed(1)} hr` : 'invalid'} (${hoverPreview.note})`
       : budget ? `${Math.round(energy)} / ${Math.round(budget)}` : `${Math.round(energy)}`
   };
 }
@@ -1567,3 +1606,5 @@ function escapeHtml(value) {
 function escapeAttr(value) {
   return escapeHtml(value).replace(/`/g, '&#096;');
 }
+
+

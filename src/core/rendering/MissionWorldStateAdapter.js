@@ -1,4 +1,4 @@
-import { getPlanningFrame } from '../sim/ChallengeMode.js';
+﻿import { getPlanningFrame } from '../sim/ChallengeMode.js';
 import { getFrameAtTime, getWindowForTime } from '../time/MissionTime.js';
 import { sampleCurrentField } from '../currents/CurrentFieldSampler.js';
 import { getDeploymentZonesForAgent, getSelectedStart } from '../deployment/DeploymentZones.js';
@@ -6,7 +6,7 @@ import { getActivePriorityTargets } from '../sim/PriorityTargets.js';
 import { getMobileHazardsAtTime } from '../sim/MobileHazards.js';
 import { computePlannedCoverage, computeTravelCostField, getCellRoiDisplayValue, normalizeRoiMode } from '../roi/RoiMode.js';
 
-export const MISSION_WORLD_STATE_ADAPTER_VERSION = 'mission-world-state-adapter-gfx-r3a';
+export const MISSION_WORLD_STATE_ADAPTER_VERSION = 'mission-world-state-adapter-gfx-r3b';
 
 export function missionWorldRenderInputFromWorkspace(scene, options = {}) {
   const state = scene?.app?.state ?? scene?.state ?? {};
@@ -37,6 +37,8 @@ export function missionWorldRenderInputFromReplay(replayState = {}, options = {}
     plan: publicState.plan ?? replayState.plan ?? null,
     selectedAgentId: options.selectedAgentId ?? replayState.selectedAgentId ?? publicState.selectedAgentId ?? null,
     selectedWaypointId: options.selectedWaypointId ?? null,
+    selectedMarkerId: options.selectedMarkerId ?? null,
+    selectedPriorityTargetId: options.selectedPriorityTargetId ?? null,
     activeTimeSeconds: Number(replayState.timeSeconds ?? publicState.timeSeconds ?? 0) || 0,
     displaySettings: { ...(options.displaySettings ?? {}), rendererBackend: options.rendererBackend ?? 'threeMission3d' },
     visibilityTier: options.visibilityTier ?? 'fair',
@@ -54,6 +56,8 @@ export function missionWorldRenderInputSummary(input = {}) {
     activeTimeSeconds: finiteNumber(input.activeTimeSeconds),
     selectedAgentId: input.selectedAgentId ?? null,
     selectedWaypointId: input.selectedWaypointId ?? null,
+    selectedMarkerId: input.selectedMarkerId ?? null,
+    selectedPriorityTargetId: input.selectedPriorityTargetId ?? null,
     dropZoneCount: input.options?.dropZones?.length ?? 0,
     gliderCount: input.options?.gliders?.length ?? input.mission?.agents?.length ?? 0,
     waypointCount: (input.options?.waypoints ?? []).length,
@@ -83,6 +87,8 @@ function missionWorldRenderInputFromState(state = {}, options = {}) {
   const grid = level?.world?.grid ?? { width: frame?.roi?.[0]?.length ?? 10, height: frame?.roi?.length ?? 10 };
   const selectedAgentId = options.selectedAgentId ?? state.selectedAgentId ?? mission?.agents?.[0]?.id ?? null;
   const selectedWaypointId = selectedWaypointIdentity(state.ui?.selectedWaypoint);
+  const selectedMarkerId = selectedMarkerIdentity(state.ui?.selectedMarker, plan);
+  const selectedPriorityTargetId = state.ui?.selectedPriorityTargetId ?? null;
   const selectedWindow = state.selectedWindow ?? getWindowForTime(level, activeTimeSeconds);
   const displaySettings = normalizeDisplaySettings(state.ui, options.displaySettings);
   const sampleField = buildSampleField({ level, mission, plan, frame, state, selectedAgentId, selectedWaypoint: state.ui?.selectedWaypoint, activeTimeSeconds, displaySettings });
@@ -112,6 +118,8 @@ function missionWorldRenderInputFromState(state = {}, options = {}) {
     plan,
     selectedAgentId,
     selectedWaypointId,
+    selectedMarkerId,
+    selectedPriorityTargetId,
     selectedCell: options.selectedCell ?? state.ui?.hoverCell ?? null,
     planningMarkers,
     activeTimeSeconds,
@@ -266,6 +274,17 @@ function buildStaticHazards(level) {
   return hazards;
 }
 
+function selectedMarkerIdentity(selectedMarker, plan) {
+  if (!selectedMarker) return null;
+  if (selectedMarker.markerId) return selectedMarker.markerId;
+  const index = Number(selectedMarker.index);
+  if (Number.isInteger(index)) {
+    const marker = plan?.planningMarkers?.[index];
+    return marker?.markerId ?? marker?.id ?? String(index);
+  }
+  return null;
+}
+
 function selectedWaypointIdentity(selectedWaypoint) {
   if (!selectedWaypoint) return null;
   if (selectedWaypoint.waypointId) return selectedWaypoint.waypointId;
@@ -286,3 +305,7 @@ function finiteNumber(value, fallback = 0) {
 function round(value, digits = 4) {
   return Number(Number(value).toFixed(digits));
 }
+
+
+
+

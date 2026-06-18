@@ -12,8 +12,9 @@ export function updateThreePlanningMarkerLayer(group, viewModel = {}) {
     );
     mesh.name = marker.markerId;
     mesh.position.copy(positionForRecord(transform, marker, 0.28));
-    mesh.userData = { id: marker.markerId, markerId: marker.markerId, executable: false, plannedTimeSeconds: marker.plannedTimeSeconds };
+    mesh.userData = { missionObjectType: 'planningMarker', missionObjectId: marker.markerId, id: marker.markerId, markerId: marker.markerId, agentId: marker.agentId ?? null, executable: false, plannedTimeSeconds: marker.plannedTimeSeconds, gridCell: { x: marker.x, y: marker.y } };
     group.add(mesh);
   }
   return group;
 }
+

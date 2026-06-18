@@ -12,8 +12,9 @@ export function updateThreeWaypointLayer(group, viewModel = {}) {
     );
     mesh.name = waypoint.waypointId;
     mesh.position.copy(positionForRecord(transform, waypoint, 0.22));
-    mesh.userData = { id: waypoint.waypointId, waypointId: waypoint.waypointId, agentId: waypoint.agentId, index: waypoint.index, action: waypoint.action, selected: waypoint.selected === true };
+    mesh.userData = { missionObjectType: 'waypoint', missionObjectId: waypoint.waypointId, id: waypoint.waypointId, waypointId: waypoint.waypointId, agentId: waypoint.agentId, index: waypoint.index, action: waypoint.action, selected: waypoint.selected === true, gridCell: { x: waypoint.x, y: waypoint.y } };
     group.add(mesh);
   }
   return group;
 }
+

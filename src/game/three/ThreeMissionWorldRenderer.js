@@ -9,10 +9,16 @@ import { updateThreePriorityTargetLayer } from './layers/ThreePriorityTargetLaye
 import { updateThreeCurrentVectorLayer } from './layers/ThreeCurrentVectorLayer.js';
 import { updateThreeHazardLayer, updateThreeConstraintLayer } from './layers/ThreeHazardLayer.js';
 import { updateThreeSelectionLayer, updateThreeGuidanceLayer } from './layers/ThreeSelectionLayer.js';
+import {
+  createThreePlanningInteractionLayer,
+  updateThreePlanningInteractionLayer,
+  setThreePlanningInteractionLayerVisibility,
+  disposeThreePlanningInteractionLayer
+} from './layers/ThreePlanningInteractionLayer.js';
 import { clearGroup, makeBoxCell } from './layers/ThreeMissionLayerUtils.js';
 import { missionWorldRenderViewModelSummary } from '../../core/rendering/MissionWorldRenderViewModel.js';
 
-export const THREE_MISSION_WORLD_RENDERER_VERSION = 'three-mission-world-renderer-gfx-r3a';
+export const THREE_MISSION_WORLD_RENDERER_VERSION = 'three-mission-world-renderer-gfx-r3b';
 
 const GROUP_KEYS = [
   'bathymetryGroup',
@@ -30,7 +36,8 @@ const GROUP_KEYS = [
   'priorityTargetGroup',
   'observationGroup',
   'selectionGroup',
-  'guidanceGroup'
+  'guidanceGroup',
+  'interactionGroup'
 ];
 
 export function createThreeMissionWorldRenderer(container, options = {}) {
@@ -59,6 +66,10 @@ export function createThreeMissionWorldRenderer(container, options = {}) {
   }
   const scalarLayer = createThreeScalarFieldLayer({ name: 'mission-scalar-field' });
   groups.scalarFieldGroup.add(scalarLayer.group);
+  const planningInteractionLayer = createThreePlanningInteractionLayer({ name: 'mission-planning-interaction-layer' });
+  groups.interactionGroup.add(planningInteractionLayer.group);
+  const interactionSurface = createInteractionSurface();
+  groups.interactionGroup.add(interactionSurface);
   scene.add(new THREE.HemisphereLight(0xdff9ff, 0x07111f, 1.35));
   const sun = new THREE.DirectionalLight(0xffffff, 2.1);
   sun.position.set(-24, 38, 22);
@@ -76,6 +87,8 @@ export function createThreeMissionWorldRenderer(container, options = {}) {
     root,
     groups,
     scalarLayer,
+    planningInteractionLayer,
+    interactionSurface,
     viewModel: null,
     layerVisibility: defaultLayerVisibility(options.layerVisibility),
     cameraState: normalizeCameraPatch(options.camera ?? { preset: 'obliqueMission' }),
@@ -118,6 +131,8 @@ export function updateThreeMissionWorldRenderer(renderer, viewModel = {}) {
   updateObservationLayer(renderer.groups.observationGroup, viewModel);
   updateThreeSelectionLayer(renderer.groups.selectionGroup, viewModel);
   updateThreeGuidanceLayer(renderer.groups.guidanceGroup, viewModel);
+  updateInteractionSurface(renderer, viewModel);
+  updateThreePlanningInteractionLayer(renderer.planningInteractionLayer, viewModel.interactionViewModel, { transform: viewModel.coordinateSystem, viewModel });
   setThreeMissionLayerVisibility(renderer, renderer.layerVisibility);
   fitCamera(renderer, viewModel);
   renderer.renderer.render(renderer.scene, renderer.camera);
@@ -161,6 +176,8 @@ export function setThreeMissionLayerVisibility(renderer, visibilityPatch = {}) {
   renderer.groups.observationGroup.visible = v.observations !== false;
   renderer.groups.selectionGroup.visible = v.selection !== false;
   renderer.groups.guidanceGroup.visible = v.guidance !== false;
+  renderer.groups.interactionGroup.visible = v.interaction !== false;
+  setThreePlanningInteractionLayerVisibility(renderer.planningInteractionLayer, v.interaction !== false);
   setThreeScalarFieldVisibility(renderer.scalarLayer, v.scalarField !== false);
   return renderer;
 }
@@ -185,6 +202,8 @@ export function threeMissionWorldRendererSummary(renderer = {}) {
     routeObjectCount: renderer.groups?.routeGroup?.children?.length ?? 0,
     markerObjectCount: renderer.groups?.markerGroup?.children?.length ?? 0,
     priorityTargetObjectCount: renderer.groups?.priorityTargetGroup?.children?.length ?? 0,
+    interactionObjectCount: renderer.groups?.interactionGroup?.children?.length ?? 0,
+    interactionSurfaceAvailable: Boolean(renderer.interactionSurface),
     layerVisibility: { ...(renderer.layerVisibility ?? {}) },
     camera: { ...(renderer.cameraState ?? {}) },
     ownsSimulationState: false,
@@ -205,6 +224,7 @@ export function disposeThreeMissionWorldRenderer(renderer) {
   renderer.disposed = true;
   if (renderer.animationFrame) globalThis.cancelAnimationFrame?.(renderer.animationFrame);
   disposeThreeScalarFieldLayer(renderer.scalarLayer);
+  disposeThreePlanningInteractionLayer(renderer.planningInteractionLayer);
   for (const group of Object.values(renderer.groups ?? {})) clearGroup(group);
   renderer.scene?.traverse?.((object) => {
     object.geometry?.dispose?.();
@@ -214,6 +234,35 @@ export function disposeThreeMissionWorldRenderer(renderer) {
   renderer.renderer?.dispose?.();
   renderer.renderer?.domElement?.remove?.();
   renderer.container?.classList?.remove?.('three-mission-world-host');
+}
+
+function createInteractionSurface() {
+  const mesh = new THREE.Mesh(
+    new THREE.PlaneGeometry(1, 1, 1, 1),
+    new THREE.MeshBasicMaterial({ transparent: true, opacity: 0, depthWrite: false, side: THREE.DoubleSide })
+  );
+  mesh.name = 'mission-grid-interaction-surface';
+  mesh.rotation.x = -Math.PI / 2;
+  mesh.position.y = 0.5;
+  mesh.renderOrder = 999;
+  mesh.userData = { missionObjectType: 'gridCell', missionObjectId: 'mission-grid-interaction-surface', ownsPlanning: false, ownsSimulationState: false, ownsScoring: false };
+  return mesh;
+}
+
+function updateInteractionSurface(renderer, viewModel = {}) {
+  const surface = renderer.interactionSurface;
+  const transform = viewModel.coordinateSystem;
+  if (!surface || !transform) return;
+  const width = Math.max(1, Number(viewModel.grid?.width ?? transform.width ?? 1)) * transform.cellSize;
+  const height = Math.max(1, Number(viewModel.grid?.height ?? transform.height ?? 1)) * transform.cellSize;
+  surface.scale.set(width, height, 1);
+  surface.position.set(0, 0.5, 0);
+  surface.userData = {
+    ...(surface.userData ?? {}),
+    gridWidth: viewModel.grid?.width ?? transform.width,
+    gridHeight: viewModel.grid?.height ?? transform.height,
+    coordinateSystem: transform
+  };
 }
 
 function updateBathymetry(renderer, viewModel) {
@@ -319,7 +368,8 @@ function defaultLayerVisibility(input = {}) {
     priorityTargets: input.priorityTargets !== false,
     observations: input.observations !== false,
     selection: input.selection !== false,
-    guidance: input.guidance !== false
+    guidance: input.guidance !== false,
+    interaction: input.interaction !== false
   };
 }
 
@@ -335,3 +385,8 @@ function renderLoop(renderer) {
   renderer.renderer.render(renderer.scene, renderer.camera);
   renderer.animationFrame = globalThis.requestAnimationFrame?.(() => renderLoop(renderer)) ?? null;
 }
+
+
+
+
+
