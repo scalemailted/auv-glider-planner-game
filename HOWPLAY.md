@@ -205,7 +205,7 @@ The bottom timeline shows the plan structure above the slider. Numbered yellow c
 
 The committed route line starts at the fixed start, selected deployment cell, or surfaced replanning position. It then connects to waypoint 1 and continues through the rest of the waypoint list. If no deployment cell has been chosen, the game does not draw a fake route from the corner of the map.
 
-The deployment start is separate from the waypoint list. It is not counted as waypoint 1 and does not sample ROI. In drop-zone missions, use the `Change` control in the waypoint panel or click another valid drop-zone cell before execution to move the start.
+The deployment start is separate from the waypoint list. It is not counted as waypoint 1 and does not sample ROI. In drop-zone missions, use the `Change` control in the waypoint panel or click another valid drop-zone cell before execution to move the start. The Three.js map uses the highlighted drop-zone cells as the source of truth and recenters the selector on the chosen canonical cell.
 
 If the next waypoint would exceed estimated fuel or cross blocked terrain, the game blocks the placement and shows a warning. A final waypoint beyond mission duration is different: it can be a terminal carry-through instruction. Simulation travels toward it, stops at the mission time limit, marks it missed because time expired, and debriefs normally. You can repair true route problems by deleting waypoints, moving them closer, reordering them, or clearing the selected glider's route.
 

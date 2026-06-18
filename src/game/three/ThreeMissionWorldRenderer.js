@@ -23,7 +23,7 @@ import {
 import { clearGroup, makeBoxCell } from './layers/ThreeMissionLayerUtils.js';
 import { missionWorldRenderViewModelSummary } from '../../core/rendering/MissionWorldRenderViewModel.js';
 
-export const THREE_MISSION_WORLD_RENDERER_VERSION = 'three-mission-world-renderer-gfx-r3b';
+export const THREE_MISSION_WORLD_RENDERER_VERSION = 'three-mission-world-renderer-three-r1-1';
 
 const GROUP_KEYS = [
   'bathymetryGroup',
@@ -59,7 +59,8 @@ export function createThreeMissionWorldRenderer(container, options = {}) {
   scene.fog = new THREE.FogExp2(0x06111f, 0.014);
   const camera = new THREE.PerspectiveCamera(46, width / height, 0.1, 4000);
   const webglRenderer = new THREE.WebGLRenderer({ antialias: true, alpha: false, powerPreference: 'high-performance' });
-  webglRenderer.setPixelRatio(Math.min(2, Number(globalThis.devicePixelRatio || 1)));
+  const pixelRatio = Math.min(2, Number(globalThis.devicePixelRatio || 1));
+  webglRenderer.setPixelRatio(pixelRatio);
   webglRenderer.setSize(width, height, false);
   webglRenderer.domElement.className = 'three-mission-world-canvas';
   webglRenderer.domElement.setAttribute('aria-label', 'Three.js live mission world renderer');
@@ -99,6 +100,8 @@ export function createThreeMissionWorldRenderer(container, options = {}) {
     planningInteractionLayer,
     interactionSurface,
     viewModel: null,
+    rendererPixelRatio: pixelRatio,
+    lastSize: { width, height, pixelRatio, resizeSequence: 0 },
     layerVisibility: defaultLayerVisibility(options.layerVisibility),
     cameraState: normalizeCameraPatch(options.camera ?? { preset: 'obliqueMission' }),
     disposed: false,
@@ -155,11 +158,23 @@ export function updateThreeMissionWorldRenderer(renderer, viewModel = {}) {
 
 export function resizeThreeMissionWorldRenderer(renderer, width, height) {
   if (!renderer || renderer.disposed) return renderer;
-  const w = Math.max(1, Number(width ?? renderer.container?.clientWidth ?? 1));
-  const h = Math.max(1, Number(height ?? renderer.container?.clientHeight ?? 1));
+  const rect = renderer.container?.getBoundingClientRect?.() ?? null;
+  const w = Math.max(1, Number(width ?? rect?.width ?? renderer.container?.clientWidth ?? 1));
+  const h = Math.max(1, Number(height ?? rect?.height ?? renderer.container?.clientHeight ?? 1));
+  const pixelRatio = Math.min(2, Number(globalThis.devicePixelRatio || 1));
+  renderer.renderer.setPixelRatio(pixelRatio);
   renderer.camera.aspect = w / h;
   renderer.camera.updateProjectionMatrix();
   renderer.renderer.setSize(w, h, false);
+  renderer.rendererPixelRatio = pixelRatio;
+  renderer.lastSize = {
+    width: w,
+    height: h,
+    pixelRatio,
+    backingWidth: renderer.renderer.domElement?.width ?? null,
+    backingHeight: renderer.renderer.domElement?.height ?? null,
+    resizeSequence: Number(renderer.lastSize?.resizeSequence ?? 0) + 1
+  };
   renderer.renderer.render(renderer.scene, renderer.camera);
   return renderer;
 }
@@ -224,6 +239,13 @@ export function threeMissionWorldRendererSummary(renderer = {}) {
     priorityTargetObjectCount: renderer.groups?.priorityTargetGroup?.children?.length ?? 0,
     interactionObjectCount: renderer.groups?.interactionGroup?.children?.length ?? 0,
     interactionSurfaceAvailable: Boolean(renderer.interactionSurface),
+    canvasBackingWidth: renderer.renderer?.domElement?.width ?? null,
+    canvasBackingHeight: renderer.renderer?.domElement?.height ?? null,
+    rendererPixelRatio: renderer.rendererPixelRatio ?? null,
+    cameraAspect: renderer.camera?.aspect ?? null,
+    hostWidth: renderer.lastSize?.width ?? null,
+    hostHeight: renderer.lastSize?.height ?? null,
+    resizeSequence: renderer.lastSize?.resizeSequence ?? 0,
     layerVisibility: { ...(renderer.layerVisibility ?? {}) },
     camera: { ...(renderer.cameraState ?? {}) },
     ownsSimulationState: false,
@@ -270,7 +292,7 @@ function createInteractionSurface() {
   mesh.rotation.x = -Math.PI / 2;
   mesh.position.y = 0.5;
   mesh.renderOrder = 999;
-  mesh.userData = { missionObjectType: 'gridCell', missionObjectId: 'mission-grid-interaction-surface', ownsPlanning: false, ownsSimulationState: false, ownsScoring: false };
+  mesh.userData = { missionObjectType: 'gridCell', missionObjectId: 'mission-grid-interaction-surface', planeId: 'surface', depthLayerId: 'surface', depthMeters: 0, interactionEnabled: true, visualGridEnabled: true, ownsPlanning: false, ownsSimulationState: false, ownsScoring: false };
   return mesh;
 }
 
@@ -286,7 +308,12 @@ function updateInteractionSurface(renderer, viewModel = {}) {
     ...(surface.userData ?? {}),
     gridWidth: viewModel.grid?.width ?? transform.width,
     gridHeight: viewModel.grid?.height ?? transform.height,
-    coordinateSystem: transform
+    coordinateSystem: transform,
+    planeId: 'surface',
+    depthLayerId: 'surface',
+    depthMeters: 0,
+    interactionEnabled: true,
+    visualGridEnabled: true
   };
 }
 

@@ -1,7 +1,8 @@
 import * as THREE from 'three';
 import { worldToGridCell } from '../../core/rendering/MissionWorldCoordinates.js';
+import { pointerClientToCanvasLocal, canvasLocalToNdc } from '../../core/rendering/MissionWorldPointerCoordinates.js';
 
-export const THREE_MISSION_HIT_TEST_VERSION = 'three-mission-hit-test-gfx-r3b';
+export const THREE_MISSION_HIT_TEST_VERSION = 'three-mission-hit-test-three-r1-1';
 
 export const THREE_MISSION_HIT_PRIORITY = Object.freeze([
   'waypoint',
@@ -45,13 +46,13 @@ export function createThreeMissionHitTestContext(options = {}) {
 export function hitTestThreeMissionWorld(context, pointer, options = {}) {
   if (!context?.camera || !context?.domElement) return noneHit('missingContext');
   const raycaster = context.raycaster ?? new THREE.Raycaster();
-  configureRaycaster(raycaster, context, pointer);
+  const pointerDiagnostics = configureRaycaster(raycaster, context, pointer);
   const entityHit = hitTestMissionEntities(context, raycaster, options);
   const gridHit = hitTestMissionGrid(context, raycaster, options);
   const hit = entityHit.category !== 'none'
     ? { ...entityHit, gridCell: entityHit.gridCell ?? gridHit.gridCell ?? null, gridHit }
     : gridHit.category !== 'none' ? gridHit : noneHit('noHit');
-  return { ...hit, summary: threeMissionHitTestSummary(hit) };
+  return { ...hit, pointerDiagnostics, summary: threeMissionHitTestSummary(hit) };
 }
 
 export function hitTestMissionGrid(context, raycaster, options = {}) {
@@ -169,14 +170,22 @@ function configureRaycaster(raycaster, context, pointer) {
   const rect = context.domElement.getBoundingClientRect();
   const clientX = Number(pointer?.clientX ?? pointer?.x ?? rect.left);
   const clientY = Number(pointer?.clientY ?? pointer?.y ?? rect.top);
-  const ndc = new THREE.Vector2(
-    ((clientX - rect.left) / Math.max(1, rect.width)) * 2 - 1,
-    -(((clientY - rect.top) / Math.max(1, rect.height)) * 2 - 1)
-  );
+  const local = pointerClientToCanvasLocal({ clientX, clientY }, rect);
+  const ndcPlain = canvasLocalToNdc(local, rect);
+  const ndc = new THREE.Vector2(ndcPlain.x, ndcPlain.y);
   raycaster.params.Line ??= {};
   raycaster.params.Line.threshold = Number(context.viewModel?.coordinateSystem?.cellSize ?? 1) * 0.24;
   raycaster.setFromCamera(ndc, context.camera);
-  return raycaster;
+  const diagnostics = {
+    canvasCssRect: rectToPlain(rect),
+    pointerClient: { x: round(clientX), y: round(clientY) },
+    pointerLocal: { x: round(local.x), y: round(local.y), inside: local.inside === true },
+    pointerNdc: { x: round(ndc.x), y: round(ndc.y) },
+    rayOrigin: pointToPlain(raycaster.ray.origin),
+    rayDirection: pointToPlain(raycaster.ray.direction)
+  };
+  context.lastPointerDiagnostics = diagnostics;
+  return diagnostics;
 }
 
 function missionUserData(object, expectedType = null) {
@@ -246,6 +255,10 @@ function pointToGridCell(context, point) {
   const cell = worldToGridCell(context.viewModel.coordinateSystem, point.x, point.y, point.z);
   if (!cell.inside) return null;
   return { x: cell.x, y: cell.y, col: cell.x, row: cell.y };
+}
+
+function rectToPlain(rect) {
+  return { left: round(rect.left), top: round(rect.top), width: round(rect.width), height: round(rect.height), right: round(rect.right), bottom: round(rect.bottom) };
 }
 
 function pointToPlain(point) {

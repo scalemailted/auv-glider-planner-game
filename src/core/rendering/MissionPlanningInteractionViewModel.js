@@ -1,4 +1,4 @@
-export const MISSION_PLANNING_INTERACTION_VIEW_MODEL_VERSION = 'mission-planning-interaction-view-model-gfx-r3b';
+export const MISSION_PLANNING_INTERACTION_VIEW_MODEL_VERSION = 'mission-planning-interaction-view-model-three-r1-1';
 
 export function buildMissionPlanningInteractionViewModel({
   missionWorldViewModel = null,
@@ -24,6 +24,13 @@ export function buildMissionPlanningInteractionViewModel({
     hoveredCell,
     hoveredEntity,
     selectedEntity,
+    deploymentSelectionActive: interactionState.deploymentSelectionActive === true,
+    deploymentAgentId: interactionState.deploymentAgentId ?? null,
+    deploymentCandidateCell: cloneCell(interactionState.deploymentCandidateCell),
+    deploymentCandidateValid: interactionState.deploymentCandidateValid ?? null,
+    deploymentValidationReason: interactionState.deploymentValidationReason ?? null,
+    selectedStartCell: cloneCell(interactionState.selectedStartCell),
+    selectedDropZoneId: interactionState.selectedDropZoneId ?? null,
     placementValid: validation ? validation.valid !== false && validation.allowed !== false : null,
     placementReason: validation?.reason ?? validation?.message ?? interactionState.placementReason ?? null,
     routePreview: normalizedRoutePreview,
@@ -62,6 +69,10 @@ export function missionPlanningInteractionViewModelSummary(viewModel = {}) {
     placementReason: viewModel.placementReason ?? null,
     routePreviewActive: Boolean(viewModel.routePreview?.active),
     dragPreviewActive: Boolean(viewModel.dragPreview?.active),
+    deploymentSelectionActive: viewModel.deploymentSelectionActive === true,
+    deploymentAgentId: viewModel.deploymentAgentId ?? null,
+    deploymentCandidateCell: viewModel.deploymentCandidateCell ? { ...viewModel.deploymentCandidateCell } : null,
+    deploymentCandidateValid: viewModel.deploymentCandidateValid ?? null,
     guidanceConeVisible: Boolean(viewModel.guidanceCone),
     reachableRegionVisible: Boolean(viewModel.reachableRegion),
     warningCount: viewModel.warnings?.length ?? 0,
@@ -128,6 +139,7 @@ function hintForMode(mode) {
   if (mode === 'placeWaypoint') return 'Click a valid water cell to add a waypoint. Right-drag or wheel navigates the camera.';
   if (mode === 'placeMarker') return 'Click a valid mission cell to add a non-executable planning marker.';
   if (mode === 'navigate') return 'Drag to move the camera. Clicks do not edit the plan in Navigate mode.';
+  if (mode === 'selectDeployment') return 'Click a valid highlighted drop-zone cell to set the active glider start.';
   return 'Click objects to inspect or select. Drag a selected waypoint to move it.';
 }
 

@@ -1,6 +1,7 @@
 import { expect, test } from '@playwright/test';
 import fs from 'node:fs/promises';
 import { startStaticServer } from './static-server.mjs';
+import { attachBrowserErrorCollector } from './helpers/BrowserErrorCollector.js';
 
 let server;
 
@@ -2744,6 +2745,72 @@ test('campaign planning smoke flow reaches debrief', async ({ page }) => {
   await expect(page.locator('body')).not.toHaveClass(/debrief-fullscreen/);
 });
 
+test('Three Mission Workspace Stabilization', async ({ page }) => {
+  const browserErrors = attachBrowserErrorCollector(page);
+  await page.goto('/');
+  await expect.poll(() => page.evaluate(() => window.anchorGame?.phaser?.scene.getScene('MainMenuScene')?.sys.isActive() ?? false)).toBe(true);
+  await page.evaluate(() => window.anchorGame.phaser.scene.getScene('MainMenuScene').startCampaignLevel('tutorial_01_first_deployment'));
+  await expect.poll(() => page.evaluate(() => window.anchorGame.state.level?.levelId)).toBe('tutorial_01_first_deployment');
+  await expect.poll(() => page.evaluate(() => window.anchorGame.phaser.scene.getScene('MissionBriefingScene')?.sys.isActive?.() ?? false), { timeout: 15000 }).toBe(true);
+  await startPlanningFromBriefing(page);
+  await expect.poll(() => page.evaluate(() => window.ANCHOR_MISSION_RENDER_DEBUG?.rendererReady === true), { timeout: 15000 }).toBe(true);
+  await expect.poll(() => page.evaluate(() => window.ANCHOR_MISSION_RENDER_DEBUG?.rendererRuntimeErrorCount ?? -1)).toBe(0);
+  await expect.poll(() => page.evaluate(() => Boolean(document.querySelector('.three-mission-world-canvas')))).toBe(true);
+  await expect.poll(() => page.evaluate(() => window.ANCHOR_MISSION_RENDER_DEBUG?.dropZoneCount ?? 0)).toBeGreaterThan(0);
+  await expect.poll(() => page.evaluate(() => window.ANCHOR_MISSION_RENDER_DEBUG?.rendererSummary?.dropZoneObjectCount ?? 0)).toBeGreaterThan(0);
+  expect(browserErrors.unexpected()).toEqual([]);
+
+  const deploymentCells = await page.evaluate(() => {
+    const zone = window.anchorGame.state.level?.zones?.find((candidate) => candidate.type === 'deployment');
+    return zone?.cells?.map((cell) => ({ x: cell.x, y: cell.y })) ?? [];
+  });
+  expect(deploymentCells.length).toBeGreaterThan(0);
+  const initialCell = deploymentCells[0];
+  const distinctTargetAvailable = deploymentCells.some((cell) => cell.x !== initialCell.x || cell.y !== initialCell.y);
+  const targetCell = deploymentCells.find((cell) => cell.x !== initialCell.x || cell.y !== initialCell.y) ?? initialCell;
+  let point;
+  await clickCell(page, initialCell.x, initialCell.y);
+  await expect.poll(() => page.evaluate(() => {
+    const start = window.anchorGame.state.mission?.agents?.[0]?.deployment?.selectedStart;
+    return start ? { x: start.x, y: start.y } : null;
+  })).toEqual(initialCell);
+
+  const beforeWaypointCount = await totalWaypointCount(page);
+  await expect(page.locator('#waypoint-timeline [data-change-start]').first()).toBeVisible();
+  await page.locator('#waypoint-timeline [data-change-start]').first().click();
+  await expect.poll(() => page.evaluate(() => window.ANCHOR_MISSION_RENDER_DEBUG?.deploymentSelectionActive === true)).toBe(true);
+  point = await cellCenter(page, targetCell.x, targetCell.y);
+  await page.mouse.click(point.x, point.y);
+  await expect.poll(() => page.evaluate(() => window.ANCHOR_MISSION_RENDER_DEBUG?.lastIntentStatus)).toBe(distinctTargetAvailable ? 'accepted' : 'noChange');
+  await expect.poll(() => page.evaluate(() => {
+    const start = window.anchorGame.state.mission?.agents?.[0]?.deployment?.selectedStart;
+    return start ? { x: start.x, y: start.y } : null;
+  })).toEqual(targetCell);
+  await expect(page.evaluate(() => window.ANCHOR_MISSION_RENDER_DEBUG?.selectedStartCell)).resolves.toMatchObject(targetCell);
+  await expect(totalWaypointCount(page)).resolves.toBe(beforeWaypointCount);
+  await expect(page.evaluate(() => window.ANCHOR_MISSION_RENDER_DEBUG?.pointerCellDelta)).resolves.toEqual({ dx: 0, dy: 0 });
+
+  const hoverCell = deploymentCells.find((cell) => cell.x !== targetCell.x || cell.y !== targetCell.y) ?? targetCell;
+  point = await cellCenter(page, hoverCell.x, hoverCell.y);
+  await page.mouse.move(point.x, point.y);
+  await expect.poll(() => page.evaluate(() => window.ANCHOR_MISSION_RENDER_DEBUG?.pointerCalibrationStatus)).toBe('ok');
+  await expect(page.evaluate(() => window.ANCHOR_MISSION_RENDER_DEBUG?.actualGridCell)).resolves.toEqual(hoverCell);
+
+  await page.setViewportSize({ width: 1280, height: 800 });
+  await page.waitForTimeout(250);
+  point = await cellCenter(page, hoverCell.x, hoverCell.y);
+  await page.mouse.move(point.x, point.y);
+  await expect.poll(() => page.evaluate(() => window.ANCHOR_MISSION_RENDER_DEBUG?.pointerCalibrationStatus)).toBe('ok');
+  await expect(page.evaluate(() => window.ANCHOR_MISSION_RENDER_DEBUG?.actualGridCell)).resolves.toEqual(hoverCell);
+  await page.evaluate(() => window.ANCHOR_MISSION_RENDER_TEST_API.setCameraPresetForTest('tacticalTopDown'));
+  point = await cellCenter(page, hoverCell.x, hoverCell.y);
+  await page.mouse.move(point.x, point.y);
+  await expect.poll(() => page.evaluate(() => window.ANCHOR_MISSION_RENDER_DEBUG?.pointerCalibrationStatus)).toBe('ok');
+  await expect(page.evaluate(() => window.ANCHOR_MISSION_RENDER_DEBUG?.pointerOwner)).resolves.toBe('three');
+  await expect(page.evaluate(() => window.ANCHOR_MISSION_RENDER_DEBUG?.phaserWorldInputEnabled)).resolves.toBe(false);
+  await expect(page.evaluate(() => window.ANCHOR_MISSION_RENDER_DEBUG?.duplicatePointerDispatchCount)).resolves.toBe(0);
+  expect(browserErrors.unexpected()).toEqual([]);
+});
 test('Three Mission renderer preserves live Mission Planning state', async ({ page }) => {
   await page.goto('/');
   await expect.poll(() => page.evaluate(() => window.anchorGame?.phaser?.scene.getScene('MainMenuScene')?.sys.isActive() ?? false)).toBe(true);
@@ -3763,4 +3830,8 @@ async function cellCenter(page, x, y) {
       y: rect.top + canvasY * rect.height / canvas.height
     };
   }, { x, y });
+}
+
+async function totalWaypointCount(page) {
+  return page.evaluate(() => (window.anchorGame.state.plan?.agentPlans ?? []).reduce((sum, plan) => sum + (plan.waypoints?.length ?? 0), 0));
 }

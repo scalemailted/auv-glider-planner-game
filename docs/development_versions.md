@@ -38,6 +38,13 @@ Challenge Mode also persists `missionMode`. Mission modes are player-facing obje
 
 ## Version / Milestone Log
 
+### THREE-R1.1 - Mission Workspace Runtime Stabilization
+
+- Fixed the Three Mission Workspace startup crash caused by an out-of-scope renderer reference during render view-model construction.
+- Added shared canvas-rect pointer coordinate helpers, renderer lifecycle/error debug fields, pointer calibration diagnostics, canonical drop-zone render metadata, and a distinct deployment-selection intent that updates selected starts without creating waypoints.
+- Added focused smoke/audit coverage for runtime view-model construction, pointer coordinates, pointer calibration, drop-zone view models/layers, deployment selection, layer coordinate alignment, and workspace runtime-error contracts.
+- Preserved the boundary: this phase does not start replay/debrief/editor parity, add bathymetric planning slabs, change scoring, change simulation, add planners, or replace the Phaser lifecycle shell.
+
 ### THREE-R1 - Reverted-Baseline Alignment and Three.js Interaction Ownership
 
 - Confirmed the restored production baseline: `index.html` boots `src/game/main.js`, Phaser owns scene lifecycle, Three.js is the production mission-world renderer, and vendored Three.js files remain checked in for static hosting.

@@ -6,7 +6,7 @@ import { getActivePriorityTargets } from '../sim/PriorityTargets.js';
 import { getMobileHazardsAtTime } from '../sim/MobileHazards.js';
 import { computePlannedCoverage, computeTravelCostField, getCellRoiDisplayValue, normalizeRoiMode } from '../roi/RoiMode.js';
 
-export const MISSION_WORLD_STATE_ADAPTER_VERSION = 'mission-world-state-adapter-gfx-r3b';
+export const MISSION_WORLD_STATE_ADAPTER_VERSION = 'mission-world-state-adapter-three-r1-1';
 
 export function missionWorldRenderInputFromWorkspace(scene, options = {}) {
   const state = scene?.app?.state ?? scene?.state ?? {};
@@ -229,14 +229,54 @@ function buildDropZones(level, mission) {
   const byId = new Map();
   for (const agent of mission?.agents ?? []) {
     for (const zone of getDeploymentZonesForAgent(level, mission, agent.id)) {
-      const current = byId.get(zone.id) ?? { ...zone, allowedAgentIds: [], selectedStart: null, valid: true };
-      current.allowedAgentIds.push(agent.id);
+      const current = byId.get(zone.id) ?? {
+        ...zone,
+        id: zone.id,
+        label: zone.label ?? zone.id,
+        agentIds: [],
+        allowedAgentIds: [],
+        selectedStart: null,
+        selectedCell: null,
+        selectedAgentId: null,
+        status: 'available',
+        visible: true,
+        source: 'DeploymentZones.getDeploymentZonesForAgent'
+      };
+      if (!current.allowedAgentIds.includes(agent.id)) current.allowedAgentIds.push(agent.id);
+      if (!current.agentIds.includes(agent.id)) current.agentIds.push(agent.id);
       const selected = getSelectedStart(agent);
-      if (selected && zone.cells?.some((cell) => cell.x === selected.x && cell.y === selected.y)) current.selectedStart = { ...selected, agentId: agent.id };
+      if (selected && zone.cells?.some((cell) => cell.x === selected.x && cell.y === selected.y)) {
+        current.selectedStart = { ...selected, agentId: agent.id };
+        current.selectedCell = { x: selected.x, y: selected.y };
+        current.selectedAgentId = agent.id;
+        current.status = 'selected';
+      }
       byId.set(zone.id, current);
     }
   }
-  return [...byId.values()];
+  return [...byId.values()].map((zone) => ({
+    ...zone,
+    center: zone.center ?? centerOfCells(zone.cells ?? []),
+    boundary: zone.boundary ?? boundaryFromCells(zone.cells ?? []),
+    validCellCount: (zone.cells ?? []).length
+  }));
+}
+
+function centerOfCells(cells = []) {
+  if (!cells.length) return null;
+  const sum = cells.reduce((acc, cell) => ({ x: acc.x + Number(cell.x), y: acc.y + Number(cell.y) }), { x: 0, y: 0 });
+  return { x: Number((sum.x / cells.length).toFixed(3)), y: Number((sum.y / cells.length).toFixed(3)) };
+}
+
+function boundaryFromCells(cells = []) {
+  if (!cells.length) return [];
+  const xs = cells.map((cell) => Number(cell.x));
+  const ys = cells.map((cell) => Number(cell.y));
+  const minX = Math.min(...xs);
+  const maxX = Math.max(...xs) + 1;
+  const minY = Math.min(...ys);
+  const maxY = Math.max(...ys) + 1;
+  return [{ x: minX, y: minY }, { x: maxX, y: minY }, { x: maxX, y: maxY }, { x: minX, y: maxY }];
 }
 
 function buildSelectedStarts(mission) {

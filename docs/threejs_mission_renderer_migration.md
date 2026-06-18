@@ -76,6 +76,10 @@ Implemented in GFX-R3B:
 - Mission Console planning controls for Navigate, Select/Edit, Place Waypoint, Place Marker, and Cancel Current Interaction.
 - `ANCHOR_MISSION_RENDER_TEST_API`: projection helpers for E2E pointer tests without exposing mutation methods.
 
+## THREE-R1.1 Stabilization Contract
+
+THREE-R1.1 keeps the restored Phaser lifecycle and Three mission renderer, but hardens the production Planning workspace. It fixes the undefined `renderer` crash during view-model construction, records renderer lifecycle/runtime errors in `ANCHOR_MISSION_RENDER_DEBUG`, uses a shared CSS-pixel pointer coordinate helper based on the actual Three canvas rect, synchronizes renderer/camera size from the host, preserves one logical interaction plane with metadata, renders canonical drop zones, and routes deployment selection through a distinct `selectDeploymentCell` intent instead of waypoint placement. See [Three.js Workspace Stabilization](threejs_workspace_stabilization.md).
+
 Deferred after GFX-R3B:
 
 - Simulation rendering base is connected for realized tracks, observations, route/failure overlays, surfacing events, and status; simulation-time scalar/current field polish remains future work.

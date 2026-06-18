@@ -221,15 +221,17 @@ Boundaries:
 
 Active/near-term work should stabilize the current Three.js-first mission architecture before adding large new systems.
 
-1. THREE-R2 - Three.js Replay, Debrief Route Review, and Editor Interaction Parity: extend the proven Three mission surface to replay/debrief/editor inspection without taking over replay, scoring, or editor rules.
-2. Lifecycle extraction readiness: extract mission lifecycle only behind the restored Phaser scene shell, preserving visible product flow and avoiding the reverted DOM router/hash-route approach.
-3. Legacy Phaser retirement readiness: keep `?legacyPhaser=1` diagnostic coverage while reducing production dependencies on Phaser map drawing and pointer code incrementally.
-4. Blind Discovery / Hidden-State Mode implementation: hide ocean fields until sampled and build gameplay around sparse observations and belief construction.
-5. Production mission scoring synthesis: align science value, uncertainty, discovery, energy, hazards, redundancy, and regret without replacing official browser scoring with headless scoring.
-6. Learning Lab for Benchmark Modes + Headless Workflow + Hidden Discovery: teach Planner, Adaptive, Full Autonomy, solver-packet roundtrip, forecast correction, hidden-event hypothesis, and 2.5D sampling.
-7. Scenario packs and classroom assignment packs: provide reproducible missions for teaching and benchmark comparisons.
-8. Replay/debrief polish: improve comparisons, route explanation, depth-layer summaries, and regret narratives.
-9. Manual QA and performance pass: keep the static browser app responsive and testable as fields and artifacts grow.
+1. THREE-R1.1 - Mission Workspace runtime crash, pointer calibration, and drop-zone parity stabilization: complete code stabilization and manual Planning QA before treating THREE-R1 as done.
+2. THREE-R1.2 - Bathymetric Terrain Surface + Operational Depth/Control Slabs: add the next terrain/depth visualization layer while preserving the single explicit operational selection contract until depth-aware planning is deliberately introduced.
+3. THREE-R2 - Three.js Replay, Debrief Route Review, and Editor Interaction Parity: extend the proven Three mission surface to replay/debrief/editor inspection without taking over replay, scoring, or editor rules.
+4. Lifecycle extraction readiness: extract mission lifecycle only behind the restored Phaser scene shell, preserving visible product flow and avoiding the reverted DOM router/hash-route approach.
+5. Legacy Phaser retirement readiness: keep `?legacyPhaser=1` diagnostic coverage while reducing production dependencies on Phaser map drawing and pointer code incrementally.
+6. Blind Discovery / Hidden-State Mode implementation: hide ocean fields until sampled and build gameplay around sparse observations and belief construction.
+7. Production mission scoring synthesis: align science value, uncertainty, discovery, energy, hazards, redundancy, and regret without replacing official browser scoring with headless scoring.
+8. Learning Lab for Benchmark Modes + Headless Workflow + Hidden Discovery: teach Planner, Adaptive, Full Autonomy, solver-packet roundtrip, forecast correction, hidden-event hypothesis, and 2.5D sampling.
+9. Scenario packs and classroom assignment packs: provide reproducible missions for teaching and benchmark comparisons.
+10. Replay/debrief polish: improve comparisons, route explanation, depth-layer summaries, and regret narratives.
+11. Manual QA and performance pass: keep the static browser app responsive and testable as fields and artifacts grow.
 
 ## 12. Medium-Term Priorities
 

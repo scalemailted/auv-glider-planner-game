@@ -1,6 +1,6 @@
 import { strict as assert } from 'node:assert';
-import { setSelectedStart } from '../../src/core/deployment/DeploymentZones.js';
-import { createMissionWorldInteractionIntent, validateMissionWorldInteractionIntent } from '../../src/core/rendering/MissionWorldInteractionIntent.js';
+import { missionWorldRenderInputFromWorkspace } from '../../src/core/rendering/MissionWorldStateAdapter.js';
+import { buildMissionWorldRenderViewModel, validateMissionWorldRenderViewModel } from '../../src/core/rendering/MissionWorldRenderViewModel.js';
 
 function fixtureState() {
   const level = {
@@ -22,15 +22,14 @@ function fixtureState() {
 }
 
 const state = fixtureState();
-state.mission.agents[0].deployment.selectedStart = null; delete state.mission.agents[0].start; state.plan.agentPlans[0].selectedStart = null;
-const before = state.plan.agentPlans[0].waypoints.length;
-const intent = createMissionWorldInteractionIntent({ intentId: "selectDeploymentCell", interactionMode: "selectDeployment", agentId: "glider_01", gridCell: { x: 2, y: 1 } });
-assert.equal(validateMissionWorldInteractionIntent(intent).valid, true);
-const accepted = setSelectedStart(state.level, state.mission, state.plan, "glider_01", intent.gridCell);
-assert.equal(accepted.valid, true);
-assert.deepEqual(state.mission.agents[0].deployment.selectedStart, { x: 2, y: 1, col: 2, row: 1, blocked: false, reason: null });
-assert.equal(state.plan.agentPlans[0].waypoints.length, before);
-const rejected = setSelectedStart(state.level, state.mission, state.plan, "glider_01", { x: 5, y: 4 });
-assert.equal(rejected.valid, false);
-assert.equal(state.plan.agentPlans[0].waypoints.length, before);
-console.log('Three deployment selection smoke passed.');
+const input = missionWorldRenderInputFromWorkspace({ app: { state } });
+const vm = buildMissionWorldRenderViewModel(input);
+const validation = validateMissionWorldRenderViewModel(vm);
+assert.equal(validation.valid, true);
+assert.equal(vm.dropZones.length, 1);
+assert.equal(vm.dropZones[0].id, "drop_alpha");
+assert.equal(vm.dropZones[0].validCellCount, 3);
+assert.deepEqual(vm.dropZones[0].selectedCell, { x: 1, y: 1 });
+assert.equal(vm.dropZones[0].source, "DeploymentZones.getDeploymentZonesForAgent");
+assert.equal(vm.boundaryFlags.includesHiddenTruth, false);
+console.log('Mission drop-zone view model smoke passed.');

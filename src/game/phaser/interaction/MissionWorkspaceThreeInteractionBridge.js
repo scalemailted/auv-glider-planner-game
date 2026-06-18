@@ -4,7 +4,7 @@ import {
   validateMissionWorldInteractionResult
 } from '../../../core/rendering/MissionWorldInteractionResult.js';
 
-export const MISSION_WORKSPACE_THREE_INTERACTION_BRIDGE_VERSION = 'mission-workspace-three-interaction-bridge-gfx-r3b';
+export const MISSION_WORKSPACE_THREE_INTERACTION_BRIDGE_VERSION = 'mission-workspace-three-interaction-bridge-three-r1-1';
 const TRAIL_LIMIT = 20;
 
 export function createMissionWorkspaceThreeInteractionBridge(scene, options = {}) {
@@ -82,6 +82,7 @@ function routeIntent(scene, intent) {
   if (id === 'selectAgent') return scene.selectGliderFromThree?.(intent.agentId, intent) ?? rejected(intent, 'No glider is available at that point.');
   if (id === 'selectWaypoint') return scene.selectWaypointById?.(intent.waypointId, intent) ?? rejected(intent, 'No waypoint is available at that point.');
   if (id === 'selectPriorityTarget') return scene.selectPriorityTargetFromThree?.(intent.targetId, intent) ?? rejected(intent, 'No priority target is available at that point.');
+  if (id === 'selectDeploymentCell') return scene.selectDeploymentCellFromThree?.(intent) ?? rejected(intent, 'Deployment selection is not available.');
   if (id === 'placeWaypoint') return scene.placeWaypointFromThree?.(intent) ?? rejected(intent, 'Waypoint placement is not available.');
   if (id === 'previewWaypointMove') return scene.previewWaypointMoveFromThree?.(intent) ?? noChange(intent, 'Waypoint move preview unavailable.');
   if (id === 'commitWaypointMove') return scene.commitWaypointMoveFromThree?.(intent) ?? rejected(intent, 'Waypoint move is not available.');

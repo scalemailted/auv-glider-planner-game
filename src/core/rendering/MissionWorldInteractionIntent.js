@@ -1,11 +1,12 @@
-export const MISSION_WORLD_INTERACTION_INTENT_VERSION = 'mission-world-interaction-intent-gfx-r3b';
+export const MISSION_WORLD_INTERACTION_INTENT_VERSION = 'mission-world-interaction-intent-three-r1-1';
 
 export const MISSION_WORLD_INTERACTION_MODE_IDS = Object.freeze([
   'navigate',
   'selectInspect',
   'placeWaypoint',
   'editWaypoint',
-  'placeMarker'
+  'placeMarker',
+  'selectDeployment'
 ]);
 
 export const MISSION_WORLD_INTERACTION_INTENT_IDS = Object.freeze([
@@ -18,6 +19,7 @@ export const MISSION_WORLD_INTERACTION_INTENT_IDS = Object.freeze([
   'selectSurfacingEvent',
   'selectRouteSegment',
   'selectRouteFailure',
+  'selectDeploymentCell',
   'placeWaypoint',
   'previewWaypointMove',
   'commitWaypointMove',

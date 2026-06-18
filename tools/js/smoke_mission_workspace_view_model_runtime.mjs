@@ -1,6 +1,7 @@
 import { strict as assert } from 'node:assert';
-import { setSelectedStart } from '../../src/core/deployment/DeploymentZones.js';
-import { createMissionWorldInteractionIntent, validateMissionWorldInteractionIntent } from '../../src/core/rendering/MissionWorldInteractionIntent.js';
+import fs from 'node:fs';
+import { missionWorldRenderInputFromWorkspace } from '../../src/core/rendering/MissionWorldStateAdapter.js';
+import { buildMissionWorldRenderViewModel, validateMissionWorldRenderViewModel } from '../../src/core/rendering/MissionWorldRenderViewModel.js';
 
 function fixtureState() {
   const level = {
@@ -21,16 +22,15 @@ function fixtureState() {
   return { mode: 'planning', challengeMode: 'perfectKnowledge', level, mission, plan, selectedAgentId: 'glider_01', ui: { rendererBackend: 'threeMission3d', threeMissionCameraPreset: 'obliqueMission' } };
 }
 
-const state = fixtureState();
-state.mission.agents[0].deployment.selectedStart = null; delete state.mission.agents[0].start; state.plan.agentPlans[0].selectedStart = null;
-const before = state.plan.agentPlans[0].waypoints.length;
-const intent = createMissionWorldInteractionIntent({ intentId: "selectDeploymentCell", interactionMode: "selectDeployment", agentId: "glider_01", gridCell: { x: 2, y: 1 } });
-assert.equal(validateMissionWorldInteractionIntent(intent).valid, true);
-const accepted = setSelectedStart(state.level, state.mission, state.plan, "glider_01", intent.gridCell);
-assert.equal(accepted.valid, true);
-assert.deepEqual(state.mission.agents[0].deployment.selectedStart, { x: 2, y: 1, col: 2, row: 1, blocked: false, reason: null });
-assert.equal(state.plan.agentPlans[0].waypoints.length, before);
-const rejected = setSelectedStart(state.level, state.mission, state.plan, "glider_01", { x: 5, y: 4 });
-assert.equal(rejected.valid, false);
-assert.equal(state.plan.agentPlans[0].waypoints.length, before);
-console.log('Three deployment selection smoke passed.');
+const source = fs.readFileSync('src/game/phaser/scenes/MissionWorkspaceScene.js', 'utf8');
+const buildStart = source.indexOf('  buildMissionWorldViewModelForScene()');
+const buildEnd = source.indexOf('  refreshThreeMissionRenderer()', buildStart);
+assert(!source.slice(buildStart, buildEnd).includes('renderer?.renderer'), 'buildMissionWorldViewModelForScene must not reference an undeclared renderer.');
+for (const state of [fixtureState(), { ...fixtureState(), ui: {} }]) {
+  const input = missionWorldRenderInputFromWorkspace({ app: { state } });
+  const vm = buildMissionWorldRenderViewModel(input);
+  assert.equal(validateMissionWorldRenderViewModel(vm).valid, true);
+  assert.equal(vm.boundaryFlags.usesThreeRenderer, false);
+  assert.equal(JSON.stringify(vm).includes('WebGLRenderer'), false);
+}
+console.log('Mission workspace view model runtime smoke passed.');

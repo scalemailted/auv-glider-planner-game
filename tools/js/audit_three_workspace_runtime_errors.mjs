@@ -1,0 +1,12 @@
+import { strict as assert } from 'node:assert';
+import fs from 'node:fs';
+const source = fs.readFileSync('src/game/phaser/scenes/MissionWorkspaceScene.js', 'utf8');
+const buildStart = source.indexOf('  buildMissionWorldViewModelForScene()');
+const buildEnd = source.indexOf('  refreshThreeMissionRenderer()', buildStart);
+const buildSource = source.slice(buildStart, buildEnd);
+assert(!/renderer?.renderer/.test(buildSource), 'View-model builder must not reference an undeclared renderer object.');
+assert(source.includes('rendererLifecycleState'), 'Renderer lifecycle debug fields must exist.');
+assert(source.includes('recordThreeRendererRuntimeError'), 'Renderer runtime errors must be recorded.');
+assert(source.includes('rendererRuntimeErrorCount'), 'Runtime error count must be exposed.');
+assert(!/catch (error) {s*}/.test(source), 'Fatal renderer errors must not be swallowed silently.');
+console.log('Three workspace runtime error audit passed.');

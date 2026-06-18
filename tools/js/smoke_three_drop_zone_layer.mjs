@@ -1,0 +1,15 @@
+import { strict as assert } from 'node:assert';
+import * as THREE from 'three';
+import { createMissionWorldCoordinateTransform } from '../../src/core/rendering/MissionWorldCoordinates.js';
+import { updateThreeDropZoneLayer } from '../../src/game/three/layers/ThreeDropZoneLayer.js';
+const group = new THREE.Group();
+const viewModel = { coordinateSystem: createMissionWorldCoordinateTransform({ grid: { width: 6, height: 5 } }), dropZones: [{ id: "drop_alpha", status: "selected", cells: [{ x: 1, y: 1 }, { x: 2, y: 1 }], boundary: [{ x: 1, y: 1 }, { x: 3, y: 1 }, { x: 3, y: 2 }, { x: 1, y: 2 }], selectedCell: { x: 1, y: 1 }, selectedAgentId: "glider_01", agentIds: ["glider_01"] }] };
+updateThreeDropZoneLayer(group, viewModel);
+const firstCount = group.children.length;
+assert(firstCount >= 4);
+assert(group.children.some((child) => child.userData?.missionObjectType === "selectedStart"));
+assert(group.children.every((child) => child.userData?.zoneId === "drop_alpha"));
+updateThreeDropZoneLayer(group, viewModel);
+assert.equal(group.children.length, firstCount, "Drop-zone updates must clear old geometry before rendering new geometry.");
+assert(group.children.some((child) => Number(child.position.y) > 0), "Drop-zone visual offset should avoid exact coplanar placement.");
+console.log('Three drop-zone layer smoke passed.');

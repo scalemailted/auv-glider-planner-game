@@ -151,6 +151,7 @@ export class MissionWorkspaceScene extends PhaserScene {
     this.cameraObjects = [];
     this.threeMissionContainer = null;
     this.threeMissionRenderer = null;
+    this.threeRendererLifecycle = { state: 'idle', mountCompleted: false, firstRefreshCompleted: false, refreshDeferredReason: null, runtimeErrorCount: 0, resizeSequence: 0, lastError: null };
     this.threeInteractionController = null;
     this.threeInteractionBridge = null;
     this.missionRenderViewModel = null;
@@ -633,13 +634,17 @@ export class MissionWorkspaceScene extends PhaserScene {
   ensureThreeMissionContainer() {
     if (this.threeMissionContainer?.isConnected) return this.threeMissionContainer;
     const host = this.app?.elements?.viewportShell ?? this.app?.elements?.gameContainer ?? globalThis.document?.getElementById?.('viewport-shell');
-    if (!host?.appendChild) return null;
+    if (!host?.appendChild) {
+      this.updateThreeRendererLifecycle({ state: 'deferred', refreshDeferredReason: 'missingRendererHost' });
+      return null;
+    }
     const container = globalThis.document.createElement('div');
     container.className = 'three-mission-world-host';
     container.dataset.rendererBackend = 'threeMission3d';
     container.setAttribute('aria-label', 'Three.js Bathymetric 3D mission renderer');
     host.appendChild(container);
     this.threeMissionContainer = container;
+    this.updateThreeRendererLifecycle({ state: 'mounted', mountCompleted: true, refreshDeferredReason: null });
     return container;
   }
 
@@ -647,15 +652,48 @@ export class MissionWorkspaceScene extends PhaserScene {
     const container = this.ensureThreeMissionContainer();
     if (!container) return null;
     container.hidden = false;
-    if (!this.threeMissionRenderer) {
-      this.threeMissionRenderer = createThreeMissionWorldRenderer(container, {
-        camera: { preset: this.app.state.ui?.threeMissionCameraPreset ?? 'obliqueMission' },
-        layerVisibility: this.threeLayerVisibilityPatch()
-      });
+    try {
+      if (!this.threeMissionRenderer) {
+        this.updateThreeRendererLifecycle({ state: 'initializing', refreshDeferredReason: null });
+        this.threeMissionRenderer = createThreeMissionWorldRenderer(container, {
+          camera: { preset: this.app.state.ui?.threeMissionCameraPreset ?? 'obliqueMission' },
+          layerVisibility: this.threeLayerVisibilityPatch()
+        });
+      }
+      this.ensureThreeInteractionController();
+      const rect = container.getBoundingClientRect?.();
+      resizeThreeMissionWorldRenderer(this.threeMissionRenderer, rect?.width ?? container.clientWidth, rect?.height ?? container.clientHeight);
+      this.updateThreeRendererLifecycle({ state: 'ready', mountCompleted: true, rendererReady: true, refreshDeferredReason: null, resizeSequence: this.threeMissionRenderer?.lastSize?.resizeSequence ?? this.threeRendererLifecycle?.resizeSequence ?? 0 });
+      return this.threeMissionRenderer;
+    } catch (error) {
+      this.recordThreeRendererRuntimeError(error, 'ensureThreeMissionRenderer');
+      return null;
     }
-    this.ensureThreeInteractionController();
-    resizeThreeMissionWorldRenderer(this.threeMissionRenderer, container.clientWidth, container.clientHeight);
-    return this.threeMissionRenderer;
+  }
+
+  updateThreeRendererLifecycle(patch = {}) {
+    this.threeRendererLifecycle = {
+      state: patch.state ?? this.threeRendererLifecycle?.state ?? 'idle',
+      mountCompleted: patch.mountCompleted ?? this.threeRendererLifecycle?.mountCompleted ?? false,
+      firstRefreshCompleted: patch.firstRefreshCompleted ?? this.threeRendererLifecycle?.firstRefreshCompleted ?? false,
+      refreshDeferredReason: patch.refreshDeferredReason ?? this.threeRendererLifecycle?.refreshDeferredReason ?? null,
+      runtimeErrorCount: patch.runtimeErrorCount ?? this.threeRendererLifecycle?.runtimeErrorCount ?? 0,
+      resizeSequence: patch.resizeSequence ?? this.threeRendererLifecycle?.resizeSequence ?? 0,
+      rendererReady: patch.rendererReady ?? this.threeRendererLifecycle?.rendererReady ?? false,
+      lastError: patch.lastError ?? this.threeRendererLifecycle?.lastError ?? null
+    };
+    return this.threeRendererLifecycle;
+  }
+
+  recordThreeRendererRuntimeError(error, phase = 'unknown') {
+    const message = String(error?.message ?? error ?? 'Unknown Three renderer error.');
+    this.updateThreeRendererLifecycle({
+      state: 'error',
+      rendererReady: false,
+      runtimeErrorCount: Number(this.threeRendererLifecycle?.runtimeErrorCount ?? 0) + 1,
+      lastError: { phase, message }
+    });
+    this.app?.toast?.('Three renderer error: ' + message, 'error');
   }
 
   hideThreeMissionRenderer() {
@@ -716,8 +754,6 @@ export class MissionWorkspaceScene extends PhaserScene {
     this.missionRenderInput = input;
     const viewModel = buildMissionWorldRenderViewModel(input);
     const interactionState = this.app.state.ui?.threeMissionInteraction ?? {};
-    const canvas = renderer?.renderer?.domElement ?? null;
-    const canvasPointerEvents = canvas ? globalThis.getComputedStyle?.(canvas)?.pointerEvents ?? canvas.style?.pointerEvents ?? 'auto' : null;
     viewModel.interactionViewModel = buildMissionPlanningInteractionViewModel({
       missionWorldViewModel: viewModel,
       interactionState: {
@@ -736,19 +772,28 @@ export class MissionWorkspaceScene extends PhaserScene {
   refreshThreeMissionRenderer() {
     const renderer = this.ensureThreeMissionRenderer();
     if (!renderer) {
-      this.updateMissionRenderDebug({ activeBackend: 'threeMission3d', threeMounted: false, viewModel: this.buildMissionWorldViewModelForScene(), parityWarnings: ['Three mission renderer could not mount DOM container.'] });
+      const viewModel = this.buildMissionWorldViewModelForScene();
+      this.updateThreeRendererLifecycle({ state: this.threeRendererLifecycle?.state ?? 'deferred', rendererReady: false, refreshDeferredReason: this.threeRendererLifecycle?.refreshDeferredReason ?? 'rendererUnavailable' });
+      this.updateMissionRenderDebug({ activeBackend: 'threeMission3d', threeMounted: false, viewModel, parityWarnings: ['Three mission renderer could not mount DOM container.'] });
       return;
     }
-    const viewModel = this.buildMissionWorldViewModelForScene();
-    updateThreeMissionInteractionContext(this.ensureThreeInteractionController(), viewModel);
-    setThreeMissionWorldCamera(renderer, { preset: this.app.state.ui?.threeMissionCameraPreset ?? 'obliqueMission' });
-    updateThreeMissionWorldRenderer(renderer, viewModel);
-    resizeThreeMissionWorldRenderer(renderer, this.threeMissionContainer?.clientWidth, this.threeMissionContainer?.clientHeight);
-    const validation = validateMissionWorldRenderViewModel(viewModel);
-    const parityWarnings = [...(validation.warnings ?? [])];
-    if (!validation.valid) parityWarnings.push(...validation.errors);
-    this.updateMissionRenderDebug({ activeBackend: 'threeMission3d', threeMounted: true, viewModel, renderer, parityWarnings });
-    this.refreshMigrationDebug();
+    try {
+      const rect = this.threeMissionContainer?.getBoundingClientRect?.();
+      resizeThreeMissionWorldRenderer(renderer, rect?.width ?? this.threeMissionContainer?.clientWidth, rect?.height ?? this.threeMissionContainer?.clientHeight);
+      setThreeMissionWorldCamera(renderer, { preset: this.app.state.ui?.threeMissionCameraPreset ?? 'obliqueMission' });
+      const viewModel = this.buildMissionWorldViewModelForScene();
+      updateThreeMissionInteractionContext(this.ensureThreeInteractionController(), viewModel);
+      updateThreeMissionWorldRenderer(renderer, viewModel);
+      const validation = validateMissionWorldRenderViewModel(viewModel);
+      const parityWarnings = [...(validation.warnings ?? [])];
+      if (!validation.valid) parityWarnings.push(...validation.errors);
+      this.updateThreeRendererLifecycle({ state: 'ready', rendererReady: true, mountCompleted: true, firstRefreshCompleted: true, refreshDeferredReason: null, resizeSequence: renderer.lastSize?.resizeSequence ?? 0 });
+      this.updateMissionRenderDebug({ activeBackend: 'threeMission3d', threeMounted: true, viewModel, renderer, parityWarnings });
+      this.refreshMigrationDebug();
+    } catch (error) {
+      this.recordThreeRendererRuntimeError(error, 'refreshThreeMissionRenderer');
+      this.updateMissionRenderDebug({ activeBackend: 'threeMission3d', threeMounted: Boolean(renderer), viewModel: this.missionRenderViewModel, renderer, parityWarnings: [String(error?.message ?? error)] });
+    }
   }
 
   threeLayerVisibilityPatch() {
@@ -798,6 +843,16 @@ export class MissionWorkspaceScene extends PhaserScene {
       }
     }
     const interactionState = this.app.state.ui?.threeMissionInteraction ?? {};
+    const canvas = renderer?.renderer?.domElement ?? this.threeMissionRenderer?.renderer?.domElement ?? null;
+    const canvasRect = canvas?.getBoundingClientRect?.() ?? null;
+    const canvasPointerEvents = canvas ? globalThis.getComputedStyle?.(canvas)?.pointerEvents ?? canvas.style?.pointerEvents ?? 'auto' : null;
+    const backingSize = canvas ? { width: canvas.width ?? null, height: canvas.height ?? null } : null;
+    const lifecycle = this.threeRendererLifecycle ?? {};
+    const pointerDiagnostics = this.threeInteractionController?.lastPointerDiagnostics ?? null;
+    const lastHit = this.threeInteractionController?.lastHit ?? null;
+    const expectedGridCell = interactionState.expectedGridCell ?? null;
+    const actualGridCell = lastHit?.gridCell ? { x: lastHit.gridCell.x, y: lastHit.gridCell.y } : null;
+    const pointerCellDelta = expectedGridCell && actualGridCell ? { dx: actualGridCell.x - expectedGridCell.x, dy: actualGridCell.y - expectedGridCell.y } : null;
     const interactionVm = viewModel?.interactionViewModel ?? {};
     const hoveredEntity = interactionVm.hoveredEntity ?? interactionState.hoveredEntity ?? null;
     const hoveredCell = interactionVm.hoveredCell ?? interactionState.hoveredCell ?? null;
@@ -812,6 +867,13 @@ export class MissionWorkspaceScene extends PhaserScene {
       version: 'gfx-r3b',
       activeBackend: activeBackend ?? this.getMissionRendererBackend(),
       threeMounted: threeMounted === true,
+      rendererLifecycleState: lifecycle.state ?? (threeMounted ? 'ready' : 'idle'),
+      rendererReady: lifecycle.rendererReady === true || threeMounted === true,
+      rendererMountCompleted: lifecycle.mountCompleted === true,
+      rendererFirstRefreshCompleted: lifecycle.firstRefreshCompleted === true,
+      rendererRefreshDeferredReason: lifecycle.refreshDeferredReason ?? null,
+      rendererRuntimeErrorCount: Number(lifecycle.runtimeErrorCount ?? 0),
+      rendererLastError: lifecycle.lastError ?? null,
       phase: viewModel?.phase ?? this.app.state.mode ?? 'planning',
       missionId: viewModel?.missionId ?? this.app.state.mission?.missionId ?? null,
       levelId: viewModel?.levelId ?? this.app.state.level?.levelId ?? null,
@@ -846,11 +908,41 @@ export class MissionWorkspaceScene extends PhaserScene {
       pointerOwner: this.getMissionRendererBackend() === 'threeMission3d' ? 'three' : 'phaser',
       lastPointerConsumer: lastInteractionIntent ? 'three' : null,
       threeCanvasPointerEvents: canvasPointerEvents,
+      canvasCssRect: canvasRect ? { left: canvasRect.left, top: canvasRect.top, width: canvasRect.width, height: canvasRect.height, right: canvasRect.right, bottom: canvasRect.bottom } : null,
+      canvasBackingWidth: backingSize?.width ?? rendererSummary?.canvasBackingWidth ?? null,
+      canvasBackingHeight: backingSize?.height ?? rendererSummary?.canvasBackingHeight ?? null,
+      canvasBackingSize: backingSize,
+      rendererPixelRatio: rendererSummary?.rendererPixelRatio ?? null,
+      cameraAspect: rendererSummary?.cameraAspect ?? null,
+      hostWidth: rendererSummary?.hostWidth ?? null,
+      hostHeight: rendererSummary?.hostHeight ?? null,
+      resizeSequence: rendererSummary?.resizeSequence ?? lifecycle.resizeSequence ?? 0,
+      devicePixelRatio: Number(globalThis.devicePixelRatio ?? 1),
       phaserWorldInputEnabled: this.getMissionRendererBackend() !== 'threeMission3d',
       duplicatePointerDispatchCount: 0,
       selectedObservationId: null,
       selectedRouteSegmentId: null,
       selectedSurfacingEventId: null,
+      deploymentSelectionActive: interactionVm.deploymentSelectionActive === true || interactionState.deploymentSelectionActive === true,
+      deploymentAgentId: interactionVm.deploymentAgentId ?? interactionState.deploymentAgentId ?? null,
+      deploymentCandidateCell: interactionVm.deploymentCandidateCell ?? interactionState.deploymentCandidateCell ?? null,
+      deploymentCandidateValid: interactionVm.deploymentCandidateValid ?? interactionState.deploymentCandidateValid ?? null,
+      deploymentValidationReason: interactionVm.deploymentValidationReason ?? interactionState.deploymentValidationReason ?? null,
+      selectedStartCell: interactionVm.selectedStartCell ?? interactionState.selectedStartCell ?? null,
+      selectedDropZoneId: interactionVm.selectedDropZoneId ?? interactionState.selectedDropZoneId ?? null,
+      lastPointerClient: pointerDiagnostics?.pointerClient ?? null,
+      lastPointerLocal: pointerDiagnostics?.pointerLocal ?? null,
+      lastPointerNdc: pointerDiagnostics?.pointerNdc ?? null,
+      lastRayOrigin: pointerDiagnostics?.rayOrigin ?? null,
+      lastRayDirection: pointerDiagnostics?.rayDirection ?? null,
+      lastHitObjectType: lastHit?.objectType ?? null,
+      lastHitObjectId: lastHit?.objectId ?? null,
+      lastHitWorldPoint: lastHit?.worldPoint ?? null,
+      lastHitGridCell: actualGridCell,
+      expectedGridCell,
+      actualGridCell,
+      pointerCellDelta,
+      pointerCalibrationStatus: pointerCellDelta ? (pointerCellDelta.dx === 0 && pointerCellDelta.dy === 0 ? 'ok' : 'mismatch') : 'unknown',
       hoveredObjectType: hoveredEntity?.objectType ?? null,
       hoveredObjectId: hoveredEntity?.objectId ?? hoveredEntity?.waypointId ?? hoveredEntity?.markerId ?? hoveredEntity?.targetId ?? hoveredEntity?.agentId ?? null,
       hoveredGridCell: hoveredCell ? { x: hoveredCell.x, y: hoveredCell.y, blocked: hoveredCell.blocked === true, reason: hoveredCell.reason ?? null } : null,
@@ -910,7 +1002,12 @@ export class MissionWorkspaceScene extends PhaserScene {
       version: 'gfx-r3b',
       rendererBackend: this.getMissionRendererBackend(),
       hasThreeRenderer: Boolean(this.threeMissionRenderer),
-      screenPointForGridCell: (x, y) => this.screenPointForMissionCell({ x, y }),
+      screenPointForGridCell: (x, y) => {
+        this.app.state.ui ??= {};
+        this.app.state.ui.threeMissionInteraction ??= {};
+        this.app.state.ui.threeMissionInteraction.expectedGridCell = { x: Math.round(Number(x)), y: Math.round(Number(y)) };
+        return this.screenPointForMissionCell({ x, y });
+      },
       screenPointForWaypoint: (waypointId) => this.screenPointForMissionRecord((this.missionRenderViewModel?.waypoints ?? []).find((record) => record.waypointId === waypointId)),
       screenPointForAgent: (agentId) => this.screenPointForMissionRecord((this.missionRenderViewModel?.gliders ?? []).find((record) => record.agentId === agentId)),
       screenPointForMarker: (markerId) => this.screenPointForMissionRecord((this.missionRenderViewModel?.planningMarkers ?? []).find((record) => record.markerId === markerId)),
@@ -1324,6 +1421,12 @@ export class MissionWorkspaceScene extends PhaserScene {
       ? { objectType: intent.metadata.objectType, objectId: intent.metadata.objectId ?? null, agentId: intent.agentId, waypointId: intent.waypointId, markerId: intent.markerId, targetId: intent.targetId, gridCell: cell }
       : null;
     this.app.state.ui.threeMissionInteraction.placementValidation = this.validateThreePlacementPreview(intent);
+    if (this.app.state.ui.threeMissionInteraction.deploymentSelectionActive === true) {
+      const validation = cell ? setSelectedStartPreview(this.app.state.level, this.app.state.mission, this.app.state.ui.threeMissionInteraction.deploymentAgentId ?? this.app.state.selectedAgentId, cell) : { valid: false, message: 'Pointer is outside the mission grid.' };
+      this.app.state.ui.threeMissionInteraction.deploymentCandidateCell = cell ? { x: cell.x, y: cell.y } : null;
+      this.app.state.ui.threeMissionInteraction.deploymentCandidateValid = validation.valid;
+      this.app.state.ui.threeMissionInteraction.deploymentValidationReason = validation.message;
+    }
     this.refreshPanels();
     this.refreshMap();
     return this.threeInteractionResult(intent, 'noChange', { userMessage: cell ? `Hover (${cell.x}, ${cell.y})` : 'Hover cleared.' });
@@ -1336,6 +1439,12 @@ export class MissionWorkspaceScene extends PhaserScene {
     this.app.state.ui.threeMissionInteraction.hoveredCell = null;
     this.app.state.ui.threeMissionInteraction.hoveredEntity = null;
     this.app.state.ui.threeMissionInteraction.placementValidation = null;
+    this.app.state.ui.threeMissionInteraction.deploymentSelectionActive = false;
+    this.app.state.ui.threeMissionInteraction.deploymentAgentId = null;
+    this.app.state.ui.threeMissionInteraction.deploymentCandidateCell = null;
+    this.app.state.ui.threeMissionInteraction.deploymentCandidateValid = null;
+    this.app.state.ui.threeMissionInteraction.deploymentValidationReason = null;
+    this.app.state.ui.threeMissionInteractionMode = this.app.state.ui.threeMissionInteraction.previousInteractionMode ?? 'selectInspect';
     this.refreshPanels();
     this.refreshMap();
     return this.threeInteractionResult(intent, 'noChange', { userMessage: 'Hover cleared.' });
@@ -1380,6 +1489,59 @@ export class MissionWorkspaceScene extends PhaserScene {
     return this.threeInteractionResult(intent, 'accepted', { selectedTargetId: this.app.state.ui.selectedPriorityTargetId, userMessage: `Gold Star inspected: ${target.label ?? target.id ?? targetId}.` });
   }
 
+
+  selectDeploymentCellFromThree(intent) {
+    const cell = intent.gridCell;
+    const agentId = this.app.state.ui?.threeMissionInteraction?.deploymentAgentId ?? this.app.state.selectedAgentId;
+    this.app.state.ui ??= {};
+    this.app.state.ui.threeMissionInteraction ??= {};
+    const interaction = this.app.state.ui.threeMissionInteraction;
+    interaction.deploymentSelectionActive = true;
+    interaction.deploymentAgentId = agentId;
+    interaction.deploymentCandidateCell = cell ? { x: cell.x, y: cell.y } : null;
+    const agent = this.app.state.mission?.agents?.find((candidate) => candidate.id === agentId);
+    if (!cell || !agent) {
+      const message = !agent ? 'No active glider selected.' : 'Click a valid drop-zone cell.';
+      interaction.deploymentCandidateValid = false;
+      interaction.deploymentValidationReason = message;
+      this.app.toast(message, 'warning');
+      this.refreshPanels();
+      this.refreshMap();
+      return this.threeInteractionResult(intent, 'rejected', { committedGridCell: cell, userMessage: message, warnings: [message] });
+    }
+    const beforeWaypointCount = (this.app.state.plan?.agentPlans ?? []).reduce((sum, plan) => sum + (plan.waypoints?.length ?? 0), 0);
+    const result = setSelectedStart(this.app.state.level, this.app.state.mission, this.app.state.plan, agentId, { x: cell.x, y: cell.y });
+    interaction.deploymentCandidateValid = result.valid === true;
+    interaction.deploymentValidationReason = result.message || (result.valid ? 'Deployment start selected.' : 'Deployment rejected.');
+    if (!result.valid) {
+      this.app.toast(result.message || 'Deployment start rejected.', 'warning');
+      this.refreshPanels();
+      this.refreshMap();
+      return this.threeInteractionResult(intent, 'rejected', { committedGridCell: cell, userMessage: result.message || 'Deployment start rejected.', warnings: [result.message || 'Deployment start rejected.'] });
+    }
+    this.app.state.surfacedAgents = (this.app.state.surfacedAgents ?? []).filter((candidate) => candidate.id !== agentId);
+    this.app.state.ui.hoverCell = null;
+    this.clearSelectedWaypoint();
+    this.app.state.ui.planningAnchor = { agentId, ...result.selectedStart, t: 0, source: 'selectedStart' };
+    interaction.selectedStartCell = { x: result.selectedStart.x, y: result.selectedStart.y };
+    const zone = getDeploymentZonesForAgent(this.app.state.level, this.app.state.mission, agentId).find((candidate) => candidate.cells?.some((zoneCell) => zoneCell.x === result.selectedStart.x && zoneCell.y === result.selectedStart.y));
+    interaction.selectedDropZoneId = zone?.id ?? null;
+    interaction.deploymentSelectionActive = false;
+    this.app.state.ui.threeMissionInteractionMode = interaction.previousInteractionMode ?? 'selectInspect';
+    setThreeMissionInteractionMode(this.threeInteractionController, this.app.state.ui.threeMissionInteractionMode);
+    this.markManualPlan();
+    this.afterPlanChanged(agentId);
+    const afterWaypointCount = (this.app.state.plan?.agentPlans ?? []).reduce((sum, plan) => sum + (plan.waypoints?.length ?? 0), 0);
+    this.app.toast('Deployment start selected at (' + cell.x + ', ' + cell.y + ').', 'success');
+    this.refreshPanels();
+    this.refreshMap();
+    return this.threeInteractionResult(intent, 'accepted', {
+      changedCanonicalState: true,
+      committedGridCell: cell,
+      userMessage: 'Deployment start selected.',
+      preview: { waypointCountUnchanged: beforeWaypointCount === afterWaypointCount }
+    });
+  }
   placeWaypointFromThree(intent) {
     const cell = intent.gridCell;
     if (!cell) return this.threeInteractionResult(intent, 'rejected', { userMessage: 'Click inside the mission grid to place a waypoint.', warnings: ['Missing grid cell.'] });
@@ -1586,6 +1748,12 @@ export class MissionWorkspaceScene extends PhaserScene {
     this.app.state.ui.hoverCell = null;
     this.clearSelectedWaypoint();
     applyPlanningAnchor(this.app.state, agentId);
+    this.app.state.ui.threeMissionInteraction ??= {};
+    this.app.state.ui.threeMissionInteraction.deploymentSelectionActive = true;
+    this.app.state.ui.threeMissionInteraction.deploymentAgentId = agentId;
+    this.app.state.ui.threeMissionInteraction.previousInteractionMode = this.app.state.ui.threeMissionInteractionMode ?? 'selectInspect';
+    this.app.state.ui.threeMissionInteractionMode = 'selectDeployment';
+    setThreeMissionInteractionMode(this.threeInteractionController, 'selectDeployment');
     this.app.toast('Click a valid drop-zone cell to set or change this glider start.', 'info');
     this.refreshPanels();
     this.refreshMap();
@@ -3084,3 +3252,17 @@ function formatScore(value) {
 
 
 
+
+
+function setSelectedStartPreview(level, mission, agentId, cell) {
+  const agent = mission?.agents?.find((candidate) => candidate.id === agentId);
+  if (!agent) return { valid: false, message: 'No active glider selected.' };
+  const grid = level?.world?.grid ?? {};
+  const rounded = { x: Math.round(Number(cell?.x)), y: Math.round(Number(cell?.y)) };
+  if (!Number.isFinite(rounded.x) || !Number.isFinite(rounded.y)) return { valid: false, message: 'Pointer is outside the mission grid.' };
+  if (rounded.x < 0 || rounded.y < 0 || rounded.x >= Number(grid.width ?? 0) || rounded.y >= Number(grid.height ?? 0)) return { valid: false, message: 'Deployment cell is outside the map.' };
+  if (level?.layers?.terrain?.[rounded.y]?.[rounded.x]) return { valid: false, message: 'Deployment cell must be water.' };
+  const zones = getDeploymentZonesForAgent(level, mission, agentId);
+  if (!zones.some((zone) => zone.cells?.some((candidate) => candidate.x === rounded.x && candidate.y === rounded.y))) return { valid: false, message: 'Choose a deployment cell inside the drop zone first.' };
+  return { valid: true, message: 'Valid deployment cell.' };
+}

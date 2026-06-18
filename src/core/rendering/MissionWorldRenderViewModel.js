@@ -1,6 +1,6 @@
 ﻿import { createMissionWorldCoordinateTransform, depthForLayer } from './MissionWorldCoordinates.js';
 
-export const MISSION_WORLD_RENDER_VIEW_MODEL_VERSION = 'mission-world-render-view-model-gfx-r3b';
+export const MISSION_WORLD_RENDER_VIEW_MODEL_VERSION = 'mission-world-render-view-model-three-r1-1';
 export const MISSION_WORLD_SCALAR_LAYER_IDS = Object.freeze(['sampleValue', 'remainingSampleValue', 'samplingPriority', 'forecast', 'belief', 'uncertainty', 'hazard', 'none']);
 
 export function buildMissionWorldRenderViewModel({
@@ -36,7 +36,7 @@ export function buildMissionWorldRenderViewModel({
   const terrain = normalizeTerrain(level, grid);
   const hazards = normalizeCellRecords(options.hazards ?? level?.layers?.hazards, grid, 'hazard');
   const constraints = normalizeCellRecords(options.constraints ?? level?.layers?.terrain, grid, 'constraint');
-  const dropZones = normalizeDropZones(options.dropZones, selectedAgentId);
+  const dropZones = normalizeDropZones(options.dropZones, selectedAgentId, grid);
   const selectedStarts = normalizeSelectedStarts(options.selectedStarts, selectedAgentId);
   const gliders = normalizeGliders(options.gliders ?? mission?.agents, selectedAgentId);
   const waypoints = normalizeWaypoints(options.waypoints ?? plan?.agentPlans, selectedWaypointId);
@@ -75,6 +75,7 @@ export function buildMissionWorldRenderViewModel({
     hazards,
     constraints,
     dropZones,
+    dropZoneSummary: summarizeDropZones(dropZones),
     selectedStarts,
     gliders,
     waypoints,
@@ -123,6 +124,10 @@ export function missionWorldRenderViewModelSummary(viewModel = {}) {
     hazardCount: viewModel.hazards?.length ?? 0,
     constraintCount: viewModel.constraints?.length ?? 0,
     dropZoneCount: viewModel.dropZones?.length ?? 0,
+    dropZoneCellCount: viewModel.dropZoneSummary?.dropZoneCellCount ?? 0,
+    availableDropZoneCellCount: viewModel.dropZoneSummary?.availableDropZoneCellCount ?? 0,
+    selectedStartCount: viewModel.dropZoneSummary?.selectedStartCount ?? 0,
+    missingDropZoneWarnings: viewModel.dropZoneSummary?.missingDropZoneWarnings ?? [],
     gliderCount: viewModel.gliders?.length ?? 0,
     waypointCount: viewModel.waypoints?.length ?? 0,
     routeCount: viewModel.routes?.length ?? 0,
@@ -231,8 +236,71 @@ function normalizeCellRecords(input, grid, kind) {
   return records;
 }
 
-function normalizeDropZones(zones = [], selectedAgentId = null) {
-  return (zones ?? []).map((zone, index) => ({ id: zone.id ?? `drop-zone-${index + 1}`, label: zone.label ?? zone.id ?? `Drop Zone ${index + 1}`, cells: cloneArray(zone.cells), geometry: cloneArray(zone.geometry), allowedAgentIds: [...(zone.allowedAgentIds ?? [])], selectedStart: zone.selectedStart ?? null, valid: zone.valid !== false, selected: zone.allowedAgentIds?.includes?.(selectedAgentId) ?? false }));
+function normalizeDropZones(zones = [], selectedAgentId = null, grid = {}) {
+  return (zones ?? []).map((zone, index) => {
+    const warnings = [];
+    const seen = new Set();
+    const cells = cloneArray(zone.cells).map((cell) => ({ x: Math.round(Number(cell.x)), y: Math.round(Number(cell.y)) }))
+      .filter((cell) => {
+        if (!Number.isFinite(cell.x) || !Number.isFinite(cell.y)) { warnings.push('Drop zone ' + (zone.id ?? index) + ' has a non-finite cell.'); return false; }
+        if (cell.x < 0 || cell.y < 0 || cell.x >= grid.width || cell.y >= grid.height) { warnings.push('Drop zone ' + (zone.id ?? index) + ' has an out-of-bounds cell ' + cell.x + ',' + cell.y + '.'); return false; }
+        const key = cell.x + ',' + cell.y;
+        if (seen.has(key)) { warnings.push('Drop zone ' + (zone.id ?? index) + ' has duplicate cell ' + key + '.'); return false; }
+        seen.add(key);
+        return true;
+      });
+    const agentIds = [...(zone.agentIds ?? zone.allowedAgentIds ?? [])];
+    const selectedStart = zone.selectedStart ?? zone.selectedCell ?? null;
+    const selectedCell = selectedStart ? { x: Math.round(Number(selectedStart.x)), y: Math.round(Number(selectedStart.y)) } : null;
+    const selected = agentIds.includes(selectedAgentId) || zone.selectedAgentId === selectedAgentId;
+    const status = zone.status ?? (zone.valid === false ? 'invalid' : selectedCell ? 'selected' : selected ? 'available' : 'unavailable');
+    return {
+      id: zone.id ?? 'drop-zone-' + (index + 1),
+      label: zone.label ?? zone.id ?? 'Drop Zone ' + (index + 1),
+      agentIds,
+      allowedAgentIds: [...(zone.allowedAgentIds ?? agentIds)],
+      cells,
+      boundary: cloneArray(zone.boundary).length ? cloneArray(zone.boundary) : boundaryFromCells(cells),
+      center: zone.center ?? centerOfCells(cells),
+      validCellCount: cells.length,
+      selectedStart: selectedStart ? { ...selectedStart } : null,
+      selectedCell,
+      selectedAgentId: zone.selectedAgentId ?? selectedStart?.agentId ?? null,
+      status,
+      visible: zone.visible !== false,
+      source: zone.source ?? 'unknown',
+      valid: zone.valid !== false && status !== 'invalid',
+      selected,
+      warnings
+    };
+  });
+}
+
+function summarizeDropZones(dropZones = []) {
+  return {
+    dropZoneCount: dropZones.length,
+    dropZoneCellCount: dropZones.reduce((sum, zone) => sum + (zone.cells?.length ?? 0), 0),
+    availableDropZoneCellCount: dropZones.reduce((sum, zone) => sum + (zone.status === 'available' || zone.status === 'selected' ? zone.cells?.length ?? 0 : 0), 0),
+    selectedStartCount: dropZones.filter((zone) => zone.selectedCell || zone.selectedStart).length,
+    missingDropZoneWarnings: dropZones.flatMap((zone) => zone.warnings ?? [])
+  };
+}
+
+function centerOfCells(cells = []) {
+  if (!cells.length) return null;
+  const sum = cells.reduce((acc, cell) => ({ x: acc.x + Number(cell.x), y: acc.y + Number(cell.y) }), { x: 0, y: 0 });
+  return { x: round(sum.x / cells.length), y: round(sum.y / cells.length) };
+}
+
+function boundaryFromCells(cells = []) {
+  if (!cells.length) return [];
+  const xs = cells.map((cell) => Number(cell.x));
+  const ys = cells.map((cell) => Number(cell.y));
+  const minX = Math.min(...xs);
+  const maxX = Math.max(...xs) + 1;
+  const minY = Math.min(...ys);
+  const maxY = Math.max(...ys) + 1;
+  return [{ x: minX, y: minY }, { x: maxX, y: minY }, { x: maxX, y: maxY }, { x: minX, y: maxY }];
 }
 
 function normalizeSelectedStarts(starts = [], selectedAgentId = null) {

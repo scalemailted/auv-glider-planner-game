@@ -9,7 +9,7 @@ THREE-R1 audits the reverted baseline where Phaser owns lifecycle and Three.js o
 - `.three-mission-world-canvas` has `touch-action: none` and explicit `pointer-events: auto`.
 - `#ui-root` is passive with `pointer-events: none`; actual panels and modals opt back in with `pointer-events: auto`.
 - `MissionWorkspaceScene.onPointerDown`, `onPointerMove`, and `onPointerUp` return immediately when the Three backend is active.
-- Runtime debug reports `pointerOwner`, `lastPointerConsumer`, `threeCanvasPointerEvents`, `phaserWorldInputEnabled`, and `duplicatePointerDispatchCount`.
+- Runtime debug reports `pointerOwner`, `lastPointerConsumer`, `threeCanvasPointerEvents`, `phaserWorldInputEnabled`, `duplicatePointerDispatchCount`, renderer lifecycle/error state, canvas CSS/backing sizes, and pointer calibration diagnostics.
 
 ## Interaction inventory
 
@@ -17,7 +17,7 @@ THREE-R1 audits the reverted baseline where Phaser owns lifecycle and Three.js o
 |---|---|---|---|---|
 | Hover mission cell | Three canvas | `handleThreeHoverIntent` / planning interaction view model | Connected to public hover state | Richer public hover copy can be polished later |
 | Select glider | Three canvas | `selectGliderFromThree` | Connected; updates selected agent and panels | None in THREE-R1 |
-| Select deployment/drop-zone cell | Three canvas | `trySelectDeploymentStart` through `placeWaypointFromThree` | Connected; deployment start does not become waypoint | Browser QA for all generated drop-zone shapes |
+| Select deployment/drop-zone cell | Three canvas | `selectDeploymentCellFromThree` via `selectDeploymentCell` intent and canonical selected-start helpers | Connected; deployment start does not become waypoint | More generated-shape visual QA remains useful |
 | Place waypoint | Three canvas | `placeWaypointFromThree` | Connected; canonical validation decides accepted/rejected | None in THREE-R1 |
 | Select waypoint | Three canvas | `selectWaypointById` | Connected; no duplicate waypoint | None in THREE-R1 |
 | Drag waypoint | Three canvas | `previewWaypointMoveFromThree` then `commitWaypointMoveFromThree` | Connected; canonical waypoint ID preserved | More visible ghost styling later |
@@ -33,7 +33,7 @@ THREE-R1 audits the reverted baseline where Phaser owns lifecycle and Three.js o
 
 ## Root cause addressed
 
-The restored baseline already had most GFX-R3B planning wiring, but simulation selection was still renderer-only display. THREE-R1 adds simulation hit priorities, stable simulation object IDs, non-editable simulation interaction routing, and shared debug/test API projection so browser tests can click rendered Three objects directly.
+The restored baseline already had most GFX-R3B planning wiring, but simulation selection was still renderer-only display. THREE-R1 adds simulation hit priorities, stable simulation object IDs, non-editable simulation interaction routing, and shared debug/test API projection so browser tests can click rendered Three objects directly. THREE-R1.1 fixes a Planning startup crash from an out-of-scope renderer reference, moves pointer conversion onto the actual Three canvas rect, and separates deployment selection from waypoint placement through a dedicated intent.
 
 ## Boundary assessment
 

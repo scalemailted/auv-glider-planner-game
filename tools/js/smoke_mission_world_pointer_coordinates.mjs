@@ -1,0 +1,15 @@
+import { strict as assert } from 'node:assert';
+import { createMissionWorldCoordinateTransform } from '../../src/core/rendering/MissionWorldCoordinates.js';
+import { pointerClientToCanvasLocal, canvasLocalToNdc, gridCellCenterToWorld, worldPointToGridCell, validatePointerGridRoundtrip } from '../../src/core/rendering/MissionWorldPointerCoordinates.js';
+const rect = { left: 320, top: 80, width: 640, height: 480, right: 960, bottom: 560 };
+const local = pointerClientToCanvasLocal({ clientX: 640, clientY: 320 }, rect);
+assert.deepEqual(local, { x: 320, y: 240, clientX: 640, clientY: 320, inside: true });
+assert.deepEqual(canvasLocalToNdc(local, rect), { x: 0, y: -0 });
+const dprLocal = pointerClientToCanvasLocal({ clientX: 640, clientY: 320, devicePixelRatio: 2 }, rect);
+assert.equal(dprLocal.x, 320, "CSS-pixel local coordinate must not be multiplied by DPR.");
+const tx = createMissionWorldCoordinateTransform({ grid: { width: 6, height: 5 } });
+const world = gridCellCenterToWorld(tx, 2, 3, 0);
+assert.deepEqual(worldPointToGridCell(tx, world), { x: 2, y: 3, col: 2, row: 3, depthMeters: 0, inside: true });
+assert.equal(validatePointerGridRoundtrip({ transform: tx, cell: { x: 2, y: 3 } }).ok, true);
+assert.equal(pointerClientToCanvasLocal({ clientX: 100, clientY: 100 }, rect).inside, false);
+console.log('Mission world pointer coordinate smoke passed.');

@@ -1,7 +1,7 @@
 import { createMissionWorldInteractionIntent, normalizeMissionWorldInteractionMode } from '../../core/rendering/MissionWorldInteractionIntent.js';
 import { createThreeMissionHitTestContext, hitTestThreeMissionWorld } from './ThreeMissionHitTest.js';
 
-export const THREE_MISSION_INTERACTION_CONTROLLER_VERSION = 'three-mission-interaction-controller-gfx-r3b';
+export const THREE_MISSION_INTERACTION_CONTROLLER_VERSION = 'three-mission-interaction-controller-three-r1-1';
 export const THREE_MISSION_CLICK_THRESHOLD_CSS_PX = 5;
 
 export function createThreeMissionInteractionController({ renderer, camera, domElement, coordinates, getViewModel, emitIntent, options = {} } = {}) {
@@ -29,6 +29,7 @@ export function createThreeMissionInteractionController({ renderer, camera, domE
     cameraGestureActive: false,
     disposed: false,
     lastHit: null,
+    lastPointerDiagnostics: null,
     lastIntent: null,
     lastResult: null,
     listeners: []
@@ -237,12 +238,18 @@ function onKeyDown(controller, event) {
 
 function handleClick(controller, hit, event) {
   const gridCell = hit.gridCell;
+  const viewModel = controller.viewModel ?? controller.getViewModel?.() ?? null;
+  const deploymentActive = viewModel?.interactionViewModel?.deploymentSelectionActive === true;
   if (controller.interactionMode === 'placeWaypoint') {
     emit(controller, 'placeWaypoint', { gridCell, worldPoint: hit.worldPoint, metadata: { objectType: hit.objectType, objectId: hit.objectId, hitCategory: hit.category } });
     return;
   }
   if (controller.interactionMode === 'placeMarker') {
     emit(controller, 'placePlanningMarker', { gridCell, worldPoint: hit.worldPoint, metadata: { objectType: hit.objectType, objectId: hit.objectId, hitCategory: hit.category } });
+    return;
+  }
+  if (controller.interactionMode === 'selectDeployment' || deploymentActive) {
+    emit(controller, 'selectDeploymentCell', { gridCell, worldPoint: hit.worldPoint, metadata: { objectType: hit.objectType, objectId: hit.objectId, hitCategory: hit.category } });
     return;
   }
   if (controller.interactionMode === 'navigate') {
@@ -279,7 +286,10 @@ function scheduleHover(controller, event) {
 function hitTest(controller, event, options = {}) {
   const viewModel = controller.viewModel ?? controller.getViewModel?.() ?? null;
   const context = createThreeMissionHitTestContext({ renderer: controller.renderer, camera: controller.camera, domElement: controller.domElement, viewModel });
-  return hitTestThreeMissionWorld(context, event, options);
+  const hit = hitTestThreeMissionWorld(context, event, options);
+  controller.lastPointerDiagnostics = hit.pointerDiagnostics ?? context.lastPointerDiagnostics ?? null;
+  controller.lastHit = hit;
+  return hit;
 }
 
 function emit(controller, intentId, patch = {}) {
