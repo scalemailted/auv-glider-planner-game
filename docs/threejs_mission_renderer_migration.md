@@ -1,6 +1,6 @@
 # Three.js Mission Renderer Migration
 
-GFX-R3A connected a Three.js mission-world renderer to the live Mission Planning workspace. GFX-R3B adds planning interaction parity by treating Three.js as an interaction surface over canonical Mission Workspace commands. Phaser remains the app shell, default/fallback tactical renderer, simulator scene owner, replay/debrief owner, and official browser scoring path. The Three renderer consumes a public-safe `MissionWorldRenderViewModel` built from the same mission state used by the legacy tactical map.
+GFX-R3A connected a Three.js mission-world renderer to the live Mission Planning workspace. GFX-R3B added planning interaction parity by treating Three.js as an interaction surface over canonical Mission Workspace commands. MIG-R1 makes Three.js the production mission environment for planning and live simulation rendering. Phaser remains transitional shell/lab infrastructure and a query-gated diagnostic tactical renderer behind `?legacyPhaser=1`. The Three renderer consumes public-safe mission and simulation render view models built from canonical app state.
 
 Renderer switching and Three.js interactions must not mutate plans except through canonical workspace commands, change simulation state, change scoring, change replay semantics, expose hidden truth, or create solver data. Waypoint placement remains 2.5D: the pointer selects a horizontal grid cell, while depth, action, and dive-profile semantics come from existing planning controls.
 
@@ -10,17 +10,17 @@ Renderer switching and Three.js interactions must not mutate plans except throug
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | Terrain / land mask | `level.layers.terrain` | tactical map terrain cells | `constraintGroup` and interaction surface | Connected | Connected as display | Context only | Direct hit testing rejects blocked cells | Visual QA polish |
 | Bathymetry / depth layers | `level.layers.depth`, water-column metadata | bathymetry views and planning metadata | `bathymetryGroup`, `depthLayerGroup` | Connected as context | Display only | Context only | 2.5D horizontal selection only | Full 3D planning is out of scope |
-| Current vectors `F(x,y,t)` | shared current sampler / active frame | current arrow overlay | `currentVectorGroup` | Connected | Display only in planning | Context only | Hover shows public current context when available | Simulation-time parity in GFX-R3C |
+| Current vectors `F(x,y,t)` | shared current sampler / active frame | current arrow overlay | `currentVectorGroup` | Connected | Display context only | Context only | Hover shows public current context when available | Simulation-time field polishing remains future work |
 | ROI / scalar heatmap | visible sample/forecast/belief frame | ROI/scalar cell fills | `scalarFieldGroup` | Connected | Display only in planning | Context only | Hover shows public scalar context when available | Legend polish |
-| Hazards / constraints | level hazards and route validators | hazard cells and route warnings | `hazardGroup`, `constraintGroup` | Connected | Display only in planning | Context only | Hit testing reports hazards and rejects blocked terrain | Runtime hazard playback in GFX-R3C |
+| Hazards / constraints | level hazards and route validators | hazard cells and route warnings | `hazardGroup`, `constraintGroup`, `routeStatusGroup` | Connected | Connected for route/failure status | Context only | Hit testing reports hazards and rejects blocked terrain | Hazard animation polish remains future work |
 | Drop zones / selected starts | deployment helpers | deployment zone interaction | `dropZoneGroup` | Connected | Context only | Context only | Inspection and deployment-start selection only where legacy rules allow | No post-launch redeploy |
-| Gliders | mission agents and selected-agent state | glider sprites and HUD | `gliderGroup` | Connected | Planning pose only | Context only | Direct select through canonical selected-agent path | Simulation pose parity in GFX-R3C |
+| Gliders | mission agents and selected-agent state | glider sprites and HUD | `gliderGroup` | Connected | Connected from simulation adapter | Context only | Direct select through canonical selected-agent path | Pose/label visual polish remains future work |
 | Waypoints | `plan.agentPlans[].waypoints` | waypoint markers, route line, timeline | `waypointGroup`, `routeGroup` | Connected | Planned route only | Context only | Direct select/place/move/delete through canonical commands | Segment details polish |
 | Planning markers | `plan.planningMarkers` | marker glyphs and timeline hints | `markerGroup` | Connected | No execution role | Context only | Direct place/select/delete; markers stay non-executable | Marker conversion remains existing UI behavior only |
 | Temporal Gold Stars | `level.layers.priorityTargets` | star overlay and timeline | `priorityTargetGroup` | Connected | Display only in planning | Context only | Direct inspect/select without adding waypoints | Expiry countdown polish |
 | Guidance / reachability | existing guidance state and UI flags | guidance cone/reachable overlays | `guidanceGroup`, interaction overlay | Reused where canonical data exists | No | No | Overlay renders canonical data when present and warns when absent | No Three-only approximation |
 | ETA / energy preview | existing route/cost estimates | HUD and route labels | interaction view-model metadata | Reused where available | Summary only | Summary only | Displayed only from canonical preview data | More detailed 3D labels later |
-| Realized trajectory / observations | simulation engine and replay artifacts | Simulation/Debrief scenes | future realized/observation layers | No | Deferred | Deferred | No direct interaction | GFX-R3C / GFX-R3D |
+| Realized trajectory / observations | simulation engine and replay artifacts | Simulation/Debrief scenes | `realizedTrajectoryGroup`, observation markers | No planning role | Connected for live simulation | Deferred | Inspection/display only | Replay/debrief parity remains future work |
 | Replay route / replay observations | headless/browser replay artifacts | Headless Bundle Viewer and debrief panels | future replay layers | No | No | Deferred | No direct interaction | GFX-R3D / H4 alignment |
 ## Interaction-Parity Inventory
 
@@ -76,10 +76,10 @@ Implemented in GFX-R3B:
 
 Deferred after GFX-R3B:
 
-- Simulation execution parity for realized tracks, observations, failed-route overlays, surfacing events, and simulation-time pose/field updates.
+- Simulation rendering base is connected for realized tracks, observations, route/failure overlays, surfacing events, and status; simulation-time scalar/current field polish remains future work.
 - Replay/debrief parity for route review, replay observations, and headless/browser replay artifacts.
 - Full visual polish for ETA/energy labels, ghost paths, advanced touch navigation, and 3D glyph styling.
-- Making Three.js the default renderer or retiring the legacy Phaser tactical map.
+- Replay/debrief parity and phased retirement of the query-gated legacy Phaser tactical diagnostic map.
 
 ## Boundary Rules
 
@@ -90,5 +90,20 @@ Deferred after GFX-R3B:
 - Display scaling can change glyph size and camera position; it must not change physical/model magnitude, route validation, scoring, or simulation.
 - Waypoint placement remains 2.5D: select horizontal mission position; depth/action/dive-profile semantics come from existing planning controls.
 - Camera navigation is separated from edit gestures and must not accidentally add or move mission artifacts.
-- The legacy Phaser tactical map must remain until Three.js simulation, replay/debrief, and visual QA parity are verified.
+- The legacy Phaser tactical map is a developer-only diagnostic fallback behind `?legacyPhaser=1`; new production mission work should target Three.js and portable mission controllers.
 - Three.js does not add a planner, optimizer, scoring change, Python simulator, WebGPU fluid solver, RL, or MARL.
+
+## MIG-R1 Three.js-First Contract
+
+MIG-R1 changes the active target from optional 3D renderer to Three.js-first mission environment:
+
+| Layer | Current authority |
+| --- | --- |
+| Mission lifecycle and routing | Transitional Phaser scenes, to be extracted in MIG-R2 |
+| Planning interaction surface | Three.js by default, through canonical workspace commands |
+| Simulation world rendering | Three.js by default, from `SimulationWorldRenderViewModel` |
+| Simulation physics, observations, and scoring | Portable simulation engine and browser scoring modules |
+| Legacy Phaser tactical renderer | Developer-only diagnostic fallback with `?legacyPhaser=1` |
+| Replay/debrief world rendering | Future parity pass |
+
+The browser debug objects `ANCHOR_MIGRATION_DEBUG`, `ANCHOR_MISSION_RENDER_DEBUG`, and `ANCHOR_SIMULATION_RENDER_DEBUG` expose the active backend and boundary flags used by smoke tests.

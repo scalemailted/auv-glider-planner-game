@@ -1,4 +1,4 @@
-import * as THREE from '../../../node_modules/three/build/three.module.js';
+import * as THREE from 'three';
 
 export const THREE_BATHYMETRY_RENDERER_VERSION = 'three-bathymetry-renderer-gfx-r2';
 
@@ -244,8 +244,8 @@ function addMarkers(group, points = [], terrainMesh, options = {}) {
   }
 }
 
-function addPath(group, points = [], color = 0xffffff, yOffset = 0, width = 2, name = 'path-line') {
-  const vectors = (points ?? []).map((point) => worldPointFromMissionPoint(point, yOffset));
+function addPath(group, points = [], terrainMesh, color = 0xffffff, yOffset = 0, width = 2, name = 'path-line') {
+  const vectors = (points ?? []).map((point) => worldPointFromMissionPoint(point, terrainMesh, yOffset)).filter(isFiniteVector3);
   if (vectors.length < 2) return;
   const geometry = new THREE.BufferGeometry().setFromPoints(vectors);
   const line = new THREE.Line(geometry, new THREE.LineBasicMaterial({ color, transparent: true, opacity: 0.95, linewidth: width }));
@@ -401,11 +401,17 @@ function createCameraState(input = {}) {
   };
 }
 
-function worldPointFromMissionPoint(point, yOffset = 0) {
-  const x = Number(point.x ?? 0);
-  const y = Number(point.y ?? 0);
-  const depth = Number(point.depthMeters ?? Math.max(0, -Number(point.z ?? 0))) || 0;
-  return new THREE.Vector3(x - 0.5, yOffset - depth * 0.055, y - 0.5);
+function worldPointFromMissionPoint(point, terrainMesh = null, yOffset = 0) {
+  const x = Number(point?.x ?? 0);
+  const y = Number(point?.y ?? 0);
+  const z = Number(point?.z ?? 0);
+  const depth = Number(point?.depthMeters ?? Math.max(0, -z)) || 0;
+  const width = Number(terrainMesh?.width ?? 1);
+  const height = Number(terrainMesh?.height ?? 1);
+  const worldX = x - (Number.isFinite(width) ? (width - 1) / 2 : 0.5);
+  const worldZ = y - (Number.isFinite(height) ? (height - 1) / 2 : 0.5);
+  const worldY = Number(yOffset ?? 0) - depth * 0.055;
+  return new THREE.Vector3(worldX, worldY, worldZ);
 }
 
 function gridPointToWorld(point, terrainMesh, yOffset = 0) {
@@ -416,6 +422,10 @@ function gridPointToWorld(point, terrainMesh, yOffset = 0) {
 
 function vectorFromPoint(point = {}) {
   return new THREE.Vector3(Number(point.x ?? 0), Number(point.y ?? 0), Number(point.z ?? 0));
+}
+
+function isFiniteVector3(vector) {
+  return Number.isFinite(vector?.x) && Number.isFinite(vector?.y) && Number.isFinite(vector?.z);
 }
 
 function clearGroup(group) {

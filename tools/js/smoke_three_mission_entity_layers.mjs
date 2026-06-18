@@ -1,5 +1,5 @@
-﻿import assert from 'node:assert/strict';
-import * as THREE from '../../node_modules/three/build/three.module.js';
+import assert from 'node:assert/strict';
+import * as THREE from 'three';
 import { createMissionWorldFixture } from './mission_world_fixture.mjs';
 import { missionWorldRenderInputFromWorkspace } from '../../src/core/rendering/MissionWorldStateAdapter.js';
 import { buildMissionWorldRenderViewModel } from '../../src/core/rendering/MissionWorldRenderViewModel.js';
@@ -41,4 +41,5 @@ assert.ok(groups.marker.children.every((child) => child.userData.executable === 
 for (const group of Object.values(groups)) clearGroup(group);
 assert.ok(Object.values(groups).every((group) => group.children.length === 0));
 console.log('Three mission entity layers smoke passed');
+
 

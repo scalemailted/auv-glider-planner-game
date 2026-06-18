@@ -1,4 +1,4 @@
-import * as THREE from '../../../node_modules/three/build/three.module.js';
+import * as THREE from 'three';
 import { worldToGridCell } from '../../core/rendering/MissionWorldCoordinates.js';
 
 export const THREE_MISSION_HIT_TEST_VERSION = 'three-mission-hit-test-gfx-r3b';

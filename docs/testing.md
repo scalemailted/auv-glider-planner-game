@@ -1,12 +1,37 @@
 # Testing
 
-The browser game does not require a build step, backend, or Playwright for normal use. GFX-R2/GFX-R3A/GFX-R3B use the npm `three` dependency for the 3D Bathymetric World View and live Mission Planning renderer, so run `npm install` after a fresh checkout if `node_modules/three` is not present. Normal local serving still works with:
+The browser game does not require a build step, backend, Playwright, or `node_modules` for normal use. GFX-R2/GFX-R3A/GFX-R3B use the checked-in Three.js runtime under `vendor/three/`, with npm `three` remaining the source package for vendor refresh checks. Normal local serving still works with:
 
 ```bash
 python -m http.server 8000
 ```
 
 Playwright is optional and intended for development smoke testing.
+
+For static GitHub Pages compatibility checks, run:
+
+```bash
+npm.cmd run check:three-vendor
+npm.cmd run build:pages
+npm.cmd run smoke:pages
+```
+
+See `docs/threejs_static_runtime.md` for the import-map and vendored-runtime contract.
+
+## Three.js-First Mission Migration Checks
+
+MIG-R1 makes Three.js the default production mission environment for planning and live simulation. Focused checks:
+
+```bash
+node tools/js/smoke_three_default_planning_runtime.mjs
+node tools/js/smoke_three_default_simulation_runtime.mjs
+node tools/js/audit_three_first_production_path.mjs
+node tools/js/audit_phaser_deprecation.mjs
+node tools/js/audit_three_simulation_boundaries.mjs
+node tools/js/smoke_three_simulation_object_stability.mjs
+```
+
+These checks verify default Three.js backends, query-gated legacy Phaser fallback, renderer boundary flags, and the current inventory of remaining Phaser scene dependencies. The legacy tactical renderer is diagnostic only and should not be used for new mission features.
 
 For product-design consistency checks, use `docs/game_design_scientific_auv_planning.md` as the canonical source for the scientific mission loop, objective archetypes, visibility modes, scoring/regret direction, 2.5O gameplay, motion/path-planning boundary, and future production gameplay targets. Run `node tools/js/smoke_game_design_doc.mjs` after design-doc edits.
 

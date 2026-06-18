@@ -1,4 +1,4 @@
-﻿import {
+import {
   formatMissionTime,
   getMissionTimelineFrames,
   getNextTimelineFrameIndex,
@@ -713,7 +713,8 @@ function legend(kind, label) {
 }
 
 function rendererBackendSection(state) {
-  const backend = state.ui?.rendererBackend === 'threeMission3d' ? 'threeMission3d' : 'legacyPhaser2d';
+  const backend = state.ui?.rendererBackend === 'legacyPhaser2d' && state.ui?.legacyPhaserMissionRendererEnabled === true ? 'legacyPhaser2d' : 'threeMission3d';
+  const legacyEnabled = state.ui?.legacyPhaserMissionRendererEnabled === true;
   const camera = state.ui?.threeMissionCameraPreset ?? 'obliqueMission';
   const layer = state.ui?.threeMissionLayers ?? {};
   const mode = state.ui?.threeMissionInteractionMode ?? 'selectInspect';
@@ -733,6 +734,15 @@ function rendererBackendSection(state) {
     ['priorityTargets', 'Gold Stars'],
     ['interaction', 'Interaction Overlay']
   ].map(([id, labelText]) => `<button class="console-button secondary" data-action="three-layer" data-layer="${escapeAttr(id)}">${layer[id] === false ? 'Show' : 'Hide'} ${escapeHtml(labelText)}</button>`).join('');
+  const legacyControl = legacyEnabled ? `
+        <div class="console-callout warning">
+          <strong>Legacy Phaser Diagnostic Renderer</strong>
+          <p>Legacy diagnostic renderer. This path is being removed and should not be used for new feature development.</p>
+          <div class="console-button-row">
+            <button class="console-button ${backend === 'legacyPhaser2d' ? 'primary' : 'secondary'}" data-action="renderer-legacy">Legacy Phaser Diagnostic Renderer</button>
+            <button class="console-button ${backend === 'threeMission3d' ? 'primary' : 'secondary'}" data-action="renderer-three">Return To Three.js Mission World</button>
+          </div>
+        </div>` : '';
   const interactionControls = backend === 'threeMission3d' ? `
         <h3 class="waypoint-section-title">Three Planning Tools</h3>
         <div class="console-button-row">
@@ -742,19 +752,15 @@ function rendererBackendSection(state) {
           ${interactionModeButton('placeMarker', 'Place Marker', mode)}
           <button class="console-button secondary" data-action="three-cancel-interaction">Cancel</button>
         </div>
-        <div class="hud-muted">Three pointer edits dispatch canonical workspace commands. Route timing, scoring, and simulation remain owned by the mission workspace.</div>
+        <div class="hud-muted">Three pointer edits dispatch canonical workspace commands. Route timing, scoring, and simulation remain owned by the portable mission core.</div>
         ${threeInteractionStatusPanel(interaction)}
         <h3 class="waypoint-section-title">Three Layers</h3><div class="console-button-row">${layerButtons}</div>`
-    : '<div class="hud-muted">Three planning controls appear when the Three.js backend is active.</div>';
+    : '<div class="hud-muted">Legacy diagnostic view is active. Use Three.js for production planning.</div>';
   return `
       <section class="console-section" data-renderer-backend-control>
-        <h2>World View</h2>
-        <div class="console-button-row">
-          <button class="console-button ${backend === 'legacyPhaser2d' ? 'primary' : 'secondary'}" data-action="renderer-legacy">Legacy Tactical 2D</button>
-          <button class="console-button ${backend === 'threeMission3d' ? 'primary' : 'secondary'}" data-action="renderer-three">Three.js Bathymetric 3D</button>
-        </div>
-        <div class="hud-muted">Three.js is rendering the same live mission state as the tactical view.</div>
-        <div class="hud-muted">Changing renderer does not change the plan, simulation, score, or visibility permissions.</div>
+        <h2>Mission World</h2>
+        <div class="hud-muted">Three.js is the production mission environment. The portable JavaScript core owns planning validity, simulation, scoring, and visibility permissions.</div>
+        ${legacyControl}
         <h3 class="waypoint-section-title">Camera Preset</h3>
         <div class="console-button-row">
           ${cameraButton('tacticalTopDown', 'Tactical Top Down', camera)}
@@ -764,7 +770,6 @@ function rendererBackendSection(state) {
         ${interactionControls}
       </section>`;
 }
-
 function interactionModeButton(id, label, active) {
   return `<button class="console-button ${active === id ? 'primary' : 'secondary'}" data-action="three-interaction-mode" data-mode="${escapeAttr(id)}">${escapeHtml(label)}</button>`;
 }
@@ -1557,7 +1562,7 @@ function routeEstimate(state) {
   return {
     distance,
     energyText: hoverPreview
-      ? `${hoverPreview.valid ? `${hoverPreview.energy.toFixed(1)} Ã‚Â· ETA ${Number(hoverPreview.eta ?? hoverPreview.estimatedTravelTime ?? 0).toFixed(1)} hr` : 'invalid'} (${hoverPreview.note})`
+      ? `${hoverPreview.valid ? `${hoverPreview.energy.toFixed(1)} Ãƒâ€šÃ‚Â· ETA ${Number(hoverPreview.eta ?? hoverPreview.estimatedTravelTime ?? 0).toFixed(1)} hr` : 'invalid'} (${hoverPreview.note})`
       : budget ? `${Math.round(energy)} / ${Math.round(budget)}` : `${Math.round(energy)}`
   };
 }

@@ -1,5 +1,5 @@
-﻿import assert from 'node:assert/strict';
-import * as THREE from '../../node_modules/three/build/three.module.js';
+import assert from 'node:assert/strict';
+import * as THREE from 'three';
 
 import { createMissionWorldFixture } from './mission_world_fixture.mjs';
 import { missionWorldRenderInputFromWorkspace } from '../../src/core/rendering/MissionWorldStateAdapter.js';
@@ -66,3 +66,4 @@ assert.ok(['gridCell', 'glider', 'dropZone'].includes(gridHit.category), `expect
 assert.equal(gridHit.summary.usesSharedMissionCoordinates, true);
 
 console.log('Three mission hit testing smoke passed');
+

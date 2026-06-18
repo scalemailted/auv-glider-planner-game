@@ -1,0 +1,100 @@
+import { existsSync, statSync } from 'node:fs';
+import { cp, mkdir, readdir, rm, stat, writeFile } from 'node:fs/promises';
+import path from 'node:path';
+import { spawnSync } from 'node:child_process';
+
+const root = process.cwd();
+const out = path.join(root, '_site');
+const copyRoots = [
+  'index.html',
+  'css',
+  'src',
+  'vendor',
+  'labs',
+  'docs',
+  'schemas',
+  'levels',
+  'missions',
+  'plans',
+  'experiments',
+  'tutorials/import-demo'
+];
+const excludeNames = new Set(['node_modules', '.git', '.github', 'tests', 'test-results', 'tmp', 'coverage', '.codex', '.agents', '_site']);
+await rm(out, { recursive: true, force: true });
+await mkdir(out, { recursive: true });
+for (const entry of copyRoots) {
+  const source = path.join(root, entry);
+  if (!existsSync(source)) continue;
+  await copyEntry(source, path.join(out, entry));
+}
+await writeFile(path.join(out, '.nojekyll'), '', 'utf8');
+for (const required of ['index.html', 'vendor/three/build/three.module.js', 'vendor/three/LICENSE', 'vendor/phaser.min.js']) {
+  if (!existsSync(path.join(out, required))) throw new Error(`_site missing required file: ${required}`);
+}
+const audit = spawnSync(process.execPath, ['tools/js/audit_github_pages_paths.mjs'], { cwd: root, stdio: 'inherit' });
+if (audit.status !== 0) process.exit(audit.status ?? 1);
+const unresolved = await findUnresolvedRuntimeImports(out);
+if (unresolved.length) {
+  console.error('Unresolved runtime imports in _site:');
+  for (const item of unresolved) console.error(`- ${item}`);
+  process.exit(1);
+}
+const stats = await countFiles(out);
+console.log(`Built _site with ${stats.count} files (${stats.bytes} bytes).`);
+
+async function copyEntry(source, destination) {
+  const name = path.basename(source);
+  if (excludeNames.has(name)) return;
+  const sourceStat = await stat(source);
+  if (sourceStat.isDirectory()) {
+    await mkdir(destination, { recursive: true });
+    for (const child of await readdir(source)) await copyEntry(path.join(source, child), path.join(destination, child));
+  } else {
+    await mkdir(path.dirname(destination), { recursive: true });
+    await cp(source, destination, { force: true });
+  }
+}
+
+async function countFiles(dir) {
+  let count = 0;
+  let bytes = 0;
+  for (const entry of await readdir(dir, { withFileTypes: true })) {
+    const full = path.join(dir, entry.name);
+    if (entry.isDirectory()) {
+      const child = await countFiles(full);
+      count += child.count;
+      bytes += child.bytes;
+    } else {
+      count += 1;
+      bytes += statSync(full).size;
+    }
+  }
+  return { count, bytes };
+}
+
+async function findUnresolvedRuntimeImports(siteRoot) {
+  const failures = [];
+  const files = await walk(path.join(siteRoot, 'src'));
+  for (const file of files.filter((candidate) => candidate.endsWith('.js'))) {
+    const text = await import('node:fs/promises').then((fs) => fs.readFile(file, 'utf8'));
+    for (const match of text.matchAll(/from\s+['"]([^'"]+)['"]/g)) {
+      const specifier = match[1];
+      if (specifier === 'three' || specifier.startsWith('three/addons/')) continue;
+      if (specifier.startsWith('.')) {
+        const resolved = path.resolve(path.dirname(file), specifier);
+        if (!existsSync(resolved)) failures.push(`${path.relative(siteRoot, file)} -> ${specifier}`);
+      }
+    }
+  }
+  return failures;
+}
+async function walk(dir) {
+  const out = [];
+  if (!existsSync(dir)) return out;
+  for (const entry of await readdir(dir, { withFileTypes: true })) {
+    const full = path.join(dir, entry.name);
+    if (entry.isDirectory()) out.push(...await walk(full));
+    else out.push(full);
+  }
+  return out;
+}

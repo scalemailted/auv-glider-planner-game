@@ -1,6 +1,6 @@
 # Bathymetric World View
 
-GFX-R2 upgrades the ENV-R1 bathymetric world viewer from a Phaser-only proof of concept to a dedicated Three.js/WebGL renderer hosted inside the existing Phaser app shell. GFX-R3A then adds a separate live Mission Planning renderer path that uses `ThreeMissionWorldRenderer` and `MissionWorldRenderViewModel` to show the current mission state inside the planning workspace. Both are browser visualization layers over existing portable JS mission state: x, y, depth layer, time, fields, observations, planned route, realized trajectory, motion diagnostics, and water-column summaries.
+GFX-R2 upgrades the ENV-R1 bathymetric world viewer from a Phaser-only proof of concept to a dedicated Three.js/WebGL renderer hosted inside the browser app shell. GFX-R3A then adds a live Mission Planning renderer path that uses `ThreeMissionWorldRenderer` and `MissionWorldRenderViewModel`; MIG-R1 makes the Three.js mission world the default production surface for planning and live simulation rendering. These are browser visualization layers over existing portable JS mission state: x, y, depth layer, time, fields, observations, planned route, realized trajectory, motion diagnostics, and water-column summaries.
 
 ## Why This Exists
 
@@ -8,7 +8,7 @@ The tactical mission is still planned from a top-down route, while the science h
 
 ## Renderer Architecture
 
-Phaser remains the product shell and scene router. `src/game/three/ThreeBathymetryRenderer.js` owns a separate Three.js scene/camera/canvas mounted by `BathymetryWorldViewScene`. The live planning renderer uses `src/game/three/ThreeMissionWorldRenderer.js`, `src/core/rendering/MissionWorldStateAdapter.js`, and `src/core/rendering/MissionWorldRenderViewModel.js` from `MissionWorkspaceScene`. These renderers consume public-safe view models and do not own simulation, scoring, planning, benchmark, replay semantics, or hidden-truth authority modules.
+Phaser remains transitional shell/lab infrastructure and scene routing during migration. `src/game/three/ThreeBathymetryRenderer.js` owns a separate Three.js scene/camera/canvas mounted by `BathymetryWorldViewScene`. The live mission renderer uses `src/game/three/ThreeMissionWorldRenderer.js`, `src/core/rendering/MissionWorldStateAdapter.js`, `src/core/rendering/MissionWorldRenderViewModel.js`, `src/core/rendering/SimulationWorldStateAdapter.js`, and `src/core/rendering/SimulationWorldRenderViewModel.js` from mission planning and simulation scenes. These renderers consume public-safe view models and do not own simulation, scoring, planning, benchmark, replay semantics, or hidden-truth authority modules.
 
 Three.js is used directly. Enable3D is not used because this view does not need a physics wrapper or Phaser-to-Three abstraction. WebGPU-Ocean is not integrated because ANCHOR still needs a static-hosted WebGL path and the current goal is environmental visualization, not a fluid solver.
 

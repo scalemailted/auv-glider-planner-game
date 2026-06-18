@@ -1,0 +1,21 @@
+{
+  "type": "anchor.vendor.three-runtime",
+  "package": "three",
+  "version": "0.184.0",
+  "license": "MIT",
+  "sourcePackage": "node_modules/three",
+  "declaredDependency": "^0.184.0",
+  "files": [
+    {
+      "path": "build/three.module.js",
+      "sha256": "61134198639a10885daf893fb29669ca26386e2a4cde76e8399f51e329f741f2",
+      "role": "core"
+    },
+    {
+      "path": "build/three.core.js",
+      "sha256": "368dc78835287709a48939e8eb9a7a61d0732098bdf916e56840d458aae9ccf3",
+      "role": "core"
+    }
+  ],
+  "generatedBy": "tools/js/sync_three_vendor.mjs"
+}

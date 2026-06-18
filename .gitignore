@@ -43,3 +43,4 @@ build/
 # Playwright browser/cache artifacts
 blob-report/
 playwright/.cache/
+_site/

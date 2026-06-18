@@ -1,4 +1,4 @@
-﻿import { getPlanningFrame } from '../sim/ChallengeMode.js';
+import { getPlanningFrame } from '../sim/ChallengeMode.js';
 import { getFrameAtTime, getWindowForTime } from '../time/MissionTime.js';
 import { sampleCurrentField } from '../currents/CurrentFieldSampler.js';
 import { getDeploymentZonesForAgent, getSelectedStart } from '../deployment/DeploymentZones.js';
@@ -22,7 +22,7 @@ export function missionWorldRenderInputFromSimulation(scene, options = {}) {
   return missionWorldRenderInputFromState(state, {
     ...options,
     phase: 'simulation',
-    simulationState: scene?.engine ? { running: true, timeSeconds: scene.engine.time } : state.simulationState ?? null,
+    simulationState: options.simulationState ?? (scene?.engine ? { running: scene.engine.running === true, timeSeconds: scene.engine.t ?? 0 } : state.simulationState ?? null),
     motionTrajectory: state.motionTrajectory ?? state.result?.motionTrajectory ?? null
   });
 }

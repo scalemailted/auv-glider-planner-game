@@ -1,4 +1,4 @@
-﻿import * as THREE from '../../../../node_modules/three/build/three.module.js';
+import * as THREE from 'three';
 import { gridCellToWorld, missionPositionToWorld } from '../../../core/rendering/MissionWorldCoordinates.js';
 
 export function clearGroup(group) {
@@ -68,3 +68,4 @@ export function makeLine(points = [], { color = 0xffffff, opacity = 0.95 } = {})
 export function setGroupVisible(group, visible) {
   if (group) group.visible = visible !== false;
 }
+

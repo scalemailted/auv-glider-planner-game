@@ -43,21 +43,33 @@ import {
 } from '../../../core/benchmark/BenchmarkEpisodeRuntime.js';
 import { deriveAdaptiveBenchmarkContextFromState } from '../../../core/benchmark/AdaptiveBenchmarkRuntime.js';
 import { attemptSourceFromRouteSourceLabel } from '../../../core/benchmark/BenchmarkAttemptSourceMapping.js';
+import { buildSimulationWorldRenderViewModel, validateSimulationWorldRenderViewModel, simulationWorldRenderViewModelSummary } from '../../../core/rendering/SimulationWorldRenderViewModel.js';
+import { simulationWorldRenderInputFromScene, simulationWorldRenderInputSummary } from '../../../core/rendering/SimulationWorldStateAdapter.js';
+import { createThreeMissionWorldRenderer, updateThreeMissionWorldRenderer, resizeThreeMissionWorldRenderer, setThreeMissionWorldCamera, setThreeMissionLayerVisibility, threeMissionWorldRendererSummary, disposeThreeMissionWorldRenderer } from '../../three/ThreeMissionWorldRenderer.js';
+import { legacyPhaserMissionRendererEnabled, preferredMissionRendererBackend, publishMigrationDebug } from '../../../core/runtime/MigrationRuntimeConfig.js';
 
 const PhaserScene = globalThis.Phaser?.Scene ?? class {};
 
 export class SimulationScene extends PhaserScene {
   constructor() {
     super('SimulationScene');
+    this.threeSimulationContainer = null;
+    this.threeSimulationRenderer = null;
+    this.simulationRenderInput = null;
+    this.simulationRenderViewModel = null;
   }
 
   create() {
     this.app = this.sys.game.anchorApp;
     this.app.setSceneLabel('Simulation');
     this.app.state.mode = 'simulation';
+    this.app.state.ui ??= {};
+    this.app.state.ui.legacyPhaserMissionRendererEnabled = legacyPhaserMissionRendererEnabled();
+    this.app.state.ui.rendererBackend = preferredMissionRendererBackend({ requested: this.app.state.ui.rendererBackend });
     clearPlanningOverlayState(this.app.state);
     this.app.elements.shell?.classList.remove('planning-workspace');
     this.graphics = this.add.graphics();
+    this.graphics.setVisible(this.getSimulationRendererBackend() === 'legacyPhaser2d');
     this.app.clearPanels();
     this.modal = new Modal(this);
     normalizeStochasticState(this.app.state);
@@ -131,6 +143,7 @@ export class SimulationScene extends PhaserScene {
     globalThis.removeEventListener?.('resize', this.onViewportResize);
     this.resizeObserver?.disconnect();
     if (this.app.elements.overlay?.bottomTimeline) this.app.elements.overlay.bottomTimeline.innerHTML = '';
+    this.disposeThreeSimulationRenderer();
     this.modal?.destroy();
   }
 
@@ -167,6 +180,15 @@ export class SimulationScene extends PhaserScene {
         <small id="simulation-console-summary">Waiting for playback.</small>
       </section>
       <section class="console-section">
+        <h2>Three Mission World</h2>
+        <p class="hud-muted">Three.js is the default simulation environment. The portable simulation engine owns time, vehicle motion, observations, and score.</p>
+        <div class="console-button-row">
+          <button class="console-button secondary" data-action="sim-camera-top">Top Down</button>
+          <button class="console-button secondary" data-action="sim-camera-oblique">Oblique</button>
+          <button class="console-button secondary" data-action="sim-camera-profile">Water Column</button>
+        </div>
+      </section>
+      <section class="console-section">
         <h2>Recent Events</h2>
         <div id="simulation-console-events" class="event-list">
           <div class="hud-muted">No events yet.</div>
@@ -183,6 +205,29 @@ export class SimulationScene extends PhaserScene {
     root.querySelector('[data-action="planning"]')?.addEventListener('click', () => this.scene.start('MissionWorkspaceScene'));
     root.querySelector('[data-action="debrief"]')?.addEventListener('click', () => this.goDebrief());
     root.querySelector('[data-action="menu"]')?.addEventListener('click', () => this.scene.start('MainMenuScene'));
+    root.querySelector('[data-action="sim-camera-top"]')?.addEventListener('click', () => this.setThreeSimulationCameraPreset('tacticalTopDown'));
+    root.querySelector('[data-action="sim-camera-oblique"]')?.addEventListener('click', () => this.setThreeSimulationCameraPreset('obliqueMission'));
+    root.querySelector('[data-action="sim-camera-profile"]')?.addEventListener('click', () => this.setThreeSimulationCameraPreset('waterColumnProfile'));
+  }
+
+  getSimulationRendererBackend() {
+    return preferredMissionRendererBackend({ requested: this.app.state.ui?.rendererBackend });
+  }
+
+  refreshMigrationDebug() {
+    return publishMigrationDebug({
+      legacyFallbackEnabled: legacyPhaserMissionRendererEnabled(),
+      planningBackend: 'threeMission3d',
+      simulationBackend: this.getSimulationRendererBackend(),
+      remainingPhaserProductionRoutes: ['scene-lifecycle', 'mission-briefing', 'simulation-lifecycle', 'debrief', 'editor']
+    });
+  }
+
+  setThreeSimulationCameraPreset(preset) {
+    this.app.state.ui ??= {};
+    this.app.state.ui.threeMissionCameraPreset = ['tacticalTopDown', 'obliqueMission', 'waterColumnProfile'].includes(preset) ? preset : 'obliqueMission';
+    if (this.threeSimulationRenderer) setThreeMissionWorldCamera(this.threeSimulationRenderer, { preset: this.app.state.ui.threeMissionCameraPreset });
+    this.refresh();
   }
 
   togglePlay() {
@@ -560,34 +605,41 @@ export class SimulationScene extends PhaserScene {
     });
     this.trace?.markFrame?.(this.app.state.level, renderTime, 'SimulationScene');
     this.graphics.clear();
-    this.app.adapter.layout = drawMissionMap(this.graphics, {
-      level: this.app.state.level,
-      mission: this.app.state.mission,
-      plan: this.app.state.plan,
-      engine: this.engine,
-      time: renderTime,
-      guidanceSettings: {
-        mode: 'simulation',
-        showWater: this.app.state.ui.showWater,
-        showROI: this.app.state.ui.showROI,
-        showCurrents: this.app.state.ui.showCurrents,
-        showHazards: this.app.state.ui.showHazards,
-        showTerrain: this.app.state.ui.showTerrain,
-        showPlannedPath: this.app.state.ui.showPlannedPath,
-        showActualPath: this.app.state.ui.showActualPath,
-        showGuidance: false,
-        planningAnchor: null
-      },
-      mapBounds: getViewportMapBounds(this.app, {
-        topPadding: 28,
-        sidePadding: 34,
-        bottomPadding: 18,
-        fallbackTop: 132,
-        fallbackBottom: 100
-      }),
-      mapCamera: this.app.state.ui.mapCamera
-    });
     this.syncSimulationTimeToState(renderTime);
+    if (this.getSimulationRendererBackend() === 'threeMission3d') {
+      this.graphics.setVisible(false);
+      this.refreshThreeSimulationRenderer(renderTime);
+    } else {
+      this.hideThreeSimulationRenderer();
+      this.graphics.setVisible(true);
+      this.app.adapter.layout = drawMissionMap(this.graphics, {
+        level: this.app.state.level,
+        mission: this.app.state.mission,
+        plan: this.app.state.plan,
+        engine: this.engine,
+        time: renderTime,
+        guidanceSettings: {
+          mode: 'simulation',
+          showWater: this.app.state.ui.showWater,
+          showROI: this.app.state.ui.showROI,
+          showCurrents: this.app.state.ui.showCurrents,
+          showHazards: this.app.state.ui.showHazards,
+          showTerrain: this.app.state.ui.showTerrain,
+          showPlannedPath: this.app.state.ui.showPlannedPath,
+          showActualPath: this.app.state.ui.showActualPath,
+          showGuidance: false,
+          planningAnchor: null
+        },
+        mapBounds: getViewportMapBounds(this.app, {
+          topPadding: 28,
+          sidePadding: 34,
+          bottomPadding: 18,
+          fallbackTop: 132,
+          fallbackBottom: 100
+        }),
+        mapCamera: this.app.state.ui.mapCamera
+      });
+    }
     traceSimulation(this.trace, {
       scene: 'SimulationScene',
       phase: 'ui.waypointPanel.update',
@@ -606,7 +658,154 @@ export class SimulationScene extends PhaserScene {
       message: 'Simulation frame rendered'
     });
   }
+  ensureThreeSimulationContainer() {
+    if (this.threeSimulationContainer?.isConnected) return this.threeSimulationContainer;
+    const host = this.app?.elements?.viewportShell ?? this.app?.elements?.gameContainer ?? globalThis.document?.getElementById?.('viewport-shell');
+    if (!host?.appendChild) return null;
+    const container = globalThis.document.createElement('div');
+    container.className = 'three-mission-world-host';
+    container.dataset.rendererBackend = 'threeMission3d';
+    container.dataset.simulationRenderer = 'true';
+    container.setAttribute('aria-label', 'Three.js live mission simulation renderer');
+    host.appendChild(container);
+    this.threeSimulationContainer = container;
+    return container;
+  }
 
+  ensureThreeSimulationRenderer() {
+    const container = this.ensureThreeSimulationContainer();
+    if (!container) return null;
+    container.hidden = false;
+    if (!this.threeSimulationRenderer) {
+      this.threeSimulationRenderer = createThreeMissionWorldRenderer(container, {
+        camera: { preset: this.app.state.ui?.threeMissionCameraPreset ?? 'obliqueMission' },
+        layerVisibility: this.threeSimulationLayerVisibilityPatch()
+      });
+    }
+    resizeThreeMissionWorldRenderer(this.threeSimulationRenderer, container.clientWidth, container.clientHeight);
+    return this.threeSimulationRenderer;
+  }
+
+  hideThreeSimulationRenderer() {
+    if (this.threeSimulationContainer) this.threeSimulationContainer.hidden = true;
+  }
+
+  disposeThreeSimulationRenderer() {
+    disposeThreeMissionWorldRenderer(this.threeSimulationRenderer);
+    this.threeSimulationRenderer = null;
+    this.threeSimulationContainer?.remove?.();
+    this.threeSimulationContainer = null;
+  }
+
+  buildSimulationWorldViewModelForScene(renderTime = null) {
+    const input = simulationWorldRenderInputFromScene(this, {
+      activeTimeSeconds: renderTime ?? this.engine?.t ?? 0,
+      displaySettings: {
+        rendererBackend: 'threeMission3d',
+        cameraPreset: this.app.state.ui?.threeMissionCameraPreset ?? 'obliqueMission',
+        ...(this.threeSimulationLayerVisibilityPatch())
+      }
+    });
+    this.simulationRenderInput = input;
+    const viewModel = buildSimulationWorldRenderViewModel(input);
+    this.simulationRenderViewModel = viewModel;
+    return viewModel;
+  }
+
+  refreshThreeSimulationRenderer(renderTime = null) {
+    const renderer = this.ensureThreeSimulationRenderer();
+    const viewModel = this.buildSimulationWorldViewModelForScene(renderTime);
+    if (!renderer) {
+      this.updateSimulationRenderDebug({ activeBackend: 'threeMission3d', threeMounted: false, viewModel, parityWarnings: ['Three simulation renderer could not mount DOM container.'] });
+      return;
+    }
+    setThreeMissionWorldCamera(renderer, { preset: this.app.state.ui?.threeMissionCameraPreset ?? 'obliqueMission' });
+    setThreeMissionLayerVisibility(renderer, this.threeSimulationLayerVisibilityPatch());
+    updateThreeMissionWorldRenderer(renderer, viewModel);
+    resizeThreeMissionWorldRenderer(renderer, this.threeSimulationContainer?.clientWidth, this.threeSimulationContainer?.clientHeight);
+    const validation = validateSimulationWorldRenderViewModel(viewModel);
+    const parityWarnings = [...(validation.warnings ?? [])];
+    if (!validation.valid) parityWarnings.push(...validation.errors);
+    this.updateSimulationRenderDebug({ activeBackend: 'threeMission3d', threeMounted: true, viewModel, renderer, parityWarnings });
+  }
+
+  threeSimulationLayerVisibilityPatch() {
+    const layers = this.app.state.ui?.threeMissionLayers ?? {};
+    return {
+      bathymetry: layers.bathymetry !== false,
+      waterSurface: layers.waterSurface !== false,
+      depthLayers: layers.depthLayers !== false,
+      scalarField: layers.scalarField !== false && this.app.state.ui?.showROI !== false,
+      currentVectors: layers.currentVectors !== false && this.app.state.ui?.showCurrents !== false,
+      hazards: layers.hazards !== false && this.app.state.ui?.showHazards !== false,
+      constraints: layers.constraints !== false && this.app.state.ui?.showTerrain !== false,
+      dropZones: layers.dropZones !== false,
+      gliders: layers.gliders !== false,
+      waypoints: layers.waypoints !== false,
+      routes: layers.routes !== false && this.app.state.ui?.showPlannedPath !== false,
+      realizedTrajectories: layers.realizedTrajectories !== false && this.app.state.ui?.showActualPath !== false,
+      observations: layers.observations !== false,
+      surfacingEvents: layers.surfacingEvents !== false,
+      routeStatus: layers.routeStatus !== false,
+      priorityTargets: layers.priorityTargets !== false,
+      selection: layers.selection !== false,
+      guidance: false,
+      interaction: false
+    };
+  }
+
+  updateSimulationRenderDebug({ activeBackend, threeMounted, viewModel, renderer = null, parityWarnings = [] } = {}) {
+    const summary = simulationWorldRenderViewModelSummary(viewModel ?? {});
+    const rendererSummary = renderer ? threeMissionWorldRendererSummary(renderer) : null;
+    const status = viewModel?.simulationStatus ?? {};
+    const progress = viewModel?.missionProgress ?? {};
+    globalThis.ANCHOR_SIMULATION_RENDER_DEBUG = {
+      version: 'mig-r1',
+      activeBackend: activeBackend ?? this.getSimulationRendererBackend(),
+      threeMounted: threeMounted === true,
+      simulationStatus: status.status ?? null,
+      paused: status.paused !== false,
+      speedScale: Number(this.app.state.playback?.speedScale ?? 1) || 1,
+      simulationTimeSeconds: status.timeSeconds ?? this.engine?.t ?? 0,
+      renderedSimulationTimeSeconds: viewModel?.activeTimeSeconds ?? null,
+      renderedScalarFieldTimeSeconds: viewModel?.scalarFieldLayer?.timeSeconds ?? null,
+      renderedCurrentFieldTimeSeconds: viewModel?.vectorFieldLayer?.timeSeconds ?? null,
+      selectedAgentId: this.app.state.selectedAgentId ?? null,
+      agentCount: this.engine?.agents?.length ?? 0,
+      activeAgentCount: progress.activeAgentCount ?? 0,
+      completedAgentCount: progress.completedAgentCount ?? 0,
+      failedAgentCount: progress.failedAgentCount ?? 0,
+      plannedRouteCount: summary.routeCount ?? 0,
+      realizedTrajectoryCount: summary.realizedTrajectoryCount ?? 0,
+      realizedTrajectoryPointCount: summary.realizedTrajectoryPointCount ?? 0,
+      sampledTrajectoryPointCount: summary.sampledTrajectoryPointCount ?? 0,
+      observationCount: summary.observationCount ?? 0,
+      surfacingEventCount: summary.surfacingEventCount ?? 0,
+      communicationEventCount: summary.communicationEventCount ?? 0,
+      routeFailureCount: summary.routeFailureCount ?? 0,
+      threeObjectCount: rendererSummary?.threeObjectCount ?? 0,
+      threeGeometryCount: rendererSummary?.threeGeometryCount ?? 0,
+      threeMaterialCount: rendererSummary?.threeMaterialCount ?? 0,
+      threeTextureCount: rendererSummary?.threeTextureCount ?? 0,
+      objectGrowthWarnings: rendererSummary?.objectGrowthWarnings ?? [],
+      inputSummary: simulationWorldRenderInputSummary(this.simulationRenderInput ?? {}),
+      rendererSummary,
+      parityWarnings,
+      ownsSimulationState: false,
+      advancesSimulationClock: false,
+      computesVehicleMotion: false,
+      generatesObservations: false,
+      ownsScoring: false,
+      changesOfficialBrowserScoring: false,
+      exposesHiddenTruth: false,
+      phaserWorldRendererActive: this.getSimulationRendererBackend() === 'legacyPhaser2d',
+      legacyPhaserFallbackEnabled: legacyPhaserMissionRendererEnabled(),
+      usesNewPlanner: false,
+      usesRouteOptimizer: false,
+      usesMARL: false
+    };
+    this.refreshMigrationDebug();
+  }
   syncSimulationTimeToState(time = null) {
     const renderTime = time ?? getActiveRenderTime(this.app.state, this.engine);
     this.app.state.simulationTime = renderTime;

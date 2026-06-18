@@ -1,4 +1,4 @@
-﻿import * as THREE from '../../../../node_modules/three/build/three.module.js';
+import * as THREE from 'three';
 import { clearGroup, agentColor, positionForRecord } from './ThreeMissionLayerUtils.js';
 
 export function updateThreeWaypointLayer(group, viewModel = {}) {
@@ -17,4 +17,5 @@ export function updateThreeWaypointLayer(group, viewModel = {}) {
   }
   return group;
 }
+
 

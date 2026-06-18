@@ -20,7 +20,7 @@ Update it after substantial refactors so future work starts from the current pro
 
 ## Current Development State
 
-ANCHOR is a static browser-first Phaser 3 game and simulator. The active shell is the Mission Console + Phaser Simulator Viewport + Waypoint Timeline. The browser game is the authoritative validator, simulator, and scorer. External solvers propose JSON plans; ANCHOR validates, simulates, scores, and exports results.
+ANCHOR is a static browser-first Three.js mission game and simulator with a transitional Phaser scene shell. The active mission shell is the Mission Console + Three.js Mission World + Waypoint Timeline. The browser game is the authoritative validator, simulator, and scorer. External solvers propose JSON plans; ANCHOR validates, simulates, scores, and exports results.
 
 The current app supports tutorials, deterministic and stochastic generated challenges, Mission Briefing, waypoint planning, continuous route validation, simulation playback, Debrief comparison, local leaderboard/best-path records, dataset export, JSON solver contracts, Learning Labs static concept pages, optional Python/Colab templates, and optional Node.js headless solver tools.
 
@@ -37,6 +37,19 @@ Both modes use the same terrain, current fields, hazards, glider physics, scorin
 Challenge Mode also persists `missionMode`. Mission modes are player-facing objective presets such as Survey Sweep, Signal Hunt, Plume Intercept, Danger Run, and Long Glide. They map to shared technical defaults for sample-field behavior, current-field behavior, sampling rules, scoring weights, route-grade weights, and replay/export metadata. Simulation Lab remains the detailed configuration path.
 
 ## Version / Milestone Log
+
+### MIG-R1 - Three.js-First Mission Runtime
+
+- Made Three.js the default production mission environment for planning and live simulation rendering.
+- Added migration runtime config/debug metadata, query-gated legacy Phaser fallback, simulation render view models/adapters, Three.js layers for realized trajectories, observations, surfacing events, route status, and simulation status, plus focused browser/node smokes and audits.
+- Preserved the boundary: Three.js renders derived public-safe state and does not own mission lifecycle, simulation clock, vehicle motion, observation generation, scoring, replay semantics, route optimization, hidden truth, Python simulation, WebGPU fluid simulation, RL, or MARL. MIG-R2 should extract mission lifecycle and routing from Phaser.
+
+### PAGES-R1 - Self-Contained Three.js Runtime
+
+- Added a checked-in, curated Three.js runtime under `vendor/three/` for static browser and GitHub Pages deployment.
+- Browser modules now import `three` through the `index.html` import map instead of direct `node_modules/three` paths.
+- Added vendor sync/check scripts, `_site` Pages build tooling, a Pages-like static-host smoke test, GitHub Pages workflow, and Third-Party Notices.
+- Preserved the boundary: `node_modules/` remains ignored and is only a development source package for refreshing the curated vendor runtime.
 
 ### DOCS-GDD-R1 - Canonical Scientific AUV Planning Game Design
 
@@ -428,3 +441,4 @@ Added a versioned headless replay alignment contract with `replay_manifest.json`
 ## H4.1 / Replay Schema, Integrity, And Multi-Agent Contract Hardening
 
 Added formal replay schemas, runtime schema validation, compatibility policy, structured integrity verifier, compact clean/tampered replay fixtures, browser-visible integrity failures, compact replay summary export, and a contract-only two-agent replay fixture. Public playback remains `publicObservationPlayback`; protected/referee replay modes remain reserved and unimplemented for public artifacts.
+

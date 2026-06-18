@@ -1,13 +1,17 @@
 {
   "name": "auv-glider-planner-game",
   "version": "0.1.0",
-  "description": "Phaser 3 browser-first AUV glider planning puzzle game with schema-driven simulation, solver bridge, and dataset export.",
+  "description": "Three.js-first AUV glider planning game with a portable simulation core, solver bridge, dataset export, and transitional Phaser shell.",
   "type": "module",
   "scripts": {
     "serve": "python -m http.server 8000",
-    "check": "node tools/check-js.mjs",
+    "check": "node tools/js/check_three_vendor.mjs && node tools/check-js.mjs",
     "test:e2e": "playwright test --reporter=line",
-    "test:e2e:headed": "playwright test --headed --reporter=line"
+    "test:e2e:headed": "playwright test --headed --reporter=line",
+    "vendor:three": "node tools/js/sync_three_vendor.mjs",
+    "check:three-vendor": "node tools/js/check_three_vendor.mjs",
+    "build:pages": "node tools/js/build_github_pages.mjs",
+    "smoke:pages": "node tools/js/smoke_github_pages_static_host.mjs"
   },
   "devDependencies": {
     "@playwright/test": "^1.54.0"

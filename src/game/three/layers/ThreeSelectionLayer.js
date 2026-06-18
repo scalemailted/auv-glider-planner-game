@@ -1,4 +1,4 @@
-﻿import * as THREE from '../../../../node_modules/three/build/three.module.js';
+import * as THREE from 'three';
 import { clearGroup, positionForRecord } from './ThreeMissionLayerUtils.js';
 
 export function updateThreeSelectionLayer(group, viewModel = {}) {
@@ -33,3 +33,4 @@ export function updateThreeGuidanceLayer(group, viewModel = {}) {
   group.add(line);
   return group;
 }
+

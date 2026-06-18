@@ -1,4 +1,4 @@
-﻿import { expect, test } from '@playwright/test';
+import { expect, test } from '@playwright/test';
 import fs from 'node:fs/promises';
 import { startStaticServer } from './static-server.mjs';
 
@@ -2742,19 +2742,25 @@ test('Three Mission renderer preserves live Mission Planning state', async ({ pa
   await page.evaluate(() => window.anchorGame.phaser.scene.getScene('MainMenuScene').startCampaignLevel('tutorial_01_first_deployment'));
   await expect.poll(() => page.evaluate(() => window.anchorGame.phaser.scene.getScene('MissionBriefingScene').sys.isActive())).toBe(true);
   await startPlanningFromBriefing(page);
-  await expect(page.locator('#mission-console')).toContainText('World View');
-  await expect(page.locator('#mission-console')).toContainText('Three.js is rendering the same live mission state as the tactical view.');
-  await expect(page.locator('#mission-console')).toContainText('Changing renderer does not change the plan, simulation, score, or visibility permissions.');
-  await expect.poll(() => page.evaluate(() => window.ANCHOR_MISSION_RENDER_DEBUG?.activeBackend)).toBe('legacyPhaser2d');
+  await expect(page.locator('#mission-console')).toContainText('Mission World');
+  await expect(page.locator('#mission-console')).toContainText('Three.js is the production mission environment.');
+  await expect(page.locator('#mission-console')).toContainText('portable JavaScript core owns planning validity, simulation, scoring, and visibility permissions.');
+  await expect.poll(() => page.evaluate(() => window.ANCHOR_MISSION_RENDER_DEBUG?.activeBackend)).toBe('threeMission3d');
 
-  await clickCell(page, 1, 1);
+  await page.evaluate(() => {
+    const scene = window.anchorGame.phaser.scene.getScene('MissionWorkspaceScene');
+    scene.trySelectDeploymentStart({ x: 1, y: 1 });
+    scene.addWaypointForSelected({ x: 5, y: 2, action: 'sample' });
+    scene.setPlanningTime(6);
+    scene.addWaypointForSelected({ x: 5, y: 3, action: 'sample' });
+    scene.addMarkerForSelected({ x: 4, y: 4 });
+  });
   await expect(page.evaluate(() => window.anchorGame.state.mission?.agents?.[0]?.deployment?.selectedStart)).resolves.toEqual({ x: 1, y: 1 });
-  await clickCell(page, 5, 2);
-  await expectWaypointCount(page, 1);
-  await page.evaluate(() => window.anchorGame.phaser.scene.getScene('MissionWorkspaceScene').setPlanningTime(6));
-  await clickCell(page, 5, 3);
   await expectWaypointCount(page, 2);
-  await expectMarkerHoverAndPlacement(page, 4, 4);
+  await expect(page.evaluate(() => {
+    const marker = window.anchorGame.state.plan.planningMarkers?.at(-1);
+    return marker ? { x: marker.x, y: marker.y } : null;
+  })).resolves.toEqual({ x: 4, y: 4 });
   await page.evaluate(() => {
     const state = window.anchorGame.state;
     state.level.layers ??= {};
@@ -2778,7 +2784,6 @@ test('Three Mission renderer preserves live Mission Planning state', async ({ pa
   }));
   expect(beforeSwitch).toMatchObject({ waypointCount: 2, markerCount: 1, selectedStart: { x: 1, y: 1 }, planningTime: 6, mode: 'planning' });
 
-  await page.locator('#mission-console [data-action="renderer-three"]').click();
   await expect(page.locator('.three-mission-world-host')).toBeVisible();
   await expect(page.locator('.three-mission-world-canvas')).toBeVisible();
   await expect.poll(() => page.evaluate(() => window.ANCHOR_MISSION_RENDER_DEBUG?.activeBackend)).toBe('threeMission3d');
@@ -2815,18 +2820,16 @@ test('Three Mission renderer preserves live Mission Planning state', async ({ pa
   await expect.poll(() => page.evaluate(() => window.ANCHOR_MISSION_RENDER_DEBUG?.activeTimeSeconds)).toBe(12);
   await expect.poll(() => page.evaluate(() => window.ANCHOR_MISSION_RENDER_DEBUG?.renderedCurrentTimeSeconds)).toBe(12);
 
-  await page.locator('#mission-console [data-action="renderer-legacy"]').click();
-  await expect.poll(() => page.evaluate(() => window.ANCHOR_MISSION_RENDER_DEBUG?.activeBackend)).toBe('legacyPhaser2d');
-  await expect(page.locator('.three-mission-world-host')).toBeHidden();
+  await expect(page.locator('#mission-console [data-action="renderer-legacy"]')).toHaveCount(0);
+  await page.evaluate(() => window.anchorGame.phaser.scene.getScene('MissionWorkspaceScene').setRendererBackend('legacyPhaser2d'));
+  await expect.poll(() => page.evaluate(() => window.ANCHOR_MISSION_RENDER_DEBUG?.activeBackend)).toBe('threeMission3d');
+  await expect(page.locator('.three-mission-world-host')).toBeVisible();
   await expect(page.evaluate(() => ({
     waypointCount: window.anchorGame.state.plan.agentPlans.reduce((sum, agentPlan) => sum + (agentPlan.waypoints?.length ?? 0), 0),
     markerCount: window.anchorGame.state.plan.planningMarkers?.length ?? 0,
     selectedStart: window.anchorGame.state.mission.agents[0].deployment?.selectedStart,
     mode: window.anchorGame.state.mode
   }))).resolves.toEqual({ waypointCount: 2, markerCount: 1, selectedStart: { x: 1, y: 1 }, mode: 'planning' });
-
-  await page.locator('#mission-console [data-action="renderer-three"]').click();
-  await expect.poll(() => page.evaluate(() => window.ANCHOR_MISSION_RENDER_DEBUG?.activeBackend)).toBe('threeMission3d');
   await expect.poll(() => page.evaluate(() => window.ANCHOR_MISSION_RENDER_DEBUG?.waypointCount)).toBe(2);
 });
 test('Three Mission planning interactions dispatch canonical workspace commands', async ({ page }) => {
@@ -2837,7 +2840,7 @@ test('Three Mission planning interactions dispatch canonical workspace commands'
   await page.evaluate(() => window.anchorGame.phaser.scene.getScene('MainMenuScene').startCampaignLevel('tutorial_01_first_deployment'));
   await expect.poll(() => page.evaluate(() => window.anchorGame.phaser.scene.getScene('MissionBriefingScene').sys.isActive())).toBe(true);
   await startPlanningFromBriefing(page);
-  await clickCell(page, 1, 1);
+  await page.evaluate(() => window.anchorGame.phaser.scene.getScene('MissionWorkspaceScene').trySelectDeploymentStart({ x: 1, y: 1 }));
 
   await page.evaluate(() => {
     const state = window.anchorGame.state;
@@ -2883,7 +2886,6 @@ test('Three Mission planning interactions dispatch canonical workspace commands'
   });
 
   await expectWaypointCount(page, 0);
-  await page.locator('#mission-console [data-action="renderer-three"]').click();
   await expect(page.locator('.three-mission-world-host')).toBeVisible();
   await expect.poll(() => page.evaluate(() => window.ANCHOR_MISSION_RENDER_DEBUG?.activeBackend)).toBe('threeMission3d');
   await page.locator('#mission-console [data-action="three-camera"][data-preset="tacticalTopDown"]').click();
@@ -3647,7 +3649,3 @@ async function cellCenter(page, x, y) {
     };
   }, { x, y });
 }
-
-
-
-

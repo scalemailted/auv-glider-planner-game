@@ -1,4 +1,4 @@
-﻿import * as THREE from '../../../../node_modules/three/build/three.module.js';
+import * as THREE from 'three';
 import { clearGroup, positionForRecord } from './ThreeMissionLayerUtils.js';
 
 export function updateThreeCurrentVectorLayer(group, viewModel = {}) {
@@ -24,3 +24,4 @@ export function updateThreeCurrentVectorLayer(group, viewModel = {}) {
   }
   return group;
 }
+

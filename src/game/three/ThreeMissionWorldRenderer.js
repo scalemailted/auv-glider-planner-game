@@ -1,4 +1,4 @@
-﻿import * as THREE from '../../../node_modules/three/build/three.module.js';
+import * as THREE from 'three';
 import { createThreeScalarFieldLayer, updateThreeScalarFieldLayer, setThreeScalarFieldVisibility, disposeThreeScalarFieldLayer } from './layers/ThreeScalarFieldLayer.js';
 import { updateThreeDropZoneLayer } from './layers/ThreeDropZoneLayer.js';
 import { updateThreeGliderLayer } from './layers/ThreeGliderLayer.js';
@@ -9,6 +9,11 @@ import { updateThreePriorityTargetLayer } from './layers/ThreePriorityTargetLaye
 import { updateThreeCurrentVectorLayer } from './layers/ThreeCurrentVectorLayer.js';
 import { updateThreeHazardLayer, updateThreeConstraintLayer } from './layers/ThreeHazardLayer.js';
 import { updateThreeSelectionLayer, updateThreeGuidanceLayer } from './layers/ThreeSelectionLayer.js';
+import { updateThreeRealizedTrajectoryLayer, clearThreeRealizedTrajectoryLayer } from './layers/ThreeRealizedTrajectoryLayer.js';
+import { updateThreeObservationLayer, clearThreeObservationLayer } from './layers/ThreeObservationLayer.js';
+import { updateThreeSurfacingEventLayer, clearThreeSurfacingEventLayer } from './layers/ThreeSurfacingEventLayer.js';
+import { updateThreeRouteStatusLayer, clearThreeRouteStatusLayer } from './layers/ThreeRouteStatusLayer.js';
+import { updateThreeSimulationStatusLayer, clearThreeSimulationStatusLayer } from './layers/ThreeSimulationStatusLayer.js';
 import {
   createThreePlanningInteractionLayer,
   updateThreePlanningInteractionLayer,
@@ -32,9 +37,13 @@ const GROUP_KEYS = [
   'gliderGroup',
   'waypointGroup',
   'routeGroup',
+  'realizedTrajectoryGroup',
   'markerGroup',
   'priorityTargetGroup',
   'observationGroup',
+  'surfacingEventGroup',
+  'routeStatusGroup',
+  'simulationStatusGroup',
   'selectionGroup',
   'guidanceGroup',
   'interactionGroup'
@@ -126,9 +135,14 @@ export function updateThreeMissionWorldRenderer(renderer, viewModel = {}) {
   updateThreeGliderLayer(renderer.groups.gliderGroup, viewModel);
   updateThreeWaypointLayer(renderer.groups.waypointGroup, viewModel);
   updateThreeRouteLayer(renderer.groups.routeGroup, viewModel);
+  updateThreeRealizedTrajectoryLayer(renderer.groups.realizedTrajectoryGroup, viewModel);
   updateThreePlanningMarkerLayer(renderer.groups.markerGroup, viewModel);
   updateThreePriorityTargetLayer(renderer.groups.priorityTargetGroup, viewModel);
-  updateObservationLayer(renderer.groups.observationGroup, viewModel);
+  if (viewModel.phase === 'simulation' || viewModel.type === 'anchor.rendering.simulation-world') updateThreeObservationLayer(renderer.groups.observationGroup, viewModel);
+  else updateObservationLayer(renderer.groups.observationGroup, viewModel);
+  updateThreeSurfacingEventLayer(renderer.groups.surfacingEventGroup, viewModel);
+  updateThreeRouteStatusLayer(renderer.groups.routeStatusGroup, viewModel);
+  updateThreeSimulationStatusLayer(renderer.groups.simulationStatusGroup, viewModel);
   updateThreeSelectionLayer(renderer.groups.selectionGroup, viewModel);
   updateThreeGuidanceLayer(renderer.groups.guidanceGroup, viewModel);
   updateInteractionSurface(renderer, viewModel);
@@ -171,9 +185,13 @@ export function setThreeMissionLayerVisibility(renderer, visibilityPatch = {}) {
   renderer.groups.gliderGroup.visible = v.gliders !== false;
   renderer.groups.waypointGroup.visible = v.waypoints !== false;
   renderer.groups.routeGroup.visible = v.routes !== false;
+  renderer.groups.realizedTrajectoryGroup.visible = v.realizedTrajectories !== false;
   renderer.groups.markerGroup.visible = v.planningMarkers !== false;
   renderer.groups.priorityTargetGroup.visible = v.priorityTargets !== false;
   renderer.groups.observationGroup.visible = v.observations !== false;
+  renderer.groups.surfacingEventGroup.visible = v.surfacingEvents !== false;
+  renderer.groups.routeStatusGroup.visible = v.routeStatus !== false;
+  renderer.groups.simulationStatusGroup.visible = true;
   renderer.groups.selectionGroup.visible = v.selection !== false;
   renderer.groups.guidanceGroup.visible = v.guidance !== false;
   renderer.groups.interactionGroup.visible = v.interaction !== false;
@@ -200,6 +218,8 @@ export function threeMissionWorldRendererSummary(renderer = {}) {
     gliderObjectCount: renderer.groups?.gliderGroup?.children?.length ?? 0,
     waypointObjectCount: renderer.groups?.waypointGroup?.children?.length ?? 0,
     routeObjectCount: renderer.groups?.routeGroup?.children?.length ?? 0,
+    realizedTrajectoryObjectCount: renderer.groups?.realizedTrajectoryGroup?.children?.length ?? 0,
+    realizedTrajectoryPointCount: countTrajectoryPoints(renderer.groups?.realizedTrajectoryGroup),
     markerObjectCount: renderer.groups?.markerGroup?.children?.length ?? 0,
     priorityTargetObjectCount: renderer.groups?.priorityTargetGroup?.children?.length ?? 0,
     interactionObjectCount: renderer.groups?.interactionGroup?.children?.length ?? 0,
@@ -225,6 +245,11 @@ export function disposeThreeMissionWorldRenderer(renderer) {
   if (renderer.animationFrame) globalThis.cancelAnimationFrame?.(renderer.animationFrame);
   disposeThreeScalarFieldLayer(renderer.scalarLayer);
   disposeThreePlanningInteractionLayer(renderer.planningInteractionLayer);
+  clearThreeRealizedTrajectoryLayer(renderer.groups?.realizedTrajectoryGroup);
+  clearThreeObservationLayer(renderer.groups?.observationGroup);
+  clearThreeSurfacingEventLayer(renderer.groups?.surfacingEventGroup);
+  clearThreeRouteStatusLayer(renderer.groups?.routeStatusGroup);
+  clearThreeSimulationStatusLayer(renderer.groups?.simulationStatusGroup);
   for (const group of Object.values(renderer.groups ?? {})) clearGroup(group);
   renderer.scene?.traverse?.((object) => {
     object.geometry?.dispose?.();
@@ -364,9 +389,12 @@ function defaultLayerVisibility(input = {}) {
     gliders: input.gliders !== false,
     waypoints: input.waypoints !== false,
     routes: input.routes !== false,
+    realizedTrajectories: input.realizedTrajectories !== false,
     planningMarkers: input.planningMarkers !== false,
     priorityTargets: input.priorityTargets !== false,
     observations: input.observations !== false,
+    surfacingEvents: input.surfacingEvents !== false,
+    routeStatus: input.routeStatus !== false,
     selection: input.selection !== false,
     guidance: input.guidance !== false,
     interaction: input.interaction !== false
@@ -380,11 +408,41 @@ function depthLayerColor(id) {
   return 0x54c7ec;
 }
 
+function countTrajectoryPoints(group) {
+  let count = 0;
+  for (const child of group?.children ?? []) count += Number(child.userData?.pointCount ?? 0);
+  return count;
+}
+
+function countSceneObjects(scene) {
+  let count = 0;
+  scene?.traverse?.(() => { count += 1; });
+  return count;
+}
+
+function countSceneResources(scene, key) {
+  const seen = new Set();
+  scene?.traverse?.((object) => {
+    const value = object?.[key];
+    if (Array.isArray(value)) value.forEach((item) => item && seen.add(item));
+    else if (value) seen.add(value);
+  });
+  return seen.size;
+}
+
+function objectGrowthWarnings(renderer) {
+  const objectCount = countSceneObjects(renderer.scene);
+  const warnings = [];
+  if (objectCount > 2500) warnings.push(`Three mission renderer object count is high (${objectCount}).`);
+  return warnings;
+}
+
 function renderLoop(renderer) {
   if (!renderer || renderer.disposed) return;
   renderer.renderer.render(renderer.scene, renderer.camera);
   renderer.animationFrame = globalThis.requestAnimationFrame?.(() => renderLoop(renderer)) ?? null;
 }
+
 
 
 

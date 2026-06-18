@@ -1,4 +1,4 @@
-﻿import * as THREE from '../../../../node_modules/three/build/three.module.js';
+import * as THREE from 'three';
 import { clearGroup } from './ThreeMissionLayerUtils.js';
 
 export function createThreeScalarFieldLayer(options = {}) {
@@ -84,3 +84,4 @@ function colorForScale(v, scaleId = '') {
   if (v < 0.75) return { r: Math.round(45 + (v - 0.45) * 250), g: Math.round(212 + (v - 0.45) * 80), b: Math.round(191 - (v - 0.45) * 250) };
   return { r: 255, g: Math.round(209 - (v - 0.75) * 110), b: Math.round(102 - (v - 0.75) * 90) };
 }
+

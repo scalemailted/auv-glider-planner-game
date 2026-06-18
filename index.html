@@ -30,6 +30,26 @@
   <input id="hidden-file-input" type="file" accept="application/json" hidden />
   <div id="toast-root" aria-live="polite"></div>
   <script src="vendor/phaser.min.js"></script>
+  <script>
+    globalThis.ANCHOR_DEPLOYMENT_DEBUG = {
+      deploymentMode: 'static-import-map',
+      basePath: globalThis.location ? globalThis.location.pathname.replace(/[^/]*$/, '') : './',
+      threeRuntimeSource: './vendor/three/build/three.module.js',
+      threeVersion: '0.184.0',
+      threeVendored: true,
+      nodeModulesRuntimeDependency: false,
+      externalThreeCdn: false,
+      githubPagesCompatible: true
+    };
+  </script>
+  <script type="importmap">
+  {
+    "imports": {
+      "three": "./vendor/three/build/three.module.js",
+      "three/addons/": "./vendor/three/examples/jsm/"
+    }
+  }
+  </script>
   <script type="module" src="src/game/main.js"></script>
 </body>
 </html>

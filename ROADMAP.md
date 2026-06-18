@@ -26,7 +26,7 @@ Browser ANCHOR is the visual game and referee. Node/OceanBox-JS is the canonical
 
 ### Browser ANCHOR
 
-Browser ANCHOR is the visual game, referee, and debrief UI. Phaser remains the current app/game shell and input/fallback renderer. GFX-ARCH-R1 added a renderer boundary so Three.js/WebGL/WebGPU environmental renderers can consume public-safe view models without owning simulation, scoring, planning, replay semantics, or hidden truth. GFX-R3A connects an optional Three.js Bathymetric 3D renderer to the live Mission Planning workspace through a mission-world view model, and GFX-R3B adds direct planning interactions that route through canonical workspace commands without making Three.js the plan owner. Browser ANCHOR owns the player-facing planning flow, simulation screens, tutorial/challenge routes, benchmark UI, adaptive surfacing review, and Headless Bundle Viewer. Browser scoring remains the official gameplay scoring surface.
+Browser ANCHOR is the visual game, referee, and debrief UI. Three.js is now the production mission environment for planning and live simulation rendering. Phaser remains a transitional scene shell, lab host, and query-gated diagnostic fallback (`?legacyPhaser=1`), not the target mission renderer for new feature development. Renderer view models consume public-safe state without owning simulation, scoring, planning, replay semantics, route optimization, or hidden truth. Browser ANCHOR owns the player-facing planning flow, simulation screens, tutorial/challenge routes, benchmark UI, adaptive surfacing review, and Headless Bundle Viewer. Browser scoring remains the official gameplay scoring surface.
 
 Product surfaces include:
 
@@ -219,19 +219,17 @@ Boundaries:
 
 ## 11. Near-Term Priorities
 
-Active/near-term work should stabilize the current scientific game and headless architecture before adding large new systems.
+Active/near-term work should stabilize the current Three.js-first mission architecture before adding large new systems.
 
-1. GFX-R3C - Three.js Simulation Execution Parity: render realized trajectories, sampled observations, simulation-time current/scalar fields, and execution state in Three.js while Phaser remains official simulator/scoring owner.
+1. MIG-R2 - Extract Mission Lifecycle and Routing from Phaser: move mission flow/state orchestration behind portable controllers while preserving current UI behavior and legacy diagnostic fallback.
 2. GFX-R3D - Replay / Debrief Parity: make Three.js replay/debrief inspection match existing browser/headless replay artifacts without taking over replay authority.
-3. GFX-R3E - Three.js Default + Legacy Phaser Map Retirement Readiness: only after simulation and replay/debrief parity, evaluate whether Three.js can become default while retaining a tested legacy fallback.
-4. P11 - 2.5D Water-Column Sampling and Depth-Layer Mission Model: harden browser/headless parity, teaching copy, and fixture coverage around the new water-column foundation.
-5. H4 - Headless Replay / Browser Replay Alignment: make headless episode replay inspectable in Browser ANCHOR with clearer route, observation, score, and diagnosis alignment.
+3. Legacy Phaser retirement readiness: keep `?legacyPhaser=1` diagnostic coverage while reducing production dependencies on Phaser map drawing and pointer code.
+4. Blind Discovery / Hidden-State Mode implementation: hide ocean fields until sampled and build gameplay around sparse observations and belief construction.
+5. Production mission scoring synthesis: align science value, uncertainty, discovery, energy, hazards, redundancy, and regret without replacing official browser scoring with headless scoring.
 6. Learning Lab for Benchmark Modes + Headless Workflow + Hidden Discovery: teach Planner, Adaptive, Full Autonomy, solver-packet roundtrip, forecast correction, hidden-event hypothesis, and 2.5D sampling.
-7. Blind Discovery / Hidden-State Mode implementation: hide ocean fields until sampled and build gameplay around sparse observations and belief construction.
-8. Production mission scoring synthesis: align science value, uncertainty, discovery, energy, hazards, redundancy, and regret without replacing official browser scoring with headless scoring.
-9. Scenario packs and classroom assignment packs: provide reproducible missions for teaching and benchmark comparisons.
-10. Replay/debrief polish: improve comparisons, route explanation, depth-layer summaries, and regret narratives.
-11. Manual QA and performance pass: keep the static browser app responsive and testable as fields and artifacts grow.
+7. Scenario packs and classroom assignment packs: provide reproducible missions for teaching and benchmark comparisons.
+8. Replay/debrief polish: improve comparisons, route explanation, depth-layer summaries, and regret narratives.
+9. Manual QA and performance pass: keep the static browser app responsive and testable as fields and artifacts grow.
 
 ## 12. Medium-Term Priorities
 
@@ -274,7 +272,7 @@ Current boundaries:
 - No Python simulator reimplementation.
 - No MARL/RL training implementation yet.
 - No full 3D route planning yet.
-- No requirement to remove Phaser; future 3D rendering should be a pluggable renderer layer first.
+- No wholesale Phaser removal in one pass; Phaser retirement should proceed through tested migration steps while preserving the developer-only diagnostic fallback until parity is proven.
 - No WebGPU fluid simulation in the canonical mission engine.
 - No production data assimilation, GP, or GMRF claim.
 - No official browser scoring replacement by headless score.
@@ -299,11 +297,11 @@ SIM-R1 now adds optional Node/OceanBox-JS motion cost graph and adjacency matrix
 
 ## GFX-ARCH-R1 Renderer Boundary Checkpoint
 
-GFX-ARCH-R1 keeps Phaser as the app/game shell and adds pure renderer boundary contracts for capability detection, renderer host descriptors, and public-safe ocean-world render view models. Renderer Architecture Preview appears under Simulation Lab as an inspection scaffold, not a final 3D scene.
+GFX-ARCH-R1 introduced the renderer boundary. MIG-R1 moves the production mission path to Three.js while keeping Phaser as transitional shell/lab infrastructure and a query-gated diagnostic fallback. Renderer Architecture Preview remains under Simulation Lab as an inspection scaffold, not a final gameplay scene.
 
-ENV-R1 established the bathymetric world view and toggleable depth-layer concept. GFX-R2 upgrades that view to a dedicated Three.js/WebGL renderer that consumes public-safe view models while Phaser remains the app shell. GFX-R3A connects a separate Three.js mission-world renderer to the live Mission Planning workspace through `MissionWorldRenderViewModel`, `MissionWorldStateAdapter`, and `ThreeMissionWorldRenderer`; GFX-R3B adds intent-based planning interaction parity through `MissionWorldInteractionIntent`, `MissionWorldInteractionResult`, `ThreeMissionHitTest`, `ThreeMissionInteractionController`, and the Mission Workspace bridge. WebGPU-Ocean-style fluid work remains a future sandbox/reference, not the canonical mission engine. The renderer layer must not own simulation state, browser scoring, planning, replay semantics, headless runtime behavior, hidden truth, Python simulation, route optimization, or MARL/RL.
+ENV-R1 established the bathymetric world view and toggleable depth-layer concept. GFX-R2 upgrades that view to a dedicated Three.js/WebGL renderer. GFX-R3A connects the Three.js mission-world renderer to live Mission Planning through `MissionWorldRenderViewModel`, `MissionWorldStateAdapter`, and `ThreeMissionWorldRenderer`; GFX-R3B adds intent-based planning interaction parity through `MissionWorldInteractionIntent`, `MissionWorldInteractionResult`, `ThreeMissionHitTest`, `ThreeMissionInteractionController`, and the Mission Workspace bridge. MIG-R1 makes this Three.js path the default production planning/simulation renderer and adds live simulation layers for realized trajectories, sampled observations, surfacing events, route status, and simulation status. WebGPU-Ocean-style fluid work remains a future sandbox/reference, not the canonical mission engine. The renderer layer must not own simulation state, browser scoring, planning, replay semantics, headless runtime behavior, hidden truth, Python simulation, route optimization, or MARL/RL.
 
-GFX-R2 Bathymetric World View adds higher-quality synthetic bathymetry visualization over the 2.5D model. GFX-R3A adds visual parity for live mission artifacts such as terrain, bathymetry, currents, scalar fields, hazards, drop zones, selected starts, gliders, waypoints, planning markers, routes, and active Gold Stars. GFX-R3B adds direct Three.js hover/inspect, selection, 2.5D waypoint placement/editing/deletion, planning-marker interaction, and Gold Star inspection while preserving canonical workspace commands. It does not add full 3D route planning, a route optimizer, simulation execution parity, replay/debrief parity, WebGPU-Ocean, a Python simulator, scoring changes, or MARL/RL.
+GFX-R2 Bathymetric World View adds higher-quality synthetic bathymetry visualization over the 2.5D model. GFX-R3A adds visual parity for live mission artifacts such as terrain, bathymetry, currents, scalar fields, hazards, drop zones, selected starts, gliders, waypoints, planning markers, routes, and active Gold Stars. GFX-R3B adds direct Three.js hover/inspect, selection, 2.5D waypoint placement/editing/deletion, planning-marker interaction, and Gold Star inspection while preserving canonical workspace commands. MIG-R1 adds default Three.js mission rendering and live simulation rendering while preserving the boundary: no full 3D route planning, route optimizer, replay/debrief takeover, WebGPU-Ocean, Python simulator, scoring changes, or MARL/RL.
 ## SCORE-R1 Shadow Mission Outcome Scoring
 
 SCORE-R1 is shadow benchmark scoring. It does not replace official browser scoring, Challenge Mode scoring, leaderboard ranking, or existing debrief totals. Profiles are objective-aware and versioned; missing data is explicit; regret requires a compatible reference, and best-known attempt does not mean optimal. The Node/OceanBox-JS runtime remains the canonical headless runtime. Python/Colab analyzes exported artifacts or invokes Node; no Python simulator, planner, optimizer, MARL/RL, operational certification, SeaExplorer validation, or calibrated ocean forecast is added.
@@ -311,3 +309,4 @@ SCORE-R1 is shadow benchmark scoring. It does not replace official browser scori
 See [Mission Scoring and Regret](docs/mission_scoring_and_regret.md) for the SCORE-R1 artifact contract and boundaries.
 
 H4.1 hardens replay artifacts with formal schemas, deterministic integrity issue codes, tamper fixtures, compact browser replay summaries, and a contract-only multi-agent replay fixture. This stabilizes public replay/debrief infrastructure before Blind Discovery gameplay or cooperative multi-glider work; it does not add authoritative hidden-state replay, Python simulation, planners, optimizers, or MARL/RL.
+

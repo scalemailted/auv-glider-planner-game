@@ -1,4 +1,4 @@
-import * as THREE from '../../../../node_modules/three/build/three.module.js';
+import * as THREE from 'three';
 import { downloadJSON, loadJSON, readJSONFile } from '../../../core/io/ImportExport.js';
 import { buildSolverPacket } from '../../../core/io/SolverPacketExporter.js';
 import { buildChallengeExport } from '../../../core/io/ChallengeExporter.js';
@@ -135,6 +135,7 @@ import {
 } from '../../../core/benchmark/BenchmarkEpisodeRuntime.js';
 import { deriveAdaptiveBenchmarkContextFromState } from '../../../core/benchmark/AdaptiveBenchmarkRuntime.js';
 import { attemptSourceFromRouteSourceLabel } from '../../../core/benchmark/BenchmarkAttemptSourceMapping.js';
+import { legacyPhaserMissionRendererEnabled, preferredMissionRendererBackend, publishMigrationDebug } from '../../../core/runtime/MigrationRuntimeConfig.js';
 
 
 const PhaserScene = globalThis.Phaser?.Scene ?? class {};
@@ -162,7 +163,8 @@ export class MissionWorkspaceScene extends PhaserScene {
     this.app.state.mode = 'planning';
     this.app.elements.shell?.classList.add('planning-workspace');
     this.app.state.ui ??= {};
-    this.app.state.ui.rendererBackend ??= 'legacyPhaser2d';
+    this.app.state.ui.legacyPhaserMissionRendererEnabled = legacyPhaserMissionRendererEnabled();
+    this.app.state.ui.rendererBackend = preferredMissionRendererBackend({ requested: this.app.state.ui.rendererBackend });
     this.app.state.ui.threeMissionCameraPreset ??= 'obliqueMission';
     this.app.state.ui.threeMissionLayers ??= {};
     this.app.state.ui.threeMissionInteractionMode ??= 'selectInspect';
@@ -199,6 +201,7 @@ export class MissionWorkspaceScene extends PhaserScene {
     this.refreshPanels();
     this.refreshMap();
     this.consumePendingAutoExecute();
+    this.refreshMigrationDebug();
     this.input.on('pointerdown', this.onPointerDown, this);
     this.input.on('pointermove', this.onPointerMove, this);
     this.input.on('pointerup', this.onPointerUp, this);
@@ -552,17 +555,26 @@ export class MissionWorkspaceScene extends PhaserScene {
     this.addWaypointLabels(layout);
     this.addGliderHitTargets(layout);
     this.updateMissionRenderDebug({ activeBackend: 'legacyPhaser2d', threeMounted: false, viewModel: this.buildMissionWorldViewModelForScene(), parityWarnings: [] });
+    this.refreshMigrationDebug();
   }
 
   getMissionRendererBackend() {
-    const backend = this.app.state.ui?.rendererBackend;
-    return backend === 'threeMission3d' ? 'threeMission3d' : 'legacyPhaser2d';
+    return preferredMissionRendererBackend({ requested: this.app.state.ui?.rendererBackend });
+  }
+
+  refreshMigrationDebug() {
+    return publishMigrationDebug({
+      legacyFallbackEnabled: legacyPhaserMissionRendererEnabled(),
+      planningBackend: this.getMissionRendererBackend(),
+      simulationBackend: 'threeMission3d',
+      remainingPhaserProductionRoutes: ['scene-lifecycle', 'mission-briefing', 'simulation-lifecycle', 'debrief', 'editor']
+    });
   }
 
   setRendererBackend(backend) {
     this.app.state.ui ??= {};
-    const normalized = backend === 'threeMission3d' ? 'threeMission3d' : 'legacyPhaser2d';
-    const previous = this.app.state.ui.rendererBackend ?? 'legacyPhaser2d';
+    const normalized = preferredMissionRendererBackend({ requested: backend });
+    const previous = preferredMissionRendererBackend({ requested: this.app.state.ui.rendererBackend });
     if (previous === normalized) return;
     this.app.state.ui.rendererBackend = normalized;
     if (previous === 'threeMission3d' && normalized !== 'threeMission3d') {
@@ -734,6 +746,7 @@ export class MissionWorkspaceScene extends PhaserScene {
     const parityWarnings = [...(validation.warnings ?? [])];
     if (!validation.valid) parityWarnings.push(...validation.errors);
     this.updateMissionRenderDebug({ activeBackend: 'threeMission3d', threeMounted: true, viewModel, renderer, parityWarnings });
+    this.refreshMigrationDebug();
   }
 
   threeLayerVisibilityPatch() {
@@ -868,6 +881,9 @@ export class MissionWorkspaceScene extends PhaserScene {
       ownsReplaySemantics: false,
       changesMissionState: false,
       changesOfficialBrowserScoring: false,
+      phaserWorldRendererActive: this.getMissionRendererBackend() === 'legacyPhaser2d',
+      legacyPhaserFallbackEnabled: legacyPhaserMissionRendererEnabled(),
+      productionMissionUsesPhaserDrawing: this.getMissionRendererBackend() === 'legacyPhaser2d',
       exposesHiddenTruth: viewModel?.boundaryFlags?.includesHiddenTruth === true,
       usesWebGPUFluid: false,
       usesNewPlanner: false,
@@ -1112,6 +1128,7 @@ export class MissionWorkspaceScene extends PhaserScene {
   }
 
   onPointerDown(pointer) {
+    if (this.getMissionRendererBackend() === 'threeMission3d') return;
     const point = this.resolvePointerPoint(pointer);
     if (this.shouldPanMap(pointer)) {
       this.cameraPan = {
@@ -1130,6 +1147,7 @@ export class MissionWorkspaceScene extends PhaserScene {
   }
 
   onPointerMove(pointer) {
+    if (this.getMissionRendererBackend() === 'threeMission3d') return;
     const point = this.resolvePointerPoint(pointer);
     if (this.cameraPan) {
       this.app.state.ui.mapCamera ??= { zoom: 1, panX: 0, panY: 0 };
@@ -1158,6 +1176,7 @@ export class MissionWorkspaceScene extends PhaserScene {
   }
 
   onPointerUp(pointer) {
+    if (this.getMissionRendererBackend() === 'threeMission3d') return;
     if (this.cameraPan) {
       this.cameraPan = null;
       return;
@@ -3025,6 +3044,7 @@ function formatScore(value) {
   if (!Number.isFinite(number)) return 'N/A';
   return Math.abs(number) >= 100 ? number.toFixed(0) : number.toFixed(2);
 }
+
 
 
 
