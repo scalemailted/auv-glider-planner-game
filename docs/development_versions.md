@@ -20,7 +20,7 @@ Update it after substantial refactors so future work starts from the current pro
 
 ## Current Development State
 
-ANCHOR is a static browser-first Three.js mission game and simulator with a DOM router/runtime and a lazy legacy Phaser island. The active mission shell is the Mission Console + Three.js Mission World + Waypoint Timeline. The browser game is the authoritative validator, simulator, and scorer. External solvers propose JSON plans; ANCHOR validates, simulates, scores, and exports results.
+ANCHOR is a static browser-first Three.js mission game and simulator with a transitional Phaser scene shell. The active mission shell is the Mission Console + Three.js Mission World + Waypoint Timeline. The browser game is the authoritative validator, simulator, and scorer. External solvers propose JSON plans; ANCHOR validates, simulates, scores, and exports results.
 
 The current app supports tutorials, deterministic and stochastic generated challenges, Mission Briefing, waypoint planning, continuous route validation, simulation playback, Debrief comparison, local leaderboard/best-path records, dataset export, JSON solver contracts, Learning Labs static concept pages, optional Python/Colab templates, and optional Node.js headless solver tools.
 
@@ -38,17 +38,11 @@ Challenge Mode also persists `missionMode`. Mission modes are player-facing obje
 
 ## Version / Milestone Log
 
-### MIG-R2 - DOM Mission Lifecycle and Lazy Phaser Island
-
-- Added `src/app/` router, mission lifecycle, session store, browser runtime, DOM app shell, DOM mission views, planning interaction bridge, browser simulation controller, and lazy legacy Phaser island host.
-- Switched `index.html` from the eager Phaser entry point to `src/app/main.js`; `vendor/phaser.min.js` is now loaded by the legacy island only when an old lab/editor route is opened.
-- Added debug globals `ANCHOR_APP_RUNTIME_DEBUG`, `ANCHOR_MISSION_LIFECYCLE_DEBUG`, and `ANCHOR_LEGACY_PHASER_DEBUG` plus focused MIG-R2 smokes and production-runtime Phaser audits.
-- Preserved the boundary: MIG-R2 extracts lifecycle/routing/control flow, but does not rewrite the science/simulation core, scoring, planners, benchmark semantics, or legacy lab implementations.
 ### MIG-R1 - Three.js-First Mission Runtime
 
 - Made Three.js the default production mission environment for planning and live simulation rendering.
 - Added migration runtime config/debug metadata, query-gated legacy Phaser fallback, simulation render view models/adapters, Three.js layers for realized trajectories, observations, surfacing events, route status, and simulation status, plus focused browser/node smokes and audits.
-- Preserved the boundary: Three.js renders derived public-safe state and does not own mission lifecycle, simulation clock, vehicle motion, observation generation, scoring, replay semantics, route optimization, hidden truth, Python simulation, WebGPU fluid simulation, RL, or MARL. MIG-R2 later moved mission lifecycle and routing into the DOM runtime.
+- Preserved the boundary: Three.js renders derived public-safe state and does not own mission lifecycle, simulation clock, vehicle motion, observation generation, scoring, replay semantics, route optimization, hidden truth, Python simulation, WebGPU fluid simulation, RL, or MARL. MIG-R2 should extract mission lifecycle and routing from Phaser.
 
 ### PAGES-R1 - Self-Contained Three.js Runtime
 
@@ -447,6 +441,4 @@ Added a versioned headless replay alignment contract with `replay_manifest.json`
 ## H4.1 / Replay Schema, Integrity, And Multi-Agent Contract Hardening
 
 Added formal replay schemas, runtime schema validation, compatibility policy, structured integrity verifier, compact clean/tampered replay fixtures, browser-visible integrity failures, compact replay summary export, and a contract-only two-agent replay fixture. Public playback remains `publicObservationPlayback`; protected/referee replay modes remain reserved and unimplemented for public artifacts.
-
-
 

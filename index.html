@@ -29,6 +29,7 @@
   <aside id="waypoint-timeline" aria-label="Mission Waypoint Timeline"></aside>
   <input id="hidden-file-input" type="file" accept="application/json" hidden />
   <div id="toast-root" aria-live="polite"></div>
+  <script src="vendor/phaser.min.js"></script>
   <script>
     globalThis.ANCHOR_DEPLOYMENT_DEBUG = {
       deploymentMode: 'static-import-map',
@@ -49,7 +50,6 @@
     }
   }
   </script>
-  <script type="module" src="src/app/main.js"></script>
+  <script type="module" src="src/game/main.js"></script>
 </body>
 </html>
-

@@ -41,15 +41,9 @@ const failedResponses = [];
 const nodeModuleRequests = [];
 const externalThreeRequests = [];
 let vendorThreeRequestSeen = false;
-let lazyPhaserRequestSeen = false;
 let page = null;
-const assetChecks = [];
 
 try {
-  for (const assetPath of ['vendor/three/build/three.module.js', 'vendor/three/build/three.core.js']) {
-    assetChecks.push(await assertStaticJavaScriptAsset(`${baseUrl}${assetPath}`));
-  }
-
   page = await browser.newPage({ viewport: { width: 1280, height: 820 } });
   page.on('pageerror', (error) => pageErrors.push(error.message));
   page.on('console', (message) => {
@@ -58,7 +52,6 @@ try {
   page.on('request', (request) => {
     const url = request.url();
     if (url.includes('/vendor/three/build/three.module.js')) vendorThreeRequestSeen = true;
-    if (url.includes('/vendor/phaser.min.js')) lazyPhaserRequestSeen = true;
     if (url.includes('/node_modules/')) nodeModuleRequests.push(url);
     if (/^https?:\/\//i.test(url) && !url.startsWith(`http://127.0.0.1:${address.port}/`) && /three|cdn|unpkg|jsdelivr|esm\.sh|skypack/i.test(url)) {
       externalThreeRequests.push(url);
@@ -83,35 +76,24 @@ try {
   assert.equal(deployment?.externalThreeCdn, false, 'deployment debug excludes Three CDN dependency');
   assert.equal(deployment?.githubPagesCompatible, true, 'deployment debug marks Pages compatibility');
 
-  const initialRuntime = await page.evaluate(() => ({
-    route: globalThis.ANCHOR_APP_RUNTIME_DEBUG?.route?.currentRoute?.id,
-    normalRoutesInstantiatePhaser: globalThis.ANCHOR_APP_RUNTIME_DEBUG?.normalRoutesInstantiatePhaser,
-    phaserLoaded: Boolean(globalThis.Phaser)
-  }));
-  assert.equal(initialRuntime.route, 'mainMenu', 'DOM runtime starts on main menu route');
-  assert.equal(initialRuntime.normalRoutesInstantiatePhaser, false, 'normal routes do not instantiate Phaser');
-  assert.equal(initialRuntime.phaserLoaded, false, 'Phaser is not loaded before a legacy route opens');
-
-  await page.evaluate(() => globalThis.anchorRuntime.openLegacyRoute('bathymetryWorldView'));
-  await page.waitForFunction(() => globalThis.ANCHOR_LEGACY_PHASER_DEBUG?.mounted === true, null, { timeout: 20_000 });
-  await page.waitForFunction(() => globalThis.ANCHOR_BATHYMETRY_VIEW_DEBUG?.usesThreeRenderer === true, null, { timeout: 20_000 });
-  await page.waitForSelector('.three-bathymetry-canvas', { timeout: 20_000 });
+  await page.locator('#main-menu-hub [data-hub-view="simulation"]').first().click();
+  await page.locator('#main-menu-hub [data-action="bathymetry-world-view"]').first().click();
+  await page.waitForFunction(() => globalThis.ANCHOR_BATHYMETRY_VIEW_DEBUG?.usesThreeRenderer === true, null, { timeout: 15_000 });
+  await page.waitForSelector('.three-bathymetry-canvas', { timeout: 15_000 });
   const bathymetry = await page.evaluate(() => ({
     usesThreeRenderer: globalThis.ANCHOR_BATHYMETRY_VIEW_DEBUG?.usesThreeRenderer === true,
     rendererBackend: globalThis.ANCHOR_BATHYMETRY_VIEW_DEBUG?.rendererBackend,
-    terrainVertexCount: globalThis.ANCHOR_BATHYMETRY_VIEW_DEBUG?.terrainVertexCount ?? 0,
-    legacyMounted: globalThis.ANCHOR_LEGACY_PHASER_DEBUG?.mounted === true
+    terrainVertexCount: globalThis.ANCHOR_BATHYMETRY_VIEW_DEBUG?.terrainVertexCount ?? 0
   }));
   assert.equal(bathymetry.usesThreeRenderer, true, 'bathymetry view uses Three renderer');
   assert.equal(bathymetry.rendererBackend, 'three', 'bathymetry debug renderer backend');
   assert.ok(bathymetry.terrainVertexCount > 0, 'bathymetry exposes terrain vertices');
-  assert.equal(bathymetry.legacyMounted, true, 'legacy island mounted for legacy route');
 
   await page.goto(baseUrl, { waitUntil: 'domcontentloaded' });
   await page.waitForSelector('#main-menu-hub', { timeout: 15_000 });
-  await page.evaluate(() => globalThis.anchorRuntime.lifecycleController.loadTutorialMission('tutorial_01_first_deployment'));
-  await page.waitForFunction(() => globalThis.ANCHOR_MISSION_LIFECYCLE_DEBUG?.summary?.state === 'briefing', null, { timeout: 15_000 });
-  await page.evaluate(() => globalThis.anchorRuntime.lifecycleController.beginPlanning());
+  await page.evaluate(() => globalThis.anchorGame.phaser.scene.getScene('MainMenuScene').startCampaignLevel('tutorial_01_first_deployment'));
+  await page.waitForFunction(() => globalThis.anchorGame.phaser.scene.getScene('MissionBriefingScene')?.sys?.isActive?.() === true, null, { timeout: 15_000 });
+  await page.evaluate(() => globalThis.anchorGame.phaser.scene.getScene('MissionBriefingScene').startPlanning());
   await page.waitForSelector('.three-mission-world-canvas', { timeout: 15_000 });
   await page.waitForFunction(() => globalThis.ANCHOR_MISSION_RENDER_DEBUG?.activeBackend === 'threeMission3d' && globalThis.ANCHOR_MISSION_RENDER_DEBUG?.threeMounted === true, null, { timeout: 15_000 });
   assert.equal(await page.locator('#mission-console [data-action="renderer-legacy"]').count(), 0, 'normal planning UI hides legacy renderer control');
@@ -123,16 +105,16 @@ try {
   assert.equal(mission.activeBackend, 'threeMission3d', 'mission renderer backend');
   assert.equal(mission.threeMounted, true, 'mission Three renderer mounted');
   assert.equal(mission.rendererSummary?.threeAvailable, true, 'mission renderer summary marks Three available');
+
   await page.close();
   assert.equal(vendorThreeRequestSeen, true, 'browser requested vendored Three module');
-  assert.equal(lazyPhaserRequestSeen, true, 'browser requested Phaser only after legacy route opened');
   assert.deepEqual(nodeModuleRequests, [], 'browser made no node_modules requests');
   assert.deepEqual(externalThreeRequests, [], 'browser made no external Three/CDN requests');
   assert.deepEqual(failedRequests, [], 'browser request failures');
   assert.deepEqual(failedResponses, [], 'browser HTTP error responses');
   assert.deepEqual(pageErrors, [], 'browser page errors');
   assert.deepEqual(consoleErrors, [], 'browser console errors');
-  console.log('smoke_github_pages_static_host: ok', { baseUrl, assetChecks, deployment, bathymetry, missionBackend: mission.activeBackend });
+  console.log('smoke_github_pages_static_host: ok', { baseUrl, deployment, bathymetry, missionBackend: mission.activeBackend });
 } catch (error) {
   let bodyText = '';
   try {
@@ -143,15 +125,13 @@ try {
   console.error('smoke_github_pages_static_host diagnostics:', {
     pageUrl: page?.url?.() ?? null,
     vendorThreeRequestSeen,
-    lazyPhaserRequestSeen,
     nodeModuleRequests,
     externalThreeRequests,
     failedRequests,
     failedResponses,
     pageErrors,
     consoleErrors,
-    bodyText,
-    assetChecks
+    bodyText
   });
   throw error;
 } finally {
@@ -198,16 +178,4 @@ function createPagesLikeServer(staticRoot) {
     return close(callback);
   };
   return server;
-}
-
-
-async function assertStaticJavaScriptAsset(url) {
-  const response = await fetch(url);
-  const contentType = response.headers.get('content-type') ?? '';
-  const body = await response.text();
-  assert.equal(response.status, 200, `${url} should return HTTP 200`);
-  assert.match(contentType, /javascript|ecmascript|text\/plain|application\/octet-stream/i, `${url} should return JavaScript-like content type`);
-  assert.ok(body.length > 1000, `${url} should be nonempty`);
-  assert.equal(/^\s*</.test(body), false, `${url} should not return an HTML 404 document`);
-  return { url, status: response.status, contentType, bytes: body.length };
 }
