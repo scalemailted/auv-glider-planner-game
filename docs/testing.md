@@ -18,6 +18,33 @@ npm.cmd run smoke:pages
 
 See `docs/threejs_static_runtime.md` for the import-map and vendored-runtime contract.
 
+
+## MIG-R2 DOM Runtime / Lazy Phaser Checks
+
+MIG-R2 moves the normal mission lifecycle, routing, planning, simulation control, and debrief path into `src/app/`. Phaser is retained only as a lazy legacy island for older labs/editor routes. Focused checks:
+
+```bash
+node tools/js/smoke_anchor_route_contract.mjs
+node tools/js/smoke_anchor_router.mjs
+node tools/js/smoke_mission_lifecycle_contract.mjs
+node tools/js/smoke_mission_session_store.mjs
+node tools/js/smoke_mission_lifecycle_controller.mjs
+node tools/js/smoke_anchor_browser_runtime.mjs
+node tools/js/smoke_anchor_app_shell.mjs
+node tools/js/smoke_dom_main_menu_view.mjs
+node tools/js/smoke_dom_mission_briefing_view.mjs
+node tools/js/smoke_dom_mission_planning_view.mjs
+node tools/js/smoke_browser_mission_simulation_controller.mjs
+node tools/js/smoke_dom_mission_simulation_view.mjs
+node tools/js/smoke_dom_mission_debrief_view.mjs
+node tools/js/smoke_legacy_phaser_island_host.mjs
+node tools/js/smoke_benchmark_dom_lifecycle_metadata.mjs
+node tools/js/audit_no_phaser_production_runtime.mjs
+node tools/js/audit_phaser_deprecation.mjs
+```
+
+These checks verify that production app routes do not call Phaser scene APIs, session state stays free of Phaser objects, the browser simulation controller wraps the shared `SimulationEngine`, and the active `index.html` entry point is `src/app/main.js`.
+
 ## Three.js-First Mission Migration Checks
 
 MIG-R1 makes Three.js the default production mission environment for planning and live simulation. Focused checks:
@@ -31,7 +58,7 @@ node tools/js/audit_three_simulation_boundaries.mjs
 node tools/js/smoke_three_simulation_object_stability.mjs
 ```
 
-These checks verify default Three.js backends, query-gated legacy Phaser fallback, renderer boundary flags, and the current inventory of remaining Phaser scene dependencies. The legacy tactical renderer is diagnostic only and should not be used for new mission features.
+These checks verify default Three.js backends, renderer boundary flags, and the current inventory of remaining Phaser scene dependencies. After MIG-R2, legacy Phaser screens are reached through the lazy island host and should not be used for new mission features.
 
 For product-design consistency checks, use `docs/game_design_scientific_auv_planning.md` as the canonical source for the scientific mission loop, objective archetypes, visibility modes, scoring/regret direction, 2.5O gameplay, motion/path-planning boundary, and future production gameplay targets. Run `node tools/js/smoke_game_design_doc.mjs` after design-doc edits.
 
@@ -602,3 +629,5 @@ node tools/js/audit_replay_authority_boundaries.mjs
 ```
 
 These checks verify schemas, compatibility warnings, stable issue codes, tamper detection, CLI nonzero failure behavior, multi-agent public playback state, compact browser summary export, public-safety boundaries, and the absence of authoritative hidden-state resimulation claims.
+
+

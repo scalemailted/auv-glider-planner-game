@@ -375,3 +375,150 @@
   font-size: .58rem;
   text-transform: uppercase;
 }
+
+/* MIG-R2 DOM mission runtime shell. */
+.anchor-dom-runtime #game-root {
+  min-height: 100%;
+}
+
+.anchor-dom-main-menu,
+.anchor-dom-mission-setup,
+.anchor-dom-briefing,
+.anchor-dom-debrief {
+  min-height: 100%;
+  display: grid;
+  align-content: center;
+  gap: 16px;
+  padding: 24px;
+  color: #e8f6ff;
+  background: radial-gradient(circle at 20% 10%, rgba(46, 154, 194, 0.16), transparent 28%), #06111f;
+}
+
+.anchor-dom-panel {
+  max-width: 760px;
+  padding: 16px;
+  border: 1px solid rgba(153, 221, 255, 0.18);
+  border-radius: 8px;
+  background: rgba(7, 20, 34, 0.88);
+  box-shadow: 0 18px 42px rgba(0, 0, 0, 0.22);
+}
+
+.anchor-dom-heading,
+.anchor-dom-panel h2 {
+  margin: 0 0 10px;
+  font-size: 1.15rem;
+  letter-spacing: 0;
+}
+
+.anchor-dom-copy,
+.anchor-dom-panel p {
+  color: #aec9d8;
+  line-height: 1.45;
+}
+
+.anchor-dom-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 14px;
+}
+
+.anchor-dom-actions-column {
+  flex-direction: column;
+}
+
+.anchor-dom-button {
+  min-height: 36px;
+  padding: 8px 12px;
+  border: 1px solid rgba(164, 223, 255, 0.28);
+  border-radius: 6px;
+  color: #e8f6ff;
+  background: rgba(30, 55, 75, 0.92);
+  cursor: pointer;
+}
+
+.anchor-dom-button:hover,
+.anchor-dom-button:focus-visible {
+  border-color: rgba(159, 231, 255, 0.7);
+  background: rgba(42, 82, 108, 0.96);
+}
+
+.anchor-dom-button-primary {
+  color: #06111f;
+  background: #78d7ff;
+  border-color: #78d7ff;
+  font-weight: 700;
+}
+
+.anchor-dom-metrics {
+  display: grid;
+  grid-template-columns: minmax(120px, 0.8fr) 1fr;
+  gap: 6px 12px;
+  margin: 12px 0 0;
+}
+
+.anchor-dom-metrics dt {
+  color: #8db7ca;
+}
+
+.anchor-dom-metrics dd {
+  margin: 0;
+  color: #f5fbff;
+}
+
+.anchor-dom-planning,
+.anchor-dom-simulation {
+  height: 100%;
+  min-height: 560px;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 280px;
+  background: #06111f;
+}
+
+.anchor-three-planning-host,
+.anchor-three-simulation-host {
+  min-width: 0;
+  min-height: 560px;
+  position: relative;
+}
+
+.anchor-dom-planning-tools,
+.anchor-dom-simulation-controls {
+  overflow: auto;
+  padding: 12px;
+  border-left: 1px solid rgba(153, 221, 255, 0.16);
+  background: rgba(6, 17, 31, 0.96);
+}
+
+@media (max-width: 900px) {
+  .anchor-dom-planning,
+  .anchor-dom-simulation {
+    grid-template-columns: 1fr;
+    grid-template-rows: minmax(420px, 1fr) auto;
+  }
+
+  .anchor-dom-planning-tools,
+  .anchor-dom-simulation-controls {
+    border-left: 0;
+    border-top: 1px solid rgba(153, 221, 255, 0.16);
+  }
+}
+
+.anchor-dom-hub-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+  align-items: start;
+}
+
+.anchor-dom-button[href] {
+  display: inline-flex;
+  align-items: center;
+  text-decoration: none;
+}
+
+@media (max-width: 1100px) {
+  .anchor-dom-hub-grid {
+    grid-template-columns: 1fr;
+  }
+}

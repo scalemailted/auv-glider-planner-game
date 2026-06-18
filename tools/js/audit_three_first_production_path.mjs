@@ -8,22 +8,23 @@ try {
   const page = await browser.newPage({ viewport: { width: 1280, height: 820 } });
   await page.goto('http://127.0.0.1:9333/');
   await page.waitForSelector('#main-menu-hub');
-  await page.evaluate(() => globalThis.anchorGame.phaser.scene.getScene('MainMenuScene').startCampaignLevel('tutorial_01_first_deployment'));
-  await page.waitForFunction(() => globalThis.anchorGame.phaser.scene.getScene('MissionBriefingScene')?.sys?.isActive?.() === true);
-  await page.evaluate(() => globalThis.anchorGame.phaser.scene.getScene('MissionBriefingScene').startPlanning());
+  const initial = await page.evaluate(() => ({ phaserLoaded: Boolean(globalThis.Phaser), runtime: globalThis.ANCHOR_APP_RUNTIME_DEBUG }));
+  assert.equal(initial.runtime?.normalRoutesInstantiatePhaser, false);
+  await page.evaluate(() => globalThis.anchorRuntime.lifecycleController.loadTutorialMission('tutorial_01_first_deployment'));
+  await page.evaluate(() => globalThis.anchorRuntime.lifecycleController.beginPlanning());
   await page.waitForFunction(() => globalThis.ANCHOR_MISSION_RENDER_DEBUG?.activeBackend === 'threeMission3d');
   await page.evaluate(() => {
-    const scene = globalThis.anchorGame.phaser.scene.getScene('MissionWorkspaceScene');
-    scene.trySelectDeploymentStart?.({ x: 1, y: 1 });
-    scene.addWaypointForSelected({ x: 2, y: 2, action: 'sample' });
-    scene.executePlan();
+    const view = globalThis.anchorRuntime.activeView;
+    view.bridge.selectDefaultStart();
+    view.bridge.addWaypointAt(view.bridge.sampleWaypointCell(), { action: 'sample' });
+    globalThis.anchorRuntime.lifecycleController.launchSimulation();
   });
   await page.waitForFunction(() => globalThis.ANCHOR_SIMULATION_RENDER_DEBUG?.activeBackend === 'threeMission3d' && globalThis.ANCHOR_SIMULATION_RENDER_DEBUG?.threeMounted === true);
-  const state = await page.evaluate(() => ({ planning: globalThis.ANCHOR_MISSION_RENDER_DEBUG, simulation: globalThis.ANCHOR_SIMULATION_RENDER_DEBUG, migration: globalThis.ANCHOR_MIGRATION_DEBUG }));
+  const state = await page.evaluate(() => ({ planning: globalThis.ANCHOR_MISSION_RENDER_DEBUG, simulation: globalThis.ANCHOR_SIMULATION_RENDER_DEBUG, runtime: globalThis.ANCHOR_APP_RUNTIME_DEBUG }));
   assert.equal(state.planning.phaserWorldRendererActive, false);
   assert.equal(state.simulation.phaserWorldRendererActive, false);
   assert.equal(state.simulation.advancesSimulationClock, false);
-  assert.equal(state.migration.architectureTarget, 'threejs-first');
+  assert.equal(state.runtime.normalRoutesUsePhaserUpdate, false);
   console.log('audit_three_first_production_path: ok');
   await page.close();
 } finally {
