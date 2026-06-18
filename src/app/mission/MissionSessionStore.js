@@ -1,4 +1,4 @@
-import { createEmptyPlan, normalizePlan } from '../../core/planning/WaypointPlan.js';
+﻿import { createEmptyPlan, normalizePlan } from '../../core/planning/WaypointPlan.js';
 import { createMissionLifecycleState } from './MissionLifecycleContract.js';
 
 export const MISSION_SESSION_STORE_VERSION = 'mission-session-store-mig-r2';
@@ -79,6 +79,10 @@ export function normalizeMissionSessionState(value = {}) {
     challengeMode: value.challengeMode ?? level?.challengeMode ?? 'perfectKnowledge',
     experienceMode: value.experienceMode ?? level?.meta?.experienceMode ?? mission?.meta?.experienceMode ?? null,
     missionMode: value.missionMode ?? level?.meta?.missionMode ?? mission?.meta?.missionMode ?? null,
+    benchmarkMode: value.benchmarkMode ?? null,
+    visibilityMode: value.visibilityMode ?? null,
+    seed: value.seed ?? level?.seed ?? level?.meta?.seed ?? null,
+    adaptiveLegIndex: Number.isFinite(Number(value.adaptiveLegIndex)) ? Number(value.adaptiveLegIndex) : 0,
     currentScenario: cloneData(value.currentScenario ?? null),
     simulation: normalizeSimulationSession(value.simulation),
     warnings: [...(value.warnings ?? [])],
@@ -97,6 +101,11 @@ export function missionSessionStoreSummary(state = {}, listenerCount = 0) {
     waypointCount: (state.plan?.agentPlans ?? []).reduce((sum, agentPlan) => sum + (agentPlan.waypoints?.length ?? 0), 0),
     hasResult: Boolean(state.result),
     simulationStatus: state.simulation?.status ?? null,
+    missionMode: state.missionMode ?? null,
+    benchmarkMode: state.benchmarkMode ?? null,
+    visibilityMode: state.visibilityMode ?? null,
+    seed: state.seed ?? null,
+    adaptiveLegIndex: state.adaptiveLegIndex ?? 0,
     listenerCount,
     containsPhaserObjects: containsRuntimeObject(state, ['scene', 'phaser', 'canvas', 'game'])
   };
@@ -140,3 +149,4 @@ function containsRuntimeObject(value, bannedKeys = []) {
   }
   return false;
 }
+

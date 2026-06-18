@@ -1,4 +1,4 @@
-import { ANCHOR_ROUTE_IDS } from '../router/AnchorRouteContract.js';
+﻿import { ANCHOR_ROUTE_IDS } from '../router/AnchorRouteContract.js';
 import {
   MISSION_LIFECYCLE_CONTRACT_VERSION,
   MISSION_LIFECYCLE_EVENTS,
@@ -27,15 +27,15 @@ export class MissionLifecycleController {
     this.router?.navigate?.(ANCHOR_ROUTE_IDS.missionSetup, params, { source: 'lifecycle' });
   }
 
-  async loadTutorialMission(tutorialId = 'tutorial_01_first_deployment') {
+  async loadTutorialMission(tutorialId = 'tutorial_01_first_deployment', options = {}) {
     if (typeof this.services.loadTutorialMission !== 'function') {
       throw new Error('Tutorial mission loader service is not available.');
     }
     const loaded = await this.services.loadTutorialMission(tutorialId);
-    return this.loadMission(loaded, { source: 'tutorial', tutorialId });
+    return this.loadMission({ ...loaded, ...options }, { source: options.source ?? 'tutorial', tutorialId, ...options });
   }
 
-  loadMission({ level, mission, plan = null, source = 'unknown', challengeMode = null, experienceMode = null } = {}, meta = {}) {
+  loadMission({ level, mission, plan = null, source = 'unknown', challengeMode = null, experienceMode = null, missionMode = null, benchmarkMode = null, visibilityMode = null, seed = null } = {}, meta = {}) {
     if (!level || !mission) throw new Error('Loading a mission requires both level and mission objects.');
     const state = this.sessionStore.patch({
       level,
@@ -45,7 +45,10 @@ export class MissionLifecycleController {
       source: meta.source ?? source,
       challengeMode: challengeMode ?? level?.challengeMode ?? 'perfectKnowledge',
       experienceMode: experienceMode ?? level?.meta?.experienceMode ?? mission?.meta?.experienceMode ?? null,
-      missionMode: level?.meta?.missionMode ?? mission?.meta?.missionMode ?? null,
+      missionMode: missionMode ?? meta.missionMode ?? level?.meta?.missionMode ?? mission?.meta?.missionMode ?? null,
+      benchmarkMode: benchmarkMode ?? meta.benchmarkMode ?? null,
+      visibilityMode: visibilityMode ?? meta.visibilityMode ?? null,
+      seed: seed ?? meta.seed ?? level?.seed ?? level?.meta?.seed ?? null,
       currentScenario: {
         levelId: level?.levelId ?? null,
         instanceId: level?.instanceId ?? null,
@@ -156,3 +159,4 @@ export class MissionLifecycleController {
     globalThis.ANCHOR_MISSION_LIFECYCLE_DEBUG = this.getDebugState();
   }
 }
+

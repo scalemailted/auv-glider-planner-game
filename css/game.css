@@ -522,3 +522,120 @@
     grid-template-columns: 1fr;
   }
 }
+
+/* MIG-R2.2 route-scoped parity shell. */
+.anchor-route-root {
+  box-sizing: border-box;
+  width: 100%;
+  height: 100%;
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.anchor-route-main-menu,
+.anchor-route-mission-setup,
+.anchor-route-mission-briefing,
+.anchor-route-mission-debrief,
+.anchor-route-import-export,
+.anchor-route-leaderboard,
+.anchor-route-tutorial-browser {
+  overflow: auto;
+}
+
+.anchor-route-mission-planning,
+.anchor-route-mission-simulation {
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
+  background: #06111f;
+}
+
+.anchor-route-mission-planning .anchor-three-planning-host,
+.anchor-route-mission-simulation .anchor-three-simulation-host,
+.mission-viewport-panel {
+  min-width: 0;
+  min-height: 0;
+  width: 100%;
+  height: 100%;
+  position: relative;
+  overflow: hidden;
+}
+
+.mission-status-strip,
+.mission-timeline-strip,
+.mission-performance-strip {
+  box-sizing: border-box;
+  padding: .55rem .7rem;
+  color: var(--text);
+  border: 1px solid rgba(141, 220, 242, 0.18);
+  background: rgba(8, 17, 31, 0.86);
+}
+
+#top-hud .mission-status-strip,
+#bottom-timeline .mission-timeline-strip,
+#agent-performance-hud .mission-performance-strip {
+  pointer-events: auto;
+}
+
+.anchor-layout-product-hub #mission-console {
+  display: block;
+}
+
+.anchor-layout-product-hub #waypoint-timeline,
+.anchor-layout-product-hub #bottom-timeline,
+.anchor-layout-product-hub #agent-performance-hud {
+  display: none;
+}
+
+.anchor-layout-mission-workspace #waypoint-timeline,
+.anchor-layout-simulation-workspace #waypoint-timeline,
+.anchor-layout-debrief #waypoint-timeline,
+.anchor-layout-setup #waypoint-timeline,
+.anchor-layout-briefing #waypoint-timeline {
+  display: block;
+}
+
+.anchor-dom-form {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: .65rem;
+  margin-top: .8rem;
+}
+
+.anchor-dom-field {
+  display: grid;
+  gap: .25rem;
+}
+
+.anchor-dom-label {
+  color: var(--muted);
+  font-size: .75rem;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.anchor-dom-select,
+.anchor-dom-input {
+  min-height: 2.25rem;
+  color: var(--text);
+  border: 1px solid rgba(141, 220, 242, 0.22);
+  border-radius: 6px;
+  background: rgba(6, 17, 31, 0.92);
+  padding: .35rem .45rem;
+}
+
+@media (max-width: 900px) {
+  .anchor-dom-form {
+    grid-template-columns: 1fr;
+  }
+}
+
+.mission-console-host,
+.mission-main-host,
+.mission-status-host,
+.mission-viewport-host,
+.mission-right-panel-host,
+.mission-modal-host,
+.mission-toast-host {
+  box-sizing: border-box;
+}

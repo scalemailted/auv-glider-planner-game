@@ -1,5 +1,6 @@
 import { buildMissionWorldRenderViewModel, missionWorldRenderViewModelSummary } from '../../core/rendering/MissionWorldRenderViewModel.js';
 import { getDeploymentZones } from '../../core/deployment/DeploymentZones.js';
+import { RightWaypointPanel } from '../../ui/RightWaypointPanel.js';
 import {
   createThreeMissionWorldRenderer,
   disposeThreeMissionWorldRenderer,
@@ -9,7 +10,7 @@ import {
 import { createMissionPlanningInteractionBridge } from '../planning/MissionPlanningInteractionBridge.js';
 import { createAnchorViewContract, button, createDomElement, formatNumber, metricList, panel } from './AnchorViewContract.js';
 
-export const MISSION_PLANNING_VIEW_VERSION = 'mission-planning-view-mig-r2';
+export const MISSION_PLANNING_VIEW_VERSION = 'mission-planning-view-mig-r2-2';
 
 export function createMissionPlanningView(context = {}) {
   return new MissionPlanningView(context);
@@ -28,9 +29,13 @@ export class MissionPlanningView {
     };
     this.contract = createAnchorViewContract('missionPlanning', { ownsPlanningState: false });
     this.unsubscribe = null;
+    this.resizeHandler = () => this.resize();
     this.element = null;
     this.renderer = null;
     this.rendererHost = null;
+    this.shell = null;
+    this.documentRef = null;
+    this.rightPanel = null;
     this.bridge = createMissionPlanningInteractionBridge({
       sessionStore,
       lifecycleController,
@@ -39,19 +44,25 @@ export class MissionPlanningView {
   }
 
   mount({ documentRef, shell }) {
-    shell.clearSidePanels?.();
+    shell.clearRouteRegions?.();
+    this.shell = shell;
+    this.documentRef = documentRef;
     const root = createDomElement(documentRef, 'main', 'anchor-dom-planning');
-    const rendererHost = createDomElement(documentRef, 'div', 'anchor-three-planning-host');
-    const side = createDomElement(documentRef, 'aside', 'anchor-dom-planning-tools');
-    root.append(rendererHost, side);
+    root.dataset.testid = 'mission-planning-view';
+    root.dataset.sectionId = 'planningTools';
+    const status = createDomElement(documentRef, 'div', 'mission-status-strip');
+    status.dataset.sectionId = 'planningStatus';
+    status.textContent = 'Mission Planning';
+    const rendererHost = createDomElement(documentRef, 'div', 'anchor-three-planning-host mission-viewport-panel');
+    rendererHost.dataset.testid = 'three-mission-canvas';
+    root.append(status, rendererHost);
     this.element = root;
     this.rendererHost = rendererHost;
-    this.side = side;
     this.mountRenderer();
-    this.renderTools(documentRef, shell);
+    this.renderPanels();
     this.unsubscribe = this.sessionStore?.subscribe?.(() => this.refresh());
     rendererHost.addEventListener?.('click', (event) => this.handleGridClick(event));
-    globalThis.addEventListener?.('resize', () => this.resize());
+    globalThis.addEventListener?.('resize', this.resizeHandler);
     return root;
   }
 
@@ -61,38 +72,84 @@ export class MissionPlanningView {
     this.refresh();
   }
 
-  renderTools(documentRef, shell) {
-    if (!this.side) return;
+  renderPanels() {
+    if (!this.documentRef || !this.shell) return;
     const state = this.sessionStore?.getState?.() ?? {};
-    this.side.innerHTML = '';
-    const title = panel(documentRef, 'Planning Tools', 'Click the map or add a sample waypoint. The route remains shared plan JSON; the view only edits via the planning bridge.');
+    this.shell.setConsole?.(this.buildConsole(this.documentRef, state));
+    this.renderRightPanel(state);
+    this.shell.setTimeline?.(this.buildTimeline(this.documentRef, state));
+    this.shell.setPerformance?.(this.buildPerformance(this.documentRef, state));
+    this.shell.setStatus?.(this.buildStatus(this.documentRef, state));
+  }
+
+  buildConsole(documentRef, state) {
+    const title = panel(documentRef, 'Planning Tools', 'Build a waypoint plan, inspect route status, then launch the deterministic browser simulation.');
+    title.dataset.sectionId = 'planningTools';
     title.appendChild(metricList(documentRef, [
       { label: 'Agent', value: state.selectedAgentId ?? 'none' },
       { label: 'Waypoints', value: countWaypoints(state.plan) },
       { label: 'Markers', value: state.plan?.planningMarkers?.length ?? 0 },
       { label: 'Duration', value: `${formatNumber(state.level?.world?.time?.duration, 0)} s` }
     ]));
+    title.append(
+      statusLine(documentRef, 'selected-agent', state.selectedAgentId ?? 'none'),
+      statusLine(documentRef, 'waypoint-count', countWaypoints(state.plan)),
+      statusLine(documentRef, 'interaction-mode', 'placeWaypoint'),
+      statusLine(documentRef, 'planning-time-control', formatNumber(state.planningTime ?? 0, 1))
+    );
     const actions = createDomElement(documentRef, 'div', 'anchor-dom-actions anchor-dom-actions-column');
     actions.append(
-      button(documentRef, 'Select Default Start', () => this.bridge.selectDefaultStart(), 'anchor-dom-button anchor-dom-button-primary'),
-      button(documentRef, 'Add Sample Waypoint', () => this.bridge.addWaypointAt(this.bridge.sampleWaypointCell(), { action: 'sample' })),
-      button(documentRef, 'Remove Last Waypoint', () => this.bridge.removeLastWaypoint()),
-      button(documentRef, 'Clear Plan', () => this.bridge.clearPlan()),
-      button(documentRef, 'Run Simulation', () => this.lifecycleController?.launchSimulation?.(), 'anchor-dom-button anchor-dom-button-primary'),
-      button(documentRef, 'Briefing', () => this.lifecycleController?.showBriefing?.())
+      buttonWithTestId(documentRef, 'Select Default Start', () => this.bridge.selectDefaultStart(), 'select-default-start', 'anchor-dom-button anchor-dom-button-primary'),
+      button(documentRef, 'Add Sample Waypoint', () => this.bridge.addWaypointAt(this.bridge.sampleWaypointCell(), { action: 'sample' }), 'anchor-dom-button'),
+      button(documentRef, 'Remove Last Waypoint', () => this.bridge.removeLastWaypoint(), 'anchor-dom-button'),
+      button(documentRef, 'Clear Plan', () => this.bridge.clearPlan(), 'anchor-dom-button'),
+      buttonWithTestId(documentRef, 'Launch Simulation', () => this.lifecycleController?.launchSimulation?.(), 'launch-simulation', 'anchor-dom-button anchor-dom-button-primary'),
+      button(documentRef, 'Briefing', () => this.lifecycleController?.showBriefing?.(), 'anchor-dom-button'),
+      buttonWithTestId(documentRef, 'Main Menu', () => this.router?.navigate?.('mainMenu'), 'return-to-menu', 'anchor-dom-button')
     );
     title.appendChild(actions);
-    this.side.appendChild(title);
-    shell.setConsole?.('<h2>Mission Planning</h2><p>DOM route editing writes to the shared waypoint plan. The Three renderer displays fields and routes but does not own planning state.</p>');
+    return title;
+  }
+
+  renderRightPanel(state) {
+    const root = this.shell?.elements?.waypointTimelineRoot;
+    if (!root) return;
+    this.rightPanel ??= new RightWaypointPanel({ state }, root);
+    this.rightPanel.setHandlers?.({
+      selectAgent: (agentId) => this.bridge.selectAgent(agentId),
+      remove: (agentId, index) => this.bridge.removeLastWaypoint(agentId, index)
+    });
+    this.rightPanel.refresh(state);
+  }
+
+  buildTimeline(documentRef, state) {
+    const timeline = createDomElement(documentRef, 'section', 'mission-timeline-strip');
+    timeline.dataset.sectionId = 'planningTimeline';
+    timeline.textContent = `Planning time ${formatNumber(state.planningTime ?? 0, 1)} s | ${countWaypoints(state.plan)} waypoint(s)`;
+    return timeline;
+  }
+
+  buildPerformance(documentRef, state) {
+    const perf = createDomElement(documentRef, 'section', 'mission-performance-strip');
+    perf.dataset.sectionId = 'missionPerformance';
+    perf.textContent = `Route preview: ${countWaypoints(state.plan)} waypoint(s), ${state.mission?.agents?.length ?? 0} glider(s)`;
+    return perf;
+  }
+
+  buildStatus(documentRef, state) {
+    const status = createDomElement(documentRef, 'section', 'mission-status-strip');
+    status.dataset.sectionId = 'planningStatus';
+    status.textContent = `${state.level?.meta?.name ?? 'Mission'} | ${state.challengeMode ?? 'perfectKnowledge'} | ${state.visibilityMode ?? 'public'}`;
+    return status;
   }
 
   refresh() {
     const state = this.sessionStore?.getState?.() ?? {};
+    this.renderPanels();
     if (!state.level || !state.mission || !state.plan || !this.renderer) return;
     const viewModel = buildPlanningViewModel(state);
     this.rendererApi.update(this.renderer, viewModel);
     this.resize();
-    globalThis.ANCHOR_APP_RUNTIME_DEBUG ??= {};
     globalThis.ANCHOR_MISSION_RENDER_DEBUG = {
       type: 'anchor.mission-render.debug',
       activeBackend: 'threeMission3d',
@@ -102,6 +159,7 @@ export class MissionPlanningView {
       viewModel: missionWorldRenderViewModelSummary(viewModel),
       rendererSummary: this.renderer?.type ? { type: this.renderer.type, threeAvailable: this.renderer.threeAvailable !== false } : null
     };
+    globalThis.ANCHOR_APP_RUNTIME_DEBUG ??= {};
     globalThis.ANCHOR_APP_RUNTIME_DEBUG.planningView = {
       type: 'anchor.view.mission-planning.debug',
       version: MISSION_PLANNING_VIEW_VERSION,
@@ -129,10 +187,12 @@ export class MissionPlanningView {
 
   unmount() {
     this.unsubscribe?.();
+    globalThis.removeEventListener?.('resize', this.resizeHandler);
     this.rendererApi.dispose(this.renderer);
     this.renderer = null;
     this.element?.remove?.();
     this.element = null;
+    this.rightPanel = null;
   }
 }
 
@@ -189,4 +249,14 @@ function countWaypoints(plan = {}) {
   return (plan.agentPlans ?? []).reduce((sum, agentPlan) => sum + (agentPlan.waypoints?.length ?? 0), 0);
 }
 
+function buttonWithTestId(documentRef, label, onClick, testId, className = 'anchor-dom-button') {
+  const el = button(documentRef, label, onClick, className);
+  el.dataset.testid = testId;
+  return el;
+}
 
+function statusLine(documentRef, testId, value) {
+  const el = createDomElement(documentRef, 'p', 'anchor-dom-copy', String(value ?? ''));
+  el.dataset.testid = testId;
+  return el;
+}

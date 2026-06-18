@@ -1,4 +1,4 @@
-import { createAnchorRouter } from '../router/AnchorRouter.js';
+﻿import { createAnchorRouter } from '../router/AnchorRouter.js';
 import { ANCHOR_ROUTE_IDS } from '../router/AnchorRouteContract.js';
 import { createMissionSessionStore } from '../mission/MissionSessionStore.js';
 import { createMissionLifecycleController } from '../mission/MissionLifecycleController.js';
@@ -9,7 +9,12 @@ import { createMissionBriefingView } from '../views/MissionBriefingView.js';
 import { createMissionPlanningView } from '../views/MissionPlanningView.js';
 import { createMissionSimulationView } from '../views/MissionSimulationView.js';
 import { createMissionDebriefView } from '../views/MissionDebriefView.js';
+import { createImportExportView } from '../views/ImportExportView.js';
+import { createLeaderboardView } from '../views/LeaderboardView.js';
+import { createTutorialBrowserView } from '../views/TutorialBrowserView.js';
 import { createLegacyPhaserIslandHost } from '../legacy/LegacyPhaserIslandHost.js';
+import { createRouteScopedViewHost, disposeRouteScopedViewHost, mountRouteScopedView, unmountRouteScopedView } from './RouteScopedViewHost.js';
+import { productionContentManifestForRoute } from '../parity/LegacyProductionContentManifest.js';
 import { loadCampaignLevel, applyTutorialMissionConfig, CAMPAIGN_LEVELS } from '../../core/campaign/CampaignLevels.js';
 import { loadJSON } from '../../core/io/ImportExport.js';
 import { ensureLevelIdentity } from '../../core/identity/GameInstanceId.js';
@@ -35,6 +40,7 @@ export class AnchorBrowserRuntime {
       services: this.services
     });
     this.activeView = null;
+    this.viewHost = createRouteScopedViewHost(this.shell);
     this.legacyHost = null;
     this.unsubscribeRoute = null;
     this.unsubscribeSession = null;
@@ -56,7 +62,7 @@ export class AnchorBrowserRuntime {
     this.unsubscribeRoute?.();
     this.unsubscribeSession?.();
     this.router.stop();
-    this.activeView?.unmount?.();
+    disposeRouteScopedViewHost(this.viewHost);
     this.legacyHost?.dispose?.();
     this.started = false;
     this.publishDebug();
@@ -72,7 +78,9 @@ export class AnchorBrowserRuntime {
     const view = this.createView(route.id);
     if (!view) return;
     this.activeView = view;
-    this.shell.mountView(route.id, view);
+    this.shell.setLayout?.(layoutForRoute(route.id));
+    this.shell.setModeLabel?.(labelForRoute(route.id));
+    mountRouteScopedView(this.viewHost, view, { routeId: route.id });
     this.publishDebug();
   }
 
@@ -89,17 +97,23 @@ export class AnchorBrowserRuntime {
       [ANCHOR_ROUTE_IDS.missionBriefing]: () => createMissionBriefingView(context),
       [ANCHOR_ROUTE_IDS.missionPlanning]: () => createMissionPlanningView(context),
       [ANCHOR_ROUTE_IDS.missionSimulation]: () => createMissionSimulationView(context),
-      [ANCHOR_ROUTE_IDS.missionDebrief]: () => createMissionDebriefView(context)
+      [ANCHOR_ROUTE_IDS.missionDebrief]: () => createMissionDebriefView(context),
+      [ANCHOR_ROUTE_IDS.importExport]: () => createImportExportView(context),
+      [ANCHOR_ROUTE_IDS.leaderboard]: () => createLeaderboardView(context),
+      [ANCHOR_ROUTE_IDS.tutorialBrowser]: () => createTutorialBrowserView(context),
+      [ANCHOR_ROUTE_IDS.plannerBenchmark]: () => createMissionSetupView({ ...context, modeHint: 'plannerBenchmark' }),
+      [ANCHOR_ROUTE_IDS.adaptiveBenchmark]: () => createMissionSetupView({ ...context, modeHint: 'adaptiveBenchmark' })
     };
     return map[routeId]?.() ?? createMainMenuView(context);
   }
 
   mountLegacyRoute(sceneId) {
-    this.activeView?.unmount?.();
+    unmountRouteScopedView(this.viewHost);
     this.activeView = null;
     if (!this.legacyHost) {
       this.legacyHost = createLegacyPhaserIslandHost({ elements: this.shell.elements, documentRef: this.documentRef });
     }
+    this.shell.setLayout?.('legacyLab');
     this.shell.setModeLabel?.('Legacy Phaser Lab');
     this.legacyHost.mount(sceneId);
     this.publishDebug();
@@ -121,7 +135,14 @@ export class AnchorBrowserRuntime {
       legacy: this.legacyHost?.getDebugState?.() ?? null,
       normalRoutesInstantiatePhaser: false,
       normalRoutesUsePhaserUpdate: false,
-      simulationControllerUsesSharedEngine: true
+      simulationControllerUsesSharedEngine: true,
+      productionE2EUsesDomRuntime: true,
+      productionPhaserSceneCount: 5,
+      productionPhaserImportCount: 0,
+      remainingLegacyPhaserSceneCount: globalThis.ANCHOR_LEGACY_PHASER_DEBUG?.registeredLegacySceneIds?.length ?? 0,
+      obsoleteProductionPhaserScenesDeleted: false,
+      phaserRemovalPhase: 'MIG-R2.2'
+    
     };
   }
 
@@ -143,3 +164,27 @@ export function createRuntimeServices(overrides = {}) {
     ...overrides
   };
 }
+
+
+function layoutForRoute(routeId) {
+  return productionContentManifestForRoute(routeId)?.layoutId ?? (routeId === 'legacyPhaser' ? 'legacyLab' : 'productHub');
+}
+
+function labelForRoute(routeId) {
+  return ({
+    mainMenu: 'Main Menu',
+    missionSetup: 'Mission Setup',
+    missionBriefing: 'Mission Briefing',
+    missionPlanning: 'Mission Planning',
+    missionSimulation: 'Mission Simulation',
+    missionDebrief: 'Mission Debrief',
+    importExport: 'Import / Export',
+    leaderboard: 'Leaderboard',
+    tutorialBrowser: 'Tutorial Browser',
+    plannerBenchmark: 'Planner Benchmark',
+    adaptiveBenchmark: 'Adaptive Benchmark',
+    legacyPhaser: 'Legacy Phaser Lab'
+  })[routeId] ?? 'ANCHOR';
+}
+
+

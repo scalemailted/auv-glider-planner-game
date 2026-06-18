@@ -1,4 +1,4 @@
-export const ANCHOR_ROUTE_CONTRACT_VERSION = 'anchor-route-contract-mig-r2';
+﻿export const ANCHOR_ROUTE_CONTRACT_VERSION = 'anchor-route-contract-mig-r2';
 
 export const ANCHOR_ROUTE_IDS = Object.freeze({
   mainMenu: 'mainMenu',
@@ -7,16 +7,26 @@ export const ANCHOR_ROUTE_IDS = Object.freeze({
   missionPlanning: 'missionPlanning',
   missionSimulation: 'missionSimulation',
   missionDebrief: 'missionDebrief',
+  importExport: 'importExport',
+  leaderboard: 'leaderboard',
+  tutorialBrowser: 'tutorialBrowser',
+  plannerBenchmark: 'plannerBenchmark',
+  adaptiveBenchmark: 'adaptiveBenchmark',
   legacyPhaser: 'legacyPhaser'
 });
 
 export const ANCHOR_ROUTE_HASHES = Object.freeze({
   [ANCHOR_ROUTE_IDS.mainMenu]: '#/menu',
-  [ANCHOR_ROUTE_IDS.missionSetup]: '#/mission/setup',
-  [ANCHOR_ROUTE_IDS.missionBriefing]: '#/mission/briefing',
-  [ANCHOR_ROUTE_IDS.missionPlanning]: '#/mission/planning',
-  [ANCHOR_ROUTE_IDS.missionSimulation]: '#/mission/simulation',
-  [ANCHOR_ROUTE_IDS.missionDebrief]: '#/mission/debrief'
+  [ANCHOR_ROUTE_IDS.missionSetup]: '#/setup',
+  [ANCHOR_ROUTE_IDS.missionBriefing]: '#/briefing',
+  [ANCHOR_ROUTE_IDS.missionPlanning]: '#/planning',
+  [ANCHOR_ROUTE_IDS.missionSimulation]: '#/simulation',
+  [ANCHOR_ROUTE_IDS.missionDebrief]: '#/debrief',
+  [ANCHOR_ROUTE_IDS.importExport]: '#/import',
+  [ANCHOR_ROUTE_IDS.leaderboard]: '#/leaderboard',
+  [ANCHOR_ROUTE_IDS.tutorialBrowser]: '#/tutorials',
+  [ANCHOR_ROUTE_IDS.plannerBenchmark]: '#/benchmark/planner',
+  [ANCHOR_ROUTE_IDS.adaptiveBenchmark]: '#/benchmark/adaptive'
 });
 
 export const LEGACY_PHASER_SCENE_ALIASES = Object.freeze({
@@ -66,14 +76,28 @@ export function normalizeAnchorRouteId(value) {
     main: ANCHOR_ROUTE_IDS.mainMenu,
     setup: ANCHOR_ROUTE_IDS.missionSetup,
     missionSetup: ANCHOR_ROUTE_IDS.missionSetup,
+    missionsetup: ANCHOR_ROUTE_IDS.missionSetup,
     briefing: ANCHOR_ROUTE_IDS.missionBriefing,
     missionBriefing: ANCHOR_ROUTE_IDS.missionBriefing,
+    missionbriefing: ANCHOR_ROUTE_IDS.missionBriefing,
     planning: ANCHOR_ROUTE_IDS.missionPlanning,
     missionPlanning: ANCHOR_ROUTE_IDS.missionPlanning,
+    missionplanning: ANCHOR_ROUTE_IDS.missionPlanning,
     simulation: ANCHOR_ROUTE_IDS.missionSimulation,
     missionSimulation: ANCHOR_ROUTE_IDS.missionSimulation,
+    missionsimulation: ANCHOR_ROUTE_IDS.missionSimulation,
     debrief: ANCHOR_ROUTE_IDS.missionDebrief,
     missionDebrief: ANCHOR_ROUTE_IDS.missionDebrief,
+    missiondebrief: ANCHOR_ROUTE_IDS.missionDebrief,
+    import: ANCHOR_ROUTE_IDS.importExport,
+    importExport: ANCHOR_ROUTE_IDS.importExport,
+    leaderboard: ANCHOR_ROUTE_IDS.leaderboard,
+    tutorials: ANCHOR_ROUTE_IDS.tutorialBrowser,
+    tutorialBrowser: ANCHOR_ROUTE_IDS.tutorialBrowser,
+    plannerBenchmark: ANCHOR_ROUTE_IDS.plannerBenchmark,
+    benchmarkPlanner: ANCHOR_ROUTE_IDS.plannerBenchmark,
+    adaptiveBenchmark: ANCHOR_ROUTE_IDS.adaptiveBenchmark,
+    benchmarkAdaptive: ANCHOR_ROUTE_IDS.adaptiveBenchmark,
     legacy: ANCHOR_ROUTE_IDS.legacyPhaser,
     legacyPhaser: ANCHOR_ROUTE_IDS.legacyPhaser
   };
@@ -128,3 +152,6 @@ export function anchorRouteSummary(route = {}) {
     hash: hashForAnchorRoute(normalized)
   };
 }
+
+
+
