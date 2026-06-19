@@ -1,4 +1,4 @@
-export const MISSION_PLANNING_TOOL_STATE_VERSION = 'mission-planning-tool-state-three-r1-1b';
+export const MISSION_PLANNING_TOOL_STATE_VERSION = 'mission-planning-tool-state-three-r1-1c';
 
 export const MISSION_PLANNING_TOOL_IDS = Object.freeze([
   'navigate',
@@ -150,7 +150,8 @@ export function labelForTool(toolId) {
 export function cursorForTool(toolId, options = {}) {
   const id = normalizeToolId(toolId);
   if (options.invalid) return 'not-allowed';
-  if (id === 'navigate') return options.dragging ? 'grabbing' : 'grab';
+  if (options.dragging) return 'grabbing';
+  if (id === 'navigate') return 'grab';
   if (id === 'selectDeploymentCell' || id === 'placeWaypoint') return 'crosshair';
   if (id === 'placePlanningMarker') return 'copy';
   return 'default';
@@ -199,7 +200,7 @@ function defaultInstructions(toolId, context = {}) {
   if (toolId === 'selectDeploymentCell') return `Select a highlighted deployment cell for ${label}.`;
   if (toolId === 'placeWaypoint') return `Click the mission plane to append route waypoints for ${label}.`;
   if (toolId === 'placePlanningMarker') return 'Click the mission plane to add a non-executable planning marker.';
-  if (toolId === 'navigate') return 'Left drag: orbit. Right drag or Shift+left drag: pan. Wheel: zoom.';
+  if (toolId === 'navigate') return 'Click: use active planning tool. Left drag: pan. Right drag: rotate. Wheel: zoom. Esc: cancel active tool.';
   if (toolId === 'editWaypoint') return 'Drag an existing waypoint to move it, or select route objects to inspect.';
   return 'Click objects to select or inspect. Empty-cell clicks do not add route waypoints.';
 }

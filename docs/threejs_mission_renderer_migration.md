@@ -47,8 +47,8 @@ THREE-R1 starts from the restored baseline after the MIG-R2/MIG-R2.2 DOM-routing
 | reachable region | existing guidance state | interaction view model | layer toggle / selection | Partial | canonical reachability only | Extraction polish where missing |
 | ETA preview | existing route estimate | interaction view model | hover/drag preview | Partial | canonical route/cost estimate only | More visible labels |
 | energy preview | existing route estimate | interaction view model | hover/drag preview | Partial | canonical route/cost estimate only | More visible labels |
-| camera rotate | Three controller/camera state | `cameraChanged` intent | Navigate drag / modifier drag | Connected | renderer camera only | OrbitControls polish |
-| camera pan | Three controller/camera state | `cameraChanged` intent | middle/right/modifier drag | Connected | renderer camera only | Touch gesture polish |
+| camera rotate | Three controller/camera state | `cameraChanged` intent | right drag | Connected | renderer camera only | Touch gesture polish |
+| camera pan | Three controller/camera state | `cameraChanged` intent | left drag above threshold | Connected | renderer camera only | Touch gesture polish |
 | camera zoom | Three controller/camera state | `cameraChanged` intent | wheel | Connected | renderer camera only | None |
 | touch tap | Three controller | normal click intent | one-finger tap | Basic | click threshold prevents accidental drag placement | Advanced mobile QA |
 | touch navigation | Three controller | `cameraChanged` where supported | movement beyond threshold | Basic | click threshold | Two-finger gesture polish |
@@ -75,6 +75,10 @@ Implemented in GFX-R3B:
 - `MissionPlanningInteractionViewModel` and `ThreePlanningInteractionLayer`: public-safe hover, validation, route-preview, drag-preview, selected-waypoint, guidance, and reachable-region overlay state.
 - Mission Console planning controls for Navigate, Select/Edit, Place Waypoint, Place Marker, and Cancel Current Interaction.
 - `ANCHOR_MISSION_RENDER_TEST_API`: projection helpers for E2E pointer tests without exposing mutation methods.
+
+## THREE-R1.1C Waypoint and Camera Repair
+
+THREE-R1.1C keeps the same architecture and repairs the visible waypoint path: deployment auto-arms Add Waypoint when appropriate, Three waypoint clicks route through canonical workspace commands, and the standard desktop gesture mapping is left click for planning, left drag pan, right drag orbit, and wheel zoom. See [Three.js Waypoint Pipeline and Camera Controls](threejs_waypoint_pipeline_and_camera_controls.md).
 
 ## THREE-R1.1 Stabilization Contract
 

@@ -42,3 +42,6 @@ The restored baseline already had most GFX-R3B planning wiring, but simulation s
 - Three.js does not advance simulation time.
 - Three.js does not compute vehicle motion, observations, scoring, replay semantics, route optimization, or hidden truth.
 - Three.js uses one invisible horizontal interaction plane for logical grid selection; bathymetry remains visual geometry.
+## THREE-R1.1C Note
+
+The interaction owner remains ThreeMissionInteractionController for pointer classification and MissionWorkspaceScene for planning-tool state. R1.1C maps left click to the active planning action, left drag to pan, right drag to orbit, and wheel to zoom while preserving canonical command ownership for deployment and waypoints.

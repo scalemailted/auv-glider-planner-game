@@ -53,6 +53,10 @@ Terrain, scalar fields, hazards, drop zones, gliders, waypoints, routes, plannin
 
 Browser smoke coverage now captures page errors, console errors, and failed module requests so runtime crashes fail E2E instead of passing silently. `ANCHOR_MISSION_RENDER_DEBUG` reports renderer lifecycle state, runtime error count, last error, pointer diagnostics, expected versus actual grid cell, and deployment-selection state.
 
+## THREE-R1.1C follow-up
+
+THREE-R1.1C repaired the post-deployment waypoint command pipeline and standard desktop camera gestures. Deployment with an empty route now auto-arms Add Waypoint, accepted waypoint clicks remain canonical, left drag pans, right drag changes yaw/pitch, wheel zooms, and camera gestures do not place mission objects. See [Three.js Waypoint Pipeline and Camera Controls](threejs_waypoint_pipeline_and_camera_controls.md).
+
 ## Deferred terrain/slab work
 
 THREE-R1.1 intentionally leaves bathymetric terrain surfaces, depth/control slabs, richer water-column picking, replay/debrief parity, and editor interaction parity for later phases. The recommended next phase is `THREE-R1.2 - Bathymetric Terrain Surface + Operational Depth/Control Slabs`.

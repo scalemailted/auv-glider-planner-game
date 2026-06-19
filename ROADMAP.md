@@ -24,9 +24,11 @@ Browser ANCHOR is the visual game and referee. Node/OceanBox-JS is the canonical
 
 ## 2. Current Architecture
 
+Current renderer sequence: THREE-R1.1C standard camera gestures and end-to-end waypoint placement repair precedes THREE-R1.2 bathymetric terrain surface and operational depth/control slabs; THREE-R2 replay/debrief/editor parity remains later.
+
 ### Browser ANCHOR
 
-Browser ANCHOR is the visual game, referee, and debrief UI. Three.js is now the production mission environment for planning and live simulation rendering, with visible planning tools and camera-control parity in the Mission Workspace. Phaser remains a transitional scene shell, lab host, and query-gated diagnostic fallback (`?legacyPhaser=1`), not the target mission renderer for new feature development. Renderer view models consume public-safe state without owning simulation, scoring, planning, replay semantics, route optimization, or hidden truth. Browser ANCHOR owns the player-facing planning flow, simulation screens, tutorial/challenge routes, benchmark UI, adaptive surfacing review, and Headless Bundle Viewer. Browser scoring remains the official gameplay scoring surface.
+Browser ANCHOR is the visual game, referee, and debrief UI. Three.js is now the production mission environment for planning and live simulation rendering, with visible planning tools, repaired end-to-end waypoint placement, and standard left-drag pan / right-drag orbit / wheel-zoom controls in the Mission Workspace. Phaser remains a transitional scene shell, lab host, and query-gated diagnostic fallback (`?legacyPhaser=1`), not the target mission renderer for new feature development. Renderer view models consume public-safe state without owning simulation, scoring, planning, replay semantics, route optimization, or hidden truth. Browser ANCHOR owns the player-facing planning flow, simulation screens, tutorial/challenge routes, benchmark UI, adaptive surfacing review, and Headless Bundle Viewer. Browser scoring remains the official gameplay scoring surface.
 
 Product surfaces include:
 
@@ -219,7 +221,7 @@ Boundaries:
 
 ## 11. Near-Term Priorities
 
-Current renderer stabilization priority after THREE-R1.1B is complete should be THREE-R1.2 — Bathymetric Terrain Surface + Operational Depth/Control Slabs. Terrain/slab work should build on the existing visible Planning Tools and camera controller without changing app routing or reintroducing the reverted DOM runtime.
+Current renderer stabilization priority after THREE-R1.1B is complete should be THREE-R1.2 â€” Bathymetric Terrain Surface + Operational Depth/Control Slabs. Terrain/slab work should build on the existing visible Planning Tools and camera controller without changing app routing or reintroducing the reverted DOM runtime.
 
 
 Active/near-term work should stabilize the current Three.js-first mission architecture before adding large new systems.
@@ -314,4 +316,3 @@ SCORE-R1 is shadow benchmark scoring. It does not replace official browser scori
 See [Mission Scoring and Regret](docs/mission_scoring_and_regret.md) for the SCORE-R1 artifact contract and boundaries.
 
 H4.1 hardens replay artifacts with formal schemas, deterministic integrity issue codes, tamper fixtures, compact browser replay summaries, and a contract-only multi-agent replay fixture. This stabilizes public replay/debrief infrastructure before Blind Discovery gameplay or cooperative multi-glider work; it does not add authoritative hidden-state replay, Python simulation, planners, optimizers, or MARL/RL.
-

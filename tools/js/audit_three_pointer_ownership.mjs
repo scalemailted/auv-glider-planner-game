@@ -25,7 +25,13 @@ assert.match(controller, /cameraGestureTypeForEvent/, 'controller must arbitrate
 assert.match(controller, /cameraController\?\.orbitBy/, 'controller must delegate orbit gestures to camera controller.');
 assert.match(controller, /cameraController\?\.panBy/, 'controller must delegate pan gestures to camera controller.');
 assert.match(planning, /activePlanningToolId/, 'planning debug must expose active planning tool.');
-assert.match(planning, /cameraOrbitChangeCount/, 'planning debug must expose camera controller change counts.');assert.match(controller, /allowEditing:\s*options\.allowEditing !== false/, 'controller must support non-editable simulation mode.');
+assert.match(planning, /cameraOrbitChangeCount/, 'planning debug must expose camera controller change counts.');
+assert.match(planning, /pointerGestureClassification/, 'planning debug must expose pointer gesture classification.');
+assert.match(planning, /missionClickSuppressedReason/, 'planning debug must expose mission click suppression reason.');
+assert.match(controller, /contextmenu/, 'controller must scope context-menu prevention to the Three canvas.');
+assert.match(controller, /controller\.pointerDown\.cameraGestureType = 'pan'/, 'left drag should promote to camera pan.');
+assert.match(controller, /event\.button === 2\) return 'orbit'/, 'right drag should orbit.');
+assert.match(controller, /allowEditing:\s*options\.allowEditing !== false/, 'controller must support non-editable simulation mode.');
 assert.match(simulation, /allowEditing:\s*false/, 'simulation controller must disable edit intents.');
 assert.match(simulation, /ANCHOR_MISSION_RENDER_DEBUG/, 'simulation must publish the shared mission render debug contract.');
 

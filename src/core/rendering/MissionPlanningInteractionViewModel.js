@@ -145,7 +145,7 @@ function clonePlainObject(value = null) {
 }
 
 function hintForMode(mode) {
-  if (mode === 'placeWaypoint') return 'Click a valid water cell to add a waypoint. Right-drag or wheel navigates the camera.';
+  if (mode === 'placeWaypoint') return 'Click a valid water cell to add a waypoint. Left drag pans, right drag rotates, and wheel zooms.';
   if (mode === 'placeMarker') return 'Click a valid mission cell to add a non-executable planning marker.';
   if (mode === 'navigate') return 'Drag to move the camera. Clicks do not edit the plan in Navigate mode.';
   if (mode === 'selectDeployment') return 'Click a valid highlighted drop-zone cell to set the active glider start.';

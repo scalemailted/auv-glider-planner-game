@@ -1,8 +1,8 @@
 import { createMissionWorldInteractionIntent, normalizeMissionWorldInteractionMode } from '../../core/rendering/MissionWorldInteractionIntent.js';
 import { createThreeMissionHitTestContext, hitTestThreeMissionWorld } from './ThreeMissionHitTest.js';
-import { setThreeMissionCameraInteractionMode, threeMissionCameraControllerSummary } from './ThreeMissionCameraController.js';
+import { THREE_MISSION_CAMERA_MOUSE_MAPPING, setThreeMissionCameraInteractionMode, threeMissionCameraControllerSummary } from './ThreeMissionCameraController.js';
 
-export const THREE_MISSION_INTERACTION_CONTROLLER_VERSION = 'three-mission-interaction-controller-three-r1-1b';
+export const THREE_MISSION_INTERACTION_CONTROLLER_VERSION = 'three-mission-interaction-controller-three-r1-1c';
 export const THREE_MISSION_CLICK_THRESHOLD_CSS_PX = 5;
 
 export function createThreeMissionInteractionController({ renderer, camera, domElement, coordinates, getViewModel, emitIntent, options = {} } = {}) {
@@ -34,6 +34,9 @@ export function createThreeMissionInteractionController({ renderer, camera, domE
     disposed: false,
     lastHit: null,
     lastPointerDiagnostics: null,
+    lastPointerGesture: null,
+    missionClickSuppressedReason: null,
+    contextMenuPreventedCount: 0,
     lastIntent: null,
     lastResult: null,
     listeners: []
@@ -43,7 +46,10 @@ export function createThreeMissionInteractionController({ renderer, camera, domE
   addListener(controller, domElement, 'pointerup', (event) => onPointerUp(controller, event));
   addListener(controller, domElement, 'pointercancel', (event) => onPointerCancel(controller, event));
   addListener(controller, domElement, 'wheel', (event) => onWheel(controller, event), { passive: false });
-  addListener(controller, domElement, 'contextmenu', (event) => event.preventDefault());
+  addListener(controller, domElement, 'contextmenu', (event) => {
+    controller.contextMenuPreventedCount += 1;
+    event.preventDefault();
+  });
   const keyTarget = domElement.ownerDocument ?? globalThis.document;
   addListener(controller, keyTarget, 'keydown', (event) => onKeyDown(controller, event));
   return controller;
@@ -101,6 +107,16 @@ export function threeMissionInteractionControllerSummary(controller = {}) {
     cameraGestureActive: controller.cameraGestureActive === true,
     cameraGestureType: controller.cameraGestureType ?? null,
     cameraPointerButton: controller.cameraPointerButton ?? null,
+    pointerButton: controller.lastPointerGesture?.button ?? null,
+    pointerDownClient: controller.lastPointerGesture?.pointerDownClient ?? null,
+    pointerUpClient: controller.lastPointerGesture?.pointerUpClient ?? null,
+    pointerMovementPixels: controller.lastPointerGesture?.movementPixels ?? 0,
+    pointerGestureClassification: controller.lastPointerGesture?.classification ?? null,
+    cameraMovedSincePointerDown: controller.lastPointerGesture?.cameraMovedSincePointerDown === true,
+    missionClickSuppressedReason: controller.lastPointerGesture?.missionClickSuppressedReason ?? controller.missionClickSuppressedReason ?? null,
+    cameraMouseMapping: { ...THREE_MISSION_CAMERA_MOUSE_MAPPING },
+    contextMenuScopedToCanvas: true,
+    contextMenuPreventedCount: Number(controller.contextMenuPreventedCount ?? 0),
     cameraController: threeMissionCameraControllerSummary(controller.cameraController ?? {}),
     waypointDragActive: controller.dragState?.active === true,
     dragWaypointId: controller.dragState?.waypointId ?? null,
@@ -138,17 +154,19 @@ function onPointerDown(controller, event) {
     lastX: event.clientX,
     lastY: event.clientY,
     moved: false,
+    movementPixels: 0,
     hit,
     cameraGesture,
     cameraGestureType,
+    cameraCountsBefore: cameraCounts(controller.cameraController),
+    cameraTargetBefore: targetPlain(controller.cameraController?.target),
+    cameraMovedSincePointerDown: false,
     waypointDragCandidate: controller.allowEditing !== false && !cameraGesture && isPrimaryButton(event) && isEditMode(controller) && hit.category === 'waypoint' && hit.waypointId
   };
   setPointerCapture(controller, event.pointerId);
   if (cameraGesture) {
-    controller.cameraGestureActive = true;
-    controller.cameraGestureType = cameraGestureType;
-    controller.cameraPointerButton = event.button;
-    controller.cameraController?.beginGesture?.(cameraGestureType, event.button);
+    event.preventDefault?.();
+    startCameraGestureFromPointer(controller, cameraGestureType, event.button);
   }
 }
 
@@ -158,16 +176,16 @@ function onPointerMove(controller, event) {
   if (!controller.pointerDown || controller.pointerDown.pointerId !== event.pointerId) return;
   const dx = event.clientX - controller.pointerDown.startX;
   const dy = event.clientY - controller.pointerDown.startY;
-  const moved = Math.hypot(dx, dy) > controller.clickThresholdCssPx;
+  const movementPixels = Math.hypot(dx, dy);
+  const moved = movementPixels > controller.clickThresholdCssPx;
+  controller.pointerDown.movementPixels = movementPixels;
   controller.pointerDown.moved = controller.pointerDown.moved || moved;
   if (!moved) return;
   if (controller.pointerDown.cameraGesture) {
-    controller.cameraGestureActive = true;
-    controller.cameraGestureType = controller.pointerDown.cameraGestureType;
-    controller.cameraPointerButton = event.button;
     applyCameraDrag(controller, event.clientX - controller.pointerDown.lastX, event.clientY - controller.pointerDown.lastY, event);
     controller.pointerDown.lastX = event.clientX;
     controller.pointerDown.lastY = event.clientY;
+    controller.pointerDown.cameraMovedSincePointerDown = cameraMovedSincePointerDown(controller, controller.pointerDown);
     return;
   }
   if (controller.pointerDown.waypointDragCandidate) {
@@ -187,6 +205,17 @@ function onPointerMove(controller, event) {
       worldPoint: hit.worldPoint,
       metadata: { objectType: 'waypoint', objectId: controller.dragState.waypointId, hitCategory: hit.category }
     });
+    return;
+  }
+  if (isPrimaryButtonValue(controller.pointerDown.button)) {
+    event.preventDefault?.();
+    controller.pointerDown.cameraGesture = true;
+    controller.pointerDown.cameraGestureType = 'pan';
+    startCameraGestureFromPointer(controller, 'pan', controller.pointerDown.button);
+    applyCameraDrag(controller, event.clientX - controller.pointerDown.lastX, event.clientY - controller.pointerDown.lastY, event);
+    controller.pointerDown.lastX = event.clientX;
+    controller.pointerDown.lastY = event.clientY;
+    controller.pointerDown.cameraMovedSincePointerDown = cameraMovedSincePointerDown(controller, controller.pointerDown);
   }
 }
 
@@ -196,8 +225,16 @@ function onPointerUp(controller, event) {
   releasePointer(controller, event.pointerId);
   controller.pointerDown = null;
   if (!pointerDown || pointerDown.pointerId !== event.pointerId) return;
+  pointerDown.endX = event.clientX;
+  pointerDown.endY = event.clientY;
+  pointerDown.movementPixels = Math.hypot(event.clientX - pointerDown.startX, event.clientY - pointerDown.startY);
   const hit = hitTest(controller, event, { preferGrid: true });
   if (controller.dragState?.active) {
+    recordPointerGesture(controller, pointerDown, {
+      classification: 'waypointDrag',
+      cameraMoved: false,
+      missionClickSuppressedReason: 'waypointDragActive'
+    });
     emit(controller, 'commitWaypointMove', {
       waypointId: controller.dragState.waypointId,
       agentId: controller.dragState.agentId,
@@ -208,20 +245,44 @@ function onPointerUp(controller, event) {
     controller.dragState = null;
     return;
   }
-  if (pointerDown.cameraGesture || pointerDown.moved) {
+  const cameraMoved = pointerDown.cameraMovedSincePointerDown === true || cameraMovedSincePointerDown(controller, pointerDown);
+  if (pointerDown.cameraGesture || pointerDown.moved || cameraMoved) {
+    const classification = pointerDown.cameraGestureType ?? (isPrimaryButtonValue(pointerDown.button) ? 'pan' : 'cameraGesture');
+    recordPointerGesture(controller, pointerDown, {
+      classification,
+      cameraMoved,
+      missionClickSuppressedReason: cameraMoved || pointerDown.cameraGesture ? `${classification}Gesture` : 'pointerMovedBeyondClickThreshold'
+    });
     controller.cameraGestureActive = false;
-  controller.cameraGestureType = null;
-  controller.cameraPointerButton = null;
-  controller.cameraController?.endGesture?.();
-    emit(controller, 'cameraChanged', { metadata: { objectType: 'camera', objectId: controller.renderer?.cameraState?.preset ?? 'manual' } });
+    controller.cameraGestureType = null;
+    controller.cameraPointerButton = null;
+    controller.cameraController?.endGesture?.();
+    emit(controller, 'cameraChanged', { metadata: { objectType: 'camera', objectId: controller.renderer?.cameraState?.preset ?? 'manual', pointerGestureClassification: classification } });
     return;
   }
-  if (!isPrimaryButton(event)) return;
+  if (!isPrimaryButton(event)) {
+    recordPointerGesture(controller, pointerDown, {
+      classification: 'nonPrimaryClickSuppressed',
+      cameraMoved: false,
+      missionClickSuppressedReason: 'nonPrimaryButton'
+    });
+    return;
+  }
+  recordPointerGesture(controller, pointerDown, {
+    classification: 'missionClick',
+    cameraMoved: false,
+    missionClickSuppressedReason: null
+  });
   handleClick(controller, hit, event);
 }
 
 function onPointerCancel(controller, event) {
   releasePointer(controller, event.pointerId);
+  recordPointerGesture(controller, controller.pointerDown, {
+    classification: 'cancelled',
+    cameraMoved: false,
+    missionClickSuppressedReason: 'pointerCancelled'
+  });
   cancelThreeMissionInteraction(controller);
 }
 
@@ -235,6 +296,19 @@ function onWheel(controller, event) {
   controller.cameraController?.zoomByDelta?.(event.deltaY);
   controller.cameraController?.endGesture?.();
   controller.cameraGestureActive = false;
+  controller.missionClickSuppressedReason = 'wheelZoom';
+  controller.lastPointerGesture = {
+    button: 'wheel',
+    buttonIndex: null,
+    pointerDownClient: null,
+    pointerUpClient: null,
+    movementPixels: 0,
+    classification: 'wheelZoom',
+    cameraMovedSincePointerDown: true,
+    missionClickSuppressedReason: 'wheelZoom',
+    cameraTargetBeforeGesture: null,
+    cameraTargetAfterGesture: targetPlain(controller.cameraController?.target)
+  };
   emit(controller, 'cameraChanged', { metadata: { objectType: 'camera', objectId: 'wheelZoom', cameraGestureType: 'zoom' } });
   controller.cameraGestureType = null;
   controller.cameraPointerButton = null;
@@ -339,9 +413,8 @@ function emit(controller, intentId, patch = {}) {
 }
 
 function cameraGestureTypeForEvent(controller, event) {
-  if (event.button === 2 || event.button === 1 || event.shiftKey) return 'pan';
-  if (controller.interactionMode === 'navigate' && isPrimaryButton(event)) return 'orbit';
-  if (event.altKey || event.metaKey || event.ctrlKey) return 'orbit';
+  if (event.button === 2) return 'orbit';
+  if (event.button === 1) return 'dolly';
   return null;
 }
 
@@ -356,7 +429,69 @@ function isPrimaryButton(event) {
 function applyCameraDrag(controller, dx, dy, event) {
   const gestureType = controller.pointerDown?.cameraGestureType ?? cameraGestureTypeForEvent(controller, event);
   if (gestureType === 'pan') controller.cameraController?.panBy?.(dx, dy);
+  else if (gestureType === 'dolly') controller.cameraController?.zoomByDelta?.(dy);
   else controller.cameraController?.orbitBy?.(dx, dy);
+}
+
+function startCameraGestureFromPointer(controller, gestureType, button) {
+  controller.cameraGestureActive = true;
+  controller.cameraGestureType = gestureType;
+  controller.cameraPointerButton = button;
+  controller.cameraController?.beginGesture?.(gestureType, button);
+  if (controller.domElement?.style && gestureType === 'pan') controller.domElement.style.cursor = 'grabbing';
+}
+
+function cameraMovedSincePointerDown(controller, pointerDown = {}) {
+  const before = pointerDown.cameraCountsBefore ?? {};
+  const after = cameraCounts(controller.cameraController);
+  return after.orbit !== before.orbit || after.pan !== before.pan || after.zoom !== before.zoom;
+}
+
+function cameraCounts(cameraController = {}) {
+  return {
+    orbit: Number(cameraController?.orbitChangeCount ?? 0),
+    pan: Number(cameraController?.panChangeCount ?? 0),
+    zoom: Number(cameraController?.zoomChangeCount ?? 0)
+  };
+}
+
+function recordPointerGesture(controller, pointerDown, options = {}) {
+  if (!pointerDown) return;
+  controller.missionClickSuppressedReason = options.missionClickSuppressedReason ?? null;
+  controller.lastPointerGesture = {
+    button: pointerButtonName(pointerDown.button),
+    buttonIndex: Number(pointerDown.button ?? 0),
+    pointerDownClient: { x: round(pointerDown.startX), y: round(pointerDown.startY) },
+    pointerUpClient: { x: round(pointerDown.endX ?? pointerDown.lastX ?? pointerDown.startX), y: round(pointerDown.endY ?? pointerDown.lastY ?? pointerDown.startY) },
+    movementPixels: round(pointerDown.movementPixels ?? 0),
+    classification: options.classification ?? 'unknown',
+    cameraMovedSincePointerDown: options.cameraMoved === true,
+    missionClickSuppressedReason: options.missionClickSuppressedReason ?? null,
+    cameraTargetBeforeGesture: pointerDown.cameraTargetBefore ?? null,
+    cameraTargetAfterGesture: targetPlain(controller.cameraController?.target)
+  };
+  if (controller.domElement?.style && options.classification !== 'pan') controller.domElement.style.cursor = '';
+}
+
+function targetPlain(target = {}) {
+  if (!target) return null;
+  return { x: round(target.x), y: round(target.y), z: round(target.z) };
+}
+
+function pointerButtonName(button) {
+  if (Number(button) === 0) return 'left';
+  if (Number(button) === 1) return 'middle';
+  if (Number(button) === 2) return 'right';
+  return String(button ?? 'unknown');
+}
+
+function isPrimaryButtonValue(button) {
+  return Number(button ?? 0) === 0;
+}
+
+function round(value, digits = 3) {
+  const numeric = Number(value);
+  return Number.isFinite(numeric) ? Number(numeric.toFixed(digits)) : null;
 }
 
 function setPointerCapture(controller, pointerId) {

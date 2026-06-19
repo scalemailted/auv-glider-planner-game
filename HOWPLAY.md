@@ -143,9 +143,9 @@ For the Three.js Mission World, use the Mission Console `Planning Tools` section
 - `Add Waypoint`: click successive valid cells to append executable route waypoints.
 - `Select / Edit`: inspect objects or drag an existing waypoint.
 - `Add Marker`: place non-executable planning markers.
-- `Navigate`: left drag orbits; right/middle/Shift-drag pans; wheel zooms.
+- `Navigate`: camera-focused mode; left click still uses the active tool, left drag pans, right drag rotates/orbits, and wheel zooms.
 
-The Mission Console `Camera Controls` section provides `Top Down`, `Oblique`, `Profile`, `Fleet`, `Focus Glider`, `Focus Route`, and `Reset Camera`. Manual camera movement is preserved across normal renderer refreshes; preset/reset buttons intentionally replace the manual camera pose.
+The Mission Console `Camera Controls` section provides `Top Down`, `Oblique`, `Profile`, `Fleet`, `Focus Glider`, `Focus Route`, and `Reset Camera`. In the Three.js Mission World, left click uses the active planning tool, left drag pans, right drag rotates/orbits, and wheel zooms. Manual camera movement is preserved across normal renderer refreshes; preset/reset buttons intentionally replace the manual camera pose.
 
 The camera moves only the mission world. The Mission Console, Waypoint Timeline, HUDs, modals, and bottom time slider stay fixed. See [Three.js Planning Tools and Camera Controls](docs/threejs_planning_tools_and_camera.md).
 
@@ -155,7 +155,7 @@ The left Mission Console is organized as collapsible sections. Click a section h
 
 The simulator map scales inside the canvas between the top selected-glider HUD and the bottom timeline. Grid cells stay square; if the viewport shape does not match the mission grid, the map leaves balanced empty space inside the canvas instead of stretching.
 
-Generated challenge missions may show highlighted deployment/drop-zone cells. If the selected glider has no start yet, the map prompts you to choose a deployment cell and the waypoint panel says `Start: not selected`. In this state, the game hides route guidance, drift cones, reachability, ETA, energy previews, overlapping base/station markers, and real glider/start icons so it does not imply a false start at the corner of the grid. Hover a valid drop-zone cell to preview a temporary ghost start marker, then click it to lock the glider's start. After that, ordinary route waypoint placement begins from the selected start, and the reachability oval centers on that locked start until the first reachable waypoint becomes the next planning anchor. Tutorial missions usually use fixed starts and skip this deployment selection step.
+Generated challenge missions may show highlighted deployment/drop-zone cells. If the selected glider has no start yet, the map prompts you to choose a deployment cell and the waypoint panel says `Start: not selected`. In this state, the game hides route guidance, drift cones, reachability, ETA, energy previews, overlapping base/station markers, and real glider/start icons so it does not imply a false start at the corner of the grid. Hover a valid drop-zone cell to preview a temporary ghost start marker, then click it to lock the glider's start. After that, Add Waypoint becomes available and auto-arms when the route is empty; ordinary route waypoint placement begins from the selected start, and the reachability oval centers on that locked start until the first reachable waypoint becomes the next planning anchor. Tutorial missions usually use fixed starts and skip this deployment selection step.
 
 Generated maps are checked for deployment connectivity before play. If terrain would trap the drop zone, the generator repairs the map or retries with a derived seed. In custom/editor maps, Planning and the Environment Editor can warn if deployment water, ROI targets, or required recovery zones are disconnected.
 

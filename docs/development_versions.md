@@ -38,6 +38,12 @@ Challenge Mode also persists `missionMode`. Mission modes are player-facing obje
 
 ## Version / Milestone Log
 
+### THREE-R1.1C - Standard Camera Gestures and Waypoint Placement Repair
+
+- Repaired the visible deployment-to-waypoint workflow so an accepted empty-route deployment auto-arms Add Waypoint and successive Three canvas clicks create canonical route waypoints.
+- Added single tool-state ownership diagnostics, waypoint pipeline transaction fields, waypoint tool availability reasons, and canonical/Three/right-panel/timeline count synchronization checks.
+- Standardized desktop camera gestures: left click executes the active planning action, left drag pans, right drag orbits yaw/pitch, wheel zooms, and camera gestures never mutate mission state.
+- Preserved the boundary: Three remains a renderer/input surface; the Mission Workspace scene and portable mission core own validation, planning mutation, simulation, and scoring.
 ### THREE-R1.1B - Planning Tool Activation and Camera Control Parity
 
 - Added renderer-neutral planning tool state for `Navigate`, `Select / Edit`, `Deploy / Change Start`, `Add Waypoint`, `Edit Waypoint`, and `Add Marker`.
@@ -461,4 +467,3 @@ Added a versioned headless replay alignment contract with `replay_manifest.json`
 ## H4.1 / Replay Schema, Integrity, And Multi-Agent Contract Hardening
 
 Added formal replay schemas, runtime schema validation, compatibility policy, structured integrity verifier, compact clean/tampered replay fixtures, browser-visible integrity failures, compact replay summary export, and a contract-only two-agent replay fixture. Public playback remains `publicObservationPlayback`; protected/referee replay modes remain reserved and unimplemented for public artifacts.
-

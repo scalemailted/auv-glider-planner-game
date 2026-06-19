@@ -1,9 +1,16 @@
 import * as THREE from 'three';
 
-export const THREE_MISSION_CAMERA_CONTROLLER_VERSION = 'three-mission-camera-controller-three-r1-1b';
+export const THREE_MISSION_CAMERA_CONTROLLER_VERSION = 'three-mission-camera-controller-three-r1-1c';
 
 const DEFAULT_MIN_POLAR = 0.14;
 const DEFAULT_MAX_POLAR = 1.34;
+
+export const THREE_MISSION_CAMERA_MOUSE_MAPPING = Object.freeze({
+  LEFT: 'PAN',
+  MIDDLE: 'DOLLY',
+  RIGHT: 'ROTATE',
+  screenSpacePanning: true
+});
 
 export function createThreeMissionCameraController(options = {}) {
   const camera = options.camera ?? options.renderer?.camera ?? null;
@@ -29,9 +36,18 @@ export function createThreeMissionCameraController(options = {}) {
     orbitEnabled: options.orbitEnabled !== false,
     panEnabled: options.panEnabled !== false,
     zoomEnabled: options.zoomEnabled !== false,
+    screenSpacePanning: options.screenSpacePanning !== false,
+    mouseButtons: { ...THREE_MISSION_CAMERA_MOUSE_MAPPING },
     gestureActive: false,
     gestureType: null,
     pointerButton: null,
+    gestureStartTarget: null,
+    gestureEndTarget: null,
+    gestureStartAzimuthRadians: null,
+    gestureStartPolarRadians: null,
+    cameraAzimuthDelta: 0,
+    cameraPolarDelta: 0,
+    cameraPanDelta: { x: 0, y: 0, z: 0 },
     orbitChangeCount: 0,
     panChangeCount: 0,
     zoomChangeCount: 0,
@@ -127,12 +143,19 @@ export function threeMissionCameraControllerSummary(controller = {}) {
     cameraOrbitEnabled: controller.orbitEnabled === true,
     cameraPanEnabled: controller.panEnabled === true,
     cameraZoomEnabled: controller.zoomEnabled === true,
+    cameraMouseMapping: { ...(controller.mouseButtons ?? THREE_MISSION_CAMERA_MOUSE_MAPPING) },
+    screenSpacePanning: controller.screenSpacePanning !== false,
     cameraGestureActive: controller.gestureActive === true,
     cameraGestureType: controller.gestureType ?? null,
     cameraPointerButton: controller.pointerButton ?? null,
     cameraOrbitChangeCount: Number(controller.orbitChangeCount ?? 0),
     cameraPanChangeCount: Number(controller.panChangeCount ?? 0),
     cameraZoomChangeCount: Number(controller.zoomChangeCount ?? 0),
+    cameraAzimuthDelta: round(controller.cameraAzimuthDelta),
+    cameraPolarDelta: round(controller.cameraPolarDelta),
+    cameraTargetBeforeGesture: plainVector(controller.gestureStartTarget),
+    cameraTargetAfterGesture: plainVector(controller.gestureEndTarget ?? controller.target),
+    cameraPanDelta: plainVector(controller.cameraPanDelta),
     lastCameraPosition: plainVector(controller.camera?.position),
     lastCameraTarget: plainVector(controller.target),
     bounds: controller.bounds ? {
@@ -175,10 +198,18 @@ function beginCameraGesture(controller, type, pointerButton = null) {
   controller.gestureActive = true;
   controller.gestureType = type;
   controller.pointerButton = pointerButton;
+  controller.gestureStartTarget = controller.target?.clone?.() ?? vector3(controller.target);
+  controller.gestureEndTarget = controller.gestureStartTarget?.clone?.() ?? null;
+  controller.gestureStartAzimuthRadians = controller.azimuthRadians;
+  controller.gestureStartPolarRadians = controller.polarRadians;
+  controller.cameraAzimuthDelta = 0;
+  controller.cameraPolarDelta = 0;
+  controller.cameraPanDelta = { x: 0, y: 0, z: 0 };
   return controller;
 }
 
 function endCameraGesture(controller) {
+  controller.gestureEndTarget = controller.target?.clone?.() ?? vector3(controller.target);
   controller.gestureActive = false;
   controller.gestureType = null;
   controller.pointerButton = null;
@@ -187,10 +218,14 @@ function endCameraGesture(controller) {
 
 function orbitCameraBy(controller, deltaX, deltaY) {
   if (!controller?.orbitEnabled || controller.disposed) return controller;
+  const beforeAzimuth = controller.azimuthRadians;
+  const beforePolar = controller.polarRadians;
   controller.azimuthRadians -= finiteNumber(deltaX, 0) * 0.008;
   controller.polarRadians += finiteNumber(deltaY, 0) * 0.006;
   controller.orbitChangeCount += 1;
   clampController(controller);
+  controller.cameraAzimuthDelta += controller.azimuthRadians - beforeAzimuth;
+  controller.cameraPolarDelta += controller.polarRadians - beforePolar;
   applyCamera(controller);
   markRendererCamera(controller, { manual: true, preset: 'manualOrbit' });
   return controller;
@@ -199,6 +234,7 @@ function orbitCameraBy(controller, deltaX, deltaY) {
 function panCameraBy(controller, deltaX, deltaY) {
   if (!controller?.panEnabled || controller.disposed) return controller;
   const camera = controller.camera;
+  const beforeTarget = controller.target?.clone?.() ?? vector3(controller.target);
   const panScale = Math.max(0.008, controller.distance * 0.0018);
   const forward = new THREE.Vector3();
   camera.getWorldDirection(forward);
@@ -210,6 +246,14 @@ function panCameraBy(controller, deltaX, deltaY) {
     .addScaledVector(right, -finiteNumber(deltaX, 0) * panScale)
     .addScaledVector(forward, finiteNumber(deltaY, 0) * panScale);
   controller.target = clampTarget(controller, nextTarget);
+  const afterTarget = controller.target?.clone?.() ?? vector3(controller.target);
+  const panDelta = afterTarget.clone().sub(beforeTarget);
+  controller.cameraPanDelta = {
+    x: finiteNumber(controller.cameraPanDelta?.x, 0) + panDelta.x,
+    y: finiteNumber(controller.cameraPanDelta?.y, 0) + panDelta.y,
+    z: finiteNumber(controller.cameraPanDelta?.z, 0) + panDelta.z
+  };
+  controller.gestureEndTarget = afterTarget;
   controller.panChangeCount += 1;
   applyCamera(controller);
   markRendererCamera(controller, { manual: true, preset: 'manualPan' });

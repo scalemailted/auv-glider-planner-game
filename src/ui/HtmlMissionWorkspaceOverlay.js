@@ -724,6 +724,7 @@ function rendererBackendSection(state) {
   const activeToolId = toolState.activeToolId ?? planningToolForMode(mode);
   const activeToolLabel = toolState.activeToolLabel ?? planningToolLabel(activeToolId);
   const activeInstruction = toolState.instructions ?? interaction.userHint ?? 'Select a planning tool.';
+  const waypointAvailability = waypointToolAvailabilityForState(state);
   const layerButtons = [
     ['bathymetry', 'Bathymetry'],
     ['waterSurface', 'Water Surface'],
@@ -754,7 +755,7 @@ function rendererBackendSection(state) {
           ${planningToolButton('navigate', 'Navigate', activeToolId)}
           ${planningToolButton('selectInspect', 'Select / Edit', activeToolId)}
           ${planningToolButton('selectDeploymentCell', 'Deploy / Change Start', activeToolId)}
-          ${planningToolButton('placeWaypoint', 'Add Waypoint', activeToolId)}
+          ${planningToolButton('placeWaypoint', 'Add Waypoint', activeToolId, { disabled: !waypointAvailability.enabled, title: waypointAvailability.reason })}
           ${planningToolButton('placePlanningMarker', 'Add Marker', activeToolId)}
           <button class="console-button secondary" data-action="three-cancel-interaction">Cancel</button>
         </div>
@@ -762,6 +763,7 @@ function rendererBackendSection(state) {
           <div><strong>Active Tool:</strong> ${escapeHtml(activeToolLabel)}</div>
           <div>${escapeHtml(activeInstruction)}</div>
         </div>
+        <div class="hud-muted">Click: use active planning tool. Left drag: pan. Right drag: rotate. Wheel: zoom. Esc: cancel active tool.</div>
         <div class="hud-muted">Three pointer edits dispatch canonical workspace commands. Route timing, scoring, and simulation remain owned by the portable mission core.</div>
         ${threeInteractionStatusPanel(interaction)}
         <h3 class="waypoint-section-title">Three Layers</h3><div class="console-button-row wrap">${layerButtons}</div>`
@@ -788,8 +790,10 @@ function interactionModeButton(id, label, active) {
   return `<button class="console-button ${active === id ? 'primary' : 'secondary'}" data-action="three-interaction-mode" data-mode="${escapeAttr(id)}">${escapeHtml(label)}</button>`;
 }
 
-function planningToolButton(id, label, active) {
-  return `<button class="console-button ${active === id ? 'primary' : 'secondary'}" data-action="mission-planning-tool" data-tool="${escapeAttr(id)}">${escapeHtml(label)}</button>`;
+function planningToolButton(id, label, active, options = {}) {
+  const disabled = options.disabled ? ' disabled' : '';
+  const title = options.title ? ` title="${escapeAttr(options.title)}"` : '';
+  return `<button class="console-button ${active === id ? 'primary' : 'secondary'}" data-action="mission-planning-tool" data-tool="${escapeAttr(id)}"${disabled}${title}>${escapeHtml(label)}</button>`;
 }
 
 function planningToolForMode(mode) {
@@ -799,6 +803,27 @@ function planningToolForMode(mode) {
   if (mode === 'placeMarker') return 'placePlanningMarker';
   if (mode === 'editWaypoint') return 'editWaypoint';
   return 'selectInspect';
+}
+
+function waypointToolAvailabilityForState(state = {}) {
+  const selectedAgentId = state.selectedAgentId ?? state.mission?.agents?.[0]?.id ?? null;
+  const missionPhaseAllowsPlanning = state.mode === 'planning';
+  const agent = (state.mission?.agents ?? []).find((candidate) => candidate.id === selectedAgentId);
+  if (!selectedAgentId || !agent) return { enabled: false, selectedAgentId, hasDeploymentStart: false, missionPhaseAllowsPlanning, reason: 'Select a glider first.' };
+  const selectedStart = selectedStartForAgent(agent);
+  if (!missionPhaseAllowsPlanning) return { enabled: false, selectedAgentId, hasDeploymentStart: Boolean(selectedStart), missionPhaseAllowsPlanning, reason: 'Planning is unavailable in the current mission phase.' };
+  if (agent.locked === true || agent.planningLocked === true) return { enabled: false, selectedAgentId, hasDeploymentStart: Boolean(selectedStart), missionPhaseAllowsPlanning, reason: 'This agent is locked.' };
+  if (!selectedStart && (agent.deployment?.mode === 'chooseFromZone' || agent.deployment?.mode === 'chooseFromZones')) return { enabled: false, selectedAgentId, hasDeploymentStart: false, missionPhaseAllowsPlanning, reason: 'Deploy this glider first.' };
+  if (!selectedStart) return { enabled: false, selectedAgentId, hasDeploymentStart: false, missionPhaseAllowsPlanning, reason: 'No valid deployment exists.' };
+  return { enabled: true, selectedAgentId, hasDeploymentStart: true, missionPhaseAllowsPlanning, reason: 'Ready to add waypoints.' };
+}
+
+function selectedStartForAgent(agent = {}) {
+  const deployment = agent.deployment ?? {};
+  const selected = deployment.mode === 'chooseFromZone' || deployment.mode === 'chooseFromZones'
+    ? deployment.selectedStart ?? agent.selectedStart
+    : deployment.selectedStart ?? agent.selectedStart ?? agent.start;
+  return Number.isFinite(Number(selected?.x)) && Number.isFinite(Number(selected?.y)) ? selected : null;
 }
 
 function planningToolLabel(id) {
@@ -1649,5 +1674,3 @@ function escapeHtml(value) {
 function escapeAttr(value) {
   return escapeHtml(value).replace(/`/g, '&#096;');
 }
-
-
