@@ -401,6 +401,7 @@ function emit(controller, intentId, patch = {}) {
     pointerId: patch.pointerId ?? controller.pointerDown?.pointerId ?? null,
     modifiers: patch.modifiers ?? {},
     missionId: viewModel?.missionId ?? null,
+    continuousPoint: patch.continuousPoint ?? patch.gridCell?.continuousPoint ?? null,
     activeTimeSeconds: viewModel?.activeTimeSeconds ?? 0,
     sourceBackend: 'threeMission3d',
     sequence: ++controller.sequence,

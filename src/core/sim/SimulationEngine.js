@@ -132,6 +132,8 @@ export class SimulationEngine {
       rngSeed: this.mission.rules?.stochasticSeed ?? this.mission.rules?.rngSeed ?? this.level.meta?.seed ?? this.level.instanceId ?? this.level.levelId,
       roiOutcomes: new Map(),
       plan: this.plan,
+      coordinateProfileId: this.plan?.coordinateProfileId ?? this.plan?.meta?.coordinateProfileId ?? this.mission?.meta?.coordinateProfileId ?? this.level?.meta?.coordinateProfileId ?? 'legacyIntegerCellsV1',
+      fieldSamplingProfileId: this.plan?.fieldSamplingProfileId ?? this.plan?.meta?.fieldSamplingProfileId ?? this.mission?.meta?.fieldSamplingProfileId ?? this.level?.meta?.fieldSamplingProfileId ?? 'legacyNearestCellV1',
       missionDuration: this.level.world?.time?.duration ?? 0,
       waterColumnConfig,
       defaultDiveProfileId: this.mission.rules?.waterColumn?.defaultDiveProfileId ?? this.mission.waterColumnConfig?.defaultDiveProfileId ?? waterColumnConfig.diveProfileId,
@@ -370,7 +372,8 @@ export class SimulationEngine {
       t: this.t,
       mission: this.mission,
       driftGain: getDriftRules(this.mission).driftGain,
-      energyPerCell: this.mission.physics?.energyPerCell ?? 1
+      energyPerCell: this.mission.physics?.energyPerCell ?? 1,
+      waterColumnConfig: this.missionState.waterColumnConfig
     });
     if (outcome.invalidStep || outcome.invalidPosition) {
       this.abortSimulation(outcome.invalidStep ? 'invalidPhysicsStep' : 'invalidAgentOrWaypointPosition', {
@@ -390,6 +393,28 @@ export class SimulationEngine {
         multiplier: round(outcome.depthMultiplier, 3),
         extraEnergy: round(Math.max(0, outcome.energy - outcome.baseEnergy), 4),
         energyBenefit: round(Math.max(0, outcome.baseEnergy - outcome.energy), 4)
+      });
+    }
+    for (const event of outcome.diveEvents ?? []) {
+      this.recordEvent({
+        ...event,
+        type: `dive_${event.type}`,
+        source: 'gliderDiveStateMachine',
+        waypointIndex: agent.currentWaypointIndex,
+        depthMeters: event.depthMeters ?? round(agent.depthMeters ?? 0, 3),
+        divePhase: agent.divePhase ?? null,
+        syntheticTeachingModel: true,
+        operationallyCalibrated: false
+      });
+    }
+    for (const event of outcome.layerCrossingEvents ?? []) {
+      this.recordEvent({
+        ...event,
+        type: 'depthLayerCrossing',
+        source: 'gliderDiveStateMachine',
+        waypointIndex: agent.currentWaypointIndex,
+        syntheticTeachingModel: true,
+        operationallyCalibrated: false
       });
     }
 
@@ -1260,6 +1285,7 @@ export class SimulationEngine {
       scoreProfile: this.missionState.depthScienceScoreProfile
     });
     publishDepthScienceDebug(this.missionState, summary);
+    publishContinuousMissionDebug(this, this.missionState, summary);
     return summary;
   }
 
@@ -1304,6 +1330,7 @@ export class SimulationEngine {
       priorityTargets: summarizePriorityTargets(this.level, this.missionState),
       deployment: summarizeDeployment(this.level, this.mission),
       depthScience: summary.depthScience ?? this.missionState.depthScienceSummary ?? null,
+      continuousMission: continuousMissionSummary(this, this.missionState, summary),
       frames: this.logger.frames,
       events: this.events,
       probabilityOutcomes,
@@ -1354,6 +1381,43 @@ function resolveDepthScienceScoreProfile(level, mission, waterColumnConfig) {
 
 function primaryMissionObjective(mission = null) {
   return mission?.objectives?.[0] ?? mission?.scienceObjectives?.[0] ?? mission?.objective ?? mission?.rules?.objective ?? null;
+}
+
+function continuousMissionSummary(engine = {}, missionState = {}, summary = {}) {
+  const agents = engine.agents ?? [];
+  const events = engine.events ?? [];
+  const waypoints = (engine.plan?.agentPlans ?? []).flatMap((agentPlan) => agentPlan.waypoints ?? []);
+  const continuousWaypointCount = waypoints.filter((waypoint) => !Number.isInteger(Number(waypoint.x)) || !Number.isInteger(Number(waypoint.y))).length;
+  const maxActualDepthMeters = Math.max(0, ...agents.map((agent) => Number(agent.depthMeters ?? 0)).filter(Number.isFinite), ...(events ?? []).map((event) => Number(event.depthMeters ?? 0)).filter(Number.isFinite));
+  return {
+    type: 'anchor.sim.continuous-mission-summary',
+    version: 'continuous-mission-three-r1-2a-3',
+    coordinateProfileId: missionState.coordinateProfileId ?? null,
+    fieldSamplingProfileId: missionState.fieldSamplingProfileId ?? null,
+    continuousWaypointCount,
+    totalWaypointCount: waypoints.length,
+    routeAuthority: 'horizontalWaypointsWithOptionalDiveProfiles',
+    coordinateFrame: 'continuousGridV1',
+    supportsFreePlacement: missionState.coordinateProfileId === 'continuousGridV1',
+    usesArbitraryXYZPlanning: false,
+    diveModelType: 'educationalGliderDiveKinematics',
+    seaExplorerValidated: false,
+    operationallyCalibrated: false,
+    syntheticTeachingModel: true,
+    calibratedOceanForecast: false,
+    agentCount: agents.length,
+    activeDivePhases: [...new Set(agents.map((agent) => agent.divePhase ?? 'surfaced'))],
+    maximumActualDepthMeters: round(maxActualDepthMeters, 3),
+    depthLayerCrossingEventCount: events.filter((event) => event.type === 'depthLayerCrossing').length,
+    diveTransitionEventCount: events.filter((event) => String(event.type ?? '').startsWith('dive_')).length,
+    sampleEventCount: events.filter((event) => event.type === 'sample').length,
+    actualDepthSampleCount: events.filter((event) => event.actualDepthSample === true).length,
+    scoreFinal: summary.finalScore ?? null
+  };
+}
+
+function publishContinuousMissionDebug(engine = {}, missionState = {}, summary = {}) {
+  globalThis.ANCHOR_CONTINUOUS_MISSION_DEBUG = continuousMissionSummary(engine, missionState, summary);
 }
 
 function publishDepthScienceDebug(missionState = {}, summary = {}) {

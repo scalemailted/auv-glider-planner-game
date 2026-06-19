@@ -1,4 +1,4 @@
-﻿import { missionWorldRenderInputFromSimulation, missionWorldRenderInputSummary } from './MissionWorldStateAdapter.js';
+import { missionWorldRenderInputFromSimulation, missionWorldRenderInputSummary } from './MissionWorldStateAdapter.js';
 
 export const SIMULATION_WORLD_STATE_ADAPTER_VERSION = 'simulation-world-state-adapter-mig-r1';
 
@@ -28,7 +28,18 @@ export function simulationWorldRenderInputFromScene(scene, options = {}) {
     y: finiteNumber(agent.y),
     z: -finiteNumber(agent.depthMeters, 0),
     depthMeters: finiteNumber(agent.depthMeters, 0),
-    headingRadians: finiteNumber(agent.heading, 0),
+    headingRadians: finiteNumber(agent.headingRadians ?? agent.heading, 0),
+    courseOverGroundRadians: finiteNumber(agent.courseOverGroundRadians ?? agent.heading, 0),
+    pitchRadians: finiteNumber(agent.pitchRadians, 0),
+    rollRadians: finiteNumber(agent.rollRadians, 0),
+    divePhase: agent.divePhase ?? 'surfaced',
+    profileProgress: finiteNumber(agent.profileProgress, 0),
+    segmentProgress: finiteNumber(agent.segmentProgress, 0),
+    waterRelativeVelocity: agent.waterRelativeVelocity ?? { x: 0, y: 0, vertical: 0 },
+    groundRelativeVelocity: agent.groundRelativeVelocity ?? agent.velocity ?? { x: 0, y: 0, vertical: 0 },
+    currentVector: agent.currentVector ?? { u: 0, v: 0, w: 0 },
+    bottomDepthMeters: agent.bottomDepthMeters ?? null,
+    bottomClearanceMeters: agent.bottomClearanceMeters ?? null,
     batteryFraction: batteryFraction(agent),
     energyFraction: batteryFraction(agent),
     status: agent.status ?? (engine?.complete ? 'complete' : engine?.running ? 'enroute' : 'paused'),

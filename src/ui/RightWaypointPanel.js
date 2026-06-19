@@ -59,6 +59,8 @@ export class RightWaypointPanel {
     const selectedPlan = (state.plan?.agentPlans ?? []).find((plan) => plan.agentId === selectedAgentId);
     const waypoints = selectedPlan?.waypoints ?? [];
     const timeConfig = getTimeConfig(state.level);
+    const coordinateProfile = state.plan?.coordinateProfileId ?? state.plan?.meta?.coordinateProfileId ?? 'legacyIntegerCellsV1';
+    const fieldSamplingProfile = state.plan?.fieldSamplingProfileId ?? state.plan?.meta?.fieldSamplingProfileId ?? (coordinateProfile === 'continuousGridV1' ? 'continuousTrilinearV1' : 'legacyNearestCellV1');
     const routeQuality = gradeRouteContributions({
       level: state.level,
       mission: state.mission,
@@ -78,7 +80,8 @@ export class RightWaypointPanel {
         </div>
         <div class="waypoint-summary">
           <span>${waypoints.length} waypoint(s)</span>
-          <span>Global markers live on the map/timeline</span>
+          <span>Coordinates: ${escapeHtml(labelize(coordinateProfile))}</span>
+          <span>Sampling: ${escapeHtml(labelize(fieldSamplingProfile))}</span>
         </div>
         ${deploymentSummary(state, selectedAgentId)}
         ${routeQuality?.overall?.segmentCount ? `<div class="waypoint-summary"><span>Route grade: ${escapeHtml(routeQuality.overall.grade)} (${escapeHtml(routeQuality.overall.numericScore)})</span><span>${escapeHtml(routeQuality.overall.segmentCount)} segment(s)</span></div>` : ''}
@@ -165,6 +168,7 @@ function waypointRows(state, waypoints, agentId, engine, result, routeQuality) {
             : missed ? `MISSED: ${labelReason(missed.reason).toUpperCase()}` : statusLabel(status);
         const selected = state.ui?.selectedWaypoint?.agentId === agentId && state.ui.selectedWaypoint.index === index;
         const grade = routeQuality?.segments?.find((segment) => Number(segment.toWaypointIndex) === index);
+        const coordinate = waypointCoordinateSummary(waypoint, state);
         return `
           <li class="timeline-waypoint ${status} ${terminalCarryThrough ? 'warning' : ''} ${selected || routeFailure ? 'selected' : ''} ${routeFailure ? 'failure' : ''}">
             <button class="waypoint-main" data-select-waypoint data-agent="${escapeAttr(agentId)}" data-index="${index}">
@@ -173,7 +177,7 @@ function waypointRows(state, waypoints, agentId, engine, result, routeQuality) {
                 <strong>W${index + 1} &middot; ${escapeHtml(semanticLabel)}</strong>
                 ${waypointKind === 'surface' ? '<small class="marker-estimate">GPS correction, communication/update, replanning point.</small>' : ''}
                 <strong>W${Number(waypoint.window ?? 0)} · ${escapeHtml(formatMissionTime(state.level, waypoint.t ?? 0))}</strong>
-                <small>(${Number(waypoint.x)}, ${Number(waypoint.y)}) · ${escapeHtml(waypoint.action ?? 'sample')}</small>
+                <small>X ${escapeHtml(coordinate.x)} | Y ${escapeHtml(coordinate.y)} | Cell ${escapeHtml(coordinate.cellLabel)} | ${escapeHtml(coordinate.coordinateProfileLabel)}</small>
                 ${segmentGradeLine(grade)}
                 ${isRuntimeTruncatedTimeWaypoint(waypoint) ? '<small class="marker-warning">Mission-window warning: ETA exceeds mission end; simulation will run until mission time expires and report unreached status.</small>' : ''}
                 ${waypoint.warnings?.length ? `<small class="marker-warning">${escapeHtml(waypoint.warnings[0])}</small>` : ''}
@@ -244,6 +248,30 @@ function statusLabelText(status) {
   if (status === 'risky') return 'Risky';
   if (status === 'impossible') return 'Impossible';
   return 'Estimate';
+}
+
+function waypointCoordinateSummary(waypoint = {}, state = {}) {
+  const x = waypoint.position?.x ?? waypoint.x;
+  const y = waypoint.position?.y ?? waypoint.y;
+  const derived = waypoint.derivedCell ?? waypoint.legacyCell ?? waypoint.position?.derivedCell ?? null;
+  const cellX = derived?.x ?? derived?.col ?? Math.round(Number(x));
+  const cellY = derived?.y ?? derived?.row ?? Math.round(Number(y));
+  const coordinateProfile = waypoint.coordinateProfileId ?? state.plan?.coordinateProfileId ?? state.plan?.meta?.coordinateProfileId ?? 'legacyIntegerCellsV1';
+  return {
+    x: formatCoordinate(x),
+    y: formatCoordinate(y),
+    cellLabel: Number.isFinite(Number(cellX)) && Number.isFinite(Number(cellY)) ? `(${Math.round(Number(cellX))}, ${Math.round(Number(cellY))})` : '(N/A)',
+    coordinateProfileLabel: labelize(coordinateProfile)
+  };
+}
+
+function labelize(value) {
+  return String(value ?? '').replace(/[_-]/g, ' ').replace(/([a-z])([A-Z])/g, '$1 $2').replace(/\b\w/g, (char) => char.toUpperCase());
+}
+function formatCoordinate(value) {
+  const number = Number(value);
+  if (!Number.isFinite(number)) return 'N/A';
+  return Number.isInteger(number) ? String(number) : number.toFixed(2);
 }
 
 function formatNumber(value) {

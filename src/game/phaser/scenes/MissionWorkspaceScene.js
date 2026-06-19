@@ -463,6 +463,7 @@ export class MissionWorkspaceScene extends PhaserScene {
       setRendererBackend: (backend) => this.setRendererBackend(backend),
       setThreeCameraPreset: (preset) => this.setThreeCameraPreset(preset),
       setMissionPlanningTool: (toolId) => this.setPlanningToolFromUi(toolId),
+      setWaypointSnapMode: (mode) => this.setWaypointSnapMode(mode),
       toggleThreeLayer: (layerId) => this.toggleThreeMissionLayer(layerId),
       setThreeInteractionMode: (mode) => this.setThreeInteractionMode(mode),
       setWaterColumnDisplayMode: (mode) => this.setWaterColumnDisplayMode(mode),
@@ -832,6 +833,25 @@ export class MissionWorkspaceScene extends PhaserScene {
 
   setPlanningTool(toolId, context = {}) {
     return this.activatePlanningTool(toolId, context);
+  }
+
+  setWaypointSnapMode(mode) {
+    const normalized = mode === 'freePlacement' || mode === 'snapToFeature' || mode === 'snapToCellCenters'
+      ? mode
+      : (this.currentCoordinateProfileId() === 'continuousGridV1' ? 'freePlacement' : 'snapToCellCenters');
+    const effective = normalized === 'freePlacement' && this.currentCoordinateProfileId() !== 'continuousGridV1'
+      ? 'snapToCellCenters'
+      : normalized;
+    this.app.state.ui ??= {};
+    this.app.state.ui.waypointSnapMode = effective;
+    this.app.state.ui.threeMissionInteraction ??= {};
+    this.app.state.ui.threeMissionInteraction.waypointSnapMode = effective;
+    this.app.state.ui.threeMissionInteraction.snapModeUpdatedAt = Date.now();
+    this.syncPlanningToolToThreeController();
+    this.refreshPanels();
+    this.refreshMap();
+    this.app.toast?.(`Waypoint placement: ${labelForSnapMode(effective)}.`, 'info');
+    return effective;
   }
 
   cancelPlanningTool(reason = 'user') {
@@ -2447,7 +2467,8 @@ export class MissionWorkspaceScene extends PhaserScene {
       this.refreshMap();
       return this.threeInteractionResult(intent, 'rejected', { committedGridCell: cell, userMessage: message, warnings: [message] });
     }
-    const result = this.addWaypointForSelected({ x: cell.x, y: cell.y, action: 'sample' });
+    const placementPoint = this.resolveWaypointPlacementPoint(intent);
+    const result = this.addWaypointForSelected({ x: placementPoint.x, y: placementPoint.y, action: 'sample', continuousPoint: placementPoint, legacyCell: cell });
     if (!result?.ok) {
       const message = result?.message ?? 'Waypoint placement rejected.';
       const validation = { valid: false, reason: result?.reason ?? 'canonicalCommandFailure', message, cell };
@@ -2488,7 +2509,7 @@ export class MissionWorkspaceScene extends PhaserScene {
   }
 
   commitWaypointMoveFromThree(intent) {
-    const result = this.moveWaypointById(intent.waypointId, intent.gridCell);
+    const result = this.moveWaypointById(intent.waypointId, intent.continuousPoint ?? intent.gridCell);
     this.app.state.ui.threeMissionInteraction ??= {};
     this.app.state.ui.threeMissionInteraction.dragPreview = null;
     this.app.state.ui.threeMissionInteraction.placementValidation = result.ok ? { valid: true, message: 'Waypoint moved.', cell: intent.gridCell } : { valid: false, message: result.message, cell: intent.gridCell };
@@ -2568,10 +2589,12 @@ export class MissionWorkspaceScene extends PhaserScene {
     if (!match) return { ok: false, message: 'Waypoint was not found.' };
     const validation = this.validateThreeMoveCell(cell, match.agentId, match.index);
     if (!validation.valid) return { ok: false, message: validation.message ?? 'Waypoint move rejected.' };
-    const targetX = Math.round(cell.x);
-    const targetY = Math.round(cell.y);
-    if (Math.round(match.waypoint.x) === targetX && Math.round(match.waypoint.y) === targetY) return { ok: true, changed: false, waypoint: match.waypoint };
-    const waypoint = updateWaypoint(this.app.state.plan, match.agentId, match.index, { x: targetX, y: targetY });
+    const coordinateProfileId = this.currentCoordinateProfileId();
+    const freePlacement = coordinateProfileId === 'continuousGridV1' && this.currentWaypointSnapMode() === 'freePlacement';
+    const targetX = freePlacement ? this.roundContinuousCoordinate(cell.x) : Math.round(cell.x);
+    const targetY = freePlacement ? this.roundContinuousCoordinate(cell.y) : Math.round(cell.y);
+    if (Math.abs(Number(match.waypoint.x) - targetX) < 1e-6 && Math.abs(Number(match.waypoint.y) - targetY) < 1e-6) return { ok: true, changed: false, waypoint: match.waypoint };
+    const waypoint = updateWaypoint(this.app.state.plan, match.agentId, match.index, { x: targetX, y: targetY, position: { x: targetX, y: targetY, coordinateFrame: cell.coordinateFrame ?? 'continuousGridV1' }, coordinateProfileId, legacyCell: { col: Math.round(targetX), row: Math.round(targetY), x: Math.round(targetX), y: Math.round(targetY), compatibilityOnly: true } });
     this.app.state.ui.selectedWaypoint = { agentId: match.agentId, index: match.index };
     this.app.state.ui.selectedMarker = null;
     this.afterPlanChanged(match.agentId, { selectedIndex: match.index });
@@ -2697,7 +2720,57 @@ export class MissionWorkspaceScene extends PhaserScene {
   }
 
 
-  addWaypointForSelected({ x, y, action }) {
+  currentCoordinateProfileId() {
+    return this.app.state.plan?.coordinateProfileId
+      ?? this.app.state.plan?.meta?.coordinateProfileId
+      ?? this.app.state.mission?.meta?.coordinateProfileId
+      ?? this.app.state.level?.meta?.coordinateProfileId
+      ?? (this.app.state.mission?.meta?.waterColumnConfigSource === 'generatedModernMission' || this.app.state.level?.meta?.waterColumnConfigSource === 'generatedModernMission' ? 'continuousGridV1' : 'legacyIntegerCellsV1');
+  }
+
+  currentFieldSamplingProfileId() {
+    return this.app.state.plan?.fieldSamplingProfileId
+      ?? this.app.state.plan?.meta?.fieldSamplingProfileId
+      ?? (this.currentCoordinateProfileId() === 'continuousGridV1' ? 'continuousTrilinearV1' : 'legacyNearestCellV1');
+  }
+
+  currentWaypointSnapMode(intent = null) {
+    const configured = this.app.state.ui?.waypointSnapMode ?? this.app.state.ui?.threeMissionInteraction?.waypointSnapMode ?? null;
+    if (intent?.modifiers?.shiftKey) return 'snapToCellCenters';
+    if (configured === 'freePlacement' || configured === 'snapToCellCenters' || configured === 'snapToFeature') return configured;
+    return this.currentCoordinateProfileId() === 'continuousGridV1' ? 'freePlacement' : 'snapToCellCenters';
+  }
+
+  resolveWaypointPlacementPoint(intent = {}) {
+    const cell = intent.gridCell ?? null;
+    const continuous = intent.continuousPoint ?? cell?.continuousPoint ?? null;
+    const mode = this.currentWaypointSnapMode(intent);
+    this.app.state.ui ??= {};
+    this.app.state.ui.threeMissionInteraction ??= {};
+    this.app.state.ui.threeMissionInteraction.waypointSnapMode = mode;
+    this.app.state.ui.threeMissionInteraction.selectedWaypointPosition = continuous ? { x: continuous.x, y: continuous.y, coordinateFrame: continuous.coordinateFrame ?? 'continuousGridV1' } : null;
+    this.app.state.ui.threeMissionInteraction.selectedWaypointContainingCell = cell ? { x: cell.x, y: cell.y, col: cell.col, row: cell.row } : null;
+    if (mode === 'freePlacement' && this.currentCoordinateProfileId() === 'continuousGridV1' && continuous) {
+      return {
+        x: Number(continuous.x),
+        y: Number(continuous.y),
+        coordinateFrame: continuous.coordinateFrame ?? 'continuousGridV1',
+        derivedCell: continuous.derivedCell ?? { col: cell?.col ?? Math.round(continuous.x), row: cell?.row ?? Math.round(continuous.y) }
+      };
+    }
+    return {
+      x: Math.round(Number(cell?.x ?? continuous?.x ?? 0)),
+      y: Math.round(Number(cell?.y ?? continuous?.y ?? 0)),
+      coordinateFrame: 'continuousGridV1',
+      derivedCell: { col: Math.round(Number(cell?.x ?? continuous?.x ?? 0)), row: Math.round(Number(cell?.y ?? continuous?.y ?? 0)) }
+    };
+  }
+
+  roundContinuousCoordinate(value) {
+    const number = Number(value);
+    return Number.isFinite(number) ? Number(number.toFixed(6)) : NaN;
+  }
+  addWaypointForSelected({ x, y, action, continuousPoint = null, legacyCell = null }) {
     if (this.previousWaypointSelected) {
       const agentPlan = getAgentPlan(this.app.state.plan, this.app.state.selectedAgentId);
       for (let i = this.app.state.ui.selectedWaypoint.index + 1; i < agentPlan.waypoints.length; i = i) {
@@ -2705,8 +2778,16 @@ export class MissionWorkspaceScene extends PhaserScene {
       }
       this.previousWaypointSelected = false;
     }
-    const targetX = Math.round(x);
-    const targetY = Math.round(y);
+    const coordinateProfileId = this.currentCoordinateProfileId();
+    const snapMode = this.currentWaypointSnapMode();
+    const freePlacement = coordinateProfileId === 'continuousGridV1' && snapMode === 'freePlacement';
+    const targetX = freePlacement ? this.roundContinuousCoordinate(x) : Math.round(x);
+    const targetY = freePlacement ? this.roundContinuousCoordinate(y) : Math.round(y);
+    this.app.state.plan.coordinateProfileId ??= coordinateProfileId;
+    this.app.state.plan.fieldSamplingProfileId ??= this.currentFieldSamplingProfileId();
+    this.app.state.plan.meta ??= {};
+    this.app.state.plan.meta.coordinateProfileId ??= coordinateProfileId;
+    this.app.state.plan.meta.fieldSamplingProfileId ??= this.app.state.plan.fieldSamplingProfileId;
     if (requiresDeploymentSelection(this.app.state.mission, this.app.state.selectedAgentId)) {
       const message = 'Choose a deployment cell first.';
       this.app.toast(message, 'warning');
@@ -2749,11 +2830,16 @@ export class MissionWorkspaceScene extends PhaserScene {
       energyMargin: placement.estimate?.remainingFuel,
       x: targetX,
       y: targetY,
+      position: { x: targetX, y: targetY, coordinateFrame: continuousPoint?.coordinateFrame ?? 'continuousGridV1' },
+      coordinateProfileId,
+      fieldSamplingProfileId: this.currentFieldSamplingProfileId(),
+      validationRadius: this.app.state.mission?.rules?.waypointValidationRadius ?? this.app.state.mission?.rules?.waypointTolerance ?? 0.35,
+      legacyCell: legacyCell ? { col: legacyCell.col ?? legacyCell.x, row: legacyCell.row ?? legacyCell.y, x: legacyCell.x, y: legacyCell.y, compatibilityOnly: true } : null,
       kind: 'navigation',
       action
     });
     this.debugCoordinateWaypointPlaced({
-      clickCell: { x: targetX, y: targetY },
+      clickCell: legacyCell ?? { x: Math.round(targetX), y: Math.round(targetY) },
       storedWaypoint: waypoint
     });
     const absorbedMarker = absorbPlanningMarkersForWaypoint(this.app.state.plan, waypoint);
@@ -2823,8 +2909,16 @@ export class MissionWorkspaceScene extends PhaserScene {
 
   addMarkerForSelected({ x, y }) {
     const agentId = this.app.state.selectedAgentId ?? this.app.state.mission?.agents?.[0]?.id ?? null;
-    const targetX = Math.round(x);
-    const targetY = Math.round(y);
+    const coordinateProfileId = this.currentCoordinateProfileId();
+    const snapMode = this.currentWaypointSnapMode();
+    const freePlacement = coordinateProfileId === 'continuousGridV1' && snapMode === 'freePlacement';
+    const targetX = freePlacement ? this.roundContinuousCoordinate(x) : Math.round(x);
+    const targetY = freePlacement ? this.roundContinuousCoordinate(y) : Math.round(y);
+    this.app.state.plan.coordinateProfileId ??= coordinateProfileId;
+    this.app.state.plan.fieldSamplingProfileId ??= this.currentFieldSamplingProfileId();
+    this.app.state.plan.meta ??= {};
+    this.app.state.plan.meta.coordinateProfileId ??= coordinateProfileId;
+    this.app.state.plan.meta.fieldSamplingProfileId ??= this.app.state.plan.fieldSamplingProfileId;
     const validity = isValidWaypointCell(this.app.state.level, targetX, targetY);
     if (!validity.valid && validity.block) {
       const message = validity.message.replace('Waypoints', 'Markers');

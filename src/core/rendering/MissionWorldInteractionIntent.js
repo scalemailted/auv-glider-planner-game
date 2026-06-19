@@ -62,6 +62,7 @@ export function createMissionWorldInteractionIntent(options = {}) {
     routeSegmentId: options.routeSegmentId ?? null,
     routeFailureId: options.routeFailureId ?? null,
     gridCell: normalizeGridCell(options.gridCell),
+    continuousPoint: normalizeContinuousPoint(options.continuousPoint ?? options.missionPoint ?? options.gridCell?.continuousPoint),
     worldPoint: normalizeWorldPoint(options.worldPoint),
     depthLayerId: options.depthLayerId ?? 'surface',
     activeTimeSeconds: finiteNumber(options.activeTimeSeconds, 0),
@@ -102,6 +103,7 @@ export function missionWorldInteractionIntentSummary(intent = {}) {
     objectType: intent.metadata?.objectType ?? null,
     objectId: intent.waypointId ?? intent.markerId ?? intent.targetId ?? intent.observationId ?? intent.surfacingEventId ?? intent.routeSegmentId ?? intent.routeFailureId ?? intent.agentId ?? intent.metadata?.objectId ?? null,
     gridCell: intent.gridCell ? { ...intent.gridCell } : null,
+    continuousPoint: intent.continuousPoint ? { ...intent.continuousPoint } : null,
     sequence: finiteNumber(intent.sequence, 0),
     ownsPlanning: intent.boundaryFlags?.ownsPlanning === true,
     ownsSimulation: intent.boundaryFlags?.ownsSimulation === true,
@@ -139,6 +141,21 @@ function normalizeGridCell(cell = null) {
     row: Math.round(y),
     blocked: Boolean(cell.blocked),
     reason: cell.reason ?? null
+  };
+}
+
+function normalizeContinuousPoint(point = null) {
+  if (!point) return null;
+  const x = Number(point.x ?? point.col);
+  const y = Number(point.y ?? point.row);
+  if (!Number.isFinite(x) || !Number.isFinite(y)) return null;
+  const cellX = Math.round(x);
+  const cellY = Math.round(y);
+  return {
+    x,
+    y,
+    coordinateFrame: point.coordinateFrame ?? 'continuousGridV1',
+    derivedCell: point.derivedCell ?? { col: cellX, row: cellY, x: cellX, y: cellY }
   };
 }
 

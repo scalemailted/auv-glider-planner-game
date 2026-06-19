@@ -2,6 +2,14 @@ import { getWindowStartTime } from '../time/MissionTime.js';
 import { attachIdentityToPlan } from '../identity/GameInstanceId.js';
 import { getSelectedStart, isValidSelectedStart, setSelectedStart } from '../deployment/DeploymentZones.js';
 import { WAYPOINT_KINDS, normalizeWaypointKind } from './WaypointSemantics.js';
+import {
+  CONTINUOUS_COORDINATE_PROFILE_ID,
+  LEGACY_INTEGER_COORDINATE_PROFILE_ID
+} from '../geometry/ContinuousMissionCoordinates.js';
+import {
+  normalizeContinuousMissionWaypoint,
+  normalizeCoordinateProfileId
+} from './ContinuousMissionWaypoint.js';
 
 export const VALID_WAYPOINT_ACTIONS = ['sample', 'transit', 'return', 'hold'];
 
@@ -9,6 +17,8 @@ export function createEmptyPlan(level, mission) {
   return attachIdentityToPlan(normalizePlan({
     schemaVersion: '2.0',
     type: 'anchor.plan',
+    coordinateProfileId: defaultCoordinateProfileId(level, mission),
+    fieldSamplingProfileId: defaultFieldSamplingProfileId(level, mission),
     levelId: level?.levelId ?? null,
     missionId: mission?.missionId ?? null,
     meta: {
@@ -40,9 +50,13 @@ export function normalizePlan(plan, level, mission) {
     planner: plan.planner ?? plan.meta?.planner ?? null,
     importMetadata: plan.importMetadata ?? null,
     surfaceSegments: Array.isArray(plan.surfaceSegments) ? plan.surfaceSegments : [],
+    coordinateProfileId: defaultCoordinateProfileId(level, mission, plan),
+    fieldSamplingProfileId: defaultFieldSamplingProfileId(level, mission, plan),
     meta: {
       name: plan.meta?.name ?? 'Imported Waypoint Plan',
       createdAt: plan.meta?.createdAt ?? new Date().toISOString(),
+      coordinateProfileId: defaultCoordinateProfileId(level, mission, plan),
+      fieldSamplingProfileId: defaultFieldSamplingProfileId(level, mission, plan),
       ...copyExtraMeta(plan.meta)
     },
     planningMarkers: [],
@@ -80,7 +94,7 @@ export function normalizePlan(plan, level, mission) {
 
     rawWaypoints.forEach((waypoint) => {
       if (!waypoint || typeof waypoint !== 'object') return;
-      agentPlan.waypoints.push(normalizeWaypoint(waypoint, agentId, agentPlan.waypoints.length, level));
+      agentPlan.waypoints.push(normalizeWaypoint(waypoint, agentId, agentPlan.waypoints.length, level, { ...normalized, mission }));
     });
     const rawMarkers = Array.isArray(rawAgentPlan.markers) ? rawAgentPlan.markers : [];
     rawMarkers.forEach((marker) => {
@@ -171,7 +185,7 @@ export function getAgentPlan(plan, agentId) {
 
 export function addWaypoint(plan, agentId, waypoint) {
   const agentPlan = getAgentPlan(plan, agentId);
-  const normalized = normalizeWaypoint(waypoint, agentId, agentPlan.waypoints.length);
+  const normalized = normalizeWaypoint(waypoint, agentId, agentPlan.waypoints.length, null, plan);
   agentPlan.waypoints.push(normalized);
   fillMissingWaypointIds(plan);
   return normalized;
@@ -181,7 +195,7 @@ export function updateWaypoint(plan, agentId, waypointIndex, patch) {
   const agentPlan = getAgentPlan(plan, agentId);
   const current = agentPlan.waypoints[waypointIndex];
   if (!current) return null;
-  agentPlan.waypoints[waypointIndex] = normalizeWaypoint({ ...current, ...patch }, agentId, waypointIndex);
+  agentPlan.waypoints[waypointIndex] = normalizeWaypoint({ ...current, ...patch }, agentId, waypointIndex, null, plan);
   fillMissingWaypointIds(plan);
   return agentPlan.waypoints.find((waypoint) => waypoint.id === current.id) ?? agentPlan.waypoints[waypointIndex];
 }
@@ -301,24 +315,25 @@ export function hitTestWaypoint(point, plan, renderState = {}) {
 }
 
 export function isValidWaypointCell(level, x, y) {
-  if (!Number.isFinite(x) || !Number.isFinite(y)) {
+  if (!Number.isFinite(Number(x)) || !Number.isFinite(Number(y))) {
     return { valid: false, block: true, message: 'Choose a valid grid cell.' };
   }
-
+  const cx = Math.round(Number(x));
+  const cy = Math.round(Number(y));
   const grid = level?.world?.grid;
-  if (!grid || x < 0 || y < 0 || x >= grid.width || y >= grid.height) {
+  if (!grid || cx < 0 || cy < 0 || cx >= grid.width || cy >= grid.height) {
     return { valid: false, block: true, message: 'Waypoint target is outside the map.' };
   }
 
-  if (level?.layers?.terrain?.[y]?.[x]) {
+  if (level?.layers?.terrain?.[cy]?.[cx]) {
     return { valid: false, block: true, message: 'Waypoints must be placed in water cells.' };
   }
 
-  if (level?.layers?.hazards?.[y]?.[x]) {
-    return { valid: true, block: false, warning: true, message: 'Waypoint placed inside a hazard cell.' };
+  if (level?.layers?.hazards?.[cy]?.[cx]) {
+    return { valid: true, block: false, warning: true, message: 'Waypoint placed inside a hazard cell.', cell: { x: cx, y: cy } };
   }
 
-  return { valid: true, block: false, warning: false, message: '' };
+  return { valid: true, block: false, warning: false, message: '', cell: { x: cx, y: cy } };
 }
 
 export function getAgentStartAtCell(mission, x, y) {
@@ -359,21 +374,38 @@ export function getUnknownAgentIds(plan, mission) {
     .filter((agentId) => agentId && knownAgentIds.size > 0 && !knownAgentIds.has(agentId));
 }
 
-function normalizeWaypoint(waypoint, agentId, index, level = null) {
+function normalizeWaypoint(waypoint, agentId, index, level = null, planContext = null) {
   const action = VALID_WAYPOINT_ACTIONS.includes(waypoint.action) ? waypoint.action : 'sample';
   const kind = normalizeWaypointKind(waypoint);
-  const x = Number(waypoint.x);
-  const y = Number(waypoint.y);
+  const coordinateProfileId = normalizeCoordinateProfileId(waypoint.coordinateProfileId ?? planContext?.coordinateProfileId ?? planContext?.meta?.coordinateProfileId ?? LEGACY_INTEGER_COORDINATE_PROFILE_ID);
+  const continuous = normalizeContinuousMissionWaypoint({
+    ...waypoint,
+    agentId,
+    action,
+    coordinateProfileId
+  }, {
+    level,
+    grid: level?.world?.grid,
+    agentId,
+    coordinateProfileId
+  });
+  const x = coordinateProfileId === CONTINUOUS_COORDINATE_PROFILE_ID ? roundCoordinate(continuous.x) : Math.round(Number(continuous.x));
+  const y = coordinateProfileId === CONTINUOUS_COORDINATE_PROFILE_ID ? roundCoordinate(continuous.y) : Math.round(Number(continuous.y));
   const window = Number(waypoint.window ?? 0);
   const normalizedWindow = Number.isFinite(window) ? Math.max(0, Math.floor(window)) : 0;
-  const t = Number(waypoint.t ?? getWindowStartTime(level, normalizedWindow));
+  const t = Number(waypoint.t ?? waypoint.plannedTime ?? getWindowStartTime(level, normalizedWindow));
 
   const normalized = {
     id: waypoint.id ? String(waypoint.id) : makeWaypointId(agentId, index),
     window: normalizedWindow,
     t: Number.isFinite(t) ? t : getWindowStartTime(level, normalizedWindow),
-    x: Number.isFinite(x) ? Math.round(x) : NaN,
-    y: Number.isFinite(y) ? Math.round(y) : NaN,
+    x: Number.isFinite(x) ? x : NaN,
+    y: Number.isFinite(y) ? y : NaN,
+    position: { x, y, coordinateFrame: continuous.position.coordinateFrame },
+    coordinateProfileId,
+    validationRadius: continuous.validationRadius,
+    legacyCell: continuous.legacyCell,
+    derivedCell: continuous.derivedCell,
     kind,
     waypointKind: kind,
     action,
@@ -382,7 +414,7 @@ function normalizeWaypoint(waypoint, agentId, index, level = null) {
   for (const key of ['diveProfileId', 'targetDepthLayerId', 'depthLayerId', 'depthLayer', 'samplingMode', 'sensorProfileId']) {
     if (waypoint[key] !== undefined && waypoint[key] !== null && String(waypoint[key]).trim()) normalized[key] = String(waypoint[key]);
   }
-  for (const key of ['maximumDiveDepthMeters', 'depthMeters', 'sampleIntervalSeconds']) {
+  for (const key of ['maximumDiveDepthMeters', 'depthMeters', 'maximumDepthMeters', 'sampleIntervalSeconds']) {
     const value = Number(waypoint[key]);
     if (Number.isFinite(value)) normalized[key] = value;
   }
@@ -431,6 +463,7 @@ function normalizeWaypoint(waypoint, agentId, index, level = null) {
         ? waypoint.validity.reasons.map((reason) => String(reason))
         : []
     };
+    if (waypoint.validity.routeAudit) normalized.validity.routeAudit = { ...waypoint.validity.routeAudit };
   }
   if (Array.isArray(waypoint.warnings)) normalized.warnings = waypoint.warnings.map((warning) => String(warning));
   if (Array.isArray(waypoint.warningCodes)) normalized.warningCodes = waypoint.warningCodes.map((warning) => String(warning));
@@ -440,7 +473,6 @@ function normalizeWaypoint(waypoint, agentId, index, level = null) {
   if (waypoint.planningDiagnostics && typeof waypoint.planningDiagnostics === 'object') normalized.planningDiagnostics = { ...waypoint.planningDiagnostics };
   return normalized;
 }
-
 function normalizeMarker(marker, agentId, index, level = null) {
   const x = Number(marker.x);
   const y = Number(marker.y);
@@ -504,6 +536,36 @@ function normalizeMarkerReachability(reachability) {
   return normalized;
 }
 
+function defaultCoordinateProfileId(level = null, mission = null, plan = null) {
+  const explicit = plan?.coordinateProfileId
+    ?? plan?.meta?.coordinateProfileId
+    ?? mission?.coordinateProfileId
+    ?? mission?.meta?.coordinateProfileId
+    ?? level?.coordinateProfileId
+    ?? level?.meta?.coordinateProfileId
+    ?? level?.world?.coordinateProfileId;
+  if (explicit) return normalizeCoordinateProfileId(explicit);
+  const configSource = mission?.meta?.waterColumnConfigSource
+    ?? mission?.waterColumnConfig?.source
+    ?? level?.meta?.waterColumnConfigSource
+    ?? level?.world?.waterColumnConfig?.source;
+  return configSource === 'generatedModernMission' ? CONTINUOUS_COORDINATE_PROFILE_ID : LEGACY_INTEGER_COORDINATE_PROFILE_ID;
+}
+
+function defaultFieldSamplingProfileId(level = null, mission = null, plan = null) {
+  return plan?.fieldSamplingProfileId
+    ?? plan?.meta?.fieldSamplingProfileId
+    ?? mission?.fieldSamplingProfileId
+    ?? mission?.meta?.fieldSamplingProfileId
+    ?? level?.fieldSamplingProfileId
+    ?? level?.meta?.fieldSamplingProfileId
+    ?? (defaultCoordinateProfileId(level, mission, plan) === CONTINUOUS_COORDINATE_PROFILE_ID ? 'continuousTrilinearV1' : 'legacyNearestCellV1');
+}
+
+function roundCoordinate(value) {
+  const number = Number(value);
+  return Number.isFinite(number) ? Number(number.toFixed(6)) : NaN;
+}
 function fillMissingWaypointIds(plan) {
   for (const agentPlan of plan.agentPlans ?? []) {
     const used = new Set();

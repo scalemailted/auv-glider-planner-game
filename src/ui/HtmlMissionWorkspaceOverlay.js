@@ -448,6 +448,7 @@ export class HtmlMissionWorkspaceOverlay {
       'renderer-three': () => this.handlers.setRendererBackend?.('threeMission3d'),
       'three-camera': (button) => this.handlers.setThreeCameraPreset?.(button.dataset.preset),
       'mission-planning-tool': (button) => this.handlers.setMissionPlanningTool?.(button.dataset.tool),
+      'waypoint-snap-mode': (button) => this.handlers.setWaypointSnapMode?.(button.dataset.mode),
       'three-layer': (button) => this.handlers.toggleThreeLayer?.(button.dataset.layer),
       'three-interaction-mode': (button) => this.handlers.setThreeInteractionMode?.(button.dataset.mode),
       'water-column-display-mode': (button) => this.handlers.setWaterColumnDisplayMode?.(button.dataset.mode),
@@ -773,7 +774,14 @@ function rendererBackendSection(state) {
           <div><strong>Active Tool:</strong> ${escapeHtml(activeToolLabel)}</div>
           <div>${escapeHtml(activeInstruction)}</div>
         </div>
-        <div class="hud-muted">Click: use active planning tool. Left drag: pan. Right drag: rotate. Wheel: zoom. Esc: cancel active tool.</div>
+        <h3 class="waypoint-section-title">Waypoint Placement</h3>
+        <div class="console-button-row wrap">
+          ${waypointSnapButton('freePlacement', 'Free Placement', waypointSnapMode, { disabled: coordinateProfile !== 'continuousGridV1', title: coordinateProfile !== 'continuousGridV1' ? 'Continuous placement is available for continuous-grid plans.' : '' })}
+          ${waypointSnapButton('snapToCellCenters', 'Snap To Cell', waypointSnapMode)}
+          ${waypointSnapButton('snapToFeature', 'Snap To Feature', waypointSnapMode, { title: 'Snaps to the nearest supported mission feature when available, otherwise cell centers.' })}
+        </div>
+        <div class="hud-muted">Coordinates: ${escapeHtml(labelize(coordinateProfile))} | Sampling: ${escapeHtml(labelize(fieldSamplingProfile))}</div>
+        <div class="hud-muted">Click: use active planning tool. Shift-click temporarily snaps to cell centers. Left drag: pan. Right drag: rotate. Wheel: zoom. Esc: cancel active tool.</div>
         <div class="hud-muted">Three pointer edits dispatch canonical workspace commands. Route timing, scoring, and simulation remain owned by the portable mission core.</div>
         ${threeInteractionStatusPanel(interaction)}
         <h3 class="waypoint-section-title">Three Layers</h3><div class="console-button-row wrap">${layerButtons}</div>`
@@ -891,6 +899,19 @@ function planningToolButton(id, label, active, options = {}) {
   const disabled = options.disabled ? ' disabled' : '';
   const title = options.title ? ` title="${escapeAttr(options.title)}"` : '';
   return `<button class="console-button ${active === id ? 'primary' : 'secondary'}" data-action="mission-planning-tool" data-tool="${escapeAttr(id)}"${disabled}${title}>${escapeHtml(label)}</button>`;
+}
+
+function waypointSnapButton(id, label, active, options = {}) {
+  const disabled = options.disabled ? ' disabled' : '';
+  const title = options.title ? ` title="${escapeAttr(options.title)}"` : '';
+  return `<button class="console-button ${active === id ? 'primary' : 'secondary'}" data-action="waypoint-snap-mode" data-mode="${escapeAttr(id)}"${disabled}${title}>${escapeHtml(label)}</button>`;
+}
+
+function normalizeWaypointSnapMode(value, coordinateProfileId = 'legacyIntegerCellsV1') {
+  if (value === 'freePlacement' && coordinateProfileId === 'continuousGridV1') return 'freePlacement';
+  if (value === 'snapToCellCenters') return 'snapToCellCenters';
+  if (value === 'snapToFeature') return 'snapToFeature';
+  return coordinateProfileId === 'continuousGridV1' ? 'freePlacement' : 'snapToCellCenters';
 }
 
 function planningToolForMode(mode) {

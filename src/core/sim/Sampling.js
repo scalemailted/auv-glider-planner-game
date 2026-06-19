@@ -17,7 +17,8 @@ export function updateSampling(agent, world, missionState, t) {
 
   const depthContext = resolveSampleDepthContext(agent, missionState, sample, t);
   const depthAware = missionState.depthScienceScoreProfile?.depthAware === true;
-  const key = depthAware ? `${sample.x},${sample.y}:${depthContext.depthLayerId}` : `${sample.x},${sample.y}`;
+  const sampleGridKey = sample.sampleKey ?? `${sample.containingCell?.x ?? sample.nearestCell?.x ?? sample.x},${sample.containingCell?.y ?? sample.nearestCell?.y ?? sample.y}`;
+  const key = depthAware ? `${sampleGridKey}:${depthContext.depthLayerId}` : sampleGridKey;
   const rules = missionState.samplingRules ?? normalizeSamplingRules(missionState);
   const window = getMissionWindow(missionState, t);
   const history = missionState.sampleHistory?.get(key) ?? null;
@@ -36,6 +37,9 @@ export function updateSampling(agent, world, missionState, t) {
       agentId: agent.id,
       x: sample.x,
       y: sample.y,
+      sampleGridKey,
+      containingCell: sample.containingCell ?? sample.nearestCell ?? null,
+      fieldSample: sample.fieldSample ?? null,
       depthLayerId: depthContext.depthLayerId,
       depthMeters: depthContext.depthMeters,
       diveProfileId: depthContext.diveProfileId,
@@ -51,7 +55,7 @@ export function updateSampling(agent, world, missionState, t) {
   if (outcome.windowLimited && missionState.sampleWindows?.has(sampleWindowKey)) return null;
 
   const depthScienceValue = depthAware ? evaluateDepthAwareSampleValue({
-    position: { x: sample.x, y: sample.y },
+    position: { x: sample.x, y: sample.y, containingCell: sample.containingCell ?? null },
     depthLayerId: depthContext.depthLayerId,
     depthMeters: depthContext.depthMeters,
     timeSeconds: t,
@@ -100,7 +104,7 @@ export function updateSampling(agent, world, missionState, t) {
   agent.sampleScore += realizedValue;
   agent.expectedSampleScore = (agent.expectedSampleScore ?? 0) + expectedValue;
 
-  const sampleId = `${agent.id}:${sample.x},${sample.y}:${depthContext.depthLayerId}:${window}`;
+  const sampleId = `${agent.id}:${sampleGridKey}:${depthContext.depthLayerId}:${window}`;
   const scoreEvent = depthAware ? depthAwareSampleScoreEvent(depthScienceValue, {
     sampleId,
     agentId: agent.id,
@@ -116,6 +120,9 @@ export function updateSampling(agent, world, missionState, t) {
       agentId: agent.id,
       x: sample.x,
       y: sample.y,
+      sampleGridKey,
+      containingCell: sample.containingCell ?? sample.nearestCell ?? null,
+      fieldSample: sample.fieldSample ?? null,
       depthLayerId: depthContext.depthLayerId,
       depthMeters: depthContext.depthMeters,
       timeSeconds: t,
@@ -130,6 +137,10 @@ export function updateSampling(agent, world, missionState, t) {
     sampleId,
     x: sample.x,
     y: sample.y,
+    sampleGridKey,
+    containingCell: sample.containingCell ?? sample.nearestCell ?? null,
+    fieldSample: sample.fieldSample ?? null,
+    interpolationWeights: sample.fieldSample?.interpolationWeights ?? sample.interpolationWeights ?? null,
     depthLayerId: depthContext.depthLayerId,
     depthMeters: depthContext.depthMeters,
     diveProfileId: depthContext.diveProfileId,
@@ -240,13 +251,34 @@ function findBestSampleCell(agent, world, missionState, t) {
     for (let x = minX; x <= maxX; x += 1) {
       const dist = Math.hypot(agent.x - x, agent.y - y);
       if (dist > radius) continue;
-      const roi = world.sampleROIObject?.(x, y, t) ?? { value: world.sampleROI(x, y, t), probability: 1, expectedValue: world.sampleROI(x, y, t) };
+      const roi = world.sampleROIObject?.(x, y, t, agent.depthMeters ?? 0) ?? { value: world.sampleROI(x, y, t), probability: 1, expectedValue: world.sampleROI(x, y, t) };
       const outcome = resolveROIOutcome(roi, x, y, missionState);
       if (!best || roi.expectedValue > best.expectedValue) best = { x, y, ...roi, ...outcome };
     }
   }
 
-  return best;
+  if (!best) return null;
+  const sampleX = round(agent.x, 3);
+  const sampleY = round(agent.y, 3);
+  const containingCell = { x: best.x, y: best.y, col: best.x, row: best.y };
+  const continuousSampling = (missionState.fieldSamplingProfileId ?? missionState.plan?.fieldSamplingProfileId ?? missionState.plan?.meta?.fieldSamplingProfileId) !== 'legacyNearestCellV1';
+  const continuousRoi = continuousSampling
+    ? world.sampleROIObject?.(sampleX, sampleY, t, agent.depthMeters ?? 0)
+    : null;
+  const roi = continuousRoi?.volumetricSample ? continuousRoi : best;
+  const outcome = resolveROIOutcome(roi, containingCell.x, containingCell.y, missionState);
+  return {
+    ...best,
+    ...roi,
+    ...outcome,
+    x: sampleX,
+    y: sampleY,
+    containingCell,
+    nearestCell: containingCell,
+    sampleKey: `${containingCell.x},${containingCell.y}`,
+    fieldSample: continuousRoi?.volumetricSample ?? best.volumetricSample ?? null,
+    interpolationWeights: continuousRoi?.volumetricSample?.interpolationWeights ?? null
+  };
 }
 
 function resolveROIOutcome(roi, x, y, missionState) {
@@ -297,12 +329,15 @@ function resolveSampleDepthContext(agent, missionState, sample, t) {
   const profile = normalizeDiveProfile(profileId, config);
   const progress = routeProgressForAgent(agent, agentPlan, missionState, t);
   const profileLayer = depthLayerForDiveProfile(profile, progress);
-  const depthLayerId = normalizeWaterColumnLayerId(explicitLayer ?? (profile.id === 'surfaceOnly' ? 'surface' : profileLayer), targetDepthLayerId);
+  const actualDepthMeters = Number(agent.depthMeters);
+  const actualLayer = Number.isFinite(actualDepthMeters) ? depthLayerForMeters(actualDepthMeters, config, targetDepthLayerId) : null;
+  const depthLayerId = normalizeWaterColumnLayerId(explicitLayer ?? actualLayer ?? (profile.id === 'surfaceOnly' ? 'surface' : profileLayer), targetDepthLayerId);
   const safeLayerId = config.depthLayerIds.includes(depthLayerId) ? depthLayerId : config.depthLayerIds[0] ?? 'surface';
   const metadata = waterColumnLayerMetadata(safeLayerId);
   return {
     depthLayerId: safeLayerId,
-    depthMeters: Number(metadata.nominalDepthMeters ?? 0),
+    depthMeters: Number.isFinite(actualDepthMeters) ? Number(actualDepthMeters.toFixed(3)) : Number(metadata.nominalDepthMeters ?? 0),
+    divePhase: agent.divePhase ?? null,
     diveProfileId: profile.id,
     targetDepthLayerId,
     routeProgress: progress,
@@ -311,12 +346,28 @@ function resolveSampleDepthContext(agent, missionState, sample, t) {
   };
 }
 
+function depthLayerForMeters(depthMeters, config, fallback = 'surface') {
+  const depth = Number(depthMeters);
+  if (!Number.isFinite(depth)) return fallback;
+  let best = { id: fallback, distance: Infinity };
+  for (const id of config.depthLayerIds ?? []) {
+    const layerDepth = Number(waterColumnLayerMetadata(id).nominalDepthMeters ?? 0);
+    const distance = Math.abs(layerDepth - depth);
+    if (distance < best.distance) best = { id, distance };
+  }
+  return best.id ?? fallback;
+}
+
 function routeProgressForAgent(agent, agentPlan, missionState, t) {
   const total = Math.max(1, Number(agentPlan?.waypoints?.length ?? 1));
   const indexProgress = total <= 1 ? 0 : Math.max(0, Math.min(1, Number(agent.currentWaypointIndex ?? 0) / (total - 1)));
   const duration = Number(missionState.missionDuration ?? missionState.duration ?? 0);
   const timeProgress = duration > 0 ? Math.max(0, Math.min(1, Number(t ?? 0) / duration)) : indexProgress;
   return Number(((indexProgress + timeProgress) / 2).toFixed(6));
+}
+
+function round(value, digits = 3) {
+  return Number(Number(value ?? 0).toFixed(digits));
 }
 
 function parseSampleKey(key) {

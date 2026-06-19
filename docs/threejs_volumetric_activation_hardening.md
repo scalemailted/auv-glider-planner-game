@@ -1,6 +1,6 @@
 # Three.js Volumetric Activation Hardening
 
-Phase: THREE-R1.2A.1 - Volumetric Activation and Lifecycle Hardening
+Phase: THREE-R1.2A.1 / THREE-R1.2A.3 - Volumetric Activation, Continuous Geometry, and Dive Execution Hardening
 
 This pass stabilized the transition from the P11 water-column contract into the live Three.js mission workspace. It did not add a new planner, arbitrary XYZ route editing, WebGPU fluid simulation, calibrated ocean forecasting, or a detailed bathymetric seabed mesh.
 
@@ -33,11 +33,22 @@ Use `globalThis.ANCHOR_WATER_COLUMN_RENDER_DEBUG` to verify:
 
 Use `globalThis.ANCHOR_SCENE_CLEANUP_DEBUG` and `globalThis.ANCHOR_SCENE_ISOLATION_DEBUG` to verify cleanup counts, cleanup errors, duplicate cleanup calls, and stale Three.js DOM removal.
 
+Use `globalThis.ANCHOR_CONTINUOUS_MISSION_DEBUG` to verify the current coordinate profile, field sampling profile, continuous route geometry summary, canonical dive-state-machine metadata, and boundary flags. It should continue to report that the runtime does not add arbitrary XYZ route planning, calibrated ocean forecasting, WebGPU fluid simulation, or SeaExplorer-validated operational dynamics.
+
+## Continuous Geometry and Dive Execution
+
+THREE-R1.2A.3 adds continuous mission coordinates for waypoint placement and route sampling while preserving legacy integer cell compatibility. Free-placement waypoints keep decimal `x` / `y` values, and the simulator derives containing cells for terrain, hazard, duplicate-sample, and compatibility logic.
+
+The canonical route remains horizontal mission geometry plus optional dive profile / target-layer metadata. The dive state machine owns simplified educational vertical execution, layer crossings, bottom-turn events, and surfacing/transmission phases. It is synthetic, deterministic, and not a calibrated glider or ocean forecast model.
+
+Smoothed volumetric scalar rendering interpolates public-safe mission view-model fields for display only. It does not own planning, simulation, scoring, replay semantics, hidden truth, or field generation.
+
 ## Validation
 
 Focused checks:
 
 ```bash
+node tools/js/smoke_continuous_mission_geometry.mjs
 node tools/js/smoke_three_lifecycle_null_safety.mjs
 node tools/js/smoke_main_menu_scene_stop_contract.mjs
 node tools/js/smoke_mission_scene_cleanup_idempotence.mjs
@@ -56,7 +67,7 @@ Human manual QA by the project owner remains pending.
 
 ## Next Phase
 
-THREE-R1.2B - Bathymetric Seabed Mesh, Coastline, and Landmass Geometry.
+THREE-R1.2B - Continuous Bathymetric Seabed Mesh, Coastline, and Landmass Geometry.
 ## Depth-Aware Score Profile Activation
 
 Generated volumetric missions can carry `depthAwareScienceV1` metadata. Legacy imported surface-only missions retain `legacySurfaceScienceV1`. The selected profile is preserved in mission metadata, result summaries, and exports.

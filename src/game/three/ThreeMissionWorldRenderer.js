@@ -1,5 +1,12 @@
 import * as THREE from 'three';
 import { createThreeScalarFieldLayer, updateThreeScalarFieldLayer, setThreeScalarFieldVisibility, disposeThreeScalarFieldLayer } from './layers/ThreeScalarFieldLayer.js';
+import {
+  createThreeVolumetricScalarFieldLayer,
+  updateThreeVolumetricScalarFieldLayer,
+  setThreeVolumetricScalarFieldLayerVisibility,
+  disposeThreeVolumetricScalarFieldLayer,
+  threeVolumetricScalarFieldLayerSummary
+} from './layers/ThreeVolumetricScalarFieldLayer.js';
 import { updateThreeDropZoneLayer } from './layers/ThreeDropZoneLayer.js';
 import { updateThreeGliderLayer } from './layers/ThreeGliderLayer.js';
 import { updateThreeWaypointLayer } from './layers/ThreeWaypointLayer.js';
@@ -89,6 +96,8 @@ export function createThreeMissionWorldRenderer(container, options = {}) {
   }
   const scalarLayer = createThreeScalarFieldLayer({ name: 'mission-scalar-field' });
   groups.scalarFieldGroup.add(scalarLayer.group);
+  const volumetricScalarFieldLayer = createThreeVolumetricScalarFieldLayer({ name: 'mission-volumetric-scalar-field' });
+  groups.scalarFieldGroup.add(volumetricScalarFieldLayer.group);
   const operationalDepthSlabLayer = createThreeOperationalDepthSlabLayer({ name: 'mission-operational-depth-slabs' });
   groups.depthLayerGroup.add(operationalDepthSlabLayer.group);
   const waterColumnVolumeFrameLayer = createThreeWaterColumnVolumeFrameLayer({ name: 'mission-water-column-volume-frame' });
@@ -114,6 +123,7 @@ export function createThreeMissionWorldRenderer(container, options = {}) {
     root,
     groups,
     scalarLayer,
+    volumetricScalarFieldLayer,
     operationalDepthSlabLayer,
     waterColumnVolumeFrameLayer,
     planningInteractionLayer,
@@ -157,6 +167,7 @@ export function updateThreeMissionWorldRenderer(renderer, viewModel = {}) {
   updateDepthLayers(renderer, viewModel);
   updateThreeWaterColumnVolumeFrameLayer(renderer.waterColumnVolumeFrameLayer, viewModel);
   updateThreeScalarFieldLayer(renderer.scalarLayer, viewModel.scalarFieldLayer, { transform: viewModel.coordinateSystem, yOffset: 0.08 });
+  updateThreeVolumetricScalarFieldLayer(renderer.volumetricScalarFieldLayer, viewModel, { transform: viewModel.coordinateSystem, yOffset: 0.12 });
   updateThreeCurrentVectorLayer(renderer.groups.currentVectorGroup, viewModel);
   updateThreeHazardLayer(renderer.groups.hazardGroup, viewModel);
   updateThreeConstraintLayer(renderer.groups.constraintGroup, viewModel);
@@ -248,6 +259,7 @@ export function setThreeMissionLayerVisibility(renderer, visibilityPatch = {}) {
   setThreePlanningInteractionLayerVisibility(renderer.planningInteractionLayer, v.interaction !== false);
   setThreeOperationalDepthSlabLayerVisibility(renderer.operationalDepthSlabLayer, v.depthLayers !== false);
   setThreeScalarFieldVisibility(renderer.scalarLayer, v.scalarField !== false);
+  setThreeVolumetricScalarFieldLayerVisibility(renderer.volumetricScalarFieldLayer, v.scalarField !== false && v.depthLayers !== false);
   return renderer;
 }
 
@@ -263,6 +275,7 @@ export function threeMissionWorldRendererSummary(renderer = {}) {
     viewModel: missionWorldRenderViewModelSummary(vm),
     bathymetryObjectCount: renderer.groups?.bathymetryGroup?.children?.length ?? 0,
     scalarFieldObjectCount: renderer.groups?.scalarFieldGroup?.children?.length ?? 0,
+    volumetricScalarFieldSummary: renderer.volumetricScalarFieldLayer?.lastSummary ?? threeVolumetricScalarFieldLayerSummary(renderer.volumetricScalarFieldLayer ?? {}, vm),
     currentVectorObjectCount: renderer.groups?.currentVectorGroup?.children?.length ?? 0,
     hazardObjectCount: renderer.groups?.hazardGroup?.children?.length ?? 0,
     dropZoneObjectCount: renderer.groups?.dropZoneGroup?.children?.length ?? 0,
@@ -314,6 +327,7 @@ export function disposeThreeMissionWorldRenderer(renderer) {
   renderer.disposed = true;
   if (renderer.animationFrame) globalThis.cancelAnimationFrame?.(renderer.animationFrame);
   disposeThreeScalarFieldLayer(renderer.scalarLayer);
+  disposeThreeVolumetricScalarFieldLayer(renderer.volumetricScalarFieldLayer);
   disposeThreeOperationalDepthSlabLayer(renderer.operationalDepthSlabLayer);
   disposeThreeWaterColumnVolumeFrameLayer(renderer.waterColumnVolumeFrameLayer);
   clearThreeDepthTrajectoryLayer(renderer.groups?.depthTrajectoryGroup);

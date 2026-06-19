@@ -6,14 +6,32 @@ export function createAgent(config) {
   const x = Number.isFinite(Number(rawStart?.x)) ? Number(rawStart.x) : NaN;
   const y = Number.isFinite(Number(rawStart?.y)) ? Number(rawStart.y) : NaN;
   const battery = config.battery ?? 100;
+  const depthMeters = finiteNumber(config.depthMeters ?? config.start?.depthMeters, 0);
+  const heading = finiteNumber(config.headingRadians ?? config.heading, -Math.PI / 2);
 
   return {
     id: config.id,
     label: config.label ?? config.id,
     x,
     y,
-    heading: -Math.PI / 2,
-    velocity: { x: 0, y: 0 },
+    depthMeters,
+    heading,
+    headingRadians: heading,
+    courseOverGroundRadians: heading,
+    pitchRadians: finiteNumber(config.pitchRadians, 0),
+    rollRadians: finiteNumber(config.rollRadians, 0),
+    velocity: { x: 0, y: 0, vertical: 0 },
+    waterRelativeVelocity: { x: 0, y: 0, vertical: 0 },
+    groundRelativeVelocity: { x: 0, y: 0, vertical: 0 },
+    currentVector: { u: 0, v: 0, w: 0 },
+    divePhase: depthMeters > 0 ? 'descending' : 'surfaced',
+    profileProgress: 0,
+    segmentProgress: 0,
+    bottomDepthMeters: null,
+    bottomClearanceMeters: null,
+    continuousState: null,
+    activeSegmentInitialDistance: null,
+    activeWaypointIdForDive: null,
     battery,
     maxBattery: battery,
     maxSpeed: config.maxSpeed ?? 1,
@@ -36,6 +54,26 @@ export function createAgent(config) {
     lastSurfaceTime: 0,
     lastStepTime: 0,
     lastDepthMultiplier: 1,
-    history: [{ x, y, t: 0 }]
+    history: [{
+      x,
+      y,
+      t: 0,
+      depthMeters,
+      heading,
+      headingRadians: heading,
+      courseOverGroundRadians: heading,
+      pitchRadians: finiteNumber(config.pitchRadians, 0),
+      rollRadians: finiteNumber(config.rollRadians, 0),
+      divePhase: depthMeters > 0 ? 'descending' : 'surfaced',
+      velocity: { x: 0, y: 0, vertical: 0 },
+      waterRelativeVelocity: { x: 0, y: 0, vertical: 0 },
+      groundRelativeVelocity: { x: 0, y: 0, vertical: 0 },
+      currentVector: { u: 0, v: 0, w: 0 }
+    }]
   };
+}
+
+function finiteNumber(value, fallback = 0) {
+  const number = Number(value);
+  return Number.isFinite(number) ? number : fallback;
 }

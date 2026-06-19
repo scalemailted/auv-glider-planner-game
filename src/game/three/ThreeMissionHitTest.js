@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { worldToGridCell } from '../../core/rendering/MissionWorldCoordinates.js';
+import { localMetersToContinuousPoint } from '../../core/geometry/ContinuousMissionCoordinates.js';
 import { pointerClientToCanvasLocal, canvasLocalToNdc } from '../../core/rendering/MissionWorldPointerCoordinates.js';
 
 export const THREE_MISSION_HIT_TEST_VERSION = 'three-mission-hit-test-three-r1-1';
@@ -123,6 +124,7 @@ function hitTestMissionGrid(context, raycaster, options = {}) {
   }
   const cell = worldToGridCell(transform, point.x, point.y, point.z);
   if (!cell.inside) return noneHit('outsideGrid', { worldPoint: pointToPlain(point), gridCell: cell });
+  const continuousPoint = localMetersToContinuousPoint({ east: point.x, north: point.z }, transform);
   const blocked = Boolean(viewModel.terrain?.values?.[cell.y]?.[cell.x] || viewModel.constraints?.some?.((record) => Math.round(record.x) === cell.x && Math.round(record.y) === cell.y));
   const hazard = Boolean(viewModel.hazards?.some?.((record) => Math.round(record.x) === cell.x && Math.round(record.y) === cell.y));
   return {
@@ -131,7 +133,8 @@ function hitTestMissionGrid(context, raycaster, options = {}) {
     category: blocked ? 'terrain' : 'gridCell',
     objectType: blocked ? 'terrain' : 'gridCell',
     objectId: `${cell.x}-${cell.y}`,
-    gridCell: { x: cell.x, y: cell.y, col: cell.x, row: cell.y, blocked, hazard, reason: blocked ? 'blockedTerrain' : hazard ? 'hazard' : null },
+    gridCell: { x: cell.x, y: cell.y, col: cell.x, row: cell.y, continuousX: continuousPoint.x, continuousY: continuousPoint.y, continuousPoint, blocked, hazard, reason: blocked ? 'blockedTerrain' : hazard ? 'hazard' : null },
+    continuousPoint,
     worldPoint: pointToPlain(point),
     distance: 0,
     blocked,
@@ -219,6 +222,7 @@ function hitTestGroup(category, group, raycaster, context, options = {}) {
     routeFailureId: data.routeFailureId ?? null,
     zoneId: data.zoneId ?? null,
     gridCell,
+    continuousPoint: worldPoint && context.viewModel?.coordinateSystem ? localMetersToContinuousPoint({ east: worldPoint.x, north: worldPoint.z }, context.viewModel.coordinateSystem) : null,
     worldPoint: worldPoint ? pointToPlain(worldPoint) : null,
     distance: Number(first.distance ?? 0),
     blocked: data.blocked === true,
