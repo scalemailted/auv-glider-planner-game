@@ -501,3 +501,10 @@ Added formal replay schemas, runtime schema validation, compatibility policy, st
 ## THREE-R1.2A.2 Depth-Aware Scoring Note
 
 Depth-aware science scoring is now versioned separately from the legacy horizontal-cell score path. Browser official scoring uses `depthAwareScienceV1` only when mission metadata selects it; imported surface-only missions retain `legacySurfaceScienceV1`. The current implementation remains a synthetic educational model and does not claim calibrated ocean validation.
+
+### THREE-R1.2A.4 - Predicted 3D Dive Planning and Bathymetry Renderer Convergence
+
+- Added renderer-neutral planned dive segment view models with surface intent path, predicted dive path, expected current-corrected path, bottom turns, layer crossings, predicted samples, surfacing offset, bathymetry clearance, feasibility, and boundary flags.
+- Added Three.js planned-dive trajectory rendering plus Segment Dive Plan controls for profile, target layer, requested depth, cycles, sample interval, apply-to-remaining, reset, and route-understanding camera presets.
+- Audited the Bathymetric World View route as fixture/illustrative geometry, not canonical prediction, and documented convergence boundaries.
+- Preserved the boundary: no arbitrary XYZ waypoint planner, no new simulation engine, no scoring change, no WebGPU, and no calibrated ocean forecast claim.

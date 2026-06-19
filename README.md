@@ -941,3 +941,7 @@ Replay artifacts now have formal schema documents under `schemas/`, structured r
 ## Depth-Aware Science Scoring
 
 THREE-R1.2A.2 adds versioned depth-aware science scoring for volumetric water-column missions. Generated volumetric missions may use `depthAwareScienceV1`; imported surface-only missions remain compatible through `legacySurfaceScienceV1`. Science is credited from actual depth-layer observations, and integrated top-down priority is a planning summary rather than automatic surface-sample credit. See [Depth-Aware Sampling Value and Scoring](docs/depth_aware_sampling_value_and_scoring.md) and [Depth-Aware Scoring Audit](docs/depth_aware_scoring_audit.md).
+
+## Predicted 3D Dive Planning
+
+Surface waypoints define navigation and expected surfacing intent. Dive profiles define expected underwater movement between surface waypoints, including predicted descent/ascent, layer crossings, bottom turns, expected current drift, bathymetry clearance, and predicted sample locations. Predicted sample locations are planning estimates; actual samples and trajectories remain authoritative. See [Predicted 3D Dive Planning](docs/predicted_3d_dive_planning.md) and [Bathymetry Demo Mission Path Audit](docs/bathymetry_demo_mission_path_audit.md). No arbitrary XYZ waypoint planner is implemented, and no operational/calibrated ocean claim is made.

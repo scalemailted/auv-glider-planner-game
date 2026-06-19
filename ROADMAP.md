@@ -332,3 +332,14 @@ Next intended renderer/science order:
 2. THREE-R1.2B - Bathymetric seabed mesh, coastline, and landmass geometry
 3. THREE-R1.2C - Terrain-aware profile feasibility and polished 3D mission presentation
 4. THREE-R2 - Replay, debrief route review, and editor parity
+
+## Renderer Roadmap Checkpoint
+
+Current order:
+
+1. THREE-R1.2A.4 - Predicted 3D dive planning and bathymetry renderer convergence.
+2. THREE-R1.2B - Continuous bathymetric seabed mesh, coastline, and landmass geometry.
+3. THREE-R1.2C - Terrain-aware continuous mission validation and polished 3D presentation.
+4. THREE-R2 - Replay, debrief route review, and editor parity.
+
+THREE-R1.2A.4 keeps surface waypoints as navigation/surfacing intent and moves underwater geometry into segment dive-profile prediction. It does not add arbitrary XYZ path planning, WebGPU fluid simulation, calibrated ocean claims, or renderer-owned simulation/scoring.

@@ -2908,6 +2908,142 @@ test('Continuous Mission Plan Executes Through Canonical 3D Dive', async ({ page
   expect(metadata.continuousWaypointCount).toBeGreaterThan(0);
   assertContinuousBrowserErrorsClean(browserErrors);
 });
+
+
+test('Surface Waypoints Produce a Predicted Three-Dimensional Dive', async ({ page }) => {
+  const browserErrors = attachBrowserErrorCollector(page);
+  await startVisibleContinuousMissionPlanning(page);
+  await page.locator('#mission-console [data-action="three-camera"][data-preset="tacticalTopDown"]').click();
+  const agentId = await selectedAgentId(page);
+  await deploySelectedGliderThroughVisibleControls(page, agentId);
+  await page.locator('#mission-console [data-action="waypoint-snap-mode"][data-mode="freePlacement"]').click();
+  for (let index = 0; index < 2; index += 1) {
+    const pair = await adjacentPlaceableWaypointPair(page, agentId);
+    await page.locator('#mission-console [data-action="mission-planning-tool"][data-tool="placeWaypoint"]').click();
+    await clickBetweenThreeGridCells(page, pair.a, pair.b, index === 0 ? 0.34 : 0.58);
+  }
+  await expectWaypointCount(page, 2);
+  await expect(page.locator('#mission-console')).toContainText('Segment Dive Plan');
+  await page.locator('#mission-console [data-action="water-column-dive-profile"][data-profile="thermoclineDive"]').click();
+  await page.locator('#mission-console [data-action="water-column-target-layer"][data-layer="thermocline"]').click();
+  await page.locator('#mission-console [data-action="water-column-max-depth"][data-depth="80"]').click();
+  await page.locator('#mission-console [data-action="water-column-cycle-count"][data-cycles="2"]').click();
+
+  await expect.poll(() => page.evaluate(() => window.ANCHOR_DIVE_PLAN_DEBUG?.selectedSegmentDiveProfileId), { timeout: 10000 }).toBe('thermoclineDive');
+  await expect.poll(() => page.evaluate(() => window.ANCHOR_DIVE_PLAN_DEBUG?.predictedDiveAvailable === true)).toBe(true);
+  await expect.poll(() => page.evaluate(() => window.ANCHOR_DIVE_PLAN_DEBUG?.predictedDivePointCount ?? 0)).toBeGreaterThan(0);
+  await expect.poll(() => page.evaluate(() => window.ANCHOR_DIVE_PLAN_DEBUG?.predictedLayerCrossingCount ?? 0)).toBeGreaterThan(0);
+  await expect.poll(() => page.evaluate(() => window.ANCHOR_DIVE_PLAN_DEBUG?.predictedSampleCount ?? 0)).toBeGreaterThan(0);
+  await expect.poll(() => page.evaluate(() => window.ANCHOR_DIVE_PLAN_DEBUG?.predictedBottomTurnCount ?? 0)).toBeGreaterThan(0);
+  await expect.poll(() => page.evaluate(() => window.ANCHOR_DIVE_PLAN_DEBUG?.plannedDiveThreeObjectCount ?? 0)).toBeGreaterThan(0);
+  await expect(page.evaluate(() => {
+    const scene = window.anchorGame.phaser.scene.getScene('MissionWorkspaceScene');
+    const selectedSegmentId = window.ANCHOR_DIVE_PLAN_DEBUG?.selectedSegmentId;
+    const segments = scene.missionRenderViewModel?.plannedDiveSegments ?? [];
+    const segment = segments.find((candidate) => candidate.segmentId === selectedSegmentId) ?? segments.find((candidate) => candidate.diveProfileId === 'thermoclineDive') ?? segments[0];
+    return {
+      surfaceIntentAtSurface: segment?.surfaceIntentPath?.every((point) => Number(point.depthMeters ?? 0) === 0) === true,
+      predictedDescends: segment?.predictedDivePath?.some((point) => Number(point.depthMeters ?? 0) > 0) === true,
+      predictedSamplesAtDepth: segment?.predictedSamples?.every((sample) => Number(sample.depthMeters ?? 0) > 0 && sample.createsScoreEvent === false) === true,
+      usesArbitraryXYZWaypoints: segment?.boundaryFlags?.usesArbitraryXYZWaypoints === true,
+      rendererOwnsPrediction: segment?.boundaryFlags?.rendererOwnsPrediction === true
+    };
+  })).resolves.toEqual({
+    surfaceIntentAtSurface: true,
+    predictedDescends: true,
+    predictedSamplesAtDepth: true,
+    usesArbitraryXYZWaypoints: false,
+    rendererOwnsPrediction: false
+  });
+
+  await page.locator('#mission-console [data-action="three-camera"][data-preset="sideProfile"]').click();
+  await expect.poll(() => page.evaluate(() => window.ANCHOR_MISSION_RENDER_DEBUG?.cameraPresetId)).toBe('sideProfile');
+  await page.locator('#mission-console [data-action="water-column-dive-profile"][data-profile="surfaceOnly"]').click();
+  await expect.poll(() => page.evaluate(() => window.ANCHOR_DIVE_PLAN_DEBUG?.selectedSegmentDiveProfileId), { timeout: 10000 }).toBe('surfaceOnly');
+  await expect.poll(() => page.evaluate(() => {
+    const scene = window.anchorGame.phaser.scene.getScene('MissionWorkspaceScene');
+    const selectedSegmentId = window.ANCHOR_DIVE_PLAN_DEBUG?.selectedSegmentId;
+    const segments = scene.missionRenderViewModel?.plannedDiveSegments ?? [];
+    const segment = segments.find((candidate) => candidate.segmentId === selectedSegmentId) ?? segments[0];
+    return Math.max(0, ...(segment?.predictedDivePath ?? []).map((point) => Number(point.depthMeters ?? 0)));
+  })).toBe(0);
+  assertContinuousBrowserErrorsClean(browserErrors);
+});
+
+test('Segment Distance Changes Predicted Dive Geometry', async ({ page }) => {
+  await page.goto('/');
+  const result = await page.evaluate(async () => {
+    const { buildPlannedDiveSegmentViewModel } = await import('./src/core/rendering/PlannedDiveSegmentViewModel.js');
+    const waterColumnConfig = { depthLayerIds: ['surface', 'shallow', 'thermocline', 'deep'], defaultLayerIds: ['surface', 'thermocline', 'deep'], diveProfileId: 'fullProfile' };
+    const deepBottom = Array.from({ length: 5 }, () => Array.from({ length: 14 }, () => 220));
+    const short = buildPlannedDiveSegmentViewModel({ startWaypoint: { x: 0, y: 2 }, targetWaypoint: { x: 1, y: 2, diveProfileId: 'fullProfile', targetDepthLayerId: 'deep' }, waterColumnConfig, bottomBoundary: { bottomDepthField: deepBottom }, requestedMaximumDepthMeters: 120, cycleCount: 5 });
+    const long = buildPlannedDiveSegmentViewModel({ startWaypoint: { x: 0, y: 2 }, targetWaypoint: { x: 12, y: 2, diveProfileId: 'fullProfile', targetDepthLayerId: 'deep' }, waterColumnConfig, bottomBoundary: { bottomDepthField: deepBottom }, requestedMaximumDepthMeters: 120, cycleCount: 5 });
+    const shallow = buildPlannedDiveSegmentViewModel({ startWaypoint: { x: 0, y: 2 }, targetWaypoint: { x: 7, y: 2, diveProfileId: 'deepDive', targetDepthLayerId: 'deep' }, waterColumnConfig, bottomBoundary: { bottomDepthField: Array.from({ length: 5 }, () => Array.from({ length: 8 }, () => 45)) }, requestedMaximumDepthMeters: 120, requiredBottomClearanceMeters: 10 });
+    return {
+      shortCycles: short.cycleCount,
+      longCycles: long.cycleCount,
+      shortSamples: short.predictedSamples.length,
+      longSamples: long.predictedSamples.length,
+      terrainLimited: shallow.bottomClearance.terrainLimited,
+      minClearance: shallow.bottomClearance.minimumClearanceMeters,
+      noRendererAuthority: shallow.boundaryFlags.ownsPlanning === false && shallow.boundaryFlags.ownsSimulation === false && shallow.boundaryFlags.ownsScoring === false
+    };
+  });
+  expect(result.longCycles).toBeGreaterThan(result.shortCycles);
+  expect(result.longSamples).toBeGreaterThanOrEqual(result.shortSamples);
+  expect(result.terrainLimited).toBe(true);
+  expect(result.minClearance).toBeGreaterThanOrEqual(0);
+  expect(result.noRendererAuthority).toBe(true);
+});
+
+test('Predicted and Realized Dive Paths Remain Distinct', async ({ page }) => {
+  await page.goto('/');
+  const result = await page.evaluate(async () => {
+    const { buildPlannedDiveSegmentViewModel } = await import('./src/core/rendering/PlannedDiveSegmentViewModel.js');
+    const { buildRealizedDiveTrajectory } = await import('./src/core/rendering/DiveTrajectoryViewModel.js');
+    const waterColumnConfig = { depthLayerIds: ['surface', 'shallow', 'thermocline', 'deep'], defaultLayerIds: ['surface', 'thermocline', 'deep'], diveProfileId: 'sawtoothProfile' };
+    const predicted = buildPlannedDiveSegmentViewModel({ startWaypoint: { x: 0, y: 1 }, targetWaypoint: { x: 6, y: 3, diveProfileId: 'sawtoothProfile', targetDepthLayerId: 'deep' }, waterColumnConfig, bottomBoundary: { bottomDepthField: Array.from({ length: 5 }, () => Array.from({ length: 8 }, () => 180)) }, requestedMaximumDepthMeters: 110, cycleCount: 2 });
+    const frozen = JSON.stringify(predicted.predictedDivePath);
+    const actual = [{ x: 0, y: 1, depthMeters: 0 }, { x: 2.2, y: 1.7, depthMeters: 65 }, { x: 4.5, y: 2.6, depthMeters: 96 }];
+    const growing = buildRealizedDiveTrajectory({ points: actual, diveProfileId: 'sawtoothProfile' });
+    actual.push({ x: 6.4, y: 3.2, depthMeters: 0 });
+    const completed = buildRealizedDiveTrajectory({ points: actual, diveProfileId: 'sawtoothProfile' });
+    return {
+      predictionFrozen: JSON.stringify(predicted.predictedDivePath) === frozen,
+      actualGrows: completed.points.length > growing.points.length,
+      surfacingOffset: Math.hypot((predicted.predictedSurfacingPosition.x ?? 0) - (completed.surfacingPoint.x ?? 0), (predicted.predictedSurfacingPosition.y ?? 0) - (completed.surfacingPoint.y ?? 0)),
+      predictedSamplesScore: predicted.predictedSamples.some((sample) => sample.createsScoreEvent === true)
+    };
+  });
+  expect(result.predictionFrozen).toBe(true);
+  expect(result.actualGrows).toBe(true);
+  expect(result.surfacingOffset).toBeGreaterThan(0);
+  expect(result.predictedSamplesScore).toBe(false);
+});
+
+test('Bathymetry Demo and Mission Dive Paths Share Coordinates', async ({ page }) => {
+  await page.goto('/');
+  const result = await page.evaluate(async () => {
+    const { createMissionWorldCoordinateTransform, gridCellToWorld } = await import('./src/core/rendering/MissionWorldCoordinates.js');
+    const { gridCellDepthToWorld, createVolumetricMissionCoordinateModel } = await import('./src/core/rendering/VolumetricMissionCoordinates.js');
+    const transform = createMissionWorldCoordinateTransform({ grid: { width: 8, height: 6 }, depthScale: 0.05, verticalExaggeration: 1.5 });
+    const coordinateModel = createVolumetricMissionCoordinateModel({ coordinateSystem: transform, verticalDisplayMode: 'physicalDepth', depthLayers: [] });
+    const surface = gridCellDepthToWorld({ col: 3, row: 2, depthMeters: 0, coordinateModel, transform, verticalDisplayMode: 'physicalDepth' });
+    const deep = gridCellDepthToWorld({ col: 3, row: 2, depthMeters: 80, coordinateModel, transform, verticalDisplayMode: 'physicalDepth' });
+    const mission = gridCellToWorld(transform, 3, 2, 0);
+    return {
+      sameHorizontalX: Math.abs(surface.x - mission.x) < 1e-9 && Math.abs(deep.x - mission.x) < 1e-9,
+      sameHorizontalZ: Math.abs(surface.z - mission.z) < 1e-9 && Math.abs(deep.z - mission.z) < 1e-9,
+      positiveDepthMovesDown: deep.y < surface.y,
+      surfaceY: surface.y,
+      deepY: deep.y
+    };
+  });
+  expect(result.sameHorizontalX).toBe(true);
+  expect(result.sameHorizontalZ).toBe(true);
+  expect(result.positiveDepthMovesDown).toBe(true);
+});
+
 test('Three Mission Workspace Stabilization', async ({ page }) => {
   const browserErrors = attachBrowserErrorCollector(page);
   await page.goto('/');
@@ -3979,6 +4115,9 @@ test('Three Volumetric Water Column Planning', async ({ page }) => {
     const waypoint = plan?.waypoints?.[0];
     return { diveProfileId: waypoint?.diveProfileId, targetDepthLayerId: waypoint?.targetDepthLayerId, depthLayerId: waypoint?.depthLayerId };
   })).toEqual({ diveProfileId: 'deepDive', targetDepthLayerId: 'deep', depthLayerId: 'deep' });
+
+  await expect.poll(() => page.evaluate(() => window.ANCHOR_WATER_COLUMN_RENDER_DEBUG?.plannedDiveSegmentCount ?? 0), { timeout: 10000 }).toBeGreaterThan(0);
+  await expect.poll(() => page.evaluate(() => window.ANCHOR_WATER_COLUMN_RENDER_DEBUG?.predictedTrajectoryPointCount ?? 0), { timeout: 10000 }).toBeGreaterThan(0);
 
   const depthPoint = await page.evaluate(() => window.ANCHOR_MISSION_RENDER_TEST_API?.screenPointForDepthCell?.('thermocline', 2, 2));
   expect(depthPoint).toMatchObject({ visible: true });

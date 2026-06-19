@@ -97,7 +97,7 @@ function missionWorldRenderInputFromState(state = {}, options = {}) {
   const selectedStarts = buildSelectedStarts(mission);
   const gliders = buildGliders({ mission, state, selectedAgentId });
   const waypoints = buildWaypointList(plan);
-  const routes = buildRouteList(plan);
+  const routes = buildRouteList(plan, mission);
   const planningMarkers = (plan?.planningMarkers ?? []).map((marker) => ({ ...marker, executable: false }));
   const priorityTargets = getActivePriorityTargets(level, activeTimeSeconds).map((target) => ({
     ...target,
@@ -312,8 +312,21 @@ function buildWaypointList(plan) {
   return (plan?.agentPlans ?? []).flatMap((agentPlan) => (agentPlan.waypoints ?? []).map((waypoint, index) => ({ ...waypoint, agentId: agentPlan.agentId, index })));
 }
 
-function buildRouteList(plan) {
-  return (plan?.agentPlans ?? []).filter((agentPlan) => (agentPlan.waypoints ?? []).length).map((agentPlan) => ({ id: `${agentPlan.agentId}-planned-route`, agentId: agentPlan.agentId, points: agentPlan.waypoints ?? [], status: 'planned' }));
+function buildRouteList(plan, mission = null) {
+  return (plan?.agentPlans ?? [])
+    .filter((agentPlan) => (agentPlan.waypoints ?? []).length)
+    .map((agentPlan) => {
+      const agent = (mission?.agents ?? []).find((candidate) => candidate.id === agentPlan.agentId || candidate.agentId === agentPlan.agentId);
+      const selectedStart = agentPlan.selectedStart ?? agentPlan.start ?? agentPlan.deployment?.selectedStart ?? getSelectedStart(agent) ?? agent?.start ?? null;
+      const startPoint = isFiniteCell(selectedStart)
+        ? [{ id: `${agentPlan.agentId}-surface-start`, waypointId: `${agentPlan.agentId}-surface-start`, x: Number(selectedStart.x), y: Number(selectedStart.y), routeBoundary: 'deploymentStart' }]
+        : [];
+      return { id: `${agentPlan.agentId}-planned-route`, agentId: agentPlan.agentId, points: [...startPoint, ...(agentPlan.waypoints ?? [])], status: 'planned' };
+    });
+}
+
+function isFiniteCell(cell) {
+  return Number.isFinite(Number(cell?.x)) && Number.isFinite(Number(cell?.y));
 }
 
 function buildStaticHazards(level) {

@@ -10,7 +10,8 @@ const files = [
   'src/game/three/layers/ThreeRealizedTrajectoryLayer.js',
   'src/game/three/layers/ThreeObservationLayer.js',
   'src/game/three/layers/ThreeRouteStatusLayer.js',
-  'src/game/three/layers/ThreeSimulationStatusLayer.js'
+  'src/game/three/layers/ThreeSimulationStatusLayer.js',
+  'src/game/three/layers/ThreePlannedDiveTrajectoryLayer.js'
 ];
 for (const file of files) {
   const source = fs.existsSync(file) ? fs.readFileSync(file, 'utf8') : '';
@@ -29,6 +30,8 @@ assert(scene.includes('rendererOwnsScoring: false'), 'debug must state renderer 
 assert(missionWorkspaceScene.includes('usesCanonical3DDiveState: true'), 'Planning debug must state canonical 3D dive state ownership');
 assert(missionWorkspaceScene.includes('setWaterColumnVolumeRenderMode'), 'Planning scene must own volume render mode control');
 assert(missionWorkspaceScene.includes('setWaterColumnDiveProfile'), 'Planning scene must own dive profile control');
+assert(missionWorkspaceScene.includes('setWaterColumnMaximumDepth'), 'Planning scene must own requested-depth control');
+assert(missionWorkspaceScene.includes('setWaterColumnCycleCount'), 'Planning scene must own cycle-count control');
 assert(missionWorkspaceScene.includes('setWaypointSnapMode'), 'Planning scene must own waypoint snap mode control');
 assert(continuousUiState.includes('rendererOwnsPlanning: false'), 'Continuous UI contract must deny renderer planning ownership');
 assert(continuousUiState.includes('rendererOwnsSimulation: false'), 'Continuous UI contract must deny renderer simulation ownership');

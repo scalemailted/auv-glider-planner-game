@@ -20,6 +20,7 @@ import { updateThreeGuidanceConeLayer } from './layers/ThreeGuidanceConeLayer.js
 import { createThreeOperationalDepthSlabLayer, updateThreeOperationalDepthSlabLayer, setThreeOperationalDepthSlabLayerVisibility, disposeThreeOperationalDepthSlabLayer, threeOperationalDepthSlabLayerSummary } from './layers/ThreeOperationalDepthSlabLayer.js';
 import { createThreeWaterColumnVolumeFrameLayer, updateThreeWaterColumnVolumeFrameLayer, disposeThreeWaterColumnVolumeFrameLayer, threeWaterColumnVolumeFrameLayerSummary } from './layers/ThreeWaterColumnVolumeFrameLayer.js';
 import { updateThreeDepthTrajectoryLayer, clearThreeDepthTrajectoryLayer, threeDepthTrajectoryLayerSummary } from './layers/ThreeDepthTrajectoryLayer.js';
+import { updateThreePlannedDiveTrajectoryLayer, clearThreePlannedDiveTrajectoryLayer, threePlannedDiveTrajectoryLayerSummary } from './layers/ThreePlannedDiveTrajectoryLayer.js';
 import { updateThreeRealizedTrajectoryLayer, clearThreeRealizedTrajectoryLayer } from './layers/ThreeRealizedTrajectoryLayer.js';
 import { updateThreeObservationLayer, clearThreeObservationLayer } from './layers/ThreeObservationLayer.js';
 import { updateThreeSurfacingEventLayer, clearThreeSurfacingEventLayer } from './layers/ThreeSurfacingEventLayer.js';
@@ -56,6 +57,7 @@ const GROUP_KEYS = [
   'gliderGroup',
   'waypointGroup',
   'routeGroup',
+  'plannedDiveTrajectoryGroup',
   'depthTrajectoryGroup',
   'realizedTrajectoryGroup',
   'markerGroup',
@@ -175,6 +177,7 @@ export function updateThreeMissionWorldRenderer(renderer, viewModel = {}) {
   updateThreeGliderLayer(renderer.groups.gliderGroup, viewModel);
   updateThreeWaypointLayer(renderer.groups.waypointGroup, viewModel);
   updateThreeRouteLayer(renderer.groups.routeGroup, viewModel);
+  updateThreePlannedDiveTrajectoryLayer(renderer.groups.plannedDiveTrajectoryGroup, viewModel);
   updateThreeDepthTrajectoryLayer(renderer.groups.depthTrajectoryGroup, viewModel);
   updateThreeRealizedTrajectoryLayer(renderer.groups.realizedTrajectoryGroup, viewModel);
   updateThreePlanningMarkerLayer(renderer.groups.markerGroup, viewModel);
@@ -245,6 +248,7 @@ export function setThreeMissionLayerVisibility(renderer, visibilityPatch = {}) {
   renderer.groups.gliderGroup.visible = v.gliders !== false;
   renderer.groups.waypointGroup.visible = v.waypoints !== false;
   renderer.groups.routeGroup.visible = v.routes !== false;
+  renderer.groups.plannedDiveTrajectoryGroup.visible = v.routes !== false;
   renderer.groups.depthTrajectoryGroup.visible = v.routes !== false || v.realizedTrajectories !== false;
   renderer.groups.realizedTrajectoryGroup.visible = v.realizedTrajectories !== false;
   renderer.groups.markerGroup.visible = v.planningMarkers !== false;
@@ -282,6 +286,7 @@ export function threeMissionWorldRendererSummary(renderer = {}) {
     gliderObjectCount: renderer.groups?.gliderGroup?.children?.length ?? 0,
     waypointObjectCount: renderer.groups?.waypointGroup?.children?.length ?? 0,
     routeObjectCount: renderer.groups?.routeGroup?.children?.length ?? 0,
+    plannedDiveTrajectorySummary: threePlannedDiveTrajectoryLayerSummary(renderer.groups?.plannedDiveTrajectoryGroup),
     depthTrajectorySummary: threeDepthTrajectoryLayerSummary(renderer.groups?.depthTrajectoryGroup),
     operationalDepthSlabSummary: threeOperationalDepthSlabLayerSummary(renderer.operationalDepthSlabLayer ?? {}, vm),
     waterColumnVolumeFrameSummary: threeWaterColumnVolumeFrameLayerSummary(renderer.waterColumnVolumeFrameLayer ?? {}, vm),
@@ -330,6 +335,7 @@ export function disposeThreeMissionWorldRenderer(renderer) {
   disposeThreeVolumetricScalarFieldLayer(renderer.volumetricScalarFieldLayer);
   disposeThreeOperationalDepthSlabLayer(renderer.operationalDepthSlabLayer);
   disposeThreeWaterColumnVolumeFrameLayer(renderer.waterColumnVolumeFrameLayer);
+  clearThreePlannedDiveTrajectoryLayer(renderer.groups?.plannedDiveTrajectoryGroup);
   clearThreeDepthTrajectoryLayer(renderer.groups?.depthTrajectoryGroup);
   disposeThreePlanningInteractionLayer(renderer.planningInteractionLayer);
   disposeThreeMissionCameraController(renderer.cameraController);

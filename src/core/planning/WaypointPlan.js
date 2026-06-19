@@ -77,7 +77,7 @@ export function normalizePlan(plan, level, mission) {
     for (const key of ['diveProfileId', 'targetDepthLayerId', 'samplingMode']) {
       if (rawAgentPlan[key] !== undefined && rawAgentPlan[key] !== null) agentPlan[key] = String(rawAgentPlan[key]);
     }
-    for (const key of ['maximumDiveDepthMeters', 'sampleIntervalSeconds']) {
+    for (const key of ['maximumDiveDepthMeters', 'maximumDepthMeters', 'sampleIntervalSeconds', 'cycleCount']) {
       const value = Number(rawAgentPlan[key]);
       if (Number.isFinite(value)) agentPlan[key] = value;
     }
@@ -414,7 +414,7 @@ function normalizeWaypoint(waypoint, agentId, index, level = null, planContext =
   for (const key of ['diveProfileId', 'targetDepthLayerId', 'depthLayerId', 'depthLayer', 'samplingMode', 'sensorProfileId']) {
     if (waypoint[key] !== undefined && waypoint[key] !== null && String(waypoint[key]).trim()) normalized[key] = String(waypoint[key]);
   }
-  for (const key of ['maximumDiveDepthMeters', 'depthMeters', 'maximumDepthMeters', 'sampleIntervalSeconds']) {
+  for (const key of ['maximumDiveDepthMeters', 'depthMeters', 'maximumDepthMeters', 'sampleIntervalSeconds', 'cycleCount']) {
     const value = Number(waypoint[key]);
     if (Number.isFinite(value)) normalized[key] = value;
   }

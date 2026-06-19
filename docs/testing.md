@@ -721,3 +721,21 @@ Focused browser coverage should exercise Planning -> Execute -> Simulation -> St
 ## THREE-R1.2A.2 Tests
 
 Depth-aware scoring adds focused smokes for dive feasibility, sample value, profile value, objective weighting, profile compatibility, score-event deduplication, debrief summaries, source-boundary checks, and browser/headless component parity.
+
+## THREE-R1.2A.4 Predicted Dive Planning Checks
+
+Run:
+
+```bash
+node tools/js/smoke_planned_dive_segment_view_model.mjs
+node tools/js/smoke_planning_simulation_dive_model_parity.mjs
+node tools/js/smoke_multi_yo_predicted_trajectory.mjs
+node tools/js/smoke_three_planned_dive_trajectory_layer.mjs
+node tools/js/smoke_planned_dive_bathymetry_clearance.mjs
+node tools/js/smoke_predicted_sample_markers.mjs
+node tools/js/smoke_planned_vs_realized_dive_comparison.mjs
+node tools/js/audit_bathymetry_demo_path_source.mjs
+node tools/js/audit_dive_prediction_boundaries.mjs
+```
+
+Focused browser checks should confirm a surface route, thermocline/deep predicted dive preview, multi-yo cycle preview, side-profile camera readability, terrain-limited clipping, and predicted-vs-realized distinction. Human manual QA by the project owner remains pending; use `docs/manual_predicted_dive_planning_checklist.md`.

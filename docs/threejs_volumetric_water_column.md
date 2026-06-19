@@ -66,3 +66,7 @@ node tools/js/audit_volumetric_activation_boundaries.mjs
 ## Depth-Value Boundary
 
 Volumetric slabs may show layer-specific value, actual samples, and score-by-layer summaries. Three.js must not calculate score. Actual depth-aware score events are emitted by the simulator/headless runtime through the portable science-value evaluator.
+
+## Planned Dive Trajectory Layer
+
+THREE-R1.2A.4 adds `ThreePlannedDiveTrajectoryLayer` for dashed surface intent paths, translucent predicted dive paths, expected current-corrected paths, bottom-turn markers, layer-crossing markers, predicted sample rings, and predicted surfacing markers. It consumes `plannedDiveSegments` from the volumetric mission view model and owns only display objects.

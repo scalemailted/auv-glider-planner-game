@@ -158,6 +158,22 @@ const modelStackDepthValue = evaluateDepthAwareSampleValue({ position: { x: 0, y
 assert.equal(modelStackDepthValue.boundaryFlags.awardsIntegratedValueToSurfaceSample, false, 'Depth-aware value does not award top-down priority to ordinary samples');
 assert.equal(depthScienceScoreProfileMetadata('depthAwareScienceV1').depthAware, true, 'Depth-aware score profile imports');
 
+const plannedDiveModule = await import('../../src/core/rendering/PlannedDiveSegmentViewModel.js');
+const modelStackPlannedDive = plannedDiveModule.buildPlannedDiveSegmentViewModel({
+  agentId: 'glider-1',
+  startWaypoint: { id: 'stack-wp-a', x: 0, y: 1 },
+  targetWaypoint: { id: 'stack-wp-b', x: 6, y: 2, diveProfileId: 'thermoclineDive', targetDepthLayerId: 'thermocline' },
+  waterColumnConfig: { depthLayerIds: ['surface', 'shallow', 'thermocline', 'deep'], diveProfileId: 'thermoclineDive' },
+  bottomBoundary: { bottomDepthField: Array.from({ length: 4 }, () => Array.from({ length: 8 }, () => 160)) },
+  requestedMaximumDepthMeters: 80,
+  cycleCount: 1
+});
+const modelStackPlannedDiveValidation = plannedDiveModule.validatePlannedDiveSegmentViewModel(modelStackPlannedDive);
+assert.equal(modelStackPlannedDiveValidation.valid, true, modelStackPlannedDiveValidation.errors.join('; '));
+assert.equal(modelStackPlannedDive.boundaryFlags.ownsPlanning, false, 'Planned-dive segment view model does not own planning');
+assert.equal(modelStackPlannedDive.boundaryFlags.ownsSimulation, false, 'Planned-dive segment view model does not own simulation');
+assert.equal(modelStackPlannedDive.boundaryFlags.ownsScoring, false, 'Planned-dive segment view model does not own scoring');
+
 
 // P9 science diagnosis modules: forecast correction vs hidden-event hypothesis lifecycle.
 assert.equal(normalizeScienceDiagnosisId('likelyForecastError'), 'forecastIntensityError', 'P9 science diagnosis aliases normalize');

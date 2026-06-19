@@ -540,6 +540,13 @@ export class HtmlMissionWorkspaceOverlay {
       'water-column-volume-render-mode': (button) => this.handlers.setWaterColumnVolumeRenderMode?.(button.dataset.mode),
       'water-column-dive-profile': (button) => this.handlers.setWaterColumnDiveProfile?.(button.dataset.profile),
       'water-column-target-layer': (button) => this.handlers.setWaterColumnTargetLayer?.(button.dataset.layer),
+      'water-column-max-depth': (button) => this.handlers.setWaterColumnMaximumDepth?.(button.dataset.depth),
+      'water-column-cycle-count': (button) => this.handlers.setWaterColumnCycleCount?.(button.dataset.cycles),
+      'water-column-sample-interval': (button) => this.handlers.setWaterColumnSampleInterval?.(button.dataset.seconds),
+      'water-column-reset-profile': () => this.handlers.resetWaterColumnSegmentProfile?.(),
+      'water-column-apply-remaining': () => this.handlers.applyWaterColumnProfileToRemainingSegments?.(),
+      'water-column-focus-predicted-dive': () => this.handlers.setThreeCameraPreset?.('selectedSegmentDive'),
+      'water-column-side-profile': () => this.handlers.setThreeCameraPreset?.('sideProfile'),
       'three-cancel-interaction': () => this.handlers.cancelThreeInteraction?.(),
       'show-best-path': () => this.handlers.showBestPath?.(),
       'hide-best-path': () => this.handlers.hideBestPath?.(),
@@ -884,6 +891,8 @@ function rendererBackendSection(state, continuousUi = normalizeContinuousMission
           ${cameraButton('layerStackOverview', 'Layer Stack', camera)}
           ${cameraButton('activeLayer', 'Active Layer', camera)}
           ${cameraButton('selectedDive', 'Selected Dive', camera)}
+          ${cameraButton('selectedSegmentDive', 'Segment Dive', camera)}
+          ${cameraButton('fullRouteDiveOverview', 'Route Dive', camera)}
           ${cameraButton('fleetOverview', 'Fleet', camera)}
           ${cameraButton('focusSelectedGlider', 'Focus Glider', camera)}
           ${cameraButton('focusRoute', 'Focus Route', camera)}
@@ -911,6 +920,7 @@ function waterColumnSection(state, continuousUi = normalizeContinuousMissionUiSt
   const layerButtons = layerOptions.map((layer) => waterColumnLayerButton(layer, activeLayerId, hidden)).join('');
   const targetButtons = layerOptions.map((layer) => waterColumnTargetLayerButton(layer, selectedTarget)).join('');
   const profileButtons = waterColumnProfileOptions().map((profile) => waterColumnProfileButton(profile, selectedProfile)).join('');
+  const segmentDivePanel = segmentDivePlanPanel(state, continuousUi, { selectedProfile, selectedTarget });
   const opacity = Math.round(Number(ui.globalOpacity ?? 0.26) * 100);
   const legacyFallback = config.source === 'importedLegacySurfaceFallback' || config.compatibility?.importedLegacySurfaceFallback === true || layerIds.length <= 1;
   const claim = legacyFallback
@@ -954,7 +964,102 @@ function waterColumnSection(state, continuousUi = normalizeContinuousMissionUiSt
           <div class="hud-muted">Selected waypoint or selected glider plan metadata: dive profile and target layer. Planning state only; simulation is not mutated here.</div>
         </div>
         <div class="console-button-row wrap">${profileButtons}</div>
-        <div class="console-button-row wrap">${targetButtons}</div>`;
+        <div class="console-button-row wrap">${targetButtons}</div>
+        ${segmentDivePanel}`;
+}
+
+function segmentDivePlanPanel(state, continuousUi = {}, options = {}) {
+  const waterUi = state.ui?.waterColumn ?? {};
+  const debug = state.ui?.divePlanDebug ?? globalThis.ANCHOR_DIVE_PLAN_DEBUG ?? {};
+  const selectedProfile = debug.selectedSegmentDiveProfileId ?? options.selectedProfile ?? continuousUi.selectedDiveProfileId ?? waterUi.selectedDiveProfileId ?? 'surfaceOnly';
+  const selectedTarget = debug.selectedSegmentTargetLayerId ?? options.selectedTarget ?? continuousUi.selectedTargetDepthLayerId ?? waterUi.selectedTargetDepthLayerId ?? 'surface';
+  const requestedDepth = debug.selectedSegmentRequestedDepth ?? waterUi.maximumDiveDepthMeters ?? null;
+  const achievableDepth = debug.selectedSegmentAchievableDepth ?? null;
+  const cycles = debug.selectedSegmentCycleCount ?? waterUi.cycleCount ?? null;
+  const requestedCycles = debug.selectedSegmentRequestedCycleCount ?? cycles;
+  const samplesByLayer = debug.predictedSamplesByLayer ?? {};
+  const sampleRows = Object.keys(samplesByLayer).length
+    ? Object.entries(samplesByLayer).map(([layer, count]) => `${labelize(layer)} ${count}`).join(' | ')
+    : `${Number(debug.predictedSampleCount ?? 0)} expected`;
+  const surfacing = debug.predictedSurfacingPosition
+    ? `X ${formatNumber(debug.predictedSurfacingPosition.x, 2)} | Y ${formatNumber(debug.predictedSurfacingPosition.y, 2)}`
+    : 'No segment selected';
+  const offset = debug.predictedSurfacingOffset
+    ? `${formatNumber(debug.predictedSurfacingOffset.distance, 2)} grid units`
+    : 'N/A';
+  const clearance = debug.predictedMinimumBottomClearance == null
+    ? 'N/A'
+    : `${formatNumber(debug.predictedMinimumBottomClearance, 1)} m${debug.predictedTerrainLimited ? ' terrain-limited' : ''}`;
+  const segmentLabel = debug.selectedSegmentStartWaypointId || debug.selectedSegmentTargetWaypointId
+    ? `${debug.selectedSegmentStartWaypointId ?? 'surface start'} -> ${debug.selectedSegmentTargetWaypointId ?? 'surface target'}`
+    : 'Select or add a route segment';
+  return `
+        <div class="hud-card compact" data-segment-dive-plan>
+          <h3>Segment Dive Plan</h3>
+          <div><strong>Segment:</strong> ${escapeHtml(segmentLabel)}</div>
+          <div><strong>Surface Distance:</strong> ${escapeHtml(formatMeters(debug.selectedSegmentSurfaceDistanceMeters))}</div>
+          <div><strong>Dive Profile:</strong> ${escapeHtml(labelize(selectedProfile))}</div>
+          <div><strong>Target Layer:</strong> ${escapeHtml(labelize(selectedTarget))}</div>
+          <div><strong>Requested Max Depth:</strong> ${escapeHtml(formatMeters(requestedDepth))}</div>
+          <div><strong>Achievable Max Depth:</strong> ${escapeHtml(formatMeters(achievableDepth))}</div>
+          <div><strong>Dive Cycles:</strong> ${escapeHtml(formatCycleCount(requestedCycles, cycles))}</div>
+          <div><strong>Expected Surfacing:</strong> ${escapeHtml(surfacing)} | Offset ${escapeHtml(offset)}</div>
+          <div><strong>Expected Samples:</strong> ${escapeHtml(sampleRows)}</div>
+          <div><strong>Bottom Clearance:</strong> ${escapeHtml(clearance)}</div>
+          <div><strong>Limiting Factor:</strong> ${escapeHtml(labelize(debug.selectedSegmentLimitingFactor ?? 'none'))}</div>
+          <div class="hud-muted">Surface waypoints define mission intent. The selected dive profile determines expected underwater motion between them. Actual execution may differ under currents and mission conditions.</div>
+        </div>
+        <div class="console-button-row wrap">
+          ${waterColumnDepthButton(40, requestedDepth)}
+          ${waterColumnDepthButton(80, requestedDepth)}
+          ${waterColumnDepthButton(120, requestedDepth)}
+          ${waterColumnCycleButton(1, cycles)}
+          ${waterColumnCycleButton(2, cycles)}
+          ${waterColumnCycleButton(3, cycles)}
+          ${waterColumnSampleIntervalButton(300, waterUi.sampleIntervalSeconds)}
+          ${waterColumnSampleIntervalButton(600, waterUi.sampleIntervalSeconds)}
+        </div>
+        <div class="console-button-row wrap">
+          <button class="console-button secondary" data-action="water-column-apply-remaining">Apply To Remaining Segments</button>
+          <button class="console-button secondary" data-action="water-column-reset-profile">Reset Profile</button>
+          <button class="console-button secondary" data-action="water-column-focus-predicted-dive">Focus Predicted Dive</button>
+          <button class="console-button secondary" data-action="water-column-side-profile">Side Profile View</button>
+        </div>`;
+}
+
+function waterColumnDepthButton(depth, selectedDepth) {
+  const active = Number(selectedDepth) === Number(depth);
+  return `<button class="console-button ${active ? 'primary' : 'secondary'}" data-action="water-column-max-depth" data-depth="${depth}">${depth} m</button>`;
+}
+
+function waterColumnCycleButton(cycles, selectedCycles) {
+  const active = Number(selectedCycles) === Number(cycles);
+  return `<button class="console-button ${active ? 'primary' : 'secondary'}" data-action="water-column-cycle-count" data-cycles="${cycles}">${cycles} cycle${cycles === 1 ? '' : 's'}</button>`;
+}
+
+function waterColumnSampleIntervalButton(seconds, selectedSeconds) {
+  const active = Number(selectedSeconds) === Number(seconds);
+  const minutes = Math.round(seconds / 60);
+  return `<button class="console-button ${active ? 'primary' : 'secondary'}" data-action="water-column-sample-interval" data-seconds="${seconds}">${minutes} min samples</button>`;
+}
+
+function formatMeters(value) {
+  const numeric = Number(value);
+  return Number.isFinite(numeric) ? `${formatNumber(numeric, numeric >= 100 ? 0 : 1)} m` : 'N/A';
+}
+
+function formatCycleCount(requested, feasible) {
+  const requestedNumber = Number(requested);
+  const feasibleNumber = Number(feasible);
+  if (!Number.isFinite(requestedNumber) && !Number.isFinite(feasibleNumber)) return 'N/A';
+  if (!Number.isFinite(requestedNumber)) return `${formatNumber(feasibleNumber, 0)} feasible`;
+  if (!Number.isFinite(feasibleNumber)) return `${formatNumber(requestedNumber, 0)} planned`;
+  return `${formatNumber(requestedNumber, 0)} planned | ${formatNumber(feasibleNumber, 0)} feasible`;
+}
+
+function formatNumber(value, digits = 1) {
+  const numeric = Number(value);
+  return Number.isFinite(numeric) ? numeric.toFixed(digits).replace(/\.0+$/, '') : 'N/A';
 }
 
 function waterColumnLayerButton(layer, activeLayerId, hidden) {

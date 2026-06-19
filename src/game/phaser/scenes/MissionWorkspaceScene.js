@@ -488,6 +488,11 @@ export class MissionWorkspaceScene extends PhaserScene {
       setWaterColumnVolumeRenderMode: (mode) => this.setWaterColumnVolumeRenderMode(mode),
       setWaterColumnDiveProfile: (profileId) => this.setWaterColumnDiveProfile(profileId),
       setWaterColumnTargetLayer: (layerId) => this.setWaterColumnTargetLayer(layerId),
+      setWaterColumnMaximumDepth: (depth) => this.setWaterColumnMaximumDepth(depth),
+      setWaterColumnCycleCount: (count) => this.setWaterColumnCycleCount(count),
+      setWaterColumnSampleInterval: (seconds) => this.setWaterColumnSampleInterval(seconds),
+      resetWaterColumnSegmentProfile: () => this.resetWaterColumnSegmentProfile(),
+      applyWaterColumnProfileToRemainingSegments: () => this.applyWaterColumnProfileToRemainingSegments(),
       cancelThreeInteraction: () => this.cancelThreeInteraction(),
       rerunSamePlan: () => this.rerunSamePlan(),
       rerunWithNewSeed: () => this.rerunWithNewSeed(),
@@ -1046,7 +1051,7 @@ export class MissionWorkspaceScene extends PhaserScene {
       resetThreeMissionCamera(controller, { presetId: 'obliqueMission' });
       this.app.state.ui.threeMissionCameraPreset = 'obliqueMission';
     } else {
-      const normalized = ['tacticalTopDown', 'obliqueMission', 'obliqueWaterColumn', 'waterColumnProfile', 'sideProfile', 'layerStackOverview', 'activeLayer', 'selectedDive', 'fleetOverview'].includes(presetId) ? presetId : 'obliqueMission';
+      const normalized = ['tacticalTopDown', 'obliqueMission', 'obliqueWaterColumn', 'waterColumnProfile', 'sideProfile', 'layerStackOverview', 'activeLayer', 'selectedDive', 'selectedSegmentDive', 'fullRouteDiveOverview', 'fleetOverview'].includes(presetId) ? presetId : 'obliqueMission';
       this.app.state.ui.threeMissionCameraPreset = normalized;
       if (controller) setThreeMissionCameraPreset(controller, normalized);
       else if (renderer) setThreeMissionWorldCamera(renderer, { preset: normalized });
@@ -1135,7 +1140,9 @@ export class MissionWorkspaceScene extends PhaserScene {
       currentDisplayMode: existing.currentDisplayMode === 'allLayers' ? 'allLayers' : 'activeLayerOnly',
       selectedDiveProfileId: normalizeWaterColumnProfileId(existing.selectedDiveProfileId ?? this.selectedAgentPlanWaterColumnValue('diveProfileId') ?? config?.defaultDiveProfileId ?? config?.diveProfileId ?? 'surfaceOnly'),
       selectedTargetDepthLayerId: normalizeWaterColumnLayerId(existing.selectedTargetDepthLayerId ?? this.selectedAgentPlanWaterColumnValue('targetDepthLayerId') ?? config?.defaultTargetDepthLayerId ?? 'surface', active),
-      maximumDiveDepthMeters: Number.isFinite(Number(existing.maximumDiveDepthMeters)) ? Number(existing.maximumDiveDepthMeters) : null,
+      maximumDiveDepthMeters: Number.isFinite(Number(existing.maximumDiveDepthMeters)) ? Number(existing.maximumDiveDepthMeters) : (Number.isFinite(Number(this.selectedAgentPlanWaterColumnValue('maximumDiveDepthMeters'))) ? Number(this.selectedAgentPlanWaterColumnValue('maximumDiveDepthMeters')) : null),
+      cycleCount: Number.isFinite(Number(existing.cycleCount)) ? Number(existing.cycleCount) : (Number.isFinite(Number(this.selectedAgentPlanWaterColumnValue('cycleCount'))) ? Number(this.selectedAgentPlanWaterColumnValue('cycleCount')) : null),
+      sampleIntervalSeconds: Number.isFinite(Number(existing.sampleIntervalSeconds)) ? Number(existing.sampleIntervalSeconds) : (Number.isFinite(Number(this.selectedAgentPlanWaterColumnValue('sampleIntervalSeconds'))) ? Number(this.selectedAgentPlanWaterColumnValue('sampleIntervalSeconds')) : null),
       userModified: existing.userModified === true,
       defaultDisplayModeApplied: existing.defaultDisplayModeApplied === true
     };
@@ -1218,7 +1225,37 @@ export class MissionWorkspaceScene extends PhaserScene {
       rendererOwnsSimulation: false,
       rendererOwnsScoring: false,
       rendererSummary: patch.rendererSummary ?? null,
-      waterColumnDebug: patch.waterColumnDebug ?? null
+      waterColumnDebug: patch.waterColumnDebug ?? null,
+      predictedDiveAvailable: patch.plannedDiveDebug?.predictedDiveAvailable === true,
+      predictedDiveSource: patch.plannedDiveDebug?.predictedDiveSource ?? null,
+      predictedDiveModelVersion: patch.plannedDiveDebug?.predictedDiveModelVersion ?? null,
+      selectedSegmentId: patch.plannedDiveDebug?.selectedSegmentId ?? null,
+      selectedSegmentStartWaypointId: patch.plannedDiveDebug?.selectedSegmentStartWaypointId ?? null,
+      selectedSegmentTargetWaypointId: patch.plannedDiveDebug?.selectedSegmentTargetWaypointId ?? null,
+      selectedSegmentDiveProfileId: patch.plannedDiveDebug?.selectedSegmentDiveProfileId ?? null,
+      selectedSegmentTargetLayerId: patch.plannedDiveDebug?.selectedSegmentTargetLayerId ?? null,
+      selectedSegmentRequestedDepth: patch.plannedDiveDebug?.selectedSegmentRequestedDepth ?? null,
+      selectedSegmentAchievableDepth: patch.plannedDiveDebug?.selectedSegmentAchievableDepth ?? null,
+      selectedSegmentCycleCount: patch.plannedDiveDebug?.selectedSegmentCycleCount ?? null,
+      selectedSegmentLimitingFactor: patch.plannedDiveDebug?.selectedSegmentLimitingFactor ?? null,
+      surfaceIntentPointCount: patch.plannedDiveDebug?.surfaceIntentPointCount ?? 0,
+      predictedDivePointCount: patch.plannedDiveDebug?.predictedDivePointCount ?? 0,
+      predictedCurrentPathPointCount: patch.plannedDiveDebug?.predictedCurrentPathPointCount ?? 0,
+      predictedSampleCount: patch.plannedDiveDebug?.predictedSampleCount ?? 0,
+      predictedLayerCrossingCount: patch.plannedDiveDebug?.predictedLayerCrossingCount ?? 0,
+      predictedBottomTurnCount: patch.plannedDiveDebug?.predictedBottomTurnCount ?? 0,
+      predictedSurfacingPosition: patch.plannedDiveDebug?.predictedSurfacingPosition ?? null,
+      predictedSurfacingOffset: patch.plannedDiveDebug?.predictedSurfacingOffset ?? null,
+      predictedMinimumBottomClearance: patch.plannedDiveDebug?.predictedMinimumBottomClearance ?? null,
+      predictedTerrainLimited: patch.plannedDiveDebug?.predictedTerrainLimited === true,
+      plannedDiveThreeObjectCount: patch.plannedDiveDebug?.plannedDiveThreeObjectCount ?? 0,
+      plannedSampleThreeObjectCount: patch.plannedDiveDebug?.plannedSampleThreeObjectCount ?? 0,
+      predictionCanonicalParityStatus: patch.plannedDiveDebug?.predictionCanonicalParityStatus ?? null,
+      physicalExplodedPredictionDigestMatch: patch.plannedDiveDebug?.physicalExplodedPredictionDigestMatch === true,
+      bathymetryDemoPathSource: 'fixtureExplicitDepthWaypoints',
+      bathymetryDemoUsesCanonicalDiveModel: false,
+      rendererOwnsPrediction: false,
+      usesArbitraryXYZWaypoints: false
     };
     globalThis.ANCHOR_CONTINUOUS_MISSION_DEBUG = debug;
     globalThis.ANCHOR_CONTINUOUS_UI_DEBUG = {
@@ -1265,6 +1302,8 @@ export class MissionWorkspaceScene extends PhaserScene {
       selectedDiveProfileId: config?.defaultDiveProfileId ?? config?.diveProfileId ?? 'surfaceOnly',
       selectedTargetDepthLayerId: config?.defaultTargetDepthLayerId ?? 'surface',
       maximumDiveDepthMeters: null,
+      cycleCount: null,
+      sampleIntervalSeconds: null,
       userModified: false,
       defaultDisplayModeApplied: true
     };
@@ -1386,6 +1425,89 @@ export class MissionWorkspaceScene extends PhaserScene {
     ui.userModified = true;
     ui.activeDepthLayerId = ui.selectedTargetDepthLayerId;
     this.applyWaterColumnPlanMetadata({ targetDepthLayerId: ui.selectedTargetDepthLayerId, depthLayerId: ui.selectedTargetDepthLayerId });
+  }
+
+  setWaterColumnMaximumDepth(depth) {
+    const ui = this.ensureWaterColumnUiState();
+    const value = Number(depth);
+    if (!Number.isFinite(value) || value < 0) return;
+    ui.maximumDiveDepthMeters = value;
+    ui.userModified = true;
+    this.applyWaterColumnPlanMetadata({ maximumDiveDepthMeters: value, maximumDepthMeters: value });
+  }
+
+  setWaterColumnCycleCount(count) {
+    const ui = this.ensureWaterColumnUiState();
+    const value = Math.max(0, Math.round(Number(count)));
+    if (!Number.isFinite(value)) return;
+    ui.cycleCount = value;
+    ui.userModified = true;
+    this.applyWaterColumnPlanMetadata({ cycleCount: value });
+  }
+
+  setWaterColumnSampleInterval(seconds) {
+    const ui = this.ensureWaterColumnUiState();
+    const value = Math.max(30, Math.round(Number(seconds)));
+    if (!Number.isFinite(value)) return;
+    ui.sampleIntervalSeconds = value;
+    ui.userModified = true;
+    this.applyWaterColumnPlanMetadata({ sampleIntervalSeconds: value });
+  }
+
+  resetWaterColumnSegmentProfile() {
+    const ui = this.ensureWaterColumnUiState();
+    const config = this.currentWaterColumnConfig() ?? {};
+    const layers = config.depthLayerIds ?? ['surface'];
+    ui.selectedDiveProfileId = config.defaultDiveProfileId ?? config.diveProfileId ?? 'surfaceOnly';
+    ui.selectedTargetDepthLayerId = config.defaultTargetDepthLayerId ?? layers[0] ?? 'surface';
+    ui.maximumDiveDepthMeters = null;
+    ui.cycleCount = null;
+    ui.sampleIntervalSeconds = null;
+    ui.userModified = true;
+    this.applyWaterColumnPlanMetadata({
+      diveProfileId: ui.selectedDiveProfileId,
+      targetDepthLayerId: ui.selectedTargetDepthLayerId,
+      depthLayerId: ui.selectedTargetDepthLayerId,
+      maximumDiveDepthMeters: undefined,
+      maximumDepthMeters: undefined,
+      cycleCount: undefined,
+      sampleIntervalSeconds: undefined
+    });
+  }
+
+  applyWaterColumnProfileToRemainingSegments() {
+    const agentId = this.app.state.selectedAgentId;
+    if (!agentId || !this.app.state.plan) return;
+    const agentPlan = getAgentPlan(this.app.state.plan, agentId);
+    const selected = this.app.state.ui?.selectedWaypoint;
+    const selectedIndex = selected?.agentId === agentId && Number.isInteger(Number(selected.index))
+      ? Number(selected.index)
+      : 0;
+    const ui = this.ensureWaterColumnUiState();
+    const patch = this.currentWaterColumnPlanPatch(ui);
+    for (let index = Math.max(0, selectedIndex); index < (agentPlan.waypoints ?? []).length; index += 1) {
+      updateWaypoint(this.app.state.plan, agentId, index, patch);
+    }
+    Object.assign(agentPlan, patch);
+    this.afterPlanChanged(agentId, { selectedIndex });
+    this.markManualPlan();
+    this.refreshPanels();
+    this.refreshMap();
+  }
+
+  currentWaterColumnPlanPatch(ui = this.ensureWaterColumnUiState()) {
+    const patch = {
+      diveProfileId: ui.selectedDiveProfileId,
+      targetDepthLayerId: ui.selectedTargetDepthLayerId,
+      depthLayerId: ui.selectedTargetDepthLayerId
+    };
+    if (Number.isFinite(Number(ui.maximumDiveDepthMeters))) {
+      patch.maximumDiveDepthMeters = Number(ui.maximumDiveDepthMeters);
+      patch.maximumDepthMeters = Number(ui.maximumDiveDepthMeters);
+    }
+    if (Number.isFinite(Number(ui.cycleCount))) patch.cycleCount = Math.max(0, Math.round(Number(ui.cycleCount)));
+    if (Number.isFinite(Number(ui.sampleIntervalSeconds))) patch.sampleIntervalSeconds = Math.max(30, Math.round(Number(ui.sampleIntervalSeconds)));
+    return patch;
   }
 
   applyWaterColumnPlanMetadata(patch = {}) {
@@ -1716,6 +1838,7 @@ export class MissionWorkspaceScene extends PhaserScene {
     const waypointBeyondMissionWindow = placementWarningCodes.includes('BEYOND_MISSION_WINDOW');
     const waypointCandidateStatus = placementValidation?.valid === false ? 'INVALID' : placementWarnings.length ? 'VALID_WITH_WARNINGS' : placementValidation ? 'VALID' : null;
     const waterColumnUi = this.ensureWaterColumnUiState();
+    const plannedDiveDebug = plannedDiveDebugPayload(viewModel ?? {}, rendererSummary, this.app.state.ui?.selectedWaypoint, selectedAgentIdForDebug);
     const waterColumnDebug = waterColumnRenderDebugPayload(viewModel ?? {}, rendererSummary, {
       phase: viewModel?.phase ?? this.app.state.mode ?? 'planning',
       selectedDiveProfileId: waterColumnUi.selectedDiveProfileId,
@@ -1725,7 +1848,10 @@ export class MissionWorkspaceScene extends PhaserScene {
       lifecycleCleanupErrorCount: Number(this.cleanupErrorCount ?? 0)
     });
     globalThis.ANCHOR_WATER_COLUMN_RENDER_DEBUG = waterColumnDebug;
-    this.publishContinuousMissionDebug({ rendererSummary, waterColumnDebug });
+    globalThis.ANCHOR_DIVE_PLAN_DEBUG = plannedDiveDebug;
+    this.app.state.ui ??= {};
+    this.app.state.ui.divePlanDebug = plannedDiveDebug;
+    this.publishContinuousMissionDebug({ rendererSummary, waterColumnDebug, plannedDiveDebug });
     globalThis.ANCHOR_MISSION_RENDER_DEBUG = {
       version: 'gfx-r3b',
       activeBackend: activeBackend ?? this.getMissionRendererBackend(),
@@ -4665,6 +4791,62 @@ function formatScore(value) {
 
 
 
+function plannedDiveDebugPayload(viewModel = {}, rendererSummary = null, selectedWaypoint = null, selectedAgentId = null) {
+  const segments = viewModel.plannedDiveSegments ?? [];
+  const selected = selectPlannedDiveSegmentForDebug(segments, selectedWaypoint, selectedAgentId) ?? segments[0] ?? null;
+  const summary = rendererSummary?.plannedDiveTrajectorySummary ?? {};
+  return {
+    type: 'anchor.debug.dive-plan',
+    version: 'three-r1-2a-4',
+    predictedDiveAvailable: Boolean(selected && (selected.predictedDivePath?.length ?? 0) >= 2),
+    predictedDiveSource: selected ? 'PlannedDiveSegmentViewModel' : null,
+    predictedDiveModelVersion: selected?.version ?? null,
+    selectedSegmentId: selected?.segmentId ?? null,
+    selectedSegmentStartWaypointId: selected?.startWaypointId ?? null,
+    selectedSegmentTargetWaypointId: selected?.targetWaypointId ?? null,
+    selectedSegmentDiveProfileId: selected?.diveProfileId ?? null,
+    selectedSegmentTargetLayerId: selected?.targetDepthLayerId ?? null,
+    selectedSegmentRequestedDepth: selected?.requestedMaximumDepthMeters ?? null,
+    selectedSegmentAchievableDepth: selected?.achievableMaximumDepthMeters ?? null,
+    selectedSegmentCycleCount: selected?.cycleCount ?? null,
+    selectedSegmentRequestedCycleCount: selected?.requestedCycleCount ?? selected?.cycleCount ?? null,
+    selectedSegmentLimitingFactor: selected?.limitingFactor ?? null,
+    selectedSegmentSurfaceDistanceMeters: selected?.surfaceDistanceMeters ?? null,
+    surfaceIntentPointCount: selected?.surfaceIntentPath?.length ?? 0,
+    predictedDivePointCount: selected?.predictedDivePath?.length ?? 0,
+    predictedCurrentPathPointCount: selected?.predictedCurrentCorrectedPath?.length ?? 0,
+    predictedSampleCount: selected?.predictedSamples?.length ?? 0,
+    predictedLayerCrossingCount: selected?.layerCrossings?.length ?? 0,
+    predictedBottomTurnCount: selected?.bottomTurns?.length ?? 0,
+    predictedSurfacingPosition: selected?.predictedSurfacingPosition ?? null,
+    predictedSurfacingOffset: selected?.predictedSurfacingOffset ?? null,
+    predictedMinimumBottomClearance: selected?.bottomClearance?.minimumClearanceMeters ?? null,
+    predictedTerrainLimited: selected?.bottomClearance?.terrainLimited === true,
+    predictedSamplesByLayer: selected?.expectedScience?.samplesByLayer ?? {},
+    warningCodes: selected?.warningCodes ?? [],
+    plannedDiveThreeObjectCount: summary.objectCount ?? 0,
+    plannedSampleThreeObjectCount: summary.predictedSampleObjectCount ?? 0,
+    predictionCanonicalParityStatus: 'single-cycle shares canonical profile/depth constraints; multi-yo is planned prediction only until execution parity is expanded',
+    physicalExplodedPredictionDigestMatch: Boolean(viewModel?.plannedDiveSegments),
+    bathymetryDemoPathSource: 'fixtureExplicitDepthWaypoints',
+    bathymetryDemoUsesCanonicalDiveModel: false,
+    rendererOwnsPrediction: false,
+    rendererOwnsPlanning: false,
+    rendererOwnsSimulation: false,
+    rendererOwnsScoring: false,
+    usesArbitraryXYZWaypoints: false
+  };
+}
+
+function selectPlannedDiveSegmentForDebug(segments = [], selectedWaypoint = null, selectedAgentId = null) {
+  if (!segments.length) return null;
+  if (selectedWaypoint?.agentId) {
+    const selectedIndex = Number(selectedWaypoint.index);
+    const segment = segments.find((candidate) => candidate.agentId === selectedWaypoint.agentId && Number(candidate.segmentIndex) === selectedIndex);
+    if (segment) return segment;
+  }
+  return segments.find((candidate) => candidate.agentId === selectedAgentId) ?? segments[0] ?? null;
+}
 function setSelectedStartPreview(level, mission, agentId, cell) {
   const agent = mission?.agents?.find((candidate) => candidate.id === agentId);
   if (!agent) return { valid: false, message: 'No active glider selected.' };

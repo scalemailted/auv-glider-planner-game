@@ -83,6 +83,14 @@ export function setThreeMissionCameraPreset(controller, presetId, context = {}) 
     controller.azimuthRadians = 0;
     controller.polarRadians = 1.18;
     controller.distance = radius * 1.78;
+  } else if (preset === 'selectedSegmentDive') {
+    controller.azimuthRadians = -0.9;
+    controller.polarRadians = 0.88;
+    controller.distance = radius * 1.38;
+  } else if (preset === 'fullRouteDiveOverview') {
+    controller.azimuthRadians = -0.66;
+    controller.polarRadians = 0.82;
+    controller.distance = radius * 2.02;
   } else if (preset === 'obliqueWaterColumn') {
     controller.azimuthRadians = -0.74;
     controller.polarRadians = 0.92;
@@ -343,6 +351,8 @@ function normalizePresetId(presetId) {
     'layerStackOverview',
     'activeLayer',
     'selectedDive',
+    'selectedSegmentDive',
+    'fullRouteDiveOverview',
     'fleetOverview'
   ].includes(id)) return id;
   if (id === 'resetCamera') return 'obliqueMission';

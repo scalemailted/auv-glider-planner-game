@@ -1108,3 +1108,7 @@ The Headless Bundle Viewer includes Load Example Replay, Load Tampered Replay, a
 ## Depth-Aware Sampling Update
 
 The current volumetric activation layer now has explicit scoring semantics: actual samples at different depth layers can receive different science value. Predicted profile points remain planning previews and do not create score events.
+
+### Predicted 3D Dive Planning
+
+Surface waypoints are where the glider is intended to navigate and surface, not underwater control points. In the Water Column / Dive Planning controls, choose a dive profile, target layer, requested maximum depth, cycle count, and sample interval for the selected segment. The Three.js Mission World distinguishes the dashed surface intent route from the predicted underwater dive, expected current-corrected path, predicted surfacing marker, bottom turns, layer crossings, and expected samples. Predicted samples are estimates only; actual simulation samples create score. Use Side Profile, Segment Dive, and Route Dive camera presets to inspect vertical motion. See [Predicted 3D Dive Planning](docs/predicted_3d_dive_planning.md).

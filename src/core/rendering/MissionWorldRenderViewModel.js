@@ -1,4 +1,4 @@
-﻿import { createMissionWorldCoordinateTransform, depthForLayer } from './MissionWorldCoordinates.js';
+import { createMissionWorldCoordinateTransform, depthForLayer } from './MissionWorldCoordinates.js';
 
 export const MISSION_WORLD_RENDER_VIEW_MODEL_VERSION = 'mission-world-render-view-model-three-r1-1';
 export const MISSION_WORLD_SCALAR_LAYER_IDS = Object.freeze(['sampleValue', 'remainingSampleValue', 'samplingPriority', 'forecast', 'belief', 'uncertainty', 'hazard', 'none']);
@@ -40,7 +40,8 @@ export function buildMissionWorldRenderViewModel({
   const selectedStarts = normalizeSelectedStarts(options.selectedStarts, selectedAgentId);
   const gliders = normalizeGliders(options.gliders ?? mission?.agents, selectedAgentId);
   const waypoints = normalizeWaypoints(options.waypoints ?? plan?.agentPlans, selectedWaypointId);
-  const routes = normalizeRoutes(options.routes ?? plan?.agentPlans);
+  const routeAgentPlans = options.routes ?? mergeAgentPlanSelectedStarts(plan?.agentPlans, mission?.agents);
+  const routes = normalizeRoutes(routeAgentPlans);
   const markers = normalizePlanningMarkers(planningMarkers ?? options.planningMarkers ?? plan?.planningMarkers, selectedMarkerId);
   const priorityTargets = normalizePriorityTargets(options.priorityTargets, activeTimeSeconds, selectedPriorityTargetId);
   const observations = normalizePoints(options.observations, 'observation');
@@ -313,31 +314,102 @@ function normalizeGliders(gliders = [], selectedAgentId = null) {
 
 function normalizeWaypoints(agentPlans = [], selectedWaypointId = null) {
   const raw = agentPlans ?? [];
+  const normalizeWaypointRecord = (waypoint, agentId, index) => {
+    const waypointId = waypoint.waypointId ?? waypoint.id ?? `${agentId}-waypoint-${Number(waypoint.index ?? index) + 1}`;
+    const x = finiteNumber(waypoint.x);
+    const y = finiteNumber(waypoint.y);
+    return {
+      waypointId,
+      agentId,
+      index: Number.isFinite(Number(waypoint.index)) ? Number(waypoint.index) : index,
+      x,
+      y,
+      z: 0,
+      depthMeters: 0,
+      depthLayerId: 'surface',
+      surfaceAnchor: true,
+      validationRadius: finiteNumber(waypoint.validationRadius ?? waypoint.radius, 0.5),
+      diveProfileId: waypoint.diveProfileId ?? null,
+      targetDepthLayerId: waypoint.targetDepthLayerId ?? waypoint.depthLayerId ?? waypoint.depthLayer ?? null,
+      requestedMaximumDepthMeters: finiteOrNull(waypoint.maximumDiveDepthMeters ?? waypoint.maximumDepthMeters),
+      sampleIntervalSeconds: finiteOrNull(waypoint.sampleIntervalSeconds),
+      action: waypoint.action ?? 'sample',
+      status: waypoint.status ?? 'planned',
+      selected: waypointId === selectedWaypointId || selectedWaypointId === `${agentId}:${Number.isFinite(Number(waypoint.index)) ? Number(waypoint.index) : index}`,
+      plannedTimeSeconds: finiteOrNull(waypoint.t ?? waypoint.plannedTimeSeconds),
+      visible: waypoint.visible !== false
+    };
+  };
   if (raw.length && !Array.isArray(raw[0]?.waypoints) && raw[0]?.agentId) {
-    return raw.map((waypoint, index) => {
-      const waypointId = waypoint.waypointId ?? waypoint.id ?? `${waypoint.agentId}-waypoint-${Number(waypoint.index ?? index) + 1}`;
-      return { waypointId, agentId: waypoint.agentId, index: Number.isFinite(Number(waypoint.index)) ? Number(waypoint.index) : index, x: finiteNumber(waypoint.x), y: finiteNumber(waypoint.y), z: finiteNumber(waypoint.z, -finiteNumber(waypoint.depthMeters, depthForLayer(waypoint.depthLayerId))), depthLayerId: waypoint.depthLayerId ?? waypoint.depthLayer ?? 'surface', action: waypoint.action ?? 'sample', status: waypoint.status ?? 'planned', selected: waypointId === selectedWaypointId || selectedWaypointId === `${waypoint.agentId}:${waypoint.index ?? index}`, plannedTimeSeconds: finiteOrNull(waypoint.t ?? waypoint.plannedTimeSeconds), visible: waypoint.visible !== false };
-    });
+    return raw.map((waypoint, index) => normalizeWaypointRecord(waypoint, waypoint.agentId, index));
   }
-  return raw.flatMap((agentPlan) => (agentPlan.waypoints ?? []).map((waypoint, index) => {
-    const waypointId = waypoint.waypointId ?? waypoint.id ?? `${agentPlan.agentId}-waypoint-${index + 1}`;
-    return { waypointId, agentId: agentPlan.agentId, index, x: finiteNumber(waypoint.x), y: finiteNumber(waypoint.y), z: finiteNumber(waypoint.z, -finiteNumber(waypoint.depthMeters, depthForLayer(waypoint.depthLayerId))), depthLayerId: waypoint.depthLayerId ?? waypoint.depthLayer ?? 'surface', action: waypoint.action ?? 'sample', status: waypoint.status ?? 'planned', selected: waypointId === selectedWaypointId || selectedWaypointId === `${agentPlan.agentId}:${index}`, plannedTimeSeconds: finiteOrNull(waypoint.t ?? waypoint.plannedTimeSeconds), visible: waypoint.visible !== false };
-  }));
+  return raw.flatMap((agentPlan) => (agentPlan.waypoints ?? []).map((waypoint, index) => normalizeWaypointRecord(waypoint, agentPlan.agentId, index)));
+}
+function mergeAgentPlanSelectedStarts(agentPlans = [], agents = []) {
+  if (!Array.isArray(agentPlans)) return agentPlans;
+  const agentsById = new Map((agents ?? []).map((agent) => [agent.id ?? agent.agentId, agent]));
+  return agentPlans.map((agentPlan) => {
+    if (!agentPlan || agentPlan.selectedStart || agentPlan.start || agentPlan.deployment?.selectedStart) return agentPlan;
+    const agent = agentsById.get(agentPlan.agentId);
+    const selectedStart = agent?.deployment?.selectedStart ?? agent?.selectedStart ?? agent?.start ?? null;
+    if (!isFinitePoint(selectedStart)) return agentPlan;
+    return { ...agentPlan, selectedStart: { x: finiteNumber(selectedStart.x), y: finiteNumber(selectedStart.y) } };
+  });
 }
 
+function isFinitePoint(point) {
+  return Number.isFinite(Number(point?.x)) && Number.isFinite(Number(point?.y));
+}
 function normalizeRoutes(agentPlans = []) {
   const raw = agentPlans ?? [];
+  const normalizeRoutePoint = (point, agentId, index, options = {}) => {
+    const waypointId = point.waypointId ?? point.id ?? `${agentId}-route-point-${index + 1}`;
+    const x = finiteNumber(point.x);
+    const y = finiteNumber(point.y);
+    return {
+      id: waypointId,
+      waypointId,
+      agentId,
+      x,
+      y,
+      z: 0,
+      depthMeters: 0,
+      depthLayerId: 'surface',
+      surfaceAnchor: true,
+      index,
+      routeBoundary: options.routeBoundary ?? (index === 0 ? 'start' : 'waypoint'),
+      validationRadius: finiteNumber(point.validationRadius ?? point.radius, 0.5),
+      diveProfileId: point.diveProfileId ?? options.diveProfileId ?? null,
+      targetDepthLayerId: point.targetDepthLayerId ?? point.depthLayerId ?? point.depthLayer ?? options.targetDepthLayerId ?? null,
+      maximumDiveDepthMeters: finiteOrNull(point.maximumDiveDepthMeters ?? point.maximumDepthMeters ?? point.requestedMaximumDepthMeters),
+      sampleIntervalSeconds: finiteOrNull(point.sampleIntervalSeconds),
+      cycleCount: finiteOrNull(point.cycleCount),
+      action: point.action ?? null,
+      plannedTimeSeconds: finiteOrNull(point.t ?? point.plannedTimeSeconds)
+    };
+  };
   if (raw.length && Array.isArray(raw[0]?.points)) {
     return raw.map((route, routeIndex) => ({
       id: route.id ?? `${route.agentId ?? 'agent'}-planned-route-${routeIndex + 1}`,
       agentId: route.agentId ?? null,
       status: route.status ?? 'planned',
-      points: (route.points ?? []).map((point, index) => ({ id: point.id ?? `${route.agentId ?? 'agent'}-route-point-${index + 1}`, x: finiteNumber(point.x), y: finiteNumber(point.y), z: finiteNumber(point.z, -finiteNumber(point.depthMeters, depthForLayer(point.depthLayerId))), depthLayerId: point.depthLayerId ?? 'surface', index }))
+      diveProfileId: route.diveProfileId ?? null,
+      targetDepthLayerId: route.targetDepthLayerId ?? null,
+      points: (route.points ?? []).map((point, index) => normalizeRoutePoint(point, route.agentId ?? null, index, route))
     })).filter((route) => route.points.length > 0);
   }
-  return raw.map((agentPlan) => ({ id: `${agentPlan.agentId}-planned-route`, agentId: agentPlan.agentId, status: agentPlan.status ?? 'planned', points: (agentPlan.waypoints ?? []).map((waypoint, index) => ({ id: waypoint.id ?? `${agentPlan.agentId}-route-point-${index + 1}`, x: finiteNumber(waypoint.x), y: finiteNumber(waypoint.y), z: finiteNumber(waypoint.z, -finiteNumber(waypoint.depthMeters, depthForLayer(waypoint.depthLayerId))), depthLayerId: waypoint.depthLayerId ?? 'surface', index })) })).filter((route) => route.points.length > 0);
+  return raw.map((agentPlan) => {
+    const points = [];
+    const start = agentPlan.selectedStart ?? agentPlan.start ?? agentPlan.deployment?.selectedStart ?? null;
+    if (start && Number.isFinite(Number(start.x)) && Number.isFinite(Number(start.y))) {
+      points.push(normalizeRoutePoint({ ...start, id: `${agentPlan.agentId}-surface-start`, waypointId: `${agentPlan.agentId}-surface-start` }, agentPlan.agentId, 0, { routeBoundary: 'deploymentStart', diveProfileId: agentPlan.diveProfileId, targetDepthLayerId: agentPlan.targetDepthLayerId }));
+    }
+    for (const waypoint of (agentPlan.waypoints ?? [])) {
+      points.push(normalizeRoutePoint(waypoint, agentPlan.agentId, points.length, { routeBoundary: 'waypoint', diveProfileId: agentPlan.diveProfileId, targetDepthLayerId: agentPlan.targetDepthLayerId }));
+    }
+    return { id: `${agentPlan.agentId}-planned-route`, agentId: agentPlan.agentId, status: agentPlan.status ?? 'planned', diveProfileId: agentPlan.diveProfileId ?? null, targetDepthLayerId: agentPlan.targetDepthLayerId ?? null, points };
+  }).filter((route) => route.points.length > 0);
 }
-
 function normalizePlanningMarkers(markers = [], selectedMarkerId = null) {
   return (markers ?? []).map((marker, index) => {
     const markerId = marker.markerId ?? marker.id ?? `planning-marker-${index + 1}`;
@@ -473,8 +545,3 @@ function clamp01(value) {
 function round(value, digits = 6) {
   return Number(Number(value).toFixed(digits));
 }
-
-
-
-
-

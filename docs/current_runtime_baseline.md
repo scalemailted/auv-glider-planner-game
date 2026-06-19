@@ -34,3 +34,7 @@
 ## Depth-Aware Scoring Baseline
 
 The active runtime keeps simulation and scoring authority in the portable core. `src/core/science/DepthAwareScienceValue.js` and `src/core/science/DiveProfileFeasibility.js` are renderer-neutral. Three.js consumes public state and debug summaries but does not own field generation, feasibility, simulation, or scoring.
+
+## THREE-R1.2A.4 Predicted Dive Planning Baseline
+
+The active entry point remains `src/game/main.js`. The Mission Workspace uses Three.js as the production mission world and consumes renderer-neutral planned dive segment view models. Surface waypoints remain horizontal/surfacing anchors; segment dive profiles create predicted underwater trajectories. Three.js renders the result but does not own prediction authority, planning, simulation, sampling, scoring, route optimization, or hidden truth.
