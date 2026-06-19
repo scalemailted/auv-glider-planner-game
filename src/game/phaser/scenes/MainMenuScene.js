@@ -20,6 +20,7 @@ import {
   importLeaderboard,
   loadLeaderboard
 } from '../../../core/storage/LeaderboardStore.js';
+import { resetMissionShellForMainMenu, publishSceneIsolationDebug } from '../../../ui/MissionShellReset.js';
 
 const PhaserScene = globalThis.Phaser?.Scene ?? class {};
 const MAIN_MENU_VERSION = 'main-menu-hub-ui-r1';
@@ -69,23 +70,35 @@ export class MainMenuScene extends PhaserScene {
     this.app = this.sys.game.anchorApp ?? globalThis.__anchorPhaserApp;
     if (this.app && !this.sys.game.anchorApp) this.sys.game.anchorApp = this.app;
     if (!this.app) return;
+    this.events?.once?.('shutdown', () => this.shutdown());
+    this.events?.once?.('destroy', () => this.shutdown());
+    this.stopMissionScenesForMainMenu();
     this.destroyLeaderboardView();
     this.destroyTutorialBrowser();
     this.app.state.mode = 'mainMenu';
     this.app.clearPanels();
-    this.app.console?.renderIdle({ mode: 'Main Menu', status: 'Main Menu' });
-    this.app.waypointPanel?.renderIdle({ mainMenu: true });
+    resetMissionShellForMainMenu(this.app, { reason: 'main-menu-create' });
     this.app.agentPerformanceHud?.setHandlers({});
     this.app.setSceneLabel('Main Menu');
-    this.app.elements.shell?.classList.remove('planning-workspace');
     this.setMainMenuShellState(true);
     this.activeHubView = 'home';
     this.buttons = [];
     this.updateDebugObject(true);
     this.drawIdleViewport();
     this.mountProductHub('home');
+    publishSceneIsolationDebug(this.app, { reason: 'main-menu-mounted', activePhaserSceneKeys: ['MainMenuScene'], activeProductionSceneCount: 1 });
+    globalThis.requestAnimationFrame?.(() => publishSceneIsolationDebug(this.app, { reason: 'main-menu-mounted-frame', activePhaserSceneKeys: ['MainMenuScene'], activeProductionSceneCount: 1 }));
   }
 
+  stopMissionScenesForMainMenu() {
+    const sceneManager = this.scene;
+    for (const key of ['MissionWorkspaceScene', 'SimulationScene', 'DebriefScene']) {
+      const scene = sceneManager?.get?.(key);
+      if (!scene || scene === this) continue;
+      try { scene.shutdown?.(); } catch (error) { globalThis.console?.warn?.('Scene cleanup failed before main menu', key, error); }
+      try { sceneManager.stop?.(key); } catch (error) { globalThis.console?.warn?.('Scene stop failed before main menu', key, error); }
+    }
+  }
   shutdown() {
     this.clearObjects();
     this.unmountProductHub();

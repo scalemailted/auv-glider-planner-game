@@ -38,6 +38,14 @@ Challenge Mode also persists `missionMode`. Mission modes are player-facing obje
 
 ## Version / Milestone Log
 
+### THREE-R1.1E - Scene Isolation and Three.js Visual/Planning Parity
+
+- Added event-bound, idempotent Planning and Simulation scene cleanup plus a Main Menu shell reset/debug object to prevent stale mission renderers behind Product Hub.
+- Added renderer-neutral glider pose view model, stable Three glider mesh updates, quaternion orientation, canonical guidance cone rendering, coordinate helper aliases, and layer alignment reporting.
+- Reclassified ETA-beyond-mission-duration placement as an accepted mission-window warning while preserving hard-invalid terrain/fuel/surface-window rejection.
+- Preserved the boundary: Three.js renders canonical state but does not own planning mutation, simulation physics, scoring, route feasibility, replay semantics, hidden truth, Python simulation, RL, or MARL.
+
+
 ### THREE-R1.1D - Execute Mission Pipeline and Three.js Simulation Parity
 
 - Added renderer-neutral execution transaction, clone-safe launch snapshot, plan digest comparison, SimulationScene payload initialization, and execution debug fields.

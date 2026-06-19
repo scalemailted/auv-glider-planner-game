@@ -632,6 +632,28 @@ node tools/js/audit_replay_authority_boundaries.mjs
 
 These checks verify schemas, compatibility warnings, stable issue codes, tamper detection, CLI nonzero failure behavior, multi-agent public playback state, compact browser summary export, public-safety boundaries, and the absence of authoritative hidden-state resimulation claims.
 
+## THREE-R1.1E Scene Isolation / Pose / Guidance / Waypoint Checks
+
+Focused checks:
+
+```bash
+node tools/js/smoke_three_mission_scene_lifecycle.mjs
+node tools/js/smoke_scene_transition_cleanup.mjs
+node tools/js/smoke_glider_pose_view_model.mjs
+node tools/js/smoke_three_glider_orientation.mjs
+node tools/js/smoke_three_guidance_cone_layer.mjs
+node tools/js/smoke_mission_grid_coordinate_contract.mjs
+node tools/js/audit_three_mission_layer_alignment.mjs
+node tools/js/smoke_waypoint_placement_assessment.mjs
+node tools/js/smoke_three_invalid_waypoint_feedback.mjs
+node tools/js/smoke_time_overrun_waypoint_semantics.mjs
+node tools/js/audit_three_scene_isolation.mjs
+node tools/js/audit_three_pose_guidance_boundaries.mjs
+node tools/js/audit_three_waypoint_semantics.mjs
+```
+
+These checks cover lifecycle disposal, Main Menu shell reset contracts, renderer-neutral pose, quaternion glider orientation, canonical guidance rendering, coordinate helper roundtrips, layer-alignment reporting, hard-invalid waypoint rejection, mission-window warning acceptance, and the boundary that Three.js does not own planning, physics, scoring, or route feasibility.
+
 ## THREE-R1.1D Execute Mission Pipeline Checks
 
 Run the focused execution parity checks:

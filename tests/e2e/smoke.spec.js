@@ -3772,6 +3772,192 @@ test('Execute Mission Through Three Simulation', async ({ page }) => {
   expect(browserErrors.unexpected()).toEqual([]);
 });
 
+test('Three Mission Scene Isolation', async ({ page }) => {
+  const browserErrors = attachBrowserErrorCollector(page);
+  await page.goto('/');
+  await expectMainMenuSceneIsolation(page);
+
+  await startTutorialPlanning(page);
+  await expectSingleThreeMissionRenderer(page, 'planning');
+  await planVisibleThreeTutorialRoute(page, { includeSecondAgent: false });
+
+  await page.locator('#mission-console [data-action="execute"]').click();
+  await expect.poll(() => page.evaluate(() => window.anchorGame.phaser.scene.getScene('SimulationScene')?.sys.isActive?.() ?? false), { timeout: 15000 }).toBe(true);
+  await expectSingleThreeMissionRenderer(page, 'simulation');
+
+  await page.locator('#mission-console [data-action="menu"]').click();
+  await expectMainMenuSceneIsolation(page);
+
+  await startTutorialPlanning(page);
+  await expectSingleThreeMissionRenderer(page, 'planning');
+  await page.locator('[data-action="main-menu"]').filter({ hasText: 'Main Menu' }).first().click();
+  await expectMainMenuSceneIsolation(page);
+  expect(browserErrors.unexpected()).toEqual([]);
+});
+
+test('Three Vehicle Pose Guidance and Grid Alignment', async ({ page }) => {
+  const browserErrors = attachBrowserErrorCollector(page);
+  await page.goto('/');
+  await startTutorialPlanning(page);
+  await expect.poll(() => page.evaluate(() => window.ANCHOR_MISSION_RENDER_DEBUG?.rendererReady === true), { timeout: 15000 }).toBe(true);
+  await page.locator('#mission-console [data-action="three-camera"][data-preset="tacticalTopDown"]').click();
+  await planVisibleThreeTutorialRoute(page, { includeSecondAgent: false });
+
+  await page.locator('#mission-console [data-action="mission-planning-tool"][data-tool="placeWaypoint"]').click();
+  await expect.poll(() => page.evaluate(() => window.ANCHOR_MISSION_RENDER_DEBUG?.activePlanningToolId)).toBe('placeWaypoint');
+  const guidanceCell = await findWaypointPlacementCell(page, { requireNoWarnings: true });
+  expect(guidanceCell).toBeTruthy();
+  const guidancePoint = await threeGridPoint(page, guidanceCell.x, guidanceCell.y);
+  await page.mouse.move(guidancePoint.x + 10, guidancePoint.y + 10);
+  await page.mouse.move(guidancePoint.x, guidancePoint.y, { steps: 4 });
+  await expect.poll(() => page.evaluate(() => ({
+    available: window.ANCHOR_MISSION_RENDER_DEBUG?.guidanceAvailable === true,
+    visible: window.ANCHOR_MISSION_RENDER_DEBUG?.guidanceConeVisible === true,
+    sourcePresent: Boolean(window.ANCHOR_MISSION_RENDER_DEBUG?.guidanceSource),
+    directionFinite: Number.isFinite(window.ANCHOR_MISSION_RENDER_DEBUG?.guidanceConeDirection),
+    origin: window.ANCHOR_MISSION_RENDER_DEBUG?.guidanceConeOrigin
+  }))).toMatchObject({ available: true, visible: true, sourcePresent: true, directionFinite: true });
+
+  await expect.poll(() => page.evaluate(() => ({
+    status: window.ANCHOR_MISSION_RENDER_DEBUG?.layerAlignmentStatus,
+    maxDelta: window.ANCHOR_MISSION_RENDER_DEBUG?.maxLayerAlignmentDelta,
+    misaligned: window.ANCHOR_MISSION_RENDER_DEBUG?.misalignedLayerIds ?? []
+  }))).toEqual({ status: 'PASS', maxDelta: 0, misaligned: [] });
+
+  for (const cell of [{ x: 1, y: 1 }, { x: 5, y: 2 }, { x: 0, y: 0 }, guidanceCell]) {
+    const point = await threeGridPoint(page, cell.x, cell.y);
+    expect(Number.isFinite(point.x)).toBe(true);
+    expect(Number.isFinite(point.y)).toBe(true);
+  }
+
+  await page.locator('#mission-console [data-action="execute"]').click();
+  await expect.poll(() => page.evaluate(() => window.anchorGame.phaser.scene.getScene('SimulationScene')?.sys.isActive?.() ?? false), { timeout: 15000 }).toBe(true);
+  await expect.poll(() => page.evaluate(() => window.ANCHOR_SIMULATION_RENDER_DEBUG?.threeMounted === true), { timeout: 15000 }).toBe(true);
+
+  const poseSweep = await page.evaluate(() => {
+    const scene = window.anchorGame.phaser.scene.getScene('SimulationScene');
+    const samples = [];
+    for (let index = 0; index < 80; index += 1) {
+      scene.stepOnce();
+      scene.refresh();
+      const debug = window.ANCHOR_SIMULATION_RENDER_DEBUG ?? {};
+      if (debug.currentBodyQuaternion) {
+        samples.push({
+          quaternion: debug.currentBodyQuaternion,
+          heading: debug.currentBodyHeadingRadians,
+          course: debug.currentActualCourseRadians,
+          pitch: debug.selectedAgentPitchRadians,
+          orientationSource: debug.selectedAgentOrientationSource,
+          courseSource: debug.selectedAgentCourseSource
+        });
+      }
+      if (scene.engine?.t >= 12) break;
+    }
+    return samples;
+  });
+  expect(poseSweep.length).toBeGreaterThan(1);
+  expect(poseSweep.every((sample) => isFiniteQuaternion(sample.quaternion))).toBe(true);
+  expect(poseSweep.some((sample) => sample.orientationSource && sample.courseSource)).toBe(true);
+  expect(poseSweep.some((sample) => quaternionDelta(sample.quaternion, poseSweep[0].quaternion) > 0.01)).toBe(true);
+  expect(browserErrors.unexpected()).toEqual([]);
+});
+
+test('Three Waypoint Validation and Mission Window Semantics', async ({ page }) => {
+  const browserErrors = attachBrowserErrorCollector(page);
+  await page.goto('/');
+  await startTutorialPlanning(page);
+  await expect.poll(() => page.evaluate(() => window.ANCHOR_MISSION_RENDER_DEBUG?.rendererReady === true), { timeout: 15000 }).toBe(true);
+  await page.locator('#mission-console [data-action="three-camera"][data-preset="tacticalTopDown"]').click();
+  const agentId = await page.evaluate(() => window.anchorGame.state.mission?.agents?.[0]?.id);
+  await clickThreeObject(page, 'screenPointForAgent', agentId);
+  await deployAgentThroughVisibleThreeControls(page, agentId);
+  await page.locator('#mission-console [data-action="mission-planning-tool"][data-tool="placeWaypoint"]').click();
+  await expect.poll(() => page.evaluate(() => window.ANCHOR_MISSION_RENDER_DEBUG?.activePlanningToolId)).toBe('placeWaypoint');
+
+  const invalidCell = await findHardInvalidWaypointCell(page);
+  const invalidPoint = await threeGridPoint(page, invalidCell.x, invalidCell.y);
+  await page.mouse.move(invalidPoint.x + 10, invalidPoint.y + 10);
+  await page.mouse.move(invalidPoint.x, invalidPoint.y, { steps: 4 });
+  await expect.poll(() => page.evaluate(() => window.ANCHOR_MISSION_RENDER_DEBUG?.waypointCandidateStatus)).toBe('INVALID');
+  await expect.poll(() => page.evaluate(() => Boolean(window.ANCHOR_MISSION_RENDER_DEBUG?.waypointPrimaryMessage))).toBe(true);
+  const beforeInvalid = await totalWaypointCount(page);
+  await page.mouse.click(invalidPoint.x, invalidPoint.y);
+  await expectWaypointCount(page, beforeInvalid);
+  await expect.poll(() => page.evaluate(() => window.ANCHOR_MISSION_RENDER_DEBUG?.lastWaypointPipelineStatus)).toBe('rejected');
+  await expectDebugWaypointSynchronization(page, beforeInvalid);
+
+  const normalCell = await findWaypointPlacementCell(page, { requireNoWarnings: true });
+  expect(normalCell).toBeTruthy();
+  await clickThreeGridCell(page, normalCell.x, normalCell.y);
+  await expectWaypointCount(page, beforeInvalid + 1);
+
+  let overrunCell = await findWaypointPlacementCell(page, { warningCode: 'BEYOND_MISSION_WINDOW' });
+  for (let attempts = 0; !overrunCell && attempts < 6; attempts += 1) {
+    const filler = await findWaypointPlacementCell(page, { preferFar: true });
+    expect(filler).toBeTruthy();
+    await clickThreeGridCell(page, filler.x, filler.y);
+    await expect.poll(() => totalWaypointCount(page)).toBeGreaterThan(beforeInvalid + 1 + attempts);
+    overrunCell = await findWaypointPlacementCell(page, { warningCode: 'BEYOND_MISSION_WINDOW' });
+  }
+  expect(overrunCell).toBeTruthy();
+  const overrunPoint = await threeGridPoint(page, overrunCell.x, overrunCell.y);
+  await page.mouse.move(overrunPoint.x, overrunPoint.y);
+  await expect.poll(() => page.evaluate(() => ({
+    status: window.ANCHOR_MISSION_RENDER_DEBUG?.waypointCandidateStatus,
+    commitAllowed: window.ANCHOR_MISSION_RENDER_DEBUG?.waypointCommitAllowed,
+    beyond: window.ANCHOR_MISSION_RENDER_DEBUG?.waypointBeyondMissionWindow,
+    warnings: window.ANCHOR_MISSION_RENDER_DEBUG?.waypointWarnings ?? []
+  }))).toMatchObject({ status: 'VALID_WITH_WARNINGS', commitAllowed: true, beyond: true });
+
+  const beforeOverrun = await totalWaypointCount(page);
+  await page.mouse.click(overrunPoint.x, overrunPoint.y);
+  await expectWaypointCount(page, beforeOverrun + 1);
+  const overrunWaypoint = await page.evaluate(() => {
+    const waypoint = window.anchorGame.state.plan.agentPlans[0].waypoints.at(-1);
+    return {
+      id: waypoint.id,
+      warningCodes: waypoint.warningCodes ?? [],
+      warnings: waypoint.warnings ?? [],
+      runtimeBehavior: waypoint.runtimeBehavior,
+      estimatedArrivalTime: waypoint.estimatedArrivalTime,
+      missionDurationAtPlanning: waypoint.missionDurationAtPlanning,
+      likelyReachedWithinWindow: waypoint.likelyReachedWithinWindow
+    };
+  });
+  expect(overrunWaypoint.warningCodes).toContain('BEYOND_MISSION_WINDOW');
+  expect(overrunWaypoint.runtimeBehavior).toBe('truncate_at_mission_end');
+  expect(overrunWaypoint.likelyReachedWithinWindow).toBe(false);
+  await expect(page.locator('#waypoint-timeline')).toContainText(/Mission-window|Likely not reached|MISSION WINDOW/i);
+
+  await page.locator('#mission-console [data-action="execute"]').click();
+  await expect.poll(() => page.evaluate(() => window.anchorGame.phaser.scene.getScene('SimulationScene')?.sys.isActive?.() ?? false), { timeout: 15000 }).toBe(true);
+  await page.locator('#mission-console [data-action="finish"]').click();
+  await expect.poll(() => page.evaluate(() => window.ANCHOR_EXECUTION_DEBUG?.resultAvailable === true), { timeout: 30000 }).toBe(true);
+  const terminal = await page.evaluate((waypointId) => {
+    const scene = window.anchorGame.phaser.scene.getScene('SimulationScene');
+    const agent = scene.engine?.agents?.[0];
+    const duration = Number(window.anchorGame.state.level?.world?.time?.duration ?? 0);
+    const completed = (agent?.completedWaypoints ?? []).some((item) => item.waypointId === waypointId);
+    const missed = (agent?.missedWaypoints ?? []).find((item) => item.waypointId === waypointId) ?? null;
+    return {
+      time: scene.engine?.t ?? 0,
+      duration,
+      completed,
+      missedReason: missed?.reason ?? null,
+      unreachedTimeOverrunWaypointCount: window.ANCHOR_SIMULATION_RENDER_DEBUG?.unreachedTimeOverrunWaypointCount ?? 0,
+      missedWaypoints: window.anchorGame.state.result?.summary?.missedWaypoints ?? 0
+    };
+  }, overrunWaypoint.id);
+  expect(terminal.time).toBeLessThanOrEqual(terminal.duration + 1e-6);
+  expect(terminal.completed).toBe(false);
+  expect(terminal.missedReason).toBe('missionTimeExpired');
+  expect(terminal.unreachedTimeOverrunWaypointCount).toBeGreaterThan(0);
+
+  await page.locator('#mission-console [data-action="debrief"]').click();
+  await expect.poll(() => page.evaluate(() => window.anchorGame.phaser.scene.getScene('DebriefScene')?.sys.isActive?.() ?? false), { timeout: 15000 }).toBe(true);
+  await expect(page.locator('#debrief-root')).toContainText(/missed|Mission time|expired/i);
+  expect(browserErrors.unexpected()).toEqual([]);
+});
 test('Legacy and Three Simulation Produce Identical Canonical Result', async ({ browser }) => {
   const legacyPage = await browser.newPage();
   const threePage = await browser.newPage();
@@ -3800,6 +3986,141 @@ test('legacy saved level registry scene still opens', async ({ page }) => {
   await expect(page.locator('#saved-level-id-input')).toBeVisible();
 });
 
+async function collectSceneIsolationSnapshot(page) {
+  return page.evaluate(() => {
+    const scene = window.anchorGame?.phaser?.scene;
+    const debug = window.ANCHOR_SCENE_ISOLATION_DEBUG ?? {};
+    const text = (id) => document.getElementById(id)?.textContent?.replace(/\s+/g, ' ').trim() ?? '';
+    return {
+      mainMenuActive: scene?.getScene('MainMenuScene')?.sys?.isActive?.() ?? false,
+      planningActive: scene?.getScene('MissionWorkspaceScene')?.sys?.isActive?.() ?? false,
+      simulationActive: scene?.getScene('SimulationScene')?.sys?.isActive?.() ?? false,
+      mainMenuVisible: Boolean(document.querySelector('#main-menu-hub')),
+      threeCanvasCount: document.querySelectorAll('.three-mission-world-canvas').length,
+      threeHostCount: document.querySelectorAll('.three-mission-world-host').length,
+      planningOverlayCount: document.querySelectorAll('.three-mission-tool-overlay').length,
+      simulationOverlayCount: document.querySelectorAll('.three-simulation-overlay, [data-simulation-overlay]').length,
+      timelineText: text('bottom-timeline'),
+      performanceText: text('agent-performance-hud'),
+      rightPanelText: text('waypoint-timeline'),
+      debugIsolationStatus: debug.isolationStatus ?? null,
+      debugActiveProductionSceneCount: debug.activeProductionSceneCount ?? null,
+      debugThreeMissionCanvasCount: debug.threeMissionCanvasCount ?? null,
+      debugThreeMissionRendererCount: debug.threeMissionRendererCount ?? null,
+      debugThreeAnimationLoopCount: debug.threeAnimationLoopCount ?? null,
+      debugPlanningOverlayCount: debug.planningOverlayCount ?? null,
+      debugSimulationOverlayCount: debug.simulationOverlayCount ?? null
+    };
+  });
+}
+
+async function expectMainMenuSceneIsolation(page) {
+  await expect(page.locator('#main-menu-hub')).toBeVisible({ timeout: 15000 });
+  await expect.poll(() => collectSceneIsolationSnapshot(page), { timeout: 15000 }).toMatchObject({
+    mainMenuActive: true,
+    mainMenuVisible: true,
+    threeCanvasCount: 0,
+    threeHostCount: 0,
+    planningOverlayCount: 0,
+    simulationOverlayCount: 0,
+    debugIsolationStatus: 'PASS',
+    debugActiveProductionSceneCount: 1,
+    debugThreeMissionCanvasCount: 0,
+    debugThreeMissionRendererCount: 0,
+    debugThreeAnimationLoopCount: 0,
+    debugPlanningOverlayCount: 0,
+    debugSimulationOverlayCount: 0
+  });
+  const snapshot = await collectSceneIsolationSnapshot(page);
+  expect(snapshot.timelineText).not.toMatch(/Mission Waypoints|Transport|Play|Step|Pause/i);
+  expect(snapshot.performanceText).not.toMatch(/Mission Performance|Battery|Energy|Samples|Glider/i);
+  expect(snapshot.rightPanelText).not.toMatch(/Mission Waypoints|Waypoint \d|MISSION WINDOW|Glider/i);
+}
+
+async function expectSingleThreeMissionRenderer(page, phase) {
+  await expect.poll(() => page.evaluate((expectedPhase) => {
+    const missionDebug = window.ANCHOR_MISSION_RENDER_DEBUG ?? {};
+    const simulationDebug = window.ANCHOR_SIMULATION_RENDER_DEBUG ?? {};
+    const phaseDebug = expectedPhase === 'simulation' ? simulationDebug : missionDebug;
+    return {
+      canvasCount: document.querySelectorAll('.three-mission-world-canvas').length,
+      hostCount: document.querySelectorAll('.three-mission-world-host').length,
+      mounted: phaseDebug.threeMounted === true,
+      backend: phaseDebug.activeBackend ?? null,
+      renderLoopCount: expectedPhase === 'simulation'
+        ? (simulationDebug.threeRenderLoopCount ?? (phaseDebug.threeMounted ? 1 : 0))
+        : (missionDebug.threeRenderLoopCount ?? (phaseDebug.threeMounted ? 1 : 0))
+    };
+  }, phase), { timeout: 15000 }).toMatchObject({
+    canvasCount: 1,
+    hostCount: 1,
+    mounted: true,
+    backend: 'threeMission3d'
+  });
+}
+
+async function findHardInvalidWaypointCell(page) {
+  return page.evaluate(() => {
+    const level = window.anchorGame.state.level;
+    const fallback = { x: 0, y: 0 };
+    for (let y = 0; y < level.world.grid.height; y += 1) {
+      for (let x = 0; x < level.world.grid.width; x += 1) {
+        if (!level.layers.terrain?.[y]?.[x]) continue;
+        const point = window.ANCHOR_MISSION_RENDER_TEST_API?.screenPointForGridCell?.(x, y);
+        if (point?.visible !== false && point?.x >= 0 && point?.y >= 0 && point.x <= window.innerWidth && point.y <= window.innerHeight) {
+          return { x, y };
+        }
+      }
+    }
+    return fallback;
+  });
+}
+
+async function findWaypointPlacementCell(page, { warningCode = null, requireNoWarnings = false, preferFar = false } = {}) {
+  return page.evaluate(async ({ warningCode, requireNoWarnings, preferFar }) => {
+    const { canPlaceWaypoint } = await import('./src/core/planning/WaypointPlacementGuard.js');
+    const state = window.anchorGame.state;
+    const agentId = state.selectedAgentId ?? state.mission?.agents?.[0]?.id;
+    const plan = state.plan?.agentPlans?.find((candidate) => candidate.agentId === agentId);
+    const existing = new Set((plan?.waypoints ?? []).map((waypoint) => `${Math.round(waypoint.x)},${Math.round(waypoint.y)}`));
+    const start = plan?.selectedStart ?? state.mission?.agents?.find((agent) => agent.id === agentId)?.deployment?.selectedStart ?? state.mission?.agents?.[0]?.start ?? { x: 0, y: 0 };
+    const last = (plan?.waypoints ?? []).at(-1) ?? start;
+    const cells = [];
+    const grid = state.level?.world?.grid ?? {};
+    for (let y = 0; y < Number(grid.height ?? 0); y += 1) {
+      for (let x = 0; x < Number(grid.width ?? 0); x += 1) {
+        if (existing.has(`${x},${y}`)) continue;
+        const placement = canPlaceWaypoint(state, agentId, { x, y, action: 'sample' });
+        if (!placement.allowed) continue;
+        const warningCodes = placement.estimate?.warningCodes ?? [];
+        const warnings = placement.estimate?.warnings ?? [];
+        if (warningCode && !warningCodes.includes(warningCode)) continue;
+        if (requireNoWarnings && (warningCodes.length || warnings.length)) continue;
+        cells.push({
+          x,
+          y,
+          distance: Math.hypot(Number(x) - Number(last?.x ?? 0), Number(y) - Number(last?.y ?? 0)),
+          eta: Number(placement.estimate?.estimatedArrivalTime ?? placement.estimate?.arrivalTime ?? 0)
+        });
+      }
+    }
+    cells.sort((a, b) => preferFar || warningCode ? (b.eta - a.eta) || (b.distance - a.distance) : (a.distance - b.distance));
+    return cells[0] ? { x: cells[0].x, y: cells[0].y } : null;
+  }, { warningCode, requireNoWarnings, preferFar });
+}
+
+function isFiniteQuaternion(quaternion) {
+  return Boolean(quaternion)
+    && Number.isFinite(quaternion.x)
+    && Number.isFinite(quaternion.y)
+    && Number.isFinite(quaternion.z)
+    && Number.isFinite(quaternion.w);
+}
+
+function quaternionDelta(a, b) {
+  if (!isFiniteQuaternion(a) || !isFiniteQuaternion(b)) return 0;
+  return Math.hypot(a.x - b.x, a.y - b.y, a.z - b.z, a.w - b.w);
+}
 async function clickCell(page, x, y) {
   await page.evaluate(() => {
     if (window.ANCHOR_MISSION_RENDER_DEBUG?.activeBackend === 'threeMission3d') {

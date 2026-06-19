@@ -388,6 +388,8 @@ function normalizeWaypoint(waypoint, agentId, index, level = null) {
   if (waypoint.targetId) normalized.targetId = String(waypoint.targetId);
   for (const key of [
     'estimatedArrivalTime',
+    'missionDurationAtPlanning',
+    'energyMargin',
     'segmentEnergy',
     'cumulativeEnergy',
     'remainingFuelEstimate',
@@ -417,6 +419,11 @@ function normalizeWaypoint(waypoint, agentId, index, level = null) {
     };
   }
   if (Array.isArray(waypoint.warnings)) normalized.warnings = waypoint.warnings.map((warning) => String(warning));
+  if (Array.isArray(waypoint.warningCodes)) normalized.warningCodes = waypoint.warningCodes.map((warning) => String(warning));
+  if (waypoint.likelyReachedWithinWindow !== undefined) normalized.likelyReachedWithinWindow = waypoint.likelyReachedWithinWindow !== false;
+  if (waypoint.runtimeBehavior) normalized.runtimeBehavior = String(waypoint.runtimeBehavior);
+  if (waypoint.riskSummary && typeof waypoint.riskSummary === 'object') normalized.riskSummary = { ...waypoint.riskSummary };
+  if (waypoint.planningDiagnostics && typeof waypoint.planningDiagnostics === 'object') normalized.planningDiagnostics = { ...waypoint.planningDiagnostics };
   return normalized;
 }
 

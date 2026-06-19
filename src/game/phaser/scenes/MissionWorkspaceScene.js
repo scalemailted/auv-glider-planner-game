@@ -150,6 +150,9 @@ import {
   validateMissionPlanningToolState
 } from '../../../core/rendering/MissionPlanningToolState.js';
 import { gridCellToWorld } from '../../../core/rendering/MissionWorldCoordinates.js';
+import { compareMissionLayerCoordinates, missionLayerAlignmentSummary } from '../../../core/rendering/MissionLayerAlignment.js';
+import { createThreeMissionSceneLifecycle, registerThreeMissionSceneResource, disposeThreeMissionSceneLifecycle, threeMissionSceneLifecycleSummary } from '../../three/ThreeMissionSceneLifecycle.js';
+import { publishSceneIsolationDebug } from '../../../ui/MissionShellReset.js';
 import {
   getDeploymentZonesForAgent,
   getSelectedStart,
@@ -197,10 +200,16 @@ export class MissionWorkspaceScene extends PhaserScene {
     this.executeLaunchInProgress = false;
     this.lastExecuteControlDispatch = null;
     this.executionTransaction = null;
+    this.sceneCleanupDisposed = false;
+    this.threeSceneLifecycle = null;
+    this.sceneLifecycleDisposalCount = 0;
   }
 
   create() {
     this.app = this.sys.game.anchorApp;
+    this.bindThreeSceneLifecycleEvents();
+    this.threeSceneLifecycle = createThreeMissionSceneLifecycle({ sceneKey: 'MissionWorkspaceScene' });
+    this.sceneCleanupDisposed = false;
     this.app.setSceneLabel('Mission Workspace');
     this.app.state.mode = 'planning';
     this.app.elements.shell?.classList.add('planning-workspace');
@@ -252,11 +261,13 @@ export class MissionWorkspaceScene extends PhaserScene {
       globalThis.requestAnimationFrame?.(() => this.refreshMap());
     };
     globalThis.addEventListener?.('resize', this.onViewportResize);
+    registerThreeMissionSceneResource(this.threeSceneLifecycle, 'eventListener', { target: globalThis, type: 'resize', listener: this.onViewportResize });
     this.resizeObserver = globalThis.ResizeObserver
       ? new globalThis.ResizeObserver(this.onViewportResize)
       : null;
     if (this.resizeObserver && this.app.elements.viewportShell) {
       this.resizeObserver.observe(this.app.elements.viewportShell);
+      registerThreeMissionSceneResource(this.threeSceneLifecycle, 'resizeObserver', this.resizeObserver);
     }
     this.focusManager = new FocusManager(this);
     this.focusManager.setActions([
@@ -281,23 +292,60 @@ export class MissionWorkspaceScene extends PhaserScene {
     }
   }
 
+  bindThreeSceneLifecycleEvents() {
+    if (this.sceneLifecycleEventsBound) return;
+    this.sceneLifecycleEventsBound = true;
+    this.events?.once?.('shutdown', () => this.cleanupMissionWorkspaceScene('shutdown-event'));
+    this.events?.once?.('destroy', () => this.cleanupMissionWorkspaceScene('destroy-event'));
+  }
+
   shutdown() {
-    this.app.mapHoverTooltip?.hide();
-    this.input.off('pointerdown', this.onPointerDown, this);
-    this.input.off('pointermove', this.onPointerMove, this);
-    this.input.off('pointerup', this.onPointerUp, this);
+    this.cleanupMissionWorkspaceScene('shutdown-method');
+  }
+
+  cleanupMissionWorkspaceScene(reason = 'cleanup') {
+    if (this.sceneCleanupDisposed) return;
+    this.sceneCleanupDisposed = true;
+    this.sceneLifecycleDisposalCount = Number(this.sceneLifecycleDisposalCount ?? 0) + 1;
+    this.app?.mapHoverTooltip?.hide?.();
+    this.disableThreeInteractionSilently();
+    this.input?.off?.('pointerdown', this.onPointerDown, this);
+    this.input?.off?.('pointermove', this.onPointerMove, this);
+    this.input?.off?.('pointerup', this.onPointerUp, this);
     globalThis.removeEventListener?.('resize', this.onViewportResize);
-    this.resizeObserver?.disconnect();
-    this.input.off('wheel', this.onWheelZoom, this);
-    this.input.keyboard?.off('keydown', this.onCameraKeyDown, this);
-    this.clearPlanningOverlayObjects();
-    this.cameraObjects.forEach((object) => object.destroy?.());
+    this.resizeObserver?.disconnect?.();
+    this.input?.off?.('wheel', this.onWheelZoom, this);
+    this.input?.keyboard?.off?.('keydown', this.onCameraKeyDown, this);
+    this.clearPlanningOverlayObjects?.();
+    this.cameraObjects?.forEach?.((object) => object.destroy?.());
     this.cameraObjects = [];
-    this.hud?.destroy();
-    this.executeHotspot?.destroy();
+    this.hud?.destroy?.();
+    this.hud = null;
+    this.executeHotspot?.destroy?.();
+    this.executeHotspot = null;
     this.disposeThreeMissionRenderer();
-    this.modal?.destroy();
-    this.fileBridge?.destroy();
+    this.modal?.destroy?.();
+    this.modal = null;
+    this.fileBridge?.destroy?.();
+    this.fileBridge = null;
+    clearPlanningOverlayState(this.app?.state);
+    if (this.app?.state?.ui?.threeMissionInteraction) {
+      this.app.state.ui.threeMissionInteraction.dragPreview = null;
+      this.app.state.ui.threeMissionInteraction.routePreview = null;
+      this.app.state.ui.threeMissionInteraction.placementValidation = null;
+      this.app.state.ui.threeMissionInteraction.waypointPlacementActive = false;
+    }
+    disposeThreeMissionSceneLifecycle(this.threeSceneLifecycle, reason);
+    publishSceneIsolationDebug(this.app, {
+      reason,
+      disposedRendererCount: this.sceneLifecycleDisposalCount,
+      lifecycleSummary: threeMissionSceneLifecycleSummary(this.threeSceneLifecycle)
+    });
+  }
+
+  goMainMenu(reason = 'mission-workspace-menu') {
+    this.cleanupMissionWorkspaceScene(reason);
+    this.scene.start('MainMenuScene');
   }
 
   update() {
@@ -352,7 +400,7 @@ export class MissionWorkspaceScene extends PhaserScene {
       rerunSamePlan: () => this.rerunSamePlan(),
       rerunWithNewSeed: () => this.rerunWithNewSeed(),
       toggleGuidance: () => this.toggleGuidance(),
-      mainMenu: () => this.scene.start('MainMenuScene')
+      mainMenu: () => this.goMainMenu('mission-console-main-menu')
     });
     this.hud.handlers.remove = (index) => {
       removeWaypoint(this.app.state.plan, this.app.state.selectedAgentId, index);
@@ -977,6 +1025,9 @@ export class MissionWorkspaceScene extends PhaserScene {
           camera: { preset: this.app.state.ui?.threeMissionCameraPreset ?? 'obliqueMission' },
           layerVisibility: this.threeLayerVisibilityPatch()
         });
+        registerThreeMissionSceneResource(this.threeSceneLifecycle, 'renderer', this.threeMissionRenderer);
+        registerThreeMissionSceneResource(this.threeSceneLifecycle, 'cameraController', this.threeMissionRenderer.cameraController);
+        registerThreeMissionSceneResource(this.threeSceneLifecycle, 'canvas', this.threeMissionRenderer.renderer?.domElement);
       }
       this.ensureThreeInteractionController();
       const rect = container.getBoundingClientRect?.();
@@ -1053,6 +1104,7 @@ export class MissionWorkspaceScene extends PhaserScene {
         emitIntent: (intent) => handleMissionWorldInteractionIntent(this.threeInteractionBridge, intent),
         options: { interactionMode: this.app.state.ui?.threeMissionInteractionMode ?? 'selectInspect', cameraController: this.threeMissionRenderer.cameraController }
       });
+      registerThreeMissionSceneResource(this.threeSceneLifecycle, 'interactionController', this.threeInteractionController);
     }
     setThreeMissionInteractionEnabled(this.threeInteractionController, this.getMissionRendererBackend() === 'threeMission3d');
     const mode = this.app.state.ui?.threeMissionInteractionMode ?? 'selectInspect';
@@ -1060,7 +1112,48 @@ export class MissionWorkspaceScene extends PhaserScene {
     return this.threeInteractionController;
   }
 
+  refreshCanonicalPlanningGuidanceForThree() {
+    this.app.state.ui ??= {};
+    const markerMode = this.app.state.ui.placementMode === 'marker';
+    const guidanceSettings = {
+      mode: markerMode ? 'marker' : 'planning',
+      showGuidance: markerMode ? false : this.app.state.ui.showGuidance,
+      showDrift: markerMode ? false : this.app.state.ui.showDriftCone,
+      showReachable: markerMode ? false : this.app.state.ui.showReachableArea,
+      showSurfacing: this.app.state.ui.showPredictedSurfacing,
+      showEnergy: markerMode ? false : this.app.state.ui.showEnergyPreview
+    };
+    if (!shouldRenderPlanningGuidance({
+      mode: 'planning',
+      selectedAgentId: this.app.state.selectedAgentId,
+      planningAnchor: this.app.state.ui.planningAnchor,
+      guidanceSettings,
+      surfaceDecision: this.app.state.surfaceDecision
+    })) {
+      this.app.state.ui.overlayDebug = null;
+      return null;
+    }
+    const guidance = buildPlanningGuidance({
+      level: this.app.state.level,
+      mission: this.app.state.mission,
+      plan: this.app.state.plan,
+      selectedAgentId: this.app.state.selectedAgentId,
+      selectedWaypoint: this.app.state.ui.selectedWaypoint,
+      selectedWindow: this.app.state.selectedWindow,
+      surfacedAgents: this.app.state.surfacedAgents,
+      hoverCell: this.app.state.ui.hoverCell,
+      time: this.app.state.planningTime,
+      challengeMode: this.app.state.challengeMode,
+      revealTruth: this.app.state.ui.revealTruth,
+      forecastMemberId: this.app.state.ui.forecastMemberId,
+      planningAnchor: this.app.state.ui.planningAnchor,
+      settings: guidanceSettings
+    });
+    this.app.state.ui.overlayDebug = guidance;
+    return guidance;
+  }
   buildMissionWorldViewModelForScene() {
+    this.refreshCanonicalPlanningGuidanceForThree();
     const input = missionWorldRenderInputFromWorkspace(this, {
       visibilityTier: this.app.state.challengeMode === 'forecast' && this.app.state.ui?.revealTruth ? 'oracle' : 'fair',
       displaySettings: {
@@ -1182,9 +1275,10 @@ export class MissionWorkspaceScene extends PhaserScene {
     const interactionVm = viewModel?.interactionViewModel ?? {};
     const hoveredEntity = interactionVm.hoveredEntity ?? interactionState.hoveredEntity ?? null;
     const hoveredCell = interactionVm.hoveredCell ?? interactionState.hoveredCell ?? null;
+    const rawPlacementValidation = interactionState.placementValidation ?? null;
     const placementValidation = interactionVm.placementValid !== undefined
-      ? { valid: interactionVm.placementValid, message: interactionVm.placementReason ?? null }
-      : interactionState.placementValidation ?? null;
+      ? { ...(rawPlacementValidation ?? {}), valid: interactionVm.placementValid, message: interactionVm.placementReason ?? rawPlacementValidation?.message ?? null }
+      : rawPlacementValidation;
     const dragPreview = interactionVm.dragPreview ?? interactionState.dragPreview ?? null;
     const routePreview = interactionVm.routePreview ?? interactionState.routePreview ?? null;
     const lastInteractionIntent = interactionState.lastIntent ?? null;
@@ -1193,6 +1287,17 @@ export class MissionWorkspaceScene extends PhaserScene {
     const planningToolStateMismatches = this.planningToolStateMismatches();
     const visibleToolButtonId = this.visiblePlanningToolButtonId();
     const selectedAgent = this.app.state.mission?.agents?.find((candidate) => candidate.id === this.app.state.selectedAgentId);
+    const selectedAgentIdForDebug = viewModel?.selectedAgentId ?? this.app.state.selectedAgentId ?? null;
+    const selectedPoseSummary = (rendererSummary?.gliderPoseSummaries ?? []).find((pose) => pose.agentId === selectedAgentIdForDebug) ?? rendererSummary?.gliderPoseSummaries?.[0] ?? null;
+    const selectedGliderMesh = renderer?.groups?.gliderGroup?.children?.find?.((mesh) => mesh.userData?.agentId === selectedAgentIdForDebug) ?? null;
+    const guidanceSummary = rendererSummary?.guidanceSummary ?? {};
+    const alignmentReport = viewModel?.coordinateSystem ? compareMissionLayerCoordinates({ viewModel }) : null;
+    const alignmentSummary = alignmentReport ? missionLayerAlignmentSummary(alignmentReport) : null;
+    const hoveredExpectedWorld = hoveredCell && viewModel?.coordinateSystem ? gridCellToWorld(viewModel.coordinateSystem, hoveredCell.x, hoveredCell.y, 0) : null;
+    const placementWarnings = placementValidation?.warnings ?? interactionState.placementValidation?.warnings ?? [];
+    const placementWarningCodes = placementValidation?.warningCodes ?? interactionState.placementValidation?.warningCodes ?? [];
+    const waypointBeyondMissionWindow = placementWarningCodes.includes('BEYOND_MISSION_WINDOW');
+    const waypointCandidateStatus = placementValidation?.valid === false ? 'INVALID' : placementWarnings.length ? 'VALID_WITH_WARNINGS' : placementValidation ? 'VALID' : null;
     globalThis.ANCHOR_MISSION_RENDER_DEBUG = {
       version: 'gfx-r3b',
       activeBackend: activeBackend ?? this.getMissionRendererBackend(),
@@ -1211,7 +1316,29 @@ export class MissionWorkspaceScene extends PhaserScene {
       renderedFieldTimeSeconds: viewModel?.scalarFieldLayer?.timeSeconds ?? null,
       renderedCurrentTimeSeconds: viewModel?.vectorFieldLayer?.timeSeconds ?? null,
       activePriorityTargetCount: summary.priorityTargetCount ?? 0,
-      selectedAgentId: viewModel?.selectedAgentId ?? this.app.state.selectedAgentId ?? null,
+      selectedAgentId: selectedAgentIdForDebug,
+      selectedAgentHeadingRadians: selectedPoseSummary?.headingRadians ?? null,
+      selectedAgentCourseRadians: selectedPoseSummary?.courseOverGroundRadians ?? null,
+      selectedAgentPitchRadians: selectedPoseSummary?.pitchRadians ?? null,
+      selectedAgentOrientationSource: selectedPoseSummary?.orientationSource ?? null,
+      selectedAgentCourseSource: selectedPoseSummary?.courseSource ?? null,
+      selectedAgentRenderedQuaternion: selectedGliderMesh?.quaternion ? { x: selectedGliderMesh.quaternion.x, y: selectedGliderMesh.quaternion.y, z: selectedGliderMesh.quaternion.z, w: selectedGliderMesh.quaternion.w } : null,
+      selectedAgentPoseWarnings: selectedPoseSummary?.warnings ?? [],
+      guidanceAvailable: guidanceSummary.guidanceAvailable === true,
+      guidanceSource: guidanceSummary.guidanceSource ?? null,
+      guidanceConeVisible: guidanceSummary.guidanceConeVisible === true,
+      guidanceConeOrigin: guidanceSummary.guidanceConeOrigin ?? null,
+      guidanceConeDirection: guidanceSummary.guidanceConeDirection ?? null,
+      guidanceConeAngularWidth: guidanceSummary.guidanceConeAngularWidth ?? null,
+      guidanceConeRadius: guidanceSummary.guidanceConeRadius ?? null,
+      guidanceRiskStatus: guidanceSummary.guidanceRiskStatus ?? null,
+      activeGridTransformVersion: viewModel?.coordinateSystem?.version ?? null,
+      hoveredCellExpectedWorldCenter: hoveredExpectedWorld,
+      hoveredCellRenderedWorldCenter: hoveredExpectedWorld,
+      hoveredCellAlignmentDelta: 0,
+      layerAlignmentStatus: alignmentSummary?.status ?? null,
+      maxLayerAlignmentDelta: alignmentSummary?.maxHorizontalDelta ?? null,
+      misalignedLayerIds: alignmentSummary?.misalignedLayerIds ?? [],
       selectedWaypointId: viewModel?.selectedWaypointId ?? null,
       selectedMarkerId: viewModel?.selectedMarkerId ?? null,
       selectedPriorityTargetId: viewModel?.selectedPriorityTargetId ?? null,
@@ -1334,6 +1461,14 @@ export class MissionWorkspaceScene extends PhaserScene {
       placementPreviewActive: placementValidation != null,
       placementPreviewValid: placementValidation?.valid ?? null,
       placementPreviewReason: placementValidation?.message ?? placementValidation?.reason ?? null,
+      waypointCandidateStatus,
+      waypointCommitAllowed: placementValidation?.commitAllowed ?? null,
+      waypointHardErrors: placementValidation?.hardErrors ?? [],
+      waypointWarnings: placementWarnings,
+      waypointPrimaryMessage: placementValidation?.message ?? placementValidation?.reason ?? null,
+      waypointEstimatedArrivalTime: placementValidation?.estimate?.estimatedArrivalTime ?? placementValidation?.estimate?.arrivalTime ?? null,
+      missionDurationSeconds: Number(this.app.state.level?.world?.time?.duration ?? 0),
+      waypointBeyondMissionWindow,
       waypointDragActive: dragPreview?.active === true,
       dragWaypointId: dragPreview?.waypointId ?? null,
       dragPreviewCell: dragPreview?.gridCell ?? dragPreview?.to ?? null,
@@ -2162,10 +2297,30 @@ export class MissionWorkspaceScene extends PhaserScene {
     if (!cell) return null;
     if (intent.interactionMode !== 'placeWaypoint' && intent.interactionMode !== 'editWaypoint') return null;
     const validity = isValidWaypointCell(this.app.state.level, cell.x, cell.y);
-    if (!validity.valid && validity.block) return { valid: false, allowed: false, reason: 'blockedTerrain', message: validity.message, cell };
+    if (!validity.valid && validity.block) return { valid: false, allowed: false, commitAllowed: false, reason: 'blockedTerrain', message: validity.message, cell, hardErrors: [validity.message] };
     const disabledReason = getPlacementDisabledReason(this.app.state, this.app.state.selectedAgentId);
-    if (disabledReason) return { valid: false, allowed: false, reason: 'placementDisabled', message: disabledReason, cell };
-    return { valid: true, allowed: true, reason: validity.warning ? 'warning' : null, message: validity.warning ? validity.message : 'Valid placement cell.', cell };
+    if (disabledReason) return { valid: false, allowed: false, commitAllowed: false, reason: 'placementDisabled', message: disabledReason, cell, hardErrors: [disabledReason] };
+    const placement = canPlaceWaypoint(this.app.state, this.app.state.selectedAgentId, { x: cell.x, y: cell.y, action: 'sample' });
+    if (!placement.allowed) {
+      const message = placement.message || 'Waypoint placement is not available for this route.';
+      return { valid: false, allowed: false, commitAllowed: false, reason: placement.reason ?? 'routeRejected', message, cell, hardErrors: [message], estimate: placement.estimate ?? null };
+    }
+    const warnings = [...(validity.warning ? [validity.message] : []), ...(placement.estimate?.warnings ?? [])].filter(Boolean);
+    const warningCodes = placement.estimate?.warningCodes ?? [];
+    const beyondMissionWindow = warningCodes.includes('BEYOND_MISSION_WINDOW');
+    return {
+      valid: true,
+      allowed: true,
+      commitAllowed: true,
+      status: warnings.length ? 'VALID_WITH_WARNINGS' : 'VALID',
+      reason: warnings.length ? (beyondMissionWindow ? 'missionWindowWarning' : 'warning') : null,
+      message: warnings[0] ?? 'Valid placement cell.',
+      cell,
+      warnings,
+      warningCodes,
+      estimate: placement.estimate ?? null,
+      beyondMissionWindow
+    };
   }
 
   setThreePlacementValidation(validation) {
@@ -2281,9 +2436,20 @@ export class MissionWorkspaceScene extends PhaserScene {
     if (placement.estimate?.warnings?.length) {
       this.app.toast(placement.estimate.warnings[0], 'warning');
     }
+    const warningCodes = placement.estimate?.warningCodes ?? [];
+    const beyondMissionWindow = warningCodes.includes('BEYOND_MISSION_WINDOW');
     const waypoint = addWaypoint(this.app.state.plan, this.app.state.selectedAgentId, {
       window: placement.estimate.window,
       t: placement.estimate.arrivalTime,
+      estimatedArrivalTime: placement.estimate.arrivalTime,
+      missionDurationAtPlanning: placement.estimate.missionDurationAtPlanning ?? placement.estimate.missionDuration,
+      likelyReachedWithinWindow: placement.estimate.likelyReachedWithinWindow !== false,
+      warningCodes,
+      warnings: placement.estimate?.warnings ?? [],
+      validity: beyondMissionWindow ? { valid: true, reasons: ['waypoint_exceeds_mission_duration'] } : { valid: true, reasons: [] },
+      runtimeBehavior: beyondMissionWindow ? 'truncate_at_mission_end' : undefined,
+      riskSummary: placement.estimate?.segment?.riskSummary ?? null,
+      energyMargin: placement.estimate?.remainingFuel,
       x: targetX,
       y: targetY,
       kind: 'navigation',
@@ -2304,6 +2470,9 @@ export class MissionWorkspaceScene extends PhaserScene {
       this.app.toast(message, 'warning');
     } else if (waypoint?.warnings?.some((warning) => String(warning).toLowerCase().includes('surfacing'))) {
       message = 'Waypoint is likely beyond the next surfacing window.';
+      this.app.toast(message, 'warning');
+    } else if (waypoint?.warningCodes?.includes('BEYOND_MISSION_WINDOW')) {
+      message = 'Waypoint accepted with mission-window warning; it may remain pending or missed at mission end.';
       this.app.toast(message, 'warning');
     } else if (absorbedMarker) {
       message = 'Marker converted to waypoint.';

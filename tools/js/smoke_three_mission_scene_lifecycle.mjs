@@ -1,0 +1,26 @@
+import assert from 'node:assert/strict';
+import { createThreeMissionSceneLifecycle, registerThreeMissionSceneResource, disposeThreeMissionSceneLifecycle, threeMissionSceneLifecycleSummary } from '../../src/game/three/ThreeMissionSceneLifecycle.js';
+
+let removed = false;
+let listenerRemoved = false;
+let disconnected = false;
+let disposed = false;
+const lifecycle = createThreeMissionSceneLifecycle({ sceneKey: 'SmokeScene' });
+const canvas = { remove: () => { removed = true; } };
+const listener = () => {};
+registerThreeMissionSceneResource(lifecycle, 'canvas', canvas);
+registerThreeMissionSceneResource(lifecycle, 'eventListener', { target: { removeEventListener: () => { listenerRemoved = true; } }, type: 'resize', listener });
+registerThreeMissionSceneResource(lifecycle, 'resizeObserver', { disconnect: () => { disconnected = true; } });
+registerThreeMissionSceneResource(lifecycle, 'renderer', { dispose: () => { disposed = true; } });
+registerThreeMissionSceneResource(lifecycle, 'renderer', { dispose: () => { disposed = true; } });
+disposeThreeMissionSceneLifecycle(lifecycle, 'smoke');
+disposeThreeMissionSceneLifecycle(lifecycle, 'again');
+const summary = threeMissionSceneLifecycleSummary(lifecycle);
+assert.equal(removed, true);
+assert.equal(listenerRemoved, true);
+assert.equal(disconnected, true);
+assert.equal(disposed, true);
+assert.equal(summary.disposed, true);
+assert.equal(summary.disposeErrorCount, 0);
+assert.equal(summary.counts.canvas, 1);
+console.log('smoke_three_mission_scene_lifecycle passed');

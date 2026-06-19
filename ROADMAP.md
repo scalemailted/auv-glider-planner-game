@@ -24,7 +24,7 @@ Browser ANCHOR is the visual game and referee. Node/OceanBox-JS is the canonical
 
 ## 2. Current Architecture
 
-Current renderer sequence: THREE-R1.1D Execute Mission pipeline and Three.js Simulation feature/UI parity precedes THREE-R1.2 bathymetric terrain surface and operational depth/control slabs; THREE-R2 replay/debrief/editor parity remains later.
+Current renderer sequence: THREE-R1.1E scene isolation, vehicle pose, guidance overlay, grid alignment, and waypoint-validation parity precedes THREE-R1.2 bathymetric terrain surface and operational depth/control slabs; THREE-R2 replay/debrief/editor parity remains later.
 
 ### Browser ANCHOR
 
@@ -221,15 +221,15 @@ Boundaries:
 
 ## 11. Near-Term Priorities
 
-Current renderer stabilization priority is THREE-R1.1D Execute Mission Pipeline and Three.js Simulation Feature/UI Parity. Terrain/slab work must wait until the visible Planning -> Execute -> Simulation -> Debrief loop passes manual QA. After that gate, proceed to THREE-R1.2 Bathymetric Terrain Surface + Operational Depth/Control Slabs; THREE-R2 remains later.
+Current renderer stabilization priority is THREE-R1.1E Scene Isolation, Vehicle Pose, Guidance Overlay, Grid Alignment, and Waypoint-Validation Parity. Terrain/slab work must wait until scene isolation, pose, guidance, alignment, and waypoint semantics pass focused browser and owner QA. After that gate, proceed to THREE-R1.2 Bathymetric Terrain Surface + Operational Depth/Control Slabs; THREE-R2 remains later.
 
 
 Active/near-term work should stabilize the current Three.js-first mission architecture before adding large new systems.
 
 1. THREE-R1.1 - Mission Workspace runtime crash, pointer calibration, and drop-zone parity stabilization: complete code stabilization and manual Planning QA before treating THREE-R1 as done.
-1. THREE-R1.1D - Execute Mission Pipeline and Three.js Simulation Feature/UI Parity: stabilize the canonical launch transaction, plan snapshot, simulation controls, debug object, and deterministic renderer parity.
-2. THREE-R1.2 - Bathymetric Terrain Surface + Operational Depth/Control Slabs: add the next terrain/depth visualization layer while preserving the single explicit operational selection contract until depth-aware planning is deliberately introduced.
-3. THREE-R2 - Three.js Replay, Debrief Route Review, and Editor Interaction Parity: extend the proven Three mission surface to replay/debrief/editor inspection without taking over replay, scoring, or editor rules.
+2. THREE-R1.1E - Scene Isolation, Vehicle Pose, Guidance Overlay, Grid Alignment, and Waypoint-Validation Parity: prevent stale mission scenes behind Product Hub, preserve one renderer per mission scene, align pose/guidance/cell semantics, and keep mission-window overruns as warnings.
+3. THREE-R1.2 - Bathymetric Terrain Surface + Operational Depth/Control Slabs: add the next terrain/depth visualization layer while preserving the single explicit operational selection contract until depth-aware planning is deliberately introduced.
+4. THREE-R2 - Three.js Replay, Debrief Route Review, and Editor Interaction Parity: extend the proven Three mission surface to replay/debrief/editor inspection without taking over replay, scoring, or editor rules.
 4. Lifecycle extraction readiness: extract mission lifecycle only behind the restored Phaser scene shell, preserving visible product flow and avoiding the reverted DOM router/hash-route approach.
 5. Legacy Phaser retirement readiness: keep `?legacyPhaser=1` diagnostic coverage while reducing production dependencies on Phaser map drawing and pointer code incrementally.
 6. Blind Discovery / Hidden-State Mode implementation: hide ocean fields until sampled and build gameplay around sparse observations and belief construction.

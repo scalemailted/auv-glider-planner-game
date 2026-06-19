@@ -1,4 +1,4 @@
-﻿export const MISSION_WORLD_COORDINATES_VERSION = 'mission-world-coordinates-gfx-r3a';
+export const MISSION_WORLD_COORDINATES_VERSION = 'mission-world-coordinates-three-r1-1e';
 
 export function createMissionWorldCoordinateTransform(options = {}) {
   const grid = options.grid ?? {};
@@ -34,6 +34,59 @@ export function gridCellToWorld(transform, col, row, depthMeters = 0) {
   return { x: round(x), y: round(y), z: round(z), col: Math.floor(Number(col)), row: Math.floor(Number(row)), depthMeters: finiteNumber(depthMeters, 0) };
 }
 
+export function gridCellCenterToWorld(transform, col, row, depthMeters = 0) {
+  return gridCellToWorld(transform, col, row, depthMeters);
+}
+
+export function gridCellBoundsToWorld(transform, col, row, depthMeters = 0) {
+  const tx = validateMissionWorldCoordinateTransform(transform).transform;
+  const minX = (Number(col) - tx.width / 2) * tx.cellSize;
+  const maxX = (Number(col) + 1 - tx.width / 2) * tx.cellSize;
+  const minZ = (Number(row) - tx.height / 2) * tx.cellSize;
+  const maxZ = (Number(row) + 1 - tx.height / 2) * tx.cellSize;
+  const y = -finiteNumber(depthMeters, 0) * tx.depthScale * tx.verticalExaggeration;
+  return {
+    min: { x: round(minX), y: round(y), z: round(minZ) },
+    max: { x: round(maxX), y: round(y), z: round(maxZ) },
+    center: gridCellToWorld(tx, col, row, depthMeters),
+    col: Math.floor(Number(col)),
+    row: Math.floor(Number(row))
+  };
+}
+
+export function worldPointToGridCell(transform, point = {}) {
+  return worldToGridCell(transform, point.x, point.y, point.z);
+}
+
+export function gridVertexToWorld(transform, colVertex, rowVertex, depthMeters = 0) {
+  const tx = validateMissionWorldCoordinateTransform(transform).transform;
+  const x = (Number(colVertex) - tx.width / 2) * tx.cellSize;
+  const z = (Number(rowVertex) - tx.height / 2) * tx.cellSize;
+  const y = -finiteNumber(depthMeters, 0) * tx.depthScale * tx.verticalExaggeration;
+  return { x: round(x), y: round(y), z: round(z), colVertex: Number(colVertex), rowVertex: Number(rowVertex), depthMeters: finiteNumber(depthMeters, 0) };
+}
+
+export function fieldUvForGridCell(transform, col, row) {
+  const tx = validateMissionWorldCoordinateTransform(transform).transform;
+  return {
+    u: tx.width <= 0 ? 0 : clamp01((Number(col) + 0.5) / tx.width),
+    v: tx.height <= 0 ? 0 : clamp01((Number(row) + 0.5) / tx.height),
+    col: Math.floor(Number(col)),
+    row: Math.floor(Number(row)),
+    convention: 'row-major-field-values-at-cell-centers'
+  };
+}
+
+export function gridExtentToWorldBounds(transform, depthMeters = 0) {
+  const tx = validateMissionWorldCoordinateTransform(transform).transform;
+  return {
+    min: gridVertexToWorld(tx, 0, 0, depthMeters),
+    max: gridVertexToWorld(tx, tx.width, tx.height, depthMeters),
+    width: tx.width * tx.cellSize,
+    height: tx.height * tx.cellSize,
+    center: { x: 0, y: -finiteNumber(depthMeters, 0) * tx.depthScale * tx.verticalExaggeration, z: 0 }
+  };
+}
 export function worldToGridCell(transform, x, y, z) {
   const tx = validateMissionWorldCoordinateTransform(transform).transform;
   const col = Math.floor((Number(x) / tx.cellSize) + tx.width / 2);

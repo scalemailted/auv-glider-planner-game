@@ -8,7 +8,8 @@ import { updateThreePlanningMarkerLayer } from './layers/ThreePlanningMarkerLaye
 import { updateThreePriorityTargetLayer } from './layers/ThreePriorityTargetLayer.js';
 import { updateThreeCurrentVectorLayer } from './layers/ThreeCurrentVectorLayer.js';
 import { updateThreeHazardLayer, updateThreeConstraintLayer } from './layers/ThreeHazardLayer.js';
-import { updateThreeSelectionLayer, updateThreeGuidanceLayer } from './layers/ThreeSelectionLayer.js';
+import { updateThreeSelectionLayer } from './layers/ThreeSelectionLayer.js';
+import { updateThreeGuidanceConeLayer } from './layers/ThreeGuidanceConeLayer.js';
 import { updateThreeRealizedTrajectoryLayer, clearThreeRealizedTrajectoryLayer } from './layers/ThreeRealizedTrajectoryLayer.js';
 import { updateThreeObservationLayer, clearThreeObservationLayer } from './layers/ThreeObservationLayer.js';
 import { updateThreeSurfacingEventLayer, clearThreeSurfacingEventLayer } from './layers/ThreeSurfacingEventLayer.js';
@@ -160,7 +161,7 @@ export function updateThreeMissionWorldRenderer(renderer, viewModel = {}) {
   updateThreeRouteStatusLayer(renderer.groups.routeStatusGroup, viewModel);
   updateThreeSimulationStatusLayer(renderer.groups.simulationStatusGroup, viewModel);
   updateThreeSelectionLayer(renderer.groups.selectionGroup, viewModel);
-  updateThreeGuidanceLayer(renderer.groups.guidanceGroup, viewModel);
+  updateThreeGuidanceConeLayer(renderer.groups.guidanceGroup, viewModel);
   updateInteractionSurface(renderer, viewModel);
   updateThreePlanningInteractionLayer(renderer.planningInteractionLayer, viewModel.interactionViewModel, { transform: viewModel.coordinateSystem, viewModel });
   setThreeMissionLayerVisibility(renderer, renderer.layerVisibility);
@@ -257,6 +258,9 @@ export function threeMissionWorldRendererSummary(renderer = {}) {
     markerObjectCount: renderer.groups?.markerGroup?.children?.length ?? 0,
     priorityTargetObjectCount: renderer.groups?.priorityTargetGroup?.children?.length ?? 0,
     interactionObjectCount: renderer.groups?.interactionGroup?.children?.length ?? 0,
+    guidanceObjectCount: renderer.groups?.guidanceGroup?.children?.length ?? 0,
+    guidanceSummary: renderer.groups?.guidanceGroup?.userData ?? null,
+    gliderPoseSummaries: renderer.groups?.gliderGroup?.userData?.poseSummaries ?? [],
     interactionSurfaceAvailable: Boolean(renderer.interactionSurface),
     canvasBackingWidth: renderer.renderer?.domElement?.width ?? null,
     canvasBackingHeight: renderer.renderer?.domElement?.height ?? null,
@@ -521,9 +525,3 @@ function renderLoop(renderer) {
   renderer.renderer.render(renderer.scene, renderer.camera);
   renderer.animationFrame = globalThis.requestAnimationFrame?.(() => renderLoop(renderer)) ?? null;
 }
-
-
-
-
-
-

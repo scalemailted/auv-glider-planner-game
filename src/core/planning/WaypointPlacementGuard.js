@@ -30,6 +30,12 @@ export function canPlaceWaypoint(state, agentId, target, options = {}) {
   const duration = getTimeConfig(level).duration;
   const surface = surfaceWindowEstimate(mission, Number(anchor?.t ?? 0), arrivalTime);
   const warnings = [...(segment.warnings ?? [])];
+  const warningCodes = [];
+  const beyondMissionWindow = arrivalTime > duration;
+  if (beyondMissionWindow) {
+    warnings.push('Waypoint ETA exceeds mission duration; it will be kept as a mission-window warning.');
+    warningCodes.push('BEYOND_MISSION_WINDOW');
+  }
   const estimate = {
     anchor,
     target,
@@ -39,15 +45,17 @@ export function canPlaceWaypoint(state, agentId, target, options = {}) {
     currentFuel,
     remainingFuel,
     missionDuration: duration,
+    missionDurationAtPlanning: duration,
+    beyondMissionWindow,
+    likelyReachedWithinWindow: !beyondMissionWindow,
+    warningCodes,
     surface
   };
 
   if (!segment.valid) {
     return { allowed: false, reason: 'terrainBlocked', message: 'Route blocked by terrain.', estimate };
   }
-  if (arrivalTime > duration) {
-    return { allowed: false, reason: 'missionTimeExceeded', message: 'Mission time exhausted.', estimate };
-  }
+
   if (remainingFuel < 0) {
     return { allowed: false, reason: 'fuelExceeded', message: 'Fuel exhausted for this glider.', estimate };
   }
@@ -55,7 +63,9 @@ export function canPlaceWaypoint(state, agentId, target, options = {}) {
     return { allowed: false, reason: 'surfaceWindowExceeded', message: 'Waypoint unreachable before next surface.', estimate };
   }
   if (surface.exceeded) warnings.push('Waypoint likely beyond next surfacing window');
-  return { allowed: true, reason: null, message: '', estimate: { ...estimate, warnings } };
+  const reason = beyondMissionWindow ? 'missionWindowWarning' : null;
+  const message = beyondMissionWindow ? 'ETA exceeds mission duration; waypoint will remain pending or missed if time expires.' : '';
+  return { allowed: true, commitAllowed: true, reason, message, warningCodes, estimate: { ...estimate, warnings, warningCodes } };
 }
 
 export function getPlacementDisabledReason(state, agentId) {

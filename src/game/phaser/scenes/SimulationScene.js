@@ -46,6 +46,8 @@ import { deriveAdaptiveBenchmarkContextFromState } from '../../../core/benchmark
 import { attemptSourceFromRouteSourceLabel } from '../../../core/benchmark/BenchmarkAttemptSourceMapping.js';
 import { buildSimulationWorldRenderViewModel, validateSimulationWorldRenderViewModel, simulationWorldRenderViewModelSummary } from '../../../core/rendering/SimulationWorldRenderViewModel.js';
 import { gridCellToWorld } from '../../../core/rendering/MissionWorldCoordinates.js';
+import { createThreeMissionSceneLifecycle, registerThreeMissionSceneResource, disposeThreeMissionSceneLifecycle, threeMissionSceneLifecycleSummary } from '../../three/ThreeMissionSceneLifecycle.js';
+import { publishSceneIsolationDebug } from '../../../ui/MissionShellReset.js';
 import { createMissionWorldInteractionResult } from '../../../core/rendering/MissionWorldInteractionResult.js';
 import { simulationWorldRenderInputFromScene, simulationWorldRenderInputSummary } from '../../../core/rendering/SimulationWorldStateAdapter.js';
 import { createThreeMissionWorldRenderer, updateThreeMissionWorldRenderer, resizeThreeMissionWorldRenderer, setThreeMissionWorldCamera, setThreeMissionLayerVisibility, threeMissionWorldRendererSummary, disposeThreeMissionWorldRenderer } from '../../three/ThreeMissionWorldRenderer.js';
@@ -94,6 +96,9 @@ export class SimulationScene extends PhaserScene {
     this.runningReported = false;
     this.terminalReported = false;
     this.terminalResultRecorded = false;
+    this.sceneCleanupDisposed = false;
+    this.sceneLifecycleDisposalCount = 0;
+    this.threeSceneLifecycle = null;
   }
 
   init(data = {}) {
@@ -102,6 +107,9 @@ export class SimulationScene extends PhaserScene {
 
   create() {
     this.app = this.sys.game.anchorApp;
+    this.bindThreeSceneLifecycleEvents();
+    this.threeSceneLifecycle = createThreeMissionSceneLifecycle({ sceneKey: 'SimulationScene' });
+    this.sceneCleanupDisposed = false;
     this.initializeLaunchPayload();
     this.app.setSceneLabel('Simulation');
     this.app.state.mode = 'simulation';
@@ -182,11 +190,13 @@ export class SimulationScene extends PhaserScene {
       globalThis.requestAnimationFrame?.(() => this.refresh());
     };
     globalThis.addEventListener?.('resize', this.onViewportResize);
+    registerThreeMissionSceneResource(this.threeSceneLifecycle, 'eventListener', { target: globalThis, type: 'resize', listener: this.onViewportResize });
     this.resizeObserver = globalThis.ResizeObserver
       ? new globalThis.ResizeObserver(this.onViewportResize)
       : null;
     if (this.resizeObserver && this.app.elements.viewportShell) {
       this.resizeObserver.observe(this.app.elements.viewportShell);
+      registerThreeMissionSceneResource(this.threeSceneLifecycle, 'resizeObserver', this.resizeObserver);
     }
     this.syncResult();
     this.refresh();
@@ -195,13 +205,41 @@ export class SimulationScene extends PhaserScene {
     this.refreshRouteFailureDecision();
   }
 
+  bindThreeSceneLifecycleEvents() {
+    if (this.sceneLifecycleEventsBound) return;
+    this.sceneLifecycleEventsBound = true;
+    this.events?.once?.('shutdown', () => this.cleanupSimulationScene('shutdown-event'));
+    this.events?.once?.('destroy', () => this.cleanupSimulationScene('destroy-event'));
+  }
+
   shutdown() {
-    this.unbindSurfaceDecisionFallbacks();
+    this.cleanupSimulationScene('shutdown-method');
+  }
+
+  cleanupSimulationScene(reason = 'cleanup') {
+    if (this.sceneCleanupDisposed) return;
+    this.sceneCleanupDisposed = true;
+    this.sceneLifecycleDisposalCount = Number(this.sceneLifecycleDisposalCount ?? 0) + 1;
+    this.finishingAsync = false;
+    this.engine?.pause?.();
+    this.unbindSurfaceDecisionFallbacks?.();
     globalThis.removeEventListener?.('resize', this.onViewportResize);
-    this.resizeObserver?.disconnect();
-    if (this.app.elements.overlay?.bottomTimeline) this.app.elements.overlay.bottomTimeline.innerHTML = '';
+    this.resizeObserver?.disconnect?.();
+    if (this.app?.elements?.overlay?.bottomTimeline) this.app.elements.overlay.bottomTimeline.innerHTML = '';
     this.disposeThreeSimulationRenderer();
-    this.modal?.destroy();
+    this.modal?.destroy?.();
+    this.modal = null;
+    disposeThreeMissionSceneLifecycle(this.threeSceneLifecycle, reason);
+    publishSceneIsolationDebug(this.app, {
+      reason,
+      disposedRendererCount: this.sceneLifecycleDisposalCount,
+      lifecycleSummary: threeMissionSceneLifecycleSummary(this.threeSceneLifecycle)
+    });
+  }
+
+  goMainMenu(reason = 'simulation-menu') {
+    this.cleanupSimulationScene(reason);
+    this.scene.start('MainMenuScene');
   }
 
   renderPanel() {
@@ -267,7 +305,7 @@ export class SimulationScene extends PhaserScene {
     root.querySelector('[data-action="reset"]')?.addEventListener('click', () => this.resetSimulation());
     root.querySelector('[data-action="planning"]')?.addEventListener('click', () => this.scene.start('MissionWorkspaceScene'));
     root.querySelector('[data-action="debrief"]')?.addEventListener('click', () => this.goDebrief());
-    root.querySelector('[data-action="menu"]')?.addEventListener('click', () => this.scene.start('MainMenuScene'));
+    root.querySelector('[data-action="menu"]')?.addEventListener('click', () => this.goMainMenu('simulation-main-menu'));
     root.querySelector('[data-action="sim-camera-top"]')?.addEventListener('click', () => this.setThreeSimulationCameraPreset('tacticalTopDown'));
     root.querySelector('[data-action="sim-camera-oblique"]')?.addEventListener('click', () => this.setThreeSimulationCameraPreset('obliqueMission'));
     root.querySelector('[data-action="sim-camera-profile"]')?.addEventListener('click', () => this.setThreeSimulationCameraPreset('waterColumnProfile'));
@@ -933,6 +971,9 @@ export class SimulationScene extends PhaserScene {
         camera: { preset: this.app.state.ui?.threeMissionCameraPreset ?? 'obliqueMission' },
         layerVisibility: this.threeSimulationLayerVisibilityPatch()
       });
+      registerThreeMissionSceneResource(this.threeSceneLifecycle, 'renderer', this.threeSimulationRenderer);
+      registerThreeMissionSceneResource(this.threeSceneLifecycle, 'cameraController', this.threeSimulationRenderer.cameraController);
+      registerThreeMissionSceneResource(this.threeSceneLifecycle, 'canvas', this.threeSimulationRenderer.renderer?.domElement);
     }
     this.ensureThreeSimulationInteractionController();
     resizeThreeMissionWorldRenderer(this.threeSimulationRenderer, container.clientWidth, container.clientHeight);
@@ -963,6 +1004,7 @@ export class SimulationScene extends PhaserScene {
         emitIntent: (intent) => this.handleThreeSimulationIntent(intent),
         options: { interactionMode: 'selectInspect', allowEditing: false }
       });
+      registerThreeMissionSceneResource(this.threeSceneLifecycle, 'interactionController', this.threeSimulationInteractionController);
     }
     setThreeMissionInteractionEnabled(this.threeSimulationInteractionController, this.getSimulationRendererBackend() === 'threeMission3d');
     return this.threeSimulationInteractionController;
@@ -1261,6 +1303,10 @@ export class SimulationScene extends PhaserScene {
     const canvasPointerEvents = canvas ? globalThis.getComputedStyle?.(canvas)?.pointerEvents ?? canvas.style?.pointerEvents ?? 'auto' : null;
     const status = viewModel?.simulationStatus ?? {};
     const progress = viewModel?.missionProgress ?? {};
+    const selectedAgentIdForDebug = this.app.state.selectedAgentId ?? viewModel?.selectedAgentId ?? null;
+    const selectedPoseSummary = (rendererSummary?.gliderPoseSummaries ?? []).find((pose) => pose.agentId === selectedAgentIdForDebug) ?? rendererSummary?.gliderPoseSummaries?.[0] ?? null;
+    const selectedGliderMesh = renderer?.groups?.gliderGroup?.children?.find?.((mesh) => mesh.userData?.agentId === selectedAgentIdForDebug) ?? null;
+    const guidanceSummary = rendererSummary?.guidanceSummary ?? {};
     globalThis.ANCHOR_SIMULATION_RENDER_DEBUG = {
       version: 'mig-r1',
       activeBackend: activeBackend ?? this.getSimulationRendererBackend(),
@@ -1272,7 +1318,19 @@ export class SimulationScene extends PhaserScene {
       renderedSimulationTimeSeconds: viewModel?.activeTimeSeconds ?? null,
       renderedScalarFieldTimeSeconds: viewModel?.scalarFieldLayer?.timeSeconds ?? null,
       renderedCurrentFieldTimeSeconds: viewModel?.vectorFieldLayer?.timeSeconds ?? null,
-      selectedAgentId: this.app.state.selectedAgentId ?? null,
+      selectedAgentId: selectedAgentIdForDebug,
+      poseSummaryCount: rendererSummary?.gliderPoseSummaries?.length ?? 0,
+      poseWarnings: (rendererSummary?.gliderPoseSummaries ?? []).flatMap((pose) => pose.warnings ?? []),
+      currentBodyHeadingRadians: selectedPoseSummary?.headingRadians ?? null,
+      currentActualCourseRadians: selectedPoseSummary?.courseOverGroundRadians ?? null,
+      selectedAgentPitchRadians: selectedPoseSummary?.pitchRadians ?? null,
+      selectedAgentOrientationSource: selectedPoseSummary?.orientationSource ?? null,
+      selectedAgentCourseSource: selectedPoseSummary?.courseSource ?? null,
+      currentBodyQuaternion: selectedGliderMesh?.quaternion ? { x: selectedGliderMesh.quaternion.x, y: selectedGliderMesh.quaternion.y, z: selectedGliderMesh.quaternion.z, w: selectedGliderMesh.quaternion.w } : null,
+      guidanceLayerCount: rendererSummary?.guidanceObjectCount ?? 0,
+      guidanceAvailable: guidanceSummary.guidanceAvailable === true,
+      guidanceConeVisible: guidanceSummary.guidanceConeVisible === true,
+      unreachedTimeOverrunWaypointCount: (this.engine?.agents ?? []).reduce((sum, agent) => sum + (agent.missedWaypoints ?? []).filter((item) => item.reason === 'missionTimeExpired').length, 0),
       selectedObservationId: interactionState.selectedObservationId ?? null,
       selectedRouteSegmentId: interactionState.selectedRouteSegmentId ?? null,
       selectedSurfacingEventId: interactionState.selectedSurfacingEventId ?? null,
@@ -1583,7 +1641,7 @@ export class SimulationScene extends PhaserScene {
     `;
     root.querySelector('[data-action="abort-planning"]')?.addEventListener('click', () => this.scene.start('MissionWorkspaceScene'));
     root.querySelector('[data-action="abort-export"]')?.addEventListener('click', () => this.exportDebugResult());
-    root.querySelector('[data-action="abort-menu"]')?.addEventListener('click', () => this.scene.start('MainMenuScene'));
+    root.querySelector('[data-action="abort-menu"]')?.addEventListener('click', () => this.goMainMenu('simulation-main-menu'));
   }
 
   exportDebugResult() {
@@ -1759,7 +1817,7 @@ export class SimulationScene extends PhaserScene {
       { label: 'Export Observation Data', onClick: () => this.exportObservationData('routeFailure'), close: false },
       { label: 'Import Waypoint Data', onClick: () => this.importWaypointData('routeFailure'), close: false },
       { label: 'End Mission / Debrief', onClick: () => this.finishFromRouteFailure() },
-      { label: 'Main Menu', onClick: () => this.scene.start('MainMenuScene') }
+      { label: 'Main Menu', onClick: () => this.goMainMenu('simulation-main-menu') }
     ].filter(Boolean);
     this.modal.show({
       title: routeFailureTitle(decision.reason),
@@ -1806,7 +1864,7 @@ export class SimulationScene extends PhaserScene {
     root.querySelector('[data-action="failure-export-observation"]')?.addEventListener('click', () => this.exportObservationData('routeFailure'));
     root.querySelector('[data-action="failure-import-waypoints"]')?.addEventListener('click', () => this.importWaypointData('routeFailure'));
     root.querySelector('[data-action="failure-debrief"]')?.addEventListener('click', () => this.finishFromRouteFailure());
-    root.querySelector('[data-action="failure-menu"]')?.addEventListener('click', () => this.scene.start('MainMenuScene'));
+    root.querySelector('[data-action="failure-menu"]')?.addEventListener('click', () => this.goMainMenu('simulation-main-menu'));
   }
 
   clearRouteFailureFallback() {

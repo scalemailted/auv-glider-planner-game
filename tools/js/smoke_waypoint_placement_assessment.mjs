@@ -1,0 +1,20 @@
+import assert from 'node:assert/strict';
+import { canPlaceWaypoint } from '../../src/core/planning/WaypointPlacementGuard.js';
+
+const zeros = (w, h) => Array.from({ length: h }, () => Array(w).fill(0));
+const currents = (w, h) => Array.from({ length: h }, () => Array.from({ length: w }, () => [0, 0]));
+const level = { world: { grid: { width: 8, height: 8 }, time: { dt: 1, duration: 2, planningWindow: 1 } }, layers: { terrain: zeros(8, 8), hazards: zeros(8, 8), truth: { frames: [{ t: 0, current: currents(8, 8), roi: zeros(8, 8) }] } } };
+const mission = { agents: [{ id: 'g1', maxSpeed: 1, battery: 100, start: { x: 0, y: 0 } }], physics: { energyPerCell: 1, driftGain: 0 }, rules: {} };
+const state = { level, mission, plan: { agentPlans: [{ agentId: 'g1', waypoints: [] }] }, selectedAgentId: 'g1', challengeMode: 'perfectKnowledge', ui: { planningAnchor: { agentId: 'g1', x: 0, y: 0, t: 0 } } };
+const valid = canPlaceWaypoint(state, 'g1', { x: 1, y: 0 });
+assert.equal(valid.allowed, true);
+const overrun = canPlaceWaypoint(state, 'g1', { x: 6, y: 0 });
+assert.equal(overrun.allowed, true);
+assert.equal(overrun.commitAllowed, true);
+assert.equal(overrun.estimate.warningCodes.includes('BEYOND_MISSION_WINDOW'), true);
+const blockedLevel = structuredClone(level);
+blockedLevel.layers.terrain[0][1] = 1;
+const blocked = canPlaceWaypoint({ ...state, level: blockedLevel }, 'g1', { x: 1, y: 0 });
+assert.equal(blocked.allowed, false);
+assert.equal(blocked.reason, 'terrainBlocked');
+console.log('smoke_waypoint_placement_assessment passed');

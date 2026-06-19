@@ -10,7 +10,7 @@
 - `SimulationScene` owns Simulation lifecycle.
 - `DebriefScene` owns Debrief lifecycle.
 - Three.js is the normal mission-world renderer and interaction surface for Planning and live Simulation.
-- THREE-R1.1 stabilizes the Three Mission Workspace runtime: renderer startup errors are captured in `ANCHOR_MISSION_RENDER_DEBUG`, pointer conversion uses the actual canvas rect in CSS pixels, and drop-zone deployment selection goes through the canonical selected-start path. THREE-R1.1C repairs end-to-end waypoint placement after deployment and standardizes mouse gestures: left click for the active planning action, left drag pan, right drag orbit, and wheel zoom. THREE-R1.1D adds a transaction-backed Execute -> Simulation launch payload and digest chain while keeping Three.js out of simulation authority.
+- THREE-R1.1 stabilizes the Three Mission Workspace runtime: renderer startup errors are captured in `ANCHOR_MISSION_RENDER_DEBUG`, pointer conversion uses the actual canvas rect in CSS pixels, and drop-zone deployment selection goes through the canonical selected-start path. THREE-R1.1C repairs end-to-end waypoint placement after deployment and standardizes mouse gestures: left click for the active planning action, left drag pan, right drag orbit, and wheel zoom. THREE-R1.1D adds a transaction-backed Execute -> Simulation launch payload and digest chain while keeping Three.js out of simulation authority. THREE-R1.1E adds scene isolation cleanup, pose/guidance parity helpers, shared coordinate helpers, and mission-window waypoint warnings.
 - The legacy Phaser tactical map is a diagnostic/fallback renderer only, enabled by `?legacyPhaser=1`.
 - GitHub Pages uses the checked-in vendor runtime under `vendor/three/` through the `index.html` import map.
 

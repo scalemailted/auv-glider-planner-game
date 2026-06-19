@@ -24,7 +24,7 @@ export class RightWaypointPanel {
           <div class="console-kicker">About ANCHOR</div>
           <h2>Product Hub</h2>
           <p class="hud-muted">Challenge Mode, Simulation Lab, and Learning Labs are selected from the main viewport.</p>
-          <p class="hud-muted">Mission waypoints appear here after a playable route is loaded.</p>
+          <p class="hud-muted">Planning details appear here after a playable route is loaded.</p>
         </section>
       `;
       return;
@@ -175,7 +175,8 @@ function waypointRows(state, waypoints, agentId, engine, result, routeQuality) {
                 <strong>W${Number(waypoint.window ?? 0)} · ${escapeHtml(formatMissionTime(state.level, waypoint.t ?? 0))}</strong>
                 <small>(${Number(waypoint.x)}, ${Number(waypoint.y)}) · ${escapeHtml(waypoint.action ?? 'sample')}</small>
                 ${segmentGradeLine(grade)}
-                ${terminalCarryThrough ? '<small class="marker-warning">Terminal carry-through: simulation will travel toward this waypoint until mission time expires.</small>' : ''}
+                ${isRuntimeTruncatedTimeWaypoint(waypoint) ? '<small class="marker-warning">Mission-window warning: ETA exceeds mission end; simulation will run until mission time expires and report unreached status.</small>' : ''}
+                ${waypoint.warnings?.length ? `<small class="marker-warning">${escapeHtml(waypoint.warnings[0])}</small>` : ''}
                 ${waypoint.validity?.routeAudit ? `<small class="marker-warning">${escapeHtml(formatDiagnosticForUi(waypoint.validity.routeAudit.diagnostic) ?? waypoint.validity.routeAudit.message)}</small>` : ''}
               </span>
               <em>${escapeHtml(label)}</em>
@@ -286,7 +287,7 @@ function waypointMissEvent({ waypoint, index, agentId, engine, result }) {
 }
 
 function statusLabel(status) {
-  if (status === 'warning-time') return 'CARRY-THROUGH';
+  if (status === 'warning-time') return 'MISSION WINDOW';
   if (status === 'invalid-time') return 'INVALID: TIME';
   if (status === 'invalid-fuel') return 'INVALID: FUEL';
   if (status === 'invalid-terrain') return 'INVALID: TERRAIN';
@@ -320,4 +321,3 @@ function escapeHtml(value) {
 function escapeAttr(value) {
   return escapeHtml(value).replace(/`/g, '&#096;');
 }
-
