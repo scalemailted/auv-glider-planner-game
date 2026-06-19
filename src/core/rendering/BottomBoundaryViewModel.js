@@ -1,4 +1,4 @@
-﻿import { bathymetryFieldStats } from '../science/BathymetryFieldModel.js';
+import { bathymetryFieldStats } from '../science/BathymetryFieldModel.js';
 
 export const BOTTOM_BOUNDARY_VIEW_MODEL_VERSION = 'bottom-boundary-view-model-three-r1-2a';
 
@@ -23,6 +23,7 @@ export function buildBottomBoundaryViewModel(options = {}) {
   const bathymetryStats = options.bathymetry ? safeBathymetryStats(options.bathymetry) : null;
   const warnings = [];
   if (!depthSource) warnings.push('No canonical bathymetry depth field was present; using a synthetic flat bottom for display constraints.');
+  else if (depthSourceStats(depthSource).max <= 2) warnings.push('Normalized depth field converted to synthetic meters for water-column display constraints.');
   return {
     type: 'anchor.rendering.bottom-boundary-view-model',
     version: BOTTOM_BOUNDARY_VIEW_MODEL_VERSION,
@@ -87,11 +88,26 @@ function normalizeGrid(grid = {}, widthFallback = null, heightFallback = null) {
 }
 
 function normalizeDepthField(source, grid, terrain = null, fallbackDepth = 180) {
+  const stats = depthSourceStats(source);
+  const normalizedUnitDepth = stats.count > 0 && stats.max <= 2;
   return Array.from({ length: grid.height }, (_row, y) => Array.from({ length: grid.width }, (_cell, x) => {
     if (terrain?.[y]?.[x]) return 0;
     const value = Number(source?.[y]?.[x]);
-    return Number.isFinite(value) ? Math.max(0, round(value)) : Math.max(1, round(fallbackDepth));
+    if (!Number.isFinite(value)) return Math.max(1, round(fallbackDepth));
+    if (normalizedUnitDepth) return Math.max(1, round(20 + Math.max(0, Math.min(1, value)) * 220));
+    return Math.max(0, round(value));
   }));
+}
+
+function depthSourceStats(source) {
+  const values = Array.isArray(source)
+    ? source.flat().map(Number).filter((value) => Number.isFinite(value) && value > 0)
+    : [];
+  return {
+    count: values.length,
+    min: values.length ? Math.min(...values) : null,
+    max: values.length ? Math.max(...values) : null
+  };
 }
 
 function normalizeLandMask(source, grid, depthField) {

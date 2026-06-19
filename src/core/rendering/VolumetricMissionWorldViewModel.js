@@ -1,4 +1,5 @@
-﻿import { normalizeWaterColumnConfig, waterColumnLayerMetadata } from '../science/WaterColumnSchema.js';
+import { normalizeWaterColumnConfig, waterColumnLayerMetadata } from '../science/WaterColumnSchema.js';
+import { buildLegacySurfaceOnlyWaterColumnConfig, isLegacySurfaceOnlyMission, waterColumnMissionConfigSummary } from '../science/WaterColumnMissionDefaults.js';
 import { buildBottomBoundaryViewModel, bottomBoundaryViewModelSummary } from './BottomBoundaryViewModel.js';
 import { buildOperationalDepthLayerViewModel, operationalDepthLayerViewModelSummary } from './OperationalDepthLayerViewModel.js';
 import { createVolumetricMissionCoordinateModel } from './VolumetricMissionCoordinates.js';
@@ -23,15 +24,24 @@ export function augmentMissionWorldWithVolumetricModel(baseViewModel = {}, optio
     ?? mission?.world?.waterColumnConfig
     ?? mission?.waterColumnConfig
     ?? null;
-  const waterColumnConfig = normalizeWaterColumnConfig(explicitWaterColumnConfig ?? {
-    enabled: true,
-    depthLayerIds: ['surface'],
-    defaultLayerIds: ['surface'],
-    diveProfileId: 'surfaceOnly',
-    source: 'legacySurfaceOnlyFallback'
+  const rawWaterColumnConfig = explicitWaterColumnConfig ?? buildLegacySurfaceOnlyWaterColumnConfig({
+    level,
+    mission,
+    reason: 'No mission waterColumnConfig reached the volumetric view model.'
   });
+  const normalizedWaterColumnConfig = normalizeWaterColumnConfig(rawWaterColumnConfig);
+  const waterColumnConfig = {
+    ...rawWaterColumnConfig,
+    ...normalizedWaterColumnConfig,
+    source: rawWaterColumnConfig.source ?? (explicitWaterColumnConfig ? 'explicitScenarioConfig' : 'importedLegacySurfaceFallback'),
+    defaultDisplayMode: rawWaterColumnConfig.defaultDisplayMode ?? (normalizedWaterColumnConfig.depthLayerIds.length > 1 ? 'explodedLayers' : 'physicalDepth'),
+    defaultPlanningLayerId: rawWaterColumnConfig.defaultPlanningLayerId ?? (normalizedWaterColumnConfig.depthLayerIds.includes('thermocline') ? 'thermocline' : normalizedWaterColumnConfig.depthLayerIds[0] ?? 'surface'),
+    defaultDiveProfileId: rawWaterColumnConfig.defaultDiveProfileId ?? normalizedWaterColumnConfig.diveProfileId ?? 'surfaceOnly'
+  };
+  const configSummary = waterColumnMissionConfigSummary(waterColumnConfig);
+  const legacySurfaceOnlyFallback = isLegacySurfaceOnlyMission(waterColumnConfig);
   const waterColumnUi = displaySettings.waterColumn ?? options.waterColumn ?? {};
-  const verticalDisplayMode = normalizeVerticalDisplayMode(waterColumnUi.verticalDisplayMode ?? displaySettings.verticalDisplayMode);
+  const verticalDisplayMode = normalizeVerticalDisplayMode(waterColumnUi.verticalDisplayMode ?? displaySettings.verticalDisplayMode ?? waterColumnConfig.defaultDisplayMode);
   const bottomBoundary = buildBottomBoundaryViewModel({ level, grid, bathymetry: options.bathymetry ?? level?.bathymetry ?? null });
   const layerFields = buildLayerFields({ baseViewModel, waterColumnConfig, grid, selectedFieldId: waterColumnUi.selectedScalarFieldId ?? displaySettings.selectedScalarFieldId });
   const layerCurrents = buildLayerCurrents({ baseViewModel, waterColumnConfig });
@@ -97,6 +107,11 @@ export function augmentMissionWorldWithVolumetricModel(baseViewModel = {}, optio
     coordinateModel,
     verticalDisplayMode,
     waterColumnConfig,
+    waterColumnConfigSource: configSummary.source,
+    waterColumnConfigVersion: configSummary.configVersion,
+    waterColumnFallbackUsed: legacySurfaceOnlyFallback,
+    waterColumnFallbackReason: waterColumnConfig.compatibility?.fallbackReason ?? null,
+    modernMissionExpectedVolumetric: configSummary.modernMissionExpectedVolumetric === true,
     waterSurface: baseViewModel.waterSurface ?? { id: 'waterSurface', label: 'Water Surface', elevation: 0, visible: true },
     depthLayers: operational.layers,
     operationalDepthLayerModel: operational,
@@ -137,7 +152,12 @@ export function augmentMissionWorldWithVolumetricModel(baseViewModel = {}, optio
       usesWebGPUFluid: false,
       usesNewPlanner: false,
       explicitWaterColumnConfig: Boolean(explicitWaterColumnConfig),
-      legacySurfaceOnlyFallback: !explicitWaterColumnConfig
+      waterColumnConfigSource: configSummary.source,
+      waterColumnConfigVersion: configSummary.configVersion,
+      waterColumnFallbackUsed: legacySurfaceOnlyFallback,
+      waterColumnFallbackReason: waterColumnConfig.compatibility?.fallbackReason ?? null,
+      modernMissionExpectedVolumetric: configSummary.modernMissionExpectedVolumetric === true,
+      legacySurfaceOnlyFallback
     }
   };
 }
@@ -182,7 +202,12 @@ export function volumetricMissionWorldViewModelSummary(model = {}) {
     changesOfficialBrowserScoring: model.boundaryFlags?.changesOfficialBrowserScoring === true,
     publicSafe: model.boundaryFlags?.includesHiddenTruth !== true,
     explicitWaterColumnConfig: model.boundaryFlags?.explicitWaterColumnConfig === true,
+    waterColumnConfigSource: model.boundaryFlags?.waterColumnConfigSource ?? model.waterColumnConfigSource ?? model.waterColumnConfig?.source ?? null,
+    waterColumnConfigVersion: model.boundaryFlags?.waterColumnConfigVersion ?? model.waterColumnConfigVersion ?? model.waterColumnConfig?.defaultsVersion ?? model.waterColumnConfig?.version ?? null,
+    waterColumnFallbackUsed: model.boundaryFlags?.waterColumnFallbackUsed === true || model.boundaryFlags?.legacySurfaceOnlyFallback === true,
+    waterColumnFallbackReason: model.boundaryFlags?.waterColumnFallbackReason ?? model.waterColumnFallbackReason ?? null,
     legacySurfaceOnlyFallback: model.boundaryFlags?.legacySurfaceOnlyFallback === true,
+    modernMissionExpectedVolumetric: model.boundaryFlags?.modernMissionExpectedVolumetric === true,
     warnings: [...(model.warnings ?? [])]
   };
 }
@@ -192,6 +217,9 @@ export function waterColumnRenderDebugPayload(viewModel = {}, rendererSummary = 
   const operationalSummary = volumetricSummary.operationalDepthLayers ?? operationalDepthLayerViewModelSummary(viewModel.operationalDepthLayerModel ?? {});
   const bottomSummary = volumetricSummary.bottomBoundary ?? bottomBoundaryViewModelSummary(viewModel.bottomBoundary ?? {});
   const depthLayers = viewModel.depthLayers ?? [];
+  const visibleDepthLayers = depthLayers.filter((layer) => layer.visible !== false && layer.id !== 'waterSurface');
+  const visibleWorldYValues = visibleDepthLayers.map((layer) => Number(viewModel.verticalDisplayMode === 'explodedLayers' ? layer.explodedWorldY : layer.physicalWorldY)).filter(Number.isFinite);
+  const separation = layerSeparationMetrics(visibleWorldYValues, visibleDepthLayers.map((layer) => layer.id));
   const selectedDepthCell = viewModel.selectedDepthCell ?? viewModel.selectedCellDepth ?? null;
   const selectedRoute = viewModel.plannedRoutes?.[0] ?? null;
   const boundary = viewModel.boundaryFlags ?? {};
@@ -202,18 +230,31 @@ export function waterColumnRenderDebugPayload(viewModel = {}, rendererSummary = 
     type: 'anchor.renderer.water-column-debug',
     version: VOLUMETRIC_MISSION_WORLD_VIEW_MODEL_VERSION,
     phase: options.phase ?? viewModel.phase ?? null,
+    configSource: volumetricSummary.waterColumnConfigSource ?? viewModel.waterColumnConfig?.source ?? null,
+    configVersion: volumetricSummary.waterColumnConfigVersion ?? viewModel.waterColumnConfig?.defaultsVersion ?? viewModel.waterColumnConfig?.version ?? null,
+    fallbackUsed: volumetricSummary.waterColumnFallbackUsed === true,
+    fallbackReason: volumetricSummary.waterColumnFallbackReason ?? null,
     verticalDisplayMode: viewModel.verticalDisplayMode ?? null,
     verticalScale: viewModel.coordinateModel?.verticalScale ?? ((viewModel.coordinateSystem?.depthScale ?? null) === null ? null : Number(viewModel.coordinateSystem?.depthScale ?? 0) * Number(viewModel.coordinateSystem?.verticalExaggeration ?? 1)),
     activeDepthLayerId: viewModel.activeDepthLayerId ?? null,
     canonicalLayerCount: operationalSummary.canonicalLayerCount ?? viewModel.waterColumnConfig?.depthLayerIds?.length ?? 0,
-    visibleLayerCount: operationalSummary.visibleLayerCount ?? depthLayers.filter((layer) => layer.visible !== false).length,
-    interactiveLayerCount: operationalSummary.interactiveLayerCount ?? depthLayers.filter((layer) => layer.interactive !== false && layer.visible !== false).length,
+    availableLayerCount: operationalSummary.layerCount ?? depthLayers.length,
+    visibleLayerCount: visibleDepthLayers.length,
+    interactiveLayerCount: visibleDepthLayers.filter((layer) => layer.interactive !== false).length,
     layerIds: operationalSummary.layerIds ?? depthLayers.map((layer) => layer.id),
+    visibleLayerIds: visibleDepthLayers.map((layer) => layer.id),
     layerDepthMeters: operationalSummary.layerDepthMeters ?? Object.fromEntries(depthLayers.map((layer) => [layer.id, layer.representativeDepthMeters])),
     layerWorldY: operationalSummary.layerWorldY ?? Object.fromEntries(depthLayers.map((layer) => [layer.id, layer.physicalWorldY])),
     slabObjectCount: rendererSummary?.slabObjectCount ?? slabSummary.slabObjectCount ?? slabSummary.slabCount ?? 0,
     slabTextureCount: rendererSummary?.slabTextureCount ?? slabSummary.slabTextureCount ?? slabSummary.textureCount ?? 0,
     slabLabelCount: rendererSummary?.slabLabelCount ?? slabSummary.slabLabelCount ?? slabSummary.labelCount ?? 0,
+    volumeFrameObjectCount: rendererSummary?.volumeFrameObjectCount ?? 0,
+    depthTickCount: rendererSummary?.depthTickCount ?? 0,
+    uniqueLayerWorldYCount: separation.uniqueCount,
+    minimumLayerWorldYSeparation: separation.minimumSeparation,
+    maximumLayerWorldYSeparation: separation.maximumSeparation,
+    waterColumnVolumeHeightWorld: separation.volumeHeight,
+    coplanarLayerPairs: separation.coplanarPairs,
     selectedDepthCell,
     selectedDepthLayerId: selectedDepthCell?.depthLayerId ?? viewModel.activeDepthLayerId ?? null,
     selectedDepthMeters: selectedDepthCell?.depthMeters ?? null,
@@ -228,11 +269,16 @@ export function waterColumnRenderDebugPayload(viewModel = {}, rendererSummary = 
     currentVectorObjectCount: rendererSummary?.currentVectorObjectCount ?? 0,
     fieldTextureCount: rendererSummary?.slabTextureCount ?? 0,
     bottomBoundaryAvailable: Boolean(viewModel.bottomBoundary?.bottomDepthField),
+    bottomBoundaryWorldY: separation.bottomBoundaryWorldY,
     bottomDepthRange: bottomSummary.depthRange ?? { min: bottomSummary.minimumDepth ?? viewModel.bottomBoundary?.minimumDepth ?? null, max: bottomSummary.maximumDepth ?? viewModel.bottomBoundary?.maximumDepth ?? null },
     physicalExplodedStateDigestMatch,
     displayStateDigest: displayDigest,
     explicitWaterColumnConfig: boundary.explicitWaterColumnConfig === true,
     legacySurfaceOnlyFallback: boundary.legacySurfaceOnlyFallback === true,
+    defaultDisplayModeApplied: options.defaultDisplayModeApplied ?? (viewModel.displayDefaults?.waterColumnApplied === true) ?? false,
+    cameraPresetId: options.cameraPresetId ?? rendererSummary?.camera?.preset ?? null,
+    modernMissionExpectedVolumetric: boundary.modernMissionExpectedVolumetric === true,
+    modernMissionActuallyVolumetric: boundary.modernMissionExpectedVolumetric === true && boundary.waterColumnFallbackUsed !== true && (operationalSummary.canonicalLayerCount ?? 0) > 1 && visibleDepthLayers.length > 1,
     usesFree3DPlanning: boundary.usesFree3DPlanning === true,
     usesHorizontalWaypoints: boundary.usesHorizontalWaypoints !== false,
     usesDiveProfiles: boundary.usesDiveProfiles !== false,
@@ -243,6 +289,7 @@ export function waterColumnRenderDebugPayload(viewModel = {}, rendererSummary = 
     changesOfficialBrowserScoring: boundary.changesOfficialBrowserScoring === true,
     usesWebGPUFluid: boundary.usesWebGPUFluid === true,
     usesNewPlanner: boundary.usesNewPlanner === true,
+    lifecycleCleanupErrorCount: Number(options.lifecycleCleanupErrorCount ?? 0),
     publicSafe: boundary.includesHiddenTruth !== true
   };
 }
@@ -408,3 +455,27 @@ function round(value, digits = 6) {
 
 
 
+
+function layerSeparationMetrics(worldYValues = [], layerIds = []) {
+  const rounded = worldYValues.map((value) => round(value, 6));
+  const unique = [...new Set(rounded)];
+  const sorted = [...unique].sort((a, b) => a - b);
+  const separations = [];
+  for (let index = 1; index < sorted.length; index += 1) separations.push(round(Math.abs(sorted[index] - sorted[index - 1]), 6));
+  const coplanarPairs = [];
+  for (let i = 0; i < rounded.length; i += 1) {
+    for (let j = i + 1; j < rounded.length; j += 1) {
+      if (Math.abs(rounded[i] - rounded[j]) <= 1e-6) coplanarPairs.push([layerIds[i], layerIds[j]]);
+    }
+  }
+  const min = sorted.length ? Math.min(...sorted) : 0;
+  const max = sorted.length ? Math.max(...sorted) : 0;
+  return {
+    uniqueCount: unique.length,
+    minimumSeparation: separations.length ? Math.min(...separations) : 0,
+    maximumSeparation: separations.length ? Math.max(...separations) : 0,
+    volumeHeight: round(Math.abs(max - min), 6),
+    bottomBoundaryWorldY: round(min - 0.45, 6),
+    coplanarPairs
+  };
+}

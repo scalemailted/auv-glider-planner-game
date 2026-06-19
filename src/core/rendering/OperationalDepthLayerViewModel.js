@@ -1,4 +1,4 @@
-﻿import {
+import {
   normalizeWaterColumnConfig,
   waterColumnLayerMetadata,
   WATER_COLUMN_DEPTH_LAYER_IDS,
@@ -69,6 +69,7 @@ export function operationalDepthLayerViewModelSummary(model = {}) {
     layerDepthMeters: Object.fromEntries((model.layers ?? []).map((layer) => [layer.id, layer.representativeDepthMeters])),
     layerWorldY: Object.fromEntries((model.layers ?? []).map((layer) => [layer.id, model.verticalDisplayMode === 'explodedLayers' ? layer.explodedWorldY : layer.physicalWorldY])),
     waterCellCounts: Object.fromEntries((model.layers ?? []).map((layer) => [layer.id, layer.waterCellCount ?? 0])),
+    ...layerSeparationSummary(model),
     usesFull3DPlanning: model.usesFull3DPlanning === true,
     ownsPlanning: model.ownsPlanning === true,
     ownsSimulation: model.ownsSimulation === true,
@@ -102,7 +103,7 @@ function buildLayerRecords({ config, bottomBoundary, grid, options, activeDepthL
       canonicalIndex: id === 'waterSurface' ? -1 : id === 'integratedWaterColumn' ? null : config.depthLayerIds.indexOf(id),
       renderOrder: index,
       visible,
-      interactive: visible && id !== 'waterSurface' && id !== 'bottom',
+      interactive: visible && id === activeDepthLayerId && id !== 'waterSurface' && id !== 'bottom' && id !== 'integratedWaterColumn',
       selected: id === activeDepthLayerId,
       fieldAvailability: fieldAvailabilityForLayer(id, options),
       currentAvailability: currentAvailabilityForLayer(id, options),
@@ -211,4 +212,29 @@ function finiteOrNull(value) {
 
 function round(value, digits = 6) {
   return Number(Number(value ?? 0).toFixed(digits));
+}
+
+function layerSeparationSummary(model = {}) {
+  const visible = (model.layers ?? []).filter((layer) => layer.visible !== false && layer.id !== 'waterSurface');
+  const layerWorldY = Object.fromEntries(visible.map((layer) => [layer.id, model.verticalDisplayMode === 'explodedLayers' ? layer.explodedWorldY : layer.physicalWorldY]));
+  const values = Object.values(layerWorldY).map(Number).filter(Number.isFinite).map((value) => round(value, 6));
+  const unique = [...new Set(values)];
+  const sorted = [...unique].sort((a, b) => a - b);
+  const separations = [];
+  for (let index = 1; index < sorted.length; index += 1) separations.push(round(Math.abs(sorted[index] - sorted[index - 1]), 6));
+  const ids = visible.map((layer) => layer.id);
+  const coplanarLayerPairs = [];
+  for (let i = 0; i < values.length; i += 1) {
+    for (let j = i + 1; j < values.length; j += 1) {
+      if (Math.abs(values[i] - values[j]) <= 1e-6) coplanarLayerPairs.push([ids[i], ids[j]]);
+    }
+  }
+  return {
+    visibleLayerIds: ids,
+    uniqueLayerWorldYCount: unique.length,
+    minimumLayerWorldYSeparation: separations.length ? Math.min(...separations) : 0,
+    maximumLayerWorldYSeparation: separations.length ? Math.max(...separations) : 0,
+    waterColumnVolumeHeightWorld: sorted.length ? round(Math.abs(sorted.at(-1) - sorted[0]), 6) : 0,
+    coplanarLayerPairs
+  };
 }

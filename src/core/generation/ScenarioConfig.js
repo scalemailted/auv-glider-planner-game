@@ -12,6 +12,7 @@ import {
 import { createDefaultSampleFieldConfig, normalizeSampleFieldConfig } from './SampleFieldConfig.js';
 import { DEFAULT_MISSION_MODE_ID, applyMissionModeDefaults, getMissionModePreset, normalizeMissionModeId } from '../missions/MissionModeRegistry.js';
 import { normalizeNavigationUncertaintyConfig } from '../navigation/NavigationUncertainty.js';
+import { ensureModernWaterColumnMissionConfig } from '../science/WaterColumnMissionDefaults.js';
 
 export const SCENARIO_SIZE_PRESETS = {
   small: { label: 'Small', width: 12, height: 12, duration: 12, surfaceInterval: 3, agentCount: 1, fuel: 100 },
@@ -321,6 +322,7 @@ export function generateScenarioFromConfig(config = {}) {
     }
   ];
   mission.meta.replaySeedContract = replaySeedContract;
+  ensureModernWaterColumnMissionConfig(level, mission, { source: 'generatedModernMission', scenarioMode: normalized.mode });
   mission.rules ??= {};
   mission.rules.stochasticSeed ??= replaySeedContract?.derivedSeeds?.truth ?? seed;
   mission.rules.rngSeed ??= replaySeedContract?.derivedSeeds?.truth ?? seed;

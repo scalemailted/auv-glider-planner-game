@@ -3903,6 +3903,137 @@ test('Three Mission Scene Isolation', async ({ page }) => {
   expect(browserErrors.unexpected()).toEqual([]);
 });
 
+test('Three Scene Cleanup Is Null-Safe and Idempotent', async ({ page }) => {
+  const browserErrors = attachBrowserErrorCollector(page);
+  await page.goto('/');
+  await startTutorialPlanning(page);
+  await expectSingleThreeMissionRenderer(page, 'planning');
+
+  await page.locator('[data-action="main-menu"]').filter({ hasText: 'Main Menu' }).first().click();
+  await expectMainMenuSceneIsolation(page);
+
+  const cleanupSnapshot = await page.evaluate(async () => {
+    const { threeMissionSceneLifecycleSummary } = await import('./src/game/three/ThreeMissionSceneLifecycle.js');
+    const planning = window.anchorGame.phaser.scene.getScene('MissionWorkspaceScene');
+    planning.cleanupMissionWorkspaceScene?.('e2e-duplicate-cleanup');
+    return {
+      nullSummary: threeMissionSceneLifecycleSummary(null),
+      cleanup: window.ANCHOR_SCENE_CLEANUP_DEBUG ?? {},
+      isolation: window.ANCHOR_SCENE_ISOLATION_DEBUG ?? {}
+    };
+  });
+
+  expect(cleanupSnapshot.nullSummary).toMatchObject({
+    status: 'inactive',
+    disposed: true,
+    registeredResourceCount: 0,
+    activeResourceCount: 0,
+    disposedResourceCount: 0
+  });
+  expect(cleanupSnapshot.cleanup.planningCleanupInvocationCount ?? 0).toBeGreaterThan(0);
+  expect(cleanupSnapshot.cleanup.planningCleanupErrorCount ?? 0).toBe(0);
+  expect(cleanupSnapshot.isolation.isolationStatus).toBe('PASS');
+  expect(browserErrors.unexpected()).toEqual([]);
+});
+
+test('Generated Mission Opens a Visible Volumetric Water Column', async ({ page }) => {
+  const browserErrors = attachBrowserErrorCollector(page);
+  await page.goto('/');
+  await page.evaluate(() => window.anchorGame.phaser.scene.getScene('MainMenuScene').startRandomChallenge('perfectKnowledge'));
+  await expect.poll(() => page.evaluate(() => window.anchorGame.phaser.scene.getScene('MissionBriefingScene')?.sys.isActive?.() ?? false), { timeout: 15000 }).toBe(true);
+  await startPlanningFromBriefing(page);
+  await expectSingleThreeMissionRenderer(page, 'planning');
+  await expect(page.locator('#mission-console')).toContainText('Water Column');
+
+  await expect.poll(() => page.evaluate(() => {
+    const debug = window.ANCHOR_WATER_COLUMN_RENDER_DEBUG ?? {};
+    const scenario = window.anchorGame.state.currentScenario ?? {};
+    return {
+      scenarioSource: scenario.source ?? null,
+      configSource: scenario.waterColumnConfigSource ?? debug.configSource ?? null,
+      layerCount: scenario.waterColumnLayerCount ?? debug.canonicalLayerCount ?? 0,
+      fallback: scenario.waterColumnFallbackUsed === true || debug.fallbackUsed === true,
+      displayMode: debug.verticalDisplayMode ?? null,
+      slabObjectCount: debug.slabObjectCount ?? 0,
+      volumeFrameObjectCount: debug.volumeFrameObjectCount ?? 0,
+      uniqueLayerWorldYCount: debug.uniqueLayerWorldYCount ?? 0,
+      minimumLayerWorldYSeparation: debug.minimumLayerWorldYSeparation ?? 0,
+      modernMissionActuallyVolumetric: debug.modernMissionActuallyVolumetric === true,
+      usesFree3DPlanning: debug.usesFree3DPlanning === true,
+      ownsPlanning: debug.ownsPlanning === true,
+      ownsSimulation: debug.ownsSimulation === true,
+      ownsScoring: debug.ownsScoring === true
+    };
+  }), { timeout: 15000 }).toMatchObject({
+    scenarioSource: 'deterministicChallenge',
+    configSource: 'generatedModernMission',
+    fallback: false,
+    displayMode: 'explodedLayers',
+    modernMissionActuallyVolumetric: true,
+    usesFree3DPlanning: false,
+    ownsPlanning: false,
+    ownsSimulation: false,
+    ownsScoring: false
+  });
+  const snapshot = await generatedWaterColumnSnapshot(page);
+  expect(snapshot.layerCount).toBeGreaterThanOrEqual(5);
+  expect(snapshot.slabObjectCount).toBeGreaterThanOrEqual(4);
+  expect(snapshot.uniqueLayerWorldYCount).toBeGreaterThanOrEqual(4);
+  expect(snapshot.minimumLayerWorldYSeparation).toBeGreaterThan(0);
+  expect(snapshot.volumeFrameObjectCount).toBeGreaterThanOrEqual(0);
+  expect(browserErrors.unexpected()).toEqual([]);
+});
+
+test('Legacy Mission Uses Explicit Surface Compatibility Mode', async ({ page }) => {
+  const browserErrors = attachBrowserErrorCollector(page);
+  await page.goto('/');
+  await page.evaluate(() => window.anchorGame.phaser.scene.start('LoadLevelJsonScene'));
+  await expect.poll(() => page.evaluate(() => window.anchorGame.phaser.scene.getScene('LoadLevelJsonScene')?.sys.isActive?.() ?? false), { timeout: 15000 }).toBe(true);
+  await page.evaluate(async () => {
+    const level = await fetch('levels/tutorial_01_currents.json').then((response) => response.json());
+    const scene = window.anchorGame.phaser.scene.getScene('LoadLevelJsonScene');
+    scene.importLevelData(level);
+    scene.playImportedExperience('simulationLab');
+  });
+  await expect.poll(() => page.evaluate(() => window.anchorGame.phaser.scene.getScene('MissionBriefingScene')?.sys.isActive?.() ?? false), { timeout: 15000 }).toBe(true);
+  await startPlanningFromBriefing(page);
+  await expectSingleThreeMissionRenderer(page, 'planning');
+  await expect(page.locator('#mission-console')).toContainText('surface-only compatibility mode');
+
+  await expect.poll(() => page.evaluate(() => {
+    const debug = window.ANCHOR_WATER_COLUMN_RENDER_DEBUG ?? {};
+    const scenario = window.anchorGame.state.currentScenario ?? {};
+    return {
+      scenarioSource: scenario.source ?? null,
+      configSource: scenario.waterColumnConfigSource ?? debug.configSource ?? null,
+      layerCount: scenario.waterColumnLayerCount ?? debug.canonicalLayerCount ?? 0,
+      fallback: scenario.waterColumnFallbackUsed === true || debug.fallbackUsed === true,
+      displayMode: debug.verticalDisplayMode ?? null,
+      slabObjectCount: debug.slabObjectCount ?? 0,
+      modernMissionActuallyVolumetric: debug.modernMissionActuallyVolumetric === true,
+      legacySurfaceOnlyFallback: debug.legacySurfaceOnlyFallback === true,
+      usesFree3DPlanning: debug.usesFree3DPlanning === true,
+      ownsPlanning: debug.ownsPlanning === true,
+      ownsSimulation: debug.ownsSimulation === true,
+      ownsScoring: debug.ownsScoring === true
+    };
+  }), { timeout: 15000 }).toMatchObject({
+    scenarioSource: 'customScenarioBenchmark',
+    configSource: 'importedLegacySurfaceFallback',
+    layerCount: 1,
+    fallback: true,
+    displayMode: 'physicalDepth',
+    modernMissionActuallyVolumetric: false,
+    legacySurfaceOnlyFallback: true,
+    usesFree3DPlanning: false,
+    ownsPlanning: false,
+    ownsSimulation: false,
+    ownsScoring: false
+  });
+  const snapshot = await legacyWaterColumnSnapshot(page);
+  expect(snapshot.slabObjectCount).toBeLessThanOrEqual(2);
+  expect(browserErrors.unexpected()).toEqual([]);
+});
 test('Three Vehicle Pose Guidance and Grid Alignment', async ({ page }) => {
   const browserErrors = attachBrowserErrorCollector(page);
   await page.goto('/');
@@ -4094,6 +4225,49 @@ test('legacy saved level registry scene still opens', async ({ page }) => {
   await expect(page.locator('#saved-level-id-input')).toBeVisible();
 });
 
+async function generatedWaterColumnSnapshot(page) {
+  return page.evaluate(() => {
+    const debug = window.ANCHOR_WATER_COLUMN_RENDER_DEBUG ?? {};
+    const scenario = window.anchorGame.state.currentScenario ?? {};
+    return {
+      scenarioSource: scenario.source ?? null,
+      configSource: scenario.waterColumnConfigSource ?? debug.configSource ?? null,
+      layerCount: scenario.waterColumnLayerCount ?? debug.canonicalLayerCount ?? 0,
+      fallback: scenario.waterColumnFallbackUsed === true || debug.fallbackUsed === true,
+      displayMode: debug.verticalDisplayMode ?? null,
+      slabObjectCount: debug.slabObjectCount ?? 0,
+      volumeFrameObjectCount: debug.volumeFrameObjectCount ?? 0,
+      uniqueLayerWorldYCount: debug.uniqueLayerWorldYCount ?? 0,
+      minimumLayerWorldYSeparation: debug.minimumLayerWorldYSeparation ?? 0,
+      modernMissionActuallyVolumetric: debug.modernMissionActuallyVolumetric === true,
+      usesFree3DPlanning: debug.usesFree3DPlanning === true,
+      ownsPlanning: debug.ownsPlanning === true,
+      ownsSimulation: debug.ownsSimulation === true,
+      ownsScoring: debug.ownsScoring === true
+    };
+  });
+}
+
+async function legacyWaterColumnSnapshot(page) {
+  return page.evaluate(() => {
+    const debug = window.ANCHOR_WATER_COLUMN_RENDER_DEBUG ?? {};
+    const scenario = window.anchorGame.state.currentScenario ?? {};
+    return {
+      scenarioSource: scenario.source ?? null,
+      configSource: scenario.waterColumnConfigSource ?? debug.configSource ?? null,
+      layerCount: scenario.waterColumnLayerCount ?? debug.canonicalLayerCount ?? 0,
+      fallback: scenario.waterColumnFallbackUsed === true || debug.fallbackUsed === true,
+      displayMode: debug.verticalDisplayMode ?? null,
+      slabObjectCount: debug.slabObjectCount ?? 0,
+      modernMissionActuallyVolumetric: debug.modernMissionActuallyVolumetric === true,
+      legacySurfaceOnlyFallback: debug.legacySurfaceOnlyFallback === true,
+      usesFree3DPlanning: debug.usesFree3DPlanning === true,
+      ownsPlanning: debug.ownsPlanning === true,
+      ownsSimulation: debug.ownsSimulation === true,
+      ownsScoring: debug.ownsScoring === true
+    };
+  });
+}
 async function collectSceneIsolationSnapshot(page) {
   return page.evaluate(() => {
     const scene = window.anchorGame?.phaser?.scene;

@@ -93,9 +93,11 @@ export class MainMenuScene extends PhaserScene {
   stopMissionScenesForMainMenu() {
     const sceneManager = this.scene;
     for (const key of ['MissionWorkspaceScene', 'SimulationScene', 'DebriefScene']) {
-      const scene = sceneManager?.get?.(key);
-      if (!scene || scene === this) continue;
-      try { scene.shutdown?.(); } catch (error) { globalThis.console?.warn?.('Scene cleanup failed before main menu', key, error); }
+      if (key === this.sys?.settings?.key) continue;
+      const active = sceneManager?.isActive?.(key) === true;
+      const sleeping = sceneManager?.isSleeping?.(key) === true;
+      const paused = sceneManager?.isPaused?.(key) === true;
+      if (!active && !sleeping && !paused) continue;
       try { sceneManager.stop?.(key); } catch (error) { globalThis.console?.warn?.('Scene stop failed before main menu', key, error); }
     }
   }

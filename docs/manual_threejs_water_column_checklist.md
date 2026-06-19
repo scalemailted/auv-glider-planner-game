@@ -1,4 +1,4 @@
-﻿# Manual Three.js Water Column Checklist
+# Manual Three.js Water Column Checklist
 
 Human manual QA by the project owner remains pending.
 
@@ -6,6 +6,7 @@ Use this checklist after running automated checks.
 
 ## Planning Workspace
 
+- Generate a new deterministic challenge and confirm it opens with a multi-layer water-column stack, not a surface-only fallback.
 - Open a mission with declared water-column config.
 - Confirm water surface, operational slabs, scalar texture, current vectors, gliders, waypoints, and route lines render together without blank canvas or overlap.
 - Toggle Physical Depth and Exploded Layers. The route and waypoint list should not mutate.
@@ -25,6 +26,13 @@ Use this checklist after running automated checks.
 - Open an older mission without `waterColumnConfig`.
 - Confirm the Water Column panel states surface-only fallback.
 - Confirm no deeper layers are implied unless the mission declares them.
+- Confirm ANCHOR_WATER_COLUMN_RENDER_DEBUG.configSource is importedLegacySurfaceFallback and allbackUsed is true.
+
+## Lifecycle / Main Menu
+
+- Enter Planning, return to Main Menu, and confirm no Three canvas remains behind the product hub.
+- Repeat the Planning -> Main Menu transition and confirm the browser console has no null-lifecycle cleanup error.
+- Confirm ANCHOR_SCENE_CLEANUP_DEBUG reports zero cleanup errors and ANCHOR_SCENE_ISOLATION_DEBUG.isolationStatus is PASS.
 
 ## Not Accepted Until
 

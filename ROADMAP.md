@@ -24,7 +24,7 @@ Browser ANCHOR is the visual game and referee. Node/OceanBox-JS is the canonical
 
 ## 2. Current Architecture
 
-Current renderer sequence: THREE-R1.1E scene isolation, vehicle pose, guidance overlay, grid alignment, and waypoint-validation parity precedes THREE-R1.2 bathymetric terrain surface and operational depth/control slabs; THREE-R2 replay/debrief/editor parity remains later.
+Current renderer sequence: THREE-R1.1E scene isolation and THREE-R1.2A water-column slabs are followed by THREE-R1.2A.1 volumetric activation/lifecycle hardening, then THREE-R1.2B bathymetric seabed mesh/coastline/landmass geometry, THREE-R1.2C water-column visual polish, and later THREE-R2 replay/debrief/editor parity.
 
 ### Browser ANCHOR
 

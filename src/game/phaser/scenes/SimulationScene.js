@@ -101,6 +101,16 @@ export class SimulationScene extends PhaserScene {
     this.sceneCleanupDisposed = false;
     this.sceneLifecycleDisposalCount = 0;
     this.threeSceneLifecycle = null;
+    this.cleanupInvocationCount = 0;
+    this.duplicateCleanupInvocationCount = 0;
+    this.cleanupErrorCount = 0;
+    this.lifecycleWasNullAtCleanup = false;
+    this.lifecycleResourceCountBefore = 0;
+    this.lifecycleResourceCountAfter = 0;
+    this.cleanupReason = null;
+    this.shutdownHandlerBindCount = 0;
+    this.destroyHandlerBindCount = 0;
+    this.duplicateLifecycleHandlerCount = 0;
   }
 
   init(data = {}) {
@@ -109,15 +119,17 @@ export class SimulationScene extends PhaserScene {
 
   create() {
     this.app = this.sys.game.anchorApp;
+    this.sceneCleanupDisposed = false;
+    this.sceneLifecycleEventsBound = false;
     this.bindThreeSceneLifecycleEvents();
     this.threeSceneLifecycle = createThreeMissionSceneLifecycle({ sceneKey: 'SimulationScene' });
-    this.sceneCleanupDisposed = false;
     this.initializeLaunchPayload();
     this.app.setSceneLabel('Simulation');
     this.app.state.mode = 'simulation';
     this.app.state.ui ??= {};
     this.app.state.ui.legacyPhaserMissionRendererEnabled = legacyPhaserMissionRendererEnabled();
     this.app.state.ui.rendererBackend = preferredMissionRendererBackend({ requested: this.app.state.ui.rendererBackend });
+    this.applyInitialWaterColumnSimulationDefaults();
     clearPlanningOverlayState(this.app.state);
     this.app.elements.shell?.classList.remove('planning-workspace');
     this.graphics = this.add.graphics();
@@ -208,8 +220,13 @@ export class SimulationScene extends PhaserScene {
   }
 
   bindThreeSceneLifecycleEvents() {
-    if (this.sceneLifecycleEventsBound) return;
+    if (this.sceneLifecycleEventsBound) {
+      this.duplicateLifecycleHandlerCount = Number(this.duplicateLifecycleHandlerCount ?? 0) + 1;
+      return;
+    }
     this.sceneLifecycleEventsBound = true;
+    this.shutdownHandlerBindCount = Number(this.shutdownHandlerBindCount ?? 0) + 1;
+    this.destroyHandlerBindCount = Number(this.destroyHandlerBindCount ?? 0) + 1;
     this.events?.once?.('shutdown', () => this.cleanupSimulationScene('shutdown-event'));
     this.events?.once?.('destroy', () => this.cleanupSimulationScene('destroy-event'));
   }
@@ -219,23 +236,72 @@ export class SimulationScene extends PhaserScene {
   }
 
   cleanupSimulationScene(reason = 'cleanup') {
-    if (this.sceneCleanupDisposed) return;
+    this.cleanupInvocationCount = Number(this.cleanupInvocationCount ?? 0) + 1;
+    this.cleanupReason = reason;
+    if (this.sceneCleanupDisposed) {
+      this.duplicateCleanupInvocationCount = Number(this.duplicateCleanupInvocationCount ?? 0) + 1;
+      this.publishSimulationCleanupDebug(reason, {
+        duplicate: true,
+        lifecycleSummary: threeMissionSceneLifecycleSummary(this.threeSceneLifecycle)
+      });
+      return;
+    }
     this.sceneCleanupDisposed = true;
     this.sceneLifecycleDisposalCount = Number(this.sceneLifecycleDisposalCount ?? 0) + 1;
-    this.finishingAsync = false;
-    this.engine?.pause?.();
-    this.unbindSurfaceDecisionFallbacks?.();
-    globalThis.removeEventListener?.('resize', this.onViewportResize);
-    this.resizeObserver?.disconnect?.();
-    if (this.app?.elements?.overlay?.bottomTimeline) this.app.elements.overlay.bottomTimeline.innerHTML = '';
-    this.disposeThreeSimulationRenderer();
-    this.modal?.destroy?.();
-    this.modal = null;
-    disposeThreeMissionSceneLifecycle(this.threeSceneLifecycle, reason);
+    const lifecycle = this.threeSceneLifecycle;
+    const before = threeMissionSceneLifecycleSummary(lifecycle);
+    this.lifecycleWasNullAtCleanup = !lifecycle;
+    this.lifecycleResourceCountBefore = Number(before.registeredResourceCount ?? before.resourceCount ?? 0);
+    let cleanupError = null;
+    try {
+      this.finishingAsync = false;
+      this.engine?.pause?.();
+      this.unbindSurfaceDecisionFallbacks?.();
+      globalThis.removeEventListener?.('resize', this.onViewportResize);
+      this.resizeObserver?.disconnect?.();
+      if (this.app?.elements?.overlay?.bottomTimeline) this.app.elements.overlay.bottomTimeline.innerHTML = '';
+      this.disposeThreeSimulationRenderer();
+      this.modal?.destroy?.();
+      this.modal = null;
+      disposeThreeMissionSceneLifecycle(lifecycle, reason);
+    } catch (error) {
+      cleanupError = error;
+      this.cleanupErrorCount = Number(this.cleanupErrorCount ?? 0) + 1;
+      globalThis.console?.warn?.('SimulationScene cleanup warning', error);
+    }
+    const after = threeMissionSceneLifecycleSummary(lifecycle);
+    this.lifecycleResourceCountAfter = Number(after.activeResourceCount ?? 0);
+    this.threeSceneLifecycle = null;
+    this.publishSimulationCleanupDebug(reason, { before, after, cleanupError });
+  }
+
+  publishSimulationCleanupDebug(reason = 'cleanup', patch = {}) {
+    const cleanup = {
+      ...(globalThis.ANCHOR_SCENE_CLEANUP_DEBUG ?? {}),
+      simulationCleanupInvocationCount: Number(this.cleanupInvocationCount ?? 0),
+      simulationCleanupCompleted: this.sceneCleanupDisposed === true,
+      simulationDuplicateCleanupInvocationCount: Number(this.duplicateCleanupInvocationCount ?? 0),
+      simulationLifecycleWasNullAtCleanup: this.lifecycleWasNullAtCleanup === true,
+      simulationLifecycleResourceCountBefore: Number(this.lifecycleResourceCountBefore ?? 0),
+      simulationLifecycleResourceCountAfter: Number(this.lifecycleResourceCountAfter ?? 0),
+      simulationCleanupErrorCount: Number(this.cleanupErrorCount ?? 0),
+      simulationCleanupReason: reason,
+      simulationShutdownHandlerBindCount: Number(this.shutdownHandlerBindCount ?? 0),
+      simulationDestroyHandlerBindCount: Number(this.destroyHandlerBindCount ?? 0),
+      simulationDuplicateLifecycleHandlerCount: Number(this.duplicateLifecycleHandlerCount ?? 0)
+    };
+    globalThis.ANCHOR_SCENE_CLEANUP_DEBUG = cleanup;
     publishSceneIsolationDebug(this.app, {
       reason,
       disposedRendererCount: this.sceneLifecycleDisposalCount,
-      lifecycleSummary: threeMissionSceneLifecycleSummary(this.threeSceneLifecycle)
+      lifecycleSummary: patch.after ?? patch.lifecycleSummary ?? threeMissionSceneLifecycleSummary(this.threeSceneLifecycle),
+      simulationCleanupInvocationCount: cleanup.simulationCleanupInvocationCount,
+      simulationCleanupErrorCount: cleanup.simulationCleanupErrorCount,
+      nullLifecycleSummaryCount: (patch.before?.status === 'inactive' || patch.lifecycleSummary?.status === 'inactive') ? 1 : 0,
+      duplicateCleanupInvocationCount: cleanup.simulationDuplicateCleanupInvocationCount,
+      activeWaterColumnSlabCount: 0,
+      activeWaterColumnLabelCount: 0,
+      activeWaterColumnFrameCount: 0
     });
   }
 
@@ -441,9 +507,34 @@ export class SimulationScene extends PhaserScene {
     });
   }
 
+  applyInitialWaterColumnSimulationDefaults() {
+    this.app.state.ui ??= {};
+    const config = this.app.state.level?.world?.waterColumnConfig
+      ?? this.app.state.mission?.world?.waterColumnConfig
+      ?? this.app.state.mission?.waterColumnConfig
+      ?? null;
+    const layers = config?.depthLayerIds ?? ['surface'];
+    const legacy = config?.source === 'importedLegacySurfaceFallback' || config?.compatibility?.importedLegacySurfaceFallback === true || layers.length <= 1;
+    const existing = this.app.state.ui.waterColumn ?? {};
+    if (existing.userModified === true) return;
+    this.app.state.ui.waterColumn = {
+      ...existing,
+      verticalDisplayMode: 'physicalDepth',
+      activeDepthLayerId: legacy ? 'surface' : (existing.activeDepthLayerId ?? config?.defaultPlanningLayerId ?? (layers.includes('thermocline') ? 'thermocline' : layers[0] ?? 'surface')),
+      hiddenLayerIds: legacy ? [] : (existing.hiddenLayerIds ?? []),
+      visibleLayerIds: null,
+      selectedDiveProfileId: existing.selectedDiveProfileId ?? config?.defaultDiveProfileId ?? 'surfaceOnly',
+      selectedTargetDepthLayerId: existing.selectedTargetDepthLayerId ?? config?.defaultTargetDepthLayerId ?? 'surface',
+      userModified: false,
+      defaultDisplayModeApplied: true
+    };
+    if (!this.app.state.ui.threeMissionCameraPreset || this.app.state.ui.threeMissionCameraPreset === 'obliqueMission' || this.app.state.ui.threeMissionCameraPreset === 'obliqueWaterColumn') {
+      this.app.state.ui.threeMissionCameraPreset = legacy ? 'tacticalTopDown' : 'obliqueWaterColumn';
+    }
+  }
   setThreeSimulationCameraPreset(preset) {
     this.app.state.ui ??= {};
-    this.app.state.ui.threeMissionCameraPreset = ['tacticalTopDown', 'obliqueMission', 'waterColumnProfile'].includes(preset) ? preset : 'obliqueMission';
+    this.app.state.ui.threeMissionCameraPreset = ['tacticalTopDown', 'obliqueMission', 'obliqueWaterColumn', 'waterColumnProfile', 'sideProfile', 'layerStackOverview', 'activeLayer', 'selectedDive', 'fleetOverview'].includes(preset) ? preset : 'obliqueMission';
     if (this.threeSimulationRenderer) setThreeMissionWorldCamera(this.threeSimulationRenderer, { preset: this.app.state.ui.threeMissionCameraPreset });
     this.refresh();
   }
@@ -1331,6 +1422,9 @@ export class SimulationScene extends PhaserScene {
       phase: 'simulation',
       selectedDiveProfileId: waterColumnUi.selectedDiveProfileId,
       selectedTargetDepthLayerId: waterColumnUi.selectedTargetDepthLayerId,
+      defaultDisplayModeApplied: waterColumnUi.defaultDisplayModeApplied === true,
+      cameraPresetId: this.app.state.ui?.threeMissionCameraPreset ?? null,
+      lifecycleCleanupErrorCount: Number(this.cleanupErrorCount ?? 0),
       canonicalObservationCount
     });
     globalThis.ANCHOR_WATER_COLUMN_RENDER_DEBUG = waterColumnDebug;
@@ -2202,15 +2296,15 @@ export class SimulationScene extends PhaserScene {
     this.onFinishSurfaceKey = () => {
       if (this.engine?.awaitingSurfaceDecision) this.finishFromSurface();
     };
-    this.input.keyboard?.on('keydown-C', this.onContinueSurfaceKey);
-    this.input.keyboard?.on('keydown-U', this.onUpdateSurfaceKey);
-    this.input.keyboard?.on('keydown-F', this.onFinishSurfaceKey);
+    this.input?.keyboard?.on('keydown-C', this.onContinueSurfaceKey);
+    this.input?.keyboard?.on('keydown-U', this.onUpdateSurfaceKey);
+    this.input?.keyboard?.on('keydown-F', this.onFinishSurfaceKey);
   }
 
   unbindSurfaceDecisionFallbacks() {
-    this.input.keyboard?.off('keydown-C', this.onContinueSurfaceKey);
-    this.input.keyboard?.off('keydown-U', this.onUpdateSurfaceKey);
-    this.input.keyboard?.off('keydown-F', this.onFinishSurfaceKey);
+    this.input?.keyboard?.off('keydown-C', this.onContinueSurfaceKey);
+    this.input?.keyboard?.off('keydown-U', this.onUpdateSurfaceKey);
+    this.input?.keyboard?.off('keydown-F', this.onFinishSurfaceKey);
   }
 }
 

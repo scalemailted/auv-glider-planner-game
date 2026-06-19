@@ -55,7 +55,13 @@ export function publishSceneIsolationDebug(app, patch = {}) {
     && !timelineVisible
     && !performanceStripVisible
     && !rightPanelMissionContentVisible;
-  const isolationStatus = mainMenuOnly ? (noMissionDom ? 'PASS' : 'FAIL') : (threeMissionCanvasCount <= 1 && threeMissionRendererCount <= 1 ? 'PASS' : 'FAIL');
+  const cleanup = globalThis.ANCHOR_SCENE_CLEANUP_DEBUG ?? {};
+  const waterDebug = globalThis.ANCHOR_WATER_COLUMN_RENDER_DEBUG ?? {};
+  const activeWaterColumnSlabCount = mainMenuOnly ? 0 : Number(patch.activeWaterColumnSlabCount ?? waterDebug.slabObjectCount ?? 0);
+  const activeWaterColumnLabelCount = mainMenuOnly ? 0 : Number(patch.activeWaterColumnLabelCount ?? waterDebug.slabLabelCount ?? 0);
+  const activeWaterColumnFrameCount = mainMenuOnly ? 0 : Number(patch.activeWaterColumnFrameCount ?? waterDebug.volumeFrameObjectCount ?? 0);
+  const cleanupErrorCount = Number(patch.planningCleanupErrorCount ?? cleanup.planningCleanupErrorCount ?? 0) + Number(patch.simulationCleanupErrorCount ?? cleanup.simulationCleanupErrorCount ?? 0);
+  const isolationStatus = mainMenuOnly ? (noMissionDom && cleanupErrorCount === 0 && activeWaterColumnSlabCount === 0 && activeWaterColumnLabelCount === 0 && activeWaterColumnFrameCount === 0 ? 'PASS' : 'FAIL') : (threeMissionCanvasCount <= 1 && threeMissionRendererCount <= 1 ? 'PASS' : 'FAIL');
   const debug = {
     version: MISSION_SHELL_RESET_VERSION,
     activePhaserSceneKeys,
@@ -76,6 +82,17 @@ export function publishSceneIsolationDebug(app, patch = {}) {
     staleSceneNodeCount: Number(patch.removedStaleNodeCount ?? 0),
     staleListenerCount: Number(patch.staleListenerCount ?? 0),
     staleTimerCount: Number(patch.staleTimerCount ?? 0),
+    planningCleanupInvocationCount: Number(patch.planningCleanupInvocationCount ?? cleanup.planningCleanupInvocationCount ?? 0),
+    simulationCleanupInvocationCount: Number(patch.simulationCleanupInvocationCount ?? cleanup.simulationCleanupInvocationCount ?? 0),
+    planningCleanupErrorCount: Number(patch.planningCleanupErrorCount ?? cleanup.planningCleanupErrorCount ?? 0),
+    simulationCleanupErrorCount: Number(patch.simulationCleanupErrorCount ?? cleanup.simulationCleanupErrorCount ?? 0),
+    nullLifecycleSummaryCount: Number(patch.nullLifecycleSummaryCount ?? cleanup.nullLifecycleSummaryCount ?? 0),
+    duplicateCleanupInvocationCount: Number(patch.duplicateCleanupInvocationCount ?? 0)
+      + Number(cleanup.planningDuplicateCleanupInvocationCount ?? 0)
+      + Number(cleanup.simulationDuplicateCleanupInvocationCount ?? 0),
+    activeWaterColumnSlabCount,
+    activeWaterColumnLabelCount,
+    activeWaterColumnFrameCount,
     isolationStatus,
     ...patch
   };

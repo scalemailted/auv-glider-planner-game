@@ -38,6 +38,12 @@ Challenge Mode also persists `missionMode`. Mission modes are player-facing obje
 
 ## Version / Milestone Log
 
+### THREE-R1.2A.1 - Volumetric Activation and Lifecycle Hardening
+
+- Added canonical generated-mission water-column defaults so new generated missions open as synthetic multi-layer volumetric stacks while keeping `surfaceOnly` as the default dive profile for behavior parity.
+- Added explicit imported-legacy surface-only fallback metadata, config-source debug fields, volume-frame context rendering, and focused generated/legacy/surface-parity smokes.
+- Hardened Planning and Simulation Three scene cleanup for null lifecycle summaries and duplicate cleanup calls; Main Menu stops mission scenes through the scene manager instead of calling cross-scene shutdown directly.
+- Preserved the boundary: no arbitrary XYZ route planner, no new planner, no detailed seabed mesh, no scoring changes, no calibrated ocean forecast, no WebGPU fluid simulation, no Python simulator, and no MARL/RL.
 ### THREE-R1.2A - Volumetric Water Column and Operational Depth Slabs
 
 - Added renderer-neutral bottom-boundary, operational-depth-layer, volumetric-coordinate, dive-trajectory, and volumetric mission-world view models for the P11 2.5D water-column contract.

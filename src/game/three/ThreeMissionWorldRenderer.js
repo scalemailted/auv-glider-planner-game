@@ -11,6 +11,7 @@ import { updateThreeHazardLayer, updateThreeConstraintLayer } from './layers/Thr
 import { updateThreeSelectionLayer } from './layers/ThreeSelectionLayer.js';
 import { updateThreeGuidanceConeLayer } from './layers/ThreeGuidanceConeLayer.js';
 import { createThreeOperationalDepthSlabLayer, updateThreeOperationalDepthSlabLayer, setThreeOperationalDepthSlabLayerVisibility, disposeThreeOperationalDepthSlabLayer, threeOperationalDepthSlabLayerSummary } from './layers/ThreeOperationalDepthSlabLayer.js';
+import { createThreeWaterColumnVolumeFrameLayer, updateThreeWaterColumnVolumeFrameLayer, disposeThreeWaterColumnVolumeFrameLayer, threeWaterColumnVolumeFrameLayerSummary } from './layers/ThreeWaterColumnVolumeFrameLayer.js';
 import { updateThreeDepthTrajectoryLayer, clearThreeDepthTrajectoryLayer, threeDepthTrajectoryLayerSummary } from './layers/ThreeDepthTrajectoryLayer.js';
 import { updateThreeRealizedTrajectoryLayer, clearThreeRealizedTrajectoryLayer } from './layers/ThreeRealizedTrajectoryLayer.js';
 import { updateThreeObservationLayer, clearThreeObservationLayer } from './layers/ThreeObservationLayer.js';
@@ -39,6 +40,7 @@ const GROUP_KEYS = [
   'bathymetryGroup',
   'waterSurfaceGroup',
   'depthLayerGroup',
+  'waterColumnFrameGroup',
   'scalarFieldGroup',
   'currentVectorGroup',
   'hazardGroup',
@@ -89,6 +91,8 @@ export function createThreeMissionWorldRenderer(container, options = {}) {
   groups.scalarFieldGroup.add(scalarLayer.group);
   const operationalDepthSlabLayer = createThreeOperationalDepthSlabLayer({ name: 'mission-operational-depth-slabs' });
   groups.depthLayerGroup.add(operationalDepthSlabLayer.group);
+  const waterColumnVolumeFrameLayer = createThreeWaterColumnVolumeFrameLayer({ name: 'mission-water-column-volume-frame' });
+  groups.waterColumnFrameGroup.add(waterColumnVolumeFrameLayer.group);
   const planningInteractionLayer = createThreePlanningInteractionLayer({ name: 'mission-planning-interaction-layer' });
   groups.interactionGroup.add(planningInteractionLayer.group);
   const interactionSurface = createInteractionSurface();
@@ -111,6 +115,7 @@ export function createThreeMissionWorldRenderer(container, options = {}) {
     groups,
     scalarLayer,
     operationalDepthSlabLayer,
+    waterColumnVolumeFrameLayer,
     planningInteractionLayer,
     interactionSurface,
     cameraController: null,
@@ -150,6 +155,7 @@ export function updateThreeMissionWorldRenderer(renderer, viewModel = {}) {
   updateBathymetry(renderer, viewModel);
   updateWaterSurface(renderer, viewModel);
   updateDepthLayers(renderer, viewModel);
+  updateThreeWaterColumnVolumeFrameLayer(renderer.waterColumnVolumeFrameLayer, viewModel);
   updateThreeScalarFieldLayer(renderer.scalarLayer, viewModel.scalarFieldLayer, { transform: viewModel.coordinateSystem, yOffset: 0.08 });
   updateThreeCurrentVectorLayer(renderer.groups.currentVectorGroup, viewModel);
   updateThreeHazardLayer(renderer.groups.hazardGroup, viewModel);
@@ -220,6 +226,7 @@ export function setThreeMissionLayerVisibility(renderer, visibilityPatch = {}) {
   renderer.groups.bathymetryGroup.visible = v.bathymetry !== false;
   renderer.groups.waterSurfaceGroup.visible = v.waterSurface !== false;
   renderer.groups.depthLayerGroup.visible = v.depthLayers !== false;
+  renderer.groups.waterColumnFrameGroup.visible = v.depthLayers !== false && v.waterColumnFrame !== false;
   renderer.groups.currentVectorGroup.visible = v.currentVectors !== false;
   renderer.groups.hazardGroup.visible = v.hazards !== false;
   renderer.groups.constraintGroup.visible = v.constraints !== false;
@@ -264,6 +271,9 @@ export function threeMissionWorldRendererSummary(renderer = {}) {
     routeObjectCount: renderer.groups?.routeGroup?.children?.length ?? 0,
     depthTrajectorySummary: threeDepthTrajectoryLayerSummary(renderer.groups?.depthTrajectoryGroup),
     operationalDepthSlabSummary: threeOperationalDepthSlabLayerSummary(renderer.operationalDepthSlabLayer ?? {}, vm),
+    waterColumnVolumeFrameSummary: threeWaterColumnVolumeFrameLayerSummary(renderer.waterColumnVolumeFrameLayer ?? {}, vm),
+    volumeFrameObjectCount: renderer.waterColumnVolumeFrameLayer?.lastSummary?.volumeFrameObjectCount ?? renderer.groups?.waterColumnFrameGroup?.children?.reduce?.((sum, child) => sum + 1 + (child.children?.length ?? 0), 0) ?? 0,
+    depthTickCount: renderer.waterColumnVolumeFrameLayer?.lastSummary?.depthTickCount ?? 0,
     slabObjectCount: renderer.operationalDepthSlabLayer?.slabs?.size ?? 0,
     slabTextureCount: [...(renderer.operationalDepthSlabLayer?.slabs?.values?.() ?? [])].filter((record) => record.texture).length,
     slabLabelCount: renderer.operationalDepthSlabLayer?.labels?.size ?? 0,
@@ -305,6 +315,7 @@ export function disposeThreeMissionWorldRenderer(renderer) {
   if (renderer.animationFrame) globalThis.cancelAnimationFrame?.(renderer.animationFrame);
   disposeThreeScalarFieldLayer(renderer.scalarLayer);
   disposeThreeOperationalDepthSlabLayer(renderer.operationalDepthSlabLayer);
+  disposeThreeWaterColumnVolumeFrameLayer(renderer.waterColumnVolumeFrameLayer);
   clearThreeDepthTrajectoryLayer(renderer.groups?.depthTrajectoryGroup);
   disposeThreePlanningInteractionLayer(renderer.planningInteractionLayer);
   disposeThreeMissionCameraController(renderer.cameraController);
@@ -468,6 +479,7 @@ function defaultLayerVisibility(input = {}) {
     bathymetry: input.bathymetry !== false,
     waterSurface: input.waterSurface !== false,
     depthLayers: input.depthLayers !== false,
+    waterColumnFrame: input.waterColumnFrame !== false,
     scalarField: input.scalarField !== false,
     currentVectors: input.currentVectors !== false,
     hazards: input.hazards !== false,

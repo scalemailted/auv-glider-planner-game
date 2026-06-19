@@ -1,6 +1,6 @@
-﻿# Three.js Volumetric Water Column
+# Three.js Volumetric Water Column
 
-Phase: THREE-R1.2A - Volumetric Water Column and Operational Depth Slabs
+Phase: THREE-R1.2A / THREE-R1.2A.1 - Volumetric Water Column Activation and Operational Depth Slabs
 
 The production Three.js mission world now visualizes the P11 2.5D water-column model through operational depth slabs. Planning remains top-down: a waypoint is still a horizontal grid cell, while dive profile and optional target depth layer are metadata on the selected waypoint or selected glider plan.
 
@@ -31,11 +31,11 @@ Three.js does not own planning arrays, simulation time, vehicle motion, scoring,
 
 ## Legacy Surface-Only Compatibility
 
-If a level or mission does not declare `waterColumnConfig`, the volumetric compositor uses a surface-only fallback. This prevents older missions from implying fabricated deeper scientific layers. Missions that declare water-column config can expose the configured layer stack.
+Generated missions receive canonical synthetic multi-layer `waterColumnConfig` so they open as visible volumetric stacks. If an imported level or mission does not declare `waterColumnConfig`, the compositor uses an explicit surface-only fallback. This prevents older missions from implying fabricated deeper scientific layers. Missions that declare water-column config can expose the configured layer stack.
 
 ## Debug Surface
 
-Planning and Simulation publish `globalThis.ANCHOR_WATER_COLUMN_RENDER_DEBUG` with layer ids, depth meters, world Y positions, slab counts, selected depth-cell inspection, dive profile/target layer, trajectory counts, observation counts, seabed-mask counts, bottom-depth range, and ownership flags.
+Planning and Simulation publish `globalThis.ANCHOR_WATER_COLUMN_RENDER_DEBUG` with config source, fallback status, layer ids, depth meters, world Y positions, slab/frame counts, selected depth-cell inspection, dive profile/target layer, trajectory counts, observation counts, seabed-mask counts, bottom-depth range, and ownership flags.
 
 ## Validation
 
@@ -54,4 +54,11 @@ node tools/js/smoke_three_depth_observations.mjs
 node tools/js/audit_water_column_browser_headless_alignment.mjs
 node tools/js/audit_volumetric_display_invariance.mjs
 node tools/js/audit_three_water_column_boundaries.mjs
+node tools/js/smoke_generated_mission_water_column_config.mjs
+node tools/js/smoke_legacy_surface_fallback.mjs
+node tools/js/smoke_visible_water_column_stack.mjs
+node tools/js/smoke_surface_default_result_parity.mjs
+node tools/js/smoke_three_lifecycle_null_safety.mjs
+node tools/js/smoke_mission_scene_cleanup_idempotence.mjs
+node tools/js/audit_volumetric_activation_boundaries.mjs
 ```

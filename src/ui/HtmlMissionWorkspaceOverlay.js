@@ -453,6 +453,7 @@ export class HtmlMissionWorkspaceOverlay {
       'water-column-display-mode': (button) => this.handlers.setWaterColumnDisplayMode?.(button.dataset.mode),
       'water-column-active-layer': (button) => this.handlers.setWaterColumnActiveLayer?.(button.dataset.layer),
       'water-column-toggle-layer': (button) => this.handlers.toggleWaterColumnLayer?.(button.dataset.layer),
+      'water-column-layer-visibility': (button) => this.handlers.setWaterColumnLayerVisibilityMode?.(button.dataset.mode),
       'water-column-opacity': (button) => this.handlers.adjustWaterColumnOpacity?.(Number(button.dataset.delta ?? 0)),
       'water-column-scalar-field': (button) => this.handlers.setWaterColumnScalarField?.(button.dataset.field),
       'water-column-current-mode': (button) => this.handlers.setWaterColumnCurrentMode?.(button.dataset.mode),
@@ -803,7 +804,7 @@ function rendererBackendSection(state) {
 }
 function waterColumnSection(state) {
   const explicitConfig = state.level?.world?.waterColumnConfig ?? state.mission?.world?.waterColumnConfig ?? state.mission?.waterColumnConfig ?? null;
-  const config = normalizeWaterColumnConfig(explicitConfig ?? { depthLayerIds: ['surface'], defaultLayerIds: ['surface'], diveProfileId: 'surfaceOnly' });
+  const config = { ...(explicitConfig ?? {}), ...normalizeWaterColumnConfig(explicitConfig ?? { depthLayerIds: ['surface'], defaultLayerIds: ['surface'], diveProfileId: 'surfaceOnly' }) };
   const ui = state.ui?.waterColumn ?? {};
   const layerIds = config.depthLayerIds ?? ['surface'];
   const activeLayerId = layerIds.includes(ui.activeDepthLayerId) ? ui.activeDepthLayerId : layerIds[0] ?? 'surface';
@@ -814,25 +815,35 @@ function waterColumnSection(state) {
   const selectedProfile = ui.selectedDiveProfileId ?? config.diveProfileId ?? 'surfaceOnly';
   const selectedTarget = ui.selectedTargetDepthLayerId ?? activeLayerId;
   const layerOptions = waterColumnLayerOptions().filter((layer) => layerIds.includes(layer.id));
+  const visibleLayerCount = layerIds.filter((id) => !hidden.has(id)).length;
   const layerButtons = layerOptions.map((layer) => waterColumnLayerButton(layer, activeLayerId, hidden)).join('');
   const targetButtons = layerOptions.map((layer) => waterColumnTargetLayerButton(layer, selectedTarget)).join('');
   const profileButtons = waterColumnProfileOptions().map((profile) => waterColumnProfileButton(profile, selectedProfile)).join('');
   const opacity = Math.round(Number(ui.globalOpacity ?? 0.26) * 100);
-  const claim = explicitConfig
-    ? '2.5D water-column display from mission depth-layer config. Synthetic teaching model, not calibrated ocean data.'
-    : 'Surface-only mission. No declared depth-layer config, so deeper slabs are not fabricated.';
+  const legacyFallback = config.source === 'importedLegacySurfaceFallback' || config.compatibility?.importedLegacySurfaceFallback === true || layerIds.length <= 1;
+  const claim = legacyFallback
+    ? 'This imported mission has no water-column configuration. It is displayed in surface-only compatibility mode.'
+    : '2.5D water-column display from generated mission depth-layer config. Synthetic teaching model, not calibrated ocean data.';
+  const badge = legacyFallback ? 'Legacy surface-only mission' : `${layerIds.length}-layer water column - ${labelize(displayMode)}`;
   return `
         <h3 class="waypoint-section-title">Water Column</h3>
         <div class="hud-card compact" data-water-column-controls>
+          <div><strong>Water Column:</strong> ${escapeHtml(badge)}</div>
           <div><strong>Model:</strong> ${escapeHtml(config.model ?? 'top-down-2p5d-depth-layer-sampling')}</div>
           <div>${escapeHtml(claim)}</div>
-          <div><strong>Display:</strong> ${escapeHtml(labelize(displayMode))} | <strong>Active:</strong> ${escapeHtml(labelize(activeLayerId))} | <strong>Opacity:</strong> ${opacity}%</div>
+          <div><strong>Layers:</strong> ${layerIds.length} available · ${visibleLayerCount} visible | <strong>Active:</strong> ${escapeHtml(labelize(activeLayerId))}</div>
+          <div><strong>Mode:</strong> ${escapeHtml(labelize(displayMode))} | <strong>Opacity:</strong> ${opacity}%</div>
         </div>
         <div class="console-button-row wrap">
-          ${waterColumnModeButton('physicalDepth', 'Physical Depth', displayMode)}
           ${waterColumnModeButton('explodedLayers', 'Exploded Layers', displayMode)}
+          ${waterColumnModeButton('physicalDepth', 'Physical Depth', displayMode)}
           <button class="console-button secondary" data-action="water-column-opacity" data-delta="-0.06">Less Opaque</button>
           <button class="console-button secondary" data-action="water-column-opacity" data-delta="0.06">More Opaque</button>
+        </div>
+        <div class="console-button-row wrap">
+          <button class="console-button secondary" data-action="water-column-layer-visibility" data-mode="showAll">Show All</button>
+          <button class="console-button secondary" data-action="water-column-layer-visibility" data-mode="isolateActive">Isolate Active</button>
+          <button class="console-button secondary" data-action="water-column-layer-visibility" data-mode="hideContext">Hide Context</button>
         </div>
         <div class="console-button-row wrap">${layerButtons}</div>
         <div class="console-button-row wrap">

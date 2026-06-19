@@ -42,7 +42,9 @@ export function registerThreeMissionSceneResource(lifecycle, kind, resource) {
 }
 
 export function disposeThreeMissionSceneLifecycle(lifecycle, reason = 'dispose') {
-  if (!lifecycle) return lifecycle;
+  if (!lifecycle) return null;
+  lifecycle.resources = Array.isArray(lifecycle.resources) ? lifecycle.resources : [];
+  lifecycle.disposedCounts ??= {};
   if (lifecycle.disposed) return lifecycle;
   lifecycle.disposed = true;
   lifecycle.disposeReason = reason;
@@ -61,24 +63,55 @@ export function disposeThreeMissionSceneLifecycle(lifecycle, reason = 'dispose')
   return lifecycle;
 }
 
-export function threeMissionSceneLifecycleSummary(lifecycle = {}) {
+export function threeMissionSceneLifecycleSummary(lifecycle = null) {
+  if (!lifecycle) return inactiveLifecycleSummary();
+  const resources = Array.isArray(lifecycle.resources) ? lifecycle.resources : [];
   const counts = {};
   const disposedCounts = {};
-  for (const entry of lifecycle.resources ?? []) {
+  for (const entry of resources) {
+    if (!entry) continue;
     counts[entry.kind] = Number(counts[entry.kind] ?? 0) + 1;
     if (entry.disposed) disposedCounts[entry.kind] = Number(disposedCounts[entry.kind] ?? 0) + 1;
   }
+  const mergedDisposedCounts = { ...disposedCounts, ...(lifecycle.disposedCounts ?? {}) };
+  const disposedResourceCount = resources.filter((entry) => entry?.disposed).length;
+  const activeResourceCount = Math.max(0, resources.length - disposedResourceCount);
   return {
     type: 'anchor.renderer.three-mission-scene-lifecycle-summary',
     version: THREE_MISSION_SCENE_LIFECYCLE_VERSION,
+    status: lifecycle.disposed === true ? 'disposed' : 'active',
     sceneKey: lifecycle.sceneKey ?? 'unknown',
     disposed: lifecycle.disposed === true,
     disposeReason: lifecycle.disposeReason ?? null,
-    resourceCount: lifecycle.resources?.length ?? 0,
+    resourceCount: resources.length,
+    registeredResourceCount: resources.length,
+    activeResourceCount,
+    disposedResourceCount,
     counts,
-    disposedCounts: { ...disposedCounts, ...(lifecycle.disposedCounts ?? {}) },
+    disposedCounts: mergedDisposedCounts,
     duplicateRegistrationCount: Number(lifecycle.duplicateRegistrationCount ?? 0),
-    disposeErrorCount: Number(lifecycle.disposeErrorCount ?? 0)
+    disposeErrorCount: Number(lifecycle.disposeErrorCount ?? 0),
+    warnings: []
+  };
+}
+
+function inactiveLifecycleSummary() {
+  return {
+    type: 'anchor.renderer.three-mission-scene-lifecycle-summary',
+    version: THREE_MISSION_SCENE_LIFECYCLE_VERSION,
+    status: 'inactive',
+    sceneKey: 'unknown',
+    disposed: true,
+    disposeReason: null,
+    resourceCount: 0,
+    registeredResourceCount: 0,
+    activeResourceCount: 0,
+    disposedResourceCount: 0,
+    counts: {},
+    disposedCounts: {},
+    duplicateRegistrationCount: 0,
+    disposeErrorCount: 0,
+    warnings: []
   };
 }
 
