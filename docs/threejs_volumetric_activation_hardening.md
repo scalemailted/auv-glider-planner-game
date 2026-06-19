@@ -57,3 +57,6 @@ Human manual QA by the project owner remains pending.
 ## Next Phase
 
 THREE-R1.2B - Bathymetric Seabed Mesh, Coastline, and Landmass Geometry.
+## Depth-Aware Score Profile Activation
+
+Generated volumetric missions can carry `depthAwareScienceV1` metadata. Legacy imported surface-only missions retain `legacySurfaceScienceV1`. The selected profile is preserved in mission metadata, result summaries, and exports.

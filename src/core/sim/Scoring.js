@@ -1,8 +1,20 @@
+import { summarizeDepthAwareScoreEvents } from '../science/DepthAwareScienceValue.js';
+import { depthScienceScoreProfileMetadata } from '../science/DepthScoringProfiles.js';
+
 export function summarizeScore({ agents, events, t, scoring = {}, missionState = null, complete = false }) {
   const sampleScore = agents.reduce((sum, agent) => sum + agent.sampleScore, 0);
   const expectedSampleScore = agents.reduce((sum, agent) => sum + (agent.expectedSampleScore ?? 0), 0);
   const energyUsed = agents.reduce((sum, agent) => sum + agent.energyUsed, 0);
   const sampleEvents = events.filter((event) => event.type === 'sample');
+  const depthScoreEvents = events.filter((event) => event.type === 'anchor.score.depth-aware-sample');
+  const depthScienceProfile = depthScienceScoreProfileMetadata(missionState?.depthScienceScoreProfile ?? scoring?.depthScience ?? scoring?.scoreProfileId ?? 'legacySurfaceScienceV1', {
+    layerSchemaVersion: missionState?.waterColumnConfig?.version,
+    objectiveWeightProfileId: missionState?.depthScienceScoreProfile?.objectiveWeightProfileId
+  });
+  const depthScience = summarizeDepthAwareScoreEvents(depthScoreEvents.length ? depthScoreEvents : missionState?.depthScienceEvents ?? [], {
+    waterColumnConfig: missionState?.waterColumnConfig,
+    scoreProfile: depthScienceProfile
+  });
   const hazardsHit = events.filter((event) => event.type === 'hazard').length;
   const mobileHazardsHit = events.filter((event) => event.type === 'mobileHazard').length;
   const mobileHazardNearMisses = events.filter((event) => event.type === 'mobileHazardNearMiss').length;
@@ -44,6 +56,14 @@ export function summarizeScore({ agents, events, t, scoring = {}, missionState =
     sampleScore: round(sampleScore, 3),
     expectedSampleScore: round(expectedSampleScore, 3),
     realizedTruthValue: round(sampleScore, 3),
+    scoreProfileId: depthScienceProfile.scoreProfileId,
+    scoreProfileVersion: depthScienceProfile.scoreProfileVersion,
+    depthAwareScoreProfile: depthScienceProfile.depthAware,
+    depthScience,
+    depthScienceScore: round(depthScience.totalScienceScore ?? 0, 3),
+    scienceScoreByDepthLayer: depthScience.scienceValueByDepthLayer ?? {},
+    samplesByDepthLayer: depthScience.samplesByDepthLayer ?? {},
+    verticalCoverage: depthScience.verticalCoverage ?? null,
     realizedSampleScore: round(sampleScore, 3),
     expectedValueRegret: round(Math.max(0, expectedSampleScore - sampleScore), 3),
     probabilitySuccesses,

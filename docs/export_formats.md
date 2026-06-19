@@ -326,3 +326,7 @@ See `docs/headless_replay_alignment.md` for ordering, digest, CLI, and browser v
 ## H4.1 Replay Schema And Integrity Artifacts
 
 Replay schema documents live under `schemas/replay-*.schema.json`. Browser summaries may include `type: "anchor.browser.headless-replay-summary"`, a compact public-safe summary containing replay identity, mode/version, event/checkpoint counts, agent IDs, integrity status, warning/failure codes, playback cursor, selected agent, surfacing/objective counts, terminal reason, public-safety result, and boundary flags. The compact summary intentionally excludes full event arrays and hidden truth.
+
+## Depth-Science Export Fields
+
+`anchor.result` exports now preserve compact `depthScience` summaries and `anchor.score.depth-aware-sample` events when present. Headless bundles may include `depth_science_summary.json` and `depth_science_score_events.json` alongside the water-column summary.

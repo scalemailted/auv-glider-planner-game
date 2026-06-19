@@ -62,3 +62,7 @@ node tools/js/smoke_three_lifecycle_null_safety.mjs
 node tools/js/smoke_mission_scene_cleanup_idempotence.mjs
 node tools/js/audit_volumetric_activation_boundaries.mjs
 ```
+
+## Depth-Value Boundary
+
+Volumetric slabs may show layer-specific value, actual samples, and score-by-layer summaries. Three.js must not calculate score. Actual depth-aware score events are emitted by the simulator/headless runtime through the portable science-value evaluator.

@@ -58,3 +58,7 @@ ENV-R1 Bathymetric World View visualizes the 2.5D water-column model with water 
 THREE-R1.2A visualizes the same P11 contract in the production Three.js mission world. The renderer shows water surface, operational depth slabs, depth-aware currents, observations, and predicted/realized dive trajectories. The Water Column console controls update display state plus optional dive-profile/target-layer metadata on the selected waypoint or selected glider plan. XY waypoints, route validation, simulation, scoring, and exports remain owned by the portable mission core.
 
 Older missions without `waterColumnConfig` use a surface-only fallback so the UI does not imply fabricated deep layers. See `docs/threejs_volumetric_water_column.md` and `docs/manual_threejs_water_column_checklist.md`.
+
+## Depth-Aware Sampling Value
+
+The 2.5D water-column model now distinguishes `A_global_depth(x,y,layer,t)` from `A_global_topdown(x,y,t)`. `A_global_topdown` is the default accessible-max planning summary from the current priority model. Ordinary samples credit the actual sampled layer; integrated profile credit requires explicit integrated-profile observations.

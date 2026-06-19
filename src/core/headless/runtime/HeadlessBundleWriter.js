@@ -14,6 +14,8 @@ export function createHeadlessBundleManifest(episode, options = {}) {
   const roundtripReport = options.roundtripReport ?? episode?.roundtripReport ?? null;
   const hasScienceDiagnostics = Boolean(episode?.scienceDiagnostics);
   const hasWaterColumnSummary = Boolean(episode?.waterColumnSummary);
+  const hasDepthScienceSummary = Boolean(episode?.depthScienceSummary);
+  const hasDepthScienceEvents = Boolean(episode?.depthScienceScoreEvents?.length);
   const hasDepthLayerPriority = Boolean(episode?.depthLayerPriority);
   const hasMotionTrajectory = Boolean(episode?.motionTrajectory);
   const hasMotionDiagnostics = Boolean(episode?.motionDiagnostics ?? episode?.motionTrajectory?.motionDiagnostics);
@@ -57,6 +59,8 @@ export function createHeadlessBundleManifest(episode, options = {}) {
   if (hasDepthLayerPriority) {
     files.splice(9, 0, fileEntry('depth_layer_priority.json', 'depthLayerPriority', 'anchor.headless.depth-layer-priority', 'publicScenario', 'P11 public-safe depth-layer A_global priority and top-down collapse.'));
   }
+  if (hasDepthScienceSummary) files.push(fileEntry('depth_science_summary.json', 'depthScienceSummary', 'anchor.science.depth-aware-score-summary', 'publicScenario', 'THREE-R1.2A.2 public-safe actual-depth science score summary.'));
+  if (hasDepthScienceEvents) files.push(fileEntry('depth_science_score_events.json', 'depthScienceScoreEvents', 'anchor.score.depth-aware-sample', 'publicScenario', 'THREE-R1.2A.2 canonical actual-observation science score events.'));
   if (hasBathymetrySummary) {
     files.push(fileEntry('bathymetry_summary.json', 'bathymetrySummary', 'anchor.headless.bathymetry-summary', 'publicScenario', 'ENV-R1 public-safe environmental bathymetry summary.'));
   }
@@ -98,6 +102,8 @@ export function createHeadlessBundleManifest(episode, options = {}) {
   if (hasScienceDiagnostics) jsonFiles.push('science_diagnostics.json');
   if (hasWaterColumnSummary) jsonFiles.push('water_column_summary.json');
   if (hasDepthLayerPriority) jsonFiles.push('depth_layer_priority.json');
+  if (hasDepthScienceSummary) jsonFiles.push('depth_science_summary.json');
+  if (hasDepthScienceEvents) jsonFiles.push('depth_science_score_events.json');
   if (hasMotionTrajectory) jsonFiles.push('motion_trajectory.json', 'control_trace.json');
   if (hasMotionDiagnostics) jsonFiles.push('motion_diagnostics.json');
   if (hasMissionFeasibilityReport) jsonFiles.push('mission_feasibility_report.json');
@@ -171,6 +177,8 @@ export function headlessBundleFiles(episode, options = {}) {
     'score_report.json': stableJson(episode.scoreReport),
     ...(episode.scienceDiagnostics ? { 'science_diagnostics.json': stableJson(episode.scienceDiagnostics) } : {}),
     ...(episode.waterColumnSummary ? { 'water_column_summary.json': stableJson(episode.waterColumnSummary) } : {}),
+    ...(episode.depthScienceSummary ? { 'depth_science_summary.json': stableJson(episode.depthScienceSummary) } : {}),
+    ...(episode.depthScienceScoreEvents?.length ? { 'depth_science_score_events.json': stableJson({ type: 'anchor.score.depth-aware-sample-events', version: 'depth-aware-science-value-three-r1-2a-2', events: episode.depthScienceScoreEvents }) } : {}),
     ...(episode.bathymetrySummary || episode.fieldPackBefore?.bathymetrySummary || episode.fieldPackAfter?.bathymetrySummary ? { 'bathymetry_summary.json': stableJson(episode.bathymetrySummary ?? episode.fieldPackBefore?.bathymetrySummary ?? episode.fieldPackAfter?.bathymetrySummary) } : {}),
     ...(episode.missionGeometrySummary ? { 'mission_geometry_summary.json': stableJson(episode.missionGeometrySummary) } : {}),
     ...(episode.depthLayerPriority ? { 'depth_layer_priority.json': stableJson(episode.depthLayerPriority) } : {}),
@@ -224,6 +232,8 @@ export function createHeadlessCombinedBundle(episode, options = {}) {
     scoreReport: episode.scoreReport,
     scienceDiagnostics: episode.scienceDiagnostics ?? null,
     waterColumnSummary: episode.waterColumnSummary ?? null,
+    depthScienceSummary: episode.depthScienceSummary ?? null,
+    depthScienceScoreEvents: episode.depthScienceScoreEvents ?? [],
     bathymetrySummary: episode.bathymetrySummary ?? episode.fieldPackBefore?.bathymetrySummary ?? episode.fieldPackAfter?.bathymetrySummary ?? null,
     missionGeometrySummary: episode.missionGeometrySummary ?? null,
     depthLayerPrioritySummary: episode.depthLayerPriority?.summary ?? episode.depthLayerPrioritySummary ?? null,

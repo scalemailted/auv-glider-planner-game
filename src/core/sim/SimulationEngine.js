@@ -48,6 +48,9 @@ import {
   validateWaypoint
 } from './SimulationSafety.js';
 import { debugSurfaceDecision } from './SurfaceDecisionVisibility.js';
+import { normalizeWaterColumnConfig } from '../science/WaterColumnSchema.js';
+import { depthScienceScoreProfileMetadata } from '../science/DepthScoringProfiles.js';
+import { summarizeDepthAwareScoreEvents } from '../science/DepthAwareScienceValue.js';
 
 const MAX_PLAYBACK_STEPS = SIMULATION_LIMITS.maxPlaybackSteps;
 
@@ -87,6 +90,9 @@ export class SimulationEngine {
     this.ignoredUpdateEvents = [];
     const samplingRules = normalizeSamplingRules(this.mission);
     const priorityTargetRules = normalizePriorityTargetRules(this.mission);
+    const waterColumnConfig = normalizeWaterColumnConfig(this.mission?.waterColumnConfig ?? this.mission?.world?.waterColumnConfig ?? this.level?.world?.waterColumnConfig ?? { depthLayerIds: ['surface'], diveProfileId: 'surfaceOnly' });
+    const depthScienceScoreProfile = resolveDepthScienceScoreProfile(this.level, this.mission, waterColumnConfig);
+    const primaryObjective = primaryMissionObjective(this.mission);
     this.missionState = {
       sampled: new Set(),
       sampleHistory: new Map(),
@@ -99,7 +105,10 @@ export class SimulationEngine {
         duplicateSamples: 0,
         depletedSamples: 0,
         cooldownSuppressedSamples: 0,
-        persistentSamples: 0
+        persistentSamples: 0,
+        depthAwareSamples: 0,
+        verticalDuplicateSamples: 0,
+        duplicateDepthScoreEvents: 0
       },
       endConditionConfig: normalizeEndCondition(this.mission),
       endConditionResult: null,
@@ -121,7 +130,21 @@ export class SimulationEngine {
       allowDuplicateSampling: samplingRules.duplicateValueMultiplier > 0 || samplingRules.mode === 'persistent',
       roiScoringMode: this.mission.rules?.roiScoringMode ?? this.level.meta?.roiScoringMode ?? 'expectedValue',
       rngSeed: this.mission.rules?.stochasticSeed ?? this.mission.rules?.rngSeed ?? this.level.meta?.seed ?? this.level.instanceId ?? this.level.levelId,
-      roiOutcomes: new Map()
+      roiOutcomes: new Map(),
+      plan: this.plan,
+      missionDuration: this.level.world?.time?.duration ?? 0,
+      waterColumnConfig,
+      defaultDiveProfileId: this.mission.rules?.waterColumn?.defaultDiveProfileId ?? this.mission.waterColumnConfig?.defaultDiveProfileId ?? waterColumnConfig.diveProfileId,
+      defaultTargetDepthLayerId: this.mission.rules?.waterColumn?.defaultTargetDepthLayerId ?? this.mission.waterColumnConfig?.defaultTargetDepthLayerId ?? waterColumnConfig.defaultLayerIds?.[0] ?? 'surface',
+      depthScienceScoreProfile,
+      scoreProfileId: depthScienceScoreProfile.scoreProfileId,
+      primaryObjective,
+      depthScienceObservationHistory: [],
+      depthScienceEvents: [],
+      depthScienceScoreEventKeys: new Set(),
+      depthPriorityField: this.level.layers?.A_global_depth ?? this.level.layers?.waterColumn?.A_global_depth ?? this.level.layers?.waterColumn?.A_global ?? null,
+      topDownPriorityField: this.level.layers?.A_global_topdown ?? this.level.layers?.waterColumn?.A_global_topdown ?? null,
+      visibilityContext: { publicSafe: true, hiddenTruthIncluded: false }
     };
     this.driftMetrics = {
       samples: 0,
@@ -455,6 +478,7 @@ export class SimulationEngine {
     const samplingEvent = updateSampling(agent, this.world, this.missionState, this.t);
     if (samplingEvent) {
       this.recordEvent(samplingEvent);
+      if (samplingEvent.scoreEvent) this.recordDepthScienceScoreEvent(samplingEvent.scoreEvent);
       if (Number(samplingEvent.probability ?? 1) < 1 || samplingEvent.roiScoringMode === 'realizedStochastic') {
         this.recordEvent({
           type: 'probabilityOutcome',
@@ -770,6 +794,21 @@ export class SimulationEngine {
   }
 
   recordWaypointTransition(event) {
+    this.recordEvent(event);
+  }
+
+  recordDepthScienceScoreEvent(event) {
+    if (!event) return;
+    const key = event.sampleId ?? [event.agentId ?? 'agent', event.depthLayerId ?? 'surface', event.timeSeconds ?? this.t].join(':');
+    this.missionState.depthScienceScoreEventKeys ??= new Set();
+    if (this.missionState.depthScienceScoreEventKeys.has(key)) {
+      this.missionState.samplingMetrics ??= {};
+      this.missionState.samplingMetrics.duplicateDepthScoreEvents = (this.missionState.samplingMetrics.duplicateDepthScoreEvents ?? 0) + 1;
+      return;
+    }
+    this.missionState.depthScienceScoreEventKeys.add(key);
+    this.missionState.depthScienceEvents ??= [];
+    this.missionState.depthScienceEvents.push(event);
     this.recordEvent(event);
   }
 
@@ -1216,6 +1255,11 @@ export class SimulationEngine {
     });
     this.missionState.stopReason = summary.stopReason;
     summary.routeFailureDecision = this.routeFailureDecision;
+    this.missionState.depthScienceSummary = summary.depthScience ?? summarizeDepthAwareScoreEvents(this.missionState.depthScienceEvents ?? [], {
+      waterColumnConfig: this.missionState.waterColumnConfig,
+      scoreProfile: this.missionState.depthScienceScoreProfile
+    });
+    publishDepthScienceDebug(this.missionState, summary);
     return summary;
   }
 
@@ -1259,6 +1303,7 @@ export class SimulationEngine {
       drift: summarizeDriftMetrics(this.driftMetrics),
       priorityTargets: summarizePriorityTargets(this.level, this.missionState),
       deployment: summarizeDeployment(this.level, this.mission),
+      depthScience: summary.depthScience ?? this.missionState.depthScienceSummary ?? null,
       frames: this.logger.frames,
       events: this.events,
       probabilityOutcomes,
@@ -1295,6 +1340,62 @@ export class SimulationEngine {
       scoreComponents: summary
     };
   }
+}
+
+function resolveDepthScienceScoreProfile(level, mission, waterColumnConfig) {
+  const candidate = mission?.scoring?.depthScience ?? mission?.scoring?.scoreProfileId ?? mission?.meta?.scoreProfileId ?? mission?.waterColumnConfig?.scoreProfile ?? level?.world?.waterColumnConfig?.scoreProfile ?? null;
+  const defaultProfileId = waterColumnConfig.depthLayerIds.length > 1 ? 'depthAwareScienceV1' : 'legacySurfaceScienceV1';
+  return depthScienceScoreProfileMetadata(candidate ?? defaultProfileId, {
+    defaultProfileId,
+    layerSchemaVersion: waterColumnConfig.version,
+    objectiveWeightProfileId: mission?.scoring?.depthScience?.objectiveWeightProfileId ?? mission?.objectiveWeightProfileId
+  });
+}
+
+function primaryMissionObjective(mission = null) {
+  return mission?.objectives?.[0] ?? mission?.scienceObjectives?.[0] ?? mission?.objective ?? mission?.rules?.objective ?? null;
+}
+
+function publishDepthScienceDebug(missionState = {}, summary = {}) {
+  const depthScience = summary.depthScience ?? missionState.depthScienceSummary ?? {};
+  globalThis.ANCHOR_DEPTH_SCIENCE_DEBUG = {
+    version: depthScience.version ?? 'depth-aware-science-value-three-r1-2a-2',
+    scoreProfileId: missionState.depthScienceScoreProfile?.scoreProfileId ?? depthScience.scoreProfileId ?? null,
+    scoreProfileVersion: missionState.depthScienceScoreProfile?.scoreProfileVersion ?? depthScience.scoreProfileVersion ?? null,
+    objectiveId: missionState.primaryObjective?.objectiveId ?? missionState.primaryObjective?.id ?? null,
+    objectiveDepthWeightProfile: missionState.depthScienceScoreProfile?.objectiveWeightProfileId ?? null,
+    selectedAgentId: null,
+    selectedSegmentId: null,
+    selectedDiveProfileId: missionState.defaultDiveProfileId ?? null,
+    selectedTargetLayerId: missionState.defaultTargetDepthLayerId ?? null,
+    segmentDistance: null,
+    achievableMaximumDepthMeters: null,
+    requestedMaximumDepthMeters: null,
+    limitingFactor: null,
+    reachableLayerIds: missionState.waterColumnConfig?.depthLayerIds ?? [],
+    unreachableLayerIds: [],
+    predictedSamplesByLayer: {},
+    predictedScienceValueByLayer: {},
+    predictedTotalScienceValue: null,
+    actualSamplesByLayer: depthScience.samplesByDepthLayer ?? {},
+    actualScienceValueByLayer: depthScience.scienceValueByDepthLayer ?? {},
+    actualTotalScienceValue: depthScience.totalScienceScore ?? 0,
+    verticalCoverage: depthScience.verticalCoverage ?? null,
+    maximumActualDepthMeters: depthScience.maximumActualDepthMeters ?? 0,
+    redundancyPenaltyByLayer: depthScience.redundancyPenaltyByLayer ?? {},
+    informationGainByLayer: depthScience.informationGainByLayer ?? {},
+    objectiveContributionByLayer: depthScience.objectiveContributionByLayer ?? {},
+    canonicalScoreEventCount: depthScience.canonicalScoreEventCount ?? 0,
+    uiScoreEventCount: depthScience.uiScoreEventCount ?? 0,
+    duplicateScoreEventCount: depthScience.duplicateScoreEventCount ?? 0,
+    browserHeadlessParityStatus: depthScience.browserHeadlessParityStatus ?? 'not_checked',
+    usesActualObservationDepthForScoring: true,
+    awardsIntegratedValueToSurfaceSample: false,
+    usesFree3DPlanning: false,
+    ownsSimulation: false,
+    ownsRendering: false,
+    operationallyValidated: false
+  };
 }
 
 function round(value, digits) {

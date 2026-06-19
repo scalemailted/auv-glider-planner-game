@@ -491,3 +491,7 @@ Added a versioned headless replay alignment contract with `replay_manifest.json`
 ## H4.1 / Replay Schema, Integrity, And Multi-Agent Contract Hardening
 
 Added formal replay schemas, runtime schema validation, compatibility policy, structured integrity verifier, compact clean/tampered replay fixtures, browser-visible integrity failures, compact replay summary export, and a contract-only two-agent replay fixture. Public playback remains `publicObservationPlayback`; protected/referee replay modes remain reserved and unimplemented for public artifacts.
+
+## THREE-R1.2A.2 Depth-Aware Scoring Note
+
+Depth-aware science scoring is now versioned separately from the legacy horizontal-cell score path. Browser official scoring uses `depthAwareScienceV1` only when mission metadata selects it; imported surface-only missions retain `legacySurfaceScienceV1`. The current implementation remains a synthetic educational model and does not claim calibrated ocean validation.

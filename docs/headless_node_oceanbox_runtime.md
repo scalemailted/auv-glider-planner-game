@@ -154,3 +154,7 @@ See [Mission Scoring and Regret](mission_scoring_and_regret.md) for the SCORE-R1
 ## Replay Integrity Boundary
 
 Node/OceanBox-JS replay verification checks recorded public replay artifacts, deterministic ordering, checkpoint references, digests, and public-safety markers. It does not rerun hidden-state physics or make headless scoring official browser scoring. See `docs/replay_artifact_schemas.md` for H4.1 schema and issue-code details.
+
+## Depth-Aware Science Components
+
+Node/OceanBox-JS uses the same portable depth-aware sample/profile value evaluator as the browser where water-column observations are available. Headless score reports remain educational unless explicitly compared through browser/headless parity artifacts.

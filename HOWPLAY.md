@@ -1102,3 +1102,7 @@ See [Mission Scoring and Regret](docs/mission_scoring_and_regret.md) for the SCO
 ### Replay Integrity Fixtures
 
 The Headless Bundle Viewer includes Load Example Replay, Load Tampered Replay, and Load Multi-Agent Replay actions. Tampered fixtures are intentionally invalid and show: "This replay failed integrity verification. Playback results should not be treated as trustworthy." Multi-agent replay is contract-only playback for public recorded state; it is not fleet planning or MARL.
+
+## Depth-Aware Sampling Update
+
+The current volumetric activation layer now has explicit scoring semantics: actual samples at different depth layers can receive different science value. Predicted profile points remain planning previews and do not create score events.

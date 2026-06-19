@@ -189,6 +189,8 @@ export function buildResultExport({ level, mission, plan, result, label = 'Manua
       events: cloneJson(result?.events ?? [])
     },
     scoreSummary: cloneJson(result?.summary ?? {}),
+    depthScience: cloneJson(result?.depthScience ?? result?.summary?.depthScience ?? null),
+    depthScienceScoreEvents: cloneJson((result?.events ?? []).filter((event) => event.type === 'anchor.score.depth-aware-sample')),
     energySummary: cloneJson(result?.energy ?? {
       energyUsed: result?.summary?.energyUsed ?? null,
       energyPenalty: result?.summary?.energyPenalty ?? null
@@ -219,7 +221,8 @@ export function buildResultExport({ level, mission, plan, result, label = 'Manua
       sampling: result?.sampling ?? null,
       priorityTargets: result?.priorityTargets ?? result?.summary?.priorityTargets ?? null,
       missionOutcomeReport: result?.missionOutcomeReport ?? result?.scoreArtifacts?.missionOutcomeReport ?? null,
-      missionScore: result?.missionScore ?? result?.scoreArtifacts?.missionScore ?? null
+      missionScore: result?.missionScore ?? result?.scoreArtifacts?.missionScore ?? null,
+      depthScience: result?.depthScience ?? result?.summary?.depthScience ?? null
     }),
     debugTrace: cloneJson(result?.debugTrace ?? result?.simulationTrace ?? null),
     rawResult: cloneJson(result ?? null)

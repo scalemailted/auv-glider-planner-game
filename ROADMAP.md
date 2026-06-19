@@ -321,3 +321,14 @@ H4.1 hardens replay artifacts with formal schemas, deterministic integrity issue
 ## Current Renderer Stabilization Note
 
 THREE-R1.2A adds the operational 2.5D water-column renderer over the existing P11 model. The next renderer phase should be THREE-R1.2B - Bathymetric Seabed Mesh, Coastline, and Landmass Geometry.
+
+### THREE-R1.2A.2 - Depth-aware sampling value, dive feasibility, and scientific scoring
+
+Implemented as a stabilization step before terrain/seabed work. Horizontal surface waypoints still define mission intent; segment distance and profile mechanics constrain achievable dive depth; science is credited from actual depth-aware observations; different layers may carry different scientific value; integrated top-down priority is a planning summary, not automatic sample credit; scoring is versioned. No arbitrary XYZ route planner and no operational/calibrated ocean validation are claimed.
+
+Next intended renderer/science order:
+
+1. THREE-R1.2A.2 - Depth-aware sampling value, dive feasibility, and scientific scoring
+2. THREE-R1.2B - Bathymetric seabed mesh, coastline, and landmass geometry
+3. THREE-R1.2C - Terrain-aware profile feasibility and polished 3D mission presentation
+4. THREE-R2 - Replay, debrief route review, and editor parity

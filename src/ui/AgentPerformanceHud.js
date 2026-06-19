@@ -38,6 +38,9 @@ export class AgentPerformanceHud {
           ${totalChip('ROI', formatHudMetric(metrics.totalRoiCollected, 2))}
           ${totalChip('Planned EV', formatHudMetric(metrics.totalExpectedValue, 2))}
           ${totalChip('Actual ROI', formatHudMetric(metrics.totalRealizedValue, 2))}
+          ${metrics.totalScienceScore !== null ? totalChip('Science', formatHudMetric(metrics.totalScienceScore, 2)) : ''}
+          ${metrics.scoreProfileId ? totalChip('Profile', metrics.scoreProfileId) : ''}
+          ${metrics.verticalCoverage ? totalChip('Depth Cov', metrics.verticalCoverage) : ''}
           ${totalChip('Actual Energy', formatHudMetric(metrics.totalEnergyUsed))}
           ${totalChip('Hazards', `${metrics.hazardsHit}/${metrics.mobileHazardsHit}`)}
           ${totalChip('Time', metrics.missionTimeLabel)}

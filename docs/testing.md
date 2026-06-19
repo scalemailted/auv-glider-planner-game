@@ -704,3 +704,7 @@ node tools/js/audit_execute_pipeline_runtime_errors.mjs
 ```
 
 Focused browser coverage should exercise Planning -> Execute -> Simulation -> Step/Play/Pause -> Finish -> Debrief through visible controls. The renderer must not own execution, simulation state, observations, scoring, result creation, or hidden truth.
+
+## THREE-R1.2A.2 Tests
+
+Depth-aware scoring adds focused smokes for dive feasibility, sample value, profile value, objective weighting, profile compatibility, score-event deduplication, debrief summaries, source-boundary checks, and browser/headless component parity.

@@ -137,6 +137,9 @@ import { CoupledFieldsDemoScene } from '../../src/game/phaser/scenes/CoupledFiel
 import { MotionPlanningDemoScene } from '../../src/game/phaser/scenes/MotionPlanningDemoScene.js';
 import { RendererArchitecturePreviewScene } from '../../src/game/phaser/scenes/RendererArchitecturePreviewScene.js';
 import { BathymetryWorldViewScene } from '../../src/game/phaser/scenes/BathymetryWorldViewScene.js';
+import { assessDiveProfileFeasibility } from '../../src/core/science/DiveProfileFeasibility.js';
+import { evaluateDepthAwareSampleValue } from '../../src/core/science/DepthAwareScienceValue.js';
+import { depthScienceScoreProfileMetadata } from '../../src/core/science/DepthScoringProfiles.js';
 
 function assertFiniteNumber(value, label) {
   assert.equal(Number.isFinite(Number(value)), true, `${label} should be finite`);
@@ -147,6 +150,12 @@ function assertFieldNonEmpty(field, label) {
   assert.ok(field.length > 0 && field[0]?.length > 0, `${label} should have dimensions`);
   assert.ok(field.flat().some((value) => Number(value) > 0 || (typeof value === 'string' && value !== 'inactive' && value !== 'empty')), `${label} should not be empty`);
 }
+
+const modelStackDepthFeasibility = assessDiveProfileFeasibility({ waterColumnConfig: { depthLayerIds: ['surface', 'thermocline', 'deep'] }, segmentHorizontalDistanceMeters: 900, requestedTargetLayerId: 'deep' });
+assert.equal(modelStackDepthFeasibility.usesFull3DPlanning, false, 'Depth feasibility remains 2.5D and renderer-neutral');
+const modelStackDepthValue = evaluateDepthAwareSampleValue({ position: { x: 0, y: 0 }, depthLayerId: 'thermocline', observation: { observedValue: 2 }, waterColumnConfig: { depthLayerIds: ['surface', 'thermocline', 'deep'] } });
+assert.equal(modelStackDepthValue.boundaryFlags.awardsIntegratedValueToSurfaceSample, false, 'Depth-aware value does not award top-down priority to ordinary samples');
+assert.equal(depthScienceScoreProfileMetadata('depthAwareScienceV1').depthAware, true, 'Depth-aware score profile imports');
 
 
 // P9 science diagnosis modules: forecast correction vs hidden-event hypothesis lifecycle.
@@ -1246,5 +1255,3 @@ const simulationSceneSource = fs.readFileSync('src/game/phaser/scenes/Simulation
 assert.ok(simulationSceneSource.includes('normalizeMissionLaunchPayload'), 'SimulationScene consumes launch payloads');
 assert.ok(simulationSceneSource.includes('rendererOwnsSimulationState: false'), 'Simulation debug preserves renderer boundary');
 console.log('Model stack integration smoke passed');
-
-

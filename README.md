@@ -937,3 +937,7 @@ Headless bundles can now include REPLAY-R1 artifacts: `replay_manifest.json`, `r
 ### H4.1 / Replay Schema, Integrity, And Multi-Agent Contract Hardening
 
 Replay artifacts now have formal schema documents under `schemas/`, structured runtime validation, deterministic integrity issue codes, compact clean/tampered fixtures, and a contract-only two-agent replay fixture. The Headless Bundle Viewer can load public, tampered, and multi-agent replay examples, show integrity failures without crashing, and export `anchor.browser.headless-replay-summary`. Public replay remains recorded public-state playback only: it does not reconstruct hidden truth, rerun physics, change official browser scoring, add a planner, add a Python simulator, or add RL/MARL. See [Replay Artifact Schemas](docs/replay_artifact_schemas.md).
+
+## Depth-Aware Science Scoring
+
+THREE-R1.2A.2 adds versioned depth-aware science scoring for volumetric water-column missions. Generated volumetric missions may use `depthAwareScienceV1`; imported surface-only missions remain compatible through `legacySurfaceScienceV1`. Science is credited from actual depth-layer observations, and integrated top-down priority is a planning summary rather than automatic surface-sample credit. See [Depth-Aware Sampling Value and Scoring](docs/depth_aware_sampling_value_and_scoring.md) and [Depth-Aware Scoring Audit](docs/depth_aware_scoring_audit.md).

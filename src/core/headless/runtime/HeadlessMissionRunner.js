@@ -7,6 +7,8 @@ import { createDefaultHeadlessRuntimeConfig, validateHeadlessRuntimeConfig } fro
 import { computeHeadlessScoreReport } from './HeadlessScoring.js';
 import { analyzeScienceEvidence, buildScienceDiagnosticsArtifact, scienceDiscoverySummary } from '../../science/ScienceDiscoveryLifecycle.js';
 import { computeWaterColumnPriority } from '../../science/WaterColumnPriorityModel.js';
+import { evaluateDepthAwareProfileValue } from '../../science/DepthAwareScienceValue.js';
+import { depthScienceScoreProfileMetadata } from '../../science/DepthScoringProfiles.js';
 import { buildWaterColumnSummary } from '../../science/WaterColumnObservationModel.js';
 import { createSyntheticBathymetryField } from '../../science/BathymetryFieldModel.js';
 import { buildOceanWorldGeometry } from '../../science/OceanWorldGeometryAdapter.js';
@@ -102,6 +104,20 @@ export function simulateHeadlessEpisode(configInput = {}, planInput = null) {
     diveProfile: glider?.diveProfile ?? plan.diveProfileId,
     depthLayerPriority
   });
+  const depthScienceScoreProfile = depthScienceScoreProfileMetadata(config.missionConfig?.scoring?.depthScience ?? config.missionConfig?.scoring?.scoreProfileId ?? (waterColumnSummary.waterColumnConfig?.layerCount > 1 ? 'depthAwareScienceV1' : 'legacySurfaceScienceV1'), {
+    defaultProfileId: waterColumnSummary.waterColumnConfig?.layerCount > 1 ? 'depthAwareScienceV1' : 'legacySurfaceScienceV1',
+    layerSchemaVersion: config.waterColumnConfig?.version,
+    objectiveWeightProfileId: missionConfig.objectives?.[0]?.objectiveWeightProfileId
+  });
+  const depthScienceProfileValue = evaluateDepthAwareProfileValue({
+    observations: executionObservations,
+    waterColumnConfig: config.waterColumnConfig ?? config,
+    priorityField: fieldPackAfter.fields.A_global,
+    missionObjective: missionConfig.objectives?.[0] ?? null,
+    scoreProfile: depthScienceScoreProfile,
+    agentId: plan.gliderId ?? glider?.id ?? 'glider-1'
+  });
+  const depthScienceSummary = depthScienceProfileValue.summary;
   const missionGeometry = buildOceanWorldGeometry({
     missionConfig,
     fieldPack: fieldPackAfter,
@@ -221,6 +237,9 @@ export function simulateHeadlessEpisode(configInput = {}, planInput = null) {
     observations: executionObservations,
     tracks: executionTracks,
     waterColumnSummary,
+    depthScienceScoreProfile,
+    depthScienceScoreEvents: depthScienceProfileValue.scoreEvents,
+    depthScienceSummary,
     bathymetrySummary: fieldPackBefore.bathymetrySummary ?? fieldPackAfter.bathymetrySummary ?? null,
     missionGeometrySummary: missionGeometry.summary,
     depthLayerPriority,
@@ -275,6 +294,7 @@ export function simulateHeadlessEpisode(configInput = {}, planInput = null) {
       missionScoreSummary: missionScoreArtifacts.missionScoreSummary,
       regretSummary: missionScoreArtifacts.regretSummary,
       waterColumnSummary,
+      depthScienceSummary,
       depthLayerPrioritySummary: depthLayerPriority.summary,
       scienceDiscoverySummary: scienceDiscoverySummary(scienceDiagnostics),
       calibratedOceanForecast: false,

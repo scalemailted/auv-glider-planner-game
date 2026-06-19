@@ -11,7 +11,7 @@ if (!index.includes('src/game/main.js')) failures.push('index.html must boot src
 if (index.includes('src/app/main.js')) failures.push('index.html must not boot reverted src/app/main.js.');
 if (index.includes('AnchorBrowserRuntime')) failures.push('index.html must not activate AnchorBrowserRuntime.');
 
-for (const file of ['vendor/three/build/three.module.js', 'vendor/three/build/three.core.js']) {
+for (const file of ['vendor/three/build/three.module.js', 'vendor/three/build/three.core.js', 'src/core/science/DepthAwareScienceValue.js', 'src/core/science/DiveProfileFeasibility.js', 'src/core/science/DepthScoringProfiles.js']) {
   if (!existsSync(path.join(root, file))) failures.push(`${file} is missing.`);
 }
 

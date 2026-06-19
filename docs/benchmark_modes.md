@@ -128,3 +128,7 @@ Adaptive Benchmark now supports a one-leg execution preview: setup launch, exist
 ## P8 Adaptive Session Boundary
 
 Adaptive Benchmark supports compact multi-leg session persistence and objective-history review. Planner Benchmark remains fixed-objective attempt comparison. Full Autonomy remains contract-only. P8 does not add route generation, scoring redesign, automatic full-mission execution, or MARL/RL.
+
+## Depth-Aware Benchmark Boundary
+
+Planner and adaptive benchmark records may display or export depth-science summaries, but SCORE-R1 mission-outcome scoring remains a shadow benchmark layer. Incompatible score profiles should not be ranked as though they are identical.

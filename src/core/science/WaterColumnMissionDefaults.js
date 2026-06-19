@@ -1,4 +1,4 @@
-﻿import {
+import {
   WATER_COLUMN_SCHEMA_VERSION,
   WATER_COLUMN_PROFILE_IDS,
   normalizeWaterColumnConfig,
@@ -6,6 +6,7 @@
   waterColumnLayerMetadata,
   waterColumnNotA
 } from './WaterColumnSchema.js';
+import { depthScienceScoreProfileMetadata } from './DepthScoringProfiles.js';
 
 export const WATER_COLUMN_MISSION_DEFAULTS_VERSION = 'water-column-mission-defaults-three-r1-2a-1';
 
@@ -27,6 +28,10 @@ export function buildDefaultWaterColumnMissionConfig(options = {}) {
     diveProfileId: 'surfaceOnly'
   });
   const availableDiveProfileIds = WATER_COLUMN_PROFILE_IDS.filter((id) => id !== 'integratedWaterColumn');
+  const scoreProfile = depthScienceScoreProfileMetadata('depthAwareScienceV1', {
+    layerSchemaVersion: WATER_COLUMN_SCHEMA_VERSION,
+    objectiveWeightProfileId: options.objectiveWeightProfileId ?? 'generalSurvey'
+  });
   return {
     ...config,
     version: WATER_COLUMN_SCHEMA_VERSION,
@@ -35,6 +40,10 @@ export function buildDefaultWaterColumnMissionConfig(options = {}) {
     synthetic: true,
     calibrated: false,
     generatedModernMission: source === 'generatedModernMission' || source === 'scenarioSpecificGeneratedConfig' || source === 'tutorialGeneratedMission',
+    scoreProfile,
+    scoreProfileId: scoreProfile.scoreProfileId,
+    scoreProfileVersion: scoreProfile.scoreProfileVersion,
+    depthAwareScienceScoring: scoreProfile,
     layerIds: config.depthLayerIds.slice(),
     layerDefinitions: Object.fromEntries(config.depthLayerIds.map((id) => [id, {
       ...waterColumnLayerMetadata(id),
@@ -62,7 +71,8 @@ export function buildDefaultWaterColumnMissionConfig(options = {}) {
     },
     warnings: [
       'Synthetic educational water-column configuration; not a calibrated ocean forecast.',
-      'Surface-only remains the default dive profile until the player selects another profile.'
+      'Surface-only remains the default dive profile until the player selects another profile.',
+      'Depth-aware science scoring is versioned and credits actual depth-layer observations.'
     ],
     notA: waterColumnNotA()
   };
@@ -75,12 +85,20 @@ export function buildLegacySurfaceOnlyWaterColumnConfig(options = {}) {
     defaultLayerIds: ['surface'],
     diveProfileId: 'surfaceOnly'
   });
+  const scoreProfile = depthScienceScoreProfileMetadata('legacySurfaceScienceV1', {
+    layerSchemaVersion: WATER_COLUMN_SCHEMA_VERSION,
+    objectiveWeightProfileId: 'surfaceLegacy'
+  });
   return {
     ...config,
     defaultsVersion: WATER_COLUMN_MISSION_DEFAULTS_VERSION,
     source: 'importedLegacySurfaceFallback',
     synthetic: true,
     calibrated: false,
+    scoreProfile,
+    scoreProfileId: scoreProfile.scoreProfileId,
+    scoreProfileVersion: scoreProfile.scoreProfileVersion,
+    depthAwareScienceScoring: scoreProfile,
     layerIds: ['surface'],
     layerDefinitions: {
       surface: {
@@ -109,7 +127,8 @@ export function buildLegacySurfaceOnlyWaterColumnConfig(options = {}) {
       explodedModeVisualizationOnly: true
     },
     warnings: [
-      'This imported mission has no water-column configuration. It is displayed in surface-only compatibility mode.'
+      'This imported mission has no water-column configuration. It is displayed in surface-only compatibility mode.',
+      'Legacy surface-only scoring is preserved as legacySurfaceScienceV1.'
     ],
     notA: waterColumnNotA()
   };
@@ -198,6 +217,8 @@ export function attachWaterColumnConfig(level = null, mission = null, config = n
     level.world.waterColumnConfig = cloneJson(config);
     level.meta ??= {};
     level.meta.waterColumnConfigSource = config.source ?? null;
+    level.meta.scoreProfileId = config.scoreProfileId ?? config.scoreProfile?.scoreProfileId ?? null;
+    level.meta.scoreProfileVersion = config.scoreProfileVersion ?? config.scoreProfile?.scoreProfileVersion ?? null;
   }
   if (mission) {
     mission.waterColumnConfig = cloneJson(config);
@@ -205,12 +226,19 @@ export function attachWaterColumnConfig(level = null, mission = null, config = n
     mission.world.waterColumnConfig = cloneJson(config);
     mission.meta ??= {};
     mission.meta.waterColumnConfigSource = config.source ?? null;
+    mission.meta.scoreProfileId = config.scoreProfileId ?? config.scoreProfile?.scoreProfileId ?? null;
+    mission.meta.scoreProfileVersion = config.scoreProfileVersion ?? config.scoreProfile?.scoreProfileVersion ?? null;
     mission.rules ??= {};
+    mission.scoring ??= {};
+    mission.scoring.depthScience = cloneJson(config.scoreProfile ?? config.depthAwareScienceScoring ?? null);
+    mission.scoring.scoreProfileId = config.scoreProfileId ?? config.scoreProfile?.scoreProfileId ?? mission.scoring.scoreProfileId;
     mission.rules.waterColumn = {
       configSource: config.source ?? null,
       defaultDiveProfileId: config.defaultDiveProfileId ?? config.diveProfileId ?? 'surfaceOnly',
       defaultTargetDepthLayerId: config.defaultTargetDepthLayerId ?? 'surface',
-      surfaceOnlyDefaultPreservesCanonicalRoute: true
+      surfaceOnlyDefaultPreservesCanonicalRoute: true,
+      scoreProfileId: config.scoreProfileId ?? config.scoreProfile?.scoreProfileId ?? null,
+      scoreProfileVersion: config.scoreProfileVersion ?? config.scoreProfile?.scoreProfileVersion ?? null
     };
     for (const agent of mission.agents ?? []) {
       agent.diveProfileId ??= config.defaultDiveProfileId ?? 'surfaceOnly';

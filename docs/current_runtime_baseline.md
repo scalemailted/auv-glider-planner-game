@@ -30,3 +30,7 @@
 - Keep simulation, science, planning, scoring, and replay logic renderer-independent.
 - Remove Phaser only incrementally after exact visual, interaction, and validation parity is proven.
 - No all-at-once router replacement is planned for the current architecture.
+
+## Depth-Aware Scoring Baseline
+
+The active runtime keeps simulation and scoring authority in the portable core. `src/core/science/DepthAwareScienceValue.js` and `src/core/science/DiveProfileFeasibility.js` are renderer-neutral. Three.js consumes public state and debug summaries but does not own field generation, feasibility, simulation, or scoring.
