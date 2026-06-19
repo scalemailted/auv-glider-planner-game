@@ -208,7 +208,7 @@ The deployment start is separate from the waypoint list. It is not counted as wa
 
 If the next waypoint would exceed estimated fuel or cross blocked terrain, the game blocks the placement and shows a warning. A final waypoint beyond mission duration is different: it can be a terminal carry-through instruction. Simulation travels toward it, stops at the mission time limit, marks it missed because time expired, and debriefs normally. You can repair true route problems by deleting waypoints, moving them closer, reordering them, or clearing the selected glider's route.
 
-When you press `Execute`, the game checks that every required deployment start is selected, every fixed start is valid, mission time settings are usable, waypoint coordinates are finite and inside water cells, route segments do not cross terrain, and estimated fuel is sufficient. If something is invalid, Planning stays open, the visible Execute control is blocked, and the affected waypoint/segment is highlighted before simulation starts. A future waypoint scheduled beyond the mission duration is a warning, not a hard blocker: simulation runs toward it and ends at the mission time limit before it is reached.
+When you press `Execute`, the game creates a public execution transaction and clone-safe launch snapshot, then checks that every required deployment start is selected, every fixed start is valid, mission time settings are usable, waypoint coordinates are finite and inside water cells, route segments do not cross terrain, and estimated fuel is sufficient. If something is invalid, Planning stays open, the visible Execute control is blocked, and the affected waypoint/segment is highlighted before simulation starts. A future waypoint scheduled beyond the mission duration is a warning, not a hard blocker: simulation runs toward it and ends at the mission time limit before it is reached.
 
 ### Simulation
 
@@ -270,7 +270,7 @@ The right Waypoint Timeline shows compact segment grades beside each waypoint. T
 
 If the simulator detects an invalid or unreachable plan, it stops with a warning and recovery choices instead of freezing. Move or delete the problem waypoint, replan from the current actual position, or end to Debrief. Exported results include the stop reason and recovery decision for debugging.
 
-During Simulation, Start, Prev, Next, End, Play/Pause, Step, and Finish live in the bottom timeline panel instead of inside the map viewport. The Three.js mission world stays focused on terrain, currents, hazards, planned path, actual path, glider playback, observations, surfacing events, and route/failure inspection; the portable simulation engine owns time, motion, observations, and scoring.
+During Simulation, Start, Prev, Next, End, Play/Pause, Step, Finish, Reset, Return/Replan, Debrief, and Main Menu controls remain outside the map viewport. The Three.js mission world stays focused on terrain, currents, hazards, planned path, actual path, glider playback, observations, surfacing events, and route/failure inspection; the portable simulation engine owns time, motion, observations, and scoring.
 
 ## Tutorial Sequence
 

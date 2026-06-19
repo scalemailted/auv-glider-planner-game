@@ -1,6 +1,6 @@
 # Three.js Waypoint Pipeline and Camera Controls
 
-THREE-R1.1C repairs the visible waypoint command pipeline and adopts standard desktop 3D camera gestures. It keeps the active architecture unchanged: `index.html` loads `src/game/main.js`, Phaser owns scene lifecycle, Three.js owns the mission-world renderer/input surface, and the portable mission core plus `MissionWorkspaceScene` own planning, validation, simulation, and scoring.
+THREE-R1.1C repairs the visible waypoint command pipeline and adopts standard desktop 3D camera gestures. THREE-R1.1D follows it by hardening Execute -> Simulation parity from the same canonical plan. It keeps the active architecture unchanged: `index.html` loads `src/game/main.js`, Phaser owns scene lifecycle, Three.js owns the mission-world renderer/input surface, and the portable mission core plus `MissionWorkspaceScene` own planning, validation, simulation, and scoring.
 
 ## Manual Defects Found
 

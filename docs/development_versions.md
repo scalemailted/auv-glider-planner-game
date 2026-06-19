@@ -38,6 +38,11 @@ Challenge Mode also persists `missionMode`. Mission modes are player-facing obje
 
 ## Version / Milestone Log
 
+### THREE-R1.1D - Execute Mission Pipeline and Three.js Simulation Parity
+
+- Added renderer-neutral execution transaction, clone-safe launch snapshot, plan digest comparison, SimulationScene payload initialization, and execution debug fields.
+- Restored visible simulation control parity around Start, Play/Pause, Pause, Step, Finish, Reset, Return/Replan, Debrief, Main Menu, camera controls, route/status panels, and terminal/debrief accounting.
+- Preserved the boundary: Three.js renders canonical simulation state but does not own execution, vehicle motion, observation generation, scoring, result creation, hidden truth, route optimization, Python simulation, RL, or MARL.
 ### THREE-R1.1C - Standard Camera Gestures and Waypoint Placement Repair
 
 - Repaired the visible deployment-to-waypoint workflow so an accepted empty-route deployment auto-arms Add Waypoint and successive Three canvas clicks create canonical route waypoints.

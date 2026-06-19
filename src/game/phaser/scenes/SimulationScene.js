@@ -57,6 +57,16 @@ import {
   threeMissionInteractionControllerSummary
 } from '../../three/ThreeMissionInteractionController.js';
 import { legacyPhaserMissionRendererEnabled, preferredMissionRendererBackend, publishMigrationDebug } from '../../../core/runtime/MigrationRuntimeConfig.js';
+import {
+  advanceMissionExecutionTransaction,
+  failMissionExecutionTransaction,
+  missionExecutionTransactionSummary
+} from '../../../core/simulation/MissionExecutionTransaction.js';
+import {
+  digestExecutionPlan,
+  normalizeMissionLaunchPayload,
+  summarizeMissionLaunchPayload
+} from '../../../core/simulation/MissionExecutionSnapshot.js';
 
 const PhaserScene = globalThis.Phaser?.Scene ?? class {};
 
@@ -70,10 +80,29 @@ export class SimulationScene extends PhaserScene {
     this.threeSimulationInteractionController = null;
     this.lastThreeSimulationIntent = null;
     this.lastThreeSimulationResult = null;
+    this.rawLaunchPayload = null;
+    this.launchPayload = null;
+    this.executionTransaction = null;
+    this.simulationReceivedPlanDigest = null;
+    this.enginePlanDigest = null;
+    this.firstStepCompleted = false;
+    this.rendererMountedReported = false;
+    this.resultBuildCount = 0;
+    this.debriefTransitionCount = 0;
+    this.simulationLoopCount = 0;
+    this.threeRenderLoopCount = 0;
+    this.runningReported = false;
+    this.terminalReported = false;
+    this.terminalResultRecorded = false;
+  }
+
+  init(data = {}) {
+    this.rawLaunchPayload = data ?? null;
   }
 
   create() {
     this.app = this.sys.game.anchorApp;
+    this.initializeLaunchPayload();
     this.app.setSceneLabel('Simulation');
     this.app.state.mode = 'simulation';
     this.app.state.ui ??= {};
@@ -91,13 +120,28 @@ export class SimulationScene extends PhaserScene {
     this.trace = this.app.state.simulationTrace ?? createSimulationTrace();
     this.app.state.simulationTrace = this.trace;
     this.engine = new SimulationEngine({
-      level: this.app.state.level,
-      mission: this.app.state.mission,
-      plan: this.app.state.plan,
-      resumeState: this.app.state.simulationResume,
+      level: this.launchPayload?.level ?? this.app.state.level,
+      mission: this.launchPayload?.mission ?? this.app.state.mission,
+      plan: this.launchPayload?.plan ?? this.app.state.plan,
+      resumeState: this.launchPayload?.simulationResume ?? this.app.state.simulationResume,
       trace: this.trace,
-      time: this.app.state.playback.time
+      time: this.launchPayload?.playback?.time ?? this.app.state.playback.time
     });
+    this.enginePlanDigest = digestExecutionPlan(this.engine.plan);
+    if (this.executionTransaction) {
+      advanceMissionExecutionTransaction(this.executionTransaction, 'engineInitialized', {
+        engineSummary: {
+          status: this.engine.aborted ? 'aborted' : this.engine.complete ? 'complete' : this.engine.running ? 'running' : 'paused',
+          timeSeconds: this.engine.t,
+          stepCount: this.engine.stepCount,
+          agentCount: this.engine.agents?.length ?? 0,
+          enginePlanDigest: this.enginePlanDigest,
+          initialValidationOk: this.engine.initialValidation?.ok === true,
+          configValidationOk: this.engine.configValidation?.ok === true
+        }
+      });
+      this.app.state.executionTransaction = this.executionTransaction;
+    }
     this.syncSimulationDecisionWaitState();
     traceSimulation(this.trace, {
       scene: 'SimulationScene',
@@ -178,10 +222,13 @@ export class SimulationScene extends PhaserScene {
       </section>
       <section class="console-section">
         <h2>Playback</h2>
+        <button class="console-button" data-action="start">Start</button>
         <button class="console-button primary" data-action="play">Play / Pause</button>
+        <button class="console-button" data-action="pause">Pause</button>
         <button class="console-button" data-action="step">Step</button>
         <button class="console-button" data-action="finish">Finish Instantly</button>
-        <button class="console-button" data-action="planning">Return To Planning</button>
+        <button class="console-button" data-action="reset">Reset Simulation</button>
+        <button class="console-button" data-action="planning">Return / Replan</button>
         <button class="console-button" data-action="debrief">Debrief</button>
       </section>
       <section id="simulation-abort-actions" class="console-section" hidden></section>
@@ -212,9 +259,12 @@ export class SimulationScene extends PhaserScene {
       </section>
     `;
     this.app.applyConsoleAccordions?.('simulation');
+    root.querySelector('[data-action="start"]')?.addEventListener('click', () => this.goToSimulationFrame(0));
     root.querySelector('[data-action="play"]')?.addEventListener('click', () => this.togglePlay());
+    root.querySelector('[data-action="pause"]')?.addEventListener('click', () => { this.engine.pause(); this.refreshControls(); this.renderSimulationTimeline(); this.publishExecutionDebug(); });
     root.querySelector('[data-action="step"]')?.addEventListener('click', () => this.stepOnce());
     root.querySelector('[data-action="finish"]')?.addEventListener('click', () => this.finishSimulation());
+    root.querySelector('[data-action="reset"]')?.addEventListener('click', () => this.resetSimulation());
     root.querySelector('[data-action="planning"]')?.addEventListener('click', () => this.scene.start('MissionWorkspaceScene'));
     root.querySelector('[data-action="debrief"]')?.addEventListener('click', () => this.goDebrief());
     root.querySelector('[data-action="menu"]')?.addEventListener('click', () => this.scene.start('MainMenuScene'));
@@ -223,6 +273,120 @@ export class SimulationScene extends PhaserScene {
     root.querySelector('[data-action="sim-camera-profile"]')?.addEventListener('click', () => this.setThreeSimulationCameraPreset('waterColumnProfile'));
   }
 
+
+  initializeLaunchPayload() {
+    try {
+      const payload = normalizeMissionLaunchPayload(this.rawLaunchPayload, this.app.state);
+      this.launchPayload = payload;
+      this.app.state.executionLaunchPayload = payload;
+      if (payload.level) this.app.state.level = payload.level;
+      if (payload.mission) this.app.state.mission = payload.mission;
+      if (payload.plan) this.app.state.plan = payload.plan;
+      if (payload.selectedAgentId) this.app.state.selectedAgentId = payload.selectedAgentId;
+      if (payload.currentPlanSource) this.app.state.currentPlanSource = payload.currentPlanSource;
+      if (payload.challengeMode) this.app.state.challengeMode = payload.challengeMode;
+      if (payload.experienceMode) this.app.state.experienceMode = payload.experienceMode;
+      if (payload.missionOptions) this.app.state.missionOptions = payload.missionOptions;
+      if (payload.stochastic) this.app.state.stochastic = payload.stochastic;
+      if (payload.playback) this.app.state.playback = { ...(this.app.state.playback ?? {}), ...payload.playback };
+      if (payload.simulationResume) this.app.state.simulationResume = payload.simulationResume;
+      this.executionTransaction = payload.transaction ?? this.app.state.executionTransaction ?? null;
+      this.simulationReceivedPlanDigest = payload.planDigest ?? digestExecutionPlan(payload.plan);
+      if (this.executionTransaction) {
+        advanceMissionExecutionTransaction(this.executionTransaction, 'simulationSceneInitialized', {
+          launchPayloadSummary: summarizeMissionLaunchPayload(payload),
+          simulationReceivedPlanDigest: this.simulationReceivedPlanDigest
+        });
+        this.app.state.executionTransaction = this.executionTransaction;
+      }
+    } catch (error) {
+      const reason = String(error?.message ?? error ?? 'Simulation launch payload failed to initialize.');
+      this.launchInitializationError = reason;
+      this.app.toast?.(`Simulation launch payload failed: ${reason}`, 'error');
+      this.executionTransaction = this.app.state.executionTransaction ?? null;
+      if (this.executionTransaction) {
+        failMissionExecutionTransaction(this.executionTransaction, 'simulationSceneInitialized', reason);
+        this.app.state.executionTransaction = this.executionTransaction;
+      }
+    }
+  }
+
+  publishExecutionDebug(patch = {}) {
+    const transaction = patch.transaction ?? this.executionTransaction ?? this.app?.state?.executionTransaction ?? null;
+    const control = globalThis.ANCHOR_EXECUTION_DEBUG ?? {};
+    const engineSummary = this.engine ? {
+      status: this.engine.aborted ? 'aborted' : this.engine.complete ? 'complete' : this.engine.running ? 'running' : 'paused',
+      timeSeconds: this.engine.t,
+      stepCount: this.engine.stepCount,
+      agentCount: this.engine.agents?.length ?? 0,
+      complete: this.engine.complete === true,
+      aborted: this.engine.aborted === true,
+      abortReason: this.engine.abortReason ?? null
+    } : null;
+    const canonicalTrajectoryPointCount = (this.engine?.agents ?? []).reduce((sum, agent) => sum + (agent.history?.length ?? 0), 0);
+    const movingAgentCount = (this.engine?.agents ?? []).filter((agent) => agent.status !== 'complete' && agent.status !== 'batteryDepleted').length;
+    const renderDebug = globalThis.ANCHOR_SIMULATION_RENDER_DEBUG ?? {};
+    const completedStages = transaction ? missionExecutionTransactionSummary(transaction).completedStages : control.completedStages ?? [];
+    const planningDigest = control.planningPlanDigest ?? this.launchPayload?.planDigest ?? null;
+    globalThis.ANCHOR_EXECUTION_DEBUG = {
+      version: 'three-r1-1d',
+      transactionId: transaction?.transactionId ?? this.launchPayload?.transactionId ?? null,
+      currentStage: patch.currentStage ?? transaction?.currentStage ?? control.currentStage ?? null,
+      completedStages,
+      failureStage: transaction?.failureStage ?? control.failureStage ?? null,
+      failureReason: transaction?.failureReason ?? control.failureReason ?? null,
+      executeControlPresent: control.executeControlPresent ?? null,
+      executeControlEnabled: control.executeControlEnabled ?? null,
+      executeControlDisabledReason: control.executeControlDisabledReason ?? null,
+      executeControlBindCount: control.executeControlBindCount ?? null,
+      executeControlClickCount: control.executeControlClickCount ?? null,
+      duplicateExecuteDispatchCount: control.duplicateExecuteDispatchCount ?? 0,
+      planningPlanDigest: planningDigest,
+      launchPlanDigest: this.launchPayload?.planDigest ?? control.launchPlanDigest ?? null,
+      simulationReceivedPlanDigest: this.simulationReceivedPlanDigest ?? null,
+      enginePlanDigest: this.enginePlanDigest ?? null,
+      planDigestMatch: Boolean(planningDigest && this.simulationReceivedPlanDigest && this.enginePlanDigest)
+        ? planningDigest === this.simulationReceivedPlanDigest && this.simulationReceivedPlanDigest === this.enginePlanDigest
+        : null,
+      selectedStartCount: this.launchPayload?.planSummary?.selectedStartCount ?? control.selectedStartCount ?? 0,
+      executableAgentPlanCount: this.launchPayload?.planSummary?.executableAgentPlanCount ?? control.executableAgentPlanCount ?? 0,
+      executableWaypointCount: this.launchPayload?.planSummary?.executableWaypointCount ?? control.executableWaypointCount ?? 0,
+      planningMarkerCount: this.launchPayload?.planSummary?.planningMarkerCount ?? control.planningMarkerCount ?? 0,
+      sceneTransitionRequested: true,
+      simulationSceneActive: this.sys?.isActive?.() === true,
+      engineInitialized: Boolean(this.engine),
+      engineStatus: engineSummary,
+      engineStepCount: this.engine?.stepCount ?? 0,
+      firstStepCompleted: this.firstStepCompleted === true,
+      simulationTimeSeconds: this.engine?.t ?? 0,
+      activeAgentCount: this.engine?.agents?.length ?? 0,
+      movingAgentCount,
+      canonicalTrajectoryPointCount,
+      threeTrajectoryPointCount: renderDebug.realizedTrajectoryPointCount ?? 0,
+      canonicalObservationCount: (this.engine?.events ?? []).filter((event) => ['sample', 'duplicateSample', 'probabilityOutcome'].includes(event.type)).length,
+      threeObservationCount: renderDebug.observationCount ?? 0,
+      canonicalWaypointStatusCount: (this.engine?.agents ?? []).reduce((sum, agent) => sum + (agent.completedWaypoints?.length ?? 0) + (agent.missedWaypoints?.length ?? 0), 0),
+      rightPanelWaypointStatusCount: renderDebug.rightPanelWaypointStatusCount ?? renderDebug.canonicalWaypointStatusCount ?? 0,
+      timelineWaypointStatusCount: renderDebug.timelineWaypointStatusCount ?? 0,
+      resultAvailable: Boolean(this.app?.state?.result),
+      debriefRequested: this.debriefTransitionCount > 0,
+      simulationLoopCount: this.engine?.running ? 1 : 0,
+      threeRenderLoopCount: this.engine?.running && this.threeSimulationRenderer ? 1 : 0,
+      resultBuildCount: this.resultBuildCount,
+      debriefTransitionCount: this.debriefTransitionCount,
+      duplicateObservationCount: 0,
+      duplicateTrajectoryPointCount: 0,
+      rendererBackend: 'threeMission3d',
+      rendererOwnsExecution: false,
+      rendererOwnsSimulationState: false,
+      rendererOwnsScoring: false,
+      changesOfficialBrowserScoring: false,
+      usesCanonicalPlan: true,
+      transactionSummary: transaction ? missionExecutionTransactionSummary(transaction) : null,
+      ...patch
+    };
+    return globalThis.ANCHOR_EXECUTION_DEBUG;
+  }
   getSimulationRendererBackend() {
     return preferredMissionRendererBackend({ requested: this.app.state.ui?.rendererBackend });
   }
@@ -253,7 +417,9 @@ export class SimulationScene extends PhaserScene {
 
   stepOnce() {
     this.engine.pause();
+    const beforeStepCount = this.engine.stepCount;
     this.engine.stepOnce();
+    this.recordSimulationProgressStage(beforeStepCount, 'manualStep');
     this.syncResult();
     this.refresh();
     this.refreshSurfaceDecision();
@@ -265,8 +431,8 @@ export class SimulationScene extends PhaserScene {
   resetSimulation() {
     applyStochasticToMission(this.app.state);
     applyMissionOptionsToMission(this.app.state);
-    console.log(this.app);
     this.engine = new SimulationEngine({ level: this.app.state.level, mission: this.app.state.mission, plan: this.app.state.plan, trace: this.trace, time: this.app.state.playback.time });
+    this.enginePlanDigest = digestExecutionPlan(this.engine.plan);
     this.abortNoticeShown = false;
     this.stopReasonNoticeShown = false;
     this.app.state.surfaceDecision = null;
@@ -292,6 +458,7 @@ export class SimulationScene extends PhaserScene {
       trace: this.trace,
       time: this.app.state.playback.time
     });
+    this.enginePlanDigest = digestExecutionPlan(this.engine.plan);
     this.abortNoticeShown = false;
     this.stopReasonNoticeShown = false;
     this.app.state.surfaceDecision = null;
@@ -355,7 +522,7 @@ export class SimulationScene extends PhaserScene {
           totalSteps += 1;
         }
         this.syncResult();
-        this.refresh();
+        const elapsed = (globalThis.performance?.now?.() ?? Date.now()) - started;
         traceSimulation(this.trace, {
           scene: 'SimulationScene',
           phase: 'finish.chunk.end',
@@ -363,11 +530,11 @@ export class SimulationScene extends PhaserScene {
           message: 'Finish chunk completed',
           details: { totalSteps, elapsed }
         });
-        const elapsed = (globalThis.performance?.now?.() ?? Date.now()) - started;
         if (elapsed > 250) {
           this.handleWatchdogAbort(this.buildManualWatchdogSnapshot('finishChunkWallTimeExceeded', { elapsed, totalSteps }));
           break;
         }
+        this.refresh();
         await yieldToBrowser();
       }
       if (!this.engine.complete && !this.engine.aborted && totalSteps >= maxTotalSteps) {
@@ -383,6 +550,20 @@ export class SimulationScene extends PhaserScene {
     }
   }
 
+
+  recordDebriefRequested(reason = 'user') {
+    if (this.debriefTransitionCount === 0 && this.executionTransaction) {
+      advanceMissionExecutionTransaction(this.executionTransaction, 'debriefRequested', {
+        reason,
+        resultAvailable: Boolean(this.app.state.result),
+        timeSeconds: this.engine?.t ?? 0
+      });
+      this.app.state.executionTransaction = this.executionTransaction;
+    }
+    this.debriefTransitionCount += 1;
+    this.engine?.pause?.();
+    this.publishExecutionDebug({ debriefRequested: true });
+  }
   goDebrief() {
     this.syncResult();
     if (this.engine.complete) recordStochasticRun(this.app.state, this.app.state.result);
@@ -390,6 +571,7 @@ export class SimulationScene extends PhaserScene {
     this.graphics?.clear();
     this.app.state.mode = 'debrief';
     this.clearSimulationWaitState();
+    this.recordDebriefRequested('debrief');
     this.scene.start('DebriefScene');
   }
 
@@ -407,6 +589,7 @@ export class SimulationScene extends PhaserScene {
       });
     }
     this.engine.step(delta / 1000);
+    this.recordSimulationProgressStage(beforeStepCount, wasRunning ? 'playbackUpdate' : 'update');
     if (wasRunning) {
       traceSimulation(this.trace, {
         scene: 'SimulationScene',
@@ -459,6 +642,36 @@ export class SimulationScene extends PhaserScene {
     this.notifyStopReasonIfNeeded();
   }
 
+
+  recordSimulationProgressStage(beforeStepCount = 0, reason = 'step') {
+    if (!this.engine) return;
+    if (!this.firstStepCompleted && this.engine.stepCount > beforeStepCount) {
+      this.firstStepCompleted = true;
+      if (this.executionTransaction) {
+        advanceMissionExecutionTransaction(this.executionTransaction, 'firstStepCompleted', {
+          reason,
+          timeSeconds: this.engine.t,
+          stepCount: this.engine.stepCount,
+          activeAgentPositions: (this.engine.agents ?? []).map((agent) => ({ agentId: agent.id, x: agent.x, y: agent.y, energy: agent.energy ?? agent.battery ?? null }))
+        });
+      }
+    }
+    if (!this.runningReported && this.engine.running) {
+      this.runningReported = true;
+      if (this.executionTransaction) advanceMissionExecutionTransaction(this.executionTransaction, 'running', { timeSeconds: this.engine.t, stepCount: this.engine.stepCount });
+    }
+    if (!this.terminalReported && (this.engine.complete || this.engine.aborted)) {
+      this.terminalReported = true;
+      if (this.executionTransaction) advanceMissionExecutionTransaction(this.executionTransaction, 'terminal', {
+        timeSeconds: this.engine.t,
+        complete: this.engine.complete === true,
+        aborted: this.engine.aborted === true,
+        abortReason: this.engine.abortReason ?? null
+      });
+    }
+    if (this.executionTransaction) this.app.state.executionTransaction = this.executionTransaction;
+    this.publishExecutionDebug();
+  }
   syncResult() {
     const source = this.app.state.currentPlanSource ?? 'manual';
     const engineResult = this.engine.getResult();
@@ -515,6 +728,32 @@ export class SimulationScene extends PhaserScene {
     storePlanResult(this.app.state, { source, plan: this.app.state.plan, result });
     result.comparison = comparePlanResults(this.app.state.planResults);
     this.app.state.result = result;
+    if (!this.terminalReported && (this.engine.complete || this.engine.aborted)) {
+      this.terminalReported = true;
+      if (this.executionTransaction) {
+        advanceMissionExecutionTransaction(this.executionTransaction, 'terminal', {
+          reason: 'syncResult',
+          timeSeconds: this.engine.t,
+          complete: this.engine.complete === true,
+          aborted: this.engine.aborted === true,
+          abortReason: this.engine.abortReason ?? null
+        });
+        this.app.state.executionTransaction = this.executionTransaction;
+      }
+    }
+    if (!this.terminalResultRecorded && (this.engine.complete || this.engine.aborted)) {
+      this.terminalResultRecorded = true;
+      this.resultBuildCount += 1;
+      if (this.executionTransaction) {
+        advanceMissionExecutionTransaction(this.executionTransaction, 'resultBuilt', {
+          resultId: result.resultId ?? result.id ?? null,
+          finalScore: result.summary?.finalScore ?? null,
+          terminalReason: result.summary?.stopReason?.code ?? null
+        });
+        this.app.state.executionTransaction = this.executionTransaction;
+      }
+      this.publishExecutionDebug();
+    }
   }
 
   annotateBenchmarkResult(result, source = 'manual') {
@@ -755,6 +994,17 @@ export class SimulationScene extends PhaserScene {
     setThreeMissionLayerVisibility(renderer, this.threeSimulationLayerVisibilityPatch());
     updateThreeMissionWorldRenderer(renderer, viewModel);
     resizeThreeMissionWorldRenderer(renderer, this.threeSimulationContainer?.clientWidth, this.threeSimulationContainer?.clientHeight);
+    if (!this.rendererMountedReported) {
+      this.rendererMountedReported = true;
+      if (this.executionTransaction) {
+        advanceMissionExecutionTransaction(this.executionTransaction, 'rendererMounted', {
+          rendererBackend: 'threeMission3d',
+          realizedTrajectoryCount: viewModel.realizedTrajectories?.length ?? 0,
+          plannedRouteCount: viewModel.routes?.length ?? 0
+        });
+        this.app.state.executionTransaction = this.executionTransaction;
+      }
+    }
     const validation = validateSimulationWorldRenderViewModel(viewModel);
     const parityWarnings = [...(validation.warnings ?? [])];
     if (!validation.valid) parityWarnings.push(...validation.errors);
@@ -1041,6 +1291,24 @@ export class SimulationScene extends PhaserScene {
       surfacingEventCount: summary.surfacingEventCount ?? 0,
       communicationEventCount: summary.communicationEventCount ?? 0,
       routeFailureCount: summary.routeFailureCount ?? 0,
+      engineStepCount: this.engine?.stepCount ?? 0,
+      firstStepCompleted: this.firstStepCompleted === true,
+      simulationReceivedPlanDigest: this.simulationReceivedPlanDigest ?? null,
+      enginePlanDigest: this.enginePlanDigest ?? null,
+      planDigestMatch: Boolean(this.launchPayload?.planDigest && this.simulationReceivedPlanDigest && this.enginePlanDigest)
+        ? this.launchPayload.planDigest === this.simulationReceivedPlanDigest && this.simulationReceivedPlanDigest === this.enginePlanDigest
+        : null,
+      canonicalTrajectoryPointCount: (this.engine?.agents ?? []).reduce((sum, agent) => sum + (agent.history?.length ?? 0), 0),
+      canonicalObservationCount: (this.engine?.events ?? []).filter((event) => ['sample', 'duplicateSample', 'probabilityOutcome'].includes(event.type)).length,
+      canonicalWaypointStatusCount: (this.engine?.agents ?? []).reduce((sum, agent) => sum + (agent.completedWaypoints?.length ?? 0) + (agent.missedWaypoints?.length ?? 0), 0),
+      rightPanelWaypointStatusCount: (this.engine?.agents ?? []).reduce((sum, agent) => sum + (agent.completedWaypoints?.length ?? 0) + (agent.missedWaypoints?.length ?? 0), 0),
+      timelineWaypointStatusCount: (this.engine?.agents ?? []).reduce((sum, agent) => sum + (agent.completedWaypoints?.length ?? 0) + (agent.missedWaypoints?.length ?? 0), 0),
+      simulationLoopCount: this.engine?.running ? 1 : 0,
+      threeRenderLoopCount: this.engine?.running && this.threeSimulationRenderer ? 1 : 0,
+      resultBuildCount: this.resultBuildCount,
+      debriefTransitionCount: this.debriefTransitionCount,
+      duplicateObservationCount: 0,
+      duplicateTrajectoryPointCount: 0,
       threeObjectCount: rendererSummary?.threeObjectCount ?? 0,
       threeGeometryCount: rendererSummary?.threeGeometryCount ?? 0,
       threeMaterialCount: rendererSummary?.threeMaterialCount ?? 0,
@@ -1740,6 +2008,7 @@ export class SimulationScene extends PhaserScene {
     this.app.state.routeFailureDecision = null;
     this.clearSimulationWaitState();
     this.app.state.mode = 'debrief';
+    this.recordDebriefRequested('debrief');
     this.scene.start('DebriefScene');
   }
 
@@ -1833,6 +2102,7 @@ export class SimulationScene extends PhaserScene {
     this.clearSurfaceDecisionFallback();
     this.clearSimulationWaitState();
     this.app.state.mode = 'debrief';
+    this.recordDebriefRequested('debrief');
     this.scene.start('DebriefScene');
   }
 

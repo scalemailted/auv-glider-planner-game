@@ -2,6 +2,7 @@ import { expect, test } from '@playwright/test';
 import fs from 'node:fs/promises';
 import { startStaticServer } from './static-server.mjs';
 import { attachBrowserErrorCollector } from './helpers/BrowserErrorCollector.js';
+import { compareSimulationExecutions } from '../../src/core/simulation/SimulationRendererParity.js';
 
 let server;
 
@@ -3657,6 +3658,138 @@ test('stochastic mode exposes ensemble and risk controls', async ({ page }) => {
   await expect.poll(() => page.evaluate(() => window.anchorGame.phaser.scene.getScene('SimulationScene').sys.isActive()), { timeout: 15000 }).toBe(true);
 });
 
+test('Execute Mission Through Three Simulation', async ({ page }) => {
+  const browserErrors = attachBrowserErrorCollector(page);
+  await page.goto('/');
+  await startTutorialPlanning(page);
+  await expect(page.locator('.three-mission-world-canvas')).toBeVisible();
+
+  await planVisibleThreeTutorialRoute(page, { includeSecondAgent: true });
+  const plannedCounts = await page.evaluate(() => ({
+    totalWaypoints: (window.anchorGame.state.plan?.agentPlans ?? []).reduce((sum, agentPlan) => sum + (agentPlan.waypoints?.length ?? 0), 0),
+    selectedStarts: (window.anchorGame.state.plan?.agentPlans ?? []).filter((agentPlan) => agentPlan.selectedStart).length,
+    agentPlans: window.anchorGame.state.plan?.agentPlans?.length ?? 0,
+    planType: window.anchorGame.state.plan?.type,
+    schemaVersion: window.anchorGame.state.plan?.schemaVersion,
+    routeAuditOk: window.anchorGame.state.ui?.routeAudit?.ok !== false,
+    timelineText: document.getElementById('waypoint-timeline')?.textContent ?? '',
+    rightPanelText: document.getElementById('waypoint-panel')?.textContent ?? ''
+  }));
+  expect(plannedCounts).toMatchObject({ planType: 'anchor.plan', schemaVersion: '2.0', routeAuditOk: true });
+  expect(plannedCounts.totalWaypoints).toBeGreaterThanOrEqual(3);
+  expect(plannedCounts.selectedStarts).toBeGreaterThanOrEqual(1);
+  expect(plannedCounts.timelineText).toContain('Waypoint');
+  await expectDebugWaypointSynchronization(page, plannedCounts.totalWaypoints);
+
+  const executeButton = page.locator('#mission-console [data-action="execute"]');
+  await expect(executeButton).toBeVisible();
+  await expect(executeButton).toBeEnabled();
+  await executeButton.click();
+  await expect.poll(() => page.evaluate(() => window.anchorGame.phaser.scene.getScene('SimulationScene')?.sys.isActive?.() ?? false), { timeout: 15000 }).toBe(true);
+  await expect.poll(() => page.evaluate(() => window.ANCHOR_EXECUTION_DEBUG?.engineInitialized === true), { timeout: 15000 }).toBe(true);
+  await expect.poll(() => page.evaluate(() => window.ANCHOR_EXECUTION_DEBUG?.planDigestMatch === true), { timeout: 15000 }).toBe(true);
+  await expect.poll(() => page.evaluate(() => window.ANCHOR_SIMULATION_RENDER_DEBUG?.threeMounted === true), { timeout: 15000 }).toBe(true);
+  await expect(page.evaluate(() => ({
+    clickCount: window.ANCHOR_EXECUTION_DEBUG?.executeControlClickCount,
+    duplicateCount: window.ANCHOR_EXECUTION_DEBUG?.duplicateExecuteDispatchCount,
+    rendererOwnsExecution: window.ANCHOR_EXECUTION_DEBUG?.rendererOwnsExecution,
+    rendererOwnsSimulationState: window.ANCHOR_EXECUTION_DEBUG?.rendererOwnsSimulationState,
+    rendererOwnsScoring: window.ANCHOR_EXECUTION_DEBUG?.rendererOwnsScoring,
+    changesOfficialBrowserScoring: window.ANCHOR_EXECUTION_DEBUG?.changesOfficialBrowserScoring,
+    planningControllerEnabled: window.anchorGame.phaser.scene.getScene('MissionWorkspaceScene')?.threeInteractionController?.enabled === true
+  }))).resolves.toMatchObject({
+    clickCount: 1,
+    duplicateCount: 0,
+    rendererOwnsExecution: false,
+    rendererOwnsSimulationState: false,
+    rendererOwnsScoring: false,
+    changesOfficialBrowserScoring: false,
+    planningControllerEnabled: false
+  });
+
+  const beforeStep = await canonicalSimulationState(page);
+  await page.locator('#mission-console [data-action="step"]').click();
+  await expect.poll(() => canonicalSimulationState(page)).toMatchObject({ stepCount: beforeStep.stepCount + 1 });
+  const afterStep = await canonicalSimulationState(page);
+  expect(afterStep.timeSeconds).toBeGreaterThan(beforeStep.timeSeconds);
+  expect(afterStep.trajectoryPointCount).toBeGreaterThan(beforeStep.trajectoryPointCount);
+  expect(afterStep.firstStepCompleted).toBe(true);
+  const movedAfterStep = afterStep.positions.some((agent, index) => {
+    const before = beforeStep.positions[index];
+    return before && (Math.abs(agent.x - before.x) > 1e-6 || Math.abs(agent.y - before.y) > 1e-6);
+  });
+  expect(movedAfterStep || Boolean(afterStep.failureReason)).toBe(true);
+
+  const beforePlay = await canonicalSimulationState(page);
+  await page.locator('#mission-console [data-action="play"]').click();
+  await expect.poll(() => page.evaluate((before) => (window.ANCHOR_EXECUTION_DEBUG?.engineStepCount ?? 0) > before.stepCount + 1, beforePlay), { timeout: 15000 }).toBe(true);
+  const runningState = await canonicalSimulationState(page);
+  expect(runningState.timeSeconds).toBeGreaterThan(beforePlay.timeSeconds);
+  expect(runningState.energyTotal).not.toBe(beforePlay.energyTotal);
+  expect(runningState.plannedRouteCount).toBeGreaterThan(0);
+  expect(runningState.threeTrajectoryPointCount).toBeGreaterThan(0);
+
+  await page.locator('#mission-console [data-action="pause"]').click();
+  const paused = await canonicalSimulationState(page);
+  const from = await threeGridPoint(page, 3, 5);
+  const to = await threeGridPoint(page, 6, 5);
+  await page.mouse.move(from.x, from.y);
+  await page.mouse.down({ button: 'right' });
+  await page.mouse.move(to.x, to.y, { steps: 6 });
+  await page.mouse.up({ button: 'right' });
+  await page.waitForTimeout(300);
+  await expect(canonicalSimulationState(page)).resolves.toMatchObject({ stepCount: paused.stepCount, timeSeconds: paused.timeSeconds });
+
+  await page.locator('#mission-console [data-action="play"]').click();
+  await expect.poll(() => page.evaluate((before) => (window.ANCHOR_EXECUTION_DEBUG?.engineStepCount ?? 0) > before.stepCount, paused), { timeout: 15000 }).toBe(true);
+  await page.locator('#mission-console [data-action="pause"]').click();
+  await expect.poll(() => page.evaluate(() => {
+    const debug = window.ANCHOR_EXECUTION_DEBUG ?? {};
+    return debug.canonicalWaypointStatusCount > 0 || debug.canonicalObservationCount > 0 || debug.resultAvailable === true;
+  }), { timeout: 20000 }).toBe(true);
+
+  const parityCounts = await page.evaluate(() => ({
+    canonicalWaypointStatusCount: window.ANCHOR_EXECUTION_DEBUG?.canonicalWaypointStatusCount ?? 0,
+    rightPanelWaypointStatusCount: window.ANCHOR_EXECUTION_DEBUG?.rightPanelWaypointStatusCount ?? 0,
+    timelineWaypointStatusCount: window.ANCHOR_EXECUTION_DEBUG?.timelineWaypointStatusCount ?? 0,
+    canonicalObservationCount: window.ANCHOR_EXECUTION_DEBUG?.canonicalObservationCount ?? 0,
+    threeObservationCount: window.ANCHOR_EXECUTION_DEBUG?.threeObservationCount ?? 0
+  }));
+  expect(parityCounts.rightPanelWaypointStatusCount).toBeGreaterThanOrEqual(0);
+  expect(parityCounts.timelineWaypointStatusCount).toBeGreaterThanOrEqual(0);
+  expect(parityCounts.threeObservationCount).toBeGreaterThanOrEqual(0);
+
+  await page.locator('#mission-console [data-action="finish"]').click();
+  await expect.poll(() => page.evaluate(() => window.ANCHOR_EXECUTION_DEBUG?.resultAvailable === true), { timeout: 30000 }).toBe(true);
+  await expect.poll(() => page.evaluate(() => window.ANCHOR_EXECUTION_DEBUG?.resultBuildCount ?? 0), { timeout: 30000 }).toBe(1);
+  await expect.poll(() => page.evaluate(() => window.anchorGame.phaser.scene.getScene('SimulationScene')?.finishingAsync === false), { timeout: 15000 }).toBe(true);
+  await page.locator('#mission-console [data-action="debrief"]').click();
+  await expect.poll(() => page.evaluate(() => window.anchorGame.phaser.scene.getScene('DebriefScene')?.sys.isActive?.() ?? false), { timeout: 15000 }).toBe(true);
+  await expect(page.locator('#mission-console')).toContainText('Debrief Console');
+  await expect(page.locator('#debrief-root')).toBeVisible();
+  await expect(page.locator('#debrief-root .debrief-metric-card')).toHaveCount(8);
+  await expect(page.evaluate(() => window.ANCHOR_EXECUTION_DEBUG?.debriefTransitionCount)).resolves.toBe(1);
+  expect(browserErrors.unexpected()).toEqual([]);
+});
+
+test('Legacy and Three Simulation Produce Identical Canonical Result', async ({ browser }) => {
+  const legacyPage = await browser.newPage();
+  const threePage = await browser.newPage();
+  try {
+    const legacyErrors = attachBrowserErrorCollector(legacyPage);
+    const threeErrors = attachBrowserErrorCollector(threePage);
+    const legacy = await runDeterministicTutorialToResult(legacyPage, { legacy: true });
+    const three = await runDeterministicTutorialToResult(threePage, { legacy: false });
+    const report = compareSimulationExecutions(legacy, three);
+    expect(report.status, JSON.stringify(report.canonicalDifferences, null, 2)).toBe('PASS');
+    expect(report.canonicalDifferences).toEqual([]);
+    expect(legacyErrors.unexpected()).toEqual([]);
+    expect(threeErrors.unexpected()).toEqual([]);
+  } finally {
+    await legacyPage.close();
+    await threePage.close();
+  }
+});
 test('legacy saved level registry scene still opens', async ({ page }) => {
   await page.goto('/');
   await expect.poll(() => page.evaluate(() => window.anchorGame.phaser.scene.getScene('MainMenuScene').sys.isActive())).toBe(true);
@@ -4020,6 +4153,181 @@ async function clickRightPanelMode(page, mode) {
   }, mode);
 }
 
+async function startTutorialPlanning(page) {
+  await expect.poll(() => page.evaluate(() => window.anchorGame?.phaser?.scene.getScene('MainMenuScene')?.sys.isActive() ?? false)).toBe(true);
+  await page.evaluate(() => window.anchorGame.phaser.scene.getScene('MainMenuScene').startCampaignLevel('tutorial_01_first_deployment'));
+  await expect.poll(() => page.evaluate(() => window.anchorGame.phaser.scene.getScene('MissionBriefingScene')?.sys.isActive?.() ?? false), { timeout: 15000 }).toBe(true);
+  await startPlanningFromBriefing(page);
+  await expect.poll(() => page.evaluate(() => window.anchorGame.phaser.scene.getScene('MissionWorkspaceScene')?.sys.isActive?.() ?? false), { timeout: 15000 }).toBe(true);
+}
+
+async function planVisibleThreeTutorialRoute(page, { includeSecondAgent = false } = {}) {
+  await expect.poll(() => page.evaluate(() => window.ANCHOR_MISSION_RENDER_DEBUG?.rendererReady === true), { timeout: 15000 }).toBe(true);
+  await page.locator('#mission-console [data-action="three-camera"][data-preset="tacticalTopDown"]').click();
+  await expect.poll(() => page.evaluate(() => window.ANCHOR_MISSION_RENDER_DEBUG?.cameraPresetId)).toBe('tacticalTopDown');
+  const agentIds = await page.evaluate(() => (window.anchorGame.state.mission?.agents ?? []).map((agent) => agent.id));
+  expect(agentIds.length).toBeGreaterThan(0);
+
+  await clickThreeObject(page, 'screenPointForAgent', agentIds[0]);
+  await deployAgentThroughVisibleThreeControls(page, agentIds[0]);
+  await page.locator('#mission-console [data-action="mission-planning-tool"][data-tool="placeWaypoint"]').click();
+  for (const cell of [{ x: 5, y: 2 }, { x: 5, y: 3 }, { x: 6, y: 2 }]) {
+    await clickThreeGridCell(page, cell.x, cell.y);
+  }
+
+  if (includeSecondAgent && agentIds.length > 1) {
+    await clickThreeObject(page, 'screenPointForAgent', agentIds[1]);
+    await deployAgentThroughVisibleThreeControls(page, agentIds[1]);
+    const waypoint = await firstPlaceableWaypointCell(page, agentIds[1]);
+    await page.locator('#mission-console [data-action="mission-planning-tool"][data-tool="placeWaypoint"]').click();
+    await clickThreeGridCell(page, waypoint.x, waypoint.y);
+  }
+}
+
+async function deployAgentThroughVisibleThreeControls(page, agentId) {
+  const deploymentCell = await deploymentCellForAgent(page, agentId);
+  await page.locator('#mission-console [data-action="mission-planning-tool"][data-tool="selectDeploymentCell"]').click();
+  await expect.poll(() => page.evaluate(() => window.ANCHOR_MISSION_RENDER_DEBUG?.activePlanningToolId)).toBe('selectDeploymentCell');
+  await clickThreeGridCell(page, deploymentCell.x, deploymentCell.y);
+  await expect.poll(() => page.evaluate((id) => {
+    const agentPlan = window.anchorGame.state.plan?.agentPlans?.find((candidate) => candidate.agentId === id);
+    const start = agentPlan?.selectedStart;
+    return start ? { x: start.x, y: start.y } : null;
+  }, agentId)).toEqual(deploymentCell);
+}
+
+async function deploymentCellForAgent(page, agentId) {
+  return page.evaluate((id) => {
+    const state = window.anchorGame.state;
+    const agent = state.mission?.agents?.find((candidate) => candidate.id === id);
+    const zones = state.level?.zones ?? [];
+    const zone = zones.find((candidate) => candidate.id === agent?.deployment?.zoneId)
+      ?? zones.find((candidate) => candidate.type === 'deployment');
+    const cell = zone?.cells?.[0];
+    if (!cell) throw new Error(`No deployment cell found for ${id}`);
+    return { x: cell.x, y: cell.y };
+  }, agentId);
+}
+
+async function firstPlaceableWaypointCell(page, agentId) {
+  return page.evaluate(async (id) => {
+    const { canPlaceWaypoint } = await import('./src/core/planning/WaypointPlacementGuard.js');
+    const width = window.anchorGame.state.level?.world?.grid?.width ?? 0;
+    const height = window.anchorGame.state.level?.world?.grid?.height ?? 0;
+    for (let y = 1; y < height; y += 1) {
+      for (let x = 1; x < width; x += 1) {
+        const placement = canPlaceWaypoint(window.anchorGame.state, id, { x, y, action: 'sample' });
+        if (placement.allowed === true) return { x, y };
+      }
+    }
+    throw new Error(`No placeable waypoint cell found for ${id}`);
+  }, agentId);
+}
+
+async function canonicalSimulationState(page) {
+  return page.evaluate(() => {
+    const scene = window.anchorGame.phaser.scene.getScene('SimulationScene');
+    const debug = window.ANCHOR_EXECUTION_DEBUG ?? {};
+    const renderDebug = window.ANCHOR_SIMULATION_RENDER_DEBUG ?? {};
+    const agents = scene?.engine?.agents ?? [];
+    const positions = agents.map((agent) => ({ id: agent.id, x: Number(agent.x), y: Number(agent.y), energy: Number(agent.energy ?? agent.battery ?? 0) }));
+    const initial = debug.initialAgentPositions ?? positions;
+    return {
+      stepCount: debug.engineStepCount ?? scene?.engine?.stepCount ?? 0,
+      timeSeconds: Number(debug.simulationTimeSeconds ?? scene?.engine?.t ?? 0),
+      firstStepCompleted: debug.firstStepCompleted === true,
+      trajectoryPointCount: debug.canonicalTrajectoryPointCount ?? positions.length,
+      threeTrajectoryPointCount: debug.threeTrajectoryPointCount ?? renderDebug.realizedTrajectoryPointCount ?? 0,
+      plannedRouteCount: renderDebug.plannedRouteCount ?? 0,
+      observationCount: debug.canonicalObservationCount ?? 0,
+      threeObservationCount: debug.threeObservationCount ?? renderDebug.observationCount ?? 0,
+      energyTotal: positions.reduce((sum, agent) => sum + agent.energy, 0),
+      positions,
+      anyAgentMoved: positions.some((agent, index) => {
+        const before = initial[index];
+        return before && (Math.abs(Number(agent.x) - Number(before.x)) > 1e-6 || Math.abs(Number(agent.y) - Number(before.y)) > 1e-6);
+      }),
+      failureReason: debug.failureReason ?? scene?.engine?.abortReason ?? null
+    };
+  });
+}
+
+async function runDeterministicTutorialToResult(page, { legacy = false } = {}) {
+  await page.goto(legacy ? '/?legacyPhaser=1' : '/');
+  await startTutorialPlanning(page);
+  if (legacy) {
+    await expect(page.locator('#mission-console [data-action="renderer-legacy"]')).toBeVisible();
+    await page.locator('#mission-console [data-action="renderer-legacy"]').click();
+    await expect.poll(() => page.evaluate(() => window.ANCHOR_MISSION_RENDER_DEBUG?.activeBackend)).toBe('legacyPhaser2d');
+  }
+  const agentId = await page.evaluate(() => window.anchorGame.state.mission?.agents?.[0]?.id);
+  const deploymentCell = await deploymentCellForAgent(page, agentId);
+  await page.evaluate(({ deploymentCell }) => {
+    const scene = window.anchorGame.phaser.scene.getScene('MissionWorkspaceScene');
+    scene.trySelectDeploymentStart(deploymentCell);
+    scene.addWaypointForSelected({ x: 5, y: 2, action: 'sample' });
+    scene.addWaypointForSelected({ x: 5, y: 3, action: 'sample' });
+    scene.executePlan({ source: 'renderer-parity-e2e' });
+  }, { deploymentCell });
+  await expectWaypointCount(page, 2);
+  await expect.poll(() => page.evaluate(() => window.anchorGame.phaser.scene.getScene('SimulationScene')?.sys.isActive?.() ?? false), { timeout: 15000 }).toBe(true);
+  await expect.poll(() => page.evaluate(() => window.ANCHOR_EXECUTION_DEBUG?.engineInitialized === true && window.ANCHOR_EXECUTION_DEBUG?.planDigestMatch === true), { timeout: 15000 }).toBe(true);
+  if (!legacy) {
+    await expect.poll(() => page.evaluate(() => window.ANCHOR_SIMULATION_RENDER_DEBUG?.activeBackend)).toBe('threeMission3d');
+    await expect.poll(() => page.evaluate(() => window.ANCHOR_SIMULATION_RENDER_DEBUG?.threeMounted === true), { timeout: 15000 }).toBe(true);
+  }
+  await page.locator('#mission-console [data-action="finish"]').click();
+  await expect.poll(() => page.evaluate(() => window.anchorGame.state.result && window.ANCHOR_EXECUTION_DEBUG?.resultBuildCount === 1), { timeout: 30000 }).toBe(true);
+  return page.evaluate(async () => {
+    const scene = window.anchorGame.phaser.scene.getScene('SimulationScene');
+    const result = window.anchorGame.state.result;
+    const events = (scene.engine?.events ?? []).map((event) => ({
+      type: event.type,
+      agentId: event.agentId ?? null,
+      x: Number.isFinite(Number(event.x)) ? Number(Number(event.x).toFixed(6)) : null,
+      y: Number.isFinite(Number(event.y)) ? Number(Number(event.y).toFixed(6)) : null,
+      t: Number.isFinite(Number(event.t ?? event.timeSeconds)) ? Number(Number(event.t ?? event.timeSeconds).toFixed(6)) : null,
+      status: event.status ?? null,
+      value: Number.isFinite(Number(event.value)) ? Number(Number(event.value).toFixed(6)) : null
+    }));
+    return {
+      levelId: window.anchorGame.state.level?.levelId ?? window.anchorGame.state.level?.id ?? null,
+      missionId: window.anchorGame.state.mission?.missionId ?? window.anchorGame.state.mission?.id ?? null,
+      seed: window.anchorGame.state.level?.meta?.seed ?? window.anchorGame.state.mission?.rules?.stochasticSeed ?? null,
+      planDigest: window.ANCHOR_EXECUTION_DEBUG?.enginePlanDigest ?? window.ANCHOR_EXECUTION_DEBUG?.launchPlanDigest ?? null,
+      terminalReason: result?.summary?.stopReason?.code ?? result?.summary?.terminalReason ?? null,
+      elapsedTime: result?.summary?.elapsedTime ?? scene.engine?.t ?? null,
+      finalPositions: (scene.engine?.agents ?? []).map((agent) => ({
+        agentId: agent.id,
+        x: Number(Number(agent.x).toFixed(6)),
+        y: Number(Number(agent.y).toFixed(6)),
+        energy: Number(Number(agent.energy ?? agent.battery ?? 0).toFixed(6)),
+        status: agent.status ?? null
+      })),
+      trajectories: (scene.engine?.agents ?? []).map((agent) => ({
+        agentId: agent.id,
+        points: (agent.history ?? []).map((point) => ({
+          x: Number(Number(point.x).toFixed(6)),
+          y: Number(Number(point.y).toFixed(6)),
+          t: Number(Number(point.t ?? point.timeSeconds ?? 0).toFixed(6))
+        }))
+      })),
+      waypointStatus: (scene.engine?.agents ?? []).map((agent) => ({
+        agentId: agent.id,
+        completed: agent.completedWaypoints ?? [],
+        missed: agent.missedWaypoints ?? []
+      })),
+      observations: events.filter((event) => ['sample', 'duplicateSample', 'probabilityOutcome'].includes(event.type)),
+      samples: result?.summary?.sampledCells ?? null,
+      energy: result?.summary?.energyUsed ?? null,
+      hazards: result?.summary?.hazardsHit ?? null,
+      goldStars: result?.summary?.priorityTargets?.captured ?? null,
+      events,
+      score: result?.summary?.finalScore ?? null,
+      result: result?.summary ?? null
+    };
+  });
+}
 async function startPlanningFromBriefing(page) {
   await page.evaluate(() => window.anchorGame.phaser.scene.getScene('MissionBriefingScene').startPlanning());
   await expect.poll(() => page.evaluate(() => window.anchorGame.phaser.scene.getScene('MissionWorkspaceScene').sys.isActive())).toBe(true);

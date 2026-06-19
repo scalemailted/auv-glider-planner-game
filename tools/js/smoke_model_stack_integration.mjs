@@ -1232,6 +1232,19 @@ assert.equal(typeof r3bInteractionModules[3].hitTestThreeMissionWorld, 'function
 assert.equal(typeof r3bInteractionModules[4].createThreeMissionInteractionController, 'function', 'R3B Three controller imports');
 assert.equal(typeof r3bInteractionModules[5].updateThreePlanningInteractionLayer, 'function', 'R3B interaction layer imports');
 assert.equal(typeof r3bInteractionModules[6].handleMissionWorldInteractionIntent, 'function', 'R3B workspace bridge imports');
+
+const executionModules = await Promise.all([
+  import('../../src/core/simulation/MissionExecutionTransaction.js'),
+  import('../../src/core/simulation/MissionExecutionSnapshot.js'),
+  import('../../src/core/simulation/SimulationRendererParity.js')
+]);
+assert.equal(typeof executionModules[0].createMissionExecutionTransaction, 'function', 'R1.1D execution transaction contract imports');
+assert.equal(typeof executionModules[1].createMissionExecutionSnapshot, 'function', 'R1.1D execution snapshot contract imports');
+assert.equal(typeof executionModules[1].digestExecutionPlan, 'function', 'R1.1D execution plan digest imports');
+assert.equal(typeof executionModules[2].compareSimulationExecutions, 'function', 'R1.1D renderer parity contract imports');
+const simulationSceneSource = fs.readFileSync('src/game/phaser/scenes/SimulationScene.js', 'utf8');
+assert.ok(simulationSceneSource.includes('normalizeMissionLaunchPayload'), 'SimulationScene consumes launch payloads');
+assert.ok(simulationSceneSource.includes('rendererOwnsSimulationState: false'), 'Simulation debug preserves renderer boundary');
 console.log('Model stack integration smoke passed');
 
 

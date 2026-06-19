@@ -24,11 +24,11 @@ Browser ANCHOR is the visual game and referee. Node/OceanBox-JS is the canonical
 
 ## 2. Current Architecture
 
-Current renderer sequence: THREE-R1.1C standard camera gestures and end-to-end waypoint placement repair precedes THREE-R1.2 bathymetric terrain surface and operational depth/control slabs; THREE-R2 replay/debrief/editor parity remains later.
+Current renderer sequence: THREE-R1.1D Execute Mission pipeline and Three.js Simulation feature/UI parity precedes THREE-R1.2 bathymetric terrain surface and operational depth/control slabs; THREE-R2 replay/debrief/editor parity remains later.
 
 ### Browser ANCHOR
 
-Browser ANCHOR is the visual game, referee, and debrief UI. Three.js is now the production mission environment for planning and live simulation rendering, with visible planning tools, repaired end-to-end waypoint placement, and standard left-drag pan / right-drag orbit / wheel-zoom controls in the Mission Workspace. Phaser remains a transitional scene shell, lab host, and query-gated diagnostic fallback (`?legacyPhaser=1`), not the target mission renderer for new feature development. Renderer view models consume public-safe state without owning simulation, scoring, planning, replay semantics, route optimization, or hidden truth. Browser ANCHOR owns the player-facing planning flow, simulation screens, tutorial/challenge routes, benchmark UI, adaptive surfacing review, and Headless Bundle Viewer. Browser scoring remains the official gameplay scoring surface.
+Browser ANCHOR is the visual game, referee, and debrief UI. Three.js is now the production mission environment for planning and live simulation rendering, with visible planning tools, repaired end-to-end waypoint placement, standard left-drag pan / right-drag orbit / wheel-zoom controls, and a transaction-backed Execute -> Simulation launch path in the Mission Workspace. Phaser remains a transitional scene shell, lab host, and query-gated diagnostic fallback (`?legacyPhaser=1`), not the target mission renderer for new feature development. Renderer view models consume public-safe state without owning simulation, scoring, planning, replay semantics, route optimization, or hidden truth. Browser ANCHOR owns the player-facing planning flow, simulation screens, tutorial/challenge routes, benchmark UI, adaptive surfacing review, and Headless Bundle Viewer. Browser scoring remains the official gameplay scoring surface.
 
 Product surfaces include:
 
@@ -221,12 +221,13 @@ Boundaries:
 
 ## 11. Near-Term Priorities
 
-Current renderer stabilization priority after THREE-R1.1B is complete should be THREE-R1.2 — Bathymetric Terrain Surface + Operational Depth/Control Slabs. Terrain/slab work should build on the existing visible Planning Tools and camera controller without changing app routing or reintroducing the reverted DOM runtime.
+Current renderer stabilization priority is THREE-R1.1D Execute Mission Pipeline and Three.js Simulation Feature/UI Parity. Terrain/slab work must wait until the visible Planning -> Execute -> Simulation -> Debrief loop passes manual QA. After that gate, proceed to THREE-R1.2 Bathymetric Terrain Surface + Operational Depth/Control Slabs; THREE-R2 remains later.
 
 
 Active/near-term work should stabilize the current Three.js-first mission architecture before adding large new systems.
 
 1. THREE-R1.1 - Mission Workspace runtime crash, pointer calibration, and drop-zone parity stabilization: complete code stabilization and manual Planning QA before treating THREE-R1 as done.
+1. THREE-R1.1D - Execute Mission Pipeline and Three.js Simulation Feature/UI Parity: stabilize the canonical launch transaction, plan snapshot, simulation controls, debug object, and deterministic renderer parity.
 2. THREE-R1.2 - Bathymetric Terrain Surface + Operational Depth/Control Slabs: add the next terrain/depth visualization layer while preserving the single explicit operational selection contract until depth-aware planning is deliberately introduced.
 3. THREE-R2 - Three.js Replay, Debrief Route Review, and Editor Interaction Parity: extend the proven Three mission surface to replay/debrief/editor inspection without taking over replay, scoring, or editor rules.
 4. Lifecycle extraction readiness: extract mission lifecycle only behind the restored Phaser scene shell, preserving visible product flow and avoiding the reverted DOM router/hash-route approach.

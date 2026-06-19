@@ -76,7 +76,7 @@ Implemented in GFX-R3B:
 - Mission Console planning controls for Navigate, Select/Edit, Place Waypoint, Place Marker, and Cancel Current Interaction.
 - `ANCHOR_MISSION_RENDER_TEST_API`: projection helpers for E2E pointer tests without exposing mutation methods.
 
-## THREE-R1.1C Waypoint and Camera Repair
+## THREE-R1.1D Execute and Simulation Parity`r`n`r`nTHREE-R1.1D hardens the visible Execute path with `MissionExecutionTransaction`, a clone-safe launch snapshot, plan digest comparison, SimulationScene payload initialization, first-step/debug tracking, and simulation UI parity controls. Three.js still renders canonical state only; the portable simulation engine owns time, motion, observations, scoring, terminal state, and results. See [Three.js Execute and Simulation Parity](threejs_execute_and_simulation_parity.md) and [Three.js Simulation Feature Parity](threejs_simulation_feature_parity.md).`r`n`r`n## THREE-R1.1C Waypoint and Camera Repair
 
 THREE-R1.1C keeps the same architecture and repairs the visible waypoint path: deployment auto-arms Add Waypoint when appropriate, Three waypoint clicks route through canonical workspace commands, and the standard desktop gesture mapping is left click for planning, left drag pan, right drag orbit, and wheel zoom. See [Three.js Waypoint Pipeline and Camera Controls](threejs_waypoint_pipeline_and_camera_controls.md).
 

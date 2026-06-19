@@ -52,6 +52,18 @@ import { recomputePlanningMarkerReachability } from '../../../core/planning/Plan
 import { clearPlanningOverlayState, shouldRenderPlanningGuidance } from '../../../core/planning/PlanningOverlayState.js';
 import { validatePlanForExecution } from '../../../core/planning/PlanExecutionValidator.js';
 import { validateRoutePlanForExecution } from '../../../core/planning/RouteValidityAudit.js';
+import {
+  createMissionExecutionTransaction,
+  advanceMissionExecutionTransaction,
+  failMissionExecutionTransaction,
+  missionExecutionTransactionSummary
+} from '../../../core/simulation/MissionExecutionTransaction.js';
+import {
+  createMissionExecutionSnapshot,
+  createMissionLaunchPayload,
+  summarizeMissionLaunchPayload,
+  summarizeValidation
+} from '../../../core/simulation/MissionExecutionSnapshot.js';
 import { createSimulationTrace, traceSimulation } from '../../../core/debug/SimulationTrace.js';
 import { canPlaceWaypoint, getPlacementDisabledReason } from '../../../core/planning/WaypointPlacementGuard.js';
 import {
@@ -179,6 +191,12 @@ export class MissionWorkspaceScene extends PhaserScene {
     this.planningToolControlDispatchCount = 0;
     this.duplicateToolControlDispatchCount = 0;
     this.lastPlanningToolDispatch = null;
+    this.executeControlBindCount = 1;
+    this.executeControlClickCount = 0;
+    this.duplicateExecuteDispatchCount = 0;
+    this.executeLaunchInProgress = false;
+    this.lastExecuteControlDispatch = null;
+    this.executionTransaction = null;
   }
 
   create() {
@@ -242,7 +260,7 @@ export class MissionWorkspaceScene extends PhaserScene {
     }
     this.focusManager = new FocusManager(this);
     this.focusManager.setActions([
-      () => this.executePlan(),
+      () => this.handleExecuteControlAction('focusManager'),
       () => this.showHelpModal(),
       () => {
         if (!this.hud) return;
@@ -288,7 +306,7 @@ export class MissionWorkspaceScene extends PhaserScene {
 
   renderHud() {
     this.hud = new HtmlMissionWorkspaceOverlay(this.app, {
-      execute: () => this.executePlan(),
+      execute: () => this.handleExecuteControlAction('missionConsole'),
       help: () => this.showHelpModal(),
       saveLevel: () => this.saveCurrentLevel(),
       exportPlan: () => this.exportPlan(),
@@ -380,7 +398,7 @@ export class MissionWorkspaceScene extends PhaserScene {
     this.executeHotspot = this.add.rectangle(1110, 40, 150, 40, 0x000000, 0)
       .setInteractive()
       .setDepth(2);
-    this.executeHotspot.on('pointerup', () => this.executePlan());
+    this.executeHotspot.on('pointerup', () => this.handleExecuteControlAction('legacyHotspot'));
     this.executeHotspot.on('pointerdown', () => {
       this.suppressNextPointerUp = true;
     });
@@ -2873,80 +2891,287 @@ export class MissionWorkspaceScene extends PhaserScene {
     this.app.state.plan = plan;
     return context;
   }
-  executePlan() {
+  handleExecuteControlAction(source = 'missionConsole') {
+    const control = this.executeControlState();
+    this.executeControlClickCount += 1;
+    if (this.executeLaunchInProgress) {
+      this.duplicateExecuteDispatchCount += 1;
+      this.lastExecuteControlDispatch = { source, duplicate: true, control, at: new Date().toISOString() };
+      this.publishExecutionDebug({ currentStage: this.executionTransaction?.currentStage ?? 'executeRequested' });
+      return;
+    }
+    this.lastExecuteControlDispatch = { source, duplicate: false, control, at: new Date().toISOString() };
+    this.executePlan({ source });
+  }
+
+  executeControlState() {
+    const root = globalThis.document?.getElementById?.('mission-console') ?? this.app?.elements?.consoleRoot ?? null;
+    const execute = root?.querySelector?.('[data-action="execute"]') ?? null;
+    const routeAudit = this.app?.state?.ui?.routeAudit ?? null;
+    const routeBlocked = routeAudit?.ok === false;
+    return {
+      executeControlPresent: Boolean(execute),
+      executeControlEnabled: Boolean(execute && !execute.disabled && !routeBlocked),
+      executeControlDisabledReason: execute?.disabled
+        ? execute.title || 'Execute control is disabled.'
+        : routeBlocked
+          ? ((routeAudit.errors ?? routeAudit.issues ?? [])[0]?.message ?? (routeAudit.errors ?? [])[0] ?? 'Review route validation before simulation.')
+          : null,
+      executeControlBindCount: this.executeControlBindCount,
+      executeControlClickCount: this.executeControlClickCount,
+      duplicateExecuteDispatchCount: this.duplicateExecuteDispatchCount
+    };
+  }
+
+  publishExecutionDebug(patch = {}) {
+    const transaction = patch.transaction ?? this.executionTransaction ?? this.app?.state?.executionTransaction ?? null;
+    const transactionSummary = transaction ? missionExecutionTransactionSummary(transaction) : null;
+    const snapshot = patch.snapshot ?? this.app?.state?.executionSnapshot ?? null;
+    const launchPayload = patch.launchPayload ?? this.app?.state?.executionLaunchPayload ?? null;
+    const planSummary = patch.planSummary ?? snapshot?.planSummary ?? launchPayload?.planSummary ?? null;
+    const control = this.executeControlState();
+    const planningDigest = patch.planningPlanDigest ?? snapshot?.planDigest ?? null;
+    const launchDigest = patch.launchPlanDigest ?? launchPayload?.planDigest ?? null;
+    globalThis.ANCHOR_EXECUTION_DEBUG = {
+      version: 'three-r1-1d',
+      transactionId: transaction?.transactionId ?? launchPayload?.transactionId ?? null,
+      currentStage: patch.currentStage ?? transaction?.currentStage ?? null,
+      completedStages: transactionSummary?.completedStages ?? [],
+      failureStage: transaction?.failureStage ?? null,
+      failureReason: transaction?.failureReason ?? null,
+      ...control,
+      planningPlanDigest: planningDigest,
+      launchPlanDigest: launchDigest,
+      simulationReceivedPlanDigest: patch.simulationReceivedPlanDigest ?? null,
+      enginePlanDigest: patch.enginePlanDigest ?? null,
+      planDigestMatch: launchDigest && planningDigest ? launchDigest === planningDigest : null,
+      selectedStartCount: planSummary?.selectedStartCount ?? 0,
+      executableAgentPlanCount: planSummary?.executableAgentPlanCount ?? 0,
+      executableWaypointCount: planSummary?.executableWaypointCount ?? 0,
+      planningMarkerCount: planSummary?.planningMarkerCount ?? 0,
+      sceneTransitionRequested: patch.sceneTransitionRequested === true,
+      simulationSceneActive: false,
+      engineInitialized: false,
+      engineStatus: null,
+      engineStepCount: 0,
+      firstStepCompleted: false,
+      simulationTimeSeconds: 0,
+      activeAgentCount: 0,
+      movingAgentCount: 0,
+      canonicalTrajectoryPointCount: 0,
+      threeTrajectoryPointCount: 0,
+      canonicalObservationCount: 0,
+      threeObservationCount: 0,
+      canonicalWaypointStatusCount: 0,
+      rightPanelWaypointStatusCount: 0,
+      timelineWaypointStatusCount: 0,
+      resultAvailable: false,
+      debriefRequested: false,
+      planningInteractionDisposed: patch.planningInteractionDisposed ?? false,
+      planningRendererDisposed: patch.planningRendererDisposed ?? false,
+      planningCanvasCountAfterExit: patch.planningCanvasCountAfterExit ?? null,
+      stalePlanningListenerCount: patch.stalePlanningListenerCount ?? 0,
+      rendererBackend: 'threeMission3d',
+      rendererOwnsExecution: false,
+      rendererOwnsSimulationState: false,
+      rendererOwnsScoring: false,
+      changesOfficialBrowserScoring: false,
+      usesCanonicalPlan: true,
+      transactionSummary
+    };
+    return globalThis.ANCHOR_EXECUTION_DEBUG;
+  }
+
+  preparePlanningInteractionForExecution({ disableThreeInteraction = false } = {}) {
+    this.cancelThreeInteraction();
+    this.app.state.ui ??= {};
+    this.app.state.ui.hoverCell = null;
+    this.app.state.ui.selectedMarker = null;
+    this.app.state.ui.threeMissionInteraction ??= {};
+    this.app.state.ui.threeMissionInteraction.dragPreview = null;
+    this.app.state.ui.threeMissionInteraction.routePreview = null;
+    this.app.state.ui.threeMissionInteraction.placementValidation = null;
+    this.app.state.ui.threeMissionInteraction.deploymentCandidateCell = null;
+    this.app.state.ui.threeMissionInteraction.waypointCandidateCell = null;
+    clearPlanningOverlayState(this.app.state);
+    this.clearPlanningOverlayObjects();
+    if (disableThreeInteraction) {
+      cancelThreeMissionInteraction(this.threeInteractionController);
+      setThreeMissionInteractionEnabled(this.threeInteractionController, false);
+      this.disableThreeInteractionSilently();
+    }
+    return {
+      planningInteractionDisposed: this.threeInteractionController?.disposed === true,
+      planningRendererDisposed: this.threeMissionRenderer?.disposed === true,
+      planningCanvasCountAfterExit: globalThis.document?.querySelectorAll?.('.three-mission-world-host canvas')?.length ?? null,
+      stalePlanningListenerCount: disableThreeInteraction && this.threeInteractionController?.enabled ? 1 : 0
+    };
+  }
+
+  executePlan({ source = 'direct' } = {}) {
+    if (this.executeLaunchInProgress) {
+      this.duplicateExecuteDispatchCount += 1;
+      this.publishExecutionDebug({ currentStage: this.executionTransaction?.currentStage ?? 'executeRequested' });
+      return;
+    }
+    this.executeLaunchInProgress = true;
     this.app.state.simulationTrace = createSimulationTrace();
+    let transaction = createMissionExecutionTransaction({
+      source,
+      level: this.app.state.level,
+      mission: this.app.state.mission,
+      plan: this.app.state.plan,
+      seed: this.app.state.level?.meta?.seed ?? this.app.state.mission?.rules?.stochasticSeed ?? null
+    });
+    this.executionTransaction = transaction;
+    this.app.state.executionTransaction = transaction;
+    this.publishExecutionDebug({ transaction });
     traceSimulation(this.app.state.simulationTrace, {
       scene: 'MissionWorkspaceScene',
       phase: 'execute.clicked',
       simTime: this.app.state.planningTime ?? 0,
       message: 'Execute clicked'
     });
-    this.applyMissionOptionsToMission();
-    applyStochasticToMission(this.app.state);
-    normalizeDeploymentState(this.app.state.level, this.app.state.mission, this.app.state.plan);
-    const missingDeployment = (this.app.state.mission.agents ?? []).find((agent) => requiresDeploymentSelection(this.app.state.mission, agent.id));
-    if (missingDeployment) {
-      this.app.state.selectedAgentId = missingDeployment.id;
-      this.showRouteValidationModal({
-        message: `${missingDeployment.label ?? missingDeployment.id} needs a deployment cell before simulation.`,
-        agentId: missingDeployment.id,
-        type: 'invalidStart',
-        reason: 'deployment',
-        fixHint: 'Choose a valid deployment cell, then click Execute again.'
+    try {
+      const cleanup = this.preparePlanningInteractionForExecution({ disableThreeInteraction: false });
+      transaction = advanceMissionExecutionTransaction(transaction, 'planningToolCancelled', cleanup);
+      this.publishExecutionDebug({ transaction, ...cleanup });
+      this.applyMissionOptionsToMission();
+      applyStochasticToMission(this.app.state);
+      normalizeDeploymentState(this.app.state.level, this.app.state.mission, this.app.state.plan);
+      const missingDeployment = (this.app.state.mission.agents ?? []).find((agent) => requiresDeploymentSelection(this.app.state.mission, agent.id));
+      if (missingDeployment) {
+        const reason = `${missingDeployment.label ?? missingDeployment.id} needs a deployment cell before simulation.`;
+        transaction = failMissionExecutionTransaction(transaction, 'planValidated', reason, { agentId: missingDeployment.id });
+        this.executeLaunchInProgress = false;
+        this.publishExecutionDebug({ transaction, currentStage: 'failed' });
+        this.app.state.selectedAgentId = missingDeployment.id;
+        this.showRouteValidationModal({
+          message: reason,
+          agentId: missingDeployment.id,
+          type: 'invalidStart',
+          reason: 'deployment',
+          fixHint: 'Choose a valid deployment cell, then click Execute again.'
+        });
+        this.refreshPanels();
+        this.refreshMap();
+        return;
+      }
+      this.app.state.plan = normalizePlan(this.app.state.plan, this.app.state.level, this.app.state.mission);
+      this.syncPlannerBenchmarkPlanContext(this.app.state.currentPlanSource ?? 'manual');
+      this.syncAdaptiveBenchmarkPlanContext();
+      recomputeAllWaypointTiming(this.app.state);
+      const routeAudit = this.refreshRouteAudit();
+      const snapshot = createMissionExecutionSnapshot({
+        level: this.app.state.level,
+        mission: this.app.state.mission,
+        plan: this.app.state.plan,
+        selectedAgentId: this.app.state.selectedAgentId,
+        currentPlanSource: this.app.state.currentPlanSource ?? 'manual',
+        challengeMode: this.app.state.challengeMode,
+        experienceMode: this.app.state.experienceMode,
+        missionOptions: this.app.state.missionOptions,
+        stochastic: this.app.state.stochastic,
+        playback: this.app.state.playback,
+        simulationResume: this.app.state.simulationResume,
+        routeAudit
       });
-      this.refreshPanels();
-      this.refreshMap();
-      return;
-    }
-    this.app.state.plan = normalizePlan(this.app.state.plan, this.app.state.level, this.app.state.mission);
-    this.syncPlannerBenchmarkPlanContext(this.app.state.currentPlanSource ?? 'manual');
-    this.syncAdaptiveBenchmarkPlanContext();
-    recomputeAllWaypointTiming(this.app.state);
-    const routeAudit = this.refreshRouteAudit();
-    traceSimulation(this.app.state.simulationTrace, {
-      scene: 'MissionWorkspaceScene',
-      phase: 'validation.start',
-      simTime: this.app.state.planningTime ?? 0,
-      message: 'Validating plan before simulation'
-    });
-    const validation = validatePlanForExecution({
-      level: this.app.state.level,
-      mission: this.app.state.mission,
-      plan: this.app.state.plan
-    });
-    if (!validation.ok) {
-      this.app.state.ui.routeAudit = validation.routeAudit ?? routeAudit;
-      const blockingIssue = firstBlockingRouteIssue(validation);
-      this.focusRouteIssue(blockingIssue);
+      this.app.state.executionSnapshot = snapshot;
+      transaction = advanceMissionExecutionTransaction(transaction, 'planSnapshotBuilt', { planSummary: snapshot.planSummary, planningPlanDigest: snapshot.planDigest });
+      this.publishExecutionDebug({ transaction, snapshot, planningPlanDigest: snapshot.planDigest });
       traceSimulation(this.app.state.simulationTrace, {
         scene: 'MissionWorkspaceScene',
-        phase: 'validation.fail',
+        phase: 'validation.start',
         simTime: this.app.state.planningTime ?? 0,
-        message: validation.errors[0] ?? 'Validation failed',
-        details: { errors: validation.errors }
+        message: 'Validating plan before simulation'
       });
-      this.refreshPanels();
-      this.refreshMap();
-      this.showRouteValidationModal(blockingIssue, validation);
-      return;
+      const validation = snapshot.validation ?? validatePlanForExecution({
+        level: snapshot.level,
+        mission: snapshot.mission,
+        plan: snapshot.plan
+      });
+      if (!validation.ok) {
+        this.app.state.ui.routeAudit = validation.routeAudit ?? routeAudit;
+        const blockingIssue = firstBlockingRouteIssue(validation);
+        this.focusRouteIssue(blockingIssue);
+        transaction = failMissionExecutionTransaction(transaction, 'planValidated', validation.errors?.[0] ?? 'Validation failed', {
+          validationSummary: summarizeValidation(validation)
+        });
+        traceSimulation(this.app.state.simulationTrace, {
+          scene: 'MissionWorkspaceScene',
+          phase: 'validation.fail',
+          simTime: this.app.state.planningTime ?? 0,
+          message: validation.errors[0] ?? 'Validation failed',
+          details: { errors: validation.errors }
+        });
+        this.executeLaunchInProgress = false;
+        this.publishExecutionDebug({ transaction, snapshot, currentStage: 'failed' });
+        this.refreshPanels();
+        this.refreshMap();
+        this.showRouteValidationModal(blockingIssue, validation);
+        return;
+      }
+      transaction = advanceMissionExecutionTransaction(transaction, 'planValidated', { validationSummary: summarizeValidation(validation) });
+      const missionDurationWarning = validation.warnings?.find((warning) => /mission duration|mission time limit/i.test(warning));
+      if (missionDurationWarning) this.app.toast?.(missionDurationWarning, 'warning');
+      traceSimulation(this.app.state.simulationTrace, {
+        scene: 'MissionWorkspaceScene',
+        phase: 'validation.pass',
+        simTime: this.app.state.planningTime ?? 0,
+        message: 'Plan validation passed'
+      });
+      attachIdentityToPlan(snapshot.plan, snapshot.level, snapshot.mission);
+      this.app.state.level = snapshot.level;
+      this.app.state.mission = snapshot.mission;
+      this.app.state.plan = snapshot.plan;
+      this.app.state.selectedAgentId = snapshot.selectedAgentId ?? this.app.state.selectedAgentId;
+      this.syncPlannerBenchmarkPlanContext(this.app.state.currentPlanSource ?? 'manual');
+      this.syncAdaptiveBenchmarkPlanContext();
+      if (this.app.state.currentPlanSource === 'manual') this.app.state.manualPlan = this.app.state.plan;
+      const launchPayload = createMissionLaunchPayload({ snapshot, transaction });
+      snapshot.planDigest = launchPayload.planDigest;
+      snapshot.planSummary = launchPayload.planSummary;
+      this.app.state.executionSnapshot = snapshot;
+      this.app.state.executionLaunchPayload = launchPayload;
+      transaction = advanceMissionExecutionTransaction(transaction, 'launchPayloadBuilt', {
+        launchPayloadSummary: summarizeMissionLaunchPayload(launchPayload),
+        launchPlanDigest: launchPayload.planDigest
+      });
+      const exitCleanup = this.preparePlanningInteractionForExecution({ disableThreeInteraction: true });
+      this.clearPlanningPreviewState();
+      this.app.state.mode = 'simulation';
+      transaction = advanceMissionExecutionTransaction(transaction, 'sceneTransitionRequested', {
+        scene: 'SimulationScene',
+        ...exitCleanup
+      });
+      launchPayload.transaction = cloneJson(transaction);
+      launchPayload.transactionId = transaction.transactionId;
+      this.app.state.executionLaunchPayload = launchPayload;
+      this.app.state.executionTransaction = transaction;
+      this.publishExecutionDebug({
+        transaction,
+        snapshot,
+        launchPayload,
+        planningPlanDigest: snapshot.planDigest,
+        launchPlanDigest: launchPayload.planDigest,
+        sceneTransitionRequested: true,
+        ...exitCleanup
+      });
+      this.scene.start('SimulationScene', launchPayload);
+    } catch (error) {
+      const reason = String(error?.message ?? error ?? 'Execute failed.');
+      transaction = failMissionExecutionTransaction(transaction, this.executionTransaction?.currentStage ?? 'executeRequested', reason);
+      this.executeLaunchInProgress = false;
+      this.publishExecutionDebug({ transaction, currentStage: 'failed' });
+      this.app.toast?.(`Simulation launch failed: ${reason}`, 'error');
+      traceSimulation(this.app.state.simulationTrace, {
+        scene: 'MissionWorkspaceScene',
+        phase: 'execute.fail',
+        simTime: this.app.state.planningTime ?? 0,
+        message: reason
+      });
     }
-    const missionDurationWarning = validation.warnings?.find((warning) => /mission duration|mission time limit/i.test(warning));
-    if (missionDurationWarning) this.app.toast?.(missionDurationWarning, 'warning');
-    traceSimulation(this.app.state.simulationTrace, {
-      scene: 'MissionWorkspaceScene',
-      phase: 'validation.pass',
-      simTime: this.app.state.planningTime ?? 0,
-      message: 'Plan validation passed'
-    });
-    attachIdentityToPlan(this.app.state.plan, this.app.state.level, this.app.state.mission);
-    this.syncPlannerBenchmarkPlanContext(this.app.state.currentPlanSource ?? 'manual');
-    this.syncAdaptiveBenchmarkPlanContext();
-    if (this.app.state.currentPlanSource === 'manual') this.app.state.manualPlan = this.app.state.plan;
-    this.clearPlanningPreviewState();
-    this.app.state.mode = 'simulation';
-    this.scene.start('SimulationScene');
   }
-
   focusRouteIssue(issue = {}) {
     const agentId = issue.agentId ?? issue.to?.agentId ?? this.app.state.selectedAgentId ?? this.app.state.mission?.agents?.[0]?.id ?? null;
     const waypointIndex = Number(issue.waypointIndex ?? issue.to?.index);

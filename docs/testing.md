@@ -631,3 +631,25 @@ node tools/js/audit_replay_authority_boundaries.mjs
 ```
 
 These checks verify schemas, compatibility warnings, stable issue codes, tamper detection, CLI nonzero failure behavior, multi-agent public playback state, compact browser summary export, public-safety boundaries, and the absence of authoritative hidden-state resimulation claims.
+
+## THREE-R1.1D Execute Mission Pipeline Checks
+
+Run the focused execution parity checks:
+
+```bash
+node tools/js/smoke_mission_execution_transaction.mjs
+node tools/js/smoke_execute_control_pipeline.mjs
+node tools/js/smoke_execution_plan_snapshot.mjs
+node tools/js/smoke_simulation_scene_launch_payload.mjs
+node tools/js/smoke_simulation_first_step.mjs
+node tools/js/smoke_three_simulation_waypoint_progress.mjs
+node tools/js/smoke_three_simulation_observation_parity.mjs
+node tools/js/smoke_three_simulation_control_parity.mjs
+node tools/js/smoke_three_simulation_terminal_debrief.mjs
+node tools/js/smoke_simulation_renderer_parity.mjs
+node tools/js/audit_three_simulation_ui_parity.mjs
+node tools/js/audit_three_execution_boundaries.mjs
+node tools/js/audit_execute_pipeline_runtime_errors.mjs
+```
+
+Focused browser coverage should exercise Planning -> Execute -> Simulation -> Step/Play/Pause -> Finish -> Debrief through visible controls. The renderer must not own execution, simulation state, observations, scoring, result creation, or hidden truth.
