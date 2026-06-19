@@ -135,7 +135,7 @@ Planning is where you create the waypoint plan. It is the main workspace: the le
 
 Three.js is the default and production mission world for planning. It renders terrain, bathymetry, water/depth layers, currents, hazards, drop zones, gliders, waypoints, planning markers, route lines, and active Gold Star targets from the same canonical mission state used by the simulator. It supports hover/inspection, glider and waypoint selection, explicit Deploy / Change Start, Add Waypoint, Select / Edit, Add Marker, and Navigate tools, waypoint placement/editing/deletion, planning-marker placement/removal, and Gold Star inspection through canonical workspace commands. Waypoint placement remains 2.5D. A developer-only legacy Phaser tactical renderer can be enabled with `?legacyPhaser=1`; it is for diagnostics only and should not be used for new feature development.
 
-Waypoint labels describe intent. `Navigation` means a commanded underwater target followed by dead reckoning. `Surface / GPS Update` means the glider surfaces, receives GPS, communicates, and may replan. `Sampling Target` means a science objective such as a Gold Star or marker; it is not a GPS-confirmed waypoint unless you add it to the route. `Terminal Carry-Through` means the final command intentionally extends past mission duration so the glider keeps moving until time expires.
+Waypoint labels describe intent.`Navigation` means a commanded underwater target followed by dead reckoning. `Surface / GPS Update` means the glider surfaces, receives GPS, communicates, and may replan. `Sampling Target` means a science objective such as a Gold Star or marker; it is not a GPS-confirmed waypoint unless you add it to the route. `Terminal Carry-Through` means the final command intentionally extends past mission duration so the glider keeps moving until time expires.
 
 For the Three.js Mission World, use the Mission Console `Planning Tools` section:
 
@@ -143,7 +143,7 @@ For the Three.js Mission World, use the Mission Console `Planning Tools` section
 - `Add Waypoint`: click successive valid cells to append executable route waypoints.
 - `Select / Edit`: inspect objects or drag an existing waypoint.
 - `Add Marker`: place non-executable planning markers.
-- `Navigate`: camera-focused mode; left click still uses the active tool, left drag pans, right drag rotates/orbits, and wheel zooms.
+-`Navigate`: camera-focused mode; left click still uses the active tool, left drag pans, right drag rotates/orbits, and wheel zooms.
 
 The Mission Console `Camera Controls` section provides `Top Down`, `Oblique`, `Profile`, `Fleet`, `Focus Glider`, `Focus Route`, and `Reset Camera`. In the Three.js Mission World, left click uses the active planning tool, left drag pans, right drag rotates/orbits, and wheel zooms. Manual camera movement is preserved across normal renderer refreshes; preset/reset buttons intentionally replace the manual camera pose.
 
@@ -186,7 +186,7 @@ The Mission Console and Waypoint Timeline show:
 - global planning-marker icons on the map and bottom timeline
 - timeline strip
 
-The top selected-glider planning HUD shows route energy, fuel remaining, waypoint count, expected ROI, current assist/opposition, next surface time, reachability, route validity, and compact warnings for the active glider. The left Mission Console also shows the selected glider's compact performance card so the bottom of the simulator can stay dedicated to mission time and playback controls. Use the right agent tabs or the Mission Console `Next Glider` control to switch gliders.
+The top selected-glider planning HUD shows route energy, fuel remaining, waypoint count, expected ROI, current assist/opposition, next surface time, reachability, route validity, and compact warnings for the active glider. The left Mission Console also shows the selected glider's compact performance card so the bottom of the simulator can stay dedicated to mission time and playback controls. Use the right agent tabs or the Mission Console`Next Glider` control to switch gliders.
 
 Planning HUD numbers are estimates. `Projected Cost`, `Estimated Fuel`, `Likely Reach`, `Guidance Cone`, and `Realized Preview` are fast planning aids based on visible currents, speed/time, terrain, and ROI forecasts. The guidance cone is current-aware: with-current routes tend to look longer/narrower and cheaper, against-current routes shorten and warn, and cross-current routes shift/widen sideways. Low forecast confidence or high ensemble disagreement widens the cone because the forecast is less certain. These are not guarantees. Simulation computes the actual path, fuel use, hazard contacts, drift metrics, and stochastic realized outcome. A mismatch between a preview and the Debrief is expected when drift, terrain, hazards, or stochastic fields resolve differently.
 
@@ -200,7 +200,7 @@ Marker Mode is exploration-first. You can use it before choosing a deployment ce
 
 Marker estimates are planning aids. The game looks from the latest connected waypoint before the marker time, or from the selected start if no waypoint exists yet, then estimates available time, travel time, slack, energy, remaining fuel, route risk, and likely backfill steps. `Reachable` means the estimate has comfortable time and fuel. `Tight` means the marker may be possible but has little slack. `Risky` means hazards, current, cross-current, or forecast uncertainty are concerning. `Impossible` means the estimated route is blocked, late, out of fuel, or lacks a valid start. The game does not build the connecting route for you.
 
-The bottom timeline shows the plan structure above the slider. Numbered yellow circles are executable waypoint arrival estimates, diamond icons are future planning markers, gold stars are priority-target windows, and the final mission-end frame is always marked. Use `Prev` and `Next` to step through timeline frames, including the exact final time even when the mission duration is not a full planning-window multiple. Hover an icon for time, window, coordinate, and estimate details. Click a waypoint icon to select that waypoint. Click a marker icon to focus its target time and estimate. Marker colors indicate whether the route currently looks early, on time, late, or unconnected relative to nearby waypoint arrivals.
+The bottom timeline shows the plan structure above the slider. Numbered yellow circles are executable waypoint arrival estimates, diamond icons are future planning markers, gold stars are priority-target windows, and the final mission-end frame is always marked. Use `Prev` and`Next` to step through timeline frames, including the exact final time even when the mission duration is not a full planning-window multiple. Hover an icon for time, window, coordinate, and estimate details. Click a waypoint icon to select that waypoint. Click a marker icon to focus its target time and estimate. Marker colors indicate whether the route currently looks early, on time, late, or unconnected relative to nearby waypoint arrivals.
 
 The committed route line starts at the fixed start, selected deployment cell, or surfaced replanning position. It then connects to waypoint 1 and continues through the rest of the waypoint list. If no deployment cell has been chosen, the game does not draw a fake route from the corner of the map.
 
@@ -260,7 +260,7 @@ Labels such as `Actual Final`, `Actual ROI`, and `Actual Energy` come from the c
 - manual-vs-Greedy Planner comparison when available
 - manual-vs-solver comparison when available
 
-Use Debrief to decide what to improve, then click `Revise Plan` or `Retry From Briefing`. Tutorial missions also offer `Next Tutorial`; generated challenges offer `New Challenge`; editor/custom missions offer `Return To Editor`. Export, rerun, Greedy Planner, comparison, and main-menu controls are in-game buttons; downloads still use the browser download bridge behind those buttons.
+Use Debrief to decide what to improve, then click `Revise Plan` or `Retry From Briefing`. Tutorial missions also offer`Next Tutorial`; generated challenges offer`New Challenge`; editor/custom missions offer `Return To Editor`. Export, rerun, Greedy Planner, comparison, and main-menu controls are in-game buttons; downloads still use the browser download bridge behind those buttons.
 
 ### Segment Contribution Grades
 
@@ -812,7 +812,7 @@ Back in Planning:
 3. Simulate the imported plan.
 4. Open Debrief.
 
-If you already ran a manual plan in the same session, Debrief can compare manual and imported solver results. It reports expected value, realized value, final score, energy, hazards, mobile hazards, depth exposure, risk exposure, forecast regret, and completed/missed waypoints when those metrics are available. Missing metrics show `N/A`.
+If you already ran a manual plan in the same session, Debrief can compare manual and imported solver results. It reports expected value, realized value, final score, energy, hazards, mobile hazards, depth exposure, risk exposure, forecast regret, and completed/missed waypoints when those metrics are available. Missing metrics show`N/A`.
 
 ## Environment Editor
 
@@ -872,7 +872,7 @@ While dragging a current brush, the editor shows a preview arrow, affected brush
 
 Use `Preview Preset` to inspect the selected synthetic current preset before changing the level. The preview shows direction arrows, a frame/time label, mean and max speed, strong-current cell percent, near-calm cell percent, and a label such as `Calm`, `Gentle`, `Moderate`, `Strong`, or `Chaotic`.
 
-Use the preview scrubber, `Prev`, `Next`, `Play`, and `Reset` controls to inspect dynamic current presets over mission time. The preview animates the generated frames at a low rate and does not regenerate while playing. Use `Apply To Level` when the full sequence looks useful for gameplay; it applies every generated current frame, not just the frame currently visible in the preview.
+Use the preview scrubber, `Prev`,`Next`, `Play`, and `Reset` controls to inspect dynamic current presets over mission time. The preview animates the generated frames at a low rate and does not regenerate while playing. Use `Apply To Level` when the full sequence looks useful for gameplay; it applies every generated current frame, not just the frame currently visible in the preview.
 
 ### Load Level JSON
 
@@ -1057,7 +1057,7 @@ The viewer is for inspection and comparison only. Browser ANCHOR remains the off
 
 In Simulation Lab / Editor & Import Tools / Headless Bundle Viewer, click `Load Example Bundle` to inspect `docs/examples/headless_oceanbox_js_public_bundle.example.json`. It is generated by the Node/OceanBox-JS runtime and omits hidden truth. The companion `docs/examples/headless_oceanbox_js_bundle.example.json` is for oracle/debug review and marks hidden truth explicitly.
 
-Use `node tools/js/generate_headless_example_bundles.mjs` to regenerate both. Colab/Python should analyze this artifact or call Node; Browser ANCHOR remains the visual/referee UI, and this workflow does not add a Python simulator, new planner, official scoring replacement, calibrated ocean forecast, or MARL/RL.
+Use`node tools/js/generate_headless_example_bundles.mjs` to regenerate both. Colab/Python should analyze this artifact or call Node; Browser ANCHOR remains the visual/referee UI, and this workflow does not add a Python simulator, new planner, official scoring replacement, calibrated ocean forecast, or MARL/RL.
 
 ## H3 Solver Packet / Headless Bundle Roundtrip
 
@@ -1087,7 +1087,7 @@ Headless bundles, solver roundtrips, and Adaptive Benchmark surfacing reviews ca
 
 Open `Simulation Lab` and choose `Motion Planning Demo` to compare a dashed planned route with the realized glider trajectory under currents, dive profile, speed, heading-rate limit, drift gain, and energy constraints. Path planning chooses waypoints; motion planning evaluates execution. Motion dynamics does not generate routes, does not change Challenge Mode scoring, and does not add WebGPU, a Python simulator, or MARL/RL.
 
-Simulation Lab also includes 3D Bathymetric World View: a Three.js/WebGL synthetic ocean visualization that separates surface waypoints, subsurface sampling points, water surface, depth layers, currents, coastlines, bottom hazards, and bathymetry. The Mission Planning and Simulation workspaces now use the Three.js mission world by default for live mission state and 2.5D planning interactions. This is not full 3D route planning, and Three.js does not add a planner or route optimizer.
+Simulation Lab also includes 3D Bathymetric World View: a Three.js/WebGL synthetic ocean visualization that separates surface waypoints, subsurface sampling points, water surface, depth layers, currents, coastlines, bottom hazards, and bathymetry. The Mission Planning and Simulation workspaces now use the Three.js mission world by default for live mission state and 2.5D planning interactions. The Water Column controls can show physical depth or exploded layers, select the active layer, and stamp selected waypoint or selected glider-plan dive profile/target-layer metadata while keeping XY waypoints canonical. Older missions without waterColumnConfig remain surface-only. This is not full 3D route planning, and Three.js does not add a planner or route optimizer.
 
 
 ## Motion Cost Graph Bundle Artifacts

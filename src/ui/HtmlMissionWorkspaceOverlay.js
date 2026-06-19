@@ -22,6 +22,7 @@ import { EXPERIENCE_MODES, getExperienceModeDefaults, experienceModeLabel } from
 import { getTutorialHint, tutorialFeatureEnabled } from '../core/tutorial/TutorialFeatureGates.js';
 import { replayDiagnosticsCardHtml } from './ReplayDiagnosticsCard.js';
 import { formatDiagnosticForUi } from '../core/planning/RouteDiagnostic.js';
+import { normalizeWaterColumnConfig, waterColumnLayerOptions, waterColumnProfileOptions } from '../core/science/WaterColumnSchema.js';
 
 export class HtmlMissionWorkspaceOverlay {
   constructor(app, handlers) {
@@ -449,6 +450,14 @@ export class HtmlMissionWorkspaceOverlay {
       'mission-planning-tool': (button) => this.handlers.setMissionPlanningTool?.(button.dataset.tool),
       'three-layer': (button) => this.handlers.toggleThreeLayer?.(button.dataset.layer),
       'three-interaction-mode': (button) => this.handlers.setThreeInteractionMode?.(button.dataset.mode),
+      'water-column-display-mode': (button) => this.handlers.setWaterColumnDisplayMode?.(button.dataset.mode),
+      'water-column-active-layer': (button) => this.handlers.setWaterColumnActiveLayer?.(button.dataset.layer),
+      'water-column-toggle-layer': (button) => this.handlers.toggleWaterColumnLayer?.(button.dataset.layer),
+      'water-column-opacity': (button) => this.handlers.adjustWaterColumnOpacity?.(Number(button.dataset.delta ?? 0)),
+      'water-column-scalar-field': (button) => this.handlers.setWaterColumnScalarField?.(button.dataset.field),
+      'water-column-current-mode': (button) => this.handlers.setWaterColumnCurrentMode?.(button.dataset.mode),
+      'water-column-dive-profile': (button) => this.handlers.setWaterColumnDiveProfile?.(button.dataset.profile),
+      'water-column-target-layer': (button) => this.handlers.setWaterColumnTargetLayer?.(button.dataset.layer),
       'three-cancel-interaction': () => this.handlers.cancelThreeInteraction?.(),
       'show-best-path': () => this.handlers.showBestPath?.(),
       'hide-best-path': () => this.handlers.hideBestPath?.(),
@@ -665,7 +674,7 @@ function timelineEventTitle(state, event) {
       `Timing: ${labelize(event.timingStatus ?? 'unconnected')}`,
       `Reach estimate: ${labelize(reach.status ?? 'estimate')}`,
       `Slack: ${slack}`,
-      event.note ? `Note: ${event.note}` : null
+      event.note ?`Note: ${event.note}` : null
     ].filter(Boolean).join('\n');
   }
   if (event.type === 'priorityTarget') {
@@ -777,14 +786,91 @@ function rendererBackendSection(state) {
         <div class="console-button-row wrap">
           ${cameraButton('tacticalTopDown', 'Top Down', camera)}
           ${cameraButton('obliqueMission', 'Oblique', camera)}
+          ${cameraButton('obliqueWaterColumn', 'Oblique Column', camera)}
           ${cameraButton('waterColumnProfile', 'Profile', camera)}
+          ${cameraButton('sideProfile', 'Side Profile', camera)}
+          ${cameraButton('layerStackOverview', 'Layer Stack', camera)}
+          ${cameraButton('activeLayer', 'Active Layer', camera)}
+          ${cameraButton('selectedDive', 'Selected Dive', camera)}
           ${cameraButton('fleetOverview', 'Fleet', camera)}
           ${cameraButton('focusSelectedGlider', 'Focus Glider', camera)}
           ${cameraButton('focusRoute', 'Focus Route', camera)}
           ${cameraButton('resetCamera', 'Reset Camera', camera)}
         </div>
+        ${waterColumnSection(state)}
         ${interactionControls}
       </section>`;
+}
+function waterColumnSection(state) {
+  const explicitConfig = state.level?.world?.waterColumnConfig ?? state.mission?.world?.waterColumnConfig ?? state.mission?.waterColumnConfig ?? null;
+  const config = normalizeWaterColumnConfig(explicitConfig ?? { depthLayerIds: ['surface'], defaultLayerIds: ['surface'], diveProfileId: 'surfaceOnly' });
+  const ui = state.ui?.waterColumn ?? {};
+  const layerIds = config.depthLayerIds ?? ['surface'];
+  const activeLayerId = layerIds.includes(ui.activeDepthLayerId) ? ui.activeDepthLayerId : layerIds[0] ?? 'surface';
+  const hidden = new Set(Array.isArray(ui.hiddenLayerIds) ? ui.hiddenLayerIds : []);
+  const displayMode = ui.verticalDisplayMode === 'explodedLayers' ? 'explodedLayers' : 'physicalDepth';
+  const currentMode = ui.currentDisplayMode === 'allLayers' ? 'allLayers' : 'activeLayerOnly';
+  const selectedField = ui.selectedScalarFieldId ?? 'sampleValue';
+  const selectedProfile = ui.selectedDiveProfileId ?? config.diveProfileId ?? 'surfaceOnly';
+  const selectedTarget = ui.selectedTargetDepthLayerId ?? activeLayerId;
+  const layerOptions = waterColumnLayerOptions().filter((layer) => layerIds.includes(layer.id));
+  const layerButtons = layerOptions.map((layer) => waterColumnLayerButton(layer, activeLayerId, hidden)).join('');
+  const targetButtons = layerOptions.map((layer) => waterColumnTargetLayerButton(layer, selectedTarget)).join('');
+  const profileButtons = waterColumnProfileOptions().map((profile) => waterColumnProfileButton(profile, selectedProfile)).join('');
+  const opacity = Math.round(Number(ui.globalOpacity ?? 0.26) * 100);
+  const claim = explicitConfig
+    ? '2.5D water-column display from mission depth-layer config. Synthetic teaching model, not calibrated ocean data.'
+    : 'Surface-only mission. No declared depth-layer config, so deeper slabs are not fabricated.';
+  return `
+        <h3 class="waypoint-section-title">Water Column</h3>
+        <div class="hud-card compact" data-water-column-controls>
+          <div><strong>Model:</strong> ${escapeHtml(config.model ?? 'top-down-2p5d-depth-layer-sampling')}</div>
+          <div>${escapeHtml(claim)}</div>
+          <div><strong>Display:</strong> ${escapeHtml(labelize(displayMode))} | <strong>Active:</strong> ${escapeHtml(labelize(activeLayerId))} | <strong>Opacity:</strong> ${opacity}%</div>
+        </div>
+        <div class="console-button-row wrap">
+          ${waterColumnModeButton('physicalDepth', 'Physical Depth', displayMode)}
+          ${waterColumnModeButton('explodedLayers', 'Exploded Layers', displayMode)}
+          <button class="console-button secondary" data-action="water-column-opacity" data-delta="-0.06">Less Opaque</button>
+          <button class="console-button secondary" data-action="water-column-opacity" data-delta="0.06">More Opaque</button>
+        </div>
+        <div class="console-button-row wrap">${layerButtons}</div>
+        <div class="console-button-row wrap">
+          ${waterColumnFieldButton('sampleValue', 'Sample Value', selectedField)}
+          ${waterColumnFieldButton('A_global_depth', 'Depth Priority', selectedField)}
+          ${waterColumnFieldButton('A_global_topdown', 'Top-Down Priority', selectedField)}
+          ${waterColumnCurrentButton('activeLayerOnly', 'Currents: Active', currentMode)}
+          ${waterColumnCurrentButton('allLayers', 'Currents: All Layers', currentMode)}
+        </div>
+        <div class="hud-muted">Selected waypoint or selected glider plan metadata: dive profile and target layer.</div>
+        <div class="console-button-row wrap">${profileButtons}</div>
+        <div class="console-button-row wrap">${targetButtons}</div>`;
+}
+
+function waterColumnLayerButton(layer, activeLayerId, hidden) {
+  const active = activeLayerId === layer.id;
+  const visible = !hidden.has(layer.id);
+  return `<button class="console-button ${active ? 'primary' : 'secondary'}" data-action="water-column-active-layer" data-layer="${escapeAttr(layer.id)}">${escapeHtml(labelize(layer.id))}</button><button class="console-button secondary" data-action="water-column-toggle-layer" data-layer="${escapeAttr(layer.id)}">${visible ? 'Hide' : 'Show'} ${escapeHtml(labelize(layer.id))}</button>`;
+}
+
+function waterColumnTargetLayerButton(layer, selectedTarget) {
+  return `<button class="console-button ${selectedTarget === layer.id ? 'primary' : 'secondary'}" data-action="water-column-target-layer" data-layer="${escapeAttr(layer.id)}">Target ${escapeHtml(labelize(layer.id))}</button>`;
+}
+
+function waterColumnProfileButton(profile, selectedProfile) {
+  return `<button class="console-button ${selectedProfile === profile.id ? 'primary' : 'secondary'}" data-action="water-column-dive-profile" data-profile="${escapeAttr(profile.id)}">${escapeHtml(profile.label)}</button>`;
+}
+
+function waterColumnModeButton(mode, label, activeMode) {
+  return `<button class="console-button ${activeMode === mode ? 'primary' : 'secondary'}" data-action="water-column-display-mode" data-mode="${escapeAttr(mode)}">${escapeHtml(label)}</button>`;
+}
+
+function waterColumnFieldButton(fieldId, label, selectedField) {
+  return `<button class="console-button ${selectedField === fieldId ? 'primary' : 'secondary'}" data-action="water-column-scalar-field" data-field="${escapeAttr(fieldId)}">${escapeHtml(label)}</button>`;
+}
+
+function waterColumnCurrentButton(mode, label, activeMode) {
+  return `<button class="console-button ${activeMode === mode ? 'primary' : 'secondary'}" data-action="water-column-current-mode" data-mode="${escapeAttr(mode)}">${escapeHtml(label)}</button>`;
 }
 function interactionModeButton(id, label, active) {
   return `<button class="console-button ${active === id ? 'primary' : 'secondary'}" data-action="three-interaction-mode" data-mode="${escapeAttr(id)}">${escapeHtml(label)}</button>`;
@@ -1625,7 +1711,7 @@ function routeEstimate(state) {
   return {
     distance,
     energyText: hoverPreview
-      ? `${hoverPreview.valid ? `${hoverPreview.energy.toFixed(1)} Ãƒâ€šÃ‚Â· ETA ${Number(hoverPreview.eta ?? hoverPreview.estimatedTravelTime ?? 0).toFixed(1)} hr` : 'invalid'} (${hoverPreview.note})`
+      ? `${hoverPreview.valid ? `${hoverPreview.energy.toFixed(1)} ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â· ETA ${Number(hoverPreview.eta ?? hoverPreview.estimatedTravelTime ?? 0).toFixed(1)} hr` : 'invalid'} (${hoverPreview.note})`
       : budget ? `${Math.round(energy)} / ${Math.round(budget)}` : `${Math.round(energy)}`
   };
 }

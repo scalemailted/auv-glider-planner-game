@@ -52,3 +52,9 @@ Recommended dive profile is context for the next leg; it does not generate a rou
 MOTION-R1 uses the P11 water-column layer ids and dive profiles as execution context for deterministic glider motion. Dive profile affects desired depth layer and observation depth along the realized trajectory. It does not add full 3D planning, calibrated vertical ocean physics, or a route planner; the player or solver still chooses the route intent.
 
 ENV-R1 Bathymetric World View visualizes the 2.5D water-column model with water surface, depth-layer planes, bathymetric bottom, surface waypoints, sampling points, and dive-profile paths. Bathymetry does not replace water-column state.
+
+## THREE-R1.2A Browser Renderer Relationship
+
+THREE-R1.2A visualizes the same P11 contract in the production Three.js mission world. The renderer shows water surface, operational depth slabs, depth-aware currents, observations, and predicted/realized dive trajectories. The Water Column console controls update display state plus optional dive-profile/target-layer metadata on the selected waypoint or selected glider plan. XY waypoints, route validation, simulation, scoring, and exports remain owned by the portable mission core.
+
+Older missions without `waterColumnConfig` use a surface-only fallback so the UI does not imply fabricated deep layers. See `docs/threejs_volumetric_water_column.md` and `docs/manual_threejs_water_column_checklist.md`.

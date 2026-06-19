@@ -317,3 +317,7 @@ SCORE-R1 is shadow benchmark scoring. It does not replace official browser scori
 See [Mission Scoring and Regret](docs/mission_scoring_and_regret.md) for the SCORE-R1 artifact contract and boundaries.
 
 H4.1 hardens replay artifacts with formal schemas, deterministic integrity issue codes, tamper fixtures, compact browser replay summaries, and a contract-only multi-agent replay fixture. This stabilizes public replay/debrief infrastructure before Blind Discovery gameplay or cooperative multi-glider work; it does not add authoritative hidden-state replay, Python simulation, planners, optimizers, or MARL/RL.
+
+## Current Renderer Stabilization Note
+
+THREE-R1.2A adds the operational 2.5D water-column renderer over the existing P11 model. The next renderer phase should be THREE-R1.2B - Bathymetric Seabed Mesh, Coastline, and Landmass Geometry.

@@ -27,3 +27,7 @@ Hard-invalid cells remain rejected before plan mutation. Waypoints whose ETA exc
 ## Verification Status
 
 Node smoke coverage exists for lifecycle cleanup, pose, guidance, grid coordinates, alignment, and waypoint semantics. Browser headed verification and human owner QA remain pending until the focused E2E/manual pass is run.
+
+## THREE-R1.2A Water Column Continuity
+
+Operational water-column slabs, depth trajectories, depth-aware observations, and active-layer current vectors are rendered as stable Three.js objects from public-safe view models. Planning and Simulation scene cleanup still owns renderer disposal; `ANCHOR_WATER_COLUMN_RENDER_DEBUG` should disappear/rebuild with the same scene lifecycle as `ANCHOR_MISSION_RENDER_DEBUG`.

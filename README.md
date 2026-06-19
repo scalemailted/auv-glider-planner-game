@@ -45,7 +45,7 @@ Version 2 is a playable static-web game built with vanilla JavaScript, HTML, CSS
 - a dependency-light Python external solver example
 - optional Playwright smoke tests for development
 
-Normal browser use does not require a build step, backend, Playwright, or `node_modules`. Phaser is vendored locally at `vendor/phaser.min.js`, and the production Three.js mission environment resolves the locked Three.js runtime through the `index.html` import map to `vendor/three/build/three.module.js`. Development uses the npm `three` dependency as the source of truth for refreshing that curated vendor runtime with `npm.cmd run vendor:three`. See [Three.js Static Runtime](docs/threejs_static_runtime.md) and [Three.js First Mission Architecture](docs/threejs_first_architecture.md) for the vendor allowlist, checks, GitHub Pages build path, and Phaser deprecation boundary.
+Normal browser use does not require a build step, backend, Playwright, or`node_modules`. Phaser is vendored locally at `vendor/phaser.min.js`, and the production Three.js mission environment resolves the locked Three.js runtime through the `index.html` import map to `vendor/three/build/three.module.js`. Development uses the npm `three` dependency as the source of truth for refreshing that curated vendor runtime with`npm.cmd run vendor:three`. See [Three.js Static Runtime](docs/threejs_static_runtime.md) and [Three.js First Mission Architecture](docs/threejs_first_architecture.md) for the vendor allowlist, checks, GitHub Pages build path, and Phaser deprecation boundary.
 
 The current production baseline is documented in [Current Runtime Baseline](docs/current_runtime_baseline.md). MIG-R2/MIG-R2.2 DOM routing and AnchorBrowserRuntime were reverted; src/app/main.js is not the active entry point, and future Phaser removal is expected to be incremental and visually invisible.
 
@@ -133,6 +133,8 @@ Quick loop:
 - [Mission Feasibility Simulator and Scientific Benchmark Requirements](docs/mission_feasibility_simulator_requirements.md)
 - [Renderer Architecture and WebGPU Strategy](docs/renderer_architecture_and_webgpu_strategy.md)
 - [Three.js Mission Renderer Migration](docs/threejs_mission_renderer_migration.md)
+- [Three.js Volumetric Water Column](docs/threejs_volumetric_water_column.md)
+- [Manual Three.js Water Column Checklist](docs/manual_threejs_water_column_checklist.md)
 - [Three.js Planning Tools and Camera Controls](docs/threejs_planning_tools_and_camera.md)
 - [Solver workflow](docs/solver_workflow.md)
 - [Export formats](docs/export_formats.md)
@@ -154,7 +156,7 @@ The Main Menu product hub includes field demos inside the `Simulation Lab` subme
 
 `Deterministic Spatiotemporal Process Lab` appears in the menu as `Process Lab`. It is the companion sandbox for pure process evolution and sample-value interpretation `S(x,y,t)`: where, when, and how a deterministic or seeded grid/cellular process creates value to sample. Its normal workflow starts with `Mode`: Foundational CA Models, Ocean-Relevant Process Analogs, Custom Composer, Process Paint, or Rule Allocation Sandbox. Foundational CA Models expose Conway, Forest Fire, SIR, Greenberg-Hastings, Sandpile, Wa-Tor, Traffic CA, and Wireworld. Ocean-Relevant Process Analogs expose simplified event/process layers such as bloom growth, river plume fronts, oil or chemical plumes, thermocline boundaries, eddy-trapped patches, runoff pulses, hydrothermal plumes, turbidity events, hypoxia recovery, and persistent-monitoring freshness fields. Observable Process Patterns remain bridge metadata, not a primary selector. Source / Initial Field replaces Event Likelihood as the primary concept: it is deterministic or seeded process support, not uncertainty or belief. Belief, expected-state uncertainty, surprise, forecast error, hidden-event diagnosis, and sampling-priority preview belong in the Uncertainty / Forecast Demo. The lab can inspect state view, model-specific rule metrics, transition view, sampling interpretation, source overlays, graph topology, process influence messages, communities/groups, depletion/freshness value, and diagnostics. Foundational CA Models, Ocean-Relevant Process Analogs, Process Paint, and Rule Allocation Sandbox advance by discrete generations, not render frames; the default is 1 generation per second, with Step Generation and tick-rate controls for classroom inspection. Exports prefer `anchor.demo.sampling-process-field` and preserve legacy `anchor.demo.sample-roi-field` aliases. Guided examples are fixture-backed and show Behavior QA in the right panel. Initial Condition controls can keep the curated seed, switch to an interactive generation-0 canvas, or generate a deterministic random seed; edits use fixed model-aware brushes and reset to generation 0 before stepping. Exported demo JSON includes `behaviorValidation`, `exampleFixtureId`, `exampleFixtureLabel`, and `initialCondition` metadata.
 
-Process Paint and Rule Allocation Sandbox use the deterministic `sampling-process-rule-families-v1` catalog. New paint exports write canonical rule IDs such as `inert`, `propagatingFront`, `localBirthDeath`, `diffusiveSpread`, `directedTransport`, `thresholdCascade`, `interactingPopulation`, and `structuredSignal`; older IDs such as `none`, `frontPropagation`, `birthDeath`, `diffusionSpread`, `driftTransport`, `cascade`, `predatorPreyMigration`, and `signalPropagation` remain accepted aliases.
+Process Paint and Rule Allocation Sandbox use the deterministic `sampling-process-rule-families-v1` catalog. New paint exports write canonical rule IDs such as `inert`, `propagatingFront`, `localBirthDeath`, `diffusiveSpread`, `directedTransport`, `thresholdCascade`, `interactingPopulation`, and `structuredSignal`; older IDs such as`none`, `frontPropagation`, `birthDeath`, `diffusionSpread`, `driftTransport`, `cascade`, `predatorPreyMigration`, and `signalPropagation` remain accepted aliases.
 
 Reference Observable Process Signatures bridge known process families to editable ROI recipes. They are inspired by cellular automata and grid-process models such as forest-fire CA, Life-like rules, Brian's Brain, epidemic/contact processes, sandpile cascades, age-of-information monitoring, reaction-diffusion spot/stripe analogs, traffic CA, and Wireworld-style signal paths, but they are not exact reproductions. Applying a signature updates the same component controls and exports preserve reference models, CA mechanism taxonomy, observable signature, QA expectations, ROI meaning, genotype/phenotype framing, and failure signs.
 
@@ -261,7 +263,7 @@ Reachability ovals, drift cones, hover ETA/energy labels, arrival previews, and 
 
 Waypoint placement is sequential. After a waypoint is added, the game estimates travel time from the previous planning anchor, writes `estimatedArrivalTime`, `segmentTravelTime`, `segmentEnergy`, `cumulativeEnergy`, `remainingFuelEstimate`, and `arrivalUncertainty` onto the waypoint, advances the time slider to that estimate, and recenters guidance from the new reachable anchor. Multiple waypoints may share the same cell when the route revisits that location at different times; the map fans their markers slightly and shows an `xN` stack badge while import/export and simulation preserve waypoint array order. If the direct segment is blocked by terrain, the warning is kept on the waypoint and the guidance anchor stays at the previous reachable point. Guidance cones are current-aware: assisting current extends and narrows the cone, opposing current shortens and warns, cross-current shifts and widens the expected arrival oval, and low confidence or ensemble disagreement widens the forecast envelope.
 
-ANCHOR distinguishes waypoint semantics. A `navigation` waypoint is a commanded underwater navigation intent, not a GPS-confirmed truth position. A `surface` waypoint is a GPS/communication/update point where replanning may occur. A `samplingTarget` is a science objective or marker and is not automatically an executable checkpoint unless converted into a route waypoint. A `terminalCarryThrough` waypoint is an intentional final command beyond mission duration; simulation travels toward it until the clock expires.
+ANCHOR distinguishes waypoint semantics. A`navigation` waypoint is a commanded underwater navigation intent, not a GPS-confirmed truth position. A `surface` waypoint is a GPS/communication/update point where replanning may occur. A `samplingTarget` is a science objective or marker and is not automatically an executable checkpoint unless converted into a route waypoint. A `terminalCarryThrough` waypoint is an intentional final command beyond mission duration; simulation travels toward it until the clock expires.
 
 Dead-reckoning uncertainty is currently represented as configuration, planning/export metadata, semantic surface/update events, and cone-aware route grading. It is not yet a full separate true-position-vs-believed-position underwater navigation simulator.
 
@@ -269,7 +271,7 @@ Planning markers are separate from route waypoints and are global by default. Us
 
 Marker Mode is free exploration and annotation. It does not require a selected glider, deployment cell, selected start, planning anchor, or route feasibility. Hovering a cell shows a floating map tooltip plus Mission Console inspection data for the current timeline time: coordinates, ROI value, current vector/magnitude, water/terrain, hazard, depth, forecast confidence when available, and active priority target value. Route guidance, drift cones, reachable ovals, ETA labels, and energy previews are suppressed until the player switches back to Waypoint Mode.
 
-The bottom time slider acts as a planning ruler. It shows planning-window and surfacing ticks, gold-star target icons, marker icons at pinned future times, numbered waypoint icons at estimated arrival times, and a distinct final mission-end frame. `Prev` and `Next` step through the frame list, so missions like `0, 3, 6, 9, 10 hr` can reach the exact `10 hr` end frame instead of stopping at the last full planning window. Click a waypoint icon to select/focus that waypoint, click a marker icon to focus its time and estimate, or click a star icon to scrub to the star window. Marker icons carry early/on-time/late/unconnected timing hints by comparing nearby waypoint arrival time to the marker target time.
+The bottom time slider acts as a planning ruler. It shows planning-window and surfacing ticks, gold-star target icons, marker icons at pinned future times, numbered waypoint icons at estimated arrival times, and a distinct final mission-end frame. `Prev` and`Next` step through the frame list, so missions like `0, 3, 6, 9, 10 hr` can reach the exact `10 hr` end frame instead of stopping at the last full planning window. Click a waypoint icon to select/focus that waypoint, click a marker icon to focus its time and estimate, or click a star icon to scrub to the star window. Marker icons carry early/on-time/late/unconnected timing hints by comparing nearby waypoint arrival time to the marker target time.
 
 Planning enforces mission limits. New waypoint placement is blocked with a warning if the proposed segment would exceed mission duration, exceed the selected glider's estimated fuel, or cross blocked terrain. Existing plans imported from JSON are recomputed and invalid waypoints are marked with `validity` reasons instead of silently producing repeated clamped times. At Execute time, a waypoint scheduled beyond mission duration is a warning rather than a hard route blocker: simulation runs toward it, stops at the mission time limit, and records the waypoint as missed due to mission time expiration.
 
@@ -366,7 +368,7 @@ Debrief is a Phaser-native fullscreen score screen with metric cards, comparison
 - side-by-side comparison for manual/player, greedy planner, and imported solver results when available
 - winner notes explaining likely score differences such as realized value, energy, hazards, risk, and forecast regret
 
-The Debrief buttons handle `Revise Plan`, `Retry From Briefing`, context-aware next actions, reruns, Greedy Planner simulation, result export, after-action report export, comparison export, and return to Main Menu. Tutorial debriefs offer `Next Tutorial`, generated challenge debriefs offer `New Challenge`, and editor/custom debriefs offer `Return To Editor`. JSON and Markdown exports still use the browser download bridge internally.
+The Debrief buttons handle `Revise Plan`, `Retry From Briefing`, context-aware next actions, reruns, Greedy Planner simulation, result export, after-action report export, comparison export, and return to Main Menu. Tutorial debriefs offer`Next Tutorial`, generated challenge debriefs offer`New Challenge`, and editor/custom debriefs offer `Return To Editor`. JSON and Markdown exports still use the browser download bridge internally.
 
 ### Segment Contribution Grades
 
@@ -498,7 +500,7 @@ Supported example strategies:
 
 - `value_per_distance`
 - `greedy_roi`
-- `nearest_roi`
+-`nearest_roi`
 
 The solver ranks visible ROI cells by expected value, avoids blocked terrain and hazard targets at a basic level, applies lightweight mobile-hazard, shallow-depth, ensemble-disagreement, and current-assist terms, and writes one waypoint list per mission agent. It is a readable baseline for students, not an optimal planner.
 
@@ -656,7 +658,7 @@ npm.cmd run check
 npm.cmd run test:e2e
 ```
 
-`npm.cmd run check` runs `node tools/check-js.mjs` for repository JavaScript syntax/import checks. Playwright requires optional npm setup. On non-Windows shells, use `npm run check` and `npm run test:e2e`.
+`npm.cmd run check` runs`node tools/check-js.mjs` for repository JavaScript syntax/import checks. Playwright requires optional npm setup. On non-Windows shells, use`npm run check` and`npm run test:e2e`.
 
 ## Architecture
 The project is intentionally static and dependency-light.
@@ -879,13 +881,13 @@ See `docs/headless_node_oceanbox_runtime.md`.
 
 Simulation Lab now includes a browser-side Headless Bundle Viewer under Editor & Import Tools. It imports Node/OceanBox-JS headless `bundle.json` files or separate JSON/CSV bundle files, validates hidden-truth visibility, displays visible fields, observations, glider tracks, score reports, and replay metadata, and exports `anchor.browser.headless-bundle-summary`.
 
-Use `node tools/js/headless_oceanbox.mjs simulate --seed demo-001 --out runs/public-demo --no-hidden-export --combined-json` to produce a public bundle for the viewer. This workflow is static-hosting compatible and does not add a Python simulator, official browser scoring replacement, new planner, calibrated ocean forecast, backend service, or MARL/RL environment. See [H2 browser headless bundle loader](docs/headless_bundle_loader.md).
+Use`node tools/js/headless_oceanbox.mjs simulate --seed demo-001 --out runs/public-demo --no-hidden-export --combined-json` to produce a public bundle for the viewer. This workflow is static-hosting compatible and does not add a Python simulator, official browser scoring replacement, new planner, calibrated ocean forecast, backend service, or MARL/RL environment. See [H2 browser headless bundle loader](docs/headless_bundle_loader.md).
 
 ## H2.1 Checked-In Example Bundle
 
 The repo includes two deterministic Node/OceanBox-JS example bundles in `docs/examples/`. `headless_oceanbox_js_public_bundle.example.json` is public-safe and is loaded by Simulation Lab / Headless Bundle Viewer / `Load Example Bundle`; `headless_oceanbox_js_bundle.example.json` is an oracle/debug fixture with hidden truth explicitly marked as hidden/oracle/debug data.
 
-Regenerate them with `node tools/js/generate_headless_example_bundles.mjs`. Colab/Python can load the public JSON fixture with standard-library `json` and inspect `observations`, `gliderTracks`, and `scoreReport`; it does not reimplement simulation. The headless score remains educational and not official browser scoring.
+Regenerate them with`node tools/js/generate_headless_example_bundles.mjs`. Colab/Python can load the public JSON fixture with standard-library `json` and inspect `observations`, `gliderTracks`, and `scoreReport`; it does not reimplement simulation. The headless score remains educational and not official browser scoring.
 
 ## H3.1 Solver Packet / Headless Bundle Roundtrip
 
@@ -911,7 +913,7 @@ P10 adds adaptive science-diagnosis context, mission-manager rationale, next-leg
 
 ## P11 2.5D Water-Column Sampling
 
-P11 adds shared depth-layer metadata and summaries for the Node/OceanBox-JS headless runtime, solver roundtrips, Headless Bundle Viewer, and Adaptive Benchmark handoff context. Bundles can include `water_column_summary.json`, `depth_layer_priority.json`, combined-bundle `waterColumnSummary`, and `depthLayerPrioritySummary`. Observations and tracks carry `depthLayerId`, `depthMeters`, and `diveProfileId`. This remains top-down 2.5D sampling context: it does not add full 3D route planning, a new planner, calibrated vertical ocean modeling, production data assimilation, Python simulation, or MARL/RL. See [2.5D Water-Column Sampling Model](docs/water_column_2p5d_sampling_model.md).
+P11 adds shared depth-layer metadata and summaries for the Node/OceanBox-JS headless runtime, solver roundtrips, Headless Bundle Viewer, and Adaptive Benchmark handoff context. Bundles can include `water_column_summary.json`, `depth_layer_priority.json`, combined-bundle `waterColumnSummary`, and `depthLayerPrioritySummary`. Observations and tracks carry `depthLayerId`, `depthMeters`, and `diveProfileId`. THREE-R1.2A visualizes that same contract in the production Three.js mission world with operational depth slabs, depth-aware current/observation/trajectory rendering, and `ANCHOR_WATER_COLUMN_RENDER_DEBUG`; older missions without `waterColumnConfig` remain surface-only. This remains top-down 2.5D sampling context: it does not add full 3D route planning, a new planner, calibrated vertical ocean modeling, production data assimilation, Python simulation, or MARL/RL. See [2.5D Water-Column Sampling Model](docs/water_column_2p5d_sampling_model.md) and [Three.js Volumetric Water Column](docs/threejs_volumetric_water_column.md).
 
 ## MOTION-R1 Glider Motion Dynamics
 
@@ -922,7 +924,7 @@ MOTION-R1 adds a portable deterministic motion-dynamics layer and a Simulation L
 
 ## SIM-R1 Motion Cost Graph
 
-SIM-R1 adds optional Node/OceanBox-JS motion cost graph and adjacency matrix artifacts for benchmark inspection. Run `node tools/js/headless_oceanbox.mjs simulate --cost-graph --combined-json --no-hidden-export --out runs/sim-r1-demo` to emit `motion_cost_graph.json`, `motion_cost_matrix.json`, and combined-bundle summaries. These artifacts inspect directed/asymmetric motion costs; they do not choose a route, optimize waypoints, change browser scoring, add a Python simulator, or add MARL/RL. See [Motion Cost Graph and Adjacency Matrix](docs/motion_cost_graph_and_adjacency_matrix.md).
+SIM-R1 adds optional Node/OceanBox-JS motion cost graph and adjacency matrix artifacts for benchmark inspection. Run`node tools/js/headless_oceanbox.mjs simulate --cost-graph --combined-json --no-hidden-export --out runs/sim-r1-demo` to emit `motion_cost_graph.json`, `motion_cost_matrix.json`, and combined-bundle summaries. These artifacts inspect directed/asymmetric motion costs; they do not choose a route, optimize waypoints, change browser scoring, add a Python simulator, or add MARL/RL. See [Motion Cost Graph and Adjacency Matrix](docs/motion_cost_graph_and_adjacency_matrix.md).
 ## SCORE-R1 Shadow Mission Outcome Scoring
 
 SCORE-R1 is shadow benchmark scoring. It does not replace official browser scoring, Challenge Mode scoring, leaderboard ranking, or existing debrief totals. Profiles are objective-aware and versioned; missing data is explicit; regret requires a compatible reference, and best-known attempt does not mean optimal. The Node/OceanBox-JS runtime remains the canonical headless runtime. Python/Colab analyzes exported artifacts or invokes Node; no Python simulator, planner, optimizer, MARL/RL, operational certification, SeaExplorer validation, or calibrated ocean forecast is added.

@@ -150,6 +150,9 @@ import {
   validateMissionPlanningToolState
 } from '../../../core/rendering/MissionPlanningToolState.js';
 import { gridCellToWorld } from '../../../core/rendering/MissionWorldCoordinates.js';
+import { depthLayerCellCenterToWorld } from '../../../core/rendering/VolumetricMissionCoordinates.js';
+import { augmentMissionWorldWithVolumetricModel, waterColumnRenderDebugPayload } from '../../../core/rendering/VolumetricMissionWorldViewModel.js';
+import { normalizeWaterColumnLayerId, normalizeWaterColumnProfileId } from '../../../core/science/WaterColumnSchema.js';
 import { compareMissionLayerCoordinates, missionLayerAlignmentSummary } from '../../../core/rendering/MissionLayerAlignment.js';
 import { createThreeMissionSceneLifecycle, registerThreeMissionSceneResource, disposeThreeMissionSceneLifecycle, threeMissionSceneLifecycleSummary } from '../../three/ThreeMissionSceneLifecycle.js';
 import { publishSceneIsolationDebug } from '../../../ui/MissionShellReset.js';
@@ -396,6 +399,14 @@ export class MissionWorkspaceScene extends PhaserScene {
       setMissionPlanningTool: (toolId) => this.setPlanningToolFromUi(toolId),
       toggleThreeLayer: (layerId) => this.toggleThreeMissionLayer(layerId),
       setThreeInteractionMode: (mode) => this.setThreeInteractionMode(mode),
+      setWaterColumnDisplayMode: (mode) => this.setWaterColumnDisplayMode(mode),
+      setWaterColumnActiveLayer: (layerId) => this.setWaterColumnActiveLayer(layerId),
+      toggleWaterColumnLayer: (layerId) => this.toggleWaterColumnLayer(layerId),
+      adjustWaterColumnOpacity: (delta) => this.adjustWaterColumnOpacity(delta),
+      setWaterColumnScalarField: (fieldId) => this.setWaterColumnScalarField(fieldId),
+      setWaterColumnCurrentMode: (mode) => this.setWaterColumnCurrentMode(mode),
+      setWaterColumnDiveProfile: (profileId) => this.setWaterColumnDiveProfile(profileId),
+      setWaterColumnTargetLayer: (layerId) => this.setWaterColumnTargetLayer(layerId),
       cancelThreeInteraction: () => this.cancelThreeInteraction(),
       rerunSamePlan: () => this.rerunSamePlan(),
       rerunWithNewSeed: () => this.rerunWithNewSeed(),
@@ -928,7 +939,7 @@ export class MissionWorkspaceScene extends PhaserScene {
       resetThreeMissionCamera(controller, { presetId: 'obliqueMission' });
       this.app.state.ui.threeMissionCameraPreset = 'obliqueMission';
     } else {
-      const normalized = ['tacticalTopDown', 'obliqueMission', 'waterColumnProfile', 'fleetOverview'].includes(presetId) ? presetId : 'obliqueMission';
+      const normalized = ['tacticalTopDown', 'obliqueMission', 'obliqueWaterColumn', 'waterColumnProfile', 'sideProfile', 'layerStackOverview', 'activeLayer', 'selectedDive', 'fleetOverview'].includes(presetId) ? presetId : 'obliqueMission';
       this.app.state.ui.threeMissionCameraPreset = normalized;
       if (controller) setThreeMissionCameraPreset(controller, normalized);
       else if (renderer) setThreeMissionWorldCamera(renderer, { preset: normalized });
@@ -993,6 +1004,120 @@ export class MissionWorkspaceScene extends PhaserScene {
     this.app.state.ui.threeMissionInteraction ??= { interactionMode: this.app.state.ui.threeMissionInteractionMode };
     this.app.state.ui.threeMissionLayers[layerId] = this.app.state.ui.threeMissionLayers[layerId] === false;
     if (this.threeMissionRenderer) setThreeMissionLayerVisibility(this.threeMissionRenderer, this.threeLayerVisibilityPatch());
+    this.refreshPanels();
+    this.refreshMap();
+  }
+
+  ensureWaterColumnUiState() {
+    this.app.state.ui ??= {};
+    const existing = this.app.state.ui.waterColumn ?? {};
+    const layers = this.missionRenderViewModel?.waterColumnConfig?.depthLayerIds ?? ['surface'];
+    const active = layers.includes(existing.activeDepthLayerId) ? existing.activeDepthLayerId : layers[0] ?? 'surface';
+    const hidden = Array.isArray(existing.hiddenLayerIds) ? existing.hiddenLayerIds.filter((id) => layers.includes(id) || id === 'integratedWaterColumn' || id === 'waterSurface') : [];
+    const next = {
+      verticalDisplayMode: existing.verticalDisplayMode === 'explodedLayers' ? 'explodedLayers' : 'physicalDepth',
+      activeDepthLayerId: active,
+      hiddenLayerIds: hidden,
+      globalOpacity: clampNumber(existing.globalOpacity, 0.26, 0.05, 0.72),
+      activeLayerEmphasis: clampNumber(existing.activeLayerEmphasis, 1.85, 1, 3.2),
+      selectedScalarFieldId: existing.selectedScalarFieldId ?? 'sampleValue',
+      currentDisplayMode: existing.currentDisplayMode === 'allLayers' ? 'allLayers' : 'activeLayerOnly',
+      selectedDiveProfileId: normalizeWaterColumnProfileId(existing.selectedDiveProfileId ?? this.selectedAgentPlanWaterColumnValue('diveProfileId') ?? this.missionRenderViewModel?.waterColumnConfig?.diveProfileId ?? 'surfaceOnly'),
+      selectedTargetDepthLayerId: normalizeWaterColumnLayerId(existing.selectedTargetDepthLayerId ?? this.selectedAgentPlanWaterColumnValue('targetDepthLayerId') ?? active, active),
+      maximumDiveDepthMeters: Number.isFinite(Number(existing.maximumDiveDepthMeters)) ? Number(existing.maximumDiveDepthMeters) : null
+    };
+    this.app.state.ui.waterColumn = next;
+    return next;
+  }
+
+  selectedAgentPlanWaterColumnValue(key) {
+    const agentPlan = (this.app.state.plan?.agentPlans ?? []).find((candidate) => candidate.agentId === this.app.state.selectedAgentId);
+    const selected = this.app.state.ui?.selectedWaypoint;
+    const waypoint = selected?.agentId && selected.agentId === this.app.state.selectedAgentId
+      ? agentPlan?.waypoints?.[Number(selected.index)]
+      : null;
+    return waypoint?.[key] ?? agentPlan?.[key] ?? null;
+  }
+
+  setWaterColumnDisplayMode(mode) {
+    const ui = this.ensureWaterColumnUiState();
+    ui.verticalDisplayMode = mode === 'explodedLayers' ? 'explodedLayers' : 'physicalDepth';
+    this.refreshPanels();
+    this.refreshMap();
+  }
+
+  setWaterColumnActiveLayer(layerId) {
+    const ui = this.ensureWaterColumnUiState();
+    const layers = this.missionRenderViewModel?.waterColumnConfig?.depthLayerIds ?? ['surface'];
+    const normalized = normalizeWaterColumnLayerId(layerId, ui.activeDepthLayerId ?? layers[0] ?? 'surface');
+    ui.activeDepthLayerId = layers.includes(normalized) ? normalized : layers[0] ?? 'surface';
+    ui.selectedTargetDepthLayerId = ui.activeDepthLayerId;
+    this.refreshPanels();
+    this.refreshMap();
+  }
+
+  toggleWaterColumnLayer(layerId) {
+    const ui = this.ensureWaterColumnUiState();
+    const id = String(layerId ?? '').trim();
+    if (!id) return;
+    const hidden = new Set(ui.hiddenLayerIds ?? []);
+    if (hidden.has(id)) hidden.delete(id);
+    else hidden.add(id);
+    ui.hiddenLayerIds = [...hidden];
+    this.refreshPanels();
+    this.refreshMap();
+  }
+
+  adjustWaterColumnOpacity(delta) {
+    const ui = this.ensureWaterColumnUiState();
+    ui.globalOpacity = clampNumber(Number(ui.globalOpacity ?? 0.26) + Number(delta ?? 0), 0.26, 0.05, 0.72);
+    this.refreshPanels();
+    this.refreshMap();
+  }
+
+  setWaterColumnScalarField(fieldId) {
+    const ui = this.ensureWaterColumnUiState();
+    ui.selectedScalarFieldId = ['sampleValue', 'A_global_depth', 'A_global_topdown'].includes(fieldId) ? fieldId : 'sampleValue';
+    this.refreshPanels();
+    this.refreshMap();
+  }
+
+  setWaterColumnCurrentMode(mode) {
+    const ui = this.ensureWaterColumnUiState();
+    ui.currentDisplayMode = mode === 'allLayers' ? 'allLayers' : 'activeLayerOnly';
+    this.refreshPanels();
+    this.refreshMap();
+  }
+
+  setWaterColumnDiveProfile(profileId) {
+    const ui = this.ensureWaterColumnUiState();
+    ui.selectedDiveProfileId = normalizeWaterColumnProfileId(profileId);
+    this.applyWaterColumnPlanMetadata({ diveProfileId: ui.selectedDiveProfileId });
+  }
+
+  setWaterColumnTargetLayer(layerId) {
+    const ui = this.ensureWaterColumnUiState();
+    const layers = this.missionRenderViewModel?.waterColumnConfig?.depthLayerIds ?? ['surface'];
+    const normalized = normalizeWaterColumnLayerId(layerId, ui.activeDepthLayerId ?? layers[0] ?? 'surface');
+    ui.selectedTargetDepthLayerId = layers.includes(normalized) ? normalized : layers[0] ?? 'surface';
+    ui.activeDepthLayerId = ui.selectedTargetDepthLayerId;
+    this.applyWaterColumnPlanMetadata({ targetDepthLayerId: ui.selectedTargetDepthLayerId, depthLayerId: ui.selectedTargetDepthLayerId });
+  }
+
+  applyWaterColumnPlanMetadata(patch = {}) {
+    const agentId = this.app.state.selectedAgentId;
+    if (!agentId || !this.app.state.plan) return;
+    const selected = this.app.state.ui?.selectedWaypoint;
+    let selectedIndex = null;
+    if (selected?.agentId === agentId && Number.isInteger(Number(selected.index))) {
+      selectedIndex = Number(selected.index);
+      updateWaypoint(this.app.state.plan, agentId, selectedIndex, patch);
+      this.app.state.ui.selectedWaypoint = { agentId, index: selectedIndex };
+    } else {
+      Object.assign(getAgentPlan(this.app.state.plan, agentId), patch);
+    }
+    this.afterPlanChanged(agentId, { selectedIndex });
+    this.markManualPlan();
     this.refreshPanels();
     this.refreshMap();
   }
@@ -1163,7 +1288,15 @@ export class MissionWorkspaceScene extends PhaserScene {
       }
     });
     this.missionRenderInput = input;
-    const viewModel = buildMissionWorldRenderViewModel(input);
+    const flatViewModel = buildMissionWorldRenderViewModel(input);
+    const viewModel = augmentMissionWorldWithVolumetricModel(flatViewModel, {
+      ...input,
+      displaySettings: { ...(input.displaySettings ?? {}), waterColumn: this.app.state.ui?.waterColumn ?? {} },
+      waterColumn: this.app.state.ui?.waterColumn ?? {},
+      level: this.app.state.level,
+      mission: this.app.state.mission,
+      plan: this.app.state.plan
+    });
     const interactionState = this.app.state.ui?.threeMissionInteraction ?? {};
     const planningToolState = this.ensureMissionPlanningToolState();
     viewModel.interactionViewModel = buildMissionPlanningInteractionViewModel({
@@ -1298,6 +1431,13 @@ export class MissionWorkspaceScene extends PhaserScene {
     const placementWarningCodes = placementValidation?.warningCodes ?? interactionState.placementValidation?.warningCodes ?? [];
     const waypointBeyondMissionWindow = placementWarningCodes.includes('BEYOND_MISSION_WINDOW');
     const waypointCandidateStatus = placementValidation?.valid === false ? 'INVALID' : placementWarnings.length ? 'VALID_WITH_WARNINGS' : placementValidation ? 'VALID' : null;
+    const waterColumnUi = this.ensureWaterColumnUiState();
+    const waterColumnDebug = waterColumnRenderDebugPayload(viewModel ?? {}, rendererSummary, {
+      phase: viewModel?.phase ?? this.app.state.mode ?? 'planning',
+      selectedDiveProfileId: waterColumnUi.selectedDiveProfileId,
+      selectedTargetDepthLayerId: waterColumnUi.selectedTargetDepthLayerId
+    });
+    globalThis.ANCHOR_WATER_COLUMN_RENDER_DEBUG = waterColumnDebug;
     globalThis.ANCHOR_MISSION_RENDER_DEBUG = {
       version: 'gfx-r3b',
       activeBackend: activeBackend ?? this.getMissionRendererBackend(),
@@ -1357,6 +1497,7 @@ export class MissionWorkspaceScene extends PhaserScene {
       parityWarnings,
       inputSummary: missionWorldRenderInputSummary(this.missionRenderInput ?? {}),
       rendererSummary,
+      waterColumnDebug,
       interactionSummary,
       interactionControllerSummary: controllerSummary,
       interactionBridgeSummary: bridgeSummary,
@@ -1536,6 +1677,7 @@ export class MissionWorkspaceScene extends PhaserScene {
         this.app.state.ui.threeMissionInteraction.expectedGridCell = { x: Math.round(Number(x)), y: Math.round(Number(y)) };
         return this.screenPointForMissionCell({ x, y });
       },
+      screenPointForDepthCell: (layerId, x, y) => this.screenPointForMissionDepthCell(layerId, { x, y }),
       screenPointForWaypoint: (waypointId) => this.screenPointForMissionRecord((this.missionRenderViewModel?.waypoints ?? []).find((record) => record.waypointId === waypointId)),
       screenPointForAgent: (agentId) => this.screenPointForMissionRecord((this.missionRenderViewModel?.gliders ?? []).find((record) => record.agentId === agentId)),
       screenPointForMarker: (markerId) => this.screenPointForMissionRecord((this.missionRenderViewModel?.planningMarkers ?? []).find((record) => record.markerId === markerId)),
@@ -1556,6 +1698,15 @@ export class MissionWorkspaceScene extends PhaserScene {
     if (!this.threeMissionRenderer || !this.missionRenderViewModel?.coordinateSystem || !cell) return null;
     const world = gridCellToWorld(this.missionRenderViewModel.coordinateSystem, cell.x, cell.y, 0);
     return this.projectThreeWorldPoint({ x: world.x, y: Number(world.y ?? 0) + 0.62, z: world.z });
+  }
+
+  screenPointForMissionDepthCell(layerId, cell) {
+    if (!this.threeMissionRenderer || !this.missionRenderViewModel?.coordinateModel || !cell) return null;
+    const world = depthLayerCellCenterToWorld(layerId, cell.x, cell.y, this.missionRenderViewModel.coordinateModel);
+    this.app.state.ui ??= {};
+    this.app.state.ui.threeMissionInteraction ??= {};
+    this.app.state.ui.threeMissionInteraction.expectedGridCell = { x: Math.round(Number(cell.x)), y: Math.round(Number(cell.y)), depthLayerId: layerId };
+    return this.projectThreeWorldPoint({ x: world.x, y: Number(world.y ?? 0) + 0.08, z: world.z });
   }
 
   screenPointForMissionRecord(record) {
@@ -4095,6 +4246,11 @@ function setSelectedStartPreview(level, mission, agentId, cell) {
   const zones = getDeploymentZonesForAgent(level, mission, agentId);
   if (!zones.some((zone) => zone.cells?.some((candidate) => candidate.x === rounded.x && candidate.y === rounded.y))) return { valid: false, message: 'Choose a deployment cell inside the drop zone first.' };
   return { valid: true, message: 'Valid deployment cell.' };
+}
+function clampNumber(value, fallback, min, max) {
+  const numeric = Number(value);
+  const base = Number.isFinite(numeric) ? numeric : Number(fallback);
+  return Math.max(Number(min), Math.min(Number(max), base));
 }
 function escapeSceneHtml(value) {
   return String(value ?? '').replace(/[&<>"]/g, (char) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[char]));

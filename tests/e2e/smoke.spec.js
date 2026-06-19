@@ -3772,6 +3772,114 @@ test('Execute Mission Through Three Simulation', async ({ page }) => {
   expect(browserErrors.unexpected()).toEqual([]);
 });
 
+test('Three Volumetric Water Column Planning', async ({ page }) => {
+  const browserErrors = attachBrowserErrorCollector(page);
+  await page.goto('/');
+  await startTutorialPlanning(page);
+  await installWaterColumnE2eConfig(page);
+  await expect(page.locator('#mission-console')).toContainText('Water Column');
+  await expect(page.locator('#mission-console')).toContainText('2.5D water-column display');
+
+  await page.locator('#mission-console [data-action="three-camera"][data-preset="obliqueWaterColumn"]').click();
+  await expect.poll(() => page.evaluate(() => window.ANCHOR_MISSION_RENDER_DEBUG?.cameraPresetId)).toBe('obliqueWaterColumn');
+  await page.locator('#mission-console [data-action="water-column-display-mode"][data-mode="explodedLayers"]').click();
+  await expect.poll(() => page.evaluate(() => window.ANCHOR_WATER_COLUMN_RENDER_DEBUG?.verticalDisplayMode)).toBe('explodedLayers');
+  await page.locator('#mission-console [data-action="water-column-active-layer"][data-layer="thermocline"]').click();
+  await expect.poll(() => page.evaluate(() => window.ANCHOR_WATER_COLUMN_RENDER_DEBUG?.activeDepthLayerId)).toBe('thermocline');
+  await page.locator('#mission-console [data-action="water-column-current-mode"][data-mode="allLayers"]').click();
+  await expect(page.evaluate(() => window.anchorGame.state.ui.waterColumn.currentDisplayMode)).resolves.toBe('allLayers');
+
+  const agentId = await page.evaluate(() => window.anchorGame.state.selectedAgentId ?? window.anchorGame.state.mission?.agents?.[0]?.id);
+  const deploymentCell = await deploymentCellForAgent(page, agentId);
+  await page.evaluate(({ deploymentCell }) => {
+    const scene = window.anchorGame.phaser.scene.getScene('MissionWorkspaceScene');
+    scene.trySelectDeploymentStart(deploymentCell);
+    scene.addWaypointForSelected({ x: 5, y: 2, action: 'sample' });
+    window.anchorGame.state.ui.selectedWaypoint = { agentId: window.anchorGame.state.selectedAgentId, index: 0 };
+    scene.refreshPanels();
+    scene.refreshMap();
+  }, { deploymentCell });
+  await expectWaypointCount(page, 1);
+  await page.locator('#mission-console [data-action="water-column-dive-profile"][data-profile="deepDive"]').click();
+  await page.locator('#mission-console [data-action="water-column-target-layer"][data-layer="deep"]').click();
+  await expect.poll(() => page.evaluate(() => {
+    const plan = window.anchorGame.state.plan.agentPlans.find((candidate) => candidate.agentId === window.anchorGame.state.selectedAgentId);
+    const waypoint = plan?.waypoints?.[0];
+    return { diveProfileId: waypoint?.diveProfileId, targetDepthLayerId: waypoint?.targetDepthLayerId, depthLayerId: waypoint?.depthLayerId };
+  })).toEqual({ diveProfileId: 'deepDive', targetDepthLayerId: 'deep', depthLayerId: 'deep' });
+
+  const depthPoint = await page.evaluate(() => window.ANCHOR_MISSION_RENDER_TEST_API?.screenPointForDepthCell?.('thermocline', 2, 2));
+  expect(depthPoint).toMatchObject({ visible: true });
+  expect(Number.isFinite(depthPoint.x)).toBe(true);
+  expect(Number.isFinite(depthPoint.y)).toBe(true);
+  const debug = await page.evaluate(() => window.ANCHOR_WATER_COLUMN_RENDER_DEBUG);
+  expect(debug).toMatchObject({
+    activeDepthLayerId: 'deep',
+    usesFree3DPlanning: false,
+    usesHorizontalWaypoints: true,
+    usesDiveProfiles: true,
+    ownsPlanning: false,
+    ownsSimulation: false,
+    ownsScoring: false,
+    changesCanonicalDepth: false,
+    usesWebGPUFluid: false,
+    usesNewPlanner: false,
+    publicSafe: true
+  });
+  expect(debug.canonicalLayerCount).toBe(4);
+  expect(debug.layerIds).toEqual(expect.arrayContaining(['surface', 'thermocline', 'deep']));
+  expect(debug.predictedTrajectoryPointCount).toBeGreaterThan(0);
+  expect(debug.slabObjectCount).toBeGreaterThan(0);
+  expect(browserErrors.unexpected()).toEqual([]);
+});
+
+test('Three Depth-Aware Dive and Sampling', async ({ page }) => {
+  const browserErrors = attachBrowserErrorCollector(page);
+  await page.goto('/');
+  await startTutorialPlanning(page);
+  await installWaterColumnE2eConfig(page);
+  await page.evaluate(() => {
+    const scene = window.anchorGame.phaser.scene.getScene('MissionWorkspaceScene');
+    const state = window.anchorGame.state;
+    const agentId = state.selectedAgentId ?? state.mission?.agents?.[0]?.id;
+    const zone = state.level?.zones?.find((candidate) => candidate.type === 'deployment') ?? state.level?.zones?.[0];
+    scene.trySelectDeploymentStart(zone?.cells?.[0] ?? { x: 1, y: 1 });
+    scene.addWaypointForSelected({ x: 5, y: 2, action: 'sample', diveProfileId: 'sawtoothProfile', targetDepthLayerId: 'thermocline', depthLayerId: 'thermocline' });
+    scene.addWaypointForSelected({ x: 6, y: 3, action: 'sample', diveProfileId: 'sawtoothProfile', targetDepthLayerId: 'deep', depthLayerId: 'deep' });
+    const plan = state.plan.agentPlans.find((candidate) => candidate.agentId === agentId);
+    plan.diveProfileId = 'sawtoothProfile';
+    plan.targetDepthLayerId = 'thermocline';
+    scene.afterPlanChanged(agentId, { selectedIndex: 1 });
+    scene.refreshPanels();
+    scene.refreshMap();
+  });
+  await expect.poll(() => page.evaluate(() => window.ANCHOR_WATER_COLUMN_RENDER_DEBUG?.predictedTrajectoryPointCount ?? 0)).toBeGreaterThan(0);
+  await page.locator('#mission-console [data-action="execute"]').click();
+  await expect.poll(() => page.evaluate(() => window.anchorGame.phaser.scene.getScene('SimulationScene')?.sys.isActive?.() ?? false), { timeout: 15000 }).toBe(true);
+  await expect.poll(() => page.evaluate(() => window.ANCHOR_SIMULATION_RENDER_DEBUG?.threeMounted === true), { timeout: 15000 }).toBe(true);
+  await expect.poll(() => page.evaluate(() => window.ANCHOR_WATER_COLUMN_RENDER_DEBUG?.phase)).toBe('simulation');
+  await page.locator('#mission-console [data-action="step"]').click();
+  await expect.poll(() => page.evaluate(() => window.ANCHOR_EXECUTION_DEBUG?.firstStepCompleted === true), { timeout: 15000 }).toBe(true);
+  await expect.poll(() => page.evaluate(() => window.ANCHOR_WATER_COLUMN_RENDER_DEBUG?.realizedTrajectoryPointCount ?? 0), { timeout: 15000 }).toBeGreaterThan(0);
+  const debug = await page.evaluate(() => window.ANCHOR_WATER_COLUMN_RENDER_DEBUG);
+  expect(debug).toMatchObject({
+    phase: 'simulation',
+    usesFree3DPlanning: false,
+    usesHorizontalWaypoints: true,
+    usesDiveProfiles: true,
+    ownsPlanning: false,
+    ownsSimulation: false,
+    ownsScoring: false,
+    changesCanonicalDepth: false,
+    usesWebGPUFluid: false,
+    usesNewPlanner: false,
+    publicSafe: true
+  });
+  expect(debug.predictedTrajectoryPointCount).toBeGreaterThan(0);
+  expect(debug.canonicalObservationCount).toBeGreaterThanOrEqual(0);
+  expect(debug.threeObservationCount).toBeGreaterThanOrEqual(0);
+  expect(browserErrors.unexpected()).toEqual([]);
+});
 test('Three Mission Scene Isolation', async ({ page }) => {
   const browserErrors = attachBrowserErrorCollector(page);
   await page.goto('/');
@@ -4474,6 +4582,33 @@ async function clickRightPanelMode(page, mode) {
   }, mode);
 }
 
+async function installWaterColumnE2eConfig(page) {
+  await page.evaluate(() => {
+    const state = window.anchorGame.state;
+    state.level.world.waterColumnConfig = {
+      enabled: true,
+      depthLayerIds: ['surface', 'shallow', 'thermocline', 'deep'],
+      defaultLayerIds: ['surface', 'thermocline', 'deep'],
+      diveProfileId: 'sawtoothProfile'
+    };
+    state.ui ??= {};
+    state.ui.waterColumn = {
+      ...(state.ui.waterColumn ?? {}),
+      verticalDisplayMode: 'physicalDepth',
+      activeDepthLayerId: 'thermocline',
+      selectedDiveProfileId: 'sawtoothProfile',
+      selectedTargetDepthLayerId: 'thermocline',
+      selectedScalarFieldId: 'sampleValue',
+      currentDisplayMode: 'activeLayerOnly',
+      globalOpacity: 0.28
+    };
+    const scene = window.anchorGame.phaser.scene.getScene('MissionWorkspaceScene');
+    scene.refreshPanels();
+    scene.refreshMap();
+  });
+  await expect.poll(() => page.evaluate(() => window.ANCHOR_WATER_COLUMN_RENDER_DEBUG?.canonicalLayerCount), { timeout: 15000 }).toBe(4);
+  await expect.poll(() => page.evaluate(() => window.ANCHOR_WATER_COLUMN_RENDER_DEBUG?.activeDepthLayerId), { timeout: 15000 }).toBe('thermocline');
+}
 async function startTutorialPlanning(page) {
   await expect.poll(() => page.evaluate(() => window.anchorGame?.phaser?.scene.getScene('MainMenuScene')?.sys.isActive() ?? false)).toBe(true);
   await page.evaluate(() => window.anchorGame.phaser.scene.getScene('MainMenuScene').startCampaignLevel('tutorial_01_first_deployment'));

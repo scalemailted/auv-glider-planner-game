@@ -79,10 +79,26 @@ export function setThreeMissionCameraPreset(controller, presetId, context = {}) 
     controller.azimuthRadians = 0.001;
     controller.polarRadians = 0.16;
     controller.distance = radius * 1.72;
-  } else if (preset === 'waterColumnProfile') {
+  } else if (preset === 'waterColumnProfile' || preset === 'sideProfile') {
     controller.azimuthRadians = 0;
     controller.polarRadians = 1.18;
     controller.distance = radius * 1.78;
+  } else if (preset === 'obliqueWaterColumn') {
+    controller.azimuthRadians = -0.74;
+    controller.polarRadians = 0.92;
+    controller.distance = radius * 1.86;
+  } else if (preset === 'layerStackOverview') {
+    controller.azimuthRadians = -0.18;
+    controller.polarRadians = 0.98;
+    controller.distance = radius * 2.08;
+  } else if (preset === 'activeLayer') {
+    controller.azimuthRadians = -0.5;
+    controller.polarRadians = 0.56;
+    controller.distance = radius * 1.34;
+  } else if (preset === 'selectedDive') {
+    controller.azimuthRadians = -0.86;
+    controller.polarRadians = 0.84;
+    controller.distance = radius * 1.48;
   } else if (preset === 'fleetOverview') {
     controller.azimuthRadians = -0.72;
     controller.polarRadians = 0.68;
@@ -317,8 +333,19 @@ function clampTarget(controller, target) {
 }
 
 function normalizePresetId(presetId) {
-  if (presetId === 'tacticalTopDown' || presetId === 'waterColumnProfile' || presetId === 'fleetOverview') return presetId;
-  if (presetId === 'resetCamera') return 'obliqueMission';
+  const id = String(presetId ?? '').trim();
+  if ([
+    'tacticalTopDown',
+    'obliqueMission',
+    'obliqueWaterColumn',
+    'waterColumnProfile',
+    'sideProfile',
+    'layerStackOverview',
+    'activeLayer',
+    'selectedDive',
+    'fleetOverview'
+  ].includes(id)) return id;
+  if (id === 'resetCamera') return 'obliqueMission';
   return 'obliqueMission';
 }
 

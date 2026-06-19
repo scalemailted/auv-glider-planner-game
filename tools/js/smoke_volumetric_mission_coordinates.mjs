@@ -1,0 +1,22 @@
+﻿import assert from 'node:assert/strict';
+import { buildOperationalDepthLayerViewModel } from '../../src/core/rendering/OperationalDepthLayerViewModel.js';
+import { createMissionWorldCoordinateTransform } from '../../src/core/rendering/MissionWorldCoordinates.js';
+import { createVolumetricMissionCoordinateModel, depthLayerCellCenterToWorld, validateVolumetricCoordinateRoundtrip, worldPointToGridCellDepth } from '../../src/core/rendering/VolumetricMissionCoordinates.js';
+import { makeGrid, TEST_WATER_COLUMN_CONFIG } from './water_column_smoke_helpers.mjs';
+
+const grid = makeGrid();
+const coordinateSystem = createMissionWorldCoordinateTransform({ grid, depthScale: 0.045, verticalExaggeration: 1.35 });
+const layers = buildOperationalDepthLayerViewModel({ waterColumnConfig: TEST_WATER_COLUMN_CONFIG, grid, coordinateSystem }).layers;
+const physical = createVolumetricMissionCoordinateModel({ coordinateSystem, depthLayers: layers, verticalDisplayMode: 'physicalDepth' });
+const exploded = createVolumetricMissionCoordinateModel({ coordinateSystem, depthLayers: layers, verticalDisplayMode: 'explodedLayers' });
+const physicalRoundtrip = validateVolumetricCoordinateRoundtrip({ coordinateSystem, depthLayers: layers, verticalDisplayMode: 'physicalDepth', col: 2, row: 3, depthMeters: 35 });
+assert.equal(physicalRoundtrip.valid, true, physicalRoundtrip.errors.join('; '));
+const thermoclineWorld = depthLayerCellCenterToWorld('thermocline', 2, 3, physical);
+const thermoclineCell = worldPointToGridCellDepth(thermoclineWorld, physical);
+assert.equal(thermoclineCell.col, 2);
+assert.equal(thermoclineCell.row, 3);
+assert.ok(Math.abs(thermoclineCell.depthMeters - 35) < 1e-4);
+const explodedWorld = depthLayerCellCenterToWorld('deep', 2, 3, exploded);
+assert.equal(exploded.displayMetadataOnly, true);
+assert.notEqual(explodedWorld.y, depthLayerCellCenterToWorld('surface', 2, 3, exploded).y);
+console.log(JSON.stringify({ ok: true, physicalY: thermoclineWorld.y, explodedY: explodedWorld.y }));

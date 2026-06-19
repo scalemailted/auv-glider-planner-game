@@ -55,10 +55,61 @@ export function hitTestThreeMissionWorld(context, pointer, options = {}) {
   return { ...hit, pointerDiagnostics, summary: threeMissionHitTestSummary(hit) };
 }
 
-export function hitTestMissionGrid(context, raycaster, options = {}) {
+export function hitTestDepthSlab(context, raycaster) {
+  const group = context.renderer?.operationalDepthSlabLayer?.group ?? context.renderer?.groups?.depthLayerGroup ?? null;
+  if (!group) return null;
+  const hits = raycaster.intersectObjects(group.children ?? [], true);
+  const hit = hits.find((candidate) => {
+    const data = missionUserData(candidate.object, null) ?? candidate.object?.userData ?? {};
+    return data.missionObjectType === 'depthCellSlab' && data.interactionEnabled !== false;
+  });
+  if (!hit) return null;
+  const data = missionUserData(hit.object, null) ?? hit.object?.userData ?? {};
+  const transform = context.viewModel?.coordinateSystem;
+  if (!transform) return null;
+  const cell = worldToGridCell(transform, hit.point.x, hit.point.y, hit.point.z);
+  if (!cell.inside) return null;
+  const row = cell.y;
+  const col = cell.x;
+  const valid = data.validCellMask?.[row]?.[col] !== false;
+  const depthLayerId = data.depthLayerId ?? context.viewModel?.activeDepthLayerId ?? 'surface';
+  const depthMeters = Number(data.depthMeters ?? 0);
+  const bottom = Number(context.viewModel?.bottomBoundary?.bottomDepthField?.[row]?.[col] ?? 0);
+  const blocked = valid !== true;
+  return {
+    type: 'anchor.renderer.three-mission-hit',
+    version: THREE_MISSION_HIT_TEST_VERSION,
+    category: 'gridCell',
+    objectType: 'depthCellSlab',
+    objectId: `${depthLayerId}:${col}-${row}`,
+    gridCell: {
+      x: col,
+      y: row,
+      col,
+      row,
+      depthLayerId,
+      depthMeters,
+      selectedDepthLayerId: depthLayerId,
+      selectedDepthMeters: depthMeters,
+      localBottomDepthMeters: bottom,
+      bottomClearanceMeters: Number((bottom - depthMeters).toFixed(6)),
+      blocked,
+      hazard: false,
+      reason: valid ? null : bottom <= 0 ? 'land' : bottom < depthMeters ? 'belowSeabed' : 'inaccessibleDepth'
+    },
+    worldPoint: pointToPlain(hit.point),
+    distance: Number(hit.distance ?? 0),
+    blocked,
+    hazard: false,
+    source: 'operationalDepthSlab'
+  };
+}
+function hitTestMissionGrid(context, raycaster, options = {}) {
   const viewModel = context.viewModel ?? {};
   const transform = viewModel.coordinateSystem;
   if (!transform) return noneHit('missingCoordinateTransform');
+  const slabHit = shouldUseDepthSlabHit(context, options) ? hitTestDepthSlab(context, raycaster) : null;
+  if (slabHit) return slabHit;
   const surface = context.interactionSurface;
   let point = null;
   if (surface) {
@@ -89,7 +140,17 @@ export function hitTestMissionGrid(context, raycaster, options = {}) {
   };
 }
 
-export function hitTestMissionEntities(context, raycaster, options = {}) {
+export function shouldUseDepthSlabHit(context, options = {}) {
+  if (options.depthSlabHitTesting === false) return false;
+  const interaction = context.viewModel?.interactionViewModel ?? context.viewModel?.interaction ?? {};
+  const activeToolId = interaction.activePlanningToolId
+    ?? interaction.planningToolState?.activeToolId
+    ?? interaction.activeToolId
+    ?? interaction.interactionMode
+    ?? 'selectInspect';
+  return ['selectInspect', 'inspect', 'inspectDepth', 'navigate'].includes(activeToolId);
+}
+function hitTestMissionEntities(context, raycaster, options = {}) {
   const tests = interactionTestsForPhase(context.viewModel?.phase ?? context.viewModel?.type);
   for (const [category, group] of tests) {
     const hit = hitTestGroup(category, groupFromCategory(context, group), raycaster, context, options);

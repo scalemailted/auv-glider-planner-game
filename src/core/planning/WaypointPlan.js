@@ -60,6 +60,13 @@ export function normalizePlan(plan, level, mission) {
     const agentId = String(rawAgentPlan.agentId ?? '').trim();
     if (!agentId) continue;
     const agentPlan = getAgentPlan(normalized, agentId);
+    for (const key of ['diveProfileId', 'targetDepthLayerId', 'samplingMode']) {
+      if (rawAgentPlan[key] !== undefined && rawAgentPlan[key] !== null) agentPlan[key] = String(rawAgentPlan[key]);
+    }
+    for (const key of ['maximumDiveDepthMeters', 'sampleIntervalSeconds']) {
+      const value = Number(rawAgentPlan[key]);
+      if (Number.isFinite(value)) agentPlan[key] = value;
+    }
     if (rawAgentPlan.selectedStart) {
       const validation = isValidSelectedStart(level, mission, agentId, rawAgentPlan.selectedStart);
       if (validation.valid) {
@@ -372,6 +379,13 @@ function normalizeWaypoint(waypoint, agentId, index, level = null) {
     action,
     note: waypoint.note ? String(waypoint.note) : ''
   };
+  for (const key of ['diveProfileId', 'targetDepthLayerId', 'depthLayerId', 'depthLayer', 'samplingMode', 'sensorProfileId']) {
+    if (waypoint[key] !== undefined && waypoint[key] !== null && String(waypoint[key]).trim()) normalized[key] = String(waypoint[key]);
+  }
+  for (const key of ['maximumDiveDepthMeters', 'depthMeters', 'sampleIntervalSeconds']) {
+    const value = Number(waypoint[key]);
+    if (Number.isFinite(value)) normalized[key] = value;
+  }
   if (kind === 'surface') {
     normalized.gpsFix = waypoint.gpsFix !== false;
     normalized.canReplan = waypoint.canReplan !== false;

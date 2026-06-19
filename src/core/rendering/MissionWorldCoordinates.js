@@ -127,9 +127,12 @@ export function validateMissionWorldCoordinateTransform(transform = {}) {
 }
 
 export function depthForLayer(layerId) {
-  if (layerId === 'surface') return 0;
-  if (layerId === 'thermocline' || layerId === 'mid') return 90;
-  if (layerId === 'deep' || layerId === 'bottom') return 260;
+  if (layerId === 'surface' || layerId === 'waterSurface') return 0;
+  if (layerId === 'shallow' || layerId === 'nearSurface') return 10;
+  if (layerId === 'thermocline' || layerId === 'mid') return 35;
+  if (layerId === 'midwater') return 75;
+  if (layerId === 'deep') return 150;
+  if (layerId === 'bottom') return 250;
   return 0;
 }
 

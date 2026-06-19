@@ -10,6 +10,8 @@ import { updateThreeCurrentVectorLayer } from './layers/ThreeCurrentVectorLayer.
 import { updateThreeHazardLayer, updateThreeConstraintLayer } from './layers/ThreeHazardLayer.js';
 import { updateThreeSelectionLayer } from './layers/ThreeSelectionLayer.js';
 import { updateThreeGuidanceConeLayer } from './layers/ThreeGuidanceConeLayer.js';
+import { createThreeOperationalDepthSlabLayer, updateThreeOperationalDepthSlabLayer, setThreeOperationalDepthSlabLayerVisibility, disposeThreeOperationalDepthSlabLayer, threeOperationalDepthSlabLayerSummary } from './layers/ThreeOperationalDepthSlabLayer.js';
+import { updateThreeDepthTrajectoryLayer, clearThreeDepthTrajectoryLayer, threeDepthTrajectoryLayerSummary } from './layers/ThreeDepthTrajectoryLayer.js';
 import { updateThreeRealizedTrajectoryLayer, clearThreeRealizedTrajectoryLayer } from './layers/ThreeRealizedTrajectoryLayer.js';
 import { updateThreeObservationLayer, clearThreeObservationLayer } from './layers/ThreeObservationLayer.js';
 import { updateThreeSurfacingEventLayer, clearThreeSurfacingEventLayer } from './layers/ThreeSurfacingEventLayer.js';
@@ -45,6 +47,7 @@ const GROUP_KEYS = [
   'gliderGroup',
   'waypointGroup',
   'routeGroup',
+  'depthTrajectoryGroup',
   'realizedTrajectoryGroup',
   'markerGroup',
   'priorityTargetGroup',
@@ -84,6 +87,8 @@ export function createThreeMissionWorldRenderer(container, options = {}) {
   }
   const scalarLayer = createThreeScalarFieldLayer({ name: 'mission-scalar-field' });
   groups.scalarFieldGroup.add(scalarLayer.group);
+  const operationalDepthSlabLayer = createThreeOperationalDepthSlabLayer({ name: 'mission-operational-depth-slabs' });
+  groups.depthLayerGroup.add(operationalDepthSlabLayer.group);
   const planningInteractionLayer = createThreePlanningInteractionLayer({ name: 'mission-planning-interaction-layer' });
   groups.interactionGroup.add(planningInteractionLayer.group);
   const interactionSurface = createInteractionSurface();
@@ -105,6 +110,7 @@ export function createThreeMissionWorldRenderer(container, options = {}) {
     root,
     groups,
     scalarLayer,
+    operationalDepthSlabLayer,
     planningInteractionLayer,
     interactionSurface,
     cameraController: null,
@@ -152,6 +158,7 @@ export function updateThreeMissionWorldRenderer(renderer, viewModel = {}) {
   updateThreeGliderLayer(renderer.groups.gliderGroup, viewModel);
   updateThreeWaypointLayer(renderer.groups.waypointGroup, viewModel);
   updateThreeRouteLayer(renderer.groups.routeGroup, viewModel);
+  updateThreeDepthTrajectoryLayer(renderer.groups.depthTrajectoryGroup, viewModel);
   updateThreeRealizedTrajectoryLayer(renderer.groups.realizedTrajectoryGroup, viewModel);
   updateThreePlanningMarkerLayer(renderer.groups.markerGroup, viewModel);
   updateThreePriorityTargetLayer(renderer.groups.priorityTargetGroup, viewModel);
@@ -220,6 +227,7 @@ export function setThreeMissionLayerVisibility(renderer, visibilityPatch = {}) {
   renderer.groups.gliderGroup.visible = v.gliders !== false;
   renderer.groups.waypointGroup.visible = v.waypoints !== false;
   renderer.groups.routeGroup.visible = v.routes !== false;
+  renderer.groups.depthTrajectoryGroup.visible = v.routes !== false || v.realizedTrajectories !== false;
   renderer.groups.realizedTrajectoryGroup.visible = v.realizedTrajectories !== false;
   renderer.groups.markerGroup.visible = v.planningMarkers !== false;
   renderer.groups.priorityTargetGroup.visible = v.priorityTargets !== false;
@@ -231,6 +239,7 @@ export function setThreeMissionLayerVisibility(renderer, visibilityPatch = {}) {
   renderer.groups.guidanceGroup.visible = v.guidance !== false;
   renderer.groups.interactionGroup.visible = v.interaction !== false;
   setThreePlanningInteractionLayerVisibility(renderer.planningInteractionLayer, v.interaction !== false);
+  setThreeOperationalDepthSlabLayerVisibility(renderer.operationalDepthSlabLayer, v.depthLayers !== false);
   setThreeScalarFieldVisibility(renderer.scalarLayer, v.scalarField !== false);
   return renderer;
 }
@@ -253,6 +262,11 @@ export function threeMissionWorldRendererSummary(renderer = {}) {
     gliderObjectCount: renderer.groups?.gliderGroup?.children?.length ?? 0,
     waypointObjectCount: renderer.groups?.waypointGroup?.children?.length ?? 0,
     routeObjectCount: renderer.groups?.routeGroup?.children?.length ?? 0,
+    depthTrajectorySummary: threeDepthTrajectoryLayerSummary(renderer.groups?.depthTrajectoryGroup),
+    operationalDepthSlabSummary: threeOperationalDepthSlabLayerSummary(renderer.operationalDepthSlabLayer ?? {}, vm),
+    slabObjectCount: renderer.operationalDepthSlabLayer?.slabs?.size ?? 0,
+    slabTextureCount: [...(renderer.operationalDepthSlabLayer?.slabs?.values?.() ?? [])].filter((record) => record.texture).length,
+    slabLabelCount: renderer.operationalDepthSlabLayer?.labels?.size ?? 0,
     realizedTrajectoryObjectCount: renderer.groups?.realizedTrajectoryGroup?.children?.length ?? 0,
     realizedTrajectoryPointCount: countTrajectoryPoints(renderer.groups?.realizedTrajectoryGroup),
     markerObjectCount: renderer.groups?.markerGroup?.children?.length ?? 0,
@@ -290,6 +304,8 @@ export function disposeThreeMissionWorldRenderer(renderer) {
   renderer.disposed = true;
   if (renderer.animationFrame) globalThis.cancelAnimationFrame?.(renderer.animationFrame);
   disposeThreeScalarFieldLayer(renderer.scalarLayer);
+  disposeThreeOperationalDepthSlabLayer(renderer.operationalDepthSlabLayer);
+  clearThreeDepthTrajectoryLayer(renderer.groups?.depthTrajectoryGroup);
   disposeThreePlanningInteractionLayer(renderer.planningInteractionLayer);
   disposeThreeMissionCameraController(renderer.cameraController);
   clearThreeRealizedTrajectoryLayer(renderer.groups?.realizedTrajectoryGroup);
@@ -377,20 +393,7 @@ function updateWaterSurface(renderer, viewModel) {
 }
 
 function updateDepthLayers(renderer, viewModel) {
-  const group = renderer.groups.depthLayerGroup;
-  clearGroup(group);
-  const transform = viewModel.coordinateSystem;
-  for (const layer of viewModel.depthLayers ?? []) {
-    const mesh = new THREE.Mesh(
-      new THREE.PlaneGeometry(viewModel.grid.width * transform.cellSize, viewModel.grid.height * transform.cellSize, 1, 1),
-      new THREE.MeshBasicMaterial({ color: depthLayerColor(layer.id), transparent: true, opacity: Number(layer.opacity ?? 0.12), side: THREE.DoubleSide, depthWrite: false })
-    );
-    mesh.rotation.x = -Math.PI / 2;
-    mesh.position.y = -Number(layer.depthMeters ?? 0) * transform.depthScale * transform.verticalExaggeration;
-    mesh.name = `depth-layer-${layer.id}`;
-    mesh.userData = { id: layer.id, depthMeters: layer.depthMeters };
-    group.add(mesh);
-  }
+  updateThreeOperationalDepthSlabLayer(renderer.operationalDepthSlabLayer, viewModel);
 }
 
 function updateObservationLayer(group, viewModel) {
@@ -418,7 +421,8 @@ function fitCamera(renderer, viewModel) {
   const radius = Math.max(width, height, 8);
   const preset = renderer.cameraState?.preset ?? 'obliqueMission';
   if (preset === 'tacticalTopDown') setCameraPose(renderer, { x: 0, y: radius * 1.65, z: 0.001, lookAt: [0, 0, 0] });
-  else if (preset === 'waterColumnProfile') setCameraPose(renderer, { x: 0, y: radius * 0.62, z: radius * 1.78, lookAt: [0, -radius * 0.08, 0] });
+  else if (preset === 'waterColumnProfile' || preset === 'sideProfile') setCameraPose(renderer, { x: 0, y: radius * 0.62, z: radius * 1.78, lookAt: [0, -radius * 0.08, 0] });
+  else if (preset === 'obliqueWaterColumn' || preset === 'layerStackOverview' || preset === 'activeLayer' || preset === 'selectedDive') setCameraPose(renderer, { x: -radius * 0.94, y: radius * 0.92, z: radius * 1.34, lookAt: [0, -radius * 0.12, 0] });
   else setCameraPose(renderer, { x: -radius * 0.82, y: radius * 1.08, z: radius * 1.24, lookAt: [0, -radius * 0.05, 0] });
 }
 

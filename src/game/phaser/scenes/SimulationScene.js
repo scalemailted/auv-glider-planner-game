@@ -46,6 +46,8 @@ import { deriveAdaptiveBenchmarkContextFromState } from '../../../core/benchmark
 import { attemptSourceFromRouteSourceLabel } from '../../../core/benchmark/BenchmarkAttemptSourceMapping.js';
 import { buildSimulationWorldRenderViewModel, validateSimulationWorldRenderViewModel, simulationWorldRenderViewModelSummary } from '../../../core/rendering/SimulationWorldRenderViewModel.js';
 import { gridCellToWorld } from '../../../core/rendering/MissionWorldCoordinates.js';
+import { depthLayerCellCenterToWorld } from '../../../core/rendering/VolumetricMissionCoordinates.js';
+import { augmentMissionWorldWithVolumetricModel, waterColumnRenderDebugPayload } from '../../../core/rendering/VolumetricMissionWorldViewModel.js';
 import { createThreeMissionSceneLifecycle, registerThreeMissionSceneResource, disposeThreeMissionSceneLifecycle, threeMissionSceneLifecycleSummary } from '../../three/ThreeMissionSceneLifecycle.js';
 import { publishSceneIsolationDebug } from '../../../ui/MissionShellReset.js';
 import { createMissionWorldInteractionResult } from '../../../core/rendering/MissionWorldInteractionResult.js';
@@ -362,6 +364,7 @@ export class SimulationScene extends PhaserScene {
       abortReason: this.engine.abortReason ?? null
     } : null;
     const canonicalTrajectoryPointCount = (this.engine?.agents ?? []).reduce((sum, agent) => sum + (agent.history?.length ?? 0), 0);
+    const canonicalObservationCount = (this.engine?.events ?? []).filter((event) => ['sample', 'duplicateSample', 'probabilityOutcome'].includes(event.type)).length;
     const movingAgentCount = (this.engine?.agents ?? []).filter((agent) => agent.status !== 'complete' && agent.status !== 'batteryDepleted').length;
     const renderDebug = globalThis.ANCHOR_SIMULATION_RENDER_DEBUG ?? {};
     const completedStages = transaction ? missionExecutionTransactionSummary(transaction).completedStages : control.completedStages ?? [];
@@ -401,7 +404,7 @@ export class SimulationScene extends PhaserScene {
       movingAgentCount,
       canonicalTrajectoryPointCount,
       threeTrajectoryPointCount: renderDebug.realizedTrajectoryPointCount ?? 0,
-      canonicalObservationCount: (this.engine?.events ?? []).filter((event) => ['sample', 'duplicateSample', 'probabilityOutcome'].includes(event.type)).length,
+      canonicalObservationCount,
       threeObservationCount: renderDebug.observationCount ?? 0,
       canonicalWaypointStatusCount: (this.engine?.agents ?? []).reduce((sum, agent) => sum + (agent.completedWaypoints?.length ?? 0) + (agent.missedWaypoints?.length ?? 0), 0),
       rightPanelWaypointStatusCount: renderDebug.rightPanelWaypointStatusCount ?? renderDebug.canonicalWaypointStatusCount ?? 0,
@@ -1019,7 +1022,15 @@ export class SimulationScene extends PhaserScene {
       }
     });
     this.simulationRenderInput = input;
-    const viewModel = buildSimulationWorldRenderViewModel(input);
+    const flatViewModel = buildSimulationWorldRenderViewModel(input);
+    const viewModel = augmentMissionWorldWithVolumetricModel(flatViewModel, {
+      ...input,
+      displaySettings: { ...(input.displaySettings ?? {}), waterColumn: this.app.state.ui?.waterColumn ?? {} },
+      waterColumn: this.app.state.ui?.waterColumn ?? {},
+      level: this.app.state.level,
+      mission: this.app.state.mission,
+      plan: this.app.state.plan
+    });
     this.simulationRenderViewModel = viewModel;
     return viewModel;
   }
@@ -1247,6 +1258,7 @@ export class SimulationScene extends PhaserScene {
       rendererBackend: this.getSimulationRendererBackend(),
       hasThreeRenderer: Boolean(this.threeSimulationRenderer),
       screenPointForGridCell: (x, y) => this.screenPointForSimulationCell({ x, y }),
+      screenPointForDepthCell: (layerId, x, y) => this.screenPointForSimulationDepthCell(layerId, { x, y }),
       screenPointForWaypoint: () => null,
       screenPointForAgent: (agentId = null) => this.screenPointForSimulationRecord(this.findSimulationRecord('glider', agentId ?? this.app.state.selectedAgentId ?? this.simulationRenderViewModel?.gliders?.[0]?.agentId)),
       screenPointForMarker: () => null,
@@ -1268,6 +1280,12 @@ export class SimulationScene extends PhaserScene {
     if (!this.threeSimulationRenderer || !this.simulationRenderViewModel?.coordinateSystem || !cell) return null;
     const world = gridCellToWorld(this.simulationRenderViewModel.coordinateSystem, cell.x, cell.y, 0);
     return this.projectSimulationThreeWorldPoint({ x: world.x, y: Number(world.y ?? 0) + 0.68, z: world.z });
+  }
+
+  screenPointForSimulationDepthCell(layerId, cell) {
+    if (!this.threeSimulationRenderer || !this.simulationRenderViewModel?.coordinateModel || !cell) return null;
+    const world = depthLayerCellCenterToWorld(layerId, cell.x, cell.y, this.simulationRenderViewModel.coordinateModel);
+    return this.projectSimulationThreeWorldPoint({ x: world.x, y: Number(world.y ?? 0) + 0.08, z: world.z });
   }
 
   screenPointForSimulationRecord(record) {
@@ -1307,6 +1325,15 @@ export class SimulationScene extends PhaserScene {
     const selectedPoseSummary = (rendererSummary?.gliderPoseSummaries ?? []).find((pose) => pose.agentId === selectedAgentIdForDebug) ?? rendererSummary?.gliderPoseSummaries?.[0] ?? null;
     const selectedGliderMesh = renderer?.groups?.gliderGroup?.children?.find?.((mesh) => mesh.userData?.agentId === selectedAgentIdForDebug) ?? null;
     const guidanceSummary = rendererSummary?.guidanceSummary ?? {};
+    const waterColumnUi = this.app.state.ui?.waterColumn ?? {};
+    const canonicalObservationCount = (this.engine?.events ?? []).filter((event) => ['sample', 'duplicateSample', 'probabilityOutcome'].includes(event.type)).length;
+    const waterColumnDebug = waterColumnRenderDebugPayload(viewModel ?? {}, rendererSummary, {
+      phase: 'simulation',
+      selectedDiveProfileId: waterColumnUi.selectedDiveProfileId,
+      selectedTargetDepthLayerId: waterColumnUi.selectedTargetDepthLayerId,
+      canonicalObservationCount
+    });
+    globalThis.ANCHOR_WATER_COLUMN_RENDER_DEBUG = waterColumnDebug;
     globalThis.ANCHOR_SIMULATION_RENDER_DEBUG = {
       version: 'mig-r1',
       activeBackend: activeBackend ?? this.getSimulationRendererBackend(),
@@ -1357,7 +1384,7 @@ export class SimulationScene extends PhaserScene {
         ? this.launchPayload.planDigest === this.simulationReceivedPlanDigest && this.simulationReceivedPlanDigest === this.enginePlanDigest
         : null,
       canonicalTrajectoryPointCount: (this.engine?.agents ?? []).reduce((sum, agent) => sum + (agent.history?.length ?? 0), 0),
-      canonicalObservationCount: (this.engine?.events ?? []).filter((event) => ['sample', 'duplicateSample', 'probabilityOutcome'].includes(event.type)).length,
+      canonicalObservationCount,
       canonicalWaypointStatusCount: (this.engine?.agents ?? []).reduce((sum, agent) => sum + (agent.completedWaypoints?.length ?? 0) + (agent.missedWaypoints?.length ?? 0), 0),
       rightPanelWaypointStatusCount: (this.engine?.agents ?? []).reduce((sum, agent) => sum + (agent.completedWaypoints?.length ?? 0) + (agent.missedWaypoints?.length ?? 0), 0),
       timelineWaypointStatusCount: (this.engine?.agents ?? []).reduce((sum, agent) => sum + (agent.completedWaypoints?.length ?? 0) + (agent.missedWaypoints?.length ?? 0), 0),
@@ -1374,6 +1401,7 @@ export class SimulationScene extends PhaserScene {
       objectGrowthWarnings: rendererSummary?.objectGrowthWarnings ?? [],
       inputSummary: simulationWorldRenderInputSummary(this.simulationRenderInput ?? {}),
       rendererSummary,
+      waterColumnDebug,
       interactionControllerSummary: controllerSummary,
       parityWarnings,
       pointerOwner: this.getSimulationRendererBackend() === 'threeMission3d' ? 'three' : 'phaser',

@@ -176,7 +176,20 @@ function normalizeDisplaySettings(ui = {}, patch = {}) {
     planningMarkers: ui.threeMissionLayers?.planningMarkers !== false,
     priorityTargets: ui.threeMissionLayers?.priorityTargets !== false,
     scalarOpacity: patch.scalarOpacity ?? 0.72,
-    ...(patch ?? {})
+    ...(patch ?? {}),
+    waterColumn: {
+      verticalDisplayMode: ui.waterColumn?.verticalDisplayMode ?? patch.waterColumn?.verticalDisplayMode ?? 'physicalDepth',
+      activeDepthLayerId: ui.waterColumn?.activeDepthLayerId ?? patch.waterColumn?.activeDepthLayerId ?? 'thermocline',
+      hiddenLayerIds: ui.waterColumn?.hiddenLayerIds ?? patch.waterColumn?.hiddenLayerIds ?? [],
+      visibleLayerIds: ui.waterColumn?.visibleLayerIds ?? patch.waterColumn?.visibleLayerIds ?? null,
+      globalOpacity: ui.waterColumn?.globalOpacity ?? patch.waterColumn?.globalOpacity ?? 0.26,
+      activeLayerEmphasis: ui.waterColumn?.activeLayerEmphasis ?? patch.waterColumn?.activeLayerEmphasis ?? 1.85,
+      selectedScalarFieldId: ui.waterColumn?.selectedScalarFieldId ?? patch.waterColumn?.selectedScalarFieldId ?? patch.scalarFieldId ?? 'sampleValue',
+      currentDisplayMode: ui.waterColumn?.currentDisplayMode ?? patch.waterColumn?.currentDisplayMode ?? 'activeLayerOnly',
+      selectedDiveProfileId: ui.waterColumn?.selectedDiveProfileId ?? patch.waterColumn?.selectedDiveProfileId ?? null,
+      selectedTargetDepthLayerId: ui.waterColumn?.selectedTargetDepthLayerId ?? patch.waterColumn?.selectedTargetDepthLayerId ?? null,
+      maximumDiveDepthMeters: ui.waterColumn?.maximumDiveDepthMeters ?? patch.waterColumn?.maximumDiveDepthMeters ?? null
+    }
   };
 }
 
@@ -345,7 +358,3 @@ function finiteNumber(value, fallback = 0) {
 function round(value, digits = 4) {
   return Number(Number(value).toFixed(digits));
 }
-
-
-
-

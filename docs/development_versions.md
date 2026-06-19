@@ -38,6 +38,11 @@ Challenge Mode also persists `missionMode`. Mission modes are player-facing obje
 
 ## Version / Milestone Log
 
+### THREE-R1.2A - Volumetric Water Column and Operational Depth Slabs
+
+- Added renderer-neutral bottom-boundary, operational-depth-layer, volumetric-coordinate, dive-trajectory, and volumetric mission-world view models for the P11 2.5D water-column contract.
+- Added Three.js operational depth slabs, depth-aware current vectors, predicted/realized dive trajectory rendering, water-column camera presets, Water Column console controls, depth-cell inspection metadata, and `ANCHOR_WATER_COLUMN_RENDER_DEBUG` in Planning and Simulation.
+- Preserved the boundary: waypoints remain horizontal 2.5D route intents with optional dive profile/target layer metadata; Three.js does not own planning arrays, simulation, scoring, route optimization, hidden truth, calibrated ocean forecasts, WebGPU fluid simulation, Python simulation, RL, or MARL.
 ### THREE-R1.1E - Scene Isolation and Three.js Visual/Planning Parity
 
 - Added event-bound, idempotent Planning and Simulation scene cleanup plus a Main Menu shell reset/debug object to prevent stale mission renderers behind Product Hub.
@@ -59,7 +64,7 @@ Challenge Mode also persists `missionMode`. Mission modes are player-facing obje
 - Preserved the boundary: Three remains a renderer/input surface; the Mission Workspace scene and portable mission core own validation, planning mutation, simulation, and scoring.
 ### THREE-R1.1B - Planning Tool Activation and Camera Control Parity
 
-- Added renderer-neutral planning tool state for `Navigate`, `Select / Edit`, `Deploy / Change Start`, `Add Waypoint`, `Edit Waypoint`, and `Add Marker`.
+- Added renderer-neutral planning tool state for`Navigate`, `Select / Edit`, `Deploy / Change Start`, `Add Waypoint`, `Edit Waypoint`, and `Add Marker`.
 - Added visible Mission Console planning tool controls, a Three viewport active-tool overlay, right-panel `Deploy Glider` / `Change Start` labels, and shared activation between console and right panel.
 - Added a shared Three mission camera controller with orbit, pan, zoom, presets, reset, and selected-glider/route focus controls.
 - Preserved the boundary: Three remains a renderer/input surface; the portable mission core and Mission Workspace scene own validation, state mutation, simulation, and scoring.
@@ -86,9 +91,9 @@ Challenge Mode also persists `missionMode`. Mission modes are player-facing obje
 ### PAGES-R1 - Self-Contained Three.js Runtime
 
 - Added a checked-in, curated Three.js runtime under `vendor/three/` for static browser and GitHub Pages deployment.
-- Browser modules now import `three` through the `index.html` import map instead of direct `node_modules/three` paths.
+- Browser modules now import `three` through the `index.html` import map instead of direct`node_modules/three` paths.
 - Added vendor sync/check scripts, `_site` Pages build tooling, a Pages-like static-host smoke test, GitHub Pages workflow, and Third-Party Notices.
-- Preserved the boundary: `node_modules/` remains ignored and is only a development source package for refreshing the curated vendor runtime.
+- Preserved the boundary:`node_modules/` remains ignored and is only a development source package for refreshing the curated vendor runtime.
 
 ### DOCS-GDD-R1 - Canonical Scientific AUV Planning Game Design
 
@@ -144,7 +149,7 @@ Challenge Mode also persists `missionMode`. Mission modes are player-facing obje
 ### FLOW-ScientificAudit - Synthetic Flow Field Diagnostics
 
 - Added pure flow-field math helpers for vector grids, bilinear sampling, speed stats, divergence, vorticity, strain, current assist/opposition, cross-current magnitude, tracer advection, terrain masking, and finite-vector validation.
-- Added scientific metadata and claim boundaries for current presets, including equations, expected diagnostics, validation targets, recommended uses, and explicit `notA` fields.
+- Added scientific metadata and claim boundaries for current presets, including equations, expected diagnostics, validation targets, recommended uses, and explicit`notA` fields.
 - Added Flow Fields Demo diagnostics, UI summary, debug object, export metadata, smoke/audit scripts, and E2E checks for diagnostics and export fields.
 - Preserved the claim boundary: deterministic synthetic ocean-inspired vector fields for teaching and planning intuition, not HYCOM/ROMS/CFD/Navier-Stokes or calibrated forecasts.
 
@@ -277,7 +282,7 @@ Challenge Mode also persists `missionMode`. Mission modes are player-facing obje
 - Refactored ROI likelihood visualization into a cell-centered mesh overlay. `likelihoodField.values` is the render/export source for every cell's `L(x,y,t)` state, while likelihood nodes/modes remain source/basin metadata. Overlay mode draws the sample-value heatmap underneath likelihood mesh dots/rings; Event Likelihood mode shows the same mesh over the likelihood heatmap. Mesh diagnostics track active/high/near-trigger likelihood cell fractions, high-likelihood components, and local neighbor correlation.
 - Added a graph-message dynamic field layer under the Sample / ROI Demo. Cells are graph nodes, neighbor edges pass abstract influence messages, and update rules combine node state, incoming messages, temporal forcing, community penalties, and sampling effects to generate `L(x,y,t)` and `S(x,y,t)`. Graph-backed presets now cover cooldown/recovery hotspots, neighbor spread, front propagation, ripple/wave activation, directed drift, freshness/revisit recovery, and life-like cellular-emergence inspired local rules. Exports include `graphField` metadata plus per-frame graph state/message layers.
 - Added graph-specific Sample / ROI display layers for Graph Communities, Node States, Graph Messages, Community + Messages, and Diagnostics Overlay. These views show community/basin membership, node state glyphs, filtered top influence edges, cluster/centroid markers, graph-state legend information, selected-cell message diagnostics, community-id grids, and filtered top-message summaries in demo exports.
-- Added Phase-1 ROI process contracts and scenario scaffolding. Preset metadata now exposes process class, domain analogies, simplified-model claim, interaction scale, component recipe, ROI interpretation, validation signature, and educational prompt. Graph update results emit causal `edgeMessages`, `nodeTransitions`, process metadata, and transition fields where practical; renderer/export prefer emitted messages and mark inferred messages as diagnostic fallback. Added `RoiScenarioGenerator.js` and `RoiScenarioValidation.js` as static-compatible APIs for seeded family scenarios.
+- Added Phase-1 ROI process contracts and scenario scaffolding. Preset metadata now exposes process class, domain analogies, simplified-model claim, interaction scale, component recipe, ROI interpretation, validation signature, and educational prompt. Graph update results emit causal `edgeMessages`,`nodeTransitions`, process metadata, and transition fields where practical; renderer/export prefer emitted messages and mark inferred messages as diagnostic fallback. Added `RoiScenarioGenerator.js` and `RoiScenarioValidation.js` as static-compatible APIs for seeded family scenarios.
 - Added Phase-2 Sample / ROI component-composer clarity. The left console now organizes the demo around Behavior Recipe / Preset, Event Likelihood, Spatial Pattern, Value Distribution, Temporal Pattern, Spatial Evolution, Interaction Scale, State Model, Sampling Effect, Display, Seed, and Export. Behavior Help explains what each component changes, what it should not change, what to look for, useful display layers, and common confusion. Recipe View now shows a component recipe table, domain analogies, simplified claim, ROI interpretation, suggested display layers, and validation signature. Modified presets show component isolation hints, and exports include the active component recipe plus compatibility warnings.
 - Added Phase-3 Sample / ROI scenario generation and export. The left console now has Scenario Generation controls for source mode, seed, difficulty, duration, frame count, and validation policy. `RoiScenarioGenerator.js` can package either the current component recipe or selected behavior family into `anchor.syntheticRoiScenario` with `roi-scenario-v1`, process contract, sampled parameters, `S(x,y,t)` / `L(x,y,t)` frames, graph/message layers, labels, diagnostics, validation summaries, and export gating. `RoiScenarioValidation.js` now reports PASS/WARN/FAIL with generic and family-specific observable signature checks.
 - Added Phase-4 Sample / ROI educational readability. Recipe View now includes Behavior Signature and ROI Meaning cards for major behavior families, plus explicit process implementation labels such as analytic time-indexed analog, state-evolving graph update, local cellular transition rule, history-aware recovery rule, and hybrid graph-assisted analog. The left console includes Component Isolation Examples for Temporal Patterns, Spatial Evolution, and Interaction Scale using stable seeded recipes. Scenario validation summaries now include observable-pattern and ROI-meaning notes while keeping single-scenario export secondary to teaching.
@@ -288,7 +293,7 @@ Challenge Mode also persists `missionMode`. Mission modes are player-facing obje
 - Refactored the graph-message layer into a hierarchy: cluster/community likelihood `C_k(t)` defines regional tendency, cell likelihood/readiness `L_i(t)` defines local activation potential, cell activation `A_i(t)` records whether the node is firing/cooling/recovering/consumed, and sample value `S_i(t)` is the realized reward. Exports now include top-level cluster metadata plus per-frame activation and cluster-likelihood layers so external notebooks can distinguish clusters, cells, edges, and realized value.
 - Added a dedicated Uncertainty / Forecast Demo for hidden truth, forecast/expected state, observations, belief, expected-state uncertainty, surprise, forecast error, unknown-event probability, sampling-priority preview, and educational belief updates. See [uncertainty_forecast_demo.md](uncertainty_forecast_demo.md).
 - Added segment contribution grades and route-quality summaries so manual, Greedy Planner, and imported-solver routes can be explained with the same vocabulary.
-- Added explicit waypoint semantics for `navigation`, `surface`, `samplingTarget`, and `terminalCarryThrough` waypoints, while preserving old plans by defaulting missing kinds to `navigation`.
+- Added explicit waypoint semantics for`navigation`, `surface`, `samplingTarget`, and `terminalCarryThrough` waypoints, while preserving old plans by defaulting missing kinds to`navigation`.
 - Added semantic timeline events for navigation intent, surface/update windows, sampling targets, and terminal carry-through outcomes while preserving existing `waypointReached` and `missedWaypoint` events.
 - Added navigation uncertainty config, seeded cone metadata, and cone-aware route grading as a first pass. This is not yet a full true-position-vs-believed-position underwater navigation simulator.
 
