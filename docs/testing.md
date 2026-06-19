@@ -100,6 +100,18 @@ node tools/js/audit_volumetric_activation_boundaries.mjs
 ```
 
 Focused browser checks should cover `Three Volumetric Water Column Planning`, `Three Depth-Aware Dive and Sampling`, `Three Scene Cleanup Is Null-Safe and Idempotent`, `Generated Mission Opens a Visible Volumetric Water Column`, and `Legacy Mission Uses Explicit Surface Compatibility Mode` in `tests/e2e/smoke.spec.js`. Human manual QA by the project owner remains pending; use `docs/manual_threejs_water_column_checklist.md`.
+For THREE-R1.2A.3.1 continuous Mission UI stabilization, run:
+
+```bash
+node tools/js/smoke_continuous_mission_ui_state.mjs
+node tools/js/smoke_html_mission_overlay_continuous_controls.mjs
+node tools/js/audit_continuous_ui_runtime_references.mjs
+node tools/js/smoke_continuous_ui_control_bindings.mjs
+node tools/js/audit_continuous_feature_activation.mjs
+node node_modules/@playwright/test/cli.js test tests/e2e/smoke.spec.js --grep "Continuous Mission Planning Starts Without Overlay Errors|Continuous Mission Controls Are Visible and Functional|Continuous Mission Plan Executes Through Canonical 3D Dive" --reporter=line
+```
+
+These checks assert that Start Planning completes without overlay errors, continuous controls bind once, Free Placement stores fractional coordinates, Snap to Cell stores canonical cell coordinates, dive/target-layer controls update canonical metadata, volumetric display controls report their fallback, Execute starts the canonical simulator, and Debrief carries continuous mission metadata. Human manual QA by the project owner remains pending; use `docs/manual_continuous_mission_ui_checklist.md`.
 ## Challenge Mode vs Simulation Lab
 
 ANCHOR has two user-facing experiences built on the same mission engine.

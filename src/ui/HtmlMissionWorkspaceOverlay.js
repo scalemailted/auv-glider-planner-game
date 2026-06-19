@@ -23,6 +23,11 @@ import { getTutorialHint, tutorialFeatureEnabled } from '../core/tutorial/Tutori
 import { replayDiagnosticsCardHtml } from './ReplayDiagnosticsCard.js';
 import { formatDiagnosticForUi } from '../core/planning/RouteDiagnostic.js';
 import { normalizeWaterColumnConfig, waterColumnLayerOptions, waterColumnProfileOptions } from '../core/science/WaterColumnSchema.js';
+import {
+  continuousMissionUiStateSummary,
+  normalizeContinuousMissionUiState,
+  validateContinuousMissionUiState
+} from '../core/rendering/ContinuousMissionUiState.js';
 
 export class HtmlMissionWorkspaceOverlay {
   constructor(app, handlers) {
@@ -32,25 +37,90 @@ export class HtmlMissionWorkspaceOverlay {
     this.consoleRoot = app.elements.consoleRoot;
     this.collapsedRight = false;
     this.boundRoots = new WeakMap();
+    this.overlayRenderCount = 0;
+    this.overlayControlBindCount = 0;
+    this.overlayControlDispatchCount = 0;
+    this.duplicateOverlayControlDispatchCount = 0;
+    this.overlayRuntimeErrorCount = 0;
+    this.overlayFirstRenderCompleted = false;
   }
 
   refresh(state) {
     this.state = state;
-    if (this.consoleRoot) {
-      this.renderPlanningConsole(state);
+    try {
+      if (this.consoleRoot) {
+        this.renderPlanningConsole(state);
+        this.renderTimeline(state);
+        this.overlayFirstRenderCompleted = true;
+        this.publishContinuousUiDebug(state);
+        return;
+      }
+      this.renderTopHud(state);
+      this.renderLeftDrawer(state);
+      this.renderRightDrawer(state);
       this.renderTimeline(state);
-      return;
+      this.overlayFirstRenderCompleted = true;
+      this.publishContinuousUiDebug(state);
+    } catch (error) {
+      this.overlayRuntimeErrorCount += 1;
+      this.overlayFirstRenderCompleted = false;
+      this.renderOverlayRuntimeError(error);
+      this.publishContinuousUiDebug(state, { error });
     }
-    this.renderTopHud(state);
-    this.renderLeftDrawer(state);
-    this.renderRightDrawer(state);
-    this.renderTimeline(state);
+  }
+
+  prepareContinuousUiState(state) {
+    const normalized = normalizeContinuousMissionUiState(state);
+    state.ui ??= {};
+    state.ui.continuousMission = normalized;
+    const validation = validateContinuousMissionUiState(normalized);
+    state.ui.continuousMissionValidation = validation;
+    return normalized;
+  }
+
+  publishContinuousUiDebug(state = this.state, patch = {}) {
+    const continuousUi = state?.ui?.continuousMission ?? normalizeContinuousMissionUiState(state ?? {});
+    const validation = state?.ui?.continuousMissionValidation ?? validateContinuousMissionUiState(continuousUi);
+    const summary = continuousMissionUiStateSummary(continuousUi);
+    globalThis.ANCHOR_CONTINUOUS_UI_DEBUG = {
+      ...summary,
+      uiStateVersion: continuousUi.version,
+      uiStateValid: validation.valid === true,
+      uiStateWarnings: validation.warnings ?? continuousUi.warnings ?? [],
+      uiStateErrors: validation.errors ?? [],
+      scenarioStartVisible: state?.mode !== 'planning',
+      planningWorkspaceVisible: state?.mode === 'planning',
+      planningControlsVisible: this.consoleRoot?.textContent?.includes?.('Planning Tools') === true,
+      planningInteractionEnabled: state?.mode === 'planning' && Boolean(state?.ui?.missionPlanningTool),
+      overlayRenderCount: this.overlayRenderCount,
+      overlayControlBindCount: this.overlayControlBindCount,
+      overlayControlDispatchCount: this.overlayControlDispatchCount,
+      duplicateOverlayControlDispatchCount: this.duplicateOverlayControlDispatchCount,
+      overlayRuntimeErrorCount: this.overlayRuntimeErrorCount,
+      overlayFirstRenderCompleted: this.overlayFirstRenderCompleted === true,
+      lastOverlayError: patch.error ? String(patch.error?.message ?? patch.error) : null
+    };
+  }
+
+  renderOverlayRuntimeError(error) {
+    if (!this.consoleRoot) return;
+    this.consoleRoot.innerHTML = `
+      <section class="console-section warning" data-overlay-runtime-error>
+        <h2>Planning UI Error</h2>
+        <div class="hud-muted">The Planning Console could not render because required UI state was invalid.</div>
+        <div class="hud-muted warning">${escapeHtml(String(error?.message ?? error ?? 'Unknown overlay error'))}</div>
+        <button class="console-button secondary" data-action="main-menu">Main Menu</button>
+      </section>`;
+    this.bind(this.consoleRoot, { 'main-menu': () => this.handlers.mainMenu?.() });
   }
 
   renderPlanningConsole(state) {
     const root = this.consoleRoot;
     if (!root) return;
     const level = state.level;
+    const continuousUi = this.prepareContinuousUiState(state);
+    this.overlayRenderCount += 1;
+    this.overlayFirstRenderCompleted = false;
     const waypointCount = (state.plan?.agentPlans ?? []).reduce((sum, agentPlan) => sum + (agentPlan.waypoints?.length ?? 0), 0);
     const estimate = routeEstimate(state);
     const routeAudit = state.ui?.routeAudit;
@@ -124,7 +194,7 @@ export class HtmlMissionWorkspaceOverlay {
         <button class="console-button" data-action="export-leaderboard">Export Leaderboard</button>
         <div class="hud-muted">Lab JSON, oracle, and solver packet tools are available in Simulation Lab.</div>
       </section>`}
-      ${rendererBackendSection(state)}
+      ${rendererBackendSection(state, continuousUi)}
       <section class="console-section">
         <h2>View Layers</h2>
         ${layerButton(state, 'showROI', 'ROI Heatmap')}
@@ -268,6 +338,9 @@ export class HtmlMissionWorkspaceOverlay {
     const root = this.roots.leftDrawer;
     if (!root) return;
     const level = state.level;
+    this.prepareContinuousUiState(state);
+    this.overlayRenderCount += 1;
+    this.overlayFirstRenderCompleted = false;
     const waypointCount = (state.plan?.agentPlans ?? []).reduce((sum, agentPlan) => sum + (agentPlan.waypoints?.length ?? 0), 0);
     const estimate = routeEstimate(state);
     root.innerHTML = `
@@ -382,6 +455,7 @@ export class HtmlMissionWorkspaceOverlay {
     const listener = (event) => {
       const button = event.target?.closest?.('[data-action]');
       if (!button || !root.contains(button) || button.disabled) return;
+      this.overlayControlDispatchCount += 1;
       const actionKey = button.dataset.action;
       debugMissionConsoleClick(event, actionKey);
       const action = root.__anchorActionMap?.[actionKey];
@@ -391,9 +465,14 @@ export class HtmlMissionWorkspaceOverlay {
         return;
       }
       event.preventDefault?.();
+      const before = this.overlayControlDispatchCount;
       action(button);
+      if (this.overlayControlDispatchCount !== before) {
+        this.duplicateOverlayControlDispatchCount += 1;
+      }
     };
     root.addEventListener('click', listener);
+    this.overlayControlBindCount += 1;
     this.boundRoots.set(root, listener);
   }
 
@@ -458,6 +537,7 @@ export class HtmlMissionWorkspaceOverlay {
       'water-column-opacity': (button) => this.handlers.adjustWaterColumnOpacity?.(Number(button.dataset.delta ?? 0)),
       'water-column-scalar-field': (button) => this.handlers.setWaterColumnScalarField?.(button.dataset.field),
       'water-column-current-mode': (button) => this.handlers.setWaterColumnCurrentMode?.(button.dataset.mode),
+      'water-column-volume-render-mode': (button) => this.handlers.setWaterColumnVolumeRenderMode?.(button.dataset.mode),
       'water-column-dive-profile': (button) => this.handlers.setWaterColumnDiveProfile?.(button.dataset.profile),
       'water-column-target-layer': (button) => this.handlers.setWaterColumnTargetLayer?.(button.dataset.layer),
       'three-cancel-interaction': () => this.handlers.cancelThreeInteraction?.(),
@@ -724,7 +804,7 @@ function legend(kind, label) {
   return `<div class="legend-item"><span class="legend-swatch ${kind}"></span><span>${escapeHtml(label)}</span></div>`;
 }
 
-function rendererBackendSection(state) {
+function rendererBackendSection(state, continuousUi = normalizeContinuousMissionUiState(state)) {
   const backend = state.ui?.rendererBackend === 'legacyPhaser2d' && state.ui?.legacyPhaserMissionRendererEnabled === true ? 'legacyPhaser2d' : 'threeMission3d';
   const legacyEnabled = state.ui?.legacyPhaserMissionRendererEnabled === true;
   const camera = state.ui?.threeMissionCameraPreset ?? 'obliqueMission';
@@ -736,6 +816,9 @@ function rendererBackendSection(state) {
   const activeToolLabel = toolState.activeToolLabel ?? planningToolLabel(activeToolId);
   const activeInstruction = toolState.instructions ?? interaction.userHint ?? 'Select a planning tool.';
   const waypointAvailability = waypointToolAvailabilityForState(state);
+  const coordinateProfile = continuousUi.coordinateProfileId;
+  const fieldSamplingProfile = continuousUi.fieldSamplingProfileId;
+  const waypointSnapMode = continuousUi.waypointSnapMode;
   const layerButtons = [
     ['bathymetry', 'Bathymetry'],
     ['waterSurface', 'Water Surface'],
@@ -806,22 +889,23 @@ function rendererBackendSection(state) {
           ${cameraButton('focusRoute', 'Focus Route', camera)}
           ${cameraButton('resetCamera', 'Reset Camera', camera)}
         </div>
-        ${waterColumnSection(state)}
+        ${waterColumnSection(state, continuousUi)}
+        ${fieldRenderingSection(continuousUi)}
         ${interactionControls}
       </section>`;
 }
-function waterColumnSection(state) {
+function waterColumnSection(state, continuousUi = normalizeContinuousMissionUiState(state)) {
   const explicitConfig = state.level?.world?.waterColumnConfig ?? state.mission?.world?.waterColumnConfig ?? state.mission?.waterColumnConfig ?? null;
   const config = { ...(explicitConfig ?? {}), ...normalizeWaterColumnConfig(explicitConfig ?? { depthLayerIds: ['surface'], defaultLayerIds: ['surface'], diveProfileId: 'surfaceOnly' }) };
   const ui = state.ui?.waterColumn ?? {};
   const layerIds = config.depthLayerIds ?? ['surface'];
-  const activeLayerId = layerIds.includes(ui.activeDepthLayerId) ? ui.activeDepthLayerId : layerIds[0] ?? 'surface';
+  const activeLayerId = layerIds.includes(continuousUi.activeDepthLayerId) ? continuousUi.activeDepthLayerId : (layerIds.includes(ui.activeDepthLayerId) ? ui.activeDepthLayerId : layerIds[0] ?? 'surface');
   const hidden = new Set(Array.isArray(ui.hiddenLayerIds) ? ui.hiddenLayerIds : []);
-  const displayMode = ui.verticalDisplayMode === 'explodedLayers' ? 'explodedLayers' : 'physicalDepth';
+  const displayMode = continuousUi.verticalDisplayMode === 'explodedLayers' ? 'explodedLayers' : 'physicalDepth';
   const currentMode = ui.currentDisplayMode === 'allLayers' ? 'allLayers' : 'activeLayerOnly';
   const selectedField = ui.selectedScalarFieldId ?? 'sampleValue';
-  const selectedProfile = ui.selectedDiveProfileId ?? config.diveProfileId ?? 'surfaceOnly';
-  const selectedTarget = ui.selectedTargetDepthLayerId ?? activeLayerId;
+  const selectedProfile = continuousUi.selectedDiveProfileId ?? ui.selectedDiveProfileId ?? config.diveProfileId ?? 'surfaceOnly';
+  const selectedTarget = continuousUi.selectedTargetDepthLayerId ?? ui.selectedTargetDepthLayerId ?? activeLayerId;
   const layerOptions = waterColumnLayerOptions().filter((layer) => layerIds.includes(layer.id));
   const visibleLayerCount = layerIds.filter((id) => !hidden.has(id)).length;
   const layerButtons = layerOptions.map((layer) => waterColumnLayerButton(layer, activeLayerId, hidden)).join('');
@@ -861,7 +945,14 @@ function waterColumnSection(state) {
           ${waterColumnCurrentButton('activeLayerOnly', 'Currents: Active', currentMode)}
           ${waterColumnCurrentButton('allLayers', 'Currents: All Layers', currentMode)}
         </div>
-        <div class="hud-muted">Selected waypoint or selected glider plan metadata: dive profile and target layer.</div>
+        <h3 class="waypoint-section-title">Dive Planning</h3>
+        <div class="hud-card compact" data-dive-planning-controls>
+          <div><strong>Dive Profile:</strong> ${escapeHtml(labelize(selectedProfile))}</div>
+          <div><strong>Target Layer:</strong> ${escapeHtml(labelize(selectedTarget))}</div>
+          <div><strong>Predicted Reachable Layers:</strong> ${escapeHtml((continuousUi.availableDepthLayerIds ?? layerIds).map(labelize).join(', '))}</div>
+          <div><strong>Limiting Factor:</strong> ${legacyFallback ? 'surface-only compatibility mode' : 'mission profile and local bottom clearance'}</div>
+          <div class="hud-muted">Selected waypoint or selected glider plan metadata: dive profile and target layer. Planning state only; simulation is not mutated here.</div>
+        </div>
         <div class="console-button-row wrap">${profileButtons}</div>
         <div class="console-button-row wrap">${targetButtons}</div>`;
 }
@@ -890,6 +981,37 @@ function waterColumnFieldButton(fieldId, label, selectedField) {
 
 function waterColumnCurrentButton(mode, label, activeMode) {
   return `<button class="console-button ${activeMode === mode ? 'primary' : 'secondary'}" data-action="water-column-current-mode" data-mode="${escapeAttr(mode)}">${escapeHtml(label)}</button>`;
+}
+
+function fieldRenderingSection(continuousUi) {
+  const modes = continuousUi.availableVolumeRenderModes ?? ['layerSlices', 'smoothedSlices'];
+  const buttons = modes.map((mode) => volumeRenderButton(mode, volumeRenderModeLabel(mode), continuousUi.volumeRenderMode)).join('');
+  const fallback = continuousUi.volumeRenderMode === 'volumetricCloud'
+    ? '<div class="hud-muted">Volumetric Cloud uses layered translucent slices in the current WebGL renderer.</div>'
+    : '';
+  return `
+        <h3 class="waypoint-section-title">Field Rendering</h3>
+        <div class="hud-card compact" data-field-rendering-controls>
+          <div><strong>Mode:</strong> ${escapeHtml(volumeRenderModeLabel(continuousUi.volumeRenderMode))}</div>
+          <div><strong>Profile:</strong> ${escapeHtml(labelize(continuousUi.volumeRenderProfileId))}</div>
+          <div><strong>Sampling:</strong> ${escapeHtml(labelize(continuousUi.fieldSamplingProfileId))}</div>
+          <div class="hud-muted">Display interpolation only. Planning, simulation, scoring, and field sampling stay in the portable core.</div>
+          ${fallback}
+        </div>
+        <div class="console-button-row wrap" data-volume-render-mode-controls>${buttons}</div>`;
+}
+
+function volumeRenderButton(mode, label, activeMode) {
+  return `<button class="console-button ${activeMode === mode ? 'primary' : 'secondary'}" data-action="water-column-volume-render-mode" data-mode="${escapeAttr(mode)}">${escapeHtml(label)}</button>`;
+}
+
+function volumeRenderModeLabel(mode) {
+  return {
+    layerSlices: 'Layer Slices',
+    smoothedSlices: 'Smoothed Slices',
+    volumetricCloud: 'Volumetric Cloud',
+    hybrid: 'Hybrid'
+  }[mode] ?? labelize(mode);
 }
 function interactionModeButton(id, label, active) {
   return `<button class="console-button ${active === id ? 'primary' : 'secondary'}" data-action="three-interaction-mode" data-mode="${escapeAttr(id)}">${escapeHtml(label)}</button>`;

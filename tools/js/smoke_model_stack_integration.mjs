@@ -125,6 +125,7 @@ import { createMissionWorldCoordinateTransform, gridCellToWorld, worldToGridCell
 import { missionWorldRenderInputFromWorkspace } from '../../src/core/rendering/MissionWorldStateAdapter.js';
 import { buildMissionWorldRenderViewModel, missionWorldRenderViewModelSummary, validateMissionWorldRenderViewModel } from '../../src/core/rendering/MissionWorldRenderViewModel.js';
 import { createMissionPlanningToolState, missionPlanningToolStateSummary, setMissionPlanningTool, validateMissionPlanningToolState } from '../../src/core/rendering/MissionPlanningToolState.js';
+import { WAYPOINT_SNAP_MODES, VOLUME_RENDER_MODES, continuousMissionUiStateSummary, normalizeContinuousMissionUiState, validateContinuousMissionUiState } from '../../src/core/rendering/ContinuousMissionUiState.js';
 import { THREE_BATHYMETRY_RENDERER_VERSION, threeBathymetryRendererSummary } from '../../src/game/three/ThreeBathymetryRenderer.js';
 import { THREE_MISSION_WORLD_RENDERER_VERSION, threeMissionWorldRendererSummary } from '../../src/game/three/ThreeMissionWorldRenderer.js';
 import { THREE_MISSION_CAMERA_CONTROLLER_VERSION, THREE_MISSION_CAMERA_MOUSE_MAPPING, createThreeMissionCameraController, threeMissionCameraControllerSummary } from '../../src/game/three/ThreeMissionCameraController.js';
@@ -731,6 +732,25 @@ const threeR11cTool = setMissionPlanningTool(createMissionPlanningToolState({ se
 const threeR11cToolValidation = validateMissionPlanningToolState(threeR11cTool);
 assert.equal(threeR11cToolValidation.valid, true, 'THREE-R1.1C planning tool state validates');
 assert.equal(missionPlanningToolStateSummary(threeR11cTool).ownsPlanning, false, 'THREE-R1.1C planning tool state excludes planning ownership');
+const threeR12a31ContinuousUi = normalizeContinuousMissionUiState({
+  coordinateProfileId: 'continuousGridV1',
+  waypointSnapMode: 'freePlacement',
+  volumeRenderMode: 'smoothedSlices',
+  waterColumnConfig: { depthLayerIds: ['surface', 'thermocline', 'deep'], defaultLayerIds: ['surface', 'thermocline', 'deep'] }
+});
+const threeR12a31ContinuousUiValidation = validateContinuousMissionUiState(threeR12a31ContinuousUi);
+assert.equal(threeR12a31ContinuousUiValidation.valid, true, 'THREE-R1.2A.3.1 continuous UI state validates');
+assert.equal(threeR12a31ContinuousUi.waypointSnapMode, 'freePlacement', 'THREE-R1.2A.3.1 free placement remains available for continuous profiles');
+assert.equal(threeR12a31ContinuousUi.volumeRenderMode, 'smoothedSlices', 'THREE-R1.2A.3.1 volume mode normalizes');
+assert.ok(WAYPOINT_SNAP_MODES.includes('snapToCellCenters'), 'THREE-R1.2A.3.1 snap-to-cell mode is advertised');
+assert.ok(VOLUME_RENDER_MODES.includes('volumetricCloud'), 'THREE-R1.2A.3.1 volumetric fallback mode is advertised');
+const threeR12a31ContinuousUiSummary = continuousMissionUiStateSummary(threeR12a31ContinuousUi);
+assert.equal(threeR12a31ContinuousUiSummary.boundaryFlags.usesContinuousWaypoints, true, 'THREE-R1.2A.3.1 uses continuous waypoints through core state');
+assert.equal(threeR12a31ContinuousUiSummary.boundaryFlags.usesArbitraryXYZRoutePlanning, false, 'THREE-R1.2A.3.1 does not add arbitrary XYZ route planning');
+assert.equal(threeR12a31ContinuousUiSummary.boundaryFlags.rendererOwnsPlanning, false, 'THREE-R1.2A.3.1 renderer does not own planning');
+assert.equal(threeR12a31ContinuousUiSummary.boundaryFlags.rendererOwnsSimulation, false, 'THREE-R1.2A.3.1 renderer does not own simulation');
+assert.equal(threeR12a31ContinuousUiSummary.boundaryFlags.rendererOwnsScoring, false, 'THREE-R1.2A.3.1 renderer does not own scoring');
+assert.equal(normalizeContinuousMissionUiState({ coordinateProfileId: 'legacyIntegerCellsV1', waypointSnapMode: 'freePlacement' }).waypointSnapMode, 'snapToCellCenters', 'THREE-R1.2A.3.1 legacy profiles snap to cell centers');
 const envScene = new BathymetryWorldViewScene();
 assert.equal(envScene.scene?.key ?? 'BathymetryWorldViewScene', 'BathymetryWorldViewScene', 'ENV-R1 BathymetryWorldViewScene imports');
 const envSceneSource = fs.readFileSync('src/game/phaser/scenes/BathymetryWorldViewScene.js', 'utf8');

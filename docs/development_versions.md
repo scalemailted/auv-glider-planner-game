@@ -24,6 +24,12 @@ ANCHOR is a static browser-first Three.js mission game and simulator with a tran
 
 The current app supports tutorials, deterministic and stochastic generated challenges, Mission Briefing, waypoint planning, continuous route validation, simulation playback, Debrief comparison, local leaderboard/best-path records, dataset export, JSON solver contracts, Learning Labs static concept pages, optional Python/Colab templates, and optional Node.js headless solver tools.
 
+### THREE-R1.2A.3.1 - Continuous Mission UI Runtime Stabilization
+
+- Added a normalized continuous Mission UI state contract for waypoint snap mode, field sampling, volume render mode, active depth layer, dive profile, target layer, warnings, and renderer-boundary flags.
+- Stabilized Planning Console startup after generated challenge Scenario Start, including fatal overlay error handling, debug publication, favicon cleanup, and authoritative browser-error collection.
+- Activated visible Free Placement, Snap to Cell, Dive Planning, Field Rendering, and execute-through-canonical-dive coverage without moving planning, simulation, scoring, or field sampling into Three.js.
+- Preserved the boundary: no arbitrary XYZ route planning, no calibrated ocean forecast claim, no WebGPU, no new planner, and no renderer-owned simulation or scoring.
 ## Challenge Mode vs Simulation Lab
 
 ANCHOR has two user-facing experiences built on the same mission engine.

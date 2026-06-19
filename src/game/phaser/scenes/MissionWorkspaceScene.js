@@ -152,6 +152,12 @@ import {
 import { gridCellToWorld } from '../../../core/rendering/MissionWorldCoordinates.js';
 import { depthLayerCellCenterToWorld } from '../../../core/rendering/VolumetricMissionCoordinates.js';
 import { augmentMissionWorldWithVolumetricModel, waterColumnRenderDebugPayload } from '../../../core/rendering/VolumetricMissionWorldViewModel.js';
+import {
+  continuousMissionUiStateSummary,
+  normalizeContinuousMissionUiState,
+  normalizeVolumeRenderMode,
+  validateContinuousMissionUiState
+} from '../../../core/rendering/ContinuousMissionUiState.js';
 import { normalizeWaterColumnLayerId, normalizeWaterColumnProfileId } from '../../../core/science/WaterColumnSchema.js';
 import { compareMissionLayerCoordinates, missionLayerAlignmentSummary } from '../../../core/rendering/MissionLayerAlignment.js';
 import { createThreeMissionSceneLifecycle, registerThreeMissionSceneResource, disposeThreeMissionSceneLifecycle, threeMissionSceneLifecycleSummary } from '../../three/ThreeMissionSceneLifecycle.js';
@@ -216,6 +222,9 @@ export class MissionWorkspaceScene extends PhaserScene {
     this.shutdownHandlerBindCount = 0;
     this.destroyHandlerBindCount = 0;
     this.duplicateLifecycleHandlerCount = 0;
+    this.continuousUiStateCreated = false;
+    this.continuousUiStateValidated = false;
+    this.planningSceneCreateCompleted = false;
   }
 
   create() {
@@ -260,6 +269,7 @@ export class MissionWorkspaceScene extends PhaserScene {
     this.mapGraphics.setDepth(0);
     this.app.clearPanels();
     this.applyInitialWaterColumnSceneDefaults('planning');
+    this.ensureContinuousMissionUiState();
     this.modal = new Modal(this);
     this.fileBridge = new FileBridge({ onFile: (file) => this.importPlanFile(file) });
     this.renderHud();
@@ -268,6 +278,8 @@ export class MissionWorkspaceScene extends PhaserScene {
     this.refreshPanels();
     this.refreshMap();
     this.consumePendingAutoExecute();
+    this.planningSceneCreateCompleted = true;
+    this.publishContinuousMissionDebug();
     this.refreshMigrationDebug();
     this.input.on('pointerdown', this.onPointerDown, this);
     this.input.on('pointermove', this.onPointerMove, this);
@@ -473,6 +485,7 @@ export class MissionWorkspaceScene extends PhaserScene {
       adjustWaterColumnOpacity: (delta) => this.adjustWaterColumnOpacity(delta),
       setWaterColumnScalarField: (fieldId) => this.setWaterColumnScalarField(fieldId),
       setWaterColumnCurrentMode: (mode) => this.setWaterColumnCurrentMode(mode),
+      setWaterColumnVolumeRenderMode: (mode) => this.setWaterColumnVolumeRenderMode(mode),
       setWaterColumnDiveProfile: (profileId) => this.setWaterColumnDiveProfile(profileId),
       setWaterColumnTargetLayer: (layerId) => this.setWaterColumnTargetLayer(layerId),
       cancelThreeInteraction: () => this.cancelThreeInteraction(),
@@ -650,10 +663,12 @@ export class MissionWorkspaceScene extends PhaserScene {
     recomputePlanningMarkerReachability(this.app.state);
     this.refreshBestPriorPath();
     this.refreshRouteAudit();
+    this.ensureContinuousMissionUiState();
     this.hud?.refresh(this.app.state);
     this.app.waypointPanel?.refresh(this.app.state);
     this.app.summaryHud?.refresh(this.app.state);
     this.app.agentPerformanceHud?.refresh(this.app.state);
+    this.publishContinuousMissionDebug();
   }
 
   refreshRouteAudit() {
@@ -1116,6 +1131,7 @@ export class MissionWorkspaceScene extends PhaserScene {
       globalOpacity: clampNumber(existing.globalOpacity, layers.length > 1 ? 0.32 : 0.26, 0.05, 0.72),
       activeLayerEmphasis: clampNumber(existing.activeLayerEmphasis, 1.85, 1, 3.2),
       selectedScalarFieldId: existing.selectedScalarFieldId ?? 'sampleValue',
+      scalarRenderMode: normalizeVolumeRenderMode(existing.scalarRenderMode ?? existing.volumeRenderMode),
       currentDisplayMode: existing.currentDisplayMode === 'allLayers' ? 'allLayers' : 'activeLayerOnly',
       selectedDiveProfileId: normalizeWaterColumnProfileId(existing.selectedDiveProfileId ?? this.selectedAgentPlanWaterColumnValue('diveProfileId') ?? config?.defaultDiveProfileId ?? config?.diveProfileId ?? 'surfaceOnly'),
       selectedTargetDepthLayerId: normalizeWaterColumnLayerId(existing.selectedTargetDepthLayerId ?? this.selectedAgentPlanWaterColumnValue('targetDepthLayerId') ?? config?.defaultTargetDepthLayerId ?? 'surface', active),
@@ -1125,6 +1141,98 @@ export class MissionWorkspaceScene extends PhaserScene {
     };
     this.app.state.ui.waterColumn = next;
     return next;
+  }
+
+  ensureContinuousMissionUiState() {
+    this.app.state.ui ??= {};
+    const waterColumn = this.ensureWaterColumnUiState();
+    const normalized = normalizeContinuousMissionUiState({
+      ...this.app.state,
+      waypointSnapMode: this.app.state.ui.waypointSnapMode,
+      waterColumn,
+      volumeRenderMode: waterColumn.scalarRenderMode
+    });
+    const validation = validateContinuousMissionUiState(normalized);
+    this.app.state.ui.continuousMission = normalized;
+    this.app.state.ui.continuousMissionValidation = validation;
+    this.continuousUiStateCreated = true;
+    this.continuousUiStateValidated = validation.valid === true;
+    globalThis.ANCHOR_CONTINUOUS_UI_DEBUG = {
+      ...continuousMissionUiStateSummary(normalized),
+      uiStateVersion: normalized.version,
+      uiStateValid: validation.valid === true,
+      uiStateWarnings: validation.warnings ?? normalized.warnings ?? [],
+      uiStateErrors: validation.errors ?? [],
+      continuousUiStateCreated: this.continuousUiStateCreated,
+      continuousUiStateValidated: this.continuousUiStateValidated
+    };
+    return normalized;
+  }
+
+  publishContinuousMissionDebug(patch = {}) {
+    const continuousUi = this.app?.state?.ui?.continuousMission ?? this.ensureContinuousMissionUiState();
+    const validation = this.app?.state?.ui?.continuousMissionValidation ?? validateContinuousMissionUiState(continuousUi);
+    const uiDebug = globalThis.ANCHOR_CONTINUOUS_UI_DEBUG ?? {};
+    const consoleText = this.app?.elements?.consoleRoot?.textContent ?? '';
+    const planningControlsVisible = consoleText.includes('Planning Tools') && consoleText.includes('Waypoint Placement');
+    const debug = {
+      type: 'anchor.continuous-mission.planning-ui-debug',
+      version: 'three-r1-2a-3-1',
+      uiStateVersion: continuousUi.version,
+      uiStateValid: validation.valid === true,
+      uiStateWarnings: validation.warnings ?? continuousUi.warnings ?? [],
+      uiStateErrors: validation.errors ?? [],
+      coordinateProfileId: continuousUi.coordinateProfileId,
+      waypointSnapMode: continuousUi.waypointSnapMode,
+      availableWaypointSnapModes: continuousUi.availableWaypointSnapModes,
+      fieldSamplingProfileId: continuousUi.fieldSamplingProfileId,
+      volumeRenderProfileId: continuousUi.volumeRenderProfileId,
+      volumeRenderMode: continuousUi.volumeRenderMode,
+      availableVolumeRenderModes: continuousUi.availableVolumeRenderModes,
+      volumeFallbackUsed: continuousUi.volumeRenderMode === 'volumetricCloud',
+      activeDepthLayerId: continuousUi.activeDepthLayerId,
+      verticalDisplayMode: continuousUi.verticalDisplayMode,
+      selectedDiveProfileId: continuousUi.selectedDiveProfileId,
+      selectedTargetDepthLayerId: continuousUi.selectedTargetDepthLayerId,
+      continuousPlacementEnabled: continuousUi.continuousPlacementEnabled === true,
+      volumetricFieldEnabled: continuousUi.volumetricFieldEnabled === true,
+      depthPlanningEnabled: continuousUi.depthPlanningEnabled === true,
+      currentMissionPhase: this.app?.state?.mode ?? null,
+      scenarioStartVisible: false,
+      planningWorkspaceVisible: this.app?.state?.mode === 'planning',
+      planningControlsVisible,
+      planningInteractionEnabled: this.app?.state?.mode === 'planning' && Boolean(this.threeInteractionController),
+      overlayRenderCount: Number(this.hud?.overlayRenderCount ?? uiDebug.overlayRenderCount ?? 0),
+      overlayControlBindCount: Number(this.hud?.overlayControlBindCount ?? uiDebug.overlayControlBindCount ?? 0),
+      overlayControlDispatchCount: Number(this.hud?.overlayControlDispatchCount ?? uiDebug.overlayControlDispatchCount ?? 0),
+      duplicateOverlayControlDispatchCount: Number(this.hud?.duplicateOverlayControlDispatchCount ?? uiDebug.duplicateOverlayControlDispatchCount ?? 0),
+      overlayRuntimeErrorCount: Number(this.hud?.overlayRuntimeErrorCount ?? uiDebug.overlayRuntimeErrorCount ?? 0),
+      overlayFirstRenderCompleted: this.hud?.overlayFirstRenderCompleted === true || uiDebug.overlayFirstRenderCompleted === true,
+      continuousUiStateCreated: this.continuousUiStateCreated === true,
+      continuousUiStateValidated: this.continuousUiStateValidated === true,
+      planningSceneCreateCompleted: this.planningSceneCreateCompleted === true,
+      usesContinuousWaypoints: true,
+      usesCanonical3DDiveState: true,
+      usesArbitraryXYZRoutePlanning: false,
+      rendererOwnsPlanning: false,
+      rendererOwnsSimulation: false,
+      rendererOwnsScoring: false,
+      rendererSummary: patch.rendererSummary ?? null,
+      waterColumnDebug: patch.waterColumnDebug ?? null
+    };
+    globalThis.ANCHOR_CONTINUOUS_MISSION_DEBUG = debug;
+    globalThis.ANCHOR_CONTINUOUS_UI_DEBUG = {
+      ...uiDebug,
+      ...continuousMissionUiStateSummary(continuousUi),
+      uiStateVersion: continuousUi.version,
+      uiStateValid: validation.valid === true,
+      uiStateWarnings: validation.warnings ?? continuousUi.warnings ?? [],
+      uiStateErrors: validation.errors ?? [],
+      planningControlsVisible,
+      overlayRuntimeErrorCount: debug.overlayRuntimeErrorCount,
+      overlayFirstRenderCompleted: debug.overlayFirstRenderCompleted
+    };
+    return debug;
   }
 
   currentWaterColumnConfig() {
@@ -1152,6 +1260,7 @@ export class MissionWorkspaceScene extends PhaserScene {
       globalOpacity: legacy ? 0.26 : 0.32,
       activeLayerEmphasis: 1.9,
       selectedScalarFieldId: 'sampleValue',
+      scalarRenderMode: normalizeVolumeRenderMode(existing?.scalarRenderMode ?? 'smoothedSlices'),
       currentDisplayMode: 'activeLayerOnly',
       selectedDiveProfileId: config?.defaultDiveProfileId ?? config?.diveProfileId ?? 'surfaceOnly',
       selectedTargetDepthLayerId: config?.defaultTargetDepthLayerId ?? 'surface',
@@ -1246,8 +1355,20 @@ export class MissionWorkspaceScene extends PhaserScene {
     const ui = this.ensureWaterColumnUiState();
     ui.currentDisplayMode = mode === 'allLayers' ? 'allLayers' : 'activeLayerOnly';
     ui.userModified = true;
+    this.ensureContinuousMissionUiState();
     this.refreshPanels();
     this.refreshMap();
+  }
+
+  setWaterColumnVolumeRenderMode(mode) {
+    const ui = this.ensureWaterColumnUiState();
+    ui.scalarRenderMode = normalizeVolumeRenderMode(mode);
+    ui.volumeRenderMode = ui.scalarRenderMode;
+    ui.userModified = true;
+    this.ensureContinuousMissionUiState();
+    this.refreshPanels();
+    this.refreshMap();
+    this.app.toast?.(`Field rendering: ${labelForVolumeRenderMode(ui.scalarRenderMode)}.`, 'info');
   }
 
   setWaterColumnDiveProfile(profileId) {
@@ -1604,6 +1725,7 @@ export class MissionWorkspaceScene extends PhaserScene {
       lifecycleCleanupErrorCount: Number(this.cleanupErrorCount ?? 0)
     });
     globalThis.ANCHOR_WATER_COLUMN_RENDER_DEBUG = waterColumnDebug;
+    this.publishContinuousMissionDebug({ rendererSummary, waterColumnDebug });
     globalThis.ANCHOR_MISSION_RENDER_DEBUG = {
       version: 'gfx-r3b',
       activeBackend: activeBackend ?? this.getMissionRendererBackend(),
@@ -1843,11 +1965,17 @@ export class MissionWorkspaceScene extends PhaserScene {
         this.app.state.ui.threeMissionInteraction.expectedGridCell = { x: Math.round(Number(x)), y: Math.round(Number(y)) };
         return this.screenPointForMissionCell({ x, y });
       },
+      screenPointForGridGroundCell: (x, y) => {
+        this.app.state.ui ??= {};
+        this.app.state.ui.threeMissionInteraction ??= {};
+        this.app.state.ui.threeMissionInteraction.expectedGridCell = { x: Math.round(Number(x)), y: Math.round(Number(y)) };
+        return this.screenPointForMissionGroundCell({ x, y });
+      },
       screenPointForDepthCell: (layerId, x, y) => this.screenPointForMissionDepthCell(layerId, { x, y }),
-      screenPointForWaypoint: (waypointId) => this.screenPointForMissionRecord((this.missionRenderViewModel?.waypoints ?? []).find((record) => record.waypointId === waypointId)),
-      screenPointForAgent: (agentId) => this.screenPointForMissionRecord((this.missionRenderViewModel?.gliders ?? []).find((record) => record.agentId === agentId)),
-      screenPointForMarker: (markerId) => this.screenPointForMissionRecord((this.missionRenderViewModel?.planningMarkers ?? []).find((record) => record.markerId === markerId)),
-      screenPointForPriorityTarget: (targetId) => this.screenPointForMissionRecord((this.missionRenderViewModel?.priorityTargets ?? []).find((record) => record.targetId === targetId)),
+      screenPointForWaypoint: (waypointId) => this.screenPointForMissionObject('waypoint', waypointId, (this.missionRenderViewModel?.waypoints ?? []).find((record) => record.waypointId === waypointId)),
+      screenPointForAgent: (agentId) => this.screenPointForMissionObject('glider', agentId, (this.missionRenderViewModel?.gliders ?? []).find((record) => record.agentId === agentId)),
+      screenPointForMarker: (markerId) => this.screenPointForMissionObject('planningMarker', markerId, (this.missionRenderViewModel?.planningMarkers ?? []).find((record) => record.markerId === markerId)),
+      screenPointForPriorityTarget: (targetId) => this.screenPointForMissionObject('priorityTarget', targetId, (this.missionRenderViewModel?.priorityTargets ?? []).find((record) => record.targetId === targetId)),
       screenPointForObservation: () => null,
       screenPointForSurfacingEvent: () => null,
       screenPointForRouteSegment: (routeSegmentId) => this.screenPointForMissionRouteSegment(routeSegmentId),
@@ -1866,6 +1994,12 @@ export class MissionWorkspaceScene extends PhaserScene {
     return this.projectThreeWorldPoint({ x: world.x, y: Number(world.y ?? 0) + 0.62, z: world.z });
   }
 
+  screenPointForMissionGroundCell(cell) {
+    if (!this.threeMissionRenderer || !this.missionRenderViewModel?.coordinateSystem || !cell) return null;
+    const world = gridCellToWorld(this.missionRenderViewModel.coordinateSystem, cell.x, cell.y, 0);
+    return this.projectThreeWorldPoint({ x: world.x, y: Number(world.y ?? 0) + 0.08, z: world.z });
+  }
+
   screenPointForMissionDepthCell(layerId, cell) {
     if (!this.threeMissionRenderer || !this.missionRenderViewModel?.coordinateModel || !cell) return null;
     const world = depthLayerCellCenterToWorld(layerId, cell.x, cell.y, this.missionRenderViewModel.coordinateModel);
@@ -1876,8 +2010,40 @@ export class MissionWorkspaceScene extends PhaserScene {
   }
 
   screenPointForMissionRecord(record) {
-    if (!record) return null;
-    return this.screenPointForMissionCell({ x: record.x, y: record.y });
+    if (!this.threeMissionRenderer || !this.missionRenderViewModel?.coordinateSystem || !record) return null;
+    const world = gridCellToWorld(this.missionRenderViewModel.coordinateSystem, record.x, record.y, Number(record.depthMeters ?? 0));
+    const yOffset = screenProjectionYOffsetForMissionRecord(record);
+    return this.projectThreeWorldPoint({ x: world.x, y: Number(world.y ?? 0) + yOffset, z: world.z });
+  }
+
+  screenPointForMissionObject(kind, id, fallbackRecord = null) {
+    const object = this.findThreeMissionObject(kind, id);
+    if (object) {
+      const position = object.getWorldPosition?.(new THREE.Vector3()) ?? object.position;
+      if (position) return this.projectThreeWorldPoint({ x: position.x, y: position.y, z: position.z });
+    }
+    return this.screenPointForMissionRecord(fallbackRecord);
+  }
+
+  findThreeMissionObject(kind, id) {
+    const groups = this.threeMissionRenderer?.groups ?? {};
+    const group = {
+      glider: groups.gliderGroup,
+      waypoint: groups.waypointGroup,
+      planningMarker: groups.planningMarkerGroup,
+      priorityTarget: groups.priorityTargetGroup
+    }[kind];
+    if (!group || id == null) return null;
+    let match = null;
+    group.traverse?.((object) => {
+      if (match) return;
+      const data = object.userData ?? {};
+      if (kind === 'glider' && data.agentId === id) match = object;
+      else if (kind === 'waypoint' && data.waypointId === id) match = object;
+      else if (kind === 'planningMarker' && data.markerId === id) match = object;
+      else if (kind === 'priorityTarget' && data.targetId === id) match = object;
+    });
+    return match;
   }
 
   screenPointForMissionRouteSegment(routeSegmentId) {
@@ -4322,6 +4488,30 @@ function labelizeStopReason(reason) {
   return String(reason ?? 'unknown')
     .replace(/_/g, ' ')
     .replace(/\b\w/g, (char) => char.toUpperCase());
+}
+
+function screenProjectionYOffsetForMissionRecord(record = {}) {
+  if (record.waypointId) return 0.22;
+  if (record.markerId) return 0.28;
+  if (record.targetId) return 0.34;
+  if (record.agentId) return 0.32;
+  return 0.32;
+}
+function labelForSnapMode(mode) {
+  return {
+    freePlacement: 'Free Placement',
+    snapToCellCenters: 'Snap to Cell',
+    snapToFeature: 'Snap to Feature'
+  }[mode] ?? 'Snap to Cell';
+}
+
+function labelForVolumeRenderMode(mode) {
+  return {
+    layerSlices: 'Layer Slices',
+    smoothedSlices: 'Smoothed Slices',
+    volumetricCloud: 'Volumetric Cloud',
+    hybrid: 'Hybrid'
+  }[mode] ?? 'Smoothed Slices';
 }
 
 function routeIssueDetails(issue = {}, state = {}) {

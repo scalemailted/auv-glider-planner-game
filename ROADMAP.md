@@ -24,7 +24,7 @@ Browser ANCHOR is the visual game and referee. Node/OceanBox-JS is the canonical
 
 ## 2. Current Architecture
 
-Current renderer sequence: THREE-R1.1E scene isolation and THREE-R1.2A water-column slabs are followed by THREE-R1.2A.1 volumetric activation/lifecycle hardening, then THREE-R1.2B bathymetric seabed mesh/coastline/landmass geometry, THREE-R1.2C water-column visual polish, and later THREE-R2 replay/debrief/editor parity.
+Current renderer sequence: THREE-R1.1E scene isolation and THREE-R1.2A water-column slabs are followed by THREE-R1.2A.1 volumetric activation/lifecycle hardening, THREE-R1.2A.3 continuous waypoint/dive/field activation, THREE-R1.2A.3.1 continuous Mission UI runtime stabilization, then THREE-R1.2B bathymetric seabed mesh/coastline/landmass geometry, THREE-R1.2C terrain-aware/polished 3D presentation, and later THREE-R2 replay/debrief/editor parity.
 
 ### Browser ANCHOR
 
@@ -320,7 +320,7 @@ H4.1 hardens replay artifacts with formal schemas, deterministic integrity issue
 
 ## Current Renderer Stabilization Note
 
-THREE-R1.2A adds the operational 2.5D water-column renderer over the existing P11 model. The next renderer phase should be THREE-R1.2B - Bathymetric Seabed Mesh, Coastline, and Landmass Geometry.
+THREE-R1.2A adds the operational 2.5D water-column renderer over the existing P11 model. THREE-R1.2A.3.1 stabilizes the visible continuous Planning UI and execute-through-dive workflow. The next renderer phase should be THREE-R1.2B - Bathymetric Seabed Mesh, Coastline, and Landmass Geometry.
 
 ### THREE-R1.2A.2 - Depth-aware sampling value, dive feasibility, and scientific scoring
 

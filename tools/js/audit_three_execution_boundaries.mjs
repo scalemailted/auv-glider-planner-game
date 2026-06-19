@@ -21,7 +21,17 @@ for (const file of files) {
   assert(!/hiddenTruth|T_hiddenTruth/.test(source), `${file} must not reference hidden truth`);
 }
 const scene = fs.readFileSync('src/game/phaser/scenes/SimulationScene.js', 'utf8');
+const missionWorkspaceScene = fs.readFileSync('src/game/phaser/scenes/MissionWorkspaceScene.js', 'utf8');
+const continuousUiState = fs.readFileSync('src/core/rendering/ContinuousMissionUiState.js', 'utf8');
 assert(scene.includes('new SimulationEngine'), 'SimulationScene/core must remain engine owner');
 assert(scene.includes('rendererOwnsSimulationState: false'), 'debug must state renderer does not own simulation state');
 assert(scene.includes('rendererOwnsScoring: false'), 'debug must state renderer does not own scoring');
+assert(missionWorkspaceScene.includes('usesCanonical3DDiveState: true'), 'Planning debug must state canonical 3D dive state ownership');
+assert(missionWorkspaceScene.includes('setWaterColumnVolumeRenderMode'), 'Planning scene must own volume render mode control');
+assert(missionWorkspaceScene.includes('setWaterColumnDiveProfile'), 'Planning scene must own dive profile control');
+assert(missionWorkspaceScene.includes('setWaypointSnapMode'), 'Planning scene must own waypoint snap mode control');
+assert(continuousUiState.includes('rendererOwnsPlanning: false'), 'Continuous UI contract must deny renderer planning ownership');
+assert(continuousUiState.includes('rendererOwnsSimulation: false'), 'Continuous UI contract must deny renderer simulation ownership');
+assert(continuousUiState.includes('rendererOwnsScoring: false'), 'Continuous UI contract must deny renderer scoring ownership');
+assert(continuousUiState.includes('usesArbitraryXYZRoutePlanning: false'), 'Continuous UI contract must deny arbitrary XYZ planning');
 console.log('audit_three_execution_boundaries passed');

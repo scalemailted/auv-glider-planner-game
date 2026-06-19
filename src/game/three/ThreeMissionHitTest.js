@@ -50,9 +50,11 @@ export function hitTestThreeMissionWorld(context, pointer, options = {}) {
   const pointerDiagnostics = configureRaycaster(raycaster, context, pointer);
   const entityHit = hitTestMissionEntities(context, raycaster, options);
   const gridHit = hitTestMissionGrid(context, raycaster, options);
-  const hit = entityHit.category !== 'none'
-    ? { ...entityHit, gridCell: entityHit.gridCell ?? gridHit.gridCell ?? null, gridHit }
-    : gridHit.category !== 'none' ? gridHit : noneHit('noHit');
+  const hit = options.preferGrid === true && gridHit.category !== 'none'
+    ? gridHit
+    : entityHit.category !== 'none'
+      ? { ...entityHit, gridCell: entityHit.gridCell ?? gridHit.gridCell ?? null, gridHit }
+      : gridHit.category !== 'none' ? gridHit : noneHit('noHit');
   return { ...hit, pointerDiagnostics, summary: threeMissionHitTestSummary(hit) };
 }
 

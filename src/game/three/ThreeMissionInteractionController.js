@@ -191,17 +191,20 @@ function onPointerMove(controller, event) {
   if (controller.pointerDown.waypointDragCandidate) {
     const hit = hitTest(controller, event, { preferGrid: true });
     const gridCell = hit.gridCell;
+    const continuousPoint = hit.continuousPoint ?? hit.gridCell?.continuousPoint ?? hit.gridHit?.continuousPoint ?? hit.gridHit?.gridCell?.continuousPoint ?? null;
     controller.dragState = {
       active: true,
       waypointId: controller.pointerDown.hit.waypointId,
       agentId: controller.pointerDown.hit.agentId,
       startCell: controller.pointerDown.hit.gridCell,
-      previewCell: gridCell
+      previewCell: gridCell,
+      previewContinuousPoint: continuousPoint
     };
     emit(controller, 'previewWaypointMove', {
       waypointId: controller.dragState.waypointId,
       agentId: controller.dragState.agentId,
       gridCell,
+      continuousPoint,
       worldPoint: hit.worldPoint,
       metadata: { objectType: 'waypoint', objectId: controller.dragState.waypointId, hitCategory: hit.category }
     });
@@ -228,17 +231,20 @@ function onPointerUp(controller, event) {
   pointerDown.endX = event.clientX;
   pointerDown.endY = event.clientY;
   pointerDown.movementPixels = Math.hypot(event.clientX - pointerDown.startX, event.clientY - pointerDown.startY);
-  const hit = hitTest(controller, event, { preferGrid: true });
+  const preferGrid = controller.dragState?.active === true || prefersGridHitOnPointerUp(controller);
+  const hit = hitTest(controller, event, preferGrid ? { preferGrid: true } : {});
   if (controller.dragState?.active) {
     recordPointerGesture(controller, pointerDown, {
       classification: 'waypointDrag',
       cameraMoved: false,
       missionClickSuppressedReason: 'waypointDragActive'
     });
+    const continuousPoint = hit.continuousPoint ?? hit.gridCell?.continuousPoint ?? hit.gridHit?.continuousPoint ?? hit.gridHit?.gridCell?.continuousPoint ?? null;
     emit(controller, 'commitWaypointMove', {
       waypointId: controller.dragState.waypointId,
       agentId: controller.dragState.agentId,
       gridCell: hit.gridCell,
+      continuousPoint,
       worldPoint: hit.worldPoint,
       metadata: { objectType: 'waypoint', objectId: controller.dragState.waypointId, hitCategory: hit.category }
     });
@@ -338,22 +344,23 @@ function onKeyDown(controller, event) {
 
 function handleClick(controller, hit, event) {
   const gridCell = hit.gridCell;
+  const continuousPoint = hit.continuousPoint ?? hit.gridCell?.continuousPoint ?? hit.gridHit?.continuousPoint ?? hit.gridHit?.gridCell?.continuousPoint ?? null;
   const viewModel = controller.viewModel ?? controller.getViewModel?.() ?? null;
   const deploymentActive = viewModel?.interactionViewModel?.deploymentSelectionActive === true;
   if (controller.interactionMode === 'placeWaypoint') {
-    emit(controller, 'placeWaypoint', { gridCell, worldPoint: hit.worldPoint, metadata: { objectType: hit.objectType, objectId: hit.objectId, hitCategory: hit.category } });
+    emit(controller, 'placeWaypoint', { gridCell, continuousPoint, worldPoint: hit.worldPoint, metadata: { objectType: hit.objectType, objectId: hit.objectId, hitCategory: hit.category } });
     return;
   }
   if (controller.interactionMode === 'placeMarker') {
-    emit(controller, 'placePlanningMarker', { gridCell, worldPoint: hit.worldPoint, metadata: { objectType: hit.objectType, objectId: hit.objectId, hitCategory: hit.category } });
+    emit(controller, 'placePlanningMarker', { gridCell, continuousPoint, worldPoint: hit.worldPoint, metadata: { objectType: hit.objectType, objectId: hit.objectId, hitCategory: hit.category } });
     return;
   }
   if (controller.interactionMode === 'selectDeployment' || deploymentActive) {
-    emit(controller, 'selectDeploymentCell', { gridCell, worldPoint: hit.worldPoint, metadata: { objectType: hit.objectType, objectId: hit.objectId, hitCategory: hit.category } });
+    emit(controller, 'selectDeploymentCell', { gridCell, continuousPoint, worldPoint: hit.worldPoint, metadata: { objectType: hit.objectType, objectId: hit.objectId, hitCategory: hit.category } });
     return;
   }
   if (controller.interactionMode === 'navigate') {
-    emit(controller, 'hoverCell', { gridCell, worldPoint: hit.worldPoint, metadata: { objectType: hit.objectType, objectId: hit.objectId, hitCategory: hit.category } });
+    emit(controller, 'hoverCell', { gridCell, continuousPoint, worldPoint: hit.worldPoint, metadata: { objectType: hit.objectType, objectId: hit.objectId, hitCategory: hit.category } });
     return;
   }
   if (hit.category === 'waypoint') emit(controller, 'selectWaypoint', { waypointId: hit.waypointId, agentId: hit.agentId, gridCell, metadata: { objectType: 'waypoint', objectId: hit.waypointId } });
@@ -413,6 +420,11 @@ function emit(controller, intentId, patch = {}) {
   return result;
 }
 
+function prefersGridHitOnPointerUp(controller) {
+  const viewModel = controller.viewModel ?? controller.getViewModel?.() ?? null;
+  const deploymentActive = viewModel?.interactionViewModel?.deploymentSelectionActive === true;
+  return deploymentActive === true || ['placeWaypoint', 'placeMarker', 'selectDeployment', 'navigate'].includes(controller.interactionMode);
+}
 function cameraGestureTypeForEvent(controller, event) {
   if (event.button === 2) return 'orbit';
   if (event.button === 1) return 'dolly';
