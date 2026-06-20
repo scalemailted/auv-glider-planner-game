@@ -9,3 +9,7 @@ Three.js pointer hits provide `continuousPoint`, and MissionWorkspaceScene commi
 ## Predicted Segment Dive Geometry
 
 Continuous surface waypoints now feed a per-segment planned dive view model. Route points remain at surface depth in the mission intent route, while segment metadata such as `diveProfileId`, `targetDepthLayerId`, `maximumDiveDepthMeters`, `cycleCount`, and `sampleIntervalSeconds` determines the predicted underwater geometry between anchors. Physical and exploded display modes change only display coordinates, not canonical route state.
+
+## THREE-R1.2A.4.1 Planning Semantics Note
+
+Surface waypoints are executable navigation/surfacing targets. Sampling targets are non-executable scientific objectives in the water column. Dive profiles determine underwater motion between surface waypoints. Predicted samples never earn score; actual observations are authoritative. The camera and vertical exaggeration are presentation only. Multi-yo prediction and execution use shared canonical kinematics. Performance quality profiles do not change canonical results. No arbitrary XYZ route planner is implemented. No operationally calibrated glider model is claimed.

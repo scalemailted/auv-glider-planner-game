@@ -1,4 +1,5 @@
 import { createMissionWorldCoordinateTransform, depthForLayer } from './MissionWorldCoordinates.js';
+import { normalizeContinuousScienceTarget } from '../science/ContinuousScienceTarget.js';
 
 export const MISSION_WORLD_RENDER_VIEW_MODEL_VERSION = 'mission-world-render-view-model-three-r1-1';
 export const MISSION_WORLD_SCALAR_LAYER_IDS = Object.freeze(['sampleValue', 'remainingSampleValue', 'samplingPriority', 'forecast', 'belief', 'uncertainty', 'hazard', 'none']);
@@ -12,6 +13,7 @@ export function buildMissionWorldRenderViewModel({
   selectedWaypointId = null,
   selectedMarkerId = null,
   selectedPriorityTargetId = null,
+  selectedScienceTargetId = null,
   selectedCell = null,
   planningMarkers = null,
   activeTimeSeconds = 0,
@@ -29,7 +31,8 @@ export function buildMissionWorldRenderViewModel({
   options = {}
 } = {}) {
   const grid = normalizeGrid(level?.world?.grid ?? options.grid ?? {});
-  const transform = createMissionWorldCoordinateTransform({ grid, ...(options.coordinateTransform ?? {}) });
+  const verticalExaggeration = finiteNumber(displaySettings?.waterColumn?.verticalExaggeration ?? displaySettings?.verticalExaggeration ?? options.coordinateTransform?.verticalExaggeration, 1.35);
+  const transform = createMissionWorldCoordinateTransform({ grid, ...(options.coordinateTransform ?? {}), verticalExaggeration });
   const phase = options.phase ?? appState?.mode ?? simulationState?.phase ?? 'planning';
   const scalarFieldLayer = normalizeScalarFieldLayer({ sampleField, forecastState, beliefState, uncertaintyState, displaySettings, grid, activeTimeSeconds, visibilityTier });
   const vectorFieldLayer = normalizeVectorFieldLayer(currentField, grid, activeTimeSeconds);
@@ -43,6 +46,7 @@ export function buildMissionWorldRenderViewModel({
   const routeAgentPlans = options.routes ?? mergeAgentPlanSelectedStarts(plan?.agentPlans, mission?.agents);
   const routes = normalizeRoutes(routeAgentPlans);
   const markers = normalizePlanningMarkers(planningMarkers ?? options.planningMarkers ?? plan?.planningMarkers, selectedMarkerId);
+  const scienceTargets = normalizeScienceTargets(options.scienceTargets ?? plan?.scienceTargets, selectedScienceTargetId);
   const priorityTargets = normalizePriorityTargets(options.priorityTargets, activeTimeSeconds, selectedPriorityTargetId);
   const observations = normalizePoints(options.observations, 'observation');
   const surfacingEvents = normalizePoints(options.surfacingEvents, 'surfacingEvent');
@@ -82,11 +86,12 @@ export function buildMissionWorldRenderViewModel({
     waypoints,
     routes,
     planningMarkers: markers,
+    scienceTargets,
     priorityTargets,
     observations,
     surfacingEvents,
     guidance: normalizeGuidance(options.guidance),
-    selection: { selectedAgentId: selectedAgentId ?? null, selectedWaypointId: selectedWaypointId ?? null, selectedMarkerId: selectedMarkerId ?? null, selectedPriorityTargetId: selectedPriorityTargetId ?? null, selectedCell: selectedCell ?? null },
+    selection: { selectedAgentId: selectedAgentId ?? null, selectedWaypointId: selectedWaypointId ?? null, selectedMarkerId: selectedMarkerId ?? null, selectedPriorityTargetId: selectedPriorityTargetId ?? null, selectedScienceTargetId: selectedScienceTargetId ?? null, selectedCell: selectedCell ?? null },
     visibility: normalizeVisibility(displaySettings, visibilityTier),
     planningWindow: planningWindow ? { ...planningWindow } : null,
     fieldState: fieldState ? { ...fieldState } : null,
@@ -133,6 +138,7 @@ export function missionWorldRenderViewModelSummary(viewModel = {}) {
     waypointCount: viewModel.waypoints?.length ?? 0,
     routeCount: viewModel.routes?.length ?? 0,
     planningMarkerCount: viewModel.planningMarkers?.length ?? 0,
+    scienceTargetCount: viewModel.scienceTargets?.length ?? 0,
     priorityTargetCount: viewModel.priorityTargets?.filter((target) => target.active !== false)?.length ?? 0,
     observationCount: viewModel.observations?.length ?? 0,
     surfacingEventCount: viewModel.surfacingEvents?.length ?? 0,
@@ -157,6 +163,7 @@ export function validateMissionWorldRenderViewModel(viewModel = {}) {
   if (viewModel.boundaryFlags?.includesHiddenTruth && viewModel.visibility?.visibilityTier === 'fair') errors.push('Fair mission render view model must not include hidden truth.');
   if (!Array.isArray(viewModel.gliders)) warnings.push('Mission world view model has no glider array.');
   if (!Array.isArray(viewModel.routes)) warnings.push('Mission world view model has no route array.');
+  if (!Array.isArray(viewModel.scienceTargets)) warnings.push('Mission world view model has no scienceTargets array.');
   return { valid: errors.length === 0, errors, warnings: [...warnings, ...(viewModel.warnings ?? [])], summary: missionWorldRenderViewModelSummary(viewModel) };
 }
 
@@ -337,7 +344,8 @@ function normalizeWaypoints(agentPlans = [], selectedWaypointId = null) {
       status: waypoint.status ?? 'planned',
       selected: waypointId === selectedWaypointId || selectedWaypointId === `${agentId}:${Number.isFinite(Number(waypoint.index)) ? Number(waypoint.index) : index}`,
       plannedTimeSeconds: finiteOrNull(waypoint.t ?? waypoint.plannedTimeSeconds),
-      visible: waypoint.visible !== false
+      visible: waypoint.visible !== false,
+      scienceTargetIds: Array.isArray(waypoint.scienceTargetIds) ? [...waypoint.scienceTargetIds] : []
     };
   };
   if (raw.length && !Array.isArray(raw[0]?.waypoints) && raw[0]?.agentId) {
@@ -385,7 +393,8 @@ function normalizeRoutes(agentPlans = []) {
       sampleIntervalSeconds: finiteOrNull(point.sampleIntervalSeconds),
       cycleCount: finiteOrNull(point.cycleCount),
       action: point.action ?? null,
-      plannedTimeSeconds: finiteOrNull(point.t ?? point.plannedTimeSeconds)
+      plannedTimeSeconds: finiteOrNull(point.t ?? point.plannedTimeSeconds),
+      scienceTargetIds: Array.isArray(point.scienceTargetIds) ? [...point.scienceTargetIds] : []
     };
   };
   if (raw.length && Array.isArray(raw[0]?.points)) {
@@ -414,6 +423,26 @@ function normalizePlanningMarkers(markers = [], selectedMarkerId = null) {
   return (markers ?? []).map((marker, index) => {
     const markerId = marker.markerId ?? marker.id ?? `planning-marker-${index + 1}`;
     return { markerId, x: finiteNumber(marker.x), y: finiteNumber(marker.y), z: finiteNumber(marker.z, -finiteNumber(marker.depthMeters, 0)), plannedTimeSeconds: finiteNumber(marker.t ?? marker.plannedTimeSeconds), label: marker.label ?? 'Planning Marker', visible: marker.visible !== false, executable: false, agentId: marker.agentId ?? null, status: marker.status ?? marker.timingStatus ?? 'annotation', selected: markerId === selectedMarkerId || selectedMarkerId === `${marker.agentId ?? ''}:${index}` || selectedMarkerId === String(index) };
+  });
+}
+
+function normalizeScienceTargets(targets = [], selectedScienceTargetId = null) {
+  return (targets ?? []).map((target) => {
+    const normalized = normalizeContinuousScienceTarget(target);
+    return {
+      ...normalized,
+      targetId: normalized.id,
+      x: finiteNumber(normalized.position.x),
+      y: finiteNumber(normalized.position.y),
+      z: -finiteNumber(normalized.position.depthMeters),
+      depthMeters: finiteNumber(normalized.position.depthMeters),
+      depthLayerId: normalized.depthLayerId ?? null,
+      selected: normalized.id === selectedScienceTargetId,
+      visible: normalized.visible !== false,
+      executable: false,
+      navigationAuthority: false,
+      scoreAuthority: false
+    };
   });
 }
 
@@ -448,7 +477,8 @@ function normalizeVisibility(displaySettings = {}, visibilityTier = 'fair') {
     waypoints: displaySettings?.waypoints !== false,
     routes: displaySettings?.routes !== false,
     planningMarkers: displaySettings?.showPlanningMarkers !== false,
-    priorityTargets: displaySettings?.showPriorityStars !== false
+    priorityTargets: displaySettings?.showPriorityStars !== false,
+    samplingTargets: displaySettings?.samplingTargets !== false
   };
 }
 

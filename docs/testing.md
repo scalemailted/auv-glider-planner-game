@@ -739,3 +739,7 @@ node tools/js/audit_dive_prediction_boundaries.mjs
 ```
 
 Focused browser checks should confirm a surface route, thermocline/deep predicted dive preview, multi-yo cycle preview, side-profile camera readability, terrain-limited clipping, and predicted-vs-realized distinction. Human manual QA by the project owner remains pending; use `docs/manual_predicted_dive_planning_checklist.md`.
+
+## THREE-R1.2A.4.1 Planning Semantics Note
+
+Surface waypoints are executable navigation/surfacing targets. Sampling targets are non-executable scientific objectives in the water column. Dive profiles determine underwater motion between surface waypoints. Predicted samples never earn score; actual observations are authoritative. The camera and vertical exaggeration are presentation only. Multi-yo prediction and execution use shared canonical kinematics. Performance quality profiles do not change canonical results. No arbitrary XYZ route planner is implemented. No operationally calibrated glider model is claimed.

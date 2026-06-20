@@ -1,4 +1,4 @@
-﻿import { validateMissionWorldInteractionIntent } from '../../../core/rendering/MissionWorldInteractionIntent.js';
+import { validateMissionWorldInteractionIntent } from '../../../core/rendering/MissionWorldInteractionIntent.js';
 import {
   createMissionWorldInteractionResult,
   validateMissionWorldInteractionResult
@@ -82,8 +82,10 @@ function routeIntent(scene, intent) {
   if (id === 'selectAgent') return scene.selectGliderFromThree?.(intent.agentId, intent) ?? rejected(intent, 'No glider is available at that point.');
   if (id === 'selectWaypoint') return scene.selectWaypointById?.(intent.waypointId, intent) ?? rejected(intent, 'No waypoint is available at that point.');
   if (id === 'selectPriorityTarget') return scene.selectPriorityTargetFromThree?.(intent.targetId, intent) ?? rejected(intent, 'No priority target is available at that point.');
+  if (id === 'selectSamplingTarget') return scene.selectSamplingTargetFromThree?.(intent.targetId, intent) ?? rejected(intent, 'No sampling target is available at that point.');
   if (id === 'selectDeploymentCell') return scene.selectDeploymentCellFromThree?.(intent) ?? rejected(intent, 'Deployment selection is not available.');
   if (id === 'placeWaypoint') return scene.placeWaypointFromThree?.(intent) ?? rejected(intent, 'Waypoint placement is not available.');
+  if (id === 'placeSamplingTarget') return scene.placeSamplingTargetFromThree?.(intent) ?? rejected(intent, 'Sampling target placement is not available.');
   if (id === 'previewWaypointMove') return scene.previewWaypointMoveFromThree?.(intent) ?? noChange(intent, 'Waypoint move preview unavailable.');
   if (id === 'commitWaypointMove') return scene.commitWaypointMoveFromThree?.(intent) ?? rejected(intent, 'Waypoint move is not available.');
   if (id === 'cancelWaypointMove') return scene.cancelWaypointMoveFromThree?.(intent) ?? cancelled(intent, 'Waypoint move cancelled.');

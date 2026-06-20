@@ -10,6 +10,10 @@ import {
   normalizeContinuousMissionWaypoint,
   normalizeCoordinateProfileId
 } from './ContinuousMissionWaypoint.js';
+import {
+  normalizeContinuousScienceTarget,
+  validateContinuousScienceTarget
+} from '../science/ContinuousScienceTarget.js';
 
 export const VALID_WAYPOINT_ACTIONS = ['sample', 'transit', 'return', 'hold'];
 
@@ -26,6 +30,7 @@ export function createEmptyPlan(level, mission) {
       createdAt: new Date().toISOString()
     },
     planningMarkers: [],
+    scienceTargets: [],
     agentPlans: (mission?.agents ?? []).map((agent) => ({
       agentId: agent.id,
       selectedStart: getSelectedStart(agent) ?? null,
@@ -60,8 +65,15 @@ export function normalizePlan(plan, level, mission) {
       ...copyExtraMeta(plan.meta)
     },
     planningMarkers: [],
+    scienceTargets: [],
     agentPlans: []
   };
+  const rawScienceTargets = Array.isArray(plan.scienceTargets) ? plan.scienceTargets : (Array.isArray(plan.samplingTargets) ? plan.samplingTargets : []);
+  rawScienceTargets.forEach((target) => {
+    if (!target || typeof target !== 'object') return;
+    normalized.scienceTargets.push(normalizeContinuousScienceTarget(target));
+  });
+
   const rawPlanningMarkers = Array.isArray(plan.planningMarkers) ? plan.planningMarkers : [];
   rawPlanningMarkers.forEach((marker) => {
     if (!marker || typeof marker !== 'object') return;
@@ -81,6 +93,7 @@ export function normalizePlan(plan, level, mission) {
       const value = Number(rawAgentPlan[key]);
       if (Number.isFinite(value)) agentPlan[key] = value;
     }
+    if (Array.isArray(rawAgentPlan.scienceTargetIds)) agentPlan.scienceTargetIds = uniqueStrings(rawAgentPlan.scienceTargetIds);
     if (rawAgentPlan.selectedStart) {
       const validation = isValidSelectedStart(level, mission, agentId, rawAgentPlan.selectedStart);
       if (validation.valid) {
@@ -110,6 +123,7 @@ export function normalizePlan(plan, level, mission) {
 
   fillMissingWaypointIds(normalized);
   fillMissingMarkerIds(normalized);
+  fillMissingScienceTargetIds(normalized);
   for (const agentPlan of normalized.agentPlans ?? []) {
     if (agentPlan.selectedStart) setSelectedStart(level, mission, normalized, agentPlan.agentId, agentPlan.selectedStart);
   }
@@ -167,6 +181,13 @@ export function validatePlan(plan, mission) {
     if (!Number.isFinite(marker.x) || !Number.isFinite(marker.y)) {
       errors.push(`Planning marker ${index + 1} needs numeric x and y.`);
     }
+  });
+
+  (plan.scienceTargets ?? []).forEach((target, index) => {
+    const validation = validateContinuousScienceTarget(target);
+    if (!validation.valid) errors.push(`Science target ${index + 1}: ${validation.errors[0] ?? 'invalid target'}`);
+    warnings.push(...validation.warnings.map((warning) => `Science target ${index + 1}: ${warning}`));
+    if (validation.target.executable !== false) errors.push(`Science target ${index + 1} must be non-executable.`);
   });
 
   return { valid: errors.length === 0, errors, warnings };
@@ -242,6 +263,38 @@ export function removeMarker(plan, agentId, markerIndex) {
   if (markerIndex < 0 || markerIndex >= plan.planningMarkers.length) return null;
   const [removed] = plan.planningMarkers.splice(markerIndex, 1);
   return removed ?? null;
+}
+
+export function addScienceTarget(plan, target) {
+  if (!Array.isArray(plan.scienceTargets)) plan.scienceTargets = [];
+  const normalized = normalizeContinuousScienceTarget(target);
+  plan.scienceTargets.push(normalized);
+  fillMissingScienceTargetIds(plan);
+  return normalized;
+}
+
+export function updateScienceTarget(plan, targetId, patch = {}) {
+  if (!Array.isArray(plan.scienceTargets)) plan.scienceTargets = [];
+  const index = plan.scienceTargets.findIndex((target) => target.id === targetId || target.targetId === targetId);
+  if (index < 0) return null;
+  plan.scienceTargets[index] = normalizeContinuousScienceTarget({ ...plan.scienceTargets[index], ...patch });
+  return plan.scienceTargets[index];
+}
+
+export function removeScienceTarget(plan, targetId) {
+  if (!Array.isArray(plan.scienceTargets)) plan.scienceTargets = [];
+  const index = plan.scienceTargets.findIndex((target) => target.id === targetId || target.targetId === targetId);
+  if (index < 0) return null;
+  const [removed] = plan.scienceTargets.splice(index, 1);
+  for (const agentPlan of plan.agentPlans ?? []) {
+    agentPlan.scienceTargetIds = (agentPlan.scienceTargetIds ?? []).filter((id) => id !== targetId);
+    for (const waypoint of agentPlan.waypoints ?? []) waypoint.scienceTargetIds = (waypoint.scienceTargetIds ?? []).filter((id) => id !== targetId);
+  }
+  return removed ?? null;
+}
+
+export function getScienceTargetById(plan, targetId) {
+  return (plan?.scienceTargets ?? []).find((target) => target.id === targetId || target.targetId === targetId) ?? null;
 }
 
 export function convertMarkerToWaypoint(plan, agentId, markerIndex, patch = {}) {
@@ -432,6 +485,8 @@ function normalizeWaypoint(waypoint, agentId, index, level = null, planContext =
   }
   if (waypoint.linkedTargetId) normalized.linkedTargetId = String(waypoint.linkedTargetId);
   if (waypoint.targetId) normalized.targetId = String(waypoint.targetId);
+  if (Array.isArray(waypoint.scienceTargetIds)) normalized.scienceTargetIds = uniqueStrings(waypoint.scienceTargetIds);
+  else if (waypoint.scienceTargetId) normalized.scienceTargetIds = uniqueStrings([waypoint.scienceTargetId]);
   for (const key of [
     'estimatedArrivalTime',
     'missionDurationAtPlanning',
@@ -589,12 +644,28 @@ function fillMissingMarkerIds(plan) {
   });
 }
 
+function fillMissingScienceTargetIds(plan) {
+  const used = new Set();
+  plan.scienceTargets ??= [];
+  plan.scienceTargets.forEach((target, index) => {
+    if (!target.id || used.has(target.id)) {
+      target.id = `science_target_${String(index + 1).padStart(3, '0')}`;
+    }
+    used.add(target.id);
+  });
+}
+
 function makeWaypointId(agentId, index) {
   return `${agentId}_wp_${String(index + 1).padStart(3, '0')}`;
 }
 
 function makeMarkerId(agentId, index) {
   return `${agentId}_marker_${String(index + 1).padStart(3, '0')}`;
+}
+
+function uniqueStrings(value) {
+  const raw = Array.isArray(value) ? value : value == null ? [] : [value];
+  return [...new Set(raw.map((item) => String(item ?? '').trim()).filter(Boolean))];
 }
 
 function copyExtraMeta(meta = {}) {

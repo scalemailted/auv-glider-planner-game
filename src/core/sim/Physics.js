@@ -210,6 +210,7 @@ function advanceContinuousDiveState(agent, target, world, dt, config, step) {
     diveProfileId: target.diveProfileId ?? target.profileId ?? agent.diveProfileId ?? config.mission?.rules?.waterColumn?.defaultDiveProfileId ?? waterColumnConfig.diveProfileId,
     targetDepthLayerId: target.targetDepthLayerId ?? target.depthLayerId ?? target.depthLayer ?? agent.targetDepthLayerId ?? config.mission?.rules?.waterColumn?.defaultTargetDepthLayerId ?? waterColumnConfig.defaultLayerIds?.[0],
     targetDepthMeters: target.depthMeters ?? target.maximumDepthMeters ?? target.maximumDiveDepthMeters,
+    cycleCount: target.cycleCount ?? target.requestedCycleCount ?? agent.cycleCount ?? config.mission?.rules?.waterColumn?.cycleCount,
     localBathymetryMeters,
     segmentLength: step.segmentInitialDistance,
     segmentProgress: step.segmentProgress,

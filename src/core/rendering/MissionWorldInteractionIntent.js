@@ -4,6 +4,7 @@ export const MISSION_WORLD_INTERACTION_MODE_IDS = Object.freeze([
   'navigate',
   'selectInspect',
   'placeWaypoint',
+  'placeSamplingTarget',
   'editWaypoint',
   'placeMarker',
   'selectDeployment'
@@ -15,12 +16,14 @@ export const MISSION_WORLD_INTERACTION_INTENT_IDS = Object.freeze([
   'selectAgent',
   'selectWaypoint',
   'selectPriorityTarget',
+  'selectSamplingTarget',
   'selectObservation',
   'selectSurfacingEvent',
   'selectRouteSegment',
   'selectRouteFailure',
   'selectDeploymentCell',
   'placeWaypoint',
+  'placeSamplingTarget',
   'previewWaypointMove',
   'commitWaypointMove',
   'cancelWaypointMove',
@@ -114,6 +117,7 @@ export function missionWorldInteractionIntentSummary(intent = {}) {
 
 const mutationIntentIds = new Set([
   'placeWaypoint',
+  'placeSamplingTarget',
   'commitWaypointMove',
   'deleteWaypoint',
   'placePlanningMarker',

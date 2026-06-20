@@ -1,4 +1,4 @@
-﻿import * as THREE from 'three';
+import * as THREE from 'three';
 import { gridCellDepthToWorld } from '../../../core/rendering/VolumetricMissionCoordinates.js';
 import { disposeObject, agentColor } from './ThreeMissionLayerUtils.js';
 
@@ -24,7 +24,7 @@ export function updateThreePlannedDiveTrajectoryLayer(group, viewModel = {}) {
     });
     upsertLine(group, objects, seen, `${segment.segmentId}:predicted-dive`, segment.predictedDivePath, viewModel, {
       color: 0xfff0a3,
-      opacity: 0.84,
+      opacity: 0.96,
       yOffset: 0.04,
       objectType: 'predictedDiveTrajectory',
       segment,
@@ -33,7 +33,7 @@ export function updateThreePlannedDiveTrajectoryLayer(group, viewModel = {}) {
     if ((segment.predictedCurrentCorrectedPath ?? []).length >= 2) {
       upsertLine(group, objects, seen, `${segment.segmentId}:current-corrected`, segment.predictedCurrentCorrectedPath, viewModel, {
         color: 0x63e6be,
-        opacity: 0.94,
+        opacity: 0.98,
         yOffset: 0.08,
         objectType: 'expectedCurrentDiveTrajectory',
         segment,
@@ -153,6 +153,7 @@ function upsertLine(group, objects, seen, id, records = [], viewModel, options =
     }
   }
   if (options.dashed && line.computeLineDistances) line.computeLineDistances();
+  line.renderOrder = options.renderRole === 'predictedDive' ? 62 : 58;
   line.userData = objectUserData(id, options, { pointCount: points.length, materialKey });
 }
 
@@ -177,16 +178,16 @@ function upsertMarker(group, objects, seen, id, record = {}, viewModel, options 
 
 function lineMaterial(options = {}) {
   if (options.dashed) {
-    return new THREE.LineDashedMaterial({ color: options.color ?? 0xffffff, transparent: true, opacity: options.opacity ?? 0.72, dashSize: 0.42, gapSize: 0.24, depthWrite: false });
+    return new THREE.LineDashedMaterial({ color: options.color ?? 0xffffff, transparent: true, opacity: options.opacity ?? 0.72, dashSize: 0.42, gapSize: 0.24, depthWrite: false, depthTest: false });
   }
-  return new THREE.LineBasicMaterial({ color: options.color ?? 0xffffff, transparent: true, opacity: options.opacity ?? 0.9, depthWrite: false });
+  return new THREE.LineBasicMaterial({ color: options.color ?? 0xffffff, transparent: true, opacity: options.opacity ?? 0.9, depthWrite: false, depthTest: false });
 }
 
 function markerMesh(shape, color, scale) {
   if (shape === 'ring') {
     const mesh = new THREE.Mesh(
       new THREE.TorusGeometry(scale, scale * 0.18, 8, 24),
-      new THREE.MeshBasicMaterial({ color, transparent: true, opacity: 0.9, depthWrite: false })
+      new THREE.MeshBasicMaterial({ color, transparent: true, opacity: 0.9, depthWrite: false, depthTest: false })
     );
     mesh.rotation.x = Math.PI / 2;
     return mesh;
@@ -194,12 +195,12 @@ function markerMesh(shape, color, scale) {
   if (shape === 'diamond') {
     return new THREE.Mesh(
       new THREE.OctahedronGeometry(scale, 0),
-      new THREE.MeshBasicMaterial({ color, transparent: true, opacity: 0.92, depthWrite: false })
+      new THREE.MeshBasicMaterial({ color, transparent: true, opacity: 0.92, depthWrite: false, depthTest: false })
     );
   }
   return new THREE.Mesh(
     new THREE.SphereGeometry(scale, 12, 8),
-    new THREE.MeshBasicMaterial({ color, transparent: true, opacity: 0.86, depthWrite: false })
+    new THREE.MeshBasicMaterial({ color, transparent: true, opacity: 0.86, depthWrite: false, depthTest: false })
   );
 }
 

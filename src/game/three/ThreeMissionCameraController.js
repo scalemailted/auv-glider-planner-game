@@ -2,8 +2,8 @@ import * as THREE from 'three';
 
 export const THREE_MISSION_CAMERA_CONTROLLER_VERSION = 'three-mission-camera-controller-three-r1-1c';
 
-const DEFAULT_MIN_POLAR = 0.14;
-const DEFAULT_MAX_POLAR = 1.34;
+const DEFAULT_MIN_POLAR = 0.08;
+const DEFAULT_MAX_POLAR = 1.553;
 
 export const THREE_MISSION_CAMERA_MOUSE_MAPPING = Object.freeze({
   LEFT: 'PAN',
@@ -81,16 +81,20 @@ export function setThreeMissionCameraPreset(controller, presetId, context = {}) 
     controller.distance = radius * 1.72;
   } else if (preset === 'waterColumnProfile' || preset === 'sideProfile') {
     controller.azimuthRadians = 0;
-    controller.polarRadians = 1.18;
+    controller.polarRadians = 1.49;
     controller.distance = radius * 1.78;
   } else if (preset === 'selectedSegmentDive') {
     controller.azimuthRadians = -0.9;
-    controller.polarRadians = 0.88;
+    controller.polarRadians = 1.36;
     controller.distance = radius * 1.38;
   } else if (preset === 'fullRouteDiveOverview') {
     controller.azimuthRadians = -0.66;
-    controller.polarRadians = 0.82;
+    controller.polarRadians = 1.16;
     controller.distance = radius * 2.02;
+  } else if (preset === 'divePlanningView' || preset === 'obliqueDive') {
+    controller.azimuthRadians = -0.82;
+    controller.polarRadians = preset === 'divePlanningView' ? 1.34 : 1.18;
+    controller.distance = radius * 1.52;
   } else if (preset === 'obliqueWaterColumn') {
     controller.azimuthRadians = -0.74;
     controller.polarRadians = 0.92;
@@ -162,6 +166,10 @@ export function threeMissionCameraControllerSummary(controller = {}) {
     cameraMode: controller.cameraMode ?? controller.mode ?? null,
     cameraAzimuthRadians: round(controller.azimuthRadians),
     cameraPolarRadians: round(controller.polarRadians),
+    cameraMinPolarRadians: round(controller.minPolarRadians),
+    cameraMaxPolarRadians: round(controller.maxPolarRadians),
+    cameraCurrentPolarRadians: round(controller.polarRadians),
+    cameraClampReason: clampReason(controller),
     cameraDistance: round(controller.distance),
     cameraTarget: plainVector(controller.target),
     cameraOrbitEnabled: controller.orbitEnabled === true,
@@ -325,6 +333,14 @@ function markRendererCamera(controller, patch = {}) {
   };
 }
 
+function clampReason(controller = {}) {
+  if (Number(controller.polarRadians) <= Number(controller.minPolarRadians) + 1e-6) return 'minPolar';
+  if (Number(controller.polarRadians) >= Number(controller.maxPolarRadians) - 1e-6) return 'maxPolar';
+  if (Number(controller.distance) <= Number(controller.minDistance) + 1e-6) return 'minDistance';
+  if (Number(controller.distance) >= Number(controller.maxDistance) - 1e-6) return 'maxDistance';
+  return 'none';
+}
+
 function clampController(controller) {
   controller.polarRadians = clamp(controller.polarRadians, controller.minPolarRadians, controller.maxPolarRadians);
   controller.distance = clamp(controller.distance, controller.minDistance, controller.maxDistance);
@@ -352,6 +368,8 @@ function normalizePresetId(presetId) {
     'activeLayer',
     'selectedDive',
     'selectedSegmentDive',
+    'divePlanningView',
+    'obliqueDive',
     'fullRouteDiveOverview',
     'fleetOverview'
   ].includes(id)) return id;
@@ -371,8 +389,8 @@ function normalizeBounds(input = {}) {
     maxX,
     minZ,
     maxZ,
-    minY: finiteNumber(input.minY, -2),
-    maxY: finiteNumber(input.maxY, 8),
+    minY: finiteNumber(input.minY, -Math.max(8, radius * 0.75)),
+    maxY: finiteNumber(input.maxY, Math.max(8, radius * 0.35)),
     radius,
     padding,
     center: vector3(input.center ?? { x: (minX + maxX) / 2, y: 0, z: (minZ + maxZ) / 2 })

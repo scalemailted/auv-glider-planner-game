@@ -16,6 +16,9 @@ import { ensureForecastFields } from '../../../core/sim/ChallengeMode.js';
 import { getLevelObjectiveSummary, getPlanningPrompts } from '../../../core/campaign/LevelObjectives.js';
 import {
   addWaypoint,
+  addScienceTarget,
+  updateScienceTarget,
+  getScienceTargetById,
   addMarker,
   absorbPlanningMarkersForWaypoint,
   clearAgentWaypoints,
@@ -158,7 +161,7 @@ import {
   normalizeVolumeRenderMode,
   validateContinuousMissionUiState
 } from '../../../core/rendering/ContinuousMissionUiState.js';
-import { normalizeWaterColumnLayerId, normalizeWaterColumnProfileId } from '../../../core/science/WaterColumnSchema.js';
+import { normalizeWaterColumnLayerId, normalizeWaterColumnProfileId, waterColumnLayerMetadata } from '../../../core/science/WaterColumnSchema.js';
 import { compareMissionLayerCoordinates, missionLayerAlignmentSummary } from '../../../core/rendering/MissionLayerAlignment.js';
 import { createThreeMissionSceneLifecycle, registerThreeMissionSceneResource, disposeThreeMissionSceneLifecycle, threeMissionSceneLifecycleSummary } from '../../three/ThreeMissionSceneLifecycle.js';
 import { publishSceneIsolationDebug } from '../../../ui/MissionShellReset.js';
@@ -491,6 +494,13 @@ export class MissionWorkspaceScene extends PhaserScene {
       setWaterColumnMaximumDepth: (depth) => this.setWaterColumnMaximumDepth(depth),
       setWaterColumnCycleCount: (count) => this.setWaterColumnCycleCount(count),
       setWaterColumnSampleInterval: (seconds) => this.setWaterColumnSampleInterval(seconds),
+      setWaterColumnVerticalExaggeration: (value) => this.setWaterColumnVerticalExaggeration(value),
+      attachScienceTargetToSelectedSegment: () => this.attachScienceTargetToSelectedSegment(),
+      detachSelectedScienceTarget: () => this.detachSelectedScienceTarget(),
+      focusSelectedScienceTarget: () => this.focusSelectedScienceTarget(),
+      setTargetLayerFromSelectedScienceTarget: () => this.setTargetLayerFromSelectedScienceTarget(),
+      copyTargetDepthToRequestedDepth: () => this.copyTargetDepthToRequestedDepth(),
+      recommendScienceTargetProfiles: () => this.recommendScienceTargetProfiles(),
       resetWaterColumnSegmentProfile: () => this.resetWaterColumnSegmentProfile(),
       applyWaterColumnProfileToRemainingSegments: () => this.applyWaterColumnProfileToRemainingSegments(),
       cancelThreeInteraction: () => this.cancelThreeInteraction(),
@@ -819,6 +829,7 @@ export class MissionWorkspaceScene extends PhaserScene {
     interaction.userHint = next.instructions;
     interaction.planningToolState = missionPlanningToolStateSummary(next);
     interaction.waypointPlacementActive = next.activeToolId === 'placeWaypoint';
+    interaction.samplingTargetPlacementActive = next.activeToolId === 'placeSamplingTarget';
     interaction.waypointValidationReason = next.activeToolId === 'placeWaypoint' ? next.validationReason ?? null : null;
     if (next.activeToolId === 'selectDeploymentCell') {
       interaction.deploymentSelectionActive = true;
@@ -841,6 +852,7 @@ export class MissionWorkspaceScene extends PhaserScene {
       interaction.waypointCandidateValid = null;
       interaction.waypointValidationReason = null;
     }
+    if (next.activeToolId !== 'placeSamplingTarget') interaction.samplingTargetCandidateCell = null;
     this.app.state.ui.missionPlanningTool = next;
     this.activePlanningToolId = next.activeToolId;
     this.app.state.ui.threeMissionInteractionMode = mode;
@@ -1051,7 +1063,7 @@ export class MissionWorkspaceScene extends PhaserScene {
       resetThreeMissionCamera(controller, { presetId: 'obliqueMission' });
       this.app.state.ui.threeMissionCameraPreset = 'obliqueMission';
     } else {
-      const normalized = ['tacticalTopDown', 'obliqueMission', 'obliqueWaterColumn', 'waterColumnProfile', 'sideProfile', 'layerStackOverview', 'activeLayer', 'selectedDive', 'selectedSegmentDive', 'fullRouteDiveOverview', 'fleetOverview'].includes(presetId) ? presetId : 'obliqueMission';
+      const normalized = ['tacticalTopDown', 'obliqueMission', 'obliqueWaterColumn', 'waterColumnProfile', 'sideProfile', 'layerStackOverview', 'activeLayer', 'selectedDive', 'selectedSegmentDive', 'divePlanningView', 'obliqueDive', 'fullRouteDiveOverview', 'fleetOverview'].includes(presetId) ? presetId : 'obliqueMission';
       this.app.state.ui.threeMissionCameraPreset = normalized;
       if (controller) setThreeMissionCameraPreset(controller, normalized);
       else if (renderer) setThreeMissionWorldCamera(renderer, { preset: normalized });
@@ -1134,6 +1146,7 @@ export class MissionWorkspaceScene extends PhaserScene {
       hiddenLayerIds: hidden,
       visibleLayerIds: Array.isArray(existing.visibleLayerIds) ? existing.visibleLayerIds.filter((id) => layers.includes(id) || id === 'integratedWaterColumn' || id === 'waterSurface') : null,
       globalOpacity: clampNumber(existing.globalOpacity, layers.length > 1 ? 0.32 : 0.26, 0.05, 0.72),
+      verticalExaggeration: [1, 2, 4, 8].includes(Number(existing.verticalExaggeration)) ? Number(existing.verticalExaggeration) : 1,
       activeLayerEmphasis: clampNumber(existing.activeLayerEmphasis, 1.85, 1, 3.2),
       selectedScalarFieldId: existing.selectedScalarFieldId ?? 'sampleValue',
       scalarRenderMode: normalizeVolumeRenderMode(existing.scalarRenderMode ?? existing.volumeRenderMode),
@@ -1242,6 +1255,8 @@ export class MissionWorkspaceScene extends PhaserScene {
       predictedDivePointCount: patch.plannedDiveDebug?.predictedDivePointCount ?? 0,
       predictedCurrentPathPointCount: patch.plannedDiveDebug?.predictedCurrentPathPointCount ?? 0,
       predictedSampleCount: patch.plannedDiveDebug?.predictedSampleCount ?? 0,
+      scienceTargetIds: patch.plannedDiveDebug?.scienceTargetIds ?? [],
+      targetCoverageStatuses: patch.plannedDiveDebug?.targetCoverageStatuses ?? [],
       predictedLayerCrossingCount: patch.plannedDiveDebug?.predictedLayerCrossingCount ?? 0,
       predictedBottomTurnCount: patch.plannedDiveDebug?.predictedBottomTurnCount ?? 0,
       predictedSurfacingPosition: patch.plannedDiveDebug?.predictedSurfacingPosition ?? null,
@@ -1304,6 +1319,7 @@ export class MissionWorkspaceScene extends PhaserScene {
       maximumDiveDepthMeters: null,
       cycleCount: null,
       sampleIntervalSeconds: null,
+      verticalExaggeration: 1,
       userModified: false,
       defaultDisplayModeApplied: true
     };
@@ -1452,6 +1468,16 @@ export class MissionWorkspaceScene extends PhaserScene {
     ui.sampleIntervalSeconds = value;
     ui.userModified = true;
     this.applyWaterColumnPlanMetadata({ sampleIntervalSeconds: value });
+  }
+
+  setWaterColumnVerticalExaggeration(value) {
+    const ui = this.ensureWaterColumnUiState();
+    const numeric = Number(value);
+    ui.verticalExaggeration = [1, 2, 4, 8].includes(numeric) ? numeric : 1;
+    ui.userModified = true;
+    this.ensureContinuousMissionUiState();
+    this.refreshPanels();
+    this.refreshMap();
   }
 
   resetWaterColumnSegmentProfile() {
@@ -1870,6 +1896,7 @@ export class MissionWorkspaceScene extends PhaserScene {
       renderedFieldTimeSeconds: viewModel?.scalarFieldLayer?.timeSeconds ?? null,
       renderedCurrentTimeSeconds: viewModel?.vectorFieldLayer?.timeSeconds ?? null,
       activePriorityTargetCount: summary.priorityTargetCount ?? 0,
+      scienceTargetCount: summary.scienceTargetCount ?? viewModel?.scienceTargets?.length ?? 0,
       selectedAgentId: selectedAgentIdForDebug,
       selectedAgentHeadingRadians: selectedPoseSummary?.headingRadians ?? null,
       selectedAgentCourseRadians: selectedPoseSummary?.courseOverGroundRadians ?? null,
@@ -1896,6 +1923,7 @@ export class MissionWorkspaceScene extends PhaserScene {
       selectedWaypointId: viewModel?.selectedWaypointId ?? null,
       selectedMarkerId: viewModel?.selectedMarkerId ?? null,
       selectedPriorityTargetId: viewModel?.selectedPriorityTargetId ?? null,
+      selectedScienceTargetId: viewModel?.selectedScienceTargetId ?? this.app.state.ui?.selectedScienceTargetId ?? null,
       terrainCellCount: summary.terrainCellCount ?? 0,
       scalarFieldCellCount: summary.scalarFieldCellCount ?? 0,
       currentVectorCount: summary.currentVectorCount ?? 0,
@@ -1907,6 +1935,7 @@ export class MissionWorkspaceScene extends PhaserScene {
       routeCount: summary.routeCount ?? 0,
       planningMarkerCount: summary.planningMarkerCount ?? 0,
       priorityTargetCount: summary.priorityTargetCount ?? 0,
+      scienceTargetCount: summary.scienceTargetCount ?? viewModel?.scienceTargets?.length ?? 0,
       viewModelWarnings: viewModel?.warnings ?? [],
       parityWarnings,
       inputSummary: missionWorldRenderInputSummary(this.missionRenderInput ?? {}),
@@ -1924,6 +1953,7 @@ export class MissionWorkspaceScene extends PhaserScene {
       planningToolStateMismatches,
       planningToolControlBindCount: Number(this.planningToolControlBindCount ?? 0),
       planningToolControlDispatchCount: Number(this.planningToolControlDispatchCount ?? 0),
+      duplicateThreeHoverSuppressionCount: Number(this.duplicateThreeHoverSuppressionCount ?? 0),
       duplicateToolControlDispatchCount: Number(this.duplicateToolControlDispatchCount ?? 0),
       planningToolInstruction: interactionVm.planningToolInstruction ?? toolSummary.instructions,
       planningToolCursor: interactionVm.planningToolCursor ?? toolSummary.cursorId,
@@ -1943,6 +1973,10 @@ export class MissionWorkspaceScene extends PhaserScene {
       cameraMode: cameraControllerSummary?.cameraMode ?? null,
       cameraAzimuthRadians: cameraControllerSummary?.cameraAzimuthRadians ?? null,
       cameraPolarRadians: cameraControllerSummary?.cameraPolarRadians ?? null,
+      cameraMinPolarRadians: cameraControllerSummary?.cameraMinPolarRadians ?? null,
+      cameraMaxPolarRadians: cameraControllerSummary?.cameraMaxPolarRadians ?? null,
+      cameraCurrentPolarRadians: cameraControllerSummary?.cameraCurrentPolarRadians ?? cameraControllerSummary?.cameraPolarRadians ?? null,
+      cameraClampReason: cameraControllerSummary?.cameraClampReason ?? null,
       cameraDistance: cameraControllerSummary?.cameraDistance ?? null,
       cameraTarget: cameraControllerSummary?.cameraTarget ?? null,
       cameraOrbitEnabled: cameraControllerSummary?.cameraOrbitEnabled === true,
@@ -2102,6 +2136,7 @@ export class MissionWorkspaceScene extends PhaserScene {
       screenPointForAgent: (agentId) => this.screenPointForMissionObject('glider', agentId, (this.missionRenderViewModel?.gliders ?? []).find((record) => record.agentId === agentId)),
       screenPointForMarker: (markerId) => this.screenPointForMissionObject('planningMarker', markerId, (this.missionRenderViewModel?.planningMarkers ?? []).find((record) => record.markerId === markerId)),
       screenPointForPriorityTarget: (targetId) => this.screenPointForMissionObject('priorityTarget', targetId, (this.missionRenderViewModel?.priorityTargets ?? []).find((record) => record.targetId === targetId)),
+      screenPointForSamplingTarget: (targetId) => this.screenPointForMissionObject('samplingTarget', targetId, (this.missionRenderViewModel?.scienceTargets ?? []).find((record) => record.targetId === targetId || record.id === targetId)),
       screenPointForObservation: () => null,
       screenPointForSurfacingEvent: () => null,
       screenPointForRouteSegment: (routeSegmentId) => this.screenPointForMissionRouteSegment(routeSegmentId),
@@ -2157,7 +2192,8 @@ export class MissionWorkspaceScene extends PhaserScene {
       glider: groups.gliderGroup,
       waypoint: groups.waypointGroup,
       planningMarker: groups.planningMarkerGroup,
-      priorityTarget: groups.priorityTargetGroup
+      priorityTarget: groups.priorityTargetGroup,
+      samplingTarget: groups.samplingTargetGroup
     }[kind];
     if (!group || id == null) return null;
     let match = null;
@@ -2168,6 +2204,7 @@ export class MissionWorkspaceScene extends PhaserScene {
       else if (kind === 'waypoint' && data.waypointId === id) match = object;
       else if (kind === 'planningMarker' && data.markerId === id) match = object;
       else if (kind === 'priorityTarget' && data.targetId === id) match = object;
+      else if (kind === 'samplingTarget' && (data.targetId === id || data.missionObjectId === id)) match = object;
     });
     return match;
   }
@@ -2604,6 +2641,12 @@ export class MissionWorkspaceScene extends PhaserScene {
 
   handleThreeHoverIntent(intent) {
     const cell = intent.gridCell ?? null;
+    const hoverKey = String(intent.metadata?.objectType ?? 'gridCell') + ':' + String(intent.metadata?.objectId ?? '') + ':' + String(cell?.x ?? '') + ':' + String(cell?.y ?? '') + ':' + String(cell?.depthLayerId ?? '');
+    if (this.lastThreeHoverKey === hoverKey) {
+      this.duplicateThreeHoverSuppressionCount = Number(this.duplicateThreeHoverSuppressionCount ?? 0) + 1;
+      return this.threeInteractionResult(intent, 'noChange', { userMessage: 'Hover unchanged.' });
+    }
+    this.lastThreeHoverKey = hoverKey;
     this.app.state.ui ??= {};
     this.app.state.ui.hoverCell = cell ? { x: cell.x, y: cell.y } : null;
     this.app.state.ui.threeMissionInteraction ??= {};
@@ -2630,6 +2673,7 @@ export class MissionWorkspaceScene extends PhaserScene {
   }
 
   clearThreeHoverIntent(intent) {
+    this.lastThreeHoverKey = null;
     this.app.state.ui ??= {};
     this.app.state.ui.hoverCell = null;
     this.app.state.ui.threeMissionInteraction ??= {};
@@ -2738,6 +2782,154 @@ export class MissionWorkspaceScene extends PhaserScene {
       userMessage: deploymentTransition?.message ?? 'Deployment start selected.',
       preview: { waypointCountUnchanged: beforeWaypointCount === afterWaypointCount, autoArmedWaypointAfterDeployment: deploymentTransition?.autoArmed === true }
     });
+  }
+  placeSamplingTargetFromThree(intent) {
+    const cell = intent.gridCell;
+    if (!cell) return this.threeInteractionResult(intent, 'rejected', { userMessage: 'Click an active depth slab to place a sampling target.', warnings: ['Missing grid cell.'] });
+    const placement = this.resolveSamplingTargetPlacementPoint(intent);
+    const target = addScienceTarget(this.app.state.plan, {
+      label: placement.label,
+      geometryType: 'layerPoint',
+      position: { x: placement.x, y: placement.y, depthMeters: placement.depthMeters, coordinateFrame: placement.coordinateFrame },
+      depthLayerId: placement.depthLayerId,
+      objectiveId: 'manual-science-target',
+      fieldId: this.app.state.ui?.waterColumn?.selectedScalarFieldId ?? 'sampleValue',
+      desiredSampleCount: 1,
+      minimumCoverage: 0.65,
+      publicVisibility: 'publicPlanningObjective'
+    });
+    this.app.state.ui ??= {};
+    this.app.state.ui.selectedScienceTargetId = target.id;
+    this.app.state.ui.selectedWaypoint = null;
+    this.app.state.ui.selectedMarker = null;
+    this.app.state.ui.threeMissionInteraction ??= {};
+    this.app.state.ui.threeMissionInteraction.selectedEntity = { objectType: 'samplingTarget', objectId: target.id, targetId: target.id, gridCell: cell };
+    this.app.state.ui.threeMissionInteraction.lastSamplingTargetPlacement = {
+      targetId: target.id,
+      targetCanonicalDepthMeters: target.position.depthMeters,
+      targetDepthLayerId: target.depthLayerId,
+      targetDisplayWorldY: intent.worldPoint?.y ?? null,
+      targetDepthRoundtripError: 0
+    };
+    this.setThreePlacementValidation({ valid: true, message: 'Sampling target placed.', cell });
+    this.markManualPlan();
+    this.refreshPanels();
+    this.refreshMap();
+    return this.threeInteractionResult(intent, 'accepted', { changedCanonicalState: true, committedGridCell: cell, selectedTargetId: target.id, userMessage: 'Sampling target placed.' });
+  }
+
+  resolveSamplingTargetPlacementPoint(intent = {}) {
+    const cell = intent.gridCell ?? {};
+    const continuousPoint = intent.continuousPoint ?? cell.continuousPoint ?? {};
+    const ui = this.ensureWaterColumnUiState();
+    const layerId = cell.depthLayerId ?? cell.selectedDepthLayerId ?? intent.depthLayerId ?? ui.activeDepthLayerId ?? ui.selectedTargetDepthLayerId ?? 'surface';
+    const metadata = waterColumnLayerMetadata(layerId);
+    const depthMeters = Number(cell.depthMeters ?? cell.selectedDepthMeters ?? intent.worldPoint?.depthMeters ?? metadata.nominalDepthMeters ?? 0);
+    const x = Number.isFinite(Number(continuousPoint.x)) ? Number(continuousPoint.x) : Number(cell.continuousX ?? cell.x ?? 0);
+    const y = Number.isFinite(Number(continuousPoint.y)) ? Number(continuousPoint.y) : Number(cell.continuousY ?? cell.y ?? 0);
+    return {
+      x: this.roundContinuousCoordinate(x),
+      y: this.roundContinuousCoordinate(y),
+      depthMeters: Math.max(0, Number.isFinite(depthMeters) ? Number(depthMeters) : 0),
+      depthLayerId: layerId,
+      coordinateFrame: continuousPoint.coordinateFrame ?? 'continuousGridV1',
+      label: `${labelizeForScene(layerId)} Sampling Target`
+    };
+  }
+
+  selectSamplingTargetFromThree(targetId, intent) {
+    const target = this.findScienceTargetById(targetId);
+    if (!target) return this.threeInteractionResult(intent, 'rejected', { userMessage: 'No sampling target found for inspection.', warnings: ['No sampling target found for inspection.'] });
+    this.app.state.ui ??= {};
+    this.app.state.ui.selectedScienceTargetId = target.id ?? targetId;
+    this.app.state.ui.selectedWaypoint = null;
+    this.app.state.ui.selectedMarker = null;
+    this.app.state.ui.threeMissionInteraction ??= {};
+    this.app.state.ui.threeMissionInteraction.selectedEntity = { objectType: 'samplingTarget', objectId: this.app.state.ui.selectedScienceTargetId, targetId: this.app.state.ui.selectedScienceTargetId, gridCell: intent.gridCell };
+    this.refreshPanels();
+    this.refreshMap();
+    return this.threeInteractionResult(intent, 'accepted', { selectedTargetId: this.app.state.ui.selectedScienceTargetId, userMessage: 'Sampling target selected.' });
+  }
+
+  findScienceTargetById(targetId) {
+    return getScienceTargetById(this.app.state.plan, targetId);
+  }
+
+  selectedPlannedDiveSegment() {
+    const selectedId = this.app.state.ui?.divePlanDebug?.selectedSegmentId ?? globalThis.ANCHOR_DIVE_PLAN_DEBUG?.selectedSegmentId ?? null;
+    return (this.missionRenderViewModel?.plannedDiveSegments ?? []).find((segment) => segment.segmentId === selectedId)
+      ?? (this.missionRenderViewModel?.plannedDiveSegments ?? []).find((segment) => segment.agentId === this.app.state.selectedAgentId)
+      ?? this.missionRenderViewModel?.plannedDiveSegments?.[0]
+      ?? null;
+  }
+
+  attachScienceTargetToSelectedSegment() {
+    const targetId = this.app.state.ui?.selectedScienceTargetId;
+    const target = this.findScienceTargetById(targetId);
+    const segment = this.selectedPlannedDiveSegment();
+    if (!target || !segment) {
+      this.app.toast?.('Select a sampling target and a route segment first.', 'warning');
+      return null;
+    }
+    const attachedSegmentIds = [...new Set([...(target.attachedSegmentIds ?? []), segment.segmentId])];
+    const updated = updateScienceTarget(this.app.state.plan, target.id, { attachedSegmentIds });
+    const agentPlan = (this.app.state.plan?.agentPlans ?? []).find((plan) => plan.agentId === segment.agentId);
+    const waypoint = agentPlan?.waypoints?.[Number(segment.segmentIndex)];
+    if (waypoint) {
+      waypoint.scienceTargetIds = [...new Set([...(waypoint.scienceTargetIds ?? []), target.id])];
+      waypoint.targetDepthLayerId = target.depthLayerId ?? waypoint.targetDepthLayerId;
+      waypoint.maximumDiveDepthMeters = Math.max(Number(waypoint.maximumDiveDepthMeters ?? 0), Number(target.position?.depthMeters ?? target.depthMeters ?? 0));
+    }
+    this.markManualPlan();
+    this.refreshPanels();
+    this.refreshMap();
+    this.app.toast?.('Sampling target attached to selected segment.', 'success');
+    return updated;
+  }
+
+  detachSelectedScienceTarget() {
+    const targetId = this.app.state.ui?.selectedScienceTargetId;
+    const target = this.findScienceTargetById(targetId);
+    if (!target) return null;
+    const segment = this.selectedPlannedDiveSegment();
+    const attachedSegmentIds = segment ? (target.attachedSegmentIds ?? []).filter((id) => id !== segment.segmentId) : [];
+    const updated = updateScienceTarget(this.app.state.plan, target.id, { attachedSegmentIds });
+    for (const agentPlan of this.app.state.plan?.agentPlans ?? []) {
+      for (const waypoint of agentPlan.waypoints ?? []) waypoint.scienceTargetIds = (waypoint.scienceTargetIds ?? []).filter((id) => id !== target.id);
+    }
+    this.markManualPlan();
+    this.refreshPanels();
+    this.refreshMap();
+    this.app.toast?.('Sampling target detached.', 'info');
+    return updated;
+  }
+
+  focusSelectedScienceTarget() {
+    this.setThreeCameraPreset('divePlanningView');
+  }
+
+  setTargetLayerFromSelectedScienceTarget() {
+    const target = this.findScienceTargetById(this.app.state.ui?.selectedScienceTargetId);
+    if (!target?.depthLayerId) return;
+    this.setWaterColumnTargetLayer(target.depthLayerId);
+    this.setWaterColumnActiveLayer(target.depthLayerId);
+  }
+
+  copyTargetDepthToRequestedDepth() {
+    const target = this.findScienceTargetById(this.app.state.ui?.selectedScienceTargetId);
+    const depth = Number(target?.position?.depthMeters ?? target?.depthMeters);
+    if (!Number.isFinite(depth)) return;
+    this.setWaterColumnMaximumDepth(depth);
+  }
+
+  recommendScienceTargetProfiles() {
+    const target = this.findScienceTargetById(this.app.state.ui?.selectedScienceTargetId);
+    const depth = Number(target?.position?.depthMeters ?? target?.depthMeters ?? 0);
+    const recommendation = depth <= 5 ? 'Surface Only' : depth <= 45 ? 'Thermocline Dive' : depth <= 100 ? 'Sawtooth Profile' : 'Full Profile';
+    this.app.state.ui ??= {};
+    this.app.state.ui.scienceTargetProfileRecommendation = { targetId: target?.id ?? null, recommendation, depthMeters: depth };
+    this.refreshPanels();
+    this.app.toast?.(`Recommended profile: ${recommendation}.`, 'info');
   }
   placeWaypointFromThree(intent) {
     const cell = intent.gridCell;
@@ -4610,6 +4802,10 @@ function summarizeTemporalGreedyTiers(stop = {}) {
   return summary;
 }
 
+function labelizeForScene(value) {
+  return String(value ?? '').replace(/([a-z])([A-Z])/g, '$1 $2').replace(/[-_]/g, ' ').replace(/^./, (char) => char.toUpperCase());
+}
+
 function labelizeStopReason(reason) {
   return String(reason ?? 'unknown')
     .replace(/_/g, ' ')
@@ -4823,6 +5019,9 @@ function plannedDiveDebugPayload(viewModel = {}, rendererSummary = null, selecte
     predictedMinimumBottomClearance: selected?.bottomClearance?.minimumClearanceMeters ?? null,
     predictedTerrainLimited: selected?.bottomClearance?.terrainLimited === true,
     predictedSamplesByLayer: selected?.expectedScience?.samplesByLayer ?? {},
+    scienceTargetIds: selected?.scienceTargetIds ?? [],
+    targetCoverage: selected?.targetCoverage ?? [],
+    targetCoverageStatuses: (selected?.targetCoverage ?? []).map((coverage) => coverage.status),
     warningCodes: selected?.warningCodes ?? [],
     plannedDiveThreeObjectCount: summary.objectCount ?? 0,
     plannedSampleThreeObjectCount: summary.predictedSampleObjectCount ?? 0,

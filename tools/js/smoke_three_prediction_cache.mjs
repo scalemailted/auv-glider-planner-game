@@ -1,0 +1,10 @@
+import assert from 'node:assert/strict';
+import { buildPlannedDiveSegmentViewModel } from '../../src/core/rendering/PlannedDiveSegmentViewModel.js';
+import { TEST_WATER_COLUMN_CONFIG } from './water_column_smoke_helpers.mjs';
+const opts = { startWaypoint: { x: 0, y: 1 }, targetWaypoint: { x: 5, y: 1, diveProfileId: 'sawtoothProfile', targetDepthLayerId: 'deep' }, waterColumnConfig: TEST_WATER_COLUMN_CONFIG, bottomBoundary: { bottomDepthField: Array.from({ length: 3 }, () => Array.from({ length: 7 }, () => 180)) }, requestedMaximumDepthMeters: 90, cycleCount: 2 };
+const a = buildPlannedDiveSegmentViewModel(opts);
+const b = buildPlannedDiveSegmentViewModel({ ...opts, cameraPreset: 'sideProfile' });
+const c = buildPlannedDiveSegmentViewModel({ ...opts, cycleCount: 1 });
+assert.equal(JSON.stringify(a.predictedDivePath), JSON.stringify(b.predictedDivePath), 'camera does not invalidate canonical prediction');
+assert.notEqual(JSON.stringify(a.predictedDivePath), JSON.stringify(c.predictedDivePath), 'profile/cycle change changes prediction');
+console.log(JSON.stringify({ ok: true }));

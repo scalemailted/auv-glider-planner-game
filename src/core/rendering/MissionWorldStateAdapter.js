@@ -5,6 +5,7 @@ import { getDeploymentZonesForAgent, getSelectedStart } from '../deployment/Depl
 import { getActivePriorityTargets } from '../sim/PriorityTargets.js';
 import { getMobileHazardsAtTime } from '../sim/MobileHazards.js';
 import { computePlannedCoverage, computeTravelCostField, getCellRoiDisplayValue, normalizeRoiMode } from '../roi/RoiMode.js';
+import { normalizeContinuousScienceTarget } from '../science/ContinuousScienceTarget.js';
 
 export const MISSION_WORLD_STATE_ADAPTER_VERSION = 'mission-world-state-adapter-three-r1-1';
 
@@ -39,6 +40,7 @@ export function missionWorldRenderInputFromReplay(replayState = {}, options = {}
     selectedWaypointId: options.selectedWaypointId ?? null,
     selectedMarkerId: options.selectedMarkerId ?? null,
     selectedPriorityTargetId: options.selectedPriorityTargetId ?? null,
+    selectedScienceTargetId: options.selectedScienceTargetId ?? replayState.selectedScienceTargetId ?? publicState.selectedScienceTargetId ?? null,
     activeTimeSeconds: Number(replayState.timeSeconds ?? publicState.timeSeconds ?? 0) || 0,
     displaySettings: { ...(options.displaySettings ?? {}), rendererBackend: options.rendererBackend ?? 'threeMission3d' },
     visibilityTier: options.visibilityTier ?? 'fair',
@@ -64,6 +66,7 @@ export function missionWorldRenderInputSummary(input = {}) {
     routeCount: input.options?.routes?.length ?? input.plan?.agentPlans?.filter((agentPlan) => agentPlan.waypoints?.length).length ?? 0,
     planningMarkerCount: input.planningMarkers?.length ?? input.plan?.planningMarkers?.length ?? 0,
     priorityTargetCount: input.options?.priorityTargets?.length ?? 0,
+    scienceTargetCount: input.options?.scienceTargets?.length ?? input.scienceTargets?.length ?? input.plan?.scienceTargets?.length ?? 0,
     currentVectorCount: input.currentField?.vectors?.length ?? 0,
     hiddenTruthExcluded: input.options?.includesHiddenTruth !== true,
     ownsSimulationState: false,
@@ -89,6 +92,7 @@ function missionWorldRenderInputFromState(state = {}, options = {}) {
   const selectedWaypointId = selectedWaypointIdentity(state.ui?.selectedWaypoint);
   const selectedMarkerId = selectedMarkerIdentity(state.ui?.selectedMarker, plan);
   const selectedPriorityTargetId = state.ui?.selectedPriorityTargetId ?? null;
+  const selectedScienceTargetId = state.ui?.selectedScienceTargetId ?? null;
   const selectedWindow = state.selectedWindow ?? getWindowForTime(level, activeTimeSeconds);
   const displaySettings = normalizeDisplaySettings(state.ui, options.displaySettings);
   const sampleField = buildSampleField({ level, mission, plan, frame, state, selectedAgentId, selectedWaypoint: state.ui?.selectedWaypoint, activeTimeSeconds, displaySettings });
@@ -99,6 +103,7 @@ function missionWorldRenderInputFromState(state = {}, options = {}) {
   const waypoints = buildWaypointList(plan);
   const routes = buildRouteList(plan, mission);
   const planningMarkers = (plan?.planningMarkers ?? []).map((marker) => ({ ...marker, executable: false }));
+  const scienceTargets = buildScienceTargetList(plan, selectedScienceTargetId);
   const priorityTargets = getActivePriorityTargets(level, activeTimeSeconds).map((target) => ({
     ...target,
     x: target.position?.x,
@@ -120,8 +125,10 @@ function missionWorldRenderInputFromState(state = {}, options = {}) {
     selectedWaypointId,
     selectedMarkerId,
     selectedPriorityTargetId,
+    selectedScienceTargetId,
     selectedCell: options.selectedCell ?? state.ui?.hoverCell ?? null,
     planningMarkers,
+    scienceTargets,
     activeTimeSeconds,
     planningWindow: { index: selectedWindow, startTimeSeconds: selectedWindowStart(level, selectedWindow), durationSeconds: level?.world?.time?.planningWindow ?? null },
     fieldState: { frameSource: frame?.source ?? null, frameTimeSeconds: frame?.t ?? activeTimeSeconds, challengeMode, roiViewMode: displaySettings.roiViewMode },
@@ -142,6 +149,7 @@ function missionWorldRenderInputFromState(state = {}, options = {}) {
       waypoints,
       routes,
       planningMarkers,
+      scienceTargets,
       priorityTargets,
       hazards: [...staticHazards, ...mobileHazards],
       constraints: level?.layers?.terrain ?? [],
@@ -175,6 +183,7 @@ function normalizeDisplaySettings(ui = {}, patch = {}) {
     routes: ui.threeMissionLayers?.routes !== false,
     planningMarkers: ui.threeMissionLayers?.planningMarkers !== false,
     priorityTargets: ui.threeMissionLayers?.priorityTargets !== false,
+    samplingTargets: ui.threeMissionLayers?.samplingTargets !== false,
     scalarOpacity: patch.scalarOpacity ?? 0.72,
     ...(patch ?? {}),
     waterColumn: {
@@ -188,7 +197,10 @@ function normalizeDisplaySettings(ui = {}, patch = {}) {
       currentDisplayMode: ui.waterColumn?.currentDisplayMode ?? patch.waterColumn?.currentDisplayMode ?? 'activeLayerOnly',
       selectedDiveProfileId: ui.waterColumn?.selectedDiveProfileId ?? patch.waterColumn?.selectedDiveProfileId ?? null,
       selectedTargetDepthLayerId: ui.waterColumn?.selectedTargetDepthLayerId ?? patch.waterColumn?.selectedTargetDepthLayerId ?? null,
-      maximumDiveDepthMeters: ui.waterColumn?.maximumDiveDepthMeters ?? patch.waterColumn?.maximumDiveDepthMeters ?? null
+      maximumDiveDepthMeters: ui.waterColumn?.maximumDiveDepthMeters ?? patch.waterColumn?.maximumDiveDepthMeters ?? null,
+      cycleCount: ui.waterColumn?.cycleCount ?? patch.waterColumn?.cycleCount ?? null,
+      sampleIntervalSeconds: ui.waterColumn?.sampleIntervalSeconds ?? patch.waterColumn?.sampleIntervalSeconds ?? null,
+      verticalExaggeration: ui.waterColumn?.verticalExaggeration ?? patch.waterColumn?.verticalExaggeration ?? 1
     }
   };
 }
@@ -310,6 +322,24 @@ function buildGliders({ mission, state, selectedAgentId }) {
 
 function buildWaypointList(plan) {
   return (plan?.agentPlans ?? []).flatMap((agentPlan) => (agentPlan.waypoints ?? []).map((waypoint, index) => ({ ...waypoint, agentId: agentPlan.agentId, index })));
+}
+
+function buildScienceTargetList(plan, selectedScienceTargetId = null) {
+  return (plan?.scienceTargets ?? []).map((target) => {
+    const normalized = normalizeContinuousScienceTarget(target);
+    return {
+      ...normalized,
+      targetId: normalized.id,
+      x: normalized.position.x,
+      y: normalized.position.y,
+      depthMeters: normalized.position.depthMeters,
+      z: -normalized.position.depthMeters,
+      selected: normalized.id === selectedScienceTargetId,
+      executable: false,
+      navigationAuthority: false,
+      scoreAuthority: false
+    };
+  });
 }
 
 function buildRouteList(plan, mission = null) {

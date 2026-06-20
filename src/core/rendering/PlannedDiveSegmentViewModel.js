@@ -1,6 +1,7 @@
 import { normalizeDiveProfile } from '../science/DiveProfileModel.js';
 import { assessDiveProfileFeasibility } from '../science/DiveProfileFeasibility.js';
 import { normalizeWaterColumnConfig, waterColumnLayerMetadata } from '../science/WaterColumnSchema.js';
+import { normalizeContinuousScienceTarget } from '../science/ContinuousScienceTarget.js';
 
 export const PLANNED_DIVE_SEGMENT_VIEW_MODEL_VERSION = 'planned-dive-segment-view-model-three-r1-2a-4';
 
@@ -62,6 +63,9 @@ export function buildPlannedDiveSegmentViewModel(options = {}) {
   const bottomTurns = predictedDivePath.filter((point) => point.phase === 'bottomTurn');
   const layerCrossings = layerCrossingsForPath(predictedDivePath);
   const predictedSamples = predictedSamplesForPath(predictedDivePath, options.layerFields, options.sampleIntervalSeconds ?? target.sampleIntervalSeconds ?? options.sampleInterval ?? null);
+  const scienceTargets = normalizeSegmentScienceTargets(options.scienceTargets, { segmentId, target });
+  const scienceTargetIds = scienceTargets.filter((scienceTarget) => scienceTarget.attached).map((scienceTarget) => scienceTarget.id);
+  const targetCoverage = scienceTargets.map((scienceTarget) => targetCoverageForSegment(scienceTarget, { segmentId, predictedDivePath, predictedSamples, achievableMaximumDepthMeters }));
   const clearance = bottomClearanceSummary(predictedDivePath, requiredBottomClearanceMeters);
   const predictedSurfacingPosition = predictedCurrentCorrectedPath.at(-1) ?? predictedDivePath.at(-1) ?? { ...target, depthMeters: 0 };
   const predictedSurfacingOffset = {
@@ -99,11 +103,14 @@ export function buildPlannedDiveSegmentViewModel(options = {}) {
     bottomTurns,
     layerCrossings,
     predictedSamples,
+    scienceTargetIds,
+    targetCoverage,
     predictedSurfacingPosition,
     predictedSurfacingOffset,
     bottomClearance: clearance,
     feasibility,
     expectedScience: expectedScienceSummary(predictedSamples),
+    expectedTargetCoverage: expectedTargetCoverageSummary(targetCoverage),
     expectedEnergy: feasibility.energyEstimate ?? null,
     expectedDuration: expectedDuration(surfaceDistanceMeters, achievableMaximumDepthMeters, options),
     surfaceDistanceMeters: round(surfaceDistanceMeters),
@@ -117,7 +124,8 @@ export function buildPlannedDiveSegmentViewModel(options = {}) {
       ownsPlanning: false,
       ownsScoring: false,
       usesArbitraryXYZWaypoints: false,
-      rendererOwnsPrediction: false
+      rendererOwnsPrediction: false,
+      targetCoverageCreatesScore: false
     }
   };
   return segment;
@@ -160,6 +168,8 @@ export function plannedDiveSegmentViewModelSummary(segment = {}) {
     predictedDivePointCount: segment.predictedDivePath?.length ?? 0,
     predictedCurrentPathPointCount: segment.predictedCurrentCorrectedPath?.length ?? 0,
     predictedSampleCount: segment.predictedSamples?.length ?? 0,
+    scienceTargetCount: segment.scienceTargetIds?.length ?? 0,
+    targetCoverageStatuses: (segment.targetCoverage ?? []).map((coverage) => coverage.status),
     predictedLayerCrossingCount: segment.layerCrossings?.length ?? 0,
     predictedBottomTurnCount: segment.bottomTurns?.length ?? 0,
     predictedSurfacingPosition: segment.predictedSurfacingPosition ?? null,
@@ -196,7 +206,8 @@ export function buildPlannedDiveSegmentsForRoutes(options = {}) {
         targetDepthLayerId: target.targetDepthLayerId ?? target.depthLayerId ?? route.targetDepthLayerId ?? options.targetDepthLayerId,
         requestedMaximumDepthMeters: target.maximumDiveDepthMeters ?? target.maximumDepthMeters ?? route.maximumDepthMeters ?? options.requestedMaximumDepthMeters,
         sampleIntervalSeconds: target.sampleIntervalSeconds ?? route.sampleIntervalSeconds ?? options.sampleIntervalSeconds,
-        cycleCount: target.cycleCount ?? route.cycleCount ?? options.cycleCount
+        cycleCount: target.cycleCount ?? route.cycleCount ?? options.cycleCount,
+        scienceTargets: options.scienceTargets
       }));
     }
     return segments;
@@ -247,6 +258,86 @@ function buildDivePath({ segmentId, start, target, profile, targetDepthLayerId, 
       predicted: true
     };
   });
+}
+
+function normalizeSegmentScienceTargets(targets = [], { segmentId, target } = {}) {
+  const attachedFromTarget = new Set(Array.isArray(target?.scienceTargetIds) ? target.scienceTargetIds.map(String) : []);
+  return (targets ?? []).map((record) => {
+    const normalized = normalizeContinuousScienceTarget(record);
+    const attachedBySegment = (normalized.attachedSegmentIds ?? []).includes(segmentId);
+    const attachedByWaypoint = attachedFromTarget.has(normalized.id);
+    return { ...normalized, attached: attachedBySegment || attachedByWaypoint };
+  }).filter((targetRecord) => targetRecord.attached || targetRecord.selected === true || attachedFromTarget.has(targetRecord.id));
+}
+
+function targetCoverageForSegment(target, { segmentId, predictedDivePath = [], predictedSamples = [], achievableMaximumDepthMeters = 0 } = {}) {
+  const targetDepth = finite(target.position?.depthMeters ?? target.depthMeters, 0);
+  const horizontalRadius = Math.max(0.05, finite(target.horizontalRadius ?? target.radiusMeters, 0.8));
+  const verticalRadius = Math.max(0.5, finite(target.verticalRadius ?? target.radiusMeters, 8));
+  const desiredSampleCount = Math.max(1, Math.round(finite(target.desiredSampleCount, 1)));
+  if (!target.attached) {
+    return coverageRecord(target, segmentId, 'NOT_ATTACHED', Infinity, 0, 0, 0, 0, null, 'target not attached to segment', ['TARGET_NOT_ATTACHED']);
+  }
+  if (!predictedDivePath.length) {
+    return coverageRecord(target, segmentId, 'UNREACHABLE', Infinity, 0, 0, 0, 0, null, 'no predicted path', ['NO_PREDICTED_PATH']);
+  }
+  const targetX = finite(target.position?.x ?? target.x, 0);
+  const targetY = finite(target.position?.y ?? target.y, 0);
+  let best = { horizontal: Infinity, vertical: Infinity, routeProgress: 0 };
+  for (const point of predictedDivePath) {
+    const horizontal = Math.hypot(finite(point.x, 0) - targetX, finite(point.y, 0) - targetY);
+    const vertical = Math.abs(finite(point.depthMeters, 0) - targetDepth);
+    const distance = Math.hypot(horizontal, vertical / 20);
+    if (distance < Math.hypot(best.horizontal, best.vertical / 20)) best = { horizontal, vertical, routeProgress: point.routeProgress ?? 0 };
+  }
+  const matchingSamples = predictedSamples.filter((sample) => Math.hypot(finite(sample.x, 0) - targetX, finite(sample.y, 0) - targetY) <= horizontalRadius && Math.abs(finite(sample.depthMeters, 0) - targetDepth) <= verticalRadius);
+  const horizontalOverlap = clamp01(1 - best.horizontal / horizontalRadius);
+  const depthOverlap = clamp01(1 - best.vertical / verticalRadius);
+  const timeOverlap = clamp01(1 - Math.abs(0.5 - finite(best.routeProgress, 0.5)) * 2);
+  const expectedScienceValue = matchingSamples.map((sample) => Number(sample.expectedScienceValue)).filter(Number.isFinite).reduce((sum, value) => sum + value, 0);
+  let status = 'UNREACHABLE';
+  let limitingFactor = 'target depth beyond achievable profile';
+  const warningCodes = [];
+  if (targetDepth > finite(achievableMaximumDepthMeters, 0) + verticalRadius) warningCodes.push('TARGET_DEPTH_BEYOND_ACHIEVABLE');
+  else if (matchingSamples.length >= desiredSampleCount && horizontalOverlap > 0 && depthOverlap > 0) {
+    status = 'COVERED';
+    limitingFactor = 'none';
+  } else if (horizontalOverlap > 0.2 && depthOverlap > 0.2) {
+    status = matchingSamples.length > 0 ? 'PARTIALLY_COVERED' : 'CROSSED_WITHOUT_SAMPLE';
+    limitingFactor = matchingSamples.length > 0 ? 'sample count below desired coverage' : 'path crosses target without expected sample';
+    warningCodes.push(matchingSamples.length > 0 ? 'PARTIAL_TARGET_COVERAGE' : 'CROSSED_WITHOUT_SAMPLE');
+  } else if (horizontalOverlap <= 0.2) {
+    limitingFactor = 'horizontal closest approach outside target radius';
+    warningCodes.push('HORIZONTAL_MISS');
+  } else {
+    limitingFactor = 'depth closest approach outside target interval';
+    warningCodes.push('DEPTH_MISS');
+  }
+  return coverageRecord(target, segmentId, status, best.horizontal, depthOverlap, horizontalOverlap, timeOverlap, matchingSamples.length, expectedScienceValue, limitingFactor, warningCodes);
+}
+
+function coverageRecord(target, segmentId, status, closestApproach, depthOverlap, horizontalOverlap, timeOverlap, predictedSampleCount, expectedScienceValue, limitingFactor, warningCodes = []) {
+  return {
+    targetId: target.id,
+    segmentId,
+    status,
+    closestApproach: Number.isFinite(closestApproach) ? round(closestApproach) : null,
+    depthOverlap: round(depthOverlap),
+    horizontalOverlap: round(horizontalOverlap),
+    timeOverlap: round(timeOverlap),
+    predictedSampleCount,
+    expectedScienceValue: expectedScienceValue == null ? null : round(expectedScienceValue),
+    limitingFactor,
+    warningCodes,
+    createsScoreEvent: false,
+    predictionOnly: true
+  };
+}
+
+function expectedTargetCoverageSummary(coverage = []) {
+  const byStatus = {};
+  for (const item of coverage) byStatus[item.status] = (byStatus[item.status] ?? 0) + 1;
+  return { targetCount: coverage.length, byStatus, createsScoreEvents: false };
 }
 
 function buildCurrentCorrectedPath(points, vectorFieldLayer, scale) {
@@ -506,6 +597,10 @@ function distance(a, b) {
 
 function lerp(a, b, t) {
   return Number(a ?? 0) + (Number(b ?? 0) - Number(a ?? 0)) * clamp(t, 0, 1);
+}
+
+function clamp01(value) {
+  return clamp(value, 0, 1);
 }
 
 function clamp(value, min, max) {

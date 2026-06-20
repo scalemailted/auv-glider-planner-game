@@ -37,3 +37,6 @@ Actual samples and trajectories remain authoritative. Predicted sample locations
 This is a synthetic educational mission-planning model, not an operational or calibrated ocean forecast. No arbitrary XYZ waypoint planner is implemented. No WebGPU fluid simulation or new simulation engine is introduced.
 
 Physical and exploded water-column modes use the same canonical segment trajectory. Only display coordinates change.
+## THREE-R1.2A.4.1 Planning Semantics Note
+
+Surface waypoints are executable navigation/surfacing targets. Sampling targets are non-executable scientific objectives in the water column. Dive profiles determine underwater motion between surface waypoints. Predicted samples never earn score; actual observations are authoritative. The camera and vertical exaggeration are presentation only. Multi-yo prediction and execution use shared canonical kinematics. Performance quality profiles do not change canonical results. No arbitrary XYZ route planner is implemented. No operationally calibrated glider model is claimed.

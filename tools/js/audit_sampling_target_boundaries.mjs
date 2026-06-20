@@ -1,0 +1,10 @@
+import assert from 'node:assert/strict';
+import fs from 'node:fs';
+const contract = fs.readFileSync('src/core/science/ContinuousScienceTarget.js', 'utf8');
+const layer = fs.readFileSync('src/game/three/layers/ThreeSamplingTargetLayer.js', 'utf8');
+assert.match(contract, /executable: false/, 'sampling targets are non-executable');
+assert.match(contract, /canCreateScoreWithoutObservation: false/, 'no score without actual observation');
+assert.doesNotMatch(contract, /from 'three'|from "three"/, 'core target contract has no Three dependency');
+assert.match(layer, /ownsScoring: false/, 'renderer target layer does not own score');
+assert.doesNotMatch(layer, /addWaypoint|score\s*\+=/, 'renderer target layer does not mutate route or score');
+console.log(JSON.stringify({ ok: true }));

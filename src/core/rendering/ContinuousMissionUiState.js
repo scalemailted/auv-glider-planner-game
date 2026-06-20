@@ -98,6 +98,7 @@ export function normalizeContinuousMissionUiState(input = {}) {
       ?? activeDepthLayerId,
     availableDepthLayerIds
   );
+  const verticalExaggeration = normalizeVerticalExaggeration(input.verticalExaggeration ?? source.verticalExaggeration ?? source.continuousMission?.verticalExaggeration ?? waterColumnUi.verticalExaggeration);
   const availableDiveProfileIds = normalizeAvailableDiveProfileIds(input.availableDiveProfileIds ?? waterColumnProfileOptions().map((profile) => profile.id));
   const warnings = [];
   if (waypointSnapMode === 'freePlacement' && coordinateProfileId !== 'continuousGridV1') {
@@ -120,6 +121,7 @@ export function normalizeContinuousMissionUiState(input = {}) {
     verticalDisplayMode,
     selectedDiveProfileId: availableDiveProfileIds.includes(selectedDiveProfileId) ? selectedDiveProfileId : availableDiveProfileIds[0] ?? 'surfaceOnly',
     selectedTargetDepthLayerId,
+    verticalExaggeration,
     continuousPlacementEnabled: coordinateProfileId === 'continuousGridV1',
     volumetricFieldEnabled: availableDepthLayerIds.length > 1,
     depthPlanningEnabled: availableDepthLayerIds.length > 1,
@@ -149,6 +151,7 @@ export function validateContinuousMissionUiState(state = {}) {
   if (!['physicalDepth', 'explodedLayers'].includes(state.verticalDisplayMode)) errors.push(`Unsupported verticalDisplayMode: ${state.verticalDisplayMode}`);
   if (!state.selectedDiveProfileId) errors.push('selectedDiveProfileId is required.');
   if (!state.selectedTargetDepthLayerId) errors.push('selectedTargetDepthLayerId is required.');
+  if (![1, 2, 4, 8].includes(Number(state.verticalExaggeration))) errors.push('Unsupported verticalExaggeration: ' + state.verticalExaggeration);
   if (state.boundaryFlags?.usesArbitraryXYZRoutePlanning !== false) errors.push('UI state must not claim arbitrary XYZ route planning.');
   if (state.boundaryFlags?.rendererOwnsPlanning !== false) errors.push('Renderer must not own planning.');
   if (state.boundaryFlags?.rendererOwnsSimulation !== false) errors.push('Renderer must not own simulation.');
@@ -169,6 +172,7 @@ export function continuousMissionUiStateSummary(state = {}) {
     verticalDisplayMode: state.verticalDisplayMode ?? null,
     selectedDiveProfileId: state.selectedDiveProfileId ?? null,
     selectedTargetDepthLayerId: state.selectedTargetDepthLayerId ?? null,
+    verticalExaggeration: state.verticalExaggeration ?? 1,
     continuousPlacementEnabled: state.continuousPlacementEnabled === true,
     volumetricFieldEnabled: state.volumetricFieldEnabled === true,
     depthPlanningEnabled: state.depthPlanningEnabled === true,
@@ -223,4 +227,9 @@ function normalizeAvailableDiveProfileIds(ids) {
 
 function normalizeVerticalDisplayMode(value) {
   return value === 'explodedLayers' ? 'explodedLayers' : 'physicalDepth';
+}
+function normalizeVerticalExaggeration(value) {
+  const numeric = Number(value);
+  if ([1, 2, 4, 8].includes(numeric)) return numeric;
+  return 1;
 }

@@ -2970,6 +2970,209 @@ test('Surface Waypoints Produce a Predicted Three-Dimensional Dive', async ({ pa
   assertContinuousBrowserErrorsClean(browserErrors);
 });
 
+test('Three Camera Reveals Full Water-Column Dive', async ({ page }) => {
+  const browserErrors = attachBrowserErrorCollector(page);
+  await prepareThreeSamplingTargetDiveScenario(page, { attach: true, profile: 'thermoclineDive', layer: 'thermocline', cycles: 2 });
+  await page.locator('#mission-console [data-action="water-column-focus-predicted-dive"]').click();
+  await expect.poll(() => page.evaluate(() => window.ANCHOR_MISSION_RENDER_DEBUG?.cameraPresetId)).toBe('selectedSegmentDive');
+  await expect.poll(() => page.evaluate(() => window.ANCHOR_DIVE_PLAN_DEBUG?.predictedDivePointCount ?? 0)).toBeGreaterThan(0);
+  const before = await page.evaluate(() => ({
+    polar: Number(window.ANCHOR_MISSION_RENDER_DEBUG?.cameraCurrentPolarRadians ?? window.ANCHOR_MISSION_RENDER_DEBUG?.cameraPolarRadians ?? 0),
+    min: Number(window.ANCHOR_MISSION_RENDER_DEBUG?.cameraMinPolarRadians ?? 0),
+    max: Number(window.ANCHOR_MISSION_RENDER_DEBUG?.cameraMaxPolarRadians ?? 0),
+    planDigest: JSON.stringify(window.anchorGame.state.plan)
+  }));
+  expect(before.min).toBeLessThanOrEqual(0.1);
+  expect(before.max).toBeGreaterThanOrEqual(1.48);
+  await page.locator('#mission-console [data-action="three-camera"][data-preset="sideProfile"]').click();
+  await expect.poll(() => page.evaluate(() => window.ANCHOR_MISSION_RENDER_DEBUG?.cameraPresetId)).toBe('sideProfile');
+  const point = await threeGridPoint(page, 4, 3);
+  await page.mouse.move(point.x, point.y);
+  await page.mouse.down({ button: 'right' });
+  await page.mouse.move(point.x, point.y + 80, { steps: 8 });
+  await page.mouse.up({ button: 'right' });
+  await expect.poll(() => page.evaluate((startPolar) => {
+    const debug = window.ANCHOR_MISSION_RENDER_DEBUG ?? {};
+    return Math.abs(Number(debug.cameraCurrentPolarRadians ?? debug.cameraPolarRadians ?? 0) - startPolar) > 0.01 || Number(debug.cameraOrbitChangeCount ?? 0) > 0;
+  }, before.polar)).toBe(true);
+  await page.locator('#mission-console [data-action="water-column-vertical-exaggeration"][data-value="4"]').click();
+  await page.evaluate(() => window.anchorGame.phaser.scene.getScene('MissionWorkspaceScene')?.setWaterColumnVerticalExaggeration?.(4));
+  await expect.poll(() => page.evaluate(() => window.anchorGame.state.ui?.waterColumn?.verticalExaggeration)).toBe(4);
+  await expect(page.evaluate((digest) => JSON.stringify(window.anchorGame.state.plan) === digest, before.planDigest)).resolves.toBe(true);
+  assertContinuousBrowserErrorsClean(browserErrors);
+});
+
+test('Surface Waypoints and Sampling Targets Have Distinct Semantics', async ({ page }) => {
+  const browserErrors = attachBrowserErrorCollector(page);
+  const setup = await prepareThreeSamplingTargetDiveScenario(page, { attach: false, profile: 'thermoclineDive', layer: 'thermocline' });
+  const state = await page.evaluate(({ agentId, targetId }) => {
+    const agentPlan = window.anchorGame.state.plan.agentPlans.find((plan) => plan.agentId === agentId);
+    const target = window.anchorGame.state.plan.scienceTargets.find((candidate) => candidate.id === targetId);
+    return {
+      waypointCount: agentPlan?.waypoints?.length ?? 0,
+      timelineWaypointCount: window.ANCHOR_MISSION_RENDER_DEBUG?.timelineWaypointCount ?? null,
+      scienceTargetCount: window.ANCHOR_MISSION_RENDER_DEBUG?.scienceTargetCount ?? 0,
+      targetExecutable: target?.executable,
+      targetNavigationAuthority: target?.navigationAuthority,
+      targetDepthLayerId: target?.depthLayerId,
+      selectedEntityType: window.anchorGame.state.ui?.threeMissionInteraction?.selectedEntity?.objectType ?? null,
+      selectedTargetId: window.anchorGame.state.ui?.selectedScienceTargetId ?? null
+    };
+  }, setup);
+  expect(state.waypointCount).toBe(2);
+  expect(state.timelineWaypointCount).toBe(2);
+  expect(state.scienceTargetCount).toBeGreaterThanOrEqual(1);
+  expect(state.targetExecutable).toBe(false);
+  expect(state.targetNavigationAuthority).toBe(false);
+  expect(state.targetDepthLayerId).toBe('thermocline');
+  expect(state.selectedEntityType).toBe('samplingTarget');
+  expect(state.selectedTargetId).toBe(setup.targetId);
+  await expect(page.locator('#mission-console [data-science-targets-panel]')).toContainText('Science Targets');
+  assertContinuousBrowserErrorsClean(browserErrors);
+});
+
+test('Sampling Target Drives Predicted Dive Without Becoming a Navigation Point', async ({ page }) => {
+  const browserErrors = attachBrowserErrorCollector(page);
+  const setup = await prepareThreeSamplingTargetDiveScenario(page, { attach: true, profile: 'thermoclineDive', layer: 'thermocline', cycles: 2 });
+  await page.locator('#mission-console [data-action="science-target-set-layer"]').click();
+  await page.locator('#mission-console [data-action="science-target-copy-depth"]').click();
+  await page.locator('#mission-console [data-action="science-target-recommend"]').click();
+  const state = await page.evaluate(({ agentId, targetId }) => {
+    const agentPlan = window.anchorGame.state.plan.agentPlans.find((plan) => plan.agentId === agentId);
+    const target = window.anchorGame.state.plan.scienceTargets.find((candidate) => candidate.id === targetId);
+    const scene = window.anchorGame.phaser.scene.getScene('MissionWorkspaceScene');
+    const segments = scene.missionRenderViewModel?.plannedDiveSegments ?? [];
+    const coverageSegment = segments.find((candidate) => (candidate.targetCoverage ?? []).some((coverage) => coverage.targetId === targetId)) ?? null;
+    const diveSegment = segments.find((candidate) => (candidate.predictedDivePath ?? []).some((point) => Number(point.depthMeters ?? 0) > 0)) ?? coverageSegment ?? segments[0];
+    return {
+      waypointCount: agentPlan?.waypoints?.length ?? 0,
+      targetAttached: (target?.attachedSegmentIds ?? []).length > 0,
+      waypointTargetIds: (agentPlan?.waypoints ?? []).flatMap((waypoint) => waypoint.scienceTargetIds ?? []),
+      coverageStatuses: coverageSegment?.targetCoverage?.map((coverage) => coverage.status) ?? diveSegment?.targetCoverage?.map((coverage) => coverage.status) ?? [],
+      predictedSamplesScore: segments.some((candidate) => (candidate.predictedSamples ?? []).some((sample) => sample.createsScoreEvent === true)),
+      surfaceIntentAtSurface: diveSegment?.surfaceIntentPath?.every((point) => Number(point.depthMeters ?? 0) === 0) === true,
+      predictedDescends: (diveSegment?.predictedDivePath ?? []).some((point) => Number(point.depthMeters ?? 0) > 0),
+      recommendation: window.anchorGame.state.ui?.scienceTargetProfileRecommendation?.recommendation ?? null
+    };
+  }, setup);
+  expect(state.waypointCount).toBe(2);
+  expect(state.targetAttached).toBe(true);
+  expect(state.waypointTargetIds).toContain(setup.targetId);
+  expect(state.coverageStatuses.length).toBeGreaterThan(0);
+  expect(state.coverageStatuses.every((status) => ['COVERED', 'PARTIALLY_COVERED', 'CROSSED_WITHOUT_SAMPLE', 'UNREACHABLE', 'NOT_ATTACHED'].includes(status))).toBe(true);
+  expect(state.predictedSamplesScore).toBe(false);
+  expect(state.surfaceIntentAtSurface).toBe(true);
+  expect(state.predictedDescends).toBe(true);
+  expect(state.recommendation).toBeTruthy();
+  assertContinuousBrowserErrorsClean(browserErrors);
+});
+
+test('Predicted Multi-Yo Profile Executes Through Canonical Simulation', async ({ page }) => {
+  await page.goto('/');
+  const result = await page.evaluate(async () => {
+    const { buildPlannedDiveSegmentViewModel } = await import('./src/core/rendering/PlannedDiveSegmentViewModel.js');
+    const { advanceGliderDiveStateMachine } = await import('./src/core/sim/GliderDiveStateMachine.js');
+    const waterColumnConfig = { depthLayerIds: ['surface', 'shallow', 'thermocline', 'deep'], defaultLayerIds: ['surface', 'thermocline', 'deep'], divediveProfileId: 'sawtoothProfile' };
+    const segment = buildPlannedDiveSegmentViewModel({
+      segmentId: 'e2e-multi-yo',
+      startWaypoint: { x: 0, y: 2 },
+      targetWaypoint: { x: 12, y: 2, divediveProfileId: 'sawtoothProfile', targetDepthLayerId: 'deep' },
+      waterColumnConfig,
+      bottomBoundary: { bottomDepthField: Array.from({ length: 5 }, () => Array.from({ length: 14 }, () => 220)) },
+      requestedMaximumDepthMeters: 110,
+      cycleCount: 3,
+      sampleCount: 100
+    });
+    const machine = advanceGliderDiveStateMachine({ position: { depthMeters: 0 }, divePhase: 'surface' }, { waterColumnConfig, targetDepthLayerId: 'deep', requestedMaximumDepthMeters: 110, achievableMaximumDepthMeters: segment.achievableMaximumDepthMeters, cycleCount: segment.requestedCycleCount, segmentProgress: 1, routeProgress: 1, diveProfileId: 'sawtoothProfile' });
+    return {
+      predictedCycles: segment.cycleCount,
+      requestedCycles: segment.requestedCycleCount,
+      actualCompletedCycles: machine.actualCompletedCycleCount,
+      predictionExecutionMatch: machine.feasibleCycleCount === segment.cycleCount,
+      predictedBottomTurns: segment.bottomTurns.length,
+      predictionOwnsSimulation: segment.boundaryFlags?.ownsSimulation === true,
+      predictionOwnsScoring: segment.boundaryFlags?.ownsScoring === true
+    };
+  });
+  expect(result.predictedCycles).toBeGreaterThanOrEqual(2);
+  expect(result.actualCompletedCycles).toBe(result.predictedCycles);
+  expect(result.predictionExecutionMatch).toBe(true);
+  expect(result.predictedBottomTurns).toBeGreaterThan(0);
+  expect(result.predictionOwnsSimulation).toBe(false);
+  expect(result.predictionOwnsScoring).toBe(false);
+});
+
+test('Three Camera Interaction Does Not Rebuild Mission Models', async ({ page }) => {
+  const browserErrors = attachBrowserErrorCollector(page);
+  await prepareThreeSamplingTargetDiveScenario(page, { attach: true, profile: 'thermoclineDive', layer: 'thermocline' });
+  const before = await page.evaluate(() => ({
+    planDigest: JSON.stringify(window.anchorGame.state.plan),
+    scienceTargetCount: window.ANCHOR_MISSION_RENDER_DEBUG?.scienceTargetCount ?? 0,
+    waypointCount: window.ANCHOR_MISSION_RENDER_DEBUG?.canonicalWaypointCount ?? 0,
+    slabTextureCount: window.ANCHOR_WATER_COLUMN_RENDER_DEBUG?.slabTextureCount ?? 0,
+    panelDispatchCount: window.ANCHOR_CONTINUOUS_UI_DEBUG?.overlayControlDispatchCount ?? 0
+  }));
+  const point = await threeGridPoint(page, 4, 3);
+  for (let index = 0; index < 3; index += 1) {
+    await page.mouse.move(point.x, point.y);
+    await page.mouse.down({ button: 'right' });
+    await page.mouse.move(point.x + 40, point.y + 20, { steps: 4 });
+    await page.mouse.up({ button: 'right' });
+  }
+  const after = await page.evaluate(() => ({
+    planDigest: JSON.stringify(window.anchorGame.state.plan),
+    scienceTargetCount: window.ANCHOR_MISSION_RENDER_DEBUG?.scienceTargetCount ?? 0,
+    waypointCount: window.ANCHOR_MISSION_RENDER_DEBUG?.canonicalWaypointCount ?? 0,
+    slabTextureCount: window.ANCHOR_WATER_COLUMN_RENDER_DEBUG?.slabTextureCount ?? 0,
+    panelDispatchCount: window.ANCHOR_CONTINUOUS_UI_DEBUG?.overlayControlDispatchCount ?? 0,
+    cameraOrbitChangeCount: window.ANCHOR_MISSION_RENDER_DEBUG?.cameraOrbitChangeCount ?? 0
+  }));
+  expect(after.planDigest).toBe(before.planDigest);
+  expect(after.scienceTargetCount).toBe(before.scienceTargetCount);
+  expect(after.waypointCount).toBe(before.waypointCount);
+  expect(after.slabTextureCount).toBe(before.slabTextureCount);
+  expect(after.panelDispatchCount).toBe(before.panelDispatchCount);
+  expect(after.cameraOrbitChangeCount).toBeGreaterThan(0);
+  assertContinuousBrowserErrorsClean(browserErrors);
+});
+
+test('Three Mission Renderer Resources Remain Stable', async ({ page }) => {
+  const browserErrors = attachBrowserErrorCollector(page);
+  await prepareThreeSamplingTargetDiveScenario(page, { attach: true, profile: 'deepDive', layer: 'deep' });
+  const snapshot = () => page.evaluate(async () => {
+    const { threeMissionWorldRendererSummary } = await import('./src/game/three/ThreeMissionWorldRenderer.js');
+    const scene = window.anchorGame.phaser.scene.getScene('MissionWorkspaceScene');
+    const summary = threeMissionWorldRendererSummary(scene.threeMissionRenderer);
+    return {
+      waypointObjectCount: summary.waypointObjectCount,
+      samplingTargetObjectCount: summary.samplingTargetObjectCount,
+      plannedDiveObjectCount: summary.plannedDiveTrajectorySummary?.objectCount ?? 0,
+      slabTextureCount: summary.slabTextureCount,
+      disposed: summary.disposed,
+      ownsPlanning: summary.ownsPlanning,
+      ownsScoring: summary.ownsScoring,
+      ownsSimulationState: summary.ownsSimulationState
+    };
+  });
+  const before = await snapshot();
+  for (const preset of ['divePlanningView', 'sideProfile', 'obliqueDive', 'tacticalTopDown']) {
+    await page.locator(`#mission-console [data-action="three-camera"][data-preset="${preset}"]`).click();
+  }
+  await page.locator('#mission-console [data-action="water-column-display-mode"][data-mode="explodedLayers"]').click();
+  await page.locator('#mission-console [data-action="water-column-display-mode"][data-mode="physicalDepth"]').click();
+  await page.locator('#mission-console [data-action="water-column-layer-visibility"][data-mode="isolateActive"]').click();
+  await page.locator('#mission-console [data-action="water-column-layer-visibility"][data-mode="showAll"]').click();
+  const after = await snapshot();
+  expect(after.disposed).toBe(false);
+  expect(after.ownsPlanning).toBe(false);
+  expect(after.ownsScoring).toBe(false);
+  expect(after.ownsSimulationState).toBe(false);
+  expect(after.waypointObjectCount).toBe(before.waypointObjectCount);
+  expect(after.samplingTargetObjectCount).toBe(before.samplingTargetObjectCount);
+  expect(after.plannedDiveObjectCount).toBeGreaterThan(0);
+  expect(after.slabTextureCount).toBeLessThanOrEqual(before.slabTextureCount + 8);
+  assertContinuousBrowserErrorsClean(browserErrors);
+});
 test('Segment Distance Changes Predicted Dive Geometry', async ({ page }) => {
   await page.goto('/');
   const result = await page.evaluate(async () => {
@@ -3001,13 +3204,13 @@ test('Predicted and Realized Dive Paths Remain Distinct', async ({ page }) => {
   const result = await page.evaluate(async () => {
     const { buildPlannedDiveSegmentViewModel } = await import('./src/core/rendering/PlannedDiveSegmentViewModel.js');
     const { buildRealizedDiveTrajectory } = await import('./src/core/rendering/DiveTrajectoryViewModel.js');
-    const waterColumnConfig = { depthLayerIds: ['surface', 'shallow', 'thermocline', 'deep'], defaultLayerIds: ['surface', 'thermocline', 'deep'], diveProfileId: 'sawtoothProfile' };
-    const predicted = buildPlannedDiveSegmentViewModel({ startWaypoint: { x: 0, y: 1 }, targetWaypoint: { x: 6, y: 3, diveProfileId: 'sawtoothProfile', targetDepthLayerId: 'deep' }, waterColumnConfig, bottomBoundary: { bottomDepthField: Array.from({ length: 5 }, () => Array.from({ length: 8 }, () => 180)) }, requestedMaximumDepthMeters: 110, cycleCount: 2 });
+    const waterColumnConfig = { depthLayerIds: ['surface', 'shallow', 'thermocline', 'deep'], defaultLayerIds: ['surface', 'thermocline', 'deep'], divediveProfileId: 'sawtoothProfile' };
+    const predicted = buildPlannedDiveSegmentViewModel({ startWaypoint: { x: 0, y: 1 }, targetWaypoint: { x: 6, y: 3, divediveProfileId: 'sawtoothProfile', targetDepthLayerId: 'deep' }, waterColumnConfig, bottomBoundary: { bottomDepthField: Array.from({ length: 5 }, () => Array.from({ length: 8 }, () => 180)) }, requestedMaximumDepthMeters: 110, cycleCount: 2 });
     const frozen = JSON.stringify(predicted.predictedDivePath);
     const actual = [{ x: 0, y: 1, depthMeters: 0 }, { x: 2.2, y: 1.7, depthMeters: 65 }, { x: 4.5, y: 2.6, depthMeters: 96 }];
-    const growing = buildRealizedDiveTrajectory({ points: actual, diveProfileId: 'sawtoothProfile' });
+    const growing = buildRealizedDiveTrajectory({ points: actual, divediveProfileId: 'sawtoothProfile' });
     actual.push({ x: 6.4, y: 3.2, depthMeters: 0 });
-    const completed = buildRealizedDiveTrajectory({ points: actual, diveProfileId: 'sawtoothProfile' });
+    const completed = buildRealizedDiveTrajectory({ points: actual, divediveProfileId: 'sawtoothProfile' });
     return {
       predictionFrozen: JSON.stringify(predicted.predictedDivePath) === frozen,
       actualGrows: completed.points.length > growing.points.length,
@@ -4155,8 +4358,8 @@ test('Three Depth-Aware Dive and Sampling', async ({ page }) => {
     const agentId = state.selectedAgentId ?? state.mission?.agents?.[0]?.id;
     const zone = state.level?.zones?.find((candidate) => candidate.type === 'deployment') ?? state.level?.zones?.[0];
     scene.trySelectDeploymentStart(zone?.cells?.[0] ?? { x: 1, y: 1 });
-    scene.addWaypointForSelected({ x: 5, y: 2, action: 'sample', diveProfileId: 'sawtoothProfile', targetDepthLayerId: 'thermocline', depthLayerId: 'thermocline' });
-    scene.addWaypointForSelected({ x: 6, y: 3, action: 'sample', diveProfileId: 'sawtoothProfile', targetDepthLayerId: 'deep', depthLayerId: 'deep' });
+    scene.addWaypointForSelected({ x: 5, y: 2, action: 'sample', divediveProfileId: 'sawtoothProfile', targetDepthLayerId: 'thermocline', depthLayerId: 'thermocline' });
+    scene.addWaypointForSelected({ x: 6, y: 3, action: 'sample', divediveProfileId: 'sawtoothProfile', targetDepthLayerId: 'deep', depthLayerId: 'deep' });
     const plan = state.plan.agentPlans.find((candidate) => candidate.agentId === agentId);
     plan.diveProfileId = 'sawtoothProfile';
     plan.targetDepthLayerId = 'thermocline';
@@ -4632,6 +4835,45 @@ async function expectMainMenuSceneIsolation(page) {
   expect(snapshot.rightPanelText).not.toMatch(/Mission Waypoints|Waypoint \d|MISSION WINDOW|Glider/i);
 }
 
+async function prepareThreeSamplingTargetDiveScenario(page, { attach = true, profile = 'thermoclineDive', layer = 'thermocline', cycles = 2 } = {}) {
+  await startVisibleContinuousMissionPlanning(page);
+  await page.locator('#mission-console [data-action="three-camera"][data-preset="tacticalTopDown"]').click();
+  await expect.poll(() => page.evaluate(() => window.ANCHOR_MISSION_RENDER_DEBUG?.cameraPresetId)).toBe('tacticalTopDown');
+  const agentId = await selectedAgentId(page);
+  await deploySelectedGliderThroughVisibleControls(page, agentId);
+  await page.locator('#mission-console [data-action="waypoint-snap-mode"][data-mode="freePlacement"]').click();
+  for (let index = 0; index < 2; index += 1) {
+    const pair = await adjacentPlaceableWaypointPair(page, agentId);
+    await page.locator('#mission-console [data-action="mission-planning-tool"][data-tool="placeWaypoint"]').click();
+    await clickBetweenThreeGridCells(page, pair.a, pair.b, index === 0 ? 0.34 : 0.58);
+  }
+  await expectWaypointCount(page, 2);
+  await page.locator(`#mission-console [data-action="water-column-dive-profile"][data-profile="${profile}"]`).click();
+  await page.locator(`#mission-console [data-action="water-column-target-layer"][data-layer="${layer}"]`).click();
+  await page.locator(`#mission-console [data-action="water-column-active-layer"][data-layer="${layer}"]`).click();
+  await page.locator(`#mission-console [data-action="water-column-cycle-count"][data-cycles="${cycles}"]`).click();
+  await expect.poll(() => page.evaluate(() => window.ANCHOR_DIVE_PLAN_DEBUG?.predictedDiveAvailable === true), { timeout: 10000 }).toBe(true);
+  const targetCell = await page.evaluate((id) => {
+    const agentPlan = window.anchorGame.state.plan.agentPlans.find((plan) => plan.agentId === id);
+    const waypoints = agentPlan?.waypoints ?? [];
+    const a = waypoints[0] ?? { x: 2, y: 2 };
+    const b = waypoints[1] ?? a;
+    return { x: Math.round((Number(a.x) + Number(b.x)) / 2), y: Math.round((Number(a.y) + Number(b.y)) / 2) };
+  }, agentId);
+  await page.locator('#mission-console [data-action="mission-planning-tool"][data-tool="placeSamplingTarget"]').click();
+  await expect.poll(() => page.evaluate(() => window.ANCHOR_MISSION_RENDER_DEBUG?.activePlanningToolId)).toBe('placeSamplingTarget');
+  const depthPoint = await page.evaluate(({ layerId, cell }) => window.ANCHOR_MISSION_RENDER_TEST_API?.screenPointForDepthCell?.(layerId, cell.x, cell.y) ?? null, { layerId: layer, cell: targetCell });
+  expect(depthPoint).toBeTruthy();
+  await page.mouse.click(depthPoint.x, depthPoint.y);
+  await expect.poll(() => page.evaluate(() => window.ANCHOR_MISSION_RENDER_DEBUG?.scienceTargetCount ?? 0)).toBeGreaterThan(0);
+  const targetId = await page.evaluate(() => window.anchorGame.state.ui?.selectedScienceTargetId ?? window.anchorGame.state.plan?.scienceTargets?.[0]?.id ?? null);
+  expect(targetId).toBeTruthy();
+  if (attach) {
+    await page.locator('#mission-console [data-action="science-target-attach"]').click();
+    await expect.poll(() => page.evaluate((id) => (window.anchorGame.state.plan?.scienceTargets ?? []).find((target) => target.id === id)?.attachedSegmentIds?.length ?? 0, targetId)).toBeGreaterThan(0);
+  }
+  return { agentId, targetId, targetCell };
+}
 async function startVisibleContinuousMissionPlanning(page) {
   await page.goto('/');
   await openMainMenuHubSection(page, 'challenge');
@@ -5236,14 +5478,14 @@ async function installWaterColumnE2eConfig(page) {
       enabled: true,
       depthLayerIds: ['surface', 'shallow', 'thermocline', 'deep'],
       defaultLayerIds: ['surface', 'thermocline', 'deep'],
-      diveProfileId: 'sawtoothProfile'
+      divediveProfileId: 'sawtoothProfile'
     };
     state.ui ??= {};
     state.ui.waterColumn = {
       ...(state.ui.waterColumn ?? {}),
       verticalDisplayMode: 'physicalDepth',
       activeDepthLayerId: 'thermocline',
-      selectedDiveProfileId: 'sawtoothProfile',
+      selectedDivediveProfileId: 'sawtoothProfile',
       selectedTargetDepthLayerId: 'thermocline',
       selectedScalarFieldId: 'sampleValue',
       currentDisplayMode: 'activeLayerOnly',

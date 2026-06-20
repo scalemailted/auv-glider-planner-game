@@ -1,0 +1,21 @@
+import assert from 'node:assert/strict';
+import * as THREE from 'three';
+import { updateThreeSamplingTargetLayer, clearThreeSamplingTargetLayer } from '../../src/game/three/layers/ThreeSamplingTargetLayer.js';
+import { makeVolumetricViewModel } from './water_column_smoke_helpers.mjs';
+
+const group = new THREE.Group();
+const vm = makeVolumetricViewModel();
+vm.scienceTargets = [{ id: 'target-1', targetId: 'target-1', geometryType: 'layerPoint', x: 2, y: 2, depthMeters: 35, depthLayerId: 'thermocline', attachedSegmentIds: [], selected: true }];
+const originalTarget = JSON.stringify(vm.scienceTargets[0]);
+updateThreeSamplingTargetLayer(group, vm);
+const first = group.userData.objects.get('target-1');
+updateThreeSamplingTargetLayer(group, vm);
+const second = group.userData.objects.get('target-1');
+assert.ok(first, 'target object rendered');
+assert.equal(first, second, 'stable object identity reused');
+assert.equal(first.userData.missionObjectType, 'samplingTarget', 'object userData category');
+assert.equal(first.userData.ownsScoring, false, 'layer does not own scoring');
+assert.equal(JSON.stringify(vm.scienceTargets[0]), originalTarget, 'layer does not mutate target data');
+clearThreeSamplingTargetLayer(group);
+assert.equal(group.children.length, 0, 'disposal clears objects');
+console.log(JSON.stringify({ ok: true }));

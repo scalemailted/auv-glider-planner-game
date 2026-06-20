@@ -38,3 +38,7 @@ The active runtime keeps simulation and scoring authority in the portable core. 
 ## THREE-R1.2A.4 Predicted Dive Planning Baseline
 
 The active entry point remains `src/game/main.js`. The Mission Workspace uses Three.js as the production mission world and consumes renderer-neutral planned dive segment view models. Surface waypoints remain horizontal/surfacing anchors; segment dive profiles create predicted underwater trajectories. Three.js renders the result but does not own prediction authority, planning, simulation, sampling, scoring, route optimization, or hidden truth.
+
+## THREE-R1.2A.4.1 Planning Semantics Note
+
+Surface waypoints are executable navigation/surfacing targets. Sampling targets are non-executable scientific objectives in the water column. Dive profiles determine underwater motion between surface waypoints. Predicted samples never earn score; actual observations are authoritative. The camera and vertical exaggeration are presentation only. Multi-yo prediction and execution use shared canonical kinematics. Performance quality profiles do not change canonical results. No arbitrary XYZ route planner is implemented. No operationally calibrated glider model is claimed.

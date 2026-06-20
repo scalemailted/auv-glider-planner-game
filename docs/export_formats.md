@@ -330,3 +330,7 @@ Replay schema documents live under `schemas/replay-*.schema.json`. Browser summa
 ## Depth-Science Export Fields
 
 `anchor.result` exports now preserve compact `depthScience` summaries and `anchor.score.depth-aware-sample` events when present. Headless bundles may include `depth_science_summary.json` and `depth_science_score_events.json` alongside the water-column summary.
+
+## THREE-R1.2A.4.1 Planning Semantics Note
+
+Surface waypoints are executable navigation/surfacing targets. Sampling targets are non-executable scientific objectives in the water column. Dive profiles determine underwater motion between surface waypoints. Predicted samples never earn score; actual observations are authoritative. The camera and vertical exaggeration are presentation only. Multi-yo prediction and execution use shared canonical kinematics. Performance quality profiles do not change canonical results. No arbitrary XYZ route planner is implemented. No operationally calibrated glider model is claimed.

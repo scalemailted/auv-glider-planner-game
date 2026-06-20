@@ -70,3 +70,7 @@ Volumetric slabs may show layer-specific value, actual samples, and score-by-lay
 ## Planned Dive Trajectory Layer
 
 THREE-R1.2A.4 adds `ThreePlannedDiveTrajectoryLayer` for dashed surface intent paths, translucent predicted dive paths, expected current-corrected paths, bottom-turn markers, layer-crossing markers, predicted sample rings, and predicted surfacing markers. It consumes `plannedDiveSegments` from the volumetric mission view model and owns only display objects.
+
+## THREE-R1.2A.4.1 Planning Semantics Note
+
+Surface waypoints are executable navigation/surfacing targets. Sampling targets are non-executable scientific objectives in the water column. Dive profiles determine underwater motion between surface waypoints. Predicted samples never earn score; actual observations are authoritative. The camera and vertical exaggeration are presentation only. Multi-yo prediction and execution use shared canonical kinematics. Performance quality profiles do not change canonical results. No arbitrary XYZ route planner is implemented. No operationally calibrated glider model is claimed.

@@ -543,6 +543,13 @@ export class HtmlMissionWorkspaceOverlay {
       'water-column-max-depth': (button) => this.handlers.setWaterColumnMaximumDepth?.(button.dataset.depth),
       'water-column-cycle-count': (button) => this.handlers.setWaterColumnCycleCount?.(button.dataset.cycles),
       'water-column-sample-interval': (button) => this.handlers.setWaterColumnSampleInterval?.(button.dataset.seconds),
+      'water-column-vertical-exaggeration': (button) => this.handlers.setWaterColumnVerticalExaggeration?.(button.dataset.value),
+      'science-target-attach': () => this.handlers.attachScienceTargetToSelectedSegment?.(),
+      'science-target-detach': () => this.handlers.detachSelectedScienceTarget?.(),
+      'science-target-focus': () => this.handlers.focusSelectedScienceTarget?.(),
+      'science-target-set-layer': () => this.handlers.setTargetLayerFromSelectedScienceTarget?.(),
+      'science-target-copy-depth': () => this.handlers.copyTargetDepthToRequestedDepth?.(),
+      'science-target-recommend': () => this.handlers.recommendScienceTargetProfiles?.(),
       'water-column-reset-profile': () => this.handlers.resetWaterColumnSegmentProfile?.(),
       'water-column-apply-remaining': () => this.handlers.applyWaterColumnProfileToRemainingSegments?.(),
       'water-column-focus-predicted-dive': () => this.handlers.setThreeCameraPreset?.('selectedSegmentDive'),
@@ -835,7 +842,8 @@ function rendererBackendSection(state, continuousUi = normalizeContinuousMission
     ['hazards', 'Hazards'],
     ['dropZones', 'Drop Zones'],
     ['gliders', 'Gliders'],
-    ['waypoints', 'Waypoints'],
+    ['waypoints', 'Surface Waypoints'],
+    ['samplingTargets', 'Sampling Targets'],
     ['routes', 'Routes'],
     ['planningMarkers', 'Planning Markers'],
     ['priorityTargets', 'Gold Stars'],
@@ -856,15 +864,16 @@ function rendererBackendSection(state, continuousUi = normalizeContinuousMission
           ${planningToolButton('navigate', 'Navigate', activeToolId)}
           ${planningToolButton('selectInspect', 'Select / Edit', activeToolId)}
           ${planningToolButton('selectDeploymentCell', 'Deploy / Change Start', activeToolId)}
-          ${planningToolButton('placeWaypoint', 'Add Waypoint', activeToolId, { disabled: !waypointAvailability.enabled, title: waypointAvailability.reason })}
-          ${planningToolButton('placePlanningMarker', 'Add Marker', activeToolId)}
+          ${planningToolButton('placeWaypoint', 'Place Surface Waypoint', activeToolId, { disabled: !waypointAvailability.enabled, title: waypointAvailability.reason })}
+          ${planningToolButton('placeSamplingTarget', 'Place Sampling Target', activeToolId)}
+          ${planningToolButton('placePlanningMarker', 'Place Planning Marker', activeToolId)}
           <button class="console-button secondary" data-action="three-cancel-interaction">Cancel</button>
         </div>
         <div class="hud-card compact mission-planning-tool-status" data-active-planning-tool="${escapeAttr(activeToolId)}">
           <div><strong>Active Tool:</strong> ${escapeHtml(activeToolLabel)}</div>
           <div>${escapeHtml(activeInstruction)}</div>
         </div>
-        <h3 class="waypoint-section-title">Waypoint Placement</h3>
+        <h3 class="waypoint-section-title">Surface Waypoint Placement</h3>
         <div class="console-button-row wrap">
           ${waypointSnapButton('freePlacement', 'Free Placement', waypointSnapMode, { disabled: coordinateProfile !== 'continuousGridV1', title: coordinateProfile !== 'continuousGridV1' ? 'Continuous placement is available for continuous-grid plans.' : '' })}
           ${waypointSnapButton('snapToCellCenters', 'Snap To Cell', waypointSnapMode)}
@@ -892,6 +901,8 @@ function rendererBackendSection(state, continuousUi = normalizeContinuousMission
           ${cameraButton('activeLayer', 'Active Layer', camera)}
           ${cameraButton('selectedDive', 'Selected Dive', camera)}
           ${cameraButton('selectedSegmentDive', 'Segment Dive', camera)}
+          ${cameraButton('divePlanningView', 'Dive Planning View', camera)}
+          ${cameraButton('obliqueDive', 'Oblique Dive', camera)}
           ${cameraButton('fullRouteDiveOverview', 'Route Dive', camera)}
           ${cameraButton('fleetOverview', 'Fleet', camera)}
           ${cameraButton('focusSelectedGlider', 'Focus Glider', camera)}
@@ -935,10 +946,16 @@ function waterColumnSection(state, continuousUi = normalizeContinuousMissionUiSt
           <div>${escapeHtml(claim)}</div>
           <div><strong>Layers:</strong> ${layerIds.length} available · ${visibleLayerCount} visible | <strong>Active:</strong> ${escapeHtml(labelize(activeLayerId))}</div>
           <div><strong>Mode:</strong> ${escapeHtml(labelize(displayMode))} | <strong>Opacity:</strong> ${opacity}%</div>
+          <div><strong>Vertical Exaggeration:</strong> ${escapeHtml(String(ui.verticalExaggeration ?? 1))}x</div>
+          <div class="hud-muted">Vertical exaggeration changes presentation only.</div>
         </div>
         <div class="console-button-row wrap">
           ${waterColumnModeButton('explodedLayers', 'Exploded Layers', displayMode)}
           ${waterColumnModeButton('physicalDepth', 'Physical Depth', displayMode)}
+          ${verticalExaggerationButton(1, ui.verticalExaggeration)}
+          ${verticalExaggerationButton(2, ui.verticalExaggeration)}
+          ${verticalExaggerationButton(4, ui.verticalExaggeration)}
+          ${verticalExaggerationButton(8, ui.verticalExaggeration)}
           <button class="console-button secondary" data-action="water-column-opacity" data-delta="-0.06">Less Opaque</button>
           <button class="console-button secondary" data-action="water-column-opacity" data-delta="0.06">More Opaque</button>
         </div>
@@ -965,7 +982,7 @@ function waterColumnSection(state, continuousUi = normalizeContinuousMissionUiSt
         </div>
         <div class="console-button-row wrap">${profileButtons}</div>
         <div class="console-button-row wrap">${targetButtons}</div>
-        ${segmentDivePanel}`;
+        ${segmentDivePanel}${scienceTargetsPanel(state)}`;
 }
 
 function segmentDivePlanPanel(state, continuousUi = {}, options = {}) {
@@ -1027,6 +1044,38 @@ function segmentDivePlanPanel(state, continuousUi = {}, options = {}) {
         </div>`;
 }
 
+function scienceTargetsPanel(state) {
+  const targets = state.plan?.scienceTargets ?? [];
+  const selectedId = state.ui?.selectedScienceTargetId ?? null;
+  const recommendation = state.ui?.scienceTargetProfileRecommendation ?? null;
+  const rows = targets.length
+    ? targets.map((target) => {
+      const selected = target.id === selectedId;
+      const attached = (target.attachedSegmentIds ?? []).length ? target.attachedSegmentIds.join(', ') : 'not attached';
+      const depth = target.position?.depthMeters ?? target.depthMeters ?? 0;
+      return `<div class="science-target-row${selected ? ' selected' : ''}"><strong>${escapeHtml(target.label ?? target.id)}</strong><br><span class="hud-muted">${escapeHtml(labelize(target.depthLayerId ?? 'layer'))} | ${escapeHtml(formatMeters(depth))} | ${escapeHtml(attached)}</span></div>`;
+    }).join('')
+    : '<div class="hud-muted">Place a sampling target on a depth layer, then attach it to a route segment. The target guides dive-profile planning but is not an executable waypoint.</div>';
+  const selectedTarget = targets.find((target) => target.id === selectedId) ?? null;
+  const recommendationText = recommendation?.targetId === selectedId ? `<div class="hud-muted">Recommendation: ${escapeHtml(recommendation.recommendation)}</div>` : '';
+  return `
+        <div class="hud-card compact" data-science-targets-panel>
+          <h3>Science Targets</h3>
+          <div><strong>Selected:</strong> ${escapeHtml(selectedTarget?.label ?? selectedId ?? 'none')}</div>
+          ${rows}
+          ${recommendationText}
+          <div class="hud-muted">Sampling targets are non-executable scientific objectives. Predicted samples are estimates; only actual observations score.</div>
+        </div>
+        <div class="console-button-row wrap">
+          <button class="console-button secondary" data-action="science-target-attach" ${selectedTarget ? '' : 'disabled'}>Attach Target to Selected Segment</button>
+          <button class="console-button secondary" data-action="science-target-detach" ${selectedTarget ? '' : 'disabled'}>Detach Target</button>
+          <button class="console-button secondary" data-action="science-target-focus" ${selectedTarget ? '' : 'disabled'}>Focus Target</button>
+          <button class="console-button secondary" data-action="science-target-set-layer" ${selectedTarget ? '' : 'disabled'}>Set as Target Layer</button>
+          <button class="console-button secondary" data-action="science-target-copy-depth" ${selectedTarget ? '' : 'disabled'}>Copy Target Depth</button>
+          <button class="console-button secondary" data-action="science-target-recommend" ${selectedTarget ? '' : 'disabled'}>Recommend Compatible Profiles</button>
+        </div>`;
+}
+
 function waterColumnDepthButton(depth, selectedDepth) {
   const active = Number(selectedDepth) === Number(depth);
   return `<button class="console-button ${active ? 'primary' : 'secondary'}" data-action="water-column-max-depth" data-depth="${depth}">${depth} m</button>`;
@@ -1074,6 +1123,11 @@ function waterColumnTargetLayerButton(layer, selectedTarget) {
 
 function waterColumnProfileButton(profile, selectedProfile) {
   return `<button class="console-button ${selectedProfile === profile.id ? 'primary' : 'secondary'}" data-action="water-column-dive-profile" data-profile="${escapeAttr(profile.id)}">${escapeHtml(profile.label)}</button>`;
+}
+
+function verticalExaggerationButton(value, selectedValue) {
+  const active = Number(selectedValue ?? 1) === Number(value);
+  return `<button class="console-button ${active ? 'primary' : 'secondary'}" data-action="water-column-vertical-exaggeration" data-value="${value}">${value}x</button>`;
 }
 
 function waterColumnModeButton(mode, label, activeMode) {
@@ -1145,6 +1199,7 @@ function planningToolForMode(mode) {
   if (mode === 'navigate') return 'navigate';
   if (mode === 'selectDeployment') return 'selectDeploymentCell';
   if (mode === 'placeWaypoint') return 'placeWaypoint';
+  if (mode === 'placeSamplingTarget') return 'placeSamplingTarget';
   if (mode === 'placeMarker') return 'placePlanningMarker';
   if (mode === 'editWaypoint') return 'editWaypoint';
   return 'selectInspect';
@@ -1176,7 +1231,8 @@ function planningToolLabel(id) {
     navigate: 'Navigate',
     selectInspect: 'Select / Edit',
     selectDeploymentCell: 'Deploy / Change Start',
-    placeWaypoint: 'Add Waypoint',
+    placeWaypoint: 'Place Surface Waypoint',
+    placeSamplingTarget: 'Place Sampling Target',
     editWaypoint: 'Edit Waypoint',
     placePlanningMarker: 'Add Marker'
   }[id] ?? 'Select / Edit';

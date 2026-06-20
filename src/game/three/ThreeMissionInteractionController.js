@@ -351,6 +351,10 @@ function handleClick(controller, hit, event) {
     emit(controller, 'placeWaypoint', { gridCell, continuousPoint, worldPoint: hit.worldPoint, metadata: { objectType: hit.objectType, objectId: hit.objectId, hitCategory: hit.category } });
     return;
   }
+  if (controller.interactionMode === 'placeSamplingTarget') {
+    emit(controller, 'placeSamplingTarget', { gridCell, continuousPoint, worldPoint: hit.worldPoint, depthLayerId: gridCell?.depthLayerId ?? hit.depthLayerId ?? null, metadata: { objectType: hit.objectType, objectId: hit.objectId, hitCategory: hit.category } });
+    return;
+  }
   if (controller.interactionMode === 'placeMarker') {
     emit(controller, 'placePlanningMarker', { gridCell, continuousPoint, worldPoint: hit.worldPoint, metadata: { objectType: hit.objectType, objectId: hit.objectId, hitCategory: hit.category } });
     return;
@@ -367,6 +371,7 @@ function handleClick(controller, hit, event) {
   else if (hit.category === 'planningMarker') emit(controller, 'deletePlanningMarker', { markerId: hit.markerId, gridCell, metadata: { objectType: 'planningMarker', objectId: hit.markerId, selectOnly: true } });
   else if (hit.category === 'glider') emit(controller, 'selectAgent', { agentId: hit.agentId, gridCell, metadata: { objectType: 'glider', objectId: hit.agentId } });
   else if (hit.category === 'priorityTarget') emit(controller, 'selectPriorityTarget', { targetId: hit.targetId, gridCell, metadata: { objectType: 'priorityTarget', objectId: hit.targetId } });
+  else if (hit.category === 'samplingTarget') emit(controller, 'selectSamplingTarget', { targetId: hit.targetId, gridCell, metadata: { objectType: 'samplingTarget', objectId: hit.targetId } });
   else if (hit.category === 'observation') emit(controller, 'selectObservation', { observationId: hit.observationId ?? hit.objectId, agentId: hit.agentId, gridCell, metadata: { objectType: 'observation', objectId: hit.observationId ?? hit.objectId } });
   else if (hit.category === 'surfacingEvent') emit(controller, 'selectSurfacingEvent', { surfacingEventId: hit.surfacingEventId ?? hit.objectId, agentId: hit.agentId, gridCell, metadata: { objectType: 'surfacingEvent', objectId: hit.surfacingEventId ?? hit.objectId } });
   else if (hit.category === 'routeFailure') emit(controller, 'selectRouteFailure', { routeFailureId: hit.routeFailureId ?? hit.objectId, agentId: hit.agentId, gridCell, metadata: { objectType: 'routeFailure', objectId: hit.routeFailureId ?? hit.objectId } });
@@ -423,7 +428,7 @@ function emit(controller, intentId, patch = {}) {
 function prefersGridHitOnPointerUp(controller) {
   const viewModel = controller.viewModel ?? controller.getViewModel?.() ?? null;
   const deploymentActive = viewModel?.interactionViewModel?.deploymentSelectionActive === true;
-  return deploymentActive === true || ['placeWaypoint', 'placeMarker', 'selectDeployment', 'navigate'].includes(controller.interactionMode);
+  return deploymentActive === true || ['placeWaypoint', 'placeSamplingTarget', 'placeMarker', 'selectDeployment', 'navigate'].includes(controller.interactionMode);
 }
 function cameraGestureTypeForEvent(controller, event) {
   if (event.button === 2) return 'orbit';

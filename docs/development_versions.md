@@ -508,3 +508,7 @@ Depth-aware science scoring is now versioned separately from the legacy horizont
 - Added Three.js planned-dive trajectory rendering plus Segment Dive Plan controls for profile, target layer, requested depth, cycles, sample interval, apply-to-remaining, reset, and route-understanding camera presets.
 - Audited the Bathymetric World View route as fixture/illustrative geometry, not canonical prediction, and documented convergence boundaries.
 - Preserved the boundary: no arbitrary XYZ waypoint planner, no new simulation engine, no scoring change, no WebGPU, and no calibrated ocean forecast claim.
+
+## THREE-R1.2A.4.1 Planning Semantics Note
+
+Surface waypoints are executable navigation/surfacing targets. Sampling targets are non-executable scientific objectives in the water column. Dive profiles determine underwater motion between surface waypoints. Predicted samples never earn score; actual observations are authoritative. The camera and vertical exaggeration are presentation only. Multi-yo prediction and execution use shared canonical kinematics. Performance quality profiles do not change canonical results. No arbitrary XYZ route planner is implemented. No operationally calibrated glider model is claimed.

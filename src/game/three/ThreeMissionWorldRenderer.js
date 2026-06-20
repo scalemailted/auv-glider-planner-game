@@ -13,6 +13,7 @@ import { updateThreeWaypointLayer } from './layers/ThreeWaypointLayer.js';
 import { updateThreeRouteLayer } from './layers/ThreeRouteLayer.js';
 import { updateThreePlanningMarkerLayer } from './layers/ThreePlanningMarkerLayer.js';
 import { updateThreePriorityTargetLayer } from './layers/ThreePriorityTargetLayer.js';
+import { updateThreeSamplingTargetLayer, clearThreeSamplingTargetLayer, threeSamplingTargetLayerSummary } from './layers/ThreeSamplingTargetLayer.js';
 import { updateThreeCurrentVectorLayer } from './layers/ThreeCurrentVectorLayer.js';
 import { updateThreeHazardLayer, updateThreeConstraintLayer } from './layers/ThreeHazardLayer.js';
 import { updateThreeSelectionLayer } from './layers/ThreeSelectionLayer.js';
@@ -61,6 +62,7 @@ const GROUP_KEYS = [
   'depthTrajectoryGroup',
   'realizedTrajectoryGroup',
   'markerGroup',
+  'samplingTargetGroup',
   'priorityTargetGroup',
   'observationGroup',
   'surfacingEventGroup',
@@ -181,6 +183,7 @@ export function updateThreeMissionWorldRenderer(renderer, viewModel = {}) {
   updateThreeDepthTrajectoryLayer(renderer.groups.depthTrajectoryGroup, viewModel);
   updateThreeRealizedTrajectoryLayer(renderer.groups.realizedTrajectoryGroup, viewModel);
   updateThreePlanningMarkerLayer(renderer.groups.markerGroup, viewModel);
+  updateThreeSamplingTargetLayer(renderer.groups.samplingTargetGroup, viewModel);
   updateThreePriorityTargetLayer(renderer.groups.priorityTargetGroup, viewModel);
   if (viewModel.phase === 'simulation' || viewModel.type === 'anchor.rendering.simulation-world') updateThreeObservationLayer(renderer.groups.observationGroup, viewModel);
   else updateObservationLayer(renderer.groups.observationGroup, viewModel);
@@ -252,6 +255,7 @@ export function setThreeMissionLayerVisibility(renderer, visibilityPatch = {}) {
   renderer.groups.depthTrajectoryGroup.visible = v.routes !== false || v.realizedTrajectories !== false;
   renderer.groups.realizedTrajectoryGroup.visible = v.realizedTrajectories !== false;
   renderer.groups.markerGroup.visible = v.planningMarkers !== false;
+  renderer.groups.samplingTargetGroup.visible = v.samplingTargets !== false;
   renderer.groups.priorityTargetGroup.visible = v.priorityTargets !== false;
   renderer.groups.observationGroup.visible = v.observations !== false;
   renderer.groups.surfacingEventGroup.visible = v.surfacingEvents !== false;
@@ -298,6 +302,8 @@ export function threeMissionWorldRendererSummary(renderer = {}) {
     realizedTrajectoryObjectCount: renderer.groups?.realizedTrajectoryGroup?.children?.length ?? 0,
     realizedTrajectoryPointCount: countTrajectoryPoints(renderer.groups?.realizedTrajectoryGroup),
     markerObjectCount: renderer.groups?.markerGroup?.children?.length ?? 0,
+    samplingTargetSummary: threeSamplingTargetLayerSummary(renderer.groups?.samplingTargetGroup),
+    samplingTargetObjectCount: renderer.groups?.samplingTargetGroup?.children?.length ?? 0,
     priorityTargetObjectCount: renderer.groups?.priorityTargetGroup?.children?.length ?? 0,
     interactionObjectCount: renderer.groups?.interactionGroup?.children?.length ?? 0,
     guidanceObjectCount: renderer.groups?.guidanceGroup?.children?.length ?? 0,
@@ -337,6 +343,7 @@ export function disposeThreeMissionWorldRenderer(renderer) {
   disposeThreeWaterColumnVolumeFrameLayer(renderer.waterColumnVolumeFrameLayer);
   clearThreePlannedDiveTrajectoryLayer(renderer.groups?.plannedDiveTrajectoryGroup);
   clearThreeDepthTrajectoryLayer(renderer.groups?.depthTrajectoryGroup);
+  clearThreeSamplingTargetLayer(renderer.groups?.samplingTargetGroup);
   disposeThreePlanningInteractionLayer(renderer.planningInteractionLayer);
   disposeThreeMissionCameraController(renderer.cameraController);
   clearThreeRealizedTrajectoryLayer(renderer.groups?.realizedTrajectoryGroup);
@@ -484,13 +491,18 @@ function missionBoundsFromViewModel(viewModel = {}) {
   const cellSize = Number(transform.cellSize ?? 1);
   const width = Math.max(1, Number(grid.width ?? transform.width ?? 12)) * cellSize;
   const height = Math.max(1, Number(grid.height ?? transform.height ?? 12)) * cellSize;
+  const depthScale = Number(transform.depthScale ?? 0.045) * Number(transform.verticalExaggeration ?? viewModel.verticalExaggeration ?? 1);
+  const maxDepth = Math.max(0, ...((viewModel.depthLayers ?? []).map((layer) => Number(layer.representativeDepthMeters ?? layer.depthMeters ?? 0)).filter(Number.isFinite)), Number(viewModel.bottomBoundary?.depthRange?.max ?? viewModel.bottomBoundary?.maximumDepth ?? 0));
+  const minY = -Math.max(4, maxDepth * depthScale + 1);
   return {
     minX: -width / 2,
     maxX: width / 2,
     minZ: -height / 2,
     maxZ: height / 2,
-    radius: Math.max(width, height, 8),
-    center: { x: 0, y: 0, z: 0 }
+    minY,
+    maxY: Math.max(6, Math.max(width, height, 8) * 0.35),
+    radius: Math.max(width, height, Math.abs(minY), 8),
+    center: { x: 0, y: minY / 2, z: 0 }
   };
 }
 
@@ -511,6 +523,7 @@ function defaultLayerVisibility(input = {}) {
     realizedTrajectories: input.realizedTrajectories !== false,
     planningMarkers: input.planningMarkers !== false,
     priorityTargets: input.priorityTargets !== false,
+    samplingTargets: input.samplingTargets !== false,
     observations: input.observations !== false,
     surfacingEvents: input.surfacingEvents !== false,
     routeStatus: input.routeStatus !== false,

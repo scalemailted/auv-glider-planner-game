@@ -7,6 +7,7 @@ export const THREE_MISSION_HIT_TEST_VERSION = 'three-mission-hit-test-three-r1-1
 
 export const THREE_MISSION_HIT_PRIORITY = Object.freeze([
   'waypoint',
+  'samplingTarget',
   'planningMarker',
   'glider',
   'priorityTarget',
@@ -153,7 +154,7 @@ export function shouldUseDepthSlabHit(context, options = {}) {
     ?? interaction.activeToolId
     ?? interaction.interactionMode
     ?? 'selectInspect';
-  return ['selectInspect', 'inspect', 'inspectDepth', 'navigate'].includes(activeToolId);
+  return ['selectInspect', 'inspect', 'inspectDepth', 'navigate', 'placeSamplingTarget'].includes(activeToolId);
 }
 function hitTestMissionEntities(context, raycaster, options = {}) {
   const tests = interactionTestsForPhase(context.viewModel?.phase ?? context.viewModel?.type);
@@ -174,6 +175,10 @@ export function hitTestMissionGlider(context, raycaster, options = {}) {
 
 export function hitTestMissionPriorityTarget(context, raycaster, options = {}) {
   return hitTestGroup('priorityTarget', context.renderer?.groups?.priorityTargetGroup, raycaster, context, options);
+}
+
+export function hitTestMissionSamplingTarget(context, raycaster, options = {}) {
+  return hitTestGroup('samplingTarget', context.renderer?.groups?.samplingTargetGroup, raycaster, context, options);
 }
 
 export function threeMissionHitTestSummary(hit = {}) {
@@ -269,6 +274,7 @@ function missionUserData(object, expectedType = null) {
 
 function matchesExpected(data, expectedType) {
   if (expectedType === 'waypoint') return Boolean(data.waypointId || data.missionObjectType === 'waypoint');
+  if (expectedType === 'samplingTarget') return Boolean(data.targetId || data.missionObjectType === 'samplingTarget');
   if (expectedType === 'planningMarker') return Boolean(data.markerId || data.missionObjectType === 'planningMarker');
   if (expectedType === 'glider') return Boolean(data.agentId || data.missionObjectType === 'glider');
   if (expectedType === 'priorityTarget') return Boolean(data.targetId || data.missionObjectType === 'priorityTarget');
@@ -294,6 +300,7 @@ function interactionTestsForPhase(phase) {
   }
   return [
     ['waypoint', 'waypointGroup'],
+    ['samplingTarget', 'samplingTargetGroup'],
     ['planningMarker', 'markerGroup'],
     ['glider', 'gliderGroup'],
     ['priorityTarget', 'priorityTargetGroup'],
@@ -307,6 +314,7 @@ function groupFromCategory(context, groupKey) {
 
 function normalizeHitCategory(objectType, fallback) {
   if (objectType === 'planningMarker') return 'planningMarker';
+  if (objectType === 'samplingTarget') return 'samplingTarget';
   if (objectType === 'routeStatus') return 'routeFailure';
   return objectType ?? fallback;
 }

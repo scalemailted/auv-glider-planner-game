@@ -45,6 +45,7 @@ export function augmentMissionWorldWithVolumetricModel(baseViewModel = {}, optio
   const configSummary = waterColumnMissionConfigSummary(waterColumnConfig);
   const legacySurfaceOnlyFallback = isLegacySurfaceOnlyMission(waterColumnConfig);
   const waterColumnUi = displaySettings.waterColumn ?? options.waterColumn ?? {};
+  const verticalExaggeration = finiteNumber(waterColumnUi.verticalExaggeration ?? displaySettings.verticalExaggeration ?? baseViewModel.coordinateSystem?.verticalExaggeration, 1);
   const verticalDisplayMode = normalizeVerticalDisplayMode(waterColumnUi.verticalDisplayMode ?? displaySettings.verticalDisplayMode ?? waterColumnConfig.defaultDisplayMode);
   const bottomBoundary = buildBottomBoundaryViewModel({ level, grid, bathymetry: options.bathymetry ?? level?.bathymetry ?? null });
   const layerFields = buildLayerFields({ baseViewModel, waterColumnConfig, grid, selectedFieldId: waterColumnUi.selectedScalarFieldId ?? displaySettings.selectedScalarFieldId });
@@ -65,8 +66,9 @@ export function augmentMissionWorldWithVolumetricModel(baseViewModel = {}, optio
     layerCurrents,
     currentField: baseViewModel.vectorFieldLayer
   });
+  const coordinateSystem = baseViewModel.coordinateSystem ? { ...baseViewModel.coordinateSystem, verticalExaggeration } : baseViewModel.coordinateSystem;
   const coordinateModel = createVolumetricMissionCoordinateModel({
-    coordinateSystem: baseViewModel.coordinateSystem,
+    coordinateSystem,
     verticalDisplayMode,
     depthLayers: operational.layers
   });
@@ -78,6 +80,7 @@ export function augmentMissionWorldWithVolumetricModel(baseViewModel = {}, optio
     cycleCount: Number(waterColumnUi.cycleCount ?? 0) || null,
     sampleIntervalSeconds: Number(waterColumnUi.sampleIntervalSeconds ?? 0) || null
   }));
+  const scienceTargets = baseViewModel.scienceTargets ?? options.scienceTargets ?? plan?.scienceTargets ?? [];
   const plannedDiveSegments = buildPlannedDiveSegmentsForRoutes({
     routes: plannedRoutes,
     waterColumnConfig,
@@ -88,7 +91,8 @@ export function augmentMissionWorldWithVolumetricModel(baseViewModel = {}, optio
     level,
     requestedMaximumDepthMeters: Number(waterColumnUi.maximumDiveDepthMeters ?? 0) || null,
     cycleCount: Number(waterColumnUi.cycleCount ?? 0) || null,
-    sampleIntervalSeconds: Number(waterColumnUi.sampleIntervalSeconds ?? 0) || null
+    sampleIntervalSeconds: Number(waterColumnUi.sampleIntervalSeconds ?? 0) || null,
+    scienceTargets
   });
   const predictedDiveTrajectories = plannedDiveSegments.map(plannedSegmentToDiveTrajectory).filter((trajectory) => trajectory.points.length >= 2);
   const realizedDiveTrajectories = buildRealizedTrajectories(baseViewModel, waterColumnConfig);
@@ -114,6 +118,7 @@ export function augmentMissionWorldWithVolumetricModel(baseViewModel = {}, optio
     version: baseViewModel.version ?? VOLUMETRIC_MISSION_WORLD_VIEW_MODEL_VERSION,
     volumetricVersion: VOLUMETRIC_MISSION_WORLD_VIEW_MODEL_VERSION,
     coordinateModel,
+    verticalExaggeration,
     verticalDisplayMode,
     waterColumnConfig,
     waterColumnConfigSource: configSummary.source,
@@ -131,6 +136,7 @@ export function augmentMissionWorldWithVolumetricModel(baseViewModel = {}, optio
     layerCurrents,
     layerMasks: operational.validDepthMask,
     plannedRoutes,
+    scienceTargets,
     plannedDiveSegments,
     predictedDiveTrajectories,
     realizedDiveTrajectories,
@@ -193,6 +199,7 @@ export function volumetricMissionWorldViewModelSummary(model = {}) {
     depthLayerCount: model.depthLayers?.length ?? 0,
     visibleDepthLayerCount: (model.depthLayers ?? []).filter((layer) => layer.visible !== false).length,
     plannedDiveSegmentCount: model.plannedDiveSegments?.length ?? 0,
+    scienceTargetCount: model.scienceTargets?.length ?? 0,
     plannedDiveSegmentSummaries: (model.plannedDiveSegments ?? []).map(plannedDiveSegmentViewModelSummary),
     predictedTrajectoryCount: model.predictedDiveTrajectories?.length ?? 0,
     predictedTrajectoryPointCount: (model.predictedDiveTrajectories ?? []).reduce((sum, item) => sum + (item.points?.length ?? 0), 0),
@@ -205,6 +212,7 @@ export function volumetricMissionWorldViewModelSummary(model = {}) {
     predictedDiveSummaries: (model.predictedDiveTrajectories ?? []).map(diveTrajectoryViewModelSummary),
     selectedPlannedDiveSegment: plannedDiveSegmentViewModelSummary((model.plannedDiveSegments ?? [])[0] ?? {}),
     displayMetadataOnly: model.coordinateModel?.displayMetadataOnly === true,
+    verticalExaggeration: model.verticalExaggeration ?? model.coordinateSystem?.verticalExaggeration ?? null,
     usesFree3DPlanning: model.boundaryFlags?.usesFree3DPlanning === true,
     usesHorizontalWaypoints: model.boundaryFlags?.usesHorizontalWaypoints !== false,
     usesDiveProfiles: model.boundaryFlags?.usesDiveProfiles !== false,
@@ -249,6 +257,9 @@ export function waterColumnRenderDebugPayload(viewModel = {}, rendererSummary = 
     fallbackReason: volumetricSummary.waterColumnFallbackReason ?? null,
     verticalDisplayMode: viewModel.verticalDisplayMode ?? null,
     verticalScale: viewModel.coordinateModel?.verticalScale ?? ((viewModel.coordinateSystem?.depthScale ?? null) === null ? null : Number(viewModel.coordinateSystem?.depthScale ?? 0) * Number(viewModel.coordinateSystem?.verticalExaggeration ?? 1)),
+    verticalExaggeration: viewModel.verticalExaggeration ?? viewModel.coordinateSystem?.verticalExaggeration ?? 1,
+    canonicalDepthDigest: canonicalDepthDigest(viewModel),
+    displayDepthDigest: displayDepthDigest(viewModel),
     activeDepthLayerId: viewModel.activeDepthLayerId ?? null,
     canonicalLayerCount: operationalSummary.canonicalLayerCount ?? viewModel.waterColumnConfig?.depthLayerIds?.length ?? 0,
     availableLayerCount: operationalSummary.layerCount ?? depthLayers.length,
@@ -274,6 +285,7 @@ export function waterColumnRenderDebugPayload(viewModel = {}, rendererSummary = 
     selectedDiveProfileId: options.selectedDiveProfileId ?? selectedRoute?.diveProfileId ?? viewModel.waterColumnConfig?.diveProfileId ?? null,
     selectedTargetDepthLayerId: options.selectedTargetDepthLayerId ?? selectedRoute?.targetDepthLayerId ?? viewModel.activeDepthLayerId ?? null,
     plannedDiveSegmentCount: volumetricSummary.plannedDiveSegmentCount ?? 0,
+    scienceTargetCount: volumetricSummary.scienceTargetCount ?? viewModel.scienceTargets?.length ?? 0,
     selectedPlannedDiveSegment: volumetricSummary.selectedPlannedDiveSegment ?? null,
     predictedTrajectoryPointCount: volumetricSummary.predictedTrajectoryPointCount ?? 0,
     realizedTrajectoryPointCount: volumetricSummary.realizedTrajectoryPointCount ?? 0,
@@ -314,6 +326,7 @@ export function volumetricDisplayStateDigest(model = {}) {
     plan: digestRoutes(model.plannedRoutes ?? model.routes ?? []),
     profiles: (model.predictedDiveTrajectories ?? []).map((trajectory) => ({ id: trajectory.id, profile: trajectory.diveProfileId, target: trajectory.targetDepthLayerId, maxDepth: trajectory.maximumDepthMeters })),
     plannedDiveSegments: (model.plannedDiveSegments ?? []).map((segment) => ({ id: segment.segmentId, profile: segment.diveProfileId, target: segment.targetDepthLayerId, cycles: segment.cycleCount, pointCount: segment.predictedDivePath?.length ?? 0 })),
+    scienceTargets: (model.scienceTargets ?? []).map((target) => ({ id: target.id ?? target.targetId, x: target.x ?? target.position?.x, y: target.y ?? target.position?.y, depthMeters: target.depthMeters ?? target.position?.depthMeters, depthLayerId: target.depthLayerId, attachedSegmentIds: target.attachedSegmentIds ?? [] })),
     observations: (model.observations ?? []).map((observation) => ({ id: observation.id, x: observation.x, y: observation.y, depthMeters: observation.depthMeters, depthLayerId: observation.depthLayerId })),
     gliders: (model.gliderPoses ?? []).map((pose) => ({ id: pose.agentId, x: pose.x, y: pose.y, depthMeters: pose.depthMeters, depthLayerId: pose.depthLayerId })),
     boundaryFlags: model.boundaryFlags
@@ -524,4 +537,20 @@ function layerSeparationMetrics(worldYValues = [], layerIds = []) {
     bottomBoundaryWorldY: round(min - 0.45, 6),
     coplanarPairs
   };
+}
+
+function canonicalDepthDigest(model = {}) {
+  return JSON.stringify({
+    targets: (model.scienceTargets ?? []).map((target) => ({ id: target.id ?? target.targetId, depthMeters: target.depthMeters ?? target.position?.depthMeters, depthLayerId: target.depthLayerId })),
+    segments: (model.plannedDiveSegments ?? []).map((segment) => ({ id: segment.segmentId, maxDepth: segment.achievableMaximumDepthMeters, targetLayer: segment.targetDepthLayerId }))
+  });
+}
+
+function displayDepthDigest(model = {}) {
+  return JSON.stringify({
+    verticalDisplayMode: model.verticalDisplayMode ?? null,
+    verticalExaggeration: model.verticalExaggeration ?? model.coordinateSystem?.verticalExaggeration ?? null,
+    layerWorldY: model.coordinateModel?.layerWorldY ?? {},
+    selectedTargetWorldY: (model.scienceTargets ?? []).map((target) => ({ id: target.id ?? target.targetId, depthMeters: target.depthMeters ?? target.position?.depthMeters }))
+  });
 }

@@ -40,3 +40,7 @@ Browser simulation records canonical `anchor.score.depth-aware-sample` events fo
 ## Not Claimed
 
 This is not a calibrated ocean forecast, not full 3D free-flight route planning, not a WebGPU fluid simulator, not MARL/RL, and not production glider control.
+
+## THREE-R1.2A.4.1 Planning Semantics Note
+
+Surface waypoints are executable navigation/surfacing targets. Sampling targets are non-executable scientific objectives in the water column. Dive profiles determine underwater motion between surface waypoints. Predicted samples never earn score; actual observations are authoritative. The camera and vertical exaggeration are presentation only. Multi-yo prediction and execution use shared canonical kinematics. Performance quality profiles do not change canonical results. No arbitrary XYZ route planner is implemented. No operationally calibrated glider model is claimed.

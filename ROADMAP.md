@@ -343,3 +343,12 @@ Current order:
 4. THREE-R2 - Replay, debrief route review, and editor parity.
 
 THREE-R1.2A.4 keeps surface waypoints as navigation/surfacing intent and moves underwater geometry into segment dive-profile prediction. It does not add arbitrary XYZ path planning, WebGPU fluid simulation, calibrated ocean claims, or renderer-owned simulation/scoring.
+
+## Renderer Roadmap Order
+
+1. THREE-R1.2A.4.1 - Sampling targets, camera freedom, multi-yo execution parity, and runtime performance hardening.
+2. THREE-R1.2B - Continuous bathymetric seabed mesh, coastline, and landmass geometry.
+3. THREE-R1.2C - Terrain-aware continuous mission validation and polished 3D presentation.
+4. THREE-R2 - Replay, debrief route review, and editor parity.
+
+Do not mark THREE-R1.2A complete while camera freedom, sampling-target semantics, multi-yo execution parity, or runtime stability remain unverified.

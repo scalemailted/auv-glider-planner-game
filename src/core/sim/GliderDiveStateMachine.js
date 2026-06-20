@@ -32,6 +32,64 @@ export function advanceGliderDiveStateMachine(state = {}, inputs = {}) {
   let pitchRadians = 0;
   const events = [];
 
+  const requestedCycleCount = requestedDiveCycleCount(inputs, profile);
+  const feasibleCycleCount = profile.id === 'surfaceOnly' || targetDepth <= 0.1 ? 0 : Math.max(1, requestedCycleCount);
+
+  if (feasibleCycleCount > 0) {
+    const cycleProgress = segmentProgress * feasibleCycleCount;
+    const cycleIndex = segmentProgress >= 1 ? feasibleCycleCount - 1 : Math.min(feasibleCycleCount - 1, Math.floor(cycleProgress));
+    const localProgress = segmentProgress >= 1 ? 1 : cycleProgress - Math.floor(cycleProgress);
+    const shape = triangularCycle(localProgress);
+    depth = segmentProgress >= 1 ? 0 : targetDepth * shape;
+    verticalVelocity = dt > 0 ? (depth - previousDepth) / dt : 0;
+    phase = cyclePhaseFor(localProgress, segmentProgress, depth);
+    pitchRadians = phase === 'descending' || phase === 'inflectingDown' ? positivePitch(inputs.descentPitchRadians ?? 0.18)
+      : phase === 'ascending' || phase === 'inflectingUp' || phase === 'surfacing' ? -positivePitch(inputs.ascentPitchRadians ?? 0.16)
+        : 0;
+    if (current.divePhase !== phase) events.push(phaseEvent(phase === 'inflectingUp' ? 'surfacing' : phase, current, inputs, { depthMeters: depth, cycleIndex }));
+    const layerCrossingEvents = layerCrossings(previousDepth, depth, config, current, inputs);
+    const bottomClearanceMeters = Number.isFinite(localBottomDepth) ? localBottomDepth - depth : null;
+    const next = normalizeContinuousGliderState({
+      ...current,
+      position: { ...current.position, depthMeters: depth },
+      velocity: { ...current.velocity, vertical: verticalVelocity },
+      groundRelativeVelocity: { ...current.groundRelativeVelocity, vertical: verticalVelocity },
+      pitchRadians,
+      divePhase: phase,
+      profileProgress: cycleProgress / Math.max(1, feasibleCycleCount),
+      segmentProgress,
+      surfaced: depth <= 0.1,
+      transmitting: phase === 'transmitting',
+      timeSeconds: current.timeSeconds + dt,
+      bottomDepthMeters: Number.isFinite(localBottomDepth) ? localBottomDepth : null,
+      bottomClearanceMeters
+    });
+    return {
+      type: 'anchor.sim.glider-dive-state-machine-step',
+      version: GLIDER_DIVE_STATE_MACHINE_VERSION,
+      model: GLIDER_DIVE_KINEMATICS_MODEL,
+      state: next,
+      previousDepthMeters: previousDepth,
+      requestedDepthMeters: requestedDepth,
+      targetDepthMeters: targetDepth,
+      requestedCycleCount,
+      feasibleCycleCount,
+      actualCompletedCycleCount: segmentProgress >= 1 ? feasibleCycleCount : cycleIndex,
+      cycleIndex,
+      cycleProgress: round(localProgress),
+      verticalVelocity,
+      horizontalPropulsionContribution: horizontalSpeed,
+      pitchRadians,
+      phase,
+      phaseTransitionEvents: events,
+      layerCrossingEvents,
+      bottomTurnEvent: phase === 'bottomTurn' ? phaseEvent('bottomTurn', current, inputs, { depthMeters: depth, cycleIndex }) : events.find((event) => event.type === 'bottomTurn') ?? null,
+      surfacingEvent: phase === 'surfacing' || phase === 'inflectingUp' || phase === 'transmitting' ? phaseEvent('surfacing', current, inputs, { cycleIndex }) : events.find((event) => event.type === 'surfacing') ?? null,
+      warnings: warningsForLimits({ requestedDepth, targetDepth, terrainLimitedDepth, ratingLimitedDepth, bottomClearanceMeters }),
+      failures: bottomClearanceMeters != null && bottomClearanceMeters < 0 ? ['seabedPenetrationPrevented'] : []
+    };
+  }
+
   if (targetDepth <= 0.1 || profile.id === 'surfaceOnly') {
     phase = segmentProgress >= 1 ? 'transmitting' : 'surfaced';
     depth = 0;
@@ -128,9 +186,19 @@ export function gliderDiveStateMachineSummary(result = {}) {
     depthMeters: result.state?.position?.depthMeters ?? null,
     pitchRadians: result.pitchRadians ?? result.state?.pitchRadians ?? null,
     targetDepthMeters: result.targetDepthMeters ?? null,
+    requestedCycleCount: result.requestedCycleCount ?? null,
+    feasibleCycleCount: result.feasibleCycleCount ?? null,
+    actualCompletedCycleCount: result.actualCompletedCycleCount ?? null,
     layerCrossingCount: result.layerCrossingEvents?.length ?? 0,
     warningCount: result.warnings?.length ?? 0
   };
+}
+
+function requestedDiveCycleCount(inputs, profile) {
+  if (profile.id === 'surfaceOnly') return 0;
+  const explicit = Number(inputs.cycleCount ?? inputs.requestedCycleCount ?? inputs.multiYoCycleCount);
+  if (Number.isFinite(explicit) && explicit >= 0) return Math.max(0, Math.round(explicit));
+  return 1;
 }
 
 function requestedTargetDepth(inputs, profile, config) {
@@ -176,6 +244,20 @@ function phaseEvent(type, current, inputs, patch = {}) {
   return { type, agentId: current.agentId, t: finite(inputs.timeSeconds ?? current.timeSeconds, 0), ...patch };
 }
 
+function triangularCycle(value) {
+  const local = clamp01(value);
+  return local <= 0.5 ? local * 2 : (1 - local) * 2;
+}
+
+function cyclePhaseFor(localProgress, segmentProgress, depthMeters) {
+  if (segmentProgress >= 1 || depthMeters <= 0.1 && localProgress > 0.95) return 'transmitting';
+  if (depthMeters <= 0.25 && localProgress <= 0.04) return 'inflectingDown';
+  if (localProgress < 0.46) return 'descending';
+  if (localProgress <= 0.54) return 'bottomTurn';
+  if (localProgress < 0.96) return 'ascending';
+  return 'inflectingUp';
+}
+
 function profileProgressFromDepth(depth, targetDepth, phase) {
   if (targetDepth <= 0) return 0;
   const fraction = clamp01(depth / targetDepth);
@@ -201,4 +283,9 @@ function positive(value, fallback) {
 function finite(value, fallback) {
   const number = Number(value);
   return Number.isFinite(number) ? number : fallback;
+}
+
+function round(value, digits = 6) {
+  const number = Number(value);
+  return Number.isFinite(number) ? Number(number.toFixed(digits)) : 0;
 }

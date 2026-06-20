@@ -1,0 +1,12 @@
+import assert from 'node:assert/strict';
+import * as THREE from 'three';
+import { updateThreeSamplingTargetLayer, clearThreeSamplingTargetLayer } from '../../src/game/three/layers/ThreeSamplingTargetLayer.js';
+import { makeVolumetricViewModel } from './water_column_smoke_helpers.mjs';
+const group = new THREE.Group();
+const vm = makeVolumetricViewModel();
+vm.scienceTargets = [{ id: 'target-1', targetId: 'target-1', geometryType: 'layerPoint', x: 2, y: 2, depthMeters: 35, depthLayerId: 'thermocline', attachedSegmentIds: ['route-1-segment-1'] }];
+for (let i = 0; i < 12; i += 1) updateThreeSamplingTargetLayer(group, vm);
+assert.equal(group.userData.objects.size, 1, 'object count plateaus');
+clearThreeSamplingTargetLayer(group);
+assert.equal(group.children.length, 0, 'disposal returns count to zero');
+console.log(JSON.stringify({ ok: true }));

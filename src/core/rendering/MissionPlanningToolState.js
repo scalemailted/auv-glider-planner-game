@@ -5,6 +5,7 @@ export const MISSION_PLANNING_TOOL_IDS = Object.freeze([
   'selectInspect',
   'selectDeploymentCell',
   'placeWaypoint',
+  'placeSamplingTarget',
   'editWaypoint',
   'placePlanningMarker'
 ]);
@@ -13,9 +14,10 @@ export const MISSION_PLANNING_TOOL_LABELS = Object.freeze({
   navigate: 'Navigate',
   selectInspect: 'Select / Edit',
   selectDeploymentCell: 'Deploy Glider / Change Start',
-  placeWaypoint: 'Add Waypoint',
-  editWaypoint: 'Edit Waypoint',
-  placePlanningMarker: 'Add Marker'
+  placeWaypoint: 'Place Surface Waypoint',
+  placeSamplingTarget: 'Place Sampling Target',
+  editWaypoint: 'Edit Surface Waypoint',
+  placePlanningMarker: 'Place Planning Marker'
 });
 
 export const MISSION_PLANNING_TOOL_TO_INTERACTION_MODE = Object.freeze({
@@ -23,6 +25,7 @@ export const MISSION_PLANNING_TOOL_TO_INTERACTION_MODE = Object.freeze({
   selectInspect: 'selectInspect',
   selectDeploymentCell: 'selectDeployment',
   placeWaypoint: 'placeWaypoint',
+  placeSamplingTarget: 'placeSamplingTarget',
   editWaypoint: 'editWaypoint',
   placePlanningMarker: 'placeMarker'
 });
@@ -32,6 +35,7 @@ export const MISSION_INTERACTION_MODE_TO_PLANNING_TOOL = Object.freeze({
   selectInspect: 'selectInspect',
   selectDeployment: 'selectDeploymentCell',
   placeWaypoint: 'placeWaypoint',
+  placeSamplingTarget: 'placeSamplingTarget',
   editWaypoint: 'editWaypoint',
   placeMarker: 'placePlanningMarker'
 });
@@ -152,7 +156,7 @@ export function cursorForTool(toolId, options = {}) {
   if (options.invalid) return 'not-allowed';
   if (options.dragging) return 'grabbing';
   if (id === 'navigate') return 'grab';
-  if (id === 'selectDeploymentCell' || id === 'placeWaypoint') return 'crosshair';
+  if (id === 'selectDeploymentCell' || id === 'placeWaypoint' || id === 'placeSamplingTarget') return 'crosshair';
   if (id === 'placePlanningMarker') return 'copy';
   return 'default';
 }
@@ -182,26 +186,28 @@ function isOneShotTool(toolId) {
 
 function isPersistentTool(toolId) {
   const id = normalizeToolId(toolId);
-  return id === 'placeWaypoint' || id === 'placePlanningMarker' || id === 'navigate' || id === 'selectInspect' || id === 'editWaypoint';
+  return id === 'placeWaypoint' || id === 'placeSamplingTarget' || id === 'placePlanningMarker' || id === 'navigate' || id === 'selectInspect' || id === 'editWaypoint';
 }
 
 function defaultStatusMessage(toolId, context = {}) {
   const label = context.agentLabel ?? context.selectedAgentLabel ?? context.selectedAgentId ?? 'selected glider';
   if (toolId === 'selectDeploymentCell') return `Deploy/change start for ${label}.`;
-  if (toolId === 'placeWaypoint') return `Adding route waypoints for ${label}.`;
+  if (toolId === 'placeWaypoint') return `Adding executable surface waypoints for ${label}.`;
+  if (toolId === 'placeSamplingTarget') return 'Adding non-executable sampling targets.';
   if (toolId === 'placePlanningMarker') return 'Adding non-executable planning markers.';
   if (toolId === 'navigate') return 'Camera navigation active.';
-  if (toolId === 'editWaypoint') return 'Waypoint editing active.';
+  if (toolId === 'editWaypoint') return 'Surface waypoint editing active.';
   return 'Select or inspect mission objects.';
 }
 
 function defaultInstructions(toolId, context = {}) {
   const label = context.agentLabel ?? context.selectedAgentLabel ?? context.selectedAgentId ?? 'the selected glider';
   if (toolId === 'selectDeploymentCell') return `Select a highlighted deployment cell for ${label}.`;
-  if (toolId === 'placeWaypoint') return `Click the mission plane to append route waypoints for ${label}.`;
+  if (toolId === 'placeWaypoint') return `Click the surface mission plane to append executable route waypoints for ${label}.`;
+  if (toolId === 'placeSamplingTarget') return 'Click the active depth slab to place a non-executable science target. Attach it to a route segment before execution.';
   if (toolId === 'placePlanningMarker') return 'Click the mission plane to add a non-executable planning marker.';
   if (toolId === 'navigate') return 'Click: use active planning tool. Left drag: pan. Right drag: rotate. Wheel: zoom. Esc: cancel active tool.';
-  if (toolId === 'editWaypoint') return 'Drag an existing waypoint to move it, or select route objects to inspect.';
+  if (toolId === 'editWaypoint') return 'Drag an existing surface waypoint to move it, or select route objects to inspect.';
   return 'Click objects to select or inspect. Empty-cell clicks do not add route waypoints.';
 }
 

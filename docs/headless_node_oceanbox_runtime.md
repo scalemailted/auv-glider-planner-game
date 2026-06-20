@@ -158,3 +158,7 @@ Node/OceanBox-JS replay verification checks recorded public replay artifacts, de
 ## Depth-Aware Science Components
 
 Node/OceanBox-JS uses the same portable depth-aware sample/profile value evaluator as the browser where water-column observations are available. Headless score reports remain educational unless explicitly compared through browser/headless parity artifacts.
+
+## THREE-R1.2A.4.1 Planning Semantics Note
+
+Surface waypoints are executable navigation/surfacing targets. Sampling targets are non-executable scientific objectives in the water column. Dive profiles determine underwater motion between surface waypoints. Predicted samples never earn score; actual observations are authoritative. The camera and vertical exaggeration are presentation only. Multi-yo prediction and execution use shared canonical kinematics. Performance quality profiles do not change canonical results. No arbitrary XYZ route planner is implemented. No operationally calibrated glider model is claimed.
