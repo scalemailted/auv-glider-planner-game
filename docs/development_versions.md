@@ -43,6 +43,12 @@ Both modes use the same terrain, current fields, hazards, glider physics, scorin
 Challenge Mode also persists `missionMode`. Mission modes are player-facing objective presets such as Survey Sweep, Signal Hunt, Plume Intercept, Danger Run, and Long Glide. They map to shared technical defaults for sample-field behavior, current-field behavior, sampling rules, scoring weights, route-grade weights, and replay/export metadata. Simulation Lab remains the detailed configuration path.
 
 ## Version / Milestone Log
+### THREE-R1.2B.1 - Bathymetry Integration Hardening and Legacy Terrain Retirement
+
+- Added active/legacy terrain path audit docs and production import checks proving active Three mission views use the shared `BathymetrySurfaceViewModel` / `BathymetryMeshGeometry` / Three terrain layer family.
+- Removed stale standalone bathymetry renderer terrain/coastline helper functions and kept `bathymetryToTerrainMeshData()` compatibility-only for older smoke/docs.
+- Added shared terrain debug fields, mesh digests, lifecycle counters, resource disposal hardening, coordinate/mesh/coastline/mask/clearance/quality audits, and focused terrain E2E names.
+- Preserved the boundary: Three.js terrain is display-only and does not own bathymetry truth, route validity, target validity, dive feasibility, simulation, scoring, WebGPU, calibrated data, or operational ocean claims.
 
 ### THREE-R1.2A.1 - Volumetric Activation and Lifecycle Hardening
 

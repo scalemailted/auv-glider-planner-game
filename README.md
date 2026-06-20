@@ -966,3 +966,7 @@ The next terrain phase remains THREE-R1.2B: Continuous Bathymetric Seabed Mesh, 
 ## THREE-R1.2B Continuous Bathymetric Terrain
 
 THREE-R1.2B derives the production Three.js seabed mesh, landmass display, coastline, and contour lines from the same canonical bathymetry field used by bottom-clearance and dive-feasibility logic. The visual mesh is not used for collision, route validity, scoring, sampling validity, replay, or simulation. Surface waypoints remain water-surface navigation targets; sampling targets remain non-executable science objectives. Current bathymetry is deterministic synthetic educational terrain with explicit source metadata and no operationally calibrated bathymetry claim.
+
+## THREE-R1.2B.1 Terrain Contract Note
+
+One shared terrain contract serves all active Three mission views. The terrain mesh is a display projection of canonical bathymetry. Production no longer uses boxed/per-cell terrain. Retained legacy terrain helpers are compatibility-only and not production. Terrain quality affects presentation only. Headed performance is the authoritative render-cost gate. Human manual QA remains separate from headed automated QA.

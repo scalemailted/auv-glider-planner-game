@@ -75,7 +75,10 @@ export function createThreeBathymetryRenderer(container, options = {}) {
     usesFull3DPlanning: false,
     usesWebGPUFluid: false,
     usesMARL: false,
-    usesEnable3D: false
+    usesEnable3D: false,
+    terrainLayerImplementationId: 'shared-three-bathymetry-terrain-layer-family-r1-2b',
+    usesSharedTerrainLayer: true,
+    usesLegacyTerrainLayer: false
   };
   state.controls = attachPointerControls(state);
   setBathymetryCamera(state, state.cameraState);
@@ -113,6 +116,9 @@ export function updateThreeBathymetryScene(rendererState, viewModel = {}) {
   updateThreeLandmassLayer(rendererState.landmassLayer, viewModel.terrainMeshGeometry ?? viewModel.terrainMesh, { visible: true });
   updateThreeCoastlineLayer(rendererState.coastlineLayer, viewModel.coastlineGeometry, { width: viewModel.terrainMesh?.width, height: viewModel.terrainMesh?.height });
   updateThreeBathymetryContourLayer(rendererState.bathymetryContourLayer, viewModel.contourGeometry, { width: viewModel.terrainMesh?.width, height: viewModel.terrainMesh?.height });
+  rendererState.terrainSourceDigest = viewModel.bathymetrySurface?.sourceDigest ?? viewModel.terrainMeshGeometry?.sourceDigest ?? viewModel.terrainMesh?.sourceDigest ?? null;
+  rendererState.terrainMeshDigest = viewModel.terrainMeshGeometry?.meshDigest ?? viewModel.terrainMeshGeometry?.sourceDigest ?? viewModel.terrainMesh?.sourceDigest ?? null;
+  rendererState.terrainCoordinateProfileId = viewModel.terrainMeshGeometry?.coordinateProfileId ?? viewModel.bathymetrySurface?.coordinateProfileId ?? null;
   addHazards(rendererState, viewModel);
   addWaterSurface(rendererState, viewModel);
   addDepthLayers(rendererState, viewModel);
@@ -169,7 +175,12 @@ export function threeBathymetryRendererSummary(rendererState = {}) {
     bathymetryContourSummary: threeBathymetryContourLayerSummary(rendererState.bathymetryContourLayer ?? {}, rendererState.viewModel?.contourGeometry ?? {}),
     terrainVertexCount: rendererState.viewModel?.terrainMeshGeometry?.vertexCount ?? rendererState.viewModel?.terrainMesh?.vertexCount ?? 0,
     terrainTriangleCount: rendererState.viewModel?.terrainMeshGeometry?.triangleCount ?? rendererState.viewModel?.terrainMesh?.triangleCount ?? 0,
-    terrainSourceDigest: rendererState.viewModel?.bathymetrySurface?.sourceDigest ?? rendererState.viewModel?.terrainMeshGeometry?.sourceDigest ?? null,
+    terrainSourceDigest: rendererState.terrainSourceDigest ?? rendererState.viewModel?.bathymetrySurface?.sourceDigest ?? rendererState.viewModel?.terrainMeshGeometry?.sourceDigest ?? null,
+    terrainMeshDigest: rendererState.terrainMeshDigest ?? rendererState.viewModel?.terrainMeshGeometry?.meshDigest ?? rendererState.viewModel?.terrainMeshGeometry?.sourceDigest ?? null,
+    terrainCoordinateProfileId: rendererState.terrainCoordinateProfileId ?? rendererState.viewModel?.terrainMeshGeometry?.coordinateProfileId ?? rendererState.viewModel?.bathymetrySurface?.coordinateProfileId ?? null,
+    terrainLayerImplementationId: rendererState.terrainLayerImplementationId ?? 'shared-three-bathymetry-terrain-layer-family-r1-2b',
+    usesSharedTerrainLayer: true,
+    usesLegacyTerrainLayer: false,
     depthLayerObjectCount: rendererState.groups?.depthLayers?.children?.length ?? 0,
     surfaceWaypointCount: rendererState.viewModel?.surfaceWaypoints?.length ?? 0,
     samplingPointCount: rendererState.viewModel?.samplingPoints?.length ?? 0,
@@ -196,37 +207,6 @@ function clearBathymetryDynamicGroups(rendererState) {
     if (!keep.has(key)) clearGroup(group);
   }
 }
-function addTerrain(rendererState, viewModel) {
-  const mesh = viewModel.terrainMesh;
-  if (!mesh?.vertices?.length || !mesh?.indices?.length) return;
-  const geometry = new THREE.BufferGeometry();
-  geometry.setAttribute('position', new THREE.Float32BufferAttribute(mesh.vertices, 3));
-  if (mesh.colors?.length === mesh.vertices.length) geometry.setAttribute('color', new THREE.Float32BufferAttribute(mesh.colors, 3));
-  if (mesh.uvs?.length) geometry.setAttribute('uv', new THREE.Float32BufferAttribute(mesh.uvs, 2));
-  geometry.setIndex(mesh.indices);
-  geometry.computeVertexNormals();
-  const material = new THREE.MeshStandardMaterial({ vertexColors: Boolean(mesh.colors?.length), roughness: 0.86, metalness: 0.02, side: THREE.DoubleSide });
-  const terrain = new THREE.Mesh(geometry, material);
-  terrain.name = 'bathymetry-terrain-mesh';
-  terrain.receiveShadow = true;
-  rendererState.groups.terrain.add(terrain);
-  const wire = new THREE.LineSegments(new THREE.WireframeGeometry(geometry), new THREE.LineBasicMaterial({ color: 0x9de7ff, transparent: true, opacity: 0.08 }));
-  wire.name = 'bathymetry-terrain-wireframe';
-  rendererState.groups.terrain.add(wire);
-}
-
-function addCoastline(rendererState, viewModel) {
-  const points = [];
-  for (const edge of viewModel.coastlineEdges ?? []) {
-    points.push(vectorFromPoint(edge.start), vectorFromPoint(edge.end));
-  }
-  if (!points.length) return;
-  const geometry = new THREE.BufferGeometry().setFromPoints(points);
-  const line = new THREE.LineSegments(geometry, new THREE.LineBasicMaterial({ color: 0xe6f6c9, transparent: true, opacity: 0.95 }));
-  line.name = 'coastline-edges';
-  rendererState.groups.coastline.add(line);
-}
-
 function addHazards(rendererState, viewModel) {
   const zones = (viewModel.bottomHazardZones ?? []).slice(0, 24);
   if (!zones.length) return;
@@ -456,9 +436,6 @@ function gridPointToWorld(point, terrainMesh, yOffset = 0) {
   return { x, y: yOffset, z };
 }
 
-function vectorFromPoint(point = {}) {
-  return new THREE.Vector3(Number(point.x ?? 0), Number(point.y ?? 0), Number(point.z ?? 0));
-}
 
 function isFiniteVector3(vector) {
   return Number.isFinite(vector?.x) && Number.isFinite(vector?.y) && Number.isFinite(vector?.z);

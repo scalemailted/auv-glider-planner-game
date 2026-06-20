@@ -44,6 +44,7 @@ export function updateThreeBathymetryTerrainLayer(layer, meshGeometry = {}, opti
     mesh.userData = {
       missionObjectType: 'bathymetryTerrain',
       sourceDigest: meshGeometry.sourceDigest ?? null,
+      meshDigest: meshGeometry.meshDigest ?? meshGeometry.sourceDigest ?? null,
       canonicalOwner: 'core',
       rendererOwnsBathymetry: false,
       usesVisualMeshForPhysics: false,
@@ -91,6 +92,7 @@ export function threeBathymetryTerrainLayerSummary(layer = {}, meshGeometry = {}
     terrainTriangleCount: Number(meshGeometry.triangleCount ?? ((layer.mesh?.geometry?.index?.count ?? 0) / 3)),
     indexedGeometry: Boolean(layer.mesh?.geometry?.index),
     sourceDigest: meshGeometry.sourceDigest ?? layer.mesh?.userData?.sourceDigest ?? null,
+    meshDigest: meshGeometry.meshDigest ?? meshGeometry.sourceDigest ?? layer.mesh?.userData?.sourceDigest ?? null,
     geometrySignature: layer.geometrySignature ?? null,
     rendererOwnsBathymetry: false,
     ownsCollision: false,

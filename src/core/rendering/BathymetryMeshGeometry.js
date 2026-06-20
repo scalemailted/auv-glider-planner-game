@@ -58,6 +58,8 @@ export function buildBathymetryMeshGeometry(options = {}) {
   normalizeNormals(normals);
   const bounds = positionBounds(positions);
   const sourceDigest = surface.sourceDigest ?? stableDigest({ field: surface.bottomDepthField, land: surface.landMask });
+  const coordinateProfileId = surface.coordinateProfileId ?? coordinateSystem?.coordinateFrame ?? null;
+  const meshDigest = stableDigest({ sourceDigest, coordinateProfileId, width, height, depthScale, verticalExaggeration, positions, indices });
   return {
     type: 'anchor.rendering.bathymetry-mesh-geometry',
     version: BATHYMETRY_MESH_GEOMETRY_VERSION,
@@ -78,8 +80,9 @@ export function buildBathymetryMeshGeometry(options = {}) {
     waterVertexMask,
     landVertexMask,
     bounds,
-    coordinateProfileId: surface.coordinateProfileId ?? coordinateSystem?.coordinateFrame ?? null,
+    coordinateProfileId,
     sourceDigest,
+    meshDigest,
     sourceMetadata: surface.sourceMetadata ?? null,
     interpolationProfileId: surface.interpolationProfileId ?? 'bilinearCellCenterV1',
     vertexConvention: surface.vertexConvention ?? 'cell centers',
@@ -120,6 +123,7 @@ export function bathymetryMeshGeometrySummary(geometry = {}) {
     landVertexCount: (geometry.landVertexMask ?? []).filter(Boolean).length,
     bounds: geometry.bounds ?? null,
     sourceDigest: geometry.sourceDigest ?? null,
+    meshDigest: geometry.meshDigest ?? null,
     coordinateProfileId: geometry.coordinateProfileId ?? null,
     usesVisualMeshForPhysics: geometry.boundaryFlags?.usesVisualMeshForPhysics === true,
     warnings: [...(geometry.warnings ?? [])]

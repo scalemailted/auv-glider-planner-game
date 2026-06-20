@@ -59,3 +59,7 @@ Simulation presentation now uses a scheduler/dirty-category pipeline. Canonical 
 ## THREE-R1.2B Terrain Baseline
 
 The production Three.js mission renderer now consumes `BathymetrySurfaceViewModel`, `BathymetryMeshGeometry`, `CoastlineGeometry`, and `BathymetryContourGeometry`. These are derived from canonical bottom-depth fields. Three.js owns presentation resources only; core logic continues to own bathymetry sampling, route blocking, dive feasibility, simulation, scoring, headless alignment, and exports.
+
+## THREE-R1.2B.1 Terrain Contract Note
+
+One shared terrain contract serves all active Three mission views. The terrain mesh is a display projection of canonical bathymetry. Production no longer uses boxed/per-cell terrain. Retained legacy terrain helpers are compatibility-only and not production. Terrain quality affects presentation only. Headed performance is the authoritative render-cost gate. Human manual QA remains separate from headed automated QA.

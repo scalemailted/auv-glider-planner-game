@@ -57,6 +57,8 @@ export class BathymetryWorldViewScene extends PhaserScene {
   create() {
     this.app = this.sys.game.anchorApp ?? globalThis.__anchorPhaserApp;
     if (!this.app) return;
+    this.events?.once?.('shutdown', () => this.shutdown());
+    this.events?.once?.('destroy', () => this.shutdown());
     this.app.state.mode = 'bathymetryWorldView';
     this.app.clearPanels();
     this.app.elements.shell?.classList.remove('planning-workspace');
@@ -271,6 +273,12 @@ export class BathymetryWorldViewScene extends PhaserScene {
       depthRange: summary.depthRange,
       featureIds: summary.featureIds,
       terrainVertexCount: summary.terrainVertexCount,
+      terrainSourceDigest: rendererSummary.terrainSourceDigest ?? summary.sourceDigest ?? null,
+      terrainMeshDigest: rendererSummary.terrainMeshDigest ?? null,
+      terrainCoordinateProfileId: rendererSummary.terrainCoordinateProfileId ?? null,
+      terrainLayerImplementationId: rendererSummary.terrainLayerImplementationId ?? null,
+      usesSharedTerrainLayer: rendererSummary.usesSharedTerrainLayer === true,
+      usesLegacyTerrainLayer: rendererSummary.usesLegacyTerrainLayer === true,
       coastlineEdgeCount: summary.coastlineEdgeCount,
       depthLayerCount: summary.depthLayerCount,
       bottomHazardZoneCount: summary.bottomHazardZoneCount,

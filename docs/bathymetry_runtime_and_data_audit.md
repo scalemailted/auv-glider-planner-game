@@ -28,13 +28,23 @@ ANCHOR now treats bathymetry as a portable core field first and a Three.js mesh 
 
 ## Findings
 
-- Duplicate terrain generation remains only as compatibility helper code in `BathymetryFieldModel.bathymetryToTerrainMeshData()` and legacy helper functions in `ThreeBathymetryRenderer.js`. Production mission rendering no longer uses per-cell bathymetry boxes.
+- Duplicate terrain generation remains only as compatibility helper code in `BathymetryFieldModel.bathymetryToTerrainMeshData()` for older visual-quality smoke/docs. The stale standalone `ThreeBathymetryRenderer` mesh helpers were removed in THREE-R1.2B.1. Production mission rendering no longer uses per-cell bathymetry boxes.
 - Duplicate coordinate transforms are now bounded: mesh contracts accept mission coordinate transforms; Bathymetric World View still has its own camera controls but consumes the same mesh/segment contracts.
 - No operational bathymetry source is claimed. Current data is deterministic synthetic educational terrain.
 - No Three.js terrain raycast is used for collision, route validity, dive feasibility, sampling validity, or score.
 
 ## Required Later Cleanup
 
-- Remove or deprecate legacy `bathymetryToTerrainMeshData()` after all existing tests and docs consume `BathymetryMeshGeometry`.
+- Keep `bathymetryToTerrainMeshData()` compatibility-only until older visual-quality smoke/docs are migrated; production-import audits must fail if it becomes active again.
 - Replace full rectangular context slab outlines with mask-following outline geometry if the visual distinction is still insufficient.
 - Expand browser E2E to assert visible terrain relief with screenshots after owner manual QA feedback.
+
+## THREE-R1.2B.1 Closure Notes
+
+- One shared terrain contract serves all active Three mission views.
+- The terrain mesh is a display projection of canonical bathymetry.
+- Production no longer uses boxed/per-cell terrain.
+- Retained legacy terrain helpers are compatibility-only and not production.
+- Terrain quality affects presentation only.
+- Headed performance is the authoritative render-cost gate.
+- Human manual QA remains separate from headed automated QA.

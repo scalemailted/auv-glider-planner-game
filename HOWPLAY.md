@@ -1131,3 +1131,7 @@ Balanced quality is the default readable mode for volumetric missions: active sc
 ## Bathymetric Terrain Note
 
 The Three.js mission world now shows a continuous synthetic seabed, land/coastline, shelf, basin, canyon/seamount-style features, and contours. These visuals explain why a dive profile is terrain-limited, but gameplay authority still comes from the portable mission core: surface waypoints navigate, sampling targets are science objectives, and vertical exaggeration is display-only.
+
+## THREE-R1.2B.1 Terrain Contract Note
+
+One shared terrain contract serves all active Three mission views. The terrain mesh is a display projection of canonical bathymetry. Production no longer uses boxed/per-cell terrain. Retained legacy terrain helpers are compatibility-only and not production. Terrain quality affects presentation only. Headed performance is the authoritative render-cost gate. Human manual QA remains separate from headed automated QA.

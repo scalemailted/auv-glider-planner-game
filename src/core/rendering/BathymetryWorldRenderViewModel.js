@@ -1,7 +1,6 @@
 import {
   bathymetryFeatureSummary,
   bathymetryFieldStats,
-  bathymetryToTerrainMeshData,
   createCoastalOperationalBathymetry,
   extractCoastlineEdges
 } from '../science/BathymetryFieldModel.js';

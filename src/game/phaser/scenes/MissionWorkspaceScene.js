@@ -1906,6 +1906,7 @@ export class MissionWorkspaceScene extends PhaserScene {
     const waypointCandidateStatus = placementValidation?.valid === false ? 'INVALID' : placementWarnings.length ? 'VALID_WITH_WARNINGS' : placementValidation ? 'VALID' : null;
     const waterColumnUi = this.ensureWaterColumnUiState();
     const plannedDiveDebug = plannedDiveDebugPayload(viewModel ?? {}, rendererSummary, this.app.state.ui?.selectedWaypoint, selectedAgentIdForDebug);
+    const samplingTargetTerrainDebug = samplingTargetTerrainValidationDebug(viewModel ?? {}, this.app.state.ui?.selectedScienceTargetId ?? null);
     const waterColumnDebug = waterColumnRenderDebugPayload(viewModel ?? {}, rendererSummary, {
       phase: viewModel?.phase ?? this.app.state.mode ?? 'planning',
       selectedDiveProfileId: waterColumnUi.selectedDiveProfileId,
@@ -1934,6 +1935,19 @@ export class MissionWorkspaceScene extends PhaserScene {
       phase: viewModel?.phase ?? this.app.state.mode ?? 'planning',
       missionId: viewModel?.missionId ?? this.app.state.mission?.missionId ?? null,
       levelId: viewModel?.levelId ?? this.app.state.level?.levelId ?? null,
+      terrainSourceDigest: rendererSummary?.terrainSourceDigest ?? null,
+      terrainMeshDigest: rendererSummary?.terrainMeshDigest ?? null,
+      terrainCoordinateProfileId: rendererSummary?.terrainCoordinateProfileId ?? null,
+      terrainLayerImplementationId: rendererSummary?.terrainLayerImplementationId ?? null,
+      usesSharedTerrainLayer: rendererSummary?.usesSharedTerrainLayer === true,
+      usesLegacyTerrainLayer: rendererSummary?.usesLegacyTerrainLayer === true,
+      lastWaypointTerrainValidationSource: placementValidation ? 'canonicalWaypointPlacementGuard' : null,
+      lastRouteTerrainValidationSource: routePreview ? 'canonicalRoutePreview' : null,
+      usesMeshRaycastForValidity: false,
+      lastSamplingTargetBottomDepthMeters: samplingTargetTerrainDebug.bottomDepthMeters,
+      lastSamplingTargetRequestedDepthMeters: samplingTargetTerrainDebug.requestedDepthMeters,
+      lastSamplingTargetClearanceMeters: samplingTargetTerrainDebug.clearanceMeters,
+      lastSamplingTargetValidationSource: samplingTargetTerrainDebug.validationSource,
       activeTimeSeconds: summary.activeTimeSeconds ?? this.app.state.planningTime ?? 0,
       renderedFieldTimeSeconds: viewModel?.scalarFieldLayer?.timeSeconds ?? null,
       renderedCurrentTimeSeconds: viewModel?.vectorFieldLayer?.timeSeconds ?? null,
@@ -5161,6 +5175,48 @@ function createMissionWorkspacePerformanceCounters() {
     panelRenderCountDuringCameraGesture: 0,
     timelineRenderCountDuringCameraGesture: 0
   };
+}
+
+function samplingTargetTerrainValidationDebug(viewModel = {}, selectedTargetId = null) {
+  const targets = viewModel.scienceTargets ?? [];
+  const target = targets.find((candidate) => (candidate.id ?? candidate.targetId) === selectedTargetId) ?? targets[0] ?? null;
+  if (!target) return { bottomDepthMeters: null, requestedDepthMeters: null, clearanceMeters: null, validationSource: null };
+  const x = Number(target.x ?? target.position?.x ?? 0);
+  const y = Number(target.y ?? target.position?.y ?? 0);
+  const requestedDepthMeters = Number(target.depthMeters ?? target.position?.depthMeters ?? 0);
+  const bottomDepthMeters = sampleGridBilinear(viewModel.bottomBoundary?.bottomDepthField, x, y);
+  const clearanceMeters = Number.isFinite(bottomDepthMeters) && Number.isFinite(requestedDepthMeters) ? roundSceneNumber(bottomDepthMeters - requestedDepthMeters) : null;
+  return {
+    bottomDepthMeters: Number.isFinite(bottomDepthMeters) ? roundSceneNumber(bottomDepthMeters) : null,
+    requestedDepthMeters: Number.isFinite(requestedDepthMeters) ? roundSceneNumber(requestedDepthMeters) : null,
+    clearanceMeters,
+    validationSource: Number.isFinite(bottomDepthMeters) ? 'canonicalBottomBoundary' : 'missingBottomBoundary'
+  };
+}
+
+function sampleGridBilinear(grid = [], x = 0, y = 0) {
+  const height = grid.length;
+  const width = grid[0]?.length ?? 0;
+  if (!height || !width) return null;
+  const bx = Math.max(0, Math.min(width - 1, Number(x) || 0));
+  const by = Math.max(0, Math.min(height - 1, Number(y) || 0));
+  const x0 = Math.floor(bx);
+  const y0 = Math.floor(by);
+  const x1 = Math.min(width - 1, x0 + 1);
+  const y1 = Math.min(height - 1, y0 + 1);
+  const tx = bx - x0;
+  const ty = by - y0;
+  const a = Number(grid[y0]?.[x0] ?? 0);
+  const b = Number(grid[y0]?.[x1] ?? 0);
+  const c = Number(grid[y1]?.[x0] ?? 0);
+  const d = Number(grid[y1]?.[x1] ?? 0);
+  const top = a + (b - a) * tx;
+  const bottom = c + (d - c) * tx;
+  return top + (bottom - top) * ty;
+}
+
+function roundSceneNumber(value, digits = 6) {
+  return Number(Number(value ?? 0).toFixed(digits));
 }
 
 function plannedDiveDebugPayload(viewModel = {}, rendererSummary = null, selectedWaypoint = null, selectedAgentId = null) {

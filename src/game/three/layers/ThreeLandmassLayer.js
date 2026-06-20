@@ -34,7 +34,12 @@ export function setThreeLandmassLayerVisibility(layer, visible) {
 }
 
 export function disposeThreeLandmassLayer(layer) {
-  if (layer?.mesh) disposeObject(layer.mesh);
+  if (layer?.mesh) {
+    layer.group?.remove?.(layer.mesh);
+    disposeObject(layer.mesh);
+  }
+  layer.mesh = null;
+  layer.signature = null;
   layer?.group?.removeFromParent?.();
 }
 

@@ -24,7 +24,7 @@ Browser ANCHOR is the visual game and referee. Node/OceanBox-JS is the canonical
 
 ## 2. Current Architecture
 
-Current renderer sequence: THREE-R1.1E scene isolation and THREE-R1.2A water-column slabs are followed by THREE-R1.2A.1 volumetric activation/lifecycle hardening, THREE-R1.2A.3 continuous waypoint/dive/field activation, THREE-R1.2A.3.1 continuous Mission UI runtime stabilization, THREE-R1.2A.4.2 performance measurement, THREE-R1.2A.4.3 Simulation presentation optimization and authoritative grouped E2E, then THREE-R1.2B bathymetric seabed mesh/coastline/landmass geometry, THREE-R1.2C terrain-aware/polished 3D presentation, and later THREE-R2 replay/debrief/editor parity.
+Current renderer sequence: THREE-R1.1E scene isolation and THREE-R1.2A water-column slabs are followed by THREE-R1.2A.1 volumetric activation/lifecycle hardening, THREE-R1.2A.3 continuous waypoint/dive/field activation, THREE-R1.2A.3.1 continuous Mission UI runtime stabilization, THREE-R1.2A.4.2 performance measurement, THREE-R1.2A.4.3 Simulation presentation optimization and authoritative grouped E2E, then THREE-R1.2B bathymetric seabed mesh/coastline/landmass geometry, THREE-R1.2B.1 bathymetry integration hardening, legacy terrain retirement, and visual/performance closure, THREE-R1.2C terrain-aware continuous mission validation and polished 3D presentation, and later THREE-R2 replay/debrief route review and editor parity.
 
 ### Browser ANCHOR
 
@@ -373,3 +373,17 @@ GPU/RAF render-cost closure is the current checkpoint before terrain. THREE-R1.2
 ## Current Terrain Sequence
 
 THREE-R1.2B is the continuous bathymetric seabed mesh, coastline, and landmass geometry pass. THREE-R1.2C should follow with terrain-aware continuous mission validation polish and 3D presentation refinement. THREE-R2 remains replay, debrief route review, and editor parity. R1.2B keeps bathymetry authority in core JavaScript and does not add arbitrary XYZ planning, WebGPU, a fluid solver, external datasets, or operational ocean claims.
+
+## Near-Term Renderer Roadmap Order
+
+```text
+THREE-R1.2B.1
+Bathymetry integration hardening, legacy terrain retirement,
+and visual/performance closure
+
+THREE-R1.2C
+Terrain-aware continuous mission validation and polished 3D presentation
+
+THREE-R2
+Replay, debrief route review, and editor parity
+```

@@ -38,7 +38,12 @@ export function setThreeCoastlineLayerVisibility(layer, visible) {
 }
 
 export function disposeThreeCoastlineLayer(layer) {
-  if (layer?.line) disposeObject(layer.line);
+  if (layer?.line) {
+    layer.group?.remove?.(layer.line);
+    disposeObject(layer.line);
+  }
+  layer.line = null;
+  layer.signature = null;
   layer?.group?.removeFromParent?.();
 }
 

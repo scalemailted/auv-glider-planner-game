@@ -3485,7 +3485,7 @@ test('Three Context Slabs Reduce Cost Without Losing Dive Context', async ({ pag
   assertContinuousBrowserErrorsClean(browserErrors);
 });
 
-test('Three Continuous Bathymetry Terrain Renders Canonical Mesh', async ({ page }) => {
+test('Three Mission Uses Continuous Bathymetric Terrain', async ({ page }) => {
   const browserErrors = attachBrowserErrorCollector(page);
   await prepareThreeSamplingTargetDiveScenario(page, { attach: true, profile: 'fullProfile', layer: 'deep', cycles: 2 });
   await expect.poll(() => page.evaluate(() => (window.ANCHOR_MISSION_RENDER_DEBUG?.rendererSummary?.terrainVertexCount ?? 0) > 0), { timeout: 15000 }).toBe(true);
@@ -3585,7 +3585,267 @@ test('Three Terrain Camera Gestures Do Not Rebuild Bathymetry Mesh', async ({ pa
   expect(after.terrainTriangleCount).toBe(before.terrainTriangleCount);
   assertContinuousBrowserErrorsClean(browserErrors);
 });
-test('Three Balanced Renderer Meets Bathymetry Headroom Gate', async ({ page }) => {
+
+test('Bathymetry Limits Predicted and Realized Dive Depth', async ({ page }) => {
+  const browserErrors = attachBrowserErrorCollector(page);
+  await prepareThreeSamplingTargetDiveScenario(page, { attach: true, profile: 'fullProfile', layer: 'deep', cycles: 2 });
+  const predicted = await page.evaluate(() => {
+    const scene = window.anchorGame.phaser.scene.getScene('MissionWorkspaceScene');
+    const segments = scene?.missionRenderViewModel?.plannedDiveSegments ?? [];
+    const points = segments.flatMap((segment) => segment.predictedDivePath ?? []);
+    const clearances = points.map((point) => Number(point.clearanceMeters)).filter(Number.isFinite);
+    return {
+      segmentCount: segments.length,
+      pointCount: points.length,
+      minimumClearance: Math.min(...clearances),
+      terrainLimited: segments.some((segment) => segment.bottomClearance?.terrainLimited === true || segment.warningCodes?.includes?.('TERRAIN_LIMITED')),
+      rendererOwnsDiveFeasibility: window.ANCHOR_MISSION_RENDER_DEBUG?.rendererSummary?.bathymetryTerrainSummary?.ownsDiveFeasibility === true,
+      validationSource: window.ANCHOR_MISSION_RENDER_DEBUG?.lastSamplingTargetValidationSource ?? null
+    };
+  });
+  expect(predicted.segmentCount).toBeGreaterThan(0);
+  expect(predicted.pointCount).toBeGreaterThan(0);
+  expect(predicted.minimumClearance).toBeGreaterThanOrEqual(4.999);
+  expect(predicted.terrainLimited).toBe(true);
+  expect(predicted.rendererOwnsDiveFeasibility).toBe(false);
+  expect(predicted.validationSource).toBe('canonicalBottomBoundary');
+
+  await page.locator('#mission-console [data-action="execute"]').click();
+  await expect.poll(() => page.evaluate(() => window.ANCHOR_SIMULATION_RENDER_DEBUG?.threeMounted === true), { timeout: 15000 }).toBe(true);
+  await advanceSimulationSceneForRenderCost(page, { steps: 8, frameDelay: 30, keepRunning: false });
+  const realized = await page.evaluate(() => {
+    const scene = window.anchorGame.phaser.scene.getScene('SimulationScene');
+    const grid = scene?.simulationRenderViewModel?.bottomBoundary?.bottomDepthField ?? [];
+    const points = (scene?.engine?.agents ?? []).flatMap((agent) => agent.history ?? []);
+    const canonicalClearances = points.map((point) => Number(point.bottomClearanceMeters)).filter(Number.isFinite);
+    const visualClearances = points.map((point) => {
+      const bottom = sample(grid, Number(point.x ?? point.col ?? 0), Number(point.y ?? point.row ?? 0));
+      const depth = Number(point.depthMeters ?? point.position?.depthMeters);
+      if (!Number.isFinite(depth)) return null;
+      return Number.isFinite(bottom) ? bottom - depth : null;
+    }).filter(Number.isFinite);
+    return {
+      pointCount: points.length,
+      minimumClearance: canonicalClearances.length ? Math.min(...canonicalClearances) : null,
+      visualMinimumClearance: visualClearances.length ? Math.min(...visualClearances) : null,
+      usesSharedTerrainLayer: window.ANCHOR_SIMULATION_RENDER_DEBUG?.usesSharedTerrainLayer === true,
+      usesMeshRaycastForValidity: window.ANCHOR_SIMULATION_RENDER_DEBUG?.usesMeshRaycastForValidity === true,
+      terrainGeometryUpdateCountDuringSimulation: window.ANCHOR_SIMULATION_RENDER_DEBUG?.rendererSummary?.terrainGeometryUpdateCountDuringSimulation ?? 0
+    };
+    function sample(grid, x, y) {
+      const height = grid.length;
+      const width = grid[0]?.length ?? 0;
+      if (!height || !width) return null;
+      const bx = Math.max(0, Math.min(width - 1, x));
+      const by = Math.max(0, Math.min(height - 1, y));
+      const x0 = Math.floor(bx);
+      const y0 = Math.floor(by);
+      const x1 = Math.min(width - 1, x0 + 1);
+      const y1 = Math.min(height - 1, y0 + 1);
+      const tx = bx - x0;
+      const ty = by - y0;
+      const a = Number(grid[y0]?.[x0] ?? 0);
+      const b = Number(grid[y0]?.[x1] ?? 0);
+      const c = Number(grid[y1]?.[x0] ?? 0);
+      const d = Number(grid[y1]?.[x1] ?? 0);
+      return (a + (b - a) * tx) + ((c + (d - c) * tx) - (a + (b - a) * tx)) * ty;
+    }
+  });
+  expect(realized.pointCount).toBeGreaterThan(0);
+  expect(realized.minimumClearance).toBeGreaterThanOrEqual(-0.001);
+  expect(realized.usesSharedTerrainLayer).toBe(true);
+  expect(realized.usesMeshRaycastForValidity).toBe(false);
+  expect(realized.terrainGeometryUpdateCountDuringSimulation).toBe(0);
+  assertContinuousBrowserErrorsClean(browserErrors);
+});
+
+test('Continuous Coastline Blocks Invalid Surface Waypoints', async ({ page }) => {
+  const browserErrors = attachBrowserErrorCollector(page);
+  await startVisibleContinuousMissionPlanning(page);
+  const agentId = await selectFirstAgentThroughVisibleControls(page);
+  await deploySelectedGliderThroughVisibleControls(page, agentId);
+  const beforeCount = await page.evaluate((id) => (window.anchorGame.state.plan?.agentPlans ?? []).find((plan) => plan.agentId === id)?.waypoints?.length ?? 0, agentId);
+  const invalid = await findHardInvalidWaypointCell(page);
+  await page.locator('#mission-console [data-action="mission-planning-tool"][data-tool="placeWaypoint"]').click();
+  await clickThreeGridCell(page, invalid.x, invalid.y);
+  await page.waitForTimeout(250);
+  const after = await page.evaluate((id) => {
+    const debug = window.ANCHOR_MISSION_RENDER_DEBUG ?? {};
+    return {
+      count: (window.anchorGame.state.plan?.agentPlans ?? []).find((plan) => plan.agentId === id)?.waypoints?.length ?? 0,
+      waypointCandidateValid: debug.waypointCandidateValid,
+      waypointValidationReason: debug.waypointValidationReason ?? debug.lastWaypointPipelineReason ?? null,
+      lastWaypointTerrainValidationSource: debug.lastWaypointTerrainValidationSource,
+      usesMeshRaycastForValidity: debug.usesMeshRaycastForValidity === true,
+      usesSharedTerrainLayer: debug.usesSharedTerrainLayer === true
+    };
+  }, agentId);
+  expect(after.count).toBe(beforeCount);
+  expect(after.waypointCandidateValid).toBe(false);
+  expect(after.waypointValidationReason).toMatch(/water|terrain|land|deployment|blocked/i);
+  expect(after.lastWaypointTerrainValidationSource).toBeTruthy();
+  expect(after.usesMeshRaycastForValidity).toBe(false);
+  expect(after.usesSharedTerrainLayer).toBe(true);
+  assertContinuousBrowserErrorsClean(browserErrors);
+});
+
+test('Water-Column Layers Respect Continuous Seabed', async ({ page }) => {
+  const browserErrors = attachBrowserErrorCollector(page);
+  await prepareThreeSamplingTargetDiveScenario(page, { attach: true, profile: 'fullProfile', layer: 'deep', cycles: 2 });
+  const masks = await page.evaluate(() => {
+    const scene = window.anchorGame.phaser.scene.getScene('MissionWorkspaceScene');
+    const vm = scene?.missionRenderViewModel ?? {};
+    const layers = vm.depthLayers ?? [];
+    const bottom = vm.bottomBoundary ?? {};
+    const findCell = (predicate) => {
+      const height = bottom.bottomDepthField?.length ?? 0;
+      const width = bottom.bottomDepthField?.[0]?.length ?? 0;
+      for (let y = 0; y < height; y += 1) for (let x = 0; x < width; x += 1) if (predicate(x, y)) return { x, y };
+      return null;
+    };
+    const land = findCell((x, y) => bottom.landMask?.[y]?.[x] === true);
+    const byId = Object.fromEntries(layers.map((layer) => [layer.id, layer]));
+    const shelf = findCell((x, y) => !bottom.landMask?.[y]?.[x] && byId.deep?.validCellMask?.[y]?.[x] === false);
+    const basin = findCell((x, y) => !bottom.landMask?.[y]?.[x] && byId.deep?.validCellMask?.[y]?.[x] === true);
+    return {
+      layerIds: layers.map((layer) => layer.id),
+      landMasked: land ? layers.every((layer) => layer.validCellMask?.[land.y]?.[land.x] === false) : false,
+      deepMaskedOnShelf: shelf ? byId.deep?.validCellMask?.[shelf.y]?.[shelf.x] === false : false,
+      midwaterValidInBasin: basin ? byId.midwater?.validCellMask?.[basin.y]?.[basin.x] === true || byId.thermocline?.validCellMask?.[basin.y]?.[basin.x] === true : false,
+      deepValidInBasin: basin ? byId.deep?.validCellMask?.[basin.y]?.[basin.x] === true : false,
+      integratedIsPhysical: byId.integratedWaterColumn?.representativeDepthMeters !== null,
+      activeTexturedSlabCount: window.ANCHOR_WATER_COLUMN_RENDER_DEBUG?.activeTexturedSlabCount ?? 0,
+      usesSharedTerrainLayer: window.ANCHOR_MISSION_RENDER_DEBUG?.usesSharedTerrainLayer === true
+    };
+  });
+  expect(masks.layerIds).toContain('deep');
+  expect(masks.landMasked).toBe(true);
+  expect(masks.deepMaskedOnShelf).toBe(true);
+  expect(masks.midwaterValidInBasin).toBe(true);
+  expect(masks.deepValidInBasin).toBe(true);
+  expect(masks.integratedIsPhysical).toBe(false);
+  expect(masks.activeTexturedSlabCount).toBe(1);
+  expect(masks.usesSharedTerrainLayer).toBe(true);
+  assertContinuousBrowserErrorsClean(browserErrors);
+});
+
+test('Bathymetric Demo and Mission Renderer Share Terrain Geometry', async ({ page }) => {
+  const browserErrors = attachBrowserErrorCollector(page);
+  await startVisibleContinuousMissionPlanning(page);
+  const missionTerrain = await page.evaluate(() => ({
+    sourceDigest: window.ANCHOR_MISSION_RENDER_DEBUG?.terrainSourceDigest ?? null,
+    meshDigest: window.ANCHOR_MISSION_RENDER_DEBUG?.terrainMeshDigest ?? null,
+    coordinateProfileId: window.ANCHOR_MISSION_RENDER_DEBUG?.terrainCoordinateProfileId ?? null,
+    implementationId: window.ANCHOR_MISSION_RENDER_DEBUG?.terrainLayerImplementationId ?? null,
+    usesSharedTerrainLayer: window.ANCHOR_MISSION_RENDER_DEBUG?.usesSharedTerrainLayer === true,
+    usesLegacyTerrainLayer: window.ANCHOR_MISSION_RENDER_DEBUG?.usesLegacyTerrainLayer === true
+  }));
+  expect(missionTerrain.sourceDigest).toBeTruthy();
+  expect(missionTerrain.meshDigest).toBeTruthy();
+  expect(missionTerrain.usesSharedTerrainLayer).toBe(true);
+  expect(missionTerrain.usesLegacyTerrainLayer).toBe(false);
+  await page.locator('[data-action="main-menu"]').filter({ hasText: 'Main Menu' }).first().click();
+  await expectNoTerrainResourcesOnMainMenu(page);
+  await openMainMenuHubSection(page, 'simulation');
+  await page.locator('#main-menu-hub [data-action="bathymetry-world-view"]').click();
+  await expect.poll(() => page.evaluate(() => window.ANCHOR_BATHYMETRY_VIEW_DEBUG?.active === true), { timeout: 15000 }).toBe(true);
+  const demoTerrain = await page.evaluate(() => ({
+    sourceDigest: window.ANCHOR_BATHYMETRY_VIEW_DEBUG?.terrainSourceDigest ?? null,
+    meshDigest: window.ANCHOR_BATHYMETRY_VIEW_DEBUG?.terrainMeshDigest ?? null,
+    coordinateProfileId: window.ANCHOR_BATHYMETRY_VIEW_DEBUG?.terrainCoordinateProfileId ?? null,
+    implementationId: window.ANCHOR_BATHYMETRY_VIEW_DEBUG?.terrainLayerImplementationId ?? null,
+    usesSharedTerrainLayer: window.ANCHOR_BATHYMETRY_VIEW_DEBUG?.usesSharedTerrainLayer === true,
+    usesLegacyTerrainLayer: window.ANCHOR_BATHYMETRY_VIEW_DEBUG?.usesLegacyTerrainLayer === true
+  }));
+  expect(demoTerrain.sourceDigest).toBeTruthy();
+  expect(demoTerrain.meshDigest).toBeTruthy();
+  expect(demoTerrain.coordinateProfileId).toBeTruthy();
+  expect(demoTerrain.implementationId).toBe(missionTerrain.implementationId);
+  expect(demoTerrain.usesSharedTerrainLayer).toBe(true);
+  expect(demoTerrain.usesLegacyTerrainLayer).toBe(false);
+  assertContinuousBrowserErrorsClean(browserErrors);
+});
+
+test('All Production Mission Phases Share One Bathymetry Contract', async ({ page }) => {
+  const browserErrors = attachBrowserErrorCollector(page);
+  await page.goto('/');
+  await openMainMenuHubSection(page, 'challenge');
+  await page.locator('#main-menu-hub [data-action="random-challenge"]').first().click();
+  await expect(page.locator('#mission-console')).toContainText('Scenario Start');
+  const scenarioStart = await page.evaluate(() => ({
+    hasBathymetry: Boolean(window.anchorGame.state.level?.world?.bathymetry || window.anchorGame.state.level?.bathymetry || window.anchorGame.state.level?.layers?.depthMeters || window.anchorGame.state.level?.layers?.depth),
+    mode: window.anchorGame.state.mode ?? null
+  }));
+  expect(scenarioStart.hasBathymetry).toBe(true);
+  await page.locator('#mission-console [data-action="start"]').click();
+  await expect.poll(() => page.evaluate(() => window.ANCHOR_MISSION_RENDER_DEBUG?.threeMounted === true), { timeout: 15000 }).toBe(true);
+  const planning = await page.evaluate(() => ({
+    sourceDigest: window.ANCHOR_MISSION_RENDER_DEBUG?.terrainSourceDigest ?? null,
+    meshDigest: window.ANCHOR_MISSION_RENDER_DEBUG?.terrainMeshDigest ?? null,
+    implementationId: window.ANCHOR_MISSION_RENDER_DEBUG?.terrainLayerImplementationId ?? null,
+    usesSharedTerrainLayer: window.ANCHOR_MISSION_RENDER_DEBUG?.usesSharedTerrainLayer === true,
+    usesLegacyTerrainLayer: window.ANCHOR_MISSION_RENDER_DEBUG?.usesLegacyTerrainLayer === true
+  }));
+  expect(planning.sourceDigest).toBeTruthy();
+  expect(planning.meshDigest).toBeTruthy();
+  expect(planning.usesSharedTerrainLayer).toBe(true);
+  expect(planning.usesLegacyTerrainLayer).toBe(false);
+  await deployAllGlidersThroughVisibleControls(page);
+  await page.locator('#mission-console [data-action="execute"]').click();
+  await expect.poll(() => page.evaluate(() => window.ANCHOR_SIMULATION_RENDER_DEBUG?.threeMounted === true), { timeout: 15000 }).toBe(true);
+  const simulation = await page.evaluate(() => ({
+    sourceDigest: window.ANCHOR_SIMULATION_RENDER_DEBUG?.terrainSourceDigest ?? null,
+    meshDigest: window.ANCHOR_SIMULATION_RENDER_DEBUG?.terrainMeshDigest ?? null,
+    implementationId: window.ANCHOR_SIMULATION_RENDER_DEBUG?.terrainLayerImplementationId ?? null,
+    usesSharedTerrainLayer: window.ANCHOR_SIMULATION_RENDER_DEBUG?.usesSharedTerrainLayer === true,
+    usesLegacyTerrainLayer: window.ANCHOR_SIMULATION_RENDER_DEBUG?.usesLegacyTerrainLayer === true,
+    terrainGeometryUpdateCountDuringSimulation: window.ANCHOR_SIMULATION_RENDER_DEBUG?.rendererSummary?.terrainGeometryUpdateCountDuringSimulation ?? 0
+  }));
+  expect(simulation.sourceDigest).toBe(planning.sourceDigest);
+  expect(simulation.meshDigest).toBe(planning.meshDigest);
+  expect(simulation.implementationId).toBe(planning.implementationId);
+  expect(simulation.usesSharedTerrainLayer).toBe(true);
+  expect(simulation.usesLegacyTerrainLayer).toBe(false);
+  expect(simulation.terrainGeometryUpdateCountDuringSimulation).toBe(0);
+  await page.locator('#mission-console [data-action="finish"]').click();
+  await expect.poll(() => page.evaluate(() => window.ANCHOR_SIMULATION_RENDER_DEBUG?.simulationStatus === 'complete' || window.anchorGame.state.mode === 'debrief'), { timeout: 30000 }).toBe(true);
+  await page.locator('#mission-console [data-action="debrief"]').click();
+  await expect(page.locator('#debrief-root')).toBeVisible({ timeout: 15000 });
+  await page.locator('[data-action="menu"]').filter({ hasText: 'Main Menu' }).first().click();
+  await expectNoTerrainResourcesOnMainMenu(page);
+  await openMainMenuHubSection(page, 'simulation');
+  await page.locator('#main-menu-hub [data-action="bathymetry-world-view"]').click();
+  await expect.poll(() => page.evaluate(() => window.ANCHOR_BATHYMETRY_VIEW_DEBUG?.active === true), { timeout: 15000 }).toBe(true);
+  const bathymetryView = await page.evaluate(() => window.ANCHOR_BATHYMETRY_VIEW_DEBUG ?? {});
+  expect(bathymetryView.usesSharedTerrainLayer).toBe(true);
+  expect(bathymetryView.usesLegacyTerrainLayer).toBe(false);
+  expect(bathymetryView.terrainLayerImplementationId).toBe(planning.implementationId);
+  assertContinuousBrowserErrorsClean(browserErrors);
+});
+
+test('Three Bathymetry Resources Dispose Across Scene Transitions', async ({ page }) => {
+  const browserErrors = attachBrowserErrorCollector(page);
+  await startVisibleContinuousMissionPlanning(page);
+  await page.locator('[data-action="main-menu"]').filter({ hasText: 'Main Menu' }).first().click();
+  const firstMenu = await expectNoTerrainResourcesOnMainMenu(page);
+  await startVisibleContinuousMissionPlanning(page);
+  await deployAllGlidersThroughVisibleControls(page);
+  await page.locator('#mission-console [data-action="execute"]').click();
+  await expect.poll(() => page.evaluate(() => window.ANCHOR_SIMULATION_RENDER_DEBUG?.threeMounted === true), { timeout: 15000 }).toBe(true);
+  await page.locator('#mission-console [data-action="menu"]').click();
+  const secondMenu = await expectNoTerrainResourcesOnMainMenu(page);
+  await openMainMenuHubSection(page, 'simulation');
+  await page.locator('#main-menu-hub [data-action="bathymetry-world-view"]').click();
+  await expect.poll(() => page.evaluate(() => window.ANCHOR_BATHYMETRY_VIEW_DEBUG?.active === true), { timeout: 15000 }).toBe(true);
+  await page.locator('#mission-console [data-action="menu"]').click();
+  const thirdMenu = await expectNoTerrainResourcesOnMainMenu(page);
+  expect(secondMenu.canvasCount).toBe(firstMenu.canvasCount);
+  expect(thirdMenu.canvasCount).toBe(firstMenu.canvasCount);
+  expect(secondMenu.bathymetryCanvasCount).toBe(firstMenu.bathymetryCanvasCount);
+  expect(thirdMenu.bathymetryCanvasCount).toBe(firstMenu.bathymetryCanvasCount);
+  assertContinuousBrowserErrorsClean(browserErrors);
+});
+test('Three Bathymetric Terrain Preserves Render-Cost Gate', async ({ page }) => {
   const browserErrors = attachBrowserErrorCollector(page);
   await prepareThreeSamplingTargetDiveScenario(page, { attach: true, profile: 'fullProfile', layer: 'deep', cycles: 2, extraFarWaypoints: 1 });
   await page.locator('#mission-console [data-action="three-quality-profile"][data-profile="balanced"]').click();
@@ -3658,13 +3918,25 @@ test('Three Balanced Renderer Meets Bathymetry Headroom Gate', async ({ page }) 
   expect(simulationVisuals.realizedTrajectoryPointCount ?? 0).toBeGreaterThan(0);
   console.log('THREE_BALANCED_HEADROOM_GATE ' + JSON.stringify({
     average: perf.frameIntervalAverageMilliseconds,
+    p50: perf.medianFrameMilliseconds ?? perf.frameIntervalMedianMilliseconds ?? perf.frameIntervalP50Milliseconds ?? null,
     p95: perf.frameIntervalP95Milliseconds,
     p99: perf.frameIntervalP99Milliseconds,
+    maximum: perf.maximumFrameMilliseconds,
     renderedFramesPerSecond: perf.renderedFramesPerSecond,
     presentationUpdateAverageMilliseconds: perf.presentationUpdateAverageMilliseconds,
     rendererSubmissionAverageMilliseconds: perf.rendererSubmissionAverageMilliseconds,
     gpuTimingSupported: perf.gpuTimingSupported,
-    gpuAverageMilliseconds: perf.gpuAverageMilliseconds
+    gpuAverageMilliseconds: perf.gpuAverageMilliseconds,
+    renderCalls: perf.rendererCalls,
+    triangles: perf.rendererTriangles,
+    lines: perf.rendererLines,
+    points: perf.rendererPoints,
+    sceneObjectCount: perf.sceneObjectCount,
+    geometryCount: perf.geometryCount,
+    materialCount: perf.materialCount,
+    textureCount: perf.textureCount,
+    terrainTriangleCount: simulationVisuals.terrainTriangleCount ?? null,
+    terrainDrawCallCount: simulationVisuals.bathymetryTerrainSummary?.terrainObjectCount ?? null
   }));
   assertContinuousBrowserErrorsClean(browserErrors);
 });
@@ -5525,6 +5797,40 @@ async function prepareThreeSamplingTargetDiveScenario(page, { attach = true, pro
     await expect.poll(() => page.evaluate((id) => (window.anchorGame.state.plan?.scienceTargets ?? []).find((target) => target.id === id)?.attachedSegmentIds?.length ?? 0, targetId)).toBeGreaterThan(0);
   }
   return { agentId, targetId, targetCell };
+}
+
+async function expectNoTerrainResourcesOnMainMenu(page) {
+  await expect(page.locator('#main-menu-hub')).toBeVisible({ timeout: 15000 });
+  await expect.poll(() => page.evaluate(() => ({
+    canvasCount: document.querySelectorAll('.three-mission-world-canvas').length,
+    hostCount: document.querySelectorAll('.three-mission-world-host').length,
+    bathymetryCanvasCount: document.querySelectorAll('.three-bathymetry-canvas').length,
+    bathymetryHostCount: document.querySelectorAll('.three-bathymetry-host, #bathymetry-three-renderer-host').length,
+    terrainObjectCount: window.ANCHOR_SCENE_ISOLATION_DEBUG?.activeWaterColumnSlabCount ?? 0,
+    isolationStatus: window.ANCHOR_SCENE_ISOLATION_DEBUG?.isolationStatus ?? null,
+    activeSceneKeys: window.ANCHOR_SCENE_ISOLATION_DEBUG?.activePhaserSceneKeys ?? []
+  })), { timeout: 10000 }).toMatchObject({
+    canvasCount: 0,
+    hostCount: 0,
+    bathymetryCanvasCount: 0,
+    bathymetryHostCount: 0,
+    isolationStatus: 'PASS'
+  });
+  const counts = await page.evaluate(() => ({
+    canvasCount: document.querySelectorAll('.three-mission-world-canvas').length,
+    hostCount: document.querySelectorAll('.three-mission-world-host').length,
+    bathymetryCanvasCount: document.querySelectorAll('.three-bathymetry-canvas').length,
+    bathymetryHostCount: document.querySelectorAll('.three-bathymetry-host, #bathymetry-three-renderer-host').length,
+    terrainObjectCount: window.ANCHOR_SCENE_ISOLATION_DEBUG?.activeWaterColumnSlabCount ?? 0,
+    isolationStatus: window.ANCHOR_SCENE_ISOLATION_DEBUG?.isolationStatus ?? null,
+    activeSceneKeys: window.ANCHOR_SCENE_ISOLATION_DEBUG?.activePhaserSceneKeys ?? []
+  }));
+  expect(counts.canvasCount).toBe(0);
+  expect(counts.hostCount).toBe(0);
+  expect(counts.bathymetryCanvasCount).toBe(0);
+  expect(counts.bathymetryHostCount).toBe(0);
+  expect(counts.isolationStatus).toBe('PASS');
+  return counts;
 }
 async function startVisibleContinuousMissionPlanning(page) {
   await page.goto('/');

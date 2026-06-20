@@ -58,3 +58,28 @@ Human manual QA by the project owner remains pending.
 - Simulation to Main Menu removes mission terrain resources.
 - No stale terrain canvas remains.
 - No page errors or unexpected console errors appear.
+
+## THREE-R1.2B.1 Owner Closure Checklist
+
+### Shared Representation
+
+- Scenario Start, Planning, Simulation, and Bathymetric World View show the same class of synthetic bathymetry representation.
+- Debug summaries report a terrain source digest and mesh digest in each active Three terrain scene.
+- `usesSharedTerrainLayer` is true and `usesLegacyTerrainLayer` is false.
+
+### Terrain Clarity
+
+- Coastline, shelf, shelf break, canyon, basin, seamount, land height, contours, and shading are readable without hiding routes, targets, fields, currents, observations, or gliders.
+
+### Interaction
+
+- Land waypoint rejection, coastline route rejection/warning, below-seabed target rejection, terrain point inspection, route clearance, and side-profile dive inspection are visible and understandable.
+
+### Performance
+
+- Orbit, pan, zoom, live multi-yo Simulation, and Balanced quality remain responsive.
+- Terrain resources plateau; camera movement and routine Simulation do not rebuild terrain geometry.
+
+### Cleanup
+
+- Planning -> Main Menu, Simulation -> Main Menu, and Bathymetric World View -> Main Menu leave no stale terrain canvas, duplicate mesh, duplicate coastline, or console errors.

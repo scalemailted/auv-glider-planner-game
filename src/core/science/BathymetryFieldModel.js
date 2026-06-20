@@ -202,6 +202,8 @@ export function createBasinSeamountBathymetry(options = {}) {
   return createScenarioBathymetry({ ...options, scenarioId: 'basinSeamount', featureIds: ['landCoast', 'continentalShelf', 'deepBasin', 'seamount', 'submarineRidge', 'bottomHazards'] });
 }
 
+// Compatibility-only mesh helper retained for older visual-quality smoke tests and docs.
+// Production Three terrain uses BathymetryMeshGeometry plus shared terrain layers.
 export function bathymetryToTerrainMeshData(bathymetry, options = {}) {
   const depth = bathymetry?.depthMeters ?? [];
   const height = depth.length;

@@ -37,3 +37,16 @@ Terrain color is bathymetry/topography only. Science value, hazards, route statu
 - Bathymetry constrains dive feasibility through the portable core.
 - The renderer does not add arbitrary XYZ route planning.
 - The renderer does not add WebGPU, a fluid solver, hydrodynamic calibration, or operational ocean claims.
+
+## THREE-R1.2B.1 Integration Closure
+
+Scenario Start, Planning, Simulation, and Bathymetric World View now expose shared terrain debug fields: `terrainSourceDigest`, `terrainMeshDigest`, `terrainCoordinateProfileId`, `terrainLayerImplementationId`, `usesSharedTerrainLayer`, and `usesLegacyTerrainLayer`.
+
+Expected active state:
+
+```text
+usesSharedTerrainLayer: true
+usesLegacyTerrainLayer: false
+```
+
+The compatibility helper `bathymetryToTerrainMeshData()` is not a production terrain path. Production terrain uses `BathymetrySurfaceViewModel`, `BathymetryMeshGeometry`, and the shared Three terrain layer family.

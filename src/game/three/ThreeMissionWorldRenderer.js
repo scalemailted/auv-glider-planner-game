@@ -194,6 +194,13 @@ export function createThreeMissionWorldRenderer(container, options = {}) {
     lastBathymetryMeshGeometry: null,
     lastCoastlineGeometry: null,
     lastContourGeometry: null,
+    terrainLayerImplementationId: 'shared-three-bathymetry-terrain-layer-family-r1-2b',
+    terrainBuildCount: 0,
+    terrainCacheHitCount: 0,
+    terrainCacheMissCount: 0,
+    terrainGeometryUpdateCountDuringCameraGesture: 0,
+    terrainGeometryUpdateCountDuringSimulation: 0,
+    lastTerrainBuildKey: null,
     presentationInitialized: false,
     presentationCache: {
       lastRenderedScalarFieldFrameId: null,
@@ -396,6 +403,10 @@ export function threeMissionWorldRendererSummary(renderer = {}) {
   const growthWarnings = renderer.scene ? objectGrowthWarnings(renderer) : [];
   const renderCostCounts = renderCostSceneCounts(renderer);
   const slabSummary = renderer.operationalDepthSlabLayer?.lastSummary ?? threeOperationalDepthSlabLayerSummary(renderer.operationalDepthSlabLayer ?? {}, vm);
+  const terrainLayerGroup = renderer.bathymetryTerrainLayer?.group ?? null;
+  const landLayerGroup = renderer.landmassLayer?.group ?? null;
+  const coastlineLayerGroup = renderer.coastlineLayer?.group ?? null;
+  const contourLayerGroup = renderer.bathymetryContourLayer?.group ?? null;
   const renderPolicy = renderCostPolicySummary(vm);
   const gate = performanceGate(renderer);
   return {
@@ -415,6 +426,24 @@ export function threeMissionWorldRendererSummary(renderer = {}) {
     terrainTriangleCount: Number(renderer.lastBathymetryMeshGeometry?.triangleCount ?? 0),
     terrainDrawCallEstimate: Number(renderer.lastBathymetryMeshGeometry ? 4 : 0),
     terrainSourceDigest: renderer.lastBathymetrySurface?.sourceDigest ?? renderer.lastBathymetryMeshGeometry?.sourceDigest ?? null,
+    terrainMeshDigest: renderer.lastBathymetryMeshGeometry?.meshDigest ?? renderer.lastBathymetryMeshGeometry?.sourceDigest ?? null,
+    terrainCoordinateProfileId: renderer.lastBathymetryMeshGeometry?.coordinateProfileId ?? renderer.lastBathymetrySurface?.coordinateProfileId ?? null,
+    terrainLayerImplementationId: renderer.terrainLayerImplementationId ?? 'shared-three-bathymetry-terrain-layer-family-r1-2b',
+    usesSharedTerrainLayer: true,
+    usesLegacyTerrainLayer: false,
+    terrainBuildCount: Number(renderer.terrainBuildCount ?? renderer.bathymetryTerrainLayer?.buildCount ?? 0),
+    terrainCacheHitCount: Number(renderer.terrainCacheHitCount ?? 0),
+    terrainCacheMissCount: Number(renderer.terrainCacheMissCount ?? 0),
+    terrainObjectCount: countGroupVisibleObjects(terrainLayerGroup),
+    landObjectCount: countGroupVisibleObjects(landLayerGroup),
+    coastlineObjectCount: countGroupVisibleObjects(coastlineLayerGroup),
+    contourObjectCount: countGroupVisibleObjects(contourLayerGroup),
+    terrainGeometryCount: countGroupResources(terrainLayerGroup, 'geometry'),
+    terrainMaterialCount: countGroupResources(terrainLayerGroup, 'material'),
+    terrainTextureCount: countGroupTextures(terrainLayerGroup),
+    terrainGeometryUpdateCountDuringCameraGesture: Number(renderer.terrainGeometryUpdateCountDuringCameraGesture ?? 0),
+    terrainGeometryUpdateCountDuringSimulation: Number(renderer.terrainGeometryUpdateCountDuringSimulation ?? 0),
+    terrainResourceGrowthWarningCount: growthWarnings.length,
     canonicalMeshAlignmentStatus: renderer.lastBathymetryMeshGeometry ? 'PASS' : 'MISSING',
     rendererOwnsBathymetry: false,
     usesVisualMeshForPhysics: false,
@@ -549,7 +578,6 @@ export function disposeThreeMissionWorldRenderer(renderer) {
   disposeThreeOperationalDepthSlabLayer(renderer.operationalDepthSlabLayer);
   disposeThreeWaterColumnVolumeFrameLayer(renderer.waterColumnVolumeFrameLayer);
   disposeThreeGpuTimer(renderer.gpuTimer);
-  disposeThreeGpuTimer(renderer.gpuTimer);
   clearThreePlannedDiveTrajectoryLayer(renderer.groups?.plannedDiveTrajectoryGroup);
   clearThreeDepthTrajectoryLayer(renderer.groups?.depthTrajectoryGroup);
   clearThreeSamplingTargetLayer(renderer.groups?.samplingTargetGroup);
@@ -618,9 +646,23 @@ function updateBathymetry(renderer, viewModel) {
     terrainFeatures: viewModel.bathymetry?.terrainFeatures,
     synthetic: true
   });
-  const meshGeometry = buildBathymetryMeshGeometry({ surfaceModel: surface, coordinateSystem: transform });
-  const coastlineGeometry = extractCoastlineSegments({ surfaceModel: surface });
-  const contourGeometry = buildBathymetryContourGeometry({ surfaceModel: surface, levels: viewModel.displaySettings?.terrain?.contourDepthsMeters });
+  const terrainKey = terrainBuildKey(surface, transform, viewModel);
+  let meshGeometry = renderer.lastBathymetryMeshGeometry;
+  let coastlineGeometry = renderer.lastCoastlineGeometry;
+  let contourGeometry = renderer.lastContourGeometry;
+  const cacheHit = renderer.lastTerrainBuildKey === terrainKey && meshGeometry && coastlineGeometry && contourGeometry;
+  if (cacheHit) {
+    renderer.terrainCacheHitCount = Number(renderer.terrainCacheHitCount ?? 0) + 1;
+  } else {
+    meshGeometry = buildBathymetryMeshGeometry({ surfaceModel: surface, coordinateSystem: transform });
+    coastlineGeometry = extractCoastlineSegments({ surfaceModel: surface });
+    contourGeometry = buildBathymetryContourGeometry({ surfaceModel: surface, levels: viewModel.displaySettings?.terrain?.contourDepthsMeters });
+    renderer.lastTerrainBuildKey = terrainKey;
+    renderer.terrainBuildCount = Number(renderer.terrainBuildCount ?? 0) + 1;
+    renderer.terrainCacheMissCount = Number(renderer.terrainCacheMissCount ?? 0) + 1;
+    if (renderer.cameraController?.gestureActive === true) renderer.terrainGeometryUpdateCountDuringCameraGesture = Number(renderer.terrainGeometryUpdateCountDuringCameraGesture ?? 0) + 1;
+    if ((viewModel.phase === 'simulation' || viewModel.type === 'anchor.rendering.simulation-world') && renderer.presentationInitialized === true) renderer.terrainGeometryUpdateCountDuringSimulation = Number(renderer.terrainGeometryUpdateCountDuringSimulation ?? 0) + 1;
+  }
   renderer.lastBathymetrySurface = surface;
   renderer.lastBathymetryMeshGeometry = meshGeometry;
   renderer.lastCoastlineGeometry = coastlineGeometry;
@@ -632,6 +674,11 @@ function updateBathymetry(renderer, viewModel) {
   updateThreeBathymetryContourLayer(renderer.bathymetryContourLayer, contourGeometry, { coordinateSystem: transform, width: viewModel.grid.width, height: viewModel.grid.height, visible: viewModel.displaySettings?.terrain?.contours !== false });
   renderer.groups.bathymetryGroup.userData = {
     sourceDigest: surface.sourceDigest,
+    meshDigest: meshGeometry.meshDigest ?? meshGeometry.sourceDigest ?? null,
+    terrainCoordinateProfileId: meshGeometry.coordinateProfileId ?? surface.coordinateProfileId ?? null,
+    terrainLayerImplementationId: renderer.terrainLayerImplementationId,
+    usesSharedTerrainLayer: true,
+    usesLegacyTerrainLayer: false,
     terrainVertexCount: meshGeometry.vertexCount,
     terrainTriangleCount: meshGeometry.triangleCount,
     coastlineSegmentCount: coastlineGeometry.segmentCount,
@@ -639,6 +686,19 @@ function updateBathymetry(renderer, viewModel) {
     rendererOwnsBathymetry: false,
     usesVisualMeshForPhysics: false
   };
+}
+
+function terrainBuildKey(surface = {}, transform = {}, viewModel = {}) {
+  return JSON.stringify({
+    sourceDigest: surface.sourceDigest ?? null,
+    coordinateFrame: transform.coordinateFrame ?? null,
+    width: transform.width ?? surface.width ?? null,
+    height: transform.height ?? surface.height ?? null,
+    cellSize: transform.cellSize ?? null,
+    depthScale: transform.depthScale ?? null,
+    verticalExaggeration: transform.verticalExaggeration ?? null,
+    contourDepthsMeters: viewModel.displaySettings?.terrain?.contourDepthsMeters ?? null
+  });
 }
 
 function updateWaterSurface(renderer, viewModel) {
@@ -790,6 +850,35 @@ function countSceneResources(scene, key) {
 function countSceneTextures(scene) {
   const seen = new Set();
   scene?.traverse?.((object) => {
+    const materials = Array.isArray(object?.material) ? object.material : object?.material ? [object.material] : [];
+    for (const material of materials) {
+      for (const value of Object.values(material ?? {})) {
+        if (value?.isTexture) seen.add(value);
+      }
+    }
+  });
+  return seen.size;
+}
+
+function countGroupVisibleObjects(group) {
+  let count = 0;
+  group?.traverse?.((object) => { if (object !== group && object.visible !== false) count += 1; });
+  return count;
+}
+
+function countGroupResources(group, key) {
+  const seen = new Set();
+  group?.traverse?.((object) => {
+    const value = object?.[key];
+    if (Array.isArray(value)) value.forEach((item) => item && seen.add(item));
+    else if (value) seen.add(value);
+  });
+  return seen.size;
+}
+
+function countGroupTextures(group) {
+  const seen = new Set();
+  group?.traverse?.((object) => {
     const materials = Array.isArray(object?.material) ? object.material : object?.material ? [object.material] : [];
     for (const material of materials) {
       for (const value of Object.values(material ?? {})) {

@@ -53,3 +53,7 @@ Predicted dive geometry remains canonical view-model output. Render-cost LOD may
 ## Bathymetry Terrain Display
 
 Predicted dive paths are displayed over the derived bathymetric terrain mesh, but feasibility and bottom-clearance clipping still come from the portable planned-dive and bathymetry core. Vertical exaggeration changes only the rendered view.
+
+## THREE-R1.2B.1 Terrain Contract Note
+
+One shared terrain contract serves all active Three mission views. The terrain mesh is a display projection of canonical bathymetry. Production no longer uses boxed/per-cell terrain. Retained legacy terrain helpers are compatibility-only and not production. Terrain quality affects presentation only. Headed performance is the authoritative render-cost gate. Human manual QA remains separate from headed automated QA.

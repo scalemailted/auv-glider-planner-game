@@ -27,3 +27,7 @@ Use `?legacyPhaser=1` only for diagnostics while retiring old tactical-map depen
 ## Bathymetry Authority Boundary
 
 Three.js terrain layers are presentation adapters over core bathymetry contracts. They must not raycast the visual mesh to determine collision, dive feasibility, sampling validity, route validity, score, or replay state.
+
+## THREE-R1.2B.1 Terrain Contract Note
+
+One shared terrain contract serves all active Three mission views. The terrain mesh is a display projection of canonical bathymetry. Production no longer uses boxed/per-cell terrain. Retained legacy terrain helpers are compatibility-only and not production. Terrain quality affects presentation only. Headed performance is the authoritative render-cost gate. Human manual QA remains separate from headed automated QA.

@@ -88,3 +88,15 @@ Human manual QA by the project owner remains pending.
 ## THREE-R1.2B Terrain Measurement Note
 
 The R1.2B terrain contract preserves the previous render-cost gate intent: headed Balanced average frame interval <= 50 ms, p95 <= 100 ms, and rendered FPS >= 20 with terrain visible. Fresh headed terrain measurements still need to be recorded after browser E2E execution in this phase.
+
+## THREE-R1.2B.1 Terrain Closure Gate
+
+The authoritative terrain render-cost gate is headed Chromium, Balanced quality, with terrain, land, coastline, contours, routes, sampling targets, fields, currents, observations, and gliders visible:
+
+```text
+average frame interval <= 50 ms
+p95 frame interval <= 100 ms
+rendered FPS >= 20
+```
+
+Headless frame intervals remain diagnostic only. Terrain quality affects presentation only and must not change bathymetry source digest, bottom-depth digest, route validity, dive feasibility, trajectory digests, observation digests, score-event digests, energy, terminal reason, result digest, or replay digest.

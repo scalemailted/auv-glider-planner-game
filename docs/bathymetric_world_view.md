@@ -47,3 +47,7 @@ Node/OceanBox-JS remains the canonical non-browser runtime. Headless bundles may
 ## R1.2B Geometry Convergence
 
 The Bathymetric World View now consumes the same renderer-neutral bathymetry surface, indexed mesh, coastline, and contour contracts as the production mission renderer. The scene remains a visual inspection/demo view and does not own simulation, scoring, route validity, or bathymetry authority.
+
+## THREE-R1.2B.1 Terrain Contract Note
+
+One shared terrain contract serves all active Three mission views. The terrain mesh is a display projection of canonical bathymetry. Production no longer uses boxed/per-cell terrain. Retained legacy terrain helpers are compatibility-only and not production. Terrain quality affects presentation only. Headed performance is the authoritative render-cost gate. Human manual QA remains separate from headed automated QA.

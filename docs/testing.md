@@ -826,3 +826,32 @@ node tools/js/audit_bathymetry_browser_headless_alignment.mjs
 node tools/js/audit_bathymetry_renderer_boundaries_v2.mjs
 node tools/js/audit_bathymetry_performance_boundaries.mjs
 ```
+
+## THREE-R1.2B.1 Bathymetry Integration Closure Checks
+
+Run the active-path and terrain integration checks with:
+
+```bash
+node tools/js/audit_no_legacy_terrain_production_imports.mjs
+node tools/js/audit_bathymetry_scene_coordinate_alignment.mjs
+node tools/js/audit_bathymetry_mesh_alignment_extended.mjs
+node tools/js/smoke_coastline_topology_integrity.mjs
+node tools/js/audit_terrain_water_column_mask_integrity.mjs
+node tools/js/audit_terrain_trajectory_clearance_alignment.mjs
+node tools/js/smoke_terrain_resource_lifecycle.mjs
+node tools/js/smoke_terrain_quality_canonical_invariance.mjs
+node tools/js/audit_playwright_group_coverage.mjs
+```
+
+Focused terrain E2E names:
+
+```text
+Three Mission Uses Continuous Bathymetric Terrain
+Bathymetry Limits Predicted and Realized Dive Depth
+Continuous Coastline Blocks Invalid Surface Waypoints
+Water-Column Layers Respect Continuous Seabed
+Bathymetric Demo and Mission Renderer Share Terrain Geometry
+Three Bathymetric Terrain Preserves Render-Cost Gate
+All Production Mission Phases Share One Bathymetry Contract
+Three Bathymetry Resources Dispose Across Scene Transitions
+```

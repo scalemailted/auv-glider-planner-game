@@ -121,3 +121,7 @@ The browser debug objects `ANCHOR_MIGRATION_DEBUG`, `ANCHOR_MISSION_RENDER_DEBUG
 ## R1.2B Terrain Migration Note
 
 The production Three.js mission renderer replaces per-cell bathymetry boxes with a shared indexed terrain mesh, landmass layer, coastline layer, and contour layer. The mesh is derived from canonical core bathymetry and remains display-only.
+
+## THREE-R1.2B.1 Terrain Contract Note
+
+One shared terrain contract serves all active Three mission views. The terrain mesh is a display projection of canonical bathymetry. Production no longer uses boxed/per-cell terrain. Retained legacy terrain helpers are compatibility-only and not production. Terrain quality affects presentation only. Headed performance is the authoritative render-cost gate. Human manual QA remains separate from headed automated QA.
