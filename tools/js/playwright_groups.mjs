@@ -63,6 +63,8 @@ export const PLAYWRIGHT_GROUPS = Object.freeze([
       /^Finish Instantly Avoids Per-Step Three Rebuilds$/i,
       /^Three Quality Profiles Preserve Canonical Simulation Result$/i,
       /^Three Context Slabs Reduce Cost Without Losing Dive Context$/i,
+      /^Three Continuous Bathymetry Terrain Renders Canonical Mesh$/i,
+      /^Three Terrain Camera Gestures Do Not Rebuild Bathymetry Mesh$/i,
       /^Three Balanced Renderer Meets Bathymetry Headroom Gate$/i,
       /^Three Camera Remains Responsive Under Live Simulation Load$/i,
       /^Execute Mission Through Three Simulation$/i,

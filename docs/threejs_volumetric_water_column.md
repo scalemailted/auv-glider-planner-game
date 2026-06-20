@@ -78,3 +78,7 @@ Surface waypoints are executable navigation/surfacing targets. Sampling targets 
 ## THREE-R1.2A.4.4 Display-Cost Addendum
 
 Context-slab LOD reduces transparent overdraw by keeping one active textured slab and rendering other visible layers as outlines in Balanced mode. This does not change water-column values, depth-layer semantics, dive-profile prediction, or bottom-boundary constraints.
+
+## Terrain and Depth Slabs
+
+Operational depth slabs continue to use canonical valid-depth masks. Invalid land or below-seabed cells are transparent in the slab texture path so deep layers do not imply water through land or shallow shelf.

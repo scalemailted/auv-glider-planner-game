@@ -55,3 +55,7 @@ Simulation presentation now uses a scheduler/dirty-category pipeline. Canonical 
 ## THREE-R1.2A.4.4 Runtime Baseline Addendum
 
 `index.html` continues to boot `src/game/main.js`; the reverted DOM runtime is not active. Three.js remains the production mission-world renderer inside the Phaser scene shell. Render-cost profiles are presentation-only and do not fork canonical simulation or scoring.
+
+## THREE-R1.2B Terrain Baseline
+
+The production Three.js mission renderer now consumes `BathymetrySurfaceViewModel`, `BathymetryMeshGeometry`, `CoastlineGeometry`, and `BathymetryContourGeometry`. These are derived from canonical bottom-depth fields. Three.js owns presentation resources only; core logic continues to own bathymetry sampling, route blocking, dive feasibility, simulation, scoring, headless alignment, and exports.

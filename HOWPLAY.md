@@ -1127,3 +1127,7 @@ Simulation presentation now uses a scheduler/dirty-category pipeline. Canonical 
 ## Render-Cost Note
 
 Balanced quality is the default readable mode for volumetric missions: active scalar field, depth context outlines, current vectors at a readable stride, predicted/realized routes, gliders, targets, and observations remain visible. Performance and High change rendering cost/clarity only; mission results are unchanged.
+
+## Bathymetric Terrain Note
+
+The Three.js mission world now shows a continuous synthetic seabed, land/coastline, shelf, basin, canyon/seamount-style features, and contours. These visuals explain why a dive profile is terrain-limited, but gameplay authority still comes from the portable mission core: surface waypoints navigate, sampling targets are science objectives, and vertical exaggeration is display-only.

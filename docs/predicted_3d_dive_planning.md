@@ -49,3 +49,7 @@ Three.js mission runtime performance is now measured through globalThis.ANCHOR_T
 ## THREE-R1.2A.4.4 Display-Cost Addendum
 
 Predicted dive geometry remains canonical view-model output. Render-cost LOD may reduce unrelated context detail, but selected dives, target coverage, layer crossings, bottom turns, predicted samples, and current-corrected paths remain presentation of the same planning data.
+
+## Bathymetry Terrain Display
+
+Predicted dive paths are displayed over the derived bathymetric terrain mesh, but feasibility and bottom-clearance clipping still come from the portable planned-dive and bathymetry core. Vertical exaggeration changes only the rendered view.

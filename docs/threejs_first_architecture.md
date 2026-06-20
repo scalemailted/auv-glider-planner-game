@@ -23,3 +23,7 @@ Three.js must remain a renderer and interaction surface over canonical state. It
 ## Legacy Phaser Policy
 
 Use `?legacyPhaser=1` only for diagnostics while retiring old tactical-map dependencies. New mission features should target portable core modules plus Three.js render/view-model adapters. Phaser may continue to host lab scenes and transitional routing until MIG-R2 extracts mission lifecycle and routing.
+
+## Bathymetry Authority Boundary
+
+Three.js terrain layers are presentation adapters over core bathymetry contracts. They must not raycast the visual mesh to determine collision, dive feasibility, sampling validity, route validity, score, or replay state.

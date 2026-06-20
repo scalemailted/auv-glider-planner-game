@@ -1,4 +1,4 @@
-﻿# Continuous Mission Geometry
+# Continuous Mission Geometry
 
 Continuous mission geometry uses `continuousGridV1` for generated modern missions. Waypoints are still horizontal mission-route intent, but `x` and `y` may be fractional when Free Placement is active.
 
@@ -13,3 +13,7 @@ Continuous surface waypoints now feed a per-segment planned dive view model. Rou
 ## THREE-R1.2A.4.1 Planning Semantics Note
 
 Surface waypoints are executable navigation/surfacing targets. Sampling targets are non-executable scientific objectives in the water column. Dive profiles determine underwater motion between surface waypoints. Predicted samples never earn score; actual observations are authoritative. The camera and vertical exaggeration are presentation only. Multi-yo prediction and execution use shared canonical kinematics. Performance quality profiles do not change canonical results. No arbitrary XYZ route planner is implemented. No operationally calibrated glider model is claimed.
+
+## Bathymetry Coordinate Convention
+
+Bathymetry surface and mesh contracts use row-major `[y][x]` fields with cell-center vertices. Depth is positive downward in meters and maps to negative render Y. No new half-cell offset or visual-mesh authority is introduced.

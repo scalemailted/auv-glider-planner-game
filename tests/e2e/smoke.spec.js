@@ -3279,7 +3279,7 @@ test('Three Sampling Target and Dive Planning Headed Workflow', async ({ page },
 
   await page.locator('#mission-console [data-action="water-column-target-layer"][data-layer="deep"]').click();
   await page.locator('#mission-console [data-action="water-column-active-layer"][data-layer="deep"]').click();
-  const deepCell = { x: setup.targetCell.x + 1, y: setup.targetCell.y };
+  const deepCell = await findSamplingTargetPlacementCell(page, 'deep') ?? { x: setup.targetCell.x + 1, y: setup.targetCell.y };
   await page.locator('#mission-console [data-action="mission-planning-tool"][data-tool="placeSamplingTarget"]').click();
   const deepPoint = await page.evaluate(({ layerId, cell }) => window.ANCHOR_MISSION_RENDER_TEST_API?.screenPointForDepthCell?.(layerId, cell.x, cell.y) ?? null, { layerId: 'deep', cell: deepCell });
   expect(deepPoint).toBeTruthy();
@@ -3485,6 +3485,106 @@ test('Three Context Slabs Reduce Cost Without Losing Dive Context', async ({ pag
   assertContinuousBrowserErrorsClean(browserErrors);
 });
 
+test('Three Continuous Bathymetry Terrain Renders Canonical Mesh', async ({ page }) => {
+  const browserErrors = attachBrowserErrorCollector(page);
+  await prepareThreeSamplingTargetDiveScenario(page, { attach: true, profile: 'fullProfile', layer: 'deep', cycles: 2 });
+  await expect.poll(() => page.evaluate(() => (window.ANCHOR_MISSION_RENDER_DEBUG?.rendererSummary?.terrainVertexCount ?? 0) > 0), { timeout: 15000 }).toBe(true);
+  const terrain = await page.evaluate(() => {
+    const summary = window.ANCHOR_MISSION_RENDER_DEBUG?.rendererSummary ?? {};
+    const terrainSummary = summary.bathymetryTerrainSummary ?? {};
+    const landmassSummary = summary.landmassSummary ?? {};
+    const coastlineSummary = summary.coastlineSummary ?? {};
+    const contourSummary = summary.bathymetryContourSummary ?? {};
+    return {
+      terrainVertexCount: summary.terrainVertexCount ?? 0,
+      terrainTriangleCount: summary.terrainTriangleCount ?? 0,
+      terrainDrawCallEstimate: summary.terrainDrawCallEstimate ?? 0,
+      terrainSourceDigest: summary.terrainSourceDigest ?? null,
+      canonicalMeshAlignmentStatus: summary.canonicalMeshAlignmentStatus ?? null,
+      rendererOwnsBathymetry: summary.rendererOwnsBathymetry,
+      usesVisualMeshForPhysics: summary.usesVisualMeshForPhysics,
+      terrainObjectCount: terrainSummary.terrainObjectCount ?? 0,
+      terrainBuildCount: terrainSummary.terrainBuildCount ?? 0,
+      indexedGeometry: terrainSummary.indexedGeometry === true,
+      terrainLayerOwnsCollision: terrainSummary.ownsCollision === true,
+      terrainLayerOwnsDiveFeasibility: terrainSummary.ownsDiveFeasibility === true,
+      landVertexCount: landmassSummary.landVertexCount ?? 0,
+      coastlineSegmentCount: coastlineSummary.coastlineSegmentCount ?? 0,
+      contourSegmentCount: contourSummary.contourSegmentCount ?? 0,
+      contourLevelsMeters: contourSummary.contourLevelsMeters ?? []
+    };
+  });
+  expect(terrain.terrainVertexCount).toBeGreaterThan(0);
+  expect(terrain.terrainTriangleCount).toBeGreaterThan(0);
+  expect(terrain.terrainDrawCallEstimate).toBeLessThanOrEqual(4);
+  expect(terrain.terrainObjectCount).toBeLessThanOrEqual(2);
+  expect(terrain.terrainBuildCount).toBe(1);
+  expect(terrain.indexedGeometry).toBe(true);
+  expect(terrain.terrainSourceDigest).toBeTruthy();
+  expect(terrain.canonicalMeshAlignmentStatus).toBe('PASS');
+  expect(terrain.rendererOwnsBathymetry).toBe(false);
+  expect(terrain.usesVisualMeshForPhysics).toBe(false);
+  expect(terrain.terrainLayerOwnsCollision).toBe(false);
+  expect(terrain.terrainLayerOwnsDiveFeasibility).toBe(false);
+  expect(terrain.landVertexCount).toBeGreaterThan(0);
+  expect(terrain.coastlineSegmentCount).toBeGreaterThan(0);
+  expect(terrain.contourSegmentCount).toBeGreaterThan(0);
+  expect(terrain.contourLevelsMeters.length).toBeGreaterThan(0);
+  assertContinuousBrowserErrorsClean(browserErrors);
+});
+
+test('Three Terrain Camera Gestures Do Not Rebuild Bathymetry Mesh', async ({ page }) => {
+  const browserErrors = attachBrowserErrorCollector(page);
+  await prepareThreeSamplingTargetDiveScenario(page, { attach: true, profile: 'fullProfile', layer: 'thermocline', cycles: 2 });
+  await expect.poll(() => page.evaluate(() => (window.ANCHOR_MISSION_RENDER_DEBUG?.rendererSummary?.bathymetryTerrainSummary?.terrainBuildCount ?? 0) > 0), { timeout: 15000 }).toBe(true);
+  const before = await page.evaluate(() => {
+    const summary = window.ANCHOR_MISSION_RENDER_DEBUG?.rendererSummary ?? {};
+    return {
+      planDigest: JSON.stringify(window.anchorGame.state.plan),
+      terrainBuildCount: summary.bathymetryTerrainSummary?.terrainBuildCount ?? 0,
+      landBuildCount: summary.landmassSummary?.landBuildCount ?? 0,
+      coastlineBuildCount: summary.coastlineSummary?.coastlineBuildCount ?? 0,
+      contourBuildCount: summary.bathymetryContourSummary?.contourBuildCount ?? 0,
+      terrainSourceDigest: summary.terrainSourceDigest ?? null,
+      terrainVertexCount: summary.terrainVertexCount ?? 0,
+      terrainTriangleCount: summary.terrainTriangleCount ?? 0,
+      cameraOrbitChangeCount: window.ANCHOR_MISSION_RENDER_DEBUG?.cameraOrbitChangeCount ?? 0,
+      cameraZoomChangeCount: window.ANCHOR_MISSION_RENDER_DEBUG?.cameraZoomChangeCount ?? 0
+    };
+  });
+  const point = await threeGridPoint(page, 4, 3);
+  await page.mouse.move(point.x, point.y);
+  await page.mouse.down({ button: 'right' });
+  await page.mouse.move(point.x + 150, point.y + 60, { steps: 12 });
+  await page.mouse.up({ button: 'right' });
+  await page.mouse.wheel(0, -180);
+  await expect.poll(() => page.evaluate((snapshot) => {
+    const debug = window.ANCHOR_MISSION_RENDER_DEBUG ?? {};
+    return (debug.cameraOrbitChangeCount ?? 0) > snapshot.cameraOrbitChangeCount || (debug.cameraZoomChangeCount ?? 0) > snapshot.cameraZoomChangeCount;
+  }, before), { timeout: 10000 }).toBe(true);
+  const after = await page.evaluate(() => {
+    const summary = window.ANCHOR_MISSION_RENDER_DEBUG?.rendererSummary ?? {};
+    return {
+      planDigest: JSON.stringify(window.anchorGame.state.plan),
+      terrainBuildCount: summary.bathymetryTerrainSummary?.terrainBuildCount ?? 0,
+      landBuildCount: summary.landmassSummary?.landBuildCount ?? 0,
+      coastlineBuildCount: summary.coastlineSummary?.coastlineBuildCount ?? 0,
+      contourBuildCount: summary.bathymetryContourSummary?.contourBuildCount ?? 0,
+      terrainSourceDigest: summary.terrainSourceDigest ?? null,
+      terrainVertexCount: summary.terrainVertexCount ?? 0,
+      terrainTriangleCount: summary.terrainTriangleCount ?? 0
+    };
+  });
+  expect(after.planDigest).toBe(before.planDigest);
+  expect(after.terrainBuildCount).toBe(before.terrainBuildCount);
+  expect(after.landBuildCount).toBe(before.landBuildCount);
+  expect(after.coastlineBuildCount).toBe(before.coastlineBuildCount);
+  expect(after.contourBuildCount).toBe(before.contourBuildCount);
+  expect(after.terrainSourceDigest).toBe(before.terrainSourceDigest);
+  expect(after.terrainVertexCount).toBe(before.terrainVertexCount);
+  expect(after.terrainTriangleCount).toBe(before.terrainTriangleCount);
+  assertContinuousBrowserErrorsClean(browserErrors);
+});
 test('Three Balanced Renderer Meets Bathymetry Headroom Gate', async ({ page }) => {
   const browserErrors = attachBrowserErrorCollector(page);
   await prepareThreeSamplingTargetDiveScenario(page, { attach: true, profile: 'fullProfile', layer: 'deep', cycles: 2, extraFarWaypoints: 1 });
@@ -3504,7 +3604,30 @@ test('Three Balanced Renderer Meets Bathymetry Headroom Gate', async ({ page }) 
   expect(planningVisuals.plannedDiveObjectCount).toBeGreaterThan(0);
 
   await page.locator('#mission-console [data-action="execute"]').click();
-  await expect.poll(() => page.evaluate(() => window.ANCHOR_SIMULATION_RENDER_DEBUG?.threeMounted === true), { timeout: 15000 }).toBe(true);
+  try {
+    await expect.poll(() => page.evaluate(() => window.ANCHOR_SIMULATION_RENDER_DEBUG?.threeMounted === true), { timeout: 15000 }).toBe(true);
+  } catch (error) {
+    const executeDebug = await page.evaluate(() => ({
+      mode: window.anchorGame.state.mode ?? null,
+      activeScenes: window.anchorGame.phaser.scene.getScenes(true).map((scene) => scene.scene?.key ?? scene.sys?.settings?.key ?? null),
+      missionDebug: window.ANCHOR_MISSION_RENDER_DEBUG ?? null,
+      executionDebug: window.ANCHOR_EXECUTION_DEBUG ?? null,
+      simulationDebug: window.ANCHOR_SIMULATION_RENDER_DEBUG ?? null,
+      executeDisabled: document.querySelector('#mission-console [data-action="execute"]')?.disabled ?? null,
+      consoleText: document.querySelector('#mission-console')?.innerText?.slice(0, 1200) ?? null,
+      planSummary: {
+        agentPlans: window.anchorGame.state.plan?.agentPlans?.map?.((agentPlan) => ({
+          agentId: agentPlan.agentId,
+          waypointCount: agentPlan.waypoints?.length ?? 0,
+          selectedStart: agentPlan.selectedStart ?? null,
+          waypoints: (agentPlan.waypoints ?? []).map((waypoint) => ({ x: waypoint.x, y: waypoint.y, targetDepthLayerId: waypoint.targetDepthLayerId, maximumDiveDepthMeters: waypoint.maximumDiveDepthMeters, scienceTargetIds: waypoint.scienceTargetIds ?? [] }))
+        })) ?? [],
+        scienceTargets: window.anchorGame.state.plan?.scienceTargets ?? []
+      }
+    }));
+    console.log('BALANCED_EXECUTE_DEBUG ' + JSON.stringify(executeDebug));
+    throw error;
+  }
   await advanceSimulationSceneForRenderCost(page, { steps: 12, frameDelay: 40, keepRunning: true });
   await expect.poll(() => page.evaluate(() => Number(window.ANCHOR_SIMULATION_RENDER_DEBUG?.engineStepCount ?? 0) > 4), { timeout: 15000 }).toBe(true);
   await page.evaluate(() => window.ANCHOR_MISSION_RENDER_TEST_API?.resetPerformanceWindow?.());
@@ -5363,7 +5486,7 @@ async function prepareThreeSamplingTargetDiveScenario(page, { attach = true, pro
   await page.locator(`#mission-console [data-action="water-column-active-layer"][data-layer="${layer}"]`).click();
   await page.locator(`#mission-console [data-action="water-column-cycle-count"][data-cycles="${cycles}"]`).click();
   await expect.poll(() => page.evaluate(() => window.ANCHOR_DIVE_PLAN_DEBUG?.predictedDiveAvailable === true), { timeout: 10000 }).toBe(true);
-  const targetCell = await page.evaluate((id) => {
+  const targetCell = await findSamplingTargetPlacementCell(page, layer) ?? await page.evaluate((id) => {
     const agentPlan = window.anchorGame.state.plan.agentPlans.find((plan) => plan.agentId === id);
     const waypoints = agentPlan?.waypoints ?? [];
     const a = waypoints[0] ?? { x: 2, y: 2 };
@@ -5375,7 +5498,26 @@ async function prepareThreeSamplingTargetDiveScenario(page, { attach = true, pro
   const depthPoint = await page.evaluate(({ layerId, cell }) => window.ANCHOR_MISSION_RENDER_TEST_API?.screenPointForDepthCell?.(layerId, cell.x, cell.y) ?? null, { layerId: layer, cell: targetCell });
   expect(depthPoint).toBeTruthy();
   await page.mouse.click(depthPoint.x, depthPoint.y);
-  await expect.poll(() => page.evaluate(() => window.ANCHOR_MISSION_RENDER_DEBUG?.scienceTargetCount ?? 0)).toBeGreaterThan(0);
+  try {
+    await expect.poll(() => page.evaluate(() => window.ANCHOR_MISSION_RENDER_DEBUG?.scienceTargetCount ?? 0)).toBeGreaterThan(0);
+  } catch (error) {
+    const targetDebug = await page.evaluate((diagnostic) => ({
+      scienceTargetCount: window.ANCHOR_MISSION_RENDER_DEBUG?.scienceTargetCount ?? 0,
+      lastIntentStatus: window.ANCHOR_MISSION_RENDER_DEBUG?.lastIntentStatus ?? null,
+      lastIntentWarning: window.ANCHOR_MISSION_RENDER_DEBUG?.lastIntentWarning ?? null,
+      placementValidation: window.ANCHOR_MISSION_RENDER_DEBUG?.placementValidation ?? null,
+      lastInteractionResult: window.ANCHOR_MISSION_RENDER_DEBUG?.lastInteractionResult ?? null,
+      selectedDepthLayerId: window.ANCHOR_WATER_COLUMN_RENDER_DEBUG?.selectedTargetDepthLayerId ?? null,
+      requestedTargetCell: diagnostic.targetCell,
+      requestedDepthPoint: diagnostic.depthPoint,
+      candidateDebug: window.__samplingTargetCandidateDebug ?? null,
+      targetCell: window.ANCHOR_MISSION_RENDER_DEBUG?.actualGridCell ?? window.ANCHOR_MISSION_RENDER_DEBUG?.hoveredGridCell ?? null,
+      rendererReady: window.ANCHOR_MISSION_RENDER_DEBUG?.rendererReady ?? null,
+      rendererRuntimeErrorCount: window.ANCHOR_MISSION_RENDER_DEBUG?.rendererRuntimeErrorCount ?? null
+    }), { targetCell, depthPoint });
+    console.log('SAMPLING_TARGET_PLACEMENT_DEBUG ' + JSON.stringify(targetDebug));
+    throw error;
+  }
   const targetId = await page.evaluate(() => window.anchorGame.state.ui?.selectedScienceTargetId ?? window.anchorGame.state.plan?.scienceTargets?.[0]?.id ?? null);
   expect(targetId).toBeTruthy();
   if (attach) {
@@ -5571,6 +5713,59 @@ async function findHardInvalidWaypointCell(page) {
   });
 }
 
+async function findSamplingTargetPlacementCell(page, layerId = 'thermocline') {
+  return page.evaluate(async (requestedLayerId) => {
+    const { sampleBathymetryAt } = await import('./src/core/science/BathymetryFieldModel.js');
+    const { waterColumnLayerMetadata } = await import('./src/core/science/WaterColumnSchema.js');
+    const state = window.anchorGame.state;
+    const level = state.level ?? {};
+    const scene = window.anchorGame.phaser.scene.getScene('MissionWorkspaceScene');
+    const viewModel = scene?.missionRenderViewModel ?? {};
+    const bathymetry = level.bathymetry ?? level.world?.bathymetry ?? level.layers?.bathymetry ?? viewModel.bathymetry ?? null;
+    const depthGrid = bathymetry?.depthMeters ?? level.world?.bathymetry?.depthMeters ?? level.layers?.depthMeters ?? viewModel.bottomBoundary?.bottomDepthField ?? level.layers?.depth ?? null;
+    const depthSource = bathymetry?.depthMeters ? bathymetry : { depthMeters: depthGrid };
+    const grid = level.world?.grid ?? viewModel.coordinateSystem ?? {};
+    const width = Number(grid.width ?? bathymetry?.width ?? depthGrid?.[0]?.length ?? 0);
+    const height = Number(grid.height ?? bathymetry?.height ?? depthGrid?.length ?? 0);
+    const depthMeters = Number(waterColumnLayerMetadata(requestedLayerId).nominalDepthMeters ?? 0);
+    const minimumClearance = Math.max(0, Number(state.mission?.physics?.minimumBottomClearanceMeters ?? state.mission?.physics?.bottomClearanceMeters ?? 5));
+    const bottomValues = Array.isArray(depthGrid) ? depthGrid.flat().map(Number).filter(Number.isFinite) : [];
+    const candidateDebug = {
+      requestedLayerId,
+      depthMeters,
+      minimumClearance,
+      width,
+      height,
+      hasBathymetry: Boolean(bathymetry?.depthMeters),
+      hasDepthGrid: Array.isArray(depthGrid),
+      minBottom: bottomValues.length ? Math.min(...bottomValues) : null,
+      maxBottom: bottomValues.length ? Math.max(...bottomValues) : null,
+      visibleDepthPointCount: 0,
+      clearanceCandidateCount: 0,
+      visibleCandidateCount: 0
+    };
+    const candidates = [];
+    for (let y = 0; y < height; y += 1) {
+      for (let x = 0; x < width; x += 1) {
+        if (level.layers?.terrain?.[y]?.[x]) continue;
+        if (bathymetry?.landMask?.[y]?.[x] || bathymetry?.landSeaMask?.[y]?.[x] === 'land') continue;
+        const bottomDepth = sampleBathymetryAt(depthSource, x, y);
+        const clearance = bottomDepth - depthMeters;
+        if (!Number.isFinite(clearance) || clearance < minimumClearance) continue;
+        candidateDebug.clearanceCandidateCount += 1;
+        const point = window.ANCHOR_MISSION_RENDER_TEST_API?.screenPointForDepthCell?.(requestedLayerId, x, y);
+        if (point) candidateDebug.visibleDepthPointCount += 1;
+        if (!point || point.visible === false || !Number.isFinite(point.x) || !Number.isFinite(point.y)) continue;
+        if (point.x < 0 || point.y < 0 || point.x > window.innerWidth || point.y > window.innerHeight) continue;
+        candidateDebug.visibleCandidateCount += 1;
+        candidates.push({ x, y, clearance, bottomDepth, distanceFromCenter: Math.hypot(x - width / 2, y - height / 2) });
+      }
+    }
+    candidates.sort((a, b) => (b.clearance - a.clearance) || (a.distanceFromCenter - b.distanceFromCenter));
+    window.__samplingTargetCandidateDebug = { ...candidateDebug, selected: candidates[0] ?? null, topCandidates: candidates.slice(0, 5) };
+    return candidates[0] ? { x: candidates[0].x, y: candidates[0].y } : null;
+  }, layerId);
+}
 async function findWaypointPlacementCell(page, { warningCode = null, requireNoWarnings = false, preferFar = false } = {}) {
   return page.evaluate(async ({ warningCode, requireNoWarnings, preferFar }) => {
     const { canPlaceWaypoint } = await import('./src/core/planning/WaypointPlacementGuard.js');

@@ -34,7 +34,15 @@ import {
   disposeThreePlanningInteractionLayer
 } from './layers/ThreePlanningInteractionLayer.js';
 import { clearGroup, makeBoxCell } from './layers/ThreeMissionLayerUtils.js';
+import { createThreeBathymetryTerrainLayer, updateThreeBathymetryTerrainLayer, disposeThreeBathymetryTerrainLayer, threeBathymetryTerrainLayerSummary } from './layers/ThreeBathymetryTerrainLayer.js';
+import { createThreeLandmassLayer, updateThreeLandmassLayer, disposeThreeLandmassLayer, threeLandmassLayerSummary } from './layers/ThreeLandmassLayer.js';
+import { createThreeCoastlineLayer, updateThreeCoastlineLayer, disposeThreeCoastlineLayer, threeCoastlineLayerSummary } from './layers/ThreeCoastlineLayer.js';
+import { createThreeBathymetryContourLayer, updateThreeBathymetryContourLayer, disposeThreeBathymetryContourLayer, threeBathymetryContourLayerSummary } from './layers/ThreeBathymetryContourLayer.js';
 import { missionWorldRenderViewModelSummary } from '../../core/rendering/MissionWorldRenderViewModel.js';
+import { buildBathymetrySurfaceViewModel } from '../../core/rendering/BathymetrySurfaceViewModel.js';
+import { buildBathymetryMeshGeometry } from '../../core/rendering/BathymetryMeshGeometry.js';
+import { extractCoastlineSegments } from '../../core/rendering/CoastlineGeometry.js';
+import { buildBathymetryContourGeometry } from '../../core/rendering/BathymetryContourGeometry.js';
 import {
   beginThreePerformanceFrame,
   createThreeMissionPerformanceMonitor,
@@ -117,6 +125,14 @@ export function createThreeMissionWorldRenderer(container, options = {}) {
   groups.scalarFieldGroup.add(scalarLayer.group);
   const volumetricScalarFieldLayer = createThreeVolumetricScalarFieldLayer({ name: 'mission-volumetric-scalar-field' });
   groups.scalarFieldGroup.add(volumetricScalarFieldLayer.group);
+  const bathymetryTerrainLayer = createThreeBathymetryTerrainLayer({ name: 'mission-bathymetry-terrain' });
+  const landmassLayer = createThreeLandmassLayer({ name: 'mission-landmass-layer' });
+  const coastlineLayer = createThreeCoastlineLayer({ name: 'mission-coastline-layer' });
+  const bathymetryContourLayer = createThreeBathymetryContourLayer({ name: 'mission-bathymetry-contour-layer' });
+  groups.bathymetryGroup.add(bathymetryTerrainLayer.group);
+  groups.bathymetryGroup.add(landmassLayer.group);
+  groups.bathymetryGroup.add(coastlineLayer.group);
+  groups.bathymetryGroup.add(bathymetryContourLayer.group);
   const operationalDepthSlabLayer = createThreeOperationalDepthSlabLayer({ name: 'mission-operational-depth-slabs' });
   groups.depthLayerGroup.add(operationalDepthSlabLayer.group);
   const waterColumnVolumeFrameLayer = createThreeWaterColumnVolumeFrameLayer({ name: 'mission-water-column-volume-frame' });
@@ -143,6 +159,10 @@ export function createThreeMissionWorldRenderer(container, options = {}) {
     groups,
     scalarLayer,
     volumetricScalarFieldLayer,
+    bathymetryTerrainLayer,
+    landmassLayer,
+    coastlineLayer,
+    bathymetryContourLayer,
     operationalDepthSlabLayer,
     waterColumnVolumeFrameLayer,
     planningInteractionLayer,
@@ -170,6 +190,10 @@ export function createThreeMissionWorldRenderer(container, options = {}) {
     continuousAnimationReason: 'render-on-demand-raf-loop',
     staticMatrixFrozenObjectCount: 0,
     dynamicMatrixObjectCount: 0,
+    lastBathymetrySurface: null,
+    lastBathymetryMeshGeometry: null,
+    lastCoastlineGeometry: null,
+    lastContourGeometry: null,
     presentationInitialized: false,
     presentationCache: {
       lastRenderedScalarFieldFrameId: null,
@@ -383,6 +407,17 @@ export function threeMissionWorldRendererSummary(renderer = {}) {
     groupKeys: GROUP_KEYS,
     viewModel: missionWorldRenderViewModelSummary(vm),
     bathymetryObjectCount: renderer.groups?.bathymetryGroup?.children?.length ?? 0,
+    bathymetryTerrainSummary: renderer.bathymetryTerrainLayer?.lastSummary ?? threeBathymetryTerrainLayerSummary(renderer.bathymetryTerrainLayer ?? {}, renderer.lastBathymetryMeshGeometry ?? {}),
+    landmassSummary: threeLandmassLayerSummary(renderer.landmassLayer ?? {}, renderer.lastBathymetryMeshGeometry ?? {}),
+    coastlineSummary: threeCoastlineLayerSummary(renderer.coastlineLayer ?? {}, renderer.lastCoastlineGeometry ?? {}),
+    bathymetryContourSummary: threeBathymetryContourLayerSummary(renderer.bathymetryContourLayer ?? {}, renderer.lastContourGeometry ?? {}),
+    terrainVertexCount: Number(renderer.lastBathymetryMeshGeometry?.vertexCount ?? 0),
+    terrainTriangleCount: Number(renderer.lastBathymetryMeshGeometry?.triangleCount ?? 0),
+    terrainDrawCallEstimate: Number(renderer.lastBathymetryMeshGeometry ? 4 : 0),
+    terrainSourceDigest: renderer.lastBathymetrySurface?.sourceDigest ?? renderer.lastBathymetryMeshGeometry?.sourceDigest ?? null,
+    canonicalMeshAlignmentStatus: renderer.lastBathymetryMeshGeometry ? 'PASS' : 'MISSING',
+    rendererOwnsBathymetry: false,
+    usesVisualMeshForPhysics: false,
     scalarFieldObjectCount: renderer.groups?.scalarFieldGroup?.children?.length ?? 0,
     volumetricScalarFieldSummary: renderer.volumetricScalarFieldLayer?.lastSummary ?? threeVolumetricScalarFieldLayerSummary(renderer.volumetricScalarFieldLayer ?? {}, vm),
     currentVectorObjectCount: renderer.groups?.currentVectorGroup?.children?.length ?? 0,
@@ -507,6 +542,10 @@ export function disposeThreeMissionWorldRenderer(renderer) {
   renderer.animationFrame = null;
   disposeThreeScalarFieldLayer(renderer.scalarLayer);
   disposeThreeVolumetricScalarFieldLayer(renderer.volumetricScalarFieldLayer);
+  disposeThreeBathymetryTerrainLayer(renderer.bathymetryTerrainLayer);
+  disposeThreeLandmassLayer(renderer.landmassLayer);
+  disposeThreeCoastlineLayer(renderer.coastlineLayer);
+  disposeThreeBathymetryContourLayer(renderer.bathymetryContourLayer);
   disposeThreeOperationalDepthSlabLayer(renderer.operationalDepthSlabLayer);
   disposeThreeWaterColumnVolumeFrameLayer(renderer.waterColumnVolumeFrameLayer);
   disposeThreeGpuTimer(renderer.gpuTimer);
@@ -567,23 +606,39 @@ function updateInteractionSurface(renderer, viewModel = {}) {
 }
 
 function updateBathymetry(renderer, viewModel) {
-  const group = renderer.groups.bathymetryGroup;
-  clearGroup(group);
   const transform = viewModel.coordinateSystem;
-  for (let y = 0; y < viewModel.grid?.height; y += 1) {
-    for (let x = 0; x < viewModel.grid?.width; x += 1) {
-      const terrain = viewModel.terrain?.values?.[y]?.[x];
-      const depth = Number(viewModel.bathymetry?.depthValues?.[y]?.[x] ?? 0);
-      const mesh = makeBoxCell(transform, { id: `bathymetry-${x}-${y}`, x, y }, {
-        color: terrain ? 0x536844 : depth > 0.65 ? 0x0a4f78 : 0x1578a4,
-        opacity: terrain ? 0.92 : 0.34,
-        height: terrain ? 0.18 : 0.02,
-        yOffset: terrain ? 0.02 : -Math.max(0, depth) * 0.025
-      });
-      mesh.userData = { id: mesh.name, terrain: Boolean(terrain), depth };
-      group.add(mesh);
-    }
-  }
+  if (!transform || !viewModel.grid) return;
+  const surface = buildBathymetrySurfaceViewModel({
+    bottomBoundary: viewModel.bottomBoundary,
+    bottomDepthField: viewModel.bottomBoundary?.bottomDepthField ?? viewModel.bathymetry?.depthValues,
+    landMask: viewModel.bottomBoundary?.landMask ?? viewModel.terrain?.values,
+    grid: viewModel.grid,
+    coordinateSystem: transform,
+    sourceMetadata: viewModel.bathymetry?.sourceMetadata,
+    terrainFeatures: viewModel.bathymetry?.terrainFeatures,
+    synthetic: true
+  });
+  const meshGeometry = buildBathymetryMeshGeometry({ surfaceModel: surface, coordinateSystem: transform });
+  const coastlineGeometry = extractCoastlineSegments({ surfaceModel: surface });
+  const contourGeometry = buildBathymetryContourGeometry({ surfaceModel: surface, levels: viewModel.displaySettings?.terrain?.contourDepthsMeters });
+  renderer.lastBathymetrySurface = surface;
+  renderer.lastBathymetryMeshGeometry = meshGeometry;
+  renderer.lastCoastlineGeometry = coastlineGeometry;
+  renderer.lastContourGeometry = contourGeometry;
+  const qualityProfile = renderer.qualityProfile ?? viewModel.displaySettings?.waterColumn?.qualityProfile ?? 'balanced';
+  updateThreeBathymetryTerrainLayer(renderer.bathymetryTerrainLayer, meshGeometry, { qualityProfile, mode: viewModel.displaySettings?.terrain?.mode ?? 'filledContours' });
+  updateThreeLandmassLayer(renderer.landmassLayer, meshGeometry, { visible: true });
+  updateThreeCoastlineLayer(renderer.coastlineLayer, coastlineGeometry, { coordinateSystem: transform, width: viewModel.grid.width, height: viewModel.grid.height });
+  updateThreeBathymetryContourLayer(renderer.bathymetryContourLayer, contourGeometry, { coordinateSystem: transform, width: viewModel.grid.width, height: viewModel.grid.height, visible: viewModel.displaySettings?.terrain?.contours !== false });
+  renderer.groups.bathymetryGroup.userData = {
+    sourceDigest: surface.sourceDigest,
+    terrainVertexCount: meshGeometry.vertexCount,
+    terrainTriangleCount: meshGeometry.triangleCount,
+    coastlineSegmentCount: coastlineGeometry.segmentCount,
+    contourSegmentCount: contourGeometry.segmentCount,
+    rendererOwnsBathymetry: false,
+    usesVisualMeshForPhysics: false
+  };
 }
 
 function updateWaterSurface(renderer, viewModel) {

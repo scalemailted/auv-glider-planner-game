@@ -1,5 +1,6 @@
 import { createSeededRng, seededUnit } from '../random/SeededRng.js';
 import { createBathymetryConfig, validateBathymetryConfig } from './BathymetrySchema.js';
+import { createBathymetrySourceMetadata } from './BathymetrySourceMetadata.js';
 
 export const BATHYMETRY_FIELD_MODEL_VERSION = 'bathymetry-field-model-gfx-r2';
 
@@ -24,10 +25,14 @@ export function createBathymetryField(options = {}) {
       publicSafe: true,
       synthetic: options.synthetic !== false,
       calibratedSurveyData: false,
+      calibrated: false,
+      operationallyValidated: false,
+      sourceMetadata: createBathymetrySourceMetadata({ sourceId: options.seed ?? 'provided-bathymetry', synthetic: options.synthetic !== false }),
       notA: config.notA.slice()
     };
     bathymetry.stats = bathymetryFieldStats(bathymetry);
     bathymetry.featureSummary = bathymetryFeatureSummary(bathymetry);
+    bathymetry.terrainFeatures = terrainFeatureMetadata(bathymetry);
     return bathymetry;
   }
   return createSyntheticBathymetryField(options);
@@ -84,12 +89,16 @@ export function createSyntheticBathymetryField(options = {}) {
     publicSafe: true,
     synthetic: true,
     calibratedSurveyData: false,
+    calibrated: false,
+    operationallyValidated: false,
+    sourceMetadata: createBathymetrySourceMetadata({ sourceId: options.seed ?? 'bathymetry-env-r1', seed: options.seed ?? 'bathymetry-env-r1', synthetic: true }),
     notA: config.notA.slice()
   };
   bathymetry.depthAccessibility = createDepthAccessibilityField(bathymetry, options);
   bathymetry.hazardField = createBathymetryHazardField(bathymetry, options);
   bathymetry.stats = bathymetryFieldStats(bathymetry);
   bathymetry.featureSummary = bathymetryFeatureSummary(bathymetry);
+  bathymetry.terrainFeatures = terrainFeatureMetadata(bathymetry);
   return bathymetry;
 }
 
@@ -314,7 +323,11 @@ function createScenarioBathymetry(options = {}) {
   bathymetry.synthetic = true;
   bathymetry.publicSafe = true;
   bathymetry.calibratedSurveyData = false;
+  bathymetry.calibrated = false;
+  bathymetry.operationallyValidated = false;
+  bathymetry.sourceMetadata = createBathymetrySourceMetadata({ sourceId: seed, seed, label: "Synthetic  bathymetry", synthetic: true });
   bathymetry.containsHiddenTruth = false;
+  bathymetry.terrainFeatures = terrainFeatureMetadata(bathymetry);
   return bathymetry;
 }
 
@@ -385,6 +398,49 @@ function extractBottomHazardZones(bathymetry, options = {}) {
   return zones.sort((a, b) => b.value - a.value).slice(0, Math.max(0, Number(options.maxZones ?? 18) || 18));
 }
 
+function terrainFeatureMetadata(bathymetry) {
+  const width = Number(bathymetry?.width ?? bathymetry?.depthMeters?.[0]?.length ?? 0);
+  const height = Number(bathymetry?.height ?? bathymetry?.depthMeters?.length ?? 0);
+  const stats = bathymetryFieldStats(bathymetry);
+  const ids = new Set(bathymetry?.featureIds ?? []);
+  const features = [
+    feature('land-coast', 'landCoast', 'Land / Coastline', 0.08, 0.5, 0, 0, 'along-coast'),
+    feature('continental-shelf', 'continentalShelf', 'Continental Shelf', 0.34, 0.5, stats.minDepthMeters, Math.min(90, stats.maxDepthMeters), 'along-coast'),
+    feature('shelf-break', 'shelfBreak', 'Shelf Break', 0.52, 0.5, 45, Math.min(165, stats.maxDepthMeters), 'along-coast'),
+    feature('continental-slope', 'continentalSlope', 'Continental Slope', 0.62, 0.5, 80, Math.min(220, stats.maxDepthMeters), 'offshore'),
+    feature('deep-basin', 'deepBasin', 'Deep Basin', 0.82, 0.54, Math.max(90, stats.maxDepthMeters * 0.55), stats.maxDepthMeters, 'offshore')
+  ];
+  if (ids.has('submarineCanyon') || ids.has('trench')) features.push(feature('submarine-canyon', ids.has('trench') ? 'trench' : 'submarineCanyon', ids.has('trench') ? 'Synthetic Trench' : 'Submarine Canyon', 0.58, 0.58, 70, stats.maxDepthMeters, 'cross-shelf'));
+  if (ids.has('seamount')) features.push(feature('seamount', 'seamount', 'Seamount / Island Base', 0.74, 0.34, Math.max(15, stats.minDepthMeters), Math.max(120, stats.maxDepthMeters * 0.75), 'local-rise'));
+  if (ids.has('ridge') || ids.has('submarineRidge')) features.push(feature('ridge', 'ridge', 'Submarine Ridge', 0.68, 0.7, 30, Math.max(120, stats.maxDepthMeters * 0.8), 'along-basin'));
+  if (ids.has('bottomHazards')) features.push(feature('bottom-hazards', 'shallowBank', 'Local Bottom Hazards', 0.42, 0.62, stats.minDepthMeters, Math.min(60, stats.maxDepthMeters), 'local'));
+  return features.map((entry) => ({
+    ...entry,
+    center: { x: round(entry.center.x * Math.max(0, width - 1)), y: round(entry.center.y * Math.max(0, height - 1)) },
+    bounds: {
+      minX: round(Math.max(0, entry.center.x * width - width * 0.12)),
+      maxX: round(Math.min(width, entry.center.x * width + width * 0.16)),
+      minY: round(Math.max(0, entry.center.y * height - height * 0.18)),
+      maxY: round(Math.min(height, entry.center.y * height + height * 0.18))
+    },
+    canonical: true,
+    synthetic: true,
+    warnings: []
+  }));
+}
+
+function feature(id, type, label, cx, cy, minimumDepth, maximumDepth, orientation) {
+  return {
+    id: `terrain-feature-${id}`,
+    type,
+    label,
+    center: { x: cx, y: cy },
+    minimumDepth: round(minimumDepth),
+    maximumDepth: round(maximumDepth),
+    orientation,
+    scale: 1
+  };
+}
 function booleanLandMask(bathymetry) {
   if (Array.isArray(bathymetry?.landMask)) return normalizeLandMaskInput(bathymetry.landMask);
   return normalizeLandMaskInput(bathymetry?.landSeaMask ?? createLandSeaMaskFromBathymetry(bathymetry));

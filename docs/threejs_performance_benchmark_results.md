@@ -84,3 +84,7 @@ The headed strict gate passed: average <= 50 ms, p95 <= 100 ms, and rendered pre
 The fixture retains two gliders, active scalar field, five-layer water-column context, predicted dive, realized trajectory, sampling targets, observations, readable current vectors, bottom boundary context, and useful labels. Quality-profile parity tests confirm canonical simulation outputs remain identical across Performance, Balanced, and High.
 
 Human manual QA by the project owner remains pending.
+
+## THREE-R1.2B Terrain Measurement Note
+
+The R1.2B terrain contract preserves the previous render-cost gate intent: headed Balanced average frame interval <= 50 ms, p95 <= 100 ms, and rendered FPS >= 20 with terrain visible. Fresh headed terrain measurements still need to be recorded after browser E2E execution in this phase.

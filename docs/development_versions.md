@@ -529,3 +529,7 @@ Simulation presentation now uses a scheduler/dirty-category pipeline. Canonical 
 - Headed Chromium focused gate on 2026-06-20 passed with avg 21.981 ms, p95 50.1 ms, rendered FPS 45.494, presentation update CPU avg 2.07 ms, renderer submission CPU avg 5.017 ms, and GPU avg 5.821 ms where supported.
 - Preserved the boundary: no terrain mesh phase, no mission mechanics, no arbitrary XYZ navigation, no WebGPU/fluid solver, no route/scoring/simulation changes, and no renderer-owned scientific-field semantics.
 - Human manual QA by the project owner remains pending.
+
+## THREE-R1.2B Continuous Bathymetric Terrain
+
+Added renderer-neutral bathymetry surface, mesh, coastline, contour, and source metadata contracts plus shared Three.js terrain/land/coastline/contour layers. Production Planning and the Bathymetric World View now converge on the same derived terrain geometry. The renderer does not own canonical bathymetry, collision, dive feasibility, planning, scoring, or simulation. Current terrain remains deterministic synthetic educational data.

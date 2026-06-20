@@ -203,7 +203,7 @@ function scalarBytes(values, mask, width, height, depthLayer, fieldId) {
       const valid = mask?.[y]?.[x] !== false;
       const raw = Number(values[y]?.[x] ?? 0);
       if (!valid) {
-        data[offset] = 8; data[offset + 1] = 12; data[offset + 2] = 18; data[offset + 3] = 24;
+        data[offset] = 8; data[offset + 1] = 12; data[offset + 2] = 18; data[offset + 3] = 0;
         continue;
       }
       const v = Math.max(0, Math.min(1, (raw - min) / span));

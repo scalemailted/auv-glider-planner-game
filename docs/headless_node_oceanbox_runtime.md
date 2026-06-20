@@ -162,3 +162,7 @@ Node/OceanBox-JS uses the same portable depth-aware sample/profile value evaluat
 ## THREE-R1.2A.4.1 Planning Semantics Note
 
 Surface waypoints are executable navigation/surfacing targets. Sampling targets are non-executable scientific objectives in the water column. Dive profiles determine underwater motion between surface waypoints. Predicted samples never earn score; actual observations are authoritative. The camera and vertical exaggeration are presentation only. Multi-yo prediction and execution use shared canonical kinematics. Performance quality profiles do not change canonical results. No arbitrary XYZ route planner is implemented. No operationally calibrated glider model is claimed.
+
+## Bathymetry Alignment
+
+Browser and Node/headless workflows should consume the same canonical bottom-depth field and source metadata. Headless runtime analysis may compare exported terrain digests, but it must not rederive physics from a Three.js visual mesh.

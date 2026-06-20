@@ -369,3 +369,7 @@ THREE-R1.2B should not start unless the Simulation performance acceptance target
 ## THREE-R1.2A.4.4 Complete
 
 GPU/RAF render-cost closure is the current checkpoint before terrain. THREE-R1.2B should add continuous bathymetric seabed mesh, coastline, and landmass geometry only after grouped, monolithic, Pages/static, and headed workflow validation remain clean.
+
+## Current Terrain Sequence
+
+THREE-R1.2B is the continuous bathymetric seabed mesh, coastline, and landmass geometry pass. THREE-R1.2C should follow with terrain-aware continuous mission validation polish and 3D presentation refinement. THREE-R2 remains replay, debrief route review, and editor parity. R1.2B keeps bathymetry authority in core JavaScript and does not add arbitrary XYZ planning, WebGPU, a fluid solver, external datasets, or operational ocean claims.

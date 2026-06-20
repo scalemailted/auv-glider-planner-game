@@ -804,3 +804,25 @@ node node_modules/@playwright/test/cli.js test tests/e2e/smoke.spec.js --grep "T
 ```
 
 Headed performance evidence is authoritative for the strict frame-interval gate. Headless timing is diagnostic only.
+
+## THREE-R1.2B Terrain Checks
+
+Run the terrain contract checks before broader browser validation:
+
+```bash
+node tools/js/smoke_bathymetry_surface_view_model.mjs
+node tools/js/smoke_bathymetry_mesh_geometry.mjs
+node tools/js/smoke_bathymetry_mesh_sampler_alignment.mjs
+node tools/js/smoke_coastline_geometry.mjs
+node tools/js/smoke_bathymetry_contours.mjs
+node tools/js/smoke_bathymetry_fixture_metadata.mjs
+node tools/js/smoke_three_bathymetry_terrain_layer.mjs
+node tools/js/smoke_three_landmass_layer.mjs
+node tools/js/smoke_three_coastline_layer.mjs
+node tools/js/smoke_terrain_depth_slab_mask_alignment.mjs
+node tools/js/smoke_terrain_target_clearance.mjs
+node tools/js/smoke_terrain_route_clearance_visualization.mjs
+node tools/js/audit_bathymetry_browser_headless_alignment.mjs
+node tools/js/audit_bathymetry_renderer_boundaries_v2.mjs
+node tools/js/audit_bathymetry_performance_boundaries.mjs
+```

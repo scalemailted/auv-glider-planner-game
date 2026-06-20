@@ -6,6 +6,10 @@ import {
   extractCoastlineEdges
 } from '../science/BathymetryFieldModel.js';
 import { normalizeWaterColumnConfig, waterColumnLayerMetadata } from '../science/WaterColumnSchema.js';
+import { buildBathymetrySurfaceViewModel } from './BathymetrySurfaceViewModel.js';
+import { buildBathymetryMeshGeometry } from './BathymetryMeshGeometry.js';
+import { extractCoastlineSegments } from './CoastlineGeometry.js';
+import { buildBathymetryContourGeometry } from './BathymetryContourGeometry.js';
 import {
   buildOceanWorldGeometry,
   diveProfilePathFromTracks,
@@ -32,11 +36,21 @@ export function buildBathymetryWorldRenderViewModel({
   const water = normalizeWaterColumnConfig(waterColumnConfig ?? waterColumnSummary?.waterColumnConfig ?? { depthLayerIds: ['surface', 'thermocline', 'deep'] });
   const stats = bathymetrySummary?.type === 'anchor.science.bathymetry-field-stats' ? bathymetrySummary : bathymetryFieldStats(field);
   const featureSummary = field.featureSummary ?? bathymetryFeatureSummary(field);
-  const terrainMesh = bathymetryToTerrainMeshData(field, {
+  const bathymetrySurface = buildBathymetrySurfaceViewModel({
+    bathymetry: field,
+    grid: { width: field.width, height: field.height },
+    coordinateProfileId: 'bathymetry-world-cell-center-v1',
+    sourceMetadata: field.sourceMetadata,
+    terrainFeatures: field.terrainFeatures
+  });
+  const terrainMesh = buildBathymetryMeshGeometry({
+    surfaceModel: bathymetrySurface,
     verticalExaggeration: options.verticalExaggeration ?? field.config?.verticalExaggeration ?? 1.5,
     horizontalScale: options.horizontalScale ?? 1,
     depthScale: options.depthScale ?? 0.055
   });
+  const coastlineGeometry = extractCoastlineSegments({ surfaceModel: bathymetrySurface });
+  const contourGeometry = buildBathymetryContourGeometry({ surfaceModel: bathymetrySurface, levels: options.contourDepthsMeters });
   const geometry = buildOceanWorldGeometry({
     missionConfig: { world: { width: field.width, height: field.height, waterColumnConfig: water, bathymetryConfig: field.config } },
     bathymetry: field,
@@ -73,8 +87,12 @@ export function buildBathymetryWorldRenderViewModel({
     type: 'anchor.rendering.bathymetry-world-view-model',
     version: BATHYMETRY_WORLD_RENDER_VIEW_MODEL_VERSION,
     terrainGrid: cloneGrid(field.depthMeters),
-    landMask: terrainMesh.landMask,
-    coastlineEdges: field.coastlineEdges ?? extractCoastlineEdges(terrainMesh.landMask),
+    landMask: bathymetrySurface.landMask,
+    coastlineEdges: field.coastlineEdges ?? extractCoastlineEdges(bathymetrySurface.landMask),
+    coastlineGeometry,
+    contourGeometry,
+    bathymetrySurface,
+    terrainMeshGeometry: terrainMesh,
     terrainMesh,
     depthRange: featureSummary.depthRange ?? { minDepthMeters: stats.minDepthMeters, maxDepthMeters: stats.maxDepthMeters },
     featureIds: field.featureIds ?? featureSummary.featureIds ?? [],
@@ -114,9 +132,11 @@ export function bathymetryWorldRenderViewModelSummary(viewModel = {}) {
   return {
     type: 'anchor.rendering.bathymetry-world-view-model-summary',
     version: BATHYMETRY_WORLD_RENDER_VIEW_MODEL_VERSION,
-    terrainVertexCount: viewModel.terrainMesh?.vertexCount ?? 0,
-    terrainTriangleCount: viewModel.terrainMesh?.triangleCount ?? 0,
-    coastlineEdgeCount: viewModel.coastlineEdges?.length ?? 0,
+    terrainVertexCount: viewModel.terrainMeshGeometry?.vertexCount ?? viewModel.terrainMesh?.vertexCount ?? 0,
+    terrainTriangleCount: viewModel.terrainMeshGeometry?.triangleCount ?? viewModel.terrainMesh?.triangleCount ?? 0,
+    coastlineEdgeCount: viewModel.coastlineGeometry?.segmentCount ?? viewModel.coastlineEdges?.length ?? 0,
+    contourSegmentCount: viewModel.contourGeometry?.segmentCount ?? 0,
+    sourceDigest: viewModel.bathymetrySurface?.sourceDigest ?? viewModel.terrainMeshGeometry?.sourceDigest ?? null,
     depthLayerCount: viewModel.depthLayers?.length ?? 0,
     surfaceWaypointCount: viewModel.surfaceWaypoints?.length ?? 0,
     samplingPointCount: viewModel.samplingPoints?.length ?? 0,

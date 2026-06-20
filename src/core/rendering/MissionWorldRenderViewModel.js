@@ -218,15 +218,32 @@ function normalizeVectorFieldLayer(currentField, grid, activeTimeSeconds) {
 }
 
 function normalizeTerrain(level, grid) {
-  const values = cloneGridValues(level?.layers?.terrain ?? [], grid, 0);
+  const source = level?.layers?.terrain ?? level?.bathymetry?.landMask ?? level?.bathymetry?.landSeaMask ?? [];
+  const values = cloneGridValues(source, grid, 0).map((row, y) => row.map((value, x) => {
+    const raw = source?.[y]?.[x];
+    if (raw === true || raw === 'land') return 1;
+    if (raw === false || raw === 'water') return 0;
+    return Number(value) > 0 ? 1 : 0;
+  }));
   const cells = [];
   for (let y = 0; y < grid.height; y += 1) for (let x = 0; x < grid.width; x += 1) if (values[y]?.[x]) cells.push({ id: `terrain-${x}-${y}`, x, y, value: 1, kind: 'land' });
   return { id: 'terrain', label: 'Terrain / Land Mask', values, cells, sourceVisibility: 'publicScenario' };
 }
 
 function normalizeBathymetry(level, grid) {
-  const depthValues = cloneGridValues(level?.layers?.depth ?? [], grid, 0).map((row) => row.map((value) => Math.max(0, finiteNumber(value))));
-  return { id: 'bathymetry', label: 'Bathymetry', depthValues, width: grid.width, height: grid.height, sourceVisibility: 'publicScenario' };
+  const source = level?.bathymetry?.depthMeters ?? level?.world?.bathymetry?.depthMeters ?? level?.layers?.depthMeters ?? level?.layers?.depth ?? [];
+  const depthValues = cloneGridValues(source, grid, 0).map((row) => row.map((value) => Math.max(0, finiteNumber(value))));
+  return {
+    id: 'bathymetry',
+    label: 'Bathymetry',
+    depthValues,
+    width: grid.width,
+    height: grid.height,
+    sourceDigest: level?.bathymetry?.sourceDigest ?? level?.bathymetry?.sourceMetadata?.sourceId ?? null,
+    sourceMetadata: level?.bathymetry?.sourceMetadata ?? null,
+    terrainFeatures: level?.bathymetry?.terrainFeatures ?? [],
+    sourceVisibility: 'publicScenario'
+  };
 }
 
 function normalizeDepthLayers(input = null) {

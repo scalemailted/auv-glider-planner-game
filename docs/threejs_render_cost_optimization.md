@@ -32,3 +32,7 @@ Quality profiles affect rendering only. They do not own simulation state, planni
 ## Boundary
 
 Reducing transparent overdraw does not remove canonical layers. Context-slab LOD does not alter water-column science. Surface waypoints and sampling targets keep their existing semantics. Headed performance evidence is environment-specific. Human manual QA by the project owner remains pending.
+
+## THREE-R1.2B Terrain Cost Policy
+
+Terrain uses a single indexed mesh plus bounded land/coastline/contour line geometry. Terrain builds are gated by bathymetry source/resolution changes and should not rebuild during camera gestures or ordinary simulation steps. Quality profiles may change presentation resolution or materials only; they must not change canonical bathymetry sampling or mission results.

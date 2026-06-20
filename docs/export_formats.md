@@ -334,3 +334,7 @@ Replay schema documents live under `schemas/replay-*.schema.json`. Browser summa
 ## THREE-R1.2A.4.1 Planning Semantics Note
 
 Surface waypoints are executable navigation/surfacing targets. Sampling targets are non-executable scientific objectives in the water column. Dive profiles determine underwater motion between surface waypoints. Predicted samples never earn score; actual observations are authoritative. The camera and vertical exaggeration are presentation only. Multi-yo prediction and execution use shared canonical kinematics. Performance quality profiles do not change canonical results. No arbitrary XYZ route planner is implemented. No operationally calibrated glider model is claimed.
+
+## Bathymetry Metadata
+
+Terrain-related exports should preserve bathymetry source metadata when present: source type, source id/version, interpolation profile, synthetic/calibrated/operational flags, and warnings. Current generated bathymetry is `syntheticGenerated`, `synthetic: true`, `calibrated: false`, and `operationallyValidated: false`.

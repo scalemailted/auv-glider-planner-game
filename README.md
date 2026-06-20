@@ -962,3 +962,7 @@ Simulation presentation now uses a scheduler/dirty-category pipeline. Canonical 
 The current Three.js mission renderer uses presentation-only quality profiles. Balanced caps effective pixel ratio at 1.25, presents simulation snapshots at up to 30 Hz, and renders one active textured water-column slab plus low-cost context depth outlines by default. These settings do not change canonical planning, simulation, sampling, scoring, or replay.
 
 The next terrain phase remains THREE-R1.2B: Continuous Bathymetric Seabed Mesh, Coastline, and Landmass Geometry. Human manual QA by the project owner remains pending.
+
+## THREE-R1.2B Continuous Bathymetric Terrain
+
+THREE-R1.2B derives the production Three.js seabed mesh, landmass display, coastline, and contour lines from the same canonical bathymetry field used by bottom-clearance and dive-feasibility logic. The visual mesh is not used for collision, route validity, scoring, sampling validity, replay, or simulation. Surface waypoints remain water-surface navigation targets; sampling targets remain non-executable science objectives. Current bathymetry is deterministic synthetic educational terrain with explicit source metadata and no operationally calibrated bathymetry claim.

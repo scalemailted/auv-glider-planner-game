@@ -1303,4 +1303,23 @@ assert.equal(modelStackRenderPolicy.changesOfficialBrowserScoring, false, 'THREE
 assert.equal(renderCostPolicyModule.effectiveThreePixelRatio({ devicePixelRatio: 2, qualityProfile: 'balanced' }), 1.25, 'Balanced pixel-ratio cap is explicit');
 const modelStackGpuTimer = gpuTimerModule.createThreeWebGLGpuTimer(null);
 assert.equal(gpuTimerModule.threeGpuTimerSummary(modelStackGpuTimer).gpuTimingSupported, false, 'GPU timing is optional and safe when unsupported');
+// BathymetrySurfaceViewModel R1.2B: terrain mesh derives from core bathymetry and remains display-only.
+const bathymetrySurfaceModule = await import('../../src/core/rendering/BathymetrySurfaceViewModel.js');
+const bathymetryMeshGeometryModule = await import('../../src/core/rendering/BathymetryMeshGeometry.js');
+const bathymetryMeshSamplerModule = await import('../../src/core/rendering/BathymetryMeshSampler.js');
+const coastlineGeometryModule = await import('../../src/core/rendering/CoastlineGeometry.js');
+const contourGeometryModule = await import('../../src/core/rendering/BathymetryContourGeometry.js');
+const modelStackBathymetry = createCoastalOperationalBathymetry({ seed: 'model-stack-r1-2b', width: 18, height: 12 });
+const modelStackSurface = bathymetrySurfaceModule.buildBathymetrySurfaceViewModel({ bathymetry: modelStackBathymetry, grid: { width: modelStackBathymetry.width, height: modelStackBathymetry.height } });
+const modelStackMesh = bathymetryMeshGeometryModule.buildBathymetryMeshGeometry({ surfaceModel: modelStackSurface });
+const modelStackAlignment = bathymetryMeshSamplerModule.compareBathymetryMeshAndCanonicalSampler({ geometry: modelStackMesh, surfaceModel: modelStackSurface });
+const modelStackCoastline = coastlineGeometryModule.extractCoastlineSegments({ surfaceModel: modelStackSurface });
+const modelStackContours = contourGeometryModule.buildBathymetryContourGeometry({ surfaceModel: modelStackSurface });
+assert.equal(bathymetrySurfaceModule.validateBathymetrySurfaceViewModel(modelStackSurface).valid, true, 'R1.2B surface view model validates');
+assert.equal(bathymetryMeshGeometryModule.validateBathymetryMeshGeometry(modelStackMesh).valid, true, 'R1.2B mesh geometry validates');
+assert.equal(modelStackAlignment.status, 'PASS', 'R1.2B mesh/canonical sampler alignment passes');
+assert.equal(coastlineGeometryModule.validateCoastlineGeometry(modelStackCoastline).valid, true, 'R1.2B coastline geometry validates');
+assert.equal(contourGeometryModule.validateBathymetryContourGeometry(modelStackContours).valid, true, 'R1.2B contour geometry validates');
+assert.equal(modelStackSurface.boundaryFlags.rendererOwnsBathymetry, false, 'R1.2B renderer does not own bathymetry');
+assert.equal(modelStackSurface.boundaryFlags.usesVisualMeshForPhysics, false, 'R1.2B visual mesh is not physics authority');
 console.log('Model stack integration smoke passed');

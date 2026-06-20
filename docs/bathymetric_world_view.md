@@ -43,3 +43,7 @@ GFX-R2 does not add full 3D route planning, a new planner, route optimization, A
 ## Headless Bundles
 
 Node/OceanBox-JS remains the canonical non-browser runtime. Headless bundles may include public-safe `bathymetrySummary` and `missionGeometrySummary` artifacts. These summaries are environmental and geometric metadata; they do not expose hidden truth arrays and do not replace browser official scoring.
+
+## R1.2B Geometry Convergence
+
+The Bathymetric World View now consumes the same renderer-neutral bathymetry surface, indexed mesh, coastline, and contour contracts as the production mission renderer. The scene remains a visual inspection/demo view and does not own simulation, scoring, route validity, or bathymetry authority.

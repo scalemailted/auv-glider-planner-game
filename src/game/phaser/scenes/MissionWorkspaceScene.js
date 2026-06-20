@@ -164,6 +164,7 @@ import {
   validateContinuousMissionUiState
 } from '../../../core/rendering/ContinuousMissionUiState.js';
 import { normalizeWaterColumnLayerId, normalizeWaterColumnProfileId, waterColumnLayerMetadata } from '../../../core/science/WaterColumnSchema.js';
+import { sampleBathymetryAt } from '../../../core/science/BathymetryFieldModel.js';
 import { compareMissionLayerCoordinates, missionLayerAlignmentSummary } from '../../../core/rendering/MissionLayerAlignment.js';
 import { createThreeMissionSceneLifecycle, registerThreeMissionSceneResource, disposeThreeMissionSceneLifecycle, threeMissionSceneLifecycleSummary } from '../../three/ThreeMissionSceneLifecycle.js';
 import { publishSceneIsolationDebug } from '../../../ui/MissionShellReset.js';
@@ -2250,7 +2251,7 @@ export class MissionWorkspaceScene extends PhaserScene {
     this.app.state.ui ??= {};
     this.app.state.ui.threeMissionInteraction ??= {};
     this.app.state.ui.threeMissionInteraction.expectedGridCell = { x: Math.round(Number(cell.x)), y: Math.round(Number(cell.y)), depthLayerId: layerId };
-    return this.projectThreeWorldPoint({ x: world.x, y: Number(world.y ?? 0) + 0.12, z: world.z });
+    return this.projectThreeWorldPoint({ x: world.x, y: Number(world.y ?? 0), z: world.z });
   }
 
   screenPointForMissionRecord(record) {
@@ -2871,6 +2872,11 @@ export class MissionWorkspaceScene extends PhaserScene {
     const cell = intent.gridCell;
     if (!cell) return this.threeInteractionResult(intent, 'rejected', { userMessage: 'Click an active depth slab to place a sampling target.', warnings: ['Missing grid cell.'] });
     const placement = this.resolveSamplingTargetPlacementPoint(intent);
+    const validation = this.validateSamplingTargetBathymetryPlacement(placement);
+    if (!validation.allowed) {
+      this.setThreePlacementValidation({ valid: false, message: validation.message, cell });
+      return this.threeInteractionResult(intent, 'rejected', { userMessage: validation.message, warnings: validation.warnings, committedGridCell: null });
+    }
     const target = addScienceTarget(this.app.state.plan, {
       label: placement.label,
       geometryType: 'layerPoint',
@@ -2895,11 +2901,11 @@ export class MissionWorkspaceScene extends PhaserScene {
       targetDisplayWorldY: intent.worldPoint?.y ?? null,
       targetDepthRoundtripError: 0
     };
-    this.setThreePlacementValidation({ valid: true, message: 'Sampling target placed.', cell });
+    this.setThreePlacementValidation({ valid: true, message: validation.warnings.length ? validation.warnings[0] : 'Sampling target placed.', cell });
     this.markManualPlan();
     this.refreshPanels();
     this.refreshMap();
-    return this.threeInteractionResult(intent, 'accepted', { changedCanonicalState: true, committedGridCell: cell, selectedTargetId: target.id, userMessage: 'Sampling target placed.' });
+    return this.threeInteractionResult(intent, 'accepted', { changedCanonicalState: true, committedGridCell: cell, selectedTargetId: target.id, userMessage: 'Sampling target placed.', warnings: validation.warnings, bottomClearanceMeters: validation.bottomClearanceMeters });
   }
 
   resolveSamplingTargetPlacementPoint(intent = {}) {
@@ -2921,6 +2927,67 @@ export class MissionWorkspaceScene extends PhaserScene {
     };
   }
 
+  validateSamplingTargetBathymetryPlacement(placement = {}) {
+    const warnings = [];
+    const level = this.app.state.level ?? {};
+    const mission = this.app.state.mission ?? {};
+    const bathymetry = level.bathymetry ?? level.world?.bathymetry ?? level.layers?.bathymetry ?? this.missionRenderViewModel?.bathymetry ?? null;
+    const depthGrid = bathymetry?.depthMeters ?? level.world?.bathymetry?.depthMeters ?? level.layers?.depthMeters ?? this.missionRenderViewModel?.bottomBoundary?.bottomDepthField ?? level.layers?.depth ?? null;
+    const terrain = level.layers?.terrain ?? level.terrain ?? level.mask ?? null;
+    const landMask = bathymetry?.landMask ?? bathymetry?.landSeaMask ?? level.bathymetry?.landMask ?? level.bathymetry?.landSeaMask ?? level.world?.bathymetry?.landMask ?? level.world?.bathymetry?.landSeaMask ?? null;
+    const width = Number(level.world?.grid?.width ?? level.grid?.width ?? level.width ?? bathymetry?.width ?? depthGrid?.[0]?.length ?? terrain?.[0]?.length ?? landMask?.[0]?.length ?? 0);
+    const height = Number(level.world?.grid?.height ?? level.grid?.height ?? level.height ?? bathymetry?.height ?? depthGrid?.length ?? terrain?.length ?? landMask?.length ?? 0);
+    const x = Number(placement.x);
+    const y = Number(placement.y);
+    const requestedDepth = Math.max(0, Number(placement.depthMeters ?? 0));
+    if (!Number.isFinite(x) || !Number.isFinite(y)) {
+      return { allowed: false, message: 'Sampling target must be placed inside the mission grid.', warnings: ['Missing target position.'], bottomDepthMeters: null, bottomClearanceMeters: null };
+    }
+    if (width > 0 && height > 0 && (x < 0 || y < 0 || x > width - 1 || y > height - 1)) {
+      return { allowed: false, message: 'Sampling target must stay inside the mission grid.', warnings: ['Target outside mission domain.'], bottomDepthMeters: null, bottomClearanceMeters: null };
+    }
+    const col = Math.max(0, Math.min(Math.max(0, width - 1), Math.round(x)));
+    const row = Math.max(0, Math.min(Math.max(0, height - 1), Math.round(y)));
+    const terrainValue = terrain?.[row]?.[col];
+    const landValue = landMask?.[row]?.[col];
+    const terrainIsLand = terrainValue === true || terrainValue === 1 || terrainValue === 'land';
+    const maskIsLand = landValue === true || landValue === 1 || landValue === 'land';
+    if (terrainIsLand || maskIsLand) {
+      return { allowed: false, message: 'Sampling target must be placed in water, not on land.', warnings: ['Target intersects land mask.'], bottomDepthMeters: 0, bottomClearanceMeters: null };
+    }
+    let bottomDepth = null;
+    if (bathymetry?.depthMeters?.length) {
+      bottomDepth = sampleBathymetryAt(bathymetry, x, y);
+    } else if (Array.isArray(depthGrid) && depthGrid.length) {
+      bottomDepth = sampleBathymetryAt({ depthMeters: depthGrid }, x, y);
+    }
+    if (!Number.isFinite(bottomDepth) || bottomDepth <= 0) {
+      warnings.push('No canonical bathymetry depth was available for this target; placement is allowed for legacy compatibility.');
+      return { allowed: true, message: warnings[0], warnings, bottomDepthMeters: null, bottomClearanceMeters: null };
+    }
+    const minimumClearance = Math.max(0, Number(mission.physics?.minimumBottomClearanceMeters ?? mission.physics?.bottomClearanceMeters ?? mission.constraints?.minimumBottomClearanceMeters ?? 5));
+    const clearance = bottomDepth - requestedDepth;
+    if (clearance < minimumClearance) {
+      const message = clearance < 0
+        ? 'Sampling target depth is below the canonical seabed.'
+        : 'Sampling target is too close to the canonical seabed.';
+      return {
+        allowed: false,
+        message,
+        warnings: [`${message} Bottom ${roundSceneMetric(bottomDepth, 2)} m, target ${roundSceneMetric(requestedDepth, 2)} m, clearance ${roundSceneMetric(clearance, 2)} m.`],
+        bottomDepthMeters: roundSceneMetric(bottomDepth, 3),
+        bottomClearanceMeters: roundSceneMetric(clearance, 3)
+      };
+    }
+    if (clearance < minimumClearance * 2) warnings.push(`Sampling target is near the canonical seabed (${roundSceneMetric(clearance, 2)} m clearance).`);
+    return {
+      allowed: true,
+      message: warnings[0] ?? 'Sampling target depth clears canonical bathymetry.',
+      warnings,
+      bottomDepthMeters: roundSceneMetric(bottomDepth, 3),
+      bottomClearanceMeters: roundSceneMetric(clearance, 3)
+    };
+  }
   selectSamplingTargetFromThree(targetId, intent) {
     const target = this.findScienceTargetById(targetId);
     if (!target) return this.threeInteractionResult(intent, 'rejected', { userMessage: 'No sampling target found for inspection.', warnings: ['No sampling target found for inspection.'] });
@@ -4894,6 +4961,11 @@ function labelizeStopReason(reason) {
   return String(reason ?? 'unknown')
     .replace(/_/g, ' ')
     .replace(/\b\w/g, (char) => char.toUpperCase());
+}
+
+function roundSceneMetric(value, digits = 6) {
+  const number = Number(value);
+  return Number.isFinite(number) ? Number(number.toFixed(digits)) : null;
 }
 
 function screenProjectionYOffsetForMissionRecord(record = {}) {

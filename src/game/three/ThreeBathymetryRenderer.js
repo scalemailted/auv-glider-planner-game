@@ -1,4 +1,8 @@
 import * as THREE from 'three';
+import { createThreeBathymetryTerrainLayer, updateThreeBathymetryTerrainLayer, disposeThreeBathymetryTerrainLayer, threeBathymetryTerrainLayerSummary } from './layers/ThreeBathymetryTerrainLayer.js';
+import { createThreeLandmassLayer, updateThreeLandmassLayer, disposeThreeLandmassLayer, threeLandmassLayerSummary } from './layers/ThreeLandmassLayer.js';
+import { createThreeCoastlineLayer, updateThreeCoastlineLayer, disposeThreeCoastlineLayer, threeCoastlineLayerSummary } from './layers/ThreeCoastlineLayer.js';
+import { createThreeBathymetryContourLayer, updateThreeBathymetryContourLayer, disposeThreeBathymetryContourLayer, threeBathymetryContourLayerSummary } from './layers/ThreeBathymetryContourLayer.js';
 
 export const THREE_BATHYMETRY_RENDERER_VERSION = 'three-bathymetry-renderer-gfx-r2';
 
@@ -36,6 +40,14 @@ export function createThreeBathymetryRenderer(container, options = {}) {
   const fill = new THREE.DirectionalLight(0x54c7ec, 0.72);
   fill.position.set(24, 18, -28);
   scene.add(fill);
+  const bathymetryTerrainLayer = createThreeBathymetryTerrainLayer({ name: 'bathymetry-world-terrain' });
+  const landmassLayer = createThreeLandmassLayer({ name: 'bathymetry-world-landmass' });
+  const coastlineLayer = createThreeCoastlineLayer({ name: 'bathymetry-world-coastline' });
+  const bathymetryContourLayer = createThreeBathymetryContourLayer({ name: 'bathymetry-world-contours' });
+  groups.terrain.add(bathymetryTerrainLayer.group);
+  groups.terrain.add(landmassLayer.group);
+  groups.coastline.add(coastlineLayer.group);
+  groups.coastline.add(bathymetryContourLayer.group);
   const state = {
     type: 'anchor.renderer.three-bathymetry',
     version: THREE_BATHYMETRY_RENDERER_VERSION,
@@ -45,6 +57,10 @@ export function createThreeBathymetryRenderer(container, options = {}) {
     renderer: webglRenderer,
     root,
     groups,
+    bathymetryTerrainLayer,
+    landmassLayer,
+    coastlineLayer,
+    bathymetryContourLayer,
     overlay,
     viewModel: null,
     layerVisibility: defaultLayerVisibility(options.layerVisibility),
@@ -72,6 +88,10 @@ export function disposeThreeBathymetryRenderer(rendererState) {
   rendererState.disposed = true;
   if (rendererState.animationFrame) globalThis.cancelAnimationFrame?.(rendererState.animationFrame);
   rendererState.controls?.dispose?.();
+  disposeThreeBathymetryTerrainLayer(rendererState.bathymetryTerrainLayer);
+  disposeThreeLandmassLayer(rendererState.landmassLayer);
+  disposeThreeCoastlineLayer(rendererState.coastlineLayer);
+  disposeThreeBathymetryContourLayer(rendererState.bathymetryContourLayer);
   for (const group of Object.values(rendererState.groups ?? {})) clearGroup(group);
   rendererState.scene?.traverse?.((object) => {
     object.geometry?.dispose?.();
@@ -88,9 +108,11 @@ export function updateThreeBathymetryScene(rendererState, viewModel = {}) {
   if (!rendererState || rendererState.disposed) return rendererState;
   rendererState.viewModel = viewModel;
   rendererState.layerVisibility = defaultLayerVisibility({ ...(viewModel.visibilityFlags ?? {}), ...(rendererState.layerVisibility ?? {}) });
-  for (const group of Object.values(rendererState.groups)) clearGroup(group);
-  addTerrain(rendererState, viewModel);
-  addCoastline(rendererState, viewModel);
+  clearBathymetryDynamicGroups(rendererState);
+  updateThreeBathymetryTerrainLayer(rendererState.bathymetryTerrainLayer, viewModel.terrainMeshGeometry ?? viewModel.terrainMesh, { mode: viewModel.displaySettings?.terrain?.mode ?? 'filledContours' });
+  updateThreeLandmassLayer(rendererState.landmassLayer, viewModel.terrainMeshGeometry ?? viewModel.terrainMesh, { visible: true });
+  updateThreeCoastlineLayer(rendererState.coastlineLayer, viewModel.coastlineGeometry, { width: viewModel.terrainMesh?.width, height: viewModel.terrainMesh?.height });
+  updateThreeBathymetryContourLayer(rendererState.bathymetryContourLayer, viewModel.contourGeometry, { width: viewModel.terrainMesh?.width, height: viewModel.terrainMesh?.height });
   addHazards(rendererState, viewModel);
   addWaterSurface(rendererState, viewModel);
   addDepthLayers(rendererState, viewModel);
@@ -112,6 +134,7 @@ export function setBathymetryLayerVisibility(rendererState, patch = {}) {
   rendererState.layerVisibility = { ...(rendererState.layerVisibility ?? defaultLayerVisibility()), ...(patch ?? {}) };
   const visibility = rendererState.layerVisibility;
   if (rendererState.groups?.terrain) rendererState.groups.terrain.visible = visibility.bathymetry !== false;
+  if (rendererState.groups?.coastline) rendererState.groups.coastline.visible = visibility.bathymetry !== false && visibility.coastline !== false;
   if (rendererState.groups?.waterSurface) rendererState.groups.waterSurface.visible = visibility.waterSurface !== false;
   if (rendererState.groups?.depthLayers) {
     for (const child of rendererState.groups.depthLayers.children) child.visible = visibility[child.userData?.layerId] !== false;
@@ -140,6 +163,13 @@ export function threeBathymetryRendererSummary(rendererState = {}) {
     threeAvailable: rendererState.threeAvailable === true,
     disposed: rendererState.disposed === true,
     terrainObjectCount: rendererState.groups?.terrain?.children?.length ?? 0,
+    bathymetryTerrainSummary: threeBathymetryTerrainLayerSummary(rendererState.bathymetryTerrainLayer ?? {}, rendererState.viewModel?.terrainMeshGeometry ?? rendererState.viewModel?.terrainMesh ?? {}),
+    landmassSummary: threeLandmassLayerSummary(rendererState.landmassLayer ?? {}, rendererState.viewModel?.terrainMeshGeometry ?? rendererState.viewModel?.terrainMesh ?? {}),
+    coastlineSummary: threeCoastlineLayerSummary(rendererState.coastlineLayer ?? {}, rendererState.viewModel?.coastlineGeometry ?? {}),
+    bathymetryContourSummary: threeBathymetryContourLayerSummary(rendererState.bathymetryContourLayer ?? {}, rendererState.viewModel?.contourGeometry ?? {}),
+    terrainVertexCount: rendererState.viewModel?.terrainMeshGeometry?.vertexCount ?? rendererState.viewModel?.terrainMesh?.vertexCount ?? 0,
+    terrainTriangleCount: rendererState.viewModel?.terrainMeshGeometry?.triangleCount ?? rendererState.viewModel?.terrainMesh?.triangleCount ?? 0,
+    terrainSourceDigest: rendererState.viewModel?.bathymetrySurface?.sourceDigest ?? rendererState.viewModel?.terrainMeshGeometry?.sourceDigest ?? null,
     depthLayerObjectCount: rendererState.groups?.depthLayers?.children?.length ?? 0,
     surfaceWaypointCount: rendererState.viewModel?.surfaceWaypoints?.length ?? 0,
     samplingPointCount: rendererState.viewModel?.samplingPoints?.length ?? 0,
@@ -160,6 +190,12 @@ export function threeBathymetryRendererSummary(rendererState = {}) {
   };
 }
 
+function clearBathymetryDynamicGroups(rendererState) {
+  const keep = new Set(['terrain', 'coastline']);
+  for (const [key, group] of Object.entries(rendererState.groups ?? {})) {
+    if (!keep.has(key)) clearGroup(group);
+  }
+}
 function addTerrain(rendererState, viewModel) {
   const mesh = viewModel.terrainMesh;
   if (!mesh?.vertices?.length || !mesh?.indices?.length) return;
@@ -364,7 +400,7 @@ function updateOverlay(rendererState, viewModel = {}) {
   const features = (viewModel.featureIds ?? []).slice(0, 6).join(' / ');
   overlay.innerHTML = `
     <div class="three-bathymetry-title">3D Bathymetric World View</div>
-    <div class="three-bathymetry-subtitle">Synthetic terrain now | real GEBCO/ETOPO fixture pipeline later</div>
+    <div class="three-bathymetry-subtitle">Synthetic educational terrain | attributed local fixtures only</div>
     <div class="three-bathymetry-metrics">
       <span>Features ${escapeHtml(features || 'synthetic')}</span>
       <span>Waypoints ${escapeHtml(summary.surfaceWaypointCount ?? viewModel.surfaceWaypoints?.length ?? 0)}</span>

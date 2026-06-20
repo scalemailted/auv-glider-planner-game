@@ -117,3 +117,7 @@ MIG-R1 changes the active target from optional 3D renderer to Three.js-first mis
 | Replay/debrief world rendering | Future parity pass |
 
 The browser debug objects `ANCHOR_MIGRATION_DEBUG`, `ANCHOR_MISSION_RENDER_DEBUG`, and `ANCHOR_SIMULATION_RENDER_DEBUG` expose the active backend and boundary flags used by smoke tests.
+
+## R1.2B Terrain Migration Note
+
+The production Three.js mission renderer replaces per-cell bathymetry boxes with a shared indexed terrain mesh, landmass layer, coastline layer, and contour layer. The mesh is derived from canonical core bathymetry and remains display-only.
