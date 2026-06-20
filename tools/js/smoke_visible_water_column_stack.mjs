@@ -1,4 +1,4 @@
-﻿import assert from 'node:assert/strict';
+import assert from 'node:assert/strict';
 import { generateScenarioFromConfig } from '../../src/core/generation/ScenarioConfig.js';
 import { buildVolumetricMissionWorldViewModel, waterColumnRenderDebugPayload } from '../../src/core/rendering/VolumetricMissionWorldViewModel.js';
 import { createMissionWorldCoordinateTransform } from '../../src/core/rendering/MissionWorldCoordinates.js';

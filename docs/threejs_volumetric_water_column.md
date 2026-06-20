@@ -74,3 +74,7 @@ THREE-R1.2A.4 adds `ThreePlannedDiveTrajectoryLayer` for dashed surface intent p
 ## THREE-R1.2A.4.1 Planning Semantics Note
 
 Surface waypoints are executable navigation/surfacing targets. Sampling targets are non-executable scientific objectives in the water column. Dive profiles determine underwater motion between surface waypoints. Predicted samples never earn score; actual observations are authoritative. The camera and vertical exaggeration are presentation only. Multi-yo prediction and execution use shared canonical kinematics. Performance quality profiles do not change canonical results. No arbitrary XYZ route planner is implemented. No operationally calibrated glider model is claimed.
+
+## THREE-R1.2A.4.4 Display-Cost Addendum
+
+Context-slab LOD reduces transparent overdraw by keeping one active textured slab and rendering other visible layers as outlines in Balanced mode. This does not change water-column values, depth-layer semantics, dive-profile prediction, or bottom-boundary constraints.

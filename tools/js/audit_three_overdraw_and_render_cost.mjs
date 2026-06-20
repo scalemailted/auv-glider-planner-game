@@ -1,0 +1,14 @@
+import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
+const renderer = readFileSync('src/game/three/ThreeMissionWorldRenderer.js', 'utf8');
+const slab = readFileSync('src/game/three/layers/ThreeOperationalDepthSlabLayer.js', 'utf8');
+const volumetric = readFileSync('src/game/three/layers/ThreeVolumetricScalarFieldLayer.js', 'utf8');
+assert.match(renderer, /fullDomainTransparentPlaneCount/, 'renderer audits full-domain transparent plane count');
+assert.match(renderer, /fullDomainTexturedPlaneCount/, 'renderer audits full-domain textured plane count');
+assert.match(renderer, /shouldRenderVolumetricFieldPlanes/, 'volumetric field planes are gated by render-cost policy');
+assert.match(slab, /contextOutline/, 'context depth layers use lower-cost LOD');
+assert.match(slab, /activeTexturedSlabCount/, 'active textured slab count is reported');
+assert.match(volumetric, /transparent:\s*true/, 'volumetric field layer remains known transparent cost surface');
+assert.equal((renderer.match(/renderer\.renderer\.render\(/g) ?? []).length, 1, 'mission renderer has one submit site');
+assert.doesNotMatch(renderer, /new Worker\(|WebGPURenderer|navigator\.gpu/, 'no worker/WebGPU render path added');
+console.log(JSON.stringify({ ok: true }));

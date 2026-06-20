@@ -722,7 +722,7 @@ assert.equal(gfxR2RendererSummary.renderer, 'three', 'GFX-R2 renderer summary ma
 assert.equal(gfxR2RendererSummary.usesFull3DPlanning, false, 'GFX-R2 renderer excludes full 3D planning');
 assert.equal(gfxR2RendererSummary.usesWebGPUFluid, false, 'GFX-R2 renderer excludes WebGPU fluid');
 assert.equal(gfxR2RendererSummary.usesEnable3D, false, 'GFX-R2 renderer excludes Enable3D');
-assert.equal(THREE_MISSION_WORLD_RENDERER_VERSION, 'three-mission-world-renderer-three-r1-1b', 'THREE-R1.1B Three mission renderer version is stable');
+assert.equal(THREE_MISSION_WORLD_RENDERER_VERSION, 'three-mission-world-renderer-r1-2a-4-4', 'THREE-R1.2A.4.4 Three mission renderer version is stable');
 const gfxR3aFixture = createMissionWorldFixture();
 const gfxR3aTransform = createMissionWorldCoordinateTransform({ grid: gfxR3aFixture.level.world.grid });
 const gfxR3aWorldPoint = gridCellToWorld(gfxR3aTransform, 3, 2, 50);
@@ -1295,4 +1295,12 @@ assert.equal(typeof executionModules[2].compareSimulationExecutions, 'function',
 const simulationSceneSource = fs.readFileSync('src/game/phaser/scenes/SimulationScene.js', 'utf8');
 assert.ok(simulationSceneSource.includes('normalizeMissionLaunchPayload'), 'SimulationScene consumes launch payloads');
 assert.ok(simulationSceneSource.includes('rendererOwnsSimulationState: false'), 'Simulation debug preserves renderer boundary');
+const renderCostPolicyModule = await import('../../src/game/three/ThreeRenderCostPolicy.js');
+const gpuTimerModule = await import('../../src/game/three/ThreeWebGLGpuTimer.js');
+const modelStackRenderPolicy = renderCostPolicyModule.renderCostPolicySummary({ displaySettings: { waterColumn: { qualityProfile: 'balanced', fieldDisplayMode: 'activeLayerOnly' } } });
+assert.equal(modelStackRenderPolicy.ownsSimulationState, false, 'THREE-R1.2A.4.4 render-cost policy owns no simulation state');
+assert.equal(modelStackRenderPolicy.changesOfficialBrowserScoring, false, 'THREE-R1.2A.4.4 render-cost policy does not alter scoring');
+assert.equal(renderCostPolicyModule.effectiveThreePixelRatio({ devicePixelRatio: 2, qualityProfile: 'balanced' }), 1.25, 'Balanced pixel-ratio cap is explicit');
+const modelStackGpuTimer = gpuTimerModule.createThreeWebGLGpuTimer(null);
+assert.equal(gpuTimerModule.threeGpuTimerSummary(modelStackGpuTimer).gpuTimingSupported, false, 'GPU timing is optional and safe when unsupported');
 console.log('Model stack integration smoke passed');

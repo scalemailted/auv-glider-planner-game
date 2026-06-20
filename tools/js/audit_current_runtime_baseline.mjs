@@ -11,7 +11,7 @@ if (!index.includes('src/game/main.js')) failures.push('index.html must boot src
 if (index.includes('src/app/main.js')) failures.push('index.html must not boot reverted src/app/main.js.');
 if (index.includes('AnchorBrowserRuntime')) failures.push('index.html must not activate AnchorBrowserRuntime.');
 
-for (const file of ['vendor/three/build/three.module.js', 'vendor/three/build/three.core.js', 'src/core/science/DepthAwareScienceValue.js', 'src/core/science/DiveProfileFeasibility.js', 'src/core/science/DepthScoringProfiles.js', 'src/core/rendering/ContinuousMissionUiState.js', 'src/game/three/ThreeMissionPerformanceMonitor.js', 'src/game/three/ThreeSimulationPresentationScheduler.js']) {
+for (const file of ['vendor/three/build/three.module.js', 'vendor/three/build/three.core.js', 'src/core/science/DepthAwareScienceValue.js', 'src/core/science/DiveProfileFeasibility.js', 'src/core/science/DepthScoringProfiles.js', 'src/core/rendering/ContinuousMissionUiState.js', 'src/game/three/ThreeMissionPerformanceMonitor.js', 'src/game/three/ThreeSimulationPresentationScheduler.js', 'src/game/three/ThreeRenderCostPolicy.js', 'src/game/three/ThreeWebGLGpuTimer.js']) {
   if (!existsSync(path.join(root, file))) failures.push(`${file} is missing.`);
 }
 
@@ -36,7 +36,9 @@ for (const token of [
   'usesArbitraryXYZRoutePlanning: false',
   'rendererOwnsPlanning: false',
   'rendererOwnsSimulation: false',
-  'rendererOwnsScoring: false'
+  'rendererOwnsScoring: false',
+  'qualityProfile',
+  'fieldDisplayMode'
 ]) {
   if (!continuousUiState.includes(token)) failures.push(`ContinuousMissionUiState.js must contain ${token}.`);
 }
@@ -49,7 +51,7 @@ const overlay = read('src/ui/HtmlMissionWorkspaceOverlay.js');
 for (const token of ['ensureContinuousMissionUiState', 'ANCHOR_CONTINUOUS_MISSION_DEBUG', 'ANCHOR_THREE_PERFORMANCE_DEBUG', 'planningSceneCreateCompleted']) {
   if (!workspaceScene.includes(token)) failures.push(`MissionWorkspaceScene.js must include ${token}.`);
 }
-for (const token of ['prepareContinuousUiState', 'ANCHOR_CONTINUOUS_UI_DEBUG', 'overlayRuntimeErrorCount', 'rendererBackendSection(state, continuousUi)']) {
+for (const token of ['prepareContinuousUiState', 'ANCHOR_CONTINUOUS_UI_DEBUG', 'overlayRuntimeErrorCount', 'rendererBackendSection(state, continuousUi)', 'water-column-field-display-mode', 'three-quality-profile']) {
   if (!overlay.includes(token)) failures.push(`HtmlMissionWorkspaceOverlay.js must include ${token}.`);
 }
 const appDir = path.join(root, 'src/app');

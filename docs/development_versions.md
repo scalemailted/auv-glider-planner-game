@@ -521,3 +521,11 @@ Three.js mission runtime performance is now measured through globalThis.ANCHOR_T
 ## THREE-R1.2A.4.3
 
 Simulation presentation now uses a scheduler/dirty-category pipeline. Canonical simulation stepping is independent of browser rendering cadence; presentation requests may be coalesced, but canonical events may not be dropped. Grouped Playwright execution is formalized through `tools/js/run_playwright_groups.mjs` plus exact coverage audit.
+
+### THREE-R1.2A.4.4 - GPU/RAF Render-Cost Closure and Bathymetry Headroom Gate
+
+- Added render-cost quality policy, optional nonblocking WebGL GPU timer diagnostics, CPU/GPU timing separation, render-pass counters, context slab LOD, pixel-ratio profile caps, static matrix freezing diagnostics, and focused render-cost smoke/audit coverage.
+- Balanced defaults now render one active textured field slab with low-cost context depth outlines; `Show Field on All Layers` remains an explicit higher-cost teaching option.
+- Headed Chromium focused gate on 2026-06-20 passed with avg 21.981 ms, p95 50.1 ms, rendered FPS 45.494, presentation update CPU avg 2.07 ms, renderer submission CPU avg 5.017 ms, and GPU avg 5.821 ms where supported.
+- Preserved the boundary: no terrain mesh phase, no mission mechanics, no arbitrary XYZ navigation, no WebGPU/fluid solver, no route/scoring/simulation changes, and no renderer-owned scientific-field semantics.
+- Human manual QA by the project owner remains pending.

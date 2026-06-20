@@ -45,3 +45,7 @@ Surface waypoints are executable navigation/surfacing targets. Sampling targets 
 ## THREE-R1.2A.4.2 Performance Closure
 
 Three.js mission runtime performance is now measured through globalThis.ANCHOR_THREE_PERFORMANCE_DEBUG, focused smoke scripts, and focused Playwright performance/usability tests. Performance quality profiles are presentation-only. Surface waypoints remain executable navigation/surfacing anchors; sampling targets remain non-executable science objectives; multi-yo execution remains canonical core behavior. Human manual QA by the project owner remains pending.
+
+## THREE-R1.2A.4.4 Display-Cost Addendum
+
+Predicted dive geometry remains canonical view-model output. Render-cost LOD may reduce unrelated context detail, but selected dives, target coverage, layer crossings, bottom turns, predicted samples, and current-corrected paths remain presentation of the same planning data.

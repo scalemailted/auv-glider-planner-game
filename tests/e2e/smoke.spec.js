@@ -2880,7 +2880,7 @@ test('Continuous Mission Plan Executes Through Canonical 3D Dive', async ({ page
   await expect.poll(() => page.evaluate(() => window.ANCHOR_SIMULATION_RENDER_DEBUG?.threeMounted === true), { timeout: 15000 }).toBe(true);
 
   const beforeDive = await continuousDiveExecutionSnapshot(page);
-  await page.locator('#mission-console [data-action="play"]').click();
+  await page.locator('[data-action="sim-play"]').click();
   await expect.poll(() => continuousDiveExecutionSnapshot(page).then((snapshot) => snapshot.maxDepthMeters > beforeDive.maxDepthMeters && snapshot.maxAbsPitchRadians > 0 && snapshot.realizedTrajectoryPointCount > beforeDive.realizedTrajectoryPointCount), { timeout: 20000 }).toBe(true);
   await page.locator('#mission-console [data-action="pause"]').click();
   const afterDive = await continuousDiveExecutionSnapshot(page);
@@ -2924,6 +2924,7 @@ test('Surface Waypoints Produce a Predicted Three-Dimensional Dive', async ({ pa
     await clickBetweenThreeGridCells(page, pair.a, pair.b, index === 0 ? 0.34 : 0.58);
   }
   await expectWaypointCount(page, 2);
+
   await expect(page.locator('#mission-console')).toContainText('Segment Dive Plan');
   await page.locator('#mission-console [data-action="water-column-dive-profile"][data-profile="thermoclineDive"]').click();
   await page.locator('#mission-console [data-action="water-column-target-layer"][data-layer="thermocline"]').click();
@@ -3301,7 +3302,7 @@ test('Three Sampling Target and Dive Planning Headed Workflow', async ({ page },
   await expect.poll(() => page.evaluate(() => window.ANCHOR_SIMULATION_RENDER_DEBUG?.threeMounted === true), { timeout: 15000 }).toBe(true);
   await page.evaluate(() => window.ANCHOR_MISSION_RENDER_TEST_API?.resetPerformanceWindow?.());
   const beforeDive = await continuousDiveExecutionSnapshot(page);
-  await page.locator('#mission-console [data-action="play"]').click();
+  await page.locator('[data-action="sim-play"]').click();
   await expect.poll(() => continuousDiveExecutionSnapshot(page).then((snapshot) => snapshot.maxDepthMeters > beforeDive.maxDepthMeters && snapshot.realizedTrajectoryPointCount > beforeDive.realizedTrajectoryPointCount), { timeout: 25000 }).toBe(true);
   await page.screenshot({ path: testInfo.outputPath('three-multi-yo-simulation.png'), fullPage: true });
   await page.locator('#mission-console [data-action="pause"]').click();
@@ -3331,7 +3332,7 @@ test('Three Simulation Uses Incremental Presentation Updates', async ({ page }) 
   await page.locator('#mission-console [data-action="execute"]').click();
   await expect.poll(() => page.evaluate(() => window.ANCHOR_SIMULATION_RENDER_DEBUG?.threeMounted === true), { timeout: 15000 }).toBe(true);
   await page.evaluate(() => window.ANCHOR_MISSION_RENDER_TEST_API?.resetPerformanceWindow?.());
-  await page.locator('#mission-console [data-action="play"]').click();
+  await page.locator('[data-action="sim-play"]').click();
   await expect.poll(() => page.evaluate(() => {
     const debug = window.ANCHOR_SIMULATION_RENDER_DEBUG ?? {};
     return Number(debug.engineStepCount ?? 0) > 0 && Number(debug.presentationFrameCount ?? 0) > 0 && Number(debug.realizedTrajectoryPointCount ?? 0) > 0;
@@ -3420,8 +3421,200 @@ test('Three Quality Profiles Preserve Canonical Simulation Result', async ({ pag
   });
   const baseline = { ...digests[0], quality: 'baseline' };
   for (const digest of digests.slice(1)) expect({ ...digest, quality: 'baseline' }).toEqual(baseline);
+  const presentation = await page.evaluate(async () => {
+    const { effectiveThreePixelRatio, renderCostPolicySummary, threeQualityProfileSettings } = await import('./src/game/three/ThreeRenderCostPolicy.js');
+    return ['performance', 'balanced', 'high'].map((qualityProfile) => ({
+      qualityProfile,
+      pixelRatio: effectiveThreePixelRatio({ devicePixelRatio: 2, qualityProfile }),
+      currentVectorStride: threeQualityProfileSettings(qualityProfile).currentVectorStride,
+      policy: renderCostPolicySummary({ displaySettings: { waterColumn: { qualityProfile, fieldDisplayMode: 'activeLayerOnly' } } })
+    }));
+  });
+  expect(presentation.map((row) => row.pixelRatio)).toEqual([1, 1.25, 2]);
+  expect(presentation.map((row) => row.currentVectorStride)).toEqual([3, 2, 1]);
+  expect(presentation.every((row) => row.policy.ownsSimulationState === false && row.policy.changesOfficialBrowserScoring === false)).toBe(true);
   assertContinuousBrowserErrorsClean(browserErrors);
 });
+
+test('Three Context Slabs Reduce Cost Without Losing Dive Context', async ({ page }) => {
+  const browserErrors = attachBrowserErrorCollector(page);
+  await prepareThreeSamplingTargetDiveScenario(page, { attach: true, profile: 'fullProfile', layer: 'thermocline', cycles: 2 });
+  await page.locator('#mission-console [data-action="three-quality-profile"][data-profile="balanced"]').click();
+  await page.locator('#mission-console [data-action="three-camera"][data-preset="sideProfile"]').click();
+  await expect.poll(() => page.evaluate(() => window.ANCHOR_WATER_COLUMN_RENDER_DEBUG?.activeTexturedSlabCount ?? 0)).toBe(1);
+  const before = await page.evaluate(() => ({
+    planDigest: JSON.stringify(window.anchorGame.state.plan),
+    activeTexturedSlabCount: window.ANCHOR_WATER_COLUMN_RENDER_DEBUG?.activeTexturedSlabCount ?? 0,
+    contextOutlineSlabCount: window.ANCHOR_WATER_COLUMN_RENDER_DEBUG?.contextOutlineSlabCount ?? 0,
+    slabTextureCount: window.ANCHOR_WATER_COLUMN_RENDER_DEBUG?.slabTextureCount ?? 0,
+    visibleLayerCount: window.ANCHOR_WATER_COLUMN_RENDER_DEBUG?.visibleLayerCount ?? 0,
+    allLayerFieldTexturesEnabled: window.ANCHOR_WATER_COLUMN_RENDER_DEBUG?.allLayerFieldTexturesEnabled === true,
+    predictedDiveObjectCount: window.ANCHOR_DIVE_PLAN_DEBUG?.predictedDivePointCount ?? 0
+  }));
+  expect(before.activeTexturedSlabCount).toBe(1);
+  expect(before.contextOutlineSlabCount).toBe(Math.max(0, before.visibleLayerCount - 1));
+  expect(before.slabTextureCount).toBe(1);
+  expect(before.allLayerFieldTexturesEnabled).toBe(false);
+  expect(before.predictedDiveObjectCount).toBeGreaterThan(0);
+
+  await page.locator('#mission-console [data-action="water-column-field-display-mode"][data-mode="allLayers"]').click();
+  await expect.poll(() => page.evaluate(() => window.ANCHOR_WATER_COLUMN_RENDER_DEBUG?.allLayerFieldTexturesEnabled === true)).toBe(true);
+  const allLayers = await page.evaluate(() => ({
+    planDigest: JSON.stringify(window.anchorGame.state.plan),
+    slabTextureCount: window.ANCHOR_WATER_COLUMN_RENDER_DEBUG?.slabTextureCount ?? 0,
+    visibleLayerCount: window.ANCHOR_WATER_COLUMN_RENDER_DEBUG?.visibleLayerCount ?? 0,
+    contextOutlineSlabCount: window.ANCHOR_WATER_COLUMN_RENDER_DEBUG?.contextOutlineSlabCount ?? 0
+  }));
+  expect(allLayers.planDigest).toBe(before.planDigest);
+  expect(allLayers.slabTextureCount).toBe(allLayers.visibleLayerCount);
+  expect(allLayers.contextOutlineSlabCount).toBe(0);
+
+  await page.locator('#mission-console [data-action="water-column-field-display-mode"][data-mode="activeLayerOnly"]').click();
+  await expect.poll(() => page.evaluate(() => window.ANCHOR_WATER_COLUMN_RENDER_DEBUG?.allLayerFieldTexturesEnabled === false)).toBe(true);
+  const after = await page.evaluate(() => ({
+    planDigest: JSON.stringify(window.anchorGame.state.plan),
+    activeTexturedSlabCount: window.ANCHOR_WATER_COLUMN_RENDER_DEBUG?.activeTexturedSlabCount ?? 0,
+    contextOutlineSlabCount: window.ANCHOR_WATER_COLUMN_RENDER_DEBUG?.contextOutlineSlabCount ?? 0,
+    slabTextureCount: window.ANCHOR_WATER_COLUMN_RENDER_DEBUG?.slabTextureCount ?? 0,
+    visibleLayerCount: window.ANCHOR_WATER_COLUMN_RENDER_DEBUG?.visibleLayerCount ?? 0
+  }));
+  expect(after.planDigest).toBe(before.planDigest);
+  expect(after.activeTexturedSlabCount).toBe(1);
+  expect(after.contextOutlineSlabCount).toBe(Math.max(0, after.visibleLayerCount - 1));
+  expect(after.slabTextureCount).toBe(1);
+  assertContinuousBrowserErrorsClean(browserErrors);
+});
+
+test('Three Balanced Renderer Meets Bathymetry Headroom Gate', async ({ page }) => {
+  const browserErrors = attachBrowserErrorCollector(page);
+  await prepareThreeSamplingTargetDiveScenario(page, { attach: true, profile: 'fullProfile', layer: 'deep', cycles: 2, extraFarWaypoints: 1 });
+  await page.locator('#mission-console [data-action="three-quality-profile"][data-profile="balanced"]').click();
+  const planningVisuals = await page.evaluate(() => ({
+    agentCount: window.anchorGame.state.mission?.agents?.length ?? 0,
+    activeTexturedSlabCount: window.ANCHOR_WATER_COLUMN_RENDER_DEBUG?.activeTexturedSlabCount ?? 0,
+    contextOutlineSlabCount: window.ANCHOR_WATER_COLUMN_RENDER_DEBUG?.contextOutlineSlabCount ?? 0,
+    currentVectorObjectCount: window.ANCHOR_WATER_COLUMN_RENDER_DEBUG?.currentVectorObjectCount ?? 0,
+    samplingTargetCount: window.ANCHOR_MISSION_RENDER_DEBUG?.scienceTargetCount ?? 0,
+    plannedDiveObjectCount: window.ANCHOR_DIVE_PLAN_DEBUG?.predictedDivePointCount ?? 0
+  }));
+  expect(planningVisuals.agentCount).toBeGreaterThanOrEqual(2);
+  expect(planningVisuals.activeTexturedSlabCount).toBe(1);
+  expect(planningVisuals.contextOutlineSlabCount).toBeGreaterThan(0);
+  expect(planningVisuals.samplingTargetCount).toBeGreaterThan(0);
+  expect(planningVisuals.plannedDiveObjectCount).toBeGreaterThan(0);
+
+  await page.locator('#mission-console [data-action="execute"]').click();
+  await expect.poll(() => page.evaluate(() => window.ANCHOR_SIMULATION_RENDER_DEBUG?.threeMounted === true), { timeout: 15000 }).toBe(true);
+  await advanceSimulationSceneForRenderCost(page, { steps: 12, frameDelay: 40, keepRunning: true });
+  await expect.poll(() => page.evaluate(() => Number(window.ANCHOR_SIMULATION_RENDER_DEBUG?.engineStepCount ?? 0) > 4), { timeout: 15000 }).toBe(true);
+  await page.evaluate(() => window.ANCHOR_MISSION_RENDER_TEST_API?.resetPerformanceWindow?.());
+  await advanceSimulationSceneForRenderCost(page, { steps: 14, frameDelay: 40, keepRunning: true });
+  await expect.poll(() => page.evaluate(() => Number(window.ANCHOR_THREE_PERFORMANCE_DEBUG?.sampleCount ?? 0) >= 8), { timeout: 25000 }).toBe(true);
+  await stopSimulationSceneRenderCostStepper(page);
+  const perf = await page.evaluate(() => window.ANCHOR_THREE_PERFORMANCE_DEBUG ?? {});
+  const strictHeadedGate = test.info().project.use?.headless === false;
+  expect(perf.qualityProfile).toBe('balanced');
+  expect(Number.isFinite(Number(perf.frameIntervalAverageMilliseconds))).toBe(true);
+  expect(Number.isFinite(Number(perf.frameIntervalP95Milliseconds))).toBe(true);
+  expect(Number.isFinite(Number(perf.presentationUpdateAverageMilliseconds))).toBe(true);
+  expect(Number.isFinite(Number(perf.rendererSubmissionAverageMilliseconds))).toBe(true);
+  expect(perf.renderedFramesPerSecond).toBeGreaterThan(0);
+  if (strictHeadedGate) {
+    expect(perf.frameIntervalAverageMilliseconds).toBeLessThanOrEqual(50);
+    expect(perf.frameIntervalP95Milliseconds).toBeLessThanOrEqual(100);
+    expect(perf.renderedFramesPerSecond).toBeGreaterThanOrEqual(20);
+  }
+  expect(perf.activeRendererCount).toBe(1);
+  expect(perf.activeRafCount).toBe(1);
+  expect(perf.renderCallsPerPresentationFrame).toBeLessThanOrEqual(1);
+  expect(perf.duplicateRenderCallWarningCount).toBe(0);
+  expect(perf.activeTexturedSlabCount).toBe(1);
+  expect(perf.contextOutlineSlabCount).toBeGreaterThan(0);
+  const simulationVisuals = await page.evaluate(() => window.ANCHOR_SIMULATION_RENDER_DEBUG?.rendererSummary ?? {});
+  expect(simulationVisuals.samplingTargetObjectCount ?? 0).toBeGreaterThan(0);
+  expect(simulationVisuals.realizedTrajectoryPointCount ?? 0).toBeGreaterThan(0);
+  console.log('THREE_BALANCED_HEADROOM_GATE ' + JSON.stringify({
+    average: perf.frameIntervalAverageMilliseconds,
+    p95: perf.frameIntervalP95Milliseconds,
+    p99: perf.frameIntervalP99Milliseconds,
+    renderedFramesPerSecond: perf.renderedFramesPerSecond,
+    presentationUpdateAverageMilliseconds: perf.presentationUpdateAverageMilliseconds,
+    rendererSubmissionAverageMilliseconds: perf.rendererSubmissionAverageMilliseconds,
+    gpuTimingSupported: perf.gpuTimingSupported,
+    gpuAverageMilliseconds: perf.gpuAverageMilliseconds
+  }));
+  assertContinuousBrowserErrorsClean(browserErrors);
+});
+
+test('Three Camera Remains Responsive Under Live Simulation Load', async ({ page }) => {
+  const browserErrors = attachBrowserErrorCollector(page);
+  await prepareThreeSamplingTargetDiveScenario(page, { attach: true, profile: 'fullProfile', layer: 'deep', cycles: 2 });
+  await page.locator('#mission-console [data-action="execute"]').click();
+  await expect.poll(() => page.evaluate(() => window.ANCHOR_SIMULATION_RENDER_DEBUG?.threeMounted === true), { timeout: 15000 }).toBe(true);
+  await advanceSimulationSceneForRenderCost(page, { steps: 2, frameDelay: 40, keepRunning: true });
+  await expect.poll(() => page.evaluate(() => Number(window.ANCHOR_SIMULATION_RENDER_DEBUG?.engineStepCount ?? 0) > 1), { timeout: 15000 }).toBe(true);
+  await page.evaluate(() => window.ANCHOR_MISSION_RENDER_TEST_API?.resetPerformanceWindow?.());
+  await startSimulationSceneRenderCostStepper(page, { intervalMs: 50, keepRunning: true });
+  const before = await page.evaluate(() => {
+    const scene = window.anchorGame.phaser.scene.getScene('SimulationScene');
+    return {
+      engineStepCount: window.ANCHOR_SIMULATION_RENDER_DEBUG?.engineStepCount ?? 0,
+      presentationFrameCount: window.ANCHOR_SIMULATION_RENDER_DEBUG?.presentationFrameCount ?? 0,
+      cameraPosition: scene.threeSimulationRenderer?.camera?.position?.toArray?.() ?? [],
+      routeDigest: JSON.stringify((window.anchorGame.state.plan?.agentPlans ?? []).map((agentPlan) => ({ agentId: agentPlan.agentId, selectedStart: agentPlan.selectedStart, waypoints: (agentPlan.waypoints ?? []).map((waypoint) => ({ id: waypoint.id, x: waypoint.x, y: waypoint.y, action: waypoint.action, kind: waypoint.kind, targetDepthLayerId: waypoint.targetDepthLayerId, diveProfileId: waypoint.diveProfileId, scienceTargetIds: waypoint.scienceTargetIds ?? [] })) })))
+    };
+  });
+  const canvasBox = await page.locator('.three-mission-world-canvas').boundingBox();
+  expect(canvasBox).toBeTruthy();
+  const point = { x: canvasBox.x + canvasBox.width * 0.52, y: canvasBox.y + canvasBox.height * 0.48 };
+  await page.mouse.move(point.x, point.y);
+  await page.mouse.down({ button: 'right' });
+  await page.mouse.move(point.x + 160, point.y + 70, { steps: 12 });
+  await page.mouse.up({ button: 'right' });
+  await page.mouse.move(point.x, point.y);
+  await page.mouse.down({ button: 'middle' });
+  await page.mouse.move(point.x + 40, point.y + 100, { steps: 8 });
+  await page.mouse.up({ button: 'middle' });
+  await page.mouse.wheel(0, -180);
+  await expect.poll(() => page.evaluate(() => Number(window.ANCHOR_THREE_PERFORMANCE_DEBUG?.cameraGestureCount ?? 0) > 0), { timeout: 10000 }).toBe(true);
+  await expect.poll(() => page.evaluate((beforeCamera) => {
+    const scene = window.anchorGame.phaser.scene.getScene('SimulationScene');
+    const current = scene.threeSimulationRenderer?.camera?.position?.toArray?.() ?? [];
+    return current.join(',') !== beforeCamera.join(',');
+  }, before.cameraPosition), { timeout: 10000 }).toBe(true);
+  await advanceSimulationSceneForRenderCost(page, { steps: 4, frameDelay: 20, keepRunning: true });
+  const afterGesture = await page.evaluate(() => {
+    const scene = window.anchorGame.phaser.scene.getScene('SimulationScene');
+    return {
+      engineStepCount: window.ANCHOR_SIMULATION_RENDER_DEBUG?.engineStepCount ?? 0,
+      presentationFrameCount: window.ANCHOR_SIMULATION_RENDER_DEBUG?.presentationFrameCount ?? 0,
+      cameraPosition: scene.threeSimulationRenderer?.camera?.position?.toArray?.() ?? [],
+      perf: window.ANCHOR_THREE_PERFORMANCE_DEBUG ?? {},
+      routeDigest: JSON.stringify((window.anchorGame.state.plan?.agentPlans ?? []).map((agentPlan) => ({ agentId: agentPlan.agentId, selectedStart: agentPlan.selectedStart, waypoints: (agentPlan.waypoints ?? []).map((waypoint) => ({ id: waypoint.id, x: waypoint.x, y: waypoint.y, action: waypoint.action, kind: waypoint.kind, targetDepthLayerId: waypoint.targetDepthLayerId, diveProfileId: waypoint.diveProfileId, scienceTargetIds: waypoint.scienceTargetIds ?? [] })) })))
+    };
+  });
+  expect(afterGesture.routeDigest).toBe(before.routeDigest);
+  expect(afterGesture.cameraPosition.join(',')).not.toBe(before.cameraPosition.join(','));
+  expect(afterGesture.engineStepCount).toBeGreaterThanOrEqual(before.engineStepCount);
+  expect(afterGesture.presentationFrameCount).toBeGreaterThan(before.presentationFrameCount);
+  expect(afterGesture.perf.activeRendererCount).toBe(1);
+  expect(afterGesture.perf.activeRafCount).toBe(1);
+  expect(afterGesture.perf.modelBuildCountDuringCameraGesture).toBe(0);
+  expect(afterGesture.perf.predictionBuildCountDuringCameraGesture).toBe(0);
+  await stopSimulationSceneRenderCostStepper(page);
+  const paused = await page.evaluate(() => ({
+    running: window.anchorGame.phaser.scene.getScene('SimulationScene')?.engine?.running === true,
+    complete: window.anchorGame.phaser.scene.getScene('SimulationScene')?.engine?.complete === true,
+    step: window.ANCHOR_SIMULATION_RENDER_DEBUG?.engineStepCount ?? 0
+  }));
+  expect(paused.running).toBe(false);
+  if (!paused.complete) {
+    await page.evaluate(() => window.anchorGame.phaser.scene.getScene('SimulationScene')?.stepOnce?.());
+    await expect.poll(() => page.evaluate((step) => Number(window.ANCHOR_SIMULATION_RENDER_DEBUG?.engineStepCount ?? 0) > step, paused.step), { timeout: 10000 }).toBe(true);
+  }
+  assertContinuousBrowserErrorsClean(browserErrors);
+});
+
 test('Segment Distance Changes Predicted Dive Geometry', async ({ page }) => {
   await page.goto('/');
   const result = await page.evaluate(async () => {
@@ -3687,7 +3880,7 @@ test('Three Planning Pointer Interaction dispatches canonical workspace commands
       radius: 0.75,
       frames: [{ t: 0, x: 4, y: 4, active: true }, { t: 6, x: 4, y: 4, active: true }, { t: 12, x: 4, y: 4, active: true }]
     }];
-    const bravoStart = { x: Math.max(0, width - 2), y: Math.max(0, height - 2) };
+    const bravoStart = { x: Math.min(Math.max(0, width - 2), 5), y: Math.min(Math.max(0, height - 2), 3) };
     state.level.layers.terrain[bravoStart.y][bravoStart.x] = 0;
     if (!state.mission.agents.some((agent) => agent.id === 'glider-bravo')) {
       state.mission.agents.push({
@@ -4474,7 +4667,7 @@ test('Execute Mission Through Three Simulation', async ({ page }) => {
   });
 
   const beforeStep = await canonicalSimulationState(page);
-  await page.locator('#mission-console [data-action="step"]').click();
+  await page.locator('[data-action="sim-step"]').click();
   await expect.poll(() => canonicalSimulationState(page)).toMatchObject({ stepCount: beforeStep.stepCount + 1 });
   const afterStep = await canonicalSimulationState(page);
   expect(afterStep.timeSeconds).toBeGreaterThan(beforeStep.timeSeconds);
@@ -4487,7 +4680,7 @@ test('Execute Mission Through Three Simulation', async ({ page }) => {
   expect(movedAfterStep || Boolean(afterStep.failureReason)).toBe(true);
 
   const beforePlay = await canonicalSimulationState(page);
-  await page.locator('#mission-console [data-action="play"]').click();
+  await page.locator('[data-action="sim-play"]').click();
   await expect.poll(() => page.evaluate((before) => (window.ANCHOR_EXECUTION_DEBUG?.engineStepCount ?? 0) > before.stepCount + 1, beforePlay), { timeout: 15000 }).toBe(true);
   const runningState = await canonicalSimulationState(page);
   expect(runningState.timeSeconds).toBeGreaterThan(beforePlay.timeSeconds);
@@ -4506,7 +4699,7 @@ test('Execute Mission Through Three Simulation', async ({ page }) => {
   await page.waitForTimeout(300);
   await expect(canonicalSimulationState(page)).resolves.toMatchObject({ stepCount: paused.stepCount, timeSeconds: paused.timeSeconds });
 
-  await page.locator('#mission-console [data-action="play"]').click();
+  await page.locator('[data-action="sim-play"]').click();
   await expect.poll(() => page.evaluate((before) => (window.ANCHOR_EXECUTION_DEBUG?.engineStepCount ?? 0) > before.stepCount, paused), { timeout: 15000 }).toBe(true);
   await page.locator('#mission-console [data-action="pause"]').click();
   await expect.poll(() => page.evaluate(() => {
@@ -4627,7 +4820,7 @@ test('Three Depth-Aware Dive and Sampling', async ({ page }) => {
   await expect.poll(() => page.evaluate(() => window.anchorGame.phaser.scene.getScene('SimulationScene')?.sys.isActive?.() ?? false), { timeout: 15000 }).toBe(true);
   await expect.poll(() => page.evaluate(() => window.ANCHOR_SIMULATION_RENDER_DEBUG?.threeMounted === true), { timeout: 15000 }).toBe(true);
   await expect.poll(() => page.evaluate(() => window.ANCHOR_WATER_COLUMN_RENDER_DEBUG?.phase)).toBe('simulation');
-  await page.locator('#mission-console [data-action="step"]').click();
+  await page.locator('[data-action="sim-step"]').click();
   await expect.poll(() => page.evaluate(() => window.ANCHOR_EXECUTION_DEBUG?.firstStepCompleted === true), { timeout: 15000 }).toBe(true);
   await expect.poll(() => page.evaluate(() => window.ANCHOR_WATER_COLUMN_RENDER_DEBUG?.realizedTrajectoryPointCount ?? 0), { timeout: 15000 }).toBeGreaterThan(0);
   const debug = await page.evaluate(() => window.ANCHOR_WATER_COLUMN_RENDER_DEBUG);
@@ -5089,7 +5282,62 @@ async function expectMainMenuSceneIsolation(page) {
   expect(snapshot.rightPanelText).not.toMatch(/Mission Waypoints|Waypoint \d|MISSION WINDOW|Glider/i);
 }
 
-async function prepareThreeSamplingTargetDiveScenario(page, { attach = true, profile = 'thermoclineDive', layer = 'thermocline', cycles = 2 } = {}) {
+async function stepSimulationSceneForRenderCost(page, { keepRunning = true } = {}) {
+  await page.evaluate(({ keepRunning }) => {
+    const scene = window.anchorGame?.phaser?.scene?.getScene?.('SimulationScene');
+    if (!scene?.engine) return;
+    if (keepRunning) scene.engine.play?.();
+    const beforeStepCount = Number(scene.engine.stepCount ?? 0);
+    scene.engine.step?.(1 / 30, { force: true });
+    scene.recordSimulationProgressStage?.(beforeStepCount, keepRunning ? 'e2eLiveRenderCostStep' : 'e2eRenderCostStep');
+    scene.syncSimulationTimeToState?.();
+    scene.publishLatestSimulationSnapshot?.(keepRunning ? 'e2eLiveRenderCostStep' : 'e2eRenderCostStep');
+    scene.consumeScheduledPresentationFrame?.({ force: true, reason: keepRunning ? 'e2eLiveRenderCostStep' : 'e2eRenderCostStep' });
+    scene.refreshSurfaceDecision?.();
+    scene.refreshRouteFailureDecision?.();
+    scene.notifyAbortIfNeeded?.();
+    scene.notifyStopReasonIfNeeded?.();
+  }, { keepRunning });
+}
+
+async function advanceSimulationSceneForRenderCost(page, { steps = 12, frameDelay = 40, keepRunning = true } = {}) {
+  for (let index = 0; index < steps; index += 1) {
+    await stepSimulationSceneForRenderCost(page, { keepRunning });
+    if (frameDelay > 0) await page.waitForTimeout(frameDelay);
+  }
+}
+
+async function startSimulationSceneRenderCostStepper(page, { intervalMs = 50, keepRunning = true } = {}) {
+  await page.evaluate(({ intervalMs, keepRunning }) => {
+    if (window.__anchorRenderCostStepper) window.clearInterval(window.__anchorRenderCostStepper);
+    const step = () => {
+      const scene = window.anchorGame?.phaser?.scene?.getScene?.('SimulationScene');
+      if (!scene?.engine) return;
+      if (keepRunning) scene.engine.play?.();
+      const beforeStepCount = Number(scene.engine.stepCount ?? 0);
+      scene.engine.step?.(1 / 30, { force: true });
+      scene.recordSimulationProgressStage?.(beforeStepCount, keepRunning ? 'e2eLiveRenderCostStep' : 'e2eRenderCostStep');
+      scene.syncSimulationTimeToState?.();
+      scene.publishLatestSimulationSnapshot?.(keepRunning ? 'e2eLiveRenderCostStep' : 'e2eRenderCostStep');
+      scene.consumeScheduledPresentationFrame?.({ force: true, reason: keepRunning ? 'e2eLiveRenderCostStep' : 'e2eRenderCostStep' });
+    };
+    step();
+    window.__anchorRenderCostStepper = window.setInterval(step, intervalMs);
+  }, { intervalMs, keepRunning });
+}
+
+async function stopSimulationSceneRenderCostStepper(page) {
+  await page.evaluate(() => {
+    if (window.__anchorRenderCostStepper) window.clearInterval(window.__anchorRenderCostStepper);
+    window.__anchorRenderCostStepper = null;
+    const scene = window.anchorGame?.phaser?.scene?.getScene?.('SimulationScene');
+    scene?.engine?.pause?.();
+    scene?.refreshControls?.();
+    scene?.renderSimulationTimeline?.();
+    scene?.publishExecutionDebug?.();
+  });
+}
+async function prepareThreeSamplingTargetDiveScenario(page, { attach = true, profile = 'thermoclineDive', layer = 'thermocline', cycles = 2, extraFarWaypoints = 0 } = {}) {
   await startVisibleContinuousMissionPlanning(page);
   await page.locator('#mission-console [data-action="three-camera"][data-preset="tacticalTopDown"]').click();
   await expect.poll(() => page.evaluate(() => window.ANCHOR_MISSION_RENDER_DEBUG?.cameraPresetId)).toBe('tacticalTopDown');
@@ -5102,7 +5350,14 @@ async function prepareThreeSamplingTargetDiveScenario(page, { attach = true, pro
     await page.locator('#mission-console [data-action="mission-planning-tool"][data-tool="placeWaypoint"]').click();
     await clickBetweenThreeGridCells(page, pair.a, pair.b, index === 0 ? 0.34 : 0.58);
   }
-  await expectWaypointCount(page, 2);
+  for (let index = 0; index < extraFarWaypoints; index += 1) {
+    const cell = await findWaypointPlacementCell(page, { preferFar: true, requireNoWarnings: true })
+      ?? await findWaypointPlacementCell(page, { preferFar: true });
+    expect(cell).toBeTruthy();
+    await page.locator('#mission-console [data-action="mission-planning-tool"][data-tool="placeWaypoint"]').click();
+    await clickThreeGridCell(page, cell.x, cell.y);
+  }
+  await expectWaypointCount(page, 2 + extraFarWaypoints);
   await page.locator(`#mission-console [data-action="water-column-dive-profile"][data-profile="${profile}"]`).click();
   await page.locator(`#mission-console [data-action="water-column-target-layer"][data-layer="${layer}"]`).click();
   await page.locator(`#mission-console [data-action="water-column-active-layer"][data-layer="${layer}"]`).click();

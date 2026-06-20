@@ -1,0 +1,22 @@
+import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
+import { createThreeSimulationPresentationScheduler, threeSimulationPresentationSchedulerSummary } from '../../src/game/three/ThreeSimulationPresentationScheduler.js';
+import { threeQualityProfileSettings } from '../../src/game/three/ThreeRenderCostPolicy.js';
+
+assert.equal(threeQualityProfileSettings('performance').presentationCadenceLimit, 20);
+assert.equal(threeQualityProfileSettings('balanced').presentationCadenceLimit, 30);
+assert.equal(threeQualityProfileSettings('high').presentationCadenceLimit, 60);
+const scheduler = createThreeSimulationPresentationScheduler({ maxHz: threeQualityProfileSettings('balanced').presentationCadenceLimit });
+const summary = threeSimulationPresentationSchedulerSummary(scheduler);
+assert.equal(summary.ownsSimulationState, false, 'presentation scheduler owns no canonical state');
+assert.equal(summary.maxHz, 30, 'Balanced presentation cadence is bounded');
+const renderer = readFileSync('src/game/three/ThreeMissionWorldRenderer.js', 'utf8');
+assert.match(renderer, /renderOnDemandEnabled:\s*true/, 'planning/static renderer supports demand rendering');
+assert.match(renderer, /cameraGesture/, 'camera gestures request visible renders');
+assert.match(renderer, /requestThreeMissionWorldRender/, 'presentation render requests are coalesced');
+assert.match(renderer, /shouldRenderAtPresentationCadence/, 'simulation playback can render latest public snapshot at bounded cadence');
+assert.match(renderer, /simulation-presentation-cadence/, 'cadence render reason is explicit');
+const scene = readFileSync('src/game/phaser/scenes/SimulationScene.js', 'utf8');
+assert.match(scene, /this\.engine\.step\(/, 'canonical step rate remains in SimulationScene');
+assert.doesNotMatch(scene, /qualityProfile[\s\S]{0,160}this\.engine\.step/, 'quality profile does not gate canonical stepping');
+console.log(JSON.stringify({ ok: true, summary }));

@@ -1,0 +1,17 @@
+import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
+const pkg = JSON.parse(readFileSync('package.json', 'utf8').replace(/^\uFEFF/, ''));
+const renderer = readFileSync('src/game/three/ThreeMissionWorldRenderer.js', 'utf8');
+const policy = readFileSync('src/game/three/ThreeRenderCostPolicy.js', 'utf8');
+const simulation = readFileSync('src/game/phaser/scenes/SimulationScene.js', 'utf8');
+const index = readFileSync('index.html', 'utf8');
+const deps = { ...(pkg.dependencies ?? {}), ...(pkg.devDependencies ?? {}) };
+assert.equal(Object.keys(deps).some((name) => /webgpu|fluid|planner/i.test(name)), false, 'no WebGPU/fluid/planner dependency added');
+assert.match(policy, /ownsSimulationState:\s*false/, 'render-cost policy owns no canonical simulation state');
+assert.match(policy, /changesOfficialBrowserScoring:\s*false/, 'render-cost policy owns no scoring changes');
+assert.doesNotMatch(renderer, /SimulationEngine|ScoringEngine|WaypointPlan|PlannerRegistry/, 'renderer imports no canonical engine/scoring/planner authority');
+assert.match(simulation, /this\.engine\.step\(/, 'SimulationScene remains canonical engine owner');
+assert.doesNotMatch(simulation, /qualityProfile[\s\S]{0,160}score|score[\s\S]{0,160}qualityProfile/, 'quality profile does not alter scoring');
+assert.equal(index.includes('src/app/main.js'), false, 'reverted DOM runtime is not active');
+assert.doesNotMatch(renderer + policy + simulation, /T_hiddenTruth|hiddenTruth/, 'render-cost pass does not expose hidden truth');
+console.log(JSON.stringify({ ok: true }));

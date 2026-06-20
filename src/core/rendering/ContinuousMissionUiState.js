@@ -99,6 +99,8 @@ export function normalizeContinuousMissionUiState(input = {}) {
     availableDepthLayerIds
   );
   const verticalExaggeration = normalizeVerticalExaggeration(input.verticalExaggeration ?? source.verticalExaggeration ?? source.continuousMission?.verticalExaggeration ?? waterColumnUi.verticalExaggeration);
+  const fieldDisplayMode = waterColumnUi.fieldDisplayMode === 'allLayers' || waterColumnUi.showFieldOnAllLayers === true ? 'allLayers' : 'activeLayerOnly';
+  const qualityProfile = normalizeThreeQualityProfile(input.qualityProfile ?? source.qualityProfile ?? source.continuousMission?.qualityProfile ?? waterColumnUi.qualityProfile ?? ui.threeMissionQualityProfile);
   const availableDiveProfileIds = normalizeAvailableDiveProfileIds(input.availableDiveProfileIds ?? waterColumnProfileOptions().map((profile) => profile.id));
   const warnings = [];
   if (waypointSnapMode === 'freePlacement' && coordinateProfileId !== 'continuousGridV1') {
@@ -122,6 +124,9 @@ export function normalizeContinuousMissionUiState(input = {}) {
     selectedDiveProfileId: availableDiveProfileIds.includes(selectedDiveProfileId) ? selectedDiveProfileId : availableDiveProfileIds[0] ?? 'surfaceOnly',
     selectedTargetDepthLayerId,
     verticalExaggeration,
+    fieldDisplayMode,
+    showFieldOnAllLayers: fieldDisplayMode === 'allLayers',
+    qualityProfile,
     continuousPlacementEnabled: coordinateProfileId === 'continuousGridV1',
     volumetricFieldEnabled: availableDepthLayerIds.length > 1,
     depthPlanningEnabled: availableDepthLayerIds.length > 1,
@@ -149,6 +154,8 @@ export function validateContinuousMissionUiState(state = {}) {
   if (!VOLUME_RENDER_MODES.includes(state.volumeRenderMode)) errors.push(`Unsupported volumeRenderMode: ${state.volumeRenderMode}`);
   if (!state.activeDepthLayerId) errors.push('activeDepthLayerId is required.');
   if (!['physicalDepth', 'explodedLayers'].includes(state.verticalDisplayMode)) errors.push(`Unsupported verticalDisplayMode: ${state.verticalDisplayMode}`);
+  if (!['activeLayerOnly', 'allLayers'].includes(state.fieldDisplayMode ?? 'activeLayerOnly')) errors.push(`Unsupported fieldDisplayMode: ${state.fieldDisplayMode}`);
+  if (!['performance', 'balanced', 'high'].includes(state.qualityProfile ?? 'balanced')) errors.push(`Unsupported qualityProfile: ${state.qualityProfile}`);
   if (!state.selectedDiveProfileId) errors.push('selectedDiveProfileId is required.');
   if (!state.selectedTargetDepthLayerId) errors.push('selectedTargetDepthLayerId is required.');
   if (![1, 2, 4, 8].includes(Number(state.verticalExaggeration))) errors.push('Unsupported verticalExaggeration: ' + state.verticalExaggeration);
@@ -173,6 +180,9 @@ export function continuousMissionUiStateSummary(state = {}) {
     selectedDiveProfileId: state.selectedDiveProfileId ?? null,
     selectedTargetDepthLayerId: state.selectedTargetDepthLayerId ?? null,
     verticalExaggeration: state.verticalExaggeration ?? 1,
+    fieldDisplayMode: state.fieldDisplayMode ?? 'activeLayerOnly',
+    showFieldOnAllLayers: state.showFieldOnAllLayers === true,
+    qualityProfile: state.qualityProfile ?? 'balanced',
     continuousPlacementEnabled: state.continuousPlacementEnabled === true,
     volumetricFieldEnabled: state.volumetricFieldEnabled === true,
     depthPlanningEnabled: state.depthPlanningEnabled === true,
@@ -228,6 +238,13 @@ function normalizeAvailableDiveProfileIds(ids) {
 function normalizeVerticalDisplayMode(value) {
   return value === 'explodedLayers' ? 'explodedLayers' : 'physicalDepth';
 }
+function normalizeThreeQualityProfile(value) {
+  const id = String(value ?? '').trim().toLowerCase();
+  if (id === 'performance' || id === 'perf') return 'performance';
+  if (id === 'high' || id === 'quality') return 'high';
+  return 'balanced';
+}
+
 function normalizeVerticalExaggeration(value) {
   const numeric = Number(value);
   if ([1, 2, 4, 8].includes(numeric)) return numeric;

@@ -1,9 +1,10 @@
-﻿import assert from 'node:assert/strict';
+import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 
 const mainMenu = readFileSync('src/game/phaser/scenes/MainMenuScene.js', 'utf8');
 const reset = readFileSync('src/ui/MissionShellReset.js', 'utf8');
 const index = readFileSync('index.html', 'utf8');
+const renderer = readFileSync('src/game/three/ThreeMissionWorldRenderer.js', 'utf8');
 assert.match(mainMenu, /stopMissionScenesForMainMenu/);
 const stopMethod = mainMenu.match(/stopMissionScenesForMainMenu\(\) \{[\s\S]*?\n  \}/)?.[0] ?? '';
 assert.match(stopMethod, /sceneManager\.stop\?\.\(key\)/);
@@ -14,4 +15,5 @@ assert.match(reset, /planningCleanupInvocationCount/);
 assert.match(reset, /activeWaterColumnSlabCount/);
 assert.equal(index.includes('src/app/main.js'), false);
 assert.equal(index.includes('AnchorBrowserRuntime'), false);
+assert.match(renderer, /disposeThreeGpuTimer/, 'renderer teardown disposes optional GPU timer diagnostics');
 console.log('audit_three_scene_isolation passed');

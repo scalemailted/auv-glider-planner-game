@@ -40,7 +40,10 @@ import {
   createThreeMissionPerformanceMonitor,
   endThreePerformanceFrame,
   recordThreePerformanceEvent,
+  recordThreePresentationUpdateDuration,
+  recordThreeRendererSubmissionDuration,
   resetThreePerformanceWindow,
+  setThreePerformanceCadenceLimit,
   threeMissionPerformanceSummary
 } from './ThreeMissionPerformanceMonitor.js';
 import {
@@ -50,8 +53,10 @@ import {
   threeMissionCameraControllerSummary,
   updateThreeMissionCameraBounds
 } from './ThreeMissionCameraController.js';
+import { createThreeWebGLGpuTimer, beginThreeGpuTimerQuery, endThreeGpuTimerQuery, threeGpuTimerSummary, disposeThreeGpuTimer } from './ThreeWebGLGpuTimer.js';
+import { effectiveThreePixelRatio, renderCostPolicySummary, shouldRenderVolumetricFieldPlanes, threeQualityProfileSettings, waterColumnDisplayPolicy } from './ThreeRenderCostPolicy.js';
 
-export const THREE_MISSION_WORLD_RENDERER_VERSION = 'three-mission-world-renderer-three-r1-1b';
+export const THREE_MISSION_WORLD_RENDERER_VERSION = 'three-mission-world-renderer-r1-2a-4-4';
 
 const GROUP_KEYS = [
   'bathymetryGroup',
@@ -91,7 +96,9 @@ export function createThreeMissionWorldRenderer(container, options = {}) {
   scene.fog = new THREE.FogExp2(0x06111f, 0.014);
   const camera = new THREE.PerspectiveCamera(46, width / height, 0.1, 4000);
   const webglRenderer = new THREE.WebGLRenderer({ antialias: true, alpha: false, powerPreference: 'high-performance' });
-  const pixelRatio = Math.min(2, Number(globalThis.devicePixelRatio || 1));
+  const qualityProfile = options.qualityProfile ?? options.viewModel?.displaySettings?.waterColumn?.qualityProfile ?? 'balanced';
+  const qualitySettings = threeQualityProfileSettings(qualityProfile);
+  const pixelRatio = effectiveThreePixelRatio({ devicePixelRatio: globalThis.devicePixelRatio || 1, qualityProfile });
   webglRenderer.setPixelRatio(pixelRatio);
   webglRenderer.setSize(width, height, false);
   webglRenderer.domElement.className = 'three-mission-world-canvas';
@@ -143,12 +150,26 @@ export function createThreeMissionWorldRenderer(container, options = {}) {
     cameraController: null,
     viewModel: null,
     rendererPixelRatio: pixelRatio,
+    pixelRatioLimit: qualitySettings.pixelRatioLimit,
+    qualityProfile: qualitySettings.id,
+    presentationCadenceLimit: qualitySettings.presentationCadenceLimit,
     lastSize: { width, height, pixelRatio, resizeSequence: 0 },
     layerVisibility: defaultLayerVisibility(options.layerVisibility),
     cameraState: normalizeCameraPatch(options.camera ?? { preset: 'obliqueMission' }),
     disposed: false,
     animationFrame: null,
-    performanceMonitor: createThreeMissionPerformanceMonitor({ windowSize: options.performanceWindowSize ?? 360 }),
+    performanceMonitor: createThreeMissionPerformanceMonitor({ windowSize: options.performanceWindowSize ?? 360, presentationCadenceLimit: qualitySettings.presentationCadenceLimit }),
+    gpuTimer: createThreeWebGLGpuTimer(webglRenderer.getContext?.(), { maxPendingQueries: 8 }),
+    needsRender: true,
+    renderRequestReason: 'initial',
+    renderFrameSequence: 0,
+    renderCallsThisPresentationFrame: 0,
+    lastRenderCallsPerPresentationFrame: 0,
+    duplicateRenderCallWarningCount: 0,
+    renderOnDemandEnabled: true,
+    continuousAnimationReason: 'render-on-demand-raf-loop',
+    staticMatrixFrozenObjectCount: 0,
+    dynamicMatrixObjectCount: 0,
     presentationInitialized: false,
     presentationCache: {
       lastRenderedScalarFieldFrameId: null,
@@ -168,6 +189,8 @@ export function createThreeMissionWorldRenderer(container, options = {}) {
     usesRouteOptimizer: false,
     usesMARL: false
   };
+  renderer.requestRender = (reason = 'external') => requestThreeMissionWorldRender(renderer, reason);
+  setThreePerformanceCadenceLimit(renderer.performanceMonitor, renderer.presentationCadenceLimit);
   renderer.cameraController = createThreeMissionCameraController({
     camera,
     renderer,
@@ -180,7 +203,9 @@ export function createThreeMissionWorldRenderer(container, options = {}) {
 
 export function updateThreeMissionWorldRenderer(renderer, viewModel = {}) {
   if (!renderer || renderer.disposed) return renderer;
+  const presentationUpdateStart = frameNow();
   renderer.viewModel = viewModel;
+  applyThreeRendererQuality(renderer, viewModel);
   recordRendererUpdateEvents(renderer, viewModel);
   renderer.layerVisibility = defaultLayerVisibility({ ...(renderer.layerVisibility ?? {}), ...(viewModel.visibility ?? {}) });
   const dirty = dirtyCategorySet(viewModel);
@@ -202,7 +227,8 @@ export function updateThreeMissionWorldRenderer(renderer, viewModel = {}) {
     const signature = scalarFieldFrameSignature(viewModel);
     if (initial || signature !== cache.lastRenderedScalarFieldFrameId) {
       updateThreeScalarFieldLayer(renderer.scalarLayer, viewModel.scalarFieldLayer, { transform: viewModel.coordinateSystem, yOffset: 0.08 });
-      updateThreeVolumetricScalarFieldLayer(renderer.volumetricScalarFieldLayer, viewModel, { transform: viewModel.coordinateSystem, yOffset: 0.12 });
+      if (shouldRenderVolumetricFieldPlanes(viewModel)) updateThreeVolumetricScalarFieldLayer(renderer.volumetricScalarFieldLayer, viewModel, { transform: viewModel.coordinateSystem, yOffset: 0.12 });
+      else { disposeThreeVolumetricScalarFieldLayer(renderer.volumetricScalarFieldLayer); renderer.volumetricScalarFieldLayer.group.visible = false; renderer.volumetricScalarFieldLayer.lastSummary = threeVolumetricScalarFieldLayerSummary(renderer.volumetricScalarFieldLayer, viewModel, { mode: viewModel.displaySettings?.waterColumn?.scalarRenderMode ?? 'smoothedSlices', selectedFieldId: viewModel.selectedFieldId ?? null, recordCount: 0 }); }
       cache.lastRenderedScalarFieldFrameId = signature;
       recordThreePerformanceEvent(renderer.performanceMonitor, 'fieldTextureUpdate');
     } else {
@@ -255,9 +281,11 @@ export function updateThreeMissionWorldRenderer(renderer, viewModel = {}) {
   if (shouldUpdate('selection', 'plannedRoute')) updateThreePlanningInteractionLayer(renderer.planningInteractionLayer, viewModel.interactionViewModel, { transform: viewModel.coordinateSystem, viewModel });
   setThreeMissionLayerVisibility(renderer, renderer.layerVisibility);
   syncCameraBounds(renderer, viewModel);
+  applyStaticMatrixPolicy(renderer);
   renderer.presentationInitialized = true;
   renderer.lastPresentationDirtyCategories = dirty ? [...dirty] : ['full'];
-  renderer.renderer.render(renderer.scene, renderer.camera);
+  recordThreePresentationUpdateDuration(renderer.performanceMonitor, frameNow() - presentationUpdateStart);
+  requestThreeMissionWorldRender(renderer, 'presentationUpdate');
   return renderer;
 }
 export function resizeThreeMissionWorldRenderer(renderer, width, height) {
@@ -265,7 +293,7 @@ export function resizeThreeMissionWorldRenderer(renderer, width, height) {
   const rect = renderer.container?.getBoundingClientRect?.() ?? null;
   const w = Math.max(1, Number(width ?? rect?.width ?? renderer.container?.clientWidth ?? 1));
   const h = Math.max(1, Number(height ?? rect?.height ?? renderer.container?.clientHeight ?? 1));
-  const pixelRatio = Math.min(2, Number(globalThis.devicePixelRatio || 1));
+  const pixelRatio = effectiveThreePixelRatio({ devicePixelRatio: globalThis.devicePixelRatio || 1, qualityProfile: renderer.qualityProfile ?? 'balanced' });
   renderer.renderer.setPixelRatio(pixelRatio);
   renderer.camera.aspect = w / h;
   renderer.camera.updateProjectionMatrix();
@@ -279,7 +307,7 @@ export function resizeThreeMissionWorldRenderer(renderer, width, height) {
     backingHeight: renderer.renderer.domElement?.height ?? null,
     resizeSequence: Number(renderer.lastSize?.resizeSequence ?? 0) + 1
   };
-  renderer.renderer.render(renderer.scene, renderer.camera);
+  requestThreeMissionWorldRender(renderer, 'resize');
   return renderer;
 }
 
@@ -293,6 +321,7 @@ export function setThreeMissionWorldCamera(renderer, cameraPatch = {}) {
   } else {
     applyCamera(renderer);
   }
+  requestThreeMissionWorldRender(renderer, 'cameraPreset');
   return renderer;
 }
 
@@ -328,6 +357,7 @@ export function setThreeMissionLayerVisibility(renderer, visibilityPatch = {}) {
   setThreeOperationalDepthSlabLayerVisibility(renderer.operationalDepthSlabLayer, v.depthLayers !== false);
   setThreeScalarFieldVisibility(renderer.scalarLayer, v.scalarField !== false);
   setThreeVolumetricScalarFieldLayerVisibility(renderer.volumetricScalarFieldLayer, v.scalarField !== false && v.depthLayers !== false);
+  requestThreeMissionWorldRender(renderer, 'visibility');
   return renderer;
 }
 
@@ -340,6 +370,10 @@ export function threeMissionWorldRendererSummary(renderer = {}) {
   const materialCount = countSceneResources(renderer.scene, 'material');
   const textureCount = Math.max(Number(rendererInfo.memory?.textures ?? 0), countSceneTextures(renderer.scene));
   const growthWarnings = renderer.scene ? objectGrowthWarnings(renderer) : [];
+  const renderCostCounts = renderCostSceneCounts(renderer);
+  const slabSummary = renderer.operationalDepthSlabLayer?.lastSummary ?? threeOperationalDepthSlabLayerSummary(renderer.operationalDepthSlabLayer ?? {}, vm);
+  const renderPolicy = renderCostPolicySummary(vm);
+  const gate = performanceGate(renderer);
   return {
     type: 'anchor.renderer.three-mission-world-summary',
     version: THREE_MISSION_WORLD_RENDERER_VERSION,
@@ -359,7 +393,7 @@ export function threeMissionWorldRendererSummary(renderer = {}) {
     routeObjectCount: renderer.groups?.routeGroup?.children?.length ?? 0,
     plannedDiveTrajectorySummary: threePlannedDiveTrajectoryLayerSummary(renderer.groups?.plannedDiveTrajectoryGroup),
     depthTrajectorySummary: threeDepthTrajectoryLayerSummary(renderer.groups?.depthTrajectoryGroup),
-    operationalDepthSlabSummary: threeOperationalDepthSlabLayerSummary(renderer.operationalDepthSlabLayer ?? {}, vm),
+    operationalDepthSlabSummary: slabSummary,
     waterColumnVolumeFrameSummary: threeWaterColumnVolumeFrameLayerSummary(renderer.waterColumnVolumeFrameLayer ?? {}, vm),
     volumeFrameObjectCount: renderer.waterColumnVolumeFrameLayer?.lastSummary?.volumeFrameObjectCount ?? renderer.groups?.waterColumnFrameGroup?.children?.reduce?.((sum, child) => sum + 1 + (child.children?.length ?? 0), 0) ?? 0,
     depthTickCount: renderer.waterColumnVolumeFrameLayer?.lastSummary?.depthTickCount ?? 0,
@@ -380,7 +414,17 @@ export function threeMissionWorldRendererSummary(renderer = {}) {
     canvasBackingWidth: renderer.renderer?.domElement?.width ?? null,
     canvasBackingHeight: renderer.renderer?.domElement?.height ?? null,
     rendererPixelRatio: renderer.rendererPixelRatio ?? null,
+    effectivePixelRatio: renderer.rendererPixelRatio ?? null,
+    pixelRatioLimit: renderer.pixelRatioLimit ?? null,
+    qualityProfile: renderer.qualityProfile ?? renderPolicy.qualityProfile ?? 'balanced',
+    presentationCadenceLimit: renderer.presentationCadenceLimit ?? renderPolicy.presentationCadenceLimit ?? null,
     rendererCalls: Number(rendererInfo.render?.calls ?? performanceSummary.rendererCalls ?? 0),
+    renderFrameSequence: Number(renderer.renderFrameSequence ?? 0),
+    renderCallsPerPresentationFrame: Number(renderer.lastRenderCallsPerPresentationFrame ?? 0),
+    lastRenderCallsPerPresentationFrame: Number(renderer.lastRenderCallsPerPresentationFrame ?? 0),
+    duplicateRenderCallWarningCount: Number(renderer.duplicateRenderCallWarningCount ?? 0),
+    renderOnDemandEnabled: renderer.renderOnDemandEnabled === true,
+    continuousAnimationReason: renderer.continuousAnimationReason ?? null,
     rendererTriangles: Number(rendererInfo.render?.triangles ?? performanceSummary.rendererTriangles ?? 0),
     rendererLines: Number(rendererInfo.render?.lines ?? performanceSummary.rendererLines ?? 0),
     rendererPoints: Number(rendererInfo.render?.points ?? performanceSummary.rendererPoints ?? 0),
@@ -392,6 +436,23 @@ export function threeMissionWorldRendererSummary(renderer = {}) {
     threeMaterialCount: materialCount,
     textureCount,
     threeTextureCount: textureCount,
+    transparentObjectCount: renderCostCounts.transparentObjectCount,
+    fullDomainTransparentPlaneCount: renderCostCounts.fullDomainTransparentPlaneCount,
+    fullDomainTexturedPlaneCount: renderCostCounts.fullDomainTexturedPlaneCount,
+    activeTexturedSlabCount: Number(slabSummary.activeTexturedSlabCount ?? 0),
+    contextOutlineSlabCount: Number(slabSummary.contextOutlineSlabCount ?? 0),
+    contextSlabMode: renderer.contextSlabMode ?? renderPolicy.contextSlabMode ?? null,
+    allLayerFieldTexturesEnabled: renderer.allLayerFieldTexturesEnabled === true || renderPolicy.allLayerFieldTexturesEnabled === true,
+    staticMatrixFrozenObjectCount: Number(renderer.staticMatrixFrozenObjectCount ?? 0),
+    dynamicMatrixObjectCount: Number(renderer.dynamicMatrixObjectCount ?? 0),
+    instancedObjectCount: renderCostCounts.instancedObjectCount,
+    visibleSceneObjectCount: renderCostCounts.visibleSceneObjectCount,
+    hiddenSceneObjectCount: renderCostCounts.hiddenSceneObjectCount,
+    interactiveHitObjectCount: renderCostCounts.interactiveHitObjectCount,
+    renderCostPolicy: renderPolicy,
+    gpuTimerSummary: threeGpuTimerSummary(renderer.gpuTimer),
+    performanceGateStatus: gate.performanceGateStatus,
+    performanceGateFailures: gate.performanceGateFailures,
     labelObjectCount: renderer.operationalDepthSlabLayer?.labels?.size ?? 0,
     currentGlyphCount: Math.floor((renderer.groups?.currentVectorGroup?.children?.length ?? 0) / 2),
     predictedDiveObjectCount: threePlannedDiveTrajectoryLayerSummary(renderer.groups?.plannedDiveTrajectoryGroup).objectCount ?? 0,
@@ -448,6 +509,8 @@ export function disposeThreeMissionWorldRenderer(renderer) {
   disposeThreeVolumetricScalarFieldLayer(renderer.volumetricScalarFieldLayer);
   disposeThreeOperationalDepthSlabLayer(renderer.operationalDepthSlabLayer);
   disposeThreeWaterColumnVolumeFrameLayer(renderer.waterColumnVolumeFrameLayer);
+  disposeThreeGpuTimer(renderer.gpuTimer);
+  disposeThreeGpuTimer(renderer.gpuTimer);
   clearThreePlannedDiveTrajectoryLayer(renderer.groups?.plannedDiveTrajectoryGroup);
   clearThreeDepthTrajectoryLayer(renderer.groups?.depthTrajectoryGroup);
   clearThreeSamplingTargetLayer(renderer.groups?.samplingTargetGroup);
@@ -691,12 +754,152 @@ function objectGrowthWarnings(renderer) {
 
 function renderLoop(renderer, timestamp = frameNow()) {
   if (!renderer || renderer.disposed) return;
-  beginThreePerformanceFrame(renderer.performanceMonitor, timestamp);
-  renderer.renderer.render(renderer.scene, renderer.camera);
-  endThreePerformanceFrame(renderer.performanceMonitor, frameNow(), renderer.renderer?.info ?? null);
+  const cadenceRender = shouldRenderAtPresentationCadence(renderer, timestamp);
+  if (renderer.needsRender === true || cadenceRender) {
+    submitThreeMissionWorldRender(renderer, timestamp, renderer.renderRequestReason ?? (cadenceRender ? 'simulationCadence' : 'scheduled'));
+  }
+  renderer.continuousAnimationReason = cadenceRender ? 'simulation-presentation-cadence' : 'render-on-demand-raf-loop';
   renderer.animationFrame = globalThis.requestAnimationFrame?.((nextTimestamp) => renderLoop(renderer, nextTimestamp)) ?? null;
 }
 
+function shouldRenderAtPresentationCadence(renderer, timestamp = frameNow()) {
+  if (!renderer || renderer.disposed || renderer.needsRender === true) return false;
+  const viewModel = renderer.viewModel ?? {};
+  const simulationActive = viewModel.phase === 'simulation' || viewModel.type === 'anchor.rendering.simulation-world';
+  if (!simulationActive || viewModel.simulationStatus?.running !== true) return false;
+  const maxHz = Number(renderer.presentationCadenceLimit ?? 0);
+  if (!Number.isFinite(maxHz) || maxHz < 20) return false;
+  const interval = 1000 / maxHz;
+  const last = Number(renderer.lastRenderTimestamp ?? 0);
+  return !last || Number(timestamp) - last >= interval;
+}
+
+export function requestThreeMissionWorldRender(renderer, reason = 'external') {
+  if (!renderer || renderer.disposed) return renderer;
+  renderer.needsRender = true;
+  renderer.renderRequestReason = reason;
+  recordThreePerformanceEvent(renderer.performanceMonitor, 'renderRequested', { reason });
+  return renderer;
+}
+
+export function submitThreeMissionWorldRender(renderer, timestamp = frameNow(), reason = 'scheduled') {
+  if (!renderer || renderer.disposed) return renderer;
+  renderer.needsRender = false;
+  renderer.renderRequestReason = null;
+  renderer.renderCallsThisPresentationFrame = 0;
+  renderer.renderFrameSequence = Number(renderer.renderFrameSequence ?? 0) + 1;
+  beginThreePerformanceFrame(renderer.performanceMonitor, timestamp);
+  const start = frameNow();
+  beginThreeGpuTimerQuery(renderer.gpuTimer);
+  renderer.renderer.render(renderer.scene, renderer.camera);
+  renderer.renderCallsThisPresentationFrame += 1;
+  endThreeGpuTimerQuery(renderer.gpuTimer);
+  const elapsed = frameNow() - start;
+  const gpuSummary = threeGpuTimerSummary(renderer.gpuTimer);
+  renderer.lastRenderCallsPerPresentationFrame = Number(renderer.renderCallsThisPresentationFrame ?? 0);
+  if (renderer.lastRenderCallsPerPresentationFrame > 1) renderer.duplicateRenderCallWarningCount = Number(renderer.duplicateRenderCallWarningCount ?? 0) + 1;
+  renderer.lastRendererSubmissionMilliseconds = elapsed;
+  renderer.lastRenderReason = reason;
+  recordThreeRendererSubmissionDuration(renderer.performanceMonitor, elapsed, renderer.renderer?.info ?? null, gpuSummary);
+  endThreePerformanceFrame(renderer.performanceMonitor, frameNow(), renderer.renderer?.info ?? null);
+  recordThreePerformanceEvent(renderer.performanceMonitor, 'renderSubmitted', { reason, renderCallsThisPresentationFrame: renderer.lastRenderCallsPerPresentationFrame });
+  return renderer;
+}
+
+function applyThreeRendererQuality(renderer, viewModel = {}) {
+  const policy = waterColumnDisplayPolicy(viewModel);
+  const pixelRatio = effectiveThreePixelRatio({ devicePixelRatio: globalThis.devicePixelRatio || 1, qualityProfile: policy.qualityProfile });
+  renderer.qualityProfile = policy.qualityProfile;
+  renderer.pixelRatioLimit = policy.pixelRatioLimit;
+  renderer.presentationCadenceLimit = policy.presentationCadenceLimit;
+  renderer.contextSlabMode = policy.contextSlabMode;
+  renderer.allLayerFieldTexturesEnabled = policy.allLayerFieldTexturesEnabled === true;
+  setThreePerformanceCadenceLimit(renderer.performanceMonitor, policy.presentationCadenceLimit);
+  if (Math.abs(Number(renderer.rendererPixelRatio ?? 0) - pixelRatio) > 1e-6) {
+    renderer.renderer.setPixelRatio(pixelRatio);
+    renderer.rendererPixelRatio = pixelRatio;
+    renderer.lastSize = { ...(renderer.lastSize ?? {}), pixelRatio, backingWidth: renderer.renderer.domElement?.width ?? null, backingHeight: renderer.renderer.domElement?.height ?? null, resizeSequence: Number(renderer.lastSize?.resizeSequence ?? 0) + 1 };
+    requestThreeMissionWorldRender(renderer, 'pixelRatio');
+  }
+  return renderer;
+}
+
+function applyStaticMatrixPolicy(renderer) {
+  let frozen = 0;
+  let dynamic = 0;
+  renderer.scene?.traverse?.((object) => {
+    if (!object || object === renderer.scene || object === renderer.root) return;
+    if (isStaticMatrixCandidate(object)) {
+      object.matrixAutoUpdate = false;
+      object.updateMatrix?.();
+      frozen += 1;
+    } else if (object.isMesh || object.isLine || object.isSprite || object.isGroup) {
+      object.matrixAutoUpdate = true;
+      dynamic += 1;
+    }
+  });
+  renderer.staticMatrixFrozenObjectCount = frozen;
+  renderer.dynamicMatrixObjectCount = dynamic;
+  return renderer;
+}
+
+function isStaticMatrixCandidate(object = {}) {
+  const name = String(object.name ?? '');
+  const type = String(object.userData?.missionObjectType ?? '');
+  if (object.isSprite) return false;
+  if (/glider|trajectory|observation|surfacing|selection|guidance|interaction|current|waypoint|target|route/i.test(name)) return false;
+  if (/glider|observation|surfacing|selection|interaction|current|waypoint|samplingTarget|priorityTarget|route/i.test(type)) return false;
+  return /bathymetry|water-surface|operational-depth-slab|water-column|volume-frame|constraint|hazard|drop-zone/i.test(name) || /depthCellSlab|terrain|constraint|hazard/i.test(type);
+}
+
+function renderCostSceneCounts(renderer) {
+  const counts = {
+    transparentObjectCount: 0,
+    fullDomainTransparentPlaneCount: 0,
+    fullDomainTexturedPlaneCount: 0,
+    visibleSceneObjectCount: 0,
+    hiddenSceneObjectCount: 0,
+    interactiveHitObjectCount: 0,
+    instancedObjectCount: 0
+  };
+  const grid = renderer.viewModel?.grid ?? {};
+  const transform = renderer.viewModel?.coordinateSystem ?? {};
+  const domainArea = Math.max(1, Number(grid.width ?? transform.width ?? 1) * Number(grid.height ?? transform.height ?? 1) * Math.max(0.0001, Number(transform.cellSize ?? 1) ** 2));
+  renderer.scene?.traverse?.((object) => {
+    if (!object || object === renderer.scene) return;
+    if (object.visible === false) counts.hiddenSceneObjectCount += 1;
+    else counts.visibleSceneObjectCount += 1;
+    if (object.isInstancedMesh) counts.instancedObjectCount += 1;
+    if (object.userData?.interactionEnabled === true || object.userData?.interactive === true) counts.interactiveHitObjectCount += 1;
+    const materials = Array.isArray(object.material) ? object.material : object.material ? [object.material] : [];
+    const transparent = materials.some((material) => material?.transparent === true || Number(material?.opacity ?? 1) < 1);
+    if (transparent && object.visible !== false) counts.transparentObjectCount += 1;
+    if (transparent && isFullDomainPlane(object, domainArea)) {
+      counts.fullDomainTransparentPlaneCount += 1;
+      if (materials.some((material) => material?.map)) counts.fullDomainTexturedPlaneCount += 1;
+    }
+  });
+  return counts;
+}
+
+function isFullDomainPlane(object, domainArea) {
+  if (!object?.isMesh || !object.geometry?.parameters) return false;
+  const parameters = object.geometry.parameters;
+  const width = Number(parameters.width ?? 0);
+  const height = Number(parameters.height ?? 0);
+  if (!(width > 0 && height > 0)) return false;
+  return width * height >= domainArea * 0.82;
+}
+
+function performanceGate(renderer) {
+  const summary = threeMissionPerformanceSummary(renderer.performanceMonitor ?? null);
+  const failures = [];
+  if (summary.sampleCount >= 10 && Number(summary.averageFrameMilliseconds) > 50) failures.push('averageFrameIntervalOver50ms');
+  if (summary.sampleCount >= 10 && Number(summary.p95FrameMilliseconds) > 100) failures.push('p95FrameIntervalOver100ms');
+  if (summary.sampleCount >= 10 && Number(summary.renderedFramesPerSecond) < 20) failures.push('renderedFpsUnder20');
+  if (Number(renderer.lastRenderCallsPerPresentationFrame ?? 0) > 1) failures.push('duplicateRenderCalls');
+  return { performanceGateStatus: failures.length ? 'FAIL' : summary.sampleCount >= 10 ? 'PASS' : 'INSUFFICIENT_SAMPLES', performanceGateFailures: failures };
+}
 function recordRendererUpdateEvents(renderer, viewModel = {}) {
   if (!renderer?.performanceMonitor) return;
   const cameraGestureActive = renderer.cameraController?.gestureActive === true;

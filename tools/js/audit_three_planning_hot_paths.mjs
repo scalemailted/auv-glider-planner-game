@@ -4,11 +4,16 @@ const scene = fs.readFileSync('src/game/phaser/scenes/MissionWorkspaceScene.js',
 const renderer = fs.readFileSync('src/game/three/ThreeMissionWorldRenderer.js', 'utf8');
 const scalarLayer = fs.readFileSync('src/game/three/layers/ThreeVolumetricScalarFieldLayer.js', 'utf8');
 const currentLayer = fs.readFileSync('src/game/three/layers/ThreeCurrentVectorLayer.js', 'utf8');
+const slabLayer = fs.readFileSync('src/game/three/layers/ThreeOperationalDepthSlabLayer.js', 'utf8');
+const policy = fs.readFileSync('src/game/three/ThreeRenderCostPolicy.js', 'utf8');
 assert.match(scene, /duplicateThreeHoverSuppressionCount/, 'hover duplicate suppression is tracked');
 assert.match(scene, /modelBuildCountDuringCameraGesture/, 'camera-only forbidden model work is tracked');
 assert.match(renderer, /recordRendererUpdateEvents/, 'renderer update hot paths are counted');
 assert.match(renderer, /dirtyCategorySet/, 'simulation presentation dirty categories gate renderer hot paths');
 assert.match(scalarLayer, /DataTexture/, 'volumetric scalar texture creation remains a known refresh hot path');
 assert.match(currentLayer, /clearGroup\(group\)/, 'current vector layer rebuild remains a known refresh hot path');
+assert.match(currentLayer, /currentVectorStride/, 'current vectors use presentation-only quality stride');
+assert.match(slabLayer, /contextOutline/, 'context slab LOD avoids five full-domain textured heatmaps by default');
+assert.match(policy, /presentationCadenceLimit/, 'quality profiles expose presentation cadence only');
 assert.doesNotMatch(scene, /navigator\\.gpu|GPUDevice|WebGPURenderer|rawWebGPU|threeWebGPU/, 'no WebGPU runtime path added');
 console.log(JSON.stringify({ ok: true }));

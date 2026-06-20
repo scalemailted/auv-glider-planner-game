@@ -5,10 +5,16 @@ const monitor = fs.readFileSync('src/game/three/ThreeMissionPerformanceMonitor.j
 const missionScene = fs.readFileSync('src/game/phaser/scenes/MissionWorkspaceScene.js', 'utf8');
 const targetLayer = fs.readFileSync('src/game/three/layers/ThreeSamplingTargetLayer.js', 'utf8');
 const scheduler = fs.readFileSync('src/game/three/ThreeSimulationPresentationScheduler.js', 'utf8');
+const policy = fs.readFileSync('src/game/three/ThreeRenderCostPolicy.js', 'utf8');
+const gpuTimer = fs.readFileSync('src/game/three/ThreeWebGLGpuTimer.js', 'utf8');
 assert.match(targetLayer, /objects instanceof Map/, 'sampling target layer reuses stable objects');
 assert.match(renderer, /disposeThreeMissionCameraController/, 'renderer disposal still tears down camera controller');
 assert.match(renderer, /dirtyCategorySet/, 'renderer honors simulation presentation dirty categories');
 assert.match(renderer, /scalarFieldFrameSkipCount/, 'renderer tracks scalar field frame cache skips');
 assert.match(scheduler, /ownsSimulationState: false/, 'presentation scheduler owns no canonical simulation state');
+assert.match(policy, /THREE_QUALITY_PROFILES/, 'render-cost quality profiles are explicit');
+assert.match(policy, /changesOfficialBrowserScoring:\s*false/, 'render-cost policy does not own scoring');
+assert.match(gpuTimer, /usesBlockingReadback:\s*false/, 'GPU timing is optional nonblocking diagnostics');
+assert.doesNotMatch(gpuTimer, /\.finish\s*\(/, 'GPU timing does not call gl.finish');
 assert.doesNotMatch(renderer, /new Worker\(/, 'no worker dependency added');
 console.log(JSON.stringify({ ok: true }));

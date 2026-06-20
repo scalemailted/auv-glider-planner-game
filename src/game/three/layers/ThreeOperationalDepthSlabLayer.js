@@ -1,7 +1,8 @@
-﻿import * as THREE from 'three';
+import * as THREE from 'three';
 import { disposeObject } from './ThreeMissionLayerUtils.js';
+import { depthLayerPresentationMode, THREE_MATERIAL_RENDER_ORDER_POLICY, waterColumnDisplayPolicy } from '../ThreeRenderCostPolicy.js';
 
-export const THREE_OPERATIONAL_DEPTH_SLAB_LAYER_VERSION = 'three-operational-depth-slab-layer-r1-2a';
+export const THREE_OPERATIONAL_DEPTH_SLAB_LAYER_VERSION = 'three-operational-depth-slab-layer-r1-2a-4-4';
 
 export function createThreeOperationalDepthSlabLayer(options = {}) {
   const group = new THREE.Group();
@@ -12,6 +13,7 @@ export function createThreeOperationalDepthSlabLayer(options = {}) {
     group,
     slabs: new Map(),
     labels: new Map(),
+    contextMaterials: new Map(),
     disposed: false,
     lastSummary: null
   };
@@ -26,44 +28,52 @@ export function updateThreeOperationalDepthSlabLayer(layer, viewModel = {}, opti
   const activeLayerId = viewModel.activeDepthLayerId ?? 'surface';
   const visibleLayers = (viewModel.depthLayers ?? []).filter((depthLayer) => depthLayer.visible !== false && depthLayer.id !== 'waterSurface');
   const seen = new Set();
+  const policy = waterColumnDisplayPolicy(viewModel);
   for (const [index, depthLayer] of visibleLayers.entries()) {
     const id = depthLayer.id;
     seen.add(id);
     const width = Math.max(1, Number(grid.width ?? transform.width ?? 1));
     const height = Math.max(1, Number(grid.height ?? transform.height ?? 1));
-    const values = fieldValuesForLayer(viewModel, selectedFieldId, id, width, height);
+    const renderMode = depthLayerPresentationMode(viewModel, id);
+    const shouldTexture = renderMode === 'activeTextured';
+    const values = shouldTexture ? fieldValuesForLayer(viewModel, selectedFieldId, id, width, height) : null;
     const mask = depthLayer.validCellMask ?? viewModel.layerMasks?.[id] ?? null;
-    const data = scalarBytes(values, mask, width, height, depthLayer, selectedFieldId);
+    const data = shouldTexture ? scalarBytes(values, mask, width, height, depthLayer, selectedFieldId) : null;
     let record = layer.slabs.get(id);
-    if (!record || record.width !== width || record.height !== height) {
+    if (!record || record.width !== width || record.height !== height || record.renderMode !== renderMode) {
       if (record) disposeSlabRecord(record, layer);
-      const texture = new THREE.DataTexture(data, width, height, THREE.RGBAFormat);
-      texture.needsUpdate = true;
-      const geometry = new THREE.PlaneGeometry(width * Number(transform.cellSize ?? 1), height * Number(transform.cellSize ?? 1), 1, 1);
-      const material = new THREE.MeshBasicMaterial({
-        map: texture,
-        transparent: true,
-        opacity: Number(depthLayer.opacity ?? 0.24),
-        side: THREE.DoubleSide,
-        depthWrite: false,
-        depthTest: true
-      });
+      const geometry = new THREE.PlaneGeometry(width * Number(transform.cellSize ?? 1), height * Number(transform.cellSize ?? 1), shouldTexture ? 1 : 4, shouldTexture ? 1 : 4);
+      let texture = null;
+      let material = null;
+      if (shouldTexture) {
+        texture = new THREE.DataTexture(data, width, height, THREE.RGBAFormat);
+        texture.needsUpdate = true;
+        material = new THREE.MeshBasicMaterial({
+          map: texture,
+          transparent: true,
+          opacity: Math.min(0.58, Number(depthLayer.opacity ?? 0.24) * Number(depthLayer.activeEmphasis ?? 1.7)),
+          side: THREE.FrontSide,
+          depthWrite: false,
+          depthTest: true
+        });
+      } else {
+        material = contextMaterial(layer, depthLayer, policy.contextSlabMode);
+      }
       const mesh = new THREE.Mesh(geometry, material);
-      mesh.name = `operational-depth-slab-${id}`;
+      mesh.name = shouldTexture ? `operational-depth-slab-${id}` : `operational-depth-context-${id}`;
       mesh.rotation.x = -Math.PI / 2;
-      mesh.renderOrder = 80 + Number(depthLayer.renderOrder ?? index);
       layer.group.add(mesh);
-      record = { id, mesh, texture, material, geometry, width, height };
+      record = { id, mesh, texture, material, geometry, width, height, renderMode };
       layer.slabs.set(id, record);
-    } else {
+    } else if (shouldTexture && record.texture && data) {
       record.texture.image.data.set(data);
       record.texture.needsUpdate = true;
-      record.material.opacity = Number(depthLayer.opacity ?? record.material.opacity ?? 0.24);
+      record.material.opacity = Math.min(0.58, Number(depthLayer.opacity ?? record.material.opacity ?? 0.24) * Number(depthLayer.activeEmphasis ?? 1.7));
     }
     const y = mode === 'explodedLayers' ? Number(depthLayer.explodedWorldY ?? 0) : Number(depthLayer.physicalWorldY ?? 0);
     record.mesh.position.set(0, y, 0);
-    record.mesh.visible = depthLayer.visible !== false;
-    record.mesh.renderOrder = 80 + Number(depthLayer.renderOrder ?? index);
+    record.mesh.visible = depthLayer.visible !== false && renderMode !== 'hidden';
+    record.mesh.renderOrder = shouldTexture ? THREE_MATERIAL_RENDER_ORDER_POLICY.activeScalarSlab + Number(depthLayer.renderOrder ?? index) : THREE_MATERIAL_RENDER_ORDER_POLICY.contextSlabs + Number(depthLayer.renderOrder ?? index);
     record.mesh.userData = {
       missionObjectType: 'depthCellSlab',
       missionObjectId: id,
@@ -72,13 +82,17 @@ export function updateThreeOperationalDepthSlabLayer(layer, viewModel = {}, opti
       layerId: id,
       depthMeters: depthLayer.representativeDepthMeters,
       selected: id === activeLayerId,
-      interactive: depthLayer.interactive !== false && depthLayer.visible !== false,
-      interactionEnabled: depthLayer.interactive !== false && depthLayer.visible !== false,
+      interactive: depthLayer.interactive !== false && depthLayer.visible !== false && id === activeLayerId,
+      interactionEnabled: depthLayer.interactive !== false && depthLayer.visible !== false && id === activeLayerId,
       validCellMask: mask,
       gridWidth: width,
       gridHeight: height,
       verticalDisplayMode: mode,
       fieldId: selectedFieldId,
+      renderMode,
+      fullDomain: true,
+      textured: shouldTexture,
+      contextSlab: !shouldTexture,
       ownsPlanning: false,
       ownsSimulationState: false,
       ownsScoring: false
@@ -112,30 +126,58 @@ export function disposeThreeOperationalDepthSlabLayer(layer) {
     layer.group.remove(label);
     disposeObject(label);
   }
+  for (const material of layer.contextMaterials?.values?.() ?? []) material?.dispose?.();
+  layer.contextMaterials?.clear?.();
   layer.labels.clear();
   layer.disposed = true;
 }
 
 export function threeOperationalDepthSlabLayerSummary(layer = {}, viewModel = {}) {
+  const records = [...(layer.slabs?.values?.() ?? [])];
+  const textured = records.filter((record) => record.renderMode === 'activeTextured' && record.mesh?.visible !== false);
+  const context = records.filter((record) => record.renderMode === 'contextOutline' && record.mesh?.visible !== false);
+  const policy = waterColumnDisplayPolicy(viewModel);
   return {
     type: 'anchor.three.operational-depth-slab-layer-summary',
     version: THREE_OPERATIONAL_DEPTH_SLAB_LAYER_VERSION,
     verticalDisplayMode: viewModel.verticalDisplayMode ?? null,
     activeDepthLayerId: viewModel.activeDepthLayerId ?? null,
     slabObjectCount: layer.slabs?.size ?? 0,
-    slabTextureCount: [...(layer.slabs?.values?.() ?? [])].filter((record) => record.texture).length,
+    slabTextureCount: textured.length,
     slabLabelCount: layer.labels?.size ?? 0,
     layerIds: [...(layer.slabs?.keys?.() ?? [])],
-    stableObjectIds: [...(layer.slabs?.values?.() ?? [])].map((record) => record.mesh?.uuid).filter(Boolean),
-    fieldTextureCount: [...(layer.slabs?.values?.() ?? [])].filter((record) => record.texture).length,
+    stableObjectIds: records.map((record) => record.mesh?.uuid).filter(Boolean),
+    fieldTextureCount: textured.length,
+    activeTexturedSlabCount: textured.length,
+    contextOutlineSlabCount: context.length,
+    allLayerFieldTexturesEnabled: policy.allLayerFieldTexturesEnabled === true,
+    contextSlabMode: policy.contextSlabMode,
+    contextMaterialReuseCount: layer.contextMaterials?.size ?? 0,
     currentVectorObjectCount: 0,
     depthWriteDisabled: true,
     depthTestEnabled: true,
-    renderOrderBase: 80,
+    renderOrderBase: THREE_MATERIAL_RENDER_ORDER_POLICY.contextSlabs,
     ownsPlanning: false,
     ownsSimulationState: false,
     ownsScoring: false
   };
+}
+
+function contextMaterial(layer, depthLayer, mode) {
+  const key = `${mode}:${depthLayer.id === 'surface' ? 'surface' : 'context'}`;
+  if (layer.contextMaterials?.has?.(key)) return layer.contextMaterials.get(key);
+  layer.contextMaterials ??= new Map();
+  const material = new THREE.MeshBasicMaterial({
+    color: contextColor(depthLayer.id),
+    transparent: true,
+    opacity: depthLayer.id === 'surface' ? 0.16 : 0.075,
+    wireframe: true,
+    side: THREE.FrontSide,
+    depthWrite: false,
+    depthTest: true
+  });
+  layer.contextMaterials.set(key, material);
+  return material;
 }
 
 function fieldValuesForLayer(viewModel, fieldId, layerId, width, height) {
@@ -169,7 +211,7 @@ function scalarBytes(values, mask, width, height, depthLayer, fieldId) {
       data[offset] = color.r;
       data[offset + 1] = color.g;
       data[offset + 2] = color.b;
-      data[offset + 3] = Math.round(255 * Math.max(0.05, Math.min(0.92, Number(depthLayer.opacity ?? 0.26))));
+      data[offset + 3] = Math.round(255 * Math.max(0.12, Math.min(0.86, Number(depthLayer.opacity ?? 0.26))));
     }
   }
   return data;
@@ -203,6 +245,7 @@ function updateLabel(layer, depthLayer, transform, worldY, active, options) {
   ctx.fillText(depth, 12, 56);
   sprite.material.map.needsUpdate = true;
   sprite.position.set((-Number(transform.width ?? 1) * Number(transform.cellSize ?? 1)) / 2 - 1.15, worldY + 0.08, 0);
+  sprite.renderOrder = THREE_MATERIAL_RENDER_ORDER_POLICY.labelsAndSelection;
   sprite.userData = { missionObjectType: 'depthLayerLabel', missionObjectId: depthLayer.id, depthLayerId: depthLayer.id, interactionEnabled: false };
 }
 
@@ -211,7 +254,7 @@ function disposeSlabRecord(record, layer) {
   layer.group?.remove?.(record.mesh);
   record.texture?.dispose?.();
   record.geometry?.dispose?.();
-  record.material?.dispose?.();
+  if (record.renderMode === 'activeTextured') record.material?.dispose?.();
   disposeObject(record.mesh);
   layer.slabs?.delete?.(record.id);
 }
@@ -225,6 +268,13 @@ function colorForLayerScale(v, layerId, fieldId) {
     g: Math.round((76 + v * 175) * tint.g),
     b: Math.round((120 + v * 95) * tint.b)
   };
+}
+
+function contextColor(layerId) {
+  if (layerId === 'surface') return 0x9ee7ff;
+  if (layerId === 'thermocline') return 0xd4ff72;
+  if (layerId === 'deep') return 0xc6a5ff;
+  return 0x7fc7ff;
 }
 
 function layerTint(layerId) {

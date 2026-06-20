@@ -570,6 +570,9 @@ export class SimulationScene extends PhaserScene {
       visibleLayerIds: null,
       selectedDiveProfileId: existing.selectedDiveProfileId ?? config?.defaultDiveProfileId ?? 'surfaceOnly',
       selectedTargetDepthLayerId: existing.selectedTargetDepthLayerId ?? config?.defaultTargetDepthLayerId ?? 'surface',
+      fieldDisplayMode: existing.fieldDisplayMode === 'allLayers' || existing.showFieldOnAllLayers === true ? 'allLayers' : 'activeLayerOnly',
+      showFieldOnAllLayers: existing.fieldDisplayMode === 'allLayers' || existing.showFieldOnAllLayers === true,
+      qualityProfile: normalizeThreeQualityProfile(existing.qualityProfile ?? this.app.state.ui.threeMissionQualityProfile ?? 'balanced'),
       userModified: false,
       defaultDisplayModeApplied: true
     };
@@ -580,7 +583,10 @@ export class SimulationScene extends PhaserScene {
   setThreeSimulationCameraPreset(preset) {
     this.app.state.ui ??= {};
     this.app.state.ui.threeMissionCameraPreset = ['tacticalTopDown', 'obliqueMission', 'obliqueWaterColumn', 'waterColumnProfile', 'sideProfile', 'layerStackOverview', 'activeLayer', 'selectedDive', 'fleetOverview'].includes(preset) ? preset : 'obliqueMission';
-    if (this.threeSimulationRenderer) setThreeMissionWorldCamera(this.threeSimulationRenderer, { preset: this.app.state.ui.threeMissionCameraPreset });
+    if (this.threeSimulationRenderer) {
+      setThreeMissionWorldCamera(this.threeSimulationRenderer, { preset: this.app.state.ui.threeMissionCameraPreset });
+      this.threeSimulationRenderer.lastRequestedCameraPreset = this.app.state.ui.threeMissionCameraPreset;
+    }
     this.refresh();
   }
 
@@ -1252,7 +1258,11 @@ export class SimulationScene extends PhaserScene {
       this.updateSimulationRenderDebug({ activeBackend: 'threeMission3d', threeMounted: false, viewModel, parityWarnings: ['Three simulation renderer could not mount DOM container.'] });
       return;
     }
-    setThreeMissionWorldCamera(renderer, { preset: this.app.state.ui?.threeMissionCameraPreset ?? 'obliqueMission' });
+    const requestedCameraPreset = this.app.state.ui?.threeMissionCameraPreset ?? 'obliqueMission';
+    if (renderer.lastRequestedCameraPreset !== requestedCameraPreset || renderer.cameraState?.manual !== true) {
+      setThreeMissionWorldCamera(renderer, { preset: requestedCameraPreset });
+      renderer.lastRequestedCameraPreset = requestedCameraPreset;
+    }
     setThreeMissionLayerVisibility(renderer, this.threeSimulationLayerVisibilityPatch());
     updateThreeMissionWorldRenderer(renderer, viewModel);
     resizeThreeMissionWorldRenderer(renderer, this.threeSimulationContainer?.clientWidth, this.threeSimulationContainer?.clientHeight);
@@ -2687,6 +2697,13 @@ function stopReasonConsoleText(stopReason) {
 function getSafeSceneStepDt(level) {
   const dt = Number(level?.world?.time?.dt ?? 0.25);
   return Number.isFinite(dt) && dt > 0 ? dt : 0.25;
+}
+
+function normalizeThreeQualityProfile(value) {
+  const id = String(value ?? '').trim().toLowerCase();
+  if (id === 'performance' || id === 'perf') return 'performance';
+  if (id === 'high' || id === 'quality') return 'high';
+  return 'balanced';
 }
 
 function yieldToBrowser() {

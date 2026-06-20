@@ -331,6 +331,7 @@ function markRendererCamera(controller, patch = {}) {
     distance: controller.distance,
     target: plainVector(controller.target)
   };
+  controller.renderer.requestRender?.('cameraGesture');
 }
 
 function clampReason(controller = {}) {

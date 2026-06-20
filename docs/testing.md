@@ -1,4 +1,4 @@
-﻿# Testing
+# Testing
 
 The browser game does not require a build step, backend, Playwright, or`node_modules` for normal use. GFX-R2/GFX-R3A/GFX-R3B use the checked-in Three.js runtime under `vendor/three/`, with npm `three` remaining the source package for vendor refresh checks. Normal local serving still works with:
 
@@ -778,3 +778,29 @@ node tools/js/audit_simulation_presentation_boundaries.mjs
 ```
 
 `npm.cmd run test:e2e` is the grouped Playwright authority. It is not reduced coverage: `tools/js/audit_playwright_group_coverage.mjs` proves every listed Playwright test is assigned exactly once before groups run. `npm.cmd run test:e2e:monolithic` remains a diagnostic command.
+
+## THREE-R1.2A.4.4 Render-Cost Checks
+
+Run the render-cost smoke/audit set before terrain work:
+
+```bash
+node tools/js/smoke_three_gpu_timer.mjs
+node tools/js/smoke_three_render_pass_contract.mjs
+node tools/js/smoke_three_context_slab_lod.mjs
+node tools/js/smoke_three_transparency_policy.mjs
+node tools/js/smoke_three_pixel_ratio_profiles.mjs
+node tools/js/smoke_three_static_matrix_policy.mjs
+node tools/js/smoke_three_instanced_marker_contract.mjs
+node tools/js/smoke_three_presentation_cadence.mjs
+node tools/js/audit_three_overdraw_and_render_cost.mjs
+node tools/js/audit_three_render_cost_boundaries.mjs
+```
+
+Focused browser checks:
+
+```bash
+node node_modules/@playwright/test/cli.js test tests/e2e/smoke.spec.js --grep "Three Balanced Renderer Meets Bathymetry Headroom Gate|Three Context Slabs Reduce Cost Without Losing Dive Context|Three Quality Profiles Preserve Canonical Simulation Result|Three Camera Remains Responsive Under Live Simulation Load" --reporter=line
+node node_modules/@playwright/test/cli.js test tests/e2e/smoke.spec.js --grep "Three Balanced Renderer Meets Bathymetry Headroom Gate" --headed --reporter=line
+```
+
+Headed performance evidence is authoritative for the strict frame-interval gate. Headless timing is diagnostic only.

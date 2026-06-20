@@ -366,3 +366,6 @@ Current roadmap order:
 4. THREE-R2 - Replay, debrief route review, and editor parity
 
 THREE-R1.2B should not start unless the Simulation performance acceptance target or minimum 2x improvement gate is met, grouped E2E coverage audit passes, grouped E2E passes, and human manual QA by the project owner is explicitly accounted for as separate from headed automated QA.
+## THREE-R1.2A.4.4 Complete
+
+GPU/RAF render-cost closure is the current checkpoint before terrain. THREE-R1.2B should add continuous bathymetric seabed mesh, coastline, and landmass geometry only after grouped, monolithic, Pages/static, and headed workflow validation remain clean.

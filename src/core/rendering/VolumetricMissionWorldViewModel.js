@@ -45,6 +45,7 @@ export function augmentMissionWorldWithVolumetricModel(baseViewModel = {}, optio
   const configSummary = waterColumnMissionConfigSummary(waterColumnConfig);
   const legacySurfaceOnlyFallback = isLegacySurfaceOnlyMission(waterColumnConfig);
   const waterColumnUi = displaySettings.waterColumn ?? options.waterColumn ?? {};
+  const allLayerFieldTexturesEnabled = waterColumnUi.fieldDisplayMode === 'allLayers' || waterColumnUi.showFieldOnAllLayers === true;
   const verticalExaggeration = finiteNumber(waterColumnUi.verticalExaggeration ?? displaySettings.verticalExaggeration ?? baseViewModel.coordinateSystem?.verticalExaggeration, 1);
   const verticalDisplayMode = normalizeVerticalDisplayMode(waterColumnUi.verticalDisplayMode ?? displaySettings.verticalDisplayMode ?? waterColumnConfig.defaultDisplayMode);
   const bottomBoundary = buildBottomBoundaryViewModel({ level, grid, bathymetry: options.bathymetry ?? level?.bathymetry ?? null });
@@ -120,6 +121,8 @@ export function augmentMissionWorldWithVolumetricModel(baseViewModel = {}, optio
     coordinateModel,
     verticalExaggeration,
     verticalDisplayMode,
+    displaySettings: { ...(baseViewModel.displaySettings ?? {}), ...displaySettings, waterColumn: { ...waterColumnUi, qualityProfile: waterColumnUi.qualityProfile ?? displaySettings.qualityProfile ?? 'balanced', fieldDisplayMode: allLayerFieldTexturesEnabled ? 'allLayers' : 'activeLayerOnly', showFieldOnAllLayers: allLayerFieldTexturesEnabled } },
+    waterColumn: { ...waterColumnUi, qualityProfile: waterColumnUi.qualityProfile ?? displaySettings.qualityProfile ?? 'balanced', fieldDisplayMode: allLayerFieldTexturesEnabled ? 'allLayers' : 'activeLayerOnly', showFieldOnAllLayers: allLayerFieldTexturesEnabled },
     waterColumnConfig,
     waterColumnConfigSource: configSummary.source,
     waterColumnConfigVersion: configSummary.configVersion,
@@ -151,6 +154,7 @@ export function augmentMissionWorldWithVolumetricModel(baseViewModel = {}, optio
       ...(baseViewModel.visibility ?? {}),
       depthLayers: baseViewModel.visibility?.depthLayers !== false,
       waterColumn: true,
+      activeLayerOnlyFields: !allLayerFieldTexturesEnabled,
       activeLayerOnlyCurrents: waterColumnUi.currentDisplayMode === 'activeLayerOnly'
     },
     warnings,
@@ -271,6 +275,10 @@ export function waterColumnRenderDebugPayload(viewModel = {}, rendererSummary = 
     layerWorldY: operationalSummary.layerWorldY ?? Object.fromEntries(depthLayers.map((layer) => [layer.id, layer.physicalWorldY])),
     slabObjectCount: rendererSummary?.slabObjectCount ?? slabSummary.slabObjectCount ?? slabSummary.slabCount ?? 0,
     slabTextureCount: rendererSummary?.slabTextureCount ?? slabSummary.slabTextureCount ?? slabSummary.textureCount ?? 0,
+    activeTexturedSlabCount: rendererSummary?.activeTexturedSlabCount ?? slabSummary.activeTexturedSlabCount ?? 0,
+    contextOutlineSlabCount: rendererSummary?.contextOutlineSlabCount ?? slabSummary.contextOutlineSlabCount ?? 0,
+    allLayerFieldTexturesEnabled: rendererSummary?.allLayerFieldTexturesEnabled === true || viewModel.waterColumn?.showFieldOnAllLayers === true,
+    contextSlabMode: rendererSummary?.contextSlabMode ?? (viewModel.waterColumn?.fieldDisplayMode === 'allLayers' ? 'textured' : 'outline'),
     slabLabelCount: rendererSummary?.slabLabelCount ?? slabSummary.slabLabelCount ?? slabSummary.labelCount ?? 0,
     volumeFrameObjectCount: rendererSummary?.volumeFrameObjectCount ?? 0,
     depthTickCount: rendererSummary?.depthTickCount ?? 0,

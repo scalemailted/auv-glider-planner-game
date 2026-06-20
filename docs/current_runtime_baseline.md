@@ -51,3 +51,7 @@ Three.js mission runtime performance is now measured through globalThis.ANCHOR_T
 ## THREE-R1.2A.4.3
 
 Simulation presentation now uses a scheduler/dirty-category pipeline. Canonical simulation stepping is independent of browser rendering cadence; presentation requests may be coalesced, but canonical events may not be dropped. Grouped Playwright execution is formalized through `tools/js/run_playwright_groups.mjs` plus exact coverage audit.
+
+## THREE-R1.2A.4.4 Runtime Baseline Addendum
+
+`index.html` continues to boot `src/game/main.js`; the reverted DOM runtime is not active. Three.js remains the production mission-world renderer inside the Phaser scene shell. Render-cost profiles are presentation-only and do not fork canonical simulation or scoring.

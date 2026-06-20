@@ -1,0 +1,14 @@
+import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
+const observation = readFileSync('src/game/three/layers/ThreeObservationLayer.js', 'utf8');
+const sampling = readFileSync('src/game/three/layers/ThreeSamplingTargetLayer.js', 'utf8');
+const current = readFileSync('src/game/three/layers/ThreeCurrentVectorLayer.js', 'utf8');
+assert.match(observation, /objects instanceof Map/, 'observation markers retain stable object IDs and reuse objects');
+assert.match(observation, /observationObjectReuseCount/, 'observation reuse is tracked');
+assert.match(sampling, /objects instanceof Map/, 'sampling target visuals retain stable IDs');
+assert.match(sampling, /missionObjectType:\s*'samplingTarget'/, 'sampling target hit metadata is retained');
+assert.match(sampling, /ownsPlanning:\s*false/, 'sampling target visuals own no planning state');
+assert.match(sampling, /ownsScoring:\s*false/, 'sampling target visuals own no scoring state');
+assert.match(current, /currentVectorStride/, 'current vectors honor render-quality stride as presentation LOD');
+assert.doesNotMatch(observation + sampling + current, /score\s*=|this\.score|ScoringEngine/, 'marker layers do not own scoring');
+console.log(JSON.stringify({ ok: true, implementedAs: 'stable-map-reuse-and-stride-lod' }));

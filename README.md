@@ -956,3 +956,9 @@ Three.js mission runtime performance is now measured through globalThis.ANCHOR_T
 ## THREE-R1.2A.4.3
 
 Simulation presentation now uses a scheduler/dirty-category pipeline. Canonical simulation stepping is independent of browser rendering cadence; presentation requests may be coalesced, but canonical events may not be dropped. Grouped Playwright execution is formalized through `tools/js/run_playwright_groups.mjs` plus exact coverage audit.
+
+## THREE-R1.2A.4.4 Render-Cost Closure
+
+The current Three.js mission renderer uses presentation-only quality profiles. Balanced caps effective pixel ratio at 1.25, presents simulation snapshots at up to 30 Hz, and renders one active textured water-column slab plus low-cost context depth outlines by default. These settings do not change canonical planning, simulation, sampling, scoring, or replay.
+
+The next terrain phase remains THREE-R1.2B: Continuous Bathymetric Seabed Mesh, Coastline, and Landmass Geometry. Human manual QA by the project owner remains pending.

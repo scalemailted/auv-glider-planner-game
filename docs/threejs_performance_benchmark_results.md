@@ -67,3 +67,20 @@ Measured locally on 2026-06-20 with package-local Playwright Chromium on the sam
 Compared with the THREE-R1.2A.4.2 headed baseline of avg 176.12 ms and p95 266.70 ms, the headed workflow improves by about 3.08x average and 2.66x p95. Compared with the headless baseline of avg 226.49 ms and p95 350.00 ms, the grouped headless workflow improves by about 2.65x average and 2.10x p95.
 
 The minimum 2x improvement gate is met. The stricter primary target is not fully met: headed avg remains above 50 ms and headed p95 is approximately 100.1 ms, just above the 100 ms target. Remaining bottlenecks are WebGL render cost/resource density, the continuous Three RAF render loop, and HUD/right-panel/timeline presentation work at simulation cadence.
+
+## THREE-R1.2A.4.4 GPU/RAF Render-Cost Closure
+
+Starting evidence from THREE-R1.2A.4.3 was headed Chromium average 57.24 ms and p95 100.1 ms against the representative multi-yo Simulation workflow. A separate fresh pre-change capture from unmodified code was not taken in this pass because the worktree was already under edit; treat the 4.3 values as starting evidence, not a newly reproduced before sample.
+
+Post-change focused measurements on 2026-06-20 with package-local Playwright Chromium:
+
+| Scenario | Browser Mode | Avg ms | P95 ms | P99 ms | Rendered FPS | Presentation CPU avg | Renderer submit CPU avg | GPU avg | Notes |
+|---|---|---:|---:|---:|---:|---:|---:|---:|---|
+| Balanced bathymetry headroom gate | headed Chromium | 21.981 | 50.1 | 66.6 | 45.494 | 2.07 | 5.017 | 5.821 | GPU timer supported; strict gate passed. |
+| Balanced bathymetry headroom gate | headless Chromium | 117.7 | 150.0 | 150.0 | 8.496 | 2.319 | 9.265 | null | Headless is diagnostic only; GPU timer unsupported in this run. |
+
+The headed strict gate passed: average <= 50 ms, p95 <= 100 ms, and rendered presentation FPS >= 20. Headless frame intervals remain much slower on this machine even though CPU update/submission costs are low; this is why strict frame-interval assertions are headed-only.
+
+The fixture retains two gliders, active scalar field, five-layer water-column context, predicted dive, realized trajectory, sampling targets, observations, readable current vectors, bottom boundary context, and useful labels. Quality-profile parity tests confirm canonical simulation outputs remain identical across Performance, Balanced, and High.
+
+Human manual QA by the project owner remains pending.

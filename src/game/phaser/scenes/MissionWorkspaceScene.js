@@ -491,6 +491,8 @@ export class MissionWorkspaceScene extends PhaserScene {
       adjustWaterColumnOpacity: (delta) => this.adjustWaterColumnOpacity(delta),
       setWaterColumnScalarField: (fieldId) => this.setWaterColumnScalarField(fieldId),
       setWaterColumnCurrentMode: (mode) => this.setWaterColumnCurrentMode(mode),
+      setWaterColumnFieldDisplayMode: (mode) => this.setWaterColumnFieldDisplayMode(mode),
+      setThreeQualityProfile: (profile) => this.setThreeQualityProfile(profile),
       setWaterColumnVolumeRenderMode: (mode) => this.setWaterColumnVolumeRenderMode(mode),
       setWaterColumnDiveProfile: (profileId) => this.setWaterColumnDiveProfile(profileId),
       setWaterColumnTargetLayer: (layerId) => this.setWaterColumnTargetLayer(layerId),
@@ -1153,6 +1155,9 @@ export class MissionWorkspaceScene extends PhaserScene {
       activeLayerEmphasis: clampNumber(existing.activeLayerEmphasis, 1.85, 1, 3.2),
       selectedScalarFieldId: existing.selectedScalarFieldId ?? 'sampleValue',
       scalarRenderMode: normalizeVolumeRenderMode(existing.scalarRenderMode ?? existing.volumeRenderMode),
+      fieldDisplayMode: existing.fieldDisplayMode === 'allLayers' || existing.showFieldOnAllLayers === true ? 'allLayers' : 'activeLayerOnly',
+      showFieldOnAllLayers: existing.fieldDisplayMode === 'allLayers' || existing.showFieldOnAllLayers === true,
+      qualityProfile: normalizeThreeQualityProfile(existing.qualityProfile ?? this.app.state.ui.threeMissionQualityProfile ?? 'balanced'),
       currentDisplayMode: existing.currentDisplayMode === 'allLayers' ? 'allLayers' : 'activeLayerOnly',
       selectedDiveProfileId: normalizeWaterColumnProfileId(existing.selectedDiveProfileId ?? this.selectedAgentPlanWaterColumnValue('diveProfileId') ?? config?.defaultDiveProfileId ?? config?.diveProfileId ?? 'surfaceOnly'),
       selectedTargetDepthLayerId: normalizeWaterColumnLayerId(existing.selectedTargetDepthLayerId ?? this.selectedAgentPlanWaterColumnValue('targetDepthLayerId') ?? config?.defaultTargetDepthLayerId ?? 'surface', active),
@@ -1316,6 +1321,9 @@ export class MissionWorkspaceScene extends PhaserScene {
       activeLayerEmphasis: 1.9,
       selectedScalarFieldId: 'sampleValue',
       scalarRenderMode: normalizeVolumeRenderMode(existing?.scalarRenderMode ?? 'smoothedSlices'),
+      fieldDisplayMode: existing?.fieldDisplayMode === 'allLayers' || existing?.showFieldOnAllLayers === true ? 'allLayers' : 'activeLayerOnly',
+      showFieldOnAllLayers: existing?.fieldDisplayMode === 'allLayers' || existing?.showFieldOnAllLayers === true,
+      qualityProfile: normalizeThreeQualityProfile(existing?.qualityProfile ?? this.app.state.ui.threeMissionQualityProfile ?? 'balanced'),
       currentDisplayMode: 'activeLayerOnly',
       selectedDiveProfileId: config?.defaultDiveProfileId ?? config?.diveProfileId ?? 'surfaceOnly',
       selectedTargetDepthLayerId: config?.defaultTargetDepthLayerId ?? 'surface',
@@ -1412,6 +1420,26 @@ export class MissionWorkspaceScene extends PhaserScene {
   setWaterColumnCurrentMode(mode) {
     const ui = this.ensureWaterColumnUiState();
     ui.currentDisplayMode = mode === 'allLayers' ? 'allLayers' : 'activeLayerOnly';
+    ui.userModified = true;
+    this.ensureContinuousMissionUiState();
+    this.refreshPanels();
+    this.refreshMap();
+  }
+
+  setWaterColumnFieldDisplayMode(mode) {
+    const ui = this.ensureWaterColumnUiState();
+    ui.fieldDisplayMode = mode === 'allLayers' ? 'allLayers' : 'activeLayerOnly';
+    ui.showFieldOnAllLayers = ui.fieldDisplayMode === 'allLayers';
+    ui.userModified = true;
+    this.ensureContinuousMissionUiState();
+    this.refreshPanels();
+    this.refreshMap();
+  }
+
+  setThreeQualityProfile(profile) {
+    const ui = this.ensureWaterColumnUiState();
+    ui.qualityProfile = normalizeThreeQualityProfile(profile);
+    this.app.state.ui.threeMissionQualityProfile = ui.qualityProfile;
     ui.userModified = true;
     this.ensureContinuousMissionUiState();
     this.refreshPanels();
@@ -2235,6 +2263,7 @@ export class MissionWorkspaceScene extends PhaserScene {
   screenPointForMissionObject(kind, id, fallbackRecord = null) {
     const object = this.findThreeMissionObject(kind, id);
     if (object) {
+      object.updateWorldMatrix?.(true, false);
       const position = object.getWorldPosition?.(new THREE.Vector3()) ?? object.position;
       if (position) return this.projectThreeWorldPoint({ x: position.x, y: position.y, z: position.z });
     }
@@ -2283,7 +2312,7 @@ export class MissionWorkspaceScene extends PhaserScene {
       y: rect.top + ((1 - vector.y) / 2) * rect.height,
       ndcX: vector.x,
       ndcY: vector.y,
-      visible: vector.z >= -1 && vector.z <= 1
+      visible: vector.x >= -1 && vector.x <= 1 && vector.y >= -1 && vector.y <= 1 && vector.z >= -1 && vector.z <= 1
     };
   }
 
@@ -5042,6 +5071,13 @@ function formatScore(value) {
 
 
 
+
+function normalizeThreeQualityProfile(value) {
+  const id = String(value ?? '').trim().toLowerCase();
+  if (id === 'performance' || id === 'perf') return 'performance';
+  if (id === 'high' || id === 'quality') return 'high';
+  return 'balanced';
+}
 function createMissionWorkspacePerformanceCounters() {
   return {
     missionViewModelBuildCount: 0,

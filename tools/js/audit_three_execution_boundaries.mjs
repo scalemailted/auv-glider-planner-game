@@ -13,7 +13,9 @@ const files = [
   'src/game/three/layers/ThreeSimulationStatusLayer.js',
   'src/game/three/layers/ThreePlannedDiveTrajectoryLayer.js',
   'src/game/three/ThreeMissionPerformanceMonitor.js',
-  'src/game/three/ThreeSimulationPresentationScheduler.js'
+  'src/game/three/ThreeSimulationPresentationScheduler.js',
+  'src/game/three/ThreeRenderCostPolicy.js',
+  'src/game/three/ThreeWebGLGpuTimer.js'
 ];
 for (const file of files) {
   const source = fs.existsSync(file) ? fs.readFileSync(file, 'utf8') : '';
@@ -41,4 +43,6 @@ assert(continuousUiState.includes('rendererOwnsPlanning: false'), 'Continuous UI
 assert(continuousUiState.includes('rendererOwnsSimulation: false'), 'Continuous UI contract must deny renderer simulation ownership');
 assert(continuousUiState.includes('rendererOwnsScoring: false'), 'Continuous UI contract must deny renderer scoring ownership');
 assert(continuousUiState.includes('usesArbitraryXYZRoutePlanning: false'), 'Continuous UI contract must deny arbitrary XYZ planning');
+assert(continuousUiState.includes('qualityProfile'), 'Continuous UI contract must carry render quality as presentation state');
+assert(continuousUiState.includes('fieldDisplayMode'), 'Continuous UI contract must carry active/all-layer field display mode');
 console.log('audit_three_execution_boundaries passed');

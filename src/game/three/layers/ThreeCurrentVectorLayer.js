@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { clearGroup, positionForRecord } from './ThreeMissionLayerUtils.js';
+import { threeQualityProfileSettings } from '../ThreeRenderCostPolicy.js';
 
 export function updateThreeCurrentVectorLayer(group, viewModel = {}) {
   clearGroup(group);
@@ -43,9 +44,12 @@ function vectorsForViewModel(viewModel = {}) {
     ? [viewModel.activeDepthLayerId ?? Object.keys(layerCurrents)[0]]
     : (viewModel.depthLayers ?? []).filter((layer) => layer.visible !== false && layer.interactive !== false).map((layer) => layer.id);
   const depthByLayer = Object.fromEntries((viewModel.depthLayers ?? []).map((layer) => [layer.id, layer.representativeDepthMeters]));
-  return layers.flatMap((layerId) => (layerCurrents[layerId]?.vectors ?? []).map((vector) => ({
+  const vectors = layers.flatMap((layerId) => (layerCurrents[layerId]?.vectors ?? []).map((vector) => ({
     ...vector,
     depthLayerId: layerId,
     depthMeters: depthByLayer[layerId] ?? vector.depthMeters ?? 0
   })));
+  const waterColumn = viewModel.displaySettings?.waterColumn ?? viewModel.waterColumn ?? {};
+  const stride = Math.max(1, Math.round(Number(threeQualityProfileSettings(waterColumn.qualityProfile ?? 'balanced').currentVectorStride ?? 1)));
+  return stride <= 1 ? vectors : vectors.filter((_vector, index) => index % stride === 0);
 }

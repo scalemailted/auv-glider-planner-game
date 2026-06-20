@@ -1,0 +1,11 @@
+import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
+const renderer = readFileSync('src/game/three/ThreeMissionWorldRenderer.js', 'utf8');
+assert.match(renderer, /function applyStaticMatrixPolicy/, 'static matrix policy exists');
+assert.match(renderer, /matrixAutoUpdate\s*=\s*false/, 'safe static objects can be frozen');
+assert.match(renderer, /updateMatrix\?\.\(\)/, 'frozen static transforms are updated explicitly');
+assert.match(renderer, /glider\|trajectory\|observation\|surfacing\|selection\|guidance\|interaction\|current\|waypoint\|target\|route/i, 'moving and interactive objects remain dynamic');
+assert.match(renderer, /staticMatrixFrozenObjectCount/, 'static frozen count is reported');
+assert.match(renderer, /dynamicMatrixObjectCount/, 'dynamic object count is reported');
+assert.doesNotMatch(renderer, /matrixAutoUpdate\s*=\s*false[\s\S]{0,120}glider/, 'glider objects are not explicitly frozen');
+console.log(JSON.stringify({ ok: true }));

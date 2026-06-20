@@ -1123,3 +1123,7 @@ Three.js mission runtime performance is now measured through globalThis.ANCHOR_T
 ## THREE-R1.2A.4.3
 
 Simulation presentation now uses a scheduler/dirty-category pipeline. Canonical simulation stepping is independent of browser rendering cadence; presentation requests may be coalesced, but canonical events may not be dropped. Grouped Playwright execution is formalized through `tools/js/run_playwright_groups.mjs` plus exact coverage audit.
+
+## Render-Cost Note
+
+Balanced quality is the default readable mode for volumetric missions: active scalar field, depth context outlines, current vectors at a readable stride, predicted/realized routes, gliders, targets, and observations remain visible. Performance and High change rendering cost/clarity only; mission results are unchanged.

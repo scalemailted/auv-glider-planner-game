@@ -1,4 +1,4 @@
-﻿# Three.js Simulation Presentation Pipeline
+# Three.js Simulation Presentation Pipeline
 
 THREE-R1.2A.4.3 introduces a browser-side presentation scheduler for live Simulation.
 
@@ -35,3 +35,11 @@ Realized trajectories use stable line objects with growable position buffers. Ob
 Performance, Balanced, and High remain presentation profiles only. They may affect visual density or display resolution, but not engine steps, canonical trajectory, observations, score, energy, route status, or result digest.
 
 Human manual QA by the project owner remains pending.
+
+## THREE-R1.2A.4.4 Presentation Cadence Contract
+
+Canonical simulation cadence is independent of presentation cadence. Performance quality profiles affect rendering only. The simulation engine remains authoritative for time, vehicle motion, observations, scoring, waypoint status, replay, and result export.
+
+Balanced simulation presentation is bounded at 30 Hz. Performance uses 20 Hz and High may present up to 60 Hz. These limits are presentation caps, not engine step-rate changes. Pausing and stepping snap to exact canonical state; no score, energy, event timestamp, observation, bottom-clearance, route-completion, or replay data is interpolated.
+
+Context-slab LOD does not alter water-column science. Reducing transparent overdraw does not remove canonical layers. Surface waypoints and sampling targets preserve their existing semantics.

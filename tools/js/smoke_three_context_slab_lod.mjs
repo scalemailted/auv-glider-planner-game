@@ -1,0 +1,22 @@
+import assert from 'node:assert/strict';
+import { createThreeOperationalDepthSlabLayer, disposeThreeOperationalDepthSlabLayer, threeOperationalDepthSlabLayerSummary, updateThreeOperationalDepthSlabLayer } from '../../src/game/three/layers/ThreeOperationalDepthSlabLayer.js';
+import { makeVolumetricViewModel } from './water_column_smoke_helpers.mjs';
+
+const balanced = makeVolumetricViewModel({ waterColumnUi: { qualityProfile: 'balanced', fieldDisplayMode: 'activeLayerOnly', showFieldOnAllLayers: false } });
+const digest = JSON.stringify(balanced.layerFields);
+const layer = createThreeOperationalDepthSlabLayer({ name: 'smoke-context-lod' });
+updateThreeOperationalDepthSlabLayer(layer, balanced, { labels: false });
+const balancedSummary = threeOperationalDepthSlabLayerSummary(layer, balanced);
+assert.equal(balancedSummary.activeTexturedSlabCount, 1, 'active slab is textured');
+assert.equal(balancedSummary.contextOutlineSlabCount, balancedSummary.slabObjectCount - 1, 'context slabs are outline/grid');
+assert.equal(balancedSummary.slabTextureCount, 1, 'Balanced does not render duplicate context textures');
+assert.equal([...layer.slabs.values()].filter((record) => record.mesh.userData.interactive === true).length, 1, 'only active slab participates in hit testing');
+const allLayers = makeVolumetricViewModel({ waterColumnUi: { qualityProfile: 'balanced', fieldDisplayMode: 'allLayers', showFieldOnAllLayers: true } });
+assert.equal(JSON.stringify(allLayers.layerFields), digest, 'LOD does not alter canonical layer fields');
+updateThreeOperationalDepthSlabLayer(layer, allLayers, { labels: false });
+const allLayerSummary = threeOperationalDepthSlabLayerSummary(layer, allLayers);
+assert.equal(allLayerSummary.allLayerFieldTexturesEnabled, true);
+assert.equal(allLayerSummary.slabTextureCount, allLayerSummary.slabObjectCount, 'explicit all-layer display restores full slab textures');
+assert.equal(allLayerSummary.contextOutlineSlabCount, 0);
+disposeThreeOperationalDepthSlabLayer(layer);
+console.log(JSON.stringify({ ok: true, balancedSummary, allLayerSummary }));

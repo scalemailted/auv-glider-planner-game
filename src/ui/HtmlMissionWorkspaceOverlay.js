@@ -537,6 +537,8 @@ export class HtmlMissionWorkspaceOverlay {
       'water-column-opacity': (button) => this.handlers.adjustWaterColumnOpacity?.(Number(button.dataset.delta ?? 0)),
       'water-column-scalar-field': (button) => this.handlers.setWaterColumnScalarField?.(button.dataset.field),
       'water-column-current-mode': (button) => this.handlers.setWaterColumnCurrentMode?.(button.dataset.mode),
+      'water-column-field-display-mode': (button) => this.handlers.setWaterColumnFieldDisplayMode?.(button.dataset.mode),
+      'three-quality-profile': (button) => this.handlers.setThreeQualityProfile?.(button.dataset.profile),
       'water-column-volume-render-mode': (button) => this.handlers.setWaterColumnVolumeRenderMode?.(button.dataset.mode),
       'water-column-dive-profile': (button) => this.handlers.setWaterColumnDiveProfile?.(button.dataset.profile),
       'water-column-target-layer': (button) => this.handlers.setWaterColumnTargetLayer?.(button.dataset.layer),
@@ -923,6 +925,8 @@ function waterColumnSection(state, continuousUi = normalizeContinuousMissionUiSt
   const hidden = new Set(Array.isArray(ui.hiddenLayerIds) ? ui.hiddenLayerIds : []);
   const displayMode = continuousUi.verticalDisplayMode === 'explodedLayers' ? 'explodedLayers' : 'physicalDepth';
   const currentMode = ui.currentDisplayMode === 'allLayers' ? 'allLayers' : 'activeLayerOnly';
+  const fieldDisplayMode = ui.fieldDisplayMode === 'allLayers' || ui.showFieldOnAllLayers === true ? 'allLayers' : 'activeLayerOnly';
+  const qualityProfile = ['performance', 'balanced', 'high'].includes(ui.qualityProfile) ? ui.qualityProfile : 'balanced';
   const selectedField = ui.selectedScalarFieldId ?? 'sampleValue';
   const selectedProfile = continuousUi.selectedDiveProfileId ?? ui.selectedDiveProfileId ?? config.diveProfileId ?? 'surfaceOnly';
   const selectedTarget = continuousUi.selectedTargetDepthLayerId ?? ui.selectedTargetDepthLayerId ?? activeLayerId;
@@ -937,7 +941,7 @@ function waterColumnSection(state, continuousUi = normalizeContinuousMissionUiSt
   const claim = legacyFallback
     ? 'This imported mission has no water-column configuration. It is displayed in surface-only compatibility mode.'
     : '2.5D water-column display from generated mission depth-layer config. Synthetic teaching model, not calibrated ocean data.';
-  const badge = legacyFallback ? 'Legacy surface-only mission' : `${layerIds.length}-layer water column - ${labelize(displayMode)}`;
+  const badge = legacyFallback ? 'Legacy surface-only mission' : `${layerIds.length}-layer water column | ${labelize(displayMode)}`;
   return `
         <h3 class="waypoint-section-title">Water Column</h3>
         <div class="hud-card compact" data-water-column-controls>
@@ -946,6 +950,7 @@ function waterColumnSection(state, continuousUi = normalizeContinuousMissionUiSt
           <div>${escapeHtml(claim)}</div>
           <div><strong>Layers:</strong> ${layerIds.length} available · ${visibleLayerCount} visible | <strong>Active:</strong> ${escapeHtml(labelize(activeLayerId))}</div>
           <div><strong>Mode:</strong> ${escapeHtml(labelize(displayMode))} | <strong>Opacity:</strong> ${opacity}%</div>
+          <div><strong>Quality:</strong> ${escapeHtml(labelize(qualityProfile))} | <strong>Field Layers:</strong> ${escapeHtml(fieldDisplayMode === 'allLayers' ? 'all layers' : 'active layer only')}</div>
           <div><strong>Vertical Exaggeration:</strong> ${escapeHtml(String(ui.verticalExaggeration ?? 1))}x</div>
           <div class="hud-muted">Vertical exaggeration changes presentation only.</div>
         </div>
@@ -971,6 +976,13 @@ function waterColumnSection(state, continuousUi = normalizeContinuousMissionUiSt
           ${waterColumnFieldButton('A_global_topdown', 'Top-Down Priority', selectedField)}
           ${waterColumnCurrentButton('activeLayerOnly', 'Currents: Active', currentMode)}
           ${waterColumnCurrentButton('allLayers', 'Currents: All Layers', currentMode)}
+        </div>
+        <div class="console-button-row wrap">
+          ${threeQualityButton('performance', 'Performance', qualityProfile)}
+          ${threeQualityButton('balanced', 'Balanced', qualityProfile)}
+          ${threeQualityButton('high', 'High', qualityProfile)}
+          ${waterColumnFieldDisplayModeButton('activeLayerOnly', 'Field: Active Layer', fieldDisplayMode)}
+          ${waterColumnFieldDisplayModeButton('allLayers', 'Show Field on All Layers', fieldDisplayMode)}
         </div>
         <h3 class="waypoint-section-title">Dive Planning</h3>
         <div class="hud-card compact" data-dive-planning-controls>
@@ -1140,6 +1152,14 @@ function waterColumnFieldButton(fieldId, label, selectedField) {
 
 function waterColumnCurrentButton(mode, label, activeMode) {
   return `<button class="console-button ${activeMode === mode ? 'primary' : 'secondary'}" data-action="water-column-current-mode" data-mode="${escapeAttr(mode)}">${escapeHtml(label)}</button>`;
+}
+
+function waterColumnFieldDisplayModeButton(mode, label, activeMode) {
+  return `<button class="console-button ${activeMode === mode ? 'primary' : 'secondary'}" data-action="water-column-field-display-mode" data-mode="${escapeAttr(mode)}">${escapeHtml(label)}</button>`;
+}
+
+function threeQualityButton(profile, label, activeProfile) {
+  return `<button class="console-button ${activeProfile === profile ? 'primary' : 'secondary'}" data-action="three-quality-profile" data-profile="${escapeAttr(profile)}">${escapeHtml(label)}</button>`;
 }
 
 function fieldRenderingSection(continuousUi) {
