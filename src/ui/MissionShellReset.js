@@ -1,3 +1,5 @@
+import { inactiveThreePerformanceDebugPayload } from '../game/three/ThreeMissionPerformanceMonitor.js';
+
 export const MISSION_SHELL_RESET_VERSION = 'mission-shell-reset-three-r1-1e';
 
 const PRODUCTION_SCENES = new Set([
@@ -97,6 +99,7 @@ export function publishSceneIsolationDebug(app, patch = {}) {
     ...patch
   };
   globalThis.ANCHOR_SCENE_ISOLATION_DEBUG = debug;
+  if (mainMenuOnly || threeMissionCanvasCount === 0) globalThis.ANCHOR_THREE_PERFORMANCE_DEBUG = inactiveThreePerformanceDebugPayload();
   return debug;
 }
 

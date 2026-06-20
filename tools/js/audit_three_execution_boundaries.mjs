@@ -11,7 +11,9 @@ const files = [
   'src/game/three/layers/ThreeObservationLayer.js',
   'src/game/three/layers/ThreeRouteStatusLayer.js',
   'src/game/three/layers/ThreeSimulationStatusLayer.js',
-  'src/game/three/layers/ThreePlannedDiveTrajectoryLayer.js'
+  'src/game/three/layers/ThreePlannedDiveTrajectoryLayer.js',
+  'src/game/three/ThreeMissionPerformanceMonitor.js',
+  'src/game/three/ThreeSimulationPresentationScheduler.js'
 ];
 for (const file of files) {
   const source = fs.existsSync(file) ? fs.readFileSync(file, 'utf8') : '';
@@ -25,8 +27,10 @@ const scene = fs.readFileSync('src/game/phaser/scenes/SimulationScene.js', 'utf8
 const missionWorkspaceScene = fs.readFileSync('src/game/phaser/scenes/MissionWorkspaceScene.js', 'utf8');
 const continuousUiState = fs.readFileSync('src/core/rendering/ContinuousMissionUiState.js', 'utf8');
 assert(scene.includes('new SimulationEngine'), 'SimulationScene/core must remain engine owner');
+assert(scene.includes('createThreeSimulationPresentationScheduler'), 'SimulationScene owns scheduler wiring while engine remains canonical');
 assert(scene.includes('rendererOwnsSimulationState: false'), 'debug must state renderer does not own simulation state');
 assert(scene.includes('rendererOwnsScoring: false'), 'debug must state renderer does not own scoring');
+assert(scene.includes('ANCHOR_THREE_PERFORMANCE_DEBUG'), 'SimulationScene publishes renderer performance debug without owning simulation');
 assert(missionWorkspaceScene.includes('usesCanonical3DDiveState: true'), 'Planning debug must state canonical 3D dive state ownership');
 assert(missionWorkspaceScene.includes('setWaterColumnVolumeRenderMode'), 'Planning scene must own volume render mode control');
 assert(missionWorkspaceScene.includes('setWaterColumnDiveProfile'), 'Planning scene must own dive profile control');

@@ -1,6 +1,14 @@
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 const scene = fs.readFileSync('src/game/phaser/scenes/MissionWorkspaceScene.js', 'utf8');
+const renderer = fs.readFileSync('src/game/three/ThreeMissionWorldRenderer.js', 'utf8');
+const scalarLayer = fs.readFileSync('src/game/three/layers/ThreeVolumetricScalarFieldLayer.js', 'utf8');
+const currentLayer = fs.readFileSync('src/game/three/layers/ThreeCurrentVectorLayer.js', 'utf8');
 assert.match(scene, /duplicateThreeHoverSuppressionCount/, 'hover duplicate suppression is tracked');
+assert.match(scene, /modelBuildCountDuringCameraGesture/, 'camera-only forbidden model work is tracked');
+assert.match(renderer, /recordRendererUpdateEvents/, 'renderer update hot paths are counted');
+assert.match(renderer, /dirtyCategorySet/, 'simulation presentation dirty categories gate renderer hot paths');
+assert.match(scalarLayer, /DataTexture/, 'volumetric scalar texture creation remains a known refresh hot path');
+assert.match(currentLayer, /clearGroup\(group\)/, 'current vector layer rebuild remains a known refresh hot path');
 assert.doesNotMatch(scene, /navigator\\.gpu|GPUDevice|WebGPURenderer|rawWebGPU|threeWebGPU/, 'no WebGPU runtime path added');
 console.log(JSON.stringify({ ok: true }));

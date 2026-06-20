@@ -1,25 +1,29 @@
 {
-  "name": "auv-glider-planner-game",
-  "version": "0.1.0",
-  "description": "Three.js-first AUV glider planning game with a portable simulation core, solver bridge, dataset export, and transitional Phaser shell.",
-  "type": "module",
-  "scripts": {
-    "serve": "python -m http.server 8000",
-    "check": "node tools/js/check_three_vendor.mjs && node tools/js/audit_three_vendor_git_tracking.mjs && node tools/check-js.mjs",
-    "test:e2e": "playwright test --reporter=line",
-    "test:e2e:headed": "playwright test --headed --reporter=line",
-    "vendor:three": "node tools/js/sync_three_vendor.mjs",
-    "check:three-vendor": "node tools/js/check_three_vendor.mjs",
-    "check:three-vendor-git": "node tools/js/audit_three_vendor_git_tracking.mjs",
-    "build:pages": "node tools/js/build_github_pages.mjs",
-    "smoke:pages": "node tools/js/smoke_github_pages_static_host.mjs"
-  },
-  "devDependencies": {
-    "@playwright/test": "^1.54.0"
-  },
-  "private": true,
-  "dependencies": {
-    "phaser": "^3.90.0",
-    "three": "^0.184.0"
-  }
+    "name":  "auv-glider-planner-game",
+    "version":  "0.1.0",
+    "description":  "Three.js-first AUV glider planning game with a portable simulation core, solver bridge, dataset export, and transitional Phaser shell.",
+    "type":  "module",
+    "scripts":  {
+                    "serve":  "python -m http.server 8000",
+                    "check":  "node tools/js/check_three_vendor.mjs \u0026\u0026 node tools/js/audit_three_vendor_git_tracking.mjs \u0026\u0026 node tools/check-js.mjs",
+                    "test:e2e":  "node tools/js/run_playwright_groups.mjs",
+                    "test:e2e:headed":  "node ./node_modules/@playwright/test/cli.js test --headed --reporter=line",
+                    "vendor:three":  "node tools/js/sync_three_vendor.mjs",
+                    "check:three-vendor":  "node tools/js/check_three_vendor.mjs",
+                    "check:three-vendor-git":  "node tools/js/audit_three_vendor_git_tracking.mjs",
+                    "build:pages":  "node tools/js/build_github_pages.mjs",
+                    "smoke:pages":  "node tools/js/smoke_github_pages_static_host.mjs",
+                    "test:e2e:focused":  "node ./node_modules/@playwright/test/cli.js test tests/e2e/smoke.spec.js --grep \"Three Mission Interaction Performance Invariants|Three Sampling Target and Dive Planning Headed Workflow\" --reporter=line",
+                    "test:e2e:groups":  "node tools/js/run_playwright_groups.mjs",
+                    "test:e2e:monolithic":  "node ./node_modules/@playwright/test/cli.js test --reporter=line",
+                    "test:e2e:list":  "node ./node_modules/@playwright/test/cli.js test --list"
+                },
+    "devDependencies":  {
+                            "@playwright/test":  "^1.54.0"
+                        },
+    "private":  true,
+    "dependencies":  {
+                         "phaser":  "^3.90.0",
+                         "three":  "^0.184.0"
+                     }
 }

@@ -36,6 +36,14 @@ import {
 import { clearGroup, makeBoxCell } from './layers/ThreeMissionLayerUtils.js';
 import { missionWorldRenderViewModelSummary } from '../../core/rendering/MissionWorldRenderViewModel.js';
 import {
+  beginThreePerformanceFrame,
+  createThreeMissionPerformanceMonitor,
+  endThreePerformanceFrame,
+  recordThreePerformanceEvent,
+  resetThreePerformanceWindow,
+  threeMissionPerformanceSummary
+} from './ThreeMissionPerformanceMonitor.js';
+import {
   createThreeMissionCameraController,
   disposeThreeMissionCameraController,
   setThreeMissionCameraPreset,
@@ -140,6 +148,14 @@ export function createThreeMissionWorldRenderer(container, options = {}) {
     cameraState: normalizeCameraPatch(options.camera ?? { preset: 'obliqueMission' }),
     disposed: false,
     animationFrame: null,
+    performanceMonitor: createThreeMissionPerformanceMonitor({ windowSize: options.performanceWindowSize ?? 360 }),
+    presentationInitialized: false,
+    presentationCache: {
+      lastRenderedScalarFieldFrameId: null,
+      lastRenderedCurrentFieldFrameId: null,
+      scalarFieldFrameSkipCount: 0,
+      currentFieldFrameSkipCount: 0
+    },
     threeAvailable: Boolean(THREE?.Scene),
     ownsSimulationState: false,
     ownsScoring: false,
@@ -165,41 +181,85 @@ export function createThreeMissionWorldRenderer(container, options = {}) {
 export function updateThreeMissionWorldRenderer(renderer, viewModel = {}) {
   if (!renderer || renderer.disposed) return renderer;
   renderer.viewModel = viewModel;
+  recordRendererUpdateEvents(renderer, viewModel);
   renderer.layerVisibility = defaultLayerVisibility({ ...(renderer.layerVisibility ?? {}), ...(viewModel.visibility ?? {}) });
-  updateBathymetry(renderer, viewModel);
-  updateWaterSurface(renderer, viewModel);
-  updateDepthLayers(renderer, viewModel);
-  updateThreeWaterColumnVolumeFrameLayer(renderer.waterColumnVolumeFrameLayer, viewModel);
-  updateThreeScalarFieldLayer(renderer.scalarLayer, viewModel.scalarFieldLayer, { transform: viewModel.coordinateSystem, yOffset: 0.08 });
-  updateThreeVolumetricScalarFieldLayer(renderer.volumetricScalarFieldLayer, viewModel, { transform: viewModel.coordinateSystem, yOffset: 0.12 });
-  updateThreeCurrentVectorLayer(renderer.groups.currentVectorGroup, viewModel);
-  updateThreeHazardLayer(renderer.groups.hazardGroup, viewModel);
-  updateThreeConstraintLayer(renderer.groups.constraintGroup, viewModel);
-  updateThreeDropZoneLayer(renderer.groups.dropZoneGroup, viewModel);
-  updateThreeGliderLayer(renderer.groups.gliderGroup, viewModel);
-  updateThreeWaypointLayer(renderer.groups.waypointGroup, viewModel);
-  updateThreeRouteLayer(renderer.groups.routeGroup, viewModel);
-  updateThreePlannedDiveTrajectoryLayer(renderer.groups.plannedDiveTrajectoryGroup, viewModel);
-  updateThreeDepthTrajectoryLayer(renderer.groups.depthTrajectoryGroup, viewModel);
-  updateThreeRealizedTrajectoryLayer(renderer.groups.realizedTrajectoryGroup, viewModel);
-  updateThreePlanningMarkerLayer(renderer.groups.markerGroup, viewModel);
-  updateThreeSamplingTargetLayer(renderer.groups.samplingTargetGroup, viewModel);
-  updateThreePriorityTargetLayer(renderer.groups.priorityTargetGroup, viewModel);
-  if (viewModel.phase === 'simulation' || viewModel.type === 'anchor.rendering.simulation-world') updateThreeObservationLayer(renderer.groups.observationGroup, viewModel);
-  else updateObservationLayer(renderer.groups.observationGroup, viewModel);
-  updateThreeSurfacingEventLayer(renderer.groups.surfacingEventGroup, viewModel);
-  updateThreeRouteStatusLayer(renderer.groups.routeStatusGroup, viewModel);
-  updateThreeSimulationStatusLayer(renderer.groups.simulationStatusGroup, viewModel);
-  updateThreeSelectionLayer(renderer.groups.selectionGroup, viewModel);
-  updateThreeGuidanceConeLayer(renderer.groups.guidanceGroup, viewModel);
+  const dirty = dirtyCategorySet(viewModel);
+  const initial = renderer.presentationInitialized !== true;
+  const shouldUpdate = (...categories) => initial || !dirty || categories.some((category) => dirty.has(category));
+  const cache = renderer.presentationCache ??= {};
+
+  if (shouldUpdate('bathymetry')) {
+    updateBathymetry(renderer, viewModel);
+    recordThreePerformanceEvent(renderer.performanceMonitor, 'bathymetryUpdate');
+  }
+  if (shouldUpdate('waterColumn', 'bathymetry')) {
+    updateWaterSurface(renderer, viewModel);
+    updateDepthLayers(renderer, viewModel);
+    updateThreeWaterColumnVolumeFrameLayer(renderer.waterColumnVolumeFrameLayer, viewModel);
+    recordThreePerformanceEvent(renderer.performanceMonitor, 'waterColumnUpdate');
+  }
+  if (shouldUpdate('scalarField', 'waterColumn')) {
+    const signature = scalarFieldFrameSignature(viewModel);
+    if (initial || signature !== cache.lastRenderedScalarFieldFrameId) {
+      updateThreeScalarFieldLayer(renderer.scalarLayer, viewModel.scalarFieldLayer, { transform: viewModel.coordinateSystem, yOffset: 0.08 });
+      updateThreeVolumetricScalarFieldLayer(renderer.volumetricScalarFieldLayer, viewModel, { transform: viewModel.coordinateSystem, yOffset: 0.12 });
+      cache.lastRenderedScalarFieldFrameId = signature;
+      recordThreePerformanceEvent(renderer.performanceMonitor, 'fieldTextureUpdate');
+    } else {
+      cache.scalarFieldFrameSkipCount = Number(cache.scalarFieldFrameSkipCount ?? 0) + 1;
+      recordThreePerformanceEvent(renderer.performanceMonitor, 'scalarFieldFrameSkip');
+    }
+  }
+  if (shouldUpdate('currentVectors', 'waterColumn')) {
+    const signature = currentFieldFrameSignature(viewModel);
+    if (initial || signature !== cache.lastRenderedCurrentFieldFrameId) {
+      updateThreeCurrentVectorLayer(renderer.groups.currentVectorGroup, viewModel);
+      cache.lastRenderedCurrentFieldFrameId = signature;
+      recordThreePerformanceEvent(renderer.performanceMonitor, 'currentBufferUpdate');
+    } else {
+      cache.currentFieldFrameSkipCount = Number(cache.currentFieldFrameSkipCount ?? 0) + 1;
+      recordThreePerformanceEvent(renderer.performanceMonitor, 'currentFieldFrameSkip');
+    }
+  }
+  if (shouldUpdate('bathymetry', 'routeStatus')) {
+    updateThreeHazardLayer(renderer.groups.hazardGroup, viewModel);
+    updateThreeConstraintLayer(renderer.groups.constraintGroup, viewModel);
+    updateThreeDropZoneLayer(renderer.groups.dropZoneGroup, viewModel);
+  }
+  if (shouldUpdate('vehiclePose')) updateThreeGliderLayer(renderer.groups.gliderGroup, viewModel);
+  if (shouldUpdate('plannedRoute')) {
+    updateThreeWaypointLayer(renderer.groups.waypointGroup, viewModel);
+    updateThreeRouteLayer(renderer.groups.routeGroup, viewModel);
+    updateThreePlannedDiveTrajectoryLayer(renderer.groups.plannedDiveTrajectoryGroup, viewModel);
+    updateThreeDepthTrajectoryLayer(renderer.groups.depthTrajectoryGroup, viewModel);
+    recordThreePerformanceEvent(renderer.performanceMonitor, 'routeGeometryUpdate');
+    if ((viewModel.plannedDiveSegments ?? []).length) recordThreePerformanceEvent(renderer.performanceMonitor, 'predictedTrajectoryBuild');
+  }
+  if (shouldUpdate('realizedTrajectory')) updateThreeRealizedTrajectoryLayer(renderer.groups.realizedTrajectoryGroup, viewModel);
+  if (shouldUpdate('selection', 'labels')) updateThreePlanningMarkerLayer(renderer.groups.markerGroup, viewModel);
+  if (shouldUpdate('samplingTargets', 'plannedRoute')) {
+    updateThreeSamplingTargetLayer(renderer.groups.samplingTargetGroup, viewModel);
+    recordThreePerformanceEvent(renderer.performanceMonitor, 'samplingTargetGeometryUpdate');
+  }
+  if (shouldUpdate('samplingTargets', 'scalarField')) updateThreePriorityTargetLayer(renderer.groups.priorityTargetGroup, viewModel);
+  if (shouldUpdate('observations')) {
+    if (viewModel.phase === 'simulation' || viewModel.type === 'anchor.rendering.simulation-world') updateThreeObservationLayer(renderer.groups.observationGroup, viewModel);
+    else updateObservationLayer(renderer.groups.observationGroup, viewModel);
+  }
+  if (shouldUpdate('surfacingEvents')) updateThreeSurfacingEventLayer(renderer.groups.surfacingEventGroup, viewModel);
+  if (shouldUpdate('routeStatus', 'simulationStatus')) updateThreeRouteStatusLayer(renderer.groups.routeStatusGroup, viewModel);
+  if (shouldUpdate('vehiclePose', 'simulationStatus')) updateThreeSimulationStatusLayer(renderer.groups.simulationStatusGroup, viewModel);
+  if (shouldUpdate('selection')) updateThreeSelectionLayer(renderer.groups.selectionGroup, viewModel);
+  if (shouldUpdate('vehiclePose', 'plannedRoute')) updateThreeGuidanceConeLayer(renderer.groups.guidanceGroup, viewModel);
   updateInteractionSurface(renderer, viewModel);
-  updateThreePlanningInteractionLayer(renderer.planningInteractionLayer, viewModel.interactionViewModel, { transform: viewModel.coordinateSystem, viewModel });
+  if (shouldUpdate('selection', 'plannedRoute')) updateThreePlanningInteractionLayer(renderer.planningInteractionLayer, viewModel.interactionViewModel, { transform: viewModel.coordinateSystem, viewModel });
   setThreeMissionLayerVisibility(renderer, renderer.layerVisibility);
   syncCameraBounds(renderer, viewModel);
+  renderer.presentationInitialized = true;
+  renderer.lastPresentationDirtyCategories = dirty ? [...dirty] : ['full'];
   renderer.renderer.render(renderer.scene, renderer.camera);
   return renderer;
 }
-
 export function resizeThreeMissionWorldRenderer(renderer, width, height) {
   if (!renderer || renderer.disposed) return renderer;
   const rect = renderer.container?.getBoundingClientRect?.() ?? null;
@@ -273,6 +333,13 @@ export function setThreeMissionLayerVisibility(renderer, visibilityPatch = {}) {
 
 export function threeMissionWorldRendererSummary(renderer = {}) {
   const vm = renderer.viewModel ?? {};
+  const rendererInfo = renderer.renderer?.info ?? {};
+  const performanceSummary = threeMissionPerformanceSummary(renderer.performanceMonitor ?? null);
+  const sceneObjectCount = countSceneObjects(renderer.scene);
+  const geometryCount = countSceneResources(renderer.scene, 'geometry');
+  const materialCount = countSceneResources(renderer.scene, 'material');
+  const textureCount = Math.max(Number(rendererInfo.memory?.textures ?? 0), countSceneTextures(renderer.scene));
+  const growthWarnings = renderer.scene ? objectGrowthWarnings(renderer) : [];
   return {
     type: 'anchor.renderer.three-mission-world-summary',
     version: THREE_MISSION_WORLD_RENDERER_VERSION,
@@ -313,6 +380,39 @@ export function threeMissionWorldRendererSummary(renderer = {}) {
     canvasBackingWidth: renderer.renderer?.domElement?.width ?? null,
     canvasBackingHeight: renderer.renderer?.domElement?.height ?? null,
     rendererPixelRatio: renderer.rendererPixelRatio ?? null,
+    rendererCalls: Number(rendererInfo.render?.calls ?? performanceSummary.rendererCalls ?? 0),
+    rendererTriangles: Number(rendererInfo.render?.triangles ?? performanceSummary.rendererTriangles ?? 0),
+    rendererLines: Number(rendererInfo.render?.lines ?? performanceSummary.rendererLines ?? 0),
+    rendererPoints: Number(rendererInfo.render?.points ?? performanceSummary.rendererPoints ?? 0),
+    sceneObjectCount,
+    threeObjectCount: sceneObjectCount,
+    geometryCount,
+    threeGeometryCount: geometryCount,
+    materialCount,
+    threeMaterialCount: materialCount,
+    textureCount,
+    threeTextureCount: textureCount,
+    labelObjectCount: renderer.operationalDepthSlabLayer?.labels?.size ?? 0,
+    currentGlyphCount: Math.floor((renderer.groups?.currentVectorGroup?.children?.length ?? 0) / 2),
+    predictedDiveObjectCount: threePlannedDiveTrajectoryLayerSummary(renderer.groups?.plannedDiveTrajectoryGroup).objectCount ?? 0,
+    activeRendererCount: renderer.disposed === true ? 0 : 1,
+    activeRafCount: renderer.disposed === true || renderer.animationFrame == null ? 0 : 1,
+    performanceSummary,
+    performanceCounters: { ...(renderer.performanceMonitor?.eventCounts ?? {}) },
+    lastPresentationDirtyCategories: [...(renderer.lastPresentationDirtyCategories ?? [])],
+    lastRenderedScalarFieldFrameId: renderer.presentationCache?.lastRenderedScalarFieldFrameId ?? null,
+    lastRenderedCurrentFieldFrameId: renderer.presentationCache?.lastRenderedCurrentFieldFrameId ?? null,
+    scalarFieldFrameSkipCount: Number(renderer.presentationCache?.scalarFieldFrameSkipCount ?? 0),
+    currentFieldFrameSkipCount: Number(renderer.presentationCache?.currentFieldFrameSkipCount ?? 0),
+    trajectoryAppendCount: Number(renderer.groups?.realizedTrajectoryGroup?.userData?.trajectoryAppendCount ?? 0),
+    trajectoryFullRebuildCount: Number(renderer.groups?.realizedTrajectoryGroup?.userData?.trajectoryFullRebuildCount ?? 0),
+    trajectoryBufferResizeCount: Number(renderer.groups?.realizedTrajectoryGroup?.userData?.trajectoryBufferResizeCount ?? 0),
+    duplicateTrajectoryPointCount: Number(renderer.groups?.realizedTrajectoryGroup?.userData?.duplicateTrajectoryPointCount ?? 0),
+    observationObjectCreateCount: Number(renderer.groups?.observationGroup?.userData?.observationObjectCreateCount ?? 0),
+    observationObjectReuseCount: Number(renderer.groups?.observationGroup?.userData?.observationObjectReuseCount ?? 0),
+    duplicateObservationObjectCount: Number(renderer.groups?.observationGroup?.userData?.duplicateObservationObjectCount ?? 0),
+    surfacingObjectCreateCount: Number(renderer.groups?.surfacingEventGroup?.userData?.surfacingObjectCreateCount ?? 0),
+    objectGrowthWarnings: growthWarnings,
     cameraAspect: renderer.camera?.aspect ?? null,
     hostWidth: renderer.lastSize?.width ?? null,
     hostHeight: renderer.lastSize?.height ?? null,
@@ -333,10 +433,17 @@ export function threeMissionWorldRendererSummary(renderer = {}) {
   };
 }
 
+export function resetThreeMissionWorldRendererPerformance(renderer) {
+  if (!renderer) return renderer;
+  resetThreePerformanceWindow(renderer.performanceMonitor);
+  return renderer;
+}
+
 export function disposeThreeMissionWorldRenderer(renderer) {
   if (!renderer || renderer.disposed) return;
   renderer.disposed = true;
   if (renderer.animationFrame) globalThis.cancelAnimationFrame?.(renderer.animationFrame);
+  renderer.animationFrame = null;
   disposeThreeScalarFieldLayer(renderer.scalarLayer);
   disposeThreeVolumetricScalarFieldLayer(renderer.volumetricScalarFieldLayer);
   disposeThreeOperationalDepthSlabLayer(renderer.operationalDepthSlabLayer);
@@ -562,6 +669,19 @@ function countSceneResources(scene, key) {
   return seen.size;
 }
 
+function countSceneTextures(scene) {
+  const seen = new Set();
+  scene?.traverse?.((object) => {
+    const materials = Array.isArray(object?.material) ? object.material : object?.material ? [object.material] : [];
+    for (const material of materials) {
+      for (const value of Object.values(material ?? {})) {
+        if (value?.isTexture) seen.add(value);
+      }
+    }
+  });
+  return seen.size;
+}
+
 function objectGrowthWarnings(renderer) {
   const objectCount = countSceneObjects(renderer.scene);
   const warnings = [];
@@ -569,8 +689,60 @@ function objectGrowthWarnings(renderer) {
   return warnings;
 }
 
-function renderLoop(renderer) {
+function renderLoop(renderer, timestamp = frameNow()) {
   if (!renderer || renderer.disposed) return;
+  beginThreePerformanceFrame(renderer.performanceMonitor, timestamp);
   renderer.renderer.render(renderer.scene, renderer.camera);
-  renderer.animationFrame = globalThis.requestAnimationFrame?.(() => renderLoop(renderer)) ?? null;
+  endThreePerformanceFrame(renderer.performanceMonitor, frameNow(), renderer.renderer?.info ?? null);
+  renderer.animationFrame = globalThis.requestAnimationFrame?.((nextTimestamp) => renderLoop(renderer, nextTimestamp)) ?? null;
+}
+
+function recordRendererUpdateEvents(renderer, viewModel = {}) {
+  if (!renderer?.performanceMonitor) return;
+  const cameraGestureActive = renderer.cameraController?.gestureActive === true;
+  const dirty = dirtyCategorySet(viewModel);
+  const has = (...categories) => !dirty || categories.some((category) => dirty.has(category));
+  recordThreePerformanceEvent(renderer.performanceMonitor, 'rendererUpdate');
+  if (has('scalarField', 'waterColumn') && ((viewModel.depthLayers ?? []).length || viewModel.layerFields || viewModel.scalarFieldLayer)) {
+    if (cameraGestureActive) recordThreePerformanceEvent(renderer.performanceMonitor, 'textureUpdateDuringCameraGesture');
+  }
+  if (has('currentVectors', 'waterColumn') && ((viewModel.layerCurrents && Object.keys(viewModel.layerCurrents).length) || (viewModel.vectorFieldLayer?.vectors ?? []).length)) {
+    if (cameraGestureActive) recordThreePerformanceEvent(renderer.performanceMonitor, 'currentBufferUpdateDuringCameraGesture');
+  }
+  if (has('plannedRoute') && cameraGestureActive && (viewModel.plannedDiveSegments ?? []).length) {
+    recordThreePerformanceEvent(renderer.performanceMonitor, 'predictionBuildDuringCameraGesture');
+  }
+}
+function dirtyCategorySet(viewModel = {}) {
+  if (!Object.prototype.hasOwnProperty.call(viewModel, 'presentationDirtyCategories')) return null;
+  return new Set((viewModel.presentationDirtyCategories ?? []).map((item) => String(item)).filter(Boolean));
+}
+
+function scalarFieldFrameSignature(viewModel = {}) {
+  const field = viewModel.scalarFieldLayer ?? {};
+  const volumetric = viewModel.layerFields ?? {};
+  return [
+    field.id ?? 'none',
+    field.timeSeconds ?? viewModel.activeTimeSeconds ?? 0,
+    viewModel.activeDepthLayerId ?? 'surface',
+    viewModel.visibility?.activeLayerOnlyFields !== false,
+    Object.keys(volumetric).join('|'),
+    viewModel.displaySettings?.qualityProfile ?? viewModel.options?.qualityProfile ?? 'balanced'
+  ].join(':');
+}
+
+function currentFieldFrameSignature(viewModel = {}) {
+  const field = viewModel.vectorFieldLayer ?? {};
+  const layers = viewModel.layerCurrents ?? {};
+  return [
+    field.id ?? 'none',
+    field.timeSeconds ?? viewModel.activeTimeSeconds ?? 0,
+    viewModel.activeDepthLayerId ?? 'surface',
+    viewModel.visibility?.activeLayerOnlyCurrents !== false,
+    Object.keys(layers).join('|'),
+    viewModel.displaySettings?.qualityProfile ?? viewModel.options?.qualityProfile ?? 'balanced'
+  ].join(':');
+}
+function frameNow() {
+  return globalThis.performance?.now?.() ?? Date.now?.() ?? 0;
 }

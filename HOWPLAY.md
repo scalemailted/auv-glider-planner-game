@@ -1114,3 +1114,12 @@ The current volumetric activation layer now has explicit scoring semantics: actu
 Surface waypoints are where the glider is intended to navigate and surface, not underwater control points. In the Water Column / Dive Planning controls, choose a dive profile, target layer, requested maximum depth, cycle count, and sample interval for the selected segment. The Three.js Mission World distinguishes the dashed surface intent route from the predicted underwater dive, expected current-corrected path, predicted surfacing marker, bottom turns, layer crossings, and expected samples. Predicted samples are estimates only; actual simulation samples create score. Use Side Profile, Segment Dive, and Route Dive camera presets to inspect vertical motion. See [Predicted 3D Dive Planning](docs/predicted_3d_dive_planning.md).
 
 THREE-R1.2A.4.1 clarifies the 3D planning model: surface waypoints are executable navigation/surfacing targets, while sampling targets are non-executable scientific objectives in the water column. Dive profiles determine underwater motion between surface waypoints; predicted samples never earn score, and actual observations are authoritative. Camera presets and vertical exaggeration are presentation only. No arbitrary XYZ route planner or operationally calibrated glider model is claimed. See [Surface Waypoints and Sampling Targets](docs/surface_waypoints_and_sampling_targets.md), [Three.js Dive Planning UX and Performance Audit](docs/threejs_dive_planning_ux_and_performance_audit.md), and [Multi-Yo Prediction and Execution Parity](docs/multi_yo_prediction_execution_parity.md).
+
+
+## THREE-R1.2A.4.2 Performance Closure
+
+Three.js mission runtime performance is now measured through globalThis.ANCHOR_THREE_PERFORMANCE_DEBUG, focused smoke scripts, and focused Playwright performance/usability tests. Performance quality profiles are presentation-only. Surface waypoints remain executable navigation/surfacing anchors; sampling targets remain non-executable science objectives; multi-yo execution remains canonical core behavior. Human manual QA by the project owner remains pending.
+
+## THREE-R1.2A.4.3
+
+Simulation presentation now uses a scheduler/dirty-category pipeline. Canonical simulation stepping is independent of browser rendering cadence; presentation requests may be coalesced, but canonical events may not be dropped. Grouped Playwright execution is formalized through `tools/js/run_playwright_groups.mjs` plus exact coverage audit.

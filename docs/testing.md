@@ -1,4 +1,4 @@
-# Testing
+﻿# Testing
 
 The browser game does not require a build step, backend, Playwright, or`node_modules` for normal use. GFX-R2/GFX-R3A/GFX-R3B use the checked-in Three.js runtime under `vendor/three/`, with npm `three` remaining the source package for vendor refresh checks. Normal local serving still works with:
 
@@ -743,3 +743,38 @@ Focused browser checks should confirm a surface route, thermocline/deep predicte
 ## THREE-R1.2A.4.1 Planning Semantics Note
 
 Surface waypoints are executable navigation/surfacing targets. Sampling targets are non-executable scientific objectives in the water column. Dive profiles determine underwater motion between surface waypoints. Predicted samples never earn score; actual observations are authoritative. The camera and vertical exaggeration are presentation only. Multi-yo prediction and execution use shared canonical kinematics. Performance quality profiles do not change canonical results. No arbitrary XYZ route planner is implemented. No operationally calibrated glider model is claimed.
+
+## THREE-R1.2A.4.2 Performance Closure Checks
+
+Run these before starting seabed mesh work:
+
+```bash
+node tools/js/smoke_three_performance_monitor.mjs
+node tools/js/smoke_three_camera_performance_invariants.mjs
+node tools/js/smoke_three_dirty_invalidation_matrix.mjs
+node tools/js/smoke_three_resource_plateau_extended.mjs
+node tools/js/smoke_e2e_static_server_cleanup.mjs
+node tools/js/audit_three_performance_measurement_boundaries.mjs
+npm.cmd run check
+npm.cmd run test:e2e:focused
+npm.cmd run test:e2e
+```
+
+For headed automated QA, run the focused grep with `--headed`. Human manual QA by the project owner remains separate and pending.
+
+## THREE-R1.2A.4.3 Simulation Presentation and Grouped E2E
+
+Run the new presentation checks with:
+
+```bash
+node tools/js/smoke_three_simulation_presentation_scheduler.mjs
+node tools/js/smoke_simulation_presentation_dirty_matrix.mjs
+node tools/js/smoke_incremental_realized_trajectory.mjs
+node tools/js/smoke_incremental_simulation_events.mjs
+node tools/js/smoke_simulation_field_frame_caching.mjs
+node tools/js/smoke_simulation_hud_throttling.mjs
+node tools/js/smoke_finish_instantly_presentation_budget.mjs
+node tools/js/audit_simulation_presentation_boundaries.mjs
+```
+
+`npm.cmd run test:e2e` is the grouped Playwright authority. It is not reduced coverage: `tools/js/audit_playwright_group_coverage.mjs` proves every listed Playwright test is assigned exactly once before groups run. `npm.cmd run test:e2e:monolithic` remains a diagnostic command.

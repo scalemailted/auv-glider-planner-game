@@ -52,7 +52,17 @@ import { createThreeMissionSceneLifecycle, registerThreeMissionSceneResource, di
 import { publishSceneIsolationDebug } from '../../../ui/MissionShellReset.js';
 import { createMissionWorldInteractionResult } from '../../../core/rendering/MissionWorldInteractionResult.js';
 import { simulationWorldRenderInputFromScene, simulationWorldRenderInputSummary } from '../../../core/rendering/SimulationWorldStateAdapter.js';
-import { createThreeMissionWorldRenderer, updateThreeMissionWorldRenderer, resizeThreeMissionWorldRenderer, setThreeMissionWorldCamera, setThreeMissionLayerVisibility, threeMissionWorldRendererSummary, disposeThreeMissionWorldRenderer } from '../../three/ThreeMissionWorldRenderer.js';
+import { createThreeMissionWorldRenderer, updateThreeMissionWorldRenderer, resizeThreeMissionWorldRenderer, setThreeMissionWorldCamera, setThreeMissionLayerVisibility, threeMissionWorldRendererSummary, resetThreeMissionWorldRendererPerformance, disposeThreeMissionWorldRenderer } from '../../three/ThreeMissionWorldRenderer.js';
+import { createThreePerformanceDebugPayload, inactiveThreePerformanceDebugPayload } from '../../three/ThreeMissionPerformanceMonitor.js';
+import {
+  createThreeSimulationPresentationScheduler,
+  dirtyCategoriesForSimulationPresentationEvent,
+  disposeSimulationPresentationScheduler,
+  markSimulationPresentationDirty,
+  publishSimulationPresentationSnapshot,
+  consumeSimulationPresentationFrame,
+  threeSimulationPresentationSchedulerSummary
+} from '../../three/ThreeSimulationPresentationScheduler.js';
 import {
   createThreeMissionInteractionController,
   updateThreeMissionInteractionContext,
@@ -108,9 +118,26 @@ export class SimulationScene extends PhaserScene {
     this.lifecycleResourceCountBefore = 0;
     this.lifecycleResourceCountAfter = 0;
     this.cleanupReason = null;
+    this.simulationViewModelBuildCount = 0;
     this.shutdownHandlerBindCount = 0;
     this.destroyHandlerBindCount = 0;
     this.duplicateLifecycleHandlerCount = 0;
+    this.presentationScheduler = null;
+    this.latestPresentationFrame = null;
+    this.lastPresentedEngineStepCount = 0;
+    this.lastPresentedEventCount = 0;
+    this.lastPresentedTrajectoryPointCount = 0;
+    this.lastHudRenderAt = 0;
+    this.hudRenderCount = 0;
+    this.rightPanelRenderCount = 0;
+    this.timelineRenderCount = 0;
+    this.hudRenderSkipCount = 0;
+    this.rightPanelRenderSkipCount = 0;
+    this.timelineRenderSkipCount = 0;
+    this.finishPresentationUpdateCount = 0;
+    this.finishEngineMilliseconds = 0;
+    this.finishPresentationMilliseconds = 0;
+    this.finishChunkCount = 0;
   }
 
   init(data = {}) {
@@ -150,6 +177,7 @@ export class SimulationScene extends PhaserScene {
       time: this.launchPayload?.playback?.time ?? this.app.state.playback.time
     });
     this.enginePlanDigest = digestExecutionPlan(this.engine.plan);
+    this.presentationScheduler = createThreeSimulationPresentationScheduler({ maxHz: 30 });
     if (this.executionTransaction) {
       advanceMissionExecutionTransaction(this.executionTransaction, 'engineInitialized', {
         engineSummary: {
@@ -260,6 +288,7 @@ export class SimulationScene extends PhaserScene {
       globalThis.removeEventListener?.('resize', this.onViewportResize);
       this.resizeObserver?.disconnect?.();
       if (this.app?.elements?.overlay?.bottomTimeline) this.app.elements.overlay.bottomTimeline.innerHTML = '';
+      disposeSimulationPresentationScheduler(this.presentationScheduler);
       this.disposeThreeSimulationRenderer();
       this.modal?.destroy?.();
       this.modal = null;
@@ -464,6 +493,22 @@ export class SimulationScene extends PhaserScene {
       engineInitialized: Boolean(this.engine),
       engineStatus: engineSummary,
       engineStepCount: this.engine?.stepCount ?? 0,
+      presentationScheduler: threeSimulationPresentationSchedulerSummary(this.presentationScheduler),
+      presentationFrameCount: this.latestPresentationFrame?.counters?.presentationFrameCount ?? 0,
+      presentationRequestCount: this.latestPresentationFrame?.counters?.presentationRequestCount ?? 0,
+      coalescedPresentationRequestCount: this.latestPresentationFrame?.counters?.coalescedPresentationRequestCount ?? 0,
+      snapshotPublishCount: this.latestPresentationFrame?.counters?.snapshotPublishCount ?? 0,
+      presentationDirtyCategories: [...(this.latestPresentationFrame?.dirtyCategories ?? [])],
+      hudRenderCount: this.hudRenderCount,
+      rightPanelRenderCount: this.rightPanelRenderCount,
+      timelineRenderCount: this.timelineRenderCount,
+      hudRenderSkipCount: this.hudRenderSkipCount,
+      rightPanelRenderSkipCount: this.rightPanelRenderSkipCount,
+      timelineRenderSkipCount: this.timelineRenderSkipCount,
+      finishEngineMilliseconds: Number(this.finishEngineMilliseconds ?? 0),
+      finishPresentationMilliseconds: Number(this.finishPresentationMilliseconds ?? 0),
+      finishChunkCount: Number(this.finishChunkCount ?? 0),
+      finishPresentationUpdateCount: Number(this.finishPresentationUpdateCount ?? 0),
       firstStepCompleted: this.firstStepCompleted === true,
       simulationTimeSeconds: this.engine?.t ?? 0,
       activeAgentCount: this.engine?.agents?.length ?? 0,
@@ -565,6 +610,7 @@ export class SimulationScene extends PhaserScene {
     applyMissionOptionsToMission(this.app.state);
     this.engine = new SimulationEngine({ level: this.app.state.level, mission: this.app.state.mission, plan: this.app.state.plan, trace: this.trace, time: this.app.state.playback.time });
     this.enginePlanDigest = digestExecutionPlan(this.engine.plan);
+    this.presentationScheduler = createThreeSimulationPresentationScheduler({ maxHz: 30 });
     this.abortNoticeShown = false;
     this.stopReasonNoticeShown = false;
     this.app.state.surfaceDecision = null;
@@ -591,6 +637,7 @@ export class SimulationScene extends PhaserScene {
       time: this.app.state.playback.time
     });
     this.enginePlanDigest = digestExecutionPlan(this.engine.plan);
+    this.presentationScheduler = createThreeSimulationPresentationScheduler({ maxHz: 30 });
     this.abortNoticeShown = false;
     this.stopReasonNoticeShown = false;
     this.app.state.surfaceDecision = null;
@@ -654,7 +701,10 @@ export class SimulationScene extends PhaserScene {
           totalSteps += 1;
         }
         this.syncResult();
+        this.publishLatestSimulationSnapshot('finishChunk');
         const elapsed = (globalThis.performance?.now?.() ?? Date.now()) - started;
+        this.finishEngineMilliseconds += elapsed;
+        this.finishChunkCount += 1;
         traceSimulation(this.trace, {
           scene: 'SimulationScene',
           phase: 'finish.chunk.end',
@@ -666,7 +716,10 @@ export class SimulationScene extends PhaserScene {
           this.handleWatchdogAbort(this.buildManualWatchdogSnapshot('finishChunkWallTimeExceeded', { elapsed, totalSteps }));
           break;
         }
-        this.refresh();
+        if (totalSteps % Math.max(stepsPerChunk, 1) === 0) {
+          this.consumeScheduledPresentationFrame({ force: true, reason: 'finishProgress', presentationOnly: true });
+          this.finishPresentationUpdateCount += 1;
+        }
         await yieldToBrowser();
       }
       if (!this.engine.complete && !this.engine.aborted && totalSteps >= maxTotalSteps) {
@@ -676,7 +729,7 @@ export class SimulationScene extends PhaserScene {
       this.engine.ignoreSurfacePauses = previousIgnoreSurfacePauses;
       this.finishingAsync = false;
       this.syncResult();
-      this.refresh();
+      this.consumeScheduledPresentationFrame({ force: true, reason: 'finishFinal' });
       this.notifyAbortIfNeeded();
       this.notifyStopReasonIfNeeded();
     }
@@ -731,7 +784,10 @@ export class SimulationScene extends PhaserScene {
         details: { stepsThisFrame: this.engine.stepCount - beforeStepCount }
       });
     }
-    if (wasRunning || this.engine.complete || this.engine.awaitingSurfaceDecision || this.engine.routeFailureDecision?.active) this.syncSimulationTimeToState();
+    if (wasRunning || this.engine.complete || this.engine.awaitingSurfaceDecision || this.engine.routeFailureDecision?.active) {
+      this.syncSimulationTimeToState();
+      this.publishLatestSimulationSnapshot(wasRunning ? 'playbackStep' : 'status');
+    }
     if (this.engine.awaitingSurfaceDecision) this.refreshSurfaceDecision();
     const snapshot = this.watchdog?.observe({
       engine: this.engine,
@@ -765,7 +821,7 @@ export class SimulationScene extends PhaserScene {
       this.syncAccumulator = 0;
     }
     if (shouldRender) {
-      this.refresh();
+      this.consumeScheduledPresentationFrame({ force: decisionActive || this.engine.complete, reason: 'update' });
       this.renderAccumulator = 0;
     }
     this.refreshSurfaceDecision();
@@ -979,7 +1035,52 @@ export class SimulationScene extends PhaserScene {
     return adaptiveContext;
   }
 
-  refresh() {
+  publishLatestSimulationSnapshot(reason = 'snapshot') {
+    if (!this.presentationScheduler || !this.engine) return;
+    const engineStepCount = Number(this.engine.stepCount ?? 0);
+    const eventCount = Number(this.engine.events?.length ?? 0);
+    const trajectoryPointCount = (this.engine.agents ?? []).reduce((sum, agent) => sum + Number(agent.history?.length ?? 0), 0);
+    const categories = [];
+    if (engineStepCount !== Number(this.lastPresentedEngineStepCount ?? -1)) {
+      categories.push(...dirtyCategoriesForSimulationPresentationEvent('motionSnapshot', {
+        newTrajectoryPoint: trajectoryPointCount > Number(this.lastPresentedTrajectoryPointCount ?? 0),
+        routeStatusChanged: Boolean(this.engine.awaitingSurfaceDecision || this.engine.routeFailureDecision?.active || this.engine.complete || this.engine.aborted),
+        includeHud: true
+      }));
+    }
+    if (eventCount > Number(this.lastPresentedEventCount ?? 0)) {
+      const events = this.engine.events ?? [];
+      const added = events.slice(Number(this.lastPresentedEventCount ?? 0));
+      if (added.some((event) => ['sample', 'duplicateSample', 'probabilityOutcome'].includes(event.type))) categories.push(...dirtyCategoriesForSimulationPresentationEvent('observation'));
+      if (added.some((event) => /surface/i.test(event.type ?? '') || event.gpsFix === true || event.canReplan === true)) categories.push(...dirtyCategoriesForSimulationPresentationEvent('surfacing'));
+    }
+    if (this.engine.complete || this.engine.aborted) categories.push(...dirtyCategoriesForSimulationPresentationEvent('terminal'));
+    publishSimulationPresentationSnapshot(this.presentationScheduler, {
+      engineStepCount,
+      eventCount,
+      trajectoryPointCount,
+      simulationTimeSeconds: this.engine.t,
+      complete: this.engine.complete === true,
+      running: this.engine.running === true,
+      reason
+    }, { engineStepCount });
+    markSimulationPresentationDirty(this.presentationScheduler, [...new Set(categories)], reason);
+    this.lastPresentedEngineStepCount = engineStepCount;
+    this.lastPresentedEventCount = eventCount;
+    this.lastPresentedTrajectoryPointCount = trajectoryPointCount;
+  }
+
+  consumeScheduledPresentationFrame(options = {}) {
+    const started = globalThis.performance?.now?.() ?? Date.now();
+    const frame = consumeSimulationPresentationFrame(this.presentationScheduler, started, { force: options.force === true });
+    if (!frame.shouldPresent) return frame;
+    this.latestPresentationFrame = frame;
+    this.refresh({ reason: options.reason ?? frame.reasons?.at?.(-1) ?? 'scheduled', presentationOnly: options.presentationOnly === true, dirtyCategories: frame.dirtyCategories });
+    this.finishPresentationMilliseconds += Math.max(0, (globalThis.performance?.now?.() ?? Date.now()) - started);
+    return frame;
+  }
+  refresh(options = {}) {
+    this.currentPresentationDirtyCategories = Array.isArray(options.dirtyCategories) ? [...options.dirtyCategories] : null;
     const renderTime = getActiveRenderTime(this.app.state, this.engine);
     traceSimulation(this.trace, {
       scene: 'SimulationScene',
@@ -1030,11 +1131,24 @@ export class SimulationScene extends PhaserScene {
       simTime: renderTime,
       message: 'Refreshing simulation UI panels'
     });
-    this.app.waypointPanel?.refresh(this.app.state, { engine: this.engine });
-    this.app.summaryHud?.refresh(this.app.state, { engine: this.engine });
-    this.app.agentPerformanceHud?.refresh(this.app.state, { engine: this.engine });
-    this.refreshControls();
-    this.renderSimulationTimeline();
+    const uiNow = globalThis.performance?.now?.() ?? Date.now();
+    const criticalUi = options.presentationOnly !== true && (this.engine.complete || this.engine.aborted || this.engine.awaitingSurfaceDecision || this.engine.routeFailureDecision?.active || /selection|terminal|finish/i.test(String(options.reason ?? '')));
+    const hudDue = criticalUi || uiNow - Number(this.lastHudRenderAt ?? 0) >= 100;
+    if (hudDue) {
+      this.app.waypointPanel?.refresh(this.app.state, { engine: this.engine });
+      this.app.summaryHud?.refresh(this.app.state, { engine: this.engine });
+      this.app.agentPerformanceHud?.refresh(this.app.state, { engine: this.engine });
+      this.refreshControls();
+      this.renderSimulationTimeline();
+      this.hudRenderCount += 1;
+      this.rightPanelRenderCount += 1;
+      this.timelineRenderCount += 1;
+      this.lastHudRenderAt = uiNow;
+    } else {
+      this.hudRenderSkipCount += 1;
+      this.rightPanelRenderSkipCount += 1;
+      this.timelineRenderSkipCount += 1;
+    }
     traceSimulation(this.trace, {
       scene: 'SimulationScene',
       phase: 'renderer.frame.end',
@@ -1085,6 +1199,7 @@ export class SimulationScene extends PhaserScene {
     this.threeSimulationRenderer = null;
     this.threeSimulationContainer?.remove?.();
     this.threeSimulationContainer = null;
+    globalThis.ANCHOR_THREE_PERFORMANCE_DEBUG = inactiveThreePerformanceDebugPayload();
   }
 
   ensureThreeSimulationInteractionController() {
@@ -1104,6 +1219,7 @@ export class SimulationScene extends PhaserScene {
     return this.threeSimulationInteractionController;
   }
   buildSimulationWorldViewModelForScene(renderTime = null) {
+    this.simulationViewModelBuildCount = Number(this.simulationViewModelBuildCount ?? 0) + 1;
     const input = simulationWorldRenderInputFromScene(this, {
       activeTimeSeconds: renderTime ?? this.engine?.t ?? 0,
       displaySettings: {
@@ -1122,6 +1238,8 @@ export class SimulationScene extends PhaserScene {
       mission: this.app.state.mission,
       plan: this.app.state.plan
     });
+    if (this.currentPresentationDirtyCategories) viewModel.presentationDirtyCategories = [...this.currentPresentationDirtyCategories];
+    viewModel.presentationSchedulerSummary = threeSimulationPresentationSchedulerSummary(this.presentationScheduler);
     this.simulationRenderViewModel = viewModel;
     return viewModel;
   }
@@ -1363,7 +1481,23 @@ export class SimulationScene extends PhaserScene {
         return this.threeSimulationRenderer?.cameraState ?? null;
       },
       interactionControllerSummary: () => threeMissionInteractionControllerSummary(this.threeSimulationInteractionController ?? {}),
-      renderDebug: () => globalThis.ANCHOR_SIMULATION_RENDER_DEBUG ?? null
+      renderDebug: () => globalThis.ANCHOR_SIMULATION_RENDER_DEBUG ?? null,
+      resetPerformanceWindow: () => {
+        resetThreeMissionWorldRendererPerformance(this.threeSimulationRenderer);
+        this.presentationScheduler = createThreeSimulationPresentationScheduler({ maxHz: 30 });
+        this.latestPresentationFrame = null;
+        this.lastPresentedEngineStepCount = Number(this.engine?.stepCount ?? 0);
+        this.lastPresentedEventCount = Number(this.engine?.events?.length ?? 0);
+        this.lastPresentedTrajectoryPointCount = (this.engine?.agents ?? []).reduce((sum, agent) => sum + Number(agent.history?.length ?? 0), 0);
+        this.hudRenderCount = 0;
+        this.rightPanelRenderCount = 0;
+        this.timelineRenderCount = 0;
+        this.hudRenderSkipCount = 0;
+        this.rightPanelRenderSkipCount = 0;
+        this.timelineRenderSkipCount = 0;
+        return true;
+      },
+      performanceDebug: () => globalThis.ANCHOR_THREE_PERFORMANCE_DEBUG ?? null
     };
   }
 
@@ -1428,6 +1562,21 @@ export class SimulationScene extends PhaserScene {
       canonicalObservationCount
     });
     globalThis.ANCHOR_WATER_COLUMN_RENDER_DEBUG = waterColumnDebug;
+    const performanceDebug = createThreePerformanceDebugPayload({
+      rendererSummary,
+      phase: 'simulation',
+      qualityProfile: this.app.state.ui?.waterColumn?.qualityProfile ?? this.app.state.ui?.threeMissionQualityProfile ?? 'balanced',
+      missionViewModelBuildCount: Number(this.simulationViewModelBuildCount ?? 0),
+      counters: {
+        ...(this.latestPresentationFrame?.counters ?? {}),
+        hudRender: this.hudRenderCount,
+        rightPanelRender: this.rightPanelRenderCount,
+        timelineRender: this.timelineRenderCount
+      },
+      renderOnDemandEnabled: true,
+      continuousAnimationReason: 'presentation-scheduler-coalesced-updates'
+    });
+    globalThis.ANCHOR_THREE_PERFORMANCE_DEBUG = performanceDebug;
     globalThis.ANCHOR_SIMULATION_RENDER_DEBUG = {
       version: 'mig-r1',
       activeBackend: activeBackend ?? this.getSimulationRendererBackend(),
@@ -1471,6 +1620,22 @@ export class SimulationScene extends PhaserScene {
       communicationEventCount: summary.communicationEventCount ?? 0,
       routeFailureCount: summary.routeFailureCount ?? 0,
       engineStepCount: this.engine?.stepCount ?? 0,
+      presentationScheduler: threeSimulationPresentationSchedulerSummary(this.presentationScheduler),
+      presentationFrameCount: this.latestPresentationFrame?.counters?.presentationFrameCount ?? 0,
+      presentationRequestCount: this.latestPresentationFrame?.counters?.presentationRequestCount ?? 0,
+      coalescedPresentationRequestCount: this.latestPresentationFrame?.counters?.coalescedPresentationRequestCount ?? 0,
+      snapshotPublishCount: this.latestPresentationFrame?.counters?.snapshotPublishCount ?? 0,
+      presentationDirtyCategories: [...(this.latestPresentationFrame?.dirtyCategories ?? [])],
+      hudRenderCount: this.hudRenderCount,
+      rightPanelRenderCount: this.rightPanelRenderCount,
+      timelineRenderCount: this.timelineRenderCount,
+      hudRenderSkipCount: this.hudRenderSkipCount,
+      rightPanelRenderSkipCount: this.rightPanelRenderSkipCount,
+      timelineRenderSkipCount: this.timelineRenderSkipCount,
+      finishEngineMilliseconds: Number(this.finishEngineMilliseconds ?? 0),
+      finishPresentationMilliseconds: Number(this.finishPresentationMilliseconds ?? 0),
+      finishChunkCount: Number(this.finishChunkCount ?? 0),
+      finishPresentationUpdateCount: Number(this.finishPresentationUpdateCount ?? 0),
       firstStepCompleted: this.firstStepCompleted === true,
       simulationReceivedPlanDigest: this.simulationReceivedPlanDigest ?? null,
       enginePlanDigest: this.enginePlanDigest ?? null,
@@ -1496,6 +1661,8 @@ export class SimulationScene extends PhaserScene {
       inputSummary: simulationWorldRenderInputSummary(this.simulationRenderInput ?? {}),
       rendererSummary,
       waterColumnDebug,
+      performanceDebug,
+      threePerformanceDebug: performanceDebug,
       interactionControllerSummary: controllerSummary,
       parityWarnings,
       pointerOwner: this.getSimulationRendererBackend() === 'threeMission3d' ? 'three' : 'phaser',

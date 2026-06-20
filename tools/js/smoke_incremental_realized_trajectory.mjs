@@ -1,0 +1,20 @@
+﻿import assert from 'node:assert/strict';
+import * as THREE from 'three';
+import { updateThreeRealizedTrajectoryLayer } from '../../src/game/three/layers/ThreeRealizedTrajectoryLayer.js';
+import { createMissionWorldCoordinateTransform } from '../../src/core/rendering/MissionWorldCoordinates.js';
+
+const group = new THREE.Group();
+const coordinateSystem = createMissionWorldCoordinateTransform({ grid: { width: 10, height: 10 }, cellSize: 1 });
+const one = { coordinateSystem, realizedTrajectories: [{ id: 'g1-realized', agentId: 'g1', points: [{ x: 1, y: 1, t: 0 }, { x: 2, y: 1, t: 1 }] }] };
+updateThreeRealizedTrajectoryLayer(group, one);
+const line = group.userData.objects.get('g1-realized');
+assert.ok(line, 'line is created');
+const capacity = line.userData.capacity;
+const two = { coordinateSystem, realizedTrajectories: [{ id: 'g1-realized', agentId: 'g1', points: [{ x: 1, y: 1, t: 0 }, { x: 2, y: 1, t: 1 }, { x: 3, y: 1, t: 2 }] }] };
+updateThreeRealizedTrajectoryLayer(group, two);
+assert.equal(group.userData.objects.get('g1-realized'), line, 'line identity remains stable');
+assert.equal(line.userData.pointCount, 3);
+assert.equal(line.userData.capacity, capacity, 'small append does not resize');
+assert.ok(group.userData.trajectoryAppendCount >= 1, 'append counter increments');
+assert.equal(group.userData.trajectoryFullRebuildCount, 0, 'normal append does not full rebuild');
+console.log('PASS smoke_incremental_realized_trajectory');

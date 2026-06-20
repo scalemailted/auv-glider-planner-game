@@ -1,13 +1,15 @@
-import * as THREE from 'three';
+﻿import * as THREE from 'three';
 import { clearGroup, disposeObject, positionForRecord } from './ThreeMissionLayerUtils.js';
 
 export function updateThreeObservationLayer(group, viewModel = {}) {
   if (!group) return group;
   const transform = viewModel.coordinateSystem;
   const existing = group.userData.objects instanceof Map ? group.userData.objects : new Map();
+  const counters = group.userData.counters ?? { observationObjectCreateCount: 0, observationObjectReuseCount: 0, duplicateObservationObjectCount: 0 };
   const seen = new Set();
   for (const [index, observation] of (viewModel.observations ?? []).entries()) {
     const id = observation.id ?? `observation-${index}`;
+    if (seen.has(id)) counters.duplicateObservationObjectCount += 1;
     seen.add(id);
     let marker = existing.get(id);
     if (!marker) {
@@ -18,6 +20,9 @@ export function updateThreeObservationLayer(group, viewModel = {}) {
       marker.name = id;
       group.add(marker);
       existing.set(id, marker);
+      counters.observationObjectCreateCount += 1;
+    } else {
+      counters.observationObjectReuseCount += 1;
     }
     marker.position.copy(positionForRecord(transform, observation, 0.38));
     marker.material.color.setHex(colorForStatus(observation.status));
@@ -31,12 +36,22 @@ export function updateThreeObservationLayer(group, viewModel = {}) {
     }
   }
   group.userData.objects = existing;
+  group.userData.counters = counters;
+  group.userData.observationObjectCreateCount = counters.observationObjectCreateCount;
+  group.userData.observationObjectReuseCount = counters.observationObjectReuseCount;
+  group.userData.duplicateObservationObjectCount = counters.duplicateObservationObjectCount;
   return group;
 }
 
 export function clearThreeObservationLayer(group) {
   clearGroup(group);
-  if (group?.userData) group.userData.objects = new Map();
+  if (group?.userData) {
+    group.userData.objects = new Map();
+    group.userData.counters = { observationObjectCreateCount: 0, observationObjectReuseCount: 0, duplicateObservationObjectCount: 0 };
+    group.userData.observationObjectCreateCount = 0;
+    group.userData.observationObjectReuseCount = 0;
+    group.userData.duplicateObservationObjectCount = 0;
+  }
 }
 
 function colorForStatus(status) {

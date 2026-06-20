@@ -128,6 +128,7 @@ import { createMissionPlanningToolState, missionPlanningToolStateSummary, setMis
 import { WAYPOINT_SNAP_MODES, VOLUME_RENDER_MODES, continuousMissionUiStateSummary, normalizeContinuousMissionUiState, validateContinuousMissionUiState } from '../../src/core/rendering/ContinuousMissionUiState.js';
 import { THREE_BATHYMETRY_RENDERER_VERSION, threeBathymetryRendererSummary } from '../../src/game/three/ThreeBathymetryRenderer.js';
 import { THREE_MISSION_WORLD_RENDERER_VERSION, threeMissionWorldRendererSummary } from '../../src/game/three/ThreeMissionWorldRenderer.js';
+import { createThreeMissionPerformanceMonitor, threeMissionPerformanceSummary } from '../../src/game/three/ThreeMissionPerformanceMonitor.js';
 import { THREE_MISSION_CAMERA_CONTROLLER_VERSION, THREE_MISSION_CAMERA_MOUSE_MAPPING, createThreeMissionCameraController, threeMissionCameraControllerSummary } from '../../src/game/three/ThreeMissionCameraController.js';
 import { createMissionWorldFixture } from './mission_world_fixture.mjs';
 import { rendererHostPanelHtml } from '../../src/ui/rendering/RendererHostPanel.js';
@@ -1277,6 +1278,10 @@ assert.equal(typeof r3bInteractionModules[3].hitTestThreeMissionWorld, 'function
 assert.equal(typeof r3bInteractionModules[4].createThreeMissionInteractionController, 'function', 'R3B Three controller imports');
 assert.equal(typeof r3bInteractionModules[5].updateThreePlanningInteractionLayer, 'function', 'R3B interaction layer imports');
 assert.equal(typeof r3bInteractionModules[6].handleMissionWorldInteractionIntent, 'function', 'R3B workspace bridge imports');
+const modelStackPerformanceMonitor = createThreeMissionPerformanceMonitor({ windowSize: 4 });
+const modelStackPerformanceSummary = threeMissionPerformanceSummary(modelStackPerformanceMonitor);
+assert.equal(modelStackPerformanceSummary.ownsScoring, false, 'Three performance monitor does not own scoring');
+assert.equal(modelStackPerformanceSummary.ownsSimulationState, false, 'Three performance monitor does not own simulation state');
 
 const executionModules = await Promise.all([
   import('../../src/core/simulation/MissionExecutionTransaction.js'),

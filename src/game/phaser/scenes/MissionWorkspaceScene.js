@@ -112,8 +112,10 @@ import {
   setThreeMissionWorldCamera,
   setThreeMissionLayerVisibility,
   threeMissionWorldRendererSummary,
+  resetThreeMissionWorldRendererPerformance,
   disposeThreeMissionWorldRenderer
 } from '../../three/ThreeMissionWorldRenderer.js';
+import { createThreePerformanceDebugPayload, inactiveThreePerformanceDebugPayload } from '../../three/ThreeMissionPerformanceMonitor.js';
 import {
   focusThreeMissionCamera,
   resetThreeMissionCamera,
@@ -228,6 +230,7 @@ export class MissionWorkspaceScene extends PhaserScene {
     this.continuousUiStateCreated = false;
     this.continuousUiStateValidated = false;
     this.planningSceneCreateCompleted = false;
+    this.threePerformanceDiagnostics = createMissionWorkspacePerformanceCounters();
   }
 
   create() {
@@ -1645,6 +1648,7 @@ export class MissionWorkspaceScene extends PhaserScene {
     this.threeMissionRenderer = null;
     this.threeMissionContainer?.remove?.();
     this.threeMissionContainer = null;
+    globalThis.ANCHOR_THREE_PERFORMANCE_DEBUG = inactiveThreePerformanceDebugPayload();
   }
 
   ensureThreeInteractionController() {
@@ -1710,6 +1714,10 @@ export class MissionWorkspaceScene extends PhaserScene {
     return guidance;
   }
   buildMissionWorldViewModelForScene() {
+    this.threePerformanceDiagnostics ??= createMissionWorkspacePerformanceCounters();
+    this.threePerformanceDiagnostics.missionViewModelBuildCount += 1;
+    const cameraGestureActive = this.threeInteractionController?.cameraGestureActive === true || this.threeMissionRenderer?.cameraController?.gestureActive === true;
+    if (cameraGestureActive) this.threePerformanceDiagnostics.modelBuildCountDuringCameraGesture += 1;
     this.refreshCanonicalPlanningGuidanceForThree();
     const input = missionWorldRenderInputFromWorkspace(this, {
       visibilityTier: this.app.state.challengeMode === 'forecast' && this.app.state.ui?.revealTruth ? 'oracle' : 'fair',
@@ -1748,6 +1756,10 @@ export class MissionWorkspaceScene extends PhaserScene {
       options: { interactionMode: this.app.state.ui?.threeMissionInteractionMode ?? interactionModeForTool(planningToolState.activeToolId) }
     });
     this.missionRenderViewModel = viewModel;
+    if ((viewModel.plannedDiveSegments ?? []).length) {
+      this.threePerformanceDiagnostics.predictedTrajectoryBuildCount += 1;
+      if (cameraGestureActive) this.threePerformanceDiagnostics.predictionBuildCountDuringCameraGesture += 1;
+    }
     return viewModel;
   }
 
@@ -1878,6 +1890,7 @@ export class MissionWorkspaceScene extends PhaserScene {
     this.app.state.ui ??= {};
     this.app.state.ui.divePlanDebug = plannedDiveDebug;
     this.publishContinuousMissionDebug({ rendererSummary, waterColumnDebug, plannedDiveDebug });
+    const performanceDebug = this.publishThreePerformanceDebug({ rendererSummary, phase: viewModel?.phase ?? this.app.state.mode ?? 'planning' });
     globalThis.ANCHOR_MISSION_RENDER_DEBUG = {
       version: 'gfx-r3b',
       activeBackend: activeBackend ?? this.getMissionRendererBackend(),
@@ -1941,6 +1954,8 @@ export class MissionWorkspaceScene extends PhaserScene {
       inputSummary: missionWorldRenderInputSummary(this.missionRenderInput ?? {}),
       rendererSummary,
       waterColumnDebug,
+      performanceDebug,
+      threePerformanceDebug: performanceDebug,
       interactionSummary,
       interactionControllerSummary: controllerSummary,
       interactionBridgeSummary: bridgeSummary,
@@ -2114,6 +2129,44 @@ export class MissionWorkspaceScene extends PhaserScene {
     this.installMissionRenderTestApi();
   }
 
+  resetThreePerformanceDiagnosticsWindow() {
+    this.threePerformanceDiagnostics = createMissionWorkspacePerformanceCounters();
+    resetThreeMissionWorldRendererPerformance(this.threeMissionRenderer);
+    return this.publishThreePerformanceDebug({
+      rendererSummary: this.threeMissionRenderer ? threeMissionWorldRendererSummary(this.threeMissionRenderer) : null,
+      phase: this.app.state.mode ?? 'planning'
+    });
+  }
+
+  buildThreePerformanceDebugPayload({ rendererSummary = null, phase = 'planning' } = {}) {
+    const diagnostics = this.threePerformanceDiagnostics ?? createMissionWorkspacePerformanceCounters();
+    const overlayRenderCount = Number(this.hud?.overlayRenderCount ?? globalThis.ANCHOR_CONTINUOUS_UI_DEBUG?.overlayRenderCount ?? 0);
+    return createThreePerformanceDebugPayload({
+      rendererSummary,
+      phase,
+      qualityProfile: this.app.state.ui?.waterColumn?.qualityProfile ?? this.app.state.ui?.threeMissionQualityProfile ?? 'balanced',
+      counters: diagnostics,
+      missionViewModelBuildCount: diagnostics.missionViewModelBuildCount,
+      predictedTrajectoryBuildCount: diagnostics.predictedTrajectoryBuildCount,
+      predictedTrajectoryCacheHitCount: diagnostics.predictedTrajectoryCacheHitCount,
+      predictedTrajectoryCacheMissCount: diagnostics.predictedTrajectoryCacheMissCount,
+      missionConsoleRenderCount: overlayRenderCount,
+      rightPanelRenderCount: overlayRenderCount,
+      timelineRenderCount: overlayRenderCount,
+      modelBuildCountDuringCameraGesture: diagnostics.modelBuildCountDuringCameraGesture,
+      predictionBuildCountDuringCameraGesture: diagnostics.predictionBuildCountDuringCameraGesture,
+      textureUpdateCountDuringCameraGesture: rendererSummary?.performanceCounters?.textureUpdateDuringCameraGesture ?? 0,
+      panelRenderCountDuringCameraGesture: diagnostics.panelRenderCountDuringCameraGesture,
+      timelineRenderCountDuringCameraGesture: diagnostics.timelineRenderCountDuringCameraGesture
+    });
+  }
+
+  publishThreePerformanceDebug(options = {}) {
+    const debug = this.buildThreePerformanceDebugPayload(options);
+    globalThis.ANCHOR_THREE_PERFORMANCE_DEBUG = debug;
+    return debug;
+  }
+
   installMissionRenderTestApi() {
     globalThis.ANCHOR_MISSION_RENDER_TEST_API = {
       version: 'gfx-r3b',
@@ -2145,6 +2198,8 @@ export class MissionWorkspaceScene extends PhaserScene {
         return this.threeMissionRenderer?.cameraState ?? null;
       },
       interactionControllerSummary: () => threeMissionInteractionControllerSummary(this.threeInteractionController ?? {}),
+      resetPerformanceWindow: () => this.resetThreePerformanceDiagnosticsWindow(),
+      performanceDebug: () => this.publishThreePerformanceDebug({ rendererSummary: this.threeMissionRenderer ? threeMissionWorldRendererSummary(this.threeMissionRenderer) : null, phase: this.app.state.mode ?? 'planning' }),
       renderDebug: () => globalThis.ANCHOR_MISSION_RENDER_DEBUG ?? null
     };
   }
@@ -2158,7 +2213,7 @@ export class MissionWorkspaceScene extends PhaserScene {
   screenPointForMissionGroundCell(cell) {
     if (!this.threeMissionRenderer || !this.missionRenderViewModel?.coordinateSystem || !cell) return null;
     const world = gridCellToWorld(this.missionRenderViewModel.coordinateSystem, cell.x, cell.y, 0);
-    return this.projectThreeWorldPoint({ x: world.x, y: Number(world.y ?? 0) + 0.08, z: world.z });
+    return this.projectThreeWorldPoint({ x: world.x, y: Number(world.y ?? 0) + 0.12, z: world.z });
   }
 
   screenPointForMissionDepthCell(layerId, cell) {
@@ -2167,7 +2222,7 @@ export class MissionWorkspaceScene extends PhaserScene {
     this.app.state.ui ??= {};
     this.app.state.ui.threeMissionInteraction ??= {};
     this.app.state.ui.threeMissionInteraction.expectedGridCell = { x: Math.round(Number(cell.x)), y: Math.round(Number(cell.y)), depthLayerId: layerId };
-    return this.projectThreeWorldPoint({ x: world.x, y: Number(world.y ?? 0) + 0.08, z: world.z });
+    return this.projectThreeWorldPoint({ x: world.x, y: Number(world.y ?? 0) + 0.12, z: world.z });
   }
 
   screenPointForMissionRecord(record) {
@@ -4986,6 +5041,19 @@ function formatScore(value) {
 
 
 
+
+function createMissionWorkspacePerformanceCounters() {
+  return {
+    missionViewModelBuildCount: 0,
+    predictedTrajectoryBuildCount: 0,
+    predictedTrajectoryCacheHitCount: 0,
+    predictedTrajectoryCacheMissCount: 0,
+    modelBuildCountDuringCameraGesture: 0,
+    predictionBuildCountDuringCameraGesture: 0,
+    panelRenderCountDuringCameraGesture: 0,
+    timelineRenderCountDuringCameraGesture: 0
+  };
+}
 
 function plannedDiveDebugPayload(viewModel = {}, rendererSummary = null, selectedWaypoint = null, selectedAgentId = null) {
   const segments = viewModel.plannedDiveSegments ?? [];

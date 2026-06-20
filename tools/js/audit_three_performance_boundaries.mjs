@@ -1,8 +1,14 @@
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 const renderer = fs.readFileSync('src/game/three/ThreeMissionWorldRenderer.js', 'utf8');
+const monitor = fs.readFileSync('src/game/three/ThreeMissionPerformanceMonitor.js', 'utf8');
+const missionScene = fs.readFileSync('src/game/phaser/scenes/MissionWorkspaceScene.js', 'utf8');
 const targetLayer = fs.readFileSync('src/game/three/layers/ThreeSamplingTargetLayer.js', 'utf8');
+const scheduler = fs.readFileSync('src/game/three/ThreeSimulationPresentationScheduler.js', 'utf8');
 assert.match(targetLayer, /objects instanceof Map/, 'sampling target layer reuses stable objects');
 assert.match(renderer, /disposeThreeMissionCameraController/, 'renderer disposal still tears down camera controller');
+assert.match(renderer, /dirtyCategorySet/, 'renderer honors simulation presentation dirty categories');
+assert.match(renderer, /scalarFieldFrameSkipCount/, 'renderer tracks scalar field frame cache skips');
+assert.match(scheduler, /ownsSimulationState: false/, 'presentation scheduler owns no canonical simulation state');
 assert.doesNotMatch(renderer, /new Worker\(/, 'no worker dependency added');
 console.log(JSON.stringify({ ok: true }));

@@ -1,0 +1,21 @@
+﻿import assert from 'node:assert/strict';
+import * as THREE from 'three';
+import { updateThreeObservationLayer } from '../../src/game/three/layers/ThreeObservationLayer.js';
+import { updateThreeSurfacingEventLayer } from '../../src/game/three/layers/ThreeSurfacingEventLayer.js';
+import { createMissionWorldCoordinateTransform } from '../../src/core/rendering/MissionWorldCoordinates.js';
+
+const coordinateSystem = createMissionWorldCoordinateTransform({ grid: { width: 8, height: 8 }, cellSize: 1 });
+const observations = new THREE.Group();
+updateThreeObservationLayer(observations, { coordinateSystem, observations: [{ id: 'obs-1', x: 1, y: 2, type: 'sample' }] });
+const obsMarker = observations.userData.objects.get('obs-1');
+updateThreeObservationLayer(observations, { coordinateSystem, observations: [{ id: 'obs-1', x: 1, y: 2, type: 'sample' }] });
+assert.equal(observations.userData.objects.get('obs-1'), obsMarker, 'observation object is reused');
+assert.equal(observations.userData.observationObjectCreateCount, 1);
+assert.ok(observations.userData.observationObjectReuseCount >= 1);
+const surfacing = new THREE.Group();
+updateThreeSurfacingEventLayer(surfacing, { coordinateSystem, surfacingEvents: [{ id: 'surf-1', x: 3, y: 4, type: 'surface' }] });
+const surfMarker = surfacing.userData.objects.get('surf-1');
+updateThreeSurfacingEventLayer(surfacing, { coordinateSystem, surfacingEvents: [{ id: 'surf-1', x: 3, y: 4, type: 'surface' }] });
+assert.equal(surfacing.userData.objects.get('surf-1'), surfMarker, 'surfacing object is reused');
+assert.equal(surfacing.userData.surfacingObjectCreateCount, 1);
+console.log('PASS smoke_incremental_simulation_events');

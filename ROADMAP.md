@@ -24,7 +24,7 @@ Browser ANCHOR is the visual game and referee. Node/OceanBox-JS is the canonical
 
 ## 2. Current Architecture
 
-Current renderer sequence: THREE-R1.1E scene isolation and THREE-R1.2A water-column slabs are followed by THREE-R1.2A.1 volumetric activation/lifecycle hardening, THREE-R1.2A.3 continuous waypoint/dive/field activation, THREE-R1.2A.3.1 continuous Mission UI runtime stabilization, then THREE-R1.2B bathymetric seabed mesh/coastline/landmass geometry, THREE-R1.2C terrain-aware/polished 3D presentation, and later THREE-R2 replay/debrief/editor parity.
+Current renderer sequence: THREE-R1.1E scene isolation and THREE-R1.2A water-column slabs are followed by THREE-R1.2A.1 volumetric activation/lifecycle hardening, THREE-R1.2A.3 continuous waypoint/dive/field activation, THREE-R1.2A.3.1 continuous Mission UI runtime stabilization, THREE-R1.2A.4.2 performance measurement, THREE-R1.2A.4.3 Simulation presentation optimization and authoritative grouped E2E, then THREE-R1.2B bathymetric seabed mesh/coastline/landmass geometry, THREE-R1.2C terrain-aware/polished 3D presentation, and later THREE-R2 replay/debrief/editor parity.
 
 ### Browser ANCHOR
 
@@ -320,7 +320,7 @@ H4.1 hardens replay artifacts with formal schemas, deterministic integrity issue
 
 ## Current Renderer Stabilization Note
 
-THREE-R1.2A adds the operational 2.5D water-column renderer over the existing P11 model. THREE-R1.2A.3.1 stabilizes the visible continuous Planning UI and execute-through-dive workflow. The next renderer phase should be THREE-R1.2B - Bathymetric Seabed Mesh, Coastline, and Landmass Geometry.
+THREE-R1.2A adds the operational 2.5D water-column renderer over the existing P11 model. THREE-R1.2A.3.1 stabilizes the visible continuous Planning UI and execute-through-dive workflow. THREE-R1.2A.4.2 adds measured performance/debug instrumentation and headed UX validation. THREE-R1.2A.4.3 adds Simulation presentation scheduling, dirty-category incremental updates, and authoritative grouped E2E coverage. THREE-R1.2B - Bathymetric Seabed Mesh, Coastline, and Landmass Geometry is gated until grouped/full E2E evidence passes and the Simulation performance target or 2x improvement gate is met.
 
 ### THREE-R1.2A.2 - Depth-aware sampling value, dive feasibility, and scientific scoring
 
@@ -329,26 +329,40 @@ Implemented as a stabilization step before terrain/seabed work. Horizontal surfa
 Next intended renderer/science order:
 
 1. THREE-R1.2A.2 - Depth-aware sampling value, dive feasibility, and scientific scoring
-2. THREE-R1.2B - Bathymetric seabed mesh, coastline, and landmass geometry
-3. THREE-R1.2C - Terrain-aware profile feasibility and polished 3D mission presentation
-4. THREE-R2 - Replay, debrief route review, and editor parity
+2. THREE-R1.2A.4.2 - Performance measurement, headed UX validation, and full-suite reliability closure
+3. THREE-R1.2B - Bathymetric seabed mesh, coastline, and landmass geometry, only after the closure gate is satisfied
+4. THREE-R1.2C - Terrain-aware profile feasibility and polished 3D mission presentation
+5. THREE-R2 - Replay, debrief route review, and editor parity
 
 ## Renderer Roadmap Checkpoint
 
 Current order:
 
 1. THREE-R1.2A.4 - Predicted 3D dive planning and bathymetry renderer convergence.
-2. THREE-R1.2B - Continuous bathymetric seabed mesh, coastline, and landmass geometry.
-3. THREE-R1.2C - Terrain-aware continuous mission validation and polished 3D presentation.
-4. THREE-R2 - Replay, debrief route review, and editor parity.
+2. THREE-R1.2A.4.2 - Performance measurement, headed UX validation, and full-suite reliability closure.
+3. THREE-R1.2B - Continuous bathymetric seabed mesh, coastline, and landmass geometry, gated by the closure evidence.
+4. THREE-R1.2C - Terrain-aware continuous mission validation and polished 3D presentation.
+5. THREE-R2 - Replay, debrief route review, and editor parity.
 
 THREE-R1.2A.4 keeps surface waypoints as navigation/surfacing intent and moves underwater geometry into segment dive-profile prediction. It does not add arbitrary XYZ path planning, WebGPU fluid simulation, calibrated ocean claims, or renderer-owned simulation/scoring.
 
 ## Renderer Roadmap Order
 
 1. THREE-R1.2A.4.1 - Sampling targets, camera freedom, multi-yo execution parity, and runtime performance hardening.
-2. THREE-R1.2B - Continuous bathymetric seabed mesh, coastline, and landmass geometry.
-3. THREE-R1.2C - Terrain-aware continuous mission validation and polished 3D presentation.
-4. THREE-R2 - Replay, debrief route review, and editor parity.
+2. THREE-R1.2A.4.2 - Performance measurement, headed UX validation, and full-suite reliability closure.
+3. THREE-R1.2B - Continuous bathymetric seabed mesh, coastline, and landmass geometry, gated by accepted R1.2A.4.2 performance/reliability evidence.
+4. THREE-R1.2C - Terrain-aware continuous mission validation and polished 3D presentation.
+5. THREE-R2 - Replay, debrief route review, and editor parity.
 
-Do not mark THREE-R1.2A complete while camera freedom, sampling-target semantics, multi-yo execution parity, or runtime stability remain unverified.
+Do not mark THREE-R1.2A complete while camera freedom, sampling-target semantics, multi-yo execution parity, runtime stability, measured performance, headed UX validation, or full-suite reliability remain unverified.
+
+### THREE-R1.2A.4.3 Gate
+
+Current roadmap order:
+
+1. THREE-R1.2A.4.3 - Simulation presentation optimization and authoritative grouped E2E
+2. THREE-R1.2B - Continuous bathymetric seabed mesh, coastline, and landmass geometry
+3. THREE-R1.2C - Terrain-aware continuous mission validation and polished 3D presentation
+4. THREE-R2 - Replay, debrief route review, and editor parity
+
+THREE-R1.2B should not start unless the Simulation performance acceptance target or minimum 2x improvement gate is met, grouped E2E coverage audit passes, grouped E2E passes, and human manual QA by the project owner is explicitly accounted for as separate from headed automated QA.

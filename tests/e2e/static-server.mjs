@@ -38,7 +38,10 @@ export function startStaticServer({ port = 9321, root = process.cwd() } = {}) {
     return close(callback);
   };
 
-  return new Promise((resolveServer) => {
+  return new Promise((resolveServer, rejectServer) => {
+    server.once('error', (error) => {
+      rejectServer(new Error(`Static test server could not bind http://127.0.0.1:${port}: ${error.message}`));
+    });
     server.listen(port, '127.0.0.1', () => {
       console.log(`Static test server running at http://127.0.0.1:${port}`);
       resolveServer(server);

@@ -189,7 +189,7 @@ function onPointerMove(controller, event) {
     return;
   }
   if (controller.pointerDown.waypointDragCandidate) {
-    const hit = hitTest(controller, event, { preferGrid: true });
+    const hit = hitTest(controller, event, { preferGrid: true, depthSlabHitTesting: false });
     const gridCell = hit.gridCell;
     const continuousPoint = hit.continuousPoint ?? hit.gridCell?.continuousPoint ?? hit.gridHit?.continuousPoint ?? hit.gridHit?.gridCell?.continuousPoint ?? null;
     controller.dragState = {
@@ -232,7 +232,9 @@ function onPointerUp(controller, event) {
   pointerDown.endY = event.clientY;
   pointerDown.movementPixels = Math.hypot(event.clientX - pointerDown.startX, event.clientY - pointerDown.startY);
   const preferGrid = controller.dragState?.active === true || prefersGridHitOnPointerUp(controller);
-  const hit = hitTest(controller, event, preferGrid ? { preferGrid: true } : {});
+  const hitOptions = preferGrid ? { preferGrid: true } : {};
+  if (controller.dragState?.active === true) hitOptions.depthSlabHitTesting = false;
+  const hit = hitTest(controller, event, hitOptions);
   if (controller.dragState?.active) {
     recordPointerGesture(controller, pointerDown, {
       classification: 'waypointDrag',
@@ -386,7 +388,7 @@ function scheduleHover(controller, event) {
     controller.hoverFrame = null;
     const pointer = controller.pendingHoverEvent;
     controller.pendingHoverEvent = null;
-    if (!pointer) return;
+    if (!pointer || controller.cameraGestureActive === true || controller.pointerDown) return;
     const hit = hitTest(controller, pointer);
     const key = `${hit.category}:${hit.objectId ?? ''}:${hit.gridCell?.x ?? ''}:${hit.gridCell?.y ?? ''}`;
     if (key === controller.lastHoverKey) return;
