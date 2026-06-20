@@ -233,6 +233,7 @@ export class DebriefScene extends PhaserScene {
           ${this.importedPlanPanelHtml(result)}
           ${this.missionOutcomeScorecardHtml(result)}
           ${this.depthSciencePanelHtml(result)}
+          ${this.terrainAwareValidationPanelHtml(result)}
           ${this.benchmarkPanelHtml(result)}
           ${this.adaptiveSurfacingPanelHtml(result)}
           ${this.adaptiveSessionPanelHtml(result)}
@@ -283,6 +284,24 @@ export class DebriefScene extends PhaserScene {
           </div>
         ` : '<p>No depth-aware score events were recorded.</p>'}
         <p>Score events ${escapeHtml(depthScience.canonicalScoreEventCount ?? 0)} | duplicate score events ${escapeHtml(depthScience.duplicateScoreEventCount ?? 0)} | parity ${escapeHtml(depthScience.browserHeadlessParityStatus ?? 'not checked')}</p>
+      </article>
+    `;
+  }
+
+  terrainAwareValidationPanelHtml(result) {
+    const validation = result?.terrainAwareValidation ?? result?.summary?.terrainAwareValidation ?? null;
+    const launch = validation?.launchSummary ?? validation?.summary ?? null;
+    const actual = validation?.actualSummary ?? null;
+    if (!validation && !launch && !actual) return '';
+    const issueCodes = (launch?.issueCodes ?? []).slice(0, 8).join(', ') || 'none';
+    return `
+      <article class="debrief-panel" data-terrain-aware-validation-debrief>
+        <h2>Terrain-Aware Validation</h2>
+        <p>Launch status: ${escapeHtml(launch?.status ?? 'unknown')} | executable at launch: ${escapeHtml(launch?.executable === true ? 'yes' : 'no')}</p>
+        <p>Hard errors ${escapeHtml(launch?.hardErrorCount ?? 0)} | warnings ${escapeHtml(launch?.warningCount ?? 0)} | advisories ${escapeHtml(launch?.advisoryCount ?? 0)}</p>
+        <p>Issue codes: ${escapeHtml(issueCodes)}</p>
+        <p>Actual route terrain events: ${escapeHtml(actual?.routeFailureCount ?? 0)} | actual clearance summary: ${escapeHtml(actual?.minimumActualClearanceMeters ?? 'not recorded')}</p>
+        <p>Validation is owned by portable JavaScript core. The Three terrain mesh is not validity authority and official scoring is unchanged.</p>
       </article>
     `;
   }

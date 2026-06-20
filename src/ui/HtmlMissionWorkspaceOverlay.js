@@ -124,7 +124,8 @@ export class HtmlMissionWorkspaceOverlay {
     const waypointCount = (state.plan?.agentPlans ?? []).reduce((sum, agentPlan) => sum + (agentPlan.waypoints?.length ?? 0), 0);
     const estimate = routeEstimate(state);
     const routeAudit = state.ui?.routeAudit;
-    const executeDisabled = routeAudit && routeAudit.ok === false;
+    const missionReadiness = state.ui?.missionReadiness ?? null;
+    const executeDisabled = (routeAudit && routeAudit.ok === false) || missionReadiness?.executable === false;
     const routeAuditIssues = routeAuditIssueCount(routeAudit);
     const connectivity = state.level && state.mission ? computeReachabilitySummary(state.level, state.mission) : null;
     const connectivityWarnings = connectivity?.warnings ?? [];
@@ -150,8 +151,8 @@ export class HtmlMissionWorkspaceOverlay {
       </section>` : ''}
       <section class="console-section">
         <h2>Plan</h2>
-        <button class="console-button primary" data-action="execute" title="${executeDisabled ? 'Review route validation before simulation.' : 'Execute mission'}">Execute Mission</button>
-        ${executeDisabled ? `<div class="hud-muted warning">${escapeHtml(routeAuditSummary(routeAudit))}</div>` : ''}
+        <button class="console-button primary" data-action="execute" title="${executeDisabled ? executeDisabledTitle(routeAudit, missionReadiness) : 'Execute mission'}">Execute Mission</button>
+        ${executeDisabled ? `<div class="hud-muted warning">${escapeHtml(executeDisabledTitle(routeAudit, missionReadiness))}</div>` : ''}
         ${tutorialFeatureEnabled(state, 'markers') ? `<button class="console-button" data-action="placement-mode">${state.ui?.placementMode === 'marker' ? 'Mode: Planning Marker' : 'Mode: Waypoint'}</button>` : ''}
         <button class="console-button" data-action="clear-route">Clear Selected Route</button>
         ${tutorialFeatureEnabled(state, 'markers') ? '<button class="console-button" data-action="clear-markers">Clear Planning Markers</button>' : ''}
@@ -166,6 +167,7 @@ export class HtmlMissionWorkspaceOverlay {
         <div class="hud-muted">${state.missionOptions?.ignoreUpdateEvents ? 'Update events: ignored. Continuous run mode is enabled.' : 'Update events: respected.'}</div>
       </section>
       ${importDemoSection(state, executeDisabled)}
+      ${missionReadinessSection(state)}
       ${routeAuditIssues ? routeAuditSection(routeAudit) : ''}
       ${tutorialHintSection(state)}
       <section class="console-section">
@@ -240,7 +242,8 @@ export class HtmlMissionWorkspaceOverlay {
   renderTopHud(state) {
     const root = this.roots.topHud;
     if (!root) return;
-    const executeDisabled = state.ui?.routeAudit && state.ui.routeAudit.ok === false;
+    const missionReadiness = state.ui?.missionReadiness ?? null;
+    const executeDisabled = (state.ui?.routeAudit && state.ui.routeAudit.ok === false) || missionReadiness?.executable === false;
     const temporalGreedyRunning = isTemporalGreedyRunning(state);
     root.innerHTML = `
       <div class="hud-panel hud-pad hud-spread">
@@ -278,9 +281,9 @@ export class HtmlMissionWorkspaceOverlay {
         <div class="hud-row">
           <button class="hud-button" data-action="toggle-waypoints">${this.collapsedRight ? 'Show Waypoints' : 'Hide Waypoints'}</button>
           <button class="hud-button" data-action="main-menu">Main Menu</button>
-          <button class="hud-button primary" data-action="execute" title="${executeDisabled ? 'Review route validation before simulation.' : 'Execute mission'}">Execute</button>
+          <button class="hud-button primary" data-action="execute" title="${executeDisabled ? executeDisabledTitle(state.ui?.routeAudit, missionReadiness) : 'Execute mission'}">Execute</button>
         </div>
-        ${executeDisabled ? `<div class="hud-muted warning">${escapeHtml(routeAuditSummary(state.ui.routeAudit))}</div>` : ''}
+        ${executeDisabled ? `<div class="hud-muted warning">${escapeHtml(executeDisabledTitle(state.ui?.routeAudit, missionReadiness))}</div>` : ''}
       </div>
     `;
     this.bind(root, {
@@ -1527,6 +1530,28 @@ function safeInteger(value, fallback = 'N/A') {
   return Number.isFinite(numeric) ? String(Math.round(numeric)) : fallback;
 }
 
+function missionReadinessSection(state) {
+  const summary = state.ui?.missionReadiness ?? null;
+  if (!summary) return '';
+  const status = summary.status === 'INVALID' ? 'NOT READY' : summary.status === 'VALID_WITH_WARNINGS' ? 'READY WITH WARNINGS' : 'READY';
+  const tone = summary.status === 'INVALID' ? 'warning' : summary.status === 'VALID_WITH_WARNINGS' ? 'warning' : '';
+  const first = summary.firstIssue ?? null;
+  const counts = `${summary.hardErrorCount ?? 0} error(s), ${summary.warningCount ?? 0} warning(s), ${summary.advisoryCount ?? 0} advisory note(s)`;
+  return `
+    <section class="console-section ${tone}">
+      <h2>Mission Readiness</h2>
+      <div class="hud-muted"><strong>${escapeHtml(status)}</strong> | ${escapeHtml(counts)}</div>
+      <div class="hud-muted">Terrain-aware validation is core-owned; Three.js only displays markers and focus hints.</div>
+      ${first ? `<div class="hud-muted ${first.severity === 'HARD_ERROR' ? 'warning' : ''}">${escapeHtml(first.code ?? 'ISSUE')}: ${escapeHtml(first.message ?? '')}</div>` : '<div class="hud-muted">No terrain-aware blockers.</div>'}
+    </section>
+  `;
+}
+
+function executeDisabledTitle(routeAudit, missionReadiness) {
+  if (routeAudit?.ok === false) return routeAuditSummary(routeAudit);
+  if (missionReadiness?.executable === false) return missionReadiness.firstIssue?.message ?? 'Review terrain-aware mission readiness before simulation.';
+  return 'Execute mission';
+}
 function routeAuditSection(routeAudit) {
   const issues = (routeAudit?.agentResults ?? []).flatMap((result) => result.issues ?? []);
   if (!issues.length) return '';

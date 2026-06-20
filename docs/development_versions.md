@@ -539,3 +539,9 @@ Simulation presentation now uses a scheduler/dirty-category pipeline. Canonical 
 ## THREE-R1.2B Continuous Bathymetric Terrain
 
 Added renderer-neutral bathymetry surface, mesh, coastline, contour, and source metadata contracts plus shared Three.js terrain/land/coastline/contour layers. Production Planning and the Bathymetric World View now converge on the same derived terrain geometry. The renderer does not own canonical bathymetry, collision, dive feasibility, planning, scoring, or simulation. Current terrain remains deterministic synthetic educational data.
+
+## THREE-R1.2C - Terrain-Aware Continuous Mission Validation
+
+- Added TerrainAwareMissionValidation.js as a portable core contract for continuous waypoint, segment, corridor, target, dive-clearance, current-risk, and mission-readiness diagnostics.
+- Added Mission Readiness wiring, Execute hard-error gating, launch/result/export metadata, Debrief terrain validation summary, and a Three terrain validation issue/corridor layer.
+- Added focused smoke/audit scripts and docs. Three.js remains presentation-only; official scoring, planner authority, and canonical simulation authority are unchanged. Human manual QA by the project owner remains pending.

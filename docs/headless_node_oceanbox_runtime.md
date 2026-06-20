@@ -166,3 +166,7 @@ Surface waypoints are executable navigation/surfacing targets. Sampling targets 
 ## Bathymetry Alignment
 
 Browser and Node/headless workflows should consume the same canonical bottom-depth field and source metadata. Headless runtime analysis may compare exported terrain digests, but it must not rederive physics from a Three.js visual mesh.
+
+## Terrain-Aware Validation Parity
+
+The portable terrain-aware validation contract is browser-safe and Node/headless-safe. Headless workflows may compare issue codes, severities, executable status, plan digest, and terrain source digest for matching public inputs. The Three terrain mesh is not used by headless validity checks.

@@ -1135,3 +1135,7 @@ The Three.js mission world now shows a continuous synthetic seabed, land/coastli
 ## THREE-R1.2B.1 Terrain Contract Note
 
 One shared terrain contract serves all active Three mission views. The terrain mesh is a display projection of canonical bathymetry. Production no longer uses boxed/per-cell terrain. Retained legacy terrain helpers are compatibility-only and not production. Terrain quality affects presentation only. Headed performance is the authoritative render-cost gate. Human manual QA remains separate from headed automated QA.
+
+## Terrain-Aware Mission Readiness
+
+Mission Planning now surfaces terrain-aware readiness for surface waypoints, route segments, dive clearance, current risk, and sampling targets. Hard errors block Execute. Warnings and advisories remain visible so a player can deliberately run a mission with accepted warnings. Surface waypoints are executable navigation/surfacing anchors; sampling targets are non-executable science objectives. Predicted samples are planning estimates and never award score.

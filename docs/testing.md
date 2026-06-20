@@ -855,3 +855,7 @@ Three Bathymetric Terrain Preserves Render-Cost Gate
 All Production Mission Phases Share One Bathymetry Contract
 Three Bathymetry Resources Dispose Across Scene Transitions
 ```
+
+## THREE-R1.2C Terrain Validation Checks
+
+Focused terrain validation checks include the smoke_terrain_aware_* scripts, smoke_three_terrain_validation_layers.mjs, smoke_terrain_validation_debrief_summary.mjs, audit_terrain_validation_browser_headless_parity.mjs, audit_terrain_validation_authority_boundaries.mjs, and audit_terrain_polish_performance_boundaries.mjs. These checks assert the portable core contract, public-safe metadata, browser/headless parity for matching inputs, and the renderer authority boundary. They do not replace headed human QA.

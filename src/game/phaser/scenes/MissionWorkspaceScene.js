@@ -56,6 +56,11 @@ import { clearPlanningOverlayState, shouldRenderPlanningGuidance } from '../../.
 import { validatePlanForExecution } from '../../../core/planning/PlanExecutionValidator.js';
 import { validateRoutePlanForExecution } from '../../../core/planning/RouteValidityAudit.js';
 import {
+  buildTerrainAwareMissionValidationReport,
+  terrainAwareMissionValidationSummary,
+  validateTerrainAwareSurfaceWaypoint
+} from '../../../core/planning/TerrainAwareMissionValidation.js';
+import {
   createMissionExecutionTransaction,
   advanceMissionExecutionTransaction,
   failMissionExecutionTransaction,
@@ -701,7 +706,36 @@ export class MissionWorkspaceScene extends PhaserScene {
       plan: this.app.state.plan,
       gameState: this.app.state
     });
+    this.refreshTerrainAwareMissionValidation();
     return this.app.state.ui.routeAudit;
+  }
+
+  refreshTerrainAwareMissionValidation() {
+    if (!this.app.state?.level || !this.app.state?.mission || !this.app.state?.plan) return null;
+    this.app.state.ui ??= {};
+    try {
+      const report = buildTerrainAwareMissionValidationReport({
+        level: this.app.state.level,
+        mission: this.app.state.mission,
+        plan: this.app.state.plan,
+        appState: this.app.state,
+        frame: getVisibleFrame(this.app.state.level, this.app.state.planningTime ?? 0, {
+          engine: null,
+          challengeMode: this.app.state.challengeMode,
+          revealTruth: this.app.state.ui?.revealTruth,
+          forecastMemberId: this.app.state.ui?.forecastMemberId
+        })
+      });
+      this.app.state.ui.terrainAwareValidationReport = report;
+      this.app.state.ui.missionReadiness = terrainAwareMissionValidationSummary(report);
+      this.app.state.ui.terrainAwareValidationError = null;
+      return report;
+    } catch (error) {
+      this.app.state.ui.terrainAwareValidationReport = null;
+      this.app.state.ui.missionReadiness = { status: 'INVALID', executable: false, hardErrorCount: 1, warningCount: 0, advisoryCount: 0, firstIssue: { code: 'INVALID_DIVE_PROFILE', severity: 'HARD_ERROR', message: String(error?.message ?? error) } };
+      this.app.state.ui.terrainAwareValidationError = String(error?.message ?? error);
+      return null;
+    }
   }
 
   refreshMap() {
@@ -1784,6 +1818,8 @@ export class MissionWorkspaceScene extends PhaserScene {
       guidanceState: this.app.state.ui?.overlayDebug ?? null,
       options: { interactionMode: this.app.state.ui?.threeMissionInteractionMode ?? interactionModeForTool(planningToolState.activeToolId) }
     });
+    viewModel.terrainValidation = this.app.state.ui?.terrainAwareValidationReport ?? null;
+    viewModel.terrainValidationSummary = this.app.state.ui?.missionReadiness ?? null;
     this.missionRenderViewModel = viewModel;
     if ((viewModel.plannedDiveSegments ?? []).length) {
       this.threePerformanceDiagnostics.predictedTrajectoryBuildCount += 1;
@@ -1944,6 +1980,15 @@ export class MissionWorkspaceScene extends PhaserScene {
       lastWaypointTerrainValidationSource: placementValidation ? 'canonicalWaypointPlacementGuard' : null,
       lastRouteTerrainValidationSource: routePreview ? 'canonicalRoutePreview' : null,
       usesMeshRaycastForValidity: false,
+      terrainAwareValidationStatus: viewModel?.terrainValidation?.status ?? this.app.state.ui?.missionReadiness?.status ?? null,
+      terrainAwareValidationExecutable: viewModel?.terrainValidation?.executable ?? this.app.state.ui?.missionReadiness?.executable ?? null,
+      terrainAwareValidationHardErrorCount: viewModel?.terrainValidation?.hardErrors?.length ?? this.app.state.ui?.missionReadiness?.hardErrorCount ?? 0,
+      terrainAwareValidationWarningCount: viewModel?.terrainValidation?.warnings?.length ?? this.app.state.ui?.missionReadiness?.warningCount ?? 0,
+      terrainAwareValidationAdvisoryCount: viewModel?.terrainValidation?.advisories?.length ?? this.app.state.ui?.missionReadiness?.advisoryCount ?? 0,
+      terrainAwareValidationIssueCodes: this.app.state.ui?.missionReadiness?.issueCodes ?? [],
+      terrainAwareValidationSummary: this.app.state.ui?.missionReadiness ?? null,
+      terrainValidationObjectCount: rendererSummary?.terrainValidationObjectCount ?? 0,
+      rendererOwnsTerrainValidation: false,
       lastSamplingTargetBottomDepthMeters: samplingTargetTerrainDebug.bottomDepthMeters,
       lastSamplingTargetRequestedDepthMeters: samplingTargetTerrainDebug.requestedDepthMeters,
       lastSamplingTargetClearanceMeters: samplingTargetTerrainDebug.clearanceMeters,
@@ -3253,43 +3298,53 @@ export class MissionWorkspaceScene extends PhaserScene {
     return { ok: true, changed: true, waypoint };
   }
 
-  validateThreeMoveCell(cell) {
+  validateThreeMoveCell(cell, agentId = this.app.state.selectedAgentId) {
     if (!cell) return { valid: false, allowed: false, message: 'Move inside the mission grid.' };
-    const validity = isValidWaypointCell(this.app.state.level, Math.round(cell.x), Math.round(cell.y));
-    if (!validity.valid && validity.block) return { valid: false, allowed: false, message: validity.message, reason: 'blockedTerrain', cell };
-    if (!isCellNavigable(this.app.state.level, this.app.state.mission, Math.round(cell.x), Math.round(cell.y))) return { valid: false, allowed: false, message: 'Waypoint must stay in navigable water.', reason: 'notNavigable', cell };
-    return { valid: true, allowed: true, message: validity.warning ? validity.message : 'Valid waypoint cell.', cell };
+    const position = cell.continuousPoint ?? cell;
+    const terrain = validateTerrainAwareSurfaceWaypoint({
+      level: this.app.state.level,
+      mission: this.app.state.mission,
+      agentId,
+      position
+    });
+    if (!terrain.accepted) {
+      const message = terrain.hardErrors?.[0]?.message ?? 'Waypoint must stay in navigable water.';
+      return { valid: false, allowed: false, message, reason: terrain.hardErrors?.[0]?.code ?? 'terrainRejected', cell, hardErrors: terrain.hardErrors, terrainAwareValidation: terrain };
+    }
+    const validity = isValidWaypointCell(this.app.state.level, position.x, position.y);
+    if (!validity.valid && validity.block) return { valid: false, allowed: false, message: validity.message, reason: 'blockedTerrain', cell, hardErrors: [validity.message], terrainAwareValidation: terrain };
+    const warnings = [...(terrain.warnings ?? []).map((entry) => entry.message), ...(validity.warning ? [validity.message] : [])].filter(Boolean);
+    return { valid: true, allowed: true, status: warnings.length ? 'VALID_WITH_WARNINGS' : 'VALID', message: warnings[0] ?? 'Valid waypoint cell.', warnings, warningCodes: (terrain.warnings ?? []).map((entry) => entry.code), cell, terrainAwareValidation: terrain };
   }
 
   validateThreePlacementPreview(intent) {
     const cell = intent.gridCell;
     if (!cell) return null;
     if (intent.interactionMode !== 'placeWaypoint' && intent.interactionMode !== 'editWaypoint') return null;
-    const validity = isValidWaypointCell(this.app.state.level, cell.x, cell.y);
-    if (!validity.valid && validity.block) return { valid: false, allowed: false, commitAllowed: false, reason: 'blockedTerrain', message: validity.message, cell, hardErrors: [validity.message] };
+    const position = intent.continuousPoint ?? cell.continuousPoint ?? cell;
+    const terrain = validateTerrainAwareSurfaceWaypoint({
+      level: this.app.state.level,
+      mission: this.app.state.mission,
+      agentId: this.app.state.selectedAgentId,
+      position
+    });
+    if (!terrain.accepted) {
+      const message = terrain.hardErrors?.[0]?.message ?? 'Waypoint placement rejected by terrain validation.';
+      return { valid: false, allowed: false, commitAllowed: false, reason: terrain.hardErrors?.[0]?.code ?? 'terrainRejected', message, cell, hardErrors: terrain.hardErrors, terrainAwareValidation: terrain };
+    }
+    const validity = isValidWaypointCell(this.app.state.level, position.x, position.y);
+    if (!validity.valid && validity.block) return { valid: false, allowed: false, commitAllowed: false, reason: 'blockedTerrain', message: validity.message, cell, hardErrors: [validity.message], terrainAwareValidation: terrain };
     const disabledReason = getPlacementDisabledReason(this.app.state, this.app.state.selectedAgentId);
-    if (disabledReason) return { valid: false, allowed: false, commitAllowed: false, reason: 'placementDisabled', message: disabledReason, cell, hardErrors: [disabledReason] };
-    const placement = canPlaceWaypoint(this.app.state, this.app.state.selectedAgentId, { x: cell.x, y: cell.y, action: 'sample' });
+    if (disabledReason) return { valid: false, allowed: false, commitAllowed: false, reason: 'placementDisabled', message: disabledReason, cell, hardErrors: [disabledReason], terrainAwareValidation: terrain };
+    const placement = canPlaceWaypoint(this.app.state, this.app.state.selectedAgentId, { x: position.x, y: position.y, action: 'sample' });
     if (!placement.allowed) {
       const message = placement.message || 'Waypoint placement is not available for this route.';
-      return { valid: false, allowed: false, commitAllowed: false, reason: placement.reason ?? 'routeRejected', message, cell, hardErrors: [message], estimate: placement.estimate ?? null };
+      return { valid: false, allowed: false, commitAllowed: false, reason: placement.reason ?? 'routeRejected', message, cell, hardErrors: [message], estimate: placement.estimate ?? null, terrainAwareValidation: terrain };
     }
-    const warnings = [...(validity.warning ? [validity.message] : []), ...(placement.estimate?.warnings ?? [])].filter(Boolean);
-    const warningCodes = placement.estimate?.warningCodes ?? [];
+    const warnings = [...(terrain.warnings ?? []).map((entry) => entry.message), ...(validity.warning ? [validity.message] : []), ...(placement.estimate?.warnings ?? [])].filter(Boolean);
+    const warningCodes = [...(terrain.warnings ?? []).map((entry) => entry.code), ...(placement.estimate?.warningCodes ?? [])];
     const beyondMissionWindow = warningCodes.includes('BEYOND_MISSION_WINDOW');
-    return {
-      valid: true,
-      allowed: true,
-      commitAllowed: true,
-      status: warnings.length ? 'VALID_WITH_WARNINGS' : 'VALID',
-      reason: warnings.length ? (beyondMissionWindow ? 'missionWindowWarning' : 'warning') : null,
-      message: warnings[0] ?? 'Valid placement cell.',
-      cell,
-      warnings,
-      warningCodes,
-      estimate: placement.estimate ?? null,
-      beyondMissionWindow
-    };
+    return { valid: true, allowed: true, commitAllowed: true, status: warnings.length ? 'VALID_WITH_WARNINGS' : 'VALID', reason: warnings.length ? (beyondMissionWindow ? 'missionWindowWarning' : 'warning') : null, message: warnings[0] ?? 'Valid placement cell.', cell, warnings, warningCodes, estimate: placement.estimate ?? null, beyondMissionWindow, terrainAwareValidation: terrain };
   }
 
   setThreePlacementValidation(validation) {
@@ -3448,6 +3503,13 @@ export class MissionWorkspaceScene extends PhaserScene {
       this.app.toast(message, 'warning');
       return { ok: false, message };
     }
+    const terrainValidation = validateTerrainAwareSurfaceWaypoint({ level: this.app.state.level, mission: this.app.state.mission, agentId: this.app.state.selectedAgentId, position: { x: targetX, y: targetY } });
+    if (!terrainValidation.accepted) {
+      const message = terrainValidation.hardErrors?.[0]?.message ?? 'Waypoint placement rejected by terrain validation.';
+      this.app.toast(message, 'warning');
+      return { ok: false, message, reason: terrainValidation.hardErrors?.[0]?.code ?? 'terrainRejected', terrainAwareValidation: terrainValidation };
+    }
+    if (terrainValidation.warnings?.length) this.app.toast(terrainValidation.warnings[0].message, 'warning');
     const validity = isValidWaypointCell(this.app.state.level, targetX, targetY);
     if (!validity.valid && validity.block) {
       this.app.toast(validity.message, 'warning');
@@ -4117,15 +4179,19 @@ export class MissionWorkspaceScene extends PhaserScene {
     const root = globalThis.document?.getElementById?.('mission-console') ?? this.app?.elements?.consoleRoot ?? null;
     const execute = root?.querySelector?.('[data-action="execute"]') ?? null;
     const routeAudit = this.app?.state?.ui?.routeAudit ?? null;
+    const terrainReadiness = this.app?.state?.ui?.missionReadiness ?? null;
     const routeBlocked = routeAudit?.ok === false;
+    const terrainBlocked = terrainReadiness?.executable === false;
     return {
       executeControlPresent: Boolean(execute),
-      executeControlEnabled: Boolean(execute && !execute.disabled && !routeBlocked),
+      executeControlEnabled: Boolean(execute && !execute.disabled && !routeBlocked && !terrainBlocked),
       executeControlDisabledReason: execute?.disabled
         ? execute.title || 'Execute control is disabled.'
         : routeBlocked
           ? ((routeAudit.errors ?? routeAudit.issues ?? [])[0]?.message ?? (routeAudit.errors ?? [])[0] ?? 'Review route validation before simulation.')
-          : null,
+          : terrainBlocked
+            ? (terrainReadiness?.firstIssue?.message ?? 'Review terrain-aware mission readiness before simulation.')
+            : null,
       executeControlBindCount: this.executeControlBindCount,
       executeControlClickCount: this.executeControlClickCount,
       duplicateExecuteDispatchCount: this.duplicateExecuteDispatchCount
@@ -4158,6 +4224,7 @@ export class MissionWorkspaceScene extends PhaserScene {
       executableAgentPlanCount: planSummary?.executableAgentPlanCount ?? 0,
       executableWaypointCount: planSummary?.executableWaypointCount ?? 0,
       planningMarkerCount: planSummary?.planningMarkerCount ?? 0,
+      terrainAwareValidationSummary: patch.terrainValidationSummary ?? snapshot?.terrainAwareValidationSummary ?? launchPayload?.terrainAwareValidationSummary ?? this.app.state.ui?.missionReadiness ?? null,
       sceneTransitionRequested: patch.sceneTransitionRequested === true,
       simulationSceneActive: false,
       engineInitialized: false,
@@ -4271,6 +4338,18 @@ export class MissionWorkspaceScene extends PhaserScene {
       this.syncAdaptiveBenchmarkPlanContext();
       recomputeAllWaypointTiming(this.app.state);
       const routeAudit = this.refreshRouteAudit();
+      const terrainReport = this.app.state.ui?.terrainAwareValidationReport ?? this.refreshTerrainAwareMissionValidation();
+      if (terrainReport?.executable === false) {
+        const blockingIssue = terrainReport.hardErrors?.[0] ?? { message: 'Terrain-aware mission validation failed.', agentId: this.app.state.selectedAgentId };
+        this.focusRouteIssue(blockingIssue);
+        transaction = failMissionExecutionTransaction(transaction, 'planValidated', blockingIssue.message ?? 'Terrain-aware mission validation failed', { terrainValidationSummary: terrainAwareMissionValidationSummary(terrainReport) });
+        this.executeLaunchInProgress = false;
+        this.publishExecutionDebug({ transaction, currentStage: 'failed', terrainValidationSummary: terrainAwareMissionValidationSummary(terrainReport) });
+        this.refreshPanels();
+        this.refreshMap();
+        this.showRouteValidationModal(blockingIssue, { ok: false, errors: [blockingIssue.message ?? 'Terrain-aware mission validation failed'], terrainAwareValidationReport: terrainReport });
+        return;
+      }
       const snapshot = createMissionExecutionSnapshot({
         level: this.app.state.level,
         mission: this.app.state.mission,
@@ -4283,7 +4362,8 @@ export class MissionWorkspaceScene extends PhaserScene {
         stochastic: this.app.state.stochastic,
         playback: this.app.state.playback,
         simulationResume: this.app.state.simulationResume,
-        routeAudit
+        routeAudit,
+        terrainAwareValidationReport: terrainReport
       });
       this.app.state.executionSnapshot = snapshot;
       transaction = advanceMissionExecutionTransaction(transaction, 'planSnapshotBuilt', { planSummary: snapshot.planSummary, planningPlanDigest: snapshot.planDigest });

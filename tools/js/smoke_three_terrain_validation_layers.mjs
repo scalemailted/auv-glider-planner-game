@@ -1,0 +1,22 @@
+import * as THREE from 'three';
+import { assert, buildPlan, createTerrainValidationFixture } from './terrain_validation_smoke_fixture.mjs';
+import { buildTerrainAwareMissionValidationReport } from '../../src/core/planning/TerrainAwareMissionValidation.js';
+import { updateThreeTerrainValidationLayer, clearThreeTerrainValidationLayer, threeTerrainValidationLayerSummary } from '../../src/game/three/layers/ThreeTerrainValidationLayer.js';
+
+const { level, mission } = createTerrainValidationFixture();
+const report = buildTerrainAwareMissionValidationReport({ level, mission, plan: buildPlan([{ id: 'wp-cross-land', x: 16, y: 10, maximumDiveDepthMeters: 90 }]) });
+const group = new THREE.Group();
+const coordinateSystem = { width: 21, height: 21, cellSize: 1, originX: 0, originY: 0, originZ: 0, depthScale: 0.01, verticalExaggeration: 1 };
+updateThreeTerrainValidationLayer(group, { coordinateSystem, terrainValidation: report, selectedRouteSegmentId: report.segmentReports[0]?.segmentId, interactionViewModel: { placementValid: false } });
+const summary = threeTerrainValidationLayerSummary(group, { terrainValidation: report, interactionViewModel: { placementValid: false } });
+assert.ok(summary.issueObjectCount > 0);
+assert.ok(summary.corridorObjectCount > 0);
+assert.equal(summary.placementPreviewAvailable, true);
+assert.equal(summary.ownsValidation, false);
+assert.equal(summary.usesMeshRaycastForValidity, false);
+const count = group.children.length;
+updateThreeTerrainValidationLayer(group, { coordinateSystem, terrainValidation: report, interactionViewModel: { placementValid: false } });
+assert.equal(group.children.length, count);
+clearThreeTerrainValidationLayer(group);
+assert.equal(group.children.length, 0);
+console.log('smoke_three_terrain_validation_layers passed');

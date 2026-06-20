@@ -365,14 +365,14 @@ Current roadmap order:
 3. THREE-R1.2C - Terrain-aware continuous mission validation and polished 3D presentation
 4. THREE-R2 - Replay, debrief route review, and editor parity
 
-THREE-R1.2B should not start unless the Simulation performance acceptance target or minimum 2x improvement gate is met, grouped E2E coverage audit passes, grouped E2E passes, and human manual QA by the project owner is explicitly accounted for as separate from headed automated QA.
+THREE-R1.2B and THREE-R1.2B.1 are complete terrain foundation checkpoints. THREE-R1.2C is the current terrain-aware validation and presentation checkpoint. Human manual QA by the project owner remains separate from headed automated QA.
 ## THREE-R1.2A.4.4 Complete
 
-GPU/RAF render-cost closure is the current checkpoint before terrain. THREE-R1.2B should add continuous bathymetric seabed mesh, coastline, and landmass geometry only after grouped, monolithic, Pages/static, and headed workflow validation remain clean.
+GPU/RAF render-cost closure preceded the completed terrain foundation. The current terrain stack now includes continuous bathymetric mesh/coastline/landmass geometry, bathymetry integration hardening, and terrain-aware mission validation.
 
 ## Current Terrain Sequence
 
-THREE-R1.2B is the continuous bathymetric seabed mesh, coastline, and landmass geometry pass. THREE-R1.2C should follow with terrain-aware continuous mission validation polish and 3D presentation refinement. THREE-R2 remains replay, debrief route review, and editor parity. R1.2B keeps bathymetry authority in core JavaScript and does not add arbitrary XYZ planning, WebGPU, a fluid solver, external datasets, or operational ocean claims.
+THREE-R1.2B is the continuous bathymetric seabed mesh, coastline, and landmass geometry pass. THREE-R1.2B.1 hardens the bathymetry integration and retires legacy terrain paths. THREE-R1.2C adds terrain-aware continuous mission validation and polished 3D presentation. THREE-R2 remains replay, Debrief route review, and editor parity. Terrain authority stays in core JavaScript and does not add arbitrary XYZ planning, WebGPU, a fluid solver, external datasets, or operational ocean claims.
 
 ## Near-Term Renderer Roadmap Order
 
@@ -387,3 +387,7 @@ Terrain-aware continuous mission validation and polished 3D presentation
 THREE-R2
 Replay, debrief route review, and editor parity
 ```
+
+## THREE-R1.2C / THREE-R2 Order
+
+Current terrain-renderer order is THREE-R1.2C terrain-aware continuous mission validation and polished 3D presentation, then THREE-R2 Three.js replay, Debrief route review, and editor parity. THREE-R2 should start only after terrain-aware validation, export/debrief metadata, browser/headless parity checks, and headed/manual QA expectations are stable.

@@ -961,7 +961,7 @@ Simulation presentation now uses a scheduler/dirty-category pipeline. Canonical 
 
 The current Three.js mission renderer uses presentation-only quality profiles. Balanced caps effective pixel ratio at 1.25, presents simulation snapshots at up to 30 Hz, and renders one active textured water-column slab plus low-cost context depth outlines by default. These settings do not change canonical planning, simulation, sampling, scoring, or replay.
 
-The next terrain phase remains THREE-R1.2B: Continuous Bathymetric Seabed Mesh, Coastline, and Landmass Geometry. Human manual QA by the project owner remains pending.
+The terrain stack now continues through THREE-R1.2C: terrain-aware continuous mission validation and polished 3D presentation. The next intended renderer phase is THREE-R2: Three.js replay, Debrief route review, and editor parity, only after validation gates remain green. Human manual QA by the project owner remains pending.
 
 ## THREE-R1.2B Continuous Bathymetric Terrain
 
@@ -970,3 +970,7 @@ THREE-R1.2B derives the production Three.js seabed mesh, landmass display, coast
 ## THREE-R1.2B.1 Terrain Contract Note
 
 One shared terrain contract serves all active Three mission views. The terrain mesh is a display projection of canonical bathymetry. Production no longer uses boxed/per-cell terrain. Retained legacy terrain helpers are compatibility-only and not production. Terrain quality affects presentation only. Headed performance is the authoritative render-cost gate. Human manual QA remains separate from headed automated QA.
+
+## THREE-R1.2C Terrain-Aware Mission Validation
+
+THREE-R1.2C adds a portable terrain-aware validation contract for continuous surface waypoints, route segments, route corridors, predicted dive clearance, current-aware terrain risk, sampling-target volume checks, and fleet mission readiness. Validation distinguishes hard errors, warnings, and advisories. Hard errors block Execute; warnings remain visible and can be carried into launch/debrief metadata. The Three terrain mesh is never validity authority, predicted samples never create score, and no arbitrary XYZ planner or operationally calibrated bathymetry/glider model is implemented. See Terrain-Aware Mission Validation, Terrain Validation Audit, Three.js Terrain Mission Presentation, and Manual Terrain-Aware QA Checklist under docs/.

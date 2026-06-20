@@ -16,7 +16,8 @@ export function createMissionExecutionSnapshot({
   stochastic = null,
   playback = null,
   simulationResume = null,
-  routeAudit = null
+  routeAudit = null,
+  terrainAwareValidationReport = null
 } = {}) {
   const clonedLevel = cloneJson(level);
   const clonedMission = cloneJson(mission);
@@ -46,6 +47,8 @@ export function createMissionExecutionSnapshot({
     playback: cloneJson(playback ?? null),
     simulationResume: cloneJson(simulationResume ?? null),
     routeAudit: cloneJson(routeAudit ?? null),
+    terrainAwareValidationReport: cloneJson(terrainAwareValidationReport ?? null),
+    terrainAwareValidationSummary: summarizeTerrainAwareValidation(terrainAwareValidationReport),
     validation,
     planDigest,
     planSummary
@@ -80,6 +83,8 @@ export function createMissionLaunchPayload({ snapshot, transaction = null } = {}
     playback: cloneJson(snapshot.playback ?? null),
     simulationResume: cloneJson(snapshot.simulationResume ?? null),
     routeAudit: cloneJson(snapshot.routeAudit ?? null),
+    terrainAwareValidationReport: cloneJson(snapshot.terrainAwareValidationReport ?? null),
+    terrainAwareValidationSummary: snapshot.terrainAwareValidationSummary ?? summarizeTerrainAwareValidation(snapshot.terrainAwareValidationReport),
     validationSummary: summarizeValidation(snapshot.validation),
     planDigest: snapshot.planDigest,
     planSummary: cloneJson(snapshot.planSummary)
@@ -120,7 +125,8 @@ export function normalizeMissionLaunchPayload(payload = {}, fallbackState = {}) 
     stochastic: fallbackState.stochastic,
     playback: fallbackState.playback,
     simulationResume: fallbackState.simulationResume,
-    routeAudit: fallbackState.ui?.routeAudit
+    routeAudit: fallbackState.ui?.routeAudit,
+    terrainAwareValidationReport: fallbackState.ui?.terrainAwareValidationReport
   });
   return createMissionLaunchPayload({ snapshot, transaction: fallbackState.executionTransaction ?? null });
 }
@@ -143,9 +149,27 @@ export function summarizeMissionLaunchPayload(payload = {}) {
       planDigest: payload.planDigest
     }),
     validationSummary: payload.validationSummary ?? null,
+    terrainAwareValidationSummary: payload.terrainAwareValidationSummary ?? summarizeTerrainAwareValidation(payload.terrainAwareValidationReport),
     hasLevel: Boolean(payload.level),
     hasMission: Boolean(payload.mission),
     hasPlan: Boolean(payload.plan)
+  };
+}
+
+export function summarizeTerrainAwareValidation(report = null) {
+  if (!report) return null;
+  const summary = report.summary ?? {};
+  return {
+    type: 'anchor.validation.terrain-aware-mission-summary',
+    version: report.version ?? null,
+    status: report.status ?? summary.status ?? null,
+    executable: report.executable === true,
+    hardErrorCount: report.hardErrors?.length ?? summary.hardErrorCount ?? 0,
+    warningCount: report.warnings?.length ?? summary.warningCount ?? 0,
+    advisoryCount: report.advisories?.length ?? summary.advisoryCount ?? 0,
+    issueCodes: [...new Set([...(report.hardErrors ?? []), ...(report.warnings ?? []), ...(report.advisories ?? [])].map((issue) => issue.code).filter(Boolean))],
+    firstIssue: report.hardErrors?.[0] ?? report.warnings?.[0] ?? report.advisories?.[0] ?? null,
+    boundaryFlags: cloneJson(report.boundaryFlags ?? null)
   };
 }
 

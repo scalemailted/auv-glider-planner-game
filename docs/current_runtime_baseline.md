@@ -63,3 +63,7 @@ The production Three.js mission renderer now consumes `BathymetrySurfaceViewMode
 ## THREE-R1.2B.1 Terrain Contract Note
 
 One shared terrain contract serves all active Three mission views. The terrain mesh is a display projection of canonical bathymetry. Production no longer uses boxed/per-cell terrain. Retained legacy terrain helpers are compatibility-only and not production. Terrain quality affects presentation only. Headed performance is the authoritative render-cost gate. Human manual QA remains separate from headed automated QA.
+
+## THREE-R1.2C Runtime Note
+
+The active entry remains src/game/main.js. Three.js is the production mission world renderer, Phaser remains a transitional scene shell, and terrain-aware validity is owned by portable JavaScript core. The renderer displays validation issues and route corridors but does not own route validity, collision, terrain validity, dive feasibility, simulation, scoring, hidden truth, or replay authority.

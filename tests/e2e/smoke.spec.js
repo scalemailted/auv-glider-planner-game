@@ -5555,6 +5555,50 @@ test('Three Waypoint Validation and Mission Window Semantics', async ({ page }) 
   await expect(page.locator('#debrief-root')).toContainText(/missed|Mission time|expired/i);
   expect(browserErrors.unexpected()).toEqual([]);
 });
+
+test('Terrain-Aware Placement Preview Prevents Invalid Mission Mutation', async ({ page }) => {
+  const browserErrors = attachBrowserErrorCollector(page);
+  await page.goto('/');
+  await startTutorialPlanning(page);
+  await expect.poll(() => page.evaluate(() => window.ANCHOR_MISSION_RENDER_DEBUG?.rendererReady === true), { timeout: 15000 }).toBe(true);
+  await page.locator('#mission-console [data-action="three-camera"][data-preset="tacticalTopDown"]').click();
+  const agentId = await page.evaluate(() => window.anchorGame.state.mission?.agents?.[0]?.id);
+  await clickThreeObject(page, 'screenPointForAgent', agentId);
+  await deployAgentThroughVisibleThreeControls(page, agentId);
+  await page.locator('#mission-console [data-action="waypoint-snap-mode"][data-mode="snapToCellCenters"]').click();
+  await page.locator('#mission-console [data-action="mission-planning-tool"][data-tool="placeWaypoint"]').click();
+
+  const invalidCell = await findHardInvalidWaypointCell(page);
+  const invalidPoint = await threeGridGroundPoint(page, invalidCell.x, invalidCell.y);
+  await page.mouse.move(invalidPoint.x, invalidPoint.y, { steps: 4 });
+  await expect.poll(() => page.evaluate(() => window.ANCHOR_MISSION_RENDER_DEBUG?.waypointCandidateStatus)).toBe('INVALID');
+  await expect.poll(() => page.evaluate(() => Boolean(window.ANCHOR_MISSION_RENDER_DEBUG?.waypointPrimaryMessage))).toBe(true);
+  const beforeInvalid = await totalWaypointCount(page);
+  await page.mouse.click(invalidPoint.x, invalidPoint.y);
+  await expectWaypointCount(page, beforeInvalid);
+  await expectDebugWaypointSynchronization(page, beforeInvalid);
+
+  const validCell = await findWaypointPlacementCell(page, { requireNoWarnings: true });
+  expect(validCell).toBeTruthy();
+  await clickThreeGridCell(page, validCell.x, validCell.y);
+  await expectWaypointCount(page, beforeInvalid + 1);
+  const waypoint = await page.evaluate((id) => {
+    const agentPlan = window.anchorGame.state.plan?.agentPlans?.find((plan) => plan.agentId === id);
+    const item = agentPlan?.waypoints?.[0] ?? null;
+    return item ? { id: item.id ?? item.waypointId, x: item.x, y: item.y } : null;
+  }, agentId);
+  expect(waypoint?.id).toBeTruthy();
+
+  await dragThreeObjectToGridCell(page, 'screenPointForWaypoint', waypoint.id, invalidCell.x, invalidCell.y);
+  await expectWaypointCount(page, beforeInvalid + 1);
+  const afterDrag = await waypointAtIndex(page, agentId, 0);
+  expect(Math.round(afterDrag.x)).toBe(Math.round(waypoint.x));
+  expect(Math.round(afterDrag.y)).toBe(Math.round(waypoint.y));
+  await expect.poll(() => page.evaluate(() => window.ANCHOR_MISSION_RENDER_DEBUG?.usesMeshRaycastForValidity)).toBe(false);
+  await expect.poll(() => page.evaluate(() => window.ANCHOR_MISSION_RENDER_DEBUG?.rendererOwnsTerrainValidation)).toBe(false);
+  expect(browserErrors.unexpected()).toEqual([]);
+});
+
 test('Legacy and Three Simulation Produce Identical Canonical Result', async ({ browser }) => {
   const legacyPage = await browser.newPage();
   const threePage = await browser.newPage();

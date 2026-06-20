@@ -82,6 +82,7 @@ export const PLAYWRIGHT_GROUPS = Object.freeze([
       /^Legacy Mission Uses Explicit Surface Compatibility Mode$/i,
       /^Three Vehicle Pose Guidance and Grid Alignment$/i,
       /^Three Waypoint Validation and Mission Window Semantics$/i,
+      /^Terrain-Aware Placement Preview Prevents Invalid Mission Mutation$/i,
       /^Legacy and Three Simulation Produce Identical Canonical Result$/i,
       /^legacy saved level registry scene still opens$/i
     ]

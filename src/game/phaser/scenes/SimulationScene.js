@@ -79,7 +79,8 @@ import {
 import {
   digestExecutionPlan,
   normalizeMissionLaunchPayload,
-  summarizeMissionLaunchPayload
+  summarizeMissionLaunchPayload,
+  summarizeTerrainAwareValidation
 } from '../../../core/simulation/MissionExecutionSnapshot.js';
 
 const PhaserScene = globalThis.Phaser?.Scene ?? class {};
@@ -488,6 +489,7 @@ export class SimulationScene extends PhaserScene {
       executableAgentPlanCount: this.launchPayload?.planSummary?.executableAgentPlanCount ?? control.executableAgentPlanCount ?? 0,
       executableWaypointCount: this.launchPayload?.planSummary?.executableWaypointCount ?? control.executableWaypointCount ?? 0,
       planningMarkerCount: this.launchPayload?.planSummary?.planningMarkerCount ?? control.planningMarkerCount ?? 0,
+      terrainAwareValidationSummary: this.launchPayload?.terrainAwareValidationSummary ?? control.terrainAwareValidationSummary ?? null,
       sceneTransitionRequested: true,
       simulationSceneActive: this.sys?.isActive?.() === true,
       engineInitialized: Boolean(this.engine),
@@ -870,6 +872,7 @@ export class SimulationScene extends PhaserScene {
     const source = this.app.state.currentPlanSource ?? 'manual';
     const engineResult = this.engine.getResult();
     const summary = engineResult.summary ?? {};
+    const terrainAwareValidation = buildTerrainAwareSimulationResultSummary(this.launchPayload, engineResult);
     const ensembleMetrics = summarizeEnsembleForPlan(this.app.state.level, this.app.state.plan, this.engine.t, {
       selectedForecastMemberId: this.app.state.ui.forecastMemberId ?? null,
       actualRealizedValue: summary.realizedSampleScore ?? summary.sampleScore
@@ -915,7 +918,8 @@ export class SimulationScene extends PhaserScene {
         probabilisticROI: true,
         mobileHazards: this.app.state.level?.layers?.mobileHazards?.length ?? 0,
         depth: Boolean(this.app.state.level?.layers?.depth)
-      }
+      },
+      terrainAwareValidation
     }, this.app.state.level, this.app.state.mission);
     this.annotateBenchmarkResult(result, source);
     annotateStochasticResult(this.app.state, result);
@@ -2779,7 +2783,31 @@ function finiteMetric(value) {
   const numeric = Number(value);
   return Number.isFinite(numeric) ? numeric : null;
 }
+function buildTerrainAwareSimulationResultSummary(launchPayload = null, engineResult = null) {
+  const launchReport = launchPayload?.terrainAwareValidationReport ?? null;
+  const launchSummary = launchPayload?.terrainAwareValidationSummary ?? summarizeTerrainAwareValidation(launchReport);
+  return {
+    type: 'anchor.validation.terrain-aware-simulation-summary',
+    version: launchSummary?.version ?? launchReport?.version ?? null,
+    launchSummary,
+    launchReport,
+    actualSummary: {
+      status: engineResult?.summary?.stopReason?.code ? 'COMPLETED_WITH_EVENTS' : 'COMPLETED_OR_RUNNING',
+      routeFailureCount: (engineResult?.events ?? []).filter((event) => event.type === 'routeFailureDecision').length,
+      sampledObservationCount: (engineResult?.events ?? []).filter((event) => ['sample', 'duplicateSample', 'probabilityOutcome', 'anchor.score.depth-aware-sample'].includes(event.type)).length,
+      minimumActualClearanceMeters: null,
+      terrainEventsSupported: false
+    },
+    plannedAndActualDistinct: true,
+    officialScoringChanged: false,
+    rendererOwnsValidation: false,
+    usesMeshRaycastForValidity: false,
+    containsHiddenTruth: false
+  };
+}
+
 function escapeHtml(value) {
+
   return String(value ?? '').replace(/[&<>"']/g, (char) => ({
     '&': '&amp;',
     '<': '&lt;',

@@ -57,3 +57,7 @@ Predicted dive paths are displayed over the derived bathymetric terrain mesh, bu
 ## THREE-R1.2B.1 Terrain Contract Note
 
 One shared terrain contract serves all active Three mission views. The terrain mesh is a display projection of canonical bathymetry. Production no longer uses boxed/per-cell terrain. Retained legacy terrain helpers are compatibility-only and not production. Terrain quality affects presentation only. Headed performance is the authoritative render-cost gate. Human manual QA remains separate from headed automated QA.
+
+## THREE-R1.2C Validation Note
+
+Predicted dive clearance now participates in the terrain-aware mission validation report. Bathymetry-limited profiles and low clearance are warnings unless the canonical predicted path violates required bottom clearance. This does not alter route geometry, create score, or make the Three mesh validity authority.

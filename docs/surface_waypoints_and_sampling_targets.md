@@ -45,3 +45,7 @@ Simulation presentation now uses a scheduler/dirty-category pipeline. Canonical 
 ## THREE-R1.2A.4.4 Semantics Addendum
 
 Surface waypoints remain executable horizontal navigation/surfacing anchors. Sampling targets remain non-executable science objectives. Render-cost quality profiles and context-slab LOD do not change either semantic role.
+
+## THREE-R1.2C Validation Note
+
+Surface waypoint placement uses continuous x/y validation before commit. Invalid surface waypoint candidates must not mutate the canonical plan. Sampling targets remain non-executable objectives and are validated against land/seabed volume samples and attached-route reachability.

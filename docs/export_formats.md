@@ -338,3 +338,7 @@ Surface waypoints are executable navigation/surfacing targets. Sampling targets 
 ## Bathymetry Metadata
 
 Terrain-related exports should preserve bathymetry source metadata when present: source type, source id/version, interpolation profile, synthetic/calibrated/operational flags, and warnings. Current generated bathymetry is `syntheticGenerated`, `synthetic: true`, `calibrated: false`, and `operationallyValidated: false`.
+
+## Terrain-Aware Validation Metadata
+
+anchor.result may include terrainAwareValidation and compact terrainValidationMetadata blocks. These preserve launch readiness, issue codes, severity counts, boundary flags, and actual-summary placeholders without duplicating full bathymetry grids or terrain meshes. The metadata is public-safe, does not expose hidden truth, and does not change official scoring.

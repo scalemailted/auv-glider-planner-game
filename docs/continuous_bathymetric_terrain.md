@@ -50,3 +50,7 @@ usesLegacyTerrainLayer: false
 ```
 
 The compatibility helper `bathymetryToTerrainMeshData()` is not a production terrain path. Production terrain uses `BathymetrySurfaceViewModel`, `BathymetryMeshGeometry`, and the shared Three terrain layer family.
+
+## Terrain-Aware Validation Boundary
+
+THREE-R1.2C consumes the same canonical bathymetry field for mission validation. The visual seabed mesh, landmass, coastline, and contours are display projections only. Bottom-clearance, surface-waypoint validity, route-segment validity, sampling-target validity, and mission readiness come from portable core modules.

@@ -26,6 +26,7 @@ import { updateThreeRealizedTrajectoryLayer, clearThreeRealizedTrajectoryLayer }
 import { updateThreeObservationLayer, clearThreeObservationLayer } from './layers/ThreeObservationLayer.js';
 import { updateThreeSurfacingEventLayer, clearThreeSurfacingEventLayer } from './layers/ThreeSurfacingEventLayer.js';
 import { updateThreeRouteStatusLayer, clearThreeRouteStatusLayer } from './layers/ThreeRouteStatusLayer.js';
+import { updateThreeTerrainValidationLayer, threeTerrainValidationLayerSummary } from './layers/ThreeTerrainValidationLayer.js';
 import { updateThreeSimulationStatusLayer, clearThreeSimulationStatusLayer } from './layers/ThreeSimulationStatusLayer.js';
 import {
   createThreePlanningInteractionLayer,
@@ -88,6 +89,7 @@ const GROUP_KEYS = [
   'observationGroup',
   'surfacingEventGroup',
   'routeStatusGroup',
+  'terrainValidationGroup',
   'simulationStatusGroup',
   'selectionGroup',
   'guidanceGroup',
@@ -305,6 +307,7 @@ export function updateThreeMissionWorldRenderer(renderer, viewModel = {}) {
   }
   if (shouldUpdate('surfacingEvents')) updateThreeSurfacingEventLayer(renderer.groups.surfacingEventGroup, viewModel);
   if (shouldUpdate('routeStatus', 'simulationStatus')) updateThreeRouteStatusLayer(renderer.groups.routeStatusGroup, viewModel);
+  if (shouldUpdate('routeStatus', 'plannedRoute', 'samplingTargets')) updateThreeTerrainValidationLayer(renderer.groups.terrainValidationGroup, viewModel);
   if (shouldUpdate('vehiclePose', 'simulationStatus')) updateThreeSimulationStatusLayer(renderer.groups.simulationStatusGroup, viewModel);
   if (shouldUpdate('selection')) updateThreeSelectionLayer(renderer.groups.selectionGroup, viewModel);
   if (shouldUpdate('vehiclePose', 'plannedRoute')) updateThreeGuidanceConeLayer(renderer.groups.guidanceGroup, viewModel);
@@ -380,6 +383,7 @@ export function setThreeMissionLayerVisibility(renderer, visibilityPatch = {}) {
   renderer.groups.observationGroup.visible = v.observations !== false;
   renderer.groups.surfacingEventGroup.visible = v.surfacingEvents !== false;
   renderer.groups.routeStatusGroup.visible = v.routeStatus !== false;
+  renderer.groups.terrainValidationGroup.visible = v.terrainValidation !== false;
   renderer.groups.simulationStatusGroup.visible = true;
   renderer.groups.selectionGroup.visible = v.selection !== false;
   renderer.groups.guidanceGroup.visible = v.guidance !== false;
@@ -464,6 +468,8 @@ export function threeMissionWorldRendererSummary(renderer = {}) {
     slabObjectCount: renderer.operationalDepthSlabLayer?.slabs?.size ?? 0,
     slabTextureCount: [...(renderer.operationalDepthSlabLayer?.slabs?.values?.() ?? [])].filter((record) => record.texture).length,
     slabLabelCount: renderer.operationalDepthSlabLayer?.labels?.size ?? 0,
+    terrainValidationSummary: renderer.groups?.terrainValidationGroup?.userData?.lastSummary ?? threeTerrainValidationLayerSummary(renderer.groups?.terrainValidationGroup, vm),
+    terrainValidationObjectCount: renderer.groups?.terrainValidationGroup?.children?.length ?? 0,
     realizedTrajectoryObjectCount: renderer.groups?.realizedTrajectoryGroup?.children?.length ?? 0,
     realizedTrajectoryPointCount: countTrajectoryPoints(renderer.groups?.realizedTrajectoryGroup),
     markerObjectCount: renderer.groups?.markerGroup?.children?.length ?? 0,
@@ -812,6 +818,7 @@ function defaultLayerVisibility(input = {}) {
     observations: input.observations !== false,
     surfacingEvents: input.surfacingEvents !== false,
     routeStatus: input.routeStatus !== false,
+    terrainValidation: input.terrainValidation !== false,
     selection: input.selection !== false,
     guidance: input.guidance !== false,
     interaction: input.interaction !== false

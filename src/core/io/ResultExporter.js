@@ -183,6 +183,17 @@ export function buildResultExport({ level, mission, plan, result, label = 'Manua
     }))),
     planningMarkers: cloneJson(plan?.planningMarkers ?? []),
     routeQuality: cloneJson(result?.routeQuality ?? null),
+    terrainAwareValidation: cloneJson(result?.terrainAwareValidation ?? result?.summary?.terrainAwareValidation ?? null),
+    terrainValidationMetadata: cloneJson({
+      type: 'anchor.validation.terrain-aware-result-metadata',
+      launchSummary: result?.terrainAwareValidation?.launchSummary ?? result?.terrainAwareValidationSummary ?? null,
+      actualSummary: result?.terrainAwareValidation?.actualSummary ?? null,
+      boundaryFlags: result?.terrainAwareValidation?.launchSummary?.boundaryFlags ?? result?.terrainAwareValidation?.launchReport?.boundaryFlags ?? null,
+      officialScoringChanged: false,
+      rendererOwnsValidation: false,
+      usesMeshRaycastForValidity: false,
+      containsHiddenTruth: false
+    }),
     routeExecution: {
       frames: cloneJson(result?.frames ?? []),
       trajectories: cloneJson(result?.trajectories ?? result?.frames ?? []),
@@ -222,7 +233,8 @@ export function buildResultExport({ level, mission, plan, result, label = 'Manua
       priorityTargets: result?.priorityTargets ?? result?.summary?.priorityTargets ?? null,
       missionOutcomeReport: result?.missionOutcomeReport ?? result?.scoreArtifacts?.missionOutcomeReport ?? null,
       missionScore: result?.missionScore ?? result?.scoreArtifacts?.missionScore ?? null,
-      depthScience: result?.depthScience ?? result?.summary?.depthScience ?? null
+      depthScience: result?.depthScience ?? result?.summary?.depthScience ?? null,
+      terrainAwareValidation: result?.terrainAwareValidation ?? result?.summary?.terrainAwareValidation ?? null
     }),
     debugTrace: cloneJson(result?.debugTrace ?? result?.simulationTrace ?? null),
     rawResult: cloneJson(result ?? null)
