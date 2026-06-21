@@ -15,7 +15,7 @@
                     "smoke:pages":  "node tools/js/smoke_github_pages_static_host.mjs",
                     "test:e2e:focused":  "node ./node_modules/@playwright/test/cli.js test tests/e2e/smoke.spec.js --grep \"Three Mission Interaction Performance Invariants|Three Sampling Target and Dive Planning Headed Workflow\" --reporter=line",
                     "test:e2e:groups":  "node tools/js/run_playwright_groups.mjs",
-                    "test:e2e:monolithic":  "node ./node_modules/@playwright/test/cli.js test --reporter=line",
+                    "test:e2e:monolithic":  "node ./node_modules/@playwright/test/cli.js test --reporter=line --workers=1",
                     "test:e2e:list":  "node ./node_modules/@playwright/test/cli.js test --list"
                 },
     "devDependencies":  {

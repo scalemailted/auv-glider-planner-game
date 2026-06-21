@@ -1,4 +1,4 @@
-export const PLAYWRIGHT_GROUPS_VERSION = 'playwright-groups-r1-2a-4-3';
+export const PLAYWRIGHT_GROUPS_VERSION = 'playwright-groups-r1-2c-3';
 
 export const PLAYWRIGHT_GROUPS = Object.freeze([
   {
@@ -91,6 +91,13 @@ export const PLAYWRIGHT_GROUPS = Object.freeze([
       /^Three Terrain Presentation Clearly Distinguishes Mission Semantics$/i,
       /^Legacy and Three Simulation Produce Identical Canonical Result$/i,
       /^legacy saved level registry scene still opens$/i
+    ]
+  },
+  {
+    id: 'visualAcceptance',
+    label: 'Headed owner visual acceptance and production walkthroughs',
+    patterns: [
+      /^THREE-R1\.2C Full Headed Production Walkthrough$/i
     ]
   }
 ]);
