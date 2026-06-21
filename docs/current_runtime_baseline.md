@@ -67,3 +67,7 @@ One shared terrain contract serves all active Three mission views. The terrain m
 ## THREE-R1.2C Runtime Note
 
 The active entry remains src/game/main.js. Three.js is the production mission world renderer, Phaser remains a transitional scene shell, and terrain-aware validity is owned by portable JavaScript core. The renderer displays validation issues and route corridors but does not own route validity, collision, terrain validity, dive feasibility, simulation, scoring, hidden truth, or replay authority.
+
+## THREE-R2A.1 Replay Baseline
+
+The production replay path consumes canonical public events and checkpoints through the shared replay reducer, then builds a renderer-neutral replay world view model for Three.js presentation. Replay does not rerun mission physics, recompute official scoring, include hidden truth, or make Three.js authoritative for replay semantics. Reverse navigation restores checkpoints and replays forward; camera/display state is excluded from replay digests.

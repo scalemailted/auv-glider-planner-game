@@ -1,0 +1,907 @@
+{
+  "type": "anchor.headless.bundle",
+  "version": "three-r2a-acceptance-fixture-v1",
+  "manifest": {
+    "missionId": "three-r2a-acceptance-mission",
+    "scenarioId": "three-r2a-acceptance-scenario",
+    "episodeId": "three-r2a-acceptance-episode",
+    "seed": "three-r2a-acceptance-seed"
+  },
+  "missionConfig": {
+    "missionId": "three-r2a-acceptance-mission",
+    "scenarioId": "three-r2a-acceptance-scenario",
+    "seed": "three-r2a-acceptance-seed",
+    "world": {
+      "width": 12,
+      "height": 12,
+      "timeStepSeconds": 60,
+      "durationSeconds": 720,
+      "waterColumnConfig": {
+        "depthLayerModel": "top-down-2p5d",
+        "defaultDepthLayerId": "surface",
+        "depthLayers": [
+          {
+            "id": "surface",
+            "label": "Surface",
+            "minDepthMeters": 0,
+            "maxDepthMeters": 5
+          },
+          {
+            "id": "shallow",
+            "label": "Shallow",
+            "minDepthMeters": 5,
+            "maxDepthMeters": 25
+          },
+          {
+            "id": "thermocline",
+            "label": "Thermocline",
+            "minDepthMeters": 25,
+            "maxDepthMeters": 60
+          },
+          {
+            "id": "midwater",
+            "label": "Midwater",
+            "minDepthMeters": 60,
+            "maxDepthMeters": 110
+          },
+          {
+            "id": "deep",
+            "label": "Deep",
+            "minDepthMeters": 110,
+            "maxDepthMeters": 180
+          }
+        ]
+      }
+    },
+    "gliders": [
+      {
+        "id": "glider-alpha",
+        "start": {
+          "x": 2,
+          "y": 2
+        },
+        "diveProfileId": "fullProfile"
+      },
+      {
+        "id": "glider-bravo",
+        "start": {
+          "x": 3,
+          "y": 8
+        },
+        "diveProfileId": "thermoclineYo"
+      }
+    ],
+    "objectives": [
+      {
+        "id": "frontSurvey",
+        "label": "Front survey"
+      }
+    ]
+  },
+  "visibleFields": {
+    "type": "anchor.visible-fields.public-replay-review",
+    "scenario": "three-r2a-acceptance-scenario",
+    "grid": {
+      "width": 12,
+      "height": 12
+    },
+    "terrain": [
+      [
+        1,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      [
+        1,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      [
+        1,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      [
+        1,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      [
+        1,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      [
+        1,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      [
+        1,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      [
+        1,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      [
+        1,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      [
+        1,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      [
+        1,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      [
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1
+      ]
+    ],
+    "publicSafe": true
+  },
+  "bathymetrySummary": {
+    "present": true,
+    "depthField": [
+      [
+        30,
+        31.92,
+        33.37,
+        33.99,
+        33.64,
+        32.39,
+        30.56,
+        28.6,
+        26.97,
+        26.09,
+        26.16,
+        27.18
+      ],
+      [
+        37,
+        38.92,
+        40.37,
+        40.99,
+        40.64,
+        39.39,
+        37.56,
+        35.6,
+        33.97,
+        33.09,
+        33.16,
+        34.18
+      ],
+      [
+        44,
+        45.92,
+        47.37,
+        47.99,
+        47.64,
+        46.39,
+        44.56,
+        42.6,
+        40.97,
+        40.09,
+        40.16,
+        41.18
+      ],
+      [
+        51,
+        52.92,
+        54.37,
+        54.99,
+        54.64,
+        53.39,
+        51.56,
+        49.6,
+        47.97,
+        47.09,
+        47.16,
+        48.18
+      ],
+      [
+        58,
+        59.92,
+        61.37,
+        61.99,
+        61.64,
+        60.39,
+        58.56,
+        56.6,
+        54.97,
+        54.09,
+        54.16,
+        55.18
+      ],
+      [
+        65,
+        66.92,
+        68.37,
+        68.99,
+        68.64,
+        67.39,
+        65.56,
+        63.6,
+        61.97,
+        61.09,
+        61.16,
+        62.18
+      ],
+      [
+        72,
+        73.92,
+        75.37,
+        75.99,
+        75.64,
+        74.39,
+        72.56,
+        70.6,
+        68.97,
+        68.09,
+        68.16,
+        69.18
+      ],
+      [
+        79,
+        80.92,
+        82.37,
+        82.99,
+        82.64,
+        81.39,
+        79.56,
+        77.6,
+        75.97,
+        75.09,
+        75.16,
+        76.18
+      ],
+      [
+        86,
+        87.92,
+        89.37,
+        89.99,
+        89.64,
+        88.39,
+        86.56,
+        84.6,
+        82.97,
+        82.09,
+        82.16,
+        83.18
+      ],
+      [
+        93,
+        94.92,
+        96.37,
+        96.99,
+        96.64,
+        95.39,
+        93.56,
+        91.6,
+        89.97,
+        89.09,
+        89.16,
+        90.18
+      ],
+      [
+        100,
+        101.92,
+        103.37,
+        103.99,
+        103.64,
+        102.39,
+        100.56,
+        98.6,
+        96.97,
+        96.09,
+        96.16,
+        97.18
+      ],
+      [
+        107,
+        108.92,
+        110.37,
+        110.99,
+        110.64,
+        109.39,
+        107.56,
+        105.6,
+        103.97,
+        103.09,
+        103.16,
+        104.18
+      ]
+    ],
+    "depthRangeMeters": {
+      "min": 30,
+      "max": 107
+    },
+    "featureIds": [
+      "shelf-slope",
+      "safe-corridor"
+    ],
+    "publicSafe": true
+  },
+  "gliderTracks": [
+    {
+      "gliderId": "glider-alpha",
+      "agentId": "glider-alpha",
+      "x": 2,
+      "y": 2,
+      "depthMeters": 0,
+      "depthLayerId": "surface",
+      "timeSeconds": 0,
+      "status": "start"
+    },
+    {
+      "gliderId": "glider-alpha",
+      "agentId": "glider-alpha",
+      "x": 4,
+      "y": 3,
+      "depthMeters": 42,
+      "depthLayerId": "thermocline",
+      "timeSeconds": 120,
+      "status": "diving"
+    },
+    {
+      "gliderId": "glider-alpha",
+      "agentId": "glider-alpha",
+      "x": 7,
+      "y": 4,
+      "depthMeters": 95,
+      "depthLayerId": "midwater",
+      "timeSeconds": 240,
+      "status": "bottom-turn"
+    },
+    {
+      "gliderId": "glider-alpha",
+      "agentId": "glider-alpha",
+      "x": 9,
+      "y": 6,
+      "depthMeters": 35,
+      "depthLayerId": "thermocline",
+      "timeSeconds": 420,
+      "status": "climbing"
+    },
+    {
+      "gliderId": "glider-alpha",
+      "agentId": "glider-alpha",
+      "x": 10,
+      "y": 7,
+      "depthMeters": 0,
+      "depthLayerId": "surface",
+      "timeSeconds": 600,
+      "status": "surface"
+    },
+    {
+      "gliderId": "glider-bravo",
+      "agentId": "glider-bravo",
+      "x": 3,
+      "y": 8,
+      "depthMeters": 0,
+      "depthLayerId": "surface",
+      "timeSeconds": 0,
+      "status": "start"
+    },
+    {
+      "gliderId": "glider-bravo",
+      "agentId": "glider-bravo",
+      "x": 5,
+      "y": 8,
+      "depthMeters": 20,
+      "depthLayerId": "shallow",
+      "timeSeconds": 120,
+      "status": "diving"
+    },
+    {
+      "gliderId": "glider-bravo",
+      "agentId": "glider-bravo",
+      "x": 8,
+      "y": 8,
+      "depthMeters": 52,
+      "depthLayerId": "thermocline",
+      "timeSeconds": 300,
+      "status": "sampling"
+    },
+    {
+      "gliderId": "glider-bravo",
+      "agentId": "glider-bravo",
+      "x": 9,
+      "y": 9,
+      "depthMeters": 0,
+      "depthLayerId": "surface",
+      "timeSeconds": 600,
+      "status": "surface"
+    }
+  ],
+  "observations": [
+    {
+      "observationId": "obs-alpha-thermocline",
+      "gliderId": "glider-alpha",
+      "agentId": "glider-alpha",
+      "x": 7,
+      "y": 4,
+      "zIndex": 2,
+      "depthLayerId": "midwater",
+      "depthMeters": 95,
+      "observedValue": 0.81,
+      "forecastValue": 0.64,
+      "timeSeconds": 240
+    },
+    {
+      "observationId": "obs-bravo-front",
+      "gliderId": "glider-bravo",
+      "agentId": "glider-bravo",
+      "x": 8,
+      "y": 8,
+      "zIndex": 1,
+      "depthLayerId": "thermocline",
+      "depthMeters": 52,
+      "observedValue": 0.73,
+      "forecastValue": 0.57,
+      "timeSeconds": 300
+    }
+  ],
+  "terrainEvents": [
+    {
+      "id": "terrain-alpha-clearance-warning",
+      "type": "anchor.simulation.terrain-clearance-warning",
+      "eventType": "anchor.simulation.terrain-clearance-warning",
+      "agentId": "glider-alpha",
+      "segmentId": "alpha-leg-2",
+      "issueCode": "terrain-clearance-warning",
+      "severity": "warning",
+      "x": 9,
+      "y": 6,
+      "depthMeters": 35,
+      "bottomDepthMeters": 43,
+      "clearanceMeters": 8,
+      "timeSeconds": 420,
+      "publicSafe": true
+    },
+    {
+      "id": "terrain-bravo-target-coverage",
+      "type": "anchor.simulation.target-coverage",
+      "eventType": "anchor.simulation.target-coverage",
+      "agentId": "glider-bravo",
+      "targetId": "target-front-1",
+      "issueCode": "target-coverage",
+      "severity": "info",
+      "x": 8,
+      "y": 8,
+      "depthMeters": 52,
+      "bottomDepthMeters": 92,
+      "clearanceMeters": 40,
+      "timeSeconds": 300,
+      "publicSafe": true
+    }
+  ],
+  "episode": {
+    "episodeId": "three-r2a-acceptance-episode",
+    "seed": "three-r2a-acceptance-seed",
+    "missionConfig": {
+      "missionId": "three-r2a-acceptance-mission",
+      "scenarioId": "three-r2a-acceptance-scenario",
+      "seed": "three-r2a-acceptance-seed",
+      "world": {
+        "width": 12,
+        "height": 12,
+        "timeStepSeconds": 60,
+        "durationSeconds": 720,
+        "waterColumnConfig": {
+          "depthLayerModel": "top-down-2p5d",
+          "defaultDepthLayerId": "surface",
+          "depthLayers": [
+            {
+              "id": "surface",
+              "label": "Surface",
+              "minDepthMeters": 0,
+              "maxDepthMeters": 5
+            },
+            {
+              "id": "shallow",
+              "label": "Shallow",
+              "minDepthMeters": 5,
+              "maxDepthMeters": 25
+            },
+            {
+              "id": "thermocline",
+              "label": "Thermocline",
+              "minDepthMeters": 25,
+              "maxDepthMeters": 60
+            },
+            {
+              "id": "midwater",
+              "label": "Midwater",
+              "minDepthMeters": 60,
+              "maxDepthMeters": 110
+            },
+            {
+              "id": "deep",
+              "label": "Deep",
+              "minDepthMeters": 110,
+              "maxDepthMeters": 180
+            }
+          ]
+        }
+      },
+      "gliders": [
+        {
+          "id": "glider-alpha",
+          "start": {
+            "x": 2,
+            "y": 2
+          },
+          "diveProfileId": "fullProfile"
+        },
+        {
+          "id": "glider-bravo",
+          "start": {
+            "x": 3,
+            "y": 8
+          },
+          "diveProfileId": "thermoclineYo"
+        }
+      ],
+      "objectives": [
+        {
+          "id": "frontSurvey",
+          "label": "Front survey"
+        }
+      ]
+    },
+    "actions": [
+      {
+        "id": "alpha-leg-1",
+        "type": "waypointTarget",
+        "gliderId": "glider-alpha",
+        "agentId": "glider-alpha",
+        "timeSeconds": 0,
+        "target": {
+          "x": 7,
+          "y": 4
+        },
+        "diveProfileId": "fullProfile"
+      },
+      {
+        "id": "bravo-leg-1",
+        "type": "waypointTarget",
+        "gliderId": "glider-bravo",
+        "agentId": "glider-bravo",
+        "timeSeconds": 0,
+        "target": {
+          "x": 8,
+          "y": 8
+        },
+        "diveProfileId": "thermoclineYo"
+      },
+      {
+        "id": "alpha-leg-2",
+        "type": "waypointTarget",
+        "gliderId": "glider-alpha",
+        "agentId": "glider-alpha",
+        "timeSeconds": 360,
+        "target": {
+          "x": 10,
+          "y": 7
+        },
+        "diveProfileId": "fullProfile"
+      }
+    ],
+    "tracks": [
+      {
+        "gliderId": "glider-alpha",
+        "agentId": "glider-alpha",
+        "x": 2,
+        "y": 2,
+        "depthMeters": 0,
+        "depthLayerId": "surface",
+        "timeSeconds": 0,
+        "status": "start"
+      },
+      {
+        "gliderId": "glider-alpha",
+        "agentId": "glider-alpha",
+        "x": 4,
+        "y": 3,
+        "depthMeters": 42,
+        "depthLayerId": "thermocline",
+        "timeSeconds": 120,
+        "status": "diving"
+      },
+      {
+        "gliderId": "glider-alpha",
+        "agentId": "glider-alpha",
+        "x": 7,
+        "y": 4,
+        "depthMeters": 95,
+        "depthLayerId": "midwater",
+        "timeSeconds": 240,
+        "status": "bottom-turn"
+      },
+      {
+        "gliderId": "glider-alpha",
+        "agentId": "glider-alpha",
+        "x": 9,
+        "y": 6,
+        "depthMeters": 35,
+        "depthLayerId": "thermocline",
+        "timeSeconds": 420,
+        "status": "climbing"
+      },
+      {
+        "gliderId": "glider-alpha",
+        "agentId": "glider-alpha",
+        "x": 10,
+        "y": 7,
+        "depthMeters": 0,
+        "depthLayerId": "surface",
+        "timeSeconds": 600,
+        "status": "surface"
+      },
+      {
+        "gliderId": "glider-bravo",
+        "agentId": "glider-bravo",
+        "x": 3,
+        "y": 8,
+        "depthMeters": 0,
+        "depthLayerId": "surface",
+        "timeSeconds": 0,
+        "status": "start"
+      },
+      {
+        "gliderId": "glider-bravo",
+        "agentId": "glider-bravo",
+        "x": 5,
+        "y": 8,
+        "depthMeters": 20,
+        "depthLayerId": "shallow",
+        "timeSeconds": 120,
+        "status": "diving"
+      },
+      {
+        "gliderId": "glider-bravo",
+        "agentId": "glider-bravo",
+        "x": 8,
+        "y": 8,
+        "depthMeters": 52,
+        "depthLayerId": "thermocline",
+        "timeSeconds": 300,
+        "status": "sampling"
+      },
+      {
+        "gliderId": "glider-bravo",
+        "agentId": "glider-bravo",
+        "x": 9,
+        "y": 9,
+        "depthMeters": 0,
+        "depthLayerId": "surface",
+        "timeSeconds": 600,
+        "status": "surface"
+      }
+    ],
+    "observations": [
+      {
+        "observationId": "obs-alpha-thermocline",
+        "gliderId": "glider-alpha",
+        "agentId": "glider-alpha",
+        "x": 7,
+        "y": 4,
+        "zIndex": 2,
+        "depthLayerId": "midwater",
+        "depthMeters": 95,
+        "observedValue": 0.81,
+        "forecastValue": 0.64,
+        "timeSeconds": 240
+      },
+      {
+        "observationId": "obs-bravo-front",
+        "gliderId": "glider-bravo",
+        "agentId": "glider-bravo",
+        "x": 8,
+        "y": 8,
+        "zIndex": 1,
+        "depthLayerId": "thermocline",
+        "depthMeters": 52,
+        "observedValue": 0.73,
+        "forecastValue": 0.57,
+        "timeSeconds": 300
+      }
+    ],
+    "terrainEvents": [
+      {
+        "id": "terrain-alpha-clearance-warning",
+        "type": "anchor.simulation.terrain-clearance-warning",
+        "eventType": "anchor.simulation.terrain-clearance-warning",
+        "agentId": "glider-alpha",
+        "segmentId": "alpha-leg-2",
+        "issueCode": "terrain-clearance-warning",
+        "severity": "warning",
+        "x": 9,
+        "y": 6,
+        "depthMeters": 35,
+        "bottomDepthMeters": 43,
+        "clearanceMeters": 8,
+        "timeSeconds": 420,
+        "publicSafe": true
+      },
+      {
+        "id": "terrain-bravo-target-coverage",
+        "type": "anchor.simulation.target-coverage",
+        "eventType": "anchor.simulation.target-coverage",
+        "agentId": "glider-bravo",
+        "targetId": "target-front-1",
+        "issueCode": "target-coverage",
+        "severity": "info",
+        "x": 8,
+        "y": 8,
+        "depthMeters": 52,
+        "bottomDepthMeters": 92,
+        "clearanceMeters": 40,
+        "timeSeconds": 300,
+        "publicSafe": true
+      }
+    ],
+    "surfacingEvents": [
+      {
+        "id": "surface-alpha-terminal",
+        "gliderId": "glider-alpha",
+        "agentId": "glider-alpha",
+        "timeSeconds": 600,
+        "reason": "planned-surface"
+      },
+      {
+        "id": "surface-bravo-terminal",
+        "gliderId": "glider-bravo",
+        "agentId": "glider-bravo",
+        "timeSeconds": 600,
+        "reason": "planned-surface"
+      }
+    ],
+    "objectiveSequence": [
+      {
+        "objectiveId": "frontSurvey",
+        "label": "Front survey",
+        "surfacingIndex": 0,
+        "timeSeconds": 240,
+        "source": "fixture"
+      }
+    ],
+    "scoreReport": {
+      "finalScore": 86,
+      "notBrowserOfficialScoring": true,
+      "changesOfficialBrowserScoring": false
+    }
+  },
+  "scoreReport": {
+    "finalScore": 86,
+    "notBrowserOfficialScoring": true,
+    "changesOfficialBrowserScoring": false
+  },
+  "publicSafe": true,
+  "hiddenTruthIncluded": false,
+  "fixtureMetadata": {
+    "purpose": "THREE-R2A.1 browser replay acceptance fixture",
+    "publicObservationPlayback": true,
+    "includesHiddenTruth": false,
+    "notAuthoritativeSimulation": true
+  }
+}
+

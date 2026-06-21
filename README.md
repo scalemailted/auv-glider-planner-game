@@ -962,7 +962,7 @@ Simulation presentation now uses a scheduler/dirty-category pipeline. Canonical 
 
 The current Three.js mission renderer uses presentation-only quality profiles. Balanced caps effective pixel ratio at 1.25, presents simulation snapshots at up to 30 Hz, and renders one active textured water-column slab plus low-cost context depth outlines by default. These settings do not change canonical planning, simulation, sampling, scoring, or replay.
 
-The terrain stack now continues through THREE-R1.2C: terrain-aware continuous mission validation and polished 3D presentation. The next intended renderer phase is THREE-R2: Three.js replay, Debrief route review, and editor parity, only after validation gates remain green. Human manual QA by the project owner remains pending.
+The terrain stack now continues through THREE-R1.2C, and THREE-R2A adds deterministic public replay review for Debrief and Headless Bundle Viewer artifacts. THREE-R2A.1 is the replay acceptance/full-E2E gate; the next intended renderer phase is THREE-R2B mission editor parity and production Phaser scene retirement only after validation and owner-review gates are green. Human manual QA by the project owner remains pending.
 
 ## THREE-R1.2B Continuous Bathymetric Terrain
 

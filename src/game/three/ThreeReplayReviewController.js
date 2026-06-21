@@ -20,6 +20,12 @@ export function createThreeReplayReviewController({ renderer = null, source = nu
     viewModel,
     lastAction: { type: 'init' },
     updateCount: 0,
+    replayViewModelBuildCount: 1,
+    replayViewModelCacheHitCount: 0,
+    replayStaticGeometryBuildCount: 0,
+    replayDynamicGeometryBuildCount: 0,
+    replayGeometryFullRebuildCount: 0,
+    replayGeometryIncrementalUpdateCount: 0,
     disposed: false,
     boundaryFlags: {
       ownsSimulation: false,
@@ -42,6 +48,9 @@ export function updateThreeReplayReviewController(controller = null, action = {}
   controller.viewModel = buildReplayWorldRenderViewModel(controller.session, action.options ?? {});
   controller.lastAction = action;
   controller.updateCount = Number(controller.updateCount ?? 0) + 1;
+  controller.replayViewModelBuildCount = Number(controller.replayViewModelBuildCount ?? 0) + 1;
+  controller.replayDynamicGeometryBuildCount = Number(controller.replayDynamicGeometryBuildCount ?? 0) + 1;
+  controller.replayGeometryIncrementalUpdateCount = Number(controller.replayGeometryIncrementalUpdateCount ?? 0) + 1;
   pushReplayViewModelToRenderer(controller, action.type ?? 'update');
   return controller;
 }
@@ -66,6 +75,12 @@ export function threeReplayReviewControllerSummary(controller = {}) {
     version: THREE_REPLAY_REVIEW_CONTROLLER_VERSION,
     disposed: controller?.disposed === true,
     updateCount: Number(controller?.updateCount ?? 0),
+    replayViewModelBuildCount: Number(controller?.replayViewModelBuildCount ?? 0),
+    replayViewModelCacheHitCount: Number(controller?.replayViewModelCacheHitCount ?? 0),
+    replayStaticGeometryBuildCount: Number(controller?.replayStaticGeometryBuildCount ?? 0),
+    replayDynamicGeometryBuildCount: Number(controller?.replayDynamicGeometryBuildCount ?? 0),
+    replayGeometryFullRebuildCount: Number(controller?.replayGeometryFullRebuildCount ?? 0),
+    replayGeometryIncrementalUpdateCount: Number(controller?.replayGeometryIncrementalUpdateCount ?? 0),
     lastActionType: controller?.lastAction?.type ?? null,
     hasRenderer: Boolean(controller?.renderer),
     session: replayReviewSessionSummary(controller?.session ?? {}),
@@ -74,6 +89,11 @@ export function threeReplayReviewControllerSummary(controller = {}) {
     validationStatus: validation?.status ?? null,
     validationErrors: validation?.errors ?? [],
     publicSafe: controller?.viewModel?.boundaryFlags?.includesHiddenTruth !== true,
+    usesSharedReplayReducer: true,
+    replayOwnsSimulation: false,
+    replayOwnsScoring: false,
+    rendererOwnsReplaySemantics: false,
+    includesHiddenTruth: false,
     ownsSimulation: false,
     ownsPlanning: false,
     ownsScoring: false,

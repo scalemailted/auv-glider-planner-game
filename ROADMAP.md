@@ -24,7 +24,7 @@ Browser ANCHOR is the visual game and referee. Node/OceanBox-JS is the canonical
 
 ## 2. Current Architecture
 
-Current renderer sequence: THREE-R1.1E scene isolation and THREE-R1.2A water-column slabs are followed by THREE-R1.2A.1 volumetric activation/lifecycle hardening, THREE-R1.2A.3 continuous waypoint/dive/field activation, THREE-R1.2A.3.1 continuous Mission UI runtime stabilization, THREE-R1.2A.4.2 performance measurement, THREE-R1.2A.4.3 Simulation presentation optimization and authoritative grouped E2E, then THREE-R1.2B bathymetric seabed mesh/coastline/landmass geometry, THREE-R1.2B.1 bathymetry integration hardening, legacy terrain retirement, and visual/performance closure, THREE-R1.2C terrain-aware continuous mission validation and polished 3D presentation, THREE-R1.2C.1 terrain validation runtime completion, replay/event alignment, and E2E stabilization, THREE-R1.2C.2 terrain-validation performance recovery, missing E2E completion, and final R2 readiness gate, and later THREE-R2 replay/debrief route review and editor parity.
+Current renderer sequence: THREE-R1.1E scene isolation and THREE-R1.2A water-column slabs are followed by THREE-R1.2A.1 volumetric activation/lifecycle hardening, THREE-R1.2A.3 continuous waypoint/dive/field activation, THREE-R1.2A.3.1 continuous Mission UI runtime stabilization, THREE-R1.2A.4.2 performance measurement, THREE-R1.2A.4.3 Simulation presentation optimization and authoritative grouped E2E, then THREE-R1.2B bathymetric seabed mesh/coastline/landmass geometry, THREE-R1.2B.1 bathymetry integration hardening, legacy terrain retirement, and visual/performance closure, THREE-R1.2C terrain-aware continuous mission validation and polished 3D presentation, THREE-R1.2C.1 terrain validation runtime completion, replay/event alignment, and E2E stabilization, THREE-R1.2C.2 terrain-validation performance recovery, missing E2E completion, and final R2 readiness gate, THREE-R2A replay/debrief route review, THREE-R2A.1 replay acceptance/full-E2E closure, and later THREE-R2B mission editor parity after the replay gates pass.
 
 ### Browser ANCHOR
 
@@ -372,7 +372,7 @@ GPU/RAF render-cost closure preceded the completed terrain foundation. The curre
 
 ## Current Terrain Sequence
 
-THREE-R1.2B is the continuous bathymetric seabed mesh, coastline, and landmass geometry pass. THREE-R1.2B.1 hardens the bathymetry integration and retires legacy terrain paths. THREE-R1.2C adds terrain-aware continuous mission validation and polished 3D presentation. THREE-R2 remains replay, Debrief route review, and editor parity. Terrain authority stays in core JavaScript and does not add arbitrary XYZ planning, WebGPU, a fluid solver, external datasets, or operational ocean claims.
+THREE-R1.2B is the continuous bathymetric seabed mesh, coastline, and landmass geometry pass. THREE-R1.2B.1 hardens the bathymetry integration and retires legacy terrain paths. THREE-R1.2C adds terrain-aware continuous mission validation and polished 3D presentation. THREE-R2A covers replay and Debrief route review; THREE-R2A.1 closes replay acceptance; THREE-R2B remains mission editor parity after replay gates pass. Terrain authority stays in core JavaScript and does not add arbitrary XYZ planning, WebGPU, a fluid solver, external datasets, or operational ocean claims.
 
 ## Near-Term Renderer Roadmap Order
 
@@ -390,7 +390,7 @@ Replay, debrief route review, and editor parity
 
 ## THREE-R1.2C / THREE-R2 Order
 
-Current terrain-renderer order is THREE-R1.2C terrain-aware continuous mission validation and polished 3D presentation, then THREE-R2 Three.js replay, Debrief route review, and editor parity. THREE-R2 should start only after terrain-aware validation, export/debrief metadata, browser/headless parity checks, and headed/manual QA expectations are stable.
+Current renderer order is THREE-R2A deterministic replay/debrief review, THREE-R2A.1 replay acceptance and full E2E closure, then THREE-R2B Three.js mission editor parity and production Phaser scene retirement. THREE-R2B should start only after replay validation, browser/headless parity checks, headed automated QA, and owner manual QA expectations are stable.
 
 ## Near-Term Renderer Sequence
 

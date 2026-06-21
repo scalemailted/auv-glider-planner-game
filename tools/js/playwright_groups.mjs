@@ -1,4 +1,4 @@
-export const PLAYWRIGHT_GROUPS_VERSION = 'playwright-groups-r2a';
+export const PLAYWRIGHT_GROUPS_VERSION = 'playwright-groups-r2a-1';
 
 export const PLAYWRIGHT_GROUPS = Object.freeze([
   {
@@ -97,15 +97,23 @@ export const PLAYWRIGHT_GROUPS = Object.freeze([
     id: 'threeReplayReview',
     label: 'Three.js replay playback and debrief route review parity',
     patterns: [
-      /^THREE-R2A Headless Replay Opens Three Review Scene$/i,
-      /^THREE-R2A Tampered Replay Review Shows Integrity Warning$/i
+      /^Three Debrief Opens Canonical Replay Review$/i,
+      /^Three Replay Play Pause Step and Checkpoint Navigation$/i,
+      /^Three Replay Scrub Reconstructs Public State Deterministically$/i,
+      /^Three Replay Distinguishes Planned Predicted and Realized Paths$/i,
+      /^Three Replay Shows Terrain Events and Depth Observations$/i,
+      /^Three Replay Supports Multi-Agent Selection$/i,
+      /^Three Replay Rejects Tampered Checkpoint Digest$/i,
+      /^Three Replay Resources Dispose Across Scene Transitions$/i,
+      /^Browser and Headless Replay Share Reducer Semantics$/i
     ]
   },
   {
     id: 'visualAcceptance',
     label: 'Headed owner visual acceptance and production walkthroughs',
     patterns: [
-      /^THREE-R1\.2C Full Headed Production Walkthrough$/i
+      /^THREE-R1\.2C Full Headed Production Walkthrough$/i,
+      /^THREE-R2A Full Headed Replay and Debrief Walkthrough$/i
     ]
   }
 ]);

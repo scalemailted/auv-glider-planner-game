@@ -568,3 +568,10 @@ Added renderer-neutral bathymetry surface, mesh, coastline, contour, and source 
 - Added playback reducer support for play, pause, step, event-index scrub, checkpoint jumps, tampered replay warnings, and public boundary debug flags.
 - Wired Debrief and the Headless Bundle Viewer to open the same Three replay review surface, with `ANCHOR_THREE_REPLAY_DEBUG` exposing mounted state, integrity, timeline, renderer, lifecycle, and boundary summaries.
 - Preserved the boundary: no new planner, no physics/resimulation rewrite, no hidden-truth replay, no official scoring change, no route optimization, and no terrain overhaul. Human manual QA by the project owner remains pending.
+
+## THREE-R2A.1 - Replay Review Acceptance, Full E2E Closure, and R2B Readiness Gate
+
+- Added exact browser E2E coverage for Debrief-to-Replay, playback controls, deterministic scrubbing, planned/predicted/realized path distinction, depth observations, terrain events, multi-agent selection, tampered replay handling, lifecycle disposal, and browser/headless reducer parity.
+- Added the deterministic `docs/examples/headless_replay_r2a_acceptance.example.json` replay fixture.
+- Added owner-review headed acceptance output under `test-results/three-r2a-owner-review/` with a QA summary and screenshots.
+- Replay remains deterministic playback over canonical public events and checkpoints. It does not rerun mission physics, recompute official scoring, expose hidden truth, or give Three.js replay-semantic authority.

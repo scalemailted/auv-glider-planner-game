@@ -917,7 +917,8 @@ function shouldRenderAtPresentationCadence(renderer, timestamp = frameNow()) {
   if (!renderer || renderer.disposed || renderer.needsRender === true) return false;
   const viewModel = renderer.viewModel ?? {};
   const simulationActive = viewModel.phase === 'simulation' || viewModel.type === 'anchor.rendering.simulation-world';
-  if (!simulationActive || viewModel.simulationStatus?.running !== true) return false;
+  const replayActive = viewModel.phase === 'replay' || viewModel.type === 'anchor.rendering.replay-world';
+  if ((!simulationActive && !replayActive) || viewModel.simulationStatus?.running !== true) return false;
   const maxHz = Number(renderer.presentationCadenceLimit ?? 0);
   if (!Number.isFinite(maxHz) || maxHz < 20) return false;
   const interval = 1000 / maxHz;
@@ -939,6 +940,7 @@ export function submitThreeMissionWorldRender(renderer, timestamp = frameNow(), 
   renderer.renderRequestReason = null;
   renderer.renderCallsThisPresentationFrame = 0;
   renderer.renderFrameSequence = Number(renderer.renderFrameSequence ?? 0) + 1;
+  renderer.lastRenderTimestamp = Number(timestamp ?? frameNow());
   beginThreePerformanceFrame(renderer.performanceMonitor, timestamp);
   const start = frameNow();
   beginThreeGpuTimerQuery(renderer.gpuTimer);

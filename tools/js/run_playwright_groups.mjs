@@ -1,4 +1,4 @@
-﻿import { spawn } from 'node:child_process';
+import { spawn } from 'node:child_process';
 import net from 'node:net';
 import { performance } from 'node:perf_hooks';
 import { PLAYWRIGHT_GROUPS, grepForGroup } from './playwright_groups.mjs';
@@ -33,7 +33,7 @@ for (const group of PLAYWRIGHT_GROUPS) {
     continue;
   }
   const started = performance.now();
-  const code = await runPlaywright(['--reporter=line', '--grep', grepForGroup(group.id)], group.id);
+  const code = await runPlaywright(groupPlaywrightArgs(group), group.id);
   const durationMs = performance.now() - started;
   const portAfterFree = await waitForPortFree(PORT, 4000);
   results.push({ group: group.id, selectedCount, code, durationMs, portBeforeFree: true, portAfterFree });
@@ -51,6 +51,11 @@ for (const result of results) {
 console.log(failed ? 'FAIL grouped Playwright suite' : 'PASS grouped Playwright suite');
 process.exit(failed ? 1 : 0);
 
+function groupPlaywrightArgs(group) {
+  const args = ['--reporter=line', '--workers=1', '--grep', grepForGroup(group.id)];
+  if (group.id === 'visualAcceptance') args.push('--headed', '--project=chromium');
+  return args;
+}
 function runPlaywright(args, label) {
   return new Promise((resolve) => {
     const child = spawn(process.execPath, ['./node_modules/@playwright/test/cli.js', 'test', ...args], { cwd: process.cwd(), stdio: 'inherit' });

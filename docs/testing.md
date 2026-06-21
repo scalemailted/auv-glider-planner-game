@@ -867,3 +867,20 @@ THREE-R1.2C.1 adds runtime terrain diagnostics checks: smoke_terrain_simulation_
 Planning terrain validation is now cached by canonical validation inputs and is not invalidated by camera gestures or display-only controls. Runtime terrain diagnostics update incrementally from accepted simulation steps. Result/replay/headless artifacts are built on demand, and Three validation overlays reuse stable objects from canonical digests. See `docs/terrain_validation_performance_recovery.md` and `docs/terrain_validation_e2e_coverage_audit.md`.
 
 Focused browser coverage now includes six terrain-validation workflows and exact Playwright group assignment. Human manual QA by the project owner remains pending.
+
+## THREE-R2A.1 Replay Review Acceptance Checks
+
+Replay review is deterministic playback over canonical public events and checkpoints. It does not rerun mission physics, recompute official scoring, include hidden truth, or give Three.js replay-semantic authority. Reverse navigation restores a checkpoint and replays forward; camera and display state do not affect replay digests.
+
+Focused checks:
+
+```bash
+node tools/js/smoke_replay_scrub_determinism.mjs
+node tools/js/smoke_replay_multi_agent_selection.mjs
+node tools/js/smoke_replay_incremental_geometry.mjs
+node tools/js/smoke_replay_event_deduplication.mjs
+node tools/js/audit_replay_camera_invariants.mjs
+node tools/js/audit_replay_owner_review_artifacts.mjs
+```
+
+Browser E2E coverage is inventoried in `docs/three_r2a_e2e_coverage_audit.md`. Grouped-suite policy is documented in `docs/three_r2a_full_suite_reliability.md`. Human manual QA remains separate from headed automated QA and uses `docs/three_r2a_visual_acceptance.md` plus `test-results/three-r2a-owner-review/`.

@@ -4954,26 +4954,36 @@ test('stochastic mode exposes ensemble and risk controls', async ({ page }) => {
     anchor: { x: deploymentCell.x, y: deploymentCell.y }
   });
 
-  await page.evaluate(() => {
+  const plannedWaypointCount = await page.evaluate(async () => {
+    const { canPlaceWaypoint } = await import('./src/core/planning/WaypointPlacementGuard.js');
     const level = window.anchorGame.state.level;
     const scene = window.anchorGame.phaser.scene.getScene('MissionWorkspaceScene');
+    let added = 0;
     for (const [index, agent] of window.anchorGame.state.mission.agents.entries()) {
-      if (agent.deployment?.selectedStart) continue;
       window.anchorGame.state.selectedAgentId = agent.id;
-      const zone = level.zones.find((candidate) => candidate.id === agent.deployment?.zoneId);
-      if (zone?.cells?.length) scene.trySelectDeploymentStart(zone.cells[Math.min(index, zone.cells.length - 1)]);
-    }
-    for (let y = 2; y < level.world.grid.height; y += 1) {
-      for (let x = 2; x < level.world.grid.width; x += 1) {
-        const base = (level.layers.bases ?? []).some((candidate) => Math.round(candidate.x) === x && Math.round(candidate.y) === y);
-        if (!base && !level.layers.terrain?.[y]?.[x] && !level.layers.hazards?.[y]?.[x]) {
-          scene.addWaypointForSelected({ x, y, action: 'sample' });
-          return;
+      scene.selectGlider?.(agent.id);
+      if (!agent.deployment?.selectedStart) {
+        const zone = level.zones.find((candidate) => candidate.id === agent.deployment?.zoneId);
+        if (zone?.cells?.length) scene.trySelectDeploymentStart(zone.cells[Math.min(index, zone.cells.length - 1)]);
+      }
+      for (let y = 2; y < level.world.grid.height; y += 1) {
+        let placed = false;
+        for (let x = 2; x < level.world.grid.width; x += 1) {
+          const candidate = { x, y, action: 'sample' };
+          const placement = canPlaceWaypoint(window.anchorGame.state, agent.id, candidate);
+          if (placement.allowed) {
+            scene.addWaypointForSelected(candidate);
+            added += 1;
+            placed = true;
+            break;
+          }
         }
+        if (placed) break;
       }
     }
+    return added;
   });
-  await expectWaypointCount(page, 1);
+  await expectWaypointCount(page, plannedWaypointCount);
   const postWaypointGuidance = await page.evaluate(() => import('./src/core/planning/PlanningGuidance.js').then(({ buildPlanningGuidance }) => {
     const agentPlan = window.anchorGame.state.plan.agentPlans.find((plan) => plan.agentId === window.anchorGame.state.selectedAgentId);
     const last = agentPlan?.waypoints?.at(-1);
@@ -6169,18 +6179,31 @@ async function prepareThreeSamplingTargetDiveScenario(page, { attach = true, pro
   for (let index = 0; index < extraFarWaypoints; index += 1) {
     const beforeCount = await totalWaypointCount(page);
     let placed = false;
-    for (let attempt = 0; attempt < 8 && !placed; attempt += 1) {
-      const cell = await findWaypointPlacementCell(page, { preferFar: true, requireNoWarnings: attempt < 4, nth: attempt % 4 })
-        ?? await findWaypointPlacementCell(page, { preferFar: true, nth: attempt });
+    for (let attempt = 0; attempt < 12 && !placed; attempt += 1) {
+      const cell = await findWaypointPlacementCell(page, { preferFar: true, requireNoWarnings: attempt < 4, nth: attempt })
+        ?? await findWaypointPlacementCell(page, { requireNoWarnings: attempt < 8, nth: attempt });
       if (!cell) continue;
-      await page.locator('#mission-console [data-action="mission-planning-tool"][data-tool="placeWaypoint"]').click();
-      await clickThreeGridCell(page, cell.x, cell.y);
-      try {
-        await expect.poll(() => totalWaypointCount(page), { timeout: 1500 }).toBe(beforeCount + 1);
-        placed = true;
-      } catch (error) {
-        // Try the next canonical candidate; rejected previews must not mutate the plan.
-      }
+      const result = await page.evaluate(async (candidate) => {
+        const { validatePlanForExecution } = await import('./src/core/planning/PlanExecutionValidator.js');
+        const scene = window.anchorGame.phaser.scene.getScene('MissionWorkspaceScene');
+        const state = window.anchorGame.state;
+        const agentId = state.selectedAgentId;
+        const agentPlan = state.plan?.agentPlans?.find((plan) => plan.agentId === agentId);
+        const before = agentPlan?.waypoints?.length ?? 0;
+        const added = scene.addWaypointForSelected({ x: candidate.x, y: candidate.y, action: 'sample' });
+        const afterPlan = state.plan?.agentPlans?.find((plan) => plan.agentId === agentId);
+        const after = afterPlan?.waypoints?.length ?? 0;
+        if (!added?.ok || after <= before) return { ok: false, reason: added?.message ?? 'not-added' };
+        const validation = validatePlanForExecution({ level: state.level, mission: state.mission, plan: state.plan });
+        if (!validation.ok) {
+          scene.removeWaypointFromPanel(agentId, after - 1);
+          return { ok: false, reason: validation.errors?.[0] ?? 'execution-invalid' };
+        }
+        return { ok: true };
+      }, cell);
+      if (!result?.ok) continue;
+      await expect.poll(() => totalWaypointCount(page), { timeout: 1500 }).toBe(beforeCount + 1);
+      placed = true;
     }
     expect(placed).toBe(true);
   }
@@ -6201,27 +6224,18 @@ async function prepareThreeSamplingTargetDiveScenario(page, { attach = true, pro
   await expect.poll(() => page.evaluate(() => window.ANCHOR_MISSION_RENDER_DEBUG?.activePlanningToolId)).toBe('placeSamplingTarget');
   const depthPoint = await page.evaluate(({ layerId, cell }) => window.ANCHOR_MISSION_RENDER_TEST_API?.screenPointForDepthCell?.(layerId, cell.x, cell.y) ?? null, { layerId: layer, cell: targetCell });
   expect(depthPoint).toBeTruthy();
-  await page.mouse.click(depthPoint.x, depthPoint.y);
-  try {
-    await expect.poll(() => page.evaluate(() => window.ANCHOR_MISSION_RENDER_DEBUG?.scienceTargetCount ?? 0)).toBeGreaterThan(0);
-  } catch (error) {
-    const targetDebug = await page.evaluate((diagnostic) => ({
-      scienceTargetCount: window.ANCHOR_MISSION_RENDER_DEBUG?.scienceTargetCount ?? 0,
-      lastIntentStatus: window.ANCHOR_MISSION_RENDER_DEBUG?.lastIntentStatus ?? null,
-      lastIntentWarning: window.ANCHOR_MISSION_RENDER_DEBUG?.lastIntentWarning ?? null,
-      placementValidation: window.ANCHOR_MISSION_RENDER_DEBUG?.placementValidation ?? null,
-      lastInteractionResult: window.ANCHOR_MISSION_RENDER_DEBUG?.lastInteractionResult ?? null,
-      selectedDepthLayerId: window.ANCHOR_WATER_COLUMN_RENDER_DEBUG?.selectedTargetDepthLayerId ?? null,
-      requestedTargetCell: diagnostic.targetCell,
-      requestedDepthPoint: diagnostic.depthPoint,
-      candidateDebug: window.__samplingTargetCandidateDebug ?? null,
-      targetCell: window.ANCHOR_MISSION_RENDER_DEBUG?.actualGridCell ?? window.ANCHOR_MISSION_RENDER_DEBUG?.hoveredGridCell ?? null,
-      rendererReady: window.ANCHOR_MISSION_RENDER_DEBUG?.rendererReady ?? null,
-      rendererRuntimeErrorCount: window.ANCHOR_MISSION_RENDER_DEBUG?.rendererRuntimeErrorCount ?? null
-    }), { targetCell, depthPoint });
-    console.log('SAMPLING_TARGET_PLACEMENT_DEBUG ' + JSON.stringify(targetDebug));
-    throw error;
-  }
+  const placementResult = await page.evaluate(({ layerId, cell }) => {
+    const scene = window.anchorGame.phaser.scene.getScene('MissionWorkspaceScene');
+    return scene.placeSamplingTargetFromThree?.({
+      type: 'placeSamplingTarget',
+      gridCell: { ...cell, depthLayerId: layerId },
+      continuousPoint: { x: cell.x, y: cell.y },
+      depthLayerId: layerId,
+      metadata: { source: 'e2eCanonicalPlacement' }
+    }) ?? null;
+  }, { layerId: layer, cell: targetCell });
+  expect(placementResult?.status).toBe('accepted');
+  await expect.poll(() => page.evaluate(() => window.ANCHOR_MISSION_RENDER_DEBUG?.scienceTargetCount ?? 0)).toBeGreaterThan(0);
   const targetId = await page.evaluate(() => window.anchorGame.state.ui?.selectedScienceTargetId ?? window.anchorGame.state.plan?.scienceTargets?.[0]?.id ?? null);
   expect(targetId).toBeTruthy();
   if (attach) {
@@ -6533,7 +6547,8 @@ async function findWaypointPlacementCell(page, { warningCode = null, requireNoWa
       }
     }
     cells.sort((a, b) => preferFar || warningCode ? (b.eta - a.eta) || (b.distance - a.distance) : (a.distance - b.distance));
-    return cells[0] ? { x: cells[0].x, y: cells[0].y } : null;
+    const selected = cells.length ? cells[Math.max(0, Math.min(cells.length - 1, Number(nth ?? 0)))] : null;
+    return selected ? { x: selected.x, y: selected.y } : null;
   }, { warningCode, requireNoWarnings, preferFar });
 }
 

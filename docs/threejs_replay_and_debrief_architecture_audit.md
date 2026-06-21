@@ -32,3 +32,13 @@ THREE-R2A makes Three.js the canonical browser replay review surface for public 
 ## Boundary Summary
 
 THREE-R2A is a browser replay review layer. It consumes public replay/result data, maps it into renderer-neutral view models, and renders it through the existing Three mission renderer. It does not rerun simulation, compute vehicle motion, generate observations, mutate plans, optimize routes, use hidden truth, change scoring, or introduce a planner.
+
+## THREE-R2A.1 Acceptance Update
+
+THREE-R2A.1 hardens the existing architecture without adding new replay semantics. The production path remains:
+
+```text
+canonical manifest/events/checkpoints -> shared reducer -> public replay state -> renderer-neutral replay view model -> Three renderer
+```
+
+The acceptance diagnostics expose `usesSharedReplayReducer: true`, `replayOwnsSimulation: false`, `replayOwnsScoring: false`, `rendererOwnsReplaySemantics: false`, and `includesHiddenTruth: false`. Reverse navigation is checkpoint restore plus forward reduction; camera/display state is excluded from replay digests.
