@@ -861,3 +861,9 @@ Three Bathymetry Resources Dispose Across Scene Transitions
 Focused terrain validation checks include the smoke_terrain_aware_* scripts, smoke_three_terrain_validation_layers.mjs, smoke_terrain_validation_debrief_summary.mjs, audit_terrain_validation_browser_headless_parity.mjs, audit_terrain_validation_authority_boundaries.mjs, and audit_terrain_polish_performance_boundaries.mjs. These checks assert the portable core contract, public-safe metadata, browser/headless parity for matching inputs, and the renderer authority boundary. They do not replace headed human QA.
 
 THREE-R1.2C.1 adds runtime terrain diagnostics checks: smoke_terrain_simulation_diagnostics.mjs, smoke_terrain_simulation_events.mjs, smoke_terrain_finish_instantly_events.mjs, smoke_terrain_replay_alignment.mjs, smoke_terrain_result_roundtrip.mjs, smoke_terrain_debrief_comparison.mjs, audit_terrain_runtime_event_boundaries.mjs, and audit_terrain_validation_camera_invariants.mjs. These checks assert that launch validation is frozen, actual diagnostics come from canonical simulation state, visual interpolation cannot create terrain events, terrain events do not change official scoring, public replay excludes hidden truth, and camera interaction cannot rebuild canonical validation.
+
+## THREE-R1.2C.2 Terrain-Validation Performance Recovery
+
+Planning terrain validation is now cached by canonical validation inputs and is not invalidated by camera gestures or display-only controls. Runtime terrain diagnostics update incrementally from accepted simulation steps. Result/replay/headless artifacts are built on demand, and Three validation overlays reuse stable objects from canonical digests. See `docs/terrain_validation_performance_recovery.md` and `docs/terrain_validation_e2e_coverage_audit.md`.
+
+Focused browser coverage now includes six terrain-validation workflows and exact Playwright group assignment. Human manual QA by the project owner remains pending.

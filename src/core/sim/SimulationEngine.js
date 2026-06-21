@@ -305,6 +305,10 @@ export class SimulationEngine {
         return;
       }
     }
+    for (const agent of this.agents) {
+      this.recordTerrainDiagnosticsForAgent(agent);
+      if (this.aborted) return;
+    }
     this.updateCommsStates();
     if (surfaceTime !== null) this.handleSurfacing(surfaceTime);
     this.updateCompletion(duration);

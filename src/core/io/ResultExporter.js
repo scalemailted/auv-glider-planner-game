@@ -68,6 +68,7 @@ import {
 } from '../storage/LeaderboardStore.js';
 
 export function buildResultExport({ level, mission, plan, result, label = 'Manual Player Plan', challenge = null, experienceMode = null } = {}) {
+  recordResultExportBuild();
   if (level) ensureLevelIdentity(level);
   const replaySeedContract = getReplaySeedContract({
     level,
@@ -105,6 +106,7 @@ export function buildResultExport({ level, mission, plan, result, label = 'Manua
       ?? challenge?.navigationUncertainty
       ?? {}
   );
+  const terrainEvents = terrainEventsFromResult(result);
   return {
     schemaVersion: EXPORT_SCHEMA_VERSION,
     type: 'anchor.result',
@@ -185,7 +187,7 @@ export function buildResultExport({ level, mission, plan, result, label = 'Manua
     routeQuality: cloneJson(result?.routeQuality ?? null),
     terrainAwareValidation: cloneJson(result?.terrainAwareValidation ?? result?.summary?.terrainAwareValidation ?? null),
     terrainValidation: cloneJson(result?.terrainValidation ?? result?.terrainAwareValidation ?? result?.summary?.terrainAwareValidation ?? null),
-    terrainEvents: cloneJson(result?.terrainEvents ?? (result?.events ?? []).filter((event) => String(event.type ?? '').startsWith('anchor.simulation.terrain-'))),
+    terrainEvents: cloneJson(terrainEvents),
     actualTerrainDiagnostics: cloneJson(result?.actualTerrainDiagnostics ?? result?.summary?.terrainDiagnostics ?? null),
     terrainValidationMetadata: cloneJson({
       type: 'anchor.validation.terrain-aware-result-metadata',
@@ -240,13 +242,28 @@ export function buildResultExport({ level, mission, plan, result, label = 'Manua
       terrainAwareValidation: result?.terrainAwareValidation ?? result?.summary?.terrainAwareValidation ?? null,
       terrainValidation: result?.terrainValidation ?? result?.terrainAwareValidation ?? result?.summary?.terrainAwareValidation ?? null,
       actualTerrainDiagnostics: result?.actualTerrainDiagnostics ?? result?.summary?.terrainDiagnostics ?? null,
-      terrainEventCount: result?.terrainEvents?.length ?? (result?.events ?? []).filter((event) => String(event.type ?? '').startsWith('anchor.simulation.terrain-')).length
+      terrainEventCount: terrainEvents.length
     }),
     debugTrace: cloneJson(result?.debugTrace ?? result?.simulationTrace ?? null),
     rawResult: cloneJson(result ?? null)
   };
 }
 
+function terrainEventsFromResult(result = {}) {
+  const primary = Array.isArray(result?.terrainEvents) ? result.terrainEvents : [];
+  const fallback = Array.isArray(result?.events) ? result.events : [];
+  const seen = new Set();
+  const events = [];
+  for (const event of [...primary, ...fallback]) {
+    const type = String(event?.type ?? event?.eventType ?? '');
+    if (!type.startsWith('anchor.simulation.terrain-')) continue;
+    const key = event?.id ?? `${type}:${event?.agentId ?? 'agent'}:${event?.tick ?? event?.timeSeconds ?? event?.t ?? events.length}`;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    events.push(event);
+  }
+  return events;
+}
 export function buildBenchmarkRunRecordExportFromResult({
   level,
   mission,
@@ -921,4 +938,10 @@ function benchmarkExportTypes() {
     'anchor.benchmark.adaptive-leg-record',
     'anchor.benchmark.adaptive-session-summary'
   ];
+}
+
+function recordResultExportBuild() {
+  globalThis.ANCHOR_RESULT_EXPORT_DEBUG ??= { buildCount: 0 };
+  globalThis.ANCHOR_RESULT_EXPORT_DEBUG.buildCount = Number(globalThis.ANCHOR_RESULT_EXPORT_DEBUG.buildCount ?? 0) + 1;
+  globalThis.ANCHOR_RESULT_EXPORT_DEBUG.lastBuildReason = 'explicit-result-export-builder';
 }

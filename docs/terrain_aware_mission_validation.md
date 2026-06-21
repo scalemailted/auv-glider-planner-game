@@ -33,3 +33,7 @@ Validation is rebuilt when canonical plan, mission, level, active forecast frame
 ## Launch Prediction and Runtime Diagnostics
 
 Launch validation is frozen at Execute and remains distinct from actual execution diagnostics. Runtime terrain diagnostics use canonical simulation state to track actual clearance, depth, per-agent/per-segment summaries, target coverage, and public terrain events. Visual interpolation cannot create terrain events. Terrain events explain feasibility outcomes and do not change official scoring.
+
+## THREE-R1.2C.2 Terrain Validation Closure
+
+Planning terrain validation is cached and event-driven, runtime terrain diagnostics are incremental, replay/export artifacts are not rebuilt per presentation frame, and Three validation layers update from canonical digests. Terrain diagnostics explain feasibility and execution outcomes but do not change official scoring. Headed browser performance is authoritative; headless timing is diagnostic. Human manual QA by the project owner remains pending.

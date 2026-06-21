@@ -27,6 +27,7 @@ export function buildReplayArtifactsFromBundle(bundle = {}, options = {}) {
 }
 
 export function buildReplayArtifactsFromSource(source = {}, options = {}) {
+  recordReplayBuild('manifest');
   const episode = source.episode ?? {};
   const bundle = source.bundle ?? {};
   const missionConfig = episode.missionConfig ?? bundle.missionConfig ?? {};
@@ -177,6 +178,7 @@ export function buildReplayArtifactsFromSource(source = {}, options = {}) {
 }
 
 export function buildReplayCheckpoints({ replayId, events, initialState, terminalTick, dt, checkpointEvery, scoreSnapshot, missionOutcomeStatus, numericPolicy = REPLAY_NUMERIC_POLICY }) {
+  recordReplayBuild('checkpoint');
   const reasonsByTick = new Map([[0, new Set(['initial'])], [terminalTick, new Set(['terminal'])]]);
   for (const event of events) {
     if (event.phase === 'surfacing') addReason(reasonsByTick, event.tick, 'surfacing');
@@ -217,6 +219,7 @@ export function buildReplayCheckpoints({ replayId, events, initialState, termina
 }
 
 export function publicReplayStateAtTick(events = [], tick = 0, options = {}) {
+  recordReplayBuild('digest');
   const dt = finitePositive(options.dt, 60);
   const state = JSON.parse(JSON.stringify(options.initialState ?? { vehicles: {}, activeObjectives: [], observationSummary: { count: 0 } }));
   state.tick = tick;
@@ -711,4 +714,12 @@ function compactObject(value) {
     }
   }
   return result;
+}
+
+function recordReplayBuild(kind = 'manifest') {
+  globalThis.ANCHOR_REPLAY_DEBUG ??= { manifestBuildCount: 0, checkpointBuildCount: 0, digestBuildCount: 0 };
+  if (kind === 'checkpoint') globalThis.ANCHOR_REPLAY_DEBUG.checkpointBuildCount = Number(globalThis.ANCHOR_REPLAY_DEBUG.checkpointBuildCount ?? 0) + 1;
+  else if (kind === 'digest') globalThis.ANCHOR_REPLAY_DEBUG.digestBuildCount = Number(globalThis.ANCHOR_REPLAY_DEBUG.digestBuildCount ?? 0) + 1;
+  else globalThis.ANCHOR_REPLAY_DEBUG.manifestBuildCount = Number(globalThis.ANCHOR_REPLAY_DEBUG.manifestBuildCount ?? 0) + 1;
+  globalThis.ANCHOR_REPLAY_DEBUG.lastBuildKind = kind;
 }

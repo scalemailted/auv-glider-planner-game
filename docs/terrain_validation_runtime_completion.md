@@ -47,3 +47,9 @@ Node/OceanBox-JS headless episodes use the same portable terrain diagnostics whe
 Automated checks cover deterministic runtime diagnostics, event deduplication, finish-instantly preservation, result roundtrip, replay alignment, debrief comparison source coverage, and renderer-authority boundaries. Human manual QA remains separate from headed automated QA.
 
 Human manual QA by the project owner remains pending.
+
+## THREE-R1.2C.2 Terrain-Validation Performance Recovery
+
+This closure pass adds cached Planning terrain validation, incremental Simulation terrain diagnostics, incremental terrain-event summaries, on-demand replay/export artifact construction counters, digest-driven Three validation-layer reuse, Mission Readiness render lifecycle counters, and six focused visible browser workflows. Headed browser performance is authoritative; headless timing is diagnostic. Terrain diagnostics remain explanatory and do not change official scoring.
+
+Focused result recorded in this pass: the six requested E2E workflows passed in one invocation (`6 passed`, about 1.6 minutes). Group coverage is exact at 68 tests. A full headed production workflow and human manual QA remain separate gates.

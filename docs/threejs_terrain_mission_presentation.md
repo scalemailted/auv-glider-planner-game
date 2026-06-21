@@ -21,3 +21,7 @@ Validation issue objects are reused by stable IDs and disposed when absent. Came
 ## Runtime Diagnostics Presentation
 
 Three.js may display runtime terrain diagnostics, realized trajectories, actual observations, and terrain event markers emitted by canonical Simulation. It must not create canonical terrain events, recompute validation from visual interpolation, mutate official score, or use camera/quality state as validation input.
+
+## THREE-R1.2C.2 Presentation Boundary
+
+Three.js terrain-validation presentation reuses stable objects from canonical validation digests. Camera movement, vertical exaggeration, quality profile, labels, and layer opacity are presentation-only and must not rebuild canonical terrain validation, terrain diagnostics, replay, export, or scoring artifacts.

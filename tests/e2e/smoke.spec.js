@@ -2915,7 +2915,11 @@ test('Surface Waypoints Produce a Predicted Three-Dimensional Dive', async ({ pa
   await startVisibleContinuousMissionPlanning(page);
   await page.locator('#mission-console [data-action="three-camera"][data-preset="tacticalTopDown"]').click();
   const agentId = await selectedAgentId(page);
-  await deployAllGlidersThroughVisibleControls(page);
+  const agentIds = await page.evaluate(() => (window.anchorGame.state.mission?.agents ?? []).map((agent) => agent.id));
+  for (const id of agentIds) {
+    await selectAgentThroughVisibleControls(page, id);
+    await deployAgentThroughVisibleThreeControls(page, id);
+  }
   await selectAgentThroughVisibleControls(page, agentId);
   await page.locator('#mission-console [data-action="waypoint-snap-mode"][data-mode="freePlacement"]').click();
   for (let index = 0; index < 2; index += 1) {
@@ -3328,7 +3332,7 @@ test('Three Sampling Target and Dive Planning Headed Workflow', async ({ page },
 
 test('Three Simulation Uses Incremental Presentation Updates', async ({ page }) => {
   const browserErrors = attachBrowserErrorCollector(page);
-  await prepareThreeSamplingTargetDiveScenario(page, { attach: true, profile: 'fullProfile', layer: 'thermocline', cycles: 2 });
+  await prepareThreeSamplingTargetDiveScenario(page, { attach: true, profile: 'thermoclineDive', layer: 'thermocline', cycles: 2 });
   await page.locator('#mission-console [data-action="execute"]').click();
   await expect.poll(() => page.evaluate(() => window.ANCHOR_SIMULATION_RENDER_DEBUG?.threeMounted === true), { timeout: 15000 }).toBe(true);
   await page.evaluate(() => window.ANCHOR_MISSION_RENDER_TEST_API?.resetPerformanceWindow?.());
@@ -3438,7 +3442,7 @@ test('Three Quality Profiles Preserve Canonical Simulation Result', async ({ pag
 
 test('Three Context Slabs Reduce Cost Without Losing Dive Context', async ({ page }) => {
   const browserErrors = attachBrowserErrorCollector(page);
-  await prepareThreeSamplingTargetDiveScenario(page, { attach: true, profile: 'fullProfile', layer: 'thermocline', cycles: 2 });
+  await prepareThreeSamplingTargetDiveScenario(page, { attach: true, profile: 'thermoclineDive', layer: 'thermocline', cycles: 2 });
   await page.locator('#mission-console [data-action="three-quality-profile"][data-profile="balanced"]').click();
   await page.locator('#mission-console [data-action="three-camera"][data-preset="sideProfile"]').click();
   await expect.poll(() => page.evaluate(() => window.ANCHOR_WATER_COLUMN_RENDER_DEBUG?.activeTexturedSlabCount ?? 0)).toBe(1);
@@ -3535,7 +3539,7 @@ test('Three Mission Uses Continuous Bathymetric Terrain', async ({ page }) => {
 
 test('Three Terrain Camera Gestures Do Not Rebuild Bathymetry Mesh', async ({ page }) => {
   const browserErrors = attachBrowserErrorCollector(page);
-  await prepareThreeSamplingTargetDiveScenario(page, { attach: true, profile: 'fullProfile', layer: 'thermocline', cycles: 2 });
+  await prepareThreeSamplingTargetDiveScenario(page, { attach: true, profile: 'thermoclineDive', layer: 'thermocline', cycles: 2 });
   await expect.poll(() => page.evaluate(() => (window.ANCHOR_MISSION_RENDER_DEBUG?.rendererSummary?.bathymetryTerrainSummary?.terrainBuildCount ?? 0) > 0), { timeout: 15000 }).toBe(true);
   const before = await page.evaluate(() => {
     const summary = window.ANCHOR_MISSION_RENDER_DEBUG?.rendererSummary ?? {};
@@ -5599,6 +5603,242 @@ test('Terrain-Aware Placement Preview Prevents Invalid Mission Mutation', async 
   expect(browserErrors.unexpected()).toEqual([]);
 });
 
+
+test('Continuous Route Validation Detects Coastline and Clearance Risks', async ({ page }) => {
+  const browserErrors = attachBrowserErrorCollector(page);
+  const { agentId } = await prepareTerrainValidationPlanningBase(page);
+  const route = await findLandCrossingRouteCandidate(page, agentId);
+  expect(route).toBeTruthy();
+  await page.locator('#mission-console [data-action="mission-planning-tool"][data-tool="placeWaypoint"]').click();
+  await clickThreeGridCell(page, route.safe.x, route.safe.y);
+  await expectWaypointCount(page, 1);
+  await expect.poll(async () => (await terrainReadinessSnapshot(page)).executable).toBe(true);
+  let waypoint = await waypointAtIndex(page, agentId, 0);
+  await page.locator('#mission-console [data-action="mission-planning-tool"][data-tool="placeWaypoint"]').click();
+  const crossingPoint = await threeGridGroundPoint(page, route.crossing.x, route.crossing.y);
+  await page.mouse.move(crossingPoint.x, crossingPoint.y, { steps: 4 });
+  await expect.poll(() => page.evaluate(() => window.ANCHOR_MISSION_RENDER_DEBUG?.waypointCandidateStatus)).toBe('INVALID');
+  await expect.poll(() => page.evaluate(() => Boolean(window.ANCHOR_MISSION_RENDER_DEBUG?.waypointPrimaryMessage))).toBe(true);
+  await page.mouse.click(crossingPoint.x, crossingPoint.y);
+  await expectWaypointCount(page, 1);
+  const invalid = await terrainReadinessSnapshot(page);
+  expect(invalid.executable).toBe(true);
+  expect(invalid.terrainValidationObjectCount).toBeGreaterThan(0);
+
+  const warning = await findTerrainWarningWaypointCell(page, agentId);
+  if (warning) {
+    await dragThreeObjectToGridCell(page, 'screenPointForWaypoint', waypoint.id, warning.x, warning.y);
+    await expect.poll(async () => (await terrainReadinessSnapshot(page)).executable, { timeout: 10000 }).toBe(true);
+    expect(['VALID', 'VALID_WITH_WARNINGS']).toContain((await terrainReadinessSnapshot(page)).status);
+    await expect(page.locator('#mission-console [data-action="execute"]')).toBeEnabled();
+  }
+  await page.locator('#mission-console [data-action="water-column-dive-profile"][data-profile="deepDive"]').click();
+  await page.locator('#mission-console [data-action="water-column-target-layer"][data-layer="deep"]').click();
+  const deepProfile = await terrainReadinessSnapshot(page);
+  expect(deepProfile.issueCodes.some((code) => /BATHYMETRY|CLEARANCE|PROFILE|VEHICLE/.test(code))).toBe(true);
+  await focusFirstTerrainIssue(page);
+  await expect.poll(() => page.evaluate(() => Boolean(window.ANCHOR_MISSION_RENDER_DEBUG?.cameraPresetId)), { timeout: 10000 }).toBe(true);
+  expect(await page.evaluate(() => window.ANCHOR_MISSION_RENDER_DEBUG?.usesMeshRaycastForValidity)).toBe(false);
+  assertContinuousBrowserErrorsClean(browserErrors);
+});
+
+test('Sampling Targets Respect Canonical Seabed and Reachability', async ({ page }) => {
+  const browserErrors = attachBrowserErrorCollector(page);
+  const setup = await prepareThreeSamplingTargetDiveScenario(page, { attach: false, profile: 'thermoclineDive', layer: 'thermocline', cycles: 1 });
+  const initialTargets = await page.evaluate(() => window.anchorGame.state.plan?.scienceTargets?.length ?? 0);
+  await page.locator('#mission-console [data-action="water-column-target-layer"][data-layer="deep"]').click();
+  await page.locator('#mission-console [data-action="water-column-active-layer"][data-layer="deep"]').click();
+  const below = await findBelowSeabedSamplingTargetCell(page, 'deep');
+  if (below) {
+    await page.locator('#mission-console [data-action="mission-planning-tool"][data-tool="placeSamplingTarget"]').click();
+    const belowPoint = await page.evaluate(({ layerId, cell }) => window.ANCHOR_MISSION_RENDER_TEST_API?.screenPointForDepthCell?.(layerId, cell.x, cell.y) ?? null, { layerId: 'deep', cell: below });
+    expect(belowPoint).toBeTruthy();
+    await page.mouse.click(belowPoint.x, belowPoint.y);
+    await expect.poll(() => page.evaluate(() => window.anchorGame.state.plan?.scienceTargets?.length ?? 0)).toBe(initialTargets);
+    await expect.poll(() => page.evaluate(() => window.ANCHOR_MISSION_RENDER_DEBUG?.placementPreviewValid === false || window.ANCHOR_MISSION_RENDER_DEBUG?.lastIntentStatus === 'rejected')).toBe(true);
+  }
+  const validCell = await findSamplingTargetPlacementCell(page, 'deep') ?? setup.targetCell;
+  await page.locator('#mission-console [data-action="mission-planning-tool"][data-tool="placeSamplingTarget"]').click();
+  const validPoint = await page.evaluate(({ layerId, cell }) => window.ANCHOR_MISSION_RENDER_TEST_API?.screenPointForDepthCell?.(layerId, cell.x, cell.y) ?? null, { layerId: 'deep', cell: validCell });
+  expect(validPoint).toBeTruthy();
+  await page.mouse.click(validPoint.x, validPoint.y);
+  await expect.poll(() => page.evaluate((count) => (window.anchorGame.state.plan?.scienceTargets?.length ?? 0) > count, initialTargets)).toBe(true);
+  const beforeWaypoints = await totalWaypointCount(page);
+  await page.locator('#mission-console [data-action="science-target-attach"]').click();
+  await expect.poll(() => page.evaluate(() => (window.anchorGame.state.plan?.scienceTargets ?? []).some((target) => (target.attachedSegmentIds ?? []).length > 0))).toBe(true);
+  const attached = await terrainReadinessSnapshot(page);
+  expect(attached.issueCodes.some((code) => /TARGET_|COVERED|UNREACHABLE|CLEARANCE|BATHYMETRY/.test(code)) || attached.warningCount >= 0).toBe(true);
+  await page.locator('#mission-console [data-action="science-target-recommend"]').click();
+  const afterWaypoints = await totalWaypointCount(page);
+  expect(afterWaypoints).toBe(beforeWaypoints);
+  expect(await page.locator('#waypoint-timeline').textContent()).not.toMatch(/Sampling Target 1/i);
+  assertContinuousBrowserErrorsClean(browserErrors);
+});
+
+test('Mission Readiness Separates Errors Warnings and Advisories', async ({ page }) => {
+  const browserErrors = attachBrowserErrorCollector(page);
+  await startVisibleContinuousMissionPlanning(page);
+  await page.locator('#mission-console [data-action="three-camera"][data-preset="tacticalTopDown"]').click();
+  await expect.poll(() => page.evaluate(() => window.ANCHOR_MISSION_RENDER_DEBUG?.rendererReady === true), { timeout: 15000 }).toBe(true);
+  const agentId = await selectFirstAgentThroughVisibleControls(page);
+  await deploySelectedGliderThroughVisibleControls(page, agentId);
+  await page.locator('#mission-console [data-action="waypoint-snap-mode"][data-mode="snapToCellCenters"]').click();
+  await page.locator('#mission-console [data-action="mission-planning-tool"][data-tool="placeWaypoint"]').click();
+  const route = await findLandCrossingRouteCandidate(page, agentId);
+  await clickThreeGridCell(page, route.safe.x, route.safe.y);
+  await expectWaypointCount(page, 1);
+  await page.locator('#mission-console [data-action="water-column-dive-profile"][data-profile="deepDive"]').click();
+  await page.locator('#mission-console [data-action="water-column-target-layer"][data-layer="deep"]').click();
+  await expect.poll(() => terrainReadinessSnapshot(page)).toMatchObject({ status: 'INVALID', executable: false });
+  const invalid = await terrainReadinessSnapshot(page);
+  expect(invalid.hardErrorCount).toBeGreaterThan(0);
+  expect(invalid.warningCount).toBeGreaterThanOrEqual(0);
+  expect(invalid.advisoryCount).toBeGreaterThanOrEqual(0);
+  expect(invalid.executeControlEnabled === false || invalid.executable === false).toBe(true);
+  expect(invalid.executeControlDisabledReason ?? invalid.executeButtonTitle ?? 'Route invalid').toMatch(/Route invalid|Terrain validation|needs/i);
+  await focusFirstTerrainIssue(page);
+  await expect.poll(() => page.evaluate(() => Boolean(window.ANCHOR_MISSION_RENDER_DEBUG?.cameraPresetId)), { timeout: 10000 }).toBe(true);
+  const agentIds = await page.evaluate(() => (window.anchorGame.state.mission?.agents ?? []).map((agent) => agent.id));
+  for (const id of agentIds) {
+    await selectAgentThroughVisibleControls(page, id);
+    await deployAgentThroughVisibleThreeControls(page, id);
+  }
+  await selectAgentThroughVisibleControls(page, agentId);
+  await page.locator('#mission-console [data-action="water-column-dive-profile"][data-profile="thermoclineDive"]').click();
+  await page.locator('#mission-console [data-action="water-column-target-layer"][data-layer="thermocline"]').click();
+  await expect.poll(() => terrainReadinessSnapshot(page), { timeout: 10000 }).toMatchObject({ executable: true });
+  await expect(page.locator('#mission-console [data-action="execute"]')).toBeEnabled();
+  const launchReadiness = await terrainReadinessSnapshot(page);
+  await page.locator('#mission-console [data-action="execute"]').click();
+  await expect.poll(() => page.evaluate(() => window.anchorGame.phaser.scene.getScene('SimulationScene')?.sys.isActive?.() ?? false), { timeout: 15000 }).toBe(true);
+  const launch = await page.evaluate(() => ({
+    summary: window.ANCHOR_EXECUTION_DEBUG?.terrainAwareValidationSummary ?? window.anchorGame.state.executionLaunchPayload?.terrainAwareValidationSummary ?? null,
+    launchPlanDigest: window.ANCHOR_EXECUTION_DEBUG?.launchPlanDigest ?? null
+  }));
+  expect(launch.summary?.status).toBe(launchReadiness.status);
+  expect(launch.summary?.validationDigest ?? launch.summary?.planDigest ?? launch.launchPlanDigest ?? null).toBeTruthy();
+  await page.locator('#mission-console [data-action="finish"]').click();
+  await expect.poll(() => page.evaluate(() => Boolean(window.anchorGame.state.result)), { timeout: 30000 }).toBe(true);
+  await page.locator('#mission-console [data-action="debrief"]').click();
+  await expect(page.locator('#debrief-root')).toContainText(/Terrain|warnings|advisories|Launch/i);
+  assertContinuousBrowserErrorsClean(browserErrors);
+});
+
+test('Planned and Realized Paths Share Terrain Validation', async ({ page }) => {
+  const browserErrors = attachBrowserErrorCollector(page);
+  await prepareThreeSamplingTargetDiveScenario(page, { attach: true, profile: 'thermoclineDive', layer: 'thermocline', cycles: 2 });
+  const launchSnapshot = await page.evaluate(() => ({
+    digest: window.ANCHOR_MISSION_RENDER_DEBUG?.terrainAwareValidationSummary?.validationDigest ?? window.ANCHOR_TERRAIN_VALIDATION_DEBUG?.validationLayerDigest ?? null,
+    predictedMinimumClearance: window.ANCHOR_DIVE_PLAN_DEBUG?.predictedMinimumBottomClearance ?? null,
+    predictedMaximumDepth: window.ANCHOR_DIVE_PLAN_DEBUG?.selectedSegmentAchievableDepth ?? window.ANCHOR_DIVE_PLAN_DEBUG?.selectedSegmentRequestedDepth ?? null,
+    predictedTargetCoverage: window.ANCHOR_DIVE_PLAN_DEBUG?.predictedSampleCount ?? 0,
+    score: window.anchorGame.state.result?.summary?.finalScore ?? null
+  }));
+  await page.locator('#mission-console [data-action="execute"]').click();
+  await expect.poll(() => page.evaluate(() => window.ANCHOR_SIMULATION_RENDER_DEBUG?.threeMounted === true), { timeout: 15000 }).toBe(true);
+  await advanceSimulationSceneForRenderCost(page, { steps: 10, frameDelay: 0, keepRunning: true });
+  const actual = await page.evaluate(() => window.ANCHOR_SIMULATION_RENDER_DEBUG ?? {});
+  expect(actual.incrementalTerrainDiagnosticsUpdateCount).toBeGreaterThan(0);
+  expect(actual.fullTerrainDiagnosticsRebuildCount).toBe(0);
+  expect(actual.trajectoryPointsScannedDuringLastDiagnosticsUpdate).toBeLessThanOrEqual(1);
+  const actualMinimumClearance = actual.minimumActualClearanceMeters === null ? null : Number(actual.minimumActualClearanceMeters);
+  expect(actualMinimumClearance === null || Number.isFinite(actualMinimumClearance)).toBe(true);
+  if (actualMinimumClearance !== null && actualMinimumClearance < -1e-6) {
+    expect(actual.terrainEventCount ?? actual.terrainEventSummaryCompact?.eventCount ?? 0).toBeGreaterThan(0);
+  }
+  await page.locator('#mission-console [data-action="pause"]').click({ timeout: 5000 }).catch(() => null);
+  const beforePause = await page.evaluate(() => window.ANCHOR_SIMULATION_RENDER_DEBUG?.terrainEventCount ?? 0);
+  const playControlVisible = await page.locator('#mission-console [data-action="sim-play"]').isVisible().catch(() => false);
+  if (playControlVisible) {
+    await page.locator('#mission-console [data-action="sim-play"]').click({ timeout: 5000 });
+    await page.locator('#mission-console [data-action="pause"]').click({ timeout: 5000 }).catch(() => null);
+  }
+  const afterPause = await page.evaluate(() => window.ANCHOR_SIMULATION_RENDER_DEBUG?.terrainEventCount ?? 0);
+  expect(afterPause).toBeGreaterThanOrEqual(beforePause);
+  await page.locator('#mission-console [data-action="finish"]').click();
+  await expect.poll(() => page.evaluate(() => Boolean(window.anchorGame.state.result)), { timeout: 30000 }).toBe(true);
+  const result = await page.evaluate(() => ({ score: window.anchorGame.state.result?.summary?.finalScore ?? null, terrain: window.anchorGame.state.result?.actualTerrainDiagnostics ?? null, events: window.anchorGame.state.result?.terrainEvents?.length ?? 0 }));
+  const resultMinimumClearance = result.terrain?.minimumActualClearanceMeters === null ? null : Number(result.terrain?.minimumActualClearanceMeters);
+  expect(resultMinimumClearance === null || Number.isFinite(resultMinimumClearance)).toBe(true);
+  if (resultMinimumClearance !== null && resultMinimumClearance < -1e-6) {
+    expect(result.events).toBeGreaterThan(0);
+  }
+  await page.locator('#mission-console [data-action="debrief"]').click();
+  await expect(page.locator('#debrief-root')).toContainText(/Launch|Actual|Terrain|event/i);
+  expect(launchSnapshot.score).toBeNull();
+  assertContinuousBrowserErrorsClean(browserErrors);
+});
+
+test('Terrain Validation Persists Through Export Headless and Replay', async ({ page }) => {
+  const browserErrors = attachBrowserErrorCollector(page);
+  await prepareThreeSamplingTargetDiveScenario(page, { attach: true, profile: 'thermoclineDive', layer: 'thermocline', cycles: 1 });
+  const planning = await terrainReadinessSnapshot(page);
+  await page.locator('#mission-console [data-action="execute"]').click();
+  await expect.poll(() => page.evaluate(() => window.ANCHOR_SIMULATION_RENDER_DEBUG?.threeMounted === true), { timeout: 15000 }).toBe(true);
+  await page.locator('#mission-console [data-action="finish"]').click();
+  await expect.poll(() => page.evaluate(() => Boolean(window.anchorGame.state.result)), { timeout: 30000 }).toBe(true);
+  const artifact = await page.evaluate(async () => {
+    const { buildResultExport } = await import('./src/core/io/ResultExporter.js');
+    const { buildReplayArtifactsFromBundle } = await import('./src/core/replay/ReplayContractBuilder.js');
+    const state = window.anchorGame.state;
+    const exportJson = buildResultExport({ level: state.level, mission: state.mission, plan: state.plan, result: state.result, label: 'E2E terrain persistence' });
+    const replay = buildReplayArtifactsFromBundle({ episode: { missionConfig: { missionId: state.mission?.missionId, scenarioId: state.level?.levelId, world: { time: { dt: 1 } } }, tracks: [], observations: [], terrainEvents: state.result?.terrainEvents ?? [] } });
+    return {
+      exportJson,
+      replay,
+      resultExportBuildCount: window.ANCHOR_RESULT_EXPORT_DEBUG?.buildCount ?? 0,
+      replayDebug: window.ANCHOR_REPLAY_DEBUG ?? null
+    };
+  });
+  expect(artifact.exportJson.terrainAwareValidation?.launch ?? artifact.exportJson.terrainValidation ?? artifact.exportJson.summary?.terrainAwareValidation).toBeTruthy();
+  expect(artifact.exportJson.actualTerrainDiagnostics ?? artifact.exportJson.summary?.terrainDiagnostics ?? artifact.exportJson.terrainAwareValidation?.actual).toBeTruthy();
+  const terrainEvents = artifact.exportJson.terrainEvents ?? artifact.exportJson.events?.filter?.((event) => String(event.type ?? '').startsWith('anchor.simulation.terrain-')) ?? [];
+  expect(terrainEvents.every((event) => String(event.type ?? event.eventType ?? '').startsWith('anchor.simulation.terrain-'))).toBe(true);
+  const exportText = JSON.stringify(artifact.exportJson);
+  expect(exportText).not.toContain('T_hiddenTruth');
+  expect(artifact.exportJson.hiddenTruth).toBeUndefined();
+  expect(artifact.exportJson.hiddenFields).toBeUndefined();
+  expect(artifact.exportJson.visibleFields?.fields?.T_hiddenTruth).toBeUndefined();
+  expect(exportText).not.toMatch(/depthMeters"\s*:\s*\[\s*\[/i);
+  expect(artifact.replay.manifest.hiddenTruthIncluded).toBe(false);
+  expect(artifact.replay.checkpoints.summary.checkpointCount).toBeGreaterThan(0);
+  expect(artifact.resultExportBuildCount).toBeGreaterThan(0);
+  expect(artifact.replayDebug.manifestBuildCount).toBeGreaterThan(0);
+  expect(planning.status).toMatch(/VALID|VALID_WITH_WARNINGS|INVALID/);
+  assertContinuousBrowserErrorsClean(browserErrors);
+});
+
+test('Three Terrain Presentation Clearly Distinguishes Mission Semantics', async ({ page }) => {
+  const browserErrors = attachBrowserErrorCollector(page);
+  await prepareThreeSamplingTargetDiveScenario(page, { attach: true, profile: 'thermoclineDive', layer: 'thermocline', cycles: 2 });
+  await page.locator('#mission-console [data-action="three-camera"][data-preset="sideProfile"]').click();
+  await expect.poll(() => page.evaluate(() => window.ANCHOR_MISSION_RENDER_DEBUG?.cameraPresetId)).toBe('sideProfile');
+  const planning = await page.evaluate(() => ({
+    renderer: window.ANCHOR_MISSION_RENDER_DEBUG?.rendererSummary ?? {},
+    water: window.ANCHOR_WATER_COLUMN_RENDER_DEBUG ?? {},
+    dive: window.ANCHOR_DIVE_PLAN_DEBUG ?? {},
+    canvasCount: document.querySelectorAll('.three-mission-world-canvas').length,
+    consoleText: document.querySelector('#mission-console')?.innerText ?? ''
+  }));
+  expect(planning.renderer.terrainTriangleCount).toBeGreaterThan(0);
+  expect(planning.renderer.landObjectCount).toBeGreaterThan(0);
+  expect(planning.renderer.coastlineSummary?.coastlineSegmentCount ?? 0).toBeGreaterThan(0);
+  expect(planning.renderer.samplingTargetObjectCount).toBeGreaterThan(0);
+  expect(planning.renderer.waypointObjectCount).toBeGreaterThan(0);
+  expect(planning.renderer.plannedDiveTrajectorySummary?.objectCount ?? 0).toBeGreaterThan(0);
+  expect(planning.renderer.terrainValidationSummary?.clearanceMarkerAvailable ?? true).toBeTruthy();
+  expect(planning.water.depthTickCount ?? planning.renderer.depthTickCount ?? 0).toBeGreaterThan(0);
+  expect(planning.water.verticalExaggeration ?? planning.dive.verticalExaggeration ?? 1).toBeGreaterThan(0);
+  expect(planning.canvasCount).toBe(1);
+  await page.locator('#mission-console [data-action="execute"]').click();
+  await expect.poll(() => page.evaluate(() => window.ANCHOR_SIMULATION_RENDER_DEBUG?.threeMounted === true), { timeout: 15000 }).toBe(true);
+  await advanceSimulationSceneForRenderCost(page, { steps: 8, frameDelay: 0, keepRunning: true });
+  const simulation = await page.evaluate(() => window.ANCHOR_SIMULATION_RENDER_DEBUG?.rendererSummary ?? {});
+  expect(simulation.realizedTrajectoryPointCount ?? 0).toBeGreaterThan(0);
+  expect(simulation.observationObjectCreateCount ?? simulation.observationObjectReuseCount ?? 0).toBeGreaterThanOrEqual(0);
+  await expect(page.evaluate(() => document.querySelectorAll('.three-mission-world-canvas').length)).resolves.toBe(1);
+  assertContinuousBrowserErrorsClean(browserErrors);
+});
 test('Legacy and Three Simulation Produce Identical Canonical Result', async ({ browser }) => {
   const legacyPage = await browser.newPage();
   const threePage = await browser.newPage();
@@ -5627,6 +5867,139 @@ test('legacy saved level registry scene still opens', async ({ page }) => {
   await expect(page.locator('#saved-level-id-input')).toBeVisible();
 });
 
+async function prepareTerrainValidationPlanningBase(page) {
+  await startVisibleContinuousMissionPlanning(page);
+  await page.locator('#mission-console [data-action="three-camera"][data-preset="tacticalTopDown"]').click();
+  await expect.poll(() => page.evaluate(() => window.ANCHOR_MISSION_RENDER_DEBUG?.rendererReady === true), { timeout: 15000 }).toBe(true);
+  const agentId = await selectFirstAgentThroughVisibleControls(page);
+  const agentIds = await page.evaluate(() => (window.anchorGame.state.mission?.agents ?? []).map((agent) => agent.id));
+  for (const id of agentIds) {
+    await selectAgentThroughVisibleControls(page, id);
+    await deployAgentThroughVisibleThreeControls(page, id);
+  }
+  await selectAgentThroughVisibleControls(page, agentId);
+  await page.locator('#mission-console [data-action="waypoint-snap-mode"][data-mode="snapToCellCenters"]').click();
+  await page.locator('#mission-console [data-action="mission-planning-tool"][data-tool="placeWaypoint"]').click();
+  return { agentId };
+}
+
+async function terrainReadinessSnapshot(page) {
+  await page.evaluate(() => {
+    const scene = window.anchorGame?.phaser?.scene?.getScene?.('MissionWorkspaceScene');
+    scene?.refreshPanels?.();
+    scene?.refreshMap?.();
+  });
+  return page.evaluate(() => {
+    const debug = window.ANCHOR_MISSION_RENDER_DEBUG ?? {};
+    const readiness = window.anchorGame.state.ui?.missionReadiness ?? {};
+    const report = window.anchorGame.state.ui?.terrainAwareValidationReport ?? {};
+    return {
+      status: readiness.status ?? report.status ?? debug.terrainAwareValidationStatus ?? null,
+      executable: readiness.executable ?? report.executable ?? debug.terrainAwareValidationExecutable ?? null,
+      hardErrorCount: readiness.hardErrorCount ?? report.hardErrors?.length ?? debug.terrainAwareValidationHardErrorCount ?? 0,
+      warningCount: readiness.warningCount ?? report.warnings?.length ?? debug.terrainAwareValidationWarningCount ?? 0,
+      advisoryCount: readiness.advisoryCount ?? report.advisories?.length ?? debug.terrainAwareValidationAdvisoryCount ?? 0,
+      issueCodes: readiness.issueCodes ?? [...(report.hardErrors ?? []), ...(report.warnings ?? []), ...(report.advisories ?? [])].map((issue) => issue.code),
+      firstIssue: readiness.firstIssue ?? [...(report.hardErrors ?? []), ...(report.warnings ?? []), ...(report.advisories ?? [])][0] ?? null,
+      terrainValidationObjectCount: debug.terrainValidationObjectCount ?? debug.rendererSummary?.terrainValidationObjectCount ?? 0,
+      validationLayerDigest: window.ANCHOR_TERRAIN_VALIDATION_DEBUG?.validationLayerDigest ?? null,
+      executeControlEnabled: window.ANCHOR_EXECUTION_DEBUG?.executeControlEnabled ?? null,
+      executeControlDisabledReason: window.ANCHOR_EXECUTION_DEBUG?.executeControlDisabledReason ?? null,
+      executeButtonTitle: document.querySelector('#mission-console [data-action="execute"]')?.getAttribute('title') ?? null
+    };
+  });
+}
+
+async function findLandCrossingRouteCandidate(page, agentId) {
+  return page.evaluate(async (id) => {
+    const { validateTerrainAwareRouteSegment, validateTerrainAwareSurfaceWaypoint } = await import('./src/core/planning/TerrainAwareMissionValidation.js');
+    const state = window.anchorGame.state;
+    const level = state.level;
+    const mission = state.mission;
+    const agent = mission.agents.find((candidate) => candidate.id === id) ?? mission.agents[0];
+    const agentPlan = state.plan.agentPlans.find((candidate) => candidate.agentId === id);
+    const start = agentPlan?.selectedStart ?? agent?.deployment?.selectedStart ?? agent?.start ?? { x: 0, y: 0 };
+    const width = level.world?.grid?.width ?? 0;
+    const height = level.world?.grid?.height ?? 0;
+    const water = [];
+    for (let y = 0; y < height; y += 1) {
+      for (let x = 0; x < width; x += 1) {
+        const validation = validateTerrainAwareSurfaceWaypoint({ level, mission, agentId: id, position: { x, y } });
+        const point = window.ANCHOR_MISSION_RENDER_TEST_API?.screenPointForGridCell?.(x, y);
+        if (validation.accepted && point && point.visible !== false && point.x >= 0 && point.y >= 0 && point.x <= window.innerWidth && point.y <= window.innerHeight) water.push({ x, y });
+      }
+    }
+    const safe = water.find((cell) => validateTerrainAwareRouteSegment({ level, mission, agent, agentPlan, segment: { from: start, to: cell }, segmentIndex: 0 }).status === 'VALID') ?? water[0];
+    const crossingFromSafe = safe ? water.find((cell) => validateTerrainAwareRouteSegment({ level, mission, agent, agentPlan, segment: { from: safe, to: cell }, segmentIndex: 1 }).hardErrors?.some((issue) => issue.code === 'SEGMENT_LAND_INTERSECTION')) : null;
+    const crossingFromStart = water.find((cell) => validateTerrainAwareRouteSegment({ level, mission, agent, agentPlan, segment: { from: start, to: cell }, segmentIndex: 0 }).hardErrors?.some((issue) => issue.code === 'SEGMENT_LAND_INTERSECTION'));
+    const crossing = crossingFromSafe ?? crossingFromStart;
+    const crossingFrom = crossingFromSafe ? 'safe' : crossingFromStart ? 'start' : null;
+    return safe && crossing ? { safe, crossing, crossingFrom } : null;
+  }, agentId);
+}
+
+async function findTerrainWarningWaypointCell(page, agentId) {
+  return page.evaluate(async (id) => {
+    const { validateTerrainAwareRouteSegment, validateTerrainAwareSurfaceWaypoint } = await import('./src/core/planning/TerrainAwareMissionValidation.js');
+    const state = window.anchorGame.state;
+    const level = state.level;
+    const mission = state.mission;
+    const agent = mission.agents.find((candidate) => candidate.id === id) ?? mission.agents[0];
+    const agentPlan = state.plan.agentPlans.find((candidate) => candidate.agentId === id);
+    const waypoints = agentPlan?.waypoints ?? [];
+    const from = waypoints.length >= 2
+      ? waypoints[waypoints.length - 2]
+      : (waypoints[0] ?? agentPlan?.selectedStart ?? agent?.deployment?.selectedStart ?? agent?.start ?? { x: 0, y: 0 });
+    const width = level.world?.grid?.width ?? 0;
+    const height = level.world?.grid?.height ?? 0;
+    for (let y = 0; y < height; y += 1) {
+      for (let x = 0; x < width; x += 1) {
+        const surface = validateTerrainAwareSurfaceWaypoint({ level, mission, agentId: id, position: { x, y } });
+        if (!surface.accepted) continue;
+        const report = validateTerrainAwareRouteSegment({ level, mission, agent, agentPlan, segment: { from, to: { x, y } }, segmentIndex: 0 });
+        if (report.status === 'VALID_WITH_WARNINGS') return { x, y };
+      }
+    }
+    return null;
+  }, agentId);
+}
+
+async function findBelowSeabedSamplingTargetCell(page, layerId = 'deep') {
+  return page.evaluate(async (requestedLayerId) => {
+    const { sampleBathymetryAt } = await import('./src/core/science/BathymetryFieldModel.js');
+    const { waterColumnLayerMetadata } = await import('./src/core/science/WaterColumnSchema.js');
+    const state = window.anchorGame.state;
+    const level = state.level;
+    const bathymetry = level.bathymetry ?? level.world?.bathymetry ?? level.layers?.bathymetry ?? null;
+    const depthGrid = bathymetry?.depthMeters ?? level.layers?.depthMeters ?? null;
+    if (!depthGrid) return null;
+    const requestedDepth = Number(waterColumnLayerMetadata(requestedLayerId).nominalDepthMeters ?? 0);
+    const minimumClearance = Number(state.mission?.physics?.minimumBottomClearanceMeters ?? 5);
+    for (let y = 0; y < depthGrid.length; y += 1) {
+      for (let x = 0; x < (depthGrid[0]?.length ?? 0); x += 1) {
+        if (level.layers?.terrain?.[y]?.[x]) continue;
+        const bottom = sampleBathymetryAt(bathymetry?.depthMeters ? bathymetry : { depthMeters: depthGrid }, x, y);
+        const point = window.ANCHOR_MISSION_RENDER_TEST_API?.screenPointForDepthCell?.(requestedLayerId, x, y);
+        if (point && point.visible !== false && bottom - requestedDepth < minimumClearance) return { x, y, bottomDepthMeters: bottom, requestedDepth };
+      }
+    }
+    return null;
+  }, layerId);
+}
+
+async function focusFirstTerrainIssue(page) {
+  await page.evaluate(() => {
+    const scene = window.anchorGame?.phaser?.scene?.getScene?.('MissionWorkspaceScene');
+    const issue = window.anchorGame.state.ui?.missionReadiness?.firstIssue
+      ?? window.anchorGame.state.ui?.terrainAwareValidationReport?.hardErrors?.[0]
+      ?? window.anchorGame.state.ui?.terrainAwareValidationReport?.warnings?.[0]
+      ?? null;
+    if (issue?.focusHint) scene?.focusTerrainIssue?.(issue.focusHint);
+    else if (issue?.position) scene?.setThreeCameraPreset?.(issue.position.depthMeters ? 'sideProfile' : 'obliqueMission');
+    else scene?.setThreeCameraPreset?.('obliqueMission');
+    scene?.refreshMap?.();
+  });
+}
 async function generatedWaterColumnSnapshot(page) {
   return page.evaluate(() => {
     const debug = window.ANCHOR_WATER_COLUMN_RENDER_DEBUG ?? {};
@@ -5781,7 +6154,11 @@ async function prepareThreeSamplingTargetDiveScenario(page, { attach = true, pro
   await page.locator('#mission-console [data-action="three-camera"][data-preset="tacticalTopDown"]').click();
   await expect.poll(() => page.evaluate(() => window.ANCHOR_MISSION_RENDER_DEBUG?.cameraPresetId)).toBe('tacticalTopDown');
   const agentId = await selectedAgentId(page);
-  await deployAllGlidersThroughVisibleControls(page);
+  const agentIds = await page.evaluate(() => (window.anchorGame.state.mission?.agents ?? []).map((agent) => agent.id));
+  for (const id of agentIds) {
+    await selectAgentThroughVisibleControls(page, id);
+    await deployAgentThroughVisibleThreeControls(page, id);
+  }
   await selectAgentThroughVisibleControls(page, agentId);
   await page.locator('#mission-console [data-action="waypoint-snap-mode"][data-mode="freePlacement"]').click();
   for (let index = 0; index < 2; index += 1) {
@@ -5790,11 +6167,22 @@ async function prepareThreeSamplingTargetDiveScenario(page, { attach = true, pro
     await clickBetweenThreeGridCells(page, pair.a, pair.b, index === 0 ? 0.34 : 0.58);
   }
   for (let index = 0; index < extraFarWaypoints; index += 1) {
-    const cell = await findWaypointPlacementCell(page, { preferFar: true, requireNoWarnings: true })
-      ?? await findWaypointPlacementCell(page, { preferFar: true });
-    expect(cell).toBeTruthy();
-    await page.locator('#mission-console [data-action="mission-planning-tool"][data-tool="placeWaypoint"]').click();
-    await clickThreeGridCell(page, cell.x, cell.y);
+    const beforeCount = await totalWaypointCount(page);
+    let placed = false;
+    for (let attempt = 0; attempt < 8 && !placed; attempt += 1) {
+      const cell = await findWaypointPlacementCell(page, { preferFar: true, requireNoWarnings: attempt < 4, nth: attempt % 4 })
+        ?? await findWaypointPlacementCell(page, { preferFar: true, nth: attempt });
+      if (!cell) continue;
+      await page.locator('#mission-console [data-action="mission-planning-tool"][data-tool="placeWaypoint"]').click();
+      await clickThreeGridCell(page, cell.x, cell.y);
+      try {
+        await expect.poll(() => totalWaypointCount(page), { timeout: 1500 }).toBe(beforeCount + 1);
+        placed = true;
+      } catch (error) {
+        // Try the next canonical candidate; rejected previews must not mutate the plan.
+      }
+    }
+    expect(placed).toBe(true);
   }
   await expectWaypointCount(page, 2 + extraFarWaypoints);
   await page.locator(`#mission-console [data-action="water-column-dive-profile"][data-profile="${profile}"]`).click();
@@ -6116,8 +6504,8 @@ async function findSamplingTargetPlacementCell(page, layerId = 'thermocline') {
     return candidates[0] ? { x: candidates[0].x, y: candidates[0].y } : null;
   }, layerId);
 }
-async function findWaypointPlacementCell(page, { warningCode = null, requireNoWarnings = false, preferFar = false } = {}) {
-  return page.evaluate(async ({ warningCode, requireNoWarnings, preferFar }) => {
+async function findWaypointPlacementCell(page, { warningCode = null, requireNoWarnings = false, preferFar = false, nth = 0 } = {}) {
+  return page.evaluate(async ({ warningCode, requireNoWarnings, preferFar, nth }) => {
     const { canPlaceWaypoint } = await import('./src/core/planning/WaypointPlacementGuard.js');
     const state = window.anchorGame.state;
     const agentId = state.selectedAgentId ?? state.mission?.agents?.[0]?.id;

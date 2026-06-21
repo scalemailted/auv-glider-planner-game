@@ -34,14 +34,21 @@ export function createTerrainSimulationDiagnostics(options = {}) {
     agents: {},
     segments: {},
     events: [],
+    eventSummary: createTerrainEventSummary(),
     activeConditions: {},
     counters: {
       updateCount: 0,
+      incrementalTerrainDiagnosticsUpdateCount: 0,
+      fullTerrainDiagnosticsRebuildCount: 0,
+      trajectoryPointsScannedDuringLastUpdate: 0,
+      eventsScannedDuringLastUpdate: 0,
       observationCount: 0,
       surfacingCount: 0,
       terrainEventCreateCount: 0,
       terrainEventDuplicateSuppressionCount: 0,
-      terrainEventActiveConditionCount: 0
+      terrainEventActiveConditionCount: 0,
+      terrainEventSummaryIncrementCount: 0,
+      terrainEventSummaryFullRebuildCount: 0
     },
     actualTargetCoverage: {
       observationCount: 0,
@@ -86,13 +93,16 @@ export function updateTerrainSimulationDiagnostics(diagnostics, canonicalSnapsho
   };
 
   diagnostics.counters.updateCount += 1;
+  diagnostics.counters.incrementalTerrainDiagnosticsUpdateCount += 1;
+  diagnostics.counters.trajectoryPointsScannedDuringLastUpdate = 1;
+  diagnostics.counters.eventsScannedDuringLastUpdate = 0;
   updateMetrics(diagnostics.mission, sample);
   const agentMetrics = ensureMetrics(diagnostics.agents, agentId);
   updateMetrics(agentMetrics, sample);
   if (segmentId) updateMetrics(ensureMetrics(diagnostics.segments, segmentId, { agentId, segmentIndex }), sample);
 
   const events = terrainEventsForSample(diagnostics, sample, context);
-  for (const event of events) diagnostics.events.push(event);
+  for (const event of events) appendTerrainEvent(diagnostics, event);
   diagnostics.counters.terrainEventActiveConditionCount = Object.values(diagnostics.activeConditions).filter(Boolean).length;
   return { diagnostics, events };
 }
@@ -100,6 +110,7 @@ export function updateTerrainSimulationDiagnostics(diagnostics, canonicalSnapsho
 export function recordTerrainSimulationObservation(diagnostics, observation = {}, context = {}) {
   if (!diagnostics || !observation) return { diagnostics, events: [] };
   diagnostics.counters.observationCount += 1;
+  diagnostics.counters.eventsScannedDuringLastUpdate = 0;
   const agentId = observation.agentId ?? context.agentId ?? 'agent';
   const layerId = observation.depthLayerId ?? observation.depthLayer ?? 'surface';
   diagnostics.actualTargetCoverage.observationCount += 1;
@@ -123,7 +134,7 @@ export function recordTerrainSimulationObservation(diagnostics, observation = {}
     clearanceMeters: observation.bottomClearanceMeters ?? null,
     dedupeScope: 'observation'
   });
-  diagnostics.events.push(event);
+  appendTerrainEvent(diagnostics, event);
   diagnostics.counters.terrainEventCreateCount += 1;
   return { diagnostics, events: [event] };
 }
@@ -146,8 +157,8 @@ export function terrainSimulationDiagnosticsSummary(diagnostics = {}) {
   const mission = diagnostics.mission ?? {};
   const agents = Object.entries(diagnostics.agents ?? {}).map(([agentId, metrics]) => compactMetrics({ agentId, ...metrics }));
   const segments = Object.entries(diagnostics.segments ?? {}).map(([segmentId, metrics]) => compactMetrics({ segmentId, ...metrics }));
-  const eventTypes = {};
-  for (const event of diagnostics.events ?? []) eventTypes[event.type] = (eventTypes[event.type] ?? 0) + 1;
+  const eventSummary = terrainEventSummarySnapshot(diagnostics);
+  const eventTypes = eventSummary.eventTypeCounts;
   return {
     type: 'anchor.simulation.terrain-diagnostics-summary',
     version: diagnostics.version ?? TERRAIN_SIMULATION_DIAGNOSTICS_VERSION,
@@ -169,8 +180,12 @@ export function terrainSimulationDiagnosticsSummary(diagnostics = {}) {
     actualTargetCoverage: cloneJson(diagnostics.actualTargetCoverage ?? {}),
     terrainRelatedTerminalReason: diagnostics.terrainRelatedTerminalReason ?? null,
     terrainEventSummary: {
-      eventCount: diagnostics.events?.length ?? 0,
+      eventCount: eventSummary.eventCount,
       eventTypes,
+      severityCounts: eventSummary.severityCounts,
+      perAgentCounts: eventSummary.perAgentCounts,
+      perSegmentCounts: eventSummary.perSegmentCounts,
+      latestEvent: eventSummary.latestEvent,
       duplicateSuppressionCount: diagnostics.counters?.terrainEventDuplicateSuppressionCount ?? 0,
       activeConditionCount: diagnostics.counters?.terrainEventActiveConditionCount ?? 0
     },
@@ -366,6 +381,73 @@ function updateMetrics(metrics, sample) {
   }
 }
 
+function createTerrainEventSummary() {
+  return {
+    eventCount: 0,
+    eventTypeCounts: {},
+    severityCounts: {},
+    perAgentCounts: {},
+    perSegmentCounts: {},
+    latestEvent: null,
+    activeConditionCount: 0,
+    duplicateSuppressionCount: 0
+  };
+}
+
+function appendTerrainEvent(diagnostics, event) {
+  if (!diagnostics || !event) return;
+  diagnostics.events ??= [];
+  diagnostics.events.push(event);
+  diagnostics.eventSummary ??= createTerrainEventSummary();
+  const summary = diagnostics.eventSummary;
+  summary.eventCount += 1;
+  summary.eventTypeCounts[event.type] = (summary.eventTypeCounts[event.type] ?? 0) + 1;
+  summary.severityCounts[event.severity ?? 'UNKNOWN'] = (summary.severityCounts[event.severity ?? 'UNKNOWN'] ?? 0) + 1;
+  if (event.agentId) summary.perAgentCounts[event.agentId] = (summary.perAgentCounts[event.agentId] ?? 0) + 1;
+  if (event.segmentId) summary.perSegmentCounts[event.segmentId] = (summary.perSegmentCounts[event.segmentId] ?? 0) + 1;
+  summary.latestEvent = compactTerrainEvent(event);
+  summary.activeConditionCount = Object.values(diagnostics.activeConditions ?? {}).filter(Boolean).length;
+  summary.duplicateSuppressionCount = diagnostics.counters?.terrainEventDuplicateSuppressionCount ?? 0;
+  diagnostics.counters ??= {};
+  diagnostics.counters.terrainEventSummaryIncrementCount = Number(diagnostics.counters.terrainEventSummaryIncrementCount ?? 0) + 1;
+}
+
+function terrainEventSummarySnapshot(diagnostics = {}) {
+  if (diagnostics.eventSummary) {
+    diagnostics.eventSummary.activeConditionCount = Object.values(diagnostics.activeConditions ?? {}).filter(Boolean).length;
+    diagnostics.eventSummary.duplicateSuppressionCount = diagnostics.counters?.terrainEventDuplicateSuppressionCount ?? 0;
+    return cloneJson(diagnostics.eventSummary);
+  }
+  const summary = createTerrainEventSummary();
+  for (const event of diagnostics.events ?? []) {
+    summary.eventCount += 1;
+    summary.eventTypeCounts[event.type] = (summary.eventTypeCounts[event.type] ?? 0) + 1;
+    summary.severityCounts[event.severity ?? 'UNKNOWN'] = (summary.severityCounts[event.severity ?? 'UNKNOWN'] ?? 0) + 1;
+    if (event.agentId) summary.perAgentCounts[event.agentId] = (summary.perAgentCounts[event.agentId] ?? 0) + 1;
+    if (event.segmentId) summary.perSegmentCounts[event.segmentId] = (summary.perSegmentCounts[event.segmentId] ?? 0) + 1;
+    summary.latestEvent = compactTerrainEvent(event);
+  }
+  summary.activeConditionCount = Object.values(diagnostics.activeConditions ?? {}).filter(Boolean).length;
+  summary.duplicateSuppressionCount = diagnostics.counters?.terrainEventDuplicateSuppressionCount ?? 0;
+  diagnostics.counters ??= {};
+  diagnostics.counters.terrainEventSummaryFullRebuildCount = Number(diagnostics.counters.terrainEventSummaryFullRebuildCount ?? 0) + 1;
+  return summary;
+}
+
+function compactTerrainEvent(event = {}) {
+  return {
+    id: event.id ?? null,
+    type: event.type ?? null,
+    severity: event.severity ?? null,
+    issueCode: event.issueCode ?? null,
+    agentId: event.agentId ?? null,
+    segmentId: event.segmentId ?? null,
+    tick: finiteOrNull(event.tick),
+    timeSeconds: finiteOrNull(event.timeSeconds ?? event.t),
+    position: event.position ?? null,
+    clearanceMeters: finiteOrNull(event.clearanceMeters)
+  };
+}
 function createMetrics(patch = {}) {
   return {
     sampleCount: 0,

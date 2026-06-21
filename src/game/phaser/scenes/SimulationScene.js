@@ -461,6 +461,8 @@ export class SimulationScene extends PhaserScene {
     } : null;
     const canonicalTrajectoryPointCount = (this.engine?.agents ?? []).reduce((sum, agent) => sum + (agent.history?.length ?? 0), 0);
     const canonicalObservationCount = (this.engine?.events ?? []).filter((event) => ['sample', 'duplicateSample', 'probabilityOutcome'].includes(event.type)).length;
+    const terrainDiagnosticCounters = this.engine?.terrainDiagnostics?.counters ?? {};
+    const terrainEventSummary = this.engine?.terrainDiagnostics?.eventSummary ?? null;
     const movingAgentCount = (this.engine?.agents ?? []).filter((agent) => agent.status !== 'complete' && agent.status !== 'batteryDepleted').length;
     const renderDebug = globalThis.ANCHOR_SIMULATION_RENDER_DEBUG ?? {};
     const completedStages = transaction ? missionExecutionTransactionSummary(transaction).completedStages : control.completedStages ?? [];
@@ -519,6 +521,14 @@ export class SimulationScene extends PhaserScene {
       threeTrajectoryPointCount: renderDebug.realizedTrajectoryPointCount ?? 0,
       canonicalObservationCount,
       actualTerrainDiagnostics: this.app.state.result?.actualTerrainDiagnostics ?? this.app.state.result?.terrainAwareValidation?.actual ?? null,
+      incrementalTerrainDiagnosticsUpdateCount: terrainDiagnosticCounters.incrementalTerrainDiagnosticsUpdateCount ?? terrainDiagnosticCounters.updateCount ?? 0,
+      runtimeTerrainDiagnosticsUpdateCount: terrainDiagnosticCounters.incrementalTerrainDiagnosticsUpdateCount ?? terrainDiagnosticCounters.updateCount ?? 0,
+      fullTerrainDiagnosticsRebuildCount: terrainDiagnosticCounters.fullTerrainDiagnosticsRebuildCount ?? 0,
+      trajectoryPointsScannedDuringLastDiagnosticsUpdate: terrainDiagnosticCounters.trajectoryPointsScannedDuringLastUpdate ?? 0,
+      eventsScannedDuringLastDiagnosticsUpdate: terrainDiagnosticCounters.eventsScannedDuringLastUpdate ?? 0,
+      terrainEventSummaryIncrementCount: terrainDiagnosticCounters.terrainEventSummaryIncrementCount ?? 0,
+      terrainEventSummaryFullRebuildCount: terrainDiagnosticCounters.terrainEventSummaryFullRebuildCount ?? 0,
+      terrainEventSummaryCompact: terrainEventSummary ? { eventCount: terrainEventSummary.eventCount, eventTypeCounts: terrainEventSummary.eventTypeCounts, severityCounts: terrainEventSummary.severityCounts, latestEvent: terrainEventSummary.latestEvent } : null,
       terrainEventsSupported: this.app.state.result?.terrainAwareValidation?.terrainEventsSupported === true,
       minimumActualClearanceMeters: this.app.state.result?.actualTerrainDiagnostics?.minimumActualClearanceMeters ?? null,
       maximumActualDepthMeters: this.app.state.result?.actualTerrainDiagnostics?.maximumActualDepthMeters ?? null,
@@ -1571,6 +1581,8 @@ export class SimulationScene extends PhaserScene {
     const guidanceSummary = rendererSummary?.guidanceSummary ?? {};
     const waterColumnUi = this.app.state.ui?.waterColumn ?? {};
     const canonicalObservationCount = (this.engine?.events ?? []).filter((event) => ['sample', 'duplicateSample', 'probabilityOutcome'].includes(event.type)).length;
+    const terrainDiagnosticCounters = this.engine?.terrainDiagnostics?.counters ?? {};
+    const terrainEventSummary = this.engine?.terrainDiagnostics?.eventSummary ?? null;
     const waterColumnDebug = waterColumnRenderDebugPayload(viewModel ?? {}, rendererSummary, {
       phase: 'simulation',
       selectedDiveProfileId: waterColumnUi.selectedDiveProfileId,
@@ -1590,7 +1602,15 @@ export class SimulationScene extends PhaserScene {
         ...(this.latestPresentationFrame?.counters ?? {}),
         hudRender: this.hudRenderCount,
         rightPanelRender: this.rightPanelRenderCount,
-        timelineRender: this.timelineRenderCount
+        timelineRender: this.timelineRenderCount,
+        incrementalTerrainDiagnosticsUpdateCount: terrainDiagnosticCounters.incrementalTerrainDiagnosticsUpdateCount ?? terrainDiagnosticCounters.updateCount ?? 0,
+        runtimeTerrainDiagnosticsUpdateCount: terrainDiagnosticCounters.incrementalTerrainDiagnosticsUpdateCount ?? terrainDiagnosticCounters.updateCount ?? 0,
+        fullTerrainDiagnosticsRebuildCount: terrainDiagnosticCounters.fullTerrainDiagnosticsRebuildCount ?? 0,
+        trajectoryPointsScannedDuringLastUpdate: terrainDiagnosticCounters.trajectoryPointsScannedDuringLastUpdate ?? 0,
+        eventsScannedDuringLastUpdate: terrainDiagnosticCounters.eventsScannedDuringLastUpdate ?? 0,
+        terrainEventSummaryIncrementCount: terrainDiagnosticCounters.terrainEventSummaryIncrementCount ?? 0,
+        terrainEventSummaryFullRebuildCount: terrainDiagnosticCounters.terrainEventSummaryFullRebuildCount ?? 0,
+        resultExportBuildCount: this.resultBuildCount ?? 0
       },
       renderOnDemandEnabled: true,
       continuousAnimationReason: 'presentation-scheduler-coalesced-updates'
@@ -1673,6 +1693,14 @@ export class SimulationScene extends PhaserScene {
       canonicalTrajectoryPointCount: (this.engine?.agents ?? []).reduce((sum, agent) => sum + (agent.history?.length ?? 0), 0),
       canonicalObservationCount,
       actualTerrainDiagnostics: this.app.state.result?.actualTerrainDiagnostics ?? this.app.state.result?.terrainAwareValidation?.actual ?? null,
+      incrementalTerrainDiagnosticsUpdateCount: terrainDiagnosticCounters.incrementalTerrainDiagnosticsUpdateCount ?? terrainDiagnosticCounters.updateCount ?? 0,
+      runtimeTerrainDiagnosticsUpdateCount: terrainDiagnosticCounters.incrementalTerrainDiagnosticsUpdateCount ?? terrainDiagnosticCounters.updateCount ?? 0,
+      fullTerrainDiagnosticsRebuildCount: terrainDiagnosticCounters.fullTerrainDiagnosticsRebuildCount ?? 0,
+      trajectoryPointsScannedDuringLastDiagnosticsUpdate: terrainDiagnosticCounters.trajectoryPointsScannedDuringLastUpdate ?? 0,
+      eventsScannedDuringLastDiagnosticsUpdate: terrainDiagnosticCounters.eventsScannedDuringLastUpdate ?? 0,
+      terrainEventSummaryIncrementCount: terrainDiagnosticCounters.terrainEventSummaryIncrementCount ?? 0,
+      terrainEventSummaryFullRebuildCount: terrainDiagnosticCounters.terrainEventSummaryFullRebuildCount ?? 0,
+      terrainEventSummaryCompact: terrainEventSummary ? { eventCount: terrainEventSummary.eventCount, eventTypeCounts: terrainEventSummary.eventTypeCounts, severityCounts: terrainEventSummary.severityCounts, latestEvent: terrainEventSummary.latestEvent } : null,
       terrainEventsSupported: this.app.state.result?.terrainAwareValidation?.terrainEventsSupported === true,
       minimumActualClearanceMeters: this.app.state.result?.actualTerrainDiagnostics?.minimumActualClearanceMeters ?? null,
       maximumActualDepthMeters: this.app.state.result?.actualTerrainDiagnostics?.maximumActualDepthMeters ?? null,

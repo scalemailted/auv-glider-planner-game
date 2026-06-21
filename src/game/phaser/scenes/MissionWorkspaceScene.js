@@ -237,6 +237,7 @@ export class MissionWorkspaceScene extends PhaserScene {
     this.continuousUiStateValidated = false;
     this.planningSceneCreateCompleted = false;
     this.threePerformanceDiagnostics = createMissionWorkspacePerformanceCounters();
+    this.terrainValidationCache = createTerrainValidationCacheState();
   }
 
   create() {
@@ -713,29 +714,103 @@ export class MissionWorkspaceScene extends PhaserScene {
   refreshTerrainAwareMissionValidation() {
     if (!this.app.state?.level || !this.app.state?.mission || !this.app.state?.plan) return null;
     this.app.state.ui ??= {};
+    this.terrainValidationCache ??= createTerrainValidationCacheState();
+    const frame = terrainValidationVisibleFrame(this.app.state);
+    const keyRecord = this.buildTerrainValidationCacheKey(frame);
+    const cache = this.terrainValidationCache;
+    const cameraGestureActive = this.threeInteractionController?.cameraGestureActive === true || this.threeInteractionController?.cameraController?.gestureActive === true;
+    if (cache.key === keyRecord.key && cache.report) {
+      cache.counters.planningValidationCacheHitCount += 1;
+      this.app.state.ui.terrainAwareValidationReport = cache.report;
+      this.app.state.ui.missionReadiness = cache.summary;
+      this.app.state.ui.terrainAwareValidationError = null;
+      if (cameraGestureActive) cache.counters.validationCacheHitCountDuringCameraGesture += 1;
+      return cache.report;
+    }
+    cache.counters.planningValidationCacheMissCount += 1;
+    cache.counters.planningValidationBuildCount += 1;
+    cache.counters.lastPlanningValidationInvalidationReason = this.terrainValidationInvalidationReason(cache.keyRecord, keyRecord);
+    if (cameraGestureActive) {
+      cache.counters.validationBuildCountDuringCameraGesture += 1;
+      cache.counters.validationInvalidationCountDuringCameraGesture += 1;
+      cache.counters.lastCameraGestureValidationReason = cache.counters.lastPlanningValidationInvalidationReason;
+    }
     try {
       const report = buildTerrainAwareMissionValidationReport({
         level: this.app.state.level,
         mission: this.app.state.mission,
         plan: this.app.state.plan,
         appState: this.app.state,
-        frame: getVisibleFrame(this.app.state.level, this.app.state.planningTime ?? 0, {
-          engine: null,
-          challengeMode: this.app.state.challengeMode,
-          revealTruth: this.app.state.ui?.revealTruth,
-          forecastMemberId: this.app.state.ui?.forecastMemberId
-        })
+        frame
       });
+      const summary = terrainAwareMissionValidationSummary(report);
       this.app.state.ui.terrainAwareValidationReport = report;
-      this.app.state.ui.missionReadiness = terrainAwareMissionValidationSummary(report);
+      this.app.state.ui.missionReadiness = summary;
       this.app.state.ui.terrainAwareValidationError = null;
+      cache.key = keyRecord.key;
+      cache.keyRecord = keyRecord;
+      cache.report = report;
+      cache.summary = summary;
+      this.recordMissionReadinessRender(summary, keyRecord.key, cameraGestureActive);
       return report;
     } catch (error) {
       this.app.state.ui.terrainAwareValidationReport = null;
       this.app.state.ui.missionReadiness = { status: 'INVALID', executable: false, hardErrorCount: 1, warningCount: 0, advisoryCount: 0, firstIssue: { code: 'INVALID_DIVE_PROFILE', severity: 'HARD_ERROR', message: String(error?.message ?? error) } };
       this.app.state.ui.terrainAwareValidationError = String(error?.message ?? error);
+      cache.counters.lastPlanningValidationInvalidationReason = 'validation-error';
       return null;
     }
+  }
+
+  buildTerrainValidationCacheKey(frame = null) {
+    const state = this.app.state ?? {};
+    const level = state.level ?? {};
+    const mission = state.mission ?? {};
+    const plan = state.plan ?? {};
+    const ui = state.ui ?? {};
+    const keyParts = {
+      version: 'terrain-validation-cache-r1-2c-2',
+      levelId: level.levelId ?? level.scenarioId ?? null,
+      missionId: mission.missionId ?? mission.id ?? null,
+      grid: level.world?.grid ?? null,
+      time: level.world?.time ?? null,
+      plan: terrainValidationPlanKey(plan),
+      mission: terrainValidationMissionKey(mission),
+      terrainSourceDigest: level.bathymetry?.sourceDigest ?? stableDigestForScene({ bathymetry: level.bathymetry, terrain: level.layers?.terrain, bottomDepthMeters: level.layers?.bottomDepthMeters }),
+      constraintDigest: stableDigestForScene({ hazards: level.layers?.hazards, restrictedZones: level.layers?.restrictedZones ?? level.layers?.static?.restrictedZones, bases: level.layers?.bases ?? level.layers?.static?.bases, zones: level.zones }),
+      frameDigest: stableDigestForScene({ t: frame?.t ?? frame?.timeSeconds ?? null, current: frame?.currentDigest ?? frame?.vectorDigest ?? null, forecastMemberId: ui.forecastMemberId ?? null, challengeMode: state.challengeMode ?? null }),
+      vehicleDigest: stableDigestForScene((mission.agents ?? []).map((agent) => ({ id: agent.id, start: agent.start, deployment: agent.deployment, maxDepthMeters: agent.maxDepthMeters ?? agent.depthRatingMeters, speed: agent.speed ?? agent.speedMetersPerSecond }))),
+      duration: mission.rules?.durationSeconds ?? level.world?.time?.duration ?? null
+    };
+    return { key: stableDigestForScene(keyParts), parts: keyParts };
+  }
+
+  terrainValidationInvalidationReason(previous = null, next = null) {
+    if (!previous) return 'initial-build';
+    const before = previous.parts ?? {};
+    const after = next?.parts ?? {};
+    for (const key of ['plan', 'terrainSourceDigest', 'constraintDigest', 'frameDigest', 'vehicleDigest', 'mission', 'duration', 'grid', 'time']) {
+      if (stableDigestForScene(before[key]) !== stableDigestForScene(after[key])) return key;
+    }
+    return previous.key === next?.key ? 'cache-hit' : 'unknown-input-change';
+  }
+
+  recordMissionReadinessRender(summary = {}, validationKey = null, cameraGestureActive = false) {
+    this.terrainValidationCache ??= createTerrainValidationCacheState();
+    const cache = this.terrainValidationCache;
+    const digest = stableDigestForScene({ validationKey, summary });
+    if (cache.lastMissionReadinessDigest === digest) {
+      cache.counters.missionReadinessIssueRowReuseCount += Number(summary.issueCodes?.length ?? 0);
+      return;
+    }
+    cache.lastMissionReadinessDigest = digest;
+    cache.counters.missionReadinessRenderCount += 1;
+    cache.counters.missionReadinessIssueRowCreateCount += Number(summary.issueCodes?.length ?? 0);
+    if (cameraGestureActive) cache.counters.missionReadinessRenderCountDuringCameraGesture += 1;
+  }
+
+  terrainValidationDebugCounters() {
+    return { ...(this.terrainValidationCache?.counters ?? createTerrainValidationCacheState().counters) };
   }
 
   refreshMap() {
@@ -1956,6 +2031,27 @@ export class MissionWorkspaceScene extends PhaserScene {
     this.app.state.ui ??= {};
     this.app.state.ui.divePlanDebug = plannedDiveDebug;
     this.publishContinuousMissionDebug({ rendererSummary, waterColumnDebug, plannedDiveDebug });
+    const terrainValidationCounters = this.terrainValidationDebugCounters();
+    const terrainLayerSummary = rendererSummary?.terrainValidationSummary ?? {};
+    globalThis.ANCHOR_TERRAIN_VALIDATION_DEBUG = {
+      ...(globalThis.ANCHOR_TERRAIN_VALIDATION_DEBUG ?? {}),
+      ...terrainValidationCounters,
+      terrainAwareValidationStatus: viewModel?.terrainValidation?.status ?? this.app.state.ui?.missionReadiness?.status ?? null,
+      terrainAwareValidationExecutable: viewModel?.terrainValidation?.executable ?? this.app.state.ui?.missionReadiness?.executable ?? null,
+      terrainAwareValidationIssueCodes: this.app.state.ui?.missionReadiness?.issueCodes ?? [],
+      validationLayerFullRebuildCount: terrainLayerSummary.validationLayerFullRebuildCount ?? 0,
+      validationLayerIncrementalUpdateCount: terrainLayerSummary.validationLayerIncrementalUpdateCount ?? 0,
+      validationLayerObjectReuseCount: terrainLayerSummary.validationLayerObjectReuseCount ?? 0,
+      validationLayerObjectCreateCount: terrainLayerSummary.validationLayerObjectCreateCount ?? 0,
+      validationLayerObjectDisposeCount: terrainLayerSummary.validationLayerObjectDisposeCount ?? 0,
+      validationLayerDigest: terrainLayerSummary.validationLayerDigest ?? null,
+      resultExportBuildCount: globalThis.ANCHOR_RESULT_EXPORT_DEBUG?.buildCount ?? 0,
+      replayManifestBuildCount: globalThis.ANCHOR_REPLAY_DEBUG?.manifestBuildCount ?? 0,
+      replayCheckpointBuildCount: globalThis.ANCHOR_REPLAY_DEBUG?.checkpointBuildCount ?? 0,
+      replayDigestBuildCount: globalThis.ANCHOR_REPLAY_DEBUG?.digestBuildCount ?? 0,
+      headlessBundleBuildCount: globalThis.ANCHOR_HEADLESS_BUNDLE_DEBUG?.buildCount ?? 0,
+      roundtripReportBuildCount: globalThis.ANCHOR_ROUNDTRIP_DEBUG?.buildCount ?? 0
+    };
     const performanceDebug = this.publishThreePerformanceDebug({ rendererSummary, phase: viewModel?.phase ?? this.app.state.mode ?? 'planning' });
     globalThis.ANCHOR_MISSION_RENDER_DEBUG = {
       version: 'gfx-r3b',
@@ -1987,6 +2083,14 @@ export class MissionWorkspaceScene extends PhaserScene {
       terrainAwareValidationAdvisoryCount: viewModel?.terrainValidation?.advisories?.length ?? this.app.state.ui?.missionReadiness?.advisoryCount ?? 0,
       terrainAwareValidationIssueCodes: this.app.state.ui?.missionReadiness?.issueCodes ?? [],
       terrainAwareValidationSummary: this.app.state.ui?.missionReadiness ?? null,
+      planningValidationBuildCount: terrainValidationCounters.planningValidationBuildCount ?? 0,
+      planningValidationCacheHitCount: terrainValidationCounters.planningValidationCacheHitCount ?? 0,
+      planningValidationCacheMissCount: terrainValidationCounters.planningValidationCacheMissCount ?? 0,
+      lastPlanningValidationInvalidationReason: terrainValidationCounters.lastPlanningValidationInvalidationReason ?? null,
+      missionReadinessRenderCount: terrainValidationCounters.missionReadinessRenderCount ?? 0,
+      missionReadinessRenderCountDuringCameraGesture: terrainValidationCounters.missionReadinessRenderCountDuringCameraGesture ?? 0,
+      missionReadinessIssueRowCreateCount: terrainValidationCounters.missionReadinessIssueRowCreateCount ?? 0,
+      missionReadinessIssueRowReuseCount: terrainValidationCounters.missionReadinessIssueRowReuseCount ?? 0,
       terrainValidationObjectCount: rendererSummary?.terrainValidationObjectCount ?? 0,
       rendererOwnsTerrainValidation: false,
       lastSamplingTargetBottomDepthMeters: samplingTargetTerrainDebug.bottomDepthMeters,
@@ -2219,6 +2323,7 @@ export class MissionWorkspaceScene extends PhaserScene {
 
   resetThreePerformanceDiagnosticsWindow() {
     this.threePerformanceDiagnostics = createMissionWorkspacePerformanceCounters();
+    this.terrainValidationCache = createTerrainValidationCacheState();
     resetThreeMissionWorldRendererPerformance(this.threeMissionRenderer);
     return this.publishThreePerformanceDebug({
       rendererSummary: this.threeMissionRenderer ? threeMissionWorldRendererSummary(this.threeMissionRenderer) : null,
@@ -2245,7 +2350,13 @@ export class MissionWorkspaceScene extends PhaserScene {
       predictionBuildCountDuringCameraGesture: diagnostics.predictionBuildCountDuringCameraGesture,
       textureUpdateCountDuringCameraGesture: rendererSummary?.performanceCounters?.textureUpdateDuringCameraGesture ?? 0,
       panelRenderCountDuringCameraGesture: diagnostics.panelRenderCountDuringCameraGesture,
-      timelineRenderCountDuringCameraGesture: diagnostics.timelineRenderCountDuringCameraGesture
+      timelineRenderCountDuringCameraGesture: diagnostics.timelineRenderCountDuringCameraGesture,
+      planningValidationBuildCount: this.terrainValidationCache?.counters?.planningValidationBuildCount ?? 0,
+      planningValidationCacheHitCount: this.terrainValidationCache?.counters?.planningValidationCacheHitCount ?? 0,
+      planningValidationCacheMissCount: this.terrainValidationCache?.counters?.planningValidationCacheMissCount ?? 0,
+      lastPlanningValidationInvalidationReason: this.terrainValidationCache?.counters?.lastPlanningValidationInvalidationReason ?? null,
+      missionReadinessRenderCount: this.terrainValidationCache?.counters?.missionReadinessRenderCount ?? 0,
+      missionReadinessRenderCountDuringCameraGesture: this.terrainValidationCache?.counters?.missionReadinessRenderCountDuringCameraGesture ?? 0
     });
   }
 
@@ -5238,6 +5349,120 @@ function formatScore(value) {
 
 
 
+function terrainValidationVisibleFrame(state = {}) {
+  const level = state.level ?? {};
+  const t = Number(getActiveRenderTime(state, null) ?? state.planningTime ?? 0);
+  const truthFrames = level.layers?.truth?.frames ?? level.truth?.frames ?? [];
+  const forecastFrames = level.layers?.forecast?.frames ?? level.forecast?.frames ?? [];
+  const frames = state.ui?.revealTruth === false && forecastFrames.length ? forecastFrames : truthFrames.length ? truthFrames : forecastFrames;
+  if (!Array.isArray(frames) || !frames.length) return null;
+  let best = frames[0];
+  let bestDistance = Math.abs(Number(best?.t ?? best?.timeSeconds ?? 0) - t);
+  for (const frame of frames) {
+    const distance = Math.abs(Number(frame?.t ?? frame?.timeSeconds ?? 0) - t);
+    if (distance < bestDistance) {
+      best = frame;
+      bestDistance = distance;
+    }
+  }
+  return best;
+}
+function createTerrainValidationCacheState() {
+  return {
+    key: null,
+    keyRecord: null,
+    report: null,
+    summary: null,
+    lastMissionReadinessDigest: null,
+    counters: {
+      planningValidationBuildCount: 0,
+      planningValidationCacheHitCount: 0,
+      planningValidationCacheMissCount: 0,
+      lastPlanningValidationInvalidationReason: null,
+      validationBuildCountDuringCameraGesture: 0,
+      validationCacheHitCountDuringCameraGesture: 0,
+      validationInvalidationCountDuringCameraGesture: 0,
+      lastCameraGestureValidationReason: null,
+      missionReadinessRenderCount: 0,
+      missionReadinessRenderCountDuringCameraGesture: 0,
+      missionReadinessIssueRowCreateCount: 0,
+      missionReadinessIssueRowReuseCount: 0
+    }
+  };
+}
+
+function terrainValidationPlanKey(plan = {}) {
+  return {
+    type: plan.type ?? null,
+    schemaVersion: plan.schemaVersion ?? null,
+    levelId: plan.levelId ?? null,
+    missionId: plan.missionId ?? null,
+    agentPlans: (plan.agentPlans ?? []).map((agentPlan) => ({
+      agentId: agentPlan.agentId,
+      selectedStart: compactPointForScene(agentPlan.selectedStart),
+      waypoints: (agentPlan.waypoints ?? []).map((waypoint) => ({
+        id: waypoint.id ?? waypoint.waypointId ?? null,
+        x: roundSceneNumberOrNull(waypoint.x),
+        y: roundSceneNumberOrNull(waypoint.y),
+        t: roundSceneNumberOrNull(waypoint.t ?? waypoint.estimatedArrivalTime),
+        action: waypoint.action ?? null,
+        diveProfileId: waypoint.diveProfileId ?? null,
+        targetDepthLayerId: waypoint.targetDepthLayerId ?? waypoint.depthLayerId ?? null,
+        maximumDiveDepthMeters: roundSceneNumberOrNull(waypoint.maximumDiveDepthMeters ?? waypoint.maximumDepthMeters),
+        scienceTargetIds: waypoint.scienceTargetIds ?? []
+      }))
+    })),
+    scienceTargets: (plan.scienceTargets ?? plan.samplingTargets ?? []).map((target) => ({
+      id: target.id ?? target.targetId ?? null,
+      position: compactPointForScene(target.position ?? target),
+      geometryType: target.geometryType ?? target.targetType ?? null,
+      attachedSegmentIds: target.attachedSegmentIds ?? [],
+      targetDepthLayerId: target.targetDepthLayerId ?? target.depthLayerId ?? null
+    }))
+  };
+}
+
+function terrainValidationMissionKey(mission = {}) {
+  return {
+    rules: mission.rules ?? null,
+    scoring: mission.scoring ?? null,
+    physics: mission.physics ?? null,
+    waterColumnConfig: mission.waterColumnConfig ?? null,
+    agents: (mission.agents ?? []).map((agent) => ({ id: agent.id, optional: agent.optional, required: agent.required, requiredRoute: agent.requiredRoute, deployment: agent.deployment, maxDepthMeters: agent.maxDepthMeters ?? agent.depthRatingMeters }))
+  };
+}
+
+function compactPointForScene(point = null) {
+  if (!point) return null;
+  const x = Number(point.x ?? point.col);
+  const y = Number(point.y ?? point.row);
+  if (!Number.isFinite(x) || !Number.isFinite(y)) return null;
+  const out = { x: roundSceneNumberOrNull(x), y: roundSceneNumberOrNull(y) };
+  const depth = Number(point.depthMeters ?? point.z);
+  if (Number.isFinite(depth)) out.depthMeters = roundSceneNumberOrNull(depth);
+  return out;
+}
+
+function stableDigestForScene(value) {
+  const text = stableStringifyForScene(value);
+  let hash = 2166136261;
+  for (let index = 0; index < text.length; index += 1) {
+    hash ^= text.charCodeAt(index);
+    hash = Math.imul(hash, 16777619);
+  }
+  return `fnv1a32:${(hash >>> 0).toString(16).padStart(8, '0')}`;
+}
+
+function stableStringifyForScene(value) {
+  if (Array.isArray(value)) return `[${value.map(stableStringifyForScene).join(',')}]`;
+  if (value && typeof value === 'object') return `{${Object.keys(value).sort().map((key) => `${JSON.stringify(key)}:${stableStringifyForScene(value[key])}`).join(',')}}`;
+  return JSON.stringify(value);
+}
+
+function roundSceneNumberOrNull(value, digits = 6) {
+  const number = Number(value);
+  return Number.isFinite(number) ? Number(number.toFixed(digits)) : null;
+}
 function normalizeThreeQualityProfile(value) {
   const id = String(value ?? '').trim().toLowerCase();
   if (id === 'performance' || id === 'perf') return 'performance';

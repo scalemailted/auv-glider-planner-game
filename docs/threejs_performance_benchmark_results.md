@@ -100,3 +100,9 @@ rendered FPS >= 20
 ```
 
 Headless frame intervals remain diagnostic only. Terrain quality affects presentation only and must not change bathymetry source digest, bottom-depth digest, route validity, dive feasibility, trajectory digests, observation digests, score-event digests, energy, terminal reason, result digest, or replay digest.
+
+## THREE-R1.2C.2 Terrain-Validation Closure Measurements
+
+This pass treats prior approximately 136 ms browser automation timing as diagnostic rather than authoritative. The closure work focused on removing per-frame full validation/export/replay/debug work and adding counters to prove lifecycle boundaries. The six requested focused browser workflows passed in one invocation (`6 passed`, about 1.6 minutes), and the new lifecycle smokes passed.
+
+A fresh strict headed production workflow remains the authoritative performance gate for THREE-R2 readiness. Human manual QA by the project owner remains pending.

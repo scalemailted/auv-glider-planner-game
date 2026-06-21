@@ -83,6 +83,12 @@ export const PLAYWRIGHT_GROUPS = Object.freeze([
       /^Three Vehicle Pose Guidance and Grid Alignment$/i,
       /^Three Waypoint Validation and Mission Window Semantics$/i,
       /^Terrain-Aware Placement Preview Prevents Invalid Mission Mutation$/i,
+      /^Continuous Route Validation Detects Coastline and Clearance Risks$/i,
+      /^Sampling Targets Respect Canonical Seabed and Reachability$/i,
+      /^Mission Readiness Separates Errors Warnings and Advisories$/i,
+      /^Planned and Realized Paths Share Terrain Validation$/i,
+      /^Terrain Validation Persists Through Export Headless and Replay$/i,
+      /^Three Terrain Presentation Clearly Distinguishes Mission Semantics$/i,
       /^Legacy and Three Simulation Produce Identical Canonical Result$/i,
       /^legacy saved level registry scene still opens$/i
     ]

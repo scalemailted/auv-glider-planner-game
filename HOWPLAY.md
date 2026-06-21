@@ -19,7 +19,7 @@ Later missions should also teach mission feasibility: a scientifically valuable 
 
 You do not steer the glider in real time. You create a plan, run the simulation, then evaluate the result.
 
-If a plan cannot run safely, the game blocks execution or records a safe aborted result instead of freezing. Invalid deployment starts are rejected before simulation, and unreachable or blocked waypoints can be marked missed during playback. If the simulation watchdog stops playback, use `Export Debug Result` from the Simulation Console; the exported JSON includes the watchdog reason, active waypoint, glider state, surfacing wait state, and render object count.
+If a plan cannot run safely, the game blocks execution or records a safe aborted result instead of freezing. Terrain-aware Planning validation is cached and event-driven; invalid land, coastline, bottom-clearance, or below-seabed target previews do not mutate the canonical plan. Runtime terrain diagnostics are incremental and explanatory; they do not change official scoring. Invalid deployment starts are rejected before simulation, and unreachable or blocked waypoints can be marked missed during playback. If the simulation watchdog stops playback, use `Export Debug Result` from the Simulation Console; the exported JSON includes the watchdog reason, active waypoint, glider state, surfacing wait state, and render object count.
 
 ## Start The Game
 

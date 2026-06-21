@@ -9,6 +9,7 @@ const VISIBLE_FIELD_IDS = Object.freeze(['E_forecast', 'mu_belief', 'U_uncertain
 const HIDDEN_FIELD_IDS = Object.freeze(['T_hiddenTruth']);
 
 export function createHeadlessBundleManifest(episode, options = {}) {
+  recordHeadlessBundleBuild();
   const includeHidden = options.includeHiddenTruth !== false;
   const combinedJson = options.combinedJson === true;
   const roundtripReport = options.roundtripReport ?? episode?.roundtripReport ?? null;
@@ -460,4 +461,10 @@ function csvValue(value) {
 
 function stableJson(value) {
   return `${JSON.stringify(value, null, 2)}\n`;
+}
+
+function recordHeadlessBundleBuild() {
+  globalThis.ANCHOR_HEADLESS_BUNDLE_DEBUG ??= { buildCount: 0 };
+  globalThis.ANCHOR_HEADLESS_BUNDLE_DEBUG.buildCount = Number(globalThis.ANCHOR_HEADLESS_BUNDLE_DEBUG.buildCount ?? 0) + 1;
+  globalThis.ANCHOR_HEADLESS_BUNDLE_DEBUG.lastBuildReason = 'explicit-headless-bundle-manifest-builder';
 }

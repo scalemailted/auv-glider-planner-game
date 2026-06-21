@@ -552,3 +552,12 @@ Added renderer-neutral bathymetry surface, mesh, coastline, contour, and source 
 - Added TerrainAwareMissionValidation.js as a portable core contract for continuous waypoint, segment, corridor, target, dive-clearance, current-risk, and mission-readiness diagnostics.
 - Added Mission Readiness wiring, Execute hard-error gating, launch/result/export metadata, Debrief terrain validation summary, and a Three terrain validation issue/corridor layer.
 - Added focused smoke/audit scripts and docs. Three.js remains presentation-only; official scoring, planner authority, and canonical simulation authority are unchanged. Human manual QA by the project owner remains pending.
+
+## THREE-R1.2C.2 Terrain-Validation Performance Recovery
+
+- Added Planning terrain-validation cache counters and invalidation reasons so canonical validation is event-driven and camera/display gestures do not rebuild validation.
+- Added incremental Simulation terrain diagnostics updates from canonical agent state, incremental terrain-event summaries, and compact debug counters.
+- Added on-demand result/replay/headless build counters and filtered `anchor.result.terrainEvents` to stable public terrain event types.
+- Added digest-driven Three terrain-validation layer reuse and Mission Readiness render lifecycle coverage.
+- Added six focused visible E2E workflows and exact group assignment. The focused six-test terrain-validation set passed in one invocation.
+- Preserved the boundary: diagnostics do not change official scoring; Three.js remains renderer-only; headed browser performance is authoritative; headless timing is diagnostic; human manual QA remains separate.

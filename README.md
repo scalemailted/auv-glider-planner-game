@@ -43,6 +43,7 @@ Version 2 is a playable static-web game built with vanilla JavaScript, HTML, CSS
 - current preview, legend, magnitude stats, and gameplay warnings for fluid presets
 - solver packet export and plan import
 - a dependency-light Python external solver example
+- terrain-aware mission validation with cached Planning validation, incremental runtime terrain diagnostics, compact terrain-event summaries, digest-driven Three validation overlays, and result/replay terrain metadata
 - optional Playwright smoke tests for development
 
 Normal browser use does not require a build step, backend, Playwright, or`node_modules`. Phaser is vendored locally at `vendor/phaser.min.js`, and the production Three.js mission environment resolves the locked Three.js runtime through the `index.html` import map to `vendor/three/build/three.module.js`. Development uses the npm `three` dependency as the source of truth for refreshing that curated vendor runtime with`npm.cmd run vendor:three`. See [Three.js Static Runtime](docs/threejs_static_runtime.md) and [Three.js First Mission Architecture](docs/threejs_first_architecture.md) for the vendor allowlist, checks, GitHub Pages build path, and Phaser deprecation boundary.
