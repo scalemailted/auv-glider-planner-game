@@ -398,3 +398,7 @@ Current renderer order is THREE-R2A deterministic replay/debrief review, THREE-R
 | --- | --- | --- |
 | 1 | THREE-R1.2C.1 | Terrain validation runtime completion, replay/event alignment, and E2E stabilization. |
 | 2 | THREE-R2 | Three.js replay, Debrief route review, and editor parity. |
+
+## THREE-R2B Checkpoint
+
+Mission Editor parity now uses the canonical editor document/command/session path with Three.js presentation. Phaser remains the shell and is not ready for final dependency removal. Next recommended work should continue retiring Phaser scene internals only after owner review of `test-results/three-r2b-owner-review/`.

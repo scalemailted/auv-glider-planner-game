@@ -1,4 +1,4 @@
-export const PLAYWRIGHT_GROUPS_VERSION = 'playwright-groups-r2a-1';
+export const PLAYWRIGHT_GROUPS_VERSION = 'playwright-groups-r2b';
 
 export const PLAYWRIGHT_GROUPS = Object.freeze([
   {
@@ -109,11 +109,26 @@ export const PLAYWRIGHT_GROUPS = Object.freeze([
     ]
   },
   {
+    id: 'threeMissionEditor',
+    label: 'Three.js mission editor parity and Phaser editor world retirement',
+    patterns: [
+      /^Three Mission Editor Opens Existing Mission Without Schema Drift$/i,
+      /^Three Mission Editor Supports Canonical Terrain and Mission Object Editing$/i,
+      /^Three Mission Editor Preserves Continuous and Legacy Cell Coordinates$/i,
+      /^Three Mission Editor Export Reimport Roundtrip Is Lossless$/i,
+      /^Three Mission Editor Preview Uses Production Mission Lifecycle$/i,
+      /^Three Mission Editor Validation Blocks Invalid Export and Preview$/i,
+      /^Three Mission Editor Resources Dispose Across Scene Transitions$/i,
+      /^Production Mission Routes Do Not Instantiate Legacy Phaser World Renderers$/i,
+      /^Browser and Headless Validate Edited Mission Identically$/i
+    ]
+  },  {
     id: 'visualAcceptance',
     label: 'Headed owner visual acceptance and production walkthroughs',
     patterns: [
       /^THREE-R1\.2C Full Headed Production Walkthrough$/i,
-      /^THREE-R2A Full Headed Replay and Debrief Walkthrough$/i
+      /^THREE-R2A Full Headed Replay and Debrief Walkthrough$/i,
+      /^THREE-R2B Full Headed Mission Editor Walkthrough$/i
     ]
   }
 ]);

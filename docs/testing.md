@@ -884,3 +884,23 @@ node tools/js/audit_replay_owner_review_artifacts.mjs
 ```
 
 Browser E2E coverage is inventoried in `docs/three_r2a_e2e_coverage_audit.md`. Grouped-suite policy is documented in `docs/three_r2a_full_suite_reliability.md`. Human manual QA remains separate from headed automated QA and uses `docs/three_r2a_visual_acceptance.md` plus `test-results/three-r2a-owner-review/`.
+## THREE-R2B Tests
+
+Mission editor parity checks:
+
+- `node tools/js/smoke_mission_editor_document.mjs`
+- `node tools/js/smoke_mission_editor_commands.mjs`
+- `node tools/js/smoke_mission_editor_session.mjs`
+- `node tools/js/smoke_mission_editor_validation.mjs`
+- `node tools/js/smoke_editor_world_render_view_model.mjs`
+- `node tools/js/smoke_three_mission_editor_controller.mjs`
+- `node tools/js/smoke_mission_editor_export_roundtrip.mjs`
+- `node tools/js/smoke_mission_editor_preview_snapshot.mjs`
+- `node tools/js/smoke_mission_editor_resource_lifecycle.mjs`
+- `node tools/js/audit_mission_editor_authority_boundaries.mjs`
+- `node tools/js/audit_mission_editor_browser_headless_parity.mjs`
+- `node tools/js/audit_no_legacy_phaser_editor_production_imports.mjs`
+- `node tools/js/audit_production_phaser_scene_retirement.mjs`
+- `node tools/js/audit_mission_editor_owner_review_artifacts.mjs` after headed owner review
+
+Focused browser coverage lives in `tests/e2e/three_r2b_mission_editor.spec.js`. Headed owner review lives in `tests/e2e/three_r2b_headed_acceptance.spec.js`.

@@ -975,3 +975,7 @@ One shared terrain contract serves all active Three mission views. The terrain m
 ## THREE-R1.2C Terrain-Aware Mission Validation
 
 THREE-R1.2C adds a portable terrain-aware validation contract for continuous surface waypoints, route segments, route corridors, predicted dive clearance, current-aware terrain risk, sampling-target volume checks, and fleet mission readiness. Validation distinguishes hard errors, warnings, and advisories. Hard errors block Execute; warnings remain visible and can be carried into launch/debrief metadata. The Three terrain mesh is never validity authority, predicted samples never create score, runtime terrain events come from canonical Simulation rather than visual interpolation, and no arbitrary XYZ planner or operationally calibrated bathymetry/glider model is implemented. See Terrain-Aware Mission Validation, Terrain Validation Runtime Completion, Terrain Validation Audit, Three.js Terrain Mission Presentation, and Manual Terrain-Aware QA Checklist under docs/.
+
+## THREE-R2B Mission Editor Runtime
+
+THREE-R2B moves the normal Mission Editor world presentation to Three.js while keeping Phaser as the transitional scene shell. Editor state is owned by `src/core/editor/` document/session/command modules, exports include `meta.threeMissionEditor`, and invalid editor documents block preview/export. See `docs/threejs_mission_editor.md`, `docs/threejs_mission_editor_architecture_audit.md`, and `docs/production_phaser_scene_retirement_audit.md`.

@@ -2,7 +2,7 @@ import { generateLevel } from '../../../core/generation/LevelGenerator.js';
 import { DIFFICULTY_PRESETS } from '../../../core/generation/DifficultyPresets.js';
 import { downloadJSON, readJSONFile } from '../../../core/io/ImportExport.js';
 import { ensureLevelIdentity, shortInstanceId } from '../../../core/identity/GameInstanceId.js';
-import { drawMissionMap, pointerToCell } from '../PhaserCoreAdapter.js';
+import { getMapLayout, pointerToCell } from '../PhaserCoreAdapter.js';
 import { saveLevelToRegistry } from '../../../core/storage/LevelRegistry.js';
 import { FLUID_PRESETS } from '../../../core/fluids/FluidPresets.js';
 import { generateFluidCurrentFrames } from '../../../core/fluids/FluidPresets.js';
@@ -29,6 +29,14 @@ import {
   updateLevelTime,
   updateMissionAgents
 } from '../../../core/editor/LevelEditOperations.js';
+import { createMissionEditorDocument, missionEditorDocumentForExport, missionEditorDocumentSummary, updateMissionEditorDocumentFromScene } from '../../../core/editor/MissionEditorDocument.js';
+import { createMissionEditorSession, missionEditorSessionSummary } from '../../../core/editor/MissionEditorSession.js';
+import { validateMissionEditorDocument, missionEditorValidationSummary } from '../../../core/editor/MissionEditorValidation.js';
+import { buildEditorWorldRenderViewModel, editorWorldRenderViewModelSummary } from '../../../core/rendering/EditorWorldRenderViewModel.js';
+import { productionPhaserRetirementSummary } from '../../../core/runtime/ProductionPhaserRetirementManifest.js';
+import { createThreeMissionWorldRenderer, disposeThreeMissionWorldRenderer, resizeThreeMissionWorldRenderer, threeMissionWorldRendererSummary } from '../../three/ThreeMissionWorldRenderer.js';
+import { createThreeMissionEditorController, disposeThreeMissionEditorController, handleThreeMissionEditorIntent, publishThreeMissionEditorDebug, resizeThreeMissionEditorController, threeMissionEditorControllerSummary, updateThreeMissionEditorController } from '../../three/ThreeMissionEditorController.js';
+import { createThreeMissionSceneLifecycle, disposeThreeMissionSceneLifecycle, registerThreeMissionSceneResource, threeMissionSceneLifecycleSummary } from '../../three/ThreeMissionSceneLifecycle.js';
 
 const BRUSHES = ['terrain', 'hazard', 'depth', 'shallow', 'clear', 'roi', 'deploymentZone', 'base', 'agentStart', 'current'];
 const CURRENT_PATTERNS = ['wave', 'uniform', 'corridor', 'vortex', 'eddies', 'fluid'];
@@ -43,6 +51,7 @@ export class EnvironmentEditorScene extends PhaserScene {
   }
 
   create() {
+    this.editorShutdownComplete = false;
     this.app = this.sys.game.anchorApp;
     this.app.state.mode = 'editor';
     this.app.setDebriefFullscreen(false);
@@ -51,6 +60,9 @@ export class EnvironmentEditorScene extends PhaserScene {
     this.app.clearPanels();
     this.level = normalizeLevelForEditor(this.app.state.customLevel ?? this.app.state.level ?? generateLevel({ difficulty: 'medium', seed: 1001 }));
     this.mission = updateMissionAgents(this.app.state.mission ?? buildDefaultMissionForLevel(this.level), this.level, {});
+    this.editorDocument = createMissionEditorDocument({ level: this.level, mission: this.mission }, { activeTool: this.brush });
+    this.editorSession = createMissionEditorSession(this.editorDocument, { sessionId: 'environment-editor-three-r2b' });
+    this.threeEditorLifecycle = createThreeMissionSceneLifecycle({ sceneKey: 'EnvironmentEditorScene' });
     this.frameIndex = 0;
     this.editorToolState = {
       radius: clampNumber(this.level.meta?.editorConfig?.radius ?? 1, 1, 8),
@@ -68,7 +80,11 @@ export class EnvironmentEditorScene extends PhaserScene {
     this.input.mouse?.disableContextMenu?.();
     this.renderPanel();
     this.editorHud = new EditorHud(this);
+    this.ensureThreeEditorRenderer();
     this.refreshMap();
+    this.publishEditorDebug({ lifecycle: 'created' });
+    this.events?.once?.('shutdown', this.shutdown, this);
+    this.events?.once?.('destroy', this.shutdown, this);
     this.input.on('pointerdown', this.onPointerDown, this);
     this.input.on('pointermove', this.onPointerMove, this);
     this.input.on('pointerup', this.onPointerUp, this);
@@ -241,6 +257,7 @@ export class EnvironmentEditorScene extends PhaserScene {
         : `Connectivity still has warnings: ${validation.warnings[0] ?? 'map is disconnected'}`);
     };
     document.getElementById('btn-use-level').onclick = async () => {
+      if (!this.ensureEditorActionAllowed('preview')) return;
       this.prepareLevelForExport();
       this.app.state.customLevel = this.level;
       beginScenario(this.app.state, {
@@ -254,6 +271,7 @@ export class EnvironmentEditorScene extends PhaserScene {
       this.scene.start('MissionBriefingScene');
     };
     document.getElementById('btn-use-level-stochastic').onclick = () => {
+      if (!this.ensureEditorActionAllowed('preview')) return;
       this.prepareLevelForExport('forecast');
       this.app.state.customLevel = this.level;
       beginScenario(this.app.state, {
@@ -266,10 +284,11 @@ export class EnvironmentEditorScene extends PhaserScene {
       resetPlanResultStore(this.app.state);
       this.scene.start('MissionBriefingScene');
     };
-    document.getElementById('btn-export-level').onclick = () => downloadJSON(`${this.level.levelId}.json`, this.prepareLevelForExport());
+    document.getElementById('btn-export-level').onclick = () => { if (this.ensureEditorActionAllowed('export')) downloadJSON(`${this.level.levelId}.json`, this.prepareLevelForExport()); };
     document.getElementById('btn-export-challenge').onclick = () => this.exportCustomChallenge({ includeHistory: false });
     document.getElementById('btn-export-challenge-history').onclick = () => this.exportCustomChallenge({ includeHistory: true });
     document.getElementById('btn-save-level').onclick = () => {
+      if (!this.ensureEditorActionAllowed('save')) return;
       const saved = saveLevelToRegistry(this.prepareLevelForExport());
       if (!saved.ok) return this.app.toast(saved.error, 'warning');
       this.level = saved.level;
@@ -323,7 +342,165 @@ export class EnvironmentEditorScene extends PhaserScene {
     `;
   }
 
+  computeEditorMapLayout() {
+    const width = Number(this.scale?.width ?? this.sys?.game?.config?.width ?? 1280);
+    const height = Number(this.scale?.height ?? this.sys?.game?.config?.height ?? 820);
+    return getMapLayout(this.level, width, height);
+  }
+
+  syncEditorDocumentFromScene() {
+    if (!this.editorSession) this.editorSession = createMissionEditorSession({ level: this.level, mission: this.mission }, { sessionId: 'environment-editor-three-r2b' });
+    this.editorDocument = updateMissionEditorDocumentFromScene(this.editorSession.document ?? createMissionEditorDocument({ level: this.level, mission: this.mission }), this);
+    this.editorSession.document = this.editorDocument;
+    this.editorSession.validation = validateMissionEditorDocument(this.editorDocument);
+    return this.editorDocument;
+  }
+
+  ensureThreeEditorContainer() {
+    if (this.threeEditorContainer?.isConnected) return this.threeEditorContainer;
+    const host = this.app?.elements?.viewportShell ?? this.app?.elements?.gameContainer ?? globalThis.document?.getElementById?.('viewport-shell');
+    if (!host?.appendChild) return null;
+    const container = globalThis.document.createElement('div');
+    container.className = 'three-mission-world-host three-mission-editor-host';
+    container.dataset.rendererBackend = 'threeMissionEditor';
+    container.dataset.threeMissionEditor = 'true';
+    container.setAttribute('aria-label', 'Three.js mission editor renderer');
+    host.appendChild(container);
+    this.threeEditorContainer = container;
+    registerThreeMissionSceneResource(this.threeEditorLifecycle, 'DOM overlay', container);
+    return container;
+  }
+
+  ensureThreeEditorRenderer() {
+    const container = this.ensureThreeEditorContainer();
+    if (!container) return null;
+    container.hidden = false;
+    if (!this.threeEditorRenderer) {
+      this.syncEditorDocumentFromScene();
+      const viewModel = buildEditorWorldRenderViewModel(this.editorDocument, { frameIndex: this.frameIndex });
+      this.editorWorldViewModel = viewModel;
+      this.threeEditorRenderer = createThreeMissionWorldRenderer(container, {
+        viewModel,
+        camera: { preset: this.app.state.ui?.threeMissionEditorCameraPreset ?? 'obliqueMission' },
+        layerVisibility: {
+          bathymetry: true,
+          waterSurface: true,
+          depthLayers: true,
+          waterColumnFrame: true,
+          scalarField: true,
+          currentVectors: true,
+          hazards: true,
+          constraints: true,
+          dropZones: true,
+          gliders: true,
+          waypoints: false,
+          routes: false,
+          planningMarkers: false,
+          priorityTargets: false,
+          samplingTargets: true,
+          routeStatus: false,
+          terrainValidation: false,
+          selection: true,
+          guidance: false,
+          interaction: true
+        }
+      });
+      registerThreeMissionSceneResource(this.threeEditorLifecycle, 'renderer', this.threeEditorRenderer);
+      registerThreeMissionSceneResource(this.threeEditorLifecycle, 'cameraController', this.threeEditorRenderer.cameraController);
+      registerThreeMissionSceneResource(this.threeEditorLifecycle, 'canvas', this.threeEditorRenderer.renderer?.domElement);
+    }
+    if (!this.threeEditorController || this.threeEditorController.disposed) {
+      this.threeEditorController = createThreeMissionEditorController({
+        renderer: this.threeEditorRenderer,
+        session: this.editorSession,
+        getBrushConfig: () => this.readBrushConfig(),
+        onDocumentChange: (document, result) => this.syncSceneFromEditorDocument(document, result),
+        onIntent: (intent) => { this.lastEditorIntent = intent; }
+      });
+      registerThreeMissionSceneResource(this.threeEditorLifecycle, 'interactionController', this.threeEditorController);
+    }
+    const rect = container.getBoundingClientRect?.();
+    resizeThreeMissionEditorController(this.threeEditorController, rect?.width ?? container.clientWidth, rect?.height ?? container.clientHeight);
+    return this.threeEditorRenderer;
+  }
+
+  syncSceneFromEditorDocument(document, result = null) {
+    this.editorDocument = document;
+    this.level = document.level;
+    this.mission = document.mission;
+    this.frameIndex = Math.min(document.editorState?.frameIndex ?? this.frameIndex ?? 0, Math.max(0, (this.level.layers?.truth?.frames?.length ?? 1) - 1));
+    this.brush = document.editorState?.activeTool ?? this.brush;
+    this.editorToolState = {
+      radius: document.editorState?.brushRadius ?? this.editorToolState?.radius ?? 1,
+      intensity: document.editorState?.brushIntensity ?? this.editorToolState?.intensity ?? 0.45
+    };
+    this.app.state.customLevel = this.level;
+    this.app.adapter.layout = this.computeEditorMapLayout();
+    this.renderEditorContextPanel();
+    this.editorHud?.refresh?.();
+    if (result?.message) this.setStatus(result.message);
+    this.publishEditorDebug({ lifecycle: 'documentChanged' });
+  }
+
+  handleEditorDebugIntent(options = {}) {
+    this.ensureThreeEditorRenderer();
+    const result = handleThreeMissionEditorIntent(this.threeEditorController, options);
+    this.publishEditorDebug({ lifecycle: 'debugIntent' });
+    return result;
+  }
+
+  publishEditorDebug(patch = {}) {
+    const validation = this.editorSession?.validation ?? validateMissionEditorDocument(this.editorDocument ?? { level: this.level, mission: this.mission });
+    const rendererSummary = this.threeEditorRenderer ? threeMissionWorldRendererSummary(this.threeEditorRenderer) : null;
+    const controllerSummary = this.threeEditorController ? threeMissionEditorControllerSummary(this.threeEditorController) : null;
+    const sessionSummary = this.editorSession ? missionEditorSessionSummary(this.editorSession) : null;
+    const viewModelSummary = this.threeEditorRenderer?.viewModel ? editorWorldRenderViewModelSummary(this.threeEditorRenderer.viewModel) : null;
+    const lifecycleSummary = threeMissionSceneLifecycleSummary(this.threeEditorLifecycle);
+    const debug = {
+      type: 'anchor.debug.mission-editor',
+      version: 'three-r2b',
+      sceneKey: 'EnvironmentEditorScene',
+      active: this.sys?.isActive?.() !== false,
+      normalEditorUsesThree: true,
+      usesLegacyPhaserWorldRenderer: false,
+      phaserShellOnly: true,
+      canonicalDocumentAuthority: true,
+      rendererOwnsEditorState: false,
+      editorDocument: this.editorDocument ? missionEditorDocumentSummary(this.editorDocument) : null,
+      session: sessionSummary,
+      validation: missionEditorValidationSummary(validation),
+      viewModel: viewModelSummary,
+      renderer: rendererSummary,
+      controller: controllerSummary,
+      lifecycle: lifecycleSummary,
+      activeRendererCount: this.threeEditorRenderer && !this.threeEditorRenderer.disposed ? 1 : 0,
+      activeControllerCount: this.threeEditorController && !this.threeEditorController.disposed ? 1 : 0,
+      activeDomListenerCount: this.threeEditorController?.listeners?.length ?? 0,
+      activeRafCount: this.threeEditorRenderer?.animationFrame == null || this.threeEditorRenderer?.disposed ? 0 : 1,
+      staleCanvasCount: globalThis.document?.querySelectorAll?.('.three-mission-editor-host .three-mission-world-canvas')?.length ?? 0,
+      previewUsesProductionMissionLifecycle: true,
+      exportUsesCanonicalDocument: true,
+      hiddenTruthExcluded: true,
+      syntheticNotCalibrated: true,
+      ownsSimulationState: false,
+      ownsScoring: false,
+      usesNewPlanner: false,
+      usesWebGPUFluid: false,
+      ...patch
+    };
+    globalThis.ANCHOR_MISSION_EDITOR_DEBUG = debug;
+    globalThis.ANCHOR_PHASER_RETIREMENT_DEBUG = productionPhaserRetirementSummary({
+      activePhaserSceneKey: 'EnvironmentEditorScene',
+      activeThreeEditorRendererCount: debug.activeRendererCount,
+      activeLegacyPhaserEditorWorldRendererCount: 0,
+      resourceCleanupStatus: lifecycleSummary.status === 'disposed' ? 'disposed' : 'active',
+      normalEditorUsesThree: true
+    });
+    return debug;
+  }
   shutdown() {
+    if (this.editorShutdownComplete) return;
+    this.editorShutdownComplete = true;
     this.input.off('pointerdown', this.onPointerDown, this);
     this.input.off('pointermove', this.onPointerMove, this);
     this.input.off('pointerup', this.onPointerUp, this);
@@ -334,6 +511,32 @@ export class EnvironmentEditorScene extends PhaserScene {
     this.currentPreviewControls?.forEach((control) => control.destroy?.());
     this.currentPreviewTexts = [];
     this.currentPreviewControls = [];
+    disposeThreeMissionEditorController(this.threeEditorController);
+    this.threeEditorController = null;
+    disposeThreeMissionWorldRenderer(this.threeEditorRenderer);
+    this.threeEditorRenderer = null;
+    this.threeEditorContainer?.remove?.();
+    this.threeEditorContainer = null;
+    disposeThreeMissionSceneLifecycle(this.threeEditorLifecycle, 'EnvironmentEditorScene.shutdown');
+    const lifecycleSummary = threeMissionSceneLifecycleSummary(this.threeEditorLifecycle);
+    globalThis.ANCHOR_MISSION_EDITOR_DEBUG = {
+      ...(globalThis.ANCHOR_MISSION_EDITOR_DEBUG ?? {}),
+      active: false,
+      activeRendererCount: 0,
+      activeControllerCount: 0,
+      activeDomListenerCount: 0,
+      activeRafCount: 0,
+      staleCanvasCount: globalThis.document?.querySelectorAll?.('.three-mission-editor-host .three-mission-world-canvas')?.length ?? 0,
+      lifecycle: lifecycleSummary,
+      resourceCleanupStatus: lifecycleSummary.disposeErrorCount ? 'FAIL' : 'PASS'
+    };
+    globalThis.ANCHOR_PHASER_RETIREMENT_DEBUG = productionPhaserRetirementSummary({
+      activePhaserSceneKey: 'EnvironmentEditorScene',
+      activeThreeEditorRendererCount: 0,
+      activeLegacyPhaserEditorWorldRendererCount: 0,
+      resourceCleanupStatus: lifecycleSummary.disposeErrorCount ? 'FAIL' : 'PASS',
+      normalEditorUsesThree: true
+    });
   }
 
   update(time) {
@@ -442,20 +645,20 @@ export class EnvironmentEditorScene extends PhaserScene {
   }
 
   refreshMap() {
-    this.graphics.clear();
-    this.app.adapter.layout = drawMissionMap(this.graphics, {
-      level: this.level,
-      mission: this.mission,
-      time: this.level.layers.truth.frames[this.frameIndex]?.t ?? 0,
-      challengeMode: 'perfectKnowledge',
-      guidanceSettings: {
-        mode: 'editor',
-        showGuidance: false
-      }
-    });
+    this.graphics?.clear?.();
+    this.app.adapter.layout = this.computeEditorMapLayout();
+    this.syncEditorDocumentFromScene();
+    this.ensureThreeEditorRenderer();
+    if (this.threeEditorController) {
+      updateThreeMissionEditorController(this.threeEditorController, null, { reason: 'sceneRefresh' });
+    } else if (this.threeEditorRenderer) {
+      const viewModel = buildEditorWorldRenderViewModel(this.editorDocument, { frameIndex: this.frameIndex });
+      this.editorWorldViewModel = viewModel;
+    }
     this.drawCurrentPreviewPanel();
     this.editorHud?.refresh();
     this.renderEditorContextPanel();
+    this.publishEditorDebug({ lifecycle: 'refreshed' });
   }
 
   onPointerDown(pointer) {
@@ -545,6 +748,17 @@ export class EnvironmentEditorScene extends PhaserScene {
     this.renderEditorContextPanel();
   }
 
+  ensureEditorActionAllowed(action = 'export') {
+    this.syncEditorDocumentFromScene();
+    const validation = validateMissionEditorDocument(this.editorDocument);
+    this.editorSession.validation = validation;
+    if (validation.valid) return true;
+    const message = `${labelize(action)} blocked: ${validation.errors?.[0]?.message ?? 'editor document is invalid'}`;
+    this.setStatus(message);
+    this.app.toast?.(message, 'warning');
+    this.publishEditorDebug({ lifecycle: `${action}Blocked`, blockedAction: action });
+    return false;
+  }
   prepareLevelForExport(forcedMode = null) {
     this.level = ensureLevelIdentity(normalizeLevelForEditor(this.level));
     this.level.challengeMode = forcedMode ?? document.getElementById('challenge-mode')?.value ?? this.level.challengeMode ?? 'perfectKnowledge';
@@ -560,10 +774,18 @@ export class EnvironmentEditorScene extends PhaserScene {
       intensity: this.editorToolState?.intensity ?? 0.45
     };
     this.attachCurrentStatsMetadata();
+    this.syncEditorDocumentFromScene();
+    this.level = missionEditorDocumentForExport(this.editorDocument, { exportedAt: new Date().toISOString() });
+    this.mission = this.level.missionDefaults;
+    this.editorDocument = createMissionEditorDocument({ level: this.level, mission: this.mission }, { activeTool: this.brush, frameIndex: this.frameIndex, brushRadius: this.editorToolState?.radius, brushIntensity: this.editorToolState?.intensity });
+    this.editorSession.document = this.editorDocument;
+    this.editorSession.validation = validateMissionEditorDocument(this.editorDocument);
+    this.publishEditorDebug({ lifecycle: 'exportPrepared' });
     return this.level;
   }
 
   exportCustomChallenge({ includeHistory = false } = {}) {
+    if (!this.ensureEditorActionAllowed('export')) return;
     const level = this.prepareLevelForExport();
     level.meta ??= {};
     level.meta.customScenario = true;
@@ -901,10 +1123,12 @@ export class EnvironmentEditorScene extends PhaserScene {
   }
 
   exportLevelFromHud() {
+    if (!this.ensureEditorActionAllowed('export')) return;
     downloadJSON(`${this.level.levelId}.json`, this.prepareLevelForExport());
   }
 
   playLevelFromHud() {
+    if (!this.ensureEditorActionAllowed('preview')) return;
     this.prepareLevelForExport();
     this.app.state.customLevel = this.level;
     beginScenario(this.app.state, {

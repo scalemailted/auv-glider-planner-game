@@ -31,3 +31,11 @@ Three.js terrain layers are presentation adapters over core bathymetry contracts
 ## THREE-R1.2B.1 Terrain Contract Note
 
 One shared terrain contract serves all active Three mission views. The terrain mesh is a display projection of canonical bathymetry. Production no longer uses boxed/per-cell terrain. Retained legacy terrain helpers are compatibility-only and not production. Terrain quality affects presentation only. Headed performance is the authoritative render-cost gate. Human manual QA remains separate from headed automated QA.
+
+## THREE-R2B Mission Editor Contract
+
+The Mission Editor now uses the shared Three.js mission-world surface for normal editor presentation, but existing level/challenge schemas remain authoritative. The editor mutates canonical documents through portable editor commands, validates through portable editor validators, and exports canonical level/challenge data rather than renderer state.
+
+Three.js owns editor presentation, camera state, hover/selection display, and pointer-intent collection only. It does not own editor documents, terrain truth, validation, scoring, planning, Simulation physics, replay semantics, or hidden truth. Preview uses the normal production mission lifecycle, and normal Planning, Simulation, Replay, and Editor worlds use Three.js. Phaser remains required for lifecycle and Learning Labs during R2B; final Phaser dependency removal is deferred to R3.
+
+The editor does not introduce arbitrary XYZ navigation planning, a planner/optimizer, WebGPU, fluid simulation, RL/MARL, or operationally calibrated terrain or ocean data claims.

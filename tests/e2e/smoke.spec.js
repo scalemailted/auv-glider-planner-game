@@ -1086,7 +1086,7 @@ test('campaign planning smoke flow reaches debrief', async ({ page }) => {
   await expect(page.locator('#mission-console [data-accordion-key]')).toHaveCount(0);
   await expect(page.locator('#mission-console .console-status')).toContainText('Main Menu');
   await expect(page.locator('#waypoint-timeline')).toBeHidden();
-  await expect(page.locator('canvas')).toBeVisible();
+  await expect(page.locator('#game-canvas')).toBeVisible();
   await expect.poll(() => page.evaluate(() => window.ANCHOR_MAIN_MENU_DEBUG?.usesFullViewportHub)).toBe(true);
   await expect.poll(() => page.evaluate(() => window.ANCHOR_MAIN_MENU_DEBUG?.changesSimulationBehavior)).toBe(false);
   await expect.poll(() => page.evaluate(() => window.ANCHOR_MAIN_MENU_DEBUG?.changesScoring)).toBe(false);
@@ -4755,7 +4755,8 @@ test('level generator opens from main menu', async ({ page }) => {
 
   await page.evaluate(() => window.anchorGame.phaser.scene.start('EnvironmentEditorScene'));
   await expect(page.getByRole('heading', { name: 'Environment Editor' })).toBeVisible();
-  await expect(page.locator('canvas')).toBeVisible();
+  await expect(page.locator('.three-mission-editor-host .three-mission-world-canvas')).toBeVisible();
+  await expect.poll(() => page.evaluate(() => window.ANCHOR_MISSION_EDITOR_DEBUG?.normalEditorUsesThree ?? false)).toBe(true);
   await expect.poll(() => page.evaluate(() => window.anchorGame.phaser.scene.getScene('EnvironmentEditorScene').editorHud?.activeGroup)).toBe('terrain');
   await expect(page.getByRole('button', { name: 'Generate Level' })).toBeVisible();
   await expect(page.locator('#ensemble-count')).toBeVisible();

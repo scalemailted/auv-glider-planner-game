@@ -1143,3 +1143,7 @@ Mission Planning now surfaces terrain-aware readiness for surface waypoints, rou
 ## Terrain Diagnostics
 
 Mission Readiness is a launch-time prediction. During execution, terrain diagnostics are based on canonical actual state, not visual interpolation. Terrain events explain clearance and feasibility outcomes but do not change official scoring. Human manual QA remains separate from headed automated QA.
+
+## THREE-R2B Mission Editor
+
+The Environment Editor now renders its center world through the shared Three.js mission renderer. Use the left console to generate, paint, validate, export, and preview levels. The editor blocks invalid preview/export when validation finds hard errors, and exported levels remain normal `anchor.level` JSON with editor metadata.

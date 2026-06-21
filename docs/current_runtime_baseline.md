@@ -71,3 +71,6 @@ The active entry remains src/game/main.js. Three.js is the production mission wo
 ## THREE-R2A.1 Replay Baseline
 
 The production replay path consumes canonical public events and checkpoints through the shared replay reducer, then builds a renderer-neutral replay world view model for Three.js presentation. Replay does not rerun mission physics, recompute official scoring, include hidden truth, or make Three.js authoritative for replay semantics. Reverse navigation restores checkpoints and replays forward; camera/display state is excluded from replay digests.
+## THREE-R2B Current Runtime Note
+
+The Mission Editor center viewport is now a Three.js renderer hosted by `EnvironmentEditorScene`. Phaser remains the scene shell. The active debug contracts are `ANCHOR_MISSION_EDITOR_DEBUG` and `ANCHOR_PHASER_RETIREMENT_DEBUG`. Legacy Phaser editor world rendering is not used in the normal editor path.

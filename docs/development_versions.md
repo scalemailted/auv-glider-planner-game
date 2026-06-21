@@ -575,3 +575,6 @@ Added renderer-neutral bathymetry surface, mesh, coastline, contour, and source 
 - Added the deterministic `docs/examples/headless_replay_r2a_acceptance.example.json` replay fixture.
 - Added owner-review headed acceptance output under `test-results/three-r2a-owner-review/` with a QA summary and screenshots.
 - Replay remains deterministic playback over canonical public events and checkpoints. It does not rerun mission physics, recompute official scoring, expose hidden truth, or give Three.js replay-semantic authority.
+## THREE-R2B
+
+Mission Editor world presentation now uses Three.js with canonical editor document/session/command authority. Phaser remains a required transitional shell; final Phaser dependency removal is still blocked. New docs: `docs/threejs_mission_editor.md`, `docs/threejs_mission_editor_architecture_audit.md`, `docs/production_phaser_scene_retirement_audit.md`, and `docs/three_r2b_visual_acceptance.md`.

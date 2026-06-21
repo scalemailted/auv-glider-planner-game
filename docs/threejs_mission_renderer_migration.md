@@ -125,3 +125,9 @@ The production Three.js mission renderer replaces per-cell bathymetry boxes with
 ## THREE-R1.2B.1 Terrain Contract Note
 
 One shared terrain contract serves all active Three mission views. The terrain mesh is a display projection of canonical bathymetry. Production no longer uses boxed/per-cell terrain. Retained legacy terrain helpers are compatibility-only and not production. Terrain quality affects presentation only. Headed performance is the authoritative render-cost gate. Human manual QA remains separate from headed automated QA.
+
+## THREE-R2B Mission Editor Parity
+
+THREE-R2B extends the Three mission-world renderer to the normal Mission Editor route. The active editor authority flow is editor UI intent -> renderer-neutral editor command -> canonical editor document -> portable validation -> renderer-neutral editor view model -> Three.js presentation.
+
+The editor keeps existing level/challenge schemas authoritative. Three.js collects pointer intent and renders the editor view model; it does not own level data, terrain truth, validation, scoring, planning, Simulation physics, replay, exports, or hidden truth. Preview uses the same production mission lifecycle as Scenario Start and Planning. Phaser still owns lifecycle and Learning Lab hosting in R2B, and final Phaser dependency removal is deferred to R3.
