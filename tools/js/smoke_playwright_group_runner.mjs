@@ -1,7 +1,7 @@
 ﻿import assert from 'node:assert/strict';
 import { auditPlaywrightGroupCoverage, grepForGroup, PLAYWRIGHT_GROUPS } from './playwright_groups.mjs';
 
-const titles = PLAYWRIGHT_GROUPS.flatMap((group) => group.patterns.map((pattern) => pattern.source.replace(/^\^/, '').replace(/\$$/, '').replace(/\\\//g, '/')));
+const titles = PLAYWRIGHT_GROUPS.flatMap((group) => group.patterns.map((pattern) => pattern.source.replace(/^\^/, '').replace(/\$$/, '').replace(/\\\//g, '/').replace(/\\\./g, '.')));
 const audit = auditPlaywrightGroupCoverage(titles);
 assert.equal(audit.valid, true, 'sample group titles are assigned exactly once');
 for (const group of PLAYWRIGHT_GROUPS) {

@@ -2719,7 +2719,7 @@ test('campaign planning smoke flow reaches debrief', async ({ page }) => {
   await expect(page.locator('#debrief-root h1')).toHaveText('Challenge Debrief');
   await expect(page.locator('#debrief-root .debrief-header p').first()).toBeVisible();
   await expect(page.locator('#debrief-root .debrief-metric-card')).toHaveCount(8);
-  await expect(page.locator('#debrief-root [data-action]')).toHaveCount(0);
+  await expect(page.locator('#debrief-root [data-action="review-replay"]')).toBeVisible();
   await expect(page.locator('#mission-console')).toContainText('Debrief Console');
   await expect(page.locator('#mission-console [data-action="revise"]')).toBeVisible();
   await expect(page.locator('#mission-console [data-action="export-result"]')).toBeVisible();

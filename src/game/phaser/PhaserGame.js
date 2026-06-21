@@ -20,6 +20,7 @@ import { BathymetryWorldViewScene } from './scenes/BathymetryWorldViewScene.js';
 import { RendererArchitecturePreviewScene } from './scenes/RendererArchitecturePreviewScene.js';
 import { BenchmarkModeOverviewScene } from './scenes/BenchmarkModeOverviewScene.js';
 import { HeadlessBundleViewerScene } from './scenes/HeadlessBundleViewerScene.js';
+import { MissionReplayReviewScene } from './scenes/MissionReplayReviewScene.js';
 import { LoadLevelByIdScene } from './scenes/LoadLevelByIdScene.js';
 import { LoadLevelJsonScene } from './scenes/LoadLevelJsonScene.js';
 import { PHASER_HEIGHT, PHASER_WIDTH } from './PhaserCoreAdapter.js';
@@ -72,6 +73,7 @@ export class PhaserGameApp {
         RendererArchitecturePreviewScene,
         BenchmarkModeOverviewScene,
         HeadlessBundleViewerScene,
+        MissionReplayReviewScene,
         LoadLevelJsonScene,
         LoadLevelByIdScene
       ],
@@ -264,7 +266,8 @@ function sceneKey(name) {
     bathymetryWorldView: 'BathymetryWorldViewScene',
     rendererArchitecturePreview: 'RendererArchitecturePreviewScene',
     benchmarkModeOverview: 'BenchmarkModeOverviewScene',
-    headlessBundleViewer: 'HeadlessBundleViewerScene'
+    headlessBundleViewer: 'HeadlessBundleViewerScene',
+    replayReview: 'MissionReplayReviewScene'
   };
   return aliases[name] ?? name;
 }

@@ -55,6 +55,15 @@ export function stepReplayPlayback(state = {}, source = {}, direction = 1) {
   return stateAtEventIndex(state, events, checkpoints, nextIndex);
 }
 
+export function jumpReplayPlaybackToEventIndex(state = {}, source = {}, eventIndex = 0) {
+  const artifacts = normalizeReplayArtifacts(source);
+  const events = artifacts.events?.events ?? [];
+  const checkpoints = artifacts.checkpoints?.checkpoints ?? [];
+  if (!events.length) return { ...state, status: state.status ?? 'unavailable', message: 'No replay events are available.' };
+  const nextIndex = clamp(Math.trunc(Number(eventIndex) || 0), 0, events.length - 1);
+  return stateAtEventIndex(state, events, checkpoints, nextIndex);
+}
+
 export function jumpReplayPlaybackToCheckpoint(state = {}, source = {}, checkpointSelector = 'next') {
   const artifacts = normalizeReplayArtifacts(source);
   const events = artifacts.events?.events ?? [];

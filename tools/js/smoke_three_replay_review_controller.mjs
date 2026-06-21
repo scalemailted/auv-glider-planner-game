@@ -1,0 +1,21 @@
+import assert from 'node:assert/strict';
+import fs from 'node:fs';
+import { buildHeadlessBundleFromFiles } from '../../src/core/headless/HeadlessBundleLoader.js';
+import { buildReplayReviewSourceFromBundle } from '../../src/core/replay/ReplayReviewLoader.js';
+import { createThreeReplayReviewController, disposeThreeReplayReviewController, threeReplayReviewControllerSummary, updateThreeReplayReviewController } from '../../src/game/three/ThreeReplayReviewController.js';
+
+const payload = JSON.parse(fs.readFileSync('docs/examples/headless_replay_public.example.json', 'utf8'));
+const bundle = buildHeadlessBundleFromFiles([{ fileName: 'bundle.json', payload }]);
+const source = buildReplayReviewSourceFromBundle(bundle, { sourceKind: 'smoke' });
+const controller = createThreeReplayReviewController({ renderer: null, source });
+assert.equal(controller.type, 'anchor.renderer.three-replay-review-controller');
+assert.equal(controller.viewModel.type, 'anchor.rendering.replay-world');
+updateThreeReplayReviewController(controller, { type: 'stepForward' });
+const summary = threeReplayReviewControllerSummary(controller);
+assert.equal(summary.hasRenderer, false, 'controller can run without browser renderer for smoke tests');
+assert.equal(summary.usesHiddenTruthResimulation, false);
+assert.equal(summary.changesOfficialBrowserScoring, false);
+assert.equal(summary.ownsSimulation, false);
+disposeThreeReplayReviewController(controller);
+assert.equal(controller.disposed, true);
+console.log('smoke_three_replay_review_controller: PASS', JSON.stringify({ updateCount: summary.updateCount, currentTick: summary.session.currentTick, integrityStatus: summary.session.integrityStatus }));

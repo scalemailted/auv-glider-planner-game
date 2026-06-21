@@ -302,7 +302,7 @@ export function updateThreeMissionWorldRenderer(renderer, viewModel = {}) {
   }
   if (shouldUpdate('samplingTargets', 'scalarField')) updateThreePriorityTargetLayer(renderer.groups.priorityTargetGroup, viewModel);
   if (shouldUpdate('observations')) {
-    if (viewModel.phase === 'simulation' || viewModel.type === 'anchor.rendering.simulation-world') updateThreeObservationLayer(renderer.groups.observationGroup, viewModel);
+    if (viewModel.phase === 'simulation' || viewModel.phase === 'replay' || viewModel.type === 'anchor.rendering.simulation-world' || viewModel.type === 'anchor.rendering.replay-world') updateThreeObservationLayer(renderer.groups.observationGroup, viewModel);
     else updateObservationLayer(renderer.groups.observationGroup, viewModel);
   }
   if (shouldUpdate('surfacingEvents')) updateThreeSurfacingEventLayer(renderer.groups.surfacingEventGroup, viewModel);

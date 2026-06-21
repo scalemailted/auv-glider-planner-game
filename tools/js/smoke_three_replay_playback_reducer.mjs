@@ -1,0 +1,24 @@
+import assert from 'node:assert/strict';
+import fs from 'node:fs';
+import { buildHeadlessBundleFromFiles } from '../../src/core/headless/HeadlessBundleLoader.js';
+import { buildReplayReviewSourceFromBundle } from '../../src/core/replay/ReplayReviewLoader.js';
+import { replayPlaybackReducer, replayPlaybackReducerSummary } from '../../src/core/replay/ReplayPlaybackReducer.js';
+
+const payload = JSON.parse(fs.readFileSync('docs/examples/headless_replay_public.example.json', 'utf8'));
+const bundle = buildHeadlessBundleFromFiles([{ fileName: 'bundle.json', payload }]);
+const source = buildReplayReviewSourceFromBundle(bundle, { sourceKind: 'smoke' });
+assert.equal(source.replayArtifacts.present, true, 'public fixture exposes REPLAY-R1 artifacts');
+let playback = replayPlaybackReducer(null, { type: 'init' }, source.replayArtifacts);
+assert.equal(playback.status, 'ready', 'playback initializes ready');
+playback = replayPlaybackReducer(playback, { type: 'stepForward' }, source.replayArtifacts);
+assert.equal(playback.eventIndex, 1, 'stepForward advances one event');
+playback = replayPlaybackReducer(playback, { type: 'scrub', eventIndex: 4 }, source.replayArtifacts);
+assert.equal(playback.eventIndex, 4, 'scrub jumps to requested event index');
+playback = replayPlaybackReducer(playback, { type: 'jumpCheckpoint', selector: 'terminal' }, source.replayArtifacts);
+assert.ok(playback.currentCheckpointId, 'terminal checkpoint jump selects a checkpoint');
+playback = replayPlaybackReducer(playback, { type: 'togglePlay' }, source.replayArtifacts);
+assert.equal(playback.playing, true, 'togglePlay starts playback');
+const summary = replayPlaybackReducerSummary(playback, source.replayArtifacts);
+assert.equal(summary.usesHiddenTruthResimulation, false, 'reducer does not use hidden-truth resimulation');
+assert.equal(summary.changesOfficialBrowserScoring, false, 'reducer does not change scoring');
+console.log('smoke_three_replay_playback_reducer: PASS', JSON.stringify({ eventCount: summary.eventCount, checkpointCount: summary.checkpointCount, currentTick: summary.currentTick }));

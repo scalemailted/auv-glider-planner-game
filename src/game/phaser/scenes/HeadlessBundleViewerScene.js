@@ -8,7 +8,8 @@ import {
 } from '../../../core/headless/HeadlessBundleBrowserAdapter.js';
 import { downloadJSON } from '../../../core/io/ImportExport.js';
 import { headlessBundleViewerPanelHtml } from '../../../ui/headless/HeadlessBundleViewerPanel.js';
-import { createReplayPlaybackState, jumpReplayPlaybackToCheckpoint, replayPlaybackSummary, selectReplayPlaybackAgent, setReplayPlaybackPlaying, stepReplayPlayback as advanceReplayPlayback } from '../../../core/replay/ReplayPlayback.js';
+import { replayPlaybackReducer, replayPlaybackReducerSummary } from '../../../core/replay/ReplayPlaybackReducer.js';
+import { buildReplayReviewSourceFromBundle } from '../../../core/replay/ReplayReviewLoader.js';
 
 const PhaserScene = globalThis.Phaser?.Scene ?? class {};
 export class HeadlessBundleViewerScene extends PhaserScene {
@@ -47,11 +48,11 @@ export class HeadlessBundleViewerScene extends PhaserScene {
 
   renderPanel() {
     this.viewModel = this.bundle ? buildHeadlessBundleViewModel(this.bundle) : null;
-    if (this.bundle && !this.replayPlaybackState) this.replayPlaybackState = createReplayPlaybackState(this.bundle);
+    if (this.bundle && !this.replayPlaybackState) this.replayPlaybackState = replayPlaybackReducer(null, { type: 'init' }, this.bundle);
     if (this.bundle && this.viewModel) {
       this.viewModel = {
         ...this.viewModel,
-        replayPlayback: replayPlaybackSummary(this.replayPlaybackState, this.bundle)
+        replayPlayback: replayPlaybackReducerSummary(this.replayPlaybackState, this.bundle)
       };
     }
     this.app.setPanel(`
@@ -101,6 +102,7 @@ export class HeadlessBundleViewerScene extends PhaserScene {
     root?.querySelector?.('[data-action="replay-jump-start"]')?.addEventListener('click', () => this.jumpReplayPlayback('start'));
     root?.querySelector?.('[data-action="replay-jump-next-checkpoint"]')?.addEventListener('click', () => this.jumpReplayPlayback('next'));
     root?.querySelector?.('[data-action="replay-jump-terminal"]')?.addEventListener('click', () => this.jumpReplayPlayback('terminal'));
+    root?.querySelector?.('[data-action="open-three-replay-review"]')?.addEventListener('click', () => this.openThreeReplayReview());
     root?.querySelectorAll?.('[data-replay-agent-filter]')?.forEach((button) => button.addEventListener('click', () => this.selectReplayAgent(button.getAttribute('data-replay-agent-filter'))));
     root?.querySelector?.('[data-action="menu"]')?.addEventListener('click', () => this.scene.start('MainMenuScene'));
     root?.querySelector?.('[data-headless-bundle-files]')?.addEventListener('change', (event) => this.loadSelectedFiles(event.target.files));
@@ -236,7 +238,7 @@ export class HeadlessBundleViewerScene extends PhaserScene {
     this.stopReplayTimer();
     this.bundle = bundle;
     this.selectedReplayAgentId = null;
-    this.replayPlaybackState = createReplayPlaybackState(bundle);
+    this.replayPlaybackState = replayPlaybackReducer(null, { type: 'init' }, bundle);
     this.statusMessage = statusMessage;
     this.lastError = null;
     this.renderPanel();
@@ -244,6 +246,17 @@ export class HeadlessBundleViewerScene extends PhaserScene {
     this.draw();
   }
 
+  openThreeReplayReview() {
+    if (!this.bundle) {
+      this.app.toast?.('Load a replay bundle before opening Three replay review.', 'warning');
+      return;
+    }
+    this.stopReplayTimer();
+    this.app.state.replayReviewSourceBundle = this.bundle;
+    this.app.state.replayReviewSource = buildReplayReviewSourceFromBundle(this.bundle, { sourceKind: 'headlessBundleViewer' });
+    this.app.state.replayReviewReturnScene = 'HeadlessBundleViewerScene';
+    this.scene.start('MissionReplayReviewScene');
+  }
   exportBrowserSummary() {
     if (!this.bundle) {
       this.app.toast?.('Load a headless bundle before exporting a browser summary.', 'warning');
@@ -265,38 +278,37 @@ export class HeadlessBundleViewerScene extends PhaserScene {
       this.app.toast?.('Load a replay bundle before exporting a replay summary.', 'warning');
       return;
     }
-    downloadJSON('anchor_headless_replay_browser_summary.json', buildBrowserHeadlessReplaySummaryArtifact(this.bundle, replayPlaybackSummary(this.replayPlaybackState, this.bundle)));
+    downloadJSON('anchor_headless_replay_browser_summary.json', buildBrowserHeadlessReplaySummaryArtifact(this.bundle, replayPlaybackReducerSummary(this.replayPlaybackState, this.bundle)));
   }
 
   toggleReplayPlayback() {
     if (!this.bundle) return;
-    this.replayPlaybackState ??= createReplayPlaybackState(this.bundle);
-    const nextPlaying = this.replayPlaybackState.playing !== true;
-    this.replayPlaybackState = setReplayPlaybackPlaying(this.replayPlaybackState, nextPlaying);
-    if (nextPlaying) this.startReplayTimer();
+    this.replayPlaybackState ??= replayPlaybackReducer(null, { type: 'init' }, this.bundle);
+    this.replayPlaybackState = replayPlaybackReducer(this.replayPlaybackState, { type: 'togglePlay' }, this.bundle);
+    if (this.replayPlaybackState.playing) this.startReplayTimer();
     else this.stopReplayTimer();
     this.refreshReplayPanel();
   }
 
   stepReplayPlayback() {
     if (!this.bundle) return;
-    this.replayPlaybackState ??= createReplayPlaybackState(this.bundle);
-    this.replayPlaybackState = advanceReplayPlayback(this.replayPlaybackState, this.bundle, 1);
+    this.replayPlaybackState ??= replayPlaybackReducer(null, { type: 'init' }, this.bundle);
+    this.replayPlaybackState = replayPlaybackReducer(this.replayPlaybackState, { type: 'stepForward' }, this.bundle);
     this.refreshReplayPanel();
   }
 
   jumpReplayPlayback(checkpointSelector) {
     if (!this.bundle) return;
-    this.replayPlaybackState ??= createReplayPlaybackState(this.bundle);
-    this.replayPlaybackState = jumpReplayPlaybackToCheckpoint(this.replayPlaybackState, this.bundle, checkpointSelector);
+    this.replayPlaybackState ??= replayPlaybackReducer(null, { type: 'init' }, this.bundle);
+    this.replayPlaybackState = replayPlaybackReducer(this.replayPlaybackState, { type: 'jumpCheckpoint', selector: checkpointSelector }, this.bundle);
     this.refreshReplayPanel();
   }
 
   selectReplayAgent(agentId) {
     if (!this.bundle) return;
     this.selectedReplayAgentId = agentId === 'all' ? null : agentId;
-    this.replayPlaybackState ??= createReplayPlaybackState(this.bundle);
-    this.replayPlaybackState = selectReplayPlaybackAgent(this.replayPlaybackState, this.selectedReplayAgentId);
+    this.replayPlaybackState ??= replayPlaybackReducer(null, { type: 'init' }, this.bundle);
+    this.replayPlaybackState = replayPlaybackReducer(this.replayPlaybackState, { type: 'selectAgent', agentId: this.selectedReplayAgentId }, this.bundle);
     this.refreshReplayPanel();
   }
 
@@ -305,8 +317,8 @@ export class HeadlessBundleViewerScene extends PhaserScene {
     this.replayPlaybackTimer = globalThis.setInterval?.(() => {
       if (!this.replayPlaybackState?.playing || !this.bundle) return;
       const before = this.replayPlaybackState.eventIndex;
-      this.replayPlaybackState = advanceReplayPlayback(this.replayPlaybackState, this.bundle, 1);
-      if (this.replayPlaybackState.eventIndex === before) this.replayPlaybackState = setReplayPlaybackPlaying(this.replayPlaybackState, false);
+      this.replayPlaybackState = replayPlaybackReducer(this.replayPlaybackState, { type: 'stepForward' }, this.bundle);
+      if (this.replayPlaybackState.eventIndex === before) this.replayPlaybackState = replayPlaybackReducer(this.replayPlaybackState, { type: 'pause' }, this.bundle);
       this.refreshReplayPanel();
       if (!this.replayPlaybackState.playing) this.stopReplayTimer();
     }, 600) ?? null;
@@ -330,7 +342,7 @@ export class HeadlessBundleViewerScene extends PhaserScene {
       statusMessage: this.statusMessage,
       lastError: this.lastError,
       sourceFiles: this.bundle.files ?? [],
-      replayPlayback: replayPlaybackSummary(this.replayPlaybackState, this.bundle),
+      replayPlayback: replayPlaybackReducerSummary(this.replayPlaybackState, this.bundle),
       replayPlaying: this.replayPlaybackState?.playing === true,
       replayCurrentTick: this.replayPlaybackState?.currentTick ?? null,
       replayCurrentEventIndex: this.replayPlaybackState?.eventIndex ?? -1,

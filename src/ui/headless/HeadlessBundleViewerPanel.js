@@ -426,6 +426,7 @@ export function headlessBundleReplayHtml(viewModel = {}) {
         <button class="console-button secondary" data-action="replay-jump-start" ${summary.present ? '' : 'disabled'}>Start Checkpoint</button>
         <button class="console-button secondary" data-action="replay-jump-next-checkpoint" ${summary.present ? '' : 'disabled'}>Next Checkpoint</button>
         <button class="console-button secondary" data-action="replay-jump-terminal" ${summary.present ? '' : 'disabled'}>Terminal Checkpoint</button>
+        <button class="console-button primary" data-action="open-three-replay-review" ${summary.present ? '' : 'disabled'}>Open Three Replay Review</button>
       </div>
       ${playback.message ? `<div class="hud-muted">${escapeHtml(playback.message)}</div>` : ''}
       ${summary.firstDivergence ? `<div class="hud-muted"><strong>Divergence:</strong> ${escapeHtml(summary.firstDivergence.mismatchClass ?? 'mismatch')} at ${escapeHtml(summary.firstDivergence.path ?? 'unknown path')}</div>` : ''}

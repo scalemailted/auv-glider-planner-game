@@ -1,4 +1,4 @@
-export const PLAYWRIGHT_GROUPS_VERSION = 'playwright-groups-r1-2c-3';
+export const PLAYWRIGHT_GROUPS_VERSION = 'playwright-groups-r2a';
 
 export const PLAYWRIGHT_GROUPS = Object.freeze([
   {
@@ -91,6 +91,14 @@ export const PLAYWRIGHT_GROUPS = Object.freeze([
       /^Three Terrain Presentation Clearly Distinguishes Mission Semantics$/i,
       /^Legacy and Three Simulation Produce Identical Canonical Result$/i,
       /^legacy saved level registry scene still opens$/i
+    ]
+  },
+  {
+    id: 'threeReplayReview',
+    label: 'Three.js replay playback and debrief route review parity',
+    patterns: [
+      /^THREE-R2A Headless Replay Opens Three Review Scene$/i,
+      /^THREE-R2A Tampered Replay Review Shows Integrity Warning$/i
     ]
   },
   {

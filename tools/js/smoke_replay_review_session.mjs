@@ -1,0 +1,21 @@
+import assert from 'node:assert/strict';
+import fs from 'node:fs';
+import { buildHeadlessBundleFromFiles } from '../../src/core/headless/HeadlessBundleLoader.js';
+import { buildReplayReviewSourceFromBundle } from '../../src/core/replay/ReplayReviewLoader.js';
+import { createReplayReviewSession, reduceReplayReviewSession, replayReviewSessionSummary } from '../../src/core/replay/ReplayReviewSession.js';
+
+const payload = JSON.parse(fs.readFileSync('docs/examples/headless_replay_public.example.json', 'utf8'));
+const bundle = buildHeadlessBundleFromFiles([{ fileName: 'bundle.json', payload }]);
+const source = buildReplayReviewSourceFromBundle(bundle, { sourceKind: 'smoke' });
+let session = createReplayReviewSession(source);
+assert.equal(session.type, 'anchor.replay.review-session');
+assert.equal(session.replayArtifacts.present, true);
+assert.ok(session.timeline.eventCount > 0, 'session exposes replay timeline');
+assert.equal(session.publicBoundary.usesHiddenTruthResimulation, false);
+session = reduceReplayReviewSession(session, { type: 'stepForward' });
+assert.equal(session.timeline.currentEventIndex, 1);
+const summary = replayReviewSessionSummary(session);
+assert.ok(['PASS', 'WARN', 'FAIL'].includes(summary.integrityStatus), 'integrity status is summarized');
+assert.equal(summary.usesHiddenTruthResimulation, false);
+assert.equal(summary.changesOfficialBrowserScoring, false);
+console.log('smoke_replay_review_session: PASS', JSON.stringify({ integrityStatus: summary.integrityStatus, eventCount: summary.eventCount, checkpointCount: summary.checkpointCount }));

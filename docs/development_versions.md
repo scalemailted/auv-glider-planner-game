@@ -561,3 +561,10 @@ Added renderer-neutral bathymetry surface, mesh, coastline, contour, and source 
 - Added digest-driven Three terrain-validation layer reuse and Mission Readiness render lifecycle coverage.
 - Added six focused visible E2E workflows and exact group assignment. The focused six-test terrain-validation set passed in one invocation.
 - Preserved the boundary: diagnostics do not change official scoring; Three.js remains renderer-only; headed browser performance is authoritative; headless timing is diagnostic; human manual QA remains separate.
+
+## THREE-R2A - Three.js Replay Playback and Debrief Route Review Parity
+
+- Added a Three.js Replay Review scene that consumes public REPLAY-R1 artifacts or public browser debrief results through a shared replay review source/session/view-model path.
+- Added playback reducer support for play, pause, step, event-index scrub, checkpoint jumps, tampered replay warnings, and public boundary debug flags.
+- Wired Debrief and the Headless Bundle Viewer to open the same Three replay review surface, with `ANCHOR_THREE_REPLAY_DEBUG` exposing mounted state, integrity, timeline, renderer, lifecycle, and boundary summaries.
+- Preserved the boundary: no new planner, no physics/resimulation rewrite, no hidden-truth replay, no official scoring change, no route optimization, and no terrain overhaul. Human manual QA by the project owner remains pending.

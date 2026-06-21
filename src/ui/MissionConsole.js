@@ -1314,6 +1314,7 @@ export class MissionConsole {
       <section class="console-section">
         <h2>Actions</h2>
         <button class="console-button primary" data-action="revise">Revise Plan</button>
+        <button class="console-button" data-action="review-replay">Review Replay</button>
       </section>
       <section class="console-section">
         <h2>Mission Actions</h2>

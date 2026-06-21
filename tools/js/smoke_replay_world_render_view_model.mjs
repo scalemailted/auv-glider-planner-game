@@ -1,0 +1,27 @@
+import assert from 'node:assert/strict';
+import fs from 'node:fs';
+import { buildHeadlessBundleFromFiles } from '../../src/core/headless/HeadlessBundleLoader.js';
+import { buildReplayReviewSourceFromBundle } from '../../src/core/replay/ReplayReviewLoader.js';
+import { createReplayReviewSession, reduceReplayReviewSession } from '../../src/core/replay/ReplayReviewSession.js';
+import { buildReplayWorldRenderViewModel, replayWorldRenderViewModelSummary, validateReplayWorldRenderViewModel } from '../../src/core/rendering/ReplayWorldRenderViewModel.js';
+
+const payload = JSON.parse(fs.readFileSync('docs/examples/headless_replay_public.example.json', 'utf8'));
+const bundle = buildHeadlessBundleFromFiles([{ fileName: 'bundle.json', payload }]);
+const source = buildReplayReviewSourceFromBundle(bundle, { sourceKind: 'smoke' });
+let session = createReplayReviewSession(source);
+session = reduceReplayReviewSession(session, { type: 'scrub', eventIndex: 6 });
+const viewModel = buildReplayWorldRenderViewModel(session);
+assert.equal(viewModel.type, 'anchor.rendering.replay-world');
+assert.equal(viewModel.phase, 'replay');
+assert.ok(viewModel.grid.width > 0 && viewModel.grid.height > 0, 'view model has grid');
+assert.ok(Array.isArray(viewModel.gliders), 'view model exposes glider poses');
+assert.ok(Array.isArray(viewModel.realizedTrajectories), 'view model exposes realized trajectories');
+assert.equal(viewModel.boundaryFlags.includesHiddenTruth, false);
+assert.equal(viewModel.boundaryFlags.usesHiddenTruthResimulation, false);
+assert.equal(viewModel.boundaryFlags.changesOfficialBrowserScoring, false);
+const validation = validateReplayWorldRenderViewModel(viewModel);
+assert.equal(validation.valid, true, validation.errors.join('\n'));
+const summary = replayWorldRenderViewModelSummary(viewModel);
+assert.equal(summary.publicObservationPlayback, true);
+assert.equal(summary.ownsReplaySemantics, false);
+console.log('smoke_replay_world_render_view_model: PASS', JSON.stringify({ gliderCount: summary.gliderCount, realizedTrajectoryPointCount: summary.realizedTrajectoryPointCount, observationCount: summary.observationCount }));

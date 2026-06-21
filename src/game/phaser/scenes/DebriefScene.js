@@ -90,6 +90,7 @@ import {
   parseBenchmarkArtifact
 } from '../../../core/benchmark/BenchmarkArtifactImport.js';
 import { buildBenchmarkImportViewModel, benchmarkImportSummary } from '../../../core/benchmark/BenchmarkImportViewModel.js';
+import { buildReplayReviewSourceFromResult } from '../../../core/replay/ReplayReviewLoader.js';
 import {
   deleteBenchmarkAttemptSession,
   listBenchmarkAttemptSessions,
@@ -234,6 +235,7 @@ export class DebriefScene extends PhaserScene {
           ${this.missionOutcomeScorecardHtml(result)}
           ${this.depthSciencePanelHtml(result)}
           ${this.terrainAwareValidationPanelHtml(result)}
+          ${this.replayReviewPanelHtml(result)}
           ${this.benchmarkPanelHtml(result)}
           ${this.adaptiveSurfacingPanelHtml(result)}
           ${this.adaptiveSessionPanelHtml(result)}
@@ -332,6 +334,18 @@ export class DebriefScene extends PhaserScene {
     `;
   }
 
+  replayReviewPanelHtml(result) {
+    const eventCount = result?.events?.length ?? result?.routeExecution?.events?.length ?? 0;
+    const frameCount = result?.frames?.length ?? result?.routeExecution?.frames?.length ?? result?.trajectories?.length ?? 0;
+    return `
+      <article class="debrief-panel" data-three-replay-review-debrief>
+        <h2>Replay Review</h2>
+        <p>Review this public result timeline in the Three.js mission renderer.</p>
+        <p>Frames ${escapeHtml(frameCount)} | events ${escapeHtml(eventCount)} | hidden truth not included | browser score unchanged.</p>
+        <button class="debrief-button primary" data-action="review-replay">Review Replay</button>
+      </article>
+    `;
+  }
   missionModePanelHtml(result) {
     const missionMode = result?.missionMode ?? this.app.state.missionMode ?? this.app.state.level?.meta?.missionMode ?? this.app.state.mission?.meta?.missionMode ?? null;
     if (!missionMode) return '';
@@ -1347,6 +1361,7 @@ export class DebriefScene extends PhaserScene {
     root.querySelector('[data-action="rerun-same"]')?.addEventListener('click', () => this.leaveDebrief(() => this.rerunSamePlan(false)));
     root.querySelector('[data-action="rerun-new-seed"]')?.addEventListener('click', () => this.leaveDebrief(() => this.rerunSamePlan(true)));
     root.querySelector('[data-action="export-result"]')?.addEventListener('click', () => downloadJson('anchor.result.json', this.buildCurrentResultExport(result)));
+    root.querySelector('[data-action="review-replay"]')?.addEventListener('click', () => this.openReplayReview(result));
     root.querySelector('[data-action="export-aar"]')?.addEventListener('click', () => downloadText('anchor_after_action_report.md', buildMarkdownAAR({
       level: this.app.state.level,
       mission: this.app.state.mission,
@@ -1417,6 +1432,7 @@ export class DebriefScene extends PhaserScene {
       'new-challenge': () => this.leaveDebrief(() => this.startNewChallenge()),
       editor: () => this.leaveDebrief(() => this.scene.start('EnvironmentEditorScene')),
       'export-result': () => downloadJson('anchor.result.json', this.buildCurrentResultExport(result)),
+      'review-replay': () => this.leaveDebrief(() => this.openReplayReview(result, { alreadyLeftDebrief: true })),
       'export-aar': () => downloadText('anchor_after_action_report.md', buildMarkdownAAR({
         result,
         plan: this.app.state.plan,
@@ -1654,6 +1670,18 @@ export class DebriefScene extends PhaserScene {
     this.scene.start('SimulationScene');
   }
 
+  openReplayReview(result, options = {}) {
+    const source = buildReplayReviewSourceFromResult({
+      level: this.app.state.level,
+      mission: this.app.state.mission,
+      plan: this.app.state.plan,
+      result
+    });
+    this.app.state.replayReviewSource = source;
+    this.app.state.replayReviewReturnScene = 'DebriefScene';
+    if (options.alreadyLeftDebrief !== true) this.leaveDebrief(() => this.scene.start('MissionReplayReviewScene'));
+    else this.scene.start('MissionReplayReviewScene');
+  }
   buildCurrentResultExport(result) {
     return buildResultExport({
       level: this.app.state.level,
