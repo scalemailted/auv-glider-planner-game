@@ -17,3 +17,7 @@ Invalid and warning states should be distinguishable without color alone. The te
 ## Performance Boundary
 
 Validation issue objects are reused by stable IDs and disposed when absent. Camera movement, vertical exaggeration, and quality changes are presentation-only and must not rebuild canonical validation or terrain data.
+
+## Runtime Diagnostics Presentation
+
+Three.js may display runtime terrain diagnostics, realized trajectories, actual observations, and terrain event markers emitted by canonical Simulation. It must not create canonical terrain events, recompute validation from visual interpolation, mutate official score, or use camera/quality state as validation input.

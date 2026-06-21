@@ -29,3 +29,7 @@ The same portable module can be called from browser Planning, Simulation launch 
 ## Validation Caching
 
 Validation is rebuilt when canonical plan, mission, level, active forecast frame, terrain source, or profile inputs change. Camera movement, vertical exaggeration, and visual quality changes must not rebuild canonical validation.
+
+## Launch Prediction and Runtime Diagnostics
+
+Launch validation is frozen at Execute and remains distinct from actual execution diagnostics. Runtime terrain diagnostics use canonical simulation state to track actual clearance, depth, per-agent/per-segment summaries, target coverage, and public terrain events. Visual interpolation cannot create terrain events. Terrain events explain feasibility outcomes and do not change official scoring.

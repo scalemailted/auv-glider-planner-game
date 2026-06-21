@@ -518,6 +518,11 @@ export class SimulationScene extends PhaserScene {
       canonicalTrajectoryPointCount,
       threeTrajectoryPointCount: renderDebug.realizedTrajectoryPointCount ?? 0,
       canonicalObservationCount,
+      actualTerrainDiagnostics: this.app.state.result?.actualTerrainDiagnostics ?? this.app.state.result?.terrainAwareValidation?.actual ?? null,
+      terrainEventsSupported: this.app.state.result?.terrainAwareValidation?.terrainEventsSupported === true,
+      minimumActualClearanceMeters: this.app.state.result?.actualTerrainDiagnostics?.minimumActualClearanceMeters ?? null,
+      maximumActualDepthMeters: this.app.state.result?.actualTerrainDiagnostics?.maximumActualDepthMeters ?? null,
+      terrainEventCount: this.app.state.result?.terrainEvents?.length ?? 0,
       threeObservationCount: renderDebug.observationCount ?? 0,
       canonicalWaypointStatusCount: (this.engine?.agents ?? []).reduce((sum, agent) => sum + (agent.completedWaypoints?.length ?? 0) + (agent.missedWaypoints?.length ?? 0), 0),
       rightPanelWaypointStatusCount: renderDebug.rightPanelWaypointStatusCount ?? renderDebug.canonicalWaypointStatusCount ?? 0,
@@ -1667,6 +1672,11 @@ export class SimulationScene extends PhaserScene {
         : null,
       canonicalTrajectoryPointCount: (this.engine?.agents ?? []).reduce((sum, agent) => sum + (agent.history?.length ?? 0), 0),
       canonicalObservationCount,
+      actualTerrainDiagnostics: this.app.state.result?.actualTerrainDiagnostics ?? this.app.state.result?.terrainAwareValidation?.actual ?? null,
+      terrainEventsSupported: this.app.state.result?.terrainAwareValidation?.terrainEventsSupported === true,
+      minimumActualClearanceMeters: this.app.state.result?.actualTerrainDiagnostics?.minimumActualClearanceMeters ?? null,
+      maximumActualDepthMeters: this.app.state.result?.actualTerrainDiagnostics?.maximumActualDepthMeters ?? null,
+      terrainEventCount: this.app.state.result?.terrainEvents?.length ?? 0,
       canonicalWaypointStatusCount: (this.engine?.agents ?? []).reduce((sum, agent) => sum + (agent.completedWaypoints?.length ?? 0) + (agent.missedWaypoints?.length ?? 0), 0),
       rightPanelWaypointStatusCount: (this.engine?.agents ?? []).reduce((sum, agent) => sum + (agent.completedWaypoints?.length ?? 0) + (agent.missedWaypoints?.length ?? 0), 0),
       timelineWaypointStatusCount: (this.engine?.agents ?? []).reduce((sum, agent) => sum + (agent.completedWaypoints?.length ?? 0) + (agent.missedWaypoints?.length ?? 0), 0),
@@ -2786,24 +2796,92 @@ function finiteMetric(value) {
 function buildTerrainAwareSimulationResultSummary(launchPayload = null, engineResult = null) {
   const launchReport = launchPayload?.terrainAwareValidationReport ?? null;
   const launchSummary = launchPayload?.terrainAwareValidationSummary ?? summarizeTerrainAwareValidation(launchReport);
+  const actual = engineResult?.actualTerrainDiagnostics ?? engineResult?.summary?.terrainDiagnostics ?? null;
+  const terrainEvents = engineResult?.terrainEvents ?? (engineResult?.events ?? []).filter((event) => String(event.type ?? '').startsWith('anchor.simulation.terrain-'));
+  const predictedMinimumClearanceMeters = minimumPredictedClearance(launchReport);
+  const predictedMaximumDepthMeters = maximumPredictedDepth(launchReport);
+  const actualMinimumClearanceMeters = finiteOrNull(actual?.minimumActualClearanceMeters);
+  const actualMaximumDepthMeters = finiteOrNull(actual?.maximumActualDepthMeters);
   return {
     type: 'anchor.validation.terrain-aware-simulation-summary',
-    version: launchSummary?.version ?? launchReport?.version ?? null,
+    version: launchSummary?.version ?? launchReport?.version ?? actual?.version ?? null,
+    launch: {
+      version: launchReport?.version ?? launchSummary?.version ?? null,
+      digest: launchReport?.planDigest ?? launchPayload?.planDigest ?? null,
+      terrainSourceDigest: launchReport?.terrainSourceDigest ?? null,
+      status: launchSummary?.status ?? launchReport?.status ?? null,
+      executable: launchSummary?.executable ?? launchReport?.executable ?? null,
+      issueSummary: launchSummary,
+      predictedMinimumClearanceMeters,
+      predictedMaximumDepthMeters,
+      predictedTargetCoverage: predictedTargetCoverage(launchReport),
+      predictedTerrainRisks: launchSummary?.issueCodes ?? []
+    },
+    actual: {
+      version: actual?.version ?? null,
+      minimumActualClearanceMeters: actualMinimumClearanceMeters,
+      maximumActualDepthMeters: actualMaximumDepthMeters,
+      eventSummary: actual?.terrainEventSummary ?? { eventCount: terrainEvents.length, eventTypes: {} },
+      actualTargetCoverage: actual?.actualTargetCoverage ?? null,
+      terrainRelatedTerminalReason: actual?.terrainRelatedTerminalReason ?? null,
+      terrainEventsSupported: actual?.terrainEventsSupported === true
+    },
+    comparison: {
+      predictedMinimumClearanceMeters,
+      actualMinimumClearanceMeters,
+      clearanceDifferenceMeters: predictedMinimumClearanceMeters != null && actualMinimumClearanceMeters != null
+        ? Number((actualMinimumClearanceMeters - predictedMinimumClearanceMeters).toFixed(6))
+        : null,
+      predictedMaximumDepthMeters,
+      actualMaximumDepthMeters,
+      predictedTargetCoverage: predictedTargetCoverage(launchReport),
+      actualTargetCoverage: actual?.actualTargetCoverage ?? null,
+      predictedSurfacingOffset: predictedSurfacingOffset(launchReport),
+      actualSurfacingOffset: null
+    },
     launchSummary,
     launchReport,
-    actualSummary: {
-      status: engineResult?.summary?.stopReason?.code ? 'COMPLETED_WITH_EVENTS' : 'COMPLETED_OR_RUNNING',
-      routeFailureCount: (engineResult?.events ?? []).filter((event) => event.type === 'routeFailureDecision').length,
-      sampledObservationCount: (engineResult?.events ?? []).filter((event) => ['sample', 'duplicateSample', 'probabilityOutcome', 'anchor.score.depth-aware-sample'].includes(event.type)).length,
-      minimumActualClearanceMeters: null,
-      terrainEventsSupported: false
-    },
+    actualSummary: actual,
+    terrainEvents: terrainEvents.map((event) => ({ ...event })),
+    terrainEventsSupported: actual?.terrainEventsSupported === true,
     plannedAndActualDistinct: true,
     officialScoringChanged: false,
     rendererOwnsValidation: false,
     usesMeshRaycastForValidity: false,
     containsHiddenTruth: false
   };
+}
+
+function minimumPredictedClearance(report = null) {
+  const values = (report?.segmentReports ?? [])
+    .map((segment) => Number(segment.diveClearance?.minimumClearanceMeters ?? segment.minimumPredictedClearanceMeters ?? segment.predictedMinimumClearanceMeters))
+    .filter(Number.isFinite);
+  return values.length ? Number(Math.min(...values).toFixed(6)) : null;
+}
+
+function maximumPredictedDepth(report = null) {
+  const values = (report?.segmentReports ?? [])
+    .flatMap((segment) => [segment.diveClearance?.requestedMaximumDepthMeters, segment.diveClearance?.achievableMaximumDepthMeters, segment.requestedMaximumDepthMeters, segment.achievableMaximumDepthMeters])
+    .map(Number)
+    .filter(Number.isFinite);
+  return values.length ? Number(Math.max(...values).toFixed(6)) : null;
+}
+
+function predictedTargetCoverage(report = null) {
+  const targetReports = report?.targetReports ?? [];
+  const byStatus = {};
+  for (const target of targetReports) byStatus[target.status ?? 'UNKNOWN'] = (byStatus[target.status ?? 'UNKNOWN'] ?? 0) + 1;
+  return { targetCount: targetReports.length, byStatus };
+}
+
+function predictedSurfacingOffset(report = null) {
+  const offsets = (report?.segmentReports ?? []).map((segment) => segment.diveClearance?.predictedSurfacingOffset ?? segment.predictedSurfacingOffset).filter(Boolean);
+  return offsets[0] ?? null;
+}
+
+function finiteOrNull(value) {
+  const number = Number(value);
+  return Number.isFinite(number) ? Number(number.toFixed(6)) : null;
 }
 
 function escapeHtml(value) {

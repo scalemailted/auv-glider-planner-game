@@ -80,3 +80,7 @@ The viewer labels public bundles as public observation playback. It does not cla
 ## H4.1 Schema And Integrity Hardening
 
 H4.1 adds formal replay schema files, runtime schema validation, explicit compatibility policy, structured integrity issue codes, compact tampered fixtures, and a contract-only multi-agent replay fixture. `verify-replay` exits nonzero on `FAIL`; `--strict` also exits nonzero on `WARN`. Public verification checks recorded public artifacts only and does not perform hidden-state resimulation or physics replay. See `docs/replay_artifact_schemas.md`.
+
+## Terrain Events in Replay
+
+THREE-R1.2C.1 adds compact public terrain events to canonical replay artifacts when runtime diagnostics are available. Replay events keep deterministic ordering and checkpoints retain a terrain event summary, including minimum actual clearance observed through that tick. Public replay excludes hidden truth and does not recompute terrain physics; display-only camera, quality, hover, label, and vertical-exaggeration state remains outside replay digests.

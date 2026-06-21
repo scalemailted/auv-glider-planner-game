@@ -536,6 +536,13 @@ Simulation presentation now uses a scheduler/dirty-category pipeline. Canonical 
 - Preserved the boundary: no terrain mesh phase, no mission mechanics, no arbitrary XYZ navigation, no WebGPU/fluid solver, no route/scoring/simulation changes, and no renderer-owned scientific-field semantics.
 - Human manual QA by the project owner remains pending.
 
+
+## THREE-R1.2C.1 - Terrain Validation Runtime Completion
+
+- Added renderer-neutral runtime terrain diagnostics for canonical actual clearance/depth, per-agent/per-segment summaries, target coverage, and deterministic public terrain events.
+- Preserved compact actual diagnostics through Simulation result, result export, replay events/checkpoints, headless episode/bundle outputs, and Debrief planned-versus-actual terrain comparison.
+- Added focused runtime terrain smoke/audit scripts. Visual interpolation cannot create terrain events; terrain events do not change official scoring; public replay excludes hidden truth. Human manual QA by the project owner remains pending.
+
 ## THREE-R1.2B Continuous Bathymetric Terrain
 
 Added renderer-neutral bathymetry surface, mesh, coastline, contour, and source metadata contracts plus shared Three.js terrain/land/coastline/contour layers. Production Planning and the Bathymetric World View now converge on the same derived terrain geometry. The renderer does not own canonical bathymetry, collision, dive feasibility, planning, scoring, or simulation. Current terrain remains deterministic synthetic educational data.

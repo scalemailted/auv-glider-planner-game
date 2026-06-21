@@ -1,4 +1,4 @@
-﻿import {
+import {
   REPLAY_ARTIFACT_TYPES,
   REPLAY_MODES,
   REPLAY_NUMERIC_POLICY,
@@ -35,6 +35,7 @@ export function buildReplayArtifactsFromSource(source = {}, options = {}) {
   const observations = normalizeObservationRows(episode.observations ?? bundle.observations ?? []);
   const actions = normalizeActions(episode.actions ?? bundle.episode?.actions ?? []);
   const surfacingEvents = normalizeSurfacingEvents(episode.surfacingEvents ?? bundle.episode?.surfacingEvents ?? [], tracks, observations);
+  const terrainEvents = normalizeTerrainEvents(episode.terrainEvents ?? bundle.terrainEvents?.events ?? bundle.terrainEvents ?? bundle.episode?.terrainEvents ?? []);
   const replayObjectiveSequence = objectiveSequenceFromReplayEvents(bundle.replayEvents?.events ?? episode.replayEvents?.events ?? []);
   const objectiveSequence = normalizeObjectiveSequence(options.objectiveSequence ?? episode.objectiveSequence ?? episode.replay?.objectiveSequence ?? missionConfig.replayObjectiveSequence ?? missionConfig.objectiveSequence ?? replayObjectiveSequence, missionConfig, tracks, surfacingEvents, options);
   const dt = finitePositive(missionConfig.world?.timeStepSeconds ?? missionConfig.world?.time?.dt ?? missionConfig.timeStepSeconds ?? options.timeStepSeconds, 60);
@@ -42,7 +43,8 @@ export function buildReplayArtifactsFromSource(source = {}, options = {}) {
     missionConfig.world?.durationSeconds,
     ...tracks.map((row) => row.timeSeconds),
     ...observations.map((row) => row.timeSeconds),
-    ...surfacingEvents.map((row) => row.timeSeconds)
+    ...surfacingEvents.map((row) => row.timeSeconds),
+    ...terrainEvents.map((row) => row.timeSeconds)
   ], 0);
   const terminalTick = Math.max(0, Math.ceil(maxTimeSeconds / dt));
   const replayId = options.replayId ?? `replay-r1-${missionConfig.missionId ?? manifestSource.missionId ?? 'mission'}-${episode.seed ?? manifestSource.seed ?? bundle.replay?.seed ?? 'seed'}`;
@@ -59,6 +61,7 @@ export function buildReplayArtifactsFromSource(source = {}, options = {}) {
     observations,
     actions,
     surfacingEvents,
+    terrainEvents,
     objectiveSequence,
     scoreSnapshot,
     initialState,
@@ -99,6 +102,7 @@ export function buildReplayArtifactsFromSource(source = {}, options = {}) {
       type: 'fixedStep',
       dtSeconds: dt,
       terminalTick,
+      terrainEventCount: events.filter((event) => event.phase === 'terrain').length,
       maxTimeSeconds,
       wallClockAffectsSimulation: false
     },
@@ -107,6 +111,7 @@ export function buildReplayArtifactsFromSource(source = {}, options = {}) {
     initialState,
     agentIds,
     featureFlags,
+    terrainEventSummary: terrainEventSummary(terrainEvents),
     eventOrderingPolicy: REPLAY_ORDERING_POLICY,
     checkpointPolicy: { id: 'replay-h4.1-public-checkpoints', requiredReasons: ['initial', 'terminal'], eventCursorSemantics: 'count of events consumed through checkpoint tick' },
     numericPolicy: REPLAY_NUMERIC_POLICY,
@@ -139,7 +144,8 @@ export function buildReplayArtifactsFromSource(source = {}, options = {}) {
       surfacingCount: events.filter((event) => event.phase === 'surfacing').length,
       observationCount: events.filter((event) => event.phase === 'observation').length,
       vehicleStateCount: events.filter((event) => event.phase === 'vehicleState').length,
-      terminalTick
+      terminalTick,
+      terrainEventCount: events.filter((event) => event.phase === 'terrain').length
     }
   };
   const replayCheckpoints = {
@@ -156,7 +162,8 @@ export function buildReplayArtifactsFromSource(source = {}, options = {}) {
       checkpointCount: checkpoints.length,
       initialDigest: checkpoints[0]?.digest?.value ?? null,
       terminalDigest: checkpoints.at(-1)?.digest?.value ?? null,
-      terminalTick
+      terminalTick,
+      terrainEventCount: events.filter((event) => event.phase === 'terrain').length
     }
   };
   const alignmentReport = buildInitialReplayAlignmentReport({ manifest, replayEvents, replayCheckpoints, scoreSnapshot });
@@ -182,6 +189,7 @@ export function buildReplayCheckpoints({ replayId, events, initialState, termina
       initialState,
       dt,
       terminalTick,
+      terrainEventCount: events.filter((event) => event.phase === 'terrain').length,
       scoreSnapshot,
       missionOutcomeStatus
     });
@@ -250,6 +258,15 @@ export function publicReplayStateAtTick(events = [], tick = 0, options = {}) {
     } else if (event.phase === 'surfacing') {
       state.surfacingCount = (state.surfacingCount ?? 0) + 1;
       state.lastSurfacing = compactObject({ tick: event.tick, timeSeconds: event.timeSeconds, agentId: event.agentId ?? null, reason: payload.reason ?? event.eventType });
+    } else if (event.phase === 'terrain') {
+      state.terrainEventSummary ??= { count: 0, byType: {}, minimumActualClearanceMeters: null, lastTerrainEventId: null };
+      state.terrainEventSummary.byType ??= {};
+      const payload = event.payload ?? {};
+      state.terrainEventSummary.count = (state.terrainEventSummary.count ?? 0) + 1;
+      state.terrainEventSummary.byType[payload.issueCode ?? event.eventType ?? 'terrain'] = (state.terrainEventSummary.byType[payload.issueCode ?? event.eventType ?? 'terrain'] ?? 0) + 1;
+      state.terrainEventSummary.lastTerrainEventId = payload.terrainEventId ?? event.eventId;
+      const clearance = Number(payload.clearanceMeters);
+      if (Number.isFinite(clearance) && (state.terrainEventSummary.minimumActualClearanceMeters === null || clearance < state.terrainEventSummary.minimumActualClearanceMeters)) state.terrainEventSummary.minimumActualClearanceMeters = clearance;
     } else if (event.phase === 'observation') {
       state.observationSummary.count = (state.observationSummary.count ?? 0) + 1;
       state.observationSummary.byAgent ??= {};
@@ -272,7 +289,7 @@ export function publicReplayStateAtTick(events = [], tick = 0, options = {}) {
   return compactObject(state);
 }
 
-function buildCanonicalEvents({ replayId, missionConfig, tracks, observations, actions, surfacingEvents, objectiveSequence, scoreSnapshot, initialState, agentIds, dt, terminalTick }) {
+function buildCanonicalEvents({ replayId, missionConfig, tracks, observations, actions, surfacingEvents, terrainEvents = [], objectiveSequence, scoreSnapshot, initialState, agentIds, dt, terminalTick }) {
   const raw = [];
   let rawIndex = 0;
   raw.push(replayEvent({ replayId, rawIndex: rawIndex += 1, tick: 0, timeSeconds: 0, phase: 'initial', eventType: 'replay.initialState', payload: initialState }));
@@ -356,6 +373,30 @@ function buildCanonicalEvents({ replayId, missionConfig, tracks, observations, a
   for (const event of surfacingEvents) {
     raw.push(replayEvent({ replayId, rawIndex: rawIndex += 1, tick: tickFromTime(event.timeSeconds, dt), timeSeconds: event.timeSeconds, phase: 'surfacing', eventType: 'vehicle.surfacing', agentId: event.gliderId ?? event.agentId ?? agentIds[0] ?? null, payload: compactObject({ surfacingId: event.id ?? null, reason: event.reason ?? 'surfacing' }) }));
   }
+  for (const event of terrainEvents) {
+    raw.push(replayEvent({
+      replayId,
+      rawIndex: rawIndex += 1,
+      tick: tickFromTime(event.timeSeconds, dt),
+      timeSeconds: event.timeSeconds,
+      phase: 'terrain',
+      eventType: event.type ?? event.eventType ?? 'anchor.simulation.terrain-event',
+      agentId: event.agentId ?? agentIds[0] ?? null,
+      payload: compactObject({
+        terrainEventId: event.id ?? null,
+        segmentId: event.segmentId ?? null,
+        targetId: event.targetId ?? null,
+        issueCode: event.issueCode ?? null,
+        severity: event.severity ?? null,
+        position: event.position ?? { x: event.x, y: event.y, depthMeters: event.depthMeters },
+        bottomDepthMeters: finiteOrNull(event.bottomDepthMeters),
+        clearanceMeters: finiteOrNull(event.clearanceMeters),
+        source: 'canonicalSimulation',
+        publicVisibility: event.publicVisibility ?? 'publicScenario',
+        boundaryFlags: { generatedFromVisualInterpolation: false, rendererOwned: false, changesOfficialScoring: false }
+      })
+    }));
+  }
   raw.push(replayEvent({ replayId, rawIndex: rawIndex += 1, tick: terminalTick, timeSeconds: terminalTick * dt, phase: 'score', eventType: 'score.publicSummary', payload: { score: scoreSnapshot.publicScore, missionOutcomeStatus: scoreSnapshot.missionOutcomeStatus } }));
   raw.push(replayEvent({ replayId, rawIndex: rawIndex += 1, tick: terminalTick, timeSeconds: terminalTick * dt, phase: 'terminal', eventType: 'mission.terminal', payload: { reason: surfacingEvents.at(-1)?.reason ?? 'mission-complete-summary-export' } }));
   return assignCanonicalReplaySequences(raw).map((event) => ({ ...event, eventId: `${replayId}-event-${String(event.sequence).padStart(5, '0')}` }));
@@ -405,6 +446,7 @@ function buildInitialPublicState({ missionConfig, tracks, observations, agentIds
     globalState: { missionStatus: 'active' },
     activeObjectives: [],
     observationSummary: { count: observations.filter((row) => finiteNumber(row.timeSeconds, 0) <= 0).length, byAgent: {}, lastObservationId: null, meanObservedValue: null },
+    terrainEventSummary: { count: 0, byType: {}, minimumActualClearanceMeters: null, lastTerrainEventId: null },
     surfacingCount: 0,
     objectiveTransitionCount: 0,
     score: null,
@@ -423,6 +465,23 @@ function normalizeObservationRows(rows) {
 
 function normalizeActions(actions) {
   return Array.isArray(actions) ? actions.map((action, index) => ({ ...action, timeSeconds: finiteNumber(action.timeSeconds, 0), id: action.id ?? `action-${index + 1}` })) : [];
+}
+
+function normalizeTerrainEvents(events = []) {
+  const list = Array.isArray(events) ? events : [];
+  return list.map((event, index) => ({
+    ...sanitizePublicObject(event),
+    id: event.id ?? 'terrain-event-' + String(index + 1),
+    timeSeconds: finiteNumber(event.timeSeconds ?? event.t, index),
+    type: event.type ?? event.eventType ?? 'anchor.simulation.terrain-event',
+    publicSafe: event.publicSafe !== false
+  })).filter((event) => event.publicSafe !== false).sort((a, b) => a.timeSeconds - b.timeSeconds || String(a.id).localeCompare(String(b.id)));
+}
+
+function terrainEventSummary(events = []) {
+  const byType = {};
+  for (const event of events) byType[event.type ?? 'terrain'] = (byType[event.type ?? 'terrain'] ?? 0) + 1;
+  return { eventCount: events.length, byType, supported: events.length > 0 };
 }
 
 function normalizeSurfacingEvents(events, tracks, observations) {
@@ -531,7 +590,8 @@ function buildInitialReplayAlignmentReport({ manifest, replayEvents, replayCheck
     checks: [
       { id: 'generated-events-canonical', ok: true, detail: replayEvents.events.length },
       { id: 'generated-checkpoint-digests', ok: true, detail: replayCheckpoints.checkpoints.length },
-      { id: 'score-shadow-only', ok: scoreSnapshot.publicScore.changesOfficialBrowserScoring === false }
+      { id: 'score-shadow-only', ok: scoreSnapshot.publicScore.changesOfficialBrowserScoring === false },
+      { id: 'terrain-events-public-safe', ok: replayEvents.events.filter((event) => event.phase === 'terrain').every((event) => event.publicSafe !== false && event.payload?.boundaryFlags?.rendererOwned !== true), detail: replayEvents.events.filter((event) => event.phase === 'terrain').length }
     ],
     checkedArtifactTypes: ['replayManifest', 'replayEvents', 'replayCheckpoints'],
     eventCount: replayEvents.events.length,
@@ -652,6 +712,3 @@ function compactObject(value) {
   }
   return result;
 }
-
-
-

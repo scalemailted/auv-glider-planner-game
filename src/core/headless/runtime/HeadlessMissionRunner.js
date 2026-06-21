@@ -11,6 +11,13 @@ import { evaluateDepthAwareProfileValue } from '../../science/DepthAwareScienceV
 import { depthScienceScoreProfileMetadata } from '../../science/DepthScoringProfiles.js';
 import { buildWaterColumnSummary } from '../../science/WaterColumnObservationModel.js';
 import { createSyntheticBathymetryField } from '../../science/BathymetryFieldModel.js';
+import {
+  createTerrainSimulationDiagnostics,
+  finalizeTerrainSimulationDiagnostics,
+  recordTerrainSimulationObservation,
+  terrainSimulationDiagnosticsSummary,
+  updateTerrainSimulationDiagnostics
+} from '../../simulation/TerrainSimulationDiagnostics.js';
 import { buildOceanWorldGeometry } from '../../science/OceanWorldGeometryAdapter.js';
 import { simulateGliderMotionTrajectory, trajectoryMotionSummary } from '../../motion/GliderTrajectorySimulator.js';
 import { buildMissionFeasibilityReport, missionFeasibilityReportSummary } from '../../motion/MissionFeasibilityReport.js';
@@ -225,6 +232,14 @@ export function simulateHeadlessEpisode(configInput = {}, planInput = null) {
     observationIds: executionObservations.map((entry) => entry.observationId),
     motionTrajectoryId: motionTrajectory?.planId ?? null
   };
+  const terrainDiagnostics = buildHeadlessTerrainDiagnostics({
+    bathymetry,
+    missionConfig,
+    scenarioId: config.scenario,
+    episodeId,
+    tracks: executionTracks,
+    observations: executionObservations
+  });
   const episode = {
     type: 'anchor.headless.episode',
     version: HEADLESS_MISSION_RUNNER_VERSION,
@@ -242,6 +257,11 @@ export function simulateHeadlessEpisode(configInput = {}, planInput = null) {
     depthScienceSummary,
     bathymetrySummary: fieldPackBefore.bathymetrySummary ?? fieldPackAfter.bathymetrySummary ?? null,
     missionGeometrySummary: missionGeometry.summary,
+    terrainValidationSummary: null,
+    actualTerrainDiagnosticsSummary: terrainDiagnostics.summary,
+    terrainEventSummary: terrainDiagnostics.summary?.terrainEventSummary ?? null,
+    terrainEvents: terrainDiagnostics.events ?? [],
+    terrainEventsSupported: terrainDiagnostics.supported === true,
     depthLayerPriority,
     depthLayerPrioritySummary: depthLayerPriority.summary,
     motionTrajectory,
@@ -285,6 +305,10 @@ export function simulateHeadlessEpisode(configInput = {}, planInput = null) {
       usesTerrainFlowAsOceanCurrent: false,
       bathymetrySummary: fieldPackBefore.bathymetrySummary ?? fieldPackAfter.bathymetrySummary ?? null,
       missionGeometrySummary: missionGeometry.summary,
+      actualTerrainDiagnosticsSummary: terrainDiagnostics.summary,
+      terrainEventSummary: terrainDiagnostics.summary?.terrainEventSummary ?? null,
+      terrainEventsSupported: terrainDiagnostics.supported === true,
+      terrainDiagnosticsUnsupportedReason: terrainDiagnostics.unsupportedReason ?? null,
       motionSummary: motionTrajectory ? trajectoryMotionSummary(motionTrajectory) : null,
       missionFeasibilitySummary: missionFeasibilityReport ? missionFeasibilityReportSummary(missionFeasibilityReport) : null,
       motionCostGraphSummary,
@@ -326,6 +350,43 @@ export function simulateHeadlessEpisode(configInput = {}, planInput = null) {
   });
   return episode;
 }
+function buildHeadlessTerrainDiagnostics({ bathymetry = null, missionConfig = {}, scenarioId = null, episodeId = null, tracks = [], observations = [] } = {}) {
+  if (!bathymetry?.depthMeters || !tracks.some((track) => Number.isFinite(Number(track.depthMeters)))) {
+    return {
+      supported: false,
+      unsupportedReason: 'headless tracks do not include bathymetry-backed depth samples',
+      summary: {
+        type: 'anchor.simulation.terrain-diagnostics-summary',
+        terrainEventsSupported: false,
+        unsupportedReason: 'headless tracks do not include bathymetry-backed depth samples'
+      },
+      events: []
+    };
+  }
+  const level = { levelId: scenarioId, bathymetry, world: { grid: { width: bathymetry.width, height: bathymetry.height } } };
+  const diagnostics = createTerrainSimulationDiagnostics({
+    level,
+    mission: { missionId: missionConfig.missionId, physics: missionConfig.physics ?? missionConfig.vehicle ?? {} }
+  });
+  tracks.forEach((track, index) => {
+    updateTerrainSimulationDiagnostics(diagnostics, {
+      agentId: track.gliderId ?? track.agentId ?? missionConfig.gliders?.[0]?.id ?? 'glider-1',
+      x: track.x,
+      y: track.y,
+      depthMeters: track.depthMeters ?? 0,
+      depthLayerId: track.depthLayerId ?? track.depthLayer ?? null,
+      segmentIndex: track.segmentIndex ?? track.waypointIndex ?? 0,
+      tick: index,
+      timeSeconds: track.timeSeconds ?? track.t ?? index
+    }, { level, tick: index, timeSeconds: track.timeSeconds ?? track.t ?? index });
+  });
+  observations.forEach((observation, index) => {
+    recordTerrainSimulationObservation(diagnostics, observation, { tick: tracks.length + index, timeSeconds: observation.timeSeconds ?? observation.t ?? 0 });
+  });
+  finalizeTerrainSimulationDiagnostics(diagnostics, { terminalReason: 'headless-episode-complete' });
+  return { supported: true, summary: terrainSimulationDiagnosticsSummary(diagnostics), events: diagnostics.events ?? [] };
+}
+
 function buildOptionalMotionCostArtifacts({ config, fieldPack, waterColumnConfig, bathymetry, plan, motionConfig } = {}) {
   if (config?.costGraphEnabled !== true) return { graph: null, matrix: null, graphSummary: null, matrixSummary: null, warnings: [] };
   try {

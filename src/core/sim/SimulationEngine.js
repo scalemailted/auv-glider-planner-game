@@ -51,6 +51,15 @@ import { debugSurfaceDecision } from './SurfaceDecisionVisibility.js';
 import { normalizeWaterColumnConfig } from '../science/WaterColumnSchema.js';
 import { depthScienceScoreProfileMetadata } from '../science/DepthScoringProfiles.js';
 import { summarizeDepthAwareScoreEvents } from '../science/DepthAwareScienceValue.js';
+import {
+  createTerrainSimulationDiagnostics,
+  finalizeTerrainSimulationDiagnostics,
+  recordTerrainSimulationObservation,
+  recordTerrainSimulationSurfacing,
+  terrainSimulationDiagnosticsSummary,
+  updateTerrainSimulationDiagnostics,
+  validateTerrainSimulationDiagnostics
+} from '../simulation/TerrainSimulationDiagnostics.js';
 
 const MAX_PLAYBACK_STEPS = SIMULATION_LIMITS.maxPlaybackSteps;
 
@@ -88,6 +97,11 @@ export class SimulationEngine {
     this.surfaceDecision = null;
     this.routeFailureDecision = null;
     this.ignoredUpdateEvents = [];
+    this.terrainDiagnostics = createTerrainSimulationDiagnostics({
+      level: this.level,
+      mission: this.mission,
+      plan: this.plan
+    });
     const samplingRules = normalizeSamplingRules(this.mission);
     const priorityTargetRules = normalizePriorityTargetRules(this.mission);
     const waterColumnConfig = normalizeWaterColumnConfig(this.mission?.waterColumnConfig ?? this.mission?.world?.waterColumnConfig ?? this.level?.world?.waterColumnConfig ?? { depthLayerIds: ['surface'], diveProfileId: 'surfaceOnly' });
@@ -818,6 +832,48 @@ export class SimulationEngine {
     }
   }
 
+  recordTerrainDiagnosticsForAgent(agent) {
+    if (!agent || !this.terrainDiagnostics) return;
+    const result = updateTerrainSimulationDiagnostics(this.terrainDiagnostics, {
+      agentId: agent.id,
+      x: agent.x,
+      y: agent.y,
+      depthMeters: agent.depthMeters ?? 0,
+      depthLayerId: agent.depthLayerId ?? null,
+      divePhase: agent.divePhase ?? null,
+      bottomDepthMeters: agent.bottomDepthMeters ?? null,
+      bottomClearanceMeters: agent.bottomClearanceMeters ?? null,
+      waypointIndex: agent.currentWaypointIndex,
+      segmentIndex: Math.max(0, Number(agent.currentWaypointIndex ?? 0)),
+      tick: this.stepCount,
+      timeSeconds: this.t
+    }, {
+      level: this.level,
+      mission: this.mission,
+      plan: this.plan,
+      tick: this.stepCount,
+      timeSeconds: this.t
+    });
+    this.terrainDiagnostics = result.diagnostics ?? this.terrainDiagnostics;
+    for (const terrainEvent of result.events ?? []) this.recordEvent(terrainEvent);
+  }
+
+  recordTerrainObservation(event, agent = null) {
+    if (!this.terrainDiagnostics || !event) return;
+    const result = recordTerrainSimulationObservation(this.terrainDiagnostics, {
+      ...event,
+      depthMeters: event.depthMeters ?? agent?.depthMeters ?? 0,
+      bottomDepthMeters: event.bottomDepthMeters ?? agent?.bottomDepthMeters ?? null,
+      bottomClearanceMeters: event.bottomClearanceMeters ?? agent?.bottomClearanceMeters ?? null
+    }, {
+      agentId: agent?.id ?? event.agentId,
+      tick: this.stepCount,
+      timeSeconds: this.t
+    });
+    this.terrainDiagnostics = result.diagnostics ?? this.terrainDiagnostics;
+    for (const terrainEvent of result.events ?? []) this.recordEvent(terrainEvent);
+  }
+
   recordWaypointTransition(event) {
     this.recordEvent(event);
   }
@@ -1140,6 +1196,7 @@ export class SimulationEngine {
   }
 
   recordSurfaceDecision(action) {
+    recordTerrainSimulationSurfacing(this.terrainDiagnostics, { action, timeSeconds: this.t }, { tick: this.stepCount, timeSeconds: this.t });
     this.recordEvent({
       type: 'surfaceDecision',
       t: this.t,
@@ -1158,6 +1215,7 @@ export class SimulationEngine {
       surfaceDecision: this.surfaceDecision,
       awaitingSurfaceDecision: this.awaitingSurfaceDecision,
       routeFailureDecision: this.routeFailureDecision,
+      terrainDiagnostics: this.terrainDiagnostics ? JSON.parse(JSON.stringify(this.terrainDiagnostics)) : null,
       missionState: {
         sampled: [...(this.missionState.sampled ?? [])],
         sampleHistory: [...(this.missionState.sampleHistory ?? new Map()).entries()],
@@ -1201,6 +1259,7 @@ export class SimulationEngine {
     this.surfaceDecision = resumeState.surfaceDecision ?? null;
     this.awaitingSurfaceDecision = resumeState.awaitingSurfaceDecision ?? null;
     this.routeFailureDecision = resumeState.routeFailureDecision ?? null;
+    this.terrainDiagnostics = resumeState.terrainDiagnostics ?? this.terrainDiagnostics;
     this.missionState.sampled = new Set(resumeState.missionState?.sampled ?? []);
     this.missionState.sampleHistory = new Map(resumeState.missionState?.sampleHistory ?? []);
     this.missionState.sampleWindows = new Set(resumeState.missionState?.sampleWindows ?? []);
@@ -1284,12 +1343,17 @@ export class SimulationEngine {
       waterColumnConfig: this.missionState.waterColumnConfig,
       scoreProfile: this.missionState.depthScienceScoreProfile
     });
+    summary.terrainDiagnostics = terrainSimulationDiagnosticsSummary(this.terrainDiagnostics);
     publishDepthScienceDebug(this.missionState, summary);
     publishContinuousMissionDebug(this, this.missionState, summary);
+    publishTerrainSimulationDebug(this.terrainDiagnostics, summary);
     return summary;
   }
 
   getResult() {
+    finalizeTerrainSimulationDiagnostics(this.terrainDiagnostics, {
+      terminalReason: this.abortReason ?? this.routeFailureDecision?.reason ?? this.missionState?.stopReason?.code ?? null
+    });
     const probabilityOutcomes = summarizeProbabilityOutcomes(this.events, this.missionState);
     const riskReward = summarizeRiskReward({ events: this.events, frames: this.logger.frames, agents: this.agents });
     const summary = this.getSummary();
@@ -1330,6 +1394,9 @@ export class SimulationEngine {
       priorityTargets: summarizePriorityTargets(this.level, this.missionState),
       deployment: summarizeDeployment(this.level, this.mission),
       depthScience: summary.depthScience ?? this.missionState.depthScienceSummary ?? null,
+      actualTerrainDiagnostics: terrainSimulationDiagnosticsSummary(this.terrainDiagnostics),
+      terrainEvents: (this.terrainDiagnostics?.events ?? []).map((event) => ({ ...event })),
+      terrainDiagnosticsValidation: validateTerrainSimulationDiagnostics(this.terrainDiagnostics),
       continuousMission: continuousMissionSummary(this, this.missionState, summary),
       frames: this.logger.frames,
       events: this.events,
@@ -1420,6 +1487,55 @@ function publishContinuousMissionDebug(engine = {}, missionState = {}, summary =
   globalThis.ANCHOR_CONTINUOUS_MISSION_DEBUG = continuousMissionSummary(engine, missionState, summary);
 }
 
+function publishTerrainSimulationDebug(terrainDiagnostics = {}, summary = {}) {
+  const terrainSummary = summary.terrainDiagnostics ?? terrainSimulationDiagnosticsSummary(terrainDiagnostics);
+  const existingDebug = globalThis.ANCHOR_TERRAIN_VALIDATION_DEBUG ?? {};
+  const performanceDebug = globalThis.ANCHOR_THREE_PERFORMANCE_DEBUG ?? {};
+  const validationBuildCountDuringCameraGesture = Number(existingDebug.validationBuildCountDuringCameraGesture ?? 0);
+  const validationCacheHitCountDuringCameraGesture = Number(existingDebug.validationCacheHitCountDuringCameraGesture ?? 0);
+  const validationInvalidationCountDuringCameraGesture = Number(existingDebug.validationInvalidationCountDuringCameraGesture ?? 0);
+  const missionModelBuildCountDuringCameraGesture = Number(performanceDebug.modelBuildCountDuringCameraGesture ?? existingDebug.missionModelBuildCountDuringCameraGesture ?? 0);
+  const predictionBuildCountDuringCameraGesture = Number(performanceDebug.predictionBuildCountDuringCameraGesture ?? existingDebug.predictionBuildCountDuringCameraGesture ?? 0);
+  const terrainBuildCountDuringCameraGesture = Number(performanceDebug.terrainBuildCountDuringCameraGesture ?? existingDebug.terrainBuildCountDuringCameraGesture ?? 0);
+  const hoverDispatchCountDuringCameraGesture = Number(existingDebug.hoverDispatchCountDuringCameraGesture ?? 0);
+  const selectionDispatchCountDuringCameraGesture = Number(existingDebug.selectionDispatchCountDuringCameraGesture ?? 0);
+  const suppressedClickCountAfterCameraGesture = Number(existingDebug.suppressedClickCountAfterCameraGesture ?? 0);
+  const cameraGestureInvariantFailures = [];
+  if (validationBuildCountDuringCameraGesture > 0) cameraGestureInvariantFailures.push('validation-build-during-camera-gesture');
+  if (validationInvalidationCountDuringCameraGesture > 0) cameraGestureInvariantFailures.push('validation-invalidation-during-camera-gesture');
+  if (missionModelBuildCountDuringCameraGesture > 0) cameraGestureInvariantFailures.push('mission-model-build-during-camera-gesture');
+  if (predictionBuildCountDuringCameraGesture > 0) cameraGestureInvariantFailures.push('prediction-build-during-camera-gesture');
+  if (terrainBuildCountDuringCameraGesture > 0) cameraGestureInvariantFailures.push('terrain-build-during-camera-gesture');
+  if (hoverDispatchCountDuringCameraGesture > 0) cameraGestureInvariantFailures.push('hover-dispatch-during-camera-gesture');
+  if (selectionDispatchCountDuringCameraGesture > 0) cameraGestureInvariantFailures.push('selection-dispatch-during-camera-gesture');
+  globalThis.ANCHOR_TERRAIN_VALIDATION_DEBUG = {
+    ...existingDebug,
+    terrainEventsSupported: terrainSummary.terrainEventsSupported === true,
+    actualDiagnosticsVersion: terrainSummary.version ?? null,
+    minimumActualClearanceMeters: terrainSummary.minimumActualClearanceMeters ?? null,
+    maximumActualDepthMeters: terrainSummary.maximumActualDepthMeters ?? null,
+    terrainEventCount: terrainSummary.terrainEventSummary?.eventCount ?? 0,
+    terrainEventTypes: Object.keys(terrainSummary.terrainEventSummary?.eventTypes ?? {}),
+    terrainEventDuplicateSuppressionCount: terrainSummary.terrainEventSummary?.duplicateSuppressionCount ?? 0,
+    actualTargetCoverageSummary: terrainSummary.actualTargetCoverage ?? null,
+    terrainRelatedTerminalReason: terrainSummary.terrainRelatedTerminalReason ?? null,
+    replayTerrainEventCount: globalThis.ANCHOR_REPLAY_DEBUG?.terrainEventCount ?? null,
+    replayTerrainDigest: globalThis.ANCHOR_REPLAY_DEBUG?.terrainDigest ?? null,
+    validationBuildCountDuringCameraGesture,
+    validationCacheHitCountDuringCameraGesture,
+    validationInvalidationCountDuringCameraGesture,
+    lastCameraGestureValidationReason: existingDebug.lastCameraGestureValidationReason ?? null,
+    missionModelBuildCountDuringCameraGesture,
+    predictionBuildCountDuringCameraGesture,
+    terrainBuildCountDuringCameraGesture,
+    hoverDispatchCountDuringCameraGesture,
+    selectionDispatchCountDuringCameraGesture,
+    suppressedClickCountAfterCameraGesture,
+    cameraGestureInvariantStatus: cameraGestureInvariantFailures.length ? 'FAIL' : 'PASS',
+    cameraGestureInvariantFailures,
+    boundaryFlags: terrainSummary.boundaryFlags ?? null
+  };
+}
 function publishDepthScienceDebug(missionState = {}, summary = {}) {
   const depthScience = summary.depthScience ?? missionState.depthScienceSummary ?? {};
   globalThis.ANCHOR_DEPTH_SCIENCE_DEBUG = {

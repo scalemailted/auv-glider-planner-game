@@ -1,4 +1,4 @@
-﻿import { continuousPointToContainingCell, normalizeContinuousMissionPoint } from '../geometry/ContinuousMissionCoordinates.js';
+import { continuousPointToContainingCell, normalizeContinuousMissionPoint } from '../geometry/ContinuousMissionCoordinates.js';
 import { buildBottomBoundaryViewModel } from '../rendering/BottomBoundaryViewModel.js';
 import { buildPlannedDiveSegmentViewModel } from '../rendering/PlannedDiveSegmentViewModel.js';
 import { normalizeContinuousScienceTarget } from '../science/ContinuousScienceTarget.js';
@@ -144,7 +144,7 @@ export function validateTerrainAwareSurfaceWaypoint(options = {}) {
   const agentId = options.agentId ?? options.agent?.id ?? null;
   const waypointId = options.waypoint?.id ?? options.waypointId ?? null;
   if (!Number.isFinite(point.x) || !Number.isFinite(point.y) || outside) {
-    hardErrors.push(issue({ code: 'OUTSIDE_DOMAIN', severity: 'HARD_ERROR', message: 'Surface waypoint must be inside the mission domain.', agentId, waypointId, position: pos(point), observedValue: pos(point), requiredValue: 'inside grid', units: 'grid-cells', repairHints: ['Move the waypoint inside the mission grid.'] }));
+    hardErrors.push(issue({ code: 'OUTSIDE_DOMAIN', severity: 'HARD_ERROR', message: 'Surface waypoint must be inside the mission terrain domain.', agentId, waypointId, position: pos(point), observedValue: pos(point), requiredValue: 'inside grid', units: 'grid-cells', repairHints: ['Move the waypoint inside the mission terrain grid.'] }));
   } else if (land || nav.ok === false) {
     hardErrors.push(issue({ code: 'LAND_SURFACE_WAYPOINT', severity: 'HARD_ERROR', message: `Surface waypoint must be in navigable water, not ${nav.reason === 'tooShallow' ? 'too-shallow water' : 'land'}.`, agentId, waypointId, position: pos(point), observedValue: roundOrNull(localBottomDepthMeters), requiredValue: '> 0', units: 'meters', repairHints: ['Move the waypoint farther offshore.'] }));
   }

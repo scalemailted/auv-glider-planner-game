@@ -1139,3 +1139,7 @@ One shared terrain contract serves all active Three mission views. The terrain m
 ## Terrain-Aware Mission Readiness
 
 Mission Planning now surfaces terrain-aware readiness for surface waypoints, route segments, dive clearance, current risk, and sampling targets. Hard errors block Execute. Warnings and advisories remain visible so a player can deliberately run a mission with accepted warnings. Surface waypoints are executable navigation/surfacing anchors; sampling targets are non-executable science objectives. Predicted samples are planning estimates and never award score.
+
+## Terrain Diagnostics
+
+Mission Readiness is a launch-time prediction. During execution, terrain diagnostics are based on canonical actual state, not visual interpolation. Terrain events explain clearance and feasibility outcomes but do not change official scoring. Human manual QA remains separate from headed automated QA.

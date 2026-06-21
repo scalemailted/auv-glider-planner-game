@@ -289,19 +289,45 @@ export class DebriefScene extends PhaserScene {
   }
 
   terrainAwareValidationPanelHtml(result) {
-    const validation = result?.terrainAwareValidation ?? result?.summary?.terrainAwareValidation ?? null;
-    const launch = validation?.launchSummary ?? validation?.summary ?? null;
-    const actual = validation?.actualSummary ?? null;
-    if (!validation && !launch && !actual) return '';
-    const issueCodes = (launch?.issueCodes ?? []).slice(0, 8).join(', ') || 'none';
+    const validation = result?.terrainAwareValidation ?? result?.terrainValidation ?? result?.summary?.terrainAwareValidation ?? null;
+    const launch = validation?.launch ?? validation?.launchSummary ?? validation?.summary ?? null;
+    const actual = validation?.actual ?? validation?.actualSummary ?? result?.actualTerrainDiagnostics ?? null;
+    const comparison = validation?.comparison ?? null;
+    const events = result?.terrainEvents ?? validation?.terrainEvents ?? (result?.events ?? []).filter((event) => String(event.type ?? '').startsWith('anchor.simulation.terrain-'));
+    if (!validation && !launch && !actual && !events.length) {
+      return `
+        <article class="debrief-panel" data-terrain-aware-validation-debrief>
+          <h2>Terrain and Feasibility</h2>
+          <p>Terrain diagnostics are unavailable for this legacy result.</p>
+          <p>Official scoring remains unchanged.</p>
+        </article>
+      `;
+    }
+    const issueCodes = (launch?.issueSummary?.issueCodes ?? launch?.issueCodes ?? []).slice(0, 8).join(', ') || 'none';
+    const eventTypes = actual?.eventSummary?.eventTypes ?? actual?.terrainEventSummary?.eventTypes ?? {};
+    const eventRows = Object.entries(eventTypes).slice(0, 6);
     return `
       <article class="debrief-panel" data-terrain-aware-validation-debrief>
-        <h2>Terrain-Aware Validation</h2>
+        <h2>Terrain and Feasibility</h2>
+        <h3>Launch Readiness</h3>
         <p>Launch status: ${escapeHtml(launch?.status ?? 'unknown')} | executable at launch: ${escapeHtml(launch?.executable === true ? 'yes' : 'no')}</p>
-        <p>Hard errors ${escapeHtml(launch?.hardErrorCount ?? 0)} | warnings ${escapeHtml(launch?.warningCount ?? 0)} | advisories ${escapeHtml(launch?.advisoryCount ?? 0)}</p>
+        <p>Hard errors ${escapeHtml(launch?.issueSummary?.hardErrorCount ?? launch?.hardErrorCount ?? 0)} | accepted warnings ${escapeHtml(launch?.issueSummary?.warningCount ?? launch?.warningCount ?? 0)} | advisories ${escapeHtml(launch?.issueSummary?.advisoryCount ?? launch?.advisoryCount ?? 0)}</p>
         <p>Issue codes: ${escapeHtml(issueCodes)}</p>
-        <p>Actual route terrain events: ${escapeHtml(actual?.routeFailureCount ?? 0)} | actual clearance summary: ${escapeHtml(actual?.minimumActualClearanceMeters ?? 'not recorded')}</p>
-        <p>Validation is owned by portable JavaScript core. The Three terrain mesh is not validity authority and official scoring is unchanged.</p>
+        <h3>Planned versus Actual</h3>
+        <p>Predicted min clearance ${escapeHtml(formatMetric(comparison?.predictedMinimumClearanceMeters))} m | actual min clearance ${escapeHtml(formatMetric(comparison?.actualMinimumClearanceMeters ?? actual?.minimumActualClearanceMeters))} m | delta ${escapeHtml(formatMetric(comparison?.clearanceDifferenceMeters))} m</p>
+        <p>Predicted max depth ${escapeHtml(formatMetric(comparison?.predictedMaximumDepthMeters))} m | actual max depth ${escapeHtml(formatMetric(comparison?.actualMaximumDepthMeters ?? actual?.maximumActualDepthMeters))} m</p>
+        <p>Terrain events: ${escapeHtml(actual?.eventSummary?.eventCount ?? actual?.terrainEventSummary?.eventCount ?? events.length ?? 0)} | duplicate suppressions ${escapeHtml(actual?.eventSummary?.duplicateSuppressionCount ?? actual?.terrainEventSummary?.duplicateSuppressionCount ?? 0)}</p>
+        ${eventRows.length ? `
+          <div class="debrief-table-wrap">
+            <table class="debrief-table">
+              <thead><tr><th>Terrain Event</th><th>Count</th></tr></thead>
+              <tbody>
+                ${eventRows.map(([type, count]) => `<tr><td>${escapeHtml(type)}</td><td>${escapeHtml(count)}</td></tr>`).join('')}
+              </tbody>
+            </table>
+          </div>
+        ` : '<p>No terrain events were emitted.</p>'}
+        <p>Terrain diagnostics explain execution outcomes. They do not modify official score.</p>
       </article>
     `;
   }

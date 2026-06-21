@@ -184,10 +184,13 @@ export function buildResultExport({ level, mission, plan, result, label = 'Manua
     planningMarkers: cloneJson(plan?.planningMarkers ?? []),
     routeQuality: cloneJson(result?.routeQuality ?? null),
     terrainAwareValidation: cloneJson(result?.terrainAwareValidation ?? result?.summary?.terrainAwareValidation ?? null),
+    terrainValidation: cloneJson(result?.terrainValidation ?? result?.terrainAwareValidation ?? result?.summary?.terrainAwareValidation ?? null),
+    terrainEvents: cloneJson(result?.terrainEvents ?? (result?.events ?? []).filter((event) => String(event.type ?? '').startsWith('anchor.simulation.terrain-'))),
+    actualTerrainDiagnostics: cloneJson(result?.actualTerrainDiagnostics ?? result?.summary?.terrainDiagnostics ?? null),
     terrainValidationMetadata: cloneJson({
       type: 'anchor.validation.terrain-aware-result-metadata',
       launchSummary: result?.terrainAwareValidation?.launchSummary ?? result?.terrainAwareValidationSummary ?? null,
-      actualSummary: result?.terrainAwareValidation?.actualSummary ?? null,
+      actualSummary: result?.terrainAwareValidation?.actual ?? result?.terrainAwareValidation?.actualSummary ?? result?.actualTerrainDiagnostics ?? null,
       boundaryFlags: result?.terrainAwareValidation?.launchSummary?.boundaryFlags ?? result?.terrainAwareValidation?.launchReport?.boundaryFlags ?? null,
       officialScoringChanged: false,
       rendererOwnsValidation: false,
@@ -234,7 +237,10 @@ export function buildResultExport({ level, mission, plan, result, label = 'Manua
       missionOutcomeReport: result?.missionOutcomeReport ?? result?.scoreArtifacts?.missionOutcomeReport ?? null,
       missionScore: result?.missionScore ?? result?.scoreArtifacts?.missionScore ?? null,
       depthScience: result?.depthScience ?? result?.summary?.depthScience ?? null,
-      terrainAwareValidation: result?.terrainAwareValidation ?? result?.summary?.terrainAwareValidation ?? null
+      terrainAwareValidation: result?.terrainAwareValidation ?? result?.summary?.terrainAwareValidation ?? null,
+      terrainValidation: result?.terrainValidation ?? result?.terrainAwareValidation ?? result?.summary?.terrainAwareValidation ?? null,
+      actualTerrainDiagnostics: result?.actualTerrainDiagnostics ?? result?.summary?.terrainDiagnostics ?? null,
+      terrainEventCount: result?.terrainEvents?.length ?? (result?.events ?? []).filter((event) => String(event.type ?? '').startsWith('anchor.simulation.terrain-')).length
     }),
     debugTrace: cloneJson(result?.debugTrace ?? result?.simulationTrace ?? null),
     rawResult: cloneJson(result ?? null)
