@@ -1,5 +1,6 @@
 import { normalizeWaterColumnConfig, waterColumnLayerMetadata } from '../science/WaterColumnSchema.js';
 import { resolveEffectiveDiveProfile } from '../motion/EffectiveDiveProfileResolver.js';
+import { buildMissionRouteSegments, missionRouteSegmentSummary } from '../planning/MissionRouteSegment.js';
 import { buildLegacySurfaceOnlyWaterColumnConfig, isLegacySurfaceOnlyMission, waterColumnMissionConfigSummary } from '../science/WaterColumnMissionDefaults.js';
 import { buildBottomBoundaryViewModel, bottomBoundaryViewModelSummary } from './BottomBoundaryViewModel.js';
 import { buildOperationalDepthLayerViewModel, operationalDepthLayerViewModelSummary } from './OperationalDepthLayerViewModel.js';
@@ -9,6 +10,10 @@ import {
   buildPlannedDiveSegmentsForRoutes,
   plannedDiveSegmentViewModelSummary
 } from './PlannedDiveSegmentViewModel.js';
+import {
+  buildWaterColumnLayerExplorerViewModel,
+  waterColumnLayerExplorerSummary
+} from './WaterColumnLayerExplorerViewModel.js';
 
 export const VOLUMETRIC_MISSION_WORLD_VIEW_MODEL_VERSION = 'volumetric-mission-world-view-model-three-r1-2a';
 
@@ -74,6 +79,8 @@ export function augmentMissionWorldWithVolumetricModel(baseViewModel = {}, optio
     verticalDisplayMode,
     depthLayers: operational.layers
   });
+  const routeSegments = buildMissionRouteSegments(plan, { level, mission, waterColumnConfig });
+  const segmentFlightPlans = routeSegments.map((segment) => segment.flightProfile).filter(Boolean);
   const plannedRoutes = (baseViewModel.routes ?? []).map((route) => ({
     ...route,
     diveProfileId: diveProfileForRoute(route, plan, mission, waterColumnConfig),
@@ -85,6 +92,7 @@ export function augmentMissionWorldWithVolumetricModel(baseViewModel = {}, optio
   const scienceTargets = baseViewModel.scienceTargets ?? options.scienceTargets ?? plan?.scienceTargets ?? [];
   const plannedDiveSegments = buildPlannedDiveSegmentsForRoutes({
     routes: plannedRoutes,
+    routeSegments,
     waterColumnConfig,
     bottomBoundary,
     vectorFieldLayer: baseViewModel.vectorFieldLayer,
@@ -101,6 +109,23 @@ export function augmentMissionWorldWithVolumetricModel(baseViewModel = {}, optio
   const observations = depthAwareObservations(baseViewModel.observations ?? [], waterColumnConfig);
   const samplePoints = observations.map((observation) => ({ ...observation, kind: 'samplePoint' }));
   const gliderPoses = depthAwareGliderPoses(baseViewModel.gliders ?? [], realizedDiveTrajectories, waterColumnConfig);
+  const waterColumnExplorer = buildWaterColumnLayerExplorerViewModel({
+    level,
+    mission,
+    plan,
+    grid,
+    baseViewModel,
+    waterColumnConfig,
+    bottomBoundary,
+    operationalDepthLayerModel: operational,
+    activeVariable: waterColumnUi.activeVariable ?? waterColumnUi.selectedScalarFieldId ?? displaySettings.selectedScalarFieldId ?? baseViewModel.scalarFieldLayer?.id ?? 'scienceValue',
+    activeLayerId: activeDepthLayerId,
+    comparisonLayerId: waterColumnUi.comparisonLayerId,
+    displayMode: waterColumnUi.layerExplorerMode ?? waterColumnUi.displayMode ?? verticalDisplayMode,
+    displaySettings: waterColumnUi,
+    activeTimeSeconds: baseViewModel.activeTimeSeconds ?? options.activeTimeSeconds ?? 0,
+    selectedLocation: baseViewModel.selectedCell ?? baseViewModel.selection?.selectedCell ?? baseViewModel.interactionViewModel?.hoveredCell ?? null
+  });
   const selectedDepthCell = buildSelectedDepthCell({
     baseViewModel,
     activeDepthLayerId,
@@ -140,6 +165,8 @@ export function augmentMissionWorldWithVolumetricModel(baseViewModel = {}, optio
     layerCurrents,
     layerMasks: operational.validDepthMask,
     plannedRoutes,
+    routeSegments,
+    segmentFlightPlans,
     scienceTargets,
     plannedDiveSegments,
     predictedDiveTrajectories,
@@ -149,6 +176,7 @@ export function augmentMissionWorldWithVolumetricModel(baseViewModel = {}, optio
     samplePoints,
     selectedCellDepth: selectedDepthCell,
     selectedDepthCell,
+    waterColumnExplorer,
     selectedRouteSegment: options.selectedRouteSegment ?? null,
     selectedGlider: gliderPoses.find((pose) => pose.selected) ?? gliderPoses[0] ?? null,
     visibility: {
@@ -204,6 +232,10 @@ export function volumetricMissionWorldViewModelSummary(model = {}) {
     depthLayerCount: model.depthLayers?.length ?? 0,
     visibleDepthLayerCount: (model.depthLayers ?? []).filter((layer) => layer.visible !== false).length,
     plannedDiveSegmentCount: model.plannedDiveSegments?.length ?? 0,
+    routeSegmentCount: model.routeSegments?.length ?? 0,
+    segmentFlightPlanCount: model.segmentFlightPlans?.length ?? 0,
+    routeSegmentSummaries: (model.routeSegments ?? []).map(missionRouteSegmentSummary),
+    waterColumnExplorer: waterColumnLayerExplorerSummary(model.waterColumnExplorer ?? {}),
     scienceTargetCount: model.scienceTargets?.length ?? 0,
     plannedDiveSegmentSummaries: (model.plannedDiveSegments ?? []).map(plannedDiveSegmentViewModelSummary),
     predictedTrajectoryCount: model.predictedDiveTrajectories?.length ?? 0,
@@ -291,9 +323,13 @@ export function waterColumnRenderDebugPayload(viewModel = {}, rendererSummary = 
     selectedDepthCell,
     selectedDepthLayerId: selectedDepthCell?.depthLayerId ?? viewModel.activeDepthLayerId ?? null,
     selectedDepthMeters: selectedDepthCell?.depthMeters ?? null,
+    activeVariable: viewModel.waterColumnExplorer?.activeVariable ?? viewModel.selectedFieldId ?? null,
     selectedDiveProfileId: options.selectedDiveProfileId ?? selectedRoute?.diveProfileId ?? viewModel.waterColumnConfig?.diveProfileId ?? null,
     selectedTargetDepthLayerId: options.selectedTargetDepthLayerId ?? selectedRoute?.targetDepthLayerId ?? viewModel.activeDepthLayerId ?? null,
     plannedDiveSegmentCount: volumetricSummary.plannedDiveSegmentCount ?? 0,
+    routeSegmentCount: volumetricSummary.routeSegmentCount ?? viewModel.routeSegments?.length ?? 0,
+    segmentFlightPlanCount: volumetricSummary.segmentFlightPlanCount ?? viewModel.segmentFlightPlans?.length ?? 0,
+    waterColumnExplorer: volumetricSummary.waterColumnExplorer ?? waterColumnLayerExplorerSummary(viewModel.waterColumnExplorer ?? {}),
     scienceTargetCount: volumetricSummary.scienceTargetCount ?? viewModel.scienceTargets?.length ?? 0,
     selectedPlannedDiveSegment: volumetricSummary.selectedPlannedDiveSegment ?? null,
     predictedTrajectoryPointCount: volumetricSummary.predictedTrajectoryPointCount ?? 0,

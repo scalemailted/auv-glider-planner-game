@@ -50,6 +50,17 @@ Three.js renders predicted and realized dive trajectories, pitch, depth, observa
 
 The model is educational and synthetic. It is not a calibrated vehicle controller, sea-trial validation, or calibrated ocean forecast.
 
+
+## DIVE-R1.1 Segment Flight Profiles
+
+Waypoints remain horizontal navigation targets. Flight-profile controls apply to the incoming route segment ending at the selected waypoint: selected start to waypoint 1, waypoint 1 to waypoint 2, and so on.
+
+Segment profile metadata may be stored on the target waypoint for plan import/export stability, but it must not be interpreted as an exact z-plane waypoint or a low-level "descend now" command. Actual depth comes from canonical dive execution, and actual samples use the glider's realized x/y/z/t state.
+
+The water-column layer explorer is display-only. It may show active slices, stacked slabs, integrated summaries, vertical profiles, layer differences, or gradients, but it does not create science fields, current fields, observations, route plans, simulation state, or scores. Integrated water-column views are derived summaries and are not physical depth planes.
+
+See docs/segment_flight_profile_authoring_audit.md for the ownership audit and DIVE-R1.1 validation commands.
+
 ## Planning Prediction Boundary
 
 Planning prediction uses the renderer-neutral `PlannedDiveSegmentViewModel` to preview the selected segment profile, expected current drift, depth-layer crossings, bottom turns, bathymetry clearance, and expected samples. Simulation execution remains authoritative for actual glider state, observations, surfacing, and score. The current parity smoke checks no-current single-cycle depth/phase/layer agreement; multi-yo execution parity remains a later hardening target.

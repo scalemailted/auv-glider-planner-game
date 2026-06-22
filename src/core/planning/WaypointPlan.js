@@ -86,10 +86,10 @@ export function normalizePlan(plan, level, mission) {
     const agentId = String(rawAgentPlan.agentId ?? '').trim();
     if (!agentId) continue;
     const agentPlan = getAgentPlan(normalized, agentId);
-    for (const key of ['diveProfileId', 'targetDepthLayerId', 'samplingMode']) {
+    for (const key of ['diveProfileId', 'targetDepthLayerId', 'samplingMode', 'samplingPhase', 'arrivalBehavior']) {
       if (rawAgentPlan[key] !== undefined && rawAgentPlan[key] !== null) agentPlan[key] = String(rawAgentPlan[key]);
     }
-    for (const key of ['maximumDiveDepthMeters', 'maximumDepthMeters', 'sampleIntervalSeconds', 'cycleCount']) {
+    for (const key of ['maximumDiveDepthMeters', 'maximumDepthMeters', 'minimumImmersionMeters', 'maximumImmersionMeters', 'targetDepthMeters', 'sampleIntervalSeconds', 'cycleCount', 'communicationWaitSeconds']) {
       const value = Number(rawAgentPlan[key]);
       if (Number.isFinite(value)) agentPlan[key] = value;
     }
@@ -472,13 +472,16 @@ function normalizeWaypoint(waypoint, agentId, index, level = null, planContext =
     action,
     note: waypoint.note ? String(waypoint.note) : ''
   };
-  for (const key of ['diveProfileId', 'targetDepthLayerId', 'depthLayerId', 'depthLayer', 'samplingMode', 'sensorProfileId']) {
+  for (const key of ['diveProfileId', 'targetDepthLayerId', 'depthLayerId', 'depthLayer', 'samplingMode', 'samplingPhase', 'arrivalBehavior', 'sensorProfileId']) {
     if (waypoint[key] !== undefined && waypoint[key] !== null && String(waypoint[key]).trim()) normalized[key] = String(waypoint[key]);
   }
-  for (const key of ['maximumDiveDepthMeters', 'depthMeters', 'maximumDepthMeters', 'sampleIntervalSeconds', 'cycleCount']) {
+  for (const key of ['maximumDiveDepthMeters', 'depthMeters', 'maximumDepthMeters', 'minimumImmersionMeters', 'maximumImmersionMeters', 'targetDepthMeters', 'sampleIntervalSeconds', 'cycleCount', 'communicationWaitSeconds']) {
     const value = Number(waypoint[key]);
     if (Number.isFinite(value)) normalized[key] = value;
   }
+  if (waypoint.surfaceAtEnd !== undefined) normalized.surfaceAtEnd = waypoint.surfaceAtEnd === true;
+  if (waypoint.segmentFlightPlan && typeof waypoint.segmentFlightPlan === 'object') normalized.segmentFlightPlan = { ...waypoint.segmentFlightPlan };
+  if (waypoint.flightProfile && typeof waypoint.flightProfile === 'object') normalized.flightProfile = { ...waypoint.flightProfile };
   if (kind === 'surface') {
     normalized.gpsFix = waypoint.gpsFix !== false;
     normalized.canReplan = waypoint.canReplan !== false;

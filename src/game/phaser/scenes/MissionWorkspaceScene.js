@@ -523,6 +523,10 @@ export class MissionWorkspaceScene extends PhaserScene {
       setWaterColumnMaximumDepth: (depth) => this.setWaterColumnMaximumDepth(depth),
       setWaterColumnCycleCount: (count) => this.setWaterColumnCycleCount(count),
       setWaterColumnSampleInterval: (seconds) => this.setWaterColumnSampleInterval(seconds),
+      setWaterColumnSamplingPhase: (phase) => this.setWaterColumnSamplingPhase(phase),
+      applyWaterColumnProfileToThisSegment: () => this.applyWaterColumnProfileToThisSegment(),
+      setWaterColumnProfileAsGliderDefault: () => this.setWaterColumnProfileAsGliderDefault(),
+      resetWaterColumnSegmentToGliderDefault: () => this.resetWaterColumnSegmentToGliderDefault(),
       setWaterColumnVerticalExaggeration: (value) => this.setWaterColumnVerticalExaggeration(value),
       attachScienceTargetToSelectedSegment: () => this.attachScienceTargetToSelectedSegment(),
       detachSelectedScienceTarget: () => this.detachSelectedScienceTarget(),
@@ -1292,6 +1296,7 @@ export class MissionWorkspaceScene extends PhaserScene {
       maximumDiveDepthMeters: Number.isFinite(Number(existing.maximumDiveDepthMeters)) ? Number(existing.maximumDiveDepthMeters) : (Number.isFinite(Number(this.selectedAgentPlanWaterColumnValue('maximumDiveDepthMeters'))) ? Number(this.selectedAgentPlanWaterColumnValue('maximumDiveDepthMeters')) : null),
       cycleCount: Number.isFinite(Number(existing.cycleCount)) ? Number(existing.cycleCount) : (Number.isFinite(Number(this.selectedAgentPlanWaterColumnValue('cycleCount'))) ? Number(this.selectedAgentPlanWaterColumnValue('cycleCount')) : null),
       sampleIntervalSeconds: Number.isFinite(Number(existing.sampleIntervalSeconds)) ? Number(existing.sampleIntervalSeconds) : (Number.isFinite(Number(this.selectedAgentPlanWaterColumnValue('sampleIntervalSeconds'))) ? Number(this.selectedAgentPlanWaterColumnValue('sampleIntervalSeconds')) : null),
+      samplingPhase: ['descent', 'ascent', 'both', 'profileDefault', 'disabled'].includes(existing.samplingPhase ?? this.selectedAgentPlanWaterColumnValue('samplingPhase')) ? (existing.samplingPhase ?? this.selectedAgentPlanWaterColumnValue('samplingPhase')) : 'profileDefault',
       userModified: existing.userModified === true,
       defaultDisplayModeApplied: existing.defaultDisplayModeApplied === true
     };
@@ -1680,6 +1685,14 @@ export class MissionWorkspaceScene extends PhaserScene {
     this.applyWaterColumnPlanMetadata({ sampleIntervalSeconds: value });
   }
 
+  setWaterColumnSamplingPhase(phase) {
+    const ui = this.ensureWaterColumnUiState();
+    const normalized = ['descent', 'ascent', 'both', 'profileDefault', 'disabled'].includes(String(phase)) ? String(phase) : 'profileDefault';
+    ui.samplingPhase = normalized;
+    ui.userModified = true;
+    this.applyWaterColumnPlanMetadata({ samplingPhase: normalized });
+  }
+
   setWaterColumnVerticalExaggeration(value) {
     const ui = this.ensureWaterColumnUiState();
     const numeric = Number(value);
@@ -1707,8 +1720,28 @@ export class MissionWorkspaceScene extends PhaserScene {
       maximumDiveDepthMeters: undefined,
       maximumDepthMeters: undefined,
       cycleCount: undefined,
-      sampleIntervalSeconds: undefined
+      sampleIntervalSeconds: undefined,
+      samplingPhase: undefined
     });
+  }
+
+  applyWaterColumnProfileToThisSegment() {
+    this.applyWaterColumnPlanMetadata(this.currentWaterColumnPlanPatch(), { scope: 'selectedSegment' });
+  }
+
+  setWaterColumnProfileAsGliderDefault() {
+    this.applyWaterColumnPlanMetadata(this.currentWaterColumnPlanPatch(), { scope: 'gliderDefault' });
+  }
+
+  resetWaterColumnSegmentToGliderDefault() {
+    const agentId = this.app.state.selectedAgentId;
+    const agentPlan = getAgentPlan(this.app.state.plan, agentId);
+    if (!agentPlan) return;
+    const patch = {};
+    for (const key of ['diveProfileId', 'targetDepthLayerId', 'depthLayerId', 'maximumDiveDepthMeters', 'maximumDepthMeters', 'cycleCount', 'sampleIntervalSeconds', 'samplingPhase']) {
+      if (agentPlan[key] !== undefined) patch[key] = agentPlan[key];
+    }
+    this.applyWaterColumnPlanMetadata(patch, { scope: 'selectedSegment' });
   }
 
   applyWaterColumnProfileToRemainingSegments() {
@@ -1724,7 +1757,6 @@ export class MissionWorkspaceScene extends PhaserScene {
     for (let index = Math.max(0, selectedIndex); index < (agentPlan.waypoints ?? []).length; index += 1) {
       updateWaypoint(this.app.state.plan, agentId, index, patch);
     }
-    Object.assign(agentPlan, patch);
     this.afterPlanChanged(agentId, { selectedIndex });
     this.markManualPlan();
     this.refreshPanels();
@@ -1743,20 +1775,25 @@ export class MissionWorkspaceScene extends PhaserScene {
     }
     if (Number.isFinite(Number(ui.cycleCount))) patch.cycleCount = Math.max(0, Math.round(Number(ui.cycleCount)));
     if (Number.isFinite(Number(ui.sampleIntervalSeconds))) patch.sampleIntervalSeconds = Math.max(30, Math.round(Number(ui.sampleIntervalSeconds)));
+    if (ui.samplingPhase) patch.samplingPhase = ui.samplingPhase;
     return patch;
   }
 
-  applyWaterColumnPlanMetadata(patch = {}) {
+  applyWaterColumnPlanMetadata(patch = {}, options = {}) {
     const agentId = this.app.state.selectedAgentId;
     if (!agentId || !this.app.state.plan) return;
     const selected = this.app.state.ui?.selectedWaypoint;
     let selectedIndex = null;
     const agentPlan = getAgentPlan(this.app.state.plan, agentId);
-    Object.assign(agentPlan, patch);
-    if (selected?.agentId === agentId && Number.isInteger(Number(selected.index))) {
+    const scope = options.scope ?? 'selectedSegment';
+    if (scope === 'gliderDefault') {
+      Object.assign(agentPlan, patch);
+    } else if (selected?.agentId === agentId && Number.isInteger(Number(selected.index))) {
       selectedIndex = Number(selected.index);
       updateWaypoint(this.app.state.plan, agentId, selectedIndex, patch);
       this.app.state.ui.selectedWaypoint = { agentId, index: selectedIndex };
+    } else {
+      Object.assign(agentPlan, patch);
     }
     this.afterPlanChanged(agentId, { selectedIndex });
     this.markManualPlan();
@@ -2095,10 +2132,16 @@ export class MissionWorkspaceScene extends PhaserScene {
       cameraPresetId: this.app.state.ui?.threeMissionCameraPreset ?? null,
       lifecycleCleanupErrorCount: Number(this.cleanupErrorCount ?? 0)
     });
+    const segmentFlightPlanDebug = segmentFlightPlanDebugPayload(viewModel ?? {}, plannedDiveDebug, selectedAgentIdForDebug);
+    const waterColumnExplorerDebug = waterColumnExplorerDebugPayload(viewModel ?? {}, rendererSummary, waterColumnDebug);
     globalThis.ANCHOR_WATER_COLUMN_RENDER_DEBUG = waterColumnDebug;
     globalThis.ANCHOR_DIVE_PLAN_DEBUG = plannedDiveDebug;
+    globalThis.ANCHOR_SEGMENT_FLIGHT_PLAN_DEBUG = segmentFlightPlanDebug;
+    globalThis.ANCHOR_WATER_COLUMN_EXPLORER_DEBUG = waterColumnExplorerDebug;
     this.app.state.ui ??= {};
     this.app.state.ui.divePlanDebug = plannedDiveDebug;
+    this.app.state.ui.segmentFlightPlanDebug = segmentFlightPlanDebug;
+    this.app.state.ui.waterColumnExplorerDebug = waterColumnExplorerDebug;
     this.publishContinuousMissionDebug({ rendererSummary, waterColumnDebug, plannedDiveDebug });
     const terrainValidationCounters = this.terrainValidationDebugCounters();
     const terrainLayerSummary = rendererSummary?.terrainValidationSummary ?? {};
@@ -2215,6 +2258,8 @@ export class MissionWorkspaceScene extends PhaserScene {
       inputSummary: missionWorldRenderInputSummary(this.missionRenderInput ?? {}),
       rendererSummary,
       waterColumnDebug,
+      segmentFlightPlanDebug,
+      waterColumnExplorerDebug,
       performanceDebug,
       threePerformanceDebug: performanceDebug,
       interactionSummary,
@@ -5783,6 +5828,139 @@ function plannedDiveDebugPayload(viewModel = {}, rendererSummary = null, selecte
     rendererOwnsSimulation: false,
     rendererOwnsScoring: false,
     usesArbitraryXYZWaypoints: false
+  };
+}
+
+function segmentFlightPlanDebugPayload(viewModel = {}, plannedDiveDebug = {}, selectedAgentId = null) {
+  const routeSegments = viewModel.routeSegments ?? [];
+  const plannedSegments = viewModel.plannedDiveSegments ?? [];
+  const segmentPlans = viewModel.segmentFlightPlans ?? [];
+  const selectedSegmentId = plannedDiveDebug.selectedSegmentId ?? null;
+  const selectedRouteSegment = routeSegments.find((segment) => segment.id === selectedSegmentId || segment.routeSegmentId === selectedSegmentId)
+    ?? routeSegments.find((segment) => segment.agentId === selectedAgentId)
+    ?? routeSegments[0]
+    ?? null;
+  const selectedPlannedSegment = plannedSegments.find((segment) => segment.segmentId === selectedSegmentId || segment.routeSegmentId === selectedSegmentId)
+    ?? plannedSegments.find((segment) => segment.agentId === selectedAgentId)
+    ?? plannedSegments[0]
+    ?? null;
+  const flightPlan = selectedRouteSegment?.flightProfile
+    ?? segmentPlans.find((plan) => plan.segmentId === selectedRouteSegment?.id || plan.segmentId === selectedPlannedSegment?.segmentId)
+    ?? segmentPlans.find((plan) => plan.agentId === selectedAgentId)
+    ?? segmentPlans[0]
+    ?? null;
+  const planDigest = flightPlan?.digest ?? null;
+  const predictionDigest = selectedPlannedSegment?.segmentPlanDigest ?? null;
+  const profileDigestMismatch = Boolean(planDigest && predictionDigest && planDigest !== predictionDigest);
+  const warnings = [
+    ...(flightPlan?.warnings ?? []),
+    ...(selectedRouteSegment?.warnings ?? []),
+    ...(selectedPlannedSegment?.warnings ?? []),
+    ...(profileDigestMismatch ? ['Segment flight plan digest differs from planned dive prediction digest.'] : [])
+  ];
+  return {
+    type: 'anchor.debug.segment-flight-plan',
+    version: flightPlan?.version ?? 'segment-flight-plan-dive-r1-1',
+    selectedAgentId,
+    selectedSegmentId: selectedRouteSegment?.id ?? selectedPlannedSegment?.segmentId ?? selectedSegmentId,
+    selectedWaypointId: selectedRouteSegment?.target?.id ?? selectedPlannedSegment?.targetWaypointId ?? plannedDiveDebug.selectedSegmentTargetWaypointId ?? null,
+    selectedSegmentStartWaypointId: selectedRouteSegment?.source?.id ?? selectedPlannedSegment?.startWaypointId ?? plannedDiveDebug.selectedSegmentStartWaypointId ?? null,
+    selectedSegmentTargetWaypointId: selectedRouteSegment?.target?.id ?? selectedPlannedSegment?.targetWaypointId ?? plannedDiveDebug.selectedSegmentTargetWaypointId ?? null,
+    segmentSourceId: selectedRouteSegment?.source?.id ?? selectedPlannedSegment?.startWaypointId ?? plannedDiveDebug.selectedSegmentStartWaypointId ?? null,
+    segmentTargetId: selectedRouteSegment?.target?.id ?? selectedPlannedSegment?.targetWaypointId ?? plannedDiveDebug.selectedSegmentTargetWaypointId ?? null,
+    selectedSegmentIndex: selectedRouteSegment?.segmentIndex ?? selectedPlannedSegment?.segmentIndex ?? null,
+    routeSegmentCount: routeSegments.length,
+    segmentFlightPlanCount: segmentPlans.length,
+    profileId: flightPlan?.profileId ?? selectedPlannedSegment?.diveProfileId ?? plannedDiveDebug.selectedSegmentDiveProfileId ?? null,
+    profileSource: flightPlan?.profileSource ?? selectedPlannedSegment?.profileSource ?? null,
+    inheritedFrom: flightPlan?.profileSource ?? null,
+    targetDepthLayerId: flightPlan?.targetDepthLayerId ?? selectedPlannedSegment?.targetDepthLayerId ?? plannedDiveDebug.selectedSegmentTargetLayerId ?? null,
+    targetDepthMeters: flightPlan?.targetDepthMeters ?? null,
+    minimumImmersionMeters: flightPlan?.minimumImmersionMeters ?? 0,
+    maximumImmersionMeters: flightPlan?.maximumImmersionMeters ?? selectedPlannedSegment?.requestedMaximumDepthMeters ?? plannedDiveDebug.selectedSegmentRequestedDepth ?? null,
+    requestedCycleCount: flightPlan?.cycleCount ?? selectedPlannedSegment?.requestedCycleCount ?? plannedDiveDebug.selectedSegmentRequestedCycleCount ?? null,
+    achievableCycleCount: selectedPlannedSegment?.cycleCount ?? plannedDiveDebug.selectedSegmentCycleCount ?? null,
+    sampleIntervalSeconds: flightPlan?.sampleIntervalSeconds ?? selectedPlannedSegment?.sampleIntervalSeconds ?? null,
+    samplingPhase: flightPlan?.samplingPhase ?? selectedPlannedSegment?.samplingPhase ?? 'profileDefault',
+    surfaceAtEnd: flightPlan?.surfaceAtEnd === true || selectedPlannedSegment?.surfaceAtEnd === true,
+    arrivalBehavior: flightPlan?.arrivalBehavior ?? selectedPlannedSegment?.arrivalBehavior ?? null,
+    communicationWaitSeconds: flightPlan?.communicationWaitSeconds ?? 0,
+    predictedMinimumDepthMeters: 0,
+    predictedMaximumDepthMeters: selectedPlannedSegment?.achievableMaximumDepthMeters ?? plannedDiveDebug.selectedSegmentAchievableDepth ?? null,
+    predictedSampleLayerIds: Object.keys(selectedPlannedSegment?.expectedScience?.samplesByLayer ?? plannedDiveDebug.predictedSamplesByLayer ?? {}),
+    limitingFactors: [selectedPlannedSegment?.limitingFactor ?? plannedDiveDebug.selectedSegmentLimitingFactor ?? flightPlan?.feasibility?.limitingFactor].filter(Boolean),
+    segmentPlanDigest: planDigest,
+    planDigest,
+    predictionDigest,
+    executionProfileDigest: planDigest,
+    profileDigestMismatch,
+    waypointIsHorizontalTarget: true,
+    segmentOwnsFlightProfile: true,
+    waypointOwnsVerticalCommand: false,
+    targetDepthMetadataCanScore: false,
+    descendAscendAreExecutionPhases: true,
+    rendererOwnsPlanning: false,
+    rendererOwnsSimulation: false,
+    rendererOwnsScoring: false,
+    ownsSimulation: false,
+    ownsScoring: false,
+    usesNewPlanner: false,
+    warnings,
+    failures: profileDigestMismatch ? ['profileDigestMismatch'] : []
+  };
+}
+
+function waterColumnExplorerDebugPayload(viewModel = {}, rendererSummary = null, waterColumnDebug = {}) {
+  const explorer = viewModel.waterColumnExplorer ?? {};
+  const summary = waterColumnDebug.waterColumnExplorer ?? {};
+  const slabSummary = rendererSummary?.operationalDepthSlabSummary ?? {};
+  return {
+    type: 'anchor.debug.water-column-layer-explorer',
+    version: explorer.version ?? summary.version ?? 'water-column-layer-explorer-dive-r1-1',
+    activeVariable: explorer.activeVariable ?? summary.activeVariable ?? null,
+    activeLayerId: explorer.activeLayerId ?? summary.activeLayerId ?? waterColumnDebug.activeDepthLayerId ?? null,
+    activeDepthMeters: explorer.activeDepthMeters ?? summary.activeDepthMeters ?? null,
+    displayMode: explorer.displayMode ?? summary.displayMode ?? null,
+    comparisonLayerId: explorer.comparisonLayerId ?? summary.comparisonLayerId ?? null,
+    interpolationMode: explorer.interpolationMode ?? summary.interpolationMode ?? null,
+    lowerInterpolationLayerId: explorer.lowerInterpolationLayerId ?? summary.lowerInterpolationLayerId ?? null,
+    upperInterpolationLayerId: explorer.upperInterpolationLayerId ?? summary.upperInterpolationLayerId ?? null,
+    interpolationFraction: explorer.interpolationFraction ?? summary.interpolationFraction ?? null,
+    layerCount: explorer.layers?.length ?? summary.layerCount ?? waterColumnDebug.availableLayerCount ?? 0,
+    physicalLayerCount: summary.physicalLayerCount ?? explorer.layers?.filter?.((layer) => layer.id !== 'integratedWaterColumn').length ?? 0,
+    includesIntegratedSummary: Boolean(explorer.integratedSummary ?? summary.includesIntegratedSummary),
+    integratedWaterColumnAvailable: Boolean(explorer.integratedSummary ?? summary.includesIntegratedSummary),
+    integratedWaterColumnIsDerived: explorer.boundaryFlags?.integratedWaterColumnIsDerived !== false,
+    selectedVerticalProfile: explorer.selectedVerticalProfile ?? [],
+    selectedLocation: explorer.selectedLocation ?? null,
+    selectedEastMeters: explorer.selectedLocation?.x ?? summary.selectedEastMeters ?? null,
+    selectedNorthMeters: explorer.selectedLocation?.y ?? summary.selectedNorthMeters ?? null,
+    selectedActualDepthMeters: explorer.selectedLocation?.depthMeters ?? summary.selectedActualDepthMeters ?? null,
+    sourceResolution: explorer.sourceResolution ?? { columns: summary.sourceColumns ?? null, rows: summary.sourceRows ?? null, depthLayers: summary.layerCount ?? null },
+    displayResolution: explorer.displayResolution ?? { columns: summary.displayColumns ?? null, rows: summary.displayRows ?? null },
+    sourceColumns: explorer.sourceResolution?.columns ?? summary.sourceColumns ?? null,
+    sourceRows: explorer.sourceResolution?.rows ?? summary.sourceRows ?? null,
+    displayColumns: explorer.displayResolution?.columns ?? summary.displayColumns ?? null,
+    displayRows: explorer.displayResolution?.rows ?? summary.displayRows ?? null,
+    activeScalarSourceDigest: explorer.activeScalarSourceDigest ?? summary.activeScalarSourceDigest ?? null,
+    activeCurrentSourceDigest: explorer.activeCurrentSourceDigest ?? summary.activeCurrentSourceDigest ?? null,
+    terrainBuildCount: rendererSummary?.terrainBuildCount ?? rendererSummary?.terrainObjectBuildCount ?? 0,
+    slabBuildCount: slabSummary.slabBuildCount ?? slabSummary.slabObjectBuildCount ?? waterColumnDebug.slabObjectCount ?? 0,
+    textureUpdateCount: slabSummary.textureUpdateCount ?? waterColumnDebug.fieldTextureCount ?? 0,
+    texturedSlabCount: summary.texturedSlabCount ?? waterColumnDebug.activeTexturedSlabCount ?? 0,
+    contextSlabCount: summary.contextSlabCount ?? waterColumnDebug.contextOutlineSlabCount ?? 0,
+    vectorGlyphCount: summary.vectorGlyphCount ?? waterColumnDebug.currentVectorObjectCount ?? 0,
+    displayOwnsScience: explorer.boundaryFlags?.displayOwnsScience === true,
+    displayOwnsCurrent: explorer.boundaryFlags?.displayOwnsCurrent === true,
+    displayOwnsSampling: explorer.boundaryFlags?.displayOwnsSampling === true,
+    displayChangesScoring: explorer.boundaryFlags?.displayChangesScoring === true,
+    ownsSimulation: explorer.boundaryFlags?.ownsSimulation === true,
+    ownsPlanning: explorer.boundaryFlags?.ownsPlanning === true,
+    ownsScoring: explorer.boundaryFlags?.ownsScoring === true,
+    usesNewPlanner: explorer.boundaryFlags?.usesNewPlanner === true,
+    publicSafe: explorer.boundaryFlags?.hiddenTruthIncluded !== true,
+    warnings: [...(explorer.warnings ?? []), ...(summary.warnings ?? [])],
+    failures: []
   };
 }
 

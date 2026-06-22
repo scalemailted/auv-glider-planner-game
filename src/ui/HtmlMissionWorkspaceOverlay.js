@@ -560,6 +560,11 @@ export class HtmlMissionWorkspaceOverlay {
       'water-column-max-depth': (button) => this.handlers.setWaterColumnMaximumDepth?.(button.dataset.depth),
       'water-column-cycle-count': (button) => this.handlers.setWaterColumnCycleCount?.(button.dataset.cycles),
       'water-column-sample-interval': (button) => this.handlers.setWaterColumnSampleInterval?.(button.dataset.seconds),
+      'water-column-sampling-phase': (button) => this.handlers.setWaterColumnSamplingPhase?.(button.dataset.phase),
+      'water-column-apply-this': () => this.handlers.applyWaterColumnProfileToThisSegment?.(),
+      'water-column-set-glider-default': () => this.handlers.setWaterColumnProfileAsGliderDefault?.(),
+      'water-column-reset-glider-default': () => this.handlers.resetWaterColumnSegmentToGliderDefault?.(),
+      'water-column-reset-mission-default': () => this.handlers.resetWaterColumnSegmentProfile?.(),
       'water-column-vertical-exaggeration': (button) => this.handlers.setWaterColumnVerticalExaggeration?.(button.dataset.value),
       'science-target-attach': () => this.handlers.attachScienceTargetToSelectedSegment?.(),
       'science-target-detach': () => this.handlers.detachSelectedScienceTarget?.(),
@@ -999,13 +1004,13 @@ function waterColumnSection(state, continuousUi = normalizeContinuousMissionUiSt
           ${waterColumnFieldDisplayModeButton('activeLayerOnly', 'Field: Active Layer', fieldDisplayMode)}
           ${waterColumnFieldDisplayModeButton('allLayers', 'Show Field on All Layers', fieldDisplayMode)}
         </div>
-        <h3 class="waypoint-section-title">Dive Planning</h3>
+        <h3 class="waypoint-section-title">Segment Flight Profile</h3>
         <div class="hud-card compact" data-dive-planning-controls>
-          <div><strong>Dive Profile:</strong> ${escapeHtml(labelize(selectedProfile))}</div>
+          <div><strong>Incoming Segment Profile:</strong> ${escapeHtml(labelize(selectedProfile))}</div>
           <div><strong>Target Layer:</strong> ${escapeHtml(labelize(selectedTarget))}</div>
           <div><strong>Predicted Reachable Layers:</strong> ${escapeHtml((continuousUi.availableDepthLayerIds ?? layerIds).map(labelize).join(', '))}</div>
           <div><strong>Limiting Factor:</strong> ${legacyFallback ? 'surface-only compatibility mode' : 'mission profile and local bottom clearance'}</div>
-          <div class="hud-muted">Selected waypoint or selected glider plan metadata: dive profile and target layer. Planning state only; simulation is not mutated here.</div>
+          <div class="hud-muted">The waypoint is a horizontal arrival target. These controls edit the flight profile on the incoming route segment.</div>
         </div>
         <div class="console-button-row wrap">${profileButtons}</div>
         <div class="console-button-row wrap">${targetButtons}</div>
@@ -1017,6 +1022,8 @@ function segmentDivePlanPanel(state, continuousUi = {}, options = {}) {
   const debug = state.ui?.divePlanDebug ?? globalThis.ANCHOR_DIVE_PLAN_DEBUG ?? {};
   const selectedProfile = debug.selectedSegmentDiveProfileId ?? options.selectedProfile ?? continuousUi.selectedDiveProfileId ?? waterUi.selectedDiveProfileId ?? 'surfaceOnly';
   const selectedTarget = debug.selectedSegmentTargetLayerId ?? options.selectedTarget ?? continuousUi.selectedTargetDepthLayerId ?? waterUi.selectedTargetDepthLayerId ?? 'surface';
+  const samplingPhase = debug.samplingPhase ?? waterUi.samplingPhase ?? 'profileDefault';
+  const profileSource = debug.profileSource ?? 'resolved profile';
   const requestedDepth = debug.selectedSegmentRequestedDepth ?? waterUi.maximumDiveDepthMeters ?? null;
   const achievableDepth = debug.selectedSegmentAchievableDepth ?? null;
   const cycles = debug.selectedSegmentCycleCount ?? waterUi.cycleCount ?? null;
@@ -1040,18 +1047,20 @@ function segmentDivePlanPanel(state, continuousUi = {}, options = {}) {
   return `
         <div class="hud-card compact" data-segment-dive-plan>
           <h3>Segment Dive Plan</h3>
-          <div><strong>Segment:</strong> ${escapeHtml(segmentLabel)}</div>
+          <div><strong>Flight Profile:</strong> Flight Profile for This Segment</div>
+          <div><strong>Incoming Segment:</strong> ${escapeHtml(segmentLabel)}</div>
           <div><strong>Surface Distance:</strong> ${escapeHtml(formatMeters(debug.selectedSegmentSurfaceDistanceMeters))}</div>
-          <div><strong>Dive Profile:</strong> ${escapeHtml(labelize(selectedProfile))}</div>
+          <div><strong>Incoming Segment Profile:</strong> ${escapeHtml(labelize(selectedProfile))}</div>
           <div><strong>Target Layer:</strong> ${escapeHtml(labelize(selectedTarget))}</div>
           <div><strong>Requested Max Depth:</strong> ${escapeHtml(formatMeters(requestedDepth))}</div>
           <div><strong>Achievable Max Depth:</strong> ${escapeHtml(formatMeters(achievableDepth))}</div>
-          <div><strong>Dive Cycles:</strong> ${escapeHtml(formatCycleCount(requestedCycles, cycles))}</div>
+          <div><strong>Yo Cycles:</strong> ${escapeHtml(formatCycleCount(requestedCycles, cycles))}</div>
+          <div><strong>Sampling Phase:</strong> ${escapeHtml(labelize(samplingPhase))}</div>
           <div><strong>Expected Surfacing:</strong> ${escapeHtml(surfacing)} | Offset ${escapeHtml(offset)}</div>
           <div><strong>Expected Samples:</strong> ${escapeHtml(sampleRows)}</div>
           <div><strong>Bottom Clearance:</strong> ${escapeHtml(clearance)}</div>
           <div><strong>Limiting Factor:</strong> ${escapeHtml(labelize(debug.selectedSegmentLimitingFactor ?? 'none'))}</div>
-          <div class="hud-muted">Surface waypoints define mission intent. The selected dive profile determines expected underwater motion between them. Actual execution may differ under currents and mission conditions.</div>
+          <div class="hud-muted">Waypoints stay horizontal. The profile predicts continuous depth during this segment; descend and ascend are execution phases.</div>
         </div>
         <div class="console-button-row wrap">
           ${waterColumnDepthButton(40, requestedDepth)}
@@ -1062,10 +1071,17 @@ function segmentDivePlanPanel(state, continuousUi = {}, options = {}) {
           ${waterColumnCycleButton(3, cycles)}
           ${waterColumnSampleIntervalButton(300, waterUi.sampleIntervalSeconds)}
           ${waterColumnSampleIntervalButton(600, waterUi.sampleIntervalSeconds)}
+          ${waterColumnSamplingPhaseButton('profileDefault', samplingPhase, 'Profile Samples')}
+          ${waterColumnSamplingPhaseButton('descent', samplingPhase, 'Descent Samples')}
+          ${waterColumnSamplingPhaseButton('both', samplingPhase, 'Both Phases')}
+          ${waterColumnSamplingPhaseButton('ascent', samplingPhase, 'Ascent Samples')}
         </div>
         <div class="console-button-row wrap">
-          <button class="console-button secondary" data-action="water-column-apply-remaining">Apply To Remaining Segments</button>
-          <button class="console-button secondary" data-action="water-column-reset-profile">Reset Profile</button>
+          <button class="console-button primary" data-action="water-column-apply-this">Apply to This Segment</button>
+          <button class="console-button secondary" data-action="water-column-apply-remaining">Apply to Remaining Segments</button>
+          <button class="console-button secondary" data-action="water-column-set-glider-default">Set as Glider Default</button>
+          <button class="console-button secondary" data-action="water-column-reset-glider-default">Reset to Glider Default</button>
+          <button class="console-button secondary" data-action="water-column-reset-mission-default">Reset to Mission Default</button>
           <button class="console-button secondary" data-action="water-column-focus-predicted-dive">Focus Predicted Dive</button>
           <button class="console-button secondary" data-action="water-column-side-profile">Side Profile View</button>
         </div>`;
@@ -1103,6 +1119,10 @@ function scienceTargetsPanel(state) {
         </div>`;
 }
 
+function waterColumnSamplingPhaseButton(phase, selectedPhase, label) {
+  const active = String(phase) === String(selectedPhase);
+  return '<button class="console-button ' + (active ? 'primary' : 'secondary') + '" data-action="water-column-sampling-phase" data-phase="' + escapeHtml(phase) + '">' + escapeHtml(label) + '</button>';
+}
 function waterColumnDepthButton(depth, selectedDepth) {
   const active = Number(selectedDepth) === Number(depth);
   return `<button class="console-button ${active ? 'primary' : 'secondary'}" data-action="water-column-max-depth" data-depth="${depth}">${depth} m</button>`;

@@ -123,7 +123,7 @@ function profileCandidates(options, waterColumnConfig) {
   const agent = options.agent ?? options.glider ?? null;
   const mission = options.mission ?? null;
   return [
-    { source: 'segmentOverride', id: waypoint?.diveProfileId ?? waypoint?.profileId ?? options.segment?.diveProfileId ?? route?.selectedDiveProfileId ?? options.diveProfileIdOverride },
+    { source: 'segmentOverride', id: waypoint?.diveProfileId ?? waypoint?.profileId ?? options.segment?.flightProfile?.profileId ?? options.segment?.flightProfile?.diveProfileId ?? options.segment?.flightProfileId ?? options.segment?.diveProfileId ?? route?.selectedDiveProfileId ?? options.diveProfileIdOverride },
     { source: 'agentPlanDefault', id: agentPlan?.diveProfileId ?? route?.diveProfileId ?? options.plan?.diveProfileId },
     { source: 'agentDefault', id: agent?.diveProfileId ?? agent?.defaultDiveProfileId ?? agent?.waterColumn?.defaultDiveProfileId },
     { source: 'missionWaterColumnDefault', id: mission?.rules?.waterColumn?.defaultDiveProfileId ?? mission?.waterColumnConfig?.defaultDiveProfileId ?? mission?.world?.waterColumnConfig?.defaultDiveProfileId ?? options.level?.world?.waterColumnConfig?.defaultDiveProfileId ?? waterColumnConfig.defaultDiveProfileId ?? waterColumnConfig.diveProfileId },
@@ -142,6 +142,8 @@ function resolveTargetDepthLayerId(options, config, profile, modern) {
     ?? waypoint?.depthLayerId
     ?? waypoint?.depthLayer
     ?? route?.targetDepthLayerId
+    ?? options.segment?.flightProfile?.targetDepthLayerId
+    ?? options.segment?.targetDepthLayerId
     ?? agentPlan?.targetDepthLayerId
     ?? agentPlan?.depthLayerId
     ?? agent?.targetDepthLayerId;

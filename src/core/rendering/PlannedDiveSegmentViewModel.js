@@ -82,6 +82,13 @@ export function buildPlannedDiveSegmentViewModel(options = {}) {
     segmentIndex: Number.isFinite(Number(options.segmentIndex)) ? Number(options.segmentIndex) : null,
     startWaypointId: start.waypointId ?? start.id ?? null,
     targetWaypointId: target.waypointId ?? target.id ?? null,
+    routeSegmentId: options.routeSegmentId ?? segmentId,
+    segmentFlightPlan: options.segmentFlightPlan ?? null,
+    profileSource: options.segmentFlightPlan?.profileSource ?? null,
+    segmentPlanDigest: options.segmentFlightPlan?.digest ?? null,
+    samplingPhase: options.segmentFlightPlan?.samplingPhase ?? 'profileDefault',
+    surfaceAtEnd: options.segmentFlightPlan?.surfaceAtEnd === true,
+    arrivalBehavior: options.segmentFlightPlan?.arrivalBehavior ?? null,
     startSurfacePosition: { ...start, depthMeters: 0, depthLayerId: 'surface' },
     targetSurfacePosition: { ...target, depthMeters: 0, depthLayerId: 'surface' },
     diveProfileId: profile.id,
@@ -157,6 +164,12 @@ export function plannedDiveSegmentViewModelSummary(segment = {}) {
     agentId: segment.agentId ?? null,
     startWaypointId: segment.startWaypointId ?? null,
     targetWaypointId: segment.targetWaypointId ?? null,
+    routeSegmentId: segment.routeSegmentId ?? segment.segmentId ?? null,
+    profileSource: segment.profileSource ?? segment.segmentFlightPlan?.profileSource ?? null,
+    segmentPlanDigest: segment.segmentPlanDigest ?? segment.segmentFlightPlan?.digest ?? null,
+    samplingPhase: segment.samplingPhase ?? segment.segmentFlightPlan?.samplingPhase ?? null,
+    surfaceAtEnd: segment.surfaceAtEnd === true,
+    arrivalBehavior: segment.arrivalBehavior ?? segment.segmentFlightPlan?.arrivalBehavior ?? null,
     diveProfileId: segment.diveProfileId ?? null,
     targetDepthLayerId: segment.targetDepthLayerId ?? null,
     requestedMaximumDepthMeters: finiteOrNull(segment.requestedMaximumDepthMeters),
@@ -188,12 +201,16 @@ export function plannedDiveSegmentViewModelSummary(segment = {}) {
 
 export function buildPlannedDiveSegmentsForRoutes(options = {}) {
   const routes = options.routes ?? [];
+  const routeSegments = options.routeSegments ?? [];
   return routes.flatMap((route) => {
     const points = route.points ?? [];
     const segments = [];
     for (let index = 1; index < points.length; index += 1) {
       const start = points[index - 1];
       const target = points[index];
+      const routeSegment = routeSegments.find((segment) => segment.agentId === route.agentId && Number(segment.sequenceIndex) === index - 1)
+        ?? routeSegments.find((segment) => segment.agentId === route.agentId && segment.source?.id === (start.waypointId ?? start.id) && segment.target?.id === (target.waypointId ?? target.id));
+      const flightPlan = routeSegment?.flightProfile ?? null;
       segments.push(buildPlannedDiveSegmentViewModel({
         ...options,
         route,
@@ -201,12 +218,14 @@ export function buildPlannedDiveSegmentsForRoutes(options = {}) {
         targetWaypoint: target,
         agentId: route.agentId ?? options.agentId,
         segmentIndex: index - 1,
-        segmentId: `${route.id ?? route.agentId ?? 'route'}-segment-${index}`,
-        diveProfileId: target.diveProfileId ?? route.diveProfileId ?? options.diveProfileId,
-        targetDepthLayerId: target.targetDepthLayerId ?? target.depthLayerId ?? route.targetDepthLayerId ?? options.targetDepthLayerId,
-        requestedMaximumDepthMeters: target.maximumDiveDepthMeters ?? target.maximumDepthMeters ?? route.maximumDepthMeters ?? options.requestedMaximumDepthMeters,
-        sampleIntervalSeconds: target.sampleIntervalSeconds ?? route.sampleIntervalSeconds ?? options.sampleIntervalSeconds,
-        cycleCount: target.cycleCount ?? route.cycleCount ?? options.cycleCount,
+        segmentId: routeSegment?.id ?? `${route.id ?? route.agentId ?? 'route'}-segment-${index}`,
+        routeSegmentId: routeSegment?.id ?? null,
+        segmentFlightPlan: flightPlan,
+        diveProfileId: flightPlan?.profileId ?? target.diveProfileId ?? route.diveProfileId ?? options.diveProfileId,
+        targetDepthLayerId: flightPlan?.targetDepthLayerId ?? target.targetDepthLayerId ?? target.depthLayerId ?? route.targetDepthLayerId ?? options.targetDepthLayerId,
+        requestedMaximumDepthMeters: flightPlan?.maximumImmersionMeters ?? target.maximumDiveDepthMeters ?? target.maximumDepthMeters ?? route.maximumDepthMeters ?? options.requestedMaximumDepthMeters,
+        sampleIntervalSeconds: flightPlan?.sampleIntervalSeconds ?? target.sampleIntervalSeconds ?? route.sampleIntervalSeconds ?? options.sampleIntervalSeconds,
+        cycleCount: flightPlan?.cycleCount ?? target.cycleCount ?? route.cycleCount ?? options.cycleCount,
         scienceTargets: options.scienceTargets
       }));
     }

@@ -212,6 +212,28 @@ Manual sample-field checks should cover:
 - Gold Star / priority targets remain separate from ROI cells and are labeled as sampling targets or objectives rather than GPS waypoint truth;
 - solver packets and result exports preserve visible sample-field metadata while fair stochastic packets omit hidden truth.
 
+
+## DIVE-R1.1 Segment Flight-Profile Checks
+
+DIVE-R1.1 keeps waypoints horizontal and assigns dive-profile controls to incoming route segments. Focused checks:
+
+```bash
+node tools/js/smoke_mission_route_segments.mjs
+node tools/js/smoke_segment_flight_plan.mjs
+node tools/js/smoke_segment_profile_reorder_delete.mjs
+node tools/js/smoke_water_column_layer_explorer.mjs
+node tools/js/smoke_water_column_layer_interpolation.mjs
+node tools/js/smoke_same_xy_layer_value_display.mjs
+node tools/js/smoke_segment_profile_execution_parity.mjs
+node tools/js/smoke_segment_profile_replan_preservation.mjs
+node tools/js/audit_segment_flight_profile_authority.mjs
+node tools/js/audit_water_column_explorer_authority.mjs
+node tools/js/audit_water_column_layer_performance.mjs
+npx.cmd playwright test tests/e2e/dive_r1_1_segment_profiles.spec.js --reporter=line
+```
+
+These checks confirm segment-profile inheritance, edit scope, reorder/delete behavior, water-column layer display, display authority boundaries, plan roundtrip preservation, and idle-glider-safe depth sampling. Full headed owner visual QA remains manual and should use docs/segment_flight_profile_authoring_audit.md.
+
 ## Core Oevelopment Checks
 
 Leaderboard checks should cover:
