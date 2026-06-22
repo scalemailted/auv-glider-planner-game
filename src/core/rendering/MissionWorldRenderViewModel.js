@@ -1,5 +1,8 @@
 import { createMissionWorldCoordinateTransform, depthForLayer } from './MissionWorldCoordinates.js';
 import { normalizeContinuousScienceTarget } from '../science/ContinuousScienceTarget.js';
+import { createLegacyOperationalDomainFromGrid, normalizeOperationalDomainSpec, operationalDomainSummary } from '../domain/OperationalDomainSpec.js';
+import { createLegacyResolutionProfileFromGrid, missionResolutionProfileSummary, normalizeMissionResolutionProfile } from '../domain/MissionResolutionProfile.js';
+import { createMissionScaleModel, missionScaleModelSummary } from '../domain/MissionScaleModel.js';
 
 export const MISSION_WORLD_RENDER_VIEW_MODEL_VERSION = 'mission-world-render-view-model-three-r1-1';
 export const MISSION_WORLD_SCALAR_LAYER_IDS = Object.freeze(['sampleValue', 'remainingSampleValue', 'samplingPriority', 'forecast', 'belief', 'uncertainty', 'hazard', 'none']);
@@ -31,6 +34,13 @@ export function buildMissionWorldRenderViewModel({
   options = {}
 } = {}) {
   const grid = normalizeGrid(level?.world?.grid ?? options.grid ?? {});
+  const operationalDomain = normalizeRenderOperationalDomain(level, grid);
+  const resolutionProfile = normalizeRenderResolutionProfile(level, grid);
+  const physicalScaleModel = createMissionScaleModel({
+    domain: operationalDomain,
+    profile: resolutionProfile,
+    glider: { nominalSpeedMetersPerSecond: firstAgentSpeedMetersPerSecond(mission) }
+  });
   const verticalExaggeration = finiteNumber(displaySettings?.waterColumn?.verticalExaggeration ?? displaySettings?.verticalExaggeration ?? options.coordinateTransform?.verticalExaggeration, 1.35);
   const transform = createMissionWorldCoordinateTransform({ grid, ...(options.coordinateTransform ?? {}), verticalExaggeration });
   const phase = options.phase ?? appState?.mode ?? simulationState?.phase ?? 'planning';
@@ -67,6 +77,11 @@ export function buildMissionWorldRenderViewModel({
     selectedWaypointId: selectedWaypointId ?? null,
     selectedCell: selectedCell ? { x: finiteNumber(selectedCell.x), y: finiteNumber(selectedCell.y) } : null,
     coordinateSystem: transform,
+    operationalDomain,
+    operationalDomainSummary: operationalDomainSummary(operationalDomain),
+    resolutionProfile,
+    resolutionProfileSummary: missionResolutionProfileSummary(resolutionProfile),
+    physicalScale: missionScaleModelSummary(physicalScaleModel),
     grid,
     worldBounds: { minX: -grid.width / 2, maxX: grid.width / 2, minZ: -grid.height / 2, maxZ: grid.height / 2 },
     bathymetry: normalizeBathymetry(level, grid),
@@ -121,6 +136,12 @@ export function missionWorldRenderViewModelSummary(viewModel = {}) {
     phase: viewModel.phase ?? null,
     missionId: viewModel.missionId ?? null,
     levelId: viewModel.levelId ?? null,
+    operationalDomainId: viewModel.operationalDomain?.domainId ?? null,
+    resolutionProfileId: viewModel.resolutionProfile?.profileId ?? null,
+    domainWidthKm: viewModel.operationalDomainSummary?.widthKm ?? null,
+    domainHeightKm: viewModel.operationalDomainSummary?.heightKm ?? null,
+    planningCellWidthMeters: viewModel.physicalScale?.planningCellWidthMeters ?? null,
+    planningCellHeightMeters: viewModel.physicalScale?.planningCellHeightMeters ?? null,
     activeTimeSeconds: finiteNumber(viewModel.activeTimeSeconds),
     selectedAgentId: viewModel.selectedAgentId ?? null,
     selectedWaypointId: viewModel.selectedWaypointId ?? null,
@@ -169,6 +190,23 @@ export function validateMissionWorldRenderViewModel(viewModel = {}) {
 
 function normalizeGrid(grid = {}) {
   return { width: Math.max(1, Math.round(Number(grid.width) || 10)), height: Math.max(1, Math.round(Number(grid.height) || 10)) };
+}
+
+function normalizeRenderOperationalDomain(level, grid) {
+  const source = level?.operationalDomain ?? level?.world?.operationalDomain ?? level?.meta?.operationalDomain ?? null;
+  if (source) return normalizeOperationalDomainSpec(source);
+  return createLegacyOperationalDomainFromGrid(level?.world?.grid ?? grid);
+}
+
+function normalizeRenderResolutionProfile(level, grid) {
+  const source = level?.resolutionProfile ?? level?.world?.resolutionProfile ?? level?.meta?.resolutionProfile ?? null;
+  if (source) return normalizeMissionResolutionProfile(source);
+  return createLegacyResolutionProfileFromGrid(level?.world?.grid ?? grid);
+}
+
+function firstAgentSpeedMetersPerSecond(mission = null) {
+  const agent = mission?.agents?.[0] ?? null;
+  return finiteNumber(agent?.nominalSpeedMetersPerSecond ?? agent?.speedMetersPerSecond ?? agent?.maxSpeed, 0.35);
 }
 
 function normalizeScalarFieldLayer({ sampleField, forecastState, beliefState, uncertaintyState, displaySettings, grid, activeTimeSeconds, visibilityTier }) {

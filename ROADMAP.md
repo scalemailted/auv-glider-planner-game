@@ -44,6 +44,8 @@ The portable JavaScript core holds deterministic model, schema, state, scoring-a
 
 Current core areas include benchmark contracts, science diagnosis, hidden-event and forecast-correction state, water-column models, headless schemas, solver-packet adapters, bundle validation, sampling priority, flow-coupled action value, and process/field math.
 
+WORLD-R1 adds multiscale world-domain contracts to the portable core: physical `operationalDomain`, independent `resolutionProfile`, physical-coordinate sampling, compact regional exports, and synthetic regional shelf/fleet defaults. This is a world-model compatibility layer, not a renderer switch, planner addition, scoring redesign, real-data integration, or calibrated ocean forecast.
+
 ### Node/OceanBox-JS
 
 Node/OceanBox-JS is the canonical non-browser headless runtime. It can run deterministic educational missions, execute submitted waypoint plans, emit JSON/CSV bundles, validate solver packets, run solver-packet roundtrips, and produce browser-compatible bundle artifacts.

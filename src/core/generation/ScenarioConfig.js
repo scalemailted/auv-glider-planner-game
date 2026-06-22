@@ -15,10 +15,10 @@ import { normalizeNavigationUncertaintyConfig } from '../navigation/NavigationUn
 import { ensureModernWaterColumnMissionConfig } from '../science/WaterColumnMissionDefaults.js';
 
 export const SCENARIO_SIZE_PRESETS = {
-  small: { label: 'Small', width: 12, height: 12, duration: 12, surfaceInterval: 3, agentCount: 1, fuel: 100 },
-  medium: { label: 'Medium', width: 20, height: 20, duration: 24, surfaceInterval: 3, agentCount: 2, fuel: 120 },
-  large: { label: 'Large', width: 32, height: 32, duration: 48, surfaceInterval: 6, agentCount: 3, fuel: 150 },
-  huge: { label: 'Huge / Experimental', width: 48, height: 48, duration: 72, surfaceInterval: 12, agentCount: 4, fuel: 200 }
+  small: { label: 'Compact Inspection Lattice', width: 12, height: 12, duration: 12, surfaceInterval: 3, agentCount: 1, fuel: 100 },
+  medium: { label: 'Standard Inspection Lattice', width: 20, height: 20, duration: 24, surfaceInterval: 3, agentCount: 2, fuel: 120 },
+  large: { label: 'Detailed Inspection Lattice', width: 32, height: 32, duration: 48, surfaceInterval: 6, agentCount: 3, fuel: 150 },
+  huge: { label: 'Dense Inspection Lattice / Experimental', width: 48, height: 48, duration: 72, surfaceInterval: 12, agentCount: 4, fuel: 200 }
 };
 
 export function createDefaultScenarioConfig(mode = 'perfectKnowledge') {
@@ -126,7 +126,9 @@ export function normalizeScenarioConfig(config = {}) {
     scoringWeights: missionDefaults.scoringWeights ?? {},
     routeGradeWeights: missionDefaults.routeGradeWeights ?? {},
     medals: missionDefaults.medals ?? [],
-    plannerDefaults: missionDefaults.plannerDefaults ?? {}
+    plannerDefaults: missionDefaults.plannerDefaults ?? {},
+    operationalDomain: missionDefaults.operationalDomain ?? null,
+    resolutionProfile: missionDefaults.resolutionProfile ?? null
   };
 }
 
@@ -166,6 +168,8 @@ export function buildScenarioGenerationConfig(config = {}) {
     routeGradeWeights: normalized.routeGradeWeights,
     medals: normalized.medals,
     plannerDefaults: normalized.plannerDefaults,
+    operationalDomain: normalized.operationalDomain,
+    resolutionProfile: normalized.resolutionProfile,
     priorityTargetFrequency: normalized.priorityTargetFrequency,
     forecastNoise: normalized.forecastNoise,
     forecastConfidence: normalized.forecastConfidence,
@@ -274,6 +278,18 @@ export function generateScenarioFromConfig(config = {}) {
   level.meta.generationConfig.replaySeedAnchor = challengeId;
   level.meta.generationConfig.generationVersion = GENERATION_VERSION;
   level.meta.generationConfig.derivedSeeds = replaySeedContract?.derivedSeeds ?? {};
+  if (normalized.operationalDomain) {
+    level.operationalDomain = normalized.operationalDomain;
+    level.world.operationalDomain = normalized.operationalDomain;
+    level.meta.operationalDomain = normalized.operationalDomain;
+    level.meta.generationConfig.operationalDomain = normalized.operationalDomain;
+  }
+  if (normalized.resolutionProfile) {
+    level.resolutionProfile = normalized.resolutionProfile;
+    level.world.resolutionProfile = normalized.resolutionProfile;
+    level.meta.resolutionProfile = normalized.resolutionProfile;
+    level.meta.generationConfig.resolutionProfile = normalized.resolutionProfile;
+  }
 
   const mission = buildDefaultMissionForLevel(level, {
     missionId: stochastic ? 'stochastic_challenge_mission' : 'deterministic_challenge_mission',
@@ -297,6 +313,8 @@ export function generateScenarioFromConfig(config = {}) {
   mission.meta.importedFlowField = normalized.importedFlowField;
   mission.meta.sampleFieldConfig = normalized.sampleFieldConfig;
   mission.meta.navigationUncertainty = normalized.navigationUncertainty;
+  mission.meta.operationalDomain = normalized.operationalDomain ?? null;
+  mission.meta.resolutionProfile = normalized.resolutionProfile ?? null;
   mission.meta.missionMode = normalized.missionMode;
   mission.meta.missionModePreset = normalized.missionModePreset;
   mission.rules ??= {};
@@ -350,10 +368,10 @@ export function describeScenarioComplexity(config = {}) {
     frames,
     vectorStride: cells >= 1600 ? 3 : cells >= 625 ? 2 : 1,
     warning: cells >= 1600 || load >= 60000
-      ? 'Huge maps are experimental and may be slower on some browsers.'
+      ? 'Dense inspection lattices are experimental and may be slower on some browsers; they do not define physical mission extent.'
       : cells >= 900
-        ? 'Large maps work best with camera zoom and vector stride.'
-        : 'Browser-safe mission size.'
+        ? 'Detailed inspection lattices work best with camera zoom and vector stride; physical domain is separate.'
+        : 'Browser-safe inspection lattice.'
   };
 }
 

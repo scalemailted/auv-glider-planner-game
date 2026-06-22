@@ -252,7 +252,9 @@ export function generateLevel(config = {}) {
     },
     world: {
       grid: { width, height, cellSizeMeters: 100 },
-      time: { dt, duration, planningWindow, displayUnits: 'hours' }
+      time: { dt, duration, planningWindow, displayUnits: 'hours' },
+      operationalDomain: merged.operationalDomain ?? merged.generationConfig?.operationalDomain ?? null,
+      resolutionProfile: merged.resolutionProfile ?? merged.generationConfig?.resolutionProfile ?? null
     },
     layers: {
       terrain,
@@ -267,6 +269,14 @@ export function generateLevel(config = {}) {
     },
     zones
   };
+  if (merged.operationalDomain ?? merged.generationConfig?.operationalDomain) {
+    level.operationalDomain = merged.operationalDomain ?? merged.generationConfig.operationalDomain;
+    level.meta.operationalDomain = level.operationalDomain;
+  }
+  if (merged.resolutionProfile ?? merged.generationConfig?.resolutionProfile) {
+    level.resolutionProfile = merged.resolutionProfile ?? merged.generationConfig.resolutionProfile;
+    level.meta.resolutionProfile = level.resolutionProfile;
+  }
   const connectivityConfig = generationConfig.connectivity;
   let connectivity = validateGeneratedLevelConnectivity(level, null, connectivityConfig);
   let repaired = false;

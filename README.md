@@ -6,6 +6,8 @@ The project is also an **AUV Glider Planner Game** for teaching long-horizon pla
 
 The benchmark target now explicitly includes mission feasibility: planned vs realized trajectory, mission duration, distance traveled, battery/energy, bathymetry/depth constraints, payload/sensor cost, surfacing/communication events, and optional Node/OceanBox-JS motion cost graph / adjacency matrix exports. See [Mission Feasibility Simulator and Scientific Benchmark Requirements](docs/mission_feasibility_simulator_requirements.md).
 
+WORLD-R1 adds a renderer-neutral multiscale mission-domain contract. Physical operational extent, planning lattice, bathymetry/source-field resolution, render LOD, and simulation time are now named separately for regional synthetic missions; legacy grid levels still load through a compatibility profile. See [WORLD-R1 Multiscale Operational Domain Audit](docs/multiscale_operational_domain_audit.md) and [Regional Mission Scale and Resolution](docs/regional_mission_scale_and_resolution.md).
+
 ANCHOR separates current flow, event likelihood, realized sample value, and uncertainty into distinct field concepts. Current flow describes how hard it is to move, event likelihood describes where sample-value events tend to originate, sample value describes where and when sampling has reward, and uncertainty describes what the planner does not know. Both experiences use the same terrain, current fields, sample fields, hazards, glider physics, scoring, route validation, planner APIs, and export/replay system.
 
 ## Current Status
@@ -132,6 +134,8 @@ Quick loop:
 - [Adaptive Benchmark Mission Manager](docs/adaptive_benchmark_mission_manager.md)
 - [2.5D Water-Column Sampling Model](docs/water_column_2p5d_sampling_model.md)
 - [Mission Feasibility Simulator and Scientific Benchmark Requirements](docs/mission_feasibility_simulator_requirements.md)
+- [Regional Mission Scale and Resolution](docs/regional_mission_scale_and_resolution.md)
+- [WORLD-R1 Multiscale Operational Domain Audit](docs/multiscale_operational_domain_audit.md)
 - [Renderer Architecture and WebGPU Strategy](docs/renderer_architecture_and_webgpu_strategy.md)
 - [Three.js Mission Renderer Migration](docs/threejs_mission_renderer_migration.md)
 - [Three.js Volumetric Water Column](docs/threejs_volumetric_water_column.md)

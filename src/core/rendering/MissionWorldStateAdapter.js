@@ -54,6 +54,8 @@ export function missionWorldRenderInputSummary(input = {}) {
     version: MISSION_WORLD_STATE_ADAPTER_VERSION,
     phase: input.phase ?? input.options?.phase ?? null,
     levelId: input.level?.levelId ?? null,
+    operationalDomainId: input.level?.operationalDomain?.domainId ?? input.level?.world?.operationalDomain?.domainId ?? null,
+    resolutionProfileId: input.level?.resolutionProfile?.profileId ?? input.level?.world?.resolutionProfile?.profileId ?? null,
     missionId: input.mission?.missionId ?? null,
     activeTimeSeconds: finiteNumber(input.activeTimeSeconds),
     selectedAgentId: input.selectedAgentId ?? null,

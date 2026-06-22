@@ -1,4 +1,4 @@
-﻿import assert from 'node:assert/strict';
+import assert from 'node:assert/strict';
 import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 
@@ -11,7 +11,7 @@ if (!index.includes('src/game/main.js')) failures.push('index.html must boot src
 if (index.includes('src/app/main.js')) failures.push('index.html must not boot reverted src/app/main.js.');
 if (index.includes('AnchorBrowserRuntime')) failures.push('index.html must not activate AnchorBrowserRuntime.');
 
-for (const file of ['vendor/three/build/three.module.js', 'vendor/three/build/three.core.js', 'src/core/science/DepthAwareScienceValue.js', 'src/core/science/DiveProfileFeasibility.js', 'src/core/science/DepthScoringProfiles.js', 'src/core/rendering/ContinuousMissionUiState.js', 'src/game/three/ThreeMissionPerformanceMonitor.js', 'src/game/three/ThreeSimulationPresentationScheduler.js', 'src/game/three/ThreeRenderCostPolicy.js', 'src/game/three/ThreeWebGLGpuTimer.js']) {
+for (const file of ['vendor/three/build/three.module.js', 'vendor/three/build/three.core.js', 'src/core/science/DepthAwareScienceValue.js', 'src/core/science/DiveProfileFeasibility.js', 'src/core/science/DepthScoringProfiles.js', 'src/core/rendering/ContinuousMissionUiState.js', 'src/core/domain/OperationalDomainSpec.js', 'src/core/domain/MissionResolutionProfile.js', 'src/core/domain/OperationalDomainCoordinates.js', 'src/core/domain/MultiResolutionFieldSampler.js', 'src/core/generation/RegionalMissionDefaults.js', 'src/game/three/ThreeMissionPerformanceMonitor.js', 'src/game/three/ThreeSimulationPresentationScheduler.js', 'src/game/three/ThreeRenderCostPolicy.js', 'src/game/three/ThreeWebGLGpuTimer.js']) {
   if (!existsSync(path.join(root, file))) failures.push(`${file} is missing.`);
 }
 

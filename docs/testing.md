@@ -18,6 +18,25 @@ npm.cmd run smoke:pages
 
 See `docs/threejs_static_runtime.md` for the import-map and vendored-runtime contract.
 
+## WORLD-R1 Multiscale Domain Checks
+
+WORLD-R1 validation keeps physical mission scale, planning lattice, source-field resolution, render LOD, and compact exports decoupled without changing runtime ownership:
+
+```bash
+node tools/js/smoke_operational_domain_spec.mjs
+node tools/js/smoke_mission_resolution_profiles.mjs
+node tools/js/smoke_operational_domain_coordinates.mjs
+node tools/js/smoke_physical_mission_scale.mjs
+node tools/js/smoke_multiresolution_field_sampler.mjs
+node tools/js/smoke_resolution_invariant_science.mjs
+node tools/js/smoke_regional_mission_defaults.mjs
+node tools/js/smoke_regional_fleet_balance.mjs
+node tools/js/audit_no_per_cell_regional_three_objects.mjs
+node tools/js/audit_operational_domain_authority_boundaries.mjs
+node tools/js/audit_regional_export_compactness.mjs
+node tools/js/audit_regional_browser_headless_parity.mjs
+```
+
 ## Three.js-First Mission Migration Checks
 
 MIG-R1 makes Three.js the default production mission environment for planning and live simulation. Focused checks:

@@ -17,6 +17,8 @@ A good plan should:
 
 Later missions should also teach mission feasibility: a scientifically valuable route can still fail if currents, energy, dive profile, payload/sensor duty cycle, surfacing windows, bathymetry, or communication constraints make it impractical. See [Mission Feasibility Simulator and Scientific Benchmark Requirements](docs/mission_feasibility_simulator_requirements.md).
 
+Regional missions can now separate physical domain scale from the inspection grid. A 48 by 30 planning lattice can represent an 80 km by 50 km synthetic shelf mission because waypoints, source fields, terrain meshes, and render LOD are separate contracts. These regional defaults are deterministic classroom fixtures, not calibrated forecasts or real survey products. See [Regional Mission Scale and Resolution](docs/regional_mission_scale_and_resolution.md).
+
 You do not steer the glider in real time. You create a plan, run the simulation, then evaluate the result.
 
 If a plan cannot run safely, the game blocks execution or records a safe aborted result instead of freezing. Terrain-aware Planning validation is cached and event-driven; invalid land, coastline, bottom-clearance, or below-seabed target previews do not mutate the canonical plan. Runtime terrain diagnostics are incremental and explanatory; they do not change official scoring. Invalid deployment starts are rejected before simulation, and unreachable or blocked waypoints can be marked missed during playback. If the simulation watchdog stops playback, use `Export Debug Result` from the Simulation Console; the exported JSON includes the watchdog reason, active waypoint, glider state, surfacing wait state, and render object count.
