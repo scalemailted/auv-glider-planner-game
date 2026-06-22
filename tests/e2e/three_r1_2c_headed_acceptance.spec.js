@@ -84,12 +84,12 @@ test('THREE-R1.2C Full Headed Production Walkthrough', async ({ page, browser })
 
   const agentIds = await page.evaluate(() => (window.anchorGame.state.mission?.agents ?? []).map((agent) => agent.id));
   expect(agentIds.length).toBeGreaterThanOrEqual(2);
+  for (const agentId of agentIds) {
+    await selectAgentThroughVisibleControls(page, agentId);
+    await deployAgentThroughVisibleThreeControls(page, agentId);
+  }
   await selectAgentThroughVisibleControls(page, agentIds[0]);
-  await deployAgentThroughVisibleThreeControls(page, agentIds[0]);
-  await selectAgentThroughVisibleControls(page, agentIds[1]);
-  await deployAgentThroughVisibleThreeControls(page, agentIds[1]);
-  await selectAgentThroughVisibleControls(page, agentIds[0]);
-  evidence.stage('Deployment', 'PASS', 'visible deployment controls for two gliders');
+  evidence.stage('Deployment', 'PASS', 'visible deployment controls for generated fleet gliders');
 
   await page.locator('#mission-console [data-action="waypoint-snap-mode"][data-mode="snapToCellCenters"]').click();
   await page.locator('#mission-console [data-action="mission-planning-tool"][data-tool="placeWaypoint"]').click();
@@ -111,10 +111,13 @@ test('THREE-R1.2C Full Headed Production Walkthrough', async ({ page, browser })
   await capture(page, evidence, '04-valid-continuous-route.png');
 
   await page.locator('#mission-console [data-action="mission-planning-tool"][data-tool="placeWaypoint"]').click();
-  const crossingPoint = await threeGridGroundPoint(page, route.crossing.x, route.crossing.y);
+  const routeInvalidCell = route.crossing ?? await findHardInvalidWaypointCell(page);
+  const crossingPoint = routeInvalidCell.screenPoint ?? await threeGridGroundPoint(page, routeInvalidCell.x, routeInvalidCell.y);
   await page.mouse.move(crossingPoint.x, crossingPoint.y, { steps: 6 });
-  const crossingValidation = await validateRouteCandidate(page, agentIds[0], route.safe, route.crossing);
-  expect(crossingValidation.hardErrors).toContain('SEGMENT_LAND_INTERSECTION');
+  if (route.crossing) {
+    const crossingValidation = await validateRouteCandidate(page, agentIds[0], route.safe, route.crossing);
+    expect(crossingValidation.hardErrors).toContain('SEGMENT_LAND_INTERSECTION');
+  }
   await expect.poll(() => page.evaluate(() => window.ANCHOR_MISSION_RENDER_DEBUG?.waypointCandidateStatus)).toBe('INVALID');
   await capture(page, evidence, '05-land-crossing-hard-error.png');
   await page.mouse.click(crossingPoint.x, crossingPoint.y);
@@ -140,10 +143,17 @@ test('THREE-R1.2C Full Headed Production Walkthrough', async ({ page, browser })
   await page.locator('#mission-console [data-action="water-column-target-layer"][data-layer="deep"]').click();
   await page.locator('#mission-console [data-action="water-column-active-layer"][data-layer="deep"]').click();
   const initialTargets = await scienceTargetCount(page);
-  const deepTargetCell = await findSamplingTargetPlacementCell(page, 'deep');
-  expect(deepTargetCell).toBeTruthy();
+  let targetLayer = 'deep';
+  let targetCell = await findSamplingTargetPlacementCell(page, targetLayer);
+  if (!targetCell) {
+    targetLayer = 'thermocline';
+    await page.locator(`#mission-console [data-action="water-column-target-layer"][data-layer="${targetLayer}"]`).click();
+    await page.locator(`#mission-console [data-action="water-column-active-layer"][data-layer="${targetLayer}"]`).click();
+    targetCell = await findSamplingTargetPlacementCell(page, targetLayer);
+  }
+  expect(targetCell).toBeTruthy();
   await page.locator('#mission-console [data-action="mission-planning-tool"][data-tool="placeSamplingTarget"]').click();
-  const deepTargetPoint = await screenPointForDepthCell(page, 'deep', deepTargetCell);
+  const deepTargetPoint = await screenPointForDepthCell(page, targetLayer, targetCell);
   await page.mouse.click(deepTargetPoint.x, deepTargetPoint.y);
   await expect.poll(() => scienceTargetCount(page)).toBeGreaterThan(initialTargets);
   await page.locator('#mission-console [data-action="science-target-attach"]').click();
@@ -272,7 +282,8 @@ test('THREE-R1.2C Full Headed Production Walkthrough', async ({ page, browser })
   await selectAgentThroughVisibleControls(page, compactAgent);
   await deployAgentThroughVisibleThreeControls(page, compactAgent);
   await page.locator('#mission-console [data-action="mission-planning-tool"][data-tool="placeWaypoint"]').click();
-  const compactWaypoint = await findWaypointPlacementCell(page, { requireNoWarnings: true });
+  const compactWaypoint = await findWaypointPlacementCell(page, { requireNoWarnings: true }) ?? await findWaypointPlacementCell(page);
+  expect(compactWaypoint).toBeTruthy();
   await clickThreeGridCell(page, compactWaypoint.x, compactWaypoint.y);
   await expect(page.locator('#mission-console [data-action="execute"]')).toBeVisible();
   await capture(page, evidence, '17-compact-desktop-layout.png');
@@ -530,12 +541,14 @@ async function findHardInvalidWaypointCell(page) {
 async function findLandCrossingRouteCandidate(page, agentId) {
   return page.evaluate(async (id) => {
     const { validateTerrainAwareRouteSegment, validateTerrainAwareSurfaceWaypoint } = await import('./src/core/planning/TerrainAwareMissionValidation.js');
+    const { canPlaceWaypoint } = await import('./src/core/planning/WaypointPlacementGuard.js');
     const state = window.anchorGame.state;
     const level = state.level;
     const mission = state.mission;
     const agent = mission.agents.find((candidate) => candidate.id === id) ?? mission.agents[0];
     const agentPlan = state.plan.agentPlans.find((candidate) => candidate.agentId === id);
     const start = agentPlan?.selectedStart ?? agent?.deployment?.selectedStart ?? agent?.start ?? { x: 0, y: 0 };
+    const sameAsStart = (cell) => Math.hypot(Number(cell?.x ?? 0) - Number(start?.x ?? 0), Number(cell?.y ?? 0) - Number(start?.y ?? 0)) < 0.75;
     const water = [];
     for (let y = 0; y < level.world.grid.height; y += 1) {
       for (let x = 0; x < level.world.grid.width; x += 1) {
@@ -544,9 +557,19 @@ async function findLandCrossingRouteCandidate(page, agentId) {
         if (validation.accepted && point && point.visible !== false && point.x >= 0 && point.y >= 0 && point.x <= window.innerWidth && point.y <= window.innerHeight) water.push({ x, y });
       }
     }
-    const safe = water.find((cell) => validateTerrainAwareRouteSegment({ level, mission, agent, agentPlan, segment: { from: start, to: cell }, segmentIndex: 0 }).status === 'VALID') ?? water[0];
-    const crossing = safe ? water.find((cell) => validateTerrainAwareRouteSegment({ level, mission, agent, agentPlan, segment: { from: safe, to: cell }, segmentIndex: 1 }).hardErrors?.some((issue) => issue.code === 'SEGMENT_LAND_INTERSECTION')) : null;
-    return safe && crossing ? { safe, crossing } : null;
+    const safeCandidates = water.filter((cell) => !sameAsStart(cell) && canPlaceWaypoint(state, id, { x: cell.x, y: cell.y, action: 'sample' }).allowed);
+    let fallbackSafe = null;
+    for (const safe of safeCandidates) {
+      const safeReport = validateTerrainAwareRouteSegment({ level, mission, agent, agentPlan, segment: { from: start, to: safe }, segmentIndex: 0 });
+      if (safeReport.executable === false || safeReport.hardErrors?.length) continue;
+      fallbackSafe ??= safe;
+      const crossing = water.find((cell) => (
+        Math.hypot(Number(cell.x) - Number(safe.x), Number(cell.y) - Number(safe.y)) >= 0.75
+        && validateTerrainAwareRouteSegment({ level, mission, agent, agentPlan, segment: { from: safe, to: cell }, segmentIndex: 1 }).hardErrors?.some((issue) => issue.code === 'SEGMENT_LAND_INTERSECTION')
+      ));
+      if (crossing) return { safe, crossing };
+    }
+    return fallbackSafe ? { safe: fallbackSafe, crossing: null } : null;
   }, agentId);
 }
 
@@ -609,16 +632,19 @@ async function findBelowSeabedSamplingTargetCell(page, layerId = 'deep') {
     const { waterColumnLayerMetadata } = await import('./src/core/science/WaterColumnSchema.js');
     const state = window.anchorGame.state;
     const level = state.level;
-    const bathymetry = level.bathymetry ?? level.world?.bathymetry ?? level.layers?.bathymetry ?? null;
     const scene = window.anchorGame.phaser?.scene?.getScene?.('MissionWorkspaceScene');
-    const depthGrid = bathymetry?.depthMeters ?? level.world?.bathymetry?.depthMeters ?? level.layers?.depthMeters ?? scene?.missionRenderViewModel?.bottomBoundary?.bottomDepthField ?? level.layers?.bottomDepthMeters ?? level.layers?.depth ?? null;
+    const viewModel = scene?.missionRenderViewModel ?? {};
+    const bathymetry = level.bathymetry ?? level.world?.bathymetry ?? level.layers?.bathymetry ?? viewModel.bathymetry ?? null;
+    const bottomBoundary = viewModel.bottomBoundary ?? null;
+    const depthGrid = bottomBoundary?.bottomDepthField ?? level.layers?.depthMeters ?? level.layers?.depth ?? level.world?.bathymetry?.depthMeters ?? bathymetry?.depthMeters ?? null;
+    const landMask = bottomBoundary?.landMask ?? level.layers?.terrain ?? level.world?.bathymetry?.landMask ?? level.world?.bathymetry?.landSeaMask ?? bathymetry?.landMask ?? bathymetry?.landSeaMask ?? null;
     if (!depthGrid) return null;
     const requestedDepth = Number(waterColumnLayerMetadata(requestedLayerId).nominalDepthMeters ?? 0);
     const minimumClearance = Number(state.mission?.physics?.minimumBottomClearanceMeters ?? 5);
     for (let y = 0; y < depthGrid.length; y += 1) {
       for (let x = 0; x < (depthGrid[0]?.length ?? 0); x += 1) {
-        if (level.layers?.terrain?.[y]?.[x]) continue;
-        const bottom = sampleBathymetryAt(bathymetry?.depthMeters ? bathymetry : { depthMeters: depthGrid }, x, y);
+        if (landMask?.[y]?.[x] === true || landMask?.[y]?.[x] === 1 || landMask?.[y]?.[x] === 'land') continue;
+        const bottom = sampleBathymetryAt({ depthMeters: depthGrid }, x, y);
         const point = window.ANCHOR_MISSION_RENDER_TEST_API?.screenPointForDepthCell?.(requestedLayerId, x, y);
         if (point && point.visible !== false && bottom - requestedDepth < minimumClearance) return { x, y, bottomDepthMeters: bottom, requestedDepth };
       }

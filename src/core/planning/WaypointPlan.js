@@ -97,10 +97,7 @@ export function normalizePlan(plan, level, mission) {
     if (rawAgentPlan.selectedStart) {
       const validation = isValidSelectedStart(level, mission, agentId, rawAgentPlan.selectedStart);
       if (validation.valid) {
-        agentPlan.selectedStart = {
-          x: Math.round(Number(rawAgentPlan.selectedStart.x)),
-          y: Math.round(Number(rawAgentPlan.selectedStart.y))
-        };
+        agentPlan.selectedStart = normalizeSelectedStart(rawAgentPlan.selectedStart, normalized.coordinateProfileId);
       }
     }
     const rawWaypoints = Array.isArray(rawAgentPlan.waypoints) ? rawAgentPlan.waypoints : [];
@@ -427,6 +424,17 @@ export function getUnknownAgentIds(plan, mission) {
     .filter((agentId) => agentId && knownAgentIds.size > 0 && !knownAgentIds.has(agentId));
 }
 
+function normalizeSelectedStart(start = {}, coordinateProfileId = LEGACY_INTEGER_COORDINATE_PROFILE_ID) {
+  const continuous = normalizeCoordinateProfileId(coordinateProfileId) === CONTINUOUS_COORDINATE_PROFILE_ID;
+  const x = continuous ? roundCoordinate(start.x) : Math.round(Number(start.x));
+  const y = continuous ? roundCoordinate(start.y) : Math.round(Number(start.y));
+  return {
+    x,
+    y,
+    coordinateFrame: continuous ? CONTINUOUS_COORDINATE_PROFILE_ID : LEGACY_INTEGER_COORDINATE_PROFILE_ID,
+    containingCell: { x: Math.round(Number(start.x)), y: Math.round(Number(start.y)) }
+  };
+}
 function normalizeWaypoint(waypoint, agentId, index, level = null, planContext = null) {
   const action = VALID_WAYPOINT_ACTIONS.includes(waypoint.action) ? waypoint.action : 'sample';
   const kind = normalizeWaypointKind(waypoint);

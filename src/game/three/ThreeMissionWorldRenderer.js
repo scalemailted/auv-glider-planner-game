@@ -32,7 +32,8 @@ import {
   createThreePlanningInteractionLayer,
   updateThreePlanningInteractionLayer,
   setThreePlanningInteractionLayerVisibility,
-  disposeThreePlanningInteractionLayer
+  disposeThreePlanningInteractionLayer,
+  threePlanningInteractionLayerSummary
 } from './layers/ThreePlanningInteractionLayer.js';
 import { clearGroup, makeBoxCell } from './layers/ThreeMissionLayerUtils.js';
 import { createThreeBathymetryTerrainLayer, updateThreeBathymetryTerrainLayer, disposeThreeBathymetryTerrainLayer, threeBathymetryTerrainLayerSummary } from './layers/ThreeBathymetryTerrainLayer.js';
@@ -477,6 +478,13 @@ export function threeMissionWorldRendererSummary(renderer = {}) {
     samplingTargetObjectCount: renderer.groups?.samplingTargetGroup?.children?.length ?? 0,
     priorityTargetObjectCount: renderer.groups?.priorityTargetGroup?.children?.length ?? 0,
     interactionObjectCount: renderer.groups?.interactionGroup?.children?.length ?? 0,
+    planningGuideSummary: threePlanningInteractionLayerSummary(renderer.planningInteractionLayer, vm?.interactionViewModel?.routePreview ?? null),
+    previewSegmentCount: threePlanningInteractionLayerSummary(renderer.planningInteractionLayer, vm?.interactionViewModel?.routePreview ?? null).previewSegmentCount,
+    previewObjectCreateCount: threePlanningInteractionLayerSummary(renderer.planningInteractionLayer, vm?.interactionViewModel?.routePreview ?? null).objectCreateCount,
+    previewObjectReuseCount: threePlanningInteractionLayerSummary(renderer.planningInteractionLayer, vm?.interactionViewModel?.routePreview ?? null).objectReuseCount,
+    previewObjectDisposeCount: threePlanningInteractionLayerSummary(renderer.planningInteractionLayer, vm?.interactionViewModel?.routePreview ?? null).objectDisposeCount,
+    stalePreviewCount: threePlanningInteractionLayerSummary(renderer.planningInteractionLayer, vm?.interactionViewModel?.routePreview ?? null).stalePreviewCount,
+    maximumSimultaneousPreviewSegments: threePlanningInteractionLayerSummary(renderer.planningInteractionLayer, vm?.interactionViewModel?.routePreview ?? null).maximumSimultaneousPreviewSegments,
     guidanceObjectCount: renderer.groups?.guidanceGroup?.children?.length ?? 0,
     guidanceSummary: renderer.groups?.guidanceGroup?.userData ?? null,
     gliderPoseSummaries: renderer.groups?.gliderGroup?.userData?.poseSummaries ?? [],
@@ -737,7 +745,11 @@ function updateObservationLayer(group, viewModel) {
 
 function syncCameraBounds(renderer, viewModel) {
   if (renderer.cameraController) {
-    updateThreeMissionCameraBounds(renderer.cameraController, missionBoundsFromViewModel(viewModel));
+    const bounds = missionBoundsFromViewModel(viewModel);
+    updateThreeMissionCameraBounds(renderer.cameraController, bounds);
+    if (renderer.cameraState?.manual !== true) {
+      setThreeMissionCameraPreset(renderer.cameraController, renderer.cameraState?.preset ?? 'obliqueMission', { bounds });
+    }
     return;
   }
   fitCamera(renderer, viewModel);
@@ -749,7 +761,7 @@ function fitCamera(renderer, viewModel) {
   const height = Number(viewModel.grid?.height ?? 10);
   const radius = Math.max(width, height, 8);
   const preset = renderer.cameraState?.preset ?? 'obliqueMission';
-  if (preset === 'tacticalTopDown') setCameraPose(renderer, { x: 0, y: radius * 1.65, z: 0.001, lookAt: [0, 0, 0] });
+  if (preset === 'tacticalTopDown') setCameraPose(renderer, { x: 0, y: radius * (radius >= 32 ? 6.8 : 1.65), z: 0.001, lookAt: [0, 0, 0] });
   else if (preset === 'waterColumnProfile' || preset === 'sideProfile') setCameraPose(renderer, { x: 0, y: radius * 0.62, z: radius * 1.78, lookAt: [0, -radius * 0.08, 0] });
   else if (preset === 'obliqueWaterColumn' || preset === 'layerStackOverview' || preset === 'activeLayer' || preset === 'selectedDive') setCameraPose(renderer, { x: -radius * 0.94, y: radius * 0.92, z: radius * 1.34, lookAt: [0, -radius * 0.12, 0] });
   else setCameraPose(renderer, { x: -radius * 0.82, y: radius * 1.08, z: radius * 1.24, lookAt: [0, -radius * 0.05, 0] });
@@ -1102,3 +1114,4 @@ function currentFieldFrameSignature(viewModel = {}) {
 function frameNow() {
   return globalThis.performance?.now?.() ?? Date.now?.() ?? 0;
 }
+

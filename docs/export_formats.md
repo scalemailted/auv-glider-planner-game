@@ -348,3 +348,7 @@ anchor.result may include terrainAwareValidation and compact terrainValidationMe
 THREE-R2B Mission Editor exports continue to use existing `anchor.challenge`, level, plan, result, and related public schemas. The editor document wrapper and command/session metadata are authoring helpers; exported gameplay artifacts preserve canonical IDs, seeds, coordinate representation, water-column metadata, terrain-source metadata, and compatible unknown fields where safe.
 
 Renderer and display state are excluded from public exports: camera, hover, selection display, Three.js objects, Phaser objects, DOM nodes, listeners, and renderer diagnostics are not authoritative schema fields. Public exports must not include hidden truth unless an existing oracle/debug format explicitly permits it, and synthetic terrain/current/scalar metadata must not claim operationally calibrated ocean forecast status.
+
+## WORLD-R1.1 Export Metadata
+
+Regional generated challenge exports include operational-domain metadata, resolution profile metadata, signed terrain authority summaries/digests, water-column configuration, and continuous coordinate metadata. Preview Planning-guide state is noncanonical and is not exported as plan data.

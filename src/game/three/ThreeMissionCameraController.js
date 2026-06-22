@@ -30,7 +30,7 @@ export function createThreeMissionCameraController(options = {}) {
     minPolarRadians: finiteNumber(options.minPolarRadians, DEFAULT_MIN_POLAR),
     maxPolarRadians: finiteNumber(options.maxPolarRadians, DEFAULT_MAX_POLAR),
     minDistance: finiteNumber(options.minDistance, 4),
-    maxDistance: finiteNumber(options.maxDistance, 96),
+    maxDistance: finiteNumber(options.maxDistance, 160),
     bounds: normalizeBounds(options.bounds),
     interactionToolId: options.interactionToolId ?? 'selectInspect',
     orbitEnabled: options.orbitEnabled !== false,
@@ -76,9 +76,10 @@ export function setThreeMissionCameraPreset(controller, presetId, context = {}) 
     controller.target = vector3(context.target ?? bounds.center);
   }
   if (preset === 'tacticalTopDown') {
+    const topDownDistanceMultiplier = radius >= 32 ? 6.8 : 1.72;
     controller.azimuthRadians = 0.001;
-    controller.polarRadians = 0.16;
-    controller.distance = radius * 1.72;
+    controller.polarRadians = 0.08;
+    controller.distance = radius * topDownDistanceMultiplier;
   } else if (preset === 'waterColumnProfile' || preset === 'sideProfile') {
     controller.azimuthRadians = 0;
     controller.polarRadians = 1.49;
@@ -145,7 +146,7 @@ export function updateThreeMissionCameraBounds(controller, bounds) {
   if (!controller || controller.disposed) return controller;
   controller.bounds = normalizeBounds(bounds);
   controller.minDistance = Math.max(3, controller.bounds.radius * 0.32);
-  controller.maxDistance = Math.max(18, controller.bounds.radius * 4.2);
+  controller.maxDistance = Math.max(18, controller.bounds.radius * 7.5);
   controller.target = clampTarget(controller, controller.target);
   controller.distance = clamp(controller.distance, controller.minDistance, controller.maxDistance);
   applyCamera(controller);

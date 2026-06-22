@@ -60,3 +60,7 @@ THREE-R1.2C consumes the same canonical bathymetry field for mission validation.
 THREE-R2B lets the Mission Editor preview and edit existing supported terrain/environment data through canonical editor commands. Land/water and blocked-cell edits mutate the canonical level/challenge document, then rebuild renderer-neutral terrain view models for Three.js display.
 
 The visual terrain mesh is never exported as terrain truth. Direct bathymetry sculpting and arbitrary XYZ navigation planning remain out of scope. Synthetic terrain/current/scalar fields remain educational and are not claimed as operationally calibrated ocean forecasts or survey products.
+
+## Signed Terrain Authority
+
+Modern generated missions derive land/water classification, coastline, bottom depth, navigable water, field masks, and drop-zone validity from `SignedTerrainSurfaceModel`. Legacy grid missions keep compatibility behavior but are explicitly not assigned invented kilometer-scale meaning.

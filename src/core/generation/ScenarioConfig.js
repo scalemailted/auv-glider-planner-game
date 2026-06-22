@@ -13,6 +13,11 @@ import { createDefaultSampleFieldConfig, normalizeSampleFieldConfig } from './Sa
 import { DEFAULT_MISSION_MODE_ID, applyMissionModeDefaults, getMissionModePreset, normalizeMissionModeId } from '../missions/MissionModeRegistry.js';
 import { normalizeNavigationUncertaintyConfig } from '../navigation/NavigationUncertainty.js';
 import { ensureModernWaterColumnMissionConfig } from '../science/WaterColumnMissionDefaults.js';
+import { createOperationalDomainSpec } from '../domain/OperationalDomainSpec.js';
+import { normalizeMissionResolutionProfile } from '../domain/MissionResolutionProfile.js';
+import { createRegionalMissionBundle } from './RegionalMissionDefaults.js';
+import { makeForecastEnsembleFromTruth, makeForecastFromTruth } from './ForecastGenerator.js';
+import { createSeededRandom } from './Random.js';
 
 export const SCENARIO_SIZE_PRESETS = {
   small: { label: 'Compact Inspection Lattice', width: 12, height: 12, duration: 12, surfaceInterval: 3, agentCount: 1, fuel: 100 },
@@ -20,6 +25,12 @@ export const SCENARIO_SIZE_PRESETS = {
   large: { label: 'Detailed Inspection Lattice', width: 32, height: 32, duration: 48, surfaceInterval: 6, agentCount: 3, fuel: 150 },
   huge: { label: 'Dense Inspection Lattice / Experimental', width: 48, height: 48, duration: 72, surfaceInterval: 12, agentCount: 4, fuel: 200 }
 };
+
+export const OPERATIONAL_DOMAIN_CHOICES = Object.freeze({
+  compactTrainingArea: Object.freeze({ label: 'Compact Training Area', resolutionProfileId: 'tutorialCompact', widthKm: 1.2, heightKm: 0.8, duration: 12, surfaceInterval: 3, agentCount: 1, fuel: 100 }),
+  coastalMissionArea: Object.freeze({ label: 'Coastal Mission Area', resolutionProfileId: 'coastalStandard', widthKm: 32, heightKm: 20, duration: 36, surfaceInterval: 6, agentCount: 2, fuel: 140 }),
+  regionalFleetArea: Object.freeze({ label: 'Regional Fleet Area', resolutionProfileId: 'regionalFleet', widthKm: 80, heightKm: 50, duration: 48, surfaceInterval: 8, agentCount: 3, fuel: 190 })
+});
 
 export function createDefaultScenarioConfig(mode = 'perfectKnowledge') {
   const stochastic = mode === 'forecast';
@@ -45,7 +56,8 @@ export function createDefaultScenarioConfig(mode = 'perfectKnowledge') {
     multipleDropZones: false,
     agentSpecMode: stochastic ? 'varied' : 'uniform',
     ensembleCount: stochastic ? 3 : 0,
-    gliderSpeed: stochastic ? 1.2 : 1.25
+    gliderSpeed: stochastic ? 1.2 : 1.25,
+    operationalDomainProfileId: 'compactTrainingArea'
   });
 }
 
@@ -74,6 +86,12 @@ export function normalizeScenarioConfig(config = {}) {
   const missionMode = normalizeMissionModeId(missionDefaults.missionMode);
   const missionModePreset = getMissionModePreset(missionMode);
   const navigationUncertainty = normalizeNavigationUncertaintyConfig(missionDefaults.navigationUncertainty);
+  const requestedDomainProfile = missionDefaults.operationalDomainProfileId ?? missionDefaults.domainProfileId ?? missionDefaults.operationalDomainChoice;
+  const domainProfileRequested = Boolean(requestedDomainProfile);
+  const operationalDomainProfileId = normalizeOperationalDomainProfileId(requestedDomainProfile);
+  const domainChoice = OPERATIONAL_DOMAIN_CHOICES[operationalDomainProfileId];
+  const resolutionProfile = normalizeMissionResolutionProfile(requestedDomainProfile ? domainChoice.resolutionProfileId : missionDefaults.resolutionProfile ?? domainChoice.resolutionProfileId);
+  const operationalDomain = requestedDomainProfile ? createDomainForChoice(operationalDomainProfileId) : missionDefaults.operationalDomain ?? createDomainForChoice(operationalDomainProfileId);
   return {
     mode,
     missionMode,
@@ -88,12 +106,14 @@ export function normalizeScenarioConfig(config = {}) {
       strategyHint: missionModePreset.strategyHint
     },
     preset: presetKey,
-    agentCount: clampInt(missionDefaults.agentCount ?? preset.agentCount, 1, 8),
-    width: clampInt(missionDefaults.width ?? preset.width, 8, 48),
-    height: clampInt(missionDefaults.height ?? preset.height, 8, 48),
-    duration: clampInt(missionDefaults.duration ?? preset.duration, 6, 96),
-    surfaceInterval: clampInt(missionDefaults.surfaceInterval ?? preset.surfaceInterval, 1, 24),
-    fuel: clampInt(missionDefaults.fuel ?? preset.fuel, 25, 400),
+    operationalDomainProfileId,
+    operationalDomainProfile: domainChoice,
+    agentCount: clampInt(domainProfileRequested ? domainChoice.agentCount : missionDefaults.agentCount ?? domainChoice.agentCount ?? preset.agentCount, 1, 8),
+    width: clampInt(resolutionProfile.planningLattice.columns ?? missionDefaults.width ?? preset.width, 8, 48),
+    height: clampInt(resolutionProfile.planningLattice.rows ?? missionDefaults.height ?? preset.height, 8, 48),
+    duration: clampInt(domainChoice.duration ?? missionDefaults.duration ?? preset.duration, 6, 96),
+    surfaceInterval: clampInt(domainChoice.surfaceInterval ?? missionDefaults.surfaceInterval ?? preset.surfaceInterval, 1, 24),
+    fuel: clampInt(domainProfileRequested ? domainChoice.fuel : missionDefaults.fuel ?? domainChoice.fuel ?? preset.fuel, 25, 400),
     gliderSpeed: finiteNumber(missionDefaults.gliderSpeed, mode === 'forecast' ? 1.2 : 1.25),
     difficulty: missionDefaults.difficulty ?? (mode === 'forecast' ? 'hard' : 'medium'),
     terrainDensity: clamp01(finiteNumber(missionDefaults.terrainDensity, 0.08)),
@@ -127,8 +147,8 @@ export function normalizeScenarioConfig(config = {}) {
     routeGradeWeights: missionDefaults.routeGradeWeights ?? {},
     medals: missionDefaults.medals ?? [],
     plannerDefaults: missionDefaults.plannerDefaults ?? {},
-    operationalDomain: missionDefaults.operationalDomain ?? null,
-    resolutionProfile: missionDefaults.resolutionProfile ?? null
+    operationalDomain,
+    resolutionProfile
   };
 }
 
@@ -136,6 +156,7 @@ export function buildScenarioGenerationConfig(config = {}) {
   const normalized = normalizeScenarioConfig(config);
   return {
     mode: normalized.mode === 'forecast' ? 'stochastic' : 'deterministic',
+    operationalDomainProfileId: normalized.operationalDomainProfileId,
     missionMode: normalized.missionMode,
     missionModePreset: normalized.missionModePreset,
     agentCount: normalized.agentCount,
@@ -193,6 +214,42 @@ export function generateScenarioFromConfig(config = {}) {
   const stochastic = normalized.mode === 'forecast';
   const challengeId = String(config.challengeId ?? config.uuid ?? config.instanceId ?? createGameInstanceId('CHALLENGE'));
   const seed = config.seed ?? deriveSeedFromUuid(challengeId, 'mission') ?? makeChallengeSeed(normalized.mode);
+  if (normalized.operationalDomainProfileId === 'regionalFleetArea') {
+    const regionalLevelName = config.name ?? (stochastic ? `Stochastic Challenge ${seed}` : `Deterministic Challenge ${seed}`);
+    const bundle = createRegionalMissionBundle({ seed, levelId: `regional_fleet_survey_${challengeId}`, missionId: `regional_fleet_mission_${challengeId}`, domain: normalized.operationalDomain, resolutionProfile: normalized.resolutionProfile, agentCount: normalized.agentCount, name: regionalLevelName });
+    const level = ensureLevelIdentity(bundle.level);
+    level.challengeMode = normalized.mode;
+    level.instanceId = challengeId;
+    level.meta ??= {};
+    level.meta.name = regionalLevelName;
+    level.meta.replaySeedAnchor = challengeId;
+    level.meta.generationVersion = GENERATION_VERSION;
+    const regionalGenerationConfig = buildScenarioGenerationConfig({ ...normalized, seed, challengeId });
+    level.meta.generationConfig = {
+      ...regionalGenerationConfig,
+      challengeId,
+      replaySeedAnchor: challengeId,
+      generationVersion: GENERATION_VERSION,
+      scenarioSetup: {
+        ...regionalGenerationConfig,
+        challengeId,
+        replaySeedAnchor: challengeId,
+        generationVersion: GENERATION_VERSION
+      }
+    };
+    const mission = bundle.mission;
+    mission.meta ??= {};
+    mission.meta.scenarioSetup = level.meta.generationConfig.scenarioSetup;
+    mission.meta.operationalDomain = normalized.operationalDomain;
+    mission.meta.resolutionProfile = normalized.resolutionProfile;
+    mission.meta.operationalDomainProfileId = normalized.operationalDomainProfileId;
+    ensureModernWaterColumnMissionConfig(level, mission, { source: 'generatedModernMission', scenarioMode: normalized.mode });
+    for (const config of [level.world?.waterColumnConfig, mission.waterColumnConfig, mission.world?.waterColumnConfig]) {
+      if (config) config.defaultPlanningCameraPresetId = 'tacticalTopDown';
+    }
+    if (stochastic) applyRegionalForecastCompatibility(level, normalized, seed);
+    return { level, mission, config: normalized, generationConfig: level.meta.generationConfig, replaySeedContract: null };
+  }
   const generationConfig = {
     ...buildScenarioGenerationConfig({ ...normalized, seed }),
     challengeId,
@@ -375,6 +432,105 @@ export function describeScenarioComplexity(config = {}) {
   };
 }
 
+function applyRegionalForecastCompatibility(level, normalized, seed) {
+  const baseFrame = level?.layers?.truth?.frames?.[0];
+  if (!baseFrame?.current || !baseFrame?.roi) return;
+  const frameCount = Math.max(4, Math.min(8, Math.round(Number(normalized.ensembleCount ?? 3)) + 1));
+  const dt = Math.max(1, Number(level.world?.time?.planningWindow ?? level.world?.time?.dt ?? 1));
+  const truthFrames = Array.from({ length: frameCount }, (_value, index) => ({
+    t: index * dt,
+    current: shiftRegionalCurrentFrame(baseFrame.current, index),
+    roi: shiftRegionalRoiFrame(baseFrame.roi, index)
+  }));
+  const forecastConfig = {
+    forecastMode: 'noisy',
+    forecastNoise: normalized.forecastNoise,
+    forecastDecay: normalized.forecastDecay,
+    forecastRules: normalizeForecastRules({
+      mode: normalized.forecastDecay ? 'decay' : 'none',
+      minConfidence: normalized.forecastMinConfidence,
+      decayRate: normalized.forecastDecayRate,
+      decayModel: normalized.forecastDecayModel
+    }),
+    ensembleCount: Math.max(1, Number(normalized.ensembleCount ?? 3) || 3)
+  };
+  level.layers.truth.frames = truthFrames;
+  level.layers.forecast = {
+    ...(level.layers.forecast ?? {}),
+    frames: makeForecastFromTruth(truthFrames, forecastConfig, createSeededRandom(`${seed}:regional-forecast`))
+  };
+  level.layers.forecasts = makeForecastEnsembleFromTruth(
+    truthFrames,
+    forecastConfig,
+    createSeededRandom(`${seed}:regional-forecast-ensemble`)
+  );
+  level.meta ??= {};
+  level.meta.generationConfig ??= {};
+  level.meta.generationConfig.ensembleCount = forecastConfig.ensembleCount;
+  level.meta.generationConfig.forecastMode = 'noisy';
+  level.meta.generationConfig.forecastRules = forecastConfig.forecastRules;
+  level.meta.generationConfig.scenarioSetup ??= {};
+  level.meta.generationConfig.scenarioSetup.ensembleCount = forecastConfig.ensembleCount;
+  level.meta.generationConfig.scenarioSetup.forecastMode = 'noisy';
+  level.meta.generationConfig.scenarioSetup.forecastRules = forecastConfig.forecastRules;
+}
+
+function shiftRegionalCurrentFrame(current = [], frameIndex = 0) {
+  const phase = frameIndex * 0.37;
+  return current.map((row, y) => row.map((vector, x) => {
+    const u = Number(vector?.[0] ?? 0);
+    const v = Number(vector?.[1] ?? 0);
+    const wobble = 0.018 * Math.sin(phase + x * 0.17 + y * 0.11);
+    return [roundScenarioValue(u + wobble), roundScenarioValue(v - wobble * 0.7)];
+  }));
+}
+
+function shiftRegionalRoiFrame(roi = [], frameIndex = 0) {
+  const phase = frameIndex * 0.23;
+  return roi.map((row, y) => row.map((cell, x) => {
+    const wobble = 0.025 * Math.sin(phase + x * 0.19 - y * 0.13);
+    if (cell && typeof cell === 'object') {
+      const value = clamp01(Number(cell.value ?? cell.expectedValue ?? 0) + wobble);
+      const probability = clamp01(Number(cell.probability ?? 1) + wobble * 0.5);
+      return {
+        ...cell,
+        value: roundScenarioValue(value),
+        probability: roundScenarioValue(probability),
+        expectedValue: roundScenarioValue(value * probability)
+      };
+    }
+    return roundScenarioValue(clamp01(Number(cell ?? 0) + wobble));
+  }));
+}
+
+function roundScenarioValue(value, digits = 6) {
+  return Number(Number(value ?? 0).toFixed(digits));
+}
+function normalizeOperationalDomainProfileId(value) {
+  if (value === 'regionalFleet' || value === 'regionalFleetArea') return 'regionalFleetArea';
+  if (value === 'coastalStandard' || value === 'coastalMissionArea') return 'coastalMissionArea';
+  if (value === 'tutorialCompact' || value === 'compactTrainingArea') return 'compactTrainingArea';
+  return 'compactTrainingArea';
+}
+
+function createDomainForChoice(profileId) {
+  const choice = OPERATIONAL_DOMAIN_CHOICES[normalizeOperationalDomainProfileId(profileId)] ?? OPERATIONAL_DOMAIN_CHOICES.compactTrainingArea;
+  const id = normalizeOperationalDomainProfileId(profileId);
+  return createOperationalDomainSpec({
+    domainId: id === 'regionalFleetArea' ? 'synthetic-regional-shelf-80x50km' : id === 'coastalMissionArea' ? 'synthetic-coastal-mission-32x20km' : 'synthetic-compact-training-1p2x0p8km',
+    label: choice.label,
+    horizontal: { minEastMeters: 0, maxEastMeters: choice.widthKm * 1000, minNorthMeters: 0, maxNorthMeters: choice.heightKm * 1000 },
+    time: { durationSeconds: choice.duration * 3600, dtSeconds: 300 },
+    source: {
+      kind: 'syntheticEducational',
+      synthetic: true,
+      realData: false,
+      calibrated: false,
+      operationalForecast: false,
+      description: 'Synthetic educational operating area. Not real Gulf of Mexico bathymetry or forecast data.'
+    }
+  });
+}
 function makeChallengeSeed(mode) {
   const prefix = mode === 'forecast' ? 'stochastic' : 'deterministic';
   const cryptoValue = globalThis.crypto?.getRandomValues ? globalThis.crypto.getRandomValues(new Uint32Array(1))[0] : Date.now();
@@ -418,7 +574,10 @@ function scenarioConfigFromGenerationConfig(generationConfig = {}, source = {}) 
     hiddenTruthVariation: setup.hiddenTruthVariation,
     multipleDropZones: setup.multipleDropZones,
     agentSpecMode: setup.agentSpecMode,
-    ensembleCount: setup.ensembleCount
+    ensembleCount: setup.ensembleCount,
+    operationalDomainProfileId: setup.operationalDomainProfileId,
+    operationalDomain: setup.operationalDomain,
+    resolutionProfile: setup.resolutionProfile
   });
 }
 
@@ -442,3 +601,6 @@ function booleanValue(value, fallback = false) {
   if (typeof value === 'string') return value === 'true' || value === '1' || value === 'yes';
   return Boolean(value);
 }
+
+
+

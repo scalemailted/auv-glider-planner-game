@@ -1,3 +1,5 @@
+﻿import { normalizePlanningGuidePreview } from './PlanningGuidePreviewViewModel.js';
+
 export const MISSION_PLANNING_INTERACTION_VIEW_MODEL_VERSION = 'mission-planning-interaction-view-model-three-r1-1';
 
 export function buildMissionPlanningInteractionViewModel({
@@ -105,15 +107,7 @@ function selectedFromMissionWorld(viewModel = {}) {
 }
 
 function normalizePreview(preview = null) {
-  if (!preview) return null;
-  return {
-    ...clonePlainObject(preview),
-    active: preview.active !== false,
-    from: cloneCell(preview.from),
-    to: cloneCell(preview.to ?? preview.gridCell),
-    gridCell: cloneCell(preview.gridCell ?? preview.to),
-    valid: preview.valid !== false
-  };
+  return normalizePlanningGuidePreview(preview);
 }
 
 function cloneEntity(entity = null) {
@@ -166,3 +160,4 @@ function scrubObject(value) {
   }
   return out;
 }
+

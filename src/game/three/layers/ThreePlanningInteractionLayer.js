@@ -1,47 +1,63 @@
 import * as THREE from 'three';
 import { clearGroup, makeLine, positionForCell, positionForRecord } from './ThreeMissionLayerUtils.js';
+import { planningGuidePreviewSummary } from '../../../core/rendering/PlanningGuidePreviewViewModel.js';
+
+export const THREE_PLANNING_INTERACTION_LAYER_VERSION = 'three-planning-interaction-layer-world-r1-1';
 
 export function createThreePlanningInteractionLayer(options = {}) {
   const group = new THREE.Group();
   group.name = options.name ?? 'mission-planning-interaction-layer';
   group.userData = { missionObjectType: 'interactionOverlay', ownsPlanning: false };
-  return { group, visible: true };
+  const overlayGroup = new THREE.Group();
+  overlayGroup.name = 'mission-planning-transient-overlay-group';
+  const previewGroup = new THREE.Group();
+  previewGroup.name = 'mission-planning-route-preview-group';
+  group.add(overlayGroup, previewGroup);
+  const layer = {
+    group,
+    overlayGroup,
+    previewGroup,
+    previewLine: null,
+    visible: true,
+    objectCreateCount: 0,
+    objectReuseCount: 0,
+    objectDisposeCount: 0,
+    previewSegmentCount: 0,
+    stalePreviewCount: 0,
+    maximumSimultaneousPreviewSegments: 0,
+    lastPreviewDigest: null,
+    disposed: false
+  };
+  publishPlanningGuideDebug(layer, null);
+  return layer;
 }
 
 export function updateThreePlanningInteractionLayer(layerOrGroup, interactionViewModel = {}, options = {}) {
-  const group = layerOrGroup?.group ?? layerOrGroup;
+  const layer = normalizeLayer(layerOrGroup);
+  const group = layer.group;
   if (!group) return layerOrGroup;
-  clearGroup(group);
   const transform = options.transform ?? options.viewModel?.coordinateSystem;
   if (!transform) return layerOrGroup;
+  clearGroup(layer.overlayGroup);
   const cell = interactionViewModel.hoveredCell;
-  if (cell) group.add(cellRing(transform, cell, colorForPlacement(interactionViewModel), 0.84, 'hovered-grid-cell', interactionViewModel.placementValid === false ? 'blocked placement' : 'hovered cell'));
-  const preview = interactionViewModel.routePreview;
-  if (preview?.from && preview?.to) {
-    const line = makeLine([positionForCell(transform, preview.from.x, preview.from.y, 0, 0.42), positionForCell(transform, preview.to.x, preview.to.y, 0, 0.42)], {
-      color: preview.valid === false ? 0xff4e5a : 0x63e6be,
-      opacity: 0.78
-    });
-    line.name = 'three-route-preview-segment';
-    line.userData = { missionObjectType: 'routePreview', semantic: preview.valid === false ? 'blocked preview' : 'valid preview', ownsPlanning: false };
-    group.add(line);
-  }
+  if (cell) layer.overlayGroup.add(cellRing(transform, cell, colorForPlacement(interactionViewModel), 0.84, 'hovered-grid-cell', interactionViewModel.placementValid === false ? 'blocked placement' : 'hovered cell'));
+  updatePreviewSegment(layer, interactionViewModel.routePreview, transform);
   const drag = interactionViewModel.dragPreview;
   if (drag?.active && drag.gridCell) {
     const ghost = cellRing(transform, drag.gridCell, drag.valid === false ? 0xff4e5a : 0xffffff, 0.62, 'waypoint-drag-ghost', 'drag ghost');
     ghost.scale.setScalar(1.18);
-    group.add(ghost);
+    layer.overlayGroup.add(ghost);
   }
   const selected = interactionViewModel.selectedEntity;
   if (selected?.gridCell && selected.objectType === 'waypoint') {
-    group.add(cellRing(transform, selected.gridCell, 0xffffff, 0.92, 'selected-waypoint-outline', 'selected waypoint'));
+    layer.overlayGroup.add(cellRing(transform, selected.gridCell, 0xffffff, 0.92, 'selected-waypoint-outline', 'selected waypoint'));
   }
   if (interactionViewModel.guidanceCone?.polygon?.length) {
     const points = [...interactionViewModel.guidanceCone.polygon, interactionViewModel.guidanceCone.polygon[0]].map((point) => positionForRecord(transform, point, 0.33));
     const line = makeLine(points, { color: 0x54c7ec, opacity: 0.5 });
     line.name = 'canonical-guidance-cone-outline';
     line.userData = { missionObjectType: 'guidanceCone', ownsPlanning: false };
-    group.add(line);
+    layer.overlayGroup.add(line);
   }
   if (interactionViewModel.reachableRegion?.center) {
     const region = interactionViewModel.reachableRegion;
@@ -54,8 +70,9 @@ export function updateThreePlanningInteractionLayer(layerOrGroup, interactionVie
     ring.position.copy(positionForRecord(transform, region.center, 0.27));
     ring.name = 'canonical-reachable-region-outline';
     ring.userData = { missionObjectType: 'reachableRegion', ownsPlanning: false };
-    group.add(ring);
+    layer.overlayGroup.add(ring);
   }
+  publishPlanningGuideDebug(layer, interactionViewModel.routePreview ?? null);
   return layerOrGroup;
 }
 
@@ -67,8 +84,112 @@ export function setThreePlanningInteractionLayerVisibility(layerOrGroup, visible
 }
 
 export function disposeThreePlanningInteractionLayer(layerOrGroup) {
-  const group = layerOrGroup?.group ?? layerOrGroup;
-  clearGroup(group);
+  const layer = normalizeLayer(layerOrGroup);
+  if (layer.previewLine) {
+    layer.objectDisposeCount = Number(layer.objectDisposeCount ?? 0) + 1;
+    layer.previewLine = null;
+  }
+  clearGroup(layer.previewGroup);
+  clearGroup(layer.overlayGroup);
+  layer.previewSegmentCount = 0;
+  layer.disposed = true;
+  publishPlanningGuideDebug(layer, null);
+}
+
+export function threePlanningInteractionLayerSummary(layerOrGroup = {}, preview = null) {
+  const layer = normalizeLayer(layerOrGroup);
+  const visiblePreviewSegments = countVisiblePreviewSegments(layer.previewGroup);
+  return {
+    type: 'anchor.renderer.three-planning-interaction-layer-summary',
+    version: THREE_PLANNING_INTERACTION_LAYER_VERSION,
+    active: visiblePreviewSegments > 0,
+    previewDigest: layer.lastPreviewDigest ?? preview?.digest ?? null,
+    previewSegmentCount: visiblePreviewSegments,
+    objectCreateCount: Number(layer.objectCreateCount ?? 0),
+    objectReuseCount: Number(layer.objectReuseCount ?? 0),
+    objectDisposeCount: Number(layer.objectDisposeCount ?? 0),
+    stalePreviewCount: Number(layer.stalePreviewCount ?? 0),
+    maximumSimultaneousPreviewSegments: Number(layer.maximumSimultaneousPreviewSegments ?? 0),
+    previewOwnsPlan: false,
+    previewIsExported: false,
+    disposed: layer.disposed === true,
+    preview: planningGuidePreviewSummary(preview)
+  };
+}
+
+function normalizeLayer(layerOrGroup = {}) {
+  if (layerOrGroup?.group) return layerOrGroup;
+  layerOrGroup.overlayGroup ??= layerOrGroup;
+  layerOrGroup.previewGroup ??= layerOrGroup;
+  return layerOrGroup;
+}
+
+function updatePreviewSegment(layer, preview, transform) {
+  const active = preview?.active === true && preview?.originPoint && preview?.candidatePoint;
+  if (!active) {
+    if (layer.previewLine) layer.previewLine.visible = false;
+    layer.previewSegmentCount = 0;
+    layer.lastPreviewDigest = null;
+    return;
+  }
+  const start = positionForRecord(transform, preview.originPoint, 0.42);
+  const end = positionForRecord(transform, preview.candidatePoint, 0.42);
+  const color = preview.valid === false || preview.validationStatus === 'INVALID' ? 0xff4e5a : 0x63e6be;
+  if (!layer.previewLine) {
+    layer.previewLine = makeLine([start, end], { color, opacity: 0.78 });
+    layer.previewLine.name = 'three-route-preview-segment';
+    layer.previewLine.userData = { missionObjectType: 'routePreview', semantic: 'candidate waypoint preview', ownsPlanning: false, previewOwnsPlan: false, previewIsExported: false };
+    layer.previewGroup.add(layer.previewLine);
+    layer.objectCreateCount = Number(layer.objectCreateCount ?? 0) + 1;
+  } else {
+    replaceLineGeometry(layer.previewLine, [start, end], color, 0.78);
+    layer.previewLine.visible = true;
+    layer.objectReuseCount = Number(layer.objectReuseCount ?? 0) + 1;
+  }
+  layer.previewLine.userData.previewDigest = preview.digest ?? null;
+  layer.previewLine.userData.selectedAgentId = preview.selectedAgentId ?? null;
+  layer.previewLine.userData.originType = preview.originType ?? null;
+  layer.previewLine.userData.originId = preview.originId ?? null;
+  layer.previewLine.userData.validationStatus = preview.validationStatus ?? null;
+  layer.lastPreviewDigest = preview.digest ?? null;
+  layer.previewSegmentCount = 1;
+  const visibleCount = countVisiblePreviewSegments(layer.previewGroup);
+  layer.stalePreviewCount = Math.max(0, visibleCount - 1);
+  layer.maximumSimultaneousPreviewSegments = Math.max(Number(layer.maximumSimultaneousPreviewSegments ?? 0), visibleCount);
+}
+
+function replaceLineGeometry(line, points, color, opacity) {
+  line.geometry?.dispose?.();
+  line.geometry = new THREE.BufferGeometry().setFromPoints(points);
+  line.material.color.setHex(color);
+  line.material.transparent = opacity < 1;
+  line.material.opacity = opacity;
+  line.material.needsUpdate = true;
+}
+
+function countVisiblePreviewSegments(group) {
+  return (group?.children ?? []).filter((child) => child.visible !== false && child.userData?.missionObjectType === 'routePreview').length;
+}
+
+function publishPlanningGuideDebug(layer, preview) {
+  const summary = threePlanningInteractionLayerSummary(layer, preview);
+  globalThis.ANCHOR_PLANNING_GUIDE_DEBUG = {
+    version: THREE_PLANNING_INTERACTION_LAYER_VERSION,
+    active: summary.active,
+    selectedAgentId: preview?.selectedAgentId ?? null,
+    originType: preview?.originType ?? null,
+    originId: preview?.originId ?? null,
+    previewDigest: summary.previewDigest,
+    previewSegmentCount: summary.previewSegmentCount,
+    objectCreateCount: summary.objectCreateCount,
+    objectReuseCount: summary.objectReuseCount,
+    objectDisposeCount: summary.objectDisposeCount,
+    stalePreviewCount: summary.stalePreviewCount,
+    maximumSimultaneousPreviewSegments: summary.maximumSimultaneousPreviewSegments,
+    previewOwnsPlan: false,
+    previewIsExported: false,
+    failures: summary.stalePreviewCount > 0 ? ['stalePreviewSegmentsPresent'] : []
+  };
 }
 
 function cellRing(transform, cell, color, opacity, name, semantic) {

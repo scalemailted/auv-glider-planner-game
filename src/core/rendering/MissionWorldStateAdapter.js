@@ -1,4 +1,4 @@
-import { getPlanningFrame } from '../sim/ChallengeMode.js';
+﻿import { getPlanningFrame } from '../sim/ChallengeMode.js';
 import { getFrameAtTime, getWindowForTime } from '../time/MissionTime.js';
 import { sampleCurrentField } from '../currents/CurrentFieldSampler.js';
 import { getDeploymentZonesForAgent, getSelectedStart } from '../deployment/DeploymentZones.js';
@@ -56,6 +56,8 @@ export function missionWorldRenderInputSummary(input = {}) {
     levelId: input.level?.levelId ?? null,
     operationalDomainId: input.level?.operationalDomain?.domainId ?? input.level?.world?.operationalDomain?.domainId ?? null,
     resolutionProfileId: input.level?.resolutionProfile?.profileId ?? input.level?.world?.resolutionProfile?.profileId ?? null,
+    terrainAuthorityMode: input.level?.terrainAuthority?.terrainAuthorityMode ?? input.level?.signedTerrainSurface?.terrainAuthorityMode ?? (input.level?.signedTerrainSurface ? 'signedElevationV1' : null),
+    terrainSourceDigest: input.level?.terrainAuthority?.terrainSourceDigest ?? input.level?.signedTerrainSurface?.digest ?? null,
     missionId: input.mission?.missionId ?? null,
     activeTimeSeconds: finiteNumber(input.activeTimeSeconds),
     selectedAgentId: input.selectedAgentId ?? null,
@@ -406,3 +408,4 @@ function finiteNumber(value, fallback = 0) {
 function round(value, digits = 4) {
   return Number(Number(value).toFixed(digits));
 }
+

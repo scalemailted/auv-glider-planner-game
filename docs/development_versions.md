@@ -584,3 +584,7 @@ Mission Editor world presentation now uses Three.js with canonical editor docume
 ## THREE-R3A
 
 Added a gated Phaser-free production shell behind `?runtimeShell=next`, plus route/lifecycle/session/view-host contracts, accessibility/debug foundations, static packaging audit, focused E2E coverage, and owner-review artifact specs. The default Phaser shell remains active. Phaser final removal is deferred to R3B.
+
+## WORLD-R1.1
+
+Adds regional profile activation, signed terrain authority, checked-in regional fixture, continuous selected-start preservation, and stable reusable Three.js Planning-guide preview geometry. This phase does not switch the default runtime, remove Phaser, add dependencies, or alter official scoring semantics.

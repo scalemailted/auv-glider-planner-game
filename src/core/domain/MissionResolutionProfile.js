@@ -1,4 +1,4 @@
-export const MISSION_RESOLUTION_PROFILE_VERSION = 'mission-resolution-profile-world-r1';
+﻿export const MISSION_RESOLUTION_PROFILE_VERSION = 'mission-resolution-profile-world-r1';
 
 export const MISSION_RESOLUTION_PROFILES = Object.freeze({
   tutorialCompact: Object.freeze({
@@ -9,6 +9,26 @@ export const MISSION_RESOLUTION_PROFILES = Object.freeze({
     scienceGrid: { columns: 24, rows: 16, role: 'sample value and priority source' },
     currentGrid: { columns: 18, rows: 12, role: 'current vector source' },
     renderLod: { terrainMaxVertices: 2500, scalarTextureMaxPixels: 4096, currentVectorMaxGlyphs: 240, inspectionGlyphMaxCount: 120 },
+    simulationTime: { dtSeconds: 300, maxSteps: 576 }
+  }),
+  coastalStandard: Object.freeze({
+    profileId: 'coastalStandard',
+    label: 'Coastal Mission Area',
+    planningLattice: { columns: 32, rows: 20, role: 'route planning and inspection lattice' },
+    terrainGrid: { columns: 129, rows: 81, role: 'bathymetry/land-sea source grid' },
+    scienceGrid: { columns: 64, rows: 40, role: 'sampling value and uncertainty fields' },
+    currentGrid: { columns: 48, rows: 30, role: 'flow vector fields' },
+    renderLod: { terrainMaxVertices: 14000, scalarTextureMaxPixels: 6144, currentVectorMaxGlyphs: 560, inspectionGlyphMaxCount: 220 },
+    simulationTime: { dtSeconds: 300, maxSteps: 432 }
+  }),
+  regionalFleet: Object.freeze({
+    profileId: 'regionalFleet',
+    label: 'Regional Fleet Area',
+    planningLattice: { columns: 48, rows: 30, role: 'route planning and classroom inspection lattice' },
+    terrainGrid: { columns: 193, rows: 121, role: 'bathymetry/land-sea source grid' },
+    scienceGrid: { columns: 96, rows: 60, role: 'sampling value, belief, uncertainty, and priority fields' },
+    currentGrid: { columns: 64, rows: 40, role: 'flow vector fields' },
+    renderLod: { terrainMaxVertices: 24000, scalarTextureMaxPixels: 8192, currentVectorMaxGlyphs: 900, inspectionGlyphMaxCount: 300 },
     simulationTime: { dtSeconds: 300, maxSteps: 576 }
   }),
   regionalShelfFleet: Object.freeze({
@@ -39,8 +59,8 @@ export function createMissionResolutionProfile(options = {}) {
 
 export function normalizeMissionResolutionProfile(input = {}) {
   const source = typeof input === 'string'
-    ? MISSION_RESOLUTION_PROFILES[input] ?? MISSION_RESOLUTION_PROFILES.regionalShelfFleet
-    : (MISSION_RESOLUTION_PROFILES[input.profileId] ? { ...MISSION_RESOLUTION_PROFILES[input.profileId], ...input } : input);
+    ? MISSION_RESOLUTION_PROFILES[resolutionProfileAlias(input)] ?? MISSION_RESOLUTION_PROFILES.regionalShelfFleet
+    : (MISSION_RESOLUTION_PROFILES[resolutionProfileAlias(input.profileId)] ? { ...MISSION_RESOLUTION_PROFILES[resolutionProfileAlias(input.profileId)], ...input, profileId: input.profileId ?? MISSION_RESOLUTION_PROFILES[resolutionProfileAlias(input.profileId)].profileId } : input);
   const base = source && Object.keys(source).length ? source : MISSION_RESOLUTION_PROFILES.regionalShelfFleet;
   const planningLattice = normalizeGridSpec(base.planningLattice ?? base.planningGrid ?? base.grid, MISSION_RESOLUTION_PROFILES.regionalShelfFleet.planningLattice);
   const terrainGrid = normalizeGridSpec(base.terrainGrid, MISSION_RESOLUTION_PROFILES.regionalShelfFleet.terrainGrid);
@@ -143,6 +163,12 @@ export function resolutionGridForRole(profile = {}, role = 'planning') {
   return normalized.planningLattice;
 }
 
+function resolutionProfileAlias(value) {
+  if (value === 'compactTrainingArea') return 'tutorialCompact';
+  if (value === 'coastalMissionArea') return 'coastalStandard';
+  if (value === 'regionalFleetArea') return 'regionalFleet';
+  return value;
+}
 function normalizeGridSpec(input = {}, fallback = {}) {
   return {
     columns: positiveInt(input.columns ?? input.width, fallback.columns ?? fallback.width ?? 1),
@@ -173,3 +199,4 @@ function round(value, digits = 6) {
   const number = Number(value);
   return Number.isFinite(number) ? Number(number.toFixed(digits)) : null;
 }
+

@@ -47,3 +47,7 @@ node tools/js/audit_operational_domain_authority_boundaries.mjs
 node tools/js/audit_regional_export_compactness.mjs
 node tools/js/audit_regional_browser_headless_parity.mjs
 ```
+
+## WORLD-R1.1 Regional Fixture
+
+`levels/regional_fleet_survey.json` is the checked-in synthetic regional fixture. It uses `regionalFleet`, three gliders, signed terrain authority, and the label `Synthetic Regional Shelf and Basin`. It is educational synthetic data and not real Gulf bathymetry or a calibrated forecast.

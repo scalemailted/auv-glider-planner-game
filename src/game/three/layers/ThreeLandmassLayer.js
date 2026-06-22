@@ -52,7 +52,9 @@ export function threeLandmassLayerSummary(layer = {}, meshGeometry = {}) {
     landVertexCount: (meshGeometry.landVertexMask ?? []).filter(Boolean).length,
     sourceDigest: meshGeometry.sourceDigest ?? layer.mesh?.userData?.sourceDigest ?? null,
     rendererOwnsRouteBlocking: false,
-    landElevationDisplayOnly: true
+    landElevationDisplayOnly: true,
+    usesPerCellLandMeshes: false,
+    landTileMeshCount: 0
   };
 }
 

@@ -1,4 +1,4 @@
-import { buildScenarioSummary } from '../../../core/scenario/ScenarioSummary.js';
+﻿import { buildScenarioSummary } from '../../../core/scenario/ScenarioSummary.js';
 import { beginScenario, markBriefingSeen } from '../../../core/scenario/ScenarioState.js';
 import { resetPlanResultStore } from '../../../core/evaluation/PlanResultStore.js';
 import {
@@ -6,6 +6,7 @@ import {
   describeScenarioComplexity,
   generateScenarioFromConfig,
   normalizeScenarioConfig,
+  OPERATIONAL_DOMAIN_CHOICES,
   SCENARIO_SIZE_PRESETS
 } from '../../../core/generation/ScenarioConfig.js';
 import { VECTOR_FIELD_PRESETS } from '../../../core/generation/VectorFieldPresets.js';
@@ -149,8 +150,9 @@ export class MissionBriefingScene extends PhaserScene {
           ${challengeSetup ? missionModeBriefingIntroHtml(config) : ''}
           <section class="setup-metric-grid">
             ${challengeSetup ? setupMetricHtml('Mission', missionModeLabel(config.missionMode)) : ''}
+            ${setupMetricHtml('Operational Domain', operationalDomainLabel(config))}
             ${setupMetricHtml('Agents', config.agentCount)}
-            ${setupMetricHtml('Map Size', `${config.width} x ${config.height}`)}
+            ${setupMetricHtml('Inspection Lattice', `${config.width} x ${config.height}`)}
             ${setupMetricHtml('Duration', `${config.duration} hr`)}
             ${setupMetricHtml('Surface Interval', `${config.surfaceInterval} hr`)}
             ${setupMetricHtml('Fuel / Glider', config.fuel)}
@@ -160,7 +162,8 @@ export class MissionBriefingScene extends PhaserScene {
             ${setupMetricHtml('Priority Stars', `${Math.round(config.priorityTargetFrequency * 100)}% window chance`)}
           </section>
           <section class="setup-section-grid">
-            ${setupSectionHtml('Generated Mission Preview', `${complexity.cells} cells, about ${complexity.frames} temporal frames, vector stride ${complexity.vectorStride}.`)}
+            ${setupSectionHtml('Generated Mission Preview', `${complexity.cells} inspection cells, about ${complexity.frames} temporal frames, vector stride ${complexity.vectorStride}.`)}
+            ${setupSectionHtml('Operational Domain', operationalDomainDetails(config))}
             ${setupSectionHtml('Performance Note', complexity.warning)}
             ${setupSectionHtml('Knowledge Mode', config.mode === 'forecast' ? 'Planning uses forecast and ensemble fields. Simulation resolves against hidden truth.' : 'Planning and simulation use the same perfect-knowledge truth fields.')}
             ${challengeSetup ? setupSectionHtml('Strategy', getMissionModePreset(config.missionMode).strategyHint) : ''}
@@ -353,9 +356,10 @@ export class MissionBriefingScene extends PhaserScene {
           <span>${escapeHtml(config.mode === 'forecast' ? 'Forecast' : 'Perfect Knowledge')}</span>
         </div>
         <div class="mission-snapshot-list">
+          ${snapshotRowHtml('Operational Domain', operationalDomainLabel(config))}
           ${snapshotRowHtml('Agents', config.agentCount)}
           ${snapshotRowHtml('Duration', `${config.duration} hr`)}
-          ${snapshotRowHtml('Map', `${config.width} x ${config.height}`)}
+          ${snapshotRowHtml('Inspection Lattice', `${config.width} x ${config.height}`)}
           ${snapshotRowHtml('Surface', `${config.surfaceInterval} hr`)}
           ${snapshotRowHtml('Current', summarizeCurrentFieldConfig(config.currentFieldConfig))}
           ${snapshotRowHtml('Sample Field', `${sampleSpatialPatternLabel(config.sampleFieldConfig?.spatialPattern)} / ${sampleTemporalBehaviorLabel(config.sampleFieldConfig?.temporalBehavior)}`)}
@@ -433,6 +437,14 @@ export class MissionBriefingScene extends PhaserScene {
     values.currentStrength = values.currentFieldConfig.strength;
     values.currentFieldSource = root?.querySelector('[data-current-field-source]')?.value ?? current.currentFieldSource ?? 'procedural';
     values.importedFlowField = values.currentFieldSource === 'imported' ? current.importedFlowField ?? null : null;
+    if (values.operationalDomainProfileId && values.operationalDomainProfileId !== current.operationalDomainProfileId) {
+      delete values.width;
+      delete values.height;
+      delete values.duration;
+      delete values.surfaceInterval;
+      delete values.agentCount;
+      delete values.fuel;
+    }
     values.sampleFieldConfig = normalizeSampleFieldConfig({
       ...current.sampleFieldConfig,
       spatialPattern: values.sampleSpatialPattern ?? current.sampleFieldConfig?.spatialPattern,
@@ -855,7 +867,8 @@ function coreSettingsSectionHtml(config) {
 
 function coreSettingsFieldsHtml(config) {
   return `
-    ${selectField('preset', 'Map Size', Object.entries(SCENARIO_SIZE_PRESETS).map(([value, preset]) => [value, preset.label]), config.preset)}
+    ${selectField('operationalDomainProfileId', 'Operational Domain', Object.entries(OPERATIONAL_DOMAIN_CHOICES).map(([value, choice]) => [value, choice.label]), config.operationalDomainProfileId)}
+    ${selectField('preset', 'Inspection Lattice Tuning', Object.entries(SCENARIO_SIZE_PRESETS).map(([value, preset]) => [value, preset.label]), config.preset)}
     ${selectField('agentCount', 'Agents', range(1, 8), String(config.agentCount))}
     ${selectField('duration', 'Duration', ['12', '24', '48', '72'].map((value) => [value, `${value} hr`]), String(config.duration))}
     ${selectField('surfaceInterval', 'Surfacing', ['3', '6', '12'].map((value) => [value, `${value} hr`]), String(config.surfaceInterval))}
@@ -906,6 +919,22 @@ function missionModeTechnicalSummaryBodyHtml(config) {
   `;
 }
 
+function operationalDomainLabel(config = {}) {
+  return OPERATIONAL_DOMAIN_CHOICES[config.operationalDomainProfileId]?.label ?? 'Compact Training Area';
+}
+
+function operationalDomainDetails(config = {}) {
+  const domain = config.operationalDomain;
+  const profile = config.resolutionProfile;
+  const widthKm = Number(domain?.horizontal?.widthMeters ?? 0) / 1000;
+  const heightKm = Number(domain?.horizontal?.heightMeters ?? 0) / 1000;
+  return `${operationalDomainLabel(config)}: ${formatNumber(widthKm)} km x ${formatNumber(heightKm)} km synthetic educational domain. Planning inspection lattice ${profile?.planningLattice?.columns ?? config.width} x ${profile?.planningLattice?.rows ?? config.height}; terrain ${profile?.terrainGrid?.columns ?? 'n/a'} x ${profile?.terrainGrid?.rows ?? 'n/a'}; scalar ${profile?.scienceGrid?.columns ?? 'n/a'} x ${profile?.scienceGrid?.rows ?? 'n/a'}; current ${profile?.currentGrid?.columns ?? 'n/a'} x ${profile?.currentGrid?.rows ?? 'n/a'}.`;
+}
+
+function formatNumber(value) {
+  const number = Number(value);
+  return Number.isFinite(number) ? Number(number.toFixed(number >= 10 ? 1 : 2)) : 'n/a';
+}
 function snapshotRowHtml(label, value) {
   return `
     <div class="mission-snapshot-row">
@@ -1105,3 +1134,4 @@ function range(min, max) {
     return [value, value];
   });
 }
+

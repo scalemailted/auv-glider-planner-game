@@ -5,17 +5,25 @@ export const BOTTOM_BOUNDARY_VIEW_MODEL_VERSION = 'bottom-boundary-view-model-th
 export function buildBottomBoundaryViewModel(options = {}) {
   const level = options.level ?? options.missionConfig?.level ?? null;
   const grid = normalizeGrid(options.grid ?? level?.world?.grid ?? level?.world ?? {}, options.width, options.height);
-  const depthSource = options.bottomDepthField
-    ?? options.depthMeters
-    ?? options.bathymetry?.depthMeters
-    ?? level?.bathymetry?.depthMeters
-    ?? level?.world?.bathymetry?.depthMeters
-    ?? level?.layers?.depthMeters
-    ?? level?.layers?.depth
-    ?? null;
-  const terrain = options.landMask ?? level?.layers?.terrain ?? null;
+  const depthSource = selectGridAlignedSource([
+    options.bottomDepthField,
+    options.depthMeters,
+    level?.layers?.depthMeters,
+    level?.layers?.depth,
+    options.bathymetry?.depthMeters,
+    level?.world?.bathymetry?.depthMeters,
+    level?.bathymetry?.depthMeters
+  ], grid);
+  const terrain = selectGridAlignedSource([
+    options.landMask,
+    level?.layers?.terrain,
+    options.bathymetry?.landMask,
+    options.bathymetry?.landSeaMask,
+    level?.bathymetry?.landMask,
+    level?.bathymetry?.landSeaMask
+  ], grid) ?? null;
   const bottomDepthField = normalizeDepthField(depthSource, grid, terrain, options.defaultWaterDepthMeters ?? 180);
-  const landMask = normalizeLandMask(options.landMask ?? options.bathymetry?.landMask ?? options.bathymetry?.landSeaMask ?? level?.bathymetry?.landMask ?? level?.layers?.terrain, grid, bottomDepthField);
+  const landMask = normalizeLandMask(terrain, grid, bottomDepthField);
   const coastlineMask = buildCoastlineMask(landMask, grid);
   const values = bottomDepthField.flat().map(Number).filter((value) => Number.isFinite(value) && value > 0);
   const hazards = normalizeCellRecords(options.hazards ?? level?.layers?.hazards, grid, 'hazard');
@@ -85,6 +93,19 @@ function normalizeGrid(grid = {}, widthFallback = null, heightFallback = null) {
     width: Math.max(1, Math.round(Number(grid.width ?? widthFallback ?? 10)) || 10),
     height: Math.max(1, Math.round(Number(grid.height ?? heightFallback ?? 10)) || 10)
   };
+}
+
+function selectGridAlignedSource(candidates = [], grid = {}) {
+  const present = candidates.filter((candidate) => Array.isArray(candidate));
+  const aligned = present.find((candidate) => gridMatches(candidate, grid));
+  return aligned ?? present[0] ?? null;
+}
+
+function gridMatches(source, grid = {}) {
+  return Array.isArray(source)
+    && source.length === Number(grid.height ?? 0)
+    && Array.isArray(source[0])
+    && source[0].length === Number(grid.width ?? 0);
 }
 
 function normalizeDepthField(source, grid, terrain = null, fallbackDepth = 180) {

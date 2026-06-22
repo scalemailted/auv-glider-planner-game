@@ -1,5 +1,6 @@
 import { getCommunicationRules } from '../sim/GliderComms.js';
 import { getTimeConfig, getWindowForTime } from '../time/MissionTime.js';
+import { validateTerrainAwareSurfaceWaypoint } from './TerrainAwareMissionValidation.js';
 import { estimateTemporalSegment, getPlanningAnchorForAgent } from './TemporalWaypointPlanner.js';
 
 export function canPlaceWaypoint(state, agentId, target, options = {}) {
@@ -14,6 +15,12 @@ export function canPlaceWaypoint(state, agentId, target, options = {}) {
   if (!anchor) {
     return { allowed: false, reason: 'deploymentStartMissing', message: 'Choose a deployment cell first.', estimate: null };
   }
+  const terrainValidation = validateTerrainAwareSurfaceWaypoint({ level, mission, agentId, position: target });
+  if (!terrainValidation.accepted) {
+    const message = terrainValidation.hardErrors?.[0]?.message ?? 'Waypoint must be in navigable water.';
+    return { allowed: false, reason: 'terrainBlocked', message, estimate: null, terrainAwareValidation: terrainValidation };
+  }
+
   const segment = estimateTemporalSegment({
     level,
     mission,
@@ -29,8 +36,10 @@ export function canPlaceWaypoint(state, agentId, target, options = {}) {
   const arrivalTime = Number(anchor?.t ?? 0) + Number(segment.estimatedTravelTime ?? 0);
   const duration = getTimeConfig(level).duration;
   const surface = surfaceWindowEstimate(mission, Number(anchor?.t ?? 0), arrivalTime);
-  const warnings = [...(segment.warnings ?? [])];
-  const warningCodes = [];
+  const terrainWarnings = (terrainValidation.warnings ?? []).map((issue) => issue.message).filter(Boolean);
+  const terrainWarningCodes = (terrainValidation.warnings ?? []).map((issue) => issue.code).filter(Boolean);
+  const warnings = [...(segment.warnings ?? []), ...terrainWarnings];
+  const warningCodes = [...terrainWarningCodes];
   const beyondMissionWindow = arrivalTime > duration;
   if (beyondMissionWindow) {
     warnings.push('Waypoint ETA exceeds mission duration; it will be kept as a mission-window warning.');
@@ -49,7 +58,8 @@ export function canPlaceWaypoint(state, agentId, target, options = {}) {
     beyondMissionWindow,
     likelyReachedWithinWindow: !beyondMissionWindow,
     warningCodes,
-    surface
+    surface,
+    terrainAwareValidation: terrainValidation
   };
 
   if (!segment.valid) {

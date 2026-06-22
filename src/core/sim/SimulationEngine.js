@@ -389,6 +389,7 @@ export class SimulationEngine {
     const outcome = stepAgentToward(agent, activeWaypoint, this.world, dt, {
       t: this.t,
       mission: this.mission,
+      agentPlan: this.plan?.agentPlans?.find((candidate) => candidate.agentId === agent.id) ?? null,
       driftGain: getDriftRules(this.mission).driftGain,
       energyPerCell: this.mission.physics?.energyPerCell ?? 1,
       waterColumnConfig: this.missionState.waterColumnConfig

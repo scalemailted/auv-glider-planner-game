@@ -412,3 +412,7 @@ Mission Editor parity now uses the canonical editor document/command/session pat
 3. THREE-R3C - Release candidate hardening, packaging, accessibility closure, documentation, and production release.
 
 No scientific, scoring, schema, or planner semantics change in R3A. Human manual QA remains separate from headed automated QA.
+
+## WORLD-R1.1 Checkpoint
+
+WORLD-R1.1 activates Regional Fleet Area in generated gameplay, unifies modern land/water/coastline/bottom behavior under a signed terrain surface, preserves continuous physical route coordinates, and fixes stale Planning-guide preview geometry. THREE-R3B remains gated by the separate R3A owner approval path; WORLD-R1.1 does not switch runtimes or remove Phaser.

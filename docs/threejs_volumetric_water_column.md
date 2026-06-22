@@ -86,3 +86,7 @@ Operational depth slabs continue to use canonical valid-depth masks. Invalid lan
 ## THREE-R1.2B.1 Terrain Contract Note
 
 One shared terrain contract serves all active Three mission views. The terrain mesh is a display projection of canonical bathymetry. Production no longer uses boxed/per-cell terrain. Retained legacy terrain helpers are compatibility-only and not production. Terrain quality affects presentation only. Headed performance is the authoritative render-cost gate. Human manual QA remains separate from headed automated QA.
+
+## Regional Terrain And Water Column Boundary
+
+WORLD-R1.1 keeps the 2.5D water-column model as continuous horizontal surface intent plus educational dive profiles. It does not add arbitrary underwater XYZ route planning, a new planner, a fluid solver, or calibrated ocean data. Regional terrain and depth masks are synthetic and sourced from signed terrain authority.

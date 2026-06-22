@@ -95,13 +95,9 @@ export class TruthWorld {
   }
 
   sampleBottomDepthMeters(x, y) {
-    const grid = this.level.bathymetry?.depthMeters ?? this.level.layers?.bathymetry?.depthMeters ?? this.level.layers?.bottomDepthMeters ?? null;
-    if (!Array.isArray(grid) || !grid.length) return Infinity;
-    const width = grid[0]?.length ?? this.grid.width;
-    const height = grid.length;
-    const cx = Math.max(0, Math.min(width - 1, Math.round(Number(x))));
-    const cy = Math.max(0, Math.min(height - 1, Math.round(Number(y))));
-    const value = Number(grid[cy]?.[cx]);
+    const source = selectBottomDepthSource(this.level, this.grid);
+    if (!source) return Infinity;
+    const value = sampleBottomDepthSource(source, x, y, this.grid);
     return Number.isFinite(value) ? Math.max(0, value) : Infinity;
   }
 
@@ -154,4 +150,56 @@ export class TruthWorld {
       ?? this.level?.meta?.fieldSamplingProfileId
       ?? fallback;
   }
+}
+function selectBottomDepthSource(level = {}, planningGrid = {}) {
+  const candidates = [
+    level.layers?.bottomDepthMeters,
+    level.layers?.depthMeters,
+    level.layers?.depth,
+    level.bathymetry?.depthMeters,
+    level.world?.bathymetry?.depthMeters,
+    level.layers?.bathymetry?.depthMeters,
+    level.regionalFields?.bathymetryDepthMeters,
+    level.signedTerrainSurface?.bottomDepthMeters
+  ].filter((candidate) => Array.isArray(candidate) && Array.isArray(candidate[0]));
+  if (!candidates.length) return null;
+  return candidates.find((candidate) => gridMatches(candidate, planningGrid)) ?? candidates[0];
+}
+
+function gridMatches(grid = [], planningGrid = {}) {
+  return grid.length === Number(planningGrid.height ?? 0)
+    && Number(grid[0]?.length ?? 0) === Number(planningGrid.width ?? 0);
+}
+
+function sampleBottomDepthSource(grid = [], x = 0, y = 0, planningGrid = {}) {
+  const height = grid.length;
+  const width = grid[0]?.length ?? 0;
+  if (!height || !width) return Infinity;
+  const planningWidth = Math.max(1, Number(planningGrid.width ?? width));
+  const planningHeight = Math.max(1, Number(planningGrid.height ?? height));
+  const sourceX = width === planningWidth ? Number(x) : (Number(x) / Math.max(1, planningWidth - 1)) * Math.max(1, width - 1);
+  const sourceY = height === planningHeight ? Number(y) : (Number(y) / Math.max(1, planningHeight - 1)) * Math.max(1, height - 1);
+  return sampleGridBilinear(grid, sourceX, sourceY);
+}
+
+function sampleGridBilinear(grid = [], x = 0, y = 0) {
+  const height = grid.length;
+  const width = grid[0]?.length ?? 0;
+  if (!height || !width) return Infinity;
+  const bx = Math.max(0, Math.min(width - 1, Number(x) || 0));
+  const by = Math.max(0, Math.min(height - 1, Number(y) || 0));
+  const x0 = Math.floor(bx);
+  const y0 = Math.floor(by);
+  const x1 = Math.min(width - 1, x0 + 1);
+  const y1 = Math.min(height - 1, y0 + 1);
+  const tx = bx - x0;
+  const ty = by - y0;
+  const a = Number(grid[y0]?.[x0]);
+  const b = Number(grid[y0]?.[x1]);
+  const c = Number(grid[y1]?.[x0]);
+  const d = Number(grid[y1]?.[x1]);
+  if (![a, b, c, d].every(Number.isFinite)) return Infinity;
+  const top = a + (b - a) * tx;
+  const bottom = c + (d - c) * tx;
+  return top + (bottom - top) * ty;
 }

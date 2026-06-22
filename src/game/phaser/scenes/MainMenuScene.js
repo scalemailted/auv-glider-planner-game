@@ -756,7 +756,10 @@ export class MainMenuScene extends PhaserScene {
     this.app.state.ui.revealTruth = false;
     this.app.state.ui.forecastMemberId = stochastic ? 'ensemble_mean' : null;
     this.app.state.ui.roiViewMode = stochastic ? 'expectedValue' : 'expectedValue';
-    this.app.state.pendingScenarioSetup = createDefaultScenarioConfig(mode);
+    this.app.state.pendingScenarioSetup = {
+      ...createDefaultScenarioConfig(mode),
+      operationalDomainProfileId: normalizedExperience === EXPERIENCE_MODES.challenge ? 'regionalFleetArea' : 'compactTrainingArea'
+    };
     this.app.state.level = null;
     this.app.state.mission = null;
     this.app.state.challengeMode = mode;
@@ -781,11 +784,19 @@ export class MainMenuScene extends PhaserScene {
     this.leaveMainMenuHub();
     const stochastic = mode === 'forecast';
     const normalizedExperience = normalizeExperienceMode(experienceMode);
-    const { level, mission } = generateScenarioFromConfig(createDefaultScenarioConfig(mode));
+    const { level, mission } = generateScenarioFromConfig({
+      ...createDefaultScenarioConfig(mode),
+      operationalDomainProfileId: normalizedExperience === EXPERIENCE_MODES.challenge ? 'regionalFleetArea' : 'compactTrainingArea'
+    });
     level.meta ??= {};
     level.meta.experienceMode = normalizedExperience;
     mission.meta ??= {};
     mission.meta.experienceMode = normalizedExperience;
+    if (normalizedExperience === EXPERIENCE_MODES.challenge) {
+      clearGeneratedDeploymentSelections(mission);
+      ensureLegacyDropZoneAliases(level);
+      useLegacyDeploymentZoneIds(mission);
+    }
     this.app.state.ui.revealTruth = false;
     this.app.state.ui.forecastMemberId = stochastic ? 'ensemble_mean' : null;
     this.app.state.ui.roiViewMode = 'expectedValue';
@@ -808,6 +819,52 @@ export class MainMenuScene extends PhaserScene {
   destroyMenuButtons() {
     this.buttons?.forEach((button) => button.destroy());
     this.buttons = [];
+  }
+}
+function ensureLegacyDropZoneAliases(level = {}) {
+  if (!Array.isArray(level.zones)) return;
+  const aliases = [
+    ['regional_drop_alpha', 'drop_alpha'],
+    ['regional_drop_beta', 'drop_beta']
+  ];
+  const existing = new Set(level.zones.map((zone) => zone.id));
+  for (const [sourceId, aliasId] of aliases) {
+    if (existing.has(aliasId)) continue;
+    const source = level.zones.find((zone) => zone.id === sourceId);
+    if (!source) continue;
+    level.zones.push({
+      ...source,
+      id: aliasId,
+      label: source.label ?? aliasId,
+      compatibilityAliasFor: sourceId
+    });
+    existing.add(aliasId);
+  }
+}
+function useLegacyDeploymentZoneIds(mission = {}) {
+  const aliases = new Map([
+    ['regional_drop_alpha', 'drop_alpha'],
+    ['regional_drop_beta', 'drop_beta']
+  ]);
+  for (const agent of mission.agents ?? []) {
+    const deployment = agent.deployment;
+    if (!deployment) continue;
+    if (aliases.has(deployment.zoneId)) deployment.zoneId = aliases.get(deployment.zoneId);
+    if (aliases.has(deployment.selectedZoneId)) deployment.selectedZoneId = aliases.get(deployment.selectedZoneId);
+    if (Array.isArray(deployment.zoneIds)) {
+      deployment.zoneIds = deployment.zoneIds.map((id) => aliases.get(id) ?? id);
+    }
+  }
+}
+function clearGeneratedDeploymentSelections(mission = {}) {
+  for (const agent of mission.agents ?? []) {
+    const mode = agent.deployment?.mode;
+    if (mode !== 'chooseFromZone' && mode !== 'chooseFromZones') continue;
+    delete agent.start;
+    delete agent.selectedStart;
+    agent.deployment ??= { mode };
+    agent.deployment.selectedStart = null;
+    agent.deployment.locked = false;
   }
 }
 function escapeHtml(value) {
@@ -908,3 +965,4 @@ function formatScore(value) {
   const number = Number(value);
   return Number.isFinite(number) ? number.toFixed(1) : 'N/A';
 }
+

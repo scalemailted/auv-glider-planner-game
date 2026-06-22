@@ -1,5 +1,6 @@
 import { createSeededRng, seededUnit } from '../random/SeededRng.js';
 import { createCoastalOperationalBathymetry } from '../science/BathymetryFieldModel.js';
+import { createSignedTerrainSurfaceFromBathymetry, sampleSignedTerrainSurfaceAtUv, signedTerrainSurfaceSummary } from '../science/SignedTerrainSurfaceModel.js';
 import { createOperationalDomainSpec, operationalDomainDigest, operationalDomainSummary } from '../domain/OperationalDomainSpec.js';
 import { missionResolutionProfileSummary, normalizeMissionResolutionProfile } from '../domain/MissionResolutionProfile.js';
 import { gridCellToPhysicalPoint } from '../domain/OperationalDomainCoordinates.js';
@@ -22,15 +23,17 @@ export function createRegionalContinentalShelfScenario(options = {}) {
     maxDepthMeters: domain.vertical.maxDepthMeters,
     minimumNavigableDepthMeters: 8
   });
+  const signedTerrainSurface = createSignedTerrainSurfaceFromBathymetry(bathymetry, { minimumNavigableDepthMeters: 8 });
   bathymetry.operationalDomain = operationalDomainSummary(domain);
   bathymetry.resolutionRole = 'terrainGrid';
-  const regionalScience = buildField(scienceGrid, (u, v) => evaluateRegionalScienceValueAtUv(u, v, { seed }));
-  const regionalUncertainty = buildField(scienceGrid, (u, v) => evaluateRegionalUncertaintyAtUv(u, v, { seed }));
-  const regionalCurrent = buildVectorField(currentGrid, (u, v) => evaluateRegionalCurrentAtUv(u, v, { seed }));
-  const roi = buildField(planning, (u, v) => evaluateRegionalScienceValueAtUv(u, v, { seed }));
-  const terrain = buildField(planning, (u, v) => evaluateRegionalLandMaskAtUv(u, v, { seed }), { integer: true });
-  const hazards = buildField(planning, (u, v) => evaluateRegionalHazardAtUv(u, v, { seed }), { integer: false });
-  const current = buildVectorField(planning, (u, v) => evaluateRegionalCurrentAtUv(u, v, { seed }));
+  bathymetry.signedTerrainSurfaceDigest = signedTerrainSurface.digest;
+  const regionalScience = buildField(scienceGrid, (u, v) => sampleSignedTerrainSurfaceAtUv(signedTerrainSurface, u, v).navigable ? evaluateRegionalScienceValueAtUv(u, v, { seed }) : 0);
+  const regionalUncertainty = buildField(scienceGrid, (u, v) => sampleSignedTerrainSurfaceAtUv(signedTerrainSurface, u, v).navigable ? evaluateRegionalUncertaintyAtUv(u, v, { seed }) : 0);
+  const regionalCurrent = buildVectorField(currentGrid, (u, v) => sampleSignedTerrainSurfaceAtUv(signedTerrainSurface, u, v).navigable ? evaluateRegionalCurrentAtUv(u, v, { seed }) : { u: 0, v: 0, magnitude: 0 });
+  const roi = buildField(planning, (u, v) => sampleSignedTerrainSurfaceAtUv(signedTerrainSurface, u, v).navigable ? evaluateRegionalScienceValueAtUv(u, v, { seed }) : 0);
+  const terrain = buildField(planning, (u, v) => sampleSignedTerrainSurfaceAtUv(signedTerrainSurface, u, v).land ? 1 : 0, { integer: true });
+  const hazards = buildField(planning, (u, v) => evaluateRegionalHazardAtUv(u, v, { seed, signedTerrainSurface }), { integer: false });
+  const current = buildVectorField(planning, (u, v) => sampleSignedTerrainSurfaceAtUv(signedTerrainSurface, u, v).navigable ? evaluateRegionalCurrentAtUv(u, v, { seed }) : { u: 0, v: 0, magnitude: 0 });
   const durationHours = Math.max(1, Math.round(domain.time.durationSeconds / 3600));
   const dtHours = Math.max(1, Math.round(domain.time.dtSeconds / 3600) || 1);
   const level = {
@@ -47,10 +50,18 @@ export function createRegionalContinentalShelfScenario(options = {}) {
       syntheticEducational: true,
       calibratedOceanForecast: false,
       operationalForecast: false,
-      operationalDomainDigest: operationalDomainDigest(domain)
+      disclaimer: 'Synthetic educational operating area. Not real Gulf of Mexico bathymetry or forecast data.',
+      terrainAuthorityMode: 'signedElevationV1',
+      operationalDomainDigest: operationalDomainDigest(domain),
+      terrainSourceDigest: signedTerrainSurface.digest,
+      landWaterSourceDigest: signedTerrainSurface.digest,
+      coastlineSourceDigest: signedTerrainSurface.digest,
+      bottomBoundarySourceDigest: signedTerrainSurface.digest
     },
     operationalDomain: domain,
     resolutionProfile: profile,
+    terrainAuthority: signedTerrainSurfaceSummary(signedTerrainSurface),
+    signedTerrainSurface,
     world: {
       grid: {
         width: planning.columns,
@@ -80,19 +91,26 @@ export function createRegionalContinentalShelfScenario(options = {}) {
       scienceValue: regionalScience,
       uncertainty: regionalUncertainty,
       currentVector: regionalCurrent,
-      bathymetryDepthMeters: bathymetry.depthMeters
+      bathymetryDepthMeters: bathymetry.depthMeters,
+      signedTerrainSurfaceDigest: signedTerrainSurface.digest,
+      sourceDigests: {
+        terrainSourceDigest: signedTerrainSurface.digest,
+        landWaterSourceDigest: signedTerrainSurface.digest,
+        coastlineSourceDigest: signedTerrainSurface.digest,
+        bottomBoundarySourceDigest: signedTerrainSurface.digest
+      }
     },
     layers: {
       terrain,
       hazards,
-      depth: buildField(planning, (u, v) => evaluateRegionalBathymetryDepthAtUv(u, v, domain), { integer: false }),
+      depth: buildField(planning, (u, v) => sampleSignedTerrainSurfaceAtUv(signedTerrainSurface, u, v).bottomDepthMeters, { integer: false }),
       truth: { frames: [{ t: 0, current, roi }] },
       forecast: { frames: [{ t: 0, current, roi: blurField(roi) }] },
       bases: [{ id: 'base_regional_alpha', x: 2, y: Math.floor(planning.rows * 0.5), radius: 1 }],
       priorityTargets: buildPriorityTargets(planning, seed),
       mobileHazards: []
     },
-    zones: buildDeploymentZones(planning)
+    zones: buildDeploymentZones(planning, signedTerrainSurface, seed)
   };
   return level;
 }
@@ -102,14 +120,7 @@ export function createRegionalFleetMission(options = {}) {
   const profile = normalizeMissionResolutionProfile(options.resolutionProfile ?? options.profile ?? 'regionalShelfFleet');
   const planning = profile.planningLattice;
   const agentCount = Math.max(1, Math.min(6, Math.round(Number(options.agentCount ?? 3))));
-  const starts = [
-    { x: 2, y: Math.floor(planning.rows * 0.42) },
-    { x: 3, y: Math.floor(planning.rows * 0.54) },
-    { x: 2, y: Math.floor(planning.rows * 0.66) },
-    { x: 3, y: Math.floor(planning.rows * 0.3) },
-    { x: 4, y: Math.floor(planning.rows * 0.78) },
-    { x: 5, y: Math.floor(planning.rows * 0.18) }
-  ];
+  const starts = regionalDeploymentStartCells(planning);
   return {
     schemaVersion: '2.0',
     type: 'anchor.mission',
@@ -120,6 +131,8 @@ export function createRegionalFleetMission(options = {}) {
       seed,
       syntheticEducational: true,
       calibratedOceanForecast: false,
+      disclaimer: 'Synthetic educational operating area. Not real Gulf of Mexico bathymetry or forecast data.',
+      terrainAuthorityMode: 'signedElevationV1',
       generationVersion: REGIONAL_MISSION_DEFAULTS_VERSION
     },
     resolutionProfile: profile,
@@ -127,7 +140,7 @@ export function createRegionalFleetMission(options = {}) {
       id: `glider_${index + 1}`,
       label: `Glider ${index + 1}`,
       start: starts[index],
-      deployment: { mode: 'fixed', selectedStart: starts[index], zoneId: 'regional_drop_alpha' },
+      deployment: { mode: 'chooseFromZone', selectedStart: starts[index], zoneId: 'regional_drop_alpha', zoneIds: ['regional_drop_alpha'] },
       battery: 190,
       maxBattery: 190,
       maxSpeed: 1.1,
@@ -253,7 +266,8 @@ export function evaluateRegionalLandMaskAtUv(u, v) {
 }
 
 export function evaluateRegionalHazardAtUv(u, v, options = {}) {
-  if (evaluateRegionalLandMaskAtUv(u, v) > 0) return 1;
+  const terrainSample = options.signedTerrainSurface ? sampleSignedTerrainSurfaceAtUv(options.signedTerrainSurface, u, v) : null;
+  if (terrainSample?.land || (!terrainSample && evaluateRegionalLandMaskAtUv(u, v) > 0)) return 1;
   const shallowBank = Math.exp(-(((u - 0.27) ** 2) / 0.012 + ((v - 0.22) ** 2) / 0.025));
   const steepCanyon = Math.exp(-(((u - 0.56 - 0.09 * v) ** 2) / 0.004 + ((v - 0.58) ** 2) / 0.25));
   return round(clamp01(0.08 * shallowBank + 0.18 * steepCanyon + (seededUnit(`${options.seed ?? 'world-r1'}:hazard:${Math.round(u * 48)}:${Math.round(v * 30)}`) > 0.985 ? 0.55 : 0)));
@@ -312,12 +326,39 @@ function blurField(field = []) {
   }));
 }
 
-function buildDeploymentZones(planning) {
-  const cells = [];
-  for (let y = Math.max(1, Math.floor(planning.rows * 0.36)); y <= Math.min(planning.rows - 2, Math.floor(planning.rows * 0.68)); y += 1) {
-    for (let x = 1; x <= 4; x += 1) cells.push({ x, y });
-  }
-  return [{ id: 'regional_drop_alpha', type: 'deployment', label: 'Regional Drop Zone Alpha', cells }];
+function buildDeploymentZones(planning, signedTerrainSurface, seed) {
+  const starts = regionalDeploymentStartCells(planning);
+  const zoneCells = (centerY) => {
+    const cells = [];
+    for (let y = Math.max(1, centerY - 2); y <= Math.min(planning.rows - 2, centerY + 2); y += 1) {
+      for (let x = 6; x <= Math.min(planning.columns - 2, 11); x += 1) {
+        const u = planning.columns <= 1 ? 0 : x / (planning.columns - 1);
+        const v = planning.rows <= 1 ? 0 : y / (planning.rows - 1);
+        if (x === 8 && y === 8) continue;
+        const sample = sampleSignedTerrainSurfaceAtUv(signedTerrainSurface, u, v);
+        if (sample.navigable && sample.bottomDepthMeters >= 12) cells.push({ x, y });
+      }
+    }
+    return cells;
+  };
+  const alpha = zoneCells(starts[0].y);
+  const beta = zoneCells(starts[1]?.y ?? Math.floor(planning.rows * 0.64));
+  return [
+    { id: 'regional_drop_alpha', type: 'deployment', label: 'Regional Drop Zone Alpha', cells: alpha.length ? alpha : starts.slice(0, 3), terrainSourceDigest: signedTerrainSurface.digest, seed },
+    { id: 'regional_drop_beta', type: 'deployment', label: 'Regional Drop Zone Beta', cells: beta.length ? beta : starts.slice(3, 6), terrainSourceDigest: signedTerrainSurface.digest, seed }
+  ];
+}
+
+function regionalDeploymentStartCells(planning) {
+  const x0 = Math.min(Math.max(6, Math.round(planning.columns * 0.17)), planning.columns - 3);
+  return [
+    { x: x0, y: Math.floor(planning.rows * 0.30) },
+    { x: x0 + 1, y: Math.floor(planning.rows * 0.62) },
+    { x: x0 + 2, y: Math.floor(planning.rows * 0.46) },
+    { x: x0, y: Math.floor(planning.rows * 0.74) },
+    { x: x0 + 2, y: Math.floor(planning.rows * 0.18) },
+    { x: x0 + 3, y: Math.floor(planning.rows * 0.84) }
+  ].map((cell) => ({ x: Math.max(1, Math.min(planning.columns - 2, cell.x)), y: Math.max(1, Math.min(planning.rows - 2, cell.y)) }));
 }
 
 function buildPriorityTargets(planning, seed) {
@@ -366,3 +407,4 @@ function round(value, digits = 6) {
   const number = Number(value);
   return Number.isFinite(number) ? Number(number.toFixed(digits)) : null;
 }
+

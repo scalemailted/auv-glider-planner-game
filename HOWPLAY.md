@@ -1153,3 +1153,7 @@ The Environment Editor now renders its center world through the shared Three.js 
 ## THREE-R3A Runtime Shell Note
 
 THREE-R3A keeps the current Phaser lifecycle shell as the default runtime. `?runtimeShell=next` enables the gated Phaser-free production shell for parity testing only. The current UI remains the parity reference, and the next shell reuses canonical Planning, Simulation, Replay, and Editor state instead of changing scoring, schemas, mission semantics, or adding planners. Learning Labs may remain a lazy legacy island during R3A. Final Phaser removal is deferred until owner-reviewed parity acceptance.
+
+## Operational Domain Setup
+
+Generated setup now exposes an Operational Domain choice: Compact Training Area, Coastal Mission Area, or Regional Fleet Area. Tutorials remain compact. Regional missions use continuous east/north route positions with inspection cells shown only as secondary metadata. The regional terrain is synthetic educational data, not a real ocean forecast or survey.

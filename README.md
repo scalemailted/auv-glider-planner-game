@@ -987,3 +987,7 @@ THREE-R2B moves the normal Mission Editor world presentation to Three.js while k
 ## THREE-R3A Runtime Shell Note
 
 THREE-R3A keeps the current Phaser lifecycle shell as the default runtime. `?runtimeShell=next` enables the gated Phaser-free production shell for parity testing only. The current UI remains the parity reference, and the next shell reuses canonical Planning, Simulation, Replay, and Editor state instead of changing scoring, schemas, mission semantics, or adding planners. Learning Labs may remain a lazy legacy island during R3A. Final Phaser removal is deferred until owner-reviewed parity acceptance.
+
+## WORLD-R1.1 Regional World Activation
+
+Modern generated regional missions derive land, water, coastline, navigable depth, field masks, and deployment validity from one signed terrain surface. The 2D Planning lattice is optional inspection metadata; regional routes use continuous physical coordinates, while tutorials may remain compact. `levels/regional_fleet_survey.json` provides a synthetic educational regional fixture and does not claim real Gulf, GEBCO, ETOPO, NOAA, Copernicus, or calibrated forecast data. See `docs/regional_world_activation.md`, `docs/signed_terrain_surface_authority.md`, and `docs/planning_guide_geometry_lifecycle_audit.md`.

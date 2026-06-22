@@ -3,6 +3,7 @@ import { normalizeContinuousScienceTarget } from '../science/ContinuousScienceTa
 import { createLegacyOperationalDomainFromGrid, normalizeOperationalDomainSpec, operationalDomainSummary } from '../domain/OperationalDomainSpec.js';
 import { createLegacyResolutionProfileFromGrid, missionResolutionProfileSummary, normalizeMissionResolutionProfile } from '../domain/MissionResolutionProfile.js';
 import { createMissionScaleModel, missionScaleModelSummary } from '../domain/MissionScaleModel.js';
+import { signedTerrainSurfaceSummary } from '../science/SignedTerrainSurfaceModel.js';
 
 export const MISSION_WORLD_RENDER_VIEW_MODEL_VERSION = 'mission-world-render-view-model-three-r1-1';
 export const MISSION_WORLD_SCALAR_LAYER_IDS = Object.freeze(['sampleValue', 'remainingSampleValue', 'samplingPriority', 'forecast', 'belief', 'uncertainty', 'hazard', 'none']);
@@ -46,9 +47,12 @@ export function buildMissionWorldRenderViewModel({
   const phase = options.phase ?? appState?.mode ?? simulationState?.phase ?? 'planning';
   const scalarFieldLayer = normalizeScalarFieldLayer({ sampleField, forecastState, beliefState, uncertaintyState, displaySettings, grid, activeTimeSeconds, visibilityTier });
   const vectorFieldLayer = normalizeVectorFieldLayer(currentField, grid, activeTimeSeconds);
+  const terrainAuthority = normalizeTerrainAuthority(level);
   const terrain = normalizeTerrain(level, grid);
   const hazards = normalizeCellRecords(options.hazards ?? level?.layers?.hazards, grid, 'hazard');
-  const constraints = normalizeCellRecords(options.constraints ?? level?.layers?.terrain, grid, 'constraint');
+  const constraints = terrainAuthority.usesSignedTerrainAuthority === true
+    ? []
+    : normalizeCellRecords(options.constraints ?? level?.layers?.terrain, grid, 'constraint');
   const dropZones = normalizeDropZones(options.dropZones, selectedAgentId, grid);
   const selectedStarts = normalizeSelectedStarts(options.selectedStarts, selectedAgentId);
   const gliders = normalizeGliders(options.gliders ?? mission?.agents, selectedAgentId);
@@ -82,6 +86,7 @@ export function buildMissionWorldRenderViewModel({
     resolutionProfile,
     resolutionProfileSummary: missionResolutionProfileSummary(resolutionProfile),
     physicalScale: missionScaleModelSummary(physicalScaleModel),
+    terrainAuthority,
     grid,
     worldBounds: { minX: -grid.width / 2, maxX: grid.width / 2, minZ: -grid.height / 2, maxZ: grid.height / 2 },
     bathymetry: normalizeBathymetry(level, grid),
@@ -142,6 +147,12 @@ export function missionWorldRenderViewModelSummary(viewModel = {}) {
     domainHeightKm: viewModel.operationalDomainSummary?.heightKm ?? null,
     planningCellWidthMeters: viewModel.physicalScale?.planningCellWidthMeters ?? null,
     planningCellHeightMeters: viewModel.physicalScale?.planningCellHeightMeters ?? null,
+    terrainAuthorityMode: viewModel.terrainAuthority?.terrainAuthorityMode ?? null,
+    terrainSourceDigest: viewModel.terrainAuthority?.terrainSourceDigest ?? null,
+    landWaterSourceDigest: viewModel.terrainAuthority?.landWaterSourceDigest ?? null,
+    coastlineSourceDigest: viewModel.terrainAuthority?.coastlineSourceDigest ?? null,
+    bottomBoundarySourceDigest: viewModel.terrainAuthority?.bottomBoundarySourceDigest ?? null,
+    usesSignedTerrainAuthority: viewModel.terrainAuthority?.usesSignedTerrainAuthority === true,
     activeTimeSeconds: finiteNumber(viewModel.activeTimeSeconds),
     selectedAgentId: viewModel.selectedAgentId ?? null,
     selectedWaypointId: viewModel.selectedWaypointId ?? null,
@@ -253,6 +264,23 @@ function normalizeVectorFieldLayer(currentField, grid, activeTimeSeconds) {
     sourceVisibility: vector.sourceVisibility ?? 'publicScenario'
   })) : [];
   return { id: 'currentVectors', label: 'Current Vectors', width: grid.width, height: grid.height, timeSeconds: finiteNumber(activeTimeSeconds), vectors, sourceVisibility: 'publicScenario' };
+}
+
+function normalizeTerrainAuthority(level = null) {
+  if (level?.signedTerrainSurface) return signedTerrainSurfaceSummary(level.signedTerrainSurface);
+  if (level?.terrainAuthority) return { ...level.terrainAuthority };
+  const digest = level?.bathymetry?.signedTerrainSurfaceDigest ?? level?.bathymetry?.sourceDigest ?? null;
+  return {
+    terrainAuthorityMode: digest ? 'signedElevationV1' : 'legacyGridCompatibility',
+    terrainSourceDigest: digest,
+    landWaterSourceDigest: digest,
+    coastlineSourceDigest: digest,
+    bottomBoundarySourceDigest: digest,
+    usesSignedTerrainAuthority: Boolean(digest),
+    usesLegacyLandTileGenerator: false,
+    usesPerCellLandMeshes: false,
+    landTileMeshCount: 0
+  };
 }
 
 function normalizeTerrain(level, grid) {
@@ -630,3 +658,4 @@ function clamp01(value) {
 function round(value, digits = 6) {
   return Number(Number(value).toFixed(digits));
 }
+

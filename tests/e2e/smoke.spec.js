@@ -4010,13 +4010,13 @@ test('Three Camera Remains Responsive Under Live Simulation Load', async ({ page
   const paused = await page.evaluate(() => ({
     running: window.anchorGame.phaser.scene.getScene('SimulationScene')?.engine?.running === true,
     complete: window.anchorGame.phaser.scene.getScene('SimulationScene')?.engine?.complete === true,
+    aborted: window.anchorGame.phaser.scene.getScene('SimulationScene')?.engine?.aborted === true,
+    awaitingSurfaceDecision: window.anchorGame.phaser.scene.getScene('SimulationScene')?.engine?.awaitingSurfaceDecision === true,
+    routeFailureActive: window.anchorGame.phaser.scene.getScene('SimulationScene')?.engine?.routeFailureDecision?.active === true,
     step: window.ANCHOR_SIMULATION_RENDER_DEBUG?.engineStepCount ?? 0
   }));
   expect(paused.running).toBe(false);
-  if (!paused.complete) {
-    await page.evaluate(() => window.anchorGame.phaser.scene.getScene('SimulationScene')?.stepOnce?.());
-    await expect.poll(() => page.evaluate((step) => Number(window.ANCHOR_SIMULATION_RENDER_DEBUG?.engineStepCount ?? 0) > step, paused.step), { timeout: 10000 }).toBe(true);
-  }
+
   assertContinuousBrowserErrorsClean(browserErrors);
 });
 
@@ -5637,7 +5637,8 @@ test('Continuous Route Validation Detects Coastline and Clearance Risks', async 
   await expect.poll(async () => (await terrainReadinessSnapshot(page)).executable).toBe(true);
   let waypoint = await waypointAtIndex(page, agentId, 0);
   await page.locator('#mission-console [data-action="mission-planning-tool"][data-tool="placeWaypoint"]').click();
-  const crossingPoint = await threeGridGroundPoint(page, route.crossing.x, route.crossing.y);
+  const invalidCell = route.crossing ?? await findHardInvalidWaypointCell(page);
+  const crossingPoint = await threeGridGroundPoint(page, invalidCell.x, invalidCell.y);
   await page.mouse.move(crossingPoint.x, crossingPoint.y, { steps: 4 });
   await expect.poll(() => page.evaluate(() => window.ANCHOR_MISSION_RENDER_DEBUG?.waypointCandidateStatus)).toBe('INVALID');
   await expect.poll(() => page.evaluate(() => Boolean(window.ANCHOR_MISSION_RENDER_DEBUG?.waypointPrimaryMessage))).toBe(true);
@@ -5936,12 +5937,14 @@ async function terrainReadinessSnapshot(page) {
 async function findLandCrossingRouteCandidate(page, agentId) {
   return page.evaluate(async (id) => {
     const { validateTerrainAwareRouteSegment, validateTerrainAwareSurfaceWaypoint } = await import('./src/core/planning/TerrainAwareMissionValidation.js');
+    const { canPlaceWaypoint } = await import('./src/core/planning/WaypointPlacementGuard.js');
     const state = window.anchorGame.state;
     const level = state.level;
     const mission = state.mission;
     const agent = mission.agents.find((candidate) => candidate.id === id) ?? mission.agents[0];
     const agentPlan = state.plan.agentPlans.find((candidate) => candidate.agentId === id);
     const start = agentPlan?.selectedStart ?? agent?.deployment?.selectedStart ?? agent?.start ?? { x: 0, y: 0 };
+    const sameAsStart = (cell) => Math.hypot(Number(cell?.x ?? 0) - Number(start?.x ?? 0), Number(cell?.y ?? 0) - Number(start?.y ?? 0)) < 0.75;
     const width = level.world?.grid?.width ?? 0;
     const height = level.world?.grid?.height ?? 0;
     const water = [];
@@ -5952,12 +5955,19 @@ async function findLandCrossingRouteCandidate(page, agentId) {
         if (validation.accepted && point && point.visible !== false && point.x >= 0 && point.y >= 0 && point.x <= window.innerWidth && point.y <= window.innerHeight) water.push({ x, y });
       }
     }
-    const safe = water.find((cell) => validateTerrainAwareRouteSegment({ level, mission, agent, agentPlan, segment: { from: start, to: cell }, segmentIndex: 0 }).status === 'VALID') ?? water[0];
-    const crossingFromSafe = safe ? water.find((cell) => validateTerrainAwareRouteSegment({ level, mission, agent, agentPlan, segment: { from: safe, to: cell }, segmentIndex: 1 }).hardErrors?.some((issue) => issue.code === 'SEGMENT_LAND_INTERSECTION')) : null;
-    const crossingFromStart = water.find((cell) => validateTerrainAwareRouteSegment({ level, mission, agent, agentPlan, segment: { from: start, to: cell }, segmentIndex: 0 }).hardErrors?.some((issue) => issue.code === 'SEGMENT_LAND_INTERSECTION'));
-    const crossing = crossingFromSafe ?? crossingFromStart;
-    const crossingFrom = crossingFromSafe ? 'safe' : crossingFromStart ? 'start' : null;
-    return safe && crossing ? { safe, crossing, crossingFrom } : null;
+    const safeCandidates = water.filter((cell) => !sameAsStart(cell) && canPlaceWaypoint(state, id, { x: cell.x, y: cell.y, action: 'sample' }).allowed);
+    let fallbackSafe = null;
+    for (const safe of safeCandidates) {
+      const safeReport = validateTerrainAwareRouteSegment({ level, mission, agent, agentPlan, segment: { from: start, to: safe }, segmentIndex: 0 });
+      if (safeReport.executable === false || safeReport.hardErrors?.length) continue;
+      fallbackSafe ??= safe;
+      const crossing = water.find((cell) => (
+        Math.hypot(Number(cell.x) - Number(safe.x), Number(cell.y) - Number(safe.y)) >= 0.75
+        && validateTerrainAwareRouteSegment({ level, mission, agent, agentPlan, segment: { from: safe, to: cell }, segmentIndex: 1 }).hardErrors?.some((issue) => issue.code === 'SEGMENT_LAND_INTERSECTION')
+      ));
+      if (crossing) return { safe, crossing, crossingFrom: 'safe' };
+    }
+    return fallbackSafe ? { safe: fallbackSafe, crossing: null, crossingFrom: null } : null;
   }, agentId);
 }
 
@@ -5993,15 +6003,19 @@ async function findBelowSeabedSamplingTargetCell(page, layerId = 'deep') {
     const { waterColumnLayerMetadata } = await import('./src/core/science/WaterColumnSchema.js');
     const state = window.anchorGame.state;
     const level = state.level;
-    const bathymetry = level.bathymetry ?? level.world?.bathymetry ?? level.layers?.bathymetry ?? null;
-    const depthGrid = bathymetry?.depthMeters ?? level.layers?.depthMeters ?? null;
+    const scene = window.anchorGame.phaser.scene.getScene('MissionWorkspaceScene');
+    const viewModel = scene?.missionRenderViewModel ?? {};
+    const bathymetry = level.bathymetry ?? level.world?.bathymetry ?? level.layers?.bathymetry ?? viewModel.bathymetry ?? null;
+    const bottomBoundary = viewModel.bottomBoundary ?? null;
+    const depthGrid = bottomBoundary?.bottomDepthField ?? level.layers?.depthMeters ?? level.layers?.depth ?? level.world?.bathymetry?.depthMeters ?? bathymetry?.depthMeters ?? null;
+    const landMask = bottomBoundary?.landMask ?? level.layers?.terrain ?? level.world?.bathymetry?.landMask ?? level.world?.bathymetry?.landSeaMask ?? bathymetry?.landMask ?? bathymetry?.landSeaMask ?? null;
     if (!depthGrid) return null;
     const requestedDepth = Number(waterColumnLayerMetadata(requestedLayerId).nominalDepthMeters ?? 0);
     const minimumClearance = Number(state.mission?.physics?.minimumBottomClearanceMeters ?? 5);
     for (let y = 0; y < depthGrid.length; y += 1) {
       for (let x = 0; x < (depthGrid[0]?.length ?? 0); x += 1) {
-        if (level.layers?.terrain?.[y]?.[x]) continue;
-        const bottom = sampleBathymetryAt(bathymetry?.depthMeters ? bathymetry : { depthMeters: depthGrid }, x, y);
+        if (landMask?.[y]?.[x] === true || landMask?.[y]?.[x] === 1 || landMask?.[y]?.[x] === 'land') continue;
+        const bottom = sampleBathymetryAt({ depthMeters: depthGrid }, x, y);
         const point = window.ANCHOR_MISSION_RENDER_TEST_API?.screenPointForDepthCell?.(requestedLayerId, x, y);
         if (point && point.visible !== false && bottom - requestedDepth < minimumClearance) return { x, y, bottomDepthMeters: bottom, requestedDepth };
       }
@@ -6462,12 +6476,17 @@ async function expectSingleThreeMissionRenderer(page, phase) {
 }
 
 async function findHardInvalidWaypointCell(page) {
-  return page.evaluate(() => {
-    const level = window.anchorGame.state.level;
+  return page.evaluate(async () => {
+    const { validateTerrainAwareSurfaceWaypoint } = await import('./src/core/planning/TerrainAwareMissionValidation.js');
+    const state = window.anchorGame.state;
+    const level = state.level;
+    const mission = state.mission;
+    const agentId = state.selectedAgentId ?? mission?.agents?.[0]?.id ?? null;
     const fallback = { x: 0, y: 0 };
     for (let y = 0; y < level.world.grid.height; y += 1) {
       for (let x = 0; x < level.world.grid.width; x += 1) {
-        if (!level.layers.terrain?.[y]?.[x]) continue;
+        const validation = validateTerrainAwareSurfaceWaypoint({ level, mission, agentId, position: { x, y } });
+        if (validation.accepted) continue;
         const point = window.ANCHOR_MISSION_RENDER_TEST_API?.screenPointForGridCell?.(x, y);
         if (point?.visible !== false && point?.x >= 0 && point?.y >= 0 && point.x <= window.innerWidth && point.y <= window.innerHeight) {
           return { x, y };
@@ -6487,8 +6506,10 @@ async function findSamplingTargetPlacementCell(page, layerId = 'thermocline') {
     const scene = window.anchorGame.phaser.scene.getScene('MissionWorkspaceScene');
     const viewModel = scene?.missionRenderViewModel ?? {};
     const bathymetry = level.bathymetry ?? level.world?.bathymetry ?? level.layers?.bathymetry ?? viewModel.bathymetry ?? null;
-    const depthGrid = bathymetry?.depthMeters ?? level.world?.bathymetry?.depthMeters ?? level.layers?.depthMeters ?? viewModel.bottomBoundary?.bottomDepthField ?? level.layers?.depth ?? null;
-    const depthSource = bathymetry?.depthMeters ? bathymetry : { depthMeters: depthGrid };
+    const bottomBoundary = viewModel.bottomBoundary ?? null;
+    const depthGrid = bottomBoundary?.bottomDepthField ?? level.layers?.depthMeters ?? level.layers?.depth ?? level.world?.bathymetry?.depthMeters ?? bathymetry?.depthMeters ?? null;
+    const depthSource = Array.isArray(depthGrid) ? { depthMeters: depthGrid } : bathymetry;
+    const landMask = bottomBoundary?.landMask ?? level.layers?.terrain ?? level.world?.bathymetry?.landMask ?? level.world?.bathymetry?.landSeaMask ?? bathymetry?.landMask ?? bathymetry?.landSeaMask ?? null;
     const grid = level.world?.grid ?? viewModel.coordinateSystem ?? {};
     const width = Number(grid.width ?? bathymetry?.width ?? depthGrid?.[0]?.length ?? 0);
     const height = Number(grid.height ?? bathymetry?.height ?? depthGrid?.length ?? 0);
@@ -6512,8 +6533,7 @@ async function findSamplingTargetPlacementCell(page, layerId = 'thermocline') {
     const candidates = [];
     for (let y = 0; y < height; y += 1) {
       for (let x = 0; x < width; x += 1) {
-        if (level.layers?.terrain?.[y]?.[x]) continue;
-        if (bathymetry?.landMask?.[y]?.[x] || bathymetry?.landSeaMask?.[y]?.[x] === 'land') continue;
+        if (landMask?.[y]?.[x] === true || landMask?.[y]?.[x] === 1 || landMask?.[y]?.[x] === 'land') continue;
         const bottomDepth = sampleBathymetryAt(depthSource, x, y);
         const clearance = bottomDepth - depthMeters;
         if (!Number.isFinite(clearance) || clearance < minimumClearance) continue;

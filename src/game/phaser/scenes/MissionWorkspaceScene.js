@@ -146,6 +146,7 @@ import {
   buildMissionPlanningInteractionViewModel,
   missionPlanningInteractionViewModelSummary
 } from '../../../core/rendering/MissionPlanningInteractionViewModel.js';
+import { buildPlanningGuidePreviewViewModel } from '../../../core/rendering/PlanningGuidePreviewViewModel.js';
 import { createMissionWorldInteractionResult } from '../../../core/rendering/MissionWorldInteractionResult.js';
 import { normalizeMissionWorldInteractionMode } from '../../../core/rendering/MissionWorldInteractionIntent.js';
 import {
@@ -966,6 +967,7 @@ export class MissionWorkspaceScene extends PhaserScene {
       interaction.waypointCandidateCell = null;
       interaction.waypointCandidateValid = null;
       interaction.waypointValidationReason = null;
+      interaction.routePreview = null;
     }
     if (next.activeToolId !== 'placeSamplingTarget') interaction.samplingTargetCandidateCell = null;
     this.app.state.ui.missionPlanningTool = next;
@@ -1313,6 +1315,10 @@ export class MissionWorkspaceScene extends PhaserScene {
     const uiDebug = globalThis.ANCHOR_CONTINUOUS_UI_DEBUG ?? {};
     const consoleText = this.app?.elements?.consoleRoot?.textContent ?? '';
     const planningControlsVisible = consoleText.includes('Planning Tools') && consoleText.includes('Waypoint Placement');
+    const terrainAuthority = this.missionRenderViewModel?.terrainAuthority ?? this.app?.state?.level?.terrainAuthority ?? null;
+    const signedTerrain = this.app?.state?.level?.signedTerrainSurface ?? null;
+    const rendererSummary = patch.rendererSummary ?? null;
+    const terrainDigest = terrainAuthority?.terrainSourceDigest ?? signedTerrain?.digest ?? rendererSummary?.terrainSourceDigest ?? null;
     const debug = {
       type: 'anchor.continuous-mission.planning-ui-debug',
       version: 'three-r1-2a-3-1',
@@ -1355,6 +1361,26 @@ export class MissionWorkspaceScene extends PhaserScene {
       rendererOwnsPlanning: false,
       rendererOwnsSimulation: false,
       rendererOwnsScoring: false,
+      terrainAuthorityMode: terrainAuthority?.terrainAuthorityMode ?? (signedTerrain ? 'signedElevationV1' : 'legacyGridCompatibility'),
+      terrainSourceDigest: terrainDigest,
+      landWaterSourceDigest: terrainAuthority?.landWaterSourceDigest ?? signedTerrain?.landWaterSourceDigest ?? terrainDigest,
+      coastlineSourceDigest: terrainAuthority?.coastlineSourceDigest ?? signedTerrain?.coastlineSourceDigest ?? terrainDigest,
+      bottomBoundarySourceDigest: terrainAuthority?.bottomBoundarySourceDigest ?? signedTerrain?.bottomBoundarySourceDigest ?? terrainDigest,
+      usesSignedTerrainAuthority: terrainAuthority?.usesSignedTerrainAuthority === true || Boolean(signedTerrain),
+      usesLegacyLandTileGenerator: terrainAuthority?.usesLegacyLandTileGenerator === true ? true : false,
+      usesPerCellLandMeshes: terrainAuthority?.usesPerCellLandMeshes === true ? true : false,
+      landTileMeshCount: Number(terrainAuthority?.landTileMeshCount ?? 0),
+      routeUsesContinuousMeters: continuousUi.coordinateProfileId === 'continuousGridV1',
+      executionUsesContinuousMeters: continuousUi.coordinateProfileId === 'continuousGridV1',
+      executionSnapsToPlanningCell: continuousUi.coordinateProfileId !== 'continuousGridV1',
+      analysisLatticeVisible: this.app?.state?.ui?.threeMissionLayers?.analysisLattice === true,
+      terrainVertexCount: Number(rendererSummary?.terrainVertexCount ?? 0),
+      terrainTriangleCount: Number(rendererSummary?.terrainTriangleCount ?? 0),
+      terrainDrawCallCount: Number(rendererSummary?.terrainDrawCallEstimate ?? 0),
+      scalarSourceSampleCount: Number(this.app?.state?.level?.resolutionProfile?.scienceGrid?.columns ?? this.app?.state?.level?.regionalFields?.grids?.scienceGrid?.columns ?? 0) * Number(this.app?.state?.level?.resolutionProfile?.scienceGrid?.rows ?? this.app?.state?.level?.regionalFields?.grids?.scienceGrid?.rows ?? 0),
+      scalarDisplayPixelCount: Number(rendererSummary?.volumetricScalarFieldSummary?.texturePixelCount ?? rendererSummary?.scalarFieldCellCount ?? 0),
+      currentSourceSampleCount: Number(this.app?.state?.level?.resolutionProfile?.currentGrid?.columns ?? this.app?.state?.level?.regionalFields?.grids?.currentGrid?.columns ?? 0) * Number(this.app?.state?.level?.resolutionProfile?.currentGrid?.rows ?? this.app?.state?.level?.regionalFields?.grids?.currentGrid?.rows ?? 0),
+      currentGlyphCount: Number(rendererSummary?.currentGlyphCount ?? 0),
       rendererSummary: patch.rendererSummary ?? null,
       waterColumnDebug: patch.waterColumnDebug ?? null,
       predictedDiveAvailable: patch.plannedDiveDebug?.predictedDiveAvailable === true,
@@ -1391,6 +1417,31 @@ export class MissionWorkspaceScene extends PhaserScene {
       usesArbitraryXYZWaypoints: false
     };
     globalThis.ANCHOR_CONTINUOUS_MISSION_DEBUG = debug;
+    globalThis.ANCHOR_OPERATIONAL_DOMAIN_DEBUG = {
+      version: 'world-r1-1-operational-domain-debug',
+      operationalDomainId: this.app?.state?.level?.operationalDomain?.domainId ?? this.app?.state?.level?.world?.operationalDomain?.domainId ?? null,
+      resolutionProfileId: this.app?.state?.level?.resolutionProfile?.profileId ?? this.app?.state?.level?.world?.resolutionProfile?.profileId ?? null,
+      terrainAuthorityMode: debug.terrainAuthorityMode,
+      terrainSourceDigest: debug.terrainSourceDigest,
+      landWaterSourceDigest: debug.landWaterSourceDigest,
+      coastlineSourceDigest: debug.coastlineSourceDigest,
+      bottomBoundarySourceDigest: debug.bottomBoundarySourceDigest,
+      usesSignedTerrainAuthority: debug.usesSignedTerrainAuthority,
+      usesLegacyLandTileGenerator: debug.usesLegacyLandTileGenerator,
+      usesPerCellLandMeshes: debug.usesPerCellLandMeshes,
+      landTileMeshCount: debug.landTileMeshCount,
+      routeUsesContinuousMeters: debug.routeUsesContinuousMeters,
+      executionUsesContinuousMeters: debug.executionUsesContinuousMeters,
+      executionSnapsToPlanningCell: debug.executionSnapsToPlanningCell,
+      analysisLatticeVisible: debug.analysisLatticeVisible,
+      terrainVertexCount: debug.terrainVertexCount,
+      terrainTriangleCount: debug.terrainTriangleCount,
+      terrainDrawCallCount: debug.terrainDrawCallCount,
+      scalarSourceSampleCount: debug.scalarSourceSampleCount,
+      scalarDisplayPixelCount: debug.scalarDisplayPixelCount,
+      currentSourceSampleCount: debug.currentSourceSampleCount,
+      currentGlyphCount: debug.currentGlyphCount
+    };
     globalThis.ANCHOR_CONTINUOUS_UI_DEBUG = {
       ...uiDebug,
       ...continuousMissionUiStateSummary(continuousUi),
@@ -1444,7 +1495,9 @@ export class MissionWorkspaceScene extends PhaserScene {
       userModified: false,
       defaultDisplayModeApplied: true
     };
-    if (!this.app.state.ui.threeMissionCameraPreset || this.app.state.ui.threeMissionCameraPreset === 'obliqueMission') {
+    const currentCameraPreset = this.app.state.ui.threeMissionCameraPreset;
+    const cameraPresetLooksDefault = !currentCameraPreset || ['obliqueMission', 'obliqueWaterColumn'].includes(currentCameraPreset);
+    if (cameraPresetLooksDefault && existing?.userModified !== true) {
       this.app.state.ui.threeMissionCameraPreset = legacy ? 'tacticalTopDown' : (config?.defaultPlanningCameraPresetId ?? 'obliqueWaterColumn');
     }
     this.app.state.ui.waterColumnDefaultsAppliedForMission = missionKey;
@@ -1682,12 +1735,12 @@ export class MissionWorkspaceScene extends PhaserScene {
     if (!agentId || !this.app.state.plan) return;
     const selected = this.app.state.ui?.selectedWaypoint;
     let selectedIndex = null;
+    const agentPlan = getAgentPlan(this.app.state.plan, agentId);
+    Object.assign(agentPlan, patch);
     if (selected?.agentId === agentId && Number.isInteger(Number(selected.index))) {
       selectedIndex = Number(selected.index);
       updateWaypoint(this.app.state.plan, agentId, selectedIndex, patch);
       this.app.state.ui.selectedWaypoint = { agentId, index: selectedIndex };
-    } else {
-      Object.assign(getAgentPlan(this.app.state.plan, agentId), patch);
     }
     this.afterPlanChanged(agentId, { selectedIndex });
     this.markManualPlan();
@@ -2417,10 +2470,22 @@ export class MissionWorkspaceScene extends PhaserScene {
 
   screenPointForMissionDepthCell(layerId, cell) {
     if (!this.threeMissionRenderer || !this.missionRenderViewModel?.coordinateModel || !cell) return null;
-    const world = depthLayerCellCenterToWorld(layerId, cell.x, cell.y, this.missionRenderViewModel.coordinateModel);
+    const bottomDepthField = this.missionRenderViewModel?.bottomBoundary?.bottomDepthField ?? null;
+    const landMask = this.missionRenderViewModel?.bottomBoundary?.landMask ?? null;
+    const x = Number(cell.x);
+    const y = Number(cell.y);
+    const col = Math.round(x);
+    const row = Math.round(y);
+    if (Array.isArray(bottomDepthField) && bottomDepthField.length) {
+      const layerDepth = Number(waterColumnLayerMetadata(layerId).nominalDepthMeters ?? 0);
+      const bottomDepth = sampleBathymetryAt({ depthMeters: bottomDepthField }, x, y);
+      const minimumClearance = Math.max(0, Number(this.app.state.mission?.physics?.minimumBottomClearanceMeters ?? this.app.state.mission?.physics?.bottomClearanceMeters ?? 5));
+      if (landMask?.[row]?.[col] || !Number.isFinite(bottomDepth) || bottomDepth <= 0 || bottomDepth - layerDepth < minimumClearance) return null;
+    }
+    const world = depthLayerCellCenterToWorld(layerId, x, y, this.missionRenderViewModel.coordinateModel);
     this.app.state.ui ??= {};
     this.app.state.ui.threeMissionInteraction ??= {};
-    this.app.state.ui.threeMissionInteraction.expectedGridCell = { x: Math.round(Number(cell.x)), y: Math.round(Number(cell.y)), depthLayerId: layerId };
+    this.app.state.ui.threeMissionInteraction.expectedGridCell = { x: Math.round(x), y: Math.round(y), depthLayerId: layerId };
     return this.projectThreeWorldPoint({ x: world.x, y: Number(world.y ?? 0), z: world.z });
   }
 
@@ -2911,6 +2976,7 @@ export class MissionWorkspaceScene extends PhaserScene {
       : null;
     const placementPreview = this.validateThreePlacementPreview(intent);
     this.app.state.ui.threeMissionInteraction.placementValidation = placementPreview;
+    this.updatePlanningGuidePreviewFromIntent(intent, placementPreview);
     if (this.app.state.ui.threeMissionInteraction.deploymentSelectionActive === true) {
       const validation = cell ? setSelectedStartPreview(this.app.state.level, this.app.state.mission, this.app.state.ui.threeMissionInteraction.deploymentAgentId ?? this.app.state.selectedAgentId, cell) : { valid: false, message: 'Pointer is outside the mission grid.' };
       this.app.state.ui.threeMissionInteraction.deploymentCandidateCell = cell ? { x: cell.x, y: cell.y } : null;
@@ -2941,6 +3007,7 @@ export class MissionWorkspaceScene extends PhaserScene {
     this.app.state.ui.threeMissionInteraction.waypointCandidateCell = null;
     this.app.state.ui.threeMissionInteraction.waypointCandidateValid = null;
     this.app.state.ui.threeMissionInteraction.waypointValidationReason = null;
+    this.app.state.ui.threeMissionInteraction.routePreview = null;
     this.refreshPanels();
     this.refreshMap();
     return this.threeInteractionResult(intent, 'noChange', { userMessage: 'Hover cleared.' });
@@ -2950,6 +3017,8 @@ export class MissionWorkspaceScene extends PhaserScene {
     const agent = this.app.state.mission?.agents?.find((candidate) => candidate.id === agentId);
     if (!agent) return this.threeInteractionResult(intent, 'rejected', { userMessage: 'No glider found for selection.', warnings: ['No glider found for selection.'] });
     this.selectGlider(agentId);
+    this.app.state.ui.threeMissionInteraction ??= {};
+    this.app.state.ui.threeMissionInteraction.routePreview = null;
     return this.threeInteractionResult(intent, 'accepted', { selectedAgentId: agentId, userMessage: `Selected ${agent.label ?? agent.name ?? agent.id}.` });
   }
 
@@ -3102,11 +3171,12 @@ export class MissionWorkspaceScene extends PhaserScene {
     const level = this.app.state.level ?? {};
     const mission = this.app.state.mission ?? {};
     const bathymetry = level.bathymetry ?? level.world?.bathymetry ?? level.layers?.bathymetry ?? this.missionRenderViewModel?.bathymetry ?? null;
-    const depthGrid = bathymetry?.depthMeters ?? level.world?.bathymetry?.depthMeters ?? level.layers?.depthMeters ?? this.missionRenderViewModel?.bottomBoundary?.bottomDepthField ?? level.layers?.depth ?? null;
+    const bottomBoundary = this.missionRenderViewModel?.bottomBoundary ?? null;
+    const depthGrid = bottomBoundary?.bottomDepthField ?? level.layers?.depthMeters ?? level.layers?.depth ?? level.world?.bathymetry?.depthMeters ?? bathymetry?.depthMeters ?? null;
     const terrain = level.layers?.terrain ?? level.terrain ?? level.mask ?? null;
-    const landMask = bathymetry?.landMask ?? bathymetry?.landSeaMask ?? level.bathymetry?.landMask ?? level.bathymetry?.landSeaMask ?? level.world?.bathymetry?.landMask ?? level.world?.bathymetry?.landSeaMask ?? null;
-    const width = Number(level.world?.grid?.width ?? level.grid?.width ?? level.width ?? bathymetry?.width ?? depthGrid?.[0]?.length ?? terrain?.[0]?.length ?? landMask?.[0]?.length ?? 0);
-    const height = Number(level.world?.grid?.height ?? level.grid?.height ?? level.height ?? bathymetry?.height ?? depthGrid?.length ?? terrain?.length ?? landMask?.length ?? 0);
+    const landMask = bottomBoundary?.landMask ?? terrain ?? level.world?.bathymetry?.landMask ?? level.world?.bathymetry?.landSeaMask ?? bathymetry?.landMask ?? bathymetry?.landSeaMask ?? null;
+    const width = Number(level.world?.grid?.width ?? level.grid?.width ?? level.width ?? bottomBoundary?.width ?? depthGrid?.[0]?.length ?? terrain?.[0]?.length ?? landMask?.[0]?.length ?? bathymetry?.width ?? 0);
+    const height = Number(level.world?.grid?.height ?? level.grid?.height ?? level.height ?? bottomBoundary?.height ?? depthGrid?.length ?? terrain?.length ?? landMask?.length ?? bathymetry?.height ?? 0);
     const x = Number(placement.x);
     const y = Number(placement.y);
     const requestedDepth = Math.max(0, Number(placement.depthMeters ?? 0));
@@ -3126,10 +3196,10 @@ export class MissionWorkspaceScene extends PhaserScene {
       return { allowed: false, message: 'Sampling target must be placed in water, not on land.', warnings: ['Target intersects land mask.'], bottomDepthMeters: 0, bottomClearanceMeters: null };
     }
     let bottomDepth = null;
-    if (bathymetry?.depthMeters?.length) {
-      bottomDepth = sampleBathymetryAt(bathymetry, x, y);
-    } else if (Array.isArray(depthGrid) && depthGrid.length) {
+    if (Array.isArray(depthGrid) && depthGrid.length) {
       bottomDepth = sampleBathymetryAt({ depthMeters: depthGrid }, x, y);
+    } else if (bathymetry?.depthMeters?.length) {
+      bottomDepth = sampleBathymetryAt(bathymetry, x, y);
     }
     if (!Number.isFinite(bottomDepth) || bottomDepth <= 0) {
       warnings.push('No canonical bathymetry depth was available for this target; placement is allowed for legacy compatibility.');
@@ -3283,6 +3353,8 @@ export class MissionWorkspaceScene extends PhaserScene {
       return this.threeInteractionResult(intent, 'rejected', { committedGridCell: cell, userMessage: message, warnings: [message] });
     }
     this.setThreePlacementValidation({ valid: true, message: 'Waypoint placed.', cell });
+    this.app.state.ui.threeMissionInteraction ??= {};
+    this.app.state.ui.threeMissionInteraction.routePreview = null;
     this.recordWaypointPipeline({ stage: 'canonicalCommand', status: 'accepted', reason: 'Waypoint placed.', validation: { valid: true, reason: 'accepted', message: 'Waypoint placed.', cell }, commandResult: { ok: true, waypointId: result.waypoint?.id ?? null, index: result.index ?? null, agentId: result.agentId ?? null } });
     this.updatePlanningToolValidation({ canPlace: true, validationReason: 'Waypoint placed.', statusMessage: 'Waypoint placed. Continue clicking cells to append route waypoints.' });
     return this.threeInteractionResult(intent, 'accepted', {
@@ -3426,6 +3498,31 @@ export class MissionWorkspaceScene extends PhaserScene {
     if (!validity.valid && validity.block) return { valid: false, allowed: false, message: validity.message, reason: 'blockedTerrain', cell, hardErrors: [validity.message], terrainAwareValidation: terrain };
     const warnings = [...(terrain.warnings ?? []).map((entry) => entry.message), ...(validity.warning ? [validity.message] : [])].filter(Boolean);
     return { valid: true, allowed: true, status: warnings.length ? 'VALID_WITH_WARNINGS' : 'VALID', message: warnings[0] ?? 'Valid waypoint cell.', warnings, warningCodes: (terrain.warnings ?? []).map((entry) => entry.code), cell, terrainAwareValidation: terrain };
+  }
+
+  updatePlanningGuidePreviewFromIntent(intent, placementPreview = null) {
+    this.app.state.ui ??= {};
+    this.app.state.ui.threeMissionInteraction ??= {};
+    const interaction = this.app.state.ui.threeMissionInteraction;
+    const activeToolId = this.app.state.ui?.missionPlanningTool?.activeToolId ?? interaction.activePlanningToolId ?? interaction.interactionMode ?? intent?.interactionMode ?? null;
+    if (activeToolId !== 'placeWaypoint' || !intent?.gridCell) {
+      interaction.routePreview = null;
+      return null;
+    }
+    const placementPoint = this.resolveWaypointPlacementPoint(intent);
+    const preview = buildPlanningGuidePreviewViewModel({
+      tool: activeToolId,
+      interactionMode: intent.interactionMode,
+      selectedAgentId: this.app.state.selectedAgentId,
+      mission: this.app.state.mission,
+      plan: this.app.state.plan,
+      candidatePoint: placementPoint,
+      candidateCell: intent.gridCell,
+      placementValidation: placementPreview,
+      active: true
+    });
+    interaction.routePreview = preview.active ? preview : null;
+    return interaction.routePreview;
   }
 
   validateThreePlacementPreview(intent) {
@@ -5603,3 +5700,6 @@ function clampNumber(value, fallback, min, max) {
 function escapeSceneHtml(value) {
   return String(value ?? '').replace(/[&<>"]/g, (char) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[char]));
 }
+
+
+
