@@ -230,7 +230,7 @@ You can:
 
 For quick testing, use `Finish Instantly`.
 
-In surface-only missions, the simulation pauses when the glider surfaces. The pause dialog shows expected and actual position. Choose `Continue Mission` to keep the plan, `Update Waypoints` to return to Planning from the surfaced position, or `Finish Simulation` to run through the remaining mission.
+In surface-only missions, the simulation pauses when the glider surfaces. The pause dialog shows expected and actual position. Choose `Continue Mission` to keep the plan, `Update Waypoints` to return to Planning from the surfaced position, or `Finish Mission / Debrief` to end the mission. In Planning, `Commit Replan and Resume` validates the edited future route and resumes the paused simulation; `Cancel Replan` returns to the same surface decision without keeping the edits.
 
 Planning includes an advanced `Ignore Update Events` option. It is off by default. When enabled, the simulation logs scheduled surfacing/update windows as ignored and continues without opening the surface decision dialog. Route failures, blocked terrain, fuel exhaustion, and mission-end conditions still apply.
 

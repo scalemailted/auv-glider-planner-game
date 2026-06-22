@@ -126,6 +126,13 @@ export class HtmlMissionWorkspaceOverlay {
     const routeAudit = state.ui?.routeAudit;
     const missionReadiness = state.ui?.missionReadiness ?? null;
     const executeDisabled = (routeAudit && routeAudit.ok === false) || missionReadiness?.executable === false;
+    const surfacingReplan = isSurfacingReplanMode(state);
+    const executeLabel = surfacingReplan ? 'Commit Replan and Resume' : 'Execute Mission';
+    const executeTitle = executeDisabled
+      ? executeDisabledTitle(routeAudit, missionReadiness)
+      : surfacingReplan
+        ? 'Validate the edited future route, commit the surfacing replan, and resume the paused simulation.'
+        : 'Execute mission';
     const routeAuditIssues = routeAuditIssueCount(routeAudit);
     const connectivity = state.level && state.mission ? computeReachabilitySummary(state.level, state.mission) : null;
     const connectivityWarnings = connectivity?.warnings ?? [];
@@ -151,7 +158,9 @@ export class HtmlMissionWorkspaceOverlay {
       </section>` : ''}
       <section class="console-section">
         <h2>Plan</h2>
-        <button class="console-button primary" data-action="execute" title="${executeDisabled ? executeDisabledTitle(routeAudit, missionReadiness) : 'Execute mission'}">Execute Mission</button>
+        <button class="console-button primary" data-action="execute" title="${escapeAttr(executeTitle)}">${escapeHtml(executeLabel)}</button>
+        ${surfacingReplan ? surfacingReplanNotice(state) : ''}
+        ${surfacingReplan ? '<button class="console-button secondary" data-action="cancel-surfacing-replan">Cancel Replan</button>' : ''}
         ${executeDisabled ? `<div class="hud-muted warning">${escapeHtml(executeDisabledTitle(routeAudit, missionReadiness))}</div>` : ''}
         ${tutorialFeatureEnabled(state, 'markers') ? `<button class="console-button" data-action="placement-mode">${state.ui?.placementMode === 'marker' ? 'Mode: Planning Marker' : 'Mode: Waypoint'}</button>` : ''}
         <button class="console-button" data-action="clear-route">Clear Selected Route</button>
@@ -281,7 +290,8 @@ export class HtmlMissionWorkspaceOverlay {
         <div class="hud-row">
           <button class="hud-button" data-action="toggle-waypoints">${this.collapsedRight ? 'Show Waypoints' : 'Hide Waypoints'}</button>
           <button class="hud-button" data-action="main-menu">Main Menu</button>
-          <button class="hud-button primary" data-action="execute" title="${executeDisabled ? executeDisabledTitle(state.ui?.routeAudit, missionReadiness) : 'Execute mission'}">Execute</button>
+          ${surfacingReplan ? '<button class="hud-button" data-action="cancel-surfacing-replan">Cancel</button>' : ''}
+          <button class="hud-button primary" data-action="execute" title="${escapeAttr(executeTitle)}">${surfacingReplan ? 'Commit Replan' : 'Execute'}</button>
         </div>
         ${executeDisabled ? `<div class="hud-muted warning">${escapeHtml(executeDisabledTitle(state.ui?.routeAudit, missionReadiness))}</div>` : ''}
       </div>
@@ -289,6 +299,7 @@ export class HtmlMissionWorkspaceOverlay {
     this.bind(root, {
       'save-level': () => this.handlers.saveLevel(),
       'clear-route': () => this.handlers.clear(),
+      'cancel-surfacing-replan': () => this.handlers.cancelSurfacingReplan?.(),
       'placement-mode': () => this.handlers.markerMode?.(),
       'clear-markers': () => this.handlers.clearMarkers?.(),
       'import-plan': () => this.handlers.importPlan(),
@@ -506,6 +517,7 @@ export class HtmlMissionWorkspaceOverlay {
     return {
       'save-level': () => this.handlers.saveLevel(),
       'clear-route': () => this.handlers.clear(),
+      'cancel-surfacing-replan': () => this.handlers.cancelSurfacingReplan?.(),
       'placement-mode': () => this.handlers.markerMode?.(),
       'clear-markers': () => this.handlers.clearMarkers?.(),
       'import-plan': () => this.handlers.importPlan(),
@@ -1367,6 +1379,21 @@ function tutorialHintSection(state) {
   `;
 }
 
+function isSurfacingReplanMode(state = {}) {
+  return Boolean(state?.surfacingReplanHandoff?.type === 'anchor.planning.surfacing-replan-handoff'
+    || state?.surfaceDecision?.mode === 'editingFutureWaypoints');
+}
+
+function surfacingReplanNotice(state = {}) {
+  const handoff = state.surfacingReplanHandoff ?? {};
+  const decision = state.surfaceDecision ?? {};
+  const agentId = handoff.surfacedAgentId ?? decision.agentId ?? state.selectedAgentId ?? 'glider';
+  const point = handoff.surfacedPosition ?? decision.actualPosition ?? decision.actual ?? null;
+  const position = point && Number.isFinite(Number(point.x)) && Number.isFinite(Number(point.y))
+    ? ` from (${Number(point.x).toFixed(1)}, ${Number(point.y).toFixed(1)})`
+    : '';
+  return `<div class="hud-muted warning">Editing future waypoints for ${escapeHtml(agentId)}${escapeHtml(position)}. Commit resumes the paused simulation; Cancel returns to the surface decision.</div>`;
+}
 function importDemoSection(state, executeDisabled) {
   const demo = state.level?.tutorial?.importDemo;
   if (!demo) return '';

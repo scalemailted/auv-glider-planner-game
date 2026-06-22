@@ -37,6 +37,27 @@ import {
   debugSurfaceDecision,
   isSurfaceDecisionModalVisible
 } from '../../../core/sim/SurfaceDecisionVisibility.js';
+import {
+  SURFACING_DECISION_ACTION,
+  SURFACING_DECISION_STATUS,
+  createSurfacingDecisionState,
+  normalizeSurfacingDecisionAction,
+  surfacingDecisionStateSummary,
+  validateSurfacingDecisionState
+} from '../../../core/simulation/SurfacingDecisionState.js';
+import {
+  acceptSurfacingDecisionAction,
+  commitSurfacingDecisionAction,
+  createSurfacingDecisionTransaction,
+  startSurfacingReplan,
+  surfacingDecisionTransactionSummary
+} from '../../../core/simulation/SurfacingDecisionTransaction.js';
+import {
+  createSurfacingReplanHandoff,
+  surfacingReplanHandoffSummary,
+  validateSurfacingReplanHandoff
+} from '../../../core/planning/SurfacingReplanHandoff.js';
+import { createHtmlSurfacingDecisionModal } from '../../../ui/simulation/HtmlSurfacingDecisionModal.js';
 import { getAgentPlan, removeWaypoint } from '../../../core/planning/WaypointPlan.js';
 import {
   derivePlannerBenchmarkAttemptContext,
@@ -112,6 +133,12 @@ export class SimulationScene extends PhaserScene {
     this.sceneCleanupDisposed = false;
     this.sceneLifecycleDisposalCount = 0;
     this.threeSceneLifecycle = null;
+    this.surfaceDecisionModal = null;
+    this.surfaceDecisionTransaction = null;
+    this.surfaceDecisionOpenedEvents = new Set();
+    this.surfacingActionDispatchCount = 0;
+    this.surfacingDuplicateActionCount = 0;
+    this.lastSurfaceDecisionDebug = null;
     this.cleanupInvocationCount = 0;
     this.duplicateCleanupInvocationCount = 0;
     this.cleanupErrorCount = 0;
@@ -164,6 +191,10 @@ export class SimulationScene extends PhaserScene {
     this.graphics.setVisible(this.getSimulationRendererBackend() === 'legacyPhaser2d');
     this.app.clearPanels();
     this.modal = new Modal(this);
+    this.surfaceDecisionModal = createHtmlSurfacingDecisionModal({
+      root: globalThis.document?.body ?? this.app.elements.shell ?? null,
+      onAction: (action, details) => this.handleSurfacingDecisionAction(action, details)
+    });
     normalizeStochasticState(this.app.state);
     applyStochasticToMission(this.app.state);
     applyMissionOptionsToMission(this.app.state);
@@ -179,6 +210,13 @@ export class SimulationScene extends PhaserScene {
     });
     this.enginePlanDigest = digestExecutionPlan(this.engine.plan);
     this.presentationScheduler = createThreeSimulationPresentationScheduler({ maxHz: 30 });
+    const shouldAutoResumeAfterSurfacingReplan = this.app.state.pendingSurfacingResumePlay === true;
+    if (shouldAutoResumeAfterSurfacingReplan) {
+      this.app.state.pendingSurfacingResumePlay = false;
+      if (!this.engine.awaitingSurfaceDecision && !this.engine.routeFailureDecision?.active && !this.engine.complete && !this.engine.aborted) {
+        this.engine.play();
+      }
+    }
     if (this.executionTransaction) {
       advanceMissionExecutionTransaction(this.executionTransaction, 'engineInitialized', {
         engineSummary: {
@@ -291,6 +329,8 @@ export class SimulationScene extends PhaserScene {
       if (this.app?.elements?.overlay?.bottomTimeline) this.app.elements.overlay.bottomTimeline.innerHTML = '';
       disposeSimulationPresentationScheduler(this.presentationScheduler);
       this.disposeThreeSimulationRenderer();
+      this.surfaceDecisionModal?.destroy?.();
+      this.surfaceDecisionModal = null;
       this.modal?.destroy?.();
       this.modal = null;
       disposeThreeMissionSceneLifecycle(lifecycle, reason);
@@ -2015,64 +2055,135 @@ export class SimulationScene extends PhaserScene {
 
   isSurfaceDecisionUiVisible() {
     const phaserModalVisible = Boolean(this.modal?.isVisible?.());
+    const htmlModalVisible = Boolean(this.surfaceDecisionModal?.isVisible?.());
     const fallbackVisible = this.isSurfaceFallbackVisible();
     if (this.app.state.surfaceDecision) {
-      this.app.state.surfaceDecision.modalVisible = phaserModalVisible;
+      this.app.state.surfaceDecision.modalVisible = htmlModalVisible || phaserModalVisible;
       this.app.state.surfaceDecision.fallbackVisible = fallbackVisible;
-      this.app.state.surfaceDecision.uiMounted = phaserModalVisible || fallbackVisible;
+      this.app.state.surfaceDecision.uiMounted = htmlModalVisible || phaserModalVisible || fallbackVisible;
+      this.app.state.surfaceDecision.ui = {
+        ...(this.app.state.surfaceDecision.ui ?? {}),
+        modalVisible: htmlModalVisible || phaserModalVisible,
+        fallbackVisible,
+        uiMounted: htmlModalVisible || phaserModalVisible || fallbackVisible,
+        modalKind: htmlModalVisible ? 'html' : phaserModalVisible ? 'phaser' : null
+      };
     }
-    return Boolean(phaserModalVisible || isSurfaceDecisionModalVisible(this.app.state, this.app.elements.consoleRoot));
+    return Boolean(htmlModalVisible || phaserModalVisible || isSurfaceDecisionModalVisible(this.app.state, globalThis.document ?? this.app.elements.consoleRoot));
   }
 
   refreshSurfaceDecision() {
     const decision = this.engine.awaitingSurfaceDecision;
-    this.app.state.surfaceDecision = decision ? normalizeSurfaceDecisionState(this.app.state.level, decision, {
-      modalVisible: Boolean(this.modal?.isVisible?.()),
-      fallbackVisible: this.isSurfaceFallbackVisible()
-    }) : null;
     if (!decision) {
+      this.surfaceDecisionModal?.hide?.();
+      this.app.state.surfaceDecision = null;
+      this.app.state.surfacingDecisionTransaction = null;
+      this.surfaceDecisionTransaction = null;
       this.clearSurfaceDecisionFallback();
       this.syncSimulationDecisionWaitState();
+      this.publishSurfacingDecisionDebug({ active: false, currentStage: 'idle' });
       return;
     }
+
+    const first = decision.agents?.[0] ?? {};
+    const decisionState = createSurfacingDecisionState({
+      level: this.app.state.level,
+      mission: this.app.state.mission,
+      plan: this.app.state.plan,
+      engine: this.engine,
+      decision,
+      agentId: first.agentId ?? decision.agentId ?? this.app.state.selectedAgentId,
+      activeDecisionIndex: 0,
+      pendingDecisionCount: decision.agents?.length ?? 1,
+      ui: {
+        modalVisible: Boolean(this.surfaceDecisionModal?.isVisible?.() || this.modal?.isVisible?.()),
+        fallbackVisible: this.isSurfaceFallbackVisible(),
+        modalKind: this.surfaceDecisionModal?.isVisible?.() ? 'html' : this.modal?.isVisible?.() ? 'phaser' : null
+      }
+    });
+    const validation = validateSurfacingDecisionState(decisionState);
+    this.app.state.surfaceDecision = decisionState;
     this.setSimulationWaitState('surfaceDecision');
-    const decisionKey = `${decision.t}:${decision.agents?.map((agent) => agent.agentId).join(',')}`;
+    const previousDecisionKey = this.activeSurfaceDecisionKey;
+
+    const previousTransaction = this.surfaceDecisionTransaction ?? this.app.state.surfacingDecisionTransaction ?? null;
+    this.surfaceDecisionTransaction = createSurfacingDecisionTransaction({ decisionState, previous: previousTransaction });
+    this.app.state.surfacingDecisionTransaction = this.surfaceDecisionTransaction;
+    this.activeSurfaceDecisionKey = decisionState.id;
+
     debugSurfaceDecision('surface state created', {
-      decisionKey,
-      time: decision.t ?? decision.time,
-      agentId: this.app.state.surfaceDecision?.agentId ?? null
+      decisionKey: decisionState.id,
+      time: decisionState.time,
+      agentId: decisionState.agentId,
+      validationOk: validation.ok
     });
-    if (this.activeSurfaceDecisionKey === decisionKey) {
-      this.ensureSurfaceDecisionFallback();
-      return;
+
+    if (!this.surfaceDecisionOpenedEvents.has(decisionState.id)) {
+      this.surfaceDecisionOpenedEvents.add(decisionState.id);
+      this.engine.recordEvent({
+        type: 'anchor.simulation.surfacing-decision-opened',
+        t: this.engine.t,
+        agentId: decisionState.agentId,
+        surfacingDecisionId: decisionState.id,
+        transactionId: this.surfaceDecisionTransaction.transactionId,
+        changesOfficialScoring: false
+      });
+      traceSimulation(this.trace, {
+        scene: 'SimulationScene',
+        phase: 'surfacing.decision.opened',
+        simTime: decisionState.time,
+        agentId: decisionState.agentId,
+        message: 'Surface decision opened',
+        details: { decisionKey: decisionState.id, transactionId: this.surfaceDecisionTransaction.transactionId }
+      });
     }
-    this.activeSurfaceDecisionKey = decisionKey;
-    const first = decision.agents?.[0];
-    const agent = this.engine.agents?.find((candidate) => candidate.id === first?.agentId);
-    const drift = first?.expected && first?.actual
-      ? Math.hypot(Number(first.actual.x) - Number(first.expected.x), Number(first.actual.y) - Number(first.expected.y))
-      : 0;
-    debugSurfaceDecision('surface modal render attempted', { decisionKey, agentId: first?.agentId ?? null });
-    this.modal.show({
-      title: 'Glider Surfaced',
-      body: `${first?.agentId ?? 'Glider'} surfaced at ${formatMissionTime(this.app.state.level, decision.t)}.\nExpected position: ${formatPoint(first?.expected)}\nActual position: ${formatPoint(first?.actual)}\nBattery remaining: ${formatMetric(agent?.battery)}\nSamples collected: ${formatMetric(agent?.sampleScore)}${drift > 1 ? '\nWarning: actual position differs from expected by more than one cell.' : ''}\n\nContinue, update future waypoints, or finish the mission.`,
-      buttons: [
-        { label: 'Continue Mission', onClick: () => this.continueFromSurfaceDecision() },
-        { label: 'Update Waypoints / Replan', onClick: () => this.updateWaypointsFromSurface() },
-        { label: 'Export Observation Data', onClick: () => this.exportObservationData('surfaceDecision'), close: false },
-        { label: 'Import Waypoint Data', onClick: () => this.importWaypointData('surfaceDecision'), close: false },
-        { label: 'Finish Mission / Debrief', onClick: () => this.finishFromSurface() }
-      ]
-    });
-    traceSimulation(this.trace, {
-      scene: 'SimulationScene',
-      phase: 'surfacing.modal.show',
-      simTime: decision.t,
-      agentId: first?.agentId ?? null,
-      message: 'Surface decision modal requested',
-      details: { decisionKey }
-    });
+
+    let modalShown = Boolean(this.surfaceDecisionModal?.isVisible?.());
+    const shouldRenderModal = previousDecisionKey !== decisionState.id || !modalShown;
+    if (shouldRenderModal) {
+      modalShown = this.surfaceDecisionModal?.show?.({
+        decision: decisionState,
+        transaction: this.surfaceDecisionTransaction,
+        queue: { index: decisionState.activeDecisionIndex, count: decisionState.pendingDecisionCount },
+        onAction: (action, details) => this.handleSurfacingDecisionAction(action, details)
+      }) === true;
+      if (!modalShown) {
+        this.app.toast?.('Surface decision required. Use the Simulation Console fallback controls.', 'warning');
+      }
+    }
     this.ensureSurfaceDecisionFallback();
+    this.app.state.surfaceDecision.ui.modalVisible = Boolean(modalShown || this.modal?.isVisible?.());
+    this.app.state.surfaceDecision.ui.fallbackVisible = this.isSurfaceFallbackVisible();
+    this.app.state.surfaceDecision.ui.uiMounted = this.app.state.surfaceDecision.ui.modalVisible || this.app.state.surfaceDecision.ui.fallbackVisible;
+    this.publishSurfacingDecisionDebug({ active: true, currentStage: 'decisionOpened', validation });
+  }
+
+  publishSurfacingDecisionDebug(patch = {}) {
+    const state = this.app?.state?.surfaceDecision ?? null;
+    const transaction = this.surfaceDecisionTransaction ?? this.app?.state?.surfacingDecisionTransaction ?? null;
+    const handoff = this.app?.state?.surfacingReplanHandoff ?? null;
+    const debug = {
+      version: 'surface-r1',
+      active: Boolean(state?.active || this.engine?.awaitingSurfaceDecision),
+      currentStage: patch.currentStage ?? transaction?.status ?? null,
+      decisionSummary: state ? surfacingDecisionStateSummary(state) : null,
+      transactionSummary: transaction ? surfacingDecisionTransactionSummary(transaction) : null,
+      handoffSummary: handoff ? surfacingReplanHandoffSummary(handoff) : null,
+      modalSummary: this.surfaceDecisionModal?.summary?.() ?? null,
+      fallbackVisible: this.isSurfaceFallbackVisible(),
+      engineAwaitingSurfaceDecision: Boolean(this.engine?.awaitingSurfaceDecision),
+      simulationRunning: Boolean(this.engine?.running),
+      actionDispatchCount: this.surfacingActionDispatchCount,
+      duplicateActionCount: this.surfacingDuplicateActionCount,
+      pendingDecisionCount: state?.pendingDecisionCount ?? this.engine?.awaitingSurfaceDecision?.agents?.length ?? 0,
+      createsNewPlanner: false,
+      changesOfficialScoring: false,
+      rendererOwnsSimulationState: false,
+      ...patch
+    };
+    this.lastSurfaceDecisionDebug = debug;
+    globalThis.ANCHOR_SURFACING_DECISION_DEBUG = debug;
+    return debug;
   }
 
   ensureSurfaceDecisionFallback() {
@@ -2420,23 +2531,136 @@ export class SimulationScene extends PhaserScene {
     this.scene.start('DebriefScene');
   }
 
+  handleSurfacingDecisionAction(action, details = {}) {
+    const normalizedAction = normalizeSurfacingDecisionAction(action);
+    this.surfacingActionDispatchCount += 1;
+    if (!normalizedAction) {
+      this.surfacingDuplicateActionCount += 1;
+      this.publishSurfacingDecisionDebug({ currentStage: 'unknownAction', action, details });
+      this.app.toast?.(`Unknown surface decision action: ${action}`, 'warning');
+      return;
+    }
+    if (!this.engine?.awaitingSurfaceDecision) {
+      this.surfacingDuplicateActionCount += 1;
+      this.publishSurfacingDecisionDebug({ currentStage: 'staleActionIgnored', action: normalizedAction, details });
+      return;
+    }
+    if (normalizedAction === SURFACING_DECISION_ACTION.EXPORT_OBSERVATIONS) {
+      this.engine.recordEvent({ type: 'anchor.simulation.surfacing-observations-export-requested', t: this.engine.t, agentId: this.app.state.surfaceDecision?.agentId ?? null });
+      this.publishSurfacingDecisionDebug({ currentStage: 'exportObservationsRequested', action: normalizedAction, details });
+      this.exportObservationData('surfaceDecision');
+      return;
+    }
+    if (normalizedAction === SURFACING_DECISION_ACTION.IMPORT_WAYPOINTS) {
+      this.engine.recordEvent({ type: 'anchor.simulation.surfacing-waypoint-import-requested', t: this.engine.t, agentId: this.app.state.surfaceDecision?.agentId ?? null });
+      this.publishSurfacingDecisionDebug({ currentStage: 'importWaypointsRequested', action: normalizedAction, details });
+      this.importWaypointData('surfaceDecision');
+      return;
+    }
+    if (normalizedAction === SURFACING_DECISION_ACTION.CONTINUE_ORIGINAL_PLAN) {
+      this.continueFromSurfaceDecision();
+      return;
+    }
+    if (normalizedAction === SURFACING_DECISION_ACTION.UPDATE_WAYPOINTS) {
+      this.updateWaypointsFromSurface();
+      return;
+    }
+    if (normalizedAction === SURFACING_DECISION_ACTION.FINISH_MISSION) {
+      this.finishFromSurface();
+    }
+  }
+
   continueFromSurfaceDecision() {
+    if (!this.engine.awaitingSurfaceDecision) return;
     traceSimulation(this.trace, { scene: 'SimulationScene', phase: 'surfacing.continue', simTime: this.engine.t, message: 'Continue surface decision clicked' });
+    const decisionState = this.app.state.surfaceDecision ?? createSurfacingDecisionState({
+      level: this.app.state.level,
+      mission: this.app.state.mission,
+      plan: this.app.state.plan,
+      engine: this.engine,
+      decision: this.engine.awaitingSurfaceDecision
+    });
+    const transaction = this.surfaceDecisionTransaction ?? this.app.state.surfacingDecisionTransaction ?? createSurfacingDecisionTransaction({ decisionState });
+    this.surfaceDecisionTransaction = commitSurfacingDecisionAction(
+      transaction,
+      SURFACING_DECISION_ACTION.CONTINUE_ORIGINAL_PLAN,
+      { time: this.engine.t, source: 'surfaceDecision' }
+    );
+    this.app.state.lastSurfacingDecisionTransaction = this.surfaceDecisionTransaction;
+    this.engine.recordEvent({
+      type: 'anchor.simulation.surfacing-continue-selected',
+      t: this.engine.t,
+      agentId: this.app.state.surfaceDecision?.agentId ?? null,
+      surfacingDecisionId: this.app.state.surfaceDecision?.id ?? null,
+      transactionId: this.surfaceDecisionTransaction?.transactionId ?? null,
+      changesOfficialScoring: false
+    });
     this.engine.continueFromSurface();
+    this.surfaceDecisionModal?.hide?.();
     this.app.state.surfaceDecision = null;
+    this.app.state.surfacingDecisionTransaction = null;
     this.clearSurfaceDecisionFallback();
     this.clearSimulationWaitState();
     this.watchdog?.reset();
-    this.refreshControls();
+    this.syncResult();
+    this.refresh();
+    this.publishSurfacingDecisionDebug({ active: false, currentStage: 'continueCommitted' });
   }
 
   updateWaypointsFromSurface() {
     const decision = this.engine.awaitingSurfaceDecision;
+    if (!decision) return;
     traceSimulation(this.trace, { scene: 'SimulationScene', phase: 'surfacing.update', simTime: this.engine.t, message: 'Update waypoints from surface clicked' });
     const selectedAgentId = decision?.agentId ?? decision?.agents?.[0]?.agentId ?? this.app.state.selectedAgentId;
-    this.engine.recordReplanDecision();
+    const decisionState = this.app.state.surfaceDecision ?? createSurfacingDecisionState({
+      level: this.app.state.level,
+      mission: this.app.state.mission,
+      plan: this.app.state.plan,
+      engine: this.engine,
+      decision,
+      agentId: selectedAgentId
+    });
+    this.surfaceDecisionTransaction = startSurfacingReplan(
+      this.surfaceDecisionTransaction ?? this.app.state.surfacingDecisionTransaction ?? createSurfacingDecisionTransaction({ decisionState }),
+      { time: this.engine.t, source: 'surfaceDecision' }
+    );
+    const resumeState = this.engine.createResumeState();
+    const handoff = createSurfacingReplanHandoff({
+      level: this.app.state.level,
+      mission: this.app.state.mission,
+      plan: this.app.state.plan,
+      engine: this.engine,
+      decisionState,
+      decision,
+      transaction: this.surfaceDecisionTransaction,
+      resumeState,
+      surfacedAgentId: selectedAgentId
+    });
+    const handoffValidation = validateSurfacingReplanHandoff(handoff);
+    if (!handoffValidation.ok) {
+      this.app.toast?.(`Surface replan handoff warning: ${handoffValidation.errors[0]}`, 'warning');
+    }
+    const engineAgent = this.engine.agents.find((agent) => agent.id === selectedAgentId) ?? this.engine.agents[0] ?? null;
+    const actual = decisionState.actualPosition ?? decisionState.actual ?? (engineAgent ? { x: engineAgent.x, y: engineAgent.y } : null);
+    this.engine.recordEvent({
+      type: 'anchor.simulation.surfacing-replan-started',
+      t: this.engine.t,
+      agentId: selectedAgentId,
+      surfacingDecisionId: decisionState.id,
+      transactionId: this.surfaceDecisionTransaction.transactionId,
+      actualPosition: actual,
+      changesOfficialScoring: false
+    });
     this.syncResult();
-    this.app.state.simulationResume = this.engine.createResumeState();
+    this.app.state.simulationResume = resumeState;
+    this.app.state.surfacingReplanHandoff = handoff;
+    this.app.state.surfacingDecisionTransaction = this.surfaceDecisionTransaction;
+    this.app.state.surfaceDecision = {
+      ...decisionState,
+      status: SURFACING_DECISION_STATUS.REPLAN_SELECTED,
+      mode: 'editingFutureWaypoints',
+      ui: { ...(decisionState.ui ?? {}), modalVisible: false, fallbackVisible: false, uiMounted: false }
+    };
     this.app.state.surfacedAgents = this.engine.agents.map((agent) => ({
       id: agent.id,
       agentId: agent.id,
@@ -2444,71 +2668,77 @@ export class SimulationScene extends PhaserScene {
       y: agent.y,
       t: this.engine.t,
       heading: agent.heading,
-      commsState: agent.commsState
+      depthMeters: agent.depthMeters ?? 0,
+      commsState: agent.commsState,
+      status: agent.status
     }));
-    console.log(this.app)
-    const waypoints = getAgentPlan(this.app.state.plan, this.app.state.selectedAgentId).waypoints;
-    for (const agent of this.engine.agents) {
-      if (this.app.state.selectedAgentId == agent.id) {
-        var engineAgent = agent;
-        break;
-      }
+    this.app.state.ui ??= {};
+    this.app.state.ui.planningAnchor = actual ? {
+      agentId: selectedAgentId,
+      x: actual.x,
+      y: actual.y,
+      t: this.engine.t,
+      source: 'surfaced',
+      surfacingDecisionId: decisionState.id
+    } : null;
+    const agentPlan = getAgentPlan(this.app.state.plan, selectedAgentId);
+    const nextIndex = Math.max(0, Math.min((agentPlan?.waypoints?.length ?? 1) - 1, Number(engineAgent?.currentWaypointIndex ?? 0)));
+    if (agentPlan?.waypoints?.[nextIndex]) {
+      this.app.state.ui.selectedWaypoint = { agentId: selectedAgentId, index: nextIndex };
+      this.app.state.ui.hoverCell = { x: agentPlan.waypoints[nextIndex].x, y: agentPlan.waypoints[nextIndex].y };
     }
-    for (let agent = 0; agent <  this.app.state.mission.agents.length; agent++) {
-      if (this.app.state.selectedAgentId == this.app.state.mission.agents[agent].id) {
-        var missionAgentIndex = agent;
-        break;
-      }
-    }
-      for (const waypoint of engineAgent.completedWaypoints) {
-        this.app.phaser.scene.scenes[3].hud.handlers.remove(this.app.state.agentId, waypoint.waypointIndex);
-      }
-    this.app.state.surfaceDecision = null;
+    this.surfaceDecisionModal?.hide?.();
     this.clearSurfaceDecisionFallback();
     this.clearSimulationWaitState();
+    this.engine.pause();
     this.app.state.mode = 'planning';
     this.app.state.planningTime = this.engine.t;
     this.app.state.selectedWindow = getWindowForTime(this.app.state.level, this.engine.t);
-    this.scene.start('MissionWorkspaceScene');
     this.app.state.selectedAgentId = selectedAgentId;
-    this.app.state.ui.hoverCell = {
-      x:waypoints[waypoints.length - 1].x,
-      y:waypoints[waypoints.length - 1].y
-    }
-    this.app.state.plan.agentPlans[missionAgentIndex].selectedStart = {
-      x:engineAgent.x,
-      y:engineAgent.y
-    };
-    this.app.state.mission.agents[missionAgentIndex].deployment.selectedStart = {
-      x:engineAgent.x,
-      y:engineAgent.y
-    };
-    this.app.state.mission.agents[missionAgentIndex].start = {
-      x:engineAgent.x,
-      y:engineAgent.y
-    };
-    this.app.state.mission.agents[missionAgentIndex].deployment.mode = "fixedStart";
-    this.app.phaser.scene.scenes[3].hud.handlers.focusWaypoint(this.app.state.selectedAgentId, waypoints.length - 1);
-    this.app.state.ui.selectedWaypoint = {agentId: this.app.state.agentId, waypoint:waypoints[waypoints.length - 1]};
-    this.app.state.ui.planningAnchor.x = waypoints[waypoints.length - 1].x;
-    this.app.state.ui.planningAnchor.y = waypoints[waypoints.length - 1].y;
-    this.refresh();
+    this.publishSurfacingDecisionDebug({ currentStage: 'replanHandoffCreated', handoffValidation });
+    this.scene.start('MissionWorkspaceScene');
   }
 
   finishFromSurface() {
     traceSimulation(this.trace, { scene: 'SimulationScene', phase: 'surfacing.finish', simTime: this.engine?.t ?? 0, message: 'Finish from surface clicked' });
-    if (this.engine.awaitingSurfaceDecision) this.engine.finishFromSurfaceDecision();
-    else {
+    if (this.engine.awaitingSurfaceDecision) {
+      const decisionState = this.app.state.surfaceDecision ?? createSurfacingDecisionState({
+        level: this.app.state.level,
+        mission: this.app.state.mission,
+        plan: this.app.state.plan,
+        engine: this.engine,
+        decision: this.engine.awaitingSurfaceDecision
+      });
+      const transaction = this.surfaceDecisionTransaction ?? this.app.state.surfacingDecisionTransaction ?? createSurfacingDecisionTransaction({ decisionState });
+      this.surfaceDecisionTransaction = commitSurfacingDecisionAction(
+        transaction,
+        SURFACING_DECISION_ACTION.FINISH_MISSION,
+        { time: this.engine.t, source: 'surfaceDecision' }
+      );
+      this.app.state.lastSurfacingDecisionTransaction = this.surfaceDecisionTransaction;
+      this.engine.recordEvent({
+        type: 'anchor.simulation.surfacing-finish-selected',
+        t: this.engine.t,
+        agentId: this.app.state.surfaceDecision?.agentId ?? null,
+        surfacingDecisionId: this.app.state.surfaceDecision?.id ?? null,
+        transactionId: this.surfaceDecisionTransaction?.transactionId ?? null,
+        changesOfficialScoring: false
+      });
+      this.engine.finishFromSurfaceDecision();
+    } else {
       this.finishSimulation();
       return;
     }
+    this.surfaceDecisionModal?.hide?.();
     this.syncResult();
     if (this.engine.complete) recordStochasticRun(this.app.state, this.app.state.result);
     clearPlanningOverlayState(this.app.state);
     this.graphics?.clear();
     this.app.state.surfaceDecision = null;
+    this.app.state.surfacingDecisionTransaction = null;
     this.clearSurfaceDecisionFallback();
     this.clearSimulationWaitState();
+    this.publishSurfacingDecisionDebug({ active: false, currentStage: 'finishCommitted' });
     this.app.state.mode = 'debrief';
     this.recordDebriefRequested('debrief');
     this.scene.start('DebriefScene');

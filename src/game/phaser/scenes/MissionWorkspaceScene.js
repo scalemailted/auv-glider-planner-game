@@ -67,6 +67,21 @@ import {
   missionExecutionTransactionSummary
 } from '../../../core/simulation/MissionExecutionTransaction.js';
 import {
+  SURFACING_DECISION_ACTION,
+  SURFACING_DECISION_STATUS
+} from '../../../core/simulation/SurfacingDecisionState.js';
+import {
+  cancelSurfacingReplan as cancelSurfacingReplanTransaction,
+  commitSurfacingReplan,
+  surfacingDecisionTransactionSummary
+} from '../../../core/simulation/SurfacingDecisionTransaction.js';
+import {
+  commitSurfacingReplanResumeState,
+  normalizeSurfacingReplanHandoff,
+  surfacingReplanHandoffSummary,
+  validateSurfacingReplanHandoff
+} from '../../../core/planning/SurfacingReplanHandoff.js';
+import {
   createMissionExecutionSnapshot,
   createMissionLaunchPayload,
   summarizeMissionLaunchPayload,
@@ -473,6 +488,7 @@ export class MissionWorkspaceScene extends PhaserScene {
       exportBestPath: () => this.exportBestPath(),
       temporalGreedy: () => this.applyTemporalGreedyPlan(),
       clear: () => this.clearSelectedAgentPlan(),
+      cancelSurfacingReplan: () => this.cancelSurfacingReplan(),
       markerMode: () => this.togglePlacementMode(),
       clearMarkers: () => this.clearSelectedAgentMarkers(),
       focusWaypoint: (agentId, index) => this.focusWaypointFromTimeline(agentId, index),
@@ -4370,6 +4386,94 @@ export class MissionWorkspaceScene extends PhaserScene {
     this.app.state.plan = plan;
     return context;
   }
+  isSurfacingReplanMode() {
+    return Boolean(this.app?.state?.surfacingReplanHandoff?.type === 'anchor.planning.surfacing-replan-handoff'
+      || this.app?.state?.surfaceDecision?.mode === 'editingFutureWaypoints');
+  }
+
+  cancelSurfacingReplan() {
+    const handoff = normalizeSurfacingReplanHandoff(this.app.state.surfacingReplanHandoff);
+    if (!handoff) {
+      this.app.toast?.('No active surface replan to cancel.', 'warning');
+      return;
+    }
+    const transaction = cancelSurfacingReplanTransaction(this.app.state.surfacingDecisionTransaction, {
+      time: handoff.simulationTime,
+      source: 'missionWorkspaceCancel'
+    });
+    this.app.state.plan = cloneJson(handoff.sourcePlan ?? this.app.state.plan);
+    if (this.app.state.currentPlanSource === 'manual') this.app.state.manualPlan = this.app.state.plan;
+    this.app.state.simulationResume = cloneJson(handoff.resumeState ?? this.app.state.simulationResume);
+    const pendingDecision = this.app.state.simulationResume?.awaitingSurfaceDecision ?? null;
+    this.app.state.surfaceDecision = {
+      ...(this.app.state.surfaceDecision ?? pendingDecision ?? {}),
+      active: true,
+      status: SURFACING_DECISION_STATUS.PENDING,
+      mode: null,
+      ui: { modalVisible: false, fallbackVisible: false, uiMounted: false }
+    };
+    this.app.state.surfacingReplanHandoff = null;
+    this.app.state.surfacingDecisionTransaction = transaction;
+    this.app.state.lastSurfacingDecisionTransaction = transaction;
+    this.app.state.pendingSurfacingResumePlay = false;
+    this.app.state.mode = 'simulation';
+    clearPlanningOverlayState(this.app.state);
+    this.publishSurfacingReplanDebug({ currentStage: 'cancelled', transaction, handoff });
+    this.scene.start('SimulationScene');
+  }
+
+  prepareSurfacingReplanCommit({ snapshot = null } = {}) {
+    const handoff = normalizeSurfacingReplanHandoff(this.app.state.surfacingReplanHandoff);
+    if (!handoff) return null;
+    const validation = validateSurfacingReplanHandoff(handoff);
+    if (!validation.ok) {
+      throw new Error(validation.errors[0] ?? 'Surface replan handoff is invalid.');
+    }
+    let transaction = commitSurfacingReplan(this.app.state.surfacingDecisionTransaction, {
+      time: handoff.simulationTime,
+      source: 'missionWorkspaceCommit',
+      planDigest: snapshot?.planDigest ?? null
+    });
+    const committedResume = commitSurfacingReplanResumeState(this.app.state.simulationResume ?? handoff.resumeState, {
+      decisionState: this.app.state.surfaceDecision,
+      transaction,
+      updatePenalty: this.app.state.mission?.rules?.communication?.updatePenalty ?? this.app.state.mission?.rules?.updatePenalty ?? null,
+      action: SURFACING_DECISION_ACTION.UPDATE_WAYPOINTS
+    });
+    this.app.state.simulationResume = committedResume;
+    if (snapshot) {
+      snapshot.simulationResume = committedResume;
+      snapshot.surfacingReplan = surfacingReplanHandoffSummary(handoff);
+    }
+    this.app.state.lastSurfacingReplanHandoff = handoff;
+    this.app.state.lastSurfacingDecisionTransaction = transaction;
+    this.app.state.surfacingDecisionTransaction = transaction;
+    this.app.state.surfacingReplanHandoff = null;
+    this.app.state.surfaceDecision = null;
+    this.app.state.pendingSurfacingResumePlay = true;
+    this.publishSurfacingReplanDebug({ currentStage: 'committed', transaction, handoff, committedResume });
+    return { transaction, handoff, committedResume, validation };
+  }
+
+  publishSurfacingReplanDebug(patch = {}) {
+    const transaction = patch.transaction ?? this.app.state.surfacingDecisionTransaction ?? this.app.state.lastSurfacingDecisionTransaction ?? null;
+    const handoff = patch.handoff ?? this.app.state.surfacingReplanHandoff ?? this.app.state.lastSurfacingReplanHandoff ?? null;
+    const debug = {
+      version: 'surface-r1',
+      active: this.isSurfacingReplanMode(),
+      currentStage: patch.currentStage ?? (handoff ? 'editingFutureWaypoints' : 'idle'),
+      handoffSummary: handoff ? surfacingReplanHandoffSummary(handoff) : null,
+      transactionSummary: transaction ? surfacingDecisionTransactionSummary(transaction) : null,
+      hasPendingResumeState: Boolean((patch.committedResume ?? this.app.state.simulationResume)?.awaitingSurfaceDecision),
+      pendingSurfacingResumePlay: this.app.state.pendingSurfacingResumePlay === true,
+      startsNewMission: false,
+      usesNewPlanner: false,
+      changesOfficialBrowserScoring: false,
+      rendererOwnsSimulationState: false
+    };
+    globalThis.ANCHOR_SURFACING_REPLAN_DEBUG = debug;
+    return debug;
+  }
   handleExecuteControlAction(source = 'missionConsole') {
     const control = this.executeControlState();
     this.executeControlClickCount += 1;
@@ -4498,6 +4602,8 @@ export class MissionWorkspaceScene extends PhaserScene {
       this.publishExecutionDebug({ currentStage: this.executionTransaction?.currentStage ?? 'executeRequested' });
       return;
     }
+    const surfacingReplanActive = this.isSurfacingReplanMode();
+    if (surfacingReplanActive && source === 'missionConsole') source = 'surfacingReplanCommit';
     this.executeLaunchInProgress = true;
     this.app.state.simulationTrace = createSimulationTrace();
     let transaction = createMissionExecutionTransaction({
@@ -4608,7 +4714,16 @@ export class MissionWorkspaceScene extends PhaserScene {
         this.showRouteValidationModal(blockingIssue, validation);
         return;
       }
-      transaction = advanceMissionExecutionTransaction(transaction, 'planValidated', { validationSummary: summarizeValidation(validation) });
+      const surfacingCommit = surfacingReplanActive ? this.prepareSurfacingReplanCommit({ snapshot }) : null;
+      transaction = advanceMissionExecutionTransaction(transaction, 'planValidated', {
+        validationSummary: summarizeValidation(validation),
+        surfacingReplan: surfacingCommit ? {
+          handoffSummary: surfacingReplanHandoffSummary(surfacingCommit.handoff),
+          transactionSummary: surfacingDecisionTransactionSummary(surfacingCommit.transaction),
+          resumeTime: surfacingCommit.committedResume?.t ?? null,
+          pendingDecisionCleared: !surfacingCommit.committedResume?.awaitingSurfaceDecision
+        } : null
+      });
       const missionDurationWarning = validation.warnings?.find((warning) => /mission duration|mission time limit/i.test(warning));
       if (missionDurationWarning) this.app.toast?.(missionDurationWarning, 'warning');
       traceSimulation(this.app.state.simulationTrace, {

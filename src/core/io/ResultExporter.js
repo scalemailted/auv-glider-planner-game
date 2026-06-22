@@ -66,6 +66,7 @@ import {
   classifyRouteSource,
   leaderboardScopeForExperience
 } from '../storage/LeaderboardStore.js';
+import { summarizeSurfaceDecisionEvents } from '../simulation/SurfacingDecisionState.js';
 
 export function buildResultExport({ level, mission, plan, result, label = 'Manual Player Plan', challenge = null, experienceMode = null } = {}) {
   recordResultExportBuild();
@@ -165,6 +166,7 @@ export function buildResultExport({ level, mission, plan, result, label = 'Manua
       ignoreUpdateEvents: Boolean(result?.missionOptions?.ignoreUpdateEvents),
       ignoredUpdateEvents: Number(result?.missionOptions?.ignoredUpdateEvents ?? result?.updateEventsIgnored ?? 0)
     },
+    surfacingDecision: summarizeSurfaceDecisionEvents(result?.events ?? []),
     missionOptions: cloneJson(result?.missionOptions ?? mission?.rules?.missionOptions ?? { ignoreUpdateEvents: false }),
     challengeReference: challenge ? {
       levelId: challenge.levelId,
