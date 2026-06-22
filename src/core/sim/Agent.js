@@ -25,6 +25,10 @@ export function createAgent(config) {
     groundRelativeVelocity: { x: 0, y: 0, vertical: 0 },
     currentVector: { u: 0, v: 0, w: 0 },
     divePhase: depthMeters > 0 ? 'descending' : 'surfaced',
+    diveProfileId: config.diveProfileId ?? config.defaultDiveProfileId ?? null,
+    targetDepthLayerId: config.targetDepthLayerId ?? config.depthLayerId ?? config.defaultTargetDepthLayerId ?? null,
+    maximumDiveDepthMeters: finiteOptionalNumber(config.maximumDiveDepthMeters ?? config.maximumDepthMeters ?? config.maxDepthMeters),
+    cycleCount: finiteOptionalNumber(config.cycleCount ?? config.requestedCycleCount),
     profileProgress: 0,
     segmentProgress: 0,
     bottomDepthMeters: null,
@@ -76,4 +80,9 @@ export function createAgent(config) {
 function finiteNumber(value, fallback = 0) {
   const number = Number(value);
   return Number.isFinite(number) ? number : fallback;
+}
+
+function finiteOptionalNumber(value) {
+  const number = Number(value);
+  return Number.isFinite(number) ? number : null;
 }

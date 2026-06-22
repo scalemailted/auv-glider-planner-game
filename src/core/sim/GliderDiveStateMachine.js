@@ -1,8 +1,9 @@
 import { normalizeDiveProfile } from '../science/DiveProfileModel.js';
 import { normalizeWaterColumnConfig, waterColumnLayerMetadata } from '../science/WaterColumnSchema.js';
+import { resolveEffectiveDiveProfile, effectiveDiveProfileSummary } from '../motion/EffectiveDiveProfileResolver.js';
 import { normalizeContinuousGliderState } from './ContinuousGliderState.js';
 
-export const GLIDER_DIVE_STATE_MACHINE_VERSION = 'glider-dive-state-machine-three-r1-2a-3';
+export const GLIDER_DIVE_STATE_MACHINE_VERSION = 'glider-dive-state-machine-dive-r1';
 export const GLIDER_DIVE_KINEMATICS_MODEL = Object.freeze({
   modelType: 'educationalGliderDiveKinematics',
   version: GLIDER_DIVE_STATE_MACHINE_VERSION,
@@ -14,8 +15,11 @@ export function advanceGliderDiveStateMachine(state = {}, inputs = {}) {
   const current = normalizeContinuousGliderState(state);
   const dt = positive(inputs.dt ?? inputs.deltaTimeSeconds, 0.25);
   const config = normalizeWaterColumnConfig(inputs.waterColumnConfig ?? inputs.mission?.waterColumnConfig ?? inputs.level?.world?.waterColumnConfig ?? { depthLayerIds: ['surface'] });
-  const profile = normalizeDiveProfile(inputs.diveProfile ?? inputs.diveProfileId ?? inputs.selectedDiveProfileId ?? 'surfaceOnly', config);
-  const requestedDepth = requestedTargetDepth(inputs, profile, config);
+  const effectiveDiveProfile = inputs.effectiveDiveProfile ?? explicitEffectiveDiveProfile(inputs, config) ?? resolveEffectiveDiveProfile({ ...inputs, waterColumnConfig: config });
+  const profile = effectiveDiveProfile.profile ?? normalizeDiveProfile(effectiveDiveProfile.profileId ?? 'surfaceOnly', config);
+  const effectiveInputs = { ...inputs, targetDepthLayerId: inputs.targetDepthLayerId ?? effectiveDiveProfile.targetDepthLayerId };
+  const model = { ...GLIDER_DIVE_KINEMATICS_MODEL, effectiveDiveProfile: effectiveDiveProfileSummary(effectiveDiveProfile) };
+  const requestedDepth = requestedTargetDepth(effectiveInputs, profile, config);
   const localBottomDepth = finite(inputs.localBathymetryMeters ?? inputs.bottomDepthMeters, Infinity);
   const bottomClearance = positive(inputs.minimumBottomClearanceMeters ?? inputs.bottomClearanceMeters, 5);
   const terrainLimitedDepth = Math.max(0, Number.isFinite(localBottomDepth) ? localBottomDepth - bottomClearance : requestedDepth);
@@ -67,7 +71,8 @@ export function advanceGliderDiveStateMachine(state = {}, inputs = {}) {
     return {
       type: 'anchor.sim.glider-dive-state-machine-step',
       version: GLIDER_DIVE_STATE_MACHINE_VERSION,
-      model: GLIDER_DIVE_KINEMATICS_MODEL,
+      model,
+      effectiveDiveProfile: effectiveDiveProfileSummary(effectiveDiveProfile),
       state: next,
       previousDepthMeters: previousDepth,
       requestedDepthMeters: requestedDepth,
@@ -158,7 +163,8 @@ export function advanceGliderDiveStateMachine(state = {}, inputs = {}) {
   return {
     type: 'anchor.sim.glider-dive-state-machine-step',
     version: GLIDER_DIVE_STATE_MACHINE_VERSION,
-    model: GLIDER_DIVE_KINEMATICS_MODEL,
+    model,
+    effectiveDiveProfile: effectiveDiveProfileSummary(effectiveDiveProfile),
     state: next,
     previousDepthMeters: previousDepth,
     requestedDepthMeters: requestedDepth,
@@ -186,6 +192,7 @@ export function gliderDiveStateMachineSummary(result = {}) {
     depthMeters: result.state?.position?.depthMeters ?? null,
     pitchRadians: result.pitchRadians ?? result.state?.pitchRadians ?? null,
     targetDepthMeters: result.targetDepthMeters ?? null,
+    effectiveDiveProfile: result.effectiveDiveProfile ?? result.model?.effectiveDiveProfile ?? null,
     requestedCycleCount: result.requestedCycleCount ?? null,
     feasibleCycleCount: result.feasibleCycleCount ?? null,
     actualCompletedCycleCount: result.actualCompletedCycleCount ?? null,
@@ -194,6 +201,27 @@ export function gliderDiveStateMachineSummary(result = {}) {
   };
 }
 
+function explicitEffectiveDiveProfile(inputs, config) {
+  const explicit = inputs.diveProfile ?? inputs.diveProfileId ?? inputs.selectedDiveProfileId ?? null;
+  if (!explicit) return null;
+  const profile = normalizeDiveProfile(explicit, config);
+  const targetDepthLayerId = inputs.targetDepthLayerId
+    ?? profile.sequence?.findLast?.((id) => id !== 'surface')
+    ?? profile.sequence?.at(-1)
+    ?? config.depthLayerIds[0]
+    ?? 'surface';
+  return {
+    type: 'anchor.motion.effective-dive-profile',
+    profile,
+    profileId: profile.id,
+    source: 'segmentOverride',
+    targetDepthLayerId,
+    inherited: false,
+    compatibilityFallback: false,
+    routeEmpty: false,
+    warnings: []
+  };
+}
 function requestedDiveCycleCount(inputs, profile) {
   if (profile.id === 'surfaceOnly') return 0;
   const explicit = Number(inputs.cycleCount ?? inputs.requestedCycleCount ?? inputs.multiYoCycleCount);

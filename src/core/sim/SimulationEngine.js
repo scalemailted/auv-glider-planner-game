@@ -108,6 +108,8 @@ export class SimulationEngine {
     const depthScienceScoreProfile = resolveDepthScienceScoreProfile(this.level, this.mission, waterColumnConfig);
     const primaryObjective = primaryMissionObjective(this.mission);
     this.missionState = {
+      level: this.level,
+      mission: this.mission,
       sampled: new Set(),
       sampleHistory: new Map(),
       sampleWindows: new Set(),

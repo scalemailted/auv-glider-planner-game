@@ -1,6 +1,7 @@
 import { seededUnit } from '../random/SeededRng.js';
 import { normalizeSamplingRules } from './MissionRules.js';
 import { depthLayerForDiveProfile, normalizeDiveProfile } from '../science/DiveProfileModel.js';
+import { resolveEffectiveDiveProfile } from '../motion/EffectiveDiveProfileResolver.js';
 import {
   normalizeWaterColumnConfig,
   normalizeWaterColumnLayerId,
@@ -12,6 +13,7 @@ import {
 } from '../science/DepthAwareScienceValue.js';
 
 export function updateSampling(agent, world, missionState, t) {
+  if (!agent?.activeWaypoint) return null;
   const sample = findBestSampleCell(agent, world, missionState, t);
   if (!sample || sample.expectedValue < (missionState.roiThreshold ?? 0.15)) return null;
 
@@ -309,17 +311,22 @@ function resolveSampleDepthContext(agent, missionState, sample, t) {
   const config = normalizeWaterColumnConfig(missionState.waterColumnConfig ?? { depthLayerIds: ['surface'], diveProfileId: 'surfaceOnly' });
   const activeWaypoint = agent.activeWaypoint ?? null;
   const agentPlan = (missionState.plan?.agentPlans ?? []).find((plan) => plan.agentId === agent.id) ?? null;
-  const profileId = activeWaypoint?.diveProfileId
-    ?? agentPlan?.diveProfileId
-    ?? agent.diveProfileId
-    ?? missionState.defaultDiveProfileId
-    ?? config.diveProfileId;
+  const effectiveDiveProfile = resolveEffectiveDiveProfile({
+    targetWaypoint: activeWaypoint,
+    agentPlan,
+    agent,
+    mission: missionState.mission,
+    level: missionState.level,
+    waterColumnConfig: config,
+    routeWaypointCount: agentPlan?.waypoints?.length != null ? Number(agentPlan.waypoints.length) + 1 : null,
+    executableSegmentCount: agentPlan?.waypoints?.length != null ? Math.max(0, Number(agentPlan.waypoints.length)) : null
+  });
+  const profileId = effectiveDiveProfile.profileId;
   const targetDepthLayerId = normalizeWaterColumnLayerId(
     activeWaypoint?.targetDepthLayerId
       ?? activeWaypoint?.depthLayerId
       ?? activeWaypoint?.depthLayer
-      ?? agentPlan?.targetDepthLayerId
-      ?? agent.targetDepthLayerId
+      ?? effectiveDiveProfile.targetDepthLayerId
       ?? missionState.defaultTargetDepthLayerId
       ?? config.defaultLayerIds?.[0]
       ?? 'surface',
@@ -331,7 +338,7 @@ function resolveSampleDepthContext(agent, missionState, sample, t) {
   const profileLayer = depthLayerForDiveProfile(profile, progress);
   const actualDepthMeters = Number(agent.depthMeters);
   const actualLayer = Number.isFinite(actualDepthMeters) ? depthLayerForMeters(actualDepthMeters, config, targetDepthLayerId) : null;
-  const depthLayerId = normalizeWaterColumnLayerId(explicitLayer ?? actualLayer ?? (profile.id === 'surfaceOnly' ? 'surface' : profileLayer), targetDepthLayerId);
+  const depthLayerId = normalizeWaterColumnLayerId(actualLayer ?? explicitLayer ?? (profile.id === 'surfaceOnly' ? 'surface' : profileLayer), targetDepthLayerId);
   const safeLayerId = config.depthLayerIds.includes(depthLayerId) ? depthLayerId : config.depthLayerIds[0] ?? 'surface';
   const metadata = waterColumnLayerMetadata(safeLayerId);
   return {

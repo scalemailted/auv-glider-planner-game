@@ -2,6 +2,7 @@ import { clamp, normalize } from '../math/MathUtils.js';
 import { estimateBeachingRiskAtCell } from '../planning/ShorelineRisk.js';
 import { computeHeadingCurrentComponents, currentEnergyMultiplier } from '../planning/CurrentAwareRouteCost.js';
 import { normalizeWaterColumnConfig } from '../science/WaterColumnSchema.js';
+import { resolveEffectiveDiveProfile, effectiveDiveProfileSummary } from '../motion/EffectiveDiveProfileResolver.js';
 import { applySeededStochasticDrift } from './StochasticDrift.js';
 import { advanceGliderDiveStateMachine } from './GliderDiveStateMachine.js';
 
@@ -202,14 +203,29 @@ function advanceContinuousDiveState(agent, target, world, dt, config, step) {
     bottomClearanceMeters: Number.isFinite(localBathymetryMeters) ? localBathymetryMeters - Number(agent.depthMeters ?? 0) : null,
     currentVector: { u: step.currentX, v: step.currentY, w: 0 }
   };
+  const effectiveDiveProfile = resolveEffectiveDiveProfile({
+    targetWaypoint: target,
+    agentPlan: config.agentPlan,
+    agent,
+    mission: config.mission,
+    level: world.level,
+    waterColumnConfig,
+    routeWaypointCount: config.agentPlan?.waypoints?.length != null ? Number(config.agentPlan.waypoints.length) + 1 : null,
+    executableSegmentCount: config.agentPlan?.waypoints?.length != null ? Math.max(0, Number(config.agentPlan.waypoints.length)) : null
+  });
   const result = advanceGliderDiveStateMachine(state, {
     dt,
     timeSeconds: config.t ?? 0,
     waterColumnConfig,
     mission: config.mission,
-    diveProfileId: target.diveProfileId ?? target.profileId ?? config.agentPlan?.diveProfileId ?? agent.diveProfileId ?? config.mission?.rules?.waterColumn?.defaultDiveProfileId ?? waterColumnConfig.diveProfileId,
-    targetDepthLayerId: target.targetDepthLayerId ?? target.depthLayerId ?? target.depthLayer ?? config.agentPlan?.targetDepthLayerId ?? config.agentPlan?.depthLayerId ?? agent.targetDepthLayerId ?? config.mission?.rules?.waterColumn?.defaultTargetDepthLayerId ?? waterColumnConfig.defaultLayerIds?.[0],
-    targetDepthMeters: target.depthMeters ?? target.maximumDepthMeters ?? target.maximumDiveDepthMeters ?? config.agentPlan?.maximumDiveDepthMeters ?? config.agentPlan?.maximumDepthMeters,
+    targetWaypoint: target,
+    agentPlan: config.agentPlan,
+    agent,
+    effectiveDiveProfile,
+    diveProfile: effectiveDiveProfile.profile,
+    diveProfileId: effectiveDiveProfile.profileId,
+    targetDepthLayerId: effectiveDiveProfile.targetDepthLayerId,
+    targetDepthMeters: target.depthMeters ?? target.maximumDepthMeters ?? target.maximumDiveDepthMeters ?? config.agentPlan?.maximumDiveDepthMeters ?? config.agentPlan?.maximumDepthMeters ?? agent.maximumDiveDepthMeters,
     cycleCount: target.cycleCount ?? target.requestedCycleCount ?? config.agentPlan?.cycleCount ?? agent.cycleCount ?? config.mission?.rules?.waterColumn?.cycleCount,
     localBathymetryMeters,
     segmentLength: step.segmentInitialDistance,
@@ -225,6 +241,9 @@ function advanceContinuousDiveState(agent, target, world, dt, config, step) {
   agent.pitchRadians = next.pitchRadians;
   agent.rollRadians = next.rollRadians;
   agent.divePhase = next.divePhase;
+  agent.diveProfileId = effectiveDiveProfile.profileId;
+  agent.targetDepthLayerId = effectiveDiveProfile.targetDepthLayerId;
+  agent.effectiveDiveProfile = effectiveDiveProfileSummary(effectiveDiveProfile);
   agent.profileProgress = next.profileProgress;
   agent.segmentProgress = next.segmentProgress;
   agent.bottomDepthMeters = next.bottomDepthMeters;

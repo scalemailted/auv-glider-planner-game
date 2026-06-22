@@ -1,4 +1,5 @@
 import { normalizeWaterColumnConfig, waterColumnLayerMetadata } from '../science/WaterColumnSchema.js';
+import { resolveEffectiveDiveProfile } from '../motion/EffectiveDiveProfileResolver.js';
 import { buildLegacySurfaceOnlyWaterColumnConfig, isLegacySurfaceOnlyMission, waterColumnMissionConfigSummary } from '../science/WaterColumnMissionDefaults.js';
 import { buildBottomBoundaryViewModel, bottomBoundaryViewModelSummary } from './BottomBoundaryViewModel.js';
 import { buildOperationalDepthLayerViewModel, operationalDepthLayerViewModelSummary } from './OperationalDepthLayerViewModel.js';
@@ -461,7 +462,15 @@ function buildSelectedDepthCell({ baseViewModel, activeDepthLayerId, operational
 function diveProfileForRoute(route, plan, mission, waterColumnConfig) {
   const agentPlan = (plan?.agentPlans ?? []).find((candidate) => candidate.agentId === route.agentId);
   const agent = (mission?.agents ?? []).find((candidate) => candidate.id === route.agentId || candidate.agentId === route.agentId);
-  return route.diveProfileId ?? agentPlan?.diveProfileId ?? agent?.diveProfileId ?? waterColumnConfig.diveProfileId ?? 'surfaceOnly';
+  return resolveEffectiveDiveProfile({
+    route,
+    agentPlan,
+    agent,
+    mission,
+    waterColumnConfig,
+    routeWaypointCount: route.points?.length ?? (agentPlan?.waypoints?.length != null ? Number(agentPlan.waypoints.length) + 1 : null),
+    executableSegmentCount: route.points?.length != null ? Math.max(0, Number(route.points.length) - 1) : (agentPlan?.waypoints?.length != null ? Math.max(0, Number(agentPlan.waypoints.length)) : null)
+  }).profileId;
 }
 
 function targetLayerForRoute(route, activeDepthLayerId) {

@@ -65,6 +65,8 @@ const PROFILE_ALIASES = Object.freeze({
   deep: 'deepDive',
   full: 'fullProfile',
   sawtooth: 'sawtoothProfile',
+  standardSawtooth: 'sawtoothProfile',
+  standard_sawtooth: 'sawtoothProfile',
   adaptive: 'adaptiveVerticalProfile',
   integrated: 'integratedWaterColumn'
 });

@@ -8,7 +8,7 @@ import {
 } from './WaterColumnSchema.js';
 import { depthScienceScoreProfileMetadata } from './DepthScoringProfiles.js';
 
-export const WATER_COLUMN_MISSION_DEFAULTS_VERSION = 'water-column-mission-defaults-three-r1-2a-1';
+export const WATER_COLUMN_MISSION_DEFAULTS_VERSION = 'water-column-mission-defaults-dive-r1';
 
 export const MODERN_OPERATIONAL_DEPTH_LAYER_IDS = Object.freeze([
   'surface',
@@ -25,8 +25,9 @@ export function buildDefaultWaterColumnMissionConfig(options = {}) {
     enabled: true,
     depthLayerIds: layerIds,
     defaultLayerIds: layerIds,
-    diveProfileId: 'surfaceOnly'
+    diveProfileId: 'sawtoothProfile'
   });
+  const defaultPlanningLayerId = config.depthLayerIds.includes('thermocline') ? 'thermocline' : config.depthLayerIds.find((id) => id !== 'surface') ?? config.depthLayerIds[0] ?? 'surface';
   const availableDiveProfileIds = WATER_COLUMN_PROFILE_IDS.filter((id) => id !== 'integratedWaterColumn');
   const scoreProfile = depthScienceScoreProfileMetadata('depthAwareScienceV1', {
     layerSchemaVersion: WATER_COLUMN_SCHEMA_VERSION,
@@ -53,10 +54,10 @@ export function buildDefaultWaterColumnMissionConfig(options = {}) {
       synthetic: true,
       calibrated: false
     }])),
-    defaultDiveProfileId: 'surfaceOnly',
+    defaultDiveProfileId: config.diveProfileId,
     availableDiveProfileIds,
-    defaultPlanningLayerId: config.depthLayerIds.includes('thermocline') ? 'thermocline' : config.depthLayerIds[0] ?? 'surface',
-    defaultTargetDepthLayerId: 'surface',
+    defaultPlanningLayerId,
+    defaultTargetDepthLayerId: defaultPlanningLayerId,
     defaultDisplayMode: config.depthLayerIds.length > 1 ? 'explodedLayers' : 'physicalDepth',
     defaultPlanningCameraPresetId: config.depthLayerIds.length > 1 ? 'obliqueWaterColumn' : 'tacticalTopDown',
     bottomBoundaryReference: bottomBoundaryReference(options.level),
@@ -64,14 +65,14 @@ export function buildDefaultWaterColumnMissionConfig(options = {}) {
     compatibility: {
       modernMissionExpectedVolumetric: config.depthLayerIds.length > 1,
       importedLegacySurfaceFallback: false,
-      surfaceOnlyDefaultPreservesCanonicalRoute: true,
+      surfaceOnlyDefaultPreservesCanonicalRoute: false,
       routeModel: 'horizontalWaypointsWithOptionalDiveProfiles',
       free3DPlanning: false,
       explodedModeVisualizationOnly: true
     },
     warnings: [
       'Synthetic educational water-column configuration; not a calibrated ocean forecast.',
-      'Surface-only remains the default dive profile until the player selects another profile.',
+      'Routed modern missions default to a standard sawtooth dive profile; explicit surface-only selections remain supported.',
       'Depth-aware science scoring is versioned and credits actual depth-layer observations.'
     ],
     notA: waterColumnNotA()
@@ -108,7 +109,7 @@ export function buildLegacySurfaceOnlyWaterColumnConfig(options = {}) {
         calibrated: false
       }
     },
-    defaultDiveProfileId: 'surfaceOnly',
+    defaultDiveProfileId: config.diveProfileId,
     availableDiveProfileIds: ['surfaceOnly'],
     defaultPlanningLayerId: 'surface',
     defaultTargetDepthLayerId: 'surface',
@@ -235,14 +236,14 @@ export function attachWaterColumnConfig(level = null, mission = null, config = n
     mission.rules.waterColumn = {
       configSource: config.source ?? null,
       defaultDiveProfileId: config.defaultDiveProfileId ?? config.diveProfileId ?? 'surfaceOnly',
-      defaultTargetDepthLayerId: config.defaultTargetDepthLayerId ?? 'surface',
-      surfaceOnlyDefaultPreservesCanonicalRoute: true,
+      defaultTargetDepthLayerId: config.defaultTargetDepthLayerId ?? config.defaultPlanningLayerId ?? 'surface',
+      surfaceOnlyDefaultPreservesCanonicalRoute: config.compatibility?.surfaceOnlyDefaultPreservesCanonicalRoute ?? ((config.defaultDiveProfileId ?? config.diveProfileId) === 'surfaceOnly'),
       scoreProfileId: config.scoreProfileId ?? config.scoreProfile?.scoreProfileId ?? null,
       scoreProfileVersion: config.scoreProfileVersion ?? config.scoreProfile?.scoreProfileVersion ?? null
     };
     for (const agent of mission.agents ?? []) {
-      agent.diveProfileId ??= config.defaultDiveProfileId ?? 'surfaceOnly';
-      agent.targetDepthLayerId ??= config.defaultTargetDepthLayerId ?? 'surface';
+      agent.diveProfileId ??= config.defaultDiveProfileId ?? config.diveProfileId ?? 'surfaceOnly';
+      agent.targetDepthLayerId ??= config.defaultTargetDepthLayerId ?? config.defaultPlanningLayerId ?? 'surface';
     }
   }
   return config;
