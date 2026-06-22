@@ -991,3 +991,7 @@ THREE-R3A keeps the current Phaser lifecycle shell as the default runtime. `?run
 ## WORLD-R1.1 Regional World Activation
 
 Modern generated regional missions derive land, water, coastline, navigable depth, field masks, and deployment validity from one signed terrain surface. The 2D Planning lattice is optional inspection metadata; regional routes use continuous physical coordinates, while tutorials may remain compact. `levels/regional_fleet_survey.json` provides a synthetic educational regional fixture and does not claim real Gulf, GEBCO, ETOPO, NOAA, Copernicus, or calibrated forecast data. See `docs/regional_world_activation.md`, `docs/signed_terrain_surface_authority.md`, and `docs/planning_guide_geometry_lifecycle_audit.md`.
+
+## FLOW-R2A Volumetric Currents
+
+The mission current environment now has a browser/headless-safe 4D contract: `F(x,y,z,t)=<u,v>`, with U eastward and V northward in m/s. Operational slabs visualize samples from one current cube at declared physical depths. Synthetic fixtures are HYCOM-style educational fields, not HYCOM data and not calibrated forecasts. Instanced Three glyphs visualize the field; they do not define current authority or scoring.

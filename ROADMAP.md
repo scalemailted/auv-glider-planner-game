@@ -416,3 +416,7 @@ No scientific, scoring, schema, or planner semantics change in R3A. Human manual
 ## WORLD-R1.1 Checkpoint
 
 WORLD-R1.1 activates Regional Fleet Area in generated gameplay, unifies modern land/water/coastline/bottom behavior under a signed terrain surface, preserves continuous physical route coordinates, and fixes stale Planning-guide preview geometry. THREE-R3B remains gated by the separate R3A owner approval path; WORLD-R1.1 does not switch runtimes or remove Phaser.
+
+## FLOW-R2A Current Stack Note
+
+FLOW-R2A adds the canonical 4D current cube, depth/time sampler, DIVE-R1.1 layer-explorer current extension, and instanced current glyph layer. FLOW-R2B should add display-only tracers, pathlines, stream ribbons, and route-current inspection. WebGPU remains future backend work and does not replace regional current authority.

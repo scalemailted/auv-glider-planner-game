@@ -11,7 +11,7 @@ if (!index.includes('src/game/main.js')) failures.push('index.html must boot src
 if (index.includes('src/app/main.js')) failures.push('index.html must not boot reverted src/app/main.js.');
 if (index.includes('AnchorBrowserRuntime')) failures.push('index.html must not activate AnchorBrowserRuntime.');
 
-for (const file of ['vendor/three/build/three.module.js', 'vendor/three/build/three.core.js', 'src/core/science/DepthAwareScienceValue.js', 'src/core/science/DiveProfileFeasibility.js', 'src/core/science/DepthScoringProfiles.js', 'src/core/rendering/ContinuousMissionUiState.js', 'src/core/domain/OperationalDomainSpec.js', 'src/core/domain/MissionResolutionProfile.js', 'src/core/domain/OperationalDomainCoordinates.js', 'src/core/domain/MultiResolutionFieldSampler.js', 'src/core/generation/RegionalMissionDefaults.js', 'src/game/three/ThreeMissionPerformanceMonitor.js', 'src/game/three/ThreeSimulationPresentationScheduler.js', 'src/game/three/ThreeRenderCostPolicy.js', 'src/game/three/ThreeWebGLGpuTimer.js']) {
+for (const file of ['vendor/three/build/three.module.js', 'vendor/three/build/three.core.js', 'src/core/science/DepthAwareScienceValue.js', 'src/core/science/DiveProfileFeasibility.js', 'src/core/science/DepthScoringProfiles.js', 'src/core/rendering/ContinuousMissionUiState.js', 'src/core/domain/OperationalDomainSpec.js', 'src/core/domain/MissionResolutionProfile.js', 'src/core/domain/OperationalDomainCoordinates.js', 'src/core/domain/MultiResolutionFieldSampler.js', 'src/core/science/OceanCurrentField4D.js', 'src/core/science/OceanCurrentFieldSampler.js', 'src/core/science/SyntheticCurrentCubeAdapter.js', 'src/core/rendering/CurrentVisualizationBackendContract.js', 'src/game/three/layers/ThreeInstancedCurrentGlyphLayer.js', 'src/core/generation/RegionalMissionDefaults.js', 'src/game/three/ThreeMissionPerformanceMonitor.js', 'src/game/three/ThreeSimulationPresentationScheduler.js', 'src/game/three/ThreeRenderCostPolicy.js', 'src/game/three/ThreeWebGLGpuTimer.js']) {
   if (!existsSync(path.join(root, file))) failures.push(`${file} is missing.`);
 }
 
@@ -76,4 +76,8 @@ const packageJson = JSON.parse(read('package.json'));
 if (String(packageJson.scripts?.['test:e2e'] ?? '') !== 'node tools/js/run_playwright_groups.mjs') failures.push('test:e2e must use the authoritative grouped Playwright runner.');
 if (!String(packageJson.scripts?.['test:e2e:monolithic'] ?? '').startsWith('node ./node_modules/@playwright/test/cli.js test')) failures.push('test:e2e:monolithic must use package-local Playwright CLI.');
 assert.equal(failures.length, 0, failures.join('\n'));
-console.log('Current runtime baseline audit passed: src/game/main.js + Phaser lifecycle + vendored Three.js + continuous UI contract.');
+const currentContract = read('src/core/science/OceanCurrentField4D.js');
+if (!currentContract.includes('localEastNorthDown')) failures.push('OceanCurrentField4D must define localEastNorthDown frame.');
+if (!currentContract.includes('HYCOM-style synthetic current cube')) failures.push('Synthetic current cube label must be HYCOM-style, not HYCOM data.');
+assert.equal(failures.length, 0, failures.join('\\n'));
+console.log('Current runtime baseline audit passed: src/game/main.js + Phaser lifecycle + vendored Three.js + continuous UI + FLOW-R2A current cube contract.');

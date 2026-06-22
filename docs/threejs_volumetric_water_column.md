@@ -90,3 +90,7 @@ One shared terrain contract serves all active Three mission views. The terrain m
 ## Regional Terrain And Water Column Boundary
 
 WORLD-R1.1 keeps the 2.5D water-column model as continuous horizontal surface intent plus educational dive profiles. It does not add arbitrary underwater XYZ route planning, a new planner, a fluid solver, or calibrated ocean data. Regional terrain and depth masks are synthetic and sourced from signed terrain authority.
+
+## FLOW-R2A Current Slabs
+
+Three.js current slabs use instanced glyphs from the existing mission renderer. Eastward current maps to world X, northward current maps to world Z, and physical depth maps to world Y through the existing volumetric coordinate transform. No separate renderer, camera controller, or RAF loop is added.

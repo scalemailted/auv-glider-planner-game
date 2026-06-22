@@ -1,4 +1,4 @@
-﻿export const PLAYWRIGHT_GROUPS_VERSION = 'playwright-groups-r3a';
+export const PLAYWRIGHT_GROUPS_VERSION = 'playwright-groups-r3a';
 
 export const PLAYWRIGHT_GROUPS = Object.freeze([
   {
@@ -88,6 +88,13 @@ export const PLAYWRIGHT_GROUPS = Object.freeze([
       /^Surfacing Replan Can Change Future Segment Dive Profiles$/i,
       /^Segment Flight Profiles Roundtrip Through Plan and Replay$/i,
       /^Layer Explorer Runs From GitHub Pages Subpath$/i,
+      /^Current Vectors Differ Across Water Column Depths$/i,
+      /^Current Vectors Change With Canonical Mission Time$/i,
+      /^Active Current Slab Uses Instanced Three Glyphs$/i,
+      /^Glider Drift Uses Current at Actual Dive Depth$/i,
+      /^Current Display Modes Do Not Change Mission Outcome$/i,
+      /^Current Vertical Profile Uses One Four Dimensional Field$/i,
+      /^Volumetric Current Slabs Run From GitHub Pages Subpath$/i,
       /^Three Mission Scene Isolation$/i,
       /^Three Scene Cleanup Is Null-Safe and Idempotent$/i,
       /^Generated Mission Opens a Visible Volumetric Water Column$/i,

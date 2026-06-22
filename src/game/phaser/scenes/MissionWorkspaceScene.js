@@ -177,7 +177,7 @@ import {
 } from '../../../core/rendering/MissionPlanningToolState.js';
 import { gridCellToWorld } from '../../../core/rendering/MissionWorldCoordinates.js';
 import { depthLayerCellCenterToWorld } from '../../../core/rendering/VolumetricMissionCoordinates.js';
-import { augmentMissionWorldWithVolumetricModel, waterColumnRenderDebugPayload } from '../../../core/rendering/VolumetricMissionWorldViewModel.js';
+import { augmentMissionWorldWithVolumetricModel, waterColumnRenderDebugPayload, volumetricCurrentDebugPayload } from '../../../core/rendering/VolumetricMissionWorldViewModel.js';
 import {
   continuousMissionUiStateSummary,
   normalizeContinuousMissionUiState,
@@ -2134,10 +2134,18 @@ export class MissionWorkspaceScene extends PhaserScene {
     });
     const segmentFlightPlanDebug = segmentFlightPlanDebugPayload(viewModel ?? {}, plannedDiveDebug, selectedAgentIdForDebug);
     const waterColumnExplorerDebug = waterColumnExplorerDebugPayload(viewModel ?? {}, rendererSummary, waterColumnDebug);
+    const volumetricCurrentDebug = volumetricCurrentDebugPayload(viewModel ?? {}, rendererSummary, { terrainDigest: rendererSummary?.terrainSourceDigest ?? null });
     globalThis.ANCHOR_WATER_COLUMN_RENDER_DEBUG = waterColumnDebug;
     globalThis.ANCHOR_DIVE_PLAN_DEBUG = plannedDiveDebug;
     globalThis.ANCHOR_SEGMENT_FLIGHT_PLAN_DEBUG = segmentFlightPlanDebug;
-    globalThis.ANCHOR_WATER_COLUMN_EXPLORER_DEBUG = waterColumnExplorerDebug;
+    globalThis.ANCHOR_WATER_COLUMN_EXPLORER_DEBUG = {
+      ...waterColumnExplorerDebug,
+      currentSourceDigest: volumetricCurrentDebug.currentSourceDigest,
+      selectedCurrentProfileSampleCount: viewModel?.waterColumnExplorer?.selectedCurrentProfile?.samplesByDepth?.length ?? 0,
+      activeCurrentVectorCount: volumetricCurrentDebug.activeVectorCount,
+      glyphInstanceCount: volumetricCurrentDebug.glyphInstanceCount
+    };
+    globalThis.ANCHOR_VOLUMETRIC_CURRENT_DEBUG = volumetricCurrentDebug;
     this.app.state.ui ??= {};
     this.app.state.ui.divePlanDebug = plannedDiveDebug;
     this.app.state.ui.segmentFlightPlanDebug = segmentFlightPlanDebug;
@@ -5993,6 +6001,3 @@ function clampNumber(value, fallback, min, max) {
 function escapeSceneHtml(value) {
   return String(value ?? '').replace(/[&<>"]/g, (char) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[char]));
 }
-
-
-

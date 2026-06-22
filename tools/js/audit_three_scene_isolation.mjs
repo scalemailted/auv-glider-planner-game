@@ -1,4 +1,4 @@
-﻿import assert from 'node:assert/strict';
+import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 
 const mainMenu = readFileSync('src/game/phaser/scenes/MainMenuScene.js', 'utf8');
@@ -16,6 +16,7 @@ assert.match(reset, /activeWaterColumnSlabCount/);
 assert.equal(index.includes('src/app/main.js'), false);
 assert.equal(index.includes('AnchorBrowserRuntime'), false);
 assert.match(renderer, /disposeThreeGpuTimer/, 'renderer teardown disposes optional GPU timer diagnostics');
+assert.match(renderer, /disposeThreeInstancedCurrentGlyphLayer/, 'renderer teardown disposes FLOW-R2A instanced current glyph resources');
 const nextHost = readFileSync('src/app/production/AnchorProductionViewHost.js', 'utf8');
 assert.match(nextHost, /disposeActiveView/, 'R3A next shell has route-scoped disposal');
 assert.match(nextHost, /clearRouteRegions/, 'R3A next shell clears route-owned regions on transition');

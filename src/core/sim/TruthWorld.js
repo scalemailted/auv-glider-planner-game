@@ -4,6 +4,8 @@ import { depthEnergyMultiplier, sampleDepth } from './DepthLayer.js';
 import { mobileHazardAt } from './MobileHazards.js';
 import { isPointNavigable } from '../planning/Navigability.js';
 import { sampleCurrentVector } from '../currents/CurrentFieldSampler.js';
+import { createSyntheticCurrentCubeFromMissionWorld } from '../science/SyntheticCurrentCubeAdapter.js';
+import { sampleOceanCurrent } from '../science/OceanCurrentFieldSampler.js';
 import { sampleScalarFieldContinuous, sampleVectorFieldContinuous } from '../science/VolumetricFieldSampler.js';
 import { normalizeWaterColumnConfig, waterColumnLayerMetadata } from '../science/WaterColumnSchema.js';
 
@@ -13,8 +15,10 @@ export class TruthWorld {
     this.mission = mission;
     this.grid = level.world.grid;
     this.time = level.world.time;
-    this.frames = level.layers.truth.frames ?? [];
+    this.frames = level.layers?.truth?.frames ?? [];
     this.lastVolumetricCurrentSample = null;
+    this.lastOceanCurrentSample = null;
+    this.currentField4D = createSyntheticCurrentCubeFromMissionWorld({ level, waterColumnConfig: this.waterColumnConfig() });
     this.lastVolumetricRoiSample = null;
   }
 
@@ -30,6 +34,15 @@ export class TruthWorld {
   }
 
   sampleVolumetricCurrent(x, y, t, depthMeters = 0) {
+    const oceanField = this.currentField4D ?? null;
+    if (oceanField) {
+      const oceanSample = sampleOceanCurrent({ field: oceanField, eastMeters: x, northMeters: y, depthMeters, timeSeconds: t, interpolation: 'linear4d' });
+      this.lastOceanCurrentSample = oceanSample;
+      if (oceanSample.wet === true || oceanSample.masked === true) {
+        this.lastVolumetricCurrentSample = { ...oceanSample, u: oceanSample.uEastMetersPerSecond, v: oceanSample.vNorthMetersPerSecond, vector: { u: oceanSample.uEastMetersPerSecond, v: oceanSample.vNorthMetersPerSecond, w: oceanSample.wDownMetersPerSecond ?? 0 } };
+        return this.lastVolumetricCurrentSample;
+      }
+    }
     const field = this.level.layers?.waterColumn?.current
       ?? this.level.layers?.waterColumn?.currentVectors
       ?? this.level.layers?.current3d

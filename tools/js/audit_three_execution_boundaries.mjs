@@ -1,4 +1,4 @@
-﻿import fs from 'node:fs';
+import fs from 'node:fs';
 
 function assert(condition, message) {
   if (!condition) throw new Error(message);
@@ -12,6 +12,7 @@ const files = [
   'src/game/three/layers/ThreeRouteStatusLayer.js',
   'src/game/three/layers/ThreeSimulationStatusLayer.js',
   'src/game/three/layers/ThreePlannedDiveTrajectoryLayer.js',
+  'src/game/three/layers/ThreeInstancedCurrentGlyphLayer.js',
   'src/game/three/ThreeMissionPerformanceMonitor.js',
   'src/game/three/ThreeSimulationPresentationScheduler.js',
   'src/game/three/ThreeRenderCostPolicy.js',
@@ -45,6 +46,9 @@ assert(continuousUiState.includes('rendererOwnsScoring: false'), 'Continuous UI 
 assert(continuousUiState.includes('usesArbitraryXYZRoutePlanning: false'), 'Continuous UI contract must deny arbitrary XYZ planning');
 assert(continuousUiState.includes('qualityProfile'), 'Continuous UI contract must carry render quality as presentation state');
 assert(continuousUiState.includes('fieldDisplayMode'), 'Continuous UI contract must carry active/all-layer field display mode');
+const currentGlyphLayer = fs.readFileSync('src/game/three/layers/ThreeInstancedCurrentGlyphLayer.js', 'utf8');
+assert(/rendererOwnsCurrent:\s*false/.test(currentGlyphLayer), 'Current glyph layer must not own current authority');
+assert(/changesOfficialScoring:\s*false/.test(currentGlyphLayer), 'Current glyph layer must not change scoring');
 const nextBootstrap = fs.readFileSync('src/app/production/AnchorProductionBootstrap.js', 'utf8');
 const nextViews = fs.readFileSync('src/app/production/views/RouteViewFactory.js', 'utf8');
 assert(/usesCanonicalPlanning:\s*true/.test(nextBootstrap), 'R3A next shell debug must state canonical Planning reuse');

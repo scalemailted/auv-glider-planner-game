@@ -1157,3 +1157,7 @@ THREE-R3A keeps the current Phaser lifecycle shell as the default runtime. `?run
 ## Operational Domain Setup
 
 Generated setup now exposes an Operational Domain choice: Compact Training Area, Coastal Mission Area, or Regional Fleet Area. Tutorials remain compact. Regional missions use continuous east/north route positions with inspection cells shown only as secondary metadata. The regional terrain is synthetic educational data, not a real ocean forecast or survey.
+
+## Volumetric Current Display
+
+Water-column current slabs show U/V samples from one 4D current cube. Active, stacked, and exploded current views are display modes only. Changing them must not alter the route, segment profile, launch digest, simulation, score, or replay digest. Depth-average current is derived and is not a physical slab.

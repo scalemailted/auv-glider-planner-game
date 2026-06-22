@@ -15,6 +15,12 @@ import { updateThreePlanningMarkerLayer } from './layers/ThreePlanningMarkerLaye
 import { updateThreePriorityTargetLayer } from './layers/ThreePriorityTargetLayer.js';
 import { updateThreeSamplingTargetLayer, clearThreeSamplingTargetLayer, threeSamplingTargetLayerSummary } from './layers/ThreeSamplingTargetLayer.js';
 import { updateThreeCurrentVectorLayer } from './layers/ThreeCurrentVectorLayer.js';
+import {
+  createThreeInstancedCurrentGlyphLayer,
+  updateThreeInstancedCurrentGlyphLayer,
+  disposeThreeInstancedCurrentGlyphLayer,
+  threeInstancedCurrentGlyphLayerSummary
+} from './layers/ThreeInstancedCurrentGlyphLayer.js';
 import { updateThreeHazardLayer, updateThreeConstraintLayer } from './layers/ThreeHazardLayer.js';
 import { updateThreeSelectionLayer } from './layers/ThreeSelectionLayer.js';
 import { updateThreeGuidanceConeLayer } from './layers/ThreeGuidanceConeLayer.js';
@@ -140,6 +146,11 @@ export function createThreeMissionWorldRenderer(container, options = {}) {
   groups.depthLayerGroup.add(operationalDepthSlabLayer.group);
   const waterColumnVolumeFrameLayer = createThreeWaterColumnVolumeFrameLayer({ name: 'mission-water-column-volume-frame' });
   groups.waterColumnFrameGroup.add(waterColumnVolumeFrameLayer.group);
+  const instancedCurrentGlyphLayer = createThreeInstancedCurrentGlyphLayer({ name: 'mission-instanced-current-glyphs' });
+  const legacyCurrentVectorGroup = new THREE.Group();
+  legacyCurrentVectorGroup.name = 'mission-legacy-current-vectors';
+  groups.currentVectorGroup.add(legacyCurrentVectorGroup);
+  groups.currentVectorGroup.add(instancedCurrentGlyphLayer.group);
   const planningInteractionLayer = createThreePlanningInteractionLayer({ name: 'mission-planning-interaction-layer' });
   groups.interactionGroup.add(planningInteractionLayer.group);
   const interactionSurface = createInteractionSurface();
@@ -168,6 +179,8 @@ export function createThreeMissionWorldRenderer(container, options = {}) {
     bathymetryContourLayer,
     operationalDepthSlabLayer,
     waterColumnVolumeFrameLayer,
+    instancedCurrentGlyphLayer,
+    legacyCurrentVectorGroup,
     planningInteractionLayer,
     interactionSurface,
     cameraController: null,
@@ -273,7 +286,16 @@ export function updateThreeMissionWorldRenderer(renderer, viewModel = {}) {
   if (shouldUpdate('currentVectors', 'waterColumn')) {
     const signature = currentFieldFrameSignature(viewModel);
     if (initial || signature !== cache.lastRenderedCurrentFieldFrameId) {
-      updateThreeCurrentVectorLayer(renderer.groups.currentVectorGroup, viewModel);
+      if (hasVolumetricCurrentGlyphs(viewModel)) {
+        clearGroup(renderer.legacyCurrentVectorGroup);
+        renderer.legacyCurrentVectorGroup.visible = false;
+        updateThreeInstancedCurrentGlyphLayer(renderer.instancedCurrentGlyphLayer, viewModel);
+      } else {
+        disposeThreeInstancedCurrentGlyphLayer(renderer.instancedCurrentGlyphLayer);
+        renderer.instancedCurrentGlyphLayer.group.visible = false;
+        renderer.legacyCurrentVectorGroup.visible = true;
+        updateThreeCurrentVectorLayer(renderer.legacyCurrentVectorGroup, viewModel);
+      }
       cache.lastRenderedCurrentFieldFrameId = signature;
       recordThreePerformanceEvent(renderer.performanceMonitor, 'currentBufferUpdate');
     } else {
@@ -413,6 +435,8 @@ export function threeMissionWorldRendererSummary(renderer = {}) {
   const coastlineLayerGroup = renderer.coastlineLayer?.group ?? null;
   const contourLayerGroup = renderer.bathymetryContourLayer?.group ?? null;
   const renderPolicy = renderCostPolicySummary(vm);
+  const currentGlyphSummary = renderer.instancedCurrentGlyphLayer?.lastSummary ?? threeInstancedCurrentGlyphLayerSummary(renderer.instancedCurrentGlyphLayer ?? {}, vm);
+  const legacyCurrentVectorObjectCount = renderer.legacyCurrentVectorGroup?.children?.length ?? 0;
   const gate = performanceGate(renderer);
   return {
     type: 'anchor.renderer.three-mission-world-summary',
@@ -454,7 +478,12 @@ export function threeMissionWorldRendererSummary(renderer = {}) {
     usesVisualMeshForPhysics: false,
     scalarFieldObjectCount: renderer.groups?.scalarFieldGroup?.children?.length ?? 0,
     volumetricScalarFieldSummary: renderer.volumetricScalarFieldLayer?.lastSummary ?? threeVolumetricScalarFieldLayerSummary(renderer.volumetricScalarFieldLayer ?? {}, vm),
-    currentVectorObjectCount: renderer.groups?.currentVectorGroup?.children?.length ?? 0,
+    currentVectorObjectCount: legacyCurrentVectorObjectCount,
+    instancedCurrentGlyphSummary: currentGlyphSummary,
+    glyphInstanceCount: currentGlyphSummary.glyphInstanceCount ?? 0,
+    glyphDrawCallCount: currentGlyphSummary.glyphDrawCallCount ?? 0,
+    glyphBufferUpdateCount: currentGlyphSummary.glyphBufferUpdateCount ?? 0,
+    glyphObjectCreateCount: currentGlyphSummary.glyphObjectCreateCount ?? 0,
     hazardObjectCount: renderer.groups?.hazardGroup?.children?.length ?? 0,
     dropZoneObjectCount: renderer.groups?.dropZoneGroup?.children?.length ?? 0,
     gliderObjectCount: renderer.groups?.gliderGroup?.children?.length ?? 0,
@@ -532,7 +561,7 @@ export function threeMissionWorldRendererSummary(renderer = {}) {
     performanceGateStatus: gate.performanceGateStatus,
     performanceGateFailures: gate.performanceGateFailures,
     labelObjectCount: renderer.operationalDepthSlabLayer?.labels?.size ?? 0,
-    currentGlyphCount: Math.floor((renderer.groups?.currentVectorGroup?.children?.length ?? 0) / 2),
+    currentGlyphCount: currentGlyphSummary.glyphInstanceCount ?? Math.floor(legacyCurrentVectorObjectCount / 2),
     predictedDiveObjectCount: threePlannedDiveTrajectoryLayerSummary(renderer.groups?.plannedDiveTrajectoryGroup).objectCount ?? 0,
     activeRendererCount: renderer.disposed === true ? 0 : 1,
     activeRafCount: renderer.disposed === true || renderer.animationFrame == null ? 0 : 1,
@@ -585,6 +614,7 @@ export function disposeThreeMissionWorldRenderer(renderer) {
   renderer.animationFrame = null;
   disposeThreeScalarFieldLayer(renderer.scalarLayer);
   disposeThreeVolumetricScalarFieldLayer(renderer.volumetricScalarFieldLayer);
+  disposeThreeInstancedCurrentGlyphLayer(renderer.instancedCurrentGlyphLayer);
   disposeThreeBathymetryTerrainLayer(renderer.bathymetryTerrainLayer);
   disposeThreeLandmassLayer(renderer.landmassLayer);
   disposeThreeCoastlineLayer(renderer.coastlineLayer);
@@ -1099,6 +1129,11 @@ function scalarFieldFrameSignature(viewModel = {}) {
   ].join(':');
 }
 
+function hasVolumetricCurrentGlyphs(viewModel = {}) {
+  const explorer = viewModel.waterColumnExplorer ?? {};
+  return Boolean(explorer.currentFieldSummary || (explorer.layers ?? []).some((layer) => (layer.currentField?.vectors ?? []).length));
+}
+
 function currentFieldFrameSignature(viewModel = {}) {
   const field = viewModel.vectorFieldLayer ?? {};
   const layers = viewModel.layerCurrents ?? {};
@@ -1108,10 +1143,10 @@ function currentFieldFrameSignature(viewModel = {}) {
     viewModel.activeDepthLayerId ?? 'surface',
     viewModel.visibility?.activeLayerOnlyCurrents !== false,
     Object.keys(layers).join('|'),
+    viewModel.waterColumnExplorer?.currentFieldSummary?.digest ?? viewModel.waterColumnExplorer?.activeCurrentSourceDigest ?? 'no-current-cube',
     viewModel.displaySettings?.qualityProfile ?? viewModel.options?.qualityProfile ?? 'balanced'
   ].join(':');
 }
 function frameNow() {
   return globalThis.performance?.now?.() ?? Date.now?.() ?? 0;
 }
-

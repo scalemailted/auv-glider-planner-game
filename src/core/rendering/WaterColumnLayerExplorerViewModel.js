@@ -1,7 +1,10 @@
-﻿import { buildBottomBoundaryViewModel } from './BottomBoundaryViewModel.js';
+import { buildBottomBoundaryViewModel } from './BottomBoundaryViewModel.js';
 import { buildOperationalDepthLayerViewModel } from './OperationalDepthLayerViewModel.js';
 import { collapseWaterColumnField, waterColumnFieldStats } from '../science/WaterColumnFieldModel.js';
 import { sampleScalarFieldContinuous, sampleVectorFieldContinuous } from '../science/VolumetricFieldSampler.js';
+import { createSyntheticCurrentCubeFromMissionWorld } from '../science/SyntheticCurrentCubeAdapter.js';
+import { sampleOceanCurrent } from '../science/OceanCurrentFieldSampler.js';
+import { oceanCurrentField4DSummary } from '../science/OceanCurrentField4D.js';
 import {
   normalizeWaterColumnConfig,
   normalizeWaterColumnLayerId,
@@ -16,7 +19,12 @@ export const WATER_COLUMN_LAYER_DISPLAY_MODES = Object.freeze([
   'integratedWaterColumn',
   'verticalProfile',
   'layerDifference',
-  'verticalGradient'
+  'verticalGradient',
+  'activeCurrentSlice',
+  'stackedCurrentSlabs',
+  'explodedCurrentSlabs',
+  'currentVerticalProfile',
+  'depthAverageCurrent'
 ]);
 
 const VARIABLE_ALIASES = Object.freeze({
@@ -44,11 +52,13 @@ export function buildWaterColumnLayerExplorerViewModel(options = {}) {
   const displayMode = normalizeDisplayMode(options.displayMode ?? options.displaySettings?.displayMode ?? options.displaySettings?.verticalDisplayMode ?? 'activeSlice');
   const bottomBoundary = options.bottomBoundary ?? buildBottomBoundaryViewModel({ level, grid });
   const operational = options.operationalDepthLayerModel ?? buildOperationalDepthLayerViewModel({ waterColumnConfig, bottomBoundary, grid, activeDepthLayerId: activeLayerId, verticalDisplayMode: displayMode === 'explodedSlabs' ? 'explodedLayers' : 'physicalDepth' });
-  const source = normalizeFieldSources({ level, baseViewModel: options.baseViewModel, waterColumnConfig, grid });
-  const layers = waterColumnConfig.depthLayerIds.map((layerId, index) => buildExplorerLayer({ layerId, index, waterColumnConfig, source, bottomBoundary, grid }));
+  const currentCube = options.currentField4D ?? options.oceanCurrentField4D ?? createSyntheticCurrentCubeFromMissionWorld({ level, baseViewModel: options.baseViewModel, waterColumnConfig, grid });
+  const source = normalizeFieldSources({ level, baseViewModel: options.baseViewModel, waterColumnConfig, grid, currentCube });
+  const layers = waterColumnConfig.depthLayerIds.map((layerId, index) => buildExplorerLayer({ layerId, index, waterColumnConfig, source, bottomBoundary, grid, currentCube, activeTimeSeconds: options.activeTimeSeconds ?? 0 }));
   const integratedField = source.scalarField.length ? collapseWaterColumnField(source.scalarField, waterColumnConfig, { method: 'integratedProfile' }) : [];
   const selectedLocation = normalizeSelectedLocation(options.selectedLocation ?? options.baseViewModel?.selectedDepthCell ?? options.baseViewModel?.selectedCell ?? options.baseViewModel?.selection?.selectedCell, grid, activeLayerId);
   const selectedVerticalProfile = buildSelectedVerticalProfile({ selectedLocation, waterColumnConfig, source, activeTimeSeconds: options.activeTimeSeconds ?? 0 });
+  const selectedCurrentProfile = buildSelectedCurrentProfile({ selectedLocation, waterColumnConfig, source, activeTimeSeconds: options.activeTimeSeconds ?? 0 });
   const interpolation = interpolationForDepth(selectedLocation.depthMeters, waterColumnConfig);
   const activeLayer = layers.find((layer) => layer.id === activeLayerId) ?? layers[0] ?? null;
   const comparisonLayerId = normalizeLayer(options.comparisonLayerId ?? options.displaySettings?.comparisonLayerId ?? nextComparisonLayer(activeLayerId, waterColumnConfig), waterColumnConfig);
@@ -86,6 +96,10 @@ export function buildWaterColumnLayerExplorerViewModel(options = {}) {
     interpolationFraction: interpolation.fraction,
     activeScalarSourceDigest,
     activeCurrentSourceDigest,
+    currentCube,
+    currentFieldSummary: currentCube ? oceanCurrentField4DSummary(currentCube) : null,
+    selectedCurrentProfile,
+    currentDisplayModes: ['activeCurrentSlice', 'stackedCurrentSlabs', 'explodedCurrentSlabs', 'currentVerticalProfile', 'depthAverageCurrent'],
     boundaryFlags: {
       publicSafe: true,
       hiddenTruthIncluded: false,
@@ -132,6 +146,8 @@ export function waterColumnLayerExplorerSummary(model = {}) {
     texturedSlabCount: model.displayMode === 'integratedWaterColumn' ? 1 : 1,
     contextSlabCount: Math.max(0, (model.layers?.length ?? 0) - 1),
     vectorGlyphCount: (model.layers ?? []).reduce((sum, layer) => sum + (layer.currentField?.vectors?.length ?? 0), 0),
+    selectedCurrentProfileSampleCount: model.selectedCurrentProfile?.samplesByDepth?.length ?? 0,
+    currentSourceDigest: model.currentFieldSummary?.digest ?? model.activeCurrentSourceDigest ?? null,
     displayOwnsScience: model.boundaryFlags?.displayOwnsScience === true,
     displayOwnsCurrent: model.boundaryFlags?.displayOwnsCurrent === true,
     displayOwnsSampling: model.boundaryFlags?.displayOwnsSampling === true,
@@ -152,13 +168,14 @@ export function validateWaterColumnLayerExplorerViewModel(model = {}) {
   return { valid: errors.length === 0, status: errors.length ? 'FAIL' : warnings.length ? 'WARN' : 'PASS', errors, warnings, summary: waterColumnLayerExplorerSummary(model) };
 }
 
-function buildExplorerLayer({ layerId, index, waterColumnConfig, source, bottomBoundary, grid }) {
+function buildExplorerLayer({ layerId, index, waterColumnConfig, source, bottomBoundary, grid, currentCube, activeTimeSeconds = 0 }) {
   const metadata = waterColumnLayerMetadata(layerId);
   const representativeDepthMeters = Number(metadata.nominalDepthMeters ?? index);
   const scalarField = layer2d(source.scalarField, index, grid, 0);
   const uncertaintyField = layer2d(source.uncertaintyField, index, grid, null);
   const remainingValueField = layer2d(source.remainingValueField, index, grid, null);
-  const currentField = vectorLayer(source.currentField, index, grid);
+  const legacyCurrentField = vectorLayer(source.currentField, index, grid);
+  const currentField = currentCube ? currentLayerFromCube({ field: currentCube, layerId, representativeDepthMeters, grid, activeTimeSeconds, terrainMask: null }) : legacyCurrentField;
   const terrainMask = Array.from({ length: grid.height ?? scalarField.length }, (_row, row) => Array.from({ length: grid.width ?? scalarField[0]?.length ?? 0 }, (_cell, col) => {
     if (bottomBoundary.landMask?.[row]?.[col]) return false;
     const bottom = Number(bottomBoundary.bottomDepthField?.[row]?.[col] ?? Infinity);
@@ -174,6 +191,10 @@ function buildExplorerLayer({ layerId, index, waterColumnConfig, source, bottomB
     },
     scalarField,
     currentField,
+    currentMagnitudeStatistics: currentVectorStats(currentField.vectors ?? []),
+    currentSourceDigest: currentCube?.digest ?? `current-${layerId}-${hashStable(currentField.vectors ?? [])}`,
+    currentAvailable: (currentField.vectors ?? []).some((vector) => vector.visible !== false),
+    representativeCurrentSamples: representativeCurrentSamples(currentField.vectors ?? []),
     uncertaintyField,
     remainingValueField,
     terrainMask,
@@ -198,20 +219,25 @@ function buildSelectedVerticalProfile({ selectedLocation, waterColumnConfig, sou
   return waterColumnConfig.depthLayerIds.map((layerId) => {
     const depthMeters = Number(waterColumnLayerMetadata(layerId).nominalDepthMeters ?? 0);
     const scalar = source.scalarField.length ? sampleScalarFieldContinuous({ field: source.scalarField, x, y, depthMeters, timeSeconds: activeTimeSeconds, depthCoordinates: source.depthCoordinates, timeCoordinates: source.timeCoordinates, interpolationProfileId: 'trilinearVolumeV1' }) : null;
-    const vector = source.currentField ? sampleVectorFieldContinuous({ field: source.currentField, x, y, depthMeters, timeSeconds: activeTimeSeconds, depthCoordinates: source.depthCoordinates, timeCoordinates: source.timeCoordinates, interpolationProfileId: 'trilinearVolumeV1' }) : null;
+    const vector = source.currentCube
+      ? sampleOceanCurrent({ field: source.currentCube, eastMeters: x, northMeters: y, depthMeters, timeSeconds: activeTimeSeconds, interpolation: 'linear4d' })
+      : source.currentField ? sampleVectorFieldContinuous({ field: source.currentField, x, y, depthMeters, timeSeconds: activeTimeSeconds, depthCoordinates: source.depthCoordinates, timeCoordinates: source.timeCoordinates, interpolationProfileId: 'trilinearVolumeV1' }) : null;
     return {
       layerId,
       depthMeters,
       scienceValue: scalar?.value ?? null,
-      current: vector?.vector ?? null,
-      currentMagnitude: vector?.magnitude ?? null,
+      current: vector ? { u: vector.uEastMetersPerSecond ?? vector.vector?.u ?? 0, v: vector.vNorthMetersPerSecond ?? vector.vector?.v ?? 0, w: vector.wDownMetersPerSecond ?? vector.vector?.w ?? 0 } : null,
+      currentMagnitude: vector?.magnitudeMetersPerSecond ?? vector?.magnitude ?? null,
+      uEastMetersPerSecond: vector?.uEastMetersPerSecond ?? vector?.vector?.u ?? null,
+      vNorthMetersPerSecond: vector?.vNorthMetersPerSecond ?? vector?.vector?.v ?? null,
+      bearingDegrees: vector?.bearingDegrees ?? null,
       uncertainty: source.uncertaintyField.length ? sampleScalarFieldContinuous({ field: source.uncertaintyField, x, y, depthMeters, timeSeconds: activeTimeSeconds, depthCoordinates: source.depthCoordinates, timeCoordinates: source.timeCoordinates, interpolationProfileId: 'trilinearVolumeV1' }).value : null,
       valid: scalar?.valid !== false
     };
   });
 }
 
-function normalizeFieldSources({ level, baseViewModel, waterColumnConfig, grid }) {
+function normalizeFieldSources({ level, baseViewModel, waterColumnConfig, grid, currentCube = null }) {
   const wc = level?.layers?.waterColumn ?? level?.waterColumn ?? {};
   const scalarField = normalize3dField(wc.sampleValue ?? wc.scienceValue ?? wc.A_global ?? wc.expectedValue ?? baseViewModel?.layerFields?.sampleValue, waterColumnConfig, grid, baseViewModel?.scalarFieldLayer?.values);
   const remainingValueField = normalize3dField(wc.remainingValue ?? wc.remaining ?? null, waterColumnConfig, grid, null);
@@ -227,6 +253,7 @@ function normalizeFieldSources({ level, baseViewModel, waterColumnConfig, grid }
     remainingValueField,
     uncertaintyField,
     currentField,
+    currentCube,
     depthCoordinates,
     timeCoordinates,
     width: shape.width,
@@ -292,6 +319,95 @@ function vectorLayer(field, index, grid) {
   return { vectors };
 }
 
+function buildSelectedCurrentProfile({ selectedLocation, waterColumnConfig, source, activeTimeSeconds }) {
+  const x = selectedLocation.x;
+  const y = selectedLocation.y;
+  const samplesByDepth = waterColumnConfig.depthLayerIds.map((layerId) => {
+    const depthMeters = Number(waterColumnLayerMetadata(layerId).nominalDepthMeters ?? 0);
+    const sample = source.currentCube
+      ? sampleOceanCurrent({ field: source.currentCube, eastMeters: x, northMeters: y, depthMeters, timeSeconds: activeTimeSeconds, interpolation: 'linear4d' })
+      : null;
+    return {
+      layerId,
+      depthMeters,
+      uEastMetersPerSecond: sample?.uEastMetersPerSecond ?? null,
+      vNorthMetersPerSecond: sample?.vNorthMetersPerSecond ?? null,
+      magnitudeMetersPerSecond: sample?.magnitudeMetersPerSecond ?? null,
+      bearingDegrees: sample?.bearingDegrees ?? null,
+      wet: sample?.wet === true,
+      masked: sample?.masked === true,
+      sourceDigest: sample?.source?.digest ?? source.currentCube?.digest ?? null
+    };
+  });
+  return {
+    eastMeters: x,
+    northMeters: y,
+    timeSeconds: activeTimeSeconds,
+    samplesByDepth,
+    derivedDepthAverage: depthAverageCurrent(samplesByDepth)
+  };
+}
+
+function currentLayerFromCube({ field, layerId, representativeDepthMeters, grid, activeTimeSeconds }) {
+  const vectors = [];
+  for (let y = 0; y < (grid.height ?? 0); y += 1) {
+    for (let x = 0; x < (grid.width ?? 0); x += 1) {
+      const sample = sampleOceanCurrent({ field, eastMeters: x, northMeters: y, depthMeters: representativeDepthMeters, timeSeconds: activeTimeSeconds, interpolation: 'linear4d' });
+      vectors.push({
+        id: `current-${layerId}-${x}-${y}`,
+        x,
+        y,
+        eastMeters: x,
+        northMeters: y,
+        depthMeters: representativeDepthMeters,
+        depthLayerId: layerId,
+        timeSeconds: activeTimeSeconds,
+        u: sample.uEastMetersPerSecond,
+        v: sample.vNorthMetersPerSecond,
+        w: sample.wDownMetersPerSecond ?? 0,
+        uEastMetersPerSecond: sample.uEastMetersPerSecond,
+        vNorthMetersPerSecond: sample.vNorthMetersPerSecond,
+        magnitude: sample.magnitudeMetersPerSecond,
+        magnitudeMetersPerSecond: sample.magnitudeMetersPerSecond,
+        bearingDegrees: sample.bearingDegrees,
+        visible: sample.wet === true && sample.masked !== true,
+        wet: sample.wet === true,
+        masked: sample.masked === true,
+        belowBottom: sample.belowBottom === true,
+        outsideDomain: sample.outsideDomain === true,
+        sourceDigest: sample.source?.digest ?? field.digest ?? null
+      });
+    }
+  }
+  return { vectors, units: 'm/s', sourceDigest: field.digest ?? null, source: field.sourceMetadata ?? null };
+}
+
+function currentVectorStats(vectors = []) {
+  const values = vectors.filter((vector) => vector.visible !== false).map((vector) => Number(vector.magnitudeMetersPerSecond ?? vector.magnitude)).filter(Number.isFinite);
+  if (!values.length) return { count: 0, min: null, mean: null, max: null, units: 'm/s' };
+  return { count: values.length, min: round(Math.min(...values)), mean: round(values.reduce((sum, value) => sum + value, 0) / values.length), max: round(Math.max(...values)), units: 'm/s' };
+}
+
+function representativeCurrentSamples(vectors = [], limit = 8) {
+  return vectors.filter((vector) => vector.visible !== false).filter((_vector, index) => index % Math.max(1, Math.floor(vectors.length / Math.max(1, limit))) === 0).slice(0, limit).map((vector) => ({
+    x: vector.x,
+    y: vector.y,
+    depthMeters: vector.depthMeters,
+    uEastMetersPerSecond: vector.uEastMetersPerSecond,
+    vNorthMetersPerSecond: vector.vNorthMetersPerSecond,
+    magnitudeMetersPerSecond: vector.magnitudeMetersPerSecond,
+    bearingDegrees: vector.bearingDegrees
+  }));
+}
+
+function depthAverageCurrent(samples = []) {
+  const valid = samples.filter((sample) => Number.isFinite(Number(sample.uEastMetersPerSecond)) && Number.isFinite(Number(sample.vNorthMetersPerSecond)));
+  if (!valid.length) return { derived: true, physicalDepthPlane: false, uEastMetersPerSecond: null, vNorthMetersPerSecond: null, magnitudeMetersPerSecond: null, label: 'Depth-average current (derived)' };
+  const u = valid.reduce((sum, sample) => sum + Number(sample.uEastMetersPerSecond), 0) / valid.length;
+  const v = valid.reduce((sum, sample) => sum + Number(sample.vNorthMetersPerSecond), 0) / valid.length;
+  return { derived: true, physicalDepthPlane: false, uEastMetersPerSecond: round(u), vNorthMetersPerSecond: round(v), magnitudeMetersPerSecond: round(Math.hypot(u, v)), label: 'Depth-average current (derived)' };
+}
+
 function interpolationForDepth(depthMeters = 0, config) {
   const coords = config.depthLayerIds.map((id) => ({ id, depth: Number(waterColumnLayerMetadata(id).nominalDepthMeters ?? 0) })).sort((a, b) => a.depth - b.depth);
   const depth = Number(depthMeters);
@@ -327,6 +443,11 @@ function normalizeDisplayMode(value) {
   const text = String(value ?? '').trim();
   if (text === 'physicalDepth') return 'stackedSlabs';
   if (text === 'explodedLayers') return 'explodedSlabs';
+  if (text === 'Active Current Slice') return 'activeCurrentSlice';
+  if (text === 'Stacked Current Slabs') return 'stackedCurrentSlabs';
+  if (text === 'Exploded Current Slabs') return 'explodedCurrentSlabs';
+  if (text === 'Current Vertical Profile') return 'currentVerticalProfile';
+  if (text === 'Depth-Average Current') return 'depthAverageCurrent';
   return WATER_COLUMN_LAYER_DISPLAY_MODES.includes(text) ? text : 'activeSlice';
 }
 

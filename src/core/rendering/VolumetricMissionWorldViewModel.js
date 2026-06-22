@@ -211,6 +211,95 @@ export function augmentMissionWorldWithVolumetricModel(baseViewModel = {}, optio
   };
 }
 
+export function volumetricCurrentDebugPayload(viewModel = {}, rendererSummary = null, options = {}) {
+  const explorer = viewModel.waterColumnExplorer ?? {};
+  const fieldSummary = explorer.currentFieldSummary ?? {};
+  const activeLayer = (explorer.layers ?? []).find((layer) => layer.id === explorer.activeLayerId) ?? explorer.layers?.[0] ?? null;
+  const activeVectors = (activeLayer?.currentField?.vectors ?? []).filter((vector) => vector.visible !== false);
+  const contextVectors = (explorer.layers ?? []).filter((layer) => layer.id !== activeLayer?.id).reduce((sum, layer) => sum + (layer.currentField?.vectors ?? []).filter((vector) => vector.visible !== false).length, 0);
+  const selectedSourceCurrent = selectCurrentSampleForLayer(explorer.selectedCurrentProfile?.samplesByDepth ?? [], activeLayer?.id ?? explorer.activeLayerId);
+  const selectedRenderedCurrent = selectedSourceCurrent ? { ...selectedSourceCurrent } : null;
+  const glider = (viewModel.gliderPoses ?? viewModel.gliders ?? []).find((candidate) => candidate.selected) ?? (viewModel.gliderPoses ?? viewModel.gliders ?? [])[0] ?? null;
+  const gliderSampledCurrent = glider?.currentVector ? {
+    uEastMetersPerSecond: numberOrNull(glider.currentVector.u),
+    vNorthMetersPerSecond: numberOrNull(glider.currentVector.v),
+    wDownMetersPerSecond: numberOrNull(glider.currentVector.w) ?? 0,
+    depthMeters: numberOrNull(glider.depthMeters),
+    timeSeconds: numberOrNull(viewModel.activeTimeSeconds)
+  } : null;
+  const renderedGliderCurrent = nearestRenderedCurrent(activeLayer?.currentField?.vectors ?? [], glider);
+  return {
+    type: 'anchor.debug.volumetric-current',
+    version: 'volumetric-current-debug-flow-r2a',
+    fieldId: fieldSummary.fieldId ?? explorer.currentCube?.id ?? null,
+    sourceType: fieldSummary.sourceType ?? explorer.currentCube?.sourceMetadata?.sourceType ?? null,
+    usesRealHycom: fieldSummary.usesRealHycom === true,
+    usesRealMarineCopernicus: fieldSummary.usesRealMarineCopernicus === true,
+    calibratedForecast: fieldSummary.calibratedForecast === true,
+    coordinateFrame: fieldSummary.coordinateFrame ?? explorer.currentCube?.coordinateFrame ?? null,
+    eastSampleCount: fieldSummary.eastSampleCount ?? explorer.currentCube?.eastAxisMeters?.length ?? 0,
+    northSampleCount: fieldSummary.northSampleCount ?? explorer.currentCube?.northAxisMeters?.length ?? 0,
+    depthSampleCount: fieldSummary.depthSampleCount ?? explorer.currentCube?.depthAxisMeters?.length ?? 0,
+    timeSampleCount: fieldSummary.timeSampleCount ?? explorer.currentCube?.timeAxisSeconds?.length ?? 0,
+    activeLayerId: explorer.activeLayerId ?? viewModel.activeDepthLayerId ?? null,
+    activeDepthMeters: explorer.activeDepthMeters ?? activeLayer?.representativeDepthMeters ?? null,
+    activeTimeSeconds: explorer.activeTimeSeconds ?? viewModel.activeTimeSeconds ?? 0,
+    activeVectorCount: activeVectors.length,
+    contextVectorCount: contextVectors,
+    glyphInstanceCount: rendererSummary?.glyphInstanceCount ?? rendererSummary?.instancedCurrentGlyphSummary?.glyphInstanceCount ?? 0,
+    glyphDrawCallCount: rendererSummary?.glyphDrawCallCount ?? rendererSummary?.instancedCurrentGlyphSummary?.glyphDrawCallCount ?? 0,
+    glyphBufferUpdateCount: rendererSummary?.glyphBufferUpdateCount ?? rendererSummary?.instancedCurrentGlyphSummary?.glyphBufferUpdateCount ?? 0,
+    glyphObjectCreateCount: rendererSummary?.glyphObjectCreateCount ?? rendererSummary?.instancedCurrentGlyphSummary?.glyphObjectCreateCount ?? 0,
+    currentSourceDigest: fieldSummary.digest ?? explorer.currentCube?.digest ?? explorer.activeCurrentSourceDigest ?? null,
+    selectedSourceCurrent,
+    selectedRenderedCurrent,
+    selectedCurrentDelta: currentDelta(selectedSourceCurrent, selectedRenderedCurrent),
+    gliderSampledCurrent,
+    renderedGliderCurrent,
+    renderedGliderCurrentDelta: currentDelta(gliderSampledCurrent, renderedGliderCurrent),
+    terrainDigest: options.terrainDigest ?? rendererSummary?.terrainSourceDigest ?? null,
+    wetMaskDigest: explorer.currentCube?.wetMask ? `wet-${hashStable(explorer.currentCube.wetMask)}` : null,
+    activeRendererCount: rendererSummary?.activeRendererCount ?? 0,
+    activeRafCount: rendererSummary?.activeRafCount ?? 0,
+    rendererOwnsCurrent: false,
+    displayLayerChangesCurrent: false,
+    changesOfficialScoring: false,
+    usesNewPlanner: false,
+    usesWebGpu: false,
+    warnings: [...(explorer.warnings ?? [])],
+    failures: []
+  };
+}
+
+function selectCurrentSampleForLayer(samples = [], layerId = null) {
+  return samples.find((sample) => sample.layerId === layerId) ?? samples[0] ?? null;
+}
+
+function nearestRenderedCurrent(vectors = [], glider = null) {
+  if (!glider) return null;
+  let best = null;
+  let bestDistance = Infinity;
+  for (const vector of vectors) {
+    const distance = Math.hypot(Number(vector.x ?? 0) - Number(glider.x ?? 0), Number(vector.y ?? 0) - Number(glider.y ?? 0));
+    if (distance < bestDistance) { best = vector; bestDistance = distance; }
+  }
+  if (!best) return null;
+  return {
+    uEastMetersPerSecond: numberOrNull(best.uEastMetersPerSecond ?? best.u),
+    vNorthMetersPerSecond: numberOrNull(best.vNorthMetersPerSecond ?? best.v),
+    wDownMetersPerSecond: numberOrNull(best.w) ?? 0,
+    depthMeters: numberOrNull(best.depthMeters),
+    timeSeconds: numberOrNull(best.timeSeconds)
+  };
+}
+
+function currentDelta(a = null, b = null) {
+  if (!a || !b) return null;
+  const du = Number(b.uEastMetersPerSecond ?? 0) - Number(a.uEastMetersPerSecond ?? 0);
+  const dv = Number(b.vNorthMetersPerSecond ?? 0) - Number(a.vNorthMetersPerSecond ?? 0);
+  return { du: round(du), dv: round(dv), magnitude: round(Math.hypot(du, dv)) };
+}
+
 export function validateVolumetricMissionWorldViewModel(model = {}) {
   const errors = [];
   const warnings = [...(model.warnings ?? [])];
@@ -567,6 +656,16 @@ function round(value, digits = 6) {
 
 
 
+
+function hashStable(value) {
+  const text = JSON.stringify(value);
+  let hash = 2166136261;
+  for (let index = 0; index < text.length; index += 1) {
+    hash ^= text.charCodeAt(index);
+    hash = Math.imul(hash, 16777619);
+  }
+  return (hash >>> 0).toString(16).padStart(8, '0');
+}
 
 function layerSeparationMetrics(worldYValues = [], layerIds = []) {
   const rounded = worldYValues.map((value) => round(value, 6));

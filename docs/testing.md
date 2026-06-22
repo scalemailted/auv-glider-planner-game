@@ -981,3 +981,26 @@ node tools/js/audit_regional_render_object_counts.mjs
 ```
 
 Human manual QA remains separate from headed automated QA.
+
+## FLOW-R2A Validation
+
+Focused FLOW-R2A checks:
+
+```text
+node tools/js/smoke_ocean_current_field_4d.mjs
+node tools/js/smoke_ocean_current_sampler_4d.mjs
+node tools/js/smoke_current_depth_interpolation.mjs
+node tools/js/smoke_current_time_interpolation.mjs
+node tools/js/smoke_current_wet_mask.mjs
+node tools/js/smoke_water_column_current_explorer.mjs
+node tools/js/smoke_instanced_current_glyph_contract.mjs
+node tools/js/smoke_glider_current_depth_parity.mjs
+node tools/js/smoke_segment_current_inspection.mjs
+node tools/js/audit_no_per_vector_three_objects.mjs
+node tools/js/audit_current_renderer_authority.mjs
+node tools/js/audit_current_browser_headless_parity.mjs
+node tools/js/audit_current_resource_lifecycle.mjs
+node tools/js/audit_future_webgpu_boundary.mjs
+```
+
+Focused E2E spec: `tests/e2e/flow_r2a_current_cubes.spec.js`.

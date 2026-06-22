@@ -80,3 +80,7 @@ The Mission Editor center viewport is now a Three.js renderer hosted by `Environ
 `index.html` still loads `src/game/main.js`. That module now selects a runtime: default imports `src/game/phaser/PhaserProductionBootstrap.js`, while `?runtimeShell=next` imports `src/app/production/AnchorProductionBootstrap.js`. The next shell publishes `ANCHOR_RUNTIME_SELECTION_DEBUG`, `ANCHOR_PRODUCTION_SHELL_DEBUG`, `ANCHOR_ACCESSIBILITY_DEBUG`, and `ANCHOR_LIFECYCLE_PARITY_DEBUG`.
 
 Default runtime behavior is unchanged for normal users. The next shell must not instantiate Phaser for production mission routes. Learning Labs remain a lazy legacy island until R3B.
+
+## FLOW-R2A Current Runtime Boundary
+
+The active runtime still boots `src/game/main.js` and retains vendored Three/Phaser. Current cube authority lives in `src/core/science`; Three.js owns only instanced glyph presentation. Synthetic current fixtures are HYCOM-style and do not claim calibrated ocean forecast status.

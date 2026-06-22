@@ -1,4 +1,4 @@
-﻿import assert from 'node:assert/strict';
+import assert from 'node:assert/strict';
 import fs from 'node:fs';
 
 import {
@@ -1330,4 +1330,16 @@ const r3aSession = productionSessionModule.createAnchorProductionSessionStore();
 const r3aLifecycle = productionLifecycleModule.createAnchorProductionLifecycle({ sessionStore: r3aSession });
 assert.equal(productionLifecycleModule.dispatchAnchorLifecycleCommand(r3aLifecycle, 'openMissionSetup').accepted, true, 'R3A lifecycle accepts setup transition');
 assert.equal(productionLifecycleModule.dispatchAnchorLifecycleCommand(r3aLifecycle, 'loadMission').to, 'missionBriefing', 'R3A lifecycle reaches briefing');
+const [oceanCurrentFieldModule, oceanCurrentSamplerModule, syntheticCurrentAdapterModule, currentBackendModule] = await Promise.all([
+  import('../../src/core/science/OceanCurrentField4D.js'),
+  import('../../src/core/science/OceanCurrentFieldSampler.js'),
+  import('../../src/core/science/SyntheticCurrentCubeAdapter.js'),
+  import('../../src/core/rendering/CurrentVisualizationBackendContract.js')
+]);
+const flowR2aCube = syntheticCurrentAdapterModule.createSyntheticCurrentCubeFixture();
+assert.equal(oceanCurrentFieldModule.validateOceanCurrentField4D(flowR2aCube).valid, true, 'FLOW-R2A current cube validates');
+const flowR2aSample = oceanCurrentSamplerModule.sampleOceanCurrent({ field: flowR2aCube, eastMeters: 2, northMeters: 2, depthMeters: 35, timeSeconds: 600 });
+assert.equal(Number.isFinite(flowR2aSample.uEastMetersPerSecond), true, 'FLOW-R2A sampler returns finite U');
+assert.equal(currentBackendModule.validateCurrentVisualizationBackendDescriptor(currentBackendModule.createCurrentVisualizationBackendDescriptor('webglInstancedGlyphsV1')).valid, true, 'FLOW-R2A current visualization backend descriptor validates');
+
 console.log('Model stack integration smoke passed');

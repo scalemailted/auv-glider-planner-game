@@ -588,3 +588,7 @@ Added a gated Phaser-free production shell behind `?runtimeShell=next`, plus rou
 ## WORLD-R1.1
 
 Adds regional profile activation, signed terrain authority, checked-in regional fixture, continuous selected-start preservation, and stable reusable Three.js Planning-guide preview geometry. This phase does not switch the default runtime, remove Phaser, add dependencies, or alter official scoring semantics.
+
+## FLOW-R2A
+
+Adds `OceanCurrentField4D`, `OceanCurrentFieldSampler`, `SyntheticCurrentCubeAdapter`, current extensions to the DIVE-R1.1 layer explorer, `ThreeInstancedCurrentGlyphLayer`, and `CurrentVisualizationBackendContract`. Tracers/pathlines and WebGPU remain future phases.

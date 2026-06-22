@@ -7,3 +7,7 @@ Layer modes include Active Slice, Stacked Slabs, Exploded Slabs, Integrated Wate
 Changing the active layer, variable, comparison layer, vertical exaggeration, opacity, labels, or slab mode must not mutate the plan, simulation state, result digest, science truth, current fields, terrain validation, or score.
 
 Three.js renders the explorer output but does not own science, current, sampling, planning, simulation, or scoring semantics.
+
+## FLOW-R2A Current Extension
+
+The layer explorer now includes current-specific layer fields: current samples, magnitude statistics, source digests, current availability, representative samples, and selected-location current profiles. These extend the DIVE-R1.1 explorer; there is no second explorer contract.

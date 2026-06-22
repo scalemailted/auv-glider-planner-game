@@ -72,3 +72,7 @@ Surface waypoints are executable navigation/surfacing targets. Sampling targets 
 ## Terrain-Aware Launch Metadata
 
 Launch payloads may include a frozen terrain-aware validation report and summary. Simulation result exports and Debrief can display that launch readiness separately from actual execution summaries. Official scoring remains unchanged.
+
+## FLOW-R2A Actual-Depth Currents
+
+Glider drift current sampling now routes through the 4D current sampler with actual x/y/depth/time. Vertical exaggeration and visible current layer selection cannot change canonical current sampling.
