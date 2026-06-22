@@ -39,3 +39,7 @@ Final Phaser removal is not approved in this phase.
 ## Remaining Phaser Role
 
 Phaser still owns scene lifecycle, boot/routing, and transitional UI scene hosting. It no longer owns normal Mission Editor world rendering.
+
+## THREE-R3A Update
+
+R3A does not remove Phaser. It adds a gated next shell and documents final-removal readiness. `vendor/phaser.min.js` remains required for the default shell and the lazy Learning Lab island. Final dependency removal is blocked until R3B switches the default runtime and migrates remaining Learning Labs.

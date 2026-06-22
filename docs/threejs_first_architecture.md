@@ -39,3 +39,9 @@ The Mission Editor now uses the shared Three.js mission-world surface for normal
 Three.js owns editor presentation, camera state, hover/selection display, and pointer-intent collection only. It does not own editor documents, terrain truth, validation, scoring, planning, Simulation physics, replay semantics, or hidden truth. Preview uses the normal production mission lifecycle, and normal Planning, Simulation, Replay, and Editor worlds use Three.js. Phaser remains required for lifecycle and Learning Labs during R2B; final Phaser dependency removal is deferred to R3.
 
 The editor does not introduce arbitrary XYZ navigation planning, a planner/optimizer, WebGPU, fluid simulation, RL/MARL, or operationally calibrated terrain or ocean data claims.
+
+## THREE-R3A Gated Shell Baseline
+
+`index.html` still loads `src/game/main.js`. That module now selects a runtime: default imports `src/game/phaser/PhaserProductionBootstrap.js`, while `?runtimeShell=next` imports `src/app/production/AnchorProductionBootstrap.js`. The next shell publishes `ANCHOR_RUNTIME_SELECTION_DEBUG`, `ANCHOR_PRODUCTION_SHELL_DEBUG`, `ANCHOR_ACCESSIBILITY_DEBUG`, and `ANCHOR_LIFECYCLE_PARITY_DEBUG`.
+
+Default runtime behavior is unchanged for normal users. The next shell must not instantiate Phaser for production mission routes. Learning Labs remain a lazy legacy island until R3B.

@@ -1,4 +1,4 @@
-import fs from 'node:fs';
+﻿import fs from 'node:fs';
 
 function assert(condition, message) {
   if (!condition) throw new Error(message);
@@ -45,4 +45,11 @@ assert(continuousUiState.includes('rendererOwnsScoring: false'), 'Continuous UI 
 assert(continuousUiState.includes('usesArbitraryXYZRoutePlanning: false'), 'Continuous UI contract must deny arbitrary XYZ planning');
 assert(continuousUiState.includes('qualityProfile'), 'Continuous UI contract must carry render quality as presentation state');
 assert(continuousUiState.includes('fieldDisplayMode'), 'Continuous UI contract must carry active/all-layer field display mode');
+const nextBootstrap = fs.readFileSync('src/app/production/AnchorProductionBootstrap.js', 'utf8');
+const nextViews = fs.readFileSync('src/app/production/views/RouteViewFactory.js', 'utf8');
+assert(/usesCanonicalPlanning:\s*true/.test(nextBootstrap), 'R3A next shell debug must state canonical Planning reuse');
+assert(/usesCanonicalSimulation:\s*true/.test(nextBootstrap), 'R3A next shell debug must state canonical Simulation reuse');
+assert(/usesCanonicalReplayReducer:\s*true/.test(nextBootstrap), 'R3A next shell debug must state canonical Replay reducer reuse');
+assert(/createThreeMissionWorldRenderer/.test(nextViews), 'R3A next shell must reuse Three mission world renderer');
+assert(!/new\s+SimulationEngine/.test(nextViews), 'R3A next shell views must not create SimulationEngine');
 console.log('audit_three_execution_boundaries passed');

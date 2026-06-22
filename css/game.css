@@ -375,3 +375,114 @@
   font-size: .58rem;
   text-transform: uppercase;
 }
+
+/* THREE-R3A gated Phaser-free shell support. */
+body.next-production-shell #game-root {
+  align-items: stretch;
+  justify-items: stretch;
+}
+
+.next-shell-route {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  min-width: 0;
+  min-height: 0;
+  box-sizing: border-box;
+  overflow: auto;
+}
+
+.next-shell-world-route {
+  display: grid;
+  grid-template-rows: minmax(0, 1fr) auto;
+  overflow: hidden;
+}
+
+.next-shell-world-panel {
+  position: relative;
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr) auto;
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.next-shell-world-header,
+.next-route-control-strip {
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: .75rem;
+  padding: .75rem .9rem;
+  color: var(--text);
+  background: linear-gradient(90deg, rgba(8,17,31,0.92), rgba(10,28,46,0.82));
+  border-bottom: 1px solid rgba(141,220,242,0.2);
+}
+
+.next-shell-world-header h1 {
+  margin: 0;
+  font-size: clamp(1.2rem, 2vw, 1.65rem);
+  line-height: 1.1;
+}
+
+.next-shell-world-header p {
+  margin: .25rem 0 0;
+  color: var(--muted);
+}
+
+.next-shell-three-host,
+.next-shell-legacy-lab-host {
+  min-width: 0;
+  min-height: 0;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  background: #06111f;
+}
+
+.next-route-control-strip {
+  justify-content: flex-start;
+  flex-wrap: wrap;
+  border-top: 1px solid rgba(141,220,242,0.2);
+  border-bottom: 0;
+}
+
+.next-shell-headless-panel {
+  max-height: min(62vh, 44rem);
+  overflow: auto;
+  border: 1px solid rgba(141,220,242,0.18);
+  border-radius: 8px;
+  background: rgba(6,17,31,0.38);
+}
+
+.next-shell-route :focus-visible,
+body.next-production-shell #mission-console :focus-visible,
+body.next-production-shell #waypoint-timeline :focus-visible {
+  outline: 3px solid var(--warning);
+  outline-offset: 2px;
+}
+
+.sr-only {
+  position: absolute !important;
+  width: 1px !important;
+  height: 1px !important;
+  padding: 0 !important;
+  margin: -1px !important;
+  overflow: hidden !important;
+  clip: rect(0, 0, 0, 0) !important;
+  white-space: nowrap !important;
+  border: 0 !important;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  body.next-production-shell *,
+  body.next-production-shell *::before,
+  body.next-production-shell *::after {
+    scroll-behavior: auto !important;
+    transition-duration: .001ms !important;
+    animation-duration: .001ms !important;
+    animation-iteration-count: 1 !important;
+  }
+}

@@ -1147,3 +1147,7 @@ Mission Readiness is a launch-time prediction. During execution, terrain diagnos
 ## THREE-R2B Mission Editor
 
 The Environment Editor now renders its center world through the shared Three.js mission renderer. Use the left console to generate, paint, validate, export, and preview levels. The editor blocks invalid preview/export when validation finds hard errors, and exported levels remain normal `anchor.level` JSON with editor metadata.
+
+## THREE-R3A Runtime Shell Note
+
+THREE-R3A keeps the current Phaser lifecycle shell as the default runtime. `?runtimeShell=next` enables the gated Phaser-free production shell for parity testing only. The current UI remains the parity reference, and the next shell reuses canonical Planning, Simulation, Replay, and Editor state instead of changing scoring, schemas, mission semantics, or adding planners. Learning Labs may remain a lazy legacy island during R3A. Final Phaser removal is deferred until owner-reviewed parity acceptance.

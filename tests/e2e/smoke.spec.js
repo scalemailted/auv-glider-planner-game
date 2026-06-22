@@ -16,6 +16,12 @@ test.afterAll(async () => {
   await new Promise((resolve) => server?.close(resolve));
 });
 
+async function waitForDefaultPhaserApp(page) {
+  await expect.poll(() => page.evaluate(() => Boolean(
+    window.anchorGame?.phaser?.scene?.getScene?.('MainMenuScene')?.sys?.isActive?.()
+  )), { timeout: 15000 }).toBe(true);
+}
+
 test('learning labs static page is linked from the main menu', async ({ page }) => {
   const pageErrors = [];
   page.on('pageerror', (error) => pageErrors.push(error.message));
@@ -4785,6 +4791,7 @@ test('level generator opens from main menu', async ({ page }) => {
 
 test('deterministic challenge generates a fresh perfect-knowledge level', async ({ page }) => {
   await page.goto('/');
+  await waitForDefaultPhaserApp(page);
 
   await page.evaluate(() => window.anchorGame.phaser.scene.getScene('MainMenuScene').startRandomChallenge('perfectKnowledge'));
   await expect.poll(() => page.evaluate(() => window.anchorGame.state.level?.meta?.name?.startsWith('Deterministic Challenge'))).toBe(true);
@@ -4803,6 +4810,7 @@ test('deterministic challenge generates a fresh perfect-knowledge level', async 
 
 test('load level json imports a level and offers play/edit actions', async ({ page }) => {
   await page.goto('/');
+  await waitForDefaultPhaserApp(page);
 
   await page.evaluate(() => window.anchorGame.phaser.scene.start('LoadLevelJsonScene'));
   await expect.poll(() => page.evaluate(() => window.anchorGame.phaser.scene.getScene('LoadLevelJsonScene').sys.isActive())).toBe(true);
@@ -4818,6 +4826,7 @@ test('load level json imports a level and offers play/edit actions', async ({ pa
 
 test('stochastic mode exposes ensemble and risk controls', async ({ page }) => {
   await page.goto('/');
+  await waitForDefaultPhaserApp(page);
 
   await page.evaluate(() => window.anchorGame.phaser.scene.getScene('MainMenuScene').startRandomChallenge('forecast'));
   await expect.poll(() => page.evaluate(() => window.anchorGame.state.level?.meta?.name?.startsWith('Stochastic Challenge'))).toBe(true);
@@ -5311,6 +5320,7 @@ test('Three Scene Cleanup Is Null-Safe and Idempotent', async ({ page }) => {
 test('Generated Mission Opens a Visible Volumetric Water Column', async ({ page }) => {
   const browserErrors = attachBrowserErrorCollector(page);
   await page.goto('/');
+  await waitForDefaultPhaserApp(page);
   await page.evaluate(() => window.anchorGame.phaser.scene.getScene('MainMenuScene').startRandomChallenge('perfectKnowledge'));
   await expect.poll(() => page.evaluate(() => window.anchorGame.phaser.scene.getScene('MissionBriefingScene')?.sys.isActive?.() ?? false), { timeout: 15000 }).toBe(true);
   await startPlanningFromBriefing(page);
@@ -5359,6 +5369,7 @@ test('Generated Mission Opens a Visible Volumetric Water Column', async ({ page 
 test('Legacy Mission Uses Explicit Surface Compatibility Mode', async ({ page }) => {
   const browserErrors = attachBrowserErrorCollector(page);
   await page.goto('/');
+  await waitForDefaultPhaserApp(page);
   await page.evaluate(() => window.anchorGame.phaser.scene.start('LoadLevelJsonScene'));
   await expect.poll(() => page.evaluate(() => window.anchorGame.phaser.scene.getScene('LoadLevelJsonScene')?.sys.isActive?.() ?? false), { timeout: 15000 }).toBe(true);
   await page.evaluate(async () => {
@@ -5870,6 +5881,7 @@ test('Legacy and Three Simulation Produce Identical Canonical Result', async ({ 
 });
 test('legacy saved level registry scene still opens', async ({ page }) => {
   await page.goto('/');
+  await waitForDefaultPhaserApp(page);
   await expect.poll(() => page.evaluate(() => window.anchorGame.phaser.scene.getScene('MainMenuScene').sys.isActive())).toBe(true);
 
   await page.evaluate(() => window.anchorGame.phaser.scene.start('LoadLevelByIdScene'));

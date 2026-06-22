@@ -1,4 +1,4 @@
-import { createReadStream, existsSync, statSync } from 'node:fs';
+﻿import { createReadStream, existsSync, statSync } from 'node:fs';
 import { createServer } from 'node:http';
 import { extname, normalize, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -17,7 +17,9 @@ const mimeTypes = {
 export function startStaticServer({ port = 9321, root = process.cwd() } = {}) {
   const server = createServer((request, response) => {
     const url = new URL(request.url ?? '/', `http://127.0.0.1:${port}`);
-    const requested = url.pathname === '/' ? '/index.html' : decodeURIComponent(url.pathname);
+    const pagesPrefix = '/auv-glider-planner-game';
+    const pathname = url.pathname === pagesPrefix || url.pathname.startsWith(`${pagesPrefix}/`) ? url.pathname.slice(pagesPrefix.length) || '/' : url.pathname;
+    const requested = pathname === '/' ? '/index.html' : decodeURIComponent(pathname);
     const filePath = resolve(root, `.${normalize(requested)}`);
 
     if (!filePath.startsWith(root) || !existsSync(filePath) || !statSync(filePath).isFile()) {

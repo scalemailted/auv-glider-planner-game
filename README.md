@@ -979,3 +979,7 @@ THREE-R1.2C adds a portable terrain-aware validation contract for continuous sur
 ## THREE-R2B Mission Editor Runtime
 
 THREE-R2B moves the normal Mission Editor world presentation to Three.js while keeping Phaser as the transitional scene shell. Editor state is owned by `src/core/editor/` document/session/command modules, exports include `meta.threeMissionEditor`, and invalid editor documents block preview/export. See `docs/threejs_mission_editor.md`, `docs/threejs_mission_editor_architecture_audit.md`, and `docs/production_phaser_scene_retirement_audit.md`.
+
+## THREE-R3A Runtime Shell Note
+
+THREE-R3A keeps the current Phaser lifecycle shell as the default runtime. `?runtimeShell=next` enables the gated Phaser-free production shell for parity testing only. The current UI remains the parity reference, and the next shell reuses canonical Planning, Simulation, Replay, and Editor state instead of changing scoring, schemas, mission semantics, or adding planners. Learning Labs may remain a lazy legacy island during R3A. Final Phaser removal is deferred until owner-reviewed parity acceptance.

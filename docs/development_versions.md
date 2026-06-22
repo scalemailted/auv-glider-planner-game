@@ -578,3 +578,7 @@ Added renderer-neutral bathymetry surface, mesh, coastline, contour, and source 
 ## THREE-R2B
 
 Mission Editor world presentation now uses Three.js with canonical editor document/session/command authority. Phaser remains a required transitional shell; final Phaser dependency removal is still blocked. New docs: `docs/threejs_mission_editor.md`, `docs/threejs_mission_editor_architecture_audit.md`, `docs/production_phaser_scene_retirement_audit.md`, and `docs/three_r2b_visual_acceptance.md`.
+
+## THREE-R3A
+
+Added a gated Phaser-free production shell behind `?runtimeShell=next`, plus route/lifecycle/session/view-host contracts, accessibility/debug foundations, static packaging audit, focused E2E coverage, and owner-review artifact specs. The default Phaser shell remains active. Phaser final removal is deferred to R3B.

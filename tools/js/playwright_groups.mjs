@@ -1,4 +1,4 @@
-export const PLAYWRIGHT_GROUPS_VERSION = 'playwright-groups-r2b';
+﻿export const PLAYWRIGHT_GROUPS_VERSION = 'playwright-groups-r3a';
 
 export const PLAYWRIGHT_GROUPS = Object.freeze([
   {
@@ -122,13 +122,30 @@ export const PLAYWRIGHT_GROUPS = Object.freeze([
       /^Production Mission Routes Do Not Instantiate Legacy Phaser World Renderers$/i,
       /^Browser and Headless Validate Edited Mission Identically$/i
     ]
+  },
+  {
+    id: 'productionShellR3A',
+    label: 'THREE-R3A gated Phaser-free production shell parity',
+    patterns: [
+      /^THREE-R3A Current Shell Visual and Route Baseline$/i,
+      /^Next Shell Product Hub Preserves Production Content and Styling$/i,
+      /^Next Shell Preserves Setup Briefing Planning Simulation and Debrief$/i,
+      /^Next Shell Reuses Canonical Three Replay and Mission Editor$/i,
+      /^Next Shell Route Transitions Dispose Previous View$/i,
+      /^Next Shell Import Export and Headless Viewer Preserve Tool Behavior$/i,
+      /^Next Shell Supports Keyboard Route and Mission Control$/i,
+      /^Next Shell Honors Reduced Motion Without Changing Mission Outcomes$/i,
+      /^Next Shell Runs From GitHub Pages Subpath Without Phaser$/i,
+      /^Next Shell Loads Legacy Learning Lab Only On Demand$/i
+    ]
   },  {
     id: 'visualAcceptance',
     label: 'Headed owner visual acceptance and production walkthroughs',
     patterns: [
       /^THREE-R1\.2C Full Headed Production Walkthrough$/i,
       /^THREE-R2A Full Headed Replay and Debrief Walkthrough$/i,
-      /^THREE-R2B Full Headed Mission Editor Walkthrough$/i
+      /^THREE-R2B Full Headed Mission Editor Walkthrough$/i,
+      /^THREE-R3A Full Headed Phaser-Free Production Shell Walkthrough$/i
     ]
   }
 ]);

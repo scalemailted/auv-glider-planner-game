@@ -402,3 +402,11 @@ Current renderer order is THREE-R2A deterministic replay/debrief review, THREE-R
 ## THREE-R2B Checkpoint
 
 Mission Editor parity now uses the canonical editor document/command/session path with Three.js presentation. Phaser remains the shell and is not ready for final dependency removal. Next recommended work should continue retiring Phaser scene internals only after owner review of `test-results/three-r2b-owner-review/`.
+
+## THREE-R3 Runtime Roadmap
+
+1. THREE-R3A - Phaser-free production shell, UI parity, accessibility foundation, and final-removal readiness. Current Phaser shell remains default; the next shell is explicitly gated by `?runtimeShell=next`.
+2. THREE-R3B - Default runtime switch, Learning Lab migration, and Phaser dependency removal after parity acceptance.
+3. THREE-R3C - Release candidate hardening, packaging, accessibility closure, documentation, and production release.
+
+No scientific, scoring, schema, or planner semantics change in R3A. Human manual QA remains separate from headed automated QA.

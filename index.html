@@ -30,7 +30,14 @@
   <aside id="waypoint-timeline" aria-label="Mission Waypoint Timeline"></aside>
   <input id="hidden-file-input" type="file" accept="application/json" hidden />
   <div id="toast-root" aria-live="polite"></div>
-  <script src="vendor/phaser.min.js"></script>
+  <script>
+    (() => {
+      const params = new URLSearchParams(globalThis.location?.search ?? '');
+      if (params.get('runtimeShell') !== 'next') {
+        document.write('<script src="vendor/phaser.min.js" data-anchor-default-phaser><\/script>');
+      }
+    })();
+  </script>
   <script>
     globalThis.ANCHOR_DEPLOYMENT_DEBUG = {
       deploymentMode: 'static-import-map',

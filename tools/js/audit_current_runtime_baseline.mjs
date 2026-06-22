@@ -1,4 +1,4 @@
-import assert from 'node:assert/strict';
+﻿import assert from 'node:assert/strict';
 import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 
@@ -23,6 +23,18 @@ for (const scene of ['MainMenuScene', 'MissionBriefingScene', 'MissionWorkspaceS
 const gameMain = read('src/game/main.js');
 if (gameMain.includes('AnchorBrowserRuntime')) failures.push('src/game/main.js must not use AnchorBrowserRuntime.');
 if (gameMain.includes('src/app/main.js')) failures.push('src/game/main.js must not depend on src/app/main.js.');
+if (!gameMain.includes('AnchorProductionBootstrap.js')) failures.push('src/game/main.js must expose the gated R3A next shell dynamic import.');
+if (!gameMain.includes('PhaserProductionBootstrap.js')) failures.push('src/game/main.js must preserve the default Phaser bootstrap dynamic import.');
+for (const file of [
+  'src/app/production/AnchorRuntimeSelector.js',
+  'src/app/production/AnchorProductionRoute.js',
+  'src/app/production/AnchorProductionLifecycle.js',
+  'src/app/production/AnchorProductionSessionStore.js',
+  'src/app/production/AnchorProductionViewHost.js',
+  'src/app/production/AnchorProductionBootstrap.js'
+]) {
+  if (!existsSync(path.join(root, file))) failures.push(`${file} is missing.`);
+}
 
 const continuousUiState = read('src/core/rendering/ContinuousMissionUiState.js');
 for (const token of [

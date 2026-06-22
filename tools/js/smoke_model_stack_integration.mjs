@@ -1,4 +1,4 @@
-import assert from 'node:assert/strict';
+﻿import assert from 'node:assert/strict';
 import fs from 'node:fs';
 
 import {
@@ -1322,4 +1322,12 @@ assert.equal(coastlineGeometryModule.validateCoastlineGeometry(modelStackCoastli
 assert.equal(contourGeometryModule.validateBathymetryContourGeometry(modelStackContours).valid, true, 'R1.2B contour geometry validates');
 assert.equal(modelStackSurface.boundaryFlags.rendererOwnsBathymetry, false, 'R1.2B renderer does not own bathymetry');
 assert.equal(modelStackSurface.boundaryFlags.usesVisualMeshForPhysics, false, 'R1.2B visual mesh is not physics authority');
+const productionRouteModule = await import('../../src/app/production/AnchorProductionRoute.js');
+const productionLifecycleModule = await import('../../src/app/production/AnchorProductionLifecycle.js');
+const productionSessionModule = await import('../../src/app/production/AnchorProductionSessionStore.js');
+assert.equal(productionRouteModule.validateAnchorProductionRoute('missionPlanning').valid, true, 'R3A production route contract imports');
+const r3aSession = productionSessionModule.createAnchorProductionSessionStore();
+const r3aLifecycle = productionLifecycleModule.createAnchorProductionLifecycle({ sessionStore: r3aSession });
+assert.equal(productionLifecycleModule.dispatchAnchorLifecycleCommand(r3aLifecycle, 'openMissionSetup').accepted, true, 'R3A lifecycle accepts setup transition');
+assert.equal(productionLifecycleModule.dispatchAnchorLifecycleCommand(r3aLifecycle, 'loadMission').to, 'missionBriefing', 'R3A lifecycle reaches briefing');
 console.log('Model stack integration smoke passed');

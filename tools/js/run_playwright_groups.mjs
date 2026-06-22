@@ -1,4 +1,4 @@
-import { spawn } from 'node:child_process';
+﻿import { spawn } from 'node:child_process';
 import net from 'node:net';
 import { performance } from 'node:perf_hooks';
 import { PLAYWRIGHT_GROUPS, grepForGroup } from './playwright_groups.mjs';
@@ -52,7 +52,7 @@ console.log(failed ? 'FAIL grouped Playwright suite' : 'PASS grouped Playwright 
 process.exit(failed ? 1 : 0);
 
 function groupPlaywrightArgs(group) {
-  const args = ['--reporter=line', '--workers=1', '--grep', grepForGroup(group.id)];
+  const args = ['--reporter=line', '--workers=1', '--output', 'test-results/.playwright-' + group.id, '--grep', grepForGroup(group.id)];
   if (group.id === 'visualAcceptance') args.push('--headed', '--project=chromium');
   return args;
 }

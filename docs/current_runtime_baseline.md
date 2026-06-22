@@ -74,3 +74,9 @@ The production replay path consumes canonical public events and checkpoints thro
 ## THREE-R2B Current Runtime Note
 
 The Mission Editor center viewport is now a Three.js renderer hosted by `EnvironmentEditorScene`. Phaser remains the scene shell. The active debug contracts are `ANCHOR_MISSION_EDITOR_DEBUG` and `ANCHOR_PHASER_RETIREMENT_DEBUG`. Legacy Phaser editor world rendering is not used in the normal editor path.
+
+## THREE-R3A Gated Shell Baseline
+
+`index.html` still loads `src/game/main.js`. That module now selects a runtime: default imports `src/game/phaser/PhaserProductionBootstrap.js`, while `?runtimeShell=next` imports `src/app/production/AnchorProductionBootstrap.js`. The next shell publishes `ANCHOR_RUNTIME_SELECTION_DEBUG`, `ANCHOR_PRODUCTION_SHELL_DEBUG`, `ANCHOR_ACCESSIBILITY_DEBUG`, and `ANCHOR_LIFECYCLE_PARITY_DEBUG`.
+
+Default runtime behavior is unchanged for normal users. The next shell must not instantiate Phaser for production mission routes. Learning Labs remain a lazy legacy island until R3B.
