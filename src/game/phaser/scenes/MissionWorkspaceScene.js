@@ -101,6 +101,7 @@ import { buildGuidanceLabel, cellToWorld, clampZoom, drawMissionMap, getMapLayou
 import { saveLevelToRegistry } from '../../../core/storage/LevelRegistry.js';
 import { getViewportMapBounds } from '../ViewportMapBounds.js';
 import { getActiveRenderTime } from '../../../core/time/ActiveRenderTime.js';
+import { planningTimelineBridgeSummary, planningTimelineTimeToCurrentSeconds } from '../../../core/time/PlanningTimelineTimeBridge.js';
 import { getActivePriorityTargets } from '../../../core/sim/PriorityTargets.js';
 import { inspectCellAtTime } from '../../../core/exploration/CellInspection.js';
 import { cellToCenterPosition, isCellNavigable } from '../../../core/planning/Navigability.js';
@@ -845,12 +846,14 @@ export class MissionWorkspaceScene extends PhaserScene {
 
   markMissionCurrentPresentationDirty(categories = []) {
     this.nextMissionPresentationDirtyCategories = [...new Set(['currentVectors', 'CURRENT_TIME_DIRTY', ...categories])];
+    this.recordPlanningCurrentTransaction('dirty.current-presentation', { dirtyCategories: this.nextMissionPresentationDirtyCategories });
   }
 
   refreshMap() {
     this.clearPlanningOverlayObjects();
     if (this.getMissionRendererBackend() === 'threeMission3d') {
       this.mapGraphics?.setVisible?.(false);
+      this.recordPlanningCurrentTransaction('refreshMap.three', { rendererBackend: 'threeMission3d' });
       this.refreshThreeMissionRenderer();
       return;
     }
@@ -2137,6 +2140,70 @@ export class MissionWorkspaceScene extends PhaserScene {
     };
   }
 
+  publishPlanningTimelineDebug({ stage = 'refresh', viewModel = null, rendererSummary = null } = {}) {
+    if (typeof globalThis !== 'object') return null;
+    const state = this.app?.state ?? {};
+    const bridge = viewModel?.planningTimelineTimeBridge ?? planningTimelineBridgeSummary(state.level, state.planningTime ?? 0, { phase: 'planning' });
+    const currentPresentation = globalThis.ANCHOR_CURRENT_PRESENTATION_DEBUG ?? null;
+    const timelineRoot = globalThis.document?.getElementById?.('bottom-timeline') ?? null;
+    const slider = timelineRoot?.querySelector?.('[data-action="time-slider"]') ?? null;
+    const controls = ['time-start', 'window-prev', 'window-next', 'time-end'];
+    const controlsPresent = Object.fromEntries(controls.map((action) => [action, Boolean(timelineRoot?.querySelector?.(`[data-action="${action}"]`))]));
+    const overlay = this.hud ?? {};
+    const transaction = globalThis.ANCHOR_PLANNING_CURRENT_TRANSACTION_DEBUG ?? null;
+    const debug = {
+      type: 'anchor.debug.planning-timeline',
+      version: 'planning-timeline-debug-flow-runtime-r1-1',
+      stage,
+      runtimeSourceIdentity: currentPresentation?.runtimeSourceIdentity ?? {
+        branchOrBuildLabel: 'master-flow-runtime-r1-1-working-tree',
+        sourceHead: '7593bd92c2f2bbbbf7938e591009a8fe4a2944bc+working-tree',
+        sourceRootMode: 'repository-root-static-server',
+        runtimeShell: 'default',
+        currentRuntimeVersion: 'current-presentation-state-flow-runtime-r1-1',
+        phase: 'FLOW-RUNTIME-R1.1',
+        entryPoint: 'index.html -> src/game/main.js'
+      },
+      bind: {
+        bottomTimelineRootPresent: Boolean(timelineRoot),
+        sliderBoundByInputListener: Boolean(slider),
+        controlsPresent,
+        overlayControlBindCount: Number(overlay.overlayControlBindCount ?? 0),
+        timelineActionMapPresent: Boolean(timelineRoot?.__anchorActionMap),
+        timelineActionKeys: Object.keys(timelineRoot?.__anchorActionMap ?? {})
+      },
+      dispatch: {
+        overlayControlDispatchCount: Number(overlay.overlayControlDispatchCount ?? 0),
+        duplicateOverlayControlDispatchCount: Number(overlay.duplicateOverlayControlDispatchCount ?? 0),
+        lastOverlayActionKey: overlay.lastOverlayActionKey ?? null,
+        lastTimelineActionKey: overlay.lastTimelineActionKey ?? null
+      },
+      time: {
+        planningTime: Number(state.planningTime ?? 0),
+        selectedWindow: Number(state.selectedWindow ?? 0),
+        sliderValue: slider ? Number(slider.value) : null,
+        missionTimelineTimeSeconds: bridge.missionTimelineTimeSeconds,
+        currentPresentationTimeSeconds: currentPresentation?.currentPresentationTimeSeconds ?? viewModel?.currentPresentationTimeSeconds ?? null,
+        samplerInputTimeSeconds: currentPresentation?.samplerInputTimeSeconds ?? null,
+        heatmapFrameTime: viewModel?.fieldState?.frameTimeSeconds ?? null,
+        currentEqualsTimelineSeconds: Math.abs(Number(currentPresentation?.currentPresentationTimeSeconds ?? NaN) - Number(bridge.missionTimelineTimeSeconds ?? NaN)) <= 1e-3
+      },
+      refresh: {
+        viewModelBuildCount: Number(this.threePerformanceDiagnostics?.missionViewModelBuildCount ?? 0),
+        dirtyCategories: viewModel?.presentationDirtyCategories ?? [],
+        currentLayerUpdateCount: Number(rendererSummary?.currentLayerUpdateCount ?? 0),
+        directionBufferUploadCount: Number(rendererSummary?.currentDirectionBufferUploadCount ?? 0),
+        matrixBufferUploadCount: Number(rendererSummary?.currentMatrixBufferUploadCount ?? 0),
+        currentDataDigest: rendererSummary?.currentDataDigest ?? currentPresentation?.renderSampleDigest ?? null,
+        transactionStage: transaction?.lastStage ?? null
+      },
+      visibleWorkflow: 'Product Hub / Generate Challenge / Planning visible Start Prev Next End and timeline input',
+      directDebugTimeMutationUsed: false
+    };
+    globalThis.ANCHOR_PLANNING_TIMELINE_DEBUG = debug;
+    return debug;
+  }
+
   updateMissionRenderDebug({ activeBackend, threeMounted, viewModel, renderer = null, parityWarnings = [] } = {}) {
     const summary = missionWorldRenderViewModelSummary(viewModel ?? {});
     const rendererSummary = renderer ? threeMissionWorldRendererSummary(renderer) : null;
@@ -2238,6 +2305,8 @@ export class MissionWorkspaceScene extends PhaserScene {
       layerVisibility: this.threeLayerVisibilityPatch(),
       warnings: parityWarnings
     });
+    this.publishPlanningTimelineDebug({ stage: 'renderer.debug-published', viewModel, rendererSummary });
+    this.recordPlanningCurrentTransaction('renderer.debug-published', { rendererSummary, currentPresentation: globalThis.ANCHOR_CURRENT_PRESENTATION_DEBUG });
     const currentViewportWarning = currentVectorViewportWarning(volumetricCurrentDebug);
     if (currentViewportWarning && currentViewportWarning !== this.lastCurrentViewportWarning) {
       this.lastCurrentViewportWarning = currentViewportWarning;
@@ -4432,12 +4501,14 @@ export class MissionWorkspaceScene extends PhaserScene {
   }
 
   setPlanningTime(time) {
+    this.recordPlanningCurrentTransaction('handler.setPlanningTime.start', { requestedTime: Number(time) });
     this.markMissionCurrentPresentationDirty(['scalarField', 'waterColumn', 'routeStatus']);
     this.app.state.planningTime = clampMissionTime(this.app.state.level, time);
     this.app.state.selectedWindow = getWindowForTime(this.app.state.level, this.app.state.planningTime);
     applyPlanningAnchor(this.app.state, this.app.state.selectedAgentId);
     this.refreshPanels();
     this.refreshMap();
+    this.recordPlanningCurrentTransaction('handler.setPlanningTime.end', { planningTime: this.app.state.planningTime });
   }
 
   setActiveWindow(windowIndex) {
@@ -4446,12 +4517,37 @@ export class MissionWorkspaceScene extends PhaserScene {
   }
 
   setTimelineFrame(frameIndex) {
+    this.recordPlanningCurrentTransaction('handler.setTimelineFrame.start', { requestedFrameIndex: Number(frameIndex) });
     this.markMissionCurrentPresentationDirty(['scalarField', 'waterColumn', 'routeStatus']);
     this.app.state.planningTime = clampMissionTime(this.app.state.level, getTimelineFrameTime(this.app.state.level, this.app.state.mission, frameIndex));
     this.app.state.selectedWindow = getWindowForTime(this.app.state.level, this.app.state.planningTime);
     applyPlanningAnchor(this.app.state, this.app.state.selectedAgentId);
     this.refreshPanels();
     this.refreshMap();
+    this.recordPlanningCurrentTransaction('handler.setTimelineFrame.end', { frameIndex: Number(frameIndex), planningTime: this.app.state.planningTime });
+  }
+
+  recordPlanningCurrentTransaction(stage, patch = {}) {
+    if (typeof globalThis !== 'object') return null;
+    const state = this.app?.state ?? {};
+    const planningTime = Number(state.planningTime ?? 0);
+    const currentPresentationTimeSeconds = planningTimelineTimeToCurrentSeconds(state.level, planningTime, { phase: state.mode ?? 'planning' });
+    const previous = globalThis.ANCHOR_PLANNING_CURRENT_TRANSACTION_DEBUG ?? {};
+    const sequence = Number(previous.sequence ?? 0) + 1;
+    const entry = { sequence, stage, planningTime, currentPresentationTimeSeconds, ...patch };
+    const stages = [...(Array.isArray(previous.stages) ? previous.stages : []), entry].slice(-16);
+    const debug = {
+      type: 'anchor.debug.planning-current-transaction',
+      version: 'planning-current-transaction-flow-runtime-r1-1',
+      sequence,
+      lastStage: stage,
+      planningTime,
+      currentPresentationTimeSeconds,
+      stages,
+      directDebugTimeMutationUsed: false
+    };
+    globalThis.ANCHOR_PLANNING_CURRENT_TRANSACTION_DEBUG = debug;
+    return debug;
   }
 
   getAgentAtCell(cell) {

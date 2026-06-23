@@ -14,4 +14,6 @@ const stages = [
 ];
 for (const [stage, a, b, changed] of stages) assert.equal(changed, true, `${stage} must change between tested current times (${JSON.stringify(a)} -> ${JSON.stringify(b)})`);
 assert.equal(probe.currentFieldDigestStable, true, 'time-only current presentation does not rebuild or mutate current cube digest');
-console.log('[audit_current_timeline_to_gpu_pipeline] PASS', { stages: stages.map(([stage]) => stage) });
+assert.equal(probe.firstVm.planningTimelineTimeBridge?.conversionApplied, true, 'Planning helper uses the visible Planning-hour to current-seconds bridge');
+assert.equal(probe.firstVm.currentPresentationTimeSeconds, probe.firstVm.planningTimelineTimeBridge?.missionTimelineTimeSeconds, 'current presentation seconds match bridged mission timeline seconds');
+console.log('[audit_current_timeline_to_gpu_pipeline] PASS', { stages: stages.map(([stage]) => stage), bridge: probe.firstVm.planningTimelineTimeBridge });

@@ -142,6 +142,11 @@ export const PLAYWRIGHT_GROUPS = Object.freeze([
       /^Adaptive Current Density Classifies Rendered and Filtered Samples$/i,
       /^FLOW-R2A\.5\.2 Pixel Evidence Shows Dynamic Current Frames$/i,
       /^Planning Timeline Updates Visible Current Vectors$/i,
+      /^Visible Planning Next Button Updates Current Vectors$/i,
+      /^Visible Planning Start Prev Next and End Share One Time Authority$/i,
+      /^Visible Planning Timeline Input Updates Current Vectors$/i,
+      /^Planning Current Test Does Not Use a Direct Time Mutation$/i,
+      /^Manual Planning Current Workflow Runs From GitHub Pages Subpath$/i,
       /^Current Vectors Update Within a Source Time Bracket$/i,
       /^Simulation Play Pause and Step Control Current Evolution$/i,
       /^Rendered Current Matches Glider Applied Current$/i,
@@ -238,6 +243,7 @@ export const PLAYWRIGHT_GROUPS = Object.freeze([
       /^FLOW-R2A\.4 Full Headed Production Current Visibility Walkthrough$/i,
       /^FLOW-R2A\.5 Full Headed Production 4D Current Dynamics Walkthrough$/i,
       /^FLOW-R2A\.5\.1 Full Headed Environment Time and Layer Walkthrough$/i,
+      /^FLOW-RUNTIME-R1\.1 Full Headed Manual Planning Timeline Walkthrough$/i,
       /^FLOW-RUNTIME-R1 Full Headed Canonical Current Evolution Walkthrough$/i
     ]
   }

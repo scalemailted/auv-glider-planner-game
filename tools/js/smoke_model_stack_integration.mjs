@@ -123,6 +123,7 @@ import { buildOceanWorldRenderViewModel, oceanWorldRenderViewModelSummary } from
 import { buildBathymetryWorldRenderViewModel, bathymetryWorldRenderViewModelSummary } from '../../src/core/rendering/BathymetryWorldRenderViewModel.js';
 import { createMissionWorldCoordinateTransform, gridCellToWorld, worldToGridCell } from '../../src/core/rendering/MissionWorldCoordinates.js';
 import { missionWorldRenderInputFromWorkspace } from '../../src/core/rendering/MissionWorldStateAdapter.js';
+import { planningTimelineBridgeSummary, planningTimelineTimeToCurrentSeconds } from '../../src/core/time/PlanningTimelineTimeBridge.js';
 import { buildMissionWorldRenderViewModel, missionWorldRenderViewModelSummary, validateMissionWorldRenderViewModel } from '../../src/core/rendering/MissionWorldRenderViewModel.js';
 import { createMissionPlanningToolState, missionPlanningToolStateSummary, setMissionPlanningTool, validateMissionPlanningToolState } from '../../src/core/rendering/MissionPlanningToolState.js';
 import { WAYPOINT_SNAP_MODES, VOLUME_RENDER_MODES, continuousMissionUiStateSummary, normalizeContinuousMissionUiState, validateContinuousMissionUiState } from '../../src/core/rendering/ContinuousMissionUiState.js';
@@ -1369,6 +1370,9 @@ assert.equal(flowR2aGlyphSummary.glyphMeshVisible, true, 'FLOW-R2A.2 current gly
 assert.equal(flowR2aGlyphSummary.glyphDrawCallCount, 1, 'FLOW-R2A.2 current glyph draw call is bounded');
 assert.equal(flowR2aCurrentDebug.currentDisplayMode, 'activeSlice', 'FLOW-R2A.2 debug reports activeSlice');
 assert.equal(flowR2aCurrentDebug.currentPresentationEnabled, true, 'FLOW-R2A.2 debug reports presentation enabled');
+const flowRuntimeR11Bridge = planningTimelineBridgeSummary({ world: { time: { duration: 48, durationSeconds: 172800, displayUnits: 'hours' } } }, 8, { phase: 'planning' });
+assert.equal(planningTimelineTimeToCurrentSeconds({ world: { time: { displayUnits: 'hours' } } }, 8, { phase: 'planning' }), 28800, 'FLOW-RUNTIME-R1.1 bridge converts visible Planning hours to current seconds');
+assert.equal(flowRuntimeR11Bridge.currentPresentationTimeSeconds, flowRuntimeR11Bridge.missionTimelineTimeSeconds, 'FLOW-RUNTIME-R1.1 bridge exposes one Planning time authority for currents');
 assert.equal(Number.isFinite(Number(flowR2aCurrentDebug.currentPresentationTimeSeconds)), true, 'FLOW-RUNTIME-R1 debug exposes finite current presentation time');
 assert.equal(Number.isFinite(Number(flowR2aCurrentDebug.samplerInputTimeSeconds)), true, 'FLOW-RUNTIME-R1 debug exposes finite sampler input time');
 assert.ok(Object.prototype.hasOwnProperty.call(flowR2aCurrentDebug, 'directionBufferUploadCount'), 'FLOW-RUNTIME-R1 debug exposes direction upload count');

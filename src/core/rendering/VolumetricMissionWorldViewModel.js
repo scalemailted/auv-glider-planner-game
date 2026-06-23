@@ -20,6 +20,7 @@ import {
   normalizeCurrentDisplayMode as normalizeSharedCurrentDisplayMode,
   resolveCurrentPresentationTimeSeconds
 } from './CurrentPresentationState.js';
+import { planningTimelineBridgeSummary } from '../time/PlanningTimelineTimeBridge.js';
 
 export const VOLUMETRIC_MISSION_WORLD_VIEW_MODEL_VERSION = 'volumetric-mission-world-view-model-three-r1-2a';
 
@@ -57,11 +58,19 @@ export function augmentMissionWorldWithVolumetricModel(baseViewModel = {}, optio
   const configSummary = waterColumnMissionConfigSummary(waterColumnConfig);
   const legacySurfaceOnlyFallback = isLegacySurfaceOnlyMission(waterColumnConfig);
   const waterColumnUi = displaySettings.waterColumn ?? options.waterColumn ?? {};
-  const canonicalActiveTimeSeconds = finiteNumber(options.activeTimeSeconds ?? baseViewModel.activeTimeSeconds ?? baseViewModel.simulationStatus?.timeSeconds, 0);
+  const renderPhase = options.phase ?? baseViewModel.phase ?? options.options?.phase ?? baseViewModel.options?.phase ?? 'planning';
+  const rawActiveTimelineTime = finiteNumber(options.activeTimeSeconds ?? baseViewModel.activeTimeSeconds ?? baseViewModel.simulationStatus?.timeSeconds, 0);
+  const planningTimelineTimeBridge = planningTimelineBridgeSummary(level, rawActiveTimelineTime, {
+    phase: renderPhase,
+    simulationStatus: options.simulationStatus ?? baseViewModel.simulationStatus ?? null,
+    timeSeconds: options.simulationState?.timeSeconds ?? baseViewModel.simulationState?.timeSeconds ?? null
+  });
+  const canonicalActiveTimeSeconds = planningTimelineTimeBridge.currentPresentationTimeSeconds;
   const currentPresentationTimeSeconds = resolveCurrentPresentationTimeSeconds({
     ...baseViewModel,
     activeTimeSeconds: canonicalActiveTimeSeconds,
     currentActiveTimeSeconds: baseViewModel.currentActiveTimeSeconds ?? canonicalActiveTimeSeconds,
+    currentPresentationTimeSeconds: canonicalActiveTimeSeconds,
     simulationStatus: options.simulationStatus ?? baseViewModel.simulationStatus
   }, canonicalActiveTimeSeconds);
   const allLayerFieldTexturesEnabled = waterColumnUi.fieldDisplayMode === 'allLayers' || waterColumnUi.showFieldOnAllLayers === true;
@@ -221,6 +230,11 @@ export function augmentMissionWorldWithVolumetricModel(baseViewModel = {}, optio
     currentActiveTimeSeconds: currentVisualization.currentActiveTimeSeconds,
     currentPresentationTimeSeconds,
     currentSourceTimeFrameSignature: currentSourceFrameSignature,
+    planningTimelineTimeBridge,
+    missionTimelineTime: planningTimelineTimeBridge.missionTimelineTime,
+    missionTimelineTimeHours: planningTimelineTimeBridge.missionTimelineTimeHours,
+    missionTimelineTimeSeconds: planningTimelineTimeBridge.missionTimelineTimeSeconds,
+    currentPresentationTimeSource: planningTimelineTimeBridge.sourceTimeAuthority,
     currentVectorSampleCount: currentVisualization.currentVectorSampleCount,
     currentVectorValidCount: currentVisualization.currentVectorValidCount,
     selectedRouteSegment: options.selectedRouteSegment ?? null,
@@ -265,6 +279,7 @@ export function volumetricCurrentDebugPayload(viewModel = {}, rendererSummary = 
   const activeVectors = (activeLayer?.currentField?.vectors ?? []).filter((vector) => vector.visible !== false);
   const contextVectors = (explorer.layers ?? []).filter((layer) => layer.id !== activeLayer?.id).reduce((sum, layer) => sum + (layer.currentField?.vectors ?? []).filter((vector) => vector.visible !== false).length, 0);
   const selectedSourceCurrent = selectCurrentSampleForLayer(explorer.selectedCurrentProfile?.samplesByDepth ?? [], activeLayer?.id ?? explorer.activeLayerId);
+  const bridge = viewModel.planningTimelineTimeBridge ?? {};
   const selectedRenderedCurrent = selectedSourceCurrent ? { ...selectedSourceCurrent } : null;
   const glider = (viewModel.gliderPoses ?? viewModel.gliders ?? []).find((candidate) => candidate.selected) ?? (viewModel.gliderPoses ?? viewModel.gliders ?? [])[0] ?? null;
   const gliderSampledCurrent = glider?.currentVector ? {
@@ -324,9 +339,15 @@ export function volumetricCurrentDebugPayload(viewModel = {}, rendererSummary = 
     temporalPeriodSeconds: fieldSummary.temporalPeriodSeconds ?? explorer.currentCube?.temporalPeriodSeconds ?? explorer.currentCube?.sourceMetadata?.temporalPeriodSeconds ?? null,
     validTimeStartSeconds: fieldSummary.validTimeStartSeconds ?? explorer.currentCube?.validTimeStartSeconds ?? explorer.currentCube?.sourceMetadata?.validTimeStartSeconds ?? null,
     validTimeEndSeconds: fieldSummary.validTimeEndSeconds ?? explorer.currentCube?.validTimeEndSeconds ?? explorer.currentCube?.sourceMetadata?.validTimeEndSeconds ?? null,
+    planningTimelineTimeBridge: Object.keys(bridge).length ? bridge : null,
+    planningTimelineTimeUnits: bridge.displayUnits ?? null,
+    missionTimelineTime: bridge.missionTimelineTime ?? null,
+    missionTimelineTimeHours: bridge.missionTimelineTimeHours ?? null,
+    missionTimelineTimeSeconds: bridge.missionTimelineTimeSeconds ?? viewModel.currentPresentationTimeSeconds ?? null,
+    currentTimeConversionMultiplier: bridge.timeUnitMultiplier ?? null,
     activeLayerId: currentVisualization.currentActiveLayerId ?? viewModel.currentActiveLayerId ?? explorer.activeLayerId ?? viewModel.activeDepthLayerId ?? null,
     activeDepthMeters: currentVisualization.currentActiveDepthMeters ?? explorer.activeDepthMeters ?? activeLayer?.representativeDepthMeters ?? null,
-    canonicalMissionTimeSeconds: viewModel.simulationStatus?.timeSeconds ?? viewModel.activeTimeSeconds ?? explorer.activeTimeSeconds ?? 0,
+    canonicalMissionTimeSeconds: bridge.missionTimelineTimeSeconds ?? viewModel.simulationStatus?.timeSeconds ?? viewModel.activeTimeSeconds ?? explorer.activeTimeSeconds ?? 0,
     activeTimeSeconds: explorer.activeTimeSeconds ?? viewModel.activeTimeSeconds ?? 0,
     currentPresentationTimeSeconds: resolveCurrentPresentationTimeSeconds(viewModel, explorer.activeTimeSeconds ?? viewModel.activeTimeSeconds ?? 0),
     samplerInputTimeSeconds: selectedSourceCurrent?.currentSampleTimeSeconds ?? selectedSourceCurrent?.timeSeconds ?? explorer.activeTimeSeconds ?? viewModel.activeTimeSeconds ?? 0,
@@ -395,7 +416,7 @@ export function volumetricCurrentDebugPayload(viewModel = {}, rendererSummary = 
     currentLayerUpdateCount: rendererSummary?.currentLayerUpdateCount ?? rendererSummary?.instancedCurrentGlyphSummary?.currentLayerUpdateCount ?? 0,
     currentLayerSkippedUpdateCount: rendererSummary?.currentLayerSkippedUpdateCount ?? rendererSummary?.instancedCurrentGlyphSummary?.currentLayerSkippedUpdateCount ?? 0,
     currentLayerSkipReason: rendererSummary?.currentLayerSkipReason ?? rendererSummary?.instancedCurrentGlyphSummary?.currentLayerSkipReason ?? null,
-    timelineBindingPass: Math.abs(Number(resolveCurrentPresentationTimeSeconds(viewModel, explorer.activeTimeSeconds ?? viewModel.activeTimeSeconds ?? 0)) - Number(viewModel.simulationStatus?.timeSeconds ?? viewModel.activeTimeSeconds ?? explorer.activeTimeSeconds ?? 0)) <= 1e-3,
+    timelineBindingPass: Math.abs(Number(resolveCurrentPresentationTimeSeconds(viewModel, explorer.activeTimeSeconds ?? viewModel.activeTimeSeconds ?? 0)) - Number(bridge.missionTimelineTimeSeconds ?? viewModel.simulationStatus?.timeSeconds ?? viewModel.activeTimeSeconds ?? explorer.activeTimeSeconds ?? 0)) <= 1e-3,
     samplerTimePass: Math.abs(Number(selectedSourceCurrent?.currentSampleTimeSeconds ?? selectedSourceCurrent?.timeSeconds ?? explorer.activeTimeSeconds ?? 0) - Number(resolveCurrentPresentationTimeSeconds(viewModel, explorer.activeTimeSeconds ?? viewModel.activeTimeSeconds ?? 0))) <= 1e-3 || selectedSourceCurrent?.timeWrappedPeriodically === true,
     renderSampleTimePass: selectedRenderedCurrent?.timeSeconds == null || Math.abs(Number(selectedRenderedCurrent.timeSeconds) - Number(selectedSourceCurrent?.currentSampleTimeSeconds ?? explorer.activeTimeSeconds ?? 0)) <= 1e-3,
     nextFrameDigest: selectedSourceCurrent?.upperTimeSeconds != null ? String(fieldSummary.digest ?? explorer.currentCube?.digest ?? 'current') + ':' + selectedSourceCurrent.upperTimeSeconds : null,

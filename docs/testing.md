@@ -1142,3 +1142,16 @@ npm.cmd run test:science
 `test:science` is also included in `npm.cmd run test:packages`. It runs manufactured bathymetry, bathymetry convergence, bathymetry ensemble, manufactured current, current depth/time, current invariant, manufactured scalar, scalar conservation/convergence, environment mission-coupling, and benchmark shortcut checks. These tests verify deterministic software behavior, numerical manufactured-case behavior, and synthetic claim boundaries. They do not establish calibrated oceanographic validity.
 
 See `docs/homegrown_environment_scientific_baseline.md` and `docs/homegrown_model_scorecard.md` for the SCI-VALID-R1 scorecard and external-oracle gap assessment.
+
+## FLOW-RUNTIME-R1.1 Planning Current Timeline Gate
+
+Use this focused gate when changing Planning timeline controls or current-vector presentation:
+
+```bash
+node tools/js/smoke_visible_planning_timeline_current_binding.mjs
+node tools/js/audit_planning_current_time_authority.mjs
+node tools/js/audit_no_direct_time_mutation_in_current_e2e.mjs
+npx playwright test tests/e2e/flow_runtime_r1_1_manual_planning_timeline.spec.js
+```
+
+The Playwright spec intentionally advances time through visible Planning controls only. It must not mutate scene time or debug objects directly.

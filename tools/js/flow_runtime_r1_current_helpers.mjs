@@ -5,6 +5,7 @@ import { buildSimulationWorldRenderViewModel } from '../../src/core/rendering/Si
 import { augmentMissionWorldWithVolumetricModel } from '../../src/core/rendering/VolumetricMissionWorldViewModel.js';
 import { sampleOceanCurrent } from '../../src/core/science/OceanCurrentFieldSampler.js';
 import { SimulationEngine } from '../../src/core/sim/SimulationEngine.js';
+import { currentSecondsToPlanningTimelineTime } from '../../src/core/time/PlanningTimelineTimeBridge.js';
 
 export function createFlowRuntimeR1Fixture(options = {}) {
   const fixture = createNormalGeneratedCurrentScenario({
@@ -23,7 +24,7 @@ export function createFlowRuntimeR1Fixture(options = {}) {
 
 export function buildPlanningCurrentViewModelAt(fixture, timeSeconds) {
   fixture.state.mode = 'planning';
-  fixture.state.planningTime = Number(timeSeconds) || 0;
+  fixture.state.planningTime = currentSecondsToPlanningTimelineTime(fixture.level, Number(timeSeconds) || 0, { phase: 'planning' });
   return buildNormalGeneratedCurrentViewModel({ fixture }).viewModel;
 }
 

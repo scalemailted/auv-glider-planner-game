@@ -1,4 +1,4 @@
-export const CURRENT_PRESENTATION_STATE_VERSION = 'current-presentation-state-flow-runtime-r1';
+export const CURRENT_PRESENTATION_STATE_VERSION = 'current-presentation-state-flow-runtime-r1-1';
 
 export function normalizeCurrentDisplayMode(mode = 'activeSlice') {
   if (mode === 'activeLayerOnly' || mode === 'activeCurrentSlice') return 'activeSlice';
@@ -105,13 +105,18 @@ export function buildCurrentPresentationDebug({
   const normalizedDisplayMode = normalizeCurrentDisplayMode(waterColumn.currentDisplayMode ?? currentDebug?.currentDisplayMode ?? 'activeSlice');
   const rendererDisplayMode = normalizeRendererCurrentDisplayMode(normalizedDisplayMode);
   const currentPresentationTimeSeconds = resolveCurrentPresentationTimeSeconds(viewModel, currentDebug?.currentActiveTimeSeconds ?? 0);
+  const bridge = viewModel.planningTimelineTimeBridge ?? currentDebug?.planningTimelineTimeBridge ?? null;
   const sourceFrameSignature = currentSourceTimeFrameSignature(viewModel);
   const sourceVectorSampleCount = Number(currentDebug?.sourceVectorSampleCount ?? rendererSummary?.sourceVectorSampleCount ?? 0);
-  const canonicalMissionTimeSeconds = finiteNumber(viewModel.simulationStatus?.timeSeconds ?? viewModel.activeTimeSeconds ?? viewModel.planningTime, currentPresentationTimeSeconds);
+  const canonicalMissionTimeSeconds = finiteNumber(bridge?.missionTimelineTimeSeconds ?? viewModel.currentPresentationTimeSeconds ?? viewModel.simulationStatus?.timeSeconds ?? viewModel.activeTimeSeconds ?? viewModel.planningTime, currentPresentationTimeSeconds);
   const samplerInputTimeSeconds = finiteNumber(currentDebug?.samplerInputTimeSeconds ?? currentDebug?.currentSampleTimeSeconds ?? currentDebug?.currentActiveTimeSeconds, currentPresentationTimeSeconds);
+  const missionTimelineTime = finiteNumber(bridge?.missionTimelineTime ?? viewModel.planningTime ?? viewModel.activeTimeSeconds, currentPresentationTimeSeconds);
   const timeToleranceSeconds = 1e-3;
   const finiteVectorSampleCount = Number(currentDebug?.finiteVectorSampleCount ?? rendererSummary?.finiteVectorSampleCount ?? 0);
   const nonzeroVectorSampleCount = Number(currentDebug?.nonzeroVectorSampleCount ?? rendererSummary?.nonzeroVectorSampleCount ?? 0);
+  const currentEvolutionMode = currentDebug?.timeDependent === true
+    ? currentDebug?.temporalBoundaryMode === 'periodic' ? 'periodicTimeVarying' : 'boundedTimeVarying'
+    : 'steady';
   const glyphInstanceCount = Number(currentDebug?.glyphInstanceCount ?? rendererSummary?.glyphInstanceCount ?? 0);
   const visibleVectorInstanceCount = Number(currentDebug?.visibleVectorInstanceCount ?? rendererSummary?.visibleVectorInstanceCount ?? glyphInstanceCount ?? 0);
   const requested = safeModeExplicit ? false : (ui.showCurrents !== false && layerVisibility.currentVectors !== false && currentDebug?.currentPresentationRequested !== false);
@@ -144,8 +149,28 @@ export function buildCurrentPresentationDebug({
     currentLayerMode: waterColumn.currentLayerMode ?? 'followSelectedGlider',
     currentActiveLayerId: currentDebug?.currentActiveLayerId ?? viewModel.currentActiveLayerId ?? viewModel.currentVisualization?.currentActiveLayerId ?? null,
     currentActiveDepthMeters: currentDebug?.currentActiveDepthMeters ?? viewModel.currentActiveDepthMeters ?? null,
+    runtimeSourceIdentity: {
+      branchOrBuildLabel: 'master-flow-runtime-r1-1-working-tree',
+      sourceHead: '7593bd92c2f2bbbbf7938e591009a8fe4a2944bc+working-tree',
+      sourceRootMode: 'repository-root-static-server',
+      runtimeShell,
+      currentRuntimeVersion: CURRENT_PRESENTATION_STATE_VERSION,
+      phase: 'FLOW-RUNTIME-R1.1',
+      entryPoint: 'index.html -> src/game/main.js',
+      rendererPath: 'visible Planning controls -> mission state -> current presentation -> Three glyph upload'
+    },
+    missionTimelineTime,
+    missionTimelineTimeHours: bridge?.missionTimelineTimeHours ?? (bridge?.displayUnits === 'hours' ? missionTimelineTime : null),
+    missionTimelineTimeSeconds: canonicalMissionTimeSeconds,
+    planningTimelineTimeUnits: bridge?.displayUnits ?? null,
+    currentTimeConversionMultiplier: bridge?.timeUnitMultiplier ?? null,
     canonicalMissionTimeSeconds,
     currentPresentationTimeSeconds,
+    currentPresentationTimeAuthority: bridge?.sourceTimeAuthority ?? 'current-presentation-view-model',
+    currentEvolutionMode,
+    timeDependent: currentDebug?.timeDependent === true,
+    currentChangeSincePreviousTimelineState: rendererSummary?.currentDataChangedSinceLastUpload ?? currentDebug?.currentDataChangedSinceLastUpload ?? null,
+    sourceTimeCount: currentDebug?.sourceTimeCount ?? null,
     samplerInputTimeSeconds,
     lowerTimeSeconds: currentDebug?.lowerTimeSeconds ?? null,
     upperTimeSeconds: currentDebug?.upperTimeSeconds ?? null,
@@ -187,6 +212,7 @@ export function buildCurrentPresentationDebug({
     currentCubeBuildCount: currentDebug?.currentCubeBuildCount ?? null,
     currentSamplerCreateCount: currentDebug?.currentSamplerCreateCount ?? null,
     usesWallClockTime: false,
+    directDebugTimeMutationUsed: false,
     rendererOwnsCurrent: false,
     displayLayerChangesCurrent: false,
     changesOfficialScoring: false,

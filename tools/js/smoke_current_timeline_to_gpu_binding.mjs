@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import { createNormalGeneratedCurrentScenario, buildNormalGeneratedCurrentViewModel } from './flow_r2a4_production_helpers.mjs';
 import { currentPresentationCacheSignature, currentSourceTimeFrameSignature } from '../../src/core/rendering/CurrentPresentationState.js';
 import { createThreeInstancedCurrentGlyphLayer, updateThreeInstancedCurrentGlyphLayer, threeInstancedCurrentGlyphLayerSummary } from '../../src/game/three/layers/ThreeInstancedCurrentGlyphLayer.js';
+import { currentSecondsToPlanningTimelineTime } from '../../src/core/time/PlanningTimelineTimeBridge.js';
 
 const fixture = createNormalGeneratedCurrentScenario({ seed: 'flow-r2a5-2-timeline-binding' });
 fixture.state.ui.waterColumn.currentDisplayMode = 'stackedDepthField';
@@ -9,7 +10,8 @@ fixture.state.ui.waterColumn.showContextCurrents = true;
 fixture.state.ui.waterColumn.currentVectorDensity = 'balanced';
 
 function viewModelAt(timeSeconds) {
-  fixture.state.planningTime = timeSeconds;
+  fixture.state.mode = 'planning';
+  fixture.state.planningTime = currentSecondsToPlanningTimelineTime(fixture.level, timeSeconds, { phase: 'planning' });
   const built = buildNormalGeneratedCurrentViewModel({ fixture });
   return built.viewModel;
 }

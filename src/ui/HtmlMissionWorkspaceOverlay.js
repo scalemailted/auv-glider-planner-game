@@ -448,7 +448,12 @@ export class HtmlMissionWorkspaceOverlay {
       </section>
     `;
     const slider = root.querySelector('[data-action="time-slider"]');
-    slider?.addEventListener('input', () => this.handlers.time(Number(slider.value)));
+    slider?.addEventListener('input', () => {
+      this.overlayControlDispatchCount += 1;
+      this.lastOverlayActionKey = 'time-slider';
+      this.lastTimelineActionKey = 'time-slider';
+      this.handlers.time(Number(slider.value));
+    });
     const frames = getMissionTimelineFrames(state.level, state.mission);
     this.bind(root, {
       'time-start': () => this.goToTimelineFrame(0, state, 'start'),
@@ -471,6 +476,8 @@ export class HtmlMissionWorkspaceOverlay {
       if (!button || !root.contains(button) || button.disabled) return;
       this.overlayControlDispatchCount += 1;
       const actionKey = button.dataset.action;
+      this.lastOverlayActionKey = actionKey;
+      if (isTimelineAction(actionKey)) this.lastTimelineActionKey = actionKey;
       debugMissionConsoleClick(event, actionKey);
       const action = root.__anchorActionMap?.[actionKey];
       debugMissionActionDispatch(actionKey, root.__anchorActionMap, action);
@@ -955,6 +962,7 @@ function waterColumnSection(state, continuousUi = normalizeContinuousMissionUiSt
   const currentMagnitudeScale = Number.isFinite(Number(ui.currentMagnitudeScale)) ? Number(ui.currentMagnitudeScale) : 1.8;
   const currentColorMode = ['speed', 'direction', 'depthLayer', 'assistOpposeRoute'].includes(ui.currentColorMode) ? ui.currentColorMode : 'speed';
   const currentVectorsEnabled = state.ui?.showCurrents !== false;
+  const currentDebug = typeof globalThis === 'object' ? globalThis.ANCHOR_CURRENT_PRESENTATION_DEBUG ?? null : null;
   const contextCurrentsEnabled = ui.showContextCurrents === true;
   const fieldDisplayMode = ui.fieldDisplayMode === 'allLayers' || ui.showFieldOnAllLayers === true ? 'allLayers' : 'activeLayerOnly';
   const qualityProfile = ['performance', 'balanced', 'high'].includes(ui.qualityProfile) ? ui.qualityProfile : 'balanced';
@@ -972,6 +980,7 @@ function waterColumnSection(state, continuousUi = normalizeContinuousMissionUiSt
   const claim = legacyFallback
     ? 'This imported mission has no water-column configuration. It is displayed in surface-only compatibility mode.'
     : '2.5D water-column display from generated mission depth-layer config. Synthetic teaching model, not calibrated ocean data.';
+  const currentToggleLabel = currentVectorsEnabled ? 'Current Vectors On' : 'Show Current Vectors';
   const badge = legacyFallback ? 'Legacy surface-only mission' : `${layerIds.length}-layer water column | ${labelize(displayMode)}`;
   return `
         <h3 class="waypoint-section-title">Water Column</h3>
@@ -979,7 +988,7 @@ function waterColumnSection(state, continuousUi = normalizeContinuousMissionUiSt
           <div><strong>Water Column:</strong> ${escapeHtml(badge)}</div>
           <div><strong>Model:</strong> ${escapeHtml(config.model ?? 'top-down-2p5d-depth-layer-sampling')}</div>
           <div>${escapeHtml(claim)}</div>
-          <div><strong>Layers:</strong> ${layerIds.length} available Â· ${visibleLayerCount} visible | <strong>Active:</strong> ${escapeHtml(labelize(activeLayerId))}</div>
+          <div><strong>Layers:</strong> ${layerIds.length} available ???? ${visibleLayerCount} visible | <strong>Active:</strong> ${escapeHtml(labelize(activeLayerId))}</div>
           <div><strong>Mode:</strong> ${escapeHtml(labelize(displayMode))} | <strong>Opacity:</strong> ${opacity}%</div>
           <div><strong>Quality:</strong> ${escapeHtml(labelize(qualityProfile))} | <strong>Field Layers:</strong> ${escapeHtml(fieldDisplayMode === 'allLayers' ? 'all layers' : 'active layer only')}</div>
           <div><strong>Vertical Exaggeration:</strong> ${escapeHtml(String(ui.verticalExaggeration ?? 1))}x</div>
@@ -1011,10 +1020,11 @@ function waterColumnSection(state, continuousUi = normalizeContinuousMissionUiSt
           <div><strong>Show Current Vectors:</strong> ${currentVectorsEnabled ? 'on' : 'off'} | <strong>Active Layer:</strong> ${escapeHtml(labelize(activeLayerId))}</div>
           <div><strong>Layer Tracking:</strong> ${escapeHtml(currentLayerMode === 'followSelectedGlider' ? 'follow selected glider depth' : 'manual active layer')}</div>
           <div><strong>Density:</strong> ${escapeHtml(currentDensity)} | <strong>Magnitude Scale:</strong> ${escapeHtml(formatNumber(currentMagnitudeScale, 1))}x | <strong>Color:</strong> ${escapeHtml(labelize(currentColorMode))}</div>
+          ${currentEvolutionStatus(currentDebug, state)}
           <div class="hud-muted">Current vectors are a display of the canonical 4D current field. They do not change drift, scoring, or route validity.</div>
         </div>
         <div class="console-button-row wrap">
-          <button class="console-button ${currentVectorsEnabled ? 'primary' : 'secondary'}" data-action="layer-currents">Show Current Vectors</button>
+          <button class="console-button ${currentVectorsEnabled ? 'primary' : 'secondary'}" data-action="layer-currents">${escapeHtml(currentToggleLabel)}</button>
           ${waterColumnCurrentButton('activeSlice', 'Active Slice', currentMode)}
           ${waterColumnCurrentButton('allLayers', 'All Layers', currentMode)}
           ${waterColumnCurrentLayerButton('followSelectedGlider', 'Follow Selected Glider Depth', currentLayerMode)}
@@ -2179,7 +2189,7 @@ function routeEstimate(state) {
   return {
     distance,
     energyText: hoverPreview
-      ? `${hoverPreview.valid ? `${hoverPreview.energy.toFixed(1)} ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â· ETA ${Number(hoverPreview.eta ?? hoverPreview.estimatedTravelTime ?? 0).toFixed(1)} hr` : 'invalid'} (${hoverPreview.note})`
+      ? `${hoverPreview.valid ? `${hoverPreview.energy.toFixed(1)} ?????????????????????????????????????????????????????????????????????????????????????????????????? ETA ${Number(hoverPreview.eta ?? hoverPreview.estimatedTravelTime ?? 0).toFixed(1)} hr` : 'invalid'} (${hoverPreview.note})`
       : budget ? `${Math.round(energy)} / ${Math.round(budget)}` : `${Math.round(energy)}`
   };
 }
@@ -2202,6 +2212,22 @@ function hoverEnergyPreview(state, origin, agent) {
 
 function toggleLabel(state, key, label) {
   return `${state.ui?.[key] === false ? 'Show' : 'Hide'} ${label}`;
+}
+
+function currentEvolutionStatus(debug, state) {
+  if (!debug) return '<div class="hud-muted" data-current-evolution-status>Current Evolution: checking timeline binding...</div>';
+  const mode = debug.currentEvolutionMode === 'steady' ? 'Steady field' : 'Dynamic';
+  const planningTime = formatMissionTime(state.level, state.planningTime ?? 0);
+  const currentHours = Number(debug.currentPresentationTimeSeconds ?? 0) / 3600;
+  const lower = Number(debug.lowerTimeSeconds ?? 0) / 3600;
+  const upper = Number(debug.upperTimeSeconds ?? 0) / 3600;
+  const interpolation = Number.isFinite(Number(debug.timeInterpolationFraction)) ? `${Math.round(Number(debug.timeInterpolationFraction) * 100)}%` : 'n/a';
+  const update = debug.timelineBindingPass && debug.samplerTimePass && debug.currentPresentationEnabled ? 'PASS' : 'checking';
+  return `<div class="hud-muted" data-current-evolution-status><strong>Current Evolution:</strong> ${escapeHtml(mode)} | <strong>Planning Time:</strong> ${escapeHtml(planningTime)} | <strong>Current Time:</strong> ${escapeHtml(formatNumber(currentHours, 1))} hr | <strong>Source Bracket:</strong> ${escapeHtml(formatNumber(lower, 1))} hr -> ${escapeHtml(formatNumber(upper, 1))} hr | <strong>Interpolation:</strong> ${escapeHtml(interpolation)} | <strong>Last Vector Update:</strong> ${escapeHtml(update)}</div>`;
+}
+
+function isTimelineAction(actionKey) {
+  return ['time-slider', 'time-start', 'window-prev', 'window-next', 'time-end', 'timeline-waypoint', 'timeline-marker', 'timeline-star', 'timeline-surface'].includes(String(actionKey));
 }
 
 function labelize(value) {
