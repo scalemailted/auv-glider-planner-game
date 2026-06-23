@@ -592,3 +592,7 @@ Adds regional profile activation, signed terrain authority, checked-in regional 
 ## FLOW-R2A
 
 Adds `OceanCurrentField4D`, `OceanCurrentFieldSampler`, `SyntheticCurrentCubeAdapter`, current extensions to the DIVE-R1.1 layer explorer, `ThreeInstancedCurrentGlyphLayer`, and `CurrentVisualizationBackendContract`. Tracers/pathlines and WebGPU remain future phases.
+
+## FLOW-R2A.1 Launch Stabilization
+
+FLOW-R2A.1 is a release-blocking stabilization pass for the existing FLOW-R2A volumetric-current runtime. It adds launch profiling/debug counters, current cube/session cache guards, hot-path sampler protections, current glyph fail-soft behavior, pre-scene canonical current failure UI, re-execute lifecycle reset, focused smokes/audits, and a focused Playwright launch-stability spec. It does not add FLOW-R2B tracer/pathline features, WebGPU, planner changes, scoring changes, or Phaser removal.

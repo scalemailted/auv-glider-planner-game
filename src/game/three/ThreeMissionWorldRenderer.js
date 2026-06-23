@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { markSimulationLaunchStage, completeSimulationLaunchStage, incrementSimulationLaunchCounter, setSimulationLaunchPresentationDegraded } from '../../core/runtime/SimulationLaunchProfiler.js';
 import { createThreeScalarFieldLayer, updateThreeScalarFieldLayer, setThreeScalarFieldVisibility, disposeThreeScalarFieldLayer } from './layers/ThreeScalarFieldLayer.js';
 import {
   createThreeVolumetricScalarFieldLayer,
@@ -286,15 +287,30 @@ export function updateThreeMissionWorldRenderer(renderer, viewModel = {}) {
   if (shouldUpdate('currentVectors', 'waterColumn')) {
     const signature = currentFieldFrameSignature(viewModel);
     if (initial || signature !== cache.lastRenderedCurrentFieldFrameId) {
-      if (hasVolumetricCurrentGlyphs(viewModel)) {
+      if (hasVolumetricCurrentGlyphs(viewModel) && renderer.currentGlyphPresentationFailed !== true) {
         clearGroup(renderer.legacyCurrentVectorGroup);
         renderer.legacyCurrentVectorGroup.visible = false;
-        updateThreeInstancedCurrentGlyphLayer(renderer.instancedCurrentGlyphLayer, viewModel);
+        try {
+          markSimulationLaunchStage('createCurrentGlyphLayer');
+          updateThreeInstancedCurrentGlyphLayer(renderer.instancedCurrentGlyphLayer, viewModel);
+          completeSimulationLaunchStage('createCurrentGlyphLayer');
+          markSimulationLaunchStage('uploadCurrentBuffers');
+          completeSimulationLaunchStage('uploadCurrentBuffers');
+          renderer.currentGlyphPresentationWarning = null;
+        } catch (error) {
+          renderer.currentGlyphPresentationFailed = true;
+          renderer.currentGlyphPresentationWarning = 'Volumetric current visualization could not be initialized. Mission physics still use the canonical current field.';
+          renderer.currentGlyphPresentationError = String(error?.message ?? error ?? 'current glyph presentation failed');
+          disposeThreeInstancedCurrentGlyphLayer(renderer.instancedCurrentGlyphLayer);
+          renderer.instancedCurrentGlyphLayer.group.visible = false;
+          setSimulationLaunchPresentationDegraded(renderer.currentGlyphPresentationWarning);
+          globalThis.console?.warn?.(renderer.currentGlyphPresentationWarning, error);
+        }
       } else {
         disposeThreeInstancedCurrentGlyphLayer(renderer.instancedCurrentGlyphLayer);
         renderer.instancedCurrentGlyphLayer.group.visible = false;
-        renderer.legacyCurrentVectorGroup.visible = true;
-        updateThreeCurrentVectorLayer(renderer.legacyCurrentVectorGroup, viewModel);
+        renderer.legacyCurrentVectorGroup.visible = renderer.currentGlyphPresentationFailed === true ? false : true;
+        if (renderer.currentGlyphPresentationFailed !== true) updateThreeCurrentVectorLayer(renderer.legacyCurrentVectorGroup, viewModel);
       }
       cache.lastRenderedCurrentFieldFrameId = signature;
       recordThreePerformanceEvent(renderer.performanceMonitor, 'currentBufferUpdate');
@@ -484,6 +500,9 @@ export function threeMissionWorldRendererSummary(renderer = {}) {
     glyphDrawCallCount: currentGlyphSummary.glyphDrawCallCount ?? 0,
     glyphBufferUpdateCount: currentGlyphSummary.glyphBufferUpdateCount ?? 0,
     glyphObjectCreateCount: currentGlyphSummary.glyphObjectCreateCount ?? 0,
+    glyphBufferAllocationCount: currentGlyphSummary.glyphBufferAllocationCount ?? 0,
+    currentGlyphPresentationFailed: renderer.currentGlyphPresentationFailed === true,
+    currentGlyphPresentationWarning: renderer.currentGlyphPresentationWarning ?? null,
     hazardObjectCount: renderer.groups?.hazardGroup?.children?.length ?? 0,
     dropZoneObjectCount: renderer.groups?.dropZoneGroup?.children?.length ?? 0,
     gliderObjectCount: renderer.groups?.gliderGroup?.children?.length ?? 0,
@@ -982,7 +1001,10 @@ export function submitThreeMissionWorldRender(renderer, timestamp = frameNow(), 
   renderer.renderRequestReason = null;
   renderer.renderCallsThisPresentationFrame = 0;
   renderer.renderFrameSequence = Number(renderer.renderFrameSequence ?? 0) + 1;
+  markSimulationLaunchStage('firstRenderSubmission');
+  incrementSimulationLaunchCounter('renderSubmissionCount');
   renderer.lastRenderTimestamp = Number(timestamp ?? frameNow());
+  completeSimulationLaunchStage('firstRenderSubmission');
   beginThreePerformanceFrame(renderer.performanceMonitor, timestamp);
   const start = frameNow();
   beginThreeGpuTimerQuery(renderer.gpuTimer);

@@ -1,6 +1,27 @@
-export const OCEAN_CURRENT_FIELD_4D_VERSION = 'ocean-current-field-4d-flow-r2a';
+import {
+  completeSimulationLaunchStage,
+  incrementSimulationLaunchCounter,
+  markSimulationLaunchStage,
+  setSimulationLaunchCurrentField
+} from '../runtime/SimulationLaunchProfiler.js';
+export const OCEAN_CURRENT_FIELD_4D_VERSION = 'ocean-current-field-4d-flow-r2a-1';
+
+const oceanCurrentFieldRuntimeCounters = { buildCount: 0, normalizeCount: 0, normalizeHitCount: 0, digestCount: 0, summaryBuildCount: 0 };
+
+export function resetOceanCurrentFieldRuntimeCounters() {
+  oceanCurrentFieldRuntimeCounters.buildCount = 0;
+  oceanCurrentFieldRuntimeCounters.normalizeCount = 0;
+  oceanCurrentFieldRuntimeCounters.normalizeHitCount = 0;
+  oceanCurrentFieldRuntimeCounters.digestCount = 0;
+  oceanCurrentFieldRuntimeCounters.summaryBuildCount = 0;
+}
+
+export function getOceanCurrentFieldRuntimeCounters() {
+  return { ...oceanCurrentFieldRuntimeCounters };
+}
 
 export function createOceanCurrentField4D(options = {}) {
+  oceanCurrentFieldRuntimeCounters.buildCount += 1;
   const dims = inferDims(options);
   const eastAxisMeters = axis(options.eastAxisMeters, dims.width, (i) => i);
   const northAxisMeters = axis(options.northAxisMeters, dims.height, (i) => i);
@@ -44,15 +65,33 @@ export function createOceanCurrentField4D(options = {}) {
     }
   };
   field.digest = oceanCurrentField4DDigest(field);
+  markNormalizedField(field);
+  setSimulationLaunchCurrentField(field);
   return field;
 }
 
 export function normalizeOceanCurrentField4D(field = {}) {
-  if (field?.type === 'anchor.science.ocean-current-field-4d') return createOceanCurrentField4D(field);
-  return createOceanCurrentField4D(field ?? {});
+  if (isNormalizedOceanCurrentField4D(field)) {
+    oceanCurrentFieldRuntimeCounters.normalizeHitCount += 1;
+    setSimulationLaunchCurrentField(field);
+    return field;
+  }
+  oceanCurrentFieldRuntimeCounters.normalizeCount += 1;
+  incrementSimulationLaunchCounter('currentCubeNormalizeCount');
+  markSimulationLaunchStage('normalizeCurrentCube');
+  const normalized = createOceanCurrentField4D(field ?? {});
+  completeSimulationLaunchStage('normalizeCurrentCube');
+  return normalized;
 }
 
 export function validateOceanCurrentField4D(field = {}) {
+  const rawErrors = [];
+  if (field?.type === 'anchor.science.ocean-current-field-4d') {
+    for (const key of ['eastAxisMeters', 'northAxisMeters', 'depthAxisMeters', 'timeAxisSeconds', 'uEastMetersPerSecond', 'vNorthMetersPerSecond']) {
+      if (!Array.isArray(field[key]) || !field[key].length) rawErrors.push(`${key} must be supplied on typed current fields.`);
+    }
+    if (rawErrors.length) return { valid: false, status: 'FAIL', errors: rawErrors, warnings: [], field, summary: null };
+  }
   const normalized = normalizeOceanCurrentField4D(field);
   const errors = [];
   const warnings = [];
@@ -75,12 +114,14 @@ export function validateOceanCurrentField4D(field = {}) {
 
 export function oceanCurrentField4DSummary(field = {}) {
   const normalized = normalizeOceanCurrentField4D(field);
+  if (normalized?.__anchorCurrentFieldSummary) return normalized.__anchorCurrentFieldSummary;
+  oceanCurrentFieldRuntimeCounters.summaryBuildCount += 1;
   const speeds = [];
   const dims = dimensionsForField(normalized);
   for (let t = 0; t < dims.time; t += 1) for (let z = 0; z < dims.depth; z += 1) for (let y = 0; y < dims.height; y += 1) for (let x = 0; x < dims.width; x += 1) {
     speeds.push(Math.hypot(normalized.uEastMetersPerSecond[t][z][y][x], normalized.vNorthMetersPerSecond[t][z][y][x]));
   }
-  return {
+  const summary = {
     type: 'anchor.science.ocean-current-field-4d-summary',
     version: normalized.version,
     fieldId: normalized.id,
@@ -99,9 +140,13 @@ export function oceanCurrentField4DSummary(field = {}) {
     digest: normalized.digest ?? oceanCurrentField4DDigest(normalized),
     boundaryFlags: normalized.boundaryFlags
   };
+  defineHidden(normalized, '__anchorCurrentFieldSummary', summary);
+  return summary;
 }
 
 export function oceanCurrentField4DDigest(field = {}) {
+  oceanCurrentFieldRuntimeCounters.digestCount += 1;
+  incrementSimulationLaunchCounter('currentCubeDigestCount');
   return `fnv1a32:${fnv(stable({
     coordinateFrame: field.coordinateFrame,
     eastAxisMeters: field.eastAxisMeters,
@@ -117,6 +162,29 @@ export function oceanCurrentField4DDigest(field = {}) {
   }))}`;
 }
 
+function isNormalizedOceanCurrentField4D(field = {}) {
+  return field?.type === 'anchor.science.ocean-current-field-4d'
+    && field.__anchorCurrentFieldNormalized === true
+    && Array.isArray(field.eastAxisMeters)
+    && Array.isArray(field.northAxisMeters)
+    && Array.isArray(field.depthAxisMeters)
+    && Array.isArray(field.timeAxisSeconds)
+    && Array.isArray(field.uEastMetersPerSecond)
+    && Array.isArray(field.vNorthMetersPerSecond);
+}
+
+function markNormalizedField(field = {}) {
+  defineHidden(field, '__anchorCurrentFieldNormalized', true);
+  return field;
+}
+
+function defineHidden(target, key, value) {
+  try {
+    Object.defineProperty(target, key, { value, configurable: true, enumerable: false, writable: true });
+  } catch (_error) {
+    target[key] = value;
+  }
+}
 export function dimensionsForField(field = {}) {
   return { width: field.eastAxisMeters?.length ?? 0, height: field.northAxisMeters?.length ?? 0, depth: field.depthAxisMeters?.length ?? 0, time: field.timeAxisSeconds?.length ?? 0 };
 }

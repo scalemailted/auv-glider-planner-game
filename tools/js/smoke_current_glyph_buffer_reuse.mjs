@@ -1,0 +1,22 @@
+import assert from 'node:assert/strict';
+import { createThreeInstancedCurrentGlyphLayer, updateThreeInstancedCurrentGlyphLayer, threeInstancedCurrentGlyphLayerSummary } from '../../src/game/three/layers/ThreeInstancedCurrentGlyphLayer.js';
+import { makeCurrentExplorer, makeFlowR2A1Level, makeFixtureCurrentField } from './flow_r2a1_test_helpers.mjs';
+
+const level = makeFlowR2A1Level();
+const explorer = makeCurrentExplorer(level, { currentField4D: makeFixtureCurrentField() });
+const layer = createThreeInstancedCurrentGlyphLayer();
+const viewModel = { coordinateSystem: { cellSize: 12, originX: 0, originY: 0 }, waterColumnExplorer: explorer, waterColumn: { currentVectorDensity: 1 } };
+updateThreeInstancedCurrentGlyphLayer(layer, viewModel);
+const first = threeInstancedCurrentGlyphLayerSummary(layer, viewModel);
+updateThreeInstancedCurrentGlyphLayer(layer, viewModel);
+const second = threeInstancedCurrentGlyphLayerSummary(layer, viewModel);
+const invalidExplorer = structuredClone(explorer);
+invalidExplorer.layers[2].currentField.vectors[0].uEastMetersPerSecond = Number.NaN;
+updateThreeInstancedCurrentGlyphLayer(layer, { ...viewModel, waterColumnExplorer: invalidExplorer });
+const invalid = threeInstancedCurrentGlyphLayerSummary(layer, { ...viewModel, waterColumnExplorer: invalidExplorer });
+assert.equal(first.glyphObjectCreateCount, 1);
+assert.equal(second.glyphObjectCreateCount, 1, 'same capacity update reuses geometry/material');
+assert.equal(second.glyphBufferAllocationCount, 1, 'same capacity update does not reallocate buffers');
+assert.ok(invalid.invalidVectorCount >= 1, 'invalid vector is counted');
+assert.equal(invalid.noPerVectorThreeObjects, true);
+console.log('[smoke_current_glyph_buffer_reuse] PASS', { first, second, invalidVectorCount: invalid.invalidVectorCount });

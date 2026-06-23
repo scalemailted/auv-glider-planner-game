@@ -1004,3 +1004,25 @@ node tools/js/audit_future_webgpu_boundary.mjs
 ```
 
 Focused E2E spec: `tests/e2e/flow_r2a_current_cubes.spec.js`.
+
+## FLOW-R2A.1 Launch Stability Checks
+
+Run these after changing current-field generation, current sampling, simulation launch, water-column render view models, Three current glyphs, or MissionWorkspace execute/re-execute flow:
+
+```powershell
+node tools/js/smoke_simulation_launch_profiler.mjs
+node tools/js/smoke_current_field_session_cache.mjs
+node tools/js/smoke_current_sampler_hot_path.mjs
+node tools/js/smoke_current_render_sample_cache.mjs
+node tools/js/smoke_current_glyph_buffer_reuse.mjs
+node tools/js/smoke_current_presentation_fail_soft.mjs
+node tools/js/smoke_current_canonical_launch_failure.mjs
+node tools/js/audit_current_launch_hot_paths.mjs
+node tools/js/audit_no_full_current_cube_hot_loop_clone.mjs
+node tools/js/audit_no_current_digest_in_sample_loop.mjs
+node tools/js/audit_current_renderer_single_raf.mjs
+node tools/js/audit_current_launch_memory.mjs
+node node_modules/@playwright/test/cli.js test tests/e2e/flow_r2a_1_launch_stability.spec.js --reporter=line --workers=1
+```
+
+These checks verify launch interactivity, bounded current cube/sampler counts, hot-loop sampling behavior, glyph fail-soft behavior, malformed-current clean aborts, GitHub Pages subpath launch, and re-execution after returning to Planning.

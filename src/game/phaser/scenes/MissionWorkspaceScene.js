@@ -66,6 +66,7 @@ import {
   failMissionExecutionTransaction,
   missionExecutionTransactionSummary
 } from '../../../core/simulation/MissionExecutionTransaction.js';
+import { failSimulationLaunchProfiler } from '../../../core/runtime/SimulationLaunchProfiler.js';
 import {
   SURFACING_DECISION_ACTION,
   SURFACING_DECISION_STATUS
@@ -258,6 +259,8 @@ export class MissionWorkspaceScene extends PhaserScene {
 
   create() {
     this.app = this.sys.game.anchorApp;
+    this.executeLaunchInProgress = false;
+    this.lastExecuteControlDispatch = null;
     this.sceneCleanupDisposed = false;
     this.sceneLifecycleEventsBound = false;
     this.bindThreeSceneLifecycleEvents();
@@ -4828,7 +4831,11 @@ export class MissionWorkspaceScene extends PhaserScene {
       transaction = failMissionExecutionTransaction(transaction, this.executionTransaction?.currentStage ?? 'executeRequested', reason);
       this.executeLaunchInProgress = false;
       this.publishExecutionDebug({ transaction, currentStage: 'failed' });
-      this.app.toast?.(`Simulation launch failed: ${reason}`, 'error');
+      if (error?.name === 'CanonicalCurrentFieldError') {
+        this.handlePreSceneCanonicalLaunchFailure(error, transaction);
+      } else {
+        this.app.toast?.(`Simulation launch failed: ${reason}`, 'error');
+      }
       traceSimulation(this.app.state.simulationTrace, {
         scene: 'MissionWorkspaceScene',
         phase: 'execute.fail',
@@ -4837,8 +4844,47 @@ export class MissionWorkspaceScene extends PhaserScene {
       });
     }
   }
-  focusRouteIssue(issue = {}) {
-    const agentId = issue.agentId ?? issue.to?.agentId ?? this.app.state.selectedAgentId ?? this.app.state.mission?.agents?.[0]?.id ?? null;
+  handlePreSceneCanonicalLaunchFailure(error, transaction = null) {
+    const message = String(error?.message ?? error ?? 'Simulation launch failed before the canonical engine could start.');
+    this.app.state.simulationLaunchError = {
+      type: 'anchor.simulation.launch-error',
+      stage: transaction?.currentStage ?? 'executeRequested',
+      message,
+      name: error?.name ?? 'Error',
+      planPreserved: Boolean(this.app.state.plan),
+      missionPreserved: Boolean(this.app.state.mission),
+      levelPreserved: Boolean(this.app.state.level),
+      sceneTransitionRequested: false
+    };
+    failSimulationLaunchProfiler(message, { launchAbortedCleanly: true });
+    this.renderPreSceneCanonicalLaunchFailureConsole(message);
+    this.app.toast?.(`Simulation launch failed: ${message}`, 'danger');
+  }
+
+  renderPreSceneCanonicalLaunchFailureConsole(message) {
+    const root = this.app.elements.consoleRoot;
+    if (!root) return;
+    root.innerHTML = `
+      <section class="console-header">
+        <div class="console-kicker">Simulation Launch</div>
+        <h1>Launch Failed Cleanly</h1>
+        <p>The canonical Simulation engine did not start because required launch data failed validation.</p>
+      </section>
+      <section class="console-section warning-card" data-simulation-launch-error="true">
+        <h2>Current-field validation</h2>
+        <p>${escapeSceneHtml(message)}</p>
+        <p class="hud-muted">No partial Simulation was started. The existing plan and mission state remain available for inspection.</p>
+        <button class="console-button primary" data-action="return-planning">Return To Planning</button>
+      </section>
+    `;
+    root.querySelector('[data-action="return-planning"]')?.addEventListener('click', () => {
+      this.app.state.mode = 'planning';
+      this.refreshPanels();
+      this.refreshMap();
+    });
+  }
+
+  focusRouteIssue(issue = {}) {    const agentId = issue.agentId ?? issue.to?.agentId ?? this.app.state.selectedAgentId ?? this.app.state.mission?.agents?.[0]?.id ?? null;
     const waypointIndex = Number(issue.waypointIndex ?? issue.to?.index);
     if (agentId) this.app.state.selectedAgentId = agentId;
     this.app.state.ui ??= {};

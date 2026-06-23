@@ -93,6 +93,15 @@ import {
 } from '../../three/ThreeMissionInteractionController.js';
 import { legacyPhaserMissionRendererEnabled, preferredMissionRendererBackend, publishMigrationDebug } from '../../../core/runtime/MigrationRuntimeConfig.js';
 import {
+  startSimulationLaunchProfiler,
+  markSimulationLaunchStage,
+  completeSimulationLaunchStage,
+  completeSimulationLaunchProfiler,
+  failSimulationLaunchProfiler,
+  setSimulationLaunchRendererCounts,
+  simulationLaunchDebugSnapshot
+} from '../../../core/runtime/SimulationLaunchProfiler.js';
+import {
   advanceMissionExecutionTransaction,
   failMissionExecutionTransaction,
   missionExecutionTransactionSummary
@@ -178,7 +187,17 @@ export class SimulationScene extends PhaserScene {
     this.sceneLifecycleEventsBound = false;
     this.bindThreeSceneLifecycleEvents();
     this.threeSceneLifecycle = createThreeMissionSceneLifecycle({ sceneKey: 'SimulationScene' });
+    markSimulationLaunchStage('prepareLaunchSnapshot');
     this.initializeLaunchPayload();
+    this.launchProfiler = startSimulationLaunchProfiler({
+      level: this.launchPayload?.level ?? this.app.state.level,
+      mission: this.launchPayload?.mission ?? this.app.state.mission,
+      agentCount: (this.launchPayload?.mission ?? this.app.state.mission)?.agents?.length ?? 0,
+      safeCurrentDisplayMode: new URLSearchParams(globalThis.location?.search ?? '').get('currentDisplay') === 'safe'
+    });
+    completeSimulationLaunchStage('prepareLaunchSnapshot');
+    markSimulationLaunchStage('validateLaunchSnapshot');
+    completeSimulationLaunchStage('validateLaunchSnapshot');
     this.app.setSceneLabel('Simulation');
     this.app.state.mode = 'simulation';
     this.app.state.ui ??= {};
@@ -200,14 +219,25 @@ export class SimulationScene extends PhaserScene {
     applyMissionOptionsToMission(this.app.state);
     this.trace = this.app.state.simulationTrace ?? createSimulationTrace();
     this.app.state.simulationTrace = this.trace;
-    this.engine = new SimulationEngine({
-      level: this.launchPayload?.level ?? this.app.state.level,
-      mission: this.launchPayload?.mission ?? this.app.state.mission,
-      plan: this.launchPayload?.plan ?? this.app.state.plan,
-      resumeState: this.launchPayload?.simulationResume ?? this.app.state.simulationResume,
-      trace: this.trace,
-      time: this.launchPayload?.playback?.time ?? this.app.state.playback.time
-    });
+    markSimulationLaunchStage('constructSimulationEngine');
+    try {
+      this.engine = new SimulationEngine({
+        level: this.launchPayload?.level ?? this.app.state.level,
+        mission: this.launchPayload?.mission ?? this.app.state.mission,
+        plan: this.launchPayload?.plan ?? this.app.state.plan,
+        resumeState: this.launchPayload?.simulationResume ?? this.app.state.simulationResume,
+        trace: this.trace,
+        time: this.launchPayload?.playback?.time ?? this.app.state.playback.time
+      });
+    } catch (error) {
+      this.handleCanonicalLaunchFailure(error);
+      return;
+    }
+    completeSimulationLaunchStage('constructSimulationEngine');
+    markSimulationLaunchStage('initializeAgents');
+    completeSimulationLaunchStage('initializeAgents', { agentCount: this.engine.agents?.length ?? 0 });
+    markSimulationLaunchStage('buildInitialSimulationState');
+    completeSimulationLaunchStage('buildInitialSimulationState');
     this.enginePlanDigest = digestExecutionPlan(this.engine.plan);
     this.presentationScheduler = createThreeSimulationPresentationScheduler({ maxHz: 30 });
     const shouldAutoResumeAfterSurfacingReplan = this.app.state.pendingSurfacingResumePlay === true;
@@ -267,6 +297,7 @@ export class SimulationScene extends PhaserScene {
     });
     this.renderSimulationTimeline();
     this.bindSurfaceDecisionFallbacks();
+    completeSimulationLaunchStage('bindSimulationControls');
     this.onViewportResize = () => {
       globalThis.requestAnimationFrame?.(() => this.refresh());
     };
@@ -284,6 +315,10 @@ export class SimulationScene extends PhaserScene {
     this.notifyAbortIfNeeded();
     this.notifyStopReasonIfNeeded();
     this.refreshRouteFailureDecision();
+    completeSimulationLaunchProfiler('interactive', {
+      activeRendererCount: this.threeSimulationRenderer && !this.threeSimulationRenderer.disposed ? 1 : 0,
+      activeRafCount: this.threeSimulationRenderer?.animationFrame == null ? 0 : 1
+    });
   }
 
   bindThreeSceneLifecycleEvents() {
@@ -385,6 +420,50 @@ export class SimulationScene extends PhaserScene {
     this.add.text(36, 30, 'Simulation', { fontFamily: 'system-ui', fontSize: '22px', fontStyle: '700', color: '#eef6ff' });
     this.statusText = this.add.text(36, 66, 'Ready.', { fontFamily: 'system-ui', fontSize: '14px', color: '#b9c7dc', wordWrap: { width: 480 } });
     this.summaryText = this.add.text(970, 128, '', { fontFamily: 'system-ui', fontSize: '13px', color: '#eef6ff', wordWrap: { width: 250 } });
+  }
+
+  handleCanonicalLaunchFailure(error) {
+    const message = error?.message ?? 'Simulation launch failed before the canonical engine could start.';
+    this.app.state.simulationLaunchError = {
+      type: 'anchor.simulation.launch-error',
+      stage: 'constructSimulationEngine',
+      message,
+      name: error?.name ?? 'Error',
+      planPreserved: Boolean(this.app.state.plan),
+      missionPreserved: Boolean(this.app.state.mission),
+      levelPreserved: Boolean(this.app.state.level)
+    };
+    failSimulationLaunchProfiler(message, { launchAbortedCleanly: true });
+    if (this.executionTransaction) {
+      this.app.state.executionTransaction = failMissionExecutionTransaction(this.executionTransaction, 'constructSimulationEngine', message, {
+        launchPayloadSummary: summarizeMissionLaunchPayload(this.launchPayload),
+        planPreserved: Boolean(this.app.state.plan)
+      });
+    }
+    this.renderPanel();
+    if (this.statusText) this.statusText.setText('Launch failed before Simulation started. Return to Planning to inspect the route and current-field data.');
+    this.renderCanonicalLaunchFailureConsole(message);
+    this.app.toast?.(`Simulation launch failed: ${message}`, 'danger');
+    globalThis.console?.error?.('Simulation launch failed cleanly', error);
+  }
+
+  renderCanonicalLaunchFailureConsole(message) {
+    const root = this.app.elements.consoleRoot;
+    if (!root) return;
+    root.innerHTML = `
+      <section class="console-header">
+        <div class="console-kicker">Simulation Launch</div>
+        <h1>Launch Failed Cleanly</h1>
+        <p>The canonical Simulation engine did not start because required launch data failed validation.</p>
+      </section>
+      <section class="console-section warning-card" data-simulation-launch-error="true">
+        <h2>Current-field validation</h2>
+        <p>${escapeHtml(message)}</p>
+        <p class="hud-muted">No partial Simulation was started. The existing plan and mission state remain available for inspection.</p>
+        <button class="console-button primary" data-action="return-planning">Return To Planning</button>
+      </section>
+    `;
+    root.querySelector('[data-action="return-planning"]')?.addEventListener('click', () => this.scene.start('MissionWorkspaceScene'));
   }
 
   renderConsole() {
@@ -671,7 +750,13 @@ export class SimulationScene extends PhaserScene {
   resetSimulation() {
     applyStochasticToMission(this.app.state);
     applyMissionOptionsToMission(this.app.state);
+    markSimulationLaunchStage('constructSimulationEngine');
     this.engine = new SimulationEngine({ level: this.app.state.level, mission: this.app.state.mission, plan: this.app.state.plan, trace: this.trace, time: this.app.state.playback.time });
+    completeSimulationLaunchStage('constructSimulationEngine');
+    markSimulationLaunchStage('initializeAgents');
+    completeSimulationLaunchStage('initializeAgents', { agentCount: this.engine.agents?.length ?? 0 });
+    markSimulationLaunchStage('buildInitialSimulationState');
+    completeSimulationLaunchStage('buildInitialSimulationState');
     this.enginePlanDigest = digestExecutionPlan(this.engine.plan);
     this.presentationScheduler = createThreeSimulationPresentationScheduler({ maxHz: 30 });
     this.abortNoticeShown = false;
@@ -692,6 +777,7 @@ export class SimulationScene extends PhaserScene {
     this.engine.pause();
     applyStochasticToMission(this.app.state);
     applyMissionOptionsToMission(this.app.state);
+    markSimulationLaunchStage('constructSimulationEngine');
     this.engine = new SimulationEngine({
       level: this.app.state.level,
       mission: this.app.state.mission,
@@ -699,6 +785,11 @@ export class SimulationScene extends PhaserScene {
       trace: this.trace,
       time: this.app.state.playback.time
     });
+    completeSimulationLaunchStage('constructSimulationEngine');
+    markSimulationLaunchStage('initializeAgents');
+    completeSimulationLaunchStage('initializeAgents', { agentCount: this.engine.agents?.length ?? 0 });
+    markSimulationLaunchStage('buildInitialSimulationState');
+    completeSimulationLaunchStage('buildInitialSimulationState');
     this.enginePlanDigest = digestExecutionPlan(this.engine.plan);
     this.presentationScheduler = createThreeSimulationPresentationScheduler({ maxHz: 30 });
     this.abortNoticeShown = false;
@@ -1240,6 +1331,7 @@ export class SimulationScene extends PhaserScene {
     if (!container) return null;
     container.hidden = false;
     if (!this.threeSimulationRenderer) {
+      markSimulationLaunchStage('createThreeRenderer');
       this.threeSimulationRenderer = createThreeMissionWorldRenderer(container, {
         camera: { preset: this.app.state.ui?.threeMissionCameraPreset ?? 'obliqueMission' },
         layerVisibility: this.threeSimulationLayerVisibilityPatch()
@@ -1247,6 +1339,7 @@ export class SimulationScene extends PhaserScene {
       registerThreeMissionSceneResource(this.threeSceneLifecycle, 'renderer', this.threeSimulationRenderer);
       registerThreeMissionSceneResource(this.threeSceneLifecycle, 'cameraController', this.threeSimulationRenderer.cameraController);
       registerThreeMissionSceneResource(this.threeSceneLifecycle, 'canvas', this.threeSimulationRenderer.renderer?.domElement);
+      completeSimulationLaunchStage('createThreeRenderer');
     }
     this.ensureThreeSimulationInteractionController();
     resizeThreeMissionWorldRenderer(this.threeSimulationRenderer, container.clientWidth, container.clientHeight);
@@ -1285,12 +1378,15 @@ export class SimulationScene extends PhaserScene {
   }
   buildSimulationWorldViewModelForScene(renderTime = null) {
     this.simulationViewModelBuildCount = Number(this.simulationViewModelBuildCount ?? 0) + 1;
+    markSimulationLaunchStage('buildSimulationRenderViewModel');
+    const layerVisibility = this.threeSimulationLayerVisibilityPatch();
     const input = simulationWorldRenderInputFromScene(this, {
       activeTimeSeconds: renderTime ?? this.engine?.t ?? 0,
       displaySettings: {
         rendererBackend: 'threeMission3d',
         cameraPreset: this.app.state.ui?.threeMissionCameraPreset ?? 'obliqueMission',
-        ...(this.threeSimulationLayerVisibilityPatch())
+        ...layerVisibility,
+        showCurrents: layerVisibility.currentVectors
       }
     });
     this.simulationRenderInput = input;
@@ -1306,6 +1402,7 @@ export class SimulationScene extends PhaserScene {
     if (this.currentPresentationDirtyCategories) viewModel.presentationDirtyCategories = [...this.currentPresentationDirtyCategories];
     viewModel.presentationSchedulerSummary = threeSimulationPresentationSchedulerSummary(this.presentationScheduler);
     this.simulationRenderViewModel = viewModel;
+    completeSimulationLaunchStage('buildSimulationRenderViewModel');
     return viewModel;
   }
 
@@ -1338,6 +1435,13 @@ export class SimulationScene extends PhaserScene {
     }
     const validation = validateSimulationWorldRenderViewModel(viewModel);
     const parityWarnings = [...(validation.warnings ?? [])];
+    if (renderer.currentGlyphPresentationWarning) {
+      parityWarnings.push(renderer.currentGlyphPresentationWarning);
+      if (!this.currentGlyphPresentationWarningShown) {
+        this.currentGlyphPresentationWarningShown = true;
+        this.app.toast?.(renderer.currentGlyphPresentationWarning, 'warning');
+      }
+    }
     if (!validation.valid) parityWarnings.push(...validation.errors);
     this.updateSimulationRenderDebug({ activeBackend: 'threeMission3d', threeMounted: true, viewModel, renderer, parityWarnings });
   }
@@ -1349,7 +1453,7 @@ export class SimulationScene extends PhaserScene {
       waterSurface: layers.waterSurface !== false,
       depthLayers: layers.depthLayers !== false,
       scalarField: layers.scalarField !== false && this.app.state.ui?.showROI !== false,
-      currentVectors: layers.currentVectors !== false && this.app.state.ui?.showCurrents !== false,
+      currentVectors: layers.currentVectors !== false && this.app.state.ui?.showCurrents !== false && new URLSearchParams(globalThis.location?.search ?? '').get('currentDisplay') !== 'safe',
       hazards: layers.hazards !== false && this.app.state.ui?.showHazards !== false,
       constraints: layers.constraints !== false && this.app.state.ui?.showTerrain !== false,
       dropZones: layers.dropZones !== false,
@@ -1656,6 +1760,12 @@ export class SimulationScene extends PhaserScene {
       continuousAnimationReason: 'presentation-scheduler-coalesced-updates'
     });
     globalThis.ANCHOR_THREE_PERFORMANCE_DEBUG = performanceDebug;
+    setSimulationLaunchRendererCounts({
+      activeRendererCount: rendererSummary?.activeRendererCount ?? 0,
+      activeRafCount: rendererSummary?.activeRafCount ?? 0,
+      estimatedRenderBufferBytes: rendererSummary?.estimatedRenderBufferBytes ?? 0
+    });
+    const launchDebug = simulationLaunchDebugSnapshot(this.launchProfiler);
     globalThis.ANCHOR_SIMULATION_RENDER_DEBUG = {
       version: 'mig-r1',
       activeBackend: activeBackend ?? this.getSimulationRendererBackend(),
@@ -1787,7 +1897,7 @@ export class SimulationScene extends PhaserScene {
       legacyPhaserFallbackEnabled: legacyPhaserMissionRendererEnabled(),
       usesNewPlanner: false,
       usesRouteOptimizer: false,
-      usesMARL: false
+      usesMARL: false,
     };
     globalThis.ANCHOR_MISSION_RENDER_DEBUG = {
       ...globalThis.ANCHOR_SIMULATION_RENDER_DEBUG,

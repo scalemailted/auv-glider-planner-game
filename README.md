@@ -995,3 +995,7 @@ Modern generated regional missions derive land, water, coastline, navigable dept
 ## FLOW-R2A Volumetric Currents
 
 The mission current environment now has a browser/headless-safe 4D contract: `F(x,y,z,t)=<u,v>`, with U eastward and V northward in m/s. Operational slabs visualize samples from one current cube at declared physical depths. Synthetic fixtures are HYCOM-style educational fields, not HYCOM data and not calibrated forecasts. Instanced Three glyphs visualize the field; they do not define current authority or scoring.
+
+### FLOW-R2A.1 Launch Stabilization
+
+The volumetric current launch path is guarded by `globalThis.ANCHOR_SIMULATION_LAUNCH_DEBUG` and focused smoke/E2E checks. One mission launch should build at most one current cube and one prepared sampler, and simulation sampling must not rebuild, normalize, digest, or clone the full current cube. Current glyph failures degrade presentation only and show: "Volumetric current visualization could not be initialized. Mission physics still use the canonical current field." See [FLOW-R2A.1 Launch Acceptance](docs/flow_r2a_1_launch_acceptance.md).

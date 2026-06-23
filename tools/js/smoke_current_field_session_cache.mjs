@@ -1,0 +1,25 @@
+import assert from 'node:assert/strict';
+import { getSyntheticCurrentCubeFromMissionWorld, resetSyntheticCurrentCubeSessionCache, syntheticCurrentCubeSessionCacheSummary } from '../../src/core/science/SyntheticCurrentCubeAdapter.js';
+import { getOceanCurrentSampler, getOceanCurrentSamplerRuntimeCounters, resetOceanCurrentSamplerRuntimeCounters } from '../../src/core/science/OceanCurrentFieldSampler.js';
+import { getOceanCurrentFieldRuntimeCounters, resetOceanCurrentFieldRuntimeCounters } from '../../src/core/science/OceanCurrentField4D.js';
+import { makeFlowR2A1Level, makeCurrentExplorer } from './flow_r2a1_test_helpers.mjs';
+
+resetSyntheticCurrentCubeSessionCache();
+resetOceanCurrentFieldRuntimeCounters();
+resetOceanCurrentSamplerRuntimeCounters();
+const level = makeFlowR2A1Level();
+const first = getSyntheticCurrentCubeFromMissionWorld({ level, waterColumnConfig: level.world.waterColumnConfig });
+const second = getSyntheticCurrentCubeFromMissionWorld({ level, waterColumnConfig: level.world.waterColumnConfig });
+assert.equal(first, second, 'session cache reuses current field by level/session key');
+const samplerA = getOceanCurrentSampler(first);
+const samplerB = getOceanCurrentSampler(second);
+assert.equal(samplerA, samplerB, 'sampler cache reuses sampler for cached field');
+makeCurrentExplorer(level, { currentField4D: first, displayMode: 'activeCurrentSlice' });
+makeCurrentExplorer(level, { currentField4D: first, displayMode: 'explodedCurrentSlabs' });
+const cubeStats = syntheticCurrentCubeSessionCacheSummary();
+const fieldStats = getOceanCurrentFieldRuntimeCounters();
+const samplerStats = getOceanCurrentSamplerRuntimeCounters();
+assert.equal(cubeStats.buildCount, 1, 'one synthetic cube build');
+assert.equal(fieldStats.normalizeCount, 0, 'already-normalized cached field is not normalized again');
+assert.ok(samplerStats.samplerCreateCount <= 1, 'sampler created at most once');
+console.log('[smoke_current_field_session_cache] PASS', { cubeStats, fieldStats, samplerStats });

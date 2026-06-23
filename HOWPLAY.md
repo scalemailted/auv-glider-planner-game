@@ -1161,3 +1161,7 @@ Generated setup now exposes an Operational Domain choice: Compact Training Area,
 ## Volumetric Current Display
 
 Water-column current slabs show U/V samples from one 4D current cube. Active, stacked, and exploded current views are display modes only. Changing them must not alter the route, segment profile, launch digest, simulation, score, or replay digest. Depth-average current is derived and is not a physical slab.
+
+## FLOW-R2A.1 Current Launch Stability
+
+If Simulation appears to stall when volumetric currents are visible, inspect `globalThis.ANCHOR_SIMULATION_LAUNCH_DEBUG`. For a normal launch, current cube build, normalization, and sampler creation counters should remain bounded at one or less per launch. `?currentDisplay=safe` can be used to disable current-glyph presentation while preserving canonical current physics. Glyph presentation failures should show a warning instead of blocking mission execution. See `docs/current_presentation_fail_soft.md`.

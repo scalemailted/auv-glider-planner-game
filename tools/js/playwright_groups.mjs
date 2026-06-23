@@ -95,6 +95,16 @@ export const PLAYWRIGHT_GROUPS = Object.freeze([
       /^Current Display Modes Do Not Change Mission Outcome$/i,
       /^Current Vertical Profile Uses One Four Dimensional Field$/i,
       /^Volumetric Current Slabs Run From GitHub Pages Subpath$/i,
+      /^Simulation Launch Reaches Interactive Frame With Volumetric Currents$/i,
+      /^Current Cube Is Built Once Per Mission Launch$/i,
+      /^Simulation Current Sampling Does Not Rebuild the Current Field$/i,
+      /^Current Glyph Presentation Failure Does Not Freeze Simulation$/i,
+      /^Malformed Canonical Current Field Aborts Launch Cleanly$/i,
+      /^Regional Simulation Launch Remains Responsive$/i,
+      /^Legacy Mission Launch Remains Compatible After FLOW-R2A$/i,
+      /^Camera and Current Layer Changes Do Not Reallocate the Current Cube$/i,
+      /^FLOW-R2A Simulation Launch Works From GitHub Pages Subpath$/i,
+      /^Current Display Safe Mode Keeps Canonical Current Physics$/i,
       /^Three Mission Scene Isolation$/i,
       /^Three Scene Cleanup Is Null-Safe and Idempotent$/i,
       /^Generated Mission Opens a Visible Volumetric Water Column$/i,
@@ -164,7 +174,8 @@ export const PLAYWRIGHT_GROUPS = Object.freeze([
       /^THREE-R1\.2C Full Headed Production Walkthrough$/i,
       /^THREE-R2A Full Headed Replay and Debrief Walkthrough$/i,
       /^THREE-R2B Full Headed Mission Editor Walkthrough$/i,
-      /^THREE-R3A Full Headed Phaser-Free Production Shell Walkthrough$/i
+      /^THREE-R3A Full Headed Phaser-Free Production Shell Walkthrough$/i,
+      /^FLOW-R2A\.1 Full Headed Simulation Launch Stability Walkthrough$/i
     ]
   }
 ]);

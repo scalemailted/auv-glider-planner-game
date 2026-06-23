@@ -84,3 +84,7 @@ Default runtime behavior is unchanged for normal users. The next shell must not 
 ## FLOW-R2A Current Runtime Boundary
 
 The active runtime still boots `src/game/main.js` and retains vendored Three/Phaser. Current cube authority lives in `src/core/science`; Three.js owns only instanced glyph presentation. Synthetic current fixtures are HYCOM-style and do not claim calibrated ocean forecast status.
+
+## FLOW-R2A.1 Launch Stabilization
+
+FLOW-R2A.1 hardens launch and hot-path behavior for the existing volumetric current stack. The mission launch path caches the synthetic current cube per mission-world config, reuses prepared current samplers, avoids normalization/digest/full-cube cloning in hot simulation sampling, and publishes `globalThis.ANCHOR_SIMULATION_LAUNCH_DEBUG`. Current glyph presentation fails soft with a visible warning while canonical physics continues to use the current field. `?currentDisplay=safe` disables glyph presentation only. See `docs/flow_r2a_simulation_launch_freeze_audit.md`, `docs/current_field_cache_and_hot_path.md`, `docs/current_presentation_fail_soft.md`, and `docs/flow_r2a_1_launch_acceptance.md`.

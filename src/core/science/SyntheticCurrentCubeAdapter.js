@@ -1,9 +1,47 @@
-import { createOceanCurrentField4D } from './OceanCurrentField4D.js';
+import { createOceanCurrentField4D, validateOceanCurrentField4D } from './OceanCurrentField4D.js';
 import { normalizeWaterColumnConfig, waterColumnLayerMetadata } from './WaterColumnSchema.js';
+import { incrementSimulationLaunchCounter } from '../runtime/SimulationLaunchProfiler.js';
 
-export const SYNTHETIC_CURRENT_CUBE_ADAPTER_VERSION = 'synthetic-current-cube-adapter-flow-r2a';
+export const SYNTHETIC_CURRENT_CUBE_ADAPTER_VERSION = 'synthetic-current-cube-adapter-flow-r2a-1';
+const syntheticCurrentCubeSessionCache = new WeakMap();
+const syntheticCurrentCubeSessionStats = { buildCount: 0, cacheHitCount: 0, cacheMissCount: 0 };
+
+export function resetSyntheticCurrentCubeSessionCache() {
+  syntheticCurrentCubeSessionStats.buildCount = 0;
+  syntheticCurrentCubeSessionStats.cacheHitCount = 0;
+  syntheticCurrentCubeSessionStats.cacheMissCount = 0;
+}
+
+export function syntheticCurrentCubeSessionCacheSummary() {
+  return { ...syntheticCurrentCubeSessionStats };
+}
+
+export function getSyntheticCurrentCubeFromMissionWorld(options = {}) {
+  const explicit = explicitCurrentFieldFromMissionWorld(options);
+  if (explicit) return explicit;
+  const level = options.level ?? null;
+  if (!level || typeof level !== 'object') return createSyntheticCurrentCubeFromMissionWorld(options);
+  const key = syntheticCurrentCubeCacheKey(options);
+  let entries = syntheticCurrentCubeSessionCache.get(level);
+  if (!entries) {
+    entries = new Map();
+    syntheticCurrentCubeSessionCache.set(level, entries);
+  }
+  if (entries.has(key)) {
+    syntheticCurrentCubeSessionStats.cacheHitCount += 1;
+    return entries.get(key);
+  }
+  syntheticCurrentCubeSessionStats.cacheMissCount += 1;
+  const field = createSyntheticCurrentCubeFromMissionWorld(options);
+  entries.set(key, field);
+  return field;
+}
 
 export function createSyntheticCurrentCubeFromMissionWorld(options = {}) {
+  const explicit = explicitCurrentFieldFromMissionWorld(options);
+  if (explicit) return explicit;
+  syntheticCurrentCubeSessionStats.buildCount += 1;
+  incrementSimulationLaunchCounter('currentCubeBuildCount');
   const level = options.level ?? {};
   const baseViewModel = options.baseViewModel ?? {};
   const grid = options.grid ?? baseViewModel.grid ?? level.world?.grid ?? { width: 8, height: 8 };
@@ -113,6 +151,28 @@ export function syntheticCurrentCubeAdapterSummary(field = {}) {
   };
 }
 
+function explicitCurrentFieldFromMissionWorld(options = {}) {
+  const level = options.level ?? {};
+  const field = options.currentField4D
+    ?? options.oceanCurrentField4D
+    ?? level.currentField4D
+    ?? level.oceanCurrentField4D
+    ?? level.layers?.currentField4D
+    ?? level.layers?.oceanCurrentField4D
+    ?? level.layers?.waterColumn?.currentField4D
+    ?? level.layers?.waterColumn?.oceanCurrentField4D
+    ?? null;
+  if (!field) return null;
+  const validation = validateOceanCurrentField4D(field);
+  if (!validation.valid) {
+    const error = new Error(`Canonical current field invalid: ${validation.errors.join('; ') || 'unknown validation failure'}`);
+    error.name = 'CanonicalCurrentFieldError';
+    error.validation = validation;
+    throw error;
+  }
+  return validation.field;
+}
+
 function depthAxis(config, explicit) {
   if (Array.isArray(explicit) && explicit.length) return [...new Set(explicit.map(Number).filter(Number.isFinite))].sort((a, b) => a - b);
   return [...new Set(config.depthLayerIds.map((id, index) => finite(config.layerMetadata?.[id]?.nominalDepthMeters ?? waterColumnLayerMetadata(id).nominalDepthMeters, index * 50)))].sort((a, b) => a - b);
@@ -177,3 +237,31 @@ function bottomDepth(level, width, height, depthAxisMeters) { const source = lev
 function wetMaskFromTerrain(terrain, bottomDepthMeters, width, height) { return Array.from({ length: height }, (_row, y) => Array.from({ length: width }, (_cell, x) => !Boolean(terrain?.[y]?.[x]) && finite(bottomDepthMeters?.[y]?.[x], 0) > 0)); }
 function finite(value, fallback = 0) { const n = Number(value); return Number.isFinite(n) ? n : fallback; }
 function round(value, digits = 6) { const n = Number(value); return Number.isFinite(n) ? Number(n.toFixed(digits)) : null; }
+
+function syntheticCurrentCubeCacheKey(options = {}) {
+  const level = options.level ?? {};
+  const baseViewModel = options.baseViewModel ?? {};
+  const grid = options.grid ?? baseViewModel.grid ?? level.world?.grid ?? { width: 8, height: 8 };
+  const waterColumnConfig = normalizeWaterColumnConfig(options.waterColumnConfig ?? level.world?.waterColumnConfig ?? { depthLayerIds: ['surface'], diveProfileId: 'surfaceOnly' });
+  const explicitDepth = Array.isArray(options.depthAxisMeters) ? options.depthAxisMeters.join(',') : '';
+  const explicitTime = Array.isArray(options.timeAxisSeconds) ? options.timeAxisSeconds.join(',') : '';
+  return stable({
+    width: Number(grid.width ?? 8),
+    height: Number(grid.height ?? 8),
+    layerIds: waterColumnConfig.depthLayerIds,
+    defaultLayerIds: waterColumnConfig.defaultLayerIds,
+    diveProfileId: waterColumnConfig.diveProfileId,
+    duration: level.world?.time?.duration ?? null,
+    dt: level.world?.time?.dt ?? null,
+    seed: options.seed ?? level.meta?.seed ?? level.seed ?? 29,
+    depth: explicitDepth,
+    time: explicitTime,
+    preserveLegacySurfaceOnly: options.preserveLegacySurfaceOnly === true
+  });
+}
+
+function stable(value) {
+  if (Array.isArray(value)) return `[${value.map(stable).join(',')}]`;
+  if (value && typeof value === 'object') return `{${Object.keys(value).sort().map((key) => `${JSON.stringify(key)}:${stable(value[key])}`).join(',')}}`;
+  return JSON.stringify(value);
+}

@@ -2,8 +2,9 @@ import { buildBottomBoundaryViewModel } from './BottomBoundaryViewModel.js';
 import { buildOperationalDepthLayerViewModel } from './OperationalDepthLayerViewModel.js';
 import { collapseWaterColumnField, waterColumnFieldStats } from '../science/WaterColumnFieldModel.js';
 import { sampleScalarFieldContinuous, sampleVectorFieldContinuous } from '../science/VolumetricFieldSampler.js';
-import { createSyntheticCurrentCubeFromMissionWorld } from '../science/SyntheticCurrentCubeAdapter.js';
-import { sampleOceanCurrent } from '../science/OceanCurrentFieldSampler.js';
+import { getSyntheticCurrentCubeFromMissionWorld } from '../science/SyntheticCurrentCubeAdapter.js';
+import { getOceanCurrentSampler, sampleOceanCurrent } from '../science/OceanCurrentFieldSampler.js';
+import { incrementSimulationLaunchCounter } from '../runtime/SimulationLaunchProfiler.js';
 import { oceanCurrentField4DSummary } from '../science/OceanCurrentField4D.js';
 import {
   normalizeWaterColumnConfig,
@@ -27,6 +28,20 @@ export const WATER_COLUMN_LAYER_DISPLAY_MODES = Object.freeze([
   'depthAverageCurrent'
 ]);
 
+const currentRenderSampleCache = new WeakMap();
+const currentRenderSampleCacheStats = { buildCount: 0, hitCount: 0, missCount: 0, cameraInvalidationCount: 0 };
+
+export function resetWaterColumnCurrentRenderSampleCache() {
+  currentRenderSampleCacheStats.buildCount = 0;
+  currentRenderSampleCacheStats.hitCount = 0;
+  currentRenderSampleCacheStats.missCount = 0;
+  currentRenderSampleCacheStats.cameraInvalidationCount = 0;
+}
+
+export function waterColumnCurrentRenderSampleCacheSummary() {
+  return { ...currentRenderSampleCacheStats };
+}
+
 const VARIABLE_ALIASES = Object.freeze({
   science: 'scienceValue',
   sampleValue: 'scienceValue',
@@ -43,6 +58,7 @@ const VARIABLE_ALIASES = Object.freeze({
 });
 
 export function buildWaterColumnLayerExplorerViewModel(options = {}) {
+  incrementSimulationLaunchCounter('currentViewModelBuildCount');
   const level = options.level ?? null;
   const mission = options.mission ?? null;
   const grid = options.grid ?? level?.world?.grid ?? options.baseViewModel?.grid ?? { width: 0, height: 0 };
@@ -52,7 +68,7 @@ export function buildWaterColumnLayerExplorerViewModel(options = {}) {
   const displayMode = normalizeDisplayMode(options.displayMode ?? options.displaySettings?.displayMode ?? options.displaySettings?.verticalDisplayMode ?? 'activeSlice');
   const bottomBoundary = options.bottomBoundary ?? buildBottomBoundaryViewModel({ level, grid });
   const operational = options.operationalDepthLayerModel ?? buildOperationalDepthLayerViewModel({ waterColumnConfig, bottomBoundary, grid, activeDepthLayerId: activeLayerId, verticalDisplayMode: displayMode === 'explodedSlabs' ? 'explodedLayers' : 'physicalDepth' });
-  const currentCube = options.currentField4D ?? options.oceanCurrentField4D ?? createSyntheticCurrentCubeFromMissionWorld({ level, baseViewModel: options.baseViewModel, waterColumnConfig, grid });
+  const currentCube = options.currentField4D ?? options.oceanCurrentField4D ?? getSyntheticCurrentCubeFromMissionWorld({ level, baseViewModel: options.baseViewModel, waterColumnConfig, grid });
   const source = normalizeFieldSources({ level, baseViewModel: options.baseViewModel, waterColumnConfig, grid, currentCube });
   const layers = waterColumnConfig.depthLayerIds.map((layerId, index) => buildExplorerLayer({ layerId, index, waterColumnConfig, source, bottomBoundary, grid, currentCube, activeTimeSeconds: options.activeTimeSeconds ?? 0 }));
   const integratedField = source.scalarField.length ? collapseWaterColumnField(source.scalarField, waterColumnConfig, { method: 'integratedProfile' }) : [];
@@ -349,10 +365,23 @@ function buildSelectedCurrentProfile({ selectedLocation, waterColumnConfig, sour
 }
 
 function currentLayerFromCube({ field, layerId, representativeDepthMeters, grid, activeTimeSeconds }) {
+  const key = `${field.digest ?? field.id ?? 'field'}:${layerId}:${roundCache(representativeDepthMeters)}:${roundCache(activeTimeSeconds)}:${grid.width ?? 0}x${grid.height ?? 0}`;
+  let cache = currentRenderSampleCache.get(field);
+  if (!cache) {
+    cache = new Map();
+    currentRenderSampleCache.set(field, cache);
+  }
+  if (cache.has(key)) {
+    currentRenderSampleCacheStats.hitCount += 1;
+    return cache.get(key);
+  }
+  currentRenderSampleCacheStats.missCount += 1;
+  currentRenderSampleCacheStats.buildCount += 1;
+  const sampler = getOceanCurrentSampler(field);
   const vectors = [];
   for (let y = 0; y < (grid.height ?? 0); y += 1) {
     for (let x = 0; x < (grid.width ?? 0); x += 1) {
-      const sample = sampleOceanCurrent({ field, eastMeters: x, northMeters: y, depthMeters: representativeDepthMeters, timeSeconds: activeTimeSeconds, interpolation: 'linear4d' });
+      const sample = sampler.sample({ eastMeters: x, northMeters: y, depthMeters: representativeDepthMeters, timeSeconds: activeTimeSeconds, interpolation: 'linear4d' });
       vectors.push({
         id: `current-${layerId}-${x}-${y}`,
         x,
@@ -379,7 +408,14 @@ function currentLayerFromCube({ field, layerId, representativeDepthMeters, grid,
       });
     }
   }
-  return { vectors, units: 'm/s', sourceDigest: field.digest ?? null, source: field.sourceMetadata ?? null };
+  const layer = { vectors, units: 'm/s', sourceDigest: field.digest ?? null, source: field.sourceMetadata ?? null, renderSampleCacheKey: key };
+  cache.set(key, layer);
+  return layer;
+}
+
+function roundCache(value) {
+  const n = Number(value);
+  return Number.isFinite(n) ? Number(n.toFixed(3)) : 0;
 }
 
 function currentVectorStats(vectors = []) {

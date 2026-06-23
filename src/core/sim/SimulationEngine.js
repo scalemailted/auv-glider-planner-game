@@ -1,4 +1,5 @@
 import { TruthWorld } from './TruthWorld.js';
+import { markSimulationLaunchStage, completeSimulationLaunchStage } from '../runtime/SimulationLaunchProfiler.js';
 import { createAgent } from './Agent.js';
 import { stepAgentToward } from './Physics.js';
 import { updateSampling } from './Sampling.js';
@@ -72,7 +73,9 @@ export class SimulationEngine {
     normalizeDeploymentState(this.level, this.mission, this.plan);
     this.initialValidation = validatePlanForExecution({ level: this.level, mission: this.mission, plan: this.plan });
     this.configValidation = validateSimulationConfig(this.level, this.mission, this.plan);
+    markSimulationLaunchStage('constructTruthWorld');
     this.world = new TruthWorld(level, mission);
+    completeSimulationLaunchStage('constructTruthWorld');
     this.resumeState = resumeState;
     this.trace = trace ?? createSimulationTrace();
     this.missionOptions = normalizeMissionOptions(this.mission);
