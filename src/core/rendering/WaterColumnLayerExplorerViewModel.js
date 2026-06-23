@@ -239,7 +239,7 @@ function buildSelectedVerticalProfile({ selectedLocation, waterColumnConfig, sou
     const depthMeters = Number(waterColumnLayerMetadata(layerId).nominalDepthMeters ?? 0);
     const scalar = source.scalarField.length ? sampleScalarFieldContinuous({ field: source.scalarField, x, y, depthMeters, timeSeconds: activeTimeSeconds, depthCoordinates: source.depthCoordinates, timeCoordinates: source.timeCoordinates, interpolationProfileId: 'trilinearVolumeV1' }) : null;
     const vector = source.currentCube
-      ? sampleOceanCurrent({ field: source.currentCube, eastMeters: x, northMeters: y, depthMeters, timeSeconds: activeTimeSeconds, interpolation: 'linear4d' })
+      ? sampleOceanCurrent({ field: source.currentCube, ...gridPointToCurrentMeters(source.currentCube, { width: source.width, height: source.height }, x, y), depthMeters, timeSeconds: activeTimeSeconds, interpolation: 'linear4d' })
       : source.currentField ? sampleVectorFieldContinuous({ field: source.currentField, x, y, depthMeters, timeSeconds: activeTimeSeconds, depthCoordinates: source.depthCoordinates, timeCoordinates: source.timeCoordinates, interpolationProfileId: 'trilinearVolumeV1' }) : null;
     return {
       layerId,
@@ -344,7 +344,7 @@ function buildSelectedCurrentProfile({ selectedLocation, waterColumnConfig, sour
   const samplesByDepth = waterColumnConfig.depthLayerIds.map((layerId) => {
     const depthMeters = Number(waterColumnLayerMetadata(layerId).nominalDepthMeters ?? 0);
     const sample = source.currentCube
-      ? sampleOceanCurrent({ field: source.currentCube, eastMeters: x, northMeters: y, depthMeters, timeSeconds: activeTimeSeconds, interpolation: 'linear4d' })
+      ? sampleOceanCurrent({ field: source.currentCube, ...gridPointToCurrentMeters(source.currentCube, { width: source.width, height: source.height }, x, y), depthMeters, timeSeconds: activeTimeSeconds, interpolation: 'linear4d' })
       : null;
     return {
       layerId,
@@ -365,8 +365,7 @@ function buildSelectedCurrentProfile({ selectedLocation, waterColumnConfig, sour
     };
   });
   return {
-    eastMeters: x,
-    northMeters: y,
+    ...gridPointToCurrentMeters(source.currentCube, { width: source.width, height: source.height }, x, y),
     timeSeconds: activeTimeSeconds,
     samplesByDepth,
     derivedDepthAverage: depthAverageCurrent(samplesByDepth)
@@ -390,13 +389,14 @@ function currentLayerFromCube({ field, layerId, representativeDepthMeters, grid,
   const vectors = [];
   for (let y = 0; y < (grid.height ?? 0); y += 1) {
     for (let x = 0; x < (grid.width ?? 0); x += 1) {
-      const sample = sampler.sample({ eastMeters: x, northMeters: y, depthMeters: representativeDepthMeters, timeSeconds: activeTimeSeconds, interpolation: 'linear4d' });
+      const currentMeters = gridPointToCurrentMeters(field, grid, x, y);
+      const sample = sampler.sample({ ...currentMeters, depthMeters: representativeDepthMeters, timeSeconds: activeTimeSeconds, interpolation: 'linear4d' });
       vectors.push({
         id: `current-${layerId}-${x}-${y}`,
         x,
         y,
-        eastMeters: x,
-        northMeters: y,
+        eastMeters: currentMeters.eastMeters,
+        northMeters: currentMeters.northMeters,
         depthMeters: representativeDepthMeters,
         depthLayerId: layerId,
         timeSeconds: activeTimeSeconds,
@@ -429,6 +429,25 @@ function currentLayerFromCube({ field, layerId, representativeDepthMeters, grid,
   return layer;
 }
 
+function gridPointToCurrentMeters(field = {}, grid = {}, x = 0, y = 0) {
+  return {
+    eastMeters: axisCoordinateForGridIndex(field.eastAxisMeters ?? field.axes?.eastMeters ?? field.axes?.east ?? [], x, grid.width),
+    northMeters: axisCoordinateForGridIndex(field.northAxisMeters ?? field.axes?.northMeters ?? field.axes?.north ?? [], y, grid.height)
+  };
+}
+
+function axisCoordinateForGridIndex(axis = [], index = 0, gridSize = null) {
+  const values = Array.isArray(axis) ? axis.map(Number).filter(Number.isFinite) : [];
+  const coordinate = Number(index);
+  if (!values.length) return Number.isFinite(coordinate) ? coordinate : 0;
+  const size = Number(gridSize ?? values.length);
+  if (values.length === 1 || !Number.isFinite(size) || size <= 1) return values[0];
+  const clamped = Math.max(0, Math.min(size - 1, Number.isFinite(coordinate) ? coordinate : 0));
+  const fraction = clamped / Math.max(1, size - 1);
+  const start = values[0];
+  const end = values.at(-1);
+  return start + (end - start) * fraction;
+}
 function roundCache(value) {
   const n = Number(value);
   return Number.isFinite(n) ? Number(n.toFixed(3)) : 0;

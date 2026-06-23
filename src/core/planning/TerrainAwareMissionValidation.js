@@ -43,14 +43,42 @@ export function validateTerrainAwareMissionPlan(options = {}) {
     const agentId = agent.id ?? agent.agentId;
     const agentPlan = (plan?.agentPlans ?? []).find((candidate) => candidate.agentId === agentId) ?? { agentId, waypoints: [] };
     const agentIssues = [];
+    const waypoints = agentPlan.waypoints ?? [];
+    const routeRequired = isRouteRequired(mission, agent, agentPlan);
+    if (waypoints.length === 0 && !routeRequired) {
+      const idleIssue = issue({
+        code: 'NO_EXECUTABLE_WAYPOINTS',
+        severity: 'ADVISORY',
+        message: `${agent.label ?? agentId} has no executable waypoints; it will remain idle unless a route is added.`,
+        agentId,
+        position: pos(agentPlan.selectedStart ?? getSelectedStart(agent) ?? agent.start),
+        repairHints: ['Add a surface waypoint for this glider if it should participate.']
+      });
+      agentIssues.push(idleIssue);
+      allIssues.push(...agentIssues);
+      agentReports.push({
+        agentId,
+        agentLabel: agent.label ?? agent.name ?? agentId,
+        status: 'VALID',
+        executable: true,
+        startReport: { type: 'anchor.validation.terrain-aware-start', status: 'IDLE', position: idleIssue.position, issues: [] },
+        routePointCount: 0,
+        segmentCount: 0,
+        hardErrors: [],
+        warnings: [],
+        advisories: agentIssues,
+        summary: { hardErrorCount: 0, warningCount: 0, advisoryCount: agentIssues.length }
+      });
+      continue;
+    }
     const startReport = validateAgentStart({ level, mission, plan, agent, agentPlan, bottomBoundary });
     agentIssues.push(...startReport.issues);
     const route = buildRouteSegmentsForAgent({ level, mission, agent, agentPlan, surfacedAgents: gameState?.surfacedAgents, planningAnchor: gameState?.ui?.planningAnchor });
-    if ((agentPlan.waypoints ?? []).length === 0) {
+    if (waypoints.length === 0) {
       agentIssues.push(issue({
         code: 'NO_EXECUTABLE_WAYPOINTS',
-        severity: isRouteRequired(mission, agent, agentPlan) ? 'HARD_ERROR' : 'ADVISORY',
-        message: isRouteRequired(mission, agent, agentPlan) ? `${agent.label ?? agentId} needs at least one executable waypoint.` : `${agent.label ?? agentId} has no executable waypoints; it will remain idle unless a route is added.`,
+        severity: routeRequired ? 'HARD_ERROR' : 'ADVISORY',
+        message: routeRequired ? `${agent.label ?? agentId} needs at least one executable waypoint.` : `${agent.label ?? agentId} has no executable waypoints; it will remain idle unless a route is added.`,
         agentId,
         position: startReport.position,
         repairHints: ['Add a surface waypoint for this glider or mark the agent as optional.']

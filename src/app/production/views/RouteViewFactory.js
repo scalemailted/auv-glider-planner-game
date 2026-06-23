@@ -1,6 +1,8 @@
-﻿import { markAnchorRuntimeThreeLoaded } from '../AnchorRuntimeSelector.js';
+import { markAnchorRuntimeThreeLoaded } from '../AnchorRuntimeSelector.js';
 import { missionWorldRenderInputFromWorkspace, missionWorldRenderInputFromSimulation } from '../../../core/rendering/MissionWorldStateAdapter.js';
 import { buildMissionWorldRenderViewModel } from '../../../core/rendering/MissionWorldRenderViewModel.js';
+import { augmentMissionWorldWithVolumetricModel, volumetricCurrentDebugPayload } from '../../../core/rendering/VolumetricMissionWorldViewModel.js';
+import { buildCurrentPresentationDebug } from '../../../core/rendering/CurrentPresentationState.js';
 import { createThreeMissionWorldRenderer, disposeThreeMissionWorldRenderer, threeMissionWorldRendererSummary, updateThreeMissionWorldRenderer } from '../../../game/three/ThreeMissionWorldRenderer.js';
 import { headlessBundleViewerPanelHtml } from '../../../ui/headless/HeadlessBundleViewerPanel.js';
 import { buildHeadlessBundleFromFiles } from '../../../core/headless/HeadlessBundleLoader.js';
@@ -121,7 +123,17 @@ function mountThreeRenderer(host, context, phase) {
     const input = phase === 'simulation'
       ? missionWorldRenderInputFromSimulation({ app: { state: context.sessionStore.state.gameState } }, { phase, displaySettings: { qualityProfile: 'balanced' } })
       : missionWorldRenderInputFromWorkspace({ app: { state: context.sessionStore.state.gameState } }, { phase, displaySettings: { qualityProfile: 'balanced' } });
-    updateThreeMissionWorldRenderer(renderer, buildMissionWorldRenderViewModel(input));
+    const flatViewModel = buildMissionWorldRenderViewModel(input);
+    const viewModel = augmentMissionWorldWithVolumetricModel(flatViewModel, {
+      ...input,
+      displaySettings: { ...(input.displaySettings ?? {}), waterColumn: context.sessionStore.state.gameState.ui?.waterColumn ?? {} },
+      waterColumn: context.sessionStore.state.gameState.ui?.waterColumn ?? {},
+      level: context.sessionStore.state.gameState.level,
+      mission: context.sessionStore.state.gameState.mission,
+      plan: context.sessionStore.state.gameState.plan
+    });
+    updateThreeMissionWorldRenderer(renderer, viewModel);
+    publishNextShellCurrentPresentationDebug({ phase, renderer, viewModel, context });
   } catch (error) {
     host.innerHTML = `<div class="center-callout">Three renderer failed: ${escapeHtml(error?.message ?? error)}</div>`;
   }
@@ -132,6 +144,21 @@ function renderShellPanels(context, leftTitle, rightTitle, metrics = [], control
   context.regions.consoleRoot.innerHTML = `<section class="console-header"><div class="console-kicker">${escapeHtml(leftTitle)}</div><h2>${escapeHtml(leftTitle)}</h2><p>Route-scoped production shell panel.</p></section><section class="console-section"><h2>Controls</h2><div class="panel-stack">${buttons(controls)}</div></section><section class="console-section"><h2>Boundary</h2><div class="hud-muted">Uses framework-neutral lifecycle and canonical mission state.</div></section>`;
   context.regions.rightRoot.innerHTML = `<section class="console-header"><div class="console-kicker">Status</div><h2>${escapeHtml(rightTitle)}</h2><p>Contextual route details.</p></section><section class="console-section"><h2>Metrics</h2><div class="cell-inspector-metrics">${metrics.map(([k, v]) => metric(k, v)).join('')}</div></section>`;
   bindActions(context.regions.consoleRoot, context);
+}
+
+function publishNextShellCurrentPresentationDebug({ phase, renderer, viewModel, context } = {}) {
+  const rendererSummary = renderer ? threeMissionWorldRendererSummary(renderer) : null;
+  const currentDebug = volumetricCurrentDebugPayload(viewModel ?? {}, rendererSummary, { terrainDigest: rendererSummary?.terrainSourceDigest ?? null });
+  globalThis.ANCHOR_VOLUMETRIC_CURRENT_DEBUG = currentDebug;
+  globalThis.ANCHOR_CURRENT_PRESENTATION_DEBUG = buildCurrentPresentationDebug({
+    phase,
+    runtimeShell: 'next',
+    viewModel,
+    rendererSummary,
+    currentDebug,
+    ui: context?.sessionStore?.state?.gameState?.ui ?? {},
+    layerVisibility: rendererSummary?.layerVisibility ?? {}
+  });
 }
 
 function bindActions(root, context) {

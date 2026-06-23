@@ -31,6 +31,10 @@ export function validatePlanForExecution({ level, mission, plan } = {}) {
       errors.push('No scoring ROI cells are reachable from deployment. Reduce or revise terrain.');
     }
   }
+  if (level && mission && plan) {
+    const executableAgentCount = (plan.agentPlans ?? []).filter((agentPlan) => (agentPlan.waypoints ?? []).length > 0).length;
+    if (executableAgentCount <= 0) errors.push('At least one glider needs a waypoint route before simulation.');
+  }
 
   for (const agent of mission?.agents ?? []) {
     const speed = Number(agent.maxSpeed ?? 1);
@@ -38,6 +42,14 @@ export function validatePlanForExecution({ level, mission, plan } = {}) {
     if (!Number.isFinite(speed) || speed <= 0) errors.push(`${agent.label ?? agent.id} needs a positive finite max speed.`);
     if (!Number.isFinite(battery) || battery < 0) errors.push(`${agent.label ?? agent.id} needs finite non-negative fuel.`);
     const selectedStart = getSelectedStart(agent);
+    const agentPlan = plan?.agentPlans?.find((candidate) => candidate.agentId === agent.id);
+    const waypoints = agentPlan?.waypoints ?? [];
+    const agentIsIdle = !agentPlan || waypoints.length === 0;
+    if (agentIsIdle) {
+      warnings.push(`${agent.label ?? agent.id} has no waypoints and will idle.`);
+      continue;
+    }
+
     if (requiresDeploymentSelection(mission, agent.id)) {
       errors.push(`${agent.label ?? agent.id} needs a deployment cell before simulation.`);
     } else if (agent.deployment?.mode === 'chooseFromZone' || agent.deployment?.mode === 'chooseFromZones') {
@@ -46,13 +58,6 @@ export function validatePlanForExecution({ level, mission, plan } = {}) {
     } else if (!isFinitePoint(selectedStart ?? agent.start)) {
       errors.push(`${agent.label ?? agent.id} needs a valid fixed start.`);
     }
-
-    const agentPlan = plan?.agentPlans?.find((candidate) => candidate.agentId === agent.id);
-    if (!agentPlan) {
-      warnings.push(`${agent.label ?? agent.id} has no plan and will idle.`);
-      continue;
-    }
-    const waypoints = agentPlan.waypoints ?? [];
     if (waypoints.length > MAX_EXECUTION_WAYPOINTS_PER_AGENT) {
       errors.push(`${agent.label ?? agent.id} route exceeds the safe waypoint limit (${waypoints.length}/${MAX_EXECUTION_WAYPOINTS_PER_AGENT}). Reduce or revise waypoints.`);
     }

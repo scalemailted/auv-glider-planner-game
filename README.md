@@ -1004,6 +1004,10 @@ The volumetric current launch path is guarded by `globalThis.ANCHOR_SIMULATION_L
 
 Planning and Simulation now expose instanced Three.js current glyphs by default for modern water-column missions. The normal display mode is `activeSlice`, layer tracking follows the selected glider depth when an actual depth is available, density defaults to `balanced`, context layers are hidden by default, and glyph material/order/offset are tuned to remain visible over slabs and scalar fields. `?currentDisplay=safe` is the only safe-mode switch; it hides glyph presentation and shows a warning while canonical current physics continue to run. Pixel-level headed acceptance lives in `tests/e2e/flow_r2a_2_visible_currents.spec.js`, with owner-review screenshots under `test-results/flow-r2a-2-owner-review/`.
 
+
+### FLOW-R2A.4 Production Current Visibility Recovery
+
+Normal generated Challenge missions now use the same current-presentation contract as focused current fixtures: grid render cells are mapped onto the canonical physical-meter `OceanCurrentField4D` axes before sampling, Planning and Simulation publish `ANCHOR_CURRENT_PRESENTATION_DEBUG`, and the gated `?runtimeShell=next` shell applies the same volumetric current augmentation. Optional Glider 2/3 controls may remain idle with zero waypoints; they do not block the routed Glider 1 execution path or fabricate observations. This pass restores visibility plumbing only; it does not add tracers, pathlines, new equations, WebGPU, planner changes, scoring changes, or Phaser removal.
 ## FLOW-R2A.3 Current-Field Contract
 
 The current authority is `OceanCurrentField4D`: `F(x, y, z, t) = <u, v>` in meters and seconds. Generated current fields are scientifically constrained synthetic teaching fixtures, not calibrated ocean forecasts and not real HYCOM or Marine Copernicus data. Bathymetry masks and steers currents but does not imply generic downhill flow. WebGPU remains a future rendering/compute acceleration boundary and does not replace the canonical current source.

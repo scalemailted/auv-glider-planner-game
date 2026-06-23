@@ -13,7 +13,7 @@ import { summarizeProbabilityOutcomes } from '../evaluation/ProbabilityOutcomeMe
 import { summarizeRiskReward } from '../evaluation/RiskRewardMetrics.js';
 import { evaluateEndCondition } from './EndConditions.js';
 import { normalizeEndCondition, normalizeMissionOptions, normalizePriorityTargetRules, normalizeSamplingRules } from './MissionRules.js';
-import { normalizeDeploymentState, summarizeDeployment } from '../deployment/DeploymentZones.js';
+import { getDeploymentZonesForAgent, normalizeDeploymentState, summarizeDeployment } from '../deployment/DeploymentZones.js';
 import { normalizeForecastRules } from '../forecast/ForecastDecay.js';
 import { summarizeAgentSpecs } from '../agents/AgentSpecs.js';
 import { validatePlanForExecution } from '../planning/PlanExecutionValidator.js';
@@ -86,6 +86,7 @@ export class SimulationEngine {
 
   reset() {
     this.agents = (this.mission.agents ?? []).map(createAgent);
+    this.markIdleAgents();
     this.complete = false;
     this.aborted = false;
     this.abortReason = null;
@@ -197,6 +198,44 @@ export class SimulationEngine {
     } else if (!this.configValidation.ok) {
       this.abortSimulation('invalidSimulationConfig', { errors: this.configValidation.errors });
     }
+  }
+
+  markIdleAgents() {
+    const activePlanIds = new Set((this.plan?.agentPlans ?? [])
+      .filter((agentPlan) => (agentPlan.waypoints ?? []).length > 0)
+      .map((agentPlan) => agentPlan.agentId));
+    for (const agent of this.agents ?? []) {
+      if (activePlanIds.has(agent.id)) continue;
+      const pose = this.idleAgentSurfacePose(agent.id);
+      agent.x = pose.x;
+      agent.y = pose.y;
+      agent.depthMeters = 0;
+      agent.divePhase = 'surfaced';
+      agent.completedPlan = true;
+      agent.status = 'idle';
+      agent.idleControl = true;
+      agent.activeWaypoint = null;
+      agent.currentWaypointIndex = 0;
+      if (agent.history?.[0]) {
+        agent.history[0] = {
+          ...agent.history[0],
+          x: pose.x,
+          y: pose.y,
+          depthMeters: 0,
+          divePhase: 'surfaced',
+          idleControl: true
+        };
+      }
+    }
+  }
+
+  idleAgentSurfacePose(agentId) {
+    const missionAgent = (this.mission?.agents ?? []).find((candidate) => candidate.id === agentId) ?? {};
+    const selected = missionAgent.deployment?.selectedStart ?? missionAgent.start ?? null;
+    if (Number.isFinite(Number(selected?.x)) && Number.isFinite(Number(selected?.y))) return { x: Number(selected.x), y: Number(selected.y) };
+    const fallback = getDeploymentZonesForAgent(this.level, this.mission, agentId)?.[0]?.cells?.[0] ?? null;
+    if (Number.isFinite(Number(fallback?.x)) && Number.isFinite(Number(fallback?.y))) return { x: Number(fallback.x), y: Number(fallback.y) };
+    return { x: 0, y: 0 };
   }
 
   play() {

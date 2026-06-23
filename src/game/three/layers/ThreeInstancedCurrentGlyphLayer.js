@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { positionForRecord } from './ThreeMissionLayerUtils.js';
 import { incrementSimulationLaunchCounter } from '../../../core/runtime/SimulationLaunchProfiler.js';
+import { normalizeRendererCurrentDisplayMode } from '../../../core/rendering/CurrentPresentationState.js';
 
 export const THREE_INSTANCED_CURRENT_GLYPH_LAYER_VERSION = 'three-instanced-current-glyph-layer-flow-r2a-3';
 
@@ -222,7 +223,7 @@ function ensureMesh(layer, capacity, transform, options = {}) {
     transparent: true,
     opacity: finite(options.opacity, DEFAULT_OPACITY),
     depthWrite: false,
-    depthTest: options.depthTest === false ? false : true,
+    depthTest: options.depthTest === true ? true : false,
     side: THREE.DoubleSide,
     vertexColors: true,
     toneMapped: false
@@ -333,12 +334,7 @@ function currentVectorDensityStride(value) {
 }
 
 function normalizeCurrentDisplayMode(mode) {
-  if (mode === 'activeSlice' || mode === 'activeLayerOnly') return 'activeCurrentSlice';
-  if (mode === 'allLayers') return 'stackedCurrentSlabs';
-  if (mode === 'stackedDepthField' || mode === 'volumetricStackedCurrent') return 'stackedDepthField';
-  if (mode === 'explodedDepthField' || mode === 'volumetricExplodedCurrent') return 'explodedDepthField';
-  if (mode === 'sparseVolumetricField' || mode === 'volumetricCurrentField') return 'sparseVolumetricField';
-  return String(mode ?? 'activeCurrentSlice');
+  return normalizeRendererCurrentDisplayMode(mode);
 }
 
 function boundsSummary(mesh) {

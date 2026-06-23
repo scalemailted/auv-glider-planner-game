@@ -24,6 +24,24 @@ export function validateRoutePlanForExecution({
   for (const agent of agents) {
     const agentPlan = (plan?.agentPlans ?? []).find((candidate) => candidate.agentId === agent.id) ?? { agentId: agent.id, agentLabel: agent.label ?? agent.id, waypoints: [] };
     const issues = [];
+    const waypoints = agentPlan.waypoints ?? [];
+    if (waypoints.length === 0) {
+      issues.push(buildIssue({
+        type: 'idleControl',
+        reason: 'idleControl',
+        severity: 'warning',
+        agentId: agent.id,
+        agentLabel: agent.label ?? agent.id,
+        message: `${agent.label ?? agent.id} has no waypoints and will idle.`
+      }));
+      agentResults.push({
+        agentId: agent.id,
+        agentLabel: agent.label ?? agent.id,
+        ok: true,
+        issues
+      });
+      continue;
+    }
     const route = buildRouteSegmentsForAgent({
       level,
       mission,
@@ -501,4 +519,3 @@ function getMaxWaypointTravelTime(level, waypoint, currentTime = 0) {
 function isFinitePoint(point) {
   return Number.isFinite(Number(point?.x)) && Number.isFinite(Number(point?.y));
 }
-

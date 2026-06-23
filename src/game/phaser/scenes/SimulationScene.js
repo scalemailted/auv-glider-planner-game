@@ -69,6 +69,7 @@ import { buildSimulationWorldRenderViewModel, validateSimulationWorldRenderViewM
 import { gridCellToWorld } from '../../../core/rendering/MissionWorldCoordinates.js';
 import { depthLayerCellCenterToWorld } from '../../../core/rendering/VolumetricMissionCoordinates.js';
 import { augmentMissionWorldWithVolumetricModel, waterColumnRenderDebugPayload, volumetricCurrentDebugPayload } from '../../../core/rendering/VolumetricMissionWorldViewModel.js';
+import { buildCurrentPresentationDebug } from '../../../core/rendering/CurrentPresentationState.js';
 import { createThreeMissionSceneLifecycle, registerThreeMissionSceneResource, disposeThreeMissionSceneLifecycle, threeMissionSceneLifecycleSummary } from '../../three/ThreeMissionSceneLifecycle.js';
 import { publishSceneIsolationDebug } from '../../../ui/MissionShellReset.js';
 import { createMissionWorldInteractionResult } from '../../../core/rendering/MissionWorldInteractionResult.js';
@@ -1508,7 +1509,14 @@ export class SimulationScene extends PhaserScene {
       case 'cancelInteraction':
         return this.clearThreeSimulationInspection(intent);
       case 'hoverCell':
+        return this.simulationInteractionResult(intent, 'noChange', { userMessage: '' });
       case 'cameraChanged':
+        this.updateSimulationRenderDebug({
+          activeBackend: this.getSimulationRendererBackend(),
+          threeMounted: Boolean(this.threeSimulationRenderer),
+          viewModel: this.simulationRenderViewModel,
+          renderer: this.threeSimulationRenderer
+        });
         return this.simulationInteractionResult(intent, 'noChange', { userMessage: '' });
       default:
         return this.simulationInteractionResult(intent, 'noChange', { userMessage: 'Simulation renderer received a non-editing intent.' });
@@ -1745,6 +1753,16 @@ export class SimulationScene extends PhaserScene {
     globalThis.ANCHOR_WATER_COLUMN_RENDER_DEBUG = waterColumnDebug;
     const volumetricCurrentDebug = volumetricCurrentDebugPayload(viewModel ?? {}, rendererSummary, { terrainDigest: rendererSummary?.terrainSourceDigest ?? null });
     globalThis.ANCHOR_VOLUMETRIC_CURRENT_DEBUG = volumetricCurrentDebug;
+    globalThis.ANCHOR_CURRENT_PRESENTATION_DEBUG = buildCurrentPresentationDebug({
+      phase: 'simulation',
+      runtimeShell: 'default',
+      viewModel,
+      rendererSummary,
+      currentDebug: volumetricCurrentDebug,
+      ui: this.app.state.ui ?? {},
+      layerVisibility: this.threeSimulationLayerVisibilityPatch(),
+      warnings: parityWarnings
+    });
     const currentViewportWarning = currentVectorViewportWarning(volumetricCurrentDebug);
     const performanceDebug = createThreePerformanceDebugPayload({
       rendererSummary,

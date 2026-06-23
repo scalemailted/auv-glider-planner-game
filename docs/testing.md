@@ -1,4 +1,4 @@
-# Testing
+﻿# Testing
 
 The browser game does not require a build step, backend, Playwright, or`node_modules` for normal use. GFX-R2/GFX-R3A/GFX-R3B use the checked-in Three.js runtime under `vendor/three/`, with npm `three` remaining the source package for vendor refresh checks. Normal local serving still works with:
 
@@ -1049,3 +1049,25 @@ These checks verify that current samples reach Planning and Simulation view mode
 ## FLOW-R2A.3 Current Validation
 
 Run the focused scripts `tools/js/smoke_manufactured_current_catalog.mjs`, `tools/js/smoke_bathymetry_conditioned_current_builder.mjs`, `tools/js/audit_current_scientific_claim_boundaries.mjs`, and `tests/e2e/flow_r2a_3_scientific_currents.spec.js` for the scientific current pass. Grouped and monolithic E2E gates are still required before recommending FLOW-R2B.
+
+## FLOW-R2A.4 Production Current Visibility Recovery
+
+Run these after changing production current presentation plumbing, runtime shell parity, normal generated Challenge missions, current controls, or Planning-to-Simulation scene handoff:
+
+```powershell
+node tools/js/smoke_current_presentation_state_defaults.mjs
+node tools/js/smoke_normal_generated_mission_current_activation.mjs
+node tools/js/smoke_current_execute_handoff.mjs
+node tools/js/smoke_current_runtime_shell_parity.mjs
+node tools/js/smoke_current_scene_transition_persistence.mjs
+node tools/js/smoke_current_renderer_attachment_lifecycle.mjs
+node tools/js/audit_current_production_path_plumbing.mjs
+node tools/js/audit_current_runtime_shell_parity.mjs
+node tools/js/audit_current_safe_mode_persistence.mjs
+node tools/js/audit_current_normal_mission_defaults.mjs
+node tools/js/audit_current_visible_control_binding.mjs
+node tools/js/audit_current_pixel_evidence_production_path.mjs
+node node_modules/@playwright/test/cli.js test tests/e2e/flow_r2a_4_production_current_visibility.spec.js --reporter=line --workers=1
+```
+
+These checks verify the normal production Challenge path, default and `?runtimeShell=next` current-presentation parity, explicit-only safe mode, current glyph recovery warnings, GitHub Pages subpath loading, and idle optional gliders. They also guard the render-only coordinate conversion that maps top-down grid cells to the canonical physical-meter current cube axes. They do not add FLOW-R2B tracers/pathlines, WebGPU, new current equations, planner changes, scoring changes, or Phaser removal.

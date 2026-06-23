@@ -124,6 +124,16 @@ export const PLAYWRIGHT_GROUPS = Object.freeze([
       /^Current Glyph Camera Presets Preserve Visibility$/i,
       /^Visible Current Glyphs Do Not Change Mission Outcome$/i,
       /^Visible Current Vectors Run From GitHub Pages Subpath$/i,
+      /^Normal Generated Challenge Displays Current Vectors in Planning$/i,
+      /^Normal Generated Challenge Displays Current Vectors in Simulation$/i,
+      /^Current Visibility Survives Planning to Simulation Transition$/i,
+      /^Current Visibility Survives Return Replan and Second Execute$/i,
+      /^Current Display Is Not Limited to the Regional Benchmark Fixture$/i,
+      /^Idle Optional Gliders Do Not Disable Current Presentation$/i,
+      /^Safe Current Display Requires an Explicit Query$/i,
+      /^Default and Next Runtime Shells Use Shared Current Presentation Contracts$/i,
+      /^Current Presentation Failure Shows a Visible Recovery Reason$/i,
+      /^Production Current Vectors Run From GitHub Pages Subpath$/i,
       /^Three Mission Scene Isolation$/i,
       /^Three Scene Cleanup Is Null-Safe and Idempotent$/i,
       /^Generated Mission Opens a Visible Volumetric Water Column$/i,
@@ -196,7 +206,8 @@ export const PLAYWRIGHT_GROUPS = Object.freeze([
       /^THREE-R3A Full Headed Phaser-Free Production Shell Walkthrough$/i,
       /^FLOW-R2A\.1 Full Headed Simulation Launch Stability Walkthrough$/i,
       /^FLOW-R2A\.2 Full Headed Visible Current Vector Walkthrough$/i,
-      /^FLOW-R2A\.3 Full Headed Scientific Volumetric Current Walkthrough$/i
+      /^FLOW-R2A\.3 Full Headed Scientific Volumetric Current Walkthrough$/i,
+      /^FLOW-R2A\.4 Full Headed Production Current Visibility Walkthrough$/i
     ]
   }
 ]);

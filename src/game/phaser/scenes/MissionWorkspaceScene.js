@@ -179,6 +179,7 @@ import {
 import { gridCellToWorld } from '../../../core/rendering/MissionWorldCoordinates.js';
 import { depthLayerCellCenterToWorld } from '../../../core/rendering/VolumetricMissionCoordinates.js';
 import { augmentMissionWorldWithVolumetricModel, waterColumnRenderDebugPayload, volumetricCurrentDebugPayload } from '../../../core/rendering/VolumetricMissionWorldViewModel.js';
+import { buildCurrentPresentationDebug } from '../../../core/rendering/CurrentPresentationState.js';
 import {
   continuousMissionUiStateSummary,
   normalizeContinuousMissionUiState,
@@ -2209,6 +2210,16 @@ export class MissionWorkspaceScene extends PhaserScene {
       glyphInstanceCount: volumetricCurrentDebug.glyphInstanceCount
     };
     globalThis.ANCHOR_VOLUMETRIC_CURRENT_DEBUG = volumetricCurrentDebug;
+    globalThis.ANCHOR_CURRENT_PRESENTATION_DEBUG = buildCurrentPresentationDebug({
+      phase: viewModel?.phase ?? this.app.state.mode ?? 'planning',
+      runtimeShell: 'default',
+      viewModel,
+      rendererSummary,
+      currentDebug: volumetricCurrentDebug,
+      ui: this.app.state.ui ?? {},
+      layerVisibility: this.threeLayerVisibilityPatch(),
+      warnings: parityWarnings
+    });
     const currentViewportWarning = currentVectorViewportWarning(volumetricCurrentDebug);
     if (currentViewportWarning && currentViewportWarning !== this.lastCurrentViewportWarning) {
       this.lastCurrentViewportWarning = currentViewportWarning;
@@ -4750,7 +4761,8 @@ export class MissionWorkspaceScene extends PhaserScene {
       this.applyMissionOptionsToMission();
       applyStochasticToMission(this.app.state);
       normalizeDeploymentState(this.app.state.level, this.app.state.mission, this.app.state.plan);
-      const missingDeployment = (this.app.state.mission.agents ?? []).find((agent) => requiresDeploymentSelection(this.app.state.mission, agent.id));
+      const executableAgentIds = executableAgentIdsForPlan(this.app.state.plan);
+      const missingDeployment = (this.app.state.mission.agents ?? []).find((agent) => executableAgentIds.has(agent.id) && requiresDeploymentSelection(this.app.state.mission, agent.id));
       if (missingDeployment) {
         const reason = `${missingDeployment.label ?? missingDeployment.id} needs a deployment cell before simulation.`;
         transaction = failMissionExecutionTransaction(transaction, 'planValidated', reason, { agentId: missingDeployment.id });
@@ -5846,6 +5858,12 @@ function currentVectorViewportWarning(debug = {}) {
   if (Number(debug.sourceVectorSampleCount ?? 0) <= 0) return null;
   return 'Current physics are active, but no current vectors are visible. Reason: ' + (debug.noVisibleVectorsReason ?? 'unknown') + '.';
 }
+function executableAgentIdsForPlan(plan = {}) {
+  return new Set((plan.agentPlans ?? [])
+    .filter((agentPlan) => (agentPlan.waypoints ?? []).length > 0)
+    .map((agentPlan) => agentPlan.agentId));
+}
+
 function normalizeCurrentDisplayModeAlias(value) {
   if (value === 'allLayers' || value === 'stackedCurrentSlabs') return 'allLayers';
   if (value === 'explodedCurrentSlabs' || value === 'explodedDepthField') return 'explodedDepthField';

@@ -14,6 +14,10 @@ import {
   buildWaterColumnLayerExplorerViewModel,
   waterColumnLayerExplorerSummary
 } from './WaterColumnLayerExplorerViewModel.js';
+import {
+  isExplicitCurrentSafeMode,
+  normalizeCurrentDisplayMode as normalizeSharedCurrentDisplayMode
+} from './CurrentPresentationState.js';
 
 export const VOLUMETRIC_MISSION_WORLD_VIEW_MODEL_VERSION = 'volumetric-mission-world-view-model-three-r1-2a';
 
@@ -412,17 +416,10 @@ function buildCurrentVisualizationSummary({ waterColumnUi = {}, waterColumnExplo
 }
 
 function normalizeCurrentDisplayMode(mode) {
-  if (mode === 'activeLayerOnly' || mode === 'activeCurrentSlice') return 'activeSlice';
-  if (mode === 'allLayers' || mode === 'stackedCurrentSlabs') return 'allLayers';
-  if (mode === 'stackedDepthField' || mode === 'explodedDepthField' || mode === 'sparseVolumetricField') return mode;
-  return String(mode ?? 'activeSlice');
+  return normalizeSharedCurrentDisplayMode(mode);
 }
 function explicitCurrentSafeMode() {
-  try {
-    return new URLSearchParams(globalThis.location?.search ?? '').get('currentDisplay') === 'safe';
-  } catch (_error) {
-    return false;
-  }
+  return isExplicitCurrentSafeMode();
 }
 function selectCurrentSampleForLayer(samples = [], layerId = null) {
   return samples.find((sample) => sample.layerId === layerId) ?? samples[0] ?? null;

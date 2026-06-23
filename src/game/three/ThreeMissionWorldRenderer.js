@@ -72,6 +72,7 @@ import {
 } from './ThreeMissionCameraController.js';
 import { createThreeWebGLGpuTimer, beginThreeGpuTimerQuery, endThreeGpuTimerQuery, threeGpuTimerSummary, disposeThreeGpuTimer } from './ThreeWebGLGpuTimer.js';
 import { effectiveThreePixelRatio, renderCostPolicySummary, shouldRenderVolumetricFieldPlanes, threeQualityProfileSettings, waterColumnDisplayPolicy } from './ThreeRenderCostPolicy.js';
+import { currentPresentationCacheSignature } from '../../core/rendering/CurrentPresentationState.js';
 
 export const THREE_MISSION_WORLD_RENDERER_VERSION = 'three-mission-world-renderer-r1-2a-4-4';
 
@@ -354,6 +355,7 @@ export function updateThreeMissionWorldRenderer(renderer, viewModel = {}) {
   if (shouldUpdate('selection', 'plannedRoute')) updateThreePlanningInteractionLayer(renderer.planningInteractionLayer, viewModel.interactionViewModel, { transform: viewModel.coordinateSystem, viewModel });
   setThreeMissionLayerVisibility(renderer, renderer.layerVisibility);
   syncCameraBounds(renderer, viewModel);
+  syncSceneFog(renderer, viewModel);
   applyStaticMatrixPolicy(renderer);
   renderer.presentationInitialized = true;
   renderer.lastPresentationDirtyCategories = dirty ? [...dirty] : ['full'];
@@ -519,6 +521,9 @@ export function threeMissionWorldRendererSummary(renderer = {}) {
     glyphDepthWrite: currentGlyphSummary.glyphDepthWrite ?? null,
     glyphRenderOrder: currentGlyphSummary.glyphRenderOrder ?? null,
     glyphLayerOffsetWorld: currentGlyphSummary.glyphLayerOffsetWorld ?? null,
+    sceneFogDensity: Number(renderer.scene?.fog?.density ?? 0),
+    sceneFogScaledForMissionBounds: renderer.sceneFogScaledForMissionBounds === true,
+    sceneFogMissionRadius: Number(renderer.sceneFogMissionRadius ?? 0),
     sourceVectorSampleCount: currentGlyphSummary.sourceVectorSampleCount ?? 0,
     finiteVectorSampleCount: currentGlyphSummary.finiteVectorSampleCount ?? 0,
     nonzeroVectorSampleCount: currentGlyphSummary.nonzeroVectorSampleCount ?? 0,
@@ -861,6 +866,20 @@ function normalizeCameraPatch(patch = {}) {
   };
 }
 
+function syncSceneFog(renderer, viewModel = {}) {
+  if (!renderer?.scene) return;
+  const bounds = missionBoundsFromViewModel(viewModel);
+  const radius = Math.max(8, Number(bounds.radius ?? 8));
+  const density = Math.min(0.014, Math.max(0.0012, 0.085 / radius));
+  if (!renderer.scene.fog || !(renderer.scene.fog instanceof THREE.FogExp2)) {
+    renderer.scene.fog = new THREE.FogExp2(0x06111f, density);
+  } else {
+    renderer.scene.fog.color?.set?.(0x06111f);
+    renderer.scene.fog.density = density;
+  }
+  renderer.sceneFogScaledForMissionBounds = true;
+  renderer.sceneFogMissionRadius = radius;
+}
 function missionBoundsFromViewModel(viewModel = {}) {
   const grid = viewModel.grid ?? {};
   const transform = viewModel.coordinateSystem ?? {};
@@ -1208,6 +1227,7 @@ function currentFieldFrameSignature(viewModel = {}) {
     viewModel.visibility?.activeLayerOnlyCurrents !== false,
     Object.keys(layers).join('|'),
     viewModel.waterColumnExplorer?.currentFieldSummary?.digest ?? viewModel.waterColumnExplorer?.activeCurrentSourceDigest ?? 'no-current-cube',
+    currentPresentationCacheSignature(viewModel),
     viewModel.displaySettings?.qualityProfile ?? viewModel.options?.qualityProfile ?? 'balanced'
   ].join(':');
 }

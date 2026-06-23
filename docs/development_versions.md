@@ -1,4 +1,4 @@
-### P6 - Adaptive Benchmark Mission Manager Contract
+﻿### P6 - Adaptive Benchmark Mission Manager Contract
 
 - Added Adaptive Benchmark mission-manager config, diagnosis, objective-transition policy, manager state, surfacing-event records, synthetic fixtures, preview view model, UI panel, adaptive exports, debug fields, smoke tests, and docs.
 - Adaptive Benchmark now means objective authority belongs to a transparent mission manager while route authority remains with the player or solver.
@@ -600,3 +600,7 @@ FLOW-R2A.1 is a release-blocking stabilization pass for the existing FLOW-R2A vo
 ## FLOW-R2A.3
 
 Adds scientific source-tier metadata, manufactured analytical current fixtures, bathymetry-conditioned synthetic current generation, current diagnostics, regional current benchmark fixture, volumetric glyph display modes, focused smokes/audits, and visual-acceptance documentation. Synthetic current fields must state that they are not calibrated forecasts and not real HYCOM or Marine Copernicus data.
+
+## FLOW-R2A.4
+
+Production current visibility recovery for the normal generated Challenge path. The water-column current renderer now maps top-down grid cells to canonical physical-meter current axes before sampling `OceanCurrentField4D`, default Planning/Simulation scenes and `?runtimeShell=next` publish shared `ANCHOR_CURRENT_PRESENTATION_DEBUG`, and zero-waypoint optional gliders can remain idle without blocking Glider 1 execution. This is a stabilization pass only: no tracers/pathlines, WebGPU, new current equations, planner changes, scoring changes, or Phaser removal.
