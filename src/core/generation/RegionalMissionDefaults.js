@@ -1,5 +1,6 @@
 import { createSeededRng, seededUnit } from '../random/SeededRng.js';
 import { createCoastalOperationalBathymetry } from '../science/BathymetryFieldModel.js';
+import { bathymetryArtifactAdapterSummary, createBathymetryArtifactFromField } from './BathymetryArtifactAdapter.js';
 import { createSignedTerrainSurfaceFromBathymetry, sampleSignedTerrainSurfaceAtUv, signedTerrainSurfaceSummary } from '../science/SignedTerrainSurfaceModel.js';
 import { createOperationalDomainSpec, operationalDomainDigest, operationalDomainSummary } from '../domain/OperationalDomainSpec.js';
 import { missionResolutionProfileSummary, normalizeMissionResolutionProfile } from '../domain/MissionResolutionProfile.js';
@@ -24,6 +25,13 @@ export function createRegionalContinentalShelfScenario(options = {}) {
     minimumNavigableDepthMeters: 8
   });
   const signedTerrainSurface = createSignedTerrainSurfaceFromBathymetry(bathymetry, { minimumNavigableDepthMeters: 8 });
+  const bathymetryArtifact = createBathymetryArtifactFromField(bathymetry, {
+    id: `${seed}:bathymetry-artifact`,
+    signedTerrainSurface,
+    operationalDomain: domain,
+    physicalExtentMeters: { east: domain.horizontal.widthMeters, north: domain.horizontal.heightMeters }
+  });
+  const bathymetryArtifactSummary = bathymetryArtifactAdapterSummary(bathymetryArtifact);
   bathymetry.operationalDomain = operationalDomainSummary(domain);
   bathymetry.resolutionRole = 'terrainGrid';
   bathymetry.signedTerrainSurfaceDigest = signedTerrainSurface.digest;
@@ -56,7 +64,10 @@ export function createRegionalContinentalShelfScenario(options = {}) {
       terrainSourceDigest: signedTerrainSurface.digest,
       landWaterSourceDigest: signedTerrainSurface.digest,
       coastlineSourceDigest: signedTerrainSurface.digest,
-      bottomBoundarySourceDigest: signedTerrainSurface.digest
+      bottomBoundarySourceDigest: signedTerrainSurface.digest,
+      bathymetryPackageVersion: bathymetryArtifact.bathymetryPackageVersion,
+      bathymetryManifestDigest: bathymetryArtifact.manifestDigest,
+      bathymetryArtifactDigest: bathymetryArtifact.artifactDigest
     },
     operationalDomain: domain,
     resolutionProfile: profile,
@@ -73,6 +84,8 @@ export function createRegionalContinentalShelfScenario(options = {}) {
       resolutionProfile: profile
     },
     bathymetry,
+    bathymetryArtifact,
+    bathymetryArtifactSummary,
     regionalFields: {
       type: 'anchor.world.regional-field-pack',
       version: REGIONAL_MISSION_DEFAULTS_VERSION,
@@ -97,7 +110,9 @@ export function createRegionalContinentalShelfScenario(options = {}) {
         terrainSourceDigest: signedTerrainSurface.digest,
         landWaterSourceDigest: signedTerrainSurface.digest,
         coastlineSourceDigest: signedTerrainSurface.digest,
-        bottomBoundarySourceDigest: signedTerrainSurface.digest
+        bottomBoundarySourceDigest: signedTerrainSurface.digest,
+        bathymetryArtifact: bathymetryArtifact.artifactDigest,
+        bathymetryManifest: bathymetryArtifact.manifestDigest
       }
     },
     layers: {

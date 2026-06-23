@@ -1,3 +1,4 @@
+import { BATHYMETRY_PACKAGE_VERSION, bathymetryArtifactSummary as summarizeBathymetryArtifact, createBathymetryArtifact } from '../../../packages/bathymetry/src/index.js';
 import {
   bathymetryFeatureSummary,
   bathymetryFieldStats,
@@ -32,6 +33,13 @@ export function buildBathymetryWorldRenderViewModel({
   options = {}
 } = {}) {
   const field = bathymetry ?? createCoastalOperationalBathymetry(options.bathymetryOptions ?? options);
+  const packageBathymetryArtifact = field.bathymetryArtifact ?? createBathymetryArtifact({
+    id: field.seed ?? field.id ?? 'bathymetry-world-view-artifact',
+    bathymetry: field,
+    physicalExtentMeters: options.physicalExtentMeters,
+    sourceMetadata: field.sourceMetadata
+  });
+  const packageBathymetryArtifactSummary = field.bathymetryArtifactSummary ?? summarizeBathymetryArtifact(packageBathymetryArtifact);
   const water = normalizeWaterColumnConfig(waterColumnConfig ?? waterColumnSummary?.waterColumnConfig ?? { depthLayerIds: ['surface', 'thermocline', 'deep'] });
   const stats = bathymetrySummary?.type === 'anchor.science.bathymetry-field-stats' ? bathymetrySummary : bathymetryFieldStats(field);
   const featureSummary = field.featureSummary ?? bathymetryFeatureSummary(field);
@@ -85,6 +93,14 @@ export function buildBathymetryWorldRenderViewModel({
   return scrubHidden({
     type: 'anchor.rendering.bathymetry-world-view-model',
     version: BATHYMETRY_WORLD_RENDER_VIEW_MODEL_VERSION,
+    bathymetryPackageVersion: BATHYMETRY_PACKAGE_VERSION,
+    bathymetryManifestDigest: packageBathymetryArtifact.manifestDigest ?? null,
+    bathymetryArtifactDigest: packageBathymetryArtifact.artifactDigest ?? null,
+    bathymetryCoordinateFrame: packageBathymetryArtifact.coordinateFrame ?? null,
+    bathymetryAxisCounts: { east: packageBathymetryArtifact.eastAxisMeters?.length ?? 0, north: packageBathymetryArtifact.northAxisMeters?.length ?? 0 },
+    bathymetryValidationStatus: packageBathymetryArtifact.validationReport?.status ?? null,
+    bathymetryWetCellCount: packageBathymetryArtifactSummary.wetCellCount ?? null,
+    bathymetryLandCellCount: packageBathymetryArtifactSummary.landCellCount ?? null,
     terrainGrid: cloneGrid(field.depthMeters),
     landMask: bathymetrySurface.landMask,
     coastlineEdges: field.coastlineEdges ?? extractCoastlineEdges(bathymetrySurface.landMask),
@@ -115,6 +131,7 @@ export function buildBathymetryWorldRenderViewModel({
     boundaryFlags,
     summaries: {
       bathymetry: stats,
+      bathymetryArtifact: packageBathymetryArtifactSummary,
       featureSummary,
       waterColumn: waterColumnSummary ?? null,
       oceanWorld: geometry.summary ?? null,
@@ -131,6 +148,14 @@ export function bathymetryWorldRenderViewModelSummary(viewModel = {}) {
   return {
     type: 'anchor.rendering.bathymetry-world-view-model-summary',
     version: BATHYMETRY_WORLD_RENDER_VIEW_MODEL_VERSION,
+    bathymetryPackageVersion: viewModel.bathymetryPackageVersion ?? null,
+    bathymetryManifestDigest: viewModel.bathymetryManifestDigest ?? null,
+    bathymetryArtifactDigest: viewModel.bathymetryArtifactDigest ?? null,
+    bathymetryCoordinateFrame: viewModel.bathymetryCoordinateFrame ?? null,
+    bathymetryAxisCounts: viewModel.bathymetryAxisCounts ?? null,
+    bathymetryValidationStatus: viewModel.summaries?.bathymetryArtifact?.validationStatus ?? null,
+    bathymetryWetCellCount: viewModel.summaries?.bathymetryArtifact?.wetCellCount ?? null,
+    bathymetryLandCellCount: viewModel.summaries?.bathymetryArtifact?.landCellCount ?? null,
     terrainVertexCount: viewModel.terrainMeshGeometry?.vertexCount ?? viewModel.terrainMesh?.vertexCount ?? 0,
     terrainTriangleCount: viewModel.terrainMeshGeometry?.triangleCount ?? viewModel.terrainMesh?.triangleCount ?? 0,
     coastlineEdgeCount: viewModel.coastlineGeometry?.segmentCount ?? viewModel.coastlineEdges?.length ?? 0,

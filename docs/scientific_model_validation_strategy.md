@@ -1,4 +1,4 @@
-﻿# Scientific Model Validation Strategy
+# Scientific Model Validation Strategy
 
 ARCH-R1 introduces package-level validation as a boundary concept. It does not replace the existing smoke, audit, and E2E suites.
 
@@ -43,3 +43,7 @@ A package extraction is not complete until:
 ## Synthetic and Calibrated Claims
 
 A model may be synthetic, manufactured, educational, or calibrated. Default package contracts assume synthetic, not calibrated. Calibrated claims require explicit provenance and a validation check that recognizes the source.
+
+## BATHY-PKG-R1 Validation
+
+BATHY-PKG-R1 adds package smokes for manifest normalization, artifact validation, sampler behavior, signed terrain helpers, compatibility forwarders, generator-adapter parity, dependency safety, browser safety, and a compact seven-case parity fixture. `tests/fixtures/bathymetry_package_r1_parity.json` stores digests, statistics, masks, coastline summaries, and representative samples without large arrays.

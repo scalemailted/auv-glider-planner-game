@@ -1,4 +1,4 @@
-﻿# Scientific Package Architecture
+# Scientific Package Architecture
 
 ARCH-R1 defines the package architecture target for the scientific core while keeping one web application as the product shell.
 
@@ -55,3 +55,7 @@ Renderer code may consume package outputs through explicit view models and adapt
 ## Claim Boundary
 
 Synthetic fields remain synthetic unless a manifest explicitly declares a calibrated source and the relevant validation accepts that claim. Package contracts include provenance fields so future artifacts can distinguish synthetic fixtures, manufactured solutions, classroom demos, and calibrated data sources.
+
+## BATHY-PKG-R1 Update
+
+BATHY-PKG-R1 makes `@anchor/bathymetry` a real production package boundary. It now owns canonical bathymetry contracts, source metadata, signed terrain helpers, artifact normalization, validation, and canonical sampling. The application owns UI, scene lifecycle, and visualization. Three.js does not own bathymetry truth. The existing synthetic generator remains behavior-compatible during R1. Manifest and artifact are distinct.

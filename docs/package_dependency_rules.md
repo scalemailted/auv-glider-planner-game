@@ -1,4 +1,4 @@
-﻿# Package Dependency Rules
+# Package Dependency Rules
 
 ARCH-R1 package skeletons are local workspaces under `packages/`. They are not a new app and they do not change active browser imports.
 
@@ -44,3 +44,7 @@ npm run test:packages
 ```
 
 This imports every package skeleton, validates the contract proof, checks deterministic digests, and runs the package boundary audit.
+
+## BATHY-PKG-R1 Dependency Checks
+
+`npm.cmd run audit:packages` now runs the shared package boundary audit plus BATHY-PKG-R1 bathymetry dependency and browser-safety audits. `packages/bathymetry` may depend on `packages/contracts` only. It must not import `src/`, Three.js, Phaser, DOM APIs, `globalThis.Phaser`, global `THREE`, or ANCHOR debug globals.

@@ -262,6 +262,7 @@ export class BathymetryWorldViewScene extends PhaserScene {
   refreshDebugObject(active = true) {
     const summary = bathymetryWorldRenderViewModelSummary(this.viewModel ?? {});
     const rendererSummary = threeBathymetryRendererSummary(this.threeRenderer ?? {});
+    const artifactSummary = this.viewModel?.summaries?.bathymetryArtifact ?? null;
     globalThis.ANCHOR_BATHYMETRY_VIEW_DEBUG = {
       version: BATHYMETRY_WORLD_VIEW_SCENE_VERSION,
       active: Boolean(active),
@@ -274,6 +275,20 @@ export class BathymetryWorldViewScene extends PhaserScene {
       featureIds: summary.featureIds,
       terrainVertexCount: summary.terrainVertexCount,
       terrainSourceDigest: rendererSummary.terrainSourceDigest ?? summary.sourceDigest ?? null,
+      bathymetryPackageVersion: this.viewModel?.bathymetryPackageVersion ?? null,
+      bathymetryManifestDigest: this.viewModel?.bathymetryManifestDigest ?? null,
+      bathymetryArtifactDigest: this.viewModel?.bathymetryArtifactDigest ?? null,
+      bathymetrySourceType: artifactSummary?.sourceType ?? this.bathymetry?.sourceMetadata?.sourceType ?? null,
+      bathymetryCoordinateFrame: this.viewModel?.bathymetryCoordinateFrame ?? null,
+      bathymetryAxisCounts: this.viewModel?.bathymetryAxisCounts ?? null,
+      bathymetryWetCellCount: artifactSummary?.wetCellCount ?? null,
+      bathymetryLandCellCount: artifactSummary?.landCellCount ?? null,
+      bathymetryValidationStatus: artifactSummary?.validationStatus ?? null,
+      rendererOwnsBathymetry: false,
+      simulationOwnsBathymetryGeneration: false,
+      packageUsesThree: false,
+      packageUsesPhaser: false,
+      packageUsesDom: false,
       terrainMeshDigest: rendererSummary.terrainMeshDigest ?? null,
       terrainCoordinateProfileId: rendererSummary.terrainCoordinateProfileId ?? null,
       terrainLayerImplementationId: rendererSummary.terrainLayerImplementationId ?? null,

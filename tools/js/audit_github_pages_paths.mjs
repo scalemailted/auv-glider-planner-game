@@ -3,7 +3,7 @@ import { readdir, readFile } from 'node:fs/promises';
 import path from 'node:path';
 
 const root = process.cwd();
-const runtimeRoots = ['index.html', 'src', 'css', 'labs'];
+const runtimeRoots = ['index.html', 'src', 'packages', 'css', 'labs'];
 const failures = [];
 const files = await collectRuntimeFiles(runtimeRoots);
 for (const file of files) {

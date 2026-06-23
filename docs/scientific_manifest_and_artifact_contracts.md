@@ -1,4 +1,4 @@
-﻿# Scientific Manifest and Artifact Contracts
+# Scientific Manifest and Artifact Contracts
 
 ARCH-R1 separates manifests from artifacts.
 
@@ -47,3 +47,7 @@ Existing production artifact digest functions remain untouched in ARCH-R1. Later
 ## Visibility Boundary
 
 Public or solver-visible artifacts must not leak hidden truth fields. That visibility policy remains owned by existing headless/export modules until a later `@anchor/codecs` extraction phase.
+
+## BATHY-PKG-R1 Bathymetry Contract
+
+Bathymetry now has a package-owned manifest/artifact split. The manifest records recipe, source, resolution, coordinate frame, and claim boundary. The artifact records generated axes, signed elevation, bottom depth, wet/land masks, coastline, provenance, validation report, and deterministic digest. See [Bathymetry Manifest and Artifact Contract](bathymetry_manifest_and_artifact.md).

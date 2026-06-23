@@ -1,4 +1,4 @@
-﻿# Roadmap
+# Roadmap
 
 This roadmap tracks likely next development directions for **ANCHOR: Glider Command**. It is not a claim that future items are implemented.
 
@@ -11,7 +11,7 @@ For the canonical game-design spec, see [docs/game_design_scientific_auv_plannin
 
 ARCH-R1 establishes local scientific package boundaries without changing app behavior. The active web application remains the product shell, while `packages/` now defines dependency-safe skeletons for contracts, bathymetry, currents, scalar processes, environment composition, mission simulation, validation, and codecs.
 
-Immediate follow-on phases should be narrow extractions, not rewrites:
+Package extraction phases should remain narrow extractions, not rewrites. Current order:
 
 - `BATHY-PKG-R1`: extract bathymetry contracts and pure field helpers behind forwarding modules, with digest and fixture parity.
 - `CURRENT-PKG-R1`: separate current-field generation and sampling from debug/runtime hooks before package movement.
@@ -467,3 +467,15 @@ Optional bounded local WebGPU fluid-perturbation research layer
 
 Do not treat FLOW-R2B as ready unless normal production vectors differ by depth, evolve with canonical time, encode physical magnitude, represent calm regions without arbitrary direction, pass coherence/bathymetry diagnostics, preserve glider/render parity, and satisfy headed performance plus grouped E2E gates.
 
+## Scientific Package Roadmap Order
+
+- ARCH-R1: Scientific package contracts and dependency boundaries.
+- BATHY-PKG-R1: Bathymetry contracts, artifact, sampler, and pure helper extraction.
+- BATHY-PKG-R2: Synthetic bathymetry generator extraction and component composition.
+- FLOW-PKG-R1: 4D current generator and sampler extraction.
+- PROCESS-PKG-R1: Temporal scalar/science-process extraction.
+- ENV-PKG-R1: Canonical environment composition.
+- SIM-PKG-R1: Mission simulator environment-consumer boundary.
+- WEBGPU-GEN-R1: Optional WebGPU generation backend.
+
+BATHY-PKG-R1 is an extraction phase, not a scientific retuning phase. The package owns canonical bathymetry contracts and pure scientific helpers. The application owns UI, scene lifecycle, and visualization.

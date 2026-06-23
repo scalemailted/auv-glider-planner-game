@@ -38,6 +38,9 @@ const forbiddenSourceTerms = [
   { pattern: /\bdocument\b/, message: 'must not use document' },
   { pattern: /\bwindow\b/, message: 'must not use window' },
   { pattern: /\brequestAnimationFrame\b/, message: 'must not use requestAnimationFrame' },
+  { pattern: /globalThis\.Phaser\b/, message: 'must not use globalThis.Phaser' },
+  { pattern: /\bTHREE\b/, message: 'must not use global THREE' },
+  { pattern: /ANCHOR_[A-Z0-9_]+_DEBUG/, message: 'must not write or reference project debug globals' },
 ];
 
 async function exists(target) {

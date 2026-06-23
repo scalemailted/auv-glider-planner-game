@@ -622,3 +622,10 @@ Production current visibility recovery for the normal generated Challenge path. 
 - Updated layer explorer and Three instanced current glyphs so physical speed in m/s maps to bounded glyph length, calm vectors do not receive arbitrary direction, and stacked/sparse modes render bounded multi-depth samples from the canonical `OceanCurrentField4D`.
 - Added FLOW-R2A.5 smoke/audit scripts, focused Playwright coverage, owner-review artifact path, and docs for current depth/time authority, magnitude/calm handling, coherent components, and spatial-coherence validation.
 - Preserved the boundary: no tracers, pathlines, stream ribbons, WebGPU, real HYCOM/Copernicus import, planner changes, scoring changes, runtime-shell switch, Phaser removal, or calibrated forecast claim.
+
+### BATHY-PKG-R1 - Bathymetry Contracts and Pure Helper Extraction
+
+- Moved bathymetry source metadata and signed terrain helper implementations into `packages/bathymetry` with compatibility forwarders under `src/core/science`.
+- Added package-owned bathymetry manifest, artifact, sampler, validation, model card, compact parity fixture, package smokes, dependency/browser-safety audits, and static Pages package-path audit.
+- Added app-side generator adapter and debug provenance fields so generated planning, simulation, and standalone bathymetry views expose the same package artifact identity.
+- Preserved the boundary: BATHY-PKG-R1 does not retune bathymetry equations, change currents/scalar fields, alter mission physics, change scoring, or move Three.js/Phaser code into packages.

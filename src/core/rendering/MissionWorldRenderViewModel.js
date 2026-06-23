@@ -49,6 +49,7 @@ export function buildMissionWorldRenderViewModel({
   const vectorFieldLayer = normalizeVectorFieldLayer(currentField, grid, activeTimeSeconds);
   const terrainAuthority = normalizeTerrainAuthority(level);
   const terrain = normalizeTerrain(level, grid);
+  const bathymetryArtifactSummary = level?.bathymetryArtifactSummary ?? null;
   const hazards = normalizeCellRecords(options.hazards ?? level?.layers?.hazards, grid, 'hazard');
   const constraints = terrainAuthority.usesSignedTerrainAuthority === true
     ? []
@@ -90,6 +91,7 @@ export function buildMissionWorldRenderViewModel({
     grid,
     worldBounds: { minX: -grid.width / 2, maxX: grid.width / 2, minZ: -grid.height / 2, maxZ: grid.height / 2 },
     bathymetry: normalizeBathymetry(level, grid),
+    bathymetryArtifactSummary,
     terrain,
     coastline: options.coastline ?? [],
     waterSurface: { id: 'waterSurface', label: 'Water Surface', elevation: 0, visible: displaySettings?.waterSurface !== false },
@@ -152,6 +154,14 @@ export function missionWorldRenderViewModelSummary(viewModel = {}) {
     landWaterSourceDigest: viewModel.terrainAuthority?.landWaterSourceDigest ?? null,
     coastlineSourceDigest: viewModel.terrainAuthority?.coastlineSourceDigest ?? null,
     bottomBoundarySourceDigest: viewModel.terrainAuthority?.bottomBoundarySourceDigest ?? null,
+    bathymetryPackageVersion: viewModel.bathymetryArtifactSummary?.bathymetryPackageVersion ?? null,
+    bathymetryManifestDigest: viewModel.bathymetryArtifactSummary?.manifestDigest ?? null,
+    bathymetryArtifactDigest: viewModel.bathymetryArtifactSummary?.artifactDigest ?? null,
+    bathymetryCoordinateFrame: viewModel.bathymetryArtifactSummary?.coordinateFrame ?? null,
+    bathymetryAxisCounts: viewModel.bathymetryArtifactSummary ? { east: viewModel.bathymetryArtifactSummary.eastCount, north: viewModel.bathymetryArtifactSummary.northCount } : null,
+    bathymetryWetCellCount: viewModel.bathymetryArtifactSummary?.wetCellCount ?? null,
+    bathymetryLandCellCount: viewModel.bathymetryArtifactSummary?.landCellCount ?? null,
+    bathymetryValidationStatus: viewModel.bathymetryArtifactSummary?.validationStatus ?? null,
     usesSignedTerrainAuthority: viewModel.terrainAuthority?.usesSignedTerrainAuthority === true,
     activeTimeSeconds: finiteNumber(viewModel.activeTimeSeconds),
     selectedAgentId: viewModel.selectedAgentId ?? null,

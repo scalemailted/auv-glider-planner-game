@@ -10,6 +10,7 @@ const copyRoots = [
   'css',
   'src',
   'vendor',
+  'packages',
   'labs',
   'docs',
   'schemas',
@@ -32,13 +33,14 @@ for (const entry of copyRoots) {
   await copyEntry(source, path.join(out, entry));
 }
 await writeFile(path.join(out, '.nojekyll'), '', 'utf8');
-for (const required of ['index.html', 'vendor/three/build/three.module.js', 'vendor/three/build/three.core.js', 'vendor/three/LICENSE', 'vendor/phaser.min.js']) {
+for (const required of ['index.html', 'vendor/three/build/three.module.js', 'vendor/three/build/three.core.js', 'vendor/three/LICENSE', 'vendor/phaser.min.js', 'packages/bathymetry/src/index.js', 'packages/contracts/src/index.js']) {
   if (!existsSync(path.join(out, required))) throw new Error(`_site missing required file: ${required}`);
 }
 const siteIndex = await readFile(path.join(out, 'index.html'), 'utf8');
 if (!siteIndex.includes('"three": "./vendor/three/build/three.module.js"')) throw new Error('_site/index.html import map does not resolve three to vendor/three/build/three.module.js.');
 if (!siteIndex.includes('"three/addons/": "./vendor/three/examples/jsm/"')) throw new Error('_site/index.html import map does not preserve three/addons mapping.');
 runNode('tools/js/audit_github_pages_paths.mjs');
+runNode('tools/js/audit_bathymetry_package_static_paths.mjs');
 const unresolved = await findUnresolvedRuntimeImports(out);
 if (unresolved.length) {
   console.error('Unresolved runtime imports in _site:');
@@ -80,7 +82,10 @@ async function countFiles(dir) {
 
 async function findUnresolvedRuntimeImports(siteRoot) {
   const failures = [];
-  const files = await walk(path.join(siteRoot, 'src'));
+  const files = [
+    ...await walk(path.join(siteRoot, 'src')),
+    ...await walk(path.join(siteRoot, 'packages'))
+  ];
   for (const file of files.filter((candidate) => candidate.endsWith('.js'))) {
     const text = await import('node:fs/promises').then((fs) => fs.readFile(file, 'utf8'));
     for (const match of text.matchAll(/from\s+['"]([^'"]+)['"]/g)) {

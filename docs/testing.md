@@ -1117,3 +1117,17 @@ node node_modules/@playwright/test/cli.js test tests/e2e/flow_r2a_5_1_environmen
 ```
 
 These checks assert that bounded generated currents span mission duration, periodic fields wrap intentionally, current sampling uses canonical mission time, the only implemented browser generator backend is `cpuBathymetryConditionedSyntheticV2`, generated artifacts publish `ANCHOR_ENVIRONMENT_GENERATOR_DEBUG`, hidden depth-layer filters affect presentation only, and calm wet cells render as neutral markers instead of arbitrary directional arrows. They do not add WebGPU generation, operational ocean import, new current physics, planner changes, scoring changes, or Phaser removal.
+
+## BATHY-PKG-R1 Package Checks
+
+For bathymetry package extraction, run:
+
+```bash
+npm.cmd run audit:packages
+npm.cmd run test:packages
+node tools/js/capture_bathymetry_package_r1_baseline.mjs
+node tools/js/audit_bathymetry_package_static_paths.mjs
+npx.cmd playwright test tests/e2e/bathy_pkg_r1.spec.js --reporter=line
+```
+
+`npm.cmd run build:pages` copies `packages/bathymetry` and `packages/contracts` into `_site`. `npm.cmd run smoke:pages` verifies package modules load from a Pages-style subpath without 404 or module MIME failures.
