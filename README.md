@@ -1021,3 +1021,8 @@ Normal coastal synthetic fields use named coherent components such as along-shel
 ## Scientific Package Boundary
 
 ARCH-R1 established local scientific package skeletons. BATHY-PKG-R1 makes `packages/bathymetry` a real production boundary for bathymetry contracts, canonical artifacts, source metadata, signed terrain helpers, validation, and physical-axis sampling. Existing generation remains behavior-compatible; app imports continue through `src/core/...` forwarders; Three.js only visualizes bathymetry and does not own bathymetry truth. See [Bathymetry Package Architecture](docs/bathymetry_package_architecture.md), [Bathymetry Manifest and Artifact](docs/bathymetry_manifest_and_artifact.md), and [Bathymetry Package Migration](docs/bathymetry_package_migration.md).
+## SCI-VALID-R1 Homegrown Scientific Baseline
+
+SCI-VALID-R1 adds a deterministic scientific-baseline and gap-assessment layer for the homegrown environment stack. The new `npm.cmd run test:science` gate covers manufactured bathymetry cases, bathymetry resolution convergence, ensemble statistics, manufactured current cases, production current depth/time diagnostics, manufactured scalar cases, scalar conservation/convergence checks, mission/environment coupling, and benchmark shortcut detection.
+
+The result is a software and numerical verification baseline, not an oceanographic validation claim. Generated terrain, currents, and scalar fields remain synthetic educational fixtures unless a future artifact explicitly supplies attributed external-reference provenance and validation results. See `docs/homegrown_environment_scientific_baseline.md`, `docs/homegrown_model_scorecard.md`, `docs/bathymetry_external_reference_metrics.md`, and `docs/environment_benchmark_suitability.md`.

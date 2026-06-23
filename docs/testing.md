@@ -1131,3 +1131,14 @@ npx.cmd playwright test tests/e2e/bathy_pkg_r1.spec.js --reporter=line
 ```
 
 `npm.cmd run build:pages` copies `packages/bathymetry` and `packages/contracts` into `_site`. `npm.cmd run smoke:pages` verifies package modules load from a Pages-style subpath without 404 or module MIME failures.
+## SCI-VALID-R1 Homegrown Environment Science Checks
+
+Run the compact homegrown environment baseline with:
+
+```bash
+npm.cmd run test:science
+```
+
+`test:science` is also included in `npm.cmd run test:packages`. It runs manufactured bathymetry, bathymetry convergence, bathymetry ensemble, manufactured current, current depth/time, current invariant, manufactured scalar, scalar conservation/convergence, environment mission-coupling, and benchmark shortcut checks. These tests verify deterministic software behavior, numerical manufactured-case behavior, and synthetic claim boundaries. They do not establish calibrated oceanographic validity.
+
+See `docs/homegrown_environment_scientific_baseline.md` and `docs/homegrown_model_scorecard.md` for the SCI-VALID-R1 scorecard and external-oracle gap assessment.

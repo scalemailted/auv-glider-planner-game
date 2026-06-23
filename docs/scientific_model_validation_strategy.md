@@ -47,3 +47,10 @@ A model may be synthetic, manufactured, educational, or calibrated. Default pack
 ## BATHY-PKG-R1 Validation
 
 BATHY-PKG-R1 adds package smokes for manifest normalization, artifact validation, sampler behavior, signed terrain helpers, compatibility forwarders, generator-adapter parity, dependency safety, browser safety, and a compact seven-case parity fixture. `tests/fixtures/bathymetry_package_r1_parity.json` stores digests, statistics, masks, coastline summaries, and representative samples without large arrays.
+## SCI-VALID-R1 Homegrown Environment Baseline
+
+SCI-VALID-R1 adds a repository-level science baseline before additional package extraction. `npm.cmd run test:science` verifies manufactured bathymetry cases, bathymetry convergence, deterministic ensemble statistics, manufactured current cases, production current depth/time behavior, current physical invariants, manufactured scalar cases, scalar conservation/convergence behavior, mission/environment coupling, and benchmark shortcut detection.
+
+The baseline records compact evidence in `tests/fixtures/homegrown_environment_scientific_baseline.json`. The scorecard is documented in `docs/homegrown_model_scorecard.md`. External-oracle gaps and future bathymetry comparison metrics are documented in `docs/bathymetry_external_reference_metrics.md`.
+
+This layer is a gate for deterministic synthetic correctness and package-readiness. It does not certify oceanographic validity.

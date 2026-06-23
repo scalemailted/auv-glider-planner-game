@@ -1,0 +1,243 @@
+{
+  "type": "anchor.science.homegrown-environment-baseline-fixture",
+  "version": "sci-valid-r1",
+  "deterministic": true,
+  "externalOracleUsed": false,
+  "calibratedOceanForecast": false,
+  "generatedBy": "tools/js/audit_bathymetry_ensemble_statistics.mjs --update-fixture",
+  "bathymetry": {
+    "ensembleDigest": "fnv1a32:334c2cb3",
+    "recordCount": 12,
+    "duplicateDigestCount": 0,
+    "stats": {
+      "meanDepthMeters": {
+        "count": 12,
+        "min": 138.616972,
+        "mean": 146.29321,
+        "max": 157.221959,
+        "rms": 146.448366,
+        "p50": 144.688564,
+        "p95": 157.221959
+      },
+      "maxDepthMeters": {
+        "count": 12,
+        "min": 232.860365,
+        "mean": 253.966928,
+        "max": 287.884991,
+        "rms": 254.964152,
+        "p50": 261.590868,
+        "p95": 287.884991
+      },
+      "wetFraction": {
+        "count": 12,
+        "min": 0.85303,
+        "mean": 0.860985,
+        "max": 0.868182,
+        "rms": 0.861002,
+        "p50": 0.861364,
+        "p95": 0.868182
+      },
+      "coastlineSegmentCount": {
+        "count": 12,
+        "min": 38,
+        "mean": 50.5,
+        "max": 82,
+        "rms": 53.730811,
+        "p50": 44,
+        "p95": 82
+      },
+      "slopeMean": {
+        "count": 12,
+        "min": 7.815547,
+        "mean": 9.526526,
+        "max": 13.449157,
+        "rms": 9.801725,
+        "p50": 8.97641,
+        "p95": 13.449157
+      }
+    },
+    "records": [
+      {
+        "seed": "sci-a",
+        "archetype": "coastalShelf",
+        "digest": "anchor-artifact-fnv1a32:ab96890d",
+        "minDepthMeters": 38.453242,
+        "meanDepthMeters": 144.688564,
+        "maxDepthMeters": 233.132603,
+        "wetFraction": 0.861364,
+        "coastlineSegmentCount": 38
+      },
+      {
+        "seed": "sci-a",
+        "archetype": "shelfCanyon",
+        "digest": "anchor-artifact-fnv1a32:f143f55f",
+        "minDepthMeters": 37.624877,
+        "meanDepthMeters": 144.669469,
+        "maxDepthMeters": 232.949716,
+        "wetFraction": 0.861364,
+        "coastlineSegmentCount": 38
+      },
+      {
+        "seed": "sci-a",
+        "archetype": "islandArc",
+        "digest": "anchor-artifact-fnv1a32:1c7746db",
+        "minDepthMeters": 37.37712,
+        "meanDepthMeters": 138.64615,
+        "maxDepthMeters": 263.149072,
+        "wetFraction": 0.85303,
+        "coastlineSegmentCount": 82
+      },
+      {
+        "seed": "sci-a",
+        "archetype": "basinSeamount",
+        "digest": "anchor-artifact-fnv1a32:8134bc84",
+        "minDepthMeters": 38.121722,
+        "meanDepthMeters": 157.221959,
+        "maxDepthMeters": 286.843089,
+        "wetFraction": 0.868182,
+        "coastlineSegmentCount": 44
+      },
+      {
+        "seed": "sci-b",
+        "archetype": "coastalShelf",
+        "digest": "anchor-artifact-fnv1a32:eaffd0d4",
+        "minDepthMeters": 37.059294,
+        "meanDepthMeters": 144.600069,
+        "maxDepthMeters": 233.608754,
+        "wetFraction": 0.861364,
+        "coastlineSegmentCount": 38
+      },
+      {
+        "seed": "sci-b",
+        "archetype": "shelfCanyon",
+        "digest": "anchor-artifact-fnv1a32:93803b8f",
+        "minDepthMeters": 37.321283,
+        "meanDepthMeters": 144.730917,
+        "maxDepthMeters": 233.22991,
+        "wetFraction": 0.861364,
+        "coastlineSegmentCount": 38
+      },
+      {
+        "seed": "sci-b",
+        "archetype": "islandArc",
+        "digest": "anchor-artifact-fnv1a32:81a30e6c",
+        "minDepthMeters": 37.747497,
+        "meanDepthMeters": 138.616972,
+        "maxDepthMeters": 261.590868,
+        "wetFraction": 0.85303,
+        "coastlineSegmentCount": 82
+      },
+      {
+        "seed": "sci-b",
+        "archetype": "basinSeamount",
+        "digest": "anchor-artifact-fnv1a32:38f61658",
+        "minDepthMeters": 38.326475,
+        "meanDepthMeters": 157.120133,
+        "maxDepthMeters": 287.884991,
+        "wetFraction": 0.868182,
+        "coastlineSegmentCount": 44
+      },
+      {
+        "seed": "sci-c",
+        "archetype": "coastalShelf",
+        "digest": "anchor-artifact-fnv1a32:1b9416d1",
+        "minDepthMeters": 38.932214,
+        "meanDepthMeters": 144.678024,
+        "maxDepthMeters": 232.860365,
+        "wetFraction": 0.861364,
+        "coastlineSegmentCount": 38
+      },
+      {
+        "seed": "sci-c",
+        "archetype": "shelfCanyon",
+        "digest": "anchor-artifact-fnv1a32:9107a784",
+        "minDepthMeters": 38.109971,
+        "meanDepthMeters": 144.71799,
+        "maxDepthMeters": 233.356651,
+        "wetFraction": 0.861364,
+        "coastlineSegmentCount": 38
+      },
+      {
+        "seed": "sci-c",
+        "archetype": "islandArc",
+        "digest": "anchor-artifact-fnv1a32:b7c29cb2",
+        "minDepthMeters": 38.153875,
+        "meanDepthMeters": 138.691239,
+        "maxDepthMeters": 262.60602,
+        "wetFraction": 0.85303,
+        "coastlineSegmentCount": 82
+      },
+      {
+        "seed": "sci-c",
+        "archetype": "basinSeamount",
+        "digest": "anchor-artifact-fnv1a32:5d0ce3be",
+        "minDepthMeters": 37.658994,
+        "meanDepthMeters": 157.13703,
+        "maxDepthMeters": 286.3911,
+        "wetFraction": 0.868182,
+        "coastlineSegmentCount": 44
+      }
+    ]
+  },
+  "currents": {
+    "fieldDigest": "fnv1a32:f85cb02d",
+    "sourceTier": "scientificallyConstrainedSynthetic",
+    "equationFamily": "bathymetryConditionedStreamfunctionSyntheticV2",
+    "depthAxisMeters": [
+      0,
+      10,
+      35,
+      75,
+      150
+    ],
+    "timeAxisSeconds": [
+      0,
+      300,
+      600,
+      900
+    ],
+    "samplePoint": {
+      "xIndex": 45,
+      "yIndex": 14,
+      "eastMeters": 75015,
+      "northMeters": 23338,
+      "bottomDepthMeters": 496.460801,
+      "score": 485.460801
+    },
+    "maxDepthVectorDifference": 0.030564,
+    "maxTemporalVectorDifference": 0.201399,
+    "diagnostics": {
+      "status": "PASS",
+      "speedMean": 0.14271,
+      "speedMaximum": 0.37054,
+      "divergenceRms": 0.000021,
+      "verticalShearRms": 0.000487,
+      "temporalChangeRms": 0.149498,
+      "landVectorCount": 0,
+      "belowBottomVectorCount": 0,
+      "cellwiseDirectionNoiseScore": 0.057686
+    }
+  },
+  "scalarProcesses": {
+    "manufacturedLinearDigest": "fnv1a32:6efc4520",
+    "stats": {
+      "count": 960,
+      "min": 0.2,
+      "mean": 0.613,
+      "max": 1.11,
+      "rms": 0.634972,
+      "p50": 0.61,
+      "p95": 0.9
+    },
+    "sample": 0.475
+  },
+  "missionCoupling": {
+    "compactExportDigest": "fnv1a32:a4ef0b5c",
+    "agentCount": 3,
+    "levelId": "regional_shelf_synthetic_world_r1",
+    "missionId": "regional_fleet_synthetic_world_r1",
+    "bathymetryArtifactDigest": "anchor-artifact-fnv1a32:bc326a68",
+    "currentVectorDigest": "fnv1a-a25b5a46",
+    "scienceValueDigest": "fnv1a-7a885c15"
+  }
+}
