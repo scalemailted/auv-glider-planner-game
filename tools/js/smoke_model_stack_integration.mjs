@@ -1341,5 +1341,34 @@ assert.equal(oceanCurrentFieldModule.validateOceanCurrentField4D(flowR2aCube).va
 const flowR2aSample = oceanCurrentSamplerModule.sampleOceanCurrent({ field: flowR2aCube, eastMeters: 2, northMeters: 2, depthMeters: 35, timeSeconds: 600 });
 assert.equal(Number.isFinite(flowR2aSample.uEastMetersPerSecond), true, 'FLOW-R2A sampler returns finite U');
 assert.equal(currentBackendModule.validateCurrentVisualizationBackendDescriptor(currentBackendModule.createCurrentVisualizationBackendDescriptor('webglInstancedGlyphsV1')).valid, true, 'FLOW-R2A current visualization backend descriptor validates');
+const [currentGlyphModule, volumetricWorldModule, currentHelperModule] = await Promise.all([
+  import('../../src/game/three/layers/ThreeInstancedCurrentGlyphLayer.js'),
+  import('../../src/core/rendering/VolumetricMissionWorldViewModel.js'),
+  import('./current_cube_test_helpers.mjs')
+]);
+const flowR2aExplorer = currentHelperModule.makeCurrentExplorerFixture({ activeLayerId: 'thermocline', activeTimeSeconds: 600 });
+const flowR2aGlyphLayer = currentGlyphModule.createThreeInstancedCurrentGlyphLayer();
+const flowR2aCurrentViewModel = {
+  coordinateSystem: { cellSize: 1, originX: 0, originY: 0 },
+  waterColumnExplorer: flowR2aExplorer,
+  waterColumn: { currentDisplayMode: 'activeSlice', currentVectorDensity: 'balanced', currentMagnitudeScale: 1.8, currentColorMode: 'speed' },
+  currentVisualization: {
+    currentVisualizationAvailable: true,
+    currentPresentationRequested: true,
+    currentPresentationEnabled: true,
+    currentDisplayMode: 'activeSlice',
+    currentActiveLayerId: 'thermocline',
+    currentActiveDepthMeters: 35,
+    currentActiveTimeSeconds: 600
+  }
+};
+currentGlyphModule.updateThreeInstancedCurrentGlyphLayer(flowR2aGlyphLayer, flowR2aCurrentViewModel);
+const flowR2aGlyphSummary = currentGlyphModule.threeInstancedCurrentGlyphLayerSummary(flowR2aGlyphLayer, flowR2aCurrentViewModel);
+const flowR2aCurrentDebug = volumetricWorldModule.volumetricCurrentDebugPayload(flowR2aCurrentViewModel, { ...flowR2aGlyphSummary, glyphBoundsInFrustum: true, cameraNear: 0.1, cameraFar: 4000 });
+assert.equal(flowR2aGlyphSummary.glyphMeshVisible, true, 'FLOW-R2A.2 current glyph mesh is visible');
+assert.equal(flowR2aGlyphSummary.glyphDrawCallCount, 1, 'FLOW-R2A.2 current glyph draw call is bounded');
+assert.equal(flowR2aCurrentDebug.currentDisplayMode, 'activeSlice', 'FLOW-R2A.2 debug reports activeSlice');
+assert.equal(flowR2aCurrentDebug.currentPresentationEnabled, true, 'FLOW-R2A.2 debug reports presentation enabled');
+assert.equal(flowR2aCurrentDebug.displayLayerChangesCurrent, false, 'FLOW-R2A.2 current display does not change current physics');
 
 console.log('Model stack integration smoke passed');

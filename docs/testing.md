@@ -1026,3 +1026,22 @@ node node_modules/@playwright/test/cli.js test tests/e2e/flow_r2a_1_launch_stabi
 ```
 
 These checks verify launch interactivity, bounded current cube/sampler counts, hot-loop sampling behavior, glyph fail-soft behavior, malformed-current clean aborts, GitHub Pages subpath launch, and re-execution after returning to Planning.
+
+## FLOW-R2A.2 Visible Current Glyph Checks
+
+Run these after changing current presentation defaults, water-column render view models, Three current glyph geometry/materials, camera presets, or safe-display handling:
+
+```powershell
+node tools/js/smoke_current_presentation_defaults.mjs
+node tools/js/smoke_simulation_current_view_model.mjs
+node tools/js/smoke_current_glyph_visibility_contract.mjs
+node tools/js/smoke_current_glyph_bounds.mjs
+node tools/js/smoke_current_safe_mode_is_explicit.mjs
+node tools/js/audit_current_simulation_render_plumbing.mjs
+node tools/js/audit_current_material_visibility.mjs
+node tools/js/audit_current_depth_ordering.mjs
+node tools/js/audit_current_pixel_acceptance_contract.mjs
+node node_modules/@playwright/test/cli.js test tests/e2e/flow_r2a_2_visible_currents.spec.js --reporter=line --workers=1
+```
+
+These checks verify that current samples reach Planning and Simulation view models, visible instanced glyphs have finite bounds and readable material/scale/order, Safe Display mode is explicit and non-persistent, projected glyph neighborhoods contain changed pixels, and visible/hidden current presentation does not change mission outcome.

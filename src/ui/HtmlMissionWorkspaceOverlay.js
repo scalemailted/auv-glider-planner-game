@@ -552,6 +552,11 @@ export class HtmlMissionWorkspaceOverlay {
       'water-column-opacity': (button) => this.handlers.adjustWaterColumnOpacity?.(Number(button.dataset.delta ?? 0)),
       'water-column-scalar-field': (button) => this.handlers.setWaterColumnScalarField?.(button.dataset.field),
       'water-column-current-mode': (button) => this.handlers.setWaterColumnCurrentMode?.(button.dataset.mode),
+      'water-column-current-layer-mode': (button) => this.handlers.setWaterColumnCurrentLayerMode?.(button.dataset.mode),
+      'water-column-current-density': (button) => this.handlers.setWaterColumnCurrentDensity?.(button.dataset.density),
+      'water-column-current-magnitude-scale': (button) => this.handlers.setWaterColumnCurrentMagnitudeScale?.(button.dataset.scale),
+      'water-column-current-color-mode': (button) => this.handlers.setWaterColumnCurrentColorMode?.(button.dataset.mode),
+      'water-column-toggle-context-currents': () => this.handlers.toggleWaterColumnContextCurrents?.(),
       'water-column-field-display-mode': (button) => this.handlers.setWaterColumnFieldDisplayMode?.(button.dataset.mode),
       'three-quality-profile': (button) => this.handlers.setThreeQualityProfile?.(button.dataset.profile),
       'water-column-volume-render-mode': (button) => this.handlers.setWaterColumnVolumeRenderMode?.(button.dataset.mode),
@@ -944,7 +949,13 @@ function waterColumnSection(state, continuousUi = normalizeContinuousMissionUiSt
   const activeLayerId = layerIds.includes(continuousUi.activeDepthLayerId) ? continuousUi.activeDepthLayerId : (layerIds.includes(ui.activeDepthLayerId) ? ui.activeDepthLayerId : layerIds[0] ?? 'surface');
   const hidden = new Set(Array.isArray(ui.hiddenLayerIds) ? ui.hiddenLayerIds : []);
   const displayMode = continuousUi.verticalDisplayMode === 'explodedLayers' ? 'explodedLayers' : 'physicalDepth';
-  const currentMode = ui.currentDisplayMode === 'allLayers' ? 'allLayers' : 'activeLayerOnly';
+  const currentMode = ui.currentDisplayMode === 'allLayers' ? 'allLayers' : 'activeSlice';
+  const currentLayerMode = ui.currentLayerMode === 'manualActiveLayer' ? 'manualActiveLayer' : 'followSelectedGlider';
+  const currentDensity = normalizeCurrentDensityLabel(ui.currentVectorDensity ?? 'balanced');
+  const currentMagnitudeScale = Number.isFinite(Number(ui.currentMagnitudeScale)) ? Number(ui.currentMagnitudeScale) : 1.8;
+  const currentColorMode = ['speed', 'direction', 'depthLayer', 'assistOpposeRoute'].includes(ui.currentColorMode) ? ui.currentColorMode : 'speed';
+  const currentVectorsEnabled = state.ui?.showCurrents !== false;
+  const contextCurrentsEnabled = ui.showContextCurrents === true;
   const fieldDisplayMode = ui.fieldDisplayMode === 'allLayers' || ui.showFieldOnAllLayers === true ? 'allLayers' : 'activeLayerOnly';
   const qualityProfile = ['performance', 'balanced', 'high'].includes(ui.qualityProfile) ? ui.qualityProfile : 'balanced';
   const selectedField = ui.selectedScalarFieldId ?? 'sampleValue';
@@ -994,8 +1005,35 @@ function waterColumnSection(state, continuousUi = normalizeContinuousMissionUiSt
           ${waterColumnFieldButton('sampleValue', 'Sample Value', selectedField)}
           ${waterColumnFieldButton('A_global_depth', 'Depth Priority', selectedField)}
           ${waterColumnFieldButton('A_global_topdown', 'Top-Down Priority', selectedField)}
-          ${waterColumnCurrentButton('activeLayerOnly', 'Currents: Active', currentMode)}
-          ${waterColumnCurrentButton('allLayers', 'Currents: All Layers', currentMode)}
+        </div>
+        <h3 class="waypoint-section-title">Currents</h3>
+        <div class="hud-card compact" data-current-vector-controls>
+          <div><strong>Show Current Vectors:</strong> ${currentVectorsEnabled ? 'on' : 'off'} | <strong>Active Layer:</strong> ${escapeHtml(labelize(activeLayerId))}</div>
+          <div><strong>Layer Tracking:</strong> ${escapeHtml(currentLayerMode === 'followSelectedGlider' ? 'follow selected glider depth' : 'manual active layer')}</div>
+          <div><strong>Density:</strong> ${escapeHtml(currentDensity)} | <strong>Magnitude Scale:</strong> ${escapeHtml(formatNumber(currentMagnitudeScale, 1))}x | <strong>Color:</strong> ${escapeHtml(labelize(currentColorMode))}</div>
+          <div class="hud-muted">Current vectors are a display of the canonical 4D current field. They do not change drift, scoring, or route validity.</div>
+        </div>
+        <div class="console-button-row wrap">
+          <button class="console-button ${currentVectorsEnabled ? 'primary' : 'secondary'}" data-action="layer-currents">Show Current Vectors</button>
+          ${waterColumnCurrentButton('activeSlice', 'Active Slice', currentMode)}
+          ${waterColumnCurrentButton('allLayers', 'All Layers', currentMode)}
+          ${waterColumnCurrentLayerButton('followSelectedGlider', 'Follow Selected Glider Depth', currentLayerMode)}
+          ${waterColumnCurrentLayerButton('manualActiveLayer', 'Manual Active Layer', currentLayerMode)}
+        </div>
+        <div class="console-button-row wrap">
+          ${waterColumnCurrentDensityButton('balanced', 'Vector Density: Balanced', currentDensity)}
+          ${waterColumnCurrentDensityButton('sparse', 'Sparse', currentDensity)}
+          ${waterColumnCurrentDensityButton('dense', 'Dense', currentDensity)}
+          ${waterColumnCurrentMagnitudeButton(1.0, 'Scale 1.0x', currentMagnitudeScale)}
+          ${waterColumnCurrentMagnitudeButton(1.8, 'Scale 1.8x', currentMagnitudeScale)}
+          ${waterColumnCurrentMagnitudeButton(2.8, 'Scale 2.8x', currentMagnitudeScale)}
+        </div>
+        <div class="console-button-row wrap">
+          ${waterColumnCurrentColorButton('speed', 'Speed', currentColorMode)}
+          ${waterColumnCurrentColorButton('direction', 'Direction', currentColorMode)}
+          ${waterColumnCurrentColorButton('depthLayer', 'Depth Layer', currentColorMode)}
+          ${waterColumnCurrentColorButton('assistOpposeRoute', 'Assist/Oppose Route', currentColorMode)}
+          <button class="console-button ${contextCurrentsEnabled ? 'primary' : 'secondary'}" data-action="water-column-toggle-context-currents">Show Context Layers</button>
         </div>
         <div class="console-button-row wrap">
           ${threeQualityButton('performance', 'Performance', qualityProfile)}
@@ -1187,6 +1225,29 @@ function waterColumnFieldButton(fieldId, label, selectedField) {
 
 function waterColumnCurrentButton(mode, label, activeMode) {
   return `<button class="console-button ${activeMode === mode ? 'primary' : 'secondary'}" data-action="water-column-current-mode" data-mode="${escapeAttr(mode)}">${escapeHtml(label)}</button>`;
+}
+
+function waterColumnCurrentLayerButton(mode, label, activeMode) {
+  return `<button class="console-button ${activeMode === mode ? 'primary' : 'secondary'}" data-action="water-column-current-layer-mode" data-mode="${escapeAttr(mode)}">${escapeHtml(label)}</button>`;
+}
+
+function waterColumnCurrentDensityButton(density, label, activeDensity) {
+  return `<button class="console-button ${activeDensity === density ? 'primary' : 'secondary'}" data-action="water-column-current-density" data-density="${escapeAttr(density)}">${escapeHtml(label)}</button>`;
+}
+
+function waterColumnCurrentMagnitudeButton(scale, label, activeScale) {
+  const active = Math.abs(Number(activeScale) - Number(scale)) < 0.05;
+  return `<button class="console-button ${active ? 'primary' : 'secondary'}" data-action="water-column-current-magnitude-scale" data-scale="${escapeAttr(scale)}">${escapeHtml(label)}</button>`;
+}
+
+function waterColumnCurrentColorButton(mode, label, activeMode) {
+  return `<button class="console-button ${activeMode === mode ? 'primary' : 'secondary'}" data-action="water-column-current-color-mode" data-mode="${escapeAttr(mode)}">${escapeHtml(label)}</button>`;
+}
+
+function normalizeCurrentDensityLabel(value) {
+  if (value === 'sparse' || Number(value) >= 2) return 'sparse';
+  if (value === 'dense') return 'dense';
+  return 'balanced';
 }
 
 function waterColumnFieldDisplayModeButton(mode, label, activeMode) {

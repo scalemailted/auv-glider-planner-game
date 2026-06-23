@@ -58,6 +58,12 @@ export function augmentMissionWorldWithVolumetricModel(baseViewModel = {}, optio
   const layerFields = buildLayerFields({ baseViewModel, waterColumnConfig, grid, selectedFieldId: waterColumnUi.selectedScalarFieldId ?? displaySettings.selectedScalarFieldId });
   const layerCurrents = buildLayerCurrents({ baseViewModel, waterColumnConfig });
   const activeDepthLayerId = normalizeActiveLayer(waterColumnUi.activeDepthLayerId ?? displaySettings.activeDepthLayerId, waterColumnConfig);
+  const currentActiveDepthLayerId = resolveActiveDepthLayerForCurrent({
+    requestedLayerId: activeDepthLayerId,
+    waterColumnUi,
+    baseViewModel,
+    waterColumnConfig
+  });
   const operational = buildOperationalDepthLayerViewModel({
     waterColumnConfig,
     bottomBoundary,
@@ -135,6 +141,13 @@ export function augmentMissionWorldWithVolumetricModel(baseViewModel = {}, optio
     layerCurrents,
     selectedFieldId: waterColumnUi.selectedScalarFieldId ?? baseViewModel.scalarFieldLayer?.id ?? 'sampleValue'
   });
+  const currentVisualization = buildCurrentVisualizationSummary({
+    waterColumnUi,
+    waterColumnExplorer,
+    activeDepthLayerId: currentActiveDepthLayerId,
+    activeTimeSeconds: baseViewModel.activeTimeSeconds ?? options.activeTimeSeconds ?? 0,
+    showCurrents: displaySettings.showCurrents ?? baseViewModel.visibility?.currentVectors ?? true
+  });
   const warnings = [
     ...(baseViewModel.warnings ?? []),
     ...(operational.warnings ?? []),
@@ -177,6 +190,17 @@ export function augmentMissionWorldWithVolumetricModel(baseViewModel = {}, optio
     selectedCellDepth: selectedDepthCell,
     selectedDepthCell,
     waterColumnExplorer,
+    currentVisualization,
+    currentVisualizationAvailable: currentVisualization.currentVisualizationAvailable,
+    currentPresentationRequested: currentVisualization.currentPresentationRequested,
+    currentPresentationEnabled: currentVisualization.currentPresentationEnabled,
+    currentDisplayMode: currentVisualization.currentDisplayMode,
+    currentActiveLayerId: currentVisualization.currentActiveLayerId,
+    currentActiveDepthLayerId,
+    currentActiveDepthMeters: currentVisualization.currentActiveDepthMeters,
+    currentActiveTimeSeconds: currentVisualization.currentActiveTimeSeconds,
+    currentVectorSampleCount: currentVisualization.currentVectorSampleCount,
+    currentVectorValidCount: currentVisualization.currentVectorValidCount,
     selectedRouteSegment: options.selectedRouteSegment ?? null,
     selectedGlider: gliderPoses.find((pose) => pose.selected) ?? gliderPoses[0] ?? null,
     visibility: {
@@ -184,7 +208,7 @@ export function augmentMissionWorldWithVolumetricModel(baseViewModel = {}, optio
       depthLayers: baseViewModel.visibility?.depthLayers !== false,
       waterColumn: true,
       activeLayerOnlyFields: !allLayerFieldTexturesEnabled,
-      activeLayerOnlyCurrents: waterColumnUi.currentDisplayMode === 'activeLayerOnly'
+      activeLayerOnlyCurrents: ['activeLayerOnly', 'activeSlice', 'activeCurrentSlice'].includes(waterColumnUi.currentDisplayMode ?? 'activeSlice')
     },
     warnings,
     boundaryFlags: {
@@ -214,7 +238,8 @@ export function augmentMissionWorldWithVolumetricModel(baseViewModel = {}, optio
 export function volumetricCurrentDebugPayload(viewModel = {}, rendererSummary = null, options = {}) {
   const explorer = viewModel.waterColumnExplorer ?? {};
   const fieldSummary = explorer.currentFieldSummary ?? {};
-  const activeLayer = (explorer.layers ?? []).find((layer) => layer.id === explorer.activeLayerId) ?? explorer.layers?.[0] ?? null;
+  const currentActiveLayerId = viewModel.currentActiveLayerId ?? viewModel.currentVisualization?.currentActiveLayerId ?? explorer.currentActiveLayerId ?? explorer.activeLayerId;
+  const activeLayer = (explorer.layers ?? []).find((layer) => layer.id === currentActiveLayerId) ?? explorer.layers?.[0] ?? null;
   const activeVectors = (activeLayer?.currentField?.vectors ?? []).filter((vector) => vector.visible !== false);
   const contextVectors = (explorer.layers ?? []).filter((layer) => layer.id !== activeLayer?.id).reduce((sum, layer) => sum + (layer.currentField?.vectors ?? []).filter((vector) => vector.visible !== false).length, 0);
   const selectedSourceCurrent = selectCurrentSampleForLayer(explorer.selectedCurrentProfile?.samplesByDepth ?? [], activeLayer?.id ?? explorer.activeLayerId);
@@ -228,6 +253,21 @@ export function volumetricCurrentDebugPayload(viewModel = {}, rendererSummary = 
     timeSeconds: numberOrNull(viewModel.activeTimeSeconds)
   } : null;
   const renderedGliderCurrent = nearestRenderedCurrent(activeLayer?.currentField?.vectors ?? [], glider);
+  const currentVisualization = viewModel.currentVisualization ?? {};
+  const safeModeExplicit = explicitCurrentSafeMode();
+  const presentationRequested = safeModeExplicit ? false : currentVisualization.currentPresentationRequested !== false;
+  const presentationEnabled = presentationRequested && rendererSummary?.currentGlyphPresentationFailed !== true && (rendererSummary?.visibleVectorInstanceCount ?? rendererSummary?.glyphInstanceCount ?? 0) > 0;
+  const noVisibleVectorsReason = presentationEnabled
+    ? null
+    : safeModeExplicit
+      ? 'Safe Display mode'
+      : rendererSummary?.currentGlyphPresentationFailed === true
+        ? 'presentation initialization failed'
+        : !activeLayer
+          ? 'no active layer'
+          : activeVectors.length === 0
+            ? 'no finite samples'
+            : 'current layer outside view or hidden';
   return {
     type: 'anchor.debug.volumetric-current',
     version: 'volumetric-current-debug-flow-r2a',
@@ -241,9 +281,45 @@ export function volumetricCurrentDebugPayload(viewModel = {}, rendererSummary = 
     northSampleCount: fieldSummary.northSampleCount ?? explorer.currentCube?.northAxisMeters?.length ?? 0,
     depthSampleCount: fieldSummary.depthSampleCount ?? explorer.currentCube?.depthAxisMeters?.length ?? 0,
     timeSampleCount: fieldSummary.timeSampleCount ?? explorer.currentCube?.timeAxisSeconds?.length ?? 0,
-    activeLayerId: explorer.activeLayerId ?? viewModel.activeDepthLayerId ?? null,
-    activeDepthMeters: explorer.activeDepthMeters ?? activeLayer?.representativeDepthMeters ?? null,
+    activeLayerId: currentVisualization.currentActiveLayerId ?? viewModel.currentActiveLayerId ?? explorer.activeLayerId ?? viewModel.activeDepthLayerId ?? null,
+    activeDepthMeters: currentVisualization.currentActiveDepthMeters ?? explorer.activeDepthMeters ?? activeLayer?.representativeDepthMeters ?? null,
     activeTimeSeconds: explorer.activeTimeSeconds ?? viewModel.activeTimeSeconds ?? 0,
+    currentPresentationRequested: presentationRequested,
+    currentPresentationEnabled: presentationEnabled,
+    currentDisplayMode: currentVisualization.currentDisplayMode ?? normalizeCurrentDisplayMode(viewModel.waterColumn?.currentDisplayMode ?? viewModel.displaySettings?.waterColumn?.currentDisplayMode ?? 'activeSlice'),
+    currentSafeModeExplicit: safeModeExplicit,
+    currentActiveLayerId: currentVisualization.currentActiveLayerId ?? explorer.activeLayerId ?? viewModel.activeDepthLayerId ?? null,
+    currentActiveDepthMeters: currentVisualization.currentActiveDepthMeters ?? explorer.activeDepthMeters ?? activeLayer?.representativeDepthMeters ?? null,
+    currentActiveTimeSeconds: currentVisualization.currentActiveTimeSeconds ?? explorer.activeTimeSeconds ?? viewModel.activeTimeSeconds ?? 0,
+    sourceVectorSampleCount: rendererSummary?.sourceVectorSampleCount ?? activeVectors.length,
+    finiteVectorSampleCount: rendererSummary?.finiteVectorSampleCount ?? activeVectors.length,
+    nonzeroVectorSampleCount: rendererSummary?.nonzeroVectorSampleCount ?? activeVectors.filter((vector) => Math.hypot(Number(vector.uEastMetersPerSecond ?? vector.u ?? 0), Number(vector.vNorthMetersPerSecond ?? vector.v ?? 0)) > 1e-5).length,
+    terrainMaskedVectorCount: rendererSummary?.terrainMaskedVectorCount ?? activeVectors.filter((vector) => vector.masked === true || vector.wet === false).length,
+    belowBottomVectorCount: rendererSummary?.belowBottomVectorCount ?? activeVectors.filter((vector) => vector.belowBottom === true).length,
+    visibleVectorInstanceCount: rendererSummary?.visibleVectorInstanceCount ?? rendererSummary?.glyphInstanceCount ?? 0,
+    glyphMeshVisible: rendererSummary?.glyphMeshVisible === true,
+    glyphParentVisible: rendererSummary?.glyphParentVisible === true,
+    glyphFrustumCulled: rendererSummary?.glyphFrustumCulled === true,
+    glyphBoundsInFrustum: rendererSummary?.glyphBoundsInFrustum ?? null,
+    glyphMinimumScale: rendererSummary?.glyphMinimumScale ?? null,
+    glyphMaximumScale: rendererSummary?.glyphMaximumScale ?? null,
+    glyphOpacity: rendererSummary?.glyphOpacity ?? null,
+    glyphDepthTest: rendererSummary?.glyphDepthTest ?? null,
+    glyphDepthWrite: rendererSummary?.glyphDepthWrite ?? null,
+    glyphRenderOrder: rendererSummary?.glyphRenderOrder ?? null,
+    glyphLayerOffsetWorld: rendererSummary?.glyphLayerOffsetWorld ?? null,
+    glyphBoundsMinimum: rendererSummary?.glyphBoundsMinimum ?? null,
+    glyphBoundsMaximum: rendererSummary?.glyphBoundsMaximum ?? null,
+    glyphBoundsRadius: rendererSummary?.glyphBoundsRadius ?? null,
+    cameraNear: rendererSummary?.cameraNear ?? null,
+    cameraFar: rendererSummary?.cameraFar ?? null,
+    shaderCompileStatus: rendererSummary?.currentGlyphPresentationFailed === true ? 'failed' : 'not-applicable-fixed-pipeline-material',
+    shaderLinkStatus: rendererSummary?.currentGlyphPresentationFailed === true ? 'failed' : 'not-applicable-fixed-pipeline-material',
+    webglContextLost: rendererSummary?.webglContextLost === true,
+    visiblePixelEvidenceAvailable: false,
+    visiblePixelDifferenceCount: 0,
+    visiblePixelDifferenceRatio: 0,
+    noVisibleVectorsReason,
     activeVectorCount: activeVectors.length,
     contextVectorCount: contextVectors,
     glyphInstanceCount: rendererSummary?.glyphInstanceCount ?? rendererSummary?.instancedCurrentGlyphSummary?.glyphInstanceCount ?? 0,
@@ -271,6 +347,44 @@ export function volumetricCurrentDebugPayload(viewModel = {}, rendererSummary = 
   };
 }
 
+function buildCurrentVisualizationSummary({ waterColumnUi = {}, waterColumnExplorer = {}, activeDepthLayerId = null, activeTimeSeconds = 0, showCurrents = true } = {}) {
+  const displayMode = normalizeCurrentDisplayMode(waterColumnUi.currentDisplayMode ?? 'activeSlice');
+  const activeLayer = (waterColumnExplorer.layers ?? []).find((layer) => layer.id === activeDepthLayerId) ?? waterColumnExplorer.layers?.find((layer) => layer.id === waterColumnExplorer.activeLayerId) ?? waterColumnExplorer.layers?.[0] ?? null;
+  const vectors = (activeLayer?.currentField?.vectors ?? []).filter((vector) => vector.visible !== false);
+  const finite = vectors.filter((vector) => Number.isFinite(Number(vector.uEastMetersPerSecond ?? vector.u)) && Number.isFinite(Number(vector.vNorthMetersPerSecond ?? vector.v)));
+  return {
+    type: 'anchor.rendering.current-visualization-summary',
+    version: 'current-visualization-summary-flow-r2a-2',
+    currentVisualizationAvailable: vectors.length > 0,
+    currentPresentationRequested: showCurrents !== false,
+    currentPresentationEnabled: showCurrents !== false && vectors.length > 0,
+    currentDisplayMode: displayMode,
+    currentLayerMode: waterColumnUi.currentLayerMode ?? 'followSelectedGlider',
+    currentActiveLayerId: activeLayer?.id ?? activeDepthLayerId ?? waterColumnExplorer.activeLayerId ?? null,
+    currentActiveDepthMeters: waterColumnExplorer.activeDepthMeters ?? activeLayer?.representativeDepthMeters ?? null,
+    currentActiveTimeSeconds: waterColumnExplorer.activeTimeSeconds ?? activeTimeSeconds ?? 0,
+    currentVectorSampleCount: vectors.length,
+    currentVectorValidCount: finite.length,
+    currentVectorDensity: waterColumnUi.currentVectorDensity ?? 'balanced',
+    currentMagnitudeScale: Number(waterColumnUi.currentMagnitudeScale ?? 1.8),
+    currentColorMode: waterColumnUi.currentColorMode ?? 'speed',
+    showContextCurrents: waterColumnUi.showContextCurrents === true,
+    usesFullCurrentCubeClone: false
+  };
+}
+
+function normalizeCurrentDisplayMode(mode) {
+  if (mode === 'activeLayerOnly' || mode === 'activeCurrentSlice') return 'activeSlice';
+  if (mode === 'allLayers' || mode === 'stackedCurrentSlabs') return 'allLayers';
+  return String(mode ?? 'activeSlice');
+}
+function explicitCurrentSafeMode() {
+  try {
+    return new URLSearchParams(globalThis.location?.search ?? '').get('currentDisplay') === 'safe';
+  } catch (_error) {
+    return false;
+  }
+}
 function selectCurrentSampleForLayer(samples = [], layerId = null) {
   return samples.find((sample) => sample.layerId === layerId) ?? samples[0] ?? null;
 }
@@ -602,6 +716,40 @@ function targetLayerForRoute(route, activeDepthLayerId) {
   return route.targetDepthLayerId ?? route.points?.find((point) => point.targetDepthLayerId)?.targetDepthLayerId ?? activeDepthLayerId;
 }
 
+function resolveActiveDepthLayerForCurrent({ requestedLayerId = null, waterColumnUi = {}, baseViewModel = {}, waterColumnConfig = {} } = {}) {
+  const requested = normalizeActiveLayer(requestedLayerId, waterColumnConfig);
+  if (waterColumnUi.currentLayerMode === 'manualActiveLayer') return requested;
+  const gliders = baseViewModel.gliderPoses ?? baseViewModel.gliders ?? [];
+  const selected = gliders.find((candidate) => candidate.selected) ?? gliders[0] ?? null;
+  const depthMeters = actualGliderDepthMeters(selected);
+  if (!Number.isFinite(depthMeters)) return requested;
+  return nearestLayerForDepth(depthMeters, waterColumnConfig) ?? requested;
+}
+
+function actualGliderDepthMeters(glider = null) {
+  if (!glider) return null;
+  const explicit = numberOrNull(glider.depthMeters ?? glider.actualDepthMeters);
+  if (Number.isFinite(explicit)) return Math.max(0, explicit);
+  const z = numberOrNull(glider.z);
+  return Number.isFinite(z) ? Math.max(0, -z) : null;
+}
+
+function nearestLayerForDepth(depthMeters, config = {}) {
+  const candidates = (config.depthLayerIds ?? []).filter((id) => id !== 'integratedWaterColumn');
+  if (!candidates.length) return null;
+  let best = candidates[0];
+  let bestDistance = Infinity;
+  for (const id of candidates) {
+    const nominal = numberOrNull(config.layerMetadata?.[id]?.nominalDepthMeters ?? waterColumnLayerMetadata(id).nominalDepthMeters);
+    if (!Number.isFinite(nominal)) continue;
+    const distance = Math.abs(Number(depthMeters) - nominal);
+    if (distance < bestDistance) {
+      best = id;
+      bestDistance = distance;
+    }
+  }
+  return best;
+}
 function normalizeActiveLayer(value, config) {
   const text = String(value ?? '').trim();
   if (config.depthLayerIds.includes(text) || text === 'integratedWaterColumn') return text;

@@ -1165,3 +1165,7 @@ Water-column current slabs show U/V samples from one 4D current cube. Active, st
 ## FLOW-R2A.1 Current Launch Stability
 
 If Simulation appears to stall when volumetric currents are visible, inspect `globalThis.ANCHOR_SIMULATION_LAUNCH_DEBUG`. For a normal launch, current cube build, normalization, and sampler creation counters should remain bounded at one or less per launch. `?currentDisplay=safe` can be used to disable current-glyph presentation while preserving canonical current physics. Glyph presentation failures should show a warning instead of blocking mission execution. See `docs/current_presentation_fail_soft.md`.
+
+### FLOW-R2A.2 Visible Current Vectors
+
+Modern water-column missions should show current vectors in Planning and Simulation without extra setup. Use the Currents controls in the Water Column console section to show/hide vectors, choose Active Slice or All Layers, follow selected-glider depth, adjust density/scale/color, and optionally show context layers. These controls are presentation-only: they do not change drift, route validity, scoring, or replay. If the URL includes ?currentDisplay=safe, the app hides current vectors and shows the Safe Display warning while current physics remain active.

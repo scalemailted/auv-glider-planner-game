@@ -999,3 +999,7 @@ The mission current environment now has a browser/headless-safe 4D contract: `F(
 ### FLOW-R2A.1 Launch Stabilization
 
 The volumetric current launch path is guarded by `globalThis.ANCHOR_SIMULATION_LAUNCH_DEBUG` and focused smoke/E2E checks. One mission launch should build at most one current cube and one prepared sampler, and simulation sampling must not rebuild, normalize, digest, or clone the full current cube. Current glyph failures degrade presentation only and show: "Volumetric current visualization could not be initialized. Mission physics still use the canonical current field." See [FLOW-R2A.1 Launch Acceptance](docs/flow_r2a_1_launch_acceptance.md).
+
+### FLOW-R2A.2 Visible Current Glyphs
+
+Planning and Simulation now expose instanced Three.js current glyphs by default for modern water-column missions. The normal display mode is `activeSlice`, layer tracking follows the selected glider depth when an actual depth is available, density defaults to `balanced`, context layers are hidden by default, and glyph material/order/offset are tuned to remain visible over slabs and scalar fields. `?currentDisplay=safe` is the only safe-mode switch; it hides glyph presentation and shows a warning while canonical current physics continue to run. Pixel-level headed acceptance lives in `tests/e2e/flow_r2a_2_visible_currents.spec.js`, with owner-review screenshots under `test-results/flow-r2a-2-owner-review/`.

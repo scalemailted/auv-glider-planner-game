@@ -68,7 +68,7 @@ import { attemptSourceFromRouteSourceLabel } from '../../../core/benchmark/Bench
 import { buildSimulationWorldRenderViewModel, validateSimulationWorldRenderViewModel, simulationWorldRenderViewModelSummary } from '../../../core/rendering/SimulationWorldRenderViewModel.js';
 import { gridCellToWorld } from '../../../core/rendering/MissionWorldCoordinates.js';
 import { depthLayerCellCenterToWorld } from '../../../core/rendering/VolumetricMissionCoordinates.js';
-import { augmentMissionWorldWithVolumetricModel, waterColumnRenderDebugPayload } from '../../../core/rendering/VolumetricMissionWorldViewModel.js';
+import { augmentMissionWorldWithVolumetricModel, waterColumnRenderDebugPayload, volumetricCurrentDebugPayload } from '../../../core/rendering/VolumetricMissionWorldViewModel.js';
 import { createThreeMissionSceneLifecycle, registerThreeMissionSceneResource, disposeThreeMissionSceneLifecycle, threeMissionSceneLifecycleSummary } from '../../three/ThreeMissionSceneLifecycle.js';
 import { publishSceneIsolationDebug } from '../../../ui/MissionShellReset.js';
 import { createMissionWorldInteractionResult } from '../../../core/rendering/MissionWorldInteractionResult.js';
@@ -709,6 +709,12 @@ export class SimulationScene extends PhaserScene {
       fieldDisplayMode: existing.fieldDisplayMode === 'allLayers' || existing.showFieldOnAllLayers === true ? 'allLayers' : 'activeLayerOnly',
       showFieldOnAllLayers: existing.fieldDisplayMode === 'allLayers' || existing.showFieldOnAllLayers === true,
       qualityProfile: normalizeThreeQualityProfile(existing.qualityProfile ?? this.app.state.ui.threeMissionQualityProfile ?? 'balanced'),
+      currentDisplayMode: normalizeCurrentDisplayModeAlias(existing.currentDisplayMode ?? 'activeSlice'),
+      currentLayerMode: existing.currentLayerMode ?? 'followSelectedGlider',
+      currentVectorDensity: normalizeCurrentVectorDensity(existing.currentVectorDensity ?? 'balanced'),
+      currentMagnitudeScale: clampNumber(existing.currentMagnitudeScale, 1.8, 0.25, 6),
+      currentColorMode: ['speed', 'direction', 'depthLayer', 'assistOpposeRoute'].includes(existing.currentColorMode) ? existing.currentColorMode : 'speed',
+      showContextCurrents: existing.showContextCurrents === true,
       userModified: false,
       defaultDisplayModeApplied: true
     };
@@ -1737,6 +1743,9 @@ export class SimulationScene extends PhaserScene {
       canonicalObservationCount
     });
     globalThis.ANCHOR_WATER_COLUMN_RENDER_DEBUG = waterColumnDebug;
+    const volumetricCurrentDebug = volumetricCurrentDebugPayload(viewModel ?? {}, rendererSummary, { terrainDigest: rendererSummary?.terrainSourceDigest ?? null });
+    globalThis.ANCHOR_VOLUMETRIC_CURRENT_DEBUG = volumetricCurrentDebug;
+    const currentViewportWarning = currentVectorViewportWarning(volumetricCurrentDebug);
     const performanceDebug = createThreePerformanceDebugPayload({
       rendererSummary,
       phase: 'simulation',
@@ -1777,6 +1786,24 @@ export class SimulationScene extends PhaserScene {
       renderedSimulationTimeSeconds: viewModel?.activeTimeSeconds ?? null,
       renderedScalarFieldTimeSeconds: viewModel?.scalarFieldLayer?.timeSeconds ?? null,
       renderedCurrentFieldTimeSeconds: viewModel?.vectorFieldLayer?.timeSeconds ?? null,
+      currentVisualizationAvailable: viewModel?.currentVisualizationAvailable === true,
+      currentPresentationRequested: volumetricCurrentDebug.currentPresentationRequested === true,
+      currentPresentationEnabled: volumetricCurrentDebug.currentPresentationEnabled === true,
+      currentGlyphPresentationEnabled: volumetricCurrentDebug.currentPresentationEnabled === true,
+      currentDisplayMode: volumetricCurrentDebug.currentDisplayMode ?? null,
+      currentSafeModeExplicit: volumetricCurrentDebug.currentSafeModeExplicit === true,
+      currentActiveLayerId: volumetricCurrentDebug.currentActiveLayerId ?? null,
+      currentActiveDepthMeters: volumetricCurrentDebug.currentActiveDepthMeters ?? null,
+      currentActiveTimeSeconds: volumetricCurrentDebug.currentActiveTimeSeconds ?? null,
+      currentVectorSampleCount: volumetricCurrentDebug.sourceVectorSampleCount ?? 0,
+      currentVectorValidCount: volumetricCurrentDebug.finiteVectorSampleCount ?? 0,
+      currentNonzeroVectorCount: volumetricCurrentDebug.nonzeroVectorSampleCount ?? 0,
+      currentVisibleVectorInstanceCount: volumetricCurrentDebug.visibleVectorInstanceCount ?? 0,
+      currentGlyphBoundsInFrustum: volumetricCurrentDebug.glyphBoundsInFrustum ?? null,
+      currentGlyphOpacity: volumetricCurrentDebug.glyphOpacity ?? null,
+      currentGlyphRenderOrder: volumetricCurrentDebug.glyphRenderOrder ?? null,
+      currentNoVisibleVectorsReason: volumetricCurrentDebug.noVisibleVectorsReason ?? null,
+      currentViewportWarning,
       terrainSourceDigest: rendererSummary?.terrainSourceDigest ?? null,
       terrainMeshDigest: rendererSummary?.terrainMeshDigest ?? null,
       terrainCoordinateProfileId: rendererSummary?.terrainCoordinateProfileId ?? null,
@@ -1875,7 +1902,7 @@ export class SimulationScene extends PhaserScene {
       performanceDebug,
       threePerformanceDebug: performanceDebug,
       interactionControllerSummary: controllerSummary,
-      parityWarnings,
+      parityWarnings: currentViewportWarning ? [...parityWarnings, currentViewportWarning] : parityWarnings,
       pointerOwner: this.getSimulationRendererBackend() === 'threeMission3d' ? 'three' : 'phaser',
       lastPointerConsumer: this.lastThreeSimulationIntent ? 'three' : null,
       threeCanvasPointerEvents: canvasPointerEvents,
@@ -1909,6 +1936,10 @@ export class SimulationScene extends PhaserScene {
       changesOfficialBrowserScoring: false,
       exposesHiddenTruth: false
     };
+    if (currentViewportWarning && currentViewportWarning !== this.lastCurrentViewportWarning) {
+      this.lastCurrentViewportWarning = currentViewportWarning;
+      this.app.toast?.(currentViewportWarning, 'warning');
+    }
     this.installSimulationRenderTestApi();
     this.refreshMigrationDebug();
   }
@@ -3090,6 +3121,31 @@ function getSafeSceneStepDt(level) {
   return Number.isFinite(dt) && dt > 0 ? dt : 0.25;
 }
 
+function currentVectorViewportWarning(debug = {}) {
+  if (debug.currentSafeModeExplicit === true) return 'Current-vector display is disabled by Safe Display mode. Mission physics still use the canonical current field.';
+  if (debug.currentPresentationRequested !== true) return null;
+  if (debug.currentPresentationEnabled === true) return null;
+  if (Number(debug.sourceVectorSampleCount ?? 0) <= 0) return null;
+  return 'Current physics are active, but no current vectors are visible. Reason: ' + (debug.noVisibleVectorsReason ?? 'unknown') + '.';
+}
+
+function normalizeCurrentDisplayModeAlias(value) {
+  if (value === 'allLayers' || value === 'stackedCurrentSlabs' || value === 'explodedCurrentSlabs') return 'allLayers';
+  if (value === 'hidden') return 'hidden';
+  return 'activeSlice';
+}
+
+function normalizeCurrentVectorDensity(value) {
+  if (value === 'sparse' || Number(value) >= 2) return 'sparse';
+  if (value === 'dense') return 'dense';
+  return 'balanced';
+}
+
+function clampNumber(value, fallback, min, max) {
+  const numeric = Number(value);
+  const resolved = Number.isFinite(numeric) ? numeric : fallback;
+  return Math.max(min, Math.min(max, resolved));
+}
 function normalizeThreeQualityProfile(value) {
   const id = String(value ?? '').trim().toLowerCase();
   if (id === 'performance' || id === 'perf') return 'performance';

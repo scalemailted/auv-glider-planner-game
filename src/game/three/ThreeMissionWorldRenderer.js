@@ -452,6 +452,7 @@ export function threeMissionWorldRendererSummary(renderer = {}) {
   const contourLayerGroup = renderer.bathymetryContourLayer?.group ?? null;
   const renderPolicy = renderCostPolicySummary(vm);
   const currentGlyphSummary = renderer.instancedCurrentGlyphLayer?.lastSummary ?? threeInstancedCurrentGlyphLayerSummary(renderer.instancedCurrentGlyphLayer ?? {}, vm);
+  const currentGlyphFrustum = currentGlyphFrustumSummary(renderer);
   const legacyCurrentVectorObjectCount = renderer.legacyCurrentVectorGroup?.children?.length ?? 0;
   const gate = performanceGate(renderer);
   return {
@@ -503,6 +504,29 @@ export function threeMissionWorldRendererSummary(renderer = {}) {
     glyphBufferAllocationCount: currentGlyphSummary.glyphBufferAllocationCount ?? 0,
     currentGlyphPresentationFailed: renderer.currentGlyphPresentationFailed === true,
     currentGlyphPresentationWarning: renderer.currentGlyphPresentationWarning ?? null,
+    glyphMeshVisible: currentGlyphSummary.glyphMeshVisible === true,
+    glyphParentVisible: currentGlyphSummary.glyphParentVisible === true,
+    glyphFrustumCulled: currentGlyphSummary.glyphFrustumCulled === true,
+    glyphBoundsInFrustum: currentGlyphFrustum.glyphBoundsInFrustum,
+    glyphBoundsMinimum: currentGlyphSummary.glyphBoundsMinimum ?? null,
+    glyphBoundsMaximum: currentGlyphSummary.glyphBoundsMaximum ?? null,
+    glyphBoundsCenter: currentGlyphSummary.glyphBoundsCenter ?? null,
+    glyphBoundsRadius: currentGlyphSummary.glyphBoundsRadius ?? null,
+    glyphMinimumScale: currentGlyphSummary.glyphMinimumScale ?? 0,
+    glyphMaximumScale: currentGlyphSummary.glyphMaximumScale ?? 0,
+    glyphOpacity: currentGlyphSummary.glyphOpacity ?? null,
+    glyphDepthTest: currentGlyphSummary.glyphDepthTest ?? null,
+    glyphDepthWrite: currentGlyphSummary.glyphDepthWrite ?? null,
+    glyphRenderOrder: currentGlyphSummary.glyphRenderOrder ?? null,
+    glyphLayerOffsetWorld: currentGlyphSummary.glyphLayerOffsetWorld ?? null,
+    sourceVectorSampleCount: currentGlyphSummary.sourceVectorSampleCount ?? 0,
+    finiteVectorSampleCount: currentGlyphSummary.finiteVectorSampleCount ?? 0,
+    nonzeroVectorSampleCount: currentGlyphSummary.nonzeroVectorSampleCount ?? 0,
+    visibleVectorInstanceCount: currentGlyphSummary.visibleVectorInstanceCount ?? 0,
+    terrainMaskedVectorCount: currentGlyphSummary.terrainMaskedVectorCount ?? 0,
+    belowBottomVectorCount: currentGlyphSummary.belowBottomVectorCount ?? 0,
+    cameraNear: currentGlyphFrustum.cameraNear,
+    cameraFar: currentGlyphFrustum.cameraFar,
     hazardObjectCount: renderer.groups?.hazardGroup?.children?.length ?? 0,
     dropZoneObjectCount: renderer.groups?.dropZoneGroup?.children?.length ?? 0,
     gliderObjectCount: renderer.groups?.gliderGroup?.children?.length ?? 0,
@@ -858,6 +882,24 @@ function missionBoundsFromViewModel(viewModel = {}) {
   };
 }
 
+function currentGlyphFrustumSummary(renderer = {}) {
+  const mesh = renderer.instancedCurrentGlyphLayer?.mesh ?? null;
+  const camera = renderer.camera ?? null;
+  if (!mesh || !camera) return { glyphBoundsInFrustum: null, cameraNear: camera?.near ?? null, cameraFar: camera?.far ?? null };
+  mesh.updateWorldMatrix?.(true, false);
+  camera.updateMatrixWorld?.();
+  const box = new THREE.Box3().setFromObject(mesh);
+  if (![box.min.x, box.min.y, box.min.z, box.max.x, box.max.y, box.max.z].every(Number.isFinite)) {
+    return { glyphBoundsInFrustum: false, cameraNear: camera.near ?? null, cameraFar: camera.far ?? null };
+  }
+  const frustum = new THREE.Frustum();
+  frustum.setFromProjectionMatrix(new THREE.Matrix4().multiplyMatrices(camera.projectionMatrix, camera.matrixWorldInverse));
+  return {
+    glyphBoundsInFrustum: frustum.intersectsBox(box),
+    cameraNear: camera.near ?? null,
+    cameraFar: camera.far ?? null
+  };
+}
 function defaultLayerVisibility(input = {}) {
   return {
     bathymetry: input.bathymetry !== false,

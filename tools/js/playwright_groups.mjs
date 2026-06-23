@@ -105,6 +105,14 @@ export const PLAYWRIGHT_GROUPS = Object.freeze([
       /^Camera and Current Layer Changes Do Not Reallocate the Current Cube$/i,
       /^FLOW-R2A Simulation Launch Works From GitHub Pages Subpath$/i,
       /^Current Display Safe Mode Keeps Canonical Current Physics$/i,
+      /^Simulation Displays Current Vectors by Default$/i,
+      /^Planning Displays the Active Current Slice$/i,
+      /^Current Glyphs Remain Visible Over Scalar and Water Column Slabs$/i,
+      /^Current Vectors Follow Selected Glider Depth$/i,
+      /^Safe Current Display Is Disabled Only by Explicit Query$/i,
+      /^Current Glyph Camera Presets Preserve Visibility$/i,
+      /^Visible Current Glyphs Do Not Change Mission Outcome$/i,
+      /^Visible Current Vectors Run From GitHub Pages Subpath$/i,
       /^Three Mission Scene Isolation$/i,
       /^Three Scene Cleanup Is Null-Safe and Idempotent$/i,
       /^Generated Mission Opens a Visible Volumetric Water Column$/i,
@@ -175,7 +183,8 @@ export const PLAYWRIGHT_GROUPS = Object.freeze([
       /^THREE-R2A Full Headed Replay and Debrief Walkthrough$/i,
       /^THREE-R2B Full Headed Mission Editor Walkthrough$/i,
       /^THREE-R3A Full Headed Phaser-Free Production Shell Walkthrough$/i,
-      /^FLOW-R2A\.1 Full Headed Simulation Launch Stability Walkthrough$/i
+      /^FLOW-R2A\.1 Full Headed Simulation Launch Stability Walkthrough$/i,
+      /^FLOW-R2A\.2 Full Headed Visible Current Vector Walkthrough$/i
     ]
   }
 ]);

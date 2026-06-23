@@ -518,6 +518,11 @@ export class MissionWorkspaceScene extends PhaserScene {
       adjustWaterColumnOpacity: (delta) => this.adjustWaterColumnOpacity(delta),
       setWaterColumnScalarField: (fieldId) => this.setWaterColumnScalarField(fieldId),
       setWaterColumnCurrentMode: (mode) => this.setWaterColumnCurrentMode(mode),
+      setWaterColumnCurrentLayerMode: (mode) => this.setWaterColumnCurrentLayerMode(mode),
+      setWaterColumnCurrentDensity: (density) => this.setWaterColumnCurrentDensity(density),
+      setWaterColumnCurrentMagnitudeScale: (scale) => this.setWaterColumnCurrentMagnitudeScale(scale),
+      setWaterColumnCurrentColorMode: (mode) => this.setWaterColumnCurrentColorMode(mode),
+      toggleWaterColumnContextCurrents: () => this.toggleWaterColumnContextCurrents(),
       setWaterColumnFieldDisplayMode: (mode) => this.setWaterColumnFieldDisplayMode(mode),
       setThreeQualityProfile: (profile) => this.setThreeQualityProfile(profile),
       setWaterColumnVolumeRenderMode: (mode) => this.setWaterColumnVolumeRenderMode(mode),
@@ -1293,7 +1298,12 @@ export class MissionWorkspaceScene extends PhaserScene {
       fieldDisplayMode: existing.fieldDisplayMode === 'allLayers' || existing.showFieldOnAllLayers === true ? 'allLayers' : 'activeLayerOnly',
       showFieldOnAllLayers: existing.fieldDisplayMode === 'allLayers' || existing.showFieldOnAllLayers === true,
       qualityProfile: normalizeThreeQualityProfile(existing.qualityProfile ?? this.app.state.ui.threeMissionQualityProfile ?? 'balanced'),
-      currentDisplayMode: existing.currentDisplayMode === 'allLayers' ? 'allLayers' : 'activeLayerOnly',
+      currentDisplayMode: normalizeCurrentDisplayModeAlias(existing.currentDisplayMode ?? 'activeSlice'),
+      currentLayerMode: existing.currentLayerMode ?? 'followSelectedGlider',
+      currentVectorDensity: normalizeCurrentVectorDensity(existing.currentVectorDensity ?? 'balanced'),
+      currentMagnitudeScale: clampNumber(existing.currentMagnitudeScale, 1.8, 0.25, 6),
+      currentColorMode: ['speed', 'direction', 'depthLayer', 'assistOpposeRoute'].includes(existing.currentColorMode) ? existing.currentColorMode : 'speed',
+      showContextCurrents: existing.showContextCurrents === true,
       selectedDiveProfileId: normalizeWaterColumnProfileId(existing.selectedDiveProfileId ?? this.selectedAgentPlanWaterColumnValue('diveProfileId') ?? config?.defaultDiveProfileId ?? config?.diveProfileId ?? 'surfaceOnly'),
       selectedTargetDepthLayerId: normalizeWaterColumnLayerId(existing.selectedTargetDepthLayerId ?? this.selectedAgentPlanWaterColumnValue('targetDepthLayerId') ?? config?.defaultTargetDepthLayerId ?? 'surface', active),
       maximumDiveDepthMeters: Number.isFinite(Number(existing.maximumDiveDepthMeters)) ? Number(existing.maximumDiveDepthMeters) : (Number.isFinite(Number(this.selectedAgentPlanWaterColumnValue('maximumDiveDepthMeters'))) ? Number(this.selectedAgentPlanWaterColumnValue('maximumDiveDepthMeters')) : null),
@@ -1509,7 +1519,12 @@ export class MissionWorkspaceScene extends PhaserScene {
       fieldDisplayMode: existing?.fieldDisplayMode === 'allLayers' || existing?.showFieldOnAllLayers === true ? 'allLayers' : 'activeLayerOnly',
       showFieldOnAllLayers: existing?.fieldDisplayMode === 'allLayers' || existing?.showFieldOnAllLayers === true,
       qualityProfile: normalizeThreeQualityProfile(existing?.qualityProfile ?? this.app.state.ui.threeMissionQualityProfile ?? 'balanced'),
-      currentDisplayMode: 'activeLayerOnly',
+      currentDisplayMode: normalizeCurrentDisplayModeAlias(existing?.currentDisplayMode ?? 'activeSlice'),
+      currentLayerMode: existing?.currentLayerMode ?? 'followSelectedGlider',
+      currentVectorDensity: normalizeCurrentVectorDensity(existing?.currentVectorDensity ?? 'balanced'),
+      currentMagnitudeScale: clampNumber(existing?.currentMagnitudeScale, 1.8, 0.25, 6),
+      currentColorMode: ['speed', 'direction', 'depthLayer', 'assistOpposeRoute'].includes(existing?.currentColorMode) ? existing.currentColorMode : 'speed',
+      showContextCurrents: existing?.showContextCurrents === true,
       selectedDiveProfileId: config?.defaultDiveProfileId ?? config?.diveProfileId ?? 'surfaceOnly',
       selectedTargetDepthLayerId: config?.defaultTargetDepthLayerId ?? 'surface',
       maximumDiveDepthMeters: null,
@@ -1606,7 +1621,52 @@ export class MissionWorkspaceScene extends PhaserScene {
 
   setWaterColumnCurrentMode(mode) {
     const ui = this.ensureWaterColumnUiState();
-    ui.currentDisplayMode = mode === 'allLayers' ? 'allLayers' : 'activeLayerOnly';
+    ui.currentDisplayMode = normalizeCurrentDisplayModeAlias(mode);
+    ui.userModified = true;
+    this.ensureContinuousMissionUiState();
+    this.refreshPanels();
+    this.refreshMap();
+  }
+
+  setWaterColumnCurrentLayerMode(mode) {
+    const ui = this.ensureWaterColumnUiState();
+    ui.currentLayerMode = mode === 'manualActiveLayer' ? 'manualActiveLayer' : 'followSelectedGlider';
+    ui.userModified = true;
+    this.ensureContinuousMissionUiState();
+    this.refreshPanels();
+    this.refreshMap();
+  }
+
+  setWaterColumnCurrentDensity(density) {
+    const ui = this.ensureWaterColumnUiState();
+    ui.currentVectorDensity = normalizeCurrentVectorDensity(density);
+    ui.userModified = true;
+    this.ensureContinuousMissionUiState();
+    this.refreshPanels();
+    this.refreshMap();
+  }
+
+  setWaterColumnCurrentMagnitudeScale(scale) {
+    const ui = this.ensureWaterColumnUiState();
+    ui.currentMagnitudeScale = clampNumber(scale, 1.8, 0.25, 6);
+    ui.userModified = true;
+    this.ensureContinuousMissionUiState();
+    this.refreshPanels();
+    this.refreshMap();
+  }
+
+  setWaterColumnCurrentColorMode(mode) {
+    const ui = this.ensureWaterColumnUiState();
+    ui.currentColorMode = ['speed', 'direction', 'depthLayer', 'assistOpposeRoute'].includes(mode) ? mode : 'speed';
+    ui.userModified = true;
+    this.ensureContinuousMissionUiState();
+    this.refreshPanels();
+    this.refreshMap();
+  }
+
+  toggleWaterColumnContextCurrents() {
+    const ui = this.ensureWaterColumnUiState();
+    ui.showContextCurrents = ui.showContextCurrents !== true;
     ui.userModified = true;
     this.ensureContinuousMissionUiState();
     this.refreshPanels();
@@ -2046,7 +2106,7 @@ export class MissionWorkspaceScene extends PhaserScene {
       waterSurface: layers.waterSurface !== false,
       depthLayers: layers.depthLayers !== false,
       scalarField: layers.scalarField !== false && this.app.state.ui?.showROI !== false,
-      currentVectors: layers.currentVectors !== false && this.app.state.ui?.showCurrents !== false,
+      currentVectors: layers.currentVectors !== false && this.app.state.ui?.showCurrents !== false && new URLSearchParams(globalThis.location?.search ?? '').get('currentDisplay') !== 'safe',
       hazards: layers.hazards !== false && this.app.state.ui?.showHazards !== false,
       constraints: layers.constraints !== false && this.app.state.ui?.showTerrain !== false,
       dropZones: layers.dropZones !== false,
@@ -2149,6 +2209,11 @@ export class MissionWorkspaceScene extends PhaserScene {
       glyphInstanceCount: volumetricCurrentDebug.glyphInstanceCount
     };
     globalThis.ANCHOR_VOLUMETRIC_CURRENT_DEBUG = volumetricCurrentDebug;
+    const currentViewportWarning = currentVectorViewportWarning(volumetricCurrentDebug);
+    if (currentViewportWarning && currentViewportWarning !== this.lastCurrentViewportWarning) {
+      this.lastCurrentViewportWarning = currentViewportWarning;
+      this.app.toast?.(currentViewportWarning, 'warning');
+    }
     this.app.state.ui ??= {};
     this.app.state.ui.divePlanDebug = plannedDiveDebug;
     this.app.state.ui.segmentFlightPlanDebug = segmentFlightPlanDebug;
@@ -5773,6 +5838,24 @@ function stableStringifyForScene(value) {
 function roundSceneNumberOrNull(value, digits = 6) {
   const number = Number(value);
   return Number.isFinite(number) ? Number(number.toFixed(digits)) : null;
+}
+function currentVectorViewportWarning(debug = {}) {
+  if (debug.currentSafeModeExplicit === true) return 'Current-vector display is disabled by Safe Display mode. Mission physics still use the canonical current field.';
+  if (debug.currentPresentationRequested !== true) return null;
+  if (debug.currentPresentationEnabled === true) return null;
+  if (Number(debug.sourceVectorSampleCount ?? 0) <= 0) return null;
+  return 'Current physics are active, but no current vectors are visible. Reason: ' + (debug.noVisibleVectorsReason ?? 'unknown') + '.';
+}
+function normalizeCurrentDisplayModeAlias(value) {
+  if (value === 'allLayers' || value === 'stackedCurrentSlabs' || value === 'explodedCurrentSlabs') return 'allLayers';
+  if (value === 'hidden') return 'hidden';
+  return 'activeSlice';
+}
+
+function normalizeCurrentVectorDensity(value) {
+  if (value === 'sparse' || Number(value) >= 2) return 'sparse';
+  if (value === 'dense') return 'dense';
+  return 'balanced';
 }
 function normalizeThreeQualityProfile(value) {
   const id = String(value ?? '').trim().toLowerCase();

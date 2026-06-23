@@ -17,6 +17,7 @@ assert.equal(index.includes('src/app/main.js'), false);
 assert.equal(index.includes('AnchorBrowserRuntime'), false);
 assert.match(renderer, /disposeThreeGpuTimer/, 'renderer teardown disposes optional GPU timer diagnostics');
 assert.match(renderer, /disposeThreeInstancedCurrentGlyphLayer/, 'renderer teardown disposes FLOW-R2A instanced current glyph resources');
+assert.match(renderer, /currentGlyphFrustumSummary/, 'renderer publishes bounded current glyph frustum diagnostics');
 const nextHost = readFileSync('src/app/production/AnchorProductionViewHost.js', 'utf8');
 assert.match(nextHost, /disposeActiveView/, 'R3A next shell has route-scoped disposal');
 assert.match(nextHost, /clearRouteRegions/, 'R3A next shell clears route-owned regions on transition');

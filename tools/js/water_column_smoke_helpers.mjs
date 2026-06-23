@@ -1,4 +1,4 @@
-﻿import assert from 'node:assert/strict';
+import assert from 'node:assert/strict';
 import { createMissionWorldCoordinateTransform } from '../../src/core/rendering/MissionWorldCoordinates.js';
 import { buildVolumetricMissionWorldViewModel } from '../../src/core/rendering/VolumetricMissionWorldViewModel.js';
 
@@ -108,7 +108,12 @@ export function makeVolumetricViewModel(options = {}) {
         verticalDisplayMode: options.verticalDisplayMode ?? 'physicalDepth',
         activeDepthLayerId: options.activeDepthLayerId ?? 'thermocline',
         selectedScalarFieldId: 'sampleValue',
-        currentDisplayMode: 'activeLayerOnly',
+        currentDisplayMode: 'activeSlice',
+        currentLayerMode: 'followSelectedGlider',
+        currentVectorDensity: 'balanced',
+        currentMagnitudeScale: 1.8,
+        currentColorMode: 'speed',
+        showContextCurrents: false,
         ...(options.waterColumnUi ?? {})
       }
     }

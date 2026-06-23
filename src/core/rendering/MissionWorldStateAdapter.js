@@ -198,7 +198,12 @@ function normalizeDisplaySettings(ui = {}, patch = {}) {
       globalOpacity: ui.waterColumn?.globalOpacity ?? patch.waterColumn?.globalOpacity ?? 0.26,
       activeLayerEmphasis: ui.waterColumn?.activeLayerEmphasis ?? patch.waterColumn?.activeLayerEmphasis ?? 1.85,
       selectedScalarFieldId: ui.waterColumn?.selectedScalarFieldId ?? patch.waterColumn?.selectedScalarFieldId ?? patch.scalarFieldId ?? 'sampleValue',
-      currentDisplayMode: ui.waterColumn?.currentDisplayMode ?? patch.waterColumn?.currentDisplayMode ?? 'activeLayerOnly',
+      currentDisplayMode: ui.waterColumn?.currentDisplayMode ?? patch.waterColumn?.currentDisplayMode ?? 'activeSlice',
+      currentLayerMode: ui.waterColumn?.currentLayerMode ?? patch.waterColumn?.currentLayerMode ?? 'followSelectedGlider',
+      currentVectorDensity: ui.waterColumn?.currentVectorDensity ?? patch.waterColumn?.currentVectorDensity ?? 1,
+      currentMagnitudeScale: ui.waterColumn?.currentMagnitudeScale ?? patch.waterColumn?.currentMagnitudeScale ?? 1.8,
+      currentColorMode: ui.waterColumn?.currentColorMode ?? patch.waterColumn?.currentColorMode ?? 'speed',
+      showContextCurrents: ui.waterColumn?.showContextCurrents === true || patch.waterColumn?.showContextCurrents === true,
       fieldDisplayMode: ui.waterColumn?.fieldDisplayMode ?? patch.waterColumn?.fieldDisplayMode ?? (ui.waterColumn?.showFieldOnAllLayers === true || patch.waterColumn?.showFieldOnAllLayers === true ? 'allLayers' : 'activeLayerOnly'),
       showFieldOnAllLayers: ui.waterColumn?.showFieldOnAllLayers === true || patch.waterColumn?.showFieldOnAllLayers === true,
       qualityProfile: ui.waterColumn?.qualityProfile ?? ui.threeMissionQualityProfile ?? patch.waterColumn?.qualityProfile ?? patch.qualityProfile ?? 'balanced',
@@ -408,4 +413,3 @@ function finiteNumber(value, fallback = 0) {
 function round(value, digits = 4) {
   return Number(Number(value).toFixed(digits));
 }
-
