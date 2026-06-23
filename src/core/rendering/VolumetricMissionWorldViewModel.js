@@ -279,6 +279,8 @@ export function volumetricCurrentDebugPayload(viewModel = {}, rendererSummary = 
     sourceTier: fieldSummary.sourceTier ?? explorer.currentCube?.sourceMetadata?.sourceTier ?? null,
     sourceType: fieldSummary.sourceType ?? explorer.currentCube?.sourceMetadata?.sourceType ?? null,
     equationFamily: fieldSummary.equationFamily ?? explorer.currentCube?.sourceMetadata?.equationFamily ?? null,
+    sourceId: fieldSummary.sourceMetadata?.sourceId ?? explorer.currentCube?.sourceMetadata?.sourceId ?? null,
+    componentIds: fieldSummary.componentIds ?? explorer.currentCube?.sourceMetadata?.componentIds ?? (explorer.currentCube?.sourceMetadata?.components ?? []).map((component) => component.id).filter(Boolean),
     depthDependent: fieldSummary.depthDependent === true || explorer.currentCube?.sourceMetadata?.depthDependent === true,
     timeDependent: fieldSummary.timeDependent === true || explorer.currentCube?.sourceMetadata?.timeDependent === true,
     usesManufacturedField: (fieldSummary.sourceTier ?? explorer.currentCube?.sourceMetadata?.sourceTier) === 'manufacturedAnalytical',
@@ -293,6 +295,8 @@ export function volumetricCurrentDebugPayload(viewModel = {}, rendererSummary = 
     timeSampleCount: fieldSummary.timeSampleCount ?? explorer.currentCube?.timeAxisSeconds?.length ?? 0,
     sourceDepthCount: fieldSummary.depthSampleCount ?? explorer.currentCube?.depthAxisMeters?.length ?? 0,
     sourceTimeCount: fieldSummary.timeSampleCount ?? explorer.currentCube?.timeAxisSeconds?.length ?? 0,
+    sourceDepthMeters: fieldSummary.sourceDepthMeters ?? explorer.currentCube?.depthAxisMeters ?? [],
+    sourceTimeSeconds: fieldSummary.sourceTimeSeconds ?? explorer.currentCube?.timeAxisSeconds ?? [],
     activeLayerId: currentVisualization.currentActiveLayerId ?? viewModel.currentActiveLayerId ?? explorer.activeLayerId ?? viewModel.activeDepthLayerId ?? null,
     activeDepthMeters: currentVisualization.currentActiveDepthMeters ?? explorer.activeDepthMeters ?? activeLayer?.representativeDepthMeters ?? null,
     activeTimeSeconds: explorer.activeTimeSeconds ?? viewModel.activeTimeSeconds ?? 0,
@@ -304,9 +308,16 @@ export function volumetricCurrentDebugPayload(viewModel = {}, rendererSummary = 
     currentActiveLayerId: currentVisualization.currentActiveLayerId ?? explorer.activeLayerId ?? viewModel.activeDepthLayerId ?? null,
     currentActiveDepthMeters: currentVisualization.currentActiveDepthMeters ?? explorer.activeDepthMeters ?? activeLayer?.representativeDepthMeters ?? null,
     currentActiveTimeSeconds: currentVisualization.currentActiveTimeSeconds ?? explorer.activeTimeSeconds ?? viewModel.activeTimeSeconds ?? 0,
+    activeDisplayMode: currentVisualization.currentDisplayMode ?? normalizeCurrentDisplayMode(viewModel.waterColumn?.currentDisplayMode ?? viewModel.displaySettings?.waterColumn?.currentDisplayMode ?? 'activeSlice'),
     sourceVectorSampleCount: rendererSummary?.sourceVectorSampleCount ?? activeVectors.length,
     finiteVectorSampleCount: rendererSummary?.finiteVectorSampleCount ?? activeVectors.length,
     nonzeroVectorSampleCount: rendererSummary?.nonzeroVectorSampleCount ?? activeVectors.filter((vector) => Math.hypot(Number(vector.uEastMetersPerSecond ?? vector.u ?? 0), Number(vector.vNorthMetersPerSecond ?? vector.v ?? 0)) > 1e-5).length,
+    canonicalMagnitudeMinimum: rendererSummary?.canonicalMagnitudeMinimum ?? fieldSummary.diagnostics?.speedMinimum ?? fieldSummary.speedStatistics?.min ?? null,
+    canonicalMagnitudeMean: rendererSummary?.canonicalMagnitudeMean ?? fieldSummary.diagnostics?.speedMean ?? fieldSummary.speedStatistics?.mean ?? null,
+    canonicalMagnitudeMaximum: rendererSummary?.canonicalMagnitudeMaximum ?? fieldSummary.diagnostics?.speedMaximum ?? fieldSummary.speedStatistics?.max ?? null,
+    calmThresholdMetersPerSecond: rendererSummary?.calmThresholdMetersPerSecond ?? fieldSummary.calmThresholdMetersPerSecond ?? fieldSummary.diagnostics?.calmThresholdMetersPerSecond ?? explorer.currentCube?.sourceMetadata?.calmThresholdMetersPerSecond ?? null,
+    calmVectorCount: rendererSummary?.calmVectorCount ?? fieldSummary.calmVectorCount ?? fieldSummary.diagnostics?.calmVectorCount ?? 0,
+    distinctMagnitudeBinCount: rendererSummary?.distinctMagnitudeBinCount ?? activeVectorsMagnitudeBinCount(activeVectors),
     terrainMaskedVectorCount: rendererSummary?.terrainMaskedVectorCount ?? activeVectors.filter((vector) => vector.masked === true || vector.wet === false).length,
     belowBottomVectorCount: rendererSummary?.belowBottomVectorCount ?? activeVectors.filter((vector) => vector.belowBottom === true).length,
     visibleVectorInstanceCount: rendererSummary?.visibleVectorInstanceCount ?? rendererSummary?.glyphInstanceCount ?? 0,
@@ -329,6 +340,10 @@ export function volumetricCurrentDebugPayload(viewModel = {}, rendererSummary = 
     glyphParentVisible: rendererSummary?.glyphParentVisible === true,
     glyphFrustumCulled: rendererSummary?.glyphFrustumCulled === true,
     glyphBoundsInFrustum: rendererSummary?.glyphBoundsInFrustum ?? null,
+    glyphLengthMinimum: rendererSummary?.glyphLengthMinimum ?? rendererSummary?.glyphMinimumScale ?? null,
+    glyphLengthMean: rendererSummary?.glyphLengthMean ?? null,
+    glyphLengthMaximum: rendererSummary?.glyphLengthMaximum ?? rendererSummary?.glyphMaximumScale ?? null,
+
     glyphMinimumScale: rendererSummary?.glyphMinimumScale ?? null,
     glyphMaximumScale: rendererSummary?.glyphMaximumScale ?? null,
     glyphOpacity: rendererSummary?.glyphOpacity ?? null,
@@ -368,6 +383,8 @@ export function volumetricCurrentDebugPayload(viewModel = {}, rendererSummary = 
     activeRendererCount: rendererSummary?.activeRendererCount ?? 0,
     activeRafCount: rendererSummary?.activeRafCount ?? 0,
     rendererOwnsCurrent: false,
+    displayChangesPhysics: false,
+
     displayLayerChangesCurrent: false,
     changesOfficialScoring: false,
     usesNewPlanner: false,
@@ -382,6 +399,22 @@ export function volumetricCurrentDebugPayload(viewModel = {}, rendererSummary = 
     temporalChangeRms: fieldSummary.temporalChangeRms ?? null,
     alongIsobathFraction: fieldSummary.alongIsobathFraction ?? null,
     crossIsobathFraction: fieldSummary.crossIsobathFraction ?? null,
+    alongIsobathSpeedRms: fieldSummary.alongIsobathSpeedRms ?? fieldSummary.diagnostics?.alongIsobathSpeedRms ?? null,
+    crossIsobathSpeedRms: fieldSummary.crossIsobathSpeedRms ?? fieldSummary.diagnostics?.crossIsobathSpeedRms ?? null,
+    adjacentDirectionDifferenceMeanDegrees: fieldSummary.adjacentDirectionDifferenceMeanDegrees ?? fieldSummary.diagnostics?.adjacentDirectionDifferenceMeanDegrees ?? null,
+    adjacentDirectionDifferenceP50Degrees: fieldSummary.adjacentDirectionDifferenceP50Degrees ?? fieldSummary.diagnostics?.adjacentDirectionDifferenceP50Degrees ?? null,
+    adjacentDirectionDifferenceP95Degrees: fieldSummary.adjacentDirectionDifferenceP95Degrees ?? fieldSummary.diagnostics?.adjacentDirectionDifferenceP95Degrees ?? null,
+    adjacentMagnitudeDifferenceMean: fieldSummary.adjacentMagnitudeDifferenceMean ?? fieldSummary.diagnostics?.adjacentMagnitudeDifferenceMean ?? null,
+    adjacentMagnitudeDifferenceP95: fieldSummary.adjacentMagnitudeDifferenceP95 ?? fieldSummary.diagnostics?.adjacentMagnitudeDifferenceP95 ?? null,
+    spatialAutocorrelation: fieldSummary.spatialAutocorrelation ?? fieldSummary.diagnostics?.spatialAutocorrelation ?? null,
+    estimatedCorrelationLengthMeters: fieldSummary.estimatedCorrelationLengthMeters ?? fieldSummary.diagnostics?.estimatedCorrelationLengthMeters ?? null,
+    coherentRegionCount: fieldSummary.coherentRegionCount ?? fieldSummary.diagnostics?.coherentRegionCount ?? null,
+    calmRegionCount: fieldSummary.calmRegionCount ?? fieldSummary.diagnostics?.calmRegionCount ?? null,
+    cellwiseDirectionNoiseScore: fieldSummary.cellwiseDirectionNoiseScore ?? fieldSummary.diagnostics?.cellwiseDirectionNoiseScore ?? null,
+    lowFrequencyEnergyFraction: fieldSummary.lowFrequencyEnergyFraction ?? fieldSummary.diagnostics?.lowFrequencyEnergyFraction ?? null,
+    highFrequencyEnergyFraction: fieldSummary.highFrequencyEnergyFraction ?? fieldSummary.diagnostics?.highFrequencyEnergyFraction ?? null,
+    canyonExchangeVectorCount: fieldSummary.canyonExchangeVectorCount ?? fieldSummary.diagnostics?.canyonExchangeVectorCount ?? 0,
+    undeclaredCrossShelfVectorCount: fieldSummary.undeclaredCrossShelfVectorCount ?? fieldSummary.diagnostics?.undeclaredCrossShelfVectorCount ?? 0,
     landVectorCount: fieldSummary.landVectorCount ?? 0,
     diagnosticsBelowBottomVectorCount: fieldSummary.belowBottomVectorCount ?? 0,
     warnings: [...(explorer.warnings ?? [])],
@@ -454,15 +487,28 @@ function distinctCurrentVectorCountByDepth(layers = []) {
 
 function distinctCurrentVectorCountByTime(field = null) {
   if (!field?.uEastMetersPerSecond?.length) return 0;
-  const z = Math.min(1, (field.depthAxisMeters?.length ?? 1) - 1);
-  const y = Math.max(0, Math.floor((field.northAxisMeters?.length ?? 1) / 2));
-  const x = Math.max(0, Math.floor((field.eastAxisMeters?.length ?? 1) / 2));
-  const signatures = new Set();
-  for (let t = 0; t < (field.timeAxisSeconds?.length ?? 0); t += 1) {
-    signatures.add(`${round(field.uEastMetersPerSecond?.[t]?.[z]?.[y]?.[x], 4)},${round(field.vNorthMetersPerSecond?.[t]?.[z]?.[y]?.[x], 4)}`);
+  for (let z = 0; z < (field.depthAxisMeters?.length ?? 0); z += 1) {
+    const depth = Number(field.depthAxisMeters?.[z] ?? z);
+    for (let y = 0; y < (field.northAxisMeters?.length ?? 0); y += 1) {
+      for (let x = 0; x < (field.eastAxisMeters?.length ?? 0); x += 1) {
+        const wet = field.wetMask?.[y]?.[x] !== false;
+        const bottom = Number(field.bottomDepthMeters?.[y]?.[x] ?? Infinity);
+        if (!wet || depth > bottom + 1e-6) continue;
+        const signatures = new Set();
+        for (let t = 0; t < (field.timeAxisSeconds?.length ?? 0); t += 1) signatures.add(`${round(field.uEastMetersPerSecond?.[t]?.[z]?.[y]?.[x], 4)},${round(field.vNorthMetersPerSecond?.[t]?.[z]?.[y]?.[x], 4)}`);
+        if (signatures.size > 1) return signatures.size;
+      }
+    }
   }
-  return signatures.size;
+  return 1;
 }
+function activeVectorsMagnitudeBinCount(vectors = []) {
+  const values = vectors.map((vector) => Number(vector.magnitudeMetersPerSecond ?? vector.magnitude)).filter(Number.isFinite);
+  if (!values.length) return 0;
+  const max = Math.max(...values, 0.001);
+  return new Set(values.map((value) => Math.floor(value / Math.max(0.001, max / 8)))).size;
+}
+
 function currentDelta(a = null, b = null) {
   if (!a || !b) return null;
   const du = Number(b.uEastMetersPerSecond ?? 0) - Number(a.uEastMetersPerSecond ?? 0);

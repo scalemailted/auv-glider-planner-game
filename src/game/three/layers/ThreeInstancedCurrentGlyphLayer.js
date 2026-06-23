@@ -47,9 +47,13 @@ export function updateThreeInstancedCurrentGlyphLayer(layer, viewModel = {}, opt
   const cellSize = finite(transform.cellSize, 1);
   const magnitudeScale = finite(viewModel.waterColumn?.currentMagnitudeScale ?? viewModel.displaySettings?.waterColumn?.currentMagnitudeScale ?? options.magnitudeScale, 1.8);
   const layerOffsetWorld = finite(viewModel.waterColumn?.currentGlyphLayerOffsetWorld ?? viewModel.displaySettings?.waterColumn?.currentGlyphLayerOffsetWorld ?? options.layerOffsetWorld, cellSize * DEFAULT_LAYER_OFFSET_FACTOR);
-  const maxLength = cellSize * 1.18;
-  const minLength = cellSize * 0.34;
-  const minWidth = cellSize * 0.11;
+  const fieldSummary = viewModel.waterColumnExplorer?.currentFieldSummary ?? {};
+  const sourceMetadata = fieldSummary.sourceMetadata ?? viewModel.waterColumnExplorer?.currentCube?.sourceMetadata ?? {};
+  const calmThreshold = Math.max(0, finite(sourceMetadata.calmThresholdMetersPerSecond ?? fieldSummary.calmThresholdMetersPerSecond, 0.035));
+  const canonicalMax = Math.max(calmThreshold + 1e-6, finite(sourceMetadata.displayMagnitudeRangeMetersPerSecond?.max ?? fieldSummary.speedStatistics?.max, 0.45));
+  const maxLength = cellSize * 1.24;
+  const minLength = cellSize * 0.18;
+  const minWidth = cellSize * 0.08;
   let invalidVectorCount = 0;
   let finiteVectorCount = 0;
   let nonzeroVectorCount = 0;
@@ -58,59 +62,66 @@ export function updateThreeInstancedCurrentGlyphLayer(layer, viewModel = {}, opt
   let activeGlyphCount = 0;
   let contextGlyphCount = 0;
   let volumetricGlyphCount = 0;
+  let calmVectorCount = 0;
   const visibleDepthIds = new Set();
-  let minScale = Infinity;
-  let maxScale = 0;
-  for (let index = 0; index < layer.capacity; index += 1) {
-    if (index < samples.length) {
-      const sample = samples[index];
-      visibleDepthIds.add(String(sample.depthLayerId ?? sample.depthMeters ?? 'unknown'));
-      if (sample.context === true) contextGlyphCount += 1; else activeGlyphCount += 1;
-      if (sample.volumetric === true) volumetricGlyphCount += 1;
-      const u = Number(sample.uEastMetersPerSecond ?? sample.u ?? 0);
-      const v = Number(sample.vNorthMetersPerSecond ?? sample.v ?? 0);
-      const magnitude = Number(sample.magnitudeMetersPerSecond ?? sample.magnitude ?? Math.hypot(u, v));
-      const depthMeters = Number(sample.depthMeters ?? 0);
-      const x = Number(sample.x ?? sample.eastMeters);
-      const y = Number(sample.y ?? sample.northMeters);
-      if (sample.masked === true || sample.wet === false) terrainMaskedVectorCount += 1;
-      if (sample.belowBottom === true) belowBottomVectorCount += 1;
-      if (![u, v, magnitude, depthMeters, x, y].every(Number.isFinite)) {
-        invalidVectorCount += 1;
-        hideInstance(layer, index, dummy, color);
-        continue;
-      }
-      finiteVectorCount += 1;
-      if (Math.hypot(u, v) > 1e-5) nonzeroVectorCount += 1;
-      if (magnitude <= 1e-5) {
-        hideInstance(layer, index, dummy, color);
-        continue;
-      }
-      const position = positionForRecord(transform, { x, y, depthMeters }, layerOffsetWorld);
-      if (!Number.isFinite(position.x) || !Number.isFinite(position.y) || !Number.isFinite(position.z)) {
-        invalidVectorCount += 1;
-        hideInstance(layer, index, dummy, color);
-        continue;
-      }
-      const length = Math.max(minLength, Math.min(maxLength, cellSize * magnitudeScale * (0.32 + magnitude * 2.8)));
-      const width = Math.max(minWidth, Math.min(cellSize * 0.34, length * 0.32));
-      minScale = Math.min(minScale, length);
-      maxScale = Math.max(maxScale, length);
-      dummy.position.copy(position);
-      dummy.rotation.set(0, Math.atan2(u, v), 0);
-      dummy.scale.set(width, 1, length);
-      dummy.updateMatrix();
-      layer.mesh.setMatrixAt(index, dummy.matrix);
-      layer.mesh.setColorAt(index, colorForSample(color, sample, viewModel));
-    } else {
-      hideInstance(layer, index, dummy, color);
+  const canonicalMagnitudes = [];
+  const glyphLengths = [];
+  const magnitudeBins = new Set();
+  let slot = 0;
+  for (const sample of samples) {
+    const u = Number(sample.uEastMetersPerSecond ?? sample.u ?? 0);
+    const v = Number(sample.vNorthMetersPerSecond ?? sample.v ?? 0);
+    const magnitude = Number(sample.magnitudeMetersPerSecond ?? sample.magnitude ?? Math.hypot(u, v));
+    const depthMeters = Number(sample.depthMeters ?? 0);
+    const x = Number(sample.x ?? sample.eastMeters);
+    const y = Number(sample.y ?? sample.northMeters);
+    if (sample.masked === true || sample.wet === false) terrainMaskedVectorCount += 1;
+    if (sample.belowBottom === true) belowBottomVectorCount += 1;
+    if (![u, v, magnitude, depthMeters, x, y].every(Number.isFinite)) {
+      invalidVectorCount += 1;
+      continue;
     }
+    finiteVectorCount += 1;
+    canonicalMagnitudes.push(magnitude);
+    magnitudeBins.add(Math.floor(Math.max(0, magnitude) / Math.max(0.0025, canonicalMax / 10)));
+    if (Math.hypot(u, v) > 1e-5) nonzeroVectorCount += 1;
+    const calm = sample.calm === true || magnitude <= calmThreshold || Math.hypot(u, v) <= calmThreshold;
+    if (calm) {
+      calmVectorCount += 1;
+      continue;
+    }
+    const position = positionForRecord(transform, { x, y, depthMeters }, layerOffsetWorld);
+    if (!Number.isFinite(position.x) || !Number.isFinite(position.y) || !Number.isFinite(position.z)) {
+      invalidVectorCount += 1;
+      continue;
+    }
+    const displayNormalized = Number.isFinite(Number(sample.displayMagnitudeNormalized))
+      ? Math.max(0, Math.min(1, Number(sample.displayMagnitudeNormalized)))
+      : Math.sqrt(Math.max(0, Math.min(1, (magnitude - calmThreshold) / Math.max(1e-6, canonicalMax - calmThreshold))));
+    const lengthHint = Number(sample.displayGlyphLengthWorld);
+    const rawLength = Number.isFinite(lengthHint) && lengthHint > 0
+      ? cellSize * lengthHint * Math.max(0.35, magnitudeScale / 1.8)
+      : minLength + (maxLength - minLength) * displayNormalized * Math.max(0.35, magnitudeScale / 1.8);
+    const length = Math.max(minLength, Math.min(maxLength, rawLength));
+    const width = Math.max(minWidth, Math.min(cellSize * 0.3, length * 0.25));
+    glyphLengths.push(length);
+    visibleDepthIds.add(String(sample.depthLayerId ?? sample.depthMeters ?? 'unknown'));
+    if (sample.context === true) contextGlyphCount += 1; else activeGlyphCount += 1;
+    if (sample.volumetric === true) volumetricGlyphCount += 1;
+    dummy.position.copy(position);
+    dummy.rotation.set(0, Math.atan2(u, v), 0);
+    dummy.scale.set(width, 1, length);
+    dummy.updateMatrix();
+    layer.mesh.setMatrixAt(slot, dummy.matrix);
+    layer.mesh.setColorAt(slot, colorForSample(color, sample, viewModel));
+    slot += 1;
   }
-  layer.mesh.count = samples.length;
+  for (let index = slot; index < layer.capacity; index += 1) hideInstance(layer, index, dummy, color);
+  layer.mesh.count = slot;
   layer.mesh.instanceMatrix.needsUpdate = true;
   if (layer.mesh.instanceColor) layer.mesh.instanceColor.needsUpdate = true;
-  layer.mesh.visible = samples.length > 0;
-  layer.group.visible = samples.length > 0;
+  layer.mesh.visible = slot > 0;
+  layer.group.visible = slot > 0;
   layer.group.renderOrder = DEFAULT_RENDER_ORDER;
   layer.mesh.renderOrder = DEFAULT_RENDER_ORDER;
   layer.mesh.frustumCulled = false;
@@ -120,28 +131,38 @@ export function updateThreeInstancedCurrentGlyphLayer(layer, viewModel = {}, opt
   layer.bufferUpdateCount += 1;
   layer.invalidVectorCount = invalidVectorCount;
   layer.hiddenInvalidVectorCount += invalidVectorCount;
+  const canonicalStats = numericStats(canonicalMagnitudes);
+  const glyphStats = numericStats(glyphLengths);
   layer.lastStats = {
     sourceVectorSampleCount: samples.length,
     finiteVectorSampleCount: finiteVectorCount,
     nonzeroVectorSampleCount: nonzeroVectorCount,
     terrainMaskedVectorCount,
     belowBottomVectorCount,
-    visibleVectorInstanceCount: samples.length,
+    visibleVectorInstanceCount: slot,
     activeGlyphCount,
     contextGlyphCount,
     volumetricGlyphCount,
     visibleDepthIds: [...visibleDepthIds],
     visibleDepthCount: visibleDepthIds.size,
     activeCurrentDisplayMode: normalizeCurrentDisplayMode(viewModel.waterColumn?.currentDisplayMode ?? viewModel.displaySettings?.waterColumn?.currentDisplayMode ?? viewModel.waterColumnExplorer?.displayMode ?? 'activeCurrentSlice'),
-    glyphMinimumScale: Number.isFinite(minScale) ? minScale : 0,
-    glyphMaximumScale: maxScale,
+    canonicalMagnitudeMinimum: canonicalStats.minimum,
+    canonicalMagnitudeMean: canonicalStats.mean,
+    canonicalMagnitudeMaximum: canonicalStats.maximum,
+    calmThresholdMetersPerSecond: calmThreshold,
+    calmVectorCount,
+    distinctMagnitudeBinCount: magnitudeBins.size,
+    glyphLengthMinimum: glyphStats.minimum,
+    glyphLengthMean: glyphStats.mean,
+    glyphLengthMaximum: glyphStats.maximum,
+    glyphMinimumScale: glyphStats.minimum ?? 0,
+    glyphMaximumScale: glyphStats.maximum ?? 0,
     glyphLayerOffsetWorld: layerOffsetWorld
   };
   incrementSimulationLaunchCounter('currentGlyphBufferUpdateCount');
-  layer.lastSummary = threeInstancedCurrentGlyphLayerSummary(layer, viewModel, { sampleCount: samples.length, invalidVectorCount });
+  layer.lastSummary = threeInstancedCurrentGlyphLayerSummary(layer, viewModel, { sampleCount: slot, invalidVectorCount });
   return layer;
 }
-
 export function disposeThreeInstancedCurrentGlyphLayer(layer) {
   if (!layer) return;
   layer.mesh?.geometry?.dispose?.();
@@ -187,6 +208,15 @@ export function threeInstancedCurrentGlyphLayerSummary(layer = {}, viewModel = {
     glyphMeshVisible: mesh?.visible === true,
     glyphParentVisible: layer.group?.visible === true,
     glyphFrustumCulled: mesh?.frustumCulled === true,
+    canonicalMagnitudeMinimum: stats.canonicalMagnitudeMinimum ?? null,
+    canonicalMagnitudeMean: stats.canonicalMagnitudeMean ?? null,
+    canonicalMagnitudeMaximum: stats.canonicalMagnitudeMaximum ?? null,
+    calmThresholdMetersPerSecond: stats.calmThresholdMetersPerSecond ?? null,
+    calmVectorCount: Number(stats.calmVectorCount ?? 0),
+    distinctMagnitudeBinCount: Number(stats.distinctMagnitudeBinCount ?? 0),
+    glyphLengthMinimum: round(stats.glyphLengthMinimum ?? 0),
+    glyphLengthMean: round(stats.glyphLengthMean ?? 0),
+    glyphLengthMaximum: round(stats.glyphLengthMaximum ?? 0),
     glyphMinimumScale: round(stats.glyphMinimumScale ?? 0),
     glyphMaximumScale: round(stats.glyphMaximumScale ?? 0),
     glyphOpacity: Number(material?.opacity ?? DEFAULT_OPACITY),
@@ -306,7 +336,21 @@ function currentSamplesForViewModel(viewModel = {}, options = {}) {
       });
     }
   }
-  return samples;
+  const maxGlyphSamples = Math.max(120, Number(viewModel.resolutionProfile?.renderLod?.currentVectorMaxGlyphs ?? viewModel.renderLod?.currentVectorMaxGlyphs ?? options.maxGlyphSamples ?? 900));
+  if (samples.length <= maxGlyphSamples) return samples;
+  const byDepth = new Map();
+  for (const sample of samples) {
+    const key = String(sample.depthLayerId ?? sample.depthMeters ?? 'unknown');
+    if (!byDepth.has(key)) byDepth.set(key, []);
+    byDepth.get(key).push(sample);
+  }
+  const limited = [];
+  const perDepthLimit = Math.max(1, Math.floor(maxGlyphSamples / Math.max(1, byDepth.size)));
+  for (const group of byDepth.values()) {
+    const stride = Math.max(1, Math.ceil(group.length / perDepthLimit));
+    for (let index = 0; index < group.length && limited.length < maxGlyphSamples; index += stride) limited.push(group[index]);
+  }
+  return limited;
 }
 function colorForSample(color, sample, viewModel = {}) {
   const mode = viewModel.waterColumn?.currentColorMode ?? viewModel.displaySettings?.waterColumn?.currentColorMode ?? 'speed';
@@ -323,6 +367,16 @@ function colorForSample(color, sample, viewModel = {}) {
   }
   const speed = Math.max(0, Math.min(1, Number(sample.magnitudeMetersPerSecond ?? sample.magnitude ?? 0) / 0.7));
   return color.setHSL(0.53 - speed * 0.36, 0.95, 0.66 + speed * 0.16);
+}
+
+function numericStats(values = []) {
+  const finiteValues = values.map(Number).filter(Number.isFinite).sort((a, b) => a - b);
+  if (!finiteValues.length) return { minimum: null, mean: null, maximum: null };
+  return {
+    minimum: round(finiteValues[0]),
+    mean: round(finiteValues.reduce((sum, value) => sum + value, 0) / finiteValues.length),
+    maximum: round(finiteValues.at(-1))
+  };
 }
 
 function currentVectorDensityStride(value) {

@@ -1011,3 +1011,9 @@ Normal generated Challenge missions now use the same current-presentation contra
 ## FLOW-R2A.3 Current-Field Contract
 
 The current authority is `OceanCurrentField4D`: `F(x, y, z, t) = <u, v>` in meters and seconds. Generated current fields are scientifically constrained synthetic teaching fixtures, not calibrated ocean forecasts and not real HYCOM or Marine Copernicus data. Bathymetry masks and steers currents but does not imply generic downhill flow. WebGPU remains a future rendering/compute acceleration boundary and does not replace the canonical current source.
+
+### FLOW-R2A.5 Production Current Dynamics
+
+FLOW-R2A.5 turns visible current vectors into a stricter scientific behavior contract for normal generated missions. Visible vectors alone do not establish a scientifically valid current field: the normal synthetic coastal current now varies continuously in space, depth, and canonical mission time; calm regions do not receive arbitrary arrow directions; and glyph length is a display of physical current speed in m/s. Operational display slabs sample one canonical `OceanCurrentField4D`, and display mode, density, magnitude scale, camera, and vertical exaggeration remain presentation-only.
+
+Normal coastal synthetic fields use named coherent components such as along-shelf jet, depth shear, barotropic tide, mesoscale/translating eddies, calm/weak-current regions, and localized canyon exchange. Bathymetry constrains wet volume, seabed masking, coastline boundaries, shelf/canyon interaction, and render validity, but it does not imply generic downhill flow. Cellwise independent random direction fields are prohibited. These fields remain scientifically constrained synthetic teaching fixtures: not calibrated forecasts, not real HYCOM, and not Marine Copernicus data. Real HYCOM/Copernicus claims require future attributed imported fixtures. WebGPU remains a future backend and does not own current authority.

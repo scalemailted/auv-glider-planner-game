@@ -1,4 +1,4 @@
-﻿# Testing
+# Testing
 
 The browser game does not require a build step, backend, Playwright, or`node_modules` for normal use. GFX-R2/GFX-R3A/GFX-R3B use the checked-in Three.js runtime under `vendor/three/`, with npm `three` remaining the source package for vendor refresh checks. Normal local serving still works with:
 
@@ -1071,3 +1071,34 @@ node node_modules/@playwright/test/cli.js test tests/e2e/flow_r2a_4_production_c
 ```
 
 These checks verify the normal production Challenge path, default and `?runtimeShell=next` current-presentation parity, explicit-only safe mode, current glyph recovery warnings, GitHub Pages subpath loading, and idle optional gliders. They also guard the render-only coordinate conversion that maps top-down grid cells to the canonical physical-meter current cube axes. They do not add FLOW-R2B tracers/pathlines, WebGPU, new current equations, planner changes, scoring changes, or Phaser removal.
+
+## FLOW-R2A.5 Production Current Dynamics Checks
+
+Run the production 4D current dynamics smoke and audit set after changing current-field generation, current diagnostics, depth/time sampling, current display modes, glyph magnitude scaling, or normal generated Challenge defaults:
+
+```powershell
+node tools/js/smoke_production_current_depth_distinctness.mjs
+node tools/js/smoke_production_current_time_distinctness.mjs
+node tools/js/smoke_production_current_magnitude_distribution.mjs
+node tools/js/smoke_production_current_calm_region.mjs
+node tools/js/smoke_current_glyph_magnitude_scaling.mjs
+node tools/js/smoke_current_spatial_coherence.mjs
+node tools/js/smoke_current_streamfunction_components.mjs
+node tools/js/smoke_current_timeline_buffer_updates.mjs
+node tools/js/smoke_current_stacked_depth_render_samples.mjs
+node tools/js/smoke_current_volumetric_render_samples.mjs
+node tools/js/smoke_current_glider_depth_time_parity.mjs
+node tools/js/audit_production_current_depth_time_authority.mjs
+node tools/js/audit_current_magnitude_fidelity.mjs
+node tools/js/audit_current_spatial_coherence.mjs
+node tools/js/audit_no_cellwise_random_current_directions.mjs
+node tools/js/audit_current_bathymetry_consistency.mjs
+node tools/js/audit_current_temporal_continuity.mjs
+node tools/js/audit_current_volumetric_rendering.mjs
+node tools/js/audit_current_browser_headless_dynamics_parity.mjs
+node tools/js/audit_current_display_physics_invariance.mjs
+node tools/js/audit_current_performance_hot_paths.mjs
+node node_modules/@playwright/test/cli.js test tests/e2e/flow_r2a_5_current_dynamics.spec.js --reporter=line --workers=1
+```
+
+These checks assert that normal production currents are depth-distinct, time-varying under canonical mission time, physically magnitude-scaled, calm-aware, spatially coherent, bathymetry/mask consistent, browser/headless compatible, display-invariant, and bounded for browser rendering. They do not add tracers, pathlines, stream ribbons, WebGPU, planners, scoring changes, runtime-shell switches, Phaser removal, or real-data claims.

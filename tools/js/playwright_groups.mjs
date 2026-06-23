@@ -134,7 +134,17 @@ export const PLAYWRIGHT_GROUPS = Object.freeze([
       /^Default and Next Runtime Shells Use Shared Current Presentation Contracts$/i,
       /^Current Presentation Failure Shows a Visible Recovery Reason$/i,
       /^Production Current Vectors Run From GitHub Pages Subpath$/i,
-      /^Three Mission Scene Isolation$/i,
+      /^Normal Production Currents Differ Across Physical Depths$/i,
+      /^Normal Production Currents Evolve With Canonical Mission Time$/i,
+      /^Current Glyph Length Represents Physical Speed$/i,
+      /^Production Current Field Is Spatially Coherent$/i,
+      /^Stacked Current Field Uses Distinct Depth Data$/i,
+      /^Sparse Volumetric Current Field Occupies the Wet Water Column$/i,
+      /^Synthetic Coastal Current Does Not Flow Generically Downhill$/i,
+      /^Tidal Current Evolves and Reverses Deterministically$/i,
+      /^Eddy Current Has a Calm Center and Magnitude Gradient$/i,
+      /^Glider Drift Uses Current at Actual Depth and Time$/i,
+      /^Scientific Production Currents Run From GitHub Pages Subpath$/i,      /^Three Mission Scene Isolation$/i,
       /^Three Scene Cleanup Is Null-Safe and Idempotent$/i,
       /^Generated Mission Opens a Visible Volumetric Water Column$/i,
       /^Legacy Mission Uses Explicit Surface Compatibility Mode$/i,
@@ -207,7 +217,8 @@ export const PLAYWRIGHT_GROUPS = Object.freeze([
       /^FLOW-R2A\.1 Full Headed Simulation Launch Stability Walkthrough$/i,
       /^FLOW-R2A\.2 Full Headed Visible Current Vector Walkthrough$/i,
       /^FLOW-R2A\.3 Full Headed Scientific Volumetric Current Walkthrough$/i,
-      /^FLOW-R2A\.4 Full Headed Production Current Visibility Walkthrough$/i
+      /^FLOW-R2A\.4 Full Headed Production Current Visibility Walkthrough$/i,
+      /^FLOW-R2A\.5 Full Headed Production 4D Current Dynamics Walkthrough$/i
     ]
   }
 ]);

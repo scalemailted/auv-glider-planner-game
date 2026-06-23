@@ -1285,6 +1285,10 @@ export class MissionWorkspaceScene extends PhaserScene {
     const layers = config?.depthLayerIds ?? ['surface'];
     const activeFallback = config?.defaultPlanningLayerId ?? (layers.includes('thermocline') ? 'thermocline' : layers[0] ?? 'surface');
     const active = layers.includes(existing.activeDepthLayerId) ? existing.activeDepthLayerId : activeFallback;
+    const hasExplicitCurrentDisplayMode = Object.prototype.hasOwnProperty.call(existing, 'currentDisplayMode');
+    const hasExplicitContextCurrents = Object.prototype.hasOwnProperty.call(existing, 'showContextCurrents');
+    const defaultCurrentDisplayMode = layers.length > 1 ? 'stackedDepthField' : 'activeSlice';
+    const defaultShowContextCurrents = layers.length > 1;
     const hidden = Array.isArray(existing.hiddenLayerIds) ? existing.hiddenLayerIds.filter((id) => layers.includes(id) || id === 'integratedWaterColumn' || id === 'waterSurface') : [];
     const next = {
       verticalDisplayMode: existing.verticalDisplayMode === 'explodedLayers' ? 'explodedLayers' : (config?.defaultDisplayMode === 'explodedLayers' ? 'explodedLayers' : 'physicalDepth'),
@@ -1299,12 +1303,12 @@ export class MissionWorkspaceScene extends PhaserScene {
       fieldDisplayMode: existing.fieldDisplayMode === 'allLayers' || existing.showFieldOnAllLayers === true ? 'allLayers' : 'activeLayerOnly',
       showFieldOnAllLayers: existing.fieldDisplayMode === 'allLayers' || existing.showFieldOnAllLayers === true,
       qualityProfile: normalizeThreeQualityProfile(existing.qualityProfile ?? this.app.state.ui.threeMissionQualityProfile ?? 'balanced'),
-      currentDisplayMode: normalizeCurrentDisplayModeAlias(existing.currentDisplayMode ?? 'activeSlice'),
+      currentDisplayMode: normalizeCurrentDisplayModeAlias(hasExplicitCurrentDisplayMode ? existing.currentDisplayMode : defaultCurrentDisplayMode),
       currentLayerMode: existing.currentLayerMode ?? 'followSelectedGlider',
       currentVectorDensity: normalizeCurrentVectorDensity(existing.currentVectorDensity ?? 'balanced'),
       currentMagnitudeScale: clampNumber(existing.currentMagnitudeScale, 1.8, 0.25, 6),
       currentColorMode: ['speed', 'direction', 'depthLayer', 'assistOpposeRoute'].includes(existing.currentColorMode) ? existing.currentColorMode : 'speed',
-      showContextCurrents: existing.showContextCurrents === true,
+      showContextCurrents: hasExplicitContextCurrents ? existing.showContextCurrents === true : defaultShowContextCurrents,
       selectedDiveProfileId: normalizeWaterColumnProfileId(existing.selectedDiveProfileId ?? this.selectedAgentPlanWaterColumnValue('diveProfileId') ?? config?.defaultDiveProfileId ?? config?.diveProfileId ?? 'surfaceOnly'),
       selectedTargetDepthLayerId: normalizeWaterColumnLayerId(existing.selectedTargetDepthLayerId ?? this.selectedAgentPlanWaterColumnValue('targetDepthLayerId') ?? config?.defaultTargetDepthLayerId ?? 'surface', active),
       maximumDiveDepthMeters: Number.isFinite(Number(existing.maximumDiveDepthMeters)) ? Number(existing.maximumDiveDepthMeters) : (Number.isFinite(Number(this.selectedAgentPlanWaterColumnValue('maximumDiveDepthMeters'))) ? Number(this.selectedAgentPlanWaterColumnValue('maximumDiveDepthMeters')) : null),
@@ -1507,6 +1511,8 @@ export class MissionWorkspaceScene extends PhaserScene {
     if (existing?.userModified === true && this.app.state.ui.waterColumnDefaultsAppliedForMission === missionKey) return;
     const legacy = config?.source === 'importedLegacySurfaceFallback' || config?.compatibility?.importedLegacySurfaceFallback === true || layers.length <= 1;
     const activeDepthLayerId = legacy ? 'surface' : (config?.defaultPlanningLayerId ?? (layers.includes('thermocline') ? 'thermocline' : layers[0] ?? 'surface'));
+    const hasExplicitCurrentDisplayMode = existing && Object.prototype.hasOwnProperty.call(existing, 'currentDisplayMode');
+    const hasExplicitContextCurrents = existing && Object.prototype.hasOwnProperty.call(existing, 'showContextCurrents');
     this.app.state.ui.waterColumn = {
       ...(existing ?? {}),
       verticalDisplayMode: legacy ? 'physicalDepth' : 'explodedLayers',
@@ -1520,12 +1526,12 @@ export class MissionWorkspaceScene extends PhaserScene {
       fieldDisplayMode: existing?.fieldDisplayMode === 'allLayers' || existing?.showFieldOnAllLayers === true ? 'allLayers' : 'activeLayerOnly',
       showFieldOnAllLayers: existing?.fieldDisplayMode === 'allLayers' || existing?.showFieldOnAllLayers === true,
       qualityProfile: normalizeThreeQualityProfile(existing?.qualityProfile ?? this.app.state.ui.threeMissionQualityProfile ?? 'balanced'),
-      currentDisplayMode: normalizeCurrentDisplayModeAlias(existing?.currentDisplayMode ?? 'activeSlice'),
+      currentDisplayMode: normalizeCurrentDisplayModeAlias(hasExplicitCurrentDisplayMode ? existing.currentDisplayMode : (legacy ? 'activeSlice' : 'stackedDepthField')),
       currentLayerMode: existing?.currentLayerMode ?? 'followSelectedGlider',
       currentVectorDensity: normalizeCurrentVectorDensity(existing?.currentVectorDensity ?? 'balanced'),
       currentMagnitudeScale: clampNumber(existing?.currentMagnitudeScale, 1.8, 0.25, 6),
       currentColorMode: ['speed', 'direction', 'depthLayer', 'assistOpposeRoute'].includes(existing?.currentColorMode) ? existing.currentColorMode : 'speed',
-      showContextCurrents: existing?.showContextCurrents === true,
+      showContextCurrents: hasExplicitContextCurrents ? existing.showContextCurrents === true : !legacy,
       selectedDiveProfileId: config?.defaultDiveProfileId ?? config?.diveProfileId ?? 'surfaceOnly',
       selectedTargetDepthLayerId: config?.defaultTargetDepthLayerId ?? 'surface',
       maximumDiveDepthMeters: null,

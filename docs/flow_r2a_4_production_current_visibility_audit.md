@@ -37,3 +37,7 @@ This pass does not add FLOW-R2B tracers/pathlines, WebGPU, new equations, stocha
 - `tests/e2e/flow_r2a_4_production_current_visibility.spec.js`
 
 Human manual QA by the project owner remains pending until the FLOW-R2A.4 normal-production current-visibility screenshot package is reviewed.
+
+## FLOW-R2A.5 Superseding Note
+
+FLOW-R2A.4 restored the presentation path. FLOW-R2A.5 verifies the scientific behavior behind that path. Visibility is no longer sufficient by itself: the same normal generated Challenge workflow must prove depth-distinct source currents, canonical timeline evolution, physical speed-to-glyph-length mapping, calm vectors without arbitrary bearings, coherent named structures, and bathymetry/coastline consistency. R2A.5 still does not add tracers, pathlines, WebGPU, planner changes, scoring changes, runtime-shell switching, Phaser removal, or real-data claims.

@@ -17,3 +17,7 @@ Display units are m/s. Display settings such as active slice, stacked slabs, exp
 ## FLOW-R2A.3 Update
 
 Instanced current glyphs now support active-slice, stacked-depth, exploded-depth, and sparse-volumetric modes. The implementation uses a shared instanced rendering family and does not create one Three.js object per vector.
+
+## FLOW-R2A.5 Magnitude And Calm Handling
+
+The instanced glyph layer separates canonical speed from display scale. Samples expose physical U/V, speed, bearing, display-normalized magnitude, glyph world length, and `calm`. Calm or near-zero vectors are counted and may be hidden or shown neutrally, but they do not receive an arbitrary directional arrow. Stacked and sparse volumetric modes render multiple physical depths from the canonical cube with one shared instanced mesh family and bounded LOD.

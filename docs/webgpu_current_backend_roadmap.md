@@ -15,3 +15,7 @@ WebGPU compute does not replace the regional current authority. MLS-MPM and SPH 
 ## FLOW-R2A.3 Boundary
 
 Future WebGPU backends may accelerate instanced glyphs or tracer/pathline advection. They do not replace `OceanCurrentField4D` as the regional current authority, and future fluid perturbations must be optional, bounded, separately labelled, and explicitly composited.
+
+## FLOW-R2A.5 Boundary
+
+FLOW-R2A.5 remains CPU/JavaScript source-field and WebGL/Three instanced-glyph work. WebGPU is still future optional backend work for visualization or tracer/pathline compute. It does not own `OceanCurrentField4D`, does not replace current authority, and is not a substitute for real HYCOM, Marine Copernicus, ROMS, or calibrated forecast products.

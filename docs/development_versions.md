@@ -1,4 +1,4 @@
-﻿### P6 - Adaptive Benchmark Mission Manager Contract
+### P6 - Adaptive Benchmark Mission Manager Contract
 
 - Added Adaptive Benchmark mission-manager config, diagnosis, objective-transition policy, manager state, surfacing-event records, synthetic fixtures, preview view model, UI panel, adaptive exports, debug fields, smoke tests, and docs.
 - Adaptive Benchmark now means objective authority belongs to a transparent mission manager while route authority remains with the player or solver.
@@ -604,3 +604,12 @@ Adds scientific source-tier metadata, manufactured analytical current fixtures, 
 ## FLOW-R2A.4
 
 Production current visibility recovery for the normal generated Challenge path. The water-column current renderer now maps top-down grid cells to canonical physical-meter current axes before sampling `OceanCurrentField4D`, default Planning/Simulation scenes and `?runtimeShell=next` publish shared `ANCHOR_CURRENT_PRESENTATION_DEBUG`, and zero-waypoint optional gliders can remain idle without blocking Glider 1 execution. This is a stabilization pass only: no tracers/pathlines, WebGPU, new current equations, planner changes, scoring changes, or Phaser removal.
+
+## FLOW-R2A.5 - Production 4D Current Dynamics, Magnitude Fidelity, and Ocean-Coherent Synthetic Fields
+
+- Hardened the normal generated current source to use bathymetry-conditioned coherent synthetic components: along-shelf jet, depth shear, barotropic tide, mesoscale eddy, translating eddy, calm/weak-current region, localized canyon exchange, and optional shelf/wake/surface-shear terms.
+- Fixed production depth coverage by resampling canonical bathymetry onto the current source grid instead of cropping the top-left source extent, so midwater and deep source layers remain wet where the regional bathymetry permits them.
+- Added spatial-coherence, magnitude, calm-region, isobath/coastline, canyon-exchange, temporal, and vertical-shear diagnostics with explicit synthetic/not-calibrated source metadata.
+- Updated layer explorer and Three instanced current glyphs so physical speed in m/s maps to bounded glyph length, calm vectors do not receive arbitrary direction, and stacked/sparse modes render bounded multi-depth samples from the canonical `OceanCurrentField4D`.
+- Added FLOW-R2A.5 smoke/audit scripts, focused Playwright coverage, owner-review artifact path, and docs for current depth/time authority, magnitude/calm handling, coherent components, and spatial-coherence validation.
+- Preserved the boundary: no tracers, pathlines, stream ribbons, WebGPU, real HYCOM/Copernicus import, planner changes, scoring changes, runtime-shell switch, Phaser removal, or calibrated forecast claim.

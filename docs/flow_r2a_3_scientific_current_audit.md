@@ -28,3 +28,7 @@ This audit was written before the FLOW-R2A.3 implementation changes. It captures
 - Time dependence is not lost in the sampler or explorer; it lacked exported physical bracket metadata and a focused render/debug proof.
 - Context slabs receive distinct per-layer samples in `WaterColumnLayerExplorerViewModel`; they may not be rendered because `ThreeInstancedCurrentGlyphLayer` treated context currents as an optional overlay rather than mode-owned content.
 - Field generation becomes an arbitrary visual preset in `SyntheticCurrentCubeAdapter.generatedBase()` plus `depthFactor()`. It is deterministic and useful for launch tests, but it is not a documented scientific synthetic benchmark.
+
+## FLOW-R2A.5 Superseding Note
+
+FLOW-R2A.3 established the scientific current contract and initial diagnostics. FLOW-R2A.5 tightens the production requirement: normal generated missions must use coherent named components, at least five source depths where the mission permits, at least four source times, calm-region handling, physical magnitude glyph scaling, and spatial-coherence diagnostics. The R2A.3 HYCOM-style educational wording is superseded by: Scientifically constrained synthetic current field. Not a calibrated ocean forecast. Not real HYCOM or Marine Copernicus data.

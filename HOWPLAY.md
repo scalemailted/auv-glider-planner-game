@@ -1173,3 +1173,9 @@ Modern water-column missions should show current vectors in Planning and Simulat
 ## FLOW-R2A.3 Currents
 
 Current display modes now include Active Slice, All Layers, Stacked Depth Field, Exploded Depth Field, and Sparse Volumetric Field. These are visualizations of the same canonical 4D current cube; display choices do not change mission physics, route validity, or score.
+
+## FLOW-R2A.5 Current Dynamics Note
+
+Normal generated missions now use a coherent synthetic 4D current field `F(x,y,z,t)=<u,v>` rather than merely drawing visible arrows. Surface, shallow, thermocline, midwater, and deep views may show different U/V values; the timeline changes canonical current samples; and calm regions may show no directional arrow because a near-zero vector has no meaningful bearing. Glyph length shows physical speed in m/s, while magnitude scale and display mode remain visual controls only.
+
+Bathymetry blocks land and below-seabed samples and can steer declared shelf, canyon, wake, tide, and eddy components, but water is not assumed to flow downhill into the deepest basin. The fields are deterministic scientifically constrained synthetic teaching fixtures, not calibrated ocean forecasts and not real HYCOM or Marine Copernicus data.

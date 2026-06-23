@@ -353,6 +353,9 @@ function buildSelectedCurrentProfile({ selectedLocation, waterColumnConfig, sour
       vNorthMetersPerSecond: sample?.vNorthMetersPerSecond ?? null,
       magnitudeMetersPerSecond: sample?.magnitudeMetersPerSecond ?? null,
       bearingDegrees: sample?.bearingDegrees ?? null,
+      displayMagnitudeNormalized: sample ? currentDisplayAttributes(sample, source.currentCube).displayMagnitudeNormalized : null,
+      displayGlyphLengthWorld: sample ? currentDisplayAttributes(sample, source.currentCube).displayGlyphLengthWorld : null,
+      calm: sample ? currentDisplayAttributes(sample, source.currentCube).calm : false,
       wet: sample?.wet === true,
       masked: sample?.masked === true,
       lowerDepthMeters: sample?.lowerDepthMeters ?? null,
@@ -391,6 +394,7 @@ function currentLayerFromCube({ field, layerId, representativeDepthMeters, grid,
     for (let x = 0; x < (grid.width ?? 0); x += 1) {
       const currentMeters = gridPointToCurrentMeters(field, grid, x, y);
       const sample = sampler.sample({ ...currentMeters, depthMeters: representativeDepthMeters, timeSeconds: activeTimeSeconds, interpolation: 'linear4d' });
+      const display = currentDisplayAttributes(sample, field);
       vectors.push({
         id: `current-${layerId}-${x}-${y}`,
         x,
@@ -408,6 +412,10 @@ function currentLayerFromCube({ field, layerId, representativeDepthMeters, grid,
         magnitude: sample.magnitudeMetersPerSecond,
         magnitudeMetersPerSecond: sample.magnitudeMetersPerSecond,
         bearingDegrees: sample.bearingDegrees,
+        displayMagnitudeNormalized: display.displayMagnitudeNormalized,
+        displayGlyphLengthWorld: display.displayGlyphLengthWorld,
+        calm: display.calm,
+        calmThresholdMetersPerSecond: display.calmThresholdMetersPerSecond,
         visible: sample.wet === true && sample.masked !== true,
         wet: sample.wet === true,
         masked: sample.masked === true,
@@ -427,6 +435,21 @@ function currentLayerFromCube({ field, layerId, representativeDepthMeters, grid,
   const layer = { vectors, units: 'm/s', sourceDigest: field.digest ?? null, source: field.sourceMetadata ?? null, renderSampleCacheKey: key };
   cache.set(key, layer);
   return layer;
+}
+
+function currentDisplayAttributes(sample = {}, field = {}) {
+  const speed = Math.max(0, Number(sample.magnitudeMetersPerSecond ?? sample.magnitude ?? 0));
+  const threshold = Math.max(0, Number(field.sourceMetadata?.calmThresholdMetersPerSecond ?? 0.035));
+  const range = field.sourceMetadata?.displayMagnitudeRangeMetersPerSecond ?? {};
+  const maxSpeed = Math.max(threshold + 1e-6, Number(range.max ?? field.scientificDiagnostics?.speedMaximum ?? 0.45));
+  const calm = speed <= threshold || sample.wet !== true || sample.masked === true;
+  const normalized = calm ? 0 : Math.max(0, Math.min(1, (speed - threshold) / Math.max(1e-6, maxSpeed - threshold)));
+  return {
+    displayMagnitudeNormalized: round(Math.sqrt(normalized)),
+    displayGlyphLengthWorld: round(calm ? 0 : 0.18 + 0.92 * Math.sqrt(normalized)),
+    calm,
+    calmThresholdMetersPerSecond: round(threshold)
+  };
 }
 
 function gridPointToCurrentMeters(field = {}, grid = {}, x = 0, y = 0) {
@@ -456,7 +479,9 @@ function roundCache(value) {
 function currentVectorStats(vectors = []) {
   const values = vectors.filter((vector) => vector.visible !== false).map((vector) => Number(vector.magnitudeMetersPerSecond ?? vector.magnitude)).filter(Number.isFinite);
   if (!values.length) return { count: 0, min: null, mean: null, max: null, units: 'm/s' };
-  return { count: values.length, min: round(Math.min(...values)), mean: round(values.reduce((sum, value) => sum + value, 0) / values.length), max: round(Math.max(...values)), units: 'm/s' };
+  const calmThreshold = vectors.find((vector) => Number.isFinite(Number(vector.calmThresholdMetersPerSecond)))?.calmThresholdMetersPerSecond ?? null;
+  const bins = new Set(values.map((value) => Math.floor(value / Math.max(0.001, (Math.max(...values) || 1) / 8))));
+  return { count: values.length, min: round(Math.min(...values)), mean: round(values.reduce((sum, value) => sum + value, 0) / values.length), max: round(Math.max(...values)), calmThresholdMetersPerSecond: calmThreshold, calmVectorCount: vectors.filter((vector) => vector.calm === true).length, distinctMagnitudeBinCount: bins.size, units: 'm/s' };
 }
 
 function representativeCurrentSamples(vectors = [], limit = 8) {

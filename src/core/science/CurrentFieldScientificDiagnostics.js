@@ -1,6 +1,6 @@
 import { coastlineNormal } from './CurrentTerrainBoundaryCondition.js';
 
-export const CURRENT_FIELD_SCIENTIFIC_DIAGNOSTICS_VERSION = 'current-field-scientific-diagnostics-flow-r2a-3';
+export const CURRENT_FIELD_SCIENTIFIC_DIAGNOSTICS_VERSION = 'current-field-scientific-diagnostics-flow-r2a-5';
 
 export function computeCurrentFieldScientificDiagnostics(field = {}, options = {}) {
   const dims = dimensions(field);
@@ -12,11 +12,19 @@ export function computeCurrentFieldScientificDiagnostics(field = {}, options = {
   const temporalChange = [];
   const alongFractions = [];
   const crossFractions = [];
+  const alongSpeeds = [];
   const crossShelfSpeeds = [];
+  const adjacentDirectionDifferences = [];
+  const adjacentMagnitudeDifferences = [];
+  const adjacentCosines = [];
+  const calmThreshold = finite(options.calmThresholdMetersPerSecond ?? field.sourceMetadata?.calmThresholdMetersPerSecond, 0.035);
   let validVectorCount = 0;
   let invalidVectorCount = 0;
   let landVectorCount = 0;
   let belowBottomVectorCount = 0;
+  let calmVectorCount = 0;
+  let canyonExchangeVectorCount = 0;
+  let undeclaredCrossShelfVectorCount = 0;
   for (let t = 0; t < dims.time; t += 1) {
     for (let z = 0; z < dims.depth; z += 1) {
       const depth = Number(field.depthAxisMeters?.[z] ?? z);
@@ -24,11 +32,11 @@ export function computeCurrentFieldScientificDiagnostics(field = {}, options = {
         for (let x = 0; x < dims.width; x += 1) {
           const u = Number(field.uEastMetersPerSecond?.[t]?.[z]?.[y]?.[x]);
           const v = Number(field.vNorthMetersPerSecond?.[t]?.[z]?.[y]?.[x]);
-          const finite = Number.isFinite(u) && Number.isFinite(v);
+          const finiteVector = Number.isFinite(u) && Number.isFinite(v);
           const wet2d = field.wetMask?.[y]?.[x] !== false;
           const bottom = Number(field.bottomDepthMeters?.[y]?.[x] ?? Infinity);
           const belowBottom = Number.isFinite(bottom) && depth > bottom + 1e-6;
-          if (!finite) {
+          if (!finiteVector) {
             invalidVectorCount += 1;
             continue;
           }
@@ -37,6 +45,7 @@ export function computeCurrentFieldScientificDiagnostics(field = {}, options = {
           if (!wet2d || belowBottom) continue;
           validVectorCount += 1;
           const speed = Math.hypot(u, v);
+          if (speed <= calmThreshold) calmVectorCount += 1;
           speeds.push(speed);
           const normal = coastlineNormal(field.wetMask ?? [], x, y);
           if (normal) coastlineNormalSpeeds.push(Math.abs(u * normal.x + v * normal.y));
@@ -44,7 +53,24 @@ export function computeCurrentFieldScientificDiagnostics(field = {}, options = {
           if (steering) {
             alongFractions.push(steering.alongFraction);
             crossFractions.push(steering.crossFraction);
+            alongSpeeds.push(steering.alongSpeed);
             crossShelfSpeeds.push(steering.crossSpeed);
+            if (steering.crossSpeed > calmThreshold && inDeclaredCanyon(field, x, y)) canyonExchangeVectorCount += 1;
+            if (steering.crossFraction > 0.7 && steering.crossSpeed > calmThreshold && !inDeclaredCanyon(field, x, y)) undeclaredCrossShelfVectorCount += 1;
+          }
+          for (const [nx, ny] of [[x + 1, y], [x, y + 1]]) {
+            if (!cellWetAtDepth(field, nx, ny, depth)) continue;
+            const u2 = Number(field.uEastMetersPerSecond?.[t]?.[z]?.[ny]?.[nx]);
+            const v2 = Number(field.vNorthMetersPerSecond?.[t]?.[z]?.[ny]?.[nx]);
+            if (!Number.isFinite(u2) || !Number.isFinite(v2)) continue;
+            const speed2 = Math.hypot(u2, v2);
+            adjacentMagnitudeDifferences.push(Math.abs(speed2 - speed));
+            if (speed > calmThreshold && speed2 > calmThreshold) {
+              const dot = (u * u2 + v * v2) / Math.max(1e-12, speed * speed2);
+              const clamped = Math.max(-1, Math.min(1, dot));
+              adjacentCosines.push(clamped);
+              adjacentDirectionDifferences.push(Math.acos(clamped) * 180 / Math.PI);
+            }
           }
         }
       }
@@ -80,8 +106,7 @@ export function computeCurrentFieldScientificDiagnostics(field = {}, options = {
           if (!cellWetAtDepth(field, x, y, field.depthAxisMeters?.[z] ?? z)) continue;
           const du = Number(field.uEastMetersPerSecond?.[t + 1]?.[z]?.[y]?.[x] ?? 0) - Number(field.uEastMetersPerSecond?.[t]?.[z]?.[y]?.[x] ?? 0);
           const dv = Number(field.vNorthMetersPerSecond?.[t + 1]?.[z]?.[y]?.[x] ?? 0) - Number(field.vNorthMetersPerSecond?.[t]?.[z]?.[y]?.[x] ?? 0);
-          const dt = Math.max(1e-9, Number(field.timeAxisSeconds?.[t + 1] ?? t + 1) - Number(field.timeAxisSeconds?.[t] ?? t));
-          temporalChange.push(Math.hypot(du, dv) / dt);
+          temporalChange.push(Math.hypot(du, dv));
         }
       }
     }
@@ -93,18 +118,36 @@ export function computeCurrentFieldScientificDiagnostics(field = {}, options = {
   if (belowBottomVectorCount > 0) failures.push(`${belowBottomVectorCount} nonzero vectors are below seabed.`);
   const divergenceStats = metricStats(divergence.map(Math.abs));
   const coastlineStats = metricStats(coastlineNormalSpeeds);
+  const adjacentDirectionStats = metricStats(adjacentDirectionDifferences);
+  const adjacentMagnitudeStats = metricStats(adjacentMagnitudeDifferences);
+  const spatialAutocorrelation = round(adjacentCosines.length ? adjacentCosines.reduce((sum, value) => sum + value, 0) / adjacentCosines.length : 1);
+  const highFrequencyEnergyFraction = round(Math.max(0, Math.min(1, 1 - ((spatialAutocorrelation + 1) / 2))));
+  const lowFrequencyEnergyFraction = round(1 - highFrequencyEnergyFraction);
+  const cellwiseDirectionNoiseScore = round(Math.max(0, Math.min(1, ((adjacentDirectionStats.mean ?? 0) / 180) * 0.65 + highFrequencyEnergyFraction * 0.35)));
+  const estimatedCorrelationLengthMeters = round(estimateCorrelationLengthMeters(field, spatialAutocorrelation));
+  const coherentRegionCount = countCoherentRegions(field, calmThreshold, false);
+  const calmRegionCount = countCoherentRegions(field, calmThreshold, true);
   const divergenceLimit = Number(options.divergenceRmsLimit ?? field.sourceMetadata?.expectedDiagnostics?.divergenceRmsMaximum ?? Infinity);
   const coastlineLimit = Number(options.coastlineNormalSpeedRmsLimit ?? field.sourceMetadata?.expectedDiagnostics?.coastlineNormalSpeedRmsMaximum ?? Infinity);
+  const noiseLimit = Number(options.cellwiseDirectionNoiseScoreMaximum ?? field.sourceMetadata?.expectedDiagnostics?.cellwiseDirectionNoiseScoreMaximum ?? 0.75);
+  const highFrequencyLimit = Number(options.highFrequencyEnergyFractionMaximum ?? field.sourceMetadata?.expectedDiagnostics?.highFrequencyEnergyFractionMaximum ?? 0.7);
   if (Number.isFinite(divergenceLimit) && divergenceStats.rms > divergenceLimit) warnings.push(`Divergence RMS ${round(divergenceStats.rms)} exceeds declared limit ${divergenceLimit}.`);
   if (Number.isFinite(coastlineLimit) && coastlineStats.rms > coastlineLimit) warnings.push(`Coastline normal RMS ${round(coastlineStats.rms)} exceeds declared limit ${coastlineLimit}.`);
+  if (cellwiseDirectionNoiseScore > noiseLimit) failures.push(`Direction-noise score ${cellwiseDirectionNoiseScore} is characteristic of a cellwise mosaic.`);
+  if (highFrequencyEnergyFraction > highFrequencyLimit) warnings.push(`High-frequency energy fraction ${highFrequencyEnergyFraction} exceeds declared limit ${highFrequencyLimit}.`);
+  const speedStats = metricStats(speeds);
+  const alongStats = metricStats(alongSpeeds);
+  const crossStats = metricStats(crossShelfSpeeds);
   return {
     type: 'anchor.science.current-field-scientific-diagnostics',
     version: CURRENT_FIELD_SCIENTIFIC_DIAGNOSTICS_VERSION,
     validVectorCount,
     invalidVectorCount,
-    speedMinimum: metricStats(speeds).minimum,
-    speedMean: metricStats(speeds).mean,
-    speedMaximum: metricStats(speeds).maximum,
+    speedMinimum: speedStats.minimum,
+    speedMean: speedStats.mean,
+    speedMaximum: speedStats.maximum,
+    calmThresholdMetersPerSecond: calmThreshold,
+    calmVectorCount,
     divergenceRms: divergenceStats.rms,
     divergenceP95: divergenceStats.p95,
     divergenceMaximum: divergenceStats.maximum,
@@ -119,10 +162,26 @@ export function computeCurrentFieldScientificDiagnostics(field = {}, options = {
     temporalChangeRms: metricStats(temporalChange).rms,
     temporalDiscontinuityMaximum: metricStats(temporalChange).maximum,
     wetVolumeCoverage: round(validVectorCount / Math.max(1, dims.time * dims.depth * dims.height * dims.width)),
+    alongIsobathSpeedRms: alongStats.rms,
+    crossIsobathSpeedRms: crossStats.rms,
     alongIsobathFraction: metricStats(alongFractions).mean,
     crossIsobathFraction: metricStats(crossFractions).mean,
-    crossShelfSpeedRms: metricStats(crossShelfSpeeds).rms,
-    crossShelfSpeedMaximum: metricStats(crossShelfSpeeds).maximum,
+    crossShelfSpeedRms: crossStats.rms,
+    crossShelfSpeedMaximum: crossStats.maximum,
+    canyonExchangeVectorCount,
+    undeclaredCrossShelfVectorCount,
+    adjacentDirectionDifferenceMeanDegrees: adjacentDirectionStats.mean,
+    adjacentDirectionDifferenceP50Degrees: adjacentDirectionStats.p50,
+    adjacentDirectionDifferenceP95Degrees: adjacentDirectionStats.p95,
+    adjacentMagnitudeDifferenceMean: adjacentMagnitudeStats.mean,
+    adjacentMagnitudeDifferenceP95: adjacentMagnitudeStats.p95,
+    spatialAutocorrelation,
+    estimatedCorrelationLengthMeters,
+    coherentRegionCount,
+    calmRegionCount,
+    cellwiseDirectionNoiseScore,
+    lowFrequencyEnergyFraction,
+    highFrequencyEnergyFraction,
     status: failures.length ? 'FAIL' : warnings.length ? 'WARN' : 'PASS',
     warnings,
     failures
@@ -181,9 +240,66 @@ function divergenceAt(field, t, z, x, y) {
 }
 
 function cellWetAtDepth(field = {}, x = 0, y = 0, depth = 0) {
+  if (y < 0 || x < 0 || y >= (field.wetMask?.length ?? 0) || x >= (field.wetMask?.[y]?.length ?? 0)) return false;
   const wet = field.wetMask?.[y]?.[x] !== false;
   const bottom = Number(field.bottomDepthMeters?.[y]?.[x] ?? Infinity);
   return wet && Number.isFinite(bottom) && Number(depth) <= bottom + 1e-6;
+}
+
+function inDeclaredCanyon(field = {}, x = 0, y = 0) {
+  const params = field.sourceMetadata?.parameters ?? {};
+  const width = Math.max(1, (field.eastAxisMeters?.length ?? 1) - 1);
+  const height = Math.max(1, (field.northAxisMeters?.length ?? 1) - 1);
+  const xFrac = Number(x) / width;
+  const yFrac = Number(y) / height;
+  const cx = finite(params.canyonCenterX, 0.5);
+  const cy = finite(params.canyonCenterY, 0.58);
+  const sx = finite(params.canyonWidth, 0.075) * 1.8;
+  const sy = finite(params.canyonLength, 0.24) * 1.4;
+  return Math.abs(xFrac - cx) <= sx && Math.abs(yFrac - cy) <= sy;
+}
+
+function countCoherentRegions(field = {}, calmThreshold = 0.035, calmOnly = false) {
+  const t = 0;
+  const z = Math.min(1, (field.depthAxisMeters?.length ?? 1) - 1);
+  const height = field.northAxisMeters?.length ?? 0;
+  const width = field.eastAxisMeters?.length ?? 0;
+  const seen = new Set();
+  let regions = 0;
+  for (let y = 0; y < height; y += 1) {
+    for (let x = 0; x < width; x += 1) {
+      const key = `${x},${y}`;
+      if (seen.has(key) || !cellWetAtDepth(field, x, y, field.depthAxisMeters?.[z] ?? z)) continue;
+      const speed = Math.hypot(Number(field.uEastMetersPerSecond?.[t]?.[z]?.[y]?.[x] ?? 0), Number(field.vNorthMetersPerSecond?.[t]?.[z]?.[y]?.[x] ?? 0));
+      const isCalm = speed <= calmThreshold;
+      if (calmOnly !== isCalm) continue;
+      regions += 1;
+      const stack = [[x, y]];
+      seen.add(key);
+      while (stack.length) {
+        const [cx, cy] = stack.pop();
+        for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
+          const nx = cx + dx;
+          const ny = cy + dy;
+          const nkey = `${nx},${ny}`;
+          if (seen.has(nkey) || !cellWetAtDepth(field, nx, ny, field.depthAxisMeters?.[z] ?? z)) continue;
+          const nspeed = Math.hypot(Number(field.uEastMetersPerSecond?.[t]?.[z]?.[ny]?.[nx] ?? 0), Number(field.vNorthMetersPerSecond?.[t]?.[z]?.[ny]?.[nx] ?? 0));
+          if ((nspeed <= calmThreshold) !== calmOnly) continue;
+          seen.add(nkey);
+          stack.push([nx, ny]);
+        }
+      }
+    }
+  }
+  return regions;
+}
+
+function estimateCorrelationLengthMeters(field = {}, autocorrelation = 1) {
+  const dx = Math.abs(Number(field.eastAxisMeters?.[1] ?? 1) - Number(field.eastAxisMeters?.[0] ?? 0)) || 1;
+  const dy = Math.abs(Number(field.northAxisMeters?.[1] ?? 1) - Number(field.northAxisMeters?.[0] ?? 0)) || dx;
+  const spacing = (dx + dy) / 2;
+  const ac = Math.max(0, Math.min(0.999, Number(autocorrelation)));
+  return spacing * (1 + ac * 8);
 }
 
 function dimensions(field = {}) {
@@ -197,11 +313,17 @@ function dimensions(field = {}) {
 
 function metricStats(values = []) {
   const v = values.map(Number).filter(Number.isFinite).sort((a, b) => a - b);
-  if (!v.length) return { count: 0, minimum: null, mean: null, maximum: null, rms: null, p95: null };
+  if (!v.length) return { count: 0, minimum: null, mean: null, maximum: null, rms: null, p50: null, p95: null };
   const mean = v.reduce((sum, value) => sum + value, 0) / v.length;
   const rms = Math.sqrt(v.reduce((sum, value) => sum + value * value, 0) / v.length);
+  const p50 = v[Math.min(v.length - 1, Math.max(0, Math.floor(v.length * 0.5)))] ?? v.at(-1);
   const p95 = v[Math.min(v.length - 1, Math.max(0, Math.floor(v.length * 0.95)))] ?? v.at(-1);
-  return { count: v.length, minimum: round(v[0]), mean: round(mean), maximum: round(v.at(-1)), rms: round(rms), p95: round(p95) };
+  return { count: v.length, minimum: round(v[0]), mean: round(mean), maximum: round(v.at(-1)), rms: round(rms), p50: round(p50), p95: round(p95) };
+}
+
+function finite(value, fallback = 0) {
+  const number = Number(value);
+  return Number.isFinite(number) ? number : fallback;
 }
 
 function round(value, digits = 6) {

@@ -698,6 +698,7 @@ export class SimulationScene extends PhaserScene {
     const layers = config?.depthLayerIds ?? ['surface'];
     const legacy = config?.source === 'importedLegacySurfaceFallback' || config?.compatibility?.importedLegacySurfaceFallback === true || layers.length <= 1;
     const existing = this.app.state.ui.waterColumn ?? {};
+    const hasExplicitContextCurrents = Object.prototype.hasOwnProperty.call(existing, 'showContextCurrents');
     if (existing.userModified === true) return;
     this.app.state.ui.waterColumn = {
       ...existing,
@@ -715,7 +716,7 @@ export class SimulationScene extends PhaserScene {
       currentVectorDensity: normalizeCurrentVectorDensity(existing.currentVectorDensity ?? 'balanced'),
       currentMagnitudeScale: clampNumber(existing.currentMagnitudeScale, 1.8, 0.25, 6),
       currentColorMode: ['speed', 'direction', 'depthLayer', 'assistOpposeRoute'].includes(existing.currentColorMode) ? existing.currentColorMode : 'speed',
-      showContextCurrents: existing.showContextCurrents === true,
+      showContextCurrents: hasExplicitContextCurrents ? existing.showContextCurrents === true : !legacy,
       userModified: false,
       defaultDisplayModeApplied: true
     };

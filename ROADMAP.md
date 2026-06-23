@@ -424,3 +424,31 @@ FLOW-R2A adds the canonical 4D current cube, depth/time sampler, DIVE-R1.1 layer
 ## FLOW-R2A.3 Before FLOW-R2B
 
 FLOW-R2A.3 adds scientifically constrained 4D currents, bathymetry-aware validation, manufactured analytical benchmarks, and true volumetric depth-time rendering. FLOW-R2B remains display-only tracers, pathlines, stream ribbons, and route-current inspection. DATA-R1 remains the future offline attributed ocean-model fixture pipeline. FLOW-R3 remains optional WebGPU tracer/pathline compute. FLUID-R1 remains optional bounded local fluid perturbation research.
+
+## FLOW-R2A.5 Current Dynamics Checkpoint
+
+FLOW-R2A.5 is the current scientific behavior closure for production currents. It requires normal generated missions to show depth-distinct source currents, canonical mission-time evolution, physical magnitude-to-glyph scaling with calm-region handling, and coherent named coastal/ocean-style synthetic components. Bathymetry constrains the wet volume and declared component behavior; it is not a downhill-flow rule.
+
+Near-term current roadmap order:
+
+```text
+FLOW-R2A.5
+Production 4D current dynamics, magnitude fidelity, and ocean-coherent synthetic fields
+
+FLOW-R2B
+Display-only tracers, pathlines, stream ribbons, and route-current inspection
+
+WORLD-R2
+Multi-feature large regional operational domains
+
+DATA-R1
+Offline attributed NetCDF ocean-model fixture pipeline
+
+FLOW-R3
+Optional WebGPU current visualization and tracer compute
+
+FLUID-R1
+Optional bounded local WebGPU fluid-perturbation research layer
+```
+
+Do not treat FLOW-R2B as ready unless normal production vectors differ by depth, evolve with canonical time, encode physical magnitude, represent calm regions without arbitrary direction, pass coherence/bathymetry diagnostics, preserve glider/render parity, and satisfy headed performance plus grouped E2E gates.

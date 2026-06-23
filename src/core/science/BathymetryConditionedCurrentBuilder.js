@@ -2,7 +2,7 @@ import { createOceanCurrentField4D } from './OceanCurrentField4D.js';
 import { createWetMaskFromBathymetry, projectCoastlineNoNormalVelocity, terrainBoundaryDigest } from './CurrentTerrainBoundaryCondition.js';
 import { computeCurrentFieldScientificDiagnostics } from './CurrentFieldScientificDiagnostics.js';
 
-export const BATHYMETRY_CONDITIONED_CURRENT_BUILDER_VERSION = 'bathymetry-conditioned-current-builder-flow-r2a-3';
+export const BATHYMETRY_CONDITIONED_CURRENT_BUILDER_VERSION = 'bathymetry-conditioned-current-builder-flow-r2a-5';
 
 export function createBathymetryConditionedCurrentField(options = {}) {
   const level = options.level ?? {};
@@ -54,6 +54,7 @@ export function createBathymetryConditionedCurrentField(options = {}) {
     v.push(timeV);
   }
   const componentMetadata = componentMetadataFor(enabledComponents, params);
+  const componentIds = componentMetadata.map((component) => component.id);
   const field = createOceanCurrentField4D({
     id: options.id ?? `scientific-synthetic-current-${width}x${height}x${depthAxisMeters.length}x${timeAxisSeconds.length}`,
     label: options.label ?? 'Scientifically constrained synthetic current field',
@@ -72,7 +73,7 @@ export function createBathymetryConditionedCurrentField(options = {}) {
       sourceType: 'synthetic',
       sourceId: options.id ?? 'bathymetry-conditioned-synthetic-current',
       sourceLabel: options.label ?? 'Scientifically constrained synthetic current field',
-      equationFamily: 'bathymetryConditionedStreamfunctionSyntheticV1',
+      equationFamily: 'bathymetryConditionedStreamfunctionSyntheticV2',
       coordinateFrame: 'localEastNorthDown',
       depthDependent: true,
       timeDependent: true,
@@ -84,17 +85,33 @@ export function createBathymetryConditionedCurrentField(options = {}) {
       validatedAgainstObservation: false,
       usesRealHycom: false,
       usesRealMarineCopernicus: false,
+      calmThresholdMetersPerSecond: params.calmThresholdMetersPerSecond,
+      displayMagnitudeRangeMetersPerSecond: {
+        min: params.calmThresholdMetersPerSecond,
+        max: params.displayMagnitudeMaximumMetersPerSecond
+      },
+      perturbationPolicy: {
+        deterministic: true,
+        lowFrequencyOnly: true,
+        correlationLengthMeters: round(Math.min(params.domainEastMeters, params.domainNorthMeters) / 3),
+        maximumSpeedMetersPerSecond: params.perturbationSpeed,
+        notCellwiseRandomDirections: true
+      },
       expectedDiagnostics: {
         divergenceRmsMaximum: options.divergenceRmsMaximum ?? 0.12,
-        coastlineNormalSpeedRmsMaximum: options.coastlineNormalSpeedRmsMaximum ?? 0.035
+        coastlineNormalSpeedRmsMaximum: options.coastlineNormalSpeedRmsMaximum ?? 0.035,
+        cellwiseDirectionNoiseScoreMaximum: options.cellwiseDirectionNoiseScoreMaximum ?? 0.5,
+        highFrequencyEnergyFractionMaximum: options.highFrequencyEnergyFractionMaximum ?? 0.55
       },
+      componentIds,
       components: componentMetadata,
       parameters: params,
-      references: ['FLOW-R2A.3 educational synthetic current contract'],
+      references: ['FLOW-R2A.5 production 4D current dynamics contract'],
       warnings: [
         'Scientifically constrained synthetic current field. Not a calibrated ocean forecast. Not real HYCOM or Marine Copernicus data.',
         'Bathymetry constrains and steers this fixture; it does not imply generic downhill flow.',
-        'Cross-shelf flow appears only in declared components such as tide and canyon exchange.'
+        'Cross-shelf flow appears only in declared components such as tide and localized canyon exchange.',
+        'Component perturbations are deterministic low-frequency terms, not independent cellwise random directions.'
       ]
     },
     boundaryFlags: {
@@ -121,13 +138,14 @@ export function bathymetryConditionedComponentCatalog() {
 
 const DEFAULT_COMPONENTS = Object.freeze([
   'alongShelfJet',
-  'shelfBreakJet',
-  'barotropicTide',
   'depthShear',
+  'barotropicTide',
   'mesoscaleEddy',
   'translatingEddy',
+  'calmOrWeakCurrentRegion',
+  'localizedCanyonExchange',
+  'shelfBreakJet',
   'islandWakeApproximation',
-  'canyonExchangeApproximation',
   'optionalWindDrivenSurfaceShear'
 ]);
 
@@ -141,6 +159,7 @@ function evaluateSyntheticComponents(context) {
   const yFrac = (yMeters - Number(northAxisMeters[0] ?? 0)) / ySpan;
   const duration = Math.max(1, params.durationSeconds);
   const phase = 2 * Math.PI * (Number(timeSeconds) / duration);
+  const slowPhase = phase * 0.5 + params.seed * 0.017;
   const bottom = Number(bottomDepthMeters[y]?.[x] ?? params.maximumBottomDepthMeters);
   const depthNorm = Math.max(0, Math.min(1, Number(depthMeters) / Math.max(1, bottom)));
   const depthDecay = Math.exp(-Number(depthMeters) / Math.max(1, params.depthDecayMeters));
@@ -150,46 +169,55 @@ function evaluateSyntheticComponents(context) {
   const add = (du, dv) => { u += du; v += dv; };
   const shelfWeight = gaussian(bottom, params.shelfBreakDepthMeters, params.shelfBreakWidthMeters);
   if (enabledComponents.has('alongShelfJet')) {
-    const speed = params.alongShelfJetSpeed * (0.58 + 0.42 * shelfWeight) * (1 - params.depthShearStrength * depthNorm) * (0.92 + 0.08 * Math.cos(phase));
+    const speed = params.alongShelfJetSpeed * (0.45 + 0.55 * shelfWeight) * (1 - params.depthShearStrength * depthNorm) * (1 + 0.18 * Math.sin(phase + 0.3));
     add(terrain.tangentX * speed, terrain.tangentY * speed);
   }
   if (enabledComponents.has('shelfBreakJet')) {
-    const speed = params.shelfBreakJetSpeed * shelfWeight * (0.75 + 0.25 * Math.cos(phase + 0.7)) * (1 - 0.45 * depthNorm);
+    const speed = params.shelfBreakJetSpeed * shelfWeight * (0.7 + 0.3 * Math.cos(phase + 0.7)) * (1 - 0.42 * depthNorm);
     add(terrain.tangentX * speed, terrain.tangentY * speed);
   }
   if (enabledComponents.has('barotropicTide')) {
-    add(params.tideEastAmplitude * Math.sin(phase), params.tideNorthAmplitude * Math.cos(phase));
+    add(params.tideEastAmplitude * Math.sin(phase), params.tideNorthAmplitude * Math.sin(phase + Math.PI / 4));
   }
   if (enabledComponents.has('depthShear')) {
-    const shear = params.depthShearSpeed * (depthNorm - 0.35);
+    const shear = params.depthShearSpeed * (depthNorm - 0.34) * (0.9 + 0.1 * Math.cos(phase + 1.1));
     add(terrain.tangentX * shear, terrain.tangentY * shear);
   }
   if (enabledComponents.has('mesoscaleEddy')) {
-    const eddy = eddyVector({ xFrac, yFrac, cx: 0.66, cy: 0.58, radius: 0.22, strength: params.eddyStrength * (0.65 + 0.35 * depthDecay) });
+    const eddy = eddyVector({ xFrac, yFrac, cx: 0.66, cy: 0.58, radius: 0.22, strength: params.eddyStrength * (0.7 + 0.3 * depthDecay) * (0.86 + 0.14 * Math.cos(slowPhase)) });
     add(eddy.u, eddy.v);
   }
   if (enabledComponents.has('translatingEddy')) {
-    const cx = 0.25 + 0.18 * (0.5 + 0.5 * Math.sin(phase * 0.5));
-    const cy = 0.34 + 0.08 * Math.cos(phase * 0.5);
-    const eddy = eddyVector({ xFrac, yFrac, cx, cy, radius: 0.18, strength: params.translatingEddyStrength * (0.7 + 0.3 * depthDecay) });
+    const cx = 0.25 + 0.18 * (0.5 + 0.5 * Math.sin(slowPhase));
+    const cy = 0.34 + 0.08 * Math.cos(slowPhase);
+    const eddy = eddyVector({ xFrac, yFrac, cx, cy, radius: 0.18, strength: params.translatingEddyStrength * (0.72 + 0.28 * depthDecay) });
     add(eddy.u, eddy.v);
   }
   if (enabledComponents.has('islandWakeApproximation')) {
     const island = gaussian2(xFrac, yFrac, params.islandCenterX, params.islandCenterY, 0.16, 0.12);
-    add(-params.islandWakeSpeed * island * (0.8 + 0.2 * Math.sin(phase)) * depthDecay, params.islandWakeSpeed * 0.35 * island * Math.cos(phase) * depthDecay);
+    add(-params.islandWakeSpeed * island * (0.78 + 0.22 * Math.sin(phase)) * depthDecay, params.islandWakeSpeed * 0.35 * island * Math.cos(phase) * depthDecay);
   }
-  if (enabledComponents.has('canyonExchangeApproximation')) {
+  if (enabledComponents.has('localizedCanyonExchange')) {
     const canyon = gaussian2(xFrac, yFrac, params.canyonCenterX, params.canyonCenterY, params.canyonWidth, params.canyonLength);
-    const speed = params.canyonExchangeSpeed * canyon * Math.sin(phase + 0.4) * (0.45 + 0.55 * depthDecay);
+    const speed = params.canyonExchangeSpeed * canyon * Math.sin(phase + 0.4) * (0.38 + 0.62 * depthDecay);
     add(terrain.normalX * speed, terrain.normalY * speed);
   }
   if (enabledComponents.has('optionalWindDrivenSurfaceShear')) {
-    const speed = params.windSurfaceSpeed * Math.exp(-Number(depthMeters) / Math.max(1, params.windDecayMeters)) * (0.85 + 0.15 * Math.sin(phase + 1.2));
+    const speed = params.windSurfaceSpeed * Math.exp(-Number(depthMeters) / Math.max(1, params.windDecayMeters)) * (0.84 + 0.16 * Math.sin(phase + 1.2));
     add(speed, -0.25 * speed);
   }
   if (params.perturbationSpeed > 0) {
-    const p = params.perturbationSpeed * Math.sin((xFrac * 3.1 + yFrac * 2.7 + params.seed * 0.013) * Math.PI * 2) * Math.cos(phase + depthMeters * 0.004);
+    const p = params.perturbationSpeed
+      * Math.sin((xFrac * 2.2 + yFrac * 1.6 + params.seed * 0.013) * Math.PI * 2)
+      * Math.cos(slowPhase + depthMeters * 0.004);
     add(p * terrain.tangentX, p * terrain.tangentY);
+  }
+  if (enabledComponents.has('calmOrWeakCurrentRegion')) {
+    const calm = gaussian2(xFrac, yFrac, params.calmCenterX, params.calmCenterY, params.calmWidthX, params.calmWidthY);
+    const slack = 0.5 + 0.5 * Math.cos(phase - 0.35);
+    const damping = Math.max(0.035, 1 - params.calmDampingStrength * calm * (0.82 + 0.18 * slack));
+    u *= damping;
+    v *= damping;
   }
   return { u, v };
 }
@@ -221,27 +249,39 @@ function bathymetryFrame(bottomDepthMeters = [], wetMask = [], x = 0, y = 0, eas
 function componentMetadataFor(enabledComponents, params) {
   const enabled = enabledComponents instanceof Set ? enabledComponents : new Set(enabledComponents ?? DEFAULT_COMPONENTS);
   const definitions = {
-    alongShelfJet: ['u/v along local isobath tangent', 'Continental shelf along-coast jet', 'Uses bathymetry gradient as tangent direction; does not flow downhill by default.', 'Speed weakens with depth.', 'Weak deterministic temporal modulation.', 'Synthetic educational approximation, not calibrated.'],
-    shelfBreakJet: ['Gaussian speed maximum near shelf-break depth along isobaths', 'Shelf-break current core', 'Uses declared shelf-break depth and isobath tangent.', 'Weaker at depth.', 'Slow deterministic modulation.', 'Numerical mask can introduce divergence residuals.'],
-    barotropicTide: ['Uniform u/v sinusoid in time', 'Barotropic tidal reversal', 'Independent of bathymetry except wet mask.', 'Depth invariant.', 'Reverses over mission time.', 'Not a harmonic tide product.'],
-    depthShear: ['Isobath-parallel shear proportional to normalized depth', 'Vertical current shear', 'Uses isobath tangent only for direction.', 'Depth dependent by construction.', 'No independent time variation.', 'Educational shear term.'],
-    mesoscaleEddy: ['Rotational streamfunction-like eddy', 'Mesoscale recirculation cell', 'Masked by wet volume.', 'Decays with depth.', 'Stationary in this component.', 'Gaussian envelope is synthetic.'],
-    translatingEddy: ['Rotational eddy with time-varying center', 'Moving eddy feature', 'Masked by wet volume.', 'Decays with depth.', 'Center moves deterministically.', 'Not assimilated from observations.'],
-    islandWakeApproximation: ['Localized wake perturbation around declared island/seamount', 'Island wake analogy', 'Localized by declared feature center.', 'Surface intensified.', 'Oscillates weakly.', 'Approximate display/benchmark term.'],
-    canyonExchangeApproximation: ['Localized cross-isobath exchange in canyon region', 'Submarine canyon exchange analogy', 'Explicitly uses bathymetry normal only in declared canyon region.', 'Surface-to-midwater weighted.', 'Tide-phased exchange.', 'This is the only default cross-shelf mechanism.'],
-    optionalWindDrivenSurfaceShear: ['Surface-intensified wind shear vector', 'Wind-driven surface current analogy', 'Independent of bathymetry except wet mask.', 'Exponential decay with depth.', 'Weak time modulation.', 'Optional synthetic forcing.']
+    alongShelfJet: componentDefinition('alongShelfJet', 'isobath-parallel streamfunction jet', 'Continental shelf along-coast jet', 'Uses bathymetry gradient to form an isobath tangent; bathymetry does not create downhill flow.', 'Surface-to-midwater current weakens with normalized depth.', 'Slow deterministic modulation over canonical mission time.', 'Shelf and shelf-break wet cells.', 'Synthetic shelf-jet analogue with simplified coastline projection.'),
+    depthShear: componentDefinition('depthShear', 'depth-dependent isobath-parallel shear', 'Vertical shear between surface and deeper water masses', 'Uses the same local isobath frame as the shelf jet.', 'Velocity changes sign/strength with normalized physical depth.', 'Weak canonical-time modulation only.', 'Wet volume above seabed.', 'Educational shear term, not a calibrated vertical profile.'),
+    barotropicTide: componentDefinition('barotropicTide', 'sinusoidal barotropic u/v forcing', 'Depth-independent tidal reversal', 'Masked by wet volume and coastline projection.', 'Depth invariant before boundary projection.', 'Reverses deterministically over mission duration.', 'All wet cells.', 'Not a harmonic tide product.'),
+    mesoscaleEddy: componentDefinition('mesoscaleEddy', 'Gaussian rotational streamfunction cell', 'Mesoscale recirculation cell', 'Masked by wet volume; may cross isobaths as a declared eddy.', 'Decays with depth.', 'Strength changes slowly with canonical time.', 'Declared offshore eddy envelope.', 'Gaussian envelope is synthetic.'),
+    translatingEddy: componentDefinition('translatingEddy', 'time-translating Gaussian rotational cell', 'Moving eddy feature', 'Masked by wet volume; movement is declared, deterministic, and smooth.', 'Decays with depth.', 'Center translates deterministically with canonical mission time.', 'Declared moving-eddy envelope.', 'Not assimilated from observations.'),
+    calmOrWeakCurrentRegion: componentDefinition('calmOrWeakCurrentRegion', 'Gaussian weak-flow damping envelope', 'Sheltered or slack-current region', 'Damps declared components locally without assigning a direction to calm water.', 'Applies at all physical depths, with source vectors still sampled by depth.', 'Strongest near a deterministic slack phase.', 'Declared weak-flow envelope.', 'Not a real harbor or observed stagnation product.'),
+    localizedCanyonExchange: componentDefinition('localizedCanyonExchange', 'localized cross-isobath exchange term', 'Submarine canyon exchange analogue', 'Uses bathymetry normal only inside the declared canyon envelope.', 'Surface-to-midwater weighted exchange.', 'Tide-phased deterministic exchange.', 'Declared canyon geometry only.', 'This is a localized synthetic exchange term, not a regional forecast.'),
+    shelfBreakJet: componentDefinition('shelfBreakJet', 'Gaussian shelf-break speed maximum', 'Shelf-break current core', 'Uses declared shelf-break depth and local isobath tangent.', 'Weaker at depth.', 'Slow deterministic modulation.', 'Shelf-break depth band.', 'Numerical mask can introduce small divergence residuals.'),
+    islandWakeApproximation: componentDefinition('islandWakeApproximation', 'localized wake perturbation', 'Island or seamount wake analogy', 'Localized by declared feature center and masked by wet volume.', 'Surface intensified.', 'Oscillates weakly with canonical time.', 'Declared wake envelope.', 'Approximate display/benchmark term.'),
+    optionalWindDrivenSurfaceShear: componentDefinition('optionalWindDrivenSurfaceShear', 'surface-intensified vector shear', 'Wind-driven surface current analogy', 'Independent of bathymetry except wet mask and boundary projection.', 'Exponential decay with depth.', 'Weak deterministic modulation.', 'Upper water column.', 'Optional synthetic forcing, not a weather product.')
   };
-  return Object.entries(definitions).filter(([id]) => enabled.has(id)).map(([id, values]) => ({
-    id,
-    equation: values[0],
-    intendedPhysicalAnalogy: values[1],
-    bathymetryInteraction: values[2],
-    depthBehavior: values[3],
-    timeBehavior: values[4],
-    knownLimitations: values[5],
+  return Object.entries(definitions).filter(([id]) => enabled.has(id)).map(([id, definition]) => ({
+    ...definition,
+    parameters: paramsForComponent(id, params),
     notAForecastWarning: 'Scientifically constrained synthetic current field. Not a calibrated ocean forecast.',
-    parameters: paramsForComponent(id, params)
+    notA: 'Not a calibrated regional forecast, not real HYCOM data, and not Marine Copernicus data.'
   }));
+}
+
+function componentDefinition(id, equationFamily, physicalAnalogy, bathymetryInteraction, depthBehavior, temporalBehavior, validRegion, knownLimitations) {
+  return {
+    id,
+    equationFamily,
+    equation: equationFamily,
+    physicalAnalogy,
+    intendedPhysicalAnalogy: physicalAnalogy,
+    bathymetryInteraction,
+    depthBehavior,
+    temporalBehavior,
+    timeBehavior: temporalBehavior,
+    validRegion,
+    knownLimitations
+  };
 }
 
 function paramsForComponent(id, params) {
@@ -252,8 +292,9 @@ function paramsForComponent(id, params) {
     depthShear: ['depthShearSpeed'],
     mesoscaleEddy: ['eddyStrength'],
     translatingEddy: ['translatingEddyStrength'],
+    calmOrWeakCurrentRegion: ['calmThresholdMetersPerSecond', 'calmCenterX', 'calmCenterY', 'calmWidthX', 'calmWidthY', 'calmDampingStrength'],
+    localizedCanyonExchange: ['canyonExchangeSpeed', 'canyonCenterX', 'canyonCenterY', 'canyonWidth', 'canyonLength'],
     islandWakeApproximation: ['islandWakeSpeed', 'islandCenterX', 'islandCenterY'],
-    canyonExchangeApproximation: ['canyonExchangeSpeed', 'canyonCenterX', 'canyonCenterY', 'canyonWidth', 'canyonLength'],
     optionalWindDrivenSurfaceShear: ['windSurfaceSpeed', 'windDecayMeters']
   }[id] ?? [];
   return Object.fromEntries(keys.map((key) => [key, params[key]]));
@@ -270,35 +311,43 @@ function defaultParameters(options, bottomDepthMeters, eastAxisMeters, northAxis
     depthDecayMeters: finite(options.depthDecayMeters, 220),
     shelfBreakDepthMeters: finite(options.shelfBreakDepthMeters, Math.max(120, maxDepth * 0.42)),
     shelfBreakWidthMeters: finite(options.shelfBreakWidthMeters, Math.max(70, maxDepth * 0.18)),
-    alongShelfJetSpeed: finite(options.alongShelfJetSpeed, 0.16),
-    shelfBreakJetSpeed: finite(options.shelfBreakJetSpeed, 0.12),
-    tideEastAmplitude: finite(options.tideEastAmplitude, 0.055),
-    tideNorthAmplitude: finite(options.tideNorthAmplitude, 0.035),
-    depthShearStrength: finite(options.depthShearStrength, 0.38),
-    depthShearSpeed: finite(options.depthShearSpeed, 0.045),
-    eddyStrength: finite(options.eddyStrength, 0.075),
-    translatingEddyStrength: finite(options.translatingEddyStrength, 0.065),
-    islandWakeSpeed: finite(options.islandWakeSpeed, 0.045),
+    alongShelfJetSpeed: finite(options.alongShelfJetSpeed, 0.19),
+    shelfBreakJetSpeed: finite(options.shelfBreakJetSpeed, 0.11),
+    tideEastAmplitude: finite(options.tideEastAmplitude, 0.095),
+    tideNorthAmplitude: finite(options.tideNorthAmplitude, 0.065),
+    depthShearStrength: finite(options.depthShearStrength, 0.45),
+    depthShearSpeed: finite(options.depthShearSpeed, 0.078),
+    eddyStrength: finite(options.eddyStrength, 0.62),
+    translatingEddyStrength: finite(options.translatingEddyStrength, 0.48),
+    islandWakeSpeed: finite(options.islandWakeSpeed, 0.05),
     islandCenterX: finite(options.islandCenterX, 0.72),
     islandCenterY: finite(options.islandCenterY, 0.28),
-    canyonExchangeSpeed: finite(options.canyonExchangeSpeed, 0.07),
+    canyonExchangeSpeed: finite(options.canyonExchangeSpeed, 0.11),
     canyonCenterX: finite(options.canyonCenterX, 0.5),
     canyonCenterY: finite(options.canyonCenterY, 0.58),
     canyonWidth: finite(options.canyonWidth, 0.075),
     canyonLength: finite(options.canyonLength, 0.24),
-    windSurfaceSpeed: finite(options.windSurfaceSpeed, 0.028),
+    calmThresholdMetersPerSecond: finite(options.calmThresholdMetersPerSecond, 0.035),
+    calmCenterX: finite(options.calmCenterX, 0.61),
+    calmCenterY: finite(options.calmCenterY, 0.38),
+    calmWidthX: finite(options.calmWidthX, 0.105),
+    calmWidthY: finite(options.calmWidthY, 0.12),
+    calmDampingStrength: finite(options.calmDampingStrength, 0.98),
+    displayMagnitudeMaximumMetersPerSecond: finite(options.displayMagnitudeMaximumMetersPerSecond, 0.45),
+    windSurfaceSpeed: finite(options.windSurfaceSpeed, 0.036),
     windDecayMeters: finite(options.windDecayMeters, 45),
-    perturbationSpeed: finite(options.perturbationSpeed, 0.006),
+    perturbationSpeed: finite(options.perturbationSpeed, 0.004),
     domainEastMeters: Math.max(1, Number(eastAxisMeters.at(-1) ?? 0) - Number(eastAxisMeters[0] ?? 0)),
     domainNorthMeters: Math.max(1, Number(northAxisMeters.at(-1) ?? 0) - Number(northAxisMeters[0] ?? 0))
   };
 }
 
 function normalizeEnabledComponents(value) {
+  const aliases = { canyonExchangeApproximation: 'localizedCanyonExchange', weakFlowRegion: 'calmOrWeakCurrentRegion' };
   if (!value) return new Set(DEFAULT_COMPONENTS);
-  if (Array.isArray(value)) return new Set(value);
-  if (value instanceof Set) return value;
-  if (typeof value === 'object') return new Set(DEFAULT_COMPONENTS.filter((id) => value[id] !== false));
+  if (Array.isArray(value)) return new Set(value.map((id) => aliases[id] ?? id));
+  if (value instanceof Set) return new Set([...value].map((id) => aliases[id] ?? id));
+  if (typeof value === 'object') return new Set(DEFAULT_COMPONENTS.filter((id) => value[id] !== false && value[Object.entries(aliases).find(([, target]) => target === id)?.[0]] !== false));
   return new Set(DEFAULT_COMPONENTS);
 }
 
@@ -320,7 +369,7 @@ function normalizeBottomDepth(level = {}, width, height, explicit, depthAxisMete
   const source = explicit ?? level.bathymetry?.depthMeters ?? level.layers?.bottomDepthMeters ?? level.layers?.depthMeters ?? level.world?.bathymetry?.depthMeters ?? null;
   const fallback = Math.max(220, ...(Array.isArray(depthAxisMeters) ? depthAxisMeters : [0]).map(Number).filter(Number.isFinite)) + 50;
   if (Array.isArray(source) && Array.isArray(source[0])) {
-    return Array.from({ length: height }, (_row, y) => Array.from({ length: width }, (_cell, x) => Math.max(0, finite(source?.[y]?.[x], fallback))));
+    return resample2d(source, width, height, fallback).map((row) => row.map((value) => Math.max(0, value)));
   }
   return Array.from({ length: height }, (_row, y) => Array.from({ length: width }, (_cell, x) => {
     const shelf = 45 + x * 18 + y * 7;
@@ -328,6 +377,27 @@ function normalizeBottomDepth(level = {}, width, height, explicit, depthAxisMete
     const blend = Math.min(1, Math.max(0, (x - width * 0.42) / Math.max(1, width * 0.3)));
     const canyon = Math.exp(-Math.pow((x / Math.max(1, width - 1)) - 0.5, 2) / 0.012) * Math.exp(-Math.pow((y / Math.max(1, height - 1)) - 0.62, 2) / 0.08) * 170;
     return round(shelf * (1 - blend) + basin * blend + canyon);
+  }));
+}
+
+function resample2d(source = [], width = 1, height = 1, fallback = 0) {
+  const sourceHeight = source.length;
+  const sourceWidth = source[0]?.length ?? 0;
+  if (!sourceHeight || !sourceWidth) return Array.from({ length: height }, () => Array.from({ length: width }, () => finite(fallback, 0)));
+  return Array.from({ length: height }, (_row, y) => Array.from({ length: width }, (_cell, x) => {
+    const sx = width <= 1 ? 0 : (x / Math.max(1, width - 1)) * (sourceWidth - 1);
+    const sy = height <= 1 ? 0 : (y / Math.max(1, height - 1)) * (sourceHeight - 1);
+    const x0 = Math.max(0, Math.min(sourceWidth - 1, Math.floor(sx)));
+    const x1 = Math.max(0, Math.min(sourceWidth - 1, Math.ceil(sx)));
+    const y0 = Math.max(0, Math.min(sourceHeight - 1, Math.floor(sy)));
+    const y1 = Math.max(0, Math.min(sourceHeight - 1, Math.ceil(sy)));
+    const fx = sx - x0;
+    const fy = sy - y0;
+    const a = finite(source?.[y0]?.[x0], fallback);
+    const b = finite(source?.[y0]?.[x1], a);
+    const c = finite(source?.[y1]?.[x0], a);
+    const d = finite(source?.[y1]?.[x1], c);
+    return round((a * (1 - fx) + b * fx) * (1 - fy) + (c * (1 - fx) + d * fx) * fy);
   }));
 }
 
