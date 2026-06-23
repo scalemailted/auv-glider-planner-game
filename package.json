@@ -1,4 +1,4 @@
-﻿{
+{
     "name":  "auv-glider-planner-game",
     "version":  "0.1.0",
     "description":  "Three.js-first AUV glider planning game with a portable simulation core, solver bridge, dataset export, and transitional Phaser shell.",
