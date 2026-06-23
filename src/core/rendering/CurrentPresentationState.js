@@ -1,4 +1,4 @@
-export const CURRENT_PRESENTATION_STATE_VERSION = 'current-presentation-state-flow-r2a-4';
+export const CURRENT_PRESENTATION_STATE_VERSION = 'current-presentation-state-flow-r2a-5-2';
 
 export function normalizeCurrentDisplayMode(mode = 'activeSlice') {
   if (mode === 'activeLayerOnly' || mode === 'activeCurrentSlice') return 'activeSlice';
@@ -16,6 +16,44 @@ export function normalizeRendererCurrentDisplayMode(mode = 'activeSlice') {
   return normalized;
 }
 
+
+export function resolveCurrentPresentationTimeSeconds(viewModel = {}, fallback = 0) {
+  const explorer = viewModel.waterColumnExplorer ?? {};
+  const visualization = viewModel.currentVisualization ?? {};
+  return finiteNumber(
+    viewModel.currentPresentationTimeSeconds
+      ?? visualization.currentPresentationTimeSeconds
+      ?? visualization.currentActiveTimeSeconds
+      ?? explorer.activeTimeSeconds
+      ?? viewModel.currentActiveTimeSeconds
+      ?? viewModel.activeTimeSeconds
+      ?? viewModel.simulationStatus?.timeSeconds
+      ?? viewModel.planningTime
+      ?? fallback,
+    fallback
+  );
+}
+
+export function currentSourceTimeFrameSignature(viewModel = {}) {
+  const explorer = viewModel.waterColumnExplorer ?? {};
+  const currentVisualization = viewModel.currentVisualization ?? {};
+  const activeLayerId = currentVisualization.currentActiveLayerId ?? viewModel.currentActiveLayerId ?? explorer.activeLayerId ?? viewModel.activeDepthLayerId ?? null;
+  const activeLayer = (explorer.layers ?? []).find((layer) => layer.id === activeLayerId) ?? explorer.layers?.[0] ?? null;
+  const vector = (activeLayer?.currentField?.vectors ?? []).find((candidate) => candidate.visible !== false) ?? activeLayer?.currentField?.vectors?.[0] ?? null;
+  const selected = (explorer.selectedCurrentProfile?.samplesByDepth ?? []).find((sample) => sample.layerId === activeLayer?.id) ?? explorer.selectedCurrentProfile?.samplesByDepth?.[0] ?? null;
+  const sample = selected ?? vector ?? {};
+  return [
+    'current-source-time-frame',
+    roundForSignature(resolveCurrentPresentationTimeSeconds(viewModel, explorer.activeTimeSeconds ?? 0)),
+    roundForSignature(sample.currentSampleTimeSeconds ?? sample.timeSeconds ?? explorer.activeTimeSeconds ?? 0),
+    roundForSignature(sample.wrappedCurrentTimeSeconds ?? sample.currentSampleTimeSeconds ?? sample.timeSeconds ?? explorer.activeTimeSeconds ?? 0),
+    roundForSignature(sample.lowerTimeSeconds ?? 0),
+    roundForSignature(sample.upperTimeSeconds ?? 0),
+    roundForSignature(sample.timeInterpolationFraction ?? 0),
+    sample.currentFrameDigest ?? vector?.currentFrameDigest ?? 'no-current-frame',
+    explorer.currentFieldSummary?.digest ?? explorer.activeCurrentSourceDigest ?? explorer.currentCube?.digest ?? 'no-current-cube'
+  ].join(':');
+}
 export function isExplicitCurrentSafeMode(locationOrSearch = null) {
   try {
     const search = typeof locationOrSearch === 'string'
@@ -40,6 +78,8 @@ export function currentPresentationCacheSignature(viewModel = {}, search = null)
     normalizeCurrentDisplayMode(waterColumn.currentDisplayMode ?? viewModel.currentDisplayMode ?? 'activeSlice'),
     waterColumn.currentLayerMode ?? 'followSelectedGlider',
     viewModel.currentActiveLayerId ?? viewModel.currentVisualization?.currentActiveLayerId ?? viewModel.activeDepthLayerId ?? 'none',
+    roundForSignature(resolveCurrentPresentationTimeSeconds(viewModel)),
+    currentSourceTimeFrameSignature(viewModel),
     waterColumn.currentVectorDensity ?? 'balanced',
     Number(waterColumn.currentMagnitudeScale ?? 1.8),
     waterColumn.currentColorMode ?? 'speed',
@@ -64,6 +104,8 @@ export function buildCurrentPresentationDebug({
   const safeModeExplicit = isExplicitCurrentSafeMode(search);
   const normalizedDisplayMode = normalizeCurrentDisplayMode(waterColumn.currentDisplayMode ?? currentDebug?.currentDisplayMode ?? 'activeSlice');
   const rendererDisplayMode = normalizeRendererCurrentDisplayMode(normalizedDisplayMode);
+  const currentPresentationTimeSeconds = resolveCurrentPresentationTimeSeconds(viewModel, currentDebug?.currentActiveTimeSeconds ?? 0);
+  const sourceFrameSignature = currentSourceTimeFrameSignature(viewModel);
   const sourceVectorSampleCount = Number(currentDebug?.sourceVectorSampleCount ?? rendererSummary?.sourceVectorSampleCount ?? 0);
   const finiteVectorSampleCount = Number(currentDebug?.finiteVectorSampleCount ?? rendererSummary?.finiteVectorSampleCount ?? 0);
   const nonzeroVectorSampleCount = Number(currentDebug?.nonzeroVectorSampleCount ?? rendererSummary?.nonzeroVectorSampleCount ?? 0);
@@ -99,6 +141,8 @@ export function buildCurrentPresentationDebug({
     currentLayerMode: waterColumn.currentLayerMode ?? 'followSelectedGlider',
     currentActiveLayerId: currentDebug?.currentActiveLayerId ?? viewModel.currentActiveLayerId ?? viewModel.currentVisualization?.currentActiveLayerId ?? null,
     currentActiveDepthMeters: currentDebug?.currentActiveDepthMeters ?? viewModel.currentActiveDepthMeters ?? null,
+    currentPresentationTimeSeconds,
+    sourceTimeFrameSignature: sourceFrameSignature,
     sourceVectorSampleCount,
     finiteVectorSampleCount,
     nonzeroVectorSampleCount,
@@ -108,9 +152,20 @@ export function buildCurrentPresentationDebug({
     glyphBoundsInFrustum: currentDebug?.glyphBoundsInFrustum ?? rendererSummary?.glyphBoundsInFrustum ?? null,
     noVisibleVectorsReason: currentDebug?.noVisibleVectorsReason ?? reason,
     cacheSignature: currentPresentationCacheSignature(viewModel, search),
+    currentDataChangedSinceLastUpload: rendererSummary?.currentDataChangedSinceLastUpload ?? currentDebug?.currentDataChangedSinceLastUpload ?? null,
+    currentDataUploadSkipped: rendererSummary?.currentDataUploadSkipped ?? currentDebug?.currentDataUploadSkipped ?? null,
     rendererOwnsCurrent: false,
     displayLayerChangesCurrent: false,
     changesOfficialScoring: false,
     warnings: [...warnings]
   };
+}
+function finiteNumber(value, fallback = 0) {
+  const numeric = Number(value);
+  return Number.isFinite(numeric) ? numeric : fallback;
+}
+
+function roundForSignature(value) {
+  const numeric = Number(value);
+  return Number.isFinite(numeric) ? Number(numeric.toFixed(3)) : 0;
 }

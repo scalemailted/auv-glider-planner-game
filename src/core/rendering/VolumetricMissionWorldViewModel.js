@@ -15,8 +15,10 @@ import {
   waterColumnLayerExplorerSummary
 } from './WaterColumnLayerExplorerViewModel.js';
 import {
+  currentSourceTimeFrameSignature,
   isExplicitCurrentSafeMode,
-  normalizeCurrentDisplayMode as normalizeSharedCurrentDisplayMode
+  normalizeCurrentDisplayMode as normalizeSharedCurrentDisplayMode,
+  resolveCurrentPresentationTimeSeconds
 } from './CurrentPresentationState.js';
 
 export const VOLUMETRIC_MISSION_WORLD_VIEW_MODEL_VERSION = 'volumetric-mission-world-view-model-three-r1-2a';
@@ -55,6 +57,13 @@ export function augmentMissionWorldWithVolumetricModel(baseViewModel = {}, optio
   const configSummary = waterColumnMissionConfigSummary(waterColumnConfig);
   const legacySurfaceOnlyFallback = isLegacySurfaceOnlyMission(waterColumnConfig);
   const waterColumnUi = displaySettings.waterColumn ?? options.waterColumn ?? {};
+  const canonicalActiveTimeSeconds = finiteNumber(options.activeTimeSeconds ?? baseViewModel.activeTimeSeconds ?? baseViewModel.simulationStatus?.timeSeconds, 0);
+  const currentPresentationTimeSeconds = resolveCurrentPresentationTimeSeconds({
+    ...baseViewModel,
+    activeTimeSeconds: canonicalActiveTimeSeconds,
+    currentActiveTimeSeconds: baseViewModel.currentActiveTimeSeconds ?? canonicalActiveTimeSeconds,
+    simulationStatus: options.simulationStatus ?? baseViewModel.simulationStatus
+  }, canonicalActiveTimeSeconds);
   const allLayerFieldTexturesEnabled = waterColumnUi.fieldDisplayMode === 'allLayers' || waterColumnUi.showFieldOnAllLayers === true;
   const verticalExaggeration = finiteNumber(waterColumnUi.verticalExaggeration ?? displaySettings.verticalExaggeration ?? baseViewModel.coordinateSystem?.verticalExaggeration, 1);
   const verticalDisplayMode = normalizeVerticalDisplayMode(waterColumnUi.verticalDisplayMode ?? displaySettings.verticalDisplayMode ?? waterColumnConfig.defaultDisplayMode);
@@ -133,7 +142,7 @@ export function augmentMissionWorldWithVolumetricModel(baseViewModel = {}, optio
     comparisonLayerId: waterColumnUi.comparisonLayerId,
     displayMode: waterColumnUi.layerExplorerMode ?? waterColumnUi.displayMode ?? verticalDisplayMode,
     displaySettings: waterColumnUi,
-    activeTimeSeconds: baseViewModel.activeTimeSeconds ?? options.activeTimeSeconds ?? 0,
+    activeTimeSeconds: currentPresentationTimeSeconds,
     selectedLocation: baseViewModel.selectedCell ?? baseViewModel.selection?.selectedCell ?? baseViewModel.interactionViewModel?.hoveredCell ?? null
   });
   const selectedDepthCell = buildSelectedDepthCell({
@@ -149,8 +158,15 @@ export function augmentMissionWorldWithVolumetricModel(baseViewModel = {}, optio
     waterColumnUi,
     waterColumnExplorer,
     activeDepthLayerId: currentActiveDepthLayerId,
-    activeTimeSeconds: baseViewModel.activeTimeSeconds ?? options.activeTimeSeconds ?? 0,
+    activeTimeSeconds: currentPresentationTimeSeconds,
     showCurrents: displaySettings.showCurrents ?? baseViewModel.visibility?.currentVectors ?? true
+  });
+  const currentSourceFrameSignature = currentSourceTimeFrameSignature({
+    ...baseViewModel,
+    waterColumnExplorer,
+    currentVisualization,
+    activeTimeSeconds: currentPresentationTimeSeconds,
+    currentPresentationTimeSeconds
   });
   const warnings = [
     ...(baseViewModel.warnings ?? []),
@@ -203,6 +219,8 @@ export function augmentMissionWorldWithVolumetricModel(baseViewModel = {}, optio
     currentActiveDepthLayerId,
     currentActiveDepthMeters: currentVisualization.currentActiveDepthMeters,
     currentActiveTimeSeconds: currentVisualization.currentActiveTimeSeconds,
+    currentPresentationTimeSeconds,
+    currentSourceTimeFrameSignature: currentSourceFrameSignature,
     currentVectorSampleCount: currentVisualization.currentVectorSampleCount,
     currentVectorValidCount: currentVisualization.currentVectorValidCount,
     selectedRouteSegment: options.selectedRouteSegment ?? null,
@@ -309,6 +327,8 @@ export function volumetricCurrentDebugPayload(viewModel = {}, rendererSummary = 
     activeLayerId: currentVisualization.currentActiveLayerId ?? viewModel.currentActiveLayerId ?? explorer.activeLayerId ?? viewModel.activeDepthLayerId ?? null,
     activeDepthMeters: currentVisualization.currentActiveDepthMeters ?? explorer.activeDepthMeters ?? activeLayer?.representativeDepthMeters ?? null,
     activeTimeSeconds: explorer.activeTimeSeconds ?? viewModel.activeTimeSeconds ?? 0,
+    currentPresentationTimeSeconds: resolveCurrentPresentationTimeSeconds(viewModel, explorer.activeTimeSeconds ?? viewModel.activeTimeSeconds ?? 0),
+    sourceTimeFrameSignature: currentSourceTimeFrameSignature(viewModel),
     currentPresentationRequested: presentationRequested,
     currentPresentationEnabled: presentationEnabled,
     currentDisplayMode: currentVisualization.currentDisplayMode ?? normalizeCurrentDisplayMode(viewModel.waterColumn?.currentDisplayMode ?? viewModel.displaySettings?.waterColumn?.currentDisplayMode ?? 'activeSlice'),
@@ -317,6 +337,8 @@ export function volumetricCurrentDebugPayload(viewModel = {}, rendererSummary = 
     currentActiveLayerId: currentVisualization.currentActiveLayerId ?? explorer.activeLayerId ?? viewModel.activeDepthLayerId ?? null,
     currentActiveDepthMeters: currentVisualization.currentActiveDepthMeters ?? explorer.activeDepthMeters ?? activeLayer?.representativeDepthMeters ?? null,
     currentActiveTimeSeconds: currentVisualization.currentActiveTimeSeconds ?? explorer.activeTimeSeconds ?? viewModel.activeTimeSeconds ?? 0,
+    currentPresentationTimeSeconds: resolveCurrentPresentationTimeSeconds(viewModel, explorer.activeTimeSeconds ?? viewModel.activeTimeSeconds ?? 0),
+    sourceTimeFrameSignature: currentSourceTimeFrameSignature(viewModel),
     activeDisplayMode: currentVisualization.currentDisplayMode ?? normalizeCurrentDisplayMode(viewModel.waterColumn?.currentDisplayMode ?? viewModel.displaySettings?.waterColumn?.currentDisplayMode ?? 'activeSlice'),
     sourceVectorSampleCount: rendererSummary?.sourceVectorSampleCount ?? activeVectors.length,
     finiteVectorSampleCount: rendererSummary?.finiteVectorSampleCount ?? activeVectors.length,
@@ -457,6 +479,7 @@ function buildCurrentVisualizationSummary({ waterColumnUi = {}, waterColumnExplo
     currentActiveLayerId: activeLayer?.id ?? activeDepthLayerId ?? waterColumnExplorer.activeLayerId ?? null,
     currentActiveDepthMeters: waterColumnExplorer.activeDepthMeters ?? activeLayer?.representativeDepthMeters ?? null,
     currentActiveTimeSeconds: waterColumnExplorer.activeTimeSeconds ?? activeTimeSeconds ?? 0,
+    currentPresentationTimeSeconds: waterColumnExplorer.activeTimeSeconds ?? activeTimeSeconds ?? 0,
     currentVectorSampleCount: vectors.length,
     currentVectorValidCount: finite.length,
     currentVectorDensity: waterColumnUi.currentVectorDensity ?? 'balanced',

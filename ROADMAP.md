@@ -1,4 +1,4 @@
-# Roadmap
+﻿# Roadmap
 
 This roadmap tracks likely next development directions for **ANCHOR: Glider Command**. It is not a claim that future items are implemented.
 
@@ -6,6 +6,20 @@ For the current development-state log, see [docs/development_versions.md](docs/d
 
 For the canonical game-design spec, see [docs/game_design_scientific_auv_planning.md](docs/game_design_scientific_auv_planning.md). It captures the mission loop, objective archetypes, visibility modes, scoring model, 2.5D model, and future production gameplay targets.
 
+
+## ARCH-R1 Scientific Package Architecture Checkpoint
+
+ARCH-R1 establishes local scientific package boundaries without changing app behavior. The active web application remains the product shell, while `packages/` now defines dependency-safe skeletons for contracts, bathymetry, currents, scalar processes, environment composition, mission simulation, validation, and codecs.
+
+Immediate follow-on phases should be narrow extractions, not rewrites:
+
+- `BATHY-PKG-R1`: extract bathymetry contracts and pure field helpers behind forwarding modules, with digest and fixture parity.
+- `CURRENT-PKG-R1`: separate current-field generation and sampling from debug/runtime hooks before package movement.
+- `SCALAR-PKG-R1`: separate volumetric scalar science fields from educational demo/lab presentation code.
+- `ENV-PKG-R1`: compose bathymetry, currents, and scalar artifacts through package manifests while preserving existing browser and headless loaders.
+- `SIM-PKG-R1`: split portable mission execution from browser visibility/debug adapters before moving simulator code.
+
+Package extraction gates: old `src/core/...` imports must continue through forwarding modules, artifact values and scoring must remain stable, and package audits must pass with no renderer/UI/browser dependencies.
 ## 1. Product Vision
 
 ANCHOR is evolving into a scientifically grounded AUV/glider adaptive-sampling serious game and benchmark tool. It combines a browser-based game/referee, learning labs, simulation sandboxes, benchmark modes, a portable JavaScript scientific core, and a reproducible Node/OceanBox-JS headless workflow.
@@ -452,3 +466,4 @@ Optional bounded local WebGPU fluid-perturbation research layer
 ```
 
 Do not treat FLOW-R2B as ready unless normal production vectors differ by depth, evolve with canonical time, encode physical magnitude, represent calm regions without arbitrary direction, pass coherence/bathymetry diagnostics, preserve glider/render parity, and satisfy headed performance plus grouped E2E gates.
+

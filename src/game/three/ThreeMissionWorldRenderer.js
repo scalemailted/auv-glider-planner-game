@@ -72,7 +72,7 @@ import {
 } from './ThreeMissionCameraController.js';
 import { createThreeWebGLGpuTimer, beginThreeGpuTimerQuery, endThreeGpuTimerQuery, threeGpuTimerSummary, disposeThreeGpuTimer } from './ThreeWebGLGpuTimer.js';
 import { effectiveThreePixelRatio, renderCostPolicySummary, shouldRenderVolumetricFieldPlanes, threeQualityProfileSettings, waterColumnDisplayPolicy } from './ThreeRenderCostPolicy.js';
-import { currentPresentationCacheSignature } from '../../core/rendering/CurrentPresentationState.js';
+import { currentPresentationCacheSignature, currentSourceTimeFrameSignature, resolveCurrentPresentationTimeSeconds } from '../../core/rendering/CurrentPresentationState.js';
 
 export const THREE_MISSION_WORLD_RENDERER_VERSION = 'three-mission-world-renderer-r1-2a-4-4';
 
@@ -504,6 +504,19 @@ export function threeMissionWorldRendererSummary(renderer = {}) {
     glyphBufferUpdateCount: currentGlyphSummary.glyphBufferUpdateCount ?? 0,
     glyphObjectCreateCount: currentGlyphSummary.glyphObjectCreateCount ?? 0,
     glyphBufferAllocationCount: currentGlyphSummary.glyphBufferAllocationCount ?? 0,
+    currentPresentationTimeSeconds: currentGlyphSummary.currentPresentationTimeSeconds ?? resolveCurrentPresentationTimeSeconds(vm),
+    currentSourceTimeFrameSignature: currentGlyphSummary.sourceTimeFrameSignature ?? currentSourceTimeFrameSignature(vm),
+    currentDataDigest: currentGlyphSummary.currentDataDigest ?? null,
+    currentDirectionDigest: currentGlyphSummary.currentDirectionDigest ?? null,
+    currentMagnitudeDigest: currentGlyphSummary.currentMagnitudeDigest ?? null,
+    currentVisibilityDigest: currentGlyphSummary.currentVisibilityDigest ?? null,
+    currentMatrixDigest: currentGlyphSummary.currentMatrixDigest ?? null,
+    currentDirectionAttributeVersion: currentGlyphSummary.currentDirectionAttributeVersion ?? 0,
+    currentMagnitudeAttributeVersion: currentGlyphSummary.currentMagnitudeAttributeVersion ?? 0,
+    currentVisibilityAttributeVersion: currentGlyphSummary.currentVisibilityAttributeVersion ?? 0,
+    currentMatrixAttributeVersion: currentGlyphSummary.currentMatrixAttributeVersion ?? 0,
+    currentDataChangedSinceLastUpload: currentGlyphSummary.currentDataChangedSinceLastUpload ?? null,
+    currentDataUploadSkipped: currentGlyphSummary.currentDataUploadSkipped ?? null,
     currentGlyphPresentationFailed: renderer.currentGlyphPresentationFailed === true,
     currentGlyphPresentationWarning: renderer.currentGlyphPresentationWarning ?? null,
     glyphMeshVisible: currentGlyphSummary.glyphMeshVisible === true,
@@ -1227,6 +1240,8 @@ function currentFieldFrameSignature(viewModel = {}) {
     viewModel.visibility?.activeLayerOnlyCurrents !== false,
     Object.keys(layers).join('|'),
     viewModel.waterColumnExplorer?.currentFieldSummary?.digest ?? viewModel.waterColumnExplorer?.activeCurrentSourceDigest ?? 'no-current-cube',
+    resolveCurrentPresentationTimeSeconds(viewModel),
+    currentSourceTimeFrameSignature(viewModel),
     currentPresentationCacheSignature(viewModel),
     viewModel.displaySettings?.qualityProfile ?? viewModel.options?.qualityProfile ?? 'balanced'
   ].join(':');

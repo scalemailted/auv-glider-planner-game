@@ -1,4 +1,4 @@
-{
+﻿{
     "name":  "auv-glider-planner-game",
     "version":  "0.1.0",
     "description":  "Three.js-first AUV glider planning game with a portable simulation core, solver bridge, dataset export, and transitional Phaser shell.",
@@ -16,7 +16,9 @@
                     "test:e2e:focused":  "node ./node_modules/@playwright/test/cli.js test tests/e2e/smoke.spec.js --grep \"Three Mission Interaction Performance Invariants|Three Sampling Target and Dive Planning Headed Workflow\" --reporter=line",
                     "test:e2e:groups":  "node tools/js/run_playwright_groups.mjs",
                     "test:e2e:monolithic":  "node ./node_modules/@playwright/test/cli.js test --reporter=line --workers=1 --output=test-results/.playwright-monolithic-temp",
-                    "test:e2e:list":  "node ./node_modules/@playwright/test/cli.js test --list"
+                    "test:e2e:list":  "node ./node_modules/@playwright/test/cli.js test --list",
+                    "audit:packages":  "node tools/js/audit_package_boundaries.mjs",
+                    "test:packages":  "node tools/js/smoke_arch_r1_package_contracts.mjs"
                 },
     "devDependencies":  {
                             "@playwright/test":  "^1.54.0"
@@ -25,5 +27,8 @@
     "dependencies":  {
                          "phaser":  "^3.90.0",
                          "three":  "^0.184.0"
-                     }
+                     },
+    "workspaces":  [
+                       "packages/*"
+                   ]
 }

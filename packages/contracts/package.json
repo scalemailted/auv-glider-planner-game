@@ -1,0 +1,10 @@
+﻿{
+  "name": "@anchor/contracts",
+  "version": "0.0.0-arch-r1",
+  "private": true,
+  "type": "module",
+  "description": "Shared scientific manifest, artifact, digest, provenance, units, and validation-report contracts for ANCHOR.",
+  "exports": {
+    ".": "./src/index.js"
+  }
+}
