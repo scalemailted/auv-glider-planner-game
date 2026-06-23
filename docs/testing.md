@@ -1102,3 +1102,18 @@ node node_modules/@playwright/test/cli.js test tests/e2e/flow_r2a_5_current_dyna
 ```
 
 These checks assert that normal production currents are depth-distinct, time-varying under canonical mission time, physically magnitude-scaled, calm-aware, spatially coherent, bathymetry/mask consistent, browser/headless compatible, display-invariant, and bounded for browser rendering. They do not add tracers, pathlines, stream ribbons, WebGPU, planners, scoring changes, runtime-shell switches, Phaser removal, or real-data claims.
+## FLOW-R2A.5.1 Environment Generation And Mission-Time Current Checks
+
+Run these after changing in-browser current/environment generation, mission-time current sampling, temporal boundary behavior, depth-layer current visibility, or calm-flow glyph presentation:
+
+```powershell
+node tools/js/smoke_current_temporal_boundary_modes.mjs
+node tools/js/smoke_environment_generator_manifest.mjs
+node tools/js/smoke_current_layer_filter_and_calm_markers.mjs
+node tools/js/audit_current_mission_time_span.mjs
+node tools/js/audit_environment_generator_backend_contract.mjs
+node tools/js/audit_no_short_bounded_current_axis.mjs
+node node_modules/@playwright/test/cli.js test tests/e2e/flow_r2a_5_1_environment_and_time.spec.js --reporter=line --workers=1
+```
+
+These checks assert that bounded generated currents span mission duration, periodic fields wrap intentionally, current sampling uses canonical mission time, the only implemented browser generator backend is `cpuBathymetryConditionedSyntheticV2`, generated artifacts publish `ANCHOR_ENVIRONMENT_GENERATOR_DEBUG`, hidden depth-layer filters affect presentation only, and calm wet cells render as neutral markers instead of arbitrary directional arrows. They do not add WebGPU generation, operational ocean import, new current physics, planner changes, scoring changes, or Phaser removal.

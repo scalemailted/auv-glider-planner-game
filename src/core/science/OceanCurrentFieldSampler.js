@@ -1,7 +1,7 @@
 import { normalizeOceanCurrentField4D } from './OceanCurrentField4D.js';
 import { incrementSimulationLaunchCounter, markSimulationLaunchStage, setSimulationLaunchCurrentField } from '../runtime/SimulationLaunchProfiler.js';
 
-export const OCEAN_CURRENT_FIELD_SAMPLER_VERSION = 'ocean-current-field-sampler-flow-r2a-1';
+export const OCEAN_CURRENT_FIELD_SAMPLER_VERSION = 'ocean-current-field-sampler-flow-r2a-5-1';
 
 const samplerCache = new WeakMap();
 const samplerRuntimeCounters = {
@@ -49,6 +49,7 @@ export function createOceanCurrentSampler(field = {}, options = {}) {
     northAxis: axisInfo(normalized.northAxisMeters),
     depthAxis: axisInfo(normalized.depthAxisMeters),
     timeAxis: axisInfo(normalized.timeAxisSeconds),
+    temporalBoundary: temporalBoundaryForField(normalized),
     sample(options = {}) {
       return samplePreparedOceanCurrent(this, options);
     }
@@ -72,7 +73,9 @@ export function samplePreparedOceanCurrent(sampler, options = {}) {
   const eastMeters = finite(options.eastMeters ?? options.x, field.eastAxisMeters[0] ?? 0);
   const northMeters = finite(options.northMeters ?? options.y, field.northAxisMeters[0] ?? 0);
   const depthMeters = Math.max(0, finite(options.depthMeters, 0));
-  const timeSeconds = finite(options.timeSeconds ?? options.t, field.timeAxisSeconds[0] ?? 0);
+  const rawTimeSeconds = finite(options.timeSeconds ?? options.t, field.timeAxisSeconds[0] ?? 0);
+  const temporalSample = resolveTemporalSampleTime(sampler, rawTimeSeconds);
+  const timeSeconds = temporalSample.currentSampleTimeSeconds;
   const bx = bracket(sampler.eastAxis, eastMeters, interpolation.horizontal === 'nearest');
   const by = bracket(sampler.northAxis, northMeters, interpolation.horizontal === 'nearest');
   const bz = bracket(sampler.depthAxis, depthMeters, interpolation.depth === 'nearest');
@@ -104,7 +107,17 @@ export function samplePreparedOceanCurrent(sampler, options = {}) {
     eastMeters: round(eastMeters),
     northMeters: round(northMeters),
     depthMeters: round(depthMeters),
-    timeSeconds: round(timeSeconds),
+    timeSeconds: round(rawTimeSeconds),
+    currentSampleTimeSeconds: round(timeSeconds),
+    wrappedCurrentTimeSeconds: temporalSample.wrappedCurrentTimeSeconds == null ? null : round(temporalSample.wrappedCurrentTimeSeconds),
+    temporalBoundaryMode: temporalSample.temporalBoundaryMode,
+    temporalPeriodSeconds: temporalSample.temporalPeriodSeconds,
+    validTimeStartSeconds: round(temporalSample.validTimeStartSeconds),
+    validTimeEndSeconds: round(temporalSample.validTimeEndSeconds),
+    timeWrappedPeriodically: temporalSample.timeWrappedPeriodically,
+    timeClampedToBoundary: temporalSample.timeClampedToBoundary,
+    timeClampedUnexpectedly: temporalSample.timeClampedUnexpectedly,
+    timeOutsideValidRange: temporalSample.timeOutsideValidRange,
     lowerDepthIndex: bz.i0,
     upperDepthIndex: bz.i1,
     lowerDepthMeters: round(field.depthAxisMeters?.[bz.i0] ?? depthMeters),
@@ -137,7 +150,8 @@ export function samplePreparedOceanCurrent(sampler, options = {}) {
       digest: field.digest ?? null,
       usesRealHycom: field.sourceMetadata?.usesRealHycom === true,
       usesRealMarineCopernicus: field.sourceMetadata?.usesRealMarineCopernicus === true,
-      calibratedForecast: field.sourceMetadata?.calibratedForecast === true
+      calibratedForecast: field.sourceMetadata?.calibratedForecast === true,
+      temporalBoundaryMode: field.temporalBoundaryMode ?? field.sourceMetadata?.temporalBoundaryMode ?? 'bounded'
     }
   };
 }
@@ -167,6 +181,11 @@ export function oceanCurrentSampleSummary(sample = {}) {
     bearingDegrees: sample.bearingDegrees ?? null,
     depthMeters: sample.depthMeters ?? null,
     timeSeconds: sample.timeSeconds ?? null,
+    currentSampleTimeSeconds: sample.currentSampleTimeSeconds ?? sample.timeSeconds ?? null,
+    wrappedCurrentTimeSeconds: sample.wrappedCurrentTimeSeconds ?? null,
+    temporalBoundaryMode: sample.temporalBoundaryMode ?? null,
+    timeWrappedPeriodically: sample.timeWrappedPeriodically === true,
+    timeClampedUnexpectedly: sample.timeClampedUnexpectedly === true,
     lowerDepthMeters: sample.lowerDepthMeters ?? null,
     upperDepthMeters: sample.upperDepthMeters ?? null,
     depthInterpolationFraction: sample.depthInterpolationFraction ?? null,
@@ -179,6 +198,63 @@ export function oceanCurrentSampleSummary(sample = {}) {
     outsideDomain: sample.outsideDomain === true,
     sourceDigest: sample.source?.digest ?? null
   };
+}
+
+function temporalBoundaryForField(field = {}) {
+  const mode = String(field.temporalBoundaryMode ?? field.sourceMetadata?.temporalBoundaryMode ?? '').trim() === 'periodic' ? 'periodic' : 'bounded';
+  const start = finite(field.validTimeStartSeconds ?? field.sourceMetadata?.validTimeStartSeconds, field.timeAxisSeconds?.[0] ?? 0);
+  const end = Math.max(start, finite(field.validTimeEndSeconds ?? field.sourceMetadata?.validTimeEndSeconds, field.timeAxisSeconds?.at?.(-1) ?? start));
+  const period = mode === 'periodic' ? Math.max(1e-6, finite(field.temporalPeriodSeconds ?? field.sourceMetadata?.temporalPeriodSeconds, end - start || 1)) : null;
+  return { temporalBoundaryMode: mode, temporalPeriodSeconds: period, validTimeStartSeconds: start, validTimeEndSeconds: end };
+}
+
+function resolveTemporalSampleTime(sampler = {}, rawTimeSeconds = 0) {
+  const boundary = sampler.temporalBoundary ?? temporalBoundaryForField(sampler.field ?? {});
+  const axisMin = finite(sampler.timeAxis?.min, boundary.validTimeStartSeconds);
+  const axisMax = finite(sampler.timeAxis?.max, boundary.validTimeEndSeconds);
+  const validStart = finite(boundary.validTimeStartSeconds, axisMin);
+  const validEnd = finite(boundary.validTimeEndSeconds, axisMax);
+  const raw = finite(rawTimeSeconds, axisMin);
+  if (boundary.temporalBoundaryMode === 'periodic') {
+    const period = Math.max(1e-6, finite(boundary.temporalPeriodSeconds, validEnd - validStart || axisMax - axisMin || 1));
+    const wrapped = validStart + positiveModulo(raw - validStart, period);
+    const currentSampleTimeSeconds = Math.max(axisMin, Math.min(axisMax, wrapped > axisMax && Math.abs(wrapped - (validStart + period)) <= 1e-6 ? axisMin : wrapped));
+    return {
+      temporalBoundaryMode: 'periodic',
+      temporalPeriodSeconds: period,
+      validTimeStartSeconds: validStart,
+      validTimeEndSeconds: validEnd,
+      currentSampleTimeSeconds,
+      wrappedCurrentTimeSeconds: currentSampleTimeSeconds,
+      timeWrappedPeriodically: Math.abs(currentSampleTimeSeconds - raw) > 1e-6,
+      timeClampedToBoundary: false,
+      timeClampedUnexpectedly: false,
+      timeOutsideValidRange: raw < validStart - 1e-6 || raw > validEnd + 1e-6
+    };
+  }
+  const currentSampleTimeSeconds = Math.max(axisMin, Math.min(axisMax, raw));
+  const clampedLower = raw < axisMin - 1e-6;
+  const clampedUpper = raw > axisMax + 1e-6;
+  const unexpectedlyBeforeValidEnd = clampedUpper && raw <= validEnd + 1e-6;
+  const unexpectedlyAfterValidStart = clampedLower && raw >= validStart - 1e-6;
+  return {
+    temporalBoundaryMode: 'bounded',
+    temporalPeriodSeconds: null,
+    validTimeStartSeconds: validStart,
+    validTimeEndSeconds: validEnd,
+    currentSampleTimeSeconds,
+    wrappedCurrentTimeSeconds: null,
+    timeWrappedPeriodically: false,
+    timeClampedToBoundary: clampedLower || clampedUpper,
+    timeClampedUnexpectedly: unexpectedlyBeforeValidEnd || unexpectedlyAfterValidStart,
+    timeOutsideValidRange: raw < validStart - 1e-6 || raw > validEnd + 1e-6
+  };
+}
+
+function positiveModulo(value, modulus) {
+  const number = Number(value) || 0;
+  const base = Math.max(1e-6, Number(modulus) || 1);
+  return ((number % base) + base) % base;
 }
 
 function normalizeInterpolation(value) {

@@ -1,9 +1,9 @@
 import { createOceanCurrentField4D, validateOceanCurrentField4D } from './OceanCurrentField4D.js';
-import { createBathymetryConditionedCurrentField } from './BathymetryConditionedCurrentBuilder.js';
+import { createGeneratedEnvironmentArtifact, generatedEnvironmentArtifactSummary } from '../environment/GeneratedEnvironmentArtifact.js';
 import { normalizeWaterColumnConfig, waterColumnLayerMetadata } from './WaterColumnSchema.js';
 import { incrementSimulationLaunchCounter } from '../runtime/SimulationLaunchProfiler.js';
 
-export const SYNTHETIC_CURRENT_CUBE_ADAPTER_VERSION = 'synthetic-current-cube-adapter-flow-r2a-3';
+export const SYNTHETIC_CURRENT_CUBE_ADAPTER_VERSION = 'synthetic-current-cube-adapter-flow-r2a-5-1';
 const syntheticCurrentCubeSessionCache = new WeakMap();
 const syntheticCurrentCubeSessionStats = { buildCount: 0, cacheHitCount: 0, cacheMissCount: 0 };
 
@@ -50,22 +50,33 @@ export function createSyntheticCurrentCubeFromMissionWorld(options = {}) {
   const height = Math.max(1, Number(grid.height ?? 8));
   const waterColumnConfig = normalizeWaterColumnConfig(options.waterColumnConfig ?? level.world?.waterColumnConfig ?? { depthLayerIds: ['surface'], diveProfileId: 'surfaceOnly' });
   const depthAxisMeters = depthAxis(waterColumnConfig, options.depthAxisMeters);
-  const timeAxisSeconds = timeAxis(level, options.timeAxisSeconds);
+  const timeAxisSeconds = timeAxis(level, options.timeAxisSeconds, options);
   const legacyFrames = legacyCurrentFrames(level, baseViewModel, width, height, timeAxisSeconds);
   const preserveLegacy = waterColumnConfig.depthLayerIds.length <= 1 || options.preserveLegacySurfaceOnly === true;
   const seed = finite(options.seed ?? level.meta?.seed ?? level.seed, 29);
   if (!preserveLegacy && options.useLegacySyntheticCurrentGenerator !== true) {
-    return createBathymetryConditionedCurrentField({
-      ...options,
+    const artifact = createGeneratedEnvironmentArtifact({
       level,
-      grid: { width, height },
+      backendId: options.environmentGeneratorBackendId ?? 'cpuBathymetryConditionedSyntheticV2',
+      grid: { width, height, cellSizeMeters: level.world?.grid?.cellSizeMeters ?? 100 },
       waterColumnConfig,
       depthAxisMeters,
       timeAxisSeconds,
       seed,
+      temporalBoundaryMode: options.temporalBoundaryMode ?? 'bounded',
+      temporalPeriodSeconds: options.temporalPeriodSeconds ?? null,
+      validTimeStartSeconds: options.validTimeStartSeconds ?? 0,
+      validTimeEndSeconds: options.validTimeEndSeconds ?? canonicalMissionDurationSeconds(level, options, timeAxisSeconds)
+    }, {
+      level,
       id: options.id ?? `scientific-synthetic-current-${width}x${height}x${depthAxisMeters.length}x${timeAxisSeconds.length}`,
-      label: options.label ?? 'Scientifically constrained synthetic current field'
+      currentOptions: {
+        ...options,
+        label: options.label ?? 'Scientifically constrained synthetic current field'
+      }
     });
+    publishEnvironmentGeneratorDebug(artifact);
+    return artifact.currentField4D;
   }
   const u = [];
   const v = [];
@@ -128,6 +139,10 @@ export function createSyntheticCurrentCubeFromMissionWorld(options = {}) {
       preservesLegacySurfaceOnly: preserveLegacy,
       depthDependent: !preserveLegacy,
       timeDependent: timeAxisSeconds.length > 1,
+      temporalBoundaryMode: options.temporalBoundaryMode ?? 'bounded',
+      temporalPeriodSeconds: options.temporalPeriodSeconds ?? null,
+      validTimeStartSeconds: options.validTimeStartSeconds ?? 0,
+      validTimeEndSeconds: options.validTimeEndSeconds ?? canonicalMissionDurationSeconds(level, options, timeAxisSeconds),
       usesBathymetryMask: true,
       usesCoastlineBoundary: false,
       usesIsobathSteering: false,
@@ -203,12 +218,19 @@ function depthAxis(config, explicit) {
   return [...new Set(config.depthLayerIds.map((id, index) => finite(config.layerMetadata?.[id]?.nominalDepthMeters ?? waterColumnLayerMetadata(id).nominalDepthMeters, index * 50)))].sort((a, b) => a - b);
 }
 
-function timeAxis(level, explicit) {
-  if (Array.isArray(explicit) && explicit.length) return explicit.map(Number).filter(Number.isFinite).sort((a, b) => a - b);
+function timeAxis(level, explicit, options = {}) {
+  const start = finite(options.validTimeStartSeconds, 0);
+  const end = canonicalMissionDurationSeconds(level, options, explicit);
+  const mode = String(options.temporalBoundaryMode ?? 'bounded').trim() === 'periodic' ? 'periodic' : 'bounded';
+  if (Array.isArray(explicit) && explicit.length) {
+    const base = uniqueSorted(explicit);
+    if (mode === 'periodic' || options.allowShortTimeAxis === true) return base;
+    if (Number(base.at(-1) ?? start) + 1e-6 < end) return uniqueSorted([...base, ...missionTimeAxis(start, end, 7)]);
+    return base;
+  }
   const frameTimes = (level.layers?.truth?.frames ?? []).map((frame, index) => finite(frame.t ?? frame.time, index * finite(level.world?.time?.dt, 60))).filter(Number.isFinite);
-  if (frameTimes.length >= 2) return frameTimes;
-  const duration = Math.max(600, finite(level.world?.time?.duration, 1800));
-  return [0, duration / 3, (duration * 2) / 3, duration];
+  if (frameTimes.length >= 2 && Number(frameTimes.at(-1) ?? 0) >= end - 1e-6) return frameTimes;
+  return missionTimeAxis(start, end, 7);
 }
 
 function legacyCurrentFrames(level, baseViewModel, width, height, timeAxisSeconds) {
@@ -256,6 +278,28 @@ function depthFactor(id, index, count) {
 }
 
 function layerIdAt(config, index) { return config.depthLayerIds[Math.min(index, config.depthLayerIds.length - 1)] ?? 'surface'; }
+function canonicalMissionDurationSeconds(level = {}, options = {}, explicit = null) {
+  const values = [
+    options.missionDurationSeconds,
+    level.world?.operationalDomain?.time?.durationSeconds,
+    level.operationalDomain?.time?.durationSeconds,
+    level.meta?.generationConfig?.operationalDomain?.time?.durationSeconds,
+    level.world?.time?.durationSeconds,
+    level.world?.time?.duration,
+    Array.isArray(explicit) && explicit.length ? Math.max(...explicit.map(Number).filter(Number.isFinite)) : null,
+    1800
+  ];
+  return Math.max(1, finite(values.find((value) => Number.isFinite(Number(value))), 1800));
+}
+function missionTimeAxis(start, end, count = 7) {
+  const span = Math.max(1e-6, Number(end) - Number(start));
+  return Array.from({ length: count }, (_value, index) => round(Number(start) + span * index / Math.max(1, count - 1), 6));
+}
+function uniqueSorted(values) { return [...new Set(values.map(Number).filter(Number.isFinite))].sort((a, b) => a - b); }
+function publishEnvironmentGeneratorDebug(artifact) {
+  if (!artifact || typeof globalThis !== 'object') return;
+  try { globalThis.ANCHOR_ENVIRONMENT_GENERATOR_DEBUG = generatedEnvironmentArtifactSummary(artifact); } catch (_error) { /* debug publication is best effort */ }
+}
 function generatedBase(x, y, t, width, height, timeCount, seed) { return { u: 0.17 + 0.08 * Math.sin((x / Math.max(1, width - 1) * 2 + t / Math.max(1, timeCount - 1) + seed * 0.01) * Math.PI), v: -0.05 + 0.07 * Math.cos((y / Math.max(1, height - 1) * 2 - t / Math.max(1, timeCount - 1) + seed * 0.013) * Math.PI) }; }
 function rotate(value, radians) { const c = Math.cos(radians); const s = Math.sin(radians); return { u: value.u * c - value.v * s, v: value.u * s + value.v * c }; }
 function bottomDepth(level, width, height, depthAxisMeters) { const source = level.bathymetry?.depthMeters ?? level.layers?.bottomDepthMeters ?? level.layers?.depthMeters; const fallback = Math.max(...depthAxisMeters, 150) + 50; return Array.from({ length: height }, (_row, y) => Array.from({ length: width }, (_cell, x) => Math.max(0, finite(source?.[y]?.[x], level.layers?.terrain?.[y]?.[x] ? 0 : fallback)))); }
@@ -276,7 +320,7 @@ function syntheticCurrentCubeCacheKey(options = {}) {
     layerIds: waterColumnConfig.depthLayerIds,
     defaultLayerIds: waterColumnConfig.defaultLayerIds,
     diveProfileId: waterColumnConfig.diveProfileId,
-    duration: level.world?.time?.duration ?? null,
+    duration: canonicalMissionDurationSeconds(level, options, options.timeAxisSeconds),
     dt: level.world?.time?.dt ?? null,
     seed: options.seed ?? level.meta?.seed ?? level.seed ?? 29,
     depth: explicitDepth,

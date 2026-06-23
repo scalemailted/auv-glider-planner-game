@@ -134,6 +134,11 @@ export const PLAYWRIGHT_GROUPS = Object.freeze([
       /^Default and Next Runtime Shells Use Shared Current Presentation Contracts$/i,
       /^Current Presentation Failure Shows a Visible Recovery Reason$/i,
       /^Production Current Vectors Run From GitHub Pages Subpath$/i,
+      /^Normal Generated Currents Span Full Mission Time$/i,
+      /^Periodic Current Fields Wrap Instead of Clamping$/i,
+      /^Current Depth Layer Filters Hide Only Requested Layers$/i,
+      /^Calm Wet Cells Render Neutral Current Markers$/i,
+      /^Environment Generator Manifest Is Reproducible In Browser$/i,
       /^Normal Production Currents Differ Across Physical Depths$/i,
       /^Normal Production Currents Evolve With Canonical Mission Time$/i,
       /^Current Glyph Length Represents Physical Speed$/i,
@@ -218,7 +223,8 @@ export const PLAYWRIGHT_GROUPS = Object.freeze([
       /^FLOW-R2A\.2 Full Headed Visible Current Vector Walkthrough$/i,
       /^FLOW-R2A\.3 Full Headed Scientific Volumetric Current Walkthrough$/i,
       /^FLOW-R2A\.4 Full Headed Production Current Visibility Walkthrough$/i,
-      /^FLOW-R2A\.5 Full Headed Production 4D Current Dynamics Walkthrough$/i
+      /^FLOW-R2A\.5 Full Headed Production 4D Current Dynamics Walkthrough$/i,
+      /^FLOW-R2A\.5\.1 Full Headed Environment Time and Layer Walkthrough$/i
     ]
   }
 ]);

@@ -258,6 +258,11 @@ export function volumetricCurrentDebugPayload(viewModel = {}, rendererSummary = 
   } : null;
   const renderedGliderCurrent = nearestRenderedCurrent(activeLayer?.currentField?.vectors ?? [], glider);
   const currentVisualization = viewModel.currentVisualization ?? {};
+  const waterColumnUi = viewModel.waterColumn ?? viewModel.displaySettings?.waterColumn ?? {};
+  const allCurrentLayerIds = (explorer.layers ?? []).map((layer) => layer.id).filter(Boolean);
+  const hiddenCurrentLayerIds = new Set(Array.isArray(waterColumnUi.hiddenLayerIds) ? waterColumnUi.hiddenLayerIds.map(String) : []);
+  const explicitVisibleCurrentLayerIds = Array.isArray(waterColumnUi.visibleLayerIds) && waterColumnUi.visibleLayerIds.length ? new Set(waterColumnUi.visibleLayerIds.map(String)) : null;
+  const visibleCurrentLayerIds = allCurrentLayerIds.filter((id) => !hiddenCurrentLayerIds.has(String(id)) && (!explicitVisibleCurrentLayerIds || explicitVisibleCurrentLayerIds.has(String(id))));
   const safeModeExplicit = explicitCurrentSafeMode();
   const presentationRequested = safeModeExplicit ? false : currentVisualization.currentPresentationRequested !== false;
   const presentationEnabled = presentationRequested && rendererSummary?.currentGlyphPresentationFailed !== true && (rendererSummary?.visibleVectorInstanceCount ?? rendererSummary?.glyphInstanceCount ?? 0) > 0;
@@ -297,6 +302,10 @@ export function volumetricCurrentDebugPayload(viewModel = {}, rendererSummary = 
     sourceTimeCount: fieldSummary.timeSampleCount ?? explorer.currentCube?.timeAxisSeconds?.length ?? 0,
     sourceDepthMeters: fieldSummary.sourceDepthMeters ?? explorer.currentCube?.depthAxisMeters ?? [],
     sourceTimeSeconds: fieldSummary.sourceTimeSeconds ?? explorer.currentCube?.timeAxisSeconds ?? [],
+    temporalBoundaryMode: fieldSummary.temporalBoundaryMode ?? explorer.currentCube?.temporalBoundaryMode ?? explorer.currentCube?.sourceMetadata?.temporalBoundaryMode ?? null,
+    temporalPeriodSeconds: fieldSummary.temporalPeriodSeconds ?? explorer.currentCube?.temporalPeriodSeconds ?? explorer.currentCube?.sourceMetadata?.temporalPeriodSeconds ?? null,
+    validTimeStartSeconds: fieldSummary.validTimeStartSeconds ?? explorer.currentCube?.validTimeStartSeconds ?? explorer.currentCube?.sourceMetadata?.validTimeStartSeconds ?? null,
+    validTimeEndSeconds: fieldSummary.validTimeEndSeconds ?? explorer.currentCube?.validTimeEndSeconds ?? explorer.currentCube?.sourceMetadata?.validTimeEndSeconds ?? null,
     activeLayerId: currentVisualization.currentActiveLayerId ?? viewModel.currentActiveLayerId ?? explorer.activeLayerId ?? viewModel.activeDepthLayerId ?? null,
     activeDepthMeters: currentVisualization.currentActiveDepthMeters ?? explorer.activeDepthMeters ?? activeLayer?.representativeDepthMeters ?? null,
     activeTimeSeconds: explorer.activeTimeSeconds ?? viewModel.activeTimeSeconds ?? 0,
@@ -317,6 +326,7 @@ export function volumetricCurrentDebugPayload(viewModel = {}, rendererSummary = 
     canonicalMagnitudeMaximum: rendererSummary?.canonicalMagnitudeMaximum ?? fieldSummary.diagnostics?.speedMaximum ?? fieldSummary.speedStatistics?.max ?? null,
     calmThresholdMetersPerSecond: rendererSummary?.calmThresholdMetersPerSecond ?? fieldSummary.calmThresholdMetersPerSecond ?? fieldSummary.diagnostics?.calmThresholdMetersPerSecond ?? explorer.currentCube?.sourceMetadata?.calmThresholdMetersPerSecond ?? null,
     calmVectorCount: rendererSummary?.calmVectorCount ?? fieldSummary.calmVectorCount ?? fieldSummary.diagnostics?.calmVectorCount ?? 0,
+    calmMarkerInstanceCount: rendererSummary?.calmMarkerInstanceCount ?? 0,
     distinctMagnitudeBinCount: rendererSummary?.distinctMagnitudeBinCount ?? activeVectorsMagnitudeBinCount(activeVectors),
     terrainMaskedVectorCount: rendererSummary?.terrainMaskedVectorCount ?? activeVectors.filter((vector) => vector.masked === true || vector.wet === false).length,
     belowBottomVectorCount: rendererSummary?.belowBottomVectorCount ?? activeVectors.filter((vector) => vector.belowBottom === true).length,
@@ -325,6 +335,9 @@ export function volumetricCurrentDebugPayload(viewModel = {}, rendererSummary = 
     contextGlyphCount: rendererSummary?.contextGlyphCount ?? contextVectors,
     volumetricGlyphCount: rendererSummary?.volumetricGlyphCount ?? 0,
     visibleDepthIds: rendererSummary?.visibleDepthIds ?? (explorer.layers ?? []).map((layer) => layer.id),
+    allCurrentLayerIds,
+    hiddenCurrentLayerIds: [...hiddenCurrentLayerIds],
+    visibleCurrentLayerIds,
     visibleDepthCount: rendererSummary?.visibleDepthCount ?? (explorer.layers ?? []).length,
     distinctDepthVectorCount: distinctCurrentVectorCountByDepth(explorer.layers ?? []),
     distinctTimeVectorCount: distinctCurrentVectorCountByTime(explorer.currentCube ?? null),
@@ -334,6 +347,12 @@ export function volumetricCurrentDebugPayload(viewModel = {}, rendererSummary = 
     lowerTimeSeconds: selectedSourceCurrent?.lowerTimeSeconds ?? null,
     upperTimeSeconds: selectedSourceCurrent?.upperTimeSeconds ?? null,
     timeInterpolationFraction: selectedSourceCurrent?.timeInterpolationFraction ?? null,
+    currentSampleTimeSeconds: selectedSourceCurrent?.currentSampleTimeSeconds ?? null,
+    wrappedCurrentTimeSeconds: selectedSourceCurrent?.wrappedCurrentTimeSeconds ?? null,
+    timeWrappedPeriodically: selectedSourceCurrent?.timeWrappedPeriodically === true || activeVectors.some((vector) => vector.timeWrappedPeriodically === true),
+    timeClampedToBoundary: selectedSourceCurrent?.timeClampedToBoundary === true || activeVectors.some((vector) => vector.timeClampedToBoundary === true),
+    timeClampedUnexpectedly: selectedSourceCurrent?.timeClampedUnexpectedly === true || activeVectors.some((vector) => vector.timeClampedUnexpectedly === true),
+    timeOutsideValidRange: selectedSourceCurrent?.timeOutsideValidRange === true || activeVectors.some((vector) => vector.timeOutsideValidRange === true),
     currentFrameDigest: activeVectors[0]?.currentFrameDigest ?? null,
     nextFrameDigest: selectedSourceCurrent?.upperTimeSeconds != null ? String(fieldSummary.digest ?? explorer.currentCube?.digest ?? 'current') + ':' + selectedSourceCurrent.upperTimeSeconds : null,
     glyphMeshVisible: rendererSummary?.glyphMeshVisible === true,

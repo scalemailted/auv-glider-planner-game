@@ -312,6 +312,12 @@ The demo reports speed min / mean / max plus divergence, vorticity, strain, inva
 
 ## 12. Relationship to Mission Currents
 
+### FLOW-R2A.5.1 Mission Environment Boundary
+
+The standalone Flow Fields Demo remains a 2D teaching sandbox for `F(x,y,t)`. Production generated missions now use the water-column current contract `F(x,y,z,t)` through `OceanCurrentField4D`, `OceanCurrentFieldSampler`, and the browser-side synthetic environment manifest/artifact path. Bounded generated mission fields must cover the canonical mission duration; intentionally cyclic fields declare `temporalBoundaryMode: "periodic"` and `temporalPeriodSeconds`.
+
+The only implemented browser environment backend is `cpuBathymetryConditionedSyntheticV2`. WebGPU generation and imported operational ocean fields are reserved only. Generated synthetic currents must keep the not-calibrated claim boundary: not real HYCOM, not Marine Copernicus data, and not an operational forecast. Calm wet cells are rendered as neutral markers so weak flow is visible without inventing arbitrary arrow directions.
+
 The demo and missions use the same shared current sampling path where possible:
 
 ```text

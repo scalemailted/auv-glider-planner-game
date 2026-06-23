@@ -605,6 +605,15 @@ Adds scientific source-tier metadata, manufactured analytical current fixtures, 
 
 Production current visibility recovery for the normal generated Challenge path. The water-column current renderer now maps top-down grid cells to canonical physical-meter current axes before sampling `OceanCurrentField4D`, default Planning/Simulation scenes and `?runtimeShell=next` publish shared `ANCHOR_CURRENT_PRESENTATION_DEBUG`, and zero-waypoint optional gliders can remain idle without blocking Glider 1 execution. This is a stabilization pass only: no tracers/pathlines, WebGPU, new current equations, planner changes, scoring changes, or Phaser removal.
 
+
+## FLOW-R2A.5.1 - Browser Environment Generation, Mission-Time Currents, And Calm Markers
+
+- Added a browser-side synthetic environment manifest/artifact contract under `src/core/environment/` with `cpuBathymetryConditionedSyntheticV2` as the only implemented backend; WebGPU and imported operational backends remain reserved.
+- Hardened `OceanCurrentField4D`/sampler temporal boundary metadata so bounded generated fields span canonical mission duration and periodic fields wrap explicitly instead of silently clamping after a short source axis.
+- Routed generated normal mission currents through canonical mission time, preserved deterministic same-manifest/seed/backend digests, and published `ANCHOR_ENVIRONMENT_GENERATOR_DEBUG` plus extended temporal fields in `ANCHOR_VOLUMETRIC_CURRENT_DEBUG`.
+- Updated current depth-layer filters and Three instanced current glyph summaries so hidden layers are presentation-only and calm wet cells render as neutral markers distinct from directional arrows, land, below-bottom, and invalid cells.
+- Added focused smoke/audit scripts and FLOW-R2A.5.1 Playwright coverage. Preserved the boundary: no WebGPU generation, no operational ocean import, no new planner, no scoring change, no current physics rewrite, no tracers/pathlines, and no calibrated ocean forecast claim.
+
 ## FLOW-R2A.5 - Production 4D Current Dynamics, Magnitude Fidelity, and Ocean-Coherent Synthetic Fields
 
 - Hardened the normal generated current source to use bathymetry-conditioned coherent synthetic components: along-shelf jet, depth shear, barotropic tide, mesoscale eddy, translating eddy, calm/weak-current region, localized canyon exchange, and optional shelf/wake/surface-shear terms.

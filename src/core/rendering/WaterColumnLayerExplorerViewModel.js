@@ -364,6 +364,16 @@ function buildSelectedCurrentProfile({ selectedLocation, waterColumnConfig, sour
       lowerTimeSeconds: sample?.lowerTimeSeconds ?? null,
       upperTimeSeconds: sample?.upperTimeSeconds ?? null,
       timeInterpolationFraction: sample?.timeInterpolationFraction ?? null,
+      currentSampleTimeSeconds: sample?.currentSampleTimeSeconds ?? null,
+      wrappedCurrentTimeSeconds: sample?.wrappedCurrentTimeSeconds ?? null,
+      temporalBoundaryMode: sample?.temporalBoundaryMode ?? null,
+      temporalPeriodSeconds: sample?.temporalPeriodSeconds ?? null,
+      validTimeStartSeconds: sample?.validTimeStartSeconds ?? null,
+      validTimeEndSeconds: sample?.validTimeEndSeconds ?? null,
+      timeWrappedPeriodically: sample?.timeWrappedPeriodically === true,
+      timeClampedToBoundary: sample?.timeClampedToBoundary === true,
+      timeClampedUnexpectedly: sample?.timeClampedUnexpectedly === true,
+      timeOutsideValidRange: sample?.timeOutsideValidRange === true,
       sourceDigest: sample?.source?.digest ?? source.currentCube?.digest ?? null
     };
   });
@@ -427,6 +437,16 @@ function currentLayerFromCube({ field, layerId, representativeDepthMeters, grid,
         lowerTimeSeconds: sample.lowerTimeSeconds,
         upperTimeSeconds: sample.upperTimeSeconds,
         timeInterpolationFraction: sample.timeInterpolationFraction,
+        currentSampleTimeSeconds: sample.currentSampleTimeSeconds,
+        wrappedCurrentTimeSeconds: sample.wrappedCurrentTimeSeconds,
+        temporalBoundaryMode: sample.temporalBoundaryMode,
+        temporalPeriodSeconds: sample.temporalPeriodSeconds,
+        validTimeStartSeconds: sample.validTimeStartSeconds,
+        validTimeEndSeconds: sample.validTimeEndSeconds,
+        timeWrappedPeriodically: sample.timeWrappedPeriodically === true,
+        timeClampedToBoundary: sample.timeClampedToBoundary === true,
+        timeClampedUnexpectedly: sample.timeClampedUnexpectedly === true,
+        timeOutsideValidRange: sample.timeOutsideValidRange === true,
         currentFrameDigest: String(field.digest ?? 'current') + ':' + sample.lowerTimeSeconds + '-' + sample.upperTimeSeconds,
         sourceDigest: sample.source?.digest ?? field.digest ?? null
       });

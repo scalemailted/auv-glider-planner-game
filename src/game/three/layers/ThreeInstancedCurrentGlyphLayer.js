@@ -3,7 +3,7 @@ import { positionForRecord } from './ThreeMissionLayerUtils.js';
 import { incrementSimulationLaunchCounter } from '../../../core/runtime/SimulationLaunchProfiler.js';
 import { normalizeRendererCurrentDisplayMode } from '../../../core/rendering/CurrentPresentationState.js';
 
-export const THREE_INSTANCED_CURRENT_GLYPH_LAYER_VERSION = 'three-instanced-current-glyph-layer-flow-r2a-3';
+export const THREE_INSTANCED_CURRENT_GLYPH_LAYER_VERSION = 'three-instanced-current-glyph-layer-flow-r2a-5-1';
 
 const DEFAULT_RENDER_ORDER = 96;
 const DEFAULT_OPACITY = 0.98;
@@ -63,6 +63,7 @@ export function updateThreeInstancedCurrentGlyphLayer(layer, viewModel = {}, opt
   let contextGlyphCount = 0;
   let volumetricGlyphCount = 0;
   let calmVectorCount = 0;
+  let calmMarkerInstanceCount = 0;
   const visibleDepthIds = new Set();
   const canonicalMagnitudes = [];
   const glyphLengths = [];
@@ -88,6 +89,24 @@ export function updateThreeInstancedCurrentGlyphLayer(layer, viewModel = {}, opt
     const calm = sample.calm === true || magnitude <= calmThreshold || Math.hypot(u, v) <= calmThreshold;
     if (calm) {
       calmVectorCount += 1;
+      const position = positionForRecord(transform, { x, y, depthMeters }, layerOffsetWorld);
+      if (!Number.isFinite(position.x) || !Number.isFinite(position.y) || !Number.isFinite(position.z)) {
+        invalidVectorCount += 1;
+        continue;
+      }
+      const markerSize = Math.max(cellSize * 0.1, Math.min(cellSize * 0.22, cellSize * (sample.context ? 0.11 : 0.15)));
+      glyphLengths.push(markerSize);
+      visibleDepthIds.add(String(sample.depthLayerId ?? sample.depthMeters ?? 'unknown'));
+      if (sample.context === true) contextGlyphCount += 1; else activeGlyphCount += 1;
+      if (sample.volumetric === true) volumetricGlyphCount += 1;
+      calmMarkerInstanceCount += 1;
+      dummy.position.copy(position);
+      dummy.rotation.set(0, 0, 0);
+      dummy.scale.set(markerSize, 1, markerSize);
+      dummy.updateMatrix();
+      layer.mesh.setMatrixAt(slot, dummy.matrix);
+      layer.mesh.setColorAt(slot, color.set(sample.context ? 0x64748b : 0xb7f7e6));
+      slot += 1;
       continue;
     }
     const position = positionForRecord(transform, { x, y, depthMeters }, layerOffsetWorld);
@@ -151,6 +170,7 @@ export function updateThreeInstancedCurrentGlyphLayer(layer, viewModel = {}, opt
     canonicalMagnitudeMaximum: canonicalStats.maximum,
     calmThresholdMetersPerSecond: calmThreshold,
     calmVectorCount,
+    calmMarkerInstanceCount,
     distinctMagnitudeBinCount: magnitudeBins.size,
     glyphLengthMinimum: glyphStats.minimum,
     glyphLengthMean: glyphStats.mean,
@@ -213,6 +233,8 @@ export function threeInstancedCurrentGlyphLayerSummary(layer = {}, viewModel = {
     canonicalMagnitudeMaximum: stats.canonicalMagnitudeMaximum ?? null,
     calmThresholdMetersPerSecond: stats.calmThresholdMetersPerSecond ?? null,
     calmVectorCount: Number(stats.calmVectorCount ?? 0),
+    calmMarkerInstanceCount: Number(stats.calmMarkerInstanceCount ?? 0),
+    calmMarkerPolicy: 'calm wet cells use neutral instanced markers instead of directional arrows',
     distinctMagnitudeBinCount: Number(stats.distinctMagnitudeBinCount ?? 0),
     glyphLengthMinimum: round(stats.glyphLengthMinimum ?? 0),
     glyphLengthMean: round(stats.glyphLengthMean ?? 0),
@@ -318,7 +340,8 @@ function currentSamplesForViewModel(viewModel = {}, options = {}) {
   const density = currentVectorDensityStride(viewModel.waterColumn?.currentVectorDensity ?? viewModel.displaySettings?.waterColumn?.currentVectorDensity ?? options.vectorDensity ?? 'balanced');
   const multiDepthMode = ['stackedCurrentSlabs', 'explodedCurrentSlabs', 'stackedDepthField', 'explodedDepthField', 'sparseVolumetricField', 'stackedSlabs', 'explodedSlabs', 'allLayers'].includes(currentMode);
   const includeContext = showContext || multiDepthMode;
-  const selected = includeContext ? layers : layers.filter((layer) => layer.id === activeLayerId);
+  const layerVisible = currentLayerVisibilityFilter(viewModel);
+  const selected = (includeContext ? layers : layers.filter((layer) => layer.id === activeLayerId)).filter((layer) => layerVisible(layer.id));
   const samples = [];
   for (const layer of selected) {
     const context = layer.id !== activeLayerId;
@@ -352,6 +375,13 @@ function currentSamplesForViewModel(viewModel = {}, options = {}) {
   }
   return limited;
 }
+function currentLayerVisibilityFilter(viewModel = {}) {
+  const waterColumn = viewModel.waterColumn ?? viewModel.displaySettings?.waterColumn ?? {};
+  const hidden = new Set(Array.isArray(waterColumn.hiddenLayerIds) ? waterColumn.hiddenLayerIds.map(String) : []);
+  const explicitVisible = Array.isArray(waterColumn.visibleLayerIds) && waterColumn.visibleLayerIds.length ? new Set(waterColumn.visibleLayerIds.map(String)) : null;
+  return (layerId) => !hidden.has(String(layerId)) && (!explicitVisible || explicitVisible.has(String(layerId)));
+}
+
 function colorForSample(color, sample, viewModel = {}) {
   const mode = viewModel.waterColumn?.currentColorMode ?? viewModel.displaySettings?.waterColumn?.currentColorMode ?? 'speed';
   if (sample.context) return color.set(0x7dd3fc);

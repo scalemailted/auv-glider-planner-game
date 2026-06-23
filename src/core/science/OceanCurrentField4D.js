@@ -6,7 +6,7 @@ import {
 } from '../runtime/SimulationLaunchProfiler.js';
 import { normalizeOceanCurrentSourceMetadata, validateOceanCurrentSourceMetadata } from './OceanCurrentSourceMetadata.js';
 import { computeCurrentFieldScientificDiagnostics } from './CurrentFieldScientificDiagnostics.js';
-export const OCEAN_CURRENT_FIELD_4D_VERSION = 'ocean-current-field-4d-flow-r2a-3';
+export const OCEAN_CURRENT_FIELD_4D_VERSION = 'ocean-current-field-4d-flow-r2a-5-1';
 
 const oceanCurrentFieldRuntimeCounters = { buildCount: 0, normalizeCount: 0, normalizeHitCount: 0, digestCount: 0, summaryBuildCount: 0 };
 
@@ -42,6 +42,10 @@ export function createOceanCurrentField4D(options = {}) {
     northAxisMeters,
     depthAxisMeters,
     timeAxisSeconds,
+    temporalBoundaryMode: normalizeTemporalBoundaryMode(options.temporalBoundaryMode ?? sourceMetadata.temporalBoundaryMode ?? 'bounded'),
+    temporalPeriodSeconds: finiteOrNull(options.temporalPeriodSeconds ?? sourceMetadata.temporalPeriodSeconds),
+    validTimeStartSeconds: finite(options.validTimeStartSeconds ?? sourceMetadata.validTimeStartSeconds, timeAxisSeconds[0] ?? 0),
+    validTimeEndSeconds: finite(options.validTimeEndSeconds ?? sourceMetadata.validTimeEndSeconds, timeAxisSeconds.at(-1) ?? timeAxisSeconds[0] ?? 0),
     uEastMetersPerSecond: cube(options.uEastMetersPerSecond ?? options.u ?? options.F_u, shape, (t, z, y, x) => syntheticU(t, z, y, x, shape, seed)),
     vNorthMetersPerSecond: cube(options.vNorthMetersPerSecond ?? options.v ?? options.F_v, shape, (t, z, y, x) => syntheticV(t, z, y, x, shape, seed)),
     wDownMetersPerSecond: options.wDownMetersPerSecond || options.w || options.F_w ? cube(options.wDownMetersPerSecond ?? options.w ?? options.F_w, shape, () => 0) : null,
@@ -140,6 +144,10 @@ export function oceanCurrentField4DSummary(field = {}) {
     northSampleCount: normalized.northAxisMeters.length,
     depthSampleCount: normalized.depthAxisMeters.length,
     timeSampleCount: normalized.timeAxisSeconds.length,
+    temporalBoundaryMode: normalized.temporalBoundaryMode ?? sourceMetadata.temporalBoundaryMode ?? 'bounded',
+    temporalPeriodSeconds: normalized.temporalPeriodSeconds ?? sourceMetadata.temporalPeriodSeconds ?? null,
+    validTimeStartSeconds: normalized.validTimeStartSeconds ?? sourceMetadata.validTimeStartSeconds ?? normalized.timeAxisSeconds[0] ?? 0,
+    validTimeEndSeconds: normalized.validTimeEndSeconds ?? sourceMetadata.validTimeEndSeconds ?? normalized.timeAxisSeconds.at(-1) ?? 0,
     sourceTier: sourceMetadata.sourceTier ?? null,
     sourceType: sourceMetadata.sourceType ?? null,
     sourceLabel: sourceMetadata.sourceLabel ?? sourceMetadata.label ?? null,
@@ -205,6 +213,10 @@ export function oceanCurrentField4DDigest(field = {}) {
     northAxisMeters: field.northAxisMeters,
     depthAxisMeters: field.depthAxisMeters,
     timeAxisSeconds: field.timeAxisSeconds,
+    temporalBoundaryMode: field.temporalBoundaryMode ?? field.sourceMetadata?.temporalBoundaryMode ?? 'bounded',
+    temporalPeriodSeconds: field.temporalPeriodSeconds ?? field.sourceMetadata?.temporalPeriodSeconds ?? null,
+    validTimeStartSeconds: field.validTimeStartSeconds ?? field.sourceMetadata?.validTimeStartSeconds ?? field.timeAxisSeconds?.[0] ?? 0,
+    validTimeEndSeconds: field.validTimeEndSeconds ?? field.sourceMetadata?.validTimeEndSeconds ?? field.timeAxisSeconds?.at?.(-1) ?? 0,
     uEastMetersPerSecond: field.uEastMetersPerSecond,
     vNorthMetersPerSecond: field.vNorthMetersPerSecond,
     wDownMetersPerSecond: field.wDownMetersPerSecond,
@@ -297,5 +309,7 @@ function monotonic(values) { return values.every((value, index) => index === 0 |
 function stats(values) { const v = values.map(Number).filter(Number.isFinite); return v.length ? { count: v.length, min: round(Math.min(...v)), mean: round(v.reduce((a, b) => a + b, 0) / v.length), max: round(Math.max(...v)) } : { count: 0, min: null, mean: null, max: null }; }
 function stable(value) { if (Array.isArray(value)) return `[${value.map(stable).join(',')}]`; if (value && typeof value === 'object') return `{${Object.keys(value).sort().map((key) => `${JSON.stringify(key)}:${stable(value[key])}`).join(',')}}`; return JSON.stringify(value); }
 function fnv(text) { let hash = 2166136261; for (let i = 0; i < text.length; i += 1) { hash ^= text.charCodeAt(i); hash = Math.imul(hash, 16777619); } return (hash >>> 0).toString(16).padStart(8, '0'); }
+function normalizeTemporalBoundaryMode(value) { return String(value ?? '').trim() === 'periodic' ? 'periodic' : 'bounded'; }
+function finiteOrNull(value) { const n = Number(value); return Number.isFinite(n) ? n : null; }
 function finite(value, fallback = 0) { const n = Number(value); return Number.isFinite(n) ? n : fallback; }
 function round(value, digits = 6) { const n = Number(value); return Number.isFinite(n) ? Number(n.toFixed(digits)) : null; }

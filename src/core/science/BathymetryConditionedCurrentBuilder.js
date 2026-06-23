@@ -2,7 +2,7 @@ import { createOceanCurrentField4D } from './OceanCurrentField4D.js';
 import { createWetMaskFromBathymetry, projectCoastlineNoNormalVelocity, terrainBoundaryDigest } from './CurrentTerrainBoundaryCondition.js';
 import { computeCurrentFieldScientificDiagnostics } from './CurrentFieldScientificDiagnostics.js';
 
-export const BATHYMETRY_CONDITIONED_CURRENT_BUILDER_VERSION = 'bathymetry-conditioned-current-builder-flow-r2a-5';
+export const BATHYMETRY_CONDITIONED_CURRENT_BUILDER_VERSION = 'bathymetry-conditioned-current-builder-flow-r2a-5-1';
 
 export function createBathymetryConditionedCurrentField(options = {}) {
   const level = options.level ?? {};
@@ -17,8 +17,12 @@ export function createBathymetryConditionedCurrentField(options = {}) {
   const landMask = normalizeLandMask(level, width, height, bottomDepthMeters, options.landMask);
   const wetMask = options.wetMask ?? createWetMaskFromBathymetry({ bottomDepthMeters, landMask, width, height });
   const depthAxisMeters = normalizeDepthAxis(options.depthAxisMeters, bottomDepthMeters, level, options);
-  const timeAxisSeconds = normalizeTimeAxis(options.timeAxisSeconds, level);
-  const params = defaultParameters(options, bottomDepthMeters, eastAxisMeters, northAxisMeters);
+  const temporalBoundary = normalizeTemporalBoundaryOptions(options, level);
+  const timeAxisSeconds = normalizeTimeAxis(options.timeAxisSeconds, level, temporalBoundary);
+  const params = defaultParameters({
+    ...options,
+    durationSeconds: temporalBoundary.temporalPeriodSeconds ?? Math.max(1, temporalBoundary.validTimeEndSeconds - temporalBoundary.validTimeStartSeconds)
+  }, bottomDepthMeters, eastAxisMeters, northAxisMeters);
   const enabledComponents = normalizeEnabledComponents(options.components ?? options.enabledComponents);
   const u = [];
   const v = [];
@@ -63,6 +67,10 @@ export function createBathymetryConditionedCurrentField(options = {}) {
     northAxisMeters,
     depthAxisMeters,
     timeAxisSeconds,
+    temporalBoundaryMode: temporalBoundary.temporalBoundaryMode,
+    temporalPeriodSeconds: temporalBoundary.temporalPeriodSeconds,
+    validTimeStartSeconds: temporalBoundary.validTimeStartSeconds,
+    validTimeEndSeconds: temporalBoundary.validTimeEndSeconds,
     uEastMetersPerSecond: u,
     vNorthMetersPerSecond: v,
     wetMask,
@@ -77,6 +85,10 @@ export function createBathymetryConditionedCurrentField(options = {}) {
       coordinateFrame: 'localEastNorthDown',
       depthDependent: true,
       timeDependent: true,
+      temporalBoundaryMode: temporalBoundary.temporalBoundaryMode,
+      temporalPeriodSeconds: temporalBoundary.temporalPeriodSeconds,
+      validTimeStartSeconds: temporalBoundary.validTimeStartSeconds,
+      validTimeEndSeconds: temporalBoundary.validTimeEndSeconds,
       usesBathymetryMask: true,
       usesCoastlineBoundary: true,
       usesIsobathSteering: true,
@@ -106,6 +118,10 @@ export function createBathymetryConditionedCurrentField(options = {}) {
       componentIds,
       components: componentMetadata,
       parameters: params,
+      environmentGeneratorBackendId: options.environmentGeneratorBackendId ?? options.backendId ?? 'cpuBathymetryConditionedSyntheticV2',
+      environmentGeneratorBackendVersion: options.environmentGeneratorBackendVersion ?? null,
+      environmentManifestDigest: options.environmentManifestDigest ?? null,
+      environmentArtifactDigest: options.environmentArtifactDigest ?? null,
       references: ['FLOW-R2A.5 production 4D current dynamics contract'],
       warnings: [
         'Scientifically constrained synthetic current field. Not a calibrated ocean forecast. Not real HYCOM or Marine Copernicus data.',
@@ -303,9 +319,9 @@ function paramsForComponent(id, params) {
 function defaultParameters(options, bottomDepthMeters, eastAxisMeters, northAxisMeters) {
   const depths = bottomDepthMeters.flat().map(Number).filter((value) => Number.isFinite(value) && value > 0);
   const maxDepth = depths.length ? Math.max(...depths) : 700;
-  const duration = Math.max(1, Number(options.durationSeconds ?? options.level?.world?.time?.duration ?? 2400));
+  const duration = Math.max(1, Number(options.durationSeconds ?? canonicalMissionDurationSeconds(options.level ?? {}, options, null) ?? 2400));
   return {
-    seed: finite(options.seed ?? options.level?.meta?.seed ?? options.level?.seed, 43),
+    seed: numericSeed(options.seed ?? options.level?.meta?.seed ?? options.level?.seed, 43),
     durationSeconds: duration,
     maximumBottomDepthMeters: maxDepth,
     depthDecayMeters: finite(options.depthDecayMeters, 220),
@@ -359,10 +375,58 @@ function normalizeDepthAxis(explicit, bottomDepthMeters, level, options = {}) {
   return uniqueSorted(requested).filter((depth, index, array) => index === 0 || depth > array[index - 1]);
 }
 
-function normalizeTimeAxis(explicit, level = {}) {
-  if (Array.isArray(explicit) && explicit.length) return uniqueSorted(explicit);
-  const duration = Math.max(900, finite(level.world?.time?.duration, 2400));
-  return [0, duration / 3, (duration * 2) / 3, duration].map((value) => round(value, 3));
+function normalizeTimeAxis(explicit, level = {}, temporalBoundary = {}) {
+  const start = finite(temporalBoundary.validTimeStartSeconds, 0);
+  const end = Math.max(start + 1e-6, finite(temporalBoundary.validTimeEndSeconds, canonicalMissionDurationSeconds(level, temporalBoundary, explicit)));
+  const generatedAxis = missionTimeAxis(start, end, 7);
+  if (Array.isArray(explicit) && explicit.length) {
+    const base = uniqueSorted(explicit);
+    const mode = normalizeTemporalBoundaryMode(temporalBoundary.temporalBoundaryMode);
+    if (mode === 'periodic' || temporalBoundary.allowShortTimeAxis === true) return base;
+    if (Number(base.at(-1) ?? start) + 1e-6 < end) return uniqueSorted([...base, ...generatedAxis]);
+    return base;
+  }
+  return generatedAxis;
+}
+
+function normalizeTemporalBoundaryOptions(options = {}, level = {}) {
+  const explicit = options.timeAxisSeconds;
+  const mode = normalizeTemporalBoundaryMode(options.temporalBoundaryMode ?? options.sourceMetadata?.temporalBoundaryMode ?? 'bounded');
+  const sortedExplicit = Array.isArray(explicit) && explicit.length ? uniqueSorted(explicit) : [];
+  const start = finite(options.validTimeStartSeconds ?? options.sourceMetadata?.validTimeStartSeconds, sortedExplicit.length ? Number(sortedExplicit[0]) : 0);
+  const end = Math.max(start + 1e-6, finite(options.validTimeEndSeconds ?? options.sourceMetadata?.validTimeEndSeconds, canonicalMissionDurationSeconds(level, options, explicit)));
+  const period = mode === 'periodic' ? Math.max(1e-6, finite(options.temporalPeriodSeconds ?? options.sourceMetadata?.temporalPeriodSeconds, end - start || 1)) : null;
+  return {
+    temporalBoundaryMode: mode,
+    temporalPeriodSeconds: period,
+    validTimeStartSeconds: start,
+    validTimeEndSeconds: end,
+    allowShortTimeAxis: options.allowShortTimeAxis === true
+  };
+}
+
+function canonicalMissionDurationSeconds(level = {}, options = {}, explicit = null) {
+  const explicitMax = Array.isArray(explicit) && explicit.length ? Math.max(...explicit.map(Number).filter(Number.isFinite)) : null;
+  const values = [
+    options.missionDurationSeconds,
+    level.world?.operationalDomain?.time?.durationSeconds,
+    level.operationalDomain?.time?.durationSeconds,
+    level.meta?.generationConfig?.operationalDomain?.time?.durationSeconds,
+    level.world?.time?.durationSeconds,
+    level.world?.time?.duration,
+    explicitMax,
+    2400
+  ];
+  return Math.max(1, finite(values.find((value) => Number.isFinite(Number(value))), 2400));
+}
+
+function missionTimeAxis(start, end, count = 7) {
+  const span = Math.max(1e-6, Number(end) - Number(start));
+  return Array.from({ length: count }, (_value, index) => round(Number(start) + span * index / Math.max(1, count - 1), 3));
+}
+
+function normalizeTemporalBoundaryMode(value) {
+  return String(value ?? '').trim() === 'periodic' ? 'periodic' : 'bounded';
 }
 
 function normalizeBottomDepth(level = {}, width, height, explicit, depthAxisMeters) {
@@ -429,6 +493,19 @@ function gaussian(value, center, width) {
 
 function gaussian2(x, y, cx, cy, sx, sy) {
   return Math.exp(-Math.pow((x - cx) / Math.max(1e-9, sx), 2) - Math.pow((y - cy) / Math.max(1e-9, sy), 2));
+}
+
+function numericSeed(value, fallback = 0) {
+  const number = Number(value);
+  if (Number.isFinite(number)) return number;
+  const text = String(value ?? '').trim();
+  if (!text) return fallback;
+  let hash = 2166136261;
+  for (let i = 0; i < text.length; i += 1) {
+    hash ^= text.charCodeAt(i);
+    hash = Math.imul(hash, 16777619);
+  }
+  return (hash >>> 0) / 100000;
 }
 
 function finite(value, fallback = 0) {

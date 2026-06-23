@@ -1,4 +1,4 @@
-export const OCEAN_CURRENT_SOURCE_METADATA_VERSION = 'ocean-current-source-metadata-flow-r2a-3';
+export const OCEAN_CURRENT_SOURCE_METADATA_VERSION = 'ocean-current-source-metadata-flow-r2a-5-1';
 
 export const OCEAN_CURRENT_SOURCE_TIERS = Object.freeze([
   'manufacturedAnalytical',
@@ -48,6 +48,10 @@ export function normalizeOceanCurrentSourceMetadata(input = {}, defaults = {}) {
     },
     depthDependent: input.depthDependent !== false,
     timeDependent: input.timeDependent !== false,
+    temporalBoundaryMode: normalizeTemporalBoundaryMode(input.temporalBoundaryMode ?? defaults.temporalBoundaryMode ?? 'bounded'),
+    temporalPeriodSeconds: finiteOrNull(input.temporalPeriodSeconds ?? defaults.temporalPeriodSeconds),
+    validTimeStartSeconds: finiteOrNull(input.validTimeStartSeconds ?? defaults.validTimeStartSeconds),
+    validTimeEndSeconds: finiteOrNull(input.validTimeEndSeconds ?? defaults.validTimeEndSeconds),
     usesBathymetryMask: input.usesBathymetryMask === true,
     usesCoastlineBoundary: input.usesCoastlineBoundary === true,
     usesIsobathSteering: input.usesIsobathSteering === true,
@@ -67,6 +71,11 @@ export function normalizeOceanCurrentSourceMetadata(input = {}, defaults = {}) {
     perturbationPolicy: input.perturbationPolicy ?? null,
     manufacturedFieldId: input.manufacturedFieldId ?? null,
     analyticalEvaluatorId: input.analyticalEvaluatorId ?? input.manufacturedFieldId ?? null,
+    environmentGeneratorBackendId: input.environmentGeneratorBackendId ?? defaults.environmentGeneratorBackendId ?? null,
+    environmentGeneratorBackendVersion: input.environmentGeneratorBackendVersion ?? defaults.environmentGeneratorBackendVersion ?? null,
+    environmentManifestDigest: input.environmentManifestDigest ?? defaults.environmentManifestDigest ?? null,
+    environmentArtifactDigest: input.environmentArtifactDigest ?? defaults.environmentArtifactDigest ?? null,
+    adapterVersion: input.adapterVersion ?? defaults.adapterVersion ?? null,
     equation: input.equation ?? null,
     references: Array.isArray(input.references) ? input.references : [],
     warnings,
@@ -151,6 +160,10 @@ function labelForTier(sourceTier) {
   return 'Scientifically constrained synthetic current field';
 }
 
+function normalizeTemporalBoundaryMode(value) {
+  return String(value ?? '').trim() === 'periodic' ? 'periodic' : 'bounded';
+}
+
 function uniqueStrings(values = []) {
   const seen = new Set();
   const out = [];
@@ -166,4 +179,9 @@ function uniqueStrings(values = []) {
 function finite(value, fallback = 0) {
   const number = Number(value);
   return Number.isFinite(number) ? number : fallback;
+}
+
+function finiteOrNull(value) {
+  const number = Number(value);
+  return Number.isFinite(number) ? number : null;
 }
