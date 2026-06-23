@@ -11,3 +11,7 @@ Roadmap:
 - FLUID-R1: optional bounded local WebGPU fluid perturbation research layer
 
 WebGPU compute does not replace the regional current authority. MLS-MPM and SPH are not HYCOM, not Marine Copernicus, and not substitutes for a regional forecast product. Any future local perturbation must be optional, bounded, and explicitly sourced.
+
+## FLOW-R2A.3 Boundary
+
+Future WebGPU backends may accelerate instanced glyphs or tracer/pathline advection. They do not replace `OceanCurrentField4D` as the regional current authority, and future fluid perturbations must be optional, bounded, separately labelled, and explicitly composited.

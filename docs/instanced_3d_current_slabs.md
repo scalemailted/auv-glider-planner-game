@@ -13,3 +13,7 @@ Glyph orientation uses U/V direction. Glyph length uses speed magnitude. Directi
 The layer uses one shared glyph geometry and one material family with `InstancedMesh`. It does not create an object per vector and does not create an independent renderer, camera, resize lifecycle, or RAF loop.
 
 Display units are m/s. Display settings such as active slice, stacked slabs, exploded slabs, density, magnitude scale, and color mode do not change the current cube, plan, simulation, score, or replay digest.
+
+## FLOW-R2A.3 Update
+
+Instanced current glyphs now support active-slice, stacked-depth, exploded-depth, and sparse-volumetric modes. The implementation uses a shared instanced rendering family and does not create one Three.js object per vector.

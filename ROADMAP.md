@@ -420,3 +420,7 @@ WORLD-R1.1 activates Regional Fleet Area in generated gameplay, unifies modern l
 ## FLOW-R2A Current Stack Note
 
 FLOW-R2A adds the canonical 4D current cube, depth/time sampler, DIVE-R1.1 layer-explorer current extension, and instanced current glyph layer. FLOW-R2B should add display-only tracers, pathlines, stream ribbons, and route-current inspection. WebGPU remains future backend work and does not replace regional current authority.
+
+## FLOW-R2A.3 Before FLOW-R2B
+
+FLOW-R2A.3 adds scientifically constrained 4D currents, bathymetry-aware validation, manufactured analytical benchmarks, and true volumetric depth-time rendering. FLOW-R2B remains display-only tracers, pathlines, stream ribbons, and route-current inspection. DATA-R1 remains the future offline attributed ocean-model fixture pipeline. FLOW-R3 remains optional WebGPU tracer/pathline compute. FLUID-R1 remains optional bounded local fluid perturbation research.

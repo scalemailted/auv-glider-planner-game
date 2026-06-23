@@ -1,8 +1,9 @@
 import { createOceanCurrentField4D, validateOceanCurrentField4D } from './OceanCurrentField4D.js';
+import { createBathymetryConditionedCurrentField } from './BathymetryConditionedCurrentBuilder.js';
 import { normalizeWaterColumnConfig, waterColumnLayerMetadata } from './WaterColumnSchema.js';
 import { incrementSimulationLaunchCounter } from '../runtime/SimulationLaunchProfiler.js';
 
-export const SYNTHETIC_CURRENT_CUBE_ADAPTER_VERSION = 'synthetic-current-cube-adapter-flow-r2a-1';
+export const SYNTHETIC_CURRENT_CUBE_ADAPTER_VERSION = 'synthetic-current-cube-adapter-flow-r2a-3';
 const syntheticCurrentCubeSessionCache = new WeakMap();
 const syntheticCurrentCubeSessionStats = { buildCount: 0, cacheHitCount: 0, cacheMissCount: 0 };
 
@@ -53,6 +54,19 @@ export function createSyntheticCurrentCubeFromMissionWorld(options = {}) {
   const legacyFrames = legacyCurrentFrames(level, baseViewModel, width, height, timeAxisSeconds);
   const preserveLegacy = waterColumnConfig.depthLayerIds.length <= 1 || options.preserveLegacySurfaceOnly === true;
   const seed = finite(options.seed ?? level.meta?.seed ?? level.seed, 29);
+  if (!preserveLegacy && options.useLegacySyntheticCurrentGenerator !== true) {
+    return createBathymetryConditionedCurrentField({
+      ...options,
+      level,
+      grid: { width, height },
+      waterColumnConfig,
+      depthAxisMeters,
+      timeAxisSeconds,
+      seed,
+      id: options.id ?? `scientific-synthetic-current-${width}x${height}x${depthAxisMeters.length}x${timeAxisSeconds.length}`,
+      label: options.label ?? 'Scientifically constrained synthetic current field'
+    });
+  }
   const u = [];
   const v = [];
   for (let ti = 0; ti < timeAxisSeconds.length; ti += 1) {
@@ -85,7 +99,7 @@ export function createSyntheticCurrentCubeFromMissionWorld(options = {}) {
   const wetMask = wetMaskFromTerrain(level.layers?.terrain ?? baseViewModel.terrain?.values, bottomDepthMeters, width, height);
   return createOceanCurrentField4D({
     id: options.id ?? `synthetic-current-cube-${width}x${height}x${depthAxisMeters.length}x${timeAxisSeconds.length}`,
-    label: 'HYCOM-style synthetic current cube',
+    label: 'Scientifically constrained synthetic current field',
     grid: { width, height },
     eastAxisMeters: Array.from({ length: width }, (_value, index) => index),
     northAxisMeters: Array.from({ length: height }, (_value, index) => index),
@@ -97,9 +111,12 @@ export function createSyntheticCurrentCubeFromMissionWorld(options = {}) {
     bottomDepthMeters,
     seed,
     sourceMetadata: {
+      sourceTier: 'scientificallyConstrainedSynthetic',
       sourceType: 'synthetic',
-      fieldId: options.id ?? 'hycom-style-synthetic-current-cube',
-      label: 'HYCOM-style synthetic current cube',
+      fieldId: options.id ?? 'legacy-surface-compatible-synthetic-current-cube',
+      sourceLabel: 'Scientifically constrained synthetic current field',
+      label: 'Scientifically constrained synthetic current field',
+      equationFamily: 'legacySurfaceCompatibleSyntheticCurrentV1',
       adapterVersion: SYNTHETIC_CURRENT_CUBE_ADAPTER_VERSION,
       synthetic: true,
       checkedInFixture: false,
@@ -109,6 +126,12 @@ export function createSyntheticCurrentCubeFromMissionWorld(options = {}) {
       calibratedForecast: false,
       operationalOceanPrediction: false,
       preservesLegacySurfaceOnly: preserveLegacy,
+      depthDependent: !preserveLegacy,
+      timeDependent: timeAxisSeconds.length > 1,
+      usesBathymetryMask: true,
+      usesCoastlineBoundary: false,
+      usesIsobathSteering: false,
+      warnings: ['Scientifically constrained synthetic current field. Not a calibrated ocean forecast. Not real HYCOM or Marine Copernicus data.'],
       seed
     },
     boundaryFlags: {
@@ -142,7 +165,9 @@ export function syntheticCurrentCubeAdapterSummary(field = {}) {
     type: 'anchor.science.synthetic-current-cube-adapter-summary',
     version: SYNTHETIC_CURRENT_CUBE_ADAPTER_VERSION,
     fieldId: field.id ?? field.sourceMetadata?.fieldId ?? null,
+    sourceTier: field.sourceMetadata?.sourceTier ?? null,
     sourceType: field.sourceMetadata?.sourceType ?? null,
+    equationFamily: field.sourceMetadata?.equationFamily ?? null,
     depthSampleCount: field.depthAxisMeters?.length ?? 0,
     timeSampleCount: field.timeAxisSeconds?.length ?? 0,
     usesRealHycom: field.sourceMetadata?.usesRealHycom === true,
@@ -183,7 +208,7 @@ function timeAxis(level, explicit) {
   const frameTimes = (level.layers?.truth?.frames ?? []).map((frame, index) => finite(frame.t ?? frame.time, index * finite(level.world?.time?.dt, 60))).filter(Number.isFinite);
   if (frameTimes.length >= 2) return frameTimes;
   const duration = Math.max(600, finite(level.world?.time?.duration, 1800));
-  return [0, duration / 2, duration];
+  return [0, duration / 3, (duration * 2) / 3, duration];
 }
 
 function legacyCurrentFrames(level, baseViewModel, width, height, timeAxisSeconds) {

@@ -4,7 +4,9 @@ import {
   markSimulationLaunchStage,
   setSimulationLaunchCurrentField
 } from '../runtime/SimulationLaunchProfiler.js';
-export const OCEAN_CURRENT_FIELD_4D_VERSION = 'ocean-current-field-4d-flow-r2a-1';
+import { normalizeOceanCurrentSourceMetadata, validateOceanCurrentSourceMetadata } from './OceanCurrentSourceMetadata.js';
+import { computeCurrentFieldScientificDiagnostics } from './CurrentFieldScientificDiagnostics.js';
+export const OCEAN_CURRENT_FIELD_4D_VERSION = 'ocean-current-field-4d-flow-r2a-3';
 
 const oceanCurrentFieldRuntimeCounters = { buildCount: 0, normalizeCount: 0, normalizeHitCount: 0, digestCount: 0, summaryBuildCount: 0 };
 
@@ -106,9 +108,14 @@ export function validateOceanCurrentField4D(field = {}) {
     if (got.time !== dims.time || got.depth !== dims.depth || got.height !== dims.height || got.width !== dims.width) errors.push(`${key} shape must match current axes.`);
     if (!finiteCube(normalized[key])) errors.push(`${key} contains non-finite values.`);
   }
-  const label = String(normalized.label ?? normalized.sourceMetadata?.label ?? '');
-  if (normalized.sourceMetadata?.sourceType === 'synthetic' && /\bHYCOM\b/i.test(label) && !/HYCOM-style/i.test(label)) errors.push('Synthetic fields must be labelled HYCOM-style, not HYCOM.');
+  const metadataValidation = validateOceanCurrentSourceMetadata(normalized.sourceMetadata ?? {});
+  errors.push(...metadataValidation.errors);
+  warnings.push(...metadataValidation.warnings);
+  const label = String(normalized.label ?? normalized.sourceMetadata?.label ?? normalized.sourceMetadata?.sourceLabel ?? '');
+  const syntheticClaimText = `${label} ${(normalized.sourceMetadata?.warnings ?? []).join(' ')}`;
+  if (normalized.sourceMetadata?.sourceTier === 'scientificallyConstrainedSynthetic' && /\breal\s+HYCOM\b|\bMarine\s+Copernicus\b/i.test(label) && !/not real HYCOM or Marine Copernicus/i.test(syntheticClaimText)) errors.push('Synthetic fields must not claim real HYCOM or Marine Copernicus data.');
   if (normalized.sourceMetadata?.usesRealHycom || normalized.sourceMetadata?.usesRealMarineCopernicus || normalized.sourceMetadata?.calibratedForecast) warnings.push('Field claims real or calibrated source metadata; verify provenance.');
+  if (normalized.wDownMetersPerSecond && normalized.sourceMetadata?.includesVerticalVelocity !== true) warnings.push('A vertical W field is present but source metadata does not mark includesVerticalVelocity=true.');
   return { valid: errors.length === 0, status: errors.length ? 'FAIL' : warnings.length ? 'WARN' : 'PASS', errors, warnings, field: normalized, summary: oceanCurrentField4DSummary(normalized) };
 }
 
@@ -121,6 +128,8 @@ export function oceanCurrentField4DSummary(field = {}) {
   for (let t = 0; t < dims.time; t += 1) for (let z = 0; z < dims.depth; z += 1) for (let y = 0; y < dims.height; y += 1) for (let x = 0; x < dims.width; x += 1) {
     speeds.push(Math.hypot(normalized.uEastMetersPerSecond[t][z][y][x], normalized.vNorthMetersPerSecond[t][z][y][x]));
   }
+  const diagnostics = normalized.scientificDiagnostics ?? computeCurrentFieldScientificDiagnostics(normalized);
+  const sourceMetadata = normalized.sourceMetadata ?? {};
   const summary = {
     type: 'anchor.science.ocean-current-field-4d-summary',
     version: normalized.version,
@@ -131,12 +140,34 @@ export function oceanCurrentField4DSummary(field = {}) {
     northSampleCount: normalized.northAxisMeters.length,
     depthSampleCount: normalized.depthAxisMeters.length,
     timeSampleCount: normalized.timeAxisSeconds.length,
-    sourceType: normalized.sourceMetadata?.sourceType ?? null,
-    usesRealHycom: normalized.sourceMetadata?.usesRealHycom === true,
-    usesRealMarineCopernicus: normalized.sourceMetadata?.usesRealMarineCopernicus === true,
-    calibratedForecast: normalized.sourceMetadata?.calibratedForecast === true,
+    sourceTier: sourceMetadata.sourceTier ?? null,
+    sourceType: sourceMetadata.sourceType ?? null,
+    sourceLabel: sourceMetadata.sourceLabel ?? sourceMetadata.label ?? null,
+    equationFamily: sourceMetadata.equationFamily ?? null,
+    depthDependent: sourceMetadata.depthDependent === true,
+    timeDependent: sourceMetadata.timeDependent === true,
+    usesBathymetryMask: sourceMetadata.usesBathymetryMask === true,
+    usesCoastlineBoundary: sourceMetadata.usesCoastlineBoundary === true,
+    usesIsobathSteering: sourceMetadata.usesIsobathSteering === true,
+    usesRealHycom: sourceMetadata.usesRealHycom === true,
+    usesRealMarineCopernicus: sourceMetadata.usesRealMarineCopernicus === true,
+    calibratedForecast: sourceMetadata.calibratedForecast === true,
     wComponentSupplied: normalized.wDownMetersPerSecond != null,
     speedStatistics: stats(speeds),
+    diagnostics,
+    divergenceRms: diagnostics.divergenceRms ?? null,
+    divergenceMaximum: diagnostics.divergenceMaximum ?? null,
+    vorticityMean: diagnostics.vorticityMean ?? null,
+    vorticityMaximum: diagnostics.vorticityMaximum ?? null,
+    coastlineNormalSpeedRms: diagnostics.coastlineNormalSpeedRms ?? null,
+    coastlineNormalSpeedMaximum: diagnostics.coastlineNormalSpeedMaximum ?? null,
+    verticalShearRms: diagnostics.verticalShearRms ?? null,
+    temporalChangeRms: diagnostics.temporalChangeRms ?? null,
+    alongIsobathFraction: diagnostics.alongIsobathFraction ?? null,
+    crossIsobathFraction: diagnostics.crossIsobathFraction ?? null,
+    landVectorCount: diagnostics.landVectorCount ?? 0,
+    belowBottomVectorCount: diagnostics.belowBottomVectorCount ?? 0,
+    sourceMetadata,
     digest: normalized.digest ?? oceanCurrentField4DDigest(normalized),
     boundaryFlags: normalized.boundaryFlags
   };
@@ -223,20 +254,7 @@ function bottom(input, shape, depthAxisMeters) {
 }
 
 function normalizeSourceMetadata(input = {}, seed = 17) {
-  const sourceType = ['checkedInFixture', 'importedOceanModel'].includes(input.sourceType) ? input.sourceType : 'synthetic';
-  return {
-    sourceType,
-    fieldId: input.fieldId ?? input.id ?? `current-cube-${seed}`,
-    label: input.label ?? (sourceType === 'synthetic' ? 'HYCOM-style synthetic current cube' : 'Imported ocean current cube'),
-    synthetic: sourceType === 'synthetic',
-    checkedInFixture: sourceType === 'checkedInFixture',
-    importedOceanModel: sourceType === 'importedOceanModel',
-    usesRealHycom: input.usesRealHycom === true,
-    usesRealMarineCopernicus: input.usesRealMarineCopernicus === true,
-    calibratedForecast: input.calibratedForecast === true,
-    operationalOceanPrediction: input.operationalOceanPrediction === true,
-    seed
-  };
+  return normalizeOceanCurrentSourceMetadata(input, { seed });
 }
 
 function cubeLikeDims(input) {

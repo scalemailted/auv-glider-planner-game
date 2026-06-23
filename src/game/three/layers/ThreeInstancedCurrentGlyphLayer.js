@@ -2,7 +2,7 @@ import * as THREE from 'three';
 import { positionForRecord } from './ThreeMissionLayerUtils.js';
 import { incrementSimulationLaunchCounter } from '../../../core/runtime/SimulationLaunchProfiler.js';
 
-export const THREE_INSTANCED_CURRENT_GLYPH_LAYER_VERSION = 'three-instanced-current-glyph-layer-flow-r2a-2';
+export const THREE_INSTANCED_CURRENT_GLYPH_LAYER_VERSION = 'three-instanced-current-glyph-layer-flow-r2a-3';
 
 const DEFAULT_RENDER_ORDER = 96;
 const DEFAULT_OPACITY = 0.98;
@@ -54,11 +54,18 @@ export function updateThreeInstancedCurrentGlyphLayer(layer, viewModel = {}, opt
   let nonzeroVectorCount = 0;
   let terrainMaskedVectorCount = 0;
   let belowBottomVectorCount = 0;
+  let activeGlyphCount = 0;
+  let contextGlyphCount = 0;
+  let volumetricGlyphCount = 0;
+  const visibleDepthIds = new Set();
   let minScale = Infinity;
   let maxScale = 0;
   for (let index = 0; index < layer.capacity; index += 1) {
     if (index < samples.length) {
       const sample = samples[index];
+      visibleDepthIds.add(String(sample.depthLayerId ?? sample.depthMeters ?? 'unknown'));
+      if (sample.context === true) contextGlyphCount += 1; else activeGlyphCount += 1;
+      if (sample.volumetric === true) volumetricGlyphCount += 1;
       const u = Number(sample.uEastMetersPerSecond ?? sample.u ?? 0);
       const v = Number(sample.vNorthMetersPerSecond ?? sample.v ?? 0);
       const magnitude = Number(sample.magnitudeMetersPerSecond ?? sample.magnitude ?? Math.hypot(u, v));
@@ -119,6 +126,12 @@ export function updateThreeInstancedCurrentGlyphLayer(layer, viewModel = {}, opt
     terrainMaskedVectorCount,
     belowBottomVectorCount,
     visibleVectorInstanceCount: samples.length,
+    activeGlyphCount,
+    contextGlyphCount,
+    volumetricGlyphCount,
+    visibleDepthIds: [...visibleDepthIds],
+    visibleDepthCount: visibleDepthIds.size,
+    activeCurrentDisplayMode: normalizeCurrentDisplayMode(viewModel.waterColumn?.currentDisplayMode ?? viewModel.displaySettings?.waterColumn?.currentDisplayMode ?? viewModel.waterColumnExplorer?.displayMode ?? 'activeCurrentSlice'),
     glyphMinimumScale: Number.isFinite(minScale) ? minScale : 0,
     glyphMaximumScale: maxScale,
     glyphLayerOffsetWorld: layerOffsetWorld
@@ -163,6 +176,13 @@ export function threeInstancedCurrentGlyphLayerSummary(layer = {}, viewModel = {
     terrainMaskedVectorCount: stats.terrainMaskedVectorCount ?? 0,
     belowBottomVectorCount: stats.belowBottomVectorCount ?? 0,
     visibleVectorInstanceCount: stats.visibleVectorInstanceCount ?? patch.sampleCount ?? mesh?.count ?? 0,
+    activeGlyphCount: stats.activeGlyphCount ?? 0,
+    contextGlyphCount: stats.contextGlyphCount ?? 0,
+    volumetricGlyphCount: stats.volumetricGlyphCount ?? 0,
+    visibleDepthIds: stats.visibleDepthIds ?? [],
+    visibleDepthCount: stats.visibleDepthCount ?? 0,
+    activeCurrentDisplayMode: stats.activeCurrentDisplayMode ?? normalizeCurrentDisplayMode(viewModel.waterColumn?.currentDisplayMode ?? viewModel.displaySettings?.waterColumn?.currentDisplayMode ?? explorer.displayMode ?? 'activeCurrentSlice'),
+    drawCallPolicy: 'one shared instanced mesh for all visible current glyph depths',
     glyphMeshVisible: mesh?.visible === true,
     glyphParentVisible: layer.group?.visible === true,
     glyphFrustumCulled: mesh?.frustumCulled === true,
@@ -265,20 +285,28 @@ function currentSamplesForViewModel(viewModel = {}, options = {}) {
   const currentMode = normalizeCurrentDisplayMode(viewModel.waterColumn?.currentDisplayMode ?? viewModel.displaySettings?.waterColumn?.currentDisplayMode ?? explorer.displayMode ?? 'activeCurrentSlice');
   const showContext = viewModel.waterColumn?.showContextCurrents === true || viewModel.displaySettings?.waterColumn?.showContextCurrents === true;
   const density = currentVectorDensityStride(viewModel.waterColumn?.currentVectorDensity ?? viewModel.displaySettings?.waterColumn?.currentVectorDensity ?? options.vectorDensity ?? 'balanced');
-  const includeContext = showContext && ['stackedCurrentSlabs', 'explodedCurrentSlabs', 'stackedSlabs', 'explodedSlabs', 'allLayers'].includes(currentMode);
+  const multiDepthMode = ['stackedCurrentSlabs', 'explodedCurrentSlabs', 'stackedDepthField', 'explodedDepthField', 'sparseVolumetricField', 'stackedSlabs', 'explodedSlabs', 'allLayers'].includes(currentMode);
+  const includeContext = showContext || multiDepthMode;
   const selected = includeContext ? layers : layers.filter((layer) => layer.id === activeLayerId);
   const samples = [];
   for (const layer of selected) {
     const context = layer.id !== activeLayerId;
-    const stride = context ? density * 3 : density;
+    const sparseVolume = currentMode === 'sparseVolumetricField';
+    const stride = sparseVolume ? Math.max(1, density * (context ? 4 : 2)) : context ? Math.max(1, density * 3) : density;
     for (const [index, vector] of (layer.currentField?.vectors ?? []).entries()) {
       if (vector.visible === false || index % stride !== 0) continue;
-      samples.push({ ...vector, depthLayerId: layer.id, context, opacity: context ? 0.38 : 0.95 });
+      samples.push({
+        ...vector,
+        depthLayerId: layer.id,
+        context,
+        volumetric: sparseVolume,
+        presentationMode: currentMode,
+        opacity: context ? 0.38 : 0.95
+      });
     }
   }
   return samples;
 }
-
 function colorForSample(color, sample, viewModel = {}) {
   const mode = viewModel.waterColumn?.currentColorMode ?? viewModel.displaySettings?.waterColumn?.currentColorMode ?? 'speed';
   if (sample.context) return color.set(0x7dd3fc);
@@ -307,6 +335,9 @@ function currentVectorDensityStride(value) {
 function normalizeCurrentDisplayMode(mode) {
   if (mode === 'activeSlice' || mode === 'activeLayerOnly') return 'activeCurrentSlice';
   if (mode === 'allLayers') return 'stackedCurrentSlabs';
+  if (mode === 'stackedDepthField' || mode === 'volumetricStackedCurrent') return 'stackedDepthField';
+  if (mode === 'explodedDepthField' || mode === 'volumetricExplodedCurrent') return 'explodedDepthField';
+  if (mode === 'sparseVolumetricField' || mode === 'volumetricCurrentField') return 'sparseVolumetricField';
   return String(mode ?? 'activeCurrentSlice');
 }
 

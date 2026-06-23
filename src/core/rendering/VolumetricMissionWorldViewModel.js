@@ -272,7 +272,13 @@ export function volumetricCurrentDebugPayload(viewModel = {}, rendererSummary = 
     type: 'anchor.debug.volumetric-current',
     version: 'volumetric-current-debug-flow-r2a',
     fieldId: fieldSummary.fieldId ?? explorer.currentCube?.id ?? null,
+    sourceTier: fieldSummary.sourceTier ?? explorer.currentCube?.sourceMetadata?.sourceTier ?? null,
     sourceType: fieldSummary.sourceType ?? explorer.currentCube?.sourceMetadata?.sourceType ?? null,
+    equationFamily: fieldSummary.equationFamily ?? explorer.currentCube?.sourceMetadata?.equationFamily ?? null,
+    depthDependent: fieldSummary.depthDependent === true || explorer.currentCube?.sourceMetadata?.depthDependent === true,
+    timeDependent: fieldSummary.timeDependent === true || explorer.currentCube?.sourceMetadata?.timeDependent === true,
+    usesManufacturedField: (fieldSummary.sourceTier ?? explorer.currentCube?.sourceMetadata?.sourceTier) === 'manufacturedAnalytical',
+    usesScientificallyConstrainedSyntheticField: (fieldSummary.sourceTier ?? explorer.currentCube?.sourceMetadata?.sourceTier) === 'scientificallyConstrainedSynthetic',
     usesRealHycom: fieldSummary.usesRealHycom === true,
     usesRealMarineCopernicus: fieldSummary.usesRealMarineCopernicus === true,
     calibratedForecast: fieldSummary.calibratedForecast === true,
@@ -281,12 +287,15 @@ export function volumetricCurrentDebugPayload(viewModel = {}, rendererSummary = 
     northSampleCount: fieldSummary.northSampleCount ?? explorer.currentCube?.northAxisMeters?.length ?? 0,
     depthSampleCount: fieldSummary.depthSampleCount ?? explorer.currentCube?.depthAxisMeters?.length ?? 0,
     timeSampleCount: fieldSummary.timeSampleCount ?? explorer.currentCube?.timeAxisSeconds?.length ?? 0,
+    sourceDepthCount: fieldSummary.depthSampleCount ?? explorer.currentCube?.depthAxisMeters?.length ?? 0,
+    sourceTimeCount: fieldSummary.timeSampleCount ?? explorer.currentCube?.timeAxisSeconds?.length ?? 0,
     activeLayerId: currentVisualization.currentActiveLayerId ?? viewModel.currentActiveLayerId ?? explorer.activeLayerId ?? viewModel.activeDepthLayerId ?? null,
     activeDepthMeters: currentVisualization.currentActiveDepthMeters ?? explorer.activeDepthMeters ?? activeLayer?.representativeDepthMeters ?? null,
     activeTimeSeconds: explorer.activeTimeSeconds ?? viewModel.activeTimeSeconds ?? 0,
     currentPresentationRequested: presentationRequested,
     currentPresentationEnabled: presentationEnabled,
     currentDisplayMode: currentVisualization.currentDisplayMode ?? normalizeCurrentDisplayMode(viewModel.waterColumn?.currentDisplayMode ?? viewModel.displaySettings?.waterColumn?.currentDisplayMode ?? 'activeSlice'),
+    activeCurrentDisplayMode: rendererSummary?.activeCurrentDisplayMode ?? currentVisualization.currentDisplayMode ?? normalizeCurrentDisplayMode(viewModel.waterColumn?.currentDisplayMode ?? viewModel.displaySettings?.waterColumn?.currentDisplayMode ?? 'activeSlice'),
     currentSafeModeExplicit: safeModeExplicit,
     currentActiveLayerId: currentVisualization.currentActiveLayerId ?? explorer.activeLayerId ?? viewModel.activeDepthLayerId ?? null,
     currentActiveDepthMeters: currentVisualization.currentActiveDepthMeters ?? explorer.activeDepthMeters ?? activeLayer?.representativeDepthMeters ?? null,
@@ -297,6 +306,21 @@ export function volumetricCurrentDebugPayload(viewModel = {}, rendererSummary = 
     terrainMaskedVectorCount: rendererSummary?.terrainMaskedVectorCount ?? activeVectors.filter((vector) => vector.masked === true || vector.wet === false).length,
     belowBottomVectorCount: rendererSummary?.belowBottomVectorCount ?? activeVectors.filter((vector) => vector.belowBottom === true).length,
     visibleVectorInstanceCount: rendererSummary?.visibleVectorInstanceCount ?? rendererSummary?.glyphInstanceCount ?? 0,
+    activeGlyphCount: rendererSummary?.activeGlyphCount ?? 0,
+    contextGlyphCount: rendererSummary?.contextGlyphCount ?? contextVectors,
+    volumetricGlyphCount: rendererSummary?.volumetricGlyphCount ?? 0,
+    visibleDepthIds: rendererSummary?.visibleDepthIds ?? (explorer.layers ?? []).map((layer) => layer.id),
+    visibleDepthCount: rendererSummary?.visibleDepthCount ?? (explorer.layers ?? []).length,
+    distinctDepthVectorCount: distinctCurrentVectorCountByDepth(explorer.layers ?? []),
+    distinctTimeVectorCount: distinctCurrentVectorCountByTime(explorer.currentCube ?? null),
+    lowerDepthMeters: selectedSourceCurrent?.lowerDepthMeters ?? null,
+    upperDepthMeters: selectedSourceCurrent?.upperDepthMeters ?? null,
+    depthInterpolationFraction: selectedSourceCurrent?.depthInterpolationFraction ?? null,
+    lowerTimeSeconds: selectedSourceCurrent?.lowerTimeSeconds ?? null,
+    upperTimeSeconds: selectedSourceCurrent?.upperTimeSeconds ?? null,
+    timeInterpolationFraction: selectedSourceCurrent?.timeInterpolationFraction ?? null,
+    currentFrameDigest: activeVectors[0]?.currentFrameDigest ?? null,
+    nextFrameDigest: selectedSourceCurrent?.upperTimeSeconds != null ? String(fieldSummary.digest ?? explorer.currentCube?.digest ?? 'current') + ':' + selectedSourceCurrent.upperTimeSeconds : null,
     glyphMeshVisible: rendererSummary?.glyphMeshVisible === true,
     glyphParentVisible: rendererSummary?.glyphParentVisible === true,
     glyphFrustumCulled: rendererSummary?.glyphFrustumCulled === true,
@@ -324,6 +348,7 @@ export function volumetricCurrentDebugPayload(viewModel = {}, rendererSummary = 
     contextVectorCount: contextVectors,
     glyphInstanceCount: rendererSummary?.glyphInstanceCount ?? rendererSummary?.instancedCurrentGlyphSummary?.glyphInstanceCount ?? 0,
     glyphDrawCallCount: rendererSummary?.glyphDrawCallCount ?? rendererSummary?.instancedCurrentGlyphSummary?.glyphDrawCallCount ?? 0,
+    glyphDrawCallPolicy: rendererSummary?.drawCallPolicy ?? rendererSummary?.instancedCurrentGlyphSummary?.drawCallPolicy ?? 'one shared instanced mesh for current glyphs',
     glyphBufferUpdateCount: rendererSummary?.glyphBufferUpdateCount ?? rendererSummary?.instancedCurrentGlyphSummary?.glyphBufferUpdateCount ?? 0,
     glyphObjectCreateCount: rendererSummary?.glyphObjectCreateCount ?? rendererSummary?.instancedCurrentGlyphSummary?.glyphObjectCreateCount ?? 0,
     currentSourceDigest: fieldSummary.digest ?? explorer.currentCube?.digest ?? explorer.activeCurrentSourceDigest ?? null,
@@ -333,6 +358,7 @@ export function volumetricCurrentDebugPayload(viewModel = {}, rendererSummary = 
     gliderSampledCurrent,
     renderedGliderCurrent,
     renderedGliderCurrentDelta: currentDelta(gliderSampledCurrent, renderedGliderCurrent),
+    gliderCurrentDelta: currentDelta(gliderSampledCurrent, renderedGliderCurrent),
     terrainDigest: options.terrainDigest ?? rendererSummary?.terrainSourceDigest ?? null,
     wetMaskDigest: explorer.currentCube?.wetMask ? `wet-${hashStable(explorer.currentCube.wetMask)}` : null,
     activeRendererCount: rendererSummary?.activeRendererCount ?? 0,
@@ -342,6 +368,18 @@ export function volumetricCurrentDebugPayload(viewModel = {}, rendererSummary = 
     changesOfficialScoring: false,
     usesNewPlanner: false,
     usesWebGpu: false,
+    divergenceRms: fieldSummary.divergenceRms ?? null,
+    divergenceMaximum: fieldSummary.divergenceMaximum ?? null,
+    vorticityMean: fieldSummary.vorticityMean ?? null,
+    vorticityMaximum: fieldSummary.vorticityMaximum ?? null,
+    coastlineNormalSpeedRms: fieldSummary.coastlineNormalSpeedRms ?? null,
+    coastlineNormalSpeedMaximum: fieldSummary.coastlineNormalSpeedMaximum ?? null,
+    verticalShearRms: fieldSummary.verticalShearRms ?? null,
+    temporalChangeRms: fieldSummary.temporalChangeRms ?? null,
+    alongIsobathFraction: fieldSummary.alongIsobathFraction ?? null,
+    crossIsobathFraction: fieldSummary.crossIsobathFraction ?? null,
+    landVectorCount: fieldSummary.landVectorCount ?? 0,
+    diagnosticsBelowBottomVectorCount: fieldSummary.belowBottomVectorCount ?? 0,
     warnings: [...(explorer.warnings ?? [])],
     failures: []
   };
@@ -376,6 +414,7 @@ function buildCurrentVisualizationSummary({ waterColumnUi = {}, waterColumnExplo
 function normalizeCurrentDisplayMode(mode) {
   if (mode === 'activeLayerOnly' || mode === 'activeCurrentSlice') return 'activeSlice';
   if (mode === 'allLayers' || mode === 'stackedCurrentSlabs') return 'allLayers';
+  if (mode === 'stackedDepthField' || mode === 'explodedDepthField' || mode === 'sparseVolumetricField') return mode;
   return String(mode ?? 'activeSlice');
 }
 function explicitCurrentSafeMode() {
@@ -407,6 +446,26 @@ function nearestRenderedCurrent(vectors = [], glider = null) {
   };
 }
 
+function distinctCurrentVectorCountByDepth(layers = []) {
+  const signatures = new Set();
+  for (const layer of layers) {
+    const vector = (layer.currentField?.vectors ?? []).find((candidate) => candidate.visible !== false && Number.isFinite(Number(candidate.uEastMetersPerSecond ?? candidate.u)) && Number.isFinite(Number(candidate.vNorthMetersPerSecond ?? candidate.v)));
+    if (vector) signatures.add(`${round(vector.uEastMetersPerSecond ?? vector.u, 4)},${round(vector.vNorthMetersPerSecond ?? vector.v, 4)}`);
+  }
+  return signatures.size;
+}
+
+function distinctCurrentVectorCountByTime(field = null) {
+  if (!field?.uEastMetersPerSecond?.length) return 0;
+  const z = Math.min(1, (field.depthAxisMeters?.length ?? 1) - 1);
+  const y = Math.max(0, Math.floor((field.northAxisMeters?.length ?? 1) / 2));
+  const x = Math.max(0, Math.floor((field.eastAxisMeters?.length ?? 1) / 2));
+  const signatures = new Set();
+  for (let t = 0; t < (field.timeAxisSeconds?.length ?? 0); t += 1) {
+    signatures.add(`${round(field.uEastMetersPerSecond?.[t]?.[z]?.[y]?.[x], 4)},${round(field.vNorthMetersPerSecond?.[t]?.[z]?.[y]?.[x], 4)}`);
+  }
+  return signatures.size;
+}
 function currentDelta(a = null, b = null) {
   if (!a || !b) return null;
   const du = Number(b.uEastMetersPerSecond ?? 0) - Number(a.uEastMetersPerSecond ?? 0);

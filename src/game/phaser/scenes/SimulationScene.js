@@ -3130,7 +3130,10 @@ function currentVectorViewportWarning(debug = {}) {
 }
 
 function normalizeCurrentDisplayModeAlias(value) {
-  if (value === 'allLayers' || value === 'stackedCurrentSlabs' || value === 'explodedCurrentSlabs') return 'allLayers';
+  if (value === 'allLayers' || value === 'stackedCurrentSlabs') return 'allLayers';
+  if (value === 'explodedCurrentSlabs' || value === 'explodedDepthField') return 'explodedDepthField';
+  if (value === 'stackedDepthField') return 'stackedDepthField';
+  if (value === 'sparseVolumetricField') return 'sparseVolumetricField';
   if (value === 'hidden') return 'hidden';
   return 'activeSlice';
 }

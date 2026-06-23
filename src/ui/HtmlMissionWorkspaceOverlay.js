@@ -949,7 +949,7 @@ function waterColumnSection(state, continuousUi = normalizeContinuousMissionUiSt
   const activeLayerId = layerIds.includes(continuousUi.activeDepthLayerId) ? continuousUi.activeDepthLayerId : (layerIds.includes(ui.activeDepthLayerId) ? ui.activeDepthLayerId : layerIds[0] ?? 'surface');
   const hidden = new Set(Array.isArray(ui.hiddenLayerIds) ? ui.hiddenLayerIds : []);
   const displayMode = continuousUi.verticalDisplayMode === 'explodedLayers' ? 'explodedLayers' : 'physicalDepth';
-  const currentMode = ui.currentDisplayMode === 'allLayers' ? 'allLayers' : 'activeSlice';
+  const currentMode = ['allLayers', 'stackedDepthField', 'explodedDepthField', 'sparseVolumetricField'].includes(ui.currentDisplayMode) ? ui.currentDisplayMode : 'activeSlice';
   const currentLayerMode = ui.currentLayerMode === 'manualActiveLayer' ? 'manualActiveLayer' : 'followSelectedGlider';
   const currentDensity = normalizeCurrentDensityLabel(ui.currentVectorDensity ?? 'balanced');
   const currentMagnitudeScale = Number.isFinite(Number(ui.currentMagnitudeScale)) ? Number(ui.currentMagnitudeScale) : 1.8;
@@ -979,7 +979,7 @@ function waterColumnSection(state, continuousUi = normalizeContinuousMissionUiSt
           <div><strong>Water Column:</strong> ${escapeHtml(badge)}</div>
           <div><strong>Model:</strong> ${escapeHtml(config.model ?? 'top-down-2p5d-depth-layer-sampling')}</div>
           <div>${escapeHtml(claim)}</div>
-          <div><strong>Layers:</strong> ${layerIds.length} available · ${visibleLayerCount} visible | <strong>Active:</strong> ${escapeHtml(labelize(activeLayerId))}</div>
+          <div><strong>Layers:</strong> ${layerIds.length} available Â· ${visibleLayerCount} visible | <strong>Active:</strong> ${escapeHtml(labelize(activeLayerId))}</div>
           <div><strong>Mode:</strong> ${escapeHtml(labelize(displayMode))} | <strong>Opacity:</strong> ${opacity}%</div>
           <div><strong>Quality:</strong> ${escapeHtml(labelize(qualityProfile))} | <strong>Field Layers:</strong> ${escapeHtml(fieldDisplayMode === 'allLayers' ? 'all layers' : 'active layer only')}</div>
           <div><strong>Vertical Exaggeration:</strong> ${escapeHtml(String(ui.verticalExaggeration ?? 1))}x</div>
@@ -2179,7 +2179,7 @@ function routeEstimate(state) {
   return {
     distance,
     energyText: hoverPreview
-      ? `${hoverPreview.valid ? `${hoverPreview.energy.toFixed(1)} ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â· ETA ${Number(hoverPreview.eta ?? hoverPreview.estimatedTravelTime ?? 0).toFixed(1)} hr` : 'invalid'} (${hoverPreview.note})`
+      ? `${hoverPreview.valid ? `${hoverPreview.energy.toFixed(1)} ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â· ETA ${Number(hoverPreview.eta ?? hoverPreview.estimatedTravelTime ?? 0).toFixed(1)} hr` : 'invalid'} (${hoverPreview.note})`
       : budget ? `${Math.round(energy)} / ${Math.round(budget)}` : `${Math.round(energy)}`
   };
 }

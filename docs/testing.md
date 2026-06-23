@@ -1045,3 +1045,7 @@ node node_modules/@playwright/test/cli.js test tests/e2e/flow_r2a_2_visible_curr
 ```
 
 These checks verify that current samples reach Planning and Simulation view models, visible instanced glyphs have finite bounds and readable material/scale/order, Safe Display mode is explicit and non-persistent, projected glyph neighborhoods contain changed pixels, and visible/hidden current presentation does not change mission outcome.
+
+## FLOW-R2A.3 Current Validation
+
+Run the focused scripts `tools/js/smoke_manufactured_current_catalog.mjs`, `tools/js/smoke_bathymetry_conditioned_current_builder.mjs`, `tools/js/audit_current_scientific_claim_boundaries.mjs`, and `tests/e2e/flow_r2a_3_scientific_currents.spec.js` for the scientific current pass. Grouped and monolithic E2E gates are still required before recommending FLOW-R2B.

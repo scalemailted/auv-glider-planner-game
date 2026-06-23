@@ -95,7 +95,18 @@ export const PLAYWRIGHT_GROUPS = Object.freeze([
       /^Current Display Modes Do Not Change Mission Outcome$/i,
       /^Current Vertical Profile Uses One Four Dimensional Field$/i,
       /^Volumetric Current Slabs Run From GitHub Pages Subpath$/i,
-      /^Simulation Launch Reaches Interactive Frame With Volumetric Currents$/i,
+      /^Current Vectors Render Across Multiple Physical Depths$/i,
+      /^Volumetric Current Mode Displays a Three Dimensional Vector Volume$/i,
+      /^Canonical Timeline Evolves the Current Field$/i,
+      /^Tidal Current Reverses Without Random Jitter$/i,
+      /^Synthetic Coastal Current Respects the Coastline Boundary$/i,
+      /^Canyon Exchange Occurs Only in the Declared Scenario Region$/i,
+      /^Glider Samples Current at Actual Depth and Time$/i,
+      /^Depth Strategy Changes Mission Outcome in a Sheared Current$/i,
+      /^Departure Time Changes Mission Outcome in a Tidal Current$/i,
+      /^Manufactured Current Benchmarks Match Analytical Expectations$/i,
+      /^Volumetric Current Display Does Not Change Mission Outcome$/i,
+      /^Scientific Volumetric Currents Run From GitHub Pages Subpath$/i,      /^Simulation Launch Reaches Interactive Frame With Volumetric Currents$/i,
       /^Current Cube Is Built Once Per Mission Launch$/i,
       /^Simulation Current Sampling Does Not Rebuild the Current Field$/i,
       /^Current Glyph Presentation Failure Does Not Freeze Simulation$/i,
@@ -184,7 +195,8 @@ export const PLAYWRIGHT_GROUPS = Object.freeze([
       /^THREE-R2B Full Headed Mission Editor Walkthrough$/i,
       /^THREE-R3A Full Headed Phaser-Free Production Shell Walkthrough$/i,
       /^FLOW-R2A\.1 Full Headed Simulation Launch Stability Walkthrough$/i,
-      /^FLOW-R2A\.2 Full Headed Visible Current Vector Walkthrough$/i
+      /^FLOW-R2A\.2 Full Headed Visible Current Vector Walkthrough$/i,
+      /^FLOW-R2A\.3 Full Headed Scientific Volumetric Current Walkthrough$/i
     ]
   }
 ]);

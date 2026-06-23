@@ -596,3 +596,7 @@ Adds `OceanCurrentField4D`, `OceanCurrentFieldSampler`, `SyntheticCurrentCubeAda
 ## FLOW-R2A.1 Launch Stabilization
 
 FLOW-R2A.1 is a release-blocking stabilization pass for the existing FLOW-R2A volumetric-current runtime. It adds launch profiling/debug counters, current cube/session cache guards, hot-path sampler protections, current glyph fail-soft behavior, pre-scene canonical current failure UI, re-execute lifecycle reset, focused smokes/audits, and a focused Playwright launch-stability spec. It does not add FLOW-R2B tracer/pathline features, WebGPU, planner changes, scoring changes, or Phaser removal.
+
+## FLOW-R2A.3
+
+Adds scientific source-tier metadata, manufactured analytical current fixtures, bathymetry-conditioned synthetic current generation, current diagnostics, regional current benchmark fixture, volumetric glyph display modes, focused smokes/audits, and visual-acceptance documentation. Synthetic current fields must state that they are not calibrated forecasts and not real HYCOM or Marine Copernicus data.

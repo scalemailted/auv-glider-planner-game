@@ -1169,3 +1169,7 @@ If Simulation appears to stall when volumetric currents are visible, inspect `gl
 ### FLOW-R2A.2 Visible Current Vectors
 
 Modern water-column missions should show current vectors in Planning and Simulation without extra setup. Use the Currents controls in the Water Column console section to show/hide vectors, choose Active Slice or All Layers, follow selected-glider depth, adjust density/scale/color, and optionally show context layers. These controls are presentation-only: they do not change drift, route validity, scoring, or replay. If the URL includes ?currentDisplay=safe, the app hides current vectors and shows the Safe Display warning while current physics remain active.
+
+## FLOW-R2A.3 Currents
+
+Current display modes now include Active Slice, All Layers, Stacked Depth Field, Exploded Depth Field, and Sparse Volumetric Field. These are visualizations of the same canonical 4D current cube; display choices do not change mission physics, route validity, or score.

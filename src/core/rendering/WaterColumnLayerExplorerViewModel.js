@@ -25,7 +25,10 @@ export const WATER_COLUMN_LAYER_DISPLAY_MODES = Object.freeze([
   'stackedCurrentSlabs',
   'explodedCurrentSlabs',
   'currentVerticalProfile',
-  'depthAverageCurrent'
+  'depthAverageCurrent',
+  'stackedDepthField',
+  'explodedDepthField',
+  'sparseVolumetricField'
 ]);
 
 const currentRenderSampleCache = new WeakMap();
@@ -115,7 +118,7 @@ export function buildWaterColumnLayerExplorerViewModel(options = {}) {
     currentCube,
     currentFieldSummary: currentCube ? oceanCurrentField4DSummary(currentCube) : null,
     selectedCurrentProfile,
-    currentDisplayModes: ['activeCurrentSlice', 'stackedCurrentSlabs', 'explodedCurrentSlabs', 'currentVerticalProfile', 'depthAverageCurrent'],
+    currentDisplayModes: ['activeCurrentSlice', 'stackedCurrentSlabs', 'explodedCurrentSlabs', 'sparseVolumetricField', 'currentVerticalProfile', 'depthAverageCurrent'],
     boundaryFlags: {
       publicSafe: true,
       hiddenTruthIncluded: false,
@@ -352,6 +355,12 @@ function buildSelectedCurrentProfile({ selectedLocation, waterColumnConfig, sour
       bearingDegrees: sample?.bearingDegrees ?? null,
       wet: sample?.wet === true,
       masked: sample?.masked === true,
+      lowerDepthMeters: sample?.lowerDepthMeters ?? null,
+      upperDepthMeters: sample?.upperDepthMeters ?? null,
+      depthInterpolationFraction: sample?.depthInterpolationFraction ?? null,
+      lowerTimeSeconds: sample?.lowerTimeSeconds ?? null,
+      upperTimeSeconds: sample?.upperTimeSeconds ?? null,
+      timeInterpolationFraction: sample?.timeInterpolationFraction ?? null,
       sourceDigest: sample?.source?.digest ?? source.currentCube?.digest ?? null
     };
   });
@@ -404,6 +413,13 @@ function currentLayerFromCube({ field, layerId, representativeDepthMeters, grid,
         masked: sample.masked === true,
         belowBottom: sample.belowBottom === true,
         outsideDomain: sample.outsideDomain === true,
+        lowerDepthMeters: sample.lowerDepthMeters,
+        upperDepthMeters: sample.upperDepthMeters,
+        depthInterpolationFraction: sample.depthInterpolationFraction,
+        lowerTimeSeconds: sample.lowerTimeSeconds,
+        upperTimeSeconds: sample.upperTimeSeconds,
+        timeInterpolationFraction: sample.timeInterpolationFraction,
+        currentFrameDigest: String(field.digest ?? 'current') + ':' + sample.lowerTimeSeconds + '-' + sample.upperTimeSeconds,
         sourceDigest: sample.source?.digest ?? field.digest ?? null
       });
     }
@@ -484,6 +500,12 @@ function normalizeDisplayMode(value) {
   if (text === 'Exploded Current Slabs') return 'explodedCurrentSlabs';
   if (text === 'Current Vertical Profile') return 'currentVerticalProfile';
   if (text === 'Depth-Average Current') return 'depthAverageCurrent';
+  if (text === 'Stacked Depth Field') return 'stackedDepthField';
+  if (text === 'Exploded Depth Field') return 'explodedDepthField';
+  if (text === 'Sparse Volumetric Field') return 'sparseVolumetricField';
+  if (text === 'stackedDepthField' || text === 'volumetricStackedCurrent') return 'stackedDepthField';
+  if (text === 'explodedDepthField' || text === 'volumetricExplodedCurrent') return 'explodedDepthField';
+  if (text === 'sparseVolumetricField' || text === 'volumetricCurrentField') return 'sparseVolumetricField';
   return WATER_COLUMN_LAYER_DISPLAY_MODES.includes(text) ? text : 'activeSlice';
 }
 
