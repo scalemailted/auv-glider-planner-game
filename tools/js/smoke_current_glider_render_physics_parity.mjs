@@ -1,0 +1,10 @@
+import assert from 'node:assert/strict';
+import { buildGliderRenderPhysicsParityProbe } from './flow_runtime_r1_current_helpers.mjs';
+const probe = buildGliderRenderPhysicsParityProbe({ seed: 'flow-runtime-r1-physics-parity' });
+assert.ok(Number.isFinite(Number(probe.applied?.u)), 'physics-applied current u is finite');
+assert.ok(Number.isFinite(Number(probe.sampled?.u)), 'TruthWorld sampled current u is finite');
+assert.ok(probe.appliedSampleDelta <= 1e-9, 'physics-applied current matches canonical TruthWorld sample before stochastic drift');
+assert.ok(probe.renderSampleDelta <= 0.35, 'nearby rendered current remains within coarse local parity tolerance');
+assert.equal(probe.rendererOwnsCurrent, false, 'renderer does not own current physics');
+assert.equal(probe.displayChangesPhysics, false, 'display settings do not change physics');
+console.log('[smoke_current_glider_render_physics_parity] PASS', { appliedSampleDelta: probe.appliedSampleDelta, renderSampleDelta: probe.renderSampleDelta });

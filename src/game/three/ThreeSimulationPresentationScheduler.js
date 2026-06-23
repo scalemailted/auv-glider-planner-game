@@ -1,4 +1,13 @@
-﻿export const THREE_SIMULATION_PRESENTATION_SCHEDULER_VERSION = 'three-simulation-presentation-scheduler-r1-2a-4-3';
+export const THREE_SIMULATION_PRESENTATION_SCHEDULER_VERSION = 'three-simulation-presentation-scheduler-flow-runtime-r1';
+
+export const CURRENT_PRESENTATION_DIRTY_FLAGS = Object.freeze({
+  source: 'CURRENT_SOURCE_DIRTY',
+  time: 'CURRENT_TIME_DIRTY',
+  depth: 'CURRENT_DEPTH_DIRTY',
+  visibility: 'CURRENT_VISIBILITY_DIRTY',
+  density: 'CURRENT_DENSITY_DIRTY',
+  style: 'CURRENT_STYLE_DIRTY'
+});
 
 export const SIMULATION_PRESENTATION_DIRTY_CATEGORIES = Object.freeze([
   'vehiclePose',
@@ -11,6 +20,12 @@ export const SIMULATION_PRESENTATION_DIRTY_CATEGORIES = Object.freeze([
   'samplingTargets',
   'scalarField',
   'currentVectors',
+  CURRENT_PRESENTATION_DIRTY_FLAGS.source,
+  CURRENT_PRESENTATION_DIRTY_FLAGS.time,
+  CURRENT_PRESENTATION_DIRTY_FLAGS.depth,
+  CURRENT_PRESENTATION_DIRTY_FLAGS.visibility,
+  CURRENT_PRESENTATION_DIRTY_FLAGS.density,
+  CURRENT_PRESENTATION_DIRTY_FLAGS.style,
   'waterColumn',
   'bathymetry',
   'selection',
@@ -165,7 +180,7 @@ export function threeSimulationPresentationSchedulerSummary(scheduler) {
 export function dirtyCategoriesForSimulationPresentationEvent(kind, options = {}) {
   switch (kind) {
     case 'motionSnapshot':
-      return ['vehiclePose', 'simulationStatus', ...(options.newTrajectoryPoint ? ['realizedTrajectory'] : []), ...(options.routeStatusChanged ? ['routeStatus'] : []), ...(options.includeHud ? ['hud'] : [])];
+      return ['vehiclePose', 'simulationStatus', 'currentVectors', CURRENT_PRESENTATION_DIRTY_FLAGS.time, ...(options.newTrajectoryPoint ? ['realizedTrajectory'] : []), ...(options.routeStatusChanged ? ['routeStatus'] : []), ...(options.includeHud ? ['hud'] : [])];
     case 'observation':
       return ['observations', 'hud', 'rightPanel'];
     case 'surfacing':
@@ -173,7 +188,7 @@ export function dirtyCategoriesForSimulationPresentationEvent(kind, options = {}
     case 'scalarFieldFrame':
       return ['scalarField'];
     case 'currentFieldFrame':
-      return ['currentVectors'];
+      return ['currentVectors', CURRENT_PRESENTATION_DIRTY_FLAGS.time];
     case 'cameraOnly':
       return [];
     case 'selection':
@@ -181,7 +196,7 @@ export function dirtyCategoriesForSimulationPresentationEvent(kind, options = {}
     case 'plannedRoute':
       return ['plannedRoute', 'samplingTargets', 'labels', 'rightPanel', 'timeline'];
     case 'waterColumn':
-      return ['waterColumn', 'scalarField', 'currentVectors', 'labels'];
+      return ['waterColumn', 'scalarField', 'currentVectors', CURRENT_PRESENTATION_DIRTY_FLAGS.depth, CURRENT_PRESENTATION_DIRTY_FLAGS.visibility, 'labels'];
     case 'terminal':
       return ['vehiclePose', 'simulationStatus', 'realizedTrajectory', 'observations', 'surfacingEvents', 'routeStatus', 'hud', 'rightPanel', 'timeline', 'performanceDebug'];
     default:

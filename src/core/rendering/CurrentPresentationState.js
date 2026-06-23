@@ -1,4 +1,4 @@
-export const CURRENT_PRESENTATION_STATE_VERSION = 'current-presentation-state-flow-r2a-5-2';
+export const CURRENT_PRESENTATION_STATE_VERSION = 'current-presentation-state-flow-runtime-r1';
 
 export function normalizeCurrentDisplayMode(mode = 'activeSlice') {
   if (mode === 'activeLayerOnly' || mode === 'activeCurrentSlice') return 'activeSlice';
@@ -107,6 +107,9 @@ export function buildCurrentPresentationDebug({
   const currentPresentationTimeSeconds = resolveCurrentPresentationTimeSeconds(viewModel, currentDebug?.currentActiveTimeSeconds ?? 0);
   const sourceFrameSignature = currentSourceTimeFrameSignature(viewModel);
   const sourceVectorSampleCount = Number(currentDebug?.sourceVectorSampleCount ?? rendererSummary?.sourceVectorSampleCount ?? 0);
+  const canonicalMissionTimeSeconds = finiteNumber(viewModel.simulationStatus?.timeSeconds ?? viewModel.activeTimeSeconds ?? viewModel.planningTime, currentPresentationTimeSeconds);
+  const samplerInputTimeSeconds = finiteNumber(currentDebug?.samplerInputTimeSeconds ?? currentDebug?.currentSampleTimeSeconds ?? currentDebug?.currentActiveTimeSeconds, currentPresentationTimeSeconds);
+  const timeToleranceSeconds = 1e-3;
   const finiteVectorSampleCount = Number(currentDebug?.finiteVectorSampleCount ?? rendererSummary?.finiteVectorSampleCount ?? 0);
   const nonzeroVectorSampleCount = Number(currentDebug?.nonzeroVectorSampleCount ?? rendererSummary?.nonzeroVectorSampleCount ?? 0);
   const glyphInstanceCount = Number(currentDebug?.glyphInstanceCount ?? rendererSummary?.glyphInstanceCount ?? 0);
@@ -141,7 +144,12 @@ export function buildCurrentPresentationDebug({
     currentLayerMode: waterColumn.currentLayerMode ?? 'followSelectedGlider',
     currentActiveLayerId: currentDebug?.currentActiveLayerId ?? viewModel.currentActiveLayerId ?? viewModel.currentVisualization?.currentActiveLayerId ?? null,
     currentActiveDepthMeters: currentDebug?.currentActiveDepthMeters ?? viewModel.currentActiveDepthMeters ?? null,
+    canonicalMissionTimeSeconds,
     currentPresentationTimeSeconds,
+    samplerInputTimeSeconds,
+    lowerTimeSeconds: currentDebug?.lowerTimeSeconds ?? null,
+    upperTimeSeconds: currentDebug?.upperTimeSeconds ?? null,
+    timeInterpolationFraction: currentDebug?.timeInterpolationFraction ?? null,
     sourceTimeFrameSignature: sourceFrameSignature,
     sourceVectorSampleCount,
     finiteVectorSampleCount,
@@ -152,8 +160,33 @@ export function buildCurrentPresentationDebug({
     glyphBoundsInFrustum: currentDebug?.glyphBoundsInFrustum ?? rendererSummary?.glyphBoundsInFrustum ?? null,
     noVisibleVectorsReason: currentDebug?.noVisibleVectorsReason ?? reason,
     cacheSignature: currentPresentationCacheSignature(viewModel, search),
+    canonicalCurrentDigest: currentDebug?.canonicalCurrentDigest ?? currentDebug?.currentSourceDigest ?? null,
+    renderSampleDigest: rendererSummary?.currentDataDigest ?? currentDebug?.renderSampleDigest ?? null,
+    directionAttributeDigest: rendererSummary?.currentDirectionDigest ?? null,
+    magnitudeAttributeDigest: rendererSummary?.currentMagnitudeDigest ?? null,
+    visibilityAttributeDigest: rendererSummary?.currentVisibilityDigest ?? null,
+    instanceMatrixDigest: rendererSummary?.currentMatrixDigest ?? null,
+    directionAttributeVersion: rendererSummary?.currentDirectionAttributeVersion ?? 0,
+    magnitudeAttributeVersion: rendererSummary?.currentMagnitudeAttributeVersion ?? 0,
+    visibilityAttributeVersion: rendererSummary?.currentVisibilityAttributeVersion ?? 0,
+    instanceMatrixVersion: rendererSummary?.currentMatrixAttributeVersion ?? 0,
+    directionBufferUploadCount: rendererSummary?.currentDirectionBufferUploadCount ?? 0,
+    magnitudeBufferUploadCount: rendererSummary?.currentMagnitudeBufferUploadCount ?? 0,
+    visibilityBufferUploadCount: rendererSummary?.currentVisibilityBufferUploadCount ?? 0,
+    matrixBufferUploadCount: rendererSummary?.currentMatrixBufferUploadCount ?? 0,
+    currentLayerUpdateCount: rendererSummary?.currentLayerUpdateCount ?? 0,
+    currentLayerSkippedUpdateCount: rendererSummary?.currentLayerSkippedUpdateCount ?? 0,
+    currentLayerSkipReason: rendererSummary?.currentLayerSkipReason ?? null,
     currentDataChangedSinceLastUpload: rendererSummary?.currentDataChangedSinceLastUpload ?? currentDebug?.currentDataChangedSinceLastUpload ?? null,
     currentDataUploadSkipped: rendererSummary?.currentDataUploadSkipped ?? currentDebug?.currentDataUploadSkipped ?? null,
+    timelineBindingPass: Math.abs(currentPresentationTimeSeconds - canonicalMissionTimeSeconds) <= timeToleranceSeconds,
+    samplerTimePass: Math.abs(samplerInputTimeSeconds - currentPresentationTimeSeconds) <= timeToleranceSeconds || currentDebug?.timeWrappedPeriodically === true,
+    renderSampleTimePass: Math.abs(finiteNumber(currentDebug?.selectedRenderedCurrent?.timeSeconds, samplerInputTimeSeconds) - samplerInputTimeSeconds) <= timeToleranceSeconds || currentDebug?.selectedRenderedCurrent == null,
+    gpuUploadPass: Number(rendererSummary?.currentDirectionBufferUploadCount ?? rendererSummary?.glyphBufferUpdateCount ?? 0) > 0,
+    pixelEvolutionPass: currentDebug?.pixelEvolutionPass ?? null,
+    currentCubeBuildCount: currentDebug?.currentCubeBuildCount ?? null,
+    currentSamplerCreateCount: currentDebug?.currentSamplerCreateCount ?? null,
+    usesWallClockTime: false,
     rendererOwnsCurrent: false,
     displayLayerChangesCurrent: false,
     changesOfficialScoring: false,

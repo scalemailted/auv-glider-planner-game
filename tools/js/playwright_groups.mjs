@@ -141,6 +141,12 @@ export const PLAYWRIGHT_GROUPS = Object.freeze([
       /^Canonical Current Timeline Updates Three GPU Current Attributes$/i,
       /^Adaptive Current Density Classifies Rendered and Filtered Samples$/i,
       /^FLOW-R2A\.5\.2 Pixel Evidence Shows Dynamic Current Frames$/i,
+      /^Planning Timeline Updates Visible Current Vectors$/i,
+      /^Current Vectors Update Within a Source Time Bracket$/i,
+      /^Simulation Play Pause and Step Control Current Evolution$/i,
+      /^Rendered Current Matches Glider Applied Current$/i,
+      /^Current Display Does Not Change Mission Outcome$/i,
+      /^Dynamic Current Vectors Run From GitHub Pages Subpath$/i,
       /^Normal Generated Currents Span Full Mission Time$/i,
       /^Periodic Current Fields Wrap Instead of Clamping$/i,
       /^Current Depth Layer Filters Hide Only Requested Layers$/i,
@@ -231,7 +237,8 @@ export const PLAYWRIGHT_GROUPS = Object.freeze([
       /^FLOW-R2A\.3 Full Headed Scientific Volumetric Current Walkthrough$/i,
       /^FLOW-R2A\.4 Full Headed Production Current Visibility Walkthrough$/i,
       /^FLOW-R2A\.5 Full Headed Production 4D Current Dynamics Walkthrough$/i,
-      /^FLOW-R2A\.5\.1 Full Headed Environment Time and Layer Walkthrough$/i
+      /^FLOW-R2A\.5\.1 Full Headed Environment Time and Layer Walkthrough$/i,
+      /^FLOW-RUNTIME-R1 Full Headed Canonical Current Evolution Walkthrough$/i
     ]
   }
 ]);

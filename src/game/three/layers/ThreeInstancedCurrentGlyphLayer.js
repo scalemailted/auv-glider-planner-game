@@ -3,7 +3,7 @@ import { positionForRecord } from './ThreeMissionLayerUtils.js';
 import { incrementSimulationLaunchCounter } from '../../../core/runtime/SimulationLaunchProfiler.js';
 import { currentSourceTimeFrameSignature, normalizeRendererCurrentDisplayMode, resolveCurrentPresentationTimeSeconds } from '../../../core/rendering/CurrentPresentationState.js';
 
-export const THREE_INSTANCED_CURRENT_GLYPH_LAYER_VERSION = 'three-instanced-current-glyph-layer-flow-r2a-5-2';
+export const THREE_INSTANCED_CURRENT_GLYPH_LAYER_VERSION = 'three-instanced-current-glyph-layer-flow-runtime-r1';
 
 const DEFAULT_RENDER_ORDER = 96;
 const DEFAULT_OPACITY = 0.98;
@@ -20,6 +20,8 @@ export function createThreeInstancedCurrentGlyphLayer(options = {}) {
     mesh: null,
     capacity: 0,
     updateCount: 0,
+    skippedUpdateCount: 0,
+    lastSkipReason: null,
     bufferUpdateCount: 0,
     bufferAllocationCount: 0,
     objectCreateCount: 0,
@@ -70,6 +72,8 @@ export function updateThreeInstancedCurrentGlyphLayer(layer, viewModel = {}, opt
   const fingerprint = currentGlyphPresentationFingerprint(samples, viewModel, transform, { magnitudeScale, layerOffsetWorld, currentMode: normalizeCurrentDisplayMode(viewModel.waterColumn?.currentDisplayMode ?? viewModel.displaySettings?.waterColumn?.currentDisplayMode ?? viewModel.waterColumnExplorer?.displayMode ?? 'activeCurrentSlice') });
   if (layer.lastPresentationDigest && layer.lastPresentationDigest === fingerprint.presentationDigest) {
     layer.updateCount += 1;
+    layer.skippedUpdateCount += 1;
+    layer.lastSkipReason = 'presentationDigestUnchanged';
     layer.lastStats = {
       ...(layer.lastStats ?? {}),
       ...(samples.__currentClassificationSummary ?? {}),
@@ -170,9 +174,14 @@ export function updateThreeInstancedCurrentGlyphLayer(layer, viewModel = {}, opt
   for (let index = slot; index < layer.capacity; index += 1) hideInstance(layer, index, dummy, color);
   const digestChanges = applyCurrentGlyphDigestCounters(layer, fingerprint);
   layer.lastPresentationDigest = fingerprint.presentationDigest;
+  layer.lastSkipReason = null;
   layer.mesh.count = slot;
   layer.mesh.instanceMatrix.needsUpdate = true;
-  if (layer.mesh.instanceColor) layer.mesh.instanceColor.needsUpdate = true;
+  layer.mesh.instanceMatrix.setUsage?.(THREE.DynamicDrawUsage);
+  if (layer.mesh.instanceColor) {
+    layer.mesh.instanceColor.setUsage?.(THREE.DynamicDrawUsage);
+    layer.mesh.instanceColor.needsUpdate = true;
+  }
   layer.mesh.visible = slot > 0;
   layer.group.visible = slot > 0;
   layer.group.renderOrder = DEFAULT_RENDER_ORDER;
@@ -252,6 +261,9 @@ export function threeInstancedCurrentGlyphLayerSummary(layer = {}, viewModel = {
     glyphCapacity: layer.capacity ?? 0,
     glyphDrawCallCount: patch.sampleCount || mesh?.count ? 1 : 0,
     glyphBufferUpdateCount: Number(layer.bufferUpdateCount ?? 0),
+    currentLayerUpdateCount: Number(layer.updateCount ?? 0),
+    currentLayerSkippedUpdateCount: Number(layer.skippedUpdateCount ?? 0),
+    currentLayerSkipReason: layer.lastSkipReason ?? null,
     currentDirectionBufferUploadCount: Number(layer.currentDirectionBufferUploadCount ?? 0),
     currentMagnitudeBufferUploadCount: Number(layer.currentMagnitudeBufferUploadCount ?? 0),
     currentVisibilityBufferUploadCount: Number(layer.currentVisibilityBufferUploadCount ?? 0),
@@ -432,6 +444,7 @@ function ensureMesh(layer, capacity, transform, options = {}) {
     toneMapped: false
   });
   const mesh = new THREE.InstancedMesh(geometry, material, capacity);
+  mesh.instanceMatrix?.setUsage?.(THREE.DynamicDrawUsage);
   mesh.name = 'instanced-current-glyphs';
   mesh.frustumCulled = false;
   mesh.renderOrder = DEFAULT_RENDER_ORDER;

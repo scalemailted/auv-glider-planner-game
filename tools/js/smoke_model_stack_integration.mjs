@@ -1369,6 +1369,11 @@ assert.equal(flowR2aGlyphSummary.glyphMeshVisible, true, 'FLOW-R2A.2 current gly
 assert.equal(flowR2aGlyphSummary.glyphDrawCallCount, 1, 'FLOW-R2A.2 current glyph draw call is bounded');
 assert.equal(flowR2aCurrentDebug.currentDisplayMode, 'activeSlice', 'FLOW-R2A.2 debug reports activeSlice');
 assert.equal(flowR2aCurrentDebug.currentPresentationEnabled, true, 'FLOW-R2A.2 debug reports presentation enabled');
+assert.equal(Number.isFinite(Number(flowR2aCurrentDebug.currentPresentationTimeSeconds)), true, 'FLOW-RUNTIME-R1 debug exposes finite current presentation time');
+assert.equal(Number.isFinite(Number(flowR2aCurrentDebug.samplerInputTimeSeconds)), true, 'FLOW-RUNTIME-R1 debug exposes finite sampler input time');
+assert.ok(Object.prototype.hasOwnProperty.call(flowR2aCurrentDebug, 'directionBufferUploadCount'), 'FLOW-RUNTIME-R1 debug exposes direction upload count');
+assert.ok(Object.prototype.hasOwnProperty.call(flowR2aCurrentDebug, 'matrixBufferUploadCount'), 'FLOW-RUNTIME-R1 debug exposes matrix upload count');
+assert.equal(flowR2aCurrentDebug.usesWallClockTime, false, 'FLOW-RUNTIME-R1 current debug rejects wall-clock environmental animation');
 assert.equal(flowR2aCurrentDebug.displayLayerChangesCurrent, false, 'FLOW-R2A.2 current display does not change current physics');
 
 console.log('Model stack integration smoke passed');

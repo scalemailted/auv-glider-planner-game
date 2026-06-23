@@ -843,6 +843,10 @@ export class MissionWorkspaceScene extends PhaserScene {
     return { ...(this.terrainValidationCache?.counters ?? createTerrainValidationCacheState().counters) };
   }
 
+  markMissionCurrentPresentationDirty(categories = []) {
+    this.nextMissionPresentationDirtyCategories = [...new Set(['currentVectors', 'CURRENT_TIME_DIRTY', ...categories])];
+  }
+
   refreshMap() {
     this.clearPlanningOverlayObjects();
     if (this.getMissionRendererBackend() === 'threeMission3d') {
@@ -2051,6 +2055,10 @@ export class MissionWorkspaceScene extends PhaserScene {
       mission: this.app.state.mission,
       plan: this.app.state.plan
     });
+    if (Array.isArray(this.nextMissionPresentationDirtyCategories) && this.nextMissionPresentationDirtyCategories.length) {
+      viewModel.presentationDirtyCategories = [...this.nextMissionPresentationDirtyCategories];
+      this.nextMissionPresentationDirtyCategories = null;
+    }
     const interactionState = this.app.state.ui?.threeMissionInteraction ?? {};
     const planningToolState = this.ensureMissionPlanningToolState();
     viewModel.interactionViewModel = buildMissionPlanningInteractionViewModel({
@@ -2153,6 +2161,10 @@ export class MissionWorkspaceScene extends PhaserScene {
       for (const key of ['gliderCount', 'waypointCount', 'routeCount', 'planningMarkerCount', 'priorityTargetCount']) {
         if (Number(threeArtifactCounts[key] ?? 0) !== Number(summary[key] ?? 0)) mismatches.push({ key, expected: summary[key] ?? 0, actual: threeArtifactCounts[key] ?? 0 });
       }
+    }
+    if (Array.isArray(this.nextMissionPresentationDirtyCategories) && this.nextMissionPresentationDirtyCategories.length) {
+      viewModel.presentationDirtyCategories = [...this.nextMissionPresentationDirtyCategories];
+      this.nextMissionPresentationDirtyCategories = null;
     }
     const interactionState = this.app.state.ui?.threeMissionInteraction ?? {};
     const canvas = renderer?.renderer?.domElement ?? this.threeMissionRenderer?.renderer?.domElement ?? null;
@@ -4420,6 +4432,7 @@ export class MissionWorkspaceScene extends PhaserScene {
   }
 
   setPlanningTime(time) {
+    this.markMissionCurrentPresentationDirty(['scalarField', 'waterColumn', 'routeStatus']);
     this.app.state.planningTime = clampMissionTime(this.app.state.level, time);
     this.app.state.selectedWindow = getWindowForTime(this.app.state.level, this.app.state.planningTime);
     applyPlanningAnchor(this.app.state, this.app.state.selectedAgentId);
@@ -4433,6 +4446,7 @@ export class MissionWorkspaceScene extends PhaserScene {
   }
 
   setTimelineFrame(frameIndex) {
+    this.markMissionCurrentPresentationDirty(['scalarField', 'waterColumn', 'routeStatus']);
     this.app.state.planningTime = clampMissionTime(this.app.state.level, getTimelineFrameTime(this.app.state.level, this.app.state.mission, frameIndex));
     this.app.state.selectedWindow = getWindowForTime(this.app.state.level, this.app.state.planningTime);
     applyPlanningAnchor(this.app.state, this.app.state.selectedAgentId);
