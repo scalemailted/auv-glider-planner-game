@@ -275,6 +275,58 @@ export const PLAYWRIGHT_GROUPS = Object.freeze([
   }
 ]);
 
+const RELEASE_LIMITS_BY_GROUP = Object.freeze({
+  coreMission: 8,
+  threePlanning: 8,
+  workspaceScenario: 6,
+  executionWaterColumn: 22,
+  threeReplayReview: 5,
+  threeMissionEditor: 5,
+  productionShellR3A: 4,
+  visualAcceptance: 0
+});
+
+const SMOKE_PATTERN_SOURCES = new Set([
+  /^Cold Repo Root Boot Reaches Main Menu Through Package Modules$/i.source,
+  /^Cold Pages Subpath Boot Reaches Main Menu Through Package Modules$/i.source,
+  /^learning labs static page is linked from the main menu$/i.source,
+  /^Headless Bundle Viewer opens from Simulation Lab and exports browser summary$/i.source,
+  /^deterministic challenge generates a fresh perfect-knowledge level$/i.source,
+  /^Continuous Mission Planning Starts Without Overlay Errors$/i.source,
+  /^Selected Waypoint Card Edits Its Incoming Segment Flight Profile$/i.source,
+  /^Planning Timeline Updates Visible Current Vectors$/i.source,
+  /^Execute Mission Through Three Simulation$/i.source,
+  /^Same Horizontal Location Produces Depth-Specific Science Samples$/i.source,
+  /^Surfacing Replan Can Change Future Segment Dive Profiles$/i.source,
+  /^Simulation Play Pause and Step Control Current Evolution$/i.source,
+  /^Three Debrief Opens Canonical Replay Review$/i.source,
+  /^Three Mission Editor Opens Existing Mission Without Schema Drift$/i.source,
+  /^Next Shell Product Hub Preserves Production Content and Styling$/i.source
+]);
+
+export const PLAYWRIGHT_PROFILE_IDS = Object.freeze(['smoke', 'release', 'visual', 'full']);
+
+export function normalizePlaywrightProfile(profile = 'full') {
+  const normalized = String(profile ?? 'full').trim();
+  return PLAYWRIGHT_PROFILE_IDS.includes(normalized) ? normalized : 'full';
+}
+
+export function groupsForProfile(profile = 'full') {
+  const normalized = normalizePlaywrightProfile(profile);
+  return PLAYWRIGHT_GROUPS.filter((group) => patternsForGroupProfile(group.id, normalized).length > 0);
+}
+
+export function patternsForGroupProfile(groupId, profile = 'full') {
+  const normalized = normalizePlaywrightProfile(profile);
+  const group = PLAYWRIGHT_GROUPS.find((candidate) => candidate.id === groupId);
+  if (!group) throw new Error(`Unknown Playwright group: ${groupId}`);
+  if (normalized === 'full') return group.patterns;
+  if (normalized === 'visual') return group.id === 'visualAcceptance' ? group.patterns : [];
+  if (normalized === 'smoke') return group.patterns.filter((pattern) => SMOKE_PATTERN_SOURCES.has(pattern.source));
+  const limit = RELEASE_LIMITS_BY_GROUP[group.id] ?? 0;
+  return group.patterns.slice(0, limit);
+}
+
 export function groupTitle(title) {
   const matches = PLAYWRIGHT_GROUPS.filter((group) => group.patterns.some((pattern) => pattern.test(String(title ?? ''))));
   return matches.map((group) => group.id);
@@ -296,8 +348,8 @@ export function auditPlaywrightGroupCoverage(titles = []) {
   };
 }
 
-export function grepForGroup(groupId) {
-  const group = PLAYWRIGHT_GROUPS.find((candidate) => candidate.id === groupId);
-  if (!group) throw new Error(`Unknown Playwright group: ${groupId}`);
-  return group.patterns.map((pattern) => pattern.source.replace(/^\^/, '').replace(/\$$/, '')).join('|');
+export function grepForGroup(groupId, profile = 'full') {
+  const patterns = patternsForGroupProfile(groupId, profile);
+  if (!patterns.length) throw new Error(`No Playwright patterns for group ${groupId} in profile ${normalizePlaywrightProfile(profile)}.`);
+  return patterns.map((pattern) => pattern.source.replace(/^\^/, '').replace(/\$$/, '')).join('|');
 }

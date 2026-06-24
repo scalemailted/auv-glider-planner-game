@@ -1,14 +1,21 @@
 import { spawn } from 'node:child_process';
 import net from 'node:net';
 import { performance } from 'node:perf_hooks';
-import { PLAYWRIGHT_GROUPS, grepForGroup } from './playwright_groups.mjs';
+import {
+  grepForGroup,
+  groupsForProfile,
+  normalizePlaywrightProfile,
+  patternsForGroupProfile
+} from './playwright_groups.mjs';
 import { printCoverageAudit, runCoverageAudit } from './audit_playwright_group_coverage_lib.mjs';
 
 const PORT = 9321;
 const RECENT_LINE_LIMIT = 40;
 const passthroughArgs = process.argv.slice(2);
+const profileArg = passthroughArgs.find((arg) => arg.startsWith('--profile='));
+const profile = normalizePlaywrightProfile(profileArg?.split('=')[1] ?? 'full');
 const continueOnFailure = passthroughArgs.includes('--continue-on-failure');
-const filteredArgs = passthroughArgs.filter((arg) => arg !== '--continue-on-failure');
+const filteredArgs = passthroughArgs.filter((arg) => arg !== '--continue-on-failure' && !arg.startsWith('--profile='));
 const hasFocusedArgs = filteredArgs.some((arg) => arg === '--grep' || arg.startsWith('--grep=') || /\.spec\.[cm]?js$/.test(arg));
 let activeChild = null;
 
@@ -27,11 +34,14 @@ if (hasFocusedArgs) {
 const audit = await runCoverageAudit();
 printCoverageAudit(audit);
 if (!audit.valid) process.exit(1);
+const groupsToRun = groupsForProfile(profile);
+console.log(`Playwright profile ${profile}: ${groupsToRun.length} groups`);
 
 const results = [];
 let failed = false;
-for (const group of PLAYWRIGHT_GROUPS) {
-  const selectedCount = audit.byGroup[group.id]?.length ?? 0;
+for (const group of groupsToRun) {
+  const selectedTitles = selectedTitlesForGroup(group, profile, audit);
+  const selectedCount = selectedTitles.length;
   const startIso = new Date().toISOString();
   console.log(`\n=== Playwright group ${group.id}: ${selectedCount} tests; start=${startIso}; port=${PORT} ===`);
   const beforePort = await portAvailable(PORT);
@@ -44,7 +54,7 @@ for (const group of PLAYWRIGHT_GROUPS) {
     continue;
   }
   const started = performance.now();
-  const run = await runPlaywright(groupPlaywrightArgs(group), group.id);
+  const run = await runPlaywright(groupPlaywrightArgs(group, profile), `${group.id}:${profile}`);
   const durationMs = performance.now() - started;
   const portAfterFree = await waitForPortFree(PORT, 5000);
   const row = {
@@ -70,17 +80,22 @@ for (const group of PLAYWRIGHT_GROUPS) {
   }
 }
 
-console.log('\nGrouped Playwright summary');
+console.log(`\nGrouped Playwright summary (${profile})`);
 for (const result of results) {
   console.log(`${result.code === 0 && result.portAfterFree ? 'PASS' : 'FAIL'} ${result.group}: ${result.selectedCount} tests, ${formatDuration(result.durationMs)}, start=${result.startIso}, end=${result.endIso}, port=${result.port}, portAfterFree=${result.portAfterFree}, cleanup=${result.cleanupResult}, last=${result.lastCompletedTest ?? 'n/a'}`);
 }
-console.log(failed ? 'FAIL grouped Playwright suite' : 'PASS grouped Playwright suite');
+console.log(failed ? `FAIL grouped Playwright ${profile} suite` : `PASS grouped Playwright ${profile} suite`);
 process.exit(failed ? 1 : 0);
 
-function groupPlaywrightArgs(group) {
-  const args = ['--reporter=line', '--workers=1', '--output', 'test-results/.playwright-' + group.id, '--grep', grepForGroup(group.id)];
+function groupPlaywrightArgs(group, profile) {
+  const args = ['--reporter=line', '--workers=1', '--output', 'test-results/.playwright-' + profile + '-' + group.id, '--grep', grepForGroup(group.id, profile)];
   if (group.id === 'visualAcceptance') args.push('--headed', '--project=chromium');
   return args;
+}
+
+function selectedTitlesForGroup(group, profile, audit) {
+  const patterns = patternsForGroupProfile(group.id, profile);
+  return (audit.byGroup[group.id] ?? []).filter((title) => patterns.some((pattern) => pattern.test(title)));
 }
 
 function runPlaywright(args, label) {

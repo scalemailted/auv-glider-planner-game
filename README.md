@@ -716,8 +716,6 @@ src/
     sim/
   ui/
     Toast.js
-archive/
-  legacy-vanilla-shell/
 levels/
 missions/
 plans/
@@ -796,11 +794,9 @@ tests/e2e/
 - `src/game/phaser/ui/FocusManager.js`
 - `src/ui/Toast.js`
 
-### Legacy Reference
+### Retired Historical Source
 
-- `archive/legacy-vanilla-shell/`
-
-The archived vanilla Canvas/DOM shell is retained only as historical reference. It is not imported by `src/game/main.js`, not part of active routing, and should not be described as the active implementation.
+The previous vanilla Canvas/DOM shell was removed during REPO-CLEAN-R1 after the production reachability audit found no active runtime, test, package-script, Pages, or schema dependency. Git history is the archive; the active browser lifecycle remains the Phaser shell with Three.js mission-world rendering.
 
 ### IO And Data
 

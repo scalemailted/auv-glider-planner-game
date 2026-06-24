@@ -49,3 +49,11 @@ build/
 blob-report/
 playwright/.cache/
 _site/
+
+.last-run.json
+cwd*.txt
+**/__pycache__/
+*.pyc
+*.webm
+*.trace
+trace.zip
