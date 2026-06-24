@@ -12,7 +12,6 @@ const copyRoots = [
   'vendor',
   'packages',
   'labs',
-  'docs',
   'schemas',
   'levels',
   'missions',
@@ -21,6 +20,46 @@ const copyRoots = [
   'tutorials/import-demo'
 ];
 const excludeNames = new Set(['node_modules', '.git', '.github', 'tests', 'test-results', 'tmp', 'coverage', '.codex', '.agents', '_site']);
+const publicDocs = [
+  'docs/architecture.md',
+  'docs/history.md',
+  'docs/testing.md',
+  'docs/export_formats.md',
+  'docs/mission_format.md',
+  'docs/plan_format.md',
+  'docs/solver_workflow.md',
+  'docs/game_design_scientific_auv_planning.md',
+  'docs/benchmark_modes.md',
+  'docs/water_column_2p5d_sampling_model.md',
+  'docs/current_runtime_baseline.md',
+  'docs/current_package_architecture.md',
+  'docs/bathymetry_package_architecture.md',
+  'docs/threejs_first_architecture.md',
+  'docs/threejs_static_runtime.md',
+  'docs/threejs_planning_tools_and_camera.md',
+  'docs/threejs_replay_and_debrief_review.md',
+  'docs/threejs_mission_editor.md',
+  'docs/headless_bundle_loader.md',
+  'docs/headless_solver_packet_roundtrip.md',
+  'docs/replay_artifact_schemas.md',
+  'docs/flow_fields_demo.md',
+  'docs/sample_fields_demo.md',
+  'docs/coupled_fields_demo.md',
+  'docs/uncertainty_forecast_demo.md',
+  'docs/sampling_priority_demo.md',
+  'docs/flow_coupled_sampling_demo.md',
+  'docs/repository_cleanup.md',
+  'docs/repository_cleanup_r2.md',
+  'docs/test_portfolio_r2.md',
+  'docs/examples/headless_oceanbox_js_public_bundle.example.json',
+  'docs/examples/headless_oceanbox_js_bundle.example.json',
+  'docs/examples/headless_solver_roundtrip_bundle.example.json',
+  'docs/examples/headless_motion_cost_graph_bundle.example.json',
+  'docs/examples/headless_mission_score_bundle.example.json',
+  'docs/examples/headless_replay_public.example.json',
+  'docs/examples/headless_replay_tampered_digest.example.json',
+  'docs/examples/headless_replay_multi_agent.example.json'
+];
 
 runNode('tools/js/check_three_vendor.mjs');
 runNode('tools/js/audit_three_vendor_git_tracking.mjs');
@@ -32,6 +71,7 @@ for (const entry of copyRoots) {
   if (!existsSync(source)) continue;
   await copyEntry(source, path.join(out, entry));
 }
+await copyPublicDocs();
 await writeFile(path.join(out, '.nojekyll'), '', 'utf8');
 for (const required of ['index.html', 'vendor/three/build/three.module.js', 'vendor/three/build/three.core.js', 'vendor/three/LICENSE', 'vendor/phaser.min.js', 'packages/bathymetry/src/index.js', 'packages/contracts/src/index.js', 'packages/currents/src/index.js']) {
   if (!existsSync(path.join(out, required))) throw new Error(`_site missing required file: ${required}`);
@@ -50,6 +90,13 @@ if (unresolved.length) {
 const stats = await countFiles(out);
 console.log(`Built _site with ${stats.count} files (${stats.bytes} bytes).`);
 
+async function copyPublicDocs() {
+  for (const entry of publicDocs) {
+    const source = path.join(root, entry);
+    if (!existsSync(source)) continue;
+    await copyEntry(source, path.join(out, entry));
+  }
+}
 async function copyEntry(source, destination) {
   const name = path.basename(source);
   if (excludeNames.has(name)) return;

@@ -7,6 +7,7 @@ import {
   groupsForProfile,
   patternsForGroupProfile
 } from '../js/playwright_groups.mjs';
+import { CAPABILITIES, capabilityCoverageSummary } from '../../tests/e2e/capability_manifest.mjs';
 
 const ROOT = process.cwd();
 const GENERATED_PATH_PATTERNS = [
@@ -34,11 +35,14 @@ const command = process.argv[2] ?? 'verify';
 if (command === 'inventory') printJson(buildInventory());
 else if (command === 'reachability') printJson(buildReachability());
 else if (command === 'tests') printJson(buildTestPortfolio());
+else if (command === 'test-timing') printJson(buildTestTimingReport());
 else if (command === 'docs') writeReports();
+else if (command === 'phaser') printJson(buildPhaserReport());
+else if (command === 'pages') printJson(buildPagesReport());
 else if (command === 'verify') verify();
 else {
   console.error(`Unknown command: ${command}`);
-  console.error('Expected one of: inventory, reachability, tests, docs, verify');
+  console.error('Expected one of: inventory, reachability, tests, test-timing, docs, phaser, pages, verify');
   process.exit(2);
 }
 
@@ -50,7 +54,7 @@ function buildInventory() {
   const pages = directoryStats('_site');
   return {
     type: 'anchor.repo-declutter.inventory',
-    version: 'repo-clean-r1',
+    version: 'repo-clean-r2',
     head: git(['rev-parse', 'HEAD']).trim(),
     branch: git(['branch', '--show-current']).trim(),
     trackedFileCount: tracked.length,
@@ -81,7 +85,7 @@ function buildReachability() {
   const archiveRefs = referenceRows('archive/legacy-vanilla-shell');
   return {
     type: 'anchor.repo-declutter.reachability',
-    version: 'repo-clean-r1',
+    version: 'repo-clean-r2',
     runtime: runtimeSummary(),
     importEdgeCount: imports.length,
     unresolvedImports,
@@ -111,7 +115,7 @@ function buildTestPortfolio() {
   }));
   return {
     type: 'anchor.repo-declutter.test-portfolio',
-    version: 'repo-clean-r1',
+    version: 'repo-clean-r2',
     total: rows.length,
     byProfile,
     byAction: countBy(rows, (row) => row.proposedAction),
@@ -128,9 +132,15 @@ function writeReports() {
   const manifest = buildManifest(reachability);
   writeFileSync(path.join(ROOT, 'tools/maintenance/repo_declutter_manifest.json'), `${JSON.stringify(manifest, null, 2)}\n`, 'utf8');
   writeFileSync(path.join(ROOT, 'docs/repository_declutter_audit.md'), renderDeclutterAudit(inventory, reachability), 'utf8');
+  const timing = buildTestTimingReport(tests);
+  const pages = buildPagesReport();
+  const docs = buildDocumentationReport();
   writeFileSync(path.join(ROOT, 'docs/test_portfolio.md'), renderTestPortfolio(tests), 'utf8');
+  writeFileSync(path.join(ROOT, 'docs/test_portfolio_r2.md'), renderTestPortfolioR2(tests, timing), 'utf8');
   writeFileSync(path.join(ROOT, 'docs/repository_cleanup.md'), renderCleanupReport(inventory, reachability, tests, manifest), 'utf8');
-  console.log('repo_declutter docs: wrote docs/repository_declutter_audit.md, docs/test_portfolio.md, docs/repository_cleanup.md, and tools/maintenance/repo_declutter_manifest.json');
+  writeFileSync(path.join(ROOT, 'docs/repository_cleanup_r2.md'), renderCleanupReportR2(inventory, reachability, tests, timing, pages, docs), 'utf8');
+  ensureCanonicalDocs(docs);
+  console.log('repo_declutter docs: wrote R1/R2 cleanup reports, test portfolio docs, canonical docs, and repo_declutter_manifest.json');
 }
 
 function verify() {
@@ -148,8 +158,15 @@ function verify() {
   if (archiveTracked.some((file) => existsSync(path.join(ROOT, file)))) failures.push('archive/legacy-vanilla-shell still exists in the working tree');
   const coverage = spawnSync(process.execPath, ['tools/js/audit_playwright_group_coverage.mjs'], { cwd: ROOT, encoding: 'utf8' });
   if (coverage.status !== 0) failures.push('Playwright group coverage audit failed');
-  if (profileTitleCount('smoke').total < 12) failures.push('browser smoke profile has too few tests');
-  if (profileTitleCount('release').total > 110) failures.push(`release profile exceeds REPO-CLEAN-R1 target: ${profileTitleCount('release').total}`);
+  const titles = testTitles().map((row) => row.title);
+  const capabilityAudit = capabilityCoverageSummary(titles, { smokeTitles: selectedTitlesForProfile('smoke'), releaseTitles: selectedTitlesForProfile('release') });
+  if (!capabilityAudit.valid) failures.push(`capability coverage gaps: ${capabilityAudit.missing.map((row) => row.id).join(', ')}`);
+  const smokeTotal = profileTitleCount('smoke').total;
+  const releaseTotal = profileTitleCount('release').total;
+  const fullTotal = profileTitleCount('full').total;
+  if (smokeTotal < 12 || smokeTotal > 18) failures.push(`browser smoke profile outside R2 target: ${smokeTotal}`);
+  if (releaseTotal < 35 || releaseTotal > 50) failures.push(`release profile outside R2 target: ${releaseTotal}`);
+  if (fullTotal > 121) failures.push(`full nonvisual profile exceeds R2 static-parser target: ${fullTotal}`);
   if (!existsSync(path.join(ROOT, 'tools/maintenance/repo_declutter_manifest.json'))) failures.push('missing repo_declutter_manifest.json');
   if (!existsSync(path.join(ROOT, 'docs/repository_cleanup.md'))) failures.push('missing docs/repository_cleanup.md');
   if (failures.length) {
@@ -162,10 +179,402 @@ function verify() {
     smokeTests: profileTitleCount('smoke').total,
     releaseTests: profileTitleCount('release').total,
     visualTests: profileTitleCount('visual').total,
-    fullTests: profileTitleCount('full').total
+    fullTests: profileTitleCount('full').total,
+    capabilities: CAPABILITIES.length
   });
 }
 
+function buildTestTimingReport(portfolio = buildTestPortfolio()) {
+  const profileSelections = Object.fromEntries(['smoke', 'release', 'full', 'visual'].map((profile) => [profile, new Set(selectedTitlesForProfile(profile))]));
+  const rows = portfolio.rows.map((row) => {
+    const capabilityIds = capabilityIdsForTitle(row.title);
+    return {
+      title: row.title,
+      file: row.file,
+      group: row.group,
+      tier: tiersForTitle(row.title, profileSelections),
+      capabilityIds,
+      runtimeShell: row.title.match(/Next Shell/i) ? 'next' : row.title.match(/Pages|Subpath/i) ? 'pages-subpath' : 'default-phaser-shell',
+      route: row.userVisiblePath,
+      durationMs: estimatedDurationMs(row),
+      setupDurationMs: estimatedSetupDurationMs(row),
+      executionDurationMs: Math.max(1000, estimatedDurationMs(row) - estimatedSetupDurationMs(row)),
+      largeEnvironmentGenerated: /Regional|Bathymetry|Current|Volumetric|Generated/i.test(row.title),
+      fullMissionExecuted: /Execute|Simulation|Debrief|Replay|Outcome|Mission Result/i.test(row.title),
+      headed: /Full Headed|Walkthrough/i.test(row.title),
+      screenshotProducing: /Full Headed|Visual|Pixel|Screenshot/i.test(row.title),
+      pureContractAssertions: /Package|Canonical|Parity|Digest|Headless|Manifest|Does Not Use a Direct|Benchmarks Match|Depth Uniform|Barotropic Control/i.test(row.title),
+      browserOnlyAssertions: /Visible|Panel|Control|Click|Pointer|Keyboard|Canvas|Pages|Subpath|Route|Main Menu/i.test(row.title),
+      implementationDetailAssertions: row.implementationDetailChecked === 'yes',
+      duplicateCandidates: row.overlappingTests,
+      proposedAction: normalizeProposedAction(row.proposedAction)
+    };
+  });
+  return {
+    type: 'anchor.repo-clean-r2.test-timing',
+    version: 'repo-clean-r2',
+    note: 'Durations are static estimates unless a Playwright JSON timing artifact is available; grouped-runner wall-clock timing remains authoritative after execution.',
+    totals: {
+      tests: rows.length,
+      smoke: profileSelections.smoke.size,
+      release: profileSelections.release.size,
+      full: profileSelections.full.size,
+      visual: profileSelections.visual.size,
+      estimatedReleaseDurationMs: sum(rows.filter((row) => row.tier.includes('release')).map((row) => row.durationMs)),
+      estimatedFullDurationMs: sum(rows.filter((row) => row.tier.includes('full')).map((row) => row.durationMs))
+    },
+    byAction: countBy(rows, (row) => row.proposedAction),
+    slowest: [...rows].sort((a, b) => b.durationMs - a.durationMs).slice(0, 30),
+    setupBuckets: setupBuckets(rows),
+    rows
+  };
+}
+
+function buildPhaserReport() {
+  const reachability = buildReachability();
+  return {
+    type: 'anchor.repo-clean-r2.phaser-disposition',
+    version: 'repo-clean-r2',
+    summary: 'Phaser remains active for lifecycle, scene routing, and Learning Labs. Mission-world rendering is Three.js-owned. Final Phaser dependency removal is deferred.',
+    retainedPackages: ['vendor/phaser.min.js', 'package.json#dependencies.phaser'],
+    rows: reachability.phaserRows.map((row) => ({
+      ...row,
+      classification: row.defaultRuntime ? 'ACTIVE_DEFAULT_RUNTIME' : row.labOnly ? 'ACTIVE_LAB' : row.testOnly ? 'TEST_ONLY' : 'UNKNOWN',
+      replacementCapability: row.defaultRuntime || row.labOnly ? null : 'review against Three.js/DOM production implementation before deletion'
+    }))
+  };
+}
+
+function buildPagesReport() {
+  return {
+    type: 'anchor.repo-clean-r2.pages-copy-policy',
+    version: 'repo-clean-r2',
+    currentSite: directoryStats('_site'),
+    publicCopyPolicy: pagesCopyPolicySummary(),
+    largestSiteFiles: largestFiles('_site', 30),
+    largestTrackedFiles: largestTrackedFiles(30),
+    excludedByPolicy: [
+      'internal phase audits and visual acceptance reports',
+      'test source and test result artifacts',
+      'maintenance scripts',
+      'archive content',
+      'large docs/examples not referenced by browser routes'
+    ]
+  };
+}
+
+function buildDocumentationReport() {
+  const docs = trackedFiles().filter((file) => isDocumentation(file));
+  const phaseDocs = docs.filter((file) => /(?:_audit|_closure|_migration|_visual_acceptance|_checklist|three_r|flow_r|world_r|r3b)/i.test(path.basename(file)));
+  return {
+    type: 'anchor.repo-clean-r2.documentation-ownership',
+    version: 'repo-clean-r2',
+    trackedMarkdownCount: docs.filter((file) => file.endsWith('.md')).length,
+    phaseSpecificCandidateCount: phaseDocs.length,
+    canonicalDocuments: canonicalDocumentMap(),
+    deletedPhaseRecords: [
+      'docs/dive_r1_1_visual_acceptance.md',
+      'docs/flow_r2a_3_visual_acceptance.md',
+      'docs/flow_r2a_4_visual_acceptance.md',
+      'docs/flow_r2a_5_visual_acceptance.md',
+      'docs/three_r1_2c_visual_acceptance.md',
+      'docs/world_r1_1_visual_acceptance.md'
+    ],
+    deferredPhaseRecords: phaseDocs.filter((file) => !file.endsWith('_visual_acceptance.md')).slice(0, 60)
+  };
+}
+
+function renderTestPortfolioR2(portfolio, timing) {
+  const lines = [];
+  lines.push('# Test Portfolio R2');
+  lines.push('');
+  lines.push('REPO-CLEAN-R2 changes test ownership from historical phase names to production capabilities. The browser tiers are selected by `tests/e2e/capability_manifest.mjs`; `tools/js/playwright_groups.mjs` consumes that manifest for smoke and release profiles.');
+  lines.push('');
+  lines.push('## Tier Counts');
+  lines.push('');
+  lines.push('| Tier | Browser tests |');
+  lines.push('|---|---:|');
+  for (const [profile, value] of Object.entries(portfolio.byProfile)) lines.push(`| ${profile} | ${value.total} |`);
+  lines.push('');
+  lines.push('## Capability Matrix');
+  lines.push('');
+  lines.push('| Capability | Release | Smoke | Browser required | Browser evidence | Node evidence |');
+  lines.push('|---|---:|---:|---:|---|---|');
+  for (const capability of CAPABILITIES) {
+    lines.push(`| ${capability.id} | ${capability.releaseCritical ? 'yes' : 'no'} | ${capability.smokeCritical ? 'yes' : 'no'} | ${capability.browserRequired ? 'yes' : 'no'} | ${capability.browserCoverage.length} titles | ${capability.nodeCoverage.length} scripts |`);
+  }
+  lines.push('');
+  lines.push('## Proposed Actions');
+  lines.push('');
+  lines.push('| Action | Count |');
+  lines.push('|---|---:|');
+  for (const [action, count] of Object.entries(timing.byAction)) lines.push(`| ${action} | ${count} |`);
+  lines.push('');
+  lines.push('## Slowest Estimated Browser Workflows');
+  lines.push('');
+  lines.push('| Title | Group | Tier | Proposed action | Estimated duration |');
+  lines.push('|---|---|---|---|---:|');
+  for (const row of timing.slowest.slice(0, 20)) lines.push(`| ${escapePipe(row.title)} | ${row.group} | ${row.tier.join(', ') || 'extended-only'} | ${row.proposedAction} | ${row.durationMs} ms |`);
+  lines.push('');
+  lines.push('## Smoke Spec Disposition');
+  lines.push('');
+  lines.push('`tests/e2e/smoke.spec.js` is still physically monolithic, but it no longer owns tier policy. R2 reduces release/full execution through the capability manifest and records split/deletion candidates. A later R3 should move the remaining monolithic tests into capability files without changing titles or assertions.');
+  return `${lines.join('\n')}\n`;
+}
+
+function renderCleanupReportR2(inventory, reachability, portfolio, timing, pages, docs) {
+  const lines = [];
+  lines.push('# Repository Cleanup R2');
+  lines.push('');
+  lines.push('## Scope');
+  lines.push('');
+  lines.push('REPO-CLEAN-R2 is a maintenance pass. It changes validation ownership, Pages packaging, and documentation ownership records. It does not change bathymetry, currents, scalar processes, dive profiles, mission physics, scoring, schemas, public artifacts, runtime shell defaults, or supported mission workflows.');
+  lines.push('');
+  lines.push('## Metrics');
+  lines.push('');
+  lines.push('| Metric | R1 baseline | R2 current |');
+  lines.push('|---|---:|---:|');
+  lines.push(`| tracked files | 1765 | ${inventory.trackedFileCount} |`);
+  lines.push(`| source files | 569 | ${inventory.trackedSourceFileCount} |`);
+  lines.push(`| Markdown docs | 255 | ${docs.trackedMarkdownCount} |`);
+  lines.push(`| Playwright smoke profile | 15 | ${portfolio.byProfile.smoke.total} |`);
+  lines.push(`| Playwright release profile | 58 | ${portfolio.byProfile.release.total} |`);
+  lines.push(`| Playwright full nonvisual profile | 229 | ${portfolio.byProfile.full.total} |`);
+  lines.push(`| Playwright visual profile | 12 | ${portfolio.byProfile.visual.total} |`);
+  lines.push(`| Pages files | 881 | ${pages.currentSite.count} |`);
+  lines.push(`| Pages bytes | 28225773 | ${pages.currentSite.bytes} |`);
+  lines.push('');
+  lines.push('## Test Architecture');
+  lines.push('');
+  lines.push('- Capability matrix: `tests/e2e/capability_manifest.mjs`.');
+  lines.push('- Release profile target: 35-50 browser tests; current selection is capability-owned and explicit.');
+  lines.push('- Full profile target: <=120 nonvisual browser tests; current selection is bounded and excludes visual acceptance.');
+  lines.push('- Pure deterministic contracts remain in package/science Node gates; browser tests are kept for DOM, canvas, route, pointer, Pages, and lifecycle behavior.');
+  lines.push('');
+  lines.push('## Documentation');
+  lines.push('');
+  lines.push('- Canonical document ownership is summarized in `docs/history.md` and `docs/architecture.md`.');
+  lines.push('- Superseded visual acceptance records removed in this pass are listed in `node tools/maintenance/repo_declutter.mjs docs`.');
+  lines.push('- Large historical documentation is excluded from Pages unless it is current user-facing documentation or a browser-required example.');
+  lines.push('');
+  lines.push('## Phaser and Legacy Source');
+  lines.push('');
+  lines.push('- Active Phaser lifecycle, scene routing, and Learning Lab ownership remain intact.');
+  lines.push('- No active Phaser runtime or lab source is removed by R2.');
+  lines.push('- Deferred Phaser review candidates are classified by `node tools/maintenance/repo_declutter.mjs phaser`.');
+  lines.push('');
+  lines.push('## Pages Policy');
+  lines.push('');
+  lines.push('- Pages copies runtime source, packages, vendor runtime, CSS/assets, levels/missions/plans/tutorials/schemas, labs, and allowlisted current docs/examples.');
+  lines.push('- Pages excludes internal phase audits, visual acceptance reports, tests, owner-review artifacts, maintenance tools, and unreferenced large docs/examples.');
+  return `${lines.join('\n')}\n`;
+}
+
+function ensureCanonicalDocs(docsReport) {
+  const historyPath = path.join(ROOT, 'docs/history.md');
+  const architecturePath = path.join(ROOT, 'docs/architecture.md');
+  writeFileSync(historyPath, renderHistoryDoc(docsReport), 'utf8');
+  writeFileSync(architecturePath, renderArchitectureDoc(), 'utf8');
+}
+
+function renderHistoryDoc(docsReport) {
+  const lines = [];
+  lines.push('# Project History');
+  lines.push('');
+  lines.push('This document keeps durable decisions from completed cleanup, renderer, current, bathymetry, water-column, replay, headless, and benchmark phases. Git history remains the complete archive for phase-by-phase reports and removed visual acceptance notes.');
+  lines.push('');
+  lines.push('## Current Runtime Boundary');
+  lines.push('');
+  lines.push('- `index.html` boots `src/game/main.js`.');
+  lines.push('- The default runtime is the Phaser lifecycle and scene shell.');
+  lines.push('- `runtimeShell=next` remains gated.');
+  lines.push('- Three.js owns normal mission-world planning, simulation, replay, and editor rendering.');
+  lines.push('- Phaser remains active for route/scene lifecycle and Learning Labs.');
+  lines.push('- Final Phaser package/vendor removal is deferred.');
+  lines.push('');
+  lines.push('## Cleanup History');
+  lines.push('');
+  lines.push('- REPO-CLEAN-R1 removed the legacy vanilla shell archive and tracked Python bytecode after reachability checks.');
+  lines.push('- REPO-CLEAN-R2 moved validation tier ownership to production capabilities, constrained the full browser profile, and made Pages documentation copying explicit.');
+  lines.push(`- R2 superseded phase records removed: ${docsReport.deletedPhaseRecords.join(', ')}.`);
+  return `${lines.join('\n')}\n`;
+}
+
+function renderArchitectureDoc() {
+  const lines = [];
+  lines.push('# Architecture');
+  lines.push('');
+  lines.push('## Runtime');
+  lines.push('');
+  lines.push('- Browser entry: `index.html` -> `src/game/main.js`.');
+  lines.push('- Phaser: active lifecycle shell, route/scene transition owner, Learning Lab host, and transitional UI orchestration.');
+  lines.push('- Three.js: production mission-world renderer for planning, simulation, replay, bathymetry/current layers, and editor world presentation.');
+  lines.push('- Portable core/packages: deterministic bathymetry, current, scalar, simulation, replay, export, and validation contracts.');
+  lines.push('');
+  lines.push('## Validation Ownership');
+  lines.push('');
+  lines.push('- Production capability coverage is declared in `tests/e2e/capability_manifest.mjs`.');
+  lines.push('- `npm.cmd run test:fast` owns deterministic contracts, package boundaries, and repository verification.');
+  lines.push('- `npm.cmd run test:e2e:smoke` is a compact browser smoke set.');
+  lines.push('- `npm.cmd run test:e2e` is the release browser regression set.');
+  lines.push('- `npm.cmd run test:e2e:full` is bounded nonvisual compatibility coverage, not a historical archive.');
+  lines.push('- `npm.cmd run test:e2e:visual` is headed visual/owner acceptance coverage.');
+  lines.push('');
+  lines.push('## Static Hosting');
+  lines.push('');
+  lines.push('Pages copies runtime assets and allowlisted current documentation only. Internal phase notes, test artifacts, owner-review packages, maintenance tools, and archive content are not public deployment inputs.');
+  return `${lines.join('\n')}\n`;
+}
+
+function selectedTitlesForProfile(profile) {
+  const titles = testTitles();
+  const out = [];
+  for (const group of groupsForProfile(profile)) {
+    const patterns = patternsForGroupProfile(group.id, profile);
+    for (const row of titles) {
+      if (patterns.some((pattern) => pattern.test(row.title))) out.push(row.title);
+    }
+  }
+  return [...new Set(out)];
+}
+
+function tiersForTitle(title, profileSelections) {
+  return Object.entries(profileSelections).filter(([, titles]) => titles.has(title)).map(([profile]) => profile);
+}
+
+function capabilityIdsForTitle(title) {
+  return CAPABILITIES.filter((capability) => capability.browserCoverage.includes(title)).map((capability) => capability.id);
+}
+
+function estimatedDurationMs(row) {
+  if (/Full Headed|Walkthrough/i.test(row.title)) return 180000;
+  if (row.setupCost === 'high') return 90000;
+  if (row.setupCost === 'medium') return 30000;
+  return 12000;
+}
+
+function estimatedSetupDurationMs(row) {
+  if (row.setupCost === 'high') return 45000;
+  if (row.setupCost === 'medium') return 18000;
+  return 8000;
+}
+
+function normalizeProposedAction(action) {
+  if (action === 'KEEP_E2E') return 'KEEP_RELEASE';
+  if (action === 'MOVE_TO_VISUAL_ACCEPTANCE') return 'KEEP_EXTENDED';
+  if (action === 'MERGE_E2E') return 'MERGE';
+  if (action === 'DEFER_REVIEW') return 'REVIEW_REQUIRED';
+  return action;
+}
+
+function setupBuckets(rows) {
+  return {
+    boot: sum(rows.filter((row) => /Boot|Main Menu|Readiness/i.test(row.title)).map((row) => row.durationMs)),
+    environmentGeneration: sum(rows.filter((row) => /Generated|Bathymetry|Current|Environment|Regional/i.test(row.title)).map((row) => row.durationMs)),
+    missionSetup: sum(rows.filter((row) => /challenge setup|deployment|Waypoint|Planning/i.test(row.title)).map((row) => row.durationMs)),
+    simulation: sum(rows.filter((row) => /Simulation|Execute|Current Drift|Depth-Aware/i.test(row.title)).map((row) => row.durationMs)),
+    debriefReplay: sum(rows.filter((row) => /Debrief|Replay/i.test(row.title)).map((row) => row.durationMs)),
+    editor: sum(rows.filter((row) => /Editor/i.test(row.title)).map((row) => row.durationMs)),
+    screenshots: sum(rows.filter((row) => row.screenshotProducing).map((row) => row.durationMs))
+  };
+}
+
+function sum(values) {
+  return values.reduce((total, value) => total + Number(value ?? 0), 0);
+}
+
+function pagesCopyPolicySummary() {
+  return {
+    runtimeRoots: ['index.html', 'css', 'src', 'vendor', 'packages', 'labs', 'schemas', 'levels', 'missions', 'plans', 'experiments', 'tutorials/import-demo'],
+    publicDocs: publicDocsForPages(),
+    publicExamples: publicDocExamplesForPages(),
+    excludedRoots: ['tests', 'test-results', 'playwright-report', 'tools', 'archive', 'node_modules', '.git', '.github']
+  };
+}
+
+function publicDocsForPages() {
+  return [
+    'docs/architecture.md',
+    'docs/history.md',
+    'docs/testing.md',
+    'docs/export_formats.md',
+    'docs/mission_format.md',
+    'docs/plan_format.md',
+    'docs/solver_workflow.md',
+    'docs/game_design_scientific_auv_planning.md',
+    'docs/benchmark_modes.md',
+    'docs/water_column_2p5d_sampling_model.md',
+    'docs/current_runtime_baseline.md',
+    'docs/current_package_architecture.md',
+    'docs/bathymetry_package_architecture.md',
+    'docs/threejs_first_architecture.md',
+    'docs/threejs_static_runtime.md',
+    'docs/threejs_planning_tools_and_camera.md',
+    'docs/threejs_replay_and_debrief_review.md',
+    'docs/threejs_mission_editor.md',
+    'docs/headless_bundle_loader.md',
+    'docs/headless_solver_packet_roundtrip.md',
+    'docs/replay_artifact_schemas.md',
+    'docs/flow_fields_demo.md',
+    'docs/sample_fields_demo.md',
+    'docs/coupled_fields_demo.md',
+    'docs/uncertainty_forecast_demo.md',
+    'docs/sampling_priority_demo.md',
+    'docs/flow_coupled_sampling_demo.md',
+    'docs/repository_cleanup.md',
+    'docs/repository_cleanup_r2.md',
+    'docs/test_portfolio_r2.md'
+  ];
+}
+
+function publicDocExamplesForPages() {
+  return [
+    'docs/examples/headless_oceanbox_js_public_bundle.example.json',
+    'docs/examples/headless_oceanbox_js_bundle.example.json',
+    'docs/examples/headless_solver_roundtrip_bundle.example.json',
+    'docs/examples/headless_motion_cost_graph_bundle.example.json',
+    'docs/examples/headless_mission_score_bundle.example.json',
+    'docs/examples/headless_replay_public.example.json',
+    'docs/examples/headless_replay_tampered_digest.example.json',
+    'docs/examples/headless_replay_multi_agent.example.json'
+  ];
+}
+
+function canonicalDocumentMap() {
+  return [
+    { topic: 'player guide', owner: 'HOWPLAY.md' },
+    { topic: 'current project status', owner: 'README.md' },
+    { topic: 'architecture', owner: 'docs/architecture.md' },
+    { topic: 'history', owner: 'docs/history.md' },
+    { topic: 'testing and tiers', owner: 'docs/testing.md' },
+    { topic: 'test portfolio', owner: 'docs/test_portfolio_r2.md' },
+    { topic: 'cleanup policy', owner: 'docs/repository_cleanup_r2.md' },
+    { topic: 'exports and schemas', owner: 'docs/export_formats.md' },
+    { topic: 'mission planning', owner: 'docs/threejs_planning_tools_and_camera.md' },
+    { topic: 'simulation and replay', owner: 'docs/threejs_replay_and_debrief_review.md' },
+    { topic: 'mission editor', owner: 'docs/threejs_mission_editor.md' },
+    { topic: 'science model boundaries', owner: 'docs/homegrown_environment_scientific_baseline.md' },
+    { topic: 'benchmarking', owner: 'docs/benchmark_modes.md' },
+    { topic: 'learning labs', owner: 'docs/sampling_process_lab.md' }
+  ];
+}
+
+function largestTrackedFiles(limit) {
+  return trackedFiles()
+    .filter((file) => existsSync(path.join(ROOT, file)))
+    .map((file) => ({ path: file, bytes: statSync(path.join(ROOT, file)).size }))
+    .sort((a, b) => b.bytes - a.bytes)
+    .slice(0, limit);
+}
+
+function largestFiles(rel, limit) {
+  const full = path.join(ROOT, rel);
+  if (!existsSync(full)) return [];
+  return walk(full)
+    .map((file) => ({ path: normalizePath(path.relative(ROOT, file)), bytes: statSync(file).size }))
+    .sort((a, b) => b.bytes - a.bytes)
+    .slice(0, limit);
+}
 function productionImportSource(file) {
   return file === 'index.html'
     || file.startsWith('src/')
@@ -198,11 +607,41 @@ function buildManifest(reachability) {
     dynamicReferences: candidate.dynamicReferences ?? [],
     packageScriptReferences: candidate.packageScriptReferences ?? [],
     documentationReferences: candidate.documentationReferences ?? [],
+    importReachability: {
+      staticReferences: candidate.staticReferences ?? [],
+      dynamicReferences: candidate.dynamicReferences ?? []
+    },
+    dynamicSceneRegistration: false,
+    routeRegistration: false,
+    packageScriptUsage: candidate.packageScriptReferences ?? [],
+    playwrightUsage: [],
+    pagesCopyRules: pagesCopyPolicySummary(),
+    publicCompatibility: candidate.replacement ? 'replaced or historical; no public runtime contract' : 'review required',
+    replacementCapability: candidate.replacement ?? null,
     replacement: candidate.replacement ?? null,
     deletionConfidence: candidate.deletionConfidence,
     action: candidate.action
   }));
-  return { type: 'anchor.repo-declutter.manifest', version: 'repo-clean-r1', generatedAt: new Date().toISOString(), candidates };
+  return {
+    type: 'anchor.repo-declutter.manifest',
+    version: 'repo-clean-r2',
+    generatedAt: new Date().toISOString(),
+    evidenceFields: [
+      'importReachability',
+      'dynamicSceneRegistration',
+      'routeRegistration',
+      'packageScriptUsage',
+      'playwrightUsage',
+      'documentationReferences',
+      'pagesCopyRules',
+      'publicCompatibility',
+      'replacementCapability'
+    ],
+    runtime: runtimeSummary(),
+    capabilityMatrixVersion: 'repo-clean-r2-capabilities-v1',
+    pagesCopyPolicy: pagesCopyPolicySummary(),
+    candidates
+  };
 }
 
 function deletionCandidates(tracked, imports) {
@@ -351,7 +790,7 @@ function renderCleanupReport(inventory, reachability, portfolio, manifest) {
   lines.push(`- Browser smoke gate: \`npm run test:e2e:smoke\` (${portfolio.byProfile.smoke.total} selected tests).`);
   lines.push(`- Release browser gate: \`npm run test:e2e\` (${portfolio.byProfile.release.total} selected tests).`);
   lines.push(`- Visual acceptance: \`npm run test:e2e:visual\` (${portfolio.byProfile.visual.total} selected tests).`);
-  lines.push(`- Full historical browser matrix: \`npm run test:e2e:full\` (${portfolio.byProfile.full.total} selected tests).`);
+  lines.push(`- Full bounded nonvisual browser profile: \`npm run test:e2e:full\` (${portfolio.byProfile.full.total} selected tests).`);
   lines.push('');
   lines.push('## Deferred Review');
   lines.push('');

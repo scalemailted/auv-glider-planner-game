@@ -1208,3 +1208,19 @@ node tools/js/audit_segment_profile_export_ownership.mjs
 ```
 
 These checks verify W1 maps to Selected Start -> W1, W2 maps to W1 -> W2, draft edits do not mutate canonical plan/export state until Apply, Apply mutates exactly the intended incoming segment, Apply Remaining is selected-glider-only, reorder metadata follows the destination waypoint, export/import preserves committed metadata, and launch snapshots receive committed metadata only.
+
+## REPO-CLEAN-R2 Capability-Owned Test Tiers
+
+Browser tier ownership is declared in `tests/e2e/capability_manifest.mjs`. The manifest maps supported production capabilities to smoke, release, full nonvisual, visual, and Node/package coverage so the normal release suite is no longer selected by historical phase slices.
+
+Current commands:
+
+```bash
+npm.cmd run test:fast
+npm.cmd run test:e2e:smoke
+npm.cmd run test:e2e
+npm.cmd run test:e2e:full
+npm.cmd run test:e2e:visual
+```
+
+`test:e2e` is the release browser regression profile and should stay in the 35-50 workflow range unless a supported capability requires more coverage. `test:e2e:full` is bounded nonvisual compatibility coverage, not a historical archive. `test:e2e:visual` remains headed visual/owner-acceptance coverage. Use `node tools/maintenance/repo_declutter.mjs tests`, `test-timing`, `phaser`, `pages`, and `verify` for the current inventory.

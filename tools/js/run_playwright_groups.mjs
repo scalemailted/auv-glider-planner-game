@@ -33,7 +33,7 @@ if (hasFocusedArgs) {
 
 const audit = await runCoverageAudit();
 printCoverageAudit(audit);
-if (!audit.valid) process.exit(1);
+if (!audit.valid || audit.capabilities?.valid === false) process.exit(1);
 const groupsToRun = groupsForProfile(profile);
 console.log(`Playwright profile ${profile}: ${groupsToRun.length} groups`);
 

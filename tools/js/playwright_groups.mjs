@@ -1,4 +1,5 @@
-export const PLAYWRIGHT_GROUPS_VERSION = 'playwright-groups-r3a';
+import { FULL_GROUP_LIMITS, RELEASE_TEST_TITLES, SMOKE_TEST_TITLES, exactTitlePatterns } from '../../tests/e2e/capability_manifest.mjs';
+export const PLAYWRIGHT_GROUPS_VERSION = 'playwright-groups-repo-clean-r2';
 
 export const PLAYWRIGHT_GROUPS = Object.freeze([
   {
@@ -275,34 +276,8 @@ export const PLAYWRIGHT_GROUPS = Object.freeze([
   }
 ]);
 
-const RELEASE_LIMITS_BY_GROUP = Object.freeze({
-  coreMission: 8,
-  threePlanning: 8,
-  workspaceScenario: 6,
-  executionWaterColumn: 22,
-  threeReplayReview: 5,
-  threeMissionEditor: 5,
-  productionShellR3A: 4,
-  visualAcceptance: 0
-});
-
-const SMOKE_PATTERN_SOURCES = new Set([
-  /^Cold Repo Root Boot Reaches Main Menu Through Package Modules$/i.source,
-  /^Cold Pages Subpath Boot Reaches Main Menu Through Package Modules$/i.source,
-  /^learning labs static page is linked from the main menu$/i.source,
-  /^Headless Bundle Viewer opens from Simulation Lab and exports browser summary$/i.source,
-  /^deterministic challenge generates a fresh perfect-knowledge level$/i.source,
-  /^Continuous Mission Planning Starts Without Overlay Errors$/i.source,
-  /^Selected Waypoint Card Edits Its Incoming Segment Flight Profile$/i.source,
-  /^Planning Timeline Updates Visible Current Vectors$/i.source,
-  /^Execute Mission Through Three Simulation$/i.source,
-  /^Same Horizontal Location Produces Depth-Specific Science Samples$/i.source,
-  /^Surfacing Replan Can Change Future Segment Dive Profiles$/i.source,
-  /^Simulation Play Pause and Step Control Current Evolution$/i.source,
-  /^Three Debrief Opens Canonical Replay Review$/i.source,
-  /^Three Mission Editor Opens Existing Mission Without Schema Drift$/i.source,
-  /^Next Shell Product Hub Preserves Production Content and Styling$/i.source
-]);
+const RELEASE_PATTERN_SOURCES = new Set(exactTitlePatterns(RELEASE_TEST_TITLES).map((pattern) => pattern.source));
+const SMOKE_PATTERN_SOURCES = new Set(exactTitlePatterns(SMOKE_TEST_TITLES).map((pattern) => pattern.source));
 
 export const PLAYWRIGHT_PROFILE_IDS = Object.freeze(['smoke', 'release', 'visual', 'full']);
 
@@ -320,10 +295,10 @@ export function patternsForGroupProfile(groupId, profile = 'full') {
   const normalized = normalizePlaywrightProfile(profile);
   const group = PLAYWRIGHT_GROUPS.find((candidate) => candidate.id === groupId);
   if (!group) throw new Error(`Unknown Playwright group: ${groupId}`);
-  if (normalized === 'full') return group.patterns;
   if (normalized === 'visual') return group.id === 'visualAcceptance' ? group.patterns : [];
   if (normalized === 'smoke') return group.patterns.filter((pattern) => SMOKE_PATTERN_SOURCES.has(pattern.source));
-  const limit = RELEASE_LIMITS_BY_GROUP[group.id] ?? 0;
+  if (normalized === 'release') return group.patterns.filter((pattern) => RELEASE_PATTERN_SOURCES.has(pattern.source));
+  const limit = FULL_GROUP_LIMITS[group.id] ?? 0;
   return group.patterns.slice(0, limit);
 }
 
