@@ -1030,3 +1030,7 @@ The result is a software and numerical verification baseline, not an oceanograph
 ## FLOW-PKG-R1 Current Package Boundary
 
 FLOW-PKG-R1 moves canonical 4D current contracts, package artifacts, source metadata, temporal-boundary logic, prepared sampling, manufactured verification fixtures, and pure diagnostics into `packages/currents`. Current-generation equations remain in the application until FLOW-PKG-R2. Planning display units still pass through `PlanningTimelineTimeBridge` before package sampling; the package accepts canonical seconds only. Synthetic currents remain benchmark-oriented and are not calibrated ocean forecasts. See `docs/current_package_architecture.md`, `docs/current_manifest_and_artifact.md`, and `packages/currents/MODEL_CARD.md`.
+
+## FLOW-PKG-R1.1 Boot Readiness
+
+Application readiness is now a production runtime contract, not a Playwright-only convention. The browser boot path publishes `globalThis.ANCHOR_APP_BOOT_DEBUG`, sets `data-anchor-app-ready="true"` and `data-anchor-route="main-menu"`, and dispatches `anchor:app-ready` after the Main Menu route commits and controls are bound. Static-server process spawn is not equivalent to server readiness; browser tests use explicit probes for root, Pages, package, and vendor paths before navigation. Scientific packages may load at startup, but Main Menu does not generate bathymetry, currents, or Simulation state. FLOW-PKG-R1.1 changes boot/readiness and test reliability only; current equations and package artifacts remain unchanged.

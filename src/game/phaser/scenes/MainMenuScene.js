@@ -1,3 +1,4 @@
+import { markAnchorAppBootMilestone, markAnchorRouteReady } from '../../../app/production/AnchorAppBootReadiness.js';
 import { downloadJSON, loadJSON, readJSONFile } from '../../../core/io/ImportExport.js';
 import { applyTutorialMissionConfig, loadCampaignLevel, CAMPAIGN_LEVELS } from '../../../core/campaign/CampaignLevels.js';
 import { ensureLevelIdentity } from '../../../core/identity/GameInstanceId.js';
@@ -83,6 +84,7 @@ export class MainMenuScene extends PhaserScene {
     this.setMainMenuShellState(true);
     this.activeHubView = 'home';
     this.buttons = [];
+    markAnchorAppBootMilestone('main-menu-scene-ready', { resolvedRuntimeShell: 'default' });
     this.updateDebugObject(true);
     this.drawIdleViewport();
     this.mountProductHub('home');
@@ -205,6 +207,7 @@ export class MainMenuScene extends PhaserScene {
       }
     };
     this.updateDebugObject(true);
+    markAnchorRouteReady('main-menu', { resolvedRuntimeShell: 'default', inputHandlersBound: true });
   }
 
   unmountProductHub() {
@@ -965,4 +968,3 @@ function formatScore(value) {
   const number = Number(value);
   return Number.isFinite(number) ? number.toFixed(1) : 'N/A';
 }
-

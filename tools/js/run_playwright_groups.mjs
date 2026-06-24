@@ -1,18 +1,27 @@
-﻿import { spawn } from 'node:child_process';
+import { spawn } from 'node:child_process';
 import net from 'node:net';
 import { performance } from 'node:perf_hooks';
 import { PLAYWRIGHT_GROUPS, grepForGroup } from './playwright_groups.mjs';
 import { printCoverageAudit, runCoverageAudit } from './audit_playwright_group_coverage_lib.mjs';
 
 const PORT = 9321;
+const RECENT_LINE_LIMIT = 40;
 const passthroughArgs = process.argv.slice(2);
 const continueOnFailure = passthroughArgs.includes('--continue-on-failure');
 const filteredArgs = passthroughArgs.filter((arg) => arg !== '--continue-on-failure');
 const hasFocusedArgs = filteredArgs.some((arg) => arg === '--grep' || arg.startsWith('--grep=') || /\.spec\.[cm]?js$/.test(arg));
+let activeChild = null;
+
+for (const signal of ['SIGINT', 'SIGTERM']) {
+  process.on(signal, () => {
+    if (activeChild && !activeChild.killed) activeChild.kill(signal);
+    process.exit(signal === 'SIGINT' ? 130 : 143);
+  });
+}
 
 if (hasFocusedArgs) {
-  const code = await runPlaywright(filteredArgs, 'focused-pass-through');
-  process.exit(code);
+  const result = await runPlaywright(filteredArgs, 'focused-pass-through');
+  process.exit(result.code);
 }
 
 const audit = await runCoverageAudit();
@@ -23,22 +32,39 @@ const results = [];
 let failed = false;
 for (const group of PLAYWRIGHT_GROUPS) {
   const selectedCount = audit.byGroup[group.id]?.length ?? 0;
-  console.log(`\n=== Playwright group ${group.id}: ${selectedCount} tests ===`);
+  const startIso = new Date().toISOString();
+  console.log(`\n=== Playwright group ${group.id}: ${selectedCount} tests; start=${startIso}; port=${PORT} ===`);
   const beforePort = await portAvailable(PORT);
   if (!beforePort) {
-    console.error(`FAIL ${group.id}: port ${PORT} is already occupied before group start.`);
-    results.push({ group: group.id, selectedCount, code: 1, durationMs: 0, portBeforeFree: false, portAfterFree: false });
+    const row = { group: group.id, selectedCount, code: 1, durationMs: 0, startIso, endIso: new Date().toISOString(), port: PORT, portBeforeFree: false, portAfterFree: false, cleanupResult: 'port-occupied-before-start', lastCompletedTest: null, recentLines: [] };
+    results.push(row);
+    printFailure(row);
     failed = true;
     if (!continueOnFailure) break;
     continue;
   }
   const started = performance.now();
-  const code = await runPlaywright(groupPlaywrightArgs(group), group.id);
+  const run = await runPlaywright(groupPlaywrightArgs(group), group.id);
   const durationMs = performance.now() - started;
-  const portAfterFree = await waitForPortFree(PORT, 4000);
-  results.push({ group: group.id, selectedCount, code, durationMs, portBeforeFree: true, portAfterFree });
-  console.log(`=== ${group.id} ${code === 0 ? 'PASS' : 'FAIL'} in ${formatDuration(durationMs)}; portFreeAfter=${portAfterFree} ===`);
-  if (code !== 0 || !portAfterFree) {
+  const portAfterFree = await waitForPortFree(PORT, 5000);
+  const row = {
+    group: group.id,
+    selectedCount,
+    code: run.code,
+    durationMs,
+    startIso,
+    endIso: new Date().toISOString(),
+    port: PORT,
+    portBeforeFree: true,
+    portAfterFree,
+    cleanupResult: portAfterFree ? 'port-free' : 'port-still-listening',
+    lastCompletedTest: run.lastCompletedTest,
+    recentLines: run.recentLines
+  };
+  results.push(row);
+  console.log(`=== ${group.id} ${row.code === 0 ? 'PASS' : 'FAIL'} in ${formatDuration(row.durationMs)}; end=${row.endIso}; portFreeAfter=${row.portAfterFree}; cleanup=${row.cleanupResult}; last=${row.lastCompletedTest ?? 'n/a'} ===`);
+  if (row.code !== 0 || !row.portAfterFree) {
+    printFailure(row);
     failed = true;
     if (!continueOnFailure) break;
   }
@@ -46,7 +72,7 @@ for (const group of PLAYWRIGHT_GROUPS) {
 
 console.log('\nGrouped Playwright summary');
 for (const result of results) {
-  console.log(`${result.code === 0 && result.portAfterFree ? 'PASS' : 'FAIL'} ${result.group}: ${result.selectedCount} tests, ${formatDuration(result.durationMs)}, portAfterFree=${result.portAfterFree}`);
+  console.log(`${result.code === 0 && result.portAfterFree ? 'PASS' : 'FAIL'} ${result.group}: ${result.selectedCount} tests, ${formatDuration(result.durationMs)}, start=${result.startIso}, end=${result.endIso}, port=${result.port}, portAfterFree=${result.portAfterFree}, cleanup=${result.cleanupResult}, last=${result.lastCompletedTest ?? 'n/a'}`);
 }
 console.log(failed ? 'FAIL grouped Playwright suite' : 'PASS grouped Playwright suite');
 process.exit(failed ? 1 : 0);
@@ -56,15 +82,44 @@ function groupPlaywrightArgs(group) {
   if (group.id === 'visualAcceptance') args.push('--headed', '--project=chromium');
   return args;
 }
+
 function runPlaywright(args, label) {
   return new Promise((resolve) => {
-    const child = spawn(process.execPath, ['./node_modules/@playwright/test/cli.js', 'test', ...args], { cwd: process.cwd(), stdio: 'inherit' });
-    child.on('close', (code) => resolve(Number(code ?? 1)));
+    const recentLines = [];
+    let lastCompletedTest = null;
+    const child = spawn(process.execPath, ['./node_modules/@playwright/test/cli.js', 'test', ...args], { cwd: process.cwd(), stdio: ['ignore', 'pipe', 'pipe'] });
+    activeChild = child;
+    const consume = (chunk, stream) => {
+      const text = chunk.toString();
+      stream.write(text);
+      for (const raw of text.split(/\r?\n/)) {
+        const line = raw.trim();
+        if (!line) continue;
+        recentLines.push(line);
+        while (recentLines.length > RECENT_LINE_LIMIT) recentLines.shift();
+        if (/\b\d+\)|\[\d+\/\d+\]|\.spec\.[cm]?js/.test(line)) lastCompletedTest = line.slice(0, 500);
+      }
+    };
+    child.stdout.on('data', (chunk) => consume(chunk, process.stdout));
+    child.stderr.on('data', (chunk) => consume(chunk, process.stderr));
+    child.on('close', (code) => {
+      if (activeChild === child) activeChild = null;
+      resolve({ code: Number(code ?? 1), lastCompletedTest, recentLines });
+    });
     child.on('error', (error) => {
+      if (activeChild === child) activeChild = null;
       console.error(`Playwright ${label} failed to start: ${error.message}`);
-      resolve(1);
+      resolve({ code: 1, lastCompletedTest, recentLines: [...recentLines, `spawn error: ${error.message}`] });
     });
   });
+}
+
+function printFailure(row) {
+  console.error(`FAIL ${row.group}: selected=${row.selectedCount}, code=${row.code}, port=${row.port}, cleanup=${row.cleanupResult}, duration=${formatDuration(row.durationMs)}, last=${row.lastCompletedTest ?? 'n/a'}`);
+  if (row.recentLines?.length) {
+    console.error(`Recent ${row.group} output:`);
+    for (const line of row.recentLines.slice(-12)) console.error(`  ${line}`);
+  }
 }
 
 function portAvailable(port) {

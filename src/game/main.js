@@ -1,10 +1,33 @@
 import {
+  initializeAnchorAppBootDebug,
+  markAnchorAppBootFailure,
+  markAnchorAppBootMilestone
+} from '../app/production/AnchorAppBootReadiness.js';
+import {
   publishAnchorRuntimeSelectionDebug,
   resolveAnchorProductionRuntime
 } from '../app/production/AnchorRuntimeSelector.js';
 
 const selection = resolveAnchorProductionRuntime(globalThis.location, globalThis.localStorage);
+initializeAnchorAppBootDebug({
+  requestedRuntimeShell: selection.requestedRuntime,
+  resolvedRuntimeShell: selection.resolvedRuntime,
+  sourceMode: 'browser-esm',
+  basePath: globalThis.location ? globalThis.location.pathname.replace(/[^/]*$/, '') : '/'
+});
 const debug = publishAnchorRuntimeSelectionDebug(selection);
+markAnchorAppBootMilestone('main-module-ready');
+try {
+  await import('../../packages/contracts/src/index.js');
+  markAnchorAppBootMilestone('package-contracts-ready');
+  await import('../../packages/bathymetry/src/index.js');
+  markAnchorAppBootMilestone('package-bathymetry-ready');
+  await import('../../packages/currents/src/index.js');
+  markAnchorAppBootMilestone('package-currents-ready');
+} catch (error) {
+  markAnchorAppBootFailure('package-module-import', error);
+  throw error;
+}
 
 try {
   if (selection.resolvedRuntime === 'next') {
@@ -14,6 +37,7 @@ try {
   }
 } catch (error) {
   debug.failures.push(String(error?.message ?? error));
+  markAnchorAppBootFailure('runtime-bootstrap', error);
   if (selection.resolvedRuntime === 'next') {
     debug.fallbackReason = 'next-shell-bootstrap-failed';
     debug.resolvedRuntime = selection.defaultRuntime;

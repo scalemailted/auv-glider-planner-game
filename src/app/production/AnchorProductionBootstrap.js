@@ -1,4 +1,5 @@
-﻿import { anchorProductionLifecycleSummary, createAnchorProductionLifecycle, dispatchAnchorLifecycleCommand } from './AnchorProductionLifecycle.js';
+import { markAnchorAppBootMilestone, markAnchorRouteReady } from './AnchorAppBootReadiness.js';
+import { anchorProductionLifecycleSummary, createAnchorProductionLifecycle, dispatchAnchorLifecycleCommand } from './AnchorProductionLifecycle.js';
 import { createAnchorProductionSessionStore } from './AnchorProductionSessionStore.js';
 import { createAnchorProductionShell, productionShellSummary } from './AnchorProductionShell.js';
 import { createAnchorProductionViewHost } from './AnchorProductionViewHost.js';
@@ -10,6 +11,7 @@ const sessionStore = createAnchorProductionSessionStore();
 const shell = createAnchorProductionShell(document);
 const lifecycle = createAnchorProductionLifecycle({ sessionStore });
 const viewHost = createAnchorProductionViewHost(shell);
+markAnchorAppBootMilestone('app-shell-ready', { resolvedRuntimeShell: 'next' });
 
 const app = {
   type: 'anchor.production.next-shell-app',
@@ -47,6 +49,9 @@ function render(reason = 'render') {
     publishDebug: publishProductionDebug
   });
   publishProductionDebug(reason);
+  if (lifecycle.activeRoute === 'productHub') {
+    markAnchorRouteReady('main-menu', { resolvedRuntimeShell: 'next', inputHandlersBound: true });
+  }
 }
 
 function publishProductionDebug(reason = 'update') {

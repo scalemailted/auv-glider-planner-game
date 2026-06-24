@@ -1,9 +1,11 @@
-﻿import {
+import { markAnchorAppBootMilestone } from '../../app/production/AnchorAppBootReadiness.js';
+import {
   markAnchorRuntimePhaserLoaded,
   markAnchorRuntimePhaserInstantiated
 } from '../../app/production/AnchorRuntimeSelector.js';
 
 await ensurePhaserVendorLoaded();
+markAnchorAppBootMilestone('phaser-vendor-ready', { phaserAvailable: Boolean(globalThis.Phaser?.Game) });
 
 const [gameModule, consoleModule, waypointModule, summaryModule, performanceModule, tooltipModule] = await Promise.all([
   import('./PhaserGame.js'),
@@ -26,6 +28,7 @@ const uiRoot = document.getElementById('ui-root');
 const viewportShell = document.getElementById('viewport-shell');
 const legacyPanels = createHiddenLegacyPanels(uiRoot);
 
+markAnchorAppBootMilestone('app-shell-ready', { resolvedRuntimeShell: 'default' });
 const app = createPhaserGame({
   shell: gameRoot,
   gameContainer: gameRoot,
@@ -59,6 +62,7 @@ app.agentPerformanceHud = new AgentPerformanceHud(app, document.getElementById('
 app.mapHoverTooltip = new MapHoverTooltip(app);
 app.start();
 markAnchorRuntimePhaserInstantiated(Boolean(app.phaser));
+markAnchorAppBootMilestone('phaser-game-ready', { phaserGameCreated: Boolean(app.phaser), resolvedRuntimeShell: 'default' });
 if (!app.phaser) {
   app.console.renderIdle({ mode: 'Main Menu', status: 'Main Menu' });
   app.waypointPanel.renderIdle({ mainMenu: true });

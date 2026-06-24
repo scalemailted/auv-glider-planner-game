@@ -52,3 +52,7 @@ This imports every package skeleton, validates the contract proof, checks determ
 ## FLOW-PKG-R1 Current Package Note
 
 packages/currents now owns pure 4D current contracts, artifacts, source metadata, sampler behavior, temporal boundaries, and scientific diagnostics. The package remains browser-safe, Node-safe, Worker-safe, and independent of src/, Three.js, Phaser, DOM, and UI lifecycle. Synthetic current claims remain bounded to deterministic benchmark fixtures, not calibrated ocean forecasts.
+
+## Startup Imports and Lazy Artifacts
+
+Packages may expose browser-safe ESM entry points that the production app imports at startup. Startup imports must remain side-effect-light: no bathymetry generation, current field construction, samplers, Three renderers, SimulationEngine state, scoring, or route mutation should occur during Main Menu boot.

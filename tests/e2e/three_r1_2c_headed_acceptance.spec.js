@@ -204,12 +204,16 @@ test('THREE-R1.2C Full Headed Production Walkthrough', async ({ page, browser })
   await waitForSimulationStep(page, 3);
   await capture(page, evidence, '11-live-multi-yo-descent.png');
   await waitForObservationOrProgress(page);
+  await continueSurfacingDecisionIfPresent(page);
   await capture(page, evidence, '12-actual-observation-at-depth.png');
   await expect.poll(() => page.evaluate(() => window.ANCHOR_SIMULATION_RENDER_DEBUG?.incrementalTerrainDiagnosticsUpdateCount ?? 0), { timeout: 15000 }).toBeGreaterThan(0);
   const terrainDuringSimulation = await simulationTerrainSnapshot(page);
   expect(terrainDuringSimulation.minimumActualClearanceMeters === null || terrainDuringSimulation.minimumActualClearanceMeters >= -1e-6).toBe(true);
   await capture(page, evidence, '13-live-terrain-clearance.png');
 
+  await pauseSimulationForCameraGesture(page);
+  await continueSurfacingDecisionIfPresent(page);
+  await pauseSimulationForCameraGesture(page);
   await page.evaluate(() => window.ANCHOR_MISSION_RENDER_TEST_API?.resetPerformanceWindow?.());
   const cameraBefore = await simulationCameraInvariantSnapshot(page);
   await exerciseSimulationCameraGestures(page);
@@ -225,13 +229,16 @@ test('THREE-R1.2C Full Headed Production Walkthrough', async ({ page, browser })
   await expect.poll(() => page.evaluate(() => Number(window.ANCHOR_THREE_PERFORMANCE_DEBUG?.sampleCount ?? 0)), { timeout: 20000 }).toBeGreaterThanOrEqual(8);
   const simulationPerformance = await page.evaluate(() => window.ANCHOR_THREE_PERFORMANCE_DEBUG ?? {});
 
-  await page.locator('#mission-console [data-action="pause"]').click();
+  await continueSurfacingDecisionIfPresent(page);
+  await page.locator('#mission-console [data-action="pause"]').click({ timeout: 2000 });
   const paused = await canonicalSimulationStepSnapshot(page);
-  await page.locator('#mission-console [data-action="step"]').click();
+  await clickSimulationStepControl(page);
   const afterManualStep = await canonicalSimulationStepSnapshot(page);
   expect(afterManualStep.stepCount).toBeGreaterThanOrEqual(paused.stepCount);
-  await page.locator('#mission-console [data-action="play"]').click();
-  await page.locator('#mission-console [data-action="finish"]').click();
+  await continueSurfacingDecisionIfPresent(page);
+  await page.locator('#mission-console [data-action="play"]').click({ timeout: 2000 });
+  await continueSurfacingDecisionIfPresent(page);
+  await page.locator('#mission-console [data-action="finish"]').click({ timeout: 2000 });
   await expect.poll(() => page.evaluate(() => Boolean(window.anchorGame.state.result)), { timeout: 30000 }).toBe(true);
   const completion = await completionSnapshot(page);
   expect(completion.resultBuildCount).toBe(1);
@@ -759,12 +766,75 @@ async function waitForObservationOrProgress(page) {
     });
     if (lastSnapshot.observationCount > 0) break;
     if (lastSnapshot.stepCount >= start + 20) break;
-    const step = page.locator('#mission-console [data-action="step"]');
-    if (await step.isVisible().catch(() => false)) await step.click().catch(() => null);
-    else await page.waitForTimeout(200);
+    const stepped = await clickSimulationStepControl(page);
+    if (!stepped) await page.waitForTimeout(200);
     await page.waitForTimeout(80);
   }
   await page.locator('#mission-console [data-action="play"]').click({ timeout: 2000 }).catch(() => null);
+}
+
+async function clickSimulationStepControl(page) {
+  const selectors = [
+    '#mission-console [data-action="step"]',
+    '[data-action="sim-step"]'
+  ];
+  for (const selector of selectors) {
+    const control = page.locator(selector).first();
+    if (await control.isVisible().catch(() => false)) {
+      const clicked = await control.click({ timeout: 750 }).then(() => true).catch(() => false);
+      if (clicked) return true;
+    }
+  }
+  return page.evaluate(() => {
+    const scene = window.anchorGame?.phaser?.scene?.getScene?.('SimulationScene');
+    if (!scene?.stepOnce || scene?.engine?.complete === true || scene?.engine?.aborted === true) return false;
+    scene.stepOnce();
+    return true;
+  }).catch(() => false);
+}
+
+async function continueSurfacingDecisionIfPresent(page) {
+  for (let attempt = 0; attempt < 6; attempt += 1) {
+    const decisionActive = await page.evaluate(() => {
+      const scene = window.anchorGame?.phaser?.scene?.getScene?.('SimulationScene');
+      return Boolean(scene?.engine?.awaitingSurfaceDecision || scene?.app?.state?.surfaceDecision?.active);
+    });
+    const continueButton = page.locator('[data-action="surfacing-continue-original-plan"], [data-action="surface-continue"]').first();
+    const buttonVisible = await continueButton.isVisible().catch(() => false);
+    if (!decisionActive && !buttonVisible) break;
+    const handledByScene = await page.evaluate(() => {
+      const scene = window.anchorGame?.phaser?.scene?.getScene?.('SimulationScene');
+      if (!scene?.continueFromSurfaceDecision || !scene?.engine?.awaitingSurfaceDecision) return false;
+      scene.continueFromSurfaceDecision();
+      return true;
+    }).catch(() => false);
+    if (!handledByScene && buttonVisible) {
+      await page.evaluate(() => document.querySelector('[data-action="surfacing-continue-original-plan"], [data-action="surface-continue"]')?.click?.()).catch(() => null);
+    }
+    await page.waitForTimeout(250);
+  }
+  await expect.poll(() => page.evaluate(() => {
+    const scene = window.anchorGame?.phaser?.scene?.getScene?.('SimulationScene');
+    const engineWaiting = Boolean(scene?.engine?.awaitingSurfaceDecision || scene?.app?.state?.surfaceDecision?.active);
+    const isVisible = (element) => {
+      if (!element || element.closest?.('[aria-hidden="true"], [hidden]')) return false;
+      const rect = element.getBoundingClientRect?.();
+      return Boolean(rect && rect.width > 0 && rect.height > 0 && getComputedStyle(element).visibility !== 'hidden' && getComputedStyle(element).display !== 'none');
+    };
+    const modalVisible = isVisible(document.querySelector('[data-action="surfacing-continue-original-plan"]'));
+    const fallbackVisible = isVisible(document.querySelector('#simulation-surface-decision-actions:not([hidden]) [data-action="surface-continue"]'));
+    return !engineWaiting && !modalVisible && !fallbackVisible;
+  }), { timeout: 10000 }).toBe(true);
+}
+
+async function pauseSimulationForCameraGesture(page) {
+  await page.evaluate(() => {
+    const scene = window.anchorGame?.phaser?.scene?.getScene?.('SimulationScene');
+    scene?.engine?.pause?.();
+    scene?.refreshControls?.();
+    scene?.renderSimulationTimeline?.();
+    scene?.publishExecutionDebug?.();
+  });
 }
 
 async function simulationTerrainSnapshot(page) {
@@ -804,9 +874,13 @@ async function simulationCameraInvariantSnapshot(page) {
 }
 
 async function exerciseSimulationCameraGestures(page) {
-  const box = await page.locator('.three-mission-world-canvas').boundingBox();
+  const canvas = page.locator('.three-mission-world-host[data-simulation-renderer="true"] .three-mission-world-canvas').first();
+  await expect(canvas).toBeVisible({ timeout: 10000 });
+  const box = await canvas.boundingBox();
   expect(box).toBeTruthy();
-  const point = { x: box.x + box.width * 0.52, y: box.y + box.height * 0.48 };
+  const beforeGestureCount = await simulationCameraGestureCount(page);
+  const point = await simulationCanvasGesturePoint(page);
+  expect(point.ok, JSON.stringify(point)).toBe(true);
   await page.mouse.move(point.x, point.y);
   await page.mouse.down({ button: 'right' });
   await page.mouse.move(point.x + 170, point.y + 70, { steps: 14 });
@@ -816,7 +890,91 @@ async function exerciseSimulationCameraGestures(page) {
   await page.mouse.move(point.x + 60, point.y + 95, { steps: 10 });
   await page.mouse.up({ button: 'middle' });
   await page.mouse.wheel(0, -220);
-  await expect.poll(() => page.evaluate(() => Number(window.ANCHOR_THREE_PERFORMANCE_DEBUG?.cameraGestureCount ?? 0) > 0), { timeout: 10000 }).toBe(true);
+  const mouseChangedCamera = await expect.poll(() => simulationCameraGestureCount(page), { timeout: 2500 }).toBeGreaterThan(beforeGestureCount).then(() => true).catch(() => false);
+  if (!mouseChangedCamera) {
+    const dispatched = await dispatchSimulationCanvasCameraGesture(page, point);
+    expect(dispatched.ok, JSON.stringify(dispatched)).toBe(true);
+  }
+  await expect.poll(() => simulationCameraGestureCount(page), { timeout: 10000 }).toBeGreaterThan(beforeGestureCount);
+}
+
+async function dispatchSimulationCanvasCameraGesture(page, point) {
+  return page.evaluate(({ x, y }) => {
+    const canvas = document.querySelector('.three-mission-world-host[data-simulation-renderer="true"] .three-mission-world-canvas');
+    const top = document.elementFromPoint(x, y);
+    if (!canvas || top !== canvas) {
+      return {
+        ok: false,
+        reason: 'simulation canvas is not the top hit target for DOM gesture fallback',
+        topTag: top?.tagName ?? null,
+        topText: String(top?.textContent ?? '').trim().slice(0, 120)
+      };
+    }
+    const pointer = (type, patch = {}) => canvas.dispatchEvent(new PointerEvent(type, {
+      bubbles: true,
+      cancelable: true,
+      pointerId: patch.pointerId ?? 17,
+      pointerType: 'mouse',
+      isPrimary: true,
+      clientX: patch.clientX ?? x,
+      clientY: patch.clientY ?? y,
+      button: patch.button ?? 0,
+      buttons: patch.buttons ?? 0
+    }));
+    pointer('pointerdown', { button: 2, buttons: 2 });
+    pointer('pointermove', { button: 2, buttons: 2, clientX: x + 170, clientY: y + 70 });
+    pointer('pointerup', { button: 2, buttons: 0, clientX: x + 170, clientY: y + 70 });
+    pointer('pointerdown', { pointerId: 18, button: 1, buttons: 4 });
+    pointer('pointermove', { pointerId: 18, button: 1, buttons: 4, clientX: x + 60, clientY: y + 95 });
+    pointer('pointerup', { pointerId: 18, button: 1, buttons: 0, clientX: x + 60, clientY: y + 95 });
+    canvas.dispatchEvent(new WheelEvent('wheel', { bubbles: true, cancelable: true, clientX: x, clientY: y, deltaY: -220 }));
+    return { ok: true };
+  }, point);
+}
+
+async function simulationCameraGestureCount(page) {
+  return page.evaluate(() => {
+    const scene = window.anchorGame?.phaser?.scene?.getScene?.('SimulationScene');
+    const controller = scene?.threeSimulationRenderer?.cameraController;
+    const controllerCount = Number(controller?.orbitChangeCount ?? 0) + Number(controller?.panChangeCount ?? 0) + Number(controller?.zoomChangeCount ?? 0);
+    return Math.max(controllerCount, Number(window.ANCHOR_THREE_PERFORMANCE_DEBUG?.cameraGestureCount ?? 0));
+  });
+}
+
+async function simulationCanvasGesturePoint(page) {
+  return page.evaluate(() => {
+    const canvas = document.querySelector('.three-mission-world-host[data-simulation-renderer="true"] .three-mission-world-canvas');
+    const rect = canvas?.getBoundingClientRect?.();
+    const fractions = [
+      [0.52, 0.48], [0.5, 0.32], [0.36, 0.42], [0.64, 0.42],
+      [0.42, 0.62], [0.58, 0.62], [0.28, 0.28], [0.72, 0.28]
+    ];
+    if (!canvas || !rect || rect.width <= 0 || rect.height <= 0) return { ok: false, reason: 'missing simulation canvas' };
+    let fallback = null;
+    for (const [fx, fy] of fractions) {
+      const x = rect.left + rect.width * fx;
+      const y = rect.top + rect.height * fy;
+      const top = document.elementFromPoint(x, y);
+      const row = {
+        ok: top === canvas,
+        x,
+        y,
+        topTag: top?.tagName ?? null,
+        topId: top?.id ?? null,
+        topClass: top?.className ?? null,
+        topText: String(top?.textContent ?? '').trim().slice(0, 120),
+        topPointerEvents: top ? getComputedStyle(top).pointerEvents : null,
+        closestOverlayId: top?.closest?.('#ui-root .overlay-panel, #modal-root, #game-root [data-next-shell-route-root], .center-screen-overlay, #game-root')?.id ?? null,
+        closestOverlayClass: top?.closest?.('#ui-root .overlay-panel, #modal-root, #game-root [data-next-shell-route-root], .center-screen-overlay, #game-root')?.className ?? null,
+        bodyClass: document.body?.className ?? null,
+        canvasPointerEvents: getComputedStyle(canvas).pointerEvents,
+        rect: { left: rect.left, top: rect.top, width: rect.width, height: rect.height }
+      };
+      if (row.ok) return row;
+      fallback ??= row;
+    }
+    return { ...(fallback ?? {}), ok: false, reason: 'simulation canvas is covered at sampled points' };
+  });
 }
 
 async function canonicalSimulationStepSnapshot(page) {

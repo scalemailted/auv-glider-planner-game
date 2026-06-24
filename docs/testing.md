@@ -1168,3 +1168,7 @@ node ./node_modules/@playwright/test/cli.js test tests/e2e/flow_pkg_r1_current_p
 ```
 
 The package gates assert manifest/artifact normalization, deterministic digests, source metadata, bounded and periodic temporal behavior, 4D interpolation, land/below-bottom/outside-domain masking, diagnostics, compatibility forwarders, generator-adapter parity, package dependency purity, browser/worker-safe imports, and the Planning-hour-to-current-seconds boundary.
+
+## Production Readiness Tests
+
+Browser tests should wait for production readiness before route selectors. Use `waitForAnchorAppReady(page, { routeId: 'main-menu' })` or `waitForAnchorRoute(page, 'main-menu')` from `tests/e2e/helpers/AnchorRuntimeReadyHarness.js`. Route selectors such as `#main-menu-hub` are checked after readiness. Increasing a timeout is not a substitute for locating the failed boot stage; failures should report the boot debug snapshot, page errors, failed requests, and route state.

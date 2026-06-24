@@ -9,6 +9,8 @@ for (const file of await walk(root)) {
   for (const pattern of forbidden) assert.equal(pattern.test(text), false, `${path.relative(process.cwd(), file)} contains browser/runtime-only term ${pattern}`);
 }
 await import('../../packages/currents/src/index.js');
+const readiness = await import('../../src/app/production/AnchorAppBootReadiness.js');
+assert.equal(readiness.ANCHOR_APP_BOOT_READINESS_VERSION, 'flow-pkg-r1-1-app-boot-readiness', 'boot contract imports without current package globals');
 console.log('audit_current_package_browser_safety: ok');
 
 async function walk(dir) {

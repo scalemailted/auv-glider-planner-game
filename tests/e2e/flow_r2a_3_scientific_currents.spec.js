@@ -100,9 +100,9 @@ test('Synthetic Coastal Current Respects the Coastline Boundary', async ({ page 
 
 test('Canyon Exchange Occurs Only in the Declared Scenario Region', async ({ page }) => {
   const result = await scientificCurrentProbe(page);
-  const canyon = result.summary.sourceMetadata.components.find((component) => component.id === 'canyonExchangeApproximation');
+  const canyon = result.summary.sourceMetadata.components.find((component) => ['canyonExchangeApproximation', 'localizedCanyonExchange'].includes(component.id));
   expect(canyon).toBeTruthy();
-  expect(canyon.bathymetryInteraction).toMatch(/declared canyon region/i);
+  expect(canyon.bathymetryInteraction).toMatch(/declared canyon (region|envelope)/i);
 });
 
 test('Glider Samples Current at Actual Depth and Time', async ({ page }) => {

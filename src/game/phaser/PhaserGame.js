@@ -1,3 +1,4 @@
+import { markAnchorAppBootMilestone } from '../../app/production/AnchorAppBootReadiness.js';
 import { createGameState } from '../state/GameState.js';
 import { showToast } from '../../ui/Toast.js';
 import { applyMissionConsoleAccordions, getAccordionDefaults } from '../../ui/AccordionState.js';
@@ -83,6 +84,7 @@ export class PhaserGameApp {
       },
       callbacks: {
         postBoot: (game) => {
+          markAnchorAppBootMilestone('phaser-game-ready', { postBoot: true, resolvedRuntimeShell: 'default' });
           game.canvas.id = 'game-canvas';
           game.canvas.setAttribute('aria-label', 'Game map');
           this.resizeToViewport('postBoot');

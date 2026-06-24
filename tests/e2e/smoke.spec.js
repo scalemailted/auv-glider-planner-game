@@ -2,6 +2,7 @@ import { expect, test } from '@playwright/test';
 import fs from 'node:fs/promises';
 import { startStaticServer } from './static-server.mjs';
 import { attachBrowserErrorCollector } from './helpers/BrowserErrorCollector.js';
+import { waitForAnchorAppReady, waitForAnchorRoute } from './helpers/AnchorRuntimeReadyHarness.js';
 import { compareSimulationExecutions } from '../../src/core/simulation/SimulationRendererParity.js';
 
 let server;
@@ -17,16 +18,14 @@ test.afterAll(async () => {
 });
 
 async function waitForDefaultPhaserApp(page) {
-  await expect.poll(() => page.evaluate(() => Boolean(
-    window.anchorGame?.phaser?.scene?.getScene?.('MainMenuScene')?.sys?.isActive?.()
-  )), { timeout: 15000 }).toBe(true);
+  await waitForAnchorAppReady(page, { routeId: 'main-menu' });
 }
 
 test('learning labs static page is linked from the main menu', async ({ page }) => {
   const pageErrors = [];
   page.on('pageerror', (error) => pageErrors.push(error.message));
   await page.goto('/');
-  await expect(page.locator('#main-menu-hub')).toBeVisible();
+  await waitForAnchorAppReady(page, { routeId: 'main-menu' });
   await expect(page.locator('#main-menu-hub')).toContainText('Learning Labs');
   await openMainMenuHubSection(page, 'learning');
   const learningHub = page.locator('#main-menu-hub[data-hub-view="learning"]');
@@ -252,6 +251,7 @@ test('learning labs static page is linked from the main menu', async ({ page }) 
 
 test('Benchmark modes overview opens from Simulation Lab', async ({ page }) => {
   await page.goto('/');
+  await waitForAnchorAppReady(page, { routeId: 'main-menu' });
   await openMainMenuHubSection(page, 'simulation');
   await expect(page.locator('#main-menu-hub[data-hub-view="simulation"]')).toContainText('Benchmark Modes');
 
@@ -285,7 +285,7 @@ test('Benchmark modes overview opens from Simulation Lab', async ({ page }) => {
   expect(episodeJson.type).toBe('anchor.benchmark.episode-config');
 
   await page.goto('/');
-  await expect.poll(() => page.evaluate(() => window.anchorGame?.phaser?.scene.getScene('MainMenuScene')?.sys.isActive() ?? false)).toBe(true);
+  await waitForAnchorAppReady(page, { routeId: 'main-menu' });
   await launchFromMainMenuHub(page, 'simulation', 'benchmark-adaptive');
   await expect.poll(() => page.evaluate(() => window.ANCHOR_BENCHMARK_MODE_DEBUG?.benchmarkMode)).toBe('adaptiveBenchmark');
   await expect(page.locator('#mission-console')).toContainText('Adaptive Benchmark');
@@ -346,7 +346,7 @@ test('Benchmark modes overview opens from Simulation Lab', async ({ page }) => {
   await expect.poll(() => page.evaluate(() => window.anchorGame.state.adaptiveBenchmarkRuntimeContext?.routeAuthority)).toBe('playerOrSolver');
 
   await page.goto('/');
-  await expect.poll(() => page.evaluate(() => window.anchorGame?.phaser?.scene.getScene('MainMenuScene')?.sys.isActive() ?? false)).toBe(true);
+  await waitForAnchorAppReady(page, { routeId: 'main-menu' });
   await launchFromMainMenuHub(page, 'simulation', 'benchmark-full-autonomy');
   await expect.poll(() => page.evaluate(() => window.ANCHOR_BENCHMARK_MODE_DEBUG?.benchmarkMode)).toBe('fullAutonomyBenchmark');
   await expect(page.locator('#mission-console')).toContainText('Full Autonomy Benchmark');
@@ -363,7 +363,7 @@ test('Benchmark modes overview opens from Simulation Lab', async ({ page }) => {
 });
 test('Motion Planning Demo opens from Simulation Lab and preserves benchmark/headless routes', async ({ page }) => {
   await page.goto('/');
-  await expect(page.locator('#main-menu-hub')).toBeVisible();
+  await waitForAnchorAppReady(page, { routeId: 'main-menu' });
   await openMainMenuHubSection(page, 'simulation');
   const simulationHub = page.locator('#main-menu-hub[data-hub-view="simulation"]');
   await expect(simulationHub).toContainText('Motion Planning Demo');
@@ -412,7 +412,7 @@ test('Motion Planning Demo opens from Simulation Lab and preserves benchmark/hea
 
 test('Bathymetric World View opens from Simulation Lab and preserves adjacent routes', async ({ page }) => {
   await page.goto('/');
-  await expect(page.locator('#main-menu-hub')).toBeVisible();
+  await waitForAnchorAppReady(page, { routeId: 'main-menu' });
   await openMainMenuHubSection(page, 'simulation');
   const simulationHub = page.locator('#main-menu-hub[data-hub-view="simulation"]');
   await expect(simulationHub).toContainText('3D Bathymetric World View');
@@ -492,7 +492,7 @@ test('Bathymetric World View opens from Simulation Lab and preserves adjacent ro
 });
 test('Renderer Architecture Preview opens from Simulation Lab', async ({ page }) => {
   await page.goto('/');
-  await expect(page.locator('#main-menu-hub')).toBeVisible();
+  await waitForAnchorAppReady(page, { routeId: 'main-menu' });
   await openMainMenuHubSection(page, 'simulation');
   const simulationHub = page.locator('#main-menu-hub[data-hub-view="simulation"]');
   await expect(simulationHub).toContainText('Renderer Architecture Preview');
@@ -518,6 +518,7 @@ test('Renderer Architecture Preview opens from Simulation Lab', async ({ page })
 });
 test('Headless Bundle Viewer opens from Simulation Lab and exports browser summary', async ({ page }) => {
   await page.goto('/');
+  await waitForAnchorAppReady(page, { routeId: 'main-menu' });
   await openMainMenuHubSection(page, 'simulation');
   await expect(page.locator('#main-menu-hub[data-hub-view="simulation"]')).toContainText('Headless Bundle Viewer');
 
@@ -723,7 +724,7 @@ test('Headless Bundle Viewer opens from Simulation Lab and exports browser summa
 });
 test('Planner Benchmark debrief exports benchmark records from synthetic result', async ({ page }) => {
   await page.goto('/');
-  await expect.poll(() => page.evaluate(() => window.anchorGame?.phaser?.scene.getScene('MainMenuScene')?.sys.isActive() ?? false)).toBe(true);
+  await waitForAnchorAppReady(page, { routeId: 'main-menu' });
 
   await page.evaluate(() => {
     const benchmarkMetadata = {
@@ -909,7 +910,7 @@ test('Planner Benchmark debrief exports benchmark records from synthetic result'
 
 test('Adaptive Benchmark synthetic debrief shows surfacing review and exports P8 session records', async ({ page }) => {
   await page.goto('/');
-  await expect.poll(() => page.evaluate(() => window.anchorGame?.phaser?.scene.getScene('MainMenuScene')?.sys.isActive() ?? false)).toBe(true);
+  await waitForAnchorAppReady(page, { routeId: 'main-menu' });
 
   await page.evaluate(() => {
     const benchmarkMetadata = {
@@ -1072,6 +1073,7 @@ test('Adaptive Benchmark synthetic debrief shows surfacing review and exports P8
 });
 test('campaign planning smoke flow reaches debrief', async ({ page }) => {
   await page.goto('/');
+  await waitForAnchorAppReady(page, { routeId: 'main-menu' });
   await expect(page).toHaveTitle(/ANCHOR: Glider Command/);
   await expect.poll(() => page.evaluate(() => window.anchorGame?.phaser?.scene.getScene('MainMenuScene')?.sys.isActive() ?? false)).toBe(true);
   await expect(page.locator('#top-nav')).toHaveCount(0);
@@ -3081,6 +3083,7 @@ test('Sampling Target Drives Predicted Dive Without Becoming a Navigation Point'
 
 test('Predicted Multi-Yo Profile Executes Through Canonical Simulation', async ({ page }) => {
   await page.goto('/');
+  await waitForAnchorAppReady(page, { routeId: 'main-menu' });
   const result = await page.evaluate(async () => {
     const { buildPlannedDiveSegmentViewModel } = await import('./src/core/rendering/PlannedDiveSegmentViewModel.js');
     const { advanceGliderDiveStateMachine } = await import('./src/core/sim/GliderDiveStateMachine.js');
@@ -3779,6 +3782,7 @@ test('Bathymetric Demo and Mission Renderer Share Terrain Geometry', async ({ pa
 test('All Production Mission Phases Share One Bathymetry Contract', async ({ page }) => {
   const browserErrors = attachBrowserErrorCollector(page);
   await page.goto('/');
+  await waitForAnchorAppReady(page, { routeId: 'main-menu' });
   await openMainMenuHubSection(page, 'challenge');
   await page.locator('#main-menu-hub [data-action="random-challenge"]').first().click();
   await expect(page.locator('#mission-console')).toContainText('Scenario Start');
@@ -4022,6 +4026,7 @@ test('Three Camera Remains Responsive Under Live Simulation Load', async ({ page
 
 test('Segment Distance Changes Predicted Dive Geometry', async ({ page }) => {
   await page.goto('/');
+  await waitForAnchorAppReady(page, { routeId: 'main-menu' });
   const result = await page.evaluate(async () => {
     const { buildPlannedDiveSegmentViewModel } = await import('./src/core/rendering/PlannedDiveSegmentViewModel.js');
     const waterColumnConfig = { depthLayerIds: ['surface', 'shallow', 'thermocline', 'deep'], defaultLayerIds: ['surface', 'thermocline', 'deep'], diveProfileId: 'fullProfile' };
@@ -4048,6 +4053,7 @@ test('Segment Distance Changes Predicted Dive Geometry', async ({ page }) => {
 
 test('Predicted and Realized Dive Paths Remain Distinct', async ({ page }) => {
   await page.goto('/');
+  await waitForAnchorAppReady(page, { routeId: 'main-menu' });
   const result = await page.evaluate(async () => {
     const { buildPlannedDiveSegmentViewModel } = await import('./src/core/rendering/PlannedDiveSegmentViewModel.js');
     const { buildRealizedDiveTrajectory } = await import('./src/core/rendering/DiveTrajectoryViewModel.js');
@@ -4073,6 +4079,7 @@ test('Predicted and Realized Dive Paths Remain Distinct', async ({ page }) => {
 
 test('Bathymetry Demo and Mission Dive Paths Share Coordinates', async ({ page }) => {
   await page.goto('/');
+  await waitForAnchorAppReady(page, { routeId: 'main-menu' });
   const result = await page.evaluate(async () => {
     const { createMissionWorldCoordinateTransform, gridCellToWorld } = await import('./src/core/rendering/MissionWorldCoordinates.js');
     const { gridCellDepthToWorld, createVolumetricMissionCoordinateModel } = await import('./src/core/rendering/VolumetricMissionCoordinates.js');
@@ -4097,7 +4104,7 @@ test('Bathymetry Demo and Mission Dive Paths Share Coordinates', async ({ page }
 test('Three Mission Workspace Stabilization', async ({ page }) => {
   const browserErrors = attachBrowserErrorCollector(page);
   await page.goto('/');
-  await expect.poll(() => page.evaluate(() => window.anchorGame?.phaser?.scene.getScene('MainMenuScene')?.sys.isActive() ?? false)).toBe(true);
+  await waitForAnchorAppReady(page, { routeId: 'main-menu' });
   await page.evaluate(() => window.anchorGame.phaser.scene.getScene('MainMenuScene').startCampaignLevel('tutorial_01_first_deployment'));
   await expect.poll(() => page.evaluate(() => window.anchorGame.state.level?.levelId)).toBe('tutorial_01_first_deployment');
   await expect.poll(() => page.evaluate(() => window.anchorGame.phaser.scene.getScene('MissionBriefingScene')?.sys.isActive?.() ?? false), { timeout: 15000 }).toBe(true);
@@ -4163,7 +4170,7 @@ test('Three Mission Workspace Stabilization', async ({ page }) => {
 });
 test('Three Mission renderer preserves live Mission Planning state', async ({ page }) => {
   await page.goto('/');
-  await expect.poll(() => page.evaluate(() => window.anchorGame?.phaser?.scene.getScene('MainMenuScene')?.sys.isActive() ?? false)).toBe(true);
+  await waitForAnchorAppReady(page, { routeId: 'main-menu' });
   await page.evaluate(() => window.anchorGame.phaser.scene.getScene('MainMenuScene').startCampaignLevel('tutorial_01_first_deployment'));
   await expect.poll(() => page.evaluate(() => window.anchorGame.phaser.scene.getScene('MissionBriefingScene').sys.isActive())).toBe(true);
   await startPlanningFromBriefing(page);
@@ -4261,7 +4268,7 @@ test('Three Planning Pointer Interaction dispatches canonical workspace commands
   const pageErrors = [];
   page.on('pageerror', (error) => pageErrors.push(error.message));
   await page.goto('/');
-  await expect.poll(() => page.evaluate(() => window.anchorGame?.phaser?.scene.getScene('MainMenuScene')?.sys.isActive() ?? false)).toBe(true);
+  await waitForAnchorAppReady(page, { routeId: 'main-menu' });
   await page.evaluate(() => window.anchorGame.phaser.scene.getScene('MainMenuScene').startCampaignLevel('tutorial_01_first_deployment'));
   await expect.poll(() => page.evaluate(() => window.anchorGame.phaser.scene.getScene('MissionBriefingScene').sys.isActive())).toBe(true);
   await startPlanningFromBriefing(page);
@@ -4409,7 +4416,7 @@ test('Three Planning Pointer Interaction dispatches canonical workspace commands
 test('Three Waypoint Pipeline and Standard Camera Gestures', async ({ page }) => {
   const browserErrors = attachBrowserErrorCollector(page);
   await page.goto('/');
-  await expect.poll(() => page.evaluate(() => window.anchorGame?.phaser?.scene.getScene('MainMenuScene')?.sys.isActive() ?? false)).toBe(true);
+  await waitForAnchorAppReady(page, { routeId: 'main-menu' });
   await page.evaluate(() => window.anchorGame.phaser.scene.getScene('MainMenuScene').startCampaignLevel('tutorial_01_first_deployment'));
   await expect.poll(() => page.evaluate(() => window.anchorGame.phaser.scene.getScene('MissionBriefingScene')?.sys.isActive?.() ?? false), { timeout: 15000 }).toBe(true);
   await startPlanningFromBriefing(page);
@@ -4559,7 +4566,7 @@ test('Three Waypoint Pipeline and Standard Camera Gestures', async ({ page }) =>
 test('Three Mission Planning Tools and Camera Controls', async ({ page }) => {
   const browserErrors = attachBrowserErrorCollector(page);
   await page.goto('/');
-  await expect.poll(() => page.evaluate(() => window.anchorGame?.phaser?.scene.getScene('MainMenuScene')?.sys.isActive() ?? false)).toBe(true);
+  await waitForAnchorAppReady(page, { routeId: 'main-menu' });
   await page.evaluate(() => window.anchorGame.phaser.scene.getScene('MainMenuScene').startCampaignLevel('tutorial_01_first_deployment'));
   await expect.poll(() => page.evaluate(() => window.anchorGame.phaser.scene.getScene('MissionBriefingScene')?.sys.isActive?.() ?? false), { timeout: 15000 }).toBe(true);
   await startPlanningFromBriefing(page);
@@ -4628,7 +4635,7 @@ test('Three Simulation Selection inspects canonical public simulation objects', 
   const pageErrors = [];
   page.on('pageerror', (error) => pageErrors.push(error.message));
   await page.goto('/');
-  await expect.poll(() => page.evaluate(() => window.anchorGame?.phaser?.scene.getScene('MainMenuScene')?.sys.isActive() ?? false)).toBe(true);
+  await waitForAnchorAppReady(page, { routeId: 'main-menu' });
   await page.evaluate(() => window.anchorGame.phaser.scene.getScene('MainMenuScene').startCampaignLevel('tutorial_01_first_deployment'));
   await expect.poll(() => page.evaluate(() => window.anchorGame.phaser.scene.getScene('MissionBriefingScene').sys.isActive())).toBe(true);
   await startPlanningFromBriefing(page);
@@ -4713,7 +4720,7 @@ test('Three Simulation Selection inspects canonical public simulation objects', 
 });
 test('scenario setup stays inside the center viewport', async ({ page }) => {
   await page.goto('/');
-  await expect.poll(() => page.evaluate(() => window.anchorGame?.phaser?.scene.getScene('MainMenuScene')?.sys.isActive() ?? false)).toBe(true);
+  await waitForAnchorAppReady(page, { routeId: 'main-menu' });
 
   await page.evaluate(() => window.anchorGame.phaser.scene.getScene('MainMenuScene').openChallengeSetup('perfectKnowledge'));
   await expect.poll(() => page.evaluate(() => window.anchorGame.phaser.scene.getScene('MissionBriefingScene').sys.isActive())).toBe(true);
@@ -4729,7 +4736,7 @@ test('scenario setup stays inside the center viewport', async ({ page }) => {
 
 test('challenge setup uses left navigator and selected briefing', async ({ page }) => {
   await page.goto('/');
-  await expect.poll(() => page.evaluate(() => window.anchorGame?.phaser?.scene.getScene('MainMenuScene')?.sys.isActive() ?? false)).toBe(true);
+  await waitForAnchorAppReady(page, { routeId: 'main-menu' });
 
   await page.evaluate(() => window.anchorGame.phaser.scene.getScene('MainMenuScene').openChallengeSetup('perfectKnowledge', 'challenge'));
   await expect.poll(() => page.evaluate(() => window.anchorGame.phaser.scene.getScene('MissionBriefingScene').sys.isActive())).toBe(true);
@@ -4757,7 +4764,7 @@ test('challenge setup uses left navigator and selected briefing', async ({ page 
 
 test('level generator opens from main menu', async ({ page }) => {
   await page.goto('/');
-  await expect.poll(() => page.evaluate(() => window.anchorGame?.phaser?.scene.getScene('MainMenuScene')?.sys.isActive() ?? false)).toBe(true);
+  await waitForAnchorAppReady(page, { routeId: 'main-menu' });
 
   await page.evaluate(() => window.anchorGame.phaser.scene.start('EnvironmentEditorScene'));
   await expect(page.getByRole('heading', { name: 'Environment Editor' })).toBeVisible();
@@ -4791,6 +4798,7 @@ test('level generator opens from main menu', async ({ page }) => {
 
 test('deterministic challenge generates a fresh perfect-knowledge level', async ({ page }) => {
   await page.goto('/');
+  await waitForAnchorAppReady(page, { routeId: 'main-menu' });
   await waitForDefaultPhaserApp(page);
 
   await page.evaluate(() => window.anchorGame.phaser.scene.getScene('MainMenuScene').startRandomChallenge('perfectKnowledge'));
@@ -4810,6 +4818,7 @@ test('deterministic challenge generates a fresh perfect-knowledge level', async 
 
 test('load level json imports a level and offers play/edit actions', async ({ page }) => {
   await page.goto('/');
+  await waitForAnchorAppReady(page, { routeId: 'main-menu' });
   await waitForDefaultPhaserApp(page);
 
   await page.evaluate(() => window.anchorGame.phaser.scene.start('LoadLevelJsonScene'));
@@ -4826,6 +4835,7 @@ test('load level json imports a level and offers play/edit actions', async ({ pa
 
 test('stochastic mode exposes ensemble and risk controls', async ({ page }) => {
   await page.goto('/');
+  await waitForAnchorAppReady(page, { routeId: 'main-menu' });
   await waitForDefaultPhaserApp(page);
 
   await page.evaluate(() => window.anchorGame.phaser.scene.getScene('MainMenuScene').startRandomChallenge('forecast'));
@@ -5039,6 +5049,7 @@ test('stochastic mode exposes ensemble and risk controls', async ({ page }) => {
 test('Execute Mission Through Three Simulation', async ({ page }) => {
   const browserErrors = attachBrowserErrorCollector(page);
   await page.goto('/');
+  await waitForAnchorAppReady(page, { routeId: 'main-menu' });
   await startTutorialPlanning(page);
   await expect(page.locator('.three-mission-world-canvas')).toBeVisible();
 
@@ -5153,6 +5164,7 @@ test('Execute Mission Through Three Simulation', async ({ page }) => {
 test('Three Volumetric Water Column Planning', async ({ page }) => {
   const browserErrors = attachBrowserErrorCollector(page);
   await page.goto('/');
+  await waitForAnchorAppReady(page, { routeId: 'main-menu' });
   await startTutorialPlanning(page);
   await installWaterColumnE2eConfig(page);
   await expect(page.locator('#mission-console')).toContainText('Water Column');
@@ -5217,6 +5229,7 @@ test('Three Volumetric Water Column Planning', async ({ page }) => {
 test('Three Depth-Aware Dive and Sampling', async ({ page }) => {
   const browserErrors = attachBrowserErrorCollector(page);
   await page.goto('/');
+  await waitForAnchorAppReady(page, { routeId: 'main-menu' });
   await startTutorialPlanning(page);
   await installWaterColumnE2eConfig(page);
   await page.evaluate(() => {
@@ -5264,6 +5277,7 @@ test('Three Depth-Aware Dive and Sampling', async ({ page }) => {
 test('Three Mission Scene Isolation', async ({ page }) => {
   const browserErrors = attachBrowserErrorCollector(page);
   await page.goto('/');
+  await waitForAnchorAppReady(page, { routeId: 'main-menu' });
   await expectMainMenuSceneIsolation(page);
 
   await startTutorialPlanning(page);
@@ -5287,6 +5301,7 @@ test('Three Mission Scene Isolation', async ({ page }) => {
 test('Three Scene Cleanup Is Null-Safe and Idempotent', async ({ page }) => {
   const browserErrors = attachBrowserErrorCollector(page);
   await page.goto('/');
+  await waitForAnchorAppReady(page, { routeId: 'main-menu' });
   await startTutorialPlanning(page);
   await expectSingleThreeMissionRenderer(page, 'planning');
 
@@ -5320,6 +5335,7 @@ test('Three Scene Cleanup Is Null-Safe and Idempotent', async ({ page }) => {
 test('Generated Mission Opens a Visible Volumetric Water Column', async ({ page }) => {
   const browserErrors = attachBrowserErrorCollector(page);
   await page.goto('/');
+  await waitForAnchorAppReady(page, { routeId: 'main-menu' });
   await waitForDefaultPhaserApp(page);
   await page.evaluate(() => window.anchorGame.phaser.scene.getScene('MainMenuScene').startRandomChallenge('perfectKnowledge'));
   await expect.poll(() => page.evaluate(() => window.anchorGame.phaser.scene.getScene('MissionBriefingScene')?.sys.isActive?.() ?? false), { timeout: 15000 }).toBe(true);
@@ -5369,6 +5385,7 @@ test('Generated Mission Opens a Visible Volumetric Water Column', async ({ page 
 test('Legacy Mission Uses Explicit Surface Compatibility Mode', async ({ page }) => {
   const browserErrors = attachBrowserErrorCollector(page);
   await page.goto('/');
+  await waitForAnchorAppReady(page, { routeId: 'main-menu' });
   await waitForDefaultPhaserApp(page);
   await page.evaluate(() => window.anchorGame.phaser.scene.start('LoadLevelJsonScene'));
   await expect.poll(() => page.evaluate(() => window.anchorGame.phaser.scene.getScene('LoadLevelJsonScene')?.sys.isActive?.() ?? false), { timeout: 15000 }).toBe(true);
@@ -5420,6 +5437,7 @@ test('Legacy Mission Uses Explicit Surface Compatibility Mode', async ({ page })
 test('Three Vehicle Pose Guidance and Grid Alignment', async ({ page }) => {
   const browserErrors = attachBrowserErrorCollector(page);
   await page.goto('/');
+  await waitForAnchorAppReady(page, { routeId: 'main-menu' });
   await startTutorialPlanning(page);
   await expect.poll(() => page.evaluate(() => window.ANCHOR_MISSION_RENDER_DEBUG?.rendererReady === true), { timeout: 15000 }).toBe(true);
   await page.locator('#mission-console [data-action="three-camera"][data-preset="tacticalTopDown"]').click();
@@ -5487,6 +5505,7 @@ test('Three Vehicle Pose Guidance and Grid Alignment', async ({ page }) => {
 test('Three Waypoint Validation and Mission Window Semantics', async ({ page }) => {
   const browserErrors = attachBrowserErrorCollector(page);
   await page.goto('/');
+  await waitForAnchorAppReady(page, { routeId: 'main-menu' });
   await startTutorialPlanning(page);
   await expect.poll(() => page.evaluate(() => window.ANCHOR_MISSION_RENDER_DEBUG?.rendererReady === true), { timeout: 15000 }).toBe(true);
   await page.locator('#mission-console [data-action="three-camera"][data-preset="tacticalTopDown"]').click();
@@ -5585,6 +5604,7 @@ test('Three Waypoint Validation and Mission Window Semantics', async ({ page }) 
 test('Terrain-Aware Placement Preview Prevents Invalid Mission Mutation', async ({ page }) => {
   const browserErrors = attachBrowserErrorCollector(page);
   await page.goto('/');
+  await waitForAnchorAppReady(page, { routeId: 'main-menu' });
   await startTutorialPlanning(page);
   await expect.poll(() => page.evaluate(() => window.ANCHOR_MISSION_RENDER_DEBUG?.rendererReady === true), { timeout: 15000 }).toBe(true);
   await page.locator('#mission-console [data-action="three-camera"][data-preset="tacticalTopDown"]').click();
@@ -5882,6 +5902,7 @@ test('Legacy and Three Simulation Produce Identical Canonical Result', async ({ 
 });
 test('legacy saved level registry scene still opens', async ({ page }) => {
   await page.goto('/');
+  await waitForAnchorAppReady(page, { routeId: 'main-menu' });
   await waitForDefaultPhaserApp(page);
   await expect.poll(() => page.evaluate(() => window.anchorGame.phaser.scene.getScene('MainMenuScene').sys.isActive())).toBe(true);
 
@@ -6341,6 +6362,7 @@ async function expectNoTerrainResourcesOnMainMenu(page) {
 }
 async function startVisibleContinuousMissionPlanning(page) {
   await page.goto('/');
+  await waitForAnchorAppReady(page, { routeId: 'main-menu' });
   await openMainMenuHubSection(page, 'challenge');
   await page.locator('#main-menu-hub [data-action="random-challenge"]').first().click();
   await expect.poll(() => page.evaluate(() => window.anchorGame.phaser.scene.getScene('MissionBriefingScene')?.sys.isActive?.() ?? false), { timeout: 15000 }).toBe(true);
@@ -6977,7 +6999,7 @@ async function expectSamplingSectionsCollapsed(page, titles) {
 }
 
 async function openMainMenuHubSection(page, view) {
-  await expect.poll(() => page.evaluate(() => window.anchorGame?.phaser?.scene.getScene('MainMenuScene')?.sys.isActive() ?? false)).toBe(true);
+  await waitForAnchorRoute(page, 'main-menu');
   await expect(page.locator('#main-menu-hub')).toBeVisible();
   await page.locator(`#main-menu-hub [data-hub-view="${view}"]`).first().click();
   await expect(page.locator(`#main-menu-hub[data-hub-view="${view}"]`)).toBeVisible();

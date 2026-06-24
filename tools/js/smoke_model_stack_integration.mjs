@@ -1380,4 +1380,6 @@ assert.ok(Object.prototype.hasOwnProperty.call(flowR2aCurrentDebug, 'matrixBuffe
 assert.equal(flowR2aCurrentDebug.usesWallClockTime, false, 'FLOW-RUNTIME-R1 current debug rejects wall-clock environmental animation');
 assert.equal(flowR2aCurrentDebug.displayLayerChangesCurrent, false, 'FLOW-R2A.2 current display does not change current physics');
 
+const bootReadinessModule = await import('../../src/app/production/AnchorAppBootReadiness.js');
+assert.equal(bootReadinessModule.ANCHOR_APP_BOOT_READINESS_VERSION, 'flow-pkg-r1-1-app-boot-readiness', 'FLOW-PKG-R1.1 boot readiness contract imports');
 console.log('Model stack integration smoke passed');

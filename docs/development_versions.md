@@ -634,3 +634,7 @@ SCI-VALID-R1 adds a homegrown environment scientific baseline and external-oracl
 ## FLOW-PKG-R1 Current Package Extraction
 
 FLOW-PKG-R1 establishes `packages/currents` as the owner of pure current manifests, CurrentField4D artifacts, source metadata, temporal-boundary handling, prepared sampling, manufactured verification fixtures, and scientific diagnostics. Compatibility forwarders keep `src/core/science/*` imports valid. Current generation, `PlanningTimelineTimeBridge`, Three.js rendering, Phaser scenes, and scoring remain application responsibilities.
+
+## FLOW-PKG-R1.1
+
+FLOW-PKG-R1.1 added the production app boot readiness contract, static-server readiness probes, shared Playwright runtime readiness helper, focused boot E2E coverage, grouped-runner diagnostics, and boot-performance documentation. It does not change current generation, current artifacts, bathymetry, scalar processes, glider physics, scoring, visible current evolution, or mission semantics.

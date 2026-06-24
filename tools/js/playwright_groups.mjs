@@ -13,6 +13,12 @@ export const PLAYWRIGHT_GROUPS = Object.freeze([
       /^Headless Bundle Viewer opens from Simulation Lab and exports browser summary$/i,
       /^Planner Benchmark debrief exports benchmark records from synthetic result$/i,
       /^Adaptive Benchmark synthetic debrief shows surfacing review and exports P8 session records$/i,
+      /^Cold Repo Root Boot Reaches Main Menu Through Package Modules$/i,
+      /^Cold Pages Subpath Boot Reaches Main Menu Through Package Modules$/i,
+      /^Core Mission Tests Use the Production Readiness Contract$/i,
+      /^Main Menu Boot Does Not Generate Mission Science$/i,
+      /^Repeated App Boot and Teardown Leave No Runtime Processes$/i,
+      /^Current Package Loads After Stable Main Menu Boot$/i,
       /^campaign planning smoke flow reaches debrief$/i
     ]
   },

@@ -10,3 +10,6 @@ Production flow:
 2. `CurrentFieldArtifactAdapter` normalizes and validates through `packages/currents`.
 3. Planning, Simulation, and renderer-neutral view models consume the same package-backed artifact digest.
 4. Three.js receives sampled presentation data only.
+## Boot Readiness Boundary
+
+The current package entry point may be imported during Main Menu boot to verify package availability and static hosting paths. Importing the package is not mission science generation. Main Menu boot must not build current cubes, create current samplers, run diagnostics, or construct mission simulation state. FLOW-PKG-R1.1 preserves package artifact and sampler semantics while adding boot readiness evidence.

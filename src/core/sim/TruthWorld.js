@@ -5,7 +5,7 @@ import { mobileHazardAt } from './MobileHazards.js';
 import { isPointNavigable } from '../planning/Navigability.js';
 import { sampleCurrentVector } from '../currents/CurrentFieldSampler.js';
 import { getSyntheticCurrentCubeFromMissionWorld } from '../science/SyntheticCurrentCubeAdapter.js';
-import { getOceanCurrentSampler } from '../science/OceanCurrentFieldSampler.js';
+import { getOceanCurrentSampler, getOceanCurrentSamplerRuntimeCounters } from '../science/OceanCurrentFieldSampler.js';
 import { markSimulationLaunchStage, completeSimulationLaunchStage, incrementSimulationLaunchCounter, setSimulationLaunchCurrentField } from '../runtime/SimulationLaunchProfiler.js';
 import { sampleScalarFieldContinuous, sampleVectorFieldContinuous } from '../science/VolumetricFieldSampler.js';
 import { normalizeWaterColumnConfig, waterColumnLayerMetadata } from '../science/WaterColumnSchema.js';
@@ -23,8 +23,11 @@ export class TruthWorld {
     this.currentField4D = getSyntheticCurrentCubeFromMissionWorld({ level, waterColumnConfig: this.waterColumnConfig() });
     completeSimulationLaunchStage('resolveCurrentSource');
     if (this.currentField4D) setSimulationLaunchCurrentField(this.currentField4D);
+    const samplerCreateCountBefore = getOceanCurrentSamplerRuntimeCounters().samplerCreateCount;
     this.currentSampler = this.currentField4D ? getOceanCurrentSampler(this.currentField4D, { interpolation: 'linear4d' }) : null;
-    if (this.currentSampler) incrementSimulationLaunchCounter('currentSamplerCreateCount');
+    const samplerCreateCountAfter = getOceanCurrentSamplerRuntimeCounters().samplerCreateCount;
+    const samplerCreateDelta = Math.max(0, samplerCreateCountAfter - samplerCreateCountBefore);
+    if (samplerCreateDelta > 0) incrementSimulationLaunchCounter('currentSamplerCreateCount', samplerCreateDelta);
     this.lastVolumetricRoiSample = null;
   }
 

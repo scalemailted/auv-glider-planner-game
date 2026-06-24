@@ -29,6 +29,7 @@ async function evaluateTimelineBinding(page) {
   await page.goto(BASE + '/');
   return page.evaluate(async () => {
     const { createNormalGeneratedCurrentScenario, buildNormalGeneratedCurrentViewModel } = await import('./tools/js/flow_r2a4_production_helpers.mjs');
+    const { currentSecondsToPlanningTimelineTime } = await import('./src/core/time/PlanningTimelineTimeBridge.js');
     const { currentPresentationCacheSignature, currentSourceTimeFrameSignature } = await import('./src/core/rendering/CurrentPresentationState.js');
     const { createThreeInstancedCurrentGlyphLayer, updateThreeInstancedCurrentGlyphLayer, threeInstancedCurrentGlyphLayerSummary } = await import('./src/game/three/layers/ThreeInstancedCurrentGlyphLayer.js');
 
@@ -37,7 +38,7 @@ async function evaluateTimelineBinding(page) {
     fixture.state.ui.waterColumn.showContextCurrents = true;
     fixture.state.ui.waterColumn.currentVectorDensity = 'balanced';
     const vmAt = (timeSeconds) => {
-      fixture.state.planningTime = timeSeconds;
+      fixture.state.planningTime = currentSecondsToPlanningTimelineTime(fixture.level, timeSeconds, { phase: 'planning' });
       return buildNormalGeneratedCurrentViewModel({ fixture }).viewModel;
     };
     const times = vmAt(0).waterColumnExplorer.currentCube.timeAxisSeconds;
@@ -120,6 +121,7 @@ test(EXACT_TITLES[2], async ({ page }) => {
   await page.waitForLoadState('networkidle');
   const setup = await page.evaluate(async () => {
     const { createNormalGeneratedCurrentScenario, buildNormalGeneratedCurrentViewModel } = await import('./tools/js/flow_r2a4_production_helpers.mjs');
+    const { currentSecondsToPlanningTimelineTime } = await import('./src/core/time/PlanningTimelineTimeBridge.js');
     const { createThreeMissionWorldRenderer, updateThreeMissionWorldRenderer, setThreeMissionWorldCamera } = await import('./src/game/three/ThreeMissionWorldRenderer.js');
     const fixture = createNormalGeneratedCurrentScenario({ seed: 'flow-r2a5-2-pixel-evidence' });
     fixture.state.ui.waterColumn.currentDisplayMode = 'stackedDepthField';
@@ -131,7 +133,7 @@ test(EXACT_TITLES[2], async ({ page }) => {
     host.style.cssText = 'position:fixed;left:24px;top:24px;width:760px;height:520px;background:#06111f;z-index:9999;border:1px solid #5eead4;';
     document.body.appendChild(host);
     const vmAt = (timeSeconds) => {
-      fixture.state.planningTime = timeSeconds;
+      fixture.state.planningTime = currentSecondsToPlanningTimelineTime(fixture.level, timeSeconds, { phase: 'planning' });
       const vm = buildNormalGeneratedCurrentViewModel({ fixture }).viewModel;
       vm.presentationDirtyCategories = ['currentVectors', 'waterColumn'];
       return vm;

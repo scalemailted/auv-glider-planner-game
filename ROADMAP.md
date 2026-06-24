@@ -479,3 +479,12 @@ Do not treat FLOW-R2B as ready unless normal production vectors differ by depth,
 - WEBGPU-GEN-R1: Optional WebGPU generation backend.
 
 BATHY-PKG-R1 is an extraction phase, not a scientific retuning phase. The package owns canonical bathymetry contracts and pure scientific helpers. The application owns UI, scene lifecycle, and visualization.
+
+## Current Extraction Sequence
+
+- FLOW-PKG-R1: 4D current contracts, artifact, sampler, metadata, and diagnostics extraction.
+- FLOW-PKG-R1.1: Production boot readiness and grouped E2E closure.
+- FLOW-PKG-R2: Production current generator and component composition extraction.
+- PROCESS-PKG-R1: Temporal scalar/science-process extraction.
+- ENV-PKG-R1: Canonical environment composition.
+- SIM-PKG-R1: Mission simulator environment-consumer boundary.
