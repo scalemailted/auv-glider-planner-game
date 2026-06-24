@@ -18,7 +18,7 @@ Version 2 is a playable static-web game built with vanilla JavaScript, HTML, CSS
 - full-viewport Main Menu / Product Hub with three primary cards: Challenge Mode, Simulation Lab, and Learning Labs
 - static Learning Labs concept pages, including a syllabus-style index, Scientific Computational Modeling foundation article, CA for Ocean-Relevant Processes foundation article, deterministic-process article, deterministic dynamic flow-fields article, oracle deterministic coupled sampling-space article, stochastic uncertainty article, stochastic coupled sampling-space article, Sampling Priority to Glider Action Value bridge article, and Planner / Mission Evaluation article
 - Simulation Lab field demos with Flow Fields Demo for current arrows, Process Lab for deterministic spatiotemporal process examples, Uncertainty / Forecast Demo for belief-state teaching, Sampling Priority Demo for global acquisition / sampling usefulness, Flow-Coupled Sampling Demo for glider-specific direct-target action value, Motion Planning Demo for planned-vs-realized trajectory inspection, Renderer Architecture Preview for renderer-boundary diagnostics, and Benchmark Modes for Planner / Adaptive / Full Autonomy architecture contracts plus route-execution adapter contracts
-- game-first mission planning workspace with a production Three.js bathymetric mission world, visible Planning Tools, standard left-drag pan / right-drag orbit / wheel-zoom controls, transaction-backed Execute -> Simulation launch, HTML/CSS mission-control overlays, top selected-glider planning HUD, bottom mission-time slider, waypoint drawer/table, and non-executable planning markers
+- game-first mission planning workspace with a production Three.js bathymetric mission world, visible Planning Tools, standard left-drag pan / right-drag orbit / wheel-zoom controls, transaction-backed Execute -> Simulation launch, HTML/CSS mission-control overlays, top selected-glider planning HUD, bottom mission-time slider, contextual right-panel incoming-segment flight-profile editor, waypoint drawer/table, and non-executable planning markers
 - transitional Phaser 3 scene shell with Main Menu, Mission Briefing, Mission Workspace, Simulation, Debrief, Environment Editor, Dataset Export, and lab/preview scenes; the legacy Phaser tactical mission renderer is developer-only behind `?legacyPhaser=1`
 - fourteen staged tutorial lessons built from handcrafted tutorial scenarios
 - guided tutorial prompts in the Planning scene
@@ -141,6 +141,9 @@ Quick loop:
 - [Three.js Volumetric Water Column](docs/threejs_volumetric_water_column.md)
 - [Manual Three.js Water Column Checklist](docs/manual_threejs_water_column_checklist.md)
 - [Three.js Planning Tools and Camera Controls](docs/threejs_planning_tools_and_camera.md)
+- [Right Panel Route Instruction Editor](docs/right_panel_route_instruction_editor.md)
+- [Incoming Segment Flight Profile UX](docs/incoming_segment_flight_profile_ux.md)
+- [DIVE-UX-R1 Visual Acceptance](docs/dive_ux_r1_visual_acceptance.md)
 - [Solver workflow](docs/solver_workflow.md)
 - [Export formats](docs/export_formats.md)
 - [Plan format](docs/plan_format.md)

@@ -39,6 +39,14 @@ import {
   getAgentPlan
 } from '../../../core/planning/WaypointPlan.js';
 import {
+  applySegmentFlightPlanToRemaining,
+  createSegmentFlightPlanDraft,
+  resetSegmentFlightPlan as resetSegmentFlightPlanCommand,
+  setGliderDefaultFlightPlan,
+  updateSegmentFlightPlan,
+  updateSegmentFlightPlanDraft
+} from '../../../core/planning/SegmentFlightPlanCommands.js';
+import {
   clampMissionTime,
   getPlanningWindowCount,
   getTimelineFrameTime,
@@ -127,6 +135,10 @@ import {
   missionWorldRenderViewModelSummary,
   validateMissionWorldRenderViewModel
 } from '../../../core/rendering/MissionWorldRenderViewModel.js';
+import {
+  buildRightWaypointSegmentEditorViewModel,
+  rightWaypointSegmentEditorDebugPayload
+} from '../../../core/rendering/RightWaypointSegmentEditorViewModel.js';
 import {
   createThreeMissionWorldRenderer,
   updateThreeMissionWorldRenderer,
@@ -588,7 +600,14 @@ export class MissionWorkspaceScene extends PhaserScene {
       changeStart: (agentId) => this.promptStartChange(agentId),
       convertMarker: (agentId, index) => this.convertMarkerFromPanel(agentId, index),
       deleteMarker: (agentId, index) => this.deleteMarkerFromPanel(agentId, index),
-      focusMarker: (agentId, index) => this.focusMarkerTime(index)
+      focusMarker: (agentId, index) => this.focusMarkerTime(index),
+      focusWaypoint: (agentId, index) => this.focusWaypointFromPanel(agentId, index),
+      updateSegmentDraft: (agentId, index, patch) => this.updateSelectedSegmentFlightPlanDraft(agentId, index, patch),
+      applySegmentDraft: (agentId, index) => this.applySelectedSegmentFlightPlanDraft(agentId, index),
+      cancelSegmentDraft: (agentId, index) => this.cancelSelectedSegmentFlightPlanDraft(agentId, index),
+      resetSegmentDraft: (agentId, index) => this.resetSelectedSegmentFlightPlanDraft(agentId, index),
+      applySegmentDraftToRemaining: (agentId, index) => this.applySelectedSegmentFlightPlanDraftToRemaining(agentId, index),
+      setGliderDefaultSegmentDraft: (agentId, index) => this.setSelectedSegmentFlightPlanAsGliderDefault(agentId, index)
     });
     this.app.agentPerformanceHud?.setHandlers({
       selectAgent: (agentId) => this.selectGlider(agentId)
@@ -1823,21 +1842,26 @@ export class MissionWorkspaceScene extends PhaserScene {
 
   applyWaterColumnProfileToRemainingSegments() {
     const agentId = this.app.state.selectedAgentId;
-    if (!agentId || !this.app.state.plan) return;
-    const agentPlan = getAgentPlan(this.app.state.plan, agentId);
+    if (!agentId || !this.app.state.plan) return null;
     const selected = this.app.state.ui?.selectedWaypoint;
     const selectedIndex = selected?.agentId === agentId && Number.isInteger(Number(selected.index))
       ? Number(selected.index)
       : 0;
     const ui = this.ensureWaterColumnUiState();
     const patch = this.currentWaterColumnPlanPatch(ui);
-    for (let index = Math.max(0, selectedIndex); index < (agentPlan.waypoints ?? []).length; index += 1) {
-      updateWaypoint(this.app.state.plan, agentId, index, patch);
-    }
+    const result = applySegmentFlightPlanToRemaining(this.app.state.plan, {
+      agentId,
+      waypointIndex: selectedIndex,
+      patch,
+      level: this.app.state.level,
+      mission: this.app.state.mission
+    });
+    this.recordSegmentFlightPlanCommand(result);
     this.afterPlanChanged(agentId, { selectedIndex });
     this.markManualPlan();
     this.refreshPanels();
     this.refreshMap();
+    return result;
   }
 
   currentWaterColumnPlanPatch(ui = this.ensureWaterColumnUiState()) {
@@ -1858,24 +1882,41 @@ export class MissionWorkspaceScene extends PhaserScene {
 
   applyWaterColumnPlanMetadata(patch = {}, options = {}) {
     const agentId = this.app.state.selectedAgentId;
-    if (!agentId || !this.app.state.plan) return;
+    if (!agentId || !this.app.state.plan) return null;
     const selected = this.app.state.ui?.selectedWaypoint;
     let selectedIndex = null;
     const agentPlan = getAgentPlan(this.app.state.plan, agentId);
     const scope = options.scope ?? 'selectedSegment';
+    let result = null;
     if (scope === 'gliderDefault') {
-      Object.assign(agentPlan, patch);
+      result = setGliderDefaultFlightPlan(this.app.state.plan, { agentId, patch, level: this.app.state.level, mission: this.app.state.mission });
     } else if (selected?.agentId === agentId && Number.isInteger(Number(selected.index))) {
       selectedIndex = Number(selected.index);
-      updateWaypoint(this.app.state.plan, agentId, selectedIndex, patch);
+      result = updateSegmentFlightPlan(this.app.state.plan, {
+        agentId,
+        waypointIndex: selectedIndex,
+        patch,
+        level: this.app.state.level,
+        mission: this.app.state.mission
+      });
       this.app.state.ui.selectedWaypoint = { agentId, index: selectedIndex };
+      this.app.state.ui.selectedSegmentFlightPlanDraft = createSegmentFlightPlanDraft(this.app.state.plan, {
+        agentId,
+        waypointIndex: selectedIndex,
+        waypointId: result?.waypointId,
+        level: this.app.state.level,
+        mission: this.app.state.mission
+      });
     } else {
       Object.assign(agentPlan, patch);
+      result = { command: 'updateGliderFallbackFlightPlan', status: 'applied', changed: true, waypointId: null, waypointIndex: null };
     }
+    this.recordSegmentFlightPlanCommand(result ?? {});
     this.afterPlanChanged(agentId, { selectedIndex });
     this.markManualPlan();
     this.refreshPanels();
     this.refreshMap();
+    return result;
   }
 
   ensureThreeMissionContainer() {
@@ -2281,12 +2322,18 @@ export class MissionWorkspaceScene extends PhaserScene {
       cameraPresetId: this.app.state.ui?.threeMissionCameraPreset ?? null,
       lifecycleCleanupErrorCount: Number(this.cleanupErrorCount ?? 0)
     });
-    const segmentFlightPlanDebug = segmentFlightPlanDebugPayload(viewModel ?? {}, plannedDiveDebug, selectedAgentIdForDebug);
+    const rightSegmentEditorViewModel = buildRightWaypointSegmentEditorViewModel({ state: this.app.state, agentId: selectedAgentIdForDebug });
+    const rightSegmentEditorDebug = rightWaypointSegmentEditorDebugPayload(rightSegmentEditorViewModel, this.segmentFlightPlanCommandState ?? {});
+    const segmentFlightPlanDebug = {
+      ...segmentFlightPlanDebugPayload(viewModel ?? {}, plannedDiveDebug, selectedAgentIdForDebug),
+      ...rightSegmentEditorDebug
+    };
     const waterColumnExplorerDebug = waterColumnExplorerDebugPayload(viewModel ?? {}, rendererSummary, waterColumnDebug);
     const volumetricCurrentDebug = volumetricCurrentDebugPayload(viewModel ?? {}, rendererSummary, { terrainDigest: rendererSummary?.terrainSourceDigest ?? null });
     globalThis.ANCHOR_WATER_COLUMN_RENDER_DEBUG = waterColumnDebug;
     globalThis.ANCHOR_DIVE_PLAN_DEBUG = plannedDiveDebug;
     globalThis.ANCHOR_SEGMENT_FLIGHT_PLAN_DEBUG = segmentFlightPlanDebug;
+    globalThis.ANCHOR_ROUTE_INSTRUCTION_UI_DEBUG = rightSegmentEditorDebug;
     globalThis.ANCHOR_WATER_COLUMN_EXPLORER_DEBUG = {
       ...waterColumnExplorerDebug,
       currentSourceDigest: volumetricCurrentDebug.currentSourceDigest,
@@ -3112,9 +3159,164 @@ export class MissionWorkspaceScene extends PhaserScene {
     this.app.state.selectedAgentId = agentId;
     this.app.state.ui.selectedWaypoint = { agentId, index };
     this.app.state.ui.selectedMarker = null;
+    this.ensureSelectedSegmentFlightPlanDraft(agentId, index);
     this.afterPlanChanged(agentId, { selectedIndex: index });
     this.refreshPanels();
     this.refreshMap();
+  }
+
+  focusWaypointFromPanel(agentId, index) {
+    this.selectWaypoint(agentId, index);
+    this.setThreeCameraPreset?.('selectedSegmentDive');
+  }
+
+  ensureSelectedSegmentFlightPlanDraft(agentId = this.app.state.selectedAgentId, index = null) {
+    if (!this.app.state?.plan || !agentId || index == null) return null;
+    this.app.state.ui ??= {};
+    const agentPlan = getAgentPlan(this.app.state.plan, agentId);
+    const waypoint = agentPlan?.waypoints?.[Number(index)];
+    const existing = this.app.state.ui.selectedSegmentFlightPlanDraft;
+    if (existing?.agentId === agentId && existing?.waypointId === waypoint?.id && existing?.dirty !== true) return existing;
+    if (existing?.agentId === agentId && existing?.waypointId === waypoint?.id && existing?.dirty === true) return existing;
+    const draft = createSegmentFlightPlanDraft(this.app.state.plan, {
+      agentId,
+      waypointIndex: Number(index),
+      waypointId: waypoint?.id,
+      level: this.app.state.level,
+      mission: this.app.state.mission
+    });
+    this.app.state.ui.selectedSegmentFlightPlanDraft = draft;
+    return draft;
+  }
+
+  updateSelectedSegmentFlightPlanDraft(agentId, index, patch = {}) {
+    const draft = this.ensureSelectedSegmentFlightPlanDraft(agentId, index);
+    if (!draft) return null;
+    this.app.state.ui.selectedSegmentFlightPlanDraft = updateSegmentFlightPlanDraft(draft, patch, {
+      level: this.app.state.level,
+      mission: this.app.state.mission
+    });
+    this.publishSegmentFlightPlanEditorDebug();
+    this.refreshPanels();
+    return this.app.state.ui.selectedSegmentFlightPlanDraft;
+  }
+
+  applySelectedSegmentFlightPlanDraft(agentId, index) {
+    const draft = this.ensureSelectedSegmentFlightPlanDraft(agentId, index);
+    const result = updateSegmentFlightPlan(this.app.state.plan, {
+      agentId,
+      waypointIndex: Number(index),
+      waypointId: draft?.waypointId,
+      patch: draft?.patch ?? {},
+      level: this.app.state.level,
+      mission: this.app.state.mission
+    });
+    this.recordSegmentFlightPlanCommand(result);
+    if (result.status === 'applied') {
+      this.app.state.ui.selectedSegmentFlightPlanDraft = createSegmentFlightPlanDraft(this.app.state.plan, {
+        agentId,
+        waypointIndex: Number(index),
+        waypointId: result.waypointId,
+        level: this.app.state.level,
+        mission: this.app.state.mission
+      });
+      this.afterPlanChanged(agentId, { selectedIndex: Number(index) });
+      this.markManualPlan();
+      this.refreshMap();
+    } else {
+      this.app.toast?.(result.reason ?? 'Segment profile was not applied.', 'warning');
+    }
+    this.refreshPanels();
+    return result;
+  }
+
+  cancelSelectedSegmentFlightPlanDraft(agentId, index) {
+    this.app.state.ui ??= {};
+    const agentPlan = getAgentPlan(this.app.state.plan, agentId);
+    const waypoint = agentPlan?.waypoints?.[Number(index)];
+    this.app.state.ui.selectedSegmentFlightPlanDraft = createSegmentFlightPlanDraft(this.app.state.plan, {
+      agentId,
+      waypointIndex: Number(index),
+      waypointId: waypoint?.id,
+      level: this.app.state.level,
+      mission: this.app.state.mission
+    });
+    this.recordSegmentFlightPlanCommand({ command: 'cancelSegmentFlightPlanDraft', status: 'applied', changed: false, waypointId: waypoint?.id, waypointIndex: Number(index) });
+    this.refreshPanels();
+    return this.app.state.ui.selectedSegmentFlightPlanDraft;
+  }
+
+  resetSelectedSegmentFlightPlanDraft(agentId, index) {
+    const result = resetSegmentFlightPlanCommand(this.app.state.plan, {
+      agentId,
+      waypointIndex: Number(index),
+      level: this.app.state.level,
+      mission: this.app.state.mission
+    });
+    this.recordSegmentFlightPlanCommand(result);
+    this.app.state.ui.selectedSegmentFlightPlanDraft = createSegmentFlightPlanDraft(this.app.state.plan, {
+      agentId,
+      waypointIndex: Number(index),
+      waypointId: result.waypointId,
+      level: this.app.state.level,
+      mission: this.app.state.mission
+    });
+    this.afterPlanChanged(agentId, { selectedIndex: Number(index) });
+    this.markManualPlan();
+    this.refreshPanels();
+    this.refreshMap();
+    return result;
+  }
+
+  applySelectedSegmentFlightPlanDraftToRemaining(agentId, index) {
+    const draft = this.ensureSelectedSegmentFlightPlanDraft(agentId, index);
+    const result = applySegmentFlightPlanToRemaining(this.app.state.plan, {
+      agentId,
+      waypointIndex: Number(index),
+      waypointId: draft?.waypointId,
+      patch: draft?.patch ?? {},
+      level: this.app.state.level,
+      mission: this.app.state.mission
+    });
+    this.recordSegmentFlightPlanCommand(result);
+    this.afterPlanChanged(agentId, { selectedIndex: Number(index) });
+    this.markManualPlan();
+    this.refreshPanels();
+    this.refreshMap();
+    return result;
+  }
+
+  setSelectedSegmentFlightPlanAsGliderDefault(agentId, index) {
+    const draft = this.ensureSelectedSegmentFlightPlanDraft(agentId, index);
+    const result = setGliderDefaultFlightPlan(this.app.state.plan, {
+      agentId,
+      patch: draft?.patch ?? {},
+      level: this.app.state.level,
+      mission: this.app.state.mission
+    });
+    this.recordSegmentFlightPlanCommand(result);
+    this.markManualPlan();
+    this.refreshPanels();
+    this.refreshMap();
+    return result;
+  }
+
+  recordSegmentFlightPlanCommand(result = {}) {
+    this.segmentFlightPlanCommandState ??= { lastCommand: null, commandDispatchCount: 0, duplicateDispatchCount: 0, lastSignature: null };
+    const signature = stableDigestForScene({ command: result.command, waypointId: result.waypointId, patch: result.patch, status: result.status, changed: result.changed });
+    if (this.segmentFlightPlanCommandState.lastSignature === signature) this.segmentFlightPlanCommandState.duplicateDispatchCount += 1;
+    this.segmentFlightPlanCommandState.lastSignature = signature;
+    this.segmentFlightPlanCommandState.commandDispatchCount += 1;
+    this.segmentFlightPlanCommandState.lastCommand = result;
+    this.publishSegmentFlightPlanEditorDebug();
+  }
+
+  publishSegmentFlightPlanEditorDebug() {
+    if (!this.app.state?.level || !this.app.state?.mission || !this.app.state?.plan) return null;
+    const viewModel = buildRightWaypointSegmentEditorViewModel({ state: this.app.state, agentId: this.app.state.selectedAgentId });
+    const debug = rightWaypointSegmentEditorDebugPayload(viewModel, this.segmentFlightPlanCommandState ?? {});
+    globalThis.ANCHOR_ROUTE_INSTRUCTION_UI_DEBUG = debug;
+    return debug;
   }
 
   removeWaypointFromPanel(agentId, index) {

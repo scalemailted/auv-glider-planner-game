@@ -1445,3 +1445,67 @@
 .mission-planning-tool-status {
   margin-top: .55rem;
 }
+.segment-profile-editor {
+  display: grid;
+  gap: .55rem;
+  margin: 0 .58rem .58rem 2.68rem;
+  padding: .65rem;
+  border-radius: 8px;
+  border: 1px solid rgba(141, 220, 242, 0.18);
+  background: rgba(6, 17, 31, 0.46);
+}
+.segment-profile-editor h3 {
+  margin: .15rem 0 0;
+  font-size: .78rem;
+  color: var(--text);
+}
+.segment-editor-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(9.5rem, 1fr));
+  gap: .45rem;
+}
+.segment-editor-grid label {
+  display: grid;
+  gap: .18rem;
+  color: var(--muted);
+  font-size: .68rem;
+  font-weight: 800;
+}
+.segment-editor-grid select,
+.segment-editor-grid input {
+  width: 100%;
+  min-width: 0;
+  color: var(--text);
+  background: rgba(255,255,255,0.06);
+  border: 1px solid rgba(141,220,242,0.2);
+  border-radius: 6px;
+  padding: .28rem .36rem;
+  font-size: .72rem;
+}
+.segment-profile-editor details {
+  color: var(--muted);
+}
+.segment-profile-editor summary {
+  cursor: pointer;
+  color: var(--text);
+  font-size: .76rem;
+  font-weight: 800;
+}
+.segment-profile-editor .waypoint-summary {
+  flex-wrap: wrap;
+  justify-content: flex-start;
+}
+.segment-profile-editor .waypoint-row-actions {
+  padding: 0;
+  flex-wrap: wrap;
+}
+.segment-profile-editor .marker-warning {
+  font-size: .72rem;
+  color: var(--warning);
+}
+.segment-profile-editor .marker-warning.error {
+  color: var(--danger);
+}
+.segment-profile-editor .marker-warning.advisory {
+  color: var(--muted);
+}

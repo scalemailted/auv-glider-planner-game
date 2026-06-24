@@ -26,6 +26,13 @@ The current app supports tutorials, deterministic and stochastic generated chall
 
 WORLD-R1 adds a multiscale regional world-model contract ahead of further renderer/runtime migration. The core now has `operationalDomain`, `resolutionProfile`, physical-coordinate conversion, multiresolution field sampling, physical route-scale estimates, and deterministic synthetic regional shelf/fleet defaults. It preserves legacy grid compatibility and does not add a planner, change scoring, switch runtime, remove Phaser, add real data, or claim calibrated ocean forecasts.
 
+
+### DIVE-UX-R1 - Contextual Right-Panel Incoming-Segment Flight Profile Editor
+
+- Added a contextual selected-waypoint card editor in the right Mission Waypoints panel for incoming route-segment flight profiles.
+- Preserved the waypoint-as-horizontal-destination rule: W1 edits Selected Start -> W1, W2 edits W1 -> W2, and profile metadata remains core-owned through the existing segment flight-plan contract.
+- Added transactional draft, Apply, Cancel, Reset, Apply Remaining, and Set Glider Default command paths plus compact debug state under `globalThis.ANCHOR_SEGMENT_FLIGHT_PLAN_DEBUG`.
+- Preserved the boundary: no dive-physics changes, no constant-depth hovering, no scoring change, no route optimizer, no terrain/current generation change, and no renderer-owned planning state.
 ### THREE-R1.2A.3.1 - Continuous Mission UI Runtime Stabilization
 
 - Added a normalized continuous Mission UI state contract for waypoint snap mode, field sampling, volume render mode, active depth layer, dive profile, target layer, warnings, and renderer-boundary flags.

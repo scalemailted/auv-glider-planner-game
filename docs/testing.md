@@ -1183,3 +1183,28 @@ These gates verify the V2 compatibility backend, the V3 mixed-regional backend, 
 ## Production Readiness Tests
 
 Browser tests should wait for production readiness before route selectors. Use `waitForAnchorAppReady(page, { routeId: 'main-menu' })` or `waitForAnchorRoute(page, 'main-menu')` from `tests/e2e/helpers/AnchorRuntimeReadyHarness.js`. Route selectors such as `#main-menu-hub` are checked after readiness. Increasing a timeout is not a substitute for locating the failed boot stage; failures should report the boot debug snapshot, page errors, failed requests, and route state.
+
+## DIVE-UX-R1 Contextual Segment Editor Checks
+
+DIVE-UX-R1 makes the right Mission Waypoints panel the contextual editor for incoming route-segment flight profiles. Focused checks:
+
+```bash
+node tools/js/smoke_right_waypoint_segment_editor_view_model.mjs
+node tools/js/smoke_right_waypoint_incoming_segment_identity.mjs
+node tools/js/smoke_segment_profile_draft_transaction.mjs
+node tools/js/smoke_segment_profile_apply_command.mjs
+node tools/js/smoke_segment_profile_cancel.mjs
+node tools/js/smoke_segment_profile_apply_remaining.mjs
+node tools/js/smoke_segment_profile_glider_default.mjs
+node tools/js/smoke_segment_profile_reorder_identity.mjs
+node tools/js/smoke_segment_profile_export_roundtrip.mjs
+node tools/js/smoke_segment_profile_launch_parity.mjs
+node tools/js/audit_single_segment_profile_editor_authority.mjs
+node tools/js/audit_no_direct_plan_mutation_from_right_panel.mjs
+node tools/js/audit_segment_profile_identity_stability.mjs
+node tools/js/audit_segment_profile_ui_schema_parity.mjs
+node tools/js/audit_right_panel_event_binding.mjs
+node tools/js/audit_segment_profile_export_ownership.mjs
+```
+
+These checks verify W1 maps to Selected Start -> W1, W2 maps to W1 -> W2, draft edits do not mutate canonical plan/export state until Apply, Apply mutates exactly the intended incoming segment, Apply Remaining is selected-glider-only, reorder metadata follows the destination waypoint, export/import preserves committed metadata, and launch snapshots receive committed metadata only.

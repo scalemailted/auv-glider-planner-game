@@ -46,6 +46,13 @@ assert(continuousUiState.includes('rendererOwnsScoring: false'), 'Continuous UI 
 assert(continuousUiState.includes('usesArbitraryXYZRoutePlanning: false'), 'Continuous UI contract must deny arbitrary XYZ planning');
 assert(continuousUiState.includes('qualityProfile'), 'Continuous UI contract must carry render quality as presentation state');
 assert(continuousUiState.includes('fieldDisplayMode'), 'Continuous UI contract must carry active/all-layer field display mode');
+const rightWaypointPanel = fs.readFileSync('src/ui/RightWaypointPanel.js', 'utf8');
+const segmentCommands = fs.readFileSync('src/core/planning/SegmentFlightPlanCommands.js', 'utf8');
+assert(rightWaypointPanel.includes('Draft changes are excluded from export, scoring, and Execute until Apply.'), 'DIVE-UX-R1 UI must state draft exclusion from Execute/export/scoring');
+assert(!/selectedSegmentFlightPlanDraft/.test(segmentCommands), 'canonical segment command module must not depend on UI draft state');
+assert(missionWorkspaceScene.includes('ANCHOR_SEGMENT_FLIGHT_PLAN_DEBUG'), 'Planning scene must publish DIVE-UX-R1 segment flight plan debug');
+assert(missionWorkspaceScene.includes('selectedSegmentFlightPlanDraft'), 'Planning scene owns transient DIVE-UX-R1 draft state');
+assert(missionWorkspaceScene.includes('updateSegmentFlightPlan'), 'Planning scene applies DIVE-UX-R1 edits through canonical command');
 const currentGlyphLayer = fs.readFileSync('src/game/three/layers/ThreeInstancedCurrentGlyphLayer.js', 'utf8');
 assert(/rendererOwnsCurrent:\s*false/.test(currentGlyphLayer), 'Current glyph layer must not own current authority');
 assert(/changesOfficialScoring:\s*false/.test(currentGlyphLayer), 'Current glyph layer must not change scoring');

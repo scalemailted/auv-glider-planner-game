@@ -1397,6 +1397,50 @@ assert.equal(flowPkgR2Summary.displayChangesVerticalStructure, false, 'FLOW-PKG-
 assert.equal(flowPkgR2Summary.depthLayerDigestCount > 1, true, 'FLOW-PKG-R2 V3 depth layers are not byte-identical copies');
 assert.equal(flowPkgR2Summary.materiallyDistinctColumnFraction >= 0.5, true, 'FLOW-PKG-R2 V3 exposes material depth structure');
 
+const [diveUxCommandModule, diveUxViewModelModule, diveUxFixtureModule] = await Promise.all([
+  import('../../src/core/planning/SegmentFlightPlanCommands.js'),
+  import('../../src/core/rendering/RightWaypointSegmentEditorViewModel.js'),
+  import('./dive_ux_r1_test_fixture.mjs')
+]);
+const diveUxFixture = diveUxFixtureModule.createDiveUxR1Fixture();
+const diveUxState = {
+  level: diveUxFixture.level,
+  mission: diveUxFixture.mission,
+  plan: diveUxFixtureModule.clone(diveUxFixture.plan),
+  selectedAgentId: 'glider-1',
+  ui: { selectedWaypoint: { agentId: 'glider-1', index: 1 } }
+};
+diveUxState.ui.selectedSegmentFlightPlanDraft = diveUxCommandModule.createSegmentFlightPlanDraft(diveUxState.plan, {
+  level: diveUxState.level,
+  mission: diveUxState.mission,
+  agentId: 'glider-1',
+  waypointIndex: 1,
+  waypointId: 'wp-2'
+});
+const diveUxViewModel = diveUxViewModelModule.buildRightWaypointSegmentEditorViewModel({ state: diveUxState, agentId: 'glider-1' });
+assert.equal(diveUxViewModel.selectedSegmentLabel, 'W1 -> W2', 'DIVE-UX-R1 W2 maps to incoming W1 -> W2 segment');
+assert.equal(diveUxViewModel.uiOwnsFlightPlan, false, 'DIVE-UX-R1 right panel does not own canonical flight plan');
+const diveUxBeforeDigest = diveUxFixtureModule.digest(diveUxState.plan);
+diveUxState.ui.selectedSegmentFlightPlanDraft = diveUxCommandModule.updateSegmentFlightPlanDraft(
+  diveUxState.ui.selectedSegmentFlightPlanDraft,
+  { diveProfileId: 'deepDive', targetDepthLayerId: 'deep' },
+  { level: diveUxState.level, mission: diveUxState.mission }
+);
+assert.equal(diveUxState.ui.selectedSegmentFlightPlanDraft.dirty, true, 'DIVE-UX-R1 draft becomes dirty after profile edit');
+assert.equal(diveUxFixtureModule.digest(diveUxState.plan), diveUxBeforeDigest, 'DIVE-UX-R1 draft does not mutate canonical plan before Apply');
+const diveUxApplyResult = diveUxCommandModule.updateSegmentFlightPlan(diveUxState.plan, {
+  level: diveUxState.level,
+  mission: diveUxState.mission,
+  agentId: 'glider-1',
+  waypointIndex: 1,
+  waypointId: 'wp-2',
+  patch: diveUxState.ui.selectedSegmentFlightPlanDraft.patch
+});
+assert.equal(diveUxApplyResult.status, 'applied', 'DIVE-UX-R1 Apply commits through canonical command');
+assert.equal(diveUxCommandModule.findIncomingSegment(diveUxState.plan, { level: diveUxState.level, mission: diveUxState.mission, agentId: 'glider-1', waypointId: 'wp-2' }).flightProfile.profileId, 'deepDive', 'DIVE-UX-R1 committed W2 incoming segment profile updates');
+const diveUxRightPanelSource = fs.readFileSync('src/ui/RightWaypointPanel.js', 'utf8');
+assert.ok(diveUxRightPanelSource.includes('data-agent-tab'), 'DIVE-UX-R1 right-panel agent tabs use dedicated binding selector');
+assert.equal(diveUxRightPanelSource.includes("querySelectorAll('[data-agent]')"), false, 'DIVE-UX-R1 right panel must not bind agent selection to segment controls');
 const bootReadinessModule = await import('../../src/app/production/AnchorAppBootReadiness.js');
 assert.equal(bootReadinessModule.ANCHOR_APP_BOOT_READINESS_VERSION, 'flow-pkg-r1-1-app-boot-readiness', 'FLOW-PKG-R1.1 boot readiness contract imports');
 console.log('Model stack integration smoke passed');

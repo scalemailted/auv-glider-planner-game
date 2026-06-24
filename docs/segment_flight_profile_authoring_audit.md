@@ -103,3 +103,7 @@ Focused browser tests live in tests/e2e/dive_r1_1_segment_profiles.spec.js.
 ## Remaining Manual QA
 
 The full headed owner walkthrough remains manual. Verify that the waypoint panel copy says segment profile, idle gliders remain idle, water-column layer displays change without changing canonical results, and the selected routed glider's actual observations record actual depth, resolved layer, and sampled scalar value.
+
+## DIVE-UX-R1 Addendum
+
+DIVE-UX-R1 keeps the DIVE-R1.1 stable-target metadata policy and moves normal selected-segment authoring into the right waypoint card. Canonical commits go through `SegmentFlightPlanCommands.js`; the right panel renders draft state and dispatches handlers only. The legacy left-panel water-column controls remain as compatibility controls during E2E migration and should not be treated as a second canonical state.

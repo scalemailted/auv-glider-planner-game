@@ -49,3 +49,7 @@ Surface waypoints remain executable horizontal navigation/surfacing anchors. Sam
 ## THREE-R1.2C Validation Note
 
 Surface waypoint placement uses continuous x/y validation before commit. Invalid surface waypoint candidates must not mutate the canonical plan. Sampling targets remain non-executable objectives and are validated against land/seabed volume samples and attached-route reachability.
+
+## DIVE-UX-R1 Destination Card Editor
+
+The destination waypoint card may contain controls for the incoming segment's flight profile, but the waypoint is still a horizontal executable navigation target. The card is an editing surface for route-instruction metadata, not an underwater waypoint or arbitrary z-plane command.

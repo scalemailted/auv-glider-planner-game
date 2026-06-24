@@ -76,3 +76,7 @@ Launch payloads may include a frozen terrain-aware validation report and summary
 ## FLOW-R2A Actual-Depth Currents
 
 Glider drift current sampling now routes through the 4D current sampler with actual x/y/depth/time. Vertical exaggeration and visible current layer selection cannot change canonical current sampling.
+
+## DIVE-UX-R1 Right-Panel Segment Authoring
+
+The right Mission Waypoints panel now hosts the contextual incoming-segment flight-profile editor. The destination card edits the flight profile for the segment that reaches that destination, while canonical planning/core remains the owner of metadata, validation, prediction, simulation, scoring, and export semantics. W1 edits Selected Start -> W1; W2 edits W1 -> W2. Draft values are UI-only until Apply.
