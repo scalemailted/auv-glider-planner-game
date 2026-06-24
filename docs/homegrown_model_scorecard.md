@@ -31,3 +31,7 @@ Use these phrases when describing current generated fields:
 2. Extract current contracts into `packages/currents` with the SCI-VALID-R1 manufactured current scripts as package gates.
 3. Extract scalar-process contracts after current package ownership is stable.
 4. Add explicit benchmark fixture metadata that distinguishes manufactured, synthetic, externally referenced, and calibrated sources.
+
+## FLOW-PKG-R1 Current Package Note
+
+packages/currents now owns pure 4D current contracts, artifacts, source metadata, sampler behavior, temporal boundaries, and scientific diagnostics. The package remains browser-safe, Node-safe, Worker-safe, and independent of src/, Three.js, Phaser, DOM, and UI lifecycle. Synthetic current claims remain bounded to deterministic benchmark fixtures, not calibrated ocean forecasts.

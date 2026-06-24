@@ -6,7 +6,7 @@ import { isPointNavigable } from '../planning/Navigability.js';
 import { sampleCurrentVector } from '../currents/CurrentFieldSampler.js';
 import { getSyntheticCurrentCubeFromMissionWorld } from '../science/SyntheticCurrentCubeAdapter.js';
 import { getOceanCurrentSampler } from '../science/OceanCurrentFieldSampler.js';
-import { markSimulationLaunchStage, completeSimulationLaunchStage } from '../runtime/SimulationLaunchProfiler.js';
+import { markSimulationLaunchStage, completeSimulationLaunchStage, incrementSimulationLaunchCounter, setSimulationLaunchCurrentField } from '../runtime/SimulationLaunchProfiler.js';
 import { sampleScalarFieldContinuous, sampleVectorFieldContinuous } from '../science/VolumetricFieldSampler.js';
 import { normalizeWaterColumnConfig, waterColumnLayerMetadata } from '../science/WaterColumnSchema.js';
 
@@ -22,7 +22,9 @@ export class TruthWorld {
     markSimulationLaunchStage('resolveCurrentSource');
     this.currentField4D = getSyntheticCurrentCubeFromMissionWorld({ level, waterColumnConfig: this.waterColumnConfig() });
     completeSimulationLaunchStage('resolveCurrentSource');
+    if (this.currentField4D) setSimulationLaunchCurrentField(this.currentField4D);
     this.currentSampler = this.currentField4D ? getOceanCurrentSampler(this.currentField4D, { interpolation: 'linear4d' }) : null;
+    if (this.currentSampler) incrementSimulationLaunchCounter('currentSamplerCreateCount');
     this.lastVolumetricRoiSample = null;
   }
 
@@ -41,6 +43,7 @@ export class TruthWorld {
     const oceanField = this.currentField4D ?? null;
     if (oceanField) {
       const oceanSample = (this.currentSampler ?? getOceanCurrentSampler(oceanField, { interpolation: 'linear4d' })).sample({ eastMeters: x, northMeters: y, depthMeters, timeSeconds: t, interpolation: 'linear4d' });
+      incrementSimulationLaunchCounter('currentSampleCallCount');
       this.lastOceanCurrentSample = oceanSample;
       if (oceanSample.wet === true || oceanSample.masked === true) {
         this.lastVolumetricCurrentSample = { ...oceanSample, u: oceanSample.uEastMetersPerSecond, v: oceanSample.vNorthMetersPerSecond, vector: { u: oceanSample.uEastMetersPerSecond, v: oceanSample.vNorthMetersPerSecond, w: oceanSample.wDownMetersPerSecond ?? 0 } };

@@ -1,7 +1,27 @@
-﻿# @anchor/currents
+# @anchor/currents
 
-Owns the future current-field model, diagnostics, and sampling package boundary.
+FLOW-PKG-R1 package for canonical ANCHOR current contracts.
 
-ARCH-R1 is a skeleton only. Existing current generation and sampling modules remain under `src/core/` until a later extraction phase.
+Owns:
 
-Allowed dependencies: `@anchor/contracts`, `@anchor/bathymetry`.
+- CurrentFieldManifest contract
+- CurrentField4D artifact contract
+- source metadata and claim boundary
+- bounded and periodic temporal-boundary resolution
+- prepared 4D current sampling
+- depth profiles and time series helpers
+- pure scientific diagnostics
+- manufactured current verification fixtures
+
+Does not own:
+
+- current-generation equations
+- bathymetry generation
+- scalar-process behavior
+- glider physics
+- scoring
+- Planning timeline display units
+- Phaser/HTML UI
+- Three.js rendering or GPU buffers
+
+The package accepts canonical seconds only. Planning display hours must pass through `src/core/time/PlanningTimelineTimeBridge.js` before calling the package sampler.

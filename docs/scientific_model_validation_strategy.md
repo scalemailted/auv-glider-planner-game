@@ -54,3 +54,7 @@ SCI-VALID-R1 adds a repository-level science baseline before additional package 
 The baseline records compact evidence in `tests/fixtures/homegrown_environment_scientific_baseline.json`. The scorecard is documented in `docs/homegrown_model_scorecard.md`. External-oracle gaps and future bathymetry comparison metrics are documented in `docs/bathymetry_external_reference_metrics.md`.
 
 This layer is a gate for deterministic synthetic correctness and package-readiness. It does not certify oceanographic validity.
+
+## FLOW-PKG-R1 Current Package Note
+
+packages/currents now owns pure 4D current contracts, artifacts, source metadata, sampler behavior, temporal boundaries, and scientific diagnostics. The package remains browser-safe, Node-safe, Worker-safe, and independent of src/, Three.js, Phaser, DOM, and UI lifecycle. Synthetic current claims remain bounded to deterministic benchmark fixtures, not calibrated ocean forecasts.

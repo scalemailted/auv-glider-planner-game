@@ -33,7 +33,7 @@ for (const entry of copyRoots) {
   await copyEntry(source, path.join(out, entry));
 }
 await writeFile(path.join(out, '.nojekyll'), '', 'utf8');
-for (const required of ['index.html', 'vendor/three/build/three.module.js', 'vendor/three/build/three.core.js', 'vendor/three/LICENSE', 'vendor/phaser.min.js', 'packages/bathymetry/src/index.js', 'packages/contracts/src/index.js']) {
+for (const required of ['index.html', 'vendor/three/build/three.module.js', 'vendor/three/build/three.core.js', 'vendor/three/LICENSE', 'vendor/phaser.min.js', 'packages/bathymetry/src/index.js', 'packages/contracts/src/index.js', 'packages/currents/src/index.js']) {
   if (!existsSync(path.join(out, required))) throw new Error(`_site missing required file: ${required}`);
 }
 const siteIndex = await readFile(path.join(out, 'index.html'), 'utf8');

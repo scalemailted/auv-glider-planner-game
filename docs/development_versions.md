@@ -630,3 +630,7 @@ Production current visibility recovery for the normal generated Challenge path. 
 - Added app-side generator adapter and debug provenance fields so generated planning, simulation, and standalone bathymetry views expose the same package artifact identity.
 - Preserved the boundary: BATHY-PKG-R1 does not retune bathymetry equations, change currents/scalar fields, alter mission physics, change scoring, or move Three.js/Phaser code into packages.
 SCI-VALID-R1 adds a homegrown environment scientific baseline and external-oracle gap assessment. It adds `npm.cmd run test:science`, manufactured bathymetry/current/scalar checks, current depth/time diagnostics, scalar conservation/convergence checks, mission/environment coupling smoke coverage, benchmark shortcut detection, a compact deterministic fixture, and scorecard docs. It preserves the boundary: no generator retuning, no external data ingestion, no calibrated ocean forecast claim, no scoring changes, no glider physics changes, no renderer changes, no Python simulator, and no new dependencies.
+
+## FLOW-PKG-R1 Current Package Extraction
+
+FLOW-PKG-R1 establishes `packages/currents` as the owner of pure current manifests, CurrentField4D artifacts, source metadata, temporal-boundary handling, prepared sampling, manufactured verification fixtures, and scientific diagnostics. Compatibility forwarders keep `src/core/science/*` imports valid. Current generation, `PlanningTimelineTimeBridge`, Three.js rendering, Phaser scenes, and scoring remain application responsibilities.

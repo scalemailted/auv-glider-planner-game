@@ -59,3 +59,7 @@ Synthetic fields remain synthetic unless a manifest explicitly declares a calibr
 ## BATHY-PKG-R1 Update
 
 BATHY-PKG-R1 makes `@anchor/bathymetry` a real production package boundary. It now owns canonical bathymetry contracts, source metadata, signed terrain helpers, artifact normalization, validation, and canonical sampling. The application owns UI, scene lifecycle, and visualization. Three.js does not own bathymetry truth. The existing synthetic generator remains behavior-compatible during R1. Manifest and artifact are distinct.
+
+## FLOW-PKG-R1 Current Package Note
+
+packages/currents now owns pure 4D current contracts, artifacts, source metadata, sampler behavior, temporal boundaries, and scientific diagnostics. The package remains browser-safe, Node-safe, Worker-safe, and independent of src/, Three.js, Phaser, DOM, and UI lifecycle. Synthetic current claims remain bounded to deterministic benchmark fixtures, not calibrated ocean forecasts.

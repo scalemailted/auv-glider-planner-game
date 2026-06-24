@@ -51,3 +51,7 @@ Public or solver-visible artifacts must not leak hidden truth fields. That visib
 ## BATHY-PKG-R1 Bathymetry Contract
 
 Bathymetry now has a package-owned manifest/artifact split. The manifest records recipe, source, resolution, coordinate frame, and claim boundary. The artifact records generated axes, signed elevation, bottom depth, wet/land masks, coastline, provenance, validation report, and deterministic digest. See [Bathymetry Manifest and Artifact Contract](bathymetry_manifest_and_artifact.md).
+
+## FLOW-PKG-R1 Current Package Note
+
+packages/currents now owns pure 4D current contracts, artifacts, source metadata, sampler behavior, temporal boundaries, and scientific diagnostics. The package remains browser-safe, Node-safe, Worker-safe, and independent of src/, Three.js, Phaser, DOM, and UI lifecycle. Synthetic current claims remain bounded to deterministic benchmark fixtures, not calibrated ocean forecasts.

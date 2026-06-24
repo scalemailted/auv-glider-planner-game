@@ -48,3 +48,7 @@ This imports every package skeleton, validates the contract proof, checks determ
 ## BATHY-PKG-R1 Dependency Checks
 
 `npm.cmd run audit:packages` now runs the shared package boundary audit plus BATHY-PKG-R1 bathymetry dependency and browser-safety audits. `packages/bathymetry` may depend on `packages/contracts` only. It must not import `src/`, Three.js, Phaser, DOM APIs, `globalThis.Phaser`, global `THREE`, or ANCHOR debug globals.
+
+## FLOW-PKG-R1 Current Package Note
+
+packages/currents now owns pure 4D current contracts, artifacts, source metadata, sampler behavior, temporal boundaries, and scientific diagnostics. The package remains browser-safe, Node-safe, Worker-safe, and independent of src/, Three.js, Phaser, DOM, and UI lifecycle. Synthetic current claims remain bounded to deterministic benchmark fixtures, not calibrated ocean forecasts.

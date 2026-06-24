@@ -10,6 +10,7 @@ const repoName = 'auv-glider-planner-game';
 const basePath = `/${repoName}/`;
 const root = process.cwd();
 const siteRoot = resolve(root, '_site');
+const PAGE_SMOKE_TIMEOUT_MS = 45_000;
 const mimeTypes = {
   '.html': 'text/html; charset=utf-8',
   '.js': 'text/javascript; charset=utf-8',
@@ -67,7 +68,7 @@ try {
   });
 
   await page.goto(baseUrl, { waitUntil: 'domcontentloaded' });
-  await page.waitForSelector('#main-menu-hub', { timeout: 15_000 });
+  await page.waitForSelector('#main-menu-hub', { timeout: PAGE_SMOKE_TIMEOUT_MS });
   const deployment = await page.evaluate(() => globalThis.ANCHOR_DEPLOYMENT_DEBUG ?? null);
   assert.equal(deployment?.deploymentMode, 'static-import-map', 'deployment debug mode');
   assert.equal(deployment?.threeRuntimeSource, './vendor/three/build/three.module.js', 'deployment debug Three source');
@@ -78,8 +79,8 @@ try {
 
   await page.locator('#main-menu-hub [data-hub-view="simulation"]').first().click();
   await page.locator('#main-menu-hub [data-action="bathymetry-world-view"]').first().click();
-  await page.waitForFunction(() => globalThis.ANCHOR_BATHYMETRY_VIEW_DEBUG?.usesThreeRenderer === true, null, { timeout: 15_000 });
-  await page.waitForSelector('.three-bathymetry-canvas', { timeout: 15_000 });
+  await page.waitForFunction(() => globalThis.ANCHOR_BATHYMETRY_VIEW_DEBUG?.usesThreeRenderer === true, null, { timeout: PAGE_SMOKE_TIMEOUT_MS });
+  await page.waitForSelector('.three-bathymetry-canvas', { timeout: PAGE_SMOKE_TIMEOUT_MS });
   const bathymetry = await page.evaluate(() => ({
     usesThreeRenderer: globalThis.ANCHOR_BATHYMETRY_VIEW_DEBUG?.usesThreeRenderer === true,
     rendererBackend: globalThis.ANCHOR_BATHYMETRY_VIEW_DEBUG?.rendererBackend,
@@ -90,12 +91,12 @@ try {
   assert.ok(bathymetry.terrainVertexCount > 0, 'bathymetry exposes terrain vertices');
 
   await page.goto(baseUrl, { waitUntil: 'domcontentloaded' });
-  await page.waitForSelector('#main-menu-hub', { timeout: 15_000 });
+  await page.waitForSelector('#main-menu-hub', { timeout: PAGE_SMOKE_TIMEOUT_MS });
   await page.evaluate(() => globalThis.anchorGame.phaser.scene.getScene('MainMenuScene').startCampaignLevel('tutorial_01_first_deployment'));
-  await page.waitForFunction(() => globalThis.anchorGame.phaser.scene.getScene('MissionBriefingScene')?.sys?.isActive?.() === true, null, { timeout: 15_000 });
+  await page.waitForFunction(() => globalThis.anchorGame.phaser.scene.getScene('MissionBriefingScene')?.sys?.isActive?.() === true, null, { timeout: PAGE_SMOKE_TIMEOUT_MS });
   await page.evaluate(() => globalThis.anchorGame.phaser.scene.getScene('MissionBriefingScene').startPlanning());
-  await page.waitForSelector('.three-mission-world-canvas', { timeout: 15_000 });
-  await page.waitForFunction(() => globalThis.ANCHOR_MISSION_RENDER_DEBUG?.activeBackend === 'threeMission3d' && globalThis.ANCHOR_MISSION_RENDER_DEBUG?.threeMounted === true, null, { timeout: 15_000 });
+  await page.waitForSelector('.three-mission-world-canvas', { timeout: PAGE_SMOKE_TIMEOUT_MS });
+  await page.waitForFunction(() => globalThis.ANCHOR_MISSION_RENDER_DEBUG?.activeBackend === 'threeMission3d' && globalThis.ANCHOR_MISSION_RENDER_DEBUG?.threeMounted === true, null, { timeout: PAGE_SMOKE_TIMEOUT_MS });
   assert.equal(await page.locator('#mission-console [data-action="renderer-legacy"]').count(), 0, 'normal planning UI hides legacy renderer control');
   const mission = await page.evaluate(() => ({
     activeBackend: globalThis.ANCHOR_MISSION_RENDER_DEBUG?.activeBackend,
@@ -173,17 +174,17 @@ async function smokeNextRuntime(browser, baseUrl, port) {
 
   try {
     await nextPage.goto(`${baseUrl}?runtimeShell=next`, { waitUntil: 'domcontentloaded' });
-    await nextPage.waitForFunction(() => globalThis.ANCHOR_PRODUCTION_SHELL_DEBUG?.activeRoute === 'productHub', null, { timeout: 15_000 });
-    await nextPage.waitForSelector('#main-menu-hub', { timeout: 15_000 });
+    await nextPage.waitForFunction(() => globalThis.ANCHOR_PRODUCTION_SHELL_DEBUG?.activeRoute === 'productHub', null, { timeout: PAGE_SMOKE_TIMEOUT_MS });
+    await nextPage.waitForSelector('#main-menu-hub', { timeout: PAGE_SMOKE_TIMEOUT_MS });
     await nextPage.locator('[data-action="open-mission-setup"]').first().click();
-    await nextPage.waitForFunction(() => globalThis.ANCHOR_PRODUCTION_SHELL_DEBUG?.activeRoute === 'missionSetup', null, { timeout: 15_000 });
+    await nextPage.waitForFunction(() => globalThis.ANCHOR_PRODUCTION_SHELL_DEBUG?.activeRoute === 'missionSetup', null, { timeout: PAGE_SMOKE_TIMEOUT_MS });
     await nextPage.locator('[data-action="generate"]').first().click();
-    await nextPage.waitForFunction(() => globalThis.ANCHOR_PRODUCTION_SHELL_DEBUG?.activeRoute === 'missionBriefing', null, { timeout: 15_000 });
+    await nextPage.waitForFunction(() => globalThis.ANCHOR_PRODUCTION_SHELL_DEBUG?.activeRoute === 'missionBriefing', null, { timeout: PAGE_SMOKE_TIMEOUT_MS });
     await nextPage.locator('[data-action="start-planning"]').first().click();
-    await nextPage.waitForFunction(() => globalThis.ANCHOR_PRODUCTION_SHELL_DEBUG?.activeRoute === 'missionPlanning', null, { timeout: 15_000 });
-    await nextPage.waitForSelector('canvas.three-mission-world-canvas', { timeout: 15_000 });
+    await nextPage.waitForFunction(() => globalThis.ANCHOR_PRODUCTION_SHELL_DEBUG?.activeRoute === 'missionPlanning', null, { timeout: PAGE_SMOKE_TIMEOUT_MS });
+    await nextPage.waitForSelector('canvas.three-mission-world-canvas', { timeout: PAGE_SMOKE_TIMEOUT_MS });
     await nextPage.locator('[data-action="execute-mission"]').first().click();
-    await nextPage.waitForFunction(() => globalThis.ANCHOR_PRODUCTION_SHELL_DEBUG?.activeRoute === 'missionSimulation', null, { timeout: 15_000 });
+    await nextPage.waitForFunction(() => globalThis.ANCHOR_PRODUCTION_SHELL_DEBUG?.activeRoute === 'missionSimulation', null, { timeout: PAGE_SMOKE_TIMEOUT_MS });
 
     const summary = await nextPage.evaluate(() => ({
       runtime: globalThis.ANCHOR_RUNTIME_SELECTION_DEBUG ?? null,

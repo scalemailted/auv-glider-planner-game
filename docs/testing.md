@@ -1155,3 +1155,16 @@ npx playwright test tests/e2e/flow_runtime_r1_1_manual_planning_timeline.spec.js
 ```
 
 The Playwright spec intentionally advances time through visible Planning controls only. It must not mutate scene time or debug objects directly.
+
+## FLOW-PKG-R1 Current Package Gates
+
+Run package-specific current checks with:
+
+```powershell
+npm.cmd run audit:packages
+npm.cmd run test:packages
+node tools/js/capture_current_package_r1_baseline.mjs
+node ./node_modules/@playwright/test/cli.js test tests/e2e/flow_pkg_r1_current_package.spec.js --reporter=line
+```
+
+The package gates assert manifest/artifact normalization, deterministic digests, source metadata, bounded and periodic temporal behavior, 4D interpolation, land/below-bottom/outside-domain masking, diagnostics, compatibility forwarders, generator-adapter parity, package dependency purity, browser/worker-safe imports, and the Planning-hour-to-current-seconds boundary.

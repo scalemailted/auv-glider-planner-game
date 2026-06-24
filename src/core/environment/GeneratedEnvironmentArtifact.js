@@ -1,5 +1,5 @@
 import { createBathymetryConditionedCurrentField } from '../science/BathymetryConditionedCurrentBuilder.js';
-import { oceanCurrentField4DSummary } from '../science/OceanCurrentField4D.js';
+import { normalizeCurrentFieldArtifact } from './CurrentFieldArtifactAdapter.js';
 import { normalizeSyntheticEnvironmentManifest, validateSyntheticEnvironmentManifest } from './SyntheticEnvironmentManifest.js';
 import { validateEnvironmentGeneratorBackend } from './EnvironmentGeneratorBackendContract.js';
 
@@ -15,7 +15,7 @@ export function createGeneratedEnvironmentArtifact(manifestOrOptions = {}, optio
     throw error;
   }
   const level = options.level ?? manifestOrOptions.level ?? {};
-  const currentField4D = createBathymetryConditionedCurrentField({
+  const builtCurrentField4D = createBathymetryConditionedCurrentField({
     ...(options.currentOptions ?? {}),
     level,
     grid: manifest.grid,
@@ -32,6 +32,8 @@ export function createGeneratedEnvironmentArtifact(manifestOrOptions = {}, optio
     environmentManifestDigest: manifest.digest,
     id: options.id ?? manifestOrOptions.id ?? `environment-current-${manifest.digest?.slice(-8) ?? 'field'}`
   });
+  const currentArtifactResult = normalizeCurrentFieldArtifact(builtCurrentField4D);
+  const currentField4D = currentArtifactResult.artifact;
   const artifact = {
     type: 'anchor.environment.generated-artifact',
     version: GENERATED_ENVIRONMENT_ARTIFACT_VERSION,
@@ -39,7 +41,7 @@ export function createGeneratedEnvironmentArtifact(manifestOrOptions = {}, optio
     manifestDigest: manifest.digest,
     backend: manifest.backend,
     currentField4D,
-    currentFieldSummary: oceanCurrentField4DSummary(currentField4D),
+    currentFieldSummary: currentArtifactResult.summary,
     publicSafety: {
       hiddenTruthIncluded: false,
       synthetic: true,
