@@ -3,7 +3,7 @@ import { normalizeEnvironmentGeneratorBackend, ENVIRONMENT_GENERATOR_BACKEND_CON
 export const SYNTHETIC_ENVIRONMENT_MANIFEST_VERSION = 'synthetic-environment-manifest-flow-r2a-5-1';
 
 export function createSyntheticEnvironmentManifest(options = {}) {
-  const backend = normalizeEnvironmentGeneratorBackend(options.backendId ?? options.backend ?? 'cpuBathymetryConditionedSyntheticV2');
+  const backend = normalizeEnvironmentGeneratorBackend(options.backendId ?? options.backend ?? 'cpuBathymetryConditionedSyntheticV3');
   const grid = normalizeGrid(options.grid ?? options.level?.world?.grid);
   const temporalBoundaryMode = normalizeTemporalBoundaryMode(options.temporalBoundaryMode ?? 'bounded');
   const validTimeStartSeconds = finite(options.validTimeStartSeconds, 0);
@@ -28,7 +28,7 @@ export function createSyntheticEnvironmentManifest(options = {}) {
     layers: {
       bathymetry: { model: 'deterministicSyntheticShelfBathymetry', source: 'browserGenerator' },
       wetMask: { model: 'bathymetryAndTerrainMask', source: 'browserGenerator' },
-      currentField4D: { model: 'bathymetryConditionedStreamfunctionSyntheticV2', source: 'browserGenerator' },
+      currentField4D: { model: backend.id === 'cpuBathymetryConditionedSyntheticV3' ? 'bathymetryConditionedDepthStructuredSyntheticV3' : 'bathymetryConditionedStreamfunctionSyntheticV2', source: 'browserGenerator' },
       scalarScienceField: { model: 'existingGeneratedWaterColumnScience', source: 'scenarioOrFallback' }
     },
     source: {
@@ -52,7 +52,8 @@ export function validateSyntheticEnvironmentManifest(input = {}) {
   const manifest = normalizeSyntheticEnvironmentManifest(input);
   const errors = [];
   const warnings = [];
-  if (manifest.backendId !== 'cpuBathymetryConditionedSyntheticV2') errors.push(`Only cpuBathymetryConditionedSyntheticV2 is implemented; got ${manifest.backendId}.`);
+  const implementedCurrentBackends = ['cpuBathymetryConditionedSyntheticV2', 'cpuBathymetryConditionedSyntheticV3'];
+  if (!implementedCurrentBackends.includes(manifest.backendId)) errors.push(`Only cpuBathymetryConditionedSyntheticV2 and cpuBathymetryConditionedSyntheticV3 are implemented; got ${manifest.backendId}.`);
   if (manifest.source?.calibratedForecast || manifest.source?.usesRealHycom || manifest.source?.usesRealMarineCopernicus) errors.push('Synthetic environment manifest cannot claim calibrated HYCOM/Copernicus data.');
   if (!Array.isArray(manifest.timeAxisSeconds) || manifest.timeAxisSeconds.length < 2) errors.push('Manifest must include at least two time samples.');
   if (Number(manifest.timeAxisSeconds.at(-1)) < Number(manifest.validTimeEndSeconds)) warnings.push('Manifest source time axis is shorter than validTimeEndSeconds; generator should extend bounded fields.');

@@ -606,9 +606,17 @@ Adds scientific source-tier metadata, manufactured analytical current fixtures, 
 Production current visibility recovery for the normal generated Challenge path. The water-column current renderer now maps top-down grid cells to canonical physical-meter current axes before sampling `OceanCurrentField4D`, default Planning/Simulation scenes and `?runtimeShell=next` publish shared `ANCHOR_CURRENT_PRESENTATION_DEBUG`, and zero-waypoint optional gliders can remain idle without blocking Glider 1 execution. This is a stabilization pass only: no tracers/pathlines, WebGPU, new current equations, planner changes, scoring changes, or Phaser removal.
 
 
+## FLOW-PKG-R2 - Production Current Generator Extraction And Depth-Structured Backend
+
+- Moved the bathymetry-conditioned production current generator into `packages/currents/src/generation/` with a compatibility forwarder at the old `src/core/science` path.
+- Preserved old generated-current behavior as `cpuBathymetryConditionedSyntheticV2` with exact parity fixture digest `fnv1a32:49c9a4f0`.
+- Added `cpuBathymetryConditionedSyntheticV3` as the normal generated mixed-regional backend with explicit vertical profile contracts: barotropic control, surface-intensified exponential, linear shear, thermocline jet, and bottom-boundary decay.
+- Extended current diagnostics and browser debug output with depth-layer digests, vertical-shear metrics, material distinctness, selected-column profiles, and renderer non-ownership flags.
+- Added focused smoke/audit scripts plus browser tests for barotropic controls, mixed regional depth variation, layer-explorer vertical profiles, dive-profile current consequence, and Pages subpath loading.
+- Preserved the boundary: no external ocean data, no calibrated forecast claim, no random slab noise, no scoring change, no glider dive-mechanics change, no WebGPU/WASM/Python simulator, and no Three.js ownership of current generation.
 ## FLOW-R2A.5.1 - Browser Environment Generation, Mission-Time Currents, And Calm Markers
 
-- Added a browser-side synthetic environment manifest/artifact contract under `src/core/environment/` with `cpuBathymetryConditionedSyntheticV2` as the only implemented backend; WebGPU and imported operational backends remain reserved.
+- Added a browser-side synthetic environment manifest/artifact contract under `src/core/environment/` with `cpuBathymetryConditionedSyntheticV2` as the only implemented backend at that phase; FLOW-PKG-R2 later adds `cpuBathymetryConditionedSyntheticV3` while WebGPU and imported operational backends remain reserved.
 - Hardened `OceanCurrentField4D`/sampler temporal boundary metadata so bounded generated fields span canonical mission duration and periodic fields wrap explicitly instead of silently clamping after a short source axis.
 - Routed generated normal mission currents through canonical mission time, preserved deterministic same-manifest/seed/backend digests, and published `ANCHOR_ENVIRONMENT_GENERATOR_DEBUG` plus extended temporal fields in `ANCHOR_VOLUMETRIC_CURRENT_DEBUG`.
 - Updated current depth-layer filters and Three instanced current glyph summaries so hidden layers are presentation-only and calm wet cells render as neutral markers distinct from directional arrows, land, below-bottom, and invalid cells.

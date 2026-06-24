@@ -1116,7 +1116,7 @@ node tools/js/audit_no_short_bounded_current_axis.mjs
 node node_modules/@playwright/test/cli.js test tests/e2e/flow_r2a_5_1_environment_and_time.spec.js --reporter=line --workers=1
 ```
 
-These checks assert that bounded generated currents span mission duration, periodic fields wrap intentionally, current sampling uses canonical mission time, the only implemented browser generator backend is `cpuBathymetryConditionedSyntheticV2`, generated artifacts publish `ANCHOR_ENVIRONMENT_GENERATOR_DEBUG`, hidden depth-layer filters affect presentation only, and calm wet cells render as neutral markers instead of arbitrary directional arrows. They do not add WebGPU generation, operational ocean import, new current physics, planner changes, scoring changes, or Phaser removal.
+These checks assert that bounded generated currents span mission duration, periodic fields wrap intentionally, current sampling uses canonical mission time, `cpuBathymetryConditionedSyntheticV2` remains the explicit compatibility backend, `cpuBathymetryConditionedSyntheticV3` is the normal generated backend, generated artifacts publish `ANCHOR_ENVIRONMENT_GENERATOR_DEBUG`, hidden depth-layer filters affect presentation only, and calm wet cells render as neutral markers instead of arbitrary directional arrows. They do not add WebGPU generation, operational ocean import, planner changes, scoring changes, or Phaser removal.
 
 ## BATHY-PKG-R1 Package Checks
 
@@ -1139,7 +1139,7 @@ Run the compact homegrown environment baseline with:
 npm.cmd run test:science
 ```
 
-`test:science` is also included in `npm.cmd run test:packages`. It runs manufactured bathymetry, bathymetry convergence, bathymetry ensemble, manufactured current, current depth/time, current invariant, manufactured scalar, scalar conservation/convergence, environment mission-coupling, and benchmark shortcut checks. These tests verify deterministic software behavior, numerical manufactured-case behavior, and synthetic claim boundaries. They do not establish calibrated oceanographic validity.
+`test:science` is also included in `npm.cmd run test:packages`. It runs manufactured bathymetry, bathymetry convergence, bathymetry ensemble, manufactured current, current depth/time, FLOW-PKG-R2 vertical-profile smokes, V2 compatibility, V3 backend-versioning, current physical/vertical invariants, manufactured scalar, scalar conservation/convergence, environment mission-coupling, and benchmark shortcut checks. These tests verify deterministic software behavior, numerical manufactured-case behavior, and synthetic claim boundaries. They do not establish calibrated oceanographic validity.
 
 See `docs/homegrown_environment_scientific_baseline.md` and `docs/homegrown_model_scorecard.md` for the SCI-VALID-R1 scorecard and external-oracle gap assessment.
 
@@ -1168,6 +1168,17 @@ node ./node_modules/@playwright/test/cli.js test tests/e2e/flow_pkg_r1_current_p
 ```
 
 The package gates assert manifest/artifact normalization, deterministic digests, source metadata, bounded and periodic temporal behavior, 4D interpolation, land/below-bottom/outside-domain masking, diagnostics, compatibility forwarders, generator-adapter parity, package dependency purity, browser/worker-safe imports, and the Planning-hour-to-current-seconds boundary.
+
+## FLOW-PKG-R2 Depth-Structured Current Gates
+
+Run the focused R2 gates with:
+
+```powershell
+npm.cmd run test:science
+node ./node_modules/@playwright/test/cli.js test flow_pkg_r2_depth_structured_currents.spec.js --reporter=line --workers=1
+node tools/js/audit_playwright_group_coverage.mjs
+```
+These gates verify the V2 compatibility backend, the V3 mixed-regional backend, explicit `barotropicDepthUniform` controls, coherent named vertical profiles, material depth distinctness, render/canonical depth parity, selected-column current profiles, Pages-subpath package imports, and the boundary that Three.js displays but does not generate currents.
 
 ## Production Readiness Tests
 

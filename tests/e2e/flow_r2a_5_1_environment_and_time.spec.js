@@ -146,7 +146,7 @@ test(EXACT_TITLES[4], async ({ page }) => {
   const result = await evaluateFlowR2A51(page);
   expect(result.manifestA).toBe(result.manifestB);
   expect(result.manifestA).not.toBe(result.manifestC);
-  expect(result.environmentDebug.backendId).toBe('cpuBathymetryConditionedSyntheticV2');
+  expect(result.environmentDebug.backendId).toBe('cpuBathymetryConditionedSyntheticV3');
   expect(result.environmentDebug.backendImplemented).toBe(true);
   expect(result.environmentDebug.calibratedForecast).toBe(false);
   expect(result.environmentDebug.usesRealHycom).toBe(false);

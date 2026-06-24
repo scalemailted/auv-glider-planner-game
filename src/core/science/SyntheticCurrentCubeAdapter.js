@@ -57,7 +57,7 @@ export function createSyntheticCurrentCubeFromMissionWorld(options = {}) {
   if (!preserveLegacy && options.useLegacySyntheticCurrentGenerator !== true) {
     const artifact = createGeneratedEnvironmentArtifact({
       level,
-      backendId: options.environmentGeneratorBackendId ?? 'cpuBathymetryConditionedSyntheticV2',
+      backendId: options.environmentGeneratorBackendId ?? level.meta?.generationConfig?.environmentGeneratorBackendId ?? 'cpuBathymetryConditionedSyntheticV3',
       grid: { width, height, cellSizeMeters: level.world?.grid?.cellSizeMeters ?? 100 },
       waterColumnConfig,
       depthAxisMeters,

@@ -377,11 +377,30 @@ function buildSelectedCurrentProfile({ selectedLocation, waterColumnConfig, sour
       sourceDigest: sample?.source?.digest ?? source.currentCube?.digest ?? null
     };
   });
+  const samplesWithDeltas = samplesByDepth.map((sample, index) => ({
+    ...sample,
+    deltaFromSurface: currentSampleVectorDelta(sample, samplesByDepth[0]),
+    deltaFromLayerAbove: index > 0 ? currentSampleVectorDelta(sample, samplesByDepth[index - 1]) : null,
+    profileComponent: source.currentCube?.sourceMetadata?.verticalStructureId ?? source.currentCube?.sourceMetadata?.sourceDepthRegime ?? null
+  }));
   return {
     ...gridPointToCurrentMeters(source.currentCube, { width: source.width, height: source.height }, x, y),
     timeSeconds: activeTimeSeconds,
-    samplesByDepth,
-    derivedDepthAverage: depthAverageCurrent(samplesByDepth)
+    verticalStructureId: source.currentCube?.sourceMetadata?.verticalStructureId ?? source.currentCube?.sourceMetadata?.sourceDepthRegime ?? null,
+    verticalProfileFamilies: source.currentCube?.sourceMetadata?.verticalProfileFamilies ?? [],
+    samplesByDepth: samplesWithDeltas,
+    derivedDepthAverage: depthAverageCurrent(samplesWithDeltas)
+  };
+}
+
+function currentSampleVectorDelta(sample = null, reference = null) {
+  if (!sample || !reference) return null;
+  const du = Number(sample.uEastMetersPerSecond ?? 0) - Number(reference.uEastMetersPerSecond ?? 0);
+  const dv = Number(sample.vNorthMetersPerSecond ?? 0) - Number(reference.vNorthMetersPerSecond ?? 0);
+  return {
+    duEastMetersPerSecond: round(du),
+    dvNorthMetersPerSecond: round(dv),
+    magnitudeMetersPerSecond: round(Math.hypot(du, dv))
   };
 }
 

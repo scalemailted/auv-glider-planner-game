@@ -57,6 +57,9 @@ export async function buildRecord() {
     validTimeEndSeconds: 1800
   }), [0, 600, 1200, 1800]));
   const runtimeFixture = createFlowRuntimeR1Fixture({ seed: 'flow-pkg-r1-normal-generated', waypointCount: 3, agentCount: 3 });
+  runtimeFixture.level.meta ??= {};
+  runtimeFixture.level.meta.generationConfig ??= {};
+  runtimeFixture.level.meta.generationConfig.environmentGeneratorBackendId = 'cpuBathymetryConditionedSyntheticV2';
   const normalVm = buildPlanningCurrentViewModelAt(runtimeFixture, 0);
   const normalField = normalVm.waterColumnExplorer.currentCube;
   const timelineTimes = [0, 28800, 57600, 75611.11, 144000, 172800];

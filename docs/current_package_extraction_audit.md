@@ -39,3 +39,6 @@ FLOW-PKG-R1 changes ownership of pure 4D current contracts, artifacts, source me
 ## Remaining Coupling
 
 `BathymetryConditionedCurrentBuilder`, `SyntheticCurrentCubeAdapter`, and production component composition remain in `src/` for FLOW-PKG-R2. Renderer cache/dirty state, glyph density, GPU buffers, current UI controls, `PlanningTimelineTimeBridge`, and Phaser/Three scene lifecycle remain application responsibilities.
+## FLOW-PKG-R2 Follow-Up
+
+FLOW-PKG-R2 completed the planned production generator move. `src/core/science/BathymetryConditionedCurrentBuilder.js` is now a compatibility forwarder to `packages/currents/src/generation/BathymetryConditionedCurrentBuilder.js`. The V2 backend preserves the R1 generator behavior, while V3 adds declared depth-structured mixed-regional generation. The historical table above is retained as the R1 extraction snapshot.

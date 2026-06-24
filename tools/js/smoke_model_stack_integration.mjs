@@ -1379,6 +1379,23 @@ assert.ok(Object.prototype.hasOwnProperty.call(flowR2aCurrentDebug, 'directionBu
 assert.ok(Object.prototype.hasOwnProperty.call(flowR2aCurrentDebug, 'matrixBufferUploadCount'), 'FLOW-RUNTIME-R1 debug exposes matrix upload count');
 assert.equal(flowR2aCurrentDebug.usesWallClockTime, false, 'FLOW-RUNTIME-R1 current debug rejects wall-clock environmental animation');
 assert.equal(flowR2aCurrentDebug.displayLayerChangesCurrent, false, 'FLOW-R2A.2 current display does not change current physics');
+const currentPackageModule = await import('../../packages/currents/src/index.js');
+const flowPkgR2Field = currentPackageModule.createBathymetryConditionedCurrentField({
+  grid: { width: 8, height: 6, cellSizeMeters: 250 },
+  depthAxisMeters: [0, 10, 35, 75, 150],
+  timeAxisSeconds: [0, 600, 1200],
+  landMask: Array.from({ length: 6 }, () => Array.from({ length: 8 }, () => false)),
+  seed: 'model-stack-flow-pkg-r2',
+  environmentGeneratorBackendId: currentPackageModule.CURRENT_GENERATION_BACKEND_V3_ID,
+  verticalStructureId: 'mixedRegionalBaroclinicV1'
+});
+const flowPkgR2Summary = currentPackageModule.oceanCurrentField4DSummary(flowPkgR2Field);
+assert.equal(flowPkgR2Summary.generatorBackend, currentPackageModule.CURRENT_GENERATION_BACKEND_V3_ID, 'FLOW-PKG-R2 V3 backend imports from package');
+assert.equal(flowPkgR2Summary.verticalStructureId, 'mixedRegionalBaroclinicV1', 'FLOW-PKG-R2 mixed vertical structure is declared');
+assert.equal(flowPkgR2Summary.rendererOwnsVerticalStructure, false, 'FLOW-PKG-R2 package summary rejects renderer-owned vertical structure');
+assert.equal(flowPkgR2Summary.displayChangesVerticalStructure, false, 'FLOW-PKG-R2 package summary rejects display-owned vertical structure');
+assert.equal(flowPkgR2Summary.depthLayerDigestCount > 1, true, 'FLOW-PKG-R2 V3 depth layers are not byte-identical copies');
+assert.equal(flowPkgR2Summary.materiallyDistinctColumnFraction >= 0.5, true, 'FLOW-PKG-R2 V3 exposes material depth structure');
 
 const bootReadinessModule = await import('../../src/app/production/AnchorAppBootReadiness.js');
 assert.equal(bootReadinessModule.ANCHOR_APP_BOOT_READINESS_VERSION, 'flow-pkg-r1-1-app-boot-readiness', 'FLOW-PKG-R1.1 boot readiness contract imports');

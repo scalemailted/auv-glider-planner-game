@@ -12,6 +12,16 @@ export const ENVIRONMENT_GENERATOR_BACKENDS = Object.freeze([
     claimBoundary: 'Synthetic educational environment generator. Not calibrated ocean forecast data.'
   },
   {
+    id: 'cpuBathymetryConditionedSyntheticV3',
+    label: 'CPU bathymetry-conditioned depth-structured synthetic environment V3',
+    implemented: true,
+    deterministic: true,
+    browserCompatible: true,
+    usesWebGpu: false,
+    importsOperationalData: false,
+    claimBoundary: 'Synthetic educational depth-structured current generator. Not calibrated ocean forecast data.'
+  },
+  {
     id: 'webgpuOceanSyntheticV1Reserved',
     label: 'Reserved WebGPU ocean synthetic backend',
     implemented: false,
@@ -33,8 +43,8 @@ export const ENVIRONMENT_GENERATOR_BACKENDS = Object.freeze([
   }
 ]);
 
-export function normalizeEnvironmentGeneratorBackend(value = 'cpuBathymetryConditionedSyntheticV2') {
-  const id = String(value?.id ?? value ?? 'cpuBathymetryConditionedSyntheticV2').trim() || 'cpuBathymetryConditionedSyntheticV2';
+export function normalizeEnvironmentGeneratorBackend(value = 'cpuBathymetryConditionedSyntheticV3') {
+  const id = String(value?.id ?? value ?? 'cpuBathymetryConditionedSyntheticV3').trim() || 'cpuBathymetryConditionedSyntheticV3';
   return ENVIRONMENT_GENERATOR_BACKENDS.find((backend) => backend.id === id) ?? {
     id,
     label: id,
@@ -47,7 +57,7 @@ export function normalizeEnvironmentGeneratorBackend(value = 'cpuBathymetryCondi
   };
 }
 
-export function validateEnvironmentGeneratorBackend(value = 'cpuBathymetryConditionedSyntheticV2') {
+export function validateEnvironmentGeneratorBackend(value = 'cpuBathymetryConditionedSyntheticV3') {
   const backend = normalizeEnvironmentGeneratorBackend(value);
   const errors = [];
   const warnings = [];

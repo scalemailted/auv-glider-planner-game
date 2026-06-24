@@ -484,7 +484,7 @@ BATHY-PKG-R1 is an extraction phase, not a scientific retuning phase. The packag
 
 - FLOW-PKG-R1: 4D current contracts, artifact, sampler, metadata, and diagnostics extraction.
 - FLOW-PKG-R1.1: Production boot readiness and grouped E2E closure.
-- FLOW-PKG-R2: Production current generator and component composition extraction.
+- FLOW-PKG-R2: Production current generator and component composition extraction, preserving V2 compatibility while adding the V3 depth-structured mixed-regional backend and explicit barotropic controls.
 - PROCESS-PKG-R1: Temporal scalar/science-process extraction.
 - ENV-PKG-R1: Canonical environment composition.
 - SIM-PKG-R1: Mission simulator environment-consumer boundary.

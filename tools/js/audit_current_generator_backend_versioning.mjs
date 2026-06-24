@@ -1,0 +1,12 @@
+import assert from 'node:assert/strict';
+import { normalizeEnvironmentGeneratorBackend, validateEnvironmentGeneratorBackend } from '../../src/core/environment/EnvironmentGeneratorBackendContract.js';
+import { createSyntheticEnvironmentManifest, validateSyntheticEnvironmentManifest } from '../../src/core/environment/SyntheticEnvironmentManifest.js';
+const v2 = validateEnvironmentGeneratorBackend('cpuBathymetryConditionedSyntheticV2');
+const v3 = validateEnvironmentGeneratorBackend('cpuBathymetryConditionedSyntheticV3');
+assert.equal(v2.valid, true);
+assert.equal(v3.valid, true);
+assert.equal(normalizeEnvironmentGeneratorBackend().id, 'cpuBathymetryConditionedSyntheticV3');
+const manifest = createSyntheticEnvironmentManifest({ grid: { width: 4, height: 4 }, validTimeEndSeconds: 600 });
+assert.equal(manifest.backendId, 'cpuBathymetryConditionedSyntheticV3');
+assert.equal(validateSyntheticEnvironmentManifest(manifest).valid, true);
+console.log('audit_current_generator_backend_versioning: ok', { defaultBackend: manifest.backendId, v2: v2.status, v3: v3.status });

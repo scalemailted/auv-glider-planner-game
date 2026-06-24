@@ -8,10 +8,12 @@ export const PACKAGE_BOUNDARY = Object.freeze({
     'current source metadata',
     'current temporal boundary resolution',
     'current sampling',
-    'pure current diagnostics'
+    'pure current diagnostics',
+    'deterministic synthetic current generation backends',
+    'declared vertical current profile contracts'
   ],
   dependsOn: ['@anchor/contracts', '@anchor/bathymetry'],
-  doesNotOwn: ['current generation equations', 'rendering glyph density', 'mission scoring', 'browser controls', 'Three.js presentation']
+  doesNotOwn: ['external ocean data import', 'rendering glyph density', 'mission scoring', 'browser controls', 'Three.js presentation']
 });
 
 export function packageBoundarySummary() {
@@ -105,3 +107,20 @@ export {
   evaluateExpectedCurrent,
   manufacturedCurrentFieldDefinition
 } from './ManufacturedCurrentFieldCatalog.js';
+export {
+  BATHYMETRY_CONDITIONED_CURRENT_BUILDER_VERSION,
+  CURRENT_GENERATION_BACKEND_V2_ID,
+  CURRENT_GENERATION_BACKEND_V3_ID,
+  createBathymetryConditionedCurrentField,
+  evaluateSyntheticCurrentAt,
+  bathymetryConditionedComponentCatalog
+} from './generation/BathymetryConditionedCurrentBuilder.js';
+
+export {
+  CURRENT_VERTICAL_PROFILE_CONTRACT_VERSION,
+  CURRENT_VERTICAL_PROFILE_FAMILIES,
+  createCurrentVerticalStructureDescriptor,
+  applyVerticalProfileToVector,
+  applyVerticalProfileSequence,
+  materialVectorDeltaForColumn
+} from './generation/CurrentVerticalProfileContract.js';

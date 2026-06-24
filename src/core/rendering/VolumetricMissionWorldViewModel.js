@@ -274,6 +274,8 @@ export function augmentMissionWorldWithVolumetricModel(baseViewModel = {}, optio
 export function volumetricCurrentDebugPayload(viewModel = {}, rendererSummary = null, options = {}) {
   const explorer = viewModel.waterColumnExplorer ?? {};
   const fieldSummary = explorer.currentFieldSummary ?? {};
+  const sourceMetadata = fieldSummary.sourceMetadata ?? explorer.currentCube?.sourceMetadata ?? {};
+  const diagnostics = fieldSummary.diagnostics ?? explorer.currentCube?.scientificDiagnostics ?? {};
   const currentActiveLayerId = viewModel.currentActiveLayerId ?? viewModel.currentVisualization?.currentActiveLayerId ?? explorer.currentActiveLayerId ?? explorer.activeLayerId;
   const activeLayer = (explorer.layers ?? []).find((layer) => layer.id === currentActiveLayerId) ?? explorer.layers?.[0] ?? null;
   const activeVectors = (activeLayer?.currentField?.vectors ?? []).filter((vector) => vector.visible !== false);
@@ -281,6 +283,10 @@ export function volumetricCurrentDebugPayload(viewModel = {}, rendererSummary = 
   const selectedSourceCurrent = selectCurrentSampleForLayer(explorer.selectedCurrentProfile?.samplesByDepth ?? [], activeLayer?.id ?? explorer.activeLayerId);
   const bridge = viewModel.planningTimelineTimeBridge ?? {};
   const selectedRenderedCurrent = selectedSourceCurrent ? { ...selectedSourceCurrent } : null;
+  const selectedCurrentDelta = currentDelta(selectedSourceCurrent, selectedRenderedCurrent);
+  const barotropicControl = fieldSummary.barotropicControl === true || sourceMetadata.barotropicControl === true || fieldSummary.verticalStructureId === 'barotropicDepthUniform' || sourceMetadata.verticalStructureId === 'barotropicDepthUniform';
+  const copiedLayerDetected = fieldSummary.copiedLayerDetected === true || diagnostics.copiedLayerDetected === true;
+  const materiallyDistinctColumnFraction = Number(fieldSummary.materiallyDistinctColumnFraction ?? diagnostics.materiallyDistinctColumnFraction ?? 0);
   const glider = (viewModel.gliderPoses ?? viewModel.gliders ?? []).find((candidate) => candidate.selected) ?? (viewModel.gliderPoses ?? viewModel.gliders ?? [])[0] ?? null;
   const gliderSampledCurrent = glider?.currentVector ? {
     uEastMetersPerSecond: numberOrNull(glider.currentVector.u),
@@ -315,8 +321,20 @@ export function volumetricCurrentDebugPayload(viewModel = {}, rendererSummary = 
     version: 'volumetric-current-debug-flow-r2a',
     fieldId: fieldSummary.fieldId ?? explorer.currentCube?.id ?? null,
     sourceTier: fieldSummary.sourceTier ?? explorer.currentCube?.sourceMetadata?.sourceTier ?? null,
-    sourceType: fieldSummary.sourceType ?? explorer.currentCube?.sourceMetadata?.sourceType ?? null,
-    equationFamily: fieldSummary.equationFamily ?? explorer.currentCube?.sourceMetadata?.equationFamily ?? null,
+    sourceType: fieldSummary.sourceType ?? sourceMetadata.sourceType ?? null,
+    equationFamily: fieldSummary.equationFamily ?? sourceMetadata.equationFamily ?? null,
+    generatorBackend: fieldSummary.generatorBackend ?? sourceMetadata.generatorBackend ?? sourceMetadata.environmentGeneratorBackendId ?? null,
+    generatorVersion: fieldSummary.generatorVersion ?? sourceMetadata.generatorVersion ?? null,
+    verticalStructureId: fieldSummary.verticalStructureId ?? sourceMetadata.verticalStructureId ?? sourceMetadata.sourceDepthRegime ?? null,
+    verticalStructureVersion: fieldSummary.verticalStructureVersion ?? sourceMetadata.verticalStructureVersion ?? null,
+    verticalProfileFamilies: fieldSummary.verticalProfileFamilies ?? sourceMetadata.verticalProfileFamilies ?? [],
+    currentVerticalProfileContractVersion: fieldSummary.currentVerticalProfileContractVersion ?? sourceMetadata.currentVerticalProfileContractVersion ?? null,
+    depthAxisMeters: fieldSummary.sourceDepthMeters ?? explorer.currentCube?.depthAxisMeters ?? [],
+    depthLayerDigests: fieldSummary.depthLayerDigests ?? diagnostics.depthLayerDigests ?? [],
+    depthLayerDigestCount: fieldSummary.depthLayerDigestCount ?? diagnostics.depthLayerDigestCount ?? null,
+    barotropicControl,
+    rendererOwnsVerticalStructure: fieldSummary.rendererOwnsVerticalStructure === true || sourceMetadata.rendererOwnsVerticalStructure === true,
+    displayChangesVerticalStructure: fieldSummary.displayChangesVerticalStructure === true || sourceMetadata.displayChangesVerticalStructure === true,
     sourceId: fieldSummary.sourceMetadata?.sourceId ?? explorer.currentCube?.sourceMetadata?.sourceId ?? null,
     componentIds: fieldSummary.componentIds ?? explorer.currentCube?.sourceMetadata?.componentIds ?? (explorer.currentCube?.sourceMetadata?.components ?? []).map((component) => component.id).filter(Boolean),
     depthDependent: fieldSummary.depthDependent === true || explorer.currentCube?.sourceMetadata?.depthDependent === true,
@@ -474,7 +492,8 @@ export function volumetricCurrentDebugPayload(viewModel = {}, rendererSummary = 
     packageTimeUnit: 'seconds',
     selectedSourceCurrent,
     selectedRenderedCurrent,
-    selectedCurrentDelta: currentDelta(selectedSourceCurrent, selectedRenderedCurrent),
+    selectedColumnProfile: explorer.selectedCurrentProfile ?? null,
+    selectedCurrentDelta,
     gliderSampledCurrent,
     renderedGliderCurrent,
     renderedGliderCurrentDelta: currentDelta(gliderSampledCurrent, renderedGliderCurrent),
@@ -499,8 +518,22 @@ export function volumetricCurrentDebugPayload(viewModel = {}, rendererSummary = 
     vorticityMaximum: fieldSummary.vorticityMaximum ?? null,
     coastlineNormalSpeedRms: fieldSummary.coastlineNormalSpeedRms ?? null,
     coastlineNormalSpeedMaximum: fieldSummary.coastlineNormalSpeedMaximum ?? null,
-    verticalShearRms: fieldSummary.verticalShearRms ?? null,
-    temporalChangeRms: fieldSummary.temporalChangeRms ?? null,
+    verticalShearRms: fieldSummary.verticalShearRms ?? diagnostics.verticalShearRms ?? null,
+    verticalShearMax: fieldSummary.verticalShearMaximum ?? diagnostics.verticalShearMaximum ?? null,
+    verticalShearMaximum: fieldSummary.verticalShearMaximum ?? diagnostics.verticalShearMaximum ?? null,
+    surfaceToDeepVectorDifferenceRms: fieldSummary.surfaceToDeepVectorDifferenceRms ?? diagnostics.surfaceToDeepVectorDifferenceRms ?? null,
+    surfaceToDeepBearingDifferenceMean: fieldSummary.surfaceToDeepBearingDifferenceMean ?? diagnostics.surfaceToDeepBearingDifferenceMean ?? null,
+    surfaceToDeepMagnitudeRatioMean: fieldSummary.surfaceToDeepMagnitudeRatioMean ?? diagnostics.surfaceToDeepMagnitudeRatioMean ?? null,
+    verticallyUniformColumnFraction: fieldSummary.verticallyUniformColumnFraction ?? diagnostics.verticallyUniformColumnFraction ?? null,
+    materiallyDistinctColumnFraction,
+    materialMagnitudeColumnFraction: fieldSummary.materialMagnitudeColumnFraction ?? diagnostics.materialMagnitudeColumnFraction ?? null,
+    materialBearingColumnFraction: fieldSummary.materialBearingColumnFraction ?? diagnostics.materialBearingColumnFraction ?? null,
+    copiedLayerDetected,
+    verticalStructureStatus: fieldSummary.verticalStructureStatus ?? diagnostics.verticalStructureStatus ?? null,
+    canonicalDepthDistinctnessPass: barotropicControl || (materiallyDistinctColumnFraction > 0 && copiedLayerDetected !== true),
+    renderDepthParityPass: !selectedCurrentDelta || selectedCurrentDelta.magnitude <= 1e-6,
+    samplerDepthParityPass: !selectedSourceCurrent || selectedSourceCurrent.depthInterpolationFraction != null || Array.isArray(explorer.selectedCurrentProfile?.samplesByDepth),
+    temporalChangeRms: fieldSummary.temporalChangeRms ?? diagnostics.temporalChangeRms ?? null,
     alongIsobathFraction: fieldSummary.alongIsobathFraction ?? null,
     crossIsobathFraction: fieldSummary.crossIsobathFraction ?? null,
     alongIsobathSpeedRms: fieldSummary.alongIsobathSpeedRms ?? fieldSummary.diagnostics?.alongIsobathSpeedRms ?? null,
@@ -521,8 +554,8 @@ export function volumetricCurrentDebugPayload(viewModel = {}, rendererSummary = 
     undeclaredCrossShelfVectorCount: fieldSummary.undeclaredCrossShelfVectorCount ?? fieldSummary.diagnostics?.undeclaredCrossShelfVectorCount ?? 0,
     landVectorCount: fieldSummary.landVectorCount ?? 0,
     diagnosticsBelowBottomVectorCount: fieldSummary.belowBottomVectorCount ?? 0,
-    warnings: [...(explorer.warnings ?? [])],
-    failures: []
+    warnings: [...(explorer.warnings ?? []), ...(fieldSummary.verticalStructureWarnings ?? diagnostics.verticalStructureWarnings ?? [])],
+    failures: [...(fieldSummary.verticalStructureFailures ?? diagnostics.verticalStructureFailures ?? [])]
   };
 }
 

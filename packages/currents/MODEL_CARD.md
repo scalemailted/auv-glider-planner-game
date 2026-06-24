@@ -2,7 +2,7 @@
 
 ## Purpose
 
-The package owns canonical current contracts, sampling, and pure diagnostics for ANCHOR 4D current fields.
+The package owns canonical current contracts, sampling, pure diagnostics, deterministic synthetic generation backends, and declared vertical profile contracts for ANCHOR 4D current fields.
 
 ## Inputs
 
@@ -44,7 +44,7 @@ Supported tiers include `manufacturedAnalytical`, `scientificallyConstrainedSynt
 
 ## Diagnostics
 
-Diagnostics include finite vector counts, speed statistics, calm count, divergence, vertical shear, temporal change, spatial autocorrelation, noise score, coastline-normal speed, along/cross-isobath metrics, land-vector count, and below-bottom-vector count.
+Diagnostics include finite vector counts, speed statistics, calm count, divergence, temporal change, spatial autocorrelation, noise score, coastline-normal speed, along/cross-isobath metrics, land-vector count, below-bottom-vector count, vertical shear RMS/maximum, surface-to-deep vector differences, depth-layer digest checks, copied-layer detection, and material depth-distinctness fractions.
 
 ## Deterministic Behavior
 
@@ -60,8 +60,12 @@ Scientifically constrained synthetic current fields are not calibrated ocean for
 
 ## Ownership Boundary
 
-The application owns UI, scene lifecycle, and Three.js presentation. The mission simulator consumes package currents but does not generate them. Planning display units are converted to canonical seconds before package sampling. Current-generation equations remain outside the package in FLOW-PKG-R1.
+The application owns UI, scene lifecycle, mission orchestration, scoring, and Three.js presentation. The mission simulator consumes package currents; it does not invent display-only currents. Planning display units are converted to canonical seconds before package sampling. FLOW-PKG-R2 moves production bathymetry-conditioned current generation into the package while leaving app compatibility forwarders in place.
 
 ## Future Backends
 
-Reserved backend IDs: `javascriptCpuV1`, `wasmCpuV1`, `webgpuComputeV1`, `importedOceanModelV1`. Only the existing JavaScript CPU backend is active.
+Active generation backend IDs are `cpuBathymetryConditionedSyntheticV2` for exact compatibility and `cpuBathymetryConditionedSyntheticV3` for normal depth-structured mixed regional missions. Reserved future backend IDs such as WebGPU, WASM, and imported operational products remain inactive until explicit provenance and validation exist.
+
+## FLOW-PKG-R2 Vertical Structure
+
+Equal currents across depth are valid only for an explicitly depth-uniform or vertically mixed regime such as `barotropicDepthUniform`. Normal mixed regional missions use declared depth structure through V3. Vertical variation is coherent and model-based, not random slab noise. Bathymetry masks invalid depths and influences bottom-boundary behavior. Three.js displays this structure but does not generate it. Real ocean-model validation remains a later oracle/data phase.

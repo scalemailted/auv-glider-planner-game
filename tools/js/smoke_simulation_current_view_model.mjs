@@ -48,6 +48,15 @@ assert.equal(viewModel.currentVectorValidCount > 0, true, 'Simulation valid curr
 assert.equal(viewModel.currentActiveLayerId, 'thermocline', 'Simulation active current layer is preserved');
 assert.equal(Number.isFinite(Number(viewModel.currentActiveTimeSeconds)), true, 'Simulation active current time is finite');
 assert.equal(debug.sourceVectorSampleCount > 0, true, 'compact debug payload has source samples');
+assert.equal(debug.generatorBackend, 'cpuBathymetryConditionedSyntheticV3', 'normal generated simulation debug uses the V3 current backend');
+assert.equal(debug.verticalStructureId, 'mixedRegionalBaroclinicV1', 'debug payload exposes the declared vertical structure');
+assert.equal(Array.isArray(debug.verticalProfileFamilies) && debug.verticalProfileFamilies.length > 0, true, 'debug payload exposes vertical profile families');
+assert.equal(Array.isArray(debug.depthLayerDigests) && debug.depthLayerDigests.length >= 2, true, 'debug payload exposes per-depth layer digests');
+assert.equal(debug.rendererOwnsVerticalStructure, false, 'renderer does not generate vertical current structure');
+assert.equal(debug.displayChangesVerticalStructure, false, 'display controls do not change vertical current structure');
+assert.equal(debug.renderDepthParityPass, true, 'rendered current sample matches canonical current sample');
+assert.equal(debug.canonicalDepthDistinctnessPass, true, 'canonical depth distinctness contract passes');
+assert.equal(debug.selectedColumnProfile?.samplesByDepth?.length > 1, true, 'debug payload includes selected-column vertical current profile');
 assert.equal(json.includes('eastVelocityCube'), false, 'view model does not clone full current cube arrays');
 assert.equal(json.includes('northVelocityCube'), false, 'view model does not clone full current cube arrays');
 

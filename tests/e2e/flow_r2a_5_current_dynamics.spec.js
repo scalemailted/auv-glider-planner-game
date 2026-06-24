@@ -205,7 +205,11 @@ async function collectR2A5Metrics(page, route = '/') {
 
 function expectNormalCurrentContract(metrics) {
   expect(metrics.sourceTier).toBe('scientificallyConstrainedSynthetic');
-  expect(metrics.equationFamily).toBe('bathymetryConditionedStreamfunctionSyntheticV2');
+  expect(metrics.equationFamily).toBe('bathymetryConditionedDepthStructuredSyntheticV3');
+  expect(metrics.currentDebug.generatorBackend).toBe('cpuBathymetryConditionedSyntheticV3');
+  expect(metrics.currentDebug.verticalStructureId).toBe('mixedRegionalBaroclinicV1');
+  expect(metrics.currentDebug.canonicalDepthDistinctnessPass).toBe(true);
+  expect(metrics.currentDebug.renderDepthParityPass).toBe(true);
   expect(metrics.sourceDepthAxis.length).toBeGreaterThanOrEqual(5);
   expect(metrics.sourceTimeAxis.length).toBeGreaterThanOrEqual(4);
   for (const componentId of REQUIRED_COMPONENTS) expect(metrics.componentIds).toContain(componentId);

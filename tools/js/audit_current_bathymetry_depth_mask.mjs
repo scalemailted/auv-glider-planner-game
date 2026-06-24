@@ -1,0 +1,13 @@
+import assert from 'node:assert/strict';
+import { createDepthStructuredField } from './current_vertical_structure_test_helpers.mjs';
+import { sampleOceanCurrent } from '../../packages/currents/src/index.js';
+const bottomDepthMeters = Array.from({ length: 5 }, () => Array.from({ length: 6 }, () => 40));
+bottomDepthMeters[2][3] = 120;
+const field = createDepthStructuredField({ grid: { width: 6, height: 5 }, depthAxisMeters: [0, 20, 60, 100], landMask: Array.from({ length: 5 }, () => Array.from({ length: 6 }, () => false)), patch: { bottomDepthMeters } });
+const below = sampleOceanCurrent({ field, eastMeters: 1, northMeters: 1, depthMeters: 100, timeSeconds: 600 });
+const deepWet = sampleOceanCurrent({ field, eastMeters: 3, northMeters: 2, depthMeters: 100, timeSeconds: 600 });
+assert.equal(below.wet, false);
+assert.equal(below.belowBottom, true);
+assert.equal(below.uEastMetersPerSecond, 0);
+assert.equal(deepWet.wet, true);
+console.log('audit_current_bathymetry_depth_mask: ok', { belowReason: below.maskReason, deepWet: deepWet.wet });

@@ -1,0 +1,12 @@
+import assert from 'node:assert/strict';
+import { createDepthStructuredField } from './current_vertical_structure_test_helpers.mjs';
+const field = createDepthStructuredField();
+const d = field.scientificDiagnostics;
+assert.equal(d.status, 'PASS');
+assert.ok(d.verticalShearRms > 0);
+assert.ok(d.surfaceToDeepVectorDifferenceRms > 0.01);
+assert.ok(d.materiallyDistinctColumnFraction >= 0.5);
+assert.equal(d.copiedLayerDetected, false);
+assert.equal(d.belowBottomVectorCount, 0);
+assert.equal(d.landVectorCount, 0);
+console.log('audit_current_vertical_scientific_invariants: ok', { verticalShearRms: d.verticalShearRms, surfaceToDeepVectorDifferenceRms: d.surfaceToDeepVectorDifferenceRms, materiallyDistinctColumnFraction: d.materiallyDistinctColumnFraction });

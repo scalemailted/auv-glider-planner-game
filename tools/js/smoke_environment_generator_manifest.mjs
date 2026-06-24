@@ -21,7 +21,7 @@ assert.equal(validateGeneratedEnvironmentArtifact(artifactA).valid, true);
 assert.equal(artifactA.digest, artifactB.digest, 'same manifest and backend must produce same artifact digest');
 assert.ok(artifactA.currentField4D.timeAxisSeconds.at(-1) >= 7200, 'generated current axis spans manifest valid end');
 const summary = generatedEnvironmentArtifactSummary(artifactA);
-assert.equal(summary.backendId, 'cpuBathymetryConditionedSyntheticV2');
+assert.equal(summary.backendId, 'cpuBathymetryConditionedSyntheticV3');
 assert.equal(summary.backendImplemented, true);
 assert.equal(summary.synthetic, true);
 assert.equal(summary.calibratedForecast, false);

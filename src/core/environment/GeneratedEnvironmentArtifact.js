@@ -1,4 +1,4 @@
-import { createBathymetryConditionedCurrentField } from '../science/BathymetryConditionedCurrentBuilder.js';
+import { createBathymetryConditionedCurrentField } from '../../../packages/currents/src/index.js';
 import { normalizeCurrentFieldArtifact } from './CurrentFieldArtifactAdapter.js';
 import { normalizeSyntheticEnvironmentManifest, validateSyntheticEnvironmentManifest } from './SyntheticEnvironmentManifest.js';
 import { validateEnvironmentGeneratorBackend } from './EnvironmentGeneratorBackendContract.js';

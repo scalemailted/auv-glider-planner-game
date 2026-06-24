@@ -1,12 +1,12 @@
 # Current Package Architecture
 
-`packages/currents` is the package boundary for 4D current manifests, CurrentField4D artifacts, source metadata, temporal-boundary handling, prepared sampling, manufactured verification fixtures, and pure diagnostics.
+`packages/currents` is the package boundary for 4D current manifests, CurrentField4D artifacts, source metadata, temporal-boundary handling, prepared sampling, manufactured verification fixtures, pure diagnostics, deterministic generation backends, and vertical profile contracts.
 
-The application still owns current generation, environment composition, Planning timeline display units, renderer state, Three.js glyphs, and Phaser/HTML controls. FLOW-PKG-R1 deliberately leaves production current-component composition in `src/core/science/BathymetryConditionedCurrentBuilder.js` for FLOW-PKG-R2.
+The application owns environment composition, Planning timeline display units, renderer state, Three.js glyphs, and Phaser/HTML controls. FLOW-PKG-R2 moved production bathymetry-conditioned current generation into `packages/currents/src/generation/` and left `src/core/science/BathymetryConditionedCurrentBuilder.js` as a compatibility forwarder.
 
 Production flow:
 
-1. Existing deterministic current builder creates the field values.
+1. Package generation backends create or preserve the field values.
 2. `CurrentFieldArtifactAdapter` normalizes and validates through `packages/currents`.
 3. Planning, Simulation, and renderer-neutral view models consume the same package-backed artifact digest.
 4. Three.js receives sampled presentation data only.

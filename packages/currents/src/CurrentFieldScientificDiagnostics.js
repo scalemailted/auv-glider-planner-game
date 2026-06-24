@@ -18,6 +18,7 @@ export function computeCurrentFieldScientificDiagnostics(field = {}, options = {
   const adjacentMagnitudeDifferences = [];
   const adjacentCosines = [];
   const calmThreshold = finite(options.calmThresholdMetersPerSecond ?? field.sourceMetadata?.calmThresholdMetersPerSecond, 0.035);
+  const depthStructure = computeDepthStructureDiagnostics(field, { calmThresholdMetersPerSecond: calmThreshold });
   let validVectorCount = 0;
   let invalidVectorCount = 0;
   let landVectorCount = 0;
@@ -159,6 +160,24 @@ export function computeCurrentFieldScientificDiagnostics(field = {}, options = {
     belowBottomVectorCount,
     landVectorCount,
     verticalShearRms: metricStats(verticalShear).rms,
+    verticalShearMaximum: metricStats(verticalShear).maximum,
+    surfaceToBottomVectorDifferenceRms: depthStructure.surfaceToBottomVectorDifferenceRms,
+    surfaceToDeepVectorDifferenceRms: depthStructure.surfaceToBottomVectorDifferenceRms,
+    surfaceToDeepMagnitudeRatioMean: depthStructure.surfaceToDeepMagnitudeRatioMean,
+    surfaceToDeepBearingDifferenceMean: depthStructure.surfaceToDeepBearingDifferenceMean,
+    verticallyUniformColumnFraction: depthStructure.verticallyUniformColumnFraction,
+    materiallyDistinctColumnFraction: depthStructure.materiallyDistinctColumnFraction,
+    materialMagnitudeColumnFraction: depthStructure.materialMagnitudeColumnFraction,
+    materialBearingColumnFraction: depthStructure.materialBearingColumnFraction,
+    multiLayerWetColumnCount: depthStructure.multiLayerWetColumnCount,
+    depthLayerDigests: depthStructure.depthLayerDigests,
+    depthLayerDigestCount: depthStructure.depthLayerDigestCount,
+    copiedLayerDetected: depthStructure.copiedLayerDetected,
+    depthCorrelationMatrix: depthStructure.depthCorrelationMatrix,
+    bottomBoundaryGradientCheck: depthStructure.bottomBoundaryGradientCheck,
+    verticalStructureStatus: depthStructure.status,
+    verticalStructureWarnings: depthStructure.warnings,
+    verticalStructureFailures: depthStructure.failures,
     temporalChangeRms: metricStats(temporalChange).rms,
     temporalDiscontinuityMaximum: metricStats(temporalChange).maximum,
     wetVolumeCoverage: round(validVectorCount / Math.max(1, dims.time * dims.depth * dims.height * dims.width)),
@@ -188,6 +207,106 @@ export function computeCurrentFieldScientificDiagnostics(field = {}, options = {
   };
 }
 
+export function computeDepthStructureDiagnostics(field = {}, options = {}) {
+  const dims = dimensions(field);
+  const source = field.sourceMetadata ?? {};
+  const barotropicControl = source.verticalStructureId === 'barotropicDepthUniform'
+    || source.sourceDepthRegime === 'barotropicDepthUniform'
+    || source.depthDependent === false;
+  const nonBarotropicBackend = source.environmentGeneratorBackendId === 'cpuBathymetryConditionedSyntheticV3' && !barotropicControl;
+  const layerDigests = [];
+  for (let z = 0; z < dims.depth; z += 1) {
+    layerDigests.push(stableDigest({
+      depthMeters: field.depthAxisMeters?.[z] ?? z,
+      u: (field.uEastMetersPerSecond ?? []).map((time) => time?.[z] ?? []),
+      v: (field.vNorthMetersPerSecond ?? []).map((time) => time?.[z] ?? [])
+    }));
+  }
+  const digestCount = new Set(layerDigests).size;
+  const copiedLayerDetected = dims.depth > 1 && digestCount === 1;
+  const columnDeltas = [];
+  const magnitudeRanges = [];
+  const bearingRanges = [];
+  const surfaceToBottomDeltas = [];
+  const surfaceDeepRatios = [];
+  const surfaceDeepBearingDiffs = [];
+  const materialMagnitudeFlags = [];
+  const materialBearingFlags = [];
+  const materialFlags = [];
+  const uniformFlags = [];
+  const speedByDepth = Array.from({ length: dims.depth }, () => []);
+  for (let t = 0; t < dims.time; t += 1) {
+    for (let y = 0; y < dims.height; y += 1) {
+      for (let x = 0; x < dims.width; x += 1) {
+        const samples = [];
+        for (let z = 0; z < dims.depth; z += 1) {
+          const depth = Number(field.depthAxisMeters?.[z] ?? z);
+          if (!cellWetAtDepth(field, x, y, depth)) continue;
+          const u = Number(field.uEastMetersPerSecond?.[t]?.[z]?.[y]?.[x]);
+          const v = Number(field.vNorthMetersPerSecond?.[t]?.[z]?.[y]?.[x]);
+          if (!Number.isFinite(u) || !Number.isFinite(v)) continue;
+          const speed = Math.hypot(u, v);
+          samples.push({ z, depth, u, v, speed, bearing: bearingDegrees(u, v) });
+          speedByDepth[z].push(speed);
+        }
+        if (samples.length < 2) continue;
+        let maxDelta = 0;
+        for (let i = 0; i < samples.length; i += 1) {
+          for (let j = i + 1; j < samples.length; j += 1) {
+            maxDelta = Math.max(maxDelta, Math.hypot(samples[i].u - samples[j].u, samples[i].v - samples[j].v));
+          }
+        }
+        const speeds = samples.map((sample) => sample.speed);
+        const bearings = samples.map((sample) => sample.bearing);
+        const meanSpeed = speeds.reduce((sum, value) => sum + value, 0) / Math.max(1, speeds.length);
+        const threshold = Math.max(0.01, 0.08 * meanSpeed);
+        const magRange = Math.max(...speeds) - Math.min(...speeds);
+        const bearingRange = circularBearingRange(bearings);
+        const first = samples[0];
+        const last = samples.at(-1);
+        const surfaceDeepDelta = Math.hypot(last.u - first.u, last.v - first.v);
+        columnDeltas.push(maxDelta);
+        magnitudeRanges.push(magRange);
+        bearingRanges.push(bearingRange);
+        surfaceToBottomDeltas.push(surfaceDeepDelta);
+        if (first.speed > 1e-9) surfaceDeepRatios.push(last.speed / first.speed);
+        surfaceDeepBearingDiffs.push(Math.abs(shortestBearingDelta(first.bearing, last.bearing)));
+        materialMagnitudeFlags.push(magRange >= threshold);
+        materialBearingFlags.push(bearingRange >= 5 && meanSpeed > options.calmThresholdMetersPerSecond);
+        materialFlags.push(maxDelta >= threshold);
+        uniformFlags.push(maxDelta <= 1e-9);
+      }
+    }
+  }
+  const warnings = [];
+  const failures = [];
+  if (copiedLayerDetected && !barotropicControl) failures.push('All depth-layer arrays have the same digest without a declared barotropic control.');
+  if (nonBarotropicBackend && materialFlags.length && fraction(materialFlags) < 0.5) warnings.push(`Materially distinct wet-column fraction ${round(fraction(materialFlags))} is below the mixed-regional target 0.5.`);
+  if (nonBarotropicBackend && materialBearingFlags.length && fraction(materialBearingFlags) < 0.2) warnings.push(`Material bearing-change fraction ${round(fraction(materialBearingFlags))} is below the mixed-regional target 0.2.`);
+  return {
+    barotropicControl,
+    nonBarotropicBackend,
+    multiLayerWetColumnCount: materialFlags.length,
+    maximumPairwiseVectorDelta: metricStats(columnDeltas).maximum,
+    magnitudeRangeMean: metricStats(magnitudeRanges).mean,
+    bearingRangeMeanDegrees: metricStats(bearingRanges).mean,
+    surfaceToBottomVectorDifferenceRms: metricStats(surfaceToBottomDeltas).rms,
+    surfaceToDeepMagnitudeRatioMean: metricStats(surfaceDeepRatios).mean,
+    surfaceToDeepBearingDifferenceMean: metricStats(surfaceDeepBearingDiffs).mean,
+    verticallyUniformColumnFraction: fraction(uniformFlags),
+    materiallyDistinctColumnFraction: fraction(materialFlags),
+    materialMagnitudeColumnFraction: fraction(materialMagnitudeFlags),
+    materialBearingColumnFraction: fraction(materialBearingFlags),
+    depthLayerDigests: layerDigests,
+    depthLayerDigestCount: digestCount,
+    copiedLayerDetected,
+    depthCorrelationMatrix: depthCorrelationMatrix(speedByDepth),
+    bottomBoundaryGradientCheck: bottomBoundaryGradientCheck(field),
+    status: failures.length ? 'FAIL' : warnings.length ? 'WARN' : 'PASS',
+    warnings,
+    failures
+  };
+}
 export function bathymetrySteeringAt(field = {}, x = 0, y = 0, u = 0, v = 0) {
   const b = field.bottomDepthMeters ?? [];
   if (!b.length) return null;
@@ -329,4 +448,99 @@ function finite(value, fallback = 0) {
 function round(value, digits = 6) {
   const number = Number(value);
   return Number.isFinite(number) ? Number(number.toFixed(digits)) : null;
+}
+function fraction(flags = []) {
+  if (!flags.length) return 0;
+  return round(flags.filter(Boolean).length / flags.length);
+}
+
+function bearingDegrees(u = 0, v = 0) {
+  return (((Math.atan2(Number(u), Number(v)) * 180 / Math.PI) % 360) + 360) % 360;
+}
+
+function shortestBearingDelta(a = 0, b = 0) {
+  let delta = Number(b) - Number(a);
+  while (delta > 180) delta -= 360;
+  while (delta < -180) delta += 360;
+  return delta;
+}
+
+function circularBearingRange(values = []) {
+  const bearings = values.map(Number).filter(Number.isFinite);
+  if (bearings.length < 2) return 0;
+  let maxGap = 0;
+  const sorted = bearings.map((value) => ((value % 360) + 360) % 360).sort((a, b) => a - b);
+  for (let index = 0; index < sorted.length; index += 1) {
+    const next = sorted[(index + 1) % sorted.length] + (index === sorted.length - 1 ? 360 : 0);
+    maxGap = Math.max(maxGap, next - sorted[index]);
+  }
+  return round(360 - maxGap);
+}
+
+function depthCorrelationMatrix(valuesByDepth = []) {
+  return valuesByDepth.map((a) => valuesByDepth.map((b) => round(correlation(a, b))));
+}
+
+function correlation(a = [], b = []) {
+  const count = Math.min(a.length, b.length);
+  if (!count) return null;
+  const av = a.slice(0, count).map(Number);
+  const bv = b.slice(0, count).map(Number);
+  const ma = av.reduce((sum, value) => sum + value, 0) / count;
+  const mb = bv.reduce((sum, value) => sum + value, 0) / count;
+  let num = 0;
+  let da = 0;
+  let db = 0;
+  for (let index = 0; index < count; index += 1) {
+    const x = av[index] - ma;
+    const y = bv[index] - mb;
+    num += x * y;
+    da += x * x;
+    db += y * y;
+  }
+  const den = Math.sqrt(da * db);
+  return den > 1e-12 ? num / den : 1;
+}
+
+function bottomBoundaryGradientCheck(field = {}) {
+  const source = field.sourceMetadata ?? {};
+  const expectsBottomDecay = (source.verticalProfileFamilies ?? []).includes('bottomBoundaryDecay');
+  if (!expectsBottomDecay) return { status: 'NOT_APPLICABLE', reason: 'bottomBoundaryDecay not declared' };
+  const dims = dimensions(field);
+  const ratios = [];
+  for (let t = 0; t < dims.time; t += 1) {
+    for (let y = 0; y < dims.height; y += 1) {
+      for (let x = 0; x < dims.width; x += 1) {
+        const valid = [];
+        for (let z = 0; z < dims.depth; z += 1) {
+          const depth = Number(field.depthAxisMeters?.[z] ?? z);
+          if (!cellWetAtDepth(field, x, y, depth)) continue;
+          const speed = Math.hypot(Number(field.uEastMetersPerSecond?.[t]?.[z]?.[y]?.[x] ?? 0), Number(field.vNorthMetersPerSecond?.[t]?.[z]?.[y]?.[x] ?? 0));
+          valid.push({ depth, speed });
+        }
+        if (valid.length < 2) continue;
+        const surface = valid[0].speed;
+        const deepest = valid.at(-1).speed;
+        if (surface > 1e-9) ratios.push(deepest / surface);
+      }
+    }
+  }
+  const stats = metricStats(ratios);
+  return { status: stats.mean == null ? 'NOT_APPLICABLE' : stats.mean <= 1.2 ? 'PASS' : 'WARN', deepestToSurfaceSpeedRatioMean: stats.mean, deepestToSurfaceSpeedRatioP95: stats.p95 };
+}
+
+function stableDigest(value) {
+  const text = stable(value);
+  let hash = 2166136261;
+  for (let i = 0; i < text.length; i += 1) {
+    hash ^= text.charCodeAt(i);
+    hash = Math.imul(hash, 16777619);
+  }
+  return `fnv1a32:${(hash >>> 0).toString(16).padStart(8, '0')}`;
+}
+
+function stable(value) {
+  if (Array.isArray(value)) return `[${value.map(stable).join(',')}]`;
+  if (value && typeof value === 'object') return `{${Object.keys(value).sort().map((key) => `${JSON.stringify(key)}:${stable(value[key])}`).join(',')}}`;
+  return JSON.stringify(value);
 }
