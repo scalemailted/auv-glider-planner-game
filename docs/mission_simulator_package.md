@@ -1,10 +1,10 @@
 # Mission Simulator Package
 
-SIM-PKG-R1 makes `packages/mission-simulator` an active portable mission-simulation boundary. The package owns deterministic mission-state transition contracts, manifest/input/state/event/observation normalization, clone-safe snapshots, raw metric summaries, and selected pure helpers that were previously under `src/core/sim` or `src/core/motion`.
+SIM-PKG-R2 makes `packages/mission-simulator` the authoritative mission-state transition package for ANCHOR browser, Node headless, and benchmark execution adapters. Legacy `src/core/...` runtime modules that still exist for production imports now forward to package implementations where required.
 
-The package consumes a canonical `EnvironmentArtifact`. It does not generate scientific environment fields. It does not own route planning or route editing. It does not own official score aggregation. It produces raw metrics and events consumed by scoring, result, and replay adapters.
+The package consumes a frozen canonical `EnvironmentArtifact` identity. It does not generate scientific environment fields. It does not own route planning or route editing. It does not own official score aggregation. It produces state, events, observations, terminal summaries, raw metrics, snapshots, and result digests consumed by scoring, result, replay, browser, and headless adapters.
 
-Play/Pause scheduling remains application-owned. Three.js presents simulation state but does not own physics. Phaser owns lifecycle/routing but does not own mission physics. Browser and headless execution use the same portable simulation kernel contract and debug/result digest shape. The model is an educational benchmark simulator, not a certified vehicle digital twin or operational navigation system.
+Play/Pause scheduling remains application-owned. Three.js presents simulation state but does not own physics. Phaser owns transitional route/scene lifecycle but does not own mission physics. Replay review is playback-only and does not rerun mission simulation. The model is an educational benchmark simulator, not a certified vehicle digital twin or operational navigation system.
 
 ## Dependency Boundary
 
@@ -28,32 +28,23 @@ No lower scientific package may import `mission-simulator`.
 
 ## Ownership Table
 
-| Responsibility | Current owner | Pure | Runtime coupled | SIM-PKG-R1 action |
-|---|---|---:|---:|---|
-| Canonical simulation-time authority | `SimulationEngine.t` plus package state seconds | Yes | Scheduler coupled | Package contracts use seconds; browser scheduler decides when to step |
-| Environment identity consumed by Simulation | `level.environmentArtifact` and package input digests | Yes | No | Package input freezes environment digest/reference |
-| Agent-state authority | `SimulationEngine` production agents, mirrored in package state | Partial | Yes | Package normalizes canonical agent state and snapshots |
-| Route-progress authority | `PlanExecutor` and `SimulationEngine` | Partial | Yes | Retained in app for R1; package state records active waypoint/segment progress |
-| Dive-state authority | `GliderDiveStateMachine` | Yes | No | Moved to package with compatibility forwarder |
-| Vehicle-motion authority | `Physics`, `GliderDynamicsModel`, `GliderTrajectorySimulator` | Partial | Yes | Retained in app/headless modules for R1 to avoid behavior drift |
-| Current-drift authority | Environment/currents samplers plus `Physics` application | Partial | Yes | Package consumes samplers; production drift remains unchanged |
-| Scalar sampling authority | Environment/scalar samplers plus `Sampling` | Partial | Yes | Package can sample environment; production observation semantics remain unchanged |
-| Observation authority | `Sampling`, headless observation modules, package normalization | Partial | Yes | Package normalizes observations and digests public records |
-| Observation-noise authority | Existing browser/headless observation code | Partial | Yes | Retained outside package in R1 |
-| Energy authority | Existing physics/simulation code | Partial | Yes | Package raw metrics mirror energy used; formulas unchanged |
-| Surfacing-event authority | `GliderComms`, surfacing decision transactions | Partial | Yes | Package records pending decision/decision events; UI handoff remains app-owned |
-| Pending surfacing-decision authority | `SimulationEngine`/planning handoff | Partial | Yes | Package snapshots pending decision metadata |
-| Terrain-diagnostic authority | `TerrainSimulationDiagnostics` | Partial | Yes | Retained outside package; package raw metrics/events can carry summaries |
-| Hazard authority | `MobileHazards`, terrain/hazard checks | Partial | Yes | Retained outside package; package records hazard metrics/events |
-| Mission-terminal authority | `EndConditions`, `SimulationEngine` | Yes | Partial | `EndConditions` moved to package; production terminal behavior mirrored |
-| Raw metrics authority | Package raw metric normalizer plus existing summaries | Yes | No | Package produces raw metric summaries consumed downstream |
-| Score authority | `src/core/sim/Scoring.js` and scoring modules | Partial | Yes | Retained outside package; no score formula moved |
-| Result-export authority | `ResultExporter` and `SimulationEngine.getResult()` | Partial | Yes | Result includes package debug/snapshot/digest; schema unchanged |
-| Replay-event authority | Replay builders/reducers | Partial | Yes | Replay remains playback-only; package events are source material only |
-| Browser execution path | Phaser/Three app plus `SimulationEngine` | Partial | Yes | Browser engine creates/syncs package simulator and debug object |
-| Headless execution path | `HeadlessMissionRunner` | Partial | Yes | Headless runner creates/syncs package simulator and result digest |
-| Benchmark execution path | Existing benchmark adapters | Partial | Yes | Uses existing results; package outputs are available for parity checks |
-| Duplicate execution logic | Browser and headless wrappers | No | Yes | R1 converges on package contracts without rewriting all physics |
+| Responsibility | SIM-PKG-R2 owner |
+|---|---|
+| Canonical mission-state transitions | `packages/mission-simulator` |
+| Mission input identity and digests | `packages/mission-simulator` |
+| Agent initialization and normalized state | `packages/mission-simulator` |
+| Route-progress helpers and waypoint execution helpers | `packages/mission-simulator` |
+| Vehicle motion and current-drift helper logic | `packages/mission-simulator` |
+| Environment sampling event production | `packages/mission-simulator` |
+| Terminal condition evaluation | `packages/mission-simulator` |
+| Terrain runtime diagnostic helpers | `packages/mission-simulator` |
+| Raw metric summaries | `packages/mission-simulator` |
+| Official score aggregation | Application scoring modules outside the package |
+| Play/Pause, step buttons, and scheduling cadence | Browser application adapter |
+| Route planning, route editing, and mission editor commands | Browser/headless planning adapters outside the package |
+| Three.js/Phaser/DOM rendering and scene lifecycle | Browser application |
+| Replay playback and replay reducers | Replay adapters outside the package |
+| Environment generation | Bathymetry/current/scalar/environment packages and app adapters |
 
 ## Contracts
 
@@ -82,7 +73,7 @@ Required claim boundary:
 
 ### Commands
 
-R1 exposes command-shaped entry points: `stepMissionSimulator`, `advanceMissionSimulator`, `finishMissionSimulator`, `resetMissionSimulator`, and `applyMissionSimulationDecision`. Play and Pause remain application scheduling decisions; Pause means no time-advancing package command is called.
+R2 exposes command-shaped entry points: `stepMissionSimulator`, `advanceMissionSimulator`, `finishMissionSimulator`, `resetMissionSimulator`, `applyMissionSimulationDecision`, and snapshot/restore helpers. Play and Pause remain application scheduling decisions; Pause means no time-advancing package command is called.
 
 ### Events And Observations
 
@@ -94,43 +85,39 @@ Events and observations normalize to public-safe cloneable records with versions
 
 ## Production Integration
 
-Browser production still runs through `src/core/sim/SimulationEngine.js`. SIM-PKG-R1 creates a package input/kernel during construction, resets it with the browser reset flow, syncs it after production steps, and exposes `globalThis.ANCHOR_MISSION_SIMULATOR_DEBUG` from the adapter. This preserves current glider physics, sampling, scoring, rendering, replay, and mission outcomes.
+Browser production uses `src/core/sim/SimulationEngine.js` as an adapter around the package authority. The adapter schedules commands, updates UI-facing state, publishes `globalThis.ANCHOR_MISSION_SIMULATOR_DEBUG`, and keeps existing product workflows intact.
 
-Headless execution still runs through `src/core/headless/runtime/HeadlessMissionRunner.js`. It creates the same package input/kernel shape, syncs package state from the deterministic headless route/observation output, and emits package debug/snapshot/result digests into the episode.
+Headless execution uses `src/core/headless/runtime/HeadlessMissionRunner.js` as an artifact and workflow adapter around the same package input/kernel/debug shape.
 
-Compatibility forwarders remain at selected old paths:
+Benchmark execution should consume the same browser/headless package outputs and must not introduce a second mission-state transition engine.
 
-- `src/core/sim/ContinuousGliderState.js`
-- `src/core/sim/MissionRules.js`
-- `src/core/sim/EndConditions.js`
-- `src/core/sim/GliderDiveStateMachine.js`
-- `src/core/motion/EffectiveDiveProfileResolver.js`
+Compatibility forwarders remain at selected old paths, including:
 
-## Moved Modules
+- `src/core/sim/Agent.js`
+- `src/core/sim/Physics.js`
+- `src/core/sim/Sampling.js`
+- `src/core/planning/PlanExecutor.js`
+- `src/core/simulation/TerrainSimulationDiagnostics.js`
+- existing compatibility forwarders for mission rules, end conditions, dive-state helpers, and profile runtime helpers
 
-Physically moved or copied into `packages/mission-simulator/src/` for R1:
+## Moved Or Package-Owned Modules
 
-- `ContinuousGliderState.js`
-- `MissionRules.js`
-- `EndConditions.js`
-- `GliderDiveStateMachine.js`
-- `WaterColumnProfileRuntime.js`
-- `MissionSimulationUtil.js`
-- `MissionSimulationContracts.js`
-- `MissionSimulationKernel.js`
+SIM-PKG-R2 package-owned transition modules include:
 
-## Intentionally Retained Outside The Package
-
-The following remain outside the package in R1 to avoid behavior drift:
-
-- browser scene lifecycle and Play/Pause button state
-- Three.js rendering and renderer view models
-- Phaser route/scene lifecycle
-- route planning, route editing, and mission editor commands
-- official score aggregation and leaderboard behavior
-- replay playback/reduction
-- detailed production physics and terrain diagnostics not yet isolated as pure contracts
-- sensor-noise and observation-generation details still tied to existing browser/headless paths
+- `Agent.js`
+- `Physics.js`
+- `Sampling.js`
+- `PlanExecutor.js`
+- `TerrainSimulationDiagnostics.js`
+- `CurrentAwareRouteCost.js`
+- `ShorelineRisk.js`
+- `WaypointSemantics.js`
+- `WaterColumnFieldModel.js`
+- `DepthAwareScienceValue.js`
+- `DepthScoringProfiles.js`
+- `StochasticDrift.js`
+- `SeededRng.js`
+- `RuntimeMath.js`
 
 ## Validation Commands
 
@@ -140,18 +127,20 @@ Primary package gates:
 node tools/js/audit_mission_simulator_package_dependencies.mjs
 node tools/js/audit_mission_simulator_package_browser_safety.mjs
 node tools/js/audit_mission_simulator_package_worker_safety.mjs
+node tools/js/audit_mission_simulator_authoritative_runtime.mjs
 node tools/js/smoke_mission_simulator_package_contracts.mjs
 node tools/js/smoke_mission_simulator_package_forwarders.mjs
-node tools/js/capture_mission_simulator_package_r1_baseline.mjs
+node tools/js/smoke_mission_simulator_authoritative_runtime.mjs
+node tools/js/capture_mission_simulator_package_r2_baseline.mjs
 ```
 
 Capability-owned browser workflows:
 
-- `Production Simulation Uses Package Mission Kernel`
-- `Play Pause Step Finish Preserve Canonical Package Semantics`
-- `Browser and Headless Share Mission Simulation Outcomes`
-- `Mission Simulator Package Runs From GitHub Pages Subpath`
+- `Browser Simulation Uses Package Kernel as Sole Authority`
+- `Package Kernel Preserves Play Pause Step Finish and Reset`
+- `Surfacing Replan Resumes the Same Package Simulation`
+- `Browser Headless and Pages Share the Authoritative Kernel`
 
 ## Remaining Coupling
 
-R1 does not remove all production simulation coupling. It establishes package-owned contracts, selected moved helpers, browser/headless kernel convergence, and package digests around existing behavior. A later extraction should only proceed if trajectory, observation, terminal, raw-metric, score/result, snapshot/restore, package-purity, Pages, and capability-owned release tests remain green.
+SIM-PKG-R2 is an authoritative runtime cutover, not a gameplay redesign. It intentionally preserves environment generation, route planning, glider dynamics semantics, sampling values, observation behavior, terrain and hazard rules, terminal outcomes, official scoring, rendering, replay semantics, and public schemas. Further package extraction should proceed only behind parity fixtures, package purity audits, browser/headless parity checks, and release E2E gates.

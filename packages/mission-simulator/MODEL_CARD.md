@@ -3,9 +3,9 @@
 ## Model Identity
 
 - Package: `@anchor/mission-simulator`
-- Phase: SIM-PKG-R1
+- Phase: SIM-PKG-R2
 - Active backend: `javascriptCpuV1`
-- Purpose: deterministic educational mission execution contracts for browser and Node/headless ANCHOR workflows
+- Purpose: deterministic educational mission execution contracts for browser, benchmark, and Node/headless ANCHOR workflows
 
 ## Claim Boundary
 
@@ -28,7 +28,7 @@ The package consumes mission plans, vehicle/glider configurations, deterministic
 
 ## Outputs
 
-The package produces normalized mission state, events, observations, raw metric summaries, snapshots, terminal summaries, debug summaries, and stable result digests. Existing scoring, result, replay, and UI adapters consume these outputs.
+The package produces normalized mission state, events, observations, raw metric summaries, snapshots, terminal summaries, debug summaries, and stable result digests. Existing result, replay, and UI adapters consume these outputs. Official browser score aggregation remains outside the package.
 
 ## Determinism
 
@@ -40,4 +40,4 @@ Events and observations are clone-safe public records. Public payload normalizat
 
 ## Known Limitations
 
-SIM-PKG-R1 keeps detailed production physics, route-progress orchestration, terrain diagnostics, scoring, and replay playback outside the package to avoid behavior drift. The package wraps and mirrors existing production outcomes while selected pure helpers and contracts move into `packages/mission-simulator`.
+SIM-PKG-R2 moves mission-state transition authority into the package, but it does not make the package a route planner, renderer, replay player, official score calculator, calibrated ocean model, or certified glider digital twin. Browser and headless adapters still orchestrate product workflows around the package.

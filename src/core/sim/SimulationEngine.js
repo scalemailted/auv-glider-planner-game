@@ -80,7 +80,8 @@ export class SimulationEngine {
     this.level = level;
     this.mission = mission;
     this.plan = plan;
-    this.t = time;
+    this.initialTime = Number.isFinite(Number(time)) ? Number(time) : 0;
+    this.t = this.initialTime;
     this.missionSimulationInput = createMissionSimulationInput(buildMissionSimulationInputOptions(this));
     this.missionSimulator = createMissionSimulator(this.missionSimulationInput, { backendId: 'javascriptCpuV1' });
     normalizeDeploymentState(this.level, this.mission, this.plan);
@@ -98,6 +99,7 @@ export class SimulationEngine {
   }
 
   reset() {
+    this.t = this.initialTime ?? 0;
     this.agents = (this.mission.agents ?? []).map(createAgent);
     this.markIdleAgents();
     this.complete = false;
@@ -1560,7 +1562,7 @@ function buildMissionSimulationInputOptions(engine = {}) {
   return {
     id: `${level.levelId ?? 'level'}:${mission.missionId ?? mission.id ?? 'mission'}`,
     seed: mission.rules?.stochasticSeed ?? mission.rules?.rngSeed ?? level.meta?.seed ?? level.instanceId ?? 'mission-sim-seed',
-    engineId: 'SimulationEngine',
+    engineId: 'packages/mission-simulator:SimulationEngineAdapter',
     engineVersion: MISSION_SIMULATOR_PACKAGE_VERSION,
     backendId: 'javascriptCpuV1',
     timeStepSeconds: getSafeStepDt(level),
@@ -1577,6 +1579,11 @@ function buildMissionSimulationInputOptions(engine = {}) {
     sourceMetadata: {
       adapter: 'src/core/sim/SimulationEngine.js',
       packageConsumesEnvironmentArtifact: Boolean(environmentArtifact),
+      packageOwnsPhysics: true,
+      packageOwnsRouteProgress: true,
+      packageOwnsEnvironmentSampling: true,
+      packageOwnsTerminalEvaluation: true,
+      packageOwnsRawMetrics: true,
       packageOwnsEnvironmentGeneration: false,
       packageOwnsPlanning: false,
       packageOwnsScoring: false,
@@ -1585,7 +1592,7 @@ function buildMissionSimulationInputOptions(engine = {}) {
     provenance: {
       levelId: level.levelId ?? null,
       missionId: mission.missionId ?? mission.id ?? null,
-      packagePhase: 'SIM-PKG-R1'
+      packagePhase: 'SIM-PKG-R2'
     },
     launchMetadata: {
       levelId: level.levelId ?? null,

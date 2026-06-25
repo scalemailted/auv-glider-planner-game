@@ -17,7 +17,7 @@ import {
 } from './MissionSimulationContracts.js';
 import { clonePlain, distance2d, finiteNumber, normalizeArray, pathDistance, round, stableDigest, validationReport } from './MissionSimulationUtil.js';
 
-export const MISSION_SIMULATOR_KERNEL_VERSION = 'mission-simulator-kernel-sim-pkg-r1';
+export const MISSION_SIMULATOR_KERNEL_VERSION = 'mission-simulator-kernel-sim-pkg-r2';
 
 export function createMissionSimulator(inputOrOptions = {}, options = {}) {
   const input = normalizeMissionSimulationInput(inputOrOptions);
@@ -39,6 +39,8 @@ export function createMissionSimulator(inputOrOptions = {}, options = {}) {
     sampler,
     runtime: {
       backendId: options.backendId ?? input.manifest.backendId ?? 'javascriptCpuV1',
+      engineId: 'packages/mission-simulator',
+      engineVersion: MISSION_SIMULATOR_KERNEL_VERSION,
       packageKernelActive: true,
       browserSpecific: false,
       headlessSpecific: false,
@@ -47,6 +49,10 @@ export function createMissionSimulator(inputOrOptions = {}, options = {}) {
       simulatorResetCount: 0,
       simulatorStepCount: 0,
       simulatorFinishCount: 0,
+      simulatorRestoreCount: 0,
+      packageTransitionCount: 0,
+      legacyProductionTransitionCount: 0,
+      duplicateEngineCount: 0,
       environmentSamplerCreateCount: sampler ? 1 : 0,
       warnings: [...validation.warnings],
       failures: [...validation.errors]
@@ -108,6 +114,7 @@ export function stepMissionSimulator(simulatorOrState, command = {}) {
   }
 
   simulator.runtime.simulatorStepCount += accepted && normalizedCommand.type !== 'reset' ? 1 : 0;
+  simulator.runtime.packageTransitionCount += accepted && normalizedCommand.type !== 'reset' ? 1 : 0;
   const commandRecord = {
     type: normalizedCommand.type,
     dtSeconds: normalizedCommand.dtSeconds,
@@ -158,6 +165,7 @@ export function finishMissionSimulator(simulatorOrState, options = {}) {
   }
   if (!simulator.terminal) markTerminal(simulator, options.terminalReason ?? 'operatorFinish');
   simulator.runtime.simulatorFinishCount += 1;
+  simulator.runtime.packageTransitionCount += 1;
   return simulator;
 }
 
@@ -248,6 +256,7 @@ export function restoreMissionSimulationSnapshot(snapshot = {}, dependencies = {
   simulator.terminal = snapshot.terminal === true;
   simulator.terminalReason = snapshot.terminalReason ?? null;
   simulator.pendingDecision = clonePlain(snapshot.pendingDecision ?? null);
+  simulator.runtime.simulatorRestoreCount += 1;
   return simulator;
 }
 
@@ -274,12 +283,15 @@ export function missionSimulatorDebugSummary(simulatorOrState) {
   const samplerCounters = getEnvironmentSamplerRuntimeCounters();
   return {
     packageVersion: MISSION_SIMULATOR_KERNEL_VERSION,
+    engineId: simulator.runtime.engineId ?? 'packages/mission-simulator',
+    engineVersion: simulator.runtime.engineVersion ?? MISSION_SIMULATOR_KERNEL_VERSION,
     manifestDigest: simulator.input.manifest.manifestDigest,
     inputDigest: simulator.input.inputDigest,
     environmentArtifactDigest: simulator.input.environmentArtifactDigest,
     planDigest: simulator.input.planDigest,
     stateDigest: simulator.state.stateDigest,
     timeSeconds: simulator.state.timeSeconds,
+    stepIndex: simulator.state.stepCount,
     agentCount: simulator.state.agents.length,
     activeAgentCount: simulator.state.agents.filter((agent) => agent.status !== 'idle' && agent.status !== 'complete').length,
     eventCount: simulator.events.length,
@@ -292,11 +304,22 @@ export function missionSimulatorDebugSummary(simulatorOrState) {
     simulatorResetCount: simulator.runtime.simulatorResetCount,
     simulatorStepCount: simulator.runtime.simulatorStepCount,
     simulatorFinishCount: simulator.runtime.simulatorFinishCount,
+    simulatorRestoreCount: simulator.runtime.simulatorRestoreCount ?? 0,
+    packageTransitionCount: simulator.runtime.packageTransitionCount ?? simulator.runtime.simulatorStepCount ?? 0,
+    legacyProductionTransitionCount: simulator.runtime.legacyProductionTransitionCount ?? 0,
+    duplicateEngineCount: simulator.runtime.duplicateEngineCount ?? 0,
     environmentSamplerCreateCount: simulator.runtime.environmentSamplerCreateCount,
     environmentSamplerCallCount: samplerCounters.sampleCallCount,
-    browserHeadlessParityStatus: 'not_checked',
+    browserHeadlessParityStatus: simulator.runtime.browserHeadlessParityStatus ?? 'not_checked',
+    snapshotContinuationParityStatus: simulator.runtime.snapshotContinuationParityStatus ?? 'not_checked',
+    packageOwnsPhysics: true,
+    packageOwnsRouteProgress: true,
+    packageOwnsEnvironmentSampling: true,
+    packageOwnsTerminalEvaluation: true,
+    packageOwnsRawMetrics: true,
     packageOwnsEnvironmentGeneration: false,
     packageOwnsPlanning: false,
+    packageOwnsOfficialScoring: false,
     packageOwnsScoring: false,
     packageOwnsRendering: false,
     packageUsesThree: false,

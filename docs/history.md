@@ -22,6 +22,6 @@ This document keeps durable decisions from completed cleanup, renderer, current,
 ## ENV-PKG-R1 Environment Package Boundary
 
 ENV-PKG-R1 makes `packages/environment` an active package boundary for composition, identity, validation, provenance, role metadata, and unified physical-coordinate sampling across bathymetry, current, and scalar artifacts. It preserves existing generation equations, visibility decisions, observation noise, mission execution, scoring, rendering, and synthetic claim boundaries.
-## SIM-PKG-R1 Mission Simulator Boundary
+## SIM-PKG-R2 Mission Simulator Runtime Authority
 
-SIM-PKG-R1 makes `packages/mission-simulator` an active package boundary for mission manifests, inputs, canonical state, event/observation normalization, raw metric summaries, snapshots, selected pure simulator helpers, browser debug digests, and headless package metadata. It preserves existing environment generation, route planning, glider physics, observation behavior, scoring, rendering, replay playback, and mission outcomes. Production `SimulationEngine` and `HeadlessMissionRunner` now create and sync package kernels rather than exposing package internals directly.
+SIM-PKG-R2 makes `packages/mission-simulator` the authoritative mission-state transition package for browser, Node headless, and benchmark execution adapters. Legacy runtime paths remain compatibility forwarders where required. The cutover preserves environment generation, route planning, glider dynamics semantics, sampling values, observation behavior, terrain and hazard rules, terminal outcomes, official scoring, rendering, replay semantics, and public schemas. Browser and headless adapters still own scheduling, UI/artifact orchestration, and debug publication around the package.

@@ -1,0 +1,168 @@
+{
+  "type": "anchor.mission-simulator.package-r2-parity-baseline",
+  "version": "sim-pkg-r2",
+  "generatedAt": "deterministic-static-record",
+  "harness": {
+    "type": "anchor.mission-simulator.r2-parity-harness-record",
+    "version": "sim-pkg-r2",
+    "packageVersion": "anchor-mission-simulator-sim-pkg-r1",
+    "authoritativeRuntimeVersion": "mission-simulator-authoritative-runtime-sim-pkg-r2",
+    "packageKernel": {
+      "inputDigest": "fnv1a32:a4966504",
+      "initialStateDigest": "fnv1a32:80971f8b",
+      "firstStepDigest": "fnv1a32:d231ed2e",
+      "finalStateDigest": "fnv1a32:1524004c",
+      "restoredFinalStateDigest": "fnv1a32:1524004c",
+      "eventDigest": "fnv1a32:741638a5",
+      "observationDigest": "fnv1a32:0786e6a5",
+      "rawMetricDigest": "fnv1a32:582114a0",
+      "terminalReason": null,
+      "resultDigest": "fnv1a32:55a84780"
+    },
+    "productionAdapter": {
+      "inputDigest": "fnv1a32:eacd3164",
+      "manifestDigest": "fnv1a32:70fe4412",
+      "environmentArtifactDigest": "fnv1a32:dba79f5b",
+      "planDigest": "fnv1a32:dc7c62b7",
+      "stateDigest": "fnv1a32:994a602f",
+      "resultDigest": "fnv1a32:2c13b0dc",
+      "terminal": true,
+      "terminalReason": "complete",
+      "rawMetrics": {
+        "type": "anchor.mission-simulator.raw-metrics",
+        "version": "mission-simulation-state-sim-pkg-r1",
+        "roiCollected": 0.4,
+        "energyUsed": 2.85,
+        "distanceTraveled": 3,
+        "collisions": 0,
+        "nearMisses": 0,
+        "hazards": 0,
+        "duplicateSamples": 0,
+        "sampleCount": 2,
+        "observationCount": 2,
+        "eventCount": 8,
+        "returnSuccess": true,
+        "completed": true,
+        "steps": 2,
+        "simTime": 2
+      },
+      "checkpoints": [
+        {
+          "label": "initial",
+          "timeSeconds": 0,
+          "stepCount": 0,
+          "stateDigest": "fnv1a32:81b25a75",
+          "agentCount": 1,
+          "eventCount": 0,
+          "observationCount": 0,
+          "terminal": false,
+          "terminalReason": null
+        },
+        {
+          "label": "step-1",
+          "timeSeconds": 1,
+          "stepCount": 1,
+          "stateDigest": "fnv1a32:f5b11a9f",
+          "agentCount": 1,
+          "eventCount": 4,
+          "observationCount": 1,
+          "terminal": false,
+          "terminalReason": null
+        },
+        {
+          "label": "final",
+          "timeSeconds": 2,
+          "stepCount": 2,
+          "stateDigest": "fnv1a32:994a602f",
+          "agentCount": 1,
+          "eventCount": 8,
+          "observationCount": 2,
+          "terminal": true,
+          "terminalReason": "complete"
+        }
+      ]
+    },
+    "firstDivergence": null,
+    "comparisonStatus": "PASS"
+  },
+  "cases": [
+    {
+      "id": "package-kernel-snapshot-restore",
+      "inputDigest": "fnv1a32:a4966504",
+      "initialStateDigest": "fnv1a32:80971f8b",
+      "firstStepDigest": "fnv1a32:d231ed2e",
+      "finalStateDigest": "fnv1a32:1524004c",
+      "restoredFinalStateDigest": "fnv1a32:1524004c",
+      "eventDigest": "fnv1a32:741638a5",
+      "observationDigest": "fnv1a32:0786e6a5",
+      "rawMetricDigest": "fnv1a32:582114a0",
+      "terminalReason": null,
+      "resultDigest": "fnv1a32:55a84780"
+    },
+    {
+      "id": "production-simulation-engine-adapter",
+      "inputDigest": "fnv1a32:eacd3164",
+      "manifestDigest": "fnv1a32:70fe4412",
+      "environmentArtifactDigest": "fnv1a32:dba79f5b",
+      "planDigest": "fnv1a32:dc7c62b7",
+      "stateDigest": "fnv1a32:994a602f",
+      "resultDigest": "fnv1a32:2c13b0dc",
+      "terminal": true,
+      "terminalReason": "complete",
+      "rawMetrics": {
+        "type": "anchor.mission-simulator.raw-metrics",
+        "version": "mission-simulation-state-sim-pkg-r1",
+        "roiCollected": 0.4,
+        "energyUsed": 2.85,
+        "distanceTraveled": 3,
+        "collisions": 0,
+        "nearMisses": 0,
+        "hazards": 0,
+        "duplicateSamples": 0,
+        "sampleCount": 2,
+        "observationCount": 2,
+        "eventCount": 8,
+        "returnSuccess": true,
+        "completed": true,
+        "steps": 2,
+        "simTime": 2
+      },
+      "checkpoints": [
+        {
+          "label": "initial",
+          "timeSeconds": 0,
+          "stepCount": 0,
+          "stateDigest": "fnv1a32:81b25a75",
+          "agentCount": 1,
+          "eventCount": 0,
+          "observationCount": 0,
+          "terminal": false,
+          "terminalReason": null
+        },
+        {
+          "label": "step-1",
+          "timeSeconds": 1,
+          "stepCount": 1,
+          "stateDigest": "fnv1a32:f5b11a9f",
+          "agentCount": 1,
+          "eventCount": 4,
+          "observationCount": 1,
+          "terminal": false,
+          "terminalReason": null
+        },
+        {
+          "label": "final",
+          "timeSeconds": 2,
+          "stepCount": 2,
+          "stateDigest": "fnv1a32:994a602f",
+          "agentCount": 1,
+          "eventCount": 8,
+          "observationCount": 2,
+          "terminal": true,
+          "terminalReason": "complete"
+        }
+      ]
+    }
+  ],
+  "digest": "fnv1a32:a2570acd"
+}

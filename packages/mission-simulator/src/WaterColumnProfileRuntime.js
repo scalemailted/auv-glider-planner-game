@@ -269,6 +269,27 @@ function labelForProfile(id) {
   return String(id).replace(/([a-z])([A-Z])/g, '$1 $2').replace(/\b\w/g, (char) => char.toUpperCase());
 }
 
+export function depthLayerForDiveProfile(profileInput = 'sawtoothProfile', progress = 0) {
+  const profile = profileInput?.type === 'anchor.science.water-column-profile' ? profileInput : normalizeDiveProfile(profileInput);
+  if (!profile.sequence.length) return profile.depthLayerIds[0] ?? 'surface';
+  if (profile.id === 'sawtoothProfile' || profile.id === 'adaptiveVerticalProfile') {
+    const phase = normalizedProgress(progress);
+    const triangle = phase <= 0.5 ? phase * 2 : (1 - phase) * 2;
+    const layers = profile.depthLayerIds.length ? profile.depthLayerIds : profile.sequence;
+    const index = Math.round(triangle * (layers.length - 1));
+    return layers[index] ?? layers[0];
+  }
+  const index = Math.min(profile.sequence.length - 1, Math.floor(normalizedProgress(progress) * profile.sequence.length));
+  return profile.sequence[index] ?? profile.sequence[0];
+}
+
+function normalizedProgress(value) {
+  const number = Number(value);
+  if (!Number.isFinite(number)) return 0;
+  const wrapped = number % 1;
+  return wrapped < 0 ? wrapped + 1 : wrapped;
+}
+
 export function layerIndexForDepth(depthMeters = 0, configInput = {}) {
   const config = normalizeWaterColumnConfig(configInput);
   const depth = finiteNumber(depthMeters, 0);

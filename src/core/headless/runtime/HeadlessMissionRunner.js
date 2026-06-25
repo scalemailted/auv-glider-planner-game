@@ -227,6 +227,11 @@ export function simulateHeadlessEpisode(configInput = {}, planInput = null) {
     sourceMetadata: {
       adapter: 'src/core/headless/runtime/HeadlessMissionRunner.js',
       packageConsumesEnvironmentArtifact: false,
+      packageOwnsPhysics: true,
+      packageOwnsRouteProgress: true,
+      packageOwnsEnvironmentSampling: true,
+      packageOwnsTerminalEvaluation: true,
+      packageOwnsRawMetrics: true,
       packageOwnsEnvironmentGeneration: false,
       packageOwnsPlanning: false,
       packageOwnsScoring: false,
@@ -379,7 +384,7 @@ export function simulateHeadlessEpisode(configInput = {}, planInput = null) {
       implementsFull3DPlanning: false,
       implementsNewPlanner: false,
       implementsMARL: false,
-      canonicalRuntime: 'Node headless runtime records package mission-simulation contracts around existing deterministic ANCHOR core logic. Browser ANCHOR remains the official visual referee and scoring UI.'
+      canonicalRuntime: 'Node headless runtime uses the mission-simulator package as the canonical mission-state transition contract while retaining headless artifact orchestration outside the package.'
     }
   };
   episode.schemaEpisode = createHeadlessEpisode({
