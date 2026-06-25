@@ -1,0 +1,53 @@
+{
+  "schemaVersion": "2.0",
+  "type": "anchor.solverPacket",
+  "packetId": "COLAB-BENCH-R1-REGIONAL-CHALLENGE",
+  "createdAt": "2026-06-25T00:00:00.000Z",
+  "levelId": "colab_regional_challenge",
+  "instanceId": "COLAB-BENCH-R1-D",
+  "missionId": "colab_regional_challenge_mission",
+  "challengeId": "COLAB-BENCH-R1-D",
+  "challengeMode": "forecast",
+  "visiblePlanningSource": "forecast",
+  "visibilityClass": "FORECAST_ONLY",
+  "fairnessClass": "FORECAST_ONLY",
+  "environmentDigest": "fnv1a32:c01ab004",
+  "missionDigest": "fnv1a32:c01ab104",
+  "validationBaselineDigest": "fnv1a32:dd016175",
+  "scoreProfileId": "balancedMission",
+  "scoreProfileVersion": "score-pkg-r1",
+  "scoreProfileDigest": "fnv1a32:1e7b3fe0",
+  "visibility": { "truthIncluded": false, "forecastIncluded": true, "oracleMode": false, "publicChallenge": true, "visibilityClass": "FORECAST_ONLY", "fairnessClass": "FORECAST_ONLY" },
+  "level": {
+    "schemaVersion": "2.0",
+    "type": "anchor.level",
+    "levelId": "colab_regional_challenge",
+    "instanceId": "COLAB-BENCH-R1-D",
+    "challengeMode": "forecast",
+    "meta": { "name": "COLAB-BENCH-R1 Regional Challenge", "generationVersion": "colab-bench-r1-fixture", "synthetic": true, "calibrated": false },
+    "world": { "grid": { "width": 8, "height": 6, "cellSizeMeters": 250 }, "time": { "dt": 1, "duration": 24, "planningWindow": 4 } },
+    "layers": {
+      "terrain": [[0,0,0,0,0,0,0,0],[0,0,0,1,0,0,0,0],[0,0,0,1,0,0,0,0],[0,0,0,0,0,0,0,0],[0,0,0,0,0,1,0,0],[0,0,0,0,0,0,0,0]],
+      "hazards": [[0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0],[0,0,0,0,0,0.4,0,0],[0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0]],
+      "forecast": { "frames": [{ "t": 0, "current": [[[0.05,0.02],[0.05,0.02],[0.05,0.02],[0.05,0.02],[0.05,0.02],[0.05,0.02],[0.05,0.02],[0.05,0.02]],[[0.04,0.02],[0.04,0.02],[0.04,0.02],[0,0],[0.04,0.02],[0.04,0.02],[0.04,0.02],[0.04,0.02]],[[0.03,0.01],[0.03,0.01],[0.03,0.01],[0,0],[0.03,0.01],[0.03,0.01],[0.03,0.01],[0.03,0.01]],[[0.02,0],[0.02,0],[0.02,0],[0.02,0],[0.02,0],[0.02,0],[0.02,0],[0.02,0]],[[0.01,-0.02],[0.01,-0.02],[0.01,-0.02],[0.01,-0.02],[0.01,-0.02],[0,0],[0.01,-0.02],[0.01,-0.02]],[[0,-0.03],[0,-0.03],[0,-0.03],[0,-0.03],[0,-0.03],[0,-0.03],[0,-0.03],[0,-0.03]]], "roi": [[0,0.1,0.2,0.3,0.2,0.1,0.1,0],[0,0.2,0.4,0,0.3,0.5,0.2,0],[0,0.3,0.5,0,0.6,0.2,0.4,0],[0,0.2,0.6,0.4,0.7,0.5,0.6,0],[0,0.1,0.3,0.5,0.6,0,0.8,0.2],[0,0,0.2,0.3,0.4,0.5,0.7,0.1]] }] }
+    }
+  },
+  "mission": { "schemaVersion": "2.0", "type": "anchor.mission", "missionId": "colab_regional_challenge_mission", "agents": [{ "id": "glider_01", "label": "Glider 01", "start": { "x": 0, "y": 0 }, "battery": 55, "maxSpeed": 1.2, "waypointTolerance": 0.35 }], "rules": { "roiThreshold": 0.1 }, "physics": { "driftGain": 1, "energyPerCell": 1 }, "scoring": { "sampleWeight": 100 } },
+  "deployment": { "agents": [{ "agentId": "glider_01", "mode": "fixed", "selectedStart": { "x": 0, "y": 0 }, "allowedCells": [] }] },
+  "connectivity": { "validated": true, "deploymentConnected": true, "reachableNavigableRatio": 0.95, "roiReachableRatio": 0.95, "warnings": ["Regional fixture disables exact oracle by default."] },
+  "stochasticConfig": { "enabled": true, "seed": "colab-bench-r1-regional", "roiScoringMode": "expectedValue", "selectedForecastMember": "ensemble_mean" },
+  "truthVisibility": "hidden",
+  "planningData": {
+    "hiddenTruthIncluded": false,
+    "forecastAvailable": true,
+    "selectedForecastMemberId": "ensemble_mean",
+    "roiViewMode": "expectedValue",
+    "visibleFields": {
+      "terrain": [[0,0,0,0,0,0,0,0],[0,0,0,1,0,0,0,0],[0,0,0,1,0,0,0,0],[0,0,0,0,0,0,0,0],[0,0,0,0,0,1,0,0],[0,0,0,0,0,0,0,0]],
+      "hazards": [[0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0],[0,0,0,0,0,0.4,0,0],[0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0]],
+      "forecast": { "frames": [{ "t": 0, "current": [[[0.05,0.02],[0.05,0.02],[0.05,0.02],[0.05,0.02],[0.05,0.02],[0.05,0.02],[0.05,0.02],[0.05,0.02]],[[0.04,0.02],[0.04,0.02],[0.04,0.02],[0,0],[0.04,0.02],[0.04,0.02],[0.04,0.02],[0.04,0.02]],[[0.03,0.01],[0.03,0.01],[0.03,0.01],[0,0],[0.03,0.01],[0.03,0.01],[0.03,0.01],[0.03,0.01]],[[0.02,0],[0.02,0],[0.02,0],[0.02,0],[0.02,0],[0.02,0],[0.02,0],[0.02,0]],[[0.01,-0.02],[0.01,-0.02],[0.01,-0.02],[0.01,-0.02],[0.01,-0.02],[0,0],[0.01,-0.02],[0.01,-0.02]],[[0,-0.03],[0,-0.03],[0,-0.03],[0,-0.03],[0,-0.03],[0,-0.03],[0,-0.03],[0,-0.03]]], "roi": [[0,0.1,0.2,0.3,0.2,0.1,0.1,0],[0,0.2,0.4,0,0.3,0.5,0.2,0],[0,0.3,0.5,0,0.6,0.2,0.4,0],[0,0.2,0.6,0.4,0.7,0.5,0.6,0],[0,0.1,0.3,0.5,0.6,0,0.8,0.2],[0,0,0.2,0.3,0.4,0.5,0.7,0.1]] }] }
+    }
+  },
+  "expectedPlanFormat": "anchor.plan",
+  "benchmarkFixture": { "fixtureId": "regional_challenge", "purpose": "Realistic-scale compact forecast-only challenge for heuristic scalability; exact oracle disabled.", "exactnessBoundary": "No global optimality claim for this fixture." }
+}

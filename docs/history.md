@@ -6,6 +6,10 @@ This document keeps durable decisions from completed cleanup, renderer, current,
 
 SCI-VALID-R2A established `packages/validation`, checked-in official validation reports/manifests under `validation/`, codec schemas for scientific-validation artifacts, a deterministic baseline builder, a consolidated Node test, and the public Methods & Validation route. It preserved scientific equations, environment generation, glider dynamics, mission simulation, scoring, planner behavior, rendering semantics, and mission outcomes.
 
+## COLAB-BENCH-R1
+
+COLAB-BENCH-R1 added `tools/python/notebooks/anchor_classical_planner_benchmark.ipynb`, the optional standard-library `tools/python/anchor_benchmark/` support package, compact forecast-only solver-packet fixtures, a checked-in A* plan fixture, `tools/js/evaluate_colab_benchmark_plan.mjs`, and a consolidated notebook/static audit. The notebook proposes and visualizes classical plans; ANCHOR remains the authoritative validator, simulator, and scorer. Exact claims are limited to declared bounded candidate sets, objectives, state representations, and discretizations.
+
 ## SCORE-PKG-R1
 
 SCORE-PKG-R1 introduced packages/scoring as the canonical owner for official score calculation, score profiles, ScoreInput/ScoreResult contracts, deterministic score digests, public-safe score summaries, benchmark score metadata, and result/leaderboard score identity. It preserved existing simulator raw metrics, scoring formulas, bonuses, penalties, official scores, planner behavior, scientific models, and public result compatibility.

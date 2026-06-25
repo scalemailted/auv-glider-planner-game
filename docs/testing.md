@@ -30,6 +30,25 @@ npm.cmd run smoke:pages
 
 See `docs/threejs_static_runtime.md` for the import-map and vendored-runtime contract.
 
+## COLAB-BENCH-R1 Classical Planner Notebook Checks
+
+Run these after changing the benchmark notebook, `tools/python/anchor_benchmark/`, compact fixtures, solver-packet/plan compatibility, or Pages notebook download policy:
+
+```bash
+node tools/js/audit_colab_classical_benchmark.mjs
+node tools/js/evaluate_colab_benchmark_plan.mjs --solver-packet tests/fixtures/colab_benchmark/static_additive_routing_solver_packet.json --plan tests/fixtures/colab_benchmark/plans/static_additive_astar.anchor.plan.json --out tmp/colab-benchmark-eval
+node ./node_modules/@playwright/test/cli.js test tests/e2e/colab_classical_benchmark.spec.js --reporter=line --workers=1
+```
+
+If Python is available, also run:
+
+```bash
+python -m unittest tools/python/tests/test_anchor_benchmark.py
+python -m tools.python.anchor_benchmark.cli --solver-packet tests/fixtures/colab_benchmark/static_additive_routing_solver_packet.json --out anchor_benchmark_output
+```
+
+Python tests are optional local tooling tests; normal browser usage does not require Python. The Node evaluator remains the authoritative validation/simulation/scoring bridge for notebook plans.
+
 ## SCORE-PKG-R1 Scoring Package Checks
 
 Run these after changing `packages/scoring`, score forwarders, result/debrief score metadata, benchmark score adapters, or leaderboard score metadata:

@@ -419,6 +419,7 @@ function stripBundleEpisode(episode, includeHidden) {
     if (Array.isArray(copy.observations)) copy.observations = copy.observations.map(publicObservation);
     if (Array.isArray(copy.schemaEpisode?.observations)) copy.schemaEpisode.observations = copy.schemaEpisode.observations.map(publicObservation);
     if (copy.motionTrajectory) copy.motionTrajectory = publicMotionTrajectory(copy.motionTrajectory);
+    redactObservationPayload(copy);
   }
   return copy;
 }

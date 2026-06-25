@@ -93,6 +93,7 @@ export const SMOKE_SPEC_SPLIT_FILES = Object.freeze([
   "tests/e2e/environment_rendering.spec.js",
   "tests/e2e/env_pkg_r1_environment_package.spec.js",
   "tests/e2e/codec_r1_artifact_codecs.spec.js",
+  "tests/e2e/colab_classical_benchmark.spec.js",
   "tests/e2e/workspace_and_challenge_setup.spec.js",
   "tests/e2e/simulation_and_terrain.spec.js",
   "tests/e2e/scientific_validation_methods.spec.js"
@@ -179,7 +180,8 @@ export const TEST_FILE_OWNERSHIP = Object.freeze({
   "Product Hub Opens Methods and Validation": "tests/e2e/scientific_validation_methods.spec.js",
   "Component Claims Metrics and Limitations Are Inspectable": "tests/e2e/scientific_validation_methods.spec.js",
   "Official Baseline and Exploratory Rerun Stay Distinct": "tests/e2e/scientific_validation_methods.spec.js",
-  "Methods and Validation Runs From Pages Subpath": "tests/e2e/scientific_validation_methods.spec.js"
+  "Methods and Validation Runs From Pages Subpath": "tests/e2e/scientific_validation_methods.spec.js",
+  "Notebook and Fixtures Load From Pages Subpath": "tests/e2e/colab_classical_benchmark.spec.js"
 });
 
 const NODE_COVERAGE = Object.freeze({
@@ -191,6 +193,7 @@ const NODE_COVERAGE = Object.freeze({
   SIMULATION_PHYSICS: ['node tools/js/smoke_environment_mission_coupling.mjs'],
   IMPORT_EXPORT: ['npm.cmd run test:packages'],
   METHODS_VALIDATION: ['node tools/tests/scientific_validation.test.mjs'],
+  CLASSICAL_PLANNER_NOTEBOOK: ['node tools/js/audit_colab_classical_benchmark.mjs'],
   ENVIRONMENT_PACKAGE: ['npm.cmd run test:packages'],
   RESOURCE_LIFECYCLE: ['node tools/js/audit_three_vendor_git_tracking.mjs']
 });
@@ -299,6 +302,9 @@ export const CAPABILITIES = Object.freeze([
     'Official Baseline and Exploratory Rerun Stay Distinct',
     'Methods and Validation Runs From Pages Subpath'
   ], NODE_COVERAGE.METHODS_VALIDATION),
+  capability('CLASSICAL-PLANNER-NOTEBOOK', 'External Colab classical-planner benchmark notebook, fixtures, plans, and authoritative ANCHOR round trip', false, false, true, [
+    'Notebook and Fixtures Load From Pages Subpath'
+  ], NODE_COVERAGE.CLASSICAL_PLANNER_NOTEBOOK),
   capability('RESOURCE-LIFECYCLE', 'One renderer, one RAF, and cleanup invariants', true, false, true, [
     'Repeated App Boot and Teardown Leave No Runtime Processes',
     'Three Replay Resources Dispose Across Scene Transitions',

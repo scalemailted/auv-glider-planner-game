@@ -56,6 +56,18 @@ tools/python/notebooks/anchor_external_solver_template.ipynb
 
 It loads `anchor.solver-packet.json`, reconstructs a lightweight forecast-only planning world, runs a simple greedy solver, writes `anchor.plan.json`, and reminds students that ANCHOR is still the official validator, simulator, and scorer.
 
+## Classical Planner Benchmark Notebook
+
+For multi-algorithm comparison, use:
+
+```text
+tools/python/notebooks/anchor_classical_planner_benchmark.ipynb
+```
+
+That notebook imports `tools/python/anchor_benchmark/`, runs Dijkstra/UCS, A*, Weighted A*, greedy value per predicted cost, beam search, time-expanded A*, and bounded exact small-instance checks, then returns plans to ANCHOR for authoritative validation, simulation, and scoring.
+
+The exactness boundary is explicit: exact results are exact only for the declared candidate set, state representation, objective, and discretization.
+
 ## Import Back Into The Game
 
 1. In the browser Planning scene, click `Export Solver Packet JSON`.

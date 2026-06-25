@@ -28,6 +28,7 @@ const publicDocs = [
   'docs/export_formats.md',
   'docs/artifact_codec_and_schema_contract.md',
   'docs/scientific_validation_and_methods.md',
+  'docs/classical_planner_benchmark_notebook.md',
   'docs/mission_format.md',
   'docs/plan_format.md',
   'docs/solver_workflow.md',
@@ -64,7 +65,15 @@ const publicDocs = [
   'docs/examples/headless_mission_score_bundle.example.json',
   'docs/examples/headless_replay_public.example.json',
   'docs/examples/headless_replay_tampered_digest.example.json',
-  'docs/examples/headless_replay_multi_agent.example.json'
+  'docs/examples/headless_replay_multi_agent.example.json',
+  'tools/python/notebooks/anchor_classical_planner_benchmark.ipynb',
+  'tools/python/notebooks/anchor_external_solver_template.ipynb',
+  'tests/fixtures/colab_benchmark/manifest.json',
+  'tests/fixtures/colab_benchmark/static_additive_routing_solver_packet.json',
+  'tests/fixtures/colab_benchmark/small_science_orienteering_solver_packet.json',
+  'tests/fixtures/colab_benchmark/time_varying_current_solver_packet.json',
+  'tests/fixtures/colab_benchmark/regional_challenge_solver_packet.json',
+  'tests/fixtures/colab_benchmark/plans/static_additive_astar.anchor.plan.json'
 ];
 
 runNode('tools/js/check_three_vendor.mjs');
@@ -79,7 +88,7 @@ for (const entry of copyRoots) {
 }
 await copyPublicDocs();
 await writeFile(path.join(out, '.nojekyll'), '', 'utf8');
-for (const required of ['index.html', 'vendor/three/build/three.module.js', 'vendor/three/build/three.core.js', 'vendor/three/LICENSE', 'vendor/phaser.min.js', 'packages/bathymetry/src/index.js', 'packages/contracts/src/index.js', 'packages/currents/src/index.js', 'packages/codecs/src/index.js', 'packages/validation/src/index.js', 'validation/manifest.json', 'schemas/scientific-validation-report.schema.json', 'schemas/scientific-validation-manifest.schema.json']) {
+for (const required of ['index.html', 'vendor/three/build/three.module.js', 'vendor/three/build/three.core.js', 'vendor/three/LICENSE', 'vendor/phaser.min.js', 'packages/bathymetry/src/index.js', 'packages/contracts/src/index.js', 'packages/currents/src/index.js', 'packages/codecs/src/index.js', 'packages/validation/src/index.js', 'validation/manifest.json', 'schemas/scientific-validation-report.schema.json', 'schemas/scientific-validation-manifest.schema.json', 'tools/python/notebooks/anchor_classical_planner_benchmark.ipynb', 'tests/fixtures/colab_benchmark/manifest.json']) {
   if (!existsSync(path.join(out, required))) throw new Error(`_site missing required file: ${required}`);
 }
 const siteIndex = await readFile(path.join(out, 'index.html'), 'utf8');

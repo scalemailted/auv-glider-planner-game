@@ -18,6 +18,8 @@ The validation baseline is an evidence index for deterministic software behavior
 
 Passing software or visual tests is not represented as oceanographic validation. ANCHOR remains a deterministic synthetic research-and-education sandbox, not an operational ocean forecast or certified vehicle-navigation system.
 
+COLAB-BENCH-R1 uses this baseline as context for external classical planner comparisons. The notebook reads `validation/manifest.json` when available, records the baseline digest in reproducibility manifests, and links benchmark results to stated limitations. It does not convert the validation baseline into an operational-certification claim.
+
 ## Official Baseline Artifacts
 
 | Artifact | Role |

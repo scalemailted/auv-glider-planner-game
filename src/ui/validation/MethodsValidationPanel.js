@@ -32,6 +32,13 @@ export function methodsValidationPanelHtml(viewModel) {
         <span>Software verification, numerical verification, physical plausibility, external comparison, and operational validation remain separate.</span>
         <span>Passing visual and software tests does not establish oceanographic validity.</span>
       </section>
+      <section class="methods-validation-notebook" aria-label="Classical planner benchmark notebook">
+        <div>
+          <h2>Classical Planner Benchmark Notebook</h2>
+          <p>Download a reproducible notebook that visualizes ANCHOR environments, runs transparent classical planners, and returns candidate plans to the authoritative ANCHOR referee.</p>
+        </div>
+        <a href="tools/python/notebooks/anchor_classical_planner_benchmark.ipynb" download>Download Notebook</a>
+      </section>
       <div class="methods-validation-grid">
         <aside class="methods-validation-components" aria-label="Component reports">
           <h2>Model Components</h2>

@@ -13,7 +13,7 @@ tools/python/notebooks/anchor_external_solver_template.ipynb
 The notebook demonstrates the official file workflow:
 
 ```text
-Export Solver yacket from ANCHOR
+Export Solver Packet from ANCHOR
 -> load anchor.solver-packet.json in Colab
 -> build a lightweight headless planning world
 -> run a starter forecast-only greedy solver
@@ -32,7 +32,7 @@ The default Colab template is non-oracle:
 }
 ```
 
-Colab proposes. Game validates. Game simulates. Game scores.
+Colab proposes. ANCHOR validates. ANCHOR simulates. ANCHOR scores.
 
 The notebook also includes an optional Node.js path:
 
@@ -66,6 +66,34 @@ node tools/js/headless_validate_plan.mjs anchor.solver-packet.json anchor.plan.j
 ```
 
 Notebook/Python validation is intentionally lightweight. The browser game remains the official validator, simulator, and scorer.
+
+## COLAB-BENCH-R1 Classical Planner Benchmark Notebook
+
+For a comprehensive benchmark workflow, open or upload:
+
+```text
+tools/python/notebooks/anchor_classical_planner_benchmark.ipynb
+```
+
+The starter notebook remains the minimal introduction: one readable greedy baseline and import loop.
+
+The benchmark notebook adds checked-in fixtures, Dijkstra/UCS, A*, Weighted A*, greedy value per predicted cost, beam search, time-expanded A*, a bounded exact small-instance oracle, timing summaries, matplotlib/pandas visualizations where available, `anchor.plan` export, Node authoritative evaluation, benchmark records, and reproducibility manifests.
+
+The support package is:
+
+```text
+tools/python/anchor_benchmark/
+```
+
+Core planner logic uses the Python standard library. Optional notebook visualization may use normal Colab libraries such as `pandas` and `matplotlib`.
+
+The benchmark boundary is unchanged:
+
+```text
+Colab proposes. ANCHOR validates. ANCHOR simulates. ANCHOR scores.
+```
+
+The notebook does not port the ANCHOR simulator or official scoring into Python. Final scores come from the existing Node/browser ANCHOR referee path.
 
 ## Headless Helper yackage
 

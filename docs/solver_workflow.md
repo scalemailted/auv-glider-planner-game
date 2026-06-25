@@ -45,9 +45,9 @@ Google Colab is an official external-solver platform for ANCHOR's JSON workflow.
 
 ```text
 Colab proposes.
-Game validates.
-Game simulates.
-Game scores.
+ANCHOR validates.
+ANCHOR simulates.
+ANCHOR scores.
 ```
 
 Workflow:
@@ -77,6 +77,16 @@ The default notebook planner metadata is:
 ```
 
 Oracle mode is for benchmarking/research only. Do not compare oracle-assisted plans as fair leaderboard entries.
+
+For a full classical-planner benchmark, use `tools/python/notebooks/anchor_classical_planner_benchmark.ipynb`. It keeps the same boundary but adds checked-in compact fixtures, Dijkstra/UCS, A*, Weighted A*, greedy value per predicted cost, beam search, time-expanded A*, bounded exact small-instance checks, timing tables, figures, `anchor.plan` export, Node authoritative evaluation, benchmark records, and a reproducibility manifest.
+
+The exactness claim is constrained: an exact result is exact only for the stated candidate set, state representation, objective, and discretization. The notebook may use approximate route costs while searching, but every official benchmark score must come from ANCHOR validation, simulation, and scoring.
+
+Node authoritative evaluation can be run directly:
+
+```bash
+node tools/js/evaluate_colab_benchmark_plan.mjs --solver-packet tests/fixtures/colab_benchmark/static_additive_routing_solver_packet.json --plan tests/fixtures/colab_benchmark/plans/static_additive_astar.anchor.plan.json --out tmp/colab-benchmark-eval
+```
 
 External solver entries are allowed in Challenge Mode. The leaderboard records `routeSource`, solver id/label when available, and fairness metadata, so a Challenge Mode table can compare Manual, Greedy Planner, External Solver, Imported Plan, and Saved Replay attempts without hiding how each route was produced. Oracle or hidden-truth assisted plans may be stored, but they are labeled as Oracle or Truth-assisted and should not be interpreted as fair forecast-visible competition.
 

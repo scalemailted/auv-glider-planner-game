@@ -20,6 +20,7 @@ Package extraction phases should remain narrow extractions, not rewrites. Curren
 - `SIM-PKG-R2`: makes `packages/mission-simulator` the authoritative mission-state transition package for browser, headless, and benchmark execution while preserving app-owned route planning, scheduling, UI, rendering, official scoring, and replay playback.
 - `SCORE-PKG-R1`: extracts official mission scoring, `ScoreProfile` definitions, `ScoreInput`/`ScoreResult` contracts, deterministic score digests, public-safe summaries, and benchmark/result score identity into `packages/scoring` while preserving existing scoring formulas and raw simulator metrics.
 - `SCI-VALID-R2A`: establishes `packages/validation`, checked-in validation reports/manifests, codec schemas, and the public Methods & Validation route. It presents evidence and limitations without changing scientific equations or claiming operational validation.
+- `COLAB-BENCH-R1`: adds a reproducible external classical-planner benchmark notebook, compact solver-packet fixtures, benchmark records, and Node authoritative evaluation while preserving the boundary: Colab proposes; ANCHOR validates, simulates, and scores.
 
 Package extraction gates: old `src/core/...` imports must continue through forwarding modules, artifact values and scoring must remain stable, and package audits must pass with no renderer/UI/browser dependencies.
 ## 1. Product Vision
@@ -35,6 +36,7 @@ Current foundation:
 - Planner and Adaptive benchmark surfaces for route and mission-management comparisons.
 - Node/OceanBox-JS artifacts for deterministic headless simulation, solver-packet roundtrip, and classroom analysis.
 - Colab/Python wrapper and artifact-analysis workflows.
+- COLAB-BENCH-R1 classical-planner benchmark notebook for transparent external planning, visualization, timing, exact bounded small-instance checks, and official ANCHOR evaluation.
 
 Browser ANCHOR is the visual game and referee. Node/OceanBox-JS is the canonical headless runtime. Colab/Python workflows analyze artifacts or call Node; they do not reimplement the simulator.
 
@@ -78,6 +80,8 @@ Colab / Solver / Classroom Analysis <-> artifact inspection or Node calls
 ### Colab/Python
 
 Colab/Python workflows are wrappers, external solver examples, and artifact-analysis notebooks. They may read JSON/CSV bundles, inspect observations and tracks, compare scores, or call Node/OceanBox-JS. They are not a second simulator and should not drift from the canonical JavaScript runtime.
+
+COLAB-BENCH-R1 expands this into a reproducible classical-planner benchmark workflow. The notebook may build approximate planning graphs, run transparent algorithms, and export `anchor.plan` artifacts, but official validation, simulation, and scoring remain in the canonical ANCHOR JavaScript packages. Exact results are exact only for declared bounded candidate sets, objectives, state representations, and discretizations.
 
 ## 3. Scientific State Model
 

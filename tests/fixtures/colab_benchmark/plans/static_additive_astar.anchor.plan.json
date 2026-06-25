@@ -1,0 +1,42 @@
+{
+  "schemaVersion": "2.0",
+  "type": "anchor.plan",
+  "planId": "colab-bench-r1-static-astar",
+  "levelId": "colab_static_additive_routing",
+  "instanceId": "COLAB-BENCH-R1-A",
+  "missionId": "colab_static_additive_mission",
+  "challengeId": "COLAB-BENCH-R1-A",
+  "executionMode": "openLoop",
+  "diveProfileId": "sawtoothProfile",
+  "fairnessClass": "FORECAST_ONLY",
+  "visibilityClass": "FORECAST_ONLY",
+  "planner": {
+    "name": "astar",
+    "label": "A*",
+    "type": "importedSolver",
+    "plannerClass": "classical",
+    "optimalityStatus": "EXACT_IF_HEURISTIC_ADMISSIBLE",
+    "usesForecast": true,
+    "usesTruth": false,
+    "usesOracle": false,
+    "source": "tools/python/anchor_benchmark"
+  },
+  "meta": {
+    "name": "COLAB-BENCH-R1 Static A* Plan",
+    "notebookVersion": "colab-bench-r1",
+    "solverPacketDigest": "fnv1a32:c01ab001",
+    "boundary": "Colab proposes. ANCHOR validates. ANCHOR simulates. ANCHOR scores."
+  },
+  "agentPlans": [
+    {
+      "agentId": "glider_01",
+      "diveProfileId": "sawtoothProfile",
+      "waypoints": [
+        { "id": "astar_wp_001", "waypointId": "astar_wp_001", "x": 1, "y": 1, "window": 0, "action": "transit", "diveProfileId": "sawtoothProfile", "note": "A* fixture route step from deployment toward visible ROI." },
+        { "id": "astar_wp_002", "waypointId": "astar_wp_002", "x": 2, "y": 2, "window": 1, "action": "sample", "diveProfileId": "sawtoothProfile", "note": "Center visible ROI hotspot." },
+        { "id": "astar_wp_003", "waypointId": "astar_wp_003", "x": 3, "y": 2, "window": 2, "action": "transit", "diveProfileId": "sawtoothProfile", "note": "Intermediate additive-graph waypoint for runtime compatibility." },
+        { "id": "astar_wp_004", "waypointId": "astar_wp_004", "x": 3, "y": 3, "window": 3, "action": "sample", "diveProfileId": "sawtoothProfile", "note": "Second visible ROI hotspot for roundtrip validation." }
+      ]
+    }
+  ]
+}

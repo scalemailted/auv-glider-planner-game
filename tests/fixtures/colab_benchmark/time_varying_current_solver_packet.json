@@ -1,0 +1,59 @@
+{
+  "schemaVersion": "2.0",
+  "type": "anchor.solverPacket",
+  "packetId": "COLAB-BENCH-R1-TIME-VARYING-CURRENT",
+  "createdAt": "2026-06-25T00:00:00.000Z",
+  "levelId": "colab_time_varying_current",
+  "instanceId": "COLAB-BENCH-R1-C",
+  "missionId": "colab_time_current_mission",
+  "challengeId": "COLAB-BENCH-R1-C",
+  "challengeMode": "forecast",
+  "visiblePlanningSource": "forecast",
+  "visibilityClass": "FORECAST_ONLY",
+  "fairnessClass": "FORECAST_ONLY",
+  "environmentDigest": "fnv1a32:c01ab003",
+  "missionDigest": "fnv1a32:c01ab103",
+  "validationBaselineDigest": "fnv1a32:dd016175",
+  "scoreProfileId": "balancedMission",
+  "scoreProfileVersion": "score-pkg-r1",
+  "scoreProfileDigest": "fnv1a32:1e7b3fe0",
+  "visibility": { "truthIncluded": false, "forecastIncluded": true, "oracleMode": false, "publicChallenge": true, "visibilityClass": "FORECAST_ONLY", "fairnessClass": "FORECAST_ONLY" },
+  "level": {
+    "schemaVersion": "2.0",
+    "type": "anchor.level",
+    "levelId": "colab_time_varying_current",
+    "instanceId": "COLAB-BENCH-R1-C",
+    "challengeMode": "forecast",
+    "meta": { "name": "COLAB-BENCH-R1 Time-Varying Current", "generationVersion": "colab-bench-r1-fixture", "synthetic": true, "calibrated": false },
+    "world": { "grid": { "width": 5, "height": 5, "cellSizeMeters": 100 }, "time": { "dt": 1, "duration": 18, "planningWindow": 3 } },
+    "layers": {
+      "terrain": [[0,0,0,0,0],[0,0,0,0,0],[0,0,0,0,0],[0,0,0,0,0],[0,0,0,0,0]],
+      "hazards": [[0,0,0,0,0],[0,0,0,0,0],[0,0,0,0,0],[0,0,0,0,0],[0,0,0,0,0]],
+      "forecast": { "frames": [
+        { "t": 0, "current": [[[0.2,0],[0.2,0],[0.2,0],[0.2,0],[0.2,0]],[[0.2,0],[0.2,0],[0.2,0],[0.2,0],[0.2,0]],[[0.2,0],[0.2,0],[0.2,0],[0.2,0],[0.2,0]],[[0.2,0],[0.2,0],[0.2,0],[0.2,0],[0.2,0]],[[0.2,0],[0.2,0],[0.2,0],[0.2,0],[0.2,0]]], "roi": [[0,0.1,0.2,0.1,0],[0,0.2,0.4,0.3,0],[0,0.3,0.7,0.4,0],[0,0.2,0.4,0.8,0],[0,0,0.1,0.2,0]] },
+        { "t": 9, "current": [[[-0.2,0],[-0.2,0],[-0.2,0],[-0.2,0],[-0.2,0]],[[-0.2,0],[-0.2,0],[-0.2,0],[-0.2,0],[-0.2,0]],[[-0.2,0],[-0.2,0],[-0.2,0],[-0.2,0],[-0.2,0]],[[-0.2,0],[-0.2,0],[-0.2,0],[-0.2,0],[-0.2,0]],[[-0.2,0],[-0.2,0],[-0.2,0],[-0.2,0],[-0.2,0]]], "roi": [[0,0.1,0.2,0.1,0],[0,0.2,0.4,0.3,0],[0,0.3,0.7,0.4,0],[0,0.2,0.4,0.8,0],[0,0,0.1,0.2,0]] }
+      ] }
+    }
+  },
+  "mission": { "schemaVersion": "2.0", "type": "anchor.mission", "missionId": "colab_time_current_mission", "agents": [{ "id": "glider_01", "label": "Glider 01", "start": { "x": 0, "y": 2 }, "battery": 40, "maxSpeed": 1.4, "waypointTolerance": 0.35 }], "rules": { "roiThreshold": 0.1 }, "physics": { "driftGain": 1, "energyPerCell": 1 }, "scoring": { "sampleWeight": 100 } },
+  "deployment": { "agents": [{ "agentId": "glider_01", "mode": "fixed", "selectedStart": { "x": 0, "y": 2 }, "allowedCells": [] }] },
+  "connectivity": { "validated": true, "deploymentConnected": true, "reachableNavigableRatio": 1, "roiReachableRatio": 1, "warnings": [] },
+  "stochasticConfig": { "enabled": true, "seed": "colab-bench-r1-time-current", "roiScoringMode": "expectedValue", "selectedForecastMember": "ensemble_mean" },
+  "truthVisibility": "hidden",
+  "planningData": {
+    "hiddenTruthIncluded": false,
+    "forecastAvailable": true,
+    "selectedForecastMemberId": "ensemble_mean",
+    "roiViewMode": "expectedValue",
+    "visibleFields": {
+      "terrain": [[0,0,0,0,0],[0,0,0,0,0],[0,0,0,0,0],[0,0,0,0,0],[0,0,0,0,0]],
+      "hazards": [[0,0,0,0,0],[0,0,0,0,0],[0,0,0,0,0],[0,0,0,0,0],[0,0,0,0,0]],
+      "forecast": { "frames": [
+        { "t": 0, "current": [[[0.2,0],[0.2,0],[0.2,0],[0.2,0],[0.2,0]],[[0.2,0],[0.2,0],[0.2,0],[0.2,0],[0.2,0]],[[0.2,0],[0.2,0],[0.2,0],[0.2,0],[0.2,0]],[[0.2,0],[0.2,0],[0.2,0],[0.2,0],[0.2,0]],[[0.2,0],[0.2,0],[0.2,0],[0.2,0],[0.2,0]]], "roi": [[0,0.1,0.2,0.1,0],[0,0.2,0.4,0.3,0],[0,0.3,0.7,0.4,0],[0,0.2,0.4,0.8,0],[0,0,0.1,0.2,0]] },
+        { "t": 9, "current": [[[-0.2,0],[-0.2,0],[-0.2,0],[-0.2,0],[-0.2,0]],[[-0.2,0],[-0.2,0],[-0.2,0],[-0.2,0],[-0.2,0]],[[-0.2,0],[-0.2,0],[-0.2,0],[-0.2,0],[-0.2,0]],[[-0.2,0],[-0.2,0],[-0.2,0],[-0.2,0],[-0.2,0]],[[-0.2,0],[-0.2,0],[-0.2,0],[-0.2,0],[-0.2,0]]], "roi": [[0,0.1,0.2,0.1,0],[0,0.2,0.4,0.3,0],[0,0.3,0.7,0.4,0],[0,0.2,0.4,0.8,0],[0,0,0.1,0.2,0]] }
+      ] }
+    }
+  },
+  "expectedPlanFormat": "anchor.plan",
+  "benchmarkFixture": { "fixtureId": "time_varying_current", "purpose": "Compare static and time-expanded planning under visible temporal forecast currents.", "exactnessBoundary": "Time-expanded exactness applies only to declared time bins and forecast-visible edge estimates." }
+}

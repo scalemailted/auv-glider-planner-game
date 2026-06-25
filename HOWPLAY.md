@@ -112,6 +112,8 @@ Planning exports include replayable `anchor.challenge` files, `anchor.plan` wayp
 
 For stochastic challenges, public challenge and solver exports use visible forecast/belief data. Challenge files omit plain hidden truth and may include an opaque reload bundle that is not secure against determined users. Oracle dataset exports contain hidden truth and are for training or offline benchmark evaluation, not fair player planning.
 
+For external planner benchmarking, use `tools/python/notebooks/anchor_classical_planner_benchmark.ipynb`. The notebook can load checked-in compact fixtures or uploaded solver packets, run classical planners, export `anchor.plan`, and call ANCHOR's Node referee. Colab proposes. ANCHOR validates. ANCHOR simulates. ANCHOR scores. Exact claims apply only to the declared candidate set, objective, state representation, and discretization.
+
 Plan import shows a summary with planner name, execution mode, agent count, waypoint count, forecast/truth/oracle flags, surface segment count, and validation status. `openLoop` and `timedOpenLoop` plans load as routes. `surfaceUpdateBundle` is recognized and preserved, but automatic surfacing segment application is scaffolded only. `policy` and `contingencyTable` imports are summarized but not executed.
 
 ### Mission Briefing

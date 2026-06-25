@@ -54,7 +54,9 @@ Solver packets also include `importedFlowField` when a challenge used one, plus 
 
 Imported flow fields should declare whether they are forecast-visible, truth-visible, or oracle-only. If they include synthetic topology-aware config, preserve `topologyComposite`, `dynamicComplexity`, region behavior metadata, and boundary settings so replay and solver comparison remain explainable.
 
-Google Colab is supported through `tools/python/notebooks/anchor_external_solver_template.ipynb`. The notebook loads this packet, builds a lightweight headless planning world from visible fields, writes `anchor.plan.json`, and leaves validation/simulation/scoring to the browser game.
+Google Colab is supported through `tools/python/notebooks/anchor_external_solver_template.ipynb`. The notebook loads this packet, builds a lightweight headless planning world from visible fields, writes `anchor.plan.json`, and leaves validation/simulation/scoring to ANCHOR.
+
+The comprehensive benchmark notebook is `tools/python/notebooks/anchor_classical_planner_benchmark.ipynb`. It can load checked-in compact fixtures from `tests/fixtures/colab_benchmark/`, run transparent classical planners, write `anchor.plan`, call `tools/js/evaluate_colab_benchmark_plan.mjs`, and export `anchor.benchmark.run-record` plus a reproducibility manifest. The notebook does not port official scoring or simulation into Python.
 
 The notebook can also call the Node.js headless solver:
 
@@ -130,6 +132,8 @@ Planner Benchmark, Adaptive Benchmark, and Full Autonomy Benchmark mode-config e
 `anchor.benchmark.episode-config` describes one benchmark episode: benchmark mode, objective, authority split, information access, world-model tier, fairness label, ids, seed, allowed attempt sources, and required exports. `anchor.benchmark.route-execution` normalizes an existing route attempt with validation, segment summaries, nullable metrics, diagnostics, and export references. `anchor.benchmark.run-record` wraps a BenchmarkRunRecord-compatible `anchor.benchmark.run`. `anchor.benchmark.attempt-set` compares portable attempt records for best score, lowest energy, highest sample score, fewest hazards, and least duplicate sampling.
 
 P1 does not implement a new planner, does not redesign scoring, and does not add adaptive objective switching, solver training, RL, or MARL. P6 adds adaptive objective preview records only; it still does not execute adaptive routes, add a planner, redesign scoring, or train MARL/RL. It normalizes existing planning, simulation, and debrief data. `anchor.result` may include optional `benchmarkMetadata` only when benchmark metadata was attached before export.
+
+COLAB-BENCH-R1 benchmark records use `type: "anchor.benchmark.run-record"` with `schemaVersion: "benchmark-run-record-p2"`. They record planner provenance, fairness class, candidate discretization, search effort, plan/result digests, timing separation, and the ANCHOR referee outcome when evaluated. They do not define official score and must not be interpreted without the solver-packet, environment, mission, score-profile, fairness, and validation-baseline digests.
 
 ## `anchor.plan.json`
 

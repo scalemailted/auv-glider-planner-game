@@ -18,6 +18,7 @@ export const PLAYWRIGHT_GROUPS = Object.freeze([
       /^Methods and Validation Runs From Pages Subpath$/i,
       /^Codec Package Runs From GitHub Pages Subpath$/i,
       /^Planner Benchmark debrief exports benchmark records from synthetic result$/i,
+      /^Notebook and Fixtures Load From Pages Subpath$/i,
       /^Adaptive Benchmark synthetic debrief shows surfacing review and exports P8 session records$/i,
       /^Cold Repo Root Boot Reaches Main Menu Through Package Modules$/i,
       /^Cold Pages Subpath Boot Reaches Main Menu Through Package Modules$/i,

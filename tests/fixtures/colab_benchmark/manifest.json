@@ -1,0 +1,46 @@
+{
+  "schemaVersion": "1.0",
+  "type": "anchor.colab-benchmark.fixture-manifest",
+  "phase": "COLAB-BENCH-R1",
+  "validationBaselineDigest": "fnv1a32:dd016175",
+  "defaultFairnessClass": "FORECAST_ONLY",
+  "defaultVisibilityClass": "FORECAST_ONLY",
+  "fixtures": [
+    {
+      "fixtureId": "static_additive_routing",
+      "path": "tests/fixtures/colab_benchmark/static_additive_routing_solver_packet.json",
+      "purpose": "Dijkstra/A* exact path-cost parity on a declared additive graph.",
+      "exactOracleAllowed": true,
+      "hiddenTruthIncluded": false
+    },
+    {
+      "fixtureId": "small_science_orienteering",
+      "path": "tests/fixtures/colab_benchmark/small_science_orienteering_solver_packet.json",
+      "purpose": "Bounded candidate science-orienteering comparison.",
+      "exactOracleAllowed": true,
+      "hiddenTruthIncluded": false
+    },
+    {
+      "fixtureId": "time_varying_current",
+      "path": "tests/fixtures/colab_benchmark/time_varying_current_solver_packet.json",
+      "purpose": "Time-expanded planning under visible forecast currents.",
+      "exactOracleAllowed": false,
+      "hiddenTruthIncluded": false
+    },
+    {
+      "fixtureId": "regional_challenge",
+      "path": "tests/fixtures/colab_benchmark/regional_challenge_solver_packet.json",
+      "purpose": "Compact realistic-scale challenge for heuristic scalability.",
+      "exactOracleAllowed": false,
+      "hiddenTruthIncluded": false
+    }
+  ],
+  "checkedInPlans": [
+    {
+      "plannerId": "astar",
+      "path": "tests/fixtures/colab_benchmark/plans/static_additive_astar.anchor.plan.json",
+      "solverPacketPath": "tests/fixtures/colab_benchmark/static_additive_routing_solver_packet.json"
+    }
+  ],
+  "boundary": "Colab proposes. ANCHOR validates. ANCHOR simulates. ANCHOR scores."
+}

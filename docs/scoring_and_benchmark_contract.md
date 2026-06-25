@@ -98,3 +98,9 @@ Normal public Challenge scoring must not leak hidden truth through labels, raw v
 ## CODEC-R1 Score Artifact Metadata
 
 Result exports and Debrief now surface codec-backed score identity metadata: artifact type/version, official score, ScoreProfile ID/version, ScoreResult digest, ScoreDigest, environment digest, plan digest, simulation result digest, terminal reason, planner provenance, fairness class, and visibility class. This metadata is consumed from the existing ScoreResult/export payload and does not recalculate or alter official score.
+
+## COLAB-BENCH-R1 External Planner Benchmark Records
+
+The classical planner benchmark notebook writes `anchor.plan` and optional `anchor.benchmark.run-record` artifacts. Planner search cost, nodes expanded, frontier size, exactness label, and Python timing are benchmark metadata only. They do not change score inputs, score profiles, score weights, bonuses, penalties, normalization, or official totals.
+
+Official comparison rows must use ANCHOR validation, simulation, and scoring output. `tools/js/evaluate_colab_benchmark_plan.mjs` wraps that existing referee path and records the result for Colab analysis; it does not implement a planner, simulator, or scorer.
