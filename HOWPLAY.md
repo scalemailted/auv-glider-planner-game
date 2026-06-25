@@ -1184,3 +1184,7 @@ Normal generated missions now use a coherent synthetic 4D current field `F(x,y,z
 Bathymetry blocks land and below-seabed samples and can steer declared shelf, canyon, wake, tide, and eddy components, but water is not assumed to flow downhill into the deepest basin. The fields are deterministic scientifically constrained synthetic teaching fixtures, not calibrated ocean forecasts and not real HYCOM or Marine Copernicus data.
 
 FLOW-PKG-R2 keeps the old depth-uniform/weak-depth generator as `cpuBathymetryConditionedSyntheticV2` for compatibility and makes `cpuBathymetryConditionedSyntheticV3` the normal generated mixed-regional backend. A barotropic current is still valid when explicitly labeled, but generated mixed regional missions should expose coherent physical-depth differences in `F(x,y,z,t)`. Use the layer explorer profile to inspect per-depth U, V, magnitude, bearing, wet/masked state, and deltas from the surface.
+
+## Import And Export Safety
+
+ANCHOR JSON exports are versioned artifacts. The app uses the codec package to identify artifact kind/version, compute deterministic payload digests, reject malformed or future-version artifacts, and show safe import summaries. Result Debrief now displays score profile, ScoreResult digest, plan/environment/simulation digests, fairness class, and visibility class for reproducible comparison.

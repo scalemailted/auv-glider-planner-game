@@ -12,6 +12,7 @@ export const PLAYWRIGHT_GROUPS = Object.freeze([
       /^Bathymetric World View opens from Simulation Lab and preserves adjacent routes$/i,
       /^Renderer Architecture Preview opens from Simulation Lab$/i,
       /^Headless Bundle Viewer opens from Simulation Lab and exports browser summary$/i,
+      /^Codec Package Runs From GitHub Pages Subpath$/i,
       /^Planner Benchmark debrief exports benchmark records from synthetic result$/i,
       /^Adaptive Benchmark synthetic debrief shows surfacing review and exports P8 session records$/i,
       /^Cold Repo Root Boot Reaches Main Menu Through Package Modules$/i,

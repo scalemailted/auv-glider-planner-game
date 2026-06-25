@@ -29,3 +29,7 @@ Pages copies runtime assets and allowlisted current documentation only. Internal
 ## Scoring Package
 
 packages/scoring owns official score calculation, ScoreProfile definitions, ScoreInput/ScoreResult contracts, deterministic score digests, public-safe summaries, and score methodology metadata. packages/mission-simulator owns raw mission outcomes; browser/headless/benchmark/result/Debrief adapters consume package ScoreResult metadata. UI displays score but does not calculate it, leaderboard persistence stores digests but does not score, and planner provenance never changes numerical score. See docs/scoring_and_benchmark_contract.md.
+
+## CODEC-R1 Artifact Boundary
+
+`packages/codecs` sits beside the science, environment, simulator, and scoring packages as the pure transport layer. It can depend on `packages/contracts` only. App code under `src/core/io` owns file selection, downloads, import previews, and route/workflow decisions. Domain packages continue to own scientific and mission semantics.

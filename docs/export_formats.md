@@ -352,3 +352,9 @@ Renderer and display state are excluded from public exports: camera, hover, sele
 ## WORLD-R1.1 Export Metadata
 
 Regional generated challenge exports include operational-domain metadata, resolution profile metadata, signed terrain authority summaries/digests, water-column configuration, and continuous coordinate metadata. Preview Planning-guide state is noncanonical and is not exported as plan data.
+
+## CODEC-R1 Transport Metadata
+
+Artifact transport is now centralized in `packages/codecs`. Current exports remain plain JSON, but canonical payload digests are computed from deterministic compact JSON. `anchor.result` currently uses `schemaVersion: "3.0"` and may include `scoreArtifactIdentities` plus `codecMetadata` for ScoreProfile, ScoreResult, environment, plan, simulation, visibility, fairness, and payload digest identity. These fields are metadata only; they do not rescore old results or change mission outcomes.
+
+Unsupported future versions and unsupported legacy versions should fail with structured codec errors instead of being interpreted as current formats. The supported legacy migration in CODEC-R1 is `anchor.plan` `1.0` to `2.0`.

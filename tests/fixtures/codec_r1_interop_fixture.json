@@ -1,0 +1,58 @@
+{
+  "schemaVersion": "1.0",
+  "type": "anchor.codec-r1.interop-fixture",
+  "result": {
+    "schemaVersion": "3.0",
+    "type": "anchor.result",
+    "levelId": "codec-r1-level",
+    "instanceId": "codec-r1-instance",
+    "missionId": "codec-r1-mission",
+    "executionMode": "openLoop",
+    "scoreResult": {
+      "version": "score-result-score-pkg-r1",
+      "profileId": "balancedMission",
+      "profileVersion": "score-profile-score-pkg-r1",
+      "officialScore": 42,
+      "resultDigest": "fnv1a32:11111111",
+      "scoreDigest": "fnv1a32:22222222"
+    },
+    "scoreArtifactIdentities": {
+      "artifactType": "anchor.result",
+      "artifactVersion": "3.0",
+      "environmentDigest": "fnv1a32:33333333",
+      "planDigest": "fnv1a32:44444444",
+      "simulationResultDigest": "fnv1a32:55555555",
+      "scoreResultDigest": "fnv1a32:11111111",
+      "scoreDigest": "fnv1a32:22222222",
+      "scoreProfileId": "balancedMission",
+      "scoreProfileVersion": "score-profile-score-pkg-r1",
+      "visibilityClass": "PUBLIC_OBSERVATION_ONLY",
+      "fairnessClass": "PUBLIC_FAIR"
+    },
+    "codecMetadata": {
+      "packageVersion": "anchor-codecs-codec-r1",
+      "artifactType": "anchor.result",
+      "artifactVersion": "3.0",
+      "payloadDigest": "fnv1a32:66666666",
+      "visibilityClass": "PUBLIC_OBSERVATION_ONLY",
+      "fairnessClass": "PUBLIC_FAIR"
+    }
+  },
+  "benchmarkComparison": {
+    "schemaVersion": "benchmark-comparison-export-p3",
+    "type": "anchor.benchmark.comparison",
+    "benchmarkMode": "plannerBenchmark",
+    "rows": [],
+    "summary": {
+      "attemptCount": 0
+    },
+    "codecMetadata": {
+      "packageVersion": "anchor-codecs-codec-r1",
+      "artifactType": "anchor.benchmark.comparison",
+      "artifactVersion": "benchmark-comparison-export-p3",
+      "payloadDigest": "fnv1a32:77777777",
+      "visibilityClass": "PUBLIC_OBSERVATION_ONLY",
+      "fairnessClass": "PUBLIC_FAIR"
+    }
+  }
+}

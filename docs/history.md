@@ -29,3 +29,7 @@ ENV-PKG-R1 makes `packages/environment` an active package boundary for compositi
 ## SIM-PKG-R2 Mission Simulator Runtime Authority
 
 SIM-PKG-R2 makes `packages/mission-simulator` the authoritative mission-state transition package for browser, Node headless, and benchmark execution adapters. Legacy runtime paths remain compatibility forwarders where required. The cutover preserves environment generation, route planning, glider dynamics semantics, sampling values, observation behavior, terrain and hazard rules, terminal outcomes, official scoring, rendering, replay semantics, and public schemas. Browser and headless adapters still own scheduling, UI/artifact orchestration, and debug publication around the package.
+
+## CODEC-R1
+
+CODEC-R1 promoted `packages/codecs` from an ARCH-R1 skeleton into the canonical artifact transport package. It added versioned artifact registry, canonical JSON/JSONL, safety limits, structured decode reports, one supported plan migration, envelope/bundle manifest contracts, result score metadata export, Debrief metadata display, and Python-friendly smoke coverage. It did not intentionally change scientific models, mission simulation, official scoring, replay behavior, route semantics, or public artifact semantics.

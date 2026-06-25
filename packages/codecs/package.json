@@ -1,9 +1,9 @@
 {
   "name": "@anchor/codecs",
-  "version": "0.0.0-arch-r1",
+  "version": "0.1.0-codec-r1",
   "private": true,
   "type": "module",
-  "description": "Artifact codec and visibility package boundary for ANCHOR.",
+  "description": "Versioned artifact codecs, safe import validation, migration reports, and deterministic transport metadata for ANCHOR.",
   "exports": {
     ".": "./src/index.js"
   }

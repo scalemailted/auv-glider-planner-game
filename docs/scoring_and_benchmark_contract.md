@@ -94,3 +94,7 @@ contracts
 ## Public Safety
 
 Normal public Challenge scoring must not leak hidden truth through labels, raw values, explanations, exports, Debrief, replay, or leaderboard metadata. Referee-only and oracle-derived components must be explicitly labelled and filtered from public summaries when needed.
+
+## CODEC-R1 Score Artifact Metadata
+
+Result exports and Debrief now surface codec-backed score identity metadata: artifact type/version, official score, ScoreProfile ID/version, ScoreResult digest, ScoreDigest, environment digest, plan digest, simulation result digest, terminal reason, planner provenance, fairness class, and visibility class. This metadata is consumed from the existing ScoreResult/export payload and does not recalculate or alter official score.

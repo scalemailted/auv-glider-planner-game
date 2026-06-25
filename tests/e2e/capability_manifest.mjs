@@ -92,6 +92,7 @@ export const SMOKE_SPEC_SPLIT_FILES = Object.freeze([
   "tests/e2e/mission_planning.spec.js",
   "tests/e2e/environment_rendering.spec.js",
   "tests/e2e/env_pkg_r1_environment_package.spec.js",
+  "tests/e2e/codec_r1_artifact_codecs.spec.js",
   "tests/e2e/workspace_and_challenge_setup.spec.js",
   "tests/e2e/simulation_and_terrain.spec.js"
 ]);
@@ -104,6 +105,7 @@ export const TEST_FILE_OWNERSHIP = Object.freeze({
   "Renderer Architecture Preview opens from Simulation Lab": "tests/e2e/product_hub_and_labs.spec.js",
   "Headless Bundle Viewer opens from Simulation Lab and exports browser summary": "tests/e2e/product_hub_and_labs.spec.js",
   "Planner Benchmark debrief exports benchmark records from synthetic result": "tests/e2e/product_hub_and_labs.spec.js",
+  "Codec Package Runs From GitHub Pages Subpath": "tests/e2e/codec_r1_artifact_codecs.spec.js",
   "Adaptive Benchmark synthetic debrief shows surfacing review and exports P8 session records": "tests/e2e/product_hub_and_labs.spec.js",
   "campaign planning smoke flow reaches debrief": "tests/e2e/product_hub_and_labs.spec.js",
   "Continuous Mission Planning Starts Without Overlay Errors": "tests/e2e/mission_planning.spec.js",
@@ -274,7 +276,8 @@ export const CAPABILITIES = Object.freeze([
     'Headless Bundle Viewer opens from Simulation Lab and exports browser summary',
     'Browser Headless and Pages Share the Authoritative Kernel',
     'Right Panel Segment Profile Survives Export Import and Execute',
-    'Three Mission Editor Export Reimport Roundtrip Is Lossless'
+    'Three Mission Editor Export Reimport Roundtrip Is Lossless',
+    'Codec Package Runs From GitHub Pages Subpath'
   ], NODE_COVERAGE.IMPORT_EXPORT),
   capability('BENCHMARK', 'At least one production benchmark workflow', true, false, true, [
     'Planner Benchmark debrief exports benchmark records from synthetic result',

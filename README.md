@@ -1047,3 +1047,9 @@ PROCESS-PKG-R1 moves canonical scalar-field contracts, scalar source metadata, c
 ## FLOW-PKG-R1.1 Boot Readiness
 
 Application readiness is now a production runtime contract, not a Playwright-only convention. The browser boot path publishes `globalThis.ANCHOR_APP_BOOT_DEBUG`, sets `data-anchor-app-ready="true"` and `data-anchor-route="main-menu"`, and dispatches `anchor:app-ready` after the Main Menu route commits and controls are bound. Static-server process spawn is not equivalent to server readiness; browser tests use explicit probes for root, Pages, package, and vendor paths before navigation. Scientific packages may load at startup, but Main Menu does not generate bathymetry, currents, or Simulation state. FLOW-PKG-R1.1 changes boot/readiness and test reliability only; current equations and package artifacts remain unchanged.
+
+## CODEC-R1 Artifact Transport
+
+`packages/codecs/` is now the canonical pure authority for versioned artifact encoding, decoding, validation, migration reports, safety limits, JSON/JSONL transport, artifact envelopes, bundle manifests, and deterministic transport digests. Scientific equations, mission simulation, official scoring, replay behavior, and file-picker UI remain owned by their existing packages and app adapters.
+
+See `docs/artifact_codec_and_schema_contract.md` and `packages/codecs/MODEL_CARD.md`.

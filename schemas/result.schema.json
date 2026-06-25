@@ -1,5 +1,5 @@
 {
-  "schemaVersion": "2.0",
+  "schemaVersion": "3.0",
   "type": "schema",
   "describes": "anchor.result",
   "required": [
@@ -65,7 +65,15 @@
     "waypointSemantics",
     "comparison",
     "rating",
-    "objectives"
+    "objectives",
+    "scoreResult",
+    "scoreResultSummary",
+    "scoreInputDigest",
+    "scoreProfileDigest",
+    "scoreMethodologySummary",
+    "scorePackageVersion",
+    "scoreArtifactIdentities",
+    "codecMetadata"
   ],
   "importedPlanMetadata": "Plan import metadata, validation summary, and fairness flags when the attempt used an imported plan.",
   "leaderboardScope": "challenge | simulationLab; Challenge Mode records are high-score oriented, Simulation Lab records are benchmark/comparison oriented",
@@ -229,5 +237,7 @@
     "captures": "targetId, agentId, t, x, y, value records",
     "duplicates": "duplicate capture attempts after a target was already captured"
   },
+  "scoreArtifactIdentities": "CODEC-R1 compact deterministic identity metadata for environment, plan, simulation input/result, ScoreInput, ScoreProfile, ScoreResult, ScoreDigest, terminal reason, visibility class, and fairness class. These values are exported for reproducibility and do not recalculate the official score.",
+  "codecMetadata": "CODEC-R1 transport metadata including artifact type/version, codec package version, payload digest, visibility class, and fairness class. Digests support reproducibility and accidental-corruption checks; they are not cryptographic signatures unless explicitly declared.",
   "notes": "Readable schema-like documentation; validation is lightweight/manual. Frames include per-agent position, heading, battery, energy, active waypoint, waypoint index, status, commsState, and depthEnergyMultiplier. Events may include sampled cells with expected/realized value, explicit probabilityOutcome records, mobileHazard contacts/near misses, depthEnergy, surfaced, submerged, and replanned decisions."
 }

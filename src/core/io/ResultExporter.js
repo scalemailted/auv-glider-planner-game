@@ -76,6 +76,12 @@ import {
   scoringDebugSummary,
   SCORING_PACKAGE_VERSION
 } from '../../../packages/scoring/src/index.js';
+import {
+  CODEC_PACKAGE_VERSION,
+  canonicalJsonDigest,
+  inspectArtifact
+} from '../../../packages/codecs/src/index.js';
+import { recordArtifactEncodeForDebug } from './ArtifactInspectionViewModel.js';
 
 export function buildResultExport({ level, mission, plan, result, label = 'Manual Player Plan', challenge = null, experienceMode = null } = {}) {
   recordResultExportBuild();
@@ -119,7 +125,7 @@ export function buildResultExport({ level, mission, plan, result, label = 'Manua
   const terrainEvents = terrainEventsFromResult(result);
   const canonicalScoreArtifacts = buildCanonicalScoreArtifacts({ level, mission, plan, result });
   publishScoringDebug(canonicalScoreArtifacts);
-  return {
+  const exportPayload = {
     schemaVersion: EXPORT_SCHEMA_VERSION,
     type: 'anchor.result',
     createdAt: new Date().toISOString(),
@@ -267,6 +273,20 @@ export function buildResultExport({ level, mission, plan, result, label = 'Manua
     debugTrace: cloneJson(result?.debugTrace ?? result?.simulationTrace ?? null),
     rawResult: cloneJson(result ?? null)
   };
+  exportPayload.scoreArtifactIdentities = buildScoreArtifactIdentities(canonicalScoreArtifacts, exportPayload);
+  exportPayload.codecMetadata = buildResultCodecMetadata(exportPayload);
+  recordArtifactEncodeForDebug({
+    artifactType: exportPayload.codecMetadata.artifactType,
+    sourceVersion: exportPayload.codecMetadata.artifactVersion,
+    targetVersion: exportPayload.codecMetadata.artifactVersion,
+    payloadDigest: exportPayload.codecMetadata.payloadDigest,
+    visibilityClass: exportPayload.codecMetadata.visibilityClass,
+    fairnessClass: exportPayload.codecMetadata.fairnessClass,
+    status: exportPayload.codecMetadata.inspectionStatus,
+    warnings: [],
+    failures: []
+  });
+  return exportPayload;
 }
 
 function publishScoringDebug(artifacts = {}) {
@@ -279,6 +299,53 @@ function publishScoringDebug(artifacts = {}) {
       benchmarkParityStatus: 'not_checked',
       plannerClassInvarianceStatus: 'covered_by_package_smoke'
     }
+  });
+}
+function buildScoreArtifactIdentities(artifacts = {}, exportPayload = {}) {
+  const scoreInput = artifacts.scoreInput ?? {};
+  const scoreProfile = artifacts.scoreProfile ?? {};
+  const scoreResult = artifacts.scoreResult ?? exportPayload.scoreResult ?? {};
+  const fairness = exportPayload.fairness ?? {};
+  const oracleAssisted = Boolean(fairness.usesOracle || fairness.usesTruth || fairness.oracleAssisted);
+  return cloneJson({
+    artifactType: 'anchor.result',
+    artifactVersion: exportPayload.schemaVersion ?? EXPORT_SCHEMA_VERSION,
+    environmentDigest: scoreInput.environmentArtifactDigest ?? null,
+    planDigest: scoreInput.planDigest ?? exportPayload.plan?.planDigest ?? exportPayload.plan?.meta?.planDigest ?? null,
+    simulationInputDigest: scoreInput.simulationInputDigest ?? exportPayload.simulationInputDigest ?? null,
+    simulationResultDigest: scoreInput.simulationResultDigest ?? exportPayload.simulationResultDigest ?? exportPayload.resultDigest ?? null,
+    scoreInputDigest: scoreInput.inputDigest ?? exportPayload.scoreInputDigest ?? null,
+    scoreProfileDigest: scoreProfile.profileDigest ?? exportPayload.scoreProfileDigest ?? null,
+    scoreResultDigest: scoreResult.resultDigest ?? null,
+    scoreDigest: scoreResult.scoreDigest ?? null,
+    scoreProfileId: scoreProfile.id ?? scoreResult.profileId ?? null,
+    scoreProfileVersion: scoreProfile.version ?? scoreResult.profileVersion ?? null,
+    terminalReason: scoreInput.terminalReason ?? exportPayload.scoreSummary?.terminalReason ?? exportPayload.scoreSummary?.stopReason ?? null,
+    plannerProvenance: scoreResult.plannerProvenance ?? exportPayload.planner ?? null,
+    visibilityClass: oracleAssisted ? 'ORACLE_HIDDEN_TRUTH' : 'PUBLIC_OBSERVATION_ONLY',
+    fairnessClass: oracleAssisted ? 'ORACLE_ASSISTED' : (fairness.usesForecast ? 'FORECAST_ONLY' : 'PUBLIC_FAIR')
+  });
+}
+
+function buildResultCodecMetadata(exportPayload = {}) {
+  const identityPayload = cloneJson(exportPayload);
+  delete identityPayload.codecMetadata;
+  const digestPayload = cloneJson(identityPayload);
+  delete digestPayload.createdAt;
+  const inspection = inspectArtifact(identityPayload, { kind: 'result' });
+  return cloneJson({
+    packageVersion: CODEC_PACKAGE_VERSION,
+    artifactType: 'anchor.result',
+    artifactVersion: exportPayload.schemaVersion ?? EXPORT_SCHEMA_VERSION,
+    payloadDigest: canonicalJsonDigest(digestPayload),
+    inspectionStatus: inspection.status,
+    visibilityClass: exportPayload.scoreArtifactIdentities?.visibilityClass ?? inspection.visibilityClass ?? 'PUBLIC_OBSERVATION_ONLY',
+    fairnessClass: exportPayload.scoreArtifactIdentities?.fairnessClass ?? inspection.fairnessClass ?? 'PUBLIC_FAIR',
+    scoreProfileId: exportPayload.scoreArtifactIdentities?.scoreProfileId ?? null,
+    scoreProfileVersion: exportPayload.scoreArtifactIdentities?.scoreProfileVersion ?? null,
+    scoreResultDigest: exportPayload.scoreArtifactIdentities?.scoreResultDigest ?? null,
+    scoreDigest: exportPayload.scoreArtifactIdentities?.scoreDigest ?? null,
+    notes: 'CODEC-R1 transport metadata; does not recalculate score or alter mission outcome.'
   });
 }
 function buildCanonicalScoreArtifacts({ level, mission, plan, result } = {}) {

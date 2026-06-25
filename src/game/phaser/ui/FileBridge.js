@@ -1,3 +1,5 @@
+import { downloadJSON as canonicalDownloadJSON, downloadText as canonicalDownloadText, readJSONFile } from '../../../core/io/ImportExport.js';
+
 export class FileBridge {
   constructor({ accept = 'application/json', onFile, onLoad, onError } = {}) {
     this.onFile = onFile;
@@ -37,11 +39,11 @@ export class FileBridge {
   }
 
   downloadJson(filename, data) {
-    downloadBlob(filename, JSON.stringify(data, null, 2), 'application/json');
+    downloadJson(filename, data);
   }
 
   downloadText(filename, text, mimeType = 'text/plain') {
-    downloadBlob(filename, text, mimeType);
+    downloadText(filename, text, mimeType);
   }
 
   destroy() {
@@ -50,26 +52,13 @@ export class FileBridge {
 }
 
 export async function readJsonFile(file) {
-  return JSON.parse(await file.text());
+  return readJSONFile(file);
 }
 
 export function downloadJson(filename, data) {
-  downloadBlob(filename, JSON.stringify(data, null, 2), 'application/json');
+  canonicalDownloadJSON(filename, data);
 }
 
 export function downloadText(filename, text, mimeType = 'text/plain') {
-  downloadBlob(filename, text, mimeType);
-}
-
-function downloadBlob(filename, text, mimeType) {
-  const blob = new Blob([text], { type: mimeType });
-  const url = URL.createObjectURL(blob);
-  const link = document.createElement('a');
-  link.href = url;
-  link.download = filename;
-  link.hidden = true;
-  document.body.appendChild(link);
-  link.click();
-  link.remove();
-  setTimeout(() => URL.revokeObjectURL(url), 1000);
+  canonicalDownloadText(filename, text, mimeType);
 }

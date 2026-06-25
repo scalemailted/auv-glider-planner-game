@@ -489,3 +489,7 @@ BATHY-PKG-R1 is an extraction phase, not a scientific retuning phase. The packag
 - PROCESS-PKG-R1: Canonical scalar-field package extraction is implemented; next package work should compose bathymetry, currents, and scalar artifacts through environment manifests.
 - ENV-PKG-R1: Canonical environment composition is implemented; next package work should make the simulator consume composed environment artifacts more directly without changing gameplay outcomes.
 - SIM-PKG-R2: Mission simulator authoritative runtime cutover is implemented; future work should keep package authority while avoiding scoring, rendering, and schema drift.
+
+## CODEC-R1 Checkpoint
+
+Completed: `packages/codecs` now owns canonical artifact transport: registry, version checks, canonical JSON/JSONL, envelopes, bundle manifests, safety limits, supported migration reports, deterministic digests, Python-friendly serialization, and import inspection metadata. Result exports and Debrief surface score/profile/digest/fairness metadata. Next recommended roadmap remains SCI-VALID-R2A, COLAB-BENCH-R1, then ALPHA-R1 only after codec, migration, public-safety, solver round-trip, Python, package purity, Pages, and release gates stay green.
