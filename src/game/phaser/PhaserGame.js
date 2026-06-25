@@ -21,6 +21,7 @@ import { BathymetryWorldViewScene } from './scenes/BathymetryWorldViewScene.js';
 import { RendererArchitecturePreviewScene } from './scenes/RendererArchitecturePreviewScene.js';
 import { BenchmarkModeOverviewScene } from './scenes/BenchmarkModeOverviewScene.js';
 import { HeadlessBundleViewerScene } from './scenes/HeadlessBundleViewerScene.js';
+import { MethodsValidationScene } from './scenes/MethodsValidationScene.js';
 import { MissionReplayReviewScene } from './scenes/MissionReplayReviewScene.js';
 import { LoadLevelByIdScene } from './scenes/LoadLevelByIdScene.js';
 import { LoadLevelJsonScene } from './scenes/LoadLevelJsonScene.js';
@@ -74,6 +75,7 @@ export class PhaserGameApp {
         RendererArchitecturePreviewScene,
         BenchmarkModeOverviewScene,
         HeadlessBundleViewerScene,
+        MethodsValidationScene,
         MissionReplayReviewScene,
         LoadLevelJsonScene,
         LoadLevelByIdScene

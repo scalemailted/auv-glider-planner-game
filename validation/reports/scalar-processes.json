@@ -1,0 +1,1515 @@
+{
+  "schemaVersion": "1.0",
+  "type": "anchor.scientific-validation-report",
+  "reportId": "anchor-scalar-processes-scientific-validation-report",
+  "componentId": "scalar-processes",
+  "componentLabel": "Scalar Processes",
+  "modelId": "anchor.scalar-process-field",
+  "modelVersion": "process-pkg-r1",
+  "summary": "Scalar Processes has a Pre-Alpha evidence report built from deterministic package fixtures and documented diagnostics.",
+  "claims": [
+    {
+      "version": "1.0",
+      "claimId": "scalar-processes.constant-field",
+      "componentId": "scalar-processes",
+      "title": "Constant field",
+      "plainLanguageClaim": "Scalar Processes supports constant field within the deterministic ANCHOR benchmark fixtures.",
+      "technicalClaim": "anchor.scalar-process-field constant-field is evaluated by manufactured-solution-or-interpolation-check using fixture-backed deterministic metrics. Status is recorded separately from evidence level.",
+      "evidenceLevel": "NUMERICALLY_VERIFIED",
+      "methodId": "manufactured-solution-or-interpolation-check",
+      "metricId": "manufactured-error-bound",
+      "units": "normalized-error",
+      "expectedDirection": "less-than-or-equal",
+      "threshold": 0,
+      "tolerance": 0,
+      "thresholdRationale": "Manufactured fixtures should match analytical or interpolation expectations within deterministic numerical tolerance.",
+      "fixtureIds": [
+        "tests/fixtures/scalar_package_r1_parity.json"
+      ],
+      "referenceIds": [
+        "scalar-process-package-md",
+        "homegrown-model-scorecard-md"
+      ],
+      "applicability": "deterministic-regression, education, and benchmark-suitability review",
+      "public": true,
+      "claimDigest": "fnv1a32:45567dc3"
+    },
+    {
+      "version": "1.0",
+      "claimId": "scalar-processes.linear-x-y-z-t",
+      "componentId": "scalar-processes",
+      "title": "Linear x/y/z/t interpolation",
+      "plainLanguageClaim": "Scalar Processes supports linear x/y/z/t interpolation within the deterministic ANCHOR benchmark fixtures.",
+      "technicalClaim": "anchor.scalar-process-field linear-x-y-z-t is evaluated by manufactured-solution-or-interpolation-check using fixture-backed deterministic metrics. Status is recorded separately from evidence level.",
+      "evidenceLevel": "NUMERICALLY_VERIFIED",
+      "methodId": "manufactured-solution-or-interpolation-check",
+      "metricId": "manufactured-error-bound",
+      "units": "normalized-error",
+      "expectedDirection": "less-than-or-equal",
+      "threshold": 0,
+      "tolerance": 0,
+      "thresholdRationale": "Manufactured fixtures should match analytical or interpolation expectations within deterministic numerical tolerance.",
+      "fixtureIds": [
+        "tests/fixtures/scalar_package_r1_parity.json"
+      ],
+      "referenceIds": [
+        "scalar-process-package-md",
+        "homegrown-model-scorecard-md"
+      ],
+      "applicability": "deterministic-regression, education, and benchmark-suitability review",
+      "public": true,
+      "claimDigest": "fnv1a32:ee260951"
+    },
+    {
+      "version": "1.0",
+      "claimId": "scalar-processes.multilinear-interpolation",
+      "componentId": "scalar-processes",
+      "title": "Multilinear interpolation",
+      "plainLanguageClaim": "Scalar Processes supports multilinear interpolation within the deterministic ANCHOR benchmark fixtures.",
+      "technicalClaim": "anchor.scalar-process-field multilinear-interpolation is evaluated by manufactured-solution-or-interpolation-check using fixture-backed deterministic metrics. Status is recorded separately from evidence level.",
+      "evidenceLevel": "NUMERICALLY_VERIFIED",
+      "methodId": "manufactured-solution-or-interpolation-check",
+      "metricId": "manufactured-error-bound",
+      "units": "normalized-error",
+      "expectedDirection": "less-than-or-equal",
+      "threshold": 0,
+      "tolerance": 0,
+      "thresholdRationale": "Manufactured fixtures should match analytical or interpolation expectations within deterministic numerical tolerance.",
+      "fixtureIds": [
+        "tests/fixtures/scalar_package_r1_parity.json"
+      ],
+      "referenceIds": [
+        "scalar-process-package-md",
+        "homegrown-model-scorecard-md"
+      ],
+      "applicability": "deterministic-regression, education, and benchmark-suitability review",
+      "public": true,
+      "claimDigest": "fnv1a32:67d63a4f"
+    },
+    {
+      "version": "1.0",
+      "claimId": "scalar-processes.gaussian-source",
+      "componentId": "scalar-processes",
+      "title": "Gaussian source fixture",
+      "plainLanguageClaim": "Scalar Processes supports gaussian source fixture within the deterministic ANCHOR benchmark fixtures.",
+      "technicalClaim": "anchor.scalar-process-field gaussian-source is evaluated by manufactured-solution-or-interpolation-check using fixture-backed deterministic metrics. Status is recorded separately from evidence level.",
+      "evidenceLevel": "NUMERICALLY_VERIFIED",
+      "methodId": "manufactured-solution-or-interpolation-check",
+      "metricId": "manufactured-error-bound",
+      "units": "normalized-error",
+      "expectedDirection": "less-than-or-equal",
+      "threshold": 0,
+      "tolerance": 0,
+      "thresholdRationale": "Manufactured fixtures should match analytical or interpolation expectations within deterministic numerical tolerance.",
+      "fixtureIds": [
+        "tests/fixtures/scalar_package_r1_parity.json"
+      ],
+      "referenceIds": [
+        "scalar-process-package-md",
+        "homegrown-model-scorecard-md"
+      ],
+      "applicability": "deterministic-regression, education, and benchmark-suitability review",
+      "public": true,
+      "claimDigest": "fnv1a32:13223543"
+    },
+    {
+      "version": "1.0",
+      "claimId": "scalar-processes.translation-advection",
+      "componentId": "scalar-processes",
+      "title": "Translation/advection proxy",
+      "plainLanguageClaim": "Scalar Processes supports translation/advection proxy within the deterministic ANCHOR benchmark fixtures.",
+      "technicalClaim": "anchor.scalar-process-field translation-advection is evaluated by bounded-invariant-and-diagnostic-check using fixture-backed deterministic metrics. Status is recorded separately from evidence level.",
+      "evidenceLevel": "PHYSICALLY_PLAUSIBLE",
+      "methodId": "bounded-invariant-and-diagnostic-check",
+      "metricId": "bounded-plausibility-invariant",
+      "units": "pass-count",
+      "expectedDirection": "less-than-or-equal",
+      "threshold": 0,
+      "tolerance": 1,
+      "thresholdRationale": "The threshold is a deterministic regression gate for bounded synthetic behavior; it is not an oceanographic validation threshold.",
+      "fixtureIds": [
+        "tests/fixtures/scalar_package_r1_parity.json"
+      ],
+      "referenceIds": [
+        "scalar-process-package-md",
+        "homegrown-model-scorecard-md"
+      ],
+      "applicability": "deterministic-regression, education, and benchmark-suitability review",
+      "public": true,
+      "claimDigest": "fnv1a32:888b888e"
+    },
+    {
+      "version": "1.0",
+      "claimId": "scalar-processes.diffusion-spread",
+      "componentId": "scalar-processes",
+      "title": "Diffusion spread proxy",
+      "plainLanguageClaim": "Scalar Processes supports diffusion spread proxy within the deterministic ANCHOR benchmark fixtures.",
+      "technicalClaim": "anchor.scalar-process-field diffusion-spread is evaluated by bounded-invariant-and-diagnostic-check using fixture-backed deterministic metrics. Status is recorded separately from evidence level.",
+      "evidenceLevel": "PHYSICALLY_PLAUSIBLE",
+      "methodId": "bounded-invariant-and-diagnostic-check",
+      "metricId": "bounded-plausibility-invariant",
+      "units": "pass-count",
+      "expectedDirection": "less-than-or-equal",
+      "threshold": 0,
+      "tolerance": 1,
+      "thresholdRationale": "The threshold is a deterministic regression gate for bounded synthetic behavior; it is not an oceanographic validation threshold.",
+      "fixtureIds": [
+        "tests/fixtures/scalar_package_r1_parity.json"
+      ],
+      "referenceIds": [
+        "scalar-process-package-md",
+        "homegrown-model-scorecard-md"
+      ],
+      "applicability": "deterministic-regression, education, and benchmark-suitability review",
+      "public": true,
+      "claimDigest": "fnv1a32:f4922630"
+    },
+    {
+      "version": "1.0",
+      "claimId": "scalar-processes.exponential-decay",
+      "componentId": "scalar-processes",
+      "title": "Exponential decay",
+      "plainLanguageClaim": "Scalar Processes supports exponential decay within the deterministic ANCHOR benchmark fixtures.",
+      "technicalClaim": "anchor.scalar-process-field exponential-decay is evaluated by manufactured-solution-or-interpolation-check using fixture-backed deterministic metrics. Status is recorded separately from evidence level.",
+      "evidenceLevel": "NUMERICALLY_VERIFIED",
+      "methodId": "manufactured-solution-or-interpolation-check",
+      "metricId": "manufactured-error-bound",
+      "units": "normalized-error",
+      "expectedDirection": "less-than-or-equal",
+      "threshold": 0,
+      "tolerance": 0,
+      "thresholdRationale": "Manufactured fixtures should match analytical or interpolation expectations within deterministic numerical tolerance.",
+      "fixtureIds": [
+        "tests/fixtures/scalar_package_r1_parity.json"
+      ],
+      "referenceIds": [
+        "scalar-process-package-md",
+        "homegrown-model-scorecard-md"
+      ],
+      "applicability": "deterministic-regression, education, and benchmark-suitability review",
+      "public": true,
+      "claimDigest": "fnv1a32:d7931bcd"
+    },
+    {
+      "version": "1.0",
+      "claimId": "scalar-processes.source-plus-decay",
+      "componentId": "scalar-processes",
+      "title": "Source plus decay",
+      "plainLanguageClaim": "Scalar Processes supports source plus decay within the deterministic ANCHOR benchmark fixtures.",
+      "technicalClaim": "anchor.scalar-process-field source-plus-decay is evaluated by manufactured-solution-or-interpolation-check using fixture-backed deterministic metrics. Status is recorded separately from evidence level.",
+      "evidenceLevel": "NUMERICALLY_VERIFIED",
+      "methodId": "manufactured-solution-or-interpolation-check",
+      "metricId": "manufactured-error-bound",
+      "units": "normalized-error",
+      "expectedDirection": "less-than-or-equal",
+      "threshold": 0,
+      "tolerance": 0,
+      "thresholdRationale": "Manufactured fixtures should match analytical or interpolation expectations within deterministic numerical tolerance.",
+      "fixtureIds": [
+        "tests/fixtures/scalar_package_r1_parity.json"
+      ],
+      "referenceIds": [
+        "scalar-process-package-md",
+        "homegrown-model-scorecard-md"
+      ],
+      "applicability": "deterministic-regression, education, and benchmark-suitability review",
+      "public": true,
+      "claimDigest": "fnv1a32:bf379c3b"
+    },
+    {
+      "version": "1.0",
+      "claimId": "scalar-processes.mass-integral-behavior",
+      "componentId": "scalar-processes",
+      "title": "Mass/integral behavior",
+      "plainLanguageClaim": "Scalar Processes supports mass/integral behavior within the deterministic ANCHOR benchmark fixtures.",
+      "technicalClaim": "anchor.scalar-process-field mass-integral-behavior is evaluated by bounded-invariant-and-diagnostic-check using fixture-backed deterministic metrics. Status is recorded separately from evidence level.",
+      "evidenceLevel": "PHYSICALLY_PLAUSIBLE",
+      "methodId": "bounded-invariant-and-diagnostic-check",
+      "metricId": "bounded-plausibility-invariant",
+      "units": "pass-count",
+      "expectedDirection": "less-than-or-equal",
+      "threshold": 0,
+      "tolerance": 1,
+      "thresholdRationale": "The threshold is a deterministic regression gate for bounded synthetic behavior; it is not an oceanographic validation threshold.",
+      "fixtureIds": [
+        "tests/fixtures/scalar_package_r1_parity.json"
+      ],
+      "referenceIds": [
+        "scalar-process-package-md",
+        "homegrown-model-scorecard-md"
+      ],
+      "applicability": "deterministic-regression, education, and benchmark-suitability review",
+      "public": true,
+      "claimDigest": "fnv1a32:87b7182e"
+    },
+    {
+      "version": "1.0",
+      "claimId": "scalar-processes.centroid-behavior",
+      "componentId": "scalar-processes",
+      "title": "Centroid behavior",
+      "plainLanguageClaim": "Scalar Processes supports centroid behavior within the deterministic ANCHOR benchmark fixtures.",
+      "technicalClaim": "anchor.scalar-process-field centroid-behavior is evaluated by bounded-invariant-and-diagnostic-check using fixture-backed deterministic metrics. Status is recorded separately from evidence level.",
+      "evidenceLevel": "PHYSICALLY_PLAUSIBLE",
+      "methodId": "bounded-invariant-and-diagnostic-check",
+      "metricId": "bounded-plausibility-invariant",
+      "units": "pass-count",
+      "expectedDirection": "less-than-or-equal",
+      "threshold": 0,
+      "tolerance": 1,
+      "thresholdRationale": "The threshold is a deterministic regression gate for bounded synthetic behavior; it is not an oceanographic validation threshold.",
+      "fixtureIds": [
+        "tests/fixtures/scalar_package_r1_parity.json"
+      ],
+      "referenceIds": [
+        "scalar-process-package-md",
+        "homegrown-model-scorecard-md"
+      ],
+      "applicability": "deterministic-regression, education, and benchmark-suitability review",
+      "public": true,
+      "claimDigest": "fnv1a32:7be5c4ae"
+    },
+    {
+      "version": "1.0",
+      "claimId": "scalar-processes.depth-time-distinctness",
+      "componentId": "scalar-processes",
+      "title": "Depth and time distinctness",
+      "plainLanguageClaim": "Scalar Processes supports depth and time distinctness within the deterministic ANCHOR benchmark fixtures.",
+      "technicalClaim": "anchor.scalar-process-field depth-time-distinctness is evaluated by manufactured-solution-or-interpolation-check using fixture-backed deterministic metrics. Status is recorded separately from evidence level.",
+      "evidenceLevel": "NUMERICALLY_VERIFIED",
+      "methodId": "manufactured-solution-or-interpolation-check",
+      "metricId": "manufactured-error-bound",
+      "units": "normalized-error",
+      "expectedDirection": "less-than-or-equal",
+      "threshold": 0,
+      "tolerance": 0,
+      "thresholdRationale": "Manufactured fixtures should match analytical or interpolation expectations within deterministic numerical tolerance.",
+      "fixtureIds": [
+        "tests/fixtures/scalar_package_r1_parity.json"
+      ],
+      "referenceIds": [
+        "scalar-process-package-md",
+        "homegrown-model-scorecard-md"
+      ],
+      "applicability": "deterministic-regression, education, and benchmark-suitability review",
+      "public": true,
+      "claimDigest": "fnv1a32:dc8d73fb"
+    },
+    {
+      "version": "1.0",
+      "claimId": "scalar-processes.masks-and-units",
+      "componentId": "scalar-processes",
+      "title": "Masks and units",
+      "plainLanguageClaim": "Scalar Processes supports masks and units within the deterministic ANCHOR benchmark fixtures.",
+      "technicalClaim": "anchor.scalar-process-field masks-and-units is evaluated by package-smoke-and-parity-fixture using fixture-backed deterministic metrics. Status is recorded separately from evidence level.",
+      "evidenceLevel": "SOFTWARE_VERIFIED",
+      "methodId": "package-smoke-and-parity-fixture",
+      "metricId": "deterministic-contract-status",
+      "units": "pass-count",
+      "expectedDirection": "less-than-or-equal",
+      "threshold": 0,
+      "tolerance": 0,
+      "thresholdRationale": "Software contract checks require zero hard validation failures for the checked fixture and package version.",
+      "fixtureIds": [
+        "tests/fixtures/scalar_package_r1_parity.json"
+      ],
+      "referenceIds": [
+        "scalar-process-package-md",
+        "homegrown-model-scorecard-md"
+      ],
+      "applicability": "deterministic-regression, education, and benchmark-suitability review",
+      "public": true,
+      "claimDigest": "fnv1a32:183132ad"
+    },
+    {
+      "version": "1.0",
+      "claimId": "scalar-processes.external-biogeochemical-comparison",
+      "componentId": "scalar-processes",
+      "title": "External ecological or biogeochemical comparison",
+      "plainLanguageClaim": "Scalar Processes has not yet been checked against an independent external reference for external ecological or biogeochemical comparison.",
+      "technicalClaim": "anchor.scalar-process-field external-biogeochemical-comparison is evaluated by gap-record using fixture-backed deterministic metrics. Status is recorded separately from evidence level.",
+      "evidenceLevel": "NOT_YET_EVALUATED",
+      "methodId": "gap-record",
+      "metricId": "external-reference-status",
+      "units": "status",
+      "expectedDirection": "explicitly-not-evaluated",
+      "threshold": null,
+      "tolerance": null,
+      "thresholdRationale": "No local independent reference fixture exists in SCI-VALID-R2A, so the official threshold is intentionally undefined and the claim must remain not evaluated.",
+      "fixtureIds": [
+        "tests/fixtures/scalar_package_r1_parity.json"
+      ],
+      "referenceIds": [
+        "scalar-process-package-md",
+        "homegrown-model-scorecard-md"
+      ],
+      "applicability": "future-reference-comparison-only",
+      "public": true,
+      "claimDigest": "fnv1a32:e0395172"
+    }
+  ],
+  "evidence": [
+    {
+      "version": "1.0",
+      "claimId": "scalar-processes.constant-field",
+      "componentId": "scalar-processes",
+      "modelId": "anchor.scalar-process-field",
+      "modelVersion": "process-pkg-r1",
+      "evidenceLevel": "NUMERICALLY_VERIFIED",
+      "status": "PASS",
+      "methodId": "manufactured-solution-or-interpolation-check",
+      "metricId": "manufactured-error-bound",
+      "measuredValue": 0,
+      "units": "normalized-error",
+      "threshold": 0,
+      "tolerance": 0,
+      "errorValue": 0,
+      "relativeError": 0,
+      "fixtureIds": [
+        "tests/fixtures/scalar_package_r1_parity.json"
+      ],
+      "sourceArtifactDigests": {
+        "tests/fixtures/scalar_package_r1_parity.json": "fnv1a32:8701dfe8"
+      },
+      "packageVersions": {
+        "contracts": "0.0.0-arch-r1",
+        "bathymetry": "0.0.0-arch-r1",
+        "currents": "0.0.0-arch-r1",
+        "scalar-processes": "0.1.0-process-pkg-r1",
+        "environment": "0.0.0-arch-r1",
+        "mission-simulator": "0.0.0-arch-r1",
+        "scoring": "0.0.0-score-pkg-r1",
+        "codecs": "0.1.0-codec-r1",
+        "validation": "0.1.0-sci-valid-r2a",
+        "validationRuntime": "anchor-validation-sci-valid-r2a"
+      },
+      "runtimeMetadata": {
+        "builderVersion": "sci-valid-r2a-baseline-builder",
+        "deterministic": true,
+        "officialBaseline": true
+      },
+      "interpretation": "Constant field passed as deterministic Pre-Alpha evidence for Scalar Processes.",
+      "limitations": [
+        "Evidence is fixture-scoped and deterministic; it does not generalize to operational ocean forecasting or certified navigation."
+      ],
+      "references": [
+        {
+          "version": "1.0",
+          "referenceId": "scalar-process-package-md",
+          "title": "Scalar Process Package",
+          "authors": "ANCHOR project",
+          "year": 2026,
+          "source": "local repository documentation",
+          "persistentIdentifier": null,
+          "localPath": "docs/scalar_process_package.md",
+          "role": "methodReference"
+        },
+        {
+          "version": "1.0",
+          "referenceId": "homegrown-model-scorecard-md",
+          "title": "Homegrown Model Scorecard",
+          "authors": "ANCHOR project",
+          "year": 2026,
+          "source": "local repository documentation",
+          "persistentIdentifier": null,
+          "localPath": "docs/homegrown_model_scorecard.md",
+          "role": "methodReference"
+        }
+      ],
+      "reproductionCommand": "node tools/science/build_validation_baseline.mjs",
+      "evidenceDigest": "fnv1a32:bf7bec9a"
+    },
+    {
+      "version": "1.0",
+      "claimId": "scalar-processes.linear-x-y-z-t",
+      "componentId": "scalar-processes",
+      "modelId": "anchor.scalar-process-field",
+      "modelVersion": "process-pkg-r1",
+      "evidenceLevel": "NUMERICALLY_VERIFIED",
+      "status": "PASS",
+      "methodId": "manufactured-solution-or-interpolation-check",
+      "metricId": "manufactured-error-bound",
+      "measuredValue": 0,
+      "units": "normalized-error",
+      "threshold": 0,
+      "tolerance": 0,
+      "errorValue": 0,
+      "relativeError": 0,
+      "fixtureIds": [
+        "tests/fixtures/scalar_package_r1_parity.json"
+      ],
+      "sourceArtifactDigests": {
+        "tests/fixtures/scalar_package_r1_parity.json": "fnv1a32:8701dfe8"
+      },
+      "packageVersions": {
+        "contracts": "0.0.0-arch-r1",
+        "bathymetry": "0.0.0-arch-r1",
+        "currents": "0.0.0-arch-r1",
+        "scalar-processes": "0.1.0-process-pkg-r1",
+        "environment": "0.0.0-arch-r1",
+        "mission-simulator": "0.0.0-arch-r1",
+        "scoring": "0.0.0-score-pkg-r1",
+        "codecs": "0.1.0-codec-r1",
+        "validation": "0.1.0-sci-valid-r2a",
+        "validationRuntime": "anchor-validation-sci-valid-r2a"
+      },
+      "runtimeMetadata": {
+        "builderVersion": "sci-valid-r2a-baseline-builder",
+        "deterministic": true,
+        "officialBaseline": true
+      },
+      "interpretation": "Linear x/y/z/t interpolation passed as deterministic Pre-Alpha evidence for Scalar Processes.",
+      "limitations": [
+        "Evidence is fixture-scoped and deterministic; it does not generalize to operational ocean forecasting or certified navigation."
+      ],
+      "references": [
+        {
+          "version": "1.0",
+          "referenceId": "scalar-process-package-md",
+          "title": "Scalar Process Package",
+          "authors": "ANCHOR project",
+          "year": 2026,
+          "source": "local repository documentation",
+          "persistentIdentifier": null,
+          "localPath": "docs/scalar_process_package.md",
+          "role": "methodReference"
+        },
+        {
+          "version": "1.0",
+          "referenceId": "homegrown-model-scorecard-md",
+          "title": "Homegrown Model Scorecard",
+          "authors": "ANCHOR project",
+          "year": 2026,
+          "source": "local repository documentation",
+          "persistentIdentifier": null,
+          "localPath": "docs/homegrown_model_scorecard.md",
+          "role": "methodReference"
+        }
+      ],
+      "reproductionCommand": "node tools/science/build_validation_baseline.mjs",
+      "evidenceDigest": "fnv1a32:9133d1e8"
+    },
+    {
+      "version": "1.0",
+      "claimId": "scalar-processes.multilinear-interpolation",
+      "componentId": "scalar-processes",
+      "modelId": "anchor.scalar-process-field",
+      "modelVersion": "process-pkg-r1",
+      "evidenceLevel": "NUMERICALLY_VERIFIED",
+      "status": "PASS",
+      "methodId": "manufactured-solution-or-interpolation-check",
+      "metricId": "manufactured-error-bound",
+      "measuredValue": 0,
+      "units": "normalized-error",
+      "threshold": 0,
+      "tolerance": 0,
+      "errorValue": 0,
+      "relativeError": 0,
+      "fixtureIds": [
+        "tests/fixtures/scalar_package_r1_parity.json"
+      ],
+      "sourceArtifactDigests": {
+        "tests/fixtures/scalar_package_r1_parity.json": "fnv1a32:8701dfe8"
+      },
+      "packageVersions": {
+        "contracts": "0.0.0-arch-r1",
+        "bathymetry": "0.0.0-arch-r1",
+        "currents": "0.0.0-arch-r1",
+        "scalar-processes": "0.1.0-process-pkg-r1",
+        "environment": "0.0.0-arch-r1",
+        "mission-simulator": "0.0.0-arch-r1",
+        "scoring": "0.0.0-score-pkg-r1",
+        "codecs": "0.1.0-codec-r1",
+        "validation": "0.1.0-sci-valid-r2a",
+        "validationRuntime": "anchor-validation-sci-valid-r2a"
+      },
+      "runtimeMetadata": {
+        "builderVersion": "sci-valid-r2a-baseline-builder",
+        "deterministic": true,
+        "officialBaseline": true
+      },
+      "interpretation": "Multilinear interpolation passed as deterministic Pre-Alpha evidence for Scalar Processes.",
+      "limitations": [
+        "Evidence is fixture-scoped and deterministic; it does not generalize to operational ocean forecasting or certified navigation."
+      ],
+      "references": [
+        {
+          "version": "1.0",
+          "referenceId": "scalar-process-package-md",
+          "title": "Scalar Process Package",
+          "authors": "ANCHOR project",
+          "year": 2026,
+          "source": "local repository documentation",
+          "persistentIdentifier": null,
+          "localPath": "docs/scalar_process_package.md",
+          "role": "methodReference"
+        },
+        {
+          "version": "1.0",
+          "referenceId": "homegrown-model-scorecard-md",
+          "title": "Homegrown Model Scorecard",
+          "authors": "ANCHOR project",
+          "year": 2026,
+          "source": "local repository documentation",
+          "persistentIdentifier": null,
+          "localPath": "docs/homegrown_model_scorecard.md",
+          "role": "methodReference"
+        }
+      ],
+      "reproductionCommand": "node tools/science/build_validation_baseline.mjs",
+      "evidenceDigest": "fnv1a32:60a9f57e"
+    },
+    {
+      "version": "1.0",
+      "claimId": "scalar-processes.gaussian-source",
+      "componentId": "scalar-processes",
+      "modelId": "anchor.scalar-process-field",
+      "modelVersion": "process-pkg-r1",
+      "evidenceLevel": "NUMERICALLY_VERIFIED",
+      "status": "PASS",
+      "methodId": "manufactured-solution-or-interpolation-check",
+      "metricId": "manufactured-error-bound",
+      "measuredValue": 0,
+      "units": "normalized-error",
+      "threshold": 0,
+      "tolerance": 0,
+      "errorValue": 0,
+      "relativeError": 0,
+      "fixtureIds": [
+        "tests/fixtures/scalar_package_r1_parity.json"
+      ],
+      "sourceArtifactDigests": {
+        "tests/fixtures/scalar_package_r1_parity.json": "fnv1a32:8701dfe8"
+      },
+      "packageVersions": {
+        "contracts": "0.0.0-arch-r1",
+        "bathymetry": "0.0.0-arch-r1",
+        "currents": "0.0.0-arch-r1",
+        "scalar-processes": "0.1.0-process-pkg-r1",
+        "environment": "0.0.0-arch-r1",
+        "mission-simulator": "0.0.0-arch-r1",
+        "scoring": "0.0.0-score-pkg-r1",
+        "codecs": "0.1.0-codec-r1",
+        "validation": "0.1.0-sci-valid-r2a",
+        "validationRuntime": "anchor-validation-sci-valid-r2a"
+      },
+      "runtimeMetadata": {
+        "builderVersion": "sci-valid-r2a-baseline-builder",
+        "deterministic": true,
+        "officialBaseline": true
+      },
+      "interpretation": "Gaussian source fixture passed as deterministic Pre-Alpha evidence for Scalar Processes.",
+      "limitations": [
+        "Evidence is fixture-scoped and deterministic; it does not generalize to operational ocean forecasting or certified navigation."
+      ],
+      "references": [
+        {
+          "version": "1.0",
+          "referenceId": "scalar-process-package-md",
+          "title": "Scalar Process Package",
+          "authors": "ANCHOR project",
+          "year": 2026,
+          "source": "local repository documentation",
+          "persistentIdentifier": null,
+          "localPath": "docs/scalar_process_package.md",
+          "role": "methodReference"
+        },
+        {
+          "version": "1.0",
+          "referenceId": "homegrown-model-scorecard-md",
+          "title": "Homegrown Model Scorecard",
+          "authors": "ANCHOR project",
+          "year": 2026,
+          "source": "local repository documentation",
+          "persistentIdentifier": null,
+          "localPath": "docs/homegrown_model_scorecard.md",
+          "role": "methodReference"
+        }
+      ],
+      "reproductionCommand": "node tools/science/build_validation_baseline.mjs",
+      "evidenceDigest": "fnv1a32:77c0badf"
+    },
+    {
+      "version": "1.0",
+      "claimId": "scalar-processes.translation-advection",
+      "componentId": "scalar-processes",
+      "modelId": "anchor.scalar-process-field",
+      "modelVersion": "process-pkg-r1",
+      "evidenceLevel": "PHYSICALLY_PLAUSIBLE",
+      "status": "PASS",
+      "methodId": "bounded-invariant-and-diagnostic-check",
+      "metricId": "bounded-plausibility-invariant",
+      "measuredValue": 0,
+      "units": "pass-count",
+      "threshold": 0,
+      "tolerance": 1,
+      "errorValue": 0,
+      "relativeError": 0,
+      "fixtureIds": [
+        "tests/fixtures/scalar_package_r1_parity.json"
+      ],
+      "sourceArtifactDigests": {
+        "tests/fixtures/scalar_package_r1_parity.json": "fnv1a32:8701dfe8"
+      },
+      "packageVersions": {
+        "contracts": "0.0.0-arch-r1",
+        "bathymetry": "0.0.0-arch-r1",
+        "currents": "0.0.0-arch-r1",
+        "scalar-processes": "0.1.0-process-pkg-r1",
+        "environment": "0.0.0-arch-r1",
+        "mission-simulator": "0.0.0-arch-r1",
+        "scoring": "0.0.0-score-pkg-r1",
+        "codecs": "0.1.0-codec-r1",
+        "validation": "0.1.0-sci-valid-r2a",
+        "validationRuntime": "anchor-validation-sci-valid-r2a"
+      },
+      "runtimeMetadata": {
+        "builderVersion": "sci-valid-r2a-baseline-builder",
+        "deterministic": true,
+        "officialBaseline": true
+      },
+      "interpretation": "Translation/advection proxy passed as deterministic Pre-Alpha evidence for Scalar Processes.",
+      "limitations": [
+        "Physical plausibility checks are bounded synthetic invariants, not proof of oceanographic accuracy.",
+        "Passing visual and software tests does not establish oceanographic validity."
+      ],
+      "references": [
+        {
+          "version": "1.0",
+          "referenceId": "scalar-process-package-md",
+          "title": "Scalar Process Package",
+          "authors": "ANCHOR project",
+          "year": 2026,
+          "source": "local repository documentation",
+          "persistentIdentifier": null,
+          "localPath": "docs/scalar_process_package.md",
+          "role": "methodReference"
+        },
+        {
+          "version": "1.0",
+          "referenceId": "homegrown-model-scorecard-md",
+          "title": "Homegrown Model Scorecard",
+          "authors": "ANCHOR project",
+          "year": 2026,
+          "source": "local repository documentation",
+          "persistentIdentifier": null,
+          "localPath": "docs/homegrown_model_scorecard.md",
+          "role": "methodReference"
+        }
+      ],
+      "reproductionCommand": "node tools/science/build_validation_baseline.mjs",
+      "evidenceDigest": "fnv1a32:5327adb0"
+    },
+    {
+      "version": "1.0",
+      "claimId": "scalar-processes.diffusion-spread",
+      "componentId": "scalar-processes",
+      "modelId": "anchor.scalar-process-field",
+      "modelVersion": "process-pkg-r1",
+      "evidenceLevel": "PHYSICALLY_PLAUSIBLE",
+      "status": "PASS",
+      "methodId": "bounded-invariant-and-diagnostic-check",
+      "metricId": "bounded-plausibility-invariant",
+      "measuredValue": 0,
+      "units": "pass-count",
+      "threshold": 0,
+      "tolerance": 1,
+      "errorValue": 0,
+      "relativeError": 0,
+      "fixtureIds": [
+        "tests/fixtures/scalar_package_r1_parity.json"
+      ],
+      "sourceArtifactDigests": {
+        "tests/fixtures/scalar_package_r1_parity.json": "fnv1a32:8701dfe8"
+      },
+      "packageVersions": {
+        "contracts": "0.0.0-arch-r1",
+        "bathymetry": "0.0.0-arch-r1",
+        "currents": "0.0.0-arch-r1",
+        "scalar-processes": "0.1.0-process-pkg-r1",
+        "environment": "0.0.0-arch-r1",
+        "mission-simulator": "0.0.0-arch-r1",
+        "scoring": "0.0.0-score-pkg-r1",
+        "codecs": "0.1.0-codec-r1",
+        "validation": "0.1.0-sci-valid-r2a",
+        "validationRuntime": "anchor-validation-sci-valid-r2a"
+      },
+      "runtimeMetadata": {
+        "builderVersion": "sci-valid-r2a-baseline-builder",
+        "deterministic": true,
+        "officialBaseline": true
+      },
+      "interpretation": "Diffusion spread proxy passed as deterministic Pre-Alpha evidence for Scalar Processes.",
+      "limitations": [
+        "Physical plausibility checks are bounded synthetic invariants, not proof of oceanographic accuracy.",
+        "Passing visual and software tests does not establish oceanographic validity."
+      ],
+      "references": [
+        {
+          "version": "1.0",
+          "referenceId": "scalar-process-package-md",
+          "title": "Scalar Process Package",
+          "authors": "ANCHOR project",
+          "year": 2026,
+          "source": "local repository documentation",
+          "persistentIdentifier": null,
+          "localPath": "docs/scalar_process_package.md",
+          "role": "methodReference"
+        },
+        {
+          "version": "1.0",
+          "referenceId": "homegrown-model-scorecard-md",
+          "title": "Homegrown Model Scorecard",
+          "authors": "ANCHOR project",
+          "year": 2026,
+          "source": "local repository documentation",
+          "persistentIdentifier": null,
+          "localPath": "docs/homegrown_model_scorecard.md",
+          "role": "methodReference"
+        }
+      ],
+      "reproductionCommand": "node tools/science/build_validation_baseline.mjs",
+      "evidenceDigest": "fnv1a32:4da15bf7"
+    },
+    {
+      "version": "1.0",
+      "claimId": "scalar-processes.exponential-decay",
+      "componentId": "scalar-processes",
+      "modelId": "anchor.scalar-process-field",
+      "modelVersion": "process-pkg-r1",
+      "evidenceLevel": "NUMERICALLY_VERIFIED",
+      "status": "PASS",
+      "methodId": "manufactured-solution-or-interpolation-check",
+      "metricId": "manufactured-error-bound",
+      "measuredValue": 0,
+      "units": "normalized-error",
+      "threshold": 0,
+      "tolerance": 0,
+      "errorValue": 0,
+      "relativeError": 0,
+      "fixtureIds": [
+        "tests/fixtures/scalar_package_r1_parity.json"
+      ],
+      "sourceArtifactDigests": {
+        "tests/fixtures/scalar_package_r1_parity.json": "fnv1a32:8701dfe8"
+      },
+      "packageVersions": {
+        "contracts": "0.0.0-arch-r1",
+        "bathymetry": "0.0.0-arch-r1",
+        "currents": "0.0.0-arch-r1",
+        "scalar-processes": "0.1.0-process-pkg-r1",
+        "environment": "0.0.0-arch-r1",
+        "mission-simulator": "0.0.0-arch-r1",
+        "scoring": "0.0.0-score-pkg-r1",
+        "codecs": "0.1.0-codec-r1",
+        "validation": "0.1.0-sci-valid-r2a",
+        "validationRuntime": "anchor-validation-sci-valid-r2a"
+      },
+      "runtimeMetadata": {
+        "builderVersion": "sci-valid-r2a-baseline-builder",
+        "deterministic": true,
+        "officialBaseline": true
+      },
+      "interpretation": "Exponential decay passed as deterministic Pre-Alpha evidence for Scalar Processes.",
+      "limitations": [
+        "Evidence is fixture-scoped and deterministic; it does not generalize to operational ocean forecasting or certified navigation."
+      ],
+      "references": [
+        {
+          "version": "1.0",
+          "referenceId": "scalar-process-package-md",
+          "title": "Scalar Process Package",
+          "authors": "ANCHOR project",
+          "year": 2026,
+          "source": "local repository documentation",
+          "persistentIdentifier": null,
+          "localPath": "docs/scalar_process_package.md",
+          "role": "methodReference"
+        },
+        {
+          "version": "1.0",
+          "referenceId": "homegrown-model-scorecard-md",
+          "title": "Homegrown Model Scorecard",
+          "authors": "ANCHOR project",
+          "year": 2026,
+          "source": "local repository documentation",
+          "persistentIdentifier": null,
+          "localPath": "docs/homegrown_model_scorecard.md",
+          "role": "methodReference"
+        }
+      ],
+      "reproductionCommand": "node tools/science/build_validation_baseline.mjs",
+      "evidenceDigest": "fnv1a32:434d9eba"
+    },
+    {
+      "version": "1.0",
+      "claimId": "scalar-processes.source-plus-decay",
+      "componentId": "scalar-processes",
+      "modelId": "anchor.scalar-process-field",
+      "modelVersion": "process-pkg-r1",
+      "evidenceLevel": "NUMERICALLY_VERIFIED",
+      "status": "PASS",
+      "methodId": "manufactured-solution-or-interpolation-check",
+      "metricId": "manufactured-error-bound",
+      "measuredValue": 0,
+      "units": "normalized-error",
+      "threshold": 0,
+      "tolerance": 0,
+      "errorValue": 0,
+      "relativeError": 0,
+      "fixtureIds": [
+        "tests/fixtures/scalar_package_r1_parity.json"
+      ],
+      "sourceArtifactDigests": {
+        "tests/fixtures/scalar_package_r1_parity.json": "fnv1a32:8701dfe8"
+      },
+      "packageVersions": {
+        "contracts": "0.0.0-arch-r1",
+        "bathymetry": "0.0.0-arch-r1",
+        "currents": "0.0.0-arch-r1",
+        "scalar-processes": "0.1.0-process-pkg-r1",
+        "environment": "0.0.0-arch-r1",
+        "mission-simulator": "0.0.0-arch-r1",
+        "scoring": "0.0.0-score-pkg-r1",
+        "codecs": "0.1.0-codec-r1",
+        "validation": "0.1.0-sci-valid-r2a",
+        "validationRuntime": "anchor-validation-sci-valid-r2a"
+      },
+      "runtimeMetadata": {
+        "builderVersion": "sci-valid-r2a-baseline-builder",
+        "deterministic": true,
+        "officialBaseline": true
+      },
+      "interpretation": "Source plus decay passed as deterministic Pre-Alpha evidence for Scalar Processes.",
+      "limitations": [
+        "Evidence is fixture-scoped and deterministic; it does not generalize to operational ocean forecasting or certified navigation."
+      ],
+      "references": [
+        {
+          "version": "1.0",
+          "referenceId": "scalar-process-package-md",
+          "title": "Scalar Process Package",
+          "authors": "ANCHOR project",
+          "year": 2026,
+          "source": "local repository documentation",
+          "persistentIdentifier": null,
+          "localPath": "docs/scalar_process_package.md",
+          "role": "methodReference"
+        },
+        {
+          "version": "1.0",
+          "referenceId": "homegrown-model-scorecard-md",
+          "title": "Homegrown Model Scorecard",
+          "authors": "ANCHOR project",
+          "year": 2026,
+          "source": "local repository documentation",
+          "persistentIdentifier": null,
+          "localPath": "docs/homegrown_model_scorecard.md",
+          "role": "methodReference"
+        }
+      ],
+      "reproductionCommand": "node tools/science/build_validation_baseline.mjs",
+      "evidenceDigest": "fnv1a32:00df6947"
+    },
+    {
+      "version": "1.0",
+      "claimId": "scalar-processes.mass-integral-behavior",
+      "componentId": "scalar-processes",
+      "modelId": "anchor.scalar-process-field",
+      "modelVersion": "process-pkg-r1",
+      "evidenceLevel": "PHYSICALLY_PLAUSIBLE",
+      "status": "PASS",
+      "methodId": "bounded-invariant-and-diagnostic-check",
+      "metricId": "bounded-plausibility-invariant",
+      "measuredValue": 0,
+      "units": "pass-count",
+      "threshold": 0,
+      "tolerance": 1,
+      "errorValue": 0,
+      "relativeError": 0,
+      "fixtureIds": [
+        "tests/fixtures/scalar_package_r1_parity.json"
+      ],
+      "sourceArtifactDigests": {
+        "tests/fixtures/scalar_package_r1_parity.json": "fnv1a32:8701dfe8"
+      },
+      "packageVersions": {
+        "contracts": "0.0.0-arch-r1",
+        "bathymetry": "0.0.0-arch-r1",
+        "currents": "0.0.0-arch-r1",
+        "scalar-processes": "0.1.0-process-pkg-r1",
+        "environment": "0.0.0-arch-r1",
+        "mission-simulator": "0.0.0-arch-r1",
+        "scoring": "0.0.0-score-pkg-r1",
+        "codecs": "0.1.0-codec-r1",
+        "validation": "0.1.0-sci-valid-r2a",
+        "validationRuntime": "anchor-validation-sci-valid-r2a"
+      },
+      "runtimeMetadata": {
+        "builderVersion": "sci-valid-r2a-baseline-builder",
+        "deterministic": true,
+        "officialBaseline": true
+      },
+      "interpretation": "Mass/integral behavior passed as deterministic Pre-Alpha evidence for Scalar Processes.",
+      "limitations": [
+        "Physical plausibility checks are bounded synthetic invariants, not proof of oceanographic accuracy.",
+        "Passing visual and software tests does not establish oceanographic validity."
+      ],
+      "references": [
+        {
+          "version": "1.0",
+          "referenceId": "scalar-process-package-md",
+          "title": "Scalar Process Package",
+          "authors": "ANCHOR project",
+          "year": 2026,
+          "source": "local repository documentation",
+          "persistentIdentifier": null,
+          "localPath": "docs/scalar_process_package.md",
+          "role": "methodReference"
+        },
+        {
+          "version": "1.0",
+          "referenceId": "homegrown-model-scorecard-md",
+          "title": "Homegrown Model Scorecard",
+          "authors": "ANCHOR project",
+          "year": 2026,
+          "source": "local repository documentation",
+          "persistentIdentifier": null,
+          "localPath": "docs/homegrown_model_scorecard.md",
+          "role": "methodReference"
+        }
+      ],
+      "reproductionCommand": "node tools/science/build_validation_baseline.mjs",
+      "evidenceDigest": "fnv1a32:061e5c2b"
+    },
+    {
+      "version": "1.0",
+      "claimId": "scalar-processes.centroid-behavior",
+      "componentId": "scalar-processes",
+      "modelId": "anchor.scalar-process-field",
+      "modelVersion": "process-pkg-r1",
+      "evidenceLevel": "PHYSICALLY_PLAUSIBLE",
+      "status": "PASS",
+      "methodId": "bounded-invariant-and-diagnostic-check",
+      "metricId": "bounded-plausibility-invariant",
+      "measuredValue": 0,
+      "units": "pass-count",
+      "threshold": 0,
+      "tolerance": 1,
+      "errorValue": 0,
+      "relativeError": 0,
+      "fixtureIds": [
+        "tests/fixtures/scalar_package_r1_parity.json"
+      ],
+      "sourceArtifactDigests": {
+        "tests/fixtures/scalar_package_r1_parity.json": "fnv1a32:8701dfe8"
+      },
+      "packageVersions": {
+        "contracts": "0.0.0-arch-r1",
+        "bathymetry": "0.0.0-arch-r1",
+        "currents": "0.0.0-arch-r1",
+        "scalar-processes": "0.1.0-process-pkg-r1",
+        "environment": "0.0.0-arch-r1",
+        "mission-simulator": "0.0.0-arch-r1",
+        "scoring": "0.0.0-score-pkg-r1",
+        "codecs": "0.1.0-codec-r1",
+        "validation": "0.1.0-sci-valid-r2a",
+        "validationRuntime": "anchor-validation-sci-valid-r2a"
+      },
+      "runtimeMetadata": {
+        "builderVersion": "sci-valid-r2a-baseline-builder",
+        "deterministic": true,
+        "officialBaseline": true
+      },
+      "interpretation": "Centroid behavior passed as deterministic Pre-Alpha evidence for Scalar Processes.",
+      "limitations": [
+        "Physical plausibility checks are bounded synthetic invariants, not proof of oceanographic accuracy.",
+        "Passing visual and software tests does not establish oceanographic validity."
+      ],
+      "references": [
+        {
+          "version": "1.0",
+          "referenceId": "scalar-process-package-md",
+          "title": "Scalar Process Package",
+          "authors": "ANCHOR project",
+          "year": 2026,
+          "source": "local repository documentation",
+          "persistentIdentifier": null,
+          "localPath": "docs/scalar_process_package.md",
+          "role": "methodReference"
+        },
+        {
+          "version": "1.0",
+          "referenceId": "homegrown-model-scorecard-md",
+          "title": "Homegrown Model Scorecard",
+          "authors": "ANCHOR project",
+          "year": 2026,
+          "source": "local repository documentation",
+          "persistentIdentifier": null,
+          "localPath": "docs/homegrown_model_scorecard.md",
+          "role": "methodReference"
+        }
+      ],
+      "reproductionCommand": "node tools/science/build_validation_baseline.mjs",
+      "evidenceDigest": "fnv1a32:bf045773"
+    },
+    {
+      "version": "1.0",
+      "claimId": "scalar-processes.depth-time-distinctness",
+      "componentId": "scalar-processes",
+      "modelId": "anchor.scalar-process-field",
+      "modelVersion": "process-pkg-r1",
+      "evidenceLevel": "NUMERICALLY_VERIFIED",
+      "status": "PASS",
+      "methodId": "manufactured-solution-or-interpolation-check",
+      "metricId": "manufactured-error-bound",
+      "measuredValue": 0,
+      "units": "normalized-error",
+      "threshold": 0,
+      "tolerance": 0,
+      "errorValue": 0,
+      "relativeError": 0,
+      "fixtureIds": [
+        "tests/fixtures/scalar_package_r1_parity.json"
+      ],
+      "sourceArtifactDigests": {
+        "tests/fixtures/scalar_package_r1_parity.json": "fnv1a32:8701dfe8"
+      },
+      "packageVersions": {
+        "contracts": "0.0.0-arch-r1",
+        "bathymetry": "0.0.0-arch-r1",
+        "currents": "0.0.0-arch-r1",
+        "scalar-processes": "0.1.0-process-pkg-r1",
+        "environment": "0.0.0-arch-r1",
+        "mission-simulator": "0.0.0-arch-r1",
+        "scoring": "0.0.0-score-pkg-r1",
+        "codecs": "0.1.0-codec-r1",
+        "validation": "0.1.0-sci-valid-r2a",
+        "validationRuntime": "anchor-validation-sci-valid-r2a"
+      },
+      "runtimeMetadata": {
+        "builderVersion": "sci-valid-r2a-baseline-builder",
+        "deterministic": true,
+        "officialBaseline": true
+      },
+      "interpretation": "Depth and time distinctness passed as deterministic Pre-Alpha evidence for Scalar Processes.",
+      "limitations": [
+        "Evidence is fixture-scoped and deterministic; it does not generalize to operational ocean forecasting or certified navigation."
+      ],
+      "references": [
+        {
+          "version": "1.0",
+          "referenceId": "scalar-process-package-md",
+          "title": "Scalar Process Package",
+          "authors": "ANCHOR project",
+          "year": 2026,
+          "source": "local repository documentation",
+          "persistentIdentifier": null,
+          "localPath": "docs/scalar_process_package.md",
+          "role": "methodReference"
+        },
+        {
+          "version": "1.0",
+          "referenceId": "homegrown-model-scorecard-md",
+          "title": "Homegrown Model Scorecard",
+          "authors": "ANCHOR project",
+          "year": 2026,
+          "source": "local repository documentation",
+          "persistentIdentifier": null,
+          "localPath": "docs/homegrown_model_scorecard.md",
+          "role": "methodReference"
+        }
+      ],
+      "reproductionCommand": "node tools/science/build_validation_baseline.mjs",
+      "evidenceDigest": "fnv1a32:feb8b340"
+    },
+    {
+      "version": "1.0",
+      "claimId": "scalar-processes.masks-and-units",
+      "componentId": "scalar-processes",
+      "modelId": "anchor.scalar-process-field",
+      "modelVersion": "process-pkg-r1",
+      "evidenceLevel": "SOFTWARE_VERIFIED",
+      "status": "PASS",
+      "methodId": "package-smoke-and-parity-fixture",
+      "metricId": "deterministic-contract-status",
+      "measuredValue": 0,
+      "units": "pass-count",
+      "threshold": 0,
+      "tolerance": 0,
+      "errorValue": 0,
+      "relativeError": 0,
+      "fixtureIds": [
+        "tests/fixtures/scalar_package_r1_parity.json"
+      ],
+      "sourceArtifactDigests": {
+        "tests/fixtures/scalar_package_r1_parity.json": "fnv1a32:8701dfe8"
+      },
+      "packageVersions": {
+        "contracts": "0.0.0-arch-r1",
+        "bathymetry": "0.0.0-arch-r1",
+        "currents": "0.0.0-arch-r1",
+        "scalar-processes": "0.1.0-process-pkg-r1",
+        "environment": "0.0.0-arch-r1",
+        "mission-simulator": "0.0.0-arch-r1",
+        "scoring": "0.0.0-score-pkg-r1",
+        "codecs": "0.1.0-codec-r1",
+        "validation": "0.1.0-sci-valid-r2a",
+        "validationRuntime": "anchor-validation-sci-valid-r2a"
+      },
+      "runtimeMetadata": {
+        "builderVersion": "sci-valid-r2a-baseline-builder",
+        "deterministic": true,
+        "officialBaseline": true
+      },
+      "interpretation": "Masks and units passed as deterministic Pre-Alpha evidence for Scalar Processes.",
+      "limitations": [
+        "Evidence is fixture-scoped and deterministic; it does not generalize to operational ocean forecasting or certified navigation."
+      ],
+      "references": [
+        {
+          "version": "1.0",
+          "referenceId": "scalar-process-package-md",
+          "title": "Scalar Process Package",
+          "authors": "ANCHOR project",
+          "year": 2026,
+          "source": "local repository documentation",
+          "persistentIdentifier": null,
+          "localPath": "docs/scalar_process_package.md",
+          "role": "methodReference"
+        },
+        {
+          "version": "1.0",
+          "referenceId": "homegrown-model-scorecard-md",
+          "title": "Homegrown Model Scorecard",
+          "authors": "ANCHOR project",
+          "year": 2026,
+          "source": "local repository documentation",
+          "persistentIdentifier": null,
+          "localPath": "docs/homegrown_model_scorecard.md",
+          "role": "methodReference"
+        }
+      ],
+      "reproductionCommand": "node tools/science/build_validation_baseline.mjs",
+      "evidenceDigest": "fnv1a32:9d61aaa0"
+    },
+    {
+      "version": "1.0",
+      "claimId": "scalar-processes.external-biogeochemical-comparison",
+      "componentId": "scalar-processes",
+      "modelId": "anchor.scalar-process-field",
+      "modelVersion": "process-pkg-r1",
+      "evidenceLevel": "NOT_YET_EVALUATED",
+      "status": "NOT_EVALUATED",
+      "methodId": "gap-record",
+      "metricId": "external-reference-status",
+      "measuredValue": null,
+      "units": "status",
+      "threshold": null,
+      "tolerance": null,
+      "errorValue": null,
+      "relativeError": null,
+      "fixtureIds": [
+        "tests/fixtures/scalar_package_r1_parity.json"
+      ],
+      "sourceArtifactDigests": {
+        "tests/fixtures/scalar_package_r1_parity.json": "fnv1a32:8701dfe8"
+      },
+      "packageVersions": {
+        "contracts": "0.0.0-arch-r1",
+        "bathymetry": "0.0.0-arch-r1",
+        "currents": "0.0.0-arch-r1",
+        "scalar-processes": "0.1.0-process-pkg-r1",
+        "environment": "0.0.0-arch-r1",
+        "mission-simulator": "0.0.0-arch-r1",
+        "scoring": "0.0.0-score-pkg-r1",
+        "codecs": "0.1.0-codec-r1",
+        "validation": "0.1.0-sci-valid-r2a",
+        "validationRuntime": "anchor-validation-sci-valid-r2a"
+      },
+      "runtimeMetadata": {
+        "builderVersion": "sci-valid-r2a-baseline-builder",
+        "deterministic": true,
+        "officialBaseline": true
+      },
+      "interpretation": "External ecological or biogeochemical comparison is an explicit evidence gap for Scalar Processes; no external result is claimed.",
+      "limitations": [
+        "No independent local reference data or sea-trial fixture is part of this baseline.",
+        "This gap must not be described as externally compared or operationally validated."
+      ],
+      "references": [
+        {
+          "version": "1.0",
+          "referenceId": "scalar-process-package-md",
+          "title": "Scalar Process Package",
+          "authors": "ANCHOR project",
+          "year": 2026,
+          "source": "local repository documentation",
+          "persistentIdentifier": null,
+          "localPath": "docs/scalar_process_package.md",
+          "role": "methodReference"
+        },
+        {
+          "version": "1.0",
+          "referenceId": "homegrown-model-scorecard-md",
+          "title": "Homegrown Model Scorecard",
+          "authors": "ANCHOR project",
+          "year": 2026,
+          "source": "local repository documentation",
+          "persistentIdentifier": null,
+          "localPath": "docs/homegrown_model_scorecard.md",
+          "role": "methodReference"
+        }
+      ],
+      "reproductionCommand": "node tools/science/build_validation_baseline.mjs",
+      "evidenceDigest": "fnv1a32:aa17f942"
+    }
+  ],
+  "evidenceLevelSummary": {
+    "NUMERICALLY_VERIFIED": 7,
+    "PHYSICALLY_PLAUSIBLE": 4,
+    "SOFTWARE_VERIFIED": 1,
+    "NOT_YET_EVALUATED": 1
+  },
+  "statusSummary": {
+    "PASS": 12,
+    "NOT_EVALUATED": 1
+  },
+  "assumptions": [
+    "Scalar Processes evidence uses checked-in public fixtures and repo-local commands.",
+    "Time is seconds, horizontal coordinates are local mission coordinates, and depth is positive-down meters where applicable.",
+    "Official reports are immutable baseline artifacts; browser reruns are exploratory unless they reproduce the official pipeline."
+  ],
+  "limitations": [
+    "Scalar Processes is evaluated for deterministic benchmark and education use only.",
+    "The report does not claim operational ocean forecast skill, certified navigation suitability, or calibrated digital-twin fidelity.",
+    "Literature and local method references motivate methods but do not count as external numerical comparisons."
+  ],
+  "references": [
+    {
+      "version": "1.0",
+      "referenceId": "scalar-process-package-md",
+      "title": "Scalar Process Package",
+      "authors": "ANCHOR project",
+      "year": 2026,
+      "source": "local repository documentation",
+      "persistentIdentifier": null,
+      "localPath": "docs/scalar_process_package.md",
+      "role": "methodReference"
+    },
+    {
+      "version": "1.0",
+      "referenceId": "homegrown-model-scorecard-md",
+      "title": "Homegrown Model Scorecard",
+      "authors": "ANCHOR project",
+      "year": 2026,
+      "source": "local repository documentation",
+      "persistentIdentifier": null,
+      "localPath": "docs/homegrown_model_scorecard.md",
+      "role": "methodReference"
+    }
+  ],
+  "packageVersions": {
+    "contracts": "0.0.0-arch-r1",
+    "bathymetry": "0.0.0-arch-r1",
+    "currents": "0.0.0-arch-r1",
+    "scalar-processes": "0.1.0-process-pkg-r1",
+    "environment": "0.0.0-arch-r1",
+    "mission-simulator": "0.0.0-arch-r1",
+    "scoring": "0.0.0-score-pkg-r1",
+    "codecs": "0.1.0-codec-r1",
+    "validation": "0.1.0-sci-valid-r2a",
+    "validationRuntime": "anchor-validation-sci-valid-r2a"
+  },
+  "sourceArtifactDigests": {
+    "tests/fixtures/scalar_package_r1_parity.json": "fnv1a32:8701dfe8"
+  },
+  "suitabilityDecision": {
+    "deterministicRegression": "GO",
+    "educationalUse": "GO",
+    "classicalPlannerBenchmark": "CONDITIONAL",
+    "mlDatasetGeneration": "CONDITIONAL",
+    "operationalForecastUse": "NO_GO",
+    "certifiedNavigationUse": "NO_GO",
+    "rationale": "Scalar Processes has deterministic package evidence for software/benchmark use, but external or operational claims remain out of scope where not evaluated.",
+    "conditions": [
+      "Use only with documented synthetic-fixture limitations.",
+      "Do not describe results as operational validation."
+    ]
+  },
+  "visualizations": [
+    {
+      "visualizationId": "scalar-processes-status-bars",
+      "title": "Scalar Processes status counts",
+      "kind": "bar-summary",
+      "textSummary": "Bar heights count evidence records by explicit status label. This is not a scientific-validity score.",
+      "rows": [
+        {
+          "label": "PASS",
+          "value": 12
+        },
+        {
+          "label": "NOT_EVALUATED",
+          "value": 1
+        }
+      ]
+    },
+    {
+      "visualizationId": "scalar-processes-evidence-ladder",
+      "title": "Scalar Processes evidence levels",
+      "kind": "bar-summary",
+      "textSummary": "Bar heights count claims by evidence level. External comparison and operational validation are kept separate from software checks.",
+      "rows": [
+        {
+          "label": "NUMERICALLY_VERIFIED",
+          "value": 7
+        },
+        {
+          "label": "PHYSICALLY_PLAUSIBLE",
+          "value": 4
+        },
+        {
+          "label": "SOFTWARE_VERIFIED",
+          "value": 1
+        },
+        {
+          "label": "NOT_YET_EVALUATED",
+          "value": 1
+        }
+      ]
+    },
+    {
+      "visualizationId": "scalar-processes-metric-table",
+      "title": "Scalar Processes raw metric table",
+      "kind": "table",
+      "textSummary": "Compact table for the selected report claims and evidence records.",
+      "rows": [
+        {
+          "claimId": "scalar-processes.constant-field",
+          "status": "PASS",
+          "metricId": "manufactured-error-bound",
+          "measuredValue": 0,
+          "units": "normalized-error",
+          "threshold": 0,
+          "tolerance": 0
+        },
+        {
+          "claimId": "scalar-processes.linear-x-y-z-t",
+          "status": "PASS",
+          "metricId": "manufactured-error-bound",
+          "measuredValue": 0,
+          "units": "normalized-error",
+          "threshold": 0,
+          "tolerance": 0
+        },
+        {
+          "claimId": "scalar-processes.multilinear-interpolation",
+          "status": "PASS",
+          "metricId": "manufactured-error-bound",
+          "measuredValue": 0,
+          "units": "normalized-error",
+          "threshold": 0,
+          "tolerance": 0
+        },
+        {
+          "claimId": "scalar-processes.gaussian-source",
+          "status": "PASS",
+          "metricId": "manufactured-error-bound",
+          "measuredValue": 0,
+          "units": "normalized-error",
+          "threshold": 0,
+          "tolerance": 0
+        },
+        {
+          "claimId": "scalar-processes.translation-advection",
+          "status": "PASS",
+          "metricId": "bounded-plausibility-invariant",
+          "measuredValue": 0,
+          "units": "pass-count",
+          "threshold": 0,
+          "tolerance": 1
+        },
+        {
+          "claimId": "scalar-processes.diffusion-spread",
+          "status": "PASS",
+          "metricId": "bounded-plausibility-invariant",
+          "measuredValue": 0,
+          "units": "pass-count",
+          "threshold": 0,
+          "tolerance": 1
+        },
+        {
+          "claimId": "scalar-processes.exponential-decay",
+          "status": "PASS",
+          "metricId": "manufactured-error-bound",
+          "measuredValue": 0,
+          "units": "normalized-error",
+          "threshold": 0,
+          "tolerance": 0
+        },
+        {
+          "claimId": "scalar-processes.source-plus-decay",
+          "status": "PASS",
+          "metricId": "manufactured-error-bound",
+          "measuredValue": 0,
+          "units": "normalized-error",
+          "threshold": 0,
+          "tolerance": 0
+        },
+        {
+          "claimId": "scalar-processes.mass-integral-behavior",
+          "status": "PASS",
+          "metricId": "bounded-plausibility-invariant",
+          "measuredValue": 0,
+          "units": "pass-count",
+          "threshold": 0,
+          "tolerance": 1
+        },
+        {
+          "claimId": "scalar-processes.centroid-behavior",
+          "status": "PASS",
+          "metricId": "bounded-plausibility-invariant",
+          "measuredValue": 0,
+          "units": "pass-count",
+          "threshold": 0,
+          "tolerance": 1
+        },
+        {
+          "claimId": "scalar-processes.depth-time-distinctness",
+          "status": "PASS",
+          "metricId": "manufactured-error-bound",
+          "measuredValue": 0,
+          "units": "normalized-error",
+          "threshold": 0,
+          "tolerance": 0
+        },
+        {
+          "claimId": "scalar-processes.masks-and-units",
+          "status": "PASS",
+          "metricId": "deterministic-contract-status",
+          "measuredValue": 0,
+          "units": "pass-count",
+          "threshold": 0,
+          "tolerance": 0
+        },
+        {
+          "claimId": "scalar-processes.external-biogeochemical-comparison",
+          "status": "NOT_EVALUATED",
+          "metricId": "external-reference-status",
+          "measuredValue": null,
+          "units": "status",
+          "threshold": null,
+          "tolerance": null
+        }
+      ]
+    }
+  ],
+  "claimBoundary": {
+    "benchmarkOrEducationUse": true,
+    "operationalForecast": false,
+    "certifiedNavigation": false,
+    "calibratedDigitalTwin": false
+  },
+  "visibilityClass": "PUBLIC",
+  "fairnessClass": "PUBLIC_FAIR",
+  "reportDigest": "fnv1a32:858b9d34"
+}

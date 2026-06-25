@@ -13,6 +13,7 @@ const copyRoots = [
   'packages',
   'labs',
   'schemas',
+  'validation',
   'levels',
   'missions',
   'plans',
@@ -26,6 +27,7 @@ const publicDocs = [
   'docs/testing.md',
   'docs/export_formats.md',
   'docs/artifact_codec_and_schema_contract.md',
+  'docs/scientific_validation_and_methods.md',
   'docs/mission_format.md',
   'docs/plan_format.md',
   'docs/solver_workflow.md',
@@ -77,7 +79,7 @@ for (const entry of copyRoots) {
 }
 await copyPublicDocs();
 await writeFile(path.join(out, '.nojekyll'), '', 'utf8');
-for (const required of ['index.html', 'vendor/three/build/three.module.js', 'vendor/three/build/three.core.js', 'vendor/three/LICENSE', 'vendor/phaser.min.js', 'packages/bathymetry/src/index.js', 'packages/contracts/src/index.js', 'packages/currents/src/index.js', 'packages/codecs/src/index.js']) {
+for (const required of ['index.html', 'vendor/three/build/three.module.js', 'vendor/three/build/three.core.js', 'vendor/three/LICENSE', 'vendor/phaser.min.js', 'packages/bathymetry/src/index.js', 'packages/contracts/src/index.js', 'packages/currents/src/index.js', 'packages/codecs/src/index.js', 'packages/validation/src/index.js', 'validation/manifest.json', 'schemas/scientific-validation-report.schema.json', 'schemas/scientific-validation-manifest.schema.json']) {
   if (!existsSync(path.join(out, required))) throw new Error(`_site missing required file: ${required}`);
 }
 const siteIndex = await readFile(path.join(out, 'index.html'), 'utf8');

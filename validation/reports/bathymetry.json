@@ -1,0 +1,1515 @@
+{
+  "schemaVersion": "1.0",
+  "type": "anchor.scientific-validation-report",
+  "reportId": "anchor-bathymetry-scientific-validation-report",
+  "componentId": "bathymetry",
+  "componentLabel": "Bathymetry",
+  "modelId": "anchor.synthetic-bathymetry",
+  "modelVersion": "bathy-pkg-r1",
+  "summary": "Bathymetry has a Pre-Alpha evidence report built from deterministic package fixtures and documented diagnostics.",
+  "claims": [
+    {
+      "version": "1.0",
+      "claimId": "bathymetry.deterministic-generation",
+      "componentId": "bathymetry",
+      "title": "Deterministic generation",
+      "plainLanguageClaim": "Bathymetry supports deterministic generation within the deterministic ANCHOR benchmark fixtures.",
+      "technicalClaim": "anchor.synthetic-bathymetry deterministic-generation is evaluated by package-smoke-and-parity-fixture using fixture-backed deterministic metrics. Status is recorded separately from evidence level.",
+      "evidenceLevel": "SOFTWARE_VERIFIED",
+      "methodId": "package-smoke-and-parity-fixture",
+      "metricId": "deterministic-contract-status",
+      "units": "pass-count",
+      "expectedDirection": "less-than-or-equal",
+      "threshold": 0,
+      "tolerance": 0,
+      "thresholdRationale": "Software contract checks require zero hard validation failures for the checked fixture and package version.",
+      "fixtureIds": [
+        "tests/fixtures/bathymetry_package_r1_parity.json"
+      ],
+      "referenceIds": [
+        "bathymetry-external-reference-metrics-md",
+        "homegrown-environment-scientific-baseline-md"
+      ],
+      "applicability": "deterministic-regression, education, and benchmark-suitability review",
+      "public": true,
+      "claimDigest": "fnv1a32:acb7f073"
+    },
+    {
+      "version": "1.0",
+      "claimId": "bathymetry.finite-depths",
+      "componentId": "bathymetry",
+      "title": "Finite depth/elevation values",
+      "plainLanguageClaim": "Bathymetry supports finite depth/elevation values within the deterministic ANCHOR benchmark fixtures.",
+      "technicalClaim": "anchor.synthetic-bathymetry finite-depths is evaluated by package-smoke-and-parity-fixture using fixture-backed deterministic metrics. Status is recorded separately from evidence level.",
+      "evidenceLevel": "SOFTWARE_VERIFIED",
+      "methodId": "package-smoke-and-parity-fixture",
+      "metricId": "deterministic-contract-status",
+      "units": "pass-count",
+      "expectedDirection": "less-than-or-equal",
+      "threshold": 0,
+      "tolerance": 0,
+      "thresholdRationale": "Software contract checks require zero hard validation failures for the checked fixture and package version.",
+      "fixtureIds": [
+        "tests/fixtures/bathymetry_package_r1_parity.json"
+      ],
+      "referenceIds": [
+        "bathymetry-external-reference-metrics-md",
+        "homegrown-environment-scientific-baseline-md"
+      ],
+      "applicability": "deterministic-regression, education, and benchmark-suitability review",
+      "public": true,
+      "claimDigest": "fnv1a32:e746f67d"
+    },
+    {
+      "version": "1.0",
+      "claimId": "bathymetry.wet-land-mask-consistency",
+      "componentId": "bathymetry",
+      "title": "Wet/land mask consistency",
+      "plainLanguageClaim": "Bathymetry supports wet/land mask consistency within the deterministic ANCHOR benchmark fixtures.",
+      "technicalClaim": "anchor.synthetic-bathymetry wet-land-mask-consistency is evaluated by package-smoke-and-parity-fixture using fixture-backed deterministic metrics. Status is recorded separately from evidence level.",
+      "evidenceLevel": "SOFTWARE_VERIFIED",
+      "methodId": "package-smoke-and-parity-fixture",
+      "metricId": "deterministic-contract-status",
+      "units": "pass-count",
+      "expectedDirection": "less-than-or-equal",
+      "threshold": 0,
+      "tolerance": 0,
+      "thresholdRationale": "Software contract checks require zero hard validation failures for the checked fixture and package version.",
+      "fixtureIds": [
+        "tests/fixtures/bathymetry_package_r1_parity.json"
+      ],
+      "referenceIds": [
+        "bathymetry-external-reference-metrics-md",
+        "homegrown-environment-scientific-baseline-md"
+      ],
+      "applicability": "deterministic-regression, education, and benchmark-suitability review",
+      "public": true,
+      "claimDigest": "fnv1a32:985bf811"
+    },
+    {
+      "version": "1.0",
+      "claimId": "bathymetry.manufactured-flat-plane",
+      "componentId": "bathymetry",
+      "title": "Manufactured flat plane",
+      "plainLanguageClaim": "Bathymetry supports manufactured flat plane within the deterministic ANCHOR benchmark fixtures.",
+      "technicalClaim": "anchor.synthetic-bathymetry manufactured-flat-plane is evaluated by manufactured-solution-or-interpolation-check using fixture-backed deterministic metrics. Status is recorded separately from evidence level.",
+      "evidenceLevel": "NUMERICALLY_VERIFIED",
+      "methodId": "manufactured-solution-or-interpolation-check",
+      "metricId": "manufactured-error-bound",
+      "units": "normalized-error",
+      "expectedDirection": "less-than-or-equal",
+      "threshold": 0,
+      "tolerance": 0,
+      "thresholdRationale": "Manufactured fixtures should match analytical or interpolation expectations within deterministic numerical tolerance.",
+      "fixtureIds": [
+        "tests/fixtures/bathymetry_package_r1_parity.json"
+      ],
+      "referenceIds": [
+        "bathymetry-external-reference-metrics-md",
+        "homegrown-environment-scientific-baseline-md"
+      ],
+      "applicability": "deterministic-regression, education, and benchmark-suitability review",
+      "public": true,
+      "claimDigest": "fnv1a32:b448fc51"
+    },
+    {
+      "version": "1.0",
+      "claimId": "bathymetry.manufactured-slope",
+      "componentId": "bathymetry",
+      "title": "Manufactured slope",
+      "plainLanguageClaim": "Bathymetry supports manufactured slope within the deterministic ANCHOR benchmark fixtures.",
+      "technicalClaim": "anchor.synthetic-bathymetry manufactured-slope is evaluated by manufactured-solution-or-interpolation-check using fixture-backed deterministic metrics. Status is recorded separately from evidence level.",
+      "evidenceLevel": "NUMERICALLY_VERIFIED",
+      "methodId": "manufactured-solution-or-interpolation-check",
+      "metricId": "manufactured-error-bound",
+      "units": "normalized-error",
+      "expectedDirection": "less-than-or-equal",
+      "threshold": 0,
+      "tolerance": 0,
+      "thresholdRationale": "Manufactured fixtures should match analytical or interpolation expectations within deterministic numerical tolerance.",
+      "fixtureIds": [
+        "tests/fixtures/bathymetry_package_r1_parity.json"
+      ],
+      "referenceIds": [
+        "bathymetry-external-reference-metrics-md",
+        "homegrown-environment-scientific-baseline-md"
+      ],
+      "applicability": "deterministic-regression, education, and benchmark-suitability review",
+      "public": true,
+      "claimDigest": "fnv1a32:5e3faa55"
+    },
+    {
+      "version": "1.0",
+      "claimId": "bathymetry.shelf-break",
+      "componentId": "bathymetry",
+      "title": "Synthetic shelf break fixture",
+      "plainLanguageClaim": "Bathymetry supports synthetic shelf break fixture within the deterministic ANCHOR benchmark fixtures.",
+      "technicalClaim": "anchor.synthetic-bathymetry shelf-break is evaluated by bounded-invariant-and-diagnostic-check using fixture-backed deterministic metrics. Status is recorded separately from evidence level.",
+      "evidenceLevel": "PHYSICALLY_PLAUSIBLE",
+      "methodId": "bounded-invariant-and-diagnostic-check",
+      "metricId": "bounded-plausibility-invariant",
+      "units": "pass-count",
+      "expectedDirection": "less-than-or-equal",
+      "threshold": 0,
+      "tolerance": 1,
+      "thresholdRationale": "The threshold is a deterministic regression gate for bounded synthetic behavior; it is not an oceanographic validation threshold.",
+      "fixtureIds": [
+        "tests/fixtures/bathymetry_package_r1_parity.json"
+      ],
+      "referenceIds": [
+        "bathymetry-external-reference-metrics-md",
+        "homegrown-environment-scientific-baseline-md"
+      ],
+      "applicability": "deterministic-regression, education, and benchmark-suitability review",
+      "public": true,
+      "claimDigest": "fnv1a32:441b7720"
+    },
+    {
+      "version": "1.0",
+      "claimId": "bathymetry.seamount",
+      "componentId": "bathymetry",
+      "title": "Synthetic seamount fixture",
+      "plainLanguageClaim": "Bathymetry supports synthetic seamount fixture within the deterministic ANCHOR benchmark fixtures.",
+      "technicalClaim": "anchor.synthetic-bathymetry seamount is evaluated by bounded-invariant-and-diagnostic-check using fixture-backed deterministic metrics. Status is recorded separately from evidence level.",
+      "evidenceLevel": "PHYSICALLY_PLAUSIBLE",
+      "methodId": "bounded-invariant-and-diagnostic-check",
+      "metricId": "bounded-plausibility-invariant",
+      "units": "pass-count",
+      "expectedDirection": "less-than-or-equal",
+      "threshold": 0,
+      "tolerance": 1,
+      "thresholdRationale": "The threshold is a deterministic regression gate for bounded synthetic behavior; it is not an oceanographic validation threshold.",
+      "fixtureIds": [
+        "tests/fixtures/bathymetry_package_r1_parity.json"
+      ],
+      "referenceIds": [
+        "bathymetry-external-reference-metrics-md",
+        "homegrown-environment-scientific-baseline-md"
+      ],
+      "applicability": "deterministic-regression, education, and benchmark-suitability review",
+      "public": true,
+      "claimDigest": "fnv1a32:0493f67c"
+    },
+    {
+      "version": "1.0",
+      "claimId": "bathymetry.canyon",
+      "componentId": "bathymetry",
+      "title": "Synthetic canyon fixture",
+      "plainLanguageClaim": "Bathymetry supports synthetic canyon fixture within the deterministic ANCHOR benchmark fixtures.",
+      "technicalClaim": "anchor.synthetic-bathymetry canyon is evaluated by bounded-invariant-and-diagnostic-check using fixture-backed deterministic metrics. Status is recorded separately from evidence level.",
+      "evidenceLevel": "PHYSICALLY_PLAUSIBLE",
+      "methodId": "bounded-invariant-and-diagnostic-check",
+      "metricId": "bounded-plausibility-invariant",
+      "units": "pass-count",
+      "expectedDirection": "less-than-or-equal",
+      "threshold": 0,
+      "tolerance": 1,
+      "thresholdRationale": "The threshold is a deterministic regression gate for bounded synthetic behavior; it is not an oceanographic validation threshold.",
+      "fixtureIds": [
+        "tests/fixtures/bathymetry_package_r1_parity.json"
+      ],
+      "referenceIds": [
+        "bathymetry-external-reference-metrics-md",
+        "homegrown-environment-scientific-baseline-md"
+      ],
+      "applicability": "deterministic-regression, education, and benchmark-suitability review",
+      "public": true,
+      "claimDigest": "fnv1a32:48e83818"
+    },
+    {
+      "version": "1.0",
+      "claimId": "bathymetry.island",
+      "componentId": "bathymetry",
+      "title": "Synthetic island fixture",
+      "plainLanguageClaim": "Bathymetry supports synthetic island fixture within the deterministic ANCHOR benchmark fixtures.",
+      "technicalClaim": "anchor.synthetic-bathymetry island is evaluated by bounded-invariant-and-diagnostic-check using fixture-backed deterministic metrics. Status is recorded separately from evidence level.",
+      "evidenceLevel": "PHYSICALLY_PLAUSIBLE",
+      "methodId": "bounded-invariant-and-diagnostic-check",
+      "metricId": "bounded-plausibility-invariant",
+      "units": "pass-count",
+      "expectedDirection": "less-than-or-equal",
+      "threshold": 0,
+      "tolerance": 1,
+      "thresholdRationale": "The threshold is a deterministic regression gate for bounded synthetic behavior; it is not an oceanographic validation threshold.",
+      "fixtureIds": [
+        "tests/fixtures/bathymetry_package_r1_parity.json"
+      ],
+      "referenceIds": [
+        "bathymetry-external-reference-metrics-md",
+        "homegrown-environment-scientific-baseline-md"
+      ],
+      "applicability": "deterministic-regression, education, and benchmark-suitability review",
+      "public": true,
+      "claimDigest": "fnv1a32:d13c8db6"
+    },
+    {
+      "version": "1.0",
+      "claimId": "bathymetry.mesh-sampler-alignment",
+      "componentId": "bathymetry",
+      "title": "Mesh/sampler alignment",
+      "plainLanguageClaim": "Bathymetry supports mesh/sampler alignment within the deterministic ANCHOR benchmark fixtures.",
+      "technicalClaim": "anchor.synthetic-bathymetry mesh-sampler-alignment is evaluated by package-smoke-and-parity-fixture using fixture-backed deterministic metrics. Status is recorded separately from evidence level.",
+      "evidenceLevel": "SOFTWARE_VERIFIED",
+      "methodId": "package-smoke-and-parity-fixture",
+      "metricId": "deterministic-contract-status",
+      "units": "pass-count",
+      "expectedDirection": "less-than-or-equal",
+      "threshold": 0,
+      "tolerance": 0,
+      "thresholdRationale": "Software contract checks require zero hard validation failures for the checked fixture and package version.",
+      "fixtureIds": [
+        "tests/fixtures/bathymetry_package_r1_parity.json"
+      ],
+      "referenceIds": [
+        "bathymetry-external-reference-metrics-md",
+        "homegrown-environment-scientific-baseline-md"
+      ],
+      "applicability": "deterministic-regression, education, and benchmark-suitability review",
+      "public": true,
+      "claimDigest": "fnv1a32:df6012e1"
+    },
+    {
+      "version": "1.0",
+      "claimId": "bathymetry.resolution-convergence",
+      "componentId": "bathymetry",
+      "title": "Resolution convergence trend",
+      "plainLanguageClaim": "Bathymetry supports resolution convergence trend within the deterministic ANCHOR benchmark fixtures.",
+      "technicalClaim": "anchor.synthetic-bathymetry resolution-convergence is evaluated by manufactured-solution-or-interpolation-check using fixture-backed deterministic metrics. Status is recorded separately from evidence level.",
+      "evidenceLevel": "NUMERICALLY_VERIFIED",
+      "methodId": "manufactured-solution-or-interpolation-check",
+      "metricId": "manufactured-error-bound",
+      "units": "normalized-error",
+      "expectedDirection": "less-than-or-equal",
+      "threshold": 0,
+      "tolerance": 0,
+      "thresholdRationale": "Manufactured fixtures should match analytical or interpolation expectations within deterministic numerical tolerance.",
+      "fixtureIds": [
+        "tests/fixtures/bathymetry_package_r1_parity.json"
+      ],
+      "referenceIds": [
+        "bathymetry-external-reference-metrics-md",
+        "homegrown-environment-scientific-baseline-md"
+      ],
+      "applicability": "deterministic-regression, education, and benchmark-suitability review",
+      "public": true,
+      "claimDigest": "fnv1a32:1ad0a585"
+    },
+    {
+      "version": "1.0",
+      "claimId": "bathymetry.coordinate-convention",
+      "componentId": "bathymetry",
+      "title": "Coordinate convention",
+      "plainLanguageClaim": "Bathymetry supports coordinate convention within the deterministic ANCHOR benchmark fixtures.",
+      "technicalClaim": "anchor.synthetic-bathymetry coordinate-convention is evaluated by package-smoke-and-parity-fixture using fixture-backed deterministic metrics. Status is recorded separately from evidence level.",
+      "evidenceLevel": "SOFTWARE_VERIFIED",
+      "methodId": "package-smoke-and-parity-fixture",
+      "metricId": "deterministic-contract-status",
+      "units": "pass-count",
+      "expectedDirection": "less-than-or-equal",
+      "threshold": 0,
+      "tolerance": 0,
+      "thresholdRationale": "Software contract checks require zero hard validation failures for the checked fixture and package version.",
+      "fixtureIds": [
+        "tests/fixtures/bathymetry_package_r1_parity.json"
+      ],
+      "referenceIds": [
+        "bathymetry-external-reference-metrics-md",
+        "homegrown-environment-scientific-baseline-md"
+      ],
+      "applicability": "deterministic-regression, education, and benchmark-suitability review",
+      "public": true,
+      "claimDigest": "fnv1a32:192092d3"
+    },
+    {
+      "version": "1.0",
+      "claimId": "bathymetry.external-reference-comparison",
+      "componentId": "bathymetry",
+      "title": "External bathymetry comparison",
+      "plainLanguageClaim": "Bathymetry has not yet been checked against an independent external reference for external bathymetry comparison.",
+      "technicalClaim": "anchor.synthetic-bathymetry external-reference-comparison is evaluated by gap-record using fixture-backed deterministic metrics. Status is recorded separately from evidence level.",
+      "evidenceLevel": "NOT_YET_EVALUATED",
+      "methodId": "gap-record",
+      "metricId": "external-reference-status",
+      "units": "status",
+      "expectedDirection": "explicitly-not-evaluated",
+      "threshold": null,
+      "tolerance": null,
+      "thresholdRationale": "No local independent reference fixture exists in SCI-VALID-R2A, so the official threshold is intentionally undefined and the claim must remain not evaluated.",
+      "fixtureIds": [
+        "tests/fixtures/bathymetry_package_r1_parity.json"
+      ],
+      "referenceIds": [
+        "bathymetry-external-reference-metrics-md",
+        "homegrown-environment-scientific-baseline-md"
+      ],
+      "applicability": "future-reference-comparison-only",
+      "public": true,
+      "claimDigest": "fnv1a32:fb6ac864"
+    }
+  ],
+  "evidence": [
+    {
+      "version": "1.0",
+      "claimId": "bathymetry.deterministic-generation",
+      "componentId": "bathymetry",
+      "modelId": "anchor.synthetic-bathymetry",
+      "modelVersion": "bathy-pkg-r1",
+      "evidenceLevel": "SOFTWARE_VERIFIED",
+      "status": "PASS",
+      "methodId": "package-smoke-and-parity-fixture",
+      "metricId": "deterministic-contract-status",
+      "measuredValue": 0,
+      "units": "pass-count",
+      "threshold": 0,
+      "tolerance": 0,
+      "errorValue": 0,
+      "relativeError": 0,
+      "fixtureIds": [
+        "tests/fixtures/bathymetry_package_r1_parity.json"
+      ],
+      "sourceArtifactDigests": {
+        "tests/fixtures/bathymetry_package_r1_parity.json": "fnv1a32:1767c80d"
+      },
+      "packageVersions": {
+        "contracts": "0.0.0-arch-r1",
+        "bathymetry": "0.0.0-arch-r1",
+        "currents": "0.0.0-arch-r1",
+        "scalar-processes": "0.1.0-process-pkg-r1",
+        "environment": "0.0.0-arch-r1",
+        "mission-simulator": "0.0.0-arch-r1",
+        "scoring": "0.0.0-score-pkg-r1",
+        "codecs": "0.1.0-codec-r1",
+        "validation": "0.1.0-sci-valid-r2a",
+        "validationRuntime": "anchor-validation-sci-valid-r2a"
+      },
+      "runtimeMetadata": {
+        "builderVersion": "sci-valid-r2a-baseline-builder",
+        "deterministic": true,
+        "officialBaseline": true
+      },
+      "interpretation": "Deterministic generation passed as deterministic Pre-Alpha evidence for Bathymetry.",
+      "limitations": [
+        "Evidence is fixture-scoped and deterministic; it does not generalize to operational ocean forecasting or certified navigation."
+      ],
+      "references": [
+        {
+          "version": "1.0",
+          "referenceId": "bathymetry-external-reference-metrics-md",
+          "title": "Bathymetry External Reference Metrics",
+          "authors": "ANCHOR project",
+          "year": 2026,
+          "source": "local repository documentation",
+          "persistentIdentifier": null,
+          "localPath": "docs/bathymetry_external_reference_metrics.md",
+          "role": "thresholdRationale"
+        },
+        {
+          "version": "1.0",
+          "referenceId": "homegrown-environment-scientific-baseline-md",
+          "title": "Homegrown Environment Scientific Baseline",
+          "authors": "ANCHOR project",
+          "year": 2026,
+          "source": "local repository documentation",
+          "persistentIdentifier": null,
+          "localPath": "docs/homegrown_environment_scientific_baseline.md",
+          "role": "methodReference"
+        }
+      ],
+      "reproductionCommand": "node tools/science/build_validation_baseline.mjs",
+      "evidenceDigest": "fnv1a32:825ca0cc"
+    },
+    {
+      "version": "1.0",
+      "claimId": "bathymetry.finite-depths",
+      "componentId": "bathymetry",
+      "modelId": "anchor.synthetic-bathymetry",
+      "modelVersion": "bathy-pkg-r1",
+      "evidenceLevel": "SOFTWARE_VERIFIED",
+      "status": "PASS",
+      "methodId": "package-smoke-and-parity-fixture",
+      "metricId": "deterministic-contract-status",
+      "measuredValue": 0,
+      "units": "pass-count",
+      "threshold": 0,
+      "tolerance": 0,
+      "errorValue": 0,
+      "relativeError": 0,
+      "fixtureIds": [
+        "tests/fixtures/bathymetry_package_r1_parity.json"
+      ],
+      "sourceArtifactDigests": {
+        "tests/fixtures/bathymetry_package_r1_parity.json": "fnv1a32:1767c80d"
+      },
+      "packageVersions": {
+        "contracts": "0.0.0-arch-r1",
+        "bathymetry": "0.0.0-arch-r1",
+        "currents": "0.0.0-arch-r1",
+        "scalar-processes": "0.1.0-process-pkg-r1",
+        "environment": "0.0.0-arch-r1",
+        "mission-simulator": "0.0.0-arch-r1",
+        "scoring": "0.0.0-score-pkg-r1",
+        "codecs": "0.1.0-codec-r1",
+        "validation": "0.1.0-sci-valid-r2a",
+        "validationRuntime": "anchor-validation-sci-valid-r2a"
+      },
+      "runtimeMetadata": {
+        "builderVersion": "sci-valid-r2a-baseline-builder",
+        "deterministic": true,
+        "officialBaseline": true
+      },
+      "interpretation": "Finite depth/elevation values passed as deterministic Pre-Alpha evidence for Bathymetry.",
+      "limitations": [
+        "Evidence is fixture-scoped and deterministic; it does not generalize to operational ocean forecasting or certified navigation."
+      ],
+      "references": [
+        {
+          "version": "1.0",
+          "referenceId": "bathymetry-external-reference-metrics-md",
+          "title": "Bathymetry External Reference Metrics",
+          "authors": "ANCHOR project",
+          "year": 2026,
+          "source": "local repository documentation",
+          "persistentIdentifier": null,
+          "localPath": "docs/bathymetry_external_reference_metrics.md",
+          "role": "thresholdRationale"
+        },
+        {
+          "version": "1.0",
+          "referenceId": "homegrown-environment-scientific-baseline-md",
+          "title": "Homegrown Environment Scientific Baseline",
+          "authors": "ANCHOR project",
+          "year": 2026,
+          "source": "local repository documentation",
+          "persistentIdentifier": null,
+          "localPath": "docs/homegrown_environment_scientific_baseline.md",
+          "role": "methodReference"
+        }
+      ],
+      "reproductionCommand": "node tools/science/build_validation_baseline.mjs",
+      "evidenceDigest": "fnv1a32:42d5224d"
+    },
+    {
+      "version": "1.0",
+      "claimId": "bathymetry.wet-land-mask-consistency",
+      "componentId": "bathymetry",
+      "modelId": "anchor.synthetic-bathymetry",
+      "modelVersion": "bathy-pkg-r1",
+      "evidenceLevel": "SOFTWARE_VERIFIED",
+      "status": "PASS",
+      "methodId": "package-smoke-and-parity-fixture",
+      "metricId": "deterministic-contract-status",
+      "measuredValue": 0,
+      "units": "pass-count",
+      "threshold": 0,
+      "tolerance": 0,
+      "errorValue": 0,
+      "relativeError": 0,
+      "fixtureIds": [
+        "tests/fixtures/bathymetry_package_r1_parity.json"
+      ],
+      "sourceArtifactDigests": {
+        "tests/fixtures/bathymetry_package_r1_parity.json": "fnv1a32:1767c80d"
+      },
+      "packageVersions": {
+        "contracts": "0.0.0-arch-r1",
+        "bathymetry": "0.0.0-arch-r1",
+        "currents": "0.0.0-arch-r1",
+        "scalar-processes": "0.1.0-process-pkg-r1",
+        "environment": "0.0.0-arch-r1",
+        "mission-simulator": "0.0.0-arch-r1",
+        "scoring": "0.0.0-score-pkg-r1",
+        "codecs": "0.1.0-codec-r1",
+        "validation": "0.1.0-sci-valid-r2a",
+        "validationRuntime": "anchor-validation-sci-valid-r2a"
+      },
+      "runtimeMetadata": {
+        "builderVersion": "sci-valid-r2a-baseline-builder",
+        "deterministic": true,
+        "officialBaseline": true
+      },
+      "interpretation": "Wet/land mask consistency passed as deterministic Pre-Alpha evidence for Bathymetry.",
+      "limitations": [
+        "Evidence is fixture-scoped and deterministic; it does not generalize to operational ocean forecasting or certified navigation."
+      ],
+      "references": [
+        {
+          "version": "1.0",
+          "referenceId": "bathymetry-external-reference-metrics-md",
+          "title": "Bathymetry External Reference Metrics",
+          "authors": "ANCHOR project",
+          "year": 2026,
+          "source": "local repository documentation",
+          "persistentIdentifier": null,
+          "localPath": "docs/bathymetry_external_reference_metrics.md",
+          "role": "thresholdRationale"
+        },
+        {
+          "version": "1.0",
+          "referenceId": "homegrown-environment-scientific-baseline-md",
+          "title": "Homegrown Environment Scientific Baseline",
+          "authors": "ANCHOR project",
+          "year": 2026,
+          "source": "local repository documentation",
+          "persistentIdentifier": null,
+          "localPath": "docs/homegrown_environment_scientific_baseline.md",
+          "role": "methodReference"
+        }
+      ],
+      "reproductionCommand": "node tools/science/build_validation_baseline.mjs",
+      "evidenceDigest": "fnv1a32:19fb8d51"
+    },
+    {
+      "version": "1.0",
+      "claimId": "bathymetry.manufactured-flat-plane",
+      "componentId": "bathymetry",
+      "modelId": "anchor.synthetic-bathymetry",
+      "modelVersion": "bathy-pkg-r1",
+      "evidenceLevel": "NUMERICALLY_VERIFIED",
+      "status": "PASS",
+      "methodId": "manufactured-solution-or-interpolation-check",
+      "metricId": "manufactured-error-bound",
+      "measuredValue": 0,
+      "units": "normalized-error",
+      "threshold": 0,
+      "tolerance": 0,
+      "errorValue": 0,
+      "relativeError": 0,
+      "fixtureIds": [
+        "tests/fixtures/bathymetry_package_r1_parity.json"
+      ],
+      "sourceArtifactDigests": {
+        "tests/fixtures/bathymetry_package_r1_parity.json": "fnv1a32:1767c80d"
+      },
+      "packageVersions": {
+        "contracts": "0.0.0-arch-r1",
+        "bathymetry": "0.0.0-arch-r1",
+        "currents": "0.0.0-arch-r1",
+        "scalar-processes": "0.1.0-process-pkg-r1",
+        "environment": "0.0.0-arch-r1",
+        "mission-simulator": "0.0.0-arch-r1",
+        "scoring": "0.0.0-score-pkg-r1",
+        "codecs": "0.1.0-codec-r1",
+        "validation": "0.1.0-sci-valid-r2a",
+        "validationRuntime": "anchor-validation-sci-valid-r2a"
+      },
+      "runtimeMetadata": {
+        "builderVersion": "sci-valid-r2a-baseline-builder",
+        "deterministic": true,
+        "officialBaseline": true
+      },
+      "interpretation": "Manufactured flat plane passed as deterministic Pre-Alpha evidence for Bathymetry.",
+      "limitations": [
+        "Evidence is fixture-scoped and deterministic; it does not generalize to operational ocean forecasting or certified navigation."
+      ],
+      "references": [
+        {
+          "version": "1.0",
+          "referenceId": "bathymetry-external-reference-metrics-md",
+          "title": "Bathymetry External Reference Metrics",
+          "authors": "ANCHOR project",
+          "year": 2026,
+          "source": "local repository documentation",
+          "persistentIdentifier": null,
+          "localPath": "docs/bathymetry_external_reference_metrics.md",
+          "role": "thresholdRationale"
+        },
+        {
+          "version": "1.0",
+          "referenceId": "homegrown-environment-scientific-baseline-md",
+          "title": "Homegrown Environment Scientific Baseline",
+          "authors": "ANCHOR project",
+          "year": 2026,
+          "source": "local repository documentation",
+          "persistentIdentifier": null,
+          "localPath": "docs/homegrown_environment_scientific_baseline.md",
+          "role": "methodReference"
+        }
+      ],
+      "reproductionCommand": "node tools/science/build_validation_baseline.mjs",
+      "evidenceDigest": "fnv1a32:a2061b6a"
+    },
+    {
+      "version": "1.0",
+      "claimId": "bathymetry.manufactured-slope",
+      "componentId": "bathymetry",
+      "modelId": "anchor.synthetic-bathymetry",
+      "modelVersion": "bathy-pkg-r1",
+      "evidenceLevel": "NUMERICALLY_VERIFIED",
+      "status": "PASS",
+      "methodId": "manufactured-solution-or-interpolation-check",
+      "metricId": "manufactured-error-bound",
+      "measuredValue": 0,
+      "units": "normalized-error",
+      "threshold": 0,
+      "tolerance": 0,
+      "errorValue": 0,
+      "relativeError": 0,
+      "fixtureIds": [
+        "tests/fixtures/bathymetry_package_r1_parity.json"
+      ],
+      "sourceArtifactDigests": {
+        "tests/fixtures/bathymetry_package_r1_parity.json": "fnv1a32:1767c80d"
+      },
+      "packageVersions": {
+        "contracts": "0.0.0-arch-r1",
+        "bathymetry": "0.0.0-arch-r1",
+        "currents": "0.0.0-arch-r1",
+        "scalar-processes": "0.1.0-process-pkg-r1",
+        "environment": "0.0.0-arch-r1",
+        "mission-simulator": "0.0.0-arch-r1",
+        "scoring": "0.0.0-score-pkg-r1",
+        "codecs": "0.1.0-codec-r1",
+        "validation": "0.1.0-sci-valid-r2a",
+        "validationRuntime": "anchor-validation-sci-valid-r2a"
+      },
+      "runtimeMetadata": {
+        "builderVersion": "sci-valid-r2a-baseline-builder",
+        "deterministic": true,
+        "officialBaseline": true
+      },
+      "interpretation": "Manufactured slope passed as deterministic Pre-Alpha evidence for Bathymetry.",
+      "limitations": [
+        "Evidence is fixture-scoped and deterministic; it does not generalize to operational ocean forecasting or certified navigation."
+      ],
+      "references": [
+        {
+          "version": "1.0",
+          "referenceId": "bathymetry-external-reference-metrics-md",
+          "title": "Bathymetry External Reference Metrics",
+          "authors": "ANCHOR project",
+          "year": 2026,
+          "source": "local repository documentation",
+          "persistentIdentifier": null,
+          "localPath": "docs/bathymetry_external_reference_metrics.md",
+          "role": "thresholdRationale"
+        },
+        {
+          "version": "1.0",
+          "referenceId": "homegrown-environment-scientific-baseline-md",
+          "title": "Homegrown Environment Scientific Baseline",
+          "authors": "ANCHOR project",
+          "year": 2026,
+          "source": "local repository documentation",
+          "persistentIdentifier": null,
+          "localPath": "docs/homegrown_environment_scientific_baseline.md",
+          "role": "methodReference"
+        }
+      ],
+      "reproductionCommand": "node tools/science/build_validation_baseline.mjs",
+      "evidenceDigest": "fnv1a32:22e67dbf"
+    },
+    {
+      "version": "1.0",
+      "claimId": "bathymetry.shelf-break",
+      "componentId": "bathymetry",
+      "modelId": "anchor.synthetic-bathymetry",
+      "modelVersion": "bathy-pkg-r1",
+      "evidenceLevel": "PHYSICALLY_PLAUSIBLE",
+      "status": "PASS",
+      "methodId": "bounded-invariant-and-diagnostic-check",
+      "metricId": "bounded-plausibility-invariant",
+      "measuredValue": 0,
+      "units": "pass-count",
+      "threshold": 0,
+      "tolerance": 1,
+      "errorValue": 0,
+      "relativeError": 0,
+      "fixtureIds": [
+        "tests/fixtures/bathymetry_package_r1_parity.json"
+      ],
+      "sourceArtifactDigests": {
+        "tests/fixtures/bathymetry_package_r1_parity.json": "fnv1a32:1767c80d"
+      },
+      "packageVersions": {
+        "contracts": "0.0.0-arch-r1",
+        "bathymetry": "0.0.0-arch-r1",
+        "currents": "0.0.0-arch-r1",
+        "scalar-processes": "0.1.0-process-pkg-r1",
+        "environment": "0.0.0-arch-r1",
+        "mission-simulator": "0.0.0-arch-r1",
+        "scoring": "0.0.0-score-pkg-r1",
+        "codecs": "0.1.0-codec-r1",
+        "validation": "0.1.0-sci-valid-r2a",
+        "validationRuntime": "anchor-validation-sci-valid-r2a"
+      },
+      "runtimeMetadata": {
+        "builderVersion": "sci-valid-r2a-baseline-builder",
+        "deterministic": true,
+        "officialBaseline": true
+      },
+      "interpretation": "Synthetic shelf break fixture passed as deterministic Pre-Alpha evidence for Bathymetry.",
+      "limitations": [
+        "Physical plausibility checks are bounded synthetic invariants, not proof of oceanographic accuracy.",
+        "Passing visual and software tests does not establish oceanographic validity."
+      ],
+      "references": [
+        {
+          "version": "1.0",
+          "referenceId": "bathymetry-external-reference-metrics-md",
+          "title": "Bathymetry External Reference Metrics",
+          "authors": "ANCHOR project",
+          "year": 2026,
+          "source": "local repository documentation",
+          "persistentIdentifier": null,
+          "localPath": "docs/bathymetry_external_reference_metrics.md",
+          "role": "thresholdRationale"
+        },
+        {
+          "version": "1.0",
+          "referenceId": "homegrown-environment-scientific-baseline-md",
+          "title": "Homegrown Environment Scientific Baseline",
+          "authors": "ANCHOR project",
+          "year": 2026,
+          "source": "local repository documentation",
+          "persistentIdentifier": null,
+          "localPath": "docs/homegrown_environment_scientific_baseline.md",
+          "role": "methodReference"
+        }
+      ],
+      "reproductionCommand": "node tools/science/build_validation_baseline.mjs",
+      "evidenceDigest": "fnv1a32:6529ae86"
+    },
+    {
+      "version": "1.0",
+      "claimId": "bathymetry.seamount",
+      "componentId": "bathymetry",
+      "modelId": "anchor.synthetic-bathymetry",
+      "modelVersion": "bathy-pkg-r1",
+      "evidenceLevel": "PHYSICALLY_PLAUSIBLE",
+      "status": "PASS",
+      "methodId": "bounded-invariant-and-diagnostic-check",
+      "metricId": "bounded-plausibility-invariant",
+      "measuredValue": 0,
+      "units": "pass-count",
+      "threshold": 0,
+      "tolerance": 1,
+      "errorValue": 0,
+      "relativeError": 0,
+      "fixtureIds": [
+        "tests/fixtures/bathymetry_package_r1_parity.json"
+      ],
+      "sourceArtifactDigests": {
+        "tests/fixtures/bathymetry_package_r1_parity.json": "fnv1a32:1767c80d"
+      },
+      "packageVersions": {
+        "contracts": "0.0.0-arch-r1",
+        "bathymetry": "0.0.0-arch-r1",
+        "currents": "0.0.0-arch-r1",
+        "scalar-processes": "0.1.0-process-pkg-r1",
+        "environment": "0.0.0-arch-r1",
+        "mission-simulator": "0.0.0-arch-r1",
+        "scoring": "0.0.0-score-pkg-r1",
+        "codecs": "0.1.0-codec-r1",
+        "validation": "0.1.0-sci-valid-r2a",
+        "validationRuntime": "anchor-validation-sci-valid-r2a"
+      },
+      "runtimeMetadata": {
+        "builderVersion": "sci-valid-r2a-baseline-builder",
+        "deterministic": true,
+        "officialBaseline": true
+      },
+      "interpretation": "Synthetic seamount fixture passed as deterministic Pre-Alpha evidence for Bathymetry.",
+      "limitations": [
+        "Physical plausibility checks are bounded synthetic invariants, not proof of oceanographic accuracy.",
+        "Passing visual and software tests does not establish oceanographic validity."
+      ],
+      "references": [
+        {
+          "version": "1.0",
+          "referenceId": "bathymetry-external-reference-metrics-md",
+          "title": "Bathymetry External Reference Metrics",
+          "authors": "ANCHOR project",
+          "year": 2026,
+          "source": "local repository documentation",
+          "persistentIdentifier": null,
+          "localPath": "docs/bathymetry_external_reference_metrics.md",
+          "role": "thresholdRationale"
+        },
+        {
+          "version": "1.0",
+          "referenceId": "homegrown-environment-scientific-baseline-md",
+          "title": "Homegrown Environment Scientific Baseline",
+          "authors": "ANCHOR project",
+          "year": 2026,
+          "source": "local repository documentation",
+          "persistentIdentifier": null,
+          "localPath": "docs/homegrown_environment_scientific_baseline.md",
+          "role": "methodReference"
+        }
+      ],
+      "reproductionCommand": "node tools/science/build_validation_baseline.mjs",
+      "evidenceDigest": "fnv1a32:4ecf7a95"
+    },
+    {
+      "version": "1.0",
+      "claimId": "bathymetry.canyon",
+      "componentId": "bathymetry",
+      "modelId": "anchor.synthetic-bathymetry",
+      "modelVersion": "bathy-pkg-r1",
+      "evidenceLevel": "PHYSICALLY_PLAUSIBLE",
+      "status": "PASS",
+      "methodId": "bounded-invariant-and-diagnostic-check",
+      "metricId": "bounded-plausibility-invariant",
+      "measuredValue": 0,
+      "units": "pass-count",
+      "threshold": 0,
+      "tolerance": 1,
+      "errorValue": 0,
+      "relativeError": 0,
+      "fixtureIds": [
+        "tests/fixtures/bathymetry_package_r1_parity.json"
+      ],
+      "sourceArtifactDigests": {
+        "tests/fixtures/bathymetry_package_r1_parity.json": "fnv1a32:1767c80d"
+      },
+      "packageVersions": {
+        "contracts": "0.0.0-arch-r1",
+        "bathymetry": "0.0.0-arch-r1",
+        "currents": "0.0.0-arch-r1",
+        "scalar-processes": "0.1.0-process-pkg-r1",
+        "environment": "0.0.0-arch-r1",
+        "mission-simulator": "0.0.0-arch-r1",
+        "scoring": "0.0.0-score-pkg-r1",
+        "codecs": "0.1.0-codec-r1",
+        "validation": "0.1.0-sci-valid-r2a",
+        "validationRuntime": "anchor-validation-sci-valid-r2a"
+      },
+      "runtimeMetadata": {
+        "builderVersion": "sci-valid-r2a-baseline-builder",
+        "deterministic": true,
+        "officialBaseline": true
+      },
+      "interpretation": "Synthetic canyon fixture passed as deterministic Pre-Alpha evidence for Bathymetry.",
+      "limitations": [
+        "Physical plausibility checks are bounded synthetic invariants, not proof of oceanographic accuracy.",
+        "Passing visual and software tests does not establish oceanographic validity."
+      ],
+      "references": [
+        {
+          "version": "1.0",
+          "referenceId": "bathymetry-external-reference-metrics-md",
+          "title": "Bathymetry External Reference Metrics",
+          "authors": "ANCHOR project",
+          "year": 2026,
+          "source": "local repository documentation",
+          "persistentIdentifier": null,
+          "localPath": "docs/bathymetry_external_reference_metrics.md",
+          "role": "thresholdRationale"
+        },
+        {
+          "version": "1.0",
+          "referenceId": "homegrown-environment-scientific-baseline-md",
+          "title": "Homegrown Environment Scientific Baseline",
+          "authors": "ANCHOR project",
+          "year": 2026,
+          "source": "local repository documentation",
+          "persistentIdentifier": null,
+          "localPath": "docs/homegrown_environment_scientific_baseline.md",
+          "role": "methodReference"
+        }
+      ],
+      "reproductionCommand": "node tools/science/build_validation_baseline.mjs",
+      "evidenceDigest": "fnv1a32:088719d1"
+    },
+    {
+      "version": "1.0",
+      "claimId": "bathymetry.island",
+      "componentId": "bathymetry",
+      "modelId": "anchor.synthetic-bathymetry",
+      "modelVersion": "bathy-pkg-r1",
+      "evidenceLevel": "PHYSICALLY_PLAUSIBLE",
+      "status": "PASS",
+      "methodId": "bounded-invariant-and-diagnostic-check",
+      "metricId": "bounded-plausibility-invariant",
+      "measuredValue": 0,
+      "units": "pass-count",
+      "threshold": 0,
+      "tolerance": 1,
+      "errorValue": 0,
+      "relativeError": 0,
+      "fixtureIds": [
+        "tests/fixtures/bathymetry_package_r1_parity.json"
+      ],
+      "sourceArtifactDigests": {
+        "tests/fixtures/bathymetry_package_r1_parity.json": "fnv1a32:1767c80d"
+      },
+      "packageVersions": {
+        "contracts": "0.0.0-arch-r1",
+        "bathymetry": "0.0.0-arch-r1",
+        "currents": "0.0.0-arch-r1",
+        "scalar-processes": "0.1.0-process-pkg-r1",
+        "environment": "0.0.0-arch-r1",
+        "mission-simulator": "0.0.0-arch-r1",
+        "scoring": "0.0.0-score-pkg-r1",
+        "codecs": "0.1.0-codec-r1",
+        "validation": "0.1.0-sci-valid-r2a",
+        "validationRuntime": "anchor-validation-sci-valid-r2a"
+      },
+      "runtimeMetadata": {
+        "builderVersion": "sci-valid-r2a-baseline-builder",
+        "deterministic": true,
+        "officialBaseline": true
+      },
+      "interpretation": "Synthetic island fixture passed as deterministic Pre-Alpha evidence for Bathymetry.",
+      "limitations": [
+        "Physical plausibility checks are bounded synthetic invariants, not proof of oceanographic accuracy.",
+        "Passing visual and software tests does not establish oceanographic validity."
+      ],
+      "references": [
+        {
+          "version": "1.0",
+          "referenceId": "bathymetry-external-reference-metrics-md",
+          "title": "Bathymetry External Reference Metrics",
+          "authors": "ANCHOR project",
+          "year": 2026,
+          "source": "local repository documentation",
+          "persistentIdentifier": null,
+          "localPath": "docs/bathymetry_external_reference_metrics.md",
+          "role": "thresholdRationale"
+        },
+        {
+          "version": "1.0",
+          "referenceId": "homegrown-environment-scientific-baseline-md",
+          "title": "Homegrown Environment Scientific Baseline",
+          "authors": "ANCHOR project",
+          "year": 2026,
+          "source": "local repository documentation",
+          "persistentIdentifier": null,
+          "localPath": "docs/homegrown_environment_scientific_baseline.md",
+          "role": "methodReference"
+        }
+      ],
+      "reproductionCommand": "node tools/science/build_validation_baseline.mjs",
+      "evidenceDigest": "fnv1a32:756082f3"
+    },
+    {
+      "version": "1.0",
+      "claimId": "bathymetry.mesh-sampler-alignment",
+      "componentId": "bathymetry",
+      "modelId": "anchor.synthetic-bathymetry",
+      "modelVersion": "bathy-pkg-r1",
+      "evidenceLevel": "SOFTWARE_VERIFIED",
+      "status": "PASS",
+      "methodId": "package-smoke-and-parity-fixture",
+      "metricId": "deterministic-contract-status",
+      "measuredValue": 0,
+      "units": "pass-count",
+      "threshold": 0,
+      "tolerance": 0,
+      "errorValue": 0,
+      "relativeError": 0,
+      "fixtureIds": [
+        "tests/fixtures/bathymetry_package_r1_parity.json"
+      ],
+      "sourceArtifactDigests": {
+        "tests/fixtures/bathymetry_package_r1_parity.json": "fnv1a32:1767c80d"
+      },
+      "packageVersions": {
+        "contracts": "0.0.0-arch-r1",
+        "bathymetry": "0.0.0-arch-r1",
+        "currents": "0.0.0-arch-r1",
+        "scalar-processes": "0.1.0-process-pkg-r1",
+        "environment": "0.0.0-arch-r1",
+        "mission-simulator": "0.0.0-arch-r1",
+        "scoring": "0.0.0-score-pkg-r1",
+        "codecs": "0.1.0-codec-r1",
+        "validation": "0.1.0-sci-valid-r2a",
+        "validationRuntime": "anchor-validation-sci-valid-r2a"
+      },
+      "runtimeMetadata": {
+        "builderVersion": "sci-valid-r2a-baseline-builder",
+        "deterministic": true,
+        "officialBaseline": true
+      },
+      "interpretation": "Mesh/sampler alignment passed as deterministic Pre-Alpha evidence for Bathymetry.",
+      "limitations": [
+        "Evidence is fixture-scoped and deterministic; it does not generalize to operational ocean forecasting or certified navigation."
+      ],
+      "references": [
+        {
+          "version": "1.0",
+          "referenceId": "bathymetry-external-reference-metrics-md",
+          "title": "Bathymetry External Reference Metrics",
+          "authors": "ANCHOR project",
+          "year": 2026,
+          "source": "local repository documentation",
+          "persistentIdentifier": null,
+          "localPath": "docs/bathymetry_external_reference_metrics.md",
+          "role": "thresholdRationale"
+        },
+        {
+          "version": "1.0",
+          "referenceId": "homegrown-environment-scientific-baseline-md",
+          "title": "Homegrown Environment Scientific Baseline",
+          "authors": "ANCHOR project",
+          "year": 2026,
+          "source": "local repository documentation",
+          "persistentIdentifier": null,
+          "localPath": "docs/homegrown_environment_scientific_baseline.md",
+          "role": "methodReference"
+        }
+      ],
+      "reproductionCommand": "node tools/science/build_validation_baseline.mjs",
+      "evidenceDigest": "fnv1a32:499911e4"
+    },
+    {
+      "version": "1.0",
+      "claimId": "bathymetry.resolution-convergence",
+      "componentId": "bathymetry",
+      "modelId": "anchor.synthetic-bathymetry",
+      "modelVersion": "bathy-pkg-r1",
+      "evidenceLevel": "NUMERICALLY_VERIFIED",
+      "status": "PASS",
+      "methodId": "manufactured-solution-or-interpolation-check",
+      "metricId": "manufactured-error-bound",
+      "measuredValue": 0,
+      "units": "normalized-error",
+      "threshold": 0,
+      "tolerance": 0,
+      "errorValue": 0,
+      "relativeError": 0,
+      "fixtureIds": [
+        "tests/fixtures/bathymetry_package_r1_parity.json"
+      ],
+      "sourceArtifactDigests": {
+        "tests/fixtures/bathymetry_package_r1_parity.json": "fnv1a32:1767c80d"
+      },
+      "packageVersions": {
+        "contracts": "0.0.0-arch-r1",
+        "bathymetry": "0.0.0-arch-r1",
+        "currents": "0.0.0-arch-r1",
+        "scalar-processes": "0.1.0-process-pkg-r1",
+        "environment": "0.0.0-arch-r1",
+        "mission-simulator": "0.0.0-arch-r1",
+        "scoring": "0.0.0-score-pkg-r1",
+        "codecs": "0.1.0-codec-r1",
+        "validation": "0.1.0-sci-valid-r2a",
+        "validationRuntime": "anchor-validation-sci-valid-r2a"
+      },
+      "runtimeMetadata": {
+        "builderVersion": "sci-valid-r2a-baseline-builder",
+        "deterministic": true,
+        "officialBaseline": true
+      },
+      "interpretation": "Resolution convergence trend passed as deterministic Pre-Alpha evidence for Bathymetry.",
+      "limitations": [
+        "Evidence is fixture-scoped and deterministic; it does not generalize to operational ocean forecasting or certified navigation."
+      ],
+      "references": [
+        {
+          "version": "1.0",
+          "referenceId": "bathymetry-external-reference-metrics-md",
+          "title": "Bathymetry External Reference Metrics",
+          "authors": "ANCHOR project",
+          "year": 2026,
+          "source": "local repository documentation",
+          "persistentIdentifier": null,
+          "localPath": "docs/bathymetry_external_reference_metrics.md",
+          "role": "thresholdRationale"
+        },
+        {
+          "version": "1.0",
+          "referenceId": "homegrown-environment-scientific-baseline-md",
+          "title": "Homegrown Environment Scientific Baseline",
+          "authors": "ANCHOR project",
+          "year": 2026,
+          "source": "local repository documentation",
+          "persistentIdentifier": null,
+          "localPath": "docs/homegrown_environment_scientific_baseline.md",
+          "role": "methodReference"
+        }
+      ],
+      "reproductionCommand": "node tools/science/build_validation_baseline.mjs",
+      "evidenceDigest": "fnv1a32:2bbcc838"
+    },
+    {
+      "version": "1.0",
+      "claimId": "bathymetry.coordinate-convention",
+      "componentId": "bathymetry",
+      "modelId": "anchor.synthetic-bathymetry",
+      "modelVersion": "bathy-pkg-r1",
+      "evidenceLevel": "SOFTWARE_VERIFIED",
+      "status": "PASS",
+      "methodId": "package-smoke-and-parity-fixture",
+      "metricId": "deterministic-contract-status",
+      "measuredValue": 0,
+      "units": "pass-count",
+      "threshold": 0,
+      "tolerance": 0,
+      "errorValue": 0,
+      "relativeError": 0,
+      "fixtureIds": [
+        "tests/fixtures/bathymetry_package_r1_parity.json"
+      ],
+      "sourceArtifactDigests": {
+        "tests/fixtures/bathymetry_package_r1_parity.json": "fnv1a32:1767c80d"
+      },
+      "packageVersions": {
+        "contracts": "0.0.0-arch-r1",
+        "bathymetry": "0.0.0-arch-r1",
+        "currents": "0.0.0-arch-r1",
+        "scalar-processes": "0.1.0-process-pkg-r1",
+        "environment": "0.0.0-arch-r1",
+        "mission-simulator": "0.0.0-arch-r1",
+        "scoring": "0.0.0-score-pkg-r1",
+        "codecs": "0.1.0-codec-r1",
+        "validation": "0.1.0-sci-valid-r2a",
+        "validationRuntime": "anchor-validation-sci-valid-r2a"
+      },
+      "runtimeMetadata": {
+        "builderVersion": "sci-valid-r2a-baseline-builder",
+        "deterministic": true,
+        "officialBaseline": true
+      },
+      "interpretation": "Coordinate convention passed as deterministic Pre-Alpha evidence for Bathymetry.",
+      "limitations": [
+        "Evidence is fixture-scoped and deterministic; it does not generalize to operational ocean forecasting or certified navigation."
+      ],
+      "references": [
+        {
+          "version": "1.0",
+          "referenceId": "bathymetry-external-reference-metrics-md",
+          "title": "Bathymetry External Reference Metrics",
+          "authors": "ANCHOR project",
+          "year": 2026,
+          "source": "local repository documentation",
+          "persistentIdentifier": null,
+          "localPath": "docs/bathymetry_external_reference_metrics.md",
+          "role": "thresholdRationale"
+        },
+        {
+          "version": "1.0",
+          "referenceId": "homegrown-environment-scientific-baseline-md",
+          "title": "Homegrown Environment Scientific Baseline",
+          "authors": "ANCHOR project",
+          "year": 2026,
+          "source": "local repository documentation",
+          "persistentIdentifier": null,
+          "localPath": "docs/homegrown_environment_scientific_baseline.md",
+          "role": "methodReference"
+        }
+      ],
+      "reproductionCommand": "node tools/science/build_validation_baseline.mjs",
+      "evidenceDigest": "fnv1a32:11a4d3ca"
+    },
+    {
+      "version": "1.0",
+      "claimId": "bathymetry.external-reference-comparison",
+      "componentId": "bathymetry",
+      "modelId": "anchor.synthetic-bathymetry",
+      "modelVersion": "bathy-pkg-r1",
+      "evidenceLevel": "NOT_YET_EVALUATED",
+      "status": "NOT_EVALUATED",
+      "methodId": "gap-record",
+      "metricId": "external-reference-status",
+      "measuredValue": null,
+      "units": "status",
+      "threshold": null,
+      "tolerance": null,
+      "errorValue": null,
+      "relativeError": null,
+      "fixtureIds": [
+        "tests/fixtures/bathymetry_package_r1_parity.json"
+      ],
+      "sourceArtifactDigests": {
+        "tests/fixtures/bathymetry_package_r1_parity.json": "fnv1a32:1767c80d"
+      },
+      "packageVersions": {
+        "contracts": "0.0.0-arch-r1",
+        "bathymetry": "0.0.0-arch-r1",
+        "currents": "0.0.0-arch-r1",
+        "scalar-processes": "0.1.0-process-pkg-r1",
+        "environment": "0.0.0-arch-r1",
+        "mission-simulator": "0.0.0-arch-r1",
+        "scoring": "0.0.0-score-pkg-r1",
+        "codecs": "0.1.0-codec-r1",
+        "validation": "0.1.0-sci-valid-r2a",
+        "validationRuntime": "anchor-validation-sci-valid-r2a"
+      },
+      "runtimeMetadata": {
+        "builderVersion": "sci-valid-r2a-baseline-builder",
+        "deterministic": true,
+        "officialBaseline": true
+      },
+      "interpretation": "External bathymetry comparison is an explicit evidence gap for Bathymetry; no external result is claimed.",
+      "limitations": [
+        "No independent local reference data or sea-trial fixture is part of this baseline.",
+        "This gap must not be described as externally compared or operationally validated."
+      ],
+      "references": [
+        {
+          "version": "1.0",
+          "referenceId": "bathymetry-external-reference-metrics-md",
+          "title": "Bathymetry External Reference Metrics",
+          "authors": "ANCHOR project",
+          "year": 2026,
+          "source": "local repository documentation",
+          "persistentIdentifier": null,
+          "localPath": "docs/bathymetry_external_reference_metrics.md",
+          "role": "thresholdRationale"
+        },
+        {
+          "version": "1.0",
+          "referenceId": "homegrown-environment-scientific-baseline-md",
+          "title": "Homegrown Environment Scientific Baseline",
+          "authors": "ANCHOR project",
+          "year": 2026,
+          "source": "local repository documentation",
+          "persistentIdentifier": null,
+          "localPath": "docs/homegrown_environment_scientific_baseline.md",
+          "role": "methodReference"
+        }
+      ],
+      "reproductionCommand": "node tools/science/build_validation_baseline.mjs",
+      "evidenceDigest": "fnv1a32:eb16569a"
+    }
+  ],
+  "evidenceLevelSummary": {
+    "SOFTWARE_VERIFIED": 5,
+    "NUMERICALLY_VERIFIED": 3,
+    "PHYSICALLY_PLAUSIBLE": 4,
+    "NOT_YET_EVALUATED": 1
+  },
+  "statusSummary": {
+    "PASS": 12,
+    "NOT_EVALUATED": 1
+  },
+  "assumptions": [
+    "Bathymetry evidence uses checked-in public fixtures and repo-local commands.",
+    "Time is seconds, horizontal coordinates are local mission coordinates, and depth is positive-down meters where applicable.",
+    "Official reports are immutable baseline artifacts; browser reruns are exploratory unless they reproduce the official pipeline."
+  ],
+  "limitations": [
+    "Bathymetry is evaluated for deterministic benchmark and education use only.",
+    "The report does not claim operational ocean forecast skill, certified navigation suitability, or calibrated digital-twin fidelity.",
+    "Literature and local method references motivate methods but do not count as external numerical comparisons."
+  ],
+  "references": [
+    {
+      "version": "1.0",
+      "referenceId": "bathymetry-external-reference-metrics-md",
+      "title": "Bathymetry External Reference Metrics",
+      "authors": "ANCHOR project",
+      "year": 2026,
+      "source": "local repository documentation",
+      "persistentIdentifier": null,
+      "localPath": "docs/bathymetry_external_reference_metrics.md",
+      "role": "thresholdRationale"
+    },
+    {
+      "version": "1.0",
+      "referenceId": "homegrown-environment-scientific-baseline-md",
+      "title": "Homegrown Environment Scientific Baseline",
+      "authors": "ANCHOR project",
+      "year": 2026,
+      "source": "local repository documentation",
+      "persistentIdentifier": null,
+      "localPath": "docs/homegrown_environment_scientific_baseline.md",
+      "role": "methodReference"
+    }
+  ],
+  "packageVersions": {
+    "contracts": "0.0.0-arch-r1",
+    "bathymetry": "0.0.0-arch-r1",
+    "currents": "0.0.0-arch-r1",
+    "scalar-processes": "0.1.0-process-pkg-r1",
+    "environment": "0.0.0-arch-r1",
+    "mission-simulator": "0.0.0-arch-r1",
+    "scoring": "0.0.0-score-pkg-r1",
+    "codecs": "0.1.0-codec-r1",
+    "validation": "0.1.0-sci-valid-r2a",
+    "validationRuntime": "anchor-validation-sci-valid-r2a"
+  },
+  "sourceArtifactDigests": {
+    "tests/fixtures/bathymetry_package_r1_parity.json": "fnv1a32:1767c80d"
+  },
+  "suitabilityDecision": {
+    "deterministicRegression": "GO",
+    "educationalUse": "GO",
+    "classicalPlannerBenchmark": "CONDITIONAL",
+    "mlDatasetGeneration": "CONDITIONAL",
+    "operationalForecastUse": "NO_GO",
+    "certifiedNavigationUse": "NO_GO",
+    "rationale": "Bathymetry has deterministic package evidence for software/benchmark use, but external or operational claims remain out of scope where not evaluated.",
+    "conditions": [
+      "Use only with documented synthetic-fixture limitations.",
+      "Do not describe results as operational validation."
+    ]
+  },
+  "visualizations": [
+    {
+      "visualizationId": "bathymetry-status-bars",
+      "title": "Bathymetry status counts",
+      "kind": "bar-summary",
+      "textSummary": "Bar heights count evidence records by explicit status label. This is not a scientific-validity score.",
+      "rows": [
+        {
+          "label": "PASS",
+          "value": 12
+        },
+        {
+          "label": "NOT_EVALUATED",
+          "value": 1
+        }
+      ]
+    },
+    {
+      "visualizationId": "bathymetry-evidence-ladder",
+      "title": "Bathymetry evidence levels",
+      "kind": "bar-summary",
+      "textSummary": "Bar heights count claims by evidence level. External comparison and operational validation are kept separate from software checks.",
+      "rows": [
+        {
+          "label": "SOFTWARE_VERIFIED",
+          "value": 5
+        },
+        {
+          "label": "NUMERICALLY_VERIFIED",
+          "value": 3
+        },
+        {
+          "label": "PHYSICALLY_PLAUSIBLE",
+          "value": 4
+        },
+        {
+          "label": "NOT_YET_EVALUATED",
+          "value": 1
+        }
+      ]
+    },
+    {
+      "visualizationId": "bathymetry-metric-table",
+      "title": "Bathymetry raw metric table",
+      "kind": "table",
+      "textSummary": "Compact table for the selected report claims and evidence records.",
+      "rows": [
+        {
+          "claimId": "bathymetry.deterministic-generation",
+          "status": "PASS",
+          "metricId": "deterministic-contract-status",
+          "measuredValue": 0,
+          "units": "pass-count",
+          "threshold": 0,
+          "tolerance": 0
+        },
+        {
+          "claimId": "bathymetry.finite-depths",
+          "status": "PASS",
+          "metricId": "deterministic-contract-status",
+          "measuredValue": 0,
+          "units": "pass-count",
+          "threshold": 0,
+          "tolerance": 0
+        },
+        {
+          "claimId": "bathymetry.wet-land-mask-consistency",
+          "status": "PASS",
+          "metricId": "deterministic-contract-status",
+          "measuredValue": 0,
+          "units": "pass-count",
+          "threshold": 0,
+          "tolerance": 0
+        },
+        {
+          "claimId": "bathymetry.manufactured-flat-plane",
+          "status": "PASS",
+          "metricId": "manufactured-error-bound",
+          "measuredValue": 0,
+          "units": "normalized-error",
+          "threshold": 0,
+          "tolerance": 0
+        },
+        {
+          "claimId": "bathymetry.manufactured-slope",
+          "status": "PASS",
+          "metricId": "manufactured-error-bound",
+          "measuredValue": 0,
+          "units": "normalized-error",
+          "threshold": 0,
+          "tolerance": 0
+        },
+        {
+          "claimId": "bathymetry.shelf-break",
+          "status": "PASS",
+          "metricId": "bounded-plausibility-invariant",
+          "measuredValue": 0,
+          "units": "pass-count",
+          "threshold": 0,
+          "tolerance": 1
+        },
+        {
+          "claimId": "bathymetry.seamount",
+          "status": "PASS",
+          "metricId": "bounded-plausibility-invariant",
+          "measuredValue": 0,
+          "units": "pass-count",
+          "threshold": 0,
+          "tolerance": 1
+        },
+        {
+          "claimId": "bathymetry.canyon",
+          "status": "PASS",
+          "metricId": "bounded-plausibility-invariant",
+          "measuredValue": 0,
+          "units": "pass-count",
+          "threshold": 0,
+          "tolerance": 1
+        },
+        {
+          "claimId": "bathymetry.island",
+          "status": "PASS",
+          "metricId": "bounded-plausibility-invariant",
+          "measuredValue": 0,
+          "units": "pass-count",
+          "threshold": 0,
+          "tolerance": 1
+        },
+        {
+          "claimId": "bathymetry.mesh-sampler-alignment",
+          "status": "PASS",
+          "metricId": "deterministic-contract-status",
+          "measuredValue": 0,
+          "units": "pass-count",
+          "threshold": 0,
+          "tolerance": 0
+        },
+        {
+          "claimId": "bathymetry.resolution-convergence",
+          "status": "PASS",
+          "metricId": "manufactured-error-bound",
+          "measuredValue": 0,
+          "units": "normalized-error",
+          "threshold": 0,
+          "tolerance": 0
+        },
+        {
+          "claimId": "bathymetry.coordinate-convention",
+          "status": "PASS",
+          "metricId": "deterministic-contract-status",
+          "measuredValue": 0,
+          "units": "pass-count",
+          "threshold": 0,
+          "tolerance": 0
+        },
+        {
+          "claimId": "bathymetry.external-reference-comparison",
+          "status": "NOT_EVALUATED",
+          "metricId": "external-reference-status",
+          "measuredValue": null,
+          "units": "status",
+          "threshold": null,
+          "tolerance": null
+        }
+      ]
+    }
+  ],
+  "claimBoundary": {
+    "benchmarkOrEducationUse": true,
+    "operationalForecast": false,
+    "certifiedNavigation": false,
+    "calibratedDigitalTwin": false
+  },
+  "visibilityClass": "PUBLIC",
+  "fairnessClass": "PUBLIC_FAIR",
+  "reportDigest": "fnv1a32:0dc29d33"
+}

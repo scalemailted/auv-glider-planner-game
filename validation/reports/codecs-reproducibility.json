@@ -1,0 +1,858 @@
+{
+  "schemaVersion": "1.0",
+  "type": "anchor.scientific-validation-report",
+  "reportId": "anchor-codecs-reproducibility-scientific-validation-report",
+  "componentId": "codecs-reproducibility",
+  "componentLabel": "Codecs and Reproducibility",
+  "modelId": "anchor.artifact-codecs",
+  "modelVersion": "codec-r1",
+  "summary": "Codecs and Reproducibility has a Pre-Alpha evidence report built from deterministic package fixtures and documented diagnostics.",
+  "claims": [
+    {
+      "version": "1.0",
+      "claimId": "codecs-reproducibility.canonical-json",
+      "componentId": "codecs-reproducibility",
+      "title": "Canonical JSON ordering and digesting",
+      "plainLanguageClaim": "Codecs and Reproducibility supports canonical json ordering and digesting within the deterministic ANCHOR benchmark fixtures.",
+      "technicalClaim": "anchor.artifact-codecs canonical-json is evaluated by package-smoke-and-parity-fixture using fixture-backed deterministic metrics. Status is recorded separately from evidence level.",
+      "evidenceLevel": "SOFTWARE_VERIFIED",
+      "methodId": "package-smoke-and-parity-fixture",
+      "metricId": "deterministic-contract-status",
+      "units": "pass-count",
+      "expectedDirection": "less-than-or-equal",
+      "threshold": 0,
+      "tolerance": 0,
+      "thresholdRationale": "Software contract checks require zero hard validation failures for the checked fixture and package version.",
+      "fixtureIds": [
+        "tests/fixtures/codec_r1_interop_fixture.json"
+      ],
+      "referenceIds": [
+        "artifact-codec-and-schema-contract-md"
+      ],
+      "applicability": "deterministic-regression, education, and benchmark-suitability review",
+      "public": true,
+      "claimDigest": "fnv1a32:9fde44c2"
+    },
+    {
+      "version": "1.0",
+      "claimId": "codecs-reproducibility.future-version-rejection",
+      "componentId": "codecs-reproducibility",
+      "title": "Future-version rejection",
+      "plainLanguageClaim": "Codecs and Reproducibility supports future-version rejection within the deterministic ANCHOR benchmark fixtures.",
+      "technicalClaim": "anchor.artifact-codecs future-version-rejection is evaluated by package-smoke-and-parity-fixture using fixture-backed deterministic metrics. Status is recorded separately from evidence level.",
+      "evidenceLevel": "SOFTWARE_VERIFIED",
+      "methodId": "package-smoke-and-parity-fixture",
+      "metricId": "deterministic-contract-status",
+      "units": "pass-count",
+      "expectedDirection": "less-than-or-equal",
+      "threshold": 0,
+      "tolerance": 0,
+      "thresholdRationale": "Software contract checks require zero hard validation failures for the checked fixture and package version.",
+      "fixtureIds": [
+        "tests/fixtures/codec_r1_interop_fixture.json"
+      ],
+      "referenceIds": [
+        "artifact-codec-and-schema-contract-md"
+      ],
+      "applicability": "deterministic-regression, education, and benchmark-suitability review",
+      "public": true,
+      "claimDigest": "fnv1a32:43a0515c"
+    },
+    {
+      "version": "1.0",
+      "claimId": "codecs-reproducibility.supported-migration",
+      "componentId": "codecs-reproducibility",
+      "title": "Supported legacy migration",
+      "plainLanguageClaim": "Codecs and Reproducibility supports supported legacy migration within the deterministic ANCHOR benchmark fixtures.",
+      "technicalClaim": "anchor.artifact-codecs supported-migration is evaluated by package-smoke-and-parity-fixture using fixture-backed deterministic metrics. Status is recorded separately from evidence level.",
+      "evidenceLevel": "SOFTWARE_VERIFIED",
+      "methodId": "package-smoke-and-parity-fixture",
+      "metricId": "deterministic-contract-status",
+      "units": "pass-count",
+      "expectedDirection": "less-than-or-equal",
+      "threshold": 0,
+      "tolerance": 0,
+      "thresholdRationale": "Software contract checks require zero hard validation failures for the checked fixture and package version.",
+      "fixtureIds": [
+        "tests/fixtures/codec_r1_interop_fixture.json"
+      ],
+      "referenceIds": [
+        "artifact-codec-and-schema-contract-md"
+      ],
+      "applicability": "deterministic-regression, education, and benchmark-suitability review",
+      "public": true,
+      "claimDigest": "fnv1a32:f40144ac"
+    },
+    {
+      "version": "1.0",
+      "claimId": "codecs-reproducibility.jsonl-transport",
+      "componentId": "codecs-reproducibility",
+      "title": "JSONL transport",
+      "plainLanguageClaim": "Codecs and Reproducibility supports jsonl transport within the deterministic ANCHOR benchmark fixtures.",
+      "technicalClaim": "anchor.artifact-codecs jsonl-transport is evaluated by package-smoke-and-parity-fixture using fixture-backed deterministic metrics. Status is recorded separately from evidence level.",
+      "evidenceLevel": "SOFTWARE_VERIFIED",
+      "methodId": "package-smoke-and-parity-fixture",
+      "metricId": "deterministic-contract-status",
+      "units": "pass-count",
+      "expectedDirection": "less-than-or-equal",
+      "threshold": 0,
+      "tolerance": 0,
+      "thresholdRationale": "Software contract checks require zero hard validation failures for the checked fixture and package version.",
+      "fixtureIds": [
+        "tests/fixtures/codec_r1_interop_fixture.json"
+      ],
+      "referenceIds": [
+        "artifact-codec-and-schema-contract-md"
+      ],
+      "applicability": "deterministic-regression, education, and benchmark-suitability review",
+      "public": true,
+      "claimDigest": "fnv1a32:9f439b06"
+    },
+    {
+      "version": "1.0",
+      "claimId": "codecs-reproducibility.safety-limits",
+      "componentId": "codecs-reproducibility",
+      "title": "Import safety limits",
+      "plainLanguageClaim": "Codecs and Reproducibility supports import safety limits within the deterministic ANCHOR benchmark fixtures.",
+      "technicalClaim": "anchor.artifact-codecs safety-limits is evaluated by package-smoke-and-parity-fixture using fixture-backed deterministic metrics. Status is recorded separately from evidence level.",
+      "evidenceLevel": "SOFTWARE_VERIFIED",
+      "methodId": "package-smoke-and-parity-fixture",
+      "metricId": "deterministic-contract-status",
+      "units": "pass-count",
+      "expectedDirection": "less-than-or-equal",
+      "threshold": 0,
+      "tolerance": 0,
+      "thresholdRationale": "Software contract checks require zero hard validation failures for the checked fixture and package version.",
+      "fixtureIds": [
+        "tests/fixtures/codec_r1_interop_fixture.json"
+      ],
+      "referenceIds": [
+        "artifact-codec-and-schema-contract-md"
+      ],
+      "applicability": "deterministic-regression, education, and benchmark-suitability review",
+      "public": true,
+      "claimDigest": "fnv1a32:f5b7d584"
+    },
+    {
+      "version": "1.0",
+      "claimId": "codecs-reproducibility.hidden-truth-public-rejection",
+      "componentId": "codecs-reproducibility",
+      "title": "Hidden-truth public rejection",
+      "plainLanguageClaim": "Codecs and Reproducibility supports hidden-truth public rejection within the deterministic ANCHOR benchmark fixtures.",
+      "technicalClaim": "anchor.artifact-codecs hidden-truth-public-rejection is evaluated by package-smoke-and-parity-fixture using fixture-backed deterministic metrics. Status is recorded separately from evidence level.",
+      "evidenceLevel": "SOFTWARE_VERIFIED",
+      "methodId": "package-smoke-and-parity-fixture",
+      "metricId": "deterministic-contract-status",
+      "units": "pass-count",
+      "expectedDirection": "less-than-or-equal",
+      "threshold": 0,
+      "tolerance": 0,
+      "thresholdRationale": "Software contract checks require zero hard validation failures for the checked fixture and package version.",
+      "fixtureIds": [
+        "tests/fixtures/codec_r1_interop_fixture.json"
+      ],
+      "referenceIds": [
+        "artifact-codec-and-schema-contract-md"
+      ],
+      "applicability": "deterministic-regression, education, and benchmark-suitability review",
+      "public": true,
+      "claimDigest": "fnv1a32:bea49ab6"
+    },
+    {
+      "version": "1.0",
+      "claimId": "codecs-reproducibility.schema-alignment",
+      "componentId": "codecs-reproducibility",
+      "title": "Schema/runtime alignment",
+      "plainLanguageClaim": "Codecs and Reproducibility supports schema/runtime alignment within the deterministic ANCHOR benchmark fixtures.",
+      "technicalClaim": "anchor.artifact-codecs schema-alignment is evaluated by package-smoke-and-parity-fixture using fixture-backed deterministic metrics. Status is recorded separately from evidence level.",
+      "evidenceLevel": "SOFTWARE_VERIFIED",
+      "methodId": "package-smoke-and-parity-fixture",
+      "metricId": "deterministic-contract-status",
+      "units": "pass-count",
+      "expectedDirection": "less-than-or-equal",
+      "threshold": 0,
+      "tolerance": 0,
+      "thresholdRationale": "Software contract checks require zero hard validation failures for the checked fixture and package version.",
+      "fixtureIds": [
+        "tests/fixtures/codec_r1_interop_fixture.json"
+      ],
+      "referenceIds": [
+        "artifact-codec-and-schema-contract-md"
+      ],
+      "applicability": "deterministic-regression, education, and benchmark-suitability review",
+      "public": true,
+      "claimDigest": "fnv1a32:c2c368c6"
+    },
+    {
+      "version": "1.0",
+      "claimId": "codecs-reproducibility.python-friendly-shape",
+      "componentId": "codecs-reproducibility",
+      "title": "Python-friendly JSON shape",
+      "plainLanguageClaim": "Codecs and Reproducibility supports python-friendly json shape within the deterministic ANCHOR benchmark fixtures.",
+      "technicalClaim": "anchor.artifact-codecs python-friendly-shape is evaluated by package-smoke-and-parity-fixture using fixture-backed deterministic metrics. Status is recorded separately from evidence level.",
+      "evidenceLevel": "SOFTWARE_VERIFIED",
+      "methodId": "package-smoke-and-parity-fixture",
+      "metricId": "deterministic-contract-status",
+      "units": "pass-count",
+      "expectedDirection": "less-than-or-equal",
+      "threshold": 0,
+      "tolerance": 0,
+      "thresholdRationale": "Software contract checks require zero hard validation failures for the checked fixture and package version.",
+      "fixtureIds": [
+        "tests/fixtures/codec_r1_interop_fixture.json"
+      ],
+      "referenceIds": [
+        "artifact-codec-and-schema-contract-md"
+      ],
+      "applicability": "deterministic-regression, education, and benchmark-suitability review",
+      "public": true,
+      "claimDigest": "fnv1a32:69775ad8"
+    }
+  ],
+  "evidence": [
+    {
+      "version": "1.0",
+      "claimId": "codecs-reproducibility.canonical-json",
+      "componentId": "codecs-reproducibility",
+      "modelId": "anchor.artifact-codecs",
+      "modelVersion": "codec-r1",
+      "evidenceLevel": "SOFTWARE_VERIFIED",
+      "status": "PASS",
+      "methodId": "package-smoke-and-parity-fixture",
+      "metricId": "deterministic-contract-status",
+      "measuredValue": 0,
+      "units": "pass-count",
+      "threshold": 0,
+      "tolerance": 0,
+      "errorValue": 0,
+      "relativeError": 0,
+      "fixtureIds": [
+        "tests/fixtures/codec_r1_interop_fixture.json"
+      ],
+      "sourceArtifactDigests": {
+        "tests/fixtures/codec_r1_interop_fixture.json": "fnv1a32:fd57e729"
+      },
+      "packageVersions": {
+        "contracts": "0.0.0-arch-r1",
+        "bathymetry": "0.0.0-arch-r1",
+        "currents": "0.0.0-arch-r1",
+        "scalar-processes": "0.1.0-process-pkg-r1",
+        "environment": "0.0.0-arch-r1",
+        "mission-simulator": "0.0.0-arch-r1",
+        "scoring": "0.0.0-score-pkg-r1",
+        "codecs": "0.1.0-codec-r1",
+        "validation": "0.1.0-sci-valid-r2a",
+        "validationRuntime": "anchor-validation-sci-valid-r2a"
+      },
+      "runtimeMetadata": {
+        "builderVersion": "sci-valid-r2a-baseline-builder",
+        "deterministic": true,
+        "officialBaseline": true
+      },
+      "interpretation": "Canonical JSON ordering and digesting passed as deterministic Pre-Alpha evidence for Codecs and Reproducibility.",
+      "limitations": [
+        "Evidence is fixture-scoped and deterministic; it does not generalize to operational ocean forecasting or certified navigation."
+      ],
+      "references": [
+        {
+          "version": "1.0",
+          "referenceId": "artifact-codec-and-schema-contract-md",
+          "title": "Artifact Codec And Schema Contract",
+          "authors": "ANCHOR project",
+          "year": 2026,
+          "source": "local repository documentation",
+          "persistentIdentifier": null,
+          "localPath": "docs/artifact_codec_and_schema_contract.md",
+          "role": "methodReference"
+        }
+      ],
+      "reproductionCommand": "node tools/science/build_validation_baseline.mjs",
+      "evidenceDigest": "fnv1a32:ec30b0e2"
+    },
+    {
+      "version": "1.0",
+      "claimId": "codecs-reproducibility.future-version-rejection",
+      "componentId": "codecs-reproducibility",
+      "modelId": "anchor.artifact-codecs",
+      "modelVersion": "codec-r1",
+      "evidenceLevel": "SOFTWARE_VERIFIED",
+      "status": "PASS",
+      "methodId": "package-smoke-and-parity-fixture",
+      "metricId": "deterministic-contract-status",
+      "measuredValue": 0,
+      "units": "pass-count",
+      "threshold": 0,
+      "tolerance": 0,
+      "errorValue": 0,
+      "relativeError": 0,
+      "fixtureIds": [
+        "tests/fixtures/codec_r1_interop_fixture.json"
+      ],
+      "sourceArtifactDigests": {
+        "tests/fixtures/codec_r1_interop_fixture.json": "fnv1a32:fd57e729"
+      },
+      "packageVersions": {
+        "contracts": "0.0.0-arch-r1",
+        "bathymetry": "0.0.0-arch-r1",
+        "currents": "0.0.0-arch-r1",
+        "scalar-processes": "0.1.0-process-pkg-r1",
+        "environment": "0.0.0-arch-r1",
+        "mission-simulator": "0.0.0-arch-r1",
+        "scoring": "0.0.0-score-pkg-r1",
+        "codecs": "0.1.0-codec-r1",
+        "validation": "0.1.0-sci-valid-r2a",
+        "validationRuntime": "anchor-validation-sci-valid-r2a"
+      },
+      "runtimeMetadata": {
+        "builderVersion": "sci-valid-r2a-baseline-builder",
+        "deterministic": true,
+        "officialBaseline": true
+      },
+      "interpretation": "Future-version rejection passed as deterministic Pre-Alpha evidence for Codecs and Reproducibility.",
+      "limitations": [
+        "Evidence is fixture-scoped and deterministic; it does not generalize to operational ocean forecasting or certified navigation."
+      ],
+      "references": [
+        {
+          "version": "1.0",
+          "referenceId": "artifact-codec-and-schema-contract-md",
+          "title": "Artifact Codec And Schema Contract",
+          "authors": "ANCHOR project",
+          "year": 2026,
+          "source": "local repository documentation",
+          "persistentIdentifier": null,
+          "localPath": "docs/artifact_codec_and_schema_contract.md",
+          "role": "methodReference"
+        }
+      ],
+      "reproductionCommand": "node tools/science/build_validation_baseline.mjs",
+      "evidenceDigest": "fnv1a32:d8246ed5"
+    },
+    {
+      "version": "1.0",
+      "claimId": "codecs-reproducibility.supported-migration",
+      "componentId": "codecs-reproducibility",
+      "modelId": "anchor.artifact-codecs",
+      "modelVersion": "codec-r1",
+      "evidenceLevel": "SOFTWARE_VERIFIED",
+      "status": "PASS",
+      "methodId": "package-smoke-and-parity-fixture",
+      "metricId": "deterministic-contract-status",
+      "measuredValue": 0,
+      "units": "pass-count",
+      "threshold": 0,
+      "tolerance": 0,
+      "errorValue": 0,
+      "relativeError": 0,
+      "fixtureIds": [
+        "tests/fixtures/codec_r1_interop_fixture.json"
+      ],
+      "sourceArtifactDigests": {
+        "tests/fixtures/codec_r1_interop_fixture.json": "fnv1a32:fd57e729"
+      },
+      "packageVersions": {
+        "contracts": "0.0.0-arch-r1",
+        "bathymetry": "0.0.0-arch-r1",
+        "currents": "0.0.0-arch-r1",
+        "scalar-processes": "0.1.0-process-pkg-r1",
+        "environment": "0.0.0-arch-r1",
+        "mission-simulator": "0.0.0-arch-r1",
+        "scoring": "0.0.0-score-pkg-r1",
+        "codecs": "0.1.0-codec-r1",
+        "validation": "0.1.0-sci-valid-r2a",
+        "validationRuntime": "anchor-validation-sci-valid-r2a"
+      },
+      "runtimeMetadata": {
+        "builderVersion": "sci-valid-r2a-baseline-builder",
+        "deterministic": true,
+        "officialBaseline": true
+      },
+      "interpretation": "Supported legacy migration passed as deterministic Pre-Alpha evidence for Codecs and Reproducibility.",
+      "limitations": [
+        "Evidence is fixture-scoped and deterministic; it does not generalize to operational ocean forecasting or certified navigation."
+      ],
+      "references": [
+        {
+          "version": "1.0",
+          "referenceId": "artifact-codec-and-schema-contract-md",
+          "title": "Artifact Codec And Schema Contract",
+          "authors": "ANCHOR project",
+          "year": 2026,
+          "source": "local repository documentation",
+          "persistentIdentifier": null,
+          "localPath": "docs/artifact_codec_and_schema_contract.md",
+          "role": "methodReference"
+        }
+      ],
+      "reproductionCommand": "node tools/science/build_validation_baseline.mjs",
+      "evidenceDigest": "fnv1a32:7e7c7db4"
+    },
+    {
+      "version": "1.0",
+      "claimId": "codecs-reproducibility.jsonl-transport",
+      "componentId": "codecs-reproducibility",
+      "modelId": "anchor.artifact-codecs",
+      "modelVersion": "codec-r1",
+      "evidenceLevel": "SOFTWARE_VERIFIED",
+      "status": "PASS",
+      "methodId": "package-smoke-and-parity-fixture",
+      "metricId": "deterministic-contract-status",
+      "measuredValue": 0,
+      "units": "pass-count",
+      "threshold": 0,
+      "tolerance": 0,
+      "errorValue": 0,
+      "relativeError": 0,
+      "fixtureIds": [
+        "tests/fixtures/codec_r1_interop_fixture.json"
+      ],
+      "sourceArtifactDigests": {
+        "tests/fixtures/codec_r1_interop_fixture.json": "fnv1a32:fd57e729"
+      },
+      "packageVersions": {
+        "contracts": "0.0.0-arch-r1",
+        "bathymetry": "0.0.0-arch-r1",
+        "currents": "0.0.0-arch-r1",
+        "scalar-processes": "0.1.0-process-pkg-r1",
+        "environment": "0.0.0-arch-r1",
+        "mission-simulator": "0.0.0-arch-r1",
+        "scoring": "0.0.0-score-pkg-r1",
+        "codecs": "0.1.0-codec-r1",
+        "validation": "0.1.0-sci-valid-r2a",
+        "validationRuntime": "anchor-validation-sci-valid-r2a"
+      },
+      "runtimeMetadata": {
+        "builderVersion": "sci-valid-r2a-baseline-builder",
+        "deterministic": true,
+        "officialBaseline": true
+      },
+      "interpretation": "JSONL transport passed as deterministic Pre-Alpha evidence for Codecs and Reproducibility.",
+      "limitations": [
+        "Evidence is fixture-scoped and deterministic; it does not generalize to operational ocean forecasting or certified navigation."
+      ],
+      "references": [
+        {
+          "version": "1.0",
+          "referenceId": "artifact-codec-and-schema-contract-md",
+          "title": "Artifact Codec And Schema Contract",
+          "authors": "ANCHOR project",
+          "year": 2026,
+          "source": "local repository documentation",
+          "persistentIdentifier": null,
+          "localPath": "docs/artifact_codec_and_schema_contract.md",
+          "role": "methodReference"
+        }
+      ],
+      "reproductionCommand": "node tools/science/build_validation_baseline.mjs",
+      "evidenceDigest": "fnv1a32:79425569"
+    },
+    {
+      "version": "1.0",
+      "claimId": "codecs-reproducibility.safety-limits",
+      "componentId": "codecs-reproducibility",
+      "modelId": "anchor.artifact-codecs",
+      "modelVersion": "codec-r1",
+      "evidenceLevel": "SOFTWARE_VERIFIED",
+      "status": "PASS",
+      "methodId": "package-smoke-and-parity-fixture",
+      "metricId": "deterministic-contract-status",
+      "measuredValue": 0,
+      "units": "pass-count",
+      "threshold": 0,
+      "tolerance": 0,
+      "errorValue": 0,
+      "relativeError": 0,
+      "fixtureIds": [
+        "tests/fixtures/codec_r1_interop_fixture.json"
+      ],
+      "sourceArtifactDigests": {
+        "tests/fixtures/codec_r1_interop_fixture.json": "fnv1a32:fd57e729"
+      },
+      "packageVersions": {
+        "contracts": "0.0.0-arch-r1",
+        "bathymetry": "0.0.0-arch-r1",
+        "currents": "0.0.0-arch-r1",
+        "scalar-processes": "0.1.0-process-pkg-r1",
+        "environment": "0.0.0-arch-r1",
+        "mission-simulator": "0.0.0-arch-r1",
+        "scoring": "0.0.0-score-pkg-r1",
+        "codecs": "0.1.0-codec-r1",
+        "validation": "0.1.0-sci-valid-r2a",
+        "validationRuntime": "anchor-validation-sci-valid-r2a"
+      },
+      "runtimeMetadata": {
+        "builderVersion": "sci-valid-r2a-baseline-builder",
+        "deterministic": true,
+        "officialBaseline": true
+      },
+      "interpretation": "Import safety limits passed as deterministic Pre-Alpha evidence for Codecs and Reproducibility.",
+      "limitations": [
+        "Evidence is fixture-scoped and deterministic; it does not generalize to operational ocean forecasting or certified navigation."
+      ],
+      "references": [
+        {
+          "version": "1.0",
+          "referenceId": "artifact-codec-and-schema-contract-md",
+          "title": "Artifact Codec And Schema Contract",
+          "authors": "ANCHOR project",
+          "year": 2026,
+          "source": "local repository documentation",
+          "persistentIdentifier": null,
+          "localPath": "docs/artifact_codec_and_schema_contract.md",
+          "role": "methodReference"
+        }
+      ],
+      "reproductionCommand": "node tools/science/build_validation_baseline.mjs",
+      "evidenceDigest": "fnv1a32:dc1be244"
+    },
+    {
+      "version": "1.0",
+      "claimId": "codecs-reproducibility.hidden-truth-public-rejection",
+      "componentId": "codecs-reproducibility",
+      "modelId": "anchor.artifact-codecs",
+      "modelVersion": "codec-r1",
+      "evidenceLevel": "SOFTWARE_VERIFIED",
+      "status": "PASS",
+      "methodId": "package-smoke-and-parity-fixture",
+      "metricId": "deterministic-contract-status",
+      "measuredValue": 0,
+      "units": "pass-count",
+      "threshold": 0,
+      "tolerance": 0,
+      "errorValue": 0,
+      "relativeError": 0,
+      "fixtureIds": [
+        "tests/fixtures/codec_r1_interop_fixture.json"
+      ],
+      "sourceArtifactDigests": {
+        "tests/fixtures/codec_r1_interop_fixture.json": "fnv1a32:fd57e729"
+      },
+      "packageVersions": {
+        "contracts": "0.0.0-arch-r1",
+        "bathymetry": "0.0.0-arch-r1",
+        "currents": "0.0.0-arch-r1",
+        "scalar-processes": "0.1.0-process-pkg-r1",
+        "environment": "0.0.0-arch-r1",
+        "mission-simulator": "0.0.0-arch-r1",
+        "scoring": "0.0.0-score-pkg-r1",
+        "codecs": "0.1.0-codec-r1",
+        "validation": "0.1.0-sci-valid-r2a",
+        "validationRuntime": "anchor-validation-sci-valid-r2a"
+      },
+      "runtimeMetadata": {
+        "builderVersion": "sci-valid-r2a-baseline-builder",
+        "deterministic": true,
+        "officialBaseline": true
+      },
+      "interpretation": "Hidden-truth public rejection passed as deterministic Pre-Alpha evidence for Codecs and Reproducibility.",
+      "limitations": [
+        "Evidence is fixture-scoped and deterministic; it does not generalize to operational ocean forecasting or certified navigation."
+      ],
+      "references": [
+        {
+          "version": "1.0",
+          "referenceId": "artifact-codec-and-schema-contract-md",
+          "title": "Artifact Codec And Schema Contract",
+          "authors": "ANCHOR project",
+          "year": 2026,
+          "source": "local repository documentation",
+          "persistentIdentifier": null,
+          "localPath": "docs/artifact_codec_and_schema_contract.md",
+          "role": "methodReference"
+        }
+      ],
+      "reproductionCommand": "node tools/science/build_validation_baseline.mjs",
+      "evidenceDigest": "fnv1a32:471e153e"
+    },
+    {
+      "version": "1.0",
+      "claimId": "codecs-reproducibility.schema-alignment",
+      "componentId": "codecs-reproducibility",
+      "modelId": "anchor.artifact-codecs",
+      "modelVersion": "codec-r1",
+      "evidenceLevel": "SOFTWARE_VERIFIED",
+      "status": "PASS",
+      "methodId": "package-smoke-and-parity-fixture",
+      "metricId": "deterministic-contract-status",
+      "measuredValue": 0,
+      "units": "pass-count",
+      "threshold": 0,
+      "tolerance": 0,
+      "errorValue": 0,
+      "relativeError": 0,
+      "fixtureIds": [
+        "tests/fixtures/codec_r1_interop_fixture.json"
+      ],
+      "sourceArtifactDigests": {
+        "tests/fixtures/codec_r1_interop_fixture.json": "fnv1a32:fd57e729"
+      },
+      "packageVersions": {
+        "contracts": "0.0.0-arch-r1",
+        "bathymetry": "0.0.0-arch-r1",
+        "currents": "0.0.0-arch-r1",
+        "scalar-processes": "0.1.0-process-pkg-r1",
+        "environment": "0.0.0-arch-r1",
+        "mission-simulator": "0.0.0-arch-r1",
+        "scoring": "0.0.0-score-pkg-r1",
+        "codecs": "0.1.0-codec-r1",
+        "validation": "0.1.0-sci-valid-r2a",
+        "validationRuntime": "anchor-validation-sci-valid-r2a"
+      },
+      "runtimeMetadata": {
+        "builderVersion": "sci-valid-r2a-baseline-builder",
+        "deterministic": true,
+        "officialBaseline": true
+      },
+      "interpretation": "Schema/runtime alignment passed as deterministic Pre-Alpha evidence for Codecs and Reproducibility.",
+      "limitations": [
+        "Evidence is fixture-scoped and deterministic; it does not generalize to operational ocean forecasting or certified navigation."
+      ],
+      "references": [
+        {
+          "version": "1.0",
+          "referenceId": "artifact-codec-and-schema-contract-md",
+          "title": "Artifact Codec And Schema Contract",
+          "authors": "ANCHOR project",
+          "year": 2026,
+          "source": "local repository documentation",
+          "persistentIdentifier": null,
+          "localPath": "docs/artifact_codec_and_schema_contract.md",
+          "role": "methodReference"
+        }
+      ],
+      "reproductionCommand": "node tools/science/build_validation_baseline.mjs",
+      "evidenceDigest": "fnv1a32:9e361c4a"
+    },
+    {
+      "version": "1.0",
+      "claimId": "codecs-reproducibility.python-friendly-shape",
+      "componentId": "codecs-reproducibility",
+      "modelId": "anchor.artifact-codecs",
+      "modelVersion": "codec-r1",
+      "evidenceLevel": "SOFTWARE_VERIFIED",
+      "status": "PASS",
+      "methodId": "package-smoke-and-parity-fixture",
+      "metricId": "deterministic-contract-status",
+      "measuredValue": 0,
+      "units": "pass-count",
+      "threshold": 0,
+      "tolerance": 0,
+      "errorValue": 0,
+      "relativeError": 0,
+      "fixtureIds": [
+        "tests/fixtures/codec_r1_interop_fixture.json"
+      ],
+      "sourceArtifactDigests": {
+        "tests/fixtures/codec_r1_interop_fixture.json": "fnv1a32:fd57e729"
+      },
+      "packageVersions": {
+        "contracts": "0.0.0-arch-r1",
+        "bathymetry": "0.0.0-arch-r1",
+        "currents": "0.0.0-arch-r1",
+        "scalar-processes": "0.1.0-process-pkg-r1",
+        "environment": "0.0.0-arch-r1",
+        "mission-simulator": "0.0.0-arch-r1",
+        "scoring": "0.0.0-score-pkg-r1",
+        "codecs": "0.1.0-codec-r1",
+        "validation": "0.1.0-sci-valid-r2a",
+        "validationRuntime": "anchor-validation-sci-valid-r2a"
+      },
+      "runtimeMetadata": {
+        "builderVersion": "sci-valid-r2a-baseline-builder",
+        "deterministic": true,
+        "officialBaseline": true
+      },
+      "interpretation": "Python-friendly JSON shape passed as deterministic Pre-Alpha evidence for Codecs and Reproducibility.",
+      "limitations": [
+        "Evidence is fixture-scoped and deterministic; it does not generalize to operational ocean forecasting or certified navigation."
+      ],
+      "references": [
+        {
+          "version": "1.0",
+          "referenceId": "artifact-codec-and-schema-contract-md",
+          "title": "Artifact Codec And Schema Contract",
+          "authors": "ANCHOR project",
+          "year": 2026,
+          "source": "local repository documentation",
+          "persistentIdentifier": null,
+          "localPath": "docs/artifact_codec_and_schema_contract.md",
+          "role": "methodReference"
+        }
+      ],
+      "reproductionCommand": "node tools/science/build_validation_baseline.mjs",
+      "evidenceDigest": "fnv1a32:80d9d4cd"
+    }
+  ],
+  "evidenceLevelSummary": {
+    "SOFTWARE_VERIFIED": 8
+  },
+  "statusSummary": {
+    "PASS": 8
+  },
+  "assumptions": [
+    "Codecs and Reproducibility evidence uses checked-in public fixtures and repo-local commands.",
+    "Time is seconds, horizontal coordinates are local mission coordinates, and depth is positive-down meters where applicable.",
+    "Official reports are immutable baseline artifacts; browser reruns are exploratory unless they reproduce the official pipeline."
+  ],
+  "limitations": [
+    "Codecs and Reproducibility is evaluated for deterministic benchmark and education use only.",
+    "The report does not claim operational ocean forecast skill, certified navigation suitability, or calibrated digital-twin fidelity.",
+    "Literature and local method references motivate methods but do not count as external numerical comparisons."
+  ],
+  "references": [
+    {
+      "version": "1.0",
+      "referenceId": "artifact-codec-and-schema-contract-md",
+      "title": "Artifact Codec And Schema Contract",
+      "authors": "ANCHOR project",
+      "year": 2026,
+      "source": "local repository documentation",
+      "persistentIdentifier": null,
+      "localPath": "docs/artifact_codec_and_schema_contract.md",
+      "role": "methodReference"
+    }
+  ],
+  "packageVersions": {
+    "contracts": "0.0.0-arch-r1",
+    "bathymetry": "0.0.0-arch-r1",
+    "currents": "0.0.0-arch-r1",
+    "scalar-processes": "0.1.0-process-pkg-r1",
+    "environment": "0.0.0-arch-r1",
+    "mission-simulator": "0.0.0-arch-r1",
+    "scoring": "0.0.0-score-pkg-r1",
+    "codecs": "0.1.0-codec-r1",
+    "validation": "0.1.0-sci-valid-r2a",
+    "validationRuntime": "anchor-validation-sci-valid-r2a"
+  },
+  "sourceArtifactDigests": {
+    "tests/fixtures/codec_r1_interop_fixture.json": "fnv1a32:fd57e729"
+  },
+  "suitabilityDecision": {
+    "deterministicRegression": "GO",
+    "educationalUse": "GO",
+    "classicalPlannerBenchmark": "GO",
+    "mlDatasetGeneration": "CONDITIONAL",
+    "operationalForecastUse": "NO_GO",
+    "certifiedNavigationUse": "NO_GO",
+    "rationale": "Codecs and Reproducibility has deterministic package evidence for software/benchmark use, but external or operational claims remain out of scope where not evaluated.",
+    "conditions": [
+      "Use only with documented synthetic-fixture limitations.",
+      "Do not describe results as operational validation."
+    ]
+  },
+  "visualizations": [
+    {
+      "visualizationId": "codecs-reproducibility-status-bars",
+      "title": "Codecs and Reproducibility status counts",
+      "kind": "bar-summary",
+      "textSummary": "Bar heights count evidence records by explicit status label. This is not a scientific-validity score.",
+      "rows": [
+        {
+          "label": "PASS",
+          "value": 8
+        }
+      ]
+    },
+    {
+      "visualizationId": "codecs-reproducibility-evidence-ladder",
+      "title": "Codecs and Reproducibility evidence levels",
+      "kind": "bar-summary",
+      "textSummary": "Bar heights count claims by evidence level. External comparison and operational validation are kept separate from software checks.",
+      "rows": [
+        {
+          "label": "SOFTWARE_VERIFIED",
+          "value": 8
+        }
+      ]
+    },
+    {
+      "visualizationId": "codecs-reproducibility-metric-table",
+      "title": "Codecs and Reproducibility raw metric table",
+      "kind": "table",
+      "textSummary": "Compact table for the selected report claims and evidence records.",
+      "rows": [
+        {
+          "claimId": "codecs-reproducibility.canonical-json",
+          "status": "PASS",
+          "metricId": "deterministic-contract-status",
+          "measuredValue": 0,
+          "units": "pass-count",
+          "threshold": 0,
+          "tolerance": 0
+        },
+        {
+          "claimId": "codecs-reproducibility.future-version-rejection",
+          "status": "PASS",
+          "metricId": "deterministic-contract-status",
+          "measuredValue": 0,
+          "units": "pass-count",
+          "threshold": 0,
+          "tolerance": 0
+        },
+        {
+          "claimId": "codecs-reproducibility.supported-migration",
+          "status": "PASS",
+          "metricId": "deterministic-contract-status",
+          "measuredValue": 0,
+          "units": "pass-count",
+          "threshold": 0,
+          "tolerance": 0
+        },
+        {
+          "claimId": "codecs-reproducibility.jsonl-transport",
+          "status": "PASS",
+          "metricId": "deterministic-contract-status",
+          "measuredValue": 0,
+          "units": "pass-count",
+          "threshold": 0,
+          "tolerance": 0
+        },
+        {
+          "claimId": "codecs-reproducibility.safety-limits",
+          "status": "PASS",
+          "metricId": "deterministic-contract-status",
+          "measuredValue": 0,
+          "units": "pass-count",
+          "threshold": 0,
+          "tolerance": 0
+        },
+        {
+          "claimId": "codecs-reproducibility.hidden-truth-public-rejection",
+          "status": "PASS",
+          "metricId": "deterministic-contract-status",
+          "measuredValue": 0,
+          "units": "pass-count",
+          "threshold": 0,
+          "tolerance": 0
+        },
+        {
+          "claimId": "codecs-reproducibility.schema-alignment",
+          "status": "PASS",
+          "metricId": "deterministic-contract-status",
+          "measuredValue": 0,
+          "units": "pass-count",
+          "threshold": 0,
+          "tolerance": 0
+        },
+        {
+          "claimId": "codecs-reproducibility.python-friendly-shape",
+          "status": "PASS",
+          "metricId": "deterministic-contract-status",
+          "measuredValue": 0,
+          "units": "pass-count",
+          "threshold": 0,
+          "tolerance": 0
+        }
+      ]
+    }
+  ],
+  "claimBoundary": {
+    "benchmarkOrEducationUse": true,
+    "operationalForecast": false,
+    "certifiedNavigation": false,
+    "calibratedDigitalTwin": false
+  },
+  "visibilityClass": "PUBLIC",
+  "fairnessClass": "PUBLIC_FAIR",
+  "reportDigest": "fnv1a32:4db00761"
+}

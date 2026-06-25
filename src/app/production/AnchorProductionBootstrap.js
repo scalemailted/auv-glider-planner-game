@@ -110,6 +110,6 @@ function publishProductionDebug(reason = 'update') {
 function routeToCommand(routeOrCommand) {
   const value = String(routeOrCommand ?? '');
   return {
-    productHub: 'returnToMainMenu', missionSetup: 'openMissionSetup', missionBriefing: 'openBriefing', missionPlanning: 'startPlanning', missionSimulation: 'executeMission', missionDebrief: 'openDebrief', missionReplayReview: 'openReplayReview', missionEditor: 'openEditor', importExport: 'openImportExport', leaderboard: 'openLeaderboard', headlessBundleViewer: 'openHeadlessViewer', tutorialBrowser: 'openTutorialBrowser', plannerBenchmark: 'openPlannerBenchmark', adaptiveBenchmark: 'openAdaptiveBenchmark', legacyLearningLab: 'openLegacyLearningLab'
+    productHub: 'returnToMainMenu', missionSetup: 'openMissionSetup', missionBriefing: 'openBriefing', missionPlanning: 'startPlanning', missionSimulation: 'executeMission', missionDebrief: 'openDebrief', missionReplayReview: 'openReplayReview', missionEditor: 'openEditor', importExport: 'openImportExport', leaderboard: 'openLeaderboard', headlessBundleViewer: 'openHeadlessViewer', methodsValidation: 'openMethodsValidation', tutorialBrowser: 'openTutorialBrowser', plannerBenchmark: 'openPlannerBenchmark', adaptiveBenchmark: 'openAdaptiveBenchmark', legacyLearningLab: 'openLegacyLearningLab'
   }[value] ?? value;
 }

@@ -31,7 +31,7 @@ const GENERATED_PATH_PATTERNS = [
 ];
 const TEXT_EXTENSIONS = new Set(['.js', '.mjs', '.json', '.md', '.html', '.css', '.svg', '.txt', '.yml', '.yaml']);
 const DOC_ROOTS = new Set(['README.md', 'HOWPLAY.md', 'ROADMAP.md', 'MILESTONES.md', 'AGENTS.md', 'SCAFFOLD_STATUS.md']);
-const STATIC_PUBLIC_ROOTS = ['css/', 'vendor/', 'labs/', 'levels/', 'missions/', 'plans/', 'experiments/', 'schemas/', 'tutorials/', 'favicon.svg'];
+const STATIC_PUBLIC_ROOTS = ['css/', 'vendor/', 'labs/', 'levels/', 'missions/', 'plans/', 'experiments/', 'schemas/', 'validation/', 'tutorials/', 'favicon.svg'];
 const PRODUCTION_ROOTS = ['index.html', 'src/game/main.js', 'src/app/production/', 'src/game/phaser/PhaserGame.js', 'src/game/phaser/PhaserProductionBootstrap.js', 'src/game/phaser/scenes/', 'src/game/three/', 'src/core/', 'packages/'];
 const BUILD_TOOL_ROOTS = ['package.json', 'package-lock.json', 'playwright.config.js', 'tools/js/build_github_pages.mjs', 'tools/js/run_playwright_groups.mjs', 'tools/js/playwright_groups.mjs', 'tools/check-js.mjs', 'tools/maintenance/'];
 const COMPATIBILITY_HINTS = ['forwarder', 'compat', 'legacy saved-level', 'migration', 'schema', 'HeadlessSchema', 'Replay'];
@@ -663,7 +663,7 @@ function sum(values) {
 
 function pagesCopyPolicySummary() {
   return {
-    runtimeRoots: ['index.html', 'css', 'src', 'vendor', 'packages', 'labs', 'schemas', 'levels', 'missions', 'plans', 'experiments', 'tutorials/import-demo'],
+    runtimeRoots: ['index.html', 'css', 'src', 'vendor', 'packages', 'labs', 'schemas', 'validation', 'levels', 'missions', 'plans', 'experiments', 'tutorials/import-demo'],
     publicDocs: publicDocsForPages(),
     publicExamples: publicDocExamplesForPages(),
     excludedRoots: ['tests', 'test-results', 'playwright-report', 'tools', 'archive', 'node_modules', '.git', '.github']
@@ -677,6 +677,7 @@ function publicDocsForPages() {
     'docs/testing.md',
     'docs/export_formats.md',
     'docs/artifact_codec_and_schema_contract.md',
+    'docs/scientific_validation_and_methods.md',
     'docs/mission_format.md',
     'docs/plan_format.md',
     'docs/solver_workflow.md',

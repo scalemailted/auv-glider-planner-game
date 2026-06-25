@@ -19,6 +19,7 @@ Package extraction phases should remain narrow extractions, not rewrites. Curren
 - `ENV-PKG-R1`: implemented composition of bathymetry, currents, and scalar artifacts through package manifests, field registries, validation, provenance, identity digests, and physical-coordinate sampling while preserving existing browser and headless loaders.
 - `SIM-PKG-R2`: makes `packages/mission-simulator` the authoritative mission-state transition package for browser, headless, and benchmark execution while preserving app-owned route planning, scheduling, UI, rendering, official scoring, and replay playback.
 - `SCORE-PKG-R1`: extracts official mission scoring, `ScoreProfile` definitions, `ScoreInput`/`ScoreResult` contracts, deterministic score digests, public-safe summaries, and benchmark/result score identity into `packages/scoring` while preserving existing scoring formulas and raw simulator metrics.
+- `SCI-VALID-R2A`: establishes `packages/validation`, checked-in validation reports/manifests, codec schemas, and the public Methods & Validation route. It presents evidence and limitations without changing scientific equations or claiming operational validation.
 
 Package extraction gates: old `src/core/...` imports must continue through forwarding modules, artifact values and scoring must remain stable, and package audits must pass with no renderer/UI/browser dependencies.
 ## 1. Product Vision
@@ -52,6 +53,7 @@ Product surfaces include:
 - Learning Labs and Simulation Sandboxes.
 - Planner Benchmark, Adaptive Benchmark, and Full Autonomy Benchmark placeholders/contracts.
 - Headless Bundle Viewer for inspecting Node/OceanBox-JS bundles and roundtrip reports.
+- Methods & Validation for inspecting the official evidence baseline, validation status, limitations, and reproduction commands.
 
 ### Portable JS Core
 

@@ -1,0 +1,976 @@
+{
+  "schemaVersion": "1.0",
+  "type": "anchor.scientific-validation-report",
+  "reportId": "anchor-scoring-scientific-validation-report",
+  "componentId": "scoring",
+  "componentLabel": "Scoring",
+  "modelId": "anchor.official-score",
+  "modelVersion": "score-pkg-r1",
+  "summary": "Scoring has a Pre-Alpha evidence report built from deterministic package fixtures and documented diagnostics.",
+  "claims": [
+    {
+      "version": "1.0",
+      "claimId": "scoring.score-profile-version",
+      "componentId": "scoring",
+      "title": "ScoreProfile version identity",
+      "plainLanguageClaim": "Scoring supports scoreprofile version identity within the deterministic ANCHOR benchmark fixtures.",
+      "technicalClaim": "anchor.official-score score-profile-version is evaluated by package-smoke-and-parity-fixture using fixture-backed deterministic metrics. Status is recorded separately from evidence level.",
+      "evidenceLevel": "SOFTWARE_VERIFIED",
+      "methodId": "package-smoke-and-parity-fixture",
+      "metricId": "deterministic-contract-status",
+      "units": "pass-count",
+      "expectedDirection": "less-than-or-equal",
+      "threshold": 0,
+      "tolerance": 0,
+      "thresholdRationale": "Software contract checks require zero hard validation failures for the checked fixture and package version.",
+      "fixtureIds": [
+        "tests/fixtures/scoring_package_r1_parity.json"
+      ],
+      "referenceIds": [
+        "scoring-and-benchmark-contract-md",
+        "mission-scoring-and-regret-md"
+      ],
+      "applicability": "deterministic-regression, education, and benchmark-suitability review",
+      "public": true,
+      "claimDigest": "fnv1a32:9b0b0b1d"
+    },
+    {
+      "version": "1.0",
+      "claimId": "scoring.deterministic-score",
+      "componentId": "scoring",
+      "title": "Deterministic score",
+      "plainLanguageClaim": "Scoring supports deterministic score within the deterministic ANCHOR benchmark fixtures.",
+      "technicalClaim": "anchor.official-score deterministic-score is evaluated by package-smoke-and-parity-fixture using fixture-backed deterministic metrics. Status is recorded separately from evidence level.",
+      "evidenceLevel": "SOFTWARE_VERIFIED",
+      "methodId": "package-smoke-and-parity-fixture",
+      "metricId": "deterministic-contract-status",
+      "units": "pass-count",
+      "expectedDirection": "less-than-or-equal",
+      "threshold": 0,
+      "tolerance": 0,
+      "thresholdRationale": "Software contract checks require zero hard validation failures for the checked fixture and package version.",
+      "fixtureIds": [
+        "tests/fixtures/scoring_package_r1_parity.json"
+      ],
+      "referenceIds": [
+        "scoring-and-benchmark-contract-md",
+        "mission-scoring-and-regret-md"
+      ],
+      "applicability": "deterministic-regression, education, and benchmark-suitability review",
+      "public": true,
+      "claimDigest": "fnv1a32:babe8e77"
+    },
+    {
+      "version": "1.0",
+      "claimId": "scoring.raw-metric-mapping",
+      "componentId": "scoring",
+      "title": "Raw metric mapping",
+      "plainLanguageClaim": "Scoring supports raw metric mapping within the deterministic ANCHOR benchmark fixtures.",
+      "technicalClaim": "anchor.official-score raw-metric-mapping is evaluated by package-smoke-and-parity-fixture using fixture-backed deterministic metrics. Status is recorded separately from evidence level.",
+      "evidenceLevel": "SOFTWARE_VERIFIED",
+      "methodId": "package-smoke-and-parity-fixture",
+      "metricId": "deterministic-contract-status",
+      "units": "pass-count",
+      "expectedDirection": "less-than-or-equal",
+      "threshold": 0,
+      "tolerance": 0,
+      "thresholdRationale": "Software contract checks require zero hard validation failures for the checked fixture and package version.",
+      "fixtureIds": [
+        "tests/fixtures/scoring_package_r1_parity.json"
+      ],
+      "referenceIds": [
+        "scoring-and-benchmark-contract-md",
+        "mission-scoring-and-regret-md"
+      ],
+      "applicability": "deterministic-regression, education, and benchmark-suitability review",
+      "public": true,
+      "claimDigest": "fnv1a32:421793f7"
+    },
+    {
+      "version": "1.0",
+      "claimId": "scoring.weights-and-contributions",
+      "componentId": "scoring",
+      "title": "Weights and contributions",
+      "plainLanguageClaim": "Scoring supports weights and contributions within the deterministic ANCHOR benchmark fixtures.",
+      "technicalClaim": "anchor.official-score weights-and-contributions is evaluated by package-smoke-and-parity-fixture using fixture-backed deterministic metrics. Status is recorded separately from evidence level.",
+      "evidenceLevel": "SOFTWARE_VERIFIED",
+      "methodId": "package-smoke-and-parity-fixture",
+      "metricId": "deterministic-contract-status",
+      "units": "pass-count",
+      "expectedDirection": "less-than-or-equal",
+      "threshold": 0,
+      "tolerance": 0,
+      "thresholdRationale": "Software contract checks require zero hard validation failures for the checked fixture and package version.",
+      "fixtureIds": [
+        "tests/fixtures/scoring_package_r1_parity.json"
+      ],
+      "referenceIds": [
+        "scoring-and-benchmark-contract-md",
+        "mission-scoring-and-regret-md"
+      ],
+      "applicability": "deterministic-regression, education, and benchmark-suitability review",
+      "public": true,
+      "claimDigest": "fnv1a32:45e51355"
+    },
+    {
+      "version": "1.0",
+      "claimId": "scoring.planner-provenance-invariance",
+      "componentId": "scoring",
+      "title": "Planner provenance does not alter score",
+      "plainLanguageClaim": "Scoring supports planner provenance does not alter score within the deterministic ANCHOR benchmark fixtures.",
+      "technicalClaim": "anchor.official-score planner-provenance-invariance is evaluated by package-smoke-and-parity-fixture using fixture-backed deterministic metrics. Status is recorded separately from evidence level.",
+      "evidenceLevel": "SOFTWARE_VERIFIED",
+      "methodId": "package-smoke-and-parity-fixture",
+      "metricId": "deterministic-contract-status",
+      "units": "pass-count",
+      "expectedDirection": "less-than-or-equal",
+      "threshold": 0,
+      "tolerance": 0,
+      "thresholdRationale": "Software contract checks require zero hard validation failures for the checked fixture and package version.",
+      "fixtureIds": [
+        "tests/fixtures/scoring_package_r1_parity.json"
+      ],
+      "referenceIds": [
+        "scoring-and-benchmark-contract-md",
+        "mission-scoring-and-regret-md"
+      ],
+      "applicability": "deterministic-regression, education, and benchmark-suitability review",
+      "public": true,
+      "claimDigest": "fnv1a32:0f029e2d"
+    },
+    {
+      "version": "1.0",
+      "claimId": "scoring.score-digest",
+      "componentId": "scoring",
+      "title": "Score digest stability",
+      "plainLanguageClaim": "Scoring supports score digest stability within the deterministic ANCHOR benchmark fixtures.",
+      "technicalClaim": "anchor.official-score score-digest is evaluated by package-smoke-and-parity-fixture using fixture-backed deterministic metrics. Status is recorded separately from evidence level.",
+      "evidenceLevel": "SOFTWARE_VERIFIED",
+      "methodId": "package-smoke-and-parity-fixture",
+      "metricId": "deterministic-contract-status",
+      "units": "pass-count",
+      "expectedDirection": "less-than-or-equal",
+      "threshold": 0,
+      "tolerance": 0,
+      "thresholdRationale": "Software contract checks require zero hard validation failures for the checked fixture and package version.",
+      "fixtureIds": [
+        "tests/fixtures/scoring_package_r1_parity.json"
+      ],
+      "referenceIds": [
+        "scoring-and-benchmark-contract-md",
+        "mission-scoring-and-regret-md"
+      ],
+      "applicability": "deterministic-regression, education, and benchmark-suitability review",
+      "public": true,
+      "claimDigest": "fnv1a32:8593145f"
+    },
+    {
+      "version": "1.0",
+      "claimId": "scoring.historical-profile-identity",
+      "componentId": "scoring",
+      "title": "Historical profile identity",
+      "plainLanguageClaim": "Scoring supports historical profile identity within the deterministic ANCHOR benchmark fixtures.",
+      "technicalClaim": "anchor.official-score historical-profile-identity is evaluated by package-smoke-and-parity-fixture using fixture-backed deterministic metrics. Status is recorded separately from evidence level.",
+      "evidenceLevel": "SOFTWARE_VERIFIED",
+      "methodId": "package-smoke-and-parity-fixture",
+      "metricId": "deterministic-contract-status",
+      "units": "pass-count",
+      "expectedDirection": "less-than-or-equal",
+      "threshold": 0,
+      "tolerance": 0,
+      "thresholdRationale": "Software contract checks require zero hard validation failures for the checked fixture and package version.",
+      "fixtureIds": [
+        "tests/fixtures/scoring_package_r1_parity.json"
+      ],
+      "referenceIds": [
+        "scoring-and-benchmark-contract-md",
+        "mission-scoring-and-regret-md"
+      ],
+      "applicability": "deterministic-regression, education, and benchmark-suitability review",
+      "public": true,
+      "claimDigest": "fnv1a32:914aabc5"
+    },
+    {
+      "version": "1.0",
+      "claimId": "scoring.regret-reference-status",
+      "componentId": "scoring",
+      "title": "Regret reference availability",
+      "plainLanguageClaim": "Scoring has not yet been checked against an independent external reference for regret reference availability.",
+      "technicalClaim": "anchor.official-score regret-reference-status is evaluated by gap-record using fixture-backed deterministic metrics. Status is recorded separately from evidence level.",
+      "evidenceLevel": "NOT_YET_EVALUATED",
+      "methodId": "gap-record",
+      "metricId": "external-reference-status",
+      "units": "status",
+      "expectedDirection": "explicitly-not-evaluated",
+      "threshold": null,
+      "tolerance": null,
+      "thresholdRationale": "No local independent reference fixture exists in SCI-VALID-R2A, so the official threshold is intentionally undefined and the claim must remain not evaluated.",
+      "fixtureIds": [
+        "tests/fixtures/scoring_package_r1_parity.json"
+      ],
+      "referenceIds": [
+        "scoring-and-benchmark-contract-md",
+        "mission-scoring-and-regret-md"
+      ],
+      "applicability": "future-reference-comparison-only",
+      "public": true,
+      "claimDigest": "fnv1a32:9ab34038"
+    }
+  ],
+  "evidence": [
+    {
+      "version": "1.0",
+      "claimId": "scoring.score-profile-version",
+      "componentId": "scoring",
+      "modelId": "anchor.official-score",
+      "modelVersion": "score-pkg-r1",
+      "evidenceLevel": "SOFTWARE_VERIFIED",
+      "status": "PASS",
+      "methodId": "package-smoke-and-parity-fixture",
+      "metricId": "deterministic-contract-status",
+      "measuredValue": 0,
+      "units": "pass-count",
+      "threshold": 0,
+      "tolerance": 0,
+      "errorValue": 0,
+      "relativeError": 0,
+      "fixtureIds": [
+        "tests/fixtures/scoring_package_r1_parity.json"
+      ],
+      "sourceArtifactDigests": {
+        "tests/fixtures/scoring_package_r1_parity.json": "fnv1a32:c6533216"
+      },
+      "packageVersions": {
+        "contracts": "0.0.0-arch-r1",
+        "bathymetry": "0.0.0-arch-r1",
+        "currents": "0.0.0-arch-r1",
+        "scalar-processes": "0.1.0-process-pkg-r1",
+        "environment": "0.0.0-arch-r1",
+        "mission-simulator": "0.0.0-arch-r1",
+        "scoring": "0.0.0-score-pkg-r1",
+        "codecs": "0.1.0-codec-r1",
+        "validation": "0.1.0-sci-valid-r2a",
+        "validationRuntime": "anchor-validation-sci-valid-r2a"
+      },
+      "runtimeMetadata": {
+        "builderVersion": "sci-valid-r2a-baseline-builder",
+        "deterministic": true,
+        "officialBaseline": true
+      },
+      "interpretation": "ScoreProfile version identity passed as deterministic Pre-Alpha evidence for Scoring.",
+      "limitations": [
+        "Evidence is fixture-scoped and deterministic; it does not generalize to operational ocean forecasting or certified navigation."
+      ],
+      "references": [
+        {
+          "version": "1.0",
+          "referenceId": "scoring-and-benchmark-contract-md",
+          "title": "Scoring And Benchmark Contract",
+          "authors": "ANCHOR project",
+          "year": 2026,
+          "source": "local repository documentation",
+          "persistentIdentifier": null,
+          "localPath": "docs/scoring_and_benchmark_contract.md",
+          "role": "methodReference"
+        },
+        {
+          "version": "1.0",
+          "referenceId": "mission-scoring-and-regret-md",
+          "title": "Mission Scoring And Regret",
+          "authors": "ANCHOR project",
+          "year": 2026,
+          "source": "local repository documentation",
+          "persistentIdentifier": null,
+          "localPath": "docs/mission_scoring_and_regret.md",
+          "role": "methodReference"
+        }
+      ],
+      "reproductionCommand": "node tools/science/build_validation_baseline.mjs",
+      "evidenceDigest": "fnv1a32:9cfb6516"
+    },
+    {
+      "version": "1.0",
+      "claimId": "scoring.deterministic-score",
+      "componentId": "scoring",
+      "modelId": "anchor.official-score",
+      "modelVersion": "score-pkg-r1",
+      "evidenceLevel": "SOFTWARE_VERIFIED",
+      "status": "PASS",
+      "methodId": "package-smoke-and-parity-fixture",
+      "metricId": "deterministic-contract-status",
+      "measuredValue": 0,
+      "units": "pass-count",
+      "threshold": 0,
+      "tolerance": 0,
+      "errorValue": 0,
+      "relativeError": 0,
+      "fixtureIds": [
+        "tests/fixtures/scoring_package_r1_parity.json"
+      ],
+      "sourceArtifactDigests": {
+        "tests/fixtures/scoring_package_r1_parity.json": "fnv1a32:c6533216"
+      },
+      "packageVersions": {
+        "contracts": "0.0.0-arch-r1",
+        "bathymetry": "0.0.0-arch-r1",
+        "currents": "0.0.0-arch-r1",
+        "scalar-processes": "0.1.0-process-pkg-r1",
+        "environment": "0.0.0-arch-r1",
+        "mission-simulator": "0.0.0-arch-r1",
+        "scoring": "0.0.0-score-pkg-r1",
+        "codecs": "0.1.0-codec-r1",
+        "validation": "0.1.0-sci-valid-r2a",
+        "validationRuntime": "anchor-validation-sci-valid-r2a"
+      },
+      "runtimeMetadata": {
+        "builderVersion": "sci-valid-r2a-baseline-builder",
+        "deterministic": true,
+        "officialBaseline": true
+      },
+      "interpretation": "Deterministic score passed as deterministic Pre-Alpha evidence for Scoring.",
+      "limitations": [
+        "Evidence is fixture-scoped and deterministic; it does not generalize to operational ocean forecasting or certified navigation."
+      ],
+      "references": [
+        {
+          "version": "1.0",
+          "referenceId": "scoring-and-benchmark-contract-md",
+          "title": "Scoring And Benchmark Contract",
+          "authors": "ANCHOR project",
+          "year": 2026,
+          "source": "local repository documentation",
+          "persistentIdentifier": null,
+          "localPath": "docs/scoring_and_benchmark_contract.md",
+          "role": "methodReference"
+        },
+        {
+          "version": "1.0",
+          "referenceId": "mission-scoring-and-regret-md",
+          "title": "Mission Scoring And Regret",
+          "authors": "ANCHOR project",
+          "year": 2026,
+          "source": "local repository documentation",
+          "persistentIdentifier": null,
+          "localPath": "docs/mission_scoring_and_regret.md",
+          "role": "methodReference"
+        }
+      ],
+      "reproductionCommand": "node tools/science/build_validation_baseline.mjs",
+      "evidenceDigest": "fnv1a32:fbcf704d"
+    },
+    {
+      "version": "1.0",
+      "claimId": "scoring.raw-metric-mapping",
+      "componentId": "scoring",
+      "modelId": "anchor.official-score",
+      "modelVersion": "score-pkg-r1",
+      "evidenceLevel": "SOFTWARE_VERIFIED",
+      "status": "PASS",
+      "methodId": "package-smoke-and-parity-fixture",
+      "metricId": "deterministic-contract-status",
+      "measuredValue": 0,
+      "units": "pass-count",
+      "threshold": 0,
+      "tolerance": 0,
+      "errorValue": 0,
+      "relativeError": 0,
+      "fixtureIds": [
+        "tests/fixtures/scoring_package_r1_parity.json"
+      ],
+      "sourceArtifactDigests": {
+        "tests/fixtures/scoring_package_r1_parity.json": "fnv1a32:c6533216"
+      },
+      "packageVersions": {
+        "contracts": "0.0.0-arch-r1",
+        "bathymetry": "0.0.0-arch-r1",
+        "currents": "0.0.0-arch-r1",
+        "scalar-processes": "0.1.0-process-pkg-r1",
+        "environment": "0.0.0-arch-r1",
+        "mission-simulator": "0.0.0-arch-r1",
+        "scoring": "0.0.0-score-pkg-r1",
+        "codecs": "0.1.0-codec-r1",
+        "validation": "0.1.0-sci-valid-r2a",
+        "validationRuntime": "anchor-validation-sci-valid-r2a"
+      },
+      "runtimeMetadata": {
+        "builderVersion": "sci-valid-r2a-baseline-builder",
+        "deterministic": true,
+        "officialBaseline": true
+      },
+      "interpretation": "Raw metric mapping passed as deterministic Pre-Alpha evidence for Scoring.",
+      "limitations": [
+        "Evidence is fixture-scoped and deterministic; it does not generalize to operational ocean forecasting or certified navigation."
+      ],
+      "references": [
+        {
+          "version": "1.0",
+          "referenceId": "scoring-and-benchmark-contract-md",
+          "title": "Scoring And Benchmark Contract",
+          "authors": "ANCHOR project",
+          "year": 2026,
+          "source": "local repository documentation",
+          "persistentIdentifier": null,
+          "localPath": "docs/scoring_and_benchmark_contract.md",
+          "role": "methodReference"
+        },
+        {
+          "version": "1.0",
+          "referenceId": "mission-scoring-and-regret-md",
+          "title": "Mission Scoring And Regret",
+          "authors": "ANCHOR project",
+          "year": 2026,
+          "source": "local repository documentation",
+          "persistentIdentifier": null,
+          "localPath": "docs/mission_scoring_and_regret.md",
+          "role": "methodReference"
+        }
+      ],
+      "reproductionCommand": "node tools/science/build_validation_baseline.mjs",
+      "evidenceDigest": "fnv1a32:644d6d84"
+    },
+    {
+      "version": "1.0",
+      "claimId": "scoring.weights-and-contributions",
+      "componentId": "scoring",
+      "modelId": "anchor.official-score",
+      "modelVersion": "score-pkg-r1",
+      "evidenceLevel": "SOFTWARE_VERIFIED",
+      "status": "PASS",
+      "methodId": "package-smoke-and-parity-fixture",
+      "metricId": "deterministic-contract-status",
+      "measuredValue": 0,
+      "units": "pass-count",
+      "threshold": 0,
+      "tolerance": 0,
+      "errorValue": 0,
+      "relativeError": 0,
+      "fixtureIds": [
+        "tests/fixtures/scoring_package_r1_parity.json"
+      ],
+      "sourceArtifactDigests": {
+        "tests/fixtures/scoring_package_r1_parity.json": "fnv1a32:c6533216"
+      },
+      "packageVersions": {
+        "contracts": "0.0.0-arch-r1",
+        "bathymetry": "0.0.0-arch-r1",
+        "currents": "0.0.0-arch-r1",
+        "scalar-processes": "0.1.0-process-pkg-r1",
+        "environment": "0.0.0-arch-r1",
+        "mission-simulator": "0.0.0-arch-r1",
+        "scoring": "0.0.0-score-pkg-r1",
+        "codecs": "0.1.0-codec-r1",
+        "validation": "0.1.0-sci-valid-r2a",
+        "validationRuntime": "anchor-validation-sci-valid-r2a"
+      },
+      "runtimeMetadata": {
+        "builderVersion": "sci-valid-r2a-baseline-builder",
+        "deterministic": true,
+        "officialBaseline": true
+      },
+      "interpretation": "Weights and contributions passed as deterministic Pre-Alpha evidence for Scoring.",
+      "limitations": [
+        "Evidence is fixture-scoped and deterministic; it does not generalize to operational ocean forecasting or certified navigation."
+      ],
+      "references": [
+        {
+          "version": "1.0",
+          "referenceId": "scoring-and-benchmark-contract-md",
+          "title": "Scoring And Benchmark Contract",
+          "authors": "ANCHOR project",
+          "year": 2026,
+          "source": "local repository documentation",
+          "persistentIdentifier": null,
+          "localPath": "docs/scoring_and_benchmark_contract.md",
+          "role": "methodReference"
+        },
+        {
+          "version": "1.0",
+          "referenceId": "mission-scoring-and-regret-md",
+          "title": "Mission Scoring And Regret",
+          "authors": "ANCHOR project",
+          "year": 2026,
+          "source": "local repository documentation",
+          "persistentIdentifier": null,
+          "localPath": "docs/mission_scoring_and_regret.md",
+          "role": "methodReference"
+        }
+      ],
+      "reproductionCommand": "node tools/science/build_validation_baseline.mjs",
+      "evidenceDigest": "fnv1a32:a6475ab6"
+    },
+    {
+      "version": "1.0",
+      "claimId": "scoring.planner-provenance-invariance",
+      "componentId": "scoring",
+      "modelId": "anchor.official-score",
+      "modelVersion": "score-pkg-r1",
+      "evidenceLevel": "SOFTWARE_VERIFIED",
+      "status": "PASS",
+      "methodId": "package-smoke-and-parity-fixture",
+      "metricId": "deterministic-contract-status",
+      "measuredValue": 0,
+      "units": "pass-count",
+      "threshold": 0,
+      "tolerance": 0,
+      "errorValue": 0,
+      "relativeError": 0,
+      "fixtureIds": [
+        "tests/fixtures/scoring_package_r1_parity.json"
+      ],
+      "sourceArtifactDigests": {
+        "tests/fixtures/scoring_package_r1_parity.json": "fnv1a32:c6533216"
+      },
+      "packageVersions": {
+        "contracts": "0.0.0-arch-r1",
+        "bathymetry": "0.0.0-arch-r1",
+        "currents": "0.0.0-arch-r1",
+        "scalar-processes": "0.1.0-process-pkg-r1",
+        "environment": "0.0.0-arch-r1",
+        "mission-simulator": "0.0.0-arch-r1",
+        "scoring": "0.0.0-score-pkg-r1",
+        "codecs": "0.1.0-codec-r1",
+        "validation": "0.1.0-sci-valid-r2a",
+        "validationRuntime": "anchor-validation-sci-valid-r2a"
+      },
+      "runtimeMetadata": {
+        "builderVersion": "sci-valid-r2a-baseline-builder",
+        "deterministic": true,
+        "officialBaseline": true
+      },
+      "interpretation": "Planner provenance does not alter score passed as deterministic Pre-Alpha evidence for Scoring.",
+      "limitations": [
+        "Evidence is fixture-scoped and deterministic; it does not generalize to operational ocean forecasting or certified navigation."
+      ],
+      "references": [
+        {
+          "version": "1.0",
+          "referenceId": "scoring-and-benchmark-contract-md",
+          "title": "Scoring And Benchmark Contract",
+          "authors": "ANCHOR project",
+          "year": 2026,
+          "source": "local repository documentation",
+          "persistentIdentifier": null,
+          "localPath": "docs/scoring_and_benchmark_contract.md",
+          "role": "methodReference"
+        },
+        {
+          "version": "1.0",
+          "referenceId": "mission-scoring-and-regret-md",
+          "title": "Mission Scoring And Regret",
+          "authors": "ANCHOR project",
+          "year": 2026,
+          "source": "local repository documentation",
+          "persistentIdentifier": null,
+          "localPath": "docs/mission_scoring_and_regret.md",
+          "role": "methodReference"
+        }
+      ],
+      "reproductionCommand": "node tools/science/build_validation_baseline.mjs",
+      "evidenceDigest": "fnv1a32:e427f9ba"
+    },
+    {
+      "version": "1.0",
+      "claimId": "scoring.score-digest",
+      "componentId": "scoring",
+      "modelId": "anchor.official-score",
+      "modelVersion": "score-pkg-r1",
+      "evidenceLevel": "SOFTWARE_VERIFIED",
+      "status": "PASS",
+      "methodId": "package-smoke-and-parity-fixture",
+      "metricId": "deterministic-contract-status",
+      "measuredValue": 0,
+      "units": "pass-count",
+      "threshold": 0,
+      "tolerance": 0,
+      "errorValue": 0,
+      "relativeError": 0,
+      "fixtureIds": [
+        "tests/fixtures/scoring_package_r1_parity.json"
+      ],
+      "sourceArtifactDigests": {
+        "tests/fixtures/scoring_package_r1_parity.json": "fnv1a32:c6533216"
+      },
+      "packageVersions": {
+        "contracts": "0.0.0-arch-r1",
+        "bathymetry": "0.0.0-arch-r1",
+        "currents": "0.0.0-arch-r1",
+        "scalar-processes": "0.1.0-process-pkg-r1",
+        "environment": "0.0.0-arch-r1",
+        "mission-simulator": "0.0.0-arch-r1",
+        "scoring": "0.0.0-score-pkg-r1",
+        "codecs": "0.1.0-codec-r1",
+        "validation": "0.1.0-sci-valid-r2a",
+        "validationRuntime": "anchor-validation-sci-valid-r2a"
+      },
+      "runtimeMetadata": {
+        "builderVersion": "sci-valid-r2a-baseline-builder",
+        "deterministic": true,
+        "officialBaseline": true
+      },
+      "interpretation": "Score digest stability passed as deterministic Pre-Alpha evidence for Scoring.",
+      "limitations": [
+        "Evidence is fixture-scoped and deterministic; it does not generalize to operational ocean forecasting or certified navigation."
+      ],
+      "references": [
+        {
+          "version": "1.0",
+          "referenceId": "scoring-and-benchmark-contract-md",
+          "title": "Scoring And Benchmark Contract",
+          "authors": "ANCHOR project",
+          "year": 2026,
+          "source": "local repository documentation",
+          "persistentIdentifier": null,
+          "localPath": "docs/scoring_and_benchmark_contract.md",
+          "role": "methodReference"
+        },
+        {
+          "version": "1.0",
+          "referenceId": "mission-scoring-and-regret-md",
+          "title": "Mission Scoring And Regret",
+          "authors": "ANCHOR project",
+          "year": 2026,
+          "source": "local repository documentation",
+          "persistentIdentifier": null,
+          "localPath": "docs/mission_scoring_and_regret.md",
+          "role": "methodReference"
+        }
+      ],
+      "reproductionCommand": "node tools/science/build_validation_baseline.mjs",
+      "evidenceDigest": "fnv1a32:4ffab572"
+    },
+    {
+      "version": "1.0",
+      "claimId": "scoring.historical-profile-identity",
+      "componentId": "scoring",
+      "modelId": "anchor.official-score",
+      "modelVersion": "score-pkg-r1",
+      "evidenceLevel": "SOFTWARE_VERIFIED",
+      "status": "PASS",
+      "methodId": "package-smoke-and-parity-fixture",
+      "metricId": "deterministic-contract-status",
+      "measuredValue": 0,
+      "units": "pass-count",
+      "threshold": 0,
+      "tolerance": 0,
+      "errorValue": 0,
+      "relativeError": 0,
+      "fixtureIds": [
+        "tests/fixtures/scoring_package_r1_parity.json"
+      ],
+      "sourceArtifactDigests": {
+        "tests/fixtures/scoring_package_r1_parity.json": "fnv1a32:c6533216"
+      },
+      "packageVersions": {
+        "contracts": "0.0.0-arch-r1",
+        "bathymetry": "0.0.0-arch-r1",
+        "currents": "0.0.0-arch-r1",
+        "scalar-processes": "0.1.0-process-pkg-r1",
+        "environment": "0.0.0-arch-r1",
+        "mission-simulator": "0.0.0-arch-r1",
+        "scoring": "0.0.0-score-pkg-r1",
+        "codecs": "0.1.0-codec-r1",
+        "validation": "0.1.0-sci-valid-r2a",
+        "validationRuntime": "anchor-validation-sci-valid-r2a"
+      },
+      "runtimeMetadata": {
+        "builderVersion": "sci-valid-r2a-baseline-builder",
+        "deterministic": true,
+        "officialBaseline": true
+      },
+      "interpretation": "Historical profile identity passed as deterministic Pre-Alpha evidence for Scoring.",
+      "limitations": [
+        "Evidence is fixture-scoped and deterministic; it does not generalize to operational ocean forecasting or certified navigation."
+      ],
+      "references": [
+        {
+          "version": "1.0",
+          "referenceId": "scoring-and-benchmark-contract-md",
+          "title": "Scoring And Benchmark Contract",
+          "authors": "ANCHOR project",
+          "year": 2026,
+          "source": "local repository documentation",
+          "persistentIdentifier": null,
+          "localPath": "docs/scoring_and_benchmark_contract.md",
+          "role": "methodReference"
+        },
+        {
+          "version": "1.0",
+          "referenceId": "mission-scoring-and-regret-md",
+          "title": "Mission Scoring And Regret",
+          "authors": "ANCHOR project",
+          "year": 2026,
+          "source": "local repository documentation",
+          "persistentIdentifier": null,
+          "localPath": "docs/mission_scoring_and_regret.md",
+          "role": "methodReference"
+        }
+      ],
+      "reproductionCommand": "node tools/science/build_validation_baseline.mjs",
+      "evidenceDigest": "fnv1a32:6cc5e556"
+    },
+    {
+      "version": "1.0",
+      "claimId": "scoring.regret-reference-status",
+      "componentId": "scoring",
+      "modelId": "anchor.official-score",
+      "modelVersion": "score-pkg-r1",
+      "evidenceLevel": "NOT_YET_EVALUATED",
+      "status": "NOT_EVALUATED",
+      "methodId": "gap-record",
+      "metricId": "external-reference-status",
+      "measuredValue": null,
+      "units": "status",
+      "threshold": null,
+      "tolerance": null,
+      "errorValue": null,
+      "relativeError": null,
+      "fixtureIds": [
+        "tests/fixtures/scoring_package_r1_parity.json"
+      ],
+      "sourceArtifactDigests": {
+        "tests/fixtures/scoring_package_r1_parity.json": "fnv1a32:c6533216"
+      },
+      "packageVersions": {
+        "contracts": "0.0.0-arch-r1",
+        "bathymetry": "0.0.0-arch-r1",
+        "currents": "0.0.0-arch-r1",
+        "scalar-processes": "0.1.0-process-pkg-r1",
+        "environment": "0.0.0-arch-r1",
+        "mission-simulator": "0.0.0-arch-r1",
+        "scoring": "0.0.0-score-pkg-r1",
+        "codecs": "0.1.0-codec-r1",
+        "validation": "0.1.0-sci-valid-r2a",
+        "validationRuntime": "anchor-validation-sci-valid-r2a"
+      },
+      "runtimeMetadata": {
+        "builderVersion": "sci-valid-r2a-baseline-builder",
+        "deterministic": true,
+        "officialBaseline": true
+      },
+      "interpretation": "Regret reference availability is an explicit evidence gap for Scoring; no external result is claimed.",
+      "limitations": [
+        "No independent local reference data or sea-trial fixture is part of this baseline.",
+        "This gap must not be described as externally compared or operationally validated."
+      ],
+      "references": [
+        {
+          "version": "1.0",
+          "referenceId": "scoring-and-benchmark-contract-md",
+          "title": "Scoring And Benchmark Contract",
+          "authors": "ANCHOR project",
+          "year": 2026,
+          "source": "local repository documentation",
+          "persistentIdentifier": null,
+          "localPath": "docs/scoring_and_benchmark_contract.md",
+          "role": "methodReference"
+        },
+        {
+          "version": "1.0",
+          "referenceId": "mission-scoring-and-regret-md",
+          "title": "Mission Scoring And Regret",
+          "authors": "ANCHOR project",
+          "year": 2026,
+          "source": "local repository documentation",
+          "persistentIdentifier": null,
+          "localPath": "docs/mission_scoring_and_regret.md",
+          "role": "methodReference"
+        }
+      ],
+      "reproductionCommand": "node tools/science/build_validation_baseline.mjs",
+      "evidenceDigest": "fnv1a32:2bd4c1b6"
+    }
+  ],
+  "evidenceLevelSummary": {
+    "SOFTWARE_VERIFIED": 7,
+    "NOT_YET_EVALUATED": 1
+  },
+  "statusSummary": {
+    "PASS": 7,
+    "NOT_EVALUATED": 1
+  },
+  "assumptions": [
+    "Scoring evidence uses checked-in public fixtures and repo-local commands.",
+    "Time is seconds, horizontal coordinates are local mission coordinates, and depth is positive-down meters where applicable.",
+    "Official reports are immutable baseline artifacts; browser reruns are exploratory unless they reproduce the official pipeline."
+  ],
+  "limitations": [
+    "Scoring is evaluated for deterministic benchmark and education use only.",
+    "The report does not claim operational ocean forecast skill, certified navigation suitability, or calibrated digital-twin fidelity.",
+    "Literature and local method references motivate methods but do not count as external numerical comparisons."
+  ],
+  "references": [
+    {
+      "version": "1.0",
+      "referenceId": "scoring-and-benchmark-contract-md",
+      "title": "Scoring And Benchmark Contract",
+      "authors": "ANCHOR project",
+      "year": 2026,
+      "source": "local repository documentation",
+      "persistentIdentifier": null,
+      "localPath": "docs/scoring_and_benchmark_contract.md",
+      "role": "methodReference"
+    },
+    {
+      "version": "1.0",
+      "referenceId": "mission-scoring-and-regret-md",
+      "title": "Mission Scoring And Regret",
+      "authors": "ANCHOR project",
+      "year": 2026,
+      "source": "local repository documentation",
+      "persistentIdentifier": null,
+      "localPath": "docs/mission_scoring_and_regret.md",
+      "role": "methodReference"
+    }
+  ],
+  "packageVersions": {
+    "contracts": "0.0.0-arch-r1",
+    "bathymetry": "0.0.0-arch-r1",
+    "currents": "0.0.0-arch-r1",
+    "scalar-processes": "0.1.0-process-pkg-r1",
+    "environment": "0.0.0-arch-r1",
+    "mission-simulator": "0.0.0-arch-r1",
+    "scoring": "0.0.0-score-pkg-r1",
+    "codecs": "0.1.0-codec-r1",
+    "validation": "0.1.0-sci-valid-r2a",
+    "validationRuntime": "anchor-validation-sci-valid-r2a"
+  },
+  "sourceArtifactDigests": {
+    "tests/fixtures/scoring_package_r1_parity.json": "fnv1a32:c6533216"
+  },
+  "suitabilityDecision": {
+    "deterministicRegression": "GO",
+    "educationalUse": "GO",
+    "classicalPlannerBenchmark": "CONDITIONAL",
+    "mlDatasetGeneration": "CONDITIONAL",
+    "operationalForecastUse": "NO_GO",
+    "certifiedNavigationUse": "NO_GO",
+    "rationale": "Scoring has deterministic package evidence for software/benchmark use, but external or operational claims remain out of scope where not evaluated.",
+    "conditions": [
+      "Use only with documented synthetic-fixture limitations.",
+      "Do not describe results as operational validation."
+    ]
+  },
+  "visualizations": [
+    {
+      "visualizationId": "scoring-status-bars",
+      "title": "Scoring status counts",
+      "kind": "bar-summary",
+      "textSummary": "Bar heights count evidence records by explicit status label. This is not a scientific-validity score.",
+      "rows": [
+        {
+          "label": "PASS",
+          "value": 7
+        },
+        {
+          "label": "NOT_EVALUATED",
+          "value": 1
+        }
+      ]
+    },
+    {
+      "visualizationId": "scoring-evidence-ladder",
+      "title": "Scoring evidence levels",
+      "kind": "bar-summary",
+      "textSummary": "Bar heights count claims by evidence level. External comparison and operational validation are kept separate from software checks.",
+      "rows": [
+        {
+          "label": "SOFTWARE_VERIFIED",
+          "value": 7
+        },
+        {
+          "label": "NOT_YET_EVALUATED",
+          "value": 1
+        }
+      ]
+    },
+    {
+      "visualizationId": "scoring-metric-table",
+      "title": "Scoring raw metric table",
+      "kind": "table",
+      "textSummary": "Compact table for the selected report claims and evidence records.",
+      "rows": [
+        {
+          "claimId": "scoring.score-profile-version",
+          "status": "PASS",
+          "metricId": "deterministic-contract-status",
+          "measuredValue": 0,
+          "units": "pass-count",
+          "threshold": 0,
+          "tolerance": 0
+        },
+        {
+          "claimId": "scoring.deterministic-score",
+          "status": "PASS",
+          "metricId": "deterministic-contract-status",
+          "measuredValue": 0,
+          "units": "pass-count",
+          "threshold": 0,
+          "tolerance": 0
+        },
+        {
+          "claimId": "scoring.raw-metric-mapping",
+          "status": "PASS",
+          "metricId": "deterministic-contract-status",
+          "measuredValue": 0,
+          "units": "pass-count",
+          "threshold": 0,
+          "tolerance": 0
+        },
+        {
+          "claimId": "scoring.weights-and-contributions",
+          "status": "PASS",
+          "metricId": "deterministic-contract-status",
+          "measuredValue": 0,
+          "units": "pass-count",
+          "threshold": 0,
+          "tolerance": 0
+        },
+        {
+          "claimId": "scoring.planner-provenance-invariance",
+          "status": "PASS",
+          "metricId": "deterministic-contract-status",
+          "measuredValue": 0,
+          "units": "pass-count",
+          "threshold": 0,
+          "tolerance": 0
+        },
+        {
+          "claimId": "scoring.score-digest",
+          "status": "PASS",
+          "metricId": "deterministic-contract-status",
+          "measuredValue": 0,
+          "units": "pass-count",
+          "threshold": 0,
+          "tolerance": 0
+        },
+        {
+          "claimId": "scoring.historical-profile-identity",
+          "status": "PASS",
+          "metricId": "deterministic-contract-status",
+          "measuredValue": 0,
+          "units": "pass-count",
+          "threshold": 0,
+          "tolerance": 0
+        },
+        {
+          "claimId": "scoring.regret-reference-status",
+          "status": "NOT_EVALUATED",
+          "metricId": "external-reference-status",
+          "measuredValue": null,
+          "units": "status",
+          "threshold": null,
+          "tolerance": null
+        }
+      ]
+    }
+  ],
+  "claimBoundary": {
+    "benchmarkOrEducationUse": true,
+    "operationalForecast": false,
+    "certifiedNavigation": false,
+    "calibratedDigitalTwin": false
+  },
+  "visibilityClass": "PUBLIC",
+  "fairnessClass": "PUBLIC_FAIR",
+  "reportDigest": "fnv1a32:1159404c"
+}

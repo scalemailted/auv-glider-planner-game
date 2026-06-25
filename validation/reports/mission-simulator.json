@@ -1,0 +1,858 @@
+{
+  "schemaVersion": "1.0",
+  "type": "anchor.scientific-validation-report",
+  "reportId": "anchor-mission-simulator-scientific-validation-report",
+  "componentId": "mission-simulator",
+  "componentLabel": "Mission Simulator",
+  "modelId": "anchor.mission-simulator",
+  "modelVersion": "mission-simulator-r2",
+  "summary": "Mission Simulator has a Pre-Alpha evidence report built from deterministic package fixtures and documented diagnostics.",
+  "claims": [
+    {
+      "version": "1.0",
+      "claimId": "mission-simulator.deterministic-transitions",
+      "componentId": "mission-simulator",
+      "title": "Deterministic transitions",
+      "plainLanguageClaim": "Mission Simulator supports deterministic transitions within the deterministic ANCHOR benchmark fixtures.",
+      "technicalClaim": "anchor.mission-simulator deterministic-transitions is evaluated by package-smoke-and-parity-fixture using fixture-backed deterministic metrics. Status is recorded separately from evidence level.",
+      "evidenceLevel": "SOFTWARE_VERIFIED",
+      "methodId": "package-smoke-and-parity-fixture",
+      "metricId": "deterministic-contract-status",
+      "units": "pass-count",
+      "expectedDirection": "less-than-or-equal",
+      "threshold": 0,
+      "tolerance": 0,
+      "thresholdRationale": "Software contract checks require zero hard validation failures for the checked fixture and package version.",
+      "fixtureIds": [
+        "tests/fixtures/mission_simulator_package_r2_parity.json"
+      ],
+      "referenceIds": [
+        "mission-simulator-package-md"
+      ],
+      "applicability": "deterministic-regression, education, and benchmark-suitability review",
+      "public": true,
+      "claimDigest": "fnv1a32:85b4b818"
+    },
+    {
+      "version": "1.0",
+      "claimId": "mission-simulator.event-ordering",
+      "componentId": "mission-simulator",
+      "title": "Event ordering",
+      "plainLanguageClaim": "Mission Simulator supports event ordering within the deterministic ANCHOR benchmark fixtures.",
+      "technicalClaim": "anchor.mission-simulator event-ordering is evaluated by package-smoke-and-parity-fixture using fixture-backed deterministic metrics. Status is recorded separately from evidence level.",
+      "evidenceLevel": "SOFTWARE_VERIFIED",
+      "methodId": "package-smoke-and-parity-fixture",
+      "metricId": "deterministic-contract-status",
+      "units": "pass-count",
+      "expectedDirection": "less-than-or-equal",
+      "threshold": 0,
+      "tolerance": 0,
+      "thresholdRationale": "Software contract checks require zero hard validation failures for the checked fixture and package version.",
+      "fixtureIds": [
+        "tests/fixtures/mission_simulator_package_r2_parity.json"
+      ],
+      "referenceIds": [
+        "mission-simulator-package-md"
+      ],
+      "applicability": "deterministic-regression, education, and benchmark-suitability review",
+      "public": true,
+      "claimDigest": "fnv1a32:699222ca"
+    },
+    {
+      "version": "1.0",
+      "claimId": "mission-simulator.terminal-state-evaluation",
+      "componentId": "mission-simulator",
+      "title": "Terminal state evaluation",
+      "plainLanguageClaim": "Mission Simulator supports terminal state evaluation within the deterministic ANCHOR benchmark fixtures.",
+      "technicalClaim": "anchor.mission-simulator terminal-state-evaluation is evaluated by package-smoke-and-parity-fixture using fixture-backed deterministic metrics. Status is recorded separately from evidence level.",
+      "evidenceLevel": "SOFTWARE_VERIFIED",
+      "methodId": "package-smoke-and-parity-fixture",
+      "metricId": "deterministic-contract-status",
+      "units": "pass-count",
+      "expectedDirection": "less-than-or-equal",
+      "threshold": 0,
+      "tolerance": 0,
+      "thresholdRationale": "Software contract checks require zero hard validation failures for the checked fixture and package version.",
+      "fixtureIds": [
+        "tests/fixtures/mission_simulator_package_r2_parity.json"
+      ],
+      "referenceIds": [
+        "mission-simulator-package-md"
+      ],
+      "applicability": "deterministic-regression, education, and benchmark-suitability review",
+      "public": true,
+      "claimDigest": "fnv1a32:daaf84ee"
+    },
+    {
+      "version": "1.0",
+      "claimId": "mission-simulator.snapshot-restart",
+      "componentId": "mission-simulator",
+      "title": "Snapshot/restart compatibility",
+      "plainLanguageClaim": "Mission Simulator supports snapshot/restart compatibility within the deterministic ANCHOR benchmark fixtures.",
+      "technicalClaim": "anchor.mission-simulator snapshot-restart is evaluated by package-smoke-and-parity-fixture using fixture-backed deterministic metrics. Status is recorded separately from evidence level.",
+      "evidenceLevel": "SOFTWARE_VERIFIED",
+      "methodId": "package-smoke-and-parity-fixture",
+      "metricId": "deterministic-contract-status",
+      "units": "pass-count",
+      "expectedDirection": "less-than-or-equal",
+      "threshold": 0,
+      "tolerance": 0,
+      "thresholdRationale": "Software contract checks require zero hard validation failures for the checked fixture and package version.",
+      "fixtureIds": [
+        "tests/fixtures/mission_simulator_package_r2_parity.json"
+      ],
+      "referenceIds": [
+        "mission-simulator-package-md"
+      ],
+      "applicability": "deterministic-regression, education, and benchmark-suitability review",
+      "public": true,
+      "claimDigest": "fnv1a32:5bb95eb8"
+    },
+    {
+      "version": "1.0",
+      "claimId": "mission-simulator.browser-headless-parity",
+      "componentId": "mission-simulator",
+      "title": "Browser/headless parity",
+      "plainLanguageClaim": "Mission Simulator supports browser/headless parity within the deterministic ANCHOR benchmark fixtures.",
+      "technicalClaim": "anchor.mission-simulator browser-headless-parity is evaluated by package-smoke-and-parity-fixture using fixture-backed deterministic metrics. Status is recorded separately from evidence level.",
+      "evidenceLevel": "SOFTWARE_VERIFIED",
+      "methodId": "package-smoke-and-parity-fixture",
+      "metricId": "deterministic-contract-status",
+      "units": "pass-count",
+      "expectedDirection": "less-than-or-equal",
+      "threshold": 0,
+      "tolerance": 0,
+      "thresholdRationale": "Software contract checks require zero hard validation failures for the checked fixture and package version.",
+      "fixtureIds": [
+        "tests/fixtures/mission_simulator_package_r2_parity.json"
+      ],
+      "referenceIds": [
+        "mission-simulator-package-md"
+      ],
+      "applicability": "deterministic-regression, education, and benchmark-suitability review",
+      "public": true,
+      "claimDigest": "fnv1a32:d2921e8c"
+    },
+    {
+      "version": "1.0",
+      "claimId": "mission-simulator.terrain-hazard-events",
+      "componentId": "mission-simulator",
+      "title": "Terrain and hazard events",
+      "plainLanguageClaim": "Mission Simulator supports terrain and hazard events within the deterministic ANCHOR benchmark fixtures.",
+      "technicalClaim": "anchor.mission-simulator terrain-hazard-events is evaluated by package-smoke-and-parity-fixture using fixture-backed deterministic metrics. Status is recorded separately from evidence level.",
+      "evidenceLevel": "SOFTWARE_VERIFIED",
+      "methodId": "package-smoke-and-parity-fixture",
+      "metricId": "deterministic-contract-status",
+      "units": "pass-count",
+      "expectedDirection": "less-than-or-equal",
+      "threshold": 0,
+      "tolerance": 0,
+      "thresholdRationale": "Software contract checks require zero hard validation failures for the checked fixture and package version.",
+      "fixtureIds": [
+        "tests/fixtures/mission_simulator_package_r2_parity.json"
+      ],
+      "referenceIds": [
+        "mission-simulator-package-md"
+      ],
+      "applicability": "deterministic-regression, education, and benchmark-suitability review",
+      "public": true,
+      "claimDigest": "fnv1a32:6f9c9884"
+    },
+    {
+      "version": "1.0",
+      "claimId": "mission-simulator.surfacing-replan",
+      "componentId": "mission-simulator",
+      "title": "Surfacing/replan behavior",
+      "plainLanguageClaim": "Mission Simulator supports surfacing/replan behavior within the deterministic ANCHOR benchmark fixtures.",
+      "technicalClaim": "anchor.mission-simulator surfacing-replan is evaluated by package-smoke-and-parity-fixture using fixture-backed deterministic metrics. Status is recorded separately from evidence level.",
+      "evidenceLevel": "SOFTWARE_VERIFIED",
+      "methodId": "package-smoke-and-parity-fixture",
+      "metricId": "deterministic-contract-status",
+      "units": "pass-count",
+      "expectedDirection": "less-than-or-equal",
+      "threshold": 0,
+      "tolerance": 0,
+      "thresholdRationale": "Software contract checks require zero hard validation failures for the checked fixture and package version.",
+      "fixtureIds": [
+        "tests/fixtures/mission_simulator_package_r2_parity.json"
+      ],
+      "referenceIds": [
+        "mission-simulator-package-md"
+      ],
+      "applicability": "deterministic-regression, education, and benchmark-suitability review",
+      "public": true,
+      "claimDigest": "fnv1a32:95c0f57e"
+    },
+    {
+      "version": "1.0",
+      "claimId": "mission-simulator.raw-metrics",
+      "componentId": "mission-simulator",
+      "title": "Raw mission metrics",
+      "plainLanguageClaim": "Mission Simulator supports raw mission metrics within the deterministic ANCHOR benchmark fixtures.",
+      "technicalClaim": "anchor.mission-simulator raw-metrics is evaluated by package-smoke-and-parity-fixture using fixture-backed deterministic metrics. Status is recorded separately from evidence level.",
+      "evidenceLevel": "SOFTWARE_VERIFIED",
+      "methodId": "package-smoke-and-parity-fixture",
+      "metricId": "deterministic-contract-status",
+      "units": "pass-count",
+      "expectedDirection": "less-than-or-equal",
+      "threshold": 0,
+      "tolerance": 0,
+      "thresholdRationale": "Software contract checks require zero hard validation failures for the checked fixture and package version.",
+      "fixtureIds": [
+        "tests/fixtures/mission_simulator_package_r2_parity.json"
+      ],
+      "referenceIds": [
+        "mission-simulator-package-md"
+      ],
+      "applicability": "deterministic-regression, education, and benchmark-suitability review",
+      "public": true,
+      "claimDigest": "fnv1a32:d4eb28cc"
+    }
+  ],
+  "evidence": [
+    {
+      "version": "1.0",
+      "claimId": "mission-simulator.deterministic-transitions",
+      "componentId": "mission-simulator",
+      "modelId": "anchor.mission-simulator",
+      "modelVersion": "mission-simulator-r2",
+      "evidenceLevel": "SOFTWARE_VERIFIED",
+      "status": "PASS",
+      "methodId": "package-smoke-and-parity-fixture",
+      "metricId": "deterministic-contract-status",
+      "measuredValue": 0,
+      "units": "pass-count",
+      "threshold": 0,
+      "tolerance": 0,
+      "errorValue": 0,
+      "relativeError": 0,
+      "fixtureIds": [
+        "tests/fixtures/mission_simulator_package_r2_parity.json"
+      ],
+      "sourceArtifactDigests": {
+        "tests/fixtures/mission_simulator_package_r2_parity.json": "fnv1a32:2563abdc"
+      },
+      "packageVersions": {
+        "contracts": "0.0.0-arch-r1",
+        "bathymetry": "0.0.0-arch-r1",
+        "currents": "0.0.0-arch-r1",
+        "scalar-processes": "0.1.0-process-pkg-r1",
+        "environment": "0.0.0-arch-r1",
+        "mission-simulator": "0.0.0-arch-r1",
+        "scoring": "0.0.0-score-pkg-r1",
+        "codecs": "0.1.0-codec-r1",
+        "validation": "0.1.0-sci-valid-r2a",
+        "validationRuntime": "anchor-validation-sci-valid-r2a"
+      },
+      "runtimeMetadata": {
+        "builderVersion": "sci-valid-r2a-baseline-builder",
+        "deterministic": true,
+        "officialBaseline": true
+      },
+      "interpretation": "Deterministic transitions passed as deterministic Pre-Alpha evidence for Mission Simulator.",
+      "limitations": [
+        "Evidence is fixture-scoped and deterministic; it does not generalize to operational ocean forecasting or certified navigation."
+      ],
+      "references": [
+        {
+          "version": "1.0",
+          "referenceId": "mission-simulator-package-md",
+          "title": "Mission Simulator Package",
+          "authors": "ANCHOR project",
+          "year": 2026,
+          "source": "local repository documentation",
+          "persistentIdentifier": null,
+          "localPath": "docs/mission_simulator_package.md",
+          "role": "methodReference"
+        }
+      ],
+      "reproductionCommand": "node tools/science/build_validation_baseline.mjs",
+      "evidenceDigest": "fnv1a32:dfcf91e1"
+    },
+    {
+      "version": "1.0",
+      "claimId": "mission-simulator.event-ordering",
+      "componentId": "mission-simulator",
+      "modelId": "anchor.mission-simulator",
+      "modelVersion": "mission-simulator-r2",
+      "evidenceLevel": "SOFTWARE_VERIFIED",
+      "status": "PASS",
+      "methodId": "package-smoke-and-parity-fixture",
+      "metricId": "deterministic-contract-status",
+      "measuredValue": 0,
+      "units": "pass-count",
+      "threshold": 0,
+      "tolerance": 0,
+      "errorValue": 0,
+      "relativeError": 0,
+      "fixtureIds": [
+        "tests/fixtures/mission_simulator_package_r2_parity.json"
+      ],
+      "sourceArtifactDigests": {
+        "tests/fixtures/mission_simulator_package_r2_parity.json": "fnv1a32:2563abdc"
+      },
+      "packageVersions": {
+        "contracts": "0.0.0-arch-r1",
+        "bathymetry": "0.0.0-arch-r1",
+        "currents": "0.0.0-arch-r1",
+        "scalar-processes": "0.1.0-process-pkg-r1",
+        "environment": "0.0.0-arch-r1",
+        "mission-simulator": "0.0.0-arch-r1",
+        "scoring": "0.0.0-score-pkg-r1",
+        "codecs": "0.1.0-codec-r1",
+        "validation": "0.1.0-sci-valid-r2a",
+        "validationRuntime": "anchor-validation-sci-valid-r2a"
+      },
+      "runtimeMetadata": {
+        "builderVersion": "sci-valid-r2a-baseline-builder",
+        "deterministic": true,
+        "officialBaseline": true
+      },
+      "interpretation": "Event ordering passed as deterministic Pre-Alpha evidence for Mission Simulator.",
+      "limitations": [
+        "Evidence is fixture-scoped and deterministic; it does not generalize to operational ocean forecasting or certified navigation."
+      ],
+      "references": [
+        {
+          "version": "1.0",
+          "referenceId": "mission-simulator-package-md",
+          "title": "Mission Simulator Package",
+          "authors": "ANCHOR project",
+          "year": 2026,
+          "source": "local repository documentation",
+          "persistentIdentifier": null,
+          "localPath": "docs/mission_simulator_package.md",
+          "role": "methodReference"
+        }
+      ],
+      "reproductionCommand": "node tools/science/build_validation_baseline.mjs",
+      "evidenceDigest": "fnv1a32:d9688a65"
+    },
+    {
+      "version": "1.0",
+      "claimId": "mission-simulator.terminal-state-evaluation",
+      "componentId": "mission-simulator",
+      "modelId": "anchor.mission-simulator",
+      "modelVersion": "mission-simulator-r2",
+      "evidenceLevel": "SOFTWARE_VERIFIED",
+      "status": "PASS",
+      "methodId": "package-smoke-and-parity-fixture",
+      "metricId": "deterministic-contract-status",
+      "measuredValue": 0,
+      "units": "pass-count",
+      "threshold": 0,
+      "tolerance": 0,
+      "errorValue": 0,
+      "relativeError": 0,
+      "fixtureIds": [
+        "tests/fixtures/mission_simulator_package_r2_parity.json"
+      ],
+      "sourceArtifactDigests": {
+        "tests/fixtures/mission_simulator_package_r2_parity.json": "fnv1a32:2563abdc"
+      },
+      "packageVersions": {
+        "contracts": "0.0.0-arch-r1",
+        "bathymetry": "0.0.0-arch-r1",
+        "currents": "0.0.0-arch-r1",
+        "scalar-processes": "0.1.0-process-pkg-r1",
+        "environment": "0.0.0-arch-r1",
+        "mission-simulator": "0.0.0-arch-r1",
+        "scoring": "0.0.0-score-pkg-r1",
+        "codecs": "0.1.0-codec-r1",
+        "validation": "0.1.0-sci-valid-r2a",
+        "validationRuntime": "anchor-validation-sci-valid-r2a"
+      },
+      "runtimeMetadata": {
+        "builderVersion": "sci-valid-r2a-baseline-builder",
+        "deterministic": true,
+        "officialBaseline": true
+      },
+      "interpretation": "Terminal state evaluation passed as deterministic Pre-Alpha evidence for Mission Simulator.",
+      "limitations": [
+        "Evidence is fixture-scoped and deterministic; it does not generalize to operational ocean forecasting or certified navigation."
+      ],
+      "references": [
+        {
+          "version": "1.0",
+          "referenceId": "mission-simulator-package-md",
+          "title": "Mission Simulator Package",
+          "authors": "ANCHOR project",
+          "year": 2026,
+          "source": "local repository documentation",
+          "persistentIdentifier": null,
+          "localPath": "docs/mission_simulator_package.md",
+          "role": "methodReference"
+        }
+      ],
+      "reproductionCommand": "node tools/science/build_validation_baseline.mjs",
+      "evidenceDigest": "fnv1a32:771eb15a"
+    },
+    {
+      "version": "1.0",
+      "claimId": "mission-simulator.snapshot-restart",
+      "componentId": "mission-simulator",
+      "modelId": "anchor.mission-simulator",
+      "modelVersion": "mission-simulator-r2",
+      "evidenceLevel": "SOFTWARE_VERIFIED",
+      "status": "PASS",
+      "methodId": "package-smoke-and-parity-fixture",
+      "metricId": "deterministic-contract-status",
+      "measuredValue": 0,
+      "units": "pass-count",
+      "threshold": 0,
+      "tolerance": 0,
+      "errorValue": 0,
+      "relativeError": 0,
+      "fixtureIds": [
+        "tests/fixtures/mission_simulator_package_r2_parity.json"
+      ],
+      "sourceArtifactDigests": {
+        "tests/fixtures/mission_simulator_package_r2_parity.json": "fnv1a32:2563abdc"
+      },
+      "packageVersions": {
+        "contracts": "0.0.0-arch-r1",
+        "bathymetry": "0.0.0-arch-r1",
+        "currents": "0.0.0-arch-r1",
+        "scalar-processes": "0.1.0-process-pkg-r1",
+        "environment": "0.0.0-arch-r1",
+        "mission-simulator": "0.0.0-arch-r1",
+        "scoring": "0.0.0-score-pkg-r1",
+        "codecs": "0.1.0-codec-r1",
+        "validation": "0.1.0-sci-valid-r2a",
+        "validationRuntime": "anchor-validation-sci-valid-r2a"
+      },
+      "runtimeMetadata": {
+        "builderVersion": "sci-valid-r2a-baseline-builder",
+        "deterministic": true,
+        "officialBaseline": true
+      },
+      "interpretation": "Snapshot/restart compatibility passed as deterministic Pre-Alpha evidence for Mission Simulator.",
+      "limitations": [
+        "Evidence is fixture-scoped and deterministic; it does not generalize to operational ocean forecasting or certified navigation."
+      ],
+      "references": [
+        {
+          "version": "1.0",
+          "referenceId": "mission-simulator-package-md",
+          "title": "Mission Simulator Package",
+          "authors": "ANCHOR project",
+          "year": 2026,
+          "source": "local repository documentation",
+          "persistentIdentifier": null,
+          "localPath": "docs/mission_simulator_package.md",
+          "role": "methodReference"
+        }
+      ],
+      "reproductionCommand": "node tools/science/build_validation_baseline.mjs",
+      "evidenceDigest": "fnv1a32:fd991e5e"
+    },
+    {
+      "version": "1.0",
+      "claimId": "mission-simulator.browser-headless-parity",
+      "componentId": "mission-simulator",
+      "modelId": "anchor.mission-simulator",
+      "modelVersion": "mission-simulator-r2",
+      "evidenceLevel": "SOFTWARE_VERIFIED",
+      "status": "PASS",
+      "methodId": "package-smoke-and-parity-fixture",
+      "metricId": "deterministic-contract-status",
+      "measuredValue": 0,
+      "units": "pass-count",
+      "threshold": 0,
+      "tolerance": 0,
+      "errorValue": 0,
+      "relativeError": 0,
+      "fixtureIds": [
+        "tests/fixtures/mission_simulator_package_r2_parity.json"
+      ],
+      "sourceArtifactDigests": {
+        "tests/fixtures/mission_simulator_package_r2_parity.json": "fnv1a32:2563abdc"
+      },
+      "packageVersions": {
+        "contracts": "0.0.0-arch-r1",
+        "bathymetry": "0.0.0-arch-r1",
+        "currents": "0.0.0-arch-r1",
+        "scalar-processes": "0.1.0-process-pkg-r1",
+        "environment": "0.0.0-arch-r1",
+        "mission-simulator": "0.0.0-arch-r1",
+        "scoring": "0.0.0-score-pkg-r1",
+        "codecs": "0.1.0-codec-r1",
+        "validation": "0.1.0-sci-valid-r2a",
+        "validationRuntime": "anchor-validation-sci-valid-r2a"
+      },
+      "runtimeMetadata": {
+        "builderVersion": "sci-valid-r2a-baseline-builder",
+        "deterministic": true,
+        "officialBaseline": true
+      },
+      "interpretation": "Browser/headless parity passed as deterministic Pre-Alpha evidence for Mission Simulator.",
+      "limitations": [
+        "Evidence is fixture-scoped and deterministic; it does not generalize to operational ocean forecasting or certified navigation."
+      ],
+      "references": [
+        {
+          "version": "1.0",
+          "referenceId": "mission-simulator-package-md",
+          "title": "Mission Simulator Package",
+          "authors": "ANCHOR project",
+          "year": 2026,
+          "source": "local repository documentation",
+          "persistentIdentifier": null,
+          "localPath": "docs/mission_simulator_package.md",
+          "role": "methodReference"
+        }
+      ],
+      "reproductionCommand": "node tools/science/build_validation_baseline.mjs",
+      "evidenceDigest": "fnv1a32:33930a03"
+    },
+    {
+      "version": "1.0",
+      "claimId": "mission-simulator.terrain-hazard-events",
+      "componentId": "mission-simulator",
+      "modelId": "anchor.mission-simulator",
+      "modelVersion": "mission-simulator-r2",
+      "evidenceLevel": "SOFTWARE_VERIFIED",
+      "status": "PASS",
+      "methodId": "package-smoke-and-parity-fixture",
+      "metricId": "deterministic-contract-status",
+      "measuredValue": 0,
+      "units": "pass-count",
+      "threshold": 0,
+      "tolerance": 0,
+      "errorValue": 0,
+      "relativeError": 0,
+      "fixtureIds": [
+        "tests/fixtures/mission_simulator_package_r2_parity.json"
+      ],
+      "sourceArtifactDigests": {
+        "tests/fixtures/mission_simulator_package_r2_parity.json": "fnv1a32:2563abdc"
+      },
+      "packageVersions": {
+        "contracts": "0.0.0-arch-r1",
+        "bathymetry": "0.0.0-arch-r1",
+        "currents": "0.0.0-arch-r1",
+        "scalar-processes": "0.1.0-process-pkg-r1",
+        "environment": "0.0.0-arch-r1",
+        "mission-simulator": "0.0.0-arch-r1",
+        "scoring": "0.0.0-score-pkg-r1",
+        "codecs": "0.1.0-codec-r1",
+        "validation": "0.1.0-sci-valid-r2a",
+        "validationRuntime": "anchor-validation-sci-valid-r2a"
+      },
+      "runtimeMetadata": {
+        "builderVersion": "sci-valid-r2a-baseline-builder",
+        "deterministic": true,
+        "officialBaseline": true
+      },
+      "interpretation": "Terrain and hazard events passed as deterministic Pre-Alpha evidence for Mission Simulator.",
+      "limitations": [
+        "Evidence is fixture-scoped and deterministic; it does not generalize to operational ocean forecasting or certified navigation."
+      ],
+      "references": [
+        {
+          "version": "1.0",
+          "referenceId": "mission-simulator-package-md",
+          "title": "Mission Simulator Package",
+          "authors": "ANCHOR project",
+          "year": 2026,
+          "source": "local repository documentation",
+          "persistentIdentifier": null,
+          "localPath": "docs/mission_simulator_package.md",
+          "role": "methodReference"
+        }
+      ],
+      "reproductionCommand": "node tools/science/build_validation_baseline.mjs",
+      "evidenceDigest": "fnv1a32:ee59a0a9"
+    },
+    {
+      "version": "1.0",
+      "claimId": "mission-simulator.surfacing-replan",
+      "componentId": "mission-simulator",
+      "modelId": "anchor.mission-simulator",
+      "modelVersion": "mission-simulator-r2",
+      "evidenceLevel": "SOFTWARE_VERIFIED",
+      "status": "PASS",
+      "methodId": "package-smoke-and-parity-fixture",
+      "metricId": "deterministic-contract-status",
+      "measuredValue": 0,
+      "units": "pass-count",
+      "threshold": 0,
+      "tolerance": 0,
+      "errorValue": 0,
+      "relativeError": 0,
+      "fixtureIds": [
+        "tests/fixtures/mission_simulator_package_r2_parity.json"
+      ],
+      "sourceArtifactDigests": {
+        "tests/fixtures/mission_simulator_package_r2_parity.json": "fnv1a32:2563abdc"
+      },
+      "packageVersions": {
+        "contracts": "0.0.0-arch-r1",
+        "bathymetry": "0.0.0-arch-r1",
+        "currents": "0.0.0-arch-r1",
+        "scalar-processes": "0.1.0-process-pkg-r1",
+        "environment": "0.0.0-arch-r1",
+        "mission-simulator": "0.0.0-arch-r1",
+        "scoring": "0.0.0-score-pkg-r1",
+        "codecs": "0.1.0-codec-r1",
+        "validation": "0.1.0-sci-valid-r2a",
+        "validationRuntime": "anchor-validation-sci-valid-r2a"
+      },
+      "runtimeMetadata": {
+        "builderVersion": "sci-valid-r2a-baseline-builder",
+        "deterministic": true,
+        "officialBaseline": true
+      },
+      "interpretation": "Surfacing/replan behavior passed as deterministic Pre-Alpha evidence for Mission Simulator.",
+      "limitations": [
+        "Evidence is fixture-scoped and deterministic; it does not generalize to operational ocean forecasting or certified navigation."
+      ],
+      "references": [
+        {
+          "version": "1.0",
+          "referenceId": "mission-simulator-package-md",
+          "title": "Mission Simulator Package",
+          "authors": "ANCHOR project",
+          "year": 2026,
+          "source": "local repository documentation",
+          "persistentIdentifier": null,
+          "localPath": "docs/mission_simulator_package.md",
+          "role": "methodReference"
+        }
+      ],
+      "reproductionCommand": "node tools/science/build_validation_baseline.mjs",
+      "evidenceDigest": "fnv1a32:c42dd468"
+    },
+    {
+      "version": "1.0",
+      "claimId": "mission-simulator.raw-metrics",
+      "componentId": "mission-simulator",
+      "modelId": "anchor.mission-simulator",
+      "modelVersion": "mission-simulator-r2",
+      "evidenceLevel": "SOFTWARE_VERIFIED",
+      "status": "PASS",
+      "methodId": "package-smoke-and-parity-fixture",
+      "metricId": "deterministic-contract-status",
+      "measuredValue": 0,
+      "units": "pass-count",
+      "threshold": 0,
+      "tolerance": 0,
+      "errorValue": 0,
+      "relativeError": 0,
+      "fixtureIds": [
+        "tests/fixtures/mission_simulator_package_r2_parity.json"
+      ],
+      "sourceArtifactDigests": {
+        "tests/fixtures/mission_simulator_package_r2_parity.json": "fnv1a32:2563abdc"
+      },
+      "packageVersions": {
+        "contracts": "0.0.0-arch-r1",
+        "bathymetry": "0.0.0-arch-r1",
+        "currents": "0.0.0-arch-r1",
+        "scalar-processes": "0.1.0-process-pkg-r1",
+        "environment": "0.0.0-arch-r1",
+        "mission-simulator": "0.0.0-arch-r1",
+        "scoring": "0.0.0-score-pkg-r1",
+        "codecs": "0.1.0-codec-r1",
+        "validation": "0.1.0-sci-valid-r2a",
+        "validationRuntime": "anchor-validation-sci-valid-r2a"
+      },
+      "runtimeMetadata": {
+        "builderVersion": "sci-valid-r2a-baseline-builder",
+        "deterministic": true,
+        "officialBaseline": true
+      },
+      "interpretation": "Raw mission metrics passed as deterministic Pre-Alpha evidence for Mission Simulator.",
+      "limitations": [
+        "Evidence is fixture-scoped and deterministic; it does not generalize to operational ocean forecasting or certified navigation."
+      ],
+      "references": [
+        {
+          "version": "1.0",
+          "referenceId": "mission-simulator-package-md",
+          "title": "Mission Simulator Package",
+          "authors": "ANCHOR project",
+          "year": 2026,
+          "source": "local repository documentation",
+          "persistentIdentifier": null,
+          "localPath": "docs/mission_simulator_package.md",
+          "role": "methodReference"
+        }
+      ],
+      "reproductionCommand": "node tools/science/build_validation_baseline.mjs",
+      "evidenceDigest": "fnv1a32:df1e7271"
+    }
+  ],
+  "evidenceLevelSummary": {
+    "SOFTWARE_VERIFIED": 8
+  },
+  "statusSummary": {
+    "PASS": 8
+  },
+  "assumptions": [
+    "Mission Simulator evidence uses checked-in public fixtures and repo-local commands.",
+    "Time is seconds, horizontal coordinates are local mission coordinates, and depth is positive-down meters where applicable.",
+    "Official reports are immutable baseline artifacts; browser reruns are exploratory unless they reproduce the official pipeline."
+  ],
+  "limitations": [
+    "Mission Simulator is evaluated for deterministic benchmark and education use only.",
+    "The report does not claim operational ocean forecast skill, certified navigation suitability, or calibrated digital-twin fidelity.",
+    "Literature and local method references motivate methods but do not count as external numerical comparisons."
+  ],
+  "references": [
+    {
+      "version": "1.0",
+      "referenceId": "mission-simulator-package-md",
+      "title": "Mission Simulator Package",
+      "authors": "ANCHOR project",
+      "year": 2026,
+      "source": "local repository documentation",
+      "persistentIdentifier": null,
+      "localPath": "docs/mission_simulator_package.md",
+      "role": "methodReference"
+    }
+  ],
+  "packageVersions": {
+    "contracts": "0.0.0-arch-r1",
+    "bathymetry": "0.0.0-arch-r1",
+    "currents": "0.0.0-arch-r1",
+    "scalar-processes": "0.1.0-process-pkg-r1",
+    "environment": "0.0.0-arch-r1",
+    "mission-simulator": "0.0.0-arch-r1",
+    "scoring": "0.0.0-score-pkg-r1",
+    "codecs": "0.1.0-codec-r1",
+    "validation": "0.1.0-sci-valid-r2a",
+    "validationRuntime": "anchor-validation-sci-valid-r2a"
+  },
+  "sourceArtifactDigests": {
+    "tests/fixtures/mission_simulator_package_r2_parity.json": "fnv1a32:2563abdc"
+  },
+  "suitabilityDecision": {
+    "deterministicRegression": "GO",
+    "educationalUse": "GO",
+    "classicalPlannerBenchmark": "GO",
+    "mlDatasetGeneration": "CONDITIONAL",
+    "operationalForecastUse": "NO_GO",
+    "certifiedNavigationUse": "NO_GO",
+    "rationale": "Mission Simulator has deterministic package evidence for software/benchmark use, but external or operational claims remain out of scope where not evaluated.",
+    "conditions": [
+      "Use only with documented synthetic-fixture limitations.",
+      "Do not describe results as operational validation."
+    ]
+  },
+  "visualizations": [
+    {
+      "visualizationId": "mission-simulator-status-bars",
+      "title": "Mission Simulator status counts",
+      "kind": "bar-summary",
+      "textSummary": "Bar heights count evidence records by explicit status label. This is not a scientific-validity score.",
+      "rows": [
+        {
+          "label": "PASS",
+          "value": 8
+        }
+      ]
+    },
+    {
+      "visualizationId": "mission-simulator-evidence-ladder",
+      "title": "Mission Simulator evidence levels",
+      "kind": "bar-summary",
+      "textSummary": "Bar heights count claims by evidence level. External comparison and operational validation are kept separate from software checks.",
+      "rows": [
+        {
+          "label": "SOFTWARE_VERIFIED",
+          "value": 8
+        }
+      ]
+    },
+    {
+      "visualizationId": "mission-simulator-metric-table",
+      "title": "Mission Simulator raw metric table",
+      "kind": "table",
+      "textSummary": "Compact table for the selected report claims and evidence records.",
+      "rows": [
+        {
+          "claimId": "mission-simulator.deterministic-transitions",
+          "status": "PASS",
+          "metricId": "deterministic-contract-status",
+          "measuredValue": 0,
+          "units": "pass-count",
+          "threshold": 0,
+          "tolerance": 0
+        },
+        {
+          "claimId": "mission-simulator.event-ordering",
+          "status": "PASS",
+          "metricId": "deterministic-contract-status",
+          "measuredValue": 0,
+          "units": "pass-count",
+          "threshold": 0,
+          "tolerance": 0
+        },
+        {
+          "claimId": "mission-simulator.terminal-state-evaluation",
+          "status": "PASS",
+          "metricId": "deterministic-contract-status",
+          "measuredValue": 0,
+          "units": "pass-count",
+          "threshold": 0,
+          "tolerance": 0
+        },
+        {
+          "claimId": "mission-simulator.snapshot-restart",
+          "status": "PASS",
+          "metricId": "deterministic-contract-status",
+          "measuredValue": 0,
+          "units": "pass-count",
+          "threshold": 0,
+          "tolerance": 0
+        },
+        {
+          "claimId": "mission-simulator.browser-headless-parity",
+          "status": "PASS",
+          "metricId": "deterministic-contract-status",
+          "measuredValue": 0,
+          "units": "pass-count",
+          "threshold": 0,
+          "tolerance": 0
+        },
+        {
+          "claimId": "mission-simulator.terrain-hazard-events",
+          "status": "PASS",
+          "metricId": "deterministic-contract-status",
+          "measuredValue": 0,
+          "units": "pass-count",
+          "threshold": 0,
+          "tolerance": 0
+        },
+        {
+          "claimId": "mission-simulator.surfacing-replan",
+          "status": "PASS",
+          "metricId": "deterministic-contract-status",
+          "measuredValue": 0,
+          "units": "pass-count",
+          "threshold": 0,
+          "tolerance": 0
+        },
+        {
+          "claimId": "mission-simulator.raw-metrics",
+          "status": "PASS",
+          "metricId": "deterministic-contract-status",
+          "measuredValue": 0,
+          "units": "pass-count",
+          "threshold": 0,
+          "tolerance": 0
+        }
+      ]
+    }
+  ],
+  "claimBoundary": {
+    "benchmarkOrEducationUse": true,
+    "operationalForecast": false,
+    "certifiedNavigation": false,
+    "calibratedDigitalTwin": false
+  },
+  "visibilityClass": "PUBLIC",
+  "fairnessClass": "PUBLIC_FAIR",
+  "reportDigest": "fnv1a32:cc1cf238"
+}

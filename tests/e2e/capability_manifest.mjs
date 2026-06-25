@@ -94,7 +94,8 @@ export const SMOKE_SPEC_SPLIT_FILES = Object.freeze([
   "tests/e2e/env_pkg_r1_environment_package.spec.js",
   "tests/e2e/codec_r1_artifact_codecs.spec.js",
   "tests/e2e/workspace_and_challenge_setup.spec.js",
-  "tests/e2e/simulation_and_terrain.spec.js"
+  "tests/e2e/simulation_and_terrain.spec.js",
+  "tests/e2e/scientific_validation_methods.spec.js"
 ]);
 
 export const TEST_FILE_OWNERSHIP = Object.freeze({
@@ -174,7 +175,11 @@ export const TEST_FILE_OWNERSHIP = Object.freeze({
   "Terrain Validation Persists Through Export Headless and Replay": "tests/e2e/simulation_and_terrain.spec.js",
   "Three Terrain Presentation Clearly Distinguishes Mission Semantics": "tests/e2e/simulation_and_terrain.spec.js",
   "Legacy and Three Simulation Produce Identical Canonical Result": "tests/e2e/simulation_and_terrain.spec.js",
-  "legacy saved level registry scene still opens": "tests/e2e/simulation_and_terrain.spec.js"
+  "legacy saved level registry scene still opens": "tests/e2e/simulation_and_terrain.spec.js",
+  "Product Hub Opens Methods and Validation": "tests/e2e/scientific_validation_methods.spec.js",
+  "Component Claims Metrics and Limitations Are Inspectable": "tests/e2e/scientific_validation_methods.spec.js",
+  "Official Baseline and Exploratory Rerun Stay Distinct": "tests/e2e/scientific_validation_methods.spec.js",
+  "Methods and Validation Runs From Pages Subpath": "tests/e2e/scientific_validation_methods.spec.js"
 });
 
 const NODE_COVERAGE = Object.freeze({
@@ -185,6 +190,7 @@ const NODE_COVERAGE = Object.freeze({
   DIVE_PREDICTION: ['node tools/js/smoke_current_dive_profile_consequence.mjs'],
   SIMULATION_PHYSICS: ['node tools/js/smoke_environment_mission_coupling.mjs'],
   IMPORT_EXPORT: ['npm.cmd run test:packages'],
+  METHODS_VALIDATION: ['node tools/tests/scientific_validation.test.mjs'],
   ENVIRONMENT_PACKAGE: ['npm.cmd run test:packages'],
   RESOURCE_LIFECYCLE: ['node tools/js/audit_three_vendor_git_tracking.mjs']
 });
@@ -287,6 +293,12 @@ export const CAPABILITIES = Object.freeze([
     'learning labs static page is linked from the main menu',
     'Next Shell Loads Legacy Learning Lab Only On Demand'
   ]),
+  capability('METHODS-VALIDATION', 'Public scientific validation evidence baseline and Methods route', true, false, true, [
+    'Product Hub Opens Methods and Validation',
+    'Component Claims Metrics and Limitations Are Inspectable',
+    'Official Baseline and Exploratory Rerun Stay Distinct',
+    'Methods and Validation Runs From Pages Subpath'
+  ], NODE_COVERAGE.METHODS_VALIDATION),
   capability('RESOURCE-LIFECYCLE', 'One renderer, one RAF, and cleanup invariants', true, false, true, [
     'Repeated App Boot and Teardown Leave No Runtime Processes',
     'Three Replay Resources Dispose Across Scene Transitions',

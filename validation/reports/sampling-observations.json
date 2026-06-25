@@ -1,0 +1,970 @@
+{
+  "schemaVersion": "1.0",
+  "type": "anchor.scientific-validation-report",
+  "reportId": "anchor-sampling-observations-scientific-validation-report",
+  "componentId": "sampling-observations",
+  "componentLabel": "Sampling and Observations",
+  "modelId": "anchor.depth-aware-observation",
+  "modelVersion": "mission-simulator-r2",
+  "summary": "Sampling and Observations has a Pre-Alpha evidence report built from deterministic package fixtures and documented diagnostics.",
+  "claims": [
+    {
+      "version": "1.0",
+      "claimId": "sampling-observations.actual-xyzt-sampling",
+      "componentId": "sampling-observations",
+      "title": "Actual x/y/z/time sampling",
+      "plainLanguageClaim": "Sampling and Observations supports actual x/y/z/time sampling within the deterministic ANCHOR benchmark fixtures.",
+      "technicalClaim": "anchor.depth-aware-observation actual-xyzt-sampling is evaluated by package-smoke-and-parity-fixture using fixture-backed deterministic metrics. Status is recorded separately from evidence level.",
+      "evidenceLevel": "SOFTWARE_VERIFIED",
+      "methodId": "package-smoke-and-parity-fixture",
+      "metricId": "deterministic-contract-status",
+      "units": "pass-count",
+      "expectedDirection": "less-than-or-equal",
+      "threshold": 0,
+      "tolerance": 0,
+      "thresholdRationale": "Software contract checks require zero hard validation failures for the checked fixture and package version.",
+      "fixtureIds": [
+        "tests/fixtures/homegrown_environment_scientific_baseline.json"
+      ],
+      "referenceIds": [
+        "depth-aware-sampling-value-and-scoring-md",
+        "mission-simulator-package-md"
+      ],
+      "applicability": "deterministic-regression, education, and benchmark-suitability review",
+      "public": true,
+      "claimDigest": "fnv1a32:6e4371f4"
+    },
+    {
+      "version": "1.0",
+      "claimId": "sampling-observations.same-xy-different-z",
+      "componentId": "sampling-observations",
+      "title": "Same x/y with different depth values",
+      "plainLanguageClaim": "Sampling and Observations supports same x/y with different depth values within the deterministic ANCHOR benchmark fixtures.",
+      "technicalClaim": "anchor.depth-aware-observation same-xy-different-z is evaluated by manufactured-solution-or-interpolation-check using fixture-backed deterministic metrics. Status is recorded separately from evidence level.",
+      "evidenceLevel": "NUMERICALLY_VERIFIED",
+      "methodId": "manufactured-solution-or-interpolation-check",
+      "metricId": "manufactured-error-bound",
+      "units": "normalized-error",
+      "expectedDirection": "less-than-or-equal",
+      "threshold": 0,
+      "tolerance": 0,
+      "thresholdRationale": "Manufactured fixtures should match analytical or interpolation expectations within deterministic numerical tolerance.",
+      "fixtureIds": [
+        "tests/fixtures/homegrown_environment_scientific_baseline.json"
+      ],
+      "referenceIds": [
+        "depth-aware-sampling-value-and-scoring-md",
+        "mission-simulator-package-md"
+      ],
+      "applicability": "deterministic-regression, education, and benchmark-suitability review",
+      "public": true,
+      "claimDigest": "fnv1a32:c8bda36e"
+    },
+    {
+      "version": "1.0",
+      "claimId": "sampling-observations.truth-observation-separation",
+      "componentId": "sampling-observations",
+      "title": "True value versus observed value separation",
+      "plainLanguageClaim": "Sampling and Observations supports true value versus observed value separation within the deterministic ANCHOR benchmark fixtures.",
+      "technicalClaim": "anchor.depth-aware-observation truth-observation-separation is evaluated by package-smoke-and-parity-fixture using fixture-backed deterministic metrics. Status is recorded separately from evidence level.",
+      "evidenceLevel": "SOFTWARE_VERIFIED",
+      "methodId": "package-smoke-and-parity-fixture",
+      "metricId": "deterministic-contract-status",
+      "units": "pass-count",
+      "expectedDirection": "less-than-or-equal",
+      "threshold": 0,
+      "tolerance": 0,
+      "thresholdRationale": "Software contract checks require zero hard validation failures for the checked fixture and package version.",
+      "fixtureIds": [
+        "tests/fixtures/homegrown_environment_scientific_baseline.json"
+      ],
+      "referenceIds": [
+        "depth-aware-sampling-value-and-scoring-md",
+        "mission-simulator-package-md"
+      ],
+      "applicability": "deterministic-regression, education, and benchmark-suitability review",
+      "public": true,
+      "claimDigest": "fnv1a32:3cb61982"
+    },
+    {
+      "version": "1.0",
+      "claimId": "sampling-observations.seeded-noise-determinism",
+      "componentId": "sampling-observations",
+      "title": "Seeded noise determinism",
+      "plainLanguageClaim": "Sampling and Observations supports seeded noise determinism within the deterministic ANCHOR benchmark fixtures.",
+      "technicalClaim": "anchor.depth-aware-observation seeded-noise-determinism is evaluated by package-smoke-and-parity-fixture using fixture-backed deterministic metrics. Status is recorded separately from evidence level.",
+      "evidenceLevel": "SOFTWARE_VERIFIED",
+      "methodId": "package-smoke-and-parity-fixture",
+      "metricId": "deterministic-contract-status",
+      "units": "pass-count",
+      "expectedDirection": "less-than-or-equal",
+      "threshold": 0,
+      "tolerance": 0,
+      "thresholdRationale": "Software contract checks require zero hard validation failures for the checked fixture and package version.",
+      "fixtureIds": [
+        "tests/fixtures/homegrown_environment_scientific_baseline.json"
+      ],
+      "referenceIds": [
+        "depth-aware-sampling-value-and-scoring-md",
+        "mission-simulator-package-md"
+      ],
+      "applicability": "deterministic-regression, education, and benchmark-suitability review",
+      "public": true,
+      "claimDigest": "fnv1a32:fe1e585c"
+    },
+    {
+      "version": "1.0",
+      "claimId": "sampling-observations.variable-id-units",
+      "componentId": "sampling-observations",
+      "title": "Variable ID and units",
+      "plainLanguageClaim": "Sampling and Observations supports variable id and units within the deterministic ANCHOR benchmark fixtures.",
+      "technicalClaim": "anchor.depth-aware-observation variable-id-units is evaluated by package-smoke-and-parity-fixture using fixture-backed deterministic metrics. Status is recorded separately from evidence level.",
+      "evidenceLevel": "SOFTWARE_VERIFIED",
+      "methodId": "package-smoke-and-parity-fixture",
+      "metricId": "deterministic-contract-status",
+      "units": "pass-count",
+      "expectedDirection": "less-than-or-equal",
+      "threshold": 0,
+      "tolerance": 0,
+      "thresholdRationale": "Software contract checks require zero hard validation failures for the checked fixture and package version.",
+      "fixtureIds": [
+        "tests/fixtures/homegrown_environment_scientific_baseline.json"
+      ],
+      "referenceIds": [
+        "depth-aware-sampling-value-and-scoring-md",
+        "mission-simulator-package-md"
+      ],
+      "applicability": "deterministic-regression, education, and benchmark-suitability review",
+      "public": true,
+      "claimDigest": "fnv1a32:535684c4"
+    },
+    {
+      "version": "1.0",
+      "claimId": "sampling-observations.public-safe-metadata",
+      "componentId": "sampling-observations",
+      "title": "Public-safe metadata",
+      "plainLanguageClaim": "Sampling and Observations supports public-safe metadata within the deterministic ANCHOR benchmark fixtures.",
+      "technicalClaim": "anchor.depth-aware-observation public-safe-metadata is evaluated by package-smoke-and-parity-fixture using fixture-backed deterministic metrics. Status is recorded separately from evidence level.",
+      "evidenceLevel": "SOFTWARE_VERIFIED",
+      "methodId": "package-smoke-and-parity-fixture",
+      "metricId": "deterministic-contract-status",
+      "units": "pass-count",
+      "expectedDirection": "less-than-or-equal",
+      "threshold": 0,
+      "tolerance": 0,
+      "thresholdRationale": "Software contract checks require zero hard validation failures for the checked fixture and package version.",
+      "fixtureIds": [
+        "tests/fixtures/homegrown_environment_scientific_baseline.json"
+      ],
+      "referenceIds": [
+        "depth-aware-sampling-value-and-scoring-md",
+        "mission-simulator-package-md"
+      ],
+      "applicability": "deterministic-regression, education, and benchmark-suitability review",
+      "public": true,
+      "claimDigest": "fnv1a32:d89a6d3a"
+    },
+    {
+      "version": "1.0",
+      "claimId": "sampling-observations.browser-headless-parity",
+      "componentId": "sampling-observations",
+      "title": "Browser/headless parity",
+      "plainLanguageClaim": "Sampling and Observations supports browser/headless parity within the deterministic ANCHOR benchmark fixtures.",
+      "technicalClaim": "anchor.depth-aware-observation browser-headless-parity is evaluated by package-smoke-and-parity-fixture using fixture-backed deterministic metrics. Status is recorded separately from evidence level.",
+      "evidenceLevel": "SOFTWARE_VERIFIED",
+      "methodId": "package-smoke-and-parity-fixture",
+      "metricId": "deterministic-contract-status",
+      "units": "pass-count",
+      "expectedDirection": "less-than-or-equal",
+      "threshold": 0,
+      "tolerance": 0,
+      "thresholdRationale": "Software contract checks require zero hard validation failures for the checked fixture and package version.",
+      "fixtureIds": [
+        "tests/fixtures/homegrown_environment_scientific_baseline.json"
+      ],
+      "referenceIds": [
+        "depth-aware-sampling-value-and-scoring-md",
+        "mission-simulator-package-md"
+      ],
+      "applicability": "deterministic-regression, education, and benchmark-suitability review",
+      "public": true,
+      "claimDigest": "fnv1a32:3575c1e8"
+    },
+    {
+      "version": "1.0",
+      "claimId": "sampling-observations.duplicate-suppression",
+      "componentId": "sampling-observations",
+      "title": "Duplicate suppression",
+      "plainLanguageClaim": "Sampling and Observations supports duplicate suppression within the deterministic ANCHOR benchmark fixtures.",
+      "technicalClaim": "anchor.depth-aware-observation duplicate-suppression is evaluated by package-smoke-and-parity-fixture using fixture-backed deterministic metrics. Status is recorded separately from evidence level.",
+      "evidenceLevel": "SOFTWARE_VERIFIED",
+      "methodId": "package-smoke-and-parity-fixture",
+      "metricId": "deterministic-contract-status",
+      "units": "pass-count",
+      "expectedDirection": "less-than-or-equal",
+      "threshold": 0,
+      "tolerance": 0,
+      "thresholdRationale": "Software contract checks require zero hard validation failures for the checked fixture and package version.",
+      "fixtureIds": [
+        "tests/fixtures/homegrown_environment_scientific_baseline.json"
+      ],
+      "referenceIds": [
+        "depth-aware-sampling-value-and-scoring-md",
+        "mission-simulator-package-md"
+      ],
+      "applicability": "deterministic-regression, education, and benchmark-suitability review",
+      "public": true,
+      "claimDigest": "fnv1a32:0d5d34f4"
+    }
+  ],
+  "evidence": [
+    {
+      "version": "1.0",
+      "claimId": "sampling-observations.actual-xyzt-sampling",
+      "componentId": "sampling-observations",
+      "modelId": "anchor.depth-aware-observation",
+      "modelVersion": "mission-simulator-r2",
+      "evidenceLevel": "SOFTWARE_VERIFIED",
+      "status": "PASS",
+      "methodId": "package-smoke-and-parity-fixture",
+      "metricId": "deterministic-contract-status",
+      "measuredValue": 0,
+      "units": "pass-count",
+      "threshold": 0,
+      "tolerance": 0,
+      "errorValue": 0,
+      "relativeError": 0,
+      "fixtureIds": [
+        "tests/fixtures/homegrown_environment_scientific_baseline.json"
+      ],
+      "sourceArtifactDigests": {
+        "tests/fixtures/homegrown_environment_scientific_baseline.json": "fnv1a32:898b0944"
+      },
+      "packageVersions": {
+        "contracts": "0.0.0-arch-r1",
+        "bathymetry": "0.0.0-arch-r1",
+        "currents": "0.0.0-arch-r1",
+        "scalar-processes": "0.1.0-process-pkg-r1",
+        "environment": "0.0.0-arch-r1",
+        "mission-simulator": "0.0.0-arch-r1",
+        "scoring": "0.0.0-score-pkg-r1",
+        "codecs": "0.1.0-codec-r1",
+        "validation": "0.1.0-sci-valid-r2a",
+        "validationRuntime": "anchor-validation-sci-valid-r2a"
+      },
+      "runtimeMetadata": {
+        "builderVersion": "sci-valid-r2a-baseline-builder",
+        "deterministic": true,
+        "officialBaseline": true
+      },
+      "interpretation": "Actual x/y/z/time sampling passed as deterministic Pre-Alpha evidence for Sampling and Observations.",
+      "limitations": [
+        "Evidence is fixture-scoped and deterministic; it does not generalize to operational ocean forecasting or certified navigation."
+      ],
+      "references": [
+        {
+          "version": "1.0",
+          "referenceId": "depth-aware-sampling-value-and-scoring-md",
+          "title": "Depth Aware Sampling Value And Scoring",
+          "authors": "ANCHOR project",
+          "year": 2026,
+          "source": "local repository documentation",
+          "persistentIdentifier": null,
+          "localPath": "docs/depth_aware_sampling_value_and_scoring.md",
+          "role": "methodReference"
+        },
+        {
+          "version": "1.0",
+          "referenceId": "mission-simulator-package-md",
+          "title": "Mission Simulator Package",
+          "authors": "ANCHOR project",
+          "year": 2026,
+          "source": "local repository documentation",
+          "persistentIdentifier": null,
+          "localPath": "docs/mission_simulator_package.md",
+          "role": "methodReference"
+        }
+      ],
+      "reproductionCommand": "node tools/science/build_validation_baseline.mjs",
+      "evidenceDigest": "fnv1a32:840afdde"
+    },
+    {
+      "version": "1.0",
+      "claimId": "sampling-observations.same-xy-different-z",
+      "componentId": "sampling-observations",
+      "modelId": "anchor.depth-aware-observation",
+      "modelVersion": "mission-simulator-r2",
+      "evidenceLevel": "NUMERICALLY_VERIFIED",
+      "status": "PASS",
+      "methodId": "manufactured-solution-or-interpolation-check",
+      "metricId": "manufactured-error-bound",
+      "measuredValue": 0,
+      "units": "normalized-error",
+      "threshold": 0,
+      "tolerance": 0,
+      "errorValue": 0,
+      "relativeError": 0,
+      "fixtureIds": [
+        "tests/fixtures/homegrown_environment_scientific_baseline.json"
+      ],
+      "sourceArtifactDigests": {
+        "tests/fixtures/homegrown_environment_scientific_baseline.json": "fnv1a32:898b0944"
+      },
+      "packageVersions": {
+        "contracts": "0.0.0-arch-r1",
+        "bathymetry": "0.0.0-arch-r1",
+        "currents": "0.0.0-arch-r1",
+        "scalar-processes": "0.1.0-process-pkg-r1",
+        "environment": "0.0.0-arch-r1",
+        "mission-simulator": "0.0.0-arch-r1",
+        "scoring": "0.0.0-score-pkg-r1",
+        "codecs": "0.1.0-codec-r1",
+        "validation": "0.1.0-sci-valid-r2a",
+        "validationRuntime": "anchor-validation-sci-valid-r2a"
+      },
+      "runtimeMetadata": {
+        "builderVersion": "sci-valid-r2a-baseline-builder",
+        "deterministic": true,
+        "officialBaseline": true
+      },
+      "interpretation": "Same x/y with different depth values passed as deterministic Pre-Alpha evidence for Sampling and Observations.",
+      "limitations": [
+        "Evidence is fixture-scoped and deterministic; it does not generalize to operational ocean forecasting or certified navigation."
+      ],
+      "references": [
+        {
+          "version": "1.0",
+          "referenceId": "depth-aware-sampling-value-and-scoring-md",
+          "title": "Depth Aware Sampling Value And Scoring",
+          "authors": "ANCHOR project",
+          "year": 2026,
+          "source": "local repository documentation",
+          "persistentIdentifier": null,
+          "localPath": "docs/depth_aware_sampling_value_and_scoring.md",
+          "role": "methodReference"
+        },
+        {
+          "version": "1.0",
+          "referenceId": "mission-simulator-package-md",
+          "title": "Mission Simulator Package",
+          "authors": "ANCHOR project",
+          "year": 2026,
+          "source": "local repository documentation",
+          "persistentIdentifier": null,
+          "localPath": "docs/mission_simulator_package.md",
+          "role": "methodReference"
+        }
+      ],
+      "reproductionCommand": "node tools/science/build_validation_baseline.mjs",
+      "evidenceDigest": "fnv1a32:509623e0"
+    },
+    {
+      "version": "1.0",
+      "claimId": "sampling-observations.truth-observation-separation",
+      "componentId": "sampling-observations",
+      "modelId": "anchor.depth-aware-observation",
+      "modelVersion": "mission-simulator-r2",
+      "evidenceLevel": "SOFTWARE_VERIFIED",
+      "status": "PASS",
+      "methodId": "package-smoke-and-parity-fixture",
+      "metricId": "deterministic-contract-status",
+      "measuredValue": 0,
+      "units": "pass-count",
+      "threshold": 0,
+      "tolerance": 0,
+      "errorValue": 0,
+      "relativeError": 0,
+      "fixtureIds": [
+        "tests/fixtures/homegrown_environment_scientific_baseline.json"
+      ],
+      "sourceArtifactDigests": {
+        "tests/fixtures/homegrown_environment_scientific_baseline.json": "fnv1a32:898b0944"
+      },
+      "packageVersions": {
+        "contracts": "0.0.0-arch-r1",
+        "bathymetry": "0.0.0-arch-r1",
+        "currents": "0.0.0-arch-r1",
+        "scalar-processes": "0.1.0-process-pkg-r1",
+        "environment": "0.0.0-arch-r1",
+        "mission-simulator": "0.0.0-arch-r1",
+        "scoring": "0.0.0-score-pkg-r1",
+        "codecs": "0.1.0-codec-r1",
+        "validation": "0.1.0-sci-valid-r2a",
+        "validationRuntime": "anchor-validation-sci-valid-r2a"
+      },
+      "runtimeMetadata": {
+        "builderVersion": "sci-valid-r2a-baseline-builder",
+        "deterministic": true,
+        "officialBaseline": true
+      },
+      "interpretation": "True value versus observed value separation passed as deterministic Pre-Alpha evidence for Sampling and Observations.",
+      "limitations": [
+        "Evidence is fixture-scoped and deterministic; it does not generalize to operational ocean forecasting or certified navigation."
+      ],
+      "references": [
+        {
+          "version": "1.0",
+          "referenceId": "depth-aware-sampling-value-and-scoring-md",
+          "title": "Depth Aware Sampling Value And Scoring",
+          "authors": "ANCHOR project",
+          "year": 2026,
+          "source": "local repository documentation",
+          "persistentIdentifier": null,
+          "localPath": "docs/depth_aware_sampling_value_and_scoring.md",
+          "role": "methodReference"
+        },
+        {
+          "version": "1.0",
+          "referenceId": "mission-simulator-package-md",
+          "title": "Mission Simulator Package",
+          "authors": "ANCHOR project",
+          "year": 2026,
+          "source": "local repository documentation",
+          "persistentIdentifier": null,
+          "localPath": "docs/mission_simulator_package.md",
+          "role": "methodReference"
+        }
+      ],
+      "reproductionCommand": "node tools/science/build_validation_baseline.mjs",
+      "evidenceDigest": "fnv1a32:c3c135ff"
+    },
+    {
+      "version": "1.0",
+      "claimId": "sampling-observations.seeded-noise-determinism",
+      "componentId": "sampling-observations",
+      "modelId": "anchor.depth-aware-observation",
+      "modelVersion": "mission-simulator-r2",
+      "evidenceLevel": "SOFTWARE_VERIFIED",
+      "status": "PASS",
+      "methodId": "package-smoke-and-parity-fixture",
+      "metricId": "deterministic-contract-status",
+      "measuredValue": 0,
+      "units": "pass-count",
+      "threshold": 0,
+      "tolerance": 0,
+      "errorValue": 0,
+      "relativeError": 0,
+      "fixtureIds": [
+        "tests/fixtures/homegrown_environment_scientific_baseline.json"
+      ],
+      "sourceArtifactDigests": {
+        "tests/fixtures/homegrown_environment_scientific_baseline.json": "fnv1a32:898b0944"
+      },
+      "packageVersions": {
+        "contracts": "0.0.0-arch-r1",
+        "bathymetry": "0.0.0-arch-r1",
+        "currents": "0.0.0-arch-r1",
+        "scalar-processes": "0.1.0-process-pkg-r1",
+        "environment": "0.0.0-arch-r1",
+        "mission-simulator": "0.0.0-arch-r1",
+        "scoring": "0.0.0-score-pkg-r1",
+        "codecs": "0.1.0-codec-r1",
+        "validation": "0.1.0-sci-valid-r2a",
+        "validationRuntime": "anchor-validation-sci-valid-r2a"
+      },
+      "runtimeMetadata": {
+        "builderVersion": "sci-valid-r2a-baseline-builder",
+        "deterministic": true,
+        "officialBaseline": true
+      },
+      "interpretation": "Seeded noise determinism passed as deterministic Pre-Alpha evidence for Sampling and Observations.",
+      "limitations": [
+        "Evidence is fixture-scoped and deterministic; it does not generalize to operational ocean forecasting or certified navigation."
+      ],
+      "references": [
+        {
+          "version": "1.0",
+          "referenceId": "depth-aware-sampling-value-and-scoring-md",
+          "title": "Depth Aware Sampling Value And Scoring",
+          "authors": "ANCHOR project",
+          "year": 2026,
+          "source": "local repository documentation",
+          "persistentIdentifier": null,
+          "localPath": "docs/depth_aware_sampling_value_and_scoring.md",
+          "role": "methodReference"
+        },
+        {
+          "version": "1.0",
+          "referenceId": "mission-simulator-package-md",
+          "title": "Mission Simulator Package",
+          "authors": "ANCHOR project",
+          "year": 2026,
+          "source": "local repository documentation",
+          "persistentIdentifier": null,
+          "localPath": "docs/mission_simulator_package.md",
+          "role": "methodReference"
+        }
+      ],
+      "reproductionCommand": "node tools/science/build_validation_baseline.mjs",
+      "evidenceDigest": "fnv1a32:f9818182"
+    },
+    {
+      "version": "1.0",
+      "claimId": "sampling-observations.variable-id-units",
+      "componentId": "sampling-observations",
+      "modelId": "anchor.depth-aware-observation",
+      "modelVersion": "mission-simulator-r2",
+      "evidenceLevel": "SOFTWARE_VERIFIED",
+      "status": "PASS",
+      "methodId": "package-smoke-and-parity-fixture",
+      "metricId": "deterministic-contract-status",
+      "measuredValue": 0,
+      "units": "pass-count",
+      "threshold": 0,
+      "tolerance": 0,
+      "errorValue": 0,
+      "relativeError": 0,
+      "fixtureIds": [
+        "tests/fixtures/homegrown_environment_scientific_baseline.json"
+      ],
+      "sourceArtifactDigests": {
+        "tests/fixtures/homegrown_environment_scientific_baseline.json": "fnv1a32:898b0944"
+      },
+      "packageVersions": {
+        "contracts": "0.0.0-arch-r1",
+        "bathymetry": "0.0.0-arch-r1",
+        "currents": "0.0.0-arch-r1",
+        "scalar-processes": "0.1.0-process-pkg-r1",
+        "environment": "0.0.0-arch-r1",
+        "mission-simulator": "0.0.0-arch-r1",
+        "scoring": "0.0.0-score-pkg-r1",
+        "codecs": "0.1.0-codec-r1",
+        "validation": "0.1.0-sci-valid-r2a",
+        "validationRuntime": "anchor-validation-sci-valid-r2a"
+      },
+      "runtimeMetadata": {
+        "builderVersion": "sci-valid-r2a-baseline-builder",
+        "deterministic": true,
+        "officialBaseline": true
+      },
+      "interpretation": "Variable ID and units passed as deterministic Pre-Alpha evidence for Sampling and Observations.",
+      "limitations": [
+        "Evidence is fixture-scoped and deterministic; it does not generalize to operational ocean forecasting or certified navigation."
+      ],
+      "references": [
+        {
+          "version": "1.0",
+          "referenceId": "depth-aware-sampling-value-and-scoring-md",
+          "title": "Depth Aware Sampling Value And Scoring",
+          "authors": "ANCHOR project",
+          "year": 2026,
+          "source": "local repository documentation",
+          "persistentIdentifier": null,
+          "localPath": "docs/depth_aware_sampling_value_and_scoring.md",
+          "role": "methodReference"
+        },
+        {
+          "version": "1.0",
+          "referenceId": "mission-simulator-package-md",
+          "title": "Mission Simulator Package",
+          "authors": "ANCHOR project",
+          "year": 2026,
+          "source": "local repository documentation",
+          "persistentIdentifier": null,
+          "localPath": "docs/mission_simulator_package.md",
+          "role": "methodReference"
+        }
+      ],
+      "reproductionCommand": "node tools/science/build_validation_baseline.mjs",
+      "evidenceDigest": "fnv1a32:4dd6f4fd"
+    },
+    {
+      "version": "1.0",
+      "claimId": "sampling-observations.public-safe-metadata",
+      "componentId": "sampling-observations",
+      "modelId": "anchor.depth-aware-observation",
+      "modelVersion": "mission-simulator-r2",
+      "evidenceLevel": "SOFTWARE_VERIFIED",
+      "status": "PASS",
+      "methodId": "package-smoke-and-parity-fixture",
+      "metricId": "deterministic-contract-status",
+      "measuredValue": 0,
+      "units": "pass-count",
+      "threshold": 0,
+      "tolerance": 0,
+      "errorValue": 0,
+      "relativeError": 0,
+      "fixtureIds": [
+        "tests/fixtures/homegrown_environment_scientific_baseline.json"
+      ],
+      "sourceArtifactDigests": {
+        "tests/fixtures/homegrown_environment_scientific_baseline.json": "fnv1a32:898b0944"
+      },
+      "packageVersions": {
+        "contracts": "0.0.0-arch-r1",
+        "bathymetry": "0.0.0-arch-r1",
+        "currents": "0.0.0-arch-r1",
+        "scalar-processes": "0.1.0-process-pkg-r1",
+        "environment": "0.0.0-arch-r1",
+        "mission-simulator": "0.0.0-arch-r1",
+        "scoring": "0.0.0-score-pkg-r1",
+        "codecs": "0.1.0-codec-r1",
+        "validation": "0.1.0-sci-valid-r2a",
+        "validationRuntime": "anchor-validation-sci-valid-r2a"
+      },
+      "runtimeMetadata": {
+        "builderVersion": "sci-valid-r2a-baseline-builder",
+        "deterministic": true,
+        "officialBaseline": true
+      },
+      "interpretation": "Public-safe metadata passed as deterministic Pre-Alpha evidence for Sampling and Observations.",
+      "limitations": [
+        "Evidence is fixture-scoped and deterministic; it does not generalize to operational ocean forecasting or certified navigation."
+      ],
+      "references": [
+        {
+          "version": "1.0",
+          "referenceId": "depth-aware-sampling-value-and-scoring-md",
+          "title": "Depth Aware Sampling Value And Scoring",
+          "authors": "ANCHOR project",
+          "year": 2026,
+          "source": "local repository documentation",
+          "persistentIdentifier": null,
+          "localPath": "docs/depth_aware_sampling_value_and_scoring.md",
+          "role": "methodReference"
+        },
+        {
+          "version": "1.0",
+          "referenceId": "mission-simulator-package-md",
+          "title": "Mission Simulator Package",
+          "authors": "ANCHOR project",
+          "year": 2026,
+          "source": "local repository documentation",
+          "persistentIdentifier": null,
+          "localPath": "docs/mission_simulator_package.md",
+          "role": "methodReference"
+        }
+      ],
+      "reproductionCommand": "node tools/science/build_validation_baseline.mjs",
+      "evidenceDigest": "fnv1a32:e8de0bf7"
+    },
+    {
+      "version": "1.0",
+      "claimId": "sampling-observations.browser-headless-parity",
+      "componentId": "sampling-observations",
+      "modelId": "anchor.depth-aware-observation",
+      "modelVersion": "mission-simulator-r2",
+      "evidenceLevel": "SOFTWARE_VERIFIED",
+      "status": "PASS",
+      "methodId": "package-smoke-and-parity-fixture",
+      "metricId": "deterministic-contract-status",
+      "measuredValue": 0,
+      "units": "pass-count",
+      "threshold": 0,
+      "tolerance": 0,
+      "errorValue": 0,
+      "relativeError": 0,
+      "fixtureIds": [
+        "tests/fixtures/homegrown_environment_scientific_baseline.json"
+      ],
+      "sourceArtifactDigests": {
+        "tests/fixtures/homegrown_environment_scientific_baseline.json": "fnv1a32:898b0944"
+      },
+      "packageVersions": {
+        "contracts": "0.0.0-arch-r1",
+        "bathymetry": "0.0.0-arch-r1",
+        "currents": "0.0.0-arch-r1",
+        "scalar-processes": "0.1.0-process-pkg-r1",
+        "environment": "0.0.0-arch-r1",
+        "mission-simulator": "0.0.0-arch-r1",
+        "scoring": "0.0.0-score-pkg-r1",
+        "codecs": "0.1.0-codec-r1",
+        "validation": "0.1.0-sci-valid-r2a",
+        "validationRuntime": "anchor-validation-sci-valid-r2a"
+      },
+      "runtimeMetadata": {
+        "builderVersion": "sci-valid-r2a-baseline-builder",
+        "deterministic": true,
+        "officialBaseline": true
+      },
+      "interpretation": "Browser/headless parity passed as deterministic Pre-Alpha evidence for Sampling and Observations.",
+      "limitations": [
+        "Evidence is fixture-scoped and deterministic; it does not generalize to operational ocean forecasting or certified navigation."
+      ],
+      "references": [
+        {
+          "version": "1.0",
+          "referenceId": "depth-aware-sampling-value-and-scoring-md",
+          "title": "Depth Aware Sampling Value And Scoring",
+          "authors": "ANCHOR project",
+          "year": 2026,
+          "source": "local repository documentation",
+          "persistentIdentifier": null,
+          "localPath": "docs/depth_aware_sampling_value_and_scoring.md",
+          "role": "methodReference"
+        },
+        {
+          "version": "1.0",
+          "referenceId": "mission-simulator-package-md",
+          "title": "Mission Simulator Package",
+          "authors": "ANCHOR project",
+          "year": 2026,
+          "source": "local repository documentation",
+          "persistentIdentifier": null,
+          "localPath": "docs/mission_simulator_package.md",
+          "role": "methodReference"
+        }
+      ],
+      "reproductionCommand": "node tools/science/build_validation_baseline.mjs",
+      "evidenceDigest": "fnv1a32:7101c973"
+    },
+    {
+      "version": "1.0",
+      "claimId": "sampling-observations.duplicate-suppression",
+      "componentId": "sampling-observations",
+      "modelId": "anchor.depth-aware-observation",
+      "modelVersion": "mission-simulator-r2",
+      "evidenceLevel": "SOFTWARE_VERIFIED",
+      "status": "PASS",
+      "methodId": "package-smoke-and-parity-fixture",
+      "metricId": "deterministic-contract-status",
+      "measuredValue": 0,
+      "units": "pass-count",
+      "threshold": 0,
+      "tolerance": 0,
+      "errorValue": 0,
+      "relativeError": 0,
+      "fixtureIds": [
+        "tests/fixtures/homegrown_environment_scientific_baseline.json"
+      ],
+      "sourceArtifactDigests": {
+        "tests/fixtures/homegrown_environment_scientific_baseline.json": "fnv1a32:898b0944"
+      },
+      "packageVersions": {
+        "contracts": "0.0.0-arch-r1",
+        "bathymetry": "0.0.0-arch-r1",
+        "currents": "0.0.0-arch-r1",
+        "scalar-processes": "0.1.0-process-pkg-r1",
+        "environment": "0.0.0-arch-r1",
+        "mission-simulator": "0.0.0-arch-r1",
+        "scoring": "0.0.0-score-pkg-r1",
+        "codecs": "0.1.0-codec-r1",
+        "validation": "0.1.0-sci-valid-r2a",
+        "validationRuntime": "anchor-validation-sci-valid-r2a"
+      },
+      "runtimeMetadata": {
+        "builderVersion": "sci-valid-r2a-baseline-builder",
+        "deterministic": true,
+        "officialBaseline": true
+      },
+      "interpretation": "Duplicate suppression passed as deterministic Pre-Alpha evidence for Sampling and Observations.",
+      "limitations": [
+        "Evidence is fixture-scoped and deterministic; it does not generalize to operational ocean forecasting or certified navigation."
+      ],
+      "references": [
+        {
+          "version": "1.0",
+          "referenceId": "depth-aware-sampling-value-and-scoring-md",
+          "title": "Depth Aware Sampling Value And Scoring",
+          "authors": "ANCHOR project",
+          "year": 2026,
+          "source": "local repository documentation",
+          "persistentIdentifier": null,
+          "localPath": "docs/depth_aware_sampling_value_and_scoring.md",
+          "role": "methodReference"
+        },
+        {
+          "version": "1.0",
+          "referenceId": "mission-simulator-package-md",
+          "title": "Mission Simulator Package",
+          "authors": "ANCHOR project",
+          "year": 2026,
+          "source": "local repository documentation",
+          "persistentIdentifier": null,
+          "localPath": "docs/mission_simulator_package.md",
+          "role": "methodReference"
+        }
+      ],
+      "reproductionCommand": "node tools/science/build_validation_baseline.mjs",
+      "evidenceDigest": "fnv1a32:531b1af5"
+    }
+  ],
+  "evidenceLevelSummary": {
+    "SOFTWARE_VERIFIED": 7,
+    "NUMERICALLY_VERIFIED": 1
+  },
+  "statusSummary": {
+    "PASS": 8
+  },
+  "assumptions": [
+    "Sampling and Observations evidence uses checked-in public fixtures and repo-local commands.",
+    "Time is seconds, horizontal coordinates are local mission coordinates, and depth is positive-down meters where applicable.",
+    "Official reports are immutable baseline artifacts; browser reruns are exploratory unless they reproduce the official pipeline."
+  ],
+  "limitations": [
+    "Sampling and Observations is evaluated for deterministic benchmark and education use only.",
+    "The report does not claim operational ocean forecast skill, certified navigation suitability, or calibrated digital-twin fidelity.",
+    "Literature and local method references motivate methods but do not count as external numerical comparisons."
+  ],
+  "references": [
+    {
+      "version": "1.0",
+      "referenceId": "depth-aware-sampling-value-and-scoring-md",
+      "title": "Depth Aware Sampling Value And Scoring",
+      "authors": "ANCHOR project",
+      "year": 2026,
+      "source": "local repository documentation",
+      "persistentIdentifier": null,
+      "localPath": "docs/depth_aware_sampling_value_and_scoring.md",
+      "role": "methodReference"
+    },
+    {
+      "version": "1.0",
+      "referenceId": "mission-simulator-package-md",
+      "title": "Mission Simulator Package",
+      "authors": "ANCHOR project",
+      "year": 2026,
+      "source": "local repository documentation",
+      "persistentIdentifier": null,
+      "localPath": "docs/mission_simulator_package.md",
+      "role": "methodReference"
+    }
+  ],
+  "packageVersions": {
+    "contracts": "0.0.0-arch-r1",
+    "bathymetry": "0.0.0-arch-r1",
+    "currents": "0.0.0-arch-r1",
+    "scalar-processes": "0.1.0-process-pkg-r1",
+    "environment": "0.0.0-arch-r1",
+    "mission-simulator": "0.0.0-arch-r1",
+    "scoring": "0.0.0-score-pkg-r1",
+    "codecs": "0.1.0-codec-r1",
+    "validation": "0.1.0-sci-valid-r2a",
+    "validationRuntime": "anchor-validation-sci-valid-r2a"
+  },
+  "sourceArtifactDigests": {
+    "tests/fixtures/homegrown_environment_scientific_baseline.json": "fnv1a32:898b0944"
+  },
+  "suitabilityDecision": {
+    "deterministicRegression": "GO",
+    "educationalUse": "GO",
+    "classicalPlannerBenchmark": "GO",
+    "mlDatasetGeneration": "CONDITIONAL",
+    "operationalForecastUse": "NO_GO",
+    "certifiedNavigationUse": "NO_GO",
+    "rationale": "Sampling and Observations has deterministic package evidence for software/benchmark use, but external or operational claims remain out of scope where not evaluated.",
+    "conditions": [
+      "Use only with documented synthetic-fixture limitations.",
+      "Do not describe results as operational validation."
+    ]
+  },
+  "visualizations": [
+    {
+      "visualizationId": "sampling-observations-status-bars",
+      "title": "Sampling and Observations status counts",
+      "kind": "bar-summary",
+      "textSummary": "Bar heights count evidence records by explicit status label. This is not a scientific-validity score.",
+      "rows": [
+        {
+          "label": "PASS",
+          "value": 8
+        }
+      ]
+    },
+    {
+      "visualizationId": "sampling-observations-evidence-ladder",
+      "title": "Sampling and Observations evidence levels",
+      "kind": "bar-summary",
+      "textSummary": "Bar heights count claims by evidence level. External comparison and operational validation are kept separate from software checks.",
+      "rows": [
+        {
+          "label": "SOFTWARE_VERIFIED",
+          "value": 7
+        },
+        {
+          "label": "NUMERICALLY_VERIFIED",
+          "value": 1
+        }
+      ]
+    },
+    {
+      "visualizationId": "sampling-observations-metric-table",
+      "title": "Sampling and Observations raw metric table",
+      "kind": "table",
+      "textSummary": "Compact table for the selected report claims and evidence records.",
+      "rows": [
+        {
+          "claimId": "sampling-observations.actual-xyzt-sampling",
+          "status": "PASS",
+          "metricId": "deterministic-contract-status",
+          "measuredValue": 0,
+          "units": "pass-count",
+          "threshold": 0,
+          "tolerance": 0
+        },
+        {
+          "claimId": "sampling-observations.same-xy-different-z",
+          "status": "PASS",
+          "metricId": "manufactured-error-bound",
+          "measuredValue": 0,
+          "units": "normalized-error",
+          "threshold": 0,
+          "tolerance": 0
+        },
+        {
+          "claimId": "sampling-observations.truth-observation-separation",
+          "status": "PASS",
+          "metricId": "deterministic-contract-status",
+          "measuredValue": 0,
+          "units": "pass-count",
+          "threshold": 0,
+          "tolerance": 0
+        },
+        {
+          "claimId": "sampling-observations.seeded-noise-determinism",
+          "status": "PASS",
+          "metricId": "deterministic-contract-status",
+          "measuredValue": 0,
+          "units": "pass-count",
+          "threshold": 0,
+          "tolerance": 0
+        },
+        {
+          "claimId": "sampling-observations.variable-id-units",
+          "status": "PASS",
+          "metricId": "deterministic-contract-status",
+          "measuredValue": 0,
+          "units": "pass-count",
+          "threshold": 0,
+          "tolerance": 0
+        },
+        {
+          "claimId": "sampling-observations.public-safe-metadata",
+          "status": "PASS",
+          "metricId": "deterministic-contract-status",
+          "measuredValue": 0,
+          "units": "pass-count",
+          "threshold": 0,
+          "tolerance": 0
+        },
+        {
+          "claimId": "sampling-observations.browser-headless-parity",
+          "status": "PASS",
+          "metricId": "deterministic-contract-status",
+          "measuredValue": 0,
+          "units": "pass-count",
+          "threshold": 0,
+          "tolerance": 0
+        },
+        {
+          "claimId": "sampling-observations.duplicate-suppression",
+          "status": "PASS",
+          "metricId": "deterministic-contract-status",
+          "measuredValue": 0,
+          "units": "pass-count",
+          "threshold": 0,
+          "tolerance": 0
+        }
+      ]
+    }
+  ],
+  "claimBoundary": {
+    "benchmarkOrEducationUse": true,
+    "operationalForecast": false,
+    "certifiedNavigation": false,
+    "calibratedDigitalTwin": false
+  },
+  "visibilityClass": "PUBLIC",
+  "fairnessClass": "PUBLIC_FAIR",
+  "reportDigest": "fnv1a32:ff415b6a"
+}

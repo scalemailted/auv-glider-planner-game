@@ -33,3 +33,7 @@ packages/scoring owns official score calculation, ScoreProfile definitions, Scor
 ## CODEC-R1 Artifact Boundary
 
 `packages/codecs` sits beside the science, environment, simulator, and scoring packages as the pure transport layer. It can depend on `packages/contracts` only. App code under `src/core/io` owns file selection, downloads, import previews, and route/workflow decisions. Domain packages continue to own scientific and mission semantics.
+
+## Scientific Validation Package
+
+`packages/validation` owns scientific-validation claim, evidence, report, manifest, reference, and digest contracts. It depends only on `packages/contracts` and remains independent of model equations, DOM, Phaser, Three.js, browser routes, simulation, scoring, and rendering. The Methods & Validation route presents checked-in baseline artifacts from `validation/`; it does not define scientific truth. See `docs/scientific_validation_and_methods.md`.

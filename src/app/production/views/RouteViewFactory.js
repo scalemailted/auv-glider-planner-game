@@ -8,6 +8,9 @@ import { headlessBundleViewerPanelHtml } from '../../../ui/headless/HeadlessBund
 import { buildHeadlessBundleFromFiles } from '../../../core/headless/HeadlessBundleLoader.js';
 import { buildHeadlessBundleViewModel } from '../../../core/headless/HeadlessBundleViewModel.js';
 import { mountLegacyLearningLabIsland } from '../LegacyLearningLabHost.js';
+import { downloadJSON as downloadCanonicalJSON, downloadText as downloadCanonicalText } from '../../../core/io/ImportExport.js';
+import { buildScientificValidationViewModel, buildValidationSummaryCsv, loadOfficialValidationBaseline, runExploratoryValidationCheck, scientificValidationDebugPayload, selectedRawMetricCsv, selectedReportPlotData, selectedReproductionCommand } from '../../../core/validation/ScientificValidationViewModel.js';
+import { methodsValidationPanelHtml } from '../../../ui/validation/MethodsValidationPanel.js';
 
 export const ANCHOR_PRODUCTION_ROUTE_VIEW_VERSION = 'three-r3a-route-views';
 
@@ -21,6 +24,8 @@ const PANEL_ROUTES = {
   adaptiveBenchmark: { kicker: 'Benchmark', title: 'Adaptive Benchmark', body: 'Adaptive benchmark routes are preserved. R3A does not alter scoring.', left: 'Adaptive Benchmark', right: 'Adaptive Detail', controls: [['Main Menu', 'return-main']] }
 };
 
+const methodsValidationState = { baseline: null, loading: false, presentationMode: 'learn', selectedComponentId: 'currents', selectedClaimId: null, exploratoryRerun: null, exploratoryRerunCount: 0, downloadCount: 0 };
+
 const WORLD_ROUTES = {
   missionPlanning: { title: 'Planning', left: 'Mission Console', right: 'Waypoint Timeline', phase: 'planning', controls: [['Add Waypoint', 'place-waypoint'], ['Add Target', 'place-sampling-target'], ['Execute', 'execute-mission'], ['Main Menu', 'return-main']] },
   missionSimulation: { title: 'Simulation', left: 'Mission Console', right: 'Mission Timeline', phase: 'simulation', controls: [['Play/Pause', 'pause-simulation'], ['Surface', 'surface-mission'], ['Finish', 'finish-mission']] },
@@ -33,6 +38,7 @@ export function createAnchorProductionRouteView(context) {
   if (context.route === 'productHub') return mountProductHub(context);
   if (context.route === 'missionDebrief') return mountDebrief(context);
   if (context.route === 'headlessBundleViewer') return mountHeadlessViewer(context);
+  if (context.route === 'methodsValidation') return mountMethodsValidation(context);
   if (context.route === 'legacyLearningLab') return mountLegacyLearningLab(context);
   if (WORLD_ROUTES[context.route]) return mountWorldRoute(context, WORLD_ROUTES[context.route]);
   return mountPanelRoute(context, PANEL_ROUTES[context.route] ?? PANEL_ROUTES.missionSetup);
@@ -41,7 +47,7 @@ export function createAnchorProductionRouteView(context) {
 function mountProductHub(context) {
   renderShellPanels(context, 'Production Shell', 'Mission Context', [['Runtime', 'next'], ['Phaser games', productionPhaserCount()], ['Route', 'Product Hub']], [['Import / Export', 'open-import-export'], ['Headless Bundle Viewer', 'open-headless-viewer']]);
   const root = routeRoot('product-hub-route main-menu-hub-host');
-  root.innerHTML = `<section id="main-menu-hub" class="main-menu-hub"><header class="main-menu-hero"><div><p class="main-menu-kicker">ANCHOR mission systems</p><h1 id="next-shell-route-heading">ANCHOR: Glider Command</h1><p class="main-menu-subtitle">Scientific AUV Glider Adaptive-Sampling Game</p></div><p class="main-menu-runtime-note">Browser ANCHOR is the visual game/referee. Node/OceanBox-JS remains the canonical headless runtime.</p></header><div class="main-menu-primary-grid" aria-label="Primary ANCHOR paths">${hubCard('open-mission-setup', 'Challenge Mode', 'Play missions', 'Learn objectives, chase scores, compare routes, and race the greedy baseline.')}${hubCard('open-planner-benchmark', 'Simulation Lab', 'Inspect systems', 'Open scientific sandboxes, benchmark modes, headless bundles, and solver workflows.')}${hubCard('open-legacy-lab', 'Learning Labs', 'Read + experiment', 'Use interactive articles and companion sandboxes to learn the science step by step.')}</div><div class="main-menu-secondary-row" aria-label="Secondary tools"><button type="button" data-action="open-import-export">Import JSON</button><button type="button" data-action="open-headless-viewer">Headless Bundle Viewer</button><button type="button" data-action="open-import-export">External Solver Evaluation</button><button type="button" data-action="open-tutorial-browser">Tutorial Browser</button></div></section>`;
+  root.innerHTML = `<section id="main-menu-hub" class="main-menu-hub"><header class="main-menu-hero"><div><p class="main-menu-kicker">ANCHOR mission systems</p><h1 id="next-shell-route-heading">ANCHOR: Glider Command</h1><p class="main-menu-subtitle">Scientific AUV Glider Adaptive-Sampling Game</p></div><p class="main-menu-runtime-note">Browser ANCHOR is the visual game/referee. Node/OceanBox-JS remains the canonical headless runtime.</p></header><div class="main-menu-primary-grid" aria-label="Primary ANCHOR paths">${hubCard('open-mission-setup', 'Challenge Mode', 'Play missions', 'Learn objectives, chase scores, compare routes, and race the greedy baseline.')}${hubCard('open-planner-benchmark', 'Simulation Lab', 'Inspect systems', 'Open scientific sandboxes, benchmark modes, headless bundles, and solver workflows.')}${hubCard('open-legacy-lab', 'Learning Labs', 'Read + experiment', 'Use interactive articles and companion sandboxes to learn the science step by step.')}${hubCard('open-methods-validation', 'Methods & Validation', 'Inspect evidence', 'Inspect model assumptions, numerical tests, reference comparisons, provenance, and known limitations.')}</div><div class="main-menu-secondary-row" aria-label="Secondary tools"><button type="button" data-action="open-import-export">Import JSON</button><button type="button" data-action="open-headless-viewer">Headless Bundle Viewer</button><button type="button" data-action="open-methods-validation">Methods & Validation</button><button type="button" data-action="open-import-export">External Solver Evaluation</button><button type="button" data-action="open-tutorial-browser">Tutorial Browser</button></div></section>`;
   context.regions.gameRoot.appendChild(root);
   bindActions(root, context);
   return viewHandle(root);
@@ -83,6 +89,39 @@ function mountDebrief(context) {
   context.regions.gameRoot.appendChild(root);
   bindActions(root, context);
   return viewHandle(root);
+}
+
+function mountMethodsValidation(context) {
+  const vm = methodsValidationViewModel();
+  renderShellPanels(context, 'Methods & Validation', 'Evidence Detail', [['Status', vm?.manifest ? 'loaded' : (methodsValidationState.loading ? 'loading' : 'empty')], ['Components', vm?.reports?.length ?? 0], ['Manifest', vm?.manifest?.manifestDigest ?? 'none']], [['Main Menu', 'return-main']]);
+  const root = routeRoot('center-screen-overlay tool-view methods-validation-next-shell');
+  root.innerHTML = vm?.manifest ? methodsValidationPanelHtml(vm) : '<section class="center-panel"><header class="center-panel-header"><div><p class="center-kicker">Methods & Validation</p><h1 id="next-shell-route-heading">Methods & Validation</h1><p>Loading Official Validation Baseline...</p></div></header></section>';
+  context.regions.gameRoot.appendChild(root);
+  bindActions(root, context);
+  ensureMethodsValidationBaseline(root, context);
+  publishMethodsValidationDebug(vm, 'next-shell-render');
+  return viewHandle(root);
+}
+
+function methodsValidationViewModel() {
+  return methodsValidationState.baseline ? buildScientificValidationViewModel(methodsValidationState.baseline, methodsValidationState) : null;
+}
+
+function ensureMethodsValidationBaseline(root, context) {
+  if (methodsValidationState.baseline || methodsValidationState.loading) return;
+  methodsValidationState.loading = true;
+  loadOfficialValidationBaseline().then((baseline) => {
+    methodsValidationState.baseline = baseline;
+    methodsValidationState.loading = false;
+    if (root.isConnected) context.rerender();
+  }).catch((error) => {
+    methodsValidationState.loading = false;
+    root.innerHTML = `<section class="center-panel"><h1 id="next-shell-route-heading">Methods & Validation</h1><p>Validation baseline failed: ${escapeHtml(error?.message ?? error)}</p><button class="center-button secondary" data-action="return-main">Main Menu</button></section>`;
+  });
+}
+
+function publishMethodsValidationDebug(vm, reason = 'update') {
+  globalThis.ANCHOR_SCIENTIFIC_VALIDATION_DEBUG = { ...scientificValidationDebugPayload(vm, methodsValidationState), reason };
 }
 
 function mountHeadlessViewer(context) {
@@ -163,6 +202,21 @@ function publishNextShellCurrentPresentationDebug({ phase, renderer, viewModel, 
 
 function bindActions(root, context) {
   context.addListener(root, 'click', async (event) => {
+    const component = event.target?.closest?.('[data-component-id]');
+    if (component && root.contains(component)) {
+      event.preventDefault();
+      methodsValidationState.selectedComponentId = component.dataset.componentId;
+      methodsValidationState.selectedClaimId = null;
+      context.rerender();
+      return;
+    }
+    const claim = event.target?.closest?.('[data-claim-id]');
+    if (claim && root.contains(claim)) {
+      event.preventDefault();
+      methodsValidationState.selectedClaimId = claim.dataset.claimId;
+      context.rerender();
+      return;
+    }
     const button = event.target?.closest?.('[data-action]');
     if (!button || !root.contains(button)) return;
     event.preventDefault();
@@ -192,6 +246,7 @@ async function handleAction(action, context, button) {
     case 'return-replay': context.dispatch('returnFromReplay'); break;
     case 'open-import-export': context.dispatch('openImportExport'); break;
     case 'open-headless-viewer': context.dispatch('openHeadlessViewer'); break;
+    case 'open-methods-validation': context.dispatch('openMethodsValidation'); break;
     case 'open-tutorial-browser': context.dispatch('openTutorialBrowser'); break;
     case 'open-planner-benchmark': context.dispatch('openPlannerBenchmark'); break;
     case 'open-adaptive-benchmark': context.dispatch('openAdaptiveBenchmark'); break;
@@ -207,6 +262,15 @@ async function handleAction(action, context, button) {
     case 'export-plan': downloadJson('anchor.r3a-plan.json', context.sessionStore.state.gameState.plan); break;
     case 'export-result': downloadJson('anchor.r3a-result.json', context.sessionStore.state.result ?? context.sessionStore.completeMission('completed')); break;
     case 'load-example-bundle': await loadExampleBundle(context, button); break;
+    case 'validation-mode-learn': methodsValidationState.presentationMode = 'learn'; context.rerender(); break;
+    case 'validation-mode-research': methodsValidationState.presentationMode = 'research'; context.rerender(); break;
+    case 'run-validation-exploratory': methodsValidationState.exploratoryRerun = runExploratoryValidationCheck(methodsValidationViewModel()); methodsValidationState.exploratoryRerunCount += 1; context.rerender(); break;
+    case 'download-validation-manifest': methodsValidationState.downloadCount += 1; downloadCanonicalJSON('anchor_scientific_validation_manifest.json', methodsValidationViewModel()?.manifest); publishMethodsValidationDebug(methodsValidationViewModel(), 'download'); break;
+    case 'download-validation-report': methodsValidationState.downloadCount += 1; downloadCanonicalJSON('anchor_scientific_validation_report.json', methodsValidationViewModel()?.selectedReport); publishMethodsValidationDebug(methodsValidationViewModel(), 'download'); break;
+    case 'download-validation-summary-csv': methodsValidationState.downloadCount += 1; downloadCanonicalText('anchor_scientific_validation_summary.csv', buildValidationSummaryCsv(methodsValidationViewModel()), 'text/csv'); publishMethodsValidationDebug(methodsValidationViewModel(), 'download'); break;
+    case 'download-validation-metrics-csv': methodsValidationState.downloadCount += 1; downloadCanonicalText('anchor_scientific_validation_metrics.csv', selectedRawMetricCsv(methodsValidationViewModel()), 'text/csv'); publishMethodsValidationDebug(methodsValidationViewModel(), 'download'); break;
+    case 'download-validation-plot-data': methodsValidationState.downloadCount += 1; downloadCanonicalJSON('anchor_scientific_validation_plot_data.json', selectedReportPlotData(methodsValidationViewModel())); publishMethodsValidationDebug(methodsValidationViewModel(), 'download'); break;
+    case 'copy-validation-command': methodsValidationState.downloadCount += 1; downloadCanonicalText('anchor_validation_reproduction_command.txt', selectedReproductionCommand(methodsValidationViewModel()), 'text/plain'); publishMethodsValidationDebug(methodsValidationViewModel(), 'copy-command'); break;
     case 'replay-toggle': button.textContent = button.textContent === 'Play' ? 'Pause' : 'Play'; break;
     default: break;
   }

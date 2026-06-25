@@ -1509,3 +1509,209 @@
 .segment-profile-editor .marker-warning.advisory {
   color: var(--muted);
 }
+/* SCI-VALID-R2A Methods & Validation */
+.methods-validation-host {
+  pointer-events: auto;
+}
+
+.methods-validation-route {
+  width: min(1240px, calc(100vw - 40px));
+  max-height: calc(100vh - 36px);
+  overflow: auto;
+  margin: 18px auto;
+  padding: 18px;
+  color: var(--text-strong, #eaf6ff);
+  background: rgba(5, 14, 26, 0.94);
+  border: 1px solid rgba(114, 214, 255, 0.24);
+  border-radius: 8px;
+  box-shadow: 0 18px 48px rgba(0, 0, 0, 0.38);
+}
+
+.methods-validation-header,
+.methods-validation-bottom,
+.methods-validation-boundary {
+  display: flex;
+  gap: 14px;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 14px;
+}
+
+.methods-validation-header p {
+  max-width: 860px;
+}
+
+.methods-validation-mode,
+.methods-validation-downloads,
+.methods-status-row {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.methods-validation-mode button,
+.methods-validation-downloads button,
+.methods-component-button,
+.methods-claim-button {
+  border: 1px solid rgba(126, 216, 255, 0.28);
+  background: rgba(13, 32, 52, 0.86);
+  color: inherit;
+  border-radius: 6px;
+  padding: 8px 10px;
+  text-align: left;
+}
+
+.methods-validation-mode button[aria-pressed="true"],
+.methods-component-button[aria-pressed="true"],
+.methods-claim-button[aria-pressed="true"] {
+  border-color: rgba(99, 230, 190, 0.82);
+  background: rgba(19, 70, 68, 0.72);
+}
+
+.methods-validation-overview {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 10px;
+  margin-bottom: 14px;
+}
+
+.methods-validation-metric {
+  border: 1px solid rgba(126, 216, 255, 0.18);
+  border-radius: 6px;
+  padding: 10px;
+  background: rgba(10, 28, 45, 0.72);
+  min-width: 0;
+}
+
+.methods-validation-metric span,
+.methods-component-button span,
+.methods-component-button small,
+.methods-claim-button small {
+  display: block;
+  color: var(--text-muted, #9fb4c9);
+  font-size: 12px;
+}
+
+.methods-validation-metric strong {
+  display: block;
+  overflow-wrap: anywhere;
+}
+
+.methods-validation-boundary {
+  display: grid;
+  grid-template-columns: 1fr;
+  border: 1px solid rgba(255, 214, 102, 0.28);
+  background: rgba(55, 44, 18, 0.48);
+  border-radius: 6px;
+  padding: 10px;
+}
+
+.methods-validation-grid {
+  display: grid;
+  grid-template-columns: minmax(190px, 240px) minmax(220px, 320px) minmax(280px, 1fr);
+  gap: 12px;
+  align-items: start;
+}
+
+.methods-validation-components,
+.methods-validation-claims,
+.methods-validation-detail,
+.methods-validation-plot,
+.methods-validation-table-wrap,
+.methods-validation-exploratory {
+  border: 1px solid rgba(126, 216, 255, 0.18);
+  border-radius: 6px;
+  padding: 12px;
+  background: rgba(7, 20, 34, 0.74);
+}
+
+.methods-validation-components,
+.methods-validation-claim-list {
+  display: grid;
+  gap: 8px;
+}
+
+.methods-claim-button span {
+  display: inline-block;
+  min-width: 108px;
+  font-size: 12px;
+  color: #cceeff;
+}
+
+.methods-validation-dl {
+  display: grid;
+  grid-template-columns: minmax(110px, 180px) 1fr;
+  gap: 8px 12px;
+}
+
+.methods-validation-dl dt {
+  color: var(--text-muted, #9fb4c9);
+}
+
+.methods-validation-dl dd {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+.methods-validation-dl dd span {
+  display: block;
+  margin-bottom: 4px;
+}
+
+.methods-validation-bottom {
+  display: grid;
+  grid-template-columns: minmax(260px, 360px) minmax(300px, 1fr);
+  margin-top: 12px;
+}
+
+.methods-validation-svg {
+  width: 100%;
+  max-width: 420px;
+  background: rgba(5, 14, 26, 0.55);
+  border-radius: 6px;
+}
+
+.methods-validation-svg rect {
+  fill: rgba(99, 230, 190, 0.78);
+}
+
+.methods-svg-label,
+.methods-svg-value {
+  fill: #d8efff;
+  font-size: 12px;
+}
+
+.methods-validation-table-wrap {
+  overflow: auto;
+}
+
+.methods-validation-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12px;
+}
+
+.methods-validation-table th,
+.methods-validation-table td {
+  border-bottom: 1px solid rgba(126, 216, 255, 0.14);
+  padding: 6px 8px;
+  text-align: left;
+  vertical-align: top;
+}
+
+.methods-validation-table caption {
+  text-align: left;
+  color: var(--text-muted, #9fb4c9);
+  margin-bottom: 6px;
+}
+
+@media (max-width: 980px) {
+  .methods-validation-route {
+    width: calc(100vw - 20px);
+    margin: 10px auto;
+  }
+  .methods-validation-grid,
+  .methods-validation-bottom {
+    grid-template-columns: 1fr;
+  }
+}

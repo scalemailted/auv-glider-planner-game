@@ -1,4 +1,4 @@
-﻿export const ANCHOR_PRODUCTION_ROUTE_VERSION = 'three-r3a-route-contract';
+export const ANCHOR_PRODUCTION_ROUTE_VERSION = 'three-r3a-route-contract';
 
 const ROUTES = [
   route('productHub', 'Product Hub', 'hub', 'Product Hub', 'ANCHOR: Glider Command', 'Mission Context', false, false, false, false, false, '#next-shell-route-heading', ['main-menu-shell', 'hub-mode', 'no-mission-hub']),
@@ -13,6 +13,7 @@ const ROUTES = [
   route('importExport', 'Import / Export', 'tool', 'Import / Export', 'Import / Export', 'Tool Status', false, false, false, false, false, '#next-shell-route-heading', ['tool-route']),
   route('leaderboard', 'Leaderboard', 'tool', 'Leaderboard', 'Challenge Leaderboard', 'Leaderboard Detail', false, false, false, false, false, '#next-shell-route-heading', ['tool-route']),
   route('headlessBundleViewer', 'Headless Bundle Viewer', 'tool', 'Headless Bundle Viewer', 'Headless Bundle Viewer', 'Bundle Detail', false, false, true, false, false, '#next-shell-route-heading', ['tool-route']),
+  route('methodsValidation', 'Methods & Validation', 'tool', 'Methods & Validation', 'Methods & Validation', 'Evidence Detail', false, false, false, false, false, '#next-shell-route-heading', ['tool-route', 'methods-validation-shell']),
   route('tutorialBrowser', 'Tutorial Browser', 'tool', 'Tutorial Browser', 'Tutorial Browser', 'Tutorial Detail', false, false, false, false, false, '#next-shell-route-heading', ['tool-route']),
   route('plannerBenchmark', 'Planner Benchmark', 'tool', 'Planner Benchmark', 'Planner Benchmark', 'Benchmark Detail', false, false, false, false, false, '#next-shell-route-heading', ['benchmark-route']),
   route('adaptiveBenchmark', 'Adaptive Benchmark', 'tool', 'Adaptive Benchmark', 'Adaptive Benchmark', 'Adaptive Detail', false, false, false, false, false, '#next-shell-route-heading', ['benchmark-route']),

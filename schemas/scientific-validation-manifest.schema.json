@@ -1,0 +1,36 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "schemas/scientific-validation-manifest.schema.json",
+  "title": "ANCHOR Scientific Validation Manifest",
+  "describes": "anchor.scientific-validation-manifest",
+  "schemaVersion": "1.0",
+  "type": "object",
+  "required": ["schemaVersion", "type", "manifestId", "applicationVersion", "validationBaselineId", "reports", "alphaPositioning", "overallClaimBoundary", "manifestDigest"],
+  "properties": {
+    "schemaVersion": { "const": "1.0" },
+    "type": { "const": "anchor.scientific-validation-manifest" },
+    "manifestId": { "type": "string" },
+    "applicationVersion": { "type": "string" },
+    "validationBaselineId": { "type": "string" },
+    "reports": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["componentId", "reportId", "reportVersion", "reportDigest", "path"]
+      }
+    },
+    "evidenceLevelSummary": { "type": "object" },
+    "statusSummary": { "type": "object" },
+    "packageVersions": { "type": "object" },
+    "alphaPositioning": { "type": "string" },
+    "tagline": { "type": "string" },
+    "overallClaimBoundary": {
+      "type": "object",
+      "required": ["benchmarkOrEducationUse", "operationalForecast", "certifiedNavigation", "calibratedDigitalTwin"]
+    },
+    "benchmarkSuitabilitySummary": { "type": "object" },
+    "visibilityClass": { "type": "string" },
+    "fairnessClass": { "type": "string" },
+    "manifestDigest": { "type": "string" }
+  }
+}

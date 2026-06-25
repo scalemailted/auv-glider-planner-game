@@ -8,6 +8,18 @@ python -m http.server 8000
 
 Playwright is optional and intended for development smoke testing.
 
+## SCI-VALID-R2A Scientific Validation Checks
+
+Run these after changing `packages/validation`, validation artifacts, scientific-validation schemas, the Methods & Validation route, or validation docs:
+
+```bash
+node tools/science/build_validation_baseline.mjs
+node tools/tests/scientific_validation.test.mjs
+node ./node_modules/@playwright/test/cli.js test tests/e2e/scientific_validation_methods.spec.js --reporter=line --workers=1
+```
+
+The baseline builder compares checked-in artifacts by default. Use `--update` only when intentionally refreshing official reports after review. These checks distinguish software verification, numerical verification, physical plausibility, external comparison, and operational validation; they do not certify operational ocean validity.
+
 For static GitHub Pages compatibility checks, run:
 
 ```bash

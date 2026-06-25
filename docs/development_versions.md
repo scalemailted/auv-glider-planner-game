@@ -20,6 +20,12 @@ Update it after substantial refactors so future work starts from the current pro
 
 ## Current Development State
 
+### SCI-VALID-R2A - Scientific Evidence Baseline and Methods Route
+
+- Added versioned validation contracts, checked-in official validation reports/manifests, scientific-validation codec schemas, a deterministic baseline builder, and a consolidated Node validation test.
+- Added a Product Hub Methods & Validation route for component claims, evidence levels/statuses, threshold rationales, limitations, downloads, Plain Language/Technical Detail modes, exploratory reruns, and debug state.
+- Preserved the boundary: this phase presents evidence and limitations; it does not change scientific equations, environment generation, glider dynamics, mission simulation, scoring, planner behavior, rendering semantics, or mission outcomes.
+
 ### SCORE-PKG-R1 - Canonical Scoring Package
 
 - Added packages/scoring as the canonical owner of official score calculation, ScoreProfile definitions, ScoreInput/ScoreResult contracts, deterministic score digests, public-safe summaries, score methodology metadata, and benchmark score metadata.

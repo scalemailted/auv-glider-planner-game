@@ -1,0 +1,146 @@
+{
+  "type": "anchor.scientific-validation-plot-data",
+  "schemaVersion": "1.0",
+  "baselineId": "sci-valid-r2a-pre-alpha-baseline",
+  "manifestDigest": "fnv1a32:dd016175",
+  "statusSummary": {
+    "PASS": 90,
+    "NOT_EVALUATED": 5,
+    "WARN": 1
+  },
+  "evidenceLevelSummary": {
+    "SOFTWARE_VERIFIED": 62,
+    "NUMERICALLY_VERIFIED": 14,
+    "PHYSICALLY_PLAUSIBLE": 15,
+    "NOT_YET_EVALUATED": 5
+  },
+  "componentRows": [
+    {
+      "componentId": "bathymetry",
+      "componentLabel": "Bathymetry",
+      "reportDigest": "fnv1a32:0dc29d33",
+      "claimCount": 13,
+      "statusSummary": {
+        "PASS": 12,
+        "NOT_EVALUATED": 1
+      },
+      "evidenceLevelSummary": {
+        "SOFTWARE_VERIFIED": 5,
+        "NUMERICALLY_VERIFIED": 3,
+        "PHYSICALLY_PLAUSIBLE": 4,
+        "NOT_YET_EVALUATED": 1
+      }
+    },
+    {
+      "componentId": "currents",
+      "componentLabel": "Currents",
+      "reportDigest": "fnv1a32:9f109dac",
+      "claimCount": 15,
+      "statusSummary": {
+        "PASS": 14,
+        "NOT_EVALUATED": 1
+      },
+      "evidenceLevelSummary": {
+        "SOFTWARE_VERIFIED": 6,
+        "NUMERICALLY_VERIFIED": 3,
+        "PHYSICALLY_PLAUSIBLE": 5,
+        "NOT_YET_EVALUATED": 1
+      }
+    },
+    {
+      "componentId": "scalar-processes",
+      "componentLabel": "Scalar Processes",
+      "reportDigest": "fnv1a32:858b9d34",
+      "claimCount": 13,
+      "statusSummary": {
+        "PASS": 12,
+        "NOT_EVALUATED": 1
+      },
+      "evidenceLevelSummary": {
+        "NUMERICALLY_VERIFIED": 7,
+        "PHYSICALLY_PLAUSIBLE": 4,
+        "SOFTWARE_VERIFIED": 1,
+        "NOT_YET_EVALUATED": 1
+      }
+    },
+    {
+      "componentId": "environment",
+      "componentLabel": "Environment Composition",
+      "reportDigest": "fnv1a32:29bfedd9",
+      "claimCount": 9,
+      "statusSummary": {
+        "PASS": 9
+      },
+      "evidenceLevelSummary": {
+        "SOFTWARE_VERIFIED": 9
+      }
+    },
+    {
+      "componentId": "glider-dynamics",
+      "componentLabel": "Glider Dynamics and Dive Profiles",
+      "reportDigest": "fnv1a32:5f91ec3b",
+      "claimCount": 14,
+      "statusSummary": {
+        "PASS": 12,
+        "WARN": 1,
+        "NOT_EVALUATED": 1
+      },
+      "evidenceLevelSummary": {
+        "SOFTWARE_VERIFIED": 11,
+        "PHYSICALLY_PLAUSIBLE": 2,
+        "NOT_YET_EVALUATED": 1
+      }
+    },
+    {
+      "componentId": "sampling-observations",
+      "componentLabel": "Sampling and Observations",
+      "reportDigest": "fnv1a32:ff415b6a",
+      "claimCount": 8,
+      "statusSummary": {
+        "PASS": 8
+      },
+      "evidenceLevelSummary": {
+        "SOFTWARE_VERIFIED": 7,
+        "NUMERICALLY_VERIFIED": 1
+      }
+    },
+    {
+      "componentId": "mission-simulator",
+      "componentLabel": "Mission Simulator",
+      "reportDigest": "fnv1a32:cc1cf238",
+      "claimCount": 8,
+      "statusSummary": {
+        "PASS": 8
+      },
+      "evidenceLevelSummary": {
+        "SOFTWARE_VERIFIED": 8
+      }
+    },
+    {
+      "componentId": "scoring",
+      "componentLabel": "Scoring",
+      "reportDigest": "fnv1a32:1159404c",
+      "claimCount": 8,
+      "statusSummary": {
+        "PASS": 7,
+        "NOT_EVALUATED": 1
+      },
+      "evidenceLevelSummary": {
+        "SOFTWARE_VERIFIED": 7,
+        "NOT_YET_EVALUATED": 1
+      }
+    },
+    {
+      "componentId": "codecs-reproducibility",
+      "componentLabel": "Codecs and Reproducibility",
+      "reportDigest": "fnv1a32:4db00761",
+      "claimCount": 8,
+      "statusSummary": {
+        "PASS": 8
+      },
+      "evidenceLevelSummary": {
+        "SOFTWARE_VERIFIED": 8
+      }
+    }
+  ]
+}

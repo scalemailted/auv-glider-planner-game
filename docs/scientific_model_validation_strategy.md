@@ -58,3 +58,7 @@ This layer is a gate for deterministic synthetic correctness and package-readine
 ## FLOW-PKG-R1 Current Package Note
 
 packages/currents now owns pure 4D current contracts, artifacts, source metadata, sampler behavior, temporal boundaries, and scientific diagnostics. The package remains browser-safe, Node-safe, Worker-safe, and independent of src/, Three.js, Phaser, DOM, and UI lifecycle. Synthetic current claims remain bounded to deterministic benchmark fixtures, not calibrated ocean forecasts.
+
+## SCI-VALID-R2A Evidence Baseline
+
+SCI-VALID-R2A moves validation evidence into checked-in machine-readable artifacts under `validation/` and pure contracts in `packages/validation`. The public Methods & Validation route displays those reports, threshold rationales, limitations, and reproduction commands. It distinguishes software verification, numerical verification, physical plausibility, external comparison, and operational validation. Passing software, browser, or visual checks remains insufficient for oceanographic validation.

@@ -2,6 +2,10 @@
 
 This document keeps durable decisions from completed cleanup, renderer, current, bathymetry, water-column, replay, headless, and benchmark phases. Git history remains the complete archive for phase-by-phase reports and removed visual acceptance notes.
 
+## SCI-VALID-R2A
+
+SCI-VALID-R2A established `packages/validation`, checked-in official validation reports/manifests under `validation/`, codec schemas for scientific-validation artifacts, a deterministic baseline builder, a consolidated Node test, and the public Methods & Validation route. It preserved scientific equations, environment generation, glider dynamics, mission simulation, scoring, planner behavior, rendering semantics, and mission outcomes.
+
 ## SCORE-PKG-R1
 
 SCORE-PKG-R1 introduced packages/scoring as the canonical owner for official score calculation, score profiles, ScoreInput/ScoreResult contracts, deterministic score digests, public-safe score summaries, benchmark score metadata, and result/leaderboard score identity. It preserved existing simulator raw metrics, scoring formulas, bonuses, penalties, official scores, planner behavior, scientific models, and public result compatibility.

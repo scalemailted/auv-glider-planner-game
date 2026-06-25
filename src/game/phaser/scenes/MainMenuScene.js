@@ -26,7 +26,7 @@ import { resetMissionShellForMainMenu, publishSceneIsolationDebug } from '../../
 const PhaserScene = globalThis.Phaser?.Scene ?? class {};
 const MAIN_MENU_VERSION = 'main-menu-hub-ui-r1';
 
-const PRIMARY_CARDS = ['Challenge Mode', 'Simulation Lab', 'Learning Labs'];
+const PRIMARY_CARDS = ['Challenge Mode', 'Simulation Lab', 'Learning Labs', 'Methods & Validation'];
 const CHALLENGE_ACTIONS = [
   'Start Guided Challenge',
   'Quick Random Challenge',
@@ -250,10 +250,12 @@ export class MainMenuScene extends PhaserScene {
         ${hubCardHtml({ view: 'challenge', title: 'Challenge Mode', eyebrow: 'Play missions', body: 'Learn objectives, chase scores, compare routes, and race the greedy baseline.' })}
         ${hubCardHtml({ view: 'simulation', title: 'Simulation Lab', eyebrow: 'Inspect systems', body: 'Open scientific sandboxes, benchmark modes, headless bundles, and solver workflows.' })}
         ${hubCardHtml({ view: 'learning', title: 'Learning Labs', eyebrow: 'Read + experiment', body: 'Use interactive articles and companion sandboxes to learn the science step by step.' })}
+        ${hubActionCardHtml({ action: 'methods-validation', title: 'Methods & Validation', eyebrow: 'Inspect evidence', body: 'Inspect model assumptions, numerical tests, reference comparisons, provenance, and known limitations.' })}
       </div>
       <div class="main-menu-secondary-row" aria-label="Secondary tools">
         <button type="button" data-action="load-json">Import JSON</button>
         <button type="button" data-action="headless-bundle-viewer">Headless Bundle Viewer</button>
+        <button type="button" data-action="methods-validation">Methods & Validation</button>
         <button type="button" data-action="dataset">External Solver Workflow</button>
         <button type="button" data-action="open-about">Development / About</button>
       </div>
@@ -368,6 +370,7 @@ export class MainMenuScene extends PhaserScene {
       editor: () => scene.start('EnvironmentEditorScene'),
       'load-json': () => scene.start('LoadLevelJsonScene'),
       'headless-bundle-viewer': () => scene.start('HeadlessBundleViewerScene'),
+      'methods-validation': () => scene.start('MethodsValidationScene'),
       dataset: () => scene.start('DatasetExportScene'),
       leaderboard: () => this.openLeaderboard(),
       'open-about': () => this.mountProductHub('learning')
@@ -883,6 +886,10 @@ function escapeHtml(value) {
 function escapeAttr(value) {
   return escapeHtml(value).replace(/`/g, '&#096;');
 }
+function hubActionCardHtml({ action, title, eyebrow, body }) {
+  return `<button type="button" class="main-menu-card" data-action="${escapeAttr(action)}"><span>${escapeHtml(eyebrow)}</span><strong>${escapeHtml(title)}</strong><small>${escapeHtml(body)}</small></button>`;
+}
+
 function hubCardHtml({ view, title, eyebrow, body }) {
   return `
     <button type="button" class="main-menu-card" data-hub-view="${escapeAttr(view)}">

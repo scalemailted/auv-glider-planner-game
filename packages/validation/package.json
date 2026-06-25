@@ -1,9 +1,9 @@
 {
   "name": "@anchor/validation",
-  "version": "0.0.0-arch-r1",
+  "version": "0.1.0-sci-valid-r2a",
   "private": true,
   "type": "module",
-  "description": "Scientific validation package boundary for ANCHOR.",
+  "description": "Scientific validation evidence contracts, reports, manifests, and deterministic digests for ANCHOR.",
   "exports": {
     ".": "./src/index.js"
   }

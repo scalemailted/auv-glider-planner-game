@@ -14,6 +14,8 @@ WORLD-R1 adds a renderer-neutral multiscale mission-domain contract. Physical op
 
 SIM-PKG-R2 makes `packages/mission-simulator` the sole canonical mission-state transition authority for browser, headless, and benchmark execution. It consumes frozen `EnvironmentArtifact` identity from `packages/environment` and owns physics, route progress, environment sampling, events, terminal evaluation, and raw metrics; route planning, Play/Pause scheduling, UI, rendering, official score aggregation, and replay playback remain outside the package. See [Mission Simulator Package](docs/mission_simulator_package.md).
 
+SCI-VALID-R2A adds a top-level Methods & Validation route and a checked-in scientific evidence baseline under `validation/`. It distinguishes software verification, numerical verification, physical plausibility, external comparison, and operational validation; passing browser or software tests is not presented as oceanographic validation. See [Scientific Validation and Methods](docs/scientific_validation_and_methods.md).
+
 ANCHOR separates current flow, event likelihood, realized sample value, and uncertainty into distinct field concepts. Current flow describes how hard it is to move, event likelihood describes where sample-value events tend to originate, sample value describes where and when sampling has reward, and uncertainty describes what the planner does not know. Both experiences use the same terrain, current fields, sample fields, hazards, glider physics, scoring, route validation, planner APIs, and export/replay system.
 
 ## Current Status
@@ -21,7 +23,7 @@ ANCHOR separates current flow, event likelihood, realized sample value, and unce
 Version 2 is a playable static-web game built with vanilla JavaScript, HTML, CSS, Phaser 3, Three.js, and schema-driven core modules. The active mission shell is a Mission Console + Three.js Mission World + Waypoint Timeline: HTML/CSS owns the left mission-control console for menus, forms, tables, imports/exports, and results, Three.js owns the production planning/simulation world view and direct mission interaction, Phaser remains a transitional scene router plus developer-only legacy map fallback, and the right panel owns the selected-glider waypoint timeline. It has:
 
 - main menu, campaign flow, mission briefing, planning, simulation, debrief, level editor, and dataset export scenes
-- full-viewport Main Menu / Product Hub with three primary cards: Challenge Mode, Simulation Lab, and Learning Labs
+- full-viewport Main Menu / Product Hub with four primary cards: Challenge Mode, Simulation Lab, Learning Labs, and Methods & Validation
 - static Learning Labs concept pages, including a syllabus-style index, Scientific Computational Modeling foundation article, CA for Ocean-Relevant Processes foundation article, deterministic-process article, deterministic dynamic flow-fields article, oracle deterministic coupled sampling-space article, stochastic uncertainty article, stochastic coupled sampling-space article, Sampling Priority to Glider Action Value bridge article, and Planner / Mission Evaluation article
 - Simulation Lab field demos with Flow Fields Demo for current arrows, Process Lab for deterministic spatiotemporal process examples, Uncertainty / Forecast Demo for belief-state teaching, Sampling Priority Demo for global acquisition / sampling usefulness, Flow-Coupled Sampling Demo for glider-specific direct-target action value, Motion Planning Demo for planned-vs-realized trajectory inspection, Renderer Architecture Preview for renderer-boundary diagnostics, and Benchmark Modes for Planner / Adaptive / Full Autonomy architecture contracts plus route-execution adapter contracts
 - game-first mission planning workspace with a production Three.js bathymetric mission world, visible Planning Tools, standard left-drag pan / right-drag orbit / wheel-zoom controls, transaction-backed Execute -> Simulation launch, HTML/CSS mission-control overlays, top selected-glider planning HUD, bottom mission-time slider, contextual right-panel incoming-segment flight-profile editor, waypoint drawer/table, and non-executable planning markers
@@ -108,7 +110,7 @@ Learning Labs now include foundation pages for scientific computational modeling
 Quick loop:
 
 1. Open the game.
-2. Choose one of the full-viewport hub cards: Challenge Mode, Simulation Lab, or Learning Labs.
+2. Choose one of the full-viewport hub cards: Challenge Mode, Simulation Lab, Learning Labs, or Methods & Validation.
 3. Under Challenge Mode, use guided challenges, random challenges, custom JSON import, Greedy Planner Race, Tutorials, or Challenge Leaderboard.
 4. Under Simulation Lab, use Scientific Sandboxes, Benchmark Modes, Headless / Solver Tools, or Import / Export Tools.
 5. Under Learning Labs, open explanatory articles and companion sandboxes such as Scientific Computational Modeling, CA for Ocean-Relevant Processes, Sampling Priority to Glider Action Value, and Planner / Mission Evaluation before using the sandbox.

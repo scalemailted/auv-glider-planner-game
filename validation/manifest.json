@@ -1,0 +1,127 @@
+{
+  "schemaVersion": "1.0",
+  "type": "anchor.scientific-validation-manifest",
+  "manifestId": "anchor-pre-alpha-scientific-validation-manifest",
+  "applicationVersion": "pre-alpha",
+  "validationBaselineId": "sci-valid-r2a-pre-alpha-baseline",
+  "reports": [
+    {
+      "componentId": "bathymetry",
+      "reportId": "anchor-bathymetry-scientific-validation-report",
+      "reportVersion": "1.0",
+      "reportDigest": "fnv1a32:0dc29d33",
+      "path": "validation/reports/bathymetry.json"
+    },
+    {
+      "componentId": "currents",
+      "reportId": "anchor-currents-scientific-validation-report",
+      "reportVersion": "1.0",
+      "reportDigest": "fnv1a32:9f109dac",
+      "path": "validation/reports/currents.json"
+    },
+    {
+      "componentId": "scalar-processes",
+      "reportId": "anchor-scalar-processes-scientific-validation-report",
+      "reportVersion": "1.0",
+      "reportDigest": "fnv1a32:858b9d34",
+      "path": "validation/reports/scalar-processes.json"
+    },
+    {
+      "componentId": "environment",
+      "reportId": "anchor-environment-scientific-validation-report",
+      "reportVersion": "1.0",
+      "reportDigest": "fnv1a32:29bfedd9",
+      "path": "validation/reports/environment.json"
+    },
+    {
+      "componentId": "glider-dynamics",
+      "reportId": "anchor-glider-dynamics-scientific-validation-report",
+      "reportVersion": "1.0",
+      "reportDigest": "fnv1a32:5f91ec3b",
+      "path": "validation/reports/glider-dynamics.json"
+    },
+    {
+      "componentId": "sampling-observations",
+      "reportId": "anchor-sampling-observations-scientific-validation-report",
+      "reportVersion": "1.0",
+      "reportDigest": "fnv1a32:ff415b6a",
+      "path": "validation/reports/sampling-observations.json"
+    },
+    {
+      "componentId": "mission-simulator",
+      "reportId": "anchor-mission-simulator-scientific-validation-report",
+      "reportVersion": "1.0",
+      "reportDigest": "fnv1a32:cc1cf238",
+      "path": "validation/reports/mission-simulator.json"
+    },
+    {
+      "componentId": "scoring",
+      "reportId": "anchor-scoring-scientific-validation-report",
+      "reportVersion": "1.0",
+      "reportDigest": "fnv1a32:1159404c",
+      "path": "validation/reports/scoring.json"
+    },
+    {
+      "componentId": "codecs-reproducibility",
+      "reportId": "anchor-codecs-reproducibility-scientific-validation-report",
+      "reportVersion": "1.0",
+      "reportDigest": "fnv1a32:4db00761",
+      "path": "validation/reports/codecs-reproducibility.json"
+    }
+  ],
+  "evidenceLevelSummary": {
+    "SOFTWARE_VERIFIED": 62,
+    "NUMERICALLY_VERIFIED": 14,
+    "PHYSICALLY_PLAUSIBLE": 15,
+    "NOT_YET_EVALUATED": 5
+  },
+  "statusSummary": {
+    "PASS": 90,
+    "NOT_EVALUATED": 5,
+    "WARN": 1
+  },
+  "packageVersions": {
+    "contracts": "0.0.0-arch-r1",
+    "bathymetry": "0.0.0-arch-r1",
+    "currents": "0.0.0-arch-r1",
+    "scalar-processes": "0.1.0-process-pkg-r1",
+    "environment": "0.0.0-arch-r1",
+    "mission-simulator": "0.0.0-arch-r1",
+    "scoring": "0.0.0-score-pkg-r1",
+    "codecs": "0.1.0-codec-r1",
+    "validation": "0.1.0-sci-valid-r2a",
+    "validationRuntime": "anchor-validation-sci-valid-r2a"
+  },
+  "alphaPositioning": "ANCHOR Alpha is a deterministic, scientifically constrained research-and-education sandbox for investigating adaptive underwater-glider mission planning. It supports reproducible comparison of human, classical, and learning-based planners. It is not an operational ocean forecast or certified vehicle-navigation system.",
+  "tagline": "Plan. Simulate. Compare. Learn.",
+  "overallClaimBoundary": {
+    "benchmarkOrEducationUse": true,
+    "operationalForecast": false,
+    "certifiedNavigation": false,
+    "calibratedDigitalTwin": false
+  },
+  "benchmarkSuitabilitySummary": {
+    "deterministicRegression": {
+      "GO": 9
+    },
+    "educationalUse": {
+      "GO": 9
+    },
+    "classicalPlannerBenchmark": {
+      "CONDITIONAL": 5,
+      "GO": 4
+    },
+    "mlDatasetGeneration": {
+      "CONDITIONAL": 9
+    },
+    "operationalForecastUse": {
+      "NO_GO": 9
+    },
+    "certifiedNavigationUse": {
+      "NO_GO": 9
+    }
+  },
+  "visibilityClass": "PUBLIC",
+  "fairnessClass": "PUBLIC_FAIR",
+  "manifestDigest": "fnv1a32:dd016175"
+}

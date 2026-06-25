@@ -1,0 +1,1626 @@
+{
+  "schemaVersion": "1.0",
+  "type": "anchor.scientific-validation-report",
+  "reportId": "anchor-glider-dynamics-scientific-validation-report",
+  "componentId": "glider-dynamics",
+  "componentLabel": "Glider Dynamics and Dive Profiles",
+  "modelId": "anchor.glider-dynamics-educational",
+  "modelVersion": "mission-simulator-r2",
+  "summary": "Glider Dynamics and Dive Profiles has a Pre-Alpha evidence report built from deterministic package fixtures and documented diagnostics.",
+  "claims": [
+    {
+      "version": "1.0",
+      "claimId": "glider-dynamics.positive-down-depth",
+      "componentId": "glider-dynamics",
+      "title": "Positive-down depth convention",
+      "plainLanguageClaim": "Glider Dynamics and Dive Profiles supports positive-down depth convention within the deterministic ANCHOR benchmark fixtures.",
+      "technicalClaim": "anchor.glider-dynamics-educational positive-down-depth is evaluated by package-smoke-and-parity-fixture using fixture-backed deterministic metrics. Status is recorded separately from evidence level.",
+      "evidenceLevel": "SOFTWARE_VERIFIED",
+      "methodId": "package-smoke-and-parity-fixture",
+      "metricId": "deterministic-contract-status",
+      "units": "pass-count",
+      "expectedDirection": "less-than-or-equal",
+      "threshold": 0,
+      "tolerance": 0,
+      "thresholdRationale": "Software contract checks require zero hard validation failures for the checked fixture and package version.",
+      "fixtureIds": [
+        "tests/fixtures/mission_simulator_package_r2_parity.json"
+      ],
+      "referenceIds": [
+        "canonical-3d-glider-dive-execution-md",
+        "mission-simulator-package-md"
+      ],
+      "applicability": "deterministic-regression, education, and benchmark-suitability review",
+      "public": true,
+      "claimDigest": "fnv1a32:9af18957"
+    },
+    {
+      "version": "1.0",
+      "claimId": "glider-dynamics.surface-only-behavior",
+      "componentId": "glider-dynamics",
+      "title": "Surface-only behavior",
+      "plainLanguageClaim": "Glider Dynamics and Dive Profiles supports surface-only behavior within the deterministic ANCHOR benchmark fixtures.",
+      "technicalClaim": "anchor.glider-dynamics-educational surface-only-behavior is evaluated by package-smoke-and-parity-fixture using fixture-backed deterministic metrics. Status is recorded separately from evidence level.",
+      "evidenceLevel": "SOFTWARE_VERIFIED",
+      "methodId": "package-smoke-and-parity-fixture",
+      "metricId": "deterministic-contract-status",
+      "units": "pass-count",
+      "expectedDirection": "less-than-or-equal",
+      "threshold": 0,
+      "tolerance": 0,
+      "thresholdRationale": "Software contract checks require zero hard validation failures for the checked fixture and package version.",
+      "fixtureIds": [
+        "tests/fixtures/mission_simulator_package_r2_parity.json"
+      ],
+      "referenceIds": [
+        "canonical-3d-glider-dive-execution-md",
+        "mission-simulator-package-md"
+      ],
+      "applicability": "deterministic-regression, education, and benchmark-suitability review",
+      "public": true,
+      "claimDigest": "fnv1a32:e9b0310d"
+    },
+    {
+      "version": "1.0",
+      "claimId": "glider-dynamics.sawtooth-dive",
+      "componentId": "glider-dynamics",
+      "title": "Sawtooth dive profile",
+      "plainLanguageClaim": "Glider Dynamics and Dive Profiles supports sawtooth dive profile within the deterministic ANCHOR benchmark fixtures.",
+      "technicalClaim": "anchor.glider-dynamics-educational sawtooth-dive is evaluated by package-smoke-and-parity-fixture using fixture-backed deterministic metrics. Status is recorded separately from evidence level.",
+      "evidenceLevel": "SOFTWARE_VERIFIED",
+      "methodId": "package-smoke-and-parity-fixture",
+      "metricId": "deterministic-contract-status",
+      "units": "pass-count",
+      "expectedDirection": "less-than-or-equal",
+      "threshold": 0,
+      "tolerance": 0,
+      "thresholdRationale": "Software contract checks require zero hard validation failures for the checked fixture and package version.",
+      "fixtureIds": [
+        "tests/fixtures/mission_simulator_package_r2_parity.json"
+      ],
+      "referenceIds": [
+        "canonical-3d-glider-dive-execution-md",
+        "mission-simulator-package-md"
+      ],
+      "applicability": "deterministic-regression, education, and benchmark-suitability review",
+      "public": true,
+      "claimDigest": "fnv1a32:928582d3"
+    },
+    {
+      "version": "1.0",
+      "claimId": "glider-dynamics.shallow-profile",
+      "componentId": "glider-dynamics",
+      "title": "Shallow profile",
+      "plainLanguageClaim": "Glider Dynamics and Dive Profiles supports shallow profile within the deterministic ANCHOR benchmark fixtures.",
+      "technicalClaim": "anchor.glider-dynamics-educational shallow-profile is evaluated by package-smoke-and-parity-fixture using fixture-backed deterministic metrics. Status is recorded separately from evidence level.",
+      "evidenceLevel": "SOFTWARE_VERIFIED",
+      "methodId": "package-smoke-and-parity-fixture",
+      "metricId": "deterministic-contract-status",
+      "units": "pass-count",
+      "expectedDirection": "less-than-or-equal",
+      "threshold": 0,
+      "tolerance": 0,
+      "thresholdRationale": "Software contract checks require zero hard validation failures for the checked fixture and package version.",
+      "fixtureIds": [
+        "tests/fixtures/mission_simulator_package_r2_parity.json"
+      ],
+      "referenceIds": [
+        "canonical-3d-glider-dive-execution-md",
+        "mission-simulator-package-md"
+      ],
+      "applicability": "deterministic-regression, education, and benchmark-suitability review",
+      "public": true,
+      "claimDigest": "fnv1a32:ff4c1209"
+    },
+    {
+      "version": "1.0",
+      "claimId": "glider-dynamics.deep-profile",
+      "componentId": "glider-dynamics",
+      "title": "Deep profile",
+      "plainLanguageClaim": "Glider Dynamics and Dive Profiles supports deep profile within the deterministic ANCHOR benchmark fixtures.",
+      "technicalClaim": "anchor.glider-dynamics-educational deep-profile is evaluated by package-smoke-and-parity-fixture using fixture-backed deterministic metrics. Status is recorded separately from evidence level.",
+      "evidenceLevel": "SOFTWARE_VERIFIED",
+      "methodId": "package-smoke-and-parity-fixture",
+      "metricId": "deterministic-contract-status",
+      "units": "pass-count",
+      "expectedDirection": "less-than-or-equal",
+      "threshold": 0,
+      "tolerance": 0,
+      "thresholdRationale": "Software contract checks require zero hard validation failures for the checked fixture and package version.",
+      "fixtureIds": [
+        "tests/fixtures/mission_simulator_package_r2_parity.json"
+      ],
+      "referenceIds": [
+        "canonical-3d-glider-dive-execution-md",
+        "mission-simulator-package-md"
+      ],
+      "applicability": "deterministic-regression, education, and benchmark-suitability review",
+      "public": true,
+      "claimDigest": "fnv1a32:28306b0d"
+    },
+    {
+      "version": "1.0",
+      "claimId": "glider-dynamics.multi-yo-profile",
+      "componentId": "glider-dynamics",
+      "title": "Multi-yo profile",
+      "plainLanguageClaim": "Glider Dynamics and Dive Profiles supports multi-yo profile within the deterministic ANCHOR benchmark fixtures.",
+      "technicalClaim": "anchor.glider-dynamics-educational multi-yo-profile is evaluated by package-smoke-and-parity-fixture using fixture-backed deterministic metrics. Status is recorded separately from evidence level.",
+      "evidenceLevel": "SOFTWARE_VERIFIED",
+      "methodId": "package-smoke-and-parity-fixture",
+      "metricId": "deterministic-contract-status",
+      "units": "pass-count",
+      "expectedDirection": "less-than-or-equal",
+      "threshold": 0,
+      "tolerance": 0,
+      "thresholdRationale": "Software contract checks require zero hard validation failures for the checked fixture and package version.",
+      "fixtureIds": [
+        "tests/fixtures/mission_simulator_package_r2_parity.json"
+      ],
+      "referenceIds": [
+        "canonical-3d-glider-dive-execution-md",
+        "mission-simulator-package-md"
+      ],
+      "applicability": "deterministic-regression, education, and benchmark-suitability review",
+      "public": true,
+      "claimDigest": "fnv1a32:99b3f51d"
+    },
+    {
+      "version": "1.0",
+      "claimId": "glider-dynamics.predicted-realized-path-parity",
+      "componentId": "glider-dynamics",
+      "title": "Predicted/realized path parity",
+      "plainLanguageClaim": "Glider Dynamics and Dive Profiles supports predicted/realized path parity within the deterministic ANCHOR benchmark fixtures.",
+      "technicalClaim": "anchor.glider-dynamics-educational predicted-realized-path-parity is evaluated by package-smoke-and-parity-fixture using fixture-backed deterministic metrics. Status is recorded separately from evidence level.",
+      "evidenceLevel": "SOFTWARE_VERIFIED",
+      "methodId": "package-smoke-and-parity-fixture",
+      "metricId": "deterministic-contract-status",
+      "units": "pass-count",
+      "expectedDirection": "less-than-or-equal",
+      "threshold": 0,
+      "tolerance": 0,
+      "thresholdRationale": "Software contract checks require zero hard validation failures for the checked fixture and package version.",
+      "fixtureIds": [
+        "tests/fixtures/mission_simulator_package_r2_parity.json"
+      ],
+      "referenceIds": [
+        "canonical-3d-glider-dive-execution-md",
+        "mission-simulator-package-md"
+      ],
+      "applicability": "deterministic-regression, education, and benchmark-suitability review",
+      "public": true,
+      "claimDigest": "fnv1a32:adfcbd5b"
+    },
+    {
+      "version": "1.0",
+      "claimId": "glider-dynamics.current-induced-drift",
+      "componentId": "glider-dynamics",
+      "title": "Current-induced drift",
+      "plainLanguageClaim": "Glider Dynamics and Dive Profiles supports current-induced drift within the deterministic ANCHOR benchmark fixtures.",
+      "technicalClaim": "anchor.glider-dynamics-educational current-induced-drift is evaluated by bounded-invariant-and-diagnostic-check using fixture-backed deterministic metrics. Status is recorded separately from evidence level.",
+      "evidenceLevel": "PHYSICALLY_PLAUSIBLE",
+      "methodId": "bounded-invariant-and-diagnostic-check",
+      "metricId": "bounded-plausibility-invariant",
+      "units": "pass-count",
+      "expectedDirection": "less-than-or-equal",
+      "threshold": 0,
+      "tolerance": 1,
+      "thresholdRationale": "The threshold is a deterministic regression gate for bounded synthetic behavior; it is not an oceanographic validation threshold.",
+      "fixtureIds": [
+        "tests/fixtures/mission_simulator_package_r2_parity.json"
+      ],
+      "referenceIds": [
+        "canonical-3d-glider-dive-execution-md",
+        "mission-simulator-package-md"
+      ],
+      "applicability": "deterministic-regression, education, and benchmark-suitability review",
+      "public": true,
+      "claimDigest": "fnv1a32:01f1362e"
+    },
+    {
+      "version": "1.0",
+      "claimId": "glider-dynamics.terrain-clearance",
+      "componentId": "glider-dynamics",
+      "title": "Terrain clearance",
+      "plainLanguageClaim": "Glider Dynamics and Dive Profiles supports terrain clearance within the deterministic ANCHOR benchmark fixtures.",
+      "technicalClaim": "anchor.glider-dynamics-educational terrain-clearance is evaluated by package-smoke-and-parity-fixture using fixture-backed deterministic metrics. Status is recorded separately from evidence level.",
+      "evidenceLevel": "SOFTWARE_VERIFIED",
+      "methodId": "package-smoke-and-parity-fixture",
+      "metricId": "deterministic-contract-status",
+      "units": "pass-count",
+      "expectedDirection": "less-than-or-equal",
+      "threshold": 0,
+      "tolerance": 0,
+      "thresholdRationale": "Software contract checks require zero hard validation failures for the checked fixture and package version.",
+      "fixtureIds": [
+        "tests/fixtures/mission_simulator_package_r2_parity.json"
+      ],
+      "referenceIds": [
+        "canonical-3d-glider-dive-execution-md",
+        "mission-simulator-package-md"
+      ],
+      "applicability": "deterministic-regression, education, and benchmark-suitability review",
+      "public": true,
+      "claimDigest": "fnv1a32:5af3d85d"
+    },
+    {
+      "version": "1.0",
+      "claimId": "glider-dynamics.energy-determinism",
+      "componentId": "glider-dynamics",
+      "title": "Energy determinism",
+      "plainLanguageClaim": "Glider Dynamics and Dive Profiles supports energy determinism within the deterministic ANCHOR benchmark fixtures.",
+      "technicalClaim": "anchor.glider-dynamics-educational energy-determinism is evaluated by package-smoke-and-parity-fixture using fixture-backed deterministic metrics. Status is recorded separately from evidence level.",
+      "evidenceLevel": "SOFTWARE_VERIFIED",
+      "methodId": "package-smoke-and-parity-fixture",
+      "metricId": "deterministic-contract-status",
+      "units": "pass-count",
+      "expectedDirection": "less-than-or-equal",
+      "threshold": 0,
+      "tolerance": 0,
+      "thresholdRationale": "Software contract checks require zero hard validation failures for the checked fixture and package version.",
+      "fixtureIds": [
+        "tests/fixtures/mission_simulator_package_r2_parity.json"
+      ],
+      "referenceIds": [
+        "canonical-3d-glider-dive-execution-md",
+        "mission-simulator-package-md"
+      ],
+      "applicability": "deterministic-regression, education, and benchmark-suitability review",
+      "public": true,
+      "claimDigest": "fnv1a32:e07c9425"
+    },
+    {
+      "version": "1.0",
+      "claimId": "glider-dynamics.surfacing",
+      "componentId": "glider-dynamics",
+      "title": "Surfacing behavior",
+      "plainLanguageClaim": "Glider Dynamics and Dive Profiles supports surfacing behavior within the deterministic ANCHOR benchmark fixtures.",
+      "technicalClaim": "anchor.glider-dynamics-educational surfacing is evaluated by package-smoke-and-parity-fixture using fixture-backed deterministic metrics. Status is recorded separately from evidence level.",
+      "evidenceLevel": "SOFTWARE_VERIFIED",
+      "methodId": "package-smoke-and-parity-fixture",
+      "metricId": "deterministic-contract-status",
+      "units": "pass-count",
+      "expectedDirection": "less-than-or-equal",
+      "threshold": 0,
+      "tolerance": 0,
+      "thresholdRationale": "Software contract checks require zero hard validation failures for the checked fixture and package version.",
+      "fixtureIds": [
+        "tests/fixtures/mission_simulator_package_r2_parity.json"
+      ],
+      "referenceIds": [
+        "canonical-3d-glider-dive-execution-md",
+        "mission-simulator-package-md"
+      ],
+      "applicability": "deterministic-regression, education, and benchmark-suitability review",
+      "public": true,
+      "claimDigest": "fnv1a32:9e57a51b"
+    },
+    {
+      "version": "1.0",
+      "claimId": "glider-dynamics.snapshot-restart",
+      "componentId": "glider-dynamics",
+      "title": "Snapshot/restart",
+      "plainLanguageClaim": "Glider Dynamics and Dive Profiles supports snapshot/restart within the deterministic ANCHOR benchmark fixtures.",
+      "technicalClaim": "anchor.glider-dynamics-educational snapshot-restart is evaluated by package-smoke-and-parity-fixture using fixture-backed deterministic metrics. Status is recorded separately from evidence level.",
+      "evidenceLevel": "SOFTWARE_VERIFIED",
+      "methodId": "package-smoke-and-parity-fixture",
+      "metricId": "deterministic-contract-status",
+      "units": "pass-count",
+      "expectedDirection": "less-than-or-equal",
+      "threshold": 0,
+      "tolerance": 0,
+      "thresholdRationale": "Software contract checks require zero hard validation failures for the checked fixture and package version.",
+      "fixtureIds": [
+        "tests/fixtures/mission_simulator_package_r2_parity.json"
+      ],
+      "referenceIds": [
+        "canonical-3d-glider-dive-execution-md",
+        "mission-simulator-package-md"
+      ],
+      "applicability": "deterministic-regression, education, and benchmark-suitability review",
+      "public": true,
+      "claimDigest": "fnv1a32:39af7827"
+    },
+    {
+      "version": "1.0",
+      "claimId": "glider-dynamics.literature-traceability",
+      "componentId": "glider-dynamics",
+      "title": "Literature traceability",
+      "plainLanguageClaim": "Glider Dynamics and Dive Profiles supports literature traceability within the deterministic ANCHOR benchmark fixtures.",
+      "technicalClaim": "anchor.glider-dynamics-educational literature-traceability is evaluated by bounded-invariant-and-diagnostic-check using fixture-backed deterministic metrics. Status is recorded separately from evidence level.",
+      "evidenceLevel": "PHYSICALLY_PLAUSIBLE",
+      "methodId": "bounded-invariant-and-diagnostic-check",
+      "metricId": "bounded-plausibility-invariant",
+      "units": "pass-count",
+      "expectedDirection": "less-than-or-equal",
+      "threshold": 0,
+      "tolerance": 1,
+      "thresholdRationale": "The threshold is a deterministic regression gate for bounded synthetic behavior; it is not an oceanographic validation threshold.",
+      "fixtureIds": [
+        "tests/fixtures/mission_simulator_package_r2_parity.json"
+      ],
+      "referenceIds": [
+        "canonical-3d-glider-dive-execution-md",
+        "mission-simulator-package-md"
+      ],
+      "applicability": "deterministic-regression, education, and benchmark-suitability review",
+      "public": true,
+      "claimDigest": "fnv1a32:a2ccd946"
+    },
+    {
+      "version": "1.0",
+      "claimId": "glider-dynamics.real-mission-comparison",
+      "componentId": "glider-dynamics",
+      "title": "Real mission comparison",
+      "plainLanguageClaim": "Glider Dynamics and Dive Profiles has not yet been checked against an independent external reference for real mission comparison.",
+      "technicalClaim": "anchor.glider-dynamics-educational real-mission-comparison is evaluated by gap-record using fixture-backed deterministic metrics. Status is recorded separately from evidence level.",
+      "evidenceLevel": "NOT_YET_EVALUATED",
+      "methodId": "gap-record",
+      "metricId": "external-reference-status",
+      "units": "status",
+      "expectedDirection": "explicitly-not-evaluated",
+      "threshold": null,
+      "tolerance": null,
+      "thresholdRationale": "No local independent reference fixture exists in SCI-VALID-R2A, so the official threshold is intentionally undefined and the claim must remain not evaluated.",
+      "fixtureIds": [
+        "tests/fixtures/mission_simulator_package_r2_parity.json"
+      ],
+      "referenceIds": [
+        "canonical-3d-glider-dive-execution-md",
+        "mission-simulator-package-md"
+      ],
+      "applicability": "future-reference-comparison-only",
+      "public": true,
+      "claimDigest": "fnv1a32:31561036"
+    }
+  ],
+  "evidence": [
+    {
+      "version": "1.0",
+      "claimId": "glider-dynamics.positive-down-depth",
+      "componentId": "glider-dynamics",
+      "modelId": "anchor.glider-dynamics-educational",
+      "modelVersion": "mission-simulator-r2",
+      "evidenceLevel": "SOFTWARE_VERIFIED",
+      "status": "PASS",
+      "methodId": "package-smoke-and-parity-fixture",
+      "metricId": "deterministic-contract-status",
+      "measuredValue": 0,
+      "units": "pass-count",
+      "threshold": 0,
+      "tolerance": 0,
+      "errorValue": 0,
+      "relativeError": 0,
+      "fixtureIds": [
+        "tests/fixtures/mission_simulator_package_r2_parity.json"
+      ],
+      "sourceArtifactDigests": {
+        "tests/fixtures/mission_simulator_package_r2_parity.json": "fnv1a32:2563abdc"
+      },
+      "packageVersions": {
+        "contracts": "0.0.0-arch-r1",
+        "bathymetry": "0.0.0-arch-r1",
+        "currents": "0.0.0-arch-r1",
+        "scalar-processes": "0.1.0-process-pkg-r1",
+        "environment": "0.0.0-arch-r1",
+        "mission-simulator": "0.0.0-arch-r1",
+        "scoring": "0.0.0-score-pkg-r1",
+        "codecs": "0.1.0-codec-r1",
+        "validation": "0.1.0-sci-valid-r2a",
+        "validationRuntime": "anchor-validation-sci-valid-r2a"
+      },
+      "runtimeMetadata": {
+        "builderVersion": "sci-valid-r2a-baseline-builder",
+        "deterministic": true,
+        "officialBaseline": true
+      },
+      "interpretation": "Positive-down depth convention passed as deterministic Pre-Alpha evidence for Glider Dynamics and Dive Profiles.",
+      "limitations": [
+        "Evidence is fixture-scoped and deterministic; it does not generalize to operational ocean forecasting or certified navigation."
+      ],
+      "references": [
+        {
+          "version": "1.0",
+          "referenceId": "canonical-3d-glider-dive-execution-md",
+          "title": "Canonical 3d Glider Dive Execution",
+          "authors": "ANCHOR project",
+          "year": 2026,
+          "source": "local repository documentation",
+          "persistentIdentifier": null,
+          "localPath": "docs/canonical_3d_glider_dive_execution.md",
+          "role": "methodReference"
+        },
+        {
+          "version": "1.0",
+          "referenceId": "mission-simulator-package-md",
+          "title": "Mission Simulator Package",
+          "authors": "ANCHOR project",
+          "year": 2026,
+          "source": "local repository documentation",
+          "persistentIdentifier": null,
+          "localPath": "docs/mission_simulator_package.md",
+          "role": "methodReference"
+        }
+      ],
+      "reproductionCommand": "node tools/science/build_validation_baseline.mjs",
+      "evidenceDigest": "fnv1a32:3e93e777"
+    },
+    {
+      "version": "1.0",
+      "claimId": "glider-dynamics.surface-only-behavior",
+      "componentId": "glider-dynamics",
+      "modelId": "anchor.glider-dynamics-educational",
+      "modelVersion": "mission-simulator-r2",
+      "evidenceLevel": "SOFTWARE_VERIFIED",
+      "status": "PASS",
+      "methodId": "package-smoke-and-parity-fixture",
+      "metricId": "deterministic-contract-status",
+      "measuredValue": 0,
+      "units": "pass-count",
+      "threshold": 0,
+      "tolerance": 0,
+      "errorValue": 0,
+      "relativeError": 0,
+      "fixtureIds": [
+        "tests/fixtures/mission_simulator_package_r2_parity.json"
+      ],
+      "sourceArtifactDigests": {
+        "tests/fixtures/mission_simulator_package_r2_parity.json": "fnv1a32:2563abdc"
+      },
+      "packageVersions": {
+        "contracts": "0.0.0-arch-r1",
+        "bathymetry": "0.0.0-arch-r1",
+        "currents": "0.0.0-arch-r1",
+        "scalar-processes": "0.1.0-process-pkg-r1",
+        "environment": "0.0.0-arch-r1",
+        "mission-simulator": "0.0.0-arch-r1",
+        "scoring": "0.0.0-score-pkg-r1",
+        "codecs": "0.1.0-codec-r1",
+        "validation": "0.1.0-sci-valid-r2a",
+        "validationRuntime": "anchor-validation-sci-valid-r2a"
+      },
+      "runtimeMetadata": {
+        "builderVersion": "sci-valid-r2a-baseline-builder",
+        "deterministic": true,
+        "officialBaseline": true
+      },
+      "interpretation": "Surface-only behavior passed as deterministic Pre-Alpha evidence for Glider Dynamics and Dive Profiles.",
+      "limitations": [
+        "Evidence is fixture-scoped and deterministic; it does not generalize to operational ocean forecasting or certified navigation."
+      ],
+      "references": [
+        {
+          "version": "1.0",
+          "referenceId": "canonical-3d-glider-dive-execution-md",
+          "title": "Canonical 3d Glider Dive Execution",
+          "authors": "ANCHOR project",
+          "year": 2026,
+          "source": "local repository documentation",
+          "persistentIdentifier": null,
+          "localPath": "docs/canonical_3d_glider_dive_execution.md",
+          "role": "methodReference"
+        },
+        {
+          "version": "1.0",
+          "referenceId": "mission-simulator-package-md",
+          "title": "Mission Simulator Package",
+          "authors": "ANCHOR project",
+          "year": 2026,
+          "source": "local repository documentation",
+          "persistentIdentifier": null,
+          "localPath": "docs/mission_simulator_package.md",
+          "role": "methodReference"
+        }
+      ],
+      "reproductionCommand": "node tools/science/build_validation_baseline.mjs",
+      "evidenceDigest": "fnv1a32:13de66a4"
+    },
+    {
+      "version": "1.0",
+      "claimId": "glider-dynamics.sawtooth-dive",
+      "componentId": "glider-dynamics",
+      "modelId": "anchor.glider-dynamics-educational",
+      "modelVersion": "mission-simulator-r2",
+      "evidenceLevel": "SOFTWARE_VERIFIED",
+      "status": "PASS",
+      "methodId": "package-smoke-and-parity-fixture",
+      "metricId": "deterministic-contract-status",
+      "measuredValue": 0,
+      "units": "pass-count",
+      "threshold": 0,
+      "tolerance": 0,
+      "errorValue": 0,
+      "relativeError": 0,
+      "fixtureIds": [
+        "tests/fixtures/mission_simulator_package_r2_parity.json"
+      ],
+      "sourceArtifactDigests": {
+        "tests/fixtures/mission_simulator_package_r2_parity.json": "fnv1a32:2563abdc"
+      },
+      "packageVersions": {
+        "contracts": "0.0.0-arch-r1",
+        "bathymetry": "0.0.0-arch-r1",
+        "currents": "0.0.0-arch-r1",
+        "scalar-processes": "0.1.0-process-pkg-r1",
+        "environment": "0.0.0-arch-r1",
+        "mission-simulator": "0.0.0-arch-r1",
+        "scoring": "0.0.0-score-pkg-r1",
+        "codecs": "0.1.0-codec-r1",
+        "validation": "0.1.0-sci-valid-r2a",
+        "validationRuntime": "anchor-validation-sci-valid-r2a"
+      },
+      "runtimeMetadata": {
+        "builderVersion": "sci-valid-r2a-baseline-builder",
+        "deterministic": true,
+        "officialBaseline": true
+      },
+      "interpretation": "Sawtooth dive profile passed as deterministic Pre-Alpha evidence for Glider Dynamics and Dive Profiles.",
+      "limitations": [
+        "Evidence is fixture-scoped and deterministic; it does not generalize to operational ocean forecasting or certified navigation."
+      ],
+      "references": [
+        {
+          "version": "1.0",
+          "referenceId": "canonical-3d-glider-dive-execution-md",
+          "title": "Canonical 3d Glider Dive Execution",
+          "authors": "ANCHOR project",
+          "year": 2026,
+          "source": "local repository documentation",
+          "persistentIdentifier": null,
+          "localPath": "docs/canonical_3d_glider_dive_execution.md",
+          "role": "methodReference"
+        },
+        {
+          "version": "1.0",
+          "referenceId": "mission-simulator-package-md",
+          "title": "Mission Simulator Package",
+          "authors": "ANCHOR project",
+          "year": 2026,
+          "source": "local repository documentation",
+          "persistentIdentifier": null,
+          "localPath": "docs/mission_simulator_package.md",
+          "role": "methodReference"
+        }
+      ],
+      "reproductionCommand": "node tools/science/build_validation_baseline.mjs",
+      "evidenceDigest": "fnv1a32:4a3e50a5"
+    },
+    {
+      "version": "1.0",
+      "claimId": "glider-dynamics.shallow-profile",
+      "componentId": "glider-dynamics",
+      "modelId": "anchor.glider-dynamics-educational",
+      "modelVersion": "mission-simulator-r2",
+      "evidenceLevel": "SOFTWARE_VERIFIED",
+      "status": "PASS",
+      "methodId": "package-smoke-and-parity-fixture",
+      "metricId": "deterministic-contract-status",
+      "measuredValue": 0,
+      "units": "pass-count",
+      "threshold": 0,
+      "tolerance": 0,
+      "errorValue": 0,
+      "relativeError": 0,
+      "fixtureIds": [
+        "tests/fixtures/mission_simulator_package_r2_parity.json"
+      ],
+      "sourceArtifactDigests": {
+        "tests/fixtures/mission_simulator_package_r2_parity.json": "fnv1a32:2563abdc"
+      },
+      "packageVersions": {
+        "contracts": "0.0.0-arch-r1",
+        "bathymetry": "0.0.0-arch-r1",
+        "currents": "0.0.0-arch-r1",
+        "scalar-processes": "0.1.0-process-pkg-r1",
+        "environment": "0.0.0-arch-r1",
+        "mission-simulator": "0.0.0-arch-r1",
+        "scoring": "0.0.0-score-pkg-r1",
+        "codecs": "0.1.0-codec-r1",
+        "validation": "0.1.0-sci-valid-r2a",
+        "validationRuntime": "anchor-validation-sci-valid-r2a"
+      },
+      "runtimeMetadata": {
+        "builderVersion": "sci-valid-r2a-baseline-builder",
+        "deterministic": true,
+        "officialBaseline": true
+      },
+      "interpretation": "Shallow profile passed as deterministic Pre-Alpha evidence for Glider Dynamics and Dive Profiles.",
+      "limitations": [
+        "Evidence is fixture-scoped and deterministic; it does not generalize to operational ocean forecasting or certified navigation."
+      ],
+      "references": [
+        {
+          "version": "1.0",
+          "referenceId": "canonical-3d-glider-dive-execution-md",
+          "title": "Canonical 3d Glider Dive Execution",
+          "authors": "ANCHOR project",
+          "year": 2026,
+          "source": "local repository documentation",
+          "persistentIdentifier": null,
+          "localPath": "docs/canonical_3d_glider_dive_execution.md",
+          "role": "methodReference"
+        },
+        {
+          "version": "1.0",
+          "referenceId": "mission-simulator-package-md",
+          "title": "Mission Simulator Package",
+          "authors": "ANCHOR project",
+          "year": 2026,
+          "source": "local repository documentation",
+          "persistentIdentifier": null,
+          "localPath": "docs/mission_simulator_package.md",
+          "role": "methodReference"
+        }
+      ],
+      "reproductionCommand": "node tools/science/build_validation_baseline.mjs",
+      "evidenceDigest": "fnv1a32:aafcda00"
+    },
+    {
+      "version": "1.0",
+      "claimId": "glider-dynamics.deep-profile",
+      "componentId": "glider-dynamics",
+      "modelId": "anchor.glider-dynamics-educational",
+      "modelVersion": "mission-simulator-r2",
+      "evidenceLevel": "SOFTWARE_VERIFIED",
+      "status": "PASS",
+      "methodId": "package-smoke-and-parity-fixture",
+      "metricId": "deterministic-contract-status",
+      "measuredValue": 0,
+      "units": "pass-count",
+      "threshold": 0,
+      "tolerance": 0,
+      "errorValue": 0,
+      "relativeError": 0,
+      "fixtureIds": [
+        "tests/fixtures/mission_simulator_package_r2_parity.json"
+      ],
+      "sourceArtifactDigests": {
+        "tests/fixtures/mission_simulator_package_r2_parity.json": "fnv1a32:2563abdc"
+      },
+      "packageVersions": {
+        "contracts": "0.0.0-arch-r1",
+        "bathymetry": "0.0.0-arch-r1",
+        "currents": "0.0.0-arch-r1",
+        "scalar-processes": "0.1.0-process-pkg-r1",
+        "environment": "0.0.0-arch-r1",
+        "mission-simulator": "0.0.0-arch-r1",
+        "scoring": "0.0.0-score-pkg-r1",
+        "codecs": "0.1.0-codec-r1",
+        "validation": "0.1.0-sci-valid-r2a",
+        "validationRuntime": "anchor-validation-sci-valid-r2a"
+      },
+      "runtimeMetadata": {
+        "builderVersion": "sci-valid-r2a-baseline-builder",
+        "deterministic": true,
+        "officialBaseline": true
+      },
+      "interpretation": "Deep profile passed as deterministic Pre-Alpha evidence for Glider Dynamics and Dive Profiles.",
+      "limitations": [
+        "Evidence is fixture-scoped and deterministic; it does not generalize to operational ocean forecasting or certified navigation."
+      ],
+      "references": [
+        {
+          "version": "1.0",
+          "referenceId": "canonical-3d-glider-dive-execution-md",
+          "title": "Canonical 3d Glider Dive Execution",
+          "authors": "ANCHOR project",
+          "year": 2026,
+          "source": "local repository documentation",
+          "persistentIdentifier": null,
+          "localPath": "docs/canonical_3d_glider_dive_execution.md",
+          "role": "methodReference"
+        },
+        {
+          "version": "1.0",
+          "referenceId": "mission-simulator-package-md",
+          "title": "Mission Simulator Package",
+          "authors": "ANCHOR project",
+          "year": 2026,
+          "source": "local repository documentation",
+          "persistentIdentifier": null,
+          "localPath": "docs/mission_simulator_package.md",
+          "role": "methodReference"
+        }
+      ],
+      "reproductionCommand": "node tools/science/build_validation_baseline.mjs",
+      "evidenceDigest": "fnv1a32:9553e9a6"
+    },
+    {
+      "version": "1.0",
+      "claimId": "glider-dynamics.multi-yo-profile",
+      "componentId": "glider-dynamics",
+      "modelId": "anchor.glider-dynamics-educational",
+      "modelVersion": "mission-simulator-r2",
+      "evidenceLevel": "SOFTWARE_VERIFIED",
+      "status": "PASS",
+      "methodId": "package-smoke-and-parity-fixture",
+      "metricId": "deterministic-contract-status",
+      "measuredValue": 0,
+      "units": "pass-count",
+      "threshold": 0,
+      "tolerance": 0,
+      "errorValue": 0,
+      "relativeError": 0,
+      "fixtureIds": [
+        "tests/fixtures/mission_simulator_package_r2_parity.json"
+      ],
+      "sourceArtifactDigests": {
+        "tests/fixtures/mission_simulator_package_r2_parity.json": "fnv1a32:2563abdc"
+      },
+      "packageVersions": {
+        "contracts": "0.0.0-arch-r1",
+        "bathymetry": "0.0.0-arch-r1",
+        "currents": "0.0.0-arch-r1",
+        "scalar-processes": "0.1.0-process-pkg-r1",
+        "environment": "0.0.0-arch-r1",
+        "mission-simulator": "0.0.0-arch-r1",
+        "scoring": "0.0.0-score-pkg-r1",
+        "codecs": "0.1.0-codec-r1",
+        "validation": "0.1.0-sci-valid-r2a",
+        "validationRuntime": "anchor-validation-sci-valid-r2a"
+      },
+      "runtimeMetadata": {
+        "builderVersion": "sci-valid-r2a-baseline-builder",
+        "deterministic": true,
+        "officialBaseline": true
+      },
+      "interpretation": "Multi-yo profile passed as deterministic Pre-Alpha evidence for Glider Dynamics and Dive Profiles.",
+      "limitations": [
+        "Evidence is fixture-scoped and deterministic; it does not generalize to operational ocean forecasting or certified navigation."
+      ],
+      "references": [
+        {
+          "version": "1.0",
+          "referenceId": "canonical-3d-glider-dive-execution-md",
+          "title": "Canonical 3d Glider Dive Execution",
+          "authors": "ANCHOR project",
+          "year": 2026,
+          "source": "local repository documentation",
+          "persistentIdentifier": null,
+          "localPath": "docs/canonical_3d_glider_dive_execution.md",
+          "role": "methodReference"
+        },
+        {
+          "version": "1.0",
+          "referenceId": "mission-simulator-package-md",
+          "title": "Mission Simulator Package",
+          "authors": "ANCHOR project",
+          "year": 2026,
+          "source": "local repository documentation",
+          "persistentIdentifier": null,
+          "localPath": "docs/mission_simulator_package.md",
+          "role": "methodReference"
+        }
+      ],
+      "reproductionCommand": "node tools/science/build_validation_baseline.mjs",
+      "evidenceDigest": "fnv1a32:7a4bcdfa"
+    },
+    {
+      "version": "1.0",
+      "claimId": "glider-dynamics.predicted-realized-path-parity",
+      "componentId": "glider-dynamics",
+      "modelId": "anchor.glider-dynamics-educational",
+      "modelVersion": "mission-simulator-r2",
+      "evidenceLevel": "SOFTWARE_VERIFIED",
+      "status": "PASS",
+      "methodId": "package-smoke-and-parity-fixture",
+      "metricId": "deterministic-contract-status",
+      "measuredValue": 0,
+      "units": "pass-count",
+      "threshold": 0,
+      "tolerance": 0,
+      "errorValue": 0,
+      "relativeError": 0,
+      "fixtureIds": [
+        "tests/fixtures/mission_simulator_package_r2_parity.json"
+      ],
+      "sourceArtifactDigests": {
+        "tests/fixtures/mission_simulator_package_r2_parity.json": "fnv1a32:2563abdc"
+      },
+      "packageVersions": {
+        "contracts": "0.0.0-arch-r1",
+        "bathymetry": "0.0.0-arch-r1",
+        "currents": "0.0.0-arch-r1",
+        "scalar-processes": "0.1.0-process-pkg-r1",
+        "environment": "0.0.0-arch-r1",
+        "mission-simulator": "0.0.0-arch-r1",
+        "scoring": "0.0.0-score-pkg-r1",
+        "codecs": "0.1.0-codec-r1",
+        "validation": "0.1.0-sci-valid-r2a",
+        "validationRuntime": "anchor-validation-sci-valid-r2a"
+      },
+      "runtimeMetadata": {
+        "builderVersion": "sci-valid-r2a-baseline-builder",
+        "deterministic": true,
+        "officialBaseline": true
+      },
+      "interpretation": "Predicted/realized path parity passed as deterministic Pre-Alpha evidence for Glider Dynamics and Dive Profiles.",
+      "limitations": [
+        "Evidence is fixture-scoped and deterministic; it does not generalize to operational ocean forecasting or certified navigation."
+      ],
+      "references": [
+        {
+          "version": "1.0",
+          "referenceId": "canonical-3d-glider-dive-execution-md",
+          "title": "Canonical 3d Glider Dive Execution",
+          "authors": "ANCHOR project",
+          "year": 2026,
+          "source": "local repository documentation",
+          "persistentIdentifier": null,
+          "localPath": "docs/canonical_3d_glider_dive_execution.md",
+          "role": "methodReference"
+        },
+        {
+          "version": "1.0",
+          "referenceId": "mission-simulator-package-md",
+          "title": "Mission Simulator Package",
+          "authors": "ANCHOR project",
+          "year": 2026,
+          "source": "local repository documentation",
+          "persistentIdentifier": null,
+          "localPath": "docs/mission_simulator_package.md",
+          "role": "methodReference"
+        }
+      ],
+      "reproductionCommand": "node tools/science/build_validation_baseline.mjs",
+      "evidenceDigest": "fnv1a32:570a6909"
+    },
+    {
+      "version": "1.0",
+      "claimId": "glider-dynamics.current-induced-drift",
+      "componentId": "glider-dynamics",
+      "modelId": "anchor.glider-dynamics-educational",
+      "modelVersion": "mission-simulator-r2",
+      "evidenceLevel": "PHYSICALLY_PLAUSIBLE",
+      "status": "PASS",
+      "methodId": "bounded-invariant-and-diagnostic-check",
+      "metricId": "bounded-plausibility-invariant",
+      "measuredValue": 0,
+      "units": "pass-count",
+      "threshold": 0,
+      "tolerance": 1,
+      "errorValue": 0,
+      "relativeError": 0,
+      "fixtureIds": [
+        "tests/fixtures/mission_simulator_package_r2_parity.json"
+      ],
+      "sourceArtifactDigests": {
+        "tests/fixtures/mission_simulator_package_r2_parity.json": "fnv1a32:2563abdc"
+      },
+      "packageVersions": {
+        "contracts": "0.0.0-arch-r1",
+        "bathymetry": "0.0.0-arch-r1",
+        "currents": "0.0.0-arch-r1",
+        "scalar-processes": "0.1.0-process-pkg-r1",
+        "environment": "0.0.0-arch-r1",
+        "mission-simulator": "0.0.0-arch-r1",
+        "scoring": "0.0.0-score-pkg-r1",
+        "codecs": "0.1.0-codec-r1",
+        "validation": "0.1.0-sci-valid-r2a",
+        "validationRuntime": "anchor-validation-sci-valid-r2a"
+      },
+      "runtimeMetadata": {
+        "builderVersion": "sci-valid-r2a-baseline-builder",
+        "deterministic": true,
+        "officialBaseline": true
+      },
+      "interpretation": "Current-induced drift passed as deterministic Pre-Alpha evidence for Glider Dynamics and Dive Profiles.",
+      "limitations": [
+        "Physical plausibility checks are bounded synthetic invariants, not proof of oceanographic accuracy.",
+        "Passing visual and software tests does not establish oceanographic validity."
+      ],
+      "references": [
+        {
+          "version": "1.0",
+          "referenceId": "canonical-3d-glider-dive-execution-md",
+          "title": "Canonical 3d Glider Dive Execution",
+          "authors": "ANCHOR project",
+          "year": 2026,
+          "source": "local repository documentation",
+          "persistentIdentifier": null,
+          "localPath": "docs/canonical_3d_glider_dive_execution.md",
+          "role": "methodReference"
+        },
+        {
+          "version": "1.0",
+          "referenceId": "mission-simulator-package-md",
+          "title": "Mission Simulator Package",
+          "authors": "ANCHOR project",
+          "year": 2026,
+          "source": "local repository documentation",
+          "persistentIdentifier": null,
+          "localPath": "docs/mission_simulator_package.md",
+          "role": "methodReference"
+        }
+      ],
+      "reproductionCommand": "node tools/science/build_validation_baseline.mjs",
+      "evidenceDigest": "fnv1a32:32077b54"
+    },
+    {
+      "version": "1.0",
+      "claimId": "glider-dynamics.terrain-clearance",
+      "componentId": "glider-dynamics",
+      "modelId": "anchor.glider-dynamics-educational",
+      "modelVersion": "mission-simulator-r2",
+      "evidenceLevel": "SOFTWARE_VERIFIED",
+      "status": "PASS",
+      "methodId": "package-smoke-and-parity-fixture",
+      "metricId": "deterministic-contract-status",
+      "measuredValue": 0,
+      "units": "pass-count",
+      "threshold": 0,
+      "tolerance": 0,
+      "errorValue": 0,
+      "relativeError": 0,
+      "fixtureIds": [
+        "tests/fixtures/mission_simulator_package_r2_parity.json"
+      ],
+      "sourceArtifactDigests": {
+        "tests/fixtures/mission_simulator_package_r2_parity.json": "fnv1a32:2563abdc"
+      },
+      "packageVersions": {
+        "contracts": "0.0.0-arch-r1",
+        "bathymetry": "0.0.0-arch-r1",
+        "currents": "0.0.0-arch-r1",
+        "scalar-processes": "0.1.0-process-pkg-r1",
+        "environment": "0.0.0-arch-r1",
+        "mission-simulator": "0.0.0-arch-r1",
+        "scoring": "0.0.0-score-pkg-r1",
+        "codecs": "0.1.0-codec-r1",
+        "validation": "0.1.0-sci-valid-r2a",
+        "validationRuntime": "anchor-validation-sci-valid-r2a"
+      },
+      "runtimeMetadata": {
+        "builderVersion": "sci-valid-r2a-baseline-builder",
+        "deterministic": true,
+        "officialBaseline": true
+      },
+      "interpretation": "Terrain clearance passed as deterministic Pre-Alpha evidence for Glider Dynamics and Dive Profiles.",
+      "limitations": [
+        "Evidence is fixture-scoped and deterministic; it does not generalize to operational ocean forecasting or certified navigation."
+      ],
+      "references": [
+        {
+          "version": "1.0",
+          "referenceId": "canonical-3d-glider-dive-execution-md",
+          "title": "Canonical 3d Glider Dive Execution",
+          "authors": "ANCHOR project",
+          "year": 2026,
+          "source": "local repository documentation",
+          "persistentIdentifier": null,
+          "localPath": "docs/canonical_3d_glider_dive_execution.md",
+          "role": "methodReference"
+        },
+        {
+          "version": "1.0",
+          "referenceId": "mission-simulator-package-md",
+          "title": "Mission Simulator Package",
+          "authors": "ANCHOR project",
+          "year": 2026,
+          "source": "local repository documentation",
+          "persistentIdentifier": null,
+          "localPath": "docs/mission_simulator_package.md",
+          "role": "methodReference"
+        }
+      ],
+      "reproductionCommand": "node tools/science/build_validation_baseline.mjs",
+      "evidenceDigest": "fnv1a32:a2aeb4cc"
+    },
+    {
+      "version": "1.0",
+      "claimId": "glider-dynamics.energy-determinism",
+      "componentId": "glider-dynamics",
+      "modelId": "anchor.glider-dynamics-educational",
+      "modelVersion": "mission-simulator-r2",
+      "evidenceLevel": "SOFTWARE_VERIFIED",
+      "status": "PASS",
+      "methodId": "package-smoke-and-parity-fixture",
+      "metricId": "deterministic-contract-status",
+      "measuredValue": 0,
+      "units": "pass-count",
+      "threshold": 0,
+      "tolerance": 0,
+      "errorValue": 0,
+      "relativeError": 0,
+      "fixtureIds": [
+        "tests/fixtures/mission_simulator_package_r2_parity.json"
+      ],
+      "sourceArtifactDigests": {
+        "tests/fixtures/mission_simulator_package_r2_parity.json": "fnv1a32:2563abdc"
+      },
+      "packageVersions": {
+        "contracts": "0.0.0-arch-r1",
+        "bathymetry": "0.0.0-arch-r1",
+        "currents": "0.0.0-arch-r1",
+        "scalar-processes": "0.1.0-process-pkg-r1",
+        "environment": "0.0.0-arch-r1",
+        "mission-simulator": "0.0.0-arch-r1",
+        "scoring": "0.0.0-score-pkg-r1",
+        "codecs": "0.1.0-codec-r1",
+        "validation": "0.1.0-sci-valid-r2a",
+        "validationRuntime": "anchor-validation-sci-valid-r2a"
+      },
+      "runtimeMetadata": {
+        "builderVersion": "sci-valid-r2a-baseline-builder",
+        "deterministic": true,
+        "officialBaseline": true
+      },
+      "interpretation": "Energy determinism passed as deterministic Pre-Alpha evidence for Glider Dynamics and Dive Profiles.",
+      "limitations": [
+        "Evidence is fixture-scoped and deterministic; it does not generalize to operational ocean forecasting or certified navigation."
+      ],
+      "references": [
+        {
+          "version": "1.0",
+          "referenceId": "canonical-3d-glider-dive-execution-md",
+          "title": "Canonical 3d Glider Dive Execution",
+          "authors": "ANCHOR project",
+          "year": 2026,
+          "source": "local repository documentation",
+          "persistentIdentifier": null,
+          "localPath": "docs/canonical_3d_glider_dive_execution.md",
+          "role": "methodReference"
+        },
+        {
+          "version": "1.0",
+          "referenceId": "mission-simulator-package-md",
+          "title": "Mission Simulator Package",
+          "authors": "ANCHOR project",
+          "year": 2026,
+          "source": "local repository documentation",
+          "persistentIdentifier": null,
+          "localPath": "docs/mission_simulator_package.md",
+          "role": "methodReference"
+        }
+      ],
+      "reproductionCommand": "node tools/science/build_validation_baseline.mjs",
+      "evidenceDigest": "fnv1a32:adedb52e"
+    },
+    {
+      "version": "1.0",
+      "claimId": "glider-dynamics.surfacing",
+      "componentId": "glider-dynamics",
+      "modelId": "anchor.glider-dynamics-educational",
+      "modelVersion": "mission-simulator-r2",
+      "evidenceLevel": "SOFTWARE_VERIFIED",
+      "status": "PASS",
+      "methodId": "package-smoke-and-parity-fixture",
+      "metricId": "deterministic-contract-status",
+      "measuredValue": 0,
+      "units": "pass-count",
+      "threshold": 0,
+      "tolerance": 0,
+      "errorValue": 0,
+      "relativeError": 0,
+      "fixtureIds": [
+        "tests/fixtures/mission_simulator_package_r2_parity.json"
+      ],
+      "sourceArtifactDigests": {
+        "tests/fixtures/mission_simulator_package_r2_parity.json": "fnv1a32:2563abdc"
+      },
+      "packageVersions": {
+        "contracts": "0.0.0-arch-r1",
+        "bathymetry": "0.0.0-arch-r1",
+        "currents": "0.0.0-arch-r1",
+        "scalar-processes": "0.1.0-process-pkg-r1",
+        "environment": "0.0.0-arch-r1",
+        "mission-simulator": "0.0.0-arch-r1",
+        "scoring": "0.0.0-score-pkg-r1",
+        "codecs": "0.1.0-codec-r1",
+        "validation": "0.1.0-sci-valid-r2a",
+        "validationRuntime": "anchor-validation-sci-valid-r2a"
+      },
+      "runtimeMetadata": {
+        "builderVersion": "sci-valid-r2a-baseline-builder",
+        "deterministic": true,
+        "officialBaseline": true
+      },
+      "interpretation": "Surfacing behavior passed as deterministic Pre-Alpha evidence for Glider Dynamics and Dive Profiles.",
+      "limitations": [
+        "Evidence is fixture-scoped and deterministic; it does not generalize to operational ocean forecasting or certified navigation."
+      ],
+      "references": [
+        {
+          "version": "1.0",
+          "referenceId": "canonical-3d-glider-dive-execution-md",
+          "title": "Canonical 3d Glider Dive Execution",
+          "authors": "ANCHOR project",
+          "year": 2026,
+          "source": "local repository documentation",
+          "persistentIdentifier": null,
+          "localPath": "docs/canonical_3d_glider_dive_execution.md",
+          "role": "methodReference"
+        },
+        {
+          "version": "1.0",
+          "referenceId": "mission-simulator-package-md",
+          "title": "Mission Simulator Package",
+          "authors": "ANCHOR project",
+          "year": 2026,
+          "source": "local repository documentation",
+          "persistentIdentifier": null,
+          "localPath": "docs/mission_simulator_package.md",
+          "role": "methodReference"
+        }
+      ],
+      "reproductionCommand": "node tools/science/build_validation_baseline.mjs",
+      "evidenceDigest": "fnv1a32:2e1239d1"
+    },
+    {
+      "version": "1.0",
+      "claimId": "glider-dynamics.snapshot-restart",
+      "componentId": "glider-dynamics",
+      "modelId": "anchor.glider-dynamics-educational",
+      "modelVersion": "mission-simulator-r2",
+      "evidenceLevel": "SOFTWARE_VERIFIED",
+      "status": "PASS",
+      "methodId": "package-smoke-and-parity-fixture",
+      "metricId": "deterministic-contract-status",
+      "measuredValue": 0,
+      "units": "pass-count",
+      "threshold": 0,
+      "tolerance": 0,
+      "errorValue": 0,
+      "relativeError": 0,
+      "fixtureIds": [
+        "tests/fixtures/mission_simulator_package_r2_parity.json"
+      ],
+      "sourceArtifactDigests": {
+        "tests/fixtures/mission_simulator_package_r2_parity.json": "fnv1a32:2563abdc"
+      },
+      "packageVersions": {
+        "contracts": "0.0.0-arch-r1",
+        "bathymetry": "0.0.0-arch-r1",
+        "currents": "0.0.0-arch-r1",
+        "scalar-processes": "0.1.0-process-pkg-r1",
+        "environment": "0.0.0-arch-r1",
+        "mission-simulator": "0.0.0-arch-r1",
+        "scoring": "0.0.0-score-pkg-r1",
+        "codecs": "0.1.0-codec-r1",
+        "validation": "0.1.0-sci-valid-r2a",
+        "validationRuntime": "anchor-validation-sci-valid-r2a"
+      },
+      "runtimeMetadata": {
+        "builderVersion": "sci-valid-r2a-baseline-builder",
+        "deterministic": true,
+        "officialBaseline": true
+      },
+      "interpretation": "Snapshot/restart passed as deterministic Pre-Alpha evidence for Glider Dynamics and Dive Profiles.",
+      "limitations": [
+        "Evidence is fixture-scoped and deterministic; it does not generalize to operational ocean forecasting or certified navigation."
+      ],
+      "references": [
+        {
+          "version": "1.0",
+          "referenceId": "canonical-3d-glider-dive-execution-md",
+          "title": "Canonical 3d Glider Dive Execution",
+          "authors": "ANCHOR project",
+          "year": 2026,
+          "source": "local repository documentation",
+          "persistentIdentifier": null,
+          "localPath": "docs/canonical_3d_glider_dive_execution.md",
+          "role": "methodReference"
+        },
+        {
+          "version": "1.0",
+          "referenceId": "mission-simulator-package-md",
+          "title": "Mission Simulator Package",
+          "authors": "ANCHOR project",
+          "year": 2026,
+          "source": "local repository documentation",
+          "persistentIdentifier": null,
+          "localPath": "docs/mission_simulator_package.md",
+          "role": "methodReference"
+        }
+      ],
+      "reproductionCommand": "node tools/science/build_validation_baseline.mjs",
+      "evidenceDigest": "fnv1a32:4e5ed75b"
+    },
+    {
+      "version": "1.0",
+      "claimId": "glider-dynamics.literature-traceability",
+      "componentId": "glider-dynamics",
+      "modelId": "anchor.glider-dynamics-educational",
+      "modelVersion": "mission-simulator-r2",
+      "evidenceLevel": "PHYSICALLY_PLAUSIBLE",
+      "status": "WARN",
+      "methodId": "bounded-invariant-and-diagnostic-check",
+      "metricId": "bounded-plausibility-invariant",
+      "measuredValue": {
+        "warningCount": 1,
+        "passCount": 0,
+        "note": "Traceability or plausibility evidence only; no numerical external comparison."
+      },
+      "units": "pass-count",
+      "threshold": 0,
+      "tolerance": 1,
+      "errorValue": null,
+      "relativeError": null,
+      "fixtureIds": [
+        "tests/fixtures/mission_simulator_package_r2_parity.json"
+      ],
+      "sourceArtifactDigests": {
+        "tests/fixtures/mission_simulator_package_r2_parity.json": "fnv1a32:2563abdc"
+      },
+      "packageVersions": {
+        "contracts": "0.0.0-arch-r1",
+        "bathymetry": "0.0.0-arch-r1",
+        "currents": "0.0.0-arch-r1",
+        "scalar-processes": "0.1.0-process-pkg-r1",
+        "environment": "0.0.0-arch-r1",
+        "mission-simulator": "0.0.0-arch-r1",
+        "scoring": "0.0.0-score-pkg-r1",
+        "codecs": "0.1.0-codec-r1",
+        "validation": "0.1.0-sci-valid-r2a",
+        "validationRuntime": "anchor-validation-sci-valid-r2a"
+      },
+      "runtimeMetadata": {
+        "builderVersion": "sci-valid-r2a-baseline-builder",
+        "deterministic": true,
+        "officialBaseline": true
+      },
+      "interpretation": "Literature traceability is documented and plausible for the synthetic benchmark context, but it is not a quantitative external validation.",
+      "limitations": [
+        "Physical plausibility checks are bounded synthetic invariants, not proof of oceanographic accuracy.",
+        "Passing visual and software tests does not establish oceanographic validity."
+      ],
+      "references": [
+        {
+          "version": "1.0",
+          "referenceId": "canonical-3d-glider-dive-execution-md",
+          "title": "Canonical 3d Glider Dive Execution",
+          "authors": "ANCHOR project",
+          "year": 2026,
+          "source": "local repository documentation",
+          "persistentIdentifier": null,
+          "localPath": "docs/canonical_3d_glider_dive_execution.md",
+          "role": "methodReference"
+        },
+        {
+          "version": "1.0",
+          "referenceId": "mission-simulator-package-md",
+          "title": "Mission Simulator Package",
+          "authors": "ANCHOR project",
+          "year": 2026,
+          "source": "local repository documentation",
+          "persistentIdentifier": null,
+          "localPath": "docs/mission_simulator_package.md",
+          "role": "methodReference"
+        }
+      ],
+      "reproductionCommand": "node tools/science/build_validation_baseline.mjs",
+      "evidenceDigest": "fnv1a32:f8d0bbad"
+    },
+    {
+      "version": "1.0",
+      "claimId": "glider-dynamics.real-mission-comparison",
+      "componentId": "glider-dynamics",
+      "modelId": "anchor.glider-dynamics-educational",
+      "modelVersion": "mission-simulator-r2",
+      "evidenceLevel": "NOT_YET_EVALUATED",
+      "status": "NOT_EVALUATED",
+      "methodId": "gap-record",
+      "metricId": "external-reference-status",
+      "measuredValue": null,
+      "units": "status",
+      "threshold": null,
+      "tolerance": null,
+      "errorValue": null,
+      "relativeError": null,
+      "fixtureIds": [
+        "tests/fixtures/mission_simulator_package_r2_parity.json"
+      ],
+      "sourceArtifactDigests": {
+        "tests/fixtures/mission_simulator_package_r2_parity.json": "fnv1a32:2563abdc"
+      },
+      "packageVersions": {
+        "contracts": "0.0.0-arch-r1",
+        "bathymetry": "0.0.0-arch-r1",
+        "currents": "0.0.0-arch-r1",
+        "scalar-processes": "0.1.0-process-pkg-r1",
+        "environment": "0.0.0-arch-r1",
+        "mission-simulator": "0.0.0-arch-r1",
+        "scoring": "0.0.0-score-pkg-r1",
+        "codecs": "0.1.0-codec-r1",
+        "validation": "0.1.0-sci-valid-r2a",
+        "validationRuntime": "anchor-validation-sci-valid-r2a"
+      },
+      "runtimeMetadata": {
+        "builderVersion": "sci-valid-r2a-baseline-builder",
+        "deterministic": true,
+        "officialBaseline": true
+      },
+      "interpretation": "Real mission comparison is an explicit evidence gap for Glider Dynamics and Dive Profiles; no external result is claimed.",
+      "limitations": [
+        "No independent local reference data or sea-trial fixture is part of this baseline.",
+        "This gap must not be described as externally compared or operationally validated."
+      ],
+      "references": [
+        {
+          "version": "1.0",
+          "referenceId": "canonical-3d-glider-dive-execution-md",
+          "title": "Canonical 3d Glider Dive Execution",
+          "authors": "ANCHOR project",
+          "year": 2026,
+          "source": "local repository documentation",
+          "persistentIdentifier": null,
+          "localPath": "docs/canonical_3d_glider_dive_execution.md",
+          "role": "methodReference"
+        },
+        {
+          "version": "1.0",
+          "referenceId": "mission-simulator-package-md",
+          "title": "Mission Simulator Package",
+          "authors": "ANCHOR project",
+          "year": 2026,
+          "source": "local repository documentation",
+          "persistentIdentifier": null,
+          "localPath": "docs/mission_simulator_package.md",
+          "role": "methodReference"
+        }
+      ],
+      "reproductionCommand": "node tools/science/build_validation_baseline.mjs",
+      "evidenceDigest": "fnv1a32:00f748d2"
+    }
+  ],
+  "evidenceLevelSummary": {
+    "SOFTWARE_VERIFIED": 11,
+    "PHYSICALLY_PLAUSIBLE": 2,
+    "NOT_YET_EVALUATED": 1
+  },
+  "statusSummary": {
+    "PASS": 12,
+    "WARN": 1,
+    "NOT_EVALUATED": 1
+  },
+  "assumptions": [
+    "Glider Dynamics and Dive Profiles evidence uses checked-in public fixtures and repo-local commands.",
+    "Time is seconds, horizontal coordinates are local mission coordinates, and depth is positive-down meters where applicable.",
+    "Official reports are immutable baseline artifacts; browser reruns are exploratory unless they reproduce the official pipeline."
+  ],
+  "limitations": [
+    "Glider Dynamics and Dive Profiles is evaluated for deterministic benchmark and education use only.",
+    "The report does not claim operational ocean forecast skill, certified navigation suitability, or calibrated digital-twin fidelity.",
+    "Literature and local method references motivate methods but do not count as external numerical comparisons."
+  ],
+  "references": [
+    {
+      "version": "1.0",
+      "referenceId": "canonical-3d-glider-dive-execution-md",
+      "title": "Canonical 3d Glider Dive Execution",
+      "authors": "ANCHOR project",
+      "year": 2026,
+      "source": "local repository documentation",
+      "persistentIdentifier": null,
+      "localPath": "docs/canonical_3d_glider_dive_execution.md",
+      "role": "methodReference"
+    },
+    {
+      "version": "1.0",
+      "referenceId": "mission-simulator-package-md",
+      "title": "Mission Simulator Package",
+      "authors": "ANCHOR project",
+      "year": 2026,
+      "source": "local repository documentation",
+      "persistentIdentifier": null,
+      "localPath": "docs/mission_simulator_package.md",
+      "role": "methodReference"
+    }
+  ],
+  "packageVersions": {
+    "contracts": "0.0.0-arch-r1",
+    "bathymetry": "0.0.0-arch-r1",
+    "currents": "0.0.0-arch-r1",
+    "scalar-processes": "0.1.0-process-pkg-r1",
+    "environment": "0.0.0-arch-r1",
+    "mission-simulator": "0.0.0-arch-r1",
+    "scoring": "0.0.0-score-pkg-r1",
+    "codecs": "0.1.0-codec-r1",
+    "validation": "0.1.0-sci-valid-r2a",
+    "validationRuntime": "anchor-validation-sci-valid-r2a"
+  },
+  "sourceArtifactDigests": {
+    "tests/fixtures/mission_simulator_package_r2_parity.json": "fnv1a32:2563abdc"
+  },
+  "suitabilityDecision": {
+    "deterministicRegression": "GO",
+    "educationalUse": "GO",
+    "classicalPlannerBenchmark": "CONDITIONAL",
+    "mlDatasetGeneration": "CONDITIONAL",
+    "operationalForecastUse": "NO_GO",
+    "certifiedNavigationUse": "NO_GO",
+    "rationale": "Glider Dynamics and Dive Profiles has deterministic package evidence for software/benchmark use, but external or operational claims remain out of scope where not evaluated.",
+    "conditions": [
+      "Use only with documented synthetic-fixture limitations.",
+      "Do not describe results as operational validation."
+    ]
+  },
+  "visualizations": [
+    {
+      "visualizationId": "glider-dynamics-status-bars",
+      "title": "Glider Dynamics and Dive Profiles status counts",
+      "kind": "bar-summary",
+      "textSummary": "Bar heights count evidence records by explicit status label. This is not a scientific-validity score.",
+      "rows": [
+        {
+          "label": "PASS",
+          "value": 12
+        },
+        {
+          "label": "WARN",
+          "value": 1
+        },
+        {
+          "label": "NOT_EVALUATED",
+          "value": 1
+        }
+      ]
+    },
+    {
+      "visualizationId": "glider-dynamics-evidence-ladder",
+      "title": "Glider Dynamics and Dive Profiles evidence levels",
+      "kind": "bar-summary",
+      "textSummary": "Bar heights count claims by evidence level. External comparison and operational validation are kept separate from software checks.",
+      "rows": [
+        {
+          "label": "SOFTWARE_VERIFIED",
+          "value": 11
+        },
+        {
+          "label": "PHYSICALLY_PLAUSIBLE",
+          "value": 2
+        },
+        {
+          "label": "NOT_YET_EVALUATED",
+          "value": 1
+        }
+      ]
+    },
+    {
+      "visualizationId": "glider-dynamics-metric-table",
+      "title": "Glider Dynamics and Dive Profiles raw metric table",
+      "kind": "table",
+      "textSummary": "Compact table for the selected report claims and evidence records.",
+      "rows": [
+        {
+          "claimId": "glider-dynamics.positive-down-depth",
+          "status": "PASS",
+          "metricId": "deterministic-contract-status",
+          "measuredValue": 0,
+          "units": "pass-count",
+          "threshold": 0,
+          "tolerance": 0
+        },
+        {
+          "claimId": "glider-dynamics.surface-only-behavior",
+          "status": "PASS",
+          "metricId": "deterministic-contract-status",
+          "measuredValue": 0,
+          "units": "pass-count",
+          "threshold": 0,
+          "tolerance": 0
+        },
+        {
+          "claimId": "glider-dynamics.sawtooth-dive",
+          "status": "PASS",
+          "metricId": "deterministic-contract-status",
+          "measuredValue": 0,
+          "units": "pass-count",
+          "threshold": 0,
+          "tolerance": 0
+        },
+        {
+          "claimId": "glider-dynamics.shallow-profile",
+          "status": "PASS",
+          "metricId": "deterministic-contract-status",
+          "measuredValue": 0,
+          "units": "pass-count",
+          "threshold": 0,
+          "tolerance": 0
+        },
+        {
+          "claimId": "glider-dynamics.deep-profile",
+          "status": "PASS",
+          "metricId": "deterministic-contract-status",
+          "measuredValue": 0,
+          "units": "pass-count",
+          "threshold": 0,
+          "tolerance": 0
+        },
+        {
+          "claimId": "glider-dynamics.multi-yo-profile",
+          "status": "PASS",
+          "metricId": "deterministic-contract-status",
+          "measuredValue": 0,
+          "units": "pass-count",
+          "threshold": 0,
+          "tolerance": 0
+        },
+        {
+          "claimId": "glider-dynamics.predicted-realized-path-parity",
+          "status": "PASS",
+          "metricId": "deterministic-contract-status",
+          "measuredValue": 0,
+          "units": "pass-count",
+          "threshold": 0,
+          "tolerance": 0
+        },
+        {
+          "claimId": "glider-dynamics.current-induced-drift",
+          "status": "PASS",
+          "metricId": "bounded-plausibility-invariant",
+          "measuredValue": 0,
+          "units": "pass-count",
+          "threshold": 0,
+          "tolerance": 1
+        },
+        {
+          "claimId": "glider-dynamics.terrain-clearance",
+          "status": "PASS",
+          "metricId": "deterministic-contract-status",
+          "measuredValue": 0,
+          "units": "pass-count",
+          "threshold": 0,
+          "tolerance": 0
+        },
+        {
+          "claimId": "glider-dynamics.energy-determinism",
+          "status": "PASS",
+          "metricId": "deterministic-contract-status",
+          "measuredValue": 0,
+          "units": "pass-count",
+          "threshold": 0,
+          "tolerance": 0
+        },
+        {
+          "claimId": "glider-dynamics.surfacing",
+          "status": "PASS",
+          "metricId": "deterministic-contract-status",
+          "measuredValue": 0,
+          "units": "pass-count",
+          "threshold": 0,
+          "tolerance": 0
+        },
+        {
+          "claimId": "glider-dynamics.snapshot-restart",
+          "status": "PASS",
+          "metricId": "deterministic-contract-status",
+          "measuredValue": 0,
+          "units": "pass-count",
+          "threshold": 0,
+          "tolerance": 0
+        },
+        {
+          "claimId": "glider-dynamics.literature-traceability",
+          "status": "WARN",
+          "metricId": "bounded-plausibility-invariant",
+          "measuredValue": {
+            "warningCount": 1,
+            "passCount": 0,
+            "note": "Traceability or plausibility evidence only; no numerical external comparison."
+          },
+          "units": "pass-count",
+          "threshold": 0,
+          "tolerance": 1
+        },
+        {
+          "claimId": "glider-dynamics.real-mission-comparison",
+          "status": "NOT_EVALUATED",
+          "metricId": "external-reference-status",
+          "measuredValue": null,
+          "units": "status",
+          "threshold": null,
+          "tolerance": null
+        }
+      ]
+    }
+  ],
+  "claimBoundary": {
+    "benchmarkOrEducationUse": true,
+    "operationalForecast": false,
+    "certifiedNavigation": false,
+    "calibratedDigitalTwin": false
+  },
+  "visibilityClass": "PUBLIC",
+  "fairnessClass": "PUBLIC_FAIR",
+  "reportDigest": "fnv1a32:5f91ec3b"
+}

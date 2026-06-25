@@ -25,7 +25,7 @@ const allowedDependencies = new Map([
   ['environment', ['contracts', 'bathymetry', 'currents', 'scalar-processes']],
   ['mission-simulator', ['contracts', 'environment']],
   ['scoring', ['contracts', 'mission-simulator']],
-  ['validation', ['contracts', 'bathymetry', 'currents', 'scalar-processes', 'environment', 'mission-simulator', 'codecs']],
+  ['validation', ['contracts']],
   ['codecs', ['contracts']],
 ]);
 

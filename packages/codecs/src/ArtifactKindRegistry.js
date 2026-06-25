@@ -90,6 +90,8 @@ const entries = [
   entry('datasetManifest', 'anchor.dataset-manifest', '2.0', 'schemas/dataset.schema.json', K.ALPHA_CRITICAL, V.PUBLIC_OBSERVATION_ONLY, F.PUBLIC_FAIR, 'anchor.dataset-manifest.json'),
   entry('mlJsonlRecord', 'anchor.ml-jsonl-record', '0.1-codec-r1-placeholder', null, K.ALPHA_CRITICAL, V.PUBLIC_OBSERVATION_ONLY, F.PUBLIC_FAIR, 'anchor.training.jsonl'),
   entry('headlessRoundtripReport', 'anchor.headless.solver-roundtrip-report', '1.0', 'schemas/headless-roundtrip-report.schema.json', K.SUPPORTED_COMPATIBILITY, V.PUBLIC_OBSERVATION_ONLY, F.FORECAST_ONLY, 'anchor.solver-roundtrip-report.json'),
+  entry('scientificValidationReport', 'anchor.scientific-validation-report', '1.0', 'schemas/scientific-validation-report.schema.json', K.ALPHA_CRITICAL, V.PUBLIC, F.PUBLIC_FAIR, 'anchor.scientific-validation-report.json'),
+  entry('scientificValidationManifest', 'anchor.scientific-validation-manifest', '1.0', 'schemas/scientific-validation-manifest.schema.json', K.ALPHA_CRITICAL, V.PUBLIC, F.PUBLIC_FAIR, 'anchor.scientific-validation-manifest.json'),
   entry('leaderboard', 'anchor.leaderboard', '3.0', 'schemas/leaderboard.schema.json', K.SUPPORTED_COMPATIBILITY, V.PUBLIC_OBSERVATION_ONLY, F.PUBLIC_FAIR, 'anchor.leaderboard.json'),
   entry('oracleDataset', 'anchor.oracleDataset', '3.0', 'schemas/oracle-dataset.schema.json', K.SUPPORTED_COMPATIBILITY, V.ORACLE_HIDDEN_TRUTH, F.ORACLE_ASSISTED, 'anchor.oracle-dataset.json'),
   entry('demoArtifact', 'anchor.demo-artifact', '1.1', 'schemas/demo-artifact.schema.json', K.TEACHING_DEMO, V.TEACHING_FIXTURE, F.TEACHING_FIXTURE, 'anchor.demo-artifact.json')

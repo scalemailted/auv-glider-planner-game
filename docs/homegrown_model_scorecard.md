@@ -38,3 +38,7 @@ packages/currents now owns deterministic bathymetry-conditioned current generati
 ## FLOW-PKG-R1 Current Package Note
 
 packages/currents now owns pure 4D current contracts, artifacts, source metadata, sampler behavior, temporal boundaries, and scientific diagnostics. The package remains browser-safe, Node-safe, Worker-safe, and independent of src/, Three.js, Phaser, DOM, and UI lifecycle. Synthetic current claims remain bounded to deterministic benchmark fixtures, not calibrated ocean forecasts.
+
+## SCI-VALID-R2A Evidence Baseline
+
+The scorecard now has a machine-readable companion baseline in `validation/`. That baseline records component claims, evidence levels, status, thresholds, rationales, limitations, references, and digests. It is an evidence index for ANCHOR Alpha, not a universal validity score and not operational validation.

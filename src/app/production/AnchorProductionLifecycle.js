@@ -1,4 +1,4 @@
-﻿import { anchorProductionRouteMetadata, normalizeAnchorProductionRoute } from './AnchorProductionRoute.js';
+import { anchorProductionRouteMetadata, normalizeAnchorProductionRoute } from './AnchorProductionRoute.js';
 import { anchorProductionSessionSummary } from './AnchorProductionSessionStore.js';
 
 export const ANCHOR_PRODUCTION_LIFECYCLE_VERSION = 'three-r3a-lifecycle';
@@ -24,6 +24,7 @@ const COMMANDS = Object.freeze({
   openImportExport: { route: 'importExport', from: ['productHub', 'missionPlanning', 'missionDebrief'] },
   openLeaderboard: { route: 'leaderboard', from: ['productHub', 'missionDebrief'] },
   openHeadlessViewer: { route: 'headlessBundleViewer', from: ['productHub', 'missionDebrief'] },
+  openMethodsValidation: { route: 'methodsValidation', from: ['productHub'] },
   openTutorialBrowser: { route: 'tutorialBrowser', from: ['productHub'] },
   openPlannerBenchmark: { route: 'plannerBenchmark', from: ['productHub'] },
   openAdaptiveBenchmark: { route: 'adaptiveBenchmark', from: ['productHub'] },

@@ -1,0 +1,2108 @@
+{
+  "schemaVersion": "1.0",
+  "type": "anchor.scientific-validation-report",
+  "reportId": "anchor-currents-scientific-validation-report",
+  "componentId": "currents",
+  "componentLabel": "Currents",
+  "modelId": "anchor.synthetic-current-field",
+  "modelVersion": "flow-pkg-r2",
+  "summary": "Currents has a Pre-Alpha evidence report built from deterministic package fixtures and documented diagnostics.",
+  "claims": [
+    {
+      "version": "1.0",
+      "claimId": "currents.deterministic-field-generation",
+      "componentId": "currents",
+      "title": "Deterministic field generation",
+      "plainLanguageClaim": "Currents supports deterministic field generation within the deterministic ANCHOR benchmark fixtures.",
+      "technicalClaim": "anchor.synthetic-current-field deterministic-field-generation is evaluated by package-smoke-and-parity-fixture using fixture-backed deterministic metrics. Status is recorded separately from evidence level.",
+      "evidenceLevel": "SOFTWARE_VERIFIED",
+      "methodId": "package-smoke-and-parity-fixture",
+      "metricId": "deterministic-contract-status",
+      "units": "pass-count",
+      "expectedDirection": "less-than-or-equal",
+      "threshold": 0,
+      "tolerance": 0,
+      "thresholdRationale": "Software contract checks require zero hard validation failures for the checked fixture and package version.",
+      "fixtureIds": [
+        "tests/fixtures/current_package_r1_parity.json"
+      ],
+      "referenceIds": [
+        "current-boundary-and-divergence-validation-md",
+        "current-depth-and-time-interpolation-md",
+        "current-spatial-coherence-validation-md",
+        "current-vertical-shear-validation-md"
+      ],
+      "applicability": "deterministic-regression, education, and benchmark-suitability review",
+      "public": true,
+      "claimDigest": "fnv1a32:8e0e9ce6"
+    },
+    {
+      "version": "1.0",
+      "claimId": "currents.canonical-units",
+      "componentId": "currents",
+      "title": "Canonical vector units",
+      "plainLanguageClaim": "Currents supports canonical vector units within the deterministic ANCHOR benchmark fixtures.",
+      "technicalClaim": "anchor.synthetic-current-field canonical-units is evaluated by package-smoke-and-parity-fixture using fixture-backed deterministic metrics. Status is recorded separately from evidence level.",
+      "evidenceLevel": "SOFTWARE_VERIFIED",
+      "methodId": "package-smoke-and-parity-fixture",
+      "metricId": "deterministic-contract-status",
+      "units": "pass-count",
+      "expectedDirection": "less-than-or-equal",
+      "threshold": 0,
+      "tolerance": 0,
+      "thresholdRationale": "Software contract checks require zero hard validation failures for the checked fixture and package version.",
+      "fixtureIds": [
+        "tests/fixtures/current_package_r1_parity.json"
+      ],
+      "referenceIds": [
+        "current-boundary-and-divergence-validation-md",
+        "current-depth-and-time-interpolation-md",
+        "current-spatial-coherence-validation-md",
+        "current-vertical-shear-validation-md"
+      ],
+      "applicability": "deterministic-regression, education, and benchmark-suitability review",
+      "public": true,
+      "claimDigest": "fnv1a32:c2738bc0"
+    },
+    {
+      "version": "1.0",
+      "claimId": "currents.depth-distinctness",
+      "componentId": "currents",
+      "title": "Depth-distinct current vectors",
+      "plainLanguageClaim": "Currents supports depth-distinct current vectors within the deterministic ANCHOR benchmark fixtures.",
+      "technicalClaim": "anchor.synthetic-current-field depth-distinctness is evaluated by manufactured-solution-or-interpolation-check using fixture-backed deterministic metrics. Status is recorded separately from evidence level.",
+      "evidenceLevel": "NUMERICALLY_VERIFIED",
+      "methodId": "manufactured-solution-or-interpolation-check",
+      "metricId": "manufactured-error-bound",
+      "units": "normalized-error",
+      "expectedDirection": "less-than-or-equal",
+      "threshold": 0,
+      "tolerance": 0,
+      "thresholdRationale": "Manufactured fixtures should match analytical or interpolation expectations within deterministic numerical tolerance.",
+      "fixtureIds": [
+        "tests/fixtures/current_package_r1_parity.json"
+      ],
+      "referenceIds": [
+        "current-boundary-and-divergence-validation-md",
+        "current-depth-and-time-interpolation-md",
+        "current-spatial-coherence-validation-md",
+        "current-vertical-shear-validation-md"
+      ],
+      "applicability": "deterministic-regression, education, and benchmark-suitability review",
+      "public": true,
+      "claimDigest": "fnv1a32:3a37341c"
+    },
+    {
+      "version": "1.0",
+      "claimId": "currents.temporal-distinctness",
+      "componentId": "currents",
+      "title": "Time-distinct current vectors",
+      "plainLanguageClaim": "Currents supports time-distinct current vectors within the deterministic ANCHOR benchmark fixtures.",
+      "technicalClaim": "anchor.synthetic-current-field temporal-distinctness is evaluated by manufactured-solution-or-interpolation-check using fixture-backed deterministic metrics. Status is recorded separately from evidence level.",
+      "evidenceLevel": "NUMERICALLY_VERIFIED",
+      "methodId": "manufactured-solution-or-interpolation-check",
+      "metricId": "manufactured-error-bound",
+      "units": "normalized-error",
+      "expectedDirection": "less-than-or-equal",
+      "threshold": 0,
+      "tolerance": 0,
+      "thresholdRationale": "Manufactured fixtures should match analytical or interpolation expectations within deterministic numerical tolerance.",
+      "fixtureIds": [
+        "tests/fixtures/current_package_r1_parity.json"
+      ],
+      "referenceIds": [
+        "current-boundary-and-divergence-validation-md",
+        "current-depth-and-time-interpolation-md",
+        "current-spatial-coherence-validation-md",
+        "current-vertical-shear-validation-md"
+      ],
+      "applicability": "deterministic-regression, education, and benchmark-suitability review",
+      "public": true,
+      "claimDigest": "fnv1a32:eebc9d1e"
+    },
+    {
+      "version": "1.0",
+      "claimId": "currents.interpolation-exactness",
+      "componentId": "currents",
+      "title": "Space/time/depth interpolation exactness",
+      "plainLanguageClaim": "Currents supports space/time/depth interpolation exactness within the deterministic ANCHOR benchmark fixtures.",
+      "technicalClaim": "anchor.synthetic-current-field interpolation-exactness is evaluated by manufactured-solution-or-interpolation-check using fixture-backed deterministic metrics. Status is recorded separately from evidence level.",
+      "evidenceLevel": "NUMERICALLY_VERIFIED",
+      "methodId": "manufactured-solution-or-interpolation-check",
+      "metricId": "manufactured-error-bound",
+      "units": "normalized-error",
+      "expectedDirection": "less-than-or-equal",
+      "threshold": 0,
+      "tolerance": 0,
+      "thresholdRationale": "Manufactured fixtures should match analytical or interpolation expectations within deterministic numerical tolerance.",
+      "fixtureIds": [
+        "tests/fixtures/current_package_r1_parity.json"
+      ],
+      "referenceIds": [
+        "current-boundary-and-divergence-validation-md",
+        "current-depth-and-time-interpolation-md",
+        "current-spatial-coherence-validation-md",
+        "current-vertical-shear-validation-md"
+      ],
+      "applicability": "deterministic-regression, education, and benchmark-suitability review",
+      "public": true,
+      "claimDigest": "fnv1a32:bb2b999a"
+    },
+    {
+      "version": "1.0",
+      "claimId": "currents.no-current-on-land",
+      "componentId": "currents",
+      "title": "No current on land",
+      "plainLanguageClaim": "Currents supports no current on land within the deterministic ANCHOR benchmark fixtures.",
+      "technicalClaim": "anchor.synthetic-current-field no-current-on-land is evaluated by package-smoke-and-parity-fixture using fixture-backed deterministic metrics. Status is recorded separately from evidence level.",
+      "evidenceLevel": "SOFTWARE_VERIFIED",
+      "methodId": "package-smoke-and-parity-fixture",
+      "metricId": "deterministic-contract-status",
+      "units": "pass-count",
+      "expectedDirection": "less-than-or-equal",
+      "threshold": 0,
+      "tolerance": 0,
+      "thresholdRationale": "Software contract checks require zero hard validation failures for the checked fixture and package version.",
+      "fixtureIds": [
+        "tests/fixtures/current_package_r1_parity.json"
+      ],
+      "referenceIds": [
+        "current-boundary-and-divergence-validation-md",
+        "current-depth-and-time-interpolation-md",
+        "current-spatial-coherence-validation-md",
+        "current-vertical-shear-validation-md"
+      ],
+      "applicability": "deterministic-regression, education, and benchmark-suitability review",
+      "public": true,
+      "claimDigest": "fnv1a32:e5869b08"
+    },
+    {
+      "version": "1.0",
+      "claimId": "currents.no-current-below-bottom",
+      "componentId": "currents",
+      "title": "No current below bottom",
+      "plainLanguageClaim": "Currents supports no current below bottom within the deterministic ANCHOR benchmark fixtures.",
+      "technicalClaim": "anchor.synthetic-current-field no-current-below-bottom is evaluated by package-smoke-and-parity-fixture using fixture-backed deterministic metrics. Status is recorded separately from evidence level.",
+      "evidenceLevel": "SOFTWARE_VERIFIED",
+      "methodId": "package-smoke-and-parity-fixture",
+      "metricId": "deterministic-contract-status",
+      "units": "pass-count",
+      "expectedDirection": "less-than-or-equal",
+      "threshold": 0,
+      "tolerance": 0,
+      "thresholdRationale": "Software contract checks require zero hard validation failures for the checked fixture and package version.",
+      "fixtureIds": [
+        "tests/fixtures/current_package_r1_parity.json"
+      ],
+      "referenceIds": [
+        "current-boundary-and-divergence-validation-md",
+        "current-depth-and-time-interpolation-md",
+        "current-spatial-coherence-validation-md",
+        "current-vertical-shear-validation-md"
+      ],
+      "applicability": "deterministic-regression, education, and benchmark-suitability review",
+      "public": true,
+      "claimDigest": "fnv1a32:28b1c74e"
+    },
+    {
+      "version": "1.0",
+      "claimId": "currents.coastline-normal-flow",
+      "componentId": "currents",
+      "title": "Coastline-normal flow behavior",
+      "plainLanguageClaim": "Currents supports coastline-normal flow behavior within the deterministic ANCHOR benchmark fixtures.",
+      "technicalClaim": "anchor.synthetic-current-field coastline-normal-flow is evaluated by bounded-invariant-and-diagnostic-check using fixture-backed deterministic metrics. Status is recorded separately from evidence level.",
+      "evidenceLevel": "PHYSICALLY_PLAUSIBLE",
+      "methodId": "bounded-invariant-and-diagnostic-check",
+      "metricId": "bounded-plausibility-invariant",
+      "units": "pass-count",
+      "expectedDirection": "less-than-or-equal",
+      "threshold": 0,
+      "tolerance": 1,
+      "thresholdRationale": "The threshold is a deterministic regression gate for bounded synthetic behavior; it is not an oceanographic validation threshold.",
+      "fixtureIds": [
+        "tests/fixtures/current_package_r1_parity.json"
+      ],
+      "referenceIds": [
+        "current-boundary-and-divergence-validation-md",
+        "current-depth-and-time-interpolation-md",
+        "current-spatial-coherence-validation-md",
+        "current-vertical-shear-validation-md"
+      ],
+      "applicability": "deterministic-regression, education, and benchmark-suitability review",
+      "public": true,
+      "claimDigest": "fnv1a32:fe3b8ddd"
+    },
+    {
+      "version": "1.0",
+      "claimId": "currents.divergence-diagnostics",
+      "componentId": "currents",
+      "title": "Divergence diagnostics",
+      "plainLanguageClaim": "Currents supports divergence diagnostics within the deterministic ANCHOR benchmark fixtures.",
+      "technicalClaim": "anchor.synthetic-current-field divergence-diagnostics is evaluated by bounded-invariant-and-diagnostic-check using fixture-backed deterministic metrics. Status is recorded separately from evidence level.",
+      "evidenceLevel": "PHYSICALLY_PLAUSIBLE",
+      "methodId": "bounded-invariant-and-diagnostic-check",
+      "metricId": "bounded-plausibility-invariant",
+      "units": "pass-count",
+      "expectedDirection": "less-than-or-equal",
+      "threshold": 0,
+      "tolerance": 1,
+      "thresholdRationale": "The threshold is a deterministic regression gate for bounded synthetic behavior; it is not an oceanographic validation threshold.",
+      "fixtureIds": [
+        "tests/fixtures/current_package_r1_parity.json"
+      ],
+      "referenceIds": [
+        "current-boundary-and-divergence-validation-md",
+        "current-depth-and-time-interpolation-md",
+        "current-spatial-coherence-validation-md",
+        "current-vertical-shear-validation-md"
+      ],
+      "applicability": "deterministic-regression, education, and benchmark-suitability review",
+      "public": true,
+      "claimDigest": "fnv1a32:9d126343"
+    },
+    {
+      "version": "1.0",
+      "claimId": "currents.bounded-speed",
+      "componentId": "currents",
+      "title": "Bounded speed",
+      "plainLanguageClaim": "Currents supports bounded speed within the deterministic ANCHOR benchmark fixtures.",
+      "technicalClaim": "anchor.synthetic-current-field bounded-speed is evaluated by bounded-invariant-and-diagnostic-check using fixture-backed deterministic metrics. Status is recorded separately from evidence level.",
+      "evidenceLevel": "PHYSICALLY_PLAUSIBLE",
+      "methodId": "bounded-invariant-and-diagnostic-check",
+      "metricId": "bounded-plausibility-invariant",
+      "units": "pass-count",
+      "expectedDirection": "less-than-or-equal",
+      "threshold": 0,
+      "tolerance": 1,
+      "thresholdRationale": "The threshold is a deterministic regression gate for bounded synthetic behavior; it is not an oceanographic validation threshold.",
+      "fixtureIds": [
+        "tests/fixtures/current_package_r1_parity.json"
+      ],
+      "referenceIds": [
+        "current-boundary-and-divergence-validation-md",
+        "current-depth-and-time-interpolation-md",
+        "current-spatial-coherence-validation-md",
+        "current-vertical-shear-validation-md"
+      ],
+      "applicability": "deterministic-regression, education, and benchmark-suitability review",
+      "public": true,
+      "claimDigest": "fnv1a32:bcf2c05d"
+    },
+    {
+      "version": "1.0",
+      "claimId": "currents.vertical-shear",
+      "componentId": "currents",
+      "title": "Vertical shear",
+      "plainLanguageClaim": "Currents supports vertical shear within the deterministic ANCHOR benchmark fixtures.",
+      "technicalClaim": "anchor.synthetic-current-field vertical-shear is evaluated by bounded-invariant-and-diagnostic-check using fixture-backed deterministic metrics. Status is recorded separately from evidence level.",
+      "evidenceLevel": "PHYSICALLY_PLAUSIBLE",
+      "methodId": "bounded-invariant-and-diagnostic-check",
+      "metricId": "bounded-plausibility-invariant",
+      "units": "pass-count",
+      "expectedDirection": "less-than-or-equal",
+      "threshold": 0,
+      "tolerance": 1,
+      "thresholdRationale": "The threshold is a deterministic regression gate for bounded synthetic behavior; it is not an oceanographic validation threshold.",
+      "fixtureIds": [
+        "tests/fixtures/current_package_r1_parity.json"
+      ],
+      "referenceIds": [
+        "current-boundary-and-divergence-validation-md",
+        "current-depth-and-time-interpolation-md",
+        "current-spatial-coherence-validation-md",
+        "current-vertical-shear-validation-md"
+      ],
+      "applicability": "deterministic-regression, education, and benchmark-suitability review",
+      "public": true,
+      "claimDigest": "fnv1a32:3127aa47"
+    },
+    {
+      "version": "1.0",
+      "claimId": "currents.spatial-coherence",
+      "componentId": "currents",
+      "title": "Spatial coherence",
+      "plainLanguageClaim": "Currents supports spatial coherence within the deterministic ANCHOR benchmark fixtures.",
+      "technicalClaim": "anchor.synthetic-current-field spatial-coherence is evaluated by bounded-invariant-and-diagnostic-check using fixture-backed deterministic metrics. Status is recorded separately from evidence level.",
+      "evidenceLevel": "PHYSICALLY_PLAUSIBLE",
+      "methodId": "bounded-invariant-and-diagnostic-check",
+      "metricId": "bounded-plausibility-invariant",
+      "units": "pass-count",
+      "expectedDirection": "less-than-or-equal",
+      "threshold": 0,
+      "tolerance": 1,
+      "thresholdRationale": "The threshold is a deterministic regression gate for bounded synthetic behavior; it is not an oceanographic validation threshold.",
+      "fixtureIds": [
+        "tests/fixtures/current_package_r1_parity.json"
+      ],
+      "referenceIds": [
+        "current-boundary-and-divergence-validation-md",
+        "current-depth-and-time-interpolation-md",
+        "current-spatial-coherence-validation-md",
+        "current-vertical-shear-validation-md"
+      ],
+      "applicability": "deterministic-regression, education, and benchmark-suitability review",
+      "public": true,
+      "claimDigest": "fnv1a32:d59e5125"
+    },
+    {
+      "version": "1.0",
+      "claimId": "currents.calm-region-support",
+      "componentId": "currents",
+      "title": "Calm-region support",
+      "plainLanguageClaim": "Currents supports calm-region support within the deterministic ANCHOR benchmark fixtures.",
+      "technicalClaim": "anchor.synthetic-current-field calm-region-support is evaluated by package-smoke-and-parity-fixture using fixture-backed deterministic metrics. Status is recorded separately from evidence level.",
+      "evidenceLevel": "SOFTWARE_VERIFIED",
+      "methodId": "package-smoke-and-parity-fixture",
+      "metricId": "deterministic-contract-status",
+      "units": "pass-count",
+      "expectedDirection": "less-than-or-equal",
+      "threshold": 0,
+      "tolerance": 0,
+      "thresholdRationale": "Software contract checks require zero hard validation failures for the checked fixture and package version.",
+      "fixtureIds": [
+        "tests/fixtures/current_package_r1_parity.json"
+      ],
+      "referenceIds": [
+        "current-boundary-and-divergence-validation-md",
+        "current-depth-and-time-interpolation-md",
+        "current-spatial-coherence-validation-md",
+        "current-vertical-shear-validation-md"
+      ],
+      "applicability": "deterministic-regression, education, and benchmark-suitability review",
+      "public": true,
+      "claimDigest": "fnv1a32:1ab3300e"
+    },
+    {
+      "version": "1.0",
+      "claimId": "currents.browser-physics-render-parity",
+      "componentId": "currents",
+      "title": "Browser/physics/render parity",
+      "plainLanguageClaim": "Currents supports browser/physics/render parity within the deterministic ANCHOR benchmark fixtures.",
+      "technicalClaim": "anchor.synthetic-current-field browser-physics-render-parity is evaluated by package-smoke-and-parity-fixture using fixture-backed deterministic metrics. Status is recorded separately from evidence level.",
+      "evidenceLevel": "SOFTWARE_VERIFIED",
+      "methodId": "package-smoke-and-parity-fixture",
+      "metricId": "deterministic-contract-status",
+      "units": "pass-count",
+      "expectedDirection": "less-than-or-equal",
+      "threshold": 0,
+      "tolerance": 0,
+      "thresholdRationale": "Software contract checks require zero hard validation failures for the checked fixture and package version.",
+      "fixtureIds": [
+        "tests/fixtures/current_package_r1_parity.json"
+      ],
+      "referenceIds": [
+        "current-boundary-and-divergence-validation-md",
+        "current-depth-and-time-interpolation-md",
+        "current-spatial-coherence-validation-md",
+        "current-vertical-shear-validation-md"
+      ],
+      "applicability": "deterministic-regression, education, and benchmark-suitability review",
+      "public": true,
+      "claimDigest": "fnv1a32:bcf0822e"
+    },
+    {
+      "version": "1.0",
+      "claimId": "currents.external-current-comparison",
+      "componentId": "currents",
+      "title": "External current comparison",
+      "plainLanguageClaim": "Currents has not yet been checked against an independent external reference for external current comparison.",
+      "technicalClaim": "anchor.synthetic-current-field external-current-comparison is evaluated by gap-record using fixture-backed deterministic metrics. Status is recorded separately from evidence level.",
+      "evidenceLevel": "NOT_YET_EVALUATED",
+      "methodId": "gap-record",
+      "metricId": "external-reference-status",
+      "units": "status",
+      "expectedDirection": "explicitly-not-evaluated",
+      "threshold": null,
+      "tolerance": null,
+      "thresholdRationale": "No local independent reference fixture exists in SCI-VALID-R2A, so the official threshold is intentionally undefined and the claim must remain not evaluated.",
+      "fixtureIds": [
+        "tests/fixtures/current_package_r1_parity.json"
+      ],
+      "referenceIds": [
+        "current-boundary-and-divergence-validation-md",
+        "current-depth-and-time-interpolation-md",
+        "current-spatial-coherence-validation-md",
+        "current-vertical-shear-validation-md"
+      ],
+      "applicability": "future-reference-comparison-only",
+      "public": true,
+      "claimDigest": "fnv1a32:4f4d5155"
+    }
+  ],
+  "evidence": [
+    {
+      "version": "1.0",
+      "claimId": "currents.deterministic-field-generation",
+      "componentId": "currents",
+      "modelId": "anchor.synthetic-current-field",
+      "modelVersion": "flow-pkg-r2",
+      "evidenceLevel": "SOFTWARE_VERIFIED",
+      "status": "PASS",
+      "methodId": "package-smoke-and-parity-fixture",
+      "metricId": "deterministic-contract-status",
+      "measuredValue": 0,
+      "units": "pass-count",
+      "threshold": 0,
+      "tolerance": 0,
+      "errorValue": 0,
+      "relativeError": 0,
+      "fixtureIds": [
+        "tests/fixtures/current_package_r1_parity.json"
+      ],
+      "sourceArtifactDigests": {
+        "tests/fixtures/current_package_r1_parity.json": "fnv1a32:a5399025"
+      },
+      "packageVersions": {
+        "contracts": "0.0.0-arch-r1",
+        "bathymetry": "0.0.0-arch-r1",
+        "currents": "0.0.0-arch-r1",
+        "scalar-processes": "0.1.0-process-pkg-r1",
+        "environment": "0.0.0-arch-r1",
+        "mission-simulator": "0.0.0-arch-r1",
+        "scoring": "0.0.0-score-pkg-r1",
+        "codecs": "0.1.0-codec-r1",
+        "validation": "0.1.0-sci-valid-r2a",
+        "validationRuntime": "anchor-validation-sci-valid-r2a"
+      },
+      "runtimeMetadata": {
+        "builderVersion": "sci-valid-r2a-baseline-builder",
+        "deterministic": true,
+        "officialBaseline": true
+      },
+      "interpretation": "Deterministic field generation passed as deterministic Pre-Alpha evidence for Currents.",
+      "limitations": [
+        "Evidence is fixture-scoped and deterministic; it does not generalize to operational ocean forecasting or certified navigation."
+      ],
+      "references": [
+        {
+          "version": "1.0",
+          "referenceId": "current-boundary-and-divergence-validation-md",
+          "title": "Current Boundary And Divergence Validation",
+          "authors": "ANCHOR project",
+          "year": 2026,
+          "source": "local repository documentation",
+          "persistentIdentifier": null,
+          "localPath": "docs/current_boundary_and_divergence_validation.md",
+          "role": "methodReference"
+        },
+        {
+          "version": "1.0",
+          "referenceId": "current-depth-and-time-interpolation-md",
+          "title": "Current Depth And Time Interpolation",
+          "authors": "ANCHOR project",
+          "year": 2026,
+          "source": "local repository documentation",
+          "persistentIdentifier": null,
+          "localPath": "docs/current_depth_and_time_interpolation.md",
+          "role": "methodReference"
+        },
+        {
+          "version": "1.0",
+          "referenceId": "current-spatial-coherence-validation-md",
+          "title": "Current Spatial Coherence Validation",
+          "authors": "ANCHOR project",
+          "year": 2026,
+          "source": "local repository documentation",
+          "persistentIdentifier": null,
+          "localPath": "docs/current_spatial_coherence_validation.md",
+          "role": "methodReference"
+        },
+        {
+          "version": "1.0",
+          "referenceId": "current-vertical-shear-validation-md",
+          "title": "Current Vertical Shear Validation",
+          "authors": "ANCHOR project",
+          "year": 2026,
+          "source": "local repository documentation",
+          "persistentIdentifier": null,
+          "localPath": "docs/current_vertical_shear_validation.md",
+          "role": "methodReference"
+        }
+      ],
+      "reproductionCommand": "node tools/science/build_validation_baseline.mjs",
+      "evidenceDigest": "fnv1a32:d0a98425"
+    },
+    {
+      "version": "1.0",
+      "claimId": "currents.canonical-units",
+      "componentId": "currents",
+      "modelId": "anchor.synthetic-current-field",
+      "modelVersion": "flow-pkg-r2",
+      "evidenceLevel": "SOFTWARE_VERIFIED",
+      "status": "PASS",
+      "methodId": "package-smoke-and-parity-fixture",
+      "metricId": "deterministic-contract-status",
+      "measuredValue": 0,
+      "units": "pass-count",
+      "threshold": 0,
+      "tolerance": 0,
+      "errorValue": 0,
+      "relativeError": 0,
+      "fixtureIds": [
+        "tests/fixtures/current_package_r1_parity.json"
+      ],
+      "sourceArtifactDigests": {
+        "tests/fixtures/current_package_r1_parity.json": "fnv1a32:a5399025"
+      },
+      "packageVersions": {
+        "contracts": "0.0.0-arch-r1",
+        "bathymetry": "0.0.0-arch-r1",
+        "currents": "0.0.0-arch-r1",
+        "scalar-processes": "0.1.0-process-pkg-r1",
+        "environment": "0.0.0-arch-r1",
+        "mission-simulator": "0.0.0-arch-r1",
+        "scoring": "0.0.0-score-pkg-r1",
+        "codecs": "0.1.0-codec-r1",
+        "validation": "0.1.0-sci-valid-r2a",
+        "validationRuntime": "anchor-validation-sci-valid-r2a"
+      },
+      "runtimeMetadata": {
+        "builderVersion": "sci-valid-r2a-baseline-builder",
+        "deterministic": true,
+        "officialBaseline": true
+      },
+      "interpretation": "Canonical vector units passed as deterministic Pre-Alpha evidence for Currents.",
+      "limitations": [
+        "Evidence is fixture-scoped and deterministic; it does not generalize to operational ocean forecasting or certified navigation."
+      ],
+      "references": [
+        {
+          "version": "1.0",
+          "referenceId": "current-boundary-and-divergence-validation-md",
+          "title": "Current Boundary And Divergence Validation",
+          "authors": "ANCHOR project",
+          "year": 2026,
+          "source": "local repository documentation",
+          "persistentIdentifier": null,
+          "localPath": "docs/current_boundary_and_divergence_validation.md",
+          "role": "methodReference"
+        },
+        {
+          "version": "1.0",
+          "referenceId": "current-depth-and-time-interpolation-md",
+          "title": "Current Depth And Time Interpolation",
+          "authors": "ANCHOR project",
+          "year": 2026,
+          "source": "local repository documentation",
+          "persistentIdentifier": null,
+          "localPath": "docs/current_depth_and_time_interpolation.md",
+          "role": "methodReference"
+        },
+        {
+          "version": "1.0",
+          "referenceId": "current-spatial-coherence-validation-md",
+          "title": "Current Spatial Coherence Validation",
+          "authors": "ANCHOR project",
+          "year": 2026,
+          "source": "local repository documentation",
+          "persistentIdentifier": null,
+          "localPath": "docs/current_spatial_coherence_validation.md",
+          "role": "methodReference"
+        },
+        {
+          "version": "1.0",
+          "referenceId": "current-vertical-shear-validation-md",
+          "title": "Current Vertical Shear Validation",
+          "authors": "ANCHOR project",
+          "year": 2026,
+          "source": "local repository documentation",
+          "persistentIdentifier": null,
+          "localPath": "docs/current_vertical_shear_validation.md",
+          "role": "methodReference"
+        }
+      ],
+      "reproductionCommand": "node tools/science/build_validation_baseline.mjs",
+      "evidenceDigest": "fnv1a32:450fee21"
+    },
+    {
+      "version": "1.0",
+      "claimId": "currents.depth-distinctness",
+      "componentId": "currents",
+      "modelId": "anchor.synthetic-current-field",
+      "modelVersion": "flow-pkg-r2",
+      "evidenceLevel": "NUMERICALLY_VERIFIED",
+      "status": "PASS",
+      "methodId": "manufactured-solution-or-interpolation-check",
+      "metricId": "manufactured-error-bound",
+      "measuredValue": 0,
+      "units": "normalized-error",
+      "threshold": 0,
+      "tolerance": 0,
+      "errorValue": 0,
+      "relativeError": 0,
+      "fixtureIds": [
+        "tests/fixtures/current_package_r1_parity.json"
+      ],
+      "sourceArtifactDigests": {
+        "tests/fixtures/current_package_r1_parity.json": "fnv1a32:a5399025"
+      },
+      "packageVersions": {
+        "contracts": "0.0.0-arch-r1",
+        "bathymetry": "0.0.0-arch-r1",
+        "currents": "0.0.0-arch-r1",
+        "scalar-processes": "0.1.0-process-pkg-r1",
+        "environment": "0.0.0-arch-r1",
+        "mission-simulator": "0.0.0-arch-r1",
+        "scoring": "0.0.0-score-pkg-r1",
+        "codecs": "0.1.0-codec-r1",
+        "validation": "0.1.0-sci-valid-r2a",
+        "validationRuntime": "anchor-validation-sci-valid-r2a"
+      },
+      "runtimeMetadata": {
+        "builderVersion": "sci-valid-r2a-baseline-builder",
+        "deterministic": true,
+        "officialBaseline": true
+      },
+      "interpretation": "Depth-distinct current vectors passed as deterministic Pre-Alpha evidence for Currents.",
+      "limitations": [
+        "Evidence is fixture-scoped and deterministic; it does not generalize to operational ocean forecasting or certified navigation."
+      ],
+      "references": [
+        {
+          "version": "1.0",
+          "referenceId": "current-boundary-and-divergence-validation-md",
+          "title": "Current Boundary And Divergence Validation",
+          "authors": "ANCHOR project",
+          "year": 2026,
+          "source": "local repository documentation",
+          "persistentIdentifier": null,
+          "localPath": "docs/current_boundary_and_divergence_validation.md",
+          "role": "methodReference"
+        },
+        {
+          "version": "1.0",
+          "referenceId": "current-depth-and-time-interpolation-md",
+          "title": "Current Depth And Time Interpolation",
+          "authors": "ANCHOR project",
+          "year": 2026,
+          "source": "local repository documentation",
+          "persistentIdentifier": null,
+          "localPath": "docs/current_depth_and_time_interpolation.md",
+          "role": "methodReference"
+        },
+        {
+          "version": "1.0",
+          "referenceId": "current-spatial-coherence-validation-md",
+          "title": "Current Spatial Coherence Validation",
+          "authors": "ANCHOR project",
+          "year": 2026,
+          "source": "local repository documentation",
+          "persistentIdentifier": null,
+          "localPath": "docs/current_spatial_coherence_validation.md",
+          "role": "methodReference"
+        },
+        {
+          "version": "1.0",
+          "referenceId": "current-vertical-shear-validation-md",
+          "title": "Current Vertical Shear Validation",
+          "authors": "ANCHOR project",
+          "year": 2026,
+          "source": "local repository documentation",
+          "persistentIdentifier": null,
+          "localPath": "docs/current_vertical_shear_validation.md",
+          "role": "methodReference"
+        }
+      ],
+      "reproductionCommand": "node tools/science/build_validation_baseline.mjs",
+      "evidenceDigest": "fnv1a32:caaca888"
+    },
+    {
+      "version": "1.0",
+      "claimId": "currents.temporal-distinctness",
+      "componentId": "currents",
+      "modelId": "anchor.synthetic-current-field",
+      "modelVersion": "flow-pkg-r2",
+      "evidenceLevel": "NUMERICALLY_VERIFIED",
+      "status": "PASS",
+      "methodId": "manufactured-solution-or-interpolation-check",
+      "metricId": "manufactured-error-bound",
+      "measuredValue": 0,
+      "units": "normalized-error",
+      "threshold": 0,
+      "tolerance": 0,
+      "errorValue": 0,
+      "relativeError": 0,
+      "fixtureIds": [
+        "tests/fixtures/current_package_r1_parity.json"
+      ],
+      "sourceArtifactDigests": {
+        "tests/fixtures/current_package_r1_parity.json": "fnv1a32:a5399025"
+      },
+      "packageVersions": {
+        "contracts": "0.0.0-arch-r1",
+        "bathymetry": "0.0.0-arch-r1",
+        "currents": "0.0.0-arch-r1",
+        "scalar-processes": "0.1.0-process-pkg-r1",
+        "environment": "0.0.0-arch-r1",
+        "mission-simulator": "0.0.0-arch-r1",
+        "scoring": "0.0.0-score-pkg-r1",
+        "codecs": "0.1.0-codec-r1",
+        "validation": "0.1.0-sci-valid-r2a",
+        "validationRuntime": "anchor-validation-sci-valid-r2a"
+      },
+      "runtimeMetadata": {
+        "builderVersion": "sci-valid-r2a-baseline-builder",
+        "deterministic": true,
+        "officialBaseline": true
+      },
+      "interpretation": "Time-distinct current vectors passed as deterministic Pre-Alpha evidence for Currents.",
+      "limitations": [
+        "Evidence is fixture-scoped and deterministic; it does not generalize to operational ocean forecasting or certified navigation."
+      ],
+      "references": [
+        {
+          "version": "1.0",
+          "referenceId": "current-boundary-and-divergence-validation-md",
+          "title": "Current Boundary And Divergence Validation",
+          "authors": "ANCHOR project",
+          "year": 2026,
+          "source": "local repository documentation",
+          "persistentIdentifier": null,
+          "localPath": "docs/current_boundary_and_divergence_validation.md",
+          "role": "methodReference"
+        },
+        {
+          "version": "1.0",
+          "referenceId": "current-depth-and-time-interpolation-md",
+          "title": "Current Depth And Time Interpolation",
+          "authors": "ANCHOR project",
+          "year": 2026,
+          "source": "local repository documentation",
+          "persistentIdentifier": null,
+          "localPath": "docs/current_depth_and_time_interpolation.md",
+          "role": "methodReference"
+        },
+        {
+          "version": "1.0",
+          "referenceId": "current-spatial-coherence-validation-md",
+          "title": "Current Spatial Coherence Validation",
+          "authors": "ANCHOR project",
+          "year": 2026,
+          "source": "local repository documentation",
+          "persistentIdentifier": null,
+          "localPath": "docs/current_spatial_coherence_validation.md",
+          "role": "methodReference"
+        },
+        {
+          "version": "1.0",
+          "referenceId": "current-vertical-shear-validation-md",
+          "title": "Current Vertical Shear Validation",
+          "authors": "ANCHOR project",
+          "year": 2026,
+          "source": "local repository documentation",
+          "persistentIdentifier": null,
+          "localPath": "docs/current_vertical_shear_validation.md",
+          "role": "methodReference"
+        }
+      ],
+      "reproductionCommand": "node tools/science/build_validation_baseline.mjs",
+      "evidenceDigest": "fnv1a32:a57293e9"
+    },
+    {
+      "version": "1.0",
+      "claimId": "currents.interpolation-exactness",
+      "componentId": "currents",
+      "modelId": "anchor.synthetic-current-field",
+      "modelVersion": "flow-pkg-r2",
+      "evidenceLevel": "NUMERICALLY_VERIFIED",
+      "status": "PASS",
+      "methodId": "manufactured-solution-or-interpolation-check",
+      "metricId": "manufactured-error-bound",
+      "measuredValue": 0,
+      "units": "normalized-error",
+      "threshold": 0,
+      "tolerance": 0,
+      "errorValue": 0,
+      "relativeError": 0,
+      "fixtureIds": [
+        "tests/fixtures/current_package_r1_parity.json"
+      ],
+      "sourceArtifactDigests": {
+        "tests/fixtures/current_package_r1_parity.json": "fnv1a32:a5399025"
+      },
+      "packageVersions": {
+        "contracts": "0.0.0-arch-r1",
+        "bathymetry": "0.0.0-arch-r1",
+        "currents": "0.0.0-arch-r1",
+        "scalar-processes": "0.1.0-process-pkg-r1",
+        "environment": "0.0.0-arch-r1",
+        "mission-simulator": "0.0.0-arch-r1",
+        "scoring": "0.0.0-score-pkg-r1",
+        "codecs": "0.1.0-codec-r1",
+        "validation": "0.1.0-sci-valid-r2a",
+        "validationRuntime": "anchor-validation-sci-valid-r2a"
+      },
+      "runtimeMetadata": {
+        "builderVersion": "sci-valid-r2a-baseline-builder",
+        "deterministic": true,
+        "officialBaseline": true
+      },
+      "interpretation": "Space/time/depth interpolation exactness passed as deterministic Pre-Alpha evidence for Currents.",
+      "limitations": [
+        "Evidence is fixture-scoped and deterministic; it does not generalize to operational ocean forecasting or certified navigation."
+      ],
+      "references": [
+        {
+          "version": "1.0",
+          "referenceId": "current-boundary-and-divergence-validation-md",
+          "title": "Current Boundary And Divergence Validation",
+          "authors": "ANCHOR project",
+          "year": 2026,
+          "source": "local repository documentation",
+          "persistentIdentifier": null,
+          "localPath": "docs/current_boundary_and_divergence_validation.md",
+          "role": "methodReference"
+        },
+        {
+          "version": "1.0",
+          "referenceId": "current-depth-and-time-interpolation-md",
+          "title": "Current Depth And Time Interpolation",
+          "authors": "ANCHOR project",
+          "year": 2026,
+          "source": "local repository documentation",
+          "persistentIdentifier": null,
+          "localPath": "docs/current_depth_and_time_interpolation.md",
+          "role": "methodReference"
+        },
+        {
+          "version": "1.0",
+          "referenceId": "current-spatial-coherence-validation-md",
+          "title": "Current Spatial Coherence Validation",
+          "authors": "ANCHOR project",
+          "year": 2026,
+          "source": "local repository documentation",
+          "persistentIdentifier": null,
+          "localPath": "docs/current_spatial_coherence_validation.md",
+          "role": "methodReference"
+        },
+        {
+          "version": "1.0",
+          "referenceId": "current-vertical-shear-validation-md",
+          "title": "Current Vertical Shear Validation",
+          "authors": "ANCHOR project",
+          "year": 2026,
+          "source": "local repository documentation",
+          "persistentIdentifier": null,
+          "localPath": "docs/current_vertical_shear_validation.md",
+          "role": "methodReference"
+        }
+      ],
+      "reproductionCommand": "node tools/science/build_validation_baseline.mjs",
+      "evidenceDigest": "fnv1a32:8dce0e0d"
+    },
+    {
+      "version": "1.0",
+      "claimId": "currents.no-current-on-land",
+      "componentId": "currents",
+      "modelId": "anchor.synthetic-current-field",
+      "modelVersion": "flow-pkg-r2",
+      "evidenceLevel": "SOFTWARE_VERIFIED",
+      "status": "PASS",
+      "methodId": "package-smoke-and-parity-fixture",
+      "metricId": "deterministic-contract-status",
+      "measuredValue": 0,
+      "units": "pass-count",
+      "threshold": 0,
+      "tolerance": 0,
+      "errorValue": 0,
+      "relativeError": 0,
+      "fixtureIds": [
+        "tests/fixtures/current_package_r1_parity.json"
+      ],
+      "sourceArtifactDigests": {
+        "tests/fixtures/current_package_r1_parity.json": "fnv1a32:a5399025"
+      },
+      "packageVersions": {
+        "contracts": "0.0.0-arch-r1",
+        "bathymetry": "0.0.0-arch-r1",
+        "currents": "0.0.0-arch-r1",
+        "scalar-processes": "0.1.0-process-pkg-r1",
+        "environment": "0.0.0-arch-r1",
+        "mission-simulator": "0.0.0-arch-r1",
+        "scoring": "0.0.0-score-pkg-r1",
+        "codecs": "0.1.0-codec-r1",
+        "validation": "0.1.0-sci-valid-r2a",
+        "validationRuntime": "anchor-validation-sci-valid-r2a"
+      },
+      "runtimeMetadata": {
+        "builderVersion": "sci-valid-r2a-baseline-builder",
+        "deterministic": true,
+        "officialBaseline": true
+      },
+      "interpretation": "No current on land passed as deterministic Pre-Alpha evidence for Currents.",
+      "limitations": [
+        "Evidence is fixture-scoped and deterministic; it does not generalize to operational ocean forecasting or certified navigation."
+      ],
+      "references": [
+        {
+          "version": "1.0",
+          "referenceId": "current-boundary-and-divergence-validation-md",
+          "title": "Current Boundary And Divergence Validation",
+          "authors": "ANCHOR project",
+          "year": 2026,
+          "source": "local repository documentation",
+          "persistentIdentifier": null,
+          "localPath": "docs/current_boundary_and_divergence_validation.md",
+          "role": "methodReference"
+        },
+        {
+          "version": "1.0",
+          "referenceId": "current-depth-and-time-interpolation-md",
+          "title": "Current Depth And Time Interpolation",
+          "authors": "ANCHOR project",
+          "year": 2026,
+          "source": "local repository documentation",
+          "persistentIdentifier": null,
+          "localPath": "docs/current_depth_and_time_interpolation.md",
+          "role": "methodReference"
+        },
+        {
+          "version": "1.0",
+          "referenceId": "current-spatial-coherence-validation-md",
+          "title": "Current Spatial Coherence Validation",
+          "authors": "ANCHOR project",
+          "year": 2026,
+          "source": "local repository documentation",
+          "persistentIdentifier": null,
+          "localPath": "docs/current_spatial_coherence_validation.md",
+          "role": "methodReference"
+        },
+        {
+          "version": "1.0",
+          "referenceId": "current-vertical-shear-validation-md",
+          "title": "Current Vertical Shear Validation",
+          "authors": "ANCHOR project",
+          "year": 2026,
+          "source": "local repository documentation",
+          "persistentIdentifier": null,
+          "localPath": "docs/current_vertical_shear_validation.md",
+          "role": "methodReference"
+        }
+      ],
+      "reproductionCommand": "node tools/science/build_validation_baseline.mjs",
+      "evidenceDigest": "fnv1a32:b8579c76"
+    },
+    {
+      "version": "1.0",
+      "claimId": "currents.no-current-below-bottom",
+      "componentId": "currents",
+      "modelId": "anchor.synthetic-current-field",
+      "modelVersion": "flow-pkg-r2",
+      "evidenceLevel": "SOFTWARE_VERIFIED",
+      "status": "PASS",
+      "methodId": "package-smoke-and-parity-fixture",
+      "metricId": "deterministic-contract-status",
+      "measuredValue": 0,
+      "units": "pass-count",
+      "threshold": 0,
+      "tolerance": 0,
+      "errorValue": 0,
+      "relativeError": 0,
+      "fixtureIds": [
+        "tests/fixtures/current_package_r1_parity.json"
+      ],
+      "sourceArtifactDigests": {
+        "tests/fixtures/current_package_r1_parity.json": "fnv1a32:a5399025"
+      },
+      "packageVersions": {
+        "contracts": "0.0.0-arch-r1",
+        "bathymetry": "0.0.0-arch-r1",
+        "currents": "0.0.0-arch-r1",
+        "scalar-processes": "0.1.0-process-pkg-r1",
+        "environment": "0.0.0-arch-r1",
+        "mission-simulator": "0.0.0-arch-r1",
+        "scoring": "0.0.0-score-pkg-r1",
+        "codecs": "0.1.0-codec-r1",
+        "validation": "0.1.0-sci-valid-r2a",
+        "validationRuntime": "anchor-validation-sci-valid-r2a"
+      },
+      "runtimeMetadata": {
+        "builderVersion": "sci-valid-r2a-baseline-builder",
+        "deterministic": true,
+        "officialBaseline": true
+      },
+      "interpretation": "No current below bottom passed as deterministic Pre-Alpha evidence for Currents.",
+      "limitations": [
+        "Evidence is fixture-scoped and deterministic; it does not generalize to operational ocean forecasting or certified navigation."
+      ],
+      "references": [
+        {
+          "version": "1.0",
+          "referenceId": "current-boundary-and-divergence-validation-md",
+          "title": "Current Boundary And Divergence Validation",
+          "authors": "ANCHOR project",
+          "year": 2026,
+          "source": "local repository documentation",
+          "persistentIdentifier": null,
+          "localPath": "docs/current_boundary_and_divergence_validation.md",
+          "role": "methodReference"
+        },
+        {
+          "version": "1.0",
+          "referenceId": "current-depth-and-time-interpolation-md",
+          "title": "Current Depth And Time Interpolation",
+          "authors": "ANCHOR project",
+          "year": 2026,
+          "source": "local repository documentation",
+          "persistentIdentifier": null,
+          "localPath": "docs/current_depth_and_time_interpolation.md",
+          "role": "methodReference"
+        },
+        {
+          "version": "1.0",
+          "referenceId": "current-spatial-coherence-validation-md",
+          "title": "Current Spatial Coherence Validation",
+          "authors": "ANCHOR project",
+          "year": 2026,
+          "source": "local repository documentation",
+          "persistentIdentifier": null,
+          "localPath": "docs/current_spatial_coherence_validation.md",
+          "role": "methodReference"
+        },
+        {
+          "version": "1.0",
+          "referenceId": "current-vertical-shear-validation-md",
+          "title": "Current Vertical Shear Validation",
+          "authors": "ANCHOR project",
+          "year": 2026,
+          "source": "local repository documentation",
+          "persistentIdentifier": null,
+          "localPath": "docs/current_vertical_shear_validation.md",
+          "role": "methodReference"
+        }
+      ],
+      "reproductionCommand": "node tools/science/build_validation_baseline.mjs",
+      "evidenceDigest": "fnv1a32:ffe5af74"
+    },
+    {
+      "version": "1.0",
+      "claimId": "currents.coastline-normal-flow",
+      "componentId": "currents",
+      "modelId": "anchor.synthetic-current-field",
+      "modelVersion": "flow-pkg-r2",
+      "evidenceLevel": "PHYSICALLY_PLAUSIBLE",
+      "status": "PASS",
+      "methodId": "bounded-invariant-and-diagnostic-check",
+      "metricId": "bounded-plausibility-invariant",
+      "measuredValue": 0,
+      "units": "pass-count",
+      "threshold": 0,
+      "tolerance": 1,
+      "errorValue": 0,
+      "relativeError": 0,
+      "fixtureIds": [
+        "tests/fixtures/current_package_r1_parity.json"
+      ],
+      "sourceArtifactDigests": {
+        "tests/fixtures/current_package_r1_parity.json": "fnv1a32:a5399025"
+      },
+      "packageVersions": {
+        "contracts": "0.0.0-arch-r1",
+        "bathymetry": "0.0.0-arch-r1",
+        "currents": "0.0.0-arch-r1",
+        "scalar-processes": "0.1.0-process-pkg-r1",
+        "environment": "0.0.0-arch-r1",
+        "mission-simulator": "0.0.0-arch-r1",
+        "scoring": "0.0.0-score-pkg-r1",
+        "codecs": "0.1.0-codec-r1",
+        "validation": "0.1.0-sci-valid-r2a",
+        "validationRuntime": "anchor-validation-sci-valid-r2a"
+      },
+      "runtimeMetadata": {
+        "builderVersion": "sci-valid-r2a-baseline-builder",
+        "deterministic": true,
+        "officialBaseline": true
+      },
+      "interpretation": "Coastline-normal flow behavior passed as deterministic Pre-Alpha evidence for Currents.",
+      "limitations": [
+        "Physical plausibility checks are bounded synthetic invariants, not proof of oceanographic accuracy.",
+        "Passing visual and software tests does not establish oceanographic validity."
+      ],
+      "references": [
+        {
+          "version": "1.0",
+          "referenceId": "current-boundary-and-divergence-validation-md",
+          "title": "Current Boundary And Divergence Validation",
+          "authors": "ANCHOR project",
+          "year": 2026,
+          "source": "local repository documentation",
+          "persistentIdentifier": null,
+          "localPath": "docs/current_boundary_and_divergence_validation.md",
+          "role": "methodReference"
+        },
+        {
+          "version": "1.0",
+          "referenceId": "current-depth-and-time-interpolation-md",
+          "title": "Current Depth And Time Interpolation",
+          "authors": "ANCHOR project",
+          "year": 2026,
+          "source": "local repository documentation",
+          "persistentIdentifier": null,
+          "localPath": "docs/current_depth_and_time_interpolation.md",
+          "role": "methodReference"
+        },
+        {
+          "version": "1.0",
+          "referenceId": "current-spatial-coherence-validation-md",
+          "title": "Current Spatial Coherence Validation",
+          "authors": "ANCHOR project",
+          "year": 2026,
+          "source": "local repository documentation",
+          "persistentIdentifier": null,
+          "localPath": "docs/current_spatial_coherence_validation.md",
+          "role": "methodReference"
+        },
+        {
+          "version": "1.0",
+          "referenceId": "current-vertical-shear-validation-md",
+          "title": "Current Vertical Shear Validation",
+          "authors": "ANCHOR project",
+          "year": 2026,
+          "source": "local repository documentation",
+          "persistentIdentifier": null,
+          "localPath": "docs/current_vertical_shear_validation.md",
+          "role": "methodReference"
+        }
+      ],
+      "reproductionCommand": "node tools/science/build_validation_baseline.mjs",
+      "evidenceDigest": "fnv1a32:a2e50168"
+    },
+    {
+      "version": "1.0",
+      "claimId": "currents.divergence-diagnostics",
+      "componentId": "currents",
+      "modelId": "anchor.synthetic-current-field",
+      "modelVersion": "flow-pkg-r2",
+      "evidenceLevel": "PHYSICALLY_PLAUSIBLE",
+      "status": "PASS",
+      "methodId": "bounded-invariant-and-diagnostic-check",
+      "metricId": "bounded-plausibility-invariant",
+      "measuredValue": 0,
+      "units": "pass-count",
+      "threshold": 0,
+      "tolerance": 1,
+      "errorValue": 0,
+      "relativeError": 0,
+      "fixtureIds": [
+        "tests/fixtures/current_package_r1_parity.json"
+      ],
+      "sourceArtifactDigests": {
+        "tests/fixtures/current_package_r1_parity.json": "fnv1a32:a5399025"
+      },
+      "packageVersions": {
+        "contracts": "0.0.0-arch-r1",
+        "bathymetry": "0.0.0-arch-r1",
+        "currents": "0.0.0-arch-r1",
+        "scalar-processes": "0.1.0-process-pkg-r1",
+        "environment": "0.0.0-arch-r1",
+        "mission-simulator": "0.0.0-arch-r1",
+        "scoring": "0.0.0-score-pkg-r1",
+        "codecs": "0.1.0-codec-r1",
+        "validation": "0.1.0-sci-valid-r2a",
+        "validationRuntime": "anchor-validation-sci-valid-r2a"
+      },
+      "runtimeMetadata": {
+        "builderVersion": "sci-valid-r2a-baseline-builder",
+        "deterministic": true,
+        "officialBaseline": true
+      },
+      "interpretation": "Divergence diagnostics passed as deterministic Pre-Alpha evidence for Currents.",
+      "limitations": [
+        "Physical plausibility checks are bounded synthetic invariants, not proof of oceanographic accuracy.",
+        "Passing visual and software tests does not establish oceanographic validity."
+      ],
+      "references": [
+        {
+          "version": "1.0",
+          "referenceId": "current-boundary-and-divergence-validation-md",
+          "title": "Current Boundary And Divergence Validation",
+          "authors": "ANCHOR project",
+          "year": 2026,
+          "source": "local repository documentation",
+          "persistentIdentifier": null,
+          "localPath": "docs/current_boundary_and_divergence_validation.md",
+          "role": "methodReference"
+        },
+        {
+          "version": "1.0",
+          "referenceId": "current-depth-and-time-interpolation-md",
+          "title": "Current Depth And Time Interpolation",
+          "authors": "ANCHOR project",
+          "year": 2026,
+          "source": "local repository documentation",
+          "persistentIdentifier": null,
+          "localPath": "docs/current_depth_and_time_interpolation.md",
+          "role": "methodReference"
+        },
+        {
+          "version": "1.0",
+          "referenceId": "current-spatial-coherence-validation-md",
+          "title": "Current Spatial Coherence Validation",
+          "authors": "ANCHOR project",
+          "year": 2026,
+          "source": "local repository documentation",
+          "persistentIdentifier": null,
+          "localPath": "docs/current_spatial_coherence_validation.md",
+          "role": "methodReference"
+        },
+        {
+          "version": "1.0",
+          "referenceId": "current-vertical-shear-validation-md",
+          "title": "Current Vertical Shear Validation",
+          "authors": "ANCHOR project",
+          "year": 2026,
+          "source": "local repository documentation",
+          "persistentIdentifier": null,
+          "localPath": "docs/current_vertical_shear_validation.md",
+          "role": "methodReference"
+        }
+      ],
+      "reproductionCommand": "node tools/science/build_validation_baseline.mjs",
+      "evidenceDigest": "fnv1a32:e52b8066"
+    },
+    {
+      "version": "1.0",
+      "claimId": "currents.bounded-speed",
+      "componentId": "currents",
+      "modelId": "anchor.synthetic-current-field",
+      "modelVersion": "flow-pkg-r2",
+      "evidenceLevel": "PHYSICALLY_PLAUSIBLE",
+      "status": "PASS",
+      "methodId": "bounded-invariant-and-diagnostic-check",
+      "metricId": "bounded-plausibility-invariant",
+      "measuredValue": 0,
+      "units": "pass-count",
+      "threshold": 0,
+      "tolerance": 1,
+      "errorValue": 0,
+      "relativeError": 0,
+      "fixtureIds": [
+        "tests/fixtures/current_package_r1_parity.json"
+      ],
+      "sourceArtifactDigests": {
+        "tests/fixtures/current_package_r1_parity.json": "fnv1a32:a5399025"
+      },
+      "packageVersions": {
+        "contracts": "0.0.0-arch-r1",
+        "bathymetry": "0.0.0-arch-r1",
+        "currents": "0.0.0-arch-r1",
+        "scalar-processes": "0.1.0-process-pkg-r1",
+        "environment": "0.0.0-arch-r1",
+        "mission-simulator": "0.0.0-arch-r1",
+        "scoring": "0.0.0-score-pkg-r1",
+        "codecs": "0.1.0-codec-r1",
+        "validation": "0.1.0-sci-valid-r2a",
+        "validationRuntime": "anchor-validation-sci-valid-r2a"
+      },
+      "runtimeMetadata": {
+        "builderVersion": "sci-valid-r2a-baseline-builder",
+        "deterministic": true,
+        "officialBaseline": true
+      },
+      "interpretation": "Bounded speed passed as deterministic Pre-Alpha evidence for Currents.",
+      "limitations": [
+        "Physical plausibility checks are bounded synthetic invariants, not proof of oceanographic accuracy.",
+        "Passing visual and software tests does not establish oceanographic validity."
+      ],
+      "references": [
+        {
+          "version": "1.0",
+          "referenceId": "current-boundary-and-divergence-validation-md",
+          "title": "Current Boundary And Divergence Validation",
+          "authors": "ANCHOR project",
+          "year": 2026,
+          "source": "local repository documentation",
+          "persistentIdentifier": null,
+          "localPath": "docs/current_boundary_and_divergence_validation.md",
+          "role": "methodReference"
+        },
+        {
+          "version": "1.0",
+          "referenceId": "current-depth-and-time-interpolation-md",
+          "title": "Current Depth And Time Interpolation",
+          "authors": "ANCHOR project",
+          "year": 2026,
+          "source": "local repository documentation",
+          "persistentIdentifier": null,
+          "localPath": "docs/current_depth_and_time_interpolation.md",
+          "role": "methodReference"
+        },
+        {
+          "version": "1.0",
+          "referenceId": "current-spatial-coherence-validation-md",
+          "title": "Current Spatial Coherence Validation",
+          "authors": "ANCHOR project",
+          "year": 2026,
+          "source": "local repository documentation",
+          "persistentIdentifier": null,
+          "localPath": "docs/current_spatial_coherence_validation.md",
+          "role": "methodReference"
+        },
+        {
+          "version": "1.0",
+          "referenceId": "current-vertical-shear-validation-md",
+          "title": "Current Vertical Shear Validation",
+          "authors": "ANCHOR project",
+          "year": 2026,
+          "source": "local repository documentation",
+          "persistentIdentifier": null,
+          "localPath": "docs/current_vertical_shear_validation.md",
+          "role": "methodReference"
+        }
+      ],
+      "reproductionCommand": "node tools/science/build_validation_baseline.mjs",
+      "evidenceDigest": "fnv1a32:9a47b4a0"
+    },
+    {
+      "version": "1.0",
+      "claimId": "currents.vertical-shear",
+      "componentId": "currents",
+      "modelId": "anchor.synthetic-current-field",
+      "modelVersion": "flow-pkg-r2",
+      "evidenceLevel": "PHYSICALLY_PLAUSIBLE",
+      "status": "PASS",
+      "methodId": "bounded-invariant-and-diagnostic-check",
+      "metricId": "bounded-plausibility-invariant",
+      "measuredValue": 0,
+      "units": "pass-count",
+      "threshold": 0,
+      "tolerance": 1,
+      "errorValue": 0,
+      "relativeError": 0,
+      "fixtureIds": [
+        "tests/fixtures/current_package_r1_parity.json"
+      ],
+      "sourceArtifactDigests": {
+        "tests/fixtures/current_package_r1_parity.json": "fnv1a32:a5399025"
+      },
+      "packageVersions": {
+        "contracts": "0.0.0-arch-r1",
+        "bathymetry": "0.0.0-arch-r1",
+        "currents": "0.0.0-arch-r1",
+        "scalar-processes": "0.1.0-process-pkg-r1",
+        "environment": "0.0.0-arch-r1",
+        "mission-simulator": "0.0.0-arch-r1",
+        "scoring": "0.0.0-score-pkg-r1",
+        "codecs": "0.1.0-codec-r1",
+        "validation": "0.1.0-sci-valid-r2a",
+        "validationRuntime": "anchor-validation-sci-valid-r2a"
+      },
+      "runtimeMetadata": {
+        "builderVersion": "sci-valid-r2a-baseline-builder",
+        "deterministic": true,
+        "officialBaseline": true
+      },
+      "interpretation": "Vertical shear passed as deterministic Pre-Alpha evidence for Currents.",
+      "limitations": [
+        "Physical plausibility checks are bounded synthetic invariants, not proof of oceanographic accuracy.",
+        "Passing visual and software tests does not establish oceanographic validity."
+      ],
+      "references": [
+        {
+          "version": "1.0",
+          "referenceId": "current-boundary-and-divergence-validation-md",
+          "title": "Current Boundary And Divergence Validation",
+          "authors": "ANCHOR project",
+          "year": 2026,
+          "source": "local repository documentation",
+          "persistentIdentifier": null,
+          "localPath": "docs/current_boundary_and_divergence_validation.md",
+          "role": "methodReference"
+        },
+        {
+          "version": "1.0",
+          "referenceId": "current-depth-and-time-interpolation-md",
+          "title": "Current Depth And Time Interpolation",
+          "authors": "ANCHOR project",
+          "year": 2026,
+          "source": "local repository documentation",
+          "persistentIdentifier": null,
+          "localPath": "docs/current_depth_and_time_interpolation.md",
+          "role": "methodReference"
+        },
+        {
+          "version": "1.0",
+          "referenceId": "current-spatial-coherence-validation-md",
+          "title": "Current Spatial Coherence Validation",
+          "authors": "ANCHOR project",
+          "year": 2026,
+          "source": "local repository documentation",
+          "persistentIdentifier": null,
+          "localPath": "docs/current_spatial_coherence_validation.md",
+          "role": "methodReference"
+        },
+        {
+          "version": "1.0",
+          "referenceId": "current-vertical-shear-validation-md",
+          "title": "Current Vertical Shear Validation",
+          "authors": "ANCHOR project",
+          "year": 2026,
+          "source": "local repository documentation",
+          "persistentIdentifier": null,
+          "localPath": "docs/current_vertical_shear_validation.md",
+          "role": "methodReference"
+        }
+      ],
+      "reproductionCommand": "node tools/science/build_validation_baseline.mjs",
+      "evidenceDigest": "fnv1a32:ad84eb7e"
+    },
+    {
+      "version": "1.0",
+      "claimId": "currents.spatial-coherence",
+      "componentId": "currents",
+      "modelId": "anchor.synthetic-current-field",
+      "modelVersion": "flow-pkg-r2",
+      "evidenceLevel": "PHYSICALLY_PLAUSIBLE",
+      "status": "PASS",
+      "methodId": "bounded-invariant-and-diagnostic-check",
+      "metricId": "bounded-plausibility-invariant",
+      "measuredValue": 0,
+      "units": "pass-count",
+      "threshold": 0,
+      "tolerance": 1,
+      "errorValue": 0,
+      "relativeError": 0,
+      "fixtureIds": [
+        "tests/fixtures/current_package_r1_parity.json"
+      ],
+      "sourceArtifactDigests": {
+        "tests/fixtures/current_package_r1_parity.json": "fnv1a32:a5399025"
+      },
+      "packageVersions": {
+        "contracts": "0.0.0-arch-r1",
+        "bathymetry": "0.0.0-arch-r1",
+        "currents": "0.0.0-arch-r1",
+        "scalar-processes": "0.1.0-process-pkg-r1",
+        "environment": "0.0.0-arch-r1",
+        "mission-simulator": "0.0.0-arch-r1",
+        "scoring": "0.0.0-score-pkg-r1",
+        "codecs": "0.1.0-codec-r1",
+        "validation": "0.1.0-sci-valid-r2a",
+        "validationRuntime": "anchor-validation-sci-valid-r2a"
+      },
+      "runtimeMetadata": {
+        "builderVersion": "sci-valid-r2a-baseline-builder",
+        "deterministic": true,
+        "officialBaseline": true
+      },
+      "interpretation": "Spatial coherence passed as deterministic Pre-Alpha evidence for Currents.",
+      "limitations": [
+        "Physical plausibility checks are bounded synthetic invariants, not proof of oceanographic accuracy.",
+        "Passing visual and software tests does not establish oceanographic validity."
+      ],
+      "references": [
+        {
+          "version": "1.0",
+          "referenceId": "current-boundary-and-divergence-validation-md",
+          "title": "Current Boundary And Divergence Validation",
+          "authors": "ANCHOR project",
+          "year": 2026,
+          "source": "local repository documentation",
+          "persistentIdentifier": null,
+          "localPath": "docs/current_boundary_and_divergence_validation.md",
+          "role": "methodReference"
+        },
+        {
+          "version": "1.0",
+          "referenceId": "current-depth-and-time-interpolation-md",
+          "title": "Current Depth And Time Interpolation",
+          "authors": "ANCHOR project",
+          "year": 2026,
+          "source": "local repository documentation",
+          "persistentIdentifier": null,
+          "localPath": "docs/current_depth_and_time_interpolation.md",
+          "role": "methodReference"
+        },
+        {
+          "version": "1.0",
+          "referenceId": "current-spatial-coherence-validation-md",
+          "title": "Current Spatial Coherence Validation",
+          "authors": "ANCHOR project",
+          "year": 2026,
+          "source": "local repository documentation",
+          "persistentIdentifier": null,
+          "localPath": "docs/current_spatial_coherence_validation.md",
+          "role": "methodReference"
+        },
+        {
+          "version": "1.0",
+          "referenceId": "current-vertical-shear-validation-md",
+          "title": "Current Vertical Shear Validation",
+          "authors": "ANCHOR project",
+          "year": 2026,
+          "source": "local repository documentation",
+          "persistentIdentifier": null,
+          "localPath": "docs/current_vertical_shear_validation.md",
+          "role": "methodReference"
+        }
+      ],
+      "reproductionCommand": "node tools/science/build_validation_baseline.mjs",
+      "evidenceDigest": "fnv1a32:1a08a6c0"
+    },
+    {
+      "version": "1.0",
+      "claimId": "currents.calm-region-support",
+      "componentId": "currents",
+      "modelId": "anchor.synthetic-current-field",
+      "modelVersion": "flow-pkg-r2",
+      "evidenceLevel": "SOFTWARE_VERIFIED",
+      "status": "PASS",
+      "methodId": "package-smoke-and-parity-fixture",
+      "metricId": "deterministic-contract-status",
+      "measuredValue": 0,
+      "units": "pass-count",
+      "threshold": 0,
+      "tolerance": 0,
+      "errorValue": 0,
+      "relativeError": 0,
+      "fixtureIds": [
+        "tests/fixtures/current_package_r1_parity.json"
+      ],
+      "sourceArtifactDigests": {
+        "tests/fixtures/current_package_r1_parity.json": "fnv1a32:a5399025"
+      },
+      "packageVersions": {
+        "contracts": "0.0.0-arch-r1",
+        "bathymetry": "0.0.0-arch-r1",
+        "currents": "0.0.0-arch-r1",
+        "scalar-processes": "0.1.0-process-pkg-r1",
+        "environment": "0.0.0-arch-r1",
+        "mission-simulator": "0.0.0-arch-r1",
+        "scoring": "0.0.0-score-pkg-r1",
+        "codecs": "0.1.0-codec-r1",
+        "validation": "0.1.0-sci-valid-r2a",
+        "validationRuntime": "anchor-validation-sci-valid-r2a"
+      },
+      "runtimeMetadata": {
+        "builderVersion": "sci-valid-r2a-baseline-builder",
+        "deterministic": true,
+        "officialBaseline": true
+      },
+      "interpretation": "Calm-region support passed as deterministic Pre-Alpha evidence for Currents.",
+      "limitations": [
+        "Evidence is fixture-scoped and deterministic; it does not generalize to operational ocean forecasting or certified navigation."
+      ],
+      "references": [
+        {
+          "version": "1.0",
+          "referenceId": "current-boundary-and-divergence-validation-md",
+          "title": "Current Boundary And Divergence Validation",
+          "authors": "ANCHOR project",
+          "year": 2026,
+          "source": "local repository documentation",
+          "persistentIdentifier": null,
+          "localPath": "docs/current_boundary_and_divergence_validation.md",
+          "role": "methodReference"
+        },
+        {
+          "version": "1.0",
+          "referenceId": "current-depth-and-time-interpolation-md",
+          "title": "Current Depth And Time Interpolation",
+          "authors": "ANCHOR project",
+          "year": 2026,
+          "source": "local repository documentation",
+          "persistentIdentifier": null,
+          "localPath": "docs/current_depth_and_time_interpolation.md",
+          "role": "methodReference"
+        },
+        {
+          "version": "1.0",
+          "referenceId": "current-spatial-coherence-validation-md",
+          "title": "Current Spatial Coherence Validation",
+          "authors": "ANCHOR project",
+          "year": 2026,
+          "source": "local repository documentation",
+          "persistentIdentifier": null,
+          "localPath": "docs/current_spatial_coherence_validation.md",
+          "role": "methodReference"
+        },
+        {
+          "version": "1.0",
+          "referenceId": "current-vertical-shear-validation-md",
+          "title": "Current Vertical Shear Validation",
+          "authors": "ANCHOR project",
+          "year": 2026,
+          "source": "local repository documentation",
+          "persistentIdentifier": null,
+          "localPath": "docs/current_vertical_shear_validation.md",
+          "role": "methodReference"
+        }
+      ],
+      "reproductionCommand": "node tools/science/build_validation_baseline.mjs",
+      "evidenceDigest": "fnv1a32:d2cb1d76"
+    },
+    {
+      "version": "1.0",
+      "claimId": "currents.browser-physics-render-parity",
+      "componentId": "currents",
+      "modelId": "anchor.synthetic-current-field",
+      "modelVersion": "flow-pkg-r2",
+      "evidenceLevel": "SOFTWARE_VERIFIED",
+      "status": "PASS",
+      "methodId": "package-smoke-and-parity-fixture",
+      "metricId": "deterministic-contract-status",
+      "measuredValue": 0,
+      "units": "pass-count",
+      "threshold": 0,
+      "tolerance": 0,
+      "errorValue": 0,
+      "relativeError": 0,
+      "fixtureIds": [
+        "tests/fixtures/current_package_r1_parity.json"
+      ],
+      "sourceArtifactDigests": {
+        "tests/fixtures/current_package_r1_parity.json": "fnv1a32:a5399025"
+      },
+      "packageVersions": {
+        "contracts": "0.0.0-arch-r1",
+        "bathymetry": "0.0.0-arch-r1",
+        "currents": "0.0.0-arch-r1",
+        "scalar-processes": "0.1.0-process-pkg-r1",
+        "environment": "0.0.0-arch-r1",
+        "mission-simulator": "0.0.0-arch-r1",
+        "scoring": "0.0.0-score-pkg-r1",
+        "codecs": "0.1.0-codec-r1",
+        "validation": "0.1.0-sci-valid-r2a",
+        "validationRuntime": "anchor-validation-sci-valid-r2a"
+      },
+      "runtimeMetadata": {
+        "builderVersion": "sci-valid-r2a-baseline-builder",
+        "deterministic": true,
+        "officialBaseline": true
+      },
+      "interpretation": "Browser/physics/render parity passed as deterministic Pre-Alpha evidence for Currents.",
+      "limitations": [
+        "Evidence is fixture-scoped and deterministic; it does not generalize to operational ocean forecasting or certified navigation."
+      ],
+      "references": [
+        {
+          "version": "1.0",
+          "referenceId": "current-boundary-and-divergence-validation-md",
+          "title": "Current Boundary And Divergence Validation",
+          "authors": "ANCHOR project",
+          "year": 2026,
+          "source": "local repository documentation",
+          "persistentIdentifier": null,
+          "localPath": "docs/current_boundary_and_divergence_validation.md",
+          "role": "methodReference"
+        },
+        {
+          "version": "1.0",
+          "referenceId": "current-depth-and-time-interpolation-md",
+          "title": "Current Depth And Time Interpolation",
+          "authors": "ANCHOR project",
+          "year": 2026,
+          "source": "local repository documentation",
+          "persistentIdentifier": null,
+          "localPath": "docs/current_depth_and_time_interpolation.md",
+          "role": "methodReference"
+        },
+        {
+          "version": "1.0",
+          "referenceId": "current-spatial-coherence-validation-md",
+          "title": "Current Spatial Coherence Validation",
+          "authors": "ANCHOR project",
+          "year": 2026,
+          "source": "local repository documentation",
+          "persistentIdentifier": null,
+          "localPath": "docs/current_spatial_coherence_validation.md",
+          "role": "methodReference"
+        },
+        {
+          "version": "1.0",
+          "referenceId": "current-vertical-shear-validation-md",
+          "title": "Current Vertical Shear Validation",
+          "authors": "ANCHOR project",
+          "year": 2026,
+          "source": "local repository documentation",
+          "persistentIdentifier": null,
+          "localPath": "docs/current_vertical_shear_validation.md",
+          "role": "methodReference"
+        }
+      ],
+      "reproductionCommand": "node tools/science/build_validation_baseline.mjs",
+      "evidenceDigest": "fnv1a32:67050bdc"
+    },
+    {
+      "version": "1.0",
+      "claimId": "currents.external-current-comparison",
+      "componentId": "currents",
+      "modelId": "anchor.synthetic-current-field",
+      "modelVersion": "flow-pkg-r2",
+      "evidenceLevel": "NOT_YET_EVALUATED",
+      "status": "NOT_EVALUATED",
+      "methodId": "gap-record",
+      "metricId": "external-reference-status",
+      "measuredValue": null,
+      "units": "status",
+      "threshold": null,
+      "tolerance": null,
+      "errorValue": null,
+      "relativeError": null,
+      "fixtureIds": [
+        "tests/fixtures/current_package_r1_parity.json"
+      ],
+      "sourceArtifactDigests": {
+        "tests/fixtures/current_package_r1_parity.json": "fnv1a32:a5399025"
+      },
+      "packageVersions": {
+        "contracts": "0.0.0-arch-r1",
+        "bathymetry": "0.0.0-arch-r1",
+        "currents": "0.0.0-arch-r1",
+        "scalar-processes": "0.1.0-process-pkg-r1",
+        "environment": "0.0.0-arch-r1",
+        "mission-simulator": "0.0.0-arch-r1",
+        "scoring": "0.0.0-score-pkg-r1",
+        "codecs": "0.1.0-codec-r1",
+        "validation": "0.1.0-sci-valid-r2a",
+        "validationRuntime": "anchor-validation-sci-valid-r2a"
+      },
+      "runtimeMetadata": {
+        "builderVersion": "sci-valid-r2a-baseline-builder",
+        "deterministic": true,
+        "officialBaseline": true
+      },
+      "interpretation": "External current comparison is an explicit evidence gap for Currents; no external result is claimed.",
+      "limitations": [
+        "No independent local reference data or sea-trial fixture is part of this baseline.",
+        "This gap must not be described as externally compared or operationally validated."
+      ],
+      "references": [
+        {
+          "version": "1.0",
+          "referenceId": "current-boundary-and-divergence-validation-md",
+          "title": "Current Boundary And Divergence Validation",
+          "authors": "ANCHOR project",
+          "year": 2026,
+          "source": "local repository documentation",
+          "persistentIdentifier": null,
+          "localPath": "docs/current_boundary_and_divergence_validation.md",
+          "role": "methodReference"
+        },
+        {
+          "version": "1.0",
+          "referenceId": "current-depth-and-time-interpolation-md",
+          "title": "Current Depth And Time Interpolation",
+          "authors": "ANCHOR project",
+          "year": 2026,
+          "source": "local repository documentation",
+          "persistentIdentifier": null,
+          "localPath": "docs/current_depth_and_time_interpolation.md",
+          "role": "methodReference"
+        },
+        {
+          "version": "1.0",
+          "referenceId": "current-spatial-coherence-validation-md",
+          "title": "Current Spatial Coherence Validation",
+          "authors": "ANCHOR project",
+          "year": 2026,
+          "source": "local repository documentation",
+          "persistentIdentifier": null,
+          "localPath": "docs/current_spatial_coherence_validation.md",
+          "role": "methodReference"
+        },
+        {
+          "version": "1.0",
+          "referenceId": "current-vertical-shear-validation-md",
+          "title": "Current Vertical Shear Validation",
+          "authors": "ANCHOR project",
+          "year": 2026,
+          "source": "local repository documentation",
+          "persistentIdentifier": null,
+          "localPath": "docs/current_vertical_shear_validation.md",
+          "role": "methodReference"
+        }
+      ],
+      "reproductionCommand": "node tools/science/build_validation_baseline.mjs",
+      "evidenceDigest": "fnv1a32:43bbb5d4"
+    }
+  ],
+  "evidenceLevelSummary": {
+    "SOFTWARE_VERIFIED": 6,
+    "NUMERICALLY_VERIFIED": 3,
+    "PHYSICALLY_PLAUSIBLE": 5,
+    "NOT_YET_EVALUATED": 1
+  },
+  "statusSummary": {
+    "PASS": 14,
+    "NOT_EVALUATED": 1
+  },
+  "assumptions": [
+    "Currents evidence uses checked-in public fixtures and repo-local commands.",
+    "Time is seconds, horizontal coordinates are local mission coordinates, and depth is positive-down meters where applicable.",
+    "Official reports are immutable baseline artifacts; browser reruns are exploratory unless they reproduce the official pipeline."
+  ],
+  "limitations": [
+    "Currents is evaluated for deterministic benchmark and education use only.",
+    "The report does not claim operational ocean forecast skill, certified navigation suitability, or calibrated digital-twin fidelity.",
+    "Literature and local method references motivate methods but do not count as external numerical comparisons."
+  ],
+  "references": [
+    {
+      "version": "1.0",
+      "referenceId": "current-boundary-and-divergence-validation-md",
+      "title": "Current Boundary And Divergence Validation",
+      "authors": "ANCHOR project",
+      "year": 2026,
+      "source": "local repository documentation",
+      "persistentIdentifier": null,
+      "localPath": "docs/current_boundary_and_divergence_validation.md",
+      "role": "methodReference"
+    },
+    {
+      "version": "1.0",
+      "referenceId": "current-depth-and-time-interpolation-md",
+      "title": "Current Depth And Time Interpolation",
+      "authors": "ANCHOR project",
+      "year": 2026,
+      "source": "local repository documentation",
+      "persistentIdentifier": null,
+      "localPath": "docs/current_depth_and_time_interpolation.md",
+      "role": "methodReference"
+    },
+    {
+      "version": "1.0",
+      "referenceId": "current-spatial-coherence-validation-md",
+      "title": "Current Spatial Coherence Validation",
+      "authors": "ANCHOR project",
+      "year": 2026,
+      "source": "local repository documentation",
+      "persistentIdentifier": null,
+      "localPath": "docs/current_spatial_coherence_validation.md",
+      "role": "methodReference"
+    },
+    {
+      "version": "1.0",
+      "referenceId": "current-vertical-shear-validation-md",
+      "title": "Current Vertical Shear Validation",
+      "authors": "ANCHOR project",
+      "year": 2026,
+      "source": "local repository documentation",
+      "persistentIdentifier": null,
+      "localPath": "docs/current_vertical_shear_validation.md",
+      "role": "methodReference"
+    }
+  ],
+  "packageVersions": {
+    "contracts": "0.0.0-arch-r1",
+    "bathymetry": "0.0.0-arch-r1",
+    "currents": "0.0.0-arch-r1",
+    "scalar-processes": "0.1.0-process-pkg-r1",
+    "environment": "0.0.0-arch-r1",
+    "mission-simulator": "0.0.0-arch-r1",
+    "scoring": "0.0.0-score-pkg-r1",
+    "codecs": "0.1.0-codec-r1",
+    "validation": "0.1.0-sci-valid-r2a",
+    "validationRuntime": "anchor-validation-sci-valid-r2a"
+  },
+  "sourceArtifactDigests": {
+    "tests/fixtures/current_package_r1_parity.json": "fnv1a32:a5399025"
+  },
+  "suitabilityDecision": {
+    "deterministicRegression": "GO",
+    "educationalUse": "GO",
+    "classicalPlannerBenchmark": "CONDITIONAL",
+    "mlDatasetGeneration": "CONDITIONAL",
+    "operationalForecastUse": "NO_GO",
+    "certifiedNavigationUse": "NO_GO",
+    "rationale": "Currents has deterministic package evidence for software/benchmark use, but external or operational claims remain out of scope where not evaluated.",
+    "conditions": [
+      "Use only with documented synthetic-fixture limitations.",
+      "Do not describe results as operational validation."
+    ]
+  },
+  "visualizations": [
+    {
+      "visualizationId": "currents-status-bars",
+      "title": "Currents status counts",
+      "kind": "bar-summary",
+      "textSummary": "Bar heights count evidence records by explicit status label. This is not a scientific-validity score.",
+      "rows": [
+        {
+          "label": "PASS",
+          "value": 14
+        },
+        {
+          "label": "NOT_EVALUATED",
+          "value": 1
+        }
+      ]
+    },
+    {
+      "visualizationId": "currents-evidence-ladder",
+      "title": "Currents evidence levels",
+      "kind": "bar-summary",
+      "textSummary": "Bar heights count claims by evidence level. External comparison and operational validation are kept separate from software checks.",
+      "rows": [
+        {
+          "label": "SOFTWARE_VERIFIED",
+          "value": 6
+        },
+        {
+          "label": "NUMERICALLY_VERIFIED",
+          "value": 3
+        },
+        {
+          "label": "PHYSICALLY_PLAUSIBLE",
+          "value": 5
+        },
+        {
+          "label": "NOT_YET_EVALUATED",
+          "value": 1
+        }
+      ]
+    },
+    {
+      "visualizationId": "currents-metric-table",
+      "title": "Currents raw metric table",
+      "kind": "table",
+      "textSummary": "Compact table for the selected report claims and evidence records.",
+      "rows": [
+        {
+          "claimId": "currents.deterministic-field-generation",
+          "status": "PASS",
+          "metricId": "deterministic-contract-status",
+          "measuredValue": 0,
+          "units": "pass-count",
+          "threshold": 0,
+          "tolerance": 0
+        },
+        {
+          "claimId": "currents.canonical-units",
+          "status": "PASS",
+          "metricId": "deterministic-contract-status",
+          "measuredValue": 0,
+          "units": "pass-count",
+          "threshold": 0,
+          "tolerance": 0
+        },
+        {
+          "claimId": "currents.depth-distinctness",
+          "status": "PASS",
+          "metricId": "manufactured-error-bound",
+          "measuredValue": 0,
+          "units": "normalized-error",
+          "threshold": 0,
+          "tolerance": 0
+        },
+        {
+          "claimId": "currents.temporal-distinctness",
+          "status": "PASS",
+          "metricId": "manufactured-error-bound",
+          "measuredValue": 0,
+          "units": "normalized-error",
+          "threshold": 0,
+          "tolerance": 0
+        },
+        {
+          "claimId": "currents.interpolation-exactness",
+          "status": "PASS",
+          "metricId": "manufactured-error-bound",
+          "measuredValue": 0,
+          "units": "normalized-error",
+          "threshold": 0,
+          "tolerance": 0
+        },
+        {
+          "claimId": "currents.no-current-on-land",
+          "status": "PASS",
+          "metricId": "deterministic-contract-status",
+          "measuredValue": 0,
+          "units": "pass-count",
+          "threshold": 0,
+          "tolerance": 0
+        },
+        {
+          "claimId": "currents.no-current-below-bottom",
+          "status": "PASS",
+          "metricId": "deterministic-contract-status",
+          "measuredValue": 0,
+          "units": "pass-count",
+          "threshold": 0,
+          "tolerance": 0
+        },
+        {
+          "claimId": "currents.coastline-normal-flow",
+          "status": "PASS",
+          "metricId": "bounded-plausibility-invariant",
+          "measuredValue": 0,
+          "units": "pass-count",
+          "threshold": 0,
+          "tolerance": 1
+        },
+        {
+          "claimId": "currents.divergence-diagnostics",
+          "status": "PASS",
+          "metricId": "bounded-plausibility-invariant",
+          "measuredValue": 0,
+          "units": "pass-count",
+          "threshold": 0,
+          "tolerance": 1
+        },
+        {
+          "claimId": "currents.bounded-speed",
+          "status": "PASS",
+          "metricId": "bounded-plausibility-invariant",
+          "measuredValue": 0,
+          "units": "pass-count",
+          "threshold": 0,
+          "tolerance": 1
+        },
+        {
+          "claimId": "currents.vertical-shear",
+          "status": "PASS",
+          "metricId": "bounded-plausibility-invariant",
+          "measuredValue": 0,
+          "units": "pass-count",
+          "threshold": 0,
+          "tolerance": 1
+        },
+        {
+          "claimId": "currents.spatial-coherence",
+          "status": "PASS",
+          "metricId": "bounded-plausibility-invariant",
+          "measuredValue": 0,
+          "units": "pass-count",
+          "threshold": 0,
+          "tolerance": 1
+        },
+        {
+          "claimId": "currents.calm-region-support",
+          "status": "PASS",
+          "metricId": "deterministic-contract-status",
+          "measuredValue": 0,
+          "units": "pass-count",
+          "threshold": 0,
+          "tolerance": 0
+        },
+        {
+          "claimId": "currents.browser-physics-render-parity",
+          "status": "PASS",
+          "metricId": "deterministic-contract-status",
+          "measuredValue": 0,
+          "units": "pass-count",
+          "threshold": 0,
+          "tolerance": 0
+        },
+        {
+          "claimId": "currents.external-current-comparison",
+          "status": "NOT_EVALUATED",
+          "metricId": "external-reference-status",
+          "measuredValue": null,
+          "units": "status",
+          "threshold": null,
+          "tolerance": null
+        }
+      ]
+    }
+  ],
+  "claimBoundary": {
+    "benchmarkOrEducationUse": true,
+    "operationalForecast": false,
+    "certifiedNavigation": false,
+    "calibratedDigitalTwin": false
+  },
+  "visibilityClass": "PUBLIC",
+  "fairnessClass": "PUBLIC_FAIR",
+  "reportDigest": "fnv1a32:9f109dac"
+}

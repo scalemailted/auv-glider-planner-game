@@ -25,3 +25,6 @@ SCALAR-PKG-R1: GO after current extraction stabilizes. It should package volumet
 The shortcut audit checks for repeated digests, degenerate wet/dry domains, weak depth/time current distinctness, and forbidden calibrated source claims. It does not prove realism. It is a guard against synthetic benchmark collapse.
 
 Future benchmark phases should add external-oracle comparisons only as attributed fixtures with clear units, source metadata, and acceptance thresholds.
+## SCI-VALID-R2A Public Evidence Baseline
+
+The official suitability evidence is now also indexed by `validation/manifest.json` and the Methods & Validation route. Components can be marked suitable for deterministic synthetic benchmarking while still showing NOT_EVALUATED evidence for external comparison or operational validation.
