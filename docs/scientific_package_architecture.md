@@ -63,3 +63,7 @@ BATHY-PKG-R1 makes `@anchor/bathymetry` a real production package boundary. It n
 ## FLOW-PKG-R1 Current Package Note
 
 packages/currents now owns pure 4D current contracts, artifacts, source metadata, sampler behavior, temporal boundaries, and scientific diagnostics. The package remains browser-safe, Node-safe, Worker-safe, and independent of src/, Three.js, Phaser, DOM, and UI lifecycle. Synthetic current claims remain bounded to deterministic benchmark fixtures, not calibrated ocean forecasts.
+
+## ENV-PKG-R1 Environment Package Note
+
+`packages/environment` now composes canonical bathymetry, current, and scalar artifacts without changing their scientific generation equations. It records operational-domain metadata, component digests, field roles for truth/forecast/belief/uncertainty/priority, validation summaries, and provenance. It accepts different component resolutions and axes and samples in physical coordinates. It does not own visibility policy, observation noise, mission execution, scoring, rendering, or calibrated ocean forecast claims. See `docs/environment_package.md` and `packages/environment/MODEL_CARD.md`.

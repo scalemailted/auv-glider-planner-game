@@ -1,7 +1,7 @@
 import { createOceanCurrentField4D, validateOceanCurrentField4D } from './OceanCurrentField4D.js';
 import { createGeneratedEnvironmentArtifact, generatedEnvironmentArtifactSummary } from '../environment/GeneratedEnvironmentArtifact.js';
 import { normalizeWaterColumnConfig, waterColumnLayerMetadata } from './WaterColumnSchema.js';
-import { incrementSimulationLaunchCounter } from '../runtime/SimulationLaunchProfiler.js';
+import { incrementSimulationLaunchCounter, setSimulationLaunchEnvironmentArtifact } from '../runtime/SimulationLaunchProfiler.js';
 
 export const SYNTHETIC_CURRENT_CUBE_ADAPTER_VERSION = 'synthetic-current-cube-adapter-flow-r2a-5-1';
 const syntheticCurrentCubeSessionCache = new WeakMap();
@@ -75,6 +75,8 @@ export function createSyntheticCurrentCubeFromMissionWorld(options = {}) {
         label: options.label ?? 'Scientifically constrained synthetic current field'
       }
     });
+    incrementSimulationLaunchCounter('environmentArtifactBuildCount');
+    if (artifact.environmentArtifact?.validationReport) incrementSimulationLaunchCounter('environmentValidationCount');
     publishEnvironmentGeneratorDebug(artifact);
     return artifact.currentField4D;
   }
@@ -298,7 +300,11 @@ function missionTimeAxis(start, end, count = 7) {
 function uniqueSorted(values) { return [...new Set(values.map(Number).filter(Number.isFinite))].sort((a, b) => a - b); }
 function publishEnvironmentGeneratorDebug(artifact) {
   if (!artifact || typeof globalThis !== 'object') return;
-  try { globalThis.ANCHOR_ENVIRONMENT_GENERATOR_DEBUG = generatedEnvironmentArtifactSummary(artifact); } catch (_error) { /* debug publication is best effort */ }
+  try {
+    const summary = generatedEnvironmentArtifactSummary(artifact);
+    setSimulationLaunchEnvironmentArtifact(summary);
+    globalThis.ANCHOR_ENVIRONMENT_GENERATOR_DEBUG = summary;
+  } catch (_error) { /* debug publication is best effort */ }
 }
 function generatedBase(x, y, t, width, height, timeCount, seed) { return { u: 0.17 + 0.08 * Math.sin((x / Math.max(1, width - 1) * 2 + t / Math.max(1, timeCount - 1) + seed * 0.01) * Math.PI), v: -0.05 + 0.07 * Math.cos((y / Math.max(1, height - 1) * 2 - t / Math.max(1, timeCount - 1) + seed * 0.013) * Math.PI) }; }
 function rotate(value, radians) { const c = Math.cos(radians); const s = Math.sin(radians); return { u: value.u * c - value.v * s, v: value.u * s + value.v * c }; }

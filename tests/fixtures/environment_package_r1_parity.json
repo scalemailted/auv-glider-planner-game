@@ -1,0 +1,408 @@
+{
+  "type": "anchor.environment.package-r1-parity-baseline",
+  "version": "env-pkg-r1",
+  "packageVersion": "anchor-environment-env-pkg-r1",
+  "generatedAt": "deterministic-static-record",
+  "cases": [
+    {
+      "manifestConfigId": "public-composed-environment",
+      "id": "env-pkg-r1-public",
+      "environmentManifestDigest": "fnv1a32:a213341e",
+      "environmentArtifactDigest": "fnv1a32:5e3d65fc",
+      "componentDigests": {
+        "bathymetryArtifactDigest": "anchor-artifact-fnv1a32:10fa19aa",
+        "bathymetryManifestDigest": "anchor-artifact-fnv1a32:fa5a2889",
+        "currentFieldDigests": {
+          "environment-fixture-current-truth": "fnv1a32:aa128212"
+        },
+        "scalarFieldDigests": {
+          "environment-fixture-scalar-truth": "fnv1a32:cfc0a429"
+        },
+        "currentFieldDigestList": [
+          "fnv1a32:aa128212"
+        ],
+        "scalarFieldDigestList": [
+          "fnv1a32:cfc0a429"
+        ]
+      },
+      "fieldRoleSummary": [
+        {
+          "id": "bathymetry.bottomDepthMeters",
+          "fieldType": "bathymetry",
+          "variableId": "bottomDepthMeters",
+          "epistemicRole": "publicReference",
+          "publicVisibility": "publicScenario",
+          "containsHiddenTruth": false,
+          "artifactDigest": "anchor-artifact-fnv1a32:10fa19aa"
+        },
+        {
+          "id": "environment-fixture-current-truth",
+          "fieldType": "current",
+          "variableId": "oceanCurrentVector",
+          "epistemicRole": "truth",
+          "publicVisibility": "publicScenario",
+          "containsHiddenTruth": false,
+          "artifactDigest": "fnv1a32:aa128212"
+        },
+        {
+          "id": "environment-fixture-scalar-truth",
+          "fieldType": "scalar",
+          "variableId": "scalarValue",
+          "epistemicRole": "truth",
+          "publicVisibility": "publicScenario",
+          "containsHiddenTruth": false,
+          "artifactDigest": "fnv1a32:cfc0a429"
+        }
+      ],
+      "validationStatus": "WARN",
+      "coordinateFrame": "localEastNorthDown",
+      "timeCoverage": {
+        "static": false,
+        "startSeconds": 0,
+        "endSeconds": 100,
+        "fieldCount": 2,
+        "ranges": [
+          {
+            "min": 0,
+            "max": 100,
+            "count": 2
+          },
+          {
+            "min": 0,
+            "max": 100,
+            "count": 2
+          }
+        ]
+      },
+      "depthCoverage": {
+        "surfaceOnly": false,
+        "minDepthMeters": 0,
+        "maxDepthMeters": 100,
+        "fieldCount": 2,
+        "ranges": [
+          {
+            "min": 0,
+            "max": 100,
+            "count": 3
+          },
+          {
+            "min": 0,
+            "max": 100,
+            "count": 3
+          }
+        ]
+      },
+      "samples": [
+        {
+          "eastMeters": 0,
+          "northMeters": 0,
+          "depthMeters": 0,
+          "timeSeconds": 0,
+          "bathymetryBottomDepthMeters": 120,
+          "currentFieldId": "environment-fixture-current-truth",
+          "currentU": 0.1,
+          "currentV": -0.05,
+          "scalarValues": {
+            "environment-fixture-scalar-truth": 1
+          },
+          "valid": true
+        },
+        {
+          "eastMeters": 5,
+          "northMeters": 5,
+          "depthMeters": 50,
+          "timeSeconds": 50,
+          "bathymetryBottomDepthMeters": 110,
+          "currentFieldId": "environment-fixture-current-truth",
+          "currentU": 0.858333,
+          "currentV": -0.046667,
+          "scalarValues": {
+            "environment-fixture-scalar-truth": 3.55
+          },
+          "valid": true
+        },
+        {
+          "eastMeters": 10,
+          "northMeters": 10,
+          "depthMeters": 100,
+          "timeSeconds": 100,
+          "bathymetryBottomDepthMeters": 80,
+          "currentFieldId": "environment-fixture-current-truth",
+          "currentU": 0,
+          "currentV": 0,
+          "scalarValues": {
+            "environment-fixture-scalar-truth": 6.1
+          },
+          "valid": false
+        }
+      ]
+    },
+    {
+      "manifestConfigId": "hidden-truth-roles",
+      "id": "env-pkg-r1-hidden",
+      "environmentManifestDigest": "fnv1a32:e2d44ccb",
+      "environmentArtifactDigest": "fnv1a32:177836f4",
+      "componentDigests": {
+        "bathymetryArtifactDigest": "anchor-artifact-fnv1a32:10fa19aa",
+        "bathymetryManifestDigest": "anchor-artifact-fnv1a32:fa5a2889",
+        "currentFieldDigests": {
+          "environment-fixture-current-truth": "fnv1a32:aa128212"
+        },
+        "scalarFieldDigests": {
+          "environment-fixture-scalar-truth": "fnv1a32:cfc0a429"
+        },
+        "currentFieldDigestList": [
+          "fnv1a32:aa128212"
+        ],
+        "scalarFieldDigestList": [
+          "fnv1a32:cfc0a429"
+        ]
+      },
+      "fieldRoleSummary": [
+        {
+          "id": "bathymetry.bottomDepthMeters",
+          "fieldType": "bathymetry",
+          "variableId": "bottomDepthMeters",
+          "epistemicRole": "publicReference",
+          "publicVisibility": "publicScenario",
+          "containsHiddenTruth": false,
+          "artifactDigest": "anchor-artifact-fnv1a32:10fa19aa"
+        },
+        {
+          "id": "environment-fixture-current-truth",
+          "fieldType": "current",
+          "variableId": "oceanCurrentVector",
+          "epistemicRole": "truth",
+          "publicVisibility": "hidden",
+          "containsHiddenTruth": true,
+          "artifactDigest": "fnv1a32:aa128212"
+        },
+        {
+          "id": "environment-fixture-scalar-truth",
+          "fieldType": "scalar",
+          "variableId": "scalarValue",
+          "epistemicRole": "truth",
+          "publicVisibility": "hidden",
+          "containsHiddenTruth": true,
+          "artifactDigest": "fnv1a32:cfc0a429"
+        }
+      ],
+      "validationStatus": "WARN",
+      "coordinateFrame": "localEastNorthDown",
+      "timeCoverage": {
+        "static": false,
+        "startSeconds": 0,
+        "endSeconds": 100,
+        "fieldCount": 2,
+        "ranges": [
+          {
+            "min": 0,
+            "max": 100,
+            "count": 2
+          },
+          {
+            "min": 0,
+            "max": 100,
+            "count": 2
+          }
+        ]
+      },
+      "depthCoverage": {
+        "surfaceOnly": false,
+        "minDepthMeters": 0,
+        "maxDepthMeters": 100,
+        "fieldCount": 2,
+        "ranges": [
+          {
+            "min": 0,
+            "max": 100,
+            "count": 3
+          },
+          {
+            "min": 0,
+            "max": 100,
+            "count": 3
+          }
+        ]
+      },
+      "samples": [
+        {
+          "eastMeters": 0,
+          "northMeters": 0,
+          "depthMeters": 0,
+          "timeSeconds": 0,
+          "bathymetryBottomDepthMeters": 120,
+          "currentFieldId": "environment-fixture-current-truth",
+          "currentU": 0.1,
+          "currentV": -0.05,
+          "scalarValues": {
+            "environment-fixture-scalar-truth": 1
+          },
+          "valid": true
+        },
+        {
+          "eastMeters": 5,
+          "northMeters": 5,
+          "depthMeters": 50,
+          "timeSeconds": 50,
+          "bathymetryBottomDepthMeters": 110,
+          "currentFieldId": "environment-fixture-current-truth",
+          "currentU": 0.858333,
+          "currentV": -0.046667,
+          "scalarValues": {
+            "environment-fixture-scalar-truth": 3.55
+          },
+          "valid": true
+        },
+        {
+          "eastMeters": 10,
+          "northMeters": 10,
+          "depthMeters": 100,
+          "timeSeconds": 100,
+          "bathymetryBottomDepthMeters": 80,
+          "currentFieldId": "environment-fixture-current-truth",
+          "currentU": 0,
+          "currentV": 0,
+          "scalarValues": {
+            "environment-fixture-scalar-truth": 6.1
+          },
+          "valid": false
+        }
+      ]
+    },
+    {
+      "manifestConfigId": "different-component-resolution",
+      "id": "env-pkg-r1-different-resolution",
+      "environmentManifestDigest": "fnv1a32:9f2624af",
+      "environmentArtifactDigest": "fnv1a32:287a3dfe",
+      "componentDigests": {
+        "bathymetryArtifactDigest": "anchor-artifact-fnv1a32:62540d7a",
+        "bathymetryManifestDigest": "anchor-artifact-fnv1a32:a246f537",
+        "currentFieldDigests": {
+          "env-pkg-r1-different-resolution-current": "fnv1a32:0d852118"
+        },
+        "scalarFieldDigests": {
+          "env-pkg-r1-different-resolution-scalar": "fnv1a32:9574619f"
+        },
+        "currentFieldDigestList": [
+          "fnv1a32:0d852118"
+        ],
+        "scalarFieldDigestList": [
+          "fnv1a32:9574619f"
+        ]
+      },
+      "fieldRoleSummary": [
+        {
+          "id": "bathymetry.bottomDepthMeters",
+          "fieldType": "bathymetry",
+          "variableId": "bottomDepthMeters",
+          "epistemicRole": "publicReference",
+          "publicVisibility": "publicScenario",
+          "containsHiddenTruth": false,
+          "artifactDigest": "anchor-artifact-fnv1a32:62540d7a"
+        },
+        {
+          "id": "env-pkg-r1-different-resolution-current",
+          "fieldType": "current",
+          "variableId": "oceanCurrentVector",
+          "epistemicRole": "truth",
+          "publicVisibility": "publicScenario",
+          "containsHiddenTruth": false,
+          "artifactDigest": "fnv1a32:0d852118"
+        },
+        {
+          "id": "env-pkg-r1-different-resolution-scalar",
+          "fieldType": "scalar",
+          "variableId": "scalarValue",
+          "epistemicRole": "truth",
+          "publicVisibility": "publicScenario",
+          "containsHiddenTruth": false,
+          "artifactDigest": "fnv1a32:9574619f"
+        }
+      ],
+      "validationStatus": "WARN",
+      "coordinateFrame": "localEastNorthDown",
+      "timeCoverage": {
+        "static": false,
+        "startSeconds": 0,
+        "endSeconds": 100,
+        "fieldCount": 2,
+        "ranges": [
+          {
+            "min": 0,
+            "max": 100,
+            "count": 2
+          },
+          {
+            "min": 0,
+            "max": 100,
+            "count": 2
+          }
+        ]
+      },
+      "depthCoverage": {
+        "surfaceOnly": false,
+        "minDepthMeters": 0,
+        "maxDepthMeters": 100,
+        "fieldCount": 2,
+        "ranges": [
+          {
+            "min": 0,
+            "max": 100,
+            "count": 3
+          },
+          {
+            "min": 0,
+            "max": 100,
+            "count": 3
+          }
+        ]
+      },
+      "samples": [
+        {
+          "eastMeters": 0,
+          "northMeters": 0,
+          "depthMeters": 0,
+          "timeSeconds": 0,
+          "bathymetryBottomDepthMeters": 120,
+          "currentFieldId": "env-pkg-r1-different-resolution-current",
+          "currentU": 0.1,
+          "currentV": -0.05,
+          "scalarValues": {
+            "env-pkg-r1-different-resolution-scalar": 1
+          },
+          "valid": true
+        },
+        {
+          "eastMeters": 5,
+          "northMeters": 5,
+          "depthMeters": 50,
+          "timeSeconds": 50,
+          "bathymetryBottomDepthMeters": 110,
+          "currentFieldId": "env-pkg-r1-different-resolution-current",
+          "currentU": 0.883333,
+          "currentV": -0.046667,
+          "scalarValues": {
+            "env-pkg-r1-different-resolution-scalar": 4.55
+          },
+          "valid": true
+        },
+        {
+          "eastMeters": 10,
+          "northMeters": 10,
+          "depthMeters": 100,
+          "timeSeconds": 100,
+          "bathymetryBottomDepthMeters": 80,
+          "currentFieldId": "env-pkg-r1-different-resolution-current",
+          "currentU": 0,
+          "currentV": 0,
+          "scalarValues": {
+            "env-pkg-r1-different-resolution-scalar": 8.1
+          },
+          "valid": false
+        }
+      ]
+    }
+  ],
+  "digest": "fnv1a32:d7ea457e"
+}

@@ -9,6 +9,7 @@ export const SMOKE_TEST_TITLES = Object.freeze([
   'Continuous Mission Planning Starts Without Overlay Errors',
   'Selected Waypoint Card Edits Its Incoming Segment Flight Profile',
   'Planning Timeline Updates Visible Current Vectors',
+  'Environment Package Powers Generated Planning World',
   'Execute Mission Through Three Simulation',
   'Same Horizontal Location Produces Depth-Specific Science Samples',
   'Surfacing Replan Can Change Future Segment Dive Profiles',
@@ -42,6 +43,8 @@ export const RELEASE_TEST_TITLES = Object.freeze([
   'Bathymetry Package Powers Production Simulation Terrain',
   'Bathymetry Limits Predicted and Realized Dive Depth',
   'Current Package Powers Production Planning Currents',
+  'Environment Package Powers Generated Planning World',
+  'Planning Execute Simulation Preserve One Environment Identity',
   'Planning Timeline Updates Visible Current Vectors',
   'Current Vectors Differ Across Water Column Depths',
   'Current Vectors Change With Canonical Mission Time',
@@ -84,6 +87,7 @@ export const SMOKE_SPEC_SPLIT_FILES = Object.freeze([
   "tests/e2e/product_hub_and_labs.spec.js",
   "tests/e2e/mission_planning.spec.js",
   "tests/e2e/environment_rendering.spec.js",
+  "tests/e2e/env_pkg_r1_environment_package.spec.js",
   "tests/e2e/workspace_and_challenge_setup.spec.js",
   "tests/e2e/simulation_and_terrain.spec.js"
 ]);
@@ -110,6 +114,10 @@ export const TEST_FILE_OWNERSHIP = Object.freeze({
   "Three Mission Renderer Resources Remain Stable": "tests/e2e/mission_planning.spec.js",
   "Three Mission Interaction Performance Invariants": "tests/e2e/mission_planning.spec.js",
   "Three Sampling Target and Dive Planning Headed Workflow": "tests/e2e/mission_planning.spec.js",
+  "Environment Package Powers Generated Planning World": "tests/e2e/env_pkg_r1_environment_package.spec.js",
+  "Planning Execute Simulation Preserve One Environment Identity": "tests/e2e/env_pkg_r1_environment_package.spec.js",
+  "Browser and Headless Share Environment Artifact Samples": "tests/e2e/env_pkg_r1_environment_package.spec.js",
+  "Environment Package Runs From GitHub Pages Subpath": "tests/e2e/env_pkg_r1_environment_package.spec.js",
   "Three Simulation Uses Incremental Presentation Updates": "tests/e2e/environment_rendering.spec.js",
   "Finish Instantly Avoids Per-Step Three Rebuilds": "tests/e2e/environment_rendering.spec.js",
   "Three Quality Profiles Preserve Canonical Simulation Result": "tests/e2e/environment_rendering.spec.js",
@@ -167,6 +175,7 @@ const NODE_COVERAGE = Object.freeze({
   DIVE_PREDICTION: ['node tools/js/smoke_current_dive_profile_consequence.mjs'],
   SIMULATION_PHYSICS: ['node tools/js/smoke_environment_mission_coupling.mjs'],
   IMPORT_EXPORT: ['npm.cmd run test:packages'],
+  ENVIRONMENT_PACKAGE: ['npm.cmd run test:packages'],
   RESOURCE_LIFECYCLE: ['node tools/js/audit_three_vendor_git_tracking.mjs']
 });
 
@@ -209,6 +218,10 @@ export const CAPABILITIES = Object.freeze([
     'Current Vectors Differ Across Water Column Depths',
     'Normal Production Currents Differ Across Physical Depths'
   ], NODE_COVERAGE.DEPTH_STRUCTURED_CURRENTS),
+  capability('ENVIRONMENT-PACKAGE', 'Canonical environment artifact composition, identity, validation, and sampling', true, true, true, [
+    'Environment Package Powers Generated Planning World',
+    'Planning Execute Simulation Preserve One Environment Identity'
+  ], NODE_COVERAGE.ENVIRONMENT_PACKAGE),
   capability('DIVE-PREDICTION', 'Planned dive, sampling target, and clearance', true, false, true, [
     'Surface Waypoints Produce a Predicted Three-Dimensional Dive',
     'Sampling Target Drives Predicted Dive Without Becoming a Navigation Point',

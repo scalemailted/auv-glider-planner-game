@@ -150,6 +150,7 @@ Quick loop:
 - [Greedy Planner](docs/greedy_planner.md)
 - [Testing](docs/testing.md)
 - [Scalar Process Package](docs/scalar_process_package.md)
+- [Environment Package](docs/environment_package.md)
 - [Leaderboard and best paths](docs/leaderboard.md)
 - [Development versions and project state](docs/development_versions.md)
 - [JavaScript headless solver tools](tools/js/README.md)
@@ -1022,7 +1023,7 @@ Normal coastal synthetic fields use named coherent components such as along-shel
 
 ## Scientific Package Boundary
 
-ARCH-R1 established local scientific package skeletons. BATHY-PKG-R1 makes `packages/bathymetry` a real production boundary for bathymetry contracts, canonical artifacts, source metadata, signed terrain helpers, validation, and physical-axis sampling. Existing generation remains behavior-compatible; app imports continue through `src/core/...` forwarders; Three.js only visualizes bathymetry and does not own bathymetry truth. See [Bathymetry Package Architecture](docs/bathymetry_package_architecture.md), [Bathymetry Manifest and Artifact](docs/bathymetry_manifest_and_artifact.md), and [Bathymetry Package Migration](docs/bathymetry_package_migration.md).
+ARCH-R1 established local scientific package skeletons. BATHY-PKG-R1 makes `packages/bathymetry` a real production boundary for bathymetry contracts, canonical artifacts, source metadata, signed terrain helpers, validation, and physical-axis sampling. Existing generation remains behavior-compatible; app imports continue through `src/core/...` forwarders; Three.js only visualizes bathymetry and does not own bathymetry truth. See [Bathymetry Package Architecture](docs/bathymetry_package_architecture.md), [Bathymetry Manifest and Artifact](docs/bathymetry_manifest_and_artifact.md), and [Bathymetry Package Migration](docs/bathymetry_package_migration.md). ENV-PKG-R1 now makes `packages/environment` the pure composition layer for bathymetry, current, and scalar artifacts, environment identity, role metadata, cross-artifact validation, provenance aggregation, and physical-coordinate sampling. It does not generate scientific fields, decide visibility, own simulation, add observation noise, change scoring, or own rendering. See [Environment Package](docs/environment_package.md).
 ## SCI-VALID-R1 Homegrown Scientific Baseline
 
 SCI-VALID-R1 adds a deterministic scientific-baseline and gap-assessment layer for the homegrown environment stack. The new `npm.cmd run test:science` gate covers manufactured bathymetry cases, bathymetry resolution convergence, ensemble statistics, manufactured current cases, production current depth/time diagnostics, manufactured scalar cases, scalar conservation/convergence checks, mission/environment coupling, and benchmark shortcut detection.

@@ -18,3 +18,7 @@ This document keeps durable decisions from completed cleanup, renderer, current,
 - REPO-CLEAN-R3 physically retired the historical `tests/e2e/smoke.spec.js` monolith and moved its tests into capability-owned E2E files.
 - REPO-CLEAN-R3 audited compatibility forwarders, renderer paths, and Phaser UI utilities without deleting active supported runtime paths.
 - R2 superseded phase records removed: docs/dive_r1_1_visual_acceptance.md, docs/flow_r2a_3_visual_acceptance.md, docs/flow_r2a_4_visual_acceptance.md, docs/flow_r2a_5_visual_acceptance.md, docs/three_r1_2c_visual_acceptance.md, docs/world_r1_1_visual_acceptance.md.
+
+## ENV-PKG-R1 Environment Package Boundary
+
+ENV-PKG-R1 makes `packages/environment` an active package boundary for composition, identity, validation, provenance, role metadata, and unified physical-coordinate sampling across bathymetry, current, and scalar artifacts. It preserves existing generation equations, visibility decisions, observation noise, mission execution, scoring, rendering, and synthetic claim boundaries.

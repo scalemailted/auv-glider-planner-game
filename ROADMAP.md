@@ -16,7 +16,7 @@ Package extraction phases should remain narrow extractions, not rewrites. Curren
 - `BATHY-PKG-R1`: extract bathymetry contracts and pure field helpers behind forwarding modules, with digest and fixture parity.
 - `CURRENT-PKG-R1`: separate current-field generation and sampling from debug/runtime hooks before package movement.
 - `PROCESS-PKG-R1`: extract scalar field artifacts, source metadata, continuous samplers, water-column scalar helpers, and diagnostics while keeping educational demo/lab process engines outside the package.
-- `ENV-PKG-R1`: compose bathymetry, currents, and scalar artifacts through package manifests while preserving existing browser and headless loaders.
+- `ENV-PKG-R1`: implemented composition of bathymetry, currents, and scalar artifacts through package manifests, field registries, validation, provenance, identity digests, and physical-coordinate sampling while preserving existing browser and headless loaders.
 - `SIM-PKG-R1`: split portable mission execution from browser visibility/debug adapters before moving simulator code.
 
 Package extraction gates: old `src/core/...` imports must continue through forwarding modules, artifact values and scoring must remain stable, and package audits must pass with no renderer/UI/browser dependencies.
@@ -474,8 +474,8 @@ Do not treat FLOW-R2B as ready unless normal production vectors differ by depth,
 - BATHY-PKG-R2: Synthetic bathymetry generator extraction and component composition.
 - FLOW-PKG-R1: 4D current generator and sampler extraction.
 - PROCESS-PKG-R1: Canonical scalar-field package extraction is implemented; next package work should compose bathymetry, currents, and scalar artifacts through environment manifests.
-- ENV-PKG-R1: Canonical environment composition.
-- SIM-PKG-R1: Mission simulator environment-consumer boundary.
+- ENV-PKG-R1: Canonical environment composition is implemented; next package work should make the simulator consume composed environment artifacts more directly without changing gameplay outcomes.
+- SIM-PKG-R1: Mission simulator environment-consumer boundary remains next after ENV package stabilization.
 - WEBGPU-GEN-R1: Optional WebGPU generation backend.
 
 BATHY-PKG-R1 is an extraction phase, not a scientific retuning phase. The package owns canonical bathymetry contracts and pure scientific helpers. The application owns UI, scene lifecycle, and visualization.
@@ -486,5 +486,5 @@ BATHY-PKG-R1 is an extraction phase, not a scientific retuning phase. The packag
 - FLOW-PKG-R1.1: Production boot readiness and grouped E2E closure.
 - FLOW-PKG-R2: Production current generator and component composition extraction, preserving V2 compatibility while adding the V3 depth-structured mixed-regional backend and explicit barotropic controls.
 - PROCESS-PKG-R1: Canonical scalar-field package extraction is implemented; next package work should compose bathymetry, currents, and scalar artifacts through environment manifests.
-- ENV-PKG-R1: Canonical environment composition.
-- SIM-PKG-R1: Mission simulator environment-consumer boundary.
+- ENV-PKG-R1: Canonical environment composition is implemented; next package work should make the simulator consume composed environment artifacts more directly without changing gameplay outcomes.
+- SIM-PKG-R1: Mission simulator environment-consumer boundary remains next after ENV package stabilization.

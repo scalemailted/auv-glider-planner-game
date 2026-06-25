@@ -22,6 +22,9 @@ export const SIMULATION_LAUNCH_STAGES = Object.freeze([
 ]);
 
 const COUNTER_KEYS = Object.freeze([
+  'environmentArtifactBuildCount',
+  'environmentSamplerCreateCount',
+  'environmentValidationCount',
   'currentCubeBuildCount',
   'currentCubeNormalizeCount',
   'currentCubeDigestCount',
@@ -64,6 +67,17 @@ export function createSimulationLaunchProfiler(options = {}) {
     currentDepthCount: 0,
     currentTimeCount: 0,
     currentScalarCount: 0,
+    environmentPackageVersion: options.level?.meta?.environmentPackageVersion ?? options.level?.environmentArtifactSummary?.environmentPackageVersion ?? null,
+    environmentManifestDigest: options.level?.meta?.environmentManifestDigest ?? options.level?.environmentArtifactSummary?.manifestDigest ?? null,
+    environmentArtifactDigest: options.level?.meta?.environmentArtifactDigest ?? options.level?.environmentArtifactSummary?.artifactDigest ?? null,
+    bathymetryArtifactDigest: options.level?.meta?.environmentComponentDigests?.bathymetryArtifactDigest ?? options.level?.environmentArtifactSummary?.componentDigests?.bathymetryArtifactDigest ?? null,
+    currentArtifactDigests: options.level?.meta?.environmentComponentDigests?.currentFieldDigests ?? options.level?.environmentArtifactSummary?.componentDigests?.currentFieldDigests ?? {},
+    scalarArtifactDigests: options.level?.meta?.environmentComponentDigests?.scalarFieldDigests ?? options.level?.environmentArtifactSummary?.componentDigests?.scalarFieldDigests ?? {},
+    fieldRoleSummary: options.level?.meta?.environmentFieldRoleSummary ?? options.level?.environmentArtifactSummary?.fieldRoleSummary ?? [],
+    environmentValidationSummary: options.level?.meta?.environmentValidationSummary ?? options.level?.environmentArtifactSummary?.validationSummary ?? null,
+    environmentArtifactBuildCount: 0,
+    environmentSamplerCreateCount: 0,
+    environmentValidationCount: 0,
     currentCubeBuildCount: 0,
     currentCubeNormalizeCount: 0,
     currentCubeDigestCount: 0,
@@ -198,6 +212,23 @@ export function setSimulationLaunchCurrentField(field = {}) {
   return profiler;
 }
 
+export function setSimulationLaunchEnvironmentArtifact(environmentArtifactOrSummary = {}) {
+  const profiler = getActiveSimulationLaunchProfiler();
+  const summary = environmentArtifactOrSummary?.type === 'anchor.environment.artifact-summary'
+    ? environmentArtifactOrSummary
+    : environmentArtifactOrSummary?.environmentArtifactSummary ?? environmentArtifactOrSummary;
+  profiler.environmentPackageVersion = summary.environmentPackageVersion ?? summary.version ?? 'anchor-environment-env-pkg-r1';
+  profiler.environmentManifestDigest = summary.environmentManifestDigest ?? summary.manifestDigest ?? profiler.environmentManifestDigest ?? null;
+  profiler.environmentArtifactDigest = summary.environmentArtifactDigest ?? summary.artifactDigest ?? profiler.environmentArtifactDigest ?? null;
+  profiler.bathymetryArtifactDigest = summary.componentDigests?.bathymetryArtifactDigest ?? summary.bathymetryArtifactDigest ?? profiler.bathymetryArtifactDigest ?? null;
+  profiler.currentArtifactDigests = summary.componentDigests?.currentFieldDigests ?? summary.currentFieldDigests ?? profiler.currentArtifactDigests ?? {};
+  profiler.scalarArtifactDigests = summary.componentDigests?.scalarFieldDigests ?? summary.scalarFieldDigests ?? profiler.scalarArtifactDigests ?? {};
+  profiler.fieldRoleSummary = Array.isArray(summary.fieldRoleSummary) ? summary.fieldRoleSummary : profiler.fieldRoleSummary;
+  profiler.environmentValidationSummary = summary.validationSummary ?? summary.environmentValidationSummary ?? profiler.environmentValidationSummary ?? null;
+  publishSimulationLaunchDebug(profiler);
+  return profiler;
+}
+
 export function setSimulationLaunchRendererCounts(summary = {}) {
   const profiler = getActiveSimulationLaunchProfiler();
   profiler.activeRendererCount = Number(summary.activeRendererCount ?? summary.rendererCount ?? profiler.activeRendererCount ?? 0);
@@ -240,6 +271,17 @@ export function simulationLaunchDebugSnapshot(profiler = getActiveSimulationLaun
     currentDepthCount: profiler.currentDepthCount,
     currentTimeCount: profiler.currentTimeCount,
     currentScalarCount: profiler.currentScalarCount,
+    environmentPackageVersion: profiler.environmentPackageVersion ?? null,
+    environmentManifestDigest: profiler.environmentManifestDigest ?? null,
+    environmentArtifactDigest: profiler.environmentArtifactDigest ?? null,
+    bathymetryArtifactDigest: profiler.bathymetryArtifactDigest ?? null,
+    currentArtifactDigests: { ...(profiler.currentArtifactDigests ?? {}) },
+    scalarArtifactDigests: { ...(profiler.scalarArtifactDigests ?? {}) },
+    fieldRoleSummary: Array.isArray(profiler.fieldRoleSummary) ? [...profiler.fieldRoleSummary] : [],
+    environmentValidationSummary: profiler.environmentValidationSummary ?? null,
+    environmentArtifactBuildCount: profiler.environmentArtifactBuildCount ?? 0,
+    environmentSamplerCreateCount: profiler.environmentSamplerCreateCount ?? 0,
+    environmentValidationCount: profiler.environmentValidationCount ?? 0,
     currentCubeBuildCount: profiler.currentCubeBuildCount,
     currentCubeNormalizeCount: profiler.currentCubeNormalizeCount,
     currentCubeDigestCount: profiler.currentCubeDigestCount,

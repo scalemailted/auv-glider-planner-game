@@ -1241,3 +1241,19 @@ npm.cmd run test:e2e:visual
 ```
 
 `test:e2e` is the release browser regression profile and should stay in the 35-50 workflow range unless a supported capability requires more coverage. `test:e2e:full` is bounded nonvisual compatibility coverage, not a historical archive. `test:e2e:visual` remains headed visual/owner-acceptance coverage. Use `node tools/maintenance/repo_declutter.mjs tests`, `test-timing`, `phaser`, `pages`, and `verify` for the current inventory.
+
+## ENV-PKG-R1 Environment Package Gates
+
+Run these after changing `packages/environment`, generated environment adapters, package forwarders, environment identity metadata, or unified environment sampling:
+
+```bash
+npm.cmd run audit:packages
+npm.cmd run test:packages
+node tools/js/smoke_environment_package_contracts.mjs
+node tools/js/smoke_environment_package_forwarders.mjs
+node tools/js/smoke_environment_package_adapter.mjs
+node tools/js/audit_environment_package_parity.mjs
+node ./node_modules/@playwright/test/cli.js test tests/e2e/env_pkg_r1_environment_package.spec.js --reporter=line --workers=1
+```
+
+These gates assert package dependency purity, browser/worker-safe imports, deterministic manifests/artifacts, duplicate-field rejection, hidden-truth role checks, component digest aggregation, cross-artifact validation, local-meter frame compatibility warnings, physical-coordinate bathymetry/current/scalar sampling, generated-environment adapter metadata, browser/Node sample parity, and Pages-subpath package loading. They do not retune bathymetry, current, or scalar values; they do not change visibility policy, observation noise, Simulation, scoring, rendering, or mission outcomes.
