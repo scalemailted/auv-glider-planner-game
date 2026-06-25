@@ -44,6 +44,10 @@ export const RELEASE_TEST_TITLES = Object.freeze([
   'Bathymetry Limits Predicted and Realized Dive Depth',
   'Current Package Powers Production Planning Currents',
   'Environment Package Powers Generated Planning World',
+  'Production Simulation Uses Package Mission Kernel',
+  'Play Pause Step Finish Preserve Canonical Package Semantics',
+  'Browser and Headless Share Mission Simulation Outcomes',
+  'Mission Simulator Package Runs From GitHub Pages Subpath',
   'Planning Execute Simulation Preserve One Environment Identity',
   'Planning Timeline Updates Visible Current Vectors',
   'Current Vectors Differ Across Water Column Depths',
@@ -76,7 +80,7 @@ export const FULL_GROUP_LIMITS = Object.freeze({
   coreMission: 12,
   threePlanning: 8,
   workspaceScenario: 12,
-  executionWaterColumn: 16,
+  executionWaterColumn: 20,
   threeReplayReview: 9,
   threeMissionEditor: 9,
   productionShellR3A: 10,
@@ -118,6 +122,10 @@ export const TEST_FILE_OWNERSHIP = Object.freeze({
   "Planning Execute Simulation Preserve One Environment Identity": "tests/e2e/env_pkg_r1_environment_package.spec.js",
   "Browser and Headless Share Environment Artifact Samples": "tests/e2e/env_pkg_r1_environment_package.spec.js",
   "Environment Package Runs From GitHub Pages Subpath": "tests/e2e/env_pkg_r1_environment_package.spec.js",
+  "Production Simulation Uses Package Mission Kernel": "tests/e2e/sim_pkg_r1_mission_simulator_package.spec.js",
+  "Play Pause Step Finish Preserve Canonical Package Semantics": "tests/e2e/sim_pkg_r1_mission_simulator_package.spec.js",
+  "Browser and Headless Share Mission Simulation Outcomes": "tests/e2e/sim_pkg_r1_mission_simulator_package.spec.js",
+  "Mission Simulator Package Runs From GitHub Pages Subpath": "tests/e2e/sim_pkg_r1_mission_simulator_package.spec.js",
   "Three Simulation Uses Incremental Presentation Updates": "tests/e2e/environment_rendering.spec.js",
   "Finish Instantly Avoids Per-Step Three Rebuilds": "tests/e2e/environment_rendering.spec.js",
   "Three Quality Profiles Preserve Canonical Simulation Result": "tests/e2e/environment_rendering.spec.js",
@@ -229,10 +237,12 @@ export const CAPABILITIES = Object.freeze([
   ], NODE_COVERAGE.DIVE_PREDICTION),
   capability('EXECUTE', 'Launch snapshot and simulation initialization', true, true, true, [
     'Execute Mission Through Three Simulation',
+    'Production Simulation Uses Package Mission Kernel',
     'Continuous Mission Plan Executes Through Canonical 3D Dive'
   ]),
   capability('SIMULATION-CONTROLS', 'Play, pause, step, and finish controls', true, true, true, [
     'Simulation Play Pause and Step Control Current Evolution',
+    'Play Pause Step Finish Preserve Canonical Package Semantics',
     'Three Depth-Aware Dive and Sampling'
   ]),
   capability('SIMULATION-PHYSICS', 'Dive execution, current drift, and depth-aware sampling', true, false, true, [
@@ -261,6 +271,8 @@ export const CAPABILITIES = Object.freeze([
   ]),
   capability('IMPORT-EXPORT', 'Mission, plan, result, solver, and headless bundle import/export', true, true, true, [
     'Headless Bundle Viewer opens from Simulation Lab and exports browser summary',
+    'Browser and Headless Share Mission Simulation Outcomes',
+    'Mission Simulator Package Runs From GitHub Pages Subpath',
     'Right Panel Segment Profile Survives Export Import and Execute',
     'Three Mission Editor Export Reimport Roundtrip Is Lossless'
   ], NODE_COVERAGE.IMPORT_EXPORT),

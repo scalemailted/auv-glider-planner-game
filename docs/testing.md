@@ -19,6 +19,21 @@ npm.cmd run smoke:pages
 See `docs/threejs_static_runtime.md` for the import-map and vendored-runtime contract.
 
 
+
+## SIM-PKG-R1 Mission Simulator Package Checks
+
+Run these after changing `packages/mission-simulator`, mission-simulator forwarders, `SimulationEngine` package sync, or headless mission package sync:
+
+```bash
+node tools/js/audit_mission_simulator_package_dependencies.mjs
+node tools/js/audit_mission_simulator_package_browser_safety.mjs
+node tools/js/audit_mission_simulator_package_worker_safety.mjs
+node tools/js/smoke_mission_simulator_package_contracts.mjs
+node tools/js/smoke_mission_simulator_package_forwarders.mjs
+node tools/js/capture_mission_simulator_package_r1_baseline.mjs
+```
+
+`npm.cmd run audit:packages` includes the mission-simulator purity audits, and `npm.cmd run test:packages` includes the mission-simulator contract, forwarder, and compact parity-fixture checks. Focused browser workflows live in `tests/e2e/sim_pkg_r1_mission_simulator_package.spec.js` and are registered through the capability manifest.
 ## PROCESS-PKG-R1 Scalar Package Checks
 
 Run these after changing `packages/scalar-processes`, scalar samplers, water-column scalar helpers, or scalar package forwarders:

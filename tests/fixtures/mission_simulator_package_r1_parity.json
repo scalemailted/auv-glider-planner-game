@@ -1,0 +1,105 @@
+{
+  "type": "anchor.mission-simulator.package-r1-parity-baseline",
+  "version": "sim-pkg-r1",
+  "packageVersion": "anchor-mission-simulator-sim-pkg-r1",
+  "generatedAt": "deterministic-static-record",
+  "cases": [
+    {
+      "id": "package-kernel-fixture",
+      "inputDigest": "fnv1a32:84be46fb",
+      "manifestDigest": "fnv1a32:f6446be5",
+      "environmentArtifactDigest": "fnv1a32:24e50e2f",
+      "planDigest": "fnv1a32:517616f6",
+      "initialStateDigest": "fnv1a32:29110cbb",
+      "finalStateDigest": "fnv1a32:6f05d4d8",
+      "restoredFinalStateDigest": "fnv1a32:6f05d4d8",
+      "eventCount": 0,
+      "observationCount": 2,
+      "rawMetrics": {
+        "type": "anchor.mission-simulator.raw-metrics",
+        "version": "mission-simulation-state-sim-pkg-r1",
+        "roiCollected": 0,
+        "energyUsed": 2,
+        "distanceTraveled": 2,
+        "collisions": 0,
+        "nearMisses": 0,
+        "hazards": 0,
+        "duplicateSamples": 0,
+        "sampleCount": 0,
+        "observationCount": 2,
+        "eventCount": 0,
+        "returnSuccess": false,
+        "completed": false,
+        "steps": 2,
+        "simTime": 2
+      },
+      "snapshotDigest": "fnv1a32:03ede4ad",
+      "resultDigest": "fnv1a32:e7f9a7b2"
+    },
+    {
+      "id": "production-simulation-engine-adapter",
+      "inputDigest": "fnv1a32:93bcbed0",
+      "manifestDigest": "fnv1a32:1f762ad2",
+      "environmentArtifactDigest": "fnv1a32:dba79f5b",
+      "planDigest": "fnv1a32:dc7c62b7",
+      "stateDigest": "fnv1a32:d432b3a0",
+      "resultDigest": "fnv1a32:2db161b4",
+      "terminal": true,
+      "terminalReason": "complete",
+      "rawMetrics": {
+        "type": "anchor.mission-simulator.raw-metrics",
+        "version": "mission-simulation-state-sim-pkg-r1",
+        "roiCollected": 0.4,
+        "energyUsed": 2.85,
+        "distanceTraveled": 3,
+        "collisions": 0,
+        "nearMisses": 0,
+        "hazards": 0,
+        "duplicateSamples": 0,
+        "sampleCount": 2,
+        "observationCount": 2,
+        "eventCount": 8,
+        "returnSuccess": true,
+        "completed": true,
+        "steps": 2,
+        "simTime": 2
+      },
+      "checkpoints": [
+        {
+          "label": "initial",
+          "timeSeconds": 0,
+          "stepCount": 0,
+          "stateDigest": "fnv1a32:771f86e0",
+          "agentCount": 1,
+          "eventCount": 0,
+          "observationCount": 0,
+          "terminal": false,
+          "terminalReason": null
+        },
+        {
+          "label": "step-1",
+          "timeSeconds": 1,
+          "stepCount": 1,
+          "stateDigest": "fnv1a32:463245d6",
+          "agentCount": 1,
+          "eventCount": 4,
+          "observationCount": 1,
+          "terminal": false,
+          "terminalReason": null
+        },
+        {
+          "label": "final",
+          "timeSeconds": 2,
+          "stepCount": 2,
+          "stateDigest": "fnv1a32:d432b3a0",
+          "agentCount": 1,
+          "eventCount": 8,
+          "observationCount": 2,
+          "terminal": true,
+          "terminalReason": "complete"
+        }
+      ]
+    }
+  ],
+  "digest": "fnv1a32:ffe6461f"
+}

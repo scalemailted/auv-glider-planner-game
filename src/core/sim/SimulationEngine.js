@@ -62,6 +62,17 @@ import {
   validateTerrainSimulationDiagnostics
 } from '../simulation/TerrainSimulationDiagnostics.js';
 
+import {
+  PACKAGE_VERSION as MISSION_SIMULATOR_PACKAGE_VERSION,
+  createMissionSimulationInput,
+  createMissionSimulator,
+  missionSimulationResultDigest,
+  missionSimulationSnapshot,
+  missionSimulatorDebugSummary,
+  resetMissionSimulator,
+  stepMissionSimulator,
+  syncMissionSimulatorState
+} from '../../../packages/mission-simulator/src/index.js';
 const MAX_PLAYBACK_STEPS = SIMULATION_LIMITS.maxPlaybackSteps;
 
 export class SimulationEngine {
@@ -70,6 +81,8 @@ export class SimulationEngine {
     this.mission = mission;
     this.plan = plan;
     this.t = time;
+    this.missionSimulationInput = createMissionSimulationInput(buildMissionSimulationInputOptions(this));
+    this.missionSimulator = createMissionSimulator(this.missionSimulationInput, { backendId: 'javascriptCpuV1' });
     normalizeDeploymentState(this.level, this.mission, this.plan);
     this.initialValidation = validatePlanForExecution({ level: this.level, mission: this.mission, plan: this.plan });
     this.configValidation = validateSimulationConfig(this.level, this.mission, this.plan);
@@ -179,6 +192,7 @@ export class SimulationEngine {
       seed: getDriftRules(this.mission).seed,
       stochasticDrift: getDriftRules(this.mission).stochasticDrift
     };
+    if (this.missionSimulator) resetMissionSimulator(this.missionSimulator);
     if (this.resumeState) this.applyResumeState(this.resumeState);
     this.syncActiveWaypoints();
     this.updateCommsStates();
@@ -198,6 +212,7 @@ export class SimulationEngine {
     } else if (!this.configValidation.ok) {
       this.abortSimulation('invalidSimulationConfig', { errors: this.configValidation.errors });
     }
+    this.syncMissionSimulatorPackageState('reset');
   }
 
   markIdleAgents() {
@@ -365,6 +380,8 @@ export class SimulationEngine {
       details: { complete: this.complete, aborted: this.aborted, eventCount: this.events.length }
     });
 
+    this.recordMissionSimulatorPackageStep(stepDt);
+
     if (eventsBeforeStep !== this.events.length) {
       this.logger.events = [...this.events];
     }
@@ -397,6 +414,8 @@ export class SimulationEngine {
     if (!this.complete && !this.aborted && steps >= maxSteps) {
       this.abortSimulation('maxStepsExceeded', { maxSteps, dt, t: this.t });
     }
+    if (this.missionSimulator?.runtime) this.missionSimulator.runtime.simulatorFinishCount += 1;
+    this.syncMissionSimulatorPackageState('finish');
   }
 
   stepAgent(agent, dt) {
@@ -1339,6 +1358,49 @@ export class SimulationEngine {
     }
   }
 
+  missionSimulatorRuntimeState(reason = 'sync') {
+    const summary = this.missionState?.stopReason ?? null;
+    return {
+      reason,
+      timeSeconds: this.t,
+      stepCount: this.stepCount,
+      agents: this.agents ?? [],
+      events: this.events ?? [],
+      observations: (this.events ?? []).filter((event) => event.type === 'sample' || event.type === 'observation'),
+      pendingDecision: this.awaitingSurfaceDecision ?? this.routeFailureDecision ?? null,
+      terminal: this.complete === true || this.aborted === true,
+      terminalReason: this.abortReason ?? this.routeFailureDecision?.reason ?? summary?.code ?? null,
+      endCondition: this.missionState?.endConditionResult ?? null,
+      samplingMetrics: this.missionState?.samplingMetrics ?? null,
+      rawMetrics: {
+        roiCollected: (this.agents ?? []).reduce((sum, agent) => sum + Number(agent.sampleScore ?? 0), 0),
+        energyUsed: (this.agents ?? []).reduce((sum, agent) => sum + Number(agent.energyUsed ?? 0), 0),
+        distanceTraveled: (this.agents ?? []).reduce((sum, agent) => sum + agentHistoryDistance(agent.history ?? []), 0),
+        hazards: (this.events ?? []).filter((event) => String(event.type ?? '').toLowerCase().includes('hazard')).length,
+        duplicateSamples: this.missionState?.samplingMetrics?.duplicateSamples ?? 0,
+        sampleCount: (this.events ?? []).filter((event) => event.type === 'sample').length,
+        observationCount: (this.events ?? []).filter((event) => event.type === 'sample' || event.type === 'observation').length,
+        eventCount: (this.events ?? []).length,
+        completed: this.complete === true,
+        steps: this.stepCount,
+        simTime: this.t
+      }
+    };
+  }
+
+  syncMissionSimulatorPackageState(reason = 'sync') {
+    if (!this.missionSimulator) return null;
+    return syncMissionSimulatorState(this.missionSimulator, this.missionSimulatorRuntimeState(reason));
+  }
+
+  recordMissionSimulatorPackageStep(dtSeconds) {
+    if (!this.missionSimulator) return null;
+    return stepMissionSimulator(this.missionSimulator, {
+      type: 'step',
+      dtSeconds,
+      actualState: this.missionSimulatorRuntimeState('step')
+    });
+  }
   updateCommsStates(forceState = null) {
     for (const agent of this.agents) {
       agent.commsState = forceState ?? getGliderCommsState(this.t, this.mission, agent);
@@ -1396,6 +1458,7 @@ export class SimulationEngine {
     publishDepthScienceDebug(this.missionState, summary);
     publishContinuousMissionDebug(this, this.missionState, summary);
     publishTerrainSimulationDebug(this.terrainDiagnostics, summary);
+    publishMissionSimulatorDebug(this);
     return summary;
   }
 
@@ -1406,9 +1469,13 @@ export class SimulationEngine {
     const probabilityOutcomes = summarizeProbabilityOutcomes(this.events, this.missionState);
     const riskReward = summarizeRiskReward({ events: this.events, frames: this.logger.frames, agents: this.agents });
     const summary = this.getSummary();
+    this.syncMissionSimulatorPackageState('result');
     const debug = {
       ...(this.debug ?? {}),
-      trace: this.trace?.snapshot?.() ?? []
+      trace: this.trace?.snapshot?.() ?? [],
+      missionSimulator: missionSimulatorDebugSummary(this.missionSimulator),
+      missionSimulationSnapshot: missionSimulationSnapshot(this.missionSimulator),
+      missionSimulationResultDigest: missionSimulationResultDigest(this.missionSimulator)
     };
     return {
       schemaVersion: '2.0',
@@ -1485,6 +1552,61 @@ export class SimulationEngine {
   }
 }
 
+function buildMissionSimulationInputOptions(engine = {}) {
+  const level = engine.level ?? {};
+  const mission = engine.mission ?? {};
+  const environmentArtifact = level.environmentArtifact ?? level.generatedEnvironmentArtifact?.environmentArtifact ?? level.meta?.environmentArtifact ?? null;
+  const environmentArtifactSummary = level.environmentArtifactSummary ?? null;
+  return {
+    id: `${level.levelId ?? 'level'}:${mission.missionId ?? mission.id ?? 'mission'}`,
+    seed: mission.rules?.stochasticSeed ?? mission.rules?.rngSeed ?? level.meta?.seed ?? level.instanceId ?? 'mission-sim-seed',
+    engineId: 'SimulationEngine',
+    engineVersion: MISSION_SIMULATOR_PACKAGE_VERSION,
+    backendId: 'javascriptCpuV1',
+    timeStepSeconds: getSafeStepDt(level),
+    missionDurationSeconds: getSafeMissionDuration(level),
+    environmentArtifact,
+    environmentArtifactDigest: level.environmentArtifactDigest ?? level.meta?.environmentArtifactDigest ?? environmentArtifactSummary?.artifactDigest ?? null,
+    environmentManifestDigest: level.meta?.environmentManifestDigest ?? environmentArtifactSummary?.manifestDigest ?? null,
+    plan: engine.plan,
+    agentConfigurations: mission.agents ?? [],
+    missionRules: mission.rules ?? {},
+    terminalRules: mission.rules?.endCondition ?? {},
+    observationModel: mission.rules?.sampling ?? {},
+    noiseModel: mission.rules?.sensorNoise ?? mission.sensorNoise ?? {},
+    sourceMetadata: {
+      adapter: 'src/core/sim/SimulationEngine.js',
+      packageConsumesEnvironmentArtifact: Boolean(environmentArtifact),
+      packageOwnsEnvironmentGeneration: false,
+      packageOwnsPlanning: false,
+      packageOwnsScoring: false,
+      packageOwnsRendering: false
+    },
+    provenance: {
+      levelId: level.levelId ?? null,
+      missionId: mission.missionId ?? mission.id ?? null,
+      packagePhase: 'SIM-PKG-R1'
+    },
+    launchMetadata: {
+      levelId: level.levelId ?? null,
+      missionId: mission.missionId ?? mission.id ?? null,
+      instanceId: level.instanceId ?? null
+    }
+  };
+}
+
+function agentHistoryDistance(history = []) {
+  let total = 0;
+  for (let index = 1; index < history.length; index += 1) {
+    total += Math.hypot(Number(history[index].x ?? 0) - Number(history[index - 1].x ?? 0), Number(history[index].y ?? 0) - Number(history[index - 1].y ?? 0));
+  }
+  return total;
+}
+
+function publishMissionSimulatorDebug(engine = {}) {
+  if (!engine.missionSimulator) return;
+  globalThis.ANCHOR_MISSION_SIMULATOR_DEBUG = missionSimulatorDebugSummary(engine.missionSimulator);
+}
 function resolveDepthScienceScoreProfile(level, mission, waterColumnConfig) {
   const candidate = mission?.scoring?.depthScience ?? mission?.scoring?.scoreProfileId ?? mission?.meta?.scoreProfileId ?? mission?.waterColumnConfig?.scoreProfile ?? level?.world?.waterColumnConfig?.scoreProfile ?? null;
   const defaultProfileId = waterColumnConfig.depthLayerIds.length > 1 ? 'depthAwareScienceV1' : 'legacySurfaceScienceV1';

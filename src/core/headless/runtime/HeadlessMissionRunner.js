@@ -30,6 +30,14 @@ import { aggregateMissionOutcomeScore, missionScoreAggregationSummary } from '..
 import { buildMissionRegretReport } from '../../scoring/MissionRegretModel.js';
 import { buildMissionOutcomeReport, missionOutcomeReportSummary } from '../../scoring/MissionOutcomeReport.js';
 import { sanitizeMissionOutcomeReportForPublicExport, sanitizeMissionRegretReportForPublicExport } from '../../scoring/MissionScorePublicSafety.js';
+import {
+  createMissionSimulationInput,
+  createMissionSimulator,
+  missionSimulationResultDigest,
+  missionSimulationSnapshot,
+  missionSimulatorDebugSummary,
+  syncMissionSimulatorState
+} from '../../../../packages/mission-simulator/src/index.js';
 
 export const HEADLESS_MISSION_RUNNER_VERSION = 'headless-mission-runner-h1';
 
@@ -204,6 +212,39 @@ export function simulateHeadlessEpisode(configInput = {}, planInput = null) {
     motionCostMatrixSummary,
     episodeId
   });
+  const missionSimulationInput = createMissionSimulationInput({
+    id: `headless:${config.scenario}:${config.seed}`,
+    deterministicSeed: config.seed,
+    plan: { type: 'anchor.plan', agentPlans: [{ agentId: plan.gliderId ?? glider?.id ?? 'glider-1', waypoints: plan.waypoints ?? [] }] },
+    agentConfigurations: missionConfig.gliders ?? [glider].filter(Boolean),
+    missionDurationSeconds: missionConfig.world?.durationSeconds ?? 0,
+    timeStepSeconds: missionConfig.world?.dtSeconds ?? 1,
+    environmentArtifactDigest: fieldPackBefore?.diagnostics?.environmentArtifactDigest ?? null,
+    missionRules: missionConfig.rules ?? {},
+    terminalRules: missionConfig.rules?.endCondition ?? {},
+    observationModel: { source: 'headless-runtime-observations' },
+    noiseModel: { sensorNoise: config.sensorNoise ?? null },
+    sourceMetadata: {
+      adapter: 'src/core/headless/runtime/HeadlessMissionRunner.js',
+      packageConsumesEnvironmentArtifact: false,
+      packageOwnsEnvironmentGeneration: false,
+      packageOwnsPlanning: false,
+      packageOwnsScoring: false,
+      packageOwnsRendering: false
+    }
+  });
+  const missionSimulationKernel = createMissionSimulator(missionSimulationInput, { backendId: 'javascriptCpuV1' });
+  syncMissionSimulatorState(missionSimulationKernel, headlessMissionSimulationRuntimeState({
+    routeResult,
+    executionTracks,
+    executionObservations,
+    plan,
+    glider,
+    missionConfig
+  }));
+  const missionSimulationDebug = missionSimulatorDebugSummary(missionSimulationKernel);
+  const missionSimulationSnapshotArtifact = missionSimulationSnapshot(missionSimulationKernel);
+  const missionSimulationDigest = missionSimulationResultDigest(missionSimulationKernel);
   const actions = plan.waypoints.map((waypoint, index) => ({
     id: `action-wp-${index + 1}`,
     type: 'waypointTarget',
@@ -291,6 +332,16 @@ export function simulateHeadlessEpisode(configInput = {}, planInput = null) {
     scienceDiscovery,
     scienceDiagnostics,
     replay,
+    missionSimulation: {
+      input: missionSimulationInput,
+      inputDigest: missionSimulationInput.inputDigest,
+      manifestDigest: missionSimulationInput.manifest.manifestDigest,
+      environmentArtifactDigest: missionSimulationInput.environmentArtifactDigest,
+      planDigest: missionSimulationInput.planDigest,
+      resultDigest: missionSimulationDigest,
+      debug: missionSimulationDebug,
+      snapshot: missionSimulationSnapshotArtifact
+    },
     diagnostics: {
       runtimeVersion: HEADLESS_MISSION_RUNNER_VERSION,
       configValidation: validation,
@@ -321,12 +372,14 @@ export function simulateHeadlessEpisode(configInput = {}, planInput = null) {
       depthScienceSummary,
       depthLayerPrioritySummary: depthLayerPriority.summary,
       scienceDiscoverySummary: scienceDiscoverySummary(scienceDiagnostics),
+      missionSimulatorPackage: missionSimulationDebug,
+      missionSimulationResultDigest: missionSimulationDigest,
       calibratedOceanForecast: false,
       calibratedVerticalOceanModel: false,
       implementsFull3DPlanning: false,
       implementsNewPlanner: false,
       implementsMARL: false,
-      canonicalRuntime: 'Node headless runtime over portable ANCHOR core logic. Browser ANCHOR remains the official visual referee and scoring UI.'
+      canonicalRuntime: 'Node headless runtime records package mission-simulation contracts around existing deterministic ANCHOR core logic. Browser ANCHOR remains the official visual referee and scoring UI.'
     }
   };
   episode.schemaEpisode = createHeadlessEpisode({
@@ -349,6 +402,48 @@ export function simulateHeadlessEpisode(configInput = {}, planInput = null) {
     notes: [episode.diagnostics.canonicalRuntime]
   });
   return episode;
+}
+function headlessMissionSimulationRuntimeState({ routeResult = {}, executionTracks = [], executionObservations = [], plan = {}, glider = {}, missionConfig = {} } = {}) {
+  const trackEnd = executionTracks.at(-1) ?? routeResult.state ?? {};
+  const agentId = plan.gliderId ?? glider?.id ?? routeResult.state?.gliderId ?? 'glider-1';
+  const tracks = executionTracks.map((track) => ({ x: track.x, y: track.y, depthMeters: track.depthMeters ?? 0, timeSeconds: track.timeSeconds ?? track.t ?? 0 }));
+  const distance = tracks.reduce((sum, point, index) => {
+    if (index === 0) return sum;
+    const previous = tracks[index - 1];
+    return sum + Math.hypot(Number(point.x ?? 0) - Number(previous.x ?? 0), Number(point.y ?? 0) - Number(previous.y ?? 0));
+  }, 0);
+  return {
+    timeSeconds: routeResult.state?.timeSeconds ?? trackEnd.timeSeconds ?? 0,
+    stepCount: executionTracks.length,
+    agents: [{
+      id: agentId,
+      status: routeResult.state?.completed ? 'complete' : 'enroute',
+      x: trackEnd.x ?? routeResult.state?.x ?? 0,
+      y: trackEnd.y ?? routeResult.state?.y ?? 0,
+      depthMeters: trackEnd.depthMeters ?? 0,
+      battery: Math.max(0, 100 - Number(routeResult.state?.energyUsed ?? 0)),
+      energyUsed: routeResult.state?.energyUsed ?? 0,
+      observationCount: executionObservations.length,
+      sampleCount: executionObservations.length,
+      history: tracks,
+      metadata: { headlessRuntime: true, gliderConfigId: glider?.id ?? null }
+    }],
+    events: [],
+    observations: executionObservations,
+    terminal: true,
+    terminalReason: 'headlessMissionComplete',
+    rawMetrics: {
+      energyUsed: routeResult.state?.energyUsed ?? 0,
+      distanceTraveled: routeResult.state?.distanceTraveled ?? distance,
+      hazards: routeResult.state?.hazardExposureCount ?? 0,
+      observationCount: executionObservations.length,
+      sampleCount: executionObservations.length,
+      completed: routeResult.state?.completed === true,
+      steps: executionTracks.length,
+      simTime: routeResult.state?.timeSeconds ?? trackEnd.timeSeconds ?? 0,
+      returnSuccess: routeResult.state?.completed === true || missionConfig?.returnSuccess === true
+    }
+  };
 }
 function buildHeadlessTerrainDiagnostics({ bathymetry = null, missionConfig = {}, scenarioId = null, episodeId = null, tracks = [], observations = [] } = {}) {
   if (!bathymetry?.depthMeters || !tracks.some((track) => Number.isFinite(Number(track.depthMeters)))) {

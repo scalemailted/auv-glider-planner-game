@@ -66,6 +66,10 @@ export const PLAYWRIGHT_GROUPS = Object.freeze([
     id: 'executionWaterColumn',
     label: 'Execution, water-column, generated/legacy, and parity flows',
     patterns: [
+      /^Production Simulation Uses Package Mission Kernel$/i,
+      /^Play Pause Step Finish Preserve Canonical Package Semantics$/i,
+      /^Browser and Headless Share Mission Simulation Outcomes$/i,
+      /^Mission Simulator Package Runs From GitHub Pages Subpath$/i,
       /^Three Simulation Uses Incremental Presentation Updates$/i,
       /^Finish Instantly Avoids Per-Step Three Rebuilds$/i,
       /^Three Quality Profiles Preserve Canonical Simulation Result$/i,

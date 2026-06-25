@@ -22,3 +22,6 @@ This document keeps durable decisions from completed cleanup, renderer, current,
 ## ENV-PKG-R1 Environment Package Boundary
 
 ENV-PKG-R1 makes `packages/environment` an active package boundary for composition, identity, validation, provenance, role metadata, and unified physical-coordinate sampling across bathymetry, current, and scalar artifacts. It preserves existing generation equations, visibility decisions, observation noise, mission execution, scoring, rendering, and synthetic claim boundaries.
+## SIM-PKG-R1 Mission Simulator Boundary
+
+SIM-PKG-R1 makes `packages/mission-simulator` an active package boundary for mission manifests, inputs, canonical state, event/observation normalization, raw metric summaries, snapshots, selected pure simulator helpers, browser debug digests, and headless package metadata. It preserves existing environment generation, route planning, glider physics, observation behavior, scoring, rendering, replay playback, and mission outcomes. Production `SimulationEngine` and `HeadlessMissionRunner` now create and sync package kernels rather than exposing package internals directly.

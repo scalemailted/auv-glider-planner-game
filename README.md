@@ -8,6 +8,8 @@ The benchmark target now explicitly includes mission feasibility: planned vs rea
 
 WORLD-R1 adds a renderer-neutral multiscale mission-domain contract. Physical operational extent, planning lattice, bathymetry/source-field resolution, render LOD, and simulation time are now named separately for regional synthetic missions; legacy grid levels still load through a compatibility profile. See [WORLD-R1 Multiscale Operational Domain Audit](docs/multiscale_operational_domain_audit.md) and [Regional Mission Scale and Resolution](docs/regional_mission_scale_and_resolution.md).
 
+SIM-PKG-R1 adds an active packages/mission-simulator boundary for deterministic mission-state contracts, package inputs, canonical state snapshots, events, observations, raw metrics, and browser/headless result digests. It consumes EnvironmentArtifact identity from packages/environment and leaves route planning, official scoring, rendering, and Play/Pause scheduling in the application. See [Mission Simulator Package](docs/mission_simulator_package.md).
+
 ANCHOR separates current flow, event likelihood, realized sample value, and uncertainty into distinct field concepts. Current flow describes how hard it is to move, event likelihood describes where sample-value events tend to originate, sample value describes where and when sampling has reward, and uncertainty describes what the planner does not know. Both experiences use the same terrain, current fields, sample fields, hazards, glider physics, scoring, route validation, planner APIs, and export/replay system.
 
 ## Current Status
