@@ -63,6 +63,35 @@
     }
   },
   "expectedPlanFormat": "anchor.plan",
+  "parityProbes": [
+    {
+      "probeId": "science-surface-low-start",
+      "eastMeters": 0,
+      "northMeters": 0,
+      "depthMeters": 0,
+      "timeSeconds": 0,
+      "expected": { "bottomDepthMeters": null, "wet": true, "terrainValue": 0, "hazardValue": 0, "current": { "uEastMetersPerSecond": 0, "vNorthMetersPerSecond": 0, "wDownMetersPerSecond": 0 }, "scalars": { "science-value": 0 } },
+      "tolerances": { "bottomDepthMeters": 0.000001, "currentMetersPerSecond": 0.00000001, "scalarValue": 0.00000001, "hazardValue": 0.00000001 }
+    },
+    {
+      "probeId": "science-midwater-high-gold-star",
+      "eastMeters": 360,
+      "northMeters": 240,
+      "depthMeters": 75,
+      "timeSeconds": 0,
+      "expected": { "bottomDepthMeters": null, "wet": true, "terrainValue": 0, "hazardValue": 0, "current": { "uEastMetersPerSecond": 0, "vNorthMetersPerSecond": 0, "wDownMetersPerSecond": 0 }, "scalars": { "science-value": 0.9 } },
+      "tolerances": { "bottomDepthMeters": 0.000001, "currentMetersPerSecond": 0.00000001, "scalarValue": 0.00000001, "hazardValue": 0.00000001 }
+    },
+    {
+      "probeId": "science-deep-high-target",
+      "eastMeters": 480,
+      "northMeters": 360,
+      "depthMeters": 150,
+      "timeSeconds": 0,
+      "expected": { "bottomDepthMeters": null, "wet": true, "terrainValue": 0, "hazardValue": 0, "current": { "uEastMetersPerSecond": 0, "vNorthMetersPerSecond": 0, "wDownMetersPerSecond": 0 }, "scalars": { "science-value": 0.8 } },
+      "tolerances": { "bottomDepthMeters": 0.000001, "currentMetersPerSecond": 0.00000001, "scalarValue": 0.00000001, "hazardValue": 0.00000001 }
+    }
+  ],
   "benchmarkFixture": {
     "fixtureId": "small_science_orienteering",
     "purpose": "Bounded candidate set for exhaustive small-instance comparison against greedy and beam search.",

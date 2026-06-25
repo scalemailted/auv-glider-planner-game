@@ -35,7 +35,8 @@ export function methodsValidationPanelHtml(viewModel) {
       <section class="methods-validation-notebook" aria-label="Classical planner benchmark notebook">
         <div>
           <h2>Classical Planner Benchmark Notebook</h2>
-          <p>Download a reproducible notebook that visualizes ANCHOR environments, runs transparent classical planners, and returns candidate plans to the authoritative ANCHOR referee.</p>
+          <p>Notebook Available. Download a reproducible notebook that visualizes ANCHOR environments, runs transparent classical planners, and returns candidate plans to the authoritative ANCHOR referee.</p>
+          <p class="hud-muted">Colab Execution Verified: pending until a real Python/Colab acceptance report is returned and validated.</p>
         </div>
         <a href="tools/python/notebooks/anchor_classical_planner_benchmark.ipynb" download>Download Notebook</a>
       </section>

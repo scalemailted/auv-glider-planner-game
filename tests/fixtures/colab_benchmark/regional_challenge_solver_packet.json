@@ -49,5 +49,34 @@
     }
   },
   "expectedPlanFormat": "anchor.plan",
+  "parityProbes": [
+    {
+      "probeId": "regional-surface-nonzero-current",
+      "eastMeters": 0,
+      "northMeters": 0,
+      "depthMeters": 0,
+      "timeSeconds": 0,
+      "expected": { "bottomDepthMeters": null, "wet": true, "terrainValue": 0, "hazardValue": 0, "current": { "uEastMetersPerSecond": 0.05, "vNorthMetersPerSecond": 0.02, "wDownMetersPerSecond": 0 }, "scalars": { "science-value": 0 } },
+      "tolerances": { "bottomDepthMeters": 0.000001, "currentMetersPerSecond": 0.00000001, "scalarValue": 0.00000001, "hazardValue": 0.00000001 }
+    },
+    {
+      "probeId": "regional-shallow-land-mask",
+      "eastMeters": 750,
+      "northMeters": 250,
+      "depthMeters": 10,
+      "timeSeconds": 0,
+      "expected": { "bottomDepthMeters": null, "wet": false, "terrainValue": 1, "hazardValue": 0, "current": { "uEastMetersPerSecond": 0, "vNorthMetersPerSecond": 0, "wDownMetersPerSecond": 0 }, "scalars": { "science-value": 0 } },
+      "tolerances": { "bottomDepthMeters": 0.000001, "currentMetersPerSecond": 0.00000001, "scalarValue": 0.00000001, "hazardValue": 0.00000001 }
+    },
+    {
+      "probeId": "regional-deep-hazard-scalar",
+      "eastMeters": 1250,
+      "northMeters": 500,
+      "depthMeters": 150,
+      "timeSeconds": 0,
+      "expected": { "bottomDepthMeters": null, "wet": true, "terrainValue": 0, "hazardValue": 0.4, "current": { "uEastMetersPerSecond": 0.03, "vNorthMetersPerSecond": 0.01, "wDownMetersPerSecond": 0 }, "scalars": { "science-value": 0.2 } },
+      "tolerances": { "bottomDepthMeters": 0.000001, "currentMetersPerSecond": 0.00000001, "scalarValue": 0.00000001, "hazardValue": 0.00000001 }
+    }
+  ],
   "benchmarkFixture": { "fixtureId": "regional_challenge", "purpose": "Realistic-scale compact forecast-only challenge for heuristic scalability; exact oracle disabled.", "exactnessBoundary": "No global optimality claim for this fixture." }
 }

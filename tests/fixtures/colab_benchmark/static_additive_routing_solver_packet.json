@@ -115,6 +115,35 @@
     "defaultLayerIds": ["surface", "thermocline", "deep"],
     "diveProfileId": "sawtoothProfile"
   },
+  "parityProbes": [
+    {
+      "probeId": "static-surface-calm-low-00",
+      "eastMeters": 0,
+      "northMeters": 0,
+      "depthMeters": 0,
+      "timeSeconds": 0,
+      "expected": { "bottomDepthMeters": null, "wet": true, "terrainValue": 0, "hazardValue": 0, "current": { "uEastMetersPerSecond": 0, "vNorthMetersPerSecond": 0, "wDownMetersPerSecond": 0 }, "scalars": { "science-value": 0 } },
+      "tolerances": { "bottomDepthMeters": 0.000001, "currentMetersPerSecond": 0.00000001, "scalarValue": 0.00000001, "hazardValue": 0.00000001 }
+    },
+    {
+      "probeId": "static-shallow-calm-high-center",
+      "eastMeters": 200,
+      "northMeters": 200,
+      "depthMeters": 10,
+      "timeSeconds": 0,
+      "expected": { "bottomDepthMeters": null, "wet": true, "terrainValue": 0, "hazardValue": 0, "current": { "uEastMetersPerSecond": 0, "vNorthMetersPerSecond": 0, "wDownMetersPerSecond": 0 }, "scalars": { "science-value": 0.9 } },
+      "tolerances": { "bottomDepthMeters": 0.000001, "currentMetersPerSecond": 0.00000001, "scalarValue": 0.00000001, "hazardValue": 0.00000001 }
+    },
+    {
+      "probeId": "static-deep-calm-high-southeast",
+      "eastMeters": 300,
+      "northMeters": 300,
+      "depthMeters": 150,
+      "timeSeconds": 0,
+      "expected": { "bottomDepthMeters": null, "wet": true, "terrainValue": 0, "hazardValue": 0, "current": { "uEastMetersPerSecond": 0, "vNorthMetersPerSecond": 0, "wDownMetersPerSecond": 0 }, "scalars": { "science-value": 0.8 } },
+      "tolerances": { "bottomDepthMeters": 0.000001, "currentMetersPerSecond": 0.00000001, "scalarValue": 0.00000001, "hazardValue": 0.00000001 }
+    }
+  ],
   "benchmarkFixture": {
     "fixtureId": "static_additive_routing",
     "purpose": "Dijkstra and A* exact path-cost parity on a declared additive forecast-only graph.",

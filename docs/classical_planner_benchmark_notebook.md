@@ -1,6 +1,7 @@
 # Classical Planner Benchmark Notebook
 
 COLAB-BENCH-R1 adds a reproducible external notebook workflow for transparent classical planner comparison.
+COLAB-BENCH-R1.1 adds exported-data parity probes, acceptance-report generation, and a Node validator for real notebook outputs. Static audits, browser delivery, and Node interoperability are useful preflight checks, but they are not substitutes for executing the notebook in Python/Colab.
 
 Classical planners propose plans using a declared planning representation.
 ANCHOR validates, simulates, and scores those plans using the same canonical
@@ -46,6 +47,22 @@ The notebook supports three paths:
 - `static_url`: fetch a public fixture from a user-configured Pages/static base URL.
 
 No private local path is hardcoded.
+
+## Exported Data Integrity And Web-App Parity
+
+The notebook section titled `Exported Data Integrity and Web-App Parity` reconstructs only solver-visible public data and samples it numerically before planner execution. Visual agreement is an inspection aid. Canonical digest and numerical sample agreement are the authoritative parity evidence.
+
+The current compact solver-packet fixtures expose public terrain/wet-land masks, hazard grids, forecast current frames, forecast scalar/ROI frames, mission geometry, candidate nodes, deployment/start metadata, visibility/fairness metadata, and validation/scoring metadata. They do not expose hidden truth. They also do not expose calibrated bathymetry arrays or full depth-resolved 4D current/scalar cubes; depth metadata is present only where the fixture declares it. A richer benchmark bundle remains future work for full depth/time field parity.
+
+Each COLAB-BENCH-R1.1 fixture includes `parityProbes` with fixed x/y/depth/time sample expectations. The Python notebook validates those probes from the solver-visible packet, writes `tables/parity_probe_results.json`, `tables/parity_table.json`, and includes the result in `colab_acceptance_report.json`.
+
+After a real notebook run, validate the exported acceptance report from the repository root:
+
+```bash
+node tools/js/validate_colab_benchmark_acceptance.mjs anchor_benchmark_output/colab_acceptance_report.json
+```
+
+The report is accepted only when it records `status=PASS`, the expected validation baseline digest, forecast-only default fairness, official ANCHOR evaluation metadata, no hidden-truth leakage, successful parity probes, and stable artifact digests.
 
 ## Artifact Versions
 
@@ -158,6 +175,19 @@ anchor_benchmark_output/
 
 The reproducibility manifest records notebook version, repository commit when available, Python/Node versions, validation baseline digest, solver-packet/environment/mission digests, score profile metadata, planner seeds, planner parameters, benchmark-record digests, fairness classes, and generated artifact paths.
 
+COLAB-BENCH-R1.1 also exports:
+
+```text
+anchor_benchmark_output/
+  colab_acceptance_report.json
+  tables/
+    public_environment_summary.json
+    parity_probe_results.json
+    parity_table.json
+```
+
+`colab_acceptance_report.json` is the required handoff artifact for marking the Colab execution gate as verified. If Python/Colab has not executed the notebook, the correct project status is `BLOCKED_WAITING_FOR_COLAB_EXECUTION`.
+
 ## Colab Execution
 
 The notebook can run from checked-in fixtures without network access when the repository is present. In Colab, users can upload solver packets or configure a public static fixture URL. `google.colab.files.download` is used only behind guarded imports.
@@ -187,4 +217,3 @@ The R1 fixtures are synthetic and deterministic. They support reproducible educa
 The existing `tools/python/notebooks/anchor_external_solver_template.ipynb` remains the starter notebook: one readable greedy baseline and import loop.
 
 The new `tools/python/notebooks/anchor_classical_planner_benchmark.ipynb` is the comprehensive benchmark notebook: multiple algorithms, exact bounded cases, timing, official evaluation, visualization, benchmark records, and reproducibility artifacts.
-

@@ -75,6 +75,13 @@ try {
     visibilityStatus: roundtrip.report.visibilityValidation?.status ?? null,
     finalScore: roundtrip.report.summary?.finalScore ?? null,
     scoreProfileId: roundtrip.report.summary?.scoreProfileId ?? roundtrip.report.runtime?.scoreProfileId ?? args.scoreProfile ?? packet.scoreProfileId ?? null,
+    scoreProfileVersion: benchmarkRecord.artifacts.scoreProfileVersion ?? packet.scoreProfileVersion ?? null,
+    planDigest: benchmarkRecord.artifacts.planDigest ?? null,
+    simulationInputDigest: benchmarkRecord.artifacts.simulationInputDigest ?? null,
+    simulationResultDigest: benchmarkRecord.artifacts.simulationResultDigest ?? null,
+    scoreResultDigest: benchmarkRecord.artifacts.scoreResultDigest ?? null,
+    terminalReason: benchmarkRecord.outcome.terminalReason ?? null,
+    totalEvaluationTimeSeconds: benchmarkRecord.timing.totalEvaluationTimeSeconds ?? null,
     plannerId: benchmarkRecord.planner.plannerId,
     plannerOptimalityStatus: benchmarkRecord.planner.optimalityStatus,
     fairnessClass: benchmarkRecord.planner.fairnessClass,
@@ -232,4 +239,3 @@ This tool validates a solver packet and submitted anchor.plan through CODEC-R1
 and the existing ANCHOR headless roundtrip runtime, then writes bundle.json,
 roundtrip_report.json, benchmark_record.json, and benchmark_summary.json.`);
 }
-

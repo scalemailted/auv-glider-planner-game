@@ -1061,3 +1061,9 @@ Application readiness is now a production runtime contract, not a Playwright-onl
 `packages/codecs/` is now the canonical pure authority for versioned artifact encoding, decoding, validation, migration reports, safety limits, JSON/JSONL transport, artifact envelopes, bundle manifests, and deterministic transport digests. Scientific equations, mission simulation, official scoring, replay behavior, and file-picker UI remain owned by their existing packages and app adapters.
 
 See `docs/artifact_codec_and_schema_contract.md` and `packages/codecs/MODEL_CARD.md`.
+
+## COLAB-BENCH-R1.1 Colab Benchmark Gate
+
+The classical-planner benchmark notebook now includes exported-data parity probes and writes `anchor_benchmark_output/colab_acceptance_report.json` when executed. The report can be checked with `node tools/js/validate_colab_benchmark_acceptance.mjs anchor_benchmark_output/colab_acceptance_report.json`.
+
+Colab execution is not considered verified until a real Python/Colab run produces a passing acceptance report. Static audits, Pages delivery, and Node interoperability are preflight checks only.

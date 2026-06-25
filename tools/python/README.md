@@ -79,6 +79,23 @@ The starter notebook remains the minimal introduction: one readable greedy basel
 
 The benchmark notebook adds checked-in fixtures, Dijkstra/UCS, A*, Weighted A*, greedy value per predicted cost, beam search, time-expanded A*, a bounded exact small-instance oracle, timing summaries, matplotlib/pandas visualizations where available, `anchor.plan` export, Node authoritative evaluation, benchmark records, and reproducibility manifests.
 
+COLAB-BENCH-R1.1 adds a notebook section titled `Exported Data Integrity and Web-App Parity`. It reconstructs solver-visible public terrain/mask, hazard, forecast current, scalar/ROI, mission, candidate, fairness, and metadata fields from the exported packet, validates numerical parity probes, and writes:
+
+```text
+anchor_benchmark_output/colab_acceptance_report.json
+anchor_benchmark_output/tables/public_environment_summary.json
+anchor_benchmark_output/tables/parity_probe_results.json
+anchor_benchmark_output/tables/parity_table.json
+```
+
+After a real Colab/Python run, validate the acceptance report from the repository root:
+
+```bash
+node tools/js/validate_colab_benchmark_acceptance.mjs anchor_benchmark_output/colab_acceptance_report.json
+```
+
+If Python/Colab was not actually executed, the correct status is `BLOCKED_WAITING_FOR_COLAB_EXECUTION`. Static audits, Pages delivery, and Node checks are useful but do not replace notebook execution.
+
 The support package is:
 
 ```text

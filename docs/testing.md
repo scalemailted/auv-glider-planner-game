@@ -49,6 +49,24 @@ python -m tools.python.anchor_benchmark.cli --solver-packet tests/fixtures/colab
 
 Python tests are optional local tooling tests; normal browser usage does not require Python. The Node evaluator remains the authoritative validation/simulation/scoring bridge for notebook plans.
 
+## COLAB-BENCH-R1.1 Acceptance Gate
+
+COLAB-BENCH-R1.1 adds exported-data parity probes and a real-run acceptance report. Static audits, browser delivery, and Node interoperability are preflight evidence only; they do not verify Colab execution.
+
+The required notebook section is titled exactly:
+
+```text
+Exported Data Integrity and Web-App Parity
+```
+
+After running the notebook in Python/Colab, validate the exported acceptance report:
+
+```bash
+node tools/js/validate_colab_benchmark_acceptance.mjs anchor_benchmark_output/colab_acceptance_report.json
+```
+
+The validator requires forecast-only default fairness, official ANCHOR evaluation metadata, parity-probe success, stable digests, no hidden-truth leakage, and no machine-local absolute paths in the report. If Python or Colab execution is unavailable, record `BLOCKED_WAITING_FOR_COLAB_EXECUTION` rather than marking the benchmark complete.
+
 ## SCORE-PKG-R1 Scoring Package Checks
 
 Run these after changing `packages/scoring`, score forwarders, result/debrief score metadata, benchmark score adapters, or leaderboard score metadata:

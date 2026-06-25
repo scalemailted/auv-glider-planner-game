@@ -55,5 +55,34 @@
     }
   },
   "expectedPlanFormat": "anchor.plan",
+  "parityProbes": [
+    {
+      "probeId": "time-surface-eastward-current",
+      "eastMeters": 0,
+      "northMeters": 0,
+      "depthMeters": 0,
+      "timeSeconds": 0,
+      "expected": { "bottomDepthMeters": null, "wet": true, "terrainValue": 0, "hazardValue": 0, "current": { "uEastMetersPerSecond": 0.2, "vNorthMetersPerSecond": 0, "wDownMetersPerSecond": 0 }, "scalars": { "science-value": 0 } },
+      "tolerances": { "bottomDepthMeters": 0.000001, "currentMetersPerSecond": 0.00000001, "scalarValue": 0.00000001, "hazardValue": 0.00000001 }
+    },
+    {
+      "probeId": "time-shallow-westward-current",
+      "eastMeters": 200,
+      "northMeters": 200,
+      "depthMeters": 10,
+      "timeSeconds": 9,
+      "expected": { "bottomDepthMeters": null, "wet": true, "terrainValue": 0, "hazardValue": 0, "current": { "uEastMetersPerSecond": -0.2, "vNorthMetersPerSecond": 0, "wDownMetersPerSecond": 0 }, "scalars": { "science-value": 0.7 } },
+      "tolerances": { "bottomDepthMeters": 0.000001, "currentMetersPerSecond": 0.00000001, "scalarValue": 0.00000001, "hazardValue": 0.00000001 }
+    },
+    {
+      "probeId": "time-deep-westward-high-scalar",
+      "eastMeters": 300,
+      "northMeters": 300,
+      "depthMeters": 150,
+      "timeSeconds": 9,
+      "expected": { "bottomDepthMeters": null, "wet": true, "terrainValue": 0, "hazardValue": 0, "current": { "uEastMetersPerSecond": -0.2, "vNorthMetersPerSecond": 0, "wDownMetersPerSecond": 0 }, "scalars": { "science-value": 0.8 } },
+      "tolerances": { "bottomDepthMeters": 0.000001, "currentMetersPerSecond": 0.00000001, "scalarValue": 0.00000001, "hazardValue": 0.00000001 }
+    }
+  ],
   "benchmarkFixture": { "fixtureId": "time_varying_current", "purpose": "Compare static and time-expanded planning under visible temporal forecast currents.", "exactnessBoundary": "Time-expanded exactness applies only to declared time bins and forecast-visible edge estimates." }
 }

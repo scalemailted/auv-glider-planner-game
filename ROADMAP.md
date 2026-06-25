@@ -21,6 +21,7 @@ Package extraction phases should remain narrow extractions, not rewrites. Curren
 - `SCORE-PKG-R1`: extracts official mission scoring, `ScoreProfile` definitions, `ScoreInput`/`ScoreResult` contracts, deterministic score digests, public-safe summaries, and benchmark/result score identity into `packages/scoring` while preserving existing scoring formulas and raw simulator metrics.
 - `SCI-VALID-R2A`: establishes `packages/validation`, checked-in validation reports/manifests, codec schemas, and the public Methods & Validation route. It presents evidence and limitations without changing scientific equations or claiming operational validation.
 - `COLAB-BENCH-R1`: adds a reproducible external classical-planner benchmark notebook, compact solver-packet fixtures, benchmark records, and Node authoritative evaluation while preserving the boundary: Colab proposes; ANCHOR validates, simulates, and scores.
+- `COLAB-BENCH-R1.1`: adds exported-data parity probes, a Colab acceptance-report artifact, and a Node validator. The execution gate remains blocked until a real Python/Colab run emits a passing `colab_acceptance_report.json`.
 
 Package extraction gates: old `src/core/...` imports must continue through forwarding modules, artifact values and scoring must remain stable, and package audits must pass with no renderer/UI/browser dependencies.
 ## 1. Product Vision
@@ -37,6 +38,7 @@ Current foundation:
 - Node/OceanBox-JS artifacts for deterministic headless simulation, solver-packet roundtrip, and classroom analysis.
 - Colab/Python wrapper and artifact-analysis workflows.
 - COLAB-BENCH-R1 classical-planner benchmark notebook for transparent external planning, visualization, timing, exact bounded small-instance checks, and official ANCHOR evaluation.
+- COLAB-BENCH-R1.1 parity probes and acceptance-report validation; real Colab execution remains the required evidence before treating the notebook as verified.
 
 Browser ANCHOR is the visual game and referee. Node/OceanBox-JS is the canonical headless runtime. Colab/Python workflows analyze artifacts or call Node; they do not reimplement the simulator.
 
