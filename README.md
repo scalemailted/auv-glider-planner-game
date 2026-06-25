@@ -149,6 +149,7 @@ Quick loop:
 - [Plan format](docs/plan_format.md)
 - [Greedy Planner](docs/greedy_planner.md)
 - [Testing](docs/testing.md)
+- [Scalar Process Package](docs/scalar_process_package.md)
 - [Leaderboard and best paths](docs/leaderboard.md)
 - [Development versions and project state](docs/development_versions.md)
 - [JavaScript headless solver tools](tools/js/README.md)
@@ -1031,6 +1032,10 @@ The result is a software and numerical verification baseline, not an oceanograph
 ## FLOW-PKG-R1 Current Package Boundary
 
 FLOW-PKG-R1 moved canonical 4D current contracts, package artifacts, source metadata, temporal-boundary logic, prepared sampling, manufactured verification fixtures, and pure diagnostics into `packages/currents`. FLOW-PKG-R2 then moved bathymetry-conditioned production current generation and vertical-profile contracts into `packages/currents/src/generation/` while preserving compatibility forwarders. Planning display units still pass through `PlanningTimelineTimeBridge` before package sampling; the package accepts canonical seconds only. Synthetic currents remain benchmark-oriented and are not calibrated ocean forecasts. See `docs/current_package_architecture.md`, `docs/current_manifest_and_artifact.md`, `docs/depth_structured_current_generation.md`, and `packages/currents/MODEL_CARD.md`.
+
+## PROCESS-PKG-R1 Scalar Process Package Boundary
+
+PROCESS-PKG-R1 moves canonical scalar-field contracts, scalar source metadata, continuous scalar sampling, water-column scalar helpers, depth-layer priority collapse diagnostics, manufactured scalar fixtures, and pure diagnostics into `packages/scalar-processes`. Existing `src/core/science` imports continue through compatibility forwarders. Process Lab and coupled teaching engines remain outside the package. Synthetic scalar fields remain educational/regression fixtures and are not calibrated ocean or biogeochemical forecasts. See `docs/scalar_process_package.md`, `docs/scalar_process_package_audit.md`, and `packages/scalar-processes/MODEL_CARD.md`.
 
 ## FLOW-PKG-R1.1 Boot Readiness
 

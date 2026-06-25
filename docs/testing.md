@@ -18,6 +18,23 @@ npm.cmd run smoke:pages
 
 See `docs/threejs_static_runtime.md` for the import-map and vendored-runtime contract.
 
+
+## PROCESS-PKG-R1 Scalar Package Checks
+
+Run these after changing `packages/scalar-processes`, scalar samplers, water-column scalar helpers, or scalar package forwarders:
+
+```bash
+node tools/js/audit_scalar_package_dependencies.mjs
+node tools/js/audit_scalar_package_browser_safety.mjs
+node tools/js/audit_scalar_package_worker_safety.mjs
+node tools/js/smoke_scalar_package_artifact.mjs
+node tools/js/smoke_scalar_package_sampler.mjs
+node tools/js/smoke_scalar_package_diagnostics.mjs
+node tools/js/smoke_scalar_package_forwarders.mjs
+node tools/js/audit_scalar_package_parity.mjs
+```
+
+`npm.cmd run audit:packages` and `npm.cmd run test:packages` include these scalar package gates. The package owns scalar artifacts, source metadata, continuous sampling, water-column scalar helpers, and pure diagnostics. It does not own Process Lab engines, coupled teaching engines, rendering, vehicle physics, observation noise, or score formulas.
 ## WORLD-R1 Multiscale Domain Checks
 
 WORLD-R1 validation keeps physical mission scale, planning lattice, source-field resolution, render LOD, and compact exports decoupled without changing runtime ownership:

@@ -15,7 +15,7 @@ Package extraction phases should remain narrow extractions, not rewrites. Curren
 
 - `BATHY-PKG-R1`: extract bathymetry contracts and pure field helpers behind forwarding modules, with digest and fixture parity.
 - `CURRENT-PKG-R1`: separate current-field generation and sampling from debug/runtime hooks before package movement.
-- `SCALAR-PKG-R1`: separate volumetric scalar science fields from educational demo/lab presentation code.
+- `PROCESS-PKG-R1`: extract scalar field artifacts, source metadata, continuous samplers, water-column scalar helpers, and diagnostics while keeping educational demo/lab process engines outside the package.
 - `ENV-PKG-R1`: compose bathymetry, currents, and scalar artifacts through package manifests while preserving existing browser and headless loaders.
 - `SIM-PKG-R1`: split portable mission execution from browser visibility/debug adapters before moving simulator code.
 
@@ -473,7 +473,7 @@ Do not treat FLOW-R2B as ready unless normal production vectors differ by depth,
 - BATHY-PKG-R1: Bathymetry contracts, artifact, sampler, and pure helper extraction.
 - BATHY-PKG-R2: Synthetic bathymetry generator extraction and component composition.
 - FLOW-PKG-R1: 4D current generator and sampler extraction.
-- PROCESS-PKG-R1: Temporal scalar/science-process extraction.
+- PROCESS-PKG-R1: Canonical scalar-field package extraction is implemented; next package work should compose bathymetry, currents, and scalar artifacts through environment manifests.
 - ENV-PKG-R1: Canonical environment composition.
 - SIM-PKG-R1: Mission simulator environment-consumer boundary.
 - WEBGPU-GEN-R1: Optional WebGPU generation backend.
@@ -485,6 +485,6 @@ BATHY-PKG-R1 is an extraction phase, not a scientific retuning phase. The packag
 - FLOW-PKG-R1: 4D current contracts, artifact, sampler, metadata, and diagnostics extraction.
 - FLOW-PKG-R1.1: Production boot readiness and grouped E2E closure.
 - FLOW-PKG-R2: Production current generator and component composition extraction, preserving V2 compatibility while adding the V3 depth-structured mixed-regional backend and explicit barotropic controls.
-- PROCESS-PKG-R1: Temporal scalar/science-process extraction.
+- PROCESS-PKG-R1: Canonical scalar-field package extraction is implemented; next package work should compose bathymetry, currents, and scalar artifacts through environment manifests.
 - ENV-PKG-R1: Canonical environment composition.
 - SIM-PKG-R1: Mission simulator environment-consumer boundary.

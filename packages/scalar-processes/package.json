@@ -1,10 +1,10 @@
 {
   "name": "@anchor/scalar-processes",
-  "version": "0.0.0-arch-r1",
-  "private": true,
+  "version": "0.1.0-process-pkg-r1",
   "type": "module",
-  "description": "Scalar process and forecast field package boundary for ANCHOR.",
   "exports": {
-    ".": "./src/index.js"
-  }
+    ".": "./src/index.js",
+    "./src/index.js": "./src/index.js"
+  },
+  "private": true
 }

@@ -1,7 +1,7 @@
-﻿# @anchor/scalar-processes
+# @anchor/scalar-processes
 
-Owns the future scalar process, forecast, belief, uncertainty, priority, and volumetric science-field package boundary.
+Canonical browser-safe and Node-safe scalar-process package for ANCHOR.
 
-ARCH-R1 is a skeleton only. Existing process and field algorithms remain under `src/core/` until targeted extraction phases.
+This package owns 4D scalar field contracts, scalar source metadata, pure scalar sampling, water-column scalar helpers, and diagnostics. It is synthetic by default and must not claim calibrated ocean or biogeochemical forecast skill unless an external dataset adapter explicitly supplies provenance in a later phase.
 
-Allowed dependencies: `@anchor/contracts`, `@anchor/currents`.
+It does not own rendering, vehicle physics, observation noise, official score formulas, bathymetry generation, current generation, or teaching-lab process engines.

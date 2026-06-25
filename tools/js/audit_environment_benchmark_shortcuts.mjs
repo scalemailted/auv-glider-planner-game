@@ -17,15 +17,15 @@ if (fixture.currents.maxTemporalVectorDifference <= 0.005) warnings.push('Curren
 const suitability = {
   packages: {
     bathymetry: 'YES for deterministic synthetic terrain regression and mission-feasibility benchmarking; NO for nautical/operational bathymetry validation without external datasets.',
-    currents: 'YES for deterministic current-aware route and sampler regression once packaged; NO for calibrated ocean-forecast skill claims.',
-    scalarProcesses: 'YES for manufactured scalar process and depth-sampling regression once packaged; NO for ecological/biogeochemical forecast validity.',
+    currents: 'YES for deterministic current-aware route and sampler regression through packages/currents; NO for calibrated ocean-forecast skill claims.',
+    scalarProcesses: 'YES for manufactured scalar process and depth-sampling regression through packages/scalar-processes; NO for ecological/biogeochemical forecast validity.',
     environment: 'YES as a synthetic environment composition benchmark after package extraction; external-oracle validation remains missing.',
     missionSimulator: 'YES for software route-execution/referee regression; physical vehicle fidelity and calibrated ocean validation remain out of scope.'
   },
   decisions: {
     BATHY_PKG_R2: 'GO for packaging and richer manufactured tests; defer any claim of external validation.',
     FLOW_PKG_R1: 'GO for package extraction after this baseline; require manufactured current tests and source-claim guards as package gates.',
-    SCALAR_PKG_R1: 'GO for package extraction after FLOW-PKG-R1; require conservation/convergence tests and explicit synthetic claim boundaries.'
+    PROCESS_PKG_R1: 'IMPLEMENTED for scalar artifact, sampler, diagnostics, source-claim, and manufactured regression boundaries; environment composition remains future work.'
   }
 };
 

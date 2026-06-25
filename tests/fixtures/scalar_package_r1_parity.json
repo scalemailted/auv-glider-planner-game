@@ -1,0 +1,2556 @@
+{
+  "type": "anchor.scalar-processes.package-r1-parity-baseline",
+  "version": "process-pkg-r1",
+  "packageVersion": "anchor-scalar-processes-process-pkg-r1",
+  "generatedAt": "deterministic-static-record",
+  "cases": [
+    {
+      "manifestConfigId": "linearFixture",
+      "id": "scalar-package-r1-linear-fixture",
+      "artifactDigest": "fnv1a32:935dfac0",
+      "scalarArrayDigest": "fnv1a32:f97f5fad",
+      "sourceMetadataDigest": "fnv1a32:aa31ce99",
+      "xAxisCount": 2,
+      "yAxisCount": 2,
+      "depthAxisCount": 2,
+      "timeAxisCount": 2,
+      "coordinateFrame": "localGridXYDepthTime",
+      "scalarMinimum": 1,
+      "scalarMean": 4.2,
+      "scalarMaximum": 7.4,
+      "depthMeanRange": 3,
+      "timeMeanRange": 0.4,
+      "materiallyDepthVarying": true,
+      "temporallyVarying": true,
+      "validationStatus": "PASS",
+      "samples": [
+        {
+          "label": "origin-surface",
+          "x": 0,
+          "y": 0,
+          "depthMeters": 0,
+          "timeSeconds": 0,
+          "value": 1,
+          "valid": true,
+          "exactNode": true,
+          "weights": {
+            "horizontal": {
+              "x0": 0,
+              "x1": 1,
+              "y0": 0,
+              "y1": 1,
+              "tx": 0,
+              "ty": 0
+            },
+            "depth": {
+              "z0": 0,
+              "z1": 0,
+              "tz": 0,
+              "depth0": 0,
+              "depth1": 0
+            },
+            "time": {
+              "t0": 0,
+              "t1": 0,
+              "tt": 0,
+              "time0": 0,
+              "time1": 0
+            },
+            "profile": "quadrilinearTimeVolumeV1"
+          }
+        },
+        {
+          "label": "origin-surface",
+          "x": 0,
+          "y": 0,
+          "depthMeters": 0,
+          "timeSeconds": 50,
+          "value": 1.2,
+          "valid": true,
+          "exactNode": false,
+          "weights": {
+            "horizontal": {
+              "x0": 0,
+              "x1": 1,
+              "y0": 0,
+              "y1": 1,
+              "tx": 0,
+              "ty": 0
+            },
+            "depth": {
+              "z0": 0,
+              "z1": 0,
+              "tz": 0,
+              "depth0": 0,
+              "depth1": 0
+            },
+            "time": {
+              "t0": 0,
+              "t1": 1,
+              "tt": 0.5,
+              "time0": 0,
+              "time1": 100
+            },
+            "profile": "quadrilinearTimeVolumeV1"
+          }
+        },
+        {
+          "label": "origin-surface",
+          "x": 0,
+          "y": 0,
+          "depthMeters": 0,
+          "timeSeconds": 100,
+          "value": 1.4,
+          "valid": true,
+          "exactNode": true,
+          "weights": {
+            "horizontal": {
+              "x0": 0,
+              "x1": 1,
+              "y0": 0,
+              "y1": 1,
+              "tx": 0,
+              "ty": 0
+            },
+            "depth": {
+              "z0": 0,
+              "z1": 0,
+              "tz": 0,
+              "depth0": 0,
+              "depth1": 0
+            },
+            "time": {
+              "t0": 1,
+              "t1": 1,
+              "tt": 0,
+              "time0": 100,
+              "time1": 100
+            },
+            "profile": "quadrilinearTimeVolumeV1"
+          }
+        },
+        {
+          "label": "middle-middepth",
+          "x": 0.5,
+          "y": 0.5,
+          "depthMeters": 0,
+          "timeSeconds": 0,
+          "value": 2.5,
+          "valid": true,
+          "exactNode": false,
+          "weights": {
+            "horizontal": {
+              "x0": 0,
+              "x1": 1,
+              "y0": 0,
+              "y1": 1,
+              "tx": 0.5,
+              "ty": 0.5
+            },
+            "depth": {
+              "z0": 0,
+              "z1": 0,
+              "tz": 0,
+              "depth0": 0,
+              "depth1": 0
+            },
+            "time": {
+              "t0": 0,
+              "t1": 0,
+              "tt": 0,
+              "time0": 0,
+              "time1": 0
+            },
+            "profile": "quadrilinearTimeVolumeV1"
+          }
+        },
+        {
+          "label": "middle-middepth",
+          "x": 0.5,
+          "y": 0.5,
+          "depthMeters": 0,
+          "timeSeconds": 50,
+          "value": 2.7,
+          "valid": true,
+          "exactNode": false,
+          "weights": {
+            "horizontal": {
+              "x0": 0,
+              "x1": 1,
+              "y0": 0,
+              "y1": 1,
+              "tx": 0.5,
+              "ty": 0.5
+            },
+            "depth": {
+              "z0": 0,
+              "z1": 0,
+              "tz": 0,
+              "depth0": 0,
+              "depth1": 0
+            },
+            "time": {
+              "t0": 0,
+              "t1": 1,
+              "tt": 0.5,
+              "time0": 0,
+              "time1": 100
+            },
+            "profile": "quadrilinearTimeVolumeV1"
+          }
+        },
+        {
+          "label": "middle-middepth",
+          "x": 0.5,
+          "y": 0.5,
+          "depthMeters": 0,
+          "timeSeconds": 100,
+          "value": 2.9,
+          "valid": true,
+          "exactNode": false,
+          "weights": {
+            "horizontal": {
+              "x0": 0,
+              "x1": 1,
+              "y0": 0,
+              "y1": 1,
+              "tx": 0.5,
+              "ty": 0.5
+            },
+            "depth": {
+              "z0": 0,
+              "z1": 0,
+              "tz": 0,
+              "depth0": 0,
+              "depth1": 0
+            },
+            "time": {
+              "t0": 1,
+              "t1": 1,
+              "tt": 0,
+              "time0": 100,
+              "time1": 100
+            },
+            "profile": "quadrilinearTimeVolumeV1"
+          }
+        },
+        {
+          "label": "max-deep",
+          "x": 1,
+          "y": 1,
+          "depthMeters": 100,
+          "timeSeconds": 0,
+          "value": 7,
+          "valid": true,
+          "exactNode": true,
+          "weights": {
+            "horizontal": {
+              "x0": 1,
+              "x1": 1,
+              "y0": 1,
+              "y1": 1,
+              "tx": 0,
+              "ty": 0
+            },
+            "depth": {
+              "z0": 1,
+              "z1": 1,
+              "tz": 0,
+              "depth0": 100,
+              "depth1": 100
+            },
+            "time": {
+              "t0": 0,
+              "t1": 0,
+              "tt": 0,
+              "time0": 0,
+              "time1": 0
+            },
+            "profile": "quadrilinearTimeVolumeV1"
+          }
+        },
+        {
+          "label": "max-deep",
+          "x": 1,
+          "y": 1,
+          "depthMeters": 100,
+          "timeSeconds": 50,
+          "value": 7.2,
+          "valid": true,
+          "exactNode": false,
+          "weights": {
+            "horizontal": {
+              "x0": 1,
+              "x1": 1,
+              "y0": 1,
+              "y1": 1,
+              "tx": 0,
+              "ty": 0
+            },
+            "depth": {
+              "z0": 1,
+              "z1": 1,
+              "tz": 0,
+              "depth0": 100,
+              "depth1": 100
+            },
+            "time": {
+              "t0": 0,
+              "t1": 1,
+              "tt": 0.5,
+              "time0": 0,
+              "time1": 100
+            },
+            "profile": "quadrilinearTimeVolumeV1"
+          }
+        },
+        {
+          "label": "max-deep",
+          "x": 1,
+          "y": 1,
+          "depthMeters": 100,
+          "timeSeconds": 100,
+          "value": 7.4,
+          "valid": true,
+          "exactNode": true,
+          "weights": {
+            "horizontal": {
+              "x0": 1,
+              "x1": 1,
+              "y0": 1,
+              "y1": 1,
+              "tx": 0,
+              "ty": 0
+            },
+            "depth": {
+              "z0": 1,
+              "z1": 1,
+              "tz": 0,
+              "depth0": 100,
+              "depth1": 100
+            },
+            "time": {
+              "t0": 1,
+              "t1": 1,
+              "tt": 0,
+              "time0": 100,
+              "time1": 100
+            },
+            "profile": "quadrilinearTimeVolumeV1"
+          }
+        }
+      ]
+    },
+    {
+      "manifestConfigId": "linearDepthTime",
+      "id": "manufactured-linearDepthTime-8x6",
+      "artifactDigest": "fnv1a32:769f68dd",
+      "scalarArrayDigest": "fnv1a32:7ad18b65",
+      "sourceMetadataDigest": "fnv1a32:9a25a3ec",
+      "xAxisCount": 8,
+      "yAxisCount": 6,
+      "depthAxisCount": 5,
+      "timeAxisCount": 4,
+      "coordinateFrame": "localGridXYDepthTime",
+      "scalarMinimum": 1.2,
+      "scalarMean": 2.062,
+      "scalarMaximum": 3.05,
+      "depthMeanRange": 0.45,
+      "timeMeanRange": 0.36,
+      "materiallyDepthVarying": true,
+      "temporallyVarying": true,
+      "validationStatus": "PASS",
+      "samples": [
+        {
+          "label": "origin-surface",
+          "x": 0,
+          "y": 0,
+          "depthMeters": 0,
+          "timeSeconds": 0,
+          "value": 1.2,
+          "valid": true,
+          "exactNode": true,
+          "weights": {
+            "horizontal": {
+              "x0": 0,
+              "x1": 1,
+              "y0": 0,
+              "y1": 1,
+              "tx": 0,
+              "ty": 0
+            },
+            "depth": {
+              "z0": 0,
+              "z1": 0,
+              "tz": 0,
+              "depth0": 0,
+              "depth1": 0
+            },
+            "time": {
+              "t0": 0,
+              "t1": 0,
+              "tt": 0,
+              "time0": 0,
+              "time1": 0
+            },
+            "profile": "quadrilinearTimeVolumeV1"
+          }
+        },
+        {
+          "label": "origin-surface",
+          "x": 0,
+          "y": 0,
+          "depthMeters": 0,
+          "timeSeconds": 300,
+          "value": 1.32,
+          "valid": true,
+          "exactNode": false,
+          "weights": {
+            "horizontal": {
+              "x0": 0,
+              "x1": 1,
+              "y0": 0,
+              "y1": 1,
+              "tx": 0,
+              "ty": 0
+            },
+            "depth": {
+              "z0": 0,
+              "z1": 0,
+              "tz": 0,
+              "depth0": 0,
+              "depth1": 0
+            },
+            "time": {
+              "t0": 0,
+              "t1": 1,
+              "tt": 1,
+              "time0": 0,
+              "time1": 300
+            },
+            "profile": "quadrilinearTimeVolumeV1"
+          }
+        },
+        {
+          "label": "origin-surface",
+          "x": 0,
+          "y": 0,
+          "depthMeters": 0,
+          "timeSeconds": 600,
+          "value": 1.44,
+          "valid": true,
+          "exactNode": false,
+          "weights": {
+            "horizontal": {
+              "x0": 0,
+              "x1": 1,
+              "y0": 0,
+              "y1": 1,
+              "tx": 0,
+              "ty": 0
+            },
+            "depth": {
+              "z0": 0,
+              "z1": 0,
+              "tz": 0,
+              "depth0": 0,
+              "depth1": 0
+            },
+            "time": {
+              "t0": 1,
+              "t1": 2,
+              "tt": 1,
+              "time0": 300,
+              "time1": 600
+            },
+            "profile": "quadrilinearTimeVolumeV1"
+          }
+        },
+        {
+          "label": "origin-surface",
+          "x": 0,
+          "y": 0,
+          "depthMeters": 0,
+          "timeSeconds": 900,
+          "value": 1.56,
+          "valid": true,
+          "exactNode": true,
+          "weights": {
+            "horizontal": {
+              "x0": 0,
+              "x1": 1,
+              "y0": 0,
+              "y1": 1,
+              "tx": 0,
+              "ty": 0
+            },
+            "depth": {
+              "z0": 0,
+              "z1": 0,
+              "tz": 0,
+              "depth0": 0,
+              "depth1": 0
+            },
+            "time": {
+              "t0": 3,
+              "t1": 3,
+              "tt": 0,
+              "time0": 900,
+              "time1": 900
+            },
+            "profile": "quadrilinearTimeVolumeV1"
+          }
+        },
+        {
+          "label": "middle-middepth",
+          "x": 3.5,
+          "y": 2.5,
+          "depthMeters": 35,
+          "timeSeconds": 0,
+          "value": 1.825,
+          "valid": true,
+          "exactNode": false,
+          "weights": {
+            "horizontal": {
+              "x0": 3,
+              "x1": 4,
+              "y0": 2,
+              "y1": 3,
+              "tx": 0.5,
+              "ty": 0.5
+            },
+            "depth": {
+              "z0": 1,
+              "z1": 2,
+              "tz": 1,
+              "depth0": 10,
+              "depth1": 35
+            },
+            "time": {
+              "t0": 0,
+              "t1": 0,
+              "tt": 0,
+              "time0": 0,
+              "time1": 0
+            },
+            "profile": "quadrilinearTimeVolumeV1"
+          }
+        },
+        {
+          "label": "middle-middepth",
+          "x": 3.5,
+          "y": 2.5,
+          "depthMeters": 35,
+          "timeSeconds": 300,
+          "value": 1.945,
+          "valid": true,
+          "exactNode": false,
+          "weights": {
+            "horizontal": {
+              "x0": 3,
+              "x1": 4,
+              "y0": 2,
+              "y1": 3,
+              "tx": 0.5,
+              "ty": 0.5
+            },
+            "depth": {
+              "z0": 1,
+              "z1": 2,
+              "tz": 1,
+              "depth0": 10,
+              "depth1": 35
+            },
+            "time": {
+              "t0": 0,
+              "t1": 1,
+              "tt": 1,
+              "time0": 0,
+              "time1": 300
+            },
+            "profile": "quadrilinearTimeVolumeV1"
+          }
+        },
+        {
+          "label": "middle-middepth",
+          "x": 3.5,
+          "y": 2.5,
+          "depthMeters": 35,
+          "timeSeconds": 600,
+          "value": 2.065,
+          "valid": true,
+          "exactNode": false,
+          "weights": {
+            "horizontal": {
+              "x0": 3,
+              "x1": 4,
+              "y0": 2,
+              "y1": 3,
+              "tx": 0.5,
+              "ty": 0.5
+            },
+            "depth": {
+              "z0": 1,
+              "z1": 2,
+              "tz": 1,
+              "depth0": 10,
+              "depth1": 35
+            },
+            "time": {
+              "t0": 1,
+              "t1": 2,
+              "tt": 1,
+              "time0": 300,
+              "time1": 600
+            },
+            "profile": "quadrilinearTimeVolumeV1"
+          }
+        },
+        {
+          "label": "middle-middepth",
+          "x": 3.5,
+          "y": 2.5,
+          "depthMeters": 35,
+          "timeSeconds": 900,
+          "value": 2.185,
+          "valid": true,
+          "exactNode": false,
+          "weights": {
+            "horizontal": {
+              "x0": 3,
+              "x1": 4,
+              "y0": 2,
+              "y1": 3,
+              "tx": 0.5,
+              "ty": 0.5
+            },
+            "depth": {
+              "z0": 1,
+              "z1": 2,
+              "tz": 1,
+              "depth0": 10,
+              "depth1": 35
+            },
+            "time": {
+              "t0": 3,
+              "t1": 3,
+              "tt": 0,
+              "time0": 900,
+              "time1": 900
+            },
+            "profile": "quadrilinearTimeVolumeV1"
+          }
+        },
+        {
+          "label": "max-deep",
+          "x": 7,
+          "y": 5,
+          "depthMeters": 150,
+          "timeSeconds": 0,
+          "value": 2.69,
+          "valid": true,
+          "exactNode": true,
+          "weights": {
+            "horizontal": {
+              "x0": 7,
+              "x1": 7,
+              "y0": 5,
+              "y1": 5,
+              "tx": 0,
+              "ty": 0
+            },
+            "depth": {
+              "z0": 4,
+              "z1": 4,
+              "tz": 0,
+              "depth0": 150,
+              "depth1": 150
+            },
+            "time": {
+              "t0": 0,
+              "t1": 0,
+              "tt": 0,
+              "time0": 0,
+              "time1": 0
+            },
+            "profile": "quadrilinearTimeVolumeV1"
+          }
+        },
+        {
+          "label": "max-deep",
+          "x": 7,
+          "y": 5,
+          "depthMeters": 150,
+          "timeSeconds": 300,
+          "value": 2.81,
+          "valid": true,
+          "exactNode": false,
+          "weights": {
+            "horizontal": {
+              "x0": 7,
+              "x1": 7,
+              "y0": 5,
+              "y1": 5,
+              "tx": 0,
+              "ty": 0
+            },
+            "depth": {
+              "z0": 4,
+              "z1": 4,
+              "tz": 0,
+              "depth0": 150,
+              "depth1": 150
+            },
+            "time": {
+              "t0": 0,
+              "t1": 1,
+              "tt": 1,
+              "time0": 0,
+              "time1": 300
+            },
+            "profile": "quadrilinearTimeVolumeV1"
+          }
+        },
+        {
+          "label": "max-deep",
+          "x": 7,
+          "y": 5,
+          "depthMeters": 150,
+          "timeSeconds": 600,
+          "value": 2.93,
+          "valid": true,
+          "exactNode": false,
+          "weights": {
+            "horizontal": {
+              "x0": 7,
+              "x1": 7,
+              "y0": 5,
+              "y1": 5,
+              "tx": 0,
+              "ty": 0
+            },
+            "depth": {
+              "z0": 4,
+              "z1": 4,
+              "tz": 0,
+              "depth0": 150,
+              "depth1": 150
+            },
+            "time": {
+              "t0": 1,
+              "t1": 2,
+              "tt": 1,
+              "time0": 300,
+              "time1": 600
+            },
+            "profile": "quadrilinearTimeVolumeV1"
+          }
+        },
+        {
+          "label": "max-deep",
+          "x": 7,
+          "y": 5,
+          "depthMeters": 150,
+          "timeSeconds": 900,
+          "value": 3.05,
+          "valid": true,
+          "exactNode": true,
+          "weights": {
+            "horizontal": {
+              "x0": 7,
+              "x1": 7,
+              "y0": 5,
+              "y1": 5,
+              "tx": 0,
+              "ty": 0
+            },
+            "depth": {
+              "z0": 4,
+              "z1": 4,
+              "tz": 0,
+              "depth0": 150,
+              "depth1": 150
+            },
+            "time": {
+              "t0": 3,
+              "t1": 3,
+              "tt": 0,
+              "time0": 900,
+              "time1": 900
+            },
+            "profile": "quadrilinearTimeVolumeV1"
+          }
+        }
+      ]
+    },
+    {
+      "manifestConfigId": "uniformControl",
+      "id": "manufactured-uniformControl-8x6",
+      "artifactDigest": "fnv1a32:b0938dd9",
+      "scalarArrayDigest": "fnv1a32:9bfd7f5d",
+      "sourceMetadataDigest": "fnv1a32:973737f0",
+      "xAxisCount": 8,
+      "yAxisCount": 6,
+      "depthAxisCount": 5,
+      "timeAxisCount": 4,
+      "coordinateFrame": "localGridXYDepthTime",
+      "scalarMinimum": 0.42,
+      "scalarMean": 0.42,
+      "scalarMaximum": 0.42,
+      "depthMeanRange": 0,
+      "timeMeanRange": 0,
+      "materiallyDepthVarying": false,
+      "temporallyVarying": false,
+      "validationStatus": "PASS",
+      "samples": [
+        {
+          "label": "origin-surface",
+          "x": 0,
+          "y": 0,
+          "depthMeters": 0,
+          "timeSeconds": 0,
+          "value": 0.42,
+          "valid": true,
+          "exactNode": true,
+          "weights": {
+            "horizontal": {
+              "x0": 0,
+              "x1": 1,
+              "y0": 0,
+              "y1": 1,
+              "tx": 0,
+              "ty": 0
+            },
+            "depth": {
+              "z0": 0,
+              "z1": 0,
+              "tz": 0,
+              "depth0": 0,
+              "depth1": 0
+            },
+            "time": {
+              "t0": 0,
+              "t1": 0,
+              "tt": 0,
+              "time0": 0,
+              "time1": 0
+            },
+            "profile": "quadrilinearTimeVolumeV1"
+          }
+        },
+        {
+          "label": "origin-surface",
+          "x": 0,
+          "y": 0,
+          "depthMeters": 0,
+          "timeSeconds": 300,
+          "value": 0.42,
+          "valid": true,
+          "exactNode": false,
+          "weights": {
+            "horizontal": {
+              "x0": 0,
+              "x1": 1,
+              "y0": 0,
+              "y1": 1,
+              "tx": 0,
+              "ty": 0
+            },
+            "depth": {
+              "z0": 0,
+              "z1": 0,
+              "tz": 0,
+              "depth0": 0,
+              "depth1": 0
+            },
+            "time": {
+              "t0": 0,
+              "t1": 1,
+              "tt": 1,
+              "time0": 0,
+              "time1": 300
+            },
+            "profile": "quadrilinearTimeVolumeV1"
+          }
+        },
+        {
+          "label": "origin-surface",
+          "x": 0,
+          "y": 0,
+          "depthMeters": 0,
+          "timeSeconds": 600,
+          "value": 0.42,
+          "valid": true,
+          "exactNode": false,
+          "weights": {
+            "horizontal": {
+              "x0": 0,
+              "x1": 1,
+              "y0": 0,
+              "y1": 1,
+              "tx": 0,
+              "ty": 0
+            },
+            "depth": {
+              "z0": 0,
+              "z1": 0,
+              "tz": 0,
+              "depth0": 0,
+              "depth1": 0
+            },
+            "time": {
+              "t0": 1,
+              "t1": 2,
+              "tt": 1,
+              "time0": 300,
+              "time1": 600
+            },
+            "profile": "quadrilinearTimeVolumeV1"
+          }
+        },
+        {
+          "label": "origin-surface",
+          "x": 0,
+          "y": 0,
+          "depthMeters": 0,
+          "timeSeconds": 900,
+          "value": 0.42,
+          "valid": true,
+          "exactNode": true,
+          "weights": {
+            "horizontal": {
+              "x0": 0,
+              "x1": 1,
+              "y0": 0,
+              "y1": 1,
+              "tx": 0,
+              "ty": 0
+            },
+            "depth": {
+              "z0": 0,
+              "z1": 0,
+              "tz": 0,
+              "depth0": 0,
+              "depth1": 0
+            },
+            "time": {
+              "t0": 3,
+              "t1": 3,
+              "tt": 0,
+              "time0": 900,
+              "time1": 900
+            },
+            "profile": "quadrilinearTimeVolumeV1"
+          }
+        },
+        {
+          "label": "middle-middepth",
+          "x": 3.5,
+          "y": 2.5,
+          "depthMeters": 35,
+          "timeSeconds": 0,
+          "value": 0.42,
+          "valid": true,
+          "exactNode": false,
+          "weights": {
+            "horizontal": {
+              "x0": 3,
+              "x1": 4,
+              "y0": 2,
+              "y1": 3,
+              "tx": 0.5,
+              "ty": 0.5
+            },
+            "depth": {
+              "z0": 1,
+              "z1": 2,
+              "tz": 1,
+              "depth0": 10,
+              "depth1": 35
+            },
+            "time": {
+              "t0": 0,
+              "t1": 0,
+              "tt": 0,
+              "time0": 0,
+              "time1": 0
+            },
+            "profile": "quadrilinearTimeVolumeV1"
+          }
+        },
+        {
+          "label": "middle-middepth",
+          "x": 3.5,
+          "y": 2.5,
+          "depthMeters": 35,
+          "timeSeconds": 300,
+          "value": 0.42,
+          "valid": true,
+          "exactNode": false,
+          "weights": {
+            "horizontal": {
+              "x0": 3,
+              "x1": 4,
+              "y0": 2,
+              "y1": 3,
+              "tx": 0.5,
+              "ty": 0.5
+            },
+            "depth": {
+              "z0": 1,
+              "z1": 2,
+              "tz": 1,
+              "depth0": 10,
+              "depth1": 35
+            },
+            "time": {
+              "t0": 0,
+              "t1": 1,
+              "tt": 1,
+              "time0": 0,
+              "time1": 300
+            },
+            "profile": "quadrilinearTimeVolumeV1"
+          }
+        },
+        {
+          "label": "middle-middepth",
+          "x": 3.5,
+          "y": 2.5,
+          "depthMeters": 35,
+          "timeSeconds": 600,
+          "value": 0.42,
+          "valid": true,
+          "exactNode": false,
+          "weights": {
+            "horizontal": {
+              "x0": 3,
+              "x1": 4,
+              "y0": 2,
+              "y1": 3,
+              "tx": 0.5,
+              "ty": 0.5
+            },
+            "depth": {
+              "z0": 1,
+              "z1": 2,
+              "tz": 1,
+              "depth0": 10,
+              "depth1": 35
+            },
+            "time": {
+              "t0": 1,
+              "t1": 2,
+              "tt": 1,
+              "time0": 300,
+              "time1": 600
+            },
+            "profile": "quadrilinearTimeVolumeV1"
+          }
+        },
+        {
+          "label": "middle-middepth",
+          "x": 3.5,
+          "y": 2.5,
+          "depthMeters": 35,
+          "timeSeconds": 900,
+          "value": 0.42,
+          "valid": true,
+          "exactNode": false,
+          "weights": {
+            "horizontal": {
+              "x0": 3,
+              "x1": 4,
+              "y0": 2,
+              "y1": 3,
+              "tx": 0.5,
+              "ty": 0.5
+            },
+            "depth": {
+              "z0": 1,
+              "z1": 2,
+              "tz": 1,
+              "depth0": 10,
+              "depth1": 35
+            },
+            "time": {
+              "t0": 3,
+              "t1": 3,
+              "tt": 0,
+              "time0": 900,
+              "time1": 900
+            },
+            "profile": "quadrilinearTimeVolumeV1"
+          }
+        },
+        {
+          "label": "max-deep",
+          "x": 7,
+          "y": 5,
+          "depthMeters": 150,
+          "timeSeconds": 0,
+          "value": 0.42,
+          "valid": true,
+          "exactNode": true,
+          "weights": {
+            "horizontal": {
+              "x0": 7,
+              "x1": 7,
+              "y0": 5,
+              "y1": 5,
+              "tx": 0,
+              "ty": 0
+            },
+            "depth": {
+              "z0": 4,
+              "z1": 4,
+              "tz": 0,
+              "depth0": 150,
+              "depth1": 150
+            },
+            "time": {
+              "t0": 0,
+              "t1": 0,
+              "tt": 0,
+              "time0": 0,
+              "time1": 0
+            },
+            "profile": "quadrilinearTimeVolumeV1"
+          }
+        },
+        {
+          "label": "max-deep",
+          "x": 7,
+          "y": 5,
+          "depthMeters": 150,
+          "timeSeconds": 300,
+          "value": 0.42,
+          "valid": true,
+          "exactNode": false,
+          "weights": {
+            "horizontal": {
+              "x0": 7,
+              "x1": 7,
+              "y0": 5,
+              "y1": 5,
+              "tx": 0,
+              "ty": 0
+            },
+            "depth": {
+              "z0": 4,
+              "z1": 4,
+              "tz": 0,
+              "depth0": 150,
+              "depth1": 150
+            },
+            "time": {
+              "t0": 0,
+              "t1": 1,
+              "tt": 1,
+              "time0": 0,
+              "time1": 300
+            },
+            "profile": "quadrilinearTimeVolumeV1"
+          }
+        },
+        {
+          "label": "max-deep",
+          "x": 7,
+          "y": 5,
+          "depthMeters": 150,
+          "timeSeconds": 600,
+          "value": 0.42,
+          "valid": true,
+          "exactNode": false,
+          "weights": {
+            "horizontal": {
+              "x0": 7,
+              "x1": 7,
+              "y0": 5,
+              "y1": 5,
+              "tx": 0,
+              "ty": 0
+            },
+            "depth": {
+              "z0": 4,
+              "z1": 4,
+              "tz": 0,
+              "depth0": 150,
+              "depth1": 150
+            },
+            "time": {
+              "t0": 1,
+              "t1": 2,
+              "tt": 1,
+              "time0": 300,
+              "time1": 600
+            },
+            "profile": "quadrilinearTimeVolumeV1"
+          }
+        },
+        {
+          "label": "max-deep",
+          "x": 7,
+          "y": 5,
+          "depthMeters": 150,
+          "timeSeconds": 900,
+          "value": 0.42,
+          "valid": true,
+          "exactNode": true,
+          "weights": {
+            "horizontal": {
+              "x0": 7,
+              "x1": 7,
+              "y0": 5,
+              "y1": 5,
+              "tx": 0,
+              "ty": 0
+            },
+            "depth": {
+              "z0": 4,
+              "z1": 4,
+              "tz": 0,
+              "depth0": 150,
+              "depth1": 150
+            },
+            "time": {
+              "t0": 3,
+              "t1": 3,
+              "tt": 0,
+              "time0": 900,
+              "time1": 900
+            },
+            "profile": "quadrilinearTimeVolumeV1"
+          }
+        }
+      ]
+    },
+    {
+      "manifestConfigId": "decayingPatch",
+      "id": "manufactured-decayingPatch-8x6",
+      "artifactDigest": "fnv1a32:c38e39cf",
+      "scalarArrayDigest": "fnv1a32:85ef284e",
+      "sourceMetadataDigest": "fnv1a32:a36bb937",
+      "xAxisCount": 8,
+      "yAxisCount": 6,
+      "depthAxisCount": 5,
+      "timeAxisCount": 4,
+      "coordinateFrame": "localGridXYDepthTime",
+      "scalarMinimum": 0.606531,
+      "scalarMean": 0.985728,
+      "scalarMaximum": 1.53,
+      "depthMeanRange": 0.118858,
+      "timeMeanRange": 0.489476,
+      "materiallyDepthVarying": true,
+      "temporallyVarying": true,
+      "validationStatus": "PASS",
+      "samples": [
+        {
+          "label": "origin-surface",
+          "x": 0,
+          "y": 0,
+          "depthMeters": 0,
+          "timeSeconds": 0,
+          "value": 1,
+          "valid": true,
+          "exactNode": true,
+          "weights": {
+            "horizontal": {
+              "x0": 0,
+              "x1": 1,
+              "y0": 0,
+              "y1": 1,
+              "tx": 0,
+              "ty": 0
+            },
+            "depth": {
+              "z0": 0,
+              "z1": 0,
+              "tz": 0,
+              "depth0": 0,
+              "depth1": 0
+            },
+            "time": {
+              "t0": 0,
+              "t1": 0,
+              "tt": 0,
+              "time0": 0,
+              "time1": 0
+            },
+            "profile": "quadrilinearTimeVolumeV1"
+          }
+        },
+        {
+          "label": "origin-surface",
+          "x": 0,
+          "y": 0,
+          "depthMeters": 0,
+          "timeSeconds": 300,
+          "value": 0.846482,
+          "valid": true,
+          "exactNode": false,
+          "weights": {
+            "horizontal": {
+              "x0": 0,
+              "x1": 1,
+              "y0": 0,
+              "y1": 1,
+              "tx": 0,
+              "ty": 0
+            },
+            "depth": {
+              "z0": 0,
+              "z1": 0,
+              "tz": 0,
+              "depth0": 0,
+              "depth1": 0
+            },
+            "time": {
+              "t0": 0,
+              "t1": 1,
+              "tt": 1,
+              "time0": 0,
+              "time1": 300
+            },
+            "profile": "quadrilinearTimeVolumeV1"
+          }
+        },
+        {
+          "label": "origin-surface",
+          "x": 0,
+          "y": 0,
+          "depthMeters": 0,
+          "timeSeconds": 600,
+          "value": 0.716531,
+          "valid": true,
+          "exactNode": false,
+          "weights": {
+            "horizontal": {
+              "x0": 0,
+              "x1": 1,
+              "y0": 0,
+              "y1": 1,
+              "tx": 0,
+              "ty": 0
+            },
+            "depth": {
+              "z0": 0,
+              "z1": 0,
+              "tz": 0,
+              "depth0": 0,
+              "depth1": 0
+            },
+            "time": {
+              "t0": 1,
+              "t1": 2,
+              "tt": 1,
+              "time0": 300,
+              "time1": 600
+            },
+            "profile": "quadrilinearTimeVolumeV1"
+          }
+        },
+        {
+          "label": "origin-surface",
+          "x": 0,
+          "y": 0,
+          "depthMeters": 0,
+          "timeSeconds": 900,
+          "value": 0.606531,
+          "valid": true,
+          "exactNode": true,
+          "weights": {
+            "horizontal": {
+              "x0": 0,
+              "x1": 1,
+              "y0": 0,
+              "y1": 1,
+              "tx": 0,
+              "ty": 0
+            },
+            "depth": {
+              "z0": 0,
+              "z1": 0,
+              "tz": 0,
+              "depth0": 0,
+              "depth1": 0
+            },
+            "time": {
+              "t0": 3,
+              "t1": 3,
+              "tt": 0,
+              "time0": 900,
+              "time1": 900
+            },
+            "profile": "quadrilinearTimeVolumeV1"
+          }
+        },
+        {
+          "label": "middle-middepth",
+          "x": 3.5,
+          "y": 2.5,
+          "depthMeters": 35,
+          "timeSeconds": 0,
+          "value": 1.225,
+          "valid": true,
+          "exactNode": false,
+          "weights": {
+            "horizontal": {
+              "x0": 3,
+              "x1": 4,
+              "y0": 2,
+              "y1": 3,
+              "tx": 0.5,
+              "ty": 0.5
+            },
+            "depth": {
+              "z0": 1,
+              "z1": 2,
+              "tz": 1,
+              "depth0": 10,
+              "depth1": 35
+            },
+            "time": {
+              "t0": 0,
+              "t1": 0,
+              "tt": 0,
+              "time0": 0,
+              "time1": 0
+            },
+            "profile": "quadrilinearTimeVolumeV1"
+          }
+        },
+        {
+          "label": "middle-middepth",
+          "x": 3.5,
+          "y": 2.5,
+          "depthMeters": 35,
+          "timeSeconds": 300,
+          "value": 1.03694,
+          "valid": true,
+          "exactNode": false,
+          "weights": {
+            "horizontal": {
+              "x0": 3,
+              "x1": 4,
+              "y0": 2,
+              "y1": 3,
+              "tx": 0.5,
+              "ty": 0.5
+            },
+            "depth": {
+              "z0": 1,
+              "z1": 2,
+              "tz": 1,
+              "depth0": 10,
+              "depth1": 35
+            },
+            "time": {
+              "t0": 0,
+              "t1": 1,
+              "tt": 1,
+              "time0": 0,
+              "time1": 300
+            },
+            "profile": "quadrilinearTimeVolumeV1"
+          }
+        },
+        {
+          "label": "middle-middepth",
+          "x": 3.5,
+          "y": 2.5,
+          "depthMeters": 35,
+          "timeSeconds": 600,
+          "value": 0.877751,
+          "valid": true,
+          "exactNode": false,
+          "weights": {
+            "horizontal": {
+              "x0": 3,
+              "x1": 4,
+              "y0": 2,
+              "y1": 3,
+              "tx": 0.5,
+              "ty": 0.5
+            },
+            "depth": {
+              "z0": 1,
+              "z1": 2,
+              "tz": 1,
+              "depth0": 10,
+              "depth1": 35
+            },
+            "time": {
+              "t0": 1,
+              "t1": 2,
+              "tt": 1,
+              "time0": 300,
+              "time1": 600
+            },
+            "profile": "quadrilinearTimeVolumeV1"
+          }
+        },
+        {
+          "label": "middle-middepth",
+          "x": 3.5,
+          "y": 2.5,
+          "depthMeters": 35,
+          "timeSeconds": 900,
+          "value": 0.743,
+          "valid": true,
+          "exactNode": false,
+          "weights": {
+            "horizontal": {
+              "x0": 3,
+              "x1": 4,
+              "y0": 2,
+              "y1": 3,
+              "tx": 0.5,
+              "ty": 0.5
+            },
+            "depth": {
+              "z0": 1,
+              "z1": 2,
+              "tz": 1,
+              "depth0": 10,
+              "depth1": 35
+            },
+            "time": {
+              "t0": 3,
+              "t1": 3,
+              "tt": 0,
+              "time0": 900,
+              "time1": 900
+            },
+            "profile": "quadrilinearTimeVolumeV1"
+          }
+        },
+        {
+          "label": "max-deep",
+          "x": 7,
+          "y": 5,
+          "depthMeters": 150,
+          "timeSeconds": 0,
+          "value": 1.53,
+          "valid": true,
+          "exactNode": true,
+          "weights": {
+            "horizontal": {
+              "x0": 7,
+              "x1": 7,
+              "y0": 5,
+              "y1": 5,
+              "tx": 0,
+              "ty": 0
+            },
+            "depth": {
+              "z0": 4,
+              "z1": 4,
+              "tz": 0,
+              "depth0": 150,
+              "depth1": 150
+            },
+            "time": {
+              "t0": 0,
+              "t1": 0,
+              "tt": 0,
+              "time0": 0,
+              "time1": 0
+            },
+            "profile": "quadrilinearTimeVolumeV1"
+          }
+        },
+        {
+          "label": "max-deep",
+          "x": 7,
+          "y": 5,
+          "depthMeters": 150,
+          "timeSeconds": 300,
+          "value": 1.295117,
+          "valid": true,
+          "exactNode": false,
+          "weights": {
+            "horizontal": {
+              "x0": 7,
+              "x1": 7,
+              "y0": 5,
+              "y1": 5,
+              "tx": 0,
+              "ty": 0
+            },
+            "depth": {
+              "z0": 4,
+              "z1": 4,
+              "tz": 0,
+              "depth0": 150,
+              "depth1": 150
+            },
+            "time": {
+              "t0": 0,
+              "t1": 1,
+              "tt": 1,
+              "time0": 0,
+              "time1": 300
+            },
+            "profile": "quadrilinearTimeVolumeV1"
+          }
+        },
+        {
+          "label": "max-deep",
+          "x": 7,
+          "y": 5,
+          "depthMeters": 150,
+          "timeSeconds": 600,
+          "value": 1.096293,
+          "valid": true,
+          "exactNode": false,
+          "weights": {
+            "horizontal": {
+              "x0": 7,
+              "x1": 7,
+              "y0": 5,
+              "y1": 5,
+              "tx": 0,
+              "ty": 0
+            },
+            "depth": {
+              "z0": 4,
+              "z1": 4,
+              "tz": 0,
+              "depth0": 150,
+              "depth1": 150
+            },
+            "time": {
+              "t0": 1,
+              "t1": 2,
+              "tt": 1,
+              "time0": 300,
+              "time1": 600
+            },
+            "profile": "quadrilinearTimeVolumeV1"
+          }
+        },
+        {
+          "label": "max-deep",
+          "x": 7,
+          "y": 5,
+          "depthMeters": 150,
+          "timeSeconds": 900,
+          "value": 0.927992,
+          "valid": true,
+          "exactNode": true,
+          "weights": {
+            "horizontal": {
+              "x0": 7,
+              "x1": 7,
+              "y0": 5,
+              "y1": 5,
+              "tx": 0,
+              "ty": 0
+            },
+            "depth": {
+              "z0": 4,
+              "z1": 4,
+              "tz": 0,
+              "depth0": 150,
+              "depth1": 150
+            },
+            "time": {
+              "t0": 3,
+              "t1": 3,
+              "tt": 0,
+              "time0": 900,
+              "time1": 900
+            },
+            "profile": "quadrilinearTimeVolumeV1"
+          }
+        }
+      ]
+    },
+    {
+      "manifestConfigId": "sourcePatch",
+      "id": "manufactured-sourcePatch-8x6",
+      "artifactDigest": "fnv1a32:de9f472e",
+      "scalarArrayDigest": "fnv1a32:9df35a85",
+      "sourceMetadataDigest": "fnv1a32:c60e339f",
+      "xAxisCount": 8,
+      "yAxisCount": 6,
+      "depthAxisCount": 5,
+      "timeAxisCount": 4,
+      "coordinateFrame": "localGridXYDepthTime",
+      "scalarMinimum": 0.1,
+      "scalarMean": 0.139496,
+      "scalarMaximum": 0.566122,
+      "depthMeanRange": 0.028903,
+      "timeMeanRange": 0.068093,
+      "materiallyDepthVarying": true,
+      "temporallyVarying": true,
+      "validationStatus": "PASS",
+      "samples": [
+        {
+          "label": "origin-surface",
+          "x": 0,
+          "y": 0,
+          "depthMeters": 0,
+          "timeSeconds": 0,
+          "value": 0.1,
+          "valid": true,
+          "exactNode": true,
+          "weights": {
+            "horizontal": {
+              "x0": 0,
+              "x1": 1,
+              "y0": 0,
+              "y1": 1,
+              "tx": 0,
+              "ty": 0
+            },
+            "depth": {
+              "z0": 0,
+              "z1": 0,
+              "tz": 0,
+              "depth0": 0,
+              "depth1": 0
+            },
+            "time": {
+              "t0": 0,
+              "t1": 0,
+              "tt": 0,
+              "time0": 0,
+              "time1": 0
+            },
+            "profile": "quadrilinearTimeVolumeV1"
+          }
+        },
+        {
+          "label": "origin-surface",
+          "x": 0,
+          "y": 0,
+          "depthMeters": 0,
+          "timeSeconds": 300,
+          "value": 0.100003,
+          "valid": true,
+          "exactNode": false,
+          "weights": {
+            "horizontal": {
+              "x0": 0,
+              "x1": 1,
+              "y0": 0,
+              "y1": 1,
+              "tx": 0,
+              "ty": 0
+            },
+            "depth": {
+              "z0": 0,
+              "z1": 0,
+              "tz": 0,
+              "depth0": 0,
+              "depth1": 0
+            },
+            "time": {
+              "t0": 0,
+              "t1": 1,
+              "tt": 1,
+              "time0": 0,
+              "time1": 300
+            },
+            "profile": "quadrilinearTimeVolumeV1"
+          }
+        },
+        {
+          "label": "origin-surface",
+          "x": 0,
+          "y": 0,
+          "depthMeters": 0,
+          "timeSeconds": 600,
+          "value": 0.100005,
+          "valid": true,
+          "exactNode": false,
+          "weights": {
+            "horizontal": {
+              "x0": 0,
+              "x1": 1,
+              "y0": 0,
+              "y1": 1,
+              "tx": 0,
+              "ty": 0
+            },
+            "depth": {
+              "z0": 0,
+              "z1": 0,
+              "tz": 0,
+              "depth0": 0,
+              "depth1": 0
+            },
+            "time": {
+              "t0": 1,
+              "t1": 2,
+              "tt": 1,
+              "time0": 300,
+              "time1": 600
+            },
+            "profile": "quadrilinearTimeVolumeV1"
+          }
+        },
+        {
+          "label": "origin-surface",
+          "x": 0,
+          "y": 0,
+          "depthMeters": 0,
+          "timeSeconds": 900,
+          "value": 0.100006,
+          "valid": true,
+          "exactNode": true,
+          "weights": {
+            "horizontal": {
+              "x0": 0,
+              "x1": 1,
+              "y0": 0,
+              "y1": 1,
+              "tx": 0,
+              "ty": 0
+            },
+            "depth": {
+              "z0": 0,
+              "z1": 0,
+              "tz": 0,
+              "depth0": 0,
+              "depth1": 0
+            },
+            "time": {
+              "t0": 3,
+              "t1": 3,
+              "tt": 0,
+              "time0": 900,
+              "time1": 900
+            },
+            "profile": "quadrilinearTimeVolumeV1"
+          }
+        },
+        {
+          "label": "middle-middepth",
+          "x": 3.5,
+          "y": 2.5,
+          "depthMeters": 35,
+          "timeSeconds": 0,
+          "value": 0.1,
+          "valid": true,
+          "exactNode": false,
+          "weights": {
+            "horizontal": {
+              "x0": 3,
+              "x1": 4,
+              "y0": 2,
+              "y1": 3,
+              "tx": 0.5,
+              "ty": 0.5
+            },
+            "depth": {
+              "z0": 1,
+              "z1": 2,
+              "tz": 1,
+              "depth0": 10,
+              "depth1": 35
+            },
+            "time": {
+              "t0": 0,
+              "t1": 0,
+              "tt": 0,
+              "time0": 0,
+              "time1": 0
+            },
+            "profile": "quadrilinearTimeVolumeV1"
+          }
+        },
+        {
+          "label": "middle-middepth",
+          "x": 3.5,
+          "y": 2.5,
+          "depthMeters": 35,
+          "timeSeconds": 300,
+          "value": 0.181751,
+          "valid": true,
+          "exactNode": false,
+          "weights": {
+            "horizontal": {
+              "x0": 3,
+              "x1": 4,
+              "y0": 2,
+              "y1": 3,
+              "tx": 0.5,
+              "ty": 0.5
+            },
+            "depth": {
+              "z0": 1,
+              "z1": 2,
+              "tz": 1,
+              "depth0": 10,
+              "depth1": 35
+            },
+            "time": {
+              "t0": 0,
+              "t1": 1,
+              "tt": 1,
+              "time0": 0,
+              "time1": 300
+            },
+            "profile": "quadrilinearTimeVolumeV1"
+          }
+        },
+        {
+          "label": "middle-middepth",
+          "x": 3.5,
+          "y": 2.5,
+          "depthMeters": 35,
+          "timeSeconds": 600,
+          "value": 0.231335,
+          "valid": true,
+          "exactNode": false,
+          "weights": {
+            "horizontal": {
+              "x0": 3,
+              "x1": 4,
+              "y0": 2,
+              "y1": 3,
+              "tx": 0.5,
+              "ty": 0.5
+            },
+            "depth": {
+              "z0": 1,
+              "z1": 2,
+              "tz": 1,
+              "depth0": 10,
+              "depth1": 35
+            },
+            "time": {
+              "t0": 1,
+              "t1": 2,
+              "tt": 1,
+              "time0": 300,
+              "time1": 600
+            },
+            "profile": "quadrilinearTimeVolumeV1"
+          }
+        },
+        {
+          "label": "middle-middepth",
+          "x": 3.5,
+          "y": 2.5,
+          "depthMeters": 35,
+          "timeSeconds": 900,
+          "value": 0.261409,
+          "valid": true,
+          "exactNode": false,
+          "weights": {
+            "horizontal": {
+              "x0": 3,
+              "x1": 4,
+              "y0": 2,
+              "y1": 3,
+              "tx": 0.5,
+              "ty": 0.5
+            },
+            "depth": {
+              "z0": 1,
+              "z1": 2,
+              "tz": 1,
+              "depth0": 10,
+              "depth1": 35
+            },
+            "time": {
+              "t0": 3,
+              "t1": 3,
+              "tt": 0,
+              "time0": 900,
+              "time1": 900
+            },
+            "profile": "quadrilinearTimeVolumeV1"
+          }
+        },
+        {
+          "label": "max-deep",
+          "x": 7,
+          "y": 5,
+          "depthMeters": 150,
+          "timeSeconds": 0,
+          "value": 0.1,
+          "valid": true,
+          "exactNode": true,
+          "weights": {
+            "horizontal": {
+              "x0": 7,
+              "x1": 7,
+              "y0": 5,
+              "y1": 5,
+              "tx": 0,
+              "ty": 0
+            },
+            "depth": {
+              "z0": 4,
+              "z1": 4,
+              "tz": 0,
+              "depth0": 150,
+              "depth1": 150
+            },
+            "time": {
+              "t0": 0,
+              "t1": 0,
+              "tt": 0,
+              "time0": 0,
+              "time1": 0
+            },
+            "profile": "quadrilinearTimeVolumeV1"
+          }
+        },
+        {
+          "label": "max-deep",
+          "x": 7,
+          "y": 5,
+          "depthMeters": 150,
+          "timeSeconds": 300,
+          "value": 0.107129,
+          "valid": true,
+          "exactNode": false,
+          "weights": {
+            "horizontal": {
+              "x0": 7,
+              "x1": 7,
+              "y0": 5,
+              "y1": 5,
+              "tx": 0,
+              "ty": 0
+            },
+            "depth": {
+              "z0": 4,
+              "z1": 4,
+              "tz": 0,
+              "depth0": 150,
+              "depth1": 150
+            },
+            "time": {
+              "t0": 0,
+              "t1": 1,
+              "tt": 1,
+              "time0": 0,
+              "time1": 300
+            },
+            "profile": "quadrilinearTimeVolumeV1"
+          }
+        },
+        {
+          "label": "max-deep",
+          "x": 7,
+          "y": 5,
+          "depthMeters": 150,
+          "timeSeconds": 600,
+          "value": 0.111453,
+          "valid": true,
+          "exactNode": false,
+          "weights": {
+            "horizontal": {
+              "x0": 7,
+              "x1": 7,
+              "y0": 5,
+              "y1": 5,
+              "tx": 0,
+              "ty": 0
+            },
+            "depth": {
+              "z0": 4,
+              "z1": 4,
+              "tz": 0,
+              "depth0": 150,
+              "depth1": 150
+            },
+            "time": {
+              "t0": 1,
+              "t1": 2,
+              "tt": 1,
+              "time0": 300,
+              "time1": 600
+            },
+            "profile": "quadrilinearTimeVolumeV1"
+          }
+        },
+        {
+          "label": "max-deep",
+          "x": 7,
+          "y": 5,
+          "depthMeters": 150,
+          "timeSeconds": 900,
+          "value": 0.114076,
+          "valid": true,
+          "exactNode": true,
+          "weights": {
+            "horizontal": {
+              "x0": 7,
+              "x1": 7,
+              "y0": 5,
+              "y1": 5,
+              "tx": 0,
+              "ty": 0
+            },
+            "depth": {
+              "z0": 4,
+              "z1": 4,
+              "tz": 0,
+              "depth0": 150,
+              "depth1": 150
+            },
+            "time": {
+              "t0": 3,
+              "t1": 3,
+              "tt": 0,
+              "time0": 900,
+              "time1": 900
+            },
+            "profile": "quadrilinearTimeVolumeV1"
+          }
+        }
+      ]
+    },
+    {
+      "manifestConfigId": "gaussianDiffusionProxy",
+      "id": "manufactured-gaussianDiffusionProxy-8x6",
+      "artifactDigest": "fnv1a32:b980aa58",
+      "scalarArrayDigest": "fnv1a32:556c1e5d",
+      "sourceMetadataDigest": "fnv1a32:e2728b4d",
+      "xAxisCount": 8,
+      "yAxisCount": 6,
+      "depthAxisCount": 5,
+      "timeAxisCount": 4,
+      "coordinateFrame": "localGridXYDepthTime",
+      "scalarMinimum": 0.000124,
+      "scalarMean": 0.050645,
+      "scalarMaximum": 0.327492,
+      "depthMeanRange": 0.031096,
+      "timeMeanRange": 0.00389,
+      "materiallyDepthVarying": true,
+      "temporallyVarying": true,
+      "validationStatus": "PASS",
+      "samples": [
+        {
+          "label": "origin-surface",
+          "x": 0,
+          "y": 0,
+          "depthMeters": 0,
+          "timeSeconds": 0,
+          "value": 0.000245,
+          "valid": true,
+          "exactNode": true,
+          "weights": {
+            "horizontal": {
+              "x0": 0,
+              "x1": 1,
+              "y0": 0,
+              "y1": 1,
+              "tx": 0,
+              "ty": 0
+            },
+            "depth": {
+              "z0": 0,
+              "z1": 0,
+              "tz": 0,
+              "depth0": 0,
+              "depth1": 0
+            },
+            "time": {
+              "t0": 0,
+              "t1": 0,
+              "tt": 0,
+              "time0": 0,
+              "time1": 0
+            },
+            "profile": "quadrilinearTimeVolumeV1"
+          }
+        },
+        {
+          "label": "origin-surface",
+          "x": 0,
+          "y": 0,
+          "depthMeters": 0,
+          "timeSeconds": 300,
+          "value": 0.001447,
+          "valid": true,
+          "exactNode": false,
+          "weights": {
+            "horizontal": {
+              "x0": 0,
+              "x1": 1,
+              "y0": 0,
+              "y1": 1,
+              "tx": 0,
+              "ty": 0
+            },
+            "depth": {
+              "z0": 0,
+              "z1": 0,
+              "tz": 0,
+              "depth0": 0,
+              "depth1": 0
+            },
+            "time": {
+              "t0": 0,
+              "t1": 1,
+              "tt": 1,
+              "time0": 0,
+              "time1": 300
+            },
+            "profile": "quadrilinearTimeVolumeV1"
+          }
+        },
+        {
+          "label": "origin-surface",
+          "x": 0,
+          "y": 0,
+          "depthMeters": 0,
+          "timeSeconds": 600,
+          "value": 0.003642,
+          "valid": true,
+          "exactNode": false,
+          "weights": {
+            "horizontal": {
+              "x0": 0,
+              "x1": 1,
+              "y0": 0,
+              "y1": 1,
+              "tx": 0,
+              "ty": 0
+            },
+            "depth": {
+              "z0": 0,
+              "z1": 0,
+              "tz": 0,
+              "depth0": 0,
+              "depth1": 0
+            },
+            "time": {
+              "t0": 1,
+              "t1": 2,
+              "tt": 1,
+              "time0": 300,
+              "time1": 600
+            },
+            "profile": "quadrilinearTimeVolumeV1"
+          }
+        },
+        {
+          "label": "origin-surface",
+          "x": 0,
+          "y": 0,
+          "depthMeters": 0,
+          "timeSeconds": 900,
+          "value": 0.006293,
+          "valid": true,
+          "exactNode": true,
+          "weights": {
+            "horizontal": {
+              "x0": 0,
+              "x1": 1,
+              "y0": 0,
+              "y1": 1,
+              "tx": 0,
+              "ty": 0
+            },
+            "depth": {
+              "z0": 0,
+              "z1": 0,
+              "tz": 0,
+              "depth0": 0,
+              "depth1": 0
+            },
+            "time": {
+              "t0": 3,
+              "t1": 3,
+              "tt": 0,
+              "time0": 900,
+              "time1": 900
+            },
+            "profile": "quadrilinearTimeVolumeV1"
+          }
+        },
+        {
+          "label": "middle-middepth",
+          "x": 3.5,
+          "y": 2.5,
+          "depthMeters": 35,
+          "timeSeconds": 0,
+          "value": 0.279324,
+          "valid": true,
+          "exactNode": false,
+          "weights": {
+            "horizontal": {
+              "x0": 3,
+              "x1": 4,
+              "y0": 2,
+              "y1": 3,
+              "tx": 0.5,
+              "ty": 0.5
+            },
+            "depth": {
+              "z0": 1,
+              "z1": 2,
+              "tz": 1,
+              "depth0": 10,
+              "depth1": 35
+            },
+            "time": {
+              "t0": 0,
+              "t1": 0,
+              "tt": 0,
+              "time0": 0,
+              "time1": 0
+            },
+            "profile": "quadrilinearTimeVolumeV1"
+          }
+        },
+        {
+          "label": "middle-middepth",
+          "x": 3.5,
+          "y": 2.5,
+          "depthMeters": 35,
+          "timeSeconds": 300,
+          "value": 0.21125,
+          "valid": true,
+          "exactNode": false,
+          "weights": {
+            "horizontal": {
+              "x0": 3,
+              "x1": 4,
+              "y0": 2,
+              "y1": 3,
+              "tx": 0.5,
+              "ty": 0.5
+            },
+            "depth": {
+              "z0": 1,
+              "z1": 2,
+              "tz": 1,
+              "depth0": 10,
+              "depth1": 35
+            },
+            "time": {
+              "t0": 0,
+              "t1": 1,
+              "tt": 1,
+              "time0": 0,
+              "time1": 300
+            },
+            "profile": "quadrilinearTimeVolumeV1"
+          }
+        },
+        {
+          "label": "middle-middepth",
+          "x": 3.5,
+          "y": 2.5,
+          "depthMeters": 35,
+          "timeSeconds": 600,
+          "value": 0.169606,
+          "valid": true,
+          "exactNode": false,
+          "weights": {
+            "horizontal": {
+              "x0": 3,
+              "x1": 4,
+              "y0": 2,
+              "y1": 3,
+              "tx": 0.5,
+              "ty": 0.5
+            },
+            "depth": {
+              "z0": 1,
+              "z1": 2,
+              "tz": 1,
+              "depth0": 10,
+              "depth1": 35
+            },
+            "time": {
+              "t0": 1,
+              "t1": 2,
+              "tt": 1,
+              "time0": 300,
+              "time1": 600
+            },
+            "profile": "quadrilinearTimeVolumeV1"
+          }
+        },
+        {
+          "label": "middle-middepth",
+          "x": 3.5,
+          "y": 2.5,
+          "depthMeters": 35,
+          "timeSeconds": 900,
+          "value": 0.1416,
+          "valid": true,
+          "exactNode": false,
+          "weights": {
+            "horizontal": {
+              "x0": 3,
+              "x1": 4,
+              "y0": 2,
+              "y1": 3,
+              "tx": 0.5,
+              "ty": 0.5
+            },
+            "depth": {
+              "z0": 1,
+              "z1": 2,
+              "tz": 1,
+              "depth0": 10,
+              "depth1": 35
+            },
+            "time": {
+              "t0": 3,
+              "t1": 3,
+              "tt": 0,
+              "time0": 900,
+              "time1": 900
+            },
+            "profile": "quadrilinearTimeVolumeV1"
+          }
+        },
+        {
+          "label": "max-deep",
+          "x": 7,
+          "y": 5,
+          "depthMeters": 150,
+          "timeSeconds": 0,
+          "value": 0.000124,
+          "valid": true,
+          "exactNode": true,
+          "weights": {
+            "horizontal": {
+              "x0": 7,
+              "x1": 7,
+              "y0": 5,
+              "y1": 5,
+              "tx": 0,
+              "ty": 0
+            },
+            "depth": {
+              "z0": 4,
+              "z1": 4,
+              "tz": 0,
+              "depth0": 150,
+              "depth1": 150
+            },
+            "time": {
+              "t0": 0,
+              "t1": 0,
+              "tt": 0,
+              "time0": 0,
+              "time1": 0
+            },
+            "profile": "quadrilinearTimeVolumeV1"
+          }
+        },
+        {
+          "label": "max-deep",
+          "x": 7,
+          "y": 5,
+          "depthMeters": 150,
+          "timeSeconds": 300,
+          "value": 0.000732,
+          "valid": true,
+          "exactNode": false,
+          "weights": {
+            "horizontal": {
+              "x0": 7,
+              "x1": 7,
+              "y0": 5,
+              "y1": 5,
+              "tx": 0,
+              "ty": 0
+            },
+            "depth": {
+              "z0": 4,
+              "z1": 4,
+              "tz": 0,
+              "depth0": 150,
+              "depth1": 150
+            },
+            "time": {
+              "t0": 0,
+              "t1": 1,
+              "tt": 1,
+              "time0": 0,
+              "time1": 300
+            },
+            "profile": "quadrilinearTimeVolumeV1"
+          }
+        },
+        {
+          "label": "max-deep",
+          "x": 7,
+          "y": 5,
+          "depthMeters": 150,
+          "timeSeconds": 600,
+          "value": 0.001842,
+          "valid": true,
+          "exactNode": false,
+          "weights": {
+            "horizontal": {
+              "x0": 7,
+              "x1": 7,
+              "y0": 5,
+              "y1": 5,
+              "tx": 0,
+              "ty": 0
+            },
+            "depth": {
+              "z0": 4,
+              "z1": 4,
+              "tz": 0,
+              "depth0": 150,
+              "depth1": 150
+            },
+            "time": {
+              "t0": 1,
+              "t1": 2,
+              "tt": 1,
+              "time0": 300,
+              "time1": 600
+            },
+            "profile": "quadrilinearTimeVolumeV1"
+          }
+        },
+        {
+          "label": "max-deep",
+          "x": 7,
+          "y": 5,
+          "depthMeters": 150,
+          "timeSeconds": 900,
+          "value": 0.003182,
+          "valid": true,
+          "exactNode": true,
+          "weights": {
+            "horizontal": {
+              "x0": 7,
+              "x1": 7,
+              "y0": 5,
+              "y1": 5,
+              "tx": 0,
+              "ty": 0
+            },
+            "depth": {
+              "z0": 4,
+              "z1": 4,
+              "tz": 0,
+              "depth0": 150,
+              "depth1": 150
+            },
+            "time": {
+              "t0": 3,
+              "t1": 3,
+              "tt": 0,
+              "time0": 900,
+              "time1": 900
+            },
+            "profile": "quadrilinearTimeVolumeV1"
+          }
+        }
+      ]
+    }
+  ],
+  "digest": "fnv1a32:a29af169"
+}

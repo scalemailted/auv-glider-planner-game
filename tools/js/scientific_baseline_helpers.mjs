@@ -13,7 +13,7 @@ import { createBathymetryConditionedCurrentField } from '../../src/core/science/
 import { computeCurrentFieldScientificDiagnostics } from '../../src/core/science/CurrentFieldScientificDiagnostics.js';
 import { createManufacturedCurrentField, evaluateExpectedCurrent, manufacturedCurrentFieldCatalog } from '../../src/core/science/ManufacturedCurrentFieldCatalog.js';
 import { createOceanCurrentSampler, sampleOceanCurrent } from '../../src/core/science/OceanCurrentFieldSampler.js';
-import { sampleScalarFieldContinuous } from '../../src/core/science/VolumetricFieldSampler.js';
+import { sampleScalarFieldContinuous } from '../../packages/scalar-processes/src/index.js';
 
 export const SCI_VALID_VERSION = 'sci-valid-r1';
 export const DEFAULT_EXTENT_METERS = Object.freeze({ east: 12000, north: 8000 });
@@ -573,4 +573,3 @@ function clamp(value, min, max) {
   if (!Number.isFinite(number)) return min;
   return Math.max(min, Math.min(max, number));
 }
-
