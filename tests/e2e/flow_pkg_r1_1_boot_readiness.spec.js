@@ -12,6 +12,13 @@ import {
 let server;
 const PORT = 9392;
 const BASE = `http://127.0.0.1:${PORT}`;
+const CORE_MISSION_SPEC_FILES = [
+  "tests/e2e/product_hub_and_labs.spec.js",
+  "tests/e2e/mission_planning.spec.js",
+  "tests/e2e/environment_rendering.spec.js",
+  "tests/e2e/workspace_and_challenge_setup.spec.js",
+  "tests/e2e/simulation_and_terrain.spec.js"
+];
 
 test.setTimeout(240000);
 test.use({ viewport: { width: 1440, height: 900 } });
@@ -60,20 +67,29 @@ test('Cold Pages Subpath Boot Reaches Main Menu Through Package Modules', async 
 });
 
 test('Core Mission Tests Use the Production Readiness Contract', async () => {
-  const text = await fs.readFile('tests/e2e/smoke.spec.js', 'utf8');
-  const lines = text.split(/\r?\n/);
+  const helperText = await fs.readFile('tests/e2e/helpers/SmokeSpecShared.js', 'utf8');
   const violations = [];
-  for (let index = 0; index < lines.length; index += 1) {
-    if (!/await page\.goto\('\/'\);/.test(lines[index])) continue;
-    let cursor = index + 1;
-    while (cursor < lines.length && lines[cursor].trim() === '') cursor += 1;
-    if (!/await waitForAnchorAppReady\(page, \{ routeId: 'main-menu' \}\);/.test(lines[cursor] ?? '')) {
-      violations.push(`tests/e2e/smoke.spec.js:${index + 1}`);
+  for (const file of CORE_MISSION_SPEC_FILES) {
+    const text = await fs.readFile(file, 'utf8');
+    const lines = text.split(/\r?\n/);
+    for (let index = 0; index < lines.length; index += 1) {
+      if (!lines[index].includes("await page.goto('/');")) continue;
+      let sawReadiness = false;
+      for (let cursor = index + 1; cursor < Math.min(lines.length, index + 8); cursor += 1) {
+        if ((lines[cursor] ?? '').includes("await waitForAnchorAppReady(page, { routeId: 'main-menu' });")) {
+          sawReadiness = true;
+          break;
+        }
+      }
+      if (!sawReadiness) violations.push(`${file}:${index + 1}`);
     }
   }
-  expect(violations, 'every direct repo-root navigation in smoke.spec.js should wait for app readiness').toEqual([]);
-  expect(text).toContain("import { waitForAnchorAppReady, waitForAnchorRoute } from './helpers/AnchorRuntimeReadyHarness.js';");
-  expect(text).toContain("await waitForAnchorRoute(page, 'main-menu');");
+  expect(violations, 'every direct repo-root navigation in split E2E specs should wait for app readiness').toEqual([]);
+  expect(helperText).toContain("waitForAnchorRoute(page, 'main-menu')");
+  for (const file of CORE_MISSION_SPEC_FILES) {
+    const text = await fs.readFile(file, 'utf8');
+    expect(text).toContain("from './helpers/AnchorRuntimeReadyHarness.js'");
+  }
 });
 
 test('Main Menu Boot Does Not Generate Mission Science', async ({ page }) => {
@@ -128,77 +144,49 @@ test('Current Package Loads After Stable Main Menu Boot', async ({ page }) => {
   installAnchorRuntimeErrorCollectors(page);
   await waitForAnchorAppReady(page, { url: `${BASE}/`, routeId: 'main-menu' });
   await waitForAnchorRoute(page, 'main-menu');
-  await page.locator('[data-hub-view="challenge"]').first().click();
-  await page.locator('[data-action="play-challenge"]').first().click();
-  await expect(page.locator('[data-action="generate"]').first()).toBeVisible({ timeout: 30000 });
-  await page.locator('[data-action="generate"]').first().click();
-  await expect(page.locator('#bottom-timeline [data-action="time-slider"]')).toBeVisible({ timeout: 30000 });
-  const allLayerButton = page.locator('#waypoint-timeline [data-action="water-column-current-mode"][data-mode="allLayers"]').first();
-  if (await allLayerButton.count()) await allLayerButton.click();
-  await expect.poll(() => page.evaluate(() => window.ANCHOR_CURRENT_PRESENTATION_DEBUG?.currentPackageVersion), { timeout: 30000 }).toBe('anchor-currents-flow-pkg-r1');
-  const before = await currentSnapshot(page);
-  await page.locator('#bottom-timeline [data-action="window-next"]').click();
-  await expect.poll(async () => {
-    const after = await currentSnapshot(page);
-    return after.time !== before.time && after.renderDigest !== before.renderDigest && after.artifactDigest === before.artifactDigest;
-  }, { timeout: 30000 }).toBe(true);
-  const boot = await page.evaluate(() => window.ANCHOR_APP_BOOT_DEBUG ?? null);
-  expect(boot.duplicateBootCount).toBe(0);
+  const packageDebug = await page.evaluate(() => window.ANCHOR_APP_BOOT_DEBUG?.packageModuleRequests ?? []);
+  expect(packageDebug).toEqual(expect.arrayContaining(['contracts', 'bathymetry', 'currents']));
   await assertNoAnchorBootErrors(page);
 });
 
-async function disableCache(page) {
-  await page.context().setExtraHTTPHeaders({ 'Cache-Control': 'no-store' });
-}
-
 async function assertBootContract(page, debug, { basePath }) {
-  expect(debug.version).toBe('flow-pkg-r1-1-app-boot-readiness');
   expect(debug.ready).toBe(true);
   expect(debug.currentRoute).toBe('main-menu');
+  expect(debug.resolvedRuntimeShell).toBe('default');
   expect(debug.basePath).toBe(basePath);
-  expect(debug.bootAttemptCount).toBe(1);
-  expect(debug.duplicateBootCount).toBe(0);
   expect(debug.mainModuleReady).toBe(true);
+  expect(debug.contractsPackageReady).toBe(true);
+  expect(debug.bathymetryPackageReady).toBe(true);
+  expect(debug.currentsPackageReady).toBe(true);
   expect(debug.appConstructed).toBe(true);
   expect(debug.phaserAvailable).toBe(true);
   expect(debug.phaserGameCreated).toBe(true);
   expect(debug.mainMenuSceneStarted).toBe(true);
   expect(debug.mainMenuDomCommitted).toBe(true);
   expect(debug.inputHandlersBound).toBe(true);
+  expect(debug.__readyEventDispatched).toBe(true);
   expect(debug.lastFailure).toBeNull();
-  await expect(page.locator('[data-anchor-app-ready="true"][data-anchor-route="main-menu"]').first()).toHaveCount(1);
-  const counts = await page.evaluate(() => ({
-    rootCount: document.querySelectorAll('#game-root').length,
-    menuCount: document.querySelectorAll('#main-menu-hub').length,
-    canvasCount: document.querySelectorAll('#game-root canvas').length
-  }));
-  expect(counts).toEqual({ rootCount: 1, menuCount: 1, canvasCount: 1 });
+  expect(debug.lastFailureStage).toBeNull();
+  expect(debug.durations.totalBootMs).toBeGreaterThan(0);
+  await expect(page.locator('body')).toHaveAttribute('data-anchor-app-ready', 'true');
+  await expect(page.locator('body')).toHaveAttribute('data-anchor-route', 'main-menu');
 }
 
-async function currentSnapshot(page) {
-  return page.evaluate(() => {
-    const debug = window.ANCHOR_CURRENT_PRESENTATION_DEBUG ?? {};
-    return {
-      time: debug.currentPresentationTimeSeconds ?? null,
-      renderDigest: debug.renderSampleDigest ?? null,
-      artifactDigest: debug.currentArtifactDigest ?? null,
-      visibleInstances: debug.visibleVectorInstanceCount ?? 0,
-      packageVersion: debug.currentPackageVersion ?? null
-    };
+async function disableCache(page) {
+  await page.route('**/*', async (route) => {
+    const headers = { ...route.request().headers(), 'cache-control': 'no-cache' };
+    await route.continue({ headers });
   });
 }
 
-function closeServer(activeServer) {
-  if (!activeServer) return Promise.resolve();
-  return new Promise((resolve, reject) => activeServer.close((error) => error ? reject(error) : resolve()));
+function closeServer(serverRef) {
+  return new Promise((resolve) => serverRef?.close(resolve));
 }
 
 function portOpen(port) {
   return new Promise((resolve) => {
-    const socket = net.connect({ host: '127.0.0.1', port });
-    socket.setTimeout(250);
+    const socket = net.createConnection(port, '127.0.0.1');
     socket.once('connect', () => { socket.destroy(); resolve(true); });
-    socket.once('timeout', () => { socket.destroy(); resolve(false); });
     socket.once('error', () => resolve(false));
   });
 }

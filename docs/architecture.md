@@ -9,7 +9,7 @@
 
 ## Validation Ownership
 
-- Production capability coverage is declared in `tests/e2e/capability_manifest.mjs`.
+- Production capability coverage and physical split ownership are declared in `tests/e2e/capability_manifest.mjs`.
 - `npm.cmd run test:fast` owns deterministic contracts, package boundaries, and repository verification.
 - `npm.cmd run test:e2e:smoke` is a compact browser smoke set.
 - `npm.cmd run test:e2e` is the release browser regression set.

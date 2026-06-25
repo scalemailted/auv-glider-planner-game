@@ -15,4 +15,6 @@ This document keeps durable decisions from completed cleanup, renderer, current,
 
 - REPO-CLEAN-R1 removed the legacy vanilla shell archive and tracked Python bytecode after reachability checks.
 - REPO-CLEAN-R2 moved validation tier ownership to production capabilities, constrained the full browser profile, and made Pages documentation copying explicit.
+- REPO-CLEAN-R3 physically retired the historical `tests/e2e/smoke.spec.js` monolith and moved its tests into capability-owned E2E files.
+- REPO-CLEAN-R3 audited compatibility forwarders, renderer paths, and Phaser UI utilities without deleting active supported runtime paths.
 - R2 superseded phase records removed: docs/dive_r1_1_visual_acceptance.md, docs/flow_r2a_3_visual_acceptance.md, docs/flow_r2a_4_visual_acceptance.md, docs/flow_r2a_5_visual_acceptance.md, docs/three_r1_2c_visual_acceptance.md, docs/world_r1_1_visual_acceptance.md.

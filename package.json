@@ -18,7 +18,7 @@
     "check:three-vendor-git": "node tools/js/audit_three_vendor_git_tracking.mjs",
     "build:pages": "node tools/js/build_github_pages.mjs",
     "smoke:pages": "node tools/js/smoke_github_pages_static_host.mjs",
-    "test:e2e:focused": "node ./node_modules/@playwright/test/cli.js test tests/e2e/smoke.spec.js --grep \"Three Mission Interaction Performance Invariants|Three Sampling Target and Dive Planning Headed Workflow\" --reporter=line",
+    "test:e2e:focused": "node ./node_modules/@playwright/test/cli.js test tests/e2e/mission_planning.spec.js --grep \"Three Mission Interaction Performance Invariants|Three Sampling Target and Dive Planning Headed Workflow\" --reporter=line",
     "test:e2e:groups": "node tools/js/run_playwright_groups.mjs --profile=full",
     "test:e2e:monolithic": "node ./node_modules/@playwright/test/cli.js test --reporter=line --workers=1 --output=test-results/.playwright-monolithic-temp",
     "test:e2e:list": "node ./node_modules/@playwright/test/cli.js test --list",

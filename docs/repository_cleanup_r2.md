@@ -8,7 +8,7 @@ REPO-CLEAN-R2 is a maintenance pass. It changes validation ownership, Pages pack
 
 | Metric | R1 baseline | R2 current |
 |---|---:|---:|
-| tracked files | 1765 | 1765 |
+| tracked files | 1765 | 1771 |
 | source files | 569 | 569 |
 | Markdown docs | 255 | 224 |
 | Playwright smoke profile | 15 | 15 |
@@ -16,7 +16,7 @@ REPO-CLEAN-R2 is a maintenance pass. It changes validation ownership, Pages pack
 | Playwright full nonvisual profile | 229 | 76 |
 | Playwright visual profile | 12 | 12 |
 | Pages files | 881 | 684 |
-| Pages bytes | 28225773 | 21679928 |
+| Pages bytes | 28225773 | 21679936 |
 
 ## Test Architecture
 

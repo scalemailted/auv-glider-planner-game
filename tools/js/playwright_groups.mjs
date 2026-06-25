@@ -1,5 +1,5 @@
 import { FULL_GROUP_LIMITS, RELEASE_TEST_TITLES, SMOKE_TEST_TITLES, exactTitlePatterns } from '../../tests/e2e/capability_manifest.mjs';
-export const PLAYWRIGHT_GROUPS_VERSION = 'playwright-groups-repo-clean-r2';
+export const PLAYWRIGHT_GROUPS_VERSION = 'playwright-groups-repo-clean-r3';
 
 export const PLAYWRIGHT_GROUPS = Object.freeze([
   {

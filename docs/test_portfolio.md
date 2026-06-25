@@ -142,74 +142,6 @@
 | Current Display Does Not Change Mission Outcome | tests/e2e/flow_runtime_r1_dynamic_currents.spec.js | executionWaterColumn | currents | user workflow | MERGE_E2E |
 | Dynamic Current Vectors Run From GitHub Pages Subpath | tests/e2e/flow_runtime_r1_dynamic_currents.spec.js | executionWaterColumn | currents | static-host compatibility | KEEP_E2E |
 | FLOW-RUNTIME-R1 Full Headed Canonical Current Evolution Walkthrough | tests/e2e/flow_runtime_r1_dynamic_currents.spec.js | visualAcceptance | currents | canonical contract | MOVE_TO_VISUAL_ACCEPTANCE |
-| learning labs static page is linked from the main menu | tests/e2e/smoke.spec.js | coreMission | learning lab | user workflow | KEEP_E2E |
-| Benchmark modes overview opens from Simulation Lab | tests/e2e/smoke.spec.js | coreMission | learning lab | user workflow | KEEP_E2E |
-| Motion Planning Demo opens from Simulation Lab and preserves benchmark/headless routes | tests/e2e/smoke.spec.js | coreMission | learning lab | canonical contract | MERGE_E2E |
-| Bathymetric World View opens from Simulation Lab and preserves adjacent routes | tests/e2e/smoke.spec.js | coreMission | learning lab | user workflow | MERGE_E2E |
-| Renderer Architecture Preview opens from Simulation Lab | tests/e2e/smoke.spec.js | coreMission | learning lab | user workflow | MERGE_E2E |
-| Headless Bundle Viewer opens from Simulation Lab and exports browser summary | tests/e2e/smoke.spec.js | coreMission | learning lab | canonical contract | KEEP_E2E |
-| Planner Benchmark debrief exports benchmark records from synthetic result | tests/e2e/smoke.spec.js | coreMission | replay/debrief | user workflow | KEEP_E2E |
-| Adaptive Benchmark synthetic debrief shows surfacing review and exports P8 session records | tests/e2e/smoke.spec.js | coreMission | replay/debrief | user workflow | MERGE_E2E |
-| campaign planning smoke flow reaches debrief | tests/e2e/smoke.spec.js | coreMission | replay/debrief | user workflow | MERGE_E2E |
-| Continuous Mission Planning Starts Without Overlay Errors | tests/e2e/smoke.spec.js | threePlanning | application workflow | user workflow | KEEP_E2E |
-| Continuous Mission Controls Are Visible and Functional | tests/e2e/smoke.spec.js | threePlanning | application workflow | browser UI behavior | KEEP_E2E |
-| Continuous Mission Plan Executes Through Canonical 3D Dive | tests/e2e/smoke.spec.js | threePlanning | planning/dive profile | canonical contract | KEEP_E2E |
-| Surface Waypoints Produce a Predicted Three-Dimensional Dive | tests/e2e/smoke.spec.js | threePlanning | planning/dive profile | user workflow | KEEP_E2E |
-| Three Camera Reveals Full Water-Column Dive | tests/e2e/smoke.spec.js | threePlanning | planning/dive profile | user workflow | MERGE_E2E |
-| Surface Waypoints and Sampling Targets Have Distinct Semantics | tests/e2e/smoke.spec.js | threePlanning | planning/dive profile | user workflow | MERGE_E2E |
-| Sampling Target Drives Predicted Dive Without Becoming a Navigation Point | tests/e2e/smoke.spec.js | threePlanning | planning/dive profile | user workflow | KEEP_E2E |
-| Predicted Multi-Yo Profile Executes Through Canonical Simulation | tests/e2e/smoke.spec.js | threePlanning | application workflow | canonical contract | KEEP_E2E |
-| Three Camera Interaction Does Not Rebuild Mission Models | tests/e2e/smoke.spec.js | threePlanning | application workflow | user workflow | MERGE_E2E |
-| Three Mission Renderer Resources Remain Stable | tests/e2e/smoke.spec.js | threePlanning | application workflow | user workflow | MERGE_E2E |
-| Three Mission Interaction Performance Invariants | tests/e2e/smoke.spec.js | threePlanning | application workflow | user workflow | MERGE_E2E |
-| Three Sampling Target and Dive Planning Headed Workflow | tests/e2e/smoke.spec.js | threePlanning | planning/dive profile | user workflow | MERGE_E2E |
-| Three Simulation Uses Incremental Presentation Updates | tests/e2e/smoke.spec.js | executionWaterColumn | application workflow | user workflow | MERGE_E2E |
-| Finish Instantly Avoids Per-Step Three Rebuilds | tests/e2e/smoke.spec.js | executionWaterColumn | application workflow | user workflow | MERGE_E2E |
-| Three Quality Profiles Preserve Canonical Simulation Result | tests/e2e/smoke.spec.js | executionWaterColumn | application workflow | canonical contract | MERGE_E2E |
-| Three Context Slabs Reduce Cost Without Losing Dive Context | tests/e2e/smoke.spec.js | executionWaterColumn | planning/dive profile | user workflow | MERGE_E2E |
-| Three Mission Uses Continuous Bathymetric Terrain | tests/e2e/smoke.spec.js | executionWaterColumn | bathymetry/terrain | user workflow | MERGE_E2E |
-| Three Terrain Camera Gestures Do Not Rebuild Bathymetry Mesh | tests/e2e/smoke.spec.js | executionWaterColumn | bathymetry/terrain | user workflow | MERGE_E2E |
-| Bathymetry Limits Predicted and Realized Dive Depth | tests/e2e/smoke.spec.js | executionWaterColumn | bathymetry/terrain | user workflow | KEEP_E2E |
-| Continuous Coastline Blocks Invalid Surface Waypoints | tests/e2e/smoke.spec.js | executionWaterColumn | planning/dive profile | user workflow | MERGE_E2E |
-| Water-Column Layers Respect Continuous Seabed | tests/e2e/smoke.spec.js | executionWaterColumn | bathymetry/terrain | user workflow | MERGE_E2E |
-| Bathymetric Demo and Mission Renderer Share Terrain Geometry | tests/e2e/smoke.spec.js | executionWaterColumn | bathymetry/terrain | user workflow | MERGE_E2E |
-| All Production Mission Phases Share One Bathymetry Contract | tests/e2e/smoke.spec.js | executionWaterColumn | bathymetry/terrain | user workflow | MERGE_E2E |
-| Three Bathymetry Resources Dispose Across Scene Transitions | tests/e2e/smoke.spec.js | executionWaterColumn | bathymetry/terrain | user workflow | MERGE_E2E |
-| Three Bathymetric Terrain Preserves Render-Cost Gate | tests/e2e/smoke.spec.js | executionWaterColumn | bathymetry/terrain | user workflow | MERGE_E2E |
-| Three Camera Remains Responsive Under Live Simulation Load | tests/e2e/smoke.spec.js | executionWaterColumn | application workflow | user workflow | MERGE_E2E |
-| Segment Distance Changes Predicted Dive Geometry | tests/e2e/smoke.spec.js | threePlanning | planning/dive profile | user workflow | MERGE_E2E |
-| Predicted and Realized Dive Paths Remain Distinct | tests/e2e/smoke.spec.js | threePlanning | planning/dive profile | user workflow | MERGE_E2E |
-| Bathymetry Demo and Mission Dive Paths Share Coordinates | tests/e2e/smoke.spec.js | threePlanning | bathymetry/terrain | user workflow | MERGE_E2E |
-| Three Mission Workspace Stabilization | tests/e2e/smoke.spec.js | workspaceScenario | application workflow | user workflow | MERGE_E2E |
-| Three Mission renderer preserves live Mission Planning state | tests/e2e/smoke.spec.js | workspaceScenario | application workflow | user workflow | MERGE_E2E |
-| Three Planning Pointer Interaction dispatches canonical workspace commands | tests/e2e/smoke.spec.js | workspaceScenario | application workflow | canonical contract | KEEP_E2E |
-| Three Waypoint Pipeline and Standard Camera Gestures | tests/e2e/smoke.spec.js | workspaceScenario | planning/dive profile | user workflow | KEEP_E2E |
-| Three Mission Planning Tools and Camera Controls | tests/e2e/smoke.spec.js | workspaceScenario | application workflow | browser UI behavior | MERGE_E2E |
-| Three Simulation Selection inspects canonical public simulation objects | tests/e2e/smoke.spec.js | workspaceScenario | application workflow | canonical contract | MERGE_E2E |
-| scenario setup stays inside the center viewport | tests/e2e/smoke.spec.js | workspaceScenario | application workflow | user workflow | MERGE_E2E |
-| challenge setup uses left navigator and selected briefing | tests/e2e/smoke.spec.js | workspaceScenario | application workflow | user workflow | KEEP_E2E |
-| level generator opens from main menu | tests/e2e/smoke.spec.js | workspaceScenario | application workflow | user workflow | MERGE_E2E |
-| deterministic challenge generates a fresh perfect-knowledge level | tests/e2e/smoke.spec.js | workspaceScenario | application workflow | user workflow | KEEP_E2E |
-| load level json imports a level and offers play/edit actions | tests/e2e/smoke.spec.js | workspaceScenario | application workflow | user workflow | MERGE_E2E |
-| stochastic mode exposes ensemble and risk controls | tests/e2e/smoke.spec.js | workspaceScenario | application workflow | browser UI behavior | KEEP_E2E |
-| Execute Mission Through Three Simulation | tests/e2e/smoke.spec.js | executionWaterColumn | application workflow | user workflow | KEEP_E2E |
-| Three Volumetric Water Column Planning | tests/e2e/smoke.spec.js | executionWaterColumn | planning/dive profile | user workflow | MERGE_E2E |
-| Three Depth-Aware Dive and Sampling | tests/e2e/smoke.spec.js | executionWaterColumn | planning/dive profile | user workflow | KEEP_E2E |
-| Three Mission Scene Isolation | tests/e2e/smoke.spec.js | executionWaterColumn | application workflow | user workflow | MERGE_E2E |
-| Three Scene Cleanup Is Null-Safe and Idempotent | tests/e2e/smoke.spec.js | executionWaterColumn | application workflow | user workflow | MERGE_E2E |
-| Generated Mission Opens a Visible Volumetric Water Column | tests/e2e/smoke.spec.js | executionWaterColumn | planning/dive profile | browser UI behavior | MERGE_E2E |
-| Legacy Mission Uses Explicit Surface Compatibility Mode | tests/e2e/smoke.spec.js | executionWaterColumn | application workflow | user workflow | DEFER_REVIEW |
-| Three Vehicle Pose Guidance and Grid Alignment | tests/e2e/smoke.spec.js | executionWaterColumn | application workflow | user workflow | MERGE_E2E |
-| Three Waypoint Validation and Mission Window Semantics | tests/e2e/smoke.spec.js | executionWaterColumn | planning/dive profile | user workflow | MERGE_E2E |
-| Terrain-Aware Placement Preview Prevents Invalid Mission Mutation | tests/e2e/smoke.spec.js | executionWaterColumn | bathymetry/terrain | user workflow | MERGE_E2E |
-| Continuous Route Validation Detects Coastline and Clearance Risks | tests/e2e/smoke.spec.js | executionWaterColumn | application workflow | user workflow | MERGE_E2E |
-| Sampling Targets Respect Canonical Seabed and Reachability | tests/e2e/smoke.spec.js | executionWaterColumn | bathymetry/terrain | canonical contract | MERGE_E2E |
-| Mission Readiness Separates Errors Warnings and Advisories | tests/e2e/smoke.spec.js | executionWaterColumn | application workflow | user workflow | MERGE_E2E |
-| Planned and Realized Paths Share Terrain Validation | tests/e2e/smoke.spec.js | executionWaterColumn | bathymetry/terrain | user workflow | MERGE_E2E |
-| Terrain Validation Persists Through Export Headless and Replay | tests/e2e/smoke.spec.js | executionWaterColumn | replay/debrief | canonical contract | MERGE_E2E |
-| Three Terrain Presentation Clearly Distinguishes Mission Semantics | tests/e2e/smoke.spec.js | executionWaterColumn | bathymetry/terrain | user workflow | MERGE_E2E |
-| Legacy and Three Simulation Produce Identical Canonical Result | tests/e2e/smoke.spec.js | executionWaterColumn | application workflow | canonical contract | DEFER_REVIEW |
-| legacy saved level registry scene still opens | tests/e2e/smoke.spec.js | executionWaterColumn | application workflow | user workflow | DEFER_REVIEW |
 | THREE-R1.2C Full Headed Production Walkthrough | tests/e2e/three_r1_2c_headed_acceptance.spec.js | visualAcceptance | application workflow | user workflow | MOVE_TO_VISUAL_ACCEPTANCE |
 | THREE-R2A Full Headed Replay and Debrief Walkthrough | tests/e2e/three_r2a_headed_acceptance.spec.js | visualAcceptance | replay/debrief | user workflow | MOVE_TO_VISUAL_ACCEPTANCE |
 | Three Debrief Opens Canonical Replay Review | tests/e2e/three_r2a_replay_review.spec.js | threeReplayReview | replay/debrief | canonical contract | KEEP_E2E |
@@ -242,3 +174,71 @@
 | Next Shell Honors Reduced Motion Without Changing Mission Outcomes | tests/e2e/three_r3a_production_shell.spec.js | productionShellR3A | application workflow | user workflow | MERGE_E2E |
 | Next Shell Runs From GitHub Pages Subpath Without Phaser | tests/e2e/three_r3a_production_shell.spec.js | productionShellR3A | static hosting | static-host compatibility | KEEP_E2E |
 | Next Shell Loads Legacy Learning Lab Only On Demand | tests/e2e/three_r3a_production_shell.spec.js | productionShellR3A | learning lab | user workflow | DEFER_REVIEW |
+| Three Simulation Uses Incremental Presentation Updates | tests/e2e/environment_rendering.spec.js | executionWaterColumn | application workflow | user workflow | MERGE_E2E |
+| Finish Instantly Avoids Per-Step Three Rebuilds | tests/e2e/environment_rendering.spec.js | executionWaterColumn | application workflow | user workflow | MERGE_E2E |
+| Three Quality Profiles Preserve Canonical Simulation Result | tests/e2e/environment_rendering.spec.js | executionWaterColumn | application workflow | canonical contract | MERGE_E2E |
+| Three Context Slabs Reduce Cost Without Losing Dive Context | tests/e2e/environment_rendering.spec.js | executionWaterColumn | planning/dive profile | user workflow | MERGE_E2E |
+| Three Mission Uses Continuous Bathymetric Terrain | tests/e2e/environment_rendering.spec.js | executionWaterColumn | bathymetry/terrain | user workflow | MERGE_E2E |
+| Three Terrain Camera Gestures Do Not Rebuild Bathymetry Mesh | tests/e2e/environment_rendering.spec.js | executionWaterColumn | bathymetry/terrain | user workflow | MERGE_E2E |
+| Bathymetry Limits Predicted and Realized Dive Depth | tests/e2e/environment_rendering.spec.js | executionWaterColumn | bathymetry/terrain | user workflow | KEEP_E2E |
+| Continuous Coastline Blocks Invalid Surface Waypoints | tests/e2e/environment_rendering.spec.js | executionWaterColumn | planning/dive profile | user workflow | MERGE_E2E |
+| Water-Column Layers Respect Continuous Seabed | tests/e2e/environment_rendering.spec.js | executionWaterColumn | bathymetry/terrain | user workflow | MERGE_E2E |
+| Bathymetric Demo and Mission Renderer Share Terrain Geometry | tests/e2e/environment_rendering.spec.js | executionWaterColumn | bathymetry/terrain | user workflow | MERGE_E2E |
+| All Production Mission Phases Share One Bathymetry Contract | tests/e2e/environment_rendering.spec.js | executionWaterColumn | bathymetry/terrain | user workflow | MERGE_E2E |
+| Three Bathymetry Resources Dispose Across Scene Transitions | tests/e2e/environment_rendering.spec.js | executionWaterColumn | bathymetry/terrain | user workflow | MERGE_E2E |
+| Three Bathymetric Terrain Preserves Render-Cost Gate | tests/e2e/environment_rendering.spec.js | executionWaterColumn | bathymetry/terrain | user workflow | MERGE_E2E |
+| Three Camera Remains Responsive Under Live Simulation Load | tests/e2e/environment_rendering.spec.js | executionWaterColumn | application workflow | user workflow | MERGE_E2E |
+| Segment Distance Changes Predicted Dive Geometry | tests/e2e/environment_rendering.spec.js | threePlanning | planning/dive profile | user workflow | MERGE_E2E |
+| Predicted and Realized Dive Paths Remain Distinct | tests/e2e/environment_rendering.spec.js | threePlanning | planning/dive profile | user workflow | MERGE_E2E |
+| Bathymetry Demo and Mission Dive Paths Share Coordinates | tests/e2e/environment_rendering.spec.js | threePlanning | bathymetry/terrain | user workflow | MERGE_E2E |
+| Continuous Mission Planning Starts Without Overlay Errors | tests/e2e/mission_planning.spec.js | threePlanning | application workflow | user workflow | KEEP_E2E |
+| Continuous Mission Controls Are Visible and Functional | tests/e2e/mission_planning.spec.js | threePlanning | application workflow | browser UI behavior | KEEP_E2E |
+| Continuous Mission Plan Executes Through Canonical 3D Dive | tests/e2e/mission_planning.spec.js | threePlanning | planning/dive profile | canonical contract | KEEP_E2E |
+| Surface Waypoints Produce a Predicted Three-Dimensional Dive | tests/e2e/mission_planning.spec.js | threePlanning | planning/dive profile | user workflow | KEEP_E2E |
+| Three Camera Reveals Full Water-Column Dive | tests/e2e/mission_planning.spec.js | threePlanning | planning/dive profile | user workflow | MERGE_E2E |
+| Surface Waypoints and Sampling Targets Have Distinct Semantics | tests/e2e/mission_planning.spec.js | threePlanning | planning/dive profile | user workflow | MERGE_E2E |
+| Sampling Target Drives Predicted Dive Without Becoming a Navigation Point | tests/e2e/mission_planning.spec.js | threePlanning | planning/dive profile | user workflow | KEEP_E2E |
+| Predicted Multi-Yo Profile Executes Through Canonical Simulation | tests/e2e/mission_planning.spec.js | threePlanning | application workflow | canonical contract | KEEP_E2E |
+| Three Camera Interaction Does Not Rebuild Mission Models | tests/e2e/mission_planning.spec.js | threePlanning | application workflow | user workflow | MERGE_E2E |
+| Three Mission Renderer Resources Remain Stable | tests/e2e/mission_planning.spec.js | threePlanning | application workflow | user workflow | MERGE_E2E |
+| Three Mission Interaction Performance Invariants | tests/e2e/mission_planning.spec.js | threePlanning | application workflow | user workflow | MERGE_E2E |
+| Three Sampling Target and Dive Planning Headed Workflow | tests/e2e/mission_planning.spec.js | threePlanning | planning/dive profile | user workflow | MERGE_E2E |
+| learning labs static page is linked from the main menu | tests/e2e/product_hub_and_labs.spec.js | coreMission | learning lab | user workflow | KEEP_E2E |
+| Benchmark modes overview opens from Simulation Lab | tests/e2e/product_hub_and_labs.spec.js | coreMission | learning lab | user workflow | KEEP_E2E |
+| Motion Planning Demo opens from Simulation Lab and preserves benchmark/headless routes | tests/e2e/product_hub_and_labs.spec.js | coreMission | learning lab | canonical contract | MERGE_E2E |
+| Bathymetric World View opens from Simulation Lab and preserves adjacent routes | tests/e2e/product_hub_and_labs.spec.js | coreMission | learning lab | user workflow | MERGE_E2E |
+| Renderer Architecture Preview opens from Simulation Lab | tests/e2e/product_hub_and_labs.spec.js | coreMission | learning lab | user workflow | MERGE_E2E |
+| Headless Bundle Viewer opens from Simulation Lab and exports browser summary | tests/e2e/product_hub_and_labs.spec.js | coreMission | learning lab | canonical contract | KEEP_E2E |
+| Planner Benchmark debrief exports benchmark records from synthetic result | tests/e2e/product_hub_and_labs.spec.js | coreMission | replay/debrief | user workflow | KEEP_E2E |
+| Adaptive Benchmark synthetic debrief shows surfacing review and exports P8 session records | tests/e2e/product_hub_and_labs.spec.js | coreMission | replay/debrief | user workflow | MERGE_E2E |
+| campaign planning smoke flow reaches debrief | tests/e2e/product_hub_and_labs.spec.js | coreMission | replay/debrief | user workflow | MERGE_E2E |
+| Execute Mission Through Three Simulation | tests/e2e/simulation_and_terrain.spec.js | executionWaterColumn | application workflow | user workflow | KEEP_E2E |
+| Three Volumetric Water Column Planning | tests/e2e/simulation_and_terrain.spec.js | executionWaterColumn | planning/dive profile | user workflow | MERGE_E2E |
+| Three Depth-Aware Dive and Sampling | tests/e2e/simulation_and_terrain.spec.js | executionWaterColumn | planning/dive profile | user workflow | KEEP_E2E |
+| Three Mission Scene Isolation | tests/e2e/simulation_and_terrain.spec.js | executionWaterColumn | application workflow | user workflow | MERGE_E2E |
+| Three Scene Cleanup Is Null-Safe and Idempotent | tests/e2e/simulation_and_terrain.spec.js | executionWaterColumn | application workflow | user workflow | MERGE_E2E |
+| Generated Mission Opens a Visible Volumetric Water Column | tests/e2e/simulation_and_terrain.spec.js | executionWaterColumn | planning/dive profile | browser UI behavior | MERGE_E2E |
+| Legacy Mission Uses Explicit Surface Compatibility Mode | tests/e2e/simulation_and_terrain.spec.js | executionWaterColumn | application workflow | user workflow | DEFER_REVIEW |
+| Three Vehicle Pose Guidance and Grid Alignment | tests/e2e/simulation_and_terrain.spec.js | executionWaterColumn | application workflow | user workflow | MERGE_E2E |
+| Three Waypoint Validation and Mission Window Semantics | tests/e2e/simulation_and_terrain.spec.js | executionWaterColumn | planning/dive profile | user workflow | MERGE_E2E |
+| Terrain-Aware Placement Preview Prevents Invalid Mission Mutation | tests/e2e/simulation_and_terrain.spec.js | executionWaterColumn | bathymetry/terrain | user workflow | MERGE_E2E |
+| Continuous Route Validation Detects Coastline and Clearance Risks | tests/e2e/simulation_and_terrain.spec.js | executionWaterColumn | application workflow | user workflow | MERGE_E2E |
+| Sampling Targets Respect Canonical Seabed and Reachability | tests/e2e/simulation_and_terrain.spec.js | executionWaterColumn | bathymetry/terrain | canonical contract | MERGE_E2E |
+| Mission Readiness Separates Errors Warnings and Advisories | tests/e2e/simulation_and_terrain.spec.js | executionWaterColumn | application workflow | user workflow | MERGE_E2E |
+| Planned and Realized Paths Share Terrain Validation | tests/e2e/simulation_and_terrain.spec.js | executionWaterColumn | bathymetry/terrain | user workflow | MERGE_E2E |
+| Terrain Validation Persists Through Export Headless and Replay | tests/e2e/simulation_and_terrain.spec.js | executionWaterColumn | replay/debrief | canonical contract | MERGE_E2E |
+| Three Terrain Presentation Clearly Distinguishes Mission Semantics | tests/e2e/simulation_and_terrain.spec.js | executionWaterColumn | bathymetry/terrain | user workflow | MERGE_E2E |
+| Legacy and Three Simulation Produce Identical Canonical Result | tests/e2e/simulation_and_terrain.spec.js | executionWaterColumn | application workflow | canonical contract | DEFER_REVIEW |
+| legacy saved level registry scene still opens | tests/e2e/simulation_and_terrain.spec.js | executionWaterColumn | application workflow | user workflow | DEFER_REVIEW |
+| Three Mission Workspace Stabilization | tests/e2e/workspace_and_challenge_setup.spec.js | workspaceScenario | application workflow | user workflow | MERGE_E2E |
+| Three Mission renderer preserves live Mission Planning state | tests/e2e/workspace_and_challenge_setup.spec.js | workspaceScenario | application workflow | user workflow | MERGE_E2E |
+| Three Planning Pointer Interaction dispatches canonical workspace commands | tests/e2e/workspace_and_challenge_setup.spec.js | workspaceScenario | application workflow | canonical contract | KEEP_E2E |
+| Three Waypoint Pipeline and Standard Camera Gestures | tests/e2e/workspace_and_challenge_setup.spec.js | workspaceScenario | planning/dive profile | user workflow | KEEP_E2E |
+| Three Mission Planning Tools and Camera Controls | tests/e2e/workspace_and_challenge_setup.spec.js | workspaceScenario | application workflow | browser UI behavior | MERGE_E2E |
+| Three Simulation Selection inspects canonical public simulation objects | tests/e2e/workspace_and_challenge_setup.spec.js | workspaceScenario | application workflow | canonical contract | MERGE_E2E |
+| scenario setup stays inside the center viewport | tests/e2e/workspace_and_challenge_setup.spec.js | workspaceScenario | application workflow | user workflow | MERGE_E2E |
+| challenge setup uses left navigator and selected briefing | tests/e2e/workspace_and_challenge_setup.spec.js | workspaceScenario | application workflow | user workflow | KEEP_E2E |
+| level generator opens from main menu | tests/e2e/workspace_and_challenge_setup.spec.js | workspaceScenario | application workflow | user workflow | MERGE_E2E |
+| deterministic challenge generates a fresh perfect-knowledge level | tests/e2e/workspace_and_challenge_setup.spec.js | workspaceScenario | application workflow | user workflow | KEEP_E2E |
+| load level json imports a level and offers play/edit actions | tests/e2e/workspace_and_challenge_setup.spec.js | workspaceScenario | application workflow | user workflow | MERGE_E2E |
+| stochastic mode exposes ensemble and risk controls | tests/e2e/workspace_and_challenge_setup.spec.js | workspaceScenario | application workflow | browser UI behavior | KEEP_E2E |

@@ -61,7 +61,7 @@ node tools/js/audit_three_scene_isolation.mjs
 node tools/js/audit_three_water_column_boundaries.mjs
 ```
 
-Focused browser checks in `tests/e2e/smoke.spec.js` cover generated volumetric activation, imported legacy surface fallback, and null-safe cleanup idempotence.
+Focused browser checks in `tests/e2e/simulation_and_terrain.spec.js` cover generated volumetric activation, imported legacy surface fallback, and null-safe cleanup idempotence. REPO-CLEAN-R3 retired the former `tests/e2e/smoke.spec.js` monolith.
 
 Human manual QA by the project owner remains pending.
 

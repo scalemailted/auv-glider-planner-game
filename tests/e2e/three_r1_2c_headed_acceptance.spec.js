@@ -237,8 +237,7 @@ test('THREE-R1.2C Full Headed Production Walkthrough', async ({ page, browser })
   expect(afterManualStep.stepCount).toBeGreaterThanOrEqual(paused.stepCount);
   await continueSurfacingDecisionIfPresent(page);
   await page.locator('#mission-console [data-action="play"]').click({ timeout: 2000 });
-  await continueSurfacingDecisionIfPresent(page);
-  await page.locator('#mission-console [data-action="finish"]').click({ timeout: 2000 });
+  await clickFinishAfterSurfacingDecision(page);
   await expect.poll(() => page.evaluate(() => Boolean(window.anchorGame.state.result)), { timeout: 30000 }).toBe(true);
   const completion = await completionSnapshot(page);
   expect(completion.resultBuildCount).toBe(1);
@@ -791,6 +790,21 @@ async function clickSimulationStepControl(page) {
     scene.stepOnce();
     return true;
   }).catch(() => false);
+}
+
+async function clickFinishAfterSurfacingDecision(page) {
+  const finish = page.locator('#mission-console [data-action="finish"]');
+  let lastError = null;
+  for (let attempt = 0; attempt < 8; attempt += 1) {
+    await continueSurfacingDecisionIfPresent(page);
+    const clicked = await finish.click({ timeout: 1500 }).then(() => true).catch((error) => {
+      lastError = error;
+      return false;
+    });
+    if (clicked) return;
+    await page.waitForTimeout(250);
+  }
+  throw lastError ?? new Error('Finish control remained blocked by surfacing decision overlay.');
 }
 
 async function continueSurfacingDecisionIfPresent(page) {

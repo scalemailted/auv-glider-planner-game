@@ -74,4 +74,4 @@ REPO-CLEAN-R2 changes test ownership from historical phase names to production c
 
 ## Smoke Spec Disposition
 
-`tests/e2e/smoke.spec.js` is still physically monolithic, but it no longer owns tier policy. R2 reduces release/full execution through the capability manifest and records split/deletion candidates. A later R3 should move the remaining monolithic tests into capability files without changing titles or assertions.
+R2 originally left `tests/e2e/smoke.spec.js` physically monolithic while moving tier policy into the capability manifest. R3 subsequently retired that monolith and moved the tests into capability-owned files without changing titles or assertions.

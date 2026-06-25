@@ -1,7 +1,7 @@
 {
   "type": "anchor.repo-declutter.manifest",
-  "version": "repo-clean-r2",
-  "generatedAt": "2026-06-24T23:30:06.090Z",
+  "version": "repo-clean-r3",
+  "generatedAt": "2026-06-25T00:55:43.224Z",
   "evidenceFields": [
     "importReachability",
     "dynamicSceneRegistration",
@@ -22,7 +22,7 @@
     "phaserOwnership": "default lifecycle shell, route/scene manager, transitional UI orchestration, Learning Lab host",
     "threeOwnership": "mission-world, bathymetry, current, replay, and editor rendering inside supported routes"
   },
-  "capabilityMatrixVersion": "repo-clean-r2-capabilities-v1",
+  "capabilityMatrixVersion": "repo-clean-r3-capabilities-v1",
   "pagesCopyPolicy": {
     "runtimeRoots": [
       "index.html",
@@ -68,6 +68,8 @@
       "docs/flow_coupled_sampling_demo.md",
       "docs/repository_cleanup.md",
       "docs/repository_cleanup_r2.md",
+      "docs/repository_cleanup_r3.md",
+      "docs/smoke_spec_decomposition_audit.md",
       "docs/test_portfolio_r2.md"
     ],
     "publicExamples": [
@@ -89,6 +91,1001 @@
       "node_modules",
       ".git",
       ".github"
+    ]
+  },
+  "testFiles": {
+    "type": "anchor.repo-clean-r3.test-file-ownership",
+    "version": "repo-clean-r3",
+    "originalMonolith": {
+      "path": "tests/e2e/smoke.spec.js",
+      "historicalLines": 6951,
+      "historicalTests": 68,
+      "helperFunctionsExtracted": 80,
+      "exists": false,
+      "disposition": "retired-after-physical-split"
+    },
+    "sharedHelper": {
+      "path": "tests/e2e/helpers/SmokeSpecShared.js",
+      "exists": true,
+      "exportsReferencedBySplitFiles": true
+    },
+    "splitFiles": [
+      {
+        "path": "tests/e2e/product_hub_and_labs.spec.js",
+        "exists": true,
+        "testCount": 9,
+        "declaredOwnershipCount": 9,
+        "importsSharedHelper": true,
+        "groupCounts": {
+          "coreMission": 9
+        }
+      },
+      {
+        "path": "tests/e2e/mission_planning.spec.js",
+        "exists": true,
+        "testCount": 12,
+        "declaredOwnershipCount": 12,
+        "importsSharedHelper": true,
+        "groupCounts": {
+          "threePlanning": 12
+        }
+      },
+      {
+        "path": "tests/e2e/environment_rendering.spec.js",
+        "exists": true,
+        "testCount": 17,
+        "declaredOwnershipCount": 17,
+        "importsSharedHelper": true,
+        "groupCounts": {
+          "executionWaterColumn": 14,
+          "threePlanning": 3
+        }
+      },
+      {
+        "path": "tests/e2e/workspace_and_challenge_setup.spec.js",
+        "exists": true,
+        "testCount": 12,
+        "declaredOwnershipCount": 12,
+        "importsSharedHelper": true,
+        "groupCounts": {
+          "workspaceScenario": 12
+        }
+      },
+      {
+        "path": "tests/e2e/simulation_and_terrain.spec.js",
+        "exists": true,
+        "testCount": 18,
+        "declaredOwnershipCount": 18,
+        "importsSharedHelper": true,
+        "groupCounts": {
+          "executionWaterColumn": 18
+        }
+      }
+    ],
+    "declaredOwnershipCount": 68,
+    "movedTestCount": 68,
+    "currentPortfolioCount": 229,
+    "mismatches": [],
+    "undeclaredSplitTitles": [],
+    "actions": {
+      "movedUnchanged": 68,
+      "renamed": [],
+      "merged": [],
+      "convertedToNode": [],
+      "deletedDuplicates": [],
+      "deletedRetiredImplementationTests": [],
+      "helperConsolidation": "Local smoke.spec helper functions moved to tests/e2e/helpers/SmokeSpecShared.js; existing shared helpers remain active."
+    },
+    "valid": true
+  },
+  "forwarders": {
+    "type": "anchor.repo-clean-r3.forwarder-reachability",
+    "version": "repo-clean-r3",
+    "summary": "R3 found no high-confidence compatibility forwarder deletion. Supported production, tests, docs, Pages copy policy, or public dynamic imports still reference these paths.",
+    "rows": [
+      {
+        "path": "src/core/currents/CurrentFieldSampler.js",
+        "classification": "compatibility-forwarder-or-science-contract",
+        "exists": true,
+        "staticImporters": [
+          "src/core/demo/FlowFieldDemo.js",
+          "src/core/exploration/CellInspection.js",
+          "src/core/planning/CurrentAwareRouteCost.js",
+          "src/core/planning/PlanningGuidance.js",
+          "src/core/planning/SegmentExecutionValidator.js",
+          "src/core/planning/ShorelineRisk.js",
+          "src/core/rendering/MissionWorldStateAdapter.js",
+          "src/core/roi/RoiMode.js",
+          "src/core/sim/TruthWorld.js",
+          "src/game/phaser/PhaserCoreAdapter.js"
+        ],
+        "dynamicReferences": [
+          "tools/maintenance/repo_declutter.mjs",
+          "tools/maintenance/repo_declutter_manifest.json"
+        ],
+        "sceneRegistrations": [],
+        "routeRegistrations": [],
+        "packageScriptReferences": [],
+        "testReferences": [
+          "tools/maintenance/repo_declutter.mjs",
+          "tools/maintenance/repo_declutter_manifest.json"
+        ],
+        "documentationReferences": [
+          "docs/flow_fields_demo.md",
+          "docs/game_design.md",
+          "docs/repository_declutter_audit.md",
+          "docs/scientific_package_architecture_audit.md",
+          "docs/temporal_greedy.md",
+          "docs/repository_cleanup_r3.md"
+        ],
+        "pagesReferences": [
+          "src"
+        ],
+        "publicCompatibility": "yes",
+        "replacement": "packages/currents and supported runtime current sampling contracts",
+        "replacementTests": [
+          "tools/maintenance/repo_declutter.mjs",
+          "tools/maintenance/repo_declutter_manifest.json"
+        ],
+        "confidence": "high-retain",
+        "action": "retain"
+      },
+      {
+        "path": "src/core/science/OceanCurrentField4D.js",
+        "classification": "compatibility-forwarder-or-science-contract",
+        "exists": true,
+        "staticImporters": [
+          "src/core/rendering/WaterColumnLayerExplorerViewModel.js",
+          "src/core/science/SyntheticCurrentCubeAdapter.js",
+          "tools/js/audit_no_downhill_bathymetry_current_assumption.mjs",
+          "tools/js/smoke_bathymetry_conditioned_current_builder.mjs",
+          "tools/js/smoke_current_canonical_launch_failure.mjs",
+          "tools/js/smoke_current_field_session_cache.mjs",
+          "tools/js/smoke_current_package_forwarders.mjs",
+          "tools/js/smoke_current_sampler_hot_path.mjs",
+          "tools/js/smoke_current_temporal_boundary_modes.mjs",
+          "tools/js/smoke_model_stack_integration.mjs",
+          "tools/js/smoke_normal_generated_mission_current_activation.mjs",
+          "tools/js/smoke_ocean_current_field_4d.mjs"
+        ],
+        "dynamicReferences": [
+          "tools/js/audit_current_runtime_baseline.mjs",
+          "tools/maintenance/repo_declutter.mjs",
+          "tools/maintenance/repo_declutter_manifest.json"
+        ],
+        "sceneRegistrations": [],
+        "routeRegistrations": [],
+        "packageScriptReferences": [],
+        "testReferences": [
+          "tests/e2e/flow_r2a_1_launch_stability.spec.js",
+          "tests/e2e/flow_r2a_3_scientific_currents.spec.js",
+          "tests/e2e/flow_r2a_5_1_environment_and_time.spec.js",
+          "tools/js/audit_current_runtime_baseline.mjs",
+          "tools/js/audit_no_downhill_bathymetry_current_assumption.mjs",
+          "tools/js/smoke_bathymetry_conditioned_current_builder.mjs",
+          "tools/js/smoke_current_canonical_launch_failure.mjs",
+          "tools/js/smoke_current_field_session_cache.mjs",
+          "tools/js/smoke_current_package_forwarders.mjs",
+          "tools/js/smoke_current_sampler_hot_path.mjs",
+          "tools/js/smoke_current_temporal_boundary_modes.mjs",
+          "tools/js/smoke_model_stack_integration.mjs",
+          "tools/js/smoke_normal_generated_mission_current_activation.mjs",
+          "tools/js/smoke_ocean_current_field_4d.mjs",
+          "tools/maintenance/repo_declutter.mjs",
+          "tools/maintenance/repo_declutter_manifest.json"
+        ],
+        "documentationReferences": [
+          "docs/current_field_cache_and_hot_path.md",
+          "docs/hycom_style_current_cubes.md",
+          "docs/repository_declutter_audit.md",
+          "docs/scientific_package_architecture_audit.md",
+          "docs/repository_cleanup_r3.md"
+        ],
+        "pagesReferences": [
+          "src"
+        ],
+        "publicCompatibility": "yes",
+        "replacement": "packages/currents plus browser/headless current field contracts",
+        "replacementTests": [
+          "tests/e2e/flow_r2a_1_launch_stability.spec.js",
+          "tests/e2e/flow_r2a_3_scientific_currents.spec.js",
+          "tests/e2e/flow_r2a_5_1_environment_and_time.spec.js",
+          "tools/js/audit_current_runtime_baseline.mjs",
+          "tools/js/audit_no_downhill_bathymetry_current_assumption.mjs",
+          "tools/js/smoke_bathymetry_conditioned_current_builder.mjs",
+          "tools/js/smoke_current_canonical_launch_failure.mjs",
+          "tools/js/smoke_current_field_session_cache.mjs",
+          "tools/js/smoke_current_package_forwarders.mjs",
+          "tools/js/smoke_current_sampler_hot_path.mjs",
+          "tools/js/smoke_current_temporal_boundary_modes.mjs",
+          "tools/js/smoke_model_stack_integration.mjs"
+        ],
+        "confidence": "high-retain",
+        "action": "retain"
+      },
+      {
+        "path": "src/core/science/OceanCurrentFieldSampler.js",
+        "classification": "compatibility-forwarder-or-science-contract",
+        "exists": true,
+        "staticImporters": [
+          "src/core/evaluation/CurrentFieldMissionBenchmark.js",
+          "src/core/rendering/WaterColumnLayerExplorerViewModel.js",
+          "src/core/sim/TruthWorld.js",
+          "tools/js/audit_current_browser_headless_parity.mjs",
+          "tools/js/audit_current_browser_headless_scientific_parity.mjs",
+          "tools/js/audit_current_depth_time_distinctness.mjs",
+          "tools/js/current_cube_test_helpers.mjs",
+          "tools/js/flow_r2a5_current_dynamics_helpers.mjs",
+          "tools/js/flow_runtime_r1_current_helpers.mjs",
+          "tools/js/scientific_baseline_helpers.mjs",
+          "tools/js/smoke_current_below_bottom_mask.mjs",
+          "tools/js/smoke_current_depth_interpolation.mjs",
+          "tools/js/smoke_current_field_session_cache.mjs",
+          "tools/js/smoke_current_package_forwarders.mjs",
+          "tools/js/smoke_current_sampler_hot_path.mjs",
+          "tools/js/smoke_current_temporal_boundary_modes.mjs",
+          "tools/js/smoke_current_temporal_interpolation_exactness.mjs",
+          "tools/js/smoke_current_time_interpolation.mjs",
+          "tools/js/smoke_current_vertical_interpolation_exactness.mjs",
+          "tools/js/smoke_current_wet_mask.mjs",
+          "tools/js/smoke_depth_shear_current_exactness.mjs",
+          "tools/js/smoke_eddy_current_exactness.mjs",
+          "tools/js/smoke_model_stack_integration.mjs",
+          "tools/js/smoke_ocean_current_sampler_4d.mjs",
+          "tools/js/smoke_temporal_tide_exactness.mjs",
+          "tools/js/smoke_uniform_current_exactness.mjs"
+        ],
+        "dynamicReferences": [
+          "tools/js/audit_current_launch_hot_paths.mjs",
+          "tools/js/audit_current_no_wall_clock_time.mjs",
+          "tools/js/audit_current_runtime_baseline.mjs",
+          "tools/js/audit_no_current_digest_in_sample_loop.mjs",
+          "tools/maintenance/repo_declutter.mjs",
+          "tools/maintenance/repo_declutter_manifest.json"
+        ],
+        "sceneRegistrations": [],
+        "routeRegistrations": [],
+        "packageScriptReferences": [],
+        "testReferences": [
+          "tests/e2e/flow_pkg_r1_current_package.spec.js",
+          "tests/e2e/flow_r2a_1_launch_stability.spec.js",
+          "tests/e2e/flow_r2a_3_scientific_currents.spec.js",
+          "tests/e2e/flow_r2a_5_1_environment_and_time.spec.js",
+          "tests/e2e/flow_r2a_5_current_dynamics.spec.js",
+          "tests/e2e/flow_r2a_current_cubes.spec.js",
+          "tools/js/audit_current_browser_headless_parity.mjs",
+          "tools/js/audit_current_browser_headless_scientific_parity.mjs",
+          "tools/js/audit_current_depth_time_distinctness.mjs",
+          "tools/js/audit_current_launch_hot_paths.mjs",
+          "tools/js/audit_current_no_wall_clock_time.mjs",
+          "tools/js/audit_current_runtime_baseline.mjs",
+          "tools/js/audit_no_current_digest_in_sample_loop.mjs",
+          "tools/js/current_cube_test_helpers.mjs",
+          "tools/js/flow_r2a5_current_dynamics_helpers.mjs",
+          "tools/js/flow_runtime_r1_current_helpers.mjs",
+          "tools/js/scientific_baseline_helpers.mjs",
+          "tools/js/smoke_current_below_bottom_mask.mjs",
+          "tools/js/smoke_current_depth_interpolation.mjs",
+          "tools/js/smoke_current_field_session_cache.mjs",
+          "tools/js/smoke_current_package_forwarders.mjs",
+          "tools/js/smoke_current_sampler_hot_path.mjs",
+          "tools/js/smoke_current_temporal_boundary_modes.mjs",
+          "tools/js/smoke_current_temporal_interpolation_exactness.mjs",
+          "tools/js/smoke_current_time_interpolation.mjs",
+          "tools/js/smoke_current_vertical_interpolation_exactness.mjs",
+          "tools/js/smoke_current_wet_mask.mjs",
+          "tools/js/smoke_depth_shear_current_exactness.mjs",
+          "tools/js/smoke_eddy_current_exactness.mjs",
+          "tools/js/smoke_model_stack_integration.mjs",
+          "tools/js/smoke_ocean_current_sampler_4d.mjs",
+          "tools/js/smoke_temporal_tide_exactness.mjs",
+          "tools/js/smoke_uniform_current_exactness.mjs",
+          "tools/maintenance/repo_declutter.mjs",
+          "tools/maintenance/repo_declutter_manifest.json"
+        ],
+        "documentationReferences": [
+          "docs/current_field_cache_and_hot_path.md",
+          "docs/repository_declutter_audit.md",
+          "docs/scientific_package_architecture_audit.md",
+          "docs/repository_cleanup_r3.md"
+        ],
+        "pagesReferences": [
+          "src"
+        ],
+        "publicCompatibility": "yes",
+        "replacement": "packages/currents current sampler facade",
+        "replacementTests": [
+          "tests/e2e/flow_pkg_r1_current_package.spec.js",
+          "tests/e2e/flow_r2a_1_launch_stability.spec.js",
+          "tests/e2e/flow_r2a_3_scientific_currents.spec.js",
+          "tests/e2e/flow_r2a_5_1_environment_and_time.spec.js",
+          "tests/e2e/flow_r2a_5_current_dynamics.spec.js",
+          "tests/e2e/flow_r2a_current_cubes.spec.js",
+          "tools/js/audit_current_browser_headless_parity.mjs",
+          "tools/js/audit_current_browser_headless_scientific_parity.mjs",
+          "tools/js/audit_current_depth_time_distinctness.mjs",
+          "tools/js/audit_current_launch_hot_paths.mjs",
+          "tools/js/audit_current_no_wall_clock_time.mjs",
+          "tools/js/audit_current_runtime_baseline.mjs"
+        ],
+        "confidence": "high-retain",
+        "action": "retain"
+      },
+      {
+        "path": "src/core/science/OceanCurrentSourceMetadata.js",
+        "classification": "compatibility-forwarder-or-science-contract",
+        "exists": true,
+        "staticImporters": [
+          "tools/js/audit_current_scientific_claim_boundaries.mjs",
+          "tools/js/smoke_current_package_forwarders.mjs"
+        ],
+        "dynamicReferences": [
+          "tools/maintenance/repo_declutter.mjs",
+          "tools/maintenance/repo_declutter_manifest.json"
+        ],
+        "sceneRegistrations": [],
+        "routeRegistrations": [],
+        "packageScriptReferences": [],
+        "testReferences": [
+          "tools/js/audit_current_scientific_claim_boundaries.mjs",
+          "tools/js/smoke_current_package_forwarders.mjs",
+          "tools/maintenance/repo_declutter.mjs",
+          "tools/maintenance/repo_declutter_manifest.json"
+        ],
+        "documentationReferences": [
+          "docs/repository_declutter_audit.md",
+          "docs/repository_cleanup_r3.md"
+        ],
+        "pagesReferences": [
+          "src"
+        ],
+        "publicCompatibility": "yes",
+        "replacement": "current source metadata contracts",
+        "replacementTests": [
+          "tools/js/audit_current_scientific_claim_boundaries.mjs",
+          "tools/js/smoke_current_package_forwarders.mjs",
+          "tools/maintenance/repo_declutter.mjs",
+          "tools/maintenance/repo_declutter_manifest.json"
+        ],
+        "confidence": "high-retain",
+        "action": "retain"
+      },
+      {
+        "path": "src/core/science/CurrentFieldScientificDiagnostics.js",
+        "classification": "compatibility-forwarder-or-science-contract",
+        "exists": true,
+        "staticImporters": [
+          "tools/js/audit_current_divergence_and_boundary_metrics.mjs",
+          "tools/js/scientific_baseline_helpers.mjs",
+          "tools/js/smoke_current_coastline_boundary.mjs",
+          "tools/js/smoke_eddy_current_exactness.mjs",
+          "tools/js/smoke_manufactured_current_cases.mjs",
+          "tools/js/smoke_uniform_current_exactness.mjs"
+        ],
+        "dynamicReferences": [
+          "tools/maintenance/repo_declutter.mjs",
+          "tools/maintenance/repo_declutter_manifest.json"
+        ],
+        "sceneRegistrations": [],
+        "routeRegistrations": [],
+        "packageScriptReferences": [],
+        "testReferences": [
+          "tools/js/audit_current_divergence_and_boundary_metrics.mjs",
+          "tools/js/scientific_baseline_helpers.mjs",
+          "tools/js/smoke_current_coastline_boundary.mjs",
+          "tools/js/smoke_eddy_current_exactness.mjs",
+          "tools/js/smoke_manufactured_current_cases.mjs",
+          "tools/js/smoke_uniform_current_exactness.mjs",
+          "tools/maintenance/repo_declutter.mjs",
+          "tools/maintenance/repo_declutter_manifest.json"
+        ],
+        "documentationReferences": [
+          "docs/repository_declutter_audit.md",
+          "docs/repository_cleanup_r3.md"
+        ],
+        "pagesReferences": [
+          "src"
+        ],
+        "publicCompatibility": "yes",
+        "replacement": "current package diagnostics and audits",
+        "replacementTests": [
+          "tools/js/audit_current_divergence_and_boundary_metrics.mjs",
+          "tools/js/scientific_baseline_helpers.mjs",
+          "tools/js/smoke_current_coastline_boundary.mjs",
+          "tools/js/smoke_eddy_current_exactness.mjs",
+          "tools/js/smoke_manufactured_current_cases.mjs",
+          "tools/js/smoke_uniform_current_exactness.mjs",
+          "tools/maintenance/repo_declutter.mjs",
+          "tools/maintenance/repo_declutter_manifest.json"
+        ],
+        "confidence": "high-retain",
+        "action": "retain"
+      },
+      {
+        "path": "src/core/science/BathymetrySourceMetadata.js",
+        "classification": "compatibility-forwarder-or-science-contract",
+        "exists": true,
+        "staticImporters": [
+          "src/core/rendering/BathymetrySurfaceViewModel.js",
+          "src/core/science/BathymetryFieldModel.js",
+          "tools/js/smoke_bathymetry_fixture_metadata.mjs",
+          "tools/js/smoke_bathymetry_package_forwarders.mjs"
+        ],
+        "dynamicReferences": [
+          "tools/js/audit_bathymetry_package_static_paths.mjs",
+          "tools/maintenance/repo_declutter.mjs",
+          "tools/maintenance/repo_declutter_manifest.json"
+        ],
+        "sceneRegistrations": [],
+        "routeRegistrations": [],
+        "packageScriptReferences": [],
+        "testReferences": [
+          "tools/js/audit_bathymetry_package_static_paths.mjs",
+          "tools/js/smoke_bathymetry_fixture_metadata.mjs",
+          "tools/js/smoke_bathymetry_package_forwarders.mjs",
+          "tools/maintenance/repo_declutter.mjs",
+          "tools/maintenance/repo_declutter_manifest.json"
+        ],
+        "documentationReferences": [
+          "docs/bathymetry_package_architecture.md",
+          "docs/bathymetry_package_extraction_audit.md",
+          "docs/repository_declutter_audit.md",
+          "docs/repository_cleanup_r3.md"
+        ],
+        "pagesReferences": [
+          "src"
+        ],
+        "publicCompatibility": "yes",
+        "replacement": "bathymetry package metadata contracts",
+        "replacementTests": [
+          "tools/js/audit_bathymetry_package_static_paths.mjs",
+          "tools/js/smoke_bathymetry_fixture_metadata.mjs",
+          "tools/js/smoke_bathymetry_package_forwarders.mjs",
+          "tools/maintenance/repo_declutter.mjs",
+          "tools/maintenance/repo_declutter_manifest.json"
+        ],
+        "confidence": "high-retain",
+        "action": "retain"
+      },
+      {
+        "path": "src/core/science/SignedTerrainSurfaceModel.js",
+        "classification": "compatibility-forwarder-or-science-contract",
+        "exists": true,
+        "staticImporters": [
+          "src/core/generation/RegionalMissionDefaults.js",
+          "src/core/rendering/MissionWorldRenderViewModel.js",
+          "tools/js/audit_terrain_authority_consistency.mjs",
+          "tools/js/capture_bathymetry_package_r1_baseline.mjs",
+          "tools/js/smoke_bathymetry_package_forwarders.mjs",
+          "tools/js/smoke_regional_continuous_execution.mjs",
+          "tools/js/smoke_regional_drop_zone_generation.mjs",
+          "tools/js/smoke_regional_field_mask_alignment.mjs",
+          "tools/js/smoke_signed_terrain_surface_authority.mjs"
+        ],
+        "dynamicReferences": [
+          "tools/js/audit_bathymetry_package_static_paths.mjs",
+          "tools/js/audit_no_legacy_land_tiles_modern_path.mjs",
+          "tools/maintenance/repo_declutter.mjs",
+          "tools/maintenance/repo_declutter_manifest.json"
+        ],
+        "sceneRegistrations": [],
+        "routeRegistrations": [],
+        "packageScriptReferences": [],
+        "testReferences": [
+          "tools/js/audit_bathymetry_package_static_paths.mjs",
+          "tools/js/audit_no_legacy_land_tiles_modern_path.mjs",
+          "tools/js/audit_terrain_authority_consistency.mjs",
+          "tools/js/capture_bathymetry_package_r1_baseline.mjs",
+          "tools/js/smoke_bathymetry_package_forwarders.mjs",
+          "tools/js/smoke_regional_continuous_execution.mjs",
+          "tools/js/smoke_regional_drop_zone_generation.mjs",
+          "tools/js/smoke_regional_field_mask_alignment.mjs",
+          "tools/js/smoke_signed_terrain_surface_authority.mjs",
+          "tools/maintenance/repo_declutter.mjs",
+          "tools/maintenance/repo_declutter_manifest.json"
+        ],
+        "documentationReferences": [
+          "docs/bathymetry_package_architecture.md",
+          "docs/bathymetry_package_extraction_audit.md",
+          "docs/modern_and_legacy_terrain_authority_audit.md",
+          "docs/repository_declutter_audit.md",
+          "docs/scientific_package_architecture_audit.md",
+          "docs/signed_terrain_surface_authority.md",
+          "docs/repository_cleanup_r3.md"
+        ],
+        "pagesReferences": [
+          "src"
+        ],
+        "publicCompatibility": "yes",
+        "replacement": "bathymetry package terrain surface contract",
+        "replacementTests": [
+          "tools/js/audit_bathymetry_package_static_paths.mjs",
+          "tools/js/audit_no_legacy_land_tiles_modern_path.mjs",
+          "tools/js/audit_terrain_authority_consistency.mjs",
+          "tools/js/capture_bathymetry_package_r1_baseline.mjs",
+          "tools/js/smoke_bathymetry_package_forwarders.mjs",
+          "tools/js/smoke_regional_continuous_execution.mjs",
+          "tools/js/smoke_regional_drop_zone_generation.mjs",
+          "tools/js/smoke_regional_field_mask_alignment.mjs",
+          "tools/js/smoke_signed_terrain_surface_authority.mjs",
+          "tools/maintenance/repo_declutter.mjs",
+          "tools/maintenance/repo_declutter_manifest.json"
+        ],
+        "confidence": "high-retain",
+        "action": "retain"
+      },
+      {
+        "path": "src/core/science/BathymetryConditionedCurrentBuilder.js",
+        "classification": "compatibility-forwarder-or-science-contract",
+        "exists": true,
+        "staticImporters": [
+          "tools/js/audit_current_browser_headless_scientific_parity.mjs",
+          "tools/js/audit_current_depth_time_distinctness.mjs",
+          "tools/js/audit_current_divergence_and_boundary_metrics.mjs",
+          "tools/js/audit_current_equation_metadata.mjs",
+          "tools/js/audit_current_scientific_claim_boundaries.mjs",
+          "tools/js/audit_no_downhill_bathymetry_current_assumption.mjs",
+          "tools/js/audit_no_short_bounded_current_axis.mjs",
+          "tools/js/audit_volumetric_current_rendering.mjs",
+          "tools/js/capture_current_package_r1_baseline.mjs",
+          "tools/js/scientific_baseline_helpers.mjs",
+          "tools/js/smoke_bathymetry_conditioned_current_builder.mjs",
+          "tools/js/smoke_current_below_bottom_mask.mjs",
+          "tools/js/smoke_current_coastline_boundary.mjs",
+          "tools/js/smoke_current_temporal_boundary_modes.mjs",
+          "tools/js/smoke_current_temporal_render_updates.mjs",
+          "tools/js/smoke_current_volumetric_render_view_model.mjs"
+        ],
+        "dynamicReferences": [
+          "tools/maintenance/repo_declutter.mjs",
+          "tools/maintenance/repo_declutter_manifest.json"
+        ],
+        "sceneRegistrations": [],
+        "routeRegistrations": [],
+        "packageScriptReferences": [],
+        "testReferences": [
+          "tests/e2e/flow_r2a_3_scientific_currents.spec.js",
+          "tools/js/audit_current_browser_headless_scientific_parity.mjs",
+          "tools/js/audit_current_depth_time_distinctness.mjs",
+          "tools/js/audit_current_divergence_and_boundary_metrics.mjs",
+          "tools/js/audit_current_equation_metadata.mjs",
+          "tools/js/audit_current_scientific_claim_boundaries.mjs",
+          "tools/js/audit_no_downhill_bathymetry_current_assumption.mjs",
+          "tools/js/audit_no_short_bounded_current_axis.mjs",
+          "tools/js/audit_volumetric_current_rendering.mjs",
+          "tools/js/capture_current_package_r1_baseline.mjs",
+          "tools/js/scientific_baseline_helpers.mjs",
+          "tools/js/smoke_bathymetry_conditioned_current_builder.mjs",
+          "tools/js/smoke_current_below_bottom_mask.mjs",
+          "tools/js/smoke_current_coastline_boundary.mjs",
+          "tools/js/smoke_current_temporal_boundary_modes.mjs",
+          "tools/js/smoke_current_temporal_render_updates.mjs",
+          "tools/js/smoke_current_volumetric_render_view_model.mjs",
+          "tools/maintenance/repo_declutter.mjs",
+          "tools/maintenance/repo_declutter_manifest.json"
+        ],
+        "documentationReferences": [
+          "docs/current_package_architecture.md",
+          "docs/current_package_extraction_audit.md",
+          "docs/flow_pkg_r2_generator_and_vertical_structure_audit.md",
+          "docs/flow_pkg_r2_migration.md",
+          "docs/repository_declutter_audit.md",
+          "docs/scientific_package_architecture_audit.md",
+          "docs/repository_cleanup_r3.md"
+        ],
+        "pagesReferences": [
+          "src"
+        ],
+        "publicCompatibility": "yes",
+        "replacement": "current package bathymetry-conditioned field builder",
+        "replacementTests": [
+          "tests/e2e/flow_r2a_3_scientific_currents.spec.js",
+          "tools/js/audit_current_browser_headless_scientific_parity.mjs",
+          "tools/js/audit_current_depth_time_distinctness.mjs",
+          "tools/js/audit_current_divergence_and_boundary_metrics.mjs",
+          "tools/js/audit_current_equation_metadata.mjs",
+          "tools/js/audit_current_scientific_claim_boundaries.mjs",
+          "tools/js/audit_no_downhill_bathymetry_current_assumption.mjs",
+          "tools/js/audit_no_short_bounded_current_axis.mjs",
+          "tools/js/audit_volumetric_current_rendering.mjs",
+          "tools/js/capture_current_package_r1_baseline.mjs",
+          "tools/js/scientific_baseline_helpers.mjs",
+          "tools/js/smoke_bathymetry_conditioned_current_builder.mjs"
+        ],
+        "confidence": "high-retain",
+        "action": "retain"
+      }
+    ]
+  },
+  "renderers": {
+    "type": "anchor.repo-clean-r3.renderer-reachability",
+    "version": "repo-clean-r3",
+    "summary": "R3 did not remove renderer paths without hard evidence. Fallback and demo paths remain until route, lab, and visual coverage are explicitly retired.",
+    "rows": [
+      {
+        "path": "src/game/three/layers/ThreeCurrentVectorLayer.js",
+        "classification": "renderer-or-scene-path",
+        "exists": true,
+        "staticImporters": [
+          "src/game/three/ThreeMissionWorldRenderer.js",
+          "tools/js/smoke_three_mission_entity_layers.mjs"
+        ],
+        "dynamicReferences": [
+          "tools/js/audit_three_planning_hot_paths.mjs",
+          "tools/js/smoke_three_instanced_marker_contract.mjs",
+          "tools/maintenance/repo_declutter.mjs",
+          "tools/maintenance/repo_declutter_manifest.json"
+        ],
+        "sceneRegistrations": [],
+        "routeRegistrations": [],
+        "packageScriptReferences": [],
+        "testReferences": [
+          "tools/js/audit_three_planning_hot_paths.mjs",
+          "tools/js/smoke_three_instanced_marker_contract.mjs",
+          "tools/js/smoke_three_mission_entity_layers.mjs",
+          "tools/maintenance/repo_declutter.mjs",
+          "tools/maintenance/repo_declutter_manifest.json"
+        ],
+        "documentationReferences": [
+          "docs/repository_declutter_audit.md",
+          "docs/repository_cleanup_r3.md"
+        ],
+        "pagesReferences": [
+          "src"
+        ],
+        "publicCompatibility": "yes",
+        "replacement": "ThreeInstancedCurrentGlyphLayer where fallback removal is separately gated",
+        "replacementTests": [
+          "tools/js/audit_three_planning_hot_paths.mjs",
+          "tools/js/smoke_three_instanced_marker_contract.mjs",
+          "tools/js/smoke_three_mission_entity_layers.mjs",
+          "tools/maintenance/repo_declutter.mjs",
+          "tools/maintenance/repo_declutter_manifest.json"
+        ],
+        "confidence": "high-retain",
+        "action": "retain"
+      },
+      {
+        "path": "src/game/three/layers/ThreeInstancedCurrentGlyphLayer.js",
+        "classification": "renderer-or-scene-path",
+        "exists": true,
+        "staticImporters": [
+          "src/game/three/ThreeMissionWorldRenderer.js",
+          "tools/js/audit_current_depth_ordering.mjs",
+          "tools/js/audit_current_material_visibility.mjs",
+          "tools/js/audit_current_resource_lifecycle.mjs",
+          "tools/js/audit_volumetric_current_rendering.mjs",
+          "tools/js/flow_r2a5_current_dynamics_helpers.mjs",
+          "tools/js/flow_runtime_r1_current_helpers.mjs",
+          "tools/js/smoke_current_glyph_bounds.mjs",
+          "tools/js/smoke_current_glyph_buffer_reuse.mjs",
+          "tools/js/smoke_current_glyph_visibility_contract.mjs",
+          "tools/js/smoke_current_layer_filter_and_calm_markers.mjs",
+          "tools/js/smoke_current_presentation_fail_soft.mjs",
+          "tools/js/smoke_current_timeline_to_gpu_binding.mjs",
+          "tools/js/smoke_current_volumetric_render_view_model.mjs",
+          "tools/js/smoke_instanced_current_glyph_contract.mjs",
+          "tools/js/smoke_model_stack_integration.mjs"
+        ],
+        "dynamicReferences": [
+          "tools/js/audit_current_gpu_attribute_uploads.mjs",
+          "tools/js/audit_current_no_fake_shader_animation.mjs",
+          "tools/js/audit_current_no_wall_clock_time.mjs",
+          "tools/js/audit_current_renderer_authority.mjs",
+          "tools/js/audit_current_renderer_single_raf.mjs",
+          "tools/js/audit_current_runtime_baseline.mjs",
+          "tools/js/audit_current_timeline_to_gpu_contract.mjs",
+          "tools/js/audit_no_per_vector_three_objects.mjs",
+          "tools/js/audit_three_execution_boundaries.mjs",
+          "tools/js/smoke_current_renderer_attachment_lifecycle.mjs",
+          "tools/maintenance/repo_declutter.mjs",
+          "tools/maintenance/repo_declutter_manifest.json"
+        ],
+        "sceneRegistrations": [],
+        "routeRegistrations": [],
+        "packageScriptReferences": [],
+        "testReferences": [
+          "tests/e2e/flow_pkg_r2_depth_structured_currents.spec.js",
+          "tests/e2e/flow_r2a_1_launch_stability.spec.js",
+          "tests/e2e/flow_r2a_3_scientific_currents.spec.js",
+          "tests/e2e/flow_r2a_5_1_environment_and_time.spec.js",
+          "tests/e2e/flow_r2a_5_2_timeline_to_gpu.spec.js",
+          "tests/e2e/flow_r2a_current_cubes.spec.js",
+          "tools/js/audit_current_depth_ordering.mjs",
+          "tools/js/audit_current_gpu_attribute_uploads.mjs",
+          "tools/js/audit_current_material_visibility.mjs",
+          "tools/js/audit_current_no_fake_shader_animation.mjs",
+          "tools/js/audit_current_no_wall_clock_time.mjs",
+          "tools/js/audit_current_renderer_authority.mjs",
+          "tools/js/audit_current_renderer_single_raf.mjs",
+          "tools/js/audit_current_resource_lifecycle.mjs",
+          "tools/js/audit_current_runtime_baseline.mjs",
+          "tools/js/audit_current_timeline_to_gpu_contract.mjs",
+          "tools/js/audit_no_per_vector_three_objects.mjs",
+          "tools/js/audit_three_execution_boundaries.mjs",
+          "tools/js/audit_volumetric_current_rendering.mjs",
+          "tools/js/flow_r2a5_current_dynamics_helpers.mjs",
+          "tools/js/flow_runtime_r1_current_helpers.mjs",
+          "tools/js/smoke_current_glyph_bounds.mjs",
+          "tools/js/smoke_current_glyph_buffer_reuse.mjs",
+          "tools/js/smoke_current_glyph_visibility_contract.mjs",
+          "tools/js/smoke_current_layer_filter_and_calm_markers.mjs",
+          "tools/js/smoke_current_presentation_fail_soft.mjs",
+          "tools/js/smoke_current_renderer_attachment_lifecycle.mjs",
+          "tools/js/smoke_current_timeline_to_gpu_binding.mjs",
+          "tools/js/smoke_current_volumetric_render_view_model.mjs",
+          "tools/js/smoke_instanced_current_glyph_contract.mjs",
+          "tools/js/smoke_model_stack_integration.mjs",
+          "tools/maintenance/repo_declutter.mjs",
+          "tools/maintenance/repo_declutter_manifest.json"
+        ],
+        "documentationReferences": [
+          "docs/current_field_cache_and_hot_path.md",
+          "docs/current_package_extraction_audit.md",
+          "docs/flow_pkg_r2_generator_and_vertical_structure_audit.md",
+          "docs/repository_declutter_audit.md",
+          "docs/repository_cleanup_r3.md"
+        ],
+        "pagesReferences": [
+          "src"
+        ],
+        "publicCompatibility": "yes",
+        "replacement": "active production current glyph renderer",
+        "replacementTests": [
+          "tests/e2e/flow_pkg_r2_depth_structured_currents.spec.js",
+          "tests/e2e/flow_r2a_1_launch_stability.spec.js",
+          "tests/e2e/flow_r2a_3_scientific_currents.spec.js",
+          "tests/e2e/flow_r2a_5_1_environment_and_time.spec.js",
+          "tests/e2e/flow_r2a_5_2_timeline_to_gpu.spec.js",
+          "tests/e2e/flow_r2a_current_cubes.spec.js",
+          "tools/js/audit_current_depth_ordering.mjs",
+          "tools/js/audit_current_gpu_attribute_uploads.mjs",
+          "tools/js/audit_current_material_visibility.mjs",
+          "tools/js/audit_current_no_fake_shader_animation.mjs",
+          "tools/js/audit_current_no_wall_clock_time.mjs",
+          "tools/js/audit_current_renderer_authority.mjs"
+        ],
+        "confidence": "high-retain",
+        "action": "retain"
+      },
+      {
+        "path": "src/game/phaser/renderers/BathymetryWorldRenderer.js",
+        "classification": "renderer-or-scene-path",
+        "exists": true,
+        "staticImporters": [],
+        "dynamicReferences": [
+          "tools/js/smoke_model_stack_integration.mjs",
+          "tools/maintenance/repo_declutter.mjs",
+          "tools/maintenance/repo_declutter_manifest.json"
+        ],
+        "sceneRegistrations": [],
+        "routeRegistrations": [],
+        "packageScriptReferences": [],
+        "testReferences": [
+          "tools/js/smoke_model_stack_integration.mjs",
+          "tools/maintenance/repo_declutter.mjs",
+          "tools/maintenance/repo_declutter_manifest.json"
+        ],
+        "documentationReferences": [
+          "docs/r3b_residual_phaser_audit.md",
+          "docs/repository_declutter_audit.md",
+          "docs/repository_cleanup_r3.md"
+        ],
+        "pagesReferences": [
+          "src"
+        ],
+        "publicCompatibility": "yes",
+        "replacement": "bathymetry demo renderer until demo route ownership changes",
+        "replacementTests": [
+          "tools/js/smoke_model_stack_integration.mjs",
+          "tools/maintenance/repo_declutter.mjs",
+          "tools/maintenance/repo_declutter_manifest.json"
+        ],
+        "confidence": "high-retain",
+        "action": "retain"
+      },
+      {
+        "path": "src/game/three/ThreeBathymetryRenderer.js",
+        "classification": "renderer-or-scene-path",
+        "exists": true,
+        "staticImporters": [
+          "src/game/phaser/scenes/BathymetryWorldViewScene.js",
+          "tools/js/smoke_model_stack_integration.mjs",
+          "tools/js/smoke_three_bathymetry_renderer_contract.mjs"
+        ],
+        "dynamicReferences": [
+          "tools/js/audit_bathymetry_renderer_boundaries.mjs",
+          "tools/js/audit_bathymetry_renderer_boundaries_v2.mjs",
+          "tools/js/audit_no_legacy_terrain_production_imports.mjs",
+          "tools/maintenance/repo_declutter.mjs",
+          "tools/maintenance/repo_declutter_manifest.json"
+        ],
+        "sceneRegistrations": [],
+        "routeRegistrations": [],
+        "packageScriptReferences": [],
+        "testReferences": [
+          "tools/js/audit_bathymetry_renderer_boundaries.mjs",
+          "tools/js/audit_bathymetry_renderer_boundaries_v2.mjs",
+          "tools/js/audit_no_legacy_terrain_production_imports.mjs",
+          "tools/js/smoke_model_stack_integration.mjs",
+          "tools/js/smoke_three_bathymetry_renderer_contract.mjs",
+          "tools/maintenance/repo_declutter.mjs",
+          "tools/maintenance/repo_declutter_manifest.json"
+        ],
+        "documentationReferences": [
+          "docs/bathymetric_world_view.md",
+          "docs/renderer_architecture_and_webgpu_strategy.md",
+          "docs/repository_declutter_audit.md",
+          "docs/repository_cleanup_r3.md"
+        ],
+        "pagesReferences": [
+          "src"
+        ],
+        "publicCompatibility": "yes",
+        "replacement": "active Three bathymetry renderer",
+        "replacementTests": [
+          "tools/js/audit_bathymetry_renderer_boundaries.mjs",
+          "tools/js/audit_bathymetry_renderer_boundaries_v2.mjs",
+          "tools/js/audit_no_legacy_terrain_production_imports.mjs",
+          "tools/js/smoke_model_stack_integration.mjs",
+          "tools/js/smoke_three_bathymetry_renderer_contract.mjs",
+          "tools/maintenance/repo_declutter.mjs",
+          "tools/maintenance/repo_declutter_manifest.json"
+        ],
+        "confidence": "high-retain",
+        "action": "retain"
+      },
+      {
+        "path": "src/game/three/layers/ThreeBathymetryTerrainLayer.js",
+        "classification": "renderer-or-scene-path",
+        "exists": true,
+        "staticImporters": [
+          "src/game/three/ThreeBathymetryRenderer.js",
+          "src/game/three/ThreeMissionWorldRenderer.js",
+          "tools/js/smoke_terrain_resource_lifecycle.mjs",
+          "tools/js/smoke_three_bathymetry_terrain_layer.mjs"
+        ],
+        "dynamicReferences": [
+          "tools/js/audit_bathymetry_performance_boundaries.mjs",
+          "tools/js/audit_bathymetry_renderer_boundaries_v2.mjs",
+          "tools/js/audit_no_legacy_land_tiles_modern_path.mjs",
+          "tools/js/audit_no_per_cell_regional_three_objects.mjs",
+          "tools/maintenance/repo_declutter.mjs",
+          "tools/maintenance/repo_declutter_manifest.json"
+        ],
+        "sceneRegistrations": [],
+        "routeRegistrations": [],
+        "packageScriptReferences": [],
+        "testReferences": [
+          "tools/js/audit_bathymetry_performance_boundaries.mjs",
+          "tools/js/audit_bathymetry_renderer_boundaries_v2.mjs",
+          "tools/js/audit_no_legacy_land_tiles_modern_path.mjs",
+          "tools/js/audit_no_per_cell_regional_three_objects.mjs",
+          "tools/js/smoke_terrain_resource_lifecycle.mjs",
+          "tools/js/smoke_three_bathymetry_terrain_layer.mjs",
+          "tools/maintenance/repo_declutter.mjs",
+          "tools/maintenance/repo_declutter_manifest.json"
+        ],
+        "documentationReferences": [
+          "docs/modern_and_legacy_terrain_authority_audit.md",
+          "docs/repository_declutter_audit.md",
+          "docs/repository_cleanup_r3.md"
+        ],
+        "pagesReferences": [
+          "src"
+        ],
+        "publicCompatibility": "yes",
+        "replacement": "active Three terrain layer",
+        "replacementTests": [
+          "tools/js/audit_bathymetry_performance_boundaries.mjs",
+          "tools/js/audit_bathymetry_renderer_boundaries_v2.mjs",
+          "tools/js/audit_no_legacy_land_tiles_modern_path.mjs",
+          "tools/js/audit_no_per_cell_regional_three_objects.mjs",
+          "tools/js/smoke_terrain_resource_lifecycle.mjs",
+          "tools/js/smoke_three_bathymetry_terrain_layer.mjs",
+          "tools/maintenance/repo_declutter.mjs",
+          "tools/maintenance/repo_declutter_manifest.json"
+        ],
+        "confidence": "high-retain",
+        "action": "retain"
+      },
+      {
+        "path": "src/game/phaser/scenes/BathymetryWorldViewScene.js",
+        "classification": "renderer-or-scene-path",
+        "exists": true,
+        "staticImporters": [
+          "src/game/phaser/PhaserGame.js",
+          "tools/js/smoke_model_stack_integration.mjs"
+        ],
+        "dynamicReferences": [
+          "tools/js/audit_bathymetry_boundaries.mjs",
+          "tools/js/audit_bathymetry_demo_path_source.mjs",
+          "tools/js/audit_bathymetry_renderer_boundaries.mjs",
+          "tools/js/audit_no_legacy_terrain_production_imports.mjs",
+          "tools/js/smoke_bathymetry_three_scene.mjs",
+          "tools/js/smoke_bathymetry_world_view_scene.mjs",
+          "tools/maintenance/repo_declutter.mjs",
+          "tools/maintenance/repo_declutter_manifest.json"
+        ],
+        "sceneRegistrations": [],
+        "routeRegistrations": [],
+        "packageScriptReferences": [],
+        "testReferences": [
+          "tools/js/audit_bathymetry_boundaries.mjs",
+          "tools/js/audit_bathymetry_demo_path_source.mjs",
+          "tools/js/audit_bathymetry_renderer_boundaries.mjs",
+          "tools/js/audit_no_legacy_terrain_production_imports.mjs",
+          "tools/js/smoke_bathymetry_three_scene.mjs",
+          "tools/js/smoke_bathymetry_world_view_scene.mjs",
+          "tools/js/smoke_model_stack_integration.mjs",
+          "tools/maintenance/repo_declutter.mjs",
+          "tools/maintenance/repo_declutter_manifest.json"
+        ],
+        "documentationReferences": [
+          "docs/r3b_residual_phaser_audit.md",
+          "docs/repository_declutter_audit.md",
+          "docs/repository_cleanup_r3.md"
+        ],
+        "pagesReferences": [
+          "src"
+        ],
+        "publicCompatibility": "yes",
+        "replacement": "active Simulation Lab bathymetry route",
+        "replacementTests": [
+          "tools/js/audit_bathymetry_boundaries.mjs",
+          "tools/js/audit_bathymetry_demo_path_source.mjs",
+          "tools/js/audit_bathymetry_renderer_boundaries.mjs",
+          "tools/js/audit_no_legacy_terrain_production_imports.mjs",
+          "tools/js/smoke_bathymetry_three_scene.mjs",
+          "tools/js/smoke_bathymetry_world_view_scene.mjs",
+          "tools/js/smoke_model_stack_integration.mjs",
+          "tools/maintenance/repo_declutter.mjs",
+          "tools/maintenance/repo_declutter_manifest.json"
+        ],
+        "confidence": "high-retain",
+        "action": "retain"
+      },
+      {
+        "path": "src/game/phaser/scenes/RendererArchitecturePreviewScene.js",
+        "classification": "renderer-or-scene-path",
+        "exists": true,
+        "staticImporters": [
+          "src/game/phaser/PhaserGame.js",
+          "tools/js/smoke_model_stack_integration.mjs",
+          "tools/js/smoke_renderer_architecture_preview_scene.mjs"
+        ],
+        "dynamicReferences": [
+          "tools/maintenance/repo_declutter.mjs",
+          "tools/maintenance/repo_declutter_manifest.json"
+        ],
+        "sceneRegistrations": [],
+        "routeRegistrations": [],
+        "packageScriptReferences": [],
+        "testReferences": [
+          "tools/js/smoke_model_stack_integration.mjs",
+          "tools/js/smoke_renderer_architecture_preview_scene.mjs",
+          "tools/maintenance/repo_declutter.mjs",
+          "tools/maintenance/repo_declutter_manifest.json"
+        ],
+        "documentationReferences": [
+          "docs/r3b_residual_phaser_audit.md",
+          "docs/repository_declutter_audit.md",
+          "docs/repository_cleanup_r3.md"
+        ],
+        "pagesReferences": [
+          "src"
+        ],
+        "publicCompatibility": "yes",
+        "replacement": "active Simulation Lab renderer architecture route",
+        "replacementTests": [
+          "tools/js/smoke_model_stack_integration.mjs",
+          "tools/js/smoke_renderer_architecture_preview_scene.mjs",
+          "tools/maintenance/repo_declutter.mjs",
+          "tools/maintenance/repo_declutter_manifest.json"
+        ],
+        "confidence": "high-retain",
+        "action": "retain"
+      }
     ]
   },
   "candidates": []

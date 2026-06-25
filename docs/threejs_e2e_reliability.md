@@ -26,7 +26,7 @@ Current focused results from 2026-06-20:
 | Command | Result | Notes |
 |---|---|---|
 | `npm.cmd run test:e2e:focused` | PASS, 2 tests, 2.7m | Headless Chromium; validates camera invariant and simulation workflow. |
-| `node ./node_modules/@playwright/test/cli.js test tests/e2e/smoke.spec.js --grep "Three Mission Interaction Performance Invariants|Three Sampling Target and Dive Planning Headed Workflow" --headed --reporter=line --workers=1` | PASS, 2 tests, 49.8s | Headed Chromium; validates visible UX path and screenshots. |
+| `node ./node_modules/@playwright/test/cli.js test tests/e2e/mission_planning.spec.js --grep "Three Mission Interaction Performance Invariants|Three Sampling Target and Dive Planning Headed Workflow" --headed --reporter=line --workers=1` | PASS, 2 tests, 49.8s | Headed Chromium; validates visible UX path and screenshots. Historical result originally ran from the former smoke monolith. |
 
 The sampling-target workflow deploys all required mission gliders before Execute. This preserves execution validation instead of bypassing multi-agent deployment requirements.
 
@@ -40,7 +40,7 @@ The sampling-target workflow deploys all required mission gliders before Execute
 | Workspace, pointer planning, scenario setup | 12 | PASS | 3.1m |
 | Execution, water column, cleanup, simulation parity | 11 | PASS | 4.4m |
 
-The grouped commands use `node ./node_modules/@playwright/test/cli.js` directly and `--grep` expressions over `tests/e2e/smoke.spec.js`; they do not require a global Playwright install.
+The grouped commands use `node ./node_modules/@playwright/test/cli.js` directly and `--grep` expressions over the capability-owned E2E files; they do not require a global Playwright install. REPO-CLEAN-R3 retired the former `tests/e2e/smoke.spec.js` monolith.
 ## Static Server
 
 `tools/js/smoke_e2e_static_server_cleanup.mjs` starts the local static server, verifies `index.html`, closes the server, confirms the port is released, and starts/stops it a second time. It must not kill unrelated processes.

@@ -4,7 +4,7 @@
 
 | Metric | Before | After | Change |
 |---|---:|---:|---:|
-| tracked files | 1765 | 1765 | 0 |
+| tracked files | 1771 | 1771 | 0 |
 | source files | 569 | 569 | 0 |
 | Phaser files | 43 | 43 | 0 |
 | Three files | 42 | 42 | 0 |

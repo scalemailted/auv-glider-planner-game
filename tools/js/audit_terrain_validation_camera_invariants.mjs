@@ -5,7 +5,7 @@ const workspace = fs.readFileSync('src/game/phaser/scenes/MissionWorkspaceScene.
 const interaction = fs.readFileSync('src/game/three/ThreeMissionInteractionController.js', 'utf8');
 const camera = fs.readFileSync('src/game/three/ThreeMissionCameraController.js', 'utf8');
 const diagnostics = fs.readFileSync('src/core/simulation/TerrainSimulationDiagnostics.js', 'utf8');
-const tests = fs.readFileSync('tests/e2e/smoke.spec.js', 'utf8');
+const tests = fs.readFileSync('tests/e2e/mission_planning.spec.js', 'utf8');
 
 assert.match(tests, /Three Camera Interaction Does Not Rebuild Mission Models/);
 assert.match(workspace, /modelBuildCountDuringCameraGesture/);

@@ -97,7 +97,7 @@ Results:
 | `src/core/runtime/MigrationRuntimeConfig.js` | TRANSITIONAL_COMPATIBILITY | Migration/runtime flags. | Configuration only. | Remove or update Phaser flags after final migration. |
 | `src/core/rendering/RendererCapabilityModel.js` | TRANSITIONAL_COMPATIBILITY | Renderer capability flags mention legacy Phaser fallback. | Capability reporting only. | Remove Phaser fallback capability when unavailable. |
 | `src/ui/MissionConsole.js` and related UI | TRANSITIONAL_COMPATIBILITY | Some actions still know about scene-style route concepts or Phaser-era labels. | UI commands only. | Route through framework-neutral action dispatcher. |
-| `tests/e2e/smoke.spec.js` | ACTIVE_TEST | Main E2E suite drives default Phaser scenes heavily. | Test authority only. | Replace scene calls with production-shell route commands and lab APIs. |
+| Former `tests/e2e/smoke.spec.js` tests | RETIRED_TEST_MONOLITH | REPO-CLEAN-R3 split the former monolith into capability-owned files. | Test authority only. | Continue replacing scene-shell references in the split tests with production-shell route commands and lab APIs before final Phaser removal. |
 | `tests/e2e/three_r1_2c_headed_acceptance.spec.js` | ACTIVE_TEST | Historical headed acceptance still uses `anchorGame.phaser`. | Test authority only. | Replace or retire once R3B acceptance supersedes it. |
 | `tests/e2e/three_r2a_*` | ACTIVE_TEST | Replay acceptance still reaches Phaser scenes for default shell. | Test authority only. | Replace default-shell route setup with production-shell APIs. |
 | `tests/e2e/three_r2b_*` | ACTIVE_TEST | Mission editor acceptance still drives `EnvironmentEditorScene`. | Test authority only. | Replace with Phaser-free editor route tests. |
@@ -164,7 +164,7 @@ The current Playwright and tool suites still depend on Phaser-era APIs:
 - `scene.getScene(...)`
 - `scene.start(...)`
 
-The largest active test dependency is `tests/e2e/smoke.spec.js`, with hundreds of scene-shell references. R3B must replace those with production-shell route commands, framework-neutral lab APIs, and no-Phaser static/package assertions before deleting Phaser.
+The former largest test dependency, `tests/e2e/smoke.spec.js`, was retired by REPO-CLEAN-R3 and split into capability-owned files. Final Phaser removal still requires replacing any remaining scene-shell references in those split tests with production-shell route commands, framework-neutral lab APIs, and no-Phaser static/package assertions.
 
 ## Current R3B Decision
 

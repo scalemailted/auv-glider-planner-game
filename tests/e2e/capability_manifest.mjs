@@ -1,4 +1,4 @@
-export const CAPABILITY_MATRIX_VERSION = 'repo-clean-r2-capabilities-v1';
+export const CAPABILITY_MATRIX_VERSION = 'repo-clean-r3-capabilities-v1';
 
 export const SMOKE_TEST_TITLES = Object.freeze([
   'Cold Repo Root Boot Reaches Main Menu Through Package Modules',
@@ -78,6 +78,85 @@ export const FULL_GROUP_LIMITS = Object.freeze({
   threeMissionEditor: 9,
   productionShellR3A: 10,
   visualAcceptance: 0
+});
+
+export const SMOKE_SPEC_SPLIT_FILES = Object.freeze([
+  "tests/e2e/product_hub_and_labs.spec.js",
+  "tests/e2e/mission_planning.spec.js",
+  "tests/e2e/environment_rendering.spec.js",
+  "tests/e2e/workspace_and_challenge_setup.spec.js",
+  "tests/e2e/simulation_and_terrain.spec.js"
+]);
+
+export const TEST_FILE_OWNERSHIP = Object.freeze({
+  "learning labs static page is linked from the main menu": "tests/e2e/product_hub_and_labs.spec.js",
+  "Benchmark modes overview opens from Simulation Lab": "tests/e2e/product_hub_and_labs.spec.js",
+  "Motion Planning Demo opens from Simulation Lab and preserves benchmark/headless routes": "tests/e2e/product_hub_and_labs.spec.js",
+  "Bathymetric World View opens from Simulation Lab and preserves adjacent routes": "tests/e2e/product_hub_and_labs.spec.js",
+  "Renderer Architecture Preview opens from Simulation Lab": "tests/e2e/product_hub_and_labs.spec.js",
+  "Headless Bundle Viewer opens from Simulation Lab and exports browser summary": "tests/e2e/product_hub_and_labs.spec.js",
+  "Planner Benchmark debrief exports benchmark records from synthetic result": "tests/e2e/product_hub_and_labs.spec.js",
+  "Adaptive Benchmark synthetic debrief shows surfacing review and exports P8 session records": "tests/e2e/product_hub_and_labs.spec.js",
+  "campaign planning smoke flow reaches debrief": "tests/e2e/product_hub_and_labs.spec.js",
+  "Continuous Mission Planning Starts Without Overlay Errors": "tests/e2e/mission_planning.spec.js",
+  "Continuous Mission Controls Are Visible and Functional": "tests/e2e/mission_planning.spec.js",
+  "Continuous Mission Plan Executes Through Canonical 3D Dive": "tests/e2e/mission_planning.spec.js",
+  "Surface Waypoints Produce a Predicted Three-Dimensional Dive": "tests/e2e/mission_planning.spec.js",
+  "Three Camera Reveals Full Water-Column Dive": "tests/e2e/mission_planning.spec.js",
+  "Surface Waypoints and Sampling Targets Have Distinct Semantics": "tests/e2e/mission_planning.spec.js",
+  "Sampling Target Drives Predicted Dive Without Becoming a Navigation Point": "tests/e2e/mission_planning.spec.js",
+  "Predicted Multi-Yo Profile Executes Through Canonical Simulation": "tests/e2e/mission_planning.spec.js",
+  "Three Camera Interaction Does Not Rebuild Mission Models": "tests/e2e/mission_planning.spec.js",
+  "Three Mission Renderer Resources Remain Stable": "tests/e2e/mission_planning.spec.js",
+  "Three Mission Interaction Performance Invariants": "tests/e2e/mission_planning.spec.js",
+  "Three Sampling Target and Dive Planning Headed Workflow": "tests/e2e/mission_planning.spec.js",
+  "Three Simulation Uses Incremental Presentation Updates": "tests/e2e/environment_rendering.spec.js",
+  "Finish Instantly Avoids Per-Step Three Rebuilds": "tests/e2e/environment_rendering.spec.js",
+  "Three Quality Profiles Preserve Canonical Simulation Result": "tests/e2e/environment_rendering.spec.js",
+  "Three Context Slabs Reduce Cost Without Losing Dive Context": "tests/e2e/environment_rendering.spec.js",
+  "Three Mission Uses Continuous Bathymetric Terrain": "tests/e2e/environment_rendering.spec.js",
+  "Three Terrain Camera Gestures Do Not Rebuild Bathymetry Mesh": "tests/e2e/environment_rendering.spec.js",
+  "Bathymetry Limits Predicted and Realized Dive Depth": "tests/e2e/environment_rendering.spec.js",
+  "Continuous Coastline Blocks Invalid Surface Waypoints": "tests/e2e/environment_rendering.spec.js",
+  "Water-Column Layers Respect Continuous Seabed": "tests/e2e/environment_rendering.spec.js",
+  "Bathymetric Demo and Mission Renderer Share Terrain Geometry": "tests/e2e/environment_rendering.spec.js",
+  "All Production Mission Phases Share One Bathymetry Contract": "tests/e2e/environment_rendering.spec.js",
+  "Three Bathymetry Resources Dispose Across Scene Transitions": "tests/e2e/environment_rendering.spec.js",
+  "Three Bathymetric Terrain Preserves Render-Cost Gate": "tests/e2e/environment_rendering.spec.js",
+  "Three Camera Remains Responsive Under Live Simulation Load": "tests/e2e/environment_rendering.spec.js",
+  "Segment Distance Changes Predicted Dive Geometry": "tests/e2e/environment_rendering.spec.js",
+  "Predicted and Realized Dive Paths Remain Distinct": "tests/e2e/environment_rendering.spec.js",
+  "Bathymetry Demo and Mission Dive Paths Share Coordinates": "tests/e2e/environment_rendering.spec.js",
+  "Three Mission Workspace Stabilization": "tests/e2e/workspace_and_challenge_setup.spec.js",
+  "Three Mission renderer preserves live Mission Planning state": "tests/e2e/workspace_and_challenge_setup.spec.js",
+  "Three Planning Pointer Interaction dispatches canonical workspace commands": "tests/e2e/workspace_and_challenge_setup.spec.js",
+  "Three Waypoint Pipeline and Standard Camera Gestures": "tests/e2e/workspace_and_challenge_setup.spec.js",
+  "Three Mission Planning Tools and Camera Controls": "tests/e2e/workspace_and_challenge_setup.spec.js",
+  "Three Simulation Selection inspects canonical public simulation objects": "tests/e2e/workspace_and_challenge_setup.spec.js",
+  "scenario setup stays inside the center viewport": "tests/e2e/workspace_and_challenge_setup.spec.js",
+  "challenge setup uses left navigator and selected briefing": "tests/e2e/workspace_and_challenge_setup.spec.js",
+  "level generator opens from main menu": "tests/e2e/workspace_and_challenge_setup.spec.js",
+  "deterministic challenge generates a fresh perfect-knowledge level": "tests/e2e/workspace_and_challenge_setup.spec.js",
+  "load level json imports a level and offers play/edit actions": "tests/e2e/workspace_and_challenge_setup.spec.js",
+  "stochastic mode exposes ensemble and risk controls": "tests/e2e/workspace_and_challenge_setup.spec.js",
+  "Execute Mission Through Three Simulation": "tests/e2e/simulation_and_terrain.spec.js",
+  "Three Volumetric Water Column Planning": "tests/e2e/simulation_and_terrain.spec.js",
+  "Three Depth-Aware Dive and Sampling": "tests/e2e/simulation_and_terrain.spec.js",
+  "Three Mission Scene Isolation": "tests/e2e/simulation_and_terrain.spec.js",
+  "Three Scene Cleanup Is Null-Safe and Idempotent": "tests/e2e/simulation_and_terrain.spec.js",
+  "Generated Mission Opens a Visible Volumetric Water Column": "tests/e2e/simulation_and_terrain.spec.js",
+  "Legacy Mission Uses Explicit Surface Compatibility Mode": "tests/e2e/simulation_and_terrain.spec.js",
+  "Three Vehicle Pose Guidance and Grid Alignment": "tests/e2e/simulation_and_terrain.spec.js",
+  "Three Waypoint Validation and Mission Window Semantics": "tests/e2e/simulation_and_terrain.spec.js",
+  "Terrain-Aware Placement Preview Prevents Invalid Mission Mutation": "tests/e2e/simulation_and_terrain.spec.js",
+  "Continuous Route Validation Detects Coastline and Clearance Risks": "tests/e2e/simulation_and_terrain.spec.js",
+  "Sampling Targets Respect Canonical Seabed and Reachability": "tests/e2e/simulation_and_terrain.spec.js",
+  "Mission Readiness Separates Errors Warnings and Advisories": "tests/e2e/simulation_and_terrain.spec.js",
+  "Planned and Realized Paths Share Terrain Validation": "tests/e2e/simulation_and_terrain.spec.js",
+  "Terrain Validation Persists Through Export Headless and Replay": "tests/e2e/simulation_and_terrain.spec.js",
+  "Three Terrain Presentation Clearly Distinguishes Mission Semantics": "tests/e2e/simulation_and_terrain.spec.js",
+  "Legacy and Three Simulation Produce Identical Canonical Result": "tests/e2e/simulation_and_terrain.spec.js",
+  "legacy saved level registry scene still opens": "tests/e2e/simulation_and_terrain.spec.js"
 });
 
 const NODE_COVERAGE = Object.freeze({

@@ -50,6 +50,8 @@ const publicDocs = [
   'docs/flow_coupled_sampling_demo.md',
   'docs/repository_cleanup.md',
   'docs/repository_cleanup_r2.md',
+  'docs/repository_cleanup_r3.md',
+  'docs/smoke_spec_decomposition_audit.md',
   'docs/test_portfolio_r2.md',
   'docs/examples/headless_oceanbox_js_public_bundle.example.json',
   'docs/examples/headless_oceanbox_js_bundle.example.json',

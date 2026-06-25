@@ -1,6 +1,6 @@
 # Terrain Validation E2E Coverage Audit
 
-THREE-R1.2C.2 added the six requested visible browser workflows to `tests/e2e/smoke.spec.js` and assigned them to `executionWaterColumn` in `tools/js/playwright_groups.mjs`.
+THREE-R1.2C.2 added the six requested visible browser workflows to the former `tests/e2e/smoke.spec.js`; REPO-CLEAN-R3 moved them to `tests/e2e/simulation_and_terrain.spec.js` while preserving `executionWaterColumn` group ownership in `tools/js/playwright_groups.mjs`.
 
 | Requested workflow | Existing equivalent | Missing behavior before this pass | Test added |
 | --- | --- | --- | --- |
@@ -13,16 +13,7 @@ THREE-R1.2C.2 added the six requested visible browser workflows to `tests/e2e/sm
 
 ## Group Coverage
 
-`node tools/js/audit_playwright_group_coverage.mjs` reports exact coverage:
-
-```text
-Playwright group coverage: 68 tests
-  coreMission: 9
-  threePlanning: 15
-  workspaceScenario: 12
-  executionWaterColumn: 32
-PASS playwright group coverage is exact
-```
+`node tools/js/audit_playwright_group_coverage.mjs` reports exact coverage, including physical split ownership for the 68 tests moved from the former monolith. Current profile counts are recorded in `docs/test_portfolio_r2.md` and `docs/repository_cleanup_r3.md`.
 
 ## Boundary Notes
 
