@@ -18,6 +18,7 @@ Package extraction phases should remain narrow extractions, not rewrites. Curren
 - `PROCESS-PKG-R1`: extract scalar field artifacts, source metadata, continuous samplers, water-column scalar helpers, and diagnostics while keeping educational demo/lab process engines outside the package.
 - `ENV-PKG-R1`: implemented composition of bathymetry, currents, and scalar artifacts through package manifests, field registries, validation, provenance, identity digests, and physical-coordinate sampling while preserving existing browser and headless loaders.
 - `SIM-PKG-R2`: makes `packages/mission-simulator` the authoritative mission-state transition package for browser, headless, and benchmark execution while preserving app-owned route planning, scheduling, UI, rendering, official scoring, and replay playback.
+- `SCORE-PKG-R1`: extracts official mission scoring, `ScoreProfile` definitions, `ScoreInput`/`ScoreResult` contracts, deterministic score digests, public-safe summaries, and benchmark/result score identity into `packages/scoring` while preserving existing scoring formulas and raw simulator metrics.
 
 Package extraction gates: old `src/core/...` imports must continue through forwarding modules, artifact values and scoring must remain stable, and package audits must pass with no renderer/UI/browser dependencies.
 ## 1. Product Vision

@@ -2,6 +2,7 @@ import { createGameInstanceId } from '../identity/GameInstanceId.js';
 import { compareAttempts, normalizeBestAttempt } from './BestAttemptSelector.js';
 import { evaluateExactReplayAvailability, getReplaySeedContract } from '../random/ReplaySeedContract.js';
 import { EXPERIENCE_MODES, normalizeExperienceMode } from '../experience/ExperienceMode.js';
+import { createScoreInput, createScoreProfile, evaluateScore, scoreResultSummary } from '../../../packages/scoring/src/index.js';
 
 export const LEADERBOARD_STORAGE_KEY = 'anchorGliderCommand.leaderboard.v1';
 const MAX_ATTEMPTS_PER_RECORD = 25;
@@ -83,10 +84,16 @@ export function recordLeaderboardAttempt({ level, mission, plan, result, label =
     mission: cloneJson(mission),
     attempts: existing.attempts ?? []
   });
+  const scoreArtifacts = buildLeaderboardScoreArtifacts({ level, mission, plan, result });
   const attempt = {
     attemptId: createGameInstanceId('ATTEMPT'),
     createdAt: new Date().toISOString(),
     score: Number(result?.summary?.finalScore ?? result?.summary?.score ?? 0),
+    scoreResultDigest: scoreArtifacts.scoreResultSummary?.resultDigest ?? null,
+    scoreDigest: scoreArtifacts.scoreResultSummary?.scoreDigest ?? null,
+    scoreProfileId: scoreArtifacts.scoreResultSummary?.profileId ?? null,
+    scoreProfileVersion: scoreArtifacts.scoreResultSummary?.profileVersion ?? null,
+    scoreProfileDigest: scoreArtifacts.scoreProfile?.profileDigest ?? null,
     challengeId: instanceId,
     experienceMode,
     leaderboardScope,
@@ -227,6 +234,23 @@ function normalizeRecord(record = {}) {
   };
 }
 
+function buildLeaderboardScoreArtifacts({ level, mission, plan, result } = {}) {
+  const profile = createScoreProfile({ profileId: result?.summary?.scoreProfileId ?? 'balancedMission' });
+  const scoreInput = createScoreInput({
+    environmentArtifactDigest: level?.environmentArtifact?.artifactDigest ?? level?.instanceId ?? level?.levelId ?? null,
+    planDigest: plan?.planDigest ?? plan?.id ?? plan?.planId ?? null,
+    simulationInputDigest: result?.missionSimulation?.inputDigest ?? null,
+    simulationResultDigest: result?.missionSimulation?.resultDigest ?? result?.resultDigest ?? null,
+    terminalReason: result?.stopReason?.code ?? result?.summary?.abortReason ?? null,
+    rawMetrics: { officialScoreSummary: result?.summary ?? {} },
+    missionObjectives: mission?.objectives ?? mission?.rules?.objectives ?? [],
+    missionMetadata: { missionId: mission?.missionId ?? mission?.id ?? result?.missionId ?? null },
+    scoreProfileId: profile.id,
+    scoreProfileVersion: profile.version
+  });
+  const scoreResult = evaluateScore(profile, scoreInput);
+  return { scoreProfile: profile, scoreInput, scoreResult, scoreResultSummary: scoreResultSummary(scoreResult) };
+}
 function normalizeAttempts(attempts = []) {
   return attempts
     .filter((attempt) => attempt && typeof attempt === 'object')
@@ -239,6 +263,11 @@ function normalizeAttempts(attempts = []) {
       createdAt: attempt.createdAt ?? attempt.savedAt ?? null,
       label: attempt.label ?? attempt.plan?.label ?? attempt.result?.source ?? 'Manual Player Plan',
       score: Number(attempt.score ?? attempt.summary?.finalScore ?? attempt.result?.summary?.finalScore ?? 0),
+      scoreResultDigest: attempt.scoreResultDigest ?? attempt.result?.scoreResultSummary?.resultDigest ?? attempt.result?.scoreResult?.resultDigest ?? null,
+      scoreDigest: attempt.scoreDigest ?? attempt.result?.scoreResultSummary?.scoreDigest ?? attempt.result?.scoreResult?.scoreDigest ?? null,
+      scoreProfileId: attempt.scoreProfileId ?? attempt.result?.scoreResultSummary?.profileId ?? attempt.result?.scoreResult?.profileId ?? attempt.result?.summary?.scoreProfileId ?? null,
+      scoreProfileVersion: attempt.scoreProfileVersion ?? attempt.result?.scoreResultSummary?.profileVersion ?? attempt.result?.scoreResult?.profileVersion ?? attempt.result?.summary?.scoreProfileVersion ?? null,
+      scoreProfileDigest: attempt.scoreProfileDigest ?? attempt.result?.scoreProfileDigest ?? attempt.result?.scoreResult?.profileDigest ?? null,
       challengeId: attempt.challengeId ?? attempt.result?.challengeId ?? attempt.result?.instanceId ?? null,
       experienceMode,
       leaderboardScope: attempt.leaderboardScope ?? leaderboardScopeForExperience(experienceMode),

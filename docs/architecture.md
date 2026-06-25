@@ -26,3 +26,6 @@ Pages copies runtime assets and allowlisted current documentation only. Internal
 ## Mission Simulation Package
 
 `packages/mission-simulator` owns deterministic mission-state transitions, mission input identity, canonical state snapshots, physics/route-progress helpers, environment sampling, events, observations, terminal evaluation, and raw metric summaries. It consumes frozen `packages/environment` artifacts and does not generate scientific fields. Browser ANCHOR still owns Play/Pause scheduling, Phaser lifecycle, Three.js presentation, route editing, official score aggregation, and replay playback. See `docs/mission_simulator_package.md`.
+## Scoring Package
+
+packages/scoring owns official score calculation, ScoreProfile definitions, ScoreInput/ScoreResult contracts, deterministic score digests, public-safe summaries, and score methodology metadata. packages/mission-simulator owns raw mission outcomes; browser/headless/benchmark/result/Debrief adapters consume package ScoreResult metadata. UI displays score but does not calculate it, leaderboard persistence stores digests but does not score, and planner provenance never changes numerical score. See docs/scoring_and_benchmark_contract.md.

@@ -67,6 +67,15 @@ import {
   leaderboardScopeForExperience
 } from '../storage/LeaderboardStore.js';
 import { summarizeSurfaceDecisionEvents } from '../simulation/SurfacingDecisionState.js';
+import {
+  createScoreInput,
+  createScoreProfile,
+  evaluateScore,
+  scoreMethodologySummary,
+  scoreResultSummary,
+  scoringDebugSummary,
+  SCORING_PACKAGE_VERSION
+} from '../../../packages/scoring/src/index.js';
 
 export function buildResultExport({ level, mission, plan, result, label = 'Manual Player Plan', challenge = null, experienceMode = null } = {}) {
   recordResultExportBuild();
@@ -108,6 +117,8 @@ export function buildResultExport({ level, mission, plan, result, label = 'Manua
       ?? {}
   );
   const terrainEvents = terrainEventsFromResult(result);
+  const canonicalScoreArtifacts = buildCanonicalScoreArtifacts({ level, mission, plan, result });
+  publishScoringDebug(canonicalScoreArtifacts);
   return {
     schemaVersion: EXPORT_SCHEMA_VERSION,
     type: 'anchor.result',
@@ -207,6 +218,12 @@ export function buildResultExport({ level, mission, plan, result, label = 'Manua
       events: cloneJson(result?.events ?? [])
     },
     scoreSummary: cloneJson(result?.summary ?? {}),
+    scoreResult: cloneJson(result?.scoreResult ?? result?.scoreArtifacts?.scoreResult ?? canonicalScoreArtifacts.scoreResult),
+    scoreResultSummary: cloneJson(result?.scoreResultSummary ?? result?.scoreArtifacts?.scoreResultSummary ?? canonicalScoreArtifacts.scoreResultSummary),
+    scoreInputDigest: result?.scoreInputDigest ?? result?.scoreArtifacts?.scoreInputDigest ?? canonicalScoreArtifacts.scoreInput?.inputDigest ?? null,
+    scoreProfileDigest: result?.scoreProfileDigest ?? result?.scoreArtifacts?.scoreProfileDigest ?? canonicalScoreArtifacts.scoreProfile?.profileDigest ?? null,
+    scoreMethodologySummary: cloneJson(result?.scoreMethodologySummary ?? result?.scoreArtifacts?.scoreMethodologySummary ?? canonicalScoreArtifacts.scoreMethodologySummary),
+    scorePackageVersion: SCORING_PACKAGE_VERSION,
     depthScience: cloneJson(result?.depthScience ?? result?.summary?.depthScience ?? null),
     depthScienceScoreEvents: cloneJson((result?.events ?? []).filter((event) => event.type === 'anchor.score.depth-aware-sample')),
     energySummary: cloneJson(result?.energy ?? {
@@ -240,6 +257,7 @@ export function buildResultExport({ level, mission, plan, result, label = 'Manua
       priorityTargets: result?.priorityTargets ?? result?.summary?.priorityTargets ?? null,
       missionOutcomeReport: result?.missionOutcomeReport ?? result?.scoreArtifacts?.missionOutcomeReport ?? null,
       missionScore: result?.missionScore ?? result?.scoreArtifacts?.missionScore ?? null,
+      scoreResultSummary: result?.scoreResultSummary ?? result?.scoreArtifacts?.scoreResultSummary ?? canonicalScoreArtifacts.scoreResultSummary,
       depthScience: result?.depthScience ?? result?.summary?.depthScience ?? null,
       terrainAwareValidation: result?.terrainAwareValidation ?? result?.summary?.terrainAwareValidation ?? null,
       terrainValidation: result?.terrainValidation ?? result?.terrainAwareValidation ?? result?.summary?.terrainAwareValidation ?? null,
@@ -251,6 +269,55 @@ export function buildResultExport({ level, mission, plan, result, label = 'Manua
   };
 }
 
+function publishScoringDebug(artifacts = {}) {
+  globalThis.ANCHOR_SCORING_DEBUG = scoringDebugSummary({
+    scoreProfile: artifacts.scoreProfile,
+    scoreInput: artifacts.scoreInput,
+    scoreResult: artifacts.scoreResult,
+    parity: {
+      browserHeadlessParityStatus: 'not_checked',
+      benchmarkParityStatus: 'not_checked',
+      plannerClassInvarianceStatus: 'covered_by_package_smoke'
+    }
+  });
+}
+function buildCanonicalScoreArtifacts({ level, mission, plan, result } = {}) {
+  const summary = result?.summary ?? result?.scoreSummary ?? {};
+  const profile = createScoreProfile({
+    profileId: summary.scoreProfileId ?? mission?.scoring?.scoreProfileId ?? mission?.rules?.scoring?.scoreProfileId ?? 'balancedMission',
+    scoreScale: 100
+  });
+  const scoreInput = createScoreInput({
+    environmentArtifactDigest: level?.environmentArtifact?.artifactDigest
+      ?? level?.environment?.artifactDigest
+      ?? level?.meta?.environmentArtifactDigest
+      ?? level?.instanceId
+      ?? level?.levelId
+      ?? null,
+    planDigest: plan?.planDigest ?? plan?.meta?.planDigest ?? plan?.id ?? plan?.planId ?? null,
+    simulationInputDigest: result?.missionSimulation?.inputDigest ?? result?.simulationInputDigest ?? null,
+    simulationResultDigest: result?.missionSimulation?.resultDigest ?? result?.simulationResultDigest ?? result?.resultDigest ?? null,
+    terminalReason: result?.stopReason?.code ?? summary.abortReason ?? summary.stopReason?.code ?? null,
+    rawMetrics: { officialScoreSummary: summary },
+    missionObjectives: mission?.objectives ?? mission?.rules?.objectives ?? [],
+    missionMetadata: {
+      missionId: mission?.missionId ?? mission?.id ?? result?.missionId ?? null,
+      missionMode: mission?.meta?.missionMode ?? result?.missionMode ?? null
+    },
+    agentMetrics: summary.agentMetrics ?? [],
+    fleetMetrics: result?.fleetMetrics ?? {},
+    scoreProfileId: profile.id,
+    scoreProfileVersion: profile.version
+  });
+  const scoreResult = evaluateScore(profile, scoreInput);
+  return {
+    scoreProfile: profile,
+    scoreInput,
+    scoreResult,
+    scoreResultSummary: scoreResultSummary(scoreResult),
+    scoreMethodologySummary: scoreMethodologySummary(profile)
+  };
+}
 function terrainEventsFromResult(result = {}) {
   const primary = Array.isArray(result?.terrainEvents) ? result.terrainEvents : [];
   const fallback = Array.isArray(result?.events) ? result.events : [];

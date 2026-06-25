@@ -1,0 +1,1089 @@
+{
+  "type": "anchor.scoring-package-r1-parity-fixture",
+  "version": "scoring-package-r1-parity-1",
+  "note": "Compact SCORE-PKG-R1 parity fixture. It stores digests and official score summaries only, not large trajectories or hidden fields.",
+  "caseCount": 20,
+  "records": [
+    {
+      "caseId": "perfect-route-completion",
+      "componentCount": 13,
+      "componentDefinitionDigest": "fnv1a32:f9cd1c14",
+      "depthCoverage": "surface-limited",
+      "environmentDigest": "fnv1a32:8ce47daa",
+      "label": "perfect route completion",
+      "majorComponents": [
+        {
+          "id": "sampleScore",
+          "value": 0.8
+        },
+        {
+          "id": "depthScienceScore",
+          "value": 0
+        },
+        {
+          "id": "weightedSampleScore",
+          "value": 80
+        },
+        {
+          "id": "priorityTargetScore",
+          "value": 5
+        },
+        {
+          "id": "energyPenalty",
+          "value": 0.1
+        },
+        {
+          "id": "hazardPenalty",
+          "value": 0
+        },
+        {
+          "id": "mobileHazardPenalty",
+          "value": 0
+        },
+        {
+          "id": "elapsedTimePenalty",
+          "value": 0.6
+        }
+      ],
+      "methodologyDigest": "fnv1a32:21baf35b",
+      "officialScore": 86.3,
+      "planDigest": "fnv1a32:70ab03dc",
+      "profileDigest": "fnv1a32:1e7b3fe0",
+      "rawMetricDigest": "fnv1a32:37300754",
+      "resultDigest": "fnv1a32:caf802d5",
+      "scoreDigest": "fnv1a32:869dc232",
+      "scoreProfileId": "balancedMission",
+      "scoreProfileVersion": "score-profile-score-pkg-r1",
+      "simulationInputDigest": "fnv1a32:0a01550e",
+      "simulationResultDigest": "fnv1a32:6609c56f",
+      "terminalReason": "completed"
+    },
+    {
+      "caseId": "partial-route-completion",
+      "componentCount": 13,
+      "componentDefinitionDigest": "fnv1a32:f9cd1c14",
+      "depthCoverage": "surface-limited",
+      "environmentDigest": "fnv1a32:76dcaf7e",
+      "label": "partial route completion",
+      "majorComponents": [
+        {
+          "id": "sampleScore",
+          "value": 0.4
+        },
+        {
+          "id": "depthScienceScore",
+          "value": 0
+        },
+        {
+          "id": "weightedSampleScore",
+          "value": 40
+        },
+        {
+          "id": "priorityTargetScore",
+          "value": 0
+        },
+        {
+          "id": "energyPenalty",
+          "value": 0.2
+        },
+        {
+          "id": "hazardPenalty",
+          "value": 0
+        },
+        {
+          "id": "mobileHazardPenalty",
+          "value": 0
+        },
+        {
+          "id": "elapsedTimePenalty",
+          "value": 0.9
+        }
+      ],
+      "methodologyDigest": "fnv1a32:21baf35b",
+      "officialScore": 30.9,
+      "planDigest": "fnv1a32:4eecbed0",
+      "profileDigest": "fnv1a32:1e7b3fe0",
+      "rawMetricDigest": "fnv1a32:64553023",
+      "resultDigest": "fnv1a32:8613fc8f",
+      "scoreDigest": "fnv1a32:91da93e6",
+      "scoreProfileId": "balancedMission",
+      "scoreProfileVersion": "score-profile-score-pkg-r1",
+      "simulationInputDigest": "fnv1a32:9b437412",
+      "simulationResultDigest": "fnv1a32:c794568c",
+      "terminalReason": "incomplete"
+    },
+    {
+      "caseId": "mission-time-expiry",
+      "componentCount": 13,
+      "componentDefinitionDigest": "fnv1a32:f9cd1c14",
+      "depthCoverage": "surface-limited",
+      "environmentDigest": "fnv1a32:8bab3b5e",
+      "label": "mission-time expiry",
+      "majorComponents": [
+        {
+          "id": "sampleScore",
+          "value": 0.45
+        },
+        {
+          "id": "depthScienceScore",
+          "value": 0
+        },
+        {
+          "id": "weightedSampleScore",
+          "value": 45
+        },
+        {
+          "id": "priorityTargetScore",
+          "value": 0
+        },
+        {
+          "id": "energyPenalty",
+          "value": 0.3
+        },
+        {
+          "id": "hazardPenalty",
+          "value": 0
+        },
+        {
+          "id": "mobileHazardPenalty",
+          "value": 0
+        },
+        {
+          "id": "elapsedTimePenalty",
+          "value": 72
+        }
+      ],
+      "methodologyDigest": "fnv1a32:21baf35b",
+      "officialScore": -35.3,
+      "planDigest": "fnv1a32:e396fcbc",
+      "profileDigest": "fnv1a32:1e7b3fe0",
+      "rawMetricDigest": "fnv1a32:ede89abd",
+      "resultDigest": "fnv1a32:2615d99b",
+      "scoreDigest": "fnv1a32:6c601039",
+      "scoreProfileId": "balancedMission",
+      "scoreProfileVersion": "score-profile-score-pkg-r1",
+      "simulationInputDigest": "fnv1a32:aa5dbdea",
+      "simulationResultDigest": "fnv1a32:8309e19c",
+      "terminalReason": "mission-time-expired"
+    },
+    {
+      "caseId": "energy-depletion",
+      "componentCount": 13,
+      "componentDefinitionDigest": "fnv1a32:f9cd1c14",
+      "depthCoverage": "surface-limited",
+      "environmentDigest": "fnv1a32:4661301d",
+      "label": "energy depletion",
+      "majorComponents": [
+        {
+          "id": "sampleScore",
+          "value": 0.35
+        },
+        {
+          "id": "depthScienceScore",
+          "value": 0
+        },
+        {
+          "id": "weightedSampleScore",
+          "value": 35
+        },
+        {
+          "id": "priorityTargetScore",
+          "value": 0
+        },
+        {
+          "id": "energyPenalty",
+          "value": 5
+        },
+        {
+          "id": "hazardPenalty",
+          "value": 0
+        },
+        {
+          "id": "mobileHazardPenalty",
+          "value": 0
+        },
+        {
+          "id": "elapsedTimePenalty",
+          "value": 2.4
+        }
+      ],
+      "methodologyDigest": "fnv1a32:21baf35b",
+      "officialScore": 19.6,
+      "planDigest": "fnv1a32:9a5610ff",
+      "profileDigest": "fnv1a32:1e7b3fe0",
+      "rawMetricDigest": "fnv1a32:e98dabe7",
+      "resultDigest": "fnv1a32:9097e36d",
+      "scoreDigest": "fnv1a32:ade0567d",
+      "scoreProfileId": "balancedMission",
+      "scoreProfileVersion": "score-profile-score-pkg-r1",
+      "simulationInputDigest": "fnv1a32:b980e409",
+      "simulationResultDigest": "fnv1a32:a1a0fa51",
+      "terminalReason": "energy-depleted"
+    },
+    {
+      "caseId": "hazard-heavy-mission",
+      "componentCount": 13,
+      "componentDefinitionDigest": "fnv1a32:f9cd1c14",
+      "depthCoverage": "surface-limited",
+      "environmentDigest": "fnv1a32:c9c59cc5",
+      "label": "hazard-heavy mission",
+      "majorComponents": [
+        {
+          "id": "sampleScore",
+          "value": 0.7
+        },
+        {
+          "id": "depthScienceScore",
+          "value": 0
+        },
+        {
+          "id": "weightedSampleScore",
+          "value": 70
+        },
+        {
+          "id": "priorityTargetScore",
+          "value": 0
+        },
+        {
+          "id": "energyPenalty",
+          "value": 0.25
+        },
+        {
+          "id": "hazardPenalty",
+          "value": 20
+        },
+        {
+          "id": "mobileHazardPenalty",
+          "value": 12
+        },
+        {
+          "id": "elapsedTimePenalty",
+          "value": 1.8
+        }
+      ],
+      "methodologyDigest": "fnv1a32:21baf35b",
+      "officialScore": 32.95,
+      "planDigest": "fnv1a32:8b0ca0f7",
+      "profileDigest": "fnv1a32:1e7b3fe0",
+      "rawMetricDigest": "fnv1a32:70f04b43",
+      "resultDigest": "fnv1a32:0d685a93",
+      "scoreDigest": "fnv1a32:a5ec6d2f",
+      "scoreProfileId": "balancedMission",
+      "scoreProfileVersion": "score-profile-score-pkg-r1",
+      "simulationInputDigest": "fnv1a32:d5eaea51",
+      "simulationResultDigest": "fnv1a32:c97a85e5",
+      "terminalReason": "completed"
+    },
+    {
+      "caseId": "terrain-warning-mission",
+      "componentCount": 13,
+      "componentDefinitionDigest": "fnv1a32:f9cd1c14",
+      "depthCoverage": "surface-limited",
+      "environmentDigest": "fnv1a32:6a94fb61",
+      "label": "terrain warning mission",
+      "majorComponents": [
+        {
+          "id": "sampleScore",
+          "value": 0.5
+        },
+        {
+          "id": "depthScienceScore",
+          "value": 0
+        },
+        {
+          "id": "weightedSampleScore",
+          "value": 50
+        },
+        {
+          "id": "priorityTargetScore",
+          "value": 0
+        },
+        {
+          "id": "energyPenalty",
+          "value": 0.25
+        },
+        {
+          "id": "hazardPenalty",
+          "value": 0
+        },
+        {
+          "id": "mobileHazardPenalty",
+          "value": 0
+        },
+        {
+          "id": "elapsedTimePenalty",
+          "value": 1.8
+        }
+      ],
+      "methodologyDigest": "fnv1a32:21baf35b",
+      "officialScore": 44.95,
+      "planDigest": "fnv1a32:84d9a4b3",
+      "profileDigest": "fnv1a32:1e7b3fe0",
+      "rawMetricDigest": "fnv1a32:439f891d",
+      "resultDigest": "fnv1a32:64a6dfb4",
+      "scoreDigest": "fnv1a32:22e4cb1b",
+      "scoreProfileId": "balancedMission",
+      "scoreProfileVersion": "score-profile-score-pkg-r1",
+      "simulationInputDigest": "fnv1a32:84d826d5",
+      "simulationResultDigest": "fnv1a32:681c28a5",
+      "terminalReason": "incomplete"
+    },
+    {
+      "caseId": "terrain-violation-mission",
+      "componentCount": 13,
+      "componentDefinitionDigest": "fnv1a32:f9cd1c14",
+      "depthCoverage": "surface-limited",
+      "environmentDigest": "fnv1a32:968c5206",
+      "label": "terrain violation mission",
+      "majorComponents": [
+        {
+          "id": "sampleScore",
+          "value": 0.25
+        },
+        {
+          "id": "depthScienceScore",
+          "value": 0
+        },
+        {
+          "id": "weightedSampleScore",
+          "value": 25
+        },
+        {
+          "id": "priorityTargetScore",
+          "value": 0
+        },
+        {
+          "id": "energyPenalty",
+          "value": 0.35
+        },
+        {
+          "id": "hazardPenalty",
+          "value": 0
+        },
+        {
+          "id": "mobileHazardPenalty",
+          "value": 0
+        },
+        {
+          "id": "elapsedTimePenalty",
+          "value": 1.8
+        }
+      ],
+      "methodologyDigest": "fnv1a32:21baf35b",
+      "officialScore": 14.85,
+      "planDigest": "fnv1a32:3b1cc9d4",
+      "profileDigest": "fnv1a32:1e7b3fe0",
+      "rawMetricDigest": "fnv1a32:1dd5e549",
+      "resultDigest": "fnv1a32:8033b5ec",
+      "scoreDigest": "fnv1a32:93ec8ad2",
+      "scoreProfileId": "balancedMission",
+      "scoreProfileVersion": "score-profile-score-pkg-r1",
+      "simulationInputDigest": "fnv1a32:7a4916ea",
+      "simulationResultDigest": "fnv1a32:55bec024",
+      "terminalReason": "terrain-violation"
+    },
+    {
+      "caseId": "shallow-only-sampling",
+      "componentCount": 13,
+      "componentDefinitionDigest": "fnv1a32:f9cd1c14",
+      "depthCoverage": "surface-limited",
+      "environmentDigest": "fnv1a32:d6877a2b",
+      "label": "shallow-only sampling",
+      "majorComponents": [
+        {
+          "id": "sampleScore",
+          "value": 0.3
+        },
+        {
+          "id": "depthScienceScore",
+          "value": 0.3
+        },
+        {
+          "id": "weightedSampleScore",
+          "value": 30
+        },
+        {
+          "id": "priorityTargetScore",
+          "value": 0
+        },
+        {
+          "id": "energyPenalty",
+          "value": 0.15
+        },
+        {
+          "id": "hazardPenalty",
+          "value": 0
+        },
+        {
+          "id": "mobileHazardPenalty",
+          "value": 0
+        },
+        {
+          "id": "elapsedTimePenalty",
+          "value": 1.2
+        }
+      ],
+      "methodologyDigest": "fnv1a32:21baf35b",
+      "officialScore": 25.65,
+      "planDigest": "fnv1a32:21b6c4ad",
+      "profileDigest": "fnv1a32:1e7b3fe0",
+      "rawMetricDigest": "fnv1a32:b27064bf",
+      "resultDigest": "fnv1a32:6e4694ad",
+      "scoreDigest": "fnv1a32:af767f2b",
+      "scoreProfileId": "balancedMission",
+      "scoreProfileVersion": "score-profile-score-pkg-r1",
+      "simulationInputDigest": "fnv1a32:9c045b37",
+      "simulationResultDigest": "fnv1a32:934f1161",
+      "terminalReason": "completed"
+    },
+    {
+      "caseId": "deep-water-column-sampling",
+      "componentCount": 13,
+      "componentDefinitionDigest": "fnv1a32:f9cd1c14",
+      "depthCoverage": "surface-limited",
+      "environmentDigest": "fnv1a32:66226171",
+      "label": "deep water-column sampling",
+      "majorComponents": [
+        {
+          "id": "sampleScore",
+          "value": 0.62
+        },
+        {
+          "id": "depthScienceScore",
+          "value": 1.1
+        },
+        {
+          "id": "weightedSampleScore",
+          "value": 62
+        },
+        {
+          "id": "priorityTargetScore",
+          "value": 0
+        },
+        {
+          "id": "energyPenalty",
+          "value": 0.25
+        },
+        {
+          "id": "hazardPenalty",
+          "value": 0
+        },
+        {
+          "id": "mobileHazardPenalty",
+          "value": 0
+        },
+        {
+          "id": "elapsedTimePenalty",
+          "value": 1.2
+        }
+      ],
+      "methodologyDigest": "fnv1a32:21baf35b",
+      "officialScore": 57.55,
+      "planDigest": "fnv1a32:3e78504f",
+      "profileDigest": "fnv1a32:1e7b3fe0",
+      "rawMetricDigest": "fnv1a32:6a67d359",
+      "resultDigest": "fnv1a32:6f8c214c",
+      "scoreDigest": "fnv1a32:30895444",
+      "scoreProfileId": "balancedMission",
+      "scoreProfileVersion": "score-profile-score-pkg-r1",
+      "simulationInputDigest": "fnv1a32:72e49e9d",
+      "simulationResultDigest": "fnv1a32:72c6a59b",
+      "terminalReason": "completed"
+    },
+    {
+      "caseId": "redundant-repeated-sampling",
+      "componentCount": 13,
+      "componentDefinitionDigest": "fnv1a32:f9cd1c14",
+      "depthCoverage": "surface-limited",
+      "environmentDigest": "fnv1a32:069838fe",
+      "label": "redundant repeated sampling",
+      "majorComponents": [
+        {
+          "id": "sampleScore",
+          "value": 0.5
+        },
+        {
+          "id": "depthScienceScore",
+          "value": 0
+        },
+        {
+          "id": "weightedSampleScore",
+          "value": 50
+        },
+        {
+          "id": "priorityTargetScore",
+          "value": 0
+        },
+        {
+          "id": "energyPenalty",
+          "value": 0.25
+        },
+        {
+          "id": "hazardPenalty",
+          "value": 0
+        },
+        {
+          "id": "mobileHazardPenalty",
+          "value": 0
+        },
+        {
+          "id": "elapsedTimePenalty",
+          "value": 1.2
+        }
+      ],
+      "methodologyDigest": "fnv1a32:21baf35b",
+      "officialScore": 45.55,
+      "planDigest": "fnv1a32:b5304acc",
+      "profileDigest": "fnv1a32:1e7b3fe0",
+      "rawMetricDigest": "fnv1a32:5ae4982d",
+      "resultDigest": "fnv1a32:af27fff3",
+      "scoreDigest": "fnv1a32:9c325346",
+      "scoreProfileId": "balancedMission",
+      "scoreProfileVersion": "score-profile-score-pkg-r1",
+      "simulationInputDigest": "fnv1a32:aa046692",
+      "simulationResultDigest": "fnv1a32:7a1f9e70",
+      "terminalReason": "incomplete"
+    },
+    {
+      "caseId": "multi-glider-complementary",
+      "componentCount": 13,
+      "componentDefinitionDigest": "fnv1a32:f9cd1c14",
+      "depthCoverage": "partial",
+      "environmentDigest": "fnv1a32:5f4edbaa",
+      "label": "multi-glider complementary sampling",
+      "majorComponents": [
+        {
+          "id": "sampleScore",
+          "value": 0.75
+        },
+        {
+          "id": "depthScienceScore",
+          "value": 0.7
+        },
+        {
+          "id": "weightedSampleScore",
+          "value": 75
+        },
+        {
+          "id": "priorityTargetScore",
+          "value": 0
+        },
+        {
+          "id": "energyPenalty",
+          "value": 0.3
+        },
+        {
+          "id": "hazardPenalty",
+          "value": 0
+        },
+        {
+          "id": "mobileHazardPenalty",
+          "value": 0
+        },
+        {
+          "id": "elapsedTimePenalty",
+          "value": 1.6
+        }
+      ],
+      "methodologyDigest": "fnv1a32:21baf35b",
+      "officialScore": 70.1,
+      "planDigest": "fnv1a32:60b634e8",
+      "profileDigest": "fnv1a32:1e7b3fe0",
+      "rawMetricDigest": "fnv1a32:5476152f",
+      "resultDigest": "fnv1a32:23ccaf31",
+      "scoreDigest": "fnv1a32:628e35bd",
+      "scoreProfileId": "balancedMission",
+      "scoreProfileVersion": "score-profile-score-pkg-r1",
+      "simulationInputDigest": "fnv1a32:4fd4fea6",
+      "simulationResultDigest": "fnv1a32:f1eed800",
+      "terminalReason": "completed"
+    },
+    {
+      "caseId": "multi-glider-redundant",
+      "componentCount": 13,
+      "componentDefinitionDigest": "fnv1a32:f9cd1c14",
+      "depthCoverage": "surface-limited",
+      "environmentDigest": "fnv1a32:de514111",
+      "label": "multi-glider redundant sampling",
+      "majorComponents": [
+        {
+          "id": "sampleScore",
+          "value": 0.55
+        },
+        {
+          "id": "depthScienceScore",
+          "value": 0
+        },
+        {
+          "id": "weightedSampleScore",
+          "value": 55
+        },
+        {
+          "id": "priorityTargetScore",
+          "value": 0
+        },
+        {
+          "id": "energyPenalty",
+          "value": 0.3
+        },
+        {
+          "id": "hazardPenalty",
+          "value": 0
+        },
+        {
+          "id": "mobileHazardPenalty",
+          "value": 0
+        },
+        {
+          "id": "elapsedTimePenalty",
+          "value": 1.6
+        }
+      ],
+      "methodologyDigest": "fnv1a32:21baf35b",
+      "officialScore": 50.1,
+      "planDigest": "fnv1a32:c9d96363",
+      "profileDigest": "fnv1a32:1e7b3fe0",
+      "rawMetricDigest": "fnv1a32:dea865f6",
+      "resultDigest": "fnv1a32:8be15f5a",
+      "scoreDigest": "fnv1a32:ede046e2",
+      "scoreProfileId": "balancedMission",
+      "scoreProfileVersion": "score-profile-score-pkg-r1",
+      "simulationInputDigest": "fnv1a32:b9eb0f45",
+      "simulationResultDigest": "fnv1a32:5cd97568",
+      "terminalReason": "completed"
+    },
+    {
+      "caseId": "optional-idle-gliders",
+      "componentCount": 13,
+      "componentDefinitionDigest": "fnv1a32:f9cd1c14",
+      "depthCoverage": "surface-limited",
+      "environmentDigest": "fnv1a32:fd1490b4",
+      "label": "optional idle Glider 2/3",
+      "majorComponents": [
+        {
+          "id": "sampleScore",
+          "value": 0.5
+        },
+        {
+          "id": "depthScienceScore",
+          "value": 0
+        },
+        {
+          "id": "weightedSampleScore",
+          "value": 50
+        },
+        {
+          "id": "priorityTargetScore",
+          "value": 0
+        },
+        {
+          "id": "energyPenalty",
+          "value": 0.2
+        },
+        {
+          "id": "hazardPenalty",
+          "value": 0
+        },
+        {
+          "id": "mobileHazardPenalty",
+          "value": 0
+        },
+        {
+          "id": "elapsedTimePenalty",
+          "value": 1
+        }
+      ],
+      "methodologyDigest": "fnv1a32:21baf35b",
+      "officialScore": 45.8,
+      "planDigest": "fnv1a32:bd214336",
+      "profileDigest": "fnv1a32:1e7b3fe0",
+      "rawMetricDigest": "fnv1a32:e58e08b5",
+      "resultDigest": "fnv1a32:a5ade921",
+      "scoreDigest": "fnv1a32:c7201d51",
+      "scoreProfileId": "balancedMission",
+      "scoreProfileVersion": "score-profile-score-pkg-r1",
+      "simulationInputDigest": "fnv1a32:f91bb248",
+      "simulationResultDigest": "fnv1a32:1d3d5ac0",
+      "terminalReason": "completed"
+    },
+    {
+      "caseId": "surfacing-continue",
+      "componentCount": 13,
+      "componentDefinitionDigest": "fnv1a32:f9cd1c14",
+      "depthCoverage": "surface-limited",
+      "environmentDigest": "fnv1a32:90311032",
+      "label": "surfacing Continue",
+      "majorComponents": [
+        {
+          "id": "sampleScore",
+          "value": 0.55
+        },
+        {
+          "id": "depthScienceScore",
+          "value": 0
+        },
+        {
+          "id": "weightedSampleScore",
+          "value": 55
+        },
+        {
+          "id": "priorityTargetScore",
+          "value": 0
+        },
+        {
+          "id": "energyPenalty",
+          "value": 0.2
+        },
+        {
+          "id": "hazardPenalty",
+          "value": 0
+        },
+        {
+          "id": "mobileHazardPenalty",
+          "value": 0
+        },
+        {
+          "id": "elapsedTimePenalty",
+          "value": 1.6
+        }
+      ],
+      "methodologyDigest": "fnv1a32:21baf35b",
+      "officialScore": 50.2,
+      "planDigest": "fnv1a32:26470510",
+      "profileDigest": "fnv1a32:1e7b3fe0",
+      "rawMetricDigest": "fnv1a32:392a82c8",
+      "resultDigest": "fnv1a32:7ddda2c9",
+      "scoreDigest": "fnv1a32:6407e2cb",
+      "scoreProfileId": "balancedMission",
+      "scoreProfileVersion": "score-profile-score-pkg-r1",
+      "simulationInputDigest": "fnv1a32:5a7728b6",
+      "simulationResultDigest": "fnv1a32:e1a108b5",
+      "terminalReason": "completed"
+    },
+    {
+      "caseId": "surfacing-replan",
+      "componentCount": 13,
+      "componentDefinitionDigest": "fnv1a32:f9cd1c14",
+      "depthCoverage": "surface-limited",
+      "environmentDigest": "fnv1a32:ed8a3109",
+      "label": "surfacing Replan",
+      "majorComponents": [
+        {
+          "id": "sampleScore",
+          "value": 0.58
+        },
+        {
+          "id": "depthScienceScore",
+          "value": 0
+        },
+        {
+          "id": "weightedSampleScore",
+          "value": 58
+        },
+        {
+          "id": "priorityTargetScore",
+          "value": 0
+        },
+        {
+          "id": "energyPenalty",
+          "value": 0.25
+        },
+        {
+          "id": "hazardPenalty",
+          "value": 0
+        },
+        {
+          "id": "mobileHazardPenalty",
+          "value": 0
+        },
+        {
+          "id": "elapsedTimePenalty",
+          "value": 1.8
+        }
+      ],
+      "methodologyDigest": "fnv1a32:21baf35b",
+      "officialScore": 52.95,
+      "planDigest": "fnv1a32:b393dd3f",
+      "profileDigest": "fnv1a32:1e7b3fe0",
+      "rawMetricDigest": "fnv1a32:578d3374",
+      "resultDigest": "fnv1a32:93473d6c",
+      "scoreDigest": "fnv1a32:a5f3eeae",
+      "scoreProfileId": "balancedMission",
+      "scoreProfileVersion": "score-profile-score-pkg-r1",
+      "simulationInputDigest": "fnv1a32:b31e0995",
+      "simulationResultDigest": "fnv1a32:a6edb1a2",
+      "terminalReason": "completed"
+    },
+    {
+      "caseId": "stochastic-seeded-mission",
+      "componentCount": 13,
+      "componentDefinitionDigest": "fnv1a32:f9cd1c14",
+      "depthCoverage": "surface-limited",
+      "environmentDigest": "fnv1a32:e33c0719",
+      "label": "stochastic seeded mission",
+      "majorComponents": [
+        {
+          "id": "sampleScore",
+          "value": 0.43
+        },
+        {
+          "id": "depthScienceScore",
+          "value": 0
+        },
+        {
+          "id": "weightedSampleScore",
+          "value": 43
+        },
+        {
+          "id": "priorityTargetScore",
+          "value": 0
+        },
+        {
+          "id": "energyPenalty",
+          "value": 0.3
+        },
+        {
+          "id": "hazardPenalty",
+          "value": 0
+        },
+        {
+          "id": "mobileHazardPenalty",
+          "value": 0
+        },
+        {
+          "id": "elapsedTimePenalty",
+          "value": 2.2
+        }
+      ],
+      "methodologyDigest": "fnv1a32:21baf35b",
+      "officialScore": 32.5,
+      "planDigest": "fnv1a32:98141683",
+      "profileDigest": "fnv1a32:1e7b3fe0",
+      "rawMetricDigest": "fnv1a32:5af4db7c",
+      "resultDigest": "fnv1a32:299b2c43",
+      "scoreDigest": "fnv1a32:8e4e316e",
+      "scoreProfileId": "balancedMission",
+      "scoreProfileVersion": "score-profile-score-pkg-r1",
+      "simulationInputDigest": "fnv1a32:b08aa9c5",
+      "simulationResultDigest": "fnv1a32:29475b0c",
+      "terminalReason": "incomplete"
+    },
+    {
+      "caseId": "deterministic-regional-challenge",
+      "componentCount": 13,
+      "componentDefinitionDigest": "fnv1a32:f9cd1c14",
+      "depthCoverage": "surface-limited",
+      "environmentDigest": "fnv1a32:078a1e4c",
+      "label": "deterministic regional Challenge",
+      "majorComponents": [
+        {
+          "id": "sampleScore",
+          "value": 0.72
+        },
+        {
+          "id": "depthScienceScore",
+          "value": 0.8
+        },
+        {
+          "id": "weightedSampleScore",
+          "value": 72
+        },
+        {
+          "id": "priorityTargetScore",
+          "value": 8
+        },
+        {
+          "id": "energyPenalty",
+          "value": 0.2
+        },
+        {
+          "id": "hazardPenalty",
+          "value": 0
+        },
+        {
+          "id": "mobileHazardPenalty",
+          "value": 0
+        },
+        {
+          "id": "elapsedTimePenalty",
+          "value": 1.9
+        }
+      ],
+      "methodologyDigest": "fnv1a32:21baf35b",
+      "officialScore": 77.9,
+      "planDigest": "fnv1a32:3575d94e",
+      "profileDigest": "fnv1a32:1e7b3fe0",
+      "rawMetricDigest": "fnv1a32:aa322b9a",
+      "resultDigest": "fnv1a32:685ce1a2",
+      "scoreDigest": "fnv1a32:1703786f",
+      "scoreProfileId": "balancedMission",
+      "scoreProfileVersion": "score-profile-score-pkg-r1",
+      "simulationInputDigest": "fnv1a32:fe2d9b08",
+      "simulationResultDigest": "fnv1a32:5a6d3911",
+      "terminalReason": "completed"
+    },
+    {
+      "caseId": "imported-external-plan",
+      "componentCount": 13,
+      "componentDefinitionDigest": "fnv1a32:f9cd1c14",
+      "depthCoverage": "surface-limited",
+      "environmentDigest": "fnv1a32:543080cc",
+      "label": "imported external plan",
+      "majorComponents": [
+        {
+          "id": "sampleScore",
+          "value": 0.51
+        },
+        {
+          "id": "depthScienceScore",
+          "value": 0
+        },
+        {
+          "id": "weightedSampleScore",
+          "value": 51
+        },
+        {
+          "id": "priorityTargetScore",
+          "value": 0
+        },
+        {
+          "id": "energyPenalty",
+          "value": 0.25
+        },
+        {
+          "id": "hazardPenalty",
+          "value": 0
+        },
+        {
+          "id": "mobileHazardPenalty",
+          "value": 0
+        },
+        {
+          "id": "elapsedTimePenalty",
+          "value": 2.1
+        }
+      ],
+      "methodologyDigest": "fnv1a32:21baf35b",
+      "officialScore": 40.65,
+      "planDigest": "fnv1a32:ebd965de",
+      "profileDigest": "fnv1a32:1e7b3fe0",
+      "rawMetricDigest": "fnv1a32:7209d0a1",
+      "resultDigest": "fnv1a32:bdcd807a",
+      "scoreDigest": "fnv1a32:c382280c",
+      "scoreProfileId": "balancedMission",
+      "scoreProfileVersion": "score-profile-score-pkg-r1",
+      "simulationInputDigest": "fnv1a32:27fe49f8",
+      "simulationResultDigest": "fnv1a32:d5184d3c",
+      "terminalReason": "incomplete"
+    },
+    {
+      "caseId": "benchmark-baseline-plan",
+      "componentCount": 13,
+      "componentDefinitionDigest": "fnv1a32:f9cd1c14",
+      "depthCoverage": "surface-limited",
+      "environmentDigest": "fnv1a32:741a0039",
+      "label": "benchmark baseline plan",
+      "majorComponents": [
+        {
+          "id": "sampleScore",
+          "value": 0.47
+        },
+        {
+          "id": "depthScienceScore",
+          "value": 0
+        },
+        {
+          "id": "weightedSampleScore",
+          "value": 47
+        },
+        {
+          "id": "priorityTargetScore",
+          "value": 0
+        },
+        {
+          "id": "energyPenalty",
+          "value": 0.25
+        },
+        {
+          "id": "hazardPenalty",
+          "value": 0
+        },
+        {
+          "id": "mobileHazardPenalty",
+          "value": 0
+        },
+        {
+          "id": "elapsedTimePenalty",
+          "value": 2.1
+        }
+      ],
+      "methodologyDigest": "fnv1a32:21baf35b",
+      "officialScore": 36.65,
+      "planDigest": "fnv1a32:684be517",
+      "profileDigest": "fnv1a32:1e7b3fe0",
+      "rawMetricDigest": "fnv1a32:9452381c",
+      "resultDigest": "fnv1a32:79aecda1",
+      "scoreDigest": "fnv1a32:56b0939a",
+      "scoreProfileId": "balancedMission",
+      "scoreProfileVersion": "score-profile-score-pkg-r1",
+      "simulationInputDigest": "fnv1a32:df4e91a5",
+      "simulationResultDigest": "fnv1a32:f1ce1dec",
+      "terminalReason": "incomplete"
+    },
+    {
+      "caseId": "exact-small-instance-oracle",
+      "componentCount": 13,
+      "componentDefinitionDigest": "fnv1a32:f9cd1c14",
+      "depthCoverage": "surface-limited",
+      "environmentDigest": "fnv1a32:4b213e4a",
+      "label": "exact small-instance oracle plan",
+      "majorComponents": [
+        {
+          "id": "sampleScore",
+          "value": 0.9
+        },
+        {
+          "id": "depthScienceScore",
+          "value": 0
+        },
+        {
+          "id": "weightedSampleScore",
+          "value": 90
+        },
+        {
+          "id": "priorityTargetScore",
+          "value": 10
+        },
+        {
+          "id": "energyPenalty",
+          "value": 0.1
+        },
+        {
+          "id": "hazardPenalty",
+          "value": 0
+        },
+        {
+          "id": "mobileHazardPenalty",
+          "value": 0
+        },
+        {
+          "id": "elapsedTimePenalty",
+          "value": 0.9
+        }
+      ],
+      "methodologyDigest": "fnv1a32:21baf35b",
+      "officialScore": 99,
+      "planDigest": "fnv1a32:005336e8",
+      "profileDigest": "fnv1a32:1e7b3fe0",
+      "rawMetricDigest": "fnv1a32:93caf1b6",
+      "resultDigest": "fnv1a32:2073ef48",
+      "scoreDigest": "fnv1a32:5cba6cf4",
+      "scoreProfileId": "balancedMission",
+      "scoreProfileVersion": "score-profile-score-pkg-r1",
+      "simulationInputDigest": "fnv1a32:b7b92976",
+      "simulationResultDigest": "fnv1a32:f0e8bbef",
+      "terminalReason": "completed"
+    }
+  ],
+  "fixtureDigest": "fnv1a32:7caeec92"
+}

@@ -20,12 +20,17 @@ Update it after substantial refactors so future work starts from the current pro
 
 ## Current Development State
 
+### SCORE-PKG-R1 - Canonical Scoring Package
+
+- Added packages/scoring as the canonical owner of official score calculation, ScoreProfile definitions, ScoreInput/ScoreResult contracts, deterministic score digests, public-safe summaries, score methodology metadata, and benchmark score metadata.
+- Converted legacy scoring paths to compatibility forwarders and preserved existing official score formulas, component weights, bonuses, penalties, result schemas, planner behavior, scientific models, and mission outcomes.
+- Result exports and leaderboard records now carry compact package score identity metadata while UI and storage remain display/persistence adapters only.
+
 ANCHOR is a static browser-first Three.js mission game and simulator with a transitional Phaser scene shell. The active mission shell is the Mission Console + Three.js Mission World + Waypoint Timeline. The browser game is the authoritative validator, simulator, and scorer. External solvers propose JSON plans; ANCHOR validates, simulates, scores, and exports results.
 
 The current app supports tutorials, deterministic and stochastic generated challenges, Mission Briefing, waypoint planning, continuous route validation, simulation playback, Debrief comparison, local leaderboard/best-path records, dataset export, JSON solver contracts, Learning Labs static concept pages, optional Python/Colab templates, and optional Node.js headless solver tools.
 
 WORLD-R1 adds a multiscale regional world-model contract ahead of further renderer/runtime migration. The core now has `operationalDomain`, `resolutionProfile`, physical-coordinate conversion, multiresolution field sampling, physical route-scale estimates, and deterministic synthetic regional shelf/fleet defaults. It preserves legacy grid compatibility and does not add a planner, change scoring, switch runtime, remove Phaser, add real data, or claim calibrated ocean forecasts.
-
 
 ### DIVE-UX-R1 - Contextual Right-Panel Incoming-Segment Flight Profile Editor
 
@@ -76,7 +81,6 @@ Challenge Mode also persists `missionMode`. Mission modes are player-facing obje
 - Added renderer-neutral glider pose view model, stable Three glider mesh updates, quaternion orientation, canonical guidance cone rendering, coordinate helper aliases, and layer alignment reporting.
 - Reclassified ETA-beyond-mission-duration placement as an accepted mission-window warning while preserving hard-invalid terrain/fuel/surface-window rejection.
 - Preserved the boundary: Three.js renders canonical state but does not own planning mutation, simulation physics, scoring, route feasibility, replay semantics, hidden truth, Python simulation, RL, or MARL.
-
 
 ### THREE-R1.1D - Execute Mission Pipeline and Three.js Simulation Parity
 
@@ -186,7 +190,6 @@ Challenge Mode also persists `missionMode`. Mission modes are player-facing obje
 - Added analytical scalar process engines for Gaussian moving hotspot, source/diffusion/decay, advection/diffusion/decay, growth/diffusion/decay, and front/boundary approximation, plus a CA/grid-process baseline adapter.
 - Added oracle objective construction, algorithmic validation fixtures, export metadata, debug metadata, smoke scripts, and Coupled Fields Demo selectors.
 - Preserved the Process Lab as the CA/local-rule teaching sandbox and kept stochastic belief/uncertainty out of the deterministic coupled objective.
-
 
 ### Learning Labs Static Concept Pages
 
@@ -405,7 +408,6 @@ P3 adds Debrief attempt comparison, route review, fairness/source labels, and `a
 
 P4 adds route geometry adaptation, Route Overlay / Map rendering, route review layer controls, segment/waypoint detail inspection, `anchor.benchmark.route-overlay` export support, and route overlay debug fields. It preserves P0/P1/P2/P3 fields and does not add a new planner, scoring redesign, MARL/RL, or adaptive objective execution.
 
-
 ## P7 - Adaptive Benchmark Surfacing Loop
 
 Added one-leg Adaptive Benchmark execution preview through existing setup, planning, simulation, and debrief. Debrief now builds adaptive evidence, surfacing decision, next-leg handoff, and episode trace exports. No new planner, scoring redesign, full autonomy, or MARL/RL is implemented.
@@ -528,7 +530,6 @@ Depth-aware science scoring is now versioned separately from the legacy horizont
 
 Surface waypoints are executable navigation/surfacing targets. Sampling targets are non-executable scientific objectives in the water column. Dive profiles determine underwater motion between surface waypoints. Predicted samples never earn score; actual observations are authoritative. The camera and vertical exaggeration are presentation only. Multi-yo prediction and execution use shared canonical kinematics. Performance quality profiles do not change canonical results. No arbitrary XYZ route planner is implemented. No operationally calibrated glider model is claimed.
 
-
 ## THREE-R1.2A.4.2 Performance Closure
 
 Three.js mission runtime performance is now measured through globalThis.ANCHOR_THREE_PERFORMANCE_DEBUG, focused smoke scripts, and focused Playwright performance/usability tests. Performance quality profiles are presentation-only. Surface waypoints remain executable navigation/surfacing anchors; sampling targets remain non-executable science objectives; multi-yo execution remains canonical core behavior. Human manual QA by the project owner remains pending.
@@ -544,7 +545,6 @@ Simulation presentation now uses a scheduler/dirty-category pipeline. Canonical 
 - Headed Chromium focused gate on 2026-06-20 passed with avg 21.981 ms, p95 50.1 ms, rendered FPS 45.494, presentation update CPU avg 2.07 ms, renderer submission CPU avg 5.017 ms, and GPU avg 5.821 ms where supported.
 - Preserved the boundary: no terrain mesh phase, no mission mechanics, no arbitrary XYZ navigation, no WebGPU/fluid solver, no route/scoring/simulation changes, and no renderer-owned scientific-field semantics.
 - Human manual QA by the project owner remains pending.
-
 
 ## THREE-R1.2C.1 - Terrain Validation Runtime Completion
 
@@ -611,7 +611,6 @@ Adds scientific source-tier metadata, manufactured analytical current fixtures, 
 ## FLOW-R2A.4
 
 Production current visibility recovery for the normal generated Challenge path. The water-column current renderer now maps top-down grid cells to canonical physical-meter current axes before sampling `OceanCurrentField4D`, default Planning/Simulation scenes and `?runtimeShell=next` publish shared `ANCHOR_CURRENT_PRESENTATION_DEBUG`, and zero-waypoint optional gliders can remain idle without blocking Glider 1 execution. This is a stabilization pass only: no tracers/pathlines, WebGPU, new current equations, planner changes, scoring changes, or Phaser removal.
-
 
 ## FLOW-PKG-R2 - Production Current Generator Extraction And Depth-Structured Backend
 

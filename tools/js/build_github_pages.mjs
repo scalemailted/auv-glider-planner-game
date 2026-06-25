@@ -30,6 +30,7 @@ const publicDocs = [
   'docs/solver_workflow.md',
   'docs/game_design_scientific_auv_planning.md',
   'docs/benchmark_modes.md',
+  'docs/scoring_and_benchmark_contract.md',
   'docs/water_column_2p5d_sampling_model.md',
   'docs/current_runtime_baseline.md',
   'docs/current_package_architecture.md',

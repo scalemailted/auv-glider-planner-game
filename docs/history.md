@@ -2,6 +2,10 @@
 
 This document keeps durable decisions from completed cleanup, renderer, current, bathymetry, water-column, replay, headless, and benchmark phases. Git history remains the complete archive for phase-by-phase reports and removed visual acceptance notes.
 
+## SCORE-PKG-R1
+
+SCORE-PKG-R1 introduced packages/scoring as the canonical owner for official score calculation, score profiles, ScoreInput/ScoreResult contracts, deterministic score digests, public-safe score summaries, benchmark score metadata, and result/leaderboard score identity. It preserved existing simulator raw metrics, scoring formulas, bonuses, penalties, official scores, planner behavior, scientific models, and public result compatibility.
+
 ## Current Runtime Boundary
 
 - `index.html` boots `src/game/main.js`.

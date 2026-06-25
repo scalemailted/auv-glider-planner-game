@@ -1,4 +1,4 @@
-﻿import fs from 'node:fs/promises';
+import fs from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -12,6 +12,7 @@ const expectedPackages = [
   'scalar-processes',
   'environment',
   'mission-simulator',
+  'scoring',
   'validation',
   'codecs',
 ];
@@ -23,6 +24,7 @@ const allowedDependencies = new Map([
   ['scalar-processes', ['contracts', 'currents']],
   ['environment', ['contracts', 'bathymetry', 'currents', 'scalar-processes']],
   ['mission-simulator', ['contracts', 'environment']],
+  ['scoring', ['contracts', 'mission-simulator']],
   ['validation', ['contracts', 'bathymetry', 'currents', 'scalar-processes', 'environment', 'mission-simulator', 'codecs']],
   ['codecs', ['contracts']],
 ]);
@@ -176,5 +178,3 @@ if (isMain) {
     console.log('audit_package_boundaries: ok');
   }
 }
-
-

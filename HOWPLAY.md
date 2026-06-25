@@ -1,5 +1,7 @@
 # How To Play ANCHOR: Glider Command
 
+Plan. Simulate. Compare. Learn.
+
 This guide explains how to play the game, what the screens mean, how scoring works, and how to use exports and solvers. The canonical product design target is [Scientific AUV Planning Game Design](docs/game_design_scientific_auv_planning.md), which explains the mission loop, visibility modes, objective archetypes, 2.5D sampling, adaptive replanning, multi-glider cooperation, and scoring/regret direction.
 
 ## Goal
@@ -49,7 +51,7 @@ Challenge Mode is the playable planning-puzzle experience. It emphasizes score, 
 
 Simulation Lab is the reproducible experiment sandbox. It emphasizes exact configuration, deterministic/stochastic setup, dynamic current-field metadata, solver packets, replay seeds, external solver workflows, JSON import/export, and auditability.
 
-Both modes use the same terrain, current fields, hazards, glider physics, scoring core, route validation, planner APIs, and replay/export system. The difference is the menu framing, default panels, and how much technical detail is shown by default.
+Both modes use the same terrain, current fields, hazards, glider physics, scoring core, route validation, planner APIs, and replay/export system. Scores are calculated by the canonical scoring package from simulator outcomes; the screens display score explanations and do not recalculate the official total. The difference is the menu framing, default panels, and how much technical detail is shown by default.
 
 ## Screen Overview
 

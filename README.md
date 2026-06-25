@@ -1,5 +1,9 @@
 # ANCHOR: Glider Command
 
+ANCHOR Alpha is a deterministic, scientifically constrained research-and-education sandbox for investigating adaptive underwater-glider mission planning. It supports reproducible comparison of human, classical, and learning-based planners. It is not an operational ocean forecast or certified vehicle-navigation system.
+
+Plan. Simulate. Compare. Learn.
+
 **ANCHOR** is a browser-based serious game and simulation sandbox for multi-agent underwater glider mission planning. Players plan waypoint missions, simulate glider behavior under dynamic currents, sample fields, hazards, terrain, energy limits, and forecast uncertainty, then review scores and export data for external solvers.
 
 The project is also an **AUV Glider Planner Game** for teaching long-horizon planning, energy tradeoffs, waypoint sequencing, forecast uncertainty, solver comparison, and dataset generation. The canonical game-design source of truth is [Scientific AUV Planning Game Design](docs/game_design_scientific_auv_planning.md), which captures the player-facing mission loop, objective archetypes, visibility modes, 2.5D sampling model, scoring/regret direction, and future production gameplay targets. Challenge Mode presents playable planning puzzles with mission-mode objectives, stars, route grades, risk warnings, and leaderboard comparison. Simulation Lab exposes the same mission engine as a reproducible experiment environment for deterministic/stochastic setup, current/sample-field configuration, replay seeds, solver packets, JSON import/export, and planner comparisons.

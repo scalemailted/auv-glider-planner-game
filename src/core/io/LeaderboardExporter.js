@@ -43,6 +43,11 @@ export function buildLeaderboardRecordExport(record, { embedChallenge = true } =
       reason: exactReplay.reason
     },
     bestScore: best?.score ?? null,
+    bestScoreResultDigest: best?.scoreResultDigest ?? null,
+    bestScoreDigest: best?.scoreDigest ?? null,
+    bestScoreProfileId: best?.scoreProfileId ?? null,
+    bestScoreProfileVersion: best?.scoreProfileVersion ?? null,
+    bestScoreProfileDigest: best?.scoreProfileDigest ?? null,
     bestAttemptId: best?.attemptId ?? null,
     bestPlan: cloneJson(best?.plan ?? null),
     bestSource: best?.routeSource ?? classifyAttempt(best),

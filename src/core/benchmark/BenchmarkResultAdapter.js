@@ -7,13 +7,19 @@ import {
 import { createBenchmarkModeConfig, informationAccessTierById } from './BenchmarkModeContract.js';
 import { createBenchmarkEpisodeConfig, normalizeBenchmarkAttemptSource } from './BenchmarkEpisodeContract.js';
 import {
+  createScoreInput,
+  createScoreProfile,
+  evaluateScore,
+  scoreResultSummary
+} from '../../../packages/scoring/src/index.js';
+import {
   createRouteExecutionMetrics,
   createRouteExecutionRecord,
   createRouteValidationSummary
 } from './BenchmarkRouteExecutionRecord.js';
 
 // This adapter normalizes existing ANCHOR result/debrief data into benchmark records.
-// It does not simulate routes and does not compute new official scores.
+// It does not simulate routes or own score calculation; package scoring supplies score metadata.
 export function buildBenchmarkRunRecordFromResult({
   benchmarkModeConfig,
   episodeConfig,
@@ -40,6 +46,7 @@ export function buildBenchmarkRunRecordFromResult({
     fairnessLabel
   });
   const metrics = routeExecutionRecord.metrics;
+  const packageScore = buildBenchmarkPackageScore({ level, mission, plan, result, metrics });
   return createBenchmarkRunRecord({
     benchmarkMode: modeConfig.benchmarkMode,
     worldModelTier: modeConfig.worldModelTier,
@@ -55,14 +62,16 @@ export function buildBenchmarkRunRecordFromResult({
     actions: extractActionRecords(plan, normalizedAttemptSource, modeConfig.informationAccessTier),
     rewards: [createBenchmarkRewardRecord({
       rewardType: 'existingDebriefFinalScore',
-      value: metrics.finalScore ?? 0,
-      components: metrics,
-      note: 'Normalized from existing ANCHOR debrief/result summary.'
+      value: packageScore.scoreResult?.officialScore ?? metrics.finalScore ?? 0,
+      components: { ...metrics, scoreResultDigest: packageScore.scoreResult?.resultDigest ?? null },
+      note: 'Normalized from existing ANCHOR debrief/result summary through packages/scoring.'
     })],
     diagnostics: {
       adapterOnly: true,
       doesNotSimulateRoutes: true,
       doesNotComputeOfficialScores: true,
+      usesPackageScoring: true,
+      scoreResultSummary: packageScore.scoreResultSummary,
       episodeId: episode.episodeId ?? null,
       routeExecutionSummary: routeExecutionRecord.metrics,
       routeExecutionValidation: routeExecutionRecord.validation,
@@ -198,6 +207,23 @@ export function inferBenchmarkFairnessLabel({ informationAccessTier, attemptSour
   return informationAccessTierById(informationAccessTier ?? 'forecastOnly').fairnessLabel;
 }
 
+function buildBenchmarkPackageScore({ level, mission, plan, result, metrics } = {}) {
+  const profile = createScoreProfile({ profileId: metrics?.scoreProfileId ?? result?.summary?.scoreProfileId ?? 'balancedMission' });
+  const scoreInput = createScoreInput({
+    environmentArtifactDigest: level?.environmentArtifact?.artifactDigest ?? level?.instanceId ?? level?.levelId ?? null,
+    planDigest: plan?.planDigest ?? plan?.id ?? plan?.planId ?? null,
+    simulationInputDigest: result?.missionSimulation?.inputDigest ?? null,
+    simulationResultDigest: result?.missionSimulation?.resultDigest ?? result?.resultDigest ?? null,
+    terminalReason: result?.stopReason?.code ?? result?.summary?.abortReason ?? null,
+    rawMetrics: { officialScoreSummary: result?.summary ?? metrics ?? {} },
+    missionObjectives: mission?.objectives ?? mission?.rules?.objectives ?? [],
+    missionMetadata: { missionId: mission?.missionId ?? mission?.id ?? result?.missionId ?? null },
+    scoreProfileId: profile.id,
+    scoreProfileVersion: profile.version
+  });
+  const scoreResult = evaluateScore(profile, scoreInput);
+  return { profile, scoreInput, scoreResult, scoreResultSummary: scoreResultSummary(scoreResult) };
+}
 function extractActionRecords(plan, attemptSource, informationAccessTier) {
   const actions = [];
   for (const agentPlan of plan?.agentPlans ?? []) {

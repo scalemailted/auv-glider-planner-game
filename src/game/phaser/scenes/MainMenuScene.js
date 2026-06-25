@@ -234,7 +234,7 @@ export class MainMenuScene extends PhaserScene {
             <h1>ANCHOR: Glider Command</h1>
             <p class="main-menu-subtitle">Scientific AUV Glider Adaptive-Sampling Game</p>
           </div>
-          <p class="main-menu-runtime-note">Browser ANCHOR is the visual game/referee. Node/OceanBox-JS is the canonical headless runtime.</p>
+          <p class="main-menu-runtime-note">ANCHOR Alpha is a deterministic, scientifically constrained research-and-education sandbox for investigating adaptive underwater-glider mission planning. It supports reproducible comparison of human, classical, and learning-based planners. It is not an operational ocean forecast or certified vehicle-navigation system. Plan. Simulate. Compare. Learn.</p>
         </header>
         ${view === 'home' ? this.productHubHomeHtml() : ''}
         ${view === 'challenge' ? this.challengeHubHtml() : ''}

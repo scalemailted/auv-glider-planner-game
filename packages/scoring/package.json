@@ -1,0 +1,10 @@
+{
+  "name": "@anchor/scoring",
+  "version": "0.0.0-score-pkg-r1",
+  "private": true,
+  "type": "module",
+  "description": "Canonical scoring package boundary for ANCHOR mission scores and benchmark scorecards.",
+  "exports": {
+    ".": "./src/index.js"
+  }
+}
