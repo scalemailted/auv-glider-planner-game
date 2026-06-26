@@ -20,6 +20,8 @@ Passing software or visual tests is not represented as oceanographic validation.
 
 COLAB-BENCH-R1 uses this baseline as context for external classical planner comparisons. The notebook reads `validation/manifest.json` when available, records the baseline digest in reproducibility manifests, and links benchmark results to stated limitations. It does not convert the validation baseline into an operational-certification claim.
 
+ALPHA-R1 links this route from onboarding, known limitations, researcher quick start, and release documentation. The Alpha Product Hub reads and reports the baseline identity; it does not create a separate scientific-validity score or weaken the existing claim boundary.
+
 ## Official Baseline Artifacts
 
 | Artifact | Role |

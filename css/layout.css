@@ -1098,6 +1098,253 @@ body.main-menu-shell #center-column {
   line-height: 1.35;
 }
 
+.alpha-badge-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: .45rem;
+  align-items: center;
+  margin-top: .85rem;
+}
+
+.alpha-release-badge,
+.alpha-release-version,
+.alpha-release-tagline {
+  display: inline-flex;
+  align-items: center;
+  min-height: 1.8rem;
+  padding: .26rem .55rem;
+  border: 1px solid rgba(141, 220, 242, 0.24);
+  border-radius: 8px;
+  color: #eaf8ff;
+  background: rgba(8, 17, 31, 0.7);
+  font-size: .78rem;
+  font-weight: 900;
+}
+
+.alpha-release-badge {
+  color: #06121f;
+  background: rgba(99, 230, 190, 0.95);
+  border-color: rgba(99, 230, 190, 0.95);
+}
+
+.alpha-release-tagline {
+  color: var(--success);
+}
+
+.alpha-status-strip,
+.alpha-workflow-grid,
+.alpha-limitations-grid,
+.alpha-feedback-form,
+.alpha-callout {
+  width: 100%;
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+.alpha-status-strip {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 210px), 1fr));
+  gap: .55rem;
+}
+
+.alpha-status-strip div,
+.alpha-step-card,
+.alpha-limitation-card,
+.alpha-callout {
+  border: 1px solid rgba(141, 220, 242, 0.18);
+  border-radius: 8px;
+  background: rgba(8, 17, 31, 0.62);
+}
+
+.alpha-status-strip div {
+  padding: .62rem .7rem;
+}
+
+.alpha-status-strip span,
+.alpha-limitation-card span,
+.alpha-step-card span {
+  display: block;
+  color: var(--muted);
+  font-size: .74rem;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.alpha-status-strip strong {
+  display: block;
+  margin-top: .2rem;
+  color: #eef6ff;
+  font-size: .9rem;
+}
+
+.alpha-status-strip .status-pending {
+  color: #ffd37a;
+}
+
+.hub-lede {
+  max-width: 58rem;
+  color: var(--muted);
+  line-height: 1.45;
+}
+
+.alpha-workflow-grid,
+.alpha-limitations-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 250px), 1fr));
+  gap: .75rem;
+}
+
+.alpha-step-card,
+.alpha-limitation-card,
+.alpha-callout {
+  padding: .82rem .9rem;
+}
+
+.alpha-step-card h3,
+.alpha-limitation-card h3,
+.alpha-callout h3 {
+  margin: .25rem 0 .35rem;
+  color: #eef6ff;
+}
+
+.alpha-step-card p,
+.alpha-limitation-card p,
+.alpha-callout p {
+  margin: 0;
+  color: var(--muted);
+  line-height: 1.42;
+}
+
+.alpha-step-card a,
+.alpha-limitation-card a {
+  margin-top: .6rem;
+  display: inline-block;
+  color: var(--success);
+  font-weight: 900;
+}
+
+.alpha-feedback-form {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: .75rem;
+  padding: .9rem;
+  border: 1px solid rgba(141, 220, 242, 0.18);
+  border-radius: 8px;
+  background: rgba(8, 17, 31, 0.62);
+}
+
+.alpha-feedback-form label {
+  display: grid;
+  gap: .25rem;
+  color: #dfefff;
+  font-weight: 800;
+}
+
+.alpha-feedback-form input,
+.alpha-feedback-form select,
+.alpha-feedback-form textarea {
+  width: 100%;
+  box-sizing: border-box;
+  color: var(--text);
+  border: 1px solid rgba(141, 220, 242, 0.24);
+  border-radius: 8px;
+  background: rgba(6, 17, 31, 0.82);
+  padding: .52rem .58rem;
+}
+
+.alpha-feedback-form textarea {
+  resize: vertical;
+}
+
+.alpha-feedback-form label:nth-child(n + 3),
+.alpha-form-actions {
+  grid-column: 1 / -1;
+}
+
+.alpha-form-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: .55rem;
+}
+
+.alpha-form-actions button,
+.alpha-onboarding-dialog button {
+  min-height: 2.35rem;
+  padding: .55rem .72rem;
+  color: var(--text);
+  border: 1px solid rgba(141, 220, 242, 0.26);
+  border-radius: 8px;
+  background: rgba(20, 43, 66, 0.92);
+  font-weight: 900;
+}
+
+.alpha-form-actions button:hover,
+.alpha-form-actions button:focus-visible,
+.alpha-onboarding-dialog button:hover,
+.alpha-onboarding-dialog button:focus-visible,
+.alpha-feedback-form input:focus-visible,
+.alpha-feedback-form select:focus-visible,
+.alpha-feedback-form textarea:focus-visible {
+  outline: 2px solid #88d8ff;
+  outline-offset: 2px;
+}
+
+.alpha-onboarding-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 80;
+  display: grid;
+  place-items: center;
+  padding: 1rem;
+  background: rgba(2, 8, 16, 0.72);
+}
+
+.alpha-onboarding-dialog {
+  width: min(760px, 100%);
+  max-height: min(86vh, 760px);
+  overflow: auto;
+  padding: 1rem;
+  border: 1px solid rgba(141, 220, 242, 0.28);
+  border-radius: 8px;
+  background: #08111f;
+  box-shadow: 0 24px 70px rgba(0, 0, 0, 0.42);
+}
+
+.alpha-onboarding-dialog h2 {
+  margin: 0 0 .45rem;
+  font-size: clamp(1.4rem, 2.5vw, 2.2rem);
+  letter-spacing: 0;
+}
+
+.alpha-onboarding-dialog p,
+.alpha-onboarding-dialog small,
+.alpha-onboarding-dialog footer span {
+  color: var(--muted);
+  line-height: 1.4;
+}
+
+.alpha-onboarding-options {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 250px), 1fr));
+  gap: .6rem;
+  margin: .9rem 0;
+}
+
+.alpha-onboarding-options button {
+  display: grid;
+  gap: .25rem;
+  min-height: 6.6rem;
+  text-align: left;
+  align-content: start;
+}
+
+.alpha-onboarding-dialog footer {
+  display: flex;
+  flex-wrap: wrap;
+  gap: .65rem;
+  align-items: center;
+}
+
 .main-menu-primary-grid,
 .hub-action-grid,
 .hub-group-grid {
@@ -1281,6 +1528,10 @@ body.main-menu-shell #center-column {
 
   .main-menu-card {
     min-height: 7.5rem;
+  }
+
+  .alpha-feedback-form {
+    grid-template-columns: 1fr;
   }
 }
 .bathymetry-three-renderer-host,

@@ -1,0 +1,51 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://anchor.local/schemas/alpha-release-manifest.schema.json",
+  "schemaVersion": "1.0.0",
+  "describes": "anchor.alpha-release-manifest",
+  "type": "object",
+  "required": [
+    "artifactType",
+    "artifactVersion",
+    "releaseId",
+    "releaseVersion",
+    "releaseChannel",
+    "applicationCommit",
+    "defaultRuntimeShell",
+    "packageVersions",
+    "validationBaseline",
+    "classicalPlannerNotebook",
+    "scoring",
+    "knownLimitations",
+    "claimBoundary",
+    "releaseDigest"
+  ],
+  "properties": {
+    "artifactType": { "const": "anchor.alpha-release-manifest" },
+    "artifactVersion": { "const": "1.0.0" },
+    "releaseId": { "type": "string" },
+    "releaseVersion": { "type": "string" },
+    "releaseChannel": { "const": "alpha" },
+    "applicationCommit": { "type": "string" },
+    "defaultRuntimeShell": { "type": "string" },
+    "packageVersions": { "type": "object" },
+    "validationBaseline": {
+      "type": "object",
+      "required": ["id", "digest", "reportCount", "statusSummary", "evidenceLevelSummary"]
+    },
+    "classicalPlannerNotebook": {
+      "type": "object",
+      "required": ["localPythonExecutionVerified", "localAcceptanceDigest", "googleColabHostingSmoke"]
+    },
+    "scoring": {
+      "type": "object",
+      "required": ["profileId", "profileVersion", "profileDigest"]
+    },
+    "knownLimitations": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "claimBoundary": { "type": "string" },
+    "releaseDigest": { "type": "string" }
+  }
+}

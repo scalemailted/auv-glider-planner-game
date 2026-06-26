@@ -22,6 +22,7 @@ Package extraction phases should remain narrow extractions, not rewrites. Curren
 - `SCI-VALID-R2A`: establishes `packages/validation`, checked-in validation reports/manifests, codec schemas, and the public Methods & Validation route. It presents evidence and limitations without changing scientific equations or claiming operational validation.
 - `COLAB-BENCH-R1`: adds a reproducible external classical-planner benchmark notebook, compact solver-packet fixtures, benchmark records, and Node authoritative evaluation while preserving the boundary: Colab proposes; ANCHOR validates, simulates, and scores.
 - `COLAB-BENCH-R1.1`: adds a public depth/time benchmark-data bundle, Python exported-data reconstruction, a Colab execution report/package, a local finalizer, and an acceptance validator. Local Python execution and authoritative ANCHOR acceptance are verified; hosted Google Colab Run-all smoke remains pending.
+- `ALPHA-R1`: packages the existing canonical scientific, simulation, scoring, codec, validation, and notebook stack into an external research-and-education preview with Product Hub Alpha identity, guided onboarding, researcher quick start, safe diagnostics, curated scenarios, and explicit known limitations. It does not add scientific engines, planners, renderers, packages, scoring changes, or operational-validity claims.
 
 Package extraction gates: old `src/core/...` imports must continue through forwarding modules, artifact values and scoring must remain stable, and package audits must pass with no renderer/UI/browser dependencies.
 ## 1. Product Vision
@@ -39,6 +40,7 @@ Current foundation:
 - Colab/Python wrapper and artifact-analysis workflows.
 - COLAB-BENCH-R1 classical-planner benchmark notebook for transparent external planning, visualization, timing, exact bounded small-instance checks, and official ANCHOR evaluation.
 - COLAB-BENCH-R1.1 parity probes and acceptance-report validation are locally verified with Python 3.14.6; hosted Google Colab execution remains a distribution smoke before claiming `GOOGLE_COLAB_HOSTING_SMOKE_VERIFIED`.
+- ALPHA-R1 is the next external-user packaging layer: `Plan. Simulate. Compare. Learn.` with owner review and hosted Google Colab smoke tracked separately from automated engineering gates.
 
 Browser ANCHOR is the visual game and referee. Node/OceanBox-JS is the canonical headless runtime. Colab/Python workflows analyze artifacts or call Node; they do not reimplement the simulator.
 

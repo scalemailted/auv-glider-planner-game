@@ -1,0 +1,141 @@
+{
+  "type": "anchor.alpha-scenario-catalog",
+  "schemaVersion": "1.0.0",
+  "catalogId": "alpha-r1-curated-scenarios",
+  "releaseId": "alpha-r1-external-research-education-preview",
+  "entries": [
+    {
+      "scenarioId": "alpha-guided-mission",
+      "label": "Alpha Guided Mission",
+      "audience": ["Player / Student"],
+      "learningObjectives": [
+        "Deploy one routed glider while optional gliders may remain idle.",
+        "Place surface waypoints and configure an incoming segment dive profile.",
+        "Execute, observe depth-aware sampling, surface, and replan."
+      ],
+      "researchObjectives": [
+        "Exercise the canonical mission workspace without changing scientific or scoring semantics."
+      ],
+      "estimatedDurationMinutes": 12,
+      "difficulty": "introductory",
+      "deterministic": true,
+      "multiGlider": false,
+      "requiresDiveProfiles": true,
+      "requiresDynamicCurrents": false,
+      "supportsNotebookRoundTrip": false,
+      "levelOrMissionId": "tutorial_01_first_deployment",
+      "environmentDigest": "derived-at-runtime-from-tutorial-level",
+      "validationStatus": "SUPPORTED_WITH_LIMITATIONS"
+    },
+    {
+      "scenarioId": "alpha-depth-sampling-mission",
+      "label": "Alpha Depth Sampling Mission",
+      "audience": ["Player / Student", "Researcher / Instructor"],
+      "learningObjectives": [
+        "Compare surface, shallow, thermocline, midwater, and deep samples at the same horizontal route.",
+        "Inspect planned versus realized depth trajectory."
+      ],
+      "researchObjectives": [
+        "Demonstrate that observations use actual glider x, y, z, and t rather than target-depth labels."
+      ],
+      "estimatedDurationMinutes": 15,
+      "difficulty": "intermediate",
+      "deterministic": true,
+      "multiGlider": false,
+      "requiresDiveProfiles": true,
+      "requiresDynamicCurrents": false,
+      "supportsNotebookRoundTrip": false,
+      "levelOrMissionId": "generated-depth-aware-simulation-lab",
+      "environmentDigest": "generated-by-packages/environment",
+      "validationStatus": "SUPPORTED_WITH_LIMITATIONS"
+    },
+    {
+      "scenarioId": "alpha-dynamic-current-mission",
+      "label": "Alpha Dynamic Current Mission",
+      "audience": ["Player / Student", "Researcher / Instructor"],
+      "learningObjectives": [
+        "Use the planning timeline to inspect time-varying currents.",
+        "Compare current-assisted and current-opposed route choices."
+      ],
+      "researchObjectives": [
+        "Exercise depth- and time-structured current package sampling through the browser mission runtime."
+      ],
+      "estimatedDurationMinutes": 18,
+      "difficulty": "intermediate",
+      "deterministic": true,
+      "multiGlider": false,
+      "requiresDiveProfiles": true,
+      "requiresDynamicCurrents": true,
+      "supportsNotebookRoundTrip": false,
+      "levelOrMissionId": "generated-flow-runtime-simulation-lab",
+      "environmentDigest": "generated-by-packages/environment",
+      "validationStatus": "SUPPORTED_WITH_LIMITATIONS"
+    },
+    {
+      "scenarioId": "alpha-multi-glider-mission",
+      "label": "Alpha Multi-Glider Mission",
+      "audience": ["Player / Student"],
+      "learningObjectives": [
+        "Assign complementary routes to two or three gliders.",
+        "Keep optional idle gliders surfaced without fabricated observations."
+      ],
+      "researchObjectives": [
+        "Compare fleet assignment tradeoffs under one canonical simulator and scoring path."
+      ],
+      "estimatedDurationMinutes": 20,
+      "difficulty": "intermediate",
+      "deterministic": true,
+      "multiGlider": true,
+      "requiresDiveProfiles": true,
+      "requiresDynamicCurrents": false,
+      "supportsNotebookRoundTrip": false,
+      "levelOrMissionId": "generated-regional-fleet-challenge",
+      "environmentDigest": "generated-by-packages/environment",
+      "validationStatus": "SUPPORTED_WITH_LIMITATIONS"
+    },
+    {
+      "scenarioId": "alpha-forecast-replanning-mission",
+      "label": "Alpha Forecast and Replanning Mission",
+      "audience": ["Player / Student", "Researcher / Instructor"],
+      "learningObjectives": [
+        "Use forecast uncertainty and observations at surfacing.",
+        "Choose whether to continue or update waypoints."
+      ],
+      "researchObjectives": [
+        "Inspect deterministic seed, forecast-visible state, and public observation updates."
+      ],
+      "estimatedDurationMinutes": 20,
+      "difficulty": "advanced",
+      "deterministic": true,
+      "multiGlider": true,
+      "requiresDiveProfiles": true,
+      "requiresDynamicCurrents": true,
+      "supportsNotebookRoundTrip": false,
+      "levelOrMissionId": "generated-forecast-challenge",
+      "environmentDigest": "generated-by-packages/environment",
+      "validationStatus": "SUPPORTED_WITH_LIMITATIONS"
+    },
+    {
+      "scenarioId": "alpha-research-benchmark",
+      "label": "Alpha Research Benchmark",
+      "audience": ["Researcher / Instructor"],
+      "learningObjectives": [
+        "Inspect public benchmark data and fairness labels.",
+        "Import an external candidate plan and compare authoritative ANCHOR results."
+      ],
+      "researchObjectives": [
+        "Round-trip public solver packets, benchmark bundles, notebook plans, and canonical ScoreResult provenance."
+      ],
+      "estimatedDurationMinutes": 25,
+      "difficulty": "research",
+      "deterministic": true,
+      "multiGlider": false,
+      "requiresDiveProfiles": false,
+      "requiresDynamicCurrents": false,
+      "supportsNotebookRoundTrip": true,
+      "levelOrMissionId": "static_additive_routing",
+      "environmentDigest": "fnv1a32:220ad0dc",
+      "validationStatus": "SUPPORTED_WITH_LIMITATIONS"
+    }
+  ]
+}

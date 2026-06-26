@@ -183,7 +183,7 @@ function verify() {
   const releaseTotal = profileTitleCount('release').total;
   const fullTotal = profileTitleCount('full').total;
   if (smokeTotal < 12 || smokeTotal > 18) failures.push(`browser smoke profile outside R2 target: ${smokeTotal}`);
-  if (releaseTotal < 35 || releaseTotal > 54) failures.push(`release profile outside R2 target: ${releaseTotal}`);
+  if (releaseTotal < 35 || releaseTotal > 58) failures.push(`release profile outside R2/Alpha target: ${releaseTotal}`);
   if (fullTotal > 121) failures.push(`full nonvisual profile exceeds R2 static-parser target: ${fullTotal}`);
   if (!existsSync(path.join(ROOT, 'tools/maintenance/repo_declutter_manifest.json'))) failures.push('missing repo_declutter_manifest.json');
   if (!existsSync(path.join(ROOT, 'docs/repository_cleanup.md'))) failures.push('missing docs/repository_cleanup.md');
@@ -523,7 +523,7 @@ function renderCleanupReportR2(inventory, reachability, portfolio, timing, pages
   lines.push('## Test Architecture');
   lines.push('');
   lines.push('- Capability matrix: `tests/e2e/capability_manifest.mjs`.');
-  lines.push('- Release profile target: 35-54 browser tests; current selection is capability-owned and explicit.');
+  lines.push('- Release profile target: 35-58 browser tests after ALPHA-R1; current selection is capability-owned and explicit.');
   lines.push('- Full profile target: <=120 nonvisual browser tests; current selection is bounded and excludes visual acceptance.');
   lines.push('- Pure deterministic contracts remain in package/science Node gates; browser tests are kept for DOM, canvas, route, pointer, Pages, and lifecycle behavior.');
   lines.push('');

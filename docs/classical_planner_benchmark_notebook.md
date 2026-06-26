@@ -12,7 +12,9 @@ Colab proposes. ANCHOR validates. ANCHOR simulates. ANCHOR scores.
 
 The Python notebook may inspect exported public fields and propose `anchor.plan` artifacts. It must not replace CODEC-R1 validation, mission simulation, or official scoring. The final acceptance report is authoritative only after `tools/js/finalize_colab_benchmark_acceptance.mjs` evaluates the returned Colab execution package locally.
 
-Current gate status remains `BLOCKED_WAITING_FOR_COLAB_EXECUTION` until a real Google Colab run returns `colab_execution_report.json`, `colab_execution_package.json`, and `reproducibility_manifest.json`, and those artifacts pass local finalization plus validation.
+Current local gate status is `LOCAL_PYTHON_EXECUTION_VERIFIED`: Python 3.14.6 executed the notebook support tests, all 15 Python tests passed, numerical parity had zero failed probes, and authoritative local ANCHOR finalization reproduced the checked-in A* official score `23.593559` with local acceptance digest `fnv1a32:9a73d341`.
+
+Google Colab hosting smoke remains `PENDING` until a real hosted run returns `colab_execution_report.json`, `colab_execution_package.json`, and `reproducibility_manifest.json`, and those artifacts pass local finalization plus validation.
 
 ## Public Planning-Data Audit
 

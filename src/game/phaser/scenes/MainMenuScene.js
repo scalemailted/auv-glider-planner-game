@@ -1,5 +1,5 @@
 import { markAnchorAppBootMilestone, markAnchorRouteReady } from '../../../app/production/AnchorAppBootReadiness.js';
-import { downloadJSON, loadJSON, readJSONFile } from '../../../core/io/ImportExport.js';
+import { downloadJSON, downloadText, loadJSON, readJSONFile } from '../../../core/io/ImportExport.js';
 import { applyTutorialMissionConfig, loadCampaignLevel, CAMPAIGN_LEVELS } from '../../../core/campaign/CampaignLevels.js';
 import { ensureLevelIdentity } from '../../../core/identity/GameInstanceId.js';
 import { resetPlanResultStore } from '../../../core/evaluation/PlanResultStore.js';
@@ -22,9 +22,23 @@ import {
   loadLeaderboard
 } from '../../../core/storage/LeaderboardStore.js';
 import { resetMissionShellForMainMenu, publishSceneIsolationDebug } from '../../../ui/MissionShellReset.js';
+import {
+  ALPHA_LIMITATIONS,
+  ALPHA_ONBOARDING_OPTIONS,
+  ALPHA_POSITIONING,
+  ALPHA_RELEASE_ID,
+  ALPHA_RELEASE_VERSION,
+  ALPHA_SCENARIO_CATALOG,
+  ALPHA_STATUS,
+  ALPHA_TAGLINE,
+  alphaReleaseDebugPayload,
+  buildAlphaDiagnosticBundle,
+  buildAlphaFeedbackSummary
+} from '../../../core/alpha/AlphaRelease.js';
 
 const PhaserScene = globalThis.Phaser?.Scene ?? class {};
-const MAIN_MENU_VERSION = 'main-menu-hub-ui-r1';
+const MAIN_MENU_VERSION = 'main-menu-hub-ui-alpha-r1';
+const ALPHA_ONBOARDING_STORAGE_KEY = 'anchor.alphaR1.onboarding.dismissed';
 
 const PRIMARY_CARDS = ['Challenge Mode', 'Simulation Lab', 'Learning Labs', 'Methods & Validation'];
 const CHALLENGE_ACTIONS = [
@@ -83,6 +97,8 @@ export class MainMenuScene extends PhaserScene {
     this.app.setSceneLabel('Main Menu');
     this.setMainMenuShellState(true);
     this.activeHubView = 'home';
+    this.alphaLastDiagnosticBundle = null;
+    this.alphaLastError = null;
     this.buttons = [];
     markAnchorAppBootMilestone('main-menu-scene-ready', { resolvedRuntimeShell: 'default' });
     this.updateDebugObject(true);
@@ -206,6 +222,14 @@ export class MainMenuScene extends PhaserScene {
         this.mountProductHub(viewButton.dataset.hubView);
       }
     };
+    root.onkeydown = (event) => {
+      if (event.key === 'Escape' && this.dismissAlphaOnboarding({ remember: true })) {
+        event.preventDefault();
+      }
+    };
+    if (view === 'home') {
+      globalThis.queueMicrotask?.(() => this.maybeShowAlphaOnboarding());
+    }
     this.updateDebugObject(true);
     markAnchorRouteReady('main-menu', { resolvedRuntimeShell: 'default', inputHandlersBound: true });
   }
@@ -215,6 +239,7 @@ export class MainMenuScene extends PhaserScene {
     if (!root) return;
     root.classList.remove('main-menu-hub-host');
     root.onclick = null;
+    root.onkeydown = null;
     root.innerHTML = '';
   }
 
@@ -233,19 +258,29 @@ export class MainMenuScene extends PhaserScene {
             <p class="main-menu-kicker">ANCHOR mission systems</p>
             <h1>ANCHOR: Glider Command</h1>
             <p class="main-menu-subtitle">Scientific AUV Glider Adaptive-Sampling Game</p>
+            <div class="alpha-badge-row" aria-label="Alpha release status">
+              <span class="alpha-release-badge">ANCHOR Alpha</span>
+              <span class="alpha-release-version">${escapeHtml(ALPHA_RELEASE_VERSION)}</span>
+              <span class="alpha-release-tagline">${escapeHtml(ALPHA_TAGLINE)}</span>
+            </div>
           </div>
-          <p class="main-menu-runtime-note">ANCHOR Alpha is a deterministic, scientifically constrained research-and-education sandbox for investigating adaptive underwater-glider mission planning. It supports reproducible comparison of human, classical, and learning-based planners. It is not an operational ocean forecast or certified vehicle-navigation system. Plan. Simulate. Compare. Learn.</p>
+          <p class="main-menu-runtime-note">${escapeHtml(ALPHA_POSITIONING)} ${escapeHtml(ALPHA_TAGLINE)}</p>
         </header>
         ${view === 'home' ? this.productHubHomeHtml() : ''}
         ${view === 'challenge' ? this.challengeHubHtml() : ''}
         ${view === 'simulation' ? this.simulationLabHubHtml() : ''}
         ${view === 'learning' ? this.learningLabsHubHtml() : ''}
+        ${view === 'alpha-research' ? this.alphaResearcherQuickStartHtml() : ''}
+        ${view === 'alpha-limitations' ? this.alphaLimitationsHtml() : ''}
+        ${view === 'alpha-feedback' ? this.alphaFeedbackHtml() : ''}
+        ${view === 'alpha-error' ? this.alphaErrorRecoveryHtml() : ''}
       </section>
     `;
   }
 
   productHubHomeHtml() {
     return `
+      ${this.alphaStatusStripHtml()}
       <div class="main-menu-primary-grid" aria-label="Primary ANCHOR paths">
         ${hubCardHtml({ view: 'challenge', title: 'Challenge Mode', eyebrow: 'Play missions', body: 'Learn objectives, chase scores, compare routes, and race the greedy baseline.' })}
         ${hubCardHtml({ view: 'simulation', title: 'Simulation Lab', eyebrow: 'Inspect systems', body: 'Open scientific sandboxes, benchmark modes, headless bundles, and solver workflows.' })}
@@ -253,6 +288,9 @@ export class MainMenuScene extends PhaserScene {
         ${hubActionCardHtml({ action: 'methods-validation', title: 'Methods & Validation', eyebrow: 'Inspect evidence', body: 'Inspect model assumptions, numerical tests, reference comparisons, provenance, and known limitations.' })}
       </div>
       <div class="main-menu-secondary-row" aria-label="Secondary tools">
+        <button type="button" data-action="alpha-tour">Start Alpha Tour</button>
+        <button type="button" data-hub-view="alpha-limitations">View Known Limitations</button>
+        <button type="button" data-hub-view="alpha-feedback">Feedback & Diagnostics</button>
         <button type="button" data-action="load-json">Import JSON</button>
         <button type="button" data-action="headless-bundle-viewer">Headless Bundle Viewer</button>
         <button type="button" data-action="methods-validation">Methods & Validation</button>
@@ -307,6 +345,7 @@ export class MainMenuScene extends PhaserScene {
         ])}
         ${hubGroupHtml('Headless / Solver Tools', [
           hubActionHtml('headless-bundle-viewer', 'Headless Bundle Viewer', 'Inspect Node/OceanBox-JS bundle artifacts.'),
+          hubViewHtml('alpha-research', 'Researcher Quick Start', 'Export public packets and bundles, download notebooks, import candidate plans, and evaluate with ANCHOR.'),
           hubActionHtml('dataset', 'External Solver Evaluation', 'Export datasets and solver packets.'),
           hubActionHtml('load-json', 'Import / Export Tools', 'Load challenge, level, result, oracle, and custom JSON packages.'),
           hubActionHtml('editor', 'Mission Editor', 'Build and export custom scenario/challenge packages.')
@@ -344,9 +383,155 @@ export class MainMenuScene extends PhaserScene {
     `;
   }
 
+  alphaStatusStripHtml() {
+    return `
+      <section class="alpha-status-strip" aria-label="Alpha status">
+        <div><span>Local Python Execution</span><strong>${escapeHtml(ALPHA_STATUS.localPythonExecution)}</strong></div>
+        <div><span>Authoritative ANCHOR Finalization</span><strong>${escapeHtml(ALPHA_STATUS.authoritativeAnchorFinalization)}</strong></div>
+        <div><span>Google Colab Hosting Smoke</span><strong class="status-pending">${escapeHtml(ALPHA_STATUS.googleColabHostingSmoke)}</strong></div>
+        <div><span>Validation Baseline</span><strong>${escapeHtml(ALPHA_STATUS.validationBaselineDigest)}</strong></div>
+      </section>
+    `;
+  }
+
+  alphaResearcherQuickStartHtml() {
+    return `
+      ${hubBackHtml()}
+      <div class="hub-submenu-header">
+        <p class="main-menu-kicker">Simulation Lab / External Solver Evaluation</p>
+        <h2>Researcher Quick Start</h2>
+        <p class="hub-lede">Notebook proposes. ANCHOR validates. ANCHOR simulates. ANCHOR scores.</p>
+      </div>
+      ${this.alphaStatusStripHtml()}
+      <div class="alpha-workflow-grid" data-alpha-researcher-quick-start>
+        ${alphaStepHtml('1', 'Select public benchmark mission', 'Use the Alpha Research Benchmark: static_additive_routing, FORECAST_ONLY, hidden truth disabled.')}
+        ${alphaStepHtml('2', 'Export public artifacts', 'Use Simulation Lab exports for solver packets or public benchmark bundles. Hidden truth is excluded by default.')}
+        ${alphaLinkStepHtml('3', 'Download starter notebook', 'tools/python/notebooks/anchor_external_solver_template.ipynb', 'Starter notebook')}
+        ${alphaLinkStepHtml('4', 'Download full benchmark notebook', 'tools/python/notebooks/anchor_classical_planner_benchmark.ipynb', 'Full benchmark notebook')}
+        ${alphaLinkStepHtml('5', 'Download public bundle fixture', 'tests/fixtures/colab_benchmark/bundles/static_additive_routing.classical-planner-benchmark-bundle.json', 'Public benchmark bundle')}
+        ${alphaLinkStepHtml('6', 'Import checked-in external plan', 'tests/fixtures/colab_benchmark/plans/static_additive_astar.anchor.plan.json', 'A* anchor.plan example')}
+        ${alphaStepHtml('7', 'Evaluate with ANCHOR', `Official A* score ${ALPHA_STATUS.checkedInAstarOfficialScore}; local acceptance digest ${ALPHA_STATUS.localAcceptanceDigest}.`)}
+        ${alphaStepHtml('8', 'Hosted Colab status', 'Google Colab Hosting Smoke: PENDING until a real hosted Run all is completed.')}
+      </div>
+      <section class="alpha-callout">
+        <h3>Fairness class</h3>
+        <p>FORECAST_ONLY. The notebook and public fixtures do not expose hidden truth. Exact-oracle claims are bounded to declared graph, objective, candidate set, and discretization scope.</p>
+      </section>
+    `;
+  }
+
+  alphaLimitationsHtml() {
+    return `
+      ${hubBackHtml()}
+      <div class="hub-submenu-header">
+        <p class="main-menu-kicker">Alpha known limitations</p>
+        <h2>What ANCHOR Alpha is not</h2>
+        <p class="hub-lede">${escapeHtml(ALPHA_POSITIONING)}</p>
+      </div>
+      <div class="alpha-limitations-grid" data-alpha-limitations>
+        ${ALPHA_LIMITATIONS.map((item) => `
+          <article class="alpha-limitation-card" data-alpha-limitation="${escapeAttr(item.id)}">
+            <span>${escapeHtml(item.status)}</span>
+            <h3>${escapeHtml(item.label)}</h3>
+            <p>${escapeHtml(item.detail)}</p>
+            <a href="${escapeAttr(item.doc)}" target="_blank" rel="noopener noreferrer">Open source document</a>
+          </article>
+        `).join('')}
+      </div>
+    `;
+  }
+
+  alphaFeedbackHtml() {
+    return `
+      ${hubBackHtml()}
+      <div class="hub-submenu-header">
+        <p class="main-menu-kicker">External pilot feedback</p>
+        <h2>Feedback & Diagnostics</h2>
+        <p class="hub-lede">The package is generated locally. ANCHOR Alpha does not transmit telemetry, accounts, cookies, user identity, imported file contents, hidden truth, or oracle fields.</p>
+      </div>
+      <form class="alpha-feedback-form" data-alpha-feedback-form>
+        <label>Category
+          <select name="category">
+            ${['Defect', 'Usability', 'Scientific Concern', 'Teaching Concern', 'Benchmark/Reproducibility Concern', 'Performance', 'Accessibility', 'Documentation', 'Other'].map((item) => `<option>${escapeHtml(item)}</option>`).join('')}
+          </select>
+        </label>
+        <label>Severity
+          <select name="severity">
+            ${['Blocks Mission', 'Major', 'Moderate', 'Minor', 'Suggestion'].map((item) => `<option>${escapeHtml(item)}</option>`).join('')}
+          </select>
+        </label>
+        <label>Title <input name="title" type="text" autocomplete="off" placeholder="Short title"></label>
+        <label>Observed behavior <textarea name="observedBehavior" rows="3"></textarea></label>
+        <label>Expected behavior <textarea name="expectedBehavior" rows="3"></textarea></label>
+        <label>Reproduction steps <textarea name="reproductionSteps" rows="3"></textarea></label>
+        <label>Optional notes <textarea name="optionalNotes" rows="2"></textarea></label>
+        <div class="alpha-form-actions">
+          <button type="button" data-action="alpha-download-feedback">Download Feedback Package</button>
+          <button type="button" data-action="alpha-copy-feedback-summary">Copy Human-Readable Summary</button>
+          <button type="button" data-action="alpha-trigger-error">Preview Error Recovery</button>
+        </div>
+      </form>
+      <section class="alpha-callout" data-alpha-feedback-status aria-live="polite">
+        <h3>Safe context included</h3>
+        <p>Release ID, commit/build identity, runtime shell, route, browser/platform, viewport, scenario and mission IDs, public digests, validation baseline, package versions, quality profile, renderer/RAF counts, and structured warnings where available.</p>
+      </section>
+    `;
+  }
+
+  alphaErrorRecoveryHtml() {
+    const message = this.alphaLastError?.message ?? 'Recoverable Alpha workflow error preview.';
+    return `
+      ${hubBackHtml()}
+      <div class="hub-submenu-header">
+        <p class="main-menu-kicker">Recoverable workflow error</p>
+        <h2>Alpha Error Recovery</h2>
+        <p class="hub-lede">${escapeHtml(message)}</p>
+      </div>
+      <section class="alpha-callout alpha-error-recovery" data-alpha-error-recovery>
+        <h3>No blank screen</h3>
+        <p>The current workflow can return to Product Hub, reset the current workflow, download diagnostics, or copy a summary. Canonical mission state is not mutated by this preview.</p>
+        <div class="alpha-form-actions">
+          <button type="button" data-action="alpha-recover-main">Return to Product Hub</button>
+          <button type="button" data-action="alpha-reset-workflow">Reset Current Workflow</button>
+          <button type="button" data-action="alpha-download-diagnostics">Download Diagnostics</button>
+          <button type="button" data-action="alpha-copy-error-summary">Copy Error Summary</button>
+        </div>
+      </section>
+    `;
+  }
+
   handleHubAction(action) {
     const scene = this.app?.phaser?.scene;
     const actions = {
+      'alpha-tour': () => this.showAlphaOnboarding({ openedByUser: true }),
+      'alpha-dismiss-onboarding': () => this.dismissAlphaOnboarding({ remember: true }),
+      'alpha-explore-free': () => this.dismissAlphaOnboarding({ remember: true }),
+      'alpha-guided-mission': () => {
+        this.dismissAlphaOnboarding({ remember: true });
+        this.startCampaignLevel('tutorial_01_first_deployment');
+      },
+      'alpha-researcher-quickstart': () => {
+        this.dismissAlphaOnboarding({ remember: true });
+        this.mountProductHub('alpha-research');
+      },
+      'alpha-methods': () => {
+        this.dismissAlphaOnboarding({ remember: true });
+        this.leaveMainMenuHub();
+        scene.start('MethodsValidationScene');
+      },
+      'alpha-download-feedback': () => this.downloadAlphaFeedbackPackage(),
+      'alpha-copy-feedback-summary': () => this.copyAlphaFeedbackSummary(),
+      'alpha-trigger-error': () => {
+        this.alphaLastError = { name: 'AlphaWorkflowPreviewError', message: 'Previewed recoverable invalid-import workflow for external Alpha diagnostics.', code: 'ALPHA_PREVIEW_ERROR', route: this.activeHubView };
+        this.mountProductHub('alpha-error');
+      },
+      'alpha-recover-main': () => this.mountProductHub('home'),
+      'alpha-reset-workflow': () => {
+        this.alphaLastError = null;
+        this.mountProductHub('home');
+      },
+      'alpha-download-diagnostics': () => this.downloadAlphaDiagnostics(),
+      'alpha-copy-error-summary': () => this.copyAlphaErrorSummary(),
       'flow-fields': () => scene.start('FlowFieldDemoScene'),
       'roi-demo': () => scene.start('RoiGeneratorDemoScene'),
       'coupled-fields': () => scene.start('CoupledFieldsDemoScene'),
@@ -377,12 +562,108 @@ export class MainMenuScene extends PhaserScene {
     };
     const handler = actions[action];
     if (handler) {
-      if (action !== 'open-about') this.leaveMainMenuHub();
+      if (!this.alphaHubActionStaysInHub(action)) this.leaveMainMenuHub();
       handler();
     }
   }
 
-  updateDebugObject(active = true) {
+  alphaHubActionStaysInHub(action) {
+    return action === 'open-about' || String(action ?? '').startsWith('alpha-');
+  }
+
+  maybeShowAlphaOnboarding() {
+    if (this.activeHubView !== 'home') return;
+    if (this.alphaOnboardingDismissed()) return;
+    const requested = new URLSearchParams(globalThis.location?.search ?? '').get('alphaOnboarding') === '1';
+    if (globalThis.navigator?.webdriver === true && !requested) return;
+    this.showAlphaOnboarding({ openedByUser: false });
+  }
+
+  showAlphaOnboarding({ openedByUser = false } = {}) {
+    const root = this.app?.elements?.overlay?.modalRoot;
+    if (!root || root.querySelector('[data-alpha-onboarding-modal]')) return;
+    this.alphaFocusReturnElement = globalThis.document?.activeElement ?? null;
+    root.insertAdjacentHTML('beforeend', alphaOnboardingModalHtml({ openedByUser }));
+    const modal = root.querySelector('[data-alpha-onboarding-modal]');
+    modal?.querySelector?.('button')?.focus?.();
+    this.updateDebugObject(true, { onboardingVisible: true });
+  }
+
+  dismissAlphaOnboarding({ remember = true } = {}) {
+    const modal = this.app?.elements?.overlay?.modalRoot?.querySelector?.('[data-alpha-onboarding-modal]');
+    if (!modal) return false;
+    modal.remove();
+    if (remember) {
+      try { globalThis.localStorage?.setItem?.(ALPHA_ONBOARDING_STORAGE_KEY, 'true'); } catch {}
+    }
+    if (this.alphaFocusReturnElement?.isConnected) this.alphaFocusReturnElement.focus?.();
+    this.updateDebugObject(true, { onboardingVisible: false });
+    return true;
+  }
+
+  alphaOnboardingDismissed() {
+    try { return globalThis.localStorage?.getItem?.(ALPHA_ONBOARDING_STORAGE_KEY) === 'true'; } catch { return true; }
+  }
+
+  readAlphaFeedbackForm() {
+    const form = this.app?.elements?.overlay?.modalRoot?.querySelector?.('[data-alpha-feedback-form]');
+    if (!form) return {};
+    const data = new FormData(form);
+    return Object.fromEntries([...data.entries()].map(([key, value]) => [key, String(value ?? '')]));
+  }
+
+  buildAlphaDiagnostic(feedback = {}, error = null) {
+    const bundle = buildAlphaDiagnosticBundle({
+      feedback,
+      error,
+      appState: this.app?.state ?? null,
+      route: this.activeHubView ?? 'productHub',
+      runtimeShell: 'default'
+    });
+    this.alphaLastDiagnosticBundle = bundle;
+    globalThis.ANCHOR_ALPHA_DEBUG = {
+      ...(globalThis.ANCHOR_ALPHA_DEBUG ?? {}),
+      lastDiagnosticDigest: bundle.diagnosticDigest,
+      lastDiagnosticHiddenTruthIncluded: bundle.privacy.hiddenTruthIncluded,
+      lastDiagnosticAutomaticallyTransmitted: bundle.privacy.automaticallyTransmitted
+    };
+    return bundle;
+  }
+
+  downloadAlphaFeedbackPackage() {
+    const bundle = this.buildAlphaDiagnostic(this.readAlphaFeedbackForm(), null);
+    downloadJSON('anchor-alpha-feedback-diagnostics.json', bundle);
+    this.setAlphaFeedbackStatus(`Feedback package ready: ${bundle.diagnosticDigest}`);
+  }
+
+  copyAlphaFeedbackSummary() {
+    const bundle = this.buildAlphaDiagnostic(this.readAlphaFeedbackForm(), null);
+    const summary = buildAlphaFeedbackSummary(bundle);
+    this.copyTextOrDownload(summary, 'anchor-alpha-feedback-summary.txt');
+    this.setAlphaFeedbackStatus('Human-readable feedback summary prepared.');
+  }
+
+  downloadAlphaDiagnostics() {
+    const bundle = this.buildAlphaDiagnostic({}, this.alphaLastError);
+    downloadJSON('anchor-alpha-diagnostics.json', bundle);
+  }
+
+  copyAlphaErrorSummary() {
+    const bundle = this.buildAlphaDiagnostic({}, this.alphaLastError);
+    this.copyTextOrDownload(buildAlphaFeedbackSummary(bundle), 'anchor-alpha-error-summary.txt');
+  }
+
+  copyTextOrDownload(text, filename) {
+    globalThis.navigator?.clipboard?.writeText?.(text).catch?.(() => downloadText(filename, `${text}\n`, 'text/plain'));
+    if (!globalThis.navigator?.clipboard?.writeText) downloadText(filename, `${text}\n`, 'text/plain');
+  }
+
+  setAlphaFeedbackStatus(message) {
+    const status = this.app?.elements?.overlay?.modalRoot?.querySelector?.('[data-alpha-feedback-status]');
+    if (status) status.querySelector('p').textContent = message;
+  }
+
+  updateDebugObject(active = true, alphaState = {}) {
     globalThis.ANCHOR_MAIN_MENU_DEBUG = {
       version: MAIN_MENU_VERSION,
       active: Boolean(active),
@@ -398,6 +679,10 @@ export class MainMenuScene extends PhaserScene {
       usesNewPlanner: false,
       usesMARL: false
     };
+    globalThis.ANCHOR_ALPHA_DEBUG = alphaReleaseDebugPayload({
+      activeAlphaView: this.activeHubView,
+      onboardingVisible: alphaState.onboardingVisible ?? Boolean(globalThis.document?.querySelector?.('[data-alpha-onboarding-modal]'))
+    });
   }
 
   openLeaderboard() {
@@ -910,6 +1195,16 @@ function hubActionHtml(action, title, description, tone = '') {
   `;
 }
 
+function hubViewHtml(view, title, description, tone = '') {
+  const classes = ['hub-action-card', tone].filter(Boolean).join(' ');
+  return `
+    <button type="button" class="${escapeAttr(classes)}" data-hub-view="${escapeAttr(view)}">
+      <strong>${escapeHtml(title)}</strong>
+      <small>${escapeHtml(description)}</small>
+    </button>
+  `;
+}
+
 function hubLinkHtml(href, title, description) {
   return `
     <a class="hub-action-card" href="${escapeAttr(href)}" target="_blank" rel="noopener noreferrer">
@@ -939,6 +1234,61 @@ function hubGroupHtml(title, items = []) {
 
 function hubBackHtml() {
   return '<button type="button" class="hub-back-button" data-hub-view="home">Back to Product Hub</button>';
+}
+
+function alphaStepHtml(step, title, body) {
+  return `
+    <article class="alpha-step-card">
+      <span>${escapeHtml(step)}</span>
+      <h3>${escapeHtml(title)}</h3>
+      <p>${escapeHtml(body)}</p>
+    </article>
+  `;
+}
+
+function alphaLinkStepHtml(step, title, href, label) {
+  return `
+    <article class="alpha-step-card">
+      <span>${escapeHtml(step)}</span>
+      <h3>${escapeHtml(title)}</h3>
+      <a href="${escapeAttr(href)}" download>${escapeHtml(label)}</a>
+    </article>
+  `;
+}
+
+function alphaOnboardingModalHtml({ openedByUser = false } = {}) {
+  return `
+    <div class="alpha-onboarding-backdrop" data-alpha-onboarding-modal="true" role="dialog" aria-modal="true" aria-labelledby="alpha-onboarding-title">
+      <section class="alpha-onboarding-dialog">
+        <header>
+          <p class="main-menu-kicker">${openedByUser ? 'Alpha tour' : 'First run'}</p>
+          <h2 id="alpha-onboarding-title">Start with ANCHOR Alpha</h2>
+          <p>${escapeHtml(ALPHA_POSITIONING)}</p>
+        </header>
+        <div class="alpha-onboarding-options">
+          ${ALPHA_ONBOARDING_OPTIONS.map((option) => {
+            const action = option.id === 'guided'
+              ? 'alpha-guided-mission'
+              : option.id === 'benchmark'
+                ? 'alpha-researcher-quickstart'
+                : option.id === 'methods'
+                  ? 'alpha-methods'
+                  : 'alpha-explore-free';
+            return `
+              <button type="button" data-action="${escapeAttr(action)}">
+                <strong>${escapeHtml(option.label)}</strong>
+                <small>${escapeHtml(option.description)}</small>
+              </button>
+            `;
+          }).join('')}
+        </div>
+        <footer>
+          <button type="button" class="secondary" data-action="alpha-dismiss-onboarding">Skip Guidance</button>
+          <span>Escape closes this panel and returns focus.</span>
+        </footer>
+      </section>
+    </div>
+  `;
 }
 
 function cloneJson(value) {

@@ -1,0 +1,124 @@
+{
+  "artifactType": "anchor.alpha-release-manifest",
+  "artifactVersion": "1.0.0",
+  "releaseId": "alpha-r1-external-research-education-preview",
+  "releaseVersion": "0.1.0-alpha.1",
+  "releaseChannel": "alpha",
+  "applicationCommit": "78a1ddc42426f6eb60386086689d2d9fd50244df",
+  "buildIdentity": {
+    "source": "local-checkout",
+    "head": "78a1ddc42426f6eb60386086689d2d9fd50244df",
+    "worktreePolicy": "alpha-r1-may-be-uncommitted-after-manifest-generation",
+    "applicationVersion": "0.1.0"
+  },
+  "defaultRuntimeShell": "phaser-transitional-shell",
+  "experimentalRuntimeShells": [
+    {
+      "id": "next",
+      "label": "Gated Phaser-free production shell",
+      "query": "?runtimeShell=next",
+      "status": "SUPPORTED_WITH_LIMITATIONS"
+    }
+  ],
+  "packageVersions": {
+    "contracts": "0.0.0-arch-r1",
+    "bathymetry": "0.0.0-arch-r1",
+    "currents": "0.0.0-arch-r1",
+    "scalar-processes": "0.1.0-process-pkg-r1",
+    "environment": "0.0.0-arch-r1",
+    "mission-simulator": "0.0.0-arch-r1",
+    "scoring": "0.0.0-score-pkg-r1",
+    "codecs": "0.1.0-codec-r1",
+    "validation": "0.1.0-sci-valid-r2a"
+  },
+  "validationBaseline": {
+    "id": "sci-valid-r2a-pre-alpha-baseline",
+    "digest": "fnv1a32:dd016175",
+    "reportCount": 9,
+    "statusSummary": {
+      "PASS": 90,
+      "WARN": 1,
+      "NOT_EVALUATED": 5
+    },
+    "evidenceLevelSummary": {
+      "SOFTWARE_VERIFIED": 62,
+      "NUMERICALLY_VERIFIED": 14,
+      "PHYSICALLY_PLAUSIBLE": 15,
+      "NOT_YET_EVALUATED": 5
+    }
+  },
+  "classicalPlannerNotebook": {
+    "notebookVersion": "COLAB-BENCH-R1.1",
+    "localPythonExecutionVerified": true,
+    "pythonVersion": "3.14.6",
+    "pythonTestCount": 15,
+    "failedNumericalParityProbes": 0,
+    "checkedInAstarOfficialScore": 23.593559,
+    "localAcceptanceDigest": "fnv1a32:9a73d341",
+    "googleColabHostingSmoke": "PENDING"
+  },
+  "scoring": {
+    "profileId": "balancedMission",
+    "profileVersion": "mission-score-profiles-score-r1",
+    "profileDigest": "fnv1a32:1e7b3fe0"
+  },
+  "curatedScenarios": [
+    "alpha-guided-mission",
+    "alpha-depth-sampling-mission",
+    "alpha-dynamic-current-mission",
+    "alpha-multi-glider-mission",
+    "alpha-forecast-replanning-mission",
+    "alpha-research-benchmark"
+  ],
+  "supportedBrowsers": [
+    {
+      "browser": "Chromium / Chrome / Edge current",
+      "status": "SUPPORTED",
+      "evidence": "Playwright Chromium smoke, release, and Pages gates."
+    },
+    {
+      "browser": "Firefox current",
+      "status": "NOT_TESTED",
+      "evidence": "No ALPHA-R1 Firefox run recorded yet."
+    },
+    {
+      "browser": "WebKit / Safari current",
+      "status": "NOT_TESTED",
+      "evidence": "No ALPHA-R1 WebKit run recorded yet."
+    },
+    {
+      "browser": "Mobile / tablet browsers",
+      "status": "SUPPORTED_WITH_LIMITATIONS",
+      "evidence": "Compact desktop layout is tested; touch-first mobile workflow is not certified."
+    }
+  ],
+  "supportedViewports": [
+    {
+      "viewport": "1920x1080 desktop",
+      "status": "SUPPORTED"
+    },
+    {
+      "viewport": "1366x768 compact desktop",
+      "status": "SUPPORTED_WITH_LIMITATIONS"
+    }
+  ],
+  "knownLimitations": [
+    "Synthetic benchmark environments only; not an operational ocean forecast.",
+    "Not certified navigation or a vehicle-command system.",
+    "No calibrated named-region prediction or completed real-ocean validation program.",
+    "External comparison and operational validation remain explicit evidence gaps.",
+    "Notebook exact-oracle claims are bounded to declared graph/candidate/discretization scope.",
+    "Google Colab hosting smoke remains PENDING until a real hosted Run all is completed.",
+    "Browser performance depends on WebGL capability, GPU, viewport, and quality profile."
+  ],
+  "claimBoundary": "ANCHOR Alpha is a deterministic, scientifically constrained research-and-education sandbox for investigating adaptive underwater-glider mission planning. It supports reproducible comparison of human, classical, and learning-based planners. It is not an operational ocean forecast or certified vehicle-navigation system.",
+  "tagline": "Plan. Simulate. Compare. Learn.",
+  "documentation": {
+    "alphaRelease": "docs/alpha_release.md",
+    "methodsAndValidation": "docs/scientific_validation_and_methods.md",
+    "notebook": "docs/classical_planner_benchmark_notebook.md",
+    "exportFormats": "docs/export_formats.md",
+    "testing": "docs/testing.md"
+  },
+  "releaseDigest": "fnv1a32:4e23931e"
+}

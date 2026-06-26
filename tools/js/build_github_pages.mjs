@@ -13,6 +13,7 @@ const copyRoots = [
   'packages',
   'labs',
   'schemas',
+  'alpha',
   'validation',
   'levels',
   'missions',
@@ -28,6 +29,7 @@ const publicDocs = [
   'docs/export_formats.md',
   'docs/artifact_codec_and_schema_contract.md',
   'docs/scientific_validation_and_methods.md',
+  'docs/alpha_release.md',
   'docs/classical_planner_benchmark_notebook.md',
   'docs/mission_format.md',
   'docs/plan_format.md',
@@ -104,7 +106,7 @@ for (const entry of copyRoots) {
 }
 await copyPublicDocs();
 await writeFile(path.join(out, '.nojekyll'), '', 'utf8');
-for (const required of ['index.html', 'vendor/three/build/three.module.js', 'vendor/three/build/three.core.js', 'vendor/three/LICENSE', 'vendor/phaser.min.js', 'packages/bathymetry/src/index.js', 'packages/contracts/src/index.js', 'packages/currents/src/index.js', 'packages/codecs/src/index.js', 'packages/validation/src/index.js', 'validation/manifest.json', 'schemas/scientific-validation-report.schema.json', 'schemas/scientific-validation-manifest.schema.json', 'schemas/classical-planner-benchmark-bundle.schema.json', 'tools/python/notebooks/anchor_classical_planner_benchmark.ipynb', 'tools/python/anchor_benchmark/bundle.py', 'tests/fixtures/colab_benchmark/manifest.json', 'tests/fixtures/colab_benchmark/bundles/static_additive_routing.classical-planner-benchmark-bundle.json']) {
+for (const required of ['index.html', 'vendor/three/build/three.module.js', 'vendor/three/build/three.core.js', 'vendor/three/LICENSE', 'vendor/phaser.min.js', 'packages/bathymetry/src/index.js', 'packages/contracts/src/index.js', 'packages/currents/src/index.js', 'packages/codecs/src/index.js', 'packages/validation/src/index.js', 'alpha/release-manifest.json', 'alpha/scenario-catalog.json', 'validation/manifest.json', 'schemas/scientific-validation-report.schema.json', 'schemas/scientific-validation-manifest.schema.json', 'schemas/classical-planner-benchmark-bundle.schema.json', 'schemas/alpha-release-manifest.schema.json', 'schemas/alpha-diagnostic-bundle.schema.json', 'tools/python/notebooks/anchor_classical_planner_benchmark.ipynb', 'tools/python/anchor_benchmark/bundle.py', 'tests/fixtures/colab_benchmark/manifest.json', 'tests/fixtures/colab_benchmark/bundles/static_additive_routing.classical-planner-benchmark-bundle.json']) {
   if (!existsSync(path.join(out, required))) throw new Error(`_site missing required file: ${required}`);
 }
 const siteIndex = await readFile(path.join(out, 'index.html'), 'utf8');

@@ -1,0 +1,25 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://anchor.local/schemas/alpha-diagnostic-bundle.schema.json",
+  "schemaVersion": "1.0.0",
+  "describes": "anchor.alpha-diagnostic-bundle",
+  "type": "object",
+  "required": [
+    "artifactType",
+    "artifactVersion",
+    "release",
+    "safeContext",
+    "privacy",
+    "diagnosticDigest"
+  ],
+  "properties": {
+    "artifactType": { "const": "anchor.alpha-diagnostic-bundle" },
+    "artifactVersion": { "const": "1.0.0" },
+    "release": { "type": "object" },
+    "safeContext": { "type": "object" },
+    "feedback": { "type": "object" },
+    "error": { "type": ["object", "null"] },
+    "privacy": { "type": "object" },
+    "diagnosticDigest": { "type": "string" }
+  }
+}

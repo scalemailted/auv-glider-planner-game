@@ -4,6 +4,12 @@ ANCHOR uses separate JSON products for different workflows.
 
 The app remains static. These files are the data API: export JSON from the browser, run external tools, import `anchor.plan`, simulate/score it, then export `anchor.result` or leaderboard records.
 
+## Alpha Release Artifacts
+
+`anchor.alpha-release-manifest` is the compact ALPHA-R1 release artifact at `alpha/release-manifest.json`. It records release id/version/channel, commit/build identity, package versions, validation baseline identity, local notebook acceptance identity, ScoreProfile identity, curated scenario ids, supported browsers/viewports, known limitations, claim boundary, documentation links, and a deterministic `releaseDigest`. The Google Colab hosting smoke remains `PENDING` until a real hosted `Run all` occurs.
+
+`anchor.alpha-diagnostic-bundle` is the public-safe feedback and diagnostics artifact generated from Product Hub `Feedback & Diagnostics`. It includes release identity, route/runtime context, public mission/scenario identities, validation baseline digest, package versions, quality/resource summaries, structured warnings, sanitized feedback fields, and recoverable error summary where present. It must not include hidden truth, oracle fields, large private field arrays, local absolute paths, imported file contents, cookies, arbitrary localStorage, browser history, clipboard content, or user identity. It is downloaded locally and is not automatically transmitted.
+
 ## `anchor.challenge.json`
 
 `type: "anchor.challenge"` is the replayable challenge format. It contains level identity, mission identity, challenge mode, generation config, visible map data, terrain/depth/hazards, deployment/recovery zones, agents, mission/scoring rules, time config, leaderboard identity, and visibility metadata.
