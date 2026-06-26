@@ -87,11 +87,20 @@ for (const preset of OPERATIONAL_WINDOW_PRESETS) {
   assert.ok(window.sampledFieldStats.fieldStatsDigest.startsWith('fnv1a32:'), `${preset.id} has field stats digest`);
   assert.ok(window.currentRegimeHints.length > 0, `${preset.id} has current hints`);
   assert.ok(window.scalarRegimeHints.length > 0, `${preset.id} has scalar hints`);
+  assert.ok(window.flowGenerationInputSummary.flowInputSummaryDigest.startsWith('fnv1a32:'), `${preset.id} has flow-input summary digest`);
   assert.ok(Number.isFinite(window.recommendedDomain.widthMeters), `${preset.id} domain width finite`);
   assert.ok(Number.isFinite(window.recommendedGliders), `${preset.id} glider recommendation finite`);
   const recipe = createRegionalMissionRecipe({ atlas, selectedWindow: window, seed: `recipe:${preset.id}` });
   assert.ok(recipe.recipeDigest.startsWith('fnv1a32:'), `${preset.id} recipe digest stable`);
   assert.ok(recipe.datasetTags.regionType, `${preset.id} records dataset tags`);
+  assert.ok(recipe.flowGenerationInputs.flowGenerationInputDigest.startsWith('fnv1a32:'), `${preset.id} records flow-generation inputs`);
+  assert.equal(recipe.flowGenerationInputs.generatedArtifacts.currentField4D, false, `${preset.id} does not claim currents`);
+  assert.equal(recipe.flowGenerationInputs.generatedArtifacts.scalarField4D, false, `${preset.id} does not claim scalars`);
+  assert.equal(recipe.flowGenerationInputs.dependencyPlan.currents, 'REQUIRES_REGENERATION');
+  assert.equal(recipe.flowGenerationInputs.dependencyPlan.startsDropZones, 'NEEDS_VALIDATION');
+  assert.ok(recipe.flowGenerationInputs.depthAxisMeters.length >= 4, `${preset.id} records depth axis`);
+  assert.ok(recipe.flowGenerationInputs.timeAxisSeconds.length >= 2, `${preset.id} records compact time axis`);
+  assert.ok(recipe.flowGenerationInputs.sourceGridShape.cellCount > 0, `${preset.id} records source grid shape`);
 }
 
 assert.ok(Number.isFinite(sampleAtlasLayer(atlas, 'missionSuitability', 0.45, 0.45)), 'bilinear layer sampling is finite');

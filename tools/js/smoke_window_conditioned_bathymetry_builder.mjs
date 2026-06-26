@@ -50,10 +50,22 @@ assert.notEqual(result.validationReport.status, 'FAIL', result.validationReport.
 assert.ok(result.bathymetryArtifact.artifactDigest, 'BathymetryArtifact-compatible artifact has digest');
 assert.equal(result.bathymetryArtifact.provenance.calibratedBathymetry, false);
 assert.equal(result.bathymetryArtifact.boundaryFlags.operationalNavigationProduct, false);
+assert.ok(result.flowGenerationInputs.flowGenerationInputDigest.startsWith('fnv1a32:'), 'flow-generation inputs have digest');
+assert.equal(result.flowGenerationInputs.bathymetryArtifactDigest, result.bathymetryArtifactDigest);
+assert.equal(result.flowGenerationInputs.bottomDepthBathymetryArtifactDigest, result.bathymetryArtifactDigest);
+assert.ok(result.flowGenerationInputs.bottomDepthDigest.startsWith('fnv1a32:'), 'bottom-depth digest recorded');
+assert.ok(result.flowGenerationInputs.wetLandMaskIdentity.wetMaskDigest.startsWith('fnv1a32:'), 'wet-mask digest recorded');
+assert.ok(result.flowGenerationInputs.coastlineSummary.segmentCount >= 0, 'coastline summary preserved for flow regeneration');
+assert.equal(result.flowGenerationInputs.generatedArtifacts.currentField4D, false, 'currents are not generated in ENV-ATLAS-R1.1');
+assert.equal(result.flowGenerationInputs.generatedArtifacts.scalarField4D, false, 'scalars are not generated in ENV-ATLAS-R1.1');
+assert.equal(result.flowGenerationInputs.dependencyPlan.currents, 'REQUIRES_REGENERATION');
+assert.equal(result.flowGenerationInputs.dependencyPlan.hotspots, 'REQUIRES_REGENERATION');
+assert.equal(result.flowGenerationInputs.dependencyPlan.startsDropZones, 'NEEDS_VALIDATION');
 
 const compact = compactWindowConditionedBathymetryResult(result);
 assert.equal(compact.builderDigest, result.builderDigest);
 assert.equal(compact.bathymetryArtifactDigest, result.bathymetryArtifactDigest);
+assert.equal(compact.flowGenerationInputs.flowGenerationInputDigest, result.flowGenerationInputs.flowGenerationInputDigest);
 assert.ok(!('bathymetryField' in compact), 'compact summary omits full source grids');
 
 assert.throws(() => buildWindowConditionedBathymetry({

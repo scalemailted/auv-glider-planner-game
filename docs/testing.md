@@ -1347,7 +1347,7 @@ node ./node_modules/@playwright/test/cli.js test tests/e2e/env_pkg_r1_environmen
 
 These gates assert package dependency purity, browser/worker-safe imports, deterministic manifests/artifacts, duplicate-field rejection, hidden-truth role checks, component digest aggregation, cross-artifact validation, local-meter frame compatibility warnings, physical-coordinate bathymetry/current/scalar sampling, generated-environment adapter metadata, browser/Node sample parity, and Pages-subpath package loading. They do not retune bathymetry, current, or scalar values; they do not change visibility policy, observation noise, Simulation, scoring, rendering, or mission outcomes.
 
-## ENV-STUDIO-R0/R1/R1.1/ENV-ATLAS-R1/R1.1 Environment Studio Gates
+## ENV-STUDIO / ENV-ATLAS / FIELD-REGEN Environment Studio Gates
 
 Run these after changing Environment Studio contracts, feedback docs, Studio import/export JSON, the browser route, or validation/dependency panels:
 
@@ -1359,6 +1359,9 @@ node tools/js/smoke_environment_atlas_r1.mjs
 node tools/js/smoke_synthetic_ocean_atlas_engine.mjs
 node tools/js/smoke_window_conditioned_bathymetry_builder.mjs
 node tools/js/audit_synthetic_atlas_bathymetry_usefulness.mjs
+node tools/js/smoke_atlas_conditioned_current_builder.mjs
+node tools/js/smoke_atlas_conditioned_scalar_builder.mjs
+node tools/js/audit_atlas_conditioned_field_regeneration.mjs
 node ./node_modules/@playwright/test/cli.js test tests/e2e/environment_studio_r1.spec.js --reporter=line --workers=1
 npm.cmd run test:packages
 ```
@@ -1369,13 +1372,15 @@ The R1 project smoke asserts deterministic seeded tile generation, finite bathym
 
 The R1.1 regional smoke asserts regional preset normalization, Environment Scale metadata, source-grid versus preview-grid derivation, preview decimation, regional template and feature-mix normalization, multi-archetype generation, feature summary metrics, multi-glider suitability, contextual inspector view models, project export/import round trip, and hidden-truth rejection.
 
-The ENV-ATLAS-R1/R1.1 smokes assert Synthetic Ocean Atlas creation, atlas digest stability, procedural field layers, operational window normalization and field sampling, context inference, Regional Mission Recipe generation, recipe-to-Studio conversion, window-conditioned bathymetry generation, generated regional detail, export/import round trip, builder metadata, and hidden-truth rejection.
+The ENV-ATLAS-R1/R1.1 smokes assert Synthetic Ocean Atlas creation, atlas digest stability, procedural field layers, operational window normalization and field sampling, context inference, Regional Mission Recipe generation, recipe-to-Studio conversion, window-conditioned bathymetry generation, generated regional detail, export/import round trip, builder metadata, FIELD-REGEN-R1 flow-generation input preservation, deferred current/scalar/hotspot dependency states before field generation, and hidden-truth rejection.
+
+The FIELD-REGEN-R1 smokes assert atlas-conditioned package-backed synthetic `CurrentField4D` generation, scalar field generation, hotspot candidates, stable digests, finite diagnostics, zero nonzero land/below-bottom current vectors, depth/time variation, compact project metadata, dependency-state transitions to `CURRENT` for current/scalar/hotspots, `NEEDS_VALIDATION` for starts/drop zones, and no hidden-truth, HYCOM, Marine Copernicus, calibrated-product, or operational-forecast claims.
 
 The usefulness audit generates coastal shelf, semi-enclosed gulf, island chain, shelf break/canyon, river mouth, strait/sill, and open-ocean eddy windows. It allows explicit `WARN` results for hard cases but rejects hard failures, missing connected wet water, missing feature diversity, missing mission-suitability metadata, hidden-truth leakage, calibrated ocean claims, and operational forecast claims.
 
-The focused Playwright workflows are `Procedural Atlas Field Engine` and `Window Generates Bathymetry`.
+The focused Playwright workflows are `Procedural Atlas Field Engine`, `Window Generates Bathymetry`, `Atlas Region Generates Fields`, and `Field Regeneration Export Import Cleanup`.
 
-Environment Studio tests must not change simulation, scoring, generated mission semantics, current/scalar/hotspot equations, benchmark fairness, or Alpha Product Hub pillar count. The Studio authors bathymetry as a 2.5D bottom surface rendered as 3D terrain; the Synthetic Ocean Atlas is not a real Earth map, volumetric geology editor, calibrated real-ocean bathymetry product, or operational forecast. Noise is used for variation and texture only, not as the sole terrain model.
+Environment Studio tests must not change simulation, scoring, generated mission semantics, benchmark fairness, or Alpha Product Hub pillar count. The Studio authors bathymetry as a 2.5D bottom surface rendered as 3D terrain; FIELD-REGEN-R1 field generation is an explicit package-backed synthetic action, not a renderer side effect or mission-launch adapter. The Synthetic Ocean Atlas and regenerated fields are not a real Earth map, volumetric geology editor, calibrated real-ocean products, operational forecasts, HYCOM, or Marine Copernicus. Noise is used for variation and texture only, not as the sole terrain/current/scalar model.
 
 ## Codec Package Gates
 

@@ -203,6 +203,34 @@
       ],
       "createdAtNonCanonical": "",
       "updatedAtNonCanonical": ""
+    },
+    {
+      "feedbackId": "ALPHA-FB-010",
+      "title": "Synthetic Ocean Atlas should regenerate package-backed current, scalar, and hotspot artifacts.",
+      "source": "alpha tester",
+      "status": "accepted-for-implementation",
+      "category": [
+        "UX",
+        "BENCH",
+        "EDU",
+        "SCI"
+      ],
+      "severity": "P2",
+      "affectedWorkflow": "Simulation Lab / Environment Studio / Field Regeneration",
+      "summary": "After regional bathymetry generation, Environment Studio should be able to regenerate deterministic synthetic CurrentField4D, ScalarField4D, hotspot candidates, and field diagnostics from atlas context, bathymetry, masks, coastline, open boundaries, feature zones, and regime hints.",
+      "decision": "Accepted for FIELD-REGEN-R1 as a package-backed synthetic regeneration pass. It does not launch missions from Studio projects, change simulation, change scoring, claim calibrated ocean products, or create operational forecasts.",
+      "proposedPhase": "FIELD-REGEN-R1",
+      "ownerNotes": "",
+      "evidence": [],
+      "acceptanceCriteria": [
+        "Current regeneration uses packages/currents and a reduced-order bathymetry/atlas-conditioned synthetic backend.",
+        "Scalar and hotspot regeneration uses packages/scalar-processes when package adapters are available.",
+        "Generated metadata records digests, components, diagnostics, dependency states, and claim boundaries.",
+        "Starts/drop zones remain NEEDS_VALIDATION and benchmark bundles remain REQUIRES_REGENERATION.",
+        "No exported public artifact claims HYCOM, Marine Copernicus, calibrated ocean forecasts, operational forecasts, hidden truth, simulation changes, or scoring changes."
+      ],
+      "createdAtNonCanonical": "",
+      "updatedAtNonCanonical": ""
     }
   ]
 }

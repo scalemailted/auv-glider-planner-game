@@ -24,6 +24,7 @@ import {
   patchEnvironmentStudioDomain,
   patchEnvironmentStudioOperationalWindow,
   randomizeEnvironmentStudioAtlasSeed,
+  regenerateEnvironmentStudioFields,
   refreshEnvironmentStudioSession,
   selectEnvironmentStudioObject,
   selectEnvironmentStudioOperationalWindow,
@@ -245,6 +246,8 @@ export class EnvironmentStudioScene extends PhaserScene {
       <section class="console-section" data-keep-title="true" data-accordion-key="generated-field-status">
         <h2>Generated Field Status</h2>
         ${dependencyGraphTable(this.session.dependencyGraph)}
+        ${fieldRegenerationSummaryHtml(this.session.fieldRegenerationResult)}
+        <button class="console-button primary" type="button" data-action="env-studio-generate-fields">Generate Currents &amp; Science Fields</button>
       </section>
       <section class="console-section" data-keep-title="true" data-accordion-key="import-export">
         <h2>Import / Export / Launch</h2>
@@ -265,6 +268,7 @@ export class EnvironmentStudioScene extends PhaserScene {
     root?.querySelector?.('[data-action="env-studio-apply-domain"]')?.addEventListener('click', () => this.applyDomainControls());
     root?.querySelector?.('[data-action="env-studio-generate-tile"]')?.addEventListener('click', () => this.generateTile());
     root?.querySelector?.('[data-action="env-studio-create-mosaic"]')?.addEventListener('click', () => this.createMosaic());
+    root?.querySelector?.('[data-action="env-studio-generate-fields"]')?.addEventListener('click', () => this.generateFields());
     root?.querySelector?.('[data-action="env-studio-export-project"]')?.addEventListener('click', () => this.exportProject());
     root?.querySelector?.('[data-action="env-studio-export-bathymetry"]')?.addEventListener('click', () => this.exportBathymetryArtifact());
     root?.querySelector?.('[data-env-studio-import]')?.addEventListener('change', (event) => this.importProject(event.target.files?.[0]));
@@ -300,6 +304,7 @@ export class EnvironmentStudioScene extends PhaserScene {
         ${suitabilityHtml(this.session.multiGliderSuitability)}
         <div class="console-kicker environment-studio-panel-kicker">Generated Field Status</div>
         ${dependencyGraphTable(this.session.dependencyGraph)}
+        ${fieldRegenerationSummaryHtml(this.session.fieldRegenerationResult)}
         ${validationListHtml(this.session.validationReport)}
       </section>
     `;
@@ -487,6 +492,18 @@ export class EnvironmentStudioScene extends PhaserScene {
     } catch (error) {
       this.lastError = error?.message ?? String(error);
       this.statusMessage = 'Mosaic generation failed.';
+    }
+    this.render();
+  }
+
+  generateFields() {
+    try {
+      this.session = regenerateEnvironmentStudioFields(this.session, { seed: this.readSeed() });
+      this.statusMessage = 'Generated atlas-conditioned synthetic currents, science scalar field, and hotspot candidates.';
+      this.lastError = null;
+    } catch (error) {
+      this.lastError = error?.message ?? String(error);
+      this.statusMessage = 'Field regeneration failed.';
     }
     this.render();
   }
@@ -743,6 +760,7 @@ function simplifiedConsoleHtml(scene, summary = {}, panelSections = new Map(), a
       ${suitabilityHtml(session.multiGliderSuitability)}
       <button class="console-button primary" type="button" data-action="env-studio-apply-domain">Apply Domain</button>
       <button class="console-button primary" type="button" data-action="env-studio-create-mosaic">Generate Region</button>
+      <button class="console-button primary" type="button" data-action="env-studio-generate-fields">Generate Currents &amp; Science Fields</button>
       <button class="console-button secondary" type="button" data-action="env-studio-export-project">Export Project JSON</button>
       <button class="console-button secondary" type="button" disabled data-action="env-studio-launch-planning">Launch to Planning remains disabled until environment-adapter validation.</button>
     </section>
@@ -846,6 +864,7 @@ function simplifiedConsoleHtml(scene, summary = {}, panelSections = new Map(), a
         <div class="hud-muted">Synthetic, public-safe artifacts only. Not calibrated survey data, not an operational forecast, and not certified for navigation.</div>
         <h2>Generated Field Status</h2>
         ${dependencyGraphTable(session.dependencyGraph)}
+        ${fieldRegenerationSummaryHtml(session.fieldRegenerationResult)}
         <h2>Source Tile Diagnostics</h2>
         <p class="hud-muted">Source tiles are provenance components for the synthetic regional surface. They are not depth slabs or separate water-column layers.</p>
         <div class="cell-inspector-metrics">
@@ -864,6 +883,7 @@ function bindEnvironmentStudioConsoleControls(scene, root) {
   root?.querySelector?.('[data-action="env-studio-apply-domain"]')?.addEventListener('click', () => scene.applyDomainControls());
   root?.querySelector?.('[data-action="env-studio-generate-tile"]')?.addEventListener('click', () => scene.generateTile());
   root?.querySelector?.('[data-action="env-studio-create-mosaic"]')?.addEventListener('click', () => scene.createMosaic());
+  root?.querySelector?.('[data-action="env-studio-generate-fields"]')?.addEventListener('click', () => scene.generateFields());
   root?.querySelector?.('[data-action="env-studio-export-project"]')?.addEventListener('click', () => scene.exportProject());
   root?.querySelector?.('[data-action="env-studio-export-bathymetry"]')?.addEventListener('click', () => scene.exportBathymetryArtifact());
   root?.querySelector?.('[data-env-studio-import]')?.addEventListener('change', (event) => scene.importProject(event.target.files?.[0]));
@@ -1564,6 +1584,31 @@ function inspectorActionsHtml(inspector = {}) {
   `;
 }
 
+function fieldRegenerationSummaryHtml(result = null) {
+  if (!result?.currentArtifactDigest) {
+    return '<div class="hud-muted">Currents, scalar science field, and hotspots have not been regenerated for this region yet.</div>';
+  }
+  const currentDiagnostics = result.currentDiagnostics ?? {};
+  const scalarDiagnostics = result.scalarDiagnostics ?? {};
+  return `
+    <div class="cell-inspector-metrics">
+      ${metricHtml('Field regen', shortDigest(result.fieldRegenerationDigest))}
+      ${metricHtml('Current artifact', shortDigest(result.currentArtifactDigest))}
+      ${metricHtml('Scalar artifact', shortDigest(result.scalarArtifactDigest))}
+      ${metricHtml('Hotspots', `${result.hotspotArtifact?.hotspots?.length ?? 0} / ${shortDigest(result.hotspotArtifactDigest)}`)}
+      ${metricHtml('Mean speed', formatNumber(currentDiagnostics.speedMean))}
+      ${metricHtml('Max speed', formatNumber(currentDiagnostics.speedMaximum))}
+      ${metricHtml('Divergence RMS', formatNumber(currentDiagnostics.divergenceRms))}
+      ${metricHtml('Land vectors', currentDiagnostics.landVectorCount ?? 0)}
+      ${metricHtml('Below-bottom vectors', currentDiagnostics.belowBottomVectorCount ?? 0)}
+      ${metricHtml('Scalar mean', formatNumber(scalarDiagnostics.scalarMean))}
+      ${metricHtml('Depth variation', formatNumber(scalarDiagnostics.depthMeanRange))}
+      ${metricHtml('Start/drop candidates', result.startDropZoneCandidates?.candidates?.length ?? 0)}
+    </div>
+    <p class="hud-muted">Atlas-conditioned package artifacts are synthetic and compactly recorded here. Starts/drop zones still need validation; launch and scoring are unchanged.</p>
+  `;
+}
+
 function dependencyGraphTable(graph = {}) {
   const nodes = dependencyRows(graph);
   return `
@@ -1590,14 +1635,14 @@ function dependencyRows(graph = {}) {
   return [
     { id: 'bathymetryTiles', ...(nodes.bathymetryTiles ?? {}) },
     { id: 'bathymetryArtifact', ...(nodes.bathymetryArtifact ?? {}) },
-    { id: 'wetLandMask', state: generated ? 'CURRENT' : 'NOT_GENERATED', artifactDigest: bathymetryDigest },
-    { id: 'coastline', state: generated ? 'CURRENT' : 'NOT_GENERATED', artifactDigest: bathymetryDigest },
+    { id: 'wetLandMask', state: generated ? 'CURRENT' : 'NOT_GENERATED', artifactDigest: bathymetryDigest, ...(nodes.wetLandMask ?? {}) },
+    { id: 'coastline', state: generated ? 'CURRENT' : 'NOT_GENERATED', artifactDigest: bathymetryDigest, ...(nodes.coastline ?? {}) },
     { id: 'currentArtifact', ...(nodes.currentArtifact ?? {}) },
     { id: 'scalarArtifact', ...(nodes.scalarArtifact ?? {}) },
-    { id: 'hotspots', state: generated ? 'REQUIRES_REGENERATION' : 'NOT_GENERATED', artifactDigest: null },
+    { id: 'hotspots', state: generated ? 'REQUIRES_REGENERATION' : 'NOT_GENERATED', artifactDigest: null, ...(nodes.hotspots ?? {}) },
     { id: 'hazards', state: generated ? 'REQUIRES_REGENERATION' : 'NOT_GENERATED', artifactDigest: null },
-    { id: 'startsDropZones', state: generated ? 'NEEDS_VALIDATION' : 'NOT_GENERATED', artifactDigest: null },
-    { id: 'benchmarkBundle', state: generated ? 'REQUIRES_REGENERATION' : 'NOT_GENERATED', artifactDigest: null },
+    { id: 'startsDropZones', state: generated ? 'NEEDS_VALIDATION' : 'NOT_GENERATED', artifactDigest: null, ...(nodes.startsDropZones ?? {}) },
+    { id: 'benchmarkBundle', state: generated ? 'REQUIRES_REGENERATION' : 'NOT_GENERATED', artifactDigest: null, ...(nodes.benchmarkBundle ?? {}) },
     { id: 'environmentArtifact', ...(nodes.environmentArtifact ?? {}) },
     { id: 'validationReport', ...(nodes.validationReport ?? {}) },
     { id: 'preview', ...(nodes.preview ?? {}) }

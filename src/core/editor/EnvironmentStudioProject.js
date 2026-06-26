@@ -7,6 +7,14 @@ import {
   bathymetryArtifactSummary
 } from '../../../packages/bathymetry/src/index.js';
 import {
+  ATLAS_CONDITIONED_CURRENT_BUILDER_VERSION,
+  buildAtlasConditionedCurrentArtifact
+} from '../../../packages/currents/src/index.js';
+import {
+  ATLAS_CONDITIONED_SCALAR_BUILDER_VERSION,
+  buildAtlasConditionedScalarArtifact
+} from '../../../packages/scalar-processes/src/index.js';
+import {
   BATHYMETRY_ARTIFACT_ADAPTER_VERSION,
   createBathymetryArtifactFromField
 } from '../generation/BathymetryArtifactAdapter.js';
@@ -47,6 +55,7 @@ import {
 export const ENVIRONMENT_STUDIO_PROJECT_TYPE = 'anchor.environment-studio-project';
 export const ENVIRONMENT_STUDIO_PROJECT_VERSION = '1.0.0';
 export const ENVIRONMENT_STUDIO_PROJECT_MODULE_VERSION = 'environment-studio-r1-1-project';
+export const ENVIRONMENT_STUDIO_FIELD_REGENERATION_VERSION = 'field-regen-r1';
 
 export const ENVIRONMENT_STUDIO_PREVIEW_MODES = Object.freeze([
   { id: 'bathymetry3d', label: '3D Bathymetry', description: 'Main regional terrain preview derived from the canonical 2.5D bottom surface.' },
@@ -436,6 +445,7 @@ export function createEnvironmentStudioSession(options = {}) {
     atlasSeed: atlas.seed,
     selectedOperationalWindow,
     regionalMissionRecipe,
+    flowGenerationInputs: options.flowGenerationInputs ?? options.bathymetryBuilderResult?.flowGenerationInputs ?? regionalMissionRecipe.flowGenerationInputs ?? null,
     bathymetryBuilderVersion: options.bathymetryBuilderVersion ?? options.bathymetryBuilderResult?.builderVersion ?? null,
     bathymetryBuilderResult: options.bathymetryBuilderResult ?? null,
     bathymetryArtifactDigest: options.bathymetryArtifactDigest ?? options.bathymetryBuilderResult?.bathymetryArtifactDigest ?? null,
@@ -498,6 +508,7 @@ export function patchEnvironmentStudioDomain(sessionInput = {}, patch = {}) {
     archetypeSpec,
     tiles: [],
     mosaic: null,
+    fieldRegenerationResult: null,
     lastAction: 'domain-changed'
   });
 }
@@ -529,6 +540,7 @@ export function setEnvironmentStudioArchetype(sessionInput = {}, archetypeId, op
     archetypeSpec,
     tiles: [],
     mosaic: null,
+    fieldRegenerationResult: null,
     lastAction: 'archetype-changed'
   });
 }
@@ -577,6 +589,8 @@ export function setEnvironmentStudioAtlasPreset(sessionInput = {}, atlasPreset =
     atlasSeed: atlas.seed,
     selectedOperationalWindow,
     regionalMissionRecipe,
+    flowGenerationInputs: regionalMissionRecipe.flowGenerationInputs ?? null,
+    fieldRegenerationResult: null,
     lastAction: 'atlas-preset-changed'
   });
 }
@@ -594,6 +608,8 @@ export function selectEnvironmentStudioOperationalWindow(sessionInput = {}, wind
     studioStage: 'atlasWindow',
     selectedOperationalWindow,
     regionalMissionRecipe,
+    flowGenerationInputs: regionalMissionRecipe.flowGenerationInputs ?? null,
+    fieldRegenerationResult: null,
     lastAction: 'operational-window-selected'
   });
 }
@@ -615,6 +631,8 @@ export function patchEnvironmentStudioOperationalWindow(sessionInput = {}, patch
     studioStage: 'atlasWindow',
     selectedOperationalWindow,
     regionalMissionRecipe,
+    flowGenerationInputs: regionalMissionRecipe.flowGenerationInputs ?? null,
+    fieldRegenerationResult: null,
     lastAction: 'operational-window-adjusted'
   });
 }
@@ -662,6 +680,50 @@ export function generateEnvironmentStudioRegionFromAtlasWindow(sessionInput = {}
   });
   return createEnvironmentStudioMosaicFromBuilderResult(prepared, builderResult, {
     seed: regionalMissionRecipe.randomSeed
+  });
+}
+
+export function regenerateEnvironmentStudioFields(sessionInput = {}, options = {}) {
+  const session = refreshEnvironmentStudioSession(normalizeSession(sessionInput));
+  if (!session.tiles.length || !session.mosaic?.manifest) {
+    throw new Error('Generate regional bathymetry before regenerating current and science fields.');
+  }
+  const bathymetryArtifact = createRegionalBathymetryArtifactForSession(session);
+  const seed = String(options.seed ?? session.seed ?? session.regionalMissionRecipe?.randomSeed ?? 'field-regen-r1');
+  const fieldOptions = {
+    regionalMissionRecipe: session.regionalMissionRecipe,
+    flowGenerationInputs: session.flowGenerationInputs,
+    bathymetryArtifact,
+    wetLandMask: {
+      wetMask: bathymetryArtifact.wetMask,
+      landMask: bathymetryArtifact.landMask
+    },
+    featureRecords: session.featureRecords,
+    depthAxisMeters: session.flowGenerationInputs?.depthAxisMeters ?? session.domainSpec?.vertical?.depthLayers?.map((layer) => layer.depthMeters),
+    timeAxisSeconds: session.flowGenerationInputs?.timeAxisSeconds ?? timeAxisForDomain(session.domainSpec),
+    currentRegimeHints: session.regionalMissionRecipe?.currentRegimeHints ?? session.selectedOperationalWindow?.currentRegimeHints,
+    scalarRegimeHints: session.regionalMissionRecipe?.scalarRegimeHints ?? session.selectedOperationalWindow?.scalarRegimeHints,
+    openBoundarySides: session.openOceanBoundaries ?? session.flowGenerationInputs?.openBoundarySides,
+    missionDurationSeconds: missionDurationSecondsFromSession(session, session.flowGenerationInputs ?? {}),
+    seed
+  };
+  const currentResult = buildAtlasConditionedCurrentArtifact(fieldOptions);
+  const scalarResult = buildAtlasConditionedScalarArtifact({
+    ...fieldOptions,
+    currentArtifact: currentResult.currentArtifact,
+    currentArtifactDigest: currentResult.currentArtifactDigest
+  });
+  const fieldRegenerationResult = buildFieldRegenerationResult({
+    session,
+    bathymetryArtifact,
+    currentResult,
+    scalarResult,
+    seed
+  });
+  return refreshEnvironmentStudioSession({
+    ...session,
+    fieldRegenerationResult,
+    lastAction: 'field-regeneration-generated'
   });
 }
 
@@ -720,6 +782,7 @@ export function updateEnvironmentStudioRegionalRecipe(sessionInput = {}, patch =
       featureMix: recipe.featureMix,
       regionalTemplate: recipe.regionalTemplate
     }),
+    fieldRegenerationResult: null,
     lastAction: 'regional-recipe-changed'
   });
 }
@@ -755,6 +818,7 @@ export function generateEnvironmentStudioTile(sessionInput = {}, options = {}) {
     archetypeId,
     tiles: [tile],
     mosaic: null,
+    fieldRegenerationResult: null,
     lastAction: 'tile-generated'
   });
 }
@@ -859,6 +923,7 @@ export function createEnvironmentStudioMosaic(sessionInput = {}, options = {}) {
     tileConfigs,
     tiles,
     mosaic,
+    fieldRegenerationResult: null,
     lastAction: 'mosaic-generated'
   });
 }
@@ -998,6 +1063,8 @@ export function createEnvironmentStudioMosaicFromBuilderResult(sessionInput = {}
     bathymetryBuilderResult: compactWindowConditionedBathymetryResult(builderResult),
     bathymetryBuilderVersion: builderResult.builderVersion ?? WINDOW_CONDITIONED_BATHYMETRY_BUILDER_VERSION,
     bathymetryArtifactDigest: builderResult.bathymetryArtifactDigest,
+    flowGenerationInputs: builderResult.flowGenerationInputs ?? session.regionalMissionRecipe?.flowGenerationInputs ?? session.flowGenerationInputs ?? null,
+    fieldRegenerationResult: null,
     lastAction: 'window-conditioned-bathymetry-generated'
   });
 }
@@ -1026,6 +1093,8 @@ export function buildEnvironmentStudioProject(sessionInput = {}) {
     atlasSeed: session.atlasSeed,
     selectedOperationalWindow: session.selectedOperationalWindow,
     regionalMissionRecipe: session.regionalMissionRecipe,
+    flowGenerationInputs: session.flowGenerationInputs ?? session.bathymetryBuilderResult?.flowGenerationInputs ?? session.regionalMissionRecipe?.flowGenerationInputs ?? null,
+    fieldRegenerationResult: session.fieldRegenerationResult ?? null,
     bathymetryBuilderVersion: session.bathymetryBuilderVersion ?? session.bathymetryBuilderResult?.builderVersion ?? null,
     bathymetryBuilderResult: session.bathymetryBuilderResult ?? null,
     bathymetryArtifactDigest: session.bathymetryArtifactDigest ?? session.bathymetryBuilderResult?.bathymetryArtifactDigest ?? tileArtifactDigest(session.tiles),
@@ -1091,6 +1160,8 @@ export function normalizeEnvironmentStudioProject(input = {}) {
     atlasSeed: source.atlasSeed,
     selectedOperationalWindow: source.selectedOperationalWindow,
     regionalMissionRecipe: source.regionalMissionRecipe,
+    flowGenerationInputs: source.flowGenerationInputs,
+    fieldRegenerationResult: source.fieldRegenerationResult,
     bathymetryBuilderVersion: source.bathymetryBuilderVersion,
     bathymetryBuilderResult: source.bathymetryBuilderResult,
     bathymetryArtifactDigest: source.bathymetryArtifactDigest,
@@ -1120,6 +1191,7 @@ export function normalizeEnvironmentStudioProject(input = {}) {
       regionalTemplate: source.regionalTemplate ?? session.regionalTemplate
     }),
     archetypeSpec: source.archetypeSpec ?? session.archetypeSpec,
+    fieldRegenerationResult: normalizeFieldRegenerationResult(source.fieldRegenerationResult ?? session.fieldRegenerationResult),
     dependencyGraph: source.dependencyGraph ?? session.dependencyGraph,
     validationReport: source.validationReport ?? null,
     lastAction: source.dependencyGraph?.transitionLog?.[0] ?? 'project-normalized'
@@ -1166,6 +1238,11 @@ export function refreshEnvironmentStudioSession(sessionInput = {}) {
   const previewBudget = computePreviewBudget(sourceGridShape, previewGridShape, previewDecimation);
   const multiGliderSuitability = computeMultiGliderSuitability(session, regionalFeatureSummary, sourceGridShape, previewBudget);
   const dependencyGraph = dependencyGraphForState(session);
+  const flowGenerationInputs = flowGenerationInputsForSession(session, {
+    sourceGridShape,
+    previewGridShape,
+    dependencyGraph
+  });
   const validationReport = validationReportForState({
     ...session,
     sourceGridShape,
@@ -1175,7 +1252,8 @@ export function refreshEnvironmentStudioSession(sessionInput = {}) {
     regionalFeatureSummary,
     featureRecords,
     multiGliderSuitability,
-    dependencyGraph
+    dependencyGraph,
+    flowGenerationInputs
   });
   return {
     ...session,
@@ -1186,9 +1264,92 @@ export function refreshEnvironmentStudioSession(sessionInput = {}) {
     regionalFeatureSummary,
     featureRecords,
     multiGliderSuitability,
+    flowGenerationInputs,
     dependencyGraph,
     validationReport
   };
+}
+
+function flowGenerationInputsForSession(session = {}, context = {}) {
+  const base = session.flowGenerationInputs
+    ?? session.bathymetryBuilderResult?.flowGenerationInputs
+    ?? session.regionalMissionRecipe?.flowGenerationInputs
+    ?? null;
+  if (!base) return null;
+  const fieldResult = normalizeFieldRegenerationResult(session.fieldRegenerationResult);
+  const hasRegeneratedFields = Boolean(fieldResult?.currentArtifactDigest && fieldResult?.scalarArtifactDigest);
+  const bathymetryDigest = session.bathymetryArtifactDigest
+    ?? session.bathymetryBuilderResult?.bathymetryArtifactDigest
+    ?? tileArtifactDigest(session.tiles)
+    ?? base.bathymetryArtifactDigest
+    ?? null;
+  const dependencyStates = flowDependencyStates(context.dependencyGraph);
+  const enhanced = {
+    ...base,
+    sourceGridShape: context.sourceGridShape ?? base.sourceGridShape ?? null,
+    previewGridShape: context.previewGridShape ?? base.previewGridShape ?? null,
+    intendedGliders: session.intendedGliders ?? base.intendedGliders ?? null,
+    missionDurationSeconds: missionDurationSecondsFromSession(session, base),
+    bathymetryArtifactDigest: bathymetryDigest,
+    bottomDepthBathymetryArtifactDigest: bathymetryDigest ?? base.bottomDepthBathymetryArtifactDigest ?? null,
+    validationStatus: session.bathymetryBuilderResult?.validationReport?.status ?? base.validationStatus ?? 'UNKNOWN',
+    dependencyPlan: {
+      ...(base.dependencyPlan ?? {}),
+      currents: hasRegeneratedFields ? 'CURRENT' : 'REQUIRES_REGENERATION',
+      scalarFields: hasRegeneratedFields ? 'CURRENT' : 'REQUIRES_REGENERATION',
+      hotspots: hasRegeneratedFields ? 'CURRENT' : 'REQUIRES_REGENERATION',
+      startsDropZones: 'NEEDS_VALIDATION',
+      benchmarkBundle: 'REQUIRES_REGENERATION'
+    },
+    dependencyStates,
+    regeneratedArtifactDigests: hasRegeneratedFields ? {
+      fieldRegenerationDigest: fieldResult.fieldRegenerationDigest ?? null,
+      currentArtifactDigest: fieldResult.currentArtifactDigest ?? null,
+      scalarArtifactDigest: fieldResult.scalarArtifactDigest ?? null,
+      hotspotArtifactDigest: fieldResult.hotspotArtifactDigest ?? null,
+      startDropZoneCandidateDigest: fieldResult.startDropZoneCandidateDigest ?? null
+    } : null,
+    generatedArtifacts: {
+      ...(base.generatedArtifacts ?? {}),
+      currentField4D: hasRegeneratedFields,
+      scalarField4D: hasRegeneratedFields,
+      hotspots: hasRegeneratedFields,
+      startsDropZonesValidated: false,
+      benchmarkBundle: false
+    },
+    claimBoundary: {
+      ...(base.claimBoundary ?? {}),
+      synthetic: true,
+      currentField4DGenerated: hasRegeneratedFields,
+      scalarField4DGenerated: hasRegeneratedFields,
+      hotspotsGenerated: hasRegeneratedFields,
+      calibratedOceanProduct: false,
+      operationalForecast: false,
+      hiddenTruthExposed: false
+    }
+  };
+  delete enhanced.flowGenerationInputDigest;
+  return withProjectDigest(enhanced, 'flowGenerationInputDigest');
+}
+
+function flowDependencyStates(graph = {}) {
+  const nodes = graph?.nodes ?? {};
+  return {
+    currentArtifact: nodes.currentArtifact?.state ?? 'NOT_GENERATED',
+    scalarArtifact: nodes.scalarArtifact?.state ?? 'NOT_GENERATED',
+    hotspots: nodes.hotspots?.state ?? 'NOT_GENERATED',
+    startsDropZones: nodes.startsDropZones?.state ?? 'NOT_GENERATED',
+    benchmarkBundle: nodes.benchmarkBundle?.state ?? 'NOT_GENERATED'
+  };
+}
+
+function missionDurationSecondsFromSession(session = {}, base = {}) {
+  const domainDuration = Number(session.domainSpec?.time?.durationSeconds);
+  if (Number.isFinite(domainDuration) && domainDuration > 0) return Math.round(domainDuration);
+  const baseDuration = Number(base.missionDurationSeconds);
+  if (Number.isFinite(baseDuration) && baseDuration > 0) return Math.round(baseDuration);
+  const hours = Number(String(session.estimatedMissionDuration ?? '').match(/[\d.]+/)?.[0]);
+  return Number.isFinite(hours) ? Math.round(hours * 3600) : null;
 }
 
 export function environmentStudioInspectorViewModel(sessionInput = {}) {
@@ -1374,6 +1535,28 @@ export function environmentStudioDebugPayload(sessionInput = {}) {
     scalarRegimeHints: session.regionalMissionRecipe?.scalarRegimeHints ?? session.selectedOperationalWindow?.scalarRegimeHints ?? [],
     datasetTags: session.regionalMissionRecipe?.datasetTags ?? null,
     missionDuration: session.regionalMissionRecipe?.missionDuration ?? null,
+    flowGenerationInputDigest: session.flowGenerationInputs?.flowGenerationInputDigest ?? null,
+    flowGenerationInputs: session.flowGenerationInputs,
+    fieldRegenVersion: session.fieldRegenerationResult?.version ?? null,
+    fieldRegenerationDigest: session.fieldRegenerationResult?.fieldRegenerationDigest ?? null,
+    fieldRegenerationStatus: session.fieldRegenerationResult?.status ?? null,
+    currentArtifactDigest: session.fieldRegenerationResult?.currentArtifactDigest ?? null,
+    scalarArtifactDigest: session.fieldRegenerationResult?.scalarArtifactDigest ?? null,
+    hotspotArtifactDigest: session.fieldRegenerationResult?.hotspotArtifactDigest ?? null,
+    startDropZoneCandidateDigest: session.fieldRegenerationResult?.startDropZoneCandidateDigest ?? null,
+    currentRegimeComponents: session.fieldRegenerationResult?.currentRegimeComponents ?? [],
+    scalarRegimeComponents: session.fieldRegenerationResult?.scalarRegimeComponents ?? [],
+    currentDiagnostics: session.fieldRegenerationResult?.currentDiagnostics ?? null,
+    scalarDiagnostics: session.fieldRegenerationResult?.scalarDiagnostics ?? null,
+    landVectorCount: session.fieldRegenerationResult?.currentDiagnostics?.landVectorCount ?? null,
+    belowBottomVectorCount: session.fieldRegenerationResult?.currentDiagnostics?.belowBottomVectorCount ?? null,
+    coastNormalLeakage: session.fieldRegenerationResult?.currentDiagnostics?.coastlineNormalSpeedRms ?? null,
+    divergenceRms: session.fieldRegenerationResult?.currentDiagnostics?.divergenceRms ?? null,
+    verticalShearRms: session.fieldRegenerationResult?.currentDiagnostics?.verticalShearRms ?? null,
+    temporalDistinctness: session.fieldRegenerationResult?.currentDiagnostics?.temporalChangeRms ?? null,
+    depthDistinctness: session.fieldRegenerationResult?.currentDiagnostics?.surfaceToDeepVectorDifferenceRms ?? null,
+    hotspotCount: session.fieldRegenerationResult?.hotspotArtifact?.hotspots?.length ?? null,
+    startDropZoneCandidateCount: session.fieldRegenerationResult?.startDropZoneCandidates?.candidates?.length ?? null,
     regionalTemplate: session.regionalTemplate,
     coastlineOrientation: session.coastlineOrientation,
     openOceanBoundaries: session.openOceanBoundaries,
@@ -1443,6 +1626,11 @@ export function environmentStudioSessionSummary(sessionInput = {}) {
     bathymetryBuilderDigest: session.bathymetryBuilderResult?.builderDigest ?? null,
     bathymetryArtifactDigest: session.bathymetryArtifactDigest ?? session.bathymetryBuilderResult?.bathymetryArtifactDigest ?? tileArtifactDigest(session.tiles),
     generationAttemptCount: session.bathymetryBuilderResult?.generationAttempts?.length ?? 0,
+    flowGenerationInputDigest: session.flowGenerationInputs?.flowGenerationInputDigest ?? null,
+    fieldRegenerationDigest: session.fieldRegenerationResult?.fieldRegenerationDigest ?? null,
+    currentArtifactDigest: session.fieldRegenerationResult?.currentArtifactDigest ?? null,
+    scalarArtifactDigest: session.fieldRegenerationResult?.scalarArtifactDigest ?? null,
+    hotspotArtifactDigest: session.fieldRegenerationResult?.hotspotArtifactDigest ?? null,
     regionalTemplate: session.regionalTemplate,
     previewMode: session.previewMode,
     sourceGridShape: session.sourceGridShape,
@@ -1468,8 +1656,337 @@ export function environmentStudioPackageVersions() {
     bathymetryFieldModel: BATHYMETRY_FIELD_MODEL_VERSION,
     bathymetryArtifactAdapter: BATHYMETRY_ARTIFACT_ADAPTER_VERSION,
     windowConditionedBathymetryBuilder: WINDOW_CONDITIONED_BATHYMETRY_BUILDER_VERSION,
-    bathymetryPackage: BATHYMETRY_PACKAGE_VERSION
+    bathymetryPackage: BATHYMETRY_PACKAGE_VERSION,
+    fieldRegeneration: ENVIRONMENT_STUDIO_FIELD_REGENERATION_VERSION,
+    atlasConditionedCurrentBuilder: ATLAS_CONDITIONED_CURRENT_BUILDER_VERSION,
+    atlasConditionedScalarBuilder: ATLAS_CONDITIONED_SCALAR_BUILDER_VERSION
   };
+}
+
+function buildFieldRegenerationResult({ session = {}, bathymetryArtifact = {}, currentResult = {}, scalarResult = {}, seed = '' } = {}) {
+  const currentDiagnostics = compactCurrentDiagnostics(currentResult.currentDiagnostics);
+  const scalarDiagnostics = compactScalarDiagnostics(scalarResult.scalarDiagnostics);
+  const startDropZoneCandidates = createStartDropZoneCandidates({ session, bathymetryArtifact, scalarResult });
+  const base = {
+    type: 'anchor.environment-studio.field-regeneration-result',
+    version: ENVIRONMENT_STUDIO_FIELD_REGENERATION_VERSION,
+    status: 'CURRENT',
+    generatedBy: 'src/core/editor/EnvironmentStudioProject.js',
+    deterministicSeed: String(seed ?? session.seed ?? 'field-regen-r1'),
+    bathymetryArtifactDigest: session.bathymetryArtifactDigest ?? session.bathymetryBuilderResult?.bathymetryArtifactDigest ?? bathymetryArtifact.artifactDigest ?? null,
+    regeneratedBathymetryArtifactDigest: bathymetryArtifact.artifactDigest ?? null,
+    bathymetryArtifactSummary: bathymetryArtifactSummary(bathymetryArtifact),
+    flowGenerationInputDigest: session.flowGenerationInputs?.flowGenerationInputDigest ?? null,
+    currentBuilderVersion: ATLAS_CONDITIONED_CURRENT_BUILDER_VERSION,
+    scalarBuilderVersion: ATLAS_CONDITIONED_SCALAR_BUILDER_VERSION,
+    currentArtifactDigest: currentResult.currentArtifactDigest ?? null,
+    scalarArtifactDigest: scalarResult.scalarArtifactDigest ?? null,
+    hotspotArtifactDigest: scalarResult.hotspotArtifactDigest ?? null,
+    currentFieldSummary: currentResult.currentFieldSummary ?? null,
+    scalarFieldSummary: scalarResult.scalarFieldSummary ?? null,
+    currentDiagnostics,
+    scalarDiagnostics,
+    currentRegimeHints: currentResult.componentPlan?.currentRegimeHints ?? session.regionalMissionRecipe?.currentRegimeHints ?? [],
+    scalarRegimeHints: scalarResult.componentPlan?.scalarRegimeHints ?? session.regionalMissionRecipe?.scalarRegimeHints ?? [],
+    currentRegimeComponents: currentResult.componentPlan?.componentMetadata ?? [],
+    scalarRegimeComponents: scalarResult.componentPlan?.componentMetadata ?? [],
+    currentComponentParameters: currentResult.componentPlan?.parameters ?? null,
+    scalarSourceZones: scalarResult.componentPlan?.sourceZones ?? null,
+    hotspotArtifact: scalarResult.hotspotArtifact ?? null,
+    startDropZoneCandidates,
+    startDropZoneCandidateDigest: startDropZoneCandidates.candidateDigest,
+    generatedArtifacts: {
+      currentField4D: true,
+      scalarField4D: true,
+      hotspots: true,
+      startsDropZonesValidated: false,
+      benchmarkBundle: false,
+      environmentArtifact: false
+    },
+    dependencyPlan: {
+      currents: ENVIRONMENT_STUDIO_DEPENDENCY_STATE.CURRENT,
+      scalarFields: ENVIRONMENT_STUDIO_DEPENDENCY_STATE.CURRENT,
+      hotspots: ENVIRONMENT_STUDIO_DEPENDENCY_STATE.CURRENT,
+      startsDropZones: ENVIRONMENT_STUDIO_DEPENDENCY_STATE.NEEDS_VALIDATION,
+      benchmarkBundle: ENVIRONMENT_STUDIO_DEPENDENCY_STATE.REQUIRES_REGENERATION,
+      environmentArtifact: ENVIRONMENT_STUDIO_DEPENDENCY_STATE.REQUIRES_REGENERATION
+    },
+    validation: {
+      current: compactFieldValidation(currentResult.validation),
+      scalar: compactFieldValidation(scalarResult.validation)
+    },
+    storagePolicy: {
+      projectStoresFullCurrentField4D: false,
+      projectStoresFullScalarField4D: false,
+      projectStoresCompactMetadataOnly: true,
+      reason: 'Full 4D arrays are generated and validated by packages during FIELD-REGEN-R1, but Environment Studio project export preserves compact browser-friendly metadata.'
+    },
+    claimBoundary: {
+      synthetic: true,
+      scientificallyConstrainedSynthetic: true,
+      calibratedOceanProduct: false,
+      operationalForecast: false,
+      certifiedForNavigation: false,
+      hiddenTruthExposed: false,
+      simulationChanged: false,
+      scoringChanged: false,
+      usesRealHycom: false,
+      usesRealMarineCopernicus: false,
+      note: 'Synthetic atlas-conditioned package artifacts, not HYCOM, Marine Copernicus, an operational forecast, or certified navigation data.'
+    },
+    hiddenTruthExposed: false,
+    simulationChanged: false,
+    scoringChanged: false
+  };
+  return withProjectDigest(base, 'fieldRegenerationDigest');
+}
+
+function createRegionalBathymetryArtifactForSession(session = {}) {
+  if (session.tiles.length === 1 && session.tiles[0]?.bathymetryArtifact?.bottomDepthMeters) {
+    return session.tiles[0].bathymetryArtifact;
+  }
+  const bottomDepthMeters = compositeTileArtifactGrid(session.tiles, 'bottomDepthMeters', 0, (value) => round(value));
+  const wetMask = compositeTileArtifactGrid(session.tiles, 'wetMask', false, Boolean);
+  const landMask = compositeTileArtifactGrid(session.tiles, 'landMask', false, Boolean);
+  if (!bottomDepthMeters.length || !bottomDepthMeters[0]?.length) {
+    throw new Error('Cannot regenerate fields because the regional bathymetry tiles are empty.');
+  }
+  return createBathymetryArtifactFromField({
+    id: `field-regen-bathymetry-${stableToken(session.bathymetryArtifactDigest ?? session.projectId)}`,
+    bottomDepthMeters,
+    depthMeters: bottomDepthMeters,
+    wetMask,
+    landMask,
+    width: bottomDepthMeters[0].length,
+    height: bottomDepthMeters.length,
+    physicalExtentMeters: {
+      east: session.domainSpec?.horizontal?.widthMeters,
+      north: session.domainSpec?.horizontal?.heightMeters
+    },
+    operationalDomain: {
+      coordinateFrame: session.domainSpec?.coordinateFrame,
+      horizontal: {
+        widthMeters: session.domainSpec?.horizontal?.widthMeters,
+        heightMeters: session.domainSpec?.horizontal?.heightMeters
+      }
+    },
+    sourceMetadata: {
+      sourceType: 'environment-studio-field-regeneration-bathymetry',
+      sourceTier: 'scientificallyConstrainedSynthetic',
+      bathymetryArtifactDigest: session.bathymetryArtifactDigest ?? session.bathymetryBuilderResult?.bathymetryArtifactDigest ?? tileArtifactDigest(session.tiles),
+      builderDigest: session.bathymetryBuilderResult?.builderDigest ?? null,
+      synthetic: true,
+      calibratedBathymetry: false,
+      operationalForecast: false,
+      hiddenTruthExposed: false
+    },
+    synthetic: true
+  }, {
+    id: `field-regen-bathymetry-${stableToken(session.bathymetryArtifactDigest ?? session.projectId)}`,
+    operationalDomain: session.domainSpec,
+    provenance: {
+      generatedBy: 'src/core/editor/EnvironmentStudioProject.js',
+      generatorVersion: ENVIRONMENT_STUDIO_FIELD_REGENERATION_VERSION,
+      deterministicSeed: session.seed,
+      sourceBuilderDigest: session.bathymetryBuilderResult?.builderDigest ?? null,
+      synthetic: true,
+      calibratedBathymetry: false,
+      operationalNavigationProduct: false,
+      operationalForecast: false,
+      hiddenTruthExposed: false
+    }
+  });
+}
+
+function compositeTileArtifactGrid(tiles = [], key = 'bottomDepthMeters', fallback = 0, coerce = (value) => value) {
+  const sortedRows = [...new Set(tiles.map((tile) => Number(tile.manifest?.tileCoordinate?.row ?? tile.tileConfig?.tileCoordinate?.row ?? 0)).filter(Number.isFinite))].sort((a, b) => a - b);
+  const output = [];
+  sortedRows.forEach((rowIndex, rowOrder) => {
+    const rowTiles = tiles
+      .filter((tile) => Number(tile.manifest?.tileCoordinate?.row ?? tile.tileConfig?.tileCoordinate?.row ?? 0) === rowIndex)
+      .sort((a, b) => Number(a.manifest?.tileCoordinate?.column ?? a.tileConfig?.tileCoordinate?.column ?? 0) - Number(b.manifest?.tileCoordinate?.column ?? b.tileConfig?.tileCoordinate?.column ?? 0));
+    const rowHeight = Math.max(0, ...rowTiles.map((tile) => tile.bathymetryArtifact?.[key]?.length ?? 0));
+    for (let y = 0; y < rowHeight; y += 1) {
+      if (rowOrder > 0 && y === 0) continue;
+      const row = [];
+      rowTiles.forEach((tile, columnOrder) => {
+        const grid = tile.bathymetryArtifact?.[key] ?? [];
+        const source = Array.isArray(grid[y]) ? grid[y] : [];
+        const values = columnOrder > 0 ? source.slice(1) : source;
+        row.push(...values.map((value) => coerce(value ?? fallback)));
+      });
+      if (row.length) output.push(row);
+    }
+  });
+  return output;
+}
+
+function createStartDropZoneCandidates({ session = {}, bathymetryArtifact = {}, scalarResult = {} } = {}) {
+  const hotspots = scalarResult.hotspotArtifact?.hotspots ?? [];
+  const width = bathymetryArtifact.bottomDepthMeters?.[0]?.length ?? 0;
+  const height = bathymetryArtifact.bottomDepthMeters?.length ?? 0;
+  const anchorPoints = hotspots.length
+    ? hotspots.slice(0, 4).map((hotspot) => ({ xNorm: indexNorm(hotspot.xIndex, width), yNorm: indexNorm(hotspot.yIndex, height), hotspotId: hotspot.hotspotId }))
+    : [
+        { xNorm: 0.12, yNorm: 0.18 },
+        { xNorm: 0.88, yNorm: 0.18 },
+        { xNorm: 0.15, yNorm: 0.82 },
+        { xNorm: 0.85, yNorm: 0.82 }
+      ];
+  const candidates = anchorPoints
+    .map((anchor, index) => {
+      const cell = nearestWetCell(bathymetryArtifact, anchor.xNorm, anchor.yNorm);
+      if (!cell) return null;
+      return {
+        candidateId: `start-drop-candidate-${index + 1}`,
+        xIndex: cell.x,
+        yIndex: cell.y,
+        eastMeters: round(bathymetryArtifact.eastAxisMeters?.[cell.x] ?? cell.x),
+        northMeters: round(bathymetryArtifact.northAxisMeters?.[cell.y] ?? cell.y),
+        bottomDepthMeters: round(bathymetryArtifact.bottomDepthMeters?.[cell.y]?.[cell.x] ?? 0),
+        nearestHotspotId: anchor.hotspotId ?? null,
+        intendedGliders: intendedGliderCount(session.intendedGliders),
+        validationStatus: ENVIRONMENT_STUDIO_DEPENDENCY_STATE.NEEDS_VALIDATION,
+        source: 'atlas-conditioned-field-regeneration',
+        note: 'Candidate only; launch/drop-zone validation is deferred.'
+      };
+    })
+    .filter(Boolean);
+  const base = {
+    type: 'anchor.environment-studio.start-drop-zone-candidates',
+    version: ENVIRONMENT_STUDIO_FIELD_REGENERATION_VERSION,
+    status: ENVIRONMENT_STUDIO_DEPENDENCY_STATE.NEEDS_VALIDATION,
+    candidates,
+    publicSafe: true,
+    hiddenTruthExposed: false
+  };
+  return { ...base, candidateDigest: canonicalJsonDigest(canonicalizeJsonValue(base)) };
+}
+
+function compactCurrentDiagnostics(diagnostics = {}) {
+  return {
+    type: diagnostics?.type ?? 'anchor.science.current-field-scientific-diagnostics',
+    version: diagnostics?.version ?? null,
+    status: diagnostics?.status ?? null,
+    validVectorCount: diagnostics?.validVectorCount ?? 0,
+    invalidVectorCount: diagnostics?.invalidVectorCount ?? 0,
+    speedMean: round(diagnostics?.speedMean),
+    speedMaximum: round(diagnostics?.speedMaximum),
+    divergenceRms: round(diagnostics?.divergenceRms),
+    coastlineNormalSpeedRms: round(diagnostics?.coastlineNormalSpeedRms),
+    landVectorCount: diagnostics?.landVectorCount ?? 0,
+    belowBottomVectorCount: diagnostics?.belowBottomVectorCount ?? 0,
+    verticalShearRms: round(diagnostics?.verticalShearRms),
+    temporalChangeRms: round(diagnostics?.temporalChangeRms),
+    surfaceToDeepVectorDifferenceRms: round(diagnostics?.surfaceToDeepVectorDifferenceRms),
+    materiallyDistinctColumnFraction: round(diagnostics?.materiallyDistinctColumnFraction),
+    depthLayerDigestCount: diagnostics?.depthLayerDigestCount ?? null,
+    cellwiseDirectionNoiseScore: round(diagnostics?.cellwiseDirectionNoiseScore),
+    highFrequencyEnergyFraction: round(diagnostics?.highFrequencyEnergyFraction),
+    warnings: diagnostics?.warnings ?? [],
+    failures: diagnostics?.failures ?? []
+  };
+}
+
+function compactScalarDiagnostics(diagnostics = {}) {
+  const stats = diagnostics?.scalarStatistics ?? {};
+  return {
+    type: diagnostics?.type ?? 'anchor.scalar-processes.diagnostics',
+    version: diagnostics?.version ?? null,
+    fieldId: diagnostics?.fieldId ?? null,
+    scalarMinimum: round(stats.min),
+    scalarMean: round(stats.mean),
+    scalarMaximum: round(stats.max),
+    depthMeanRange: round(diagnostics?.depthMeanRange),
+    timeMeanRange: round(diagnostics?.timeMeanRange),
+    depthLayerDigestCount: diagnostics?.depthLayerDigestCount ?? null,
+    materiallyDepthVarying: diagnostics?.materiallyDepthVarying === true,
+    temporallyVarying: diagnostics?.temporallyVarying === true,
+    publicSafe: diagnostics?.publicSafe !== false,
+    hiddenTruthIncluded: diagnostics?.hiddenTruthIncluded === true,
+    calibratedOceanForecast: diagnostics?.calibratedOceanForecast === true,
+    calibratedBiogeochemicalForecast: diagnostics?.calibratedBiogeochemicalForecast === true
+  };
+}
+
+function compactFieldValidation(validation = {}) {
+  return {
+    valid: validation?.valid === true,
+    status: validation?.status ?? 'UNKNOWN',
+    errors: Array.isArray(validation?.errors) ? validation.errors.slice(0, 20).map(String) : [],
+    warnings: Array.isArray(validation?.warnings) ? validation.warnings.slice(0, 20).map(String) : [],
+    summary: validation?.summary ? {
+      fieldId: validation.summary.fieldId ?? null,
+      digest: validation.summary.digest ?? null,
+      sourceTier: validation.summary.sourceTier ?? null,
+      sourceType: validation.summary.sourceType ?? null,
+      generatorBackend: validation.summary.generatorBackend ?? null,
+      generatorVersion: validation.summary.generatorVersion ?? null,
+      depthSampleCount: validation.summary.depthSampleCount ?? null,
+      timeSampleCount: validation.summary.timeSampleCount ?? null,
+      calibratedForecast: validation.summary.calibratedForecast === true,
+      usesRealHycom: validation.summary.usesRealHycom === true,
+      usesRealMarineCopernicus: validation.summary.usesRealMarineCopernicus === true,
+      hiddenTruthIncluded: validation.summary.hiddenTruthIncluded === true
+    } : null
+  };
+}
+
+function normalizeFieldRegenerationResult(input = null) {
+  if (!input || typeof input !== 'object') return null;
+  const base = {
+    ...input,
+    hiddenTruthExposed: input.hiddenTruthExposed === true ? false : false,
+    simulationChanged: input.simulationChanged === true ? false : false,
+    scoringChanged: input.scoringChanged === true ? false : false,
+    claimBoundary: {
+      ...(input.claimBoundary ?? {}),
+      hiddenTruthExposed: false,
+      simulationChanged: false,
+      scoringChanged: false,
+      calibratedOceanProduct: false,
+      operationalForecast: false
+    }
+  };
+  return base.fieldRegenerationDigest ? base : withProjectDigest(base, 'fieldRegenerationDigest');
+}
+
+function finiteDiagnostics(diagnostics = {}, keys = []) {
+  return keys.every((key) => Number.isFinite(Number(diagnostics?.[key])));
+}
+
+function timeAxisForDomain(domain = {}) {
+  const duration = positive(domain.time?.durationSeconds, 7200);
+  const sampleCount = Math.max(2, Math.min(7, positiveInteger(domain.time?.steps, 7)));
+  return Array.from({ length: sampleCount }, (_entry, index) => round(duration * index / Math.max(1, sampleCount - 1)));
+}
+
+function nearestWetCell(artifact = {}, xNorm = 0.5, yNorm = 0.5) {
+  const width = artifact.bottomDepthMeters?.[0]?.length ?? 0;
+  const height = artifact.bottomDepthMeters?.length ?? 0;
+  if (!width || !height) return null;
+  const targetX = xNorm * (width - 1);
+  const targetY = yNorm * (height - 1);
+  let best = null;
+  let bestScore = Infinity;
+  for (let y = 0; y < height; y += 1) {
+    for (let x = 0; x < width; x += 1) {
+      if (artifact.wetMask?.[y]?.[x] !== true) continue;
+      const depth = Number(artifact.bottomDepthMeters?.[y]?.[x] ?? 0);
+      if (depth <= 0) continue;
+      const edgePenalty = Math.min(x, y, width - 1 - x, height - 1 - y) < 1 ? 10 : 0;
+      const score = Math.hypot(x - targetX, y - targetY) + edgePenalty;
+      if (score < bestScore) {
+        bestScore = score;
+        best = { x, y };
+      }
+    }
+  }
+  return best;
+}
+
+function indexNorm(index, count) {
+  return count > 1 ? clampFinite(index / (count - 1), 0, 1, 0.5) : 0.5;
 }
 
 export function domainProfileById(id = 'compactRegional') {
@@ -1584,6 +2101,8 @@ function dependencyGraphForState(state = {}) {
   const hasMosaic = Boolean(state.mosaic?.manifest);
   const validationReport = state.validationReport ?? null;
   const bathymetryDigest = state.bathymetryArtifactDigest ?? state.bathymetryBuilderResult?.bathymetryArtifactDigest ?? tileArtifactDigest(tiles);
+  const fieldResult = normalizeFieldRegenerationResult(state.fieldRegenerationResult);
+  const hasRegeneratedFields = Boolean(fieldResult?.currentArtifactDigest && fieldResult?.scalarArtifactDigest);
   return createEnvironmentStudioDependencyGraph({
     id: 'environment-studio-r1-dependency-graph',
     nodes: {
@@ -1592,8 +2111,13 @@ function dependencyGraphForState(state = {}) {
       bathymetryTiles: node(hasTiles ? ENVIRONMENT_STUDIO_DEPENDENCY_STATE.CURRENT : ENVIRONMENT_STUDIO_DEPENDENCY_STATE.NOT_GENERATED, tileDigestListDigest(tiles)),
       tileMosaic: node(hasMosaic ? ENVIRONMENT_STUDIO_DEPENDENCY_STATE.CURRENT : ENVIRONMENT_STUDIO_DEPENDENCY_STATE.NOT_GENERATED, state.mosaic?.manifest?.mosaicDigest ?? null),
       bathymetryArtifact: node(hasTiles ? ENVIRONMENT_STUDIO_DEPENDENCY_STATE.CURRENT : ENVIRONMENT_STUDIO_DEPENDENCY_STATE.NOT_GENERATED, bathymetryDigest),
-      currentArtifact: node(hasMosaic ? ENVIRONMENT_STUDIO_DEPENDENCY_STATE.REQUIRES_REGENERATION : ENVIRONMENT_STUDIO_DEPENDENCY_STATE.NOT_GENERATED, null, hasMosaic ? 'Currents are deferred to a later regeneration pass.' : null),
-      scalarArtifact: node(hasMosaic ? ENVIRONMENT_STUDIO_DEPENDENCY_STATE.REQUIRES_REGENERATION : ENVIRONMENT_STUDIO_DEPENDENCY_STATE.NOT_GENERATED, null, hasMosaic ? 'Scalar fields are deferred to a later regeneration pass.' : null),
+      wetLandMask: node(hasMosaic ? ENVIRONMENT_STUDIO_DEPENDENCY_STATE.CURRENT : ENVIRONMENT_STUDIO_DEPENDENCY_STATE.NOT_GENERATED, bathymetryDigest, hasMosaic ? 'Wet/land mask is derived from generated bathymetry and preserved for FIELD-REGEN-R1.' : null),
+      coastline: node(hasMosaic ? ENVIRONMENT_STUDIO_DEPENDENCY_STATE.CURRENT : ENVIRONMENT_STUDIO_DEPENDENCY_STATE.NOT_GENERATED, bathymetryDigest, hasMosaic ? 'Coastline summary is derived from the wet/land boundary and preserved for FIELD-REGEN-R1.' : null),
+      currentArtifact: node(hasRegeneratedFields ? ENVIRONMENT_STUDIO_DEPENDENCY_STATE.CURRENT : hasMosaic ? ENVIRONMENT_STUDIO_DEPENDENCY_STATE.REQUIRES_REGENERATION : ENVIRONMENT_STUDIO_DEPENDENCY_STATE.NOT_GENERATED, fieldResult?.currentArtifactDigest ?? null, hasRegeneratedFields ? 'Package-backed atlas-conditioned CurrentField4D was regenerated and compact metadata was preserved.' : hasMosaic ? 'Currents require FIELD-REGEN-R1 regeneration.' : null),
+      scalarArtifact: node(hasRegeneratedFields ? ENVIRONMENT_STUDIO_DEPENDENCY_STATE.CURRENT : hasMosaic ? ENVIRONMENT_STUDIO_DEPENDENCY_STATE.REQUIRES_REGENERATION : ENVIRONMENT_STUDIO_DEPENDENCY_STATE.NOT_GENERATED, fieldResult?.scalarArtifactDigest ?? null, hasRegeneratedFields ? 'Package-backed atlas-conditioned ScalarField4D was regenerated and compact metadata was preserved.' : hasMosaic ? 'Scalar fields require FIELD-REGEN-R1 regeneration.' : null),
+      hotspots: node(hasRegeneratedFields ? ENVIRONMENT_STUDIO_DEPENDENCY_STATE.CURRENT : hasMosaic ? ENVIRONMENT_STUDIO_DEPENDENCY_STATE.REQUIRES_REGENERATION : ENVIRONMENT_STUDIO_DEPENDENCY_STATE.NOT_GENERATED, fieldResult?.hotspotArtifactDigest ?? null, hasRegeneratedFields ? 'Synthetic hotspot candidates were regenerated from the scalar artifact and still need mission-level review.' : hasMosaic ? 'Hotspot generation requires FIELD-REGEN-R1 regeneration.' : null),
+      startsDropZones: node(hasMosaic ? ENVIRONMENT_STUDIO_DEPENDENCY_STATE.NEEDS_VALIDATION : ENVIRONMENT_STUDIO_DEPENDENCY_STATE.NOT_GENERATED, fieldResult?.startDropZoneCandidateDigest ?? null, hasRegeneratedFields ? 'Start/drop-zone candidates were derived but remain NEEDS_VALIDATION.' : hasMosaic ? 'Start/drop-zone candidates need validation against regenerated flow/scalar products.' : null),
+      benchmarkBundle: node(hasMosaic ? ENVIRONMENT_STUDIO_DEPENDENCY_STATE.REQUIRES_REGENERATION : ENVIRONMENT_STUDIO_DEPENDENCY_STATE.NOT_GENERATED, null, hasMosaic ? 'Benchmark bundles are deferred until currents, scalars, hotspots, and starts are regenerated.' : null),
       environmentArtifact: node(hasMosaic ? ENVIRONMENT_STUDIO_DEPENDENCY_STATE.REQUIRES_REGENERATION : ENVIRONMENT_STUDIO_DEPENDENCY_STATE.NOT_GENERATED, null, hasMosaic ? 'Launch-to-planning adapter is deferred to ENV-STUDIO-R1.2.' : null),
       validationReport: node(validationReport ? ENVIRONMENT_STUDIO_DEPENDENCY_STATE.CURRENT : ENVIRONMENT_STUDIO_DEPENDENCY_STATE.NOT_GENERATED, null, validationReport ? 'Validation report digest is stored on the report to avoid a circular dependency graph digest.' : null),
       preview: node(hasTiles ? ENVIRONMENT_STUDIO_DEPENDENCY_STATE.CURRENT : ENVIRONMENT_STUDIO_DEPENDENCY_STATE.NOT_GENERATED, tileDigestListDigest(tiles))
@@ -1704,6 +2228,56 @@ function validationExtras(state = {}) {
     warnings.push(...(builderReport.warnings ?? []).map((message) => `Bathymetry builder: ${message}`));
     errors.push(...(builderReport.errors ?? []).map((message) => `Bathymetry builder: ${message}`));
   }
+  if (state.flowGenerationInputs) {
+    const inputs = state.flowGenerationInputs;
+    const fieldResult = normalizeFieldRegenerationResult(state.fieldRegenerationResult);
+    const hasRegeneratedFields = Boolean(fieldResult?.currentArtifactDigest && fieldResult?.scalarArtifactDigest);
+    checks.push(check('field-regeneration-inputs-present', Boolean(inputs.flowGenerationInputDigest), {
+      flowGenerationInputDigest: inputs.flowGenerationInputDigest,
+      sourcePhase: inputs.sourcePhase
+    }));
+    if (hasRegeneratedFields) {
+      checks.push(check('field-regeneration-generated-artifacts', inputs.generatedArtifacts?.currentField4D === true && inputs.generatedArtifacts?.scalarField4D === true && inputs.generatedArtifacts?.hotspots === true, {
+        generatedArtifacts: inputs.generatedArtifacts,
+        regeneratedArtifactDigests: inputs.regeneratedArtifactDigests
+      }));
+      checks.push(check('field-regeneration-current-dependency-states', inputs.dependencyPlan?.currents === 'CURRENT' && inputs.dependencyPlan?.scalarFields === 'CURRENT' && inputs.dependencyPlan?.hotspots === 'CURRENT' && inputs.dependencyPlan?.startsDropZones === 'NEEDS_VALIDATION' && inputs.dependencyPlan?.benchmarkBundle === 'REQUIRES_REGENERATION', {
+        dependencyPlan: inputs.dependencyPlan
+      }));
+    } else {
+      checks.push(check('field-regeneration-deferred-artifacts', inputs.generatedArtifacts?.currentField4D === false && inputs.generatedArtifacts?.scalarField4D === false && inputs.generatedArtifacts?.hotspots === false, {
+        generatedArtifacts: inputs.generatedArtifacts
+      }));
+      checks.push(check('field-regeneration-dependency-states', inputs.dependencyPlan?.currents === 'REQUIRES_REGENERATION' && inputs.dependencyPlan?.scalarFields === 'REQUIRES_REGENERATION' && inputs.dependencyPlan?.hotspots === 'REQUIRES_REGENERATION' && inputs.dependencyPlan?.startsDropZones === 'NEEDS_VALIDATION' && inputs.dependencyPlan?.benchmarkBundle === 'REQUIRES_REGENERATION', {
+        dependencyPlan: inputs.dependencyPlan
+      }));
+      if (inputs.generatedArtifacts?.currentField4D !== false || inputs.generatedArtifacts?.scalarField4D !== false) {
+        errors.push('Flow-generation inputs must not claim generated current/scalar fields until FIELD-REGEN-R1 generation has run.');
+      }
+    }
+  }
+  if (state.fieldRegenerationResult) {
+    const result = normalizeFieldRegenerationResult(state.fieldRegenerationResult);
+    const currentDiagnostics = result.currentDiagnostics ?? {};
+    const scalarDiagnostics = result.scalarDiagnostics ?? {};
+    checks.push(check('field-regeneration-current-artifact-digest', Boolean(result.currentArtifactDigest), {
+      currentArtifactDigest: result.currentArtifactDigest
+    }));
+    checks.push(check('field-regeneration-scalar-artifact-digest', Boolean(result.scalarArtifactDigest), {
+      scalarArtifactDigest: result.scalarArtifactDigest
+    }));
+    checks.push(check('field-regeneration-hotspot-artifact-digest', Boolean(result.hotspotArtifactDigest), {
+      hotspotArtifactDigest: result.hotspotArtifactDigest
+    }));
+    checks.push(check('field-regeneration-current-diagnostics-finite', finiteDiagnostics(currentDiagnostics, ['speedMean', 'speedMaximum', 'divergenceRms', 'coastlineNormalSpeedRms', 'verticalShearRms']), currentDiagnostics));
+    checks.push(check('field-regeneration-scalar-diagnostics-finite', finiteDiagnostics(scalarDiagnostics, ['scalarMean', 'scalarMaximum', 'depthMeanRange', 'timeMeanRange']), scalarDiagnostics));
+    checks.push(check('field-regeneration-hidden-truth-boundary', result.hiddenTruthExposed === false && result.claimBoundary?.hiddenTruthExposed === false, result.claimBoundary));
+    if (result.validation?.current?.status === ENVIRONMENT_STUDIO_STATUS.FAIL) errors.push('Generated current artifact failed package validation.');
+    if (result.validation?.scalar?.status === ENVIRONMENT_STUDIO_STATUS.FAIL) errors.push('Generated scalar artifact failed package validation.');
+    if (currentDiagnostics.landVectorCount !== 0) errors.push('Generated current artifact has nonzero land vectors.');
+    if (currentDiagnostics.belowBottomVectorCount !== 0) errors.push('Generated current artifact has nonzero below-bottom vectors.');
+    if (result.hiddenTruthExposed !== false) errors.push('Field regeneration result must not expose hidden truth.');
+  }
   if (state.previewBudget) {
     checks.push(check('preview-budget-measured', state.previewBudget.measured === true || tiles.length === 0, state.previewBudget));
   }
@@ -1759,6 +2333,8 @@ function projectStateFromProject(project = {}) {
     atlasSeed: project.atlasSeed,
     selectedOperationalWindow: project.selectedOperationalWindow,
     regionalMissionRecipe: project.regionalMissionRecipe,
+    flowGenerationInputs: project.flowGenerationInputs,
+    fieldRegenerationResult: project.fieldRegenerationResult,
     bathymetryBuilderVersion: project.bathymetryBuilderVersion,
     bathymetryBuilderResult: project.bathymetryBuilderResult,
     bathymetryArtifactDigest: project.bathymetryArtifactDigest,
@@ -1774,6 +2350,7 @@ function projectStateFromProject(project = {}) {
     archetypeSpec,
     tiles,
     mosaic,
+    fieldRegenerationResult: normalizeFieldRegenerationResult(project.fieldRegenerationResult),
     dependencyGraph: project.dependencyGraph,
     validationReport: project.validationReport,
     lastAction: project.dependencyGraph?.transitionLog?.[0] ?? 'project-imported'
@@ -1830,6 +2407,8 @@ function normalizeSession(input = {}) {
     atlasSeed: atlas.seed,
     selectedOperationalWindow,
     regionalMissionRecipe,
+    flowGenerationInputs: input.flowGenerationInputs ?? input.bathymetryBuilderResult?.flowGenerationInputs ?? regionalMissionRecipe.flowGenerationInputs ?? null,
+    fieldRegenerationResult: normalizeFieldRegenerationResult(input.fieldRegenerationResult),
     bathymetryBuilderVersion: input.bathymetryBuilderVersion ?? input.bathymetryBuilderResult?.builderVersion ?? null,
     bathymetryBuilderResult: input.bathymetryBuilderResult ?? null,
     bathymetryArtifactDigest: input.bathymetryArtifactDigest ?? input.bathymetryBuilderResult?.bathymetryArtifactDigest ?? null,

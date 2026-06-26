@@ -105,6 +105,7 @@ export function buildWindowConditionedBathymetry(recipeInput = {}, options = {})
     bathymetryArtifact: artifact,
     bathymetryArtifactSummary: bathymetryArtifactAdapterSummary(artifact),
     bathymetryArtifactDigest: artifact.artifactDigest,
+    flowGenerationInputs: buildBathymetryFlowGenerationInputs(recipe, selected, artifact),
     wetLandMask: {
       wetMask: selected.bathymetryField.wetMask,
       landMask: selected.bathymetryField.landMask,
@@ -154,6 +155,7 @@ export function compactWindowConditionedBathymetryResult(result = {}) {
     windowDigest: result.windowDigest ?? null,
     bathymetryArtifactDigest: result.bathymetryArtifactDigest ?? result.bathymetryArtifact?.artifactDigest ?? null,
     bathymetryArtifactSummary: result.bathymetryArtifactSummary ?? null,
+    flowGenerationInputs: result.flowGenerationInputs ?? null,
     generationAttempts: result.generationAttempts ?? [],
     selectedAttempt: result.selectedAttempt ?? 0,
     coastlineSummary: result.coastlineSummary ?? null,
@@ -169,6 +171,160 @@ export function compactWindowConditionedBathymetryResult(result = {}) {
 
 export function validateWindowConditionedBathymetry(result = {}) {
   return result.validationReport ?? validateCandidateField(result.bathymetryField ?? {}, result.featureRecords ?? [], result.coastlineSummary ?? {}, {});
+}
+
+function buildBathymetryFlowGenerationInputs(recipe = {}, selected = {}, artifact = {}) {
+  const field = selected.bathymetryField ?? {};
+  const rows = field.bottomDepthMeters?.length ?? 0;
+  const columns = field.bottomDepthMeters?.[0]?.length ?? 0;
+  const featureZones = flowZonesFromFeatureRecords(selected.featureRecords ?? []);
+  const baseInputs = recipe.flowGenerationInputs ?? {};
+  const dependencyPlan = {
+    ...(baseInputs.dependencyPlan ?? recipe.dependencyPlan ?? {}),
+    currents: 'REQUIRES_REGENERATION',
+    scalarFields: 'REQUIRES_REGENERATION',
+    hotspots: 'REQUIRES_REGENERATION',
+    startsDropZones: 'NEEDS_VALIDATION',
+    benchmarkBundle: 'REQUIRES_REGENERATION'
+  };
+  const base = {
+    ...baseInputs,
+    type: baseInputs.type ?? 'anchor.synthetic-ocean-atlas.flow-generation-inputs',
+    version: baseInputs.version ?? '1.1.0',
+    sourcePhase: 'ENV-ATLAS-R1.1-bathymetry-generated',
+    status: 'bathymetry-and-mask-ready-current-and-scalar-artifacts-not-generated',
+    atlasDigest: recipe.atlasDigest ?? baseInputs.atlasDigest ?? null,
+    windowDigest: recipe.windowDigest ?? baseInputs.windowDigest ?? null,
+    recipeDigest: recipe.recipeDigest ?? baseInputs.recipeDigest ?? null,
+    wetLandMaskIdentity: {
+      source: 'window-conditioned-bathymetry-builder',
+      bathymetryArtifactDigest: artifact.artifactDigest ?? null,
+      rows,
+      columns,
+      cellCount: rows * columns,
+      wetMaskDigest: canonicalJsonDigest(canonicalizeJsonValue(field.wetMask ?? [])),
+      landMaskDigest: canonicalJsonDigest(canonicalizeJsonValue(field.landMask ?? [])),
+      landSeaMaskDigest: canonicalJsonDigest(canonicalizeJsonValue(field.landSeaMask ?? [])),
+      hiddenTruthExposed: false
+    },
+    bottomDepthBathymetryArtifactDigest: artifact.artifactDigest ?? null,
+    bathymetryArtifactDigest: artifact.artifactDigest ?? null,
+    bottomDepthDigest: canonicalJsonDigest(canonicalizeJsonValue(field.bottomDepthMeters ?? [])),
+    coastlineSummary: selected.coastlineSummary ?? null,
+    coastlineSignedDistanceFieldSummary: baseInputs.coastlineSignedDistanceFieldSummary ?? null,
+    coastNormalTangentSummary: summarizeCoastNormalTangent(field.coastline ?? []),
+    gulfMouthBaySegments: mergeZones(baseInputs.gulfMouthBaySegments, featureZones.gulfMouthBaySegments),
+    straitSillSegments: mergeZones(baseInputs.straitSillSegments, featureZones.straitSillSegments),
+    islandSeamountZones: mergeZones(baseInputs.islandSeamountZones, featureZones.islandSeamountZones),
+    shelfBreakZones: mergeZones(baseInputs.shelfBreakZones, featureZones.shelfBreakZones),
+    deepBasinCenters: mergeZones(baseInputs.deepBasinCenters, featureZones.deepBasinCenters),
+    riverMouthDeltaSourceZones: mergeZones(baseInputs.riverMouthDeltaSourceZones, featureZones.riverMouthDeltaSourceZones),
+    canyonCenterlines: mergeZones(baseInputs.canyonCenterlines, featureZones.canyonCenterlines),
+    canyonPotentialZones: mergeZones(baseInputs.canyonPotentialZones, featureZones.canyonPotentialZones),
+    bathymetryFeatureRecords: compactFeatureRecords(selected.featureRecords ?? []),
+    sourceGridShape: baseInputs.sourceGridShape ?? {
+      rows,
+      columns,
+      cellCount: rows * columns,
+      widthMeters: field.operationalDomain?.horizontal?.widthMeters ?? field.physicalExtentMeters?.east ?? null,
+      heightMeters: field.operationalDomain?.horizontal?.heightMeters ?? field.physicalExtentMeters?.north ?? null
+    },
+    validationStatus: selected.validationReport?.status ?? baseInputs.validationStatus ?? 'UNKNOWN',
+    validationReportDigest: selected.validationReport?.validationReportDigest ?? null,
+    dependencyPlan,
+    generatedArtifacts: {
+      currentField4D: false,
+      scalarField4D: false,
+      hotspots: false,
+      startsDropZonesValidated: false,
+      benchmarkBundle: false
+    },
+    claimBoundary: {
+      ...(baseInputs.claimBoundary ?? {}),
+      synthetic: true,
+      currentField4DGenerated: false,
+      scalarField4DGenerated: false,
+      hotspotsGenerated: false,
+      calibratedOceanProduct: false,
+      operationalForecast: false,
+      hiddenTruthExposed: false
+    }
+  };
+  delete base.flowGenerationInputDigest;
+  return withDigest(base, 'flowGenerationInputDigest');
+}
+
+function flowZonesFromFeatureRecords(records = []) {
+  const byType = (types) => compactFeatureRecords(records.filter((record) => types.includes(record.type)));
+  return {
+    gulfMouthBaySegments: byType(['gulfBay']),
+    straitSillSegments: byType(['ridgeSill']),
+    islandSeamountZones: byType(['islandSeamount']),
+    shelfBreakZones: byType(['shelfBreak']),
+    deepBasinCenters: byType(['deepBasin']),
+    riverMouthDeltaSourceZones: byType(['riverDelta']),
+    canyonCenterlines: byType(['submarineCanyon']),
+    canyonPotentialZones: byType(['submarineCanyon'])
+  };
+}
+
+function compactFeatureRecords(records = []) {
+  return records.map((record) => ({
+    featureId: record.featureId,
+    type: record.type,
+    label: record.label,
+    approximateCenterMeters: record.approximateCenterMeters ?? null,
+    areaSquareMeters: record.areaSquareMeters ?? null,
+    lengthMeters: record.lengthMeters ?? null,
+    depthRangeMeters: record.depthRangeMeters ?? null,
+    confidence: record.confidence ?? null,
+    source: 'window-conditioned-bathymetry-feature-record',
+    hiddenTruthExposed: false
+  }));
+}
+
+function mergeZones(primary = [], secondary = []) {
+  const merged = [];
+  const seen = new Set();
+  for (const entry of [...(Array.isArray(primary) ? primary : []), ...(Array.isArray(secondary) ? secondary : [])]) {
+    if (!entry || typeof entry !== 'object') continue;
+    const key = entry.featureId ?? entry.zoneId ?? entry.primitiveDigest ?? canonicalJsonDigest(canonicalizeJsonValue(entry));
+    if (seen.has(key)) continue;
+    seen.add(key);
+    merged.push(entry);
+  }
+  return merged;
+}
+
+function summarizeCoastNormalTangent(coastline = []) {
+  let eastWest = 0;
+  let northSouth = 0;
+  let diagonal = 0;
+  let lengthMeters = 0;
+  for (const segment of coastline) {
+    const dx = Number(segment.end?.eastMeters ?? 0) - Number(segment.start?.eastMeters ?? 0);
+    const dy = Number(segment.end?.northMeters ?? 0) - Number(segment.start?.northMeters ?? 0);
+    const length = Math.sqrt(dx * dx + dy * dy);
+    if (!Number.isFinite(length) || length <= 0) continue;
+    lengthMeters += length;
+    if (Math.abs(dx) > Math.abs(dy) * 1.5) eastWest += length;
+    else if (Math.abs(dy) > Math.abs(dx) * 1.5) northSouth += length;
+    else diagonal += length;
+  }
+  return {
+    available: coastline.length > 0,
+    source: 'wet-land-adjacency coastline segments',
+    segmentCount: coastline.length,
+    tangentLengthMeters: {
+      eastWest: round(eastWest),
+      northSouth: round(northSouth),
+      diagonal: round(diagonal),
+      total: round(lengthMeters)
+    },
+    dominantTangent: eastWest >= northSouth && eastWest >= diagonal ? 'eastWest' : northSouth >= diagonal ? 'northSouth' : 'diagonal',
+    note: 'Summary is intended for FIELD-REGEN-R1 boundary-condition setup; no current field is generated here.',
+    hiddenTruthExposed: false
+  };
 }
 
 function createBathymetryCandidate(recipe, options = {}) {

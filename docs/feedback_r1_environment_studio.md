@@ -1,6 +1,6 @@
 # ENV-STUDIO-R1 Feedback Response
 
-ENV-STUDIO-R0 converted Alpha tester feedback about environment creation into a staged, reproducible Environment Studio plan. ENV-STUDIO-R1 added the visible browser thin slice for that plan. ENV-STUDIO-R1.1 responded to `ALPHA-FB-006` with regional 3D bathymetry authoring. ENV-ATLAS-R1 responds to `ALPHA-FB-008` by changing the first interaction model: mission authors start from a Synthetic Ocean Atlas and selected operational window, not low-level terrain-feature controls. ENV-ATLAS-R1.1 responds to `ALPHA-FB-009` by making the atlas field-based and adding a window-conditioned bathymetry builder. It does not change simulation, scoring, current generation, scalar generation, generated mission semantics, benchmark fairness, or existing Alpha workflows.
+ENV-STUDIO-R0 converted Alpha tester feedback about environment creation into a staged, reproducible Environment Studio plan. ENV-STUDIO-R1 added the visible browser thin slice for that plan. ENV-STUDIO-R1.1 responded to `ALPHA-FB-006` with regional 3D bathymetry authoring. ENV-ATLAS-R1 responds to `ALPHA-FB-008` by changing the first interaction model: mission authors start from a Synthetic Ocean Atlas and selected operational window, not low-level terrain-feature controls. ENV-ATLAS-R1.1 responds to `ALPHA-FB-009` by making the atlas field-based and adding a window-conditioned bathymetry builder. FIELD-REGEN-R1 responds to `ALPHA-FB-010` by adding explicit package-backed synthetic current, scalar, and hotspot regeneration from the atlas-conditioned regional context. It does not change simulation, scoring, generated mission semantics, benchmark fairness, planner behavior, or existing Alpha workflows.
 
 ## Feedback Classification
 
@@ -54,7 +54,7 @@ Implementation entry points:
 R0 intentionally does not:
 
 - add freeform terrain sculpting;
-- regenerate currents or scalar fields from edited bathymetry;
+- launch regenerated Environment Studio projects into production missions;
 - modify generated environment equations;
 - change official scoring;
 - change mission generation semantics;
@@ -136,8 +136,8 @@ Scope:
 4. Project export/import preserves atlas/window/recipe/builder metadata, bathymetry artifact digest, generation attempts, feature records, validation, dependency graph, and dataset tags.
 5. The UI shows atlas/window digests, builder digest, bathymetry artifact digest, feature summary, validation, and honest dependency states.
 
-Noise is used for variation and texture, not as the sole terrain model. Currents, scalars, hotspots, starts/drop zones, and benchmark bundles remain staged follow-ups unless a future adapter explicitly generates them.
+Noise is used for variation and texture, not as the sole terrain model. FIELD-REGEN-R1 now explicitly generates compact current, scalar, and hotspot metadata through package-backed synthetic builders. Starts/drop zones remain candidates needing validation, and benchmark bundles remain staged follow-ups.
 
 ## Staged Follow-Ups
 
-Current/scalar/hotspot regeneration, launch-to-planning, provenance-preserving sculpting, real patch import, and reference comparison remain staged follow-ups. The R1.1 UI marks those controls as planned or deferred rather than silently claiming they exist.
+Launch-to-planning, provenance-preserving sculpting, real patch import, reference comparison, environment-artifact export, and benchmark-bundle export remain staged follow-ups. Current/scalar/hotspot regeneration is available only through the explicit FIELD-REGEN-R1 action and remains synthetic, not calibrated or operational.

@@ -26,6 +26,7 @@ export const ENVIRONMENT_STUDIO_DEPENDENCY_STATE = Object.freeze({
   STALE: 'STALE',
   INVALID: 'INVALID',
   NOT_GENERATED: 'NOT_GENERATED',
+  NEEDS_VALIDATION: 'NEEDS_VALIDATION',
   REQUIRES_REGENERATION: 'REQUIRES_REGENERATION'
 });
 
@@ -52,8 +53,13 @@ export const ENVIRONMENT_STUDIO_DEPENDENCY_NODES = Object.freeze([
   'bathymetryTiles',
   'tileMosaic',
   'bathymetryArtifact',
+  'wetLandMask',
+  'coastline',
   'currentArtifact',
   'scalarArtifact',
+  'hotspots',
+  'startsDropZones',
+  'benchmarkBundle',
   'environmentArtifact',
   'validationReport',
   'preview'
@@ -390,10 +396,16 @@ export function createEnvironmentStudioDependencyGraph(input = {}) {
       ['bathymetryArchetypeSpec', 'bathymetryTiles'],
       ['bathymetryTiles', 'tileMosaic'],
       ['tileMosaic', 'bathymetryArtifact'],
+      ['bathymetryArtifact', 'wetLandMask'],
+      ['bathymetryArtifact', 'coastline'],
       ['bathymetryArtifact', 'currentArtifact'],
       ['bathymetryArtifact', 'scalarArtifact'],
+      ['bathymetryArtifact', 'hotspots'],
+      ['bathymetryArtifact', 'startsDropZones'],
       ['currentArtifact', 'environmentArtifact'],
       ['scalarArtifact', 'environmentArtifact'],
+      ['hotspots', 'benchmarkBundle'],
+      ['startsDropZones', 'benchmarkBundle'],
       ['environmentArtifact', 'validationReport'],
       ['environmentArtifact', 'preview']
     ],
@@ -414,7 +426,7 @@ export function reduceEnvironmentStudioDependencyGraph(graphInput = {}, action =
     }
   } else if (type === 'BATHYMETRY_EDITED') {
     setNodeState(next, 'bathymetryTiles', ENVIRONMENT_STUDIO_DEPENDENCY_STATE.CURRENT);
-    for (const nodeId of ['tileMosaic', 'bathymetryArtifact', 'currentArtifact', 'scalarArtifact', 'environmentArtifact', 'validationReport', 'preview']) {
+    for (const nodeId of ['tileMosaic', 'bathymetryArtifact', 'wetLandMask', 'coastline', 'currentArtifact', 'scalarArtifact', 'hotspots', 'startsDropZones', 'benchmarkBundle', 'environmentArtifact', 'validationReport', 'preview']) {
       setNodeState(next, nodeId, nodeId === 'tileMosaic' ? ENVIRONMENT_STUDIO_DEPENDENCY_STATE.STALE : ENVIRONMENT_STUDIO_DEPENDENCY_STATE.REQUIRES_REGENERATION);
     }
   } else if (type === 'MOSAIC_VALIDATED') {

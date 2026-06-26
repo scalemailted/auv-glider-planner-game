@@ -69,6 +69,12 @@ assert.equal(recipe.windowDigest, gulfWindow.windowDigest);
 assert.ok(recipe.recipeDigest.startsWith('fnv1a32:'));
 assert.equal(recipe.dependencyPlan.currents, 'REQUIRES_REGENERATION');
 assert.equal(recipe.dependencyPlan.scalarFields, 'REQUIRES_REGENERATION');
+assert.equal(recipe.dependencyPlan.hotspots, 'REQUIRES_REGENERATION');
+assert.equal(recipe.dependencyPlan.startsDropZones, 'NEEDS_VALIDATION');
+assert.equal(recipe.dependencyPlan.benchmarkBundle, 'REQUIRES_REGENERATION');
+assert.ok(recipe.flowGenerationInputs.flowGenerationInputDigest.startsWith('fnv1a32:'));
+assert.equal(recipe.flowGenerationInputs.generatedArtifacts.currentField4D, false);
+assert.equal(recipe.flowGenerationInputs.generatedArtifacts.scalarField4D, false);
 assert.equal(recipe.claimBoundary.hiddenTruthExposed, false);
 
 const studioOptions = environmentStudioOptionsFromRegionalRecipe(recipe);
@@ -101,9 +107,18 @@ assert.equal(generated.studioStage, 'regionalDetail');
 assert.equal(generated.tiles.length, 4);
 assert.equal(generated.dependencyGraph.nodes.currentArtifact.state, 'REQUIRES_REGENERATION');
 assert.equal(generated.dependencyGraph.nodes.scalarArtifact.state, 'REQUIRES_REGENERATION');
+assert.equal(generated.dependencyGraph.nodes.hotspots.state, 'REQUIRES_REGENERATION');
+assert.equal(generated.dependencyGraph.nodes.startsDropZones.state, 'NEEDS_VALIDATION');
+assert.equal(generated.dependencyGraph.nodes.benchmarkBundle.state, 'REQUIRES_REGENERATION');
 assert.ok(generated.bathymetryBuilderResult.builderDigest.startsWith('fnv1a32:'), 'builder digest recorded');
 assert.ok(generated.bathymetryBuilderResult.bathymetryArtifactDigest, 'builder bathymetry artifact digest recorded');
 assert.ok(generated.bathymetryBuilderResult.generationAttempts.length >= 1, 'builder attempts recorded');
+assert.equal(generated.flowGenerationInputs.bathymetryArtifactDigest, generated.bathymetryArtifactDigest);
+assert.equal(generated.flowGenerationInputs.generatedArtifacts.currentField4D, false);
+assert.equal(generated.flowGenerationInputs.dependencyPlan.hotspots, 'REQUIRES_REGENERATION');
+assert.ok(generated.flowGenerationInputs.coastlineSummary.segmentCount >= 0);
+assert.ok(generated.flowGenerationInputs.depthAxisMeters.length >= 4);
+assert.ok(generated.flowGenerationInputs.timeAxisSeconds.length >= 2);
 assert.ok(generated.featureRecords.length >= 3);
 assert.ok(generated.previewBudget.measured);
 
@@ -114,6 +129,13 @@ assert.equal(project.selectedOperationalWindow.windowId, session.selectedOperati
 assert.ok(project.regionalMissionRecipe.recipeDigest);
 assert.equal(project.bathymetryBuilderResult.builderDigest, generated.bathymetryBuilderResult.builderDigest);
 assert.equal(project.bathymetryArtifactDigest, generated.bathymetryArtifactDigest);
+assert.equal(project.flowGenerationInputs.flowGenerationInputDigest, generated.flowGenerationInputs.flowGenerationInputDigest);
+assert.equal(project.flowGenerationInputs.bathymetryArtifactDigest, project.bathymetryArtifactDigest);
+assert.equal(project.dependencyGraph.nodes.currentArtifact.state, 'REQUIRES_REGENERATION');
+assert.equal(project.dependencyGraph.nodes.scalarArtifact.state, 'REQUIRES_REGENERATION');
+assert.equal(project.dependencyGraph.nodes.hotspots.state, 'REQUIRES_REGENERATION');
+assert.equal(project.dependencyGraph.nodes.startsDropZones.state, 'NEEDS_VALIDATION');
+assert.equal(project.dependencyGraph.nodes.benchmarkBundle.state, 'REQUIRES_REGENERATION');
 assert.equal(project.provenance.hiddenTruthExposed, false);
 assert.equal(project.provenance.operationalForecast, false);
 
@@ -122,6 +144,7 @@ const reexported = buildEnvironmentStudioProject(imported);
 assert.equal(reexported.projectDigest, project.projectDigest, 'atlas-generated project round trip keeps digest stable');
 assert.equal(reexported.studioStage, 'regionalDetail');
 assert.equal(reexported.selectedOperationalWindow.windowId, project.selectedOperationalWindow.windowId);
+assert.equal(reexported.flowGenerationInputs.flowGenerationInputDigest, project.flowGenerationInputs.flowGenerationInputDigest);
 
 const validation = validateEnvironmentStudioProject(project);
 assert.equal(validation.valid, true, validation.errors.join('\n'));

@@ -324,7 +324,21 @@ function syntheticU(t, z, y, x, s, seed) { return 0.16 + 0.08 * Math.sin((x / Ma
 function syntheticV(t, z, y, x, s, seed) { return -0.06 + 0.07 * Math.cos((y / Math.max(1, s.height - 1) * 2 - t * 0.29 + seed * 0.013) * Math.PI) - z * 0.028 + x * 0.004; }
 function finiteCube(cubeValue) { return (cubeValue ?? []).every((t) => t.every((z) => z.every((row) => row.every((value) => Number.isFinite(Number(value)))))); }
 function monotonic(values) { return values.every((value, index) => index === 0 || Number(value) >= Number(values[index - 1])); }
-function stats(values) { const v = values.map(Number).filter(Number.isFinite); return v.length ? { count: v.length, min: round(Math.min(...v)), mean: round(v.reduce((a, b) => a + b, 0) / v.length), max: round(Math.max(...v)) } : { count: 0, min: null, mean: null, max: null }; }
+function stats(values) {
+  let count = 0;
+  let sum = 0;
+  let min = Infinity;
+  let max = -Infinity;
+  for (const value of values) {
+    const number = Number(value);
+    if (!Number.isFinite(number)) continue;
+    count += 1;
+    sum += number;
+    if (number < min) min = number;
+    if (number > max) max = number;
+  }
+  return count ? { count, min: round(min), mean: round(sum / count), max: round(max) } : { count: 0, min: null, mean: null, max: null };
+}
 function stable(value) { if (Array.isArray(value)) return `[${value.map(stable).join(',')}]`; if (value && typeof value === 'object') return `{${Object.keys(value).sort().map((key) => `${JSON.stringify(key)}:${stable(value[key])}`).join(',')}}`; return JSON.stringify(value); }
 function fnv(text) { let hash = 2166136261; for (let i = 0; i < text.length; i += 1) { hash ^= text.charCodeAt(i); hash = Math.imul(hash, 16777619); } return (hash >>> 0).toString(16).padStart(8, '0'); }
 function normalizeTemporalBoundaryMode(value) { return String(value ?? '').trim() === 'periodic' ? 'periodic' : 'bounded'; }

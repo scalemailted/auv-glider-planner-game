@@ -137,3 +137,10 @@ export {
   bestWaterColumnPriorityLayer,
   validateWaterColumnPriorityArtifact
 } from './WaterColumnPriorityModel.js';
+
+export {
+  ATLAS_CONDITIONED_SCALAR_BUILDER_VERSION,
+  createAtlasConditionedScalarField,
+  buildAtlasConditionedScalarArtifact,
+  atlasScalarComponentPlan
+} from './generation/AtlasConditionedScalarBuilder.js';

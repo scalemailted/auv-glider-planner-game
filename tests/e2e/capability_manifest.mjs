@@ -199,7 +199,9 @@ export const TEST_FILE_OWNERSHIP = Object.freeze({
   "Alpha Browser Compatibility Critical Path": "tests/e2e/alpha_r1_1_acceptance.spec.js",
   "ALPHA-R1 Full External Pilot Walkthrough": "tests/e2e/alpha_r1_1_acceptance.spec.js",
   "Procedural Atlas Field Engine": "tests/e2e/environment_studio_r1.spec.js",
-  "Window Generates Bathymetry": "tests/e2e/environment_studio_r1.spec.js"
+  "Window Generates Bathymetry": "tests/e2e/environment_studio_r1.spec.js",
+  "Atlas Region Generates Fields": "tests/e2e/environment_studio_r1.spec.js",
+  "Field Regeneration Export Import Cleanup": "tests/e2e/environment_studio_r1.spec.js"
 });
 
 const NODE_COVERAGE = Object.freeze({
@@ -213,7 +215,7 @@ const NODE_COVERAGE = Object.freeze({
   METHODS_VALIDATION: ['node tools/tests/scientific_validation.test.mjs'],
   CLASSICAL_PLANNER_NOTEBOOK: ['node tools/js/audit_colab_classical_benchmark.mjs'],
   EXTERNAL_ALPHA_PREVIEW: ['node tools/js/validate_alpha_release_manifest.mjs', 'node tools/js/audit_alpha_release_readiness.mjs', 'node tools/js/audit_alpha_r1_1_acceptance.mjs'],
-  ENVIRONMENT_STUDIO: ['node tools/js/smoke_environment_studio_contracts.mjs', 'node tools/js/smoke_environment_studio_project.mjs', 'node tools/js/smoke_environment_studio_regional_preview.mjs', 'node tools/js/smoke_environment_atlas_r1.mjs', 'node tools/js/smoke_synthetic_ocean_atlas_engine.mjs', 'node tools/js/smoke_window_conditioned_bathymetry_builder.mjs', 'node tools/js/audit_synthetic_atlas_bathymetry_usefulness.mjs'],
+  ENVIRONMENT_STUDIO: ['node tools/js/smoke_environment_studio_contracts.mjs', 'node tools/js/smoke_environment_studio_project.mjs', 'node tools/js/smoke_environment_studio_regional_preview.mjs', 'node tools/js/smoke_environment_atlas_r1.mjs', 'node tools/js/smoke_synthetic_ocean_atlas_engine.mjs', 'node tools/js/smoke_window_conditioned_bathymetry_builder.mjs', 'node tools/js/audit_synthetic_atlas_bathymetry_usefulness.mjs', 'node tools/js/smoke_atlas_conditioned_current_builder.mjs', 'node tools/js/smoke_atlas_conditioned_scalar_builder.mjs', 'node tools/js/audit_atlas_conditioned_field_regeneration.mjs'],
   ENVIRONMENT_PACKAGE: ['npm.cmd run test:packages'],
   RESOURCE_LIFECYCLE: ['node tools/js/audit_three_vendor_git_tracking.mjs']
 });
@@ -262,8 +264,10 @@ export const CAPABILITIES = Object.freeze([
     'Planning Execute Simulation Preserve One Environment Identity'
   ], NODE_COVERAGE.ENVIRONMENT_PACKAGE),
   capability('ENVIRONMENT-STUDIO', 'Browser-side synthetic environment authoring, validation, and project import/export', false, false, true, [
-    'Synthetic Atlas Window Selection',
-    'Atlas Window Generates Regional Detail'
+    'Procedural Atlas Field Engine',
+    'Window Generates Bathymetry',
+    'Atlas Region Generates Fields',
+    'Field Regeneration Export Import Cleanup'
   ], NODE_COVERAGE.ENVIRONMENT_STUDIO),
   capability('DIVE-PREDICTION', 'Planned dive, sampling target, and clearance', true, false, true, [
     'Surface Waypoints Produce a Predicted Three-Dimensional Dive',

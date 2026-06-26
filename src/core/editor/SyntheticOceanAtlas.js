@@ -23,6 +23,8 @@ export const SYNTHETIC_OCEAN_ATLAS_VERSION = '1.1.0';
 export const OPERATIONAL_WINDOW_VERSION = '1.1.0';
 export const REGIONAL_MISSION_RECIPE_TYPE = 'anchor.regional-mission-recipe';
 export const REGIONAL_MISSION_RECIPE_VERSION = '1.1.0';
+export const FLOW_GENERATION_INPUTS_TYPE = 'anchor.synthetic-ocean-atlas.flow-generation-inputs';
+export const FLOW_GENERATION_INPUTS_VERSION = '1.1.0';
 
 export const SYNTHETIC_OCEAN_ATLAS_PRESETS = Object.freeze([
   { id: 'syntheticGulfWorld', label: 'Synthetic Gulf World', defaultSeed: 'atlas-gulf-r1-1' },
@@ -284,6 +286,13 @@ export function normalizeOperationalWindow(input = {}, atlasInput = createSynthe
   const sampledFieldStats = sampleAtlasWindowStats(atlas, windowBase);
   const detectedContext = inferAtlasContext(atlas, { ...windowBase, sampledFieldStats });
   const recommendations = recommendationsForContext(detectedContext, input, sampledFieldStats);
+  const flowGenerationInputSummary = createAtlasWindowFlowGenerationInputSummary({
+    atlas,
+    window: windowBase,
+    sampledFieldStats,
+    detectedContext,
+    recommendations
+  });
   return withDigest({
     ...windowBase,
     sampledFieldStats,
@@ -313,6 +322,7 @@ export function normalizeOperationalWindow(input = {}, atlasInput = createSynthe
     featureMix: recommendations.featureMix,
     validationProfile: recommendations.validationProfile,
     futureCouplingMetadata: recommendations.futureCouplingMetadata,
+    flowGenerationInputSummary,
     claimBoundary: {
       synthetic: true,
       realEarthMap: false,
@@ -392,24 +402,48 @@ export function createRegionalMissionRecipe(options = {}) {
     ? options.selectedWindow
     : normalizeOperationalWindow(options.selectedWindow ?? options.window ?? {}, atlas);
   const datasetTags = datasetTagsForWindow(selectedWindow);
+  const dependencyPlan = {
+    bathymetry: 'CURRENT_AFTER_GENERATE',
+    wetLandMask: 'CURRENT_AFTER_GENERATE',
+    coastline: 'CURRENT_AFTER_GENERATE',
+    currents: 'REQUIRES_REGENERATION',
+    scalarFields: 'REQUIRES_REGENERATION',
+    hotspots: 'REQUIRES_REGENERATION',
+    startsDropZones: 'NEEDS_VALIDATION',
+    benchmarkBundle: 'REQUIRES_REGENERATION',
+    environmentArtifact: 'REQUIRES_REGENERATION'
+  };
+  const domainSize = {
+    widthMeters: selectedWindow.recommendedDomain.widthMeters,
+    heightMeters: selectedWindow.recommendedDomain.heightMeters
+  };
+  const sourceResolution = {
+    cellSizeMeters: selectedWindow.recommendedDomain.sourceResolutionMeters,
+    rows: selectedWindow.recommendedDomain.rows,
+    columns: selectedWindow.recommendedDomain.columns
+  };
+  const previewResolution = {
+    cellSizeMeters: selectedWindow.recommendedDomain.previewResolutionMeters
+  };
+  const flowGenerationInputs = createRecipeFlowGenerationInputs({
+    atlas,
+    selectedWindow,
+    domainSize,
+    sourceResolution,
+    previewResolution,
+    intendedGliders: selectedWindow.recommendedGliders,
+    missionDurationSeconds: selectedWindow.recommendedDurationSeconds,
+    dependencyPlan
+  });
   const recipeBase = {
     recipeType: REGIONAL_MISSION_RECIPE_TYPE,
     recipeVersion: REGIONAL_MISSION_RECIPE_VERSION,
     atlasDigest: atlas.atlasDigest,
     windowDigest: selectedWindow.windowDigest,
     selectedWindow,
-    domainSize: {
-      widthMeters: selectedWindow.recommendedDomain.widthMeters,
-      heightMeters: selectedWindow.recommendedDomain.heightMeters
-    },
-    sourceResolution: {
-      cellSizeMeters: selectedWindow.recommendedDomain.sourceResolutionMeters,
-      rows: selectedWindow.recommendedDomain.rows,
-      columns: selectedWindow.recommendedDomain.columns
-    },
-    previewResolution: {
-      cellSizeMeters: selectedWindow.recommendedDomain.previewResolutionMeters
-    },
+    domainSize,
+    sourceResolution,
+    previewResolution,
     coastlineOrientation: selectedWindow.coastlineOrientation,
     openBoundarySides: selectedWindow.openBoundarySides,
     bathymetryRegime: selectedWindow.bathymetryRegime,
@@ -426,19 +460,10 @@ export function createRegionalMissionRecipe(options = {}) {
     },
     randomSeed: String(options.randomSeed ?? options.seed ?? `${atlas.seed}:${selectedWindow.windowId}`),
     validationProfile: selectedWindow.validationProfile,
-    dependencyPlan: {
-      bathymetry: 'CURRENT_AFTER_GENERATE',
-      wetLandMask: 'CURRENT_AFTER_GENERATE',
-      coastline: 'CURRENT_AFTER_GENERATE',
-      currents: 'REQUIRES_REGENERATION',
-      scalarFields: 'REQUIRES_REGENERATION',
-      hotspots: 'REQUIRES_REGENERATION',
-      startsDropZones: 'NEEDS_VALIDATION',
-      benchmarkBundle: 'REQUIRES_REGENERATION',
-      environmentArtifact: 'REQUIRES_REGENERATION'
-    },
+    dependencyPlan,
     datasetTags,
     futureCouplingMetadata: selectedWindow.futureCouplingMetadata,
+    flowGenerationInputs,
     claimBoundary: {
       synthetic: true,
       referenceInformed: true,
@@ -551,6 +576,316 @@ export function sampleAtlasWindowStats(atlas = createSyntheticOceanAtlas(), wind
     layerMax,
     meanDistanceToCoast: layerMeans.distanceToCoast,
     fieldStatsDigest: canonicalJsonDigest({ layerMeans, layerMin, layerMax, bounds: { xMin, yMin, width, height } })
+  };
+}
+
+function createAtlasWindowFlowGenerationInputSummary({
+  atlas,
+  window,
+  sampledFieldStats,
+  detectedContext,
+  recommendations
+} = {}) {
+  const zones = atlasWindowFlowZones(atlas, window);
+  const base = {
+    type: 'anchor.synthetic-ocean-atlas.window-flow-input-summary',
+    version: FLOW_GENERATION_INPUTS_VERSION,
+    atlasDigest: atlas?.atlasDigest ?? null,
+    windowId: window?.windowId ?? null,
+    windowBounds: window?.bounds ?? null,
+    wetLandMaskIdentity: {
+      source: 'atlas.layer.landOceanMask',
+      atlasDigest: atlas?.atlasDigest ?? null,
+      layerSummary: layerStatSummary(sampledFieldStats, 'landOceanMask'),
+      layerDigest: canonicalJsonDigest({
+        atlasDigest: atlas?.atlasDigest ?? null,
+        windowDigest: window?.windowDigest ?? null,
+        layer: 'landOceanMask',
+        stats: layerStatSummary(sampledFieldStats, 'landOceanMask')
+      })
+    },
+    coastlineSignedDistanceFieldSummary: {
+      signedDistanceToCoast: layerStatSummary(sampledFieldStats, 'signedDistanceToCoast'),
+      distanceToCoast: layerStatSummary(sampledFieldStats, 'distanceToCoast'),
+      fieldStatsDigest: sampledFieldStats?.fieldStatsDigest ?? null
+    },
+    openBoundarySides: recommendations?.openBoundarySides ?? detectedContext?.openBoundarySides ?? [],
+    gulfMouthBaySegments: zones.gulfMouthBaySegments,
+    straitSillSegments: zones.straitSillSegments,
+    islandSeamountZones: zones.islandSeamountZones,
+    shelfBreakZones: zones.shelfBreakZones,
+    deepBasinCenters: zones.deepBasinCenters,
+    riverMouthDeltaSourceZones: zones.riverMouthDeltaSourceZones,
+    canyonCenterlines: zones.canyonCenterlines,
+    canyonPotentialZones: zones.canyonPotentialZones,
+    currentRegimeHints: recommendations?.currentRegimeHints ?? detectedContext?.currentRegimeHints ?? [],
+    scalarRegimeHints: recommendations?.scalarRegimeHints ?? detectedContext?.scalarRegimeHints ?? [],
+    validationStatus: detectedContext?.missionSuitabilityHint?.startsWith?.('WARN') ? 'WARN' : 'PASS',
+    generatedArtifacts: generatedArtifactsDeferredFlags(),
+    hiddenTruthExposed: false
+  };
+  return withDigest(base, 'flowInputSummaryDigest');
+}
+
+function createRecipeFlowGenerationInputs({
+  atlas,
+  selectedWindow,
+  domainSize,
+  sourceResolution,
+  previewResolution,
+  intendedGliders,
+  missionDurationSeconds,
+  dependencyPlan
+} = {}) {
+  const sourceGridShape = gridShapeForResolution(domainSize, sourceResolution);
+  const previewGridShape = gridShapeForResolution(domainSize, {
+    cellSizeMeters: previewResolution?.cellSizeMeters
+  });
+  const dtSeconds = Math.max(60, Math.round(Number(selectedWindow?.recommendedDomain?.timeStepSeconds ?? 300)));
+  const base = {
+    type: FLOW_GENERATION_INPUTS_TYPE,
+    version: FLOW_GENERATION_INPUTS_VERSION,
+    sourcePhase: 'ENV-ATLAS-R1.1',
+    status: 'metadata-only-no-current-or-scalar-artifacts',
+    atlasDigest: atlas?.atlasDigest ?? null,
+    atlasPreset: atlas?.atlasPreset ?? null,
+    windowDigest: selectedWindow?.windowDigest ?? null,
+    windowId: selectedWindow?.windowId ?? null,
+    selectedWindowBounds: selectedWindow?.bounds ?? null,
+    wetLandMaskIdentity: selectedWindow?.flowGenerationInputSummary?.wetLandMaskIdentity ?? null,
+    bottomDepthBathymetryArtifactDigest: null,
+    bathymetryArtifactDigest: null,
+    bottomDepthDigest: null,
+    coastlineSummary: null,
+    coastlineSignedDistanceFieldSummary: selectedWindow?.flowGenerationInputSummary?.coastlineSignedDistanceFieldSummary ?? null,
+    coastNormalTangentSummary: {
+      available: false,
+      status: 'requires-generated-bathymetry-coastline',
+      source: 'FIELD-REGEN-R1 input placeholder'
+    },
+    openBoundarySides: selectedWindow?.openBoundarySides ?? [],
+    gulfMouthBaySegments: selectedWindow?.flowGenerationInputSummary?.gulfMouthBaySegments ?? [],
+    straitSillSegments: selectedWindow?.flowGenerationInputSummary?.straitSillSegments ?? [],
+    islandSeamountZones: selectedWindow?.flowGenerationInputSummary?.islandSeamountZones ?? [],
+    shelfBreakZones: selectedWindow?.flowGenerationInputSummary?.shelfBreakZones ?? [],
+    deepBasinCenters: selectedWindow?.flowGenerationInputSummary?.deepBasinCenters ?? [],
+    riverMouthDeltaSourceZones: selectedWindow?.flowGenerationInputSummary?.riverMouthDeltaSourceZones ?? [],
+    canyonCenterlines: selectedWindow?.flowGenerationInputSummary?.canyonCenterlines ?? [],
+    canyonPotentialZones: selectedWindow?.flowGenerationInputSummary?.canyonPotentialZones ?? [],
+    currentRegimeHints: selectedWindow?.currentRegimeHints ?? selectedWindow?.currentRegime ?? [],
+    scalarRegimeHints: selectedWindow?.scalarRegimeHints ?? selectedWindow?.scalarRegime ?? [],
+    depthAxisMeters: depthAxisForRegime(selectedWindow?.bathymetryRegime),
+    timeAxisSeconds: compactTimeAxisSeconds(missionDurationSeconds, dtSeconds),
+    timeAxisPolicy: {
+      startSeconds: 0,
+      durationSeconds: Math.round(Number(missionDurationSeconds ?? 0)),
+      dtSeconds,
+      compactedForMetadata: true
+    },
+    intendedGliders: Math.max(1, Math.round(Number(intendedGliders ?? 1))),
+    missionDurationSeconds: Math.round(Number(missionDurationSeconds ?? 0)),
+    sourceGridShape,
+    previewGridShape,
+    validationStatus: selectedWindow?.flowGenerationInputSummary?.validationStatus ?? 'PASS',
+    dependencyPlan,
+    generatedArtifacts: generatedArtifactsDeferredFlags(),
+    claimBoundary: {
+      synthetic: true,
+      currentField4DGenerated: false,
+      scalarField4DGenerated: false,
+      hotspotsGenerated: false,
+      calibratedOceanProduct: false,
+      operationalForecast: false,
+      hiddenTruthExposed: false
+    }
+  };
+  return withDigest(base, 'flowGenerationInputDigest');
+}
+
+function atlasWindowFlowZones(atlas = {}, window = {}) {
+  const zone = (layerName, threshold, label, role) => summarizeLayerZone(atlas, window, layerName, threshold, label, role);
+  return {
+    gulfMouthBaySegments: [
+      zone('gulfBayInfluence', 0.24, 'Gulf / bay mouth influence zone', 'gulfBayMouth')
+    ].filter(Boolean),
+    straitSillSegments: [
+      ...featurePrimitivesForWindow(atlas, window, ['straitSill']),
+      zone('straitSillInfluence', 0.2, 'Strait / sill exchange segment', 'straitSill')
+    ].filter(Boolean),
+    islandSeamountZones: [
+      ...featurePrimitivesForWindow(atlas, window, ['island', 'seamount']),
+      zone('islandSeamount', 0.3, 'Island / seamount influence zone', 'islandSeamount')
+    ].filter(Boolean),
+    shelfBreakZones: [
+      zone('shelfBreak', 0.35, 'Shelf-break zone', 'shelfBreak')
+    ].filter(Boolean),
+    deepBasinCenters: [
+      zone('deepBasin', 0.45, 'Deep-basin center', 'deepBasin')
+    ].filter(Boolean),
+    riverMouthDeltaSourceZones: [
+      ...featurePrimitivesForWindow(atlas, window, ['riverMouth']),
+      zone('riverMouthInfluence', 0.18, 'River-mouth / delta source zone', 'riverMouthDelta')
+    ].filter(Boolean),
+    canyonCenterlines: featurePrimitivesForWindow(atlas, window, ['canyonPotentialSpline']),
+    canyonPotentialZones: [
+      zone('canyonPotential', 0.22, 'Canyon-potential zone', 'canyonPotential')
+    ].filter(Boolean)
+  };
+}
+
+function summarizeLayerZone(atlas = {}, window = {}, layerName = '', threshold = 0.2, label = layerName, role = layerName) {
+  if (!atlas.layers?.[layerName]) return null;
+  const bounds = normalizeWindowBounds(window);
+  const sampleCount = 9;
+  let weight = 0;
+  let sx = 0;
+  let sy = 0;
+  let support = 0;
+  let maxValue = 0;
+  let sum = 0;
+  for (let y = 0; y < sampleCount; y += 1) {
+    for (let x = 0; x < sampleCount; x += 1) {
+      const ax = bounds.xMin + (x + 0.5) / sampleCount * (bounds.xMax - bounds.xMin);
+      const ay = bounds.yMin + (y + 0.5) / sampleCount * (bounds.yMax - bounds.yMin);
+      const value = Number(sampleAtlasLayer(atlas, layerName, ax, ay));
+      if (!Number.isFinite(value)) continue;
+      sum += value;
+      maxValue = Math.max(maxValue, value);
+      if (value >= threshold) {
+        support += 1;
+        weight += value;
+        sx += ax * value;
+        sy += ay * value;
+      }
+    }
+  }
+  const supportFraction = support / (sampleCount * sampleCount);
+  if (!support && maxValue < threshold) return null;
+  const center = weight
+    ? { x: round(sx / weight), y: round(sy / weight) }
+    : { x: round((bounds.xMin + bounds.xMax) / 2), y: round((bounds.yMin + bounds.yMax) / 2) };
+  return {
+    zoneId: `${window.windowId ?? 'window'}-${role}`,
+    type: role,
+    label,
+    sourceLayer: layerName,
+    approximateCenterNormalized: center,
+    supportFraction: round(supportFraction),
+    mean: round(sum / (sampleCount * sampleCount)),
+    max: round(maxValue),
+    threshold,
+    fieldSummaryDigest: canonicalJsonDigest({ atlasDigest: atlas.atlasDigest, window: bounds, layerName, threshold, center, supportFraction, maxValue }),
+    synthetic: true,
+    hiddenTruthExposed: false
+  };
+}
+
+function featurePrimitivesForWindow(atlas = {}, window = {}, types = []) {
+  const allowed = new Set(types);
+  const bounds = normalizeWindowBounds(window);
+  return (atlas.features ?? [])
+    .filter((feature) => allowed.has(feature.type) && featureIntersectsWindow(feature, bounds))
+    .map((feature) => compactFeaturePrimitive(feature));
+}
+
+function featureIntersectsWindow(feature = {}, bounds = {}) {
+  const points = [];
+  if (Number.isFinite(Number(feature.x)) && Number.isFinite(Number(feature.y))) points.push({ x: Number(feature.x), y: Number(feature.y) });
+  if (feature.start) points.push({ x: Number(feature.start.x), y: Number(feature.start.y) });
+  if (feature.end) points.push({ x: Number(feature.end.x), y: Number(feature.end.y) });
+  if (feature.start && feature.end) {
+    points.push({
+      x: (Number(feature.start.x) + Number(feature.end.x)) / 2,
+      y: (Number(feature.start.y) + Number(feature.end.y)) / 2
+    });
+  }
+  return points.some((point) => point.x >= bounds.xMin && point.x <= bounds.xMax && point.y >= bounds.yMin && point.y <= bounds.yMax);
+}
+
+function compactFeaturePrimitive(feature = {}) {
+  const compact = {
+    featureId: feature.featureId,
+    type: feature.type,
+    source: feature.source,
+    synthetic: true,
+    hiddenTruthExposed: false
+  };
+  if (Number.isFinite(Number(feature.x)) && Number.isFinite(Number(feature.y))) {
+    compact.approximateCenterNormalized = { x: round(feature.x), y: round(feature.y) };
+  }
+  if (feature.rx || feature.ry || feature.radius) {
+    compact.radiusNormalized = round(feature.radius ?? Math.max(Number(feature.rx ?? 0), Number(feature.ry ?? 0)));
+  }
+  if (feature.start && feature.end) {
+    compact.centerlineNormalized = {
+      start: { x: round(feature.start.x), y: round(feature.start.y) },
+      end: { x: round(feature.end.x), y: round(feature.end.y) },
+      width: round(feature.width ?? 0)
+    };
+  }
+  compact.primitiveDigest = canonicalJsonDigest(compact);
+  return compact;
+}
+
+function normalizeWindowBounds(window = {}) {
+  const xMin = Number(window.bounds?.xMin ?? window.x ?? 0);
+  const yMin = Number(window.bounds?.yMin ?? window.y ?? 0);
+  const xMax = Number(window.bounds?.xMax ?? (xMin + Number(window.width ?? 0.3)));
+  const yMax = Number(window.bounds?.yMax ?? (yMin + Number(window.height ?? 0.3)));
+  return {
+    xMin: round(clamp(xMin)),
+    yMin: round(clamp(yMin)),
+    xMax: round(clamp(xMax)),
+    yMax: round(clamp(yMax))
+  };
+}
+
+function layerStatSummary(stats = {}, layerName = '') {
+  return {
+    layer: layerName,
+    min: round(stats.layerMin?.[layerName] ?? 0),
+    mean: round(stats.layerMeans?.[layerName] ?? 0),
+    max: round(stats.layerMax?.[layerName] ?? 0)
+  };
+}
+
+function gridShapeForResolution(domainSize = {}, resolution = {}) {
+  const cellSizeMeters = Math.max(1, Number(resolution.cellSizeMeters ?? 1000));
+  const columns = Math.max(2, Math.round(Number(resolution.columns ?? Math.floor(Number(domainSize.widthMeters ?? 0) / cellSizeMeters) + 1)));
+  const rows = Math.max(2, Math.round(Number(resolution.rows ?? Math.floor(Number(domainSize.heightMeters ?? 0) / cellSizeMeters) + 1)));
+  return {
+    rows,
+    columns,
+    cellCount: rows * columns,
+    widthMeters: round(Number(domainSize.widthMeters ?? 0)),
+    heightMeters: round(Number(domainSize.heightMeters ?? 0)),
+    cellSizeMeters: round(cellSizeMeters)
+  };
+}
+
+function depthAxisForRegime(regime) {
+  const maxDepth = maxDepthForRegime(regime);
+  return [...new Set([0, 10, 35, 75, Math.min(150, maxDepth), maxDepth].map((value) => round(value)))].sort((a, b) => a - b);
+}
+
+function compactTimeAxisSeconds(durationSeconds = 0, dtSeconds = 300) {
+  const duration = Math.max(0, Math.round(Number(durationSeconds ?? 0)));
+  const dt = Math.max(1, Math.round(Number(dtSeconds ?? 300)));
+  if (duration <= 0) return [0];
+  const stepCount = Math.floor(duration / dt);
+  if (stepCount <= 12) return Array.from({ length: stepCount + 1 }, (_entry, index) => index * dt);
+  const samples = [];
+  for (let index = 0; index <= 12; index += 1) samples.push(round(duration * index / 12));
+  return [...new Set(samples)].sort((a, b) => a - b);
+}
+
+function generatedArtifactsDeferredFlags() {
+  return {
+    currentField4D: false,
+    scalarField4D: false,
+    hotspots: false,
+    startsDropZonesValidated: false,
+    benchmarkBundle: false
   };
 }
 

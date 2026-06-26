@@ -117,6 +117,13 @@ export {
 } from './generation/BathymetryConditionedCurrentBuilder.js';
 
 export {
+  ATLAS_CONDITIONED_CURRENT_BUILDER_VERSION,
+  createAtlasConditionedCurrentField,
+  buildAtlasConditionedCurrentArtifact,
+  atlasCurrentComponentPlan
+} from './generation/AtlasConditionedCurrentBuilder.js';
+
+export {
   CURRENT_VERTICAL_PROFILE_CONTRACT_VERSION,
   CURRENT_VERTICAL_PROFILE_FAMILIES,
   createCurrentVerticalStructureDescriptor,
