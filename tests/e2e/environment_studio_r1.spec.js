@@ -9,8 +9,8 @@ let server;
 const BASE = 'http://127.0.0.1:9391';
 
 export const EXACT_TITLES = [
-  'Synthetic Atlas Window Selection',
-  'Atlas Window Generates Regional Detail'
+  'Procedural Atlas Field Engine',
+  'Window Generates Bathymetry'
 ];
 
 test.setTimeout(180000);
@@ -32,10 +32,20 @@ test(EXACT_TITLES[0], async ({ page }) => {
   await expect(page.locator('#mission-console')).toContainText('Synthetic Ocean Atlas');
   await expect(page.locator('#mission-console')).toContainText('Mission Region');
   await expect(page.locator('[data-env-studio-atlas-map]')).toBeVisible();
+  await expect(page.locator('[data-env-studio-atlas-field-raster]')).toBeVisible();
   await expect(page.locator('#env-studio-status-panel')).toContainText('Selected Operational Window');
 
+  const initialDigest = await page.evaluate(() => window.ANCHOR_ENVIRONMENT_STUDIO_DEBUG?.atlasDigest);
+  await page.locator('#env-studio-atlas-preset').selectOption('islandChainWorld');
+  await expect.poll(() => page.evaluate(() => window.ANCHOR_ENVIRONMENT_STUDIO_DEBUG?.atlasPreset), { timeout: 15000 }).toBe('islandChainWorld');
+  const presetDigest = await page.evaluate(() => window.ANCHOR_ENVIRONMENT_STUDIO_DEBUG?.atlasDigest);
+  expect(presetDigest).toBeTruthy();
+  expect(presetDigest).not.toBe(initialDigest);
+  await page.locator('#mission-console [data-action="env-studio-randomize-atlas-seed"]').click();
+  await expect.poll(() => page.evaluate(() => window.ANCHOR_ENVIRONMENT_STUDIO_DEBUG?.atlasDigest), { timeout: 15000 }).not.toBe(presetDigest);
+
   await page.locator('#env-studio-window-preset').selectOption('semiEnclosedGulfSurvey');
-  await expect(page.locator('#env-studio-status-panel')).toContainText('gulf / basin');
+  await expect(page.locator('#env-studio-status-panel')).toContainText('Window Digest');
   await expect(page.locator('#env-studio-status-panel')).toContainText('Recommended Gliders');
   await expect(page.locator('#env-studio-status-panel')).toContainText('Current Regime Hints');
   await expect(page.locator('#env-studio-status-panel')).toContainText('Scalar Regime Hints');
@@ -45,9 +55,11 @@ test(EXACT_TITLES[0], async ({ page }) => {
   expect(debug.atlasMode).toBe(true);
   expect(debug.studioStage).toBe('atlasWindow');
   expect(debug.atlasPreset).toBeTruthy();
-  expect(debug.selectedWindow.primaryContext).toBe('gulfBasin');
-  expect(debug.currentRegime.length).toBeGreaterThan(0);
-  expect(debug.scalarRegime.length).toBeGreaterThan(0);
+  expect(debug.atlasDigest).toMatch(/^fnv1a32:/);
+  expect(debug.selectedWindowDigest).toMatch(/^fnv1a32:/);
+  expect(debug.selectedWindow.primaryContext).toBeTruthy();
+  expect(debug.currentRegimeHints.length).toBeGreaterThan(0);
+  expect(debug.scalarRegimeHints.length).toBeGreaterThan(0);
   expect(debug.hiddenTruthExposed).toBe(false);
   expect(debug.simulationChanged).toBe(false);
   expect(debug.scoringChanged).toBe(false);
@@ -62,27 +74,39 @@ test(EXACT_TITLES[1], async ({ page }) => {
   await page.locator('#mission-console [data-action="env-studio-generate-atlas-region"]').click();
   await expect.poll(() => page.evaluate(() => window.ANCHOR_ENVIRONMENT_STUDIO_DEBUG?.studioStage), { timeout: 15000 }).toBe('regionalDetail');
   await expect.poll(() => page.evaluate(() => window.ANCHOR_ENVIRONMENT_STUDIO_DEBUG?.tileCount ?? 0), { timeout: 15000 }).toBe(4);
+  await expect.poll(() => page.evaluate(() => window.ANCHOR_ENVIRONMENT_STUDIO_DEBUG?.bathymetryArtifactDigest ?? null), { timeout: 15000 }).not.toBeNull();
 
   await expect(page.locator('.environment-studio-terrain-preview')).toBeVisible();
   await expect(page.locator('.environment-studio-terrain-preview')).toContainText('Regional 3D Bathymetry Preview');
+  await expect(page.locator('.environment-studio-digest')).toContainText('Bathymetry Artifact');
   await expect(page.locator('#mission-console')).toContainText('Basic Authoring');
   await expect(page.locator('[data-env-studio-section="advanced"]').first()).toHaveAttribute('data-collapsed', 'true');
   await expect(page.locator('[data-env-studio-source-diagnostics]').first()).toHaveAttribute('data-collapsed', 'true');
   await expect(page.locator('#env-studio-status-panel')).toContainText('Generated Field Status');
   await expect(page.locator('#env-studio-status-panel')).toContainText('Current Artifact');
+  await expect(page.locator('#mission-console')).toContainText('Builder validation');
+  await expect(page.locator('#mission-console')).toContainText('Bathymetry artifact');
+  await expect(page.locator('#env-studio-status-panel')).toContainText('REQUIRES_REGENERATION');
 
   const exported = await downloadStudioProject(page);
   expect(exported.data.studioStage).toBe('regionalDetail');
   expect(exported.data.atlas.atlasType).toBe('anchor.synthetic-ocean-atlas');
   expect(exported.data.selectedOperationalWindow.windowId).toBe('semiEnclosedGulfSurvey');
   expect(exported.data.regionalMissionRecipe.recipeDigest).toMatch(/^fnv1a32:/);
+  expect(exported.data.bathymetryBuilderVersion).toBeTruthy();
+  expect(exported.data.bathymetryBuilderResult.builderDigest).toMatch(/^fnv1a32:/);
+  expect(exported.data.bathymetryArtifactDigest).toBe(exported.data.bathymetryBuilderResult.bathymetryArtifactDigest);
   expect(exported.data.provenance.hiddenTruthExposed).toBe(false);
   const originalDigest = exported.data.projectDigest;
+  const originalRecipeDigest = exported.data.regionalMissionRecipe.recipeDigest;
+  const originalBathymetryDigest = exported.data.bathymetryArtifactDigest;
 
   await page.locator('#env-studio-import-file').setInputFiles(exported.path);
   await expect.poll(() => page.evaluate(() => window.ANCHOR_ENVIRONMENT_STUDIO_DEBUG?.projectDigest ?? null), { timeout: 15000 }).toBe(originalDigest);
   await expect.poll(() => page.evaluate(() => window.ANCHOR_ENVIRONMENT_STUDIO_DEBUG?.studioStage ?? null), { timeout: 15000 }).toBe('regionalDetail');
   await expect.poll(() => page.evaluate(() => window.ANCHOR_ENVIRONMENT_STUDIO_DEBUG?.selectedWindow?.windowId ?? null), { timeout: 15000 }).toBe('semiEnclosedGulfSurvey');
+  await expect.poll(() => page.evaluate(() => window.ANCHOR_ENVIRONMENT_STUDIO_DEBUG?.regionalMissionRecipeDigest ?? null), { timeout: 15000 }).toBe(originalRecipeDigest);
+  await expect.poll(() => page.evaluate(() => window.ANCHOR_ENVIRONMENT_STUDIO_DEBUG?.bathymetryArtifactDigest ?? null), { timeout: 15000 }).toBe(originalBathymetryDigest);
 
   await page.locator('#mission-console [data-action="menu"]').click();
   await waitForAnchorRoute(page, 'main-menu');

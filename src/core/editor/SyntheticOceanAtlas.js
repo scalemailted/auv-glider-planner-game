@@ -2,19 +2,36 @@ import {
   canonicalJsonDigest,
   canonicalizeJsonValue
 } from '../../../packages/codecs/src/index.js';
+import {
+  SYNTHETIC_ATLAS_NOISE_VERSION,
+  clamp,
+  distanceToSegment,
+  domainWarp2D,
+  fractalBrownianMotion2D,
+  gaussian2D,
+  lerp,
+  ridgedNoise2D,
+  round,
+  seededFeaturePoints,
+  seededUnit,
+  smoothstep,
+  worleyDistance2D
+} from './SyntheticAtlasNoise.js';
 
 export const SYNTHETIC_OCEAN_ATLAS_TYPE = 'anchor.synthetic-ocean-atlas';
-export const SYNTHETIC_OCEAN_ATLAS_VERSION = '1.0.0';
-export const OPERATIONAL_WINDOW_VERSION = '1.0.0';
+export const SYNTHETIC_OCEAN_ATLAS_VERSION = '1.1.0';
+export const OPERATIONAL_WINDOW_VERSION = '1.1.0';
 export const REGIONAL_MISSION_RECIPE_TYPE = 'anchor.regional-mission-recipe';
-export const REGIONAL_MISSION_RECIPE_VERSION = '1.0.0';
+export const REGIONAL_MISSION_RECIPE_VERSION = '1.1.0';
 
 export const SYNTHETIC_OCEAN_ATLAS_PRESETS = Object.freeze([
-  { id: 'syntheticGulfWorld', label: 'Synthetic Gulf World' },
-  { id: 'islandChainWorld', label: 'Island Chain World' },
-  { id: 'shelfToBasinWorld', label: 'Shelf-to-Basin World' },
-  { id: 'openOceanEddyWorld', label: 'Open Ocean Eddy World' },
-  { id: 'mixedRegionalWorld', label: 'Mixed Regional World' }
+  { id: 'syntheticGulfWorld', label: 'Synthetic Gulf World', defaultSeed: 'atlas-gulf-r1-1' },
+  { id: 'islandChainWorld', label: 'Island Chain World', defaultSeed: 'atlas-island-r1-1' },
+  { id: 'shelfToBasinWorld', label: 'Shelf-to-Basin World', defaultSeed: 'atlas-shelf-basin-r1-1' },
+  { id: 'openOceanEddyWorld', label: 'Open Ocean Eddy World', defaultSeed: 'atlas-open-ocean-r1-1' },
+  { id: 'straitSillWorld', label: 'Strait / Sill World', defaultSeed: 'atlas-strait-r1-1' },
+  { id: 'riverDeltaShelfWorld', label: 'River Delta Shelf World', defaultSeed: 'atlas-river-delta-r1-1' },
+  { id: 'mixedRegionalWorld', label: 'Mixed Regional World', defaultSeed: 'atlas-mixed-r1-1' }
 ]);
 
 export const OPERATIONAL_WINDOW_PRESETS = Object.freeze([
@@ -25,6 +42,25 @@ export const OPERATIONAL_WINDOW_PRESETS = Object.freeze([
   { id: 'riverMouthPlumeSurvey', label: 'River Mouth Plume Survey', x: 0.12, y: 0.08, width: 0.3, height: 0.3 },
   { id: 'straitSillSurvey', label: 'Strait / Sill Survey', x: 0.44, y: 0.52, width: 0.34, height: 0.26 },
   { id: 'openOceanEddySurvey', label: 'Open Ocean Eddy Survey', x: 0.62, y: 0.54, width: 0.28, height: 0.3 }
+]);
+
+const DEFAULT_RESOLUTION = Object.freeze({ columns: 72, rows: 48 });
+const FIELD_NAMES = Object.freeze([
+  'landOceanMask',
+  'signedDistanceToCoast',
+  'distanceToCoast',
+  'continentalShelf',
+  'shelfBreak',
+  'deepBasin',
+  'islandSeamount',
+  'canyonPotential',
+  'riverMouthInfluence',
+  'straitSillInfluence',
+  'gulfBayInfluence',
+  'openOceanCorridor',
+  'dominantCurrentRegime',
+  'scalarRegime',
+  'missionSuitability'
 ]);
 
 const CONTEXT_LABELS = Object.freeze({
@@ -38,10 +74,137 @@ const CONTEXT_LABELS = Object.freeze({
   openOcean: 'open ocean'
 });
 
+const CURRENT_REGIME_IDS = Object.freeze([
+  'coastParallelShelfCurrent',
+  'basinRecirculation',
+  'mouthInflowOutflow',
+  'islandWake',
+  'straitJet',
+  'tidalReversal',
+  'mesoscaleEddy',
+  'broadBackgroundCurrent',
+  'weakLandConstraint'
+]);
+
+const SCALAR_REGIME_IDS = Object.freeze([
+  'riverPlume',
+  'bloomPatch',
+  'thermoclineHotspot',
+  'shelfNutrientPatch',
+  'islandWakePatch',
+  'mixingFront',
+  'eddyTrappedHotspot',
+  'sparseOpenOceanPatch'
+]);
+
+const PRESET_CONFIGS = Object.freeze({
+  syntheticGulfWorld: {
+    domainStyle: 'semiEnclosedGulf',
+    landmassStrategy: 'western-continent-with-curved-gulf',
+    basinStrategy: 'protected-basin-mouth',
+    islandStrategy: 'sparse-mouth-islands',
+    shelfStrategy: 'wide-curved-shelf',
+    currentBias: ['basinRecirculation', 'mouthInflowOutflow', 'coastParallelShelfCurrent'],
+    scalarBias: ['bloomPatch', 'thermoclineHotspot', 'riverPlume'],
+    missionScaleBias: 'regionalSurvey2to3',
+    landEllipses: [{ cx: -0.08, cy: 0.48, rx: 0.3, ry: 0.78 }, { cx: 0.22, cy: -0.08, rx: 0.32, ry: 0.22 }],
+    gulf: { cx: 0.35, cy: 0.43, rx: 0.28, ry: 0.31 },
+    basin: { cx: 0.62, cy: 0.6, rx: 0.29, ry: 0.24 },
+    riverMouths: [{ x: 0.2, y: 0.22 }],
+    straits: [{ x: 0.52, y: 0.49, rx: 0.14, ry: 0.07 }]
+  },
+  islandChainWorld: {
+    domainStyle: 'archipelago',
+    landmassStrategy: 'small-island-chain',
+    basinStrategy: 'deep-open-corridors',
+    islandStrategy: 'dense-arc',
+    shelfStrategy: 'island-fringing-shelves',
+    currentBias: ['islandWake', 'broadBackgroundCurrent', 'mesoscaleEddy'],
+    scalarBias: ['islandWakePatch', 'mixingFront', 'sparseOpenOceanPatch'],
+    missionScaleBias: 'regionalSurvey2to3',
+    landEllipses: [{ cx: -0.12, cy: 0.32, rx: 0.18, ry: 0.52 }],
+    islands: [{ x: 0.52, y: 0.24 }, { x: 0.61, y: 0.32 }, { x: 0.72, y: 0.42 }, { x: 0.82, y: 0.55 }],
+    basin: { cx: 0.72, cy: 0.66, rx: 0.32, ry: 0.26 },
+    straits: [{ x: 0.62, y: 0.48, rx: 0.22, ry: 0.06 }]
+  },
+  shelfToBasinWorld: {
+    domainStyle: 'shelfToBasin',
+    landmassStrategy: 'western-continent',
+    basinStrategy: 'broad-deep-basin',
+    islandStrategy: 'rare-seamounts',
+    shelfStrategy: 'wide-shelf-break',
+    currentBias: ['coastParallelShelfCurrent', 'broadBackgroundCurrent'],
+    scalarBias: ['shelfNutrientPatch', 'thermoclineHotspot'],
+    missionScaleBias: 'regionalSurvey2to3',
+    landEllipses: [{ cx: -0.14, cy: 0.5, rx: 0.28, ry: 0.86 }],
+    basin: { cx: 0.72, cy: 0.58, rx: 0.33, ry: 0.33 },
+    canyons: [{ start: { x: 0.35, y: 0.22 }, end: { x: 0.66, y: 0.72 } }, { start: { x: 0.4, y: 0.72 }, end: { x: 0.7, y: 0.46 } }]
+  },
+  openOceanEddyWorld: {
+    domainStyle: 'openOcean',
+    landmassStrategy: 'weak-distant-land',
+    basinStrategy: 'open-ocean-eddy-field',
+    islandStrategy: 'seamount-scatter',
+    shelfStrategy: 'minimal-land-constraint',
+    currentBias: ['mesoscaleEddy', 'broadBackgroundCurrent', 'weakLandConstraint'],
+    scalarBias: ['eddyTrappedHotspot', 'sparseOpenOceanPatch'],
+    missionScaleBias: 'fleetBenchmark4to6',
+    landEllipses: [{ cx: -0.28, cy: 0.3, rx: 0.16, ry: 0.5 }],
+    basin: { cx: 0.68, cy: 0.58, rx: 0.42, ry: 0.34 },
+    eddies: [{ x: 0.7, y: 0.62 }, { x: 0.56, y: 0.4 }],
+    seamountCount: 6
+  },
+  straitSillWorld: {
+    domainStyle: 'straitSill',
+    landmassStrategy: 'near-touching-landmasses',
+    basinStrategy: 'two-basins-with-sill',
+    islandStrategy: 'sill-islets',
+    shelfStrategy: 'constrained-channel',
+    currentBias: ['straitJet', 'tidalReversal', 'mouthInflowOutflow'],
+    scalarBias: ['mixingFront', 'thermoclineHotspot'],
+    missionScaleBias: 'regionalSurvey2to3',
+    landEllipses: [{ cx: 0.16, cy: 0.2, rx: 0.32, ry: 0.34 }, { cx: 0.2, cy: 0.82, rx: 0.36, ry: 0.32 }],
+    basin: { cx: 0.74, cy: 0.58, rx: 0.3, ry: 0.27 },
+    straits: [{ x: 0.34, y: 0.52, rx: 0.18, ry: 0.08 }]
+  },
+  riverDeltaShelfWorld: {
+    domainStyle: 'riverDeltaShelf',
+    landmassStrategy: 'northwest-river-coast',
+    basinStrategy: 'shelf-to-delta-basin',
+    islandStrategy: 'rare-barrier-islands',
+    shelfStrategy: 'deltaic-shelf',
+    currentBias: ['coastParallelShelfCurrent', 'mouthInflowOutflow'],
+    scalarBias: ['riverPlume', 'shelfNutrientPatch', 'bloomPatch'],
+    missionScaleBias: 'singleGliderSurvey',
+    landEllipses: [{ cx: -0.08, cy: 0.24, rx: 0.33, ry: 0.58 }, { cx: 0.16, cy: -0.12, rx: 0.48, ry: 0.2 }],
+    basin: { cx: 0.7, cy: 0.65, rx: 0.28, ry: 0.26 },
+    riverMouths: [{ x: 0.2, y: 0.18 }, { x: 0.28, y: 0.28 }]
+  },
+  mixedRegionalWorld: {
+    domainStyle: 'mixedRegional',
+    landmassStrategy: 'coast-gulf-island-composite',
+    basinStrategy: 'mixed-basin-shelf-break',
+    islandStrategy: 'moderate-archipelago',
+    shelfStrategy: 'variable-shelf-break',
+    currentBias: ['coastParallelShelfCurrent', 'basinRecirculation', 'islandWake', 'straitJet'],
+    scalarBias: ['riverPlume', 'bloomPatch', 'islandWakePatch', 'mixingFront'],
+    missionScaleBias: 'fleetBenchmark4to6',
+    landEllipses: [{ cx: -0.1, cy: 0.48, rx: 0.29, ry: 0.78 }, { cx: 0.18, cy: -0.1, rx: 0.33, ry: 0.2 }],
+    gulf: { cx: 0.36, cy: 0.42, rx: 0.24, ry: 0.28 },
+    basin: { cx: 0.68, cy: 0.62, rx: 0.3, ry: 0.26 },
+    islands: [{ x: 0.62, y: 0.24 }, { x: 0.72, y: 0.34 }, { x: 0.78, y: 0.46 }],
+    riverMouths: [{ x: 0.22, y: 0.2 }],
+    straits: [{ x: 0.48, y: 0.52, rx: 0.18, ry: 0.07 }],
+    canyons: [{ start: { x: 0.36, y: 0.28 }, end: { x: 0.65, y: 0.7 } }]
+  }
+});
+
 export function createSyntheticOceanAtlas(options = {}) {
   const preset = atlasPresetById(options.presetId ?? options.atlasPreset);
-  const seed = String(options.seed ?? 'env-atlas-r1');
-  const zones = atlasZonesForPreset(preset.id, seed);
+  const config = PRESET_CONFIGS[preset.id] ?? PRESET_CONFIGS.mixedRegionalWorld;
+  const seed = String(options.seed ?? preset.defaultSeed ?? 'env-atlas-r1-1');
+  const resolution = normalizeResolution(options.resolution);
+  const generated = generateAtlasFields({ preset, config, seed, resolution });
   const atlasBase = {
     atlasType: SYNTHETIC_OCEAN_ATLAS_TYPE,
     atlasVersion: SYNTHETIC_OCEAN_ATLAS_VERSION,
@@ -49,30 +212,37 @@ export function createSyntheticOceanAtlas(options = {}) {
     label: String(options.label ?? preset.label),
     seed,
     atlasPreset: preset.id,
+    coordinateFrame: 'normalizedSyntheticAtlas',
+    width: 1,
+    height: 1,
     widthNormalized: 1,
     heightNormalized: 1,
-    layers: {
-      landOceanMask: zones.filter((zone) => zone.layer === 'landOceanMask'),
-      continentalShelfZones: zones.filter((zone) => zone.context === 'coastShelf'),
-      shelfBreakZones: zones.filter((zone) => zone.context === 'shelfBreak'),
-      deepBasinZones: zones.filter((zone) => zone.context === 'deepBasin'),
-      islandArchipelagoZones: zones.filter((zone) => zone.context === 'islandChain'),
-      gulfBayZones: zones.filter((zone) => zone.context === 'gulfBasin'),
-      straitSillZones: zones.filter((zone) => zone.context === 'straitSill'),
-      riverMouthZones: zones.filter((zone) => zone.context === 'riverMouth'),
-      openOceanCorridors: zones.filter((zone) => zone.context === 'openOcean'),
-      dominantCurrentRegimes: dominantRegimeZones(preset.id),
-      missionScaleSuitability: missionSuitabilityZones(preset.id)
+    resolution,
+    presetDefinition: {
+      domainStyle: config.domainStyle,
+      landmassStrategy: config.landmassStrategy,
+      basinStrategy: config.basinStrategy,
+      islandStrategy: config.islandStrategy,
+      shelfStrategy: config.shelfStrategy,
+      currentRegimeBias: config.currentBias,
+      scalarRegimeBias: config.scalarBias,
+      missionScaleBias: config.missionScaleBias
     },
-    regions: zones.map((zone) => ({
-      regionId: zone.id,
-      label: zone.label,
-      context: zone.context,
-      shape: zone.shape,
-      synthetic: true,
-      notCalibratedRealOceanData: true
-    })),
+    layers: generated.layers,
+    layerSummaries: summarizeAtlasLayers(generated.layers),
+    currentRegimeLegend: CURRENT_REGIME_IDS,
+    scalarRegimeLegend: SCALAR_REGIME_IDS,
+    features: generated.features,
+    regions: generated.regions,
+    validation: validateAtlasFields(generated.layers, resolution),
+    fieldEngine: {
+      version: SYNTHETIC_ATLAS_NOISE_VERSION,
+      topologySource: 'structured distance fields and feature primitives',
+      roughnessUse: 'controlled coastline and seabed variability only',
+      rawNoiseTerrain: false
+    },
     claimBoundary: {
+      deterministicSyntheticOceanAtlas: true,
       syntheticOceanAtlas: true,
       realEarthMap: false,
       calibratedOceanProduct: false,
@@ -111,70 +281,104 @@ export function normalizeOperationalWindow(input = {}, atlasInput = createSynthe
     selectedBy: String(input.selectedBy ?? 'preset'),
     label: String(input.label ?? preset.label)
   };
-  const detectedContext = inferAtlasContext(atlas, windowBase);
-  const recommendations = recommendationsForContext(detectedContext, input);
+  const sampledFieldStats = sampleAtlasWindowStats(atlas, windowBase);
+  const detectedContext = inferAtlasContext(atlas, { ...windowBase, sampledFieldStats });
+  const recommendations = recommendationsForContext(detectedContext, input, sampledFieldStats);
   return withDigest({
     ...windowBase,
+    sampledFieldStats,
     detectedContext,
+    landFraction: detectedContext.landFraction,
+    waterFraction: detectedContext.waterFraction,
+    shelfFraction: detectedContext.shelfFraction,
+    shelfBreakFraction: detectedContext.shelfBreakFraction,
+    deepBasinFraction: detectedContext.deepBasinFraction,
+    islandFraction: detectedContext.islandFraction,
+    canyonPotential: detectedContext.canyonPotential,
+    riverMouthInfluence: detectedContext.riverMouthInfluence,
+    straitSillInfluence: detectedContext.straitSillInfluence,
+    gulfBayInfluence: detectedContext.gulfBayInfluence,
+    openOceanFraction: detectedContext.openOceanFraction,
     recommendedMissionScale: recommendations.recommendedMissionScale,
     recommendedDomain: recommendations.recommendedDomain,
     recommendedGliders: recommendations.recommendedGliders,
     recommendedDurationSeconds: recommendations.recommendedDurationSeconds,
     bathymetryRegime: recommendations.bathymetryRegime,
-    currentRegime: recommendations.currentRegime,
-    scalarRegime: recommendations.scalarRegime,
+    currentRegime: recommendations.currentRegimeHints,
+    scalarRegime: recommendations.scalarRegimeHints,
+    currentRegimeHints: recommendations.currentRegimeHints,
+    scalarRegimeHints: recommendations.scalarRegimeHints,
     coastlineOrientation: recommendations.coastlineOrientation,
     openBoundarySides: recommendations.openBoundarySides,
     featureMix: recommendations.featureMix,
     validationProfile: recommendations.validationProfile,
+    futureCouplingMetadata: recommendations.futureCouplingMetadata,
     claimBoundary: {
       synthetic: true,
       realEarthMap: false,
       calibratedOceanProduct: false,
-      operationalForecast: false
+      operationalForecast: false,
+      hiddenTruthExposed: false
     }
   }, 'windowDigest');
 }
 
 export function inferAtlasContext(atlas = createSyntheticOceanAtlas(), window = {}) {
-  const regions = atlas.regions ?? [];
-  const scores = Object.fromEntries(Object.keys(CONTEXT_LABELS).map((key) => [key, 0]));
-  const sampleCount = 9;
-  let landHits = 0;
-  for (let sy = 0; sy < sampleCount; sy += 1) {
-    for (let sx = 0; sx < sampleCount; sx += 1) {
-      const px = Number(window.x ?? 0) + (sx + 0.5) / sampleCount * Number(window.width ?? 0.3);
-      const py = Number(window.y ?? 0) + (sy + 0.5) / sampleCount * Number(window.height ?? 0.3);
-      for (const region of regions) {
-        if (!pointInShape(px, py, region.shape)) continue;
-        if (region.context && scores[region.context] != null) scores[region.context] += 1;
-        if (region.context === 'coastShelf' && region.label?.toLowerCase?.().includes('land')) landHits += 1;
-      }
-    }
-  }
-  const total = sampleCount * sampleCount;
-  const normalizedScores = Object.fromEntries(Object.entries(scores).map(([key, value]) => [key, round(value / total)]));
-  const sorted = Object.entries(normalizedScores).sort((a, b) => b[1] - a[1]);
-  const primaryContext = sorted[0]?.[1] > 0 ? sorted[0][0] : 'openOcean';
-  const secondaryContexts = sorted.slice(1).filter((entry) => entry[1] >= 0.08).map((entry) => entry[0]);
-  const waterFraction = round(1 - Math.min(0.72, landHits / total));
-  const regimeHints = regimeHintsForContext(primaryContext, secondaryContexts);
+  const stats = window.sampledFieldStats ?? sampleAtlasWindowStats(atlas, window);
+  const means = stats.layerMeans ?? {};
+  const landFraction = clamp(round(means.landOceanMask ?? 0));
+  const waterFraction = clamp(round(1 - landFraction));
+  const shelfFraction = clamp(round((means.continentalShelf ?? 0) * waterFraction));
+  const shelfBreakFraction = clamp(round(means.shelfBreak ?? 0));
+  const deepBasinFraction = clamp(round(means.deepBasin ?? 0));
+  const islandFraction = clamp(round(means.islandSeamount ?? 0));
+  const canyonPotential = clamp(round(means.canyonPotential ?? 0));
+  const riverMouthInfluence = clamp(round(means.riverMouthInfluence ?? 0));
+  const straitSillInfluence = clamp(round(means.straitSillInfluence ?? means.straitInfluence ?? 0));
+  const gulfBayInfluence = clamp(round(means.gulfBayInfluence ?? 0));
+  const openOceanFraction = clamp(round(means.openOceanCorridor ?? 0));
+  const scoreEntries = [
+    ['riverMouth', riverMouthInfluence * 1.35],
+    ['straitSill', straitSillInfluence * 1.3],
+    ['gulfBasin', gulfBayInfluence * 1.22],
+    ['islandChain', islandFraction * 1.12],
+    ['shelfBreak', shelfBreakFraction + canyonPotential * 0.45],
+    ['coastShelf', shelfFraction + Math.max(0, 0.24 - stats.meanDistanceToCoast) * 0.5],
+    ['deepBasin', deepBasinFraction],
+    ['openOcean', openOceanFraction * (waterFraction > 0.82 ? 1.2 : 0.9)]
+  ];
+  scoreEntries.sort((a, b) => b[1] - a[1]);
+  const primaryContext = scoreEntries[0]?.[1] > 0.08 ? scoreEntries[0][0] : 'openOcean';
+  const secondaryContexts = scoreEntries.slice(1).filter((entry) => entry[1] >= 0.14).map((entry) => entry[0]);
+  const contextScores = Object.fromEntries(scoreEntries.map(([key, value]) => [key, round(value)]));
+  const regimeHints = rankedRegimeHints(primaryContext, secondaryContexts, stats);
   return {
+    primary: primaryContext,
     primaryContext,
     primaryContextLabel: CONTEXT_LABELS[primaryContext],
+    secondary: secondaryContexts,
     secondaryContexts,
-    contextScores: normalizedScores,
-    landFraction: round(1 - waterFraction),
+    contextScores,
+    sampledFieldStats: stats,
+    landFraction,
     waterFraction,
-    shelfFraction: normalizedScores.coastShelf,
-    basinFraction: round(normalizedScores.deepBasin + normalizedScores.gulfBasin),
-    islandFraction: normalizedScores.islandChain,
-    riverMouthInfluence: normalizedScores.riverMouth,
-    straitInfluence: normalizedScores.straitSill,
-    openBoundarySides: boundarySidesForContext(primaryContext, secondaryContexts),
+    shelfFraction,
+    shelfBreakFraction,
+    deepBasinFraction,
+    basinFraction: round(deepBasinFraction + gulfBayInfluence * 0.45),
+    islandFraction,
+    canyonPotential,
+    riverMouthInfluence,
+    straitSillInfluence,
+    straitInfluence: straitSillInfluence,
+    gulfBayInfluence,
+    openOceanFraction,
+    openBoundarySides: boundarySidesForContext(primaryContext, secondaryContexts, stats),
     currentRegimeHint: regimeHints.currentRegime,
     scalarRegimeHint: regimeHints.scalarRegime,
-    missionSuitabilityHint: missionSuitabilityForContext(primaryContext, waterFraction),
+    currentRegimeHints: regimeHints.currentRegime,
+    scalarRegimeHints: regimeHints.scalarRegime,
+    missionSuitabilityHint: missionSuitabilityForContext(primaryContext, waterFraction, stats),
     synthetic: true,
     notOperationalForecast: true
   };
@@ -187,6 +391,7 @@ export function createRegionalMissionRecipe(options = {}) {
   const selectedWindow = options.selectedWindow?.windowDigest
     ? options.selectedWindow
     : normalizeOperationalWindow(options.selectedWindow ?? options.window ?? {}, atlas);
+  const datasetTags = datasetTagsForWindow(selectedWindow);
   const recipeBase = {
     recipeType: REGIONAL_MISSION_RECIPE_TYPE,
     recipeVersion: REGIONAL_MISSION_RECIPE_VERSION,
@@ -208,9 +413,12 @@ export function createRegionalMissionRecipe(options = {}) {
     coastlineOrientation: selectedWindow.coastlineOrientation,
     openBoundarySides: selectedWindow.openBoundarySides,
     bathymetryRegime: selectedWindow.bathymetryRegime,
-    currentRegime: selectedWindow.currentRegime,
-    scalarRegime: selectedWindow.scalarRegime,
+    currentRegime: selectedWindow.currentRegimeHints ?? selectedWindow.currentRegime ?? [],
+    scalarRegime: selectedWindow.scalarRegimeHints ?? selectedWindow.scalarRegime ?? [],
+    currentRegimeHints: selectedWindow.currentRegimeHints ?? selectedWindow.currentRegime ?? [],
+    scalarRegimeHints: selectedWindow.scalarRegimeHints ?? selectedWindow.scalarRegime ?? [],
     featureMix: selectedWindow.featureMix,
+    atlasFieldStats: selectedWindow.sampledFieldStats,
     intendedGliders: selectedWindow.recommendedGliders,
     missionDuration: {
       durationSeconds: selectedWindow.recommendedDurationSeconds,
@@ -229,6 +437,8 @@ export function createRegionalMissionRecipe(options = {}) {
       benchmarkBundle: 'REQUIRES_REGENERATION',
       environmentArtifact: 'REQUIRES_REGENERATION'
     },
+    datasetTags,
+    futureCouplingMetadata: selectedWindow.futureCouplingMetadata,
     claimBoundary: {
       synthetic: true,
       referenceInformed: true,
@@ -285,73 +495,246 @@ export function operationalWindowPresetById(id = 'semiEnclosedGulfSurvey') {
   return OPERATIONAL_WINDOW_PRESETS.find((preset) => preset.id === key) ?? OPERATIONAL_WINDOW_PRESETS[1];
 }
 
-function atlasZonesForPreset(presetId, seed) {
-  const jitter = seededJitter(seed);
-  const common = [
-    zone('land-west', 'Curved Synthetic Coastline', 'landOceanMask', 'coastShelf', 'blob', { cx: -0.12, cy: 0.42, rx: 0.28 + jitter * 0.02, ry: 0.72 }),
-    zone('continental-shelf', 'Continental Shelf Zone', 'bathymetry', 'coastShelf', 'rect', { x: 0.1, y: 0.08, width: 0.28, height: 0.82 }),
-    zone('shelf-break', 'Shelf Break Zone', 'bathymetry', 'shelfBreak', 'rect', { x: 0.34, y: 0.12, width: 0.16, height: 0.76 }),
-    zone('deep-basin', 'Deep Basin Zone', 'bathymetry', 'deepBasin', 'ellipse', { cx: 0.7, cy: 0.62, rx: 0.24, ry: 0.24 }),
-    zone('open-ocean', 'Open Ocean Corridor', 'bathymetry', 'openOcean', 'rect', { x: 0.58, y: 0.08, width: 0.36, height: 0.84 })
-  ];
-  const additions = {
-    syntheticGulfWorld: [
-      zone('gulf-bay', 'Semi-Enclosed Gulf / Basin', 'bathymetry', 'gulfBasin', 'ellipse', { cx: 0.36, cy: 0.42, rx: 0.26, ry: 0.3 }),
-      zone('gulf-mouth-sill', 'Gulf Mouth Strait / Sill', 'bathymetry', 'straitSill', 'rect', { x: 0.5, y: 0.47, width: 0.18, height: 0.14 }),
-      zone('river-mouth', 'River Mouth Influence', 'bathymetry', 'riverMouth', 'ellipse', { cx: 0.22, cy: 0.22, rx: 0.13, ry: 0.12 })
-    ],
-    islandChainWorld: [
-      zone('island-chain', 'Island Chain', 'bathymetry', 'islandChain', 'ellipse', { cx: 0.62, cy: 0.34, rx: 0.26, ry: 0.15 }),
-      zone('sheltered-channel', 'Sheltered Channel / Sill', 'bathymetry', 'straitSill', 'rect', { x: 0.48, y: 0.48, width: 0.28, height: 0.12 })
-    ],
-    shelfToBasinWorld: [
-      zone('canyon-break', 'Shelf Break Canyon Corridor', 'bathymetry', 'shelfBreak', 'rect', { x: 0.4, y: 0.18, width: 0.12, height: 0.58 }),
-      zone('deep-basin-expanded', 'Expanded Deep Basin', 'bathymetry', 'deepBasin', 'ellipse', { cx: 0.68, cy: 0.56, rx: 0.28, ry: 0.28 })
-    ],
-    openOceanEddyWorld: [
-      zone('open-eddy-corridor', 'Open Ocean Eddy Corridor', 'bathymetry', 'openOcean', 'ellipse', { cx: 0.72, cy: 0.6, rx: 0.3, ry: 0.26 }),
-      zone('weak-shelf-margin', 'Weak Shelf Margin', 'bathymetry', 'shelfBreak', 'rect', { x: 0.28, y: 0.12, width: 0.08, height: 0.76 })
-    ],
-    mixedRegionalWorld: [
-      zone('gulf-bay', 'Semi-Enclosed Gulf / Basin', 'bathymetry', 'gulfBasin', 'ellipse', { cx: 0.36, cy: 0.42, rx: 0.24, ry: 0.28 }),
-      zone('island-chain', 'Island Chain', 'bathymetry', 'islandChain', 'ellipse', { cx: 0.67, cy: 0.32, rx: 0.24, ry: 0.13 }),
-      zone('river-mouth', 'River Mouth Influence', 'bathymetry', 'riverMouth', 'ellipse', { cx: 0.22, cy: 0.2, rx: 0.12, ry: 0.12 }),
-      zone('strait-sill', 'Strait / Sill', 'bathymetry', 'straitSill', 'rect', { x: 0.45, y: 0.52, width: 0.22, height: 0.14 })
-    ]
+export function sampleAtlasLayer(atlas = {}, layerName = 'distanceToCoast', x = 0.5, y = 0.5) {
+  const grid = atlas.layers?.[layerName];
+  if (!Array.isArray(grid) || !grid.length) return 0;
+  const rows = grid.length;
+  const columns = grid[0]?.length ?? 0;
+  const gx = clamp(x) * (columns - 1);
+  const gy = clamp(y) * (rows - 1);
+  const x0 = Math.floor(gx);
+  const y0 = Math.floor(gy);
+  const x1 = Math.min(columns - 1, x0 + 1);
+  const y1 = Math.min(rows - 1, y0 + 1);
+  const tx = gx - x0;
+  const ty = gy - y0;
+  const top = lerp(Number(grid[y0]?.[x0] ?? 0), Number(grid[y0]?.[x1] ?? 0), tx);
+  const bottom = lerp(Number(grid[y1]?.[x0] ?? 0), Number(grid[y1]?.[x1] ?? 0), tx);
+  return round(lerp(top, bottom, ty));
+}
+
+export function sampleAtlasWindowStats(atlas = createSyntheticOceanAtlas(), window = {}) {
+  const sampleCount = Math.max(5, Math.floor(Number(window.sampleCount ?? 11)));
+  const layerValues = Object.fromEntries(FIELD_NAMES.map((name) => [name, []]));
+  const xMin = Number(window.x ?? window.bounds?.xMin ?? 0);
+  const yMin = Number(window.y ?? window.bounds?.yMin ?? 0);
+  const width = Number(window.width ?? ((window.bounds?.xMax ?? 0.3) - xMin) ?? 0.3);
+  const height = Number(window.height ?? ((window.bounds?.yMax ?? 0.3) - yMin) ?? 0.3);
+  for (let sy = 0; sy < sampleCount; sy += 1) {
+    for (let sx = 0; sx < sampleCount; sx += 1) {
+      const x = xMin + (sx + 0.5) / sampleCount * width;
+      const y = yMin + (sy + 0.5) / sampleCount * height;
+      for (const layerName of FIELD_NAMES) layerValues[layerName].push(sampleAtlasLayer(atlas, layerName, x, y));
+    }
+  }
+  const layerMeans = {};
+  const layerMax = {};
+  const layerMin = {};
+  for (const [name, values] of Object.entries(layerValues)) {
+    const finite = values.map(Number).filter(Number.isFinite);
+    layerMeans[name] = finite.length ? round(finite.reduce((sum, value) => sum + value, 0) / finite.length) : 0;
+    layerMin[name] = finite.length ? round(Math.min(...finite)) : 0;
+    layerMax[name] = finite.length ? round(Math.max(...finite)) : 0;
+  }
+  return {
+    type: 'anchor.synthetic-ocean-atlas.window-field-stats',
+    atlasDigest: atlas.atlasDigest,
+    sampleCount: sampleCount * sampleCount,
+    bounds: {
+      xMin: round(xMin),
+      yMin: round(yMin),
+      xMax: round(xMin + width),
+      yMax: round(yMin + height)
+    },
+    layerMeans,
+    layerMin,
+    layerMax,
+    meanDistanceToCoast: layerMeans.distanceToCoast,
+    fieldStatsDigest: canonicalJsonDigest({ layerMeans, layerMin, layerMax, bounds: { xMin, yMin, width, height } })
   };
-  return [...common, ...(additions[presetId] ?? additions.mixedRegionalWorld)];
 }
 
-function dominantRegimeZones(presetId) {
-  const regimes = {
-    syntheticGulfWorld: ['basinRecirculation', 'inflowOutflowThroughMouth', 'coastalBoundaryLayer'],
-    islandChainWorld: ['islandWake', 'flowSplitting', 'leeEddies'],
-    shelfToBasinWorld: ['coastParallelShelfCurrent', 'shallowDeepShear', 'canyonExchange'],
-    openOceanEddyWorld: ['broadBackgroundCurrent', 'mesoscaleEddy', 'weakLandConstraint'],
-    mixedRegionalWorld: ['coastParallelShelfCurrent', 'basinRecirculation', 'islandWake', 'acceleratedJet']
+function generateAtlasFields({ preset, config, seed, resolution }) {
+  const rows = resolution.rows;
+  const columns = resolution.columns;
+  const layers = Object.fromEntries(FIELD_NAMES.map((name) => [name, emptyGrid(rows, columns)]));
+  const featureConfig = proceduralFeatures(config, seed);
+  const raw = Array.from({ length: rows }, () => Array.from({ length: columns }, () => ({})));
+
+  for (let y = 0; y < rows; y += 1) {
+    for (let x = 0; x < columns; x += 1) {
+      const nx = columns <= 1 ? 0 : x / (columns - 1);
+      const ny = rows <= 1 ? 0 : y / (rows - 1);
+      raw[y][x] = evaluateStructuredAtlasCell(nx, ny, { preset, config, seed, features: featureConfig });
+      layers.landOceanMask[y][x] = raw[y][x].land ? 1 : 0;
+    }
+  }
+
+  const coastDistance = computeDistanceFields(layers.landOceanMask);
+  for (let y = 0; y < rows; y += 1) {
+    for (let x = 0; x < columns; x += 1) {
+      const cell = raw[y][x];
+      const dist = coastDistance.distance[y][x];
+      const signed = cell.land ? -dist : dist;
+      const shelfWidth = clamp(0.16 + (cell.shelfWidthNoise - 0.5) * 0.09, 0.08, 0.28);
+      const shelf = cell.land ? 0 : clamp(1 - smoothstep(shelfWidth * 0.25, shelfWidth, dist));
+      const shelfBreak = cell.land ? 0 : gaussian1D(dist, shelfWidth, Math.max(0.025, shelfWidth * 0.18));
+      const deepBasin = cell.land ? 0 : clamp(cell.basinPotential * 0.82 + smoothstep(shelfWidth * 0.8, 0.55, dist) * 0.55);
+      const islandSeamount = cell.land ? clamp(cell.islandPotential) : clamp(cell.seamountPotential + cell.islandPotential * 0.45);
+      const canyon = cell.land ? 0 : clamp(cell.canyonPotential * shelfBreak * (0.55 + deepBasin));
+      const river = cell.land ? 0 : clamp(cell.riverMouthInfluence * (0.55 + shelf));
+      const strait = cell.land ? 0 : clamp(cell.straitSillInfluence);
+      const gulf = cell.land ? 0 : clamp(cell.gulfBayInfluence);
+      const open = cell.land ? 0 : clamp((1 - shelf) * (0.45 + deepBasin * 0.55) * (1 - Math.max(gulf, strait) * 0.35));
+      const currentIndex = dominantCurrentIndex({ shelf, shelfBreak, deepBasin, islandSeamount, river, strait, gulf, open }, config);
+      const scalarIndex = dominantScalarIndex({ shelf, shelfBreak, deepBasin, islandSeamount, river, strait, gulf, open }, config);
+
+      layers.signedDistanceToCoast[y][x] = round(clamp(signed, -1, 1));
+      layers.distanceToCoast[y][x] = round(dist);
+      layers.continentalShelf[y][x] = round(shelf);
+      layers.shelfBreak[y][x] = round(shelfBreak);
+      layers.deepBasin[y][x] = round(deepBasin);
+      layers.islandSeamount[y][x] = round(islandSeamount);
+      layers.canyonPotential[y][x] = round(canyon);
+      layers.riverMouthInfluence[y][x] = round(river);
+      layers.straitSillInfluence[y][x] = round(strait);
+      layers.gulfBayInfluence[y][x] = round(gulf);
+      layers.openOceanCorridor[y][x] = round(open);
+      layers.dominantCurrentRegime[y][x] = currentIndex;
+      layers.scalarRegime[y][x] = scalarIndex;
+      layers.missionSuitability[y][x] = round(cell.land ? 0 : clamp(0.25 + shelf * 0.2 + deepBasin * 0.25 + Math.max(islandSeamount, canyon, river, strait, gulf, open) * 0.3));
+    }
+  }
+
+  const features = atlasFeaturesFromConfig(featureConfig, config, seed);
+  return {
+    layers,
+    features,
+    regions: atlasRegionsFromFields(preset, config, features)
   };
-  return (regimes[presetId] ?? regimes.mixedRegionalWorld).map((id, index) => ({ id, order: index + 1, syntheticHint: true }));
 }
 
-function missionSuitabilityZones(presetId) {
-  const fleet = presetId === 'openOceanEddyWorld' || presetId === 'mixedRegionalWorld' || presetId === 'syntheticGulfWorld';
-  return [
-    { id: 'single-glider', label: 'Single glider', suitability: 'PASS' },
-    { id: 'regional-2-3', label: '2-3 glider regional survey', suitability: 'PASS' },
-    { id: 'fleet-4-6', label: '4-6 glider fleet benchmark', suitability: fleet ? 'PASS' : 'WARN' }
-  ];
+function evaluateStructuredAtlasCell(x, y, context) {
+  const { config, seed, features } = context;
+  const warp = domainWarp2D(`${seed}:coast`, x, y, { strength: 0.035, frequency: 2.2 });
+  const wx = warp.x;
+  const wy = warp.y;
+  let landScore = 0;
+  for (const ellipse of config.landEllipses ?? []) {
+    landScore = Math.max(landScore, ellipseScore(wx, wy, ellipse));
+  }
+  for (const island of features.islands) {
+    landScore = Math.max(landScore, gaussian2D(wx, wy, island.x, island.y, island.rx, island.ry) * island.landStrength);
+  }
+  const coastlineRoughness = (fractalBrownianMotion2D(`${seed}:coastline`, x * 2.2, y * 2.2, { octaves: 4 }) - 0.5) * 0.18;
+  let gulfBayInfluence = 0;
+  if (config.gulf) {
+    gulfBayInfluence = gaussian2D(x, y, config.gulf.cx, config.gulf.cy, config.gulf.rx, config.gulf.ry);
+    landScore -= gulfBayInfluence * 0.72;
+  }
+  for (const strait of features.straits) {
+    landScore -= gaussian2D(x, y, strait.x, strait.y, strait.rx, strait.ry) * 0.8;
+  }
+  const land = landScore + coastlineRoughness > 0.52;
+  const basinPotential = config.basin ? gaussian2D(x, y, config.basin.cx, config.basin.cy, config.basin.rx, config.basin.ry) : 0;
+  const islandPotential = Math.max(0, ...features.islands.map((island) => gaussian2D(x, y, island.x, island.y, island.rx * 2.2, island.ry * 2.2)));
+  const seamountPotential = Math.max(0, ...features.seamounts.map((point) => gaussian2D(x, y, point.x, point.y, point.r, point.r)));
+  const riverMouthInfluence = Math.max(0, ...(config.riverMouths ?? []).map((river) => gaussian2D(x, y, river.x, river.y, 0.1, 0.08)));
+  const straitSillInfluence = Math.max(0, ...features.straits.map((strait) => gaussian2D(x, y, strait.x, strait.y, strait.rx, strait.ry)));
+  const canyonPotential = Math.max(0, ...features.canyons.map((canyon) => {
+    const segment = distanceToSegment(x, y, canyon.start.x, canyon.start.y, canyon.end.x, canyon.end.y);
+    return Math.max(0, 1 - segment.distance / canyon.width) * Math.sin(segment.t * Math.PI);
+  }));
+  return {
+    land,
+    basinPotential,
+    islandPotential,
+    seamountPotential,
+    canyonPotential,
+    riverMouthInfluence,
+    straitSillInfluence,
+    gulfBayInfluence,
+    shelfWidthNoise: fractalBrownianMotion2D(`${seed}:shelf-width`, x * 1.6, y * 1.6, { octaves: 3 })
+  };
 }
 
-function recommendationsForContext(context, input = {}) {
+function proceduralFeatures(config, seed) {
+  const seededIslands = (config.islands ?? []).map((point, index) => ({
+    x: round(point.x + (seededUnit(seed, 'island-x', index) - 0.5) * 0.035),
+    y: round(point.y + (seededUnit(seed, 'island-y', index) - 0.5) * 0.035),
+    rx: round(0.035 + seededUnit(seed, 'island-rx', index) * 0.025),
+    ry: round(0.028 + seededUnit(seed, 'island-ry', index) * 0.023),
+    landStrength: round(0.85 + seededUnit(seed, 'island-strength', index) * 0.45)
+  }));
+  const seamounts = seededFeaturePoints(`${seed}:seamounts`, {
+    count: Number(config.seamountCount ?? 5),
+    minDistance: 0.11,
+    bounds: { xMin: 0.42, yMin: 0.16, xMax: 0.92, yMax: 0.88 }
+  }).map((point, index) => ({
+    ...point,
+    r: round(0.045 + seededUnit(seed, 'seamount-r', index) * 0.045)
+  }));
+  const straits = (config.straits ?? []).map((entry, index) => ({
+    x: round(entry.x + (seededUnit(seed, 'strait-x', index) - 0.5) * 0.025),
+    y: round(entry.y + (seededUnit(seed, 'strait-y', index) - 0.5) * 0.025),
+    rx: entry.rx,
+    ry: entry.ry
+  }));
+  const canyons = (config.canyons ?? [{ start: { x: 0.35, y: 0.28 }, end: { x: 0.66, y: 0.72 } }]).map((entry, index) => ({
+    start: {
+      x: round(entry.start.x + (seededUnit(seed, 'canyon-sx', index) - 0.5) * 0.04),
+      y: round(entry.start.y + (seededUnit(seed, 'canyon-sy', index) - 0.5) * 0.04)
+    },
+    end: {
+      x: round(entry.end.x + (seededUnit(seed, 'canyon-ex', index) - 0.5) * 0.05),
+      y: round(entry.end.y + (seededUnit(seed, 'canyon-ey', index) - 0.5) * 0.05)
+    },
+    width: round(0.045 + seededUnit(seed, 'canyon-w', index) * 0.035)
+  }));
+  return { islands: seededIslands, seamounts, straits, canyons };
+}
+
+function computeDistanceFields(landMask = []) {
+  const rows = landMask.length;
+  const columns = landMask[0]?.length ?? 0;
+  const boundary = [];
+  for (let y = 0; y < rows; y += 1) {
+    for (let x = 0; x < columns; x += 1) {
+      const value = landMask[y][x];
+      const edge = [[1, 0], [-1, 0], [0, 1], [0, -1]].some(([dx, dy]) => {
+        const nx = x + dx;
+        const ny = y + dy;
+        return nx < 0 || ny < 0 || nx >= columns || ny >= rows || landMask[ny]?.[nx] !== value;
+      });
+      if (edge) boundary.push({ x, y });
+    }
+  }
+  const diagonal = Math.sqrt(columns * columns + rows * rows);
+  const distance = emptyGrid(rows, columns);
+  for (let y = 0; y < rows; y += 1) {
+    for (let x = 0; x < columns; x += 1) {
+      let best = diagonal;
+      for (const point of boundary) {
+        const dx = x - point.x;
+        const dy = y - point.y;
+        best = Math.min(best, Math.sqrt(dx * dx + dy * dy));
+      }
+      distance[y][x] = round(best / Math.max(1, diagonal));
+    }
+  }
+  return { distance };
+}
+
+function recommendationsForContext(context, input = {}, stats = {}) {
   const primary = context.primaryContext ?? 'openOcean';
-  const fleet = input.missionScale === 'fleetBenchmark4to6' || primary === 'openOcean' || primary === 'gulfBasin';
+  const fleet = input.missionScale === 'fleetBenchmark4to6' || primary === 'openOcean' || (primary === 'gulfBasin' && context.waterFraction > 0.62);
   const regional = input.missionScale === 'regionalSurvey2to3' || primary === 'shelfBreak' || primary === 'islandChain' || primary === 'straitSill';
   const gliders = Number.isFinite(Number(input.recommendedGliders))
     ? Number(input.recommendedGliders)
     : fleet ? 4 : regional ? 3 : 1;
   const duration = fleet ? 120 * 3600 : regional ? 72 * 3600 : 36 * 3600;
   const size = fleet ? [120000, 90000, 1500] : regional ? [76000, 56000, 1200] : [42000, 32000, 1000];
-  const regimes = regimeHintsForContext(primary, context.secondaryContexts ?? []);
+  const regimeHints = rankedRegimeHints(primary, context.secondaryContexts ?? [], stats);
   const domain = {
     widthMeters: size[0],
     heightMeters: size[1],
@@ -366,63 +749,70 @@ function recommendationsForContext(context, input = {}) {
     recommendedGliders: gliders,
     recommendedDurationSeconds: duration,
     bathymetryRegime: bathymetryRegimeForContext(primary),
-    currentRegime: regimes.currentRegime,
-    scalarRegime: regimes.scalarRegime,
+    currentRegimeHints: regimeHints.currentRegime,
+    scalarRegimeHints: regimeHints.scalarRegime,
     coastlineOrientation: primary === 'islandChain' || primary === 'openOcean' ? 'islandArchipelago' : primary === 'gulfBasin' || primary === 'straitSill' ? 'curvedGulf' : 'westCoast',
-    openBoundarySides: context.openBoundarySides ?? boundarySidesForContext(primary, context.secondaryContexts ?? []),
+    openBoundarySides: context.openBoundarySides ?? boundarySidesForContext(primary, context.secondaryContexts ?? [], stats),
     featureMix: featureMixForContext(primary, context),
     validationProfile: {
       id: `${primary}-synthetic-benchmark`,
       label: `${CONTEXT_LABELS[primary]} synthetic benchmark profile`,
       notOperationalValidation: true
-    }
+    },
+    futureCouplingMetadata: futureCouplingMetadata(context, regimeHints)
   };
 }
 
-function regimeHintsForContext(primary, secondary = []) {
+function rankedRegimeHints(primary, secondary = [], stats = {}) {
   const contexts = [primary, ...secondary];
   const currentRegime = new Set();
   const scalarRegime = new Set();
   for (const context of contexts) {
     if (context === 'coastShelf') {
-      ['coastParallelShelfCurrent', 'upwellingDownwellingOptional', 'shallowDeepShear'].forEach((id) => currentRegime.add(id));
-      ['coastalFront', 'shelfNutrientPatch', 'riverPlumeOptional'].forEach((id) => scalarRegime.add(id));
+      ['coastParallelShelfCurrent', 'weakLandConstraint'].forEach((id) => currentRegime.add(id));
+      ['shelfNutrientPatch', 'riverPlume'].forEach((id) => scalarRegime.add(id));
     } else if (context === 'gulfBasin') {
-      ['basinRecirculation', 'inflowOutflowThroughMouth', 'coastalBoundaryLayer', 'eddyActivity'].forEach((id) => currentRegime.add(id));
-      ['bloomPatch', 'thermoclineHotspot', 'plumeRetention'].forEach((id) => scalarRegime.add(id));
+      ['basinRecirculation', 'mouthInflowOutflow', 'coastParallelShelfCurrent'].forEach((id) => currentRegime.add(id));
+      ['bloomPatch', 'thermoclineHotspot', 'riverPlume'].forEach((id) => scalarRegime.add(id));
     } else if (context === 'islandChain') {
-      ['islandWake', 'flowSplitting', 'leeEddies', 'shelteredChannels'].forEach((id) => currentRegime.add(id));
-      ['islandWakePatch', 'reefLikeProductivity', 'channelFront'].forEach((id) => scalarRegime.add(id));
+      ['islandWake', 'broadBackgroundCurrent', 'mesoscaleEddy'].forEach((id) => currentRegime.add(id));
+      ['islandWakePatch', 'mixingFront'].forEach((id) => scalarRegime.add(id));
     } else if (context === 'straitSill') {
-      ['acceleratedJet', 'tidalReversal', 'verticalShear', 'mixingHotspot'].forEach((id) => currentRegime.add(id));
-      ['mixingFront', 'sillNutrientPatch'].forEach((id) => scalarRegime.add(id));
+      ['straitJet', 'tidalReversal', 'mouthInflowOutflow'].forEach((id) => currentRegime.add(id));
+      ['mixingFront', 'thermoclineHotspot'].forEach((id) => scalarRegime.add(id));
     } else if (context === 'openOcean' || context === 'deepBasin') {
       ['broadBackgroundCurrent', 'mesoscaleEddy', 'weakLandConstraint'].forEach((id) => currentRegime.add(id));
       ['sparseOpenOceanPatch', 'eddyTrappedHotspot'].forEach((id) => scalarRegime.add(id));
     } else if (context === 'riverMouth') {
-      ['coastalBoundaryLayer', 'plumeOutflowShear'].forEach((id) => currentRegime.add(id));
-      ['riverPlumeOptional', 'coastalFront'].forEach((id) => scalarRegime.add(id));
+      ['mouthInflowOutflow', 'coastParallelShelfCurrent'].forEach((id) => currentRegime.add(id));
+      ['riverPlume', 'shelfNutrientPatch'].forEach((id) => scalarRegime.add(id));
     } else if (context === 'shelfBreak') {
-      ['coastParallelShelfCurrent', 'shallowDeepShear', 'shelfBreakJet'].forEach((id) => currentRegime.add(id));
-      ['shelfNutrientPatch', 'shelfBreakFront'].forEach((id) => scalarRegime.add(id));
+      ['coastParallelShelfCurrent', 'broadBackgroundCurrent'].forEach((id) => currentRegime.add(id));
+      ['shelfNutrientPatch', 'thermoclineHotspot'].forEach((id) => scalarRegime.add(id));
     }
   }
+  const means = stats.layerMeans ?? {};
+  if ((means.riverMouthInfluence ?? 0) > 0.12) scalarRegime.add('riverPlume');
+  if ((means.straitSillInfluence ?? 0) > 0.12) currentRegime.add('straitJet');
+  if ((means.openOceanCorridor ?? 0) > 0.28) currentRegime.add('mesoscaleEddy');
   return {
     currentRegime: [...currentRegime],
     scalarRegime: [...scalarRegime]
   };
 }
 
-function boundarySidesForContext(primary, secondary = []) {
+function boundarySidesForContext(primary, secondary = [], stats = {}) {
   if (primary === 'gulfBasin') return ['east'];
   if (primary === 'straitSill') return ['east', 'west'];
   if (primary === 'islandChain' || primary === 'openOcean' || secondary.includes('openOcean')) return ['north', 'south', 'east', 'west'];
   if (primary === 'riverMouth') return ['south', 'east'];
+  if ((stats.layerMeans?.openOceanCorridor ?? 0) > 0.36) return ['east', 'south', 'north'];
   return ['east', 'south'];
 }
 
-function missionSuitabilityForContext(primary, waterFraction) {
+function missionSuitabilityForContext(primary, waterFraction, stats = {}) {
   if (waterFraction < 0.42) return 'WARN: limited navigable synthetic water area';
+  if ((stats.layerMeans?.missionSuitability ?? 0) < 0.28) return 'WARN: limited route-diversity heuristic';
   if (primary === 'openOcean' || primary === 'gulfBasin' || primary === 'shelfBreak') return 'PASS: suitable for regional/fleet survey exercises';
   return 'PASS: suitable for focused synthetic mission exercises';
 }
@@ -459,7 +849,7 @@ function featureMixForContext(primary, context) {
   return {
     shelfFraction: primary === 'coastShelf' || primary === 'riverMouth' ? high : medium,
     deepBasinFraction: primary === 'deepBasin' || primary === 'openOcean' || primary === 'gulfBasin' ? high : medium,
-    canyonDensity: primary === 'shelfBreak' ? high : medium,
+    canyonDensity: primary === 'shelfBreak' || Number(context.canyonPotential ?? 0) > 0.08 ? high : medium,
     islandSeamountCount: primary === 'islandChain' || primary === 'openOcean' ? high : low,
     coastlineComplexity: primary === 'gulfBasin' || primary === 'islandChain' ? high : medium,
     riverMouthDeltaInfluence: primary === 'riverMouth' || Number(context.riverMouthInfluence ?? 0) > 0.08 ? high : low,
@@ -469,11 +859,34 @@ function featureMixForContext(primary, context) {
   };
 }
 
-function missionScaleForGliders(gliders = 1) {
-  const count = Number(gliders) || 1;
-  if (count >= 4) return 'fleetBenchmark4to6';
-  if (count >= 2) return 'regionalSurvey2to3';
-  return 'singleGliderSurvey';
+function futureCouplingMetadata(context, regimeHints) {
+  return {
+    currentRegimeHints: regimeHints.currentRegime,
+    scalarRegimeHints: regimeHints.scalarRegime,
+    openBoundarySides: context.openBoundarySides,
+    coastlineOrientationHint: context.primaryContext === 'islandChain' || context.primaryContext === 'openOcean' ? 'islandArchipelago' : context.primaryContext === 'gulfBasin' ? 'curvedGulf' : 'westCoast',
+    sourceZones: {
+      riverMouthZones: context.riverMouthInfluence > 0.05,
+      straitSillZones: context.straitSillInfluence > 0.05,
+      shelfBreakZones: context.shelfBreakFraction > 0.08,
+      basinGyreZones: context.deepBasinFraction > 0.12 || context.gulfBayInfluence > 0.12,
+      islandWakeZones: context.islandFraction > 0.08
+    },
+    noFieldsGenerated: true
+  };
+}
+
+function datasetTagsForWindow(window = {}) {
+  const current = window.currentRegimeHints?.[0] ?? window.currentRegime?.[0] ?? 'notGenerated';
+  const scalar = window.scalarRegimeHints?.[0] ?? window.scalarRegime?.[0] ?? 'notGenerated';
+  return {
+    regionType: window.detectedContext?.primaryContext ?? 'unknown',
+    missionScale: window.recommendedMissionScale ?? 'singleGliderSurvey',
+    currentRegime: current,
+    scalarRegime: scalar,
+    bathymetryRegime: window.bathymetryRegime ?? 'mixedRegionalComposite',
+    heldOutCandidate: false
+  };
 }
 
 function maxDepthForRegime(regime) {
@@ -483,30 +896,191 @@ function maxDepthForRegime(regime) {
   return 320;
 }
 
-function zone(id, label, layer, context, shapeType, shape) {
-  return { id, label, layer, context, shape: { type: shapeType, ...shape } };
+function missionScaleForGliders(gliders = 1) {
+  const count = Number(gliders) || 1;
+  if (count >= 4) return 'fleetBenchmark4to6';
+  if (count >= 2) return 'regionalSurvey2to3';
+  return 'singleGliderSurvey';
 }
 
-function pointInShape(x, y, shape = {}) {
-  if (shape.type === 'rect') {
-    return x >= shape.x && x <= shape.x + shape.width && y >= shape.y && y <= shape.y + shape.height;
-  }
-  const cx = Number(shape.cx ?? 0.5);
-  const cy = Number(shape.cy ?? 0.5);
-  const rx = Number(shape.rx ?? 0.2);
-  const ry = Number(shape.ry ?? 0.2);
-  const dx = (x - cx) / Math.max(0.0001, rx);
-  const dy = (y - cy) / Math.max(0.0001, ry);
-  return dx * dx + dy * dy <= 1;
+function dominantCurrentIndex(values, config) {
+  const candidates = [
+    ['straitJet', values.strait],
+    ['mouthInflowOutflow', Math.max(values.gulf, values.river)],
+    ['islandWake', values.islandSeamount],
+    ['coastParallelShelfCurrent', values.shelf],
+    ['basinRecirculation', values.gulf + values.deepBasin * 0.4],
+    ['mesoscaleEddy', values.open + values.deepBasin * 0.35],
+    ['broadBackgroundCurrent', values.open],
+    ['weakLandConstraint', values.open * (1 - values.shelf)]
+  ];
+  for (const bias of config.currentBias ?? []) candidates.push([bias, 0.2]);
+  candidates.sort((a, b) => b[1] - a[1]);
+  return CURRENT_REGIME_IDS.indexOf(candidates[0]?.[0]) + 1 || 1;
 }
 
-function seededJitter(seed) {
-  let hash = 2166136261;
-  for (const char of String(seed)) {
-    hash ^= char.charCodeAt(0);
-    hash = Math.imul(hash, 16777619);
+function dominantScalarIndex(values, config) {
+  const candidates = [
+    ['riverPlume', values.river],
+    ['bloomPatch', values.gulf],
+    ['islandWakePatch', values.islandSeamount],
+    ['mixingFront', values.strait],
+    ['shelfNutrientPatch', values.shelf + values.shelfBreak * 0.4],
+    ['thermoclineHotspot', values.deepBasin + values.shelfBreak * 0.25],
+    ['eddyTrappedHotspot', values.open + values.deepBasin * 0.35],
+    ['sparseOpenOceanPatch', values.open]
+  ];
+  for (const bias of config.scalarBias ?? []) candidates.push([bias, 0.2]);
+  candidates.sort((a, b) => b[1] - a[1]);
+  return SCALAR_REGIME_IDS.indexOf(candidates[0]?.[0]) + 1 || 1;
+}
+
+function validateAtlasFields(layers, resolution) {
+  const errors = [];
+  const warnings = [];
+  for (const name of FIELD_NAMES) {
+    const grid = layers[name];
+    if (!Array.isArray(grid) || grid.length !== resolution.rows) errors.push(`${name} row count mismatch.`);
+    if (grid?.some?.((row) => !Array.isArray(row) || row.length !== resolution.columns)) errors.push(`${name} column count mismatch.`);
+    const values = grid?.flat?.().map(Number) ?? [];
+    if (!values.every(Number.isFinite)) errors.push(`${name} contains non-finite values.`);
+    if (!['signedDistanceToCoast', 'dominantCurrentRegime', 'scalarRegime'].includes(name) && values.some((value) => value < 0 || value > 1)) {
+      errors.push(`${name} must be bounded to 0..1.`);
+    }
   }
-  return ((hash >>> 0) % 1000) / 1000 - 0.5;
+  const landMean = meanGrid(layers.landOceanMask);
+  if (landMean <= 0.01) warnings.push('Atlas has very little land constraint.');
+  return {
+    status: errors.length ? 'FAIL' : warnings.length ? 'WARN' : 'PASS',
+    errors,
+    warnings,
+    checks: [
+      { id: 'atlas-required-layers', passed: errors.every((entry) => !entry.includes('mismatch')) },
+      { id: 'atlas-finite-fields', passed: errors.every((entry) => !entry.includes('non-finite')) },
+      { id: 'atlas-public-safe', passed: true }
+    ],
+    hiddenTruthExposed: false
+  };
+}
+
+function summarizeAtlasLayers(layers) {
+  const summaries = {};
+  for (const [name, grid] of Object.entries(layers)) {
+    const values = grid.flat().map(Number).filter(Number.isFinite);
+    summaries[name] = {
+      min: values.length ? round(Math.min(...values)) : 0,
+      mean: values.length ? round(values.reduce((sum, value) => sum + value, 0) / values.length) : 0,
+      max: values.length ? round(Math.max(...values)) : 0
+    };
+  }
+  return summaries;
+}
+
+function atlasFeaturesFromConfig(features, config, seed) {
+  return [
+    ...(config.riverMouths ?? []).map((point, index) => ({
+      featureId: `river-mouth-${index + 1}`,
+      type: 'riverMouth',
+      x: round(point.x),
+      y: round(point.y),
+      source: 'structured-coastline',
+      synthetic: true
+    })),
+    ...features.straits.map((point, index) => ({
+      featureId: `strait-sill-${index + 1}`,
+      type: 'straitSill',
+      x: point.x,
+      y: point.y,
+      rx: point.rx,
+      ry: point.ry,
+      source: 'near-touching-landmass-distance-field',
+      synthetic: true
+    })),
+    ...features.canyons.map((canyon, index) => ({
+      featureId: `canyon-spline-${index + 1}`,
+      type: 'canyonPotentialSpline',
+      start: canyon.start,
+      end: canyon.end,
+      width: canyon.width,
+      source: 'seeded-shelf-break-to-basin-spline',
+      synthetic: true
+    })),
+    ...features.islands.map((point, index) => ({
+      featureId: `island-${index + 1}`,
+      type: 'island',
+      x: point.x,
+      y: point.y,
+      rx: point.rx,
+      ry: point.ry,
+      source: 'seeded-archipelago-primitive',
+      synthetic: true
+    })),
+    ...features.seamounts.slice(0, 6).map((point, index) => ({
+      featureId: `seamount-${index + 1}`,
+      type: 'seamount',
+      x: point.x,
+      y: point.y,
+      radius: point.r,
+      source: 'blue-noise-like-seeded-placement',
+      synthetic: true
+    })),
+    {
+      featureId: 'atlas-roughness-control',
+      type: 'controlledRoughness',
+      source: SYNTHETIC_ATLAS_NOISE_VERSION,
+      rawNoiseTerrain: false,
+      seedDigest: canonicalJsonDigest({ seed })
+    }
+  ];
+}
+
+function atlasRegionsFromFields(preset, config, features) {
+  return [
+    region('coast-shelf-field', 'Coast / Shelf Field', 'coastShelf', 'field', { layer: 'continentalShelf' }),
+    region('shelf-break-field', 'Shelf Break Field', 'shelfBreak', 'field', { layer: 'shelfBreak' }),
+    region('deep-basin-field', 'Deep Basin Field', 'deepBasin', 'field', { layer: 'deepBasin' }),
+    region('open-ocean-field', 'Open Ocean Corridor Field', 'openOcean', 'field', { layer: 'openOceanCorridor' }),
+    region('gulf-bay-field', 'Gulf / Bay Field', 'gulfBasin', 'field', { layer: 'gulfBayInfluence' }),
+    region('river-mouth-field', 'River Mouth Field', 'riverMouth', 'field', { layer: 'riverMouthInfluence' }),
+    region('strait-sill-field', 'Strait / Sill Field', 'straitSill', 'field', { layer: 'straitSillInfluence' }),
+    region('island-seamount-field', 'Island / Seamount Field', 'islandChain', 'field', { layer: 'islandSeamount' })
+  ].map((entry) => ({
+    ...entry,
+    presetId: preset.id,
+    domainStyle: config.domainStyle,
+    featureRefs: features.filter((feature) => feature.type === entry.context || feature.type?.includes?.(entry.context)).map((feature) => feature.featureId),
+    synthetic: true,
+    notCalibratedRealOceanData: true
+  }));
+}
+
+function region(regionId, label, context, shapeType, shape) {
+  return { regionId, label, context, shape: { type: shapeType, ...shape } };
+}
+
+function ellipseScore(x, y, ellipse) {
+  return gaussian2D(x, y, ellipse.cx, ellipse.cy, ellipse.rx, ellipse.ry);
+}
+
+function gaussian1D(value, center, sigma) {
+  const z = (Number(value) - Number(center)) / Math.max(1e-6, Number(sigma));
+  return Math.exp(-0.5 * z * z);
+}
+
+function normalizeResolution(input = {}) {
+  return {
+    columns: Math.max(24, Math.min(144, Math.floor(Number(input.columns ?? DEFAULT_RESOLUTION.columns)))),
+    rows: Math.max(18, Math.min(96, Math.floor(Number(input.rows ?? DEFAULT_RESOLUTION.rows))))
+  };
+}
+
+function emptyGrid(rows, columns) {
+  return Array.from({ length: rows }, () => Array.from({ length: columns }, () => 0));
+}
+
+function meanGrid(grid = []) {
+  const values = grid.flat().map(Number).filter(Number.isFinite);
+  return values.length ? values.reduce((sum, value) => sum + value, 0) / values.length : 0;
 }
 
 function withDigest(value, digestKey) {
@@ -519,9 +1093,4 @@ function clampFinite(value, min, max, fallback) {
   const number = Number(value);
   const finite = Number.isFinite(number) ? number : Number(fallback);
   return round(Math.min(max, Math.max(min, finite)));
-}
-
-function round(value, digits = 6) {
-  const number = Number(value);
-  return Number.isFinite(number) ? Number(number.toFixed(digits)) : 0;
 }

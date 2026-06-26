@@ -177,6 +177,32 @@
       ],
       "createdAtNonCanonical": "",
       "updatedAtNonCanonical": ""
+    },
+    {
+      "feedbackId": "ALPHA-FB-009",
+      "title": "Synthetic Ocean Atlas needs a procedural field engine and window-conditioned bathymetry generator.",
+      "source": "alpha tester",
+      "status": "accepted-for-implementation",
+      "category": [
+        "UX",
+        "BENCH",
+        "EDU",
+        "SCI"
+      ],
+      "severity": "P2",
+      "affectedWorkflow": "Simulation Lab / Environment Studio / Synthetic Ocean Atlas",
+      "summary": "The current atlas is too symbolic. Alpha review wants a seeded synthetic world map whose environmental fields determine land masses, coastline context, shelf/basin/island/gulf regimes, current/scalar regime hints, and generated regional bathymetry from a selected operational window.",
+      "decision": "Accepted for ENV-ATLAS-R1.1.",
+      "proposedPhase": "ENV-ATLAS-R1.1",
+      "ownerNotes": "",
+      "evidence": [],
+      "acceptanceCriteria": [
+        "Atlas generation is deterministic, procedural, field-based, and not a real Earth map.",
+        "Operational window inference samples atlas fields and produces a Regional Mission Recipe.",
+        "Generated bathymetry comes from structured procedural features, distance fields, seeded placement, controlled roughness, validation, and provenance."
+      ],
+      "createdAtNonCanonical": "",
+      "updatedAtNonCanonical": ""
     }
   ]
 }

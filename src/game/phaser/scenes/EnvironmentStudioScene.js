@@ -36,7 +36,8 @@ import {
 } from '../../../core/editor/EnvironmentStudioProject.js';
 import {
   OPERATIONAL_WINDOW_PRESETS,
-  SYNTHETIC_OCEAN_ATLAS_PRESETS
+  SYNTHETIC_OCEAN_ATLAS_PRESETS,
+  sampleAtlasLayer
 } from '../../../core/editor/SyntheticOceanAtlas.js';
 
 const PhaserScene = globalThis.Phaser?.Scene ?? class {};
@@ -331,6 +332,8 @@ export class EnvironmentStudioScene extends PhaserScene {
           <div class="environment-studio-digest">
             <span>Project Digest</span>
             <strong>${escapeHtml(shortDigest(project.projectDigest))}</strong>
+            <span>Bathymetry Artifact</span>
+            <strong>${escapeHtml(shortDigest(this.session.bathymetryArtifactDigest ?? this.session.bathymetryBuilderResult?.bathymetryArtifactDigest))}</strong>
           </div>
         </header>
         <section class="environment-studio-preview-grid" aria-label="Regional bathymetry preview">
@@ -512,6 +515,9 @@ export class EnvironmentStudioScene extends PhaserScene {
       featureMix: this.session.featureMix,
       regionalFeatureSummary: this.session.regionalFeatureSummary,
       multiGliderSuitability: this.session.multiGliderSuitability,
+      bathymetryBuilderVersion: this.session.bathymetryBuilderVersion,
+      bathymetryBuilderResult: this.session.bathymetryBuilderResult,
+      bathymetryArtifactDigest: this.session.bathymetryArtifactDigest ?? this.session.bathymetryBuilderResult?.bathymetryArtifactDigest,
       tiles: this.session.tiles.map((tile) => ({
         id: tile.id,
         archetypeId: tile.archetypeId,
@@ -731,6 +737,8 @@ function simplifiedConsoleHtml(scene, summary = {}, panelSections = new Map(), a
         ${metricHtml('Preview mesh', `${summary.previewGridShape.columns} x ${summary.previewGridShape.rows}`)}
         ${metricHtml('Preview budget', session.previewBudget?.label ?? 'Not measured')}
         ${metricHtml('Suitability', session.multiGliderSuitability?.status ?? 'WARN')}
+        ${metricHtml('Builder validation', session.bathymetryBuilderResult?.validationReport?.status ?? 'NOT_GENERATED')}
+        ${metricHtml('Bathymetry artifact', shortDigest(session.bathymetryArtifactDigest ?? session.bathymetryBuilderResult?.bathymetryArtifactDigest))}
       </div>
       ${suitabilityHtml(session.multiGliderSuitability)}
       <button class="console-button primary" type="button" data-action="env-studio-apply-domain">Apply Domain</button>
@@ -826,6 +834,10 @@ function simplifiedConsoleHtml(scene, summary = {}, panelSections = new Map(), a
           ${metricHtml('Shallow shelf', formatNumber(session.regionalFeatureSummary?.shallowShelfFraction))}
           ${metricHtml('Feature diversity', formatNumber(session.regionalFeatureSummary?.featureDiversityScore))}
           ${metricHtml('Feature records', session.featureRecords?.length ?? 0)}
+          ${metricHtml('Builder', shortDigest(session.bathymetryBuilderResult?.builderDigest))}
+          ${metricHtml('Builder attempts', session.bathymetryBuilderResult?.generationAttempts?.length ?? 0)}
+          ${metricHtml('Bathymetry artifact', shortDigest(session.bathymetryArtifactDigest ?? session.bathymetryBuilderResult?.bathymetryArtifactDigest))}
+          ${metricHtml('Builder validation', session.bathymetryBuilderResult?.validationReport?.status ?? 'NOT_GENERATED')}
           ${metricHtml('Preview budget', session.previewBudget?.label ?? 'Not measured')}
           ${metricHtml('Estimated cost', session.previewBudget?.estimatedRenderCost ?? 'Not measured')}
           ${metricHtml('Domain Digest', shortDigest(summary.domainDigest))}
@@ -921,6 +933,8 @@ function atlasConsoleHtml(scene, selectedWindow = {}) {
         ${metricHtml('Detected context', selectedWindow.detectedContext?.primaryContextLabel ?? 'not selected')}
         ${metricHtml('Domain', `${formatNumber((selectedWindow.recommendedDomain?.widthMeters ?? 0) / 1000)} x ${formatNumber((selectedWindow.recommendedDomain?.heightMeters ?? 0) / 1000)} km`)}
         ${metricHtml('Source cells', `${selectedWindow.recommendedDomain?.columns ?? 0} x ${selectedWindow.recommendedDomain?.rows ?? 0}`)}
+        ${metricHtml('Atlas digest', shortDigest(session.atlas?.atlasDigest))}
+        ${metricHtml('Window digest', shortDigest(selectedWindow.windowDigest))}
         ${metricHtml('Current hints', (selectedWindow.currentRegime ?? []).slice(0, 2).join(', ') || 'not inferred')}
         ${metricHtml('Scalar hints', (selectedWindow.scalarRegime ?? []).slice(0, 2).join(', ') || 'not inferred')}
       </div>
@@ -963,6 +977,8 @@ function atlasRightPanelHtml(session = {}) {
         ${metricHtml('Detected Context', context.primaryContextLabel ?? 'not inferred')}
         ${metricHtml('Recommended Gliders', window.recommendedGliders ?? session.intendedGliders)}
         ${metricHtml('Recommended Duration', `${Math.round(Number(window.recommendedDurationSeconds ?? 0) / 3600)} hr`)}
+        ${metricHtml('Atlas Digest', shortDigest(session.atlas?.atlasDigest))}
+        ${metricHtml('Window Digest', shortDigest(window.windowDigest))}
         ${metricHtml('Recipe Digest', shortDigest(recipe.recipeDigest))}
       </div>
       <table class="environment-studio-table">
@@ -974,7 +990,7 @@ function atlasRightPanelHtml(session = {}) {
           <tr><td>Scalar Regime Hints</td><td>${escapeHtml((window.scalarRegime ?? []).join(', ') || 'not inferred')}</td></tr>
           <tr><td>Open Boundaries</td><td>${escapeHtml((window.openBoundarySides ?? []).join(', ') || 'none')}</td></tr>
           <tr><td>Mission Suitability</td><td>${escapeHtml(context.missionSuitabilityHint ?? 'Generate or adjust a window.')}</td></tr>
-          <tr><td>Expected Artifacts</td><td>Bathymetry, wet/land mask, coastline current; currents/scalars/hotspots marked for regeneration or validation.</td></tr>
+          <tr><td>Expected Artifacts</td><td>Bathymetry, wet/land mask, and coastline metadata are current after generation; currents/scalars/hotspots are marked for regeneration or validation.</td></tr>
         </tbody>
       </table>
       <div class="environment-studio-summary-grid">
@@ -1010,7 +1026,9 @@ function atlasPreviewHtml(session = {}, project = {}) {
           <div class="environment-studio-preview-meta">
             ${metricHtml('Atlas Preset', labelize(session.atlasPreset))}
             ${metricHtml('Atlas Seed', session.atlasSeed)}
+            ${metricHtml('Atlas Digest', shortDigest(session.atlas?.atlasDigest))}
             ${metricHtml('Selected Window', session.selectedOperationalWindow?.label ?? 'none')}
+            ${metricHtml('Window Digest', shortDigest(session.selectedOperationalWindow?.windowDigest))}
             ${metricHtml('Detected Context', session.selectedOperationalWindow?.detectedContext?.primaryContextLabel ?? 'not inferred')}
             ${metricHtml('Recipe', shortDigest(session.regionalMissionRecipe?.recipeDigest))}
           </div>
@@ -1036,6 +1054,7 @@ function atlasSvgHtml(session = {}) {
   const atlas = session.atlas ?? {};
   const window = session.selectedOperationalWindow ?? {};
   const regions = atlas.regions ?? [];
+  const fieldCells = atlasFieldRasterHtml(atlas);
   const regionShapes = regions.map((region) => atlasRegionShapeHtml(region)).join('');
   const x = 60 + Number(window.x ?? 0) * 600;
   const y = 42 + Number(window.y ?? 0) * 276;
@@ -1045,6 +1064,7 @@ function atlasSvgHtml(session = {}) {
     <svg class="environment-studio-3d-svg environment-studio-atlas-svg" role="img" aria-label="Synthetic Ocean Atlas map" viewBox="0 0 720 360" preserveAspectRatio="xMidYMid meet">
       <rect x="0" y="0" width="720" height="360" rx="8" fill="rgba(2, 8, 18, 0.88)" />
       <rect x="60" y="42" width="600" height="276" rx="6" fill="#123e62" />
+      ${fieldCells}
       ${regionShapes}
       <g class="environment-studio-atlas-current-hints">
         <path d="M420 108 C500 88 580 118 620 178" />
@@ -1056,6 +1076,43 @@ function atlasSvgHtml(session = {}) {
       <text x="74" y="88">normalized coordinates, not real lat/lon</text>
     </svg>
   `;
+}
+
+function atlasFieldRasterHtml(atlas = {}) {
+  if (!atlas.layers) return '';
+  const columns = 30;
+  const rows = 16;
+  const cellWidth = 600 / columns;
+  const cellHeight = 276 / rows;
+  const cells = [];
+  for (let y = 0; y < rows; y += 1) {
+    for (let x = 0; x < columns; x += 1) {
+      const nx = (x + 0.5) / columns;
+      const ny = (y + 0.5) / rows;
+      const land = sampleAtlasLayer(atlas, 'landOceanMask', nx, ny);
+      const shelf = sampleAtlasLayer(atlas, 'continentalShelf', nx, ny);
+      const basin = sampleAtlasLayer(atlas, 'deepBasin', nx, ny);
+      const canyon = sampleAtlasLayer(atlas, 'canyonPotential', nx, ny);
+      const island = sampleAtlasLayer(atlas, 'islandSeamount', nx, ny);
+      const river = sampleAtlasLayer(atlas, 'riverMouthInfluence', nx, ny);
+      const strait = sampleAtlasLayer(atlas, 'straitSillInfluence', nx, ny);
+      const suitability = sampleAtlasLayer(atlas, 'missionSuitability', nx, ny);
+      cells.push(`<rect x="${roundForSvg(60 + x * cellWidth)}" y="${roundForSvg(42 + y * cellHeight)}" width="${roundForSvg(cellWidth + 0.25)}" height="${roundForSvg(cellHeight + 0.25)}" fill="${atlasCellColor({ land, shelf, basin, canyon, island, river, strait, suitability })}" opacity=".9" />`);
+    }
+  }
+  return `<g class="environment-studio-atlas-field-raster" data-env-studio-atlas-field-raster>${cells.join('')}</g>`;
+}
+
+function atlasCellColor(values = {}) {
+  if (values.land > 0.52) return '#6f7b4a';
+  if (values.river > 0.38) return '#6aa36f';
+  if (values.strait > 0.34) return '#55b9b5';
+  if (values.island > 0.42) return '#b8a867';
+  if (values.canyon > 0.3) return '#2b4d92';
+  if (values.shelf > 0.5) return '#2d8f9f';
+  if (values.basin > 0.5) return '#263f88';
+  if (values.suitability > 0.64) return '#1f6f9d';
+  return '#123e62';
 }
 
 function atlasRegionShapeHtml(region = {}) {

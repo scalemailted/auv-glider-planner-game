@@ -1,6 +1,6 @@
 # ENV-STUDIO-R1 Feedback Response
 
-ENV-STUDIO-R0 converted Alpha tester feedback about environment creation into a staged, reproducible Environment Studio plan. ENV-STUDIO-R1 added the visible browser thin slice for that plan. ENV-STUDIO-R1.1 responded to `ALPHA-FB-006` with regional 3D bathymetry authoring. ENV-ATLAS-R1 responds to `ALPHA-FB-008` by changing the first interaction model: mission authors start from a Synthetic Ocean Atlas and selected operational window, not low-level terrain-feature controls. It does not change simulation, scoring, current generation, scalar generation, generated mission semantics, benchmark fairness, or existing Alpha workflows.
+ENV-STUDIO-R0 converted Alpha tester feedback about environment creation into a staged, reproducible Environment Studio plan. ENV-STUDIO-R1 added the visible browser thin slice for that plan. ENV-STUDIO-R1.1 responded to `ALPHA-FB-006` with regional 3D bathymetry authoring. ENV-ATLAS-R1 responds to `ALPHA-FB-008` by changing the first interaction model: mission authors start from a Synthetic Ocean Atlas and selected operational window, not low-level terrain-feature controls. ENV-ATLAS-R1.1 responds to `ALPHA-FB-009` by making the atlas field-based and adding a window-conditioned bathymetry builder. It does not change simulation, scoring, current generation, scalar generation, generated mission semantics, benchmark fairness, or existing Alpha workflows.
 
 ## Feedback Classification
 
@@ -119,6 +119,24 @@ Scope:
 5. Advanced feature/tile controls remain available as provenance and tuning mechanisms after region generation, not as the default first screen.
 
 The atlas is synthetic, reference-informed, and benchmark-oriented. It is not a real Earth map, calibrated real-ocean data, operational forecast, or navigation product.
+
+## What ENV-ATLAS-R1.1 Implements
+
+Implemented procedural atlas field engine and window-conditioned bathymetry:
+
+```text
+ENV-ATLAS-R1.1 - Procedural Synthetic Ocean Atlas Field Engine and Window-Conditioned Bathymetry Generator
+```
+
+Scope:
+
+1. Atlas presets now generate deterministic fields for land/ocean, distance to coast, shelf, shelf break, basin, island/seamount, canyon potential, river mouth, strait/sill, gulf/bay, open-ocean corridor, current-regime hints, scalar-regime hints, and mission suitability.
+2. Operational windows sample those fields to infer context and produce a Regional Mission Recipe with atlas stats, dataset tags, current/scalar hints, open-boundary metadata, validation profile, and digests.
+3. Generate 3D Region now uses `WindowConditionedBathymetryBuilder` to build positive-down 2.5D bathymetry from shelf-to-basin profile, basin/canyon/ridge/island/delta features, controlled roughness, smoothing, validation, and deterministic retry attempts.
+4. Project export/import preserves atlas/window/recipe/builder metadata, bathymetry artifact digest, generation attempts, feature records, validation, dependency graph, and dataset tags.
+5. The UI shows atlas/window digests, builder digest, bathymetry artifact digest, feature summary, validation, and honest dependency states.
+
+Noise is used for variation and texture, not as the sole terrain model. Currents, scalars, hotspots, starts/drop zones, and benchmark bundles remain staged follow-ups unless a future adapter explicitly generates them.
 
 ## Staged Follow-Ups
 

@@ -11,6 +11,11 @@ import {
   createBathymetryArtifactFromField
 } from '../generation/BathymetryArtifactAdapter.js';
 import {
+  WINDOW_CONDITIONED_BATHYMETRY_BUILDER_VERSION,
+  buildWindowConditionedBathymetry,
+  compactWindowConditionedBathymetryResult
+} from '../generation/WindowConditionedBathymetryBuilder.js';
+import {
   BATHYMETRY_FIELD_MODEL_VERSION,
   createBasinSeamountBathymetry,
   createBathymetryField,
@@ -431,6 +436,9 @@ export function createEnvironmentStudioSession(options = {}) {
     atlasSeed: atlas.seed,
     selectedOperationalWindow,
     regionalMissionRecipe,
+    bathymetryBuilderVersion: options.bathymetryBuilderVersion ?? options.bathymetryBuilderResult?.builderVersion ?? null,
+    bathymetryBuilderResult: options.bathymetryBuilderResult ?? null,
+    bathymetryArtifactDigest: options.bathymetryArtifactDigest ?? options.bathymetryBuilderResult?.bathymetryArtifactDigest ?? null,
     previewMode: previewModeById(options.previewMode ?? recipe.previewMode).id,
     previewDetail: previewDetailById(options.previewDetail ?? recipe.previewDetail).id,
     simplifiedPanelState: normalizeSimplifiedPanelState(options.simplifiedPanelState),
@@ -648,7 +656,13 @@ export function generateEnvironmentStudioRegionFromAtlasWindow(sessionInput = {}
     simplifiedPanelState: session.simplifiedPanelState,
     expandedAdvancedSections: session.expandedAdvancedSections
   });
-  return createEnvironmentStudioMosaic(prepared, { seed: regionalMissionRecipe.randomSeed });
+  const builderResult = buildWindowConditionedBathymetry(regionalMissionRecipe, {
+    atlas,
+    seed: options.seed ?? regionalMissionRecipe.randomSeed
+  });
+  return createEnvironmentStudioMosaicFromBuilderResult(prepared, builderResult, {
+    seed: regionalMissionRecipe.randomSeed
+  });
 }
 
 export function environmentStudioPanelViewModel(sessionInput = {}) {
@@ -849,6 +863,145 @@ export function createEnvironmentStudioMosaic(sessionInput = {}, options = {}) {
   });
 }
 
+export function createEnvironmentStudioMosaicFromBuilderResult(sessionInput = {}, builderResult = {}, options = {}) {
+  const session = normalizeSession(sessionInput);
+  const seed = String(options.seed ?? session.seed ?? builderResult.provenance?.deterministicSeed ?? 'env-studio-r1-1-builder');
+  const field = builderResult.bathymetryField ?? {};
+  const depthGrid = field.bottomDepthMeters ?? field.depthMeters ?? [];
+  const rows = depthGrid.length;
+  const columns = depthGrid[0]?.length ?? 0;
+  if (!rows || !columns) throw new Error('Window-conditioned bathymetry builder returned an empty depth grid.');
+  const midRow = Math.max(0, Math.floor((rows - 1) / 2));
+  const midColumn = Math.max(0, Math.floor((columns - 1) / 2));
+  const windows = [
+    { id: 'northwest', label: 'Northwest Source Tile', row: 0, column: 0, x0: 0, y0: 0, width: midColumn + 1, height: midRow + 1, archetypeId: 'coastalShelf', featureRole: 'coast / shelf provenance tile' },
+    { id: 'northeast', label: 'Northeast Source Tile', row: 0, column: 1, x0: midColumn, y0: 0, width: columns - midColumn, height: midRow + 1, archetypeId: 'deepBasin', featureRole: 'basin / open-water provenance tile' },
+    { id: 'southwest', label: 'Southwest Source Tile', row: 1, column: 0, x0: 0, y0: midRow, width: midColumn + 1, height: rows - midRow, archetypeId: 'submarineCanyon', featureRole: 'canyon / delta provenance tile' },
+    { id: 'southeast', label: 'Southeast Source Tile', row: 1, column: 1, x0: midColumn, y0: midRow, width: columns - midColumn, height: rows - midRow, archetypeId: 'ridgeSill', featureRole: 'sill / feature-diversity provenance tile' }
+  ];
+  const tileConfigs = windows.map((window, index) => ({
+    id: window.id,
+    label: window.label,
+    tileCoordinate: { row: window.row, column: window.column },
+    archetypeId: window.archetypeId,
+    featureRole: window.featureRole,
+    seedOffset: index + 1
+  }));
+  const tileWidthMeters = session.domainSpec.horizontal.widthMeters / 2;
+  const tileHeightMeters = session.domainSpec.horizontal.heightMeters / 2;
+  const tiles = windows.map((window, index) => {
+    const bathymetry = {
+      ...field,
+      id: `window-conditioned-${window.id}`,
+      seed: `${seed}:builder-tile:${window.id}`,
+      width: window.width,
+      height: window.height,
+      bottomDepthMeters: extractDepthWindow(depthGrid, window.x0, window.y0, window.width, window.height),
+      depthMeters: extractDepthWindow(depthGrid, window.x0, window.y0, window.width, window.height),
+      landMask: extractMaskWindow(field.landMask, window.x0, window.y0, window.width, window.height, false),
+      wetMask: extractMaskWindow(field.wetMask, window.x0, window.y0, window.width, window.height, false),
+      landSeaMask: extractMaskWindow(field.landSeaMask, window.x0, window.y0, window.width, window.height, 'land'),
+      coastline: field.coastline ?? [],
+      terrainFeatures: field.terrainFeatures ?? null,
+      sourceMetadata: {
+        ...(field.sourceMetadata ?? {}),
+        builderDigest: builderResult.builderDigest,
+        bathymetryArtifactDigest: builderResult.bathymetryArtifactDigest,
+        sourceWindow: {
+          x0: window.x0,
+          y0: window.y0,
+          width: window.width,
+          height: window.height
+        }
+      },
+      provenance: {
+        ...(field.provenance ?? {}),
+        deterministicSeed: `${seed}:builder-tile:${window.id}`,
+        sourceBuilderDigest: builderResult.builderDigest
+      }
+    };
+    return createTileFromBathymetry({
+      id: `env-studio-builder-r${window.row}-c${window.column}`,
+      tileCoordinate: { row: window.row, column: window.column },
+      domainSpec: session.domainSpec,
+      archetypeSpec: session.archetypeSpec,
+      archetypeId: window.archetypeId,
+      seed: `${seed}:builder:${window.id}`,
+      rows: window.height,
+      columns: window.width,
+      eastMeters: tileWidthMeters,
+      northMeters: tileHeightMeters,
+      bathymetry,
+      tileConfig: tileConfigs[index],
+      featureRole: window.featureRole,
+      bathymetrySourceMode: 'windowConditionedAtlasGenerated',
+      provenance: {
+        generatedBy: 'src/core/editor/EnvironmentStudioProject.js',
+        generatorVersion: ENVIRONMENT_STUDIO_PROJECT_MODULE_VERSION,
+        deterministicSeed: `${seed}:builder:${window.id}`,
+        sourceBuilderDigest: builderResult.builderDigest,
+        sourceBuilderVersion: builderResult.builderVersion ?? WINDOW_CONDITIONED_BATHYMETRY_BUILDER_VERSION
+      }
+    });
+  });
+  const seamReport = validateTileSeams({
+    tileManifests: tiles.map((tile) => tile.manifest),
+    seamPolicy: { maxDepthDeltaMeters: finite(options.maxDepthDeltaMeters, ENVIRONMENT_STUDIO_LIMITS.maxMosaicSeamDeltaMeters) }
+  });
+  const mosaicManifest = normalizeTileMosaicManifest({
+    id: 'environment-studio-window-conditioned-2x2-mosaic',
+    domainSpecDigest: session.domainSpec.domainSpecDigest,
+    tileGrid: { rows: 2, columns: 2 },
+    tiles: tiles.map((tile) => tile.manifest),
+    seamPolicy: seamReport.seamPolicy,
+    editProvenance: {
+      source: 'window-conditioned-bathymetry-builder',
+      deterministicSeed: seed,
+      operations: [
+        { id: 'build-window-conditioned-bathymetry', type: 'regional-atlas-window-bathymetry-builder', target: 'bottomDepthMeters' },
+        { id: 'slice-builder-grid-into-source-tiles', type: 'overlapping-shared-edge-2x2-slice', target: 'bathymetryTiles' }
+      ]
+    }
+  });
+  const mosaic = withDigest({
+    type: 'anchor.environment-studio.mosaic',
+    version: ENVIRONMENT_STUDIO_PROJECT_MODULE_VERSION,
+    id: mosaicManifest.id,
+    manifest: mosaicManifest,
+    seamReport,
+    regionalTemplate: session.regionalTemplate,
+    featureMix: session.featureMix,
+    tileConfigs,
+    builderDigest: builderResult.builderDigest,
+    bathymetryArtifactDigest: builderResult.bathymetryArtifactDigest,
+    seamBlendPolicy: {
+      mode: 'builder-source-grid-shared-edge',
+      deterministic: true,
+      preservesSourceGridExport: true
+    },
+    tileIds: tiles.map((tile) => tile.id),
+    sourceDigest: canonicalJsonDigest({
+      seed,
+      builderDigest: builderResult.builderDigest,
+      bathymetryArtifactDigest: builderResult.bathymetryArtifactDigest,
+      tileRows: [midRow + 1, rows - midRow],
+      tileColumns: [midColumn + 1, columns - midColumn]
+    })
+  }, 'digest');
+  return refreshEnvironmentStudioSession({
+    ...session,
+    seed,
+    archetypeId: tiles[0]?.archetypeId ?? session.archetypeId,
+    tileConfigs,
+    tiles,
+    mosaic,
+    bathymetryBuilderResult: compactWindowConditionedBathymetryResult(builderResult),
+    bathymetryBuilderVersion: builderResult.builderVersion ?? WINDOW_CONDITIONED_BATHYMETRY_BUILDER_VERSION,
+    bathymetryArtifactDigest: builderResult.bathymetryArtifactDigest,
+    lastAction: 'window-conditioned-bathymetry-generated'
+  });
+}
+
 export function buildEnvironmentStudioProject(sessionInput = {}) {
   const session = refreshEnvironmentStudioSession(normalizeSession(sessionInput));
   const validationReport = session.validationReport ?? validationReportForState(session);
@@ -873,6 +1026,9 @@ export function buildEnvironmentStudioProject(sessionInput = {}) {
     atlasSeed: session.atlasSeed,
     selectedOperationalWindow: session.selectedOperationalWindow,
     regionalMissionRecipe: session.regionalMissionRecipe,
+    bathymetryBuilderVersion: session.bathymetryBuilderVersion ?? session.bathymetryBuilderResult?.builderVersion ?? null,
+    bathymetryBuilderResult: session.bathymetryBuilderResult ?? null,
+    bathymetryArtifactDigest: session.bathymetryArtifactDigest ?? session.bathymetryBuilderResult?.bathymetryArtifactDigest ?? tileArtifactDigest(session.tiles),
     previewMode: session.previewMode,
     previewDetail: session.previewDetail,
     sourceGridShape: session.sourceGridShape,
@@ -935,6 +1091,9 @@ export function normalizeEnvironmentStudioProject(input = {}) {
     atlasSeed: source.atlasSeed,
     selectedOperationalWindow: source.selectedOperationalWindow,
     regionalMissionRecipe: source.regionalMissionRecipe,
+    bathymetryBuilderVersion: source.bathymetryBuilderVersion,
+    bathymetryBuilderResult: source.bathymetryBuilderResult,
+    bathymetryArtifactDigest: source.bathymetryArtifactDigest,
     previewMode: source.previewMode,
     previewDetail: source.previewDetail,
     simplifiedPanelState: source.noncanonicalUiMetadata?.simplifiedPanelState ?? source.simplifiedPanelState,
@@ -998,7 +1157,12 @@ export function refreshEnvironmentStudioSession(sessionInput = {}) {
   const previewDecimation = derivePreviewDecimation(sourceGridShape, session.previewDetail);
   const previewGridShape = derivePreviewGridShape(sourceGridShape, previewDecimation);
   const regionalFeatureSummary = computeRegionalFeatureSummary(session, sourceGridShape);
-  const featureRecords = computeRegionalFeatureRecords(session, regionalFeatureSummary);
+  const builderFeatureRecords = Array.isArray(session.bathymetryBuilderResult?.featureRecords)
+    ? session.bathymetryBuilderResult.featureRecords
+    : [];
+  const featureRecords = builderFeatureRecords.length
+    ? builderFeatureRecords.map(normalizeBuilderFeatureRecord)
+    : computeRegionalFeatureRecords(session, regionalFeatureSummary);
   const previewBudget = computePreviewBudget(sourceGridShape, previewGridShape, previewDecimation);
   const multiGliderSuitability = computeMultiGliderSuitability(session, regionalFeatureSummary, sourceGridShape, previewBudget);
   const dependencyGraph = dependencyGraphForState(session);
@@ -1190,14 +1354,25 @@ export function environmentStudioDebugPayload(sessionInput = {}) {
     intendedGliders: session.intendedGliders,
     atlasMode: true,
     studioStage: session.studioStage,
+    atlasVersion: session.atlas?.atlasVersion ?? null,
     atlasPreset: session.atlasPreset,
     atlasSeed: session.atlasSeed,
+    atlasDigest: session.atlas?.atlasDigest ?? null,
+    atlasFieldSummary: session.atlas?.layerSummaries ?? null,
     selectedWindow: compactSelectedWindow(session.selectedOperationalWindow),
+    selectedWindowDigest: session.selectedOperationalWindow?.windowDigest ?? null,
     detectedContext: session.selectedOperationalWindow?.detectedContext ?? null,
     regionalMissionRecipeDigest: session.regionalMissionRecipe?.recipeDigest ?? null,
+    bathymetryBuilderVersion: session.bathymetryBuilderVersion ?? session.bathymetryBuilderResult?.builderVersion ?? null,
+    bathymetryBuilderDigest: session.bathymetryBuilderResult?.builderDigest ?? null,
+    bathymetryArtifactDigest: session.bathymetryArtifactDigest ?? session.bathymetryBuilderResult?.bathymetryArtifactDigest ?? tileArtifactDigest(session.tiles),
+    generationAttemptCount: session.bathymetryBuilderResult?.generationAttempts?.length ?? 0,
     bathymetryRegime: session.regionalMissionRecipe?.bathymetryRegime ?? session.selectedOperationalWindow?.bathymetryRegime ?? null,
     currentRegime: session.regionalMissionRecipe?.currentRegime ?? session.selectedOperationalWindow?.currentRegime ?? [],
     scalarRegime: session.regionalMissionRecipe?.scalarRegime ?? session.selectedOperationalWindow?.scalarRegime ?? [],
+    currentRegimeHints: session.regionalMissionRecipe?.currentRegimeHints ?? session.selectedOperationalWindow?.currentRegimeHints ?? [],
+    scalarRegimeHints: session.regionalMissionRecipe?.scalarRegimeHints ?? session.selectedOperationalWindow?.scalarRegimeHints ?? [],
+    datasetTags: session.regionalMissionRecipe?.datasetTags ?? null,
     missionDuration: session.regionalMissionRecipe?.missionDuration ?? null,
     regionalTemplate: session.regionalTemplate,
     coastlineOrientation: session.coastlineOrientation,
@@ -1213,6 +1388,7 @@ export function environmentStudioDebugPayload(sessionInput = {}) {
     selectedObjectType: session.selectedObject?.type ?? 'region',
     selectedObjectId: session.selectedObject?.id ?? 'region',
     regionalFeatureSummary: session.regionalFeatureSummary,
+    featureSummary: session.bathymetryBuilderResult?.featureSummary ?? session.regionalFeatureSummary,
     featureRecords: session.featureRecords,
     featureRecordCount: session.featureRecords.length,
     multiGliderSuitability: session.multiGliderSuitability,
@@ -1256,10 +1432,17 @@ export function environmentStudioSessionSummary(sessionInput = {}) {
     missionScale: session.missionScale,
     intendedGliders: session.intendedGliders,
     studioStage: session.studioStage,
+    atlasVersion: session.atlas?.atlasVersion ?? null,
     atlasPreset: session.atlasPreset,
     atlasSeed: session.atlasSeed,
+    atlasDigest: session.atlas?.atlasDigest ?? null,
     selectedWindow: compactSelectedWindow(session.selectedOperationalWindow),
+    selectedWindowDigest: session.selectedOperationalWindow?.windowDigest ?? null,
     regionalMissionRecipeDigest: session.regionalMissionRecipe?.recipeDigest ?? null,
+    bathymetryBuilderVersion: session.bathymetryBuilderVersion ?? session.bathymetryBuilderResult?.builderVersion ?? null,
+    bathymetryBuilderDigest: session.bathymetryBuilderResult?.builderDigest ?? null,
+    bathymetryArtifactDigest: session.bathymetryArtifactDigest ?? session.bathymetryBuilderResult?.bathymetryArtifactDigest ?? tileArtifactDigest(session.tiles),
+    generationAttemptCount: session.bathymetryBuilderResult?.generationAttempts?.length ?? 0,
     regionalTemplate: session.regionalTemplate,
     previewMode: session.previewMode,
     sourceGridShape: session.sourceGridShape,
@@ -1284,6 +1467,7 @@ export function environmentStudioPackageVersions() {
     environmentStudioContracts: ENVIRONMENT_STUDIO_CONTRACT_VERSION,
     bathymetryFieldModel: BATHYMETRY_FIELD_MODEL_VERSION,
     bathymetryArtifactAdapter: BATHYMETRY_ARTIFACT_ADAPTER_VERSION,
+    windowConditionedBathymetryBuilder: WINDOW_CONDITIONED_BATHYMETRY_BUILDER_VERSION,
     bathymetryPackage: BATHYMETRY_PACKAGE_VERSION
   };
 }
@@ -1330,14 +1514,16 @@ function createTileFromBathymetry(options = {}) {
     physicalExtentMeters: { east: positive(options.eastMeters, artifact.eastAxisMeters?.at?.(-1) ?? 1), north: positive(options.northMeters, artifact.northAxisMeters?.at?.(-1) ?? 1) },
     edgeProfiles,
     bathymetrySource: {
-      mode: 'archetypeGenerated',
+      mode: String(options.bathymetrySourceMode ?? 'archetypeGenerated'),
       publicVisibility: 'publicScenario',
       containsHiddenTruth: false
     },
     editProvenance: {
-      source: 'environment-studio-r1-browser-thin-slice',
+      source: options.provenance?.source ?? 'environment-studio-r1-browser-thin-slice',
       deterministicSeed: String(options.seed ?? 'env-studio-r1'),
-      operations: [{ id: `generate-${options.id}`, type: 'generate-bathymetry-tile', target: 'bottomDepthMeters' }]
+      operations: options.provenance?.operations ?? [{ id: `generate-${options.id}`, type: 'generate-bathymetry-tile', target: 'bottomDepthMeters' }],
+      sourceBuilderDigest: options.provenance?.sourceBuilderDigest ?? null,
+      sourceBuilderVersion: options.provenance?.sourceBuilderVersion ?? null
     }
   });
   const diagnostics = tileDiagnostics(artifact);
@@ -1397,6 +1583,7 @@ function dependencyGraphForState(state = {}) {
   const hasTiles = tiles.length > 0;
   const hasMosaic = Boolean(state.mosaic?.manifest);
   const validationReport = state.validationReport ?? null;
+  const bathymetryDigest = state.bathymetryArtifactDigest ?? state.bathymetryBuilderResult?.bathymetryArtifactDigest ?? tileArtifactDigest(tiles);
   return createEnvironmentStudioDependencyGraph({
     id: 'environment-studio-r1-dependency-graph',
     nodes: {
@@ -1404,7 +1591,7 @@ function dependencyGraphForState(state = {}) {
       bathymetryArchetypeSpec: node(ENVIRONMENT_STUDIO_DEPENDENCY_STATE.CURRENT, state.archetypeSpec?.archetypeSpecDigest),
       bathymetryTiles: node(hasTiles ? ENVIRONMENT_STUDIO_DEPENDENCY_STATE.CURRENT : ENVIRONMENT_STUDIO_DEPENDENCY_STATE.NOT_GENERATED, tileDigestListDigest(tiles)),
       tileMosaic: node(hasMosaic ? ENVIRONMENT_STUDIO_DEPENDENCY_STATE.CURRENT : ENVIRONMENT_STUDIO_DEPENDENCY_STATE.NOT_GENERATED, state.mosaic?.manifest?.mosaicDigest ?? null),
-      bathymetryArtifact: node(hasTiles ? ENVIRONMENT_STUDIO_DEPENDENCY_STATE.CURRENT : ENVIRONMENT_STUDIO_DEPENDENCY_STATE.NOT_GENERATED, tileArtifactDigest(tiles)),
+      bathymetryArtifact: node(hasTiles ? ENVIRONMENT_STUDIO_DEPENDENCY_STATE.CURRENT : ENVIRONMENT_STUDIO_DEPENDENCY_STATE.NOT_GENERATED, bathymetryDigest),
       currentArtifact: node(hasMosaic ? ENVIRONMENT_STUDIO_DEPENDENCY_STATE.REQUIRES_REGENERATION : ENVIRONMENT_STUDIO_DEPENDENCY_STATE.NOT_GENERATED, null, hasMosaic ? 'Currents are deferred to a later regeneration pass.' : null),
       scalarArtifact: node(hasMosaic ? ENVIRONMENT_STUDIO_DEPENDENCY_STATE.REQUIRES_REGENERATION : ENVIRONMENT_STUDIO_DEPENDENCY_STATE.NOT_GENERATED, null, hasMosaic ? 'Scalar fields are deferred to a later regeneration pass.' : null),
       environmentArtifact: node(hasMosaic ? ENVIRONMENT_STUDIO_DEPENDENCY_STATE.REQUIRES_REGENERATION : ENVIRONMENT_STUDIO_DEPENDENCY_STATE.NOT_GENERATED, null, hasMosaic ? 'Launch-to-planning adapter is deferred to ENV-STUDIO-R1.2.' : null),
@@ -1505,6 +1692,18 @@ function validationExtras(state = {}) {
       featureTypes: state.featureRecords.map((record) => record.type)
     }));
   }
+  if (state.bathymetryBuilderResult?.validationReport) {
+    const builderReport = state.bathymetryBuilderResult.validationReport;
+    checks.push(check('window-conditioned-bathymetry-builder-status', builderReport.status !== ENVIRONMENT_STUDIO_STATUS.FAIL, {
+      builderVersion: state.bathymetryBuilderResult.builderVersion,
+      builderDigest: state.bathymetryBuilderResult.builderDigest,
+      bathymetryArtifactDigest: state.bathymetryBuilderResult.bathymetryArtifactDigest,
+      status: builderReport.status,
+      metrics: builderReport.metrics
+    }));
+    warnings.push(...(builderReport.warnings ?? []).map((message) => `Bathymetry builder: ${message}`));
+    errors.push(...(builderReport.errors ?? []).map((message) => `Bathymetry builder: ${message}`));
+  }
   if (state.previewBudget) {
     checks.push(check('preview-budget-measured', state.previewBudget.measured === true || tiles.length === 0, state.previewBudget));
   }
@@ -1560,6 +1759,9 @@ function projectStateFromProject(project = {}) {
     atlasSeed: project.atlasSeed,
     selectedOperationalWindow: project.selectedOperationalWindow,
     regionalMissionRecipe: project.regionalMissionRecipe,
+    bathymetryBuilderVersion: project.bathymetryBuilderVersion,
+    bathymetryBuilderResult: project.bathymetryBuilderResult,
+    bathymetryArtifactDigest: project.bathymetryArtifactDigest,
     previewMode: project.previewMode,
     previewDetail: project.previewDetail,
     simplifiedPanelState: project.noncanonicalUiMetadata?.simplifiedPanelState ?? project.simplifiedPanelState,
@@ -1628,6 +1830,9 @@ function normalizeSession(input = {}) {
     atlasSeed: atlas.seed,
     selectedOperationalWindow,
     regionalMissionRecipe,
+    bathymetryBuilderVersion: input.bathymetryBuilderVersion ?? input.bathymetryBuilderResult?.builderVersion ?? null,
+    bathymetryBuilderResult: input.bathymetryBuilderResult ?? null,
+    bathymetryArtifactDigest: input.bathymetryArtifactDigest ?? input.bathymetryBuilderResult?.bathymetryArtifactDigest ?? null,
     previewMode: previewModeById(input.previewMode ?? recipe.previewMode).id,
     previewDetail: previewDetailById(input.previewDetail ?? recipe.previewDetail).id,
     simplifiedPanelState: normalizeSimplifiedPanelState(input.noncanonicalUiMetadata?.simplifiedPanelState ?? input.simplifiedPanelState),
@@ -2160,6 +2365,31 @@ function computeRegionalFeatureRecords(session = {}, summary = {}) {
   return records.filter((record) => record.confidence >= 0.45);
 }
 
+function normalizeBuilderFeatureRecord(record = {}) {
+  return {
+    featureId: String(record.featureId ?? record.id ?? `builder-feature-${stableToken(canonicalJsonDigest(record))}`),
+    type: String(record.type ?? 'regionalFeature'),
+    label: String(record.label ?? labelize(record.type ?? 'Regional Feature')),
+    approximateCenterMeters: {
+      eastMeters: round(Number(record.approximateCenterMeters?.eastMeters ?? record.center?.eastMeters ?? 0)),
+      northMeters: round(Number(record.approximateCenterMeters?.northMeters ?? record.center?.northMeters ?? 0))
+    },
+    areaSquareMeters: record.areaSquareMeters == null ? null : round(Number(record.areaSquareMeters)),
+    lengthMeters: record.lengthMeters == null ? null : round(Number(record.lengthMeters)),
+    depthRangeMeters: [
+      round(Number(record.depthRangeMeters?.[0] ?? 0)),
+      round(Number(record.depthRangeMeters?.[1] ?? 0))
+    ],
+    slopeRangeMetersPerCell: [
+      round(Number(record.slopeRangeMetersPerCell?.[0] ?? 0)),
+      round(Number(record.slopeRangeMetersPerCell?.[1] ?? 0))
+    ],
+    confidence: round(Number(record.confidence ?? 0.5)),
+    relatedTileIds: Array.isArray(record.relatedTileIds) ? record.relatedTileIds.map(String) : [],
+    validationNotes: String(record.validationNotes ?? 'Derived from the window-conditioned bathymetry builder.')
+  };
+}
+
 function featureRecord(input = {}) {
   const depthRange = Array.isArray(input.depthRangeMeters) ? input.depthRangeMeters : [0, 0];
   const slopeRange = Array.isArray(input.slopeRangeMetersPerCell) ? input.slopeRangeMetersPerCell : [0, 0];
@@ -2518,6 +2748,10 @@ function largestWetComponent(wetMask = []) {
 
 function extractDepthWindow(grid = [], x0 = 0, y0 = 0, width = 1, height = 1) {
   return Array.from({ length: height }, (_row, y) => Array.from({ length: width }, (_cell, x) => round(grid[y0 + y]?.[x0 + x] ?? 0)));
+}
+
+function extractMaskWindow(grid = [], x0 = 0, y0 = 0, width = 1, height = 1, fallback = false) {
+  return Array.from({ length: height }, (_row, y) => Array.from({ length: width }, (_cell, x) => grid[y0 + y]?.[x0 + x] ?? fallback));
 }
 
 function downsampleGrid(grid = [], maxColumns = 36, maxRows = 24) {

@@ -101,6 +101,9 @@ assert.equal(generated.studioStage, 'regionalDetail');
 assert.equal(generated.tiles.length, 4);
 assert.equal(generated.dependencyGraph.nodes.currentArtifact.state, 'REQUIRES_REGENERATION');
 assert.equal(generated.dependencyGraph.nodes.scalarArtifact.state, 'REQUIRES_REGENERATION');
+assert.ok(generated.bathymetryBuilderResult.builderDigest.startsWith('fnv1a32:'), 'builder digest recorded');
+assert.ok(generated.bathymetryBuilderResult.bathymetryArtifactDigest, 'builder bathymetry artifact digest recorded');
+assert.ok(generated.bathymetryBuilderResult.generationAttempts.length >= 1, 'builder attempts recorded');
 assert.ok(generated.featureRecords.length >= 3);
 assert.ok(generated.previewBudget.measured);
 
@@ -109,6 +112,8 @@ assert.equal(project.studioStage, 'regionalDetail');
 assert.equal(project.atlas.atlasDigest, session.atlas.atlasDigest);
 assert.equal(project.selectedOperationalWindow.windowId, session.selectedOperationalWindow.windowId);
 assert.ok(project.regionalMissionRecipe.recipeDigest);
+assert.equal(project.bathymetryBuilderResult.builderDigest, generated.bathymetryBuilderResult.builderDigest);
+assert.equal(project.bathymetryArtifactDigest, generated.bathymetryArtifactDigest);
 assert.equal(project.provenance.hiddenTruthExposed, false);
 assert.equal(project.provenance.operationalForecast, false);
 
